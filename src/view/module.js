@@ -1014,7 +1014,7 @@ app.view.TabContentView = class TabContentView extends (
           return;
         }
 
-        let allText = `${threadTitle}\n${threadUrl}\n\n`;
+        let allText = `${threadTitle}\n${threadUrl}\n`;
 
         for (let $article of $content.child()) {
           // NGレスは除外
@@ -1027,7 +1027,7 @@ app.view.TabContentView = class TabContentView extends (
           const other = $article.C("other")[0]?.textContent || "";
           const message = $article.C("message")[0]?.innerText || "";
 
-          allText += `${resNum}: ${name}  ${other}\n${message}\n\n`;
+          allText += `${resNum}: ${name}  ${other}\n${message}\n`;
         }
 
         app.clipboardWrite(allText.trim());
