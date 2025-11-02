@@ -141,3 +141,4 @@ dist
 ### MyProject
 /debug/
 /build/
+.vscode
