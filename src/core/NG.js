@@ -46,6 +46,7 @@ const _ignoreNgType = /^ignoreNgType:(?:\$\((.*?)\):)?(.*)$/;
 const _expireDate = /^expireDate:(\d{4}\/\d{1,2}\/\d{1,2}),(.*)$/;
 const _attachName = /^attachName:([^,]*),(.*)$/;
 const _expNgWords = /^\$\[(.*?)\]\$:(.*)$/;
+const _scope = /^([^(]+)\(([^)]+)\):(.*)$/;
 
 //jsonには正規表現のオブジェクトが含めれないので
 //それを展開
@@ -141,51 +142,63 @@ const parse = function (string) {
       word: "",
       subElements: [],
     };
+
+    // スコープの抽出 (例: HighlightTitle(bbs.eddibb.cc/liveedge): vtuber)
+    let scopeMatch = _scope.exec(ngWord);
+    if (scopeMatch) {
+      const keyword = scopeMatch[1].trim();
+      const scopePath = scopeMatch[2].trim();
+      const restWord = scopeMatch[3].trim();
+      ngElement.scope = { value: scopePath };
+      // キーワード部分を再構築して処理を続ける
+      ngWord = keyword + ":" + restWord;
+    }
+
     // キーワードごとのNG処理
     switch (false) {
       case !ngWord.startsWith("RegExp:"):
         ngElement.type = TYPE.REG_EXP;
-        ngElement.word = ngWord.substr(7);
+        ngElement.word = ngWord.substr(7).trim();
         break;
       case !ngWord.startsWith("RegExpTitle:"):
         ngElement.type = TYPE.REG_EXP_TITLE;
-        ngElement.word = ngWord.substr(12);
+        ngElement.word = ngWord.substr(12).trim();
         break;
       case !ngWord.startsWith("RegExpHighlightTitle:"):
         ngElement.type = TYPE.REG_EXP_HIGHLIGHT_TITLE;
-        ngElement.word = ngWord.substr(21);
+        ngElement.word = ngWord.substr(21).trim();
         break;
       case !ngWord.startsWith("RegExpName:"):
         ngElement.type = TYPE.REG_EXP_NAME;
-        ngElement.word = ngWord.substr(11);
+        ngElement.word = ngWord.substr(11).trim();
         break;
       case !ngWord.startsWith("RegExpMail:"):
         ngElement.type = TYPE.REG_EXP_MAIL;
-        ngElement.word = ngWord.substr(11);
+        ngElement.word = ngWord.substr(11).trim();
         break;
       case !ngWord.startsWith("RegExpID:"):
         ngElement.type = TYPE.REG_EXP_ID;
-        ngElement.word = ngWord.substr(9);
+        ngElement.word = ngWord.substr(9).trim();
         break;
       case !ngWord.startsWith("RegExpSlip:"):
         ngElement.type = TYPE.REG_EXP_SLIP;
-        ngElement.word = ngWord.substr(11);
+        ngElement.word = ngWord.substr(11).trim();
         break;
       case !ngWord.startsWith("RegExpBody:"):
         ngElement.type = TYPE.REG_EXP_BODY;
-        ngElement.word = ngWord.substr(11);
+        ngElement.word = ngWord.substr(11).trim();
         break;
       case !ngWord.startsWith("RegExpUrl:"):
         ngElement.type = TYPE.REG_EXP_URL;
-        ngElement.word = ngWord.substr(10);
+        ngElement.word = ngWord.substr(10).trim();
         break;
       case !ngWord.startsWith("Title:"):
         ngElement.type = TYPE.TITLE;
-        ngElement.word = normalize(ngWord.substr(6));
+        ngElement.word = normalize(ngWord.substr(6).trim());
         break;
       case !ngWord.startsWith("HighlightTitle:"):
         ngElement.type = TYPE.HIGHLIGHT_TITLE;
-        ngElement.word = normalize(ngWord.substr(15));
+        ngElement.word = normalize(ngWord.substr(15).trim());
         break;
       case !ngWord.startsWith("Name:"):
         ngElement.type = TYPE.NAME;
@@ -301,6 +314,9 @@ const parse = function (string) {
     if (ele.subElements != null) {
       ngElement.subElements = ele.subElements;
     }
+    if (ele.scope != null) {
+      ngElement.scope = ele.scope;
+    }
     // 拡張項目の設定
     if (ngElement.exception == null) {
       ngElement.exception = false;
@@ -387,6 +403,46 @@ const _checkWord = function (
 };
 
 /**
+@method _checkScope
+@param {Object} ngObj
+@param {String} url
+@private
+*/
+const _checkScope = function (ngObj, url) {
+  if (!ngObj.scope) {
+    return true;
+  }
+
+  const { value } = ngObj.scope;
+
+  // URLの形式: http://DOMAIN/test/read.cgi/BOARD/NUM/
+  // スコープの形式例:
+  // - "bbs.eddibb.cc/liveedge" -> ドメインと板の両方を指定
+  // - "bbs.eddibb.cc" -> ドメインのみ指定
+  // - "liveedge" -> 板のみ指定
+
+  // スラッシュが含まれている場合はドメイン/板の形式
+  if (value.includes("/")) {
+    // "bbs.eddibb.cc/liveedge" のような形式
+    // URLに含まれているかチェック
+    return url.includes(value);
+  } else {
+    // スラッシュがない場合は、ドメインまたは板名として扱う
+    // ドメインチェック（://の後に続く）
+    const domainMatch = url.match(/^https?:\/\/([^/]+)/);
+    if (domainMatch && domainMatch[1].includes(value)) {
+      return true;
+    }
+    // 板名チェック（/test/read.cgi/の後に続く）
+    const boardMatch = url.match(/\/test\/read\.cgi\/([^/]+)/);
+    if (boardMatch && boardMatch[1] === value) {
+      return true;
+    }
+    return false;
+  }
+};
+
+/**
 @method _checkResNum
 @param {Object} ngObj
 @param {Number} resNum
@@ -441,6 +497,10 @@ export var isNGBoard = function (
         TYPE.RES_COUNT,
       ].includes(n.type)
     ) {
+      continue;
+    }
+    // スコープのチェック
+    if (!_checkScope(n, url)) {
       continue;
     }
     // 有効期限のチェック
@@ -512,6 +572,10 @@ export var isNGThread = function (
   const now = Date.now();
   for (let n of get()) {
     if (n.type === TYPE.INVALID || n.type === "" || n.word === "") {
+      continue;
+    }
+    // スコープのチェック
+    if (!_checkScope(n, url)) {
       continue;
     }
     // ignoreResNumber用レス番号のチェック
