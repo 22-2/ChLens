@@ -1101,7 +1101,7 @@ app.view.TabContentView = class TabContentView extends (
       // 2ch.net/2ch.scに切り替え
       if (((needle = url.getTsld()), ["5ch.net", "2ch.sc"].includes(needle))) {
         __guard__(this.$element.C("button_change_netsc")[0], (x8) =>
-          x6.on("click", async () => {
+          x8.on("click", async () => {
             try {
               app.message.send("open", {
                 url: (await url.createNetScConverted()).href,
@@ -1130,7 +1130,7 @@ app.view.TabContentView = class TabContentView extends (
       //2ch.scでscの投稿だけ表示(スレ&レス)
       if (url.getTsld() === "2ch.sc") {
         __guard__(this.$element.C("button_only_sc")[0], (x10) =>
-          x8.on("click", () => {
+          x10.on("click", () => {
             for (let dom of this.$element.C("net")) {
               dom.toggleClass("hidden");
             }

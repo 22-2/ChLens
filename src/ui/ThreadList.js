@@ -480,6 +480,7 @@ export default ThreadList = (function () {
         }
         if (item.highlight) {
           $tr.addClass("highlight");
+          $tr.setAttribute()
         }
         if (item.isNet) {
           $tr.addClass("net");
