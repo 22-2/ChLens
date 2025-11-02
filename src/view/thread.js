@@ -473,6 +473,68 @@ app.boot("/view/thread.html", async function () {
   $view.on("contextmenu", onHeaderMenu);
 
   //レスメニュー表示(内容上)
+  const onMessageMenu = async function (e) {
+    const target = e.target.closest("article > .message");
+    if (target == null) {
+      return;
+    }
+
+    if (e.type !== "contextmenu") {
+      return;
+    }
+    e.preventDefault();
+
+    const $article = target.parent();
+    const $menu = $$.I("template_res_menu")
+      .content.$(".res_menu")
+      .cloneNode(true);
+    $menu.addClass("hidden");
+    let altParent = null;
+    if ($article.parent().hasClass("popup")) {
+      altParent = $view.C("popup_area")[0];
+      altParent.addLast($menu);
+      $menu.setAttr("resnum", $article.C("num")[0].textContent);
+      $article.parent().addClass("has_contextmenu");
+    } else {
+      $article.addLast($menu);
+    }
+
+    // 不要なメニュー項目を削除
+    $menu.C("toggle_aa_mode")[0].remove();
+    $menu.C("copy_id")[0].remove();
+    $menu.C("add_id_to_ngwords")[0].remove();
+    $menu.C("copy_slip")[0].remove();
+    $menu.C("add_slip_to_ngwords")[0].remove();
+    $menu.C("copy_trip")[0].remove();
+    $menu.C("jump_to_this")[0].remove();
+    $menu.C("set_image_blur")[0].remove();
+    $menu.C("reset_image_blur")[0].remove();
+    $menu.C("res_permalink")[0].remove();
+
+    if (!canWrite()) {
+      $menu.C("res_to_this")[0].remove();
+      $menu.C("res_to_this2")[0].remove();
+    }
+
+    if ($article.hasClass("written")) {
+      $menu.C("add_writehistory")[0].remove();
+    } else {
+      $menu.C("del_writehistory")[0].remove();
+    }
+
+    await app.defer();
+    if (getSelection().toString().length === 0) {
+      $menu.C("copy_selection")[0].remove();
+      $menu.C("search_selection")[0].remove();
+    }
+
+    $menu.removeClass("hidden");
+    UI.ContextMenu($menu, e.clientX, e.clientY, altParent);
+  };
+
+  $view.on("click", onMessageMenu);
+  $view.on("contextmenu", onMessageMenu);
+
   $view.on("contextmenu", function ({ target }) {
     if (!target.matches("article > .message")) {
       return;
@@ -506,7 +568,18 @@ app.boot("/view/thread.html", async function () {
       }
     }
 
-    if (target.hasClass("copy_selection")) {
+    if (target.hasClass("copy_res")) {
+      // レスをコピー
+      const threadTitle = document.title;
+      const threadUrl = viewUrlStr;
+      const resNum = $res.C("num")[0].textContent;
+      const name = app.util.decodeCharReference($res.C("name")[0].textContent);
+      const other = app.util.decodeCharReference($res.C("other")[0].textContent);
+      const message = $res.C("message")[0].innerText;
+
+      const copyText = `${threadTitle}\n${threadUrl}${resNum}\n${resNum} ${name}  ${other}\n${message}`;
+      app.clipboardWrite(copyText);
+    } else if (target.hasClass("copy_selection")) {
       selectedText = getSelection().toString();
       if (selectedText.length > 0) {
         document.execCommand("copy");
