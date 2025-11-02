@@ -1003,9 +1003,64 @@ app.view.TabContentView = class TabContentView extends (
       })
     );
 
+    // スレッドをブックマーク
+    (() => {
+      const $addButton = this.$element.$(".button_tool .button_bookmark_add");
+      const $removeButton = this.$element.$(
+        ".button_tool .button_bookmark_remove"
+      );
+
+      if (!$addButton || !$removeButton) {
+        return;
+      }
+
+      const { url } = this.$element.dataset;
+
+      // 初期状態の設定
+      const updateButtonVisibility = () => {
+        if (app.bookmark.get(url)) {
+          $addButton.addClass("hidden");
+          $removeButton.removeClass("hidden");
+        } else {
+          $addButton.removeClass("hidden");
+          $removeButton.addClass("hidden");
+        }
+      };
+
+      updateButtonVisibility();
+
+      // ブックマーク追加
+      $addButton.on("click", () => {
+        let resCount;
+        const title = document.title || url;
+
+        if (this.$element.hasClass("view_thread")) {
+          resCount = this.$element.C("content")[0].child().length;
+        }
+
+        if (resCount != null && resCount > 0) {
+          app.bookmark.add(url, title, resCount);
+        } else {
+          app.bookmark.add(url, title);
+        }
+      });
+
+      // ブックマーク削除
+      $removeButton.on("click", () => {
+        app.bookmark.remove(url);
+      });
+
+      // ブックマーク更新時の表示切り替え
+      app.message.on("bookmark_updated", function ({ type, bookmark }) {
+        if (bookmark.url === url) {
+          updateButtonVisibility();
+        }
+      });
+    })();
+
     // スレッド全文をテキストとしてコピー
-    __guard__(this.$element.C("button_copy_all")[0], (x6) =>
-      x6.on("click", () => {
+    __guard__(this.$element.C("button_copy_all")[0], (x7) =>
+      x7.on("click", () => {
         const threadTitle = document.title;
         const threadUrl = this.$element.dataset.url;
         const boardTitle = this.$element.C("breadcrumb")[0].textContent;
@@ -1045,7 +1100,7 @@ app.view.TabContentView = class TabContentView extends (
 
       // 2ch.net/2ch.scに切り替え
       if (((needle = url.getTsld()), ["5ch.net", "2ch.sc"].includes(needle))) {
-        __guard__(this.$element.C("button_change_netsc")[0], (x6) =>
+        __guard__(this.$element.C("button_change_netsc")[0], (x8) =>
           x6.on("click", async () => {
             try {
               app.message.send("open", {
@@ -1067,14 +1122,14 @@ app.view.TabContentView = class TabContentView extends (
           })
         );
       } else {
-        __guard__(this.$element.C("button_change_netsc")[0], (x7) =>
-          x7.remove()
+        __guard__(this.$element.C("button_change_netsc")[0], (x9) =>
+          x9.remove()
         );
       }
 
       //2ch.scでscの投稿だけ表示(スレ&レス)
       if (url.getTsld() === "2ch.sc") {
-        __guard__(this.$element.C("button_only_sc")[0], (x8) =>
+        __guard__(this.$element.C("button_only_sc")[0], (x10) =>
           x8.on("click", () => {
             for (let dom of this.$element.C("net")) {
               dom.toggleClass("hidden");
@@ -1082,7 +1137,7 @@ app.view.TabContentView = class TabContentView extends (
           })
         );
       } else {
-        __guard__(this.$element.C("button_only_sc")[0], (x9) => x9.remove());
+        __guard__(this.$element.C("button_only_sc")[0], (x11) => x11.remove());
       }
     })();
   }
