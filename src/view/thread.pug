@@ -22,6 +22,14 @@ block body
     .button.button_reload(title="再読み込み")
     .button.button_bookmark(title="ブックマークする")
     .button.button_write(title="書き込む")
+    .button.button_filter(title="レスを絞り込み")
+      ul.hidden
+        li.filter_all すべて表示
+        li.filter_image 画像
+        li.filter_video 動画
+        li.filter_media 画像・動画
+        li.filter_link 外部リンク
+        li.filter_popular 人気レス (3件以上の返信)
     .button.button_scheme(title="http/httpsの切り替え")
     .button.button_pause(title="自動更新一時停止")
     .button.button_tool(title="メニュー")

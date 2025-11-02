@@ -1263,6 +1263,133 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
     });
   })();
 
+  //フィルター機能
+  (function () {
+    let currentFilter = "all";
+    let filterStoredScrollTop = null;
+
+    const applyFilter = function (filterType) {
+      let dom, hitCount = 0;
+      const { scrollTop } = $content;
+
+      if (filterType === "all") {
+        // すべて表示
+        $content.removeClass("filtering");
+        $content.removeAttr("data-res-filter-hit-count");
+        const iterable = $view.C("filter_hit");
+        for (let i = iterable.length - 1; i >= 0; i--) {
+          dom = iterable[i];
+          dom.removeClass("filter_hit");
+        }
+        $view.C("hit_count")[0].textContent = "";
+
+        if (typeof filterStoredScrollTop === "number") {
+          $content.scrollTop = filterStoredScrollTop;
+          filterStoredScrollTop = null;
+        }
+      } else {
+        // フィルター適用
+        if (typeof filterStoredScrollTop !== "number") {
+          filterStoredScrollTop = $content.scrollTop;
+        }
+
+        $content.addClass("filtering");
+        for (dom of $content.child()) {
+          let match = false;
+
+          // NGレスは除外
+          if (dom.hasClass("ng") && !dom.hasClass("disp_ng")) {
+            dom.removeClass("filter_hit");
+            continue;
+          }
+
+          switch (filterType) {
+            case "image":
+              // 画像を含むレス
+              match = dom.$(".thumbnail[media-type='image']") != null;
+              break;
+            case "video":
+              // 動画を含むレス
+              match = dom.$(".thumbnail[media-type='video']") != null;
+              break;
+            case "media":
+              // 画像または動画を含むレス
+              match = dom.$(".thumbnail[media-type='image'], .thumbnail[media-type='video']") != null;
+              break;
+            case "link":
+              // 外部リンクを含むレス
+              match = dom.$(".message a:not(.anchor)") != null;
+              break;
+            case "popular":
+              // 人気レス（5件以上の返信）
+              const resNum = +dom.C("num")[0].textContent;
+              const repCount = threadContent.repIndex.get(resNum);
+              match = repCount != null && repCount.size >= 3;
+              break;
+          }
+
+          if (match) {
+            dom.addClass("filter_hit");
+            hitCount++;
+          } else {
+            dom.removeClass("filter_hit");
+          }
+        }
+
+        $content.dataset.resFilterHitCount = hitCount;
+        $view.C("hit_count")[0].textContent = `${hitCount}hit`;
+
+        if (scrollTop === $content.scrollTop) {
+          $content.emit(new Event("scroll"));
+        }
+      }
+
+      currentFilter = filterType;
+    };
+
+    // フィルターメニューのクリック
+    $view.on("click", function ({ target }) {
+
+      const closeMenu = () => document.query(`.button_filter > ul`).addClass("hidden");
+
+      if (target.matches(".button_filter")) {
+        const ul = target.querySelector("ul");
+        if (ul) {
+          return ul.toggleClass("hidden");
+        }
+        return;
+      } else if (!target.closest(".button_filter")) {
+        // クリックが .button_filter の外なら、フィルターメニューを閉じる
+        return closeMenu();
+      }
+
+      let filterType = "all";
+      if (target.hasClass("filter_all")) {
+        filterType = "all";
+      } else if (target.hasClass("filter_image")) {
+        filterType = "image";
+      } else if (target.hasClass("filter_video")) {
+        filterType = "video";
+      } else if (target.hasClass("filter_media")) {
+        filterType = "media";
+      } else if (target.hasClass("filter_link")) {
+        filterType = "link";
+      } else if (target.hasClass("filter_popular")) {
+        filterType = "popular";
+      }
+
+      applyFilter(filterType);
+      closeMenu();
+    });
+
+    // 検索とフィルターの競合を防ぐ
+    $content.on("searchstart", function () {
+      if (currentFilter !== "all") {
+        applyFilter("all");
+      }
+    });
+  })();
+
   //フッター表示処理
   (function () {
     let canBeShown = false;

@@ -57,6 +57,7 @@ let paths = {};
         "pause_19x19_811.webp",
         "regexp_19x19_333.webp",
         "regexp_19x19_06e.webp",
+        "filter_19x19_333.webp",
 
         "arrow_19x19_ddd_r90.webp",
         "arrow_19x19_ddd_r-90.webp",
@@ -72,6 +73,7 @@ let paths = {};
         "pause_19x19_a33.webp",
         "regexp_19x19_ddd.webp",
         "regexp_19x19_f93.webp",
+        "filter_19x19_ddd.webp",
       ],
       icon: `${i}/image/svg/read.crx.svg`,
       logoBig: `${i}/image/svg/read.crx.svg`,

@@ -206,6 +206,16 @@ $z-indexes: (
           background-image: img(pause_19x19_#{$pause-icon-color});
         }
       }
+      &.button_filter {
+        background-image: img(filter_19x19_#{$icon-color});
+        > ul {
+          background-color: $nav-bar-background-color;
+          border-color: $nav-bar-item-border-color;
+          > li:hover {
+            background: $tool-menu-hover-background;
+          }
+        }
+      }
       &.button_regexp {
         background-image: img(regexp_19x19_#{$icon-color});
         &.regexp {
@@ -368,6 +378,25 @@ $z-indexes: (
               color: inherit;
             }
           }
+        }
+      }
+    }
+    > .button_filter {
+      position: relative;
+      > ul {
+        position: absolute;
+        top: 19px;
+        left: 0px;
+        list-style-type: none;
+        white-space: nowrap;
+        margin: 0;
+        padding: 0;
+        border: 1px solid;
+        user-select: none;
+        font-size: 14px;
+        cursor: pointer;
+        > li {
+          padding: 5px;
         }
       }
     }

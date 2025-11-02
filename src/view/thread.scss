@@ -388,6 +388,13 @@ header {
   }
 }
 
+.filtering > :not(.filter_hit) {
+  display: none;
+  &.disp_ng {
+    display: none;
+  }
+}
+
 .thread_footer {
   contain: content;
   position: absolute;
