@@ -317,7 +317,7 @@ class="open_in_rcrx">${app.escapeHtml(newBoardUrl)}
         resCount,
         createdAt: +regRes[1] * 1000,
         ng: highlight ? null : ngResult,
-        highlight,          
+        highlight: highlight ? ngResult : null,
         isNet: scFlg ? !title.startsWith("★") : null,
       });
     }

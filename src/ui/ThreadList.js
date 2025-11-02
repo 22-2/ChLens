@@ -96,7 +96,13 @@ export default ThreadList = (function () {
         async function ({ target }) {
           if (target.tagName === "TD") {
             await app.defer();
-            target.title = target.textContent;
+            // TRのdata-title属性があればそれを使用（matchLabel対応）
+            const $tr = target.closest("tr");
+            if ($tr && $tr.dataset.title) {
+              target.title = $tr.dataset.title;
+            } else {
+              target.title = target.textContent;
+            }
           }
         },
         true
@@ -472,6 +478,15 @@ export default ThreadList = (function () {
         var $td;
         const $tr = $__("tr").addClass("open_in_rcrx");
 
+        $tr.dataset.href = app.escapeHtml(item.url);
+
+        // matchLabelがある場合はタイトルに含める
+        let titleWithLabel = item.title;
+        if (item.highlight && item.highlight.params && item.highlight.params.label) {
+          titleWithLabel = `【${item.highlight.params.label}】${item.title}`;
+        }
+        $tr.dataset.title = app.escapeHtml(titleWithLabel);
+
         if (item.expired) {
           $tr.addClass("expired");
         }
@@ -480,7 +495,6 @@ export default ThreadList = (function () {
         }
         if (item.highlight) {
           $tr.addClass("highlight");
-          $tr.setAttribute()
         }
         if (item.isNet) {
           $tr.addClass("net");
@@ -492,9 +506,6 @@ export default ThreadList = (function () {
         if (item.expired && !app.config.isOn("bookmark_show_dat")) {
           $tr.addClass("hidden");
         }
-
-        $tr.dataset.href = app.escapeHtml(item.url);
-        $tr.dataset.title = app.escapeHtml(item.title);
 
         if (item.threadNumber != null) {
           $tr.dataset.threadNumber = app.escapeHtml("" + item.threadNumber);

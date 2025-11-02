@@ -143,13 +143,27 @@ const parse = function (string) {
       subElements: [],
     };
 
-    // スコープの抽出 (例: HighlightTitle(bbs.eddibb.cc/liveedge): vtuber)
+    // スコープとパラメータの抽出 (例: HighlightTitle(bbs.eddibb.cc/liveedge, label=VTuber): vtuber)
     let scopeMatch = _scope.exec(ngWord);
     if (scopeMatch) {
       const keyword = scopeMatch[1].trim();
-      const scopePath = scopeMatch[2].trim();
+      const scopeContent = scopeMatch[2].trim();
       const restWord = scopeMatch[3].trim();
+
+      // スコープ内容をパースしてパラメータを抽出
+      const parts = scopeContent.split(',').map(p => p.trim());
+      const scopePath = parts[0]; // 最初の部分はスコープパス
       ngElement.scope = { value: scopePath };
+
+      // 残りの部分をパラメータとして処理 (KEY=VALUE形式)
+      ngElement.params = {};
+      for (let i = 1; i < parts.length; i++) {
+        const paramMatch = parts[i].match(/^(\w+)=(.+)$/);
+        if (paramMatch) {
+          ngElement.params[paramMatch[1]] = paramMatch[2];
+        }
+      }
+
       // キーワード部分を再構築して処理を続ける
       ngWord = keyword + ":" + restWord;
     }
@@ -316,6 +330,9 @@ const parse = function (string) {
     }
     if (ele.scope != null) {
       ngElement.scope = ele.scope;
+    }
+    if (ele.params != null) {
+      ngElement.params = ele.params;
     }
     // 拡張項目の設定
     if (ngElement.exception == null) {
@@ -527,7 +544,7 @@ export var isNGBoard = function (
     // メイン条件のチェック
     const ngType = _checkWord(n, threadObj);
     if (ngType) {
-      return { type: ngType, name: n.name };
+      return { type: ngType, name: n.name, params: n.params };
     }
   }
   return null;
