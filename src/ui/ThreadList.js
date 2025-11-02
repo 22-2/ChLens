@@ -2,6 +2,20 @@ let ThreadList;
 import ContextMenu from "./ContextMenu.js";
 import TableSearch from "./TableSearch.js";
 
+// 背景色プリセット
+const BG_COLOR_PRESETS = {
+  yellow: "#ffeb3b",      // 黄色 (警告・注目)
+  blue: "#e3f2fd",        // 青 (情報)
+  green: "#c8e6c9",       // 緑 (成功・OK)
+  red: "#ffcdd2",         // 赤 (重要・緊急)
+  purple: "#e1bee7",      // 紫 (特別)
+  orange: "#ffe0b2",      // オレンジ (注意)
+  pink: "#f8bbd0",        // ピンク (お気に入り)
+  cyan: "#b2ebf2",        // シアン (クール)
+  lime: "#f0f4c3",        // ライム (軽い注目)
+  amber: "#ffecb3",       // アンバー (中程度の注意)
+};
+
 /**
 @class ThreadList
 @constructor
@@ -495,6 +509,15 @@ export default ThreadList = (function () {
         }
         if (item.highlight) {
           $tr.addClass("highlight");
+          // bgColorが指定されている場合は背景色を設定
+          if (item.highlight.params && item.highlight.params.bgColor) {
+            let bgColor = item.highlight.params.bgColor;
+            // プリセット名の場合は色コードに変換
+            if (BG_COLOR_PRESETS[bgColor]) {
+              bgColor = BG_COLOR_PRESETS[bgColor];
+            }
+            $tr.style.backgroundColor = bgColor;
+          }
         }
         if (item.isNet) {
           $tr.addClass("net");

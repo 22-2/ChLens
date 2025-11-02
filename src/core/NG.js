@@ -3,6 +3,26 @@ import { decodeCharReference, normalize, stringToDate } from "./jsutil.js";
 /**
 @class NG
 @static
+
+使用例:
+- ラベル付きハイライト: HighlightTitle(bbs.eddibb.cc/liveedge, label=VTuber): vtuber
+- プリセット色使用: HighlightTitle(bbs.eddibb.cc/liveedge, label=VTuber, bgColor=yellow): vtuber
+- カラーコード使用: HighlightTitle(bbs.eddibb.cc/liveedge, label=重要, bgColor=#ffcdd2): 速報
+- 背景色のみ: HighlightTitle(bbs.eddibb.cc/liveedge, bgColor=blue): 実況
+
+背景色プリセット:
+- yellow: 黄色 (警告・注目)
+- blue: 青 (情報)
+- green: 緑 (成功・OK)
+- red: 赤 (重要・緊急)
+- purple: 紫 (特別)
+- orange: オレンジ (注意)
+- pink: ピンク (お気に入り)
+- cyan: シアン (クール)
+- lime: ライム (軽い注目)
+- amber: アンバー (中程度の注意)
+
+※プリセット名またはカラーコード(#rrggbb)が使用可能
 */
 
 export var TYPE = {
