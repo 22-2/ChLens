@@ -1008,13 +1008,14 @@ app.view.TabContentView = class TabContentView extends (
       x6.on("click", () => {
         const threadTitle = document.title;
         const threadUrl = this.$element.dataset.url;
+        const boardTitle = this.$element.C("breadcrumb")[0].textContent;
         const $content = this.$element.C("content")[0];
 
         if (!$content) {
           return;
         }
 
-        let allText = `${threadTitle}\n${threadUrl}\n`;
+        let allText = `${boardTitle}\n${threadTitle}\n${threadUrl}\n`;
 
         for (let $article of $content.child()) {
           // NGレスは除外
