@@ -106,10 +106,26 @@ export default TableSorter = (function () {
 
       const $tbody = this.table.$("tbody");
       $tbody.innerHTML = "";
+
+      // ハイライトされたスレッドを先に追加
+      const highlightRows = [];
+      const normalRows = [];
+
       for (let key of dataKeys) {
         for ($tr of data[key]) {
-          $tbody.addLast($tr);
+          if ($tr.hasClass("highlight")) {
+            highlightRows.push($tr);
+          } else {
+            normalRows.push($tr);
+          }
         }
+      }
+
+      for ($tr of highlightRows) {
+        $tbody.addLast($tr);
+      }
+      for ($tr of normalRows) {
+        $tbody.addLast($tr);
       }
 
       const exparam = { sort_order: sortOrder };

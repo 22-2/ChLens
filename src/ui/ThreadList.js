@@ -478,6 +478,9 @@ export default ThreadList = (function () {
         if (item.ng) {
           $tr.addClass("ng_thread");
         }
+        if (item.highlight) {
+          $tr.addClass("highlight");
+        }
         if (item.isNet) {
           $tr.addClass("net");
         }

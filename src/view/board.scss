@@ -44,6 +44,15 @@ tr.ng_thread {
   display: none;
 }
 
+tr.highlight {
+  background-color: #ffffcc !important;
+  font-weight: bold;
+}
+
+.theme_dark tr.highlight {
+  background-color: #665500 !important;
+}
+
 .board_footer {
   position: absolute;
   contain: content;

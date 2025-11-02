@@ -9,6 +9,7 @@ export var TYPE = {
   INVALID: "invalid",
   REG_EXP: "RegExp",
   REG_EXP_TITLE: "RegExpTitle",
+  REG_EXP_HIGHLIGHT_TITLE: "RegExpHighlightTitle",
   REG_EXP_NAME: "RegExpName",
   REG_EXP_MAIL: "RegExpMail",
   REG_EXP_ID: "RegExpId",
@@ -16,6 +17,7 @@ export var TYPE = {
   REG_EXP_BODY: "RegExpBody",
   REG_EXP_URL: "RegExpUrl",
   TITLE: "Title",
+  HIGHLIGHT_TITLE: "HighlightTitle",
   NAME: "Name",
   MAIL: "Mail",
   ID: "ID",
@@ -149,6 +151,10 @@ const parse = function (string) {
         ngElement.type = TYPE.REG_EXP_TITLE;
         ngElement.word = ngWord.substr(12);
         break;
+      case !ngWord.startsWith("RegExpHighlightTitle:"):
+        ngElement.type = TYPE.REG_EXP_HIGHLIGHT_TITLE;
+        ngElement.word = ngWord.substr(21);
+        break;
       case !ngWord.startsWith("RegExpName:"):
         ngElement.type = TYPE.REG_EXP_NAME;
         ngElement.word = ngWord.substr(11);
@@ -176,6 +182,10 @@ const parse = function (string) {
       case !ngWord.startsWith("Title:"):
         ngElement.type = TYPE.TITLE;
         ngElement.word = normalize(ngWord.substr(6));
+        break;
+      case !ngWord.startsWith("HighlightTitle:"):
+        ngElement.type = TYPE.HIGHLIGHT_TITLE;
+        ngElement.word = normalize(ngWord.substr(15));
         break;
       case !ngWord.startsWith("Name:"):
         ngElement.type = TYPE.NAME;
@@ -358,8 +368,10 @@ const _checkWord = function (
     (type === TYPE.REG_EXP_SLIP && slip != null && reg.test(slip)) ||
     (type === TYPE.REG_EXP_BODY && reg.test(mes)) ||
     (type === TYPE.REG_EXP_TITLE && reg.test(title)) ||
+    (type === TYPE.REG_EXP_HIGHLIGHT_TITLE && reg.test(title)) ||
     (type === TYPE.REG_EXP_URL && reg.test(url)) ||
     (type === TYPE.TITLE && normalize(title).includes(word)) ||
+    (type === TYPE.HIGHLIGHT_TITLE && normalize(title).includes(word)) ||
     (type === TYPE.NAME && normalize(name).includes(word)) ||
     (type === TYPE.MAIL && normalize(mail).includes(word)) ||
     (type === TYPE.ID && (id != null ? id.includes(word) : undefined)) ||
@@ -420,7 +432,9 @@ export var isNGBoard = function (
       ![
         TYPE.REG_EXP,
         TYPE.REG_EXP_TITLE,
+        TYPE.REG_EXP_HIGHLIGHT_TITLE,
         TYPE.TITLE,
+        TYPE.HIGHLIGHT_TITLE,
         TYPE.WORD,
         TYPE.REG_EXP_URL,
         TYPE.URL,
