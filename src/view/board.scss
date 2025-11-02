@@ -16,7 +16,7 @@
 @media (max-width: 500px) {
   col,
   th {
-    &:not(.table_sort_asc):not(.table_sort_desc):not(.bookmark):not(.title) {
+    &:not(.table_sort_asc):not(.table_sort_desc):not(.bookmark):not(.title):not(.heat) {
       width: 0;
     }
   }
