@@ -1090,6 +1090,38 @@ app.view.TabContentView = class TabContentView extends (
       })
     );
 
+    // （NGされたレスのみ）スレッド全文をテキストとしてコピー
+    __guard__(this.$element.C("button_copy_ng_only")[0], (x8) =>
+      x8.on("click", () => {
+        const threadTitle = document.title;
+        const threadUrl = this.$element.dataset.url;
+        const boardTitle = this.$element.C("breadcrumb")[0].textContent;
+        const $content = this.$element.C("content")[0];
+
+        if (!$content) {
+          return;
+        }
+
+        let allText = `${boardTitle}\n${threadTitle}\n${threadUrl}\n`;
+
+        for (let $article of $content.child()) {
+          // NGされたレスのみを対象
+          if (!$article.hasClass("ng") || $article.hasClass("disp_ng")) {
+            continue;
+          }
+
+          const resNum = $article.C("num")[0]?.textContent || "";
+          const name = $article.C("name")[0]?.textContent || "";
+          const other = $article.C("other")[0]?.textContent || "";
+          const message = $article.C("message")[0]?.innerText || "";
+
+          allText += `${resNum}: ${name}  ${other}\n${message}\n`;
+        }
+
+        app.clipboardWrite(allText.trim());
+      })
+    );
+
     return (() => {
       let needle;
       const urlStr = this.$element.dataset.url;
