@@ -1508,6 +1508,12 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
     const $nextUnread = {
       _ele: $view.C("next_unread")[0],
       show() {
+        // 設定で無効化されている場合は表示しない
+        if (!app.config.isOn("show_next_unread")) {
+          this.hide();
+          return;
+        }
+
         let bookmark, read;
         let next = null;
 
