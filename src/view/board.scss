@@ -90,3 +90,33 @@ tr.highlight {
     }
   }
 }
+
+// カスタムツールチップ
+.thread_list_tooltip {
+  position: fixed;
+  max-width: 500px;
+  padding: 6px 10px;
+  background-color: rgba(0, 0, 0, 0.9);
+  color: #fff;
+  font-size: 12px;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 10000;
+  opacity: 0;
+  visibility: hidden;
+  word-wrap: break-word;
+  white-space: normal;
+  line-height: 1.4;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+
+  &.visible {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+.theme_dark .thread_list_tooltip {
+  background-color: rgba(255, 255, 255, 0.95);
+  color: #000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}

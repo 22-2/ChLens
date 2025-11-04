@@ -104,18 +104,50 @@ export default ThreadList = (function () {
       let $tr = $__("tr");
       $thead.addLast($tr);
 
-      //項目のツールチップ表示
+      //カスタムツールチップ用の要素を作成
+      const $tooltip = $__("div").addClass("thread_list_tooltip");
+      document.body.appendChild($tooltip);
+      let tooltipTimeout = null;
+
+      //項目のカスタムツールチップ表示
       $table.on(
         "mouseenter",
-        async function ({ target }) {
+        function (e) {
+          const { target } = e;
           if (target.tagName === "TD") {
-            await app.defer();
+            clearTimeout(tooltipTimeout);
+
             // TRのdata-title属性があればそれを使用（matchLabel対応）
             const $tr = target.closest("tr");
+            let text = "";
             if ($tr && $tr.dataset.title) {
-              target.title = $tr.dataset.title;
+              text = $tr.dataset.title;
             } else {
-              target.title = target.textContent;
+              text = target.textContent;
+            }
+
+            if (text.trim()) {
+              $tooltip.textContent = text;
+
+              // 初期位置を設定
+              const x = e.clientX + 10;
+              const y = e.clientY + 10;
+              $tooltip.style.left = x + "px";
+              $tooltip.style.top = y + "px";
+
+              // 即座に表示
+              $tooltip.addClass("visible");
+
+              // マウス位置に追従
+              const updatePosition = (moveEvent) => {
+                const mx = moveEvent.clientX + 10;
+                const my = moveEvent.clientY + 10;
+                $tooltip.style.left = mx + "px";
+                $tooltip.style.top = my + "px";
+              };
+
+              target._tooltipMoveHandler = updatePosition;
+              target.on("mousemove", updatePosition);
             }
           }
         },
@@ -125,7 +157,14 @@ export default ThreadList = (function () {
         "mouseleave",
         function ({ target }) {
           if (target.tagName === "TD") {
-            target.removeAttr("title");
+            if (target._tooltipMoveHandler) {
+              target.off("mousemove", target._tooltipMoveHandler);
+              delete target._tooltipMoveHandler;
+            }
+
+            tooltipTimeout = setTimeout(() => {
+              $tooltip.removeClass("visible");
+            }, 100);
           }
         },
         true
