@@ -1699,6 +1699,26 @@ app.viewThread._draw = async function (
       thread.title
     );
     loadCount++;
+
+    // スレ情報を更新
+    const resCount = thread.res.length;
+    let momentum = 0;
+    if (thread.res.length > 0 && thread.res[0].other) {
+      try {
+        const firstResDate = app.util.stringToDate(thread.res[0].other);
+        if (firstResDate) {
+          const now = Date.now();
+          const elapsed = (now - firstResDate.valueOf()) / (1000 * 60 * 60 * 24); // 経過日数
+          if (elapsed > 0) {
+            momentum = Math.round(resCount / elapsed * 10) / 10;
+          }
+        }
+      } catch (e) {}
+    }
+    const $threadInfo = $view.C("thread_info")[0];
+    if ($threadInfo) {
+      $threadInfo.innerHTML = `(レス: <span class="thread_info_num">${resCount}</span>, 勢い: <span class="thread_info_num">${momentum.toLocaleString()}</span>)`;
+    }
     const lazyLoad = app.DOMData.get($view, "lazyload");
     if (!lazyLoad.isManualLoad) {
       lazyLoad.scan();

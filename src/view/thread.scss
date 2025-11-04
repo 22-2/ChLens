@@ -39,6 +39,17 @@ body {
   font-size: 15px;
 }
 
+.thread_info {
+  font-size: 12px;
+  padding: 0 5px;
+  white-space: nowrap;
+  margin-left: auto;
+  .thread_info_num {
+    font-size: 14px;
+    font-weight: bold;
+  }
+}
+
 .content {
   contain: size;
   backface-visibility: hidden;
@@ -350,7 +361,7 @@ header {
   $radius: 2px;
   position: absolute;
   right: 20px;
-  bottom: 20px;
+  bottom: 60px;
   margin: 0;
   padding: 0;
   border: 1px solid;

@@ -283,12 +283,13 @@ $z-indexes: (
     border-bottom: 2px solid hsla(0, 0%, 0%, 0.2);
     z-index: var(--z-index-tabbed-view-nav-bar);
     position: relative;
+    display: flex;
+    align-items: center;
     > label,
     > .button {
-      float: left;
+      flex-shrink: 0;
     }
     > .button,
-    > .breadcrumb,
     > .sort_item_selector,
     > .search_item_selector {
       border-width: 1px;
@@ -403,13 +404,12 @@ $z-indexes: (
   }
   .breadcrumb {
     list-style-type: none;
-    float: right;
     padding: 0;
     font-size: 14px;
     border-radius: 3px;
     border-color: transparent;
+    display: flex;
     > li {
-      float: left;
       margin: 0 3px;
       > a {
         color: inherit !important;
