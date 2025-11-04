@@ -224,6 +224,11 @@ app.boot("/view/thread.html", async function () {
         );
 
         (defaultScroll = function () {
+          // フィルター適用中または検索中はスクロールをスキップ
+          if ($content.hasClass("filtering") || $content.hasClass("searching")) {
+            return;
+          }
+
           const $last = $content.C("last")[0];
           const lastNum = $content
             .$(":scope > article:last-child")
@@ -266,6 +271,12 @@ app.boot("/view/thread.html", async function () {
             ) {
               moveMode = app.config.get("auto_load_move");
             }
+
+            // フィルター適用中または検索中は自動スクロールをスキップ（位置を維持）
+            if ($content.hasClass("filtering") || $content.hasClass("searching")) {
+              return;
+            }
+
             switch (moveMode) {
               case "new":
                 var lastNum = +__guard__(
