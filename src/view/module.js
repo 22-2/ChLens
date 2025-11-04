@@ -799,7 +799,7 @@ app.view.TabContentView = class TabContentView extends (
     switch (false) {
       case !this.$element.hasClass("view_thread"):
         cfgName = "";
-        minSeconds = 5000;
+        minSeconds = 3000;
         break;
       case !this.$element.hasClass("view_board"):
         cfgName = "_board";
@@ -825,6 +825,11 @@ app.view.TabContentView = class TabContentView extends (
         } else {
           return setInterval(() => {
             const { url } = this.$element.dataset;
+            // フィルター適用中は自動更新を一時的に無効化
+            const $content = this.$element.C("content")[0];
+            if ($content && $content.hasClass("filtering")) {
+              return;
+            }
             if (
               app.config.isOn("auto_load_all") ||
               parent.$$.$(
