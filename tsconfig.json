@@ -6,6 +6,7 @@
       "esnext",
     ],
     "module": "esnext",
+    "moduleResolution": "bundler",
     "typeRoots": [
       "node_modules/web-ext-types",
       "src/global.d.ts"
@@ -18,5 +19,9 @@
     "strict": true,
     "skipLibCheck": true,
     "noUnusedLocals": true
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "tests"
+  ]
 }
