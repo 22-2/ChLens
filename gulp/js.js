@@ -1,6 +1,6 @@
 const path = require("path");
 const gulp = require("gulp");
-const { gulp: $, rollup: _ } = require("./plugins");
+const { gulp: $, rolldown: _ } = require("./plugins");
 const { browsers, paths, defaultOptions } = require("./config");
 const util = require("./util");
 
@@ -10,29 +10,25 @@ const getReplaceMap = (browser) => ({
 });
 
 /*
-  rollup
+  rolldown
 */
-const cache = {};
-
 const makeInOut = function (
   browser,
   { output, pathname, plugins, outObj = {} }
 ) {
-  const i = Object.assign({}, defaultOptions.rollup.in);
+  const i = Object.assign({}, defaultOptions.rolldown.in);
   i.input = paths.js[pathname];
-  cache[pathname] = null;
-  i.cache = cache[pathname];
   if (plugins != null) {
     i.plugins = plugins.concat(i.plugins);
   }
 
-  const o = Object.assign({}, defaultOptions.rollup.out, outObj);
+  const o = Object.assign({}, defaultOptions.rolldown.out, outObj);
   o.file = `${paths.output[browser]}/${output}`;
   return { input: i, output: o };
 };
 exports.makeInOut = makeInOut;
 
-const getRollupIOConfigs = function (name, browser) {
+const getRolldownIOConfigs = function (name, browser) {
   const replace = _.replace({
     delimiters: ["&\\[", "\\]"],
     preventAssignment: true,
@@ -85,19 +81,18 @@ const getRollupIOConfigs = function (name, browser) {
       };
       break;
   }
-  throw new Error(`Error: rollupIOConfig Not Found '${name}'`);
+  throw new Error(`Error: rolldownIOConfig Not Found '${name}'`);
 };
-exports.getRollupIOConfigs = getRollupIOConfigs;
+exports.getRolldownIOConfigs = getRolldownIOConfigs;
 
 const makeFunc = function (browser, configName) {
-  const args = getRollupIOConfigs(configName, browser);
+  const args = getRolldownIOConfigs(configName, browser);
   const filename = path.basename(args.output);
   const { input: i, output: o } = makeInOut(browser, args);
   const func = async function () {
     try {
-      const bundle = await _.rollup.rollup(i);
-      cache[args.pathname] = bundle;
-      await bundle.write(o);
+      const build = await _.rolldown.rolldown(i);
+      await build.write(o);
     } catch (e) {
       util.onRollupError(filename)(e);
     }

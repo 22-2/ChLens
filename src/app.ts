@@ -8,10 +8,25 @@ export { default as LocalStorage } from "./app/LocalStorage";
 export { default as message } from "./app/Message";
 export * from "./app/Util";
 
-export let config: Config;
+let _config: Config | undefined;
 if (!frameElement) {
-  config = new Config();
+  _config = new Config();
 }
+
+// iframe内外で統一的にconfigにアクセスできるようにProxyを使用
+export const config = new Proxy({} as Config, {
+  get(_target, prop) {
+    const actualConfig = _config || (self !== top && (parent as any).app?._config);
+    if (!actualConfig) {
+      console.error('config is not initialized');
+      return undefined;
+    }
+    return actualConfig[prop as keyof Config];
+  }
+});
+
+// 親ウィンドウからアクセスできるように内部configも公開
+export { _config };
 
 export const manifest = (async () => {
   if (!/^(?:chrome|moz)-extension:$/.test(location.protocol)) {

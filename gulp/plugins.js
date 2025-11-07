@@ -23,9 +23,8 @@ module.exports = {
     postcss: require("gulp-postcss"),
     pug: require("gulp-pug"),
   },
-  rollup: {
-    rollup: require("rollup"),
-    ts: require("rollup-plugin-typescript2"),
+  rolldown: {
+    rolldown: require("rolldown"),
     replace: require("@rollup/plugin-replace"),
   },
   postcss: {

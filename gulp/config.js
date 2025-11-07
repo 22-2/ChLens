@@ -1,5 +1,5 @@
 const fs = require("fs-extra");
-const { compiler: c, rollup: _, postcss: p } = require("./plugins");
+const { compiler: c, rolldown: _, postcss: p } = require("./plugins");
 const util = require("./util");
 
 const browsers = ["chrome", "firefox"];
@@ -117,10 +117,13 @@ const defaultOptions = {
   },
 };
 
-defaultOptions.rollup = {
+defaultOptions.rolldown = {
   in: {
-    plugins: [_.ts(defaultOptions.rollupTs)],
-    context: "window",
+    plugins: [],
+    platform: "browser",
+    resolve: {
+      extensions: [".ts", ".js"],
+    },
     onwarn: util.rollupOnWarn,
   },
   out: {
