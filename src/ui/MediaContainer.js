@@ -21,10 +21,12 @@ export default class MediaContainer {
   @method setHoverEvents
   */
   setHoverEvents() {
-    const isImageOn = app.config.isOn("hover_zoom_image");
-    const isVideoOn = app.config.isOn("hover_zoom_video");
-    const isImageToggle = app.config.isOn("click_toggle_zoom_image");
-    const isVideoToggle = app.config.isOn("click_toggle_zoom_video");
+    const imageMode = app.config.get("zoom_image_mode");
+    const videoMode = app.config.get("zoom_video_mode");
+    const isImageHover = imageMode === "hover";
+    const isVideoHover = videoMode === "hover";
+    const isImageClick = imageMode === "click";
+    const isVideoClick = videoMode === "click";
     const imageRatioConfig = app.config.get("zoom_ratio_image");
     const videoRatioConfig = app.config.get("zoom_ratio_video");
     const imageRatio = imageRatioConfig === "original" ? null : imageRatioConfig / 100;
@@ -38,7 +40,7 @@ export default class MediaContainer {
         if (!target.matches(".thumbnail > a > img.image")) {
           return;
         }
-        if (isImageToggle && target.tagName === "IMG") {
+        if (isImageClick && target.tagName === "IMG") {
           event.preventDefault();
           const thumbnail = target.closest(".thumbnail");
           if (thumbnail.hasClass("zoom")) {
@@ -72,21 +74,21 @@ export default class MediaContainer {
         if (!target.matches(".thumbnail > a > img.image, .thumbnail > video")) {
           return;
         }
-        // トグルモードの場合はホバーで拡大しない
-        if (isImageToggle && target.tagName === "IMG") {
+        // クリックモードの場合はホバーで拡大しない
+        if (isImageClick && target.tagName === "IMG") {
           return;
         }
-        if (isVideoToggle && target.tagName === "VIDEO") {
+        if (isVideoClick && target.tagName === "VIDEO") {
           return;
         }
 
-        if (isImageOn && target.tagName === "IMG") {
+        if (isImageHover && target.tagName === "IMG") {
           if (imageRatio === null) {
             zoomWidth = target.naturalWidth;
           } else {
             zoomWidth = parseInt(target.offsetWidth * imageRatio);
           }
-        } else if (isVideoOn && target.tagName === "VIDEO") {
+        } else if (isVideoHover && target.tagName === "VIDEO") {
           // Chromeでmouseenterイベントが複数回発生するのを回避するため
           if ("&[BROWSER]" === "chrome") {
             if (target.style.width !== "") {
@@ -114,16 +116,16 @@ export default class MediaContainer {
       function ({ target }) {
         if (
           !target.matches(".thumbnail > a > img.image, .thumbnail > video") ||
-          ((!isImageOn || target.tagName !== "IMG") &&
-            (!isVideoOn || target.tagName !== "VIDEO"))
+          ((!isImageHover || target.tagName !== "IMG") &&
+            (!isVideoHover || target.tagName !== "VIDEO"))
         ) {
           return;
         }
-        // トグルモードの場合はホバー解除で縮小しない
-        if (isImageToggle && target.tagName === "IMG") {
+        // クリックモードの場合はホバー解除で縮小しない
+        if (isImageClick && target.tagName === "IMG") {
           return;
         }
-        if (isVideoToggle && target.tagName === "VIDEO") {
+        if (isVideoClick && target.tagName === "VIDEO") {
           return;
         }
 
@@ -145,7 +147,8 @@ export default class MediaContainer {
   @method setVideoEvents
   */
   setVideoEvents() {
-    const isVideoToggle = app.config.isOn("click_toggle_zoom_video");
+    const videoMode = app.config.get("zoom_video_mode");
+    const isVideoClick = videoMode === "click";
     const videoRatioConfig = app.config.get("zoom_ratio_video");
     const videoRatio = videoRatioConfig === "original" ? null : videoRatioConfig / 100;
 
@@ -157,7 +160,7 @@ export default class MediaContainer {
       }
 
       // トグル拡大機能
-      if (isVideoToggle) {
+      if (isVideoClick) {
         event.preventDefault();
         const thumbnail = target.closest(".thumbnail");
         if (thumbnail.hasClass("zoom")) {

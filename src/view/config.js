@@ -555,42 +555,6 @@ app.boot("/view/config.html", ["Cache", "BBSMenu"], function (Cache, BBSMenu) {
     });
   }
 
-  // 拡大率設定のグレーアウト制御
-  const updateZoomControls = function() {
-    const isImageHoverOn = app.config.isOn("hover_zoom_image");
-    const isVideoHoverOn = app.config.isOn("hover_zoom_video");
-
-    const $imageToggle = $view.$('input[name="click_toggle_zoom_image"]');
-    const $imageRatio = $view.$('select[name="zoom_ratio_image"]');
-    const $videoToggle = $view.$('input[name="click_toggle_zoom_video"]');
-    const $videoRatio = $view.$('select[name="zoom_ratio_video"]');
-
-    // サムネイル設定
-    if (!isImageHoverOn) {
-      $imageToggle.disabled = true;
-      $imageRatio.disabled = true;
-    } else {
-      $imageToggle.disabled = false;
-      $imageRatio.disabled = false;
-    }
-
-    // 動画設定
-    if (!isVideoHoverOn) {
-      $videoToggle.disabled = true;
-      $videoRatio.disabled = true;
-    } else {
-      $videoToggle.disabled = false;
-      $videoRatio.disabled = false;
-    }
-  };
-
-  // 初期状態を設定
-  updateZoomControls();
-
-  // hover_zoom_image/videoの変更を監視
-  $view.$('input[name="hover_zoom_image"]').on("change", updateZoomControls);
-  $view.$('input[name="hover_zoom_video"]').on("change", updateZoomControls);
-
   //バージョン情報表示
   (async function () {
     const { name, version } = await app.manifest;

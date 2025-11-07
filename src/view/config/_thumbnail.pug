@@ -100,15 +100,12 @@
     div
       |マウスを重ねた時に拡大表示
       br
-      strong 画像
-      br
       label
-        input.direct(type="checkbox" name="hover_zoom_image")
-        |ホバーでズーム切り替え
-      br
-      label
-        input.direct(type="checkbox" name="click_toggle_zoom_image")
-        |クリックでズーム切り替え
+        |画像のズーム:
+        select.direct(name="zoom_image_mode")
+          option(value="off") 無効
+          option(value="hover") ホバー
+          option(value="click") クリック
       br
       label
         |拡大率:
@@ -122,15 +119,12 @@
           option(value="500") 500%
     div
       br
-      strong 動画
-      br
       label
-        input.direct(type="checkbox" name="hover_zoom_video")
-        |ホバーでズーム切り替え
-      br
-      label
-        input.direct(type="checkbox" name="click_toggle_zoom_video")
-        |クリックでズーム切り替え
+        |動画のズーム:
+        select.direct(name="zoom_video_mode")
+          option(value="off") 無効
+          option(value="hover") ホバー
+          option(value="click") クリック
       br
       label
         |拡大率:
