@@ -43,6 +43,9 @@ export class URL extends window.URL {
   private static readonly SHITARABA_ARCHIVE_REG =
     /^\/(\w+\/\d+)\/storage\/(\d+)\.html$/;
   private static readonly SHITARABA_BOARD_REG = /^\/(\w+\/\d+\/)(?:#.*)?$/;
+  private static readonly EDDIBB_THREAD_REG = /^\/(\w+)\/(\d+).*$/;
+  private static readonly EDDIBB_BOARD_REG = /^\/(\w+)\/?(?:#.*)?$/;
+  private static readonly EDDIBB_BOARD_REG2 = /^\/test\/read\.cgi\/(\w+)\/?(?:#.*)?$/;
 
   private fixPathAndSetType(
     reg: RegExp,
@@ -118,6 +121,33 @@ export class URL extends window.URL {
       this.fixPathAndSetType(URL.SHITARABA_BOARD_REG, (res) => `/${res[1]}`, {
         type: "board",
         bbsType: "jbbs",
+      });
+      return;
+    }
+
+    if (this.hostname === "bbs.eddibb.cc") {
+      // https://bbs.eddibb.cc/BOARD/NUMBER/ を http://bbs.eddibb.cc/test/read.cgi/BOARD/NUMBER/ に変換
+      const isThread = this.fixPathAndSetType(
+        URL.EDDIBB_THREAD_REG,
+        (res) => `/test/read.cgi/${res[1]}/${res[2]}/`,
+        { type: "thread", bbsType: "2ch" }
+      );
+      if (isThread) {
+        this.protocol = "http:";
+        return;
+      }
+
+      // /test/read.cgi/BOARD/ の形式も板として認識
+      const isBoard2 = this.fixPathAndSetType(
+        URL.EDDIBB_BOARD_REG2,
+        (res) => `/test/read.cgi/${res[1]}/`,
+        { type: "board", bbsType: "2ch" }
+      );
+      if (isBoard2) return;
+
+      this.fixPathAndSetType(URL.EDDIBB_BOARD_REG, (res) => `/${res[1]}/`, {
+        type: "board",
+        bbsType: "2ch",
       });
       return;
     }

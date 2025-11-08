@@ -64,7 +64,9 @@
         "*://*.machi.to/*",
         "*://*.open2ch.net/*",
         "*://*.2ch.sc/*",
-        "*://*.bbspink.com/*"
+        "*://*.2ch.sc/*",
+        "*://*.bbspink.com/*",
+        "*://bbs.eddibb.cc/*"
       ],
       "js": ["/cs_addlink.js"]
     },
@@ -72,7 +74,8 @@
       "matches": [
         "*://*/test/bbs.cgi*",
         "*://jbbs.shitaraba.net/bbs/write.cgi/*",
-        "*://*.machi.to/*"
+        "*://*.machi.to/*",
+        "*://bbs.eddibb.cc/*"
       ],
       "js": ["/write/cs_write.js"],
       "run_at": "document_end",
@@ -104,7 +107,8 @@
         "*://*.machi.to/*",
         "*://*.open2ch.net/*",
         "*://*.2ch.sc/*",
-        "*://*.bbspink.com/*"
+        "*://*.bbspink.com/*",
+        "*://bbs.eddibb.cc/*"
       ],
       "extension_ids": []
     }
