@@ -4,14 +4,68 @@ import { fetch as fetchBBSMenu } from "./BBSMenu.js";
 // @ts-ignore
 import Cache from "./Cache.js";
 
-export interface GuessResult {
-  type: "thread" | "board" | "unknown";
-  bbsType: "jbbs" | "machi" | "2ch" | "unknown";
-}
-
 let serverNet = new Map<string, string>();
 let serverSc = new Map<string, string>();
 let serverPink = new Map<string, string>();
+// 型定義
+type BBSType = "2ch" | "machi" | "jbbs" | "unknown";
+type ContentType = "thread" | "board" | "unknown";
+
+interface GuessResult {
+  type: ContentType;
+  bbsType: BBSType;
+}
+
+// 定数定義
+const HOSTNAME = {
+  OLD_2CH: "2ch.net",
+  NEW_5CH: "5ch.net",
+  OLD_JBBS: "jbbs.livedoor.jp",
+  NEW_JBBS: "jbbs.shitaraba.net",
+  ULA_5CH: "ula.5ch.net",
+  EDDIBB: "bbs.eddibb.cc",
+  ITEST_5CH: "itest.5ch.net",
+  ITEST_BBSPINK: "itest.bbspink.com",
+} as const;
+
+const TSLD = {
+  CH_5: "5ch.net",
+  BBSPINK: "bbspink.com",
+  CH_2_SC: "2ch.sc",
+} as const;
+
+// 正規表現パターン
+const PATTERNS = {
+  // 2ch系
+  CH_THREAD: /^\/((?:\w+\/)?test\/(?:read\.cgi|-)\/\w+\/\d+).*$/,
+  CH_THREAD_ULA: /^\/2ch\/(\w+)\/([\w\.]+)\/(\d+).*$/,
+  CH_BOARD: /^\/((?:subback\/|test\/-\/)?\w+\/)(?:#.*)?$/,
+  CH_RESNUM: /^https?:\/\/[\w\.]+\/(?:\w+\/)?test\/(?:read\.cgi|-)\/\w+\/\d+\/(?:i|g\?g=)?(\d+).*$/,
+  CH_RESNUM_ULA: /^\/2ch\/\w+\/[\w\.]+\/\d+\/(\d+).*$/,
+  CH_TO_BOARD: /^\/(?:test|bbs)\/read\.cgi\/(\w+)\/\d+\/$/,
+
+  // まちBBS系
+  MACHI_THREAD: /^\/bbs\/read\.cgi\/(\w+\/\d+).*$/,
+  MACHI_BOARD: /^\/(\w+\/)(?:#.*)?$/,
+  MACHI_RESNUM: /^\/bbs\/read\.cgi\/\w+\/\d+\/(\d+).*$/,
+
+  // したらば系
+  SHITARABA_THREAD: /^\/bbs\/(read(?:_archive)?\.cgi\/\w+\/\d+\/\d+).*$/,
+  SHITARABA_ARCHIVE: /^\/(\w+\/\d+)\/storage\/(\d+)\.html$/,
+  SHITARABA_BOARD: /^\/(\w+\/\d+\/)(?:#.*)?$/,
+  SHITARABA_RESNUM: /^\/bbs\/read(?:_archive)?\.cgi\/\w+\/\d+\/\d+\/(\d+).*$/,
+  SHITARABA_TO_BOARD: /^\/bbs\/read(?:_archive)?\.cgi\/(\w+\/\d+)\/\d+\/$/,
+
+  // eddibb系
+  EDDIBB_THREAD: /^\/(\w+)\/(\d+).*$/,
+  EDDIBB_THREAD_2: /^\/test\/read\.cgi\/(\w+)\/(\d+).*$/,
+  EDDIBB_BOARD: /^\/(\w+)\/?(?:#.*)?$/,
+  EDDIBB_BOARD_2: /^\/test\/read\.cgi\/(\w+)\/?(?:#.*)?$/,
+
+  // itest系
+  ITEST_5CH: /\/(?:(?:\w+\/)?test\/read\.cgi\/(\w+)\/(\d+)\/|(?:subback\/)?(\w+)(?:\/)?)/,
+  ITEST_BBSPINK: /\/(?:(?:\w+\/)?test\/read\.cgi\/(\w+)\/(\d+)\/|(?:subback\/)?(\w+)(?:\/)?)/,
+} as const;
 
 export class URL extends window.URL {
   private guessedType: GuessResult = { type: "unknown", bbsType: "unknown" };
@@ -25,170 +79,346 @@ export class URL extends window.URL {
     this.rawUrl = url;
     this.rawHash = this.hash;
     this.hash = "";
-
-    this.fix();
+    this.normalizeAndGuessType();
   }
 
-  private static readonly CH_THREAD_REG =
-    /^\/((?:\w+\/)?test\/(?:read\.cgi|-)\/\w+\/\d+).*$/;
-  //private static readonly CH_THREAD_REG2 = /^\/(\w+)\/?(?!test)$/;
-  private static readonly CH_THREAD_ULA_REG =
-    /^\/2ch\/(\w+)\/([\w\.]+)\/(\d+).*$/;
-  private static readonly CH_BOARD_REG =
-    /^\/((?:subback\/|test\/-\/)?\w+\/)(?:#.*)?$/;
-  private static readonly MACHI_THREAD_REG = /^\/bbs\/read\.cgi\/(\w+\/\d+).*$/;
-  private static readonly MACHI_BOARD_REG = /^\/(\w+\/)(?:#.*)?$/;
-  private static readonly SHITARABA_THREAD_REG =
-    /^\/bbs\/(read(?:_archive)?\.cgi\/\w+\/\d+\/\d+).*$/;
-  private static readonly SHITARABA_ARCHIVE_REG =
-    /^\/(\w+\/\d+)\/storage\/(\d+)\.html$/;
-  private static readonly SHITARABA_BOARD_REG = /^\/(\w+\/\d+\/)(?:#.*)?$/;
-  private static readonly EDDIBB_THREAD_REG = /^\/(\w+)\/(\d+).*$/;
-  private static readonly EDDIBB_THREAD_REG2 = /^\/test\/read\.cgi\/(\w+)\/(\d+).*$/;
-  private static readonly EDDIBB_BOARD_REG = /^\/(\w+)\/?(?:#.*)?$/;
-  private static readonly EDDIBB_BOARD_REG2 = /^\/test\/read\.cgi\/(\w+)\/?(?:#.*)?$/;
+  // メインの正規化処理
+  private normalizeAndGuessType(): void {
+    this.normalizeHostname();
 
-  private fixPathAndSetType(
-    reg: RegExp,
-    replace: (res: string[]) => string,
+    // 各BBS形式ごとに処理
+    if (this.isUla5ch()) {
+      this.fixUla5ch();
+    } else if (this.isMachi()) {
+      this.fixMachi();
+    } else if (this.isShitaraba()) {
+      this.fixShitaraba();
+    } else if (this.isEddibb()) {
+      this.fixEddibb();
+    } else {
+      this.fix2ch();
+    }
+  }
+
+  // ホスト名の正規化
+  private normalizeHostname(): void {
+    if (this.hostname === HOSTNAME.OLD_2CH || this.hostname.endsWith(`.${HOSTNAME.OLD_2CH}`)) {
+      this.hostname = this.hostname.replace(HOSTNAME.OLD_2CH, HOSTNAME.NEW_5CH);
+    } else if (this.hostname === HOSTNAME.OLD_JBBS) {
+      this.hostname = HOSTNAME.NEW_JBBS;
+    }
+  }
+
+  // BBS種別判定
+  private isUla5ch(): boolean {
+    return this.hostname === HOSTNAME.ULA_5CH;
+  }
+
+  private isMachi(): boolean {
+    return this.hostname.includes("machi.to");
+  }
+
+  private isShitaraba(): boolean {
+    return this.hostname === HOSTNAME.NEW_JBBS;
+  }
+
+  private isEddibb(): boolean {
+    return this.hostname === HOSTNAME.EDDIBB;
+  }
+
+  // ULA 5ch の修正
+  private fixUla5ch(): void {
+    const match = PATTERNS.CH_THREAD_ULA.exec(this.pathname);
+    if (match) {
+      this.hostname = match[2];
+      this.pathname = `/test/read.cgi/${match[1]}/${match[3]}/`;
+      this.guessedType = { type: "thread", bbsType: "2ch" };
+    }
+  }
+
+  // まちBBS の修正
+  private fixMachi(): void {
+    if (this.tryFixPattern(
+      PATTERNS.MACHI_THREAD,
+      (match) => `/bbs/read.cgi/${match[1]}/`,
+      { type: "thread", bbsType: "machi" }
+    )) {
+      return;
+    }
+
+    this.tryFixPattern(
+      PATTERNS.MACHI_BOARD,
+      (match) => `/${match[1]}`,
+      { type: "board", bbsType: "machi" }
+    );
+  }
+
+  // したらば の修正
+  private fixShitaraba(): void {
+    if (this.tryFixPattern(
+      PATTERNS.SHITARABA_THREAD,
+      (match) => `/bbs/${match[1]}/`,
+      { type: "thread", bbsType: "jbbs" }
+    )) {
+      this.archive = this.pathname.includes("read_archive");
+      return;
+    }
+
+    if (this.tryFixPattern(
+      PATTERNS.SHITARABA_ARCHIVE,
+      (match) => `/bbs/read_archive.cgi/${match[1]}/${match[2]}/`,
+      { type: "thread", bbsType: "jbbs" }
+    )) {
+      this.archive = true;
+      return;
+    }
+
+    this.tryFixPattern(
+      PATTERNS.SHITARABA_BOARD,
+      (match) => `/${match[1]}`,
+      { type: "board", bbsType: "jbbs" }
+    );
+  }
+
+  // eddibb の修正
+  private fixEddibb(): void {
+    // /test/read.cgi/BOARD/NUMBER/ 形式
+    if (this.tryFixPattern(
+      PATTERNS.EDDIBB_THREAD_2,
+      (match) => `/test/read.cgi/${match[1]}/${match[2]}/`,
+      { type: "thread", bbsType: "2ch" }
+    )) {
+      this.protocol = "http:";
+      return;
+    }
+
+    // /BOARD/NUMBER/ 形式
+    if (this.tryFixPattern(
+      PATTERNS.EDDIBB_THREAD,
+      (match) => `/test/read.cgi/${match[1]}/${match[2]}/`,
+      { type: "thread", bbsType: "2ch" }
+    )) {
+      this.protocol = "http:";
+      return;
+    }
+
+    // 板 (test/read.cgi形式)
+    if (this.tryFixPattern(
+      PATTERNS.EDDIBB_BOARD_2,
+      (match) => `/test/read.cgi/${match[1]}/`,
+      { type: "board", bbsType: "2ch" }
+    )) {
+      return;
+    }
+
+    // 板 (通常形式)
+    this.tryFixPattern(
+      PATTERNS.EDDIBB_BOARD,
+      (match) => `/${match[1]}/`,
+      { type: "board", bbsType: "2ch" }
+    );
+  }
+
+  // 2ch系 の修正
+  private fix2ch(): void {
+    if (this.tryFixPattern(
+      PATTERNS.CH_THREAD,
+      (match) => `/${match[1]}/`,
+      { type: "thread", bbsType: "2ch" }
+    )) {
+      return;
+    }
+
+    this.tryFixPattern(
+      PATTERNS.CH_BOARD,
+      (match) => `/${match[1]}`,
+      { type: "board", bbsType: "2ch" }
+    );
+  }
+
+  // パターンマッチング共通処理
+  private tryFixPattern(
+    pattern: RegExp,
+    pathBuilder: (match: RegExpExecArray) => string,
     type: GuessResult
   ): boolean {
-    const res = reg.exec(this.pathname);
-    if (res) {
-      this.pathname = replace(res);
+    const match = pattern.exec(this.pathname);
+    if (match) {
+      this.pathname = pathBuilder(match);
       this.guessedType = type;
+      return true;
     }
-    return !!res;
+    return false;
   }
 
-  private fix() {
-    // 2ch.net -> 5ch.net & jbbs.livedoor.jp -> jbbs.shitaraba.net
-    if (this.hostname === "2ch.net" || this.hostname.endsWith(".2ch.net")) {
-      this.hostname = this.hostname.replace("2ch.net", "5ch.net");
-    } else if (this.hostname === "jbbs.livedoor.jp") {
-      this.hostname = "jbbs.shitaraba.net";
+  // レス番号の取得
+  getResNumber(): string | null {
+    const { type, bbsType } = this.guessedType;
+
+    if (type !== "thread" || bbsType === "unknown") {
+      return null;
     }
 
-    // スレ系: 誤爆する事は考えられないので、パラメータ部分をバッサリ切ってしまう
-    // 板系: 完全に誤爆を少しでも減らすために、パラメータ形式も限定する
-    if (this.hostname === "ula.5ch.net") {
-      const res = URL.CH_THREAD_ULA_REG.exec(this.pathname);
-      if (res) {
-        this.hostname = res[2];
-        this.pathname = `/test/read.cgi/${res[1]}/${res[3]}/`;
-        this.guessedType = { type: "thread", bbsType: "2ch" };
-      }
-      return;
-    }
+    const raw = new window.URL(this.rawUrl);
 
-    if (this.hostname.includes("machi.to")) {
-      const isThread = this.fixPathAndSetType(
-        URL.MACHI_THREAD_REG,
-        (res) => `/bbs/read.cgi/${res[1]}/`,
-        { type: "thread", bbsType: "machi" }
-      );
-      if (isThread) return;
+    const patternMap: Record<BBSType, RegExp | null> = {
+      jbbs: PATTERNS.SHITARABA_RESNUM,
+      machi: PATTERNS.MACHI_RESNUM,
+      "2ch": raw.hostname === HOSTNAME.ULA_5CH
+        ? PATTERNS.CH_RESNUM_ULA
+        : PATTERNS.CH_RESNUM,
+      unknown: null,
+    };
 
-      this.fixPathAndSetType(URL.MACHI_BOARD_REG, (res) => `/${res[1]}`, {
-        type: "board",
-        bbsType: "machi",
-      });
-      return;
-    }
+    const pattern = patternMap[bbsType];
+    if (!pattern) return null;
 
-    if (this.hostname === "jbbs.shitaraba.net") {
-      const isThread = this.fixPathAndSetType(
-        URL.SHITARABA_THREAD_REG,
-        (res) => `/bbs/${res[1]}/`,
-        { type: "thread", bbsType: "jbbs" }
-      );
-      if (isThread) {
-        if (this.pathname.includes("read_archive")) {
-          this.archive = true;
-        }
-        return;
-      }
-
-      const isArchive = this.fixPathAndSetType(
-        URL.SHITARABA_ARCHIVE_REG,
-        (res) => `/bbs/read_archive.cgi/${res[1]}/${res[2]}/`,
-        { type: "thread", bbsType: "jbbs" }
-      );
-      if (isArchive) {
-        this.archive = true;
-        return;
-      }
-
-      this.fixPathAndSetType(URL.SHITARABA_BOARD_REG, (res) => `/${res[1]}`, {
-        type: "board",
-        bbsType: "jbbs",
-      });
-      return;
-    }
-
-    if (this.hostname === "bbs.eddibb.cc") {
-      // /test/read.cgi/BOARD/NUMBER/ の形式を認識
-      const isThread2 = this.fixPathAndSetType(
-        URL.EDDIBB_THREAD_REG2,
-        (res) => `/test/read.cgi/${res[1]}/${res[2]}/`,
-        { type: "thread", bbsType: "2ch" }
-      );
-      if (isThread2) {
-        this.protocol = "http:";
-        return;
-      }
-
-      // https://bbs.eddibb.cc/BOARD/NUMBER/ を http://bbs.eddibb.cc/test/read.cgi/BOARD/NUMBER/ に変換
-      const isThread = this.fixPathAndSetType(
-        URL.EDDIBB_THREAD_REG,
-        (res) => `/test/read.cgi/${res[1]}/${res[2]}/`,
-        { type: "thread", bbsType: "2ch" }
-      );
-      if (isThread) {
-        this.protocol = "http:";
-        return;
-      }
-
-      // /test/read.cgi/BOARD/ の形式も板として認識
-      const isBoard2 = this.fixPathAndSetType(
-        URL.EDDIBB_BOARD_REG2,
-        (res) => `/test/read.cgi/${res[1]}/`,
-        { type: "board", bbsType: "2ch" }
-      );
-      if (isBoard2) return;
-
-      this.fixPathAndSetType(URL.EDDIBB_BOARD_REG, (res) => `/${res[1]}/`, {
-        type: "board",
-        bbsType: "2ch",
-      });
-      return;
-    }
-
-    // 2ch系
-    {
-      const isThread = this.fixPathAndSetType(
-        URL.CH_THREAD_REG,
-        (res) => `/${res[1]}/`,
-        { type: "thread", bbsType: "2ch" }
-      );
-      if (isThread) return;
-
-      /*
-      const isThread2 = this.fixPathAndSetType(
-        URL.CH_THREAD_REG2,
-        (res) => `/${res[1]}/`,
-        {type: "thread", bbsType: "2ch"}
-      );
-      if (isThread2) return;
-      */
-
-      this.fixPathAndSetType(URL.CH_BOARD_REG, (res) => `/${res[1]}`, {
-        type: "board",
-        bbsType: "2ch",
-      });
-    }
+    const target = bbsType === "2ch" && raw.hostname !== HOSTNAME.ULA_5CH
+      ? raw.href
+      : raw.pathname;
+    const match = pattern.exec(target);
+    return match ? match[1] : null;
   }
 
+  // スレッドURLから板URLへ変換
+  toBoard(): URL {
+    const { type, bbsType } = this.guessedType;
+
+    if (type !== "thread") {
+      throw new Error("toBoard()はThreadでのみ呼び出せます");
+    }
+
+    const pattern = bbsType === "jbbs"
+      ? PATTERNS.SHITARABA_TO_BOARD
+      : PATTERNS.CH_TO_BOARD;
+
+    const pathname = this.pathname.replace(pattern, "/$1/");
+    return new URL(`${this.origin}${pathname}`);
+  }
+
+  // 携帯版URLからの変換
+  convertFromPhone(): void {
+    const tsld = this.getTsld();
+
+    const patternMap: Record<string, RegExp> = {
+      [HOSTNAME.ITEST_5CH]: PATTERNS.ITEST_5CH,
+      [HOSTNAME.ITEST_BBSPINK]: PATTERNS.ITEST_BBSPINK,
+    };
+
+    const pattern = patternMap[this.hostname];
+    if (!pattern) return;
+
+    const match = pattern.exec(this.pathname);
+    if (!match) return;
+
+    const board = match[1] || match[3];
+    const thread = match[2] || null;
+    if (!board) return;
+
+    const server = this.findServer(board, tsld);
+    if (!server.serverName) return;
+
+    this.hostname = `${server.serverName}.${server.domain}`;
+    this.pathname = thread
+      ? `/test/read.cgi/${board}/${thread}/`
+      : `/${board}/`;
+    this.guessedType = {
+      type: thread ? "thread" : "board",
+      bbsType: "2ch"
+    };
+  }
+
+  // サーバー検索
+  private findServer(board: string, tsld: string): { serverName: string | null; domain: string } {
+    if (tsld === TSLD.CH_5) {
+      if (serverNet.has(board)) {
+        return { serverName: serverNet.get(board)!, domain: TSLD.CH_5 };
+      }
+      if (serverPink.has(board)) {
+        return { serverName: serverPink.get(board)!, domain: TSLD.BBSPINK };
+      }
+    } else if (tsld === TSLD.BBSPINK && serverPink.has(board)) {
+      return { serverName: serverPink.get(board)!, domain: TSLD.BBSPINK };
+    }
+    return { serverName: null, domain: tsld };
+  }
+
+  // .net ⇔ .sc 変換
+  private async exchangeNetSc(): Promise<void> {
+    const { type } = this.guessedType;
+    const boardKey = this.extractBoardKey(type);
+    if (!boardKey) return;
+
+    const tsld = this.getTsld();
+
+    // キャッシュから変換を試みる
+    if (await this.tryExchangeFromCache(boardKey, tsld)) {
+      return;
+    }
+
+    // 5ch.net以外はスキップ
+    if (tsld !== TSLD.CH_5) return;
+
+    // HTTPリクエストで変換先を取得
+    await this.fetchAndExchangeNetSc(boardKey, type);
+  }
+
+  private extractBoardKey(type: ContentType): string | null {
+    const splits = this.pathname.split("/");
+
+    if (type === "thread" && splits.length > 3) {
+      return splits[3];
+    } else if (type === "board" && splits.length > 1) {
+      return splits[1];
+    }
+    return null;
+  }
+
+  private async tryExchangeFromCache(boardKey: string, tsld: string): Promise<boolean> {
+    if (tsld === TSLD.CH_5 && serverSc.has(boardKey)) {
+      const server = serverSc.get(boardKey)!;
+      this.hostname = `${server}.${TSLD.CH_2_SC}`;
+      return true;
+    } else if (serverNet.has(boardKey)) {
+      const server = serverNet.get(boardKey)!;
+      this.hostname = `${server}.${TSLD.CH_5}`;
+      return true;
+    }
+    return false;
+  }
+
+  private async fetchAndExchangeNetSc(boardKey: string, type: ContentType): Promise<void> {
+    const hostname = this.hostname.replace(`.${TSLD.CH_5}`, `.${TSLD.CH_2_SC}`);
+    const req = new Request("HEAD", `http://${hostname}${this.pathname}`);
+    const { status, responseURL: resUrlStr } = await req.send();
+
+    if (status >= 400) {
+      throw new Error("移動先情報の取得の通信に失敗しました");
+    }
+
+    const resUrl = new URL(resUrlStr);
+    const server = resUrl.hostname.split(".")[0];
+    const newBoardKey = this.extractBoardKeyFromUrl(resUrl, type);
+
+    if (newBoardKey && !serverSc.has(newBoardKey)) {
+      serverSc.set(newBoardKey, server);
+    }
+
+    this.hostname = resUrl.hostname;
+  }
+
+  private extractBoardKeyFromUrl(url: URL, type: ContentType): string | null {
+    const splits = url.pathname.split("/");
+
+    if (type === "thread" && splits.length > 3) {
+      return splits[3];
+    } else if (type === "board" && splits.length > 1) {
+      return splits[1];
+    }
+    return null;
+  }
+
+  // 公開メソッド
   guessType(): GuessResult {
     return this.guessedType;
   }
@@ -199,22 +429,18 @@ export class URL extends window.URL {
 
   getTsld(): string {
     if (this.tsld === null) {
-      const dotList = this.hostname.split(".");
-      const len = dotList.length;
-      if (len >= 2) {
-        this.tsld = `${dotList[len - 2]}.${dotList[len - 1]}`;
-      } else {
-        this.tsld = "";
-      }
+      const parts = this.hostname.split(".");
+      const len = parts.length;
+      this.tsld = len >= 2 ? `${parts[len - 2]}.${parts[len - 1]}` : "";
     }
     return this.tsld;
   }
 
-  isHttps() {
+  isHttps(): boolean {
     return this.protocol === "https:";
   }
 
-  toggleProtocol() {
+  toggleProtocol(): void {
     this.protocol = this.isHttps() ? "http:" : "https:";
   }
 
@@ -224,200 +450,14 @@ export class URL extends window.URL {
     return toggled;
   }
 
-  private static readonly CH_RESNUM_REG =
-    /^https?:\/\/[\w\.]+\/(?:\w+\/)?test\/(?:read\.cgi|-)\/\w+\/\d+\/(?:i|g\?g=)?(\d+).*$/;
-  private static readonly CH_RESNUM_REG2 =
-    /^\/2ch\/\w+\/[\w\.]+\/\d+\/(\d+).*$/;
-  private static readonly MACHI_RESNUM_REG =
-    /^\/bbs\/read\.cgi\/\w+\/\d+\/(\d+).*$/;
-  private static readonly SHITARABA_RESNUM_REG =
-    /^\/bbs\/read(?:_archive)?\.cgi\/\w+\/\d+\/\d+\/(\d+).*$/;
-
-  getResNumber(): string | null {
-    const { type, bbsType } = this.guessedType;
-
-    if (type !== "thread" || bbsType === "unknown") {
-      return null;
-    }
-
-    const raw = new window.URL(this.rawUrl);
-
-    if (bbsType === "jbbs") {
-      const res = URL.SHITARABA_RESNUM_REG.exec(raw.pathname);
-      return res ? res[1] : null;
-    }
-
-    if (bbsType === "machi") {
-      const res = URL.MACHI_RESNUM_REG.exec(raw.pathname);
-      return res ? res[1] : null;
-    }
-
-    if (raw.hostname === "ula.5ch.net") {
-      const res = URL.CH_RESNUM_REG2.exec(raw.pathname);
-      return res ? res[1] : null;
-    }
-
-    // 2ch系
-    {
-      const res = URL.CH_RESNUM_REG.exec(raw.href);
-      if (res) {
-        return res[1];
-      }
-    }
-    return null;
-  }
-
-  private static readonly CH_TO_BOARD_REG =
-    /^\/(?:test|bbs)\/read\.cgi\/(\w+)\/\d+\/$/;
-  private static readonly SHITARABA_TO_BOARD_REG =
-    /^\/bbs\/read(?:_archive)?\.cgi\/(\w+\/\d+)\/\d+\/$/;
-
-  toBoard(): URL {
-    const { type, bbsType } = this.guessedType;
-    if (type !== "thread") {
-      throw new Error(
-        "app.URL.URL.toBoard: toBoard()はThreadでのみ呼び出せます"
-      );
-    }
-
-    if (bbsType === "jbbs") {
-      const pathname = this.pathname.replace(
-        URL.SHITARABA_TO_BOARD_REG,
-        "/$1/"
-      );
-      return new URL(`${this.origin}${pathname}`);
-    }
-
-    {
-      const pathname = this.pathname.replace(URL.CH_TO_BOARD_REG, "/$1/");
-      return new URL(`${this.origin}${pathname}`);
-    }
-  }
-
   getHashParams(): URLSearchParams {
     return this.rawHash
       ? new URLSearchParams(this.rawHash.slice(1))
       : new URLSearchParams();
   }
 
-  setHashParams(data: Record<string, string>) {
+  setHashParams(data: Record<string, string>): void {
     this.hash = new URLSearchParams(data).toString();
-  }
-
-  private static readonly ITEST_5CH_REG =
-    /\/(?:(?:\w+\/)?test\/read\.cgi\/(\w+)\/(\d+)\/|(?:subback\/)?(\w+)(?:\/)?)/;
-  private static readonly ITEST_BBSPINK_REG =
-    /\/(?:(?:\w+\/)?test\/read\.cgi\/(\w+)\/(\d+)\/|(?:subback\/)?(\w+)(?:\/)?)/;
-
-  convertFromPhone() {
-    let mode = this.getTsld();
-    let reg: RegExp;
-
-    switch (this.hostname) {
-      case "itest.5ch.net":
-        reg = URL.ITEST_5CH_REG;
-        break;
-
-      case "itest.bbspink.com":
-        reg = URL.ITEST_BBSPINK_REG;
-        break;
-
-      default:
-        return;
-    }
-
-    const res = reg.exec(this.pathname);
-    if (!res) return;
-
-    const board = res[1] || res[3];
-    const thread = res[2] || null;
-
-    if (!board) return;
-
-    let server: string | null = null;
-    let bbsType: GuessResult["bbsType"] = "unknown";
-
-    if (mode === "5ch.net") {
-      if (serverNet.has(board)) {
-        server = serverNet.get(board);
-        // 携帯用bbspinkの可能性をチェック
-      } else if (serverPink.has(board)) {
-        server = serverPink.get(board);
-        mode = "bbspink.com";
-      }
-      bbsType = "2ch";
-    } else if (mode === "bbspink.com" && serverPink.has(board)) {
-      server = serverPink.get(board);
-      bbsType = "2ch";
-    }
-
-    if (server === null) return;
-
-    let type: GuessResult["type"] = "unknown";
-    this.hostname = `${server}.${mode}`;
-    if (thread) {
-      this.pathname = `/test/read.cgi/${board}/${thread}/`;
-      type = "thread";
-    } else {
-      this.pathname = `/${board}/`;
-      type = "board";
-    }
-    this.guessedType = { type, bbsType };
-  }
-
-  private async exchangeNetSc() {
-    const { type } = this.guessedType;
-    const splits = this.pathname.split("/");
-    const tsld = this.getTsld();
-
-    let boardKey;
-    if (type === "thread" && splits.length > 3) {
-      boardKey = splits[3];
-    } else if (type === "board" && splits.length > 1) {
-      boardKey = splits[1];
-    } else {
-      return;
-    }
-
-    if (tsld === "5ch.net" && serverSc.has(boardKey)) {
-      const server = serverSc.get(boardKey);
-      this.hostname = `${server}.2ch.sc`;
-      return;
-    } else if (serverNet.has(boardKey)) {
-      const server = serverNet.get(boardKey);
-      this.hostname = `${server}.5ch.net`;
-      return;
-    }
-
-    if (tsld !== "5ch.net") return;
-
-    {
-      const hostname = this.hostname.replace(".5ch.net", ".2ch.sc");
-      const req = new Request("HEAD", `http://${hostname}${this.pathname}`);
-      const { status, responseURL: resUrlStr } = await req.send();
-      if (status >= 400) {
-        throw new Error("移動先情報の取得の通信に失敗しました");
-      }
-
-      const resUrl = new URL(resUrlStr);
-      const server = resUrl.hostname.split(".")[0];
-      const splits = resUrl.pathname.split("/");
-
-      let boardKey;
-      if (type === "thread" && splits.length > 3) {
-        boardKey = splits[3];
-      } else if (type === "board" && splits.length > 1) {
-        boardKey = splits[1];
-      } else {
-        this.href = resUrlStr;
-        return;
-      }
-
-      if (!serverSc.has(boardKey)) {
-        serverSc.set(boardKey, server);
-      }
-      this.hostname = resUrl.hostname;
-    }
   }
 
   async createNetScConverted(): Promise<URL> {
