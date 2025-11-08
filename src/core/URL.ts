@@ -44,6 +44,7 @@ export class URL extends window.URL {
     /^\/(\w+\/\d+)\/storage\/(\d+)\.html$/;
   private static readonly SHITARABA_BOARD_REG = /^\/(\w+\/\d+\/)(?:#.*)?$/;
   private static readonly EDDIBB_THREAD_REG = /^\/(\w+)\/(\d+).*$/;
+  private static readonly EDDIBB_THREAD_REG2 = /^\/test\/read\.cgi\/(\w+)\/(\d+).*$/;
   private static readonly EDDIBB_BOARD_REG = /^\/(\w+)\/?(?:#.*)?$/;
   private static readonly EDDIBB_BOARD_REG2 = /^\/test\/read\.cgi\/(\w+)\/?(?:#.*)?$/;
 
@@ -126,6 +127,17 @@ export class URL extends window.URL {
     }
 
     if (this.hostname === "bbs.eddibb.cc") {
+      // /test/read.cgi/BOARD/NUMBER/ の形式を認識
+      const isThread2 = this.fixPathAndSetType(
+        URL.EDDIBB_THREAD_REG2,
+        (res) => `/test/read.cgi/${res[1]}/${res[2]}/`,
+        { type: "thread", bbsType: "2ch" }
+      );
+      if (isThread2) {
+        this.protocol = "http:";
+        return;
+      }
+
       // https://bbs.eddibb.cc/BOARD/NUMBER/ を http://bbs.eddibb.cc/test/read.cgi/BOARD/NUMBER/ に変換
       const isThread = this.fixPathAndSetType(
         URL.EDDIBB_THREAD_REG,
