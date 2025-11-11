@@ -1890,6 +1890,10 @@ export default ThreadContent = (function () {
           var thumbnailFavicon = $__("img").addClass("favicon");
           thumbnailFavicon.src = "/img/dummy_1x1.&[IMG_EXT]";
           thumbnailFavicon.dataset.src = `https://www.google.com/s2/favicons?domain=${sourceA.hostname}`;
+          thumbnailFavicon.on("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          });
           thumbnailLink.addLast(thumbnailFavicon);
           break;
 

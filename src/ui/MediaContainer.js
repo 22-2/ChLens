@@ -57,6 +57,8 @@ export default class MediaContainer {
             } else {
               zoomWidth = parseInt(target.offsetWidth * imageRatio);
             }
+            // 画面の横幅からはみ出さないように調整
+            zoomWidth = Math.min(zoomWidth, window.innerWidth - 20); // 20pxは余裕を持たせたマージン
             thumbnail.addClass("zoom");
             target.style.width = `${zoomWidth}px`;
             target.style.maxWidth = null;
@@ -88,6 +90,8 @@ export default class MediaContainer {
           } else {
             zoomWidth = parseInt(target.offsetWidth * imageRatio);
           }
+          // 画面の横幅からはみ出さないように調整
+          zoomWidth = Math.min(zoomWidth, window.innerWidth - 20); // 20pxは余裕を持たせたマージン
         } else if (isVideoHover && target.tagName === "VIDEO") {
           // Chromeでmouseenterイベントが複数回発生するのを回避するため
           if ("&[BROWSER]" === "chrome") {
