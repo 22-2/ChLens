@@ -493,6 +493,11 @@ app.boot("/view/thread.html", async function () {
     if (e.type !== "contextmenu") {
       return;
     }
+
+    if (e.target.closest(".thumbnail")) {
+      return;
+    }
+
     e.preventDefault();
 
     const $article = target.parent();
