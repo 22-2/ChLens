@@ -173,20 +173,12 @@ app.boot("/view/thread.html", async function () {
         })
         .filter(Boolean);
 
-      // 末尾へ一度だけスクロール
-      const lastArticle = $content.$(":scope > article:last-child");
-      if (lastArticle != null) {
-        threadContent.scrollTo(lastArticle, false);
-      }
-
-      // 透明度で非表示にしてから順次表示する
+      // display:none で非表示にしてから順次表示する
       for (const el of newPosts) {
         try {
-          el.dataset.__live_orig_opacity = el.style.opacity || "";
-          el.dataset.__live_orig_transition = el.style.transition || "";
+          el.dataset.__live_orig_display = el.style.display || "";
         } catch (e) {}
-        el.style.opacity = "0";
-        el.style.transition = "opacity 0.1s linear";
+        el.style.display = "none";
       }
 
       for (let i = 0; i < newPosts.length; i++) {
@@ -210,25 +202,23 @@ app.boot("/view/thread.html", async function () {
         }
 
         const el = newPosts[i];
-        el.style.opacity = "1";
 
-        // cleanup transition 属性は少し待ってから元に戻す
-        (function (node) {
-          setTimeout(() => {
-            try {
-              if (node.dataset.__live_orig_transition !== undefined) {
-                node.style.transition = node.dataset.__live_orig_transition;
-                delete node.dataset.__live_orig_transition;
-              } else {
-                node.style.removeProperty("transition");
-              }
-              if (node.dataset.__live_orig_opacity !== undefined) {
-                node.style.opacity = node.dataset.__live_orig_opacity;
-                delete node.dataset.__live_orig_opacity;
-              }
-            } catch (e) {}
-          }, 300);
-        })(el);
+        // 表示を戻す
+        try {
+          if (
+            el.dataset.__live_orig_display !== undefined &&
+            el.dataset.__live_orig_display !== ""
+          ) {
+            el.style.display = el.dataset.__live_orig_display;
+            delete el.dataset.__live_orig_display;
+          } else {
+            el.style.removeProperty("display");
+          }
+        } catch (e) {}
+
+        // 各レス表示時に末尾へスクロール
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        threadContent.scrollTo(el, false);
       }
     } finally {
       isProcessingLiveStyle = false;
