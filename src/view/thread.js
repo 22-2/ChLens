@@ -28,6 +28,9 @@
 
 app.viewThread = {};
 
+// ライブスタイルモード用の処理中フラグ
+let isProcessingLiveStyle = false;
+
 app.boot("/view/thread.html", async function () {
   let AANoOverflow, viewUrlStr;
   try {
@@ -128,6 +131,110 @@ app.boot("/view/thread.html", async function () {
     popupView.show($popup, e.clientX, e.clientY, that);
   };
 
+  // ライブスタイル用の処理を切り出したヘルパー
+  const processLiveStyle = async ($content, threadContent) => {
+    // 新着レスを検出
+    const newPosts = [];
+    let foundLastReceived = false;
+    for (const dom of $content.child()) {
+      if (foundLastReceived) {
+        newPosts.push(dom);
+      } else if (dom.matches(".last.received")) {
+        foundLastReceived = true;
+      }
+    }
+
+    // 新着がない場合は何もしない
+    if (newPosts.length === 0) {
+      return;
+    }
+
+    isProcessingLiveStyle = true;
+    try {
+      const playbackRate = app.config.get("live_style_playback_rate") || 2;
+      const maxDelayMs = 3000; // 最大遅延時間
+      const minDelayMs = 100; // 最小遅延時間
+
+      // 各レスの投稿時刻を取得
+      const postTimes = newPosts
+        .map((post) => {
+          const timeText = post.C("info")[0]?.C("date")[0]?.textContent;
+          if (!timeText) return null;
+
+          const match = timeText.match(/(\d{2}):(\d{2}):(\d{2})(?:\.(\d{2}))?/);
+          if (!match) return null;
+
+          const hours = parseInt(match[1], 10);
+          const minutes = parseInt(match[2], 10);
+          const seconds = parseInt(match[3], 10);
+          const centiseconds = match[4] ? parseInt(match[4], 10) : 0;
+
+          return hours * 3600 + minutes * 60 + seconds + centiseconds / 100;
+        })
+        .filter(Boolean);
+
+      // 末尾へ一度だけスクロール
+      const lastArticle = $content.$(":scope > article:last-child");
+      if (lastArticle != null) {
+        threadContent.scrollTo(lastArticle, false);
+      }
+
+      // 透明度で非表示にしてから順次表示する
+      for (const el of newPosts) {
+        try {
+          el.dataset.__live_orig_opacity = el.style.opacity || "";
+          el.dataset.__live_orig_transition = el.style.transition || "";
+        } catch (e) {}
+        el.style.opacity = "0";
+        el.style.transition = "opacity 0.1s linear";
+      }
+
+      for (let i = 0; i < newPosts.length; i++) {
+        let delayMs = minDelayMs;
+        if (i > 0 && postTimes[i] != null && postTimes[i - 1] != null) {
+          const timeDiffSec = postTimes[i] - postTimes[i - 1];
+          if (timeDiffSec > 0) {
+            delayMs = Math.min(
+              Math.max((timeDiffSec * 1000) / playbackRate, minDelayMs),
+              maxDelayMs
+            );
+          }
+        }
+
+        if (i > 0) {
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+        } else {
+          await new Promise((resolve) =>
+            setTimeout(resolve, Math.min(200, minDelayMs))
+          );
+        }
+
+        const el = newPosts[i];
+        el.style.opacity = "1";
+
+        // cleanup transition 属性は少し待ってから元に戻す
+        (function (node) {
+          setTimeout(() => {
+            try {
+              if (node.dataset.__live_orig_transition !== undefined) {
+                node.style.transition = node.dataset.__live_orig_transition;
+                delete node.dataset.__live_orig_transition;
+              } else {
+                node.style.removeProperty("transition");
+              }
+              if (node.dataset.__live_orig_opacity !== undefined) {
+                node.style.opacity = node.dataset.__live_orig_opacity;
+                delete node.dataset.__live_orig_opacity;
+              }
+            } catch (e) {}
+          }, 300);
+        })(el);
+      }
+    } finally {
+      isProcessingLiveStyle = false;
+    }
+  };
+
   const canWrite = () => $view.C("button_write")[0] != null;
 
   const removeWriteButton = function () {
@@ -225,7 +332,10 @@ app.boot("/view/thread.html", async function () {
 
         (defaultScroll = function () {
           // フィルター適用中または検索中はスクロールをスキップ
-          if ($content.hasClass("filtering") || $content.hasClass("searching")) {
+          if (
+            $content.hasClass("filtering") ||
+            $content.hasClass("searching")
+          ) {
             return;
           }
 
@@ -273,7 +383,10 @@ app.boot("/view/thread.html", async function () {
             }
 
             // フィルター適用中または検索中は自動スクロールをスキップ（位置を維持）
-            if ($content.hasClass("filtering") || $content.hasClass("searching")) {
+            if (
+              $content.hasClass("filtering") ||
+              $content.hasClass("searching")
+            ) {
               return;
             }
 
@@ -345,6 +458,15 @@ app.boot("/view/thread.html", async function () {
                 if ($res != null) {
                   threadContent.scrollTo($res, true);
                 }
+                break;
+              case "live_style":
+                // 処理中なら何もしない
+                if (isProcessingLiveStyle) {
+                  return;
+                }
+
+                // 切り出したヘルパーに処理を委譲
+                processLiveStyle($content, threadContent);
                 break;
             }
           }
@@ -590,7 +712,9 @@ app.boot("/view/thread.html", async function () {
       const threadUrl = viewUrlStr;
       const resNum = $res.C("num")[0].textContent;
       const name = app.util.decodeCharReference($res.C("name")[0].textContent);
-      const other = app.util.decodeCharReference($res.C("other")[0].textContent);
+      const other = app.util.decodeCharReference(
+        $res.C("other")[0].textContent
+      );
       const message = $res.C("message")[0].innerText;
 
       const copyText = `${threadTitle}\n${threadUrl}${resNum}\n${resNum} ${name}  ${other}\n${message}`;
@@ -1358,7 +1482,8 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
     let filterStoredScrollTop = null;
 
     const applyFilter = function (filterType) {
-      let dom, hitCount = 0;
+      let dom,
+        hitCount = 0;
       const { scrollTop } = $content;
 
       if (filterType === "all") {
@@ -1403,7 +1528,10 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
               break;
             case "media":
               // 画像または動画を含むレス
-              match = dom.$(".thumbnail[media-type='image'], .thumbnail[media-type='video']") != null;
+              match =
+                dom.$(
+                  ".thumbnail[media-type='image'], .thumbnail[media-type='video']"
+                ) != null;
               break;
             case "link":
               // 外部リンクを含むレス
@@ -1438,8 +1566,8 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
 
     // フィルターメニューのクリック
     $view.on("click", function ({ target }) {
-
-      const closeMenu = () => document.query(`.button_filter > ul`).addClass("hidden");
+      const closeMenu = () =>
+        document.query(`.button_filter > ul`).addClass("hidden");
 
       if (target.matches(".button_filter")) {
         const ul = target.querySelector("ul");
@@ -1713,9 +1841,10 @@ app.viewThread._draw = async function (
         const firstResDate = app.util.stringToDate(thread.res[0].other);
         if (firstResDate) {
           const now = Date.now();
-          const elapsed = (now - firstResDate.valueOf()) / (1000 * 60 * 60 * 24); // 経過日数
+          const elapsed =
+            (now - firstResDate.valueOf()) / (1000 * 60 * 60 * 24); // 経過日数
           if (elapsed > 0) {
-            momentum = Math.round(resCount / elapsed * 10) / 10;
+            momentum = Math.round((resCount / elapsed) * 10) / 10;
           }
         }
       } catch (e) {}

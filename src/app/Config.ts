@@ -1,7 +1,7 @@
 import Callbacks from "./Callbacks";
-import message from "./Message";
 import LocalStorage from "./LocalStorage";
-import { log, assertArg } from "./Log";
+import { assertArg, log } from "./Log";
+import message from "./Message";
 
 export default class Config {
   private static readonly _default: ReadonlyMap<string, string> = new Map([
@@ -47,6 +47,7 @@ export default class Config {
     ["zoom_ratio_video", "200"],
     ["image_height_fix", "on"],
     ["delay_scroll_time", "600"],
+    ["live_style_playback_rate", "1"],
     ["expand_short_url", "none"],
     ["expand_short_url_timeout", "3000"],
     ["aa_font", "aa"],

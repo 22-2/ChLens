@@ -61,3 +61,11 @@
       label
         input.direct(name="auto_load_move" type="radio" value="newest")
         |最終レス
+      label
+        input.direct(name="auto_load_move" type="radio" value="live_style")
+        |ライブチャット風（新着を時系列で表示）
+      div(style="margin-top: 8px;")
+        |ライブチャット風モードの再生速度:
+        input.direct(type="number" name="live_style_playback_rate" min="1" max="10" step="0.5" style="width: 60px; margin: 0 4px;")
+        |倍速
+        span(style="margin-left: 8px; font-size: 0.9em; color: #666;") (新着が多い場合の表示速度)
