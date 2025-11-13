@@ -799,7 +799,7 @@ app.view.TabContentView = class TabContentView extends (
     switch (false) {
       case !this.$element.hasClass("view_thread"):
         cfgName = "";
-        minSeconds = 5000;
+        minSeconds = 3000;
         break;
       case !this.$element.hasClass("view_board"):
         cfgName = "_board";
