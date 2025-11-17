@@ -831,7 +831,15 @@ app.view.TabContentView = class TabContentView extends (
                 `.tab_container > iframe[data-url=\"${url}\"]`
               ).hasClass("tab_selected")
             ) {
-              this.$element.emit(new Event("request_reload"));
+              if (this.$element.hasClass("view_thread")) {
+                this.$element.emit(
+                  new CustomEvent("request_reload", {
+                    detail: { isAutoReload: true },
+                  })
+                );
+              } else {
+                this.$element.emit(new Event("request_reload"));
+              }
             }
           }, second);
         }

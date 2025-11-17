@@ -30,8 +30,11 @@ app.viewThread = {};
 
 // ライブスタイルモード用の処理中フラグ
 let isProcessingLiveStyle = false;
+// 初回ロードや手動リロード時に新着を一括表示するかどうか
+let liveStyleShouldBulk = true;
 
 app.boot("/view/thread.html", async function () {
+  liveStyleShouldBulk = true;
   let AANoOverflow, viewUrlStr;
   try {
     viewUrlStr = app.URL.parseQuery(location.search).get("q");
@@ -132,7 +135,11 @@ app.boot("/view/thread.html", async function () {
   };
 
   // ライブスタイル用の処理を切り出したヘルパー
-  const processLiveStyle = async ($content, threadContent) => {
+  const processLiveStyle = async (
+    $content,
+    threadContent,
+    forceBulk = false
+  ) => {
     // 新着レスを検出
     const newPosts = [];
     let foundLastReceived = false;
@@ -146,7 +153,17 @@ app.boot("/view/thread.html", async function () {
 
     // 新着がない場合は何もしない
     if (newPosts.length === 0) {
-      return;
+      return false;
+    }
+
+    // 初回ロードや手動リロード時は全てのレスを一括表示
+    if (forceBulk) {
+      // スクロール位置を最初の新着レスへ移動
+      if (newPosts.length > 0) {
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        threadContent.scrollTo(newPosts[0], false);
+      }
+      return true;
     }
 
     isProcessingLiveStyle = true;
@@ -220,6 +237,7 @@ app.boot("/view/thread.html", async function () {
         await new Promise((resolve) => requestAnimationFrame(resolve));
         threadContent.scrollTo(el, false);
       }
+      return true;
     } finally {
       isProcessingLiveStyle = false;
     }
@@ -247,6 +265,14 @@ app.boot("/view/thread.html", async function () {
   $view.on("request_reload", async function ({ detail: ex = {} }) {
     let left;
     threadContent.refreshNG();
+    const isAutoReload =
+      typeof ex === "object" &&
+      ex != null &&
+      "isAutoReload" in ex &&
+      ex.isAutoReload === true;
+    if (app.config.get("auto_load_move") === "live_style") {
+      liveStyleShouldBulk = !isAutoReload;
+    }
     //先にread_state更新処理を走らせるために、処理を飛ばす
     await app.defer();
     const jumpResNum = +((left =
@@ -320,12 +346,26 @@ app.boot("/view/thread.html", async function () {
           { once: true }
         );
 
-        (defaultScroll = function () {
+        (defaultScroll = async function () {
           // フィルター適用中または検索中はスクロールをスキップ
           if (
             $content.hasClass("filtering") ||
             $content.hasClass("searching")
           ) {
+            return;
+          }
+
+          // live_styleモードかつ初回ロード時の処理
+          const moveMode = app.config.get("auto_load_move");
+          if (moveMode === "live_style" && liveStyleShouldBulk) {
+            const handled = await processLiveStyle(
+              $content,
+              threadContent,
+              true
+            );
+            if (handled) {
+              liveStyleShouldBulk = false;
+            }
             return;
           }
 
@@ -353,13 +393,13 @@ app.boot("/view/thread.html", async function () {
         //二度目以降のread_state_attached時
         $view.on(
           "read_state_attached",
-          function ({
+          async function ({
             detail: { jumpResNum, requestReloadFlag, loadCount } = {},
           }) {
             // リロード時の一回目の処理
             let $res, dom;
             if (requestReloadFlag && loadCount === 1) {
-              defaultScroll();
+              await defaultScroll();
               return;
             }
 
@@ -455,8 +495,15 @@ app.boot("/view/thread.html", async function () {
                   return;
                 }
 
-                // 切り出したヘルパーに処理を委譲
-                processLiveStyle($content, threadContent);
+                const shouldBulk = liveStyleShouldBulk;
+                const handled = await processLiveStyle(
+                  $content,
+                  threadContent,
+                  shouldBulk
+                );
+                if (shouldBulk && (handled || requestReloadFlag)) {
+                  liveStyleShouldBulk = false;
+                }
                 break;
             }
           }
