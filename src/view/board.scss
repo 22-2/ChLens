@@ -113,6 +113,16 @@ tr.highlight {
     opacity: 1;
     visibility: visible;
   }
+
+  .thread_list_tooltip_title {
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .thread_list_tooltip_meta {
+    font-size: 11px;
+    opacity: 0.85;
+  }
 }
 
 .theme_dark .thread_list_tooltip {

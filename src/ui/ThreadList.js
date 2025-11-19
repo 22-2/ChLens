@@ -99,6 +99,7 @@ export default ThreadList = (function () {
       };
 
       const $table = this.table;
+      const threadListInstance = this;
       const $thead = $__("thead");
       $table.addLast($thead, $__("tbody"));
       let $tr = $__("tr");
@@ -109,6 +110,89 @@ export default ThreadList = (function () {
       document.body.appendChild($tooltip);
       let tooltipTimeout = null;
 
+      const renderTooltipContent = ($cell) => {
+        const $tr = $cell.closest("tr");
+        if (!$tr) {
+          return null;
+        }
+
+        let text = "";
+        if ($tr.dataset.title) {
+          text = $tr.dataset.title;
+        } else {
+          text = $cell.textContent;
+        }
+
+        if (!text || !text.trim()) {
+          return null;
+        }
+
+        $tooltip.textContent = "";
+
+        const $title = $__("div").addClass("thread_list_tooltip_title");
+        $title.textContent = text.trim();
+        $tooltip.addLast($title);
+
+        const metaParts = [];
+        const resText =
+          $tr.dataset.resCount ||
+          (threadListInstance._flg.res && selector.res
+            ? __guard__($tr.$(selector.res), (x) => (x.textContent || "").trim())
+            : "");
+        if (resText) {
+          metaParts.push(`レス数: ${resText}`);
+        }
+
+        const heatText =
+          $tr.dataset.heat ||
+          (threadListInstance._flg.heat && selector.heat
+            ? __guard__($tr.$(selector.heat), (x1) => (x1.textContent || "").trim())
+            : "");
+        if (heatText) {
+          metaParts.push(`勢い: ${heatText}`);
+        }
+
+        if (metaParts.length > 0) {
+          const $meta = $__("div").addClass("thread_list_tooltip_meta");
+          $meta.textContent = metaParts.join(" / ");
+          $tooltip.addLast($meta);
+        }
+
+        return $tr;
+      };
+
+      const positionTooltip = ($tr) => {
+        const rowRect = $tr.getBoundingClientRect();
+        const margin = 4;
+        let left = rowRect.left;
+        let top = rowRect.bottom + margin;
+
+        $tooltip.style.left = left + "px";
+        $tooltip.style.top = top + "px";
+
+        const tooltipRect = $tooltip.getBoundingClientRect();
+        const viewportPadding = 8;
+
+        if (tooltipRect.right > window.innerWidth - viewportPadding) {
+          left = Math.max(
+            viewportPadding,
+            window.innerWidth - tooltipRect.width - viewportPadding
+          );
+          $tooltip.style.left = left + "px";
+        }
+        if (tooltipRect.left < viewportPadding) {
+          $tooltip.style.left = viewportPadding + "px";
+        }
+
+        if (tooltipRect.bottom > window.innerHeight - viewportPadding) {
+          top = Math.max(
+            viewportPadding,
+            window.innerHeight - tooltipRect.height - viewportPadding
+          );
+          $tooltip.style.top = top + "px";
+        }
+      };
+
       //項目のカスタムツールチップ表示
       $table.on(
         "mouseenter",
@@ -117,38 +201,12 @@ export default ThreadList = (function () {
           if (target.tagName === "TD") {
             clearTimeout(tooltipTimeout);
 
-            // TRのdata-title属性があればそれを使用（matchLabel対応）
-            const $tr = target.closest("tr");
-            let text = "";
-            if ($tr && $tr.dataset.title) {
-              text = $tr.dataset.title;
-            } else {
-              text = target.textContent;
+            const $tr = renderTooltipContent(target);
+            if (!$tr) {
+              return;
             }
-
-            if (text.trim()) {
-              $tooltip.textContent = text;
-
-              // 初期位置を設定
-              const x = e.clientX + 10;
-              const y = e.clientY + 10;
-              $tooltip.style.left = x + "px";
-              $tooltip.style.top = y + "px";
-
-              // 即座に表示
-              $tooltip.addClass("visible");
-
-              // マウス位置に追従
-              const updatePosition = (moveEvent) => {
-                const mx = moveEvent.clientX + 10;
-                const my = moveEvent.clientY + 10;
-                $tooltip.style.left = mx + "px";
-                $tooltip.style.top = my + "px";
-              };
-
-              target._tooltipMoveHandler = updatePosition;
-              target.on("mousemove", updatePosition);
-            }
+            positionTooltip($tr);
+            $tooltip.addClass("visible");
           }
         },
         true
@@ -157,11 +215,6 @@ export default ThreadList = (function () {
         "mouseleave",
         function ({ target }) {
           if (target.tagName === "TD") {
-            if (target._tooltipMoveHandler) {
-              target.off("mousemove", target._tooltipMoveHandler);
-              delete target._tooltipMoveHandler;
-            }
-
             tooltipTimeout = setTimeout(() => {
               $tooltip.removeClass("visible");
             }, 100);
@@ -273,31 +326,43 @@ export default ThreadList = (function () {
           }
         }
 
-        if (this._flg.res && type === "res_count") {
-          const tr = $table.$(`tr[data-href=\"${bookmark.url}\"]`);
+        if (type === "res_count") {
+          const tr = $table.$(`tr[data-href="${bookmark.url}"]`);
           if (tr) {
-            let td = tr.$(selector.res);
-            const oldResCount = +td.textContent;
-            td.textContent = bookmark.resCount;
-            td.dataset.beforeres = oldResCount;
-            if (this._flg.unread) {
-              td = tr.$(selector.unread);
-              const oldUnread = +td.textContent;
-              const unread = oldUnread + (bookmark.resCount - oldResCount);
-              td.textContent = unread || "";
-              if (unread > 0) {
-                tr.addClass("updated");
-              } else {
-                tr.removeClass("updated");
+            const created = /\/(\d+)\/$/.exec(bookmark.url)[1] * 1000;
+            const heatValue = ThreadList._calcHeat(
+              Date.now(),
+              created,
+              bookmark.resCount
+            );
+            tr.dataset.resCount = "" + bookmark.resCount;
+            tr.dataset.heat = heatValue;
+
+            if (this._flg.res) {
+              let td = tr.$(selector.res);
+              const oldResCount = +td.textContent;
+              td.textContent = bookmark.resCount;
+              td.dataset.beforeres = oldResCount;
+              if (this._flg.unread) {
+                td = tr.$(selector.unread);
+                const oldUnread = +td.textContent;
+                const unread = oldUnread + (bookmark.resCount - oldResCount);
+                td.textContent = unread || "";
+                if (unread > 0) {
+                  tr.addClass("updated");
+                } else {
+                  tr.removeClass("updated");
+                }
               }
-            }
-            if (this._flg.heat) {
-              td = tr.$(selector.heat);
-              td.textContent = ThreadList._calcHeat(
-                Date.now(),
-                /\/(\d+)\/$/.exec(bookmark.url)[1] * 1000,
-                bookmark.resCount
-              );
+              if (this._flg.heat) {
+                td = tr.$(selector.heat);
+                td.textContent = heatValue;
+              }
+            } else if (this._flg.heat) {
+              const heatCell = tr.$(selector.heat);
+              if (heatCell) {
+                heatCell.textContent = heatValue;
+              }
             }
           }
         }
@@ -318,6 +383,7 @@ export default ThreadList = (function () {
             const res = tr.$(selector.res);
             if (+res.textContent < read_state.received) {
               res.textContent = read_state.received;
+              tr.dataset.resCount = "" + read_state.received;
             }
             const unread = tr.$(selector.unread);
             const unreadCount = Math.max(+res.textContent - read_state.read, 0);
@@ -576,6 +642,16 @@ export default ThreadList = (function () {
           $tr.dataset.writtenResNum = item.res;
         }
 
+        const resCount =
+          typeof item.resCount === "number" && !Number.isNaN(item.resCount)
+            ? item.resCount
+            : 0;
+        $tr.dataset.resCount = "" + resCount;
+        const rowHeat = ThreadList._calcHeat(now, item.createdAt, resCount);
+        if (rowHeat != null) {
+          $tr.dataset.heat = rowHeat;
+        }
+
         //ブックマーク状況
         if (this._flg.bookmark) {
           $td = $__("td");
@@ -630,11 +706,7 @@ export default ThreadList = (function () {
         //勢い
         if (this._flg.heat) {
           $td = $__("td");
-          $td.textContent = ThreadList._calcHeat(
-            now,
-            item.createdAt,
-            item.resCount
-          );
+          $td.textContent = rowHeat;
           $tr.addLast($td);
         }
 
