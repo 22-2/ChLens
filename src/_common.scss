@@ -539,15 +539,17 @@ $z-indexes: (
     user-select: none;
   }
   table.thread_list_single_column {
-    table-layout: auto;
     width: 100%;
     box-sizing: border-box;
   }
+  table.thread_list_single_column col:not(.column_hidden) {
+    width: 100% !important;
+  }
   table.thread_list_single_column th,
   table.thread_list_single_column td {
-    white-space: normal;
-    word-break: break-word;
-    overflow-wrap: anywhere;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   table.thread_list_single_column img {
     max-width: 100%;
