@@ -540,6 +540,18 @@ $z-indexes: (
   }
   table.thread_list_single_column {
     table-layout: auto;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  table.thread_list_single_column th,
+  table.thread_list_single_column td {
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+  table.thread_list_single_column img {
+    max-width: 100%;
+    height: auto;
   }
   tr {
     border-bottom: 1px solid;
@@ -596,6 +608,7 @@ $z-indexes: (
   }
   col.column_hidden {
     width: 0 !important;
+    display: none;
   }
   th.column_hidden,
   td.column_hidden {
