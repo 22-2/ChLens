@@ -544,6 +544,50 @@ export default ThreadList = (function () {
                     $tr.setAttr("ignore-res-number", "on");
                     $tr.emit(new Event("mousedown", { bubbles: true }));
                     break;
+                  case !target.hasClass("copy_thread_title"):
+                    (async () => {
+                      try {
+                        const text = threadTitle || "";
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                          await navigator.clipboard.writeText(text);
+                        } else {
+                          const ta = document.createElement("textarea");
+                          ta.value = text;
+                          ta.style.position = "fixed";
+                          ta.style.opacity = "0";
+                          document.body.appendChild(ta);
+                          ta.focus();
+                          ta.select();
+                          document.execCommand("copy");
+                          ta.remove();
+                        }
+                      } catch (error) {
+                        // ignore
+                      }
+                    })();
+                    break;
+                  case !target.hasClass("copy_thread_url"):
+                    (async () => {
+                      try {
+                        const text = threadURL || "";
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                          await navigator.clipboard.writeText(text);
+                        } else {
+                          const ta = document.createElement("textarea");
+                          ta.value = text;
+                          ta.style.position = "fixed";
+                          ta.style.opacity = "0";
+                          document.body.appendChild(ta);
+                          ta.focus();
+                          ta.select();
+                          document.execCommand("copy");
+                          ta.remove();
+                        }
+                      } catch (error) {
+                        // ignore
+                      }
+                    })();
+                    break;
                   case !target.hasClass("del_read_state"):
                     app.ReadState.remove(threadURL);
                     break;
