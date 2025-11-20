@@ -101,7 +101,7 @@ tr.highlight {
   font-size: 12px;
   border-radius: 4px;
   pointer-events: none;
-  z-index: 10000;
+  z-index: var(--z-index-thread-tooltip);
   opacity: 0;
   visibility: hidden;
   word-wrap: break-word;
