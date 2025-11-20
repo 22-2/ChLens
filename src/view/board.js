@@ -18,12 +18,64 @@ app.boot("/view/board.html", ["Board"], function (Board) {
     th: ["bookmark", "title", "res", "unread", "heat", "createdDate"],
     searchColumn: $view.C("search_item_selector")[0],
     searchbox: $view.C("searchbox")[0],
+    columnPreferencesKey: "board_column_preferences",
   });
   app.DOMData.set($view, "threadList", threadList);
   app.DOMData.set($view, "selectableItemList", threadList);
   const tableSorter = new UI.TableSorter($table);
   app.DOMData.set($table, "tableSorter", tableSorter);
   $$.C("content")[0].addLast($table);
+
+  // 列表示設定メニュー
+  (function () {
+    const $menuList = $view.C("column_toggle_list")[0];
+    const $resetBtn = $view.C("column_menu_reset")[0];
+
+    if (!$menuList) return;
+
+    const updateMenu = () => {
+      $menuList.textContent = "";
+      const columns = threadList.getColumnStates();
+
+      for (const col of columns) {
+        const $li = $__("li");
+        const $label = $__("label");
+        const $input = $__("input");
+        $input.type = "checkbox";
+        $input.checked = !col.hidden;
+
+        if (!col.canHide) {
+          $input.disabled = true;
+        }
+
+        $input.on("change", () => {
+          const success = threadList.setColumnVisibility(
+            col.key,
+            $input.checked
+          );
+          if (!success) {
+            $input.checked = !$input.checked; // 最後の1列などは非表示にできない場合があるため戻す
+          }
+        });
+
+        $label.addLast($input);
+        $label.addLast(document.createTextNode(" " + col.label));
+        $li.addLast($label);
+        $menuList.addLast($li);
+      }
+    };
+
+    $table.on("threadlist_column_state", updateMenu);
+
+    if ($resetBtn) {
+      $resetBtn.on("click", () => {
+        threadList.resetColumnPreferences();
+      });
+    }
+
+    // 初期表示
+    updateMenu();
+  })();
 
   const write = function (param) {
     if (param == null) {

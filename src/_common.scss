@@ -538,6 +538,9 @@ $z-indexes: (
     border-collapse: collapse;
     user-select: none;
   }
+  table.thread_list_single_column {
+    table-layout: auto;
+  }
   tr {
     border-bottom: 1px solid;
     scroll-snap-align: start;
@@ -590,6 +593,13 @@ $z-indexes: (
     padding: 10px;
     text-align: center;
     font-size: 18px;
+  }
+  col.column_hidden {
+    width: 0 !important;
+  }
+  th.column_hidden,
+  td.column_hidden {
+    display: none !important;
   }
   table[data-table-search-hit-count="0"] > tbody:not(:empty) {
     display: block;

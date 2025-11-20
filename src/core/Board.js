@@ -308,9 +308,10 @@ class="open_in_rcrx">${app.escapeHtml(newBoardUrl)}
       const resCount = +regRes[3];
 
       const ngResult = isNGBoard(title, url.href, resCount);
-      const highlight = ngResult &&
-          (ngResult.type === "HighlightTitle" ||
-            ngResult.type === "RegExpHighlightTitle");
+      const highlight =
+        ngResult &&
+        (ngResult.type === "HighlightTitle" ||
+          ngResult.type === "RegExpHighlightTitle");
       board.push({
         url: baseUrl + regRes[1] + "/",
         title,

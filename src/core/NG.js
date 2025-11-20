@@ -171,7 +171,7 @@ const parse = function (string) {
       const restWord = scopeMatch[3].trim();
 
       // スコープ内容をパースしてパラメータを抽出
-      const parts = scopeContent.split(',').map(p => p.trim());
+      const parts = scopeContent.split(",").map((p) => p.trim());
       const scopePath = parts[0]; // 最初の部分はスコープパス
       ngElement.scope = { value: scopePath };
 

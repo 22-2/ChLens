@@ -16,13 +16,14 @@ if (!frameElement) {
 // iframe内外で統一的にconfigにアクセスできるようにProxyを使用
 export const config = new Proxy({} as Config, {
   get(_target, prop) {
-    const actualConfig = _config || (self !== top && (parent as any).app?._config);
+    const actualConfig =
+      _config || (self !== top && (parent as any).app?._config);
     if (!actualConfig) {
-      console.error('config is not initialized');
+      console.error("config is not initialized");
       return undefined;
     }
     return actualConfig[prop as keyof Config];
-  }
+  },
 });
 
 // 親ウィンドウからアクセスできるように内部configも公開

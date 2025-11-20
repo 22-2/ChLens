@@ -1,7 +1,7 @@
 // 定数定義
 const BUTTON_IDS = {
   open: "36e5cda5",
-  close: "92a5da13"
+  close: "92a5da13",
 };
 
 const STYLES = {
@@ -20,7 +20,7 @@ const STYLES = {
   `,
   clickable: "cursor: pointer;",
   underline: "text-decoration: underline;",
-  closeButton: "display: inline-block; margin-left: 5px;"
+  closeButton: "display: inline-block; margin-left: 5px;",
 };
 
 // URL パターン定義
@@ -56,7 +56,7 @@ const URL_PATTERNS = [
   /^https?:\/\/(?:\w+\.)?machi\.to\/bbs\/read\.cgi\/\w+\/\d+/,
 
   // eddibb
-  /^https?:\/\/bbs\.eddibb\.cc\/\w+\/\d+/
+  /^https?:\/\/bbs\.eddibb\.cc\/\w+\/\d+/,
 ];
 
 /**
@@ -75,7 +75,7 @@ function normalizeUrl(url) {
  * 現在のURLが対象URLパターンにマッチするかチェック
  */
 function isTargetUrl(url) {
-  return URL_PATTERNS.some(pattern => pattern.test(url));
+  return URL_PATTERNS.some((pattern) => pattern.test(url));
 }
 
 /**
@@ -118,11 +118,7 @@ function createContainer() {
     STYLES.underline
   );
 
-  const closeButton = createButton(
-    BUTTON_IDS.close,
-    " x",
-    STYLES.closeButton
-  );
+  const closeButton = createButton(BUTTON_IDS.close, " x", STYLES.closeButton);
 
   container.appendChild(openButton);
   container.appendChild(closeButton);

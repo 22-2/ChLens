@@ -35,6 +35,12 @@ block body
         li.button_change_netsc 2ch.net/2ch.scに切り替え
         li.button_only_sc scのスレだけを表示する/両方表示する
         li.button_open_updated 未読があるスレッドを全て開く
+        li.column_menu_section
+          .column_menu_header
+            span 列の表示/非表示
+            button.column_menu_reset(type="button") リセット
+          ul.column_toggle_list
+          p.column_menu_hint ヘッダー右端をドラッグすると列幅を変更できます
     select.sort_item_selector
       option(data-sort-order="asc" data-sort-type="num" data-sort-index="data-thread-number") 標準
       option(data-sort-index="0") ブックマーク
