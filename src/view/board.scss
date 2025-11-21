@@ -96,7 +96,7 @@ tr.highlight {
 // カスタムツールチップ
 .thread_list_tooltip {
   position: fixed;
-  max-width: 450px;
+  max-width: min(450px, calc(100% - 24px));
   padding: 6px 10px;
   background-color: rgba(0, 0, 0, 0.9);
   color: #fff;
