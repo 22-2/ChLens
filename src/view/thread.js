@@ -545,6 +545,11 @@ app.boot("/view/thread.html", async function () {
       return;
     }
 
+    // リプライリンク上での右クリックは、リプライツリー表示に任せる
+    if (e.type === "contextmenu" && e.target.closest(".rep")) {
+      return;
+    }
+
     // id/参照ポップアップの表示処理との競合回避
     if (
       e.type === "click" &&
@@ -646,6 +651,11 @@ app.boot("/view/thread.html", async function () {
   const onMessageMenu = async function (e) {
     const target = e.target.closest("article > .message");
     if (target == null) {
+      return;
+    }
+
+    // リプライリンク上での右クリックは、リプライツリー表示に任せる
+    if (e.type === "contextmenu" && e.target.closest(".rep")) {
       return;
     }
 
@@ -1184,6 +1194,69 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
         } else if (popupCount < resCount && !app.config.isOn("reject_ng_rep")) {
           $div = $__("div").addClass("ng_count");
           $div.setAttr("ng-count", resCount - popupCount);
+          $popup.addLast($div);
+        }
+        return $popup;
+      });
+    },
+    true
+  );
+
+  //リプライツリーポップアップ (右クリック)
+  $view.on(
+    "contextmenu",
+    function (e) {
+      const { target } = e;
+      const $rep = target.closest(".rep");
+      if (!$rep) {
+        return;
+      }
+      e.preventDefault();
+
+      popupHelper($rep, e, () => {
+        const $popup = $__("div");
+        const tmp = $content.child();
+        const resNum = +$rep.closest("article").C("num")[0].textContent;
+
+        const buildTree = (currentResNum, visited) => {
+          const replies = threadContent.repIndex.get(currentResNum);
+          if (!replies || replies.size === 0) return null;
+
+          const $container = $__("div").addClass("reply_tree");
+
+          for (let replyResNum of replies) {
+            if (visited.has(replyResNum)) continue;
+            visited.add(replyResNum);
+
+            const replyRes = tmp[replyResNum - 1];
+            if (
+              replyRes.hasClass("ng") &&
+              (!replyRes.hasClass("disp_ng") || app.config.isOn("reject_ng_rep"))
+            ) {
+              continue;
+            }
+
+            const $clone = replyRes.cloneNode(true);
+            $container.addLast($clone);
+
+            const $subTree = buildTree(replyResNum, visited);
+            if ($subTree) {
+              $subTree.style.marginLeft = "12px";
+              $subTree.style.borderLeft = "2px solid rgba(128, 128, 128, 0.3)";
+              $subTree.style.paddingLeft = "4px";
+              $container.addLast($subTree);
+            }
+          }
+          return $container.child().length > 0 ? $container : null;
+        };
+
+        const $tree = buildTree(resNum, new Set());
+
+        if ($tree) {
+          $popup.addLast($tree);
+        } else {
+          const $div = $__("div").addClass("popup_disabled");
+          $div.textContent = "対象のレスが見つかりません";
           $popup.addLast($div);
         }
         return $popup;
