@@ -550,6 +550,11 @@ app.boot("/view/thread.html", async function () {
       return;
     }
 
+    // ID以外での右クリックは無視
+    if (e.type === "contextmenu" && !e.target.closest(".id")) {
+      return;
+    }
+
     // id/参照ポップアップの表示処理との競合回避
     if (
       e.type === "click" &&
@@ -571,11 +576,12 @@ app.boot("/view/thread.html", async function () {
       .cloneNode(true);
     $menu.addClass("hidden");
     let altParent = null;
-    if ($article.parent().hasClass("popup")) {
+    const $popup = $article.closest(".popup");
+    if ($popup) {
       altParent = $view.C("popup_area")[0];
       altParent.addLast($menu);
       $menu.setAttr("resnum", $article.C("num")[0].textContent);
-      $article.parent().addClass("has_contextmenu");
+      $popup.addClass("has_contextmenu");
     } else {
       $article.addLast($menu);
     }
@@ -645,7 +651,7 @@ app.boot("/view/thread.html", async function () {
   };
 
   // $view.on("click", onHeaderMenu);
-  // $view.on("contextmenu", onHeaderMenu);
+  $view.on("contextmenu", onHeaderMenu);
 
   //レスメニュー表示(内容上)
   const onMessageMenu = async function (e) {
@@ -675,11 +681,12 @@ app.boot("/view/thread.html", async function () {
       .cloneNode(true);
     $menu.addClass("hidden");
     let altParent = null;
-    if ($article.parent().hasClass("popup")) {
+    const $popup = $article.closest(".popup");
+    if ($popup) {
       altParent = $view.C("popup_area")[0];
       altParent.addLast($menu);
       $menu.setAttr("resnum", $article.C("num")[0].textContent);
-      $article.parent().addClass("has_contextmenu");
+      $popup.addClass("has_contextmenu");
     } else {
       $article.addLast($menu);
     }
