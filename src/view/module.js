@@ -37,8 +37,12 @@
 
 // ポップアウトウィンドウなどで親からコピーできなかった場合の初期化
 if (!app.bookmark && app.Bookmark && app.config) {
-  app.bookmark = new app.Bookmark(app.config.get("bookmark_id") || "dummy");
-  app.bookmarkEntryList = app.bookmark.bel;
+  app.config.ready(() => {
+    if (!app.bookmark) {
+      app.bookmark = new app.Bookmark(app.config.get("bookmark_id") || "dummy");
+      app.bookmarkEntryList = app.bookmark.bel;
+    }
+  });
 }
 
 if (app.view == null) {
