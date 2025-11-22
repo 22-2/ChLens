@@ -35,6 +35,12 @@
   }
 })();
 
+// ポップアウトウィンドウなどで親からコピーできなかった場合の初期化
+if (!app.bookmark && app.Bookmark && app.config) {
+  app.bookmark = new app.Bookmark(app.config.get("bookmark_id") || "dummy");
+  app.bookmarkEntryList = app.bookmark.bel;
+}
+
 if (app.view == null) {
   app.view = {};
 }
@@ -827,12 +833,18 @@ app.view.TabContentView = class TabContentView extends (
         } else {
           return setInterval(() => {
             const { url } = this.$element.dataset;
-            if (
-              app.config.isOn("auto_load_all") ||
-              parent.$$.$(
+            let isSelected = true;
+            // 親ウィンドウが存在し、かつiframeとして埋め込まれている場合のみタブの選択状態を確認する
+            if (parent !== window && parent.$$ && parent.$$.$) {
+              const iframe = parent.$$.$(
                 `.tab_container > iframe[data-url=\"${url}\"]`
-              ).hasClass("tab_selected")
-            ) {
+              );
+              if (iframe) {
+                isSelected = iframe.hasClass("tab_selected");
+              }
+            }
+
+            if (app.config.isOn("auto_load_all") || isSelected) {
               if (this.$element.hasClass("view_thread")) {
                 this.$element.emit(
                   new CustomEvent("request_reload", {

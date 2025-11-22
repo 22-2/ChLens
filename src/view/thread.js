@@ -73,7 +73,7 @@ app.boot("/view/thread.html", async function () {
   $view.on(
     "became_expired",
     function () {
-      parent.postMessage({ type: "became_expired" }, location.origin);
+      if (parent !== window) parent.postMessage({ type: "became_expired" }, location.origin);
       return $view.addClass("expired");
     },
     { once: true }
@@ -81,7 +81,7 @@ app.boot("/view/thread.html", async function () {
   $view.on(
     "became_over1000",
     function () {
-      parent.postMessage({ type: "became_over1000" }, location.origin);
+      if (parent !== window) parent.postMessage({ type: "became_over1000" }, location.origin);
       return $view.addClass("over1000");
     },
     { once: true }
@@ -103,7 +103,7 @@ app.boot("/view/thread.html", async function () {
         `width=600,height=300,left=${windowX},top=${windowY}`
       );
     } else if ("&[BROWSER]" === "chrome") {
-      parent.browser.windows.create({
+      (parent.browser || browser).windows.create({
         type: "popup",
         url: openUrl,
         width: 600,
@@ -513,7 +513,7 @@ app.boot("/view/thread.html", async function () {
     );
 
     let jumpResNum = -1;
-    const iframe = parent.$$.$(`iframe[data-url=\"${viewUrlStr}\"]`);
+    const iframe = parent.$$ ? parent.$$.$(`iframe[data-url=\"${viewUrlStr}\"]`) : null;
     if (iframe) {
       jumpResNum = +iframe.dataset.writtenResNum;
       if (jumpResNum < 1) {
@@ -616,6 +616,14 @@ app.boot("/view/thread.html", async function () {
 
     if (!$article.matches(".popup > article")) {
       $menu.C("jump_to_this")[0].remove();
+    }
+
+    // ポップアウト機能の追加
+    if (window !== parent) {
+      const popout = document.createElement("li");
+      popout.className = "popout_thread";
+      popout.textContent = "このスレッドを別窓で開く";
+      $menu.addLast(popout);
     }
 
     // 画像にぼかしをかける/画像のぼかしを解除する
@@ -842,6 +850,20 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
       }
     } else if (target.hasClass("res_permalink")) {
       open(app.safeHref(viewUrlStr + $res.C("num")[0].textContent));
+
+    } else if (target.hasClass("popout_thread")) {
+      const url = `/view/thread.html?${app.URL.buildQuery({ q: viewUrlStr })}`;
+      if (typeof browser !== "undefined" && browser.windows) {
+        browser.windows.create({
+          url,
+          type: "popup",
+          width: 800,
+          height: 600
+        });
+      } else {
+        open(url, "_blank", "width=800,height=600");
+      }
+      target.parent().remove();
 
       // 画像をぼかす
     } else if (target.hasClass("set_image_blur")) {
@@ -1909,6 +1931,31 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
     }
   })();
 
+  // ツールメニューのポップアウトボタン
+  (function () {
+    const $popout = $view.C("button_popout")[0];
+    if (!$popout) return;
+
+    if (window === parent) {
+      $popout.remove();
+      return;
+    }
+
+    $popout.on("click", function () {
+      const url = `/view/thread.html?${app.URL.buildQuery({ q: viewUrlStr })}`;
+      if (typeof browser !== "undefined" && browser.windows) {
+        browser.windows.create({
+          url,
+          type: "popup",
+          width: 800,
+          height: 600
+        });
+      } else {
+        open(url, "_blank", "width=800,height=600");
+      }
+    });
+  })();
+
   //パンくずリスト表示
   (async function () {
     let title;
@@ -2462,7 +2509,12 @@ app.viewThread._readStateManager = async function ($view) {
     }
   };
 
-  parent.window.on("beforezombie", onBeforezombie);
+  // 親ウィンドウのイベントリスナーか、自身のアンロードイベントか使い分ける
+  if (parent.window.on) {
+    parent.window.on("beforezombie", onBeforezombie);
+  } else {
+    window.addEventListener("beforeunload", onBeforezombie);
+  }
 
   //スクロールされたら定期的にスキャンを実行する
   let doneScroll = false;
@@ -2531,7 +2583,11 @@ app.viewThread._readStateManager = async function ($view) {
 
   window.on("view_unload", function () {
     clearInterval(scrollWatcher);
-    parent.window.off("beforezombie", onBeforezombie);
+    if (parent.window.off) {
+      parent.window.off("beforezombie", onBeforezombie);
+    } else {
+      window.removeEventListener("beforeunload", onBeforezombie);
+    }
     //ロード中に閉じられた場合、スキャンは行わない
     if ($view.hasClass("loading")) {
       return;
