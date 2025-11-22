@@ -618,14 +618,6 @@ app.boot("/view/thread.html", async function () {
       $menu.C("jump_to_this")[0].remove();
     }
 
-    // ポップアウト機能の追加
-    if (window !== parent) {
-      const popout = document.createElement("li");
-      popout.className = "popout_thread";
-      popout.textContent = "このスレッドを別窓で開く";
-      $menu.addLast(popout);
-    }
-
     // 画像にぼかしをかける/画像のぼかしを解除する
     if (!$article.hasClass("has_image")) {
       $menu.C("set_image_blur")[0].remove();

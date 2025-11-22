@@ -766,3 +766,13 @@ header {
     $thread-caution-border-color: #666
   );
 }
+
+@media (max-width: 650px) {
+  .thread_info,
+  .breadcrumb {
+    display: none !important;
+  }
+  .nav_bar > .button_tool {
+    margin-left: auto;
+  }
+}
