@@ -135,7 +135,8 @@ app.boot("/view/board.html", ["Board"], function (Board) {
     //.sort_item_selectorが非表示の時、各種項目のソート切り替えを
     //降順ソート→昇順ソート→標準ソートとする
     $table.on("click", function ({ target }) {
-      if (target.tagName !== "TH" || !target.hasClass("table_sort_asc")) {
+      const th = target.closest("th");
+      if (!th || !th.hasClass("table_sort_asc")) {
         return;
       }
       if ($view.C("sort_item_selector")[0].offsetWidth !== 0) {

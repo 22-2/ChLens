@@ -14,17 +14,18 @@ export default TableSorter = (function () {
       this.table = table;
       this.table.addClass("table_sort");
       this.table.on("click", ({ target }) => {
-        if (target.tagName !== "TH") {
+        const th = target.closest("th");
+        if (!th) {
           return;
         }
 
-        const order = target.hasClass("table_sort_desc") ? "asc" : "desc";
+        const order = th.hasClass("table_sort_desc") ? "asc" : "desc";
 
         this.clearSortClass();
 
-        target.addClass(`table_sort_${order}`);
+        th.addClass(`table_sort_${order}`);
         this.table
-          .$(`col.${target.dataset.key}`)
+          .$(`col.${th.dataset.key}`)
           .addClass(`table_sort_${order}`);
 
         this.update();
