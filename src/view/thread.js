@@ -644,8 +644,8 @@ app.boot("/view/thread.html", async function () {
     UI.ContextMenu($menu, e.clientX, e.clientY, altParent);
   };
 
-  $view.on("click", onHeaderMenu);
-  $view.on("contextmenu", onHeaderMenu);
+  // $view.on("click", onHeaderMenu);
+  // $view.on("contextmenu", onHeaderMenu);
 
   //レスメニュー表示(内容上)
   const onMessageMenu = async function (e) {
@@ -684,17 +684,48 @@ app.boot("/view/thread.html", async function () {
       $article.addLast($menu);
     }
 
-    // 不要なメニュー項目を削除
-    $menu.C("toggle_aa_mode")[0].remove();
-    $menu.C("copy_id")[0].remove();
-    $menu.C("add_id_to_ngwords")[0].remove();
-    $menu.C("copy_slip")[0].remove();
-    $menu.C("add_slip_to_ngwords")[0].remove();
-    $menu.C("copy_trip")[0].remove();
-    $menu.C("jump_to_this")[0].remove();
-    $menu.C("set_image_blur")[0].remove();
-    $menu.C("reset_image_blur")[0].remove();
-    $menu.C("res_permalink")[0].remove();
+    const $toggleAaMode = $menu.C("toggle_aa_mode")[0];
+    if ($article.parent().hasClass("config_use_aa_font")) {
+      $toggleAaMode.textContent = $article.hasClass("aa")
+        ? "AA表示モードを解除"
+        : "AA表示モードに変更";
+    } else {
+      $toggleAaMode.remove();
+    }
+
+    if ($article.dataset.id == null) {
+      $menu.C("copy_id")[0].remove();
+      $menu.C("add_id_to_ngwords")[0].remove();
+    }
+
+    if ($article.dataset.slip == null) {
+      $menu.C("copy_slip")[0].remove();
+      $menu.C("add_slip_to_ngwords")[0].remove();
+    }
+
+    if ($article.dataset.trip == null) {
+      $menu.C("copy_trip")[0].remove();
+    }
+
+    if (!$article.matches(".popup > article")) {
+      $menu.C("jump_to_this")[0].remove();
+    }
+
+    // 画像にぼかしをかける/画像のぼかしを解除する
+    if (!$article.hasClass("has_image")) {
+      $menu.C("set_image_blur")[0].remove();
+      $menu.C("reset_image_blur")[0].remove();
+    } else {
+      if (
+        $article.$(
+          ".thumbnail.image_blur[media-type='image'], .thumbnail.image_blur[media-type='video']"
+        ) != null
+      ) {
+        $menu.C("set_image_blur")[0].remove();
+      } else {
+        $menu.C("reset_image_blur")[0].remove();
+      }
+    }
 
     if (!canWrite()) {
       $menu.C("res_to_this")[0].remove();
