@@ -235,6 +235,8 @@ header {
     background-color: white;
     > img.image {
       display: block;
+      max-width: 100%;
+      height: auto;
       &[src="/img/loading.webp"],
       &[src="/img/loading.png"] {
         width: 50px;
@@ -262,6 +264,7 @@ header {
     background-color: #666666;
   }
   &.zoom {
+    max-width: 60%;
     // z-index: var(--z-index-thumnail-zoom);
   }
 }
