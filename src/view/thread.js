@@ -776,6 +776,25 @@ app.boot("/view/thread.html", async function () {
       if (selectedText.length > 0) {
         open(`https://www.google.co.jp/search?q=${selectedText}`, "_blank");
       }
+    } else if (target.hasClass("search_id_kyodemo")) {
+      const id = $res.dataset.id.replace("ID:", "");
+      if (id) {
+        const urlObj = new app.URL.URL(viewUrlStr);
+        const pathParts = urlObj.pathname.split("/");
+        const board = pathParts[3];
+        const key = pathParts[4];
+
+        const date = new Date();
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, "0");
+        const dd = String(date.getDate()).padStart(2, "0");
+        const dateStr = `${yyyy}${mm}${dd}`;
+
+        open(
+          `https://www.kyodemo.net/sdemo/b/e_e_${board}/?hi=${id}&key=${key}&date=${dateStr}`,
+          "_blank"
+        );
+      }
     } else if (target.hasClass("copy_id")) {
       app.clipboardWrite($res.dataset.id);
     } else if (target.hasClass("copy_slip")) {
