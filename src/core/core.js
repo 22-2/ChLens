@@ -21,6 +21,7 @@ import * as URL from "./URL.ts";
 import * as util from "./jsutil.js";
 import * as Util from "./Util.ts";
 import * as WriteHistory from "./WriteHistory.js";
+import { QDollarRecognizer, Point } from "./$Q.ts";
 
 export {
   BBSMenu,
@@ -46,4 +47,6 @@ export {
   util,
   Util,
   WriteHistory,
+  QDollarRecognizer,
+  Point,
 };

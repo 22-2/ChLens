@@ -1926,6 +1926,154 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
     await app.defer();
     $view.$(".breadcrumb > li > a").style.display = "inline-block";
   })();
+
+  // Gesture implementation
+  if (app.QDollarRecognizer && app.Point) {
+    const recognizer = new app.QDollarRecognizer();
+    // Add Up/Down gestures
+    // Up: (0, 100) -> (0, 0)
+    recognizer.AddGesture("Up", [
+      new app.Point(0, 100, 1),
+      new app.Point(0, 0, 1),
+    ]);
+    // Down: (0, 0) -> (0, 100)
+    recognizer.AddGesture("Down", [
+      new app.Point(0, 0, 1),
+      new app.Point(0, 100, 1),
+    ]);
+
+    let points = [];
+    let isDrawing = false;
+    let detectedGesture = null;
+    let canvas, ctx, label;
+
+    const initCanvas = () => {
+      if (!canvas) {
+        canvas = document.createElement("canvas");
+        canvas.style.position = "fixed";
+        canvas.style.top = "0";
+        canvas.style.left = "0";
+        canvas.style.width = "100%";
+        canvas.style.height = "100%";
+        canvas.style.zIndex = "99999";
+        canvas.style.pointerEvents = "none";
+        document.body.appendChild(canvas);
+        ctx = canvas.getContext("2d");
+        resizeCanvas();
+        window.addEventListener("resize", resizeCanvas);
+      }
+      if (!label) {
+        label = document.createElement("div");
+        label.style.position = "fixed";
+        label.style.top = "50%";
+        label.style.left = "50%";
+        label.style.transform = "translate(-50%, -50%)";
+        label.style.fontSize = "64px";
+        label.style.fontWeight = "bold";
+        label.style.color = "rgba(0, 123, 255, 0.8)";
+        label.style.pointerEvents = "none";
+        label.style.zIndex = "100000";
+        label.style.textShadow =
+          "2px 2px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff";
+        label.style.fontFamily = "sans-serif";
+        document.body.appendChild(label);
+      }
+      canvas.style.display = "block";
+      label.style.display = "block";
+      label.textContent = "";
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.beginPath();
+      ctx.strokeStyle = "rgba(0, 123, 255, 0.8)"; // Blueish
+      ctx.lineWidth = 4;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+    };
+
+    const resizeCanvas = () => {
+      if (canvas) {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+    };
+
+    const drawLine = (x, y) => {
+      if (!ctx) return;
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    };
+
+    const stopDrawing = () => {
+      isDrawing = false;
+      if (canvas) {
+        canvas.style.display = "none";
+      }
+      if (label) {
+        label.style.display = "none";
+      }
+    };
+
+    document.addEventListener("mousedown", (e) => {
+      if (e.button === 2) {
+        isDrawing = true;
+        points = [new app.Point(e.clientX, e.clientY, 1)];
+        detectedGesture = null;
+        initCanvas();
+        ctx.moveTo(e.clientX, e.clientY);
+      }
+    });
+
+    document.addEventListener("mousemove", (e) => {
+      if (isDrawing) {
+        points.push(new app.Point(e.clientX, e.clientY, 1));
+        drawLine(e.clientX, e.clientY);
+
+        if (points.length > 2) {
+          const startPoint = points[0];
+          const endPoint = points[points.length - 1];
+          const dy = endPoint.Y - startPoint.Y;
+
+          const result = recognizer.Recognize(points);
+
+          detectedGesture = null;
+          label.textContent = "";
+
+          if (result.Score > 0.3) {
+            if (result.Name === "Up" && dy < -10) {
+              label.textContent = "▲ Top";
+              detectedGesture = "Up";
+            } else if (result.Name === "Down" && dy > 10) {
+              label.textContent = "▼ Bottom";
+              detectedGesture = "Down";
+            }
+          }
+        }
+      }
+    });
+
+    document.addEventListener("mouseup", (e) => {
+      if (isDrawing && e.button === 2) {
+        stopDrawing();
+        if (detectedGesture === "Up") {
+          $content.scrollTop = 0;
+        } else if (detectedGesture === "Down") {
+          $content.scrollTop = $content.scrollHeight;
+        }
+      }
+    });
+
+    document.addEventListener(
+      "contextmenu",
+      (e) => {
+        if (points.length > 2) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        points = [];
+        isDrawing = false;
+      },
+      true
+    );
+  }
 });
 
 app.viewThread._draw = async function (

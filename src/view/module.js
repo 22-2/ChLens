@@ -20,6 +20,8 @@
       "SikiGuard",
       "URL",
       "util",
+      "QDollarRecognizer",
+      "Point",
     ];
 
     for (let module of modules) {
