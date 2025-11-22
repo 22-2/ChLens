@@ -2006,25 +2006,24 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
       if (!pts || pts.length < 2) {
         return null;
       }
-      let totalDx = 0;
-      let totalDy = 0;
-      for (let i = 1; i < pts.length; i++) {
-        totalDx += pts[i].X - pts[i - 1].X;
-        totalDy += pts[i].Y - pts[i - 1].Y;
-      }
+      const start = pts[0];
+      const end = pts[pts.length - 1];
+      const totalDx = end.X - start.X;
+      const totalDy = end.Y - start.Y;
+
       const distance = Math.hypot(totalDx, totalDy);
-      if (distance < 3) {
+      if (distance < 10) {
         // ignore micro movements
         return null;
       }
-      const verticalDominance = Math.abs(totalDy) / (Math.abs(totalDx) + 1);
-      if (verticalDominance < 0.5) {
-        return null;
+      // Simple 45 degree check for vertical gestures
+      if (Math.abs(totalDy) > Math.abs(totalDx)) {
+        return {
+          direction: totalDy < 0 ? "Up" : "Down",
+          distance,
+        };
       }
-      return {
-        direction: totalDy < 0 ? "Up" : "Down",
-        distance,
-      };
+      return null;
     };
 
     const stopDrawing = () => {
@@ -2069,14 +2068,8 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
         return;
       }
 
-      const result = recognizer.Recognize(points);
-      const recognizerOk =
-        !result ||
-        (result.Score > 0.15 && result.Name === summary.direction);
-      if (!recognizerOk) {
-        return;
-      }
-
+      // For simple directional swipes, vector analysis is more robust than shape recognition.
+      // We skip the recognizer check for Up/Down to improve responsiveness.
       detectedGesture = summary.direction;
       label.textContent =
         summary.direction === "Up" ? "▲ Top" : "▼ Bottom";
