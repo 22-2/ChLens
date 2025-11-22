@@ -2002,6 +2002,31 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
       ctx.stroke();
     };
 
+    const summarizeStroke = (pts) => {
+      if (!pts || pts.length < 2) {
+        return null;
+      }
+      let totalDx = 0;
+      let totalDy = 0;
+      for (let i = 1; i < pts.length; i++) {
+        totalDx += pts[i].X - pts[i - 1].X;
+        totalDy += pts[i].Y - pts[i - 1].Y;
+      }
+      const distance = Math.hypot(totalDx, totalDy);
+      if (distance < 3) {
+        // ignore micro movements
+        return null;
+      }
+      const verticalDominance = Math.abs(totalDy) / (Math.abs(totalDx) + 1);
+      if (verticalDominance < 0.5) {
+        return null;
+      }
+      return {
+        direction: totalDy < 0 ? "Up" : "Down",
+        distance,
+      };
+    };
+
     const stopDrawing = () => {
       isDrawing = false;
       if (canvas) {
@@ -2023,31 +2048,38 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
     });
 
     document.addEventListener("mousemove", (e) => {
-      if (isDrawing) {
-        points.push(new app.Point(e.clientX, e.clientY, 1));
-        drawLine(e.clientX, e.clientY);
-
-        if (points.length > 2) {
-          const startPoint = points[0];
-          const endPoint = points[points.length - 1];
-          const dy = endPoint.Y - startPoint.Y;
-
-          const result = recognizer.Recognize(points);
-
-          detectedGesture = null;
-          label.textContent = "";
-
-          if (result.Score > 0.3) {
-            if (result.Name === "Up" && dy < -10) {
-              label.textContent = "▲ Top";
-              detectedGesture = "Up";
-            } else if (result.Name === "Down" && dy > 10) {
-              label.textContent = "▼ Bottom";
-              detectedGesture = "Down";
-            }
-          }
-        }
+      if (!isDrawing) {
+        return;
       }
+
+      points.push(new app.Point(e.clientX, e.clientY, 1));
+      drawLine(e.clientX, e.clientY);
+
+      // Keep showing the first resolved direction to avoid flicker
+      if (detectedGesture) {
+        return;
+      }
+
+      if (points.length <= 2) {
+        return;
+      }
+
+      const summary = summarizeStroke(points);
+      if (!summary) {
+        return;
+      }
+
+      const result = recognizer.Recognize(points);
+      const recognizerOk =
+        !result ||
+        (result.Score > 0.15 && result.Name === summary.direction);
+      if (!recognizerOk) {
+        return;
+      }
+
+      detectedGesture = summary.direction;
+      label.textContent =
+        summary.direction === "Up" ? "▲ Top" : "▼ Bottom";
     });
 
     document.addEventListener("mouseup", (e) => {
