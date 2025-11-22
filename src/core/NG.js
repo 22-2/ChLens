@@ -74,7 +74,7 @@ const _setupReg = function (obj) {
   const _convReg = function ({ type, word }) {
     let reg = null;
     try {
-      reg = new RegExp(word);
+      reg = new RegExp(word, "i");
     } catch (error) {
       app.message.send("notify", {
         message: `\
