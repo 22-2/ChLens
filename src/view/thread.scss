@@ -53,6 +53,12 @@ body {
 .content {
   contain: size;
   backface-visibility: hidden;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
   &[data-res-search-hit-count="0"]::after {
     display: block;
     position: absolute;

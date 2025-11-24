@@ -1,14 +1,30 @@
 /**
+@typedef {Object} MinimapMetrics
+@property {number} scrollHeight
+@property {number} clientHeight
+@property {number} height
+@property {number} width
+@property {number} scale
+@property {number} viewportHeightPx
+@property {number} viewportTopPx
+@property {number} maxViewportTop
+*/
+
+/**
 @class Minimap
 @constructor
 @param {Element} view
 @param {Element} content
 */
 export default class Minimap {
+  /**
+   * @param {Element} view
+   * @param {Element} content
+   */
   constructor(view, content) {
     this.view = view;
     this.content = content;
-    
+
     this.container = document.createElement("div");
     this.container.className = "minimap-container";
     this.view.appendChild(this.container);
@@ -16,67 +32,188 @@ export default class Minimap {
     this.canvas = document.createElement("canvas");
     this.canvas.className = "minimap";
     this.container.appendChild(this.canvas);
-    
+
     this.ctx = this.canvas.getContext("2d");
+    this._isDragging = false;
+    this._dragOffset = 0;
+    this._pointerId = null;
 
     this.resize = this.resize.bind(this);
     this.draw = this.draw.bind(this);
+    this._handlePointerDown = this._handlePointerDown.bind(this);
+    this._handlePointerMove = this._handlePointerMove.bind(this);
+    this._handlePointerUp = this._handlePointerUp.bind(this);
 
     window.addEventListener("resize", this.resize);
     window.addEventListener("scroll", this.draw);
-    
+    this.content.addEventListener("scroll", this.draw);
+
     // Observe content changes to redraw
     this.observer = new MutationObserver(this.draw);
     this.observer.observe(this.content, { childList: true, subtree: true });
 
-    this.canvas.addEventListener("click", (e) => {
-      const rect = this.canvas.getBoundingClientRect();
-      const y = e.clientY - rect.top;
-      const scale = this.canvas.height / document.documentElement.scrollHeight;
-      const targetY = y / scale;
-      window.scrollTo(0, targetY - window.innerHeight / 2);
-    });
+    if (typeof ResizeObserver !== "undefined") {
+      this.resizeObserver = new ResizeObserver(this.resize);
+      this.resizeObserver.observe(this.container);
+    }
+
+    this.canvas.addEventListener("pointerdown", this._handlePointerDown);
+    this.canvas.addEventListener("pointermove", this._handlePointerMove);
+    this.canvas.addEventListener("pointerup", this._handlePointerUp);
+    this.canvas.addEventListener("pointercancel", this._handlePointerUp);
 
     this.resize();
   }
 
   resize() {
-    this.canvas.width = 80;
-    this.canvas.height = window.innerHeight - 29;
+    this.canvas.width = this.container.clientWidth || 80;
+    this.canvas.height =
+      this.container.clientHeight || Math.max(window.innerHeight - 29, 1);
     this.draw();
   }
 
-  draw() {
-    if (!this.ctx) return;
-    
-    const { width, height } = this.canvas;
-    this.ctx.clearRect(0, 0, width, height);
-    
-    const totalHeight = document.documentElement.scrollHeight;
-    const scale = height / totalHeight;
+  _getMetrics() {
+    const scrollHeight = Math.max(this.content.scrollHeight, 1);
+    const clientHeight = Math.max(this.content.clientHeight, 1);
+    const height = Math.max(this.canvas.height, 1);
+    const width = Math.max(this.canvas.width, 1);
+    const scale = height / scrollHeight;
+    const viewportHeightPx = Math.max(clientHeight * scale, 6);
+    const viewportTopPx = this.content.scrollTop * scale;
+    const maxViewportTop = Math.max(height - viewportHeightPx, 0);
 
-    // Draw posts
+    return {
+      scrollHeight,
+      clientHeight,
+      height,
+      width,
+      scale,
+      viewportHeightPx,
+      viewportTopPx,
+      maxViewportTop,
+    };
+  }
+
+  draw() {
+    if (!this.ctx) {
+      return;
+    }
+
+    const metrics = this._getMetrics();
+    const { width, height, scale, viewportTopPx, viewportHeightPx } = metrics;
+
+    this.ctx.clearRect(0, 0, width, height);
+
     const articles = this.content.getElementsByTagName("article");
     this.ctx.fillStyle = "rgba(128, 128, 128, 0.5)";
     for (let i = 0; i < articles.length; i++) {
-        const article = articles[i];
-        // Skip hidden elements if necessary, but offsetTop works.
-        // Optimization: only draw if visible in minimap?
-        // For now, draw all.
-        const y = article.offsetTop * scale;
-        const h = article.offsetHeight * scale;
-        this.ctx.fillRect(2, y, width - 4, Math.max(1, h - 1));
+      const article = articles[i];
+      const y = article.offsetTop * scale;
+      const h = Math.max(article.offsetHeight * scale, 1);
+      this.ctx.fillRect(2, y, width - 4, h);
     }
 
-    // Draw viewport indicator
-    const scrollTop = window.scrollY;
-    const viewHeight = window.innerHeight;
-    
     this.ctx.fillStyle = "rgba(0, 120, 215, 0.3)";
-    this.ctx.fillRect(0, scrollTop * scale, width, viewHeight * scale);
-    
-    // Draw border for viewport
+    this.ctx.fillRect(0, viewportTopPx, width, viewportHeightPx);
+
     this.ctx.strokeStyle = "rgba(0, 120, 215, 0.8)";
-    this.ctx.strokeRect(0, scrollTop * scale, width, viewHeight * scale);
+    this.ctx.strokeRect(
+      0.5,
+      viewportTopPx + 0.5,
+      width - 1,
+      Math.max(viewportHeightPx - 1, 1)
+    );
+  }
+
+  /**
+   * @param {PointerEvent} event
+   */
+  _handlePointerDown(event) {
+    if (event.pointerType === "mouse" && event.button !== 0) {
+      return;
+    }
+    event.preventDefault();
+    this.canvas.setPointerCapture(event.pointerId);
+    this._isDragging = true;
+    this._pointerId = event.pointerId;
+    this._updateScrollFromPointer(event, false);
+  }
+
+  /**
+   * @param {PointerEvent} event
+   */
+  _handlePointerMove(event) {
+    if (!this._isDragging || event.pointerId !== this._pointerId) {
+      return;
+    }
+    event.preventDefault();
+    this._updateScrollFromPointer(event, true);
+  }
+
+  /**
+   * @param {PointerEvent} event
+   */
+  _handlePointerUp(event) {
+    if (!this._isDragging || event.pointerId !== this._pointerId) {
+      return;
+    }
+    event.preventDefault();
+    this.canvas.releasePointerCapture(event.pointerId);
+    this._isDragging = false;
+    this._pointerId = null;
+  }
+
+  /**
+   * @param {PointerEvent} event
+   * @param {boolean} isDragUpdate
+   */
+  _updateScrollFromPointer(event, isDragUpdate) {
+    const metrics = this._getMetrics();
+    const rect = this.canvas.getBoundingClientRect();
+    const relativeY = Math.min(
+      Math.max(event.clientY - rect.top, 0),
+      metrics.height
+    );
+    const { viewportTopPx, viewportHeightPx } = metrics;
+    if (!isDragUpdate) {
+      const inViewport =
+        relativeY >= viewportTopPx &&
+        relativeY <= viewportTopPx + viewportHeightPx;
+      this._dragOffset = inViewport
+        ? relativeY - viewportTopPx
+        : viewportHeightPx / 2;
+      this._scrollByPointer(relativeY, metrics, inViewport);
+    } else {
+      this._scrollByPointer(relativeY, metrics, true);
+    }
+  }
+
+  /**
+   * @param {number} relativeY
+   * @param {MinimapMetrics} metrics
+   * @param {boolean} useDragOffset
+   */
+  _scrollByPointer(relativeY, metrics, useDragOffset) {
+    const data = metrics || this._getMetrics();
+    const {
+      scrollHeight,
+      clientHeight,
+      viewportHeightPx,
+      maxViewportTop,
+    } = data;
+
+    let viewportTop = useDragOffset
+      ? relativeY - this._dragOffset
+      : relativeY - viewportHeightPx / 2;
+
+    viewportTop = Math.min(Math.max(viewportTop, 0), maxViewportTop);
+
+    const scrollableRange = scrollHeight - clientHeight;
+    const ratio =
+      maxViewportTop === 0 ? 0 : viewportTop / Math.max(maxViewportTop, 1);
+    const target =
+      scrollableRange <= 0 ? 0 : ratio * Math.max(scrollableRange, 0);
+
+    this.content.scrollTo({ top: target, behavior: "auto" });
   }
 }
