@@ -114,12 +114,12 @@ export default class Minimap {
     this.ctx.fillRect(0, viewportTopPx, width, viewportHeightPx);
 
     this.ctx.strokeStyle = "rgba(0, 120, 215, 0.8)";
-    this.ctx.strokeRect(
-      0.5,
-      viewportTopPx + 0.5,
-      width - 1,
-      Math.max(viewportHeightPx - 1, 1)
-    );
+    this.ctx.strokeRect(0.5, viewportTopPx + 0.5, width - 1, Math.max(viewportHeightPx - 1, 1));
+
+    // Draw outer boundary for minimap area (1px inside canvas for crisp rendering)
+    this.ctx.strokeStyle = "rgba(0,0,0,0.12)";
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(0.5, 0.5, width - 1, height - 1);
   }
 
   /**

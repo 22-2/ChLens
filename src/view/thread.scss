@@ -83,6 +83,9 @@ body {
   height: calc(100vh - 29px);
   pointer-events: none;
   z-index: 10000;
+  border-left: 1px solid rgba(0,0,0,0.12);
+  background: rgba(255,255,255,0.02);
+  backdrop-filter: saturate(0.9) blur(2px);
 }
 
 .minimap {
