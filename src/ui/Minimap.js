@@ -15,15 +15,18 @@
 @constructor
 @param {Element} view
 @param {Element} content
+@param {import("./ThreadContent.js").default} threadContent
 */
 export default class Minimap {
   /**
    * @param {Element} view
    * @param {Element} content
+   * @param {import("./ThreadContent.js").default} threadContent
    */
-  constructor(view, content) {
+  constructor(view, content, threadContent) {
     this.view = view;
     this.content = content;
+    this.threadContent = threadContent;
 
     this.container = document.createElement("div");
     this.container.className = "minimap-container";
@@ -33,6 +36,7 @@ export default class Minimap {
     this.canvas.className = "minimap";
     this.container.appendChild(this.canvas);
 
+    /** @type {CanvasRenderingContext2D | null} */
     this.ctx = this.canvas.getContext("2d");
     this._isDragging = false;
     this._dragOffset = 0;
@@ -100,18 +104,11 @@ export default class Minimap {
     }
 
     const metrics = this._getMetrics();
-    const { width, height, scale, viewportTopPx, viewportHeightPx } = metrics;
+    const { width, height, viewportTopPx, viewportHeightPx } = metrics;
 
     this.ctx.clearRect(0, 0, width, height);
 
-    const articles = this.content.getElementsByTagName("article");
-    this.ctx.fillStyle = "rgba(128, 128, 128, 0.5)";
-    for (let i = 0; i < articles.length; i++) {
-      const article = articles[i];
-      const y = article.offsetTop * scale;
-      const h = Math.max(article.offsetHeight * scale, 1);
-      this.ctx.fillRect(2, y, width - 4, h);
-    }
+    this._drawPopularMarkers(metrics);
 
     this.ctx.fillStyle = "rgba(0, 120, 215, 0.3)";
     this.ctx.fillRect(0, viewportTopPx, width, viewportHeightPx);
@@ -122,6 +119,77 @@ export default class Minimap {
       viewportTopPx + 0.5,
       width - 1,
       Math.max(viewportHeightPx - 1, 1)
+    );
+  }
+
+  /**
+   * @param {MinimapMetrics} metrics
+   */
+  _drawPopularMarkers(metrics) {
+    const ctx = this.ctx;
+    if (!ctx || !this.threadContent || !this.threadContent.repIndex) {
+      return;
+    }
+
+    const { scale, height, width } = metrics;
+    const rejectNg = Boolean(
+      app?.config?.isOn && app.config.isOn("reject_ng_rep")
+    );
+    const repIndex = /** @type {Map<number, Set<number>>} */ (
+      this.threadContent.repIndex
+    );
+    const repNgIndex = /** @type {Map<number, Set<number>> | undefined} */ (
+      this.threadContent.repNgIndex
+    );
+    const arrowX = width - 6;
+    const minY = 6;
+    const maxY = height - 6;
+    const hotColor = "rgba(220, 40, 40, 0.95)";
+    const warmColor = "rgba(255, 140, 0, 0.9)";
+
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    ctx.font = "bold 12px system-ui, sans-serif";
+
+    for (let [resKey, responders] of repIndex.entries()) {
+      const res = this._getResElement(resKey);
+      if (!res || res.offsetHeight === 0) {
+        continue;
+      }
+      if (
+        res.classList &&
+        res.classList.contains("ng") &&
+        !res.classList.contains("disp_ng")
+      ) {
+        continue;
+      }
+
+      let resCount = responders.size;
+      if (rejectNg && repNgIndex && repNgIndex.has(resKey)) {
+        const ngCount = repNgIndex.get(resKey);
+        if (ngCount) {
+          resCount -= ngCount.size;
+        }
+      }
+      if (resCount < 3) {
+        continue;
+      }
+
+      const markerHeight = Math.max(res.offsetHeight * scale, 4);
+      const centerY = res.offsetTop * scale + markerHeight / 2;
+      const y = Math.min(Math.max(centerY, minY), maxY);
+      ctx.fillStyle = resCount >= 5 ? hotColor : warmColor;
+      ctx.fillText("◀", arrowX, y);
+    }
+  }
+
+  /**
+   * @param {number} resKey
+   * @returns {HTMLElement | null}
+   */
+  _getResElement(resKey) {
+    return /** @type {HTMLElement | null} */ (
+      this.content.children[resKey - 1] || null
     );
   }
 
