@@ -8,9 +8,15 @@ export default class Minimap {
   constructor(view, content) {
     this.view = view;
     this.content = content;
+    
+    this.container = document.createElement("div");
+    this.container.className = "minimap-container";
+    this.view.appendChild(this.container);
+
     this.canvas = document.createElement("canvas");
     this.canvas.className = "minimap";
-    this.content.appendChild(this.canvas);
+    this.container.appendChild(this.canvas);
+    
     this.ctx = this.canvas.getContext("2d");
 
     this.resize = this.resize.bind(this);
@@ -24,7 +30,8 @@ export default class Minimap {
     this.observer.observe(this.content, { childList: true, subtree: true });
 
     this.canvas.addEventListener("click", (e) => {
-      const y = e.clientY;
+      const rect = this.canvas.getBoundingClientRect();
+      const y = e.clientY - rect.top;
       const scale = this.canvas.height / document.documentElement.scrollHeight;
       const targetY = y / scale;
       window.scrollTo(0, targetY - window.innerHeight / 2);
@@ -35,12 +42,13 @@ export default class Minimap {
 
   resize() {
     this.canvas.width = 80;
-    this.canvas.height = window.innerHeight;
+    this.canvas.height = window.innerHeight - 29;
     this.draw();
   }
 
   draw() {
     if (!this.ctx) return;
+    
     const { width, height } = this.canvas;
     this.ctx.clearRect(0, 0, width, height);
     
