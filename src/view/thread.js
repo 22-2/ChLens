@@ -51,6 +51,7 @@ app.boot("/view/thread.html", async function () {
   const $content = $view.C("content")[0];
   const threadContent = await UI.ThreadContent.init(viewUrl, $content);
   const mediaContainer = new UI.MediaContainer($view);
+  const minimap = new UI.Minimap($view, $content);
   const lazyLoad = new UI.LazyLoad($content);
   app.DOMData.set($view, "threadContent", threadContent);
   app.DOMData.set($view, "selectableItemList", threadContent);
