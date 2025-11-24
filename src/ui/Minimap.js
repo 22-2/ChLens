@@ -13,20 +13,23 @@
 /**
 @class Minimap
 @constructor
-@param {Element} view
+@param {HTMLElement} view
 @param {Element} content
 @param {import("./ThreadContent.js").default} threadContent
 */
 export default class Minimap {
   /**
-   * @param {Element} view
+   * @param {HTMLElement} view
    * @param {Element} content
    * @param {import("./ThreadContent.js").default} threadContent
    */
   constructor(view, content, threadContent) {
+    /** @type {HTMLElement} */
     this.view = view;
     this.content = content;
     this.threadContent = threadContent;
+
+    this.view.classList.add("has-minimap");
 
     this.container = document.createElement("div");
     this.container.className = "minimap-container";
@@ -84,10 +87,12 @@ export default class Minimap {
     // (CSS still controls height / other appearance).
     this.container.style.width = `${responsiveWidth}px`;
 
-    this.canvas.width = this.container.clientWidth || responsiveWidth;
+    const effectiveWidth = this.container.clientWidth || responsiveWidth;
+    this.canvas.width = effectiveWidth;
     this.canvas.height =
       this.container.clientHeight || Math.max(window.innerHeight - 29, 1);
 
+    this._syncLayoutSpace(effectiveWidth);
     this.draw();
   }
 
@@ -298,5 +303,16 @@ export default class Minimap {
       scrollableRange <= 0 ? 0 : ratio * Math.max(scrollableRange, 0);
 
     this.content.scrollTo({ top: target, behavior: "auto" });
+  }
+
+  /**
+   * @param {number} width
+   */
+  _syncLayoutSpace(width) {
+    if (!this.view || !this.view.style) {
+      return;
+    }
+    const safeWidth = Math.max(width || 0, 0);
+    this.view.style.setProperty("--minimap-width", `${safeWidth}px`);
   }
 }

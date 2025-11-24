@@ -54,7 +54,7 @@ body {
   contain: size;
   backface-visibility: hidden;
   -ms-overflow-style: none;
-  scrollbar-width: none;
+  scrollbar-width: none!important;
   &::-webkit-scrollbar {
     width: 0;
     height: 0;
@@ -75,6 +75,15 @@ body {
   }
 }
 
+.view_thread {
+  --minimap-width: 0px;
+  --minimap-gap: 12px;
+}
+
+.view_thread.has-minimap .content {
+  margin-right: calc(var(--minimap-width, 0px) + var(--minimap-gap, 0px));
+}
+
 .minimap-container {
   position: fixed;
   top: 29px; // nav_bar height (27px) + border (2px)
@@ -82,7 +91,7 @@ body {
   width: 80px;
   height: calc(100vh - 29px);
   pointer-events: none;
-  z-index: 10000;
+  z-index: var(--z-index-minimap);
   border-left: 1px solid rgba(0,0,0,0.12);
   background: rgba(255,255,255,0.02);
   backdrop-filter: saturate(0.9) blur(2px);
