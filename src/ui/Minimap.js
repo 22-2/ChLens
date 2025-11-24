@@ -70,9 +70,24 @@ export default class Minimap {
   }
 
   resize() {
-    this.canvas.width = this.container.clientWidth || 80;
+    // Compute a responsive width based on viewport width.
+    // Use a percentage but clamp to sensible min/max so the minimap
+    // remains usable on very small or very large screens.
+    const minWidth = 30; // px
+    const maxWidth = 200; // px
+    const pct = 0.08; // 8% of viewport width
+    const responsiveWidth = Math.round(
+      Math.max(minWidth, Math.min(maxWidth, Math.round(window.innerWidth * pct)))
+    );
+
+    // Apply width as an inline style so it overrides static CSS if present
+    // (CSS still controls height / other appearance).
+    this.container.style.width = `${responsiveWidth}px`;
+
+    this.canvas.width = this.container.clientWidth || responsiveWidth;
     this.canvas.height =
       this.container.clientHeight || Math.max(window.innerHeight - 29, 1);
+
     this.draw();
   }
 
