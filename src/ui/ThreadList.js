@@ -679,6 +679,21 @@ export default ThreadList = (function () {
                       }
                     })();
                     break;
+                    case !target.hasClass("button_popout"):
+                      (function () {
+                        const popupUrl = `/view/thread.html?${app.URL.buildQuery({ q: threadURL })}`;
+                        if (typeof browser !== "undefined" && browser.windows) {
+                          browser.windows.create({
+                            url: popupUrl,
+                            type: "popup",
+                            width: 800,
+                            height: 600,
+                          });
+                        } else {
+                          open(popupUrl, "_blank", "width=800,height=600");
+                        }
+                      })();
+                      break;
                   case !target.hasClass("del_read_state"):
                     app.ReadState.remove(threadURL);
                     break;
