@@ -11,12 +11,11 @@ const cleanup = function () {
 };
 
 const eventFn = function (e) {
-  if (
-    (e.target != null ? e.target.hasClass("contextmenu_menu") : undefined) ||
-    __guard__(e.target != null ? e.target.parent() : undefined, (x) =>
-      x.hasClass("contextmenu_menu")
-    )
-  ) {
+  let target = e.target;
+  if (target && target.nodeType === 3) {
+    target = target.parentNode;
+  }
+  if (target && target.closest && target.closest(".contextmenu_menu")) {
     return;
   }
   cleanup();
