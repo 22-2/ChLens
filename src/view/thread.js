@@ -1493,63 +1493,63 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
   };
 
   //クイックジャンプパネル
-  (function () {
-    const jumpArticleSelector = {
-      ".jump_one": "article:first-child",
-      ".jump_newest": "article:last-child",
-      ".jump_not_read": "article.read + article",
-      ".jump_new": "article.received + article",
-      ".jump_last": "article.last",
-      ".jump_latest50": "article.latest50",
-    };
+  // (function () {
+  //   const jumpArticleSelector = {
+  //     ".jump_one": "article:first-child",
+  //     ".jump_newest": "article:last-child",
+  //     ".jump_not_read": "article.read + article",
+  //     ".jump_new": "article.received + article",
+  //     ".jump_last": "article.last",
+  //     ".jump_latest50": "article.latest50",
+  //   };
 
-    const $jumpPanel = $view.C("jump_panel")[0];
+  //   const $jumpPanel = $view.C("jump_panel")[0];
 
-    $view.on("read_state_attached", function () {
-      const already = {};
-      for (let panelItemSelector in jumpArticleSelector) {
-        var resNum;
-        const targetResSelector = jumpArticleSelector[panelItemSelector];
-        const res = $view.$(targetResSelector);
-        if (res) {
-          resNum = +res.C("num")[0].textContent;
-        }
-        if (res && !already[resNum]) {
-          $jumpPanel.$(panelItemSelector).style.display = "block";
-          already[resNum] = true;
-        } else {
-          $jumpPanel.$(panelItemSelector).style.display = "none";
-        }
-      }
-    });
+  //   $view.on("read_state_attached", function () {
+  //     const already = {};
+  //     for (let panelItemSelector in jumpArticleSelector) {
+  //       var resNum;
+  //       const targetResSelector = jumpArticleSelector[panelItemSelector];
+  //       const res = $view.$(targetResSelector);
+  //       if (res) {
+  //         resNum = +res.C("num")[0].textContent;
+  //       }
+  //       if (res && !already[resNum]) {
+  //         $jumpPanel.$(panelItemSelector).style.display = "block";
+  //         already[resNum] = true;
+  //       } else {
+  //         $jumpPanel.$(panelItemSelector).style.display = "none";
+  //       }
+  //     }
+  //   });
 
-    $jumpPanel.on("click", function ({ target }) {
-      let key, offset, selector;
-      for (key in jumpArticleSelector) {
-        const val = jumpArticleSelector[key];
-        if (target.matches(key)) {
-          selector = val;
-          offset = [".jump_not_read", ".jump_new"].includes(key) ? -100 : 0;
-          break;
-        }
-      }
+  //   $jumpPanel.on("click", function ({ target }) {
+  //     let key, offset, selector;
+  //     for (key in jumpArticleSelector) {
+  //       const val = jumpArticleSelector[key];
+  //       if (target.matches(key)) {
+  //         selector = val;
+  //         offset = [".jump_not_read", ".jump_new"].includes(key) ? -100 : 0;
+  //         break;
+  //       }
+  //     }
 
-      if (!selector) {
-        return;
-      }
-      const $res = $view.$(selector);
+  //     if (!selector) {
+  //       return;
+  //     }
+  //     const $res = $view.$(selector);
 
-      if ($res != null) {
-        if (key === ".jump_last") {
-          let left;
-          offset = (left = $res.attr("last-offset")) != null ? left : offset;
-        }
-        threadContent.scrollTo($res, true, +offset);
-      } else {
-        app.log("warn", "[view_thread] .jump_panel: ターゲットが存在しません");
-      }
-    });
-  })();
+  //     if ($res != null) {
+  //       if (key === ".jump_last") {
+  //         let left;
+  //         offset = (left = $res.attr("last-offset")) != null ? left : offset;
+  //       }
+  //       threadContent.scrollTo($res, true, +offset);
+  //     } else {
+  //       app.log("warn", "[view_thread] .jump_panel: ターゲットが存在しません");
+  //     }
+  //   });
+  // })();
 
   //検索ボックス
   (function () {
