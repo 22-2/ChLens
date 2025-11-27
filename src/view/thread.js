@@ -1596,9 +1596,24 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
 
           $content.addClass("searching");
           for (dom of $content.child()) {
+            // 検索対象テキストを取得。（`name` 要素は除外して検索する）
+            let haystackText;
+            try {
+              const clone = dom.cloneNode(true);
+              // クローンから name 要素を削除
+              const names = clone.$$(".name");
+              for (let i = names.length - 1; i >= 0; i--) {
+                names[i].remove();
+              }
+              haystackText = clone.textContent;
+            } catch (e) {
+              // 何らかの理由で失敗したらフォールバックで全文検索（既存挙動）
+              haystackText = dom.textContent;
+            }
+
             if (
-              ((searchRegExp && searchRegExp.test(dom.textContent)) ||
-                app.util.normalize(dom.textContent).includes(query)) &&
+              ((searchRegExp && searchRegExp.test(haystackText)) ||
+                app.util.normalize(haystackText).includes(query)) &&
               (!dom.hasClass("ng") || dom.hasClass("disp_ng"))
             ) {
               dom.addClass("search_hit");
@@ -2020,8 +2035,11 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
       new app.Point(0, 100, 1),
     ]);
 
+    const gestureStartThreshold = 12; // ignore short taps so the context menu can open normally
     let points = [];
     let isDrawing = false;
+    let gestureCandidate = false;
+    let gestureJustCompleted = false;
     let detectedGesture = null;
     let canvas, ctx, label;
 
@@ -2106,6 +2124,8 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
 
     const stopDrawing = () => {
       isDrawing = false;
+      gestureCandidate = false;
+      points = [];
       if (canvas) {
         canvas.style.display = "none";
       }
@@ -2115,21 +2135,34 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
     };
 
     document.addEventListener("mousedown", (e) => {
-      if (e.button === 2) {
-        isDrawing = true;
-        points = [new app.Point(e.clientX, e.clientY, 1)];
-        detectedGesture = null;
-        initCanvas();
-        ctx.moveTo(e.clientX, e.clientY);
+      if (e.button !== 2) {
+        return;
       }
+      gestureCandidate = true;
+      isDrawing = false;
+      points = [new app.Point(e.clientX, e.clientY, 1)];
+      detectedGesture = null;
     });
 
     document.addEventListener("mousemove", (e) => {
-      if (!isDrawing) {
+      if (!gestureCandidate) {
         return;
       }
 
       points.push(new app.Point(e.clientX, e.clientY, 1));
+
+      if (!isDrawing) {
+        const start = points[0];
+        const dx = e.clientX - start.X;
+        const dy = e.clientY - start.Y;
+        if (Math.hypot(dx, dy) < gestureStartThreshold) {
+          return;
+        }
+        initCanvas();
+        ctx.moveTo(start.X, start.Y);
+        isDrawing = true;
+      }
+
       drawLine(e.clientX, e.clientY);
 
       // Keep showing the first resolved direction to avoid flicker
@@ -2154,25 +2187,38 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
     });
 
     document.addEventListener("mouseup", (e) => {
-      if (isDrawing && e.button === 2) {
-        stopDrawing();
-        if (detectedGesture === "Up") {
-          $content.scrollTop = 0;
-        } else if (detectedGesture === "Down") {
-          $content.scrollTop = $content.scrollHeight;
-        }
+      if (e.button !== 2 || !gestureCandidate) {
+        return;
+      }
+      if (!isDrawing) {
+        gestureCandidate = false;
+        points = [];
+        return;
+      }
+      stopDrawing();
+      // mark that a gesture just completed so the following contextmenu can be suppressed
+      gestureJustCompleted = true;
+      setTimeout(() => (gestureJustCompleted = false), 400);
+      if (detectedGesture === "Up") {
+        $content.scrollTop = 0;
+      } else if (detectedGesture === "Down") {
+        $content.scrollTop = $content.scrollHeight;
       }
     });
 
     document.addEventListener(
       "contextmenu",
       (e) => {
-        if (points.length > 2) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
-        points = [];
-        isDrawing = false;
+          if (isDrawing || gestureJustCompleted) {
+            // prevent the browser/context menu after a gesture
+            e.preventDefault();
+            e.stopPropagation();
+            stopDrawing();
+            gestureJustCompleted = false;
+          } else {
+            gestureCandidate = false;
+            points = [];
+          }
       },
       true
     );
