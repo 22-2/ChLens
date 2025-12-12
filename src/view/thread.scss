@@ -110,6 +110,7 @@ body {
 }
 
 article {
+  position: relative;
   padding: 0 5px 20px 5px;
   &.ng {
     display: none;
@@ -170,16 +171,31 @@ article {
 
 .last:not(:last-child):not(.disp_ng)::after {
   @include view_thread_res_info;
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  bottom: 0;
+  margin: 0;
   content: "しおり";
 }
 
 .received:not(:last-child):not(.disp_ng)::after {
   @include view_thread_res_info;
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  bottom: 0;
+  margin: 0;
   content: "ここから新着";
 }
 
 .read:not(:last-child):not(.disp_ng)::after {
   @include view_thread_res_info;
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  bottom: 0;
+  margin: 0;
   content: "ここから未読";
 }
 
