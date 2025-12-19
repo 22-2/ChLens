@@ -790,6 +790,14 @@ app.boot("/view/thread.html", async function () {
           break;
         }
       }
+      if (!$res) {
+        for (let res of $view.$$(".popup > article")) {
+          if (res.C("num")[0].textContent === rn) {
+            $res = res;
+            break;
+          }
+        }
+      }
     }
 
     if (target.hasClass("copy_res")) {
