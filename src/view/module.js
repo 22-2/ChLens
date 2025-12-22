@@ -1029,6 +1029,24 @@ app.view.TabContentView = class TabContentView extends (
       })
     );
 
+    // URLをコピー
+    __guard__(this.$element.C("button_copy_url")[0], (x5) =>
+      x5.on("click", () => {
+        app.clipboardWrite(this.$element.dataset.url);
+      })
+    );
+
+    // datのURLをコピー
+    __guard__(this.$element.C("button_copy_dat_url")[0], (x6) =>
+      x6.on("click", () => {
+        const url = new app.URL.URL(this.$element.dataset.url);
+        const datUrl = url.getDatUrl();
+        if (datUrl) {
+          app.clipboardWrite(datUrl);
+        }
+      })
+    );
+
     // スレッドをブックマーク
     (() => {
       const $addButton = this.$element.$(".button_tool .button_bookmark_add");

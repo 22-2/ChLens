@@ -297,6 +297,33 @@ export class URL extends window.URL {
     return match ? match[1] : null;
   }
 
+  /**
+   * datのURLを取得
+   */
+  getDatUrl(): string | null {
+    const { type } = this.guessedType;
+    if (type !== "thread") return null;
+
+    const tmp = new RegExp(
+      `^/(?:test|bbs)/read(?:_archive)?\\.cgi/(\\w+)/(\\d+)/(?:(\\d+)/)?$`
+    ).exec(this.pathname);
+    if (!tmp) return null;
+
+    const tsld = this.getTsld();
+    if (tsld === "machi.to") {
+      return `${this.origin}/bbs/offlaw.cgi/${tmp[1]}/${tmp[2]}/`;
+    } else if (tsld === "shitaraba.net") {
+      if (this.isArchive()) {
+        return this.href;
+      } else {
+        return `${this.origin}/bbs/rawmode.cgi/${tmp[1]}/${tmp[2]}/${tmp[3]}/`;
+      }
+    } else {
+      // 5ch.net, bbspink.com, etc.
+      return `${this.origin}/${tmp[1]}/dat/${tmp[2]}.dat`;
+    }
+  }
+
   // スレッドURLから板URLへ変換
   toBoard(): URL {
     const { type, bbsType } = this.guessedType;
