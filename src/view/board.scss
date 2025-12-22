@@ -42,19 +42,6 @@ td {
   contain: strict;
 }
 
-tr.ng_thread {
-  display: none;
-}
-
-tr.highlight {
-  background-color: #ffffcc;
-  font-weight: bold;
-}
-
-.theme_dark tr.highlight {
-  background-color: #665500;
-}
-
 .board_footer {
   position: absolute;
   contain: content;
@@ -89,96 +76,6 @@ tr.highlight {
       ~ .board_footer .loading_indicator {
         display: none;
       }
-    }
-  }
-}
-
-// カスタムツールチップ
-.thread_list_tooltip {
-  position: fixed;
-  max-width: min(450px, calc(100% - 24px));
-  padding: 6px 10px;
-  background-color: rgba(0, 0, 0, 0.9);
-  color: #fff;
-  font-size: 12px;
-  border-radius: 4px;
-  pointer-events: none;
-  z-index: var(--z-index-thread-tooltip);
-  opacity: 0;
-  visibility: hidden;
-  word-wrap: break-word;
-  white-space: normal;
-  line-height: 1.4;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-
-  &.visible {
-    opacity: 1;
-    visibility: visible;
-  }
-
-  .thread_list_tooltip_title {
-    font-weight: 600;
-    margin-bottom: 4px;
-  }
-
-  .thread_list_tooltip_meta {
-    font-size: 11px;
-    opacity: 0.85;
-  }
-}
-
-.theme_dark .thread_list_tooltip {
-  background-color: rgba(255, 255, 255, 0.95);
-  color: #000;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-}
-
-table.thread_list_resizable {
-  col.title {
-    width: 100%;
-  }
-  th {
-    position: relative;
-    padding-right: 16px;
-    &.title {
-      width: auto;
-      min-width: 160px;
-      &::after {
-        content: "";
-        display: inline-block;
-        width: 1px;
-        height: 0;
-      }
-    }
-    .column_label {
-      display: block;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-  }
-  .column_resize_handle {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 10px;
-    height: 100%;
-    cursor: col-resize;
-    user-select: none;
-    touch-action: none;
-    &::after {
-      content: "";
-      position: absolute;
-      top: 20%;
-      bottom: 20%;
-      left: 50%;
-      width: 1px;
-      background-color: currentColor;
-      opacity: 0.2;
-      transform: translateX(-50%);
-    }
-    &.active::after,
-    &:hover::after {
-      opacity: 0.6;
     }
   }
 }
