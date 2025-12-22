@@ -239,14 +239,15 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
   }
 
   private async loadFromBrowserBookmark(): Promise<boolean> {
-    // EntryListクリア
-    for (const entry of this.getAll()) {
-      this.remove(entry.url, false);
-    }
-
     // ロード
     try {
       const res = await browser.bookmarks.getChildren(this.rootNodeId);
+
+      // EntryListクリア
+      for (const entry of this.getAll()) {
+        this.remove(entry.url, false);
+      }
+      this.nodeIdStore.clear();
 
       for (const node of res) {
         this.applyNodeAddToEntryList(node);
