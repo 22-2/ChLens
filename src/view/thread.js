@@ -776,31 +776,48 @@ app.boot("/view/thread.html", async function () {
   });
 
   //レスメニュー項目クリック
-  $view.on("click", function ({ target }) {
+  $view.on("click", function (e) {
     let addString, exDate, selectedText;
-    if (!target.matches(".res_menu > li")) {
+
+    // TextNode対策: 常にElementへ正規化
+    let $target = e.target;
+    if ($target && $target.nodeType === 3) {
+      $target = $target.parentNode;
+    }
+
+    const $item = $target?.closest?.(".res_menu > li");
+    if (!$item) {
       return;
     }
-    let $res = target.closest("article");
+
+    let $res = $item.closest("article");
     if (!$res) {
-      const rn = target.closest(".res_menu").getAttr("resnum");
-      for (let res of $view.$$(".popup.has_contextmenu > article")) {
-        if (res.C("num")[0].textContent === rn) {
-          $res = res;
-          break;
-        }
-      }
-      if (!$res) {
-        for (let res of $view.$$(".popup > article")) {
+      const rn = $item.closest(".res_menu")?.getAttr?.("resnum");
+      if (rn) {
+        for (let res of $view.$$(".popup.has_contextmenu article")) {
           if (res.C("num")[0].textContent === rn) {
             $res = res;
             break;
           }
         }
+        if (!$res) {
+          for (let res of $view.$$(".popup article")) {
+            if (res.C("num")[0].textContent === rn) {
+              $res = res;
+              break;
+            }
+          }
+        }
       }
     }
 
-    if (target.hasClass("copy_res")) {
+    // 対象レスを特定できない場合は、例外で全メニューが死ぬのを防ぐ
+    if (!$res) {
+      $item.parent()?.remove?.();
+      return;
+    }
+
+    if ($item.hasClass("copy_res")) {
       // レスをコピー
       const threadTitle = document.title;
       const threadUrl = viewUrlStr;
@@ -813,17 +830,17 @@ app.boot("/view/thread.html", async function () {
 
       const copyText = `${threadTitle}\n${threadUrl}${resNum}\n${resNum} ${name}  ${other}\n${message}`;
       app.clipboardWrite(copyText);
-    } else if (target.hasClass("copy_selection")) {
+    } else if ($item.hasClass("copy_selection")) {
       selectedText = getSelection().toString();
       if (selectedText.length > 0) {
         document.execCommand("copy");
       }
-    } else if (target.hasClass("search_selection")) {
+    } else if ($item.hasClass("search_selection")) {
       selectedText = getSelection().toString();
       if (selectedText.length > 0) {
         open(`https://www.google.co.jp/search?q=${selectedText}`, "_blank");
       }
-    } else if (target.hasClass("search_id_kyodemo")) {
+    } else if ($item.hasClass("search_id_kyodemo")) {
       const id = $res.dataset.id.replace("ID:", "");
       if (id) {
         const urlObj = new app.URL.URL(viewUrlStr);
@@ -842,13 +859,13 @@ app.boot("/view/thread.html", async function () {
           "_blank"
         );
       }
-    } else if (target.hasClass("copy_id")) {
+    } else if ($item.hasClass("copy_id")) {
       app.clipboardWrite($res.dataset.id);
-    } else if (target.hasClass("copy_slip")) {
+    } else if ($item.hasClass("copy_slip")) {
       app.clipboardWrite($res.dataset.slip);
-    } else if (target.hasClass("copy_trip")) {
+    } else if ($item.hasClass("copy_trip")) {
       app.clipboardWrite($res.dataset.trip);
-    } else if (target.hasClass("add_id_to_ngwords")) {
+    } else if ($item.hasClass("add_id_to_ngwords")) {
       addString = $res.dataset.id;
       exDate = _getExpireDateString("id");
       if (exDate) {
@@ -856,7 +873,7 @@ app.boot("/view/thread.html", async function () {
       }
       app.NG.add(addString);
       threadContent.refreshNG();
-    } else if (target.hasClass("add_slip_to_ngwords")) {
+    } else if ($item.hasClass("add_slip_to_ngwords")) {
       addString = "Slip:" + $res.dataset.slip;
       exDate = _getExpireDateString("slip");
       if (exDate) {
@@ -864,33 +881,33 @@ app.boot("/view/thread.html", async function () {
       }
       app.NG.add(addString);
       threadContent.refreshNG();
-    } else if (target.hasClass("jump_to_this")) {
+    } else if ($item.hasClass("jump_to_this")) {
       threadContent.scrollTo($res, true);
-    } else if (target.hasClass("res_to_this")) {
+    } else if ($item.hasClass("res_to_this")) {
       write({ message: `>>${$res.C("num")[0].textContent}\n` });
-    } else if (target.hasClass("res_to_this2")) {
+    } else if ($item.hasClass("res_to_this2")) {
       write({
         message: `\
 >>${$res.C("num")[0].textContent}
 ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
 `,
       });
-    } else if (target.hasClass("add_writehistory")) {
+    } else if ($item.hasClass("add_writehistory")) {
       threadContent.addWriteHistory($res);
       threadContent.addClassWithOrg($res, "written");
-    } else if (target.hasClass("del_writehistory")) {
+    } else if ($item.hasClass("del_writehistory")) {
       threadContent.removeWriteHistory($res);
       threadContent.removeClassWithOrg($res, "written");
-    } else if (target.hasClass("toggle_aa_mode")) {
+    } else if ($item.hasClass("toggle_aa_mode")) {
       if ($res.hasClass("aa")) {
         AANoOverflow.unsetMiniAA($res);
       } else {
         AANoOverflow.setMiniAA($res);
       }
-    } else if (target.hasClass("res_permalink")) {
+    } else if ($item.hasClass("res_permalink")) {
       open(app.safeHref(viewUrlStr + $res.C("num")[0].textContent));
 
-    } else if (target.hasClass("popout_thread")) {
+    } else if ($item.hasClass("popout_thread")) {
       const url = `/view/thread.html?${app.URL.buildQuery({ q: viewUrlStr })}`;
       if (typeof browser !== "undefined" && browser.windows) {
         browser.windows.create({
@@ -905,15 +922,15 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
       target.parent().remove();
 
       // 画像をぼかす
-    } else if (target.hasClass("set_image_blur")) {
+    } else if ($item.hasClass("set_image_blur")) {
       UI.MediaContainer.setImageBlur($res, true);
 
       // 画像のぼかしを解除する
-    } else if (target.hasClass("reset_image_blur")) {
+    } else if ($item.hasClass("reset_image_blur")) {
       UI.MediaContainer.setImageBlur($res, false);
     }
 
-    target.parent().remove();
+    $item.parent().remove();
   });
 
   // アンカーポップアップ
