@@ -611,6 +611,12 @@ export var isNGThread = function (
     if (n.type === TYPE.INVALID || n.type === "" || n.word === "") {
       continue;
     }
+    // ハイライト用はスキップ
+    if (
+      [TYPE.HIGHLIGHT_TITLE, TYPE.REG_EXP_HIGHLIGHT_TITLE].includes(n.type)
+    ) {
+      continue;
+    }
     // スコープのチェック
     if (!_checkScope(n, url)) {
       continue;
