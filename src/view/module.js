@@ -850,12 +850,21 @@ app.view.TabContentView = class TabContentView extends (
 
             if (app.config.isOn("auto_load_all") || isSelected) {
               if (this.$element.hasClass("view_thread")) {
+                if (this.$element.hasClass("expired")) {
+                  return;
+                }
                 this.$element.emit(
                   new CustomEvent("request_reload", {
                     detail: { isAutoReload: true },
                   })
                 );
               } else {
+                if (this.$element.hasClass("view_board")) {
+                  const tbody = this.$element.$("tbody");
+                  if (tbody && tbody.child().length === 0) {
+                    return;
+                  }
+                }
                 this.$element.emit(new Event("request_reload"));
               }
             }

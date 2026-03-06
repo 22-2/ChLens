@@ -68,9 +68,14 @@ export default class Tab {
   constructor(private $element: Element) {
     const $ele = this.$element.addClass("tab");
     const $ul = $__("ul").addClass("tab_tabbar");
+    let lastTabWheel = 0;
     $ul.on("notchedmousewheel", (e: any) => {
       if (app.config.isOn("mousewheel_change_tab")) {
         e.preventDefault();
+
+        const now = Date.now();
+        if (now - lastTabWheel < 50) return;
+        lastTabWheel = now;
 
         const tmp = e.wheelDelta < 0 ? "prev" : "next";
         const next = (this.$element.$("li.tab_selected") || {})[tmp]();

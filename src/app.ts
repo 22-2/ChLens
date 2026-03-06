@@ -1,6 +1,8 @@
 ///<reference path="global.d.ts" />
 import Config from "./app/Config";
 
+import { setupContainer } from "./service-container/setup";
+
 export { default as Callbacks } from "./app/Callbacks";
 export * from "./app/Defer";
 export * from "./app/Log";
@@ -64,6 +66,8 @@ export async function boot(
 
     const onload = () => {
       config.ready(() => {
+        setupContainer(parent.app || (window as any).app);
+
         if (!requirements) {
           fn();
           return;

@@ -35,8 +35,16 @@ export function setupContainer(app: any) {
     }
   };
 
+  // Util Adapter
+  const utilAdapter = {
+    escapeHtml: (str: string) => app.escapeHtml(str),
+    safeHref: (url: string) => app.safeHref(url),
+    defer: () => app.defer(),
+  };
+
   container.config = configAdapter;
   container.message = messageAdapter;
   container.bookmark = bookmarkAdapter;
   container.cache = cacheServiceAdapter;
+  container.util = utilAdapter;
 }

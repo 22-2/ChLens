@@ -1,6 +1,6 @@
-import Cache from "./Cache.js";
+import { container } from "../service-container/index";
 import { Request } from "./HTTP.ts";
-import { fix as fixUrl, tsld as getTsld } from "./URL.ts";
+import { ChURL } from "../../packages/ch-lib/src/index";
 
 let bbsmenuOption = null;
 
@@ -20,7 +20,7 @@ export var fetchAll = async function (forceReload = false) {
     } else {
       bbsmenuOption.clear();
     }
-    const tmpOpt = app.config.get("bbsmenu_option").split("\n");
+    const tmpOpt = container.config.get("bbsmenu_option").split("\n");
     for (let opt of tmpOpt) {
       if (opt === "" || opt.startsWith("//")) {
         continue;
@@ -29,7 +29,7 @@ export var fetchAll = async function (forceReload = false) {
     }
   }
 
-  const bbsmenuUrl = app.config.get("bbsmenu").split("\n");
+  const bbsmenuUrl = container.config.get("bbsmenu").split("\n");
   for (let url of bbsmenuUrl) {
     if (url === "" || url.startsWith("//")) {
       continue;
@@ -38,7 +38,7 @@ export var fetchAll = async function (forceReload = false) {
       ({ menu } = await fetch(url, forceReload));
       bbsmenu.push(...menu);
     } catch (error) {
-      app.message.send("notify", {
+      container.message.send("notify", {
         html: `板一覧の取得に失敗しました。(<a href="${url}" target="_blank">${url}</a>)`,
         background_color: "red",
       });
@@ -56,7 +56,7 @@ export var fetchAll = async function (forceReload = false) {
 export var fetch = async function (url, force) {
   //キャッシュ取得
   let menu, response;
-  const cache = new Cache(url);
+  const cache = container.cache.getCache(url);
 
   try {
     await cache.get();
@@ -65,7 +65,7 @@ export var fetch = async function (url, force) {
     }
     if (
       Date.now() - cache.lastUpdated >
-      +app.config.get("bbsmenu_update_interval") * 1000 * 60 * 60 * 24
+      +container.config.get("bbsmenu_update_interval") * 1000 * 60 * 60 * 24
     ) {
       throw new Error("キャッシュが期限切れなので通信します");
     }
@@ -132,7 +132,7 @@ export var fetch = async function (url, force) {
 @param {Boolean} [ForceReload=false]
 */
 export var get = async function (forceReload = false) {
-  let _updatingPromise, obj;
+  let obj;
   if (_updatingPromise == null) {
     _updatingPromise = _update(forceReload);
   }
@@ -185,7 +185,8 @@ var parse = function (html) {
         ? `https:${tmpBoardUrl}`
         : tmpBoardUrl;
 
-      if (bbsmenuOption.has(getTsld(boardUrl))) {
+      const chUrlObj = new ChURL(boardUrl);
+      if (bbsmenuOption.has(chUrlObj.getTsld())) {
         continue;
       }
       if (bbspinkException && boardUrl.includes("5ch.net/bbypink")) {
@@ -219,7 +220,7 @@ var parse = function (html) {
         regBoardRes[2] += `_${subName}`;
       }
       category.board.push({
-        url: fixUrl(boardUrl),
+        url: boardUrl,
         title: regBoardRes[2],
       });
     }

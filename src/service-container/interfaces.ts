@@ -13,6 +13,8 @@ export interface ICacheItem {
   etag?: string;
   resLength?: number;
   parsed?: any;
+  readcgiVer?: number;
+  datSize?: number;
 }
 
 export interface ICacheService {
@@ -30,10 +32,16 @@ export interface IMessage {
   on(type: string, callback: (data: any) => void): void;
 }
 
+export interface IUtil {
+  escapeHtml(str: string): string;
+  safeHref(url: string): string;
+  defer(): Promise<void>;
+}
+
 export interface IServiceContainer {
   config: IConfig;
   cache: ICacheService;
   bookmark: IBookmark;
   message: IMessage;
-  // 他、NG判定なども追加可能
+  util: IUtil;
 }
