@@ -36,11 +36,22 @@ export interface IReadStateService {
   set(readState: IReadState): Promise<void>;
 }
 
+export interface IBookmarkItem {
+  url: string;
+  title: string;
+  type: "thread" | "board";
+  resCount?: number;
+  readState?: IReadState;
+  expired?: boolean;
+}
+
 export interface IBookmark {
-  get(url: string): any;
+  get(url: string): IBookmarkItem | undefined;
+  add(item: IBookmarkItem): void;
+  remove(url: string): void;
   updateResCount(url: string, count: number): void;
   updateExpired(url: string, expired: boolean): void;
-  getByBoard(boardUrl: string): any[];
+  getByBoard(boardUrl: string): IBookmarkItem[];
 }
 
 export interface IMessage {
@@ -67,6 +78,24 @@ export interface IThread {
   threadNumber?: number;
 }
 
+export interface IRes {
+  num: number;
+  name: string;
+  mail: string;
+  date: string;
+  id: string;
+  be?: string;
+  message: string;
+  isNew?: boolean;
+}
+
+export interface IThreadDetail {
+  url: string;
+  title: string;
+  res: IRes[];
+  message?: string;
+}
+
 export interface IBoardResult {
   threads: IThread[];
   message: string | null;
@@ -74,6 +103,26 @@ export interface IBoardResult {
 
 export interface IBoardService {
   getThreads(url: string): Promise<IBoardResult>;
+}
+
+export interface IBBSMenuBoard {
+  url: string;
+  title: string;
+}
+
+export interface IBBSMenuCategory {
+  title: string;
+  board: IBBSMenuBoard[];
+}
+
+export interface IBBSMenuResult {
+  menu: IBBSMenuCategory[];
+  status: "success" | "error";
+  message?: string;
+}
+
+export interface IBBSMenuService {
+  get(forceReload?: boolean): Promise<IBBSMenuResult>;
 }
 
 export interface IServiceContainer {
@@ -84,4 +133,5 @@ export interface IServiceContainer {
   util: IUtil;
   readState: IReadStateService;
   board: IBoardService;
+  bbsMenu: IBBSMenuService;
 }

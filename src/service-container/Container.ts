@@ -1,4 +1,4 @@
-import { IServiceContainer, IConfig, ICacheService, IBookmark, IMessage, IUtil, IReadStateService, IBoardService } from "./interfaces";
+import { IServiceContainer, IConfig, ICacheService, IBookmark, IMessage, IUtil, IReadStateService, IBoardService, IBBSMenuService } from "./interfaces";
 
 const globalObj = window as any;
 
@@ -11,6 +11,7 @@ if (!globalObj.__ServiceContainer) {
     _util: undefined,
     _readState: undefined,
     _board: undefined,
+    _bbsMenu: undefined,
     
     get config(): IConfig {
       if (!this._config) throw new Error("Config service not registered");
@@ -52,7 +53,13 @@ if (!globalObj.__ServiceContainer) {
       if (!this._board) throw new Error("Board service not registered");
       return this._board;
     },
-    set board(value: IBoardService) { this._board = value; }
+    set board(value: IBoardService) { this._board = value; },
+
+    get bbsMenu(): IBBSMenuService {
+      if (!this._bbsMenu) throw new Error("BBSMenu service not registered");
+      return this._bbsMenu;
+    },
+    set bbsMenu(value: IBBSMenuService) { this._bbsMenu = value; }
   };
 }
 

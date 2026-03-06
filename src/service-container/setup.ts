@@ -1,9 +1,11 @@
 import { container } from "./Container";
-import { IConfig, ICacheService, IBookmark, IMessage, ICacheItem, IReadStateService, IBoardService, IUtil, IBoardResult } from "./interfaces";
+import { IConfig, ICacheService, IBookmark, IMessage, ICacheItem, IReadStateService, IBoardService, IUtil, IBoardResult, IBBSMenuService } from "./interfaces";
 // @ts-ignore
 import Cache from "../core/Cache.js";
 // @ts-ignore
 import BoardService from "../core/BoardService.js";
+// @ts-ignore
+import * as BBSMenu from "../core/BBSMenu.js";
 
 /**
  * Initializes the service container with the current app implementations.
@@ -26,6 +28,8 @@ export function setupContainer(app: any) {
   // Bookmark Adapter
   const bookmarkAdapter: IBookmark = {
     get: (url: string) => app.bookmark.get(url),
+    add: (item: any) => app.bookmark.add(item),
+    remove: (url: string) => app.bookmark.remove(url),
     updateResCount: (url: string, count: number) => app.bookmark.updateResCount(url, count),
     updateExpired: (url: string, exp: boolean) => app.bookmark.updateExpired(url, exp),
     getByBoard: (url: string) => app.bookmark.getByBoard(url),
@@ -50,6 +54,11 @@ export function setupContainer(app: any) {
     getThreads: (url: any): Promise<IBoardResult> => BoardService.getThreads(url),
   };
 
+  // BBSMenu Service Adapter
+  const bbsMenuServiceAdapter: IBBSMenuService = {
+    get: (forceReload?: boolean) => BBSMenu.get(forceReload),
+  };
+
   // Util Adapter
   const utilAdapter: IUtil = {
     escapeHtml: (str: string) => app.escapeHtml(str),
@@ -65,4 +74,5 @@ export function setupContainer(app: any) {
   container.util = utilAdapter;
   container.readState = readStateAdapter;
   container.board = boardServiceAdapter;
+  container.bbsMenu = bbsMenuServiceAdapter;
 }
