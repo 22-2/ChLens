@@ -1,6 +1,7 @@
 import * as BBSMenu from "./BBSMenu.js";
 import Board from "./Board.js";
 import BoardService from "./BoardService.js";
+import ThreadService from "./ThreadService.js";
 import * as BoardTitleSolver from "./BoardTitleSolver.js";
 import Bookmark from "./Bookmark.ts";
 import BrowserBookmarkEntryList from "./BrowserBookmarkEntryList.ts";
@@ -28,6 +29,7 @@ export {
   BBSMenu,
   Board,
   BoardService,
+  ThreadService,
   BoardTitleSolver,
   Bookmark,
   BookmarkEntryList,

@@ -1,4 +1,4 @@
-import { IServiceContainer, IConfig, ICacheService, IBookmark, IMessage, IUtil, IReadStateService, IBoardService, IBBSMenuService, INotificationService } from "./interfaces";
+import { IServiceContainer, IConfig, ICacheService, IBookmark, IMessage, IUtil, IReadStateService, IBoardService, IBBSMenuService, INotificationService, IThreadService } from "./interfaces";
 
 const globalObj = window as any;
 
@@ -13,6 +13,7 @@ if (!globalObj.__ServiceContainer) {
     _board: undefined,
     _bbsMenu: undefined,
     _notification: undefined,
+    _thread: undefined,
     
     get config(): IConfig {
       if (!this._config) throw new Error("Config service not registered");
@@ -66,7 +67,13 @@ if (!globalObj.__ServiceContainer) {
       if (!this._notification) throw new Error("Notification service not registered");
       return this._notification;
     },
-    set notification(value: INotificationService) { this._notification = value; }
+    set notification(value: INotificationService) { this._notification = value; },
+
+    get thread(): IThreadService {
+      if (!this._thread) throw new Error("Thread service not registered");
+      return this._thread;
+    },
+    set thread(value: IThreadService) { this._thread = value; }
   };
 }
 

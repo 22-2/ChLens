@@ -28,7 +28,7 @@ const BoardService = {
       readStateMap.set(rs.url, rs);
     }
 
-    const processedThreads = threads.map((thread, index) => {
+    const processedThreads = threads.map((/** @type {any} */ thread, /** @type {number} */ index) => {
       let readState = readStateMap.get(thread.url);
       const bookmark = container.bookmark.get(thread.url);
       

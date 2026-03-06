@@ -1,11 +1,13 @@
 import { container } from "./Container";
-import { IConfig, ICacheService, IBookmark, IMessage, ICacheItem, IReadStateService, IBoardService, IUtil, IBoardResult, IBBSMenuService, INotificationService } from "./interfaces";
+import { IConfig, ICacheService, IBookmark, IMessage, ICacheItem, IReadStateService, IBoardService, IUtil, IBoardResult, IBBSMenuService, INotificationService, IThreadService } from "./interfaces";
 // @ts-ignore
 import Cache from "../core/Cache.js";
 // @ts-ignore
 import BoardService from "../core/BoardService.js";
 // @ts-ignore
 import * as BBSMenu from "../core/BBSMenu.js";
+// @ts-ignore
+import ThreadService from "../core/ThreadService.js";
 
 /**
  * Initializes the service container with the current app implementations.
@@ -59,6 +61,11 @@ export function setupContainer(app: any) {
     get: (forceReload?: boolean) => BBSMenu.get(forceReload),
   };
 
+  // Thread Service Adapter
+  const threadServiceAdapter: IThreadService = {
+    getThread: (url, options) => ThreadService.getThread(url, options),
+  };
+
   // Notification Service Adapter
   const notificationServiceAdapter: INotificationService = {
     notify: (message, options) => {
@@ -100,5 +107,6 @@ export function setupContainer(app: any) {
   container.readState = readStateAdapter;
   container.board = boardServiceAdapter;
   container.bbsMenu = bbsMenuServiceAdapter;
+  container.thread = threadServiceAdapter;
   container.notification = notificationServiceAdapter;
 }

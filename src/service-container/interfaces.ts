@@ -83,7 +83,9 @@ export interface IRes {
   name: string;
   mail: string;
   date: string;
-  id: string;
+  id?: string;
+  slip?: string;
+  trip?: string;
   be?: string;
   message: string;
   isNew?: boolean;
@@ -94,6 +96,11 @@ export interface IThreadDetail {
   title: string;
   res: IRes[];
   message?: string;
+  expired?: boolean;
+}
+
+export interface IThreadService {
+  getThread(url: string, options?: { forceUpdate?: boolean, onCache?: (thread: IThreadDetail) => void }): Promise<IThreadDetail>;
 }
 
 export interface IBoardResult {
@@ -142,4 +149,5 @@ export interface IServiceContainer {
   board: IBoardService;
   bbsMenu: IBBSMenuService;
   notification: INotificationService;
+  thread: IThreadService;
 }
