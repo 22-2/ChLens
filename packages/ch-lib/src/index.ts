@@ -6,3 +6,4 @@ export * from "./parser/AnchorParser";
 export * from "./parser/MetadataParser";
 export * from "./fetcher/ChFetcher";
 export * from "./utils/entities";
+export * from "./parser/ReplaceStrParser";

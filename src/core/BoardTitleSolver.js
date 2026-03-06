@@ -1,4 +1,4 @@
-import { get as getBBSMenu, target as BBSMenuTarget } from "./BBSMenu.js";
+import { get as getBBSMenu, onChange as BBSMenuOnChange } from "./BBSMenu.js";
 import { Request } from "./HTTP.ts";
 import { URL } from "./URL.ts";
 
@@ -57,7 +57,7 @@ const _generateBBSMenu = function ({ status, menu, message }) {
 const _setBBSMenu = async function () {
   const obj = await getBBSMenu();
   _generateBBSMenu(obj);
-  BBSMenuTarget.on("change", ({ detail: obj }) => {
+  BBSMenuOnChange.add((obj) => {
     _generateBBSMenu(obj);
   });
 };

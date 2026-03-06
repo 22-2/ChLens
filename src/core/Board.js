@@ -1,6 +1,6 @@
 import { container } from "../service-container/index";
 import { ChURL, BoardParser } from "../../packages/ch-lib/src/index";
-import { Request } from "./HTTP.ts";
+import { Request } from "./HTTP";
 import {
   chServerMoveDetect,
 } from "./jsutil.js";

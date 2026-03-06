@@ -160,7 +160,7 @@ app.boot("/view/sidemenu.html", ["BBSMenu"], function (BBSMenu) {
       // 表示用板一覧の取得
       const obj = await BBSMenu.get();
       setupDOM(obj);
-      BBSMenu.target.on("change", function ({ detail: obj }) {
+      BBSMenu.onChange.add(function (obj) {
         setupDOM(obj);
       });
     };
