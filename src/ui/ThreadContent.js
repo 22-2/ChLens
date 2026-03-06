@@ -1,6 +1,7 @@
 let ThreadContent;
 import MediaContainer from "./MediaContainer.js";
 import ThreadModel from "../core/ThreadModel.js";
+import MessageProcessor from "../core/MessageProcessor.js";
 
 /**
 @class ThreadContent
@@ -96,6 +97,13 @@ export default ThreadContent = (function () {
         this._isScrolling = false;
       });
     }
+
+    get idIndex() { return this.model.idIndex; }
+    get slipIndex() { return this.model.slipIndex; }
+    get tripIndex() { return this.model.tripIndex; }
+    get repIndex() { return this.model.repIndex; }
+    get repNgIndex() { return this.model.repNgIndex; }
+    get ancIndex() { return this.model.ancIndex; }
 
     /**
     @method init
@@ -263,7 +271,6 @@ export default ThreadContent = (function () {
       this._lastScrollInfo.resNum = resNum;
       this._lastScrollInfo.animate = animate;
       this._lastScrollInfo.offset = offset;
-      let loadFlag = false;
 
       target = this.container.children[resNum - 1];
 
@@ -299,7 +306,7 @@ export default ThreadContent = (function () {
       if (target) {
         // 前後に存在する画像を事前にロードする
         if (!rerun) {
-          loadFlag = this._loadNearlyImages(resNum, offset);
+          this._loadNearlyImages(resNum, offset);
         }
 
         // offsetが比率の場合はpxを求める
@@ -742,6 +749,8 @@ export default ThreadContent = (function () {
         const res = this.model.getRes(i);
         if (!res) continue;
 
+        const parts = MessageProcessor.decode(res, protocol);
+
         const $article = $__("article");
         const $header = $__("header");
 
@@ -752,66 +761,26 @@ export default ThreadContent = (function () {
 
         //.name
         const $name = $__("span").addClass("name");
-        if (
-          /^\s*(?:&gt;|\uff1e){0,2}([\d\uff10-\uff19]+(?:[\-\u30fc][\d\uff10-\uff19]+)?(?:\s*,\s*[\d\uff10-\uff19]+(?:[\-\u30fc][\d\uff10-\uff19]+)?)*)\s*$/.test(
-            res.name
-          )
-        ) {
+        if (parts.isNameAnchor) {
           $name.addClass("name_anchor");
         }
-        $name.innerHTML = res.name
-          .replace(/<\/?a[^>]*>/g, "")
-          .replace(
-            /<(?!\/?(?:b|small|font(?: color="?[#a-zA-Z0-9]+"?)?)>)/g,
-            "&lt;"
-          );
-        // TRIP markup
-        if (res.trip) {
-            $name.innerHTML = $name.innerHTML.replace(res.trip, `<span class="trip">${res.trip}</span>`);
-        }
+        $name.innerHTML = parts.nameHtml;
         $header.addLast($name);
 
         //.mail
         const $mail = $__("span").addClass("mail");
-        $mail.innerHTML = res.mail.replace(/<.*?(?:>|$)/g, "");
+        $mail.innerHTML = parts.mailHtml;
         $header.addLast($mail);
 
         //.other
         const $other = $__("span").addClass("other");
-        let tmp = res.other || "";
-        // ID & SLIP markup
-        if (res.id) {
-          const idHtml = `<span class="id">${res.id}</span>`;
-          if (res.slip) {
-              tmp = tmp.replace(`ID:${res.id}`, `<span class="slip">SLIP:${res.slip}</span>${idHtml}`);
-          } else {
-              tmp = tmp.replace(res.id, idHtml);
-          }
-        } else if (res.slip) {
-            tmp += `<span class="slip">SLIP:${res.slip}</span>`;
-        }
-        // Date markup
-        if (res.date) {
-            tmp = tmp.replace(res.date, `<time class="date">${res.date}</time>`);
-        }
-        $other.innerHTML = tmp;
+        $other.innerHTML = parts.otherHtml;
         $header.addLast($other);
         $article.addLast($header);
 
         // Message
         const $message = $__("div").addClass("message");
-        // Apply coloring if font tag was present (this part is tricky as ReplaceStrTxt might have run)
-        $message.innerHTML = res.message
-          .replace(/<img src="([\w]+):\/\/(.*?)"[^>]*>/gi, "$1://$2")
-          .replace(/<img src="\/\/(.*?)"[^>]*>/gi, `${protocol}//$1`)
-          .replace(app.util.Anchor.reg.ANCHOR, ($0) => {
-              const anchor = app.util.Anchor.parseAnchor($0);
-              let disabled = anchor.targetCount >= 25 || anchor.targetCount === 0;
-              let disabledReason = anchor.targetCount >= 25 ? "指定されたレスの量が極端に多いため、ポップアップを表示しません" : "指定されたレスが存在しません";
-              return `<a href="javascript:undefined;" class="anchor ${disabled ? 'disabled' : ''}" ${disabled ? `data-disabled-reason="${disabledReason}"` : ''}>${$0}</a>`;
-          })
-          .replace(/id:(?:[a-hj-z\d_\+\/\.\!]|i(?!d:))+/gi, '<a href="javascript:undefined;" class="anchor_id">$&</a>');
-
+        $message.innerHTML = parts.messageHtml;
         $article.addLast($message);
 
         if (res.class && res.class.length > 0) {
@@ -973,7 +942,10 @@ export default ThreadContent = (function () {
         }
         let resCount = index.size;
         if (app.config.isOn("reject_ng_rep") && this.model.repNgIndex.has(resKey)) {
-          resCount -= this.model.repNgIndex.get(resKey).size;
+          const ngSet = this.model.repNgIndex.get(resKey);
+          if (ngSet) {
+            resCount -= ngSet.size;
+          }
         }
         if ((ele = res.C("rep")[0])) {
           newFlg = false;
@@ -1404,13 +1376,4 @@ function __guard__(value, transform) {
   return typeof value !== "undefined" && value !== null
     ? transform(value)
     : undefined;
-}
-function __range__(left, right, inclusive) {
-  let range = [];
-  let ascending = left < right;
-  let end = !inclusive ? right : ascending ? right + 1 : right - 1;
-  for (let i = left; ascending ? i < end : i > end; ascending ? i++ : i--) {
-    range.push(i);
-  }
-  return range;
 }
