@@ -1,3 +1,4 @@
+import { container } from "../service-container/index";
 import Thread from "./Thread.js";
 
 /**
@@ -42,7 +43,9 @@ class ThreadServiceImpl {
     return {
       url: thread.url.url.href,
       title: thread.title,
-      res: (thread.res || []).map((/** @type {any} */ r, /** @type {number} */ i) => this._parseRes(r, i + 1)),
+      res: (thread.res || []).map((/** @type {any} */ r, /** @type {number} */ i) => 
+        this._parseRes(r, i + 1, thread.title, thread.url.url.href)
+      ),
       expired: !!thread.expired
     };
   }
@@ -52,9 +55,11 @@ class ThreadServiceImpl {
    * @private
    * @param {any} rawRes 
    * @param {number} num 
+   * @param {string} title
+   * @param {string} url
    * @returns {IRes}
    */
-  _parseRes(rawRes, num) {
+  _parseRes(rawRes, num, title, url) {
     /** @type {IRes} */
     const res = {
       ...rawRes,
@@ -103,6 +108,8 @@ class ThreadServiceImpl {
         res.be = beMatch[0];
       }
     }
+    // NG Check
+    res.ng = container.ng.isNGThread(res, title, url) || undefined;
 
     return res;
   }

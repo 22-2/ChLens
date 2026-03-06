@@ -1,3 +1,4 @@
+import { container } from "../service-container/index";
 import { decodeCharReference, normalize, stringToDate } from "./jsutil.js";
 
 /**
@@ -76,13 +77,10 @@ const _setupReg = function (obj) {
     try {
       reg = new RegExp(word, "i");
     } catch (error) {
-      app.message.send("notify", {
-        message: `\
+      container.notification.notify(`\
 NG機能の正規表現(${type}: ${word})を読み込むのに失敗しました
 この行は無効化されます\
-`,
-        background_color: "red",
-      });
+`, { backgroundColor: "red" });
     }
     return reg;
   };
@@ -116,16 +114,16 @@ NG機能の正規表現(${type}: ${word})を読み込むのに失敗しました
 
 const _config = {
   get() {
-    return JSON.parse(app.config.get(_CONFIG_NAME));
+    return JSON.parse(container.config.get(_CONFIG_NAME));
   },
   set(str) {
-    app.config.set(_CONFIG_NAME, JSON.stringify(str));
+    container.config.set(_CONFIG_NAME, JSON.stringify(str));
   },
   getString() {
-    return app.config.get(_CONFIG_STRING_NAME);
+    return container.config.get(_CONFIG_STRING_NAME);
   },
   setString(str) {
-    app.config.set(_CONFIG_STRING_NAME, str);
+    container.config.set(_CONFIG_STRING_NAME, str);
   },
 };
 

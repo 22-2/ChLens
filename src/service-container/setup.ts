@@ -1,5 +1,5 @@
 import { container } from "./Container";
-import { IConfig, ICacheService, IBookmark, IMessage, ICacheItem, IReadStateService, IBoardService, IUtil, IBoardResult, IBBSMenuService, INotificationService, IThreadService } from "./interfaces";
+import { IConfig, ICacheService, IBookmark, IMessage, ICacheItem, IReadStateService, IBoardService, IUtil, IBoardResult, IBBSMenuService, INotificationService, IThreadService, INGService } from "./interfaces";
 // @ts-ignore
 import Cache from "../core/Cache.js";
 // @ts-ignore
@@ -92,6 +92,15 @@ export function setupContainer(app: any) {
     }
   };
 
+  // NG Service Adapter
+  const ngServiceAdapter: INGService = {
+    isNGBoard: (title, url, resCount) => app.NG.isNGBoard(title, url, resCount),
+    isNGThread: (res, title, url) => app.NG.isNGThread(res, title, url),
+    isThreadIgnoreNgType: (res, threadTitle, url, ngType) => app.NG.isThreadIgnoreNgType(res, threadTitle, url, ngType),
+    add: (ngWord) => app.NG.add(ngWord),
+    execExpire: () => app.NG.execExpire(),
+  };
+
   // Util Adapter
   const utilAdapter: IUtil = {
     escapeHtml: (str: string) => app.escapeHtml(str),
@@ -110,4 +119,5 @@ export function setupContainer(app: any) {
   container.bbsMenu = bbsMenuServiceAdapter;
   container.thread = threadServiceAdapter;
   container.notification = notificationServiceAdapter;
+  container.ng = ngServiceAdapter;
 }

@@ -1,4 +1,4 @@
-import { IServiceContainer, IConfig, ICacheService, IBookmark, IMessage, IUtil, IReadStateService, IBoardService, IBBSMenuService, INotificationService, IThreadService } from "./interfaces";
+import { IServiceContainer, IConfig, ICacheService, IBookmark, IMessage, IUtil, IReadStateService, IBoardService, IBBSMenuService, INotificationService, IThreadService, INGService } from "./interfaces";
 
 const globalObj = window as any;
 
@@ -14,6 +14,7 @@ if (!globalObj.__ServiceContainer) {
     _bbsMenu: undefined,
     _notification: undefined,
     _thread: undefined,
+    _ng: undefined,
     
     get config(): IConfig {
       if (!this._config) throw new Error("Config service not registered");
@@ -73,7 +74,13 @@ if (!globalObj.__ServiceContainer) {
       if (!this._thread) throw new Error("Thread service not registered");
       return this._thread;
     },
-    set thread(value: IThreadService) { this._thread = value; }
+    set thread(value: IThreadService) { this._thread = value; },
+
+    get ng(): INGService {
+      if (!this._ng) throw new Error("NG service not registered");
+      return this._ng;
+    },
+    set ng(value: INGService) { this._ng = value; }
   };
 }
 

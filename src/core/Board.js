@@ -1,6 +1,5 @@
 import { container } from "../service-container/index";
 import { ChURL } from "../../packages/ch-lib/src/index";
-import { isNGBoard } from "./NG.js";
 import { Request } from "./HTTP.ts";
 import {
   chServerMoveDetect,
@@ -308,7 +307,7 @@ class="open_in_rcrx">${container.util.escapeHtml(newBoardUrl)}
 
       const resCount = +regRes[3];
 
-      const ngResult = isNGBoard(title, url.url.href, resCount);
+      const ngResult = container.ng.isNGBoard(title, url.url.href, resCount);
       const highlight =
         ngResult &&
         (ngResult.type === "HighlightTitle" ||

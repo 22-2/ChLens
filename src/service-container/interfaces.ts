@@ -89,6 +89,7 @@ export interface IRes {
   be?: string;
   message: string;
   isNew?: boolean;
+  ng?: INGResult;
 }
 
 export interface IThreadDetail {
@@ -140,6 +141,20 @@ export interface INotificationService {
   info(message: string): void;
 }
 
+export interface INGResult {
+  type: string;
+  name?: string;
+  params?: any;
+}
+
+export interface INGService {
+  isNGBoard(title: string, url: string, resCount: number): INGResult | null;
+  isNGThread(res: any, title: string, url: string): INGResult | null;
+  isThreadIgnoreNgType(res: any, threadTitle: string, url: string, ngType: string): INGResult | null;
+  add(ngWord: string): void;
+  execExpire(): void;
+}
+
 export interface IServiceContainer {
   config: IConfig;
   cache: ICacheService;
@@ -151,4 +166,5 @@ export interface IServiceContainer {
   bbsMenu: IBBSMenuService;
   notification: INotificationService;
   thread: IThreadService;
+  ng: INGService;
 }
