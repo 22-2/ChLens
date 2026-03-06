@@ -15,6 +15,7 @@ let paths = {};
       ui: `${i}/ui/ui.js`,
       submitRes: `${i}/write/submit_res.js`,
       submitThread: `${i}/write/submit_thread.js`,
+      threadReact: `${i}/view/thread/index.tsx`,
       background: `${i}/background.js`,
       csAddlink: `${i}/cs_addlink.js`,
       view: `${i}/view/*.js`,
@@ -122,7 +123,7 @@ defaultOptions.rolldown = {
     plugins: [],
     platform: "browser",
     resolve: {
-      extensions: [".ts", ".js"],
+      extensions: [".tsx", ".ts", ".jsx", ".js"],
     },
     onwarn: util.rollupOnWarn,
   },

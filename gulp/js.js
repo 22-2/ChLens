@@ -80,6 +80,16 @@ const getRolldownIOConfigs = function (name, browser) {
         plugins: [replace],
       };
       break;
+    case "threadReact":
+      return {
+        pathname: "threadReact",
+        output: "view/thread_react.js",
+        plugins: [replace],
+        outObj: {
+          name: "ThreadReact",
+        },
+      };
+      break;
   }
   throw new Error(`Error: rolldownIOConfig Not Found '${name}'`);
 };
@@ -106,6 +116,7 @@ const core = (browser) => makeFunc(browser, "core");
 const ui = (browser) => makeFunc(browser, "ui");
 const submitRes = (browser) => makeFunc(browser, "submitRes");
 const submitThread = (browser) => makeFunc(browser, "submitThread");
+const threadReact = (browser) => makeFunc(browser, "threadReact");
 
 /*
   tasks
@@ -186,6 +197,7 @@ for (let browser of browsers) {
       ui(browser),
       submitRes(browser),
       submitThread(browser),
+      threadReact(browser),
       `js:background.js:${browser}`,
       `js:cs_addlink.js:${browser}`,
       `js:view:${browser}`,
