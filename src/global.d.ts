@@ -2,6 +2,7 @@
 
 interface Window {
   app: any;
+  container: import("./service-container/interfaces").IServiceContainer;
 }
 
 declare namespace app {

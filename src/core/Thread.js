@@ -1,7 +1,6 @@
-import Board from "./Board.js";
 import { container } from "../service-container/index";
 import { ChURL } from "../../packages/ch-lib/src/index";
-import { Request } from "./HTTP.ts";
+import { Request } from "./HTTP";
 import {
   chServerMoveDetect,
   decodeCharReference,
@@ -26,7 +25,7 @@ export default class Thread {
   get(forceUpdate, progress) {
     const getCachedInfo = (async () => {
       try {
-        const cachedInfo = await Board.getCachedResCount(this.url);
+        const cachedInfo = await container.board.getCachedResCount(this.url);
         return {
           status: "success",
           cachedInfo,

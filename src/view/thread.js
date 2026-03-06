@@ -2327,26 +2327,23 @@ app.viewThread._draw = async function (
     return thread;
   };
 
-  const thread = new app.Thread($view.dataset.url);
   let threadSetFromCacheBeforeHTTPPromise = Promise.resolve();
-  var threadGetPromise = app.util.promiseWithState(
-    thread.get(forceUpdate, function () {
-      // 通信する前にキャッシュを取得して一旦表示する
-      if (!threadGetPromise.isResolved()) {
-        threadSetFromCacheBeforeHTTPPromise = fn(thread, false);
+  let thread;
+  ok = false;
+  
+  try {
+    thread = await window.container.thread.getThread($view.dataset.url, {
+      forceUpdate,
+      onCache: (cachedThread) => {
+        threadSetFromCacheBeforeHTTPPromise = fn(cachedThread, false);
       }
-    })
-  );
-  try {
-    await threadGetPromise.promise;
-  } catch (error) {}
-  try {
+    });
+    
     await threadSetFromCacheBeforeHTTPPromise;
-  } catch (error1) {}
-  try {
-    await fn(thread, !threadGetPromise.isResolved());
+    await fn(thread, !!thread.message);
     ok = true;
-  } catch (error2) {
+  } catch (error) {
+    console.error(error);
     ok = false;
   }
   $view.removeClass("loading");

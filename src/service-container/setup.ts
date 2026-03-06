@@ -54,6 +54,7 @@ export function setupContainer(app: any) {
   // Board Service Adapter
   const boardServiceAdapter: IBoardService = {
     getThreads: (url: any): Promise<IBoardResult> => BoardService.getThreads(url),
+    getCachedResCount: (url: any) => BoardService.getCachedResCount(url),
   };
 
   // BBSMenu Service Adapter

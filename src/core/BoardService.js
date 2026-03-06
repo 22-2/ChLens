@@ -49,6 +49,15 @@ const BoardService = {
       threads: processedThreads,
       message: status === "error" ? message : null
     };
+  },
+
+  /**
+   * Gets the cached response count for a thread URL.
+   * @param {string} url 
+   * @returns {Promise<number | null>}
+   */
+  async getCachedResCount(url) {
+    return Board.getCachedResCount(url);
   }
 };
 

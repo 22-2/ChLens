@@ -57,6 +57,7 @@ class ThreadServiceImpl {
   _parseRes(rawRes, num) {
     /** @type {IRes} */
     const res = {
+      ...rawRes,
       num,
       name: rawRes.name,
       mail: rawRes.mail,
@@ -66,13 +67,15 @@ class ThreadServiceImpl {
 
     // Extract Slip and Trip from name (similar logic to ThreadContent.js)
     const name = rawRes.name;
-    const slipMatch = /<\/b>\(([^<>]+? [^<>]+?)\)<b>$/.exec(name);
-    if (slipMatch) {
-      res.slip = slipMatch[1];
-    }
-    const tripMatch = /<\/b> ?(◆[^<>]+?) ?<b>/.exec(name);
-    if (tripMatch) {
-      res.trip = tripMatch[1];
+    if (name) {
+      const slipMatch = /<\/b>\(([^<>]+? [^<>]+?)\)<b>$/.exec(name);
+      if (slipMatch) {
+        res.slip = slipMatch[1];
+      }
+      const tripMatch = /<\/b> ?(◆[^<>]+?) ?<b>/.exec(name);
+      if (tripMatch) {
+        res.trip = tripMatch[1];
+      }
     }
 
     // Extract Date and ID from other

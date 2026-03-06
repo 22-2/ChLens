@@ -109,7 +109,8 @@ export interface IBoardResult {
 }
 
 export interface IBoardService {
-  getThreads(url: string): Promise<IBoardResult>;
+  getThreads(url: any): Promise<IBoardResult>;
+  getCachedResCount(url: any): Promise<any>;
 }
 
 export interface IBBSMenuBoard {
