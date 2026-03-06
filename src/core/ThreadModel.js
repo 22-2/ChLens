@@ -1,5 +1,5 @@
 import { container } from "../service-container/index";
-import { Anchor } from "./jsutil.js";
+import { AnchorParser, MetadataParser } from "../../packages/ch-lib/src/index";
 import { replace as replaceStrTxt } from "./ReplaceStrTxt.js";
 
 /**
@@ -180,42 +180,29 @@ export default class ThreadModel {
    */
   _parseMetadata(res) {
     const resNum = res.num;
+    const meta = MetadataParser.parse(res.name, res.other || "");
 
-    // Slip
-    const slipMatch = /<\/b>\(([^<>]+? [^<>]+?)\)<b>$/.exec(res.name);
-    if (slipMatch) {
-      const slip = slipMatch[1];
-      res.slip = slip;
+    if (meta.slip) {
+      res.slip = meta.slip;
       if (resNum === 1) this._existSlipAtFirstRes = true;
-      if (!this.slipIndex.has(slip)) this.slipIndex.set(slip, new Set());
-      const set = this.slipIndex.get(slip);
+      if (!this.slipIndex.has(meta.slip)) this.slipIndex.set(meta.slip, new Set());
+      const set = this.slipIndex.get(meta.slip);
       if (set) set.add(resNum);
     }
 
-    // Trip
-    const tripMatch = /<\/b> ?(◆[^<>]+?) ?<b>/.exec(res.name);
-    if (tripMatch) {
-      const trip = tripMatch[1];
-      res.trip = trip;
-      if (!this.tripIndex.has(trip)) this.tripIndex.set(trip, new Set());
-      const set = this.tripIndex.get(trip);
+    if (meta.trip) {
+      res.trip = meta.trip;
+      if (!this.tripIndex.has(meta.trip)) this.tripIndex.set(meta.trip, new Set());
+      const set = this.tripIndex.get(meta.trip);
       if (set) set.add(resNum);
     }
 
-    // ID
-    // @ts-ignore
-    if (res.other) {
-      // @ts-ignore
-      const idMatch = /(?:^| |(\d))(ID:(?!\?\?\?)[^ <>"']+|発信元:\d+.\d+.\d+.\d+)/.exec(res.other);
-      if (idMatch) {
-        let fixedId = idMatch[2];
-        if (fixedId.endsWith("\u25cf")) fixedId = fixedId.slice(0, -1);
-        res.id = fixedId;
-        if (resNum === 1) this._existIdAtFirstRes = true;
-        if (!this.idIndex.has(fixedId)) this.idIndex.set(fixedId, new Set());
-        const set = this.idIndex.get(fixedId);
-        if (set) set.add(resNum);
-      }
+    if (meta.id) {
+      res.id = meta.id;
+      if (resNum === 1) this._existIdAtFirstRes = true;
+      if (!this.idIndex.has(meta.id)) this.idIndex.set(meta.id, new Set());
+      const set = this.idIndex.get(meta.id);
+      if (set) set.add(resNum);
     }
   }
 
@@ -225,11 +212,11 @@ export default class ThreadModel {
    */
   processAnchors(res) {
     const resNum = res.num;
-    const anchors = res.message.match(Anchor.reg.ANCHOR);
+    const anchors = res.message.match(AnchorParser.REG.ANCHOR);
     if (!anchors) return;
 
     for (const ancStr of anchors) {
-      const anchor = Anchor.parseAnchor(ancStr);
+      const anchor = AnchorParser.parse(ancStr);
       if (anchor.targetCount > 0 && anchor.targetCount < 25) {
         for (const segment of anchor.segments) {
           /** @type {number} */

@@ -2,5 +2,7 @@ export * from "./url/ChURL";
 export * from "./parser/BoardParser";
 export * from "./parser/ThreadParser";
 export * from "./parser/BBSMenuParser";
+export * from "./parser/AnchorParser";
+export * from "./parser/MetadataParser";
 export * from "./fetcher/ChFetcher";
 export * from "./utils/entities";

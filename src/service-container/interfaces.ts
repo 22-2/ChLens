@@ -87,6 +87,7 @@ export interface IRes {
   id?: string;
   slip?: string;
   trip?: string;
+  other?: string;
   be?: string;
   message: string;
   isNew?: boolean;

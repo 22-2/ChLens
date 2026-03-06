@@ -1,4 +1,3 @@
-import { ChURL } from "../url/ChURL";
 
 export interface BBSBoard {
   title: string;
@@ -13,8 +12,8 @@ export interface BBSCategory {
 export class BBSMenuParser {
   static parse(html: string): BBSCategory[] {
     const categories: BBSCategory[] = [];
-    const regCategory = /<b>(.+?)<\/b>(?:.*[\r\n]+<a\s.*?>.+?<\/a>)+/gi;
-    const regBoard = /<a\shref="?((?:https?:)?\/\/[\w\.]+\/(\w+)\/)"?>(.+?)<\/a>/gi;
+    const regCategory = /<b[^>]*>(.+?)<\/b>\s*(?:<br>)?\s*(<a\s[\s\S]+?)(?=<b|$)/gi;
+    const regBoard = /<a\shref="?((?:https?:)?\/\/[\w\.-]+\/(\w+)\/)"?>(.+?)<\/a>/gi;
 
     let catMatch: RegExpExecArray | null;
     while ((catMatch = regCategory.exec(html))) {

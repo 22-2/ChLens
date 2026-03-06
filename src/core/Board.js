@@ -1,10 +1,8 @@
 import { container } from "../service-container/index";
-import { ChURL } from "../../packages/ch-lib/src/index";
+import { ChURL, BoardParser } from "../../packages/ch-lib/src/index";
 import { Request } from "./HTTP.ts";
 import {
   chServerMoveDetect,
-  decodeCharReference,
-  removeNeedlessFromTitle,
 } from "./jsutil.js";
 
 /**
@@ -278,56 +276,23 @@ class="open_in_rcrx">${container.util.escapeHtml(newBoardUrl)}
   @return {Array | null} board
   */
   static parse(url, text) {
-    let baseUrl, bbsType, reg;
-    let regRes;
-    const tmp = /^\/(\w+)(?:\/(\w+)|\/?)/.exec(url.url.pathname);
-    let scFlg = false;
-    switch (url.getTsld()) {
-      case "machi.to":
-        bbsType = "machi";
-        reg = /^\d+<>(\d+)<>(.+)\((\d+)\)$/gm;
-        baseUrl = `${url.url.origin}/bbs/read.cgi/${tmp[1]}/`;
-        break;
-      case "shitaraba.net":
-        bbsType = "jbbs";
-        reg = /^(\d+)\.cgi,(.+)\((\d+)\)$/gm;
-        baseUrl = `${url.url.protocol}//jbbs.shitaraba.net/bbs/read.cgi/${tmp[1]}/${tmp[2]}/`;
-        break;
-      default:
-        scFlg = url.getTsld() === "2ch.sc";
-        bbsType = "2ch";
-        reg = /^(\d+)\.dat<>(.+) \((\d+)\)$/gm;
-        baseUrl = `${url.url.origin}/test/read.cgi/${tmp[1]}/`;
-    }
-
-    const board = [];
-    while ((regRes = reg.exec(text))) {
-      let title = decodeCharReference(regRes[2]);
-      title = removeNeedlessFromTitle(title);
-
-      const resCount = +regRes[3];
-
-      const ngResult = container.ng.isNGBoard(title, url.url.href, resCount);
+    const scFlg = url.getTsld() === "2ch.sc";
+    const threads = BoardParser.parse(url, text);
+    
+    return threads.map(thread => {
+      const ngResult = container.ng.isNGBoard(thread.title, url.url.href, thread.resCount);
       const highlight =
         ngResult &&
         (ngResult.type === "HighlightTitle" ||
           ngResult.type === "RegExpHighlightTitle");
-      board.push({
-        url: baseUrl + regRes[1] + "/",
-        title,
-        resCount,
-        createdAt: +regRes[1] * 1000,
+          
+      return {
+        ...thread,
         ng: highlight ? null : ngResult,
         highlight: highlight ? ngResult : null,
-        isNet: scFlg ? !title.startsWith("★") : null,
-      });
-    }
-
-    if (bbsType === "jbbs") {
-      board.pop();
-    }
-
-    return board;
+        isNet: scFlg ? !thread.title.startsWith("★") : null,
+      };
+    });
   }
 
   /**

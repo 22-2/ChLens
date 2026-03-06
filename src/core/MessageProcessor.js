@@ -1,4 +1,4 @@
-import { Anchor } from "./jsutil.js";
+import { AnchorParser } from "../../packages/ch-lib/src/index";
 
 /**
  * MessageProcessor handles the transformation of response data into displayable HTML segments.
@@ -69,8 +69,8 @@ export default class MessageProcessor {
     let messageHtml = res.message
       .replace(/<img src="([\w]+):\/\/(.*?)"[^>]*>/gi, "$1://$2")
       .replace(/<img src="\/\/(.*?)"[^>]*>/gi, `${protocol}//$1`)
-      .replace(Anchor.reg.ANCHOR, (/** @type {string} */ $0) => {
-        const anchor = Anchor.parseAnchor($0);
+      .replace(AnchorParser.REG.ANCHOR, (/** @type {string} */ $0) => {
+        const anchor = AnchorParser.parse($0);
         let disabled = anchor.targetCount >= 25 || anchor.targetCount === 0;
         let disabledReason = anchor.targetCount >= 25 
           ? "指定されたレスの量が極端に多いため、ポップアップを表示しません" 
