@@ -170,62 +170,26 @@ app.boot("/view/board.html", ["Board"], function (Board) {
 
   const load = async function (ex) {
     $view.addClass("loading");
-    app.message.send("request_update_read_state", { board_url: urlStr });
-
-    const getReadStatePromise = (async function () {
-      // request_update_read_stateを待つ
+    
+    try {
+      // 既読状態の更新リクエスト（バックグラウンドでの同期を待つためのハック）
+      app.message.send("request_update_read_state", { board_url: urlStr });
       await app.wait(150);
-      return await app.ReadState.getByBoard(urlStr);
-    })();
-    const getBoardPromise = (async function () {
-      const { status, message, data } = await Board.get(url);
+
+      // Service層を使ってスレ一覧（既読・ブックマーク統合済み）を取得
+      const { threads, message } = await container.board.getThreads(url);
+      
       const $messageBar = $view.C("message_bar")[0];
-      if (status === "error") {
+      if (message) {
         $messageBar.addClass("error");
         $messageBar.innerHTML = message;
       } else {
         $messageBar.removeClass("error");
         $messageBar.removeChildren();
       }
-      if (data != null) {
-        return data;
-      }
-      throw new Error("板の取得に失敗しました");
-    })();
-
-    try {
-      let readState, thread;
-      const [readStateArray, board] = await Promise.all([
-        getReadStatePromise,
-        getBoardPromise,
-      ]);
-      const readStateIndex = {};
-      for (let key = 0; key < readStateArray.length; key++) {
-        readState = readStateArray[key];
-        readStateIndex[readState.url] = key;
-      }
 
       threadList.empty();
-      const item = [];
-      for (let threadNumber = 0; threadNumber < board.length; threadNumber++) {
-        var bookmark;
-        thread = board[threadNumber];
-        readState = readStateArray[readStateIndex[thread.url]];
-        if (
-          __guard__(
-            (bookmark = app.bookmark.get(thread.url)),
-            (x) => x.readState
-          ) != null
-        ) {
-          if (app.util.isNewerReadState(readState, bookmark.readState)) {
-            ({ readState } = bookmark);
-          }
-        }
-        thread.readState = readState;
-        thread.threadNumber = threadNumber;
-        item.push(thread);
-      }
-      threadList.addItem(item);
+      threadList.addItem(threads);
 
       // スレ建て後の処理
       if (ex != null) {
@@ -244,7 +208,7 @@ app.boot("/view/board.html", ["Board"], function (Board) {
           }
           app.message.send("open", { url: ex.thread_url, new_tab: true });
         } else {
-          for (thread of board) {
+          for (let thread of threads) {
             if (thread.title.includes(ex.title)) {
               if (writeFlag) {
                 await app.WriteHistory.add({
@@ -265,7 +229,12 @@ app.boot("/view/board.html", ["Board"], function (Board) {
       }
 
       tableSorter.update();
-    } catch (error1) {}
+    } catch (error1) {
+      console.error(error1);
+      const $messageBar = $view.C("message_bar")[0];
+      $messageBar.addClass("error");
+      $messageBar.innerHTML = error1.message || "板の取得に失敗しました";
+    }
 
     $view.removeClass("loading");
 

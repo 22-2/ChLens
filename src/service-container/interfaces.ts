@@ -21,7 +21,23 @@ export interface ICacheService {
   getCache(path: string): ICacheItem;
 }
 
+export interface IReadState {
+  url: string;
+  last: number;
+  read: number;
+  received: number;
+  offset?: number;
+  date?: number;
+}
+
+export interface IReadStateService {
+  get(url: string): Promise<IReadState | undefined>;
+  getByBoard(boardUrl: string): Promise<IReadState[]>;
+  set(readState: IReadState): Promise<void>;
+}
+
 export interface IBookmark {
+  get(url: string): any;
   updateResCount(url: string, count: number): void;
   updateExpired(url: string, expired: boolean): void;
   getByBoard(boardUrl: string): any[];
@@ -36,6 +52,28 @@ export interface IUtil {
   escapeHtml(str: string): string;
   safeHref(url: string): string;
   defer(): Promise<void>;
+  isNewerReadState(a: any, b: any): boolean;
+}
+
+export interface IThread {
+  url: string;
+  title: string;
+  resCount: number;
+  createdAt: number;
+  ng?: any;
+  highlight?: any;
+  isNet?: boolean | null;
+  readState?: IReadState;
+  threadNumber?: number;
+}
+
+export interface IBoardResult {
+  threads: IThread[];
+  message: string | null;
+}
+
+export interface IBoardService {
+  getThreads(url: string): Promise<IBoardResult>;
 }
 
 export interface IServiceContainer {
@@ -44,4 +82,6 @@ export interface IServiceContainer {
   bookmark: IBookmark;
   message: IMessage;
   util: IUtil;
+  readState: IReadStateService;
+  board: IBoardService;
 }

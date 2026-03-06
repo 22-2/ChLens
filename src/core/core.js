@@ -1,5 +1,6 @@
 import * as BBSMenu from "./BBSMenu.js";
 import Board from "./Board.js";
+import BoardService from "./BoardService.js";
 import * as BoardTitleSolver from "./BoardTitleSolver.js";
 import Bookmark from "./Bookmark.ts";
 import BrowserBookmarkEntryList from "./BrowserBookmarkEntryList.ts";
@@ -26,6 +27,7 @@ import { QDollarRecognizer, Point } from "./$Q.ts";
 export {
   BBSMenu,
   Board,
+  BoardService,
   BoardTitleSolver,
   Bookmark,
   BookmarkEntryList,
