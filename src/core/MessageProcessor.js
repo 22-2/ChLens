@@ -55,11 +55,19 @@ export default class MessageProcessor {
     if (res.id) {
       const idHtml = `<span class="id">${res.id}</span>`;
       if (res.slip) {
+        const slipHtml = `<span class="slip">SLIP:${res.slip}</span>`;
         // Replace ID with SLIP + ID if both exist
-        otherHtml = otherHtml.replace(
-          `ID:${res.id}`,
-          `<span class="slip">SLIP:${res.slip}</span>${idHtml}`
-        );
+        // Be careful not to double the ID: prefix if res.id already includes it
+        const searchId = res.id.startsWith("ID:") ? res.id : `ID:${res.id}`;
+        if (otherHtml.includes(searchId)) {
+          otherHtml = otherHtml.replace(searchId, slipHtml + idHtml);
+        } else {
+          // Fallback: replace ID directly and append SLIP
+          otherHtml = otherHtml.replace(res.id, idHtml);
+          if (!otherHtml.includes(slipHtml)) {
+            otherHtml += slipHtml;
+          }
+        }
       } else {
         otherHtml = otherHtml.replace(res.id, idHtml);
       }
@@ -78,7 +86,7 @@ export default class MessageProcessor {
 
     // 4. Message processing
     // Fix image tags and convert anchors/ID links
-    let messageHtml = res.message
+    let messageHtml = (res.message || "")
       .replace(/<img src="([\w]+):\/\/(.*?)"[^>]*>/gi, "$1://$2")
       .replace(/<img src="\/\/(.*?)"[^>]*>/gi, `${protocol}//$1`)
       .replace(AnchorParser.REG.ANCHOR, (/** @type {string} */ $0) => {
@@ -103,10 +111,17 @@ export default class MessageProcessor {
     // Convert plain URLs to anchor tags
     // Split by existing tags to avoid double-converting
     const htmlParts = messageHtml.split(/(<[^>]+>)/);
+    let insideAnchor = false;
     messageHtml = htmlParts
       .map((part, index) => {
-        // Only process text parts (odd indices are tags)
-        if (index % 2 === 0) {
+        // odd indices are tags
+        if (index % 2 === 1) {
+          if (part.startsWith("<a")) insideAnchor = true;
+          if (part.startsWith("</a>")) insideAnchor = false;
+          return part;
+        }
+        // Only process text parts that are not inside an anchor tag
+        if (!insideAnchor) {
           return part.replace(
             /(https?:\/\/[^\s<>"]+)/gi,
             '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'

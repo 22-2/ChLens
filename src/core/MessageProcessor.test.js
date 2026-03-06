@@ -62,5 +62,20 @@ describe("MessageProcessor", () => {
       const linkCount = (result.messageHtml.match(/<a href=/g) || []).length;
       expect(linkCount).toBe(1);
     });
+
+    it("should handle both ID and SLIP in otherHtml", () => {
+      const res = {
+        name: "テスト </b>(L20 abcd-efgh)<b>",
+        mail: "",
+        other: "2026/03/06(金) 13:25:49.264 ID:test123",
+        id: "ID:test123",
+        slip: "L20 abcd-efgh",
+        date: "2026/03/06(金) 13:25:49.264",
+      };
+
+      const result = MessageProcessor.decode(res, "https:");
+      expect(result.otherHtml).toContain('<span class="slip">SLIP:L20 abcd-efgh</span>');
+      expect(result.otherHtml).toContain('<span class="id">ID:test123</span>');
+    });
   });
 });
