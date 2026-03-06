@@ -23,7 +23,7 @@ export class BBSMenuParser {
 
     let catMatch: RegExpExecArray | null;
     while ((catMatch = regCategory.exec(html))) {
-      const categoryTitle = catMatch[1];
+      const categoryTitle = this.stripHtmlTags(catMatch[1]);
       const categoryHtml = catMatch[0];
       const boards: BBSBoard[] = [];
       let subName: string | null = null;
@@ -56,7 +56,7 @@ export class BBSMenuParser {
           }
         }
 
-        let boardTitle = boardMatch[3];
+        let boardTitle = this.stripHtmlTags(boardMatch[3]);
         if (subName !== "" && !(boardTitle.endsWith(`(${subName})`) || boardTitle.endsWith(`_${subName}`))) {
           boardTitle += `_${subName}`;
         }
@@ -81,5 +81,12 @@ export class BBSMenuParser {
     }
 
     return categories;
+  }
+
+  private static stripHtmlTags(text: string): string {
+    return text
+      .replace(/<br\s*\/?>/gi, "")
+      .replace(/<\/?[^>]+>/g, "")
+      .trim();
   }
 }
