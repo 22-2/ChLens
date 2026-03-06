@@ -287,12 +287,12 @@ class="open_in_rcrx">${container.util.escapeHtml(newBoardUrl)}
       case "machi.to":
         bbsType = "machi";
         reg = /^\d+<>(\d+)<>(.+)\((\d+)\)$/gm;
-        baseUrl = `${url.origin}/bbs/read.cgi/${tmp[1]}/`;
+        baseUrl = `${url.url.origin}/bbs/read.cgi/${tmp[1]}/`;
         break;
       case "shitaraba.net":
         bbsType = "jbbs";
         reg = /^(\d+)\.cgi,(.+)\((\d+)\)$/gm;
-        baseUrl = `${url.protocol}//jbbs.shitaraba.net/bbs/read.cgi/${tmp[1]}/${tmp[2]}/`;
+        baseUrl = `${url.url.protocol}//jbbs.shitaraba.net/bbs/read.cgi/${tmp[1]}/${tmp[2]}/`;
         break;
       default:
         scFlg = url.getTsld() === "2ch.sc";
@@ -308,7 +308,7 @@ class="open_in_rcrx">${container.util.escapeHtml(newBoardUrl)}
 
       const resCount = +regRes[3];
 
-      const ngResult = isNGBoard(title, url.href, resCount);
+      const ngResult = isNGBoard(title, url.url.href, resCount);
       const highlight =
         ngResult &&
         (ngResult.type === "HighlightTitle" ||

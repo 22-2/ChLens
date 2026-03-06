@@ -128,7 +128,7 @@ export default class Thread {
         }
 
         // パース
-        const { bbsType } = this.url.guessType();
+        const bbsType = this.url.bbsType;
 
         if (
           (response != null ? response.status : undefined) === 200 ||

@@ -44,9 +44,9 @@ export class ChURL {
   private guessedType: GuessResult = { type: "unknown", bbsType: "unknown" };
   private archive = false;
 
-  constructor(urlStr: string) {
+  constructor(urlInput: string | URL) {
     // Basic normalization of hostname
-    let normalized = urlStr;
+    let normalized = urlInput.toString();
     if (normalized.includes(HOSTNAME.OLD_2CH)) {
       normalized = normalized.replace(HOSTNAME.OLD_2CH, HOSTNAME.NEW_5CH);
     } else if (normalized.includes(HOSTNAME.OLD_JBBS)) {
