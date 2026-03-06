@@ -1253,24 +1253,11 @@ export default ThreadContent = (function () {
         thumbnail.style.height = `${h}px`;
       }
 
-      let sib = sourceA;
-      while (true) {
-        const pre = sib;
-        sib = pre.next();
-        if (sib == null || sib.tagName === "BR") {
-          if (
-            __guard__(sib != null ? sib.next() : undefined, (x) =>
-              x.hasClass("thumbnail")
-            )
-          ) {
-            continue;
-          }
-          pre.addAfter(thumbnail);
-          if (!pre.hasClass("thumbnail")) {
-            pre.addAfter($__("br"));
-          }
-          break;
-        }
+      // サムネイルをレスの一番下（.messageの最後）に追加
+      const messageDiv = sourceA.closest(".message");
+      if (messageDiv) {
+        messageDiv.addLast($__("br"));
+        messageDiv.addLast(thumbnail);
       }
     }
 
