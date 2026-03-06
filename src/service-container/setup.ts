@@ -1,5 +1,5 @@
 import { container } from "./Container";
-import { IConfig, ICacheService, IBookmark, IMessage, ICacheItem, IReadStateService, IBoardService, IUtil, IBoardResult, IBBSMenuService } from "./interfaces";
+import { IConfig, ICacheService, IBookmark, IMessage, ICacheItem, IReadStateService, IBoardService, IUtil, IBoardResult, IBBSMenuService, INotificationService } from "./interfaces";
 // @ts-ignore
 import Cache from "../core/Cache.js";
 // @ts-ignore
@@ -59,6 +59,31 @@ export function setupContainer(app: any) {
     get: (forceReload?: boolean) => BBSMenu.get(forceReload),
   };
 
+  // Notification Service Adapter
+  const notificationServiceAdapter: INotificationService = {
+    notify: (message, options) => {
+      const data: any = {};
+      if (options?.html) {
+        data.html = message;
+      } else {
+        data.message = message;
+      }
+      if (options?.backgroundColor) {
+        data.background_color = options.backgroundColor;
+      }
+      app.message.send("notify", data);
+    },
+    success: (message) => {
+      app.message.send("notify", { message, background_color: "green" });
+    },
+    error: (message) => {
+      app.message.send("notify", { message, background_color: "red" });
+    },
+    info: (message) => {
+      app.message.send("notify", { message, background_color: "#777" });
+    }
+  };
+
   // Util Adapter
   const utilAdapter: IUtil = {
     escapeHtml: (str: string) => app.escapeHtml(str),
@@ -75,4 +100,5 @@ export function setupContainer(app: any) {
   container.readState = readStateAdapter;
   container.board = boardServiceAdapter;
   container.bbsMenu = bbsMenuServiceAdapter;
+  container.notification = notificationServiceAdapter;
 }

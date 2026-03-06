@@ -38,10 +38,10 @@ export var fetchAll = async function (forceReload = false) {
       ({ menu } = await fetch(url, forceReload));
       bbsmenu.push(...menu);
     } catch (error) {
-      container.message.send("notify", {
-        html: `板一覧の取得に失敗しました。(<a href="${url}" target="_blank">${url}</a>)`,
-        background_color: "red",
-      });
+      container.notification.notify(
+        `板一覧の取得に失敗しました。(<a href="${url}" target="_blank">${url}</a>)`,
+        { html: true, backgroundColor: "red" }
+      );
     }
   }
 

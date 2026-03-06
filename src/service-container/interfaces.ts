@@ -125,6 +125,13 @@ export interface IBBSMenuService {
   get(forceReload?: boolean): Promise<IBBSMenuResult>;
 }
 
+export interface INotificationService {
+  notify(message: string, options?: { html?: boolean; backgroundColor?: string }): void;
+  success(message: string): void;
+  error(message: string): void;
+  info(message: string): void;
+}
+
 export interface IServiceContainer {
   config: IConfig;
   cache: ICacheService;
@@ -134,4 +141,5 @@ export interface IServiceContainer {
   readState: IReadStateService;
   board: IBoardService;
   bbsMenu: IBBSMenuService;
+  notification: INotificationService;
 }
