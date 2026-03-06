@@ -64,6 +64,7 @@ export interface IUtil {
   safeHref(url: string): string;
   defer(): Promise<void>;
   isNewerReadState(a: any, b: any): boolean;
+  guessType(url: string): { bbsType: string; protocol: string };
 }
 
 export interface IThread {
@@ -90,6 +91,28 @@ export interface IRes {
   message: string;
   isNew?: boolean;
   ng?: INGResult;
+  isAA?: boolean;
+  class?: string[];
+}
+
+export interface IThreadModel {
+  url: string;
+  title: string;
+  resData: Map<number, IRes>;
+  idIndex: Map<string, Set<number>>;
+  slipIndex: Map<string, Set<number>>;
+  tripIndex: Map<string, Set<number>>;
+  repIndex: Map<number, Set<number>>;
+  repNgIndex: Map<number, Set<number>>;
+  ancIndex: Map<number, Set<number>>;
+  harmImgIndex: Set<number>;
+  oneId: string | null;
+  over1000ResNum: number | null;
+
+  addRes(res: IRes): void;
+  getRes(num: number): IRes | undefined;
+  refreshNG(): void;
+  getRead(scrollTop: number, clientHeight: number, getOffsetTop: (num: number) => number, getOffsetHeight: (num: number) => number): number;
 }
 
 export interface IThreadDetail {
@@ -153,6 +176,7 @@ export interface INGService {
   isThreadIgnoreNgType(res: any, threadTitle: string, url: string, ngType: string): INGResult | null;
   add(ngWord: string): void;
   execExpire(): void;
+  isIgnoreResNumForAuto(resNum: number, subType: string): boolean;
 }
 
 export interface IServiceContainer {

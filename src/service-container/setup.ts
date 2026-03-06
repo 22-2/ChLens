@@ -99,6 +99,7 @@ export function setupContainer(app: any) {
     isThreadIgnoreNgType: (res, threadTitle, url, ngType) => app.NG.isThreadIgnoreNgType(res, threadTitle, url, ngType),
     add: (ngWord) => app.NG.add(ngWord),
     execExpire: () => app.NG.execExpire(),
+    isIgnoreResNumForAuto: (num, type) => app.NG.isIgnoreResNumForAuto(num, type),
   };
 
   // Util Adapter
@@ -107,6 +108,7 @@ export function setupContainer(app: any) {
     safeHref: (url: string) => app.safeHref(url),
     defer: () => app.defer(),
     isNewerReadState: (a: any, b: any) => app.util.isNewerReadState(a, b),
+    guessType: (url: string) => app.util.guessType ? app.util.guessType(url) : { bbsType: "2ch", protocol: "https:" },
   };
 
   container.config = configAdapter;
