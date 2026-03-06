@@ -6,7 +6,10 @@ export interface IConfig {
 
 export interface ICacheItem {
   get(): Promise<any>;
-  put(data: any, options?: { lastModified?: number; etag?: string }): Promise<void>;
+  put(
+    data: any,
+    options?: { lastModified?: number; etag?: string }
+  ): Promise<void>;
   data: any;
   lastUpdated: number;
   lastModified?: number;
@@ -113,7 +116,12 @@ export interface IThreadModel {
   addRes(res: IRes): void;
   getRes(num: number): IRes | undefined;
   refreshNG(): void;
-  getRead(scrollTop: number, clientHeight: number, getOffsetTop: (num: number) => number, getOffsetHeight: (num: number) => number): number;
+  getRead(
+    scrollTop: number,
+    clientHeight: number,
+    getOffsetTop: (num: number) => number,
+    getOffsetHeight: (num: number) => number
+  ): number;
 }
 
 export interface IThreadDetail {
@@ -125,7 +133,13 @@ export interface IThreadDetail {
 }
 
 export interface IThreadService {
-  getThread(url: string, options?: { forceUpdate?: boolean, onCache?: (thread: IThreadDetail) => void }): Promise<IThreadDetail>;
+  getThread(
+    url: string,
+    options?: {
+      forceUpdate?: boolean;
+      onCache?: (thread: IThreadDetail) => void;
+    }
+  ): Promise<IThreadDetail>;
 }
 
 export interface IBoardResult {
@@ -159,7 +173,10 @@ export interface IBBSMenuService {
 }
 
 export interface INotificationService {
-  notify(message: string, options?: { html?: boolean; backgroundColor?: string }): void;
+  notify(
+    message: string,
+    options?: { html?: boolean; backgroundColor?: string }
+  ): void;
   success(message: string): void;
   error(message: string): void;
   info(message: string): void;
@@ -174,7 +191,12 @@ export interface INGResult {
 export interface INGService {
   isNGBoard(title: string, url: string, resCount: number): INGResult | null;
   isNGThread(res: any, title: string, url: string): INGResult | null;
-  isThreadIgnoreNgType(res: any, threadTitle: string, url: string, ngType: string): INGResult | null;
+  isThreadIgnoreNgType(
+    res: any,
+    threadTitle: string,
+    url: string,
+    ngType: string
+  ): INGResult | null;
   add(ngWord: string): void;
   execExpire(): void;
   isIgnoreResNumForAuto(resNum: number, subType: string): boolean;

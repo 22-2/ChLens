@@ -1,9 +1,7 @@
 import { container } from "../service-container/index";
 import { ChURL, BoardParser } from "../../packages/ch-lib/src/index";
 import { Request } from "./HTTP";
-import {
-  chServerMoveDetect,
-} from "./jsutil.js";
+import { chServerMoveDetect } from "./jsutil.js";
 
 /**
 @class Board
@@ -245,7 +243,9 @@ class="open_in_rcrx">${container.util.escapeHtml(newBoardUrl)}
   @return {Object | null} xhrInfo
   */
   static _getXhrInfo(boardUrl) {
-    const tmp = new RegExp(`^/(\\w+)(?:/(\\d+)/|/?)$`).exec(boardUrl.url.pathname);
+    const tmp = new RegExp(`^/(\\w+)(?:/(\\d+)/|/?)$`).exec(
+      boardUrl.url.pathname
+    );
     if (!tmp) {
       return null;
     }
@@ -278,14 +278,18 @@ class="open_in_rcrx">${container.util.escapeHtml(newBoardUrl)}
   static parse(url, text) {
     const scFlg = url.getTsld() === "2ch.sc";
     const threads = BoardParser.parse(url, text);
-    
-    return threads.map(thread => {
-      const ngResult = container.ng.isNGBoard(thread.title, url.url.href, thread.resCount);
+
+    return threads.map((thread) => {
+      const ngResult = container.ng.isNGBoard(
+        thread.title,
+        url.url.href,
+        thread.resCount
+      );
       const highlight =
         ngResult &&
         (ngResult.type === "HighlightTitle" ||
           ngResult.type === "RegExpHighlightTitle");
-          
+
       return {
         ...thread,
         ng: highlight ? null : ngResult,

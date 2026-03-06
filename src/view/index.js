@@ -429,9 +429,7 @@ app.boot("/view/index.html", ["BBSMenu"], async function (BBSMenu) {
 
   const { menu } = await BBSMenu.get();
   await app.URL.pushServerInfo(menu);
-  BBSMenu.onChange.add(({ menu }) =>
-    app.URL.pushServerInfo(menu)
-  );
+  BBSMenu.onChange.add(({ menu }) => app.URL.pushServerInfo(menu));
 
   if (!query) {
     return;

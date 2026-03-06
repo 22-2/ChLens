@@ -80,7 +80,10 @@ export default class Minimap {
     const maxWidth = 200; // px
     const pct = 0.08; // 8% of viewport width
     const responsiveWidth = Math.round(
-      Math.max(minWidth, Math.min(maxWidth, Math.round(window.innerWidth * pct)))
+      Math.max(
+        minWidth,
+        Math.min(maxWidth, Math.round(window.innerWidth * pct))
+      )
     );
 
     // Apply width as an inline style so it overrides static CSS if present
@@ -134,7 +137,12 @@ export default class Minimap {
     this.ctx.fillRect(0, viewportTopPx, width, viewportHeightPx);
 
     this.ctx.strokeStyle = "rgba(0, 120, 215, 0.8)";
-    this.ctx.strokeRect(0.5, viewportTopPx + 0.5, width - 1, Math.max(viewportHeightPx - 1, 1));
+    this.ctx.strokeRect(
+      0.5,
+      viewportTopPx + 0.5,
+      width - 1,
+      Math.max(viewportHeightPx - 1, 1)
+    );
 
     // Draw outer boundary for minimap area (1px inside canvas for crisp rendering)
     this.ctx.strokeStyle = "rgba(0,0,0,0.12)";
@@ -283,12 +291,8 @@ export default class Minimap {
    */
   _scrollByPointer(relativeY, metrics, useDragOffset) {
     const data = metrics || this._getMetrics();
-    const {
-      scrollHeight,
-      clientHeight,
-      viewportHeightPx,
-      maxViewportTop,
-    } = data;
+    const { scrollHeight, clientHeight, viewportHeightPx, maxViewportTop } =
+      data;
 
     let viewportTop = useDragOffset
       ? relativeY - this._dragOffset

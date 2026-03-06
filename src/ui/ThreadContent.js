@@ -98,12 +98,24 @@ export default ThreadContent = (function () {
       });
     }
 
-    get idIndex() { return this.model.idIndex; }
-    get slipIndex() { return this.model.slipIndex; }
-    get tripIndex() { return this.model.tripIndex; }
-    get repIndex() { return this.model.repIndex; }
-    get repNgIndex() { return this.model.repNgIndex; }
-    get ancIndex() { return this.model.ancIndex; }
+    get idIndex() {
+      return this.model.idIndex;
+    }
+    get slipIndex() {
+      return this.model.slipIndex;
+    }
+    get tripIndex() {
+      return this.model.tripIndex;
+    }
+    get repIndex() {
+      return this.model.repIndex;
+    }
+    get repNgIndex() {
+      return this.model.repNgIndex;
+    }
+    get ancIndex() {
+      return this.model.ancIndex;
+    }
 
     /**
     @method init
@@ -789,12 +801,12 @@ export default ThreadContent = (function () {
         if (res.id) $article.dataset.id = res.id;
         if (res.slip) $article.dataset.slip = res.slip;
         if (res.trip) $article.dataset.trip = res.trip;
-        
+
         if (res.ng) {
-           let type = res.ng.type;
-           if (res.ng.name) type += ":" + res.ng.name;
-           $article.setAttr("ng-type", type);
-           if (app.config.isOn("display_ng")) $article.addClass("disp_ng");
+          let type = res.ng.type;
+          if (res.ng.name) type += ":" + res.ng.name;
+          $article.setAttr("ng-type", type);
+          if (app.config.isOn("display_ng")) $article.addClass("disp_ng");
         }
 
         $fragment.addLast($article);
@@ -887,7 +899,12 @@ export default ThreadContent = (function () {
         this.model.slipIndex,
         "SLIP:"
       );
-      this.updateId({ startRes, dom: $fragment }, "trip", this.model.tripIndex, "");
+      this.updateId(
+        { startRes, dom: $fragment },
+        "trip",
+        this.model.tripIndex,
+        ""
+      );
     }
 
     /**
@@ -895,7 +912,12 @@ export default ThreadContent = (function () {
     */
     updateIds(endRes) {
       //id, slip, trip更新
-      this.updateId({ endRes, dom: this.container }, "id", this.model.idIndex, "");
+      this.updateId(
+        { endRes, dom: this.container },
+        "id",
+        this.model.idIndex,
+        ""
+      );
       this.updateId(
         { endRes, dom: this.container },
         "slip",
@@ -941,7 +963,10 @@ export default ThreadContent = (function () {
           continue;
         }
         let resCount = index.size;
-        if (app.config.isOn("reject_ng_rep") && this.model.repNgIndex.has(resKey)) {
+        if (
+          app.config.isOn("reject_ng_rep") &&
+          this.model.repNgIndex.has(resKey)
+        ) {
           const ngSet = this.model.repNgIndex.get(resKey);
           if (ngSet) {
             resCount -= ngSet.size;
@@ -1034,7 +1059,7 @@ export default ThreadContent = (function () {
     */
     refreshNG() {
       this.model.refreshNG();
-      
+
       // NGの解除と再設定
       for (let resEle of this.container.$$("article")) {
         const resNum = +resEle.C("num")[0].textContent;
@@ -1074,20 +1099,20 @@ export default ThreadContent = (function () {
         let isBlur = false;
         const repSet = this.model.repIndex.get(resNum);
         if (repSet) {
-            for (let rep of repSet) {
-              const repEle = this.container.child()[rep - 1];
-              if (!repEle) {
-                continue;
-              }
-              if (!repEle.hasClass("has_harm_word")) {
-                continue;
-              }
-              if (repEle.hasClass("ng")) {
-                continue;
-              }
-              isBlur = true;
-              break;
+          for (let rep of repSet) {
+            const repEle = this.container.child()[rep - 1];
+            if (!repEle) {
+              continue;
             }
+            if (!repEle.hasClass("has_harm_word")) {
+              continue;
+            }
+            if (repEle.hasClass("ng")) {
+              continue;
+            }
+            isBlur = true;
+            break;
+          }
         }
 
         if (isBlur && !ele.hasClass("has_blur_word")) {

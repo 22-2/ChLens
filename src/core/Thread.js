@@ -325,7 +325,9 @@ export default class Thread {
             this.message += `\
 スレッドの読み込みに失敗しました。
 サーバーが移転している可能性が有ります
-(<a href="${container.util.escapeHtml(container.util.safeHref(newUrl.url.href))}"
+(<a href="${container.util.escapeHtml(
+              container.util.safeHref(newUrl.url.href)
+            )}"
   class="open_in_rcrx">${container.util.escapeHtml(newUrl.url.href)}</a>)\
 `;
           } catch (error4) {

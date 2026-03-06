@@ -4,16 +4,16 @@ import TableSearch from "./TableSearch.js";
 
 // 背景色プリセット
 const BG_COLOR_PRESETS = {
-  yellow: "#ffeb3b",      // 黄色 (警告・注目)
-  blue: "#e3f2fd",        // 青 (情報)
-  green: "#c8e6c9",       // 緑 (成功・OK)
-  red: "#ffcdd2",         // 赤 (重要・緊急)
-  purple: "#e1bee7",      // 紫 (特別)
-  orange: "#ffe0b2",      // オレンジ (注意)
-  pink: "#f8bbd0",        // ピンク (お気に入り)
-  cyan: "#b2ebf2",        // シアン (クール)
-  lime: "#f0f4c3",        // ライム (軽い注目)
-  amber: "#ffecb3",       // アンバー (中程度の注意)
+  yellow: "#ffeb3b", // 黄色 (警告・注目)
+  blue: "#e3f2fd", // 青 (情報)
+  green: "#c8e6c9", // 緑 (成功・OK)
+  red: "#ffcdd2", // 赤 (重要・緊急)
+  purple: "#e1bee7", // 紫 (特別)
+  orange: "#ffe0b2", // オレンジ (注意)
+  pink: "#f8bbd0", // ピンク (お気に入り)
+  cyan: "#b2ebf2", // シアン (クール)
+  lime: "#f0f4c3", // ライム (軽い注目)
+  amber: "#ffecb3", // アンバー (中程度の注意)
 };
 
 const COLUMN_DEFINITIONS = {
@@ -75,7 +75,6 @@ export default ThreadList = (function () {
           ":" +
           fn(date.getMinutes());
       })();
-
     }
 
     static _loadColumnPreferences(key) {
@@ -174,7 +173,9 @@ export default ThreadList = (function () {
         const resText =
           $tr.dataset.resCount ||
           (threadListInstance._flg.res && selector.res
-            ? __guard__($tr.$(selector.res), (x) => (x.textContent || "").trim())
+            ? __guard__($tr.$(selector.res), (x) =>
+                (x.textContent || "").trim()
+              )
             : "");
         if (resText) {
           metaParts.push(`レス数: ${resText}`);
@@ -183,7 +184,9 @@ export default ThreadList = (function () {
         const heatText =
           $tr.dataset.heat ||
           (threadListInstance._flg.heat && selector.heat
-            ? __guard__($tr.$(selector.heat), (x1) => (x1.textContent || "").trim())
+            ? __guard__($tr.$(selector.heat), (x1) =>
+                (x1.textContent || "").trim()
+              )
             : "");
         if (heatText) {
           metaParts.push(`勢い: ${heatText}`);
@@ -617,7 +620,10 @@ export default ThreadList = (function () {
                     (async () => {
                       try {
                         const text = threadTitle || "";
-                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                        if (
+                          navigator.clipboard &&
+                          navigator.clipboard.writeText
+                        ) {
                           await navigator.clipboard.writeText(text);
                         } else {
                           const ta = document.createElement("textarea");
@@ -639,7 +645,10 @@ export default ThreadList = (function () {
                     (async () => {
                       try {
                         const text = threadURL || "";
-                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                        if (
+                          navigator.clipboard &&
+                          navigator.clipboard.writeText
+                        ) {
                           await navigator.clipboard.writeText(text);
                         } else {
                           const ta = document.createElement("textarea");
@@ -660,8 +669,12 @@ export default ThreadList = (function () {
                   case !target.hasClass("copy_thread_title_and_url"):
                     (async () => {
                       try {
-                        const text = (threadTitle || "") + " " + (threadURL || "");
-                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                        const text =
+                          (threadTitle || "") + " " + (threadURL || "");
+                        if (
+                          navigator.clipboard &&
+                          navigator.clipboard.writeText
+                        ) {
                           await navigator.clipboard.writeText(text);
                         } else {
                           const ta = document.createElement("textarea");
@@ -679,21 +692,23 @@ export default ThreadList = (function () {
                       }
                     })();
                     break;
-                    case !target.hasClass("button_popout"):
-                      (function () {
-                        const popupUrl = `/view/thread.html?${app.URL.buildQuery({ q: threadURL })}`;
-                        if (typeof browser !== "undefined" && browser.windows) {
-                          browser.windows.create({
-                            url: popupUrl,
-                            type: "popup",
-                            width: 800,
-                            height: 600,
-                          });
-                        } else {
-                          open(popupUrl, "_blank", "width=800,height=600");
-                        }
-                      })();
-                      break;
+                  case !target.hasClass("button_popout"):
+                    (function () {
+                      const popupUrl = `/view/thread.html?${app.URL.buildQuery({
+                        q: threadURL,
+                      })}`;
+                      if (typeof browser !== "undefined" && browser.windows) {
+                        browser.windows.create({
+                          url: popupUrl,
+                          type: "popup",
+                          width: 800,
+                          height: 600,
+                        });
+                      } else {
+                        open(popupUrl, "_blank", "width=800,height=600");
+                      }
+                    })();
+                    break;
                   case !target.hasClass("del_read_state"):
                     app.ReadState.remove(threadURL);
                     break;
@@ -789,7 +804,11 @@ export default ThreadList = (function () {
         "pointerdown",
         (event) => {
           const { target } = event;
-          if (!target || !target.hasClass || !target.hasClass("column_resize_handle")) {
+          if (
+            !target ||
+            !target.hasClass ||
+            !target.hasClass("column_resize_handle")
+          ) {
             return;
           }
           const { columnKey } = target.dataset || {};
@@ -960,7 +979,9 @@ export default ThreadList = (function () {
       if (!shouldShow) {
         const otherVisible = this._columnOrder.filter(
           (colKey) =>
-            colKey !== key && this._columns[colKey] && !this._columns[colKey].hidden
+            colKey !== key &&
+            this._columns[colKey] &&
+            !this._columns[colKey].hidden
         );
         if (otherVisible.length === 0) {
           return false;
@@ -1048,10 +1069,7 @@ export default ThreadList = (function () {
         if (!column) {
           return;
         }
-        if (
-          !this._singleColumnState ||
-          this._singleColumnState.key !== key
-        ) {
+        if (!this._singleColumnState || this._singleColumnState.key !== key) {
           this._restoreSingleColumnWidth();
           this._singleColumnState = { key, width: column.width };
         }
@@ -1124,7 +1142,11 @@ export default ThreadList = (function () {
 
         // matchLabelがある場合はタイトルに含める
         let titleWithLabel = item.title;
-        if (item.highlight && item.highlight.params && item.highlight.params.label) {
+        if (
+          item.highlight &&
+          item.highlight.params &&
+          item.highlight.params.label
+        ) {
           titleWithLabel = `【${item.highlight.params.label}】${item.title}`;
         }
         $tr.dataset.title = app.escapeHtml(titleWithLabel);

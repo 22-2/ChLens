@@ -1,5 +1,19 @@
 import { container } from "./Container";
-import { IConfig, ICacheService, IBookmark, IMessage, ICacheItem, IReadStateService, IBoardService, IUtil, IBoardResult, IBBSMenuService, INotificationService, IThreadService, INGService } from "./interfaces";
+import {
+  IConfig,
+  ICacheService,
+  IBookmark,
+  IMessage,
+  ICacheItem,
+  IReadStateService,
+  IBoardService,
+  IUtil,
+  IBoardResult,
+  IBBSMenuService,
+  INotificationService,
+  IThreadService,
+  INGService,
+} from "./interfaces";
 // @ts-ignore
 import Cache from "../core/Cache.js";
 // @ts-ignore
@@ -32,8 +46,10 @@ export function setupContainer(app: any) {
     get: (url: string) => app.bookmark.get(url),
     add: (item: any) => app.bookmark.add(item),
     remove: (url: string) => app.bookmark.remove(url),
-    updateResCount: (url: string, count: number) => app.bookmark.updateResCount(url, count),
-    updateExpired: (url: string, exp: boolean) => app.bookmark.updateExpired(url, exp),
+    updateResCount: (url: string, count: number) =>
+      app.bookmark.updateResCount(url, count),
+    updateExpired: (url: string, exp: boolean) =>
+      app.bookmark.updateExpired(url, exp),
     getByBoard: (url: string) => app.bookmark.getByBoard(url),
   };
 
@@ -41,7 +57,7 @@ export function setupContainer(app: any) {
   const cacheServiceAdapter: ICacheService = {
     getCache: (path: string): ICacheItem => {
       return new Cache(path) as ICacheItem;
-    }
+    },
   };
 
   // ReadState Adapter
@@ -53,7 +69,8 @@ export function setupContainer(app: any) {
 
   // Board Service Adapter
   const boardServiceAdapter: IBoardService = {
-    getThreads: (url: any): Promise<IBoardResult> => BoardService.getThreads(url),
+    getThreads: (url: any): Promise<IBoardResult> =>
+      BoardService.getThreads(url),
     getCachedResCount: (url: any) => BoardService.getCachedResCount(url),
   };
 
@@ -89,17 +106,19 @@ export function setupContainer(app: any) {
     },
     info: (message) => {
       app.message.send("notify", { message, background_color: "#777" });
-    }
+    },
   };
 
   // NG Service Adapter
   const ngServiceAdapter: INGService = {
     isNGBoard: (title, url, resCount) => app.NG.isNGBoard(title, url, resCount),
     isNGThread: (res, title, url) => app.NG.isNGThread(res, title, url),
-    isThreadIgnoreNgType: (res, threadTitle, url, ngType) => app.NG.isThreadIgnoreNgType(res, threadTitle, url, ngType),
+    isThreadIgnoreNgType: (res, threadTitle, url, ngType) =>
+      app.NG.isThreadIgnoreNgType(res, threadTitle, url, ngType),
     add: (ngWord) => app.NG.add(ngWord),
     execExpire: () => app.NG.execExpire(),
-    isIgnoreResNumForAuto: (num, type) => app.NG.isIgnoreResNumForAuto(num, type),
+    isIgnoreResNumForAuto: (num, type) =>
+      app.NG.isIgnoreResNumForAuto(num, type),
   };
 
   // Util Adapter
@@ -108,7 +127,10 @@ export function setupContainer(app: any) {
     safeHref: (url: string) => app.safeHref(url),
     defer: () => app.defer(),
     isNewerReadState: (a: any, b: any) => app.util.isNewerReadState(a, b),
-    guessType: (url: string) => app.util.guessType ? app.util.guessType(url) : { bbsType: "2ch", protocol: "https:" },
+    guessType: (url: string) =>
+      app.util.guessType
+        ? app.util.guessType(url)
+        : { bbsType: "2ch", protocol: "https:" },
   };
 
   container.config = configAdapter;

@@ -29,8 +29,10 @@ export default class MediaContainer {
     const isVideoClick = videoMode === "click";
     const imageRatioConfig = app.config.get("zoom_ratio_image");
     const videoRatioConfig = app.config.get("zoom_ratio_video");
-    const imageRatio = imageRatioConfig === "original" ? null : imageRatioConfig / 100;
-    const videoRatio = videoRatioConfig === "original" ? null : videoRatioConfig / 100;
+    const imageRatio =
+      imageRatioConfig === "original" ? null : imageRatioConfig / 100;
+    const videoRatio =
+      videoRatioConfig === "original" ? null : videoRatioConfig / 100;
 
     // クリックでトグル表示
     this.container.on(
@@ -154,7 +156,8 @@ export default class MediaContainer {
     const videoMode = app.config.get("zoom_video_mode");
     const isVideoClick = videoMode === "click";
     const videoRatioConfig = app.config.get("zoom_ratio_video");
-    const videoRatio = videoRatioConfig === "original" ? null : videoRatioConfig / 100;
+    const videoRatio =
+      videoRatioConfig === "original" ? null : videoRatioConfig / 100;
 
     // VIDEOの再生/一時停止とトグル拡大
     this.container.on("click", function (event) {

@@ -14,7 +14,7 @@ const BoardService = {
   async getThreads(url) {
     const urlStr = typeof url === "string" ? url : url.href;
     const { status, message, data } = await Board.get(url);
-    
+
     if (status === "error" && !data) {
       throw new Error(message || "板の取得に失敗しました");
     }
@@ -28,37 +28,42 @@ const BoardService = {
       readStateMap.set(rs.url, rs);
     }
 
-    const processedThreads = threads.map((/** @type {any} */ thread, /** @type {number} */ index) => {
-      let readState = readStateMap.get(thread.url);
-      const bookmark = container.bookmark.get(thread.url);
-      
-      if (bookmark && bookmark.readState) {
-        if (!readState || container.util.isNewerReadState(readState, bookmark.readState)) {
-          readState = bookmark.readState;
-        }
-      }
+    const processedThreads = threads.map(
+      (/** @type {any} */ thread, /** @type {number} */ index) => {
+        let readState = readStateMap.get(thread.url);
+        const bookmark = container.bookmark.get(thread.url);
 
-      return {
-        ...thread,
-        readState,
-        threadNumber: index
-      };
-    });
+        if (bookmark && bookmark.readState) {
+          if (
+            !readState ||
+            container.util.isNewerReadState(readState, bookmark.readState)
+          ) {
+            readState = bookmark.readState;
+          }
+        }
+
+        return {
+          ...thread,
+          readState,
+          threadNumber: index,
+        };
+      }
+    );
 
     return {
       threads: processedThreads,
-      message: status === "error" ? message : null
+      message: status === "error" ? message : null,
     };
   },
 
   /**
    * Gets the cached response count for a thread URL.
-   * @param {string} url 
+   * @param {string} url
    * @returns {Promise<number | null>}
    */
   async getCachedResCount(url) {
     return Board.getCachedResCount(url);
-  }
+  },
 };
 
 export default BoardService;

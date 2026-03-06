@@ -42,10 +42,12 @@ export var get = function () {
 */
 export var set = function (string) {
   _replaceTable = ReplaceStrParser.parse(string);
-  _config.set(_replaceTable.map(r => {
-    const { beforeReg, ...rest } = r;
-    return rest;
-  }));
+  _config.set(
+    _replaceTable.map((r) => {
+      const { beforeReg, ...rest } = r;
+      return rest;
+    })
+  );
   _config.setString(string);
 };
 

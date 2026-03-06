@@ -77,10 +77,13 @@ const _setupReg = function (obj) {
     try {
       reg = new RegExp(word, "i");
     } catch (error) {
-      container.notification.notify(`\
+      container.notification.notify(
+        `\
 NG機能の正規表現(${type}: ${word})を読み込むのに失敗しました
 この行は無効化されます\
-`, { backgroundColor: "red" });
+`,
+        { backgroundColor: "red" }
+      );
     }
     return reg;
   };
@@ -610,9 +613,7 @@ export var isNGThread = function (
       continue;
     }
     // ハイライト用はスキップ
-    if (
-      [TYPE.HIGHLIGHT_TITLE, TYPE.REG_EXP_HIGHLIGHT_TITLE].includes(n.type)
-    ) {
+    if ([TYPE.HIGHLIGHT_TITLE, TYPE.REG_EXP_HIGHLIGHT_TITLE].includes(n.type)) {
       continue;
     }
     // スコープのチェック

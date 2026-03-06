@@ -1,4 +1,17 @@
-import { IServiceContainer, IConfig, ICacheService, IBookmark, IMessage, IUtil, IReadStateService, IBoardService, IBBSMenuService, INotificationService, IThreadService, INGService } from "./interfaces";
+import {
+  IServiceContainer,
+  IConfig,
+  ICacheService,
+  IBookmark,
+  IMessage,
+  IUtil,
+  IReadStateService,
+  IBoardService,
+  IBBSMenuService,
+  INotificationService,
+  IThreadService,
+  INGService,
+} from "./interfaces";
 
 const globalObj = window as any;
 
@@ -15,72 +28,95 @@ if (!globalObj.__ServiceContainer) {
     _notification: undefined,
     _thread: undefined,
     _ng: undefined,
-    
+
     get config(): IConfig {
       if (!this._config) throw new Error("Config service not registered");
       return this._config;
     },
-    set config(value: IConfig) { this._config = value; },
+    set config(value: IConfig) {
+      this._config = value;
+    },
 
     get cache(): ICacheService {
       if (!this._cache) throw new Error("Cache service not registered");
       return this._cache;
     },
-    set cache(value: ICacheService) { this._cache = value; },
+    set cache(value: ICacheService) {
+      this._cache = value;
+    },
 
     get bookmark(): IBookmark {
       if (!this._bookmark) throw new Error("Bookmark service not registered");
       return this._bookmark;
     },
-    set bookmark(value: IBookmark) { this._bookmark = value; },
+    set bookmark(value: IBookmark) {
+      this._bookmark = value;
+    },
 
     get message(): IMessage {
       if (!this._message) throw new Error("Message service not registered");
       return this._message;
     },
-    set message(value: IMessage) { this._message = value; },
+    set message(value: IMessage) {
+      this._message = value;
+    },
 
     get util(): IUtil {
       if (!this._util) throw new Error("Util service not registered");
       return this._util;
     },
-    set util(value: IUtil) { this._util = value; },
+    set util(value: IUtil) {
+      this._util = value;
+    },
 
     get readState(): IReadStateService {
       if (!this._readState) throw new Error("ReadState service not registered");
       return this._readState;
     },
-    set readState(value: IReadStateService) { this._readState = value; },
+    set readState(value: IReadStateService) {
+      this._readState = value;
+    },
 
     get board(): IBoardService {
       if (!this._board) throw new Error("Board service not registered");
       return this._board;
     },
-    set board(value: IBoardService) { this._board = value; },
+    set board(value: IBoardService) {
+      this._board = value;
+    },
 
     get bbsMenu(): IBBSMenuService {
       if (!this._bbsMenu) throw new Error("BBSMenu service not registered");
       return this._bbsMenu;
     },
-    set bbsMenu(value: IBBSMenuService) { this._bbsMenu = value; },
+    set bbsMenu(value: IBBSMenuService) {
+      this._bbsMenu = value;
+    },
 
     get notification(): INotificationService {
-      if (!this._notification) throw new Error("Notification service not registered");
+      if (!this._notification)
+        throw new Error("Notification service not registered");
       return this._notification;
     },
-    set notification(value: INotificationService) { this._notification = value; },
+    set notification(value: INotificationService) {
+      this._notification = value;
+    },
 
     get thread(): IThreadService {
       if (!this._thread) throw new Error("Thread service not registered");
       return this._thread;
     },
-    set thread(value: IThreadService) { this._thread = value; },
+    set thread(value: IThreadService) {
+      this._thread = value;
+    },
 
     get ng(): INGService {
       if (!this._ng) throw new Error("NG service not registered");
       return this._ng;
     },
-    set ng(value: INGService) { this._ng = value; }
+    set ng(value: INGService) {
+      this._ng = value;
+    },
   };
 }
 

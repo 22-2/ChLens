@@ -170,7 +170,7 @@ app.boot("/view/board.html", ["Board"], function (Board) {
 
   const load = async function (ex) {
     $view.addClass("loading");
-    
+
     try {
       // 既読状態の更新リクエスト（バックグラウンドでの同期を待つためのハック）
       app.message.send("request_update_read_state", { board_url: urlStr });
@@ -178,7 +178,7 @@ app.boot("/view/board.html", ["Board"], function (Board) {
 
       // Service層を使ってスレ一覧（既読・ブックマーク統合済み）を取得
       const { threads, message } = await container.board.getThreads(url);
-      
+
       const $messageBar = $view.C("message_bar")[0];
       if (message) {
         $messageBar.addClass("error");

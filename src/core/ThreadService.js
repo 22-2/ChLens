@@ -10,8 +10,8 @@ import Thread from "./Thread.js";
 class ThreadServiceImpl {
   /**
    * Fetches a thread and its responses.
-   * @param {string} url 
-   * @param {{ forceUpdate?: boolean, onCache?: (thread: IThreadDetail) => void }} [options] 
+   * @param {string} url
+   * @param {{ forceUpdate?: boolean, onCache?: (thread: IThreadDetail) => void }} [options]
    * @returns {Promise<IThreadDetail>}
    */
   async getThread(url, options = {}) {
@@ -36,25 +36,26 @@ class ThreadServiceImpl {
   /**
    * Formats a Thread instance into a structured IThreadDetail.
    * @private
-   * @param {any} thread 
+   * @param {any} thread
    * @returns {IThreadDetail}
    */
   _formatResult(thread) {
     return {
       url: thread.url.url.href,
       title: thread.title,
-      res: (thread.res || []).map((/** @type {any} */ r, /** @type {number} */ i) => 
-        this._parseRes(r, i + 1, thread.title, thread.url.url.href)
+      res: (thread.res || []).map(
+        (/** @type {any} */ r, /** @type {number} */ i) =>
+          this._parseRes(r, i + 1, thread.title, thread.url.url.href)
       ),
-      expired: !!thread.expired
+      expired: !!thread.expired,
     };
   }
 
   /**
    * Parses raw response data into structured IRes.
    * @private
-   * @param {any} rawRes 
-   * @param {number} num 
+   * @param {any} rawRes
+   * @param {number} num
    * @param {string} title
    * @param {string} url
    * @returns {IRes}
@@ -67,7 +68,7 @@ class ThreadServiceImpl {
       name: rawRes.name,
       mail: rawRes.mail,
       message: rawRes.message,
-      date: ""
+      date: "",
     };
 
     // Extract Slip and Trip from name (similar logic to ThreadContent.js)
@@ -87,13 +88,19 @@ class ThreadServiceImpl {
     const other = rawRes.other;
     if (other) {
       // Date extraction
-      const dateMatch = /\d{4}\/\d{1,2}\/\d{1,2}\(.\)\s\d{1,2}:\d\d(?::\d\d(?:\.\d+)?)?/.exec(other);
+      const dateMatch =
+        /\d{4}\/\d{1,2}\/\d{1,2}\(.\)\s\d{1,2}:\d\d(?::\d\d(?:\.\d+)?)?/.exec(
+          other
+        );
       if (dateMatch) {
         res.date = dateMatch[0];
       }
 
       // ID extraction
-      const idMatch = /(?:^| |(\d))(ID:(?!\?\?\?)[^ <>"']+|発信元:\d+.\d+.\d+.\d+)/.exec(other);
+      const idMatch =
+        /(?:^| |(\d))(ID:(?!\?\?\?)[^ <>"']+|発信元:\d+.\d+.\d+.\d+)/.exec(
+          other
+        );
       if (idMatch) {
         let fixedId = idMatch[2];
         if (fixedId.endsWith("\u25cf")) {

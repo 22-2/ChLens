@@ -24,9 +24,7 @@ export default TableSorter = (function () {
         this.clearSortClass();
 
         th.addClass(`table_sort_${order}`);
-        this.table
-          .$(`col.${th.dataset.key}`)
-          .addClass(`table_sort_${order}`);
+        this.table.$(`col.${th.dataset.key}`).addClass(`table_sort_${order}`);
 
         this.update();
       });

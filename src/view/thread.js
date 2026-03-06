@@ -74,7 +74,8 @@ app.boot("/view/thread.html", async function () {
   $view.on(
     "became_expired",
     function () {
-      if (parent !== window) parent.postMessage({ type: "became_expired" }, location.origin);
+      if (parent !== window)
+        parent.postMessage({ type: "became_expired" }, location.origin);
       return $view.addClass("expired");
     },
     { once: true }
@@ -82,7 +83,8 @@ app.boot("/view/thread.html", async function () {
   $view.on(
     "became_over1000",
     function () {
-      if (parent !== window) parent.postMessage({ type: "became_over1000" }, location.origin);
+      if (parent !== window)
+        parent.postMessage({ type: "became_over1000" }, location.origin);
       return $view.addClass("over1000");
     },
     { once: true }
@@ -514,7 +516,9 @@ app.boot("/view/thread.html", async function () {
     );
 
     let jumpResNum = -1;
-    const iframe = parent.$$ ? parent.$$.$(`iframe[data-url=\"${viewUrlStr}\"]`) : null;
+    const iframe = parent.$$
+      ? parent.$$.$(`iframe[data-url=\"${viewUrlStr}\"]`)
+      : null;
     if (iframe) {
       jumpResNum = +iframe.dataset.writtenResNum;
       if (jumpResNum < 1) {
@@ -906,7 +910,6 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
       }
     } else if ($item.hasClass("res_permalink")) {
       open(app.safeHref(viewUrlStr + $res.C("num")[0].textContent));
-
     } else if ($item.hasClass("popout_thread")) {
       const url = `/view/thread.html?${app.URL.buildQuery({ q: viewUrlStr })}`;
       if (typeof browser !== "undefined" && browser.windows) {
@@ -914,7 +917,7 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
           url,
           type: "popup",
           width: 800,
-          height: 600
+          height: 600,
         });
       } else {
         open(url, "_blank", "width=800,height=600");
@@ -1328,7 +1331,8 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
             const replyRes = tmp[replyResNum - 1];
             if (
               replyRes.hasClass("ng") &&
-              (!replyRes.hasClass("disp_ng") || app.config.isOn("reject_ng_rep"))
+              (!replyRes.hasClass("disp_ng") ||
+                app.config.isOn("reject_ng_rep"))
             ) {
               continue;
             }
@@ -2019,7 +2023,7 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
           url,
           type: "popup",
           width: 800,
-          height: 600
+          height: 600,
         });
       } else {
         open(url, "_blank", "width=800,height=600");
@@ -2207,8 +2211,7 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
       // For simple directional swipes, vector analysis is more robust than shape recognition.
       // We skip the recognizer check for Up/Down to improve responsiveness.
       detectedGesture = summary.direction;
-      label.textContent =
-        summary.direction === "Up" ? "▲ Top" : "▼ Bottom";
+      label.textContent = summary.direction === "Up" ? "▲ Top" : "▼ Bottom";
     });
 
     document.addEventListener("mouseup", (e) => {
@@ -2234,16 +2237,16 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
     document.addEventListener(
       "contextmenu",
       (e) => {
-          if (isDrawing || gestureJustCompleted) {
-            // prevent the browser/context menu after a gesture
-            e.preventDefault();
-            e.stopPropagation();
-            stopDrawing();
-            gestureJustCompleted = false;
-          } else {
-            gestureCandidate = false;
-            points = [];
-          }
+        if (isDrawing || gestureJustCompleted) {
+          // prevent the browser/context menu after a gesture
+          e.preventDefault();
+          e.stopPropagation();
+          stopDrawing();
+          gestureJustCompleted = false;
+        } else {
+          gestureCandidate = false;
+          points = [];
+        }
       },
       true
     );
@@ -2330,15 +2333,15 @@ app.viewThread._draw = async function (
   let threadSetFromCacheBeforeHTTPPromise = Promise.resolve();
   let thread;
   ok = false;
-  
+
   try {
     thread = await window.container.thread.getThread($view.dataset.url, {
       forceUpdate,
       onCache: (cachedThread) => {
         threadSetFromCacheBeforeHTTPPromise = fn(cachedThread, false);
-      }
+      },
     });
-    
+
     await threadSetFromCacheBeforeHTTPPromise;
     await fn(thread, !!thread.message);
     ok = true;
