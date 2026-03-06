@@ -1,0 +1,19 @@
+{
+  "name": "shortquery",
+  "description": "Just a bundle of shorthands",
+  "main": [
+    "bin/shortQuery.min.js"
+  ],
+  "moduleType": [
+     "globals"
+  ],
+  "authors": [
+    "S"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "test"
+  ]
+}
