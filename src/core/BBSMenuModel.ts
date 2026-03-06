@@ -122,14 +122,18 @@ export class BBSMenuModel {
       if (Number.isFinite(lastModified)) {
         cache.lastModified = lastModified;
       }
-      cache.put();
+
+      await cache.put(response.body, {
+        lastModified: Number.isFinite(lastModified) ? lastModified : undefined,
+        etag: response.headers["ETag"],
+      });
     } else if (cache.data != null) {
       menu = this._parse(cache.data);
 
       // キャッシュ更新
       if (response?.status === 304) {
         cache.lastUpdated = Date.now();
-        cache.put();
+        await cache.put(cache.data);
       }
     } else {
       throw new Error("板一覧の取得に失敗しました");
