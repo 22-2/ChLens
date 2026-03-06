@@ -100,6 +100,22 @@ export default class MessageProcessor {
         '<a href="javascript:undefined;" class="anchor_id">$&</a>'
       );
 
+    // Convert plain URLs to anchor tags
+    // Split by existing tags to avoid double-converting
+    const htmlParts = messageHtml.split(/(<[^>]+>)/);
+    messageHtml = htmlParts
+      .map((part, index) => {
+        // Only process text parts (odd indices are tags)
+        if (index % 2 === 0) {
+          return part.replace(
+            /(https?:\/\/[^\s<>"]+)/gi,
+            '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
+          );
+        }
+        return part;
+      })
+      .join("");
+
     parts.messageHtml = messageHtml;
 
     return parts;
