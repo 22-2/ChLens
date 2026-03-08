@@ -1,19 +1,21 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ThreadNavBar } from "./components/ThreadNavBar";
-
-declare const app: any;
-declare const UI: any;
+import { useApp } from "./context/AppContext";
 
 interface ThreadViewProps {
   viewUrl: string;
 }
 
 export const ThreadView: React.FC<ThreadViewProps> = ({ viewUrl }) => {
+  const { app, UI, isReady } = useApp();
   const viewRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!isReady || !viewUrl) return;
+
     const initThread = async () => {
       if (!viewRef.current || !contentRef.current) return;
 
@@ -30,18 +32,32 @@ export const ThreadView: React.FC<ThreadViewProps> = ({ viewUrl }) => {
         app.DOMData.set($view, "threadContent", threadContent);
         app.DOMData.set($view, "selectableItemList", threadContent);
 
-        // 既存のthread.jsの初期化処理を呼び出し
-        // TODO: 段階的に移行
-
         setIsLoading(false);
-      } catch (error) {
-        console.error("Thread initialization failed:", error);
+      } catch (err) {
+        console.error("Thread initialization failed:", err);
+        setError(err instanceof Error ? err.message : "初期化に失敗しました");
         setIsLoading(false);
       }
     };
 
     initThread();
-  }, [viewUrl]);
+  }, [isReady, viewUrl, app, UI]);
+
+  if (!isReady) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-muted-foreground">アプリケーションを初期化中...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-destructive">エラー: {error}</div>
+      </div>
+    );
+  }
 
   return (
     <div ref={viewRef} className="view view_thread" data-url={viewUrl}>
@@ -54,7 +70,11 @@ export const ThreadView: React.FC<ThreadViewProps> = ({ viewUrl }) => {
         <a className="next_unread open_in_rcrx hidden" />
         <button className="search_next_thread hidden">次スレ検索</button>
       </footer>
-      {isLoading && <div className="loading_overlay">Loading...</div>}
+      {isLoading && (
+        <div className="loading_overlay flex items-center justify-center">
+          <div className="text-lg">Loading...</div>
+        </div>
+      )}
     </div>
   );
 };

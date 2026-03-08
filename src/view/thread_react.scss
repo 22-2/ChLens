@@ -1,0 +1,7 @@
+@import "../_common.scss";
+
+@include common;
+@include tab-content;
+
+// 既存のthread.scssのスタイルを継承
+@import "./thread.scss";

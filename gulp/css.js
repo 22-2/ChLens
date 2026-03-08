@@ -53,10 +53,36 @@ var view = function (browser) {
   });
   return () =>
     gulp
-      .src(paths.css.view, { since: gulp.lastRun(view) })
+      .src([...paths.css.view, "!src/view/thread_react.scss"], { since: gulp.lastRun(view) })
       .pipe($.sass.sync(sassOptions).on("error", util.onScssError))
       .pipe($.postcss(defaultOptions.postcss))
       .pipe(gulp.dest(output));
+};
+
+var threadReact = function (browser) {
+  const output = paths.output[browser] + "/view";
+  const sassOptions = Object.assign({}, defaultOptions.sass, {
+    functions: transforms[browser],
+  });
+
+  return () => {
+    // SCSSファイルの処理
+    const scssStream = gulp
+      .src("src/view/thread_react.scss")
+      .pipe($.sass.sync(sassOptions).on("error", util.onScssError))
+      .pipe($.postcss(defaultOptions.postcss));
+
+    // Tailwind CSSファイルの処理
+    const tailwindStream = gulp
+      .src("src/view/thread/styles/tailwind.css")
+      .pipe($.postcss(defaultOptions.postcss_tailwind))
+      .pipe($.replace(':root', ':where(:root)'));
+
+    // 2つのストリームをマージして出力
+    return $.merge(scssStream, tailwindStream)
+      .pipe($.concat("thread_react.css"))
+      .pipe(gulp.dest(output));
+  };
 };
 
 var write = function (browser) {
@@ -78,6 +104,7 @@ var write = function (browser) {
 for (browser of browsers) {
   gulp.task(`css:ui.css:${browser}`, ui(browser));
   gulp.task(`css:view:${browser}`, view(browser));
+  gulp.task(`css:thread_react:${browser}`, threadReact(browser));
   gulp.task(`css:write:${browser}`, write(browser));
 
   gulp.task(
@@ -85,6 +112,7 @@ for (browser of browsers) {
     gulp.parallel(
       `css:ui.css:${browser}`,
       `css:view:${browser}`,
+      `css:thread_react:${browser}`,
       `css:write:${browser}`
     )
   );

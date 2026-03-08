@@ -107,6 +107,7 @@ const defaultOptions = {
     outputStyle: "compressed",
   },
   postcss: [p.autoprefixer()],
+  postcss_tailwind: [p.tailwindcss(), p.autoprefixer()],
   pug: {
     pug: c.pug,
     locals: manifestJson,

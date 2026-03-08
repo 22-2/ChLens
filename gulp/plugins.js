@@ -29,6 +29,7 @@ module.exports = {
   },
   postcss: {
     autoprefixer: require("autoprefixer"),
+    tailwindcss: require("@tailwindcss/postcss"),
   },
   other: {
     sharp: require("sharp"),
