@@ -7,19 +7,28 @@ import {
   Menu,
   Pause,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ExternalLink,
+  Copy,
+  Bookmark,
+  Monitor
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
+} from "./ui/dropdown-menu";
 
 export const ThreadNavBar: React.FC = () => {
   const [searchValue, setSearchValue] = useState("");
   const [isRegexp, setIsRegexp] = useState(false);
-  const [showFilterMenu, setShowFilterMenu] = useState(false);
-  const [showToolMenu, setShowToolMenu] = useState(false);
 
   return (
-    <nav className="nav_bar flex items-center gap-1 p-1 border-b bg-background">
+    <nav className="nav_bar flex items-center gap-1 py-1 px-1 border-b bg-background">
       <Button
         variant={isRegexp ? "default" : "ghost"}
         size="icon"
@@ -79,27 +88,26 @@ export const ThreadNavBar: React.FC = () => {
         <Edit size={16} />
       </Button>
 
-      <div className="relative">
-        <Button
-          variant="ghost"
-          size="icon"
-          title="レスを絞り込み"
-          onClick={() => setShowFilterMenu(!showFilterMenu)}
-          className="h-8 w-8"
-        >
-          <Filter size={16} />
-        </Button>
-        {showFilterMenu && (
-          <ul className="absolute top-full right-0 mt-1 bg-popover border rounded-md shadow-md py-1 min-w-[200px] z-50">
-            <li className="filter_all px-3 py-2 hover:bg-accent cursor-pointer text-sm">すべて表示</li>
-            <li className="filter_popular px-3 py-2 hover:bg-accent cursor-pointer text-sm">人気レス (3件以上の返信)</li>
-            <li className="filter_image px-3 py-2 hover:bg-accent cursor-pointer text-sm">画像</li>
-            <li className="filter_video px-3 py-2 hover:bg-accent cursor-pointer text-sm">動画</li>
-            <li className="filter_media px-3 py-2 hover:bg-accent cursor-pointer text-sm">画像・動画</li>
-            <li className="filter_link px-3 py-2 hover:bg-accent cursor-pointer text-sm">外部リンク</li>
-          </ul>
-        )}
-      </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            title="レスを絞り込み"
+            className="h-8 w-8"
+          >
+            <Filter size={16} />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-[200px]">
+          <DropdownMenuItem className="filter_all">すべて表示</DropdownMenuItem>
+          <DropdownMenuItem className="filter_popular">人気レス (3件以上の返信)</DropdownMenuItem>
+          <DropdownMenuItem className="filter_image">画像</DropdownMenuItem>
+          <DropdownMenuItem className="filter_video">動画</DropdownMenuItem>
+          <DropdownMenuItem className="filter_media">画像・動画</DropdownMenuItem>
+          <DropdownMenuItem className="filter_link">外部リンク</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       <Button
         variant="ghost"
@@ -112,31 +120,48 @@ export const ThreadNavBar: React.FC = () => {
 
       <div className="thread_info text-xs px-2" />
 
-      <div className="relative">
-        <Button
-          variant="ghost"
-          size="icon"
-          title="メニュー"
-          onClick={() => setShowToolMenu(!showToolMenu)}
-          className="h-8 w-8"
-        >
-          <Menu size={16} />
-        </Button>
-        {showToolMenu && (
-          <ul className="absolute top-full right-0 mt-1 bg-popover border rounded-md shadow-md py-1 min-w-[250px] z-50">
-            <li className="button_link px-3 py-2 hover:bg-accent cursor-pointer text-sm">
-              <a target="_blank">ブラウザで直接開く</a>
-            </li>
-            <li className="button_popout px-3 py-2 hover:bg-accent cursor-pointer text-sm">🪟 このスレッドを別窓で開く</li>
-            <li className="button_copy_title_and_url px-3 py-2 hover:bg-accent cursor-pointer text-sm">📋 スレッドのタイトルとURLをコピー</li>
-            <li className="button_copy_url px-3 py-2 hover:bg-accent cursor-pointer text-sm">📋 スレッドのURLをコピー</li>
-            <li className="button_copy_dat_url px-3 py-2 hover:bg-accent cursor-pointer text-sm">📋 スレッドのdatのURLをコピー</li>
-            <li className="button_copy_all px-3 py-2 hover:bg-accent cursor-pointer text-sm">📋 スレッド全文をテキストとしてコピー</li>
-            <li className="button_bookmark_add px-3 py-2 hover:bg-accent cursor-pointer text-sm">🔖 スレッドをブックマーク</li>
-            <li className="button_tool_search_next_thread px-3 py-2 hover:bg-accent cursor-pointer text-sm">🔍 次スレ検索</li>
-          </ul>
-        )}
-      </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            title="メニュー"
+            className="h-8 w-8"
+          >
+            <Menu size={16} />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-[250px]">
+          <DropdownMenuItem className="button_link">
+            <a target="_blank" className="flex items-center gap-2 w-full">
+              <ExternalLink size={14} /> ブラウザで直接開く
+            </a>
+          </DropdownMenuItem>
+          <DropdownMenuItem className="button_popout flex items-center gap-2">
+            <Monitor size={14} /> このスレッドを別窓で開く
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem className="button_copy_title_and_url flex items-center gap-2">
+            <Copy size={14} /> スレッドのタイトルとURLをコピー
+          </DropdownMenuItem>
+          <DropdownMenuItem className="button_copy_url flex items-center gap-2">
+            <Copy size={14} /> スレッドのURLをコピー
+          </DropdownMenuItem>
+          <DropdownMenuItem className="button_copy_dat_url flex items-center gap-2">
+            <Copy size={14} /> スレッドのdatのURLをコピー
+          </DropdownMenuItem>
+          <DropdownMenuItem className="button_copy_all flex items-center gap-2">
+            <Copy size={14} /> スレッド全文をテキストとしてコピー
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem className="button_bookmark_add flex items-center gap-2">
+            <Bookmark size={14} /> スレッドをブックマーク
+          </DropdownMenuItem>
+          <DropdownMenuItem className="button_tool_search_next_thread flex items-center gap-2">
+            <Search size={14} /> 次スレ検索
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </nav>
   );
 };
