@@ -107,6 +107,7 @@ export default class Config {
   ]);
 
   private readonly _cache = new Map<string, string>();
+  private readonly _pendingStorageChanges = new Map<string, string | null>();
   readonly ready: Function;
   private readonly _onChanged: Function;
 
@@ -140,16 +141,16 @@ export default class Config {
         if (!key.startsWith("config_")) continue;
         const { newValue } = <any>val;
 
-        if (typeof newValue === "string") {
-          this._cache.set(key, newValue);
+        const pendingValue = this._pendingStorageChanges.get(key);
+        const normalizedValue =
+          typeof newValue === "string" ? newValue : null;
 
-          message.send("config_updated", {
-            key: key.slice(7),
-            val: newValue,
-          });
-        } else {
-          this._cache.delete(key);
+        if (pendingValue === normalizedValue) {
+          this._pendingStorageChanges.delete(key);
+          continue;
         }
+
+        this._applyChange(key, normalizedValue);
       }
     };
 
@@ -179,6 +180,26 @@ export default class Config {
     return this.get(key) === "on";
   }
 
+  private _applyChange(storageKey: string, value: string | null) {
+    const configKey = storageKey.slice(7);
+    const oldValue = this.get(configKey);
+
+    if (value == null) {
+      this._cache.delete(storageKey);
+    } else {
+      this._cache.set(storageKey, value);
+    }
+
+    const newValue = this.get(configKey);
+
+    if (oldValue !== newValue) {
+      message.send("config_updated", {
+        key: configKey,
+        val: newValue,
+      });
+    }
+  }
+
   async set(key: string, val: string) {
     if (
       typeof key !== "string" ||
@@ -188,19 +209,28 @@ export default class Config {
       throw new Error("app.Config::setに不適切な値が渡されました");
     }
 
-    await LocalStorage.set(`config_${key}`, val);
+    const storageKey = `config_${key}`;
+    const nextValue = val.toString();
+
+    await LocalStorage.set(storageKey, nextValue);
+    this._pendingStorageChanges.set(storageKey, nextValue);
+    this._applyChange(storageKey, nextValue);
   }
 
   async del(key: string) {
     if (assertArg("app.Config::del", [[key, "string"]])) {
       throw new Error("app.Config::delにstring以外の値が渡されました");
     }
+    const storageKey = `config_${key}`;
 
-    await LocalStorage.del(`config_${key}`);
+    await LocalStorage.del(storageKey);
+    this._pendingStorageChanges.set(storageKey, null);
+    this._applyChange(storageKey, null);
   }
 
   destroy() {
     this._cache.clear();
+    this._pendingStorageChanges.clear();
     browser.storage.onChanged.removeListener(<any>this._onChanged);
   }
 }

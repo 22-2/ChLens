@@ -245,3 +245,84 @@ input[type="text"]:invalid {
 .useragent {
   width: 560px;
 }
+
+// ダークモード
+.view.theme_dark {
+  background-color: #1e1e1e;
+  color: #ccc;
+
+  .tabbar {
+    > li {
+      background: #444;
+      color: #ccc;
+      &.selected {
+        background: #282828;
+        color: #fff;
+      }
+    }
+  }
+
+  section:not(:first-child) {
+    border-color: hsl(0, 0%, 28%);
+  }
+
+  a {
+    color: #88bbff;
+    &:visited {
+      color: #bb88ff;
+    }
+  }
+
+  input[type="text"],
+  input[type="number"],
+  textarea {
+    background-color: #2a2a2a;
+    color: #ccc;
+    border-color: #555;
+    box-shadow: none;
+    &:focus {
+      border-color: #57e;
+    }
+  }
+
+  select {
+    background-color: #2a2a2a;
+    color: #ccc;
+    border-color: #555;
+  }
+
+  input[type="text"]:invalid {
+    background-color: #5a2222;
+  }
+
+  input[type="range"] {
+    background-color: #555;
+    &::-webkit-slider-thumb {
+      border-color: #888;
+      background-color: #bbb;
+    }
+  }
+
+  section button {
+    background: linear-gradient(#555, #444);
+    border-color: #777;
+    color: #ddd;
+    &:not([disabled]) {
+      &:hover {
+        border-color: #aaa;
+      }
+      &:active {
+        background: linear-gradient(#444, #333);
+        box-shadow: 0 1px 1px #111 inset;
+      }
+    }
+    &[disabled] {
+      background: #333;
+      color: #666;
+    }
+  }
+
+  .version {
+    border-color: #555;
+  }
+}

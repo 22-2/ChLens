@@ -2,6 +2,24 @@ let ThreadList;
 import ContextMenu from "./ContextMenu.js";
 import TableSearch from "./TableSearch.js";
 
+// 背景色に対してコントラストの高いテキスト色（#222 or #eee）を返す
+function _getContrastTextColor(hex) {
+  try {
+    if (!/^#[0-9a-f]{6}$/i.test(hex)) return null;
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    const lin = (c) => {
+      c /= 255;
+      return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    };
+    const lum = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    return lum > 0.179 ? "#222" : "#eee";
+  } catch {
+    return null;
+  }
+}
+
 // 背景色プリセット
 const BG_COLOR_PRESETS = {
   yellow: "#ffeb3b", // 黄色 (警告・注目)
@@ -1167,6 +1185,8 @@ export default ThreadList = (function () {
               bgColor = BG_COLOR_PRESETS[bgColor];
             }
             $tr.style.backgroundColor = bgColor;
+            const textColor = _getContrastTextColor(bgColor);
+            if (textColor) $tr.style.color = textColor;
           }
         }
         if (item.isNet) {
