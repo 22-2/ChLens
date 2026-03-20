@@ -4,7 +4,7 @@ import { ChURL } from '../url/ChURL';
 
 describe('BoardParser', () => {
   it('should parse 5ch style subject.txt', () => {
-    const url = new ChURL('https://egg.5ch.net/software/');
+    const url = new ChURL('https://egg.5ch.io/software/');
     const text = '1000000002.dat<>Thread Title (10)\n' +
                  '1000000003.dat<>Another Thread [無断転載禁止] (100)\n';
     
@@ -13,7 +13,7 @@ describe('BoardParser', () => {
     
     expect(result[0].title).toBe('Thread Title');
     expect(result[0].resCount).toBe(10);
-    expect(result[0].url).toBe('https://egg.5ch.net/test/read.cgi/software/1000000002/');
+    expect(result[0].url).toBe('https://egg.5ch.io/test/read.cgi/software/1000000002/');
     
     expect(result[1].title).toBe('Another Thread');
     expect(result[1].resCount).toBe(100);

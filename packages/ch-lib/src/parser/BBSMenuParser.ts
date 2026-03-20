@@ -42,7 +42,7 @@ export class BBSMenuParser {
           continue;
         }
 
-        if (options.bbspinkException && boardUrl.includes("5ch.net/bbypink")) {
+        if (options.bbspinkException && boardUrl.includes("5ch.io/bbypink")) {
           continue;
         }
 

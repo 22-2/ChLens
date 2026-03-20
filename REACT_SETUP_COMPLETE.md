@@ -54,7 +54,7 @@ chrome-extension://<extension-id>/view/thread_react.html?q=<スレッドURL>
 例:
 
 ```
-chrome-extension://<extension-id>/view/thread_react.html?q=https://egg.5ch.net/test/read.cgi/software/1000000010/
+chrome-extension://<extension-id>/view/thread_react.html?q=https://egg.5ch.io/test/read.cgi/software/1000000010/
 ```
 
 ## 📁 ファイル構成

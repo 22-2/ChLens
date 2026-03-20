@@ -4,7 +4,7 @@ import { ChURL } from '../url/ChURL';
 
 describe('ThreadParser', () => {
   it('should parse 2ch style dat with metadata', () => {
-    const url = new ChURL('https://egg.5ch.net/test/read.cgi/software/1000000001/');
+    const url = new ChURL('https://egg.5ch.io/test/read.cgi/software/1000000001/');
     const dat = 'Name1</b>(Slip 1)<b><>Mail1<>2026/03/06(金) 12:00:00.00 ID:TestImage5<>Message1<>Thread Title\n' +
                 'Name2</b>◆Trip2<b><>Mail2<>2026/03/06(金) 12:05:00.00 ID:def67890<>Message2<>\n';
     

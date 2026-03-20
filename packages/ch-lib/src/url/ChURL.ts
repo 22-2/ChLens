@@ -8,12 +8,12 @@ export interface GuessResult {
 
 const HOSTNAME = {
   OLD_2CH: "2ch.net",
-  NEW_5CH: "5ch.net",
+  NEW_5CH: "5ch.io",
   OLD_JBBS: "jbbs.livedoor.jp",
   NEW_JBBS: "jbbs.shitaraba.net",
-  ULA_5CH: "ula.5ch.net",
+  ULA_5CH: "ula.5ch.io",
   EDDIBB: "bbs.eddibb.cc",
-  ITEST_5CH: "itest.5ch.net",
+  ITEST_5CH: "itest.5ch.io",
   ITEST_BBSPINK: "itest.bbspink.com",
 } as const;
 

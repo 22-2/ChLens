@@ -55,7 +55,7 @@ export default class Thread {
       let noChangeFlg = false;
       const isHtml =
         (container.config.get("format_2chnet") !== "dat" &&
-          this.tsld === "5ch.net") ||
+          this.tsld === "5ch.io") ||
         this.tsld === "bbspink.com";
 
       // キャッシュ取得
@@ -315,7 +315,7 @@ export default class Thread {
         this.message = "";
 
         //2chでrejectされてる場合は移転を疑う
-        if (this.tsld === "5ch.net" && response) {
+        if (this.tsld === "5ch.io" && response) {
           try {
             const newBoardURL = await chServerMoveDetect(this.url.toBoard());
             //移転検出時
@@ -429,7 +429,7 @@ URLが間違っているか過去ログに移動せずに削除されていま�
             charset: "EUC-JP",
           };
         }
-      case "5ch.net":
+      case "5ch.io":
         if (container.config.get("format_2chnet") === "dat") {
           return {
             path: `${url.url.origin}/${tmp[1]}/dat/${tmp[2]}.dat`,
@@ -474,7 +474,7 @@ URLが間違っているか過去ログに移動せずに削除されていま�
         } else {
           return Thread._parseJbbs(text);
         }
-      case "5ch.net":
+      case "5ch.io":
         if (container.config.get("format_2chnet") === "dat") {
           return Thread._parseCh(text);
         } else {

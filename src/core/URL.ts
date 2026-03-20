@@ -19,17 +19,17 @@ interface GuessResult {
 // 定数定義
 const HOSTNAME = {
   OLD_2CH: "2ch.net",
-  NEW_5CH: "5ch.net",
+  NEW_5CH: "5ch.io",
   OLD_JBBS: "jbbs.livedoor.jp",
   NEW_JBBS: "jbbs.shitaraba.net",
-  ULA_5CH: "ula.5ch.net",
+  ULA_5CH: "ula.5ch.io",
   EDDIBB: "bbs.eddibb.cc",
-  ITEST_5CH: "itest.5ch.net",
+  ITEST_5CH: "itest.5ch.io",
   ITEST_BBSPINK: "itest.bbspink.com",
 } as const;
 
 const TSLD = {
-  CH_5: "5ch.net",
+  CH_5: "5ch.io",
   BBSPINK: "bbspink.com",
   CH_2_SC: "2ch.sc",
 } as const;
@@ -319,7 +319,7 @@ export class URL extends window.URL {
         return `${this.origin}/bbs/rawmode.cgi/${tmp[1]}/${tmp[2]}/${tmp[3]}/`;
       }
     } else {
-      // 5ch.net, bbspink.com, etc.
+      // 5ch.io, bbspink.com, etc.
       return `${this.origin}/${tmp[1]}/dat/${tmp[2]}.dat`;
     }
   }
@@ -402,7 +402,7 @@ export class URL extends window.URL {
       return;
     }
 
-    // 5ch.net以外はスキップ
+    // 5ch.io以外はスキップ
     if (tsld !== TSLD.CH_5) return;
 
     // HTTPリクエストで変換先を取得
@@ -752,7 +752,7 @@ export async function pushServerInfo(menu: any[][]) {
   }
 
   if (!res.net || !res.bbspink) {
-    const tmpUrl = `https://menu.5ch.net/bbsmenu.html`;
+    const tmpUrl = `https://menu.5ch.io/bbsmenu.html`;
     const tmpMenu = <any[][]>(await fetchBBSMenu(tmpUrl, false)).menu;
     applyServerInfo(tmpMenu);
   }
