@@ -394,6 +394,10 @@ export var set = function (string) {
 @param {String} string
 */
 export var add = function (string) {
+  // _ng が未初期化の場合は get() で初期化する
+  // 最初のNG登録時に _ng は null のままなので、明示的に初期化が必要
+  get();
+  
   _config.setString(string + "\n" + _config.getString());
   const addNg = parse(string);
   _config.set([..._config.get()].concat([...addNg]));
