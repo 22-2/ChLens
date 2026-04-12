@@ -1071,6 +1071,13 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
                 key={res.num}
                 res={res}
                 messageProtocol={messageProtocol}
+                onContextMenu={(e, targetRes) => {
+                  setResContextMenu({
+                    x: e.clientX,
+                    y: e.clientY,
+                    res: targetRes,
+                  });
+                }}
               />
             ))}
           </div>
@@ -1085,6 +1092,13 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
           title={popup.title}
           items={popup.items}
           messageProtocol={messageProtocol}
+          onResContextMenu={(e, targetRes) => {
+            setResContextMenu({
+              x: e.clientX,
+              y: e.clientY,
+              res: targetRes,
+            });
+          }}
           onClose={closePopup}
         />
       )}
@@ -1098,6 +1112,13 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
           repIndex={indexes.repIndex}
           resMap={indexes.resMap}
           messageProtocol={messageProtocol}
+          onResContextMenu={(e, targetRes) => {
+            setResContextMenu({
+              x: e.clientX,
+              y: e.clientY,
+              res: targetRes,
+            });
+          }}
           onClose={closePopup}
         />
       )}
@@ -1203,6 +1224,7 @@ const ResItem: React.FC<ResItemProps> = React.memo(
     onContextMenu,
   }) => {
     const isNG = res.class?.includes("ng");
+    const hoveredAnchorRef = useRef<HTMLAnchorElement | null>(null);
     const decoded = useMemo(
       () => decodeResponseHtml(res, messageProtocol),
       [messageProtocol, res]
@@ -1266,18 +1288,27 @@ const ResItem: React.FC<ResItemProps> = React.memo(
             const target = e.target as HTMLElement;
             const anchor = target.closest("a.anchor");
             if (!anchor) {
+              hoveredAnchorRef.current = null;
               onAnchorLeave();
               return;
             }
+            // マウス移動中に毎フレーム更新するとポップアップが追従して落ち着かないため、
+            // 同じアンカー上では再計算せず、アンカーが切り替わった時だけ表示を更新する。
+            if (hoveredAnchorRef.current === anchor) {
+              return;
+            }
+            hoveredAnchorRef.current = anchor as HTMLAnchorElement;
             const label = anchor.textContent?.trim() ?? "";
             const targets = parseAnchorDisplayTargets(label);
             if (targets.length > 0) {
               onAnchorHover(targets, e, label);
             } else {
+              hoveredAnchorRef.current = null;
               onAnchorLeave();
             }
           }}
           onMouseLeave={() => {
+            hoveredAnchorRef.current = null;
             onAnchorLeave();
           }}
           onClick={(e) => {
@@ -1339,17 +1370,25 @@ ResItem.displayName = "ResItem";
 interface StaticResCardProps {
   res: IRes;
   messageProtocol: string;
+  onContextMenu?: (e: React.MouseEvent, res: IRes) => void;
 }
 
 const StaticResCard: React.FC<StaticResCardProps> = React.memo(
-  ({ res, messageProtocol }) => {
+  ({ res, messageProtocol, onContextMenu }) => {
     const decoded = useMemo(
       () => decodeResponseHtml(res, messageProtocol),
       [messageProtocol, res]
     );
 
     return (
-      <article className="res">
+      <article
+        className="res"
+        onContextMenu={(e) => {
+          if (!onContextMenu) return;
+          e.preventDefault();
+          onContextMenu(e, res);
+        }}
+      >
         <header className="res__header">
           <span className="res__num">{res.num}</span>
           <span
@@ -1377,8 +1416,17 @@ const ResPopup: React.FC<{
   title: string;
   items: IRes[];
   messageProtocol: string;
+  onResContextMenu: (e: React.MouseEvent, res: IRes) => void;
   onClose: () => void;
-}> = ({ x, y, title, items, messageProtocol, onClose }) => {
+}> = ({
+  x,
+  y,
+  title,
+  items,
+  messageProtocol,
+  onResContextMenu,
+  onClose,
+}) => {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -1417,6 +1465,7 @@ const ResPopup: React.FC<{
             key={res.num}
             res={res}
             messageProtocol={messageProtocol}
+            onContextMenu={onResContextMenu}
           />
         ))}
       </div>
@@ -1433,8 +1482,18 @@ const ReplyTreePopup: React.FC<{
   repIndex: Map<number, Set<number>>;
   resMap: Map<number, IRes>;
   messageProtocol: string;
+  onResContextMenu: (e: React.MouseEvent, res: IRes) => void;
   onClose: () => void;
-}> = ({ x, y, resNum, repIndex, resMap, messageProtocol, onClose }) => {
+}> = ({
+  x,
+  y,
+  resNum,
+  repIndex,
+  resMap,
+  messageProtocol,
+  onResContextMenu,
+  onClose,
+}) => {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -1472,6 +1531,7 @@ const ReplyTreePopup: React.FC<{
           repIndex={repIndex}
           resMap={resMap}
           messageProtocol={messageProtocol}
+          onResContextMenu={onResContextMenu}
           visited={new Set()}
           depth={0}
         />
@@ -1487,9 +1547,18 @@ const ReplyTree: React.FC<{
   repIndex: Map<number, Set<number>>;
   resMap: Map<number, IRes>;
   messageProtocol: string;
+  onResContextMenu: (e: React.MouseEvent, res: IRes) => void;
   visited: Set<number>;
   depth: number;
-}> = ({ resNum, repIndex, resMap, messageProtocol, visited, depth }) => {
+}> = ({
+  resNum,
+  repIndex,
+  resMap,
+  messageProtocol,
+  onResContextMenu,
+  visited,
+  depth,
+}) => {
   if (depth >= MAX_TREE_DEPTH) return null;
   const replies = repIndex.get(resNum);
   if (!replies || replies.size === 0) return null;
@@ -1516,12 +1585,17 @@ const ReplyTree: React.FC<{
         const res = resMap.get(replyNum)!;
         return (
           <React.Fragment key={replyNum}>
-            <StaticResCard res={res} messageProtocol={messageProtocol} />
+            <StaticResCard
+              res={res}
+              messageProtocol={messageProtocol}
+              onContextMenu={onResContextMenu}
+            />
             <ReplyTree
               resNum={replyNum}
               repIndex={repIndex}
               resMap={resMap}
               messageProtocol={messageProtocol}
+              onResContextMenu={onResContextMenu}
               visited={visited}
               depth={depth + 1}
             />
