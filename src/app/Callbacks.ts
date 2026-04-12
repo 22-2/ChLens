@@ -1,5 +1,5 @@
-import { log } from "./Log";
-import { deepCopy } from "./Util";
+import { log } from "src/app/Log";
+import { deepCopy } from "src/app/Util";
 
 interface CallbacksConfiguration {
   persistent?: boolean;

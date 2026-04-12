@@ -1,4 +1,4 @@
-import VirtualNotch from "./VirtualNotch";
+import VirtualNotch from "src/ui/VirtualNotch";
 
 // T型のK以外のプロパティを持つ型
 type Omit<T, K> = Pick<T, Exclude<keyof T, K>>;

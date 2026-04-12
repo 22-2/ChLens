@@ -1,4 +1,4 @@
-import Accordion from "./Accordion";
+import Accordion from "src/ui/Accordion";
 
 /*
 .select対応のAccordion。

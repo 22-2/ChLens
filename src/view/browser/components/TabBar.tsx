@@ -1,8 +1,8 @@
 import React, { useCallback, useState } from "react";
-import { useTabStore } from "../hooks/use-tab-store";
-import { getCurrentPage } from "../types";
-import type { Tab } from "../types";
-import { TabContextMenu } from "./TabContextMenu";
+import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { getCurrentPage } from "src/view/browser/types";
+import type { Tab } from "src/view/browser/types";
+import { TabContextMenu } from "src/view/browser/components/TabContextMenu";
 import { X, Plus } from "lucide-react";
 
 interface ContextMenuState {

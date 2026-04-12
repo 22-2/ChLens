@@ -1,4 +1,4 @@
-import { container } from "./Container";
+import { container } from "src/service-container/Container";
 import {
   IConfig,
   ICacheService,
@@ -13,15 +13,15 @@ import {
   INotificationService,
   IThreadService,
   INGService,
-} from "./interfaces";
+} from "src/service-container/interfaces";
 // @ts-ignore
-import Cache from "../core/Cache.js";
+import Cache from "src/core/Cache.js";
 // @ts-ignore
-import BoardService from "../core/BoardService.js";
+import BoardService from "src/core/BoardService.js";
 // @ts-ignore
-import * as BBSMenu from "../core/BBSMenu.js";
+import * as BBSMenu from "src/core/BBSMenu.js";
 // @ts-ignore
-import ThreadService from "../core/ThreadService.js";
+import ThreadService from "src/core/ThreadService.js";
 
 /**
  * Initializes the service container with the current app implementations.

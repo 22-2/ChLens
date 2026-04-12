@@ -1,10 +1,10 @@
 import React from "react";
-import { useTabStore } from "../hooks/use-tab-store";
-import { HomePage } from "../pages/HomePage";
-import { BoardListPage } from "../pages/BoardListPage";
-import { ThreadListPage } from "../pages/ThreadListPage";
-import { ThreadPage } from "../pages/ThreadPage";
-import type { Page } from "../types";
+import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { HomePage } from "src/view/browser/pages/HomePage";
+import { BoardListPage } from "src/view/browser/pages/BoardListPage";
+import { ThreadListPage } from "src/view/browser/pages/ThreadListPage";
+import { ThreadPage } from "src/view/browser/pages/ThreadPage";
+import type { Page } from "src/view/browser/types";
 
 function renderPage(page: Page): React.ReactNode {
   switch (page.type) {

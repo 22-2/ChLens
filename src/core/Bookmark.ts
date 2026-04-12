@@ -1,7 +1,7 @@
-import { Entry } from "./BookmarkEntryList";
-import BrowserBookmarkEntryList from "./BrowserBookmarkEntryList";
-import { threadToBoard } from "./URL";
-import { get as getReadState } from "./ReadState.js";
+import { Entry } from "src/core/BookmarkEntryList";
+import BrowserBookmarkEntryList from "src/core/BrowserBookmarkEntryList";
+import { threadToBoard } from "src/core/URL";
+import { get as getReadState } from "src/core/ReadState.js";
 
 export default class Bookmark {
   readonly bel: BrowserBookmarkEntryList;

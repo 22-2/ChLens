@@ -1,8 +1,8 @@
-import { Request } from "./HTTP";
+import { Request } from "src/core/HTTP";
 // @ts-ignore
-import { fetch as fetchBBSMenu } from "./BBSMenu.js";
+import { fetch as fetchBBSMenu } from "src/core/BBSMenu.js";
 // @ts-ignore
-import Cache from "./Cache.js";
+import Cache from "src/core/Cache.js";
 
 let serverNet = new Map<string, string>();
 let serverSc = new Map<string, string>();

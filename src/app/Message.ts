@@ -1,6 +1,6 @@
-import Callbacks from "./Callbacks";
-import { defer } from "./Defer";
-import { deepCopy } from "./Util";
+import Callbacks from "src/app/Callbacks";
+import { defer } from "src/app/Defer";
+import { deepCopy } from "src/app/Util";
 
 class Message {
   private static readonly CHANNEL_NAME = "readcrx";

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { useTabStore } from "../hooks/use-tab-store";
-import { container } from "../../../service-container/index";
-import type { IBBSMenuCategory } from "../../../service-container/interfaces";
+import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { container } from "src/service-container/index";
+import type { IBBSMenuCategory } from "src/service-container/interfaces";
 
 export const BoardListPage: React.FC = () => {
   const { dispatch } = useTabStore();

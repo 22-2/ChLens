@@ -13,15 +13,15 @@ import {
   Bookmark,
   Monitor
 } from "lucide-react";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
+import { Button } from "src/view/thread/components/ui/button";
+import { Input } from "src/view/thread/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator
-} from "./ui/dropdown-menu";
+} from "src/view/thread/components/ui/dropdown-menu";
 
 export const ThreadNavBar: React.FC = () => {
   const [searchValue, setSearchValue] = useState("");

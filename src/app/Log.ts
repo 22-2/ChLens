@@ -1,4 +1,4 @@
-import { deepCopy } from "./Util";
+import { deepCopy } from "src/app/Util";
 
 type logLevel = "log" | "debug" | "info" | "warn" | "error";
 const logLevels: ReadonlySet<logLevel> = new Set(<logLevel[]>[

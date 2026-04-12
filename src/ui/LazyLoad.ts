@@ -1,5 +1,5 @@
 // @ts-ignore
-import { fadeIn } from "./Animate.js";
+import { fadeIn } from "src/ui/Animate.js";
 
 type HTMLAudioVisualElement =
   | HTMLImageElement

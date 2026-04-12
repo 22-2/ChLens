@@ -1,6 +1,6 @@
 import React, { useCallback, useState, useEffect } from "react";
-import { useTabStore } from "../hooks/use-tab-store";
-import { canGoBack, canGoForward, getDisplayUrl } from "../types";
+import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { canGoBack, canGoForward, getDisplayUrl } from "src/view/browser/types";
 import {
   ArrowLeft,
   ArrowRight,

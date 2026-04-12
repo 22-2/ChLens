@@ -1,7 +1,7 @@
 import React from "react";
-import { AppProvider } from "./context/AppContext";
-import { ViewProvider } from "./context/ViewContext";
-import { ThreadView } from "./ThreadView";
+import { AppProvider } from "src/view/thread/context/AppContext";
+import { ViewProvider } from "src/view/thread/context/ViewContext";
+import { ThreadView } from "src/view/thread/ThreadView";
 import "./styles/globals.css";
 
 interface AppProps {

@@ -1,5 +1,5 @@
 import React from "react";
-import { useTabStore } from "../hooks/use-tab-store";
+import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 
 export const HomePage: React.FC = () => {
   const { dispatch } = useTabStore();

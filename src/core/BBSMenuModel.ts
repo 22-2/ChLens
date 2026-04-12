@@ -1,7 +1,7 @@
-import { container } from "../service-container/index";
-import { Request } from "./HTTP";
-import { ChURL, BBSMenuParser } from "../../packages/ch-lib/src/index";
-import Callbacks from "../app/Callbacks";
+import { container } from "src/service-container/index";
+import { Request } from "src/core/HTTP";
+import { ChURL, BBSMenuParser } from "packages/ch-lib/src/index";
+import Callbacks from "src/app/Callbacks";
 
 export interface BBSBoard {
   title: string;

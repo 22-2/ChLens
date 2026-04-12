@@ -1,5 +1,5 @@
 // @ts-ignore
-import { fadeIn, fadeOut } from "./Animate.js";
+import { fadeIn, fadeOut } from "src/ui/Animate.js";
 
 export default class SearchNextThread {
   private readonly $element: HTMLElement;

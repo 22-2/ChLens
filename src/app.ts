@@ -1,7 +1,7 @@
 ///<reference path="global.d.ts" />
-import Config from "./app/Config";
+import Config from "src/app/Config";
 
-import { setupContainer } from "./service-container/setup";
+import { setupContainer } from "src/service-container/setup";
 
 export { default as Callbacks } from "./app/Callbacks";
 export * from "./app/Defer";

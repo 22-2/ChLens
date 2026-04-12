@@ -1,7 +1,7 @@
-import Callbacks from "./Callbacks";
-import LocalStorage from "./LocalStorage";
-import { assertArg, log } from "./Log";
-import message from "./Message";
+import Callbacks from "src/app/Callbacks";
+import LocalStorage from "src/app/LocalStorage";
+import { assertArg, log } from "src/app/Log";
+import message from "src/app/Message";
 
 export default class Config {
   private static readonly _default: ReadonlyMap<string, string> = new Map([

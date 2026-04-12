@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { ThreadNavBar } from "./components/ThreadNavBar";
-import { useApp } from "./context/AppContext";
+import { ThreadNavBar } from "src/view/thread/components/ThreadNavBar";
+import { useApp } from "src/view/thread/context/AppContext";
 
 interface ThreadViewProps {
   viewUrl: string;

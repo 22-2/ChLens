@@ -6,7 +6,7 @@ import React, {
   type Dispatch,
   type ReactNode,
 } from "react";
-import { type Tab, type Page, getCurrentPage, buildHierarchy } from "../types";
+import { type Tab, type Page, getCurrentPage, buildHierarchy } from "src/view/browser/types";
 
 export interface TabStoreState {
   tabs: Tab[];

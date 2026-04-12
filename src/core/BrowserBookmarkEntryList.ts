@@ -1,5 +1,5 @@
-import { Entry, SyncableEntryList, newerEntry } from "./BookmarkEntryList";
-import { URL } from "./URL";
+import { Entry, SyncableEntryList, newerEntry } from "src/core/BookmarkEntryList";
+import { URL } from "src/core/URL";
 
 export default class BrowserBookmarkEntryList extends SyncableEntryList {
   private rootNodeId = "";

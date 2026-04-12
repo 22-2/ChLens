@@ -5,10 +5,10 @@ import React, {
   useRef,
   useMemo,
 } from "react";
-import { useTabStore } from "../hooks/use-tab-store";
-import { container } from "../../../service-container/index";
-import { SearchBar } from "../components/SearchBar";
-import { ContextMenu } from "../components/ContextMenu";
+import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { container } from "src/service-container/index";
+import { SearchBar } from "src/view/browser/components/SearchBar";
+import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import {
   Ban,
   Copy,
@@ -18,9 +18,9 @@ import {
   Search,
   Type,
 } from "lucide-react";
-import MessageProcessor from "../../../core/MessageProcessor.js";
-import type { ThreadPage as ThreadPageType } from "../types";
-import type { IRes, IThreadDetail } from "../../../service-container/interfaces";
+import MessageProcessor from "src/core/MessageProcessor.js";
+import type { ThreadPage as ThreadPageType } from "src/view/browser/types";
+import type { IRes, IThreadDetail } from "src/service-container/interfaces";
 
 // --- アンカーパーサ ---
 // MessageProcessor由来のHTML内のアンカー（>>N）から参照先レス番号を抽出する

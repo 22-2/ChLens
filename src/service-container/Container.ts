@@ -11,7 +11,7 @@ import {
   INotificationService,
   IThreadService,
   INGService,
-} from "./interfaces";
+} from "src/service-container/interfaces";
 
 const globalObj = window as any;
 
@@ -123,7 +123,7 @@ if (!globalObj.__ServiceContainer) {
 export const container: IServiceContainer = globalObj.__ServiceContainer;
 globalObj.container = container;
 
-// import { IServiceContainer, IConfig, ICacheService, IBookmark, IMessage, IUtil } from "./interfaces";
+// import { IServiceContainer, IConfig, ICacheService, IBookmark, IMessage, IUtil } from "src/service-container/interfaces";
 
 // class ServiceContainer implements IServiceContainer {
 //   private _config?: IConfig;

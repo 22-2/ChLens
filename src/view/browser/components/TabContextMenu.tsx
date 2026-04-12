@@ -1,8 +1,8 @@
 import React, { useMemo } from "react";
-import { useTabStore } from "../hooks/use-tab-store";
-import { getCurrentPage } from "../types";
-import type { Tab } from "../types";
-import { ContextMenu } from "./ContextMenu";
+import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { getCurrentPage } from "src/view/browser/types";
+import type { Tab } from "src/view/browser/types";
+import { ContextMenu } from "src/view/browser/components/ContextMenu";
 
 interface MenuPosition {
   x: number;

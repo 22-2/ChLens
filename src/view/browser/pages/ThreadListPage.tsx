@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
-import { useTabStore } from "../hooks/use-tab-store";
-import { container } from "../../../service-container/index";
-import { SearchBar } from "../components/SearchBar";
-import type { ThreadListPage as ThreadListPageType } from "../types";
-import type { IThread } from "../../../service-container/interfaces";
+import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { container } from "src/service-container/index";
+import { SearchBar } from "src/view/browser/components/SearchBar";
+import type { ThreadListPage as ThreadListPageType } from "src/view/browser/types";
+import type { IThread } from "src/service-container/interfaces";
 
 interface Props {
   page: ThreadListPageType;
