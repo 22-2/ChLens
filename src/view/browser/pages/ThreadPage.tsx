@@ -8,6 +8,7 @@ import React, {
 import { useTabStore } from "../hooks/use-tab-store";
 import { container } from "../../../service-container/index";
 import { SearchBar } from "../components/SearchBar";
+import { ContextMenu } from "../components/ContextMenu";
 import type { ThreadPage as ThreadPageType } from "../types";
 import type { IRes, IThreadDetail } from "../../../service-container/interfaces";
 
@@ -47,6 +48,42 @@ function stripHtml(html: string): string {
     .replace(/&gt;/g, ">")
     .replace(/&lt;/g, "<")
     .replace(/&amp;/g, "&");
+}
+
+function buildKyodemoUrl(threadUrl: string, rawId: string): string | null {
+  try {
+    const urlObj = new window.URL(threadUrl);
+    const pathParts = urlObj.pathname.split("/");
+    const board = pathParts[3];
+    const key = pathParts[4];
+    if (!board || !key) return null;
+
+    const date = new Date();
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const dd = String(date.getDate()).padStart(2, "0");
+    const dateStr = `${yyyy}${mm}${dd}`;
+
+    return `https://www.kyodemo.net/sdemo/b/e_e_${board}/?hi=${encodeURIComponent(rawId)}&key=${encodeURIComponent(key)}&date=${dateStr}`;
+  } catch {
+    return null;
+  }
+}
+
+async function copyText(text: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    // clipboard APIが使えない環境向けフォールバック
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.left = "-9999px";
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    textarea.remove();
+  }
 }
 
 // --- フィルタ判定 ---
@@ -121,6 +158,12 @@ interface TreePopupState {
   resNum: number;
 }
 
+interface ResContextMenuState {
+  x: number;
+  y: number;
+  res: IRes;
+}
+
 const MAX_TREE_DEPTH = 10;
 
 export const ThreadPage: React.FC<Props> = ({ page }) => {
@@ -139,6 +182,9 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
   const [showSearch, setShowSearch] = useState(false);
   const [popup, setPopup] = useState<PopupState | null>(null);
   const [treePopup, setTreePopup] = useState<TreePopupState | null>(null);
+  const [resContextMenu, setResContextMenu] =
+    useState<ResContextMenuState | null>(null);
+  const [miniAaResNums, setMiniAaResNums] = useState<Set<number>>(new Set());
 
   const fetchThread = useCallback(async () => {
     setLoading(true);
@@ -268,6 +314,58 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
     setTreePopup(null);
   }, []);
 
+  const closeResContextMenu = useCallback(() => {
+    setResContextMenu(null);
+  }, []);
+
+  const addIdToNg = useCallback(async (id: string | undefined) => {
+    if (!id) return;
+    const ngWord = id.startsWith("ID:") ? id : `ID:${id}`;
+    // 既存実装の「ID/IPをNG指定」と同じくNGサービスへ直接追加
+    container.ng.add(ngWord);
+    container.notification.info(`NGに追加しました: ${ngWord}`);
+  }, []);
+
+  const addWriteHistory = useCallback(
+    async (res: IRes) => {
+      const globalObj = window as unknown as {
+        app?: {
+          WriteHistory?: {
+            add: (item: {
+              url: string;
+              res: number;
+              title: string;
+              name: string;
+              mail: string;
+              message: string;
+              date: number;
+            }) => Promise<void> | void;
+          };
+        };
+      };
+
+      if (!globalObj.app?.WriteHistory?.add) {
+        container.notification.info("書込履歴サービスが利用できません");
+        return;
+      }
+
+      const name = stripHtml(res.name);
+      const message = stripHtml(res.message);
+      const baseTime = Date.parse(res.date ?? res.other ?? "");
+      await globalObj.app.WriteHistory.add({
+        url: page.threadUrl,
+        res: res.num,
+        title: document.title,
+        name,
+        mail: res.mail,
+        message,
+        date: Number.isNaN(baseTime) ? Date.now() : baseTime,
+      });
+      container.notification.success("書込履歴に追加しました");
+    },
+    [page.threadUrl]
+  );
+
   // 各レスのID内通し番号を事前計算
   const idPositions = useMemo(() => {
     const positions = new Map<number, number>();
@@ -281,6 +379,104 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
     }
     return positions;
   }, [responses]);
+
+  const responseContextItems = useMemo(() => {
+    if (!resContextMenu) return [];
+    const targetRes = resContextMenu.res;
+    const plainName = stripHtml(targetRes.name);
+    const plainMessage = stripHtml(targetRes.message);
+    const rawId = targetRes.id ?? "";
+    const kyodemoUrl = rawId ? buildKyodemoUrl(page.threadUrl, rawId) : null;
+    const permalink = `${page.threadUrl}${targetRes.num}`;
+    const isMiniAa = miniAaResNums.has(targetRes.num);
+
+    return [
+      {
+        id: "copy-res",
+        label: "📋 レスをコピー",
+        onSelect: async () => {
+          const copyBody = `${document.title}\n${page.threadUrl}${targetRes.num}\n${targetRes.num} ${plainName}  ${targetRes.date ?? targetRes.other ?? ""}\n${plainMessage}`;
+          await copyText(copyBody);
+        },
+      },
+      {
+        id: "copy-id",
+        label: "📋 ID/IPをコピー",
+        disabled: !rawId,
+        onSelect: async () => {
+          await copyText(rawId);
+        },
+      },
+      {
+        id: "search-id",
+        label: "🔎 IDを必死チェッカーで検索",
+        disabled: !kyodemoUrl,
+        onSelect: () => {
+          if (kyodemoUrl) {
+            window.open(kyodemoUrl, "_blank", "noopener,noreferrer");
+          }
+        },
+      },
+      {
+        id: "add-ng-id",
+        label: "🚫 ID/IPをNG指定",
+        disabled: !rawId,
+        onSelect: () => {
+          void addIdToNg(rawId);
+        },
+      },
+      { id: "sep-1", separator: true },
+      {
+        id: "reply",
+        label: "↩️ 返信",
+        onSelect: () => {
+          void copyText(`>>${targetRes.num}\n`);
+          container.notification.info("返信アンカーをコピーしました");
+        },
+      },
+      {
+        id: "quote-reply",
+        label: "↩️ 引用して返信",
+        onSelect: () => {
+          const quoted = plainMessage
+            .split(/\r?\n/)
+            .map((line) => `>${line}`)
+            .join("\n");
+          void copyText(`>>${targetRes.num}\n${quoted}\n`);
+          container.notification.info("引用テンプレートをコピーしました");
+        },
+      },
+      {
+        id: "add-write-history",
+        label: "➕ 書込履歴に追加",
+        onSelect: () => {
+          void addWriteHistory(targetRes);
+        },
+      },
+      {
+        id: "toggle-aa",
+        label: isMiniAa ? "AA表示モードを解除" : "AA表示モードに変更",
+        onSelect: () => {
+          setMiniAaResNums((prev) => {
+            const next = new Set(prev);
+            if (next.has(targetRes.num)) {
+              next.delete(targetRes.num);
+            } else {
+              next.add(targetRes.num);
+            }
+            return next;
+          });
+        },
+      },
+      {
+        id: "open-browser",
+        label: "🌐 ブラウザで開く",
+        onSelect: () => {
+          window.open(permalink, "_blank", "noopener,noreferrer");
+        },
+      },
+    ];
+  }, [addIdToNg, addWriteHistory, miniAaResNums, page.threadUrl, resContextMenu]);
 
   if (loading && responses.length === 0) {
     return <div className="page-status">読み込み中...</div>;
@@ -358,12 +554,26 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
               idPos={idPos}
               idCount={idCount}
               repCount={repCount}
+              miniAa={miniAaResNums.has(res.num)}
               onIdClick={handleIdClick}
               onRepClick={handleRepClick}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setResContextMenu({ x: e.clientX, y: e.clientY, res });
+              }}
             />
           );
         })}
       </div>
+
+      {resContextMenu && (
+        <ContextMenu
+          x={resContextMenu.x}
+          y={resContextMenu.y}
+          items={responseContextItems}
+          onClose={closeResContextMenu}
+        />
+      )}
 
       {/* IDポップアップ */}
       {popup && (
@@ -398,16 +608,21 @@ interface ResItemProps {
   idPos: number;
   idCount: number;
   repCount: number;
+  miniAa: boolean;
   onIdClick: (id: string, e: React.MouseEvent) => void;
   onRepClick: (resNum: number, e: React.MouseEvent) => void;
+  onContextMenu: (e: React.MouseEvent) => void;
 }
 
 const ResItem: React.FC<ResItemProps> = React.memo(
-  ({ res, idPos, idCount, repCount, onIdClick, onRepClick }) => {
+  ({ res, idPos, idCount, repCount, miniAa, onIdClick, onRepClick, onContextMenu }) => {
     const isNG = res.class?.includes("ng");
 
     return (
-      <article className={`res${isNG ? " res--ng" : ""}`}>
+      <article
+        className={`res${isNG ? " res--ng" : ""}${miniAa ? " res--aa" : ""}`}
+        onContextMenu={onContextMenu}
+      >
         <header className="res__header">
           <span className="res__num">{res.num}</span>
           <span

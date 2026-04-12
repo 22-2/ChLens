@@ -9,19 +9,44 @@ interface Props {
   page: ThreadListPageType;
 }
 
-type SortColumn = "num" | "title" | "resCount";
+type SortColumn = "num" | "title" | "resCount" | "heat";
 type SortDirection = "asc" | "desc";
 
-// ハイライトのbgColorに対してコントラストのあるテキスト色を返す
+const BG_COLOR_PRESETS: Record<string, string> = {
+  yellow: "#ffeb3b",
+  blue: "#e3f2fd",
+  green: "#c8e6c9",
+  red: "#ffcdd2",
+  purple: "#e1bee7",
+  orange: "#ffe0b2",
+  pink: "#f8bbd0",
+  cyan: "#b2ebf2",
+  lime: "#f0f4c3",
+  amber: "#ffecb3",
+};
+
+// 既存実装と同じ方式で、背景色に対する可読色（#222/#eee）を返す
 function getContrastTextColor(bgColor: string): string | null {
-  const m = bgColor.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
-  if (!m) return null;
-  const r = parseInt(m[1], 16);
-  const g = parseInt(m[2], 16);
-  const b = parseInt(m[3], 16);
-  // YIQ方式で明度を判定
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance < 0.5 ? "#fff" : null;
+  try {
+    if (!/^#[0-9a-f]{6}$/i.test(bgColor)) return null;
+    const r = parseInt(bgColor.slice(1, 3), 16);
+    const g = parseInt(bgColor.slice(3, 5), 16);
+    const b = parseInt(bgColor.slice(5, 7), 16);
+    const lin = (c: number) => {
+      const x = c / 255;
+      return x <= 0.04045 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+    };
+    const lum = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    return lum > 0.179 ? "#222" : "#eee";
+  } catch {
+    return null;
+  }
+}
+
+function calcHeat(now: number, created: number, resCount: number): string {
+  if (!Number.isFinite(created) || created > now) return "0.0";
+  const elapsed = Math.max((now - created) / 1000, 1) / (24 * 60 * 60);
+  return (resCount / elapsed).toFixed(1);
 }
 
 export const ThreadListPage: React.FC<Props> = ({ page }) => {
@@ -83,7 +108,12 @@ export const ThreadListPage: React.FC<Props> = ({ page }) => {
 
   // ソート・検索フィルタ適用後のスレッド一覧
   const displayThreads = useMemo(() => {
-    let list = threads.map((t, i) => ({ thread: t, originalIndex: i + 1 }));
+    const now = Date.now();
+    let list = threads.map((t, i) => ({
+      thread: t,
+      originalIndex: i + 1,
+      heat: parseFloat(calcHeat(now, t.createdAt, t.resCount)),
+    }));
 
     // テキスト検索フィルタ
     if (searchQuery) {
@@ -106,6 +136,9 @@ export const ThreadListPage: React.FC<Props> = ({ page }) => {
         case "resCount":
           cmp = a.thread.resCount - b.thread.resCount;
           break;
+        case "heat":
+          cmp = a.heat - b.heat;
+          break;
       }
       return sortDirection === "asc" ? cmp : -cmp;
     });
@@ -118,6 +151,18 @@ export const ThreadListPage: React.FC<Props> = ({ page }) => {
 
   const handleThreadClick = useCallback(
     (threadUrl: string, threadTitle: string) => {
+      dispatch({
+        type: "NAVIGATE",
+        page: { type: "thread", title: threadTitle, threadUrl },
+      });
+    },
+    [dispatch]
+  );
+
+  const openThreadInNewTab = useCallback(
+    (threadUrl: string, threadTitle: string) => {
+      // 先にタブを追加してからNAVIGATEすることで、新規タブ側に遷移させる
+      dispatch({ type: "ADD_TAB" });
       dispatch({
         type: "NAVIGATE",
         page: { type: "thread", title: threadTitle, threadUrl },
@@ -181,26 +226,39 @@ export const ThreadListPage: React.FC<Props> = ({ page }) => {
             >
               レス{sortIndicator("resCount")}
             </th>
+            <th
+              className="thread-list__th thread-list__th--heat"
+              onClick={() => handleSort("heat")}
+            >
+              勢い{sortIndicator("heat")}
+            </th>
           </tr>
         </thead>
         <tbody>
-          {displayThreads.map(({ thread, originalIndex }) => {
+          {displayThreads.map(({ thread, originalIndex, heat }) => {
             const isNG = !!thread.ng;
             const isHighlight = !!thread.highlight;
             const hlParams = thread.highlight?.params;
             const rowStyle: React.CSSProperties = {};
             if (isHighlight && hlParams?.bgColor) {
-              rowStyle.backgroundColor = hlParams.bgColor;
-              const textColor = getContrastTextColor(hlParams.bgColor);
+              const bgColor =
+                BG_COLOR_PRESETS[hlParams.bgColor] ?? hlParams.bgColor;
+              rowStyle.backgroundColor = bgColor;
+              const textColor = getContrastTextColor(bgColor);
               if (textColor) rowStyle.color = textColor;
             }
-
             return (
               <tr
                 key={thread.url}
                 className={`thread-list__row${isNG ? " thread-list__row--ng" : ""}${isHighlight ? " thread-list__row--highlight" : ""}`}
                 style={rowStyle}
                 onClick={() => handleThreadClick(thread.url, thread.title)}
+                onMouseDown={(e) => {
+                  if (e.button === 1) {
+                    e.preventDefault();
+                    openThreadInNewTab(thread.url, thread.title);
+                  }
+                }}
               >
                 <td className="thread-list__num">{originalIndex}</td>
                 <td className="thread-list__title">
@@ -210,6 +268,7 @@ export const ThreadListPage: React.FC<Props> = ({ page }) => {
                   )}
                 </td>
                 <td className="thread-list__count">{thread.resCount}</td>
+                <td className="thread-list__heat">{heat.toFixed(1)}</td>
               </tr>
             );
           })}
