@@ -7,7 +7,7 @@ import React, {
   type Dispatch,
   type ReactNode,
 } from "react";
-import { type Tab, type Page, getCurrentPage } from "../types";
+import { type Tab, type Page, getCurrentPage, buildHierarchy } from "../types";
 
 export interface TabStoreState {
   tabs: Tab[];
@@ -113,13 +113,10 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
       return { ...state, activeTabId: action.tabId };
 
     case "NAVIGATE": {
-      const tab = getActiveTab(state);
-      // 現在位置より先の履歴を切り捨てて新ページを追加
-      const newHistory = [
-        ...tab.history.slice(0, tab.currentIndex + 1),
-        action.page,
-      ];
-      return updateActiveTab(state, () => ({
+      // 常にページ種別に応じた階層スタックを構築する
+      // ホーム → 板一覧 → スレッド一覧 → スレッド の固定構造を維持
+      const newHistory = buildHierarchy(action.page);
+      return updateActiveTab(state, (tab) => ({
         ...tab,
         history: newHistory,
         currentIndex: newHistory.length - 1,

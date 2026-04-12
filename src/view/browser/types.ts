@@ -116,3 +116,68 @@ export function getDisplayUrl(page: Page): string {
       return (page as ThreadPage).threadUrl;
   }
 }
+
+// スレッドURLから板URLを導出する
+// /test/read.cgi/board_name/thread_id/ → /board_name/
+function threadUrlToBoardUrl(threadUrl: string): string {
+  try {
+    const url = new window.URL(threadUrl);
+    // 5ch, bbspink, eddibb: /test/read.cgi/BOARD/THREAD_ID/
+    const chMatch = url.pathname.match(/^\/test\/read\.cgi\/([^/]+)\//);
+    if (chMatch) {
+      return `${url.origin}/${chMatch[1]}/`;
+    }
+    // したらば: /bbs/read.cgi/CATEGORY/BOARD/THREAD_ID/
+    const jbbsMatch = url.pathname.match(
+      /^\/bbs\/read\.cgi\/([^/]+\/[^/]+)\//
+    );
+    if (jbbsMatch) {
+      return `${url.origin}/bbs/read.cgi/${jbbsMatch[1]}/`;
+    }
+    // まちBBS: /bbs/read.cgi/BOARD/THREAD_ID/
+    const machiMatch = url.pathname.match(/^\/bbs\/read\.cgi\/([^/]+)\//);
+    if (machiMatch) {
+      return `${url.origin}/${machiMatch[1]}/`;
+    }
+  } catch {
+    // パース不能時はそのまま返す
+  }
+  return threadUrl;
+}
+
+// ナビゲーション先のページに対して、必ず正しい階層スタックを構築する
+// ホーム → 板一覧 → スレッド一覧 → スレッド
+export function buildHierarchy(page: Page): Page[] {
+  switch (page.type) {
+    case "home":
+      return [page];
+
+    case "boardList":
+      return [
+        { type: "home", title: "ホーム" },
+        page,
+      ];
+
+    case "threadList":
+      return [
+        { type: "home", title: "ホーム" },
+        { type: "boardList", title: "板一覧" },
+        page,
+      ];
+
+    case "thread": {
+      const boardUrl = threadUrlToBoardUrl(page.threadUrl);
+      return [
+        { type: "home", title: "ホーム" },
+        { type: "boardList", title: "板一覧" },
+        {
+          type: "threadList",
+          title: boardUrl,
+          boardUrl,
+          boardTitle: boardUrl,
+        },
+        page,
+      ];
+    }
+  }
+}
