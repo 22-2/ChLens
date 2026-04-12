@@ -1,4 +1,5 @@
 const fs = require("fs-extra");
+const path = require("path");
 const { compiler: c, rolldown: _, postcss: p } = require("./plugins");
 const util = require("./util");
 
@@ -126,6 +127,11 @@ defaultOptions.rolldown = {
     plugins: [],
     platform: "browser",
     resolve: {
+      // ソース側の絶対パスimport（src/...）を維持したまま、bundler解決先を明示する。
+      alias: {
+        src: path.resolve(__dirname, "..", "src"),
+        packages: path.resolve(__dirname, "..", "packages"),
+      },
       extensions: [".tsx", ".ts", ".jsx", ".js"],
     },
     onwarn: util.rollupOnWarn,
