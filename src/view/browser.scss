@@ -157,7 +157,9 @@ html, body {
 }
 
 .context-menu__item {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
   padding: 6px 16px;
   border: none;
@@ -170,6 +172,22 @@ html, body {
   font-size: inherit;
 }
 
+.context-menu__icon {
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #5f6368;
+  flex-shrink: 0;
+}
+
+.context-menu__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .context-menu__item:hover:not(:disabled) {
   background: #f1f3f4;
 }
@@ -180,6 +198,10 @@ html, body {
 }
 
 .context-menu__item--danger {
+  color: #d93025;
+}
+
+.context-menu__item--danger .context-menu__icon {
   color: #d93025;
 }
 
@@ -945,4 +967,30 @@ html, body {
 /* 返信ツリーのインデント表現 */
 .reply-tree {
   margin-top: 2px;
+}
+
+.anchor-preview {
+  position: fixed;
+  z-index: 10020;
+  width: min(560px, 92vw);
+  max-height: 52vh;
+  background: #fff;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
+  overflow: hidden;
+}
+
+.anchor-preview__title {
+  padding: 6px 10px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e8eaed;
+  font-size: 12px;
+  color: #5f6368;
+}
+
+.anchor-preview__body {
+  overflow-y: auto;
+  max-height: calc(52vh - 32px);
+  padding: 4px 0;
 }

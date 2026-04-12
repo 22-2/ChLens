@@ -9,6 +9,15 @@ import { useTabStore } from "../hooks/use-tab-store";
 import { container } from "../../../service-container/index";
 import { SearchBar } from "../components/SearchBar";
 import { ContextMenu } from "../components/ContextMenu";
+import {
+  Ban,
+  Copy,
+  Globe,
+  History,
+  Reply,
+  Search,
+  Type,
+} from "lucide-react";
 import type { ThreadPage as ThreadPageType } from "../types";
 import type { IRes, IThreadDetail } from "../../../service-container/interfaces";
 
@@ -102,6 +111,32 @@ function hasVideo(message: string): boolean {
 
 function hasExternalLink(message: string): boolean {
   return /<a\b[^>]*href="https?:\/\/[^"]*"[^>]*>/i.test(message);
+}
+
+function parseAnchorDisplayTargets(text: string): number[] {
+  const raw = text
+    .replace(/&gt;/g, ">")
+    .replace(/[＞]/g, ">")
+    .replace(/^>+/, "")
+    .trim();
+  if (!raw) return [];
+
+  const result = new Set<number>();
+  const parts = raw.split(/\s*[,、]\s*/);
+  for (const part of parts) {
+    const range = part
+      .replace(FW_NUM_REG, (c) => String.fromCharCode(c.charCodeAt(0) - 0xff10 + 0x30))
+      .split(/[\-\u30fc]/);
+    const start = parseInt(range[0], 10);
+    const end = range.length > 1 ? parseInt(range[1], 10) : start;
+    if (Number.isNaN(start) || Number.isNaN(end) || end - start >= 25) {
+      continue;
+    }
+    for (let i = start; i <= end; i++) {
+      result.add(i);
+    }
+  }
+  return Array.from(result).sort((a, b) => a - b);
 }
 
 function extractUrlsFromMessage(message: string): string[] {
@@ -228,6 +263,13 @@ interface ViewerState {
   label: string;
 }
 
+interface AnchorPreviewState {
+  x: number;
+  y: number;
+  items: IRes[];
+  label: string;
+}
+
 const MAX_TREE_DEPTH = 10;
 
 export const ThreadPage: React.FC<Props> = ({ page }) => {
@@ -251,6 +293,9 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
   const [miniAaResNums, setMiniAaResNums] = useState<Set<number>>(new Set());
   const [viewer, setViewer] = useState<ViewerState | null>(null);
   const [viewerScale, setViewerScale] = useState(1);
+  const [anchorPreview, setAnchorPreview] = useState<AnchorPreviewState | null>(
+    null
+  );
 
   const fetchThread = useCallback(async () => {
     setLoading(true);
@@ -398,6 +443,28 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
     setViewer(null);
   }, []);
 
+  const hideAnchorPreview = useCallback(() => {
+    setAnchorPreview(null);
+  }, []);
+
+  const showAnchorPreview = useCallback(
+    (targets: number[], x: number, y: number, label: string) => {
+      if (targets.length === 0) {
+        setAnchorPreview(null);
+        return;
+      }
+      const items = targets
+        .map((num) => indexes.resMap.get(num))
+        .filter((res): res is IRes => !!res);
+      if (items.length === 0) {
+        setAnchorPreview(null);
+        return;
+      }
+      setAnchorPreview({ x, y, items, label });
+    },
+    [indexes.resMap]
+  );
+
   useEffect(() => {
     if (!viewer) return;
     const onKeyDown = (e: KeyboardEvent) => {
@@ -484,7 +551,8 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
     return [
       {
         id: "copy-res",
-        label: "📋 レスをコピー",
+        label: "レスをコピー",
+        icon: <Copy size={14} />,
         onSelect: async () => {
           const copyBody = `${document.title}\n${page.threadUrl}${targetRes.num}\n${targetRes.num} ${plainName}  ${targetRes.date ?? targetRes.other ?? ""}\n${plainMessage}`;
           await copyText(copyBody);
@@ -492,7 +560,8 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
       },
       {
         id: "copy-id",
-        label: "📋 ID/IPをコピー",
+        label: "ID/IPをコピー",
+        icon: <Copy size={14} />,
         disabled: !rawId,
         onSelect: async () => {
           await copyText(rawId);
@@ -500,7 +569,8 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
       },
       {
         id: "search-id",
-        label: "🔎 IDを必死チェッカーで検索",
+        label: "IDを必死チェッカーで検索",
+        icon: <Search size={14} />,
         disabled: !kyodemoUrl,
         onSelect: () => {
           if (kyodemoUrl) {
@@ -510,7 +580,8 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
       },
       {
         id: "add-ng-id",
-        label: "🚫 ID/IPをNG指定",
+        label: "ID/IPをNG指定",
+        icon: <Ban size={14} />,
         disabled: !rawId,
         onSelect: () => {
           void addIdToNg(rawId);
@@ -519,7 +590,8 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
       { id: "sep-1", separator: true },
       {
         id: "reply",
-        label: "↩️ 返信",
+        label: "返信",
+        icon: <Reply size={14} />,
         onSelect: () => {
           void copyText(`>>${targetRes.num}\n`);
           container.notification.info("返信アンカーをコピーしました");
@@ -527,7 +599,8 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
       },
       {
         id: "quote-reply",
-        label: "↩️ 引用して返信",
+        label: "引用して返信",
+        icon: <Reply size={14} />,
         onSelect: () => {
           const quoted = plainMessage
             .split(/\r?\n/)
@@ -539,7 +612,8 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
       },
       {
         id: "add-write-history",
-        label: "➕ 書込履歴に追加",
+        label: "書込履歴に追加",
+        icon: <History size={14} />,
         onSelect: () => {
           void addWriteHistory(targetRes);
         },
@@ -547,6 +621,7 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
       {
         id: "toggle-aa",
         label: isMiniAa ? "AA表示モードを解除" : "AA表示モードに変更",
+        icon: <Type size={14} />,
         onSelect: () => {
           setMiniAaResNums((prev) => {
             const next = new Set(prev);
@@ -561,7 +636,8 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
       },
       {
         id: "open-browser",
-        label: "🌐 ブラウザで開く",
+        label: "ブラウザで開く",
+        icon: <Globe size={14} />,
         onSelect: () => {
           window.open(permalink, "_blank", "noopener,noreferrer");
         },
@@ -649,6 +725,10 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
               onIdClick={handleIdClick}
               onRepClick={handleRepClick}
               onUrlClick={openMediaFromUrl}
+              onAnchorHover={(targets, e, label) => {
+                showAnchorPreview(targets, e.clientX, e.clientY, label);
+              }}
+              onAnchorLeave={hideAnchorPreview}
               onContextMenu={(e) => {
                 e.preventDefault();
                 setResContextMenu({ x: e.clientX, y: e.clientY, res });
@@ -665,6 +745,24 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
           items={responseContextItems}
           onClose={closeResContextMenu}
         />
+      )}
+
+      {anchorPreview && !popup && !treePopup && !resContextMenu && (
+        <div className="anchor-preview" style={{ left: anchorPreview.x + 12, top: anchorPreview.y + 12 }}>
+          <div className="anchor-preview__title">参照: {anchorPreview.label}</div>
+          <div className="anchor-preview__body">
+            {anchorPreview.items.slice(0, 8).map((res) => (
+              <article key={res.num} className="res">
+                <header className="res__header">
+                  <span className="res__num">{res.num}</span>
+                  <span className="res__name" dangerouslySetInnerHTML={{ __html: res.name }} />
+                  {res.id && <span className="res__id">{res.id}</span>}
+                </header>
+                <div className="res__body" dangerouslySetInnerHTML={{ __html: res.message }} />
+              </article>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* IDポップアップ */}
@@ -761,6 +859,12 @@ interface ResItemProps {
   onIdClick: (id: string, e: React.MouseEvent) => void;
   onRepClick: (resNum: number, e: React.MouseEvent) => void;
   onUrlClick: (url: string) => void;
+  onAnchorHover: (
+    targets: number[],
+    e: React.MouseEvent,
+    label: string
+  ) => void;
+  onAnchorLeave: () => void;
   onContextMenu: (e: React.MouseEvent) => void;
 }
 
@@ -774,6 +878,8 @@ const ResItem: React.FC<ResItemProps> = React.memo(
     onIdClick,
     onRepClick,
     onUrlClick,
+    onAnchorHover,
+    onAnchorLeave,
     onContextMenu,
   }) => {
     const isNG = res.class?.includes("ng");
@@ -828,6 +934,24 @@ const ResItem: React.FC<ResItemProps> = React.memo(
         <div
           className="res__body"
           dangerouslySetInnerHTML={{ __html: res.message }}
+          onMouseMove={(e) => {
+            const target = e.target as HTMLElement;
+            const anchor = target.closest("a.anchor");
+            if (!anchor) {
+              onAnchorLeave();
+              return;
+            }
+            const label = anchor.textContent?.trim() ?? "";
+            const targets = parseAnchorDisplayTargets(label);
+            if (targets.length > 0) {
+              onAnchorHover(targets, e, label);
+            } else {
+              onAnchorLeave();
+            }
+          }}
+          onMouseLeave={() => {
+            onAnchorLeave();
+          }}
           onClick={(e) => {
             const target = e.target as HTMLElement;
             const anchor = target.closest("a");

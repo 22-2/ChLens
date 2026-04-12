@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useRef } from "react";
+import type { ReactNode } from "react";
 
 export interface ContextMenuItem {
   id: string;
   label?: string;
+  icon?: ReactNode;
   disabled?: boolean;
   danger?: boolean;
   separator?: boolean;
@@ -79,7 +81,8 @@ export const ContextMenu: React.FC<Props> = ({ x, y, items, onClose }) => {
               onClose();
             }}
           >
-            {item.label}
+            {item.icon && <span className="context-menu__icon">{item.icon}</span>}
+            <span className="context-menu__label">{item.label}</span>
           </button>
         );
       })}
