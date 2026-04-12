@@ -100,6 +100,16 @@ const getRolldownIOConfigs = function (name, browser) {
         },
       };
       break;
+    case "browser":
+      return {
+        pathname: "browser",
+        output: "view/browser.js",
+        plugins: [replace],
+        outObj: {
+          name: "BrowserView",
+        },
+      };
+      break;
   }
   throw new Error(`Error: rolldownIOConfig Not Found '${name}'`);
 };
@@ -128,6 +138,7 @@ const submitRes = (browser) => makeFunc(browser, "submitRes");
 const submitThread = (browser) => makeFunc(browser, "submitThread");
 const threadReact = (browser) => makeFunc(browser, "threadReact");
 const mainLayout = (browser) => makeFunc(browser, "mainLayout");
+const browserView = (browser) => makeFunc(browser, "browser");
 
 /*
   tasks
@@ -210,6 +221,7 @@ for (let browser of browsers) {
       submitThread(browser),
       threadReact(browser),
       mainLayout(browser),
+      browserView(browser),
       `js:background.js:${browser}`,
       `js:cs_addlink.js:${browser}`,
       `js:view:${browser}`,

@@ -1,0 +1,440 @@
+/* ==========================================================================
+   Browser View - Chrome風タブブラウザUI
+   ========================================================================== */
+
+/* 全体設定: コンテンツ最大化のためマージン/パディングを排除 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* --- Shell --- */
+.browser-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 14px;
+  color: #202124;
+  background: #fff;
+}
+
+.browser-shell__chrome {
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Tab Bar - Chrome風タブストリップ
+   ========================================================================== */
+.tab-bar {
+  display: flex;
+  align-items: flex-end;
+  height: 38px;
+  background: #dee1e6;
+  padding: 0 8px;
+  padding-top: 4px;
+  /* ウィンドウ上端のドラッグ領域を兼ねるため余白確保 */
+  user-select: none;
+}
+
+.tab-list {
+  display: flex;
+  align-items: flex-end;
+  flex: 1;
+  min-width: 0;
+  gap: 1px;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 8px 0 12px;
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  max-width: 240px;
+  min-width: 80px;
+  font-size: 12px;
+  color: #5f6368;
+  position: relative;
+  transition: background 0.1s;
+}
+
+.tab--active {
+  background: #fff;
+  color: #202124;
+}
+
+.tab:not(.tab--active):hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.tab__title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 34px;
+}
+
+.tab__close {
+  flex-shrink: 0;
+  margin-left: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #5f6368;
+  transition: background 0.1s;
+}
+
+.tab__close:hover {
+  background: #d4d7da;
+}
+
+.tab-bar__add {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  margin-left: 4px;
+  margin-bottom: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #5f6368;
+  transition: background 0.1s;
+}
+
+.tab-bar__add:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+/* ==========================================================================
+   Navigation Bar - 戻る/進む/更新/URLバー/メニュー
+   ========================================================================== */
+.nav-bar {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 4px;
+  background: #fff;
+  border-bottom: 1px solid #dadce0;
+  gap: 2px;
+}
+
+.nav-bar__btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #5f6368;
+  flex-shrink: 0;
+  transition: background 0.1s;
+}
+
+.nav-bar__btn:hover:not(:disabled) {
+  background: #f1f3f4;
+}
+
+.nav-bar__btn:disabled {
+  color: #c4c7c9;
+  cursor: default;
+}
+
+.nav-bar__url {
+  flex: 1;
+  height: 32px;
+  margin: 0 4px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 24px;
+  background: #f1f3f4;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.nav-bar__url-text {
+  font-size: 14px;
+  color: #5f6368;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ==========================================================================
+   Content Area
+   ========================================================================== */
+.content-area {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: #fff;
+}
+
+/* ==========================================================================
+   共通ステータス表示
+   ========================================================================== */
+.page-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 16px;
+  color: #5f6368;
+  font-size: 14px;
+  gap: 12px;
+}
+
+.page-status--error {
+  color: #d93025;
+}
+
+.page-status__retry {
+  padding: 6px 16px;
+  border: 1px solid #dadce0;
+  border-radius: 4px;
+  background: #fff;
+  color: #1a73e8;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.page-status__retry:hover {
+  background: #f8f9fa;
+}
+
+/* ==========================================================================
+   Home Page
+   ========================================================================== */
+.home-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-top: 120px;
+  gap: 12px;
+}
+
+.home-page__title {
+  font-size: 32px;
+  font-weight: 400;
+  color: #202124;
+}
+
+.home-page__subtitle {
+  font-size: 14px;
+  color: #5f6368;
+}
+
+.home-page__actions {
+  margin-top: 24px;
+}
+
+.home-page__btn {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 24px;
+  background: #1a73e8;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+.home-page__btn:hover {
+  background: #1765cc;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.24);
+}
+
+/* ==========================================================================
+   Board List Page - 板一覧
+   ========================================================================== */
+.board-list-page {
+  padding: 8px 0;
+}
+
+.board-category {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.board-category__title {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px;
+  color: #1a73e8;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+
+.board-category__title::-webkit-details-marker {
+  display: none;
+}
+
+.board-category__title::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 6px;
+  transition: transform 0.15s;
+}
+
+.board-category[open] > .board-category__title::before {
+  transform: rotate(90deg);
+}
+
+.board-category__list {
+  list-style: none;
+  padding: 0 0 4px;
+}
+
+.board-item {
+  padding: 4px 16px 4px 32px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #202124;
+  line-height: 1.6;
+}
+
+.board-item:hover {
+  background: #f1f3f4;
+}
+
+/* ==========================================================================
+   Thread List Page - スレッド一覧
+   ========================================================================== */
+.thread-list-page {
+  padding: 0;
+}
+
+.thread-list-page__notice {
+  padding: 8px 16px;
+  background: #fef7e0;
+  color: #5f6309;
+  font-size: 13px;
+  border-bottom: 1px solid #fde293;
+}
+
+.thread-list {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.thread-list__row {
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.thread-list__row:hover {
+  background: #f8f9fa;
+}
+
+.thread-list__num {
+  width: 40px;
+  padding: 6px 4px 6px 12px;
+  text-align: right;
+  color: #70757a;
+  font-variant-numeric: tabular-nums;
+}
+
+.thread-list__title {
+  padding: 6px 8px;
+  color: #1a0dab;
+}
+
+.thread-list__count {
+  width: 60px;
+  padding: 6px 12px 6px 4px;
+  text-align: right;
+  color: #70757a;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   Thread Page - スレッド表示
+   画像のスタイルを再現: 番号+名前(緑) + 日時(右寄せ)、本文インデント
+   ========================================================================== */
+.thread-page {
+  padding: 4px 0;
+}
+
+.thread-page__notice {
+  padding: 8px 16px;
+  background: #fef7e0;
+  color: #5f6309;
+  font-size: 13px;
+  border-bottom: 1px solid #fde293;
+}
+
+.thread-page__responses {
+  padding: 0;
+}
+
+.res {
+  padding: 2px 16px 6px;
+}
+
+.res__header {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+
+.res__num {
+  font-weight: bold;
+  color: #0000cc;
+}
+
+.res__name {
+  font-weight: bold;
+  color: #009900;
+}
+
+.res__id {
+  color: #bb4400;
+  font-size: 12px;
+}
+
+.res__date {
+  color: #70757a;
+  font-size: 12px;
+  margin-left: auto;
+}
+
+.res__body {
+  padding: 2px 0 2px 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  word-break: break-all;
+}
+
+.res__body a {
+  color: #1a0dab;
+}
+
+.res__body a:visited {
+  color: #681da8;
+}
