@@ -174,7 +174,6 @@ app.boot("/view/thread.html", async function () {
       const playbackRate = app.config.get("live_style_playback_rate") || 2;
       const maxDelayMs = 3000; // 最大遅延時間
       const minDelayMs = 100; // 最小遅延時間
-
       // 各レスの投稿時刻を取得
       const postTimes = newPosts
         .map((post) => {
@@ -649,6 +648,7 @@ app.boot("/view/thread.html", async function () {
     if (getSelection().toString().length === 0) {
       $menu.C("copy_selection")[0].remove();
       $menu.C("search_selection")[0].remove();
+      $menu.C("add_selection_to_ngwords")[0].remove();
     }
 
     $menu.removeClass("hidden");
@@ -754,6 +754,7 @@ app.boot("/view/thread.html", async function () {
     if (getSelection().toString().length === 0) {
       $menu.C("copy_selection")[0].remove();
       $menu.C("search_selection")[0].remove();
+      $menu.C("add_selection_to_ngwords")[0].remove();
     }
 
     $menu.removeClass("hidden");
@@ -762,6 +763,22 @@ app.boot("/view/thread.html", async function () {
 
   $view.on("click", onMessageMenu);
   $view.on("contextmenu", onMessageMenu);
+
+  // data-idには ID:xxxx 以外の表記（id:xxxx/発信元:...）も入るため、
+  // NGの型判定で確実に拾える形へ寄せて即時反映の取りこぼしを防ぐ。
+  const normalizeIdForNg = function (idOrIp) {
+    if (typeof idOrIp !== "string") {
+      return "";
+    }
+    const trimmed = idOrIp.trim();
+    if (trimmed === "") {
+      return "";
+    }
+    if (/^id:/i.test(trimmed)) {
+      return trimmed.replace(/^id:/i, "ID:");
+    }
+    return trimmed;
+  };
 
   $view.on("contextmenu", function ({ target }) {
     if (!target.matches("article > .message")) {
@@ -844,6 +861,12 @@ app.boot("/view/thread.html", async function () {
       if (selectedText.length > 0) {
         open(`https://www.google.co.jp/search?q=${selectedText}`, "_blank");
       }
+    } else if ($item.hasClass("add_selection_to_ngwords")) {
+      selectedText = getSelection().toString().trim();
+      if (selectedText.length > 0) {
+        app.NG.add(selectedText);
+        threadContent.refreshNG();
+      }
     } else if ($item.hasClass("search_id_kyodemo")) {
       const id = $res.dataset.id.replace("ID:", "");
       if (id) {
@@ -870,7 +893,11 @@ app.boot("/view/thread.html", async function () {
     } else if ($item.hasClass("copy_trip")) {
       app.clipboardWrite($res.dataset.trip);
     } else if ($item.hasClass("add_id_to_ngwords")) {
-      addString = $res.dataset.id;
+      addString = normalizeIdForNg($res.dataset.id);
+      if (addString.length === 0) {
+        $item.parent().remove();
+        return;
+      }
       exDate = _getExpireDateString("id");
       if (exDate) {
         addString = `expireDate:${exDate},${addString}`;

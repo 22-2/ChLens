@@ -116,6 +116,7 @@ export function setupContainer(app: any) {
     isThreadIgnoreNgType: (res, threadTitle, url, ngType) =>
       app.NG.isThreadIgnoreNgType(res, threadTitle, url, ngType),
     add: (ngWord) => app.NG.add(ngWord),
+    invalidateCache: () => app.NG.invalidateCache(),
     execExpire: () => app.NG.execExpire(),
     isIgnoreResNumForAuto: (num, type) =>
       app.NG.isIgnoreResNumForAuto(num, type),

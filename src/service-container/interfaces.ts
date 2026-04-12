@@ -198,6 +198,7 @@ export interface INGService {
     ngType: string
   ): INGResult | null;
   add(ngWord: string): void;
+  invalidateCache(): void;
   execExpire(): void;
   isIgnoreResNumForAuto(resNum: number, subType: string): boolean;
 }

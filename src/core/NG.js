@@ -189,6 +189,9 @@ const parse = function (string) {
       ngWord = keyword + ":" + restWord;
     }
 
+    // 右クリックメニュー経由などで `id:` 小文字が入るケースを吸収する。
+    ngWord = ngWord.replace(/^id:/i, "ID:");
+
     // キーワードごとのNG処理
     switch (false) {
       case !ngWord.startsWith("RegExp:"):
@@ -244,6 +247,10 @@ const parse = function (string) {
         ngElement.word = normalize(ngWord.substr(5));
         break;
       case !ngWord.startsWith("ID:"):
+        ngElement.type = TYPE.ID;
+        ngElement.word = ngWord;
+        break;
+      case !ngWord.startsWith("発信元:"):
         ngElement.type = TYPE.ID;
         ngElement.word = ngWord;
         break;
@@ -390,6 +397,15 @@ export var set = function (string) {
 };
 
 /**
+@method invalidateCache
+iframe内からのNG追加後に親ウィンドウ側のキャッシュを無効化し、
+共有configから最新のNGリストを再読み込みさせるために使用する。
+*/
+export var invalidateCache = function () {
+  _ng = null;
+};
+
+/**
 @method add
 @param {String} string
 */
@@ -397,7 +413,7 @@ export var add = function (string) {
   // _ng が未初期化の場合は get() で初期化する
   // 最初のNG登録時に _ng は null のままなので、明示的に初期化が必要
   get();
-  
+
   _config.setString(string + "\n" + _config.getString());
   const addNg = parse(string);
   _config.set([..._config.get()].concat([...addNg]));
