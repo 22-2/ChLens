@@ -104,6 +104,65 @@ function hasExternalLink(message: string): boolean {
   return /<a\b[^>]*href="https?:\/\/[^"]*"[^>]*>/i.test(message);
 }
 
+function extractUrlsFromMessage(message: string): string[] {
+  const result: string[] = [];
+  const seen = new Set<string>();
+
+  const pushUrl = (url: string) => {
+    const trimmed = url.trim().replace(/[),.;]+$/, "");
+    if (!/^https?:\/\//i.test(trimmed)) return;
+    if (seen.has(trimmed)) return;
+    seen.add(trimmed);
+    result.push(trimmed);
+  };
+
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(message, "text/html");
+    for (const a of Array.from(doc.querySelectorAll("a[href]"))) {
+      pushUrl(a.getAttribute("href") ?? "");
+    }
+  } catch {
+    // HTMLパースに失敗した場合でも正規表現抽出で継続
+  }
+
+  const textMatch = message.match(/https?:\/\/[^\s"'<>]+/gi) ?? [];
+  for (const url of textMatch) {
+    pushUrl(url);
+  }
+
+  return result;
+}
+
+function toViewerImageUrl(rawUrl: string): string | null {
+  try {
+    const url = new window.URL(rawUrl);
+    const host = url.hostname.toLowerCase();
+    const pathname = url.pathname;
+
+    if (/\.(jpe?g|png|gif|webp|bmp|avif)(\?.*)?$/i.test(pathname)) {
+      return url.href;
+    }
+
+    if (host === "i.imgur.com") {
+      return url.href;
+    }
+
+    if (host === "imgur.com" || host === "m.imgur.com") {
+      const parts = pathname.split("/").filter(Boolean);
+      if (parts.length === 1) {
+        const id = parts[0].split(".")[0];
+        if (id) {
+          return `https://i.imgur.com/${id}.jpg`;
+        }
+      }
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 // --- インデックス構築 ---
 interface ThreadIndexes {
   idIndex: Map<string, Set<number>>;
@@ -164,6 +223,11 @@ interface ResContextMenuState {
   res: IRes;
 }
 
+interface ViewerState {
+  src: string;
+  label: string;
+}
+
 const MAX_TREE_DEPTH = 10;
 
 export const ThreadPage: React.FC<Props> = ({ page }) => {
@@ -185,6 +249,8 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
   const [resContextMenu, setResContextMenu] =
     useState<ResContextMenuState | null>(null);
   const [miniAaResNums, setMiniAaResNums] = useState<Set<number>>(new Set());
+  const [viewer, setViewer] = useState<ViewerState | null>(null);
+  const [viewerScale, setViewerScale] = useState(1);
 
   const fetchThread = useCallback(async () => {
     setLoading(true);
@@ -317,6 +383,31 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
   const closeResContextMenu = useCallback(() => {
     setResContextMenu(null);
   }, []);
+
+  const openMediaFromUrl = useCallback((url: string) => {
+    const imageUrl = toViewerImageUrl(url);
+    if (imageUrl) {
+      setViewer({ src: imageUrl, label: url });
+      setViewerScale(1);
+      return;
+    }
+    window.open(url, "_blank", "noopener,noreferrer");
+  }, []);
+
+  const closeViewer = useCallback(() => {
+    setViewer(null);
+  }, []);
+
+  useEffect(() => {
+    if (!viewer) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        closeViewer();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [closeViewer, viewer]);
 
   const addIdToNg = useCallback(async (id: string | undefined) => {
     if (!id) return;
@@ -557,6 +648,7 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
               miniAa={miniAaResNums.has(res.num)}
               onIdClick={handleIdClick}
               onRepClick={handleRepClick}
+              onUrlClick={openMediaFromUrl}
               onContextMenu={(e) => {
                 e.preventDefault();
                 setResContextMenu({ x: e.clientX, y: e.clientY, res });
@@ -597,6 +689,63 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
           onClose={closePopup}
         />
       )}
+
+      {viewer && (
+        <div className="media-viewer" onClick={closeViewer}>
+          <div className="media-viewer__chrome" onClick={(e) => e.stopPropagation()}>
+            <div className="media-viewer__toolbar">
+              <span className="media-viewer__label">{viewer.label}</span>
+              <div className="media-viewer__actions">
+                <button
+                  className="media-viewer__btn"
+                  onClick={() =>
+                    setViewerScale((prev) => Math.max(0.25, +(prev - 0.25).toFixed(2)))
+                  }
+                  title="縮小"
+                >
+                  -
+                </button>
+                <button
+                  className="media-viewer__btn"
+                  onClick={() => setViewerScale(1)}
+                  title="等倍"
+                >
+                  100%
+                </button>
+                <button
+                  className="media-viewer__btn"
+                  onClick={() =>
+                    setViewerScale((prev) => Math.min(5, +(prev + 0.25).toFixed(2)))
+                  }
+                  title="拡大"
+                >
+                  +
+                </button>
+                <button className="media-viewer__btn" onClick={closeViewer} title="閉じる">
+                  ✕
+                </button>
+              </div>
+            </div>
+            <div
+              className="media-viewer__stage"
+              onWheel={(e) => {
+                e.preventDefault();
+                setViewerScale((prev) => {
+                  const next = e.deltaY < 0 ? prev + 0.15 : prev - 0.15;
+                  return Math.min(5, Math.max(0.25, +next.toFixed(2)));
+                });
+              }}
+            >
+              <img
+                className="media-viewer__image"
+                src={viewer.src}
+                alt={viewer.label}
+                style={{ transform: `scale(${viewerScale})` }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -611,12 +760,28 @@ interface ResItemProps {
   miniAa: boolean;
   onIdClick: (id: string, e: React.MouseEvent) => void;
   onRepClick: (resNum: number, e: React.MouseEvent) => void;
+  onUrlClick: (url: string) => void;
   onContextMenu: (e: React.MouseEvent) => void;
 }
 
 const ResItem: React.FC<ResItemProps> = React.memo(
-  ({ res, idPos, idCount, repCount, miniAa, onIdClick, onRepClick, onContextMenu }) => {
+  ({
+    res,
+    idPos,
+    idCount,
+    repCount,
+    miniAa,
+    onIdClick,
+    onRepClick,
+    onUrlClick,
+    onContextMenu,
+  }) => {
     const isNG = res.class?.includes("ng");
+    const urls = useMemo(() => extractUrlsFromMessage(res.message), [res.message]);
+    const imageUrls = useMemo(
+      () => urls.map((url) => ({ raw: url, src: toViewerImageUrl(url) })).filter((x) => !!x.src),
+      [urls]
+    );
 
     return (
       <article
@@ -663,7 +828,46 @@ const ResItem: React.FC<ResItemProps> = React.memo(
         <div
           className="res__body"
           dangerouslySetInnerHTML={{ __html: res.message }}
+          onClick={(e) => {
+            const target = e.target as HTMLElement;
+            const anchor = target.closest("a");
+            if (!anchor) return;
+            const href = anchor.getAttribute("href") ?? "";
+            if (!href || href.startsWith("javascript:") || href.startsWith("#")) {
+              return;
+            }
+            e.preventDefault();
+            onUrlClick(href);
+          }}
         />
+        {urls.length > 0 && (
+          <div className="res__links">
+            {urls.map((url) => (
+              <button
+                key={`${res.num}:${url}`}
+                className="res__link"
+                onClick={() => onUrlClick(url)}
+                title={url}
+              >
+                {url}
+              </button>
+            ))}
+          </div>
+        )}
+        {imageUrls.length > 0 && (
+          <div className="res__thumbs">
+            {imageUrls.map(({ raw, src }) => (
+              <button
+                key={`${res.num}:thumb:${raw}`}
+                className="res__thumb"
+                onClick={() => onUrlClick(raw)}
+                title={raw}
+              >
+                <img src={src ?? ""} alt={raw} loading="lazy" />
+              </button>
+            ))}
+          </div>
+        )}
       </article>
     );
   }
