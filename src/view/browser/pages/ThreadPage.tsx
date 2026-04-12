@@ -1,23 +1,8 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useTabStore } from "../hooks/use-tab-store";
-import type {
-  ThreadPage as ThreadPageType,
-  ThreadRes,
-  ThreadDetail,
-} from "../types";
-
-// app_core.js で公開される ThreadService API
-declare const app: {
-  ThreadService: {
-    getThread: (
-      url: string,
-      options?: {
-        forceUpdate?: boolean;
-        onCache?: (cached: ThreadDetail) => void;
-      }
-    ) => Promise<ThreadDetail>;
-  };
-};
+import { container } from "../../../service-container/index";
+import type { ThreadPage as ThreadPageType } from "../types";
+import type { IRes, IThreadDetail } from "../../../service-container/interfaces";
 
 interface Props {
   page: ThreadPageType;
@@ -25,7 +10,7 @@ interface Props {
 
 export const ThreadPage: React.FC<Props> = ({ page }) => {
   const { dispatch } = useTabStore();
-  const [responses, setResponses] = useState<ThreadRes[]>([]);
+  const [responses, setResponses] = useState<IRes[]>([]);
   const [threadTitle, setThreadTitle] = useState(page.title);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,9 +23,10 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
     setError(null);
     titleUpdatedRef.current = false;
     try {
-      const result = await app.ThreadService.getThread(page.threadUrl, {
+      // container経由でThreadサービスにアクセス
+      const result = await container.thread.getThread(page.threadUrl, {
         forceUpdate: false,
-        onCache: (cached: ThreadDetail) => {
+        onCache: (cached: IThreadDetail) => {
           // キャッシュデータがあれば先に表示
           if (cached.res) {
             setResponses(cached.res);
@@ -110,7 +96,7 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
 
 // --- 個別レス表示 ---
 
-const ResItem: React.FC<{ res: ThreadRes }> = React.memo(({ res }) => {
+const ResItem: React.FC<{ res: IRes }> = React.memo(({ res }) => {
   return (
     <article className="res">
       <header className="res__header">

@@ -1,17 +1,11 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useTabStore } from "../hooks/use-tab-store";
-import type { BBSCategory, BBSMenuResult } from "../types";
-
-// app_core.js で公開されるBBSMenu API
-declare const app: {
-  BBSMenu: {
-    get: (forceReload?: boolean) => Promise<BBSMenuResult>;
-  };
-};
+import { container } from "../../../service-container/index";
+import type { IBBSMenuCategory } from "../../../service-container/interfaces";
 
 export const BoardListPage: React.FC = () => {
   const { dispatch } = useTabStore();
-  const [categories, setCategories] = useState<BBSCategory[]>([]);
+  const [categories, setCategories] = useState<IBBSMenuCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,7 +13,8 @@ export const BoardListPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const result = await app.BBSMenu.get(false);
+      // container経由でBBSMenuサービスにアクセス
+      const result = await container.bbsMenu.get(false);
       if (result.status === "success" && result.menu) {
         setCategories(result.menu);
       } else {

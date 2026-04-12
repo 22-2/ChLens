@@ -1,16 +1,8 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useTabStore } from "../hooks/use-tab-store";
-import type { ThreadListPage as ThreadListPageType, ThreadListItem } from "../types";
-
-// app_core.js で公開されるBoard API
-declare const app: {
-  BoardService: {
-    getThreads: (url: string) => Promise<{
-      threads: ThreadListItem[];
-      message?: string;
-    }>;
-  };
-};
+import { container } from "../../../service-container/index";
+import type { ThreadListPage as ThreadListPageType } from "../types";
+import type { IThread } from "../../../service-container/interfaces";
 
 interface Props {
   page: ThreadListPageType;
@@ -18,7 +10,7 @@ interface Props {
 
 export const ThreadListPage: React.FC<Props> = ({ page }) => {
   const { dispatch } = useTabStore();
-  const [threads, setThreads] = useState<ThreadListItem[]>([]);
+  const [threads, setThreads] = useState<IThread[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,7 +18,8 @@ export const ThreadListPage: React.FC<Props> = ({ page }) => {
     setLoading(true);
     setError(null);
     try {
-      const result = await app.BoardService.getThreads(page.boardUrl);
+      // container経由でBoardサービスにアクセス
+      const result = await container.board.getThreads(page.boardUrl);
       setThreads(result.threads);
       if (result.message) {
         setError(result.message);

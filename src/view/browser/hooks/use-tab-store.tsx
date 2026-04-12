@@ -2,12 +2,13 @@ import React, {
   createContext,
   useContext,
   useReducer,
+  useEffect,
+  useRef,
   type Dispatch,
   type ReactNode,
 } from "react";
 import { type Tab, type Page, getCurrentPage } from "../types";
 
-// TabState をここで型定義（types.tsにも追加する）
 export interface TabStoreState {
   tabs: Tab[];
   activeTabId: string;
@@ -20,7 +21,10 @@ export type TabAction =
   | { type: "NAVIGATE"; page: Page }
   | { type: "GO_BACK" }
   | { type: "GO_FORWARD" }
-  | { type: "UPDATE_TITLE"; title: string };
+  | { type: "UPDATE_TITLE"; title: string }
+  | { type: "RESTORE"; state: TabStoreState };
+
+const SESSION_KEY = "readcrx_browser_session";
 
 function createTab(): Tab {
   return {
@@ -30,12 +34,38 @@ function createTab(): Tab {
   };
 }
 
-const initialTab = createTab();
+// セッション復元: localStorageから前回の状態を読み込む
+function loadSession(): TabStoreState | null {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as TabStoreState;
+    if (parsed.tabs?.length > 0 && parsed.activeTabId) {
+      return parsed;
+    }
+  } catch {
+    // パース失敗時は無視
+  }
+  return null;
+}
 
-const initialState: TabStoreState = {
-  tabs: [initialTab],
-  activeTabId: initialTab.id,
+function saveSession(state: TabStoreState): void {
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify(state));
+  } catch {
+    // 容量超過等は無視
+  }
+}
+
+const restoredSession = loadSession();
+const initialState: TabStoreState = restoredSession ?? {
+  tabs: [createTab()],
+  activeTabId: "",
 };
+// 新規作成時にactiveTabIdを設定
+if (!restoredSession) {
+  initialState.activeTabId = initialState.tabs[0].id;
+}
 
 function getActiveTab(state: TabStoreState): Tab {
   return state.tabs.find((t) => t.id === state.activeTabId)!;
@@ -126,6 +156,9 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
       }));
     }
 
+    case "RESTORE":
+      return action.state;
+
     default:
       return state;
   }
@@ -148,6 +181,50 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({
   const [state, dispatch] = useReducer(tabReducer, initialState);
   const activeTab = getActiveTab(state);
   const currentPage = getCurrentPage(activeTab);
+
+  // セッション永続化: state変更時にlocalStorageへ保存
+  useEffect(() => {
+    saveSession(state);
+  }, [state]);
+
+  // ブラウザの戻る/進むをアプリ内ナビゲーションに接続
+  const isPopStateRef = useRef(false);
+  useEffect(() => {
+    // 初回: history stateを設定
+    history.replaceState({ idx: 0 }, "");
+    let currentIdx = 0;
+
+    const handlePopState = (e: PopStateEvent) => {
+      const newIdx = e.state?.idx ?? 0;
+      isPopStateRef.current = true;
+      if (newIdx < currentIdx) {
+        dispatch({ type: "GO_BACK" });
+      } else {
+        dispatch({ type: "GO_FORWARD" });
+      }
+      currentIdx = newIdx;
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  // NAVIGATEアクション時にhistory.pushStateを追加して
+  // ブラウザの戻る/進むボタンで遷移できるようにする
+  const prevPageRef = useRef(currentPage);
+  useEffect(() => {
+    if (isPopStateRef.current) {
+      // popstateトリガーの場合はpushStateしない（二重登録防止）
+      isPopStateRef.current = false;
+      prevPageRef.current = currentPage;
+      return;
+    }
+    if (prevPageRef.current !== currentPage) {
+      const idx = (history.state?.idx ?? 0) + 1;
+      history.pushState({ idx }, "");
+      prevPageRef.current = currentPage;
+    }
+  }, [currentPage]);
 
   return (
     <TabContext.Provider value={{ state, dispatch, activeTab, currentPage }}>
