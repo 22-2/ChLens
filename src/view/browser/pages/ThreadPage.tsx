@@ -41,7 +41,7 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
       });
 
       setResponses(result.res);
-      setExpired(result.expired);
+      setExpired(result.expired ?? false);
       if (result.title && !titleUpdatedRef.current) {
         setThreadTitle(result.title);
         dispatch({ type: "UPDATE_TITLE", title: result.title });
