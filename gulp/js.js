@@ -80,16 +80,7 @@ const getRolldownIOConfigs = function (name, browser) {
         plugins: [replace],
       };
       break;
-    case "threadReact":
-      return {
-        pathname: "threadReact",
-        output: "view/thread_react.js",
-        plugins: [replace],
-        outObj: {
-          name: "ThreadReact",
-        },
-      };
-      break;
+
     case "mainLayout":
       return {
         pathname: "mainLayout",
@@ -136,7 +127,7 @@ const core = (browser) => makeFunc(browser, "core");
 const ui = (browser) => makeFunc(browser, "ui");
 const submitRes = (browser) => makeFunc(browser, "submitRes");
 const submitThread = (browser) => makeFunc(browser, "submitThread");
-const threadReact = (browser) => makeFunc(browser, "threadReact");
+// thread_react is removed from JS build outputs per request
 const mainLayout = (browser) => makeFunc(browser, "mainLayout");
 const browserView = (browser) => makeFunc(browser, "browser");
 
@@ -213,13 +204,12 @@ for (let browser of browsers) {
 
   gulp.task(
     `js:${browser}`,
-    gulp.parallel(
+      gulp.parallel(
       app(browser),
       core(browser),
       ui(browser),
       submitRes(browser),
       submitThread(browser),
-      threadReact(browser),
       mainLayout(browser),
       browserView(browser),
       `js:background.js:${browser}`,
