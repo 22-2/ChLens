@@ -1,7 +1,7 @@
-@import "../_common.scss";
+@use "../_common.scss";
 
-@include common;
-@include tab-content;
+@include common.common;
+@include common.tab-content;
 
 @mixin view_thread_res_info($type: normal) {
   @if $type == normal {
@@ -255,7 +255,7 @@ header {
 }
 
 .config_use_aa_font > .aa > .message {
-  @include ascii-art;
+  @include common.ascii-art;
 
   &.mini_aa {
     transform-origin: 0 0;
@@ -303,7 +303,7 @@ header {
       }
     }
     > img.favicon {
-      @include drop-shadow;
+      @include common.drop-shadow;
       position: absolute;
       right: -4px;
       bottom: -4px;
@@ -419,7 +419,7 @@ header {
 
 .jump_panel {
   contain: content;
-  @include drop-shadow;
+  @include common.drop-shadow;
   $radius: 2px;
   position: absolute;
   right: 20px;
@@ -504,7 +504,7 @@ header {
 
 .next_thread_list {
   contain: content;
-  @include drop-shadow;
+  @include common.drop-shadow;
 
   background-color: hsla(0, 0%, 0%, 0.85);
   color: hsl(0, 0%, 100%);

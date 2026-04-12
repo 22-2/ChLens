@@ -1,3 +1,4 @@
+@use "sass:list";
 $z-indexes: (
   "tab-content",
   "selected-tab-content",
@@ -15,7 +16,7 @@ $z-indexes: (
 
 :root {
   @each $name in $z-indexes {
-    --z-index-#{$name}: #{index($z-indexes, $name)};
+    --z-index-#{$name}: #{list.index($z-indexes, $name)};
   }
   --z-index-thumnail-zoom: 20;
 

@@ -1,7 +1,7 @@
-@import "../_common.scss";
+@use "../_common.scss";
 
-@include common;
-@include tab-content;
+@include common.common;
+@include common.tab-content;
 
 html {
   overflow: auto;
@@ -25,14 +25,14 @@ input {
 }
 
 input:first-child {
-  @include input-text;
+  @include common.input-text;
   width: 0;
   flex-grow: 1;
   margin-right: 10px;
 }
 
 input[type="submit"] {
-  @include button;
+  @include common.button;
   padding: 0 5px;
   height: initial;
 }

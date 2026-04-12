@@ -1,7 +1,7 @@
-@import "../_common.scss";
-@import "_write.scss";
+@use "../_common.scss";
+@use "_write.scss";
 
-@include common;
+@include common.common;
 
 .outtitle {
   display: inline-flex;

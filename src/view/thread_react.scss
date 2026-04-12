@@ -1,7 +1,8 @@
-@import "../_common.scss";
+@use "sass:meta";
+@use "../_common.scss";
 
-@include common;
-@include tab-content;
+@include common.common;
+@include common.tab-content;
 
 // 既存のthread.scssのスタイルを継承
-@import "./thread.scss";
+@include meta.load-css("thread.scss");

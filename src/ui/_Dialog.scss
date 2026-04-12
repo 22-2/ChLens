@@ -1,3 +1,5 @@
+@use "../common";
+
 .dialog_overlay {
   position: fixed;
   contain: strict;
@@ -16,7 +18,7 @@
 }
 
 .dialog_body {
-  @include drop-shadow;
+  @include common.drop-shadow;
   padding: 5px;
   background-color: #eeeeee;
   color: #111111;
@@ -35,5 +37,5 @@
 
 .dialog_ok,
 .dialog_no {
-  @include button;
+  @include common.button;
 }

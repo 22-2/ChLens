@@ -1,7 +1,7 @@
-@import "../_common.scss";
+@use "../_common.scss";
 
-@include common;
-@include tab-content;
+@include common.common;
+@include common.tab-content;
 
 html {
   background-color: #fff;
@@ -110,7 +110,7 @@ label {
 input[type="text"],
 input[type="number"],
 textarea {
-  @include input-text;
+  @include common.input-text;
 }
 
 input[type="range"] {
@@ -140,7 +140,7 @@ input[type="range"] {
 }
 
 section button {
-  @include button;
+  @include common.button;
   margin-bottom: 3px;
 
   & + button {

@@ -1,6 +1,6 @@
-@import "../_common.scss";
+@use "../_common.scss";
 
-@include common;
+@include common.common;
 
 html,
 body,
@@ -135,7 +135,7 @@ iframe {
   right: 50px;
   z-index: var(--z-index-notification);
   > div {
-    @include drop-shadow;
+    @include common.drop-shadow;
     contain: content;
     background-image: linear-gradient(transparent, rgba(black, 0.25));
     border-radius: 5px;
