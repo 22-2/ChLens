@@ -156,6 +156,43 @@ function decodeResponseHtml(
   return MessageProcessor.decode(res, protocol) as DecodedMessageParts;
 }
 
+type GestureDirection = "Up" | "Down";
+
+interface GesturePoint {
+  x: number;
+  y: number;
+}
+
+const GESTURE_START_THRESHOLD = 12;
+const GESTURE_CONTEXTMENU_SUPPRESS_MS = 400;
+
+function summarizeVerticalGesture(
+  points: GesturePoint[]
+): { direction: GestureDirection; distance: number } | null {
+  if (points.length < 2) {
+    return null;
+  }
+
+  const start = points[0];
+  const end = points[points.length - 1];
+  const totalDx = end.x - start.x;
+  const totalDy = end.y - start.y;
+  const distance = Math.hypot(totalDx, totalDy);
+
+  if (distance < 10) {
+    return null;
+  }
+
+  if (Math.abs(totalDy) <= Math.abs(totalDx)) {
+    return null;
+  }
+
+  return {
+    direction: totalDy < 0 ? "Up" : "Down",
+    distance,
+  };
+}
+
 function extractUrlsFromMessage(message: string): string[] {
   const result: string[] = [];
   const seen = new Set<string>();
@@ -298,6 +335,7 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
   const [expired, setExpired] = useState(false);
   // タイトル更新済みかを追跡するref
   const titleUpdatedRef = useRef(false);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   // UI状態
   const [filter, setFilter] = useState<ThreadFilter>("all");
@@ -501,6 +539,243 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [closeViewer, viewer]);
 
+  useEffect(() => {
+    const host = rootRef.current;
+    if (!host) return;
+
+    // React版では content-area が実際のスクロールコンテナなので、旧ジェスチャーの移動先もそこへ合わせる。
+    const scrollContainer = host.closest(".content-area");
+    if (!(scrollContainer instanceof HTMLElement)) {
+      return;
+    }
+
+    let points: GesturePoint[] = [];
+    let isDrawing = false;
+    let gestureCandidate = false;
+    let gestureJustCompleted = false;
+    let detectedGesture: GestureDirection | null = null;
+    let canvas: HTMLCanvasElement | null = null;
+    let context: CanvasRenderingContext2D | null = null;
+    let label: HTMLDivElement | null = null;
+    let suppressTimerId: number | null = null;
+
+    const isWithinHost = (target: EventTarget | null): boolean => {
+      return target instanceof Node && host.contains(target);
+    };
+
+    const clearSuppressTimer = (): void => {
+      if (suppressTimerId != null) {
+        window.clearTimeout(suppressTimerId);
+        suppressTimerId = null;
+      }
+    };
+
+    const resizeCanvas = (): void => {
+      if (!canvas) {
+        return;
+      }
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+
+    const ensureOverlay = (): void => {
+      if (!canvas) {
+        canvas = document.createElement("canvas");
+        canvas.style.position = "fixed";
+        canvas.style.top = "0";
+        canvas.style.left = "0";
+        canvas.style.width = "100%";
+        canvas.style.height = "100%";
+        canvas.style.zIndex = "99999";
+        canvas.style.pointerEvents = "none";
+        document.body.appendChild(canvas);
+        context = canvas.getContext("2d");
+        resizeCanvas();
+      }
+
+      if (!label) {
+        label = document.createElement("div");
+        label.style.position = "fixed";
+        label.style.top = "50%";
+        label.style.left = "50%";
+        label.style.transform = "translate(-50%, -50%)";
+        label.style.fontSize = "64px";
+        label.style.fontWeight = "bold";
+        label.style.color = "rgba(0, 123, 255, 0.8)";
+        label.style.pointerEvents = "none";
+        label.style.zIndex = "100000";
+        label.style.textShadow =
+          "2px 2px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff";
+        label.style.fontFamily = "sans-serif";
+        document.body.appendChild(label);
+      }
+
+      if (!context) {
+        return;
+      }
+
+      canvas.style.display = "block";
+      label.style.display = "block";
+      label.textContent = "";
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.beginPath();
+      context.strokeStyle = "rgba(0, 123, 255, 0.8)";
+      context.lineWidth = 4;
+      context.lineCap = "round";
+      context.lineJoin = "round";
+    };
+
+    const stopDrawing = (): void => {
+      isDrawing = false;
+      gestureCandidate = false;
+      points = [];
+      detectedGesture = null;
+      if (canvas) {
+        canvas.style.display = "none";
+      }
+      if (label) {
+        label.style.display = "none";
+        label.textContent = "";
+      }
+    };
+
+    const drawLine = (x: number, y: number): void => {
+      if (!context) {
+        return;
+      }
+      context.lineTo(x, y);
+      context.stroke();
+    };
+
+    const handleMouseDown = (e: MouseEvent): void => {
+      if (e.button !== 2 || !isWithinHost(e.target)) {
+        return;
+      }
+
+      gestureCandidate = true;
+      isDrawing = false;
+      points = [{ x: e.clientX, y: e.clientY }];
+      detectedGesture = null;
+    };
+
+    const handleMouseMove = (e: MouseEvent): void => {
+      if (!gestureCandidate) {
+        return;
+      }
+
+      points.push({ x: e.clientX, y: e.clientY });
+
+      if (!isDrawing) {
+        const start = points[0];
+        const dx = e.clientX - start.x;
+        const dy = e.clientY - start.y;
+        if (Math.hypot(dx, dy) < GESTURE_START_THRESHOLD) {
+          return;
+        }
+
+        ensureOverlay();
+        if (!context) {
+          return;
+        }
+        context.moveTo(start.x, start.y);
+        isDrawing = true;
+      }
+
+      drawLine(e.clientX, e.clientY);
+
+      if (detectedGesture || points.length <= 2 || !label) {
+        return;
+      }
+
+      const summary = summarizeVerticalGesture(points);
+      if (!summary) {
+        return;
+      }
+
+      detectedGesture = summary.direction;
+      label.textContent =
+        summary.direction === "Up" ? "▲ Top" : "▼ Bottom";
+    };
+
+    const handleMouseUp = (e: MouseEvent): void => {
+      if (e.button !== 2 || !gestureCandidate) {
+        return;
+      }
+
+      if (!isDrawing) {
+        gestureCandidate = false;
+        points = [];
+        detectedGesture = null;
+        return;
+      }
+
+      const completedGesture = detectedGesture;
+      stopDrawing();
+      gestureJustCompleted = true;
+      clearSuppressTimer();
+      suppressTimerId = window.setTimeout(() => {
+        gestureJustCompleted = false;
+        suppressTimerId = null;
+      }, GESTURE_CONTEXTMENU_SUPPRESS_MS);
+
+      if (completedGesture === "Up") {
+        scrollContainer.scrollTop = 0;
+      } else if (completedGesture === "Down") {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      }
+    };
+
+    const handleContextMenu = (e: MouseEvent): void => {
+      const targetWithinHost = isWithinHost(e.target);
+
+      if (isDrawing || gestureJustCompleted) {
+        if (targetWithinHost || gestureJustCompleted) {
+          e.preventDefault();
+          e.stopPropagation();
+          stopDrawing();
+          gestureJustCompleted = false;
+          clearSuppressTimer();
+        }
+        return;
+      }
+
+      if (gestureCandidate && targetWithinHost) {
+        gestureCandidate = false;
+        points = [];
+        detectedGesture = null;
+      }
+    };
+
+    const handleWindowBlur = (): void => {
+      stopDrawing();
+      gestureJustCompleted = false;
+      clearSuppressTimer();
+    };
+
+    document.addEventListener("mousedown", handleMouseDown, true);
+    document.addEventListener("mousemove", handleMouseMove, true);
+    document.addEventListener("mouseup", handleMouseUp, true);
+    document.addEventListener("contextmenu", handleContextMenu, true);
+    window.addEventListener("resize", resizeCanvas);
+    window.addEventListener("blur", handleWindowBlur);
+
+    return () => {
+      document.removeEventListener("mousedown", handleMouseDown, true);
+      document.removeEventListener("mousemove", handleMouseMove, true);
+      document.removeEventListener("mouseup", handleMouseUp, true);
+      document.removeEventListener("contextmenu", handleContextMenu, true);
+      window.removeEventListener("resize", resizeCanvas);
+      window.removeEventListener("blur", handleWindowBlur);
+      clearSuppressTimer();
+      if (canvas) {
+        canvas.remove();
+      }
+      if (label) {
+        label.remove();
+      }
+    };
+  }, []);
+
   const addIdToNg = useCallback(async (id: string | undefined) => {
     if (!id) return;
     const ngWord = id.startsWith("ID:") ? id : `ID:${id}`;
@@ -670,21 +945,6 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
     ];
   }, [addIdToNg, addWriteHistory, miniAaResNums, page.threadUrl, resContextMenu]);
 
-  if (loading && responses.length === 0) {
-    return <div className="page-status">読み込み中...</div>;
-  }
-
-  if (error && responses.length === 0) {
-    return (
-      <div className="page-status page-status--error">
-        <p>{error}</p>
-        <button className="page-status__retry" onClick={fetchThread}>
-          再試行
-        </button>
-      </div>
-    );
-  }
-
   const filterButtons: { key: ThreadFilter; label: string }[] = [
     { key: "all", label: "全て" },
     { key: "popular", label: "多レス" },
@@ -693,8 +953,36 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
     { key: "link", label: "リンク" },
   ];
 
+  // アンカークリックで該当レスへスクロール
+  const handleAnchorClick = useCallback((resNum: number) => {
+    const host = rootRef.current;
+    if (!host) return;
+    const target = host.querySelector(`[data-res-num="${resNum}"]`);
+    if (!target) return;
+    target.scrollIntoView({ behavior: "instant", block: "start" });
+    // 視認性のためハイライトアニメーションを付与
+    target.classList.add("res--highlighted");
+    target.addEventListener(
+      "animationend",
+      () => target.classList.remove("res--highlighted"),
+      { once: true }
+    );
+  }, []);
+
+  // ジェスチャーuseEffectでrootRefが確実にマウント済みになるよう、loading中の早期returnを廃止し常にrootRef付きdivを描画する
   return (
-    <div className="thread-page">
+    <div ref={rootRef} className="thread-page">
+      {loading && responses.length === 0 ? (
+        <div className="page-status">読み込み中...</div>
+      ) : error && responses.length === 0 ? (
+        <div className="page-status page-status--error">
+          <p>{error}</p>
+          <button className="page-status__retry" onClick={fetchThread}>
+            再試行
+          </button>
+        </div>
+      ) : (
+      <>
       {/* フィルタツールバー */}
       <div className="thread-page__toolbar">
         <div className="thread-page__filters">
@@ -751,6 +1039,7 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
               onIdClick={handleIdClick}
               onRepClick={handleRepClick}
               onUrlClick={openMediaFromUrl}
+              onAnchorClick={handleAnchorClick}
               onAnchorHover={(targets, e, label) => {
                 showAnchorPreview(targets, e.clientX, e.clientY, label);
               }}
@@ -869,6 +1158,8 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
           </div>
         </div>
       )}
+      </>
+      )}
     </div>
   );
 };
@@ -885,6 +1176,7 @@ interface ResItemProps {
   onIdClick: (id: string, e: React.MouseEvent) => void;
   onRepClick: (resNum: number, e: React.MouseEvent) => void;
   onUrlClick: (url: string) => void;
+  onAnchorClick: (resNum: number) => void;
   onAnchorHover: (
     targets: number[],
     e: React.MouseEvent,
@@ -905,6 +1197,7 @@ const ResItem: React.FC<ResItemProps> = React.memo(
     onIdClick,
     onRepClick,
     onUrlClick,
+    onAnchorClick,
     onAnchorHover,
     onAnchorLeave,
     onContextMenu,
@@ -925,6 +1218,7 @@ const ResItem: React.FC<ResItemProps> = React.memo(
 
     return (
       <article
+        data-res-num={res.num}
         className={`res${isNG ? " res--ng" : ""}${miniAa ? " res--aa" : ""}`}
         onContextMenu={onContextMenu}
       >
@@ -990,6 +1284,16 @@ const ResItem: React.FC<ResItemProps> = React.memo(
             const target = e.target as HTMLElement;
             const anchor = target.closest("a");
             if (!anchor) return;
+            // アンカーリンク（>>N）クリック時は該当レスへジャンプ
+            if (anchor.classList.contains("anchor")) {
+              e.preventDefault();
+              const label = anchor.textContent?.trim() ?? "";
+              const targets = parseAnchorDisplayTargets(label);
+              if (targets.length > 0) {
+                onAnchorClick(targets[0]);
+              }
+              return;
+            }
             const href = anchor.getAttribute("href") ?? "";
             if (!href || href.startsWith("javascript:") || href.startsWith("#")) {
               return;

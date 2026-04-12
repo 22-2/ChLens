@@ -766,6 +766,15 @@ html, body {
 }
 
 /* NG済みレス */
+.res--highlighted {
+  animation: res-highlight-flash 1.5s ease-out;
+}
+
+@keyframes res-highlight-flash {
+  0% { background-color: rgba(0, 123, 255, 0.3); }
+  100% { background-color: transparent; }
+}
+
 .res--ng {
   opacity: 0.3;
 }
