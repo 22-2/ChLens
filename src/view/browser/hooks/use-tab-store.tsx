@@ -3,7 +3,6 @@ import React, {
   useContext,
   useReducer,
   useEffect,
-  useRef,
   type Dispatch,
   type ReactNode,
 } from "react";
@@ -302,43 +301,51 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({
   }, [state]);
 
   // ブラウザの戻る/進むをアプリ内ナビゲーションに接続
-  const isPopStateRef = useRef(false);
+  // history.pushState/popstateの状態同期に頼らず、キーボード/マウスイベントで直接制御する
+  // タブ切り替え時にブラウザ履歴が汚染されるバグを回避するため
   useEffect(() => {
-    // 初回: history stateを設定
-    history.replaceState({ idx: 0 }, "");
-    let currentIdx = 0;
+    // 拡張機能ページからの離脱防止用ダミー履歴エントリ
+    history.replaceState({ app: true }, "");
 
-    const handlePopState = (e: PopStateEvent) => {
-      const newIdx = e.state?.idx ?? 0;
-      isPopStateRef.current = true;
-      if (newIdx < currentIdx) {
+    const handlePopState = () => {
+      // ブラウザのBack/Forward操作によるページ離脱を防止し、アプリ内GO_BACKに変換
+      history.pushState({ app: true }, "");
+      dispatch({ type: "GO_BACK" });
+    };
+
+    // Alt+Left/Rightで戻る/進む
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && !e.ctrlKey && !e.shiftKey) {
+        if (e.key === "ArrowLeft") {
+          e.preventDefault();
+          dispatch({ type: "GO_BACK" });
+        } else if (e.key === "ArrowRight") {
+          e.preventDefault();
+          dispatch({ type: "GO_FORWARD" });
+        }
+      }
+    };
+
+    // マウスサイドボタン（戻る=3/進む=4）
+    const handleMouseUp = (e: MouseEvent) => {
+      if (e.button === 3) {
+        e.preventDefault();
         dispatch({ type: "GO_BACK" });
-      } else {
+      } else if (e.button === 4) {
+        e.preventDefault();
         dispatch({ type: "GO_FORWARD" });
       }
-      currentIdx = newIdx;
     };
 
     window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
-
-  // NAVIGATEアクション時にhistory.pushStateを追加して
-  // ブラウザの戻る/進むボタンで遷移できるようにする
-  const prevPageRef = useRef(currentPage);
-  useEffect(() => {
-    if (isPopStateRef.current) {
-      // popstateトリガーの場合はpushStateしない（二重登録防止）
-      isPopStateRef.current = false;
-      prevPageRef.current = currentPage;
-      return;
-    }
-    if (prevPageRef.current !== currentPage) {
-      const idx = (history.state?.idx ?? 0) + 1;
-      history.pushState({ idx }, "");
-      prevPageRef.current = currentPage;
-    }
-  }, [currentPage]);
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [dispatch]);
 
   return (
     <TabContext.Provider value={{ state, dispatch, activeTab, currentPage }}>

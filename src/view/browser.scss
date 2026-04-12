@@ -516,3 +516,277 @@ html, body {
 .res__body a:visited {
   color: #681da8;
 }
+
+/* ==========================================================================
+   Search Bar - Ctrl+F 検索バー
+   ========================================================================== */
+.search-bar {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #dadce0;
+  gap: 8px;
+}
+
+.search-bar__input {
+  flex: 1;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid #dadce0;
+  border-radius: 4px;
+  font-size: 13px;
+  outline: none;
+  font-family: inherit;
+}
+
+.search-bar__input:focus {
+  border-color: #1a73e8;
+}
+
+.search-bar__count {
+  font-size: 12px;
+  color: #70757a;
+  white-space: nowrap;
+}
+
+.search-bar__close {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #5f6368;
+  font-size: 14px;
+}
+
+.search-bar__close:hover {
+  background: #e8eaed;
+}
+
+/* ==========================================================================
+   Thread List - ソート可能テーブルヘッダ
+   ========================================================================== */
+.thread-list thead {
+  position: sticky;
+  top: 0;
+  background: #f8f9fa;
+  z-index: 1;
+}
+
+.thread-list__th {
+  padding: 8px 4px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: #5f6368;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  border-bottom: 2px solid #e8eaed;
+}
+
+.thread-list__th:hover {
+  background: #e8eaed;
+}
+
+.thread-list__th--num {
+  width: 40px;
+  text-align: right;
+  padding-right: 8px;
+  padding-left: 12px;
+}
+
+.thread-list__th--title {
+  padding-left: 8px;
+}
+
+.thread-list__th--count {
+  width: 60px;
+  text-align: right;
+  padding-right: 12px;
+}
+
+/* NG/ハイライト行 */
+.thread-list__row--ng {
+  opacity: 0.4;
+}
+
+.thread-list__row--highlight {
+  font-weight: 600;
+}
+
+.thread-list__label {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.08);
+  color: inherit;
+}
+
+/* ==========================================================================
+   Thread Page - フィルタツールバー
+   ========================================================================== */
+.thread-page__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e8eaed;
+}
+
+.thread-page__filters {
+  display: flex;
+  gap: 2px;
+}
+
+.thread-page__filter-btn {
+  padding: 3px 10px;
+  border: 1px solid #dadce0;
+  border-radius: 16px;
+  background: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  color: #5f6368;
+  transition: background 0.1s, color 0.1s;
+  font-family: inherit;
+}
+
+.thread-page__filter-btn:hover {
+  background: #f1f3f4;
+}
+
+.thread-page__filter-btn--active {
+  background: #1a73e8;
+  color: #fff;
+  border-color: #1a73e8;
+}
+
+.thread-page__filter-btn--active:hover {
+  background: #1765cc;
+}
+
+.thread-page__count {
+  font-size: 12px;
+  color: #70757a;
+}
+
+/* ==========================================================================
+   Res - ID/返信のクリック可能スタイル
+   ========================================================================== */
+.res__id--link {
+  cursor: pointer;
+}
+
+.res__id--link:hover {
+  text-decoration: underline;
+}
+
+.res__id--freq {
+  cursor: pointer;
+  color: #d93025;
+  font-weight: 600;
+}
+
+.res__id--freq:hover {
+  text-decoration: underline;
+}
+
+.res__rep {
+  font-size: 12px;
+  margin-left: 8px;
+}
+
+.res__rep--link {
+  color: #1a73e8;
+  cursor: pointer;
+}
+
+.res__rep--link:hover {
+  text-decoration: underline;
+}
+
+.res__rep--freq {
+  color: #d93025;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.res__rep--freq:hover {
+  text-decoration: underline;
+}
+
+/* NG済みレス */
+.res--ng {
+  opacity: 0.3;
+}
+
+.res--ng .res__body {
+  max-height: 20px;
+  overflow: hidden;
+}
+
+/* ==========================================================================
+   Res Popup - ID一覧/返信ツリーポップアップ
+   ========================================================================== */
+.res-popup {
+  position: fixed;
+  z-index: 10000;
+  min-width: 320px;
+  max-width: 600px;
+  max-height: 60vh;
+  background: #fff;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+}
+
+.res-popup__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid #e8eaed;
+  font-size: 13px;
+  font-weight: 600;
+  color: #202124;
+  flex-shrink: 0;
+}
+
+.res-popup__close {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #5f6368;
+  font-size: 14px;
+}
+
+.res-popup__close:hover {
+  background: #e8eaed;
+}
+
+.res-popup__body {
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+/* 返信ツリーのインデント表現 */
+.reply-tree {
+  margin-top: 2px;
+}
