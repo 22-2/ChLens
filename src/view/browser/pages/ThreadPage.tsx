@@ -18,6 +18,7 @@ import {
   Search,
   Type,
 } from "lucide-react";
+import MessageProcessor from "../../../core/MessageProcessor.js";
 import type { ThreadPage as ThreadPageType } from "../types";
 import type { IRes, IThreadDetail } from "../../../service-container/interfaces";
 
@@ -137,6 +138,22 @@ function parseAnchorDisplayTargets(text: string): number[] {
     }
   }
   return Array.from(result).sort((a, b) => a - b);
+}
+
+interface DecodedMessageParts {
+  nameHtml: string;
+  mailHtml: string;
+  otherHtml: string;
+  messageHtml: string;
+  isNameAnchor: boolean;
+}
+
+function decodeResponseHtml(
+  res: IRes,
+  protocol: string
+): DecodedMessageParts {
+  // React版でも旧ビューと同じHTML化を通しておかないと、>>アンカーが文字列のまま残ってホバー対象を拾えない。
+  return MessageProcessor.decode(res, protocol) as DecodedMessageParts;
 }
 
 function extractUrlsFromMessage(message: string): string[] {
@@ -296,6 +313,14 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
   const [anchorPreview, setAnchorPreview] = useState<AnchorPreviewState | null>(
     null
   );
+  const messageProtocol = useMemo(() => {
+    // 拡張ページのprotocolを使うと //example.com/... が拡張URL扱いになるため、元スレURLのprotocolで本文を復元する。
+    try {
+      return new window.URL(page.threadUrl).protocol;
+    } catch {
+      return "https:";
+    }
+  }, [page.threadUrl]);
 
   const fetchThread = useCallback(async () => {
     setLoading(true);
@@ -722,6 +747,7 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
               idCount={idCount}
               repCount={repCount}
               miniAa={miniAaResNums.has(res.num)}
+              messageProtocol={messageProtocol}
               onIdClick={handleIdClick}
               onRepClick={handleRepClick}
               onUrlClick={openMediaFromUrl}
@@ -752,14 +778,11 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
           <div className="anchor-preview__title">参照: {anchorPreview.label}</div>
           <div className="anchor-preview__body">
             {anchorPreview.items.slice(0, 8).map((res) => (
-              <article key={res.num} className="res">
-                <header className="res__header">
-                  <span className="res__num">{res.num}</span>
-                  <span className="res__name" dangerouslySetInnerHTML={{ __html: res.name }} />
-                  {res.id && <span className="res__id">{res.id}</span>}
-                </header>
-                <div className="res__body" dangerouslySetInnerHTML={{ __html: res.message }} />
-              </article>
+              <StaticResCard
+                key={res.num}
+                res={res}
+                messageProtocol={messageProtocol}
+              />
             ))}
           </div>
         </div>
@@ -772,6 +795,7 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
           y={popup.y}
           title={popup.title}
           items={popup.items}
+          messageProtocol={messageProtocol}
           onClose={closePopup}
         />
       )}
@@ -784,6 +808,7 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
           resNum={treePopup.resNum}
           repIndex={indexes.repIndex}
           resMap={indexes.resMap}
+          messageProtocol={messageProtocol}
           onClose={closePopup}
         />
       )}
@@ -856,6 +881,7 @@ interface ResItemProps {
   idCount: number;
   repCount: number;
   miniAa: boolean;
+  messageProtocol: string;
   onIdClick: (id: string, e: React.MouseEvent) => void;
   onRepClick: (resNum: number, e: React.MouseEvent) => void;
   onUrlClick: (url: string) => void;
@@ -875,6 +901,7 @@ const ResItem: React.FC<ResItemProps> = React.memo(
     idCount,
     repCount,
     miniAa,
+    messageProtocol,
     onIdClick,
     onRepClick,
     onUrlClick,
@@ -883,7 +910,14 @@ const ResItem: React.FC<ResItemProps> = React.memo(
     onContextMenu,
   }) => {
     const isNG = res.class?.includes("ng");
-    const urls = useMemo(() => extractUrlsFromMessage(res.message), [res.message]);
+    const decoded = useMemo(
+      () => decodeResponseHtml(res, messageProtocol),
+      [messageProtocol, res]
+    );
+    const urls = useMemo(
+      () => extractUrlsFromMessage(decoded.messageHtml),
+      [decoded.messageHtml]
+    );
     const imageUrls = useMemo(
       () => urls.map((url) => ({ raw: url, src: toViewerImageUrl(url) })).filter((x) => !!x.src),
       [urls]
@@ -898,7 +932,7 @@ const ResItem: React.FC<ResItemProps> = React.memo(
           <span className="res__num">{res.num}</span>
           <span
             className="res__name"
-            dangerouslySetInnerHTML={{ __html: res.name }}
+            dangerouslySetInnerHTML={{ __html: decoded.nameHtml }}
           />
           {res.id && (
             <span
@@ -933,7 +967,7 @@ const ResItem: React.FC<ResItemProps> = React.memo(
         </header>
         <div
           className="res__body"
-          dangerouslySetInnerHTML={{ __html: res.message }}
+          dangerouslySetInnerHTML={{ __html: decoded.messageHtml }}
           onMouseMove={(e) => {
             const target = e.target as HTMLElement;
             const anchor = target.closest("a.anchor");
@@ -998,6 +1032,39 @@ const ResItem: React.FC<ResItemProps> = React.memo(
 );
 ResItem.displayName = "ResItem";
 
+interface StaticResCardProps {
+  res: IRes;
+  messageProtocol: string;
+}
+
+const StaticResCard: React.FC<StaticResCardProps> = React.memo(
+  ({ res, messageProtocol }) => {
+    const decoded = useMemo(
+      () => decodeResponseHtml(res, messageProtocol),
+      [messageProtocol, res]
+    );
+
+    return (
+      <article className="res">
+        <header className="res__header">
+          <span className="res__num">{res.num}</span>
+          <span
+            className="res__name"
+            dangerouslySetInnerHTML={{ __html: decoded.nameHtml }}
+          />
+          {res.id && <span className="res__id">{res.id}</span>}
+          <span className="res__date">{res.date ?? res.other}</span>
+        </header>
+        <div
+          className="res__body"
+          dangerouslySetInnerHTML={{ __html: decoded.messageHtml }}
+        />
+      </article>
+    );
+  }
+);
+StaticResCard.displayName = "StaticResCard";
+
 // --- IDポップアップ ---
 
 const ResPopup: React.FC<{
@@ -1005,8 +1072,9 @@ const ResPopup: React.FC<{
   y: number;
   title: string;
   items: IRes[];
+  messageProtocol: string;
   onClose: () => void;
-}> = ({ x, y, title, items, onClose }) => {
+}> = ({ x, y, title, items, messageProtocol, onClose }) => {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -1041,21 +1109,11 @@ const ResPopup: React.FC<{
       </div>
       <div className="res-popup__body">
         {items.map((res) => (
-          <article key={res.num} className="res">
-            <header className="res__header">
-              <span className="res__num">{res.num}</span>
-              <span
-                className="res__name"
-                dangerouslySetInnerHTML={{ __html: res.name }}
-              />
-              {res.id && <span className="res__id">{res.id}</span>}
-              <span className="res__date">{res.date ?? res.other}</span>
-            </header>
-            <div
-              className="res__body"
-              dangerouslySetInnerHTML={{ __html: res.message }}
-            />
-          </article>
+          <StaticResCard
+            key={res.num}
+            res={res}
+            messageProtocol={messageProtocol}
+          />
         ))}
       </div>
     </div>
@@ -1070,8 +1128,9 @@ const ReplyTreePopup: React.FC<{
   resNum: number;
   repIndex: Map<number, Set<number>>;
   resMap: Map<number, IRes>;
+  messageProtocol: string;
   onClose: () => void;
-}> = ({ x, y, resNum, repIndex, resMap, onClose }) => {
+}> = ({ x, y, resNum, repIndex, resMap, messageProtocol, onClose }) => {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -1108,6 +1167,7 @@ const ReplyTreePopup: React.FC<{
           resNum={resNum}
           repIndex={repIndex}
           resMap={resMap}
+          messageProtocol={messageProtocol}
           visited={new Set()}
           depth={0}
         />
@@ -1122,9 +1182,10 @@ const ReplyTree: React.FC<{
   resNum: number;
   repIndex: Map<number, Set<number>>;
   resMap: Map<number, IRes>;
+  messageProtocol: string;
   visited: Set<number>;
   depth: number;
-}> = ({ resNum, repIndex, resMap, visited, depth }) => {
+}> = ({ resNum, repIndex, resMap, messageProtocol, visited, depth }) => {
   if (depth >= MAX_TREE_DEPTH) return null;
   const replies = repIndex.get(resNum);
   if (!replies || replies.size === 0) return null;
@@ -1151,25 +1212,12 @@ const ReplyTree: React.FC<{
         const res = resMap.get(replyNum)!;
         return (
           <React.Fragment key={replyNum}>
-            <article className="res">
-              <header className="res__header">
-                <span className="res__num">{res.num}</span>
-                <span
-                  className="res__name"
-                  dangerouslySetInnerHTML={{ __html: res.name }}
-                />
-                {res.id && <span className="res__id">{res.id}</span>}
-                <span className="res__date">{res.date ?? res.other}</span>
-              </header>
-              <div
-                className="res__body"
-                dangerouslySetInnerHTML={{ __html: res.message }}
-              />
-            </article>
+            <StaticResCard res={res} messageProtocol={messageProtocol} />
             <ReplyTree
               resNum={replyNum}
               repIndex={repIndex}
               resMap={resMap}
+              messageProtocol={messageProtocol}
               visited={visited}
               depth={depth + 1}
             />

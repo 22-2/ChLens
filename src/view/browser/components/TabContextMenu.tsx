@@ -72,18 +72,20 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
       const boardUrl = deriveBoardUrl(threadPage.threadUrl);
       result.push({
         id: "to-board",
-        label: "板に移動",
-        onSelect: () =>
+        label: "板を開く",
+        onSelect: () => {
+          // 元スレの履歴を残したまま板を見比べられるように、新しいタブで開く。
+          dispatch({ type: "ADD_TAB" });
           dispatch({
-            type: "NAVIGATE_TAB",
-            tabId: tab.id,
+            type: "NAVIGATE",
             page: {
               type: "threadList",
               title: boardUrl,
               boardUrl,
               boardTitle: boardUrl,
             },
-          }),
+          });
+        },
       });
       result.push({ id: "sep-2", separator: true });
     }
