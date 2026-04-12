@@ -266,6 +266,9 @@ app.boot("/view/thread.html", async function () {
   //リロード処理
   $view.on("request_reload", async function ({ detail: ex = {} }) {
     let left;
+    // 設定ページ等からの外部NG変更を反映するため、リロード時は
+    // 親ウィンドウ側のNGキャッシュを無効化して共有configから再読み込みさせる
+    parent.app.NG.invalidateCache();
     threadContent.refreshNG();
     const isAutoReload =
       typeof ex === "object" &&
@@ -789,7 +792,9 @@ app.boot("/view/thread.html", async function () {
       onclick(info, tab) {
         const selectedText = getSelection().toString();
         if (selectedText.length > 0) {
-          app.NG.add(selectedText);
+          // iframe内ではapp.NGはローカルのNGモジュールで、refreshNGが参照する
+          // 親ウィンドウ側のNGモジュールとは別インスタンスのため直接更新する
+          parent.app.NG.add(selectedText);
           threadContent.refreshNG();
         }
       },
@@ -864,7 +869,9 @@ app.boot("/view/thread.html", async function () {
     } else if ($item.hasClass("add_selection_to_ngwords")) {
       selectedText = getSelection().toString().trim();
       if (selectedText.length > 0) {
-        app.NG.add(selectedText);
+        // iframe内ではapp.NGはローカルのNGモジュールで、refreshNGが参照する
+        // 親ウィンドウ側のNGモジュールとは別インスタンスのため直接更新する
+        parent.app.NG.add(selectedText);
         threadContent.refreshNG();
       }
     } else if ($item.hasClass("search_id_kyodemo")) {
@@ -902,7 +909,9 @@ app.boot("/view/thread.html", async function () {
       if (exDate) {
         addString = `expireDate:${exDate},${addString}`;
       }
-      app.NG.add(addString);
+      // iframe内ではapp.NGはローカルのNGモジュールで、refreshNGが参照する
+      // 親ウィンドウ側のNGモジュールとは別インスタンスのため直接更新する
+      parent.app.NG.add(addString);
       threadContent.refreshNG();
     } else if ($item.hasClass("add_slip_to_ngwords")) {
       addString = "Slip:" + $res.dataset.slip;
@@ -910,7 +919,7 @@ app.boot("/view/thread.html", async function () {
       if (exDate) {
         addString = `expireDate:${exDate},${addString}`;
       }
-      app.NG.add(addString);
+      parent.app.NG.add(addString);
       threadContent.refreshNG();
     } else if ($item.hasClass("jump_to_this")) {
       threadContent.scrollTo($res, true);
@@ -1442,7 +1451,9 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
     app.ContextMenus.update("add_link_to_ngwords", {
       enabled: enableFlg,
       onclick: (info, tab) => {
-        app.NG.add(target.href);
+        // iframe内ではapp.NGはローカルのNGモジュールで、refreshNGが参照する
+        // 親ウィンドウ側のNGモジュールとは別インスタンスのため直接更新する
+        parent.app.NG.add(target.href);
         threadContent.refreshNG();
       },
     });
@@ -1479,7 +1490,7 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
         app.ContextMenus.update("add_link_to_ngwords", {
           enabled: true,
           onclick: (info, tab) => {
-            app.NG.add(target.parent().href);
+            parent.app.NG.add(target.parent().href);
             threadContent.refreshNG();
           },
         });
@@ -1495,7 +1506,7 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
     app.ContextMenus.update("add_media_to_ngwords", {
       title: menuTitle,
       onclick: (info, tab) => {
-        app.NG.add(target.src);
+        parent.app.NG.add(target.src);
         threadContent.refreshNG();
       },
     });

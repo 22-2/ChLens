@@ -149,11 +149,6 @@ export default class ThreadModel {
    * Recalculates all NG states and indices.
    */
   refreshNG() {
-    // iframe内からのNG追加は共有configに書き込まれるが、
-    // 親ウィンドウ側のNG._ngキャッシュには反映されない。
-    // refreshNG前にキャッシュを無効化して最新のNGリストを再読み込みさせる。
-    container.ng.invalidateCache();
-
     const { bbsType } = container.util.guessType
       ? container.util.guessType(this.urlStr)
       : { bbsType: "2ch" };
