@@ -12,18 +12,27 @@ import { type Tab, type Page, getCurrentPage, buildHierarchy } from "../types";
 export interface TabStoreState {
   tabs: Tab[];
   activeTabId: string;
+  closedTabs: Tab[];
 }
 
 export type TabAction =
   | { type: "ADD_TAB" }
   | { type: "CLOSE_TAB"; tabId: string }
+  | { type: "CLOSE_OTHER_TABS"; tabId: string }
+  | { type: "CLOSE_RIGHT_TABS"; tabId: string }
+  | { type: "CLOSE_ALL_TABS" }
+  | { type: "REOPEN_CLOSED_TAB" }
+  | { type: "TOGGLE_PIN"; tabId: string }
   | { type: "SELECT_TAB"; tabId: string }
   | { type: "NAVIGATE"; page: Page }
+  | { type: "NAVIGATE_TAB"; tabId: string; page: Page }
   | { type: "GO_BACK" }
   | { type: "GO_FORWARD" }
   | { type: "UPDATE_TITLE"; title: string }
   | { type: "RESTORE"; state: TabStoreState };
 
+// 閉じたタブの最大保持数
+const MAX_CLOSED_TABS = 20;
 const SESSION_KEY = "readcrx_browser_session";
 
 function createTab(): Tab {
@@ -31,6 +40,7 @@ function createTab(): Tab {
     id: crypto.randomUUID(),
     history: [{ type: "home", title: "ホーム" }],
     currentIndex: 0,
+    pinned: false,
   };
 }
 
@@ -41,6 +51,11 @@ function loadSession(): TabStoreState | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as TabStoreState;
     if (parsed.tabs?.length > 0 && parsed.activeTabId) {
+      // 旧フォーマット互換: pinned が無ければ補完
+      for (const tab of parsed.tabs) {
+        if (tab.pinned === undefined) tab.pinned = false;
+      }
+      if (!parsed.closedTabs) parsed.closedTabs = [];
       return parsed;
     }
   } catch {
@@ -61,6 +76,7 @@ const restoredSession = loadSession();
 const initialState: TabStoreState = restoredSession ?? {
   tabs: [createTab()],
   activeTabId: "",
+  closedTabs: [],
 };
 // 新規作成時にactiveTabIdを設定
 if (!restoredSession) {
@@ -83,44 +99,145 @@ function updateActiveTab(
   };
 }
 
+// 閉じたタブを記録するヘルパー
+function pushClosed(closedTabs: Tab[], tab: Tab): Tab[] {
+  return [tab, ...closedTabs].slice(0, MAX_CLOSED_TABS);
+}
+
 function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
   switch (action.type) {
     case "ADD_TAB": {
       const newTab = createTab();
+      // 固定タブの後ろに非固定タブを追加
       return {
+        ...state,
         tabs: [...state.tabs, newTab],
         activeTabId: newTab.id,
       };
     }
 
     case "CLOSE_TAB": {
-      // 最後の1タブは閉じない
+      const target = state.tabs.find((t) => t.id === action.tabId);
+      // 固定タブは閉じられない
+      if (!target || target.pinned) return state;
       if (state.tabs.length <= 1) return state;
-      const closingIndex = state.tabs.findIndex(
-        (t) => t.id === action.tabId
-      );
+      const closingIndex = state.tabs.indexOf(target);
       const remaining = state.tabs.filter((t) => t.id !== action.tabId);
       let newActiveId = state.activeTabId;
       if (action.tabId === state.activeTabId) {
-        // 閉じたタブがアクティブだった場合、左隣（なければ右隣）に切り替え
         const newIndex = Math.min(closingIndex, remaining.length - 1);
         newActiveId = remaining[newIndex].id;
       }
-      return { tabs: remaining, activeTabId: newActiveId };
+      return {
+        tabs: remaining,
+        activeTabId: newActiveId,
+        closedTabs: pushClosed(state.closedTabs, target),
+      };
+    }
+
+    case "CLOSE_OTHER_TABS": {
+      // 指定タブと固定タブ以外を閉じる
+      const closed = state.tabs.filter(
+        (t) => t.id !== action.tabId && !t.pinned
+      );
+      const remaining = state.tabs.filter(
+        (t) => t.id === action.tabId || t.pinned
+      );
+      if (remaining.length === 0) return state;
+      let newClosed = state.closedTabs;
+      for (const t of closed) {
+        newClosed = pushClosed(newClosed, t);
+      }
+      return {
+        tabs: remaining,
+        activeTabId: action.tabId,
+        closedTabs: newClosed,
+      };
+    }
+
+    case "CLOSE_RIGHT_TABS": {
+      const idx = state.tabs.findIndex((t) => t.id === action.tabId);
+      if (idx === -1) return state;
+      const rightTabs = state.tabs.slice(idx + 1).filter((t) => !t.pinned);
+      if (rightTabs.length === 0) return state;
+      const rightIds = new Set(rightTabs.map((t) => t.id));
+      const remaining = state.tabs.filter((t) => !rightIds.has(t.id));
+      let newClosed = state.closedTabs;
+      for (const t of rightTabs) {
+        newClosed = pushClosed(newClosed, t);
+      }
+      let newActiveId = state.activeTabId;
+      if (rightIds.has(state.activeTabId)) {
+        newActiveId = action.tabId;
+      }
+      return {
+        tabs: remaining,
+        activeTabId: newActiveId,
+        closedTabs: newClosed,
+      };
+    }
+
+    case "CLOSE_ALL_TABS": {
+      // 固定タブ以外をすべて閉じ、新しいタブを開く
+      const pinned = state.tabs.filter((t) => t.pinned);
+      const closed = state.tabs.filter((t) => !t.pinned);
+      let newClosed = state.closedTabs;
+      for (const t of closed) {
+        newClosed = pushClosed(newClosed, t);
+      }
+      const newTab = createTab();
+      return {
+        tabs: [...pinned, newTab],
+        activeTabId: newTab.id,
+        closedTabs: newClosed,
+      };
+    }
+
+    case "REOPEN_CLOSED_TAB": {
+      if (state.closedTabs.length === 0) return state;
+      const [reopened, ...rest] = state.closedTabs;
+      // 新しいIDを振り直して復元
+      const restored: Tab = { ...reopened, id: crypto.randomUUID() };
+      return {
+        tabs: [...state.tabs, restored],
+        activeTabId: restored.id,
+        closedTabs: rest,
+      };
+    }
+
+    case "TOGGLE_PIN": {
+      const tabs = state.tabs.map((t) =>
+        t.id === action.tabId ? { ...t, pinned: !t.pinned } : t
+      );
+      // 固定タブを左に、非固定タブを右に並び替え
+      tabs.sort((a, b) => (a.pinned === b.pinned ? 0 : a.pinned ? -1 : 1));
+      return { ...state, tabs };
     }
 
     case "SELECT_TAB":
       return { ...state, activeTabId: action.tabId };
 
     case "NAVIGATE": {
-      // 常にページ種別に応じた階層スタックを構築する
-      // ホーム → 板一覧 → スレッド一覧 → スレッド の固定構造を維持
       const newHistory = buildHierarchy(action.page);
       return updateActiveTab(state, (tab) => ({
         ...tab,
         history: newHistory,
         currentIndex: newHistory.length - 1,
       }));
+    }
+
+    case "NAVIGATE_TAB": {
+      // 指定タブにナビゲートしてアクティブにする
+      const newHistory = buildHierarchy(action.page);
+      return {
+        ...state,
+        activeTabId: action.tabId,
+        tabs: state.tabs.map((t) =>
+          t.id === action.tabId
+            ? { ...t, history: newHistory, currentIndex: newHistory.length - 1 }
+            : t
+        ),
+      };
     }
 
     case "GO_BACK": {

@@ -1,10 +1,19 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import { useTabStore } from "../hooks/use-tab-store";
 import { getCurrentPage } from "../types";
+import type { Tab } from "../types";
+import { TabContextMenu } from "./TabContextMenu";
 import { X, Plus } from "lucide-react";
+
+interface ContextMenuState {
+  tab: Tab;
+  x: number;
+  y: number;
+}
 
 export const TabBar: React.FC = () => {
   const { state, dispatch } = useTabStore();
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
   // ミドルクリック（ボタン1）でタブを閉じる
   const handleMouseDown = useCallback(
@@ -17,6 +26,16 @@ export const TabBar: React.FC = () => {
     [dispatch]
   );
 
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent, tab: Tab) => {
+      e.preventDefault();
+      setContextMenu({ tab, x: e.clientX, y: e.clientY });
+    },
+    []
+  );
+
+  const closeContextMenu = useCallback(() => setContextMenu(null), []);
+
   return (
     <div className="tab-bar">
       <div className="tab-list">
@@ -27,12 +46,13 @@ export const TabBar: React.FC = () => {
           return (
             <div
               key={tab.id}
-              className={`tab ${isActive ? "tab--active" : ""}`}
+              className={`tab ${isActive ? "tab--active" : ""} ${tab.pinned ? "tab--pinned" : ""}`}
               onClick={() => dispatch({ type: "SELECT_TAB", tabId: tab.id })}
               onMouseDown={(e) => handleMouseDown(e, tab.id)}
+              onContextMenu={(e) => handleContextMenu(e, tab)}
             >
               <span className="tab__title">{page.title}</span>
-              {state.tabs.length > 1 && (
+              {!tab.pinned && state.tabs.length > 1 && (
                 <button
                   className="tab__close"
                   onClick={(e) => {
@@ -56,6 +76,14 @@ export const TabBar: React.FC = () => {
           <Plus size={18} />
         </button>
       </div>
+
+      {contextMenu && (
+        <TabContextMenu
+          tab={contextMenu.tab}
+          position={{ x: contextMenu.x, y: contextMenu.y }}
+          onClose={closeContextMenu}
+        />
+      )}
     </div>
   );
 };

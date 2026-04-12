@@ -31,6 +31,7 @@ export interface Tab {
   id: string;
   history: Page[];
   currentIndex: number;
+  pinned: boolean;
 }
 
 // --- Core API の型定義 ---
