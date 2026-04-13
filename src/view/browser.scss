@@ -984,8 +984,8 @@ html, body {
   z-index: 10020;
   width: min(560px, 92vw);
   max-height: 52vh;
-  /* プレビュー自身がマウスを拾うとアンカーhoverが外れてしまうため、ヒットテストから除外する。 */
-  pointer-events: none;
+  /* 非表示を遅延制御にしたので、プレビュー自体も操作対象としてマウスを受け取る。 */
+  pointer-events: auto;
   background: #fff;
   border: 1px solid #dadce0;
   border-radius: 8px;

@@ -252,6 +252,16 @@ function toViewerImageUrl(rawUrl: string): string | null {
   return null;
 }
 
+function getEventTargetElement(target: EventTarget | null): Element | null {
+  if (target instanceof Element) {
+    return target;
+  }
+  if (target instanceof Node) {
+    return target.parentElement;
+  }
+  return null;
+}
+
 // --- インデックス構築 ---
 interface ThreadIndexes {
   idIndex: Map<string, Set<number>>;
@@ -318,6 +328,7 @@ interface ViewerState {
 }
 
 interface AnchorPreviewState {
+  depth: number;
   x: number;
   y: number;
   items: IRes[];
@@ -328,6 +339,8 @@ const MAX_TREE_DEPTH = 10;
 const ANCHOR_PREVIEW_OFFSET = 12;
 const ANCHOR_PREVIEW_GUTTER = 16;
 const ANCHOR_PREVIEW_MAX_WIDTH = 560;
+const ANCHOR_PREVIEW_HIDE_DELAY_MS = 120;
+const ANCHOR_SELECTOR = "a.anchor, a.name_anchor";
 
 export const ThreadPage: React.FC<Props> = ({ page }) => {
   const { dispatch } = useTabStore();
@@ -351,9 +364,8 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
   const [miniAaResNums, setMiniAaResNums] = useState<Set<number>>(new Set());
   const [viewer, setViewer] = useState<ViewerState | null>(null);
   const [viewerScale, setViewerScale] = useState(1);
-  const [anchorPreview, setAnchorPreview] = useState<AnchorPreviewState | null>(
-    null
-  );
+  const [anchorPreviews, setAnchorPreviews] = useState<AnchorPreviewState[]>([]);
+  const anchorPreviewHideTimerRef = useRef<number | null>(null);
   const messageProtocol = useMemo(() => {
     // 拡張ページのprotocolを使うと //example.com/... が拡張URL扱いになるため、元スレURLのprotocolで本文を復元する。
     try {
@@ -462,7 +474,7 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
     (id: string, e: React.MouseEvent) => {
       const resNums = indexes.idIndex.get(id);
       if (!resNums) return;
-      setAnchorPreview(null);
+      hideAnchorPreviewImmediately();
       const items = Array.from(resNums)
         .sort((a, b) => a - b)
         .map((num) => indexes.resMap.get(num))
@@ -481,7 +493,7 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
   // 返信クリック → 返信ツリーをポップアップ表示
   const handleRepClick = useCallback(
     (resNum: number, e: React.MouseEvent) => {
-      setAnchorPreview(null);
+      hideAnchorPreviewImmediately();
       setTreePopup({ x: e.clientX, y: e.clientY, resNum });
       setPopup(null);
     },
@@ -489,7 +501,7 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
   );
 
   const closePopup = useCallback(() => {
-    setAnchorPreview(null);
+    hideAnchorPreviewImmediately();
     setPopup(null);
     setTreePopup(null);
   }, []);
@@ -512,21 +524,44 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
     setViewer(null);
   }, []);
 
-  const hideAnchorPreview = useCallback(() => {
-    setAnchorPreview(null);
+  const clearAnchorPreviewHideTimer = useCallback(() => {
+    if (anchorPreviewHideTimerRef.current != null) {
+      window.clearTimeout(anchorPreviewHideTimerRef.current);
+      anchorPreviewHideTimerRef.current = null;
+    }
   }, []);
 
+  const hideAnchorPreviewImmediately = useCallback((fromDepth = 0) => {
+    clearAnchorPreviewHideTimer();
+    setAnchorPreviews((prev) => prev.slice(0, fromDepth));
+  }, [clearAnchorPreviewHideTimer]);
+
+  const hideAnchorPreview = useCallback((fromDepth = 0) => {
+    clearAnchorPreviewHideTimer();
+    // 親子プレビュー間を横断する間は少し猶予を持たせ、子プレビューに入ったら閉じを打ち消す。
+    anchorPreviewHideTimerRef.current = window.setTimeout(() => {
+      anchorPreviewHideTimerRef.current = null;
+      setAnchorPreviews((prev) => prev.slice(0, fromDepth));
+    }, ANCHOR_PREVIEW_HIDE_DELAY_MS);
+  }, [clearAnchorPreviewHideTimer]);
+
   const showAnchorPreview = useCallback(
-    (targets: number[], anchorRect: DOMRect, label: string) => {
+    (
+      targets: number[],
+      anchorRect: DOMRect,
+      label: string,
+      depth: number
+    ) => {
+      clearAnchorPreviewHideTimer();
       if (targets.length === 0) {
-        setAnchorPreview(null);
+        setAnchorPreviews((prev) => prev.slice(0, depth));
         return;
       }
       const items = targets
         .map((num) => indexes.resMap.get(num))
         .filter((res): res is IRes => !!res);
       if (items.length === 0) {
-        setAnchorPreview(null);
+        setAnchorPreviews((prev) => prev.slice(0, depth));
         return;
       }
       const maxWidth = Math.min(
@@ -547,11 +582,23 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
           window.innerHeight - ANCHOR_PREVIEW_GUTTER
         )
       );
-      // ポップアップをマウス座標ではなくアンカー要素の位置に固定し、ホバー中の追従を止める。
-      setAnchorPreview({ x, y, items, label });
+      // 旧PopupViewと同様に深さごとのスタックで保持し、子プレビュー表示中も親を残す。
+      setAnchorPreviews((prev) => {
+        const next = prev.slice(0, depth);
+        next.push({ depth, x, y, items, label });
+        return next;
+      });
     },
-    [indexes.resMap]
+    [clearAnchorPreviewHideTimer, indexes.resMap]
   );
+
+  useEffect(() => {
+    return () => {
+      if (anchorPreviewHideTimerRef.current != null) {
+        window.clearTimeout(anchorPreviewHideTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!viewer) return;
@@ -982,10 +1029,23 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
   const handleAnchorClick = useCallback((resNum: number) => {
     const host = rootRef.current;
     if (!host) return;
-    setAnchorPreview(null);
+    hideAnchorPreviewImmediately();
     const target = host.querySelector(`[data-res-num="${resNum}"]`);
     if (!target) return;
-    target.scrollIntoView({ behavior: "instant", block: "start" });
+    const scrollContainer = host.closest(".content-area");
+    if (scrollContainer instanceof HTMLElement && target instanceof HTMLElement) {
+      // ThreadPageでは content-area が実スクロールコンテナなので、そこへ直接位置合わせする。
+      const targetRect = target.getBoundingClientRect();
+      const containerRect = scrollContainer.getBoundingClientRect();
+      const nextScrollTop =
+        scrollContainer.scrollTop + targetRect.top - containerRect.top;
+      scrollContainer.scrollTo({
+        top: Math.max(0, nextScrollTop),
+        behavior: "auto",
+      });
+    } else {
+      target.scrollIntoView({ behavior: "auto", block: "start" });
+    }
     // 視認性のためハイライトアニメーションを付与
     target.classList.add("res--highlighted");
     target.addEventListener(
@@ -993,7 +1053,7 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
       () => target.classList.remove("res--highlighted"),
       { once: true }
     );
-  }, []);
+  }, [hideAnchorPreviewImmediately]);
 
   // ジェスチャーuseEffectでrootRefが確実にマウント済みになるよう、loading中の早期returnを廃止し常にrootRef付きdivを描画する
   return (
@@ -1066,13 +1126,11 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
               onRepClick={handleRepClick}
               onUrlClick={openMediaFromUrl}
               onAnchorClick={handleAnchorClick}
-              onAnchorHover={(targets, anchorRect, label) => {
-                showAnchorPreview(targets, anchorRect, label);
-              }}
+              onAnchorHover={showAnchorPreview}
               onAnchorLeave={hideAnchorPreview}
               onContextMenu={(e) => {
                 e.preventDefault();
-                setAnchorPreview(null);
+                hideAnchorPreviewImmediately();
                 setResContextMenu({ x: e.clientX, y: e.clientY, res });
               }}
             />
@@ -1089,32 +1147,44 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
         />
       )}
 
-      {anchorPreview && !resContextMenu && (
-        <div className="anchor-preview" style={{ left: anchorPreview.x, top: anchorPreview.y }}>
-          <div className="anchor-preview__title">参照: {anchorPreview.label}</div>
-          <div className="anchor-preview__body">
-            {anchorPreview.items.slice(0, 8).map((res) => (
-              <PopupResCard
-                key={res.num}
-                res={res}
-                messageProtocol={messageProtocol}
-                onUrlClick={openMediaFromUrl}
-                onAnchorClick={handleAnchorClick}
-                onAnchorHover={showAnchorPreview}
-                onAnchorLeave={hideAnchorPreview}
-                onContextMenu={(e, targetRes) => {
-                  setAnchorPreview(null);
-                  setResContextMenu({
-                    x: e.clientX,
-                    y: e.clientY,
-                    res: targetRes,
-                  });
-                }}
-              />
-            ))}
+      {!resContextMenu &&
+        anchorPreviews.map((anchorPreview) => (
+          <div
+            key={`anchor-preview-${anchorPreview.depth}`}
+            className="anchor-preview"
+            style={{
+              left: anchorPreview.x,
+              top: anchorPreview.y,
+              zIndex: 10020 + anchorPreview.depth,
+            }}
+            onMouseEnter={clearAnchorPreviewHideTimer}
+            onMouseLeave={() => hideAnchorPreview(anchorPreview.depth)}
+          >
+            <div className="anchor-preview__title">参照: {anchorPreview.label}</div>
+            <div className="anchor-preview__body">
+              {anchorPreview.items.slice(0, 8).map((res) => (
+                <PopupResCard
+                  key={res.num}
+                  res={res}
+                  messageProtocol={messageProtocol}
+                  anchorPreviewDepth={anchorPreview.depth + 1}
+                  onUrlClick={openMediaFromUrl}
+                  onAnchorClick={handleAnchorClick}
+                  onAnchorHover={showAnchorPreview}
+                  onAnchorLeave={hideAnchorPreview}
+                  onContextMenu={(e, targetRes) => {
+                    hideAnchorPreviewImmediately();
+                    setResContextMenu({
+                      x: e.clientX,
+                      y: e.clientY,
+                      res: targetRes,
+                    });
+                  }}
+                />
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        ))}
 
       {/* IDポップアップ */}
       {popup && (
@@ -1129,7 +1199,7 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
           onAnchorHover={showAnchorPreview}
           onAnchorLeave={hideAnchorPreview}
           onResContextMenu={(e, targetRes) => {
-            setAnchorPreview(null);
+            hideAnchorPreviewImmediately();
             setResContextMenu({
               x: e.clientX,
               y: e.clientY,
@@ -1154,7 +1224,7 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
           onAnchorHover={showAnchorPreview}
           onAnchorLeave={hideAnchorPreview}
           onResContextMenu={(e, targetRes) => {
-            setAnchorPreview(null);
+            hideAnchorPreviewImmediately();
             setResContextMenu({
               x: e.clientX,
               y: e.clientY,
@@ -1243,27 +1313,31 @@ interface ResItemProps {
   onAnchorHover: (
     targets: number[],
     anchorRect: DOMRect,
-    label: string
+    label: string,
+    depth: number
   ) => void;
-  onAnchorLeave: () => void;
+  onAnchorLeave: (fromDepth: number) => void;
   onContextMenu: (e: React.MouseEvent) => void;
 }
 
 interface ResBodyProps {
   messageHtml: string;
+  anchorPreviewDepth: number;
   onUrlClick: (url: string) => void;
   onAnchorClick: (resNum: number) => void;
   onAnchorHover: (
     targets: number[],
     anchorRect: DOMRect,
-    label: string
+    label: string,
+    depth: number
   ) => void;
-  onAnchorLeave: () => void;
+  onAnchorLeave: (fromDepth: number) => void;
 }
 
 const ResBody: React.FC<ResBodyProps> = React.memo(
   ({
     messageHtml,
+    anchorPreviewDepth,
     onUrlClick,
     onAnchorClick,
     onAnchorHover,
@@ -1276,12 +1350,12 @@ const ResBody: React.FC<ResBodyProps> = React.memo(
         className="res__body"
         dangerouslySetInnerHTML={{ __html: messageHtml }}
         onMouseOver={(e) => {
-          const target = e.target as HTMLElement;
-          const anchor = target.closest("a.anchor");
+          const target = getEventTargetElement(e.target);
+          const anchor = target?.closest(ANCHOR_SELECTOR);
           if (!(anchor instanceof HTMLAnchorElement)) {
             if (hoveredAnchorRef.current) {
               hoveredAnchorRef.current = null;
-              onAnchorLeave();
+              onAnchorLeave(anchorPreviewDepth);
             }
             return;
           }
@@ -1293,22 +1367,30 @@ const ResBody: React.FC<ResBodyProps> = React.memo(
           const targets = parseAnchorDisplayTargets(label);
           if (targets.length === 0) {
             hoveredAnchorRef.current = null;
-            onAnchorLeave();
+            onAnchorLeave(anchorPreviewDepth);
             return;
           }
           // 同じアンカー上の細かなマウス移動では再配置せず、プレビューを安定表示させる。
-          onAnchorHover(targets, anchor.getBoundingClientRect(), label);
+          onAnchorHover(
+            targets,
+            anchor.getBoundingClientRect(),
+            label,
+            anchorPreviewDepth
+          );
         }}
         onMouseLeave={() => {
           hoveredAnchorRef.current = null;
-          onAnchorLeave();
+          onAnchorLeave(anchorPreviewDepth);
         }}
         onClick={(e) => {
-          const target = e.target as HTMLElement;
-          const anchor = target.closest("a");
+          const target = getEventTargetElement(e.target);
+          const anchor = target?.closest("a");
           if (!(anchor instanceof HTMLAnchorElement)) return;
-          if (anchor.classList.contains("anchor")) {
+          if (anchor.matches(ANCHOR_SELECTOR)) {
             e.preventDefault();
+            if (anchor.classList.contains("disabled")) {
+              return;
+            }
             const label = anchor.textContent?.trim() ?? "";
             const targets = parseAnchorDisplayTargets(label);
             if (targets.length > 0) {
@@ -1404,6 +1486,7 @@ const ResItem: React.FC<ResItemProps> = React.memo(
         </header>
         <ResBody
           messageHtml={decoded.messageHtml}
+          anchorPreviewDepth={0}
           onUrlClick={onUrlClick}
           onAnchorClick={onAnchorClick}
           onAnchorHover={onAnchorHover}
@@ -1446,14 +1529,16 @@ ResItem.displayName = "ResItem";
 interface StaticResCardProps {
   res: IRes;
   messageProtocol: string;
+  anchorPreviewDepth: number;
   onUrlClick: (url: string) => void;
   onAnchorClick: (resNum: number) => void;
   onAnchorHover: (
     targets: number[],
     anchorRect: DOMRect,
-    label: string
+    label: string,
+    depth: number
   ) => void;
-  onAnchorLeave: () => void;
+  onAnchorLeave: (fromDepth: number) => void;
   onContextMenu?: (e: React.MouseEvent, res: IRes) => void;
 }
 
@@ -1461,6 +1546,7 @@ const PopupResCard: React.FC<StaticResCardProps> = React.memo(
   ({
     res,
     messageProtocol,
+    anchorPreviewDepth,
     onUrlClick,
     onAnchorClick,
     onAnchorHover,
@@ -1492,6 +1578,7 @@ const PopupResCard: React.FC<StaticResCardProps> = React.memo(
         </header>
         <ResBody
           messageHtml={decoded.messageHtml}
+          anchorPreviewDepth={anchorPreviewDepth}
           onUrlClick={onUrlClick}
           onAnchorClick={onAnchorClick}
           onAnchorHover={onAnchorHover}
@@ -1516,9 +1603,10 @@ const ResPopup: React.FC<{
   onAnchorHover: (
     targets: number[],
     anchorRect: DOMRect,
-    label: string
+    label: string,
+    depth: number
   ) => void;
-  onAnchorLeave: () => void;
+  onAnchorLeave: (fromDepth: number) => void;
   onResContextMenu: (e: React.MouseEvent, res: IRes) => void;
   onClose: () => void;
 }> = ({
@@ -1572,6 +1660,7 @@ const ResPopup: React.FC<{
             key={res.num}
             res={res}
             messageProtocol={messageProtocol}
+            anchorPreviewDepth={0}
             onUrlClick={onUrlClick}
             onAnchorClick={onAnchorClick}
             onAnchorHover={onAnchorHover}
@@ -1598,9 +1687,10 @@ const ReplyTreePopup: React.FC<{
   onAnchorHover: (
     targets: number[],
     anchorRect: DOMRect,
-    label: string
+    label: string,
+    depth: number
   ) => void;
-  onAnchorLeave: () => void;
+  onAnchorLeave: (fromDepth: number) => void;
   onResContextMenu: (e: React.MouseEvent, res: IRes) => void;
   onClose: () => void;
 }> = ({
@@ -1679,9 +1769,10 @@ const ReplyTree: React.FC<{
   onAnchorHover: (
     targets: number[],
     anchorRect: DOMRect,
-    label: string
+    label: string,
+    depth: number
   ) => void;
-  onAnchorLeave: () => void;
+  onAnchorLeave: (fromDepth: number) => void;
   onResContextMenu: (e: React.MouseEvent, res: IRes) => void;
   visited: Set<number>;
   depth: number;
@@ -1727,6 +1818,7 @@ const ReplyTree: React.FC<{
             <PopupResCard
               res={res}
               messageProtocol={messageProtocol}
+              anchorPreviewDepth={0}
               onUrlClick={onUrlClick}
               onAnchorClick={onAnchorClick}
               onAnchorHover={onAnchorHover}
