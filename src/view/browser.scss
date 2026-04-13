@@ -530,6 +530,11 @@ body {
   font-weight: 400;
 }
 
+.settings-page__form .radio span {
+  display: flex;
+  place-items: center;
+}
+
 .settings-page__form .field-description {
   margin-top: 4px;
   font-size: 12px;
