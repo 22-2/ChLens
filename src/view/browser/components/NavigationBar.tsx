@@ -1,7 +1,18 @@
-import { ArrowLeft, ArrowRight, Menu, RotateCw } from "lucide-react";
-import React, { useCallback, useEffect, useState } from "react";
+import { ArrowLeft, ArrowRight, Menu, RotateCw, Settings } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
-import { canGoBack, canGoForward, getDisplayUrl } from "src/view/browser/types";
+import {
+  canGoBack,
+  canGoForward,
+  getCurrentPage,
+  getDisplayUrl,
+} from "src/view/browser/types";
+
+interface MenuPosition {
+  x: number;
+  y: number;
+}
 
 // URLバーからの入力でページ種別を推定してナビゲートする
 function navigateByUrl(
@@ -36,7 +47,7 @@ function navigateByUrl(
 }
 
 export const NavigationBar: React.FC = () => {
-  const { activeTab, currentPage, dispatch } = useTabStore();
+  const { state, activeTab, currentPage, dispatch } = useTabStore();
 
   const back = canGoBack(activeTab);
   const forward = canGoForward(activeTab);
@@ -44,6 +55,7 @@ export const NavigationBar: React.FC = () => {
 
   const [inputValue, setInputValue] = useState(displayUrl);
   const [isFocused, setIsFocused] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
 
   // ページ遷移時にURLバーの表示を同期
   useEffect(() => {
@@ -78,6 +90,56 @@ export const NavigationBar: React.FC = () => {
     // フォーカスを外したら現在のURLに戻す
     setInputValue(displayUrl);
   }, [displayUrl]);
+
+  const openSettingsTab = useCallback(() => {
+    // 設定タブを毎回増やすより既存タブを再利用した方が往復しやすいため、まず開いている設定を探す。
+    const existingSettingsTab = state.tabs.find(
+      (tab) => getCurrentPage(tab).type === "settings",
+    );
+
+    if (existingSettingsTab) {
+      dispatch({ type: "SELECT_TAB", tabId: existingSettingsTab.id });
+      return;
+    }
+
+    dispatch({ type: "ADD_TAB" });
+    dispatch({
+      type: "NAVIGATE",
+      page: { type: "settings", title: "設定" },
+    });
+  }, [dispatch, state.tabs]);
+
+  const handleMenuClick = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      const rect = e.currentTarget.getBoundingClientRect();
+      setMenuPosition((prev) => {
+        if (prev) {
+          return null;
+        }
+        return {
+          x: Math.max(8, rect.right - 220),
+          y: rect.bottom + 4,
+        };
+      });
+    },
+    [],
+  );
+
+  const closeMenu = useCallback(() => {
+    setMenuPosition(null);
+  }, []);
+
+  const menuItems = useMemo(
+    () => [
+      {
+        id: "open-settings",
+        label: "設定を開く",
+        icon: <Settings size={14} />,
+        onSelect: openSettingsTab,
+      },
+    ],
+    [openSettingsTab],
+  );
 
   return (
     <div className="nav-bar">
@@ -115,9 +177,18 @@ export const NavigationBar: React.FC = () => {
         />
       </div>
 
-      <button className="nav-bar__btn" title="メニュー">
+      <button className="nav-bar__btn" title="メニュー" onClick={handleMenuClick}>
         <Menu size={18} />
       </button>
+
+      {menuPosition && (
+        <ContextMenu
+          x={menuPosition.x}
+          y={menuPosition.y}
+          items={menuItems}
+          onClose={closeMenu}
+        />
+      )}
     </div>
   );
 };

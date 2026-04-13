@@ -1,6 +1,11 @@
 // ページ種別の定義
 // ナビゲーション階層: ホーム → 板一覧 → スレッド一覧 → スレッド
-export type PageType = "home" | "boardList" | "threadList" | "thread";
+export type PageType =
+  | "home"
+  | "boardList"
+  | "threadList"
+  | "thread"
+  | "settings";
 
 export interface HomePage {
   type: "home";
@@ -25,7 +30,17 @@ export interface ThreadPage {
   threadUrl: string;
 }
 
-export type Page = HomePage | BoardListPage | ThreadListPage | ThreadPage;
+export interface SettingsPage {
+  type: "settings";
+  title: string;
+}
+
+export type Page =
+  | HomePage
+  | BoardListPage
+  | ThreadListPage
+  | ThreadPage
+  | SettingsPage;
 
 export interface Tab {
   id: string;
@@ -111,6 +126,8 @@ export function getDisplayUrl(page: Page): string {
       return "";
     case "boardList":
       return "板一覧";
+    case "settings":
+      return "設定";
     case "threadList":
       return (page as ThreadListPage).boardUrl;
     case "thread":
@@ -152,6 +169,9 @@ export function buildHierarchy(page: Page): Page[] {
       return [page];
 
     case "boardList":
+      return [{ type: "home", title: "ホーム" }, page];
+
+    case "settings":
       return [{ type: "home", title: "ホーム" }, page];
 
     case "threadList":

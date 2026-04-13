@@ -382,6 +382,271 @@ body {
 }
 
 /* ==========================================================================
+   Settings Page - React JSON Schema Form
+   ========================================================================== */
+.settings-page {
+  display: flex;
+  min-height: 100%;
+}
+
+.settings-page__sidebar {
+  width: 250px;
+  flex-shrink: 0;
+  border-right: 1px solid #e8eaed;
+  background: #f8f9fa;
+  padding: 16px 12px;
+}
+
+.settings-page__sidebar-title {
+  padding: 0 8px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #5f6368;
+  text-transform: uppercase;
+}
+
+.settings-page__section-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings-page__section-btn {
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  padding: 10px 12px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.settings-page__section-btn:hover {
+  background: #eef3fd;
+}
+
+.settings-page__section-btn--active {
+  background: #e8f0fe;
+  border-color: #c6dafc;
+  box-shadow: inset 0 0 0 1px rgba(26, 115, 232, 0.08);
+}
+
+.settings-page__section-name {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #202124;
+}
+
+.settings-page__section-desc {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #5f6368;
+}
+
+.settings-page__main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.settings-page__card {
+  max-width: 860px;
+  border: 1px solid #dadce0;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(32, 33, 36, 0.08);
+  padding: 24px;
+}
+
+.settings-page__eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #1a73e8;
+  text-transform: uppercase;
+}
+
+.settings-page__title {
+  margin-top: 8px;
+  font-size: 28px;
+  font-weight: 500;
+  color: #202124;
+}
+
+.settings-page__description {
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #3c4043;
+}
+
+.settings-page__note {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f8f9fa;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #5f6368;
+}
+
+.settings-page__form {
+  margin-top: 24px;
+}
+
+.settings-page__form fieldset {
+  border: none;
+}
+
+.settings-page__form .form-group,
+.settings-page__form .field {
+  margin-bottom: 16px;
+}
+
+.settings-page__form label,
+.settings-page__form legend {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #202124;
+}
+
+.settings-page__form .checkbox label,
+.settings-page__form .checkboxes label,
+.settings-page__form .radio label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 12px;
+  font-weight: 400;
+}
+
+.settings-page__form .field-description {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #5f6368;
+}
+
+.settings-page__form input[type="text"],
+.settings-page__form input[type="number"],
+.settings-page__form textarea,
+.settings-page__form select {
+  width: 100%;
+  border: 1px solid #dadce0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fff;
+  font: inherit;
+  color: #202124;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.settings-page__form textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.settings-page__form input[type="text"]:focus,
+.settings-page__form input[type="number"]:focus,
+.settings-page__form textarea:focus,
+.settings-page__form select:focus {
+  outline: none;
+  border-color: #1a73e8;
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.12);
+}
+
+.settings-page__form input[type="checkbox"],
+.settings-page__form input[type="radio"] {
+  width: 16px;
+  height: 16px;
+}
+
+.settings-page__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.settings-page__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 120px;
+  padding: 10px 16px;
+  border: 1px solid #dadce0;
+  border-radius: 999px;
+  background: #fff;
+  color: #202124;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.settings-page__button:hover:not(:disabled) {
+  background: #f8f9fa;
+}
+
+.settings-page__button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.settings-page__button--primary {
+  border-color: #1a73e8;
+  background: #1a73e8;
+  color: #fff;
+}
+
+.settings-page__button--primary:hover:not(:disabled) {
+  background: #1765cc;
+  border-color: #1765cc;
+}
+
+@media (max-width: 900px) {
+  .settings-page {
+    flex-direction: column;
+  }
+
+  .settings-page__sidebar {
+    width: auto;
+    border-right: none;
+    border-bottom: 1px solid #e8eaed;
+  }
+
+  .settings-page__main {
+    padding: 16px;
+  }
+
+  .settings-page__card {
+    padding: 20px 16px;
+  }
+
+  .settings-page__actions {
+    flex-direction: column;
+  }
+
+  .settings-page__button {
+    width: 100%;
+  }
+}
+
+/* ==========================================================================
    Board List Page - 板一覧
    ========================================================================== */
 .board-list-page {
