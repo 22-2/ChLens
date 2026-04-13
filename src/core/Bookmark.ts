@@ -1,7 +1,7 @@
 import { Entry } from "src/core/BookmarkEntryList";
 import BrowserBookmarkEntryList from "src/core/BrowserBookmarkEntryList";
-import { threadToBoard } from "src/core/URL";
 import { get as getReadState } from "src/core/ReadState.js";
+import { threadToBoard } from "src/core/URL";
 
 export default class Bookmark {
   readonly bel: BrowserBookmarkEntryList;
@@ -49,7 +49,7 @@ export default class Bookmark {
                 read_state: bookmark.readState,
               });
             }
-          }
+          },
         );
       });
     });
@@ -59,7 +59,7 @@ export default class Bookmark {
       "detected_ch_server_move",
       ({ before, after }: { before: string; after: string }) => {
         this.bel.serverMove(before, after);
-      }
+      },
     );
   }
 

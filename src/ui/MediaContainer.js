@@ -68,7 +68,7 @@ export default class MediaContainer {
           }
         }
       },
-      true
+      true,
     );
 
     this.container.on(
@@ -114,7 +114,7 @@ export default class MediaContainer {
         target.style.maxWidth = null;
         target.style.maxHeight = null;
       },
-      true
+      true,
     );
 
     this.container.on(
@@ -145,7 +145,7 @@ export default class MediaContainer {
           target.style.maxHeight = `${app.config.get("video_height")}px`;
         }
       },
-      true
+      true,
     );
   }
 
@@ -219,7 +219,7 @@ export default class MediaContainer {
         target.on("pause", func);
         target.on("ended", func);
       },
-      true
+      true,
     );
 
     // マウスポインタのリセット
@@ -258,7 +258,7 @@ export default class MediaContainer {
   */
   static setImageBlur(res, blurMode) {
     for (let thumb of res.$$(
-      ".thumbnail[media-type='image'], .thumbnail[media-type='video']"
+      ".thumbnail[media-type='image'], .thumbnail[media-type='video']",
     )) {
       MediaContainer._setImageBlurOne(thumb, blurMode);
     }

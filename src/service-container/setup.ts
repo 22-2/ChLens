@@ -1,18 +1,18 @@
 import { container } from "src/service-container/Container";
 import {
-  IConfig,
-  ICacheService,
-  IBookmark,
-  IMessage,
-  ICacheItem,
-  IReadStateService,
-  IBoardService,
-  IUtil,
-  IBoardResult,
   IBBSMenuService,
-  INotificationService,
-  IThreadService,
+  IBoardResult,
+  IBoardService,
+  IBookmark,
+  ICacheItem,
+  ICacheService,
+  IConfig,
+  IMessage,
   INGService,
+  INotificationService,
+  IReadStateService,
+  IThreadService,
+  IUtil,
 } from "src/service-container/interfaces";
 // @ts-ignore
 import Cache from "src/core/Cache.js";

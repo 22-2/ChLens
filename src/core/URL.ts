@@ -148,7 +148,7 @@ export class URL extends window.URL {
       this.tryFixPattern(
         PATTERNS.MACHI_THREAD,
         (match) => `/bbs/read.cgi/${match[1]}/`,
-        { type: "thread", bbsType: "machi" }
+        { type: "thread", bbsType: "machi" },
       )
     ) {
       return;
@@ -166,7 +166,7 @@ export class URL extends window.URL {
       this.tryFixPattern(
         PATTERNS.SHITARABA_THREAD,
         (match) => `/bbs/${match[1]}/`,
-        { type: "thread", bbsType: "jbbs" }
+        { type: "thread", bbsType: "jbbs" },
       )
     ) {
       this.archive = this.pathname.includes("read_archive");
@@ -177,7 +177,7 @@ export class URL extends window.URL {
       this.tryFixPattern(
         PATTERNS.SHITARABA_ARCHIVE,
         (match) => `/bbs/read_archive.cgi/${match[1]}/${match[2]}/`,
-        { type: "thread", bbsType: "jbbs" }
+        { type: "thread", bbsType: "jbbs" },
       )
     ) {
       this.archive = true;
@@ -197,7 +197,7 @@ export class URL extends window.URL {
       this.tryFixPattern(
         PATTERNS.EDDIBB_THREAD_2,
         (match) => `/test/read.cgi/${match[1]}/${match[2]}/`,
-        { type: "thread", bbsType: "2ch" }
+        { type: "thread", bbsType: "2ch" },
       )
     ) {
       this.protocol = "http:";
@@ -209,7 +209,7 @@ export class URL extends window.URL {
       this.tryFixPattern(
         PATTERNS.EDDIBB_THREAD,
         (match) => `/test/read.cgi/${match[1]}/${match[2]}/`,
-        { type: "thread", bbsType: "2ch" }
+        { type: "thread", bbsType: "2ch" },
       )
     ) {
       this.protocol = "http:";
@@ -221,7 +221,7 @@ export class URL extends window.URL {
       this.tryFixPattern(
         PATTERNS.EDDIBB_BOARD_2,
         (match) => `/test/read.cgi/${match[1]}/`,
-        { type: "board", bbsType: "2ch" }
+        { type: "board", bbsType: "2ch" },
       )
     ) {
       return;
@@ -255,7 +255,7 @@ export class URL extends window.URL {
   private tryFixPattern(
     pattern: RegExp,
     pathBuilder: (match: RegExpExecArray) => string,
-    type: GuessResult
+    type: GuessResult,
   ): boolean {
     const match = pattern.exec(this.pathname);
     if (match) {
@@ -305,7 +305,7 @@ export class URL extends window.URL {
     if (type !== "thread") return null;
 
     const tmp = new RegExp(
-      `^/(?:test|bbs)/read(?:_archive)?\\.cgi/(\\w+)/(\\d+)/(?:(\\d+)/)?$`
+      `^/(?:test|bbs)/read(?:_archive)?\\.cgi/(\\w+)/(\\d+)/(?:(\\d+)/)?$`,
     ).exec(this.pathname);
     if (!tmp) return null;
 
@@ -374,7 +374,7 @@ export class URL extends window.URL {
   // サーバー検索
   private findServer(
     board: string,
-    tsld: string
+    tsld: string,
   ): { serverName: string | null; domain: string } {
     if (tsld === TSLD.CH_5) {
       if (serverNet.has(board)) {
@@ -422,7 +422,7 @@ export class URL extends window.URL {
 
   private async tryExchangeFromCache(
     boardKey: string,
-    tsld: string
+    tsld: string,
   ): Promise<boolean> {
     if (tsld === TSLD.CH_5 && serverSc.has(boardKey)) {
       const server = serverSc.get(boardKey)!;
@@ -438,7 +438,7 @@ export class URL extends window.URL {
 
   private async fetchAndExchangeNetSc(
     boardKey: string,
-    type: ContentType
+    type: ContentType,
   ): Promise<void> {
     const hostname = this.hostname.replace(`.${TSLD.CH_5}`, `.${TSLD.CH_2_SC}`);
     const req = new Request("HEAD", `http://${hostname}${this.pathname}`);
@@ -673,7 +673,7 @@ export function getExtType(
     video: boolean;
     oggIsAudio: boolean;
     oggIsVideo: boolean;
-  }> = {}
+  }> = {},
 ): "audio" | "video" | null {
   if (audio && AUDIO_REG.test(filename)) {
     return "audio";

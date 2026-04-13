@@ -1,32 +1,50 @@
+import { Ban, Copy, Globe, History, Reply, Search, Type } from "lucide-react";
 import React, {
-  useEffect,
-  useState,
   useCallback,
-  useRef,
+  useEffect,
   useMemo,
+  useRef,
+  useState,
 } from "react";
-import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { container } from "src/service-container/index";
-import { SearchBar } from "src/view/browser/components/SearchBar";
-import { ContextMenu } from "src/view/browser/components/ContextMenu";
-import {
-  Ban,
-  Copy,
-  Globe,
-  History,
-  Reply,
-  Search,
-  Type,
-} from "lucide-react";
 import type { IRes, IThreadDetail } from "src/service-container/interfaces";
-import { ReplyTreePopup } from "./ReplyTreePopup";
-import { ResPopup } from "./ResPopup";
+import { ContextMenu } from "src/view/browser/components/ContextMenu";
+import { SearchBar } from "src/view/browser/components/SearchBar";
+import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import {
+  ANCHOR_PREVIEW_GUTTER,
+  ANCHOR_PREVIEW_HIDE_DELAY_MS,
+  ANCHOR_PREVIEW_MAX_WIDTH,
+  ANCHOR_PREVIEW_OFFSET,
+} from "./constants";
 import { PopupResCard } from "./PopupResCard";
+import { ReplyTreePopup } from "./ReplyTreePopup";
 import { ResItem } from "./ResItem";
-import { hasImage, hasVideo, hasExternalLink, stripHtml, toViewerImageUrl, GesturePoint, GestureDirection, GESTURE_START_THRESHOLD, summarizeVerticalGesture, GESTURE_CONTEXTMENU_SUPPRESS_MS, buildKyodemoUrl, copyText } from "./utils";
-import { Props, ThreadFilter, PopupState, TreePopupState, ResContextMenuState, ViewerState, AnchorPreviewState } from "./types";
+import { ResPopup } from "./ResPopup";
 import { buildIndexes } from "./thread-index";
-import { ANCHOR_PREVIEW_HIDE_DELAY_MS, ANCHOR_PREVIEW_MAX_WIDTH, ANCHOR_PREVIEW_GUTTER, ANCHOR_PREVIEW_OFFSET } from "./constants";
+import {
+  AnchorPreviewState,
+  PopupState,
+  Props,
+  ResContextMenuState,
+  ThreadFilter,
+  TreePopupState,
+  ViewerState,
+} from "./types";
+import {
+  buildKyodemoUrl,
+  copyText,
+  GestureDirection,
+  GesturePoint,
+  GESTURE_CONTEXTMENU_SUPPRESS_MS,
+  GESTURE_START_THRESHOLD,
+  hasExternalLink,
+  hasImage,
+  hasVideo,
+  stripHtml,
+  summarizeVerticalGesture,
+  toViewerImageUrl,
+} from "./utils";
 
 export const ThreadPage: React.FC<Props> = ({ page }) => {
   const { dispatch } = useTabStore();
@@ -50,7 +68,9 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
   const [miniAaResNums, setMiniAaResNums] = useState<Set<number>>(new Set());
   const [viewer, setViewer] = useState<ViewerState | null>(null);
   const [viewerScale, setViewerScale] = useState(1);
-  const [anchorPreviews, setAnchorPreviews] = useState<AnchorPreviewState[]>([]);
+  const [anchorPreviews, setAnchorPreviews] = useState<AnchorPreviewState[]>(
+    [],
+  );
   const anchorPreviewHideTimerRef = useRef<number | null>(null);
   const messageProtocol = useMemo(() => {
     // 拡張ページのprotocolを使うと //example.com/... が拡張URL扱いになるため、元スレURLのprotocolで本文を復元する。
@@ -93,9 +113,7 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
         setError(result.message);
       }
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "スレッドの取得に失敗しました"
-      );
+      setError(e instanceof Error ? e.message : "スレッドの取得に失敗しました");
     } finally {
       setLoading(false);
     }
@@ -173,18 +191,15 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
       });
       setTreePopup(null);
     },
-    [indexes]
+    [indexes],
   );
 
   // 返信クリック → 返信ツリーをポップアップ表示
-  const handleRepClick = useCallback(
-    (resNum: number, e: React.MouseEvent) => {
-      hideAnchorPreviewImmediately();
-      setTreePopup({ x: e.clientX, y: e.clientY, resNum });
-      setPopup(null);
-    },
-    []
-  );
+  const handleRepClick = useCallback((resNum: number, e: React.MouseEvent) => {
+    hideAnchorPreviewImmediately();
+    setTreePopup({ x: e.clientX, y: e.clientY, resNum });
+    setPopup(null);
+  }, []);
 
   const closePopup = useCallback(() => {
     hideAnchorPreviewImmediately();
@@ -217,27 +232,28 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
     }
   }, []);
 
-  const hideAnchorPreviewImmediately = useCallback((fromDepth = 0) => {
-    clearAnchorPreviewHideTimer();
-    setAnchorPreviews((prev) => prev.slice(0, fromDepth));
-  }, [clearAnchorPreviewHideTimer]);
-
-  const hideAnchorPreview = useCallback((fromDepth = 0) => {
-    clearAnchorPreviewHideTimer();
-    // 親子プレビュー間を横断する間は少し猶予を持たせ、子プレビューに入ったら閉じを打ち消す。
-    anchorPreviewHideTimerRef.current = window.setTimeout(() => {
-      anchorPreviewHideTimerRef.current = null;
+  const hideAnchorPreviewImmediately = useCallback(
+    (fromDepth = 0) => {
+      clearAnchorPreviewHideTimer();
       setAnchorPreviews((prev) => prev.slice(0, fromDepth));
-    }, ANCHOR_PREVIEW_HIDE_DELAY_MS);
-  }, [clearAnchorPreviewHideTimer]);
+    },
+    [clearAnchorPreviewHideTimer],
+  );
+
+  const hideAnchorPreview = useCallback(
+    (fromDepth = 0) => {
+      clearAnchorPreviewHideTimer();
+      // 親子プレビュー間を横断する間は少し猶予を持たせ、子プレビューに入ったら閉じを打ち消す。
+      anchorPreviewHideTimerRef.current = window.setTimeout(() => {
+        anchorPreviewHideTimerRef.current = null;
+        setAnchorPreviews((prev) => prev.slice(0, fromDepth));
+      }, ANCHOR_PREVIEW_HIDE_DELAY_MS);
+    },
+    [clearAnchorPreviewHideTimer],
+  );
 
   const showAnchorPreview = useCallback(
-    (
-      targets: number[],
-      anchorRect: DOMRect,
-      label: string,
-      depth: number
-    ) => {
+    (targets: number[], anchorRect: DOMRect, label: string, depth: number) => {
       clearAnchorPreviewHideTimer();
       if (targets.length === 0) {
         setAnchorPreviews((prev) => prev.slice(0, depth));
@@ -252,21 +268,21 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
       }
       const maxWidth = Math.min(
         ANCHOR_PREVIEW_MAX_WIDTH,
-        window.innerWidth - ANCHOR_PREVIEW_GUTTER * 2
+        window.innerWidth - ANCHOR_PREVIEW_GUTTER * 2,
       );
       const x = Math.max(
         ANCHOR_PREVIEW_GUTTER,
         Math.min(
           anchorRect.left,
-          window.innerWidth - maxWidth - ANCHOR_PREVIEW_GUTTER
-        )
+          window.innerWidth - maxWidth - ANCHOR_PREVIEW_GUTTER,
+        ),
       );
       const y = Math.max(
         ANCHOR_PREVIEW_GUTTER,
         Math.min(
           anchorRect.bottom + ANCHOR_PREVIEW_OFFSET,
-          window.innerHeight - ANCHOR_PREVIEW_GUTTER
-        )
+          window.innerHeight - ANCHOR_PREVIEW_GUTTER,
+        ),
       );
       // 旧PopupViewと同様に深さごとのスタックで保持し、子プレビュー表示中も親を残す。
       setAnchorPreviews((prev) => {
@@ -275,7 +291,7 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
         return next;
       });
     },
-    [clearAnchorPreviewHideTimer, indexes.resMap]
+    [clearAnchorPreviewHideTimer, indexes.resMap],
   );
 
   useEffect(() => {
@@ -451,8 +467,7 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
       }
 
       detectedGesture = summary.direction;
-      label.textContent =
-        summary.direction === "Up" ? "▲ Top" : "▼ Bottom";
+      label.textContent = summary.direction === "Up" ? "▲ Top" : "▼ Bottom";
     };
 
     const handleMouseUp = (e: MouseEvent): void => {
@@ -579,7 +594,7 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
       });
       container.notification.success("書込履歴に追加しました");
     },
-    [page.threadUrl]
+    [page.threadUrl],
   );
 
   // 各レスのID内通し番号を事前計算
@@ -701,7 +716,13 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
         },
       },
     ];
-  }, [addIdToNg, addWriteHistory, miniAaResNums, page.threadUrl, resContextMenu]);
+  }, [
+    addIdToNg,
+    addWriteHistory,
+    miniAaResNums,
+    page.threadUrl,
+    resContextMenu,
+  ]);
 
   const filterButtons: { key: ThreadFilter; label: string }[] = [
     { key: "all", label: "全て" },
@@ -712,34 +733,40 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
   ];
 
   // アンカークリックで該当レスへスクロール
-  const handleAnchorClick = useCallback((resNum: number) => {
-    const host = rootRef.current;
-    if (!host) return;
-    hideAnchorPreviewImmediately();
-    const target = host.querySelector(`[data-res-num="${resNum}"]`);
-    if (!target) return;
-    const scrollContainer = host.closest(".content-area");
-    if (scrollContainer instanceof HTMLElement && target instanceof HTMLElement) {
-      // ThreadPageでは content-area が実スクロールコンテナなので、そこへ直接位置合わせする。
-      const targetRect = target.getBoundingClientRect();
-      const containerRect = scrollContainer.getBoundingClientRect();
-      const nextScrollTop =
-        scrollContainer.scrollTop + targetRect.top - containerRect.top;
-      scrollContainer.scrollTo({
-        top: Math.max(0, nextScrollTop),
-        behavior: "auto",
-      });
-    } else {
-      target.scrollIntoView({ behavior: "auto", block: "start" });
-    }
-    // 視認性のためハイライトアニメーションを付与
-    target.classList.add("res--highlighted");
-    target.addEventListener(
-      "animationend",
-      () => target.classList.remove("res--highlighted"),
-      { once: true }
-    );
-  }, [hideAnchorPreviewImmediately]);
+  const handleAnchorClick = useCallback(
+    (resNum: number) => {
+      const host = rootRef.current;
+      if (!host) return;
+      hideAnchorPreviewImmediately();
+      const target = host.querySelector(`[data-res-num="${resNum}"]`);
+      if (!target) return;
+      const scrollContainer = host.closest(".content-area");
+      if (
+        scrollContainer instanceof HTMLElement &&
+        target instanceof HTMLElement
+      ) {
+        // ThreadPageでは content-area が実スクロールコンテナなので、そこへ直接位置合わせする。
+        const targetRect = target.getBoundingClientRect();
+        const containerRect = scrollContainer.getBoundingClientRect();
+        const nextScrollTop =
+          scrollContainer.scrollTop + targetRect.top - containerRect.top;
+        scrollContainer.scrollTo({
+          top: Math.max(0, nextScrollTop),
+          behavior: "auto",
+        });
+      } else {
+        target.scrollIntoView({ behavior: "auto", block: "start" });
+      }
+      // 視認性のためハイライトアニメーションを付与
+      target.classList.add("res--highlighted");
+      target.addEventListener(
+        "animationend",
+        () => target.classList.remove("res--highlighted"),
+        { once: true },
+      );
+    },
+    [hideAnchorPreviewImmediately],
+  );
 
   // ジェスチャーuseEffectでrootRefが確実にマウント済みになるよう、loading中の早期returnを廃止し常にrootRef付きdivを描画する
   return (
@@ -754,230 +781,243 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
           </button>
         </div>
       ) : (
-      <>
-      {/* フィルタツールバー */}
-      <div className="thread-page__toolbar">
-        <div className="thread-page__filters">
-          {filterButtons.map(({ key, label }) => (
-            <button
-              key={key}
-              className={`thread-page__filter-btn${filter === key ? " thread-page__filter-btn--active" : ""}`}
-              onClick={() => setFilter(key)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <span className="thread-page__count">
-          {filteredResponses.length}/{responses.length}件
-        </span>
-      </div>
+        <>
+          {/* フィルタツールバー */}
+          <div className="thread-page__toolbar">
+            <div className="thread-page__filters">
+              {filterButtons.map(({ key, label }) => (
+                <button
+                  key={key}
+                  className={`thread-page__filter-btn${filter === key ? " thread-page__filter-btn--active" : ""}`}
+                  onClick={() => setFilter(key)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <span className="thread-page__count">
+              {filteredResponses.length}/{responses.length}件
+            </span>
+          </div>
 
-      {showSearch && (
-        <SearchBar
-          query={searchQuery}
-          onQueryChange={setSearchQuery}
-          onClose={() => {
-            setShowSearch(false);
-            setSearchQuery("");
-          }}
-          hitCount={filteredResponses.length}
-        />
-      )}
-
-      {expired && (
-        <div className="thread-page__notice">
-          このスレッドはdat落ちしています
-        </div>
-      )}
-      {error && <div className="thread-page__notice">{error}</div>}
-
-      <div className="thread-page__responses">
-        {filteredResponses.map((res) => {
-          const idCount = res.id
-            ? (indexes.idIndex.get(res.id)?.size ?? 0)
-            : 0;
-          const idPos = res.id ? (idPositions.get(res.num) ?? 0) : 0;
-          const repCount = indexes.repIndex.get(res.num)?.size ?? 0;
-          return (
-            <ResItem
-              key={res.num}
-              res={res}
-              idPos={idPos}
-              idCount={idCount}
-              repCount={repCount}
-              miniAa={miniAaResNums.has(res.num)}
-              messageProtocol={messageProtocol}
-              onIdClick={handleIdClick}
-              onRepClick={handleRepClick}
-              onUrlClick={openMediaFromUrl}
-              onAnchorClick={handleAnchorClick}
-              onAnchorHover={showAnchorPreview}
-              onAnchorLeave={hideAnchorPreview}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                hideAnchorPreviewImmediately();
-                setResContextMenu({ x: e.clientX, y: e.clientY, res });
+          {showSearch && (
+            <SearchBar
+              query={searchQuery}
+              onQueryChange={setSearchQuery}
+              onClose={() => {
+                setShowSearch(false);
+                setSearchQuery("");
               }}
+              hitCount={filteredResponses.length}
             />
-          );
-        })}
-      </div>
+          )}
 
-      {resContextMenu && (
-        <ContextMenu
-          x={resContextMenu.x}
-          y={resContextMenu.y}
-          items={responseContextItems}
-          onClose={closeResContextMenu}
-        />
-      )}
+          {expired && (
+            <div className="thread-page__notice">
+              このスレッドはdat落ちしています
+            </div>
+          )}
+          {error && <div className="thread-page__notice">{error}</div>}
 
-      {!resContextMenu &&
-        anchorPreviews.map((anchorPreview) => (
-          <div
-            key={`anchor-preview-${anchorPreview.depth}`}
-            className="anchor-preview"
-            style={{
-              left: anchorPreview.x,
-              top: anchorPreview.y,
-              zIndex: 10020 + anchorPreview.depth,
-            }}
-            onMouseEnter={clearAnchorPreviewHideTimer}
-            onMouseLeave={() => hideAnchorPreview(anchorPreview.depth)}
-          >
-            <div className="anchor-preview__title">参照: {anchorPreview.label}</div>
-            <div className="anchor-preview__body">
-              {anchorPreview.items.slice(0, 8).map((res) => (
-                <PopupResCard
+          <div className="thread-page__responses">
+            {filteredResponses.map((res) => {
+              const idCount = res.id
+                ? (indexes.idIndex.get(res.id)?.size ?? 0)
+                : 0;
+              const idPos = res.id ? (idPositions.get(res.num) ?? 0) : 0;
+              const repCount = indexes.repIndex.get(res.num)?.size ?? 0;
+              return (
+                <ResItem
                   key={res.num}
                   res={res}
+                  idPos={idPos}
+                  idCount={idCount}
+                  repCount={repCount}
+                  miniAa={miniAaResNums.has(res.num)}
                   messageProtocol={messageProtocol}
-                  anchorPreviewDepth={anchorPreview.depth + 1}
+                  onIdClick={handleIdClick}
+                  onRepClick={handleRepClick}
                   onUrlClick={openMediaFromUrl}
                   onAnchorClick={handleAnchorClick}
                   onAnchorHover={showAnchorPreview}
                   onAnchorLeave={hideAnchorPreview}
-                  onContextMenu={(e, targetRes) => {
+                  onContextMenu={(e) => {
+                    e.preventDefault();
                     hideAnchorPreviewImmediately();
-                    setResContextMenu({
-                      x: e.clientX,
-                      y: e.clientY,
-                      res: targetRes,
-                    });
+                    setResContextMenu({ x: e.clientX, y: e.clientY, res });
                   }}
                 />
-              ))}
-            </div>
+              );
+            })}
           </div>
-        ))}
 
-      {/* IDポップアップ */}
-      {popup && (
-        <ResPopup
-          x={popup.x}
-          y={popup.y}
-          title={popup.title}
-          items={popup.items}
-          messageProtocol={messageProtocol}
-          onUrlClick={openMediaFromUrl}
-          onAnchorClick={handleAnchorClick}
-          onAnchorHover={showAnchorPreview}
-          onAnchorLeave={hideAnchorPreview}
-          onResContextMenu={(e, targetRes) => {
-            hideAnchorPreviewImmediately();
-            setResContextMenu({
-              x: e.clientX,
-              y: e.clientY,
-              res: targetRes,
-            });
-          }}
-          onClose={closePopup}
-        />
-      )}
+          {resContextMenu && (
+            <ContextMenu
+              x={resContextMenu.x}
+              y={resContextMenu.y}
+              items={responseContextItems}
+              onClose={closeResContextMenu}
+            />
+          )}
 
-      {/* 返信ツリーポップアップ */}
-      {treePopup && (
-        <ReplyTreePopup
-          x={treePopup.x}
-          y={treePopup.y}
-          resNum={treePopup.resNum}
-          repIndex={indexes.repIndex}
-          resMap={indexes.resMap}
-          messageProtocol={messageProtocol}
-          onUrlClick={openMediaFromUrl}
-          onAnchorClick={handleAnchorClick}
-          onAnchorHover={showAnchorPreview}
-          onAnchorLeave={hideAnchorPreview}
-          onResContextMenu={(e, targetRes) => {
-            hideAnchorPreviewImmediately();
-            setResContextMenu({
-              x: e.clientX,
-              y: e.clientY,
-              res: targetRes,
-            });
-          }}
-          onClose={closePopup}
-        />
-      )}
-
-      {viewer && (
-        <div className="media-viewer" onClick={closeViewer}>
-          <div className="media-viewer__chrome" onClick={(e) => e.stopPropagation()}>
-            <div className="media-viewer__toolbar">
-              <span className="media-viewer__label">{viewer.label}</span>
-              <div className="media-viewer__actions">
-                <button
-                  className="media-viewer__btn"
-                  onClick={() =>
-                    setViewerScale((prev) => Math.max(0.25, +(prev - 0.25).toFixed(2)))
-                  }
-                  title="縮小"
-                >
-                  -
-                </button>
-                <button
-                  className="media-viewer__btn"
-                  onClick={() => setViewerScale(1)}
-                  title="等倍"
-                >
-                  100%
-                </button>
-                <button
-                  className="media-viewer__btn"
-                  onClick={() =>
-                    setViewerScale((prev) => Math.min(5, +(prev + 0.25).toFixed(2)))
-                  }
-                  title="拡大"
-                >
-                  +
-                </button>
-                <button className="media-viewer__btn" onClick={closeViewer} title="閉じる">
-                  ✕
-                </button>
+          {!resContextMenu &&
+            anchorPreviews.map((anchorPreview) => (
+              <div
+                key={`anchor-preview-${anchorPreview.depth}`}
+                className="anchor-preview"
+                style={{
+                  left: anchorPreview.x,
+                  top: anchorPreview.y,
+                  zIndex: 10020 + anchorPreview.depth,
+                }}
+                onMouseEnter={clearAnchorPreviewHideTimer}
+                onMouseLeave={() => hideAnchorPreview(anchorPreview.depth)}
+              >
+                <div className="anchor-preview__title">
+                  参照: {anchorPreview.label}
+                </div>
+                <div className="anchor-preview__body">
+                  {anchorPreview.items.slice(0, 8).map((res) => (
+                    <PopupResCard
+                      key={res.num}
+                      res={res}
+                      messageProtocol={messageProtocol}
+                      anchorPreviewDepth={anchorPreview.depth + 1}
+                      onUrlClick={openMediaFromUrl}
+                      onAnchorClick={handleAnchorClick}
+                      onAnchorHover={showAnchorPreview}
+                      onAnchorLeave={hideAnchorPreview}
+                      onContextMenu={(e, targetRes) => {
+                        hideAnchorPreviewImmediately();
+                        setResContextMenu({
+                          x: e.clientX,
+                          y: e.clientY,
+                          res: targetRes,
+                        });
+                      }}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
-            <div
-              className="media-viewer__stage"
-              onWheel={(e) => {
-                e.preventDefault();
-                setViewerScale((prev) => {
-                  const next = e.deltaY < 0 ? prev + 0.15 : prev - 0.15;
-                  return Math.min(5, Math.max(0.25, +next.toFixed(2)));
+            ))}
+
+          {/* IDポップアップ */}
+          {popup && (
+            <ResPopup
+              x={popup.x}
+              y={popup.y}
+              title={popup.title}
+              items={popup.items}
+              messageProtocol={messageProtocol}
+              onUrlClick={openMediaFromUrl}
+              onAnchorClick={handleAnchorClick}
+              onAnchorHover={showAnchorPreview}
+              onAnchorLeave={hideAnchorPreview}
+              onResContextMenu={(e, targetRes) => {
+                hideAnchorPreviewImmediately();
+                setResContextMenu({
+                  x: e.clientX,
+                  y: e.clientY,
+                  res: targetRes,
                 });
               }}
-            >
-              <img
-                className="media-viewer__image"
-                src={viewer.src}
-                alt={viewer.label}
-                style={{ transform: `scale(${viewerScale})` }}
-              />
+              onClose={closePopup}
+            />
+          )}
+
+          {/* 返信ツリーポップアップ */}
+          {treePopup && (
+            <ReplyTreePopup
+              x={treePopup.x}
+              y={treePopup.y}
+              resNum={treePopup.resNum}
+              repIndex={indexes.repIndex}
+              resMap={indexes.resMap}
+              messageProtocol={messageProtocol}
+              onUrlClick={openMediaFromUrl}
+              onAnchorClick={handleAnchorClick}
+              onAnchorHover={showAnchorPreview}
+              onAnchorLeave={hideAnchorPreview}
+              onResContextMenu={(e, targetRes) => {
+                hideAnchorPreviewImmediately();
+                setResContextMenu({
+                  x: e.clientX,
+                  y: e.clientY,
+                  res: targetRes,
+                });
+              }}
+              onClose={closePopup}
+            />
+          )}
+
+          {viewer && (
+            <div className="media-viewer" onClick={closeViewer}>
+              <div
+                className="media-viewer__chrome"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="media-viewer__toolbar">
+                  <span className="media-viewer__label">{viewer.label}</span>
+                  <div className="media-viewer__actions">
+                    <button
+                      className="media-viewer__btn"
+                      onClick={() =>
+                        setViewerScale((prev) =>
+                          Math.max(0.25, +(prev - 0.25).toFixed(2)),
+                        )
+                      }
+                      title="縮小"
+                    >
+                      -
+                    </button>
+                    <button
+                      className="media-viewer__btn"
+                      onClick={() => setViewerScale(1)}
+                      title="等倍"
+                    >
+                      100%
+                    </button>
+                    <button
+                      className="media-viewer__btn"
+                      onClick={() =>
+                        setViewerScale((prev) =>
+                          Math.min(5, +(prev + 0.25).toFixed(2)),
+                        )
+                      }
+                      title="拡大"
+                    >
+                      +
+                    </button>
+                    <button
+                      className="media-viewer__btn"
+                      onClick={closeViewer}
+                      title="閉じる"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+                <div
+                  className="media-viewer__stage"
+                  onWheel={(e) => {
+                    e.preventDefault();
+                    setViewerScale((prev) => {
+                      const next = e.deltaY < 0 ? prev + 0.15 : prev - 0.15;
+                      return Math.min(5, Math.max(0.25, +next.toFixed(2)));
+                    });
+                  }}
+                >
+                  <img
+                    className="media-viewer__image"
+                    src={viewer.src}
+                    alt={viewer.label}
+                    style={{ transform: `scale(${viewerScale})` }}
+                  />
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
-      </>
+          )}
+        </>
       )}
     </div>
   );

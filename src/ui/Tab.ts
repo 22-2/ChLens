@@ -147,7 +147,7 @@ export default class Tab {
                 type: "responseTabHistory",
                 history,
               },
-              origin
+              origin,
             );
             break;
           case "requestTabBack":
@@ -187,7 +187,7 @@ export default class Tab {
             }
             break;
         }
-      }
+      },
     );
   }
 
@@ -231,7 +231,7 @@ export default class Tab {
       locked = false,
       lazy = false,
       restore = false,
-    }: Partial<AddTabInfo> = {}
+    }: Partial<AddTabInfo> = {},
   ): string {
     title = title === null ? url : title;
 
@@ -313,7 +313,7 @@ export default class Tab {
       const selectedTab = this.getSelected();
       if (selectedTab) {
         const iframe = this.$element.$(
-          `iframe[data-tabid="${selectedTab.tabId}"]`
+          `iframe[data-tabid="${selectedTab.tabId}"]`,
         );
         if (iframe.getAttr("src") !== selectedTab.url) {
           iframe.src = selectedTab.url;

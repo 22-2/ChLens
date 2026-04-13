@@ -1,5 +1,5 @@
-import Write from "./write.js";
 import { getByUrl as getWriteHistoryByUrl } from "../core/WriteHistory.js";
+import Write from "./write.js";
 
 Write.setFont();
 
@@ -14,7 +14,7 @@ class SubmitRes extends Write {
     const extraInfoSpec = ["requestHeaders", "blocking"];
     if (
       browser.webRequest.OnBeforeSendHeadersOptions.hasOwnProperty(
-        "EXTRA_HEADERS"
+        "EXTRA_HEADERS",
       )
     ) {
       extraInfoSpec.push("extraHeaders");
@@ -27,7 +27,7 @@ class SubmitRes extends Write {
         types: ["sub_frame"],
         urls: ["*://*/test/bbs.cgi*", "*://jbbs.shitaraba.net/bbs/write.cgi/*"],
       },
-      extraInfoSpec
+      extraInfoSpec,
     );
     browser.webRequest.onHeadersReceived.addListener(
       function ({ responseHeaders }) {
@@ -45,7 +45,7 @@ class SubmitRes extends Write {
         types: ["sub_frame"],
         urls: ["*://*/test/bbs.cgi*", "*://jbbs.shitaraba.net/bbs/write.cgi/*"],
       },
-      ["blocking", "responseHeaders"]
+      ["blocking", "responseHeaders"],
     );
   }
 

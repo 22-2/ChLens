@@ -136,7 +136,7 @@ export default TableSorter = (function () {
       }
 
       this.table.emit(
-        new CustomEvent("table_sort_updated", { detail: exparam })
+        new CustomEvent("table_sort_updated", { detail: exparam }),
       );
     }
 

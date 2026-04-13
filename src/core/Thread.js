@@ -1,5 +1,5 @@
-import { container } from "../service-container/index";
 import { ChURL } from "../../packages/ch-lib/src/index";
+import { container } from "../service-container/index";
 import { Request } from "./HTTP";
 import {
   chServerMoveDetect,
@@ -115,7 +115,7 @@ export default class Thread {
           if (hasCache) {
             if (cache.lastModified != null) {
               request.headers["If-Modified-Since"] = new Date(
-                cache.lastModified
+                cache.lastModified,
               ).toUTCString();
             }
             if (cache.etag != null) {
@@ -146,7 +146,7 @@ export default class Thread {
                 const threadResponse = Thread.parse(
                   this.url,
                   response.body,
-                  +(cache.resLength || 0)
+                  +(cache.resLength || 0),
                 );
                 // 新しいレスがない場合は最後のレスのみ表示されるのでその場合はキャッシュを送る
                 if (readcgiVer < 6 && threadResponse.res.length === 1) {
@@ -251,7 +251,7 @@ export default class Thread {
 
           if (isHtml) {
             const readcgiPlace = response.body.indexOf(
-              '<div class="footer push">read.cgi ver '
+              '<div class="footer push">read.cgi ver ',
             );
             if (readcgiPlace !== -1) {
               readcgiVer = parseInt(response.body.substr(readcgiPlace + 38, 2));
@@ -284,7 +284,7 @@ export default class Thread {
           }
 
           const lastModified = new Date(
-            response.headers["Last-Modified"] || "dummy"
+            response.headers["Last-Modified"] || "dummy",
           ).getTime();
 
           if (Number.isFinite(lastModified)) {
@@ -326,7 +326,7 @@ export default class Thread {
 スレッドの読み込みに失敗しました。
 サーバーが移転している可能性が有ります
 (<a href="${container.util.escapeHtml(
-              container.util.safeHref(newUrl.url.href)
+              container.util.safeHref(newUrl.url.href),
             )}"
   class="open_in_rcrx">${container.util.escapeHtml(newUrl.url.href)}</a>)\
 `;
@@ -364,7 +364,7 @@ URLが間違っているか過去ログに移動せずに削除されていま�
               case "STORAGE IN":
                 var newURL = this.url.href.replace(
                   "/read.cgi/",
-                  "/read_archive.cgi/"
+                  "/read_archive.cgi/",
                 );
                 this.message += `\
 過去ログが存在します
@@ -406,7 +406,7 @@ URLが間違っているか過去ログに移動せずに削除されていま�
   */
   static _getXhrInfo(url) {
     const tmp = new RegExp(
-      `^/(?:test|bbs)/read(?:_archive)?\\.cgi/(\\w+)/(\\d+)/(?:(\\d+)/)?$`
+      `^/(?:test|bbs)/read(?:_archive)?\\.cgi/(\\w+)/(\\d+)/(?:(\\d+)/)?$`,
     ).exec(url.url.pathname);
     if (!tmp) {
       return null;

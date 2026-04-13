@@ -46,7 +46,7 @@ export var set = function (string) {
     _replaceTable.map((r) => {
       const { beforeReg, ...rest } = r;
       return rest;
-    })
+    }),
   );
   _config.setString(string);
 };

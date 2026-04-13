@@ -115,7 +115,7 @@ function createContainer() {
   const openButton = createButton(
     BUTTON_IDS.open,
     "read.crx 2 で開く",
-    STYLES.underline
+    STYLES.underline,
   );
 
   const closeButton = createButton(BUTTON_IDS.close, " x", STYLES.closeButton);

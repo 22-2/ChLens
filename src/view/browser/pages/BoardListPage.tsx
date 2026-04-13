@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import React, { useCallback, useEffect, useState } from "react";
 import { container } from "src/service-container/index";
 import type { IBBSMenuCategory } from "src/service-container/interfaces";
+import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 
 export const BoardListPage: React.FC = () => {
   const { dispatch } = useTabStore();
@@ -43,7 +43,7 @@ export const BoardListPage: React.FC = () => {
         },
       });
     },
-    [dispatch]
+    [dispatch],
   );
 
   if (loading) {
@@ -65,9 +65,7 @@ export const BoardListPage: React.FC = () => {
     <div className="board-list-page">
       {categories.map((category, i) => (
         <details key={i} className="board-category" open>
-          <summary className="board-category__title">
-            {category.title}
-          </summary>
+          <summary className="board-category__title">{category.title}</summary>
           <ul className="board-category__list">
             {category.board.map((board, j) => (
               <li

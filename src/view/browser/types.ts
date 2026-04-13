@@ -129,9 +129,7 @@ function threadUrlToBoardUrl(threadUrl: string): string {
       return `${url.origin}/${chMatch[1]}/`;
     }
     // したらば: /bbs/read.cgi/CATEGORY/BOARD/THREAD_ID/
-    const jbbsMatch = url.pathname.match(
-      /^\/bbs\/read\.cgi\/([^/]+\/[^/]+)\//
-    );
+    const jbbsMatch = url.pathname.match(/^\/bbs\/read\.cgi\/([^/]+\/[^/]+)\//);
     if (jbbsMatch) {
       return `${url.origin}/bbs/read.cgi/${jbbsMatch[1]}/`;
     }
@@ -154,10 +152,7 @@ export function buildHierarchy(page: Page): Page[] {
       return [page];
 
     case "boardList":
-      return [
-        { type: "home", title: "ホーム" },
-        page,
-      ];
+      return [{ type: "home", title: "ホーム" }, page];
 
     case "threadList":
       return [

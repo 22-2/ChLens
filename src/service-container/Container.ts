@@ -1,16 +1,16 @@
 import {
-  IServiceContainer,
-  IConfig,
-  ICacheService,
-  IBookmark,
-  IMessage,
-  IUtil,
-  IReadStateService,
-  IBoardService,
   IBBSMenuService,
-  INotificationService,
-  IThreadService,
+  IBoardService,
+  IBookmark,
+  ICacheService,
+  IConfig,
+  IMessage,
   INGService,
+  INotificationService,
+  IReadStateService,
+  IServiceContainer,
+  IThreadService,
+  IUtil,
 } from "src/service-container/interfaces";
 
 const globalObj = window as any;

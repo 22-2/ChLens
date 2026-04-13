@@ -142,8 +142,7 @@ export default class Config {
         const { newValue } = <any>val;
 
         const pendingValue = this._pendingStorageChanges.get(key);
-        const normalizedValue =
-          typeof newValue === "string" ? newValue : null;
+        const normalizedValue = typeof newValue === "string" ? newValue : null;
 
         if (pendingValue === normalizedValue) {
           this._pendingStorageChanges.delete(key);

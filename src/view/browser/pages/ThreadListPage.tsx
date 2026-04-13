@@ -1,9 +1,9 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
-import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { container } from "src/service-container/index";
-import { SearchBar } from "src/view/browser/components/SearchBar";
-import type { ThreadListPage as ThreadListPageType } from "src/view/browser/types";
 import type { IThread } from "src/service-container/interfaces";
+import { SearchBar } from "src/view/browser/components/SearchBar";
+import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import type { ThreadListPage as ThreadListPageType } from "src/view/browser/types";
 
 interface Props {
   page: ThreadListPageType;
@@ -71,7 +71,7 @@ export const ThreadListPage: React.FC<Props> = ({ page }) => {
       }
     } catch (e) {
       setError(
-        e instanceof Error ? e.message : "スレッド一覧の取得に失敗しました"
+        e instanceof Error ? e.message : "スレッド一覧の取得に失敗しました",
       );
     } finally {
       setLoading(false);
@@ -119,7 +119,7 @@ export const ThreadListPage: React.FC<Props> = ({ page }) => {
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       list = list.filter(({ thread }) =>
-        thread.title.toLowerCase().includes(q)
+        thread.title.toLowerCase().includes(q),
       );
     }
 
@@ -156,7 +156,7 @@ export const ThreadListPage: React.FC<Props> = ({ page }) => {
         page: { type: "thread", title: threadTitle, threadUrl },
       });
     },
-    [dispatch]
+    [dispatch],
   );
 
   const openThreadInNewTab = useCallback(
@@ -168,7 +168,7 @@ export const ThreadListPage: React.FC<Props> = ({ page }) => {
         page: { type: "thread", title: threadTitle, threadUrl },
       });
     },
-    [dispatch]
+    [dispatch],
   );
 
   if (loading) {

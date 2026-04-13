@@ -1,7 +1,6 @@
 import type { IRes } from "src/service-container";
 import type { ThreadPage as ThreadPageType } from "../types";
 
-
 export type ThreadFilter = "all" | "popular" | "image" | "video" | "link";
 export interface Props {
   page: ThreadPageType;

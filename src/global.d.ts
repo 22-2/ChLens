@@ -28,7 +28,7 @@ declare namespace browser.bookmarks {
 interface Map<K, V> {
   has<CheckedString extends string>(
     this: Map<string, V>,
-    key: CheckedString
+    key: CheckedString,
   ): this is MapWith<K, V, CheckedString>;
 }
 interface MapWith<K, V, DefiniteKey extends K> extends Map<K, V> {
@@ -38,11 +38,13 @@ interface MapWith<K, V, DefiniteKey extends K> extends Map<K, V> {
 interface ReadonlyMap<K, V> {
   has<CheckedString extends string>(
     this: ReadonlyMap<string, V>,
-    key: CheckedString
+    key: CheckedString,
   ): this is ReadonlyMapWith<K, V, CheckedString>;
 }
-interface ReadonlyMapWith<K, V, DefiniteKey extends K>
-  extends ReadonlyMap<K, V> {
+interface ReadonlyMapWith<K, V, DefiniteKey extends K> extends ReadonlyMap<
+  K,
+  V
+> {
   get(k: DefiniteKey): V;
   get(k: K): V | undefined;
 }

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import MessageProcessor from "./MessageProcessor.js";
 
 describe("MessageProcessor", () => {
@@ -17,10 +17,14 @@ describe("MessageProcessor", () => {
       const result = MessageProcessor.decode(res, "https:");
 
       // URLが<a>タグに変換されていることを確認
-      expect(result.messageHtml).toContain('<a href="https://i.imgur.com/TestImageA.jpeg"');
-      expect(result.messageHtml).toContain('<a href="https://i.imgur.com/TestImageB.jpeg"');
-      expect(result.messageHtml).toContain("target=\"_blank\"");
-      expect(result.messageHtml).toContain("rel=\"noopener noreferrer\"");
+      expect(result.messageHtml).toContain(
+        '<a href="https://i.imgur.com/TestImageA.jpeg"',
+      );
+      expect(result.messageHtml).toContain(
+        '<a href="https://i.imgur.com/TestImageB.jpeg"',
+      );
+      expect(result.messageHtml).toContain('target="_blank"');
+      expect(result.messageHtml).toContain('rel="noopener noreferrer"');
     });
 
     it("should handle http URLs", () => {
@@ -45,7 +49,7 @@ describe("MessageProcessor", () => {
 
       const result = MessageProcessor.decode(res, "https:");
       expect(result.messageHtml).toContain(
-        '<a href="https://example.com/path?param=value&other=123"'
+        '<a href="https://example.com/path?param=value&other=123"',
       );
     });
 
@@ -74,7 +78,9 @@ describe("MessageProcessor", () => {
       };
 
       const result = MessageProcessor.decode(res, "https:");
-      expect(result.otherHtml).toContain('<span class="slip">SLIP:L20 abcd-efgh</span>');
+      expect(result.otherHtml).toContain(
+        '<span class="slip">SLIP:L20 abcd-efgh</span>',
+      );
       expect(result.otherHtml).toContain('<span class="id">ID:test123</span>');
     });
   });

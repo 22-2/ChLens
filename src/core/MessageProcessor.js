@@ -28,14 +28,14 @@ export default class MessageProcessor {
       .replace(/<\/?a[^>]*>/g, "")
       .replace(
         /<(?!\/?(?:b|small|font(?: color="?[#a-zA-Z0-9]+"?)?)>)/g,
-        "&lt;"
+        "&lt;",
       );
 
     // TRIP markup
     if (res.trip) {
       nameHtml = nameHtml.replace(
         res.trip,
-        `<span class="trip">${res.trip}</span>`
+        `<span class="trip">${res.trip}</span>`,
       );
     }
     parts.nameHtml = nameHtml;
@@ -43,7 +43,7 @@ export default class MessageProcessor {
     // Name Anchor detection (pattern for '>>1' style names)
     parts.isNameAnchor =
       /^\s*(?:&gt;|\uff1e){0,2}([\d\uff10-\uff19]+(?:[\-\u30fc][\d\uff10-\uff19]+)?(?:\s*,\s*[\d\uff10-\uff19]+(?:[\-\u30fc][\d\uff10-\uff19]+)?)*)\s*$/.test(
-        res.name
+        res.name,
       );
 
     // 2. Mail processing
@@ -79,7 +79,7 @@ export default class MessageProcessor {
     if (res.date) {
       otherHtml = otherHtml.replace(
         res.date,
-        `<time class="date">${res.date}</time>`
+        `<time class="date">${res.date}</time>`,
       );
     }
     parts.otherHtml = otherHtml;
@@ -105,7 +105,7 @@ export default class MessageProcessor {
       })
       .replace(
         /id:(?:[a-hj-z\d_\+\/\.\!]|i(?!d:))+/gi,
-        '<a href="javascript:undefined;" class="anchor_id">$&</a>'
+        '<a href="javascript:undefined;" class="anchor_id">$&</a>',
       );
 
     // Convert plain URLs to anchor tags
@@ -124,7 +124,7 @@ export default class MessageProcessor {
         if (!insideAnchor) {
           return part.replace(
             /(https?:\/\/[^\s<>"]+)/gi,
-            '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
+            '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>',
           );
         }
         return part;

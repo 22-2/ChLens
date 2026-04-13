@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef } from "react";
 import type { ReactNode } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 
 export interface ContextMenuItem {
   id: string;
@@ -23,7 +23,7 @@ export const ContextMenu: React.FC<Props> = ({ x, y, items, onClose }) => {
 
   const visibleItems = useMemo(
     () => items.filter((item) => item.separator || item.label),
-    [items]
+    [items],
   );
 
   useEffect(() => {
@@ -81,7 +81,9 @@ export const ContextMenu: React.FC<Props> = ({ x, y, items, onClose }) => {
               onClose();
             }}
           >
-            {item.icon && <span className="context-menu__icon">{item.icon}</span>}
+            {item.icon && (
+              <span className="context-menu__icon">{item.icon}</span>
+            )}
             <span className="context-menu__label">{item.label}</span>
           </button>
         );

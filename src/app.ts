@@ -5,10 +5,12 @@ import { setupContainer } from "src/service-container/setup";
 
 export { default as Callbacks } from "./app/Callbacks";
 export * from "./app/Defer";
-export * from "./app/Log";
 export { default as LocalStorage } from "./app/LocalStorage";
+export * from "./app/Log";
 export { default as message } from "./app/Message";
 export * from "./app/Util";
+// 親ウィンドウからアクセスできるように内部configも公開
+export { _config };
 
 let _config: Config | undefined;
 if (!frameElement) {
@@ -28,9 +30,6 @@ export const config = new Proxy({} as Config, {
   },
 });
 
-// 親ウィンドウからアクセスできるように内部configも公開
-export { _config };
-
 export const manifest = (async () => {
   if (!/^(?:chrome|moz)-extension:$/.test(location.protocol)) {
     throw new Error("manifest.jsonの取得に失敗しました");
@@ -44,7 +43,7 @@ export const manifest = (async () => {
 export async function boot(
   path: string,
   requirements: Function | string[] | null,
-  fn: Function
+  fn: Function,
 ) {
   if (!fn && typeof requirements === "function") {
     fn = requirements;

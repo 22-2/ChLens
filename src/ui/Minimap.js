@@ -82,8 +82,8 @@ export default class Minimap {
     const responsiveWidth = Math.round(
       Math.max(
         minWidth,
-        Math.min(maxWidth, Math.round(window.innerWidth * pct))
-      )
+        Math.min(maxWidth, Math.round(window.innerWidth * pct)),
+      ),
     );
 
     // Apply width as an inline style so it overrides static CSS if present
@@ -141,7 +141,7 @@ export default class Minimap {
       0.5,
       viewportTopPx + 0.5,
       width - 1,
-      Math.max(viewportHeightPx - 1, 1)
+      Math.max(viewportHeightPx - 1, 1),
     );
 
     // Draw outer boundary for minimap area (1px inside canvas for crisp rendering)
@@ -161,7 +161,7 @@ export default class Minimap {
 
     const { scale, height, width } = metrics;
     const rejectNg = Boolean(
-      app?.config?.isOn && app.config.isOn("reject_ng_rep")
+      app?.config?.isOn && app.config.isOn("reject_ng_rep"),
     );
     const repIndex = /** @type {Map<number, Set<number>>} */ (
       this.threadContent.repIndex
@@ -268,7 +268,7 @@ export default class Minimap {
     const rect = this.canvas.getBoundingClientRect();
     const relativeY = Math.min(
       Math.max(event.clientY - rect.top, 0),
-      metrics.height
+      metrics.height,
     );
     const { viewportTopPx, viewportHeightPx } = metrics;
     if (!isDragUpdate) {

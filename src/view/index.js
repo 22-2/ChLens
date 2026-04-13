@@ -126,7 +126,7 @@ app.view.Index = class Index extends app.view.View {
     }
     if (!$iframe.hasClass("iframe_focused")) {
       __guard__(this.$element.C("iframe_focused")[0], (x) =>
-        x.removeClass("iframe_focused")
+        x.removeClass("iframe_focused"),
       );
       $iframe.addClass("iframe_focused");
     }
@@ -136,13 +136,13 @@ app.view.Index = class Index extends app.view.View {
         $iframe.contentDocument != null
           ? $iframe.contentDocument.activeElement
           : undefined,
-        (x1) => x1.blur()
+        (x1) => x1.blur(),
       );
       __guard__(
         $iframe.contentDocument != null
           ? $iframe.contentDocument.getElementsByClassName("content")[0]
           : undefined,
-        (x2) => x2.focus()
+        (x2) => x2.focus(),
       );
     };
 
@@ -153,7 +153,7 @@ app.view.Index = class Index extends app.view.View {
           $iframe.contentDocument != null
             ? $iframe.contentDocument.getElementsByClassName("content")
             : undefined,
-          (x1) => x1[0]
+          (x1) => x1[0],
         ) != null
       ) {
         focusIframe($iframe);
@@ -167,7 +167,7 @@ app.view.Index = class Index extends app.view.View {
             }
             $iframe.off("load", fn);
             focusIframe($iframe);
-          })
+          }),
         );
       }
     }
@@ -237,7 +237,7 @@ app.view.Index = class Index extends app.view.View {
 
         app.DOMData.get($targetFrame.closest(".tab"), "tab").update(
           targetTabId,
-          { selected: true }
+          { selected: true },
         );
       } else {
         this.focus($targetFrame);
@@ -312,7 +312,7 @@ app.view.Index = class Index extends app.view.View {
 
         app.DOMData.get($targetFrame.closest(".tab"), "tab").update(
           targetTabId,
-          { selected: true }
+          { selected: true },
         );
       } else {
         this.focus($targetFrame);
@@ -329,7 +329,7 @@ app.view.Index = class Index extends app.view.View {
       $$.I("body").hasClass("pane-3") &&
       __guard__(
         this.$element.C("iframe_focused")[0].closest(".tab"),
-        (x) => x.id
+        (x) => x.id,
       ) === "tab_b"
     ) {
       iframe = this.$element.$("#tab_a iframe.tab_selected");
@@ -349,7 +349,7 @@ app.view.Index = class Index extends app.view.View {
       $$.I("body").hasClass("pane-3") &&
       __guard__(
         this.$element.C("iframe_focused")[0].closest(".tab"),
-        (x) => x.id
+        (x) => x.id,
       ) === "tab_a"
     ) {
       iframe = this.$element.$("#tab_b iframe.tab_selected");
@@ -375,17 +375,17 @@ app.view.Index = class Index extends app.view.View {
           () => {
             this.hideKeyboardHelp();
           },
-          { once: true }
+          { once: true },
         );
         return $help.on(
           "keydown",
           () => {
             this.hideKeyboardHelp();
           },
-          { once: true }
+          { once: true },
         );
       },
-      { once: true }
+      { once: true },
     );
   }
 
@@ -645,11 +645,11 @@ app.main = function () {
           ani.on("finish", () => {
             cTarget.remove();
           });
-        })
+        }),
       );
       $$.I("app_notice_container").addLast($div);
       UI.Animate.fadeIn($div);
-    }
+    },
   );
 
   //前回起動時のバージョンと違うバージョンだった場合、アップデート通知を送出
@@ -727,7 +727,7 @@ ${name} の ${newVer} が利用可能です\
       if ((win.tabs.length === 1 && win.width < 300) || win.height < 300) {
         await resizeTo(
           +app.config.get("window_width"),
-          +app.config.get("window_height")
+          +app.config.get("window_height"),
         );
         await app.defer();
       }
@@ -908,7 +908,7 @@ ${name} の ${newVer} が利用可能です\
         }
       } else {
         const $li = $view.$(
-          `.tab_tabbar > li[data-tabsrc=\"${iframeInfo.src}\"]`
+          `.tab_tabbar > li[data-tabsrc=\"${iframeInfo.src}\"]`,
         );
 
         if (
@@ -923,12 +923,12 @@ ${name} の ${newVer} が利用可能です\
         if ($li != null) {
           app.DOMData.get($li.closest(".tab"), "tab").update(
             $li.dataset.tabid,
-            { selected: true }
+            { selected: true },
           );
           if (url !== "bookmark") {
             //ブックマーク更新は時間がかかるので例外扱い
             const $iframe = $view.$(
-              `iframe[data-tabid=\"${$li.dataset.tabid}\"]`
+              `iframe[data-tabid=\"${$li.dataset.tabid}\"]`,
             );
             $iframe.contentWindow.postMessage(
               {
@@ -936,7 +936,7 @@ ${name} の ${newVer} が利用可能です\
                 written_res_num,
                 param_res_num,
               },
-              location.origin
+              location.origin,
             );
           }
         } else {
@@ -973,7 +973,7 @@ ${name} の ${newVer} が利用可能です\
           $tab.dataset.paramResNum = param_res_num != null ? param_res_num : "";
         }
       }
-    }
+    },
   );
 
   //openリクエストの監視
@@ -1011,7 +1011,7 @@ ${name} の ${newVer} が利用可能です\
           title,
           thread_url,
         },
-        location.origin
+        location.origin,
       );
     }
   });
@@ -1050,7 +1050,7 @@ ${name} の ${newVer} が利用可能です\
         urls: ["*://t.co/*"],
         types: ["xmlhttprequest"],
       },
-      ["blocking", "requestHeaders"]
+      ["blocking", "requestHeaders"],
     );
   }
 
@@ -1073,7 +1073,7 @@ ${name} の ${newVer} が利用可能です\
         if ($iframe.hasClass("tab_content")) {
           app.DOMData.get($iframe.closest(".tab"), "tab").update(
             $iframe.dataset.tabid,
-            { title }
+            { title },
           );
         }
         break;
@@ -1101,7 +1101,7 @@ ${name} の ${newVer} が利用可能です\
         //タブ内のviewが送ってきた場合
         if ($iframe.hasClass("tab_content")) {
           app.DOMData.get($iframe.closest(".tab"), "tab").remove(
-            $iframe.dataset.tabid
+            $iframe.dataset.tabid,
           );
           //モーダルのviewが送ってきた場合
         } else if ($iframe.matches("#modal > iframe")) {
@@ -1125,7 +1125,7 @@ ${name} の ${newVer} が利用可能です\
       //request_focusの翻訳
       case "request_focus":
         $iframe.emit(
-          new CustomEvent("request_focus", { detail: message, bubbles: true })
+          new CustomEvent("request_focus", { detail: message, bubbles: true }),
         );
         break;
     }
@@ -1222,7 +1222,7 @@ ${name} の ${newVer} が利用可能です\
                 .$(`iframe[data-tabid=\"${sourceTabId}\"]`)
                 .contentWindow.postMessage(
                   { type: "request_reload" },
-                  location.origin
+                  location.origin,
                 );
               break;
             //タブを固定
@@ -1272,7 +1272,7 @@ ${name} の ${newVer} が利用可能です\
               break;
           }
           $menu.remove();
-        })
+        }),
       );
       await app.defer();
       document.body.addLast($menu);

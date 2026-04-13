@@ -1,15 +1,13 @@
-import React, { useCallback, useState, useEffect } from "react";
+import { ArrowLeft, ArrowRight, Menu, RotateCw } from "lucide-react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { canGoBack, canGoForward, getDisplayUrl } from "src/view/browser/types";
-import {
-  ArrowLeft,
-  ArrowRight,
-  RotateCw,
-  Menu,
-} from "lucide-react";
 
 // URLバーからの入力でページ種別を推定してナビゲートする
-function navigateByUrl(url: string, dispatch: ReturnType<typeof useTabStore>["dispatch"]) {
+function navigateByUrl(
+  url: string,
+  dispatch: ReturnType<typeof useTabStore>["dispatch"],
+) {
   const trimmed = url.trim();
   if (!trimmed) return;
 
@@ -66,7 +64,7 @@ export const NavigationBar: React.FC = () => {
         (e.target as HTMLInputElement).blur();
       }
     },
-    [inputValue, dispatch]
+    [inputValue, dispatch],
   );
 
   const handleFocus = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
@@ -99,11 +97,7 @@ export const NavigationBar: React.FC = () => {
       >
         <ArrowRight size={18} />
       </button>
-      <button
-        className="nav-bar__btn"
-        onClick={handleRefresh}
-        title="更新"
-      >
+      <button className="nav-bar__btn" onClick={handleRefresh} title="更新">
         <RotateCw size={16} />
       </button>
 

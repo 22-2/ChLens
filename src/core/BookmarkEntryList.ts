@@ -1,4 +1,4 @@
-import { URL, fix as fixUrl, threadToBoard } from "src/core/URL";
+import { fix as fixUrl, threadToBoard, URL } from "src/core/URL";
 
 export interface ReadState {
   url: string;

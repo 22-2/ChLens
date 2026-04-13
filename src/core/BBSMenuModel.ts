@@ -1,7 +1,7 @@
-import { container } from "src/service-container/index";
-import { Request } from "src/core/HTTP";
-import { ChURL, BBSMenuParser } from "packages/ch-lib/src/index";
+import { BBSMenuParser, ChURL } from "packages/ch-lib/src/index";
 import Callbacks from "src/app/Callbacks";
+import { Request } from "src/core/HTTP";
+import { container } from "src/service-container/index";
 
 export interface BBSBoard {
   title: string;
@@ -96,7 +96,7 @@ export class BBSMenuModel {
       });
       if (cache.lastModified != null) {
         request.headers["If-Modified-Since"] = new Date(
-          cache.lastModified
+          cache.lastModified,
         ).toUTCString();
       }
 
@@ -116,7 +116,7 @@ export class BBSMenuModel {
       cache.lastUpdated = Date.now();
 
       const lastModified = new Date(
-        response.headers["Last-Modified"] || "dummy"
+        response.headers["Last-Modified"] || "dummy",
       ).getTime();
 
       if (Number.isFinite(lastModified)) {
@@ -161,7 +161,7 @@ export class BBSMenuModel {
       } catch (error) {
         container.notification.notify(
           `板一覧の取得に失敗しました。(<a href="${url}" target="_blank">${url}</a>)`,
-          { html: true, backgroundColor: "red" }
+          { html: true, backgroundColor: "red" },
         );
       }
     }

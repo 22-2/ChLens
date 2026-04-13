@@ -1,5 +1,5 @@
-import { container } from "../service-container/index";
 import { AnchorParser, MetadataParser } from "../../packages/ch-lib/src/index";
+import { container } from "../service-container/index";
 import { replace as replaceStrTxt } from "./ReplaceStrTxt.js";
 
 /**
@@ -268,7 +268,7 @@ export default class ThreadModel {
         res,
         this.title,
         this.urlStr,
-        ngObj.type
+        ngObj.type,
       )
     ) {
       return ngObj;
@@ -289,7 +289,7 @@ export default class ThreadModel {
             res,
             this.title,
             this.urlStr,
-            "NothingID"
+            "NothingID",
           )
         ) {
           return { type: "NothingID" };
@@ -308,7 +308,7 @@ export default class ThreadModel {
             res,
             this.title,
             this.urlStr,
-            "NothingSLIP"
+            "NothingSLIP",
           )
         ) {
           return { type: "NothingSLIP" };
@@ -328,7 +328,7 @@ export default class ThreadModel {
           res,
           this.title,
           this.urlStr,
-          "ChainID"
+          "ChainID",
         )
       ) {
         return { type: "ChainID" };
@@ -345,7 +345,7 @@ export default class ThreadModel {
           res,
           this.title,
           this.urlStr,
-          "ChainSLIP"
+          "ChainSLIP",
         )
       ) {
         return { type: "ChainSLIP" };
@@ -354,7 +354,7 @@ export default class ThreadModel {
 
     // Repeat Message
     const repeatCount = parseInt(
-      container.config.get("repeat_message_ng_count")
+      container.config.get("repeat_message_ng_count"),
     );
     if (repeatCount > 1) {
       const cleanMsg = res.message.replace(/<[^>]+>/g, "").trim();
@@ -370,7 +370,7 @@ export default class ThreadModel {
               res,
               this.title,
               this.urlStr,
-              "RepeatMessage"
+              "RepeatMessage",
             )
           ) {
             return { type: "RepeatMessage" };
@@ -448,7 +448,7 @@ export default class ThreadModel {
           targetRes,
           this.title,
           this.urlStr,
-          "Chain"
+          "Chain",
         )
       )
         continue;
@@ -475,7 +475,7 @@ export default class ThreadModel {
           res,
           this.title,
           this.urlStr,
-          "ChainID"
+          "ChainID",
         )
       )
         continue;
@@ -502,7 +502,7 @@ export default class ThreadModel {
           res,
           this.title,
           this.urlStr,
-          "ChainSLIP"
+          "ChainSLIP",
         )
       )
         continue;

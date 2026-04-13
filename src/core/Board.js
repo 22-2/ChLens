@@ -1,5 +1,5 @@
+import { BoardParser, ChURL } from "../../packages/ch-lib/src/index";
 import { container } from "../service-container/index";
-import { ChURL, BoardParser } from "../../packages/ch-lib/src/index";
 import { Request } from "./HTTP";
 import { chServerMoveDetect } from "./jsutil.js";
 
@@ -68,7 +68,7 @@ export default class Board {
           if (hasCache) {
             if (cache.lastModified != null) {
               request.headers["If-Modified-Since"] = new Date(
-                cache.lastModified
+                cache.lastModified,
               ).toUTCString();
             }
             if (cache.etag != null) {
@@ -118,7 +118,7 @@ export default class Board {
           cache.lastUpdated = Date.now();
 
           const lastModified = new Date(
-            response.headers["Last-Modified"] || "dummy"
+            response.headers["Last-Modified"] || "dummy",
           ).getTime();
 
           if (Number.isFinite(lastModified)) {
@@ -244,7 +244,7 @@ class="open_in_rcrx">${container.util.escapeHtml(newBoardUrl)}
   */
   static _getXhrInfo(boardUrl) {
     const tmp = new RegExp(`^/(\\w+)(?:/(\\d+)/|/?)$`).exec(
-      boardUrl.url.pathname
+      boardUrl.url.pathname,
     );
     if (!tmp) {
       return null;
@@ -283,7 +283,7 @@ class="open_in_rcrx">${container.util.escapeHtml(newBoardUrl)}
       const ngResult = container.ng.isNGBoard(
         thread.title,
         url.url.href,
-        thread.resCount
+        thread.resCount,
       );
       const highlight =
         ngResult &&

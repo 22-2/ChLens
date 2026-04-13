@@ -192,7 +192,7 @@ export default ThreadList = (function () {
           $tr.dataset.resCount ||
           (threadListInstance._flg.res && selector.res
             ? __guard__($tr.$(selector.res), (x) =>
-                (x.textContent || "").trim()
+                (x.textContent || "").trim(),
               )
             : "");
         if (resText) {
@@ -203,7 +203,7 @@ export default ThreadList = (function () {
           $tr.dataset.heat ||
           (threadListInstance._flg.heat && selector.heat
             ? __guard__($tr.$(selector.heat), (x1) =>
-                (x1.textContent || "").trim()
+                (x1.textContent || "").trim(),
               )
             : "");
         if (heatText) {
@@ -234,7 +234,7 @@ export default ThreadList = (function () {
         if (tooltipRect.right > window.innerWidth - viewportPadding) {
           left = Math.max(
             viewportPadding,
-            window.innerWidth - tooltipRect.width - viewportPadding
+            window.innerWidth - tooltipRect.width - viewportPadding,
           );
           $tooltip.style.left = left + "px";
         }
@@ -245,7 +245,7 @@ export default ThreadList = (function () {
         if (tooltipRect.bottom > window.innerHeight - viewportPadding) {
           top = Math.max(
             viewportPadding,
-            window.innerHeight - tooltipRect.height - viewportPadding
+            window.innerHeight - tooltipRect.height - viewportPadding,
           );
           $tooltip.style.top = top + "px";
         }
@@ -267,7 +267,7 @@ export default ThreadList = (function () {
             $tooltip.addClass("visible");
           }
         },
-        true
+        true,
       );
       $table.on(
         "mouseleave",
@@ -278,7 +278,7 @@ export default ThreadList = (function () {
             }, 100);
           }
         },
-        true
+        true,
       );
 
       const $cols = $_F();
@@ -294,7 +294,7 @@ export default ThreadList = (function () {
           i++;
           const className = key.replace(
             /([A-Z])/g,
-            ($0, $1) => "_" + $1.toLowerCase()
+            ($0, $1) => "_" + $1.toLowerCase(),
           );
           const $th = $__("th").addClass(className);
           $th.dataset.key = className;
@@ -423,7 +423,7 @@ export default ThreadList = (function () {
             const heatValue = ThreadList._calcHeat(
               Date.now(),
               created,
-              bookmark.resCount
+              bookmark.resCount,
             );
             tr.dataset.resCount = "" + bookmark.resCount;
             tr.dataset.heat = heatValue;
@@ -593,26 +593,26 @@ export default ThreadList = (function () {
                 const threadURL = $tr.dataset.href;
                 const threadTitle = __guard__(
                   $tr.$(selector.title),
-                  (x3) => x3.textContent
+                  (x3) => x3.textContent,
                 );
                 const threadRes = parseInt(
                   (left = __guard__(
                     $tr.$(selector.res),
-                    (x4) => x4.textContent
+                    (x4) => x4.textContent,
                   )) != null
                     ? left
-                    : 0
+                    : 0,
                 );
                 const threadWrittenRes = parseInt(
                   (left1 = __guard__(
                     $tr.$(selector.writtenRes),
-                    (x5) => x5.textContent
+                    (x5) => x5.textContent,
                   )) != null
                     ? left1
-                    : 0
+                    : 0,
                 );
                 const dateValue = __guard__($tr.$(selector.viewedDate), (x6) =>
-                  x6.getAttr("date-value")
+                  x6.getAttr("date-value"),
                 );
 
                 switch (false) {
@@ -733,7 +733,7 @@ export default ThreadList = (function () {
                 }
 
                 this.remove();
-              })
+              }),
             );
             ContextMenu($menu, e.clientX, e.clientY);
           });
@@ -802,7 +802,7 @@ export default ThreadList = (function () {
 
     _ensureAtLeastOneVisibleColumn() {
       const visible = this._columnOrder.filter(
-        (key) => this._columns[key] && !this._columns[key].hidden
+        (key) => this._columns[key] && !this._columns[key].hidden,
       );
       if (!visible.length && this._columnOrder.length > 0) {
         const fallback = this._columns[this._columnOrder[0]];
@@ -837,7 +837,7 @@ export default ThreadList = (function () {
           event.stopPropagation();
           this._startColumnResize(target, columnKey, event);
         },
-        true
+        true,
       );
     }
 
@@ -957,7 +957,7 @@ export default ThreadList = (function () {
       }
       app.config.set(
         this._columnPreferencesKey,
-        JSON.stringify(this._columnPreferences)
+        JSON.stringify(this._columnPreferences),
       );
     }
 
@@ -968,7 +968,7 @@ export default ThreadList = (function () {
       this.table.emit(
         new CustomEvent("threadlist_column_state", {
           detail: { columns: this.getColumnStates() },
-        })
+        }),
       );
     }
 
@@ -999,7 +999,7 @@ export default ThreadList = (function () {
           (colKey) =>
             colKey !== key &&
             this._columns[colKey] &&
-            !this._columns[colKey].hidden
+            !this._columns[colKey].hidden,
         );
         if (otherVisible.length === 0) {
           return false;
@@ -1079,7 +1079,7 @@ export default ThreadList = (function () {
         return;
       }
       const visibleKeys = this._columnOrder.filter(
-        (key) => this._columns[key] && !this._columns[key].hidden
+        (key) => this._columns[key] && !this._columns[key].hidden,
       );
       if (visibleKeys.length === 1) {
         const key = visibleKeys[0];
@@ -1361,7 +1361,7 @@ export default ThreadList = (function () {
 
       if (typeof target === "number") {
         target = this.table.$(
-          `tbody > tr:nth-child(${target}), tbody > tr:last-child`
+          `tbody > tr:nth-child(${target}), tbody > tr:last-child`,
         );
       }
 

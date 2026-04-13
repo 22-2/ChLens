@@ -1,7 +1,7 @@
 let ThreadContent;
-import MediaContainer from "./MediaContainer.js";
-import ThreadModel from "../core/ThreadModel.js";
 import MessageProcessor from "../core/MessageProcessor.js";
+import ThreadModel from "../core/ThreadModel.js";
+import MediaContainer from "./MediaContainer.js";
 
 /**
 @class ThreadContent
@@ -154,7 +154,7 @@ export default ThreadContent = (function () {
         this._lastScrollInfo.resNum,
         this._lastScrollInfo.animate,
         this._lastScrollInfo.offset,
-        true
+        true,
       );
     }
 
@@ -400,7 +400,7 @@ export default ThreadContent = (function () {
                   return;
                 }
                 this._scrollRequestID = requestAnimationFrame(_scrollInterval);
-              })
+              }),
             ));
           })();
         } else {
@@ -566,12 +566,12 @@ export default ThreadContent = (function () {
         offset = 0;
       }
       __guard__(this.container.$("article.selected"), (x) =>
-        x.removeClass("selected")
+        x.removeClass("selected"),
       );
 
       if (typeof target === "number") {
         target = this.container.$(
-          `article:nth-child(${target}), article:last-child`
+          `article:nth-child(${target}), article:last-child`,
         );
       }
 
@@ -824,8 +824,8 @@ export default ThreadContent = (function () {
         await Promise.all(
           Array.from(
             this.container.$$(
-              ".message > a:not(.anchor):not(.thumbnail):not(.has_thumbnail):not(.expandedURL):not(.has_expandedURL)"
-            )
+              ".message > a:not(.anchor):not(.thumbnail):not(.has_thumbnail):not(.expandedURL):not(.has_expandedURL)",
+            ),
           ).map(async (a) => {
             let err, href, link;
             ({ a, link } = await this.checkUrlExpand(a));
@@ -850,7 +850,7 @@ export default ThreadContent = (function () {
             if (mediaType) {
               this.addThumbnail(a, href, mediaType, res);
             }
-          })
+          }),
         );
         // harmImg更新
         this.updateHarmImages();
@@ -897,13 +897,13 @@ export default ThreadContent = (function () {
         { startRes, dom: $fragment },
         "slip",
         this.model.slipIndex,
-        "SLIP:"
+        "SLIP:",
       );
       this.updateId(
         { startRes, dom: $fragment },
         "trip",
         this.model.tripIndex,
-        ""
+        "",
       );
     }
 
@@ -916,19 +916,19 @@ export default ThreadContent = (function () {
         { endRes, dom: this.container },
         "id",
         this.model.idIndex,
-        ""
+        "",
       );
       this.updateId(
         { endRes, dom: this.container },
         "slip",
         this.model.slipIndex,
-        "SLIP:"
+        "SLIP:",
       );
       this.updateId(
         { endRes, dom: this.container },
         "trip",
         this.model.tripIndex,
-        ""
+        "",
       );
 
       //参照関係再構築
@@ -1222,10 +1222,10 @@ export default ThreadContent = (function () {
             case "video":
               thumbnailLink.style.WebkitFilter = webkitFilter;
               thumbnailLink.style.maxWidth = `${app.config.get(
-                "video_width"
+                "video_width",
               )}px`;
               thumbnailLink.style.maxHeight = `${app.config.get(
-                "video_height"
+                "video_height",
               )}px`;
               if (app.config.isOn("video_controls")) {
                 thumbnailLink.controls = true;
@@ -1294,7 +1294,7 @@ export default ThreadContent = (function () {
         if (sib == null || sib.tagName === "BR") {
           if (
             __guard__(sib != null ? sib.next() : undefined, (x) =>
-              x.hasClass("expandedURL")
+              x.hasClass("expandedURL"),
             )
           ) {
             continue;

@@ -1,12 +1,17 @@
 import React, {
   createContext,
   useContext,
-  useReducer,
   useEffect,
+  useReducer,
   type Dispatch,
   type ReactNode,
 } from "react";
-import { type Tab, type Page, getCurrentPage, buildHierarchy } from "src/view/browser/types";
+import {
+  buildHierarchy,
+  getCurrentPage,
+  type Page,
+  type Tab,
+} from "src/view/browser/types";
 
 export interface TabStoreState {
   tabs: Tab[];
@@ -88,13 +93,11 @@ function getActiveTab(state: TabStoreState): Tab {
 
 function updateActiveTab(
   state: TabStoreState,
-  updater: (tab: Tab) => Tab
+  updater: (tab: Tab) => Tab,
 ): TabStoreState {
   return {
     ...state,
-    tabs: state.tabs.map((t) =>
-      t.id === state.activeTabId ? updater(t) : t
-    ),
+    tabs: state.tabs.map((t) => (t.id === state.activeTabId ? updater(t) : t)),
   };
 }
 
@@ -137,10 +140,10 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
     case "CLOSE_OTHER_TABS": {
       // 指定タブと固定タブ以外を閉じる
       const closed = state.tabs.filter(
-        (t) => t.id !== action.tabId && !t.pinned
+        (t) => t.id !== action.tabId && !t.pinned,
       );
       const remaining = state.tabs.filter(
-        (t) => t.id === action.tabId || t.pinned
+        (t) => t.id === action.tabId || t.pinned,
       );
       if (remaining.length === 0) return state;
       let newClosed = state.closedTabs;
@@ -206,7 +209,7 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
 
     case "TOGGLE_PIN": {
       const tabs = state.tabs.map((t) =>
-        t.id === action.tabId ? { ...t, pinned: !t.pinned } : t
+        t.id === action.tabId ? { ...t, pinned: !t.pinned } : t,
       );
       // 固定タブを左に、非固定タブを右に並び替え
       tabs.sort((a, b) => (a.pinned === b.pinned ? 0 : a.pinned ? -1 : 1));
@@ -234,7 +237,7 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
         tabs: state.tabs.map((t) =>
           t.id === action.tabId
             ? { ...t, history: newHistory, currentIndex: newHistory.length - 1 }
-            : t
+            : t,
         ),
       };
     }

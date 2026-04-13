@@ -1,4 +1,3 @@
-
 export const MAX_TREE_DEPTH = 10;
 export const ANCHOR_PREVIEW_OFFSET = 12;
 export const ANCHOR_PREVIEW_GUTTER = 16;

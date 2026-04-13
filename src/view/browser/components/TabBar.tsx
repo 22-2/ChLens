@@ -1,9 +1,9 @@
+import { Plus, X } from "lucide-react";
 import React, { useCallback, useState } from "react";
-import { useTabStore } from "src/view/browser/hooks/use-tab-store";
-import { getCurrentPage } from "src/view/browser/types";
-import type { Tab } from "src/view/browser/types";
 import { TabContextMenu } from "src/view/browser/components/TabContextMenu";
-import { X, Plus } from "lucide-react";
+import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import type { Tab } from "src/view/browser/types";
+import { getCurrentPage } from "src/view/browser/types";
 
 interface ContextMenuState {
   tab: Tab;
@@ -23,16 +23,13 @@ export const TabBar: React.FC = () => {
         dispatch({ type: "CLOSE_TAB", tabId });
       }
     },
-    [dispatch]
+    [dispatch],
   );
 
-  const handleContextMenu = useCallback(
-    (e: React.MouseEvent, tab: Tab) => {
-      e.preventDefault();
-      setContextMenu({ tab, x: e.clientX, y: e.clientY });
-    },
-    []
-  );
+  const handleContextMenu = useCallback((e: React.MouseEvent, tab: Tab) => {
+    e.preventDefault();
+    setContextMenu({ tab, x: e.clientX, y: e.clientY });
+  }, []);
 
   const closeContextMenu = useCallback(() => setContextMenu(null), []);
 

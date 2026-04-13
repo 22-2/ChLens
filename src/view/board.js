@@ -51,7 +51,7 @@ app.boot("/view/board.html", ["Board"], function (Board) {
         $input.on("change", () => {
           const success = threadList.setColumnVisibility(
             col.key,
-            $input.checked
+            $input.checked,
           );
           if (!success) {
             $input.checked = !$input.checked; // 最後の1列などは非表示にできない場合があるため戻す
@@ -90,7 +90,7 @@ app.boot("/view/board.html", ["Board"], function (Board) {
       open(
         openUrl,
         undefined,
-        `width=600,height=300,left=${windowX},top=${windowY}`
+        `width=600,height=300,left=${windowX},top=${windowY}`,
       );
     } else if ("&[BROWSER]" === "chrome") {
       parent.browser.windows.create({
@@ -151,7 +151,7 @@ app.boot("/view/board.html", ["Board"], function (Board) {
             sortOrder: "asc",
           });
         },
-        { once: true }
+        { once: true },
       );
     });
   })();

@@ -1,27 +1,27 @@
-import React, { useState } from "react";
 import {
-  Search,
-  RotateCw,
-  Edit,
-  Filter,
-  Menu,
-  Pause,
+  Bookmark,
   ChevronLeft,
   ChevronRight,
-  ExternalLink,
   Copy,
-  Bookmark,
-  Monitor
+  Edit,
+  ExternalLink,
+  Filter,
+  Menu,
+  Monitor,
+  Pause,
+  RotateCw,
+  Search,
 } from "lucide-react";
+import React, { useState } from "react";
 import { Button } from "src/view/thread/components/ui/button";
-import { Input } from "src/view/thread/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuSeparator
 } from "src/view/thread/components/ui/dropdown-menu";
+import { Input } from "src/view/thread/components/ui/input";
 
 export const ThreadNavBar: React.FC = () => {
   const [searchValue, setSearchValue] = useState("");
@@ -79,12 +79,7 @@ export const ThreadNavBar: React.FC = () => {
         <RotateCw size={16} />
       </Button>
 
-      <Button
-        variant="ghost"
-        size="icon"
-        title="書き込む"
-        className="h-8 w-8"
-      >
+      <Button variant="ghost" size="icon" title="書き込む" className="h-8 w-8">
         <Edit size={16} />
       </Button>
 
@@ -101,11 +96,17 @@ export const ThreadNavBar: React.FC = () => {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-[200px]">
           <DropdownMenuItem className="filter_all">すべて表示</DropdownMenuItem>
-          <DropdownMenuItem className="filter_popular">人気レス (3件以上の返信)</DropdownMenuItem>
+          <DropdownMenuItem className="filter_popular">
+            人気レス (3件以上の返信)
+          </DropdownMenuItem>
           <DropdownMenuItem className="filter_image">画像</DropdownMenuItem>
           <DropdownMenuItem className="filter_video">動画</DropdownMenuItem>
-          <DropdownMenuItem className="filter_media">画像・動画</DropdownMenuItem>
-          <DropdownMenuItem className="filter_link">外部リンク</DropdownMenuItem>
+          <DropdownMenuItem className="filter_media">
+            画像・動画
+          </DropdownMenuItem>
+          <DropdownMenuItem className="filter_link">
+            外部リンク
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 

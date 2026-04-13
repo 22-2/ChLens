@@ -368,7 +368,7 @@ export class QDollarRecognizer {
 function CloudMatch(
   candidate: PointCloud,
   template: PointCloud,
-  minSoFar: number
+  minSoFar: number,
 ): number {
   const n = candidate.Points.length;
   const step = Math.floor(Math.pow(n, 0.5));
@@ -377,25 +377,25 @@ function CloudMatch(
     candidate.Points,
     template.Points,
     step,
-    template.LUT
+    template.LUT,
   );
   const LB2 = ComputeLowerBound(
     template.Points,
     candidate.Points,
     step,
-    candidate.LUT
+    candidate.LUT,
   );
 
   for (let i = 0, j = 0; i < n; i += step, j++) {
     if (LB1[j] < minSoFar)
       minSoFar = Math.min(
         minSoFar,
-        CloudDistance(candidate.Points, template.Points, i, minSoFar)
+        CloudDistance(candidate.Points, template.Points, i, minSoFar),
       );
     if (LB2[j] < minSoFar)
       minSoFar = Math.min(
         minSoFar,
-        CloudDistance(template.Points, candidate.Points, i, minSoFar)
+        CloudDistance(template.Points, candidate.Points, i, minSoFar),
       );
   }
   return minSoFar;
@@ -405,7 +405,7 @@ function CloudDistance(
   pts1: Point[],
   pts2: Point[],
   start: number,
-  minSoFar: number
+  minSoFar: number,
 ): number {
   const n = pts1.length;
   const unmatched: number[] = []; // indices for pts2 that are not matched
@@ -436,7 +436,7 @@ function ComputeLowerBound(
   pts1: Point[],
   pts2: Point[],
   step: number,
-  LUT: number[][]
+  LUT: number[][],
 ): number[] {
   const n = pts1.length;
   const LB: number[] = new Array(Math.floor(n / step) + 1);
@@ -480,8 +480,8 @@ function Resample(points: Point[], n: number): Point[] {
       new Point(
         points[points.length - 1].X,
         points[points.length - 1].Y,
-        points[points.length - 1].ID
-      )
+        points[points.length - 1].ID,
+      ),
     );
   return newpoints;
 }
@@ -542,10 +542,10 @@ function PathLength(points: Point[]): number {
 function MakeIntCoords(points: Point[]): Point[] {
   for (let i = 0; i < points.length; i++) {
     points[i].IntX = Math.round(
-      ((points[i].X + 1.0) / 2.0) * (MaxIntCoord - 1)
+      ((points[i].X + 1.0) / 2.0) * (MaxIntCoord - 1),
     );
     points[i].IntY = Math.round(
-      ((points[i].Y + 1.0) / 2.0) * (MaxIntCoord - 1)
+      ((points[i].Y + 1.0) / 2.0) * (MaxIntCoord - 1),
     );
   }
   return points;

@@ -46,7 +46,9 @@ export const ThreadView: React.FC<ThreadViewProps> = ({ viewUrl }) => {
   if (!isReady) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="text-muted-foreground">アプリケーションを初期化中...</div>
+        <div className="text-muted-foreground">
+          アプリケーションを初期化中...
+        </div>
       </div>
     );
   }

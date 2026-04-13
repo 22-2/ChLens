@@ -1,7 +1,7 @@
 import React from "react";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
-import { HomePage } from "src/view/browser/pages/HomePage";
 import { BoardListPage } from "src/view/browser/pages/BoardListPage";
+import { HomePage } from "src/view/browser/pages/HomePage";
 import { ThreadListPage } from "src/view/browser/pages/ThreadListPage";
 import { ThreadPage } from "src/view/browser/pages/ThreadPage";
 import type { Page } from "src/view/browser/types";
@@ -22,9 +22,5 @@ function renderPage(page: Page): React.ReactNode {
 export const ContentArea: React.FC = () => {
   const { currentPage } = useTabStore();
 
-  return (
-    <div className="content-area">
-      {renderPage(currentPage)}
-    </div>
-  );
+  return <div className="content-area">{renderPage(currentPage)}</div>;
 };

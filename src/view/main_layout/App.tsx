@@ -1,4 +1,3 @@
-import React, { useState } from "react";
 import {
   BookOpen,
   Clock3,
@@ -10,6 +9,7 @@ import {
   Search,
   Settings,
 } from "lucide-react";
+import React, { useState } from "react";
 
 const SIDEBAR_WIDTH = 220;
 const PANEL_BORDER = "1px solid #243041";
@@ -180,7 +180,11 @@ const App: React.FC = () => {
               title="サイドバー開閉"
               style={btnStyle}
             >
-              {sidebarOpen ? <PanelLeftClose size={16} /> : <PanelLeftOpen size={16} />}
+              {sidebarOpen ? (
+                <PanelLeftClose size={16} />
+              ) : (
+                <PanelLeftOpen size={16} />
+              )}
             </button>
             <div
               style={{
@@ -315,7 +319,11 @@ const App: React.FC = () => {
 
                 <div style={{ flex: 1 }} />
 
-                <button title="サイドバー開閉" onClick={() => setSidebarOpen(false)} style={activityButtonStyle}>
+                <button
+                  title="サイドバー開閉"
+                  onClick={() => setSidebarOpen(false)}
+                  style={activityButtonStyle}
+                >
                   <PanelLeftClose size={18} strokeWidth={1.8} />
                 </button>
               </div>
@@ -434,7 +442,13 @@ const App: React.FC = () => {
                     >
                       {section.title}
                     </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "6px",
+                      }}
+                    >
                       {section.items.map((item) => (
                         <button key={item} style={sidebarItemStyle}>
                           <span

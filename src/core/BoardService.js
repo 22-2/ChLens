@@ -47,7 +47,7 @@ const BoardService = {
           readState,
           threadNumber: index,
         };
-      }
+      },
     );
 
     return {

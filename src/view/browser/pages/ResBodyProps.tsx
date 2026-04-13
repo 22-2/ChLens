@@ -12,14 +12,19 @@ interface ResBodyProps {
     targets: number[],
     anchorRect: DOMRect,
     label: string,
-    depth: number
+    depth: number,
   ) => void;
   onAnchorLeave: (fromDepth: number) => void;
 }
 
 export const ResBody: React.FC<ResBodyProps> = React.memo(
   ({
-    messageHtml, anchorPreviewDepth, onUrlClick, onAnchorClick, onAnchorHover, onAnchorLeave,
+    messageHtml,
+    anchorPreviewDepth,
+    onUrlClick,
+    onAnchorClick,
+    onAnchorHover,
+    onAnchorLeave,
   }) => {
     const hoveredAnchorRef = useRef<HTMLAnchorElement | null>(null);
 
@@ -53,7 +58,7 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
             targets,
             anchor.getBoundingClientRect(),
             label,
-            anchorPreviewDepth
+            anchorPreviewDepth,
           );
         }}
         onMouseLeave={() => {
@@ -82,8 +87,9 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
           }
           e.preventDefault();
           onUrlClick(href);
-        }} />
+        }}
+      />
     );
-  }
+  },
 );
 ResBody.displayName = "ResBody";

@@ -1,4 +1,3 @@
-import React from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "src/view/thread/App";
 
@@ -23,12 +22,7 @@ app.boot("/view/thread_react.html", async function () {
     }
 
     const root = createRoot(container);
-    root.render(
-      <App
-        initialView="thread"
-        initialParams={{ q: viewUrlStr }}
-      />
-    );
+    root.render(<App initialView="thread" initialParams={{ q: viewUrlStr }} />);
   } catch (error) {
     console.error("Failed to initialize React app:", error);
   }

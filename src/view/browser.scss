@@ -9,7 +9,8 @@
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   height: 100%;
   overflow: hidden;
 }
@@ -19,7 +20,11 @@ html, body {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
   font-size: 14px;
   color: #202124;
   background: #fff;
@@ -258,7 +263,9 @@ html, body {
   display: flex;
   align-items: center;
   overflow: hidden;
-  transition: background 0.15s, box-shadow 0.15s;
+  transition:
+    background 0.15s,
+    box-shadow 0.15s;
 }
 
 .nav-bar__url:focus-within {
@@ -364,7 +371,9 @@ html, body {
   color: #fff;
   font-size: 14px;
   cursor: pointer;
-  transition: background 0.15s, box-shadow 0.15s;
+  transition:
+    background 0.15s,
+    box-shadow 0.15s;
 }
 
 .home-page__btn:hover {
@@ -698,7 +707,9 @@ html, body {
   font-size: 12px;
   cursor: pointer;
   color: #5f6368;
-  transition: background 0.1s, color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s;
   font-family: inherit;
 }
 
@@ -772,8 +783,12 @@ html, body {
 }
 
 @keyframes res-highlight-flash {
-  0% { background-color: rgba(0, 123, 255, 0.3); }
-  100% { background-color: transparent; }
+  0% {
+    background-color: rgba(0, 123, 255, 0.3);
+  }
+  100% {
+    background-color: transparent;
+  }
 }
 
 .res--ng {

@@ -11,7 +11,9 @@ interface ViewContextType {
 
 const ViewContext = createContext<ViewContextType | undefined>(undefined);
 
-export const ViewProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const ViewProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [currentView, setCurrentView] = useState<ViewType>("thread");
   const [viewParams, setViewParams] = useState<Record<string, any>>({});
 

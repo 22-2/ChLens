@@ -1,4 +1,8 @@
-import { Entry, SyncableEntryList, newerEntry } from "src/core/BookmarkEntryList";
+import {
+  Entry,
+  newerEntry,
+  SyncableEntryList,
+} from "src/core/BookmarkEntryList";
 import { URL } from "src/core/URL";
 
 export default class BrowserBookmarkEntryList extends SyncableEntryList {
@@ -221,7 +225,7 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
         } else if (oldParentId === this.rootNodeId) {
           this.applyNodeRemoveToEntryList(nodeId);
         }
-      }
+      },
     );
   }
 
@@ -336,7 +340,7 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
         return browser.bookmarks.remove(id).catch((e) => {
           return;
         });
-      })
+      }),
     );
     return true;
   }

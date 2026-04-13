@@ -8,7 +8,7 @@ export interface ICacheItem {
   get(): Promise<any>;
   put(
     data: any,
-    options?: { lastModified?: number; etag?: string }
+    options?: { lastModified?: number; etag?: string },
   ): Promise<void>;
   data: any;
   lastUpdated: number;
@@ -120,7 +120,7 @@ export interface IThreadModel {
     scrollTop: number,
     clientHeight: number,
     getOffsetTop: (num: number) => number,
-    getOffsetHeight: (num: number) => number
+    getOffsetHeight: (num: number) => number,
   ): number;
 }
 
@@ -138,7 +138,7 @@ export interface IThreadService {
     options?: {
       forceUpdate?: boolean;
       onCache?: (thread: IThreadDetail) => void;
-    }
+    },
   ): Promise<IThreadDetail>;
 }
 
@@ -175,7 +175,7 @@ export interface IBBSMenuService {
 export interface INotificationService {
   notify(
     message: string,
-    options?: { html?: boolean; backgroundColor?: string }
+    options?: { html?: boolean; backgroundColor?: string },
   ): void;
   success(message: string): void;
   error(message: string): void;
@@ -195,7 +195,7 @@ export interface INGService {
     res: any,
     threadTitle: string,
     url: string,
-    ngType: string
+    ngType: string,
   ): INGResult | null;
   add(ngWord: string): void;
   invalidateCache(): void;

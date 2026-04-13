@@ -1,17 +1,18 @@
 import MessageProcessor from "src/core/MessageProcessor";
 import type { IRes } from "src/service-container";
 
-
 // --- アンカーパーサ ---
 // MessageProcessor由来のHTML内のアンカー（>>N）から参照先レス番号を抽出する
-const ANCHOR_REG = /(?:&gt;|＞){1,2}([\d\uff10-\uff19]+(?:[\-\u30fc][\d\uff10-\uff19]+)?(?:\s*[,、]\s*[\d\uff10-\uff19]+(?:[\-\u30fc][\d\uff10-\uff19]+)?)*)/g;
+const ANCHOR_REG =
+  /(?:&gt;|＞){1,2}([\d\uff10-\uff19]+(?:[\-\u30fc][\d\uff10-\uff19]+)?(?:\s*[,、]\s*[\d\uff10-\uff19]+(?:[\-\u30fc][\d\uff10-\uff19]+)?)*)/g;
 const FW_NUM_REG = /[\uff10-\uff19]/g;
 export function parseAnchors(message: string): number[] {
   const targets: number[] = [];
   ANCHOR_REG.lastIndex = 0;
   let match;
   while ((match = ANCHOR_REG.exec(message)) !== null) {
-    const raw = match[1].replace(FW_NUM_REG, (c) => String.fromCharCode(c.charCodeAt(0) - 0xff10 + 0x30)
+    const raw = match[1].replace(FW_NUM_REG, (c) =>
+      String.fromCharCode(c.charCodeAt(0) - 0xff10 + 0x30),
     );
     const parts = raw.split(/\s*[,、]\s*/);
     for (const part of parts) {
@@ -35,7 +36,10 @@ export function stripHtml(html: string): string {
     .replace(/&lt;/g, "<")
     .replace(/&amp;/g, "&");
 }
-export function buildKyodemoUrl(threadUrl: string, rawId: string): string | null {
+export function buildKyodemoUrl(
+  threadUrl: string,
+  rawId: string,
+): string | null {
   try {
     const urlObj = new window.URL(threadUrl);
     const pathParts = urlObj.pathname.split("/");
@@ -72,7 +76,7 @@ export async function copyText(text: string): Promise<void> {
 // --- フィルタ判定 ---
 export function hasImage(message: string): boolean {
   return /\.(jpe?g|png|gif|webp|bmp|avif)(?:\?[^"<]*)?(?=["<\s]|$)/i.test(
-    message
+    message,
   );
 }
 export function hasVideo(message: string): boolean {
@@ -97,7 +101,9 @@ export function parseAnchorDisplayTargets(text: string): number[] {
   const parts = raw.split(/\s*[,、]\s*/);
   for (const part of parts) {
     const range = part
-      .replace(FW_NUM_REG, (c) => String.fromCharCode(c.charCodeAt(0) - 0xff10 + 0x30))
+      .replace(FW_NUM_REG, (c) =>
+        String.fromCharCode(c.charCodeAt(0) - 0xff10 + 0x30),
+      )
       .split(/[\-\u30fc]/);
     const start = parseInt(range[0], 10);
     const end = range.length > 1 ? parseInt(range[1], 10) : start;
@@ -120,7 +126,7 @@ interface DecodedMessageParts {
 
 export function decodeResponseHtml(
   res: IRes,
-  protocol: string
+  protocol: string,
 ): DecodedMessageParts {
   // React版でも旧ビューと同じHTML化を通しておかないと、>>アンカーが文字列のまま残ってホバー対象を拾えない。
   return MessageProcessor.decode(res, protocol) as DecodedMessageParts;
@@ -133,7 +139,8 @@ export interface GesturePoint {
 export const GESTURE_START_THRESHOLD = 12;
 export const GESTURE_CONTEXTMENU_SUPPRESS_MS = 400;
 export function summarizeVerticalGesture(
-  points: GesturePoint[]): { direction: GestureDirection; distance: number; } | null {
+  points: GesturePoint[],
+): { direction: GestureDirection; distance: number } | null {
   if (points.length < 2) {
     return null;
   }
@@ -217,7 +224,9 @@ export function toViewerImageUrl(rawUrl: string): string | null {
   return null;
 }
 
-export function getEventTargetElement(target: EventTarget | null): Element | null {
+export function getEventTargetElement(
+  target: EventTarget | null,
+): Element | null {
   if (target instanceof Element) {
     return target;
   }

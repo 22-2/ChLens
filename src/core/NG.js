@@ -82,7 +82,7 @@ const _setupReg = function (obj) {
 NG機能の正規表現(${type}: ${word})を読み込むのに失敗しました
 この行は無効化されます\
 `,
-        { backgroundColor: "red" }
+        { backgroundColor: "red" },
       );
     }
     return reg;
@@ -432,7 +432,7 @@ export var add = function (string) {
 */
 const _checkWord = function (
   { type, reg, word },
-  { all, name, mail, id, slip, mes, title, url, resCount }
+  { all, name, mail, id, slip, mes, title, url, resCount },
 ) {
   if (
     (type === TYPE.REG_EXP && reg.test(all)) ||
@@ -525,7 +525,7 @@ export var isNGBoard = function (
   url,
   resCount,
   exceptionFlg,
-  subType = null
+  subType = null,
 ) {
   if (exceptionFlg == null) {
     exceptionFlg = false;
@@ -606,7 +606,7 @@ export var isNGThread = function (
   title,
   url,
   exceptionFlg,
-  subType = null
+  subType = null,
 ) {
   if (exceptionFlg == null) {
     exceptionFlg = false;

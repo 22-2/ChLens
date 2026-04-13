@@ -138,7 +138,7 @@ export default class LazyLoad {
           $newImg.src = this.getWithReferrer(
             mdata.src!,
             mdata.referrer!,
-            mdata.userAgent!
+            mdata.userAgent!,
           );
           break;
         case "extract":
@@ -148,7 +148,7 @@ export default class LazyLoad {
               mdata.extract!,
               mdata.pattern!,
               mdata.extractReferrer!,
-              mdata.userAgent!
+              mdata.userAgent!,
             );
           } catch {
             $newImg.src = "";
@@ -160,7 +160,7 @@ export default class LazyLoad {
               mdata.src!,
               mdata.cookie!,
               mdata.cookieReferrer!,
-              mdata.userAgent!
+              mdata.userAgent!,
             );
           } catch {
             $newImg.src = "";
@@ -181,7 +181,7 @@ export default class LazyLoad {
   scan(): void {
     this.medias = <HTMLAudioVisualElement[]>(
       Array.from(
-        this.container.$$("img[data-src], audio[data-src], video[data-src]")
+        this.container.$$("img[data-src], audio[data-src], video[data-src]"),
       )
     );
     for (const media of this.medias) {
@@ -193,7 +193,7 @@ export default class LazyLoad {
     link: string,
     referrer: string,
     userAgent: string,
-    cookie = ""
+    cookie = "",
   ): string {
     //TODO: use browser.webRequest, browser.cookies
     //if(referrer !== ""){ req.setRequestHeader("Referer", referrer); }
@@ -206,7 +206,7 @@ export default class LazyLoad {
     link: string,
     cookieLink: string,
     referrer: string,
-    userAgent: string
+    userAgent: string,
   ): Promise<string> {
     const req = new app.HTTP.Request("GET", cookieLink);
     //TODO: use browser.webRequest
@@ -227,7 +227,7 @@ export default class LazyLoad {
     extractLink: string,
     pattern: string,
     referrer: string,
-    userAgent: string
+    userAgent: string,
   ): Promise<string> {
     const req = new app.HTTP.Request("GET", extractLink);
     //TODO: use browser.webRequest

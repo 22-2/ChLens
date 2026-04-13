@@ -1,8 +1,8 @@
 import React, { useMemo } from "react";
-import { useTabStore } from "src/view/browser/hooks/use-tab-store";
-import { getCurrentPage } from "src/view/browser/types";
-import type { Tab } from "src/view/browser/types";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
+import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import type { Tab } from "src/view/browser/types";
+import { getCurrentPage } from "src/view/browser/types";
 
 interface MenuPosition {
   x: number;
@@ -23,9 +23,7 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
   const isThread = currentPage.type === "thread";
 
   // 他のタブ（固定タブ除く、自分除く）が存在するか
-  const hasOtherClosable = state.tabs.some(
-    (t) => t.id !== tab.id && !t.pinned
-  );
+  const hasOtherClosable = state.tabs.some((t) => t.id !== tab.id && !t.pinned);
   // 右側に閉じられるタブがあるか
   const hasRightClosable = state.tabs
     .slice(tabIndex + 1)
@@ -108,7 +106,12 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
   ]);
 
   return (
-    <ContextMenu x={position.x} y={position.y} items={items} onClose={onClose} />
+    <ContextMenu
+      x={position.x}
+      y={position.y}
+      items={items}
+      onClose={onClose}
+    />
   );
 };
 

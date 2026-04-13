@@ -24,7 +24,7 @@ export default Notification = (function () {
             return (this.notify = createNotification(
               this.title,
               this.message,
-              this.tag
+              this.tag,
             ));
           }
         });
