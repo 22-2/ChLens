@@ -1,8 +1,7 @@
 import Form, { type IChangeEvent } from "@rjsf/core";
 import validator from "@rjsf/validator-ajv8";
 import type { RJSFSchema, UiSchema, ValidatorType } from "@rjsf/utils";
-import { RotateCcw, Save } from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { container } from "src/service-container/index";
 
 type SettingsSectionId =
@@ -114,6 +113,7 @@ const HOW_TO_JUDGMENT_ID_OPTIONS = [
 
 const settingsValidator =
   validator as unknown as ValidatorType<SettingsSectionFormData, RJSFSchema>;
+const AUTO_SAVE_DELAY_MS = 350;
 
 function buildFieldSchema(field: SettingsFieldDefinition): RJSFSchema {
   const schema: RJSFSchema = {
@@ -556,6 +556,8 @@ export const SettingsPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [savingSectionId, setSavingSectionId] =
     useState<SettingsSectionId | null>(null);
+  const [autoSaveError, setAutoSaveError] = useState<string | null>(null);
+  const autoSaveTimerRef = useRef<number | null>(null);
 
   const activeSection = useMemo(
     () => SETTINGS_SECTION_MAP.get(activeSectionId) ?? SETTINGS_SECTIONS[0],
@@ -585,64 +587,69 @@ export const SettingsPage: React.FC = () => {
     loadSettings();
   }, [loadSettings]);
 
+  const scheduleAutoSave = useCallback(
+    (sectionId: SettingsSectionId, sectionFormData: SettingsSectionFormData) => {
+      const section = SETTINGS_SECTION_MAP.get(sectionId);
+      if (!section) {
+        return;
+      }
+
+      if (autoSaveTimerRef.current != null) {
+        window.clearTimeout(autoSaveTimerRef.current);
+      }
+
+      // 入力のたびに即保存するとI/Oが過剰になるため、短い遅延でまとめて保存する。
+      autoSaveTimerRef.current = window.setTimeout(() => {
+        autoSaveTimerRef.current = null;
+        setSavingSectionId(sectionId);
+        setAutoSaveError(null);
+        void (async () => {
+          try {
+            // app.config は文字列保存なので、RJSFの型付き入力をここで旧設定形式へ戻して保存する。
+            await saveSectionFormData(section, sectionFormData);
+          } catch (saveError) {
+            const message =
+              saveError instanceof Error
+                ? saveError.message
+                : "設定の自動保存に失敗しました";
+            setAutoSaveError(message);
+            container.notification.error(message);
+          } finally {
+            setSavingSectionId((prev) => (prev === sectionId ? null : prev));
+          }
+        })();
+      }, AUTO_SAVE_DELAY_MS);
+    },
+    [],
+  );
+
   const handleFormChange = useCallback(
     (
       sectionId: SettingsSectionId,
       event: IChangeEvent<SettingsSectionFormData>,
     ) => {
+      const nextSectionFormData = event.formData ?? {};
       setFormState((prev) => {
         if (!prev) {
           return prev;
         }
         return {
           ...prev,
-          [sectionId]: event.formData,
+          [sectionId]: nextSectionFormData,
         };
       });
+      scheduleAutoSave(sectionId, nextSectionFormData);
     },
-    [],
+    [scheduleAutoSave],
   );
 
-  const handleResetSection = useCallback((sectionId: SettingsSectionId) => {
-    const section = SETTINGS_SECTION_MAP.get(sectionId);
-    if (!section) {
-      return;
-    }
-    setFormState((prev) => {
-      if (!prev) {
-        return prev;
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimerRef.current != null) {
+        window.clearTimeout(autoSaveTimerRef.current);
       }
-      return {
-        ...prev,
-        [sectionId]: readSectionFormData(section),
-      };
-    });
+    };
   }, []);
-
-  const handleSaveSection = useCallback(
-    async (sectionId: SettingsSectionId) => {
-      const section = SETTINGS_SECTION_MAP.get(sectionId);
-      if (!section || !formState) {
-        return;
-      }
-
-      setSavingSectionId(sectionId);
-      try {
-        // app.config は文字列保存なので、RJSFの型付き入力をここで旧設定形式へ戻して保存する。
-        await saveSectionFormData(section, formState[sectionId]);
-        container.notification.success(`${section.title}を保存しました`);
-      } catch (saveError) {
-        container.notification.error(
-          saveError instanceof Error
-            ? saveError.message
-            : "設定の保存に失敗しました",
-        );
-      } finally {
-        setSavingSectionId(null);
-      }
-    },
-    [formState],
-  );
 
   if (loading) {
     return <div className="page-status">設定を読み込み中...</div>;
@@ -691,6 +698,13 @@ export const SettingsPage: React.FC = () => {
           <p className="settings-page__note">
             旧設定画面の保存形式をそのまま使いながら、React版で利用頻度の高い項目から段階的に移植しています。
           </p>
+          <p className="settings-page__autosave-status">
+            {autoSaveError
+              ? `自動保存エラー: ${autoSaveError}`
+              : savingSectionId === activeSection.id
+                ? "自動保存中..."
+                : "変更は自動保存されます"}
+          </p>
 
           <div className="settings-page__form">
             <Form<SettingsSectionFormData>
@@ -701,32 +715,7 @@ export const SettingsPage: React.FC = () => {
               noHtml5Validate
               showErrorList={false}
               onChange={(event) => handleFormChange(activeSection.id, event)}
-              onSubmit={() => {
-                void handleSaveSection(activeSection.id);
-              }}
-            >
-              <div className="settings-page__actions">
-                <button
-                  type="submit"
-                  className="settings-page__button settings-page__button--primary"
-                  disabled={savingSectionId === activeSection.id}
-                >
-                  <Save size={16} />
-                  <span>
-                    {savingSectionId === activeSection.id ? "保存中..." : "保存"}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className="settings-page__button"
-                  disabled={savingSectionId === activeSection.id}
-                  onClick={() => handleResetSection(activeSection.id)}
-                >
-                  <RotateCcw size={16} />
-                  <span>再読込</span>
-                </button>
-              </div>
-            </Form>
+            />
           </div>
         </div>
       </div>
