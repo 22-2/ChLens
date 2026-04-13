@@ -1,6 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { container } from "src/service-container/index";
 import type { IThread } from "src/service-container/interfaces";
+import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
+import { URL as ChURL } from "src/core/URL";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import type { ThreadListPage as ThreadListPageType } from "src/view/browser/types";
@@ -51,6 +53,7 @@ function calcHeat(now: number, created: number, resCount: number): string {
 
 export const ThreadListPage: React.FC<Props> = ({ page }) => {
   const { dispatch } = useTabStore();
+  const titleFetched = useRef(false);
   const [threads, setThreads] = useState<IThread[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -81,6 +84,21 @@ export const ThreadListPage: React.FC<Props> = ({ page }) => {
   useEffect(() => {
     fetchThreads();
   }, [fetchThreads]);
+
+  useEffect(() => {
+    if (titleFetched.current) return;
+    titleFetched.current = true;
+    // boardTitleがURLと同じ場合（アドレスバー入力など）はBoardTitleSolverで解決する
+    if (page.boardTitle && page.boardTitle !== page.boardUrl) {
+      dispatch({ type: "UPDATE_TITLE", title: page.boardTitle });
+      return;
+    }
+    askBoardTitle(new ChURL(page.boardUrl)).then((title) => {
+      if (title) dispatch({ type: "UPDATE_TITLE", title });
+    }).catch((err) => {
+      console.error(err);
+    });
+  }, [dispatch, page.boardTitle, page.boardUrl]);
 
   // Ctrl+Fで検索バーを開く
   useEffect(() => {
