@@ -854,7 +854,7 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
         label: "レスをコピー",
         icon: <Copy size={14} />,
         onSelect: async () => {
-          const copyBody = `${document.title}\n${page.threadUrl}${targetRes.num}\n${targetRes.num} ${plainName}  ${targetRes.date ?? targetRes.other ?? ""}\n${plainMessage}`;
+          const copyBody = `${page.title}\n${page.threadUrl}${targetRes.num}\n${targetRes.num} ${plainName}  ${targetRes.date ?? targetRes.other ?? ""}\n${plainMessage}`;
           await copyText(copyBody);
         },
       },
