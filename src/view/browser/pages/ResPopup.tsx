@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "node_modules/@types/react";
 import React from "react";
 import type { IRes } from "src/service-container";
-import { PopupResCard } from "./PopupResCard";
+import { PopupResCard } from "src/view/browser/pages/PopupResCard";
 
 // --- IDポップアップ ---
 export const ResPopup: React.FC<{

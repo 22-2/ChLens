@@ -1,7 +1,7 @@
 import { useRef } from "node_modules/@types/react";
 import React from "react";
-import { ANCHOR_SELECTOR } from "./constants";
-import { getEventTargetElement, parseAnchorDisplayTargets } from "./utils";
+import { ANCHOR_SELECTOR } from "src/view/browser/pages/constants";
+import { getEventTargetElement, parseAnchorDisplayTargets } from "src/view/browser/pages/utils";
 
 interface ResBodyProps {
   messageHtml: string;

@@ -16,12 +16,12 @@ import {
   ANCHOR_PREVIEW_HIDE_DELAY_MS,
   ANCHOR_PREVIEW_MAX_WIDTH,
   ANCHOR_PREVIEW_OFFSET,
-} from "./constants";
-import { PopupResCard } from "./PopupResCard";
-import { ReplyTreePopup } from "./ReplyTreePopup";
-import { ResItem } from "./ResItem";
-import { ResPopup } from "./ResPopup";
-import { buildIndexes } from "./thread-index";
+} from "src/view/browser/pages/constants";
+import { PopupResCard } from "src/view/browser/pages/PopupResCard";
+import { ReplyTreePopup } from "src/view/browser/pages/ReplyTreePopup";
+import { ResItem } from "src/view/browser/pages/ResItem";
+import { ResPopup } from "src/view/browser/pages/ResPopup";
+import { buildIndexes } from "src/view/browser/pages/thread-index";
 import {
   AnchorPreviewState,
   PopupState,
@@ -30,7 +30,7 @@ import {
   ThreadFilter,
   TreePopupState,
   ViewerState,
-} from "./types";
+} from "src/view/browser/pages/types";
 import {
   buildKyodemoUrl,
   copyText,
@@ -44,7 +44,7 @@ import {
   stripHtml,
   summarizeVerticalGesture,
   toViewerImageUrl,
-} from "./utils";
+} from "src/view/browser/pages/utils";
 
 export const ThreadPage: React.FC<Props> = ({ page }) => {
   const { dispatch } = useTabStore();
