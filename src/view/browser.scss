@@ -146,7 +146,8 @@ html, body {
   ========================================================================== */
 .context-menu {
   position: fixed;
-  z-index: 10000;
+  /* レスポップアップ内で開いても確実に前面へ出す。 */
+  z-index: 10040;
   min-width: 200px;
   padding: 4px 0;
   background: #fff;
@@ -926,7 +927,7 @@ html, body {
    ========================================================================== */
 .res-popup {
   position: fixed;
-  z-index: 10000;
+  z-index: 10010;
   min-width: 320px;
   max-width: 600px;
   max-height: 60vh;
