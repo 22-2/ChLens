@@ -1,12 +1,12 @@
-import { useMemo } from "node_modules/@types/react";
+import { useMemo } from "react";
 import React from "react";
 import type { IRes } from "src/service-container";
-import { ResBody } from "src/view/browser/pages/ResBodyProps";
+import { ResBody } from "src/view/browser/components/ResBody";
 import {
   decodeResponseHtml,
   extractUrlsFromMessage,
   toViewerImageUrl,
-} from "src/view/browser/pages/utils";
+} from "src/view/browser/utils/utils";
 
 export const ResItem: React.FC<ResItemProps> = React.memo(
   ({

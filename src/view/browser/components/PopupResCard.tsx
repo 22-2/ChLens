@@ -1,8 +1,8 @@
-import { useMemo } from "node_modules/@types/react";
+import { useMemo } from "react";
 import React from "react";
 import type { IRes } from "src/service-container";
-import { ResBody } from "src/view/browser/pages/ResBodyProps";
-import { decodeResponseHtml } from "src/view/browser/pages/utils";
+import { ResBody } from "src/view/browser/components/ResBody";
+import { decodeResponseHtml } from "src/view/browser/utils/utils";
 
 export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
   ({

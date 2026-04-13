@@ -1,7 +1,7 @@
-import { useEffect, useRef } from "node_modules/@types/react";
+import { useEffect, useRef } from "react";
 import React from "react";
 import type { IRes } from "src/service-container";
-import { ReplyTree } from "src/view/browser/pages/ReplyTree";
+import { ReplyTree } from "src/view/browser/components/ReplyTree";
 
 // --- 返信ツリーポップアップ ---
 export const ReplyTreePopup: React.FC<{

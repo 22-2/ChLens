@@ -1,5 +1,5 @@
 import type { IRes } from "src/service-container";
-import { parseAnchors } from "src/view/browser/pages/utils";
+import { parseAnchors } from "src/view/browser/utils/utils";
 
 // --- インデックス構築 ---
 interface ThreadIndexes {

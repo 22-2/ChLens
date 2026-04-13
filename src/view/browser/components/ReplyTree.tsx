@@ -1,7 +1,7 @@
 import React from "react";
 import type { IRes } from "src/service-container";
-import { MAX_TREE_DEPTH } from "src/view/browser/pages/constants";
-import { PopupResCard } from "src/view/browser/pages/PopupResCard";
+import { MAX_TREE_DEPTH } from "src/view/browser/utils/constants";
+import { PopupResCard } from "src/view/browser/components/PopupResCard";
 
 // --- 再帰的返信ツリー ---
 export const ReplyTree: React.FC<{
