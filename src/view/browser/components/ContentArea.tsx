@@ -5,25 +5,30 @@ import { BoardListPage } from "src/view/browser/pages/BoardListPage";
 import { HomePage } from "src/view/browser/pages/HomePage";
 import { ThreadListPage } from "src/view/browser/pages/ThreadListPage";
 import { ThreadPage } from "src/view/browser/pages/ThreadPage";
-import type { Page } from "src/view/browser/types";
 
-function renderPage(page: Page): React.ReactNode {
-  switch (page.type) {
-    case "home":
-      return <HomePage />;
-    case "boardList":
-      return <BoardListPage />;
-    case "settings":
-      return <SettingsPage />;
-    case "threadList":
-      return <ThreadListPage page={page} />;
-    case "thread":
-      return <ThreadPage page={page} />;
-  }
-}
 
 export const ContentArea: React.FC = () => {
-  const { currentPage } = useTabStore();
+  const { currentPage, activeTab } = useTabStore();
+  const refreshKey = activeTab.reloadKey;
 
-  return <div className="content-area">{renderPage(currentPage)}</div>;
+  switch (currentPage.type) {
+    case "home":
+      return <div className="content-area"><HomePage /></div>;
+    case "boardList":
+      return <div className="content-area"><BoardListPage /></div>;
+    case "settings":
+      return <div className="content-area"><SettingsPage /></div>;
+    case "threadList":
+      return (
+        <div className="content-area">
+          <ThreadListPage page={currentPage} refreshKey={refreshKey} />
+        </div>
+      );
+    case "thread":
+      return (
+        <div className="content-area">
+          <ThreadPage page={currentPage} refreshKey={refreshKey} />
+        </div>
+      );
+  }
 };

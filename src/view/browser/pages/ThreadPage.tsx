@@ -46,7 +46,7 @@ import {
   toViewerImageUrl,
 } from "src/view/browser/utils/utils";
 
-export const ThreadPage: React.FC<Props> = ({ page }) => {
+export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
   const { dispatch } = useTabStore();
   const [responses, setResponses] = useState<IRes[]>([]);
   const [, setThreadTitle] = useState(page.title);
@@ -87,8 +87,9 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
     titleUpdatedRef.current = false;
     try {
       // container経由でThreadサービスにアクセス
+      // refreshKey > 0 のときはキャッシュを無視して強制再取得する
       const result = await container.thread.getThread(page.threadUrl, {
-        forceUpdate: false,
+        forceUpdate: refreshKey > 0,
         onCache: (cached: IThreadDetail) => {
           // キャッシュデータがあれば先に表示
           if (cached.res) {
@@ -117,7 +118,7 @@ export const ThreadPage: React.FC<Props> = ({ page }) => {
     } finally {
       setLoading(false);
     }
-  }, [page.threadUrl, dispatch]);
+  }, [page.threadUrl, dispatch, refreshKey]);
 
   useEffect(() => {
     fetchThread();

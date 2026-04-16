@@ -9,6 +9,7 @@ import type { ThreadListPage as ThreadListPageType } from "src/view/browser/type
 
 interface Props {
   page: ThreadListPageType;
+  refreshKey: number;
 }
 
 type SortColumn = "num" | "title" | "resCount" | "heat";
@@ -51,7 +52,7 @@ function calcHeat(now: number, created: number, resCount: number): string {
   return (resCount / elapsed).toFixed(1);
 }
 
-export const ThreadListPage: React.FC<Props> = ({ page }) => {
+export const ThreadListPage: React.FC<Props> = ({ page, refreshKey }) => {
   const { dispatch } = useTabStore();
   const titleFetched = useRef(false);
   const [threads, setThreads] = useState<IThread[]>([]);
@@ -79,7 +80,8 @@ export const ThreadListPage: React.FC<Props> = ({ page }) => {
     } finally {
       setLoading(false);
     }
-  }, [page.boardUrl]);
+  // refreshKeyが変わったとき（更新ボタン押下）に再取得を走らせる
+  }, [page.boardUrl, refreshKey]);
 
   useEffect(() => {
     fetchThreads();

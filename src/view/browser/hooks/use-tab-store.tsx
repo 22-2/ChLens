@@ -33,6 +33,7 @@ export type TabAction =
   | { type: "GO_BACK" }
   | { type: "GO_FORWARD" }
   | { type: "UPDATE_TITLE"; title: string }
+  | { type: "RELOAD" }
   | { type: "RESTORE"; state: TabStoreState };
 
 // 閉じたタブの最大保持数
@@ -45,6 +46,7 @@ function createTab(): Tab {
     history: [{ type: "home", title: "ホーム" }],
     currentIndex: 0,
     pinned: false,
+    reloadKey: 0,
   };
 }
 
@@ -55,9 +57,10 @@ function loadSession(): TabStoreState | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as TabStoreState;
     if (parsed.tabs?.length > 0 && parsed.activeTabId) {
-      // 旧フォーマット互換: pinned が無ければ補完
+      // 旧フォーマット互換: 無いフィールドを補完
       for (const tab of parsed.tabs) {
         if (tab.pinned === undefined) tab.pinned = false;
+        if (tab.reloadKey === undefined) tab.reloadKey = 0;
       }
       if (!parsed.closedTabs) parsed.closedTabs = [];
       return parsed;
@@ -271,6 +274,14 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
         history: newHistory,
       }));
     }
+
+    case "RELOAD":
+      // 履歴を変えずにreloadKeyをインクリメントする。
+      // ContentAreaがこれをkeyに使うことでページコンポーネントが再マウントされ、データ再取得が走る。
+      return updateActiveTab(state, (tab) => ({
+        ...tab,
+        reloadKey: tab.reloadKey + 1,
+      }));
 
     case "RESTORE":
       return action.state;

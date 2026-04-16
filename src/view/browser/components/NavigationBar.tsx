@@ -65,9 +65,10 @@ export const NavigationBar: React.FC = () => {
   }, [displayUrl, isFocused]);
 
   const handleRefresh = useCallback(() => {
-    // ページの再描画トリガー：同じページに再ナビゲートする
-    dispatch({ type: "NAVIGATE", page: { ...currentPage } });
-  }, [currentPage, dispatch]);
+    // RELOADは履歴を変えずにreloadKeyだけインクリメントする。
+    // NAVIGATEを使うと前進履歴が消えて「進む」ボタンがグレーアウトするバグがあったため専用アクションを使う。
+    dispatch({ type: "RELOAD" });
+  }, [dispatch]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {

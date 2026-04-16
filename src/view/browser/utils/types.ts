@@ -4,6 +4,7 @@ import type { ThreadPage as ThreadPageType } from "src/view/browser/types";
 export type ThreadFilter = "all" | "popular" | "image" | "video" | "link";
 export interface Props {
   page: ThreadPageType;
+  refreshKey: number;
 }
 // --- ポップアップ状態 ---
 export interface PopupState {

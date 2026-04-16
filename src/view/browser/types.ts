@@ -47,6 +47,8 @@ export interface Tab {
   history: Page[];
   currentIndex: number;
   pinned: boolean;
+  // ページの強制再読み込みに使うカウンター。インクリメントするとContentAreaがページを再マウントする
+  reloadKey: number;
 }
 
 // --- Core API の型定義 ---
