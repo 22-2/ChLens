@@ -1,8 +1,16 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import React from "react";
 import type { IRes } from "src/service-container";
+import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
+import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { ReplyTree } from "src/view/browser/components/ReplyTree";
 import { useAdjustOverflow } from "src/view/browser/utils/use-adjust-overflow";
+
+interface InternalContextMenuState {
+  x: number;
+  y: number;
+  items: ContextMenuItem[];
+}
 
 // --- 返信ツリーポップアップ ---
 export const ReplyTreePopup: React.FC<{
@@ -13,6 +21,7 @@ export const ReplyTreePopup: React.FC<{
   resMap: Map<number, IRes>;
   messageProtocol: string;
   onUrlClick: (url: string, resImages?: string[]) => void;
+  onRepClick: (resNum: number, e: React.MouseEvent) => void;
   onAnchorClick: (resNum: number) => void;
   onAnchorHover: (
     targets: number[],
@@ -21,7 +30,8 @@ export const ReplyTreePopup: React.FC<{
     depth: number,
   ) => void;
   onAnchorLeave: (fromDepth: number) => void;
-  onResContextMenu: (e: React.MouseEvent, res: IRes) => void;
+  /** コンテキストメニューの項目を生成する関数（ポップアップ内レス用） */
+  buildContextMenuItems: (res: IRes) => ContextMenuItem[];
   onClose: () => void;
 }> = ({
   x,
@@ -31,13 +41,16 @@ export const ReplyTreePopup: React.FC<{
   resMap,
   messageProtocol,
   onUrlClick,
+  onRepClick,
   onAnchorClick,
   onAnchorHover,
   onAnchorLeave,
-  onResContextMenu,
+  buildContextMenuItems,
   onClose,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
+  const [contextMenu, setContextMenu] =
+    useState<InternalContextMenuState | null>(null);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -51,6 +64,17 @@ export const ReplyTreePopup: React.FC<{
 
   // スクロールコンテナ内での position:absolute に対応したオーバーフロー補正
   useAdjustOverflow(ref);
+
+  const handleResContextMenu = (e: React.MouseEvent, targetRes: IRes) => {
+    e.stopPropagation();
+    // ContextMenu をポップアップ内に描画して、外側クリック検知との干渉を防ぐ
+    const popupRect = ref.current!.getBoundingClientRect();
+    setContextMenu({
+      x: e.clientX - popupRect.left,
+      y: e.clientY - popupRect.top,
+      items: buildContextMenuItems(targetRes),
+    });
+  };
 
   return (
     <div ref={ref} className="res-popup" style={{ left: x, top: y }}>
@@ -67,14 +91,23 @@ export const ReplyTreePopup: React.FC<{
           resMap={resMap}
           messageProtocol={messageProtocol}
           onUrlClick={onUrlClick}
+          onRepClick={onRepClick}
           onAnchorClick={onAnchorClick}
           onAnchorHover={onAnchorHover}
           onAnchorLeave={onAnchorLeave}
-          onResContextMenu={onResContextMenu}
+          onResContextMenu={handleResContextMenu}
           visited={new Set()}
           depth={0}
         />
       </div>
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={contextMenu.items}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   );
 };

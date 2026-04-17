@@ -1,4 +1,4 @@
-import { Ban, Copy, Globe, History, Reply, Search, Type } from "lucide-react";
+import { ArrowDown, Ban, Copy, Globe, History, Reply, Search, Type } from "lucide-react";
 import React, {
   useCallback,
   useEffect,
@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import { container } from "src/service-container/index";
 import type { IRes, IThreadDetail } from "src/service-container/interfaces";
+import { AnchorPreview } from "src/view/browser/components/AnchorPreview";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
@@ -17,7 +18,6 @@ import {
   ANCHOR_PREVIEW_MAX_WIDTH,
   ANCHOR_PREVIEW_OFFSET,
 } from "src/view/browser/utils/constants";
-import { PopupResCard } from "src/view/browser/components/PopupResCard";
 import { ReplyTreePopup } from "src/view/browser/components/ReplyTreePopup";
 import { ResItem } from "src/view/browser/components/ResItem";
 import { ResPopup } from "src/view/browser/components/ResPopup";
@@ -56,6 +56,7 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
   // タイトル更新済みかを追跡するref
   const titleUpdatedRef = useRef(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const viewerStageRef = useRef<HTMLDivElement>(null);
 
   // UI状態
   const [filter, setFilter] = useState<ThreadFilter>("all");
@@ -360,6 +361,23 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [closeViewer, navigateViewer, viewer]);
+
+  // React の onWheel はデフォルト passive なので preventDefault が効かない。
+  // passive: false で明示的にアタッチしてズームとスクロールを分離する。
+  useEffect(() => {
+    const el = viewerStageRef.current;
+    if (!el) return;
+    const handler = (e: WheelEvent) => {
+      e.preventDefault();
+      setViewerScale((prev) => {
+        const next = e.deltaY < 0 ? prev + 0.15 : prev - 0.15;
+        return Math.min(5, Math.max(0.25, +next.toFixed(2)));
+      });
+    };
+    el.addEventListener("wheel", handler, { passive: false });
+    return () => el.removeEventListener("wheel", handler);
+    // viewer が変化するたびに stage がマウント/アンマウントするため再アタッチする
+  }, [viewer]);
 
   useEffect(() => {
     const host = rootRef.current;
@@ -673,119 +691,6 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
     return positions;
   }, [responses]);
 
-  const responseContextItems = useMemo(() => {
-    if (!resContextMenu) return [];
-    const targetRes = resContextMenu.res;
-    const plainName = stripHtml(targetRes.name);
-    const plainMessage = stripHtml(targetRes.message);
-    const rawId = targetRes.id ?? "";
-    const kyodemoUrl = rawId ? buildKyodemoUrl(page.threadUrl, rawId) : null;
-    const permalink = `${page.threadUrl}${targetRes.num}`;
-    const isMiniAa = miniAaResNums.has(targetRes.num);
-
-    return [
-      {
-        id: "copy-res",
-        label: "レスをコピー",
-        icon: <Copy size={14} />,
-        onSelect: async () => {
-          const copyBody = `${page.title}\n${page.threadUrl}${targetRes.num}\n${targetRes.num} ${plainName}  ${targetRes.date ?? targetRes.other ?? ""}\n${plainMessage}`;
-          await copyText(copyBody);
-        },
-      },
-      {
-        id: "copy-id",
-        label: "ID/IPをコピー",
-        icon: <Copy size={14} />,
-        disabled: !rawId,
-        onSelect: async () => {
-          await copyText(rawId);
-        },
-      },
-      {
-        id: "search-id",
-        label: "IDを必死チェッカーで検索",
-        icon: <Search size={14} />,
-        disabled: !kyodemoUrl,
-        onSelect: () => {
-          if (kyodemoUrl) {
-            window.open(kyodemoUrl, "_blank", "noopener,noreferrer");
-          }
-        },
-      },
-      {
-        id: "add-ng-id",
-        label: "ID/IPをNG指定",
-        icon: <Ban size={14} />,
-        disabled: !rawId,
-        onSelect: () => {
-          void addIdToNg(rawId);
-        },
-      },
-      { id: "sep-1", separator: true },
-      {
-        id: "reply",
-        label: "返信",
-        icon: <Reply size={14} />,
-        onSelect: () => {
-          void copyText(`>>${targetRes.num}\n`);
-          container.notification.info("返信アンカーをコピーしました");
-        },
-      },
-      {
-        id: "quote-reply",
-        label: "引用して返信",
-        icon: <Reply size={14} />,
-        onSelect: () => {
-          const quoted = plainMessage
-            .split(/\r?\n/)
-            .map((line) => `>${line}`)
-            .join("\n");
-          void copyText(`>>${targetRes.num}\n${quoted}\n`);
-          container.notification.info("引用テンプレートをコピーしました");
-        },
-      },
-      {
-        id: "add-write-history",
-        label: "書込履歴に追加",
-        icon: <History size={14} />,
-        onSelect: () => {
-          void addWriteHistory(targetRes);
-        },
-      },
-      {
-        id: "toggle-aa",
-        label: isMiniAa ? "AA表示モードを解除" : "AA表示モードに変更",
-        icon: <Type size={14} />,
-        onSelect: () => {
-          setMiniAaResNums((prev) => {
-            const next = new Set(prev);
-            if (next.has(targetRes.num)) {
-              next.delete(targetRes.num);
-            } else {
-              next.add(targetRes.num);
-            }
-            return next;
-          });
-        },
-      },
-      {
-        id: "open-browser",
-        label: "ブラウザで開く",
-        icon: <Globe size={14} />,
-        onSelect: () => {
-          window.open(permalink, "_blank", "noopener,noreferrer");
-        },
-      },
-    ];
-  }, [
-    addIdToNg,
-    addWriteHistory,
-    miniAaResNums,
-    page.threadUrl,
-    resContextMenu,
-  ]);
-
   const filterButtons: { key: ThreadFilter; label: string }[] = [
     { key: "all", label: "全て" },
     { key: "popular", label: "多レス" },
@@ -828,6 +733,154 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
       );
     },
     [hideAnchorPreviewImmediately],
+  );
+
+  /**
+   * コンテキストメニュー項目を生成する汎用関数。
+   * fromPopup=true のときはポップアップ固有の「このレスにジャンプ」を先頭に追加する。
+   */
+  const buildContextMenuItems = useCallback(
+    (targetRes: IRes, fromPopup: boolean) => {
+      const plainName = stripHtml(targetRes.name);
+      const plainMessage = stripHtml(targetRes.message);
+      const rawId = targetRes.id ?? "";
+      const kyodemoUrl = rawId ? buildKyodemoUrl(page.threadUrl, rawId) : null;
+      const permalink = `${page.threadUrl}${targetRes.num}`;
+      const isMiniAa = miniAaResNums.has(targetRes.num);
+
+      return [
+        ...(fromPopup
+          ? [
+              {
+                id: "jump-to-res",
+                label: "このレスにジャンプ",
+                icon: <ArrowDown size={14} />,
+                onSelect: () => {
+                  handleAnchorClick(targetRes.num);
+                  closePopup();
+                },
+              },
+              { id: "sep-jump", separator: true },
+            ]
+          : []),
+        {
+          id: "copy-res",
+          label: "レスをコピー",
+          icon: <Copy size={14} />,
+          onSelect: async () => {
+            const copyBody = `${page.title}\n${page.threadUrl}${targetRes.num}\n${targetRes.num} ${plainName}  ${targetRes.date ?? targetRes.other ?? ""}\n${plainMessage}`;
+            await copyText(copyBody);
+          },
+        },
+        {
+          id: "copy-id",
+          label: "ID/IPをコピー",
+          icon: <Copy size={14} />,
+          disabled: !rawId,
+          onSelect: async () => {
+            await copyText(rawId);
+          },
+        },
+        {
+          id: "search-id",
+          label: "IDを必死チェッカーで検索",
+          icon: <Search size={14} />,
+          disabled: !kyodemoUrl,
+          onSelect: () => {
+            if (kyodemoUrl) {
+              window.open(kyodemoUrl, "_blank", "noopener,noreferrer");
+            }
+          },
+        },
+        {
+          id: "add-ng-id",
+          label: "ID/IPをNG指定",
+          icon: <Ban size={14} />,
+          disabled: !rawId,
+          onSelect: () => {
+            void addIdToNg(rawId);
+          },
+        },
+        { id: "sep-1", separator: true },
+        {
+          id: "reply",
+          label: "返信",
+          icon: <Reply size={14} />,
+          onSelect: () => {
+            void copyText(`>>${targetRes.num}\n`);
+            container.notification.info("返信アンカーをコピーしました");
+          },
+        },
+        {
+          id: "quote-reply",
+          label: "引用して返信",
+          icon: <Reply size={14} />,
+          onSelect: () => {
+            const quoted = plainMessage
+              .split(/\r?\n/)
+              .map((line) => `>${line}`)
+              .join("\n");
+            void copyText(`>>${targetRes.num}\n${quoted}\n`);
+            container.notification.info("引用テンプレートをコピーしました");
+          },
+        },
+        {
+          id: "add-write-history",
+          label: "書込履歴に追加",
+          icon: <History size={14} />,
+          onSelect: () => {
+            void addWriteHistory(targetRes);
+          },
+        },
+        {
+          id: "toggle-aa",
+          label: isMiniAa ? "AA表示モードを解除" : "AA表示モードに変更",
+          icon: <Type size={14} />,
+          onSelect: () => {
+            setMiniAaResNums((prev) => {
+              const next = new Set(prev);
+              if (next.has(targetRes.num)) {
+                next.delete(targetRes.num);
+              } else {
+                next.add(targetRes.num);
+              }
+              return next;
+            });
+          },
+        },
+        {
+          id: "open-browser",
+          label: "ブラウザで開く",
+          icon: <Globe size={14} />,
+          onSelect: () => {
+            window.open(permalink, "_blank", "noopener,noreferrer");
+          },
+        },
+      ];
+    },
+    [
+      addIdToNg,
+      addWriteHistory,
+      closePopup,
+      handleAnchorClick,
+      miniAaResNums,
+      page.threadUrl,
+      page.title,
+      setMiniAaResNums,
+    ],
+  );
+
+  // ポップアップ内レス用（「このレスにジャンプ」付き）のメニュービルダー
+  const buildPopupContextMenuItems = useCallback(
+    (res: IRes) => buildContextMenuItems(res, true),
+    [buildContextMenuItems],
+  );
+
+  // スレッド本文の右クリックメニュー項目
+  const responseContextItems = useMemo(
+    () =>
+      resContextMenu ? buildContextMenuItems(resContextMenu.res, false) : [],
+    [buildContextMenuItems, resContextMenu],
   );
 
   // ジェスチャーuseEffectでrootRefが確実にマウント済みになるよう、loading中の早期returnを廃止し常にrootRef付きdivを描画する
@@ -923,43 +976,26 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
             />
           )}
 
-          {!resContextMenu &&
-            anchorPreviews.map((anchorPreview) => (
-              <div
-                key={`anchor-preview-${anchorPreview.depth}`}
-                className="anchor-preview"
-                style={{
-                  left: anchorPreview.x,
-                  top: anchorPreview.y,
-                  zIndex: 10020 + anchorPreview.depth,
-                }}
-                onMouseEnter={clearAnchorPreviewHideTimer}
-                onMouseLeave={() => hideAnchorPreview(anchorPreview.depth)}
-              >
-                <div className="anchor-preview__title">
-                  参照: {anchorPreview.label}
-                </div>
-                <div className="anchor-preview__body">
-                  {anchorPreview.items.slice(0, 8).map((res) => (
-                    <PopupResCard
-                      key={res.num}
-                      res={res}
-                      messageProtocol={messageProtocol}
-                      anchorPreviewDepth={anchorPreview.depth + 1}
-                      onUrlClick={openMediaFromUrl}
-                      onAnchorClick={handleAnchorClick}
-                      onAnchorHover={showAnchorPreview}
-                      onAnchorLeave={hideAnchorPreview}
-                      onContextMenu={(e, targetRes) => {
-                        hideAnchorPreviewImmediately();
-                        const { x, y } = toPageCoords(e.clientX, e.clientY);
-                        setResContextMenu({ x, y, res: targetRes });
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
+          {anchorPreviews.map((anchorPreview) => (
+            <AnchorPreview
+              key={`anchor-preview-${anchorPreview.depth}`}
+              depth={anchorPreview.depth}
+              x={anchorPreview.x}
+              y={anchorPreview.y}
+              items={anchorPreview.items}
+              label={anchorPreview.label}
+              messageProtocol={messageProtocol}
+              repIndex={indexes.repIndex}
+              onUrlClick={openMediaFromUrl}
+              onRepClick={handleRepClick}
+              onAnchorClick={handleAnchorClick}
+              onAnchorHover={showAnchorPreview}
+              onAnchorLeave={hideAnchorPreview}
+              onMouseEnter={clearAnchorPreviewHideTimer}
+              onMouseLeave={() => hideAnchorPreview(anchorPreview.depth)}
+              buildContextMenuItems={buildPopupContextMenuItems}
+            />
+          ))}
 
           {/* IDポップアップ */}
           {popup && (
@@ -969,15 +1005,13 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
               title={popup.title}
               items={popup.items}
               messageProtocol={messageProtocol}
+              repIndex={indexes.repIndex}
               onUrlClick={openMediaFromUrl}
+              onRepClick={handleRepClick}
               onAnchorClick={handleAnchorClick}
               onAnchorHover={showAnchorPreview}
               onAnchorLeave={hideAnchorPreview}
-              onResContextMenu={(e, targetRes) => {
-                hideAnchorPreviewImmediately();
-                const { x, y } = toPageCoords(e.clientX, e.clientY);
-                setResContextMenu({ x, y, res: targetRes });
-              }}
+              buildContextMenuItems={buildPopupContextMenuItems}
               onClose={closePopup}
             />
           )}
@@ -992,14 +1026,11 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
               resMap={indexes.resMap}
               messageProtocol={messageProtocol}
               onUrlClick={openMediaFromUrl}
+              onRepClick={handleRepClick}
               onAnchorClick={handleAnchorClick}
               onAnchorHover={showAnchorPreview}
               onAnchorLeave={hideAnchorPreview}
-              onResContextMenu={(e, targetRes) => {
-                hideAnchorPreviewImmediately();
-                const { x, y } = toPageCoords(e.clientX, e.clientY);
-                setResContextMenu({ x, y, res: targetRes });
-              }}
+              buildContextMenuItems={buildPopupContextMenuItems}
               onClose={closePopup}
             />
           )}
@@ -1074,14 +1105,8 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
                   </div>
                 </div>
                 <div
+                  ref={viewerStageRef}
                   className="media-viewer__stage"
-                  onWheel={(e) => {
-                    e.preventDefault();
-                    setViewerScale((prev) => {
-                      const next = e.deltaY < 0 ? prev + 0.15 : prev - 0.15;
-                      return Math.min(5, Math.max(0.25, +next.toFixed(2)));
-                    });
-                  }}
                 >
                   <img
                     className="media-viewer__image"
