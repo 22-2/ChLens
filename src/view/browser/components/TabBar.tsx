@@ -44,6 +44,7 @@ export const TabBar: React.FC = () => {
             <div
               key={tab.id}
               className={`tab ${isActive ? "tab--active" : ""} ${tab.pinned ? "tab--pinned" : ""}`}
+              title={page.title}
               onClick={() => dispatch({ type: "SELECT_TAB", tabId: tab.id })}
               onMouseDown={(e) => handleMouseDown(e, tab.id)}
               onContextMenu={(e) => handleContextMenu(e, tab)}
