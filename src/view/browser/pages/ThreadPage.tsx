@@ -6,6 +6,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { container } from "src/service-container/index";
 import type { IRes, IThreadDetail } from "src/service-container/interfaces";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
@@ -212,14 +213,40 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
     setResContextMenu(null);
   }, []);
 
-  const openMediaFromUrl = useCallback((url: string) => {
-    const imageUrl = toViewerImageUrl(url);
-    if (imageUrl) {
-      setViewer({ src: imageUrl, label: url });
-      setViewerScale(1);
-      return;
-    }
-    window.open(url, "_blank", "noopener,noreferrer");
+  const openMediaFromUrl = useCallback(
+    (url: string, resImages?: string[]) => {
+      const imageUrl = toViewerImageUrl(url);
+      if (imageUrl) {
+        if (resImages && resImages.length > 1) {
+          const idx = resImages.indexOf(url);
+          setViewer({
+            src: imageUrl,
+            label: url,
+            images: resImages,
+            currentIndex: idx >= 0 ? idx : 0,
+          });
+        } else {
+          setViewer({ src: imageUrl, label: url });
+        }
+        setViewerScale(1);
+        return;
+      }
+      window.open(url, "_blank", "noopener,noreferrer");
+    },
+    [],
+  );
+
+  // ビューア内で同レスの画像を前後に移動する
+  const navigateViewer = useCallback((delta: number) => {
+    setViewer((prev) => {
+      if (!prev?.images) return prev;
+      const len = prev.images.length;
+      const newIdx = ((prev.currentIndex ?? 0) + delta + len) % len;
+      const rawUrl = prev.images[newIdx];
+      const newSrc = toViewerImageUrl(rawUrl) ?? rawUrl;
+      return { ...prev, src: newSrc, label: rawUrl, currentIndex: newIdx };
+    });
+    setViewerScale(1);
   }, []);
 
   const closeViewer = useCallback(() => {
@@ -308,11 +335,15 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         closeViewer();
+      } else if (e.key === "ArrowLeft") {
+        navigateViewer(-1);
+      } else if (e.key === "ArrowRight") {
+        navigateViewer(1);
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [closeViewer, viewer]);
+  }, [closeViewer, navigateViewer, viewer]);
 
   useEffect(() => {
     const host = rootRef.current;
@@ -874,45 +905,50 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
           )}
 
           {!resContextMenu &&
-            anchorPreviews.map((anchorPreview) => (
-              <div
-                key={`anchor-preview-${anchorPreview.depth}`}
-                className="anchor-preview"
-                style={{
-                  left: anchorPreview.x,
-                  top: anchorPreview.y,
-                  zIndex: 10020 + anchorPreview.depth,
-                }}
-                onMouseEnter={clearAnchorPreviewHideTimer}
-                onMouseLeave={() => hideAnchorPreview(anchorPreview.depth)}
-              >
-                <div className="anchor-preview__title">
-                  参照: {anchorPreview.label}
-                </div>
-                <div className="anchor-preview__body">
-                  {anchorPreview.items.slice(0, 8).map((res) => (
-                    <PopupResCard
-                      key={res.num}
-                      res={res}
-                      messageProtocol={messageProtocol}
-                      anchorPreviewDepth={anchorPreview.depth + 1}
-                      onUrlClick={openMediaFromUrl}
-                      onAnchorClick={handleAnchorClick}
-                      onAnchorHover={showAnchorPreview}
-                      onAnchorLeave={hideAnchorPreview}
-                      onContextMenu={(e, targetRes) => {
-                        hideAnchorPreviewImmediately();
-                        setResContextMenu({
-                          x: e.clientX,
-                          y: e.clientY,
-                          res: targetRes,
-                        });
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
+            anchorPreviews.map((anchorPreview) =>
+              // position: absolute をbodyに直接マウントしてoverflow clippingを回避する
+              createPortal(
+                <div
+                  key={`anchor-preview-${anchorPreview.depth}`}
+                  className="anchor-preview"
+                  style={{
+                    left: anchorPreview.x,
+                    top: anchorPreview.y,
+                    zIndex: 10020 + anchorPreview.depth,
+                  }}
+                  onMouseEnter={clearAnchorPreviewHideTimer}
+                  onMouseLeave={() => hideAnchorPreview(anchorPreview.depth)}
+                >
+                  <div className="anchor-preview__title">
+                    参照: {anchorPreview.label}
+                  </div>
+                  <div className="anchor-preview__body">
+                    {anchorPreview.items.slice(0, 8).map((res) => (
+                      <PopupResCard
+                        key={res.num}
+                        res={res}
+                        messageProtocol={messageProtocol}
+                        anchorPreviewDepth={anchorPreview.depth + 1}
+                        onUrlClick={openMediaFromUrl}
+                        onAnchorClick={handleAnchorClick}
+                        onAnchorHover={showAnchorPreview}
+                        onAnchorLeave={hideAnchorPreview}
+                        onContextMenu={(e, targetRes) => {
+                          hideAnchorPreviewImmediately();
+                          setResContextMenu({
+                            x: e.clientX,
+                            y: e.clientY,
+                            res: targetRes,
+                          });
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>,
+                document.body,
+                `anchor-preview-${anchorPreview.depth}`,
+              ),
+            )}
 
           {/* IDポップアップ */}
           {popup && (
@@ -972,6 +1008,28 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
                 <div className="media-viewer__toolbar">
                   <span className="media-viewer__label">{viewer.label}</span>
                   <div className="media-viewer__actions">
+                    {viewer.images && viewer.images.length > 1 && (
+                      <>
+                        <button
+                          className="media-viewer__btn"
+                          onClick={() => navigateViewer(-1)}
+                          title="前の画像"
+                        >
+                          ←
+                        </button>
+                        <span className="media-viewer__nav-pos">
+                          {(viewer.currentIndex ?? 0) + 1}/
+                          {viewer.images.length}
+                        </span>
+                        <button
+                          className="media-viewer__btn"
+                          onClick={() => navigateViewer(1)}
+                          title="次の画像"
+                        >
+                          →
+                        </button>
+                      </>
+                    )}
                     <button
                       className="media-viewer__btn"
                       onClick={() =>

@@ -150,7 +150,8 @@ body {
   Shared Context Menu
   ========================================================================== */
 .context-menu {
-  position: fixed;
+  /* createPortal でbodyに直接マウントするため、absoluteでもfixedと同等に機能する */
+  position: absolute;
   /* レスポップアップ内で開いても確実に前面へ出す。 */
   z-index: 10040;
   min-width: 200px;
@@ -1138,8 +1139,9 @@ body {
 }
 
 .media-viewer__chrome {
-  width: min(92vw, 1280px);
-  height: min(92vh, 920px);
+  /* 黒枠を縮小してオーバーレイ（外側の暗い領域）をクリックしやすくする */
+  width: min(80vw, 1100px);
+  height: min(82vh, 800px);
   background: #0f1115;
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 10px;
@@ -1190,6 +1192,13 @@ body {
   background: rgba(255, 255, 255, 0.16);
 }
 
+.media-viewer__nav-pos {
+  font-size: 12px;
+  color: #bdc1c6;
+  white-space: nowrap;
+  padding: 0 2px;
+}
+
 .media-viewer__stage {
   flex: 1;
   overflow: auto;
@@ -1211,7 +1220,8 @@ body {
    Res Popup - ID一覧/返信ツリーポップアップ
    ========================================================================== */
 .res-popup {
-  position: fixed;
+  /* createPortal でbodyに直接マウントするため、absoluteでもfixedと同等に機能する */
+  position: absolute;
   z-index: 10010;
   min-width: 320px;
   max-width: 600px;
@@ -1265,7 +1275,8 @@ body {
 }
 
 .anchor-preview {
-  position: fixed;
+  /* createPortal でbodyに直接マウントするため、absoluteでもfixedと同等に機能する */
+  position: absolute;
   z-index: 10020;
   width: min(560px, 92vw);
   max-height: 52vh;

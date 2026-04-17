@@ -26,6 +26,9 @@ export interface ResContextMenuState {
 export interface ViewerState {
   src: string;
   label: string;
+  /** 同じレス内の画像URL一覧（前後移動に使用） */
+  images?: string[];
+  currentIndex?: number;
 }
 export interface AnchorPreviewState {
   depth: number;

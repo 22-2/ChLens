@@ -112,7 +112,10 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
               <button
                 key={`${res.num}:thumb:${raw}`}
                 className="res__thumb"
-                onClick={() => onUrlClick(raw)}
+                onClick={() =>
+                  // 同レス内の全画像URLを渡してビューア内で前後移動できるようにする
+                  onUrlClick(raw, imageUrls.map((x) => x.raw))
+                }
                 title={raw}
               >
                 <img src={src ?? ""} alt={raw} loading="lazy" />
@@ -135,7 +138,8 @@ export interface ResItemProps {
   messageProtocol: string;
   onIdClick: (id: string, e: React.MouseEvent) => void;
   onRepClick: (resNum: number, e: React.MouseEvent) => void;
-  onUrlClick: (url: string) => void;
+  /** url: クリックされたURL, resImages: 同レス内の全画像URL（ビューア前後移動用、省略可） */
+  onUrlClick: (url: string, resImages?: string[]) => void;
   onAnchorClick: (resNum: number) => void;
   onAnchorHover: (
     targets: number[],

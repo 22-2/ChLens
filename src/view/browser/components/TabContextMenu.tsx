@@ -3,6 +3,7 @@ import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import type { Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
+import { copyText } from "src/view/browser/utils/utils";
 
 interface MenuPosition {
   x: number;
@@ -66,8 +67,23 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
     ];
 
     if (isThread) {
-      const threadPage = currentPage as { threadUrl: string };
+      const threadPage = currentPage as { threadUrl: string; title: string };
       const boardUrl = deriveBoardUrl(threadPage.threadUrl);
+      result.push({
+        id: "copy-title",
+        label: "スレタイをコピー",
+        onSelect: () => {
+          void copyText(threadPage.title);
+        },
+      });
+      result.push({
+        id: "copy-title-url",
+        label: "スレタイ&URLをコピー",
+        onSelect: () => {
+          void copyText(`${threadPage.title}\n${threadPage.threadUrl}`);
+        },
+      });
+      result.push({ id: "sep-copy", separator: true });
       result.push({
         id: "to-board",
         label: "板を開く",

@@ -28,9 +28,11 @@ export function parseAnchors(message: string): number[] {
   }
   return targets;
 }
-// HTMLからテキストを抽出（検索フィルタ用）
+// HTMLからテキストを抽出（検索フィルタ・コピー用）
+// <br> は改行に変換してからタグを除去することで、コピー時に改行が反映されるようにする
 export function stripHtml(html: string): string {
   return html
+    .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<[^>]*>/g, "")
     .replace(/&gt;/g, ">")
     .replace(/&lt;/g, "<")
