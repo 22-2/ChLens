@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import React, { useEffect, useMemo, useRef } from "react";
-import { createPortal } from "react-dom";
+import { useAdjustOverflow } from "src/view/browser/utils/use-adjust-overflow";
 
 export interface ContextMenuItem {
   id: string;
@@ -52,27 +52,10 @@ export const ContextMenu: React.FC<Props> = ({ x, y, items, onClose }) => {
     };
   }, [onClose]);
 
-  useEffect(() => {
-    const el = menuRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    // 右・下のはみ出しを補正してから、左・上のはみ出しも補正する
-    if (rect.right > window.innerWidth) {
-      el.style.left = `${window.innerWidth - rect.width - 4}px`;
-    }
-    if (rect.bottom > window.innerHeight) {
-      el.style.top = `${window.innerHeight - rect.height - 4}px`;
-    }
-    if (rect.left < 0) {
-      el.style.left = "4px";
-    }
-    if (rect.top < 0) {
-      el.style.top = "4px";
-    }
-  }, []);
+  // スクロールコンテナ内での position:absolute に対応したオーバーフロー補正
+  useAdjustOverflow(menuRef, 4);
 
-  // position: absolute を親のtransformに影響されずに表示するため、bodyに直接マウントする
-  return createPortal(
+  return (
     <div ref={menuRef} className="context-menu" style={{ left: x, top: y }}>
       {visibleItems.map((item) => {
         if (item.separator) {
@@ -97,7 +80,6 @@ export const ContextMenu: React.FC<Props> = ({ x, y, items, onClose }) => {
           </button>
         );
       })}
-    </div>,
-    document.body,
+    </div>
   );
 };

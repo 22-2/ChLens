@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
 import React from "react";
-import { createPortal } from "react-dom";
 import type { IRes } from "src/service-container";
 import { ReplyTree } from "src/view/browser/components/ReplyTree";
+import { useAdjustOverflow } from "src/view/browser/utils/use-adjust-overflow";
 
 // --- 返信ツリーポップアップ ---
 export const ReplyTreePopup: React.FC<{
@@ -12,7 +12,7 @@ export const ReplyTreePopup: React.FC<{
   repIndex: Map<number, Set<number>>;
   resMap: Map<number, IRes>;
   messageProtocol: string;
-  onUrlClick: (url: string) => void;
+  onUrlClick: (url: string, resImages?: string[]) => void;
   onAnchorClick: (resNum: number) => void;
   onAnchorHover: (
     targets: number[],
@@ -49,26 +49,10 @@ export const ReplyTreePopup: React.FC<{
     return () => document.removeEventListener("mousedown", handler);
   }, [onClose]);
 
-  // ビューポート内に収まるよう位置を四辺すべて補正
-  useEffect(() => {
-    if (!ref.current) return;
-    const rect = ref.current.getBoundingClientRect();
-    if (rect.right > window.innerWidth) {
-      ref.current.style.left = `${window.innerWidth - rect.width - 8}px`;
-    }
-    if (rect.bottom > window.innerHeight) {
-      ref.current.style.top = `${window.innerHeight - rect.height - 8}px`;
-    }
-    if (rect.left < 0) {
-      ref.current.style.left = "8px";
-    }
-    if (rect.top < 0) {
-      ref.current.style.top = "8px";
-    }
-  }, []);
+  // スクロールコンテナ内での position:absolute に対応したオーバーフロー補正
+  useAdjustOverflow(ref);
 
-  // position: absolute をbodyに直接マウントしてoverflow clippingを回避する
-  return createPortal(
+  return (
     <div ref={ref} className="res-popup" style={{ left: x, top: y }}>
       <div className="res-popup__header">
         <span>{`>>${resNum} への返信ツリー`}</span>
@@ -91,7 +75,6 @@ export const ReplyTreePopup: React.FC<{
           depth={0}
         />
       </div>
-    </div>,
-    document.body,
+    </div>
   );
 };

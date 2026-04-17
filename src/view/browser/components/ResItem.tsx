@@ -24,7 +24,9 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
     onAnchorLeave,
     onContextMenu,
   }) => {
-    const isNG = res.class?.includes("ng");
+    // res.ng はサービス層がNGワード照合した結果を格納するフィールド。
+    // 古いビューは class[] の "ng" 要素で判定していたが、new viewでは res.ng を優先チェックする。
+    const isNG = res.ng != null || res.class?.includes("ng");
     const decoded = useMemo(
       () => decodeResponseHtml(res, messageProtocol),
       [messageProtocol, res],

@@ -776,6 +776,8 @@ body {
    画像のスタイルを再現: 番号+名前(緑) + 日時(右寄せ)、本文インデント
    ========================================================================== */
 .thread-page {
+  /* ポップアップ・メニューを position:absolute でスクロール連動させるための基点 */
+  position: relative;
   padding: 4px 0;
 }
 
@@ -1063,7 +1065,7 @@ body {
 }
 
 .res--ng {
-  opacity: 0.3;
+  display: none;
 }
 
 .res--ng .res__body {

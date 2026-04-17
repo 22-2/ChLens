@@ -6,7 +6,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { createPortal } from "react-dom";
 import { container } from "src/service-container/index";
 import type { IRes, IThreadDetail } from "src/service-container/interfaces";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
@@ -175,6 +174,21 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
     return list;
   }, [responses, filter, searchQuery, indexes.repIndex]);
 
+  /**
+   * viewport座標（e.clientX/Y）を .thread-page 内の absolute 座標に変換する。
+   * position:absolute を使ってポップアップをスクロール連動させるために必要。
+   * getBoundingClientRect().top はスクロール量を反映した viewport 上の位置を返すため、
+   * scrollTop を別途加算する必要はない。
+   */
+  const toPageCoords = useCallback(
+    (clientX: number, clientY: number): { x: number; y: number } => {
+      if (!rootRef.current) return { x: clientX, y: clientY };
+      const rect = rootRef.current.getBoundingClientRect();
+      return { x: clientX - rect.left, y: clientY - rect.top };
+    },
+    [],
+  );
+
   // IDクリック → そのIDの全レスをポップアップ表示
   const handleIdClick = useCallback(
     (id: string, e: React.MouseEvent) => {
@@ -185,23 +199,23 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
         .sort((a, b) => a - b)
         .map((num) => indexes.resMap.get(num))
         .filter((r): r is IRes => !!r);
-      setPopup({
-        x: e.clientX,
-        y: e.clientY,
-        items,
-        title: `ID:${id} (${items.length}件)`,
-      });
+      const { x, y } = toPageCoords(e.clientX, e.clientY);
+      setPopup({ x, y, items, title: `ID:${id} (${items.length}件)` });
       setTreePopup(null);
     },
-    [indexes],
+    [indexes, toPageCoords],
   );
 
   // 返信クリック → 返信ツリーをポップアップ表示
-  const handleRepClick = useCallback((resNum: number, e: React.MouseEvent) => {
-    hideAnchorPreviewImmediately();
-    setTreePopup({ x: e.clientX, y: e.clientY, resNum });
-    setPopup(null);
-  }, []);
+  const handleRepClick = useCallback(
+    (resNum: number, e: React.MouseEvent) => {
+      hideAnchorPreviewImmediately();
+      const { x, y } = toPageCoords(e.clientX, e.clientY);
+      setTreePopup({ x, y, resNum });
+      setPopup(null);
+    },
+    [toPageCoords],
+  );
 
   const closePopup = useCallback(() => {
     hideAnchorPreviewImmediately();
@@ -298,20 +312,22 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
         ANCHOR_PREVIEW_MAX_WIDTH,
         window.innerWidth - ANCHOR_PREVIEW_GUTTER * 2,
       );
-      const x = Math.max(
+      // まず viewport 座標でビューポート内に収まる位置を計算し、page 座標に変換する
+      const vx = Math.max(
         ANCHOR_PREVIEW_GUTTER,
         Math.min(
           anchorRect.left,
           window.innerWidth - maxWidth - ANCHOR_PREVIEW_GUTTER,
         ),
       );
-      const y = Math.max(
+      const vy = Math.max(
         ANCHOR_PREVIEW_GUTTER,
         Math.min(
           anchorRect.bottom + ANCHOR_PREVIEW_OFFSET,
           window.innerHeight - ANCHOR_PREVIEW_GUTTER,
         ),
       );
+      const { x, y } = toPageCoords(vx, vy);
       // 旧PopupViewと同様に深さごとのスタックで保持し、子プレビュー表示中も親を残す。
       setAnchorPreviews((prev) => {
         const next = prev.slice(0, depth);
@@ -319,7 +335,7 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
         return next;
       });
     },
-    [clearAnchorPreviewHideTimer, indexes.resMap],
+    [clearAnchorPreviewHideTimer, indexes.resMap, toPageCoords],
   );
 
   useEffect(() => {
@@ -586,13 +602,15 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
     const ngWord = id.startsWith("ID:") ? id : `ID:${id}`;
     // 既存実装の「ID/IPをNG指定」と同じくNGサービスへ直接追加
     container.ng.add(ngWord);
-    // サービス側への追加だけでは再取得するまでUIに反映されないため、ローカルのstateも即時更新する
-    const rawId = id.startsWith("ID:") ? id.slice(3) : id;
+    // サービス側への追加だけでは再取得するまでUIに反映されないため、ローカルのstateも即時更新する。
+    // id は targetRes.id そのもの（"ID:xxx" 形式の場合もある）なので、そのまま res.id と比較する。
     setResponses((prev) =>
       prev.map((res) =>
-        res.id === rawId
+        res.id === id
           ? {
               ...res,
+              // res.ng を設定することで ResItem の isNG 判定が即座に true になる
+              ng: { type: "id" },
               class: [...(res.class ?? []).filter((c) => c !== "ng"), "ng"],
             }
           : res,
@@ -888,7 +906,8 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
                   onContextMenu={(e) => {
                     e.preventDefault();
                     hideAnchorPreviewImmediately();
-                    setResContextMenu({ x: e.clientX, y: e.clientY, res });
+                    const { x, y } = toPageCoords(e.clientX, e.clientY);
+                    setResContextMenu({ x, y, res });
                   }}
                 />
               );
@@ -905,50 +924,42 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
           )}
 
           {!resContextMenu &&
-            anchorPreviews.map((anchorPreview) =>
-              // position: absolute をbodyに直接マウントしてoverflow clippingを回避する
-              createPortal(
-                <div
-                  key={`anchor-preview-${anchorPreview.depth}`}
-                  className="anchor-preview"
-                  style={{
-                    left: anchorPreview.x,
-                    top: anchorPreview.y,
-                    zIndex: 10020 + anchorPreview.depth,
-                  }}
-                  onMouseEnter={clearAnchorPreviewHideTimer}
-                  onMouseLeave={() => hideAnchorPreview(anchorPreview.depth)}
-                >
-                  <div className="anchor-preview__title">
-                    参照: {anchorPreview.label}
-                  </div>
-                  <div className="anchor-preview__body">
-                    {anchorPreview.items.slice(0, 8).map((res) => (
-                      <PopupResCard
-                        key={res.num}
-                        res={res}
-                        messageProtocol={messageProtocol}
-                        anchorPreviewDepth={anchorPreview.depth + 1}
-                        onUrlClick={openMediaFromUrl}
-                        onAnchorClick={handleAnchorClick}
-                        onAnchorHover={showAnchorPreview}
-                        onAnchorLeave={hideAnchorPreview}
-                        onContextMenu={(e, targetRes) => {
-                          hideAnchorPreviewImmediately();
-                          setResContextMenu({
-                            x: e.clientX,
-                            y: e.clientY,
-                            res: targetRes,
-                          });
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>,
-                document.body,
-                `anchor-preview-${anchorPreview.depth}`,
-              ),
-            )}
+            anchorPreviews.map((anchorPreview) => (
+              <div
+                key={`anchor-preview-${anchorPreview.depth}`}
+                className="anchor-preview"
+                style={{
+                  left: anchorPreview.x,
+                  top: anchorPreview.y,
+                  zIndex: 10020 + anchorPreview.depth,
+                }}
+                onMouseEnter={clearAnchorPreviewHideTimer}
+                onMouseLeave={() => hideAnchorPreview(anchorPreview.depth)}
+              >
+                <div className="anchor-preview__title">
+                  参照: {anchorPreview.label}
+                </div>
+                <div className="anchor-preview__body">
+                  {anchorPreview.items.slice(0, 8).map((res) => (
+                    <PopupResCard
+                      key={res.num}
+                      res={res}
+                      messageProtocol={messageProtocol}
+                      anchorPreviewDepth={anchorPreview.depth + 1}
+                      onUrlClick={openMediaFromUrl}
+                      onAnchorClick={handleAnchorClick}
+                      onAnchorHover={showAnchorPreview}
+                      onAnchorLeave={hideAnchorPreview}
+                      onContextMenu={(e, targetRes) => {
+                        hideAnchorPreviewImmediately();
+                        const { x, y } = toPageCoords(e.clientX, e.clientY);
+                        setResContextMenu({ x, y, res: targetRes });
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
 
           {/* IDポップアップ */}
           {popup && (
@@ -964,11 +975,8 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
               onAnchorLeave={hideAnchorPreview}
               onResContextMenu={(e, targetRes) => {
                 hideAnchorPreviewImmediately();
-                setResContextMenu({
-                  x: e.clientX,
-                  y: e.clientY,
-                  res: targetRes,
-                });
+                const { x, y } = toPageCoords(e.clientX, e.clientY);
+                setResContextMenu({ x, y, res: targetRes });
               }}
               onClose={closePopup}
             />
@@ -989,11 +997,8 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
               onAnchorLeave={hideAnchorPreview}
               onResContextMenu={(e, targetRes) => {
                 hideAnchorPreviewImmediately();
-                setResContextMenu({
-                  x: e.clientX,
-                  y: e.clientY,
-                  res: targetRes,
-                });
+                const { x, y } = toPageCoords(e.clientX, e.clientY);
+                setResContextMenu({ x, y, res: targetRes });
               }}
               onClose={closePopup}
             />
