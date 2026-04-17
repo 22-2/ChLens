@@ -555,6 +555,18 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
     const ngWord = id.startsWith("ID:") ? id : `ID:${id}`;
     // 既存実装の「ID/IPをNG指定」と同じくNGサービスへ直接追加
     container.ng.add(ngWord);
+    // サービス側への追加だけでは再取得するまでUIに反映されないため、ローカルのstateも即時更新する
+    const rawId = id.startsWith("ID:") ? id.slice(3) : id;
+    setResponses((prev) =>
+      prev.map((res) =>
+        res.id === rawId
+          ? {
+              ...res,
+              class: [...(res.class ?? []).filter((c) => c !== "ng"), "ng"],
+            }
+          : res,
+      ),
+    );
     container.notification.info(`NGに追加しました: ${ngWord}`);
   }, []);
 
