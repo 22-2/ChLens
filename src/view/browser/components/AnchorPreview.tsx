@@ -1,15 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import type { IRes } from "src/service-container";
-import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
-import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
-
-interface InternalContextMenuState {
-  x: number;
-  y: number;
-  items: ContextMenuItem[];
-}
 
 export interface AnchorPreviewProps {
   depth: number;
@@ -32,7 +23,9 @@ export interface AnchorPreviewProps {
   onAnchorLeave: (fromDepth: number) => void;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
-  buildContextMenuItems: (res: IRes) => ContextMenuItem[];
+  /** 子メニューも親子スタックへ載せ、参照プレビューの早閉じを防ぐ。 */
+  onResContextMenu: (targetRes: IRes, event: React.MouseEvent) => void;
+  hasChildPopup?: boolean;
   /** z-indexを明示指定（後から開いたポップアップが前面に出るよう呼び出し元が管理する） */
   zIndex: number;
 }
@@ -53,12 +46,14 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
   onAnchorLeave,
   onMouseEnter,
   onMouseLeave,
-  buildContextMenuItems,
+  onResContextMenu,
+  hasChildPopup,
   zIndex,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
-  const [contextMenu, setContextMenu] =
-    useState<InternalContextMenuState | null>(null);
+  const [isHovering, setIsHovering] = useState(false);
+  const onMouseLeaveRef = useRef(onMouseLeave);
+  onMouseLeaveRef.current = onMouseLeave;
 
   // x/y が変わるたびに位置リセット＋ビューポートはみ出し補正を再実行する
   useEffect(() => {
@@ -91,23 +86,37 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
     return () => cancelAnimationFrame(raf);
   }, [x, y]);
 
-  const handleMouseLeave = () => {
-    // コンテキストメニューが開いている間はポップアップを閉じない
-    if (contextMenu) return;
-    onMouseLeave();
-  };
+  const prevHasChildPopupRef = useRef(!!hasChildPopup);
+  useEffect(() => {
+    const hadChildPopup = prevHasChildPopupRef.current;
+    prevHasChildPopupRef.current = !!hasChildPopup;
+    if (hadChildPopup && !hasChildPopup && !isHovering) {
+      onMouseLeaveRef.current();
+    }
+  }, [hasChildPopup, isHovering]);
 
   return (
     <div
       ref={ref}
+      data-popup-surface="true"
       className="anchor-preview"
       style={{
         left: x,
         top: y,
         zIndex,
       }}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      onMouseEnter={() => {
+        setIsHovering(true);
+        onMouseEnter();
+      }}
+      onMouseLeave={(e) => {
+        if (e.relatedTarget instanceof Node && ref.current?.contains(e.relatedTarget)) {
+          return;
+        }
+        setIsHovering(false);
+        if (hasChildPopup) return;
+        onMouseLeave();
+      }}
     >
       <div className="anchor-preview__title">参照: {label}</div>
       <div className="anchor-preview__body">
@@ -126,26 +135,11 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
             onAnchorLeave={onAnchorLeave}
             onContextMenu={(e, targetRes) => {
               e.stopPropagation();
-              // createPortalでbody直下に描画するため、viewport座標をそのまま使う。
-              setContextMenu({
-                x: e.clientX,
-                y: e.clientY,
-                items: buildContextMenuItems(targetRes),
-              });
+              onResContextMenu(targetRes, e);
             }}
           />
         ))}
       </div>
-      {contextMenu &&
-        createPortal(
-          <ContextMenu
-            x={contextMenu.x}
-            y={contextMenu.y}
-            items={contextMenu.items}
-            onClose={() => setContextMenu(null)}
-          />,
-          document.body,
-        )}
     </div>
   );
 };

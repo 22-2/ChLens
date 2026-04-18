@@ -31,10 +31,22 @@ export function usePopupManager(): PopupManagerResult {
           if (predicate(item)) {
             removedIds.add(item.id);
           }
-          if (item.parentId && removedIds.has(item.parentId)) {
-            removedIds.add(item.id);
+        }
+
+        // parentId ツリーをたどって閉じることで、今後スタックの並びが変わっても
+        // 親を閉じた時に子メニュー/子ポップアップが取り残されないようにする。
+        let changed = true;
+        while (changed) {
+          changed = false;
+          for (const item of prev) {
+            if (!item.parentId || removedIds.has(item.id)) continue;
+            if (removedIds.has(item.parentId)) {
+              removedIds.add(item.id);
+              changed = true;
+            }
           }
         }
+
         return prev.filter((item) => !removedIds.has(item.id));
       });
     },

@@ -1,4 +1,5 @@
 import type { IRes } from "src/service-container";
+import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import type { ThreadPage as ThreadPageType } from "src/view/browser/types";
 
 export type ThreadFilter = "all" | "popular" | "image" | "video" | "link";
@@ -48,8 +49,9 @@ export interface AnchorPopupItem extends PopupItemBase {
 export interface ContextMenuPopupItem extends PopupItemBase {
   type: "contextMenu";
   payload: {
-    res: IRes;
-    fromPopup: boolean;
+    // メニュー項目自体をスタックへ積むことで、
+    // 親ポップアップと同じ parentId ツリーで開閉を同期できる。
+    items: ContextMenuItem[];
   };
 }
 

@@ -1,17 +1,9 @@
-import { useRef, useState } from "react";
 import React from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useRef, useState } from "react";
 import type { IRes } from "src/service-container";
-import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
-import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { ReplyTree } from "src/view/browser/components/ReplyTree";
+import { POPUP_SURFACE_SELECTOR } from "src/view/browser/utils/constants";
 import { useAdjustOverflow } from "src/view/browser/utils/use-adjust-overflow";
-
-interface InternalContextMenuState {
-  x: number;
-  y: number;
-  items: ContextMenuItem[];
-}
 
 // --- 返信ツリーポップアップ ---
 export const ReplyTreePopup: React.FC<{
@@ -33,8 +25,8 @@ export const ReplyTreePopup: React.FC<{
     depth: number,
   ) => void;
   onAnchorLeave: (fromDepth: number) => void;
-  /** コンテキストメニューの項目を生成する関数（ポップアップ内レス用） */
-  buildContextMenuItems: (res: IRes) => ContextMenuItem[];
+  /** 親子関係つきのメニュースタックをThreadPage側で一元管理する。 */
+  onResContextMenu: (targetRes: IRes, event: React.MouseEvent) => void;
   onClose: () => void;
   /** アンカープレビューとの親子関係制御用 */
   onMouseEnter?: () => void;
@@ -57,7 +49,7 @@ export const ReplyTreePopup: React.FC<{
   onAnchorClick,
   onAnchorHover,
   onAnchorLeave,
-  buildContextMenuItems,
+  onResContextMenu,
   onClose,
   onMouseEnter,
   onMouseLeave,
@@ -65,39 +57,73 @@ export const ReplyTreePopup: React.FC<{
   zIndex,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
-  const [contextMenu, setContextMenu] =
-    useState<InternalContextMenuState | null>(null);
 
   // スクロールコンテナ内での position:absolute に対応したオーバーフロー補正
   useAdjustOverflow(ref);
 
+  // カーソルがポップアップ内にあるかを追跡する。
+  // disableOutsideClick が true→false に変わる瞬間にカーソルが外にある場合、
+  // mouseleave は既に無視済みのためこのフラグで自動 close を補完する。
+  const [isHovering, setIsHovering] = useState(false);
+
+  // onClose の参照を ref で保持し、古い参照を useEffect に取り込まないようにする
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  // 子ポップアップが閉じて disableOutsideClick が true→false に変わった瞬間、
+  // カーソルがポップアップ外にある場合は自動的に閉じる。
+  // （mouseleave は disableOutsideClick=true の間に既に発火・無視済みのため、ここで補完する）
+  const prevDisableRef = useRef(!!disableOutsideClick);
+  useEffect(() => {
+    const wasDisabled = prevDisableRef.current;
+    prevDisableRef.current = !!disableOutsideClick;
+    if (wasDisabled && !disableOutsideClick && !isHovering) {
+      onCloseRef.current();
+    }
+  }, [disableOutsideClick, isHovering]);
+
+  // 子がいない状態（disableOutsideClick=false）では外側クリックでも閉じる
+  useEffect(() => {
+    if (disableOutsideClick) return;
+    const handler = (e: MouseEvent) => {
+      if (e.target instanceof Element && e.target.closest(POPUP_SURFACE_SELECTOR)) {
+        return;
+      }
+      if (ref.current) {
+        onCloseRef.current();
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [disableOutsideClick]);
+
   const handleMouseLeave = () => {
-    // 子ポップアップまたはContextMenuが開いている間は親を閉じない。
-    if (disableOutsideClick || contextMenu != null) return;
+    // 子ポップアップや子メニューが開いている間は親を閉じない。
+    if (disableOutsideClick) return;
     onClose();
   };
 
   const handleResContextMenu = (e: React.MouseEvent, targetRes: IRes) => {
     e.stopPropagation();
-    // createPortalでbody直下に描画するため、viewport座標をそのまま使う。
-    setContextMenu({
-      x: e.clientX,
-      y: e.clientY,
-      items: buildContextMenuItems(targetRes),
-    });
+    onResContextMenu(targetRes, e);
   };
 
   return (
     <div
       ref={ref}
+      data-popup-surface="true"
       className="res-popup"
       style={{ left: x, top: y, ...(zIndex != null && { zIndex }) }}
-      onMouseEnter={onMouseEnter}
+      onMouseEnter={() => {
+        setIsHovering(true);
+        onMouseEnter?.();
+      }}
       onMouseLeave={(e) => {
         onMouseLeave?.();
         if (e.relatedTarget instanceof Node && ref.current?.contains(e.relatedTarget)) {
           return;
         }
+        setIsHovering(false);
         handleMouseLeave();
       }}
     >
@@ -125,16 +151,6 @@ export const ReplyTreePopup: React.FC<{
           depth={0}
         />
       </div>
-      {contextMenu &&
-        createPortal(
-          <ContextMenu
-            x={contextMenu.x}
-            y={contextMenu.y}
-            items={contextMenu.items}
-            onClose={() => setContextMenu(null)}
-          />,
-          document.body,
-        )}
     </div>
   );
 };

@@ -154,10 +154,10 @@ body {
   Shared Context Menu
   ========================================================================== */
 .context-menu {
-  /* createPortal でbodyに直接マウントするため、absoluteでもfixedと同等に機能する */
+  /* 共通のポップアップレイヤー上に出すので、座標系は呼び出し元で統一する。 */
   position: absolute;
   /* レスポップアップ内で開いても確実に前面へ出す。 */
-  z-index: 10040;
+  z-index: 20000;
   min-width: 200px;
   padding: 4px 0;
   background: #fff;
@@ -785,6 +785,16 @@ body {
   padding: 4px 0;
 }
 
+.thread-page__popup-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.thread-page__popup-layer > * {
+  pointer-events: auto;
+}
+
 .thread-page__notice {
   padding: 8px 16px;
   background: #fef7e0;
@@ -1230,7 +1240,7 @@ body {
    Res Popup - ID一覧/返信ツリーポップアップ
    ========================================================================== */
 .res-popup {
-  /* createPortal でbodyに直接マウントするため、absoluteでもfixedと同等に機能する */
+  /* スレッド本文とは別のポップアップレイヤーにまとめて描画する。 */
   /* z-indexはPOPUP_BASE_Z(10020)起点でThreadPageからinline styleで付与される */
   position: absolute;
   z-index: 10020;
@@ -1286,7 +1296,7 @@ body {
 }
 
 .anchor-preview {
-  /* createPortal でbodyに直接マウントするため、absoluteでもfixedと同等に機能する */
+  /* スレッド本文とは別のポップアップレイヤーにまとめて描画する。 */
   position: absolute;
   z-index: 10020;
   width: min(560px, 92vw);

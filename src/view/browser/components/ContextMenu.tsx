@@ -57,7 +57,12 @@ export const ContextMenu: React.FC<Props> = ({ x, y, items, onClose }) => {
   useAdjustOverflow(menuRef, 4);
 
   return (
-    <div ref={menuRef} className="context-menu" style={{ left: x, top: y }}>
+    <div
+      ref={menuRef}
+      data-popup-surface="true"
+      className="context-menu"
+      style={{ left: x, top: y }}
+    >
       {visibleItems.map((item) => {
         if (item.separator) {
           return <div key={item.id} className="context-menu__separator" />;

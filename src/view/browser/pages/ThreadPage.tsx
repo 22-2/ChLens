@@ -36,12 +36,6 @@ import type {
 } from "src/view/browser/utils/types";
 import { buildKyodemoUrl, copyText, stripHtml } from "src/view/browser/utils/utils";
 
-interface UrlContextMenuState {
-  x: number;
-  y: number;
-  rawUrl: string;
-}
-
 export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
   const rootRef = useRef<HTMLDivElement>(null);
   const {
@@ -83,8 +77,6 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
 
   const [miniAaResNums, setMiniAaResNums] = useState<Set<number>>(new Set());
   const anchorPreviewHideTimerRef = useRef<number | null>(null);
-  const [urlContextMenu, setUrlContextMenu] =
-    useState<UrlContextMenuState | null>(null);
 
   const closeNonContextPopups = useCallback(() => {
     closePopupsByPredicate((item) => item.type !== "contextMenu");
@@ -108,13 +100,16 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
     [popups],
   );
 
-  const resContextMenuItem = useMemo(
-    () =>
-      popups.find((item): item is ContextMenuPopupItem => item.type === "contextMenu"),
+  const contextMenuItems = useMemo(
+    () => popups.filter((item): item is ContextMenuPopupItem => item.type === "contextMenu"),
     [popups],
   );
 
   const hasAnchorPreviews = anchorPreviews.length > 0;
+  const hasPopupChild = useCallback(
+    (popupId: string) => popups.some((item) => item.parentId === popupId),
+    [popups],
+  );
 
   // 検索バーはURLバー右メニューからのみ開く。
   // （Ctrl+F割り当ては無効化して、ブラウザ/OS標準ショートカットを優先する）
@@ -244,16 +239,23 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
   );
 
   const addPopupContextMenu = useCallback(
-    (x: number, y: number, res: IRes, fromPopup: boolean) => {
+    (
+      clientX: number,
+      clientY: number,
+      items: ContextMenuItem[],
+      parentId?: string,
+    ) => {
       closePopupsByPredicate((item) => item.type === "contextMenu");
+      const { x, y } = toPageCoords(clientX, clientY);
       addPopup({
         type: "contextMenu",
         x,
         y,
-        payload: { res, fromPopup },
+        payload: { items },
+        parentId,
       });
     },
-    [addPopup, closePopupsByPredicate],
+    [addPopup, closePopupsByPredicate, toPageCoords],
   );
 
   const resolveAbsoluteUrl = useCallback(
@@ -331,51 +333,53 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
     [openResolvedUrl, resolveAbsoluteUrl],
   );
 
-  const handleUrlContextMenu = useCallback(
-    (rawUrl: string, e: React.MouseEvent) => {
-      const { x, y } = toPageCoords(e.clientX, e.clientY);
-      setUrlContextMenu({ x, y, rawUrl });
+  const buildUrlContextMenuItems = useCallback(
+    (rawUrl: string): ContextMenuItem[] => {
+      const absoluteUrl = resolveAbsoluteUrl(rawUrl);
+      const internalPage = parseInternalPage(absoluteUrl);
+
+      return [
+        {
+          id: "open-in-current",
+          label: internalPage ? "拡張内で開く" : "開く",
+          onSelect: () => openResolvedUrl(absoluteUrl, 0),
+        },
+        {
+          id: "open-in-new-tab",
+          label: internalPage ? "拡張内の新しいタブで開く" : "新しいタブで開く",
+          onSelect: () => openResolvedUrl(absoluteUrl, 1),
+        },
+        { id: "sep-url-1", separator: true },
+        {
+          id: "copy-url",
+          label: "URLをコピー",
+          onSelect: () => {
+            void copyText(absoluteUrl);
+          },
+        },
+        {
+          id: "open-in-browser",
+          label: "ブラウザで開く",
+          onSelect: () => {
+            window.open(absoluteUrl, "_blank", "noopener,noreferrer");
+          },
+        },
+      ];
     },
-    [toPageCoords],
+    [openResolvedUrl, parseInternalPage, resolveAbsoluteUrl],
   );
 
-  const closeUrlContextMenu = useCallback(() => {
-    setUrlContextMenu(null);
-  }, []);
-
-  const urlContextItems = useMemo<ContextMenuItem[]>(() => {
-    if (!urlContextMenu) return [];
-    const absoluteUrl = resolveAbsoluteUrl(urlContextMenu.rawUrl);
-    const internalPage = parseInternalPage(absoluteUrl);
-
-    return [
-      {
-        id: "open-in-current",
-        label: internalPage ? "拡張内で開く" : "開く",
-        onSelect: () => openResolvedUrl(absoluteUrl, 0),
-      },
-      {
-        id: "open-in-new-tab",
-        label: internalPage ? "拡張内の新しいタブで開く" : "新しいタブで開く",
-        onSelect: () => openResolvedUrl(absoluteUrl, 1),
-      },
-      { id: "sep-url-1", separator: true },
-      {
-        id: "copy-url",
-        label: "URLをコピー",
-        onSelect: () => {
-          void copyText(absoluteUrl);
-        },
-      },
-      {
-        id: "open-in-browser",
-        label: "ブラウザで開く",
-        onSelect: () => {
-          window.open(absoluteUrl, "_blank", "noopener,noreferrer");
-        },
-      },
-    ];
-  }, [openResolvedUrl, parseInternalPage, resolveAbsoluteUrl, urlContextMenu]);
+  const handleUrlContextMenu = useCallback(
+    (rawUrl: string, e: React.MouseEvent, parentId?: string) => {
+      addPopupContextMenu(
+        e.clientX,
+        e.clientY,
+        buildUrlContextMenuItems(rawUrl),
+        parentId,
+      );
+    },
+    [addPopupContextMenu, buildUrlContextMenuItems],
+  );
 
   // IDクリック → そのIDの全レスをポップアップ表示
   const handleIdClick = useCallback(
@@ -413,10 +417,6 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
     hideAnchorPreviewImmediately();
     closeNonContextPopups();
   }, [hideAnchorPreviewImmediately, closeNonContextPopups]);
-
-  const closeResContextMenu = useCallback(() => {
-    closePopupsByPredicate((item) => item.type === "contextMenu");
-  }, [closePopupsByPredicate]);
 
   // ポップアップ/アンカープレビュー内からの返信クリック。
   // アンカープレビューを即時消去せず、スタックに積んで親子関係を維持する。
@@ -680,19 +680,40 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
     ],
   );
 
-  // ポップアップ内レス用（「このレスにジャンプ」付き）のメニュービルダー
-  const buildPopupContextMenuItems = useCallback(
-    (res: IRes) => buildContextMenuItems(res, true),
-    [buildContextMenuItems],
+  const openResContextMenu = useCallback(
+    (
+      targetRes: IRes,
+      e: React.MouseEvent,
+      fromPopup: boolean,
+      parentId?: string,
+    ) => {
+      if (!fromPopup) {
+        hideAnchorPreviewImmediately();
+      }
+
+      // メニュー本体も同じスタックへ積み、parentId で親ポップアップとの寿命を揃える。
+      addPopupContextMenu(
+        e.clientX,
+        e.clientY,
+        buildContextMenuItems(targetRes, fromPopup),
+        parentId,
+      );
+    },
+    [addPopupContextMenu, buildContextMenuItems, hideAnchorPreviewImmediately],
   );
 
-  // スレッド本文の右クリックメニュー項目
-  const responseContextItems = useMemo(
-    () =>
-      resContextMenuItem
-        ? buildContextMenuItems(resContextMenuItem.payload.res, false)
-        : [],
-    [buildContextMenuItems, resContextMenuItem],
+  const openPopupResContextMenu = useCallback(
+    (parentId: string) => (targetRes: IRes, e: React.MouseEvent) => {
+      openResContextMenu(targetRes, e, true, parentId);
+    },
+    [openResContextMenu],
+  );
+
+  const openPopupUrlContextMenu = useCallback(
+    (parentId: string) => (rawUrl: string, e: React.MouseEvent) => {
+      handleUrlContextMenu(rawUrl, e, parentId);
+    },
+    [handleUrlContextMenu],
   );
 
   // ジェスチャーuseEffectでrootRefが確実にマウント済みになるよう、loading中の早期returnを廃止し常にrootRef付きdivを描画する
@@ -769,118 +790,111 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
                   onAnchorClick={handleAnchorClick}
                   onAnchorHover={showAnchorPreview}
                   onAnchorLeave={hideAnchorPreview}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    hideAnchorPreviewImmediately();
-                    const { x, y } = toPageCoords(e.clientX, e.clientY);
-                    addPopupContextMenu(x, y, res, false);
-                  }}
+                  onContextMenu={(e) => openResContextMenu(res, e, false)}
                 />
               );
             })}
           </div>
 
-          {resContextMenuItem && (
-            <ContextMenu
-              x={resContextMenuItem.x}
-              y={resContextMenuItem.y}
-              items={responseContextItems}
-              onClose={closeResContextMenu}
-            />
-          )}
+          <div className="thread-page__popup-layer">
+            {anchorPreviews.map((anchorPreview) => (
+              <AnchorPreview
+                key={anchorPreview.id}
+                depth={anchorPreview.payload.depth}
+                x={anchorPreview.x}
+                y={anchorPreview.y}
+                items={anchorPreview.payload.items}
+                label={anchorPreview.payload.label}
+                messageProtocol={messageProtocol}
+                repIndex={indexes.repIndex}
+                onUrlClick={handleUrlClick}
+                onUrlContextMenu={openPopupUrlContextMenu(anchorPreview.id)}
+                onRepClick={handleRepClickInPopup(
+                  anchorPreview.id,
+                  anchorPreview.payload.depth + 1,
+                )}
+                onAnchorClick={handleAnchorClick}
+                onAnchorHover={showAnchorPreview}
+                onAnchorLeave={hideAnchorPreview}
+                onMouseEnter={clearAnchorPreviewHideTimer}
+                onMouseLeave={() => hideAnchorPreview(anchorPreview.payload.depth)}
+                onResContextMenu={openPopupResContextMenu(anchorPreview.id)}
+                hasChildPopup={hasPopupChild(anchorPreview.id)}
+                zIndex={anchorPreview.z}
+              />
+            ))}
 
-          {urlContextMenu && (
-            <ContextMenu
-              x={urlContextMenu.x}
-              y={urlContextMenu.y}
-              items={urlContextItems}
-              onClose={closeUrlContextMenu}
-            />
-          )}
+            {/* IDポップアップ */}
+            {idPopup && (
+              <ResPopup
+                x={idPopup.x}
+                y={idPopup.y}
+                title={idPopup.payload.title}
+                items={idPopup.payload.items}
+                messageProtocol={messageProtocol}
+                repIndex={indexes.repIndex}
+                onUrlClick={handleUrlClick}
+                onUrlContextMenu={openPopupUrlContextMenu(idPopup.id)}
+                onRepClick={handleRepClickInPopup(idPopup.id)}
+                onAnchorClick={handleAnchorClick}
+                onAnchorHover={showAnchorPreview}
+                onAnchorLeave={hideAnchorPreview}
+                onResContextMenu={openPopupResContextMenu(idPopup.id)}
+                // 子ポップアップ（TreePopup / ContextMenu）やAnchorPreviewが開いている間は
+                // mouseleave / outside click で閉じないようにする。
+                disableOutsideClick={hasPopupChild(idPopup.id) || hasAnchorPreviews}
+                zIndex={idPopup.z}
+                onClose={() => closePopupById(idPopup.id)}
+                onMouseEnter={clearAnchorPreviewHideTimer}
+                onMouseLeave={() => hideAnchorPreview(0)}
+              />
+            )}
 
-          {anchorPreviews.map((anchorPreview) => (
-            <AnchorPreview
-              key={anchorPreview.id}
-              depth={anchorPreview.payload.depth}
-              x={anchorPreview.x}
-              y={anchorPreview.y}
-              items={anchorPreview.payload.items}
-              label={anchorPreview.payload.label}
-              messageProtocol={messageProtocol}
-              repIndex={indexes.repIndex}
-              onUrlClick={handleUrlClick}
-              onUrlContextMenu={handleUrlContextMenu}
-              onRepClick={handleRepClickInPopup(
-                anchorPreview.id,
-                anchorPreview.payload.depth + 1,
-              )}
-              onAnchorClick={handleAnchorClick}
-              onAnchorHover={showAnchorPreview}
-              onAnchorLeave={hideAnchorPreview}
-              onMouseEnter={clearAnchorPreviewHideTimer}
-              onMouseLeave={() => hideAnchorPreview(anchorPreview.payload.depth)}
-              buildContextMenuItems={buildPopupContextMenuItems}
-              zIndex={anchorPreview.z}
-            />
-          ))}
+            {/* 返信ツリーポップアップスタック（親子関係を保ちつつ積み重ねる） */}
+            {treePopupItems.map((tp, i) => (
+              <ReplyTreePopup
+                key={tp.id}
+                x={tp.x}
+                y={tp.y}
+                resNum={tp.payload.resNum}
+                repIndex={indexes.repIndex}
+                resMap={indexes.resMap}
+                messageProtocol={messageProtocol}
+                anchorPreviewDepth={tp.payload.anchorPreviewDepth}
+                onUrlClick={handleUrlClick}
+                onUrlContextMenu={openPopupUrlContextMenu(tp.id)}
+                onRepClick={handleRepClickInPopup(
+                  tp.id,
+                  tp.payload.anchorPreviewDepth,
+                )}
+                onAnchorClick={handleAnchorClick}
+                onAnchorHover={showAnchorPreview}
+                onAnchorLeave={hideAnchorPreview}
+                onResContextMenu={openPopupResContextMenu(tp.id)}
+                // 上位ポップアップ、子メニュー、AnchorPreviewが開いている間は閉じない。
+                disableOutsideClick={
+                  i < treePopupItems.length - 1 ||
+                  hasAnchorPreviews ||
+                  hasPopupChild(tp.id)
+                }
+                // 開いた順にカウントされたz-indexで「後から開いたものが前面」を保証する
+                zIndex={tp.z}
+                onClose={() => closePopupById(tp.id)}
+                onMouseEnter={clearAnchorPreviewHideTimer}
+                onMouseLeave={() => hideAnchorPreview(0)}
+              />
+            ))}
 
-          {/* IDポップアップ */}
-          {idPopup && (
-            <ResPopup
-              x={idPopup.x}
-              y={idPopup.y}
-              title={idPopup.payload.title}
-              items={idPopup.payload.items}
-              messageProtocol={messageProtocol}
-              repIndex={indexes.repIndex}
-              onUrlClick={handleUrlClick}
-              onUrlContextMenu={handleUrlContextMenu}
-              onRepClick={handleRepClickInPopup(idPopup.id)}
-              onAnchorClick={handleAnchorClick}
-              onAnchorHover={showAnchorPreview}
-              onAnchorLeave={hideAnchorPreview}
-              buildContextMenuItems={buildPopupContextMenuItems}
-              // 子ポップアップ（TreePopup / AnchorPreview）が開いている間は外側クリックで閉じない。
-              // AnchorPreview内のmousedownがdocumentに伝播してResPopupを閉じてしまうのを防ぐ。
-              disableOutsideClick={treePopupItems.length > 0 || hasAnchorPreviews}
-              zIndex={idPopup.z}
-              onClose={() => closePopupById(idPopup.id)}
-              onMouseEnter={clearAnchorPreviewHideTimer}
-              onMouseLeave={() => hideAnchorPreview(0)}
-            />
-          )}
-
-          {/* 返信ツリーポップアップスタック（親子関係を保ちつつ積み重ねる） */}
-          {treePopupItems.map((tp, i) => (
-            <ReplyTreePopup
-              key={tp.id}
-              x={tp.x}
-              y={tp.y}
-              resNum={tp.payload.resNum}
-              repIndex={indexes.repIndex}
-              resMap={indexes.resMap}
-              messageProtocol={messageProtocol}
-              anchorPreviewDepth={tp.payload.anchorPreviewDepth}
-              onUrlClick={handleUrlClick}
-              onUrlContextMenu={handleUrlContextMenu}
-              onRepClick={handleRepClickInPopup(
-                tp.id,
-                tp.payload.anchorPreviewDepth,
-              )}
-              onAnchorClick={handleAnchorClick}
-              onAnchorHover={showAnchorPreview}
-              onAnchorLeave={hideAnchorPreview}
-              buildContextMenuItems={buildPopupContextMenuItems}
-              // 上位ポップアップまたはAnchorPreviewが開いている間は外側クリックで閉じない。
-              // AnchorPreview内のmousedownがdocumentに伝播してTreePopupを閉じてしまうのを防ぐ。
-              disableOutsideClick={i < treePopupItems.length - 1 || hasAnchorPreviews}
-              // 開いた順にカウントされたz-indexで「後から開いたものが前面」を保証する
-              zIndex={tp.z}
-              onClose={() => closePopupById(tp.id)}
-              onMouseEnter={clearAnchorPreviewHideTimer}
-              onMouseLeave={() => hideAnchorPreview(0)}
-            />
-          ))}
+            {contextMenuItems.map((menu) => (
+              <ContextMenu
+                key={menu.id}
+                x={menu.x}
+                y={menu.y}
+                items={menu.payload.items}
+                onClose={() => closePopupById(menu.id)}
+              />
+            ))}
+          </div>
 
           {viewer && (
             <div className="media-viewer" onClick={closeViewer}>

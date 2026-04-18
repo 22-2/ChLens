@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { IRes } from "src/service-container/interfaces";
@@ -137,7 +137,8 @@ function PopupSequenceHarness() {
           onAnchorLeave={hideAnchorPreviewsFromDepth}
           onMouseEnter={() => {}}
           onMouseLeave={() => {}}
-          buildContextMenuItems={() => []}
+          onResContextMenu={() => {}}
+          hasChildPopup={false}
           zIndex={anchorPreview.z}
         />
       ))}
@@ -161,7 +162,7 @@ function PopupSequenceHarness() {
           onAnchorClick={() => {}}
           onAnchorHover={showAnchorPreview}
           onAnchorLeave={hideAnchorPreviewsFromDepth}
-          buildContextMenuItems={() => []}
+          onResContextMenu={() => {}}
           disableOutsideClick={
             index < treePopups.length - 1 || anchorPreviews.length > 0
           }
@@ -208,7 +209,7 @@ describe("usePopupManager popup behavior", () => {
         onAnchorClick={() => {}}
         onAnchorHover={onAnchorHover}
         onAnchorLeave={() => {}}
-        buildContextMenuItems={() => []}
+        onResContextMenu={() => {}}
         onClose={() => {}}
       />,
     );
@@ -242,5 +243,237 @@ describe("usePopupManager popup behavior", () => {
     expect(screen.getByTestId("popup-stack")).toHaveTextContent(
       "anchor:>>5:depth=1",
     );
+  });
+});
+
+// --- ReplyTreePopup: disableOutsideClick 遷移時の自動 close / outside click ---
+
+const TREE_BASE_PROPS = {
+  x: 0,
+  y: 0,
+  resNum: 1,
+  repIndex: TEST_REP_INDEX,
+  resMap: TEST_RES_MAP,
+  messageProtocol: "https:" as const,
+  anchorPreviewDepth: 0,
+  onUrlClick: () => {},
+  onUrlContextMenu: () => {},
+  onRepClick: () => {},
+  onAnchorClick: () => {},
+  onAnchorHover: () => {},
+  onAnchorLeave: () => {},
+  onResContextMenu: () => {},
+} as const;
+
+const ANCHOR_BASE_PROPS = {
+  depth: 0,
+  x: 0,
+  y: 0,
+  items: [createRes(9, "anchor preview")] as IRes[],
+  label: ">>9",
+  messageProtocol: "https:" as const,
+  repIndex: TEST_REP_INDEX,
+  onUrlClick: () => {},
+  onUrlContextMenu: () => {},
+  onRepClick: () => {},
+  onAnchorClick: () => {},
+  onAnchorHover: () => {},
+  onAnchorLeave: () => {},
+  onMouseEnter: () => {},
+  onMouseLeave: () => {},
+  onResContextMenu: () => {},
+  zIndex: 10020,
+} as const;
+
+describe("ReplyTreePopup close behavior", () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      "requestAnimationFrame",
+      (callback: FrameRequestCallback): number => {
+        callback(0);
+        return 1;
+      },
+    );
+    vi.stubGlobal("cancelAnimationFrame", () => {});
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  it("[bug再現] disableOutsideClick が true→false に変わり、かつカーソルが外にあれば自動 close する", () => {
+    // 子ポップアップ(anchor/tree)が閉じて disableOutsideClick が false に変わった瞬間、
+    // mouseleave は既に無視済みなので自動 close で補完しなければ tree1 が残ったままになる。
+    const onClose = vi.fn();
+    const { rerender } = render(
+      <ReplyTreePopup
+        {...TREE_BASE_PROPS}
+        disableOutsideClick={true}
+        onClose={onClose}
+      />,
+    );
+
+    // cursor はポップアップに入っていない（isHovering=false）
+    expect(onClose).not.toHaveBeenCalled();
+
+    // 子ポップアップが閉じて disableOutsideClick が false に変わる
+    rerender(
+      <ReplyTreePopup
+        {...TREE_BASE_PROPS}
+        disableOutsideClick={false}
+        onClose={onClose}
+      />,
+    );
+
+    // カーソルが外にいるので自動 close されるべき
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("disableOutsideClick が true→false に変わってもカーソルが内部にあれば close しない", () => {
+    const onClose = vi.fn();
+    const { rerender } = render(
+      <ReplyTreePopup
+        {...TREE_BASE_PROPS}
+        disableOutsideClick={true}
+        onClose={onClose}
+      />,
+    );
+
+    // カーソルがポップアップ内に入る
+    const popup = document.querySelector(".res-popup") as HTMLElement;
+    fireEvent.mouseEnter(popup);
+
+    // 子が閉じて disableOutsideClick が false に変わる
+    rerender(
+      <ReplyTreePopup
+        {...TREE_BASE_PROPS}
+        disableOutsideClick={false}
+        onClose={onClose}
+      />,
+    );
+
+    // カーソルが内部にあるので close してはいけない
+    expect(onClose).not.toHaveBeenCalled();
+
+    // その後カーソルが出ると mouseleave で close される
+    act(() => {
+      fireEvent.mouseLeave(popup);
+    });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("子がいない状態（disableOutsideClick=false）で外側 mousedown すると close する", () => {
+    const onClose = vi.fn();
+    render(
+      <ReplyTreePopup
+        {...TREE_BASE_PROPS}
+        disableOutsideClick={false}
+        onClose={onClose}
+      />,
+    );
+
+    // ポップアップ外の領域をクリック
+    fireEvent.mouseDown(document.body);
+
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("子がいる状態（disableOutsideClick=true）では外側 mousedown しても close しない", () => {
+    const onClose = vi.fn();
+    render(
+      <ReplyTreePopup
+        {...TREE_BASE_PROPS}
+        disableOutsideClick={true}
+        onClose={onClose}
+      />,
+    );
+
+    fireEvent.mouseDown(document.body);
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("親ポップアップを閉じると子コンテキストメニューも一緒に閉じる", () => {
+    function PopupTreeHarness() {
+      const { popups, addPopup, closePopupById } = usePopupManager();
+
+      return (
+        <div>
+          <button
+            onClick={() => {
+              const treeId = addPopup({
+                type: "tree",
+                x: 8,
+                y: 8,
+                payload: { resNum: 1, anchorPreviewDepth: 0 },
+              });
+              addPopup({
+                type: "contextMenu",
+                x: 16,
+                y: 16,
+                payload: { items: [] },
+                parentId: treeId,
+              });
+            }}
+          >
+            開く
+          </button>
+          <button
+            onClick={() => {
+              const treePopup = popups.find(
+                (item): item is TreePopupItem => item.type === "tree",
+              );
+              if (!treePopup) return;
+              closePopupById(treePopup.id);
+            }}
+          >
+            閉じる
+          </button>
+          <output data-testid="popup-tree-types">
+            {popups.map((item) => item.type).join("|")}
+          </output>
+        </div>
+      );
+    }
+
+    render(<PopupTreeHarness />);
+
+    fireEvent.click(screen.getByRole("button", { name: "開く" }));
+    expect(screen.getByTestId("popup-tree-types")).toHaveTextContent(
+      "tree|contextMenu",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "閉じる" }));
+    expect(screen.getByTestId("popup-tree-types")).toBeEmptyDOMElement();
+  });
+});
+
+describe("AnchorPreview child popup behavior", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("子メニューが閉じた時にカーソルが外なら遅延 close を再開する", () => {
+    const onMouseLeave = vi.fn();
+    const { rerender } = render(
+      <AnchorPreview
+        {...ANCHOR_BASE_PROPS}
+        hasChildPopup={true}
+        onMouseLeave={onMouseLeave}
+      />,
+    );
+
+    expect(onMouseLeave).not.toHaveBeenCalled();
+
+    rerender(
+      <AnchorPreview
+        {...ANCHOR_BASE_PROPS}
+        hasChildPopup={false}
+        onMouseLeave={onMouseLeave}
+      />,
+    );
+
+    expect(onMouseLeave).toHaveBeenCalledOnce();
   });
 });
