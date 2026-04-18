@@ -9,6 +9,7 @@ export const ReplyTree: React.FC<{
   repIndex: Map<number, Set<number>>;
   resMap: Map<number, IRes>;
   messageProtocol: string;
+  anchorPreviewDepth: number;
   onUrlClick: (url: string, resImages?: string[], button?: 0 | 1) => void;
   onUrlContextMenu: (url: string, e: React.MouseEvent) => void;
   onRepClick: (resNum: number, e: React.MouseEvent) => void;
@@ -28,6 +29,7 @@ export const ReplyTree: React.FC<{
   repIndex,
   resMap,
   messageProtocol,
+  anchorPreviewDepth,
   onUrlClick,
   onUrlContextMenu,
   onRepClick,
@@ -66,7 +68,9 @@ export const ReplyTree: React.FC<{
             <PopupResCard
               res={res}
               messageProtocol={messageProtocol}
-              anchorPreviewDepth={0}
+              // アンカープレビュー配下で開いた返信ツリーは、その階層を子レスにも引き継ぐ。
+              // ここを 0 に戻すと、次のアンカーホバーで親プレビューごと閉じる回帰が起きる。
+              anchorPreviewDepth={anchorPreviewDepth}
               repIndex={repIndex}
               onUrlClick={onUrlClick}
               onUrlContextMenu={onUrlContextMenu}
@@ -81,6 +85,7 @@ export const ReplyTree: React.FC<{
               repIndex={repIndex}
               resMap={resMap}
               messageProtocol={messageProtocol}
+              anchorPreviewDepth={anchorPreviewDepth}
               onUrlClick={onUrlClick}
               onUrlContextMenu={onUrlContextMenu}
               onRepClick={onRepClick}

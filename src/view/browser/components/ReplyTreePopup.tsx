@@ -21,6 +21,7 @@ export const ReplyTreePopup: React.FC<{
   repIndex: Map<number, Set<number>>;
   resMap: Map<number, IRes>;
   messageProtocol: string;
+  anchorPreviewDepth: number;
   onUrlClick: (url: string, resImages?: string[], button?: 0 | 1) => void;
   onUrlContextMenu: (url: string, e: React.MouseEvent) => void;
   onRepClick: (resNum: number, e: React.MouseEvent) => void;
@@ -49,6 +50,7 @@ export const ReplyTreePopup: React.FC<{
   repIndex,
   resMap,
   messageProtocol,
+  anchorPreviewDepth,
   onUrlClick,
   onUrlContextMenu,
   onRepClick,
@@ -111,6 +113,7 @@ export const ReplyTreePopup: React.FC<{
           repIndex={repIndex}
           resMap={resMap}
           messageProtocol={messageProtocol}
+          anchorPreviewDepth={anchorPreviewDepth}
           onUrlClick={onUrlClick}
           onUrlContextMenu={onUrlContextMenu}
           onRepClick={onRepClick}

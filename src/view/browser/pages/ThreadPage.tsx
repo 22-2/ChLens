@@ -149,13 +149,18 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
   }, []);
 
   const addTreePopup = useCallback(
-    (resNum: number, e: React.MouseEvent, parentId?: string) => {
+    (
+      resNum: number,
+      e: React.MouseEvent,
+      parentId?: string,
+      anchorPreviewDepth = 0,
+    ) => {
       const { x, y } = toPageCoords(e.clientX, e.clientY);
       addPopup({
         type: "tree",
         x,
         y,
-        payload: { resNum },
+        payload: { resNum, anchorPreviewDepth },
         parentId,
       });
     },
@@ -416,10 +421,13 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
   // ポップアップ/アンカープレビュー内からの返信クリック。
   // アンカープレビューを即時消去せず、スタックに積んで親子関係を維持する。
   const handleRepClickInPopup = useCallback(
-    (parentId?: string) => (resNum: number, e: React.MouseEvent) => {
-      clearAnchorPreviewHideTimer();
-      addTreePopup(resNum, e, parentId);
-    },
+    (parentId?: string, anchorPreviewDepth = 0) =>
+      (resNum: number, e: React.MouseEvent) => {
+        clearAnchorPreviewHideTimer();
+        // アンカープレビュー配下で開いた返信ツリーは、その深さを持ち回って
+        // 次のアンカーホバーでも親プレビューを巻き込んで閉じないようにする。
+        addTreePopup(resNum, e, parentId, anchorPreviewDepth);
+      },
     [addTreePopup, clearAnchorPreviewHideTimer],
   );
 
@@ -802,7 +810,10 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
               repIndex={indexes.repIndex}
               onUrlClick={handleUrlClick}
               onUrlContextMenu={handleUrlContextMenu}
-              onRepClick={handleRepClickInPopup(anchorPreview.id)}
+              onRepClick={handleRepClickInPopup(
+                anchorPreview.id,
+                anchorPreview.payload.depth + 1,
+              )}
               onAnchorClick={handleAnchorClick}
               onAnchorHover={showAnchorPreview}
               onAnchorLeave={hideAnchorPreview}
@@ -849,9 +860,13 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
               repIndex={indexes.repIndex}
               resMap={indexes.resMap}
               messageProtocol={messageProtocol}
+              anchorPreviewDepth={tp.payload.anchorPreviewDepth}
               onUrlClick={handleUrlClick}
               onUrlContextMenu={handleUrlContextMenu}
-              onRepClick={handleRepClickInPopup(tp.id)}
+              onRepClick={handleRepClickInPopup(
+                tp.id,
+                tp.payload.anchorPreviewDepth,
+              )}
               onAnchorClick={handleAnchorClick}
               onAnchorHover={showAnchorPreview}
               onAnchorLeave={hideAnchorPreview}

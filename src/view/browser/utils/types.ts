@@ -30,6 +30,9 @@ export interface TreePopupItem extends PopupItemBase {
   type: "tree";
   payload: {
     resNum: number;
+    // 返信ツリー内で開いたアンカーも親アンカープレビュー配下として扱い続けないと、
+    // 次のアンカーホバーで既存プレビュー一式を root 扱いで閉じてしまう。
+    anchorPreviewDepth: number;
   };
 }
 
@@ -69,6 +72,7 @@ export interface TreePopupState {
   x: number;
   y: number;
   resNum: number;
+  anchorPreviewDepth: number;
   /** 開いた順に割り当てられるz-index。後から開いたものが常に前面になる。 */
   z: number;
 }
