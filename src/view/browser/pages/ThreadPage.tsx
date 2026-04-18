@@ -687,6 +687,7 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
       fromPopup: boolean,
       parentId?: string,
     ) => {
+      e.preventDefault();
       if (!fromPopup) {
         hideAnchorPreviewImmediately();
       }
