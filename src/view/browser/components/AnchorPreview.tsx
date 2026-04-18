@@ -3,6 +3,7 @@ import type { IRes } from "src/service-container";
 import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
+import { ANCHOR_PREVIEW_BASE_Z } from "src/view/browser/utils/constants";
 
 interface InternalContextMenuState {
   x: number;
@@ -98,7 +99,7 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
       style={{
         left: x,
         top: y,
-        zIndex: 10020 + depth,
+        zIndex: ANCHOR_PREVIEW_BASE_Z + depth,
       }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={handleMouseLeave}

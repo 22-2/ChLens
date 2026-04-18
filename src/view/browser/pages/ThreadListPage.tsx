@@ -181,17 +181,17 @@ export const ThreadListPage: React.FC<Props> = ({ page, refreshKey }) => {
 
   const openThreadInNewTab = useCallback(
     (threadUrl: string, threadTitle: string) => {
-      // 先にタブを追加してからNAVIGATEすることで、新規タブ側に遷移させる
-      dispatch({ type: "ADD_TAB" });
+      // ミドルクリックはバックグラウンドで開く（アクティブタブを切り替えない）
       dispatch({
-        type: "NAVIGATE",
+        type: "OPEN_IN_NEW_TAB",
         page: { type: "thread", title: threadTitle, threadUrl },
       });
     },
     [dispatch],
   );
 
-  if (loading) {
+  // threads が既にある場合（更新中）はチラつき防止のため loading 表示をスキップする
+  if (loading && threads.length === 0) {
     return <div className="page-status">読み込み中...</div>;
   }
 

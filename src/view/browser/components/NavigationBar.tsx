@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Menu, RotateCw, Settings } from "lucide-react";
+import { ArrowLeft, ArrowRight, Filter, Menu, RotateCw, Search, Settings } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
@@ -132,6 +132,13 @@ export const NavigationBar: React.FC = () => {
 
   const menuItems = useMemo(
     () => [
+      // TODO: Not implemented
+      // {
+      //   id: "open-filter",
+      //   label: "フィルタリング",
+      //   icon: <Filter size={14}/>,
+      //   onSelect: () => {},
+      // },
       {
         id: "open-settings",
         label: "設定を開く",

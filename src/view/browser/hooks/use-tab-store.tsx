@@ -21,6 +21,7 @@ export interface TabStoreState {
 
 export type TabAction =
   | { type: "ADD_TAB" }
+  | { type: "OPEN_IN_NEW_TAB"; page: Page }
   | { type: "CLOSE_TAB"; tabId: string }
   | { type: "CLOSE_OTHER_TABS"; tabId: string }
   | { type: "CLOSE_RIGHT_TABS"; tabId: string }
@@ -118,6 +119,22 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
         ...state,
         tabs: [...state.tabs, newTab],
         activeTabId: newTab.id,
+      };
+    }
+
+    case "OPEN_IN_NEW_TAB": {
+      // バックグラウンドで新規タブを開く（アクティブタブを切り替えない）
+      const newTab = createTab();
+      const newHistory = buildHierarchy(action.page);
+      const navigatedTab = {
+        ...newTab,
+        history: newHistory,
+        currentIndex: newHistory.length - 1,
+      };
+      return {
+        ...state,
+        tabs: [...state.tabs, navigatedTab],
+        // activeTabId は変更しない
       };
     }
 

@@ -40,6 +40,10 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     // repIndex が渡された場合のみ返信数を表示する
     const repCount = repIndex?.get(res.num)?.size ?? 0;
 
+    // NG 判定は ResItem と同じロジック
+    const isNG = res.ng != null || res.class?.includes("ng");
+    if (isNG) return null;
+
     return (
       <article
         className="res"

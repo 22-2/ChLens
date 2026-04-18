@@ -790,7 +790,7 @@ body {
 }
 
 .thread-page__responses {
-  padding: 0;
+  padding: 0 0 120px;
 }
 
 .res {
@@ -816,7 +816,8 @@ body {
 }
 
 .res__id {
-  color: #bb4400;
+  /* IDが1件しかない場合は控えめな色でノイズを抑える */
+  color: #888;
   font-size: 12px;
 }
 
@@ -1009,6 +1010,8 @@ body {
    Res - ID/返信のクリック可能スタイル
    ========================================================================== */
 .res__id--link {
+  /* 同一IDが2件以上: 中間色（アンバー）で「複数回登場」を示す */
+  color: #c47800;
   cursor: pointer;
 }
 
@@ -1017,6 +1020,7 @@ body {
 }
 
 .res__id--freq {
+  /* 同一IDが5件以上: 赤で「多投稿」を強調 */
   cursor: pointer;
   color: #d93025;
   font-weight: 600;
@@ -1223,8 +1227,9 @@ body {
    ========================================================================== */
 .res-popup {
   /* createPortal でbodyに直接マウントするため、absoluteでもfixedと同等に機能する */
+  /* z-indexはPOPUP_BASE_Z(10020)起点でThreadPageからinline styleで付与される */
   position: absolute;
-  z-index: 10010;
+  z-index: 10020;
   min-width: 320px;
   max-width: 600px;
   max-height: 60vh;

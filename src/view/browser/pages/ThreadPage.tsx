@@ -17,6 +17,7 @@ import {
   ANCHOR_PREVIEW_HIDE_DELAY_MS,
   ANCHOR_PREVIEW_MAX_WIDTH,
   ANCHOR_PREVIEW_OFFSET,
+  POPUP_BASE_Z,
 } from "src/view/browser/utils/constants";
 import { ReplyTreePopup } from "src/view/browser/components/ReplyTreePopup";
 import { ResItem } from "src/view/browser/components/ResItem";
@@ -63,7 +64,7 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [popup, setPopup] = useState<PopupState | null>(null);
-  const [treePopup, setTreePopup] = useState<TreePopupState | null>(null);
+  const [treePopups, setTreePopups] = useState<TreePopupState[]>([]);
   const [resContextMenu, setResContextMenu] =
     useState<ResContextMenuState | null>(null);
   const [miniAaResNums, setMiniAaResNums] = useState<Set<number>>(new Set());
@@ -202,17 +203,18 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
         .filter((r): r is IRes => !!r);
       const { x, y } = toPageCoords(e.clientX, e.clientY);
       setPopup({ x, y, items, title: `ID:${id} (${items.length}件)` });
-      setTreePopup(null);
+      setTreePopups([]);
     },
     [indexes, toPageCoords],
   );
 
-  // 返信クリック → 返信ツリーをポップアップ表示
+  // 返信クリック → 返信ツリーをポップアップ表示（スレッド本文から）
   const handleRepClick = useCallback(
     (resNum: number, e: React.MouseEvent) => {
       hideAnchorPreviewImmediately();
       const { x, y } = toPageCoords(e.clientX, e.clientY);
-      setTreePopup({ x, y, resNum });
+      // 本文からの返信クリックは既存ポップアップをすべてリセットして新規スタック開始
+      setTreePopups([{ x, y, resNum }]);
       setPopup(null);
     },
     [toPageCoords],
@@ -221,7 +223,7 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
   const closePopup = useCallback(() => {
     hideAnchorPreviewImmediately();
     setPopup(null);
-    setTreePopup(null);
+    setTreePopups([]);
   }, []);
 
   const closeResContextMenu = useCallback(() => {
@@ -275,12 +277,36 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
     }
   }, []);
 
+  // ポップアップ（ResPopup/ReplyTreePopup）内からの返信クリック。
+  // アンカープレビューを即時消去せず、スタックに積んで親子関係を維持する。
+  const handleRepClickInPopup = useCallback(
+    (resNum: number, e: React.MouseEvent) => {
+      clearAnchorPreviewHideTimer();
+      const { x, y } = toPageCoords(e.clientX, e.clientY);
+      setTreePopups((prev) => [...prev, { x, y, resNum }]);
+      // 親ポップアップ（ResPopup）は閉じない
+    },
+    [clearAnchorPreviewHideTimer, toPageCoords],
+  );
+
   const hideAnchorPreviewImmediately = useCallback(
     (fromDepth = 0) => {
       clearAnchorPreviewHideTimer();
       setAnchorPreviews((prev) => prev.slice(0, fromDepth));
     },
     [clearAnchorPreviewHideTimer],
+  );
+
+  // AnchorPreview内からの返信クリック。
+  // AnchorPreview（z-index: ANCHOR_PREVIEW_BASE_Z+）がReplyTreePopup（z-index: POPUP_BASE_Z+）より
+  // 前面に描画されるため、アンカープレビューを先に閉じてからツリーポップアップを開く。
+  const handleRepClickFromAnchor = useCallback(
+    (resNum: number, e: React.MouseEvent) => {
+      hideAnchorPreviewImmediately();
+      const { x, y } = toPageCoords(e.clientX, e.clientY);
+      setTreePopups((prev) => [...prev, { x, y, resNum }]);
+    },
+    [hideAnchorPreviewImmediately, toPageCoords],
   );
 
   const hideAnchorPreview = useCallback(
@@ -987,7 +1013,7 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
               messageProtocol={messageProtocol}
               repIndex={indexes.repIndex}
               onUrlClick={openMediaFromUrl}
-              onRepClick={handleRepClick}
+              onRepClick={handleRepClickFromAnchor}
               onAnchorClick={handleAnchorClick}
               onAnchorHover={showAnchorPreview}
               onAnchorLeave={hideAnchorPreview}
@@ -1007,33 +1033,45 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
               messageProtocol={messageProtocol}
               repIndex={indexes.repIndex}
               onUrlClick={openMediaFromUrl}
-              onRepClick={handleRepClick}
+              onRepClick={handleRepClickInPopup}
               onAnchorClick={handleAnchorClick}
               onAnchorHover={showAnchorPreview}
               onAnchorLeave={hideAnchorPreview}
               buildContextMenuItems={buildPopupContextMenuItems}
+              // 子ツリーポップアップが開いている間は外側クリックで閉じない
+              disableOutsideClick={treePopups.length > 0}
+              zIndex={POPUP_BASE_Z}
               onClose={closePopup}
+              onMouseEnter={clearAnchorPreviewHideTimer}
+              onMouseLeave={() => hideAnchorPreview(0)}
             />
           )}
 
-          {/* 返信ツリーポップアップ */}
-          {treePopup && (
+          {/* 返信ツリーポップアップスタック（親子関係を保ちつつ積み重ねる） */}
+          {treePopups.map((tp, i) => (
             <ReplyTreePopup
-              x={treePopup.x}
-              y={treePopup.y}
-              resNum={treePopup.resNum}
+              key={i}
+              x={tp.x}
+              y={tp.y}
+              resNum={tp.resNum}
               repIndex={indexes.repIndex}
               resMap={indexes.resMap}
               messageProtocol={messageProtocol}
               onUrlClick={openMediaFromUrl}
-              onRepClick={handleRepClick}
+              onRepClick={handleRepClickInPopup}
               onAnchorClick={handleAnchorClick}
               onAnchorHover={showAnchorPreview}
               onAnchorLeave={hideAnchorPreview}
               buildContextMenuItems={buildPopupContextMenuItems}
-              onClose={closePopup}
+              // 最上位以外は外側クリックで閉じない（子が閉じてから順番に閉じる）
+              disableOutsideClick={i < treePopups.length - 1}
+              // スタックの深さに応じてResPopupより前面に出る
+              zIndex={POPUP_BASE_Z + 1 + i}
+              onClose={() => setTreePopups((prev) => prev.slice(0, i))}
+              onMouseEnter={clearAnchorPreviewHideTimer}
+              onMouseLeave={() => hideAnchorPreview(0)}
             />
-          )}
+          ))}
 
           {viewer && (
             <div className="media-viewer" onClick={closeViewer}>
