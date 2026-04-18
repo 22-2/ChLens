@@ -6,6 +6,56 @@ export interface Props {
   page: ThreadPageType;
   refreshKey: number;
 }
+
+export type PopupItemType = "id" | "tree" | "anchor" | "contextMenu";
+
+export interface PopupItemBase {
+  id: string;
+  type: PopupItemType;
+  x: number;
+  y: number;
+  z: number;
+  parentId?: string;
+}
+
+export interface IdPopupItem extends PopupItemBase {
+  type: "id";
+  payload: {
+    items: IRes[];
+    title: string;
+  };
+}
+
+export interface TreePopupItem extends PopupItemBase {
+  type: "tree";
+  payload: {
+    resNum: number;
+  };
+}
+
+export interface AnchorPopupItem extends PopupItemBase {
+  type: "anchor";
+  payload: {
+    items: IRes[];
+    label: string;
+    depth: number;
+  };
+}
+
+export interface ContextMenuPopupItem extends PopupItemBase {
+  type: "contextMenu";
+  payload: {
+    res: IRes;
+    fromPopup: boolean;
+  };
+}
+
+export type PopupItem =
+  | IdPopupItem
+  | TreePopupItem
+  | AnchorPopupItem
+  | ContextMenuPopupItem;
+
 // --- ポップアップ状態 ---
 export interface PopupState {
   x: number;
