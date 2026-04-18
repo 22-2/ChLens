@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { IRes } from "src/service-container";
 import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
-import { ANCHOR_PREVIEW_BASE_Z } from "src/view/browser/utils/constants";
 
 interface InternalContextMenuState {
   x: number;
@@ -32,6 +32,8 @@ export interface AnchorPreviewProps {
   onMouseEnter: () => void;
   onMouseLeave: () => void;
   buildContextMenuItems: (res: IRes) => ContextMenuItem[];
+  /** z-indexを明示指定（後から開いたポップアップが前面に出るよう呼び出し元が管理する） */
+  zIndex: number;
 }
 
 export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
@@ -50,6 +52,7 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
   onMouseEnter,
   onMouseLeave,
   buildContextMenuItems,
+  zIndex,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const [contextMenu, setContextMenu] =
@@ -99,7 +102,7 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
       style={{
         left: x,
         top: y,
-        zIndex: ANCHOR_PREVIEW_BASE_Z + depth,
+        zIndex,
       }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -120,26 +123,26 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
             onAnchorLeave={onAnchorLeave}
             onContextMenu={(e, targetRes) => {
               e.stopPropagation();
-              // コンテキストメニューをこのdiv内に描画して、
-              // ポップアップのマウスアウト検知に干渉しないようにする
-              const popupRect = ref.current!.getBoundingClientRect();
+              // createPortalでbody直下に描画するため、viewport座標をそのまま使う。
               setContextMenu({
-                x: e.clientX - popupRect.left,
-                y: e.clientY - popupRect.top,
+                x: e.clientX,
+                y: e.clientY,
                 items: buildContextMenuItems(targetRes),
               });
             }}
           />
         ))}
       </div>
-      {contextMenu && (
-        <ContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          items={contextMenu.items}
-          onClose={() => setContextMenu(null)}
-        />
-      )}
+      {contextMenu &&
+        createPortal(
+          <ContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            items={contextMenu.items}
+            onClose={() => setContextMenu(null)}
+          />,
+          document.body,
+        )}
     </div>
   );
 };

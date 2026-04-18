@@ -12,11 +12,15 @@ export interface PopupState {
   y: number;
   items: IRes[];
   title: string;
+  /** 開いた順に割り当てられるz-index。後から開いたものが常に前面になる。 */
+  z: number;
 }
 export interface TreePopupState {
   x: number;
   y: number;
   resNum: number;
+  /** 開いた順に割り当てられるz-index。後から開いたものが常に前面になる。 */
+  z: number;
 }
 export interface ResContextMenuState {
   x: number;
@@ -36,4 +40,6 @@ export interface AnchorPreviewState {
   y: number;
   items: IRes[];
   label: string;
+  /** 開いた順に割り当てられるz-index。後から開いたものが常に前面になる。 */
+  z: number;
 }

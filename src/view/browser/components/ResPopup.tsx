@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import React from "react";
+import { createPortal } from "react-dom";
 import type { IRes } from "src/service-container";
 import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
@@ -64,8 +65,11 @@ export const ResPopup: React.FC<{
     useState<InternalContextMenuState | null>(null);
 
   useEffect(() => {
-    // 子ポップアップが開いているときは外側クリック閉じを無効にする
-    if (disableOutsideClick) return;
+    // ContextMenuが開いているとき、またはAnchorPreview等の子ポップアップが開いているときは
+    // 外側クリック閉じを無効にする。
+    // ContextMenuはcreatePortalでbody直下に描画されるため、ContextMenuのDOMはref.currentの
+    // 外にある。外側クリック判定をそのまま使うとContextMenu上のclickで閉じてしまう。
+    if (disableOutsideClick || contextMenu != null) return;
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
         onClose();
@@ -73,7 +77,7 @@ export const ResPopup: React.FC<{
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [onClose, disableOutsideClick]);
+  }, [onClose, disableOutsideClick, contextMenu]);
 
   // スクロールコンテナ内での position:absolute に対応したオーバーフロー補正
   useAdjustOverflow(ref);
@@ -107,25 +111,27 @@ export const ResPopup: React.FC<{
             onAnchorLeave={onAnchorLeave}
             onContextMenu={(e, targetRes) => {
               e.stopPropagation();
-              // ContextMenu をポップアップ内に描画して、外側クリック検知との干渉を防ぐ
-              const popupRect = ref.current!.getBoundingClientRect();
+              // createPortalでbody直下に描画するため、viewport座標をそのまま使う。
+              // （ポップアップのDOMを基準にした相対座標は不要）
               setContextMenu({
-                x: e.clientX - popupRect.left,
-                y: e.clientY - popupRect.top,
+                x: e.clientX,
+                y: e.clientY,
                 items: buildContextMenuItems(targetRes),
               });
             }}
           />
         ))}
       </div>
-      {contextMenu && (
-        <ContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          items={contextMenu.items}
-          onClose={() => setContextMenu(null)}
-        />
-      )}
+      {contextMenu &&
+        createPortal(
+          <ContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            items={contextMenu.items}
+            onClose={() => setContextMenu(null)}
+          />,
+          document.body,
+        )}
     </div>
   );
 };

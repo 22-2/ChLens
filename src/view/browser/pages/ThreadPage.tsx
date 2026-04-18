@@ -7,11 +7,13 @@ import React, {
   useState,
 } from "react";
 import { container } from "src/service-container/index";
-import type { IRes, IThreadDetail } from "src/service-container/interfaces";
+import type { IRes } from "src/service-container/interfaces";
 import { AnchorPreview } from "src/view/browser/components/AnchorPreview";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { SearchBar } from "src/view/browser/components/SearchBar";
-import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
+import { useMediaViewer } from "src/view/browser/hooks/use-media-viewer";
+import { useThreadData } from "src/view/browser/hooks/use-thread-data";
 import {
   ANCHOR_PREVIEW_GUTTER,
   ANCHOR_PREVIEW_HIDE_DELAY_MS,
@@ -22,7 +24,6 @@ import {
 import { ReplyTreePopup } from "src/view/browser/components/ReplyTreePopup";
 import { ResItem } from "src/view/browser/components/ResItem";
 import { ResPopup } from "src/view/browser/components/ResPopup";
-import { buildIndexes } from "src/view/browser/utils/thread-index";
 import {
   AnchorPreviewState,
   PopupState,
@@ -30,104 +31,52 @@ import {
   ResContextMenuState,
   ThreadFilter,
   TreePopupState,
-  ViewerState,
 } from "src/view/browser/utils/types";
-import {
-  buildKyodemoUrl,
-  copyText,
-  GestureDirection,
-  GesturePoint,
-  GESTURE_CONTEXTMENU_SUPPRESS_MS,
-  GESTURE_START_THRESHOLD,
-  hasExternalLink,
-  hasImage,
-  hasVideo,
-  stripHtml,
-  summarizeVerticalGesture,
-  toViewerImageUrl,
-} from "src/view/browser/utils/utils";
+import { buildKyodemoUrl, copyText, stripHtml } from "src/view/browser/utils/utils";
 
 export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
-  const { dispatch } = useTabStore();
-  const [responses, setResponses] = useState<IRes[]>([]);
-  const [, setThreadTitle] = useState(page.title);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [expired, setExpired] = useState(false);
-  // タイトル更新済みかを追跡するref
-  const titleUpdatedRef = useRef(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const viewerStageRef = useRef<HTMLDivElement>(null);
+  const {
+    responses,
+    loading,
+    error,
+    expired,
+    indexes,
+    filteredResponses,
+    filter,
+    setFilter,
+    searchQuery,
+    setSearchQuery,
+    showSearch,
+    setShowSearch,
+    fetchThread,
+    idPositions,
+    setResponses,
+    messageProtocol,
+  } = useThreadData(page, refreshKey);
+  const {
+    viewer,
+    viewerScale,
+    viewerStageRef,
+    openMediaFromUrl,
+    closeViewer,
+    navigateViewer,
+    setViewerScale,
+  } = useMediaViewer();
 
-  // UI状態
-  const [filter, setFilter] = useState<ThreadFilter>("all");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showSearch, setShowSearch] = useState(false);
+  useMouseGesture(rootRef);
+
   const [popup, setPopup] = useState<PopupState | null>(null);
   const [treePopups, setTreePopups] = useState<TreePopupState[]>([]);
   const [resContextMenu, setResContextMenu] =
     useState<ResContextMenuState | null>(null);
   const [miniAaResNums, setMiniAaResNums] = useState<Set<number>>(new Set());
-  const [viewer, setViewer] = useState<ViewerState | null>(null);
-  const [viewerScale, setViewerScale] = useState(1);
-  const [anchorPreviews, setAnchorPreviews] = useState<AnchorPreviewState[]>(
-    [],
-  );
+  const [anchorPreviews, setAnchorPreviews] = useState<AnchorPreviewState[]>([]);
   const anchorPreviewHideTimerRef = useRef<number | null>(null);
-  const messageProtocol = useMemo(() => {
-    // 拡張ページのprotocolを使うと //example.com/... が拡張URL扱いになるため、元スレURLのprotocolで本文を復元する。
-    try {
-      return new window.URL(page.threadUrl).protocol;
-    } catch {
-      return "https:";
-    }
-  }, [page.threadUrl]);
-
-  const fetchThread = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    titleUpdatedRef.current = false;
-    try {
-      // container経由でThreadサービスにアクセス
-      // refreshKey > 0 のときはキャッシュを無視して強制再取得する
-      const result = await container.thread.getThread(page.threadUrl, {
-        forceUpdate: refreshKey > 0,
-        onCache: (cached: IThreadDetail) => {
-          // キャッシュデータがあれば先に表示
-          if (cached.res) {
-            setResponses(cached.res);
-          }
-          if (cached.title && !titleUpdatedRef.current) {
-            setThreadTitle(cached.title);
-            dispatch({ type: "UPDATE_TITLE", title: cached.title });
-            titleUpdatedRef.current = true;
-          }
-          setLoading(false);
-        },
-      });
-
-      setResponses(result.res);
-      setExpired(result.expired ?? false);
-      if (result.title && !titleUpdatedRef.current) {
-        setThreadTitle(result.title);
-        dispatch({ type: "UPDATE_TITLE", title: result.title });
-      }
-      if (result.message) {
-        setError(result.message);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "スレッドの取得に失敗しました");
-    } finally {
-      setLoading(false);
-    }
-  }, [page.threadUrl, dispatch, refreshKey]);
-
-  useEffect(() => {
-    fetchThread();
-  }, [fetchThread]);
-
-  // レスからID/返信/アンカーのインデックスを構築
-  const indexes = useMemo(() => buildIndexes(responses), [responses]);
+  // 開いた順にz-indexを単調増加させる。後から開いたポップアップが常に前面に表示される。
+  // AnchorPreview内でrepクリック → ReplyTreePopupが前面に出る、などの重なり順を保証する。
+  const zCounterRef = useRef(POPUP_BASE_Z);
+  const getNextZ = useCallback(() => ++zCounterRef.current, []);
 
   // Ctrl+Fで検索バーを開く
   useEffect(() => {
@@ -139,42 +88,7 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
-
-  // フィルタ & 検索適用
-  const filteredResponses = useMemo(() => {
-    let list = responses;
-
-    if (filter !== "all") {
-      list = list.filter((res) => {
-        switch (filter) {
-          case "popular":
-            return (indexes.repIndex.get(res.num)?.size ?? 0) >= 3;
-          case "image":
-            return hasImage(res.message);
-          case "video":
-            return hasVideo(res.message);
-          case "link":
-            return hasExternalLink(res.message);
-        }
-      });
-    }
-
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      list = list.filter((res) => {
-        const text = stripHtml(res.message).toLowerCase();
-        const name = stripHtml(res.name).toLowerCase();
-        return (
-          text.includes(q) ||
-          name.includes(q) ||
-          (res.id?.toLowerCase().includes(q) ?? false)
-        );
-      });
-    }
-
-    return list;
-  }, [responses, filter, searchQuery, indexes.repIndex]);
+  }, [setShowSearch]);
 
   /**
    * viewport座標（e.clientX/Y）を .thread-page 内の absolute 座標に変換する。
@@ -202,10 +116,10 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
         .map((num) => indexes.resMap.get(num))
         .filter((r): r is IRes => !!r);
       const { x, y } = toPageCoords(e.clientX, e.clientY);
-      setPopup({ x, y, items, title: `ID:${id} (${items.length}件)` });
+      setPopup({ x, y, items, title: `ID:${id} (${items.length}件)`, z: getNextZ() });
       setTreePopups([]);
     },
-    [indexes, toPageCoords],
+    [indexes, toPageCoords, getNextZ],
   );
 
   // 返信クリック → 返信ツリーをポップアップ表示（スレッド本文から）
@@ -214,10 +128,10 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
       hideAnchorPreviewImmediately();
       const { x, y } = toPageCoords(e.clientX, e.clientY);
       // 本文からの返信クリックは既存ポップアップをすべてリセットして新規スタック開始
-      setTreePopups([{ x, y, resNum }]);
+      setTreePopups([{ x, y, resNum, z: getNextZ() }]);
       setPopup(null);
     },
-    [toPageCoords],
+    [toPageCoords, getNextZ],
   );
 
   const closePopup = useCallback(() => {
@@ -230,46 +144,6 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
     setResContextMenu(null);
   }, []);
 
-  const openMediaFromUrl = useCallback(
-    (url: string, resImages?: string[]) => {
-      const imageUrl = toViewerImageUrl(url);
-      if (imageUrl) {
-        if (resImages && resImages.length > 1) {
-          const idx = resImages.indexOf(url);
-          setViewer({
-            src: imageUrl,
-            label: url,
-            images: resImages,
-            currentIndex: idx >= 0 ? idx : 0,
-          });
-        } else {
-          setViewer({ src: imageUrl, label: url });
-        }
-        setViewerScale(1);
-        return;
-      }
-      window.open(url, "_blank", "noopener,noreferrer");
-    },
-    [],
-  );
-
-  // ビューア内で同レスの画像を前後に移動する
-  const navigateViewer = useCallback((delta: number) => {
-    setViewer((prev) => {
-      if (!prev?.images) return prev;
-      const len = prev.images.length;
-      const newIdx = ((prev.currentIndex ?? 0) + delta + len) % len;
-      const rawUrl = prev.images[newIdx];
-      const newSrc = toViewerImageUrl(rawUrl) ?? rawUrl;
-      return { ...prev, src: newSrc, label: rawUrl, currentIndex: newIdx };
-    });
-    setViewerScale(1);
-  }, []);
-
-  const closeViewer = useCallback(() => {
-    setViewer(null);
-  }, []);
-
   const clearAnchorPreviewHideTimer = useCallback(() => {
     if (anchorPreviewHideTimerRef.current != null) {
       window.clearTimeout(anchorPreviewHideTimerRef.current);
@@ -277,16 +151,18 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
     }
   }, []);
 
-  // ポップアップ（ResPopup/ReplyTreePopup）内からの返信クリック。
+  // ポップアップ/アンカープレビュー内からの返信クリック。
   // アンカープレビューを即時消去せず、スタックに積んで親子関係を維持する。
+  // z-indexはgetNextZ()により「後から開いたものが前面」が保証されるため、
+  // AnchorPreview内からの返信でもReplyTreePopupが正しく前面に表示される。
   const handleRepClickInPopup = useCallback(
     (resNum: number, e: React.MouseEvent) => {
       clearAnchorPreviewHideTimer();
       const { x, y } = toPageCoords(e.clientX, e.clientY);
-      setTreePopups((prev) => [...prev, { x, y, resNum }]);
-      // 親ポップアップ（ResPopup）は閉じない
+      setTreePopups((prev) => [...prev, { x, y, resNum, z: getNextZ() }]);
+      // 親ポップアップ（ResPopup / AnchorPreview）は閉じない
     },
-    [clearAnchorPreviewHideTimer, toPageCoords],
+    [clearAnchorPreviewHideTimer, toPageCoords, getNextZ],
   );
 
   const hideAnchorPreviewImmediately = useCallback(
@@ -295,18 +171,6 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
       setAnchorPreviews((prev) => prev.slice(0, fromDepth));
     },
     [clearAnchorPreviewHideTimer],
-  );
-
-  // AnchorPreview内からの返信クリック。
-  // AnchorPreview（z-index: ANCHOR_PREVIEW_BASE_Z+）がReplyTreePopup（z-index: POPUP_BASE_Z+）より
-  // 前面に描画されるため、アンカープレビューを先に閉じてからツリーポップアップを開く。
-  const handleRepClickFromAnchor = useCallback(
-    (resNum: number, e: React.MouseEvent) => {
-      hideAnchorPreviewImmediately();
-      const { x, y } = toPageCoords(e.clientX, e.clientY);
-      setTreePopups((prev) => [...prev, { x, y, resNum }]);
-    },
-    [hideAnchorPreviewImmediately, toPageCoords],
   );
 
   const hideAnchorPreview = useCallback(
@@ -358,285 +222,17 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
       // 旧PopupViewと同様に深さごとのスタックで保持し、子プレビュー表示中も親を残す。
       setAnchorPreviews((prev) => {
         const next = prev.slice(0, depth);
-        next.push({ depth, x, y, items, label });
+        next.push({ depth, x, y, items, label, z: getNextZ() });
         return next;
       });
     },
-    [clearAnchorPreviewHideTimer, indexes.resMap, toPageCoords],
+    [clearAnchorPreviewHideTimer, indexes.resMap, toPageCoords, getNextZ],
   );
 
   useEffect(() => {
     return () => {
       if (anchorPreviewHideTimerRef.current != null) {
         window.clearTimeout(anchorPreviewHideTimerRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!viewer) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        closeViewer();
-      } else if (e.key === "ArrowLeft") {
-        navigateViewer(-1);
-      } else if (e.key === "ArrowRight") {
-        navigateViewer(1);
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [closeViewer, navigateViewer, viewer]);
-
-  // React の onWheel はデフォルト passive なので preventDefault が効かない。
-  // passive: false で明示的にアタッチしてズームとスクロールを分離する。
-  useEffect(() => {
-    const el = viewerStageRef.current;
-    if (!el) return;
-    const handler = (e: WheelEvent) => {
-      e.preventDefault();
-      setViewerScale((prev) => {
-        const next = e.deltaY < 0 ? prev + 0.15 : prev - 0.15;
-        return Math.min(5, Math.max(0.25, +next.toFixed(2)));
-      });
-    };
-    el.addEventListener("wheel", handler, { passive: false });
-    return () => el.removeEventListener("wheel", handler);
-    // viewer が変化するたびに stage がマウント/アンマウントするため再アタッチする
-  }, [viewer]);
-
-  useEffect(() => {
-    const host = rootRef.current;
-    if (!host) return;
-
-    // React版では content-area が実際のスクロールコンテナなので、旧ジェスチャーの移動先もそこへ合わせる。
-    const scrollContainer = host.closest(".content-area");
-    if (!(scrollContainer instanceof HTMLElement)) {
-      return;
-    }
-
-    let points: GesturePoint[] = [];
-    let isDrawing = false;
-    let gestureCandidate = false;
-    let gestureJustCompleted = false;
-    let detectedGesture: GestureDirection | null = null;
-    let canvas: HTMLCanvasElement | null = null;
-    let context: CanvasRenderingContext2D | null = null;
-    let label: HTMLDivElement | null = null;
-    let suppressTimerId: number | null = null;
-
-    const isWithinHost = (target: EventTarget | null): boolean => {
-      return target instanceof Node && host.contains(target);
-    };
-
-    const clearSuppressTimer = (): void => {
-      if (suppressTimerId != null) {
-        window.clearTimeout(suppressTimerId);
-        suppressTimerId = null;
-      }
-    };
-
-    const resizeCanvas = (): void => {
-      if (!canvas) {
-        return;
-      }
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-
-    const ensureOverlay = (): void => {
-      if (!canvas) {
-        canvas = document.createElement("canvas");
-        canvas.style.position = "fixed";
-        canvas.style.top = "0";
-        canvas.style.left = "0";
-        canvas.style.width = "100%";
-        canvas.style.height = "100%";
-        canvas.style.zIndex = "99999";
-        canvas.style.pointerEvents = "none";
-        document.body.appendChild(canvas);
-        context = canvas.getContext("2d");
-        resizeCanvas();
-      }
-
-      if (!label) {
-        label = document.createElement("div");
-        label.style.position = "fixed";
-        label.style.top = "50%";
-        label.style.left = "50%";
-        label.style.transform = "translate(-50%, -50%)";
-        label.style.fontSize = "64px";
-        label.style.fontWeight = "bold";
-        label.style.color = "rgba(0, 123, 255, 0.8)";
-        label.style.pointerEvents = "none";
-        label.style.zIndex = "100000";
-        label.style.textShadow =
-          "2px 2px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff";
-        label.style.fontFamily = "sans-serif";
-        document.body.appendChild(label);
-      }
-
-      if (!context) {
-        return;
-      }
-
-      canvas.style.display = "block";
-      label.style.display = "block";
-      label.textContent = "";
-      context.clearRect(0, 0, canvas.width, canvas.height);
-      context.beginPath();
-      context.strokeStyle = "rgba(0, 123, 255, 0.8)";
-      context.lineWidth = 4;
-      context.lineCap = "round";
-      context.lineJoin = "round";
-    };
-
-    const stopDrawing = (): void => {
-      isDrawing = false;
-      gestureCandidate = false;
-      points = [];
-      detectedGesture = null;
-      if (canvas) {
-        canvas.style.display = "none";
-      }
-      if (label) {
-        label.style.display = "none";
-        label.textContent = "";
-      }
-    };
-
-    const drawLine = (x: number, y: number): void => {
-      if (!context) {
-        return;
-      }
-      context.lineTo(x, y);
-      context.stroke();
-    };
-
-    const handleMouseDown = (e: MouseEvent): void => {
-      if (e.button !== 2 || !isWithinHost(e.target)) {
-        return;
-      }
-
-      gestureCandidate = true;
-      isDrawing = false;
-      points = [{ x: e.clientX, y: e.clientY }];
-      detectedGesture = null;
-    };
-
-    const handleMouseMove = (e: MouseEvent): void => {
-      if (!gestureCandidate) {
-        return;
-      }
-
-      points.push({ x: e.clientX, y: e.clientY });
-
-      if (!isDrawing) {
-        const start = points[0];
-        const dx = e.clientX - start.x;
-        const dy = e.clientY - start.y;
-        if (Math.hypot(dx, dy) < GESTURE_START_THRESHOLD) {
-          return;
-        }
-
-        ensureOverlay();
-        if (!context) {
-          return;
-        }
-        context.moveTo(start.x, start.y);
-        isDrawing = true;
-      }
-
-      drawLine(e.clientX, e.clientY);
-
-      if (detectedGesture || points.length <= 2 || !label) {
-        return;
-      }
-
-      const summary = summarizeVerticalGesture(points);
-      if (!summary) {
-        return;
-      }
-
-      detectedGesture = summary.direction;
-      label.textContent = summary.direction === "Up" ? "▲ Top" : "▼ Bottom";
-    };
-
-    const handleMouseUp = (e: MouseEvent): void => {
-      if (e.button !== 2 || !gestureCandidate) {
-        return;
-      }
-
-      if (!isDrawing) {
-        gestureCandidate = false;
-        points = [];
-        detectedGesture = null;
-        return;
-      }
-
-      const completedGesture = detectedGesture;
-      stopDrawing();
-      gestureJustCompleted = true;
-      clearSuppressTimer();
-      suppressTimerId = window.setTimeout(() => {
-        gestureJustCompleted = false;
-        suppressTimerId = null;
-      }, GESTURE_CONTEXTMENU_SUPPRESS_MS);
-
-      if (completedGesture === "Up") {
-        scrollContainer.scrollTop = 0;
-      } else if (completedGesture === "Down") {
-        scrollContainer.scrollTop = scrollContainer.scrollHeight;
-      }
-    };
-
-    const handleContextMenu = (e: MouseEvent): void => {
-      const targetWithinHost = isWithinHost(e.target);
-
-      if (isDrawing || gestureJustCompleted) {
-        if (targetWithinHost || gestureJustCompleted) {
-          e.preventDefault();
-          e.stopPropagation();
-          stopDrawing();
-          gestureJustCompleted = false;
-          clearSuppressTimer();
-        }
-        return;
-      }
-
-      if (gestureCandidate && targetWithinHost) {
-        gestureCandidate = false;
-        points = [];
-        detectedGesture = null;
-      }
-    };
-
-    const handleWindowBlur = (): void => {
-      stopDrawing();
-      gestureJustCompleted = false;
-      clearSuppressTimer();
-    };
-
-    document.addEventListener("mousedown", handleMouseDown, true);
-    document.addEventListener("mousemove", handleMouseMove, true);
-    document.addEventListener("mouseup", handleMouseUp, true);
-    document.addEventListener("contextmenu", handleContextMenu, true);
-    window.addEventListener("resize", resizeCanvas);
-    window.addEventListener("blur", handleWindowBlur);
-
-    return () => {
-      document.removeEventListener("mousedown", handleMouseDown, true);
-      document.removeEventListener("mousemove", handleMouseMove, true);
-      document.removeEventListener("mouseup", handleMouseUp, true);
-      document.removeEventListener("contextmenu", handleContextMenu, true);
-      window.removeEventListener("resize", resizeCanvas);
-      window.removeEventListener("blur", handleWindowBlur);
-      clearSuppressTimer();
-      if (canvas) {
-        canvas.remove();
-      }
-      if (label) {
-        label.remove();
       }
     };
   }, []);
@@ -702,20 +298,6 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
     },
     [page.threadUrl],
   );
-
-  // 各レスのID内通し番号を事前計算
-  const idPositions = useMemo(() => {
-    const positions = new Map<number, number>();
-    const counters = new Map<string, number>();
-    for (const res of responses) {
-      if (res.id) {
-        const count = (counters.get(res.id) ?? 0) + 1;
-        counters.set(res.id, count);
-        positions.set(res.num, count);
-      }
-    }
-    return positions;
-  }, [responses]);
 
   const filterButtons: { key: ThreadFilter; label: string }[] = [
     { key: "all", label: "全て" },
@@ -1013,13 +595,14 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
               messageProtocol={messageProtocol}
               repIndex={indexes.repIndex}
               onUrlClick={openMediaFromUrl}
-              onRepClick={handleRepClickFromAnchor}
+              onRepClick={handleRepClickInPopup}
               onAnchorClick={handleAnchorClick}
               onAnchorHover={showAnchorPreview}
               onAnchorLeave={hideAnchorPreview}
               onMouseEnter={clearAnchorPreviewHideTimer}
               onMouseLeave={() => hideAnchorPreview(anchorPreview.depth)}
               buildContextMenuItems={buildPopupContextMenuItems}
+              zIndex={anchorPreview.z}
             />
           ))}
 
@@ -1038,9 +621,10 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
               onAnchorHover={showAnchorPreview}
               onAnchorLeave={hideAnchorPreview}
               buildContextMenuItems={buildPopupContextMenuItems}
-              // 子ツリーポップアップが開いている間は外側クリックで閉じない
-              disableOutsideClick={treePopups.length > 0}
-              zIndex={POPUP_BASE_Z}
+              // 子ポップアップ（TreePopup / AnchorPreview）が開いている間は外側クリックで閉じない。
+              // AnchorPreview内のmousedownがdocumentに伝播してResPopupを閉じてしまうのを防ぐ。
+              disableOutsideClick={treePopups.length > 0 || anchorPreviews.length > 0}
+              zIndex={popup.z}
               onClose={closePopup}
               onMouseEnter={clearAnchorPreviewHideTimer}
               onMouseLeave={() => hideAnchorPreview(0)}
@@ -1063,10 +647,11 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
               onAnchorHover={showAnchorPreview}
               onAnchorLeave={hideAnchorPreview}
               buildContextMenuItems={buildPopupContextMenuItems}
-              // 最上位以外は外側クリックで閉じない（子が閉じてから順番に閉じる）
-              disableOutsideClick={i < treePopups.length - 1}
-              // スタックの深さに応じてResPopupより前面に出る
-              zIndex={POPUP_BASE_Z + 1 + i}
+              // 上位ポップアップまたはAnchorPreviewが開いている間は外側クリックで閉じない。
+              // AnchorPreview内のmousedownがdocumentに伝播してTreePopupを閉じてしまうのを防ぐ。
+              disableOutsideClick={i < treePopups.length - 1 || anchorPreviews.length > 0}
+              // 開いた順にカウントされたz-indexで「後から開いたものが前面」を保証する
+              zIndex={tp.z}
               onClose={() => setTreePopups((prev) => prev.slice(0, i))}
               onMouseEnter={clearAnchorPreviewHideTimer}
               onMouseLeave={() => hideAnchorPreview(0)}
