@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import React from "react";
 import { createPortal } from "react-dom";
 import type { IRes } from "src/service-container";
@@ -21,7 +21,8 @@ export const ReplyTreePopup: React.FC<{
   repIndex: Map<number, Set<number>>;
   resMap: Map<number, IRes>;
   messageProtocol: string;
-  onUrlClick: (url: string, resImages?: string[]) => void;
+  onUrlClick: (url: string, resImages?: string[], button?: 0 | 1) => void;
+  onUrlContextMenu: (url: string, e: React.MouseEvent) => void;
   onRepClick: (resNum: number, e: React.MouseEvent) => void;
   onAnchorClick: (resNum: number) => void;
   onAnchorHover: (
@@ -49,6 +50,7 @@ export const ReplyTreePopup: React.FC<{
   resMap,
   messageProtocol,
   onUrlClick,
+  onUrlContextMenu,
   onRepClick,
   onAnchorClick,
   onAnchorHover,
@@ -64,23 +66,14 @@ export const ReplyTreePopup: React.FC<{
   const [contextMenu, setContextMenu] =
     useState<InternalContextMenuState | null>(null);
 
-  useEffect(() => {
-    // ContextMenuが開いているとき、またはAnchorPreview等の子ポップアップが開いているときは
-    // 外側クリック閉じを無効にする。
-    // ContextMenuはcreatePortalでbody直下に描画されるため、ContextMenuのDOMはref.currentの
-    // 外にある。外側クリック判定をそのまま使うとContextMenu上のclickで閉じてしまう。
-    if (disableOutsideClick || contextMenu != null) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        onClose();
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [onClose, disableOutsideClick, contextMenu]);
-
   // スクロールコンテナ内での position:absolute に対応したオーバーフロー補正
   useAdjustOverflow(ref);
+
+  const handleMouseLeave = () => {
+    // 子ポップアップまたはContextMenuが開いている間は親を閉じない。
+    if (disableOutsideClick || contextMenu != null) return;
+    onClose();
+  };
 
   const handleResContextMenu = (e: React.MouseEvent, targetRes: IRes) => {
     e.stopPropagation();
@@ -98,7 +91,13 @@ export const ReplyTreePopup: React.FC<{
       className="res-popup"
       style={{ left: x, top: y, ...(zIndex != null && { zIndex }) }}
       onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
+      onMouseLeave={(e) => {
+        onMouseLeave?.();
+        if (e.relatedTarget instanceof Node && ref.current?.contains(e.relatedTarget)) {
+          return;
+        }
+        handleMouseLeave();
+      }}
     >
       <div className="res-popup__header">
         <span>{`>>${resNum} への返信ツリー`}</span>
@@ -113,6 +112,7 @@ export const ReplyTreePopup: React.FC<{
           resMap={resMap}
           messageProtocol={messageProtocol}
           onUrlClick={onUrlClick}
+          onUrlContextMenu={onUrlContextMenu}
           onRepClick={onRepClick}
           onAnchorClick={onAnchorClick}
           onAnchorHover={onAnchorHover}

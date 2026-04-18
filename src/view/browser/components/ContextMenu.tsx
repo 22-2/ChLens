@@ -10,6 +10,7 @@ export interface ContextMenuItem {
   danger?: boolean;
   separator?: boolean;
   onSelect?: () => void;
+  onAuxSelect?: (button: number) => void;
 }
 
 interface Props {
@@ -70,6 +71,16 @@ export const ContextMenu: React.FC<Props> = ({ x, y, items, onClose }) => {
               if (!item.disabled && item.onSelect) {
                 item.onSelect();
               }
+              onClose();
+            }}
+            onAuxClick={(e) => {
+              if (item.disabled || !item.onAuxSelect) return;
+              // コンテキストメニューでも中クリック操作を拾えるようにして、
+              // 履歴の「中クリックで新規タブ」を実現する。
+              if (e.button === 1) {
+                e.preventDefault();
+              }
+              item.onAuxSelect(e.button);
               onClose();
             }}
           >

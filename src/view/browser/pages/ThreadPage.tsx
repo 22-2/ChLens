@@ -10,9 +10,11 @@ import { container } from "src/service-container/index";
 import type { IRes } from "src/service-container/interfaces";
 import { AnchorPreview } from "src/view/browser/components/AnchorPreview";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
+import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
 import { useMediaViewer } from "src/view/browser/hooks/use-media-viewer";
+import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";
 import {
   ANCHOR_PREVIEW_GUTTER,
@@ -34,6 +36,12 @@ import type {
 } from "src/view/browser/utils/types";
 import { buildKyodemoUrl, copyText, stripHtml } from "src/view/browser/utils/utils";
 
+interface UrlContextMenuState {
+  x: number;
+  y: number;
+  rawUrl: string;
+}
+
 export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
   const rootRef = useRef<HTMLDivElement>(null);
   const {
@@ -54,6 +62,7 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
     setResponses,
     messageProtocol,
   } = useThreadData(page, refreshKey);
+  const { dispatch } = useTabStore();
   const {
     viewer,
     viewerScale,
@@ -74,6 +83,8 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
 
   const [miniAaResNums, setMiniAaResNums] = useState<Set<number>>(new Set());
   const anchorPreviewHideTimerRef = useRef<number | null>(null);
+  const [urlContextMenu, setUrlContextMenu] =
+    useState<UrlContextMenuState | null>(null);
 
   const closeNonContextPopups = useCallback(() => {
     closePopupsByPredicate((item) => item.type !== "contextMenu");
@@ -105,16 +116,14 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
 
   const hasAnchorPreviews = anchorPreviews.length > 0;
 
-  // Ctrl+Fで検索バーを開く
+  // 検索バーはURLバー右メニューからのみ開く。
+  // （Ctrl+F割り当ては無効化して、ブラウザ/OS標準ショートカットを優先する）
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key === "f") {
-        e.preventDefault();
+    const handleOpenSearch = () => {
         setShowSearch(true);
-      }
     };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("thread-search-open", handleOpenSearch);
+    return () => window.removeEventListener("thread-search-open", handleOpenSearch);
   }, [setShowSearch]);
 
   /**
@@ -241,6 +250,127 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
     },
     [addPopup, closePopupsByPredicate],
   );
+
+  const resolveAbsoluteUrl = useCallback(
+    (rawUrl: string): string => {
+      try {
+        return new window.URL(rawUrl, page.threadUrl).href;
+      } catch {
+        return rawUrl;
+      }
+    },
+    [page.threadUrl],
+  );
+
+  const parseInternalPage = useCallback((absoluteUrl: string) => {
+    try {
+      const url = new window.URL(absoluteUrl);
+      const path = url.pathname;
+
+      const is5chThread = /^\/test\/read\.cgi\/[^/]+\/\d+\/?/.test(path);
+      const isJbbsThread = /^\/bbs\/read\.cgi\/[^/]+\/[^/]+\/\d+\/?/.test(path);
+      const isMachiThread = /^\/bbs\/read\.cgi\/[^/]+\/\d+\/?/.test(path);
+
+      if (is5chThread || isJbbsThread || isMachiThread) {
+        return {
+          type: "thread" as const,
+          title: absoluteUrl,
+          threadUrl: absoluteUrl,
+        };
+      }
+
+      const is5chBoard = /^\/[^/]+\/$/.test(path);
+      const isJbbsBoard = /^\/bbs\/read\.cgi\/[^/]+\/[^/]+\/$/.test(path);
+      if (is5chBoard || isJbbsBoard) {
+        return {
+          type: "threadList" as const,
+          title: absoluteUrl,
+          boardUrl: absoluteUrl,
+          boardTitle: absoluteUrl,
+        };
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  }, []);
+
+  const openResolvedUrl = useCallback(
+    (absoluteUrl: string, button: 0 | 1, resImages?: string[]) => {
+      const internalPage = parseInternalPage(absoluteUrl);
+      if (internalPage) {
+        // 5ch互換URLは外部ブラウザではなく拡張内で開く。
+        if (button === 1) {
+          dispatch({ type: "OPEN_IN_NEW_TAB", page: internalPage });
+        } else {
+          dispatch({ type: "NAVIGATE", page: internalPage });
+        }
+        return;
+      }
+
+      if (button === 1) {
+        window.open(absoluteUrl, "_blank", "noopener,noreferrer");
+        return;
+      }
+
+      openMediaFromUrl(absoluteUrl, resImages);
+    },
+    [dispatch, openMediaFromUrl, parseInternalPage],
+  );
+
+  const handleUrlClick = useCallback(
+    (rawUrl: string, resImages?: string[], button: 0 | 1 = 0) => {
+      const absoluteUrl = resolveAbsoluteUrl(rawUrl);
+      openResolvedUrl(absoluteUrl, button, resImages);
+    },
+    [openResolvedUrl, resolveAbsoluteUrl],
+  );
+
+  const handleUrlContextMenu = useCallback(
+    (rawUrl: string, e: React.MouseEvent) => {
+      const { x, y } = toPageCoords(e.clientX, e.clientY);
+      setUrlContextMenu({ x, y, rawUrl });
+    },
+    [toPageCoords],
+  );
+
+  const closeUrlContextMenu = useCallback(() => {
+    setUrlContextMenu(null);
+  }, []);
+
+  const urlContextItems = useMemo<ContextMenuItem[]>(() => {
+    if (!urlContextMenu) return [];
+    const absoluteUrl = resolveAbsoluteUrl(urlContextMenu.rawUrl);
+    const internalPage = parseInternalPage(absoluteUrl);
+
+    return [
+      {
+        id: "open-in-current",
+        label: internalPage ? "拡張内で開く" : "開く",
+        onSelect: () => openResolvedUrl(absoluteUrl, 0),
+      },
+      {
+        id: "open-in-new-tab",
+        label: internalPage ? "拡張内の新しいタブで開く" : "新しいタブで開く",
+        onSelect: () => openResolvedUrl(absoluteUrl, 1),
+      },
+      { id: "sep-url-1", separator: true },
+      {
+        id: "copy-url",
+        label: "URLをコピー",
+        onSelect: () => {
+          void copyText(absoluteUrl);
+        },
+      },
+      {
+        id: "open-in-browser",
+        label: "ブラウザで開く",
+        onSelect: () => {
+          window.open(absoluteUrl, "_blank", "noopener,noreferrer");
+        },
+      },
+    ];
+  }, [openResolvedUrl, parseInternalPage, resolveAbsoluteUrl, urlContextMenu]);
 
   // IDクリック → そのIDの全レスをポップアップ表示
   const handleIdClick = useCallback(
@@ -626,7 +756,8 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
                   messageProtocol={messageProtocol}
                   onIdClick={handleIdClick}
                   onRepClick={handleRepClick}
-                  onUrlClick={openMediaFromUrl}
+                  onUrlClick={handleUrlClick}
+                  onUrlContextMenu={handleUrlContextMenu}
                   onAnchorClick={handleAnchorClick}
                   onAnchorHover={showAnchorPreview}
                   onAnchorLeave={hideAnchorPreview}
@@ -650,6 +781,15 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
             />
           )}
 
+          {urlContextMenu && (
+            <ContextMenu
+              x={urlContextMenu.x}
+              y={urlContextMenu.y}
+              items={urlContextItems}
+              onClose={closeUrlContextMenu}
+            />
+          )}
+
           {anchorPreviews.map((anchorPreview) => (
             <AnchorPreview
               key={anchorPreview.id}
@@ -660,7 +800,8 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
               label={anchorPreview.payload.label}
               messageProtocol={messageProtocol}
               repIndex={indexes.repIndex}
-              onUrlClick={openMediaFromUrl}
+              onUrlClick={handleUrlClick}
+              onUrlContextMenu={handleUrlContextMenu}
               onRepClick={handleRepClickInPopup(anchorPreview.id)}
               onAnchorClick={handleAnchorClick}
               onAnchorHover={showAnchorPreview}
@@ -681,7 +822,8 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
               items={idPopup.payload.items}
               messageProtocol={messageProtocol}
               repIndex={indexes.repIndex}
-              onUrlClick={openMediaFromUrl}
+              onUrlClick={handleUrlClick}
+              onUrlContextMenu={handleUrlContextMenu}
               onRepClick={handleRepClickInPopup(idPopup.id)}
               onAnchorClick={handleAnchorClick}
               onAnchorHover={showAnchorPreview}
@@ -707,7 +849,8 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
               repIndex={indexes.repIndex}
               resMap={indexes.resMap}
               messageProtocol={messageProtocol}
-              onUrlClick={openMediaFromUrl}
+              onUrlClick={handleUrlClick}
+              onUrlContextMenu={handleUrlContextMenu}
               onRepClick={handleRepClickInPopup(tp.id)}
               onAnchorClick={handleAnchorClick}
               onAnchorHover={showAnchorPreview}

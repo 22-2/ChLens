@@ -6,7 +6,8 @@ import { getEventTargetElement, parseAnchorDisplayTargets } from "src/view/brows
 interface ResBodyProps {
   messageHtml: string;
   anchorPreviewDepth: number;
-  onUrlClick: (url: string) => void;
+  onUrlClick: (url: string, button: 0 | 1) => void;
+  onUrlContextMenu: (url: string, e: React.MouseEvent) => void;
   onAnchorClick: (resNum: number) => void;
   onAnchorHover: (
     targets: number[],
@@ -22,6 +23,7 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
     messageHtml,
     anchorPreviewDepth,
     onUrlClick,
+    onUrlContextMenu,
     onAnchorClick,
     onAnchorHover,
     onAnchorLeave,
@@ -86,7 +88,31 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
             return;
           }
           e.preventDefault();
-          onUrlClick(href);
+          onUrlClick(href, 0);
+        }}
+        onAuxClick={(e) => {
+          const target = getEventTargetElement(e.target);
+          const anchor = target?.closest("a");
+          if (!(anchor instanceof HTMLAnchorElement)) return;
+          const href = anchor.getAttribute("href") ?? "";
+          if (!href || href.startsWith("javascript:") || href.startsWith("#")) {
+            return;
+          }
+          if (e.button !== 1) return;
+          e.preventDefault();
+          onUrlClick(href, 1);
+        }}
+        onContextMenu={(e) => {
+          const target = getEventTargetElement(e.target);
+          const anchor = target?.closest("a");
+          if (!(anchor instanceof HTMLAnchorElement)) return;
+          if (anchor.matches(ANCHOR_SELECTOR)) return;
+          const href = anchor.getAttribute("href") ?? "";
+          if (!href || href.startsWith("javascript:") || href.startsWith("#")) {
+            return;
+          }
+          e.preventDefault();
+          onUrlContextMenu(href, e);
         }}
       />
     );

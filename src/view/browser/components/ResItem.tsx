@@ -19,6 +19,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
     onIdClick,
     onRepClick,
     onUrlClick,
+    onUrlContextMenu,
     onAnchorClick,
     onAnchorHover,
     onAnchorLeave,
@@ -89,7 +90,8 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
         <ResBody
           messageHtml={decoded.messageHtml}
           anchorPreviewDepth={0}
-          onUrlClick={onUrlClick}
+          onUrlClick={(url, button) => onUrlClick(url, undefined, button)}
+          onUrlContextMenu={onUrlContextMenu}
           onAnchorClick={onAnchorClick}
           onAnchorHover={onAnchorHover}
           onAnchorLeave={onAnchorLeave}
@@ -100,7 +102,16 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
               <button
                 key={`${res.num}:${url}`}
                 className="res__link"
-                onClick={() => onUrlClick(url)}
+                onClick={() => onUrlClick(url, undefined, 0)}
+                onAuxClick={(e) => {
+                  if (e.button !== 1) return;
+                  e.preventDefault();
+                  onUrlClick(url, undefined, 1);
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  onUrlContextMenu(url, e);
+                }}
                 title={url}
               >
                 {url}
@@ -116,7 +127,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
                 className="res__thumb"
                 onClick={() =>
                   // 同レス内の全画像URLを渡してビューア内で前後移動できるようにする
-                  onUrlClick(raw, imageUrls.map((x) => x.raw))
+                  onUrlClick(raw, imageUrls.map((x) => x.raw), 0)
                 }
                 title={raw}
               >
@@ -141,7 +152,8 @@ export interface ResItemProps {
   onIdClick: (id: string, e: React.MouseEvent) => void;
   onRepClick: (resNum: number, e: React.MouseEvent) => void;
   /** url: クリックされたURL, resImages: 同レス内の全画像URL（ビューア前後移動用、省略可） */
-  onUrlClick: (url: string, resImages?: string[]) => void;
+  onUrlClick: (url: string, resImages?: string[], button?: 0 | 1) => void;
+  onUrlContextMenu: (url: string, e: React.MouseEvent) => void;
   onAnchorClick: (resNum: number) => void;
   onAnchorHover: (
     targets: number[],

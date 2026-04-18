@@ -19,7 +19,8 @@ export interface AnchorPreviewProps {
   label: string;
   messageProtocol: string;
   repIndex: Map<number, Set<number>>;
-  onUrlClick: (url: string, resImages?: string[]) => void;
+  onUrlClick: (url: string, resImages?: string[], button?: 0 | 1) => void;
+  onUrlContextMenu: (url: string, e: React.MouseEvent) => void;
   onRepClick: (resNum: number, e: React.MouseEvent) => void;
   onAnchorClick: (resNum: number) => void;
   onAnchorHover: (
@@ -45,6 +46,7 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
   messageProtocol,
   repIndex,
   onUrlClick,
+  onUrlContextMenu,
   onRepClick,
   onAnchorClick,
   onAnchorHover,
@@ -117,6 +119,7 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
             anchorPreviewDepth={depth + 1}
             repIndex={repIndex}
             onUrlClick={onUrlClick}
+            onUrlContextMenu={onUrlContextMenu}
             onRepClick={onRepClick}
             onAnchorClick={onAnchorClick}
             onAnchorHover={onAnchorHover}

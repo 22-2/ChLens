@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Filter, Menu, RotateCw, Search, Settings } from "lucide-react";
+import { ArrowLeft, ArrowRight, Menu, RotateCw, Search, Settings } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
@@ -56,6 +56,11 @@ export const NavigationBar: React.FC = () => {
   const [inputValue, setInputValue] = useState(displayUrl);
   const [isFocused, setIsFocused] = useState(false);
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
+  const [backMenuPosition, setBackMenuPosition] = useState<MenuPosition | null>(
+    null,
+  );
+  const [forwardMenuPosition, setForwardMenuPosition] =
+    useState<MenuPosition | null>(null);
 
   // ページ遷移時にURLバーの表示を同期
   useEffect(() => {
@@ -65,8 +70,6 @@ export const NavigationBar: React.FC = () => {
   }, [displayUrl, isFocused]);
 
   const handleRefresh = useCallback(() => {
-    // RELOADは履歴を変えずにreloadKeyだけインクリメントする。
-    // NAVIGATEを使うと前進履歴が消えて「進む」ボタンがグレーアウトするバグがあったため専用アクションを使う。
     dispatch({ type: "RELOAD" });
   }, [dispatch]);
 
@@ -113,6 +116,8 @@ export const NavigationBar: React.FC = () => {
   const handleMenuClick = useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {
       const rect = e.currentTarget.getBoundingClientRect();
+      setBackMenuPosition(null);
+      setForwardMenuPosition(null);
       setMenuPosition((prev) => {
         if (prev) {
           return null;
@@ -130,15 +135,90 @@ export const NavigationBar: React.FC = () => {
     setMenuPosition(null);
   }, []);
 
+  const closeBackMenu = useCallback(() => {
+    setBackMenuPosition(null);
+  }, []);
+
+  const closeForwardMenu = useCallback(() => {
+    setForwardMenuPosition(null);
+  }, []);
+
+  const handleBackContextMenu = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.preventDefault();
+      if (!back) return;
+      setMenuPosition(null);
+      setForwardMenuPosition(null);
+      setBackMenuPosition({ x: e.clientX, y: e.clientY });
+    },
+    [back],
+  );
+
+  const handleForwardContextMenu = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.preventDefault();
+      if (!forward) return;
+      setMenuPosition(null);
+      setBackMenuPosition(null);
+      setForwardMenuPosition({ x: e.clientX, y: e.clientY });
+    },
+    [forward],
+  );
+
+  const openSearchFromMenu = useCallback(() => {
+    // Ctrl+Fでは開かず、URLバー右メニューからのみ開く要件のため、
+    // NavigationBarからThreadPageへ明示イベントを送る。
+    window.dispatchEvent(new window.CustomEvent("thread-search-open"));
+  }, []);
+
+  const backHistoryItems = useMemo(
+    () =>
+      activeTab.history
+        .map((page, index) => ({ page, index }))
+        .filter(({ index }) => index < activeTab.currentIndex)
+        .sort((a, b) => b.index - a.index)
+        .map(({ page, index }) => ({
+          id: `back-${index}`,
+          label: page.title,
+          onSelect: () => dispatch({ type: "GO_TO_HISTORY_INDEX", index }),
+          onAuxSelect: (button: number) => {
+            if (button !== 1) return;
+            dispatch({ type: "OPEN_IN_NEW_TAB", page });
+          },
+        })),
+    [activeTab.currentIndex, activeTab.history, dispatch],
+  );
+
+  const forwardHistoryItems = useMemo(
+    () =>
+      activeTab.history
+        .map((page, index) => ({ page, index }))
+        .filter(({ index }) => index > activeTab.currentIndex)
+        .sort((a, b) => a.index - b.index)
+        .map(({ page, index }) => ({
+          id: `forward-${index}`,
+          label: page.title,
+          onSelect: () => dispatch({ type: "GO_TO_HISTORY_INDEX", index }),
+          onAuxSelect: (button: number) => {
+            if (button !== 1) return;
+            dispatch({ type: "OPEN_IN_NEW_TAB", page });
+          },
+        })),
+    [activeTab.currentIndex, activeTab.history, dispatch],
+  );
+
   const menuItems = useMemo(
     () => [
-      // TODO: Not implemented
-      // {
-      //   id: "open-filter",
-      //   label: "フィルタリング",
-      //   icon: <Filter size={14}/>,
-      //   onSelect: () => {},
-      // },
+      ...(currentPage.type === "thread"
+        ? [
+            {
+              id: "open-search",
+              label: "検索を開く",
+              icon: <Search size={14} />,
+              onSelect: openSearchFromMenu,
+            },
+          ]
+        : []),
       {
         id: "open-settings",
         label: "設定を開く",
@@ -146,7 +226,7 @@ export const NavigationBar: React.FC = () => {
         onSelect: openSettingsTab,
       },
     ],
-    [openSettingsTab],
+    [currentPage.type, openSearchFromMenu, openSettingsTab],
   );
 
   return (
@@ -155,6 +235,7 @@ export const NavigationBar: React.FC = () => {
         className="nav-bar__btn"
         disabled={!back}
         onClick={() => dispatch({ type: "GO_BACK" })}
+        onContextMenu={handleBackContextMenu}
         title="戻る"
       >
         <ArrowLeft size={18} />
@@ -163,6 +244,7 @@ export const NavigationBar: React.FC = () => {
         className="nav-bar__btn"
         disabled={!forward}
         onClick={() => dispatch({ type: "GO_FORWARD" })}
+        onContextMenu={handleForwardContextMenu}
         title="進む"
       >
         <ArrowRight size={18} />
@@ -195,6 +277,24 @@ export const NavigationBar: React.FC = () => {
           y={menuPosition.y}
           items={menuItems}
           onClose={closeMenu}
+        />
+      )}
+
+      {backMenuPosition && backHistoryItems.length > 0 && (
+        <ContextMenu
+          x={backMenuPosition.x}
+          y={backMenuPosition.y}
+          items={backHistoryItems}
+          onClose={closeBackMenu}
+        />
+      )}
+
+      {forwardMenuPosition && forwardHistoryItems.length > 0 && (
+        <ContextMenu
+          x={forwardMenuPosition.x}
+          y={forwardMenuPosition.y}
+          items={forwardHistoryItems}
+          onClose={closeForwardMenu}
         />
       )}
     </div>

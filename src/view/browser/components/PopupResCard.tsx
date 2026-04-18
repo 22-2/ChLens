@@ -15,6 +15,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     anchorPreviewDepth,
     repIndex,
     onUrlClick,
+    onUrlContextMenu,
     onRepClick,
     onAnchorClick,
     onAnchorHover,
@@ -76,7 +77,8 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
         <ResBody
           messageHtml={decoded.messageHtml}
           anchorPreviewDepth={anchorPreviewDepth}
-          onUrlClick={onUrlClick}
+          onUrlClick={(url, button) => onUrlClick(url, undefined, button)}
+          onUrlContextMenu={onUrlContextMenu}
           onAnchorClick={onAnchorClick}
           onAnchorHover={onAnchorHover}
           onAnchorLeave={onAnchorLeave}
@@ -89,7 +91,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
                 className="res__thumb"
                 onClick={() =>
                   // 同レス内の全画像URLを渡してビューア内で前後移動できるようにする
-                  onUrlClick(raw, imageUrls.map((x) => x.raw))
+                  onUrlClick(raw, imageUrls.map((x) => x.raw), 0)
                 }
                 title={raw}
               >
@@ -109,7 +111,8 @@ export interface StaticResCardProps {
   anchorPreviewDepth: number;
   /** 渡された場合、ヘッダーに返信数ボタンを表示する */
   repIndex?: Map<number, Set<number>>;
-  onUrlClick: (url: string, resImages?: string[]) => void;
+  onUrlClick: (url: string, resImages?: string[], button?: 0 | 1) => void;
+  onUrlContextMenu: (url: string, e: React.MouseEvent) => void;
   onRepClick?: (resNum: number, e: React.MouseEvent) => void;
   onAnchorClick: (resNum: number) => void;
   onAnchorHover: (

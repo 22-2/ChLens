@@ -9,7 +9,8 @@ export const ReplyTree: React.FC<{
   repIndex: Map<number, Set<number>>;
   resMap: Map<number, IRes>;
   messageProtocol: string;
-  onUrlClick: (url: string, resImages?: string[]) => void;
+  onUrlClick: (url: string, resImages?: string[], button?: 0 | 1) => void;
+  onUrlContextMenu: (url: string, e: React.MouseEvent) => void;
   onRepClick: (resNum: number, e: React.MouseEvent) => void;
   onAnchorClick: (resNum: number) => void;
   onAnchorHover: (
@@ -28,6 +29,7 @@ export const ReplyTree: React.FC<{
   resMap,
   messageProtocol,
   onUrlClick,
+  onUrlContextMenu,
   onRepClick,
   onAnchorClick,
   onAnchorHover,
@@ -67,6 +69,7 @@ export const ReplyTree: React.FC<{
               anchorPreviewDepth={0}
               repIndex={repIndex}
               onUrlClick={onUrlClick}
+              onUrlContextMenu={onUrlContextMenu}
               onRepClick={onRepClick}
               onAnchorClick={onAnchorClick}
               onAnchorHover={onAnchorHover}
@@ -79,6 +82,7 @@ export const ReplyTree: React.FC<{
               resMap={resMap}
               messageProtocol={messageProtocol}
               onUrlClick={onUrlClick}
+              onUrlContextMenu={onUrlContextMenu}
               onRepClick={onRepClick}
               onAnchorClick={onAnchorClick}
               onAnchorHover={onAnchorHover}

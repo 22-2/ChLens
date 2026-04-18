@@ -1,5 +1,5 @@
 import { Plus, X } from "lucide-react";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { TabContextMenu } from "src/view/browser/components/TabContextMenu";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
@@ -21,6 +21,45 @@ export const TabBar: React.FC = () => {
   const { state, dispatch } = useTabStore();
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [barContextMenu, setBarContextMenu] = useState<BarContextMenuState | null>(null);
+  const [highlightedTabIds, setHighlightedTabIds] = useState<Set<string>>(new Set());
+  const prevTabIdsRef = useRef<Set<string>>(new Set(state.tabs.map((tab) => tab.id)));
+
+  useEffect(() => {
+    const prev = prevTabIdsRef.current;
+    const current = new Set(state.tabs.map((tab) => tab.id));
+    const newIds = state.tabs
+      .map((tab) => tab.id)
+      .filter((tabId) => !prev.has(tabId));
+
+    if (newIds.length > 0) {
+      setHighlightedTabIds((prevIds) => {
+        const next = new Set(prevIds);
+        for (const tabId of newIds) {
+          next.add(tabId);
+        }
+        return next;
+      });
+
+      const timerId = window.setTimeout(() => {
+        setHighlightedTabIds((prevIds) => {
+          const next = new Set(prevIds);
+          for (const tabId of newIds) {
+            next.delete(tabId);
+          }
+          return next;
+        });
+      }, 1500);
+
+      return () => window.clearTimeout(timerId);
+    }
+
+    prevTabIdsRef.current = current;
+    return;
+  }, [state.tabs]);
+
+  useEffect(() => {
+    prevTabIdsRef.current = new Set(state.tabs.map((tab) => tab.id));
+  }, [state.tabs]);
 
   // ミドルクリック（ボタン1）でタブを閉じる
   const handleMouseDown = useCallback(
@@ -87,7 +126,7 @@ export const TabBar: React.FC = () => {
           return (
             <div
               key={tab.id}
-              className={`tab ${isActive ? "tab--active" : ""} ${tab.pinned ? "tab--pinned" : ""}`}
+              className={`tab ${isActive ? "tab--active" : ""} ${tab.pinned ? "tab--pinned" : ""}${highlightedTabIds.has(tab.id) ? " tab--highlighted" : ""}`}
               title={page.title}
               onClick={() => dispatch({ type: "SELECT_TAB", tabId: tab.id })}
               onMouseDown={(e) => handleMouseDown(e, tab.id)}

@@ -33,6 +33,7 @@ export type TabAction =
   | { type: "NAVIGATE_TAB"; tabId: string; page: Page }
   | { type: "GO_BACK" }
   | { type: "GO_FORWARD" }
+  | { type: "GO_TO_HISTORY_INDEX"; index: number }
   | { type: "UPDATE_TITLE"; title: string }
   | { type: "RELOAD" }
   | { type: "RESTORE"; state: TabStoreState };
@@ -277,6 +278,16 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
       return updateActiveTab(state, () => ({
         ...tab,
         currentIndex: tab.currentIndex + 1,
+      }));
+    }
+
+    case "GO_TO_HISTORY_INDEX": {
+      const tab = getActiveTab(state);
+      if (action.index < 0 || action.index >= tab.history.length) return state;
+      if (action.index === tab.currentIndex) return state;
+      return updateActiveTab(state, () => ({
+        ...tab,
+        currentIndex: action.index,
       }));
     }
 

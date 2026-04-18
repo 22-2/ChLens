@@ -79,6 +79,10 @@ body {
   background: rgba(255, 255, 255, 0.4);
 }
 
+.tab--highlighted {
+  animation: surface-highlight-flash 1.5s ease-out;
+}
+
 .tab__title {
   flex: 1;
   overflow: hidden;
@@ -1056,10 +1060,10 @@ body {
 
 /* NG済みレス */
 .res--highlighted {
-  animation: res-highlight-flash 1.5s ease-out;
+  animation: surface-highlight-flash 1.5s ease-out;
 }
 
-@keyframes res-highlight-flash {
+@keyframes surface-highlight-flash {
   0% {
     background-color: rgba(0, 123, 255, 0.3);
   }
