@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import type { IRes } from "src/service-container";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
+import { useAdjustOverflow } from "../utils/use-adjust-overflow";
 
 export interface AnchorPreviewProps {
   depth: number;
@@ -55,36 +56,7 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
   const onMouseLeaveRef = useRef(onMouseLeave);
   onMouseLeaveRef.current = onMouseLeave;
 
-  // x/y が変わるたびに位置リセット＋ビューポートはみ出し補正を再実行する
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    // まず style をリセットして指定位置に戻す
-    el.style.left = `${x}px`;
-    el.style.top = `${y}px`;
-    // レイアウト確定後にはみ出し補正を実行
-    const raf = requestAnimationFrame(() => {
-      const rect = el.getBoundingClientRect();
-      const cb = el.offsetParent?.getBoundingClientRect() ?? {
-        left: 0,
-        top: 0,
-      };
-      const margin = 8;
-      if (rect.right > window.innerWidth) {
-        el.style.left = `${window.innerWidth - rect.width - margin - cb.left}px`;
-      }
-      if (rect.bottom > window.innerHeight) {
-        el.style.top = `${window.innerHeight - rect.height - margin - cb.top}px`;
-      }
-      if (rect.left < 0) {
-        el.style.left = `${margin - cb.left}px`;
-      }
-      if (rect.top < 0) {
-        el.style.top = `${margin - cb.top}px`;
-      }
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [x, y]);
+  useAdjustOverflow(ref);
 
   const prevHasChildPopupRef = useRef(!!hasChildPopup);
   useEffect(() => {
