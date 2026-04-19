@@ -80,7 +80,7 @@
 - [x] fix: 親ポップアップ（root）をクリックしたら、子ポップアップはすべて閉じるように
 - [ ] feat: 返信ツリー専用メニュー（レスの一括コピー）
 - [ ] chore: 返信ツリーに参照元レスを表示する（参照元だってわかるように）
-- [ ] chore: 一番下でスクロールして更新
+- [x] chore: 一番下でスクロールして更新
 src/view/browser/components/WheelProgressIndicator.tsx
 src/view/browser/hooks/useWheelNavigation.ts
 obsidianのプロジェクトから持ってきたから、使われているcss変数は存在していない
