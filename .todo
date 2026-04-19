@@ -105,6 +105,8 @@ useAutoRefresh.ts
 タブの活性判定: document.visibilityState を監視。
 割り込み検知: ユーザーの wheel イベントをトリガーにする。
 
+自動スクロール中はわかりやすくする
+
 - [ ] ツリーが積み重なってるとき、outsideclickしても閉じないことがある
 
 ## prior 2

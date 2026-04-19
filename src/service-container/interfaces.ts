@@ -60,6 +60,7 @@ export interface IBookmark {
 export interface IMessage {
   send(type: string, data?: any): void;
   on(type: string, callback: (data: any) => void): void;
+  off(type: string, callback: (data: any) => void): void;
 }
 
 export interface IUtil {

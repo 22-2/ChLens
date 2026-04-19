@@ -36,6 +36,11 @@ export type TabAction =
   | { type: "GO_TO_HISTORY_INDEX"; index: number }
   | { type: "UPDATE_TITLE"; title: string }
   | { type: "RELOAD" }
+  | {
+      type: "SET_AUTO_REFRESH_ENABLED";
+      enabled: boolean;
+      threadUrl?: string;
+    }
   | { type: "RESTORE"; state: TabStoreState };
 
 // 閉じたタブの最大保持数
@@ -49,6 +54,8 @@ function createTab(): Tab {
     currentIndex: 0,
     pinned: false,
     reloadKey: 0,
+    autoRefreshEnabled: false,
+    autoRefreshThreadUrl: null,
   };
 }
 
@@ -63,8 +70,16 @@ function loadSession(): TabStoreState | null {
       for (const tab of parsed.tabs) {
         if (tab.pinned === undefined) tab.pinned = false;
         if (tab.reloadKey === undefined) tab.reloadKey = 0;
+        if (tab.autoRefreshEnabled === undefined) tab.autoRefreshEnabled = false;
+        if (tab.autoRefreshThreadUrl === undefined) tab.autoRefreshThreadUrl = null;
       }
       if (!parsed.closedTabs) parsed.closedTabs = [];
+      for (const tab of parsed.closedTabs) {
+        if (tab.pinned === undefined) tab.pinned = false;
+        if (tab.reloadKey === undefined) tab.reloadKey = 0;
+        if (tab.autoRefreshEnabled === undefined) tab.autoRefreshEnabled = false;
+        if (tab.autoRefreshThreadUrl === undefined) tab.autoRefreshThreadUrl = null;
+      }
       return parsed;
     }
   } catch {
@@ -309,6 +324,13 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
       return updateActiveTab(state, (tab) => ({
         ...tab,
         reloadKey: tab.reloadKey + 1,
+      }));
+
+    case "SET_AUTO_REFRESH_ENABLED":
+      return updateActiveTab(state, (tab) => ({
+        ...tab,
+        autoRefreshEnabled: action.enabled,
+        autoRefreshThreadUrl: action.enabled ? action.threadUrl ?? tab.autoRefreshThreadUrl : null,
       }));
 
     case "RESTORE":

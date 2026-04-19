@@ -804,7 +804,51 @@ body {
 }
 
 .thread-page__responses {
-  padding: 0 0 120px;
+  padding: 0 0 24px;
+}
+
+.thread-page__auto-scroll-threshold {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  min-height: 120px;
+  padding: 0 16px 28px;
+  color: #5f6368;
+}
+
+.thread-page__auto-scroll-threshold::before {
+  content: "";
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  left: 16px;
+  border-top: 2px dashed #c6dafc;
+}
+
+.thread-page__auto-scroll-threshold--armed::before {
+  border-top-color: #1a73e8;
+}
+
+.thread-page__auto-scroll-threshold--scrolling::before {
+  border-top-color: #0b8043;
+}
+
+.thread-page__auto-scroll-threshold-label {
+  position: relative;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  font-size: 11px;
+  letter-spacing: 0.01em;
+}
+
+.thread-page__auto-scroll-threshold--armed .thread-page__auto-scroll-threshold-label {
+  color: #1a73e8;
+}
+
+.thread-page__auto-scroll-threshold--scrolling .thread-page__auto-scroll-threshold-label {
+  color: #0b8043;
 }
 
 .res {

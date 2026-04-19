@@ -12,6 +12,7 @@ import { AnchorPreview } from "src/view/browser/components/AnchorPreview";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import { SearchBar } from "src/view/browser/components/SearchBar";
+import { useAutoRefresh } from "src/view/browser/hooks/use-auto-refresh";
 import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
 import { useMediaViewer } from "src/view/browser/hooks/use-media-viewer";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
@@ -56,7 +57,7 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
     setResponses,
     messageProtocol,
   } = useThreadData(page, refreshKey);
-  const { dispatch } = useTabStore();
+  const { dispatch, activeTab } = useTabStore();
   const {
     viewer,
     viewerScale,
@@ -77,6 +78,24 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
 
   const [miniAaResNums, setMiniAaResNums] = useState<Set<number>>(new Set());
   const anchorPreviewHideTimerRef = useRef<number | null>(null);
+  const isAutoRefreshEnabled =
+    activeTab.autoRefreshEnabled &&
+    activeTab.autoRefreshThreadUrl === page.threadUrl;
+
+  const requestAutoRefresh = useCallback(() => {
+    dispatch({ type: "RELOAD" });
+  }, [dispatch]);
+
+  const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling } =
+    useAutoRefresh({
+      enabled: isAutoRefreshEnabled,
+      expired,
+      loading,
+      responseCount: responses.length,
+      lastResponseNum: responses.at(-1)?.num ?? null,
+      rootRef,
+      requestRefresh: requestAutoRefresh,
+    });
 
   const closeNonContextPopups = useCallback(() => {
     closePopupsByPredicate((item) => item.type !== "contextMenu");
@@ -853,6 +872,19 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
               );
             })}
           </div>
+
+          {isAutoRefreshEnabled && (
+            <div
+              ref={autoScrollBoundaryRef}
+              className={`thread-page__auto-scroll-threshold${canAutoScroll ? " thread-page__auto-scroll-threshold--armed" : ""}${isAutoScrolling ? " thread-page__auto-scroll-threshold--scrolling" : ""}`}
+            >
+              <span className="thread-page__auto-scroll-threshold-label">
+                {canAutoScroll
+                  ? "この線より下なので新着に追従します"
+                  : "この線より下にいる時だけ新着に追従します"}
+              </span>
+            </div>
+          )}
 
           <div className="thread-page__popup-layer">
             {anchorPreviews.map((anchorPreview) => (

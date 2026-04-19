@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Menu, RotateCw, Search, Settings } from "lucide-react";
+import { ArrowLeft, ArrowRight, Menu, Pause, RotateCw, Search, Settings } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
@@ -59,8 +59,15 @@ export const NavigationBar: React.FC = () => {
   const [backMenuPosition, setBackMenuPosition] = useState<MenuPosition | null>(
     null,
   );
+  const [refreshMenuPosition, setRefreshMenuPosition] =
+    useState<MenuPosition | null>(null);
   const [forwardMenuPosition, setForwardMenuPosition] =
     useState<MenuPosition | null>(null);
+
+  const isThreadAutoRefreshEnabled =
+    currentPage.type === "thread" &&
+    activeTab.autoRefreshEnabled &&
+    activeTab.autoRefreshThreadUrl === currentPage.threadUrl;
 
   // ページ遷移時にURLバーの表示を同期
   useEffect(() => {
@@ -70,8 +77,26 @@ export const NavigationBar: React.FC = () => {
   }, [displayUrl, isFocused]);
 
   const handleRefresh = useCallback(() => {
+    setRefreshMenuPosition(null);
     dispatch({ type: "RELOAD" });
   }, [dispatch]);
+
+  const handleRefreshContextMenu = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      if (currentPage.type !== "thread") {
+        return;
+      }
+
+      e.preventDefault();
+      setMenuPosition(null);
+      setBackMenuPosition(null);
+      setForwardMenuPosition(null);
+      setRefreshMenuPosition((prev) =>
+        prev ? null : { x: e.clientX, y: e.clientY },
+      );
+    },
+    [currentPage.type],
+  );
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -118,6 +143,7 @@ export const NavigationBar: React.FC = () => {
       const rect = e.currentTarget.getBoundingClientRect();
       setBackMenuPosition(null);
       setForwardMenuPosition(null);
+      setRefreshMenuPosition(null);
       setMenuPosition((prev) => {
         if (prev) {
           return null;
@@ -143,11 +169,16 @@ export const NavigationBar: React.FC = () => {
     setForwardMenuPosition(null);
   }, []);
 
+  const closeRefreshMenu = useCallback(() => {
+    setRefreshMenuPosition(null);
+  }, []);
+
   const handleBackContextMenu = useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {
       e.preventDefault();
       if (!back) return;
       setMenuPosition(null);
+      setRefreshMenuPosition(null);
       setForwardMenuPosition(null);
       setBackMenuPosition({ x: e.clientX, y: e.clientY });
     },
@@ -159,6 +190,7 @@ export const NavigationBar: React.FC = () => {
       e.preventDefault();
       if (!forward) return;
       setMenuPosition(null);
+      setRefreshMenuPosition(null);
       setBackMenuPosition(null);
       setForwardMenuPosition({ x: e.clientX, y: e.clientY });
     },
@@ -170,6 +202,12 @@ export const NavigationBar: React.FC = () => {
     // NavigationBarからThreadPageへ明示イベントを送る。
     window.dispatchEvent(new window.CustomEvent("thread-search-open"));
   }, []);
+
+  useEffect(() => {
+    if (currentPage.type !== "thread") {
+      setRefreshMenuPosition(null);
+    }
+  }, [currentPage.type]);
 
   const backHistoryItems = useMemo(
     () =>
@@ -229,6 +267,34 @@ export const NavigationBar: React.FC = () => {
     [currentPage.type, openSearchFromMenu, openSettingsTab],
   );
 
+  const refreshMenuItems = useMemo(
+    () =>
+      currentPage.type === "thread"
+        ? [
+            {
+              id: "toggle-thread-auto-refresh",
+              label: isThreadAutoRefreshEnabled
+                ? "自動更新を停止"
+                : "自動更新を開始",
+              icon: isThreadAutoRefreshEnabled ? <Pause size={14} /> : <RotateCw size={14} />,
+              onSelect: () => {
+                dispatch({
+                  type: "SET_AUTO_REFRESH_ENABLED",
+                  enabled: !isThreadAutoRefreshEnabled,
+                  threadUrl: currentPage.threadUrl,
+                });
+              },
+            },
+            {
+              id: "thread-auto-refresh-note",
+              label: "アクティブなタブでのみ動作",
+              disabled: true,
+            },
+          ]
+        : [],
+    [currentPage, dispatch, isThreadAutoRefreshEnabled],
+  );
+
   return (
     <div className="nav-bar">
       <button
@@ -249,7 +315,12 @@ export const NavigationBar: React.FC = () => {
       >
         <ArrowRight size={18} />
       </button>
-      <button className="nav-bar__btn" onClick={handleRefresh} title="更新">
+      <button
+        className="nav-bar__btn"
+        onClick={handleRefresh}
+        onContextMenu={handleRefreshContextMenu}
+        title="更新"
+      >
         <RotateCw size={16} />
       </button>
 
@@ -295,6 +366,15 @@ export const NavigationBar: React.FC = () => {
           y={forwardMenuPosition.y}
           items={forwardHistoryItems}
           onClose={closeForwardMenu}
+        />
+      )}
+
+      {refreshMenuPosition && refreshMenuItems.length > 0 && (
+        <ContextMenu
+          x={refreshMenuPosition.x}
+          y={refreshMenuPosition.y}
+          items={refreshMenuItems}
+          onClose={closeRefreshMenu}
         />
       )}
     </div>

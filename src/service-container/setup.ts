@@ -39,6 +39,7 @@ export function setupContainer(app: any) {
   const messageAdapter: IMessage = {
     send: (type: string, data?: any) => app.message.send(type, data),
     on: (type: string, cb: (data: any) => void) => app.message.on(type, cb),
+    off: (type: string, cb: (data: any) => void) => app.message.off(type, cb),
   };
 
   // Bookmark Adapter
