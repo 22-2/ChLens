@@ -69,7 +69,9 @@ export function useThreadData(
             dispatch({ type: "UPDATE_TITLE", title: cached.title });
             titleUpdatedRef.current = true;
           }
-          setLoading(false);
+          // 自動更新では cache 描画のあとに本体レスポンスが続くことがある。
+          // ここで loading を下ろすと「更新完了」と誤認して保留中スクロールを捨てるため、
+          // 完了判定は最終 result / finally に寄せる。
         },
       });
 

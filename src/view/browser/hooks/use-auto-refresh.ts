@@ -18,10 +18,13 @@ interface PendingRefreshSnapshot {
   shouldScroll: boolean;
 }
 
+type AutoRefreshPhase = "idle" | "scrolling";
+
 interface UseAutoRefreshOptions {
   enabled: boolean;
   expired: boolean;
   loading: boolean;
+  pauseAutoScroll: boolean;
   responseCount: number;
   lastResponseNum: number | null;
   rootRef: RefObject<HTMLDivElement | null>;
@@ -37,6 +40,7 @@ export interface UseAutoRefreshResult {
   canAutoScroll: boolean;
   isAutoScrolling: boolean;
   intervalMs: number;
+  phase: AutoRefreshPhase;
 }
 
 function readThreadAutoRefreshInterval(): number {
@@ -52,6 +56,7 @@ export function useAutoRefresh({
   enabled,
   expired,
   loading,
+  pauseAutoScroll,
   responseCount,
   lastResponseNum,
   rootRef,
@@ -64,14 +69,37 @@ export function useAutoRefresh({
   const latestSnapshotRef = useRef({ responseCount, lastResponseNum });
   const canAutoScrollRef = useRef(false);
   const userInterruptedRef = useRef(false);
-  const isAutoScrollingRef = useRef(false);
   const scrollObserverFrameRef = useRef<number | null>(null);
+  const scrollingIndicatorTimerRef = useRef<number | null>(null);
   const [canAutoScroll, setCanAutoScroll] = useState(false);
   const [isAutoScrolling, setIsAutoScrolling] = useState(false);
   const [isDocumentVisible, setIsDocumentVisible] = useState(
     document.visibilityState === "visible",
   );
   const [intervalMs, setIntervalMs] = useState(readThreadAutoRefreshInterval);
+
+  const clearScrollingIndicator = useCallback(() => {
+    if (scrollingIndicatorTimerRef.current != null) {
+      window.clearTimeout(scrollingIndicatorTimerRef.current);
+      scrollingIndicatorTimerRef.current = null;
+    }
+    setIsAutoScrolling(false);
+  }, []);
+
+  const showScrollingIndicator = useCallback(() => {
+    if (scrollingIndicatorTimerRef.current != null) {
+      window.clearTimeout(scrollingIndicatorTimerRef.current);
+      scrollingIndicatorTimerRef.current = null;
+    }
+
+    // scrollBy 自体は即時でも、状態表示は少し残した方が
+    // 「今まさに追従した」ことをユーザーが認識しやすい。
+    setIsAutoScrolling(true);
+    scrollingIndicatorTimerRef.current = window.setTimeout(() => {
+      scrollingIndicatorTimerRef.current = null;
+      setIsAutoScrolling(false);
+    }, 900);
+  }, []);
 
   useEffect(() => {
     requestRefreshRef.current = requestRefresh;
@@ -153,9 +181,8 @@ export function useAutoRefresh({
     // OFF にした瞬間に保留中スクロールまで実行すると「止めたのに動く」感触になるので破棄する。
     pendingRefreshRef.current = null;
     userInterruptedRef.current = false;
-    isAutoScrollingRef.current = false;
-    setIsAutoScrolling(false);
-  }, [enabled]);
+    clearScrollingIndicator();
+  }, [clearScrollingIndicator, enabled]);
 
   useEffect(() => {
     const scrollContainer = getScrollContainer();
@@ -171,16 +198,11 @@ export function useAutoRefresh({
       scrollObserverFrameRef.current = window.requestAnimationFrame(() => {
         scrollObserverFrameRef.current = null;
         syncCanAutoScroll();
-
-        if (isAutoScrollingRef.current) {
-          isAutoScrollingRef.current = false;
-          setIsAutoScrolling(false);
-        }
       });
     };
 
     const handleWheel = () => {
-      if (pendingRefreshRef.current || isAutoScrollingRef.current) {
+      if (pendingRefreshRef.current || isAutoScrolling) {
         // smooth scroll を使わない代わりに、ユーザー操作が入ったフレームでは
         // 予定していた自動追従を明示的に取り消して手動スクロールを優先する。
         userInterruptedRef.current = true;
@@ -202,7 +224,15 @@ export function useAutoRefresh({
       scrollContainer.removeEventListener("wheel", handleWheel);
       window.removeEventListener("resize", scheduleSync);
     };
-  }, [getScrollContainer, syncCanAutoScroll]);
+  }, [getScrollContainer, isAutoScrolling, syncCanAutoScroll]);
+
+  useEffect(() => {
+    return () => {
+      if (scrollingIndicatorTimerRef.current != null) {
+        window.clearTimeout(scrollingIndicatorTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (
@@ -267,6 +297,12 @@ export function useAutoRefresh({
       return;
     }
 
+    if (pauseAutoScroll) {
+      // ポップアップ操作中はユーザーの文脈を優先し、
+      // 自動更新だけ継続して自動スクロールはこの回を破棄する。
+      return;
+    }
+
     const scrollContainer = getScrollContainer();
     if (!scrollContainer) {
       return;
@@ -277,13 +313,10 @@ export function useAutoRefresh({
       return;
     }
 
-    isAutoScrollingRef.current = true;
-    setIsAutoScrolling(true);
     scrollContainer.scrollBy({ top: deltaHeight, behavior: "auto" });
+    showScrollingIndicator();
 
     window.requestAnimationFrame(() => {
-      isAutoScrollingRef.current = false;
-      setIsAutoScrolling(false);
       syncCanAutoScroll();
     });
   }, [
@@ -291,7 +324,9 @@ export function useAutoRefresh({
     getScrollContainer,
     lastResponseNum,
     loading,
+    pauseAutoScroll,
     responseCount,
+    showScrollingIndicator,
     syncCanAutoScroll,
   ]);
 
@@ -300,5 +335,6 @@ export function useAutoRefresh({
     canAutoScroll,
     isAutoScrolling,
     intervalMs,
+    phase: isAutoScrolling ? "scrolling" : "idle",
   };
 }

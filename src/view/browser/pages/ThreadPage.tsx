@@ -12,6 +12,10 @@ import { AnchorPreview } from "src/view/browser/components/AnchorPreview";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import { SearchBar } from "src/view/browser/components/SearchBar";
+import {
+  StatusBarItem,
+  StatusBarMode,
+} from "src/view/browser/components/StatusBar";
 import { useAutoRefresh } from "src/view/browser/hooks/use-auto-refresh";
 import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
 import { useMediaViewer } from "src/view/browser/hooks/use-media-viewer";
@@ -86,16 +90,43 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
     dispatch({ type: "RELOAD" });
   }, [dispatch]);
 
-  const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling } =
+  const {
+    autoScrollBoundaryRef,
+    canAutoScroll,
+    isAutoScrolling,
+    intervalMs,
+  } =
     useAutoRefresh({
       enabled: isAutoRefreshEnabled,
       expired,
       loading,
+      pauseAutoScroll: popups.length > 0,
       responseCount: responses.length,
       lastResponseNum: responses.at(-1)?.num ?? null,
       rootRef,
       requestRefresh: requestAutoRefresh,
     });
+  const autoRefreshIntervalLabel = useMemo(() => {
+    if (intervalMs <= 0) {
+      return "OFF";
+    }
+    if (intervalMs % 1000 === 0) {
+      return `${intervalMs / 1000}s`;
+    }
+    return `${(intervalMs / 1000).toFixed(1)}s`;
+  }, [intervalMs]);
+  const autoRefreshStatusLabel = useMemo(() => {
+    if (popups.length > 0) {
+      return "自動追従一時停止（ポップアップ表示中）";
+    }
+    if (isAutoScrolling) {
+      return "自動スクロール中";
+    }
+    if (canAutoScroll) {
+      return "自動追従待機";
+    }
+    return "追従待機外";
+  }, [canAutoScroll, isAutoScrolling, popups.length]);
 
   const closeNonContextPopups = useCallback(() => {
     closePopupsByPredicate((item) => item.type !== "contextMenu");
@@ -796,6 +827,29 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
   // ジェスチャーuseEffectでrootRefが確実にマウント済みになるよう、loading中の早期returnを廃止し常にrootRef付きdivを描画する
   return (
     <div ref={rootRef} className="thread-page">
+      {isAutoRefreshEnabled && (
+        <>
+          {/* 線より下にいて新着追従が有効な間だけステータスバーを accent 化し、
+              「今の位置なら自動スクロールされる」を常時見分けやすくする。 */}
+          <StatusBarMode
+            id="thread-auto-scroll-mode"
+            appearance={canAutoScroll || isAutoScrolling ? "active" : null}
+          />
+          <StatusBarItem
+            id="thread-auto-refresh-status"
+            alignment="right"
+            priority={200}
+            title="自動更新と自動スクロールの状態"
+            className={isAutoScrolling ? "status-bar__item--active" : undefined}
+          >
+            <span className="status-bar__meta">{autoRefreshStatusLabel}</span>
+            <span className="status-bar__divider" />
+            <span className="status-bar__meta">
+              更新間隔 {autoRefreshIntervalLabel}
+            </span>
+          </StatusBarItem>
+        </>
+      )}
       {loading && responses.length === 0 ? (
         <div className="page-status">読み込み中...</div>
       ) : error && responses.length === 0 ? (

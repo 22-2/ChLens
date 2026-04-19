@@ -27,9 +27,11 @@ function createRect({ top, bottom }: TestRectOptions): DOMRect {
 
 function AutoRefreshHarness({
   enabled = true,
+  pauseAutoScroll = false,
   onRequestRefresh,
 }: {
   enabled?: boolean;
+  pauseAutoScroll?: boolean;
   onRequestRefresh: () => void;
 }) {
   const [responses, setResponses] = useState([1, 2]);
@@ -40,6 +42,7 @@ function AutoRefreshHarness({
       enabled,
       expired: false,
       loading,
+      pauseAutoScroll,
       responseCount: responses.length,
       lastResponseNum: responses.length > 0 ? responses[responses.length - 1] : null,
       rootRef,
@@ -227,5 +230,106 @@ describe("useAutoRefresh", () => {
 
     expect(onRequestRefresh).toHaveBeenCalled();
     expect(scrollBy).not.toHaveBeenCalled();
+  });
+
+  it("自動スクロール状態を短時間維持してステータス表示に使える", () => {
+    const onRequestRefresh = vi.fn();
+    render(<AutoRefreshHarness onRequestRefresh={onRequestRefresh} />);
+
+    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
+    const boundary = screen.getByTestId("boundary") as HTMLDivElement;
+
+    let scrollTopValue = 200;
+    let scrollHeightValue = 300;
+    Object.defineProperty(scrollContainer, "clientHeight", {
+      configurable: true,
+      get: () => 100,
+    });
+    Object.defineProperty(scrollContainer, "scrollTop", {
+      configurable: true,
+      get: () => scrollTopValue,
+      set: (value: number) => {
+        scrollTopValue = value;
+      },
+    });
+    Object.defineProperty(scrollContainer, "scrollHeight", {
+      configurable: true,
+      get: () => scrollHeightValue,
+    });
+    scrollContainer.getBoundingClientRect = () =>
+      createRect({ top: 0, bottom: 100 });
+    boundary.getBoundingClientRect = () => createRect({ top: 80, bottom: 100 });
+
+    scrollContainer.scrollBy = vi.fn();
+
+    act(() => {
+      vi.runOnlyPendingTimers();
+      vi.advanceTimersByTime(3000);
+    });
+
+    scrollHeightValue = 360;
+    fireEvent.click(screen.getByText("新着ありで完了"));
+
+    expect(screen.getByTestId("is-auto-scrolling")).toHaveTextContent("running");
+
+    act(() => {
+      vi.advanceTimersByTime(900);
+    });
+
+    expect(screen.getByTestId("is-auto-scrolling")).toHaveTextContent("idle");
+  });
+
+  it("ポップアップ表示中は自動更新を継続しつつ自動スクロールだけ停止する", () => {
+    const onRequestRefresh = vi.fn();
+    render(
+      <AutoRefreshHarness
+        onRequestRefresh={onRequestRefresh}
+        pauseAutoScroll={true}
+      />,
+    );
+
+    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
+    const boundary = screen.getByTestId("boundary") as HTMLDivElement;
+
+    let scrollTopValue = 200;
+    let scrollHeightValue = 300;
+    Object.defineProperty(scrollContainer, "clientHeight", {
+      configurable: true,
+      get: () => 100,
+    });
+    Object.defineProperty(scrollContainer, "scrollTop", {
+      configurable: true,
+      get: () => scrollTopValue,
+      set: (value: number) => {
+        scrollTopValue = value;
+      },
+    });
+    Object.defineProperty(scrollContainer, "scrollHeight", {
+      configurable: true,
+      get: () => scrollHeightValue,
+    });
+    scrollContainer.getBoundingClientRect = () =>
+      createRect({ top: 0, bottom: 100 });
+    boundary.getBoundingClientRect = () => createRect({ top: 80, bottom: 100 });
+
+    const scrollBy = vi.fn();
+    scrollContainer.scrollBy = scrollBy;
+
+    act(() => {
+      vi.runOnlyPendingTimers();
+      vi.advanceTimersByTime(3000);
+    });
+
+    expect(onRequestRefresh).toHaveBeenCalledOnce();
+
+    scrollHeightValue = 360;
+    fireEvent.click(screen.getByText("新着ありで完了"));
+
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
+
+    expect(scrollBy).not.toHaveBeenCalled();
+    expect(screen.getByTestId("is-auto-scrolling")).toHaveTextContent("idle");
   });
 });
