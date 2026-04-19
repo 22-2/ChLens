@@ -106,6 +106,12 @@ const ZOOM_RATIO_OPTIONS = [
   { const: "500", title: "500%" },
 ] as const satisfies readonly SettingsOption[];
 
+const THEME_ID_OPTIONS = [
+  { const: "system", title: "システム（OSに合わせる）" },
+  { const: "default", title: "ライト" },
+  { const: "dark", title: "ダーク" },
+] as const satisfies readonly SettingsOption[];
+
 const HOW_TO_JUDGMENT_ID_OPTIONS = [
   { const: "first_res", title: "1レス目に存在する場合" },
   { const: "exists_once", title: "1つでも存在する場合" },
@@ -209,6 +215,13 @@ const SETTINGS_SECTIONS = [
     "一般",
     "タブ動作やAA表示など、ブラウザ全体の基本設定です。",
     [
+      {
+        kind: "string",
+        key: "theme_id",
+        title: "テーマ",
+        options: THEME_ID_OPTIONS,
+        widget: "radio",
+      },
       // { kind: "boolean", key: "always_new_tab", title: "スレッドを常に新しいタブで開く" },
       // {
       //   kind: "boolean",

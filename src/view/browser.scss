@@ -1486,3 +1486,454 @@ body {
   max-height: calc(52vh - 32px);
   padding: 4px 0;
 }
+
+/* ==========================================================================
+   Dark mode - browser-shell[data-theme="dark"]
+   タブバーはChromeのダークモードカラーを踏襲する
+   ========================================================================== */
+
+.browser-shell[data-theme="dark"] {
+  /* --- CSS変数: Chrome風ダークモードカラー --- */
+  --browser-color-bg: #202124;
+  /* タブストリップ背景: Chrome dark の --color-toolbar に相当 */
+  --browser-color-tab-strip-bg: #292a2d;
+  --browser-color-tab-strip-hover: rgba(255, 255, 255, 0.08);
+  --browser-color-tab-strip-active-hover: rgba(255, 255, 255, 0.16);
+  --browser-color-text-primary: #e8eaed;
+  --browser-color-text-muted: #9aa0a6;
+  --browser-color-text-disabled: #5f6368;
+  --browser-color-border: #3c4043;
+  --browser-color-surface-muted: #35363a;
+  --browser-color-status-active-bg: #1a6fc4;
+  --browser-color-status-active-fg: #fff;
+  --browser-color-selection: rgba(26, 115, 232, 0.4);
+  --browser-color-placeholder: #5f6368;
+
+  /* スクロールバーなどのブラウザ標準UIをダークに */
+  color-scheme: dark;
+
+  /* --- コンテキストメニュー --- */
+  .context-menu {
+    background: #292a2d;
+    border-color: #3c4043;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  }
+
+  .context-menu__item {
+    color: #e8eaed;
+  }
+
+  .context-menu__icon {
+    color: #9aa0a6;
+  }
+
+  .context-menu__item:hover:not(:disabled) {
+    background: #35363a;
+  }
+
+  .context-menu__item:disabled {
+    color: #5f6368;
+  }
+
+  .context-menu__item--danger {
+    color: #f28b82;
+
+    .context-menu__icon {
+      color: #f28b82;
+    }
+  }
+
+  .context-menu__separator {
+    background: #3c4043;
+  }
+
+  /* --- コンテンツエリア --- */
+  .content-area {
+    background: #202124;
+  }
+
+  /* --- ステータス表示 --- */
+  .page-status {
+    color: #9aa0a6;
+  }
+
+  .page-status--error {
+    color: #f28b82;
+  }
+
+  .page-status__retry {
+    border-color: #3c4043;
+    background: #35363a;
+    color: #8ab4f8;
+  }
+
+  .page-status__retry:hover {
+    background: #3c4043;
+  }
+
+  /* --- ホームページ --- */
+  .home-page__title {
+    color: #e8eaed;
+  }
+
+  .home-page__subtitle {
+    color: #9aa0a6;
+  }
+
+  .home-page__btn {
+    background: #1a6fc4;
+
+    &:hover {
+      background: #1558a4;
+    }
+  }
+
+  /* --- 設定ページ --- */
+  .settings-page__sidebar {
+    background: #292a2d;
+    border-right-color: #3c4043;
+    border-bottom-color: #3c4043;
+  }
+
+  .settings-page__sidebar-title {
+    color: #9aa0a6;
+  }
+
+  .settings-page__section-btn:hover {
+    background: #35363a;
+  }
+
+  .settings-page__section-btn--active {
+    background: #1a3a6e;
+    border-color: #4285f4;
+  }
+
+  .settings-page__section-name {
+    color: #e8eaed;
+  }
+
+  .settings-page__section-desc {
+    color: #9aa0a6;
+  }
+
+  .settings-page__main {
+    background: #202124;
+  }
+
+  .settings-page__card {
+    background: #292a2d;
+    border-color: #3c4043;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+
+  .settings-page__eyebrow {
+    color: #8ab4f8;
+  }
+
+  .settings-page__title {
+    color: #e8eaed;
+  }
+
+  .settings-page__description {
+    color: #bdc1c6;
+  }
+
+  .settings-page__note {
+    background: #35363a;
+    color: #9aa0a6;
+  }
+
+  .settings-page__form legend,
+  .settings-page__form label {
+    color: #e8eaed;
+  }
+
+  .settings-page__form .field-description {
+    color: #9aa0a6;
+  }
+
+  .settings-page__form input[type="text"],
+  .settings-page__form input[type="number"],
+  .settings-page__form textarea,
+  .settings-page__form select {
+    background: #35363a;
+    border-color: #5f6368;
+    color: #e8eaed;
+
+    &:focus {
+      border-color: #8ab4f8;
+      box-shadow: 0 0 0 3px rgba(138, 180, 248, 0.12);
+    }
+  }
+
+  .settings-page__button {
+    background: #35363a;
+    border-color: #5f6368;
+    color: #e8eaed;
+
+    &:hover:not(:disabled) {
+      background: #3c4043;
+    }
+  }
+
+  .settings-page__button--primary {
+    background: #1a6fc4;
+    border-color: #1a6fc4;
+    color: #fff;
+
+    &:hover:not(:disabled) {
+      background: #1558a4;
+    }
+  }
+
+  /* --- 板一覧 --- */
+  .board-category {
+    border-bottom-color: #3c4043;
+  }
+
+  .board-category__title {
+    color: #8ab4f8;
+  }
+
+  .board-item {
+    color: #e8eaed;
+
+    &:hover {
+      background: #35363a;
+    }
+  }
+
+  /* --- スレッド一覧 --- */
+  .thread-list-page__notice {
+    background: #3c3a1e;
+    color: #fdd663;
+    border-bottom-color: #5f5720;
+  }
+
+  .thread-list thead {
+    background: #292a2d;
+  }
+
+  .thread-list__th {
+    color: #9aa0a6;
+    border-bottom-color: #3c4043;
+
+    &:hover {
+      background: #3c4043;
+    }
+  }
+
+  .thread-list__row {
+    border-bottom-color: #3c4043;
+
+    &:hover {
+      background: #35363a;
+    }
+  }
+
+  .thread-list__num {
+    color: #9aa0a6;
+  }
+
+  .thread-list__title {
+    color: #8ab4f8;
+  }
+
+  .thread-list__count,
+  .thread-list__heat {
+    color: #9aa0a6;
+  }
+
+  /* --- スレッドページ --- */
+  .thread-page__notice {
+    background: #3c3a1e;
+    color: #fdd663;
+    border-bottom-color: #5f5720;
+  }
+
+  .thread-page__toolbar {
+    background: #292a2d;
+    border-bottom-color: #3c4043;
+  }
+
+  .thread-page__filter-btn {
+    background: #35363a;
+    border-color: #5f6368;
+    color: #9aa0a6;
+
+    &:hover {
+      background: #3c4043;
+    }
+  }
+
+  .thread-page__filter-btn--active {
+    background: #1a6fc4;
+    color: #fff;
+    border-color: #1a6fc4;
+
+    &:hover {
+      background: #1558a4;
+    }
+  }
+
+  .thread-page__count {
+    color: #9aa0a6;
+  }
+
+  .thread-page__auto-scroll-threshold::before {
+    border-top-color: #3c4043;
+  }
+
+  .thread-page__auto-scroll-threshold-label {
+    background: rgba(32, 33, 36, 0.95);
+  }
+
+  /* --- レス --- */
+  .res__num {
+    color: #8ab4f8;
+  }
+
+  .res__name {
+    color: #81c995;
+  }
+
+  .res__date {
+    color: #9aa0a6;
+  }
+
+  .res__id {
+    color: #9aa0a6;
+  }
+
+  .res__id--link {
+    color: #fba94c;
+  }
+
+  .res__id--freq {
+    color: #f28b82;
+  }
+
+  .res__body {
+    color: #e8eaed;
+
+    a {
+      color: #8ab4f8;
+    }
+
+    a:visited {
+      color: #c58af9;
+    }
+  }
+
+  .res__rep--link {
+    color: #8ab4f8;
+  }
+
+  .res__rep--freq {
+    color: #f28b82;
+  }
+
+  .res__link {
+    border-color: #3c4043;
+    background: #35363a;
+    color: #8ab4f8;
+
+    &:hover {
+      background: #3c4043;
+    }
+  }
+
+  .res__thumb {
+    border-color: #3c4043;
+    background: #292a2d;
+  }
+
+  .res--highlighted-persistent {
+    background-color: rgba(138, 180, 248, 0.15);
+  }
+
+  /* --- 検索バー --- */
+  .search-bar {
+    background: #292a2d;
+    border-bottom-color: #3c4043;
+  }
+
+  .search-bar__input {
+    background: #35363a;
+    border-color: #5f6368;
+    color: #e8eaed;
+
+    &:focus {
+      border-color: #8ab4f8;
+    }
+  }
+
+  .search-bar__count {
+    color: #9aa0a6;
+  }
+
+  .search-bar__close {
+    color: #9aa0a6;
+
+    &:hover {
+      background: #3c4043;
+    }
+  }
+
+  /* --- レスポップアップ / アンカープレビュー --- */
+  .res-popup {
+    background: #292a2d;
+    border-color: #3c4043;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  }
+
+  .res-popup__header {
+    border-bottom-color: #3c4043;
+    color: #e8eaed;
+  }
+
+  .res-popup__icon-btn {
+    color: #9aa0a6;
+
+    &:hover {
+      background: #35363a;
+    }
+  }
+
+  .res-popup__close {
+    color: #9aa0a6;
+
+    &:hover {
+      background: #35363a;
+    }
+  }
+
+  .res-popup__section-title {
+    color: #9aa0a6;
+  }
+
+  .res-popup__section + .res-popup__section {
+    border-top-color: #3c4043;
+  }
+
+  .anchor-preview {
+    background: #292a2d;
+    border-color: #3c4043;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  }
+
+  .anchor-preview__title {
+    background: #35363a;
+    border-bottom-color: #3c4043;
+    color: #9aa0a6;
+  }
+
+  /* --- ステータスバー --- */
+  .status-bar {
+    border-top-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .status-bar__divider {
+    background: rgba(255, 255, 255, 0.18);
+  }
+}
