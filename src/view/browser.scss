@@ -1083,6 +1083,13 @@ body {
   font-weight: 600;
 }
 
+.thread-list__row--highlight .thread-list__num,
+.thread-list__row--highlight .thread-list__title,
+.thread-list__row--highlight .thread-list__count,
+.thread-list__row--highlight .thread-list__heat {
+  color: inherit;
+}
+
 .thread-list__label {
   display: inline-block;
   margin-left: 6px;
@@ -1341,6 +1348,11 @@ body {
   background: rgba(255, 255, 255, 0.16);
 }
 
+.media-viewer__btn:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
 .media-viewer__nav-pos {
   font-size: 12px;
   color: #bdc1c6;
@@ -1351,18 +1363,23 @@ body {
 .media-viewer__stage {
   flex: 1;
   overflow: auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   padding: 20px;
   cursor: zoom-in;
 }
 
+.media-viewer__canvas {
+  min-width: 100%;
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .media-viewer__image {
+  display: block;
   max-width: 100%;
   max-height: 100%;
-  transform-origin: center center;
-  transition: transform 0.08s linear;
+  transition: width 0.08s linear, height 0.08s linear;
 }
 
 /* ==========================================================================
@@ -1373,8 +1390,11 @@ body {
   /* z-indexはPOPUP_BASE_Z(10020)起点でThreadPageからinline styleで付与される */
   position: absolute;
   z-index: 10020;
-  min-width: 320px;
-  max-width: 600px;
+  /* width:auto の shrink-to-fit だと右端付近で極端に細くなるため、
+     先に実用幅を確保してからオーバーフロー補正で左へ逃がす。 */
+  width: min(520px, calc(100vw - 16px));
+  min-width: min(400px, calc(100vw - 16px));
+  max-width: min(600px, calc(100vw - 16px));
   max-height: 60vh;
   background: #fff;
   border: 1px solid #dadce0;

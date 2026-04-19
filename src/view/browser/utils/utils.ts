@@ -1,6 +1,28 @@
 import MessageProcessor from "src/core/MessageProcessor";
 import type { IRes } from "src/service-container";
 
+const decodeEntitySpan =
+  typeof document !== "undefined" ? document.createElement("span") : null;
+
+function decodeCharReferences(text: string): string {
+  return text.replace(
+    /\&(?:#(\d+)|#x([\dA-Fa-f]+)|([\da-zA-Z]+));/g,
+    (matched, decimal, hexadecimal, namedEntity) => {
+      if (decimal != null) {
+        return String.fromCodePoint(Number(decimal));
+      }
+      if (hexadecimal != null) {
+        return String.fromCodePoint(Number.parseInt(hexadecimal, 16));
+      }
+      if (namedEntity != null && decodeEntitySpan) {
+        decodeEntitySpan.innerHTML = matched;
+        return decodeEntitySpan.textContent ?? matched;
+      }
+      return matched;
+    },
+  );
+}
+
 // --- アンカーパーサ ---
 // MessageProcessor由来のHTML内のアンカー（>>N）から参照先レス番号を抽出する
 const ANCHOR_REG =
@@ -31,12 +53,19 @@ export function parseAnchors(message: string): number[] {
 // HTMLからテキストを抽出（検索フィルタ・コピー用）
 // <br> は改行に変換してからタグを除去することで、コピー時に改行が反映されるようにする
 export function stripHtml(html: string): string {
-  return html
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]*>/g, "")
-    .replace(/&gt;/g, ">")
-    .replace(/&lt;/g, "<")
-    .replace(/&amp;/g, "&");
+  // レス本文には数値文字参照の絵文字が混ざることがあるため、
+  // タグ除去後に既存の文字参照デコーダーへ通してコピー/検索時の文字化けを防ぐ。
+  return decodeCharReferences(
+    html.replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]*>/g, ""),
+  );
+}
+
+export function normalizeIdLinkText(text: string): string {
+  return text
+    .trim()
+    .replace(/^id:/i, "ID:")
+    .replace(/\(\d+\)$/, "")
+    .replace(/\u25cf$/, "");
 }
 export function buildKyodemoUrl(
   threadUrl: string,
@@ -77,8 +106,13 @@ export async function copyText(text: string): Promise<void> {
 }
 // --- フィルタ判定 ---
 export function hasImage(message: string): boolean {
-  return /\.(jpe?g|png|gif|webp|bmp|avif)(?:\?[^"<]*)?(?=["<\s]|$)/i.test(
-    message,
+  return (
+    /\.(jpe?g|png|gif|webp|bmp|avif)(?:\?[^"<]*)?(?=["<\s]|$)/i.test(
+      message,
+    ) ||
+    /https?:\/\/pbs\.twimg\.com\/media\/[^\s"'<>?]+\?[^\s"'<>]*format=(?:jpe?g|png|gif|webp|bmp|avif)\b/i.test(
+      message,
+    )
   );
 }
 export function hasVideo(message: string): boolean {
@@ -208,6 +242,16 @@ export function toViewerImageUrl(rawUrl: string): string | null {
     }
 
     if (host === "i.imgur.com") {
+      return url.href;
+    }
+
+    if (
+      host === "pbs.twimg.com" &&
+      pathname.startsWith("/media/") &&
+      /^(jpe?g|png|gif|webp|bmp|avif)$/i.test(
+        url.searchParams.get("format") ?? "",
+      )
+    ) {
       return url.href;
     }
 

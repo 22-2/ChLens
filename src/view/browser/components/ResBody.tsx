@@ -1,13 +1,21 @@
 import { useRef } from "react";
 import React from "react";
-import { ANCHOR_SELECTOR } from "src/view/browser/utils/constants";
-import { getEventTargetElement, parseAnchorDisplayTargets } from "src/view/browser/utils/utils";
+import {
+  ANCHOR_SELECTOR,
+  ID_LINK_SELECTOR,
+} from "src/view/browser/utils/constants";
+import {
+  getEventTargetElement,
+  normalizeIdLinkText,
+  parseAnchorDisplayTargets,
+} from "src/view/browser/utils/utils";
 
 interface ResBodyProps {
   messageHtml: string;
   anchorPreviewDepth: number;
   onUrlClick: (url: string, button: 0 | 1) => void;
   onUrlContextMenu: (url: string, e: React.MouseEvent) => void;
+  onIdLinkClick: (id: string, e: React.MouseEvent) => void;
   onAnchorClick: (resNum: number) => void;
   onAnchorHover: (
     targets: number[],
@@ -26,12 +34,27 @@ function getAnchorHoverKey(anchor: HTMLAnchorElement): string {
   return `${label}:${Math.round(rect.left)}:${Math.round(rect.top)}`;
 }
 
+function getAnchorElement(target: EventTarget | null): HTMLAnchorElement | null {
+  const element = getEventTargetElement(target);
+  const anchor = element?.closest("a");
+  return anchor instanceof HTMLAnchorElement ? anchor : null;
+}
+
+function getNavigableHref(anchor: HTMLAnchorElement): string | null {
+  const href = anchor.getAttribute("href") ?? "";
+  if (!href || href.startsWith("javascript:") || href.startsWith("#")) {
+    return null;
+  }
+  return href;
+}
+
 export const ResBody: React.FC<ResBodyProps> = React.memo(
   ({
     messageHtml,
     anchorPreviewDepth,
     onUrlClick,
     onUrlContextMenu,
+    onIdLinkClick,
     onAnchorClick,
     onAnchorHover,
     onAnchorLeave,
@@ -76,12 +99,39 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
           hoveredAnchorKeyRef.current = null;
           onAnchorLeave(anchorPreviewDepth);
         }}
+        onMouseDown={(e) => {
+          if (e.button !== 1) {
+            return;
+          }
+          const anchor = getAnchorElement(e.target);
+          if (!anchor) {
+            return;
+          }
+          if (anchor.matches(ANCHOR_SELECTOR) || anchor.matches(ID_LINK_SELECTOR)) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+          }
+          if (!getNavigableHref(anchor)) {
+            return;
+          }
+          // popup 内リンクの中クリックでは default の中ボタン挙動を止めて自前遷移に寄せる。
+          // これで auxclick 後に親popupが閉じるブラウザ依存挙動を避ける。
+          e.preventDefault();
+          e.stopPropagation();
+        }}
         onClick={(e) => {
-          const target = getEventTargetElement(e.target);
-          const anchor = target?.closest("a");
-          if (!(anchor instanceof HTMLAnchorElement)) return;
+          const anchor = getAnchorElement(e.target);
+          if (!anchor) return;
+          if (anchor.matches(ID_LINK_SELECTOR)) {
+            e.preventDefault();
+            e.stopPropagation();
+            onIdLinkClick(normalizeIdLinkText(anchor.textContent ?? ""), e);
+            return;
+          }
           if (anchor.matches(ANCHOR_SELECTOR)) {
             e.preventDefault();
+            e.stopPropagation();
             if (anchor.classList.contains("disabled")) {
               return;
             }
@@ -92,35 +142,41 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
             }
             return;
           }
-          const href = anchor.getAttribute("href") ?? "";
-          if (!href || href.startsWith("javascript:") || href.startsWith("#")) {
+          const href = getNavigableHref(anchor);
+          if (!href) {
             return;
           }
           e.preventDefault();
+          e.stopPropagation();
           onUrlClick(href, 0);
         }}
         onAuxClick={(e) => {
-          const target = getEventTargetElement(e.target);
-          const anchor = target?.closest("a");
-          if (!(anchor instanceof HTMLAnchorElement)) return;
-          const href = anchor.getAttribute("href") ?? "";
-          if (!href || href.startsWith("javascript:") || href.startsWith("#")) {
+          const anchor = getAnchorElement(e.target);
+          if (!anchor) return;
+          if (anchor.matches(ID_LINK_SELECTOR)) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+          }
+          const href = getNavigableHref(anchor);
+          if (!href) {
             return;
           }
           if (e.button !== 1) return;
           e.preventDefault();
+          e.stopPropagation();
           onUrlClick(href, 1);
         }}
         onContextMenu={(e) => {
-          const target = getEventTargetElement(e.target);
-          const anchor = target?.closest("a");
-          if (!(anchor instanceof HTMLAnchorElement)) return;
-          if (anchor.matches(ANCHOR_SELECTOR)) return;
-          const href = anchor.getAttribute("href") ?? "";
-          if (!href || href.startsWith("javascript:") || href.startsWith("#")) {
+          const anchor = getAnchorElement(e.target);
+          if (!anchor) return;
+          if (anchor.matches(ANCHOR_SELECTOR) || anchor.matches(ID_LINK_SELECTOR)) return;
+          const href = getNavigableHref(anchor);
+          if (!href) {
             return;
           }
           e.preventDefault();
+          e.stopPropagation();
           onUrlContextMenu(href, e);
         }}
       />

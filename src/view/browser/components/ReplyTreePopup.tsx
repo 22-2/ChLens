@@ -77,6 +77,7 @@ export const ReplyTreePopup: React.FC<{
   anchorPreviewDepth: number;
   onUrlClick: (url: string, resImages?: string[], button?: 0 | 1) => void;
   onUrlContextMenu: (url: string, e: React.MouseEvent) => void;
+  onIdLinkClick: (id: string, e: React.MouseEvent) => void;
   onRepClick: (resNum: number, e: React.MouseEvent) => void;
   onAnchorClick: (resNum: number) => void;
   onAnchorHover: (
@@ -108,6 +109,7 @@ export const ReplyTreePopup: React.FC<{
   anchorPreviewDepth,
   onUrlClick,
   onUrlContextMenu,
+  onIdLinkClick,
   onRepClick,
   onAnchorClick,
   onAnchorHover,
@@ -294,6 +296,7 @@ export const ReplyTreePopup: React.FC<{
               isHighlighted={true}
               onUrlClick={onUrlClick}
               onUrlContextMenu={onUrlContextMenu}
+              onIdLinkClick={onIdLinkClick}
               onRepClick={onRepClick}
               onAnchorClick={onAnchorClick}
               onAnchorHover={onAnchorHover}
@@ -312,6 +315,7 @@ export const ReplyTreePopup: React.FC<{
           anchorPreviewDepth={anchorPreviewDepth}
           onUrlClick={onUrlClick}
           onUrlContextMenu={onUrlContextMenu}
+          onIdLinkClick={onIdLinkClick}
           onRepClick={onRepClick}
           onAnchorClick={onAnchorClick}
           onAnchorHover={onAnchorHover}

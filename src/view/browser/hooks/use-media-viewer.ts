@@ -39,15 +39,24 @@ export function useMediaViewer(): UseMediaViewerResult {
   }, []);
 
   const navigateViewer = useCallback((delta: number) => {
+    let didNavigate = false;
     setViewer((prev) => {
       if (!prev?.images) return prev;
       const len = prev.images.length;
-      const newIdx = ((prev.currentIndex ?? 0) + delta + len) % len;
+      const currentIndex = prev.currentIndex ?? 0;
+      // 端で循環させずに止めることで、一覧の先頭/末尾を見失わないようにする。
+      const newIdx = Math.min(len - 1, Math.max(0, currentIndex + delta));
+      if (newIdx === currentIndex) {
+        return prev;
+      }
       const rawUrl = prev.images[newIdx];
       const newSrc = toViewerImageUrl(rawUrl) ?? rawUrl;
+      didNavigate = true;
       return { ...prev, src: newSrc, label: rawUrl, currentIndex: newIdx };
     });
-    setViewerScale(1);
+    if (didNavigate) {
+      setViewerScale(1);
+    }
   }, []);
 
   const closeViewer = useCallback(() => {

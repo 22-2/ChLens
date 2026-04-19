@@ -15,6 +15,7 @@ export const ResPopup: React.FC<{
   repIndex: Map<number, Set<number>>;
   onUrlClick: (url: string, resImages?: string[], button?: 0 | 1) => void;
   onUrlContextMenu: (url: string, e: React.MouseEvent) => void;
+  onIdLinkClick: (id: string, e: React.MouseEvent) => void;
   onRepClick: (resNum: number, e: React.MouseEvent) => void;
   onAnchorClick: (resNum: number) => void;
   onAnchorHover: (
@@ -48,6 +49,7 @@ export const ResPopup: React.FC<{
   repIndex,
   onUrlClick,
   onUrlContextMenu,
+  onIdLinkClick,
   onRepClick,
   onAnchorClick,
   onAnchorHover,
@@ -153,6 +155,7 @@ export const ResPopup: React.FC<{
             repIndex={repIndex}
             onUrlClick={onUrlClick}
             onUrlContextMenu={onUrlContextMenu}
+            onIdLinkClick={onIdLinkClick}
             onRepClick={onRepClick}
             onAnchorClick={onAnchorClick}
             onAnchorHover={onAnchorHover}

@@ -5,6 +5,9 @@ import { describe, expect, it, vi } from "vitest";
 import { ResBody } from "src/view/browser/components/ResBody";
 
 const ANCHOR_HTML = '<a class="anchor">&gt;&gt;5</a>';
+const URL_HTML = '<a href="https://example.com/thread/1">link</a>';
+const ID_LINK_HTML =
+  '<a href="javascript:undefined;" class="anchor_id">id:ABC123(4)</a>';
 
 describe("ResBody anchor behavior", () => {
   it("rerender後も同じアンカーhoverで onAnchorHover を再発火しない", () => {
@@ -34,6 +37,7 @@ describe("ResBody anchor behavior", () => {
             anchorPreviewDepth={0}
             onUrlClick={() => {}}
             onUrlContextMenu={() => {}}
+            onIdLinkClick={() => {}}
             onAnchorClick={() => {}}
             onAnchorHover={(targets, anchorRect, label, depth) => {
               onAnchorHover(targets, anchorRect, label, depth);
@@ -67,6 +71,7 @@ describe("ResBody anchor behavior", () => {
         anchorPreviewDepth={0}
         onUrlClick={() => {}}
         onUrlContextMenu={() => {}}
+        onIdLinkClick={() => {}}
         onAnchorClick={onAnchorClick}
         onAnchorHover={() => {}}
         onAnchorLeave={() => {}}
@@ -78,5 +83,53 @@ describe("ResBody anchor behavior", () => {
 
     expect(onAnchorClick).toHaveBeenCalledOnce();
     expect(onAnchorClick).toHaveBeenCalledWith(5);
+  });
+
+  it("通常リンクのミドルクリックを一度だけ新規タブ扱いで開く", () => {
+    const onUrlClick = vi.fn();
+    const { container } = render(
+      <ResBody
+        messageHtml={URL_HTML}
+        anchorPreviewDepth={0}
+        onUrlClick={onUrlClick}
+        onUrlContextMenu={() => {}}
+        onIdLinkClick={() => {}}
+        onAnchorClick={() => {}}
+        onAnchorHover={() => {}}
+        onAnchorLeave={() => {}}
+      />,
+    );
+
+    const anchor = container.querySelector("a") as HTMLAnchorElement;
+    fireEvent.mouseDown(anchor, { button: 1 });
+    fireEvent(
+      anchor,
+      new MouseEvent("auxclick", { button: 1, bubbles: true, cancelable: true }),
+    );
+
+    expect(onUrlClick).toHaveBeenCalledOnce();
+    expect(onUrlClick).toHaveBeenCalledWith("https://example.com/thread/1", 1);
+  });
+
+  it("anchor_id クリックで ID ポップアップ用の値を渡す", () => {
+    const onIdLinkClick = vi.fn();
+    const { container } = render(
+      <ResBody
+        messageHtml={ID_LINK_HTML}
+        anchorPreviewDepth={0}
+        onUrlClick={() => {}}
+        onUrlContextMenu={() => {}}
+        onIdLinkClick={onIdLinkClick}
+        onAnchorClick={() => {}}
+        onAnchorHover={() => {}}
+        onAnchorLeave={() => {}}
+      />,
+    );
+
+    const anchor = container.querySelector("a.anchor_id") as HTMLAnchorElement;
+    fireEvent.click(anchor);
+
+    expect(onIdLinkClick).toHaveBeenCalledOnce();
+    expect(onIdLinkClick.mock.calls[0][0]).toBe("ID:ABC123");
   });
 });

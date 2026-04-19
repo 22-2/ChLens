@@ -17,6 +17,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     isHighlighted,
     onUrlClick,
     onUrlContextMenu,
+    onIdLinkClick,
     onRepClick,
     onAnchorClick,
     onAnchorHover,
@@ -80,6 +81,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
           anchorPreviewDepth={anchorPreviewDepth}
           onUrlClick={(url, button) => onUrlClick(url, undefined, button)}
           onUrlContextMenu={onUrlContextMenu}
+          onIdLinkClick={onIdLinkClick}
           onAnchorClick={onAnchorClick}
           onAnchorHover={onAnchorHover}
           onAnchorLeave={onAnchorLeave}
@@ -88,6 +90,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
           <div className="res__thumbs">
             {imageUrls.map(({ raw, src }) => (
               <button
+                type="button"
                 key={`${res.num}:thumb:${raw}`}
                 className="res__thumb"
                 onClick={() =>
@@ -115,6 +118,7 @@ export interface StaticResCardProps {
   isHighlighted?: boolean;
   onUrlClick: (url: string, resImages?: string[], button?: 0 | 1) => void;
   onUrlContextMenu: (url: string, e: React.MouseEvent) => void;
+  onIdLinkClick: (id: string, e: React.MouseEvent) => void;
   onRepClick?: (resNum: number, e: React.MouseEvent) => void;
   onAnchorClick: (resNum: number) => void;
   onAnchorHover: (

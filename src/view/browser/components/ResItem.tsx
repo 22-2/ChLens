@@ -92,6 +92,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
           anchorPreviewDepth={0}
           onUrlClick={(url, button) => onUrlClick(url, undefined, button)}
           onUrlContextMenu={onUrlContextMenu}
+          onIdLinkClick={onIdClick}
           onAnchorClick={onAnchorClick}
           onAnchorHover={onAnchorHover}
           onAnchorLeave={onAnchorLeave}
@@ -100,16 +101,29 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
           <div className="res__links">
             {urls.map((url) => (
               <button
+                type="button"
                 key={`${res.num}:${url}`}
                 className="res__link"
-                onClick={() => onUrlClick(url, undefined, 0)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUrlClick(url, undefined, 0);
+                }}
+                onMouseDown={(e) => {
+                  if (e.button !== 1) {
+                    return;
+                  }
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
                 onAuxClick={(e) => {
                   if (e.button !== 1) return;
                   e.preventDefault();
+                  e.stopPropagation();
                   onUrlClick(url, undefined, 1);
                 }}
                 onContextMenu={(e) => {
                   e.preventDefault();
+                  e.stopPropagation();
                   onUrlContextMenu(url, e);
                 }}
                 title={url}
@@ -123,6 +137,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
           <div className="res__thumbs">
             {imageUrls.map(({ raw, src }) => (
               <button
+                type="button"
                 key={`${res.num}:thumb:${raw}`}
                 className="res__thumb"
                 onClick={() =>

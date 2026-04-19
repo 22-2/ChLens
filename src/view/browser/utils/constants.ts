@@ -4,6 +4,7 @@ export const ANCHOR_PREVIEW_GUTTER = 16;
 export const ANCHOR_PREVIEW_MAX_WIDTH = 560;
 export const ANCHOR_PREVIEW_HIDE_DELAY_MS = 120;
 export const ANCHOR_SELECTOR = "a.anchor, a.name_anchor";
+export const ID_LINK_SELECTOR = "a.anchor_id";
 // ポータルや別レイヤーへ出した子メニューでも同じ「ポップアップ面」として扱い、
 // 親ポップアップの外側クリック判定が子要素で誤反応しないようにする。
 export const POPUP_SURFACE_SELECTOR = "[data-popup-surface='true']";
