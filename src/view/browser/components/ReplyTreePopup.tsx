@@ -31,6 +31,8 @@ export const ReplyTreePopup: React.FC<{
   /** アンカープレビューとの親子関係制御用 */
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
+  /** 親popupをクリックした時に、その配下の枝だけ畳めるようにする。 */
+  onSurfaceMouseDown?: () => void;
   /** 子ポップアップが開いている間は外側クリック閉じを無効にする */
   disableOutsideClick?: boolean;
   /** z-indexを明示指定（省略時はCSSのデフォルト値を使用） */
@@ -53,6 +55,7 @@ export const ReplyTreePopup: React.FC<{
   onClose,
   onMouseEnter,
   onMouseLeave,
+  onSurfaceMouseDown,
   disableOutsideClick,
   zIndex,
 }) => {
@@ -114,15 +117,26 @@ export const ReplyTreePopup: React.FC<{
       data-popup-surface="true"
       className="res-popup"
       style={{ left: x, top: y, ...(zIndex != null && { zIndex }) }}
+      onMouseDownCapture={() => {
+        onSurfaceMouseDown?.();
+      }}
       onMouseEnter={() => {
         setIsHovering(true);
         onMouseEnter?.();
       }}
       onMouseLeave={(e) => {
-        onMouseLeave?.();
         if (e.relatedTarget instanceof Node && ref.current?.contains(e.relatedTarget)) {
           return;
         }
+        if (
+          e.relatedTarget instanceof Element &&
+          e.relatedTarget.closest(POPUP_SURFACE_SELECTOR)
+        ) {
+          return;
+        }
+        // popup surface間の移動では親子チェーンを維持したいので、
+        // 実際にsurface外へ出た時だけleave callbackを流す。
+        onMouseLeave?.();
         setIsHovering(false);
         handleMouseLeave();
       }}

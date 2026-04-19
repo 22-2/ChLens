@@ -89,6 +89,8 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
         .sort((a, b) => a.payload.depth - b.payload.depth),
     [popups],
   );
+  const anchorPreviewsRef = useRef<AnchorPopupItem[]>(anchorPreviews);
+  anchorPreviewsRef.current = anchorPreviews;
 
   const treePopupItems = useMemo(
     () => popups.filter((item): item is TreePopupItem => item.type === "tree"),
@@ -109,6 +111,15 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
   const hasPopupChild = useCallback(
     (popupId: string) => popups.some((item) => item.parentId === popupId),
     [popups],
+  );
+
+  const closePopupChildren = useCallback(
+    (popupId: string) => {
+      // 親popupを操作した時は、その枝配下の子孫だけを畳んでから次の操作を始める。
+      // root を残したまま branch をリセットしたいので、popup 自身ではなく direct child を起点に閉じる。
+      closePopupsByPredicate((item) => item.parentId === popupId);
+    },
+    [closePopupsByPredicate],
   );
 
   // 検索バーはURLバー右メニューからのみ開く。
@@ -196,6 +207,7 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
       anchorRect: DOMRect,
       label: string,
       depth: number,
+      sourcePopupId?: string,
     ) => {
       clearAnchorPreviewHideTimer();
       const items = targets
@@ -225,7 +237,26 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
         ),
       );
       const { x, y } = toPageCoords(vx, vy);
-      const parentId = depth > 0 ? anchorPreviews[depth - 1]?.id : undefined;
+      const currentPreview = anchorPreviewsRef.current.find(
+        (item) => item.payload.depth === depth,
+      );
+      if (
+        currentPreview &&
+        currentPreview.payload.label === label &&
+        currentPreview.x === x &&
+        currentPreview.y === y &&
+        currentPreview.payload.items.length === items.length &&
+        currentPreview.payload.items.every(
+          (item, index) => item.num === items[index]?.num,
+        )
+      ) {
+        return;
+      }
+
+      const parentId =
+        depth > 0
+          ? anchorPreviewsRef.current[depth - 1]?.id
+          : sourcePopupId;
       hideAnchorPreviewsFromDepth(depth);
       addPopup({
         type: "anchor",
@@ -235,7 +266,22 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
         parentId,
       });
     },
-    [addPopup, anchorPreviews, hideAnchorPreviewsFromDepth, indexes.resMap, toPageCoords],
+    [addPopup, hideAnchorPreviewsFromDepth, indexes.resMap, toPageCoords],
+  );
+
+  const openAnchorPreviewFromPopup = useCallback(
+    (popupId: string) =>
+      (
+        targets: number[],
+        anchorRect: DOMRect,
+        label: string,
+        depth: number,
+      ) => {
+        // depth=0 のアンカーは popup 内から開かれたことを親子ツリーへ残さないと、
+        // その後の返信/右クリックメニューで root 扱いになって祖先との寿命がずれる。
+        showAnchorPreview(targets, anchorRect, label, depth, popupId);
+      },
+    [showAnchorPreview],
   );
 
   const addPopupContextMenu = useCallback(
@@ -514,8 +560,12 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
     (resNum: number) => {
       const host = rootRef.current;
       if (!host) return;
-      hideAnchorPreviewImmediately();
-      const target = host.querySelector(`[data-res-num="${resNum}"]`);
+      // ポップアップ上のアンカークリックでも遷移先を確実に視認できるよう、
+      // ジャンプ時はいったん非メニュー系ポップアップを閉じて本文へフォーカスを戻す。
+      closeNonContextPopups();
+      const target = host.querySelector(
+        `.thread-page__responses [data-res-num="${resNum}"]`,
+      );
       if (!target) return;
       const scrollContainer = host.closest(".content-area");
       if (
@@ -542,7 +592,7 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
         { once: true },
       );
     },
-    [hideAnchorPreviewImmediately],
+    [closeNonContextPopups],
   );
 
   /**
@@ -717,6 +767,13 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
     [handleUrlContextMenu],
   );
 
+  const openThreadResContextMenu = useCallback(
+    (e: React.MouseEvent, res: IRes) => {
+      openResContextMenu(res, e, false);
+    },
+    [openResContextMenu],
+  );
+
   // ジェスチャーuseEffectでrootRefが確実にマウント済みになるよう、loading中の早期returnを廃止し常にrootRef付きdivを描画する
   return (
     <div ref={rootRef} className="thread-page">
@@ -791,7 +848,7 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
                   onAnchorClick={handleAnchorClick}
                   onAnchorHover={showAnchorPreview}
                   onAnchorLeave={hideAnchorPreview}
-                  onContextMenu={(e) => openResContextMenu(res, e, false)}
+                  onContextMenu={openThreadResContextMenu}
                 />
               );
             })}
@@ -819,6 +876,7 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
                 onAnchorLeave={hideAnchorPreview}
                 onMouseEnter={clearAnchorPreviewHideTimer}
                 onMouseLeave={() => hideAnchorPreview(anchorPreview.payload.depth)}
+                onSurfaceMouseDown={() => closePopupChildren(anchorPreview.id)}
                 onResContextMenu={openPopupResContextMenu(anchorPreview.id)}
                 hasChildPopup={hasPopupChild(anchorPreview.id)}
                 zIndex={anchorPreview.z}
@@ -838,8 +896,9 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
                 onUrlContextMenu={openPopupUrlContextMenu(idPopup.id)}
                 onRepClick={handleRepClickInPopup(idPopup.id)}
                 onAnchorClick={handleAnchorClick}
-                onAnchorHover={showAnchorPreview}
+                onAnchorHover={openAnchorPreviewFromPopup(idPopup.id)}
                 onAnchorLeave={hideAnchorPreview}
+                onSurfaceMouseDown={() => closePopupChildren(idPopup.id)}
                 onResContextMenu={openPopupResContextMenu(idPopup.id)}
                 // 子ポップアップ（TreePopup / ContextMenu）やAnchorPreviewが開いている間は
                 // mouseleave / outside click で閉じないようにする。
@@ -869,8 +928,9 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
                   tp.payload.anchorPreviewDepth,
                 )}
                 onAnchorClick={handleAnchorClick}
-                onAnchorHover={showAnchorPreview}
+                onAnchorHover={openAnchorPreviewFromPopup(tp.id)}
                 onAnchorLeave={hideAnchorPreview}
+                onSurfaceMouseDown={() => closePopupChildren(tp.id)}
                 onResContextMenu={openPopupResContextMenu(tp.id)}
                 // 上位ポップアップ、子メニュー、AnchorPreviewが開いている間は閉じない。
                 disableOutsideClick={

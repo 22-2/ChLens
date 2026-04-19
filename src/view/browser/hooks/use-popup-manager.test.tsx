@@ -1,13 +1,16 @@
 import "@testing-library/jest-dom/vitest";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { IRes } from "src/service-container/interfaces";
 import { AnchorPreview } from "src/view/browser/components/AnchorPreview";
+import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { ReplyTreePopup } from "src/view/browser/components/ReplyTreePopup";
+import { ResPopup } from "src/view/browser/components/ResPopup";
 import { usePopupManager } from "src/view/browser/hooks/use-popup-manager";
 import type {
   AnchorPopupItem,
+  ContextMenuPopupItem,
   PopupItem,
   TreePopupItem,
 } from "src/view/browser/utils/types";
@@ -34,6 +37,15 @@ const TEST_REP_INDEX = new Map<number, Set<number>>([
   [3, new Set([4])],
 ]);
 
+const DUPLICATE_REPLY_RES_MAP = new Map<number, IRes>([
+  [3, createRes(3, "preview target")],
+  [6, createRes(6, "&gt;&gt;3")],
+]);
+
+const DUPLICATE_REPLY_INDEX = new Map<number, Set<number>>([
+  [3, new Set([6])],
+]);
+
 function summarizePopup(item: PopupItem): string {
   if (item.type === "tree") {
     return `tree:${item.payload.resNum}:depth=${item.payload.anchorPreviewDepth}`;
@@ -41,10 +53,21 @@ function summarizePopup(item: PopupItem): string {
   if (item.type === "anchor") {
     return `anchor:${item.payload.label}:depth=${item.payload.depth}:parent=${item.parentId ?? "root"}`;
   }
+  if (item.type === "contextMenu") {
+    return `contextMenu:parent=${item.parentId ?? "root"}`;
+  }
   return item.type;
 }
 
-function PopupSequenceHarness() {
+function PopupSequenceHarness({
+  resMap = TEST_RES_MAP,
+  repIndex = TEST_REP_INDEX,
+  rootResNum = 1,
+}: {
+  resMap?: Map<number, IRes>;
+  repIndex?: Map<number, Set<number>>;
+  rootResNum?: number;
+}) {
   const { popups, addPopup, closePopupById, closePopupsByPredicate } =
     usePopupManager();
 
@@ -54,6 +77,12 @@ function PopupSequenceHarness() {
   const treePopups = popups.filter(
     (item): item is TreePopupItem => item.type === "tree",
   );
+  const contextMenus = popups.filter(
+    (item): item is ContextMenuPopupItem => item.type === "contextMenu",
+  );
+
+  const hasPopupChild = (popupId: string) =>
+    popups.some((item) => item.parentId === popupId);
 
   const hideAnchorPreviewsFromDepth = (depth: number) => {
     closePopupsByPredicate(
@@ -82,16 +111,17 @@ function PopupSequenceHarness() {
     _anchorRect: DOMRect,
     label: string,
     depth: number,
+    sourcePopupId?: string,
   ) => {
     const items = targets
-      .map((num) => TEST_RES_MAP.get(num))
+      .map((num) => resMap.get(num))
       .filter((res): res is IRes => res != null);
     if (items.length === 0) {
       hideAnchorPreviewsFromDepth(depth);
       return;
     }
 
-    const parentId = depth > 0 ? anchorPreviews[depth - 1]?.id : undefined;
+    const parentId = depth > 0 ? anchorPreviews[depth - 1]?.id : sourcePopupId;
     hideAnchorPreviewsFromDepth(depth);
     addPopup({
       type: "anchor",
@@ -109,11 +139,32 @@ function PopupSequenceHarness() {
       addTreePopup(resNum, parentId, anchorPreviewDepth);
     };
 
+  const openContextMenu = (parentId?: string) => {
+    closePopupsByPredicate((item) => item.type === "contextMenu");
+    addPopup({
+      type: "contextMenu",
+      x: 48,
+      y: 48,
+      payload: {
+        items: [{ id: "inspect", label: "Inspect" }],
+      },
+      parentId,
+    });
+  };
+
+  const closePopupChildren = (popupId: string) => {
+    closePopupsByPredicate((item) => item.parentId === popupId);
+  };
+
   return (
     <div>
-      <button onClick={() => addTreePopup(1)}>返信を開く</button>
+      <button onClick={() => addTreePopup(rootResNum)}>返信を開く</button>
       <output data-testid="popup-stack">
         {popups.map(summarizePopup).join(" | ")}
+      </output>
+      <output data-testid="first-tree-id">{treePopups[0]?.id ?? ""}</output>
+      <output data-testid="first-anchor-parent">
+        {anchorPreviews[0]?.parentId ?? "root"}
       </output>
 
       {anchorPreviews.map((anchorPreview) => (
@@ -125,7 +176,7 @@ function PopupSequenceHarness() {
           items={anchorPreview.payload.items}
           label={anchorPreview.payload.label}
           messageProtocol="https:"
-          repIndex={TEST_REP_INDEX}
+          repIndex={repIndex}
           onUrlClick={() => {}}
           onUrlContextMenu={() => {}}
           onRepClick={handleRepClickInPopup(
@@ -137,8 +188,13 @@ function PopupSequenceHarness() {
           onAnchorLeave={hideAnchorPreviewsFromDepth}
           onMouseEnter={() => {}}
           onMouseLeave={() => {}}
-          onResContextMenu={() => {}}
-          hasChildPopup={false}
+          onSurfaceMouseDown={() => closePopupChildren(anchorPreview.id)}
+          onResContextMenu={(_targetRes, event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            openContextMenu(anchorPreview.id);
+          }}
+          hasChildPopup={hasPopupChild(anchorPreview.id)}
           zIndex={anchorPreview.z}
         />
       ))}
@@ -149,8 +205,8 @@ function PopupSequenceHarness() {
           x={treePopup.x}
           y={treePopup.y}
           resNum={treePopup.payload.resNum}
-          repIndex={TEST_REP_INDEX}
-          resMap={TEST_RES_MAP}
+          repIndex={repIndex}
+          resMap={resMap}
           messageProtocol="https:"
           anchorPreviewDepth={treePopup.payload.anchorPreviewDepth}
           onUrlClick={() => {}}
@@ -160,14 +216,33 @@ function PopupSequenceHarness() {
             treePopup.payload.anchorPreviewDepth,
           )}
           onAnchorClick={() => {}}
-          onAnchorHover={showAnchorPreview}
+          onAnchorHover={(targets, anchorRect, label, depth) =>
+            showAnchorPreview(targets, anchorRect, label, depth, treePopup.id)
+          }
           onAnchorLeave={hideAnchorPreviewsFromDepth}
-          onResContextMenu={() => {}}
+          onSurfaceMouseDown={() => closePopupChildren(treePopup.id)}
+          onResContextMenu={(_targetRes, event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            openContextMenu(treePopup.id);
+          }}
           disableOutsideClick={
-            index < treePopups.length - 1 || anchorPreviews.length > 0
+            index < treePopups.length - 1 ||
+            anchorPreviews.length > 0 ||
+            hasPopupChild(treePopup.id)
           }
           zIndex={treePopup.z}
           onClose={() => closePopupById(treePopup.id)}
+        />
+      ))}
+
+      {contextMenus.map((menu) => (
+        <ContextMenu
+          key={menu.id}
+          x={menu.x}
+          y={menu.y}
+          items={menu.payload.items}
+          onClose={() => closePopupById(menu.id)}
         />
       ))}
     </div>
@@ -244,6 +319,139 @@ describe("usePopupManager popup behavior", () => {
       "anchor:>>5:depth=1",
     );
   });
+
+  it("anchors opened from a reply popup inherit that popup as parent", () => {
+    render(<PopupSequenceHarness />);
+
+    fireEvent.click(screen.getByRole("button", { name: "返信を開く" }));
+    fireEvent.mouseOver(screen.getByRole("link", { name: ">>3" }));
+
+    expect(screen.getByTestId("first-anchor-parent").textContent).toBe(
+      screen.getByTestId("first-tree-id").textContent,
+    );
+  });
+
+  it("keeps ancestor popups when opening a context menu from a nested reply popup", () => {
+    render(<PopupSequenceHarness />);
+
+    fireEvent.click(screen.getByRole("button", { name: "返信を開く" }));
+    fireEvent.mouseOver(screen.getByRole("link", { name: ">>3" }));
+    fireEvent.click(screen.getByText("返信(1)"));
+    fireEvent.contextMenu(screen.getByText("4"));
+
+    expect(screen.getByText("参照: >>3")).toBeInTheDocument();
+    expect(screen.getByText(">>3 への返信ツリー")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Inspect" })).toBeInTheDocument();
+    expect(screen.getByTestId("popup-stack")).toHaveTextContent(
+      "anchor:>>3:depth=0",
+    );
+    expect(screen.getByTestId("popup-stack")).toHaveTextContent(
+      "tree:3:depth=1",
+    );
+    expect(screen.getByTestId("popup-stack")).toHaveTextContent(
+      "contextMenu:parent=",
+    );
+  });
+
+  it("keeps the exact duplicate reply chain alive when right-clicking the nested res", () => {
+    render(
+      <PopupSequenceHarness
+        resMap={DUPLICATE_REPLY_RES_MAP}
+        repIndex={DUPLICATE_REPLY_INDEX}
+        rootResNum={3}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "返信を開く" }));
+
+    const rootPopup = document.querySelectorAll(".res-popup")[0] as HTMLElement;
+    fireEvent.mouseEnter(rootPopup);
+    fireEvent.mouseOver(within(rootPopup).getByRole("link", { name: ">>3" }));
+
+    const anchorPreview = document.querySelector(".anchor-preview") as HTMLElement;
+    fireEvent.mouseEnter(anchorPreview);
+    fireEvent.click(within(anchorPreview).getByText("返信(1)"));
+
+    const popupSurfaces = document.querySelectorAll(".res-popup");
+    const nestedPopup = popupSurfaces[1] as HTMLElement;
+    fireEvent.mouseEnter(nestedPopup);
+    fireEvent.mouseLeave(anchorPreview, { relatedTarget: nestedPopup });
+
+    const nestedResNum = within(nestedPopup).getByText("6");
+    fireEvent.contextMenu(nestedResNum);
+
+    const menu = document.querySelector(".context-menu") as HTMLElement;
+    fireEvent.mouseLeave(nestedPopup, { relatedTarget: menu });
+
+    expect(document.querySelectorAll(".res-popup")).toHaveLength(2);
+    expect(document.querySelectorAll(".anchor-preview")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Inspect" })).toBeInTheDocument();
+    expect(screen.getByTestId("popup-stack").textContent).toContain(
+      "tree:3:depth=0",
+    );
+    expect(screen.getByTestId("popup-stack").textContent).toContain(
+      "anchor:>>3:depth=0",
+    );
+    expect(screen.getByTestId("popup-stack").textContent).toContain(
+      "tree:3:depth=1",
+    );
+  });
+
+  it("clicking the root popup closes all descendant popups in that branch", () => {
+    render(
+      <PopupSequenceHarness
+        resMap={DUPLICATE_REPLY_RES_MAP}
+        repIndex={DUPLICATE_REPLY_INDEX}
+        rootResNum={3}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "返信を開く" }));
+
+    const rootPopup = document.querySelectorAll(".res-popup")[0] as HTMLElement;
+    fireEvent.mouseOver(within(rootPopup).getByRole("link", { name: ">>3" }));
+
+    const anchorPreview = document.querySelector(".anchor-preview") as HTMLElement;
+    fireEvent.click(within(anchorPreview).getByText("返信(1)"));
+
+    expect(document.querySelectorAll(".res-popup")).toHaveLength(2);
+    expect(document.querySelectorAll(".anchor-preview")).toHaveLength(1);
+
+    fireEvent.mouseDown(rootPopup);
+
+    expect(document.querySelectorAll(".res-popup")).toHaveLength(1);
+    expect(document.querySelectorAll(".anchor-preview")).toHaveLength(0);
+    expect(screen.getByTestId("popup-stack").textContent).toBe("tree:3:depth=0");
+  });
+
+  it("right-clicking the root popup closes descendants before opening its menu", () => {
+    render(
+      <PopupSequenceHarness
+        resMap={DUPLICATE_REPLY_RES_MAP}
+        repIndex={DUPLICATE_REPLY_INDEX}
+        rootResNum={3}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "返信を開く" }));
+
+    const rootPopup = document.querySelectorAll(".res-popup")[0] as HTMLElement;
+    fireEvent.mouseOver(within(rootPopup).getByRole("link", { name: ">>3" }));
+
+    const anchorPreview = document.querySelector(".anchor-preview") as HTMLElement;
+    fireEvent.click(within(anchorPreview).getByText("返信(1)"));
+
+    const rootResNum = within(rootPopup).getByText("6");
+    fireEvent.mouseDown(rootResNum, { button: 2 });
+    fireEvent.contextMenu(rootResNum);
+
+    expect(document.querySelectorAll(".res-popup")).toHaveLength(1);
+    expect(document.querySelectorAll(".anchor-preview")).toHaveLength(0);
+    expect(screen.getByRole("button", { name: "Inspect" })).toBeInTheDocument();
+    expect(screen.getByTestId("popup-stack").textContent).toContain(
+      "contextMenu:parent=tree-1",
+    );
+  });
 });
 
 // --- ReplyTreePopup: disableOutsideClick 遷移時の自動 close / outside click ---
@@ -281,6 +489,23 @@ const ANCHOR_BASE_PROPS = {
   onAnchorLeave: () => {},
   onMouseEnter: () => {},
   onMouseLeave: () => {},
+  onResContextMenu: () => {},
+  zIndex: 10020,
+} as const;
+
+const RES_BASE_PROPS = {
+  x: 0,
+  y: 0,
+  title: "ID:abc",
+  items: [createRes(6, "&gt;&gt;3")] as IRes[],
+  messageProtocol: "https:" as const,
+  repIndex: DUPLICATE_REPLY_INDEX,
+  onUrlClick: () => {},
+  onUrlContextMenu: () => {},
+  onRepClick: () => {},
+  onAnchorClick: () => {},
+  onAnchorHover: () => {},
+  onAnchorLeave: () => {},
   onResContextMenu: () => {},
   zIndex: 10020,
 } as const;
@@ -394,6 +619,53 @@ describe("ReplyTreePopup close behavior", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it("兄弟のpopup surfaceへマウス移動しても close しない", () => {
+    const onClose = vi.fn();
+    render(
+      <>
+        <ReplyTreePopup
+          {...TREE_BASE_PROPS}
+          disableOutsideClick={false}
+          onClose={onClose}
+        />
+        <div data-popup-surface="true">menu</div>
+      </>,
+    );
+
+    const popup = document.querySelector(".res-popup") as HTMLElement;
+    const siblingSurface = screen.getByText("menu");
+
+    act(() => {
+      fireEvent.mouseLeave(popup, { relatedTarget: siblingSurface });
+    });
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("兄弟のpopup surfaceへマウス移動しても onMouseLeave callback を流さない", () => {
+    const onMouseLeave = vi.fn();
+    render(
+      <>
+        <ReplyTreePopup
+          {...TREE_BASE_PROPS}
+          disableOutsideClick={false}
+          onClose={() => {}}
+          onMouseLeave={onMouseLeave}
+        />
+        <div data-popup-surface="true">menu</div>
+      </>,
+    );
+
+    const popup = document.querySelector(".res-popup") as HTMLElement;
+    const siblingSurface = screen.getByText("menu");
+
+    act(() => {
+      fireEvent.mouseLeave(popup, { relatedTarget: siblingSurface });
+    });
+
+    expect(onMouseLeave).not.toHaveBeenCalled();
+  });
+
   it("親ポップアップを閉じると子コンテキストメニューも一緒に閉じる", () => {
     function PopupTreeHarness() {
       const { popups, addPopup, closePopupById } = usePopupManager();
@@ -475,5 +747,56 @@ describe("AnchorPreview child popup behavior", () => {
     );
 
     expect(onMouseLeave).toHaveBeenCalledOnce();
+  });
+
+  it("兄弟のpopup surfaceへマウス移動しても close しない", () => {
+    const onMouseLeave = vi.fn();
+    render(
+      <>
+        <AnchorPreview
+          {...ANCHOR_BASE_PROPS}
+          onMouseLeave={onMouseLeave}
+        />
+        <div data-popup-surface="true">menu</div>
+      </>,
+    );
+
+    const preview = document.querySelector(".anchor-preview") as HTMLElement;
+    const siblingSurface = screen.getByText("menu");
+
+    act(() => {
+      fireEvent.mouseLeave(preview, { relatedTarget: siblingSurface });
+    });
+
+    expect(onMouseLeave).not.toHaveBeenCalled();
+  });
+});
+
+describe("ResPopup mouseleave behavior", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("兄弟のpopup surfaceへマウス移動しても onMouseLeave callback を流さない", () => {
+    const onMouseLeave = vi.fn();
+    render(
+      <>
+        <ResPopup
+          {...RES_BASE_PROPS}
+          onClose={() => {}}
+          onMouseLeave={onMouseLeave}
+        />
+        <div data-popup-surface="true">menu</div>
+      </>,
+    );
+
+    const popup = document.querySelector(".res-popup") as HTMLElement;
+    const siblingSurface = screen.getByText("menu");
+
+    act(() => {
+      fireEvent.mouseLeave(popup, { relatedTarget: siblingSurface });
+    });
+
+    expect(onMouseLeave).not.toHaveBeenCalled();
   });
 });

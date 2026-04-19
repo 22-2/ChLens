@@ -48,7 +48,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
       <article
         data-res-num={res.num}
         className={`res${isNG ? " res--ng" : ""}${miniAa ? " res--aa" : ""}`}
-        onContextMenu={onContextMenu}
+        onContextMenu={(e) => onContextMenu(e, res)}
       >
         <header className="res__header">
           <span className="res__num">{res.num}</span>
@@ -162,5 +162,5 @@ export interface ResItemProps {
     depth: number,
   ) => void;
   onAnchorLeave: (fromDepth: number) => void;
-  onContextMenu: (e: React.MouseEvent) => void;
+  onContextMenu: (e: React.MouseEvent, res: IRes) => void;
 }

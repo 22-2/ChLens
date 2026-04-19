@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import type { IRes } from "src/service-container";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
+import { POPUP_SURFACE_SELECTOR } from "src/view/browser/utils/constants";
 import { useAdjustOverflow } from "../utils/use-adjust-overflow";
 
 export interface AnchorPreviewProps {
@@ -24,6 +25,8 @@ export interface AnchorPreviewProps {
   onAnchorLeave: (fromDepth: number) => void;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
+  /** 親popup自体を触った時は、このpreview配下の枝だけ閉じ直せるようにする。 */
+  onSurfaceMouseDown?: () => void;
   /** 子メニューも親子スタックへ載せ、参照プレビューの早閉じを防ぐ。 */
   onResContextMenu: (targetRes: IRes, event: React.MouseEvent) => void;
   hasChildPopup?: boolean;
@@ -47,6 +50,7 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
   onAnchorLeave,
   onMouseEnter,
   onMouseLeave,
+  onSurfaceMouseDown,
   onResContextMenu,
   hasChildPopup,
   zIndex,
@@ -77,12 +81,21 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
         top: y,
         zIndex,
       }}
+      onMouseDownCapture={() => {
+        onSurfaceMouseDown?.();
+      }}
       onMouseEnter={() => {
         setIsHovering(true);
         onMouseEnter();
       }}
       onMouseLeave={(e) => {
         if (e.relatedTarget instanceof Node && ref.current?.contains(e.relatedTarget)) {
+          return;
+        }
+        if (
+          e.relatedTarget instanceof Element &&
+          e.relatedTarget.closest(POPUP_SURFACE_SELECTOR)
+        ) {
           return;
         }
         setIsHovering(false);
