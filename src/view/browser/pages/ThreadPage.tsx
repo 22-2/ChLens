@@ -31,6 +31,7 @@ import { ReplyTreePopup } from "src/view/browser/components/ReplyTreePopup";
 import { ResItem } from "src/view/browser/components/ResItem";
 import { ResPopup } from "src/view/browser/components/ResPopup";
 import { usePopupManager } from "src/view/browser/hooks/use-popup-manager";
+import { getPopupViewportBounds } from "src/view/browser/utils/use-adjust-overflow";
 import type {
   AnchorPopupItem,
   ContextMenuPopupItem,
@@ -272,6 +273,7 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
         ANCHOR_PREVIEW_MAX_WIDTH,
         window.innerWidth - ANCHOR_PREVIEW_GUTTER * 2,
       );
+      const viewport = getPopupViewportBounds();
       const vx = Math.max(
         ANCHOR_PREVIEW_GUTTER,
         Math.min(
@@ -283,7 +285,7 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
         ANCHOR_PREVIEW_GUTTER,
         Math.min(
           anchorRect.bottom + ANCHOR_PREVIEW_OFFSET,
-          window.innerHeight - ANCHOR_PREVIEW_GUTTER,
+          viewport.bottom - ANCHOR_PREVIEW_GUTTER,
         ),
       );
       const { x, y } = toPageCoords(vx, vy);
