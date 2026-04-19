@@ -749,6 +749,56 @@ describe("AnchorPreview child popup behavior", () => {
     expect(onMouseLeave).toHaveBeenCalledOnce();
   });
 
+  it("[bug再現] 子プレビューが閉じた時に実際のホバー状態が外なら親プレビューも閉じる", () => {
+    const onMouseLeave = vi.fn();
+    const { rerender } = render(
+      <AnchorPreview
+        {...ANCHOR_BASE_PROPS}
+        hasChildPopup={true}
+        onMouseLeave={onMouseLeave}
+      />,
+    );
+
+    const preview = document.querySelector(".anchor-preview") as HTMLElement;
+    fireEvent.mouseEnter(preview);
+
+    const originalMatches = preview.matches.bind(preview);
+    Object.defineProperty(preview, "matches", {
+      configurable: true,
+      value: (selector: string) => {
+        if (selector === ":hover") {
+          return false;
+        }
+        return originalMatches(selector);
+      },
+    });
+
+    rerender(
+      <AnchorPreview
+        {...ANCHOR_BASE_PROPS}
+        hasChildPopup={false}
+        onMouseLeave={onMouseLeave}
+      />,
+    );
+
+    expect(onMouseLeave).toHaveBeenCalledOnce();
+  });
+
+  it("子がいない anchor preview は外側 mousedown で閉じる", () => {
+    const onMouseLeave = vi.fn();
+    render(
+      <AnchorPreview
+        {...ANCHOR_BASE_PROPS}
+        hasChildPopup={false}
+        onMouseLeave={onMouseLeave}
+      />,
+    );
+
+    fireEvent.mouseDown(document.body);
+
+    expect(onMouseLeave).toHaveBeenCalledOnce();
+  });
+
   it("兄弟のpopup surfaceへマウス移動しても close しない", () => {
     const onMouseLeave = vi.fn();
     render(

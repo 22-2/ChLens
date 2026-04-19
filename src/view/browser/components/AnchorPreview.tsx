@@ -60,16 +60,33 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
   const onMouseLeaveRef = useRef(onMouseLeave);
   onMouseLeaveRef.current = onMouseLeave;
 
+  const isActuallyHovering = () => ref.current?.matches(":hover") ?? false;
+
   useAdjustOverflow(ref);
 
   const prevHasChildPopupRef = useRef(!!hasChildPopup);
   useEffect(() => {
     const hadChildPopup = prevHasChildPopupRef.current;
     prevHasChildPopupRef.current = !!hasChildPopup;
-    if (hadChildPopup && !hasChildPopup && !isHovering) {
+    // 子プレビューを経由した移動では isHovering が残ることがあるため、
+    // ステートではなく実 DOM の :hover を見て親の閉じ忘れを防ぐ。
+    if (hadChildPopup && !hasChildPopup && !isActuallyHovering()) {
+      setIsHovering(false);
       onMouseLeaveRef.current();
     }
   }, [hasChildPopup, isHovering]);
+
+  useEffect(() => {
+    if (hasChildPopup) return;
+    const handler = (e: MouseEvent) => {
+      if (e.target instanceof Element && e.target.closest(POPUP_SURFACE_SELECTOR)) {
+        return;
+      }
+      onMouseLeaveRef.current();
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [hasChildPopup]);
 
   return (
     <div

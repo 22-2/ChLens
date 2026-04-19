@@ -14,6 +14,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     messageProtocol,
     anchorPreviewDepth,
     repIndex,
+    isHighlighted,
     onUrlClick,
     onUrlContextMenu,
     onRepClick,
@@ -47,7 +48,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
 
     return (
       <article
-        className="res"
+        className={`res${isHighlighted ? " res--highlighted-persistent" : ""}`}
         onContextMenu={(e) => {
           if (!onContextMenu) return;
           e.preventDefault();
@@ -111,6 +112,7 @@ export interface StaticResCardProps {
   anchorPreviewDepth: number;
   /** 渡された場合、ヘッダーに返信数ボタンを表示する */
   repIndex?: Map<number, Set<number>>;
+  isHighlighted?: boolean;
   onUrlClick: (url: string, resImages?: string[], button?: 0 | 1) => void;
   onUrlContextMenu: (url: string, e: React.MouseEvent) => void;
   onRepClick?: (resNum: number, e: React.MouseEvent) => void;

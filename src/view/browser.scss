@@ -1197,6 +1197,11 @@ body {
   animation: surface-highlight-flash 1.5s ease-out;
 }
 
+.res--highlighted-persistent {
+  background-color: rgba(26, 115, 232, 0.12);
+  border-radius: 6px;
+}
+
 @keyframes surface-highlight-flash {
   0% {
     background-color: rgba(0, 123, 255, 0.3);
@@ -1391,6 +1396,29 @@ body {
   flex-shrink: 0;
 }
 
+.res-popup__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.res-popup__icon-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #5f6368;
+}
+
+.res-popup__icon-btn:hover {
+  background: #e8eaed;
+}
+
 .res-popup__close {
   width: 24px;
   height: 24px;
@@ -1412,6 +1440,17 @@ body {
 .res-popup__body {
   overflow-y: auto;
   padding: 4px 0;
+}
+
+.res-popup__section + .res-popup__section {
+  border-top: 1px solid #e8eaed;
+}
+
+.res-popup__section-title {
+  padding: 8px 12px 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #5f6368;
 }
 
 /* 返信ツリーのインデント表現 */
