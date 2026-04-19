@@ -209,31 +209,35 @@ const SETTINGS_SECTIONS = [
     "一般",
     "タブ動作やAA表示など、ブラウザ全体の基本設定です。",
     [
-      { kind: "boolean", key: "always_new_tab", title: "スレッドを常に新しいタブで開く" },
-      {
-        kind: "boolean",
-        key: "button_change_netsc_newtab",
-        title: "5ch / 2ch.sc 切り替えを新しいタブで開く",
-      },
-      {
-        kind: "boolean",
-        key: "button_change_scheme_newtab",
-        title: "http / https 切り替えを新しいタブで開く",
-      },
-      { kind: "boolean", key: "open_all_unread_lazy", title: "未読一括オープンを遅延実行する" },
-      { kind: "boolean", key: "mousewheel_change_tab", title: "マウスホイールでタブを切り替える" },
-      {
-        kind: "boolean",
-        key: "enable_link_with_res_number",
-        title: "レス番号付きリンクを開く機能を有効にする",
-      },
-      {
-        kind: "string",
-        key: "aa_font",
-        title: "AA表示フォント",
-        options: AA_FONT_OPTIONS,
-        widget: "radio",
-      },
+      // { kind: "boolean", key: "always_new_tab", title: "スレッドを常に新しいタブで開く" },
+      // {
+      //   kind: "boolean",
+      //   key: "button_change_netsc_newtab",
+      //   title: "5ch / 2ch.sc 切り替えを新しいタブで開く",
+      // },
+      // {
+      //   kind: "boolean",
+      //   key: "button_change_scheme_newtab",
+      //   title: "http / https 切り替えを新しいタブで開く",
+      // },
+
+      // TODO: どういう意味か分かりづらいので、調査してから説明を加える
+      // { kind: "boolean", key: "open_all_unread_lazy", title: "未読一括オープンを遅延実行する" },
+      // { kind: "boolean", key: "mousewheel_change_tab", title: "マウスホイールでタブを切り替える" },
+
+      // TODO: どういう意味か分かりづらいので、調査してから説明を加える
+      // {
+      //   kind: "boolean",
+      //   key: "enable_link_with_res_number",
+      //   title: "レス番号付きリンクを開く機能を有効にする",
+      // },
+      // {
+      //   kind: "string",
+      //   key: "aa_font",
+      //   title: "AA表示フォント",
+      //   options: AA_FONT_OPTIONS,
+      //   widget: "radio",
+      // },
       {
         kind: "number",
         key: "aa_min_ratio",
@@ -257,26 +261,30 @@ const SETTINGS_SECTIONS = [
     "更新関連",
     "自動更新と更新後のスクロール挙動を調整します。",
     [
+      // TODO: スクロールで更新するようにする
       { kind: "boolean", key: "dblclick_reload", title: "空白をダブルクリックで更新する" },
       { kind: "number", key: "auto_load_second", title: "スレッド自動更新間隔 (秒)", minimum: 0, step: 1 },
       { kind: "number", key: "auto_load_second_board", title: "板自動更新間隔 (秒)", minimum: 0, step: 1 },
-      {
-        kind: "number",
-        key: "auto_load_second_bookmark",
-        title: "ブックマーク自動更新間隔 (秒)",
-        minimum: 0,
-        step: 1,
-      },
-      { kind: "boolean", key: "auto_load_all", title: "自動更新時に全文を再取得する" },
-      { kind: "boolean", key: "auto_bookmark_notify", title: "ブックマーク更新を通知する" },
-      { kind: "boolean", key: "show_next_unread", title: "次の未読ブックマークを表示する" },
-      {
-        kind: "string",
-        key: "auto_load_move",
-        title: "自動更新後の移動",
-        options: AUTO_LOAD_MOVE_OPTIONS,
-        widget: "radio",
-      },
+      // {
+      //   kind: "number",
+      //   key: "auto_load_second_bookmark",
+      //   title: "ブックマーク自動更新間隔 (秒)",
+      //   minimum: 0,
+      //   step: 1,
+      // },
+      // { kind: "boolean", key: "auto_load_all", title: "自動更新時に全文を再取得する" },
+      // { kind: "boolean", key: "auto_bookmark_notify", title: "ブックマーク更新を通知する" },
+      // { kind: "boolean", key: "show_next_unread", title: "次の未読ブックマークを表示する" },
+
+      // TODO: 自動でスレを移動する機能（EdgeLiveViewerの機能を参考にする）
+
+      // {
+      //   kind: "string",
+      //   key: "auto_load_move",
+      //   title: "自動更新後の移動",
+      //   options: AUTO_LOAD_MOVE_OPTIONS,
+      //   widget: "radio",
+      // },
       {
         kind: "number",
         key: "live_style_playback_rate",
@@ -293,7 +301,9 @@ const SETTINGS_SECTIONS = [
     "サムネイル",
     "画像・動画の読み込みとプレビューサイズを調整します。",
     [
+      // TODO: Not implemented
       { kind: "boolean", key: "manual_image_load", title: "画像を手動で読み込む" },
+      // TODO: Not implemented
       { kind: "boolean", key: "image_blur", title: "画像にぼかしを適用する" },
       {
         kind: "number",
@@ -309,87 +319,93 @@ const SETTINGS_SECTIONS = [
         title: "ぼかし判定ワード",
         description: "正規表現で指定します。",
       },
-      { kind: "number", key: "image_width", title: "画像サムネイル幅", minimum: 150, maximum: 800, step: 10 },
-      { kind: "number", key: "image_height", title: "画像サムネイル高さ", minimum: 100, maximum: 600, step: 10 },
-      { kind: "boolean", key: "audio_supported", title: "音声サムネイルを有効にする" },
-      { kind: "boolean", key: "audio_supported_ogg", title: "OGG音声を有効にする" },
-      { kind: "number", key: "audio_width", title: "音声サムネイル幅", minimum: 240, maximum: 480, step: 10 },
-      { kind: "boolean", key: "video_supported", title: "動画サムネイルを有効にする" },
-      { kind: "boolean", key: "video_supported_ogg", title: "OGG動画を有効にする" },
-      { kind: "boolean", key: "video_controls", title: "動画コントロールを表示する" },
-      { kind: "number", key: "video_width", title: "動画サムネイル幅", minimum: 160, maximum: 800, step: 10 },
-      { kind: "number", key: "video_height", title: "動画サムネイル高さ", minimum: 160, maximum: 600, step: 10 },
-      {
-        kind: "string",
-        key: "zoom_image_mode",
-        title: "画像ズーム",
-        options: ZOOM_MODE_OPTIONS,
-      },
-      {
-        kind: "string",
-        key: "zoom_ratio_image",
-        title: "画像ズーム倍率",
-        options: ZOOM_RATIO_OPTIONS,
-      },
-      {
-        kind: "string",
-        key: "zoom_video_mode",
-        title: "動画ズーム",
-        options: ZOOM_MODE_OPTIONS,
-      },
-      {
-        kind: "string",
-        key: "zoom_ratio_video",
-        title: "動画ズーム倍率",
-        options: ZOOM_RATIO_OPTIONS,
-      },
-      { kind: "boolean", key: "image_height_fix", title: "コンテナ高さを固定して位置ずれを防ぐ" },
-      {
-        kind: "number",
-        key: "delay_scroll_time",
-        title: "位置合わせ待機時間 (ms)",
-        minimum: 0,
-        maximum: 3000,
-        step: 100,
-      },
+      // { kind: "number", key: "image_width", title: "画像サムネイル幅", minimum: 150, maximum: 800, step: 10 },
+      // { kind: "number", key: "image_height", title: "画像サムネイル高さ", minimum: 100, maximum: 600, step: 10 },
+      // { kind: "boolean", key: "audio_supported", title: "音声サムネイルを有効にする" },
+
+      // TODO: 項目を削除し、デフォルトで有効にする
+      // { kind: "boolean", key: "audio_supported_ogg", title: "OGG音声を有効にする" },
+      // { kind: "number", key: "audio_width", title: "音声サムネイル幅", minimum: 240, maximum: 480, step: 10 },
+
+      // TODO: Not implemented -> 画像ビューアと同じUIで拡大表示するようにする
+      // { kind: "boolean", key: "video_supported", title: "動画サムネイルを有効にする" },
+      // TODO: 項目を削除し、デフォルトで有効にする
+      // { kind: "boolean", key: "video_supported_ogg", title: "OGG動画を有効にする" },
+      // TODO: 項目を削除し、デフォルトで有効にする
+      // { kind: "boolean", key: "video_controls", title: "動画コントロールを表示する" },
+      // { kind: "number", key: "video_width", title: "動画サムネイル幅", minimum: 160, maximum: 800, step: 10 },
+      // { kind: "number", key: "video_height", title: "動画サムネイル高さ", minimum: 160, maximum: 600, step: 10 },
+      // {
+      //   kind: "string",
+      //   key: "zoom_image_mode",
+      //   title: "画像ズーム",
+      //   options: ZOOM_MODE_OPTIONS,
+      // },
+      // {
+      //   kind: "string",
+      //   key: "zoom_ratio_image",
+      //   title: "画像ズーム倍率",
+      //   options: ZOOM_RATIO_OPTIONS,
+      // },
+      // {
+      //   kind: "string",
+      //   key: "zoom_video_mode",
+      //   title: "動画ズーム",
+      //   options: ZOOM_MODE_OPTIONS,
+      // },
+      // {
+      //   kind: "string",
+      //   key: "zoom_ratio_video",
+      //   title: "動画ズーム倍率",
+      //   options: ZOOM_RATIO_OPTIONS,
+      // },
+      // { kind: "boolean", key: "image_height_fix", title: "コンテナ高さを固定して位置ずれを防ぐ" },
+      // {
+      //   kind: "number",
+      //   key: "delay_scroll_time",
+      //   title: "位置合わせ待機時間 (ms)",
+      //   minimum: 0,
+      //   maximum: 3000,
+      //   step: 100,
+      // },
     ],
   ),
-  defineSection(
-    "popup",
-    "ポップアップ",
-    "ID/参照ポップアップと短縮URL展開の挙動を制御します。",
-    [
-      {
-        kind: "string",
-        key: "popup_trigger",
-        title: "ポップアップ表示方法",
-        options: POPUP_TRIGGER_OPTIONS,
-        widget: "radio",
-      },
-      {
-        kind: "number",
-        key: "popup_delay_time",
-        title: "ポップアップ遅延時間 (ms)",
-        minimum: 0,
-        maximum: 3000,
-        step: 50,
-      },
-      {
-        kind: "string",
-        key: "expand_short_url",
-        title: "短縮URLの展開方法",
-        options: EXPAND_SHORT_URL_OPTIONS,
-        widget: "radio",
-      },
-      {
-        kind: "number",
-        key: "expand_short_url_timeout",
-        title: "短縮URLタイムアウト (ms)",
-        minimum: 0,
-        step: 100,
-      },
-    ],
-  ),
+  // defineSection(
+  //   "popup",
+  //   "ポップアップ",
+  //   "ID/参照ポップアップと短縮URL展開の挙動を制御します。",
+  //   [
+  //     {
+  //       kind: "string",
+  //       key: "popup_trigger",
+  //       title: "ポップアップ表示方法",
+  //       options: POPUP_TRIGGER_OPTIONS,
+  //       widget: "radio",
+  //     },
+  //     {
+  //       kind: "number",
+  //       key: "popup_delay_time",
+  //       title: "ポップアップ遅延時間 (ms)",
+  //       minimum: 0,
+  //       maximum: 3000,
+  //       step: 50,
+  //     },
+  //     {
+  //       kind: "string",
+  //       key: "expand_short_url",
+  //       title: "短縮URLの展開方法",
+  //       options: EXPAND_SHORT_URL_OPTIONS,
+  //       widget: "radio",
+  //     },
+  //     {
+  //       kind: "number",
+  //       key: "expand_short_url_timeout",
+  //       title: "短縮URLタイムアウト (ms)",
+  //       minimum: 0,
+  //       step: 100,
+  //     },
+  //   ],
+  // ),
   defineSection(
     "ng",
     "NG",
@@ -410,6 +426,7 @@ const SETTINGS_SECTIONS = [
       { kind: "boolean", key: "display_ng", title: "NGレスを展開可能なまま表示する" },
       { kind: "boolean", key: "bookmark_show_dat", title: "dat落ちしたブックマークを表示する" },
       { kind: "boolean", key: "reject_ng_rep", title: "NGレスへの返信も非表示にする" },
+      // TODO: どういう意味か分かりづらいので、調査してから説明を加える
       { kind: "boolean", key: "use_siki_guard", title: "しきい値ガードを有効にする" },
       { kind: "boolean", key: "nothing_id_ng", title: "IDありスレのIDなしレスをNGにする" },
       { kind: "boolean", key: "nothing_slip_ng", title: "SLIPありスレのSLIPなしレスをNGにする" },
@@ -423,7 +440,7 @@ const SETTINGS_SECTIONS = [
       {
         kind: "number",
         key: "repeat_message_ng_count",
-        title: "連投レスをNGにする回数",
+        title: "連投レスをNGにする回数（0で無効）",
         minimum: 0,
         maximum: 99,
         step: 1,
@@ -451,6 +468,8 @@ const SETTINGS_SECTIONS = [
         widget: "textarea",
         rows: 6,
       },
+
+      // TODO: どういう意味か分かりづらいので、調査してから説明を加える
       {
         kind: "string",
         key: "bbsmenu_option",
@@ -458,14 +477,14 @@ const SETTINGS_SECTIONS = [
         widget: "textarea",
         rows: 4,
       },
-      {
-        kind: "string",
-        key: "user_css",
-        title: "ユーザーCSS",
-        widget: "textarea",
-        rows: 8,
-      },
-      { kind: "boolean", key: "default_scrollbar", title: "既定のスクロールバーを使う" },
+      // {
+      //   kind: "string",
+      //   key: "user_css",
+      //   title: "ユーザーCSS",
+      //   widget: "textarea",
+      //   rows: 8,
+      // },
+      // { kind: "boolean", key: "default_scrollbar", title: "既定のスクロールバーを使う" },
       {
         kind: "string",
         key: "replace_str_txt",
@@ -473,18 +492,19 @@ const SETTINGS_SECTIONS = [
         widget: "textarea",
         rows: 6,
       },
-      { kind: "string", key: "useragent", title: "ユーザーエージェント" },
+      // { kind: "string", key: "useragent", title: "ユーザーエージェント" },
     ],
   ),
-  defineSection(
-    "data",
-    "データ",
-    "履歴や書き込み履歴の保存有無を制御します。",
-    [
-      { kind: "boolean", key: "no_history", title: "履歴を保存しない" },
-      { kind: "boolean", key: "no_writehistory", title: "書き込み履歴を保存しない" },
-    ],
-  ),
+  // TODO: インポートやエクスポートなど、既存の設定を移植する
+  // defineSection(
+  //   "data",
+  //   "データ",
+  //   "履歴や書き込み履歴の保存有無を制御します。",
+  //   [
+  //     { kind: "boolean", key: "no_history", title: "履歴を保存しない" },
+  //     { kind: "boolean", key: "no_writehistory", title: "書き込み履歴を保存しない" },
+  //   ],
+  // ),
 ] as const satisfies readonly SettingsSectionDefinition[];
 
 const SETTINGS_SECTION_MAP = new Map<SettingsSectionId, SettingsSectionDefinition>(
