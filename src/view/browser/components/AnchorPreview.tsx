@@ -2,6 +2,10 @@ import React, { useEffect, useRef, useState } from "react";
 import type { IRes } from "src/service-container";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
 import { usePopupSurfaceCloseGuard } from "src/view/browser/hooks/use-popup-manager";
+import type {
+  UrlClickHandler,
+  UrlContextMenuHandler,
+} from "src/view/browser/utils/link-routing";
 import { POPUP_SURFACE_SELECTOR } from "src/view/browser/utils/constants";
 import { useAdjustOverflow } from "src/view/browser/utils/use-adjust-overflow";
 import { getEventTargetElement } from "src/view/browser/utils/utils";
@@ -14,8 +18,8 @@ export interface AnchorPreviewProps {
   label: string;
   messageProtocol: string;
   repIndex: Map<number, Set<number>>;
-  onUrlClick: (url: string, resImages?: string[], button?: 0 | 1) => void;
-  onUrlContextMenu: (url: string, e: React.MouseEvent) => void;
+  onUrlClick: UrlClickHandler;
+  onUrlContextMenu: UrlContextMenuHandler;
   onIdLinkClick: (id: string, e: React.MouseEvent) => void;
   onRepClick: (resNum: number, e: React.MouseEvent) => void;
   onAnchorClick: (resNum: number) => void;

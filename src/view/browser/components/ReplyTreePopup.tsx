@@ -6,6 +6,10 @@ import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
 import { ReplyTree } from "src/view/browser/components/ReplyTree";
 import { usePopupSurfaceLifecycle } from "src/view/browser/hooks/use-popup-manager";
+import type {
+  UrlClickHandler,
+  UrlContextMenuHandler,
+} from "src/view/browser/utils/link-routing";
 import { useAdjustOverflow } from "src/view/browser/utils/use-adjust-overflow";
 import { copyText, stripHtml } from "src/view/browser/utils/utils";
 
@@ -83,8 +87,8 @@ export const ReplyTreePopup: React.FC<{
   resMap: Map<number, IRes>;
   messageProtocol: string;
   anchorPreviewDepth: number;
-  onUrlClick: (url: string, resImages?: string[], button?: 0 | 1) => void;
-  onUrlContextMenu: (url: string, e: React.MouseEvent) => void;
+  onUrlClick: UrlClickHandler;
+  onUrlContextMenu: UrlContextMenuHandler;
   onIdLinkClick: (id: string, e: React.MouseEvent) => void;
   onRepClick: (resNum: number, e: React.MouseEvent) => void;
   onAnchorClick: (resNum: number) => void;

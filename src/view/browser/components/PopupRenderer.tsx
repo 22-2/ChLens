@@ -6,6 +6,10 @@ import { PopupPortalLayer } from "src/view/browser/components/PopupPortalLayer";
 import { ReplyTreePopup } from "src/view/browser/components/ReplyTreePopup";
 import { ResPopup } from "src/view/browser/components/ResPopup";
 import type {
+  UrlClickHandler,
+  UrlContextMenuHandler,
+} from "src/view/browser/utils/link-routing";
+import type {
   AnchorPopupItem,
   ContextMenuPopupItem,
   IdPopupItem,
@@ -50,10 +54,10 @@ interface PopupRendererProps {
   onResContextMenuOpen: (
     parentId: string,
   ) => (targetRes: IRes, e: React.MouseEvent) => void;
-  onUrlClick: (rawUrl: string, resImages?: string[], button?: 0 | 1) => void;
+  onUrlClick: UrlClickHandler;
   onUrlContextMenuOpen: (
     parentId: string,
-  ) => (rawUrl: string, e: React.MouseEvent) => void;
+  ) => UrlContextMenuHandler;
 }
 
 export const PopupRenderer: React.FC<PopupRendererProps> = ({

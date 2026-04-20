@@ -439,6 +439,26 @@ describe("usePopupManager popup behavior", () => {
     );
   });
 
+  it("clicking a link inside the popup does not collapse existing child popups", () => {
+    render(<PopupSequenceHarness />);
+
+    fireEvent.click(screen.getByRole("button", { name: "返信を開く" }));
+
+    const rootPopup = document.querySelectorAll(".res-popup")[0] as HTMLElement;
+    const anchorLink = within(rootPopup).getByRole("link", { name: ">>3" });
+
+    fireEvent.mouseOver(anchorLink);
+    expect(screen.getByText("参照: >>3")).toBeInTheDocument();
+
+    fireEvent.mouseDown(anchorLink, { button: 0 });
+    fireEvent.click(anchorLink);
+
+    expect(screen.getByText("参照: >>3")).toBeInTheDocument();
+    expect(screen.getByTestId("popup-stack").textContent).toContain(
+      "anchor:>>3:depth=0",
+    );
+  });
+
   it("right-clicking the root popup closes descendants before opening its menu", () => {
     render(
       <PopupSequenceHarness

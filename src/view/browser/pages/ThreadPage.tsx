@@ -38,6 +38,11 @@ import {
   copyText,
   stripHtml,
 } from "src/view/browser/utils/utils";
+import {
+  parseInternalBrowserPage,
+  resolveAbsoluteUrl,
+  RESPECT_DEFAULT_EXTERNAL,
+} from "src/view/browser/utils/link-routing";
 
 export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -158,53 +163,13 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
     [showAnchorPreview],
   );
 
-  const resolveAbsoluteUrl = useCallback(
-    (rawUrl: string): string => {
-      try {
-        return new window.URL(rawUrl, page.threadUrl).href;
-      } catch {
-        return rawUrl;
-      }
-    },
-    [page.threadUrl],
-  );
-
-  const parseInternalPage = useCallback((absoluteUrl: string) => {
-    try {
-      const url = new window.URL(absoluteUrl);
-      const path = url.pathname;
-
-      const is5chThread = /^\/test\/read\.cgi\/[^/]+\/\d+\/?/.test(path);
-      const isJbbsThread = /^\/bbs\/read\.cgi\/[^/]+\/[^/]+\/\d+\/?/.test(path);
-      const isMachiThread = /^\/bbs\/read\.cgi\/[^/]+\/\d+\/?/.test(path);
-
-      if (is5chThread || isJbbsThread || isMachiThread) {
-        return {
-          type: "thread" as const,
-          title: absoluteUrl,
-          threadUrl: absoluteUrl,
-        };
-      }
-
-      const is5chBoard = /^\/[^/]+\/$/.test(path);
-      const isJbbsBoard = /^\/bbs\/read\.cgi\/[^/]+\/[^/]+\/$/.test(path);
-      if (is5chBoard || isJbbsBoard) {
-        return {
-          type: "threadList" as const,
-          title: absoluteUrl,
-          boardUrl: absoluteUrl,
-          boardTitle: absoluteUrl,
-        };
-      }
-    } catch {
-      return null;
-    }
-    return null;
-  }, []);
-
   const openResolvedUrl = useCallback(
-    (absoluteUrl: string, button: 0 | 1, resImages?: string[]) => {
-      const internalPage = parseInternalPage(absoluteUrl);
+    (
+      absoluteUrl: string,
+      button: 0 | 1,
+      resImages?: string[],
+      internalPage = parseInternalBrowserPage(absoluteUrl),
+    ) => {
       if (internalPage) {
         // 5ch互換URLは外部ブラウザではなく拡張内で開く。
         if (button === 1) {
@@ -222,32 +187,47 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
 
       openMediaFromUrl(absoluteUrl, resImages);
     },
-    [dispatch, openMediaFromUrl, parseInternalPage],
+    [dispatch, openMediaFromUrl],
   );
 
   const handleUrlClick = useCallback(
-    (rawUrl: string, resImages?: string[], button: 0 | 1 = 0) => {
-      const absoluteUrl = resolveAbsoluteUrl(rawUrl);
-      openResolvedUrl(absoluteUrl, button, resImages);
+    (
+      rawUrl: string,
+      resImages?: string[],
+      button: 0 | 1 = 0,
+      mode?: typeof RESPECT_DEFAULT_EXTERNAL,
+    ) => {
+      const absoluteUrl = resolveAbsoluteUrl(rawUrl, page.threadUrl);
+      const internalPage = parseInternalBrowserPage(absoluteUrl);
+      if (mode === RESPECT_DEFAULT_EXTERNAL) {
+        // 本文中の通常リンクでは、対応ホストのURLだけ拡張内遷移で横取りする。
+        // 非対応ホストは未処理(false)を返してブラウザ既定の左/中/右挙動へ委譲する。
+        if (!internalPage) {
+          return false;
+        }
+      }
+      openResolvedUrl(absoluteUrl, button, resImages, internalPage);
+      return true;
     },
-    [openResolvedUrl, resolveAbsoluteUrl],
+    [openResolvedUrl, page.threadUrl],
   );
 
   const buildUrlContextMenuItems = useCallback(
-    (rawUrl: string): ContextMenuItem[] => {
-      const absoluteUrl = resolveAbsoluteUrl(rawUrl);
-      const internalPage = parseInternalPage(absoluteUrl);
+    (
+      absoluteUrl: string,
+      internalPage = parseInternalBrowserPage(absoluteUrl),
+    ): ContextMenuItem[] => {
 
       return [
         {
           id: "open-in-current",
           label: internalPage ? "拡張内で開く" : "開く",
-          onSelect: () => openResolvedUrl(absoluteUrl, 0),
+          onSelect: () => openResolvedUrl(absoluteUrl, 0, undefined, internalPage),
         },
         {
           id: "open-in-new-tab",
           label: internalPage ? "拡張内の新しいタブで開く" : "新しいタブで開く",
-          onSelect: () => openResolvedUrl(absoluteUrl, 1),
+          onSelect: () => openResolvedUrl(absoluteUrl, 1, undefined, internalPage),
         },
         { id: "sep-url-1", separator: true },
         {
@@ -266,19 +246,33 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
         },
       ];
     },
-    [openResolvedUrl, parseInternalPage, resolveAbsoluteUrl],
+    [openResolvedUrl],
   );
 
   const handleUrlContextMenu = useCallback(
-    (rawUrl: string, e: React.MouseEvent, parentId?: string) => {
+    (
+      rawUrl: string,
+      e: React.MouseEvent,
+      parentId?: string,
+      mode?: typeof RESPECT_DEFAULT_EXTERNAL,
+    ) => {
+      const absoluteUrl = resolveAbsoluteUrl(rawUrl, page.threadUrl);
+      const internalPage = parseInternalBrowserPage(absoluteUrl);
+      if (mode === RESPECT_DEFAULT_EXTERNAL) {
+        // 非5ch互換URLはネイティブの右クリックメニューを優先する。
+        if (!internalPage) {
+          return false;
+        }
+      }
       addPopupContextMenu(
         e.clientX,
         e.clientY,
-        buildUrlContextMenuItems(rawUrl),
+        buildUrlContextMenuItems(absoluteUrl, internalPage),
         parentId,
       );
+      return true;
     },
-    [addPopupContextMenu, buildUrlContextMenuItems],
+    [addPopupContextMenu, buildUrlContextMenuItems, page.threadUrl],
   );
 
   // IDクリック → そのIDの全レスをポップアップ表示
@@ -625,8 +619,15 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
   );
 
   const openPopupUrlContextMenu = useCallback(
-    (parentId: string) => (rawUrl: string, e: React.MouseEvent) => {
-      handleUrlContextMenu(rawUrl, e, parentId);
+    (
+      parentId: string,
+    ) =>
+    (
+      rawUrl: string,
+      e: React.MouseEvent,
+      mode?: typeof RESPECT_DEFAULT_EXTERNAL,
+    ) => {
+      handleUrlContextMenu(rawUrl, e, parentId, mode);
     },
     [handleUrlContextMenu],
   );

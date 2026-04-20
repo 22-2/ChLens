@@ -1,6 +1,10 @@
 import React from "react";
 import type { IRes } from "src/service-container";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
+import type {
+  UrlClickHandler,
+  UrlContextMenuHandler,
+} from "src/view/browser/utils/link-routing";
 import { MAX_TREE_DEPTH } from "src/view/browser/utils/constants";
 
 // --- 再帰的返信ツリー ---
@@ -10,8 +14,8 @@ export const ReplyTree: React.FC<{
   resMap: Map<number, IRes>;
   messageProtocol: string;
   anchorPreviewDepth: number;
-  onUrlClick: (url: string, resImages?: string[], button?: 0 | 1) => void;
-  onUrlContextMenu: (url: string, e: React.MouseEvent) => void;
+  onUrlClick: UrlClickHandler;
+  onUrlContextMenu: UrlContextMenuHandler;
   onLinkMiddleClickStart?: () => void;
   onIdLinkClick: (id: string, e: React.MouseEvent) => void;
   onRepClick: (resNum: number, e: React.MouseEvent) => void;

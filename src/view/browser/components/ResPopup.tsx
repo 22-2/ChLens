@@ -2,6 +2,10 @@ import React, { useRef } from "react";
 import type { IRes } from "src/service-container";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
 import { usePopupSurfaceLifecycle } from "src/view/browser/hooks/use-popup-manager";
+import type {
+  UrlClickHandler,
+  UrlContextMenuHandler,
+} from "src/view/browser/utils/link-routing";
 import { useAdjustOverflow } from "src/view/browser/utils/use-adjust-overflow";
 
 // --- IDポップアップ ---
@@ -12,8 +16,8 @@ export const ResPopup: React.FC<{
   items: IRes[];
   messageProtocol: string;
   repIndex: Map<number, Set<number>>;
-  onUrlClick: (url: string, resImages?: string[], button?: 0 | 1) => void;
-  onUrlContextMenu: (url: string, e: React.MouseEvent) => void;
+  onUrlClick: UrlClickHandler;
+  onUrlContextMenu: UrlContextMenuHandler;
   onIdLinkClick: (id: string, e: React.MouseEvent) => void;
   onRepClick: (resNum: number, e: React.MouseEvent) => void;
   onAnchorClick: (resNum: number) => void;

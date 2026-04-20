@@ -1,6 +1,10 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useRef } from "react";
 import type { IRes } from "src/service-container";
 import { ResBody } from "src/view/browser/components/ResBody";
+import type {
+  UrlClickHandler,
+  UrlContextMenuHandler,
+} from "src/view/browser/utils/link-routing";
 import {
   decodeResponseHtml,
   extractUrlsFromMessage,
@@ -24,6 +28,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     onAnchorLeave,
     onContextMenu,
   }) => {
+    const handledMiddleClickThumbUrlRef = useRef<string | null>(null);
     const decoded = useMemo(
       () => decodeResponseHtml(res, messageProtocol),
       [messageProtocol, res],
@@ -79,8 +84,10 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
         <ResBody
           messageHtml={decoded.messageHtml}
           anchorPreviewDepth={anchorPreviewDepth}
-          onUrlClick={(url, button) => onUrlClick(url, undefined, button)}
-          onUrlContextMenu={onUrlContextMenu}
+          onUrlClick={(url, button, mode) =>
+            onUrlClick(url, undefined, button, mode)
+          }
+          onUrlContextMenu={(url, e, mode) => onUrlContextMenu(url, e, mode)}
           onMiddleClickStart={onLinkMiddleClickStart}
           onIdLinkClick={onIdLinkClick}
           onAnchorClick={onAnchorClick}
@@ -102,6 +109,39 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
                     0,
                   )
                 }
+                onMouseDown={(e) => {
+                  if (e.button !== 1) {
+                    return;
+                  }
+                  // ポップアップ内 middle click は mouseleave close と競合しやすいため、
+                  // 先に suppress を張ってから新規タブ側ハンドラを実行する。
+                  onLinkMiddleClickStart?.();
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handledMiddleClickThumbUrlRef.current = raw;
+                  onUrlClick(
+                    raw,
+                    imageUrls.map((x) => x.raw),
+                    1,
+                  );
+                }}
+                onAuxClick={(e) => {
+                  if (e.button !== 1) {
+                    return;
+                  }
+                  onLinkMiddleClickStart?.();
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (handledMiddleClickThumbUrlRef.current === raw) {
+                    handledMiddleClickThumbUrlRef.current = null;
+                    return;
+                  }
+                  onUrlClick(
+                    raw,
+                    imageUrls.map((x) => x.raw),
+                    1,
+                  );
+                }}
                 title={raw}
               >
                 <img src={src ?? ""} alt={raw} loading="lazy" />
@@ -121,8 +161,8 @@ export interface StaticResCardProps {
   /** 渡された場合、ヘッダーに返信数ボタンを表示する */
   repIndex?: Map<number, Set<number>>;
   isHighlighted?: boolean;
-  onUrlClick: (url: string, resImages?: string[], button?: 0 | 1) => void;
-  onUrlContextMenu: (url: string, e: React.MouseEvent) => void;
+  onUrlClick: UrlClickHandler;
+  onUrlContextMenu: UrlContextMenuHandler;
   onLinkMiddleClickStart?: () => void;
   onIdLinkClick: (id: string, e: React.MouseEvent) => void;
   onRepClick?: (resNum: number, e: React.MouseEvent) => void;

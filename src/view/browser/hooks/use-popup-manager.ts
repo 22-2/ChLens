@@ -406,20 +406,15 @@ export function usePopupSurfaceCloseGuard(onSurfaceMouseDown?: () => void) {
 
   const handleMouseDownCapture = useCallback(
     (event: React.MouseEvent<HTMLElement>) => {
-      onSurfaceMouseDown?.();
-
-      if (event.button !== 1) {
-        return;
-      }
-
       const target = event.target instanceof Element ? event.target : null;
-      if (!target?.closest(POPUP_KEEP_OPEN_TARGET_SELECTOR)) {
+      if (target?.closest(POPUP_KEEP_OPEN_TARGET_SELECTOR)) {
+        // popup本体クリック時は枝を畳みたいが、リンク操作まで同じ扱いにすると
+        // 「ポップアップ内のa要素を押した瞬間に子popupが消える」ので先に除外する。
+        armMouseLeaveCloseSuppression();
         return;
       }
 
-      // 中クリックで新規タブを開く瞬間はブラウザ側のフォーカス/hover判定が揺れて
-      // mouseleave が先に飛ぶことがあるため、その直後だけ自動 close を抑止する。
-      armMouseLeaveCloseSuppression();
+      onSurfaceMouseDown?.();
     },
     [armMouseLeaveCloseSuppression, onSurfaceMouseDown],
   );

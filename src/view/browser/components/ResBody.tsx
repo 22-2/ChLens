@@ -1,19 +1,47 @@
-import React, { useRef } from "react";
+import React, { useCallback, useRef } from "react";
 import {
   ANCHOR_SELECTOR,
   ID_LINK_SELECTOR,
 } from "src/view/browser/utils/constants";
+import {
+  RESPECT_DEFAULT_EXTERNAL,
+  type ResBodyUrlClickHandler,
+  type UrlContextMenuHandler,
+} from "src/view/browser/utils/link-routing";
 import {
   getEventTargetElement,
   normalizeIdLinkText,
   parseAnchorDisplayTargets,
 } from "src/view/browser/utils/utils";
 
+const PRIMARY_MOUSE_BUTTON = 0 as const;
+const MIDDLE_MOUSE_BUTTON = 1 as const;
+
+type EventConsumer = Pick<
+  React.SyntheticEvent,
+  "preventDefault" | "stopPropagation"
+>;
+
+type ResBodyInteractionHandlers = Pick<
+  React.HTMLAttributes<HTMLDivElement>,
+  | "onMouseOver"
+  | "onMouseLeave"
+  | "onMouseDown"
+  | "onClick"
+  | "onAuxClick"
+  | "onContextMenu"
+>;
+
+interface MiddleClickState {
+  href: string | null;
+  handled: boolean;
+}
+
 interface ResBodyProps {
   messageHtml: string;
   anchorPreviewDepth: number;
-  onUrlClick: (url: string, button: 0 | 1) => void;
-  onUrlContextMenu: (url: string, e: React.MouseEvent) => void;
+  onUrlClick: ResBodyUrlClickHandler;
+  onUrlContextMenu: UrlContextMenuHandler;
   onMiddleClickStart?: () => void;
   onIdLinkClick: (id: string, e: React.MouseEvent) => void;
   onAnchorClick: (resNum: number) => void;
@@ -50,6 +78,291 @@ function getNavigableHref(anchor: HTMLAnchorElement): string | null {
   return href;
 }
 
+function stopEvent(event: EventConsumer): void {
+  event.preventDefault();
+  event.stopPropagation();
+}
+
+function isReplyAnchor(anchor: HTMLAnchorElement): boolean {
+  return anchor.matches(ANCHOR_SELECTOR);
+}
+
+function isIdAnchor(anchor: HTMLAnchorElement): boolean {
+  return anchor.matches(ID_LINK_SELECTOR);
+}
+
+function isManagedAnchor(anchor: HTMLAnchorElement): boolean {
+  return isReplyAnchor(anchor) || isIdAnchor(anchor);
+}
+
+function consumeAnchorLeaveSuppression(
+  suppressNextAnchorLeaveRef: React.MutableRefObject<boolean>,
+): boolean {
+  if (!suppressNextAnchorLeaveRef.current) {
+    return false;
+  }
+  suppressNextAnchorLeaveRef.current = false;
+  return true;
+}
+
+function armAnchorLeaveSuppression(
+  suppressNextAnchorLeaveRef: React.MutableRefObject<boolean>,
+): void {
+  // middle click で別タブが開く瞬間は mouseleave が先に飛ぶことがあり、
+  // その1回だけはアンカープレビュー close を抑止して誤クローズを防ぐ。
+  suppressNextAnchorLeaveRef.current = true;
+}
+
+function rememberMiddleClick(
+  middleClickStateRef: React.MutableRefObject<MiddleClickState>,
+  href: string,
+  handled: boolean,
+): void {
+  middleClickStateRef.current = { href, handled };
+}
+
+function consumeRememberedMiddleClick(
+  middleClickStateRef: React.MutableRefObject<MiddleClickState>,
+  href: string,
+): MiddleClickState | null {
+  if (middleClickStateRef.current.href !== href) {
+    return null;
+  }
+
+  const remembered = middleClickStateRef.current;
+  middleClickStateRef.current = { href: null, handled: false };
+  return remembered;
+}
+
+function shouldHandleUrlClick(
+  onUrlClick: ResBodyUrlClickHandler,
+  href: string,
+  button: 0 | 1,
+): boolean {
+  return onUrlClick(href, button, RESPECT_DEFAULT_EXTERNAL) === true;
+}
+
+function shouldHandleUrlContextMenu(
+  onUrlContextMenu: UrlContextMenuHandler,
+  href: string,
+  event: React.MouseEvent,
+): boolean {
+  return onUrlContextMenu(href, event, RESPECT_DEFAULT_EXTERNAL) === true;
+}
+
+function useResBodyInteractionHandlers({
+  anchorPreviewDepth,
+  onUrlClick,
+  onUrlContextMenu,
+  onMiddleClickStart,
+  onIdLinkClick,
+  onAnchorClick,
+  onAnchorHover,
+  onAnchorLeave,
+}: Omit<ResBodyProps, "messageHtml">): ResBodyInteractionHandlers {
+  const hoveredAnchorKeyRef = useRef<string | null>(null);
+  const middleClickStateRef = useRef<MiddleClickState>({
+    href: null,
+    handled: false,
+  });
+  const suppressNextAnchorLeaveRef = useRef(false);
+
+  const notifyAnchorLeave = useCallback(() => {
+    if (consumeAnchorLeaveSuppression(suppressNextAnchorLeaveRef)) {
+      return;
+    }
+    onAnchorLeave(anchorPreviewDepth);
+  }, [anchorPreviewDepth, onAnchorLeave]);
+
+  const clearHoveredAnchor = useCallback(() => {
+    hoveredAnchorKeyRef.current = null;
+  }, []);
+
+  const handleMouseOver = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      const target = getEventTargetElement(e.target);
+      const anchor = target?.closest(ANCHOR_SELECTOR);
+      if (!(anchor instanceof HTMLAnchorElement)) {
+        if (hoveredAnchorKeyRef.current) {
+          clearHoveredAnchor();
+          notifyAnchorLeave();
+        }
+        return;
+      }
+
+      const label = anchor.textContent?.trim() ?? "";
+      const anchorHoverKey = getAnchorHoverKey(anchor);
+      if (hoveredAnchorKeyRef.current === anchorHoverKey) {
+        return;
+      }
+
+      const targets = parseAnchorDisplayTargets(label);
+      if (targets.length === 0) {
+        clearHoveredAnchor();
+        notifyAnchorLeave();
+        return;
+      }
+
+      hoveredAnchorKeyRef.current = anchorHoverKey;
+      // 同じアンカー上の細かなマウス移動では再配置せず、プレビューを安定表示させる。
+      onAnchorHover(
+        targets,
+        anchor.getBoundingClientRect(),
+        label,
+        anchorPreviewDepth,
+      );
+    },
+    [anchorPreviewDepth, clearHoveredAnchor, notifyAnchorLeave, onAnchorHover],
+  );
+
+  const handleMouseLeave = useCallback(() => {
+    clearHoveredAnchor();
+    notifyAnchorLeave();
+  }, [clearHoveredAnchor, notifyAnchorLeave]);
+
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (e.button !== MIDDLE_MOUSE_BUTTON) {
+        return;
+      }
+
+      const anchor = getAnchorElement(e.target);
+      if (!anchor) {
+        return;
+      }
+
+      armAnchorLeaveSuppression(suppressNextAnchorLeaveRef);
+      onMiddleClickStart?.();
+
+      if (isManagedAnchor(anchor)) {
+        stopEvent(e);
+        return;
+      }
+
+      const href = getNavigableHref(anchor);
+      if (!href) {
+        return;
+      }
+
+      const handled = shouldHandleUrlClick(
+        onUrlClick,
+        href,
+        MIDDLE_MOUSE_BUTTON,
+      );
+      rememberMiddleClick(middleClickStateRef, href, handled);
+
+      if (handled) {
+        stopEvent(e);
+      }
+    },
+    [onMiddleClickStart, onUrlClick],
+  );
+
+  const handleClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      const anchor = getAnchorElement(e.target);
+      if (!anchor) {
+        return;
+      }
+
+      if (isIdAnchor(anchor)) {
+        stopEvent(e);
+        onIdLinkClick(normalizeIdLinkText(anchor.textContent ?? ""), e);
+        return;
+      }
+
+      if (isReplyAnchor(anchor)) {
+        stopEvent(e);
+        if (anchor.classList.contains("disabled")) {
+          return;
+        }
+
+        const label = anchor.textContent?.trim() ?? "";
+        const targets = parseAnchorDisplayTargets(label);
+        if (targets.length > 0) {
+          onAnchorClick(targets[0]);
+        }
+        return;
+      }
+
+      const href = getNavigableHref(anchor);
+      if (!href) {
+        return;
+      }
+
+      if (shouldHandleUrlClick(onUrlClick, href, PRIMARY_MOUSE_BUTTON)) {
+        stopEvent(e);
+      }
+    },
+    [onAnchorClick, onIdLinkClick, onUrlClick],
+  );
+
+  const handleAuxClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      const anchor = getAnchorElement(e.target);
+      if (!anchor) {
+        return;
+      }
+
+      if (e.button === MIDDLE_MOUSE_BUTTON) {
+        armAnchorLeaveSuppression(suppressNextAnchorLeaveRef);
+        onMiddleClickStart?.();
+      }
+
+      if (isIdAnchor(anchor)) {
+        stopEvent(e);
+        return;
+      }
+
+      const href = getNavigableHref(anchor);
+      if (!href || e.button !== MIDDLE_MOUSE_BUTTON) {
+        return;
+      }
+
+      const remembered = consumeRememberedMiddleClick(middleClickStateRef, href);
+      if (remembered) {
+        if (remembered.handled) {
+          stopEvent(e);
+        }
+        return;
+      }
+
+      if (shouldHandleUrlClick(onUrlClick, href, MIDDLE_MOUSE_BUTTON)) {
+        stopEvent(e);
+      }
+    },
+    [onMiddleClickStart, onUrlClick],
+  );
+
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      const anchor = getAnchorElement(e.target);
+      if (!anchor || isManagedAnchor(anchor)) {
+        return;
+      }
+
+      const href = getNavigableHref(anchor);
+      if (!href) {
+        return;
+      }
+
+      if (shouldHandleUrlContextMenu(onUrlContextMenu, href, e)) {
+        stopEvent(e);
+      }
+    },
+    [onUrlContextMenu],
+  );
+
+  return {
+    onMouseOver: handleMouseOver,
+    onMouseLeave: handleMouseLeave,
+    onMouseDown: handleMouseDown,
+    onClick: handleClick,
+    onAuxClick: handleAuxClick,
+    onContextMenu: handleContextMenu,
+  };
+}
+
 export const ResBody: React.FC<ResBodyProps> = React.memo(
   ({
     messageHtml,
@@ -62,149 +375,22 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
     onAnchorHover,
     onAnchorLeave,
   }) => {
-    const hoveredAnchorKeyRef = useRef<string | null>(null);
-    const handledMiddleClickHrefRef = useRef<string | null>(null);
+    const interactionHandlers = useResBodyInteractionHandlers({
+      anchorPreviewDepth,
+      onUrlClick,
+      onUrlContextMenu,
+      onMiddleClickStart,
+      onIdLinkClick,
+      onAnchorClick,
+      onAnchorHover,
+      onAnchorLeave,
+    });
 
     return (
       <div
         className="res__body"
         dangerouslySetInnerHTML={{ __html: messageHtml }}
-        onMouseOver={(e) => {
-          const target = getEventTargetElement(e.target);
-          const anchor = target?.closest(ANCHOR_SELECTOR);
-          if (!(anchor instanceof HTMLAnchorElement)) {
-            if (hoveredAnchorKeyRef.current) {
-              hoveredAnchorKeyRef.current = null;
-              onAnchorLeave(anchorPreviewDepth);
-            }
-            return;
-          }
-          const label = anchor.textContent?.trim() ?? "";
-          const anchorHoverKey = getAnchorHoverKey(anchor);
-          if (hoveredAnchorKeyRef.current === anchorHoverKey) {
-            return;
-          }
-          const targets = parseAnchorDisplayTargets(label);
-          if (targets.length === 0) {
-            hoveredAnchorKeyRef.current = null;
-            onAnchorLeave(anchorPreviewDepth);
-            return;
-          }
-          hoveredAnchorKeyRef.current = anchorHoverKey;
-          // 同じアンカー上の細かなマウス移動では再配置せず、プレビューを安定表示させる。
-          onAnchorHover(
-            targets,
-            anchor.getBoundingClientRect(),
-            label,
-            anchorPreviewDepth,
-          );
-        }}
-        onMouseLeave={() => {
-          hoveredAnchorKeyRef.current = null;
-          onAnchorLeave(anchorPreviewDepth);
-        }}
-        onMouseDown={(e) => {
-          if (e.button !== 1) {
-            return;
-          }
-          const anchor = getAnchorElement(e.target);
-          if (!anchor) {
-            return;
-          }
-          onMiddleClickStart?.();
-          if (
-            anchor.matches(ANCHOR_SELECTOR) ||
-            anchor.matches(ID_LINK_SELECTOR)
-          ) {
-            e.preventDefault();
-            e.stopPropagation();
-            return;
-          }
-          if (!getNavigableHref(anchor)) {
-            return;
-          }
-          // popup 内リンクの中クリックでは default の中ボタン挙動を止めて自前遷移に寄せる。
-          // さらに auxclick が飛ばない環境でも確実に新規タブ動作させるため、
-          // middle down 時点で onUrlClick(,1) を実行しておく。
-          e.preventDefault();
-          e.stopPropagation();
-          const href = getNavigableHref(anchor);
-          if (!href) {
-            return;
-          }
-          handledMiddleClickHrefRef.current = href;
-          onUrlClick(href, 1);
-        }}
-        onClick={(e) => {
-          const anchor = getAnchorElement(e.target);
-          if (!anchor) return;
-          if (anchor.matches(ID_LINK_SELECTOR)) {
-            e.preventDefault();
-            e.stopPropagation();
-            onIdLinkClick(normalizeIdLinkText(anchor.textContent ?? ""), e);
-            return;
-          }
-          if (anchor.matches(ANCHOR_SELECTOR)) {
-            e.preventDefault();
-            e.stopPropagation();
-            if (anchor.classList.contains("disabled")) {
-              return;
-            }
-            const label = anchor.textContent?.trim() ?? "";
-            const targets = parseAnchorDisplayTargets(label);
-            if (targets.length > 0) {
-              onAnchorClick(targets[0]);
-            }
-            return;
-          }
-          const href = getNavigableHref(anchor);
-          if (!href) {
-            return;
-          }
-          e.preventDefault();
-          e.stopPropagation();
-          onUrlClick(href, 0);
-        }}
-        onAuxClick={(e) => {
-          const anchor = getAnchorElement(e.target);
-          if (!anchor) return;
-          if (e.button === 1) {
-            onMiddleClickStart?.();
-          }
-          if (anchor.matches(ID_LINK_SELECTOR)) {
-            e.preventDefault();
-            e.stopPropagation();
-            return;
-          }
-          const href = getNavigableHref(anchor);
-          if (!href) {
-            return;
-          }
-          if (e.button !== 1) return;
-          e.preventDefault();
-          e.stopPropagation();
-          if (handledMiddleClickHrefRef.current === href) {
-            handledMiddleClickHrefRef.current = null;
-            return;
-          }
-          onUrlClick(href, 1);
-        }}
-        onContextMenu={(e) => {
-          const anchor = getAnchorElement(e.target);
-          if (!anchor) return;
-          if (
-            anchor.matches(ANCHOR_SELECTOR) ||
-            anchor.matches(ID_LINK_SELECTOR)
-          )
-            return;
-          const href = getNavigableHref(anchor);
-          if (!href) {
-            return;
-          }
-          e.preventDefault();
-          e.stopPropagation();
-          onUrlContextMenu(href, e);
-        }}
+        {...interactionHandlers}
       />
     );
   },

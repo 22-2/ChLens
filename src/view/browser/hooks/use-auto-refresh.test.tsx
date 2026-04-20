@@ -60,33 +60,39 @@ function AutoRefreshHarness({
     });
 
   return (
-    <div className="content-area" data-testid="scroll-container">
-      <div ref={rootRef}>
-        {responses.map((num) => (
-          <div key={num}>{num}</div>
-        ))}
-        <div ref={autoScrollBoundaryRef} data-testid="boundary" />
-        <button
-          onClick={() => {
-            setResponses((prev) => [...prev, prev.length + 1]);
-            setLoading(false);
-          }}
-        >
-          新着ありで完了
-        </button>
-        <button
-          onClick={() => {
-            setLoading(false);
-          }}
-        >
-          新着なしで完了
-        </button>
-        <output data-testid="can-auto-scroll">
-          {canAutoScroll ? "enabled" : "disabled"}
-        </output>
-        <output data-testid="is-auto-scrolling">
-          {isAutoScrolling ? "running" : "idle"}
-        </output>
+    <div className="content-area">
+      <div
+        className="content-area__tab-panel"
+        data-active="true"
+        data-testid="scroll-container"
+      >
+        <div ref={rootRef}>
+          {responses.map((num) => (
+            <div key={num}>{num}</div>
+          ))}
+          <div ref={autoScrollBoundaryRef} data-testid="boundary" />
+          <button
+            onClick={() => {
+              setResponses((prev) => [...prev, prev.length + 1]);
+              setLoading(false);
+            }}
+          >
+            新着ありで完了
+          </button>
+          <button
+            onClick={() => {
+              setLoading(false);
+            }}
+          >
+            新着なしで完了
+          </button>
+          <output data-testid="can-auto-scroll">
+            {canAutoScroll ? "enabled" : "disabled"}
+          </output>
+          <output data-testid="is-auto-scrolling">
+            {isAutoScrolling ? "running" : "idle"}
+          </output>
+        </div>
       </div>
     </div>
   );

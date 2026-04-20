@@ -1,6 +1,10 @@
 import React, { useMemo } from "react";
 import type { IRes } from "src/service-container";
 import { ResBody } from "src/view/browser/components/ResBody";
+import type {
+  UrlClickHandler,
+  UrlContextMenuHandler,
+} from "src/view/browser/utils/link-routing";
 import {
   decodeResponseHtml,
   extractUrlsFromMessage,
@@ -89,8 +93,10 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
         <ResBody
           messageHtml={decoded.messageHtml}
           anchorPreviewDepth={0}
-          onUrlClick={(url, button) => onUrlClick(url, undefined, button)}
-          onUrlContextMenu={onUrlContextMenu}
+          onUrlClick={(url, button, mode) =>
+            onUrlClick(url, undefined, button, mode)
+          }
+          onUrlContextMenu={(url, e, mode) => onUrlContextMenu(url, e, mode)}
           onIdLinkClick={onIdClick}
           onAnchorClick={onAnchorClick}
           onAnchorHover={onAnchorHover}
@@ -170,8 +176,8 @@ export interface ResItemProps {
   onIdClick: (id: string, e: React.MouseEvent) => void;
   onRepClick: (resNum: number, e: React.MouseEvent) => void;
   /** url: クリックされたURL, resImages: 同レス内の全画像URL（ビューア前後移動用、省略可） */
-  onUrlClick: (url: string, resImages?: string[], button?: 0 | 1) => void;
-  onUrlContextMenu: (url: string, e: React.MouseEvent) => void;
+  onUrlClick: UrlClickHandler;
+  onUrlContextMenu: UrlContextMenuHandler;
   onAnchorClick: (resNum: number) => void;
   onAnchorHover: (
     targets: number[],

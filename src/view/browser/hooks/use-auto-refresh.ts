@@ -118,8 +118,25 @@ export function useAutoRefresh({
     if (!host) {
       return null;
     }
-    const containerElement = host.closest(".content-area");
-    return containerElement instanceof HTMLElement ? containerElement : null;
+    const nearestPanel = host.closest(".content-area__tab-panel");
+    if (nearestPanel instanceof HTMLElement) {
+      return nearestPanel;
+    }
+
+    const contentArea = host.closest(".content-area");
+    if (!(contentArea instanceof HTMLElement)) {
+      return null;
+    }
+
+    const activePanel = contentArea.querySelector(
+      ".content-area__tab-panel[data-active='true']",
+    );
+    if (activePanel instanceof HTMLElement) {
+      return activePanel;
+    }
+
+    // 互換性のため、旧構成（content-area 自体がスクロール）の場合は fallback する。
+    return contentArea;
   }, [rootRef]);
 
   const syncCanAutoScroll = useCallback(() => {

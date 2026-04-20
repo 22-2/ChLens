@@ -9,12 +9,16 @@ afterEach(() => {
 });
 
 function PopupCloseGuardHarness({ onClose }: { onClose: () => void }) {
-  const { armMouseLeaveCloseSuppression, shouldSuppressMouseLeaveClose } =
-    usePopupSurfaceCloseGuard();
+  const {
+    armMouseLeaveCloseSuppression,
+    handleMouseDownCapture,
+    shouldSuppressMouseLeaveClose,
+  } = usePopupSurfaceCloseGuard();
 
   return (
     <div
       data-testid="surface"
+      onMouseDownCapture={handleMouseDownCapture}
       onMouseLeave={() => {
         if (shouldSuppressMouseLeaveClose()) {
           return;
@@ -25,6 +29,26 @@ function PopupCloseGuardHarness({ onClose }: { onClose: () => void }) {
       <button type="button" onClick={armMouseLeaveCloseSuppression}>
         arm guard
       </button>
+      <a href="https://example.com" data-testid="popup-link">
+        popup link
+      </a>
+    </div>
+  );
+}
+
+function PopupSurfaceMouseDownHarness({
+  onSurfaceMouseDown,
+}: {
+  onSurfaceMouseDown: () => void;
+}) {
+  const { handleMouseDownCapture } = usePopupSurfaceCloseGuard(onSurfaceMouseDown);
+
+  return (
+    <div data-testid="surface" onMouseDownCapture={handleMouseDownCapture}>
+      <div data-testid="plain-area">plain area</div>
+      <a href="https://example.com" data-testid="popup-link">
+        popup link
+      </a>
     </div>
   );
 }
@@ -56,5 +80,42 @@ describe("usePopupSurfaceCloseGuard", () => {
     });
 
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("リンクの左クリック操作直後の mouseleave close も抑止する", () => {
+    const onClose = vi.fn();
+
+    render(<PopupCloseGuardHarness onClose={onClose} />);
+
+    fireEvent.mouseDown(screen.getByTestId("popup-link"), { button: 0 });
+    fireEvent.mouseLeave(screen.getByTestId("surface"), {
+      relatedTarget: null,
+    });
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("popup内リンクの mousedown では枝閉じ用 onSurfaceMouseDown を呼ばない", () => {
+    const onSurfaceMouseDown = vi.fn();
+
+    render(
+      <PopupSurfaceMouseDownHarness onSurfaceMouseDown={onSurfaceMouseDown} />,
+    );
+
+    fireEvent.mouseDown(screen.getByTestId("popup-link"), { button: 0 });
+
+    expect(onSurfaceMouseDown).not.toHaveBeenCalled();
+  });
+
+  it("popup本体の通常領域 mousedown では枝閉じ用 onSurfaceMouseDown を呼ぶ", () => {
+    const onSurfaceMouseDown = vi.fn();
+
+    render(
+      <PopupSurfaceMouseDownHarness onSurfaceMouseDown={onSurfaceMouseDown} />,
+    );
+
+    fireEvent.mouseDown(screen.getByTestId("plain-area"), { button: 0 });
+
+    expect(onSurfaceMouseDown).toHaveBeenCalledOnce();
   });
 });
