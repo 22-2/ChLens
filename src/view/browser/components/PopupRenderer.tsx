@@ -19,11 +19,12 @@ import type {
 interface PopupRendererProps {
   host: HTMLDivElement | null;
   anchorPreviews: AnchorPopupItem[];
-  idPopup?: IdPopupItem;
+  idPopupItems: IdPopupItem[];
   treePopupItems: TreePopupItem[];
   contextMenuItems: ContextMenuPopupItem[];
   messageProtocol: string;
   repIndex: Map<number, Set<number>>;
+  idIndex: Map<string, Set<number>>;
   resMap: Map<number, IRes>;
   hasAnchorPreviews: boolean;
   hasPopupChild: (popupId: string) => boolean;
@@ -48,6 +49,9 @@ interface PopupRendererProps {
   onClosePopupById: (popupId: string) => void;
   onClosePopupChildren: (popupId: string) => void;
   onIdLinkClick: (id: string, e: React.MouseEvent) => void;
+  onPopupIdLinkClick: (
+    parentId: string,
+  ) => (id: string, e: React.MouseEvent) => void;
   onRepClickInPopup: (
     parentId?: string,
     anchorPreviewDepth?: number,
@@ -64,11 +68,12 @@ interface PopupRendererProps {
 export const PopupRenderer: React.FC<PopupRendererProps> = ({
   host,
   anchorPreviews,
-  idPopup,
+  idPopupItems,
   treePopupItems,
   contextMenuItems,
   messageProtocol,
   repIndex,
+  idIndex,
   resMap,
   hasAnchorPreviews,
   hasPopupChild,
@@ -81,6 +86,7 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
   onClosePopupById,
   onClosePopupChildren,
   onIdLinkClick,
+  onPopupIdLinkClick,
   onRepClickInPopup,
   onResContextMenuOpen,
   onUrlClick,
@@ -98,9 +104,10 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
           label={anchorPreview.payload.label}
           messageProtocol={messageProtocol}
           repIndex={repIndex}
+          idIndex={idIndex}
           onUrlClick={onUrlClick}
           onUrlContextMenu={onUrlContextMenuOpen(anchorPreview.id)}
-          onIdLinkClick={onIdLinkClick}
+          onIdLinkClick={onPopupIdLinkClick(anchorPreview.id)}
           onRepClick={onRepClickInPopup(
             anchorPreview.id,
             anchorPreview.payload.depth + 1,
@@ -120,17 +127,19 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
         />
       ))}
 
-      {idPopup && (
+      {idPopupItems.map((idPopup) => (
         <ResPopup
+          key={idPopup.id}
           x={idPopup.x}
           y={idPopup.y}
           title={idPopup.payload.title}
           items={idPopup.payload.items}
           messageProtocol={messageProtocol}
           repIndex={repIndex}
+          idIndex={idIndex}
           onUrlClick={onUrlClick}
           onUrlContextMenu={onUrlContextMenuOpen(idPopup.id)}
-          onIdLinkClick={onIdLinkClick}
+          onIdLinkClick={onPopupIdLinkClick(idPopup.id)}
           onRepClick={onRepClickInPopup(idPopup.id)}
           onAnchorClick={onAnchorClick}
           onAnchorHover={onPopupAnchorHover(idPopup.id)}
@@ -146,7 +155,7 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
           onMouseEnter={onClearAnchorPreviewHideTimer}
           onMouseLeave={() => onAnchorLeave(0)}
         />
-      )}
+      ))}
 
       {treePopupItems.map((treePopup, index) => (
         <ReplyTreePopup
@@ -155,12 +164,13 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
           y={treePopup.y}
           resNum={treePopup.payload.resNum}
           repIndex={repIndex}
+          idIndex={idIndex}
           resMap={resMap}
           messageProtocol={messageProtocol}
           anchorPreviewDepth={treePopup.payload.anchorPreviewDepth}
           onUrlClick={onUrlClick}
           onUrlContextMenu={onUrlContextMenuOpen(treePopup.id)}
-          onIdLinkClick={onIdLinkClick}
+          onIdLinkClick={onPopupIdLinkClick(treePopup.id)}
           onRepClick={onRepClickInPopup(
             treePopup.id,
             treePopup.payload.anchorPreviewDepth,

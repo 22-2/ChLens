@@ -17,6 +17,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     messageProtocol,
     anchorPreviewDepth,
     repIndex,
+    idIndex,
     isHighlighted,
     onUrlClick,
     onUrlContextMenu,
@@ -47,6 +48,8 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
 
     // repIndex が渡された場合のみ返信数を表示する
     const repCount = repIndex?.get(res.num)?.size ?? 0;
+    // idIndex が渡された場合のみ同一IDのレス数を表示してクリック可能にする
+    const idCount = (res.id && idIndex?.get(res.id)?.size) ?? 0;
 
     // NG 判定は ResItem と同じロジック
     const isNG = res.ng != null || res.class?.includes("ng");
@@ -67,7 +70,24 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
             className="res__name"
             dangerouslySetInnerHTML={{ __html: decoded.nameHtml }}
           />
-          {res.id && <span className="res__id">{res.id}</span>}
+          {res.id && (
+            <span
+              className={`res__id${
+                idCount >= 5
+                  ? " res__id--freq"
+                  : idCount >= 2
+                    ? " res__id--link"
+                    : ""
+              }`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onIdLinkClick(res.id!, e);
+              }}
+            >
+              {res.id}
+              {idCount >= 2 && `(${idCount})`}
+            </span>
+          )}
           <span className="res__date">{res.date ?? res.other}</span>
           {repCount > 0 && onRepClick && (
             <span
@@ -160,6 +180,8 @@ export interface StaticResCardProps {
   anchorPreviewDepth: number;
   /** 渡された場合、ヘッダーに返信数ボタンを表示する */
   repIndex?: Map<number, Set<number>>;
+  /** 渡された場合、ヘッダーのIDに同一IDのレス数を表示してクリック可能にする */
+  idIndex?: Map<string, Set<number>>;
   isHighlighted?: boolean;
   onUrlClick: UrlClickHandler;
   onUrlContextMenu: UrlContextMenuHandler;

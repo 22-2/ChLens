@@ -84,6 +84,7 @@ export const ReplyTreePopup: React.FC<{
   y: number;
   resNum: number;
   repIndex: Map<number, Set<number>>;
+  idIndex?: Map<string, Set<number>>;
   resMap: Map<number, IRes>;
   messageProtocol: string;
   anchorPreviewDepth: number;
@@ -119,6 +120,7 @@ export const ReplyTreePopup: React.FC<{
   y,
   resNum,
   repIndex,
+  idIndex,
   resMap,
   messageProtocol,
   anchorPreviewDepth,
@@ -271,6 +273,7 @@ export const ReplyTreePopup: React.FC<{
               messageProtocol={messageProtocol}
               anchorPreviewDepth={anchorPreviewDepth}
               repIndex={repIndex}
+              idIndex={idIndex}
               isHighlighted={true}
               onUrlClick={onUrlClick}
               onUrlContextMenu={onUrlContextMenu}
@@ -289,6 +292,7 @@ export const ReplyTreePopup: React.FC<{
           <ReplyTree
             resNum={resNum}
             repIndex={repIndex}
+            idIndex={idIndex}
             resMap={resMap}
             messageProtocol={messageProtocol}
             anchorPreviewDepth={anchorPreviewDepth}

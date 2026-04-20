@@ -16,6 +16,7 @@ export interface AnchorPreviewProps {
   label: string;
   messageProtocol: string;
   repIndex: Map<number, Set<number>>;
+  idIndex?: Map<string, Set<number>>;
   onUrlClick: UrlClickHandler;
   onUrlContextMenu: UrlContextMenuHandler;
   onIdLinkClick: (id: string, e: React.MouseEvent) => void;
@@ -50,6 +51,7 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
   label,
   messageProtocol,
   repIndex,
+  idIndex,
   onUrlClick,
   onUrlContextMenu,
   onIdLinkClick,
@@ -112,6 +114,7 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
             messageProtocol={messageProtocol}
             anchorPreviewDepth={depth + 1}
             repIndex={repIndex}
+            idIndex={idIndex}
             onUrlClick={onUrlClick}
             onUrlContextMenu={onUrlContextMenu}
             onLinkMiddleClickStart={armMouseLeaveCloseSuppression}

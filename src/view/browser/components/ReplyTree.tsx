@@ -11,6 +11,7 @@ import { MAX_TREE_DEPTH } from "src/view/browser/utils/constants";
 export const ReplyTree: React.FC<{
   resNum: number;
   repIndex: Map<number, Set<number>>;
+  idIndex?: Map<string, Set<number>>;
   resMap: Map<number, IRes>;
   messageProtocol: string;
   anchorPreviewDepth: number;
@@ -33,6 +34,7 @@ export const ReplyTree: React.FC<{
 }> = ({
   resNum,
   repIndex,
+  idIndex,
   resMap,
   messageProtocol,
   anchorPreviewDepth,
@@ -80,6 +82,7 @@ export const ReplyTree: React.FC<{
               // ここを 0 に戻すと、次のアンカーホバーで親プレビューごと閉じる回帰が起きる。
               anchorPreviewDepth={anchorPreviewDepth}
               repIndex={repIndex}
+              idIndex={idIndex}
               onUrlClick={onUrlClick}
               onUrlContextMenu={onUrlContextMenu}
               onLinkMiddleClickStart={onLinkMiddleClickStart}
@@ -93,6 +96,7 @@ export const ReplyTree: React.FC<{
             <ReplyTree
               resNum={replyNum}
               repIndex={repIndex}
+              idIndex={idIndex}
               resMap={resMap}
               messageProtocol={messageProtocol}
               anchorPreviewDepth={anchorPreviewDepth}

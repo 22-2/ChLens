@@ -16,6 +16,7 @@ export const ResPopup: React.FC<{
   items: IRes[];
   messageProtocol: string;
   repIndex: Map<number, Set<number>>;
+  idIndex?: Map<string, Set<number>>;
   onUrlClick: UrlClickHandler;
   onUrlContextMenu: UrlContextMenuHandler;
   onIdLinkClick: (id: string, e: React.MouseEvent) => void;
@@ -53,6 +54,7 @@ export const ResPopup: React.FC<{
   items,
   messageProtocol,
   repIndex,
+  idIndex,
   onUrlClick,
   onUrlContextMenu,
   onIdLinkClick,
@@ -119,6 +121,7 @@ export const ResPopup: React.FC<{
             messageProtocol={messageProtocol}
             anchorPreviewDepth={0}
             repIndex={repIndex}
+            idIndex={idIndex}
             onUrlClick={onUrlClick}
             onUrlContextMenu={onUrlContextMenu}
             onLinkMiddleClickStart={armMouseLeaveCloseSuppression}

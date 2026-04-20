@@ -332,7 +332,7 @@ export interface ThreadPopupLifecycleResult {
   popups: PopupItem[];
   anchorPreviews: AnchorPopupItem[];
   treePopupItems: TreePopupItem[];
-  idPopup?: IdPopupItem;
+  idPopupItems: IdPopupItem[];
   contextMenuItems: ContextMenuPopupItem[];
   hasAnchorPreviews: boolean;
   addPopup: (popup: Omit<PopupItem, "id" | "z">) => string;
@@ -688,8 +688,8 @@ export function useThreadPopupLifecycle({
     () => popups.filter((item): item is TreePopupItem => item.type === "tree"),
     [popups],
   );
-  const idPopup = useMemo(
-    () => popups.find((item): item is IdPopupItem => item.type === "id"),
+  const idPopupItems = useMemo(
+    () => popups.filter((item): item is IdPopupItem => item.type === "id"),
     [popups],
   );
   const contextMenuItems = useMemo(
@@ -896,7 +896,7 @@ export function useThreadPopupLifecycle({
     popups,
     anchorPreviews,
     treePopupItems,
-    idPopup,
+    idPopupItems,
     contextMenuItems,
     hasAnchorPreviews: anchorPreviews.length > 0,
     addPopup,

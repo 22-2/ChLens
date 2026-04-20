@@ -17,18 +17,20 @@ import { usePopupManager } from "src/view/browser/hooks/use-popup-manager";
 import type {
   AnchorPopupItem,
   ContextMenuPopupItem,
+  IdPopupItem,
   PopupItem,
   TreePopupItem,
 } from "src/view/browser/utils/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-function createRes(num: number, message: string): IRes {
+function createRes(num: number, message: string, id?: string): IRes {
   return {
     num,
     name: `res-${num}`,
     mail: "",
     date: "2026/04/18(土) 12:00:00.000",
     message,
+    id,
   };
 }
 
@@ -50,6 +52,17 @@ const DUPLICATE_REPLY_RES_MAP = new Map<number, IRes>([
 ]);
 
 const DUPLICATE_REPLY_INDEX = new Map<number, Set<number>>([[3, new Set([6])]]);
+
+const ID_CHAIN_RES_MAP = new Map<number, IRes>([
+  [10, createRes(10, "id root", "ID:AAA")],
+  [11, createRes(11, "id reply", "ID:AAA")],
+]);
+
+const ID_CHAIN_REP_INDEX = new Map<number, Set<number>>([[10, new Set([11])]]);
+
+const ID_CHAIN_INDEX = new Map<string, Set<number>>([
+  ["ID:AAA", new Set([10, 11])],
+]);
 
 function summarizePopup(item: PopupItem): string {
   if (item.type === "tree") {
@@ -263,6 +276,153 @@ function PopupSequenceHarness({
           isPopupDescendantOf={isPopupDescendantOf}
           onEnterFromDescendant={() => closePopupChildren(menu.id)}
           onSurfaceMouseDown={() => closePopupChildren(menu.id)}
+        />
+      ))}
+    </div>
+  );
+}
+
+function PopupIdChainHarness() {
+  const {
+    popups,
+    addPopup,
+    closePopupById,
+    closePopupChildren,
+    isPopupDescendantOf,
+  } = usePopupManager();
+
+  const treePopups = popups.filter(
+    (item): item is TreePopupItem => item.type === "tree",
+  );
+  const idPopups = popups.filter(
+    (item): item is IdPopupItem => item.type === "id",
+  );
+
+  const hasPopupChild = (popupId: string) =>
+    popups.some((item) => item.parentId === popupId);
+
+  const addTreePopup = (resNum: number, parentId?: string) => {
+    addPopup({
+      type: "tree",
+      x: 20,
+      y: 20,
+      payload: { resNum, anchorPreviewDepth: 0 },
+      parentId,
+    });
+  };
+
+  const addIdPopup = (
+    clientX: number,
+    clientY: number,
+    items: IRes[],
+    title: string,
+    parentId?: string,
+  ) => {
+    addPopup({
+      type: "id",
+      x: clientX,
+      y: clientY,
+      payload: { items, title },
+      parentId,
+    });
+  };
+
+  const resolveIdItems = (id: string): IRes[] => {
+    const ids = id.startsWith("ID:") ? [id, id.replace(/^ID:/i, "")] : [id, `ID:${id}`];
+    const resolvedId = ids.find((candidate) => ID_CHAIN_INDEX.has(candidate));
+    const resNums = resolvedId ? ID_CHAIN_INDEX.get(resolvedId) : undefined;
+    if (!resNums) {
+      return [];
+    }
+
+    return Array.from(resNums)
+      .sort((a, b) => a - b)
+      .map((num) => ID_CHAIN_RES_MAP.get(num))
+      .filter((res): res is IRes => res != null);
+  };
+
+  const handleRepClickInPopup =
+    (parentId: string) => (resNum: number, event: ReactMouseEvent) => {
+      event.stopPropagation();
+      addTreePopup(resNum, parentId);
+    };
+
+  const handlePopupIdClick =
+    (parentId: string) => (id: string, event: ReactMouseEvent) => {
+      event.stopPropagation();
+      const items = resolveIdItems(id);
+      if (items.length === 0) {
+        return;
+      }
+      addIdPopup(40, 40, items, `${id} (${items.length}件)`, parentId);
+    };
+
+  return (
+    <div>
+      <button onClick={() => addTreePopup(10)}>ID親チェーンを開く</button>
+      <output data-testid="popup-stack-id-chain">
+        {popups.map(summarizePopup).join(" | ")}
+      </output>
+
+      {treePopups.map((treePopup, index) => (
+        <ReplyTreePopup
+          key={treePopup.id}
+          x={treePopup.x}
+          y={treePopup.y}
+          resNum={treePopup.payload.resNum}
+          repIndex={ID_CHAIN_REP_INDEX}
+          idIndex={ID_CHAIN_INDEX}
+          resMap={ID_CHAIN_RES_MAP}
+          messageProtocol="https:"
+          anchorPreviewDepth={0}
+          onUrlClick={() => {}}
+          onUrlContextMenu={() => {}}
+          onIdLinkClick={handlePopupIdClick(treePopup.id)}
+          onRepClick={handleRepClickInPopup(treePopup.id)}
+          onAnchorClick={() => {}}
+          onAnchorHover={() => {}}
+          onAnchorLeave={() => {}}
+          popupId={treePopup.id}
+          isPopupDescendantOf={isPopupDescendantOf}
+          onEnterFromDescendant={() => closePopupChildren(treePopup.id)}
+          onSurfaceMouseDown={() => closePopupChildren(treePopup.id)}
+          onResContextMenu={() => {}}
+          disableOutsideClick={
+            index < treePopups.length - 1 || hasPopupChild(treePopup.id)
+          }
+          zIndex={treePopup.z}
+          onClose={() => closePopupById(treePopup.id)}
+          onMouseEnter={() => {}}
+        />
+      ))}
+
+      {idPopups.map((item) => (
+        <ResPopup
+          key={item.id}
+          x={item.x}
+          y={item.y}
+          title={item.payload.title}
+          items={item.payload.items}
+          messageProtocol="https:"
+          repIndex={ID_CHAIN_REP_INDEX}
+          idIndex={ID_CHAIN_INDEX}
+          onUrlClick={() => {}}
+          onUrlContextMenu={() => {}}
+          onIdLinkClick={handlePopupIdClick(item.id)}
+          onRepClick={handleRepClickInPopup(item.id)}
+          onAnchorClick={() => {}}
+          onAnchorHover={() => {}}
+          onAnchorLeave={() => {}}
+          popupId={item.id}
+          isPopupDescendantOf={isPopupDescendantOf}
+          onEnterFromDescendant={() => closePopupChildren(item.id)}
+          onSurfaceMouseDown={() => closePopupChildren(item.id)}
+          onResContextMenu={() => {}}
+          disableOutsideClick={hasPopupChild(item.id)}
+          zIndex={item.z}
+          onClose={() => closePopupById(item.id)}
+          onMouseEnter={() => {}}
+          onMouseLeave={() => {}}
         />
       ))}
     </div>
@@ -553,6 +713,39 @@ describe("usePopupManager popup behavior", () => {
     expect(screen.getByRole("button", { name: "Inspect" })).toBeInTheDocument();
     expect(screen.getByTestId("popup-stack").textContent).toContain(
       "contextMenu:parent=tree-1",
+    );
+  });
+
+  it("opening ID popup from inside popup does not close ancestor popup chain", () => {
+    render(<PopupIdChainHarness />);
+
+    fireEvent.click(screen.getByRole("button", { name: "ID親チェーンを開く" }));
+    expect(screen.getAllByText(">>10 への返信ツリー")).toHaveLength(1);
+
+    const firstTreePopup = document.querySelectorAll(".res-popup")[0] as HTMLElement;
+    fireEvent.click(within(firstTreePopup).getAllByText("ID:AAA(2)")[0]);
+
+    expect(document.querySelectorAll(".res-popup")).toHaveLength(2);
+    expect(screen.getByText(">>10 への返信ツリー")).toBeInTheDocument();
+
+    const firstIdPopup = document.querySelectorAll(".res-popup")[1] as HTMLElement;
+    fireEvent.click(within(firstIdPopup).getByText("返信(1)"));
+
+    const nestedTreePopup = document.querySelectorAll(".res-popup")[2] as HTMLElement;
+    fireEvent.click(within(nestedTreePopup).getAllByText("ID:AAA(2)")[0]);
+
+    // ID popup配下の返信popupからさらにID popupを開いても、既存の祖先枝は残ること。
+    expect(document.querySelectorAll(".res-popup")).toHaveLength(4);
+    expect(screen.getAllByText(">>10 への返信ツリー")).toHaveLength(2);
+    expect(screen.getAllByText("ID:AAA (2件)")).toHaveLength(2);
+    expect(screen.getByTestId("popup-stack-id-chain").textContent).toContain(
+      "tree:10:depth=0",
+    );
+    expect(screen.getByTestId("popup-stack-id-chain").textContent).toContain(
+      "id",
+    );
+    expect(screen.getByTestId("popup-stack-id-chain").textContent).toContain(
+      "tree:10:depth=0 | id | tree:10:depth=0 | id",
     );
   });
 });

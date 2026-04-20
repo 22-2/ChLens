@@ -75,7 +75,7 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
     popups,
     anchorPreviews,
     treePopupItems,
-    idPopup,
+    idPopupItems,
     contextMenuItems,
     hasAnchorPreviews,
     addTreePopup,
@@ -306,6 +306,37 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
       );
     },
     [indexes, hideAnchorPreviewImmediately, closeNonContextPopups, addIdPopup],
+  );
+
+  const handlePopupIdClick = useCallback(
+    (parentId: string) => (id: string, e: React.MouseEvent) => {
+      // popup内クリックは親popupスタックを維持し、子としてID popupを開く。
+      // ここで全閉じすると「anchor_idで開いた瞬間に親が消える」ため closeNonContextPopups は呼ばない。
+      const candidateIds = id.startsWith("ID:")
+        ? [id, id.replace(/^ID:/i, "")]
+        : [id, `ID:${id}`];
+      const resolvedId = candidateIds.find((candidate) =>
+        indexes.idIndex.has(candidate),
+      );
+      const resNums = resolvedId ? indexes.idIndex.get(resolvedId) : undefined;
+      if (!resNums) return;
+      clearAnchorPreviewHideTimer();
+      const items = Array.from(resNums)
+        .sort((a, b) => a - b)
+        .map((num) => indexes.resMap.get(num))
+        .filter((r): r is IRes => !!r);
+      const displayId = (resolvedId ?? id).startsWith("ID:")
+        ? (resolvedId ?? id)
+        : `ID:${resolvedId ?? id}`;
+      addIdPopup(
+        e.clientX,
+        e.clientY,
+        items,
+        `${displayId} (${items.length}件)`,
+        parentId,
+      );
+    },
+    [addIdPopup, clearAnchorPreviewHideTimer, indexes.idIndex, indexes.resMap],
   );
 
   // 返信クリック → 返信ツリーをポップアップ表示（スレッド本文から）
@@ -759,11 +790,12 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
           <PopupRenderer
             host={rootRef.current}
             anchorPreviews={anchorPreviews}
-            idPopup={idPopup}
+            idPopupItems={idPopupItems}
             treePopupItems={treePopupItems}
             contextMenuItems={contextMenuItems}
             messageProtocol={messageProtocol}
             repIndex={indexes.repIndex}
+            idIndex={indexes.idIndex}
             resMap={indexes.resMap}
             hasAnchorPreviews={hasAnchorPreviews}
             hasPopupChild={hasPopupChild}
@@ -776,6 +808,7 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
             onClosePopupById={closePopupById}
             onClosePopupChildren={closePopupChildren}
             onIdLinkClick={handleIdClick}
+            onPopupIdLinkClick={handlePopupIdClick}
             onRepClickInPopup={handleRepClickInPopup}
             onResContextMenuOpen={openPopupResContextMenu}
             onUrlClick={handleUrlClick}
