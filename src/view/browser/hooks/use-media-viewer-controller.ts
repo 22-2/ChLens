@@ -391,7 +391,7 @@ export function useMediaViewerController(): MediaViewerProps | null {
     }
 
     const onMouseDown = (event: MouseEvent) => {
-      if (event.button !== 1) {
+      if (event.button !== 0 && event.button !== 1) {
         return;
       }
 
@@ -422,7 +422,10 @@ export function useMediaViewerController(): MediaViewerProps | null {
     };
 
     const onMouseUp = (event: globalThis.MouseEvent) => {
-      if (event.button !== 1 || !middlePanStateRef.current.active) {
+      if (
+        (event.button !== 0 && event.button !== 1) ||
+        !middlePanStateRef.current.active
+      ) {
         return;
       }
 
