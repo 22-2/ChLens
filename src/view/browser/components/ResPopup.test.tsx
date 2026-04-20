@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { usePopupSurfaceCloseGuard } from "src/view/browser/components/use-popup-surface-close-guard";
+import { usePopupSurfaceCloseGuard } from "src/view/browser/hooks/use-popup-surface-close-guard";
 
 afterEach(() => {
   cleanup();

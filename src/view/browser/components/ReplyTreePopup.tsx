@@ -5,12 +5,10 @@ import type { IRes } from "src/service-container";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import { ReplyTree } from "src/view/browser/components/ReplyTree";
-import { usePopupSurfaceCloseGuard } from "src/view/browser/components/use-popup-surface-close-guard";
-import { POPUP_SURFACE_SELECTOR } from "src/view/browser/utils/constants";
+import { usePopupSurfaceLifecycle } from "src/view/browser/hooks/use-popup-surface-lifecycle";
 import { useAdjustOverflow } from "src/view/browser/utils/use-adjust-overflow";
 import { copyText, stripHtml } from "src/view/browser/utils/utils";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
-import { getEventTargetElement } from "src/view/browser/utils/utils";
 
 interface TreeMenuPosition {
   x: number;
@@ -130,8 +128,15 @@ export const ReplyTreePopup: React.FC<{
     armMouseLeaveCloseSuppression,
     handleAuxClickCapture,
     handleMouseDownCapture,
-    shouldSuppressMouseLeaveClose,
-  } = usePopupSurfaceCloseGuard(onSurfaceMouseDown);
+    handleMouseEnter,
+    handleMouseLeave,
+  } = usePopupSurfaceLifecycle({
+    closeDisabled: disableOutsideClick,
+    onClose,
+    onSurfaceMouseDown,
+    onSurfaceMouseEnter: onMouseEnter,
+    onSurfaceMouseLeave: onMouseLeave,
+  });
   const [menuPosition, setMenuPosition] = useState<TreeMenuPosition | null>(null);
   const sourceRes = resMap.get(resNum) ?? null;
   const replyResponses = sourceRes
@@ -153,43 +158,6 @@ export const ReplyTreePopup: React.FC<{
 
   // スクロールコンテナ内での position:absolute に対応したオーバーフロー補正
   useAdjustOverflow(ref);
-
-  // カーソルがポップアップ内にあるかを追跡する。
-  // disableOutsideClick が true→false に変わる瞬間にカーソルが外にある場合、
-  // mouseleave は既に無視済みのためこのフラグで自動 close を補完する。
-  const [isHovering, setIsHovering] = useState(false);
-
-  // onClose の参照を ref で保持し、古い参照を useEffect に取り込まないようにする
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
-
-  // 子ポップアップが閉じて disableOutsideClick が true→false に変わった瞬間、
-  // カーソルがポップアップ外にある場合は自動的に閉じる。
-  // （mouseleave は disableOutsideClick=true の間に既に発火・無視済みのため、ここで補完する）
-  const prevDisableRef = useRef(!!disableOutsideClick);
-  useEffect(() => {
-    const wasDisabled = prevDisableRef.current;
-    prevDisableRef.current = !!disableOutsideClick;
-    if (wasDisabled && !disableOutsideClick && !isHovering) {
-      onCloseRef.current();
-    }
-  }, [disableOutsideClick, isHovering]);
-
-  // 子がいない状態（disableOutsideClick=false）では外側クリックでも閉じる
-  useEffect(() => {
-    if (disableOutsideClick) return;
-    const handler = (e: MouseEvent) => {
-      const target = getEventTargetElement(e.target);
-      if (target?.closest(POPUP_SURFACE_SELECTOR)) {
-        return;
-      }
-      if (ref.current) {
-        onCloseRef.current();
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [disableOutsideClick]);
 
   useEffect(() => {
     if (!menuPosition) {
@@ -216,12 +184,6 @@ export const ReplyTreePopup: React.FC<{
     document.addEventListener("mousedown", handleOutsideMenuClick);
     return () => document.removeEventListener("mousedown", handleOutsideMenuClick);
   }, [menuPosition]);
-
-  const handleMouseLeave = () => {
-    // 子ポップアップや子メニューが開いている間は親を閉じない。
-    if (disableOutsideClick) return;
-    onClose();
-  };
 
   const handleResContextMenu = (e: React.MouseEvent, targetRes: IRes) => {
     e.stopPropagation();
@@ -254,29 +216,8 @@ export const ReplyTreePopup: React.FC<{
       style={{ left: x, top: y, ...(zIndex != null && { zIndex }) }}
       onMouseDownCapture={handleMouseDownCapture}
       onAuxClickCapture={handleAuxClickCapture}
-      onMouseEnter={() => {
-        setIsHovering(true);
-        onMouseEnter?.();
-      }}
-      onMouseLeave={(e) => {
-        if (e.relatedTarget instanceof Node && ref.current?.contains(e.relatedTarget)) {
-          return;
-        }
-        if (
-          e.relatedTarget instanceof Element &&
-          e.relatedTarget.closest(POPUP_SURFACE_SELECTOR)
-        ) {
-          return;
-        }
-        if (shouldSuppressMouseLeaveClose()) {
-          return;
-        }
-        // popup surface間の移動では親子チェーンを維持したいので、
-        // 実際にsurface外へ出た時だけleave callbackを流す。
-        onMouseLeave?.();
-        setIsHovering(false);
-        handleMouseLeave();
-      }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <div className="res-popup__header">
         <span>{`>>${resNum} への返信ツリー`}</span>

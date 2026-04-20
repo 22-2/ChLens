@@ -16,8 +16,8 @@ import { StatusBarItem, StatusBarMode } from "src/view/browser/components/Status
 import { useAutoRefresh } from "src/view/browser/hooks/use-auto-refresh";
 import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
 import { useMediaViewer } from "src/view/browser/hooks/use-media-viewer";
+import { useThreadPopupLifecycle } from "src/view/browser/hooks/use-popup-manager";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
-import { useThreadPopupLifecycle } from "src/view/browser/hooks/use-thread-popup-lifecycle";
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";
 import { ResItem } from "src/view/browser/components/ResItem";
 import type { Props, ThreadFilter } from "src/view/browser/utils/types";
@@ -99,6 +99,7 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
     hideAnchorPreviewImmediately,
     showAnchorPreview,
   } = useThreadPopupLifecycle({
+    scopeId: tabId,
     rootRef,
     resMap: indexes.resMap,
   });

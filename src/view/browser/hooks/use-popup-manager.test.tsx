@@ -179,6 +179,7 @@ function PopupSequenceHarness({
           repIndex={repIndex}
           onUrlClick={() => {}}
           onUrlContextMenu={() => {}}
+          onIdLinkClick={() => {}}
           onRepClick={handleRepClickInPopup(
             anchorPreview.id,
             anchorPreview.payload.depth + 1,
@@ -211,6 +212,7 @@ function PopupSequenceHarness({
           anchorPreviewDepth={treePopup.payload.anchorPreviewDepth}
           onUrlClick={() => {}}
           onUrlContextMenu={() => {}}
+          onIdLinkClick={() => {}}
           onRepClick={handleRepClickInPopup(
             treePopup.id,
             treePopup.payload.anchorPreviewDepth,
@@ -280,6 +282,7 @@ describe("usePopupManager popup behavior", () => {
         anchorPreviewDepth={1}
         onUrlClick={() => {}}
         onUrlContextMenu={() => {}}
+        onIdLinkClick={() => {}}
         onRepClick={() => {}}
         onAnchorClick={() => {}}
         onAnchorHover={onAnchorHover}
@@ -466,6 +469,7 @@ const TREE_BASE_PROPS = {
   anchorPreviewDepth: 0,
   onUrlClick: () => {},
   onUrlContextMenu: () => {},
+  onIdLinkClick: () => {},
   onRepClick: () => {},
   onAnchorClick: () => {},
   onAnchorHover: () => {},
@@ -483,6 +487,7 @@ const ANCHOR_BASE_PROPS = {
   repIndex: TEST_REP_INDEX,
   onUrlClick: () => {},
   onUrlContextMenu: () => {},
+  onIdLinkClick: () => {},
   onRepClick: () => {},
   onAnchorClick: () => {},
   onAnchorHover: () => {},
@@ -502,6 +507,7 @@ const RES_BASE_PROPS = {
   repIndex: DUPLICATE_REPLY_INDEX,
   onUrlClick: () => {},
   onUrlContextMenu: () => {},
+  onIdLinkClick: () => {},
   onRepClick: () => {},
   onAnchorClick: () => {},
   onAnchorHover: () => {},
@@ -848,5 +854,59 @@ describe("ResPopup mouseleave behavior", () => {
     });
 
     expect(onMouseLeave).not.toHaveBeenCalled();
+  });
+});
+
+describe("usePopupManager zustand scopes", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("scope ごとに popup state を分離する", () => {
+    function ScopedPopupHarness() {
+      const leftScope = usePopupManager("left-tab");
+      const rightScope = usePopupManager("right-tab");
+
+      return (
+        <div>
+          <button
+            onClick={() => {
+              leftScope.addPopup({
+                type: "tree",
+                x: 8,
+                y: 8,
+                payload: { resNum: 1, anchorPreviewDepth: 0 },
+              });
+            }}
+          >
+            left
+          </button>
+          <button
+            onClick={() => {
+              rightScope.addPopup({
+                type: "tree",
+                x: 16,
+                y: 16,
+                payload: { resNum: 2, anchorPreviewDepth: 0 },
+              });
+            }}
+          >
+            right
+          </button>
+          <output data-testid="left-count">{leftScope.popups.length}</output>
+          <output data-testid="right-count">{rightScope.popups.length}</output>
+        </div>
+      );
+    }
+
+    render(<ScopedPopupHarness />);
+
+    fireEvent.click(screen.getByRole("button", { name: "left" }));
+    expect(screen.getByTestId("left-count")).toHaveTextContent("1");
+    expect(screen.getByTestId("right-count")).toHaveTextContent("0");
+
+    fireEvent.click(screen.getByRole("button", { name: "right" }));
+    expect(screen.getByTestId("left-count")).toHaveTextContent("1");
+    expect(screen.getByTestId("right-count")).toHaveTextContent("1");
   });
 });
