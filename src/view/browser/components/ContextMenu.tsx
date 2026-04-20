@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import React, { useEffect, useMemo, useRef } from "react";
+import { usePopupSurfaceLifecycle } from "src/view/browser/hooks/use-popup-manager";
 import { useAdjustOverflow } from "src/view/browser/utils/use-adjust-overflow";
 
 export interface ContextMenuItem {
@@ -18,10 +19,44 @@ interface Props {
   y: number;
   items: ContextMenuItem[];
   onClose: () => void;
+  popupId?: string;
+  isPopupDescendantOf?: (popupId: string, ancestorId: string) => boolean;
+  onEnterFromDescendant?: () => void;
+  onMouseEnter?: () => void;
+  onSurfaceMouseDown?: () => void;
+  closeDisabled?: boolean;
+  zIndex?: number;
 }
 
-export const ContextMenu: React.FC<Props> = ({ x, y, items, onClose }) => {
+export const ContextMenu: React.FC<Props> = ({
+  x,
+  y,
+  items,
+  onClose,
+  popupId,
+  isPopupDescendantOf,
+  onEnterFromDescendant,
+  onMouseEnter,
+  onSurfaceMouseDown,
+  closeDisabled,
+  zIndex,
+}) => {
   const menuRef = useRef<HTMLDivElement>(null);
+  const {
+    handleAuxClickCapture,
+    handleMouseDownCapture,
+    handleMouseEnter,
+    handleMouseLeave,
+  } = usePopupSurfaceLifecycle({
+    surfaceRef: menuRef,
+    popupId,
+    isPopupDescendantOf,
+    onEnterFromDescendant,
+    closeDisabled,
+    onClose,
+    onSurfaceMouseDown,
+    onSurfaceMouseEnter: onMouseEnter,
+  });
 
   const visibleItems = useMemo(
     () => items.filter((item) => item.separator || item.label),
@@ -29,12 +64,6 @@ export const ContextMenu: React.FC<Props> = ({ x, y, items, onClose }) => {
   );
 
   useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    };
-
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         onClose();
@@ -42,13 +71,11 @@ export const ContextMenu: React.FC<Props> = ({ x, y, items, onClose }) => {
     };
 
     const id = requestAnimationFrame(() => {
-      document.addEventListener("mousedown", handleClick);
       document.addEventListener("keydown", handleEscape);
     });
 
     return () => {
       cancelAnimationFrame(id);
-      document.removeEventListener("mousedown", handleClick);
       document.removeEventListener("keydown", handleEscape);
     };
   }, [onClose]);
@@ -60,8 +87,13 @@ export const ContextMenu: React.FC<Props> = ({ x, y, items, onClose }) => {
     <div
       ref={menuRef}
       data-popup-surface="true"
+      data-popup-id={popupId}
       className="context-menu"
-      style={{ left: x, top: y }}
+      style={{ left: x, top: y, ...(zIndex != null && { zIndex }) }}
+      onMouseDownCapture={handleMouseDownCapture}
+      onAuxClickCapture={handleAuxClickCapture}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       {visibleItems.map((item) => {
         if (item.separator) {

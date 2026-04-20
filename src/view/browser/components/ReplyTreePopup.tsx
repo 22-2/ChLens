@@ -105,6 +105,9 @@ export const ReplyTreePopup: React.FC<{
   /** アンカープレビューとの親子関係制御用 */
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
+  popupId?: string;
+  isPopupDescendantOf?: (popupId: string, ancestorId: string) => boolean;
+  onEnterFromDescendant?: () => void;
   /** 親popupをクリックした時に、その配下の枝だけ畳めるようにする。 */
   onSurfaceMouseDown?: () => void;
   /** 子ポップアップが開いている間は外側クリック閉じを無効にする */
@@ -130,6 +133,9 @@ export const ReplyTreePopup: React.FC<{
   onClose,
   onMouseEnter,
   onMouseLeave,
+  popupId,
+  isPopupDescendantOf,
+  onEnterFromDescendant,
   onSurfaceMouseDown,
   disableOutsideClick,
   zIndex,
@@ -143,6 +149,10 @@ export const ReplyTreePopup: React.FC<{
     handleMouseEnter,
     handleMouseLeave,
   } = usePopupSurfaceLifecycle({
+    surfaceRef: ref,
+    popupId,
+    isPopupDescendantOf,
+    onEnterFromDescendant,
     closeDisabled: disableOutsideClick,
     onClose,
     onSurfaceMouseDown,
@@ -227,6 +237,7 @@ export const ReplyTreePopup: React.FC<{
     <div
       ref={ref}
       data-popup-surface="true"
+      data-popup-id={popupId}
       className="res-popup"
       style={{ left: x, top: y, ...(zIndex != null && { zIndex }) }}
       onMouseDownCapture={handleMouseDownCapture}

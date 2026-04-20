@@ -85,6 +85,7 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
     closeNonContextPopups,
     closePopupById,
     closePopupChildren,
+    isPopupDescendantOf,
     hasPopupChild,
     hideAnchorPreview,
     hideAnchorPreviewImmediately,
@@ -766,6 +767,7 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
             resMap={indexes.resMap}
             hasAnchorPreviews={hasAnchorPreviews}
             hasPopupChild={hasPopupChild}
+            isPopupDescendantOf={isPopupDescendantOf}
             onAnchorClick={handleAnchorClick}
             onAnchorHover={showAnchorPreview}
             onPopupAnchorHover={openAnchorPreviewFromPopup}

@@ -8,6 +8,7 @@ import {
   ANCHOR_PREVIEW_MAX_WIDTH,
   ANCHOR_PREVIEW_OFFSET,
   POPUP_BASE_Z,
+  POPUP_SURFACE_ID_ATTRIBUTE,
   POPUP_SURFACE_SELECTOR,
 } from "src/view/browser/utils/constants";
 import type {
@@ -57,9 +58,44 @@ interface PopupCollectionSlice {
 interface PopupGraphSlice {
   closeNonContextPopupsInScope: (scopeId: string) => void;
   closePopupChildrenInScope: (scopeId: string, popupId: string) => void;
+  isPopupDescendantOfInScope: (
+    scopeId: string,
+    popupId: string,
+    ancestorId: string,
+  ) => boolean;
 }
 
 type PopupStoreState = PopupScopeSlice & PopupCollectionSlice & PopupGraphSlice;
+
+function isPopupDescendantOf(
+  popups: PopupItem[],
+  popupId: string,
+  ancestorId: string,
+): boolean {
+  const popupsById = new Map(popups.map((item) => [item.id, item]));
+  const visitedIds = new Set<string>();
+  let currentId = popupsById.get(popupId)?.parentId;
+
+  // parentId が壊れて循環しても leave 判定で無限ループしないようにガードする。
+  while (currentId) {
+    if (currentId === ancestorId) {
+      return true;
+    }
+    if (visitedIds.has(currentId)) {
+      break;
+    }
+    visitedIds.add(currentId);
+    currentId = popupsById.get(currentId)?.parentId;
+  }
+
+  return false;
+}
+
+function getPopupSurfaceId(target: EventTarget | null): string | null {
+  const targetElement = getEventTargetElement(target);
+  const popupSurface = targetElement?.closest(POPUP_SURFACE_SELECTOR);
+  return popupSurface?.getAttribute(POPUP_SURFACE_ID_ATTRIBUTE) ?? null;
+}
 
 function createPopupScope(): PopupScopeState {
   return {
@@ -239,6 +275,14 @@ const createPopupGraphSlice: StateCreator<
       (item) => item.parentId === popupId,
     );
   },
+  isPopupDescendantOfInScope: (scopeId, popupId, ancestorId) => {
+    const currentScope = get().scopes[scopeId];
+    if (!currentScope) {
+      return false;
+    }
+
+    return isPopupDescendantOf(currentScope.popups, popupId, ancestorId);
+  },
 });
 
 const usePopupStore = create<PopupStoreState>()((...args) => ({
@@ -255,9 +299,14 @@ export interface PopupManagerResult {
   closePopupsByPredicate: (predicate: (item: PopupItem) => boolean) => void;
   closeNonContextPopups: () => void;
   closePopupChildren: (popupId: string) => void;
+  isPopupDescendantOf: (popupId: string, ancestorId: string) => boolean;
 }
 
 interface PopupSurfaceLifecycleParams {
+  surfaceRef?: RefObject<HTMLElement | null>;
+  popupId?: string;
+  isPopupDescendantOf?: (popupId: string, ancestorId: string) => boolean;
+  onEnterFromDescendant?: () => void;
   closeDisabled?: boolean;
   onClose: () => void;
   onSurfaceMouseDown?: () => void;
@@ -269,7 +318,7 @@ interface PopupSurfaceLifecycleResult {
   armMouseLeaveCloseSuppression: () => void;
   handleAuxClickCapture: (event: React.MouseEvent<HTMLElement>) => void;
   handleMouseDownCapture: (event: React.MouseEvent<HTMLElement>) => void;
-  handleMouseEnter: () => void;
+  handleMouseEnter: (event: React.MouseEvent<HTMLElement>) => void;
   handleMouseLeave: (event: React.MouseEvent<HTMLElement>) => void;
 }
 
@@ -311,6 +360,7 @@ export interface ThreadPopupLifecycleResult {
   closeNonContextPopups: () => void;
   closePopupById: (id: string) => void;
   closePopupChildren: (popupId: string) => void;
+  isPopupDescendantOf: (popupId: string, ancestorId: string) => boolean;
   hasPopupChild: (popupId: string) => boolean;
   hideAnchorPreview: (fromDepth?: number) => void;
   hideAnchorPreviewImmediately: (fromDepth?: number) => void;
@@ -350,6 +400,9 @@ export function usePopupManager(
   const closePopupChildrenInScope = usePopupStore(
     (state) => state.closePopupChildrenInScope,
   );
+  const isPopupDescendantOfInScope = usePopupStore(
+    (state) => state.isPopupDescendantOfInScope,
+  );
 
   useEffect(() => {
     mountScope(scopeId);
@@ -381,6 +434,11 @@ export function usePopupManager(
     (popupId: string) => closePopupChildrenInScope(scopeId, popupId),
     [closePopupChildrenInScope, scopeId],
   );
+  const isPopupDescendantOf = useCallback(
+    (popupId: string, ancestorId: string) =>
+      isPopupDescendantOfInScope(scopeId, popupId, ancestorId),
+    [isPopupDescendantOfInScope, scopeId],
+  );
 
   return {
     popups,
@@ -390,6 +448,7 @@ export function usePopupManager(
     closePopupsByPredicate,
     closeNonContextPopups,
     closePopupChildren,
+    isPopupDescendantOf,
   };
 }
 
@@ -452,6 +511,10 @@ export function usePopupSurfaceCloseGuard(onSurfaceMouseDown?: () => void) {
 }
 
 export function usePopupSurfaceLifecycle({
+  surfaceRef,
+  popupId,
+  isPopupDescendantOf,
+  onEnterFromDescendant,
   closeDisabled,
   onClose,
   onSurfaceMouseDown,
@@ -461,6 +524,7 @@ export function usePopupSurfaceLifecycle({
   const [isHovering, setIsHovering] = useState(false);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
+  const suppressNextDisableReleaseCloseRef = useRef(false);
 
   const {
     armMouseLeaveCloseSuppression,
@@ -469,35 +533,84 @@ export function usePopupSurfaceLifecycle({
     shouldSuppressMouseLeaveClose,
   } = usePopupSurfaceCloseGuard(onSurfaceMouseDown);
 
+  const isPopupBranchTarget = useCallback(
+    (target: EventTarget | null) => {
+      const targetPopupId = getPopupSurfaceId(target);
+      if (!popupId || !targetPopupId) {
+        return false;
+      }
+
+      return (
+        targetPopupId === popupId ||
+        isPopupDescendantOf?.(targetPopupId, popupId) === true
+      );
+    },
+    [isPopupDescendantOf, popupId],
+  );
+
   const prevCloseDisabledRef = useRef(!!closeDisabled);
   useEffect(() => {
     const wasDisabled = prevCloseDisabledRef.current;
     prevCloseDisabledRef.current = !!closeDisabled;
+    const isActuallyHovering = surfaceRef?.current?.matches(":hover") ?? isHovering;
+    if (wasDisabled && !closeDisabled && suppressNextDisableReleaseCloseRef.current) {
+      // 子から親へ戻る途中は child branch を先に落とすので、
+      // disable 復帰の瞬間だけ親の自動 close を1回抑止して hover 遷移を待つ。
+      suppressNextDisableReleaseCloseRef.current = false;
+      return;
+    }
     // 子popupが閉じた直後に mouseleave を取り逃したケースは、
-    // closeDisabled の解除タイミングで hover 状態を見て補完 close する。
-    if (wasDisabled && !closeDisabled && !isHovering) {
+    // React state だけだと子popup経由の移動で stale になることがあるため、
+    // 復帰判定だけは実 DOM の :hover を優先して閉じ忘れを防ぐ。
+    if (wasDisabled && !closeDisabled && !isActuallyHovering) {
       onCloseRef.current();
     }
-  }, [closeDisabled, isHovering]);
+  }, [closeDisabled, isHovering, surfaceRef]);
 
   useEffect(() => {
     if (closeDisabled) {
       return;
     }
     const handleOutsideMouseDown = (event: MouseEvent) => {
-      const target = getEventTargetElement(event.target);
-      if (target?.closest(POPUP_SURFACE_SELECTOR)) {
+      if (
+        event.target instanceof Node &&
+        surfaceRef?.current?.contains(event.target)
+      ) {
         return;
       }
+
+      const target = getEventTargetElement(event.target);
+      const popupSurface = target?.closest(POPUP_SURFACE_SELECTOR);
+      if (!popupSurface) {
+        onCloseRef.current();
+        return;
+      }
+
+      if (!popupId) {
+        return;
+      }
+
+      if (isPopupBranchTarget(event.target)) {
+        return;
+      }
+
       onCloseRef.current();
     };
     document.addEventListener("mousedown", handleOutsideMouseDown);
     return () =>
       document.removeEventListener("mousedown", handleOutsideMouseDown);
-  }, [closeDisabled]);
+  }, [closeDisabled, isPopupBranchTarget, popupId, surfaceRef]);
 
-  const handleMouseEnter = () => {
+  const handleMouseEnter = (event: React.MouseEvent<HTMLElement>) => {
     setIsHovering(true);
+    if (
+      popupId &&
+      isPopupDescendantOf?.(getPopupSurfaceId(event.relatedTarget) ?? "", popupId)
+    ) {
+      // 親へ戻った瞬間にその親配下の枝を畳むと、子から親へ戻った後に古い子孫が残らない。
+      suppressNextDisableReleaseCloseRef.current = true;
+      onEnterFromDescendant?.();
+    }
     onSurfaceMouseEnter?.();
   };
 
@@ -508,7 +621,17 @@ export function usePopupSurfaceLifecycle({
     ) {
       return;
     }
+    const relatedPopupId = getPopupSurfaceId(event.relatedTarget);
+    if (popupId && relatedPopupId) {
+      if (isPopupBranchTarget(event.relatedTarget)) {
+        // 子孫popupへ移動した時も実際には親surfaceを離れているので hover だけは解除し、
+        // 子が閉じた瞬間に「まだ親を指しているか」を closeDisabled の復帰判定で見直せるようにする。
+        setIsHovering(false);
+        return;
+      }
+    }
     if (
+      !popupId &&
       event.relatedTarget instanceof Element &&
       event.relatedTarget.closest(POPUP_SURFACE_SELECTOR)
     ) {
@@ -517,8 +640,7 @@ export function usePopupSurfaceLifecycle({
     if (shouldSuppressMouseLeaveClose()) {
       return;
     }
-    // popup surface 間の移動では親子チェーンを維持し、
-    // 実際に surface 外へ出た時だけ leave callback と close 判定を走らせる。
+    // 子孫へ抜ける時だけ枝を維持し、それ以外の遷移は種類に関係なく現在のpopupを閉じる。
     onSurfaceMouseLeave?.();
     setIsHovering(false);
     if (closeDisabled) {
@@ -548,6 +670,7 @@ export function useThreadPopupLifecycle({
     closePopupsByPredicate,
     closeNonContextPopups,
     closePopupChildren,
+    isPopupDescendantOf,
   } = usePopupManager(scopeId);
   const anchorPreviewHideTimerRef = useRef<number | null>(null);
 
@@ -784,6 +907,7 @@ export function useThreadPopupLifecycle({
     closeNonContextPopups,
     closePopupById,
     closePopupChildren,
+    isPopupDescendantOf,
     hasPopupChild,
     hideAnchorPreview,
     hideAnchorPreviewImmediately,

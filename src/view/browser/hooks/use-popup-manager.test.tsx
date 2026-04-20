@@ -79,6 +79,7 @@ function PopupSequenceHarness({
     closePopupById,
     closePopupsByPredicate,
     closePopupChildren,
+    isPopupDescendantOf,
   } = usePopupManager();
 
   const anchorPreviews = popups.filter(
@@ -195,6 +196,9 @@ function PopupSequenceHarness({
           onAnchorLeave={hideAnchorPreviewsFromDepth}
           onMouseEnter={() => {}}
           onMouseLeave={() => {}}
+          popupId={anchorPreview.id}
+          isPopupDescendantOf={isPopupDescendantOf}
+          onEnterFromDescendant={() => closePopupChildren(anchorPreview.id)}
           onSurfaceMouseDown={() => closePopupChildren(anchorPreview.id)}
           onResContextMenu={(_targetRes, event) => {
             event.preventDefault();
@@ -228,6 +232,9 @@ function PopupSequenceHarness({
             showAnchorPreview(targets, anchorRect, label, depth, treePopup.id)
           }
           onAnchorLeave={hideAnchorPreviewsFromDepth}
+          popupId={treePopup.id}
+          isPopupDescendantOf={isPopupDescendantOf}
+          onEnterFromDescendant={() => closePopupChildren(treePopup.id)}
           onSurfaceMouseDown={() => closePopupChildren(treePopup.id)}
           onResContextMenu={(_targetRes, event) => {
             event.preventDefault();
@@ -241,6 +248,7 @@ function PopupSequenceHarness({
           }
           zIndex={treePopup.z}
           onClose={() => closePopupById(treePopup.id)}
+          onMouseEnter={() => {}}
         />
       ))}
 
@@ -251,6 +259,10 @@ function PopupSequenceHarness({
           y={menu.y}
           items={menu.payload.items}
           onClose={() => closePopupById(menu.id)}
+          popupId={menu.id}
+          isPopupDescendantOf={isPopupDescendantOf}
+          onEnterFromDescendant={() => closePopupChildren(menu.id)}
+          onSurfaceMouseDown={() => closePopupChildren(menu.id)}
         />
       ))}
     </div>
@@ -406,6 +418,60 @@ describe("usePopupManager popup behavior", () => {
     expect(screen.getByTestId("popup-stack").textContent).toContain(
       "tree:3:depth=1",
     );
+  });
+
+  it("moving from a child reply popup back to its parent closes the entire descendant branch", () => {
+    render(
+      <PopupSequenceHarness
+        resMap={DUPLICATE_REPLY_RES_MAP}
+        repIndex={DUPLICATE_REPLY_INDEX}
+        rootResNum={3}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "返信を開く" }));
+
+    const rootPopup = document.querySelectorAll(".res-popup")[0] as HTMLElement;
+    fireEvent.mouseOver(within(rootPopup).getByRole("link", { name: ">>3" }));
+
+    const anchorPreview = document.querySelector(
+      ".anchor-preview",
+    ) as HTMLElement;
+    fireEvent.click(within(anchorPreview).getByText("返信(1)"));
+
+    const nestedPopup = document.querySelectorAll(".res-popup")[1] as HTMLElement;
+    fireEvent.mouseEnter(rootPopup, { relatedTarget: nestedPopup });
+    fireEvent.mouseLeave(nestedPopup, { relatedTarget: rootPopup });
+
+    expect(document.querySelectorAll(".res-popup")).toHaveLength(1);
+    expect(document.querySelectorAll(".anchor-preview")).toHaveLength(0);
+    expect(screen.getByTestId("popup-stack").textContent).toBe(
+      "tree:3:depth=0",
+    );
+  });
+
+  it("moving from a context menu back to its parent surface closes the menu", () => {
+    const onClose = vi.fn();
+    render(
+      <>
+        <div data-popup-surface="true" data-popup-id="tree-1">
+          parent popup
+        </div>
+        <ContextMenu
+          x={0}
+          y={0}
+          items={[{ id: "inspect", label: "Inspect" }]}
+          onClose={onClose}
+          popupId="contextMenu-1"
+        />
+      </>,
+    );
+
+    const menu = document.querySelector(".context-menu") as HTMLElement;
+    const parentSurface = screen.getByText("parent popup");
+    fireEvent.mouseLeave(menu, { relatedTarget: parentSurface });
+
+    expect(onClose).toHaveBeenCalledOnce();
   });
 
   it("clicking the root popup closes all descendant popups in that branch", () => {

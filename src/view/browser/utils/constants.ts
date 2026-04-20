@@ -8,6 +8,7 @@ export const ID_LINK_SELECTOR = "a.anchor_id";
 // ポータルや別レイヤーへ出した子メニューでも同じ「ポップアップ面」として扱い、
 // 親ポップアップの外側クリック判定が子要素で誤反応しないようにする。
 export const POPUP_SURFACE_SELECTOR = "[data-popup-surface='true']";
+export const POPUP_SURFACE_ID_ATTRIBUTE = "data-popup-id";
 
 // ポップアップ系のz-index基準値
 // クリックで開く系（ResPopup, TreePopup）: POPUP_BASE_Z + stack順

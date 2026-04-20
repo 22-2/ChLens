@@ -27,6 +27,7 @@ interface PopupRendererProps {
   resMap: Map<number, IRes>;
   hasAnchorPreviews: boolean;
   hasPopupChild: (popupId: string) => boolean;
+  isPopupDescendantOf: (popupId: string, ancestorId: string) => boolean;
   onAnchorClick: (resNum: number) => void;
   onAnchorHover: (
     targets: number[],
@@ -71,6 +72,7 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
   resMap,
   hasAnchorPreviews,
   hasPopupChild,
+  isPopupDescendantOf,
   onAnchorClick,
   onAnchorHover,
   onPopupAnchorHover,
@@ -107,6 +109,9 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
           onAnchorHover={onAnchorHover}
           onAnchorLeave={onAnchorLeave}
           onMouseEnter={onClearAnchorPreviewHideTimer}
+          popupId={anchorPreview.id}
+          isPopupDescendantOf={isPopupDescendantOf}
+          onEnterFromDescendant={() => onClosePopupChildren(anchorPreview.id)}
           onMouseLeave={() => onAnchorLeave(anchorPreview.payload.depth)}
           onSurfaceMouseDown={() => onClosePopupChildren(anchorPreview.id)}
           onResContextMenu={onResContextMenuOpen(anchorPreview.id)}
@@ -130,6 +135,9 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
           onAnchorClick={onAnchorClick}
           onAnchorHover={onPopupAnchorHover(idPopup.id)}
           onAnchorLeave={onAnchorLeave}
+          popupId={idPopup.id}
+          isPopupDescendantOf={isPopupDescendantOf}
+          onEnterFromDescendant={() => onClosePopupChildren(idPopup.id)}
           onSurfaceMouseDown={() => onClosePopupChildren(idPopup.id)}
           onResContextMenu={onResContextMenuOpen(idPopup.id)}
           disableOutsideClick={hasPopupChild(idPopup.id) || hasAnchorPreviews}
@@ -160,6 +168,9 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
           onAnchorClick={onAnchorClick}
           onAnchorHover={onPopupAnchorHover(treePopup.id)}
           onAnchorLeave={onAnchorLeave}
+          popupId={treePopup.id}
+          isPopupDescendantOf={isPopupDescendantOf}
+          onEnterFromDescendant={() => onClosePopupChildren(treePopup.id)}
           onSurfaceMouseDown={() => onClosePopupChildren(treePopup.id)}
           onResContextMenu={onResContextMenuOpen(treePopup.id)}
           disableOutsideClick={
@@ -181,6 +192,12 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
           y={menu.y}
           items={menu.payload.items}
           onClose={() => onClosePopupById(menu.id)}
+          popupId={menu.id}
+          isPopupDescendantOf={isPopupDescendantOf}
+          onEnterFromDescendant={() => onClosePopupChildren(menu.id)}
+          onSurfaceMouseDown={() => onClosePopupChildren(menu.id)}
+          closeDisabled={hasPopupChild(menu.id)}
+          zIndex={menu.z}
         />
       ))}
     </PopupPortalLayer>

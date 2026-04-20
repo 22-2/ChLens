@@ -1,14 +1,12 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef } from "react";
 import type { IRes } from "src/service-container";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
-import { usePopupSurfaceCloseGuard } from "src/view/browser/hooks/use-popup-manager";
+import { usePopupSurfaceLifecycle } from "src/view/browser/hooks/use-popup-manager";
 import type {
   UrlClickHandler,
   UrlContextMenuHandler,
 } from "src/view/browser/utils/link-routing";
-import { POPUP_SURFACE_SELECTOR } from "src/view/browser/utils/constants";
 import { useAdjustOverflow } from "src/view/browser/utils/use-adjust-overflow";
-import { getEventTargetElement } from "src/view/browser/utils/utils";
 
 export interface AnchorPreviewProps {
   depth: number;
@@ -32,6 +30,9 @@ export interface AnchorPreviewProps {
   onAnchorLeave: (fromDepth: number) => void;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
+  popupId?: string;
+  isPopupDescendantOf?: (popupId: string, ancestorId: string) => boolean;
+  onEnterFromDescendant?: () => void;
   /** 親popup自体を触った時は、このpreview配下の枝だけ閉じ直せるようにする。 */
   onSurfaceMouseDown?: () => void;
   /** 子メニューも親子スタックへ載せ、参照プレビューの早閉じを防ぐ。 */
@@ -58,55 +59,39 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
   onAnchorLeave,
   onMouseEnter,
   onMouseLeave,
+  popupId,
+  isPopupDescendantOf,
+  onEnterFromDescendant,
   onSurfaceMouseDown,
   onResContextMenu,
   hasChildPopup,
   zIndex,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
-  const [isHovering, setIsHovering] = useState(false);
-  const onMouseLeaveRef = useRef(onMouseLeave);
   const {
     armMouseLeaveCloseSuppression,
     handleAuxClickCapture,
     handleMouseDownCapture,
-    shouldSuppressMouseLeaveClose,
-  } = usePopupSurfaceCloseGuard(onSurfaceMouseDown);
-  onMouseLeaveRef.current = onMouseLeave;
-
-  const isActuallyHovering = () => ref.current?.matches(":hover") ?? false;
+    handleMouseEnter,
+    handleMouseLeave,
+  } = usePopupSurfaceLifecycle({
+    surfaceRef: ref,
+    popupId,
+    isPopupDescendantOf,
+    onEnterFromDescendant,
+    closeDisabled: hasChildPopup,
+    onClose: onMouseLeave,
+    onSurfaceMouseDown,
+    onSurfaceMouseEnter: onMouseEnter,
+  });
 
   useAdjustOverflow(ref);
-
-  const prevHasChildPopupRef = useRef(!!hasChildPopup);
-  useEffect(() => {
-    const hadChildPopup = prevHasChildPopupRef.current;
-    prevHasChildPopupRef.current = !!hasChildPopup;
-    // 子プレビューを経由した移動では isHovering が残ることがあるため、
-    // ステートではなく実 DOM の :hover を見て親の閉じ忘れを防ぐ。
-    if (hadChildPopup && !hasChildPopup && !isActuallyHovering()) {
-      setIsHovering(false);
-      onMouseLeaveRef.current();
-    }
-  }, [hasChildPopup, isHovering]);
-
-  useEffect(() => {
-    if (hasChildPopup) return;
-    const handler = (e: MouseEvent) => {
-      const target = getEventTargetElement(e.target);
-      if (target?.closest(POPUP_SURFACE_SELECTOR)) {
-        return;
-      }
-      onMouseLeaveRef.current();
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [hasChildPopup]);
 
   return (
     <div
       ref={ref}
       data-popup-surface="true"
+      data-popup-id={popupId}
       className="anchor-preview"
       style={{
         left: x,
@@ -115,30 +100,8 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
       }}
       onMouseDownCapture={handleMouseDownCapture}
       onAuxClickCapture={handleAuxClickCapture}
-      onMouseEnter={() => {
-        setIsHovering(true);
-        onMouseEnter();
-      }}
-      onMouseLeave={(e) => {
-        if (
-          e.relatedTarget instanceof Node &&
-          ref.current?.contains(e.relatedTarget)
-        ) {
-          return;
-        }
-        if (
-          e.relatedTarget instanceof Element &&
-          e.relatedTarget.closest(POPUP_SURFACE_SELECTOR)
-        ) {
-          return;
-        }
-        if (shouldSuppressMouseLeaveClose()) {
-          return;
-        }
-        setIsHovering(false);
-        if (hasChildPopup) return;
-        onMouseLeave();
-      }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <div className="anchor-preview__title">参照: {label}</div>
       <div className="anchor-preview__body">
