@@ -3,9 +3,8 @@ import type { MediaViewerProps } from "src/view/browser/hooks/use-media-viewer-c
 export function MediaViewer({
   viewer,
   viewerStageRef,
+  viewerCanvasRef,
   viewerImageRef,
-  viewerCanvasSize,
-  viewerRenderedSize,
   canNavigateViewerPrev,
   canNavigateViewerNext,
   onOverlayClick,
@@ -17,7 +16,7 @@ export function MediaViewer({
   onZoomIn,
   onClose,
   onImageLoad,
-}: MediaViewerProps): JSX.Element {
+}: MediaViewerProps) {
   return (
     <div className="media-viewer" onClick={onOverlayClick}>
       <div className="media-viewer__chrome" onClick={onChromeClick}>
@@ -85,33 +84,14 @@ export function MediaViewer({
         </div>
 
         <div ref={viewerStageRef} className="media-viewer__stage">
-          <div
-            className="media-viewer__canvas"
-            style={
-              viewerCanvasSize
-                ? {
-                    width: `${viewerCanvasSize.width}px`,
-                    height: `${viewerCanvasSize.height}px`,
-                  }
-                : undefined
-            }
-          >
+          <div ref={viewerCanvasRef} className="media-viewer__canvas">
             <img
               ref={viewerImageRef}
               className="media-viewer__image"
               src={viewer.src}
               alt={viewer.label}
               onLoad={onImageLoad}
-              style={
-                viewerRenderedSize
-                  ? {
-                      width: `${viewerRenderedSize.width}px`,
-                      height: `${viewerRenderedSize.height}px`,
-                      maxWidth: "none",
-                      maxHeight: "none",
-                    }
-                  : undefined
-              }
+              draggable={false}
             />
           </div>
         </div>

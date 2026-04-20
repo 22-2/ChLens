@@ -1,11 +1,8 @@
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
-  useMemo,
   useRef,
-  useState,
-  type MouseEvent,
+  type MouseEvent as ReactMouseEvent,
   type RefObject,
 } from "react";
 import { useMediaViewerStore } from "src/view/browser/hooks/use-media-viewer-store";
@@ -16,16 +13,20 @@ interface ViewerSize {
   height: number;
 }
 
+interface ViewerPoint {
+  x: number;
+  y: number;
+}
+
 export interface MediaViewerProps {
   viewer: ViewerState;
   viewerStageRef: RefObject<HTMLDivElement | null>;
+  viewerCanvasRef: RefObject<HTMLDivElement | null>;
   viewerImageRef: RefObject<HTMLImageElement | null>;
-  viewerCanvasSize: ViewerSize | null;
-  viewerRenderedSize: ViewerSize | null;
   canNavigateViewerPrev: boolean;
   canNavigateViewerNext: boolean;
   onOverlayClick: () => void;
-  onChromeClick: (event: MouseEvent<HTMLDivElement>) => void;
+  onChromeClick: (event: ReactMouseEvent<HTMLDivElement>) => void;
   onNavigatePrev: () => void;
   onNavigateNext: () => void;
   onZoomOut: () => void;
@@ -37,12 +38,6 @@ export interface MediaViewerProps {
 
 function getViewerStageViewportSize(stage: HTMLDivElement): ViewerSize {
   const styles = window.getComputedStyle(stage);
-  const paddingX =
-    Number.parseFloat(styles.paddingLeft || "0") +
-    Number.parseFloat(styles.paddingRight || "0");
-  const paddingY =
-    Number.parseFloat(styles.paddingTop || "0") +
-    Number.parseFloat(styles.paddingBottom || "0");
   const borderX =
     Number.parseFloat(styles.borderLeftWidth || "0") +
     Number.parseFloat(styles.borderRightWidth || "0");
@@ -50,22 +45,45 @@ function getViewerStageViewportSize(stage: HTMLDivElement): ViewerSize {
     Number.parseFloat(styles.borderTopWidth || "0") +
     Number.parseFloat(styles.borderBottomWidth || "0");
 
-  // clientWidth/clientHeight はスクロールバーの出入りで揺れやすく、
-  // 狭い表示幅だと「計測→style更新→スクロールバー変化→再計測」のループを起こすことがある。
-  // border-box 基準で固定サイズを取り、padding/border を差し引いて安定化する。
+  // border-box 基準で安定したサイズを取り、スクロールバー由来の揺れを避ける。
   const rect = stage.getBoundingClientRect();
 
   return {
-    width: Math.max(1, Math.round(rect.width - paddingX - borderX)),
-    height: Math.max(1, Math.round(rect.height - paddingY - borderY)),
+    width: Math.max(1, Math.round(rect.width - borderX)),
+    height: Math.max(1, Math.round(rect.height - borderY)),
   };
 }
 
-function isSameViewerSize(
-  current: ViewerSize | null,
-  next: ViewerSize,
-): boolean {
+function isSameViewerSize(current: ViewerSize | null, next: ViewerSize): boolean {
   return current?.width === next.width && current?.height === next.height;
+}
+
+function getViewerStageCenter(size: ViewerSize): ViewerPoint {
+  return { x: size.width / 2, y: size.height / 2 };
+}
+
+function roundViewerDistance(value: number): number {
+  return Number(value.toFixed(2));
+}
+
+function roundViewerScale(value: number): number {
+  return Number(value.toFixed(4));
+}
+
+function getPointWithinStage(
+  stage: HTMLDivElement,
+  clientX: number,
+  clientY: number,
+): ViewerPoint {
+  const rect = stage.getBoundingClientRect();
+  const styles = window.getComputedStyle(stage);
+  const borderLeft = Number.parseFloat(styles.borderLeftWidth || "0");
+  const borderTop = Number.parseFloat(styles.borderTopWidth || "0");
+
+  return {
+    x: clientX - rect.left - borderLeft,
+    y: clientY - rect.top - borderTop,
+  };
 }
 
 export function useMediaViewerController(): MediaViewerProps | null {
@@ -79,12 +97,58 @@ export function useMediaViewerController(): MediaViewerProps | null {
   const zoomByWheel = useMediaViewerStore((state) => state.zoomByWheel);
 
   const viewerStageRef = useRef<HTMLDivElement>(null);
+  const viewerCanvasRef = useRef<HTMLDivElement>(null);
   const viewerImageRef = useRef<HTMLImageElement>(null);
-  const previousViewerCanvasSizeRef = useRef<ViewerSize | null>(null);
-  const [viewerBaseSize, setViewerBaseSize] = useState<ViewerSize | null>(null);
-  const [viewerStageSize, setViewerStageSize] = useState<ViewerSize | null>(
-    null,
-  );
+  const viewerBaseSizeRef = useRef<ViewerSize | null>(null);
+  const viewerStageSizeRef = useRef<ViewerSize | null>(null);
+  const viewerPanRef = useRef<ViewerPoint>({ x: 0, y: 0 });
+  const viewerDisplayScaleRef = useRef(1);
+  const viewerTargetScaleRef = useRef(1);
+  const zoomPivotRef = useRef<ViewerPoint | null>(null);
+  const zoomAnimationFrameRef = useRef<number | null>(null);
+  const middlePanStateRef = useRef<{
+    active: boolean;
+    startPointer: ViewerPoint;
+    startPan: ViewerPoint;
+  }>({
+    active: false,
+    startPointer: { x: 0, y: 0 },
+    startPan: { x: 0, y: 0 },
+  });
+
+  const renderViewerTransform = useCallback(() => {
+    const canvas = viewerCanvasRef.current;
+    const baseSize = viewerBaseSizeRef.current;
+    if (!canvas || !baseSize) {
+      return;
+    }
+
+    // 微小な浮動小数の揺れを丸めて style 文字列の差分を減らし、
+    // 狭幅時の無駄な DOM commit を抑える。
+    const panX = roundViewerDistance(viewerPanRef.current.x);
+    const panY = roundViewerDistance(viewerPanRef.current.y);
+    const scale = roundViewerScale(viewerDisplayScaleRef.current);
+
+    canvas.style.width = `${baseSize.width}px`;
+    canvas.style.height = `${baseSize.height}px`;
+    canvas.style.transform = `translate3d(${panX}px, ${panY}px, 0) scale(${scale})`;
+  }, []);
+
+  const stopZoomAnimation = useCallback(() => {
+    if (zoomAnimationFrameRef.current != null) {
+      window.cancelAnimationFrame(zoomAnimationFrameRef.current);
+      zoomAnimationFrameRef.current = null;
+    }
+  }, []);
+
+  const centerViewer = useCallback((stageSize: ViewerSize, baseSize: ViewerSize) => {
+    const scale = viewerDisplayScaleRef.current;
+    const stageCenter = getViewerStageCenter(stageSize);
+    viewerPanRef.current = {
+      x: stageCenter.x - (baseSize.width * scale) / 2,
+      y: stageCenter.y - (baseSize.height * scale) / 2,
+    };
+  }, []);
 
   const measureViewerLayout = useCallback(() => {
     const stage = viewerStageRef.current;
@@ -110,21 +174,128 @@ export function useMediaViewerController(): MediaViewerProps | null {
       height: Math.max(1, Math.round(image.naturalHeight * fitRatio)),
     };
 
-    setViewerStageSize((current) =>
-      isSameViewerSize(current, nextStageSize) ? current : nextStageSize,
-    );
-    // transform だけで拡大するとスクロール領域が拡大されず操作感が崩れるため、
-    // fit 後の実レイアウトサイズを基準にして描画サイズを更新する。
-    setViewerBaseSize((current) =>
-      isSameViewerSize(current, nextBaseSize) ? current : nextBaseSize,
-    );
+    const previousStageSize = viewerStageSizeRef.current;
+    const previousBaseSize = viewerBaseSizeRef.current;
+
+    if (
+      isSameViewerSize(previousStageSize, nextStageSize) &&
+      isSameViewerSize(previousBaseSize, nextBaseSize)
+    ) {
+      renderViewerTransform();
+      return;
+    }
+
+    viewerStageSizeRef.current = nextStageSize;
+    viewerBaseSizeRef.current = nextBaseSize;
+
+    if (!previousStageSize || !previousBaseSize) {
+      viewerDisplayScaleRef.current = viewerTargetScaleRef.current;
+      centerViewer(nextStageSize, nextBaseSize);
+      renderViewerTransform();
+      return;
+    }
+
+    // リサイズ時は viewport 中央に見えていた画像上の点を維持し、
+    // 半画面化や分割表示でも「勝手に別の場所へ飛ぶ」違和感を減らす。
+    const previousStageCenter = getViewerStageCenter(previousStageSize);
+    const nextStageCenter = getViewerStageCenter(nextStageSize);
+    const scaledPreviousWidth =
+      previousBaseSize.width * viewerDisplayScaleRef.current;
+    const scaledPreviousHeight =
+      previousBaseSize.height * viewerDisplayScaleRef.current;
+    const focusRatioX =
+      scaledPreviousWidth > 0
+        ? (previousStageCenter.x - viewerPanRef.current.x) / scaledPreviousWidth
+        : 0.5;
+    const focusRatioY =
+      scaledPreviousHeight > 0
+        ? (previousStageCenter.y - viewerPanRef.current.y) / scaledPreviousHeight
+        : 0.5;
+
+    viewerPanRef.current = {
+      x:
+        nextStageCenter.x -
+        focusRatioX * nextBaseSize.width * viewerDisplayScaleRef.current,
+      y:
+        nextStageCenter.y -
+        focusRatioY * nextBaseSize.height * viewerDisplayScaleRef.current,
+    };
+    renderViewerTransform();
+  }, [centerViewer, renderViewerTransform]);
+
+  const animateZoom = useCallback(() => {
+    const stageSize = viewerStageSizeRef.current;
+    const baseSize = viewerBaseSizeRef.current;
+    if (!stageSize || !baseSize) {
+      zoomAnimationFrameRef.current = null;
+      return;
+    }
+
+    const currentScale = viewerDisplayScaleRef.current;
+    const targetScale = viewerTargetScaleRef.current;
+    if (Math.abs(targetScale - currentScale) < 0.001) {
+      viewerDisplayScaleRef.current = targetScale;
+      renderViewerTransform();
+      zoomAnimationFrameRef.current = null;
+      return;
+    }
+
+    const zoomPivot = zoomPivotRef.current ?? getViewerStageCenter(stageSize);
+    const pivotImageX = (zoomPivot.x - viewerPanRef.current.x) / currentScale;
+    const pivotImageY = (zoomPivot.y - viewerPanRef.current.y) / currentScale;
+    const nextScale = currentScale + (targetScale - currentScale) * 0.15;
+
+    viewerDisplayScaleRef.current = nextScale;
+    viewerPanRef.current = {
+      x: zoomPivot.x - pivotImageX * nextScale,
+      y: zoomPivot.y - pivotImageY * nextScale,
+    };
+    renderViewerTransform();
+    zoomAnimationFrameRef.current = window.requestAnimationFrame(animateZoom);
+  }, [renderViewerTransform]);
+
+  const startZoomAnimation = useCallback(() => {
+    stopZoomAnimation();
+    zoomAnimationFrameRef.current = window.requestAnimationFrame(animateZoom);
+  }, [animateZoom, stopZoomAnimation]);
+
+  const setZoomPivotToStageCenter = useCallback(() => {
+    const stageSize = viewerStageSizeRef.current;
+    if (!stageSize) {
+      return;
+    }
+    zoomPivotRef.current = getViewerStageCenter(stageSize);
   }, []);
 
+  const resetViewerSurface = useCallback(() => {
+    stopZoomAnimation();
+    viewerBaseSizeRef.current = null;
+    viewerStageSizeRef.current = null;
+    viewerPanRef.current = { x: 0, y: 0 };
+    viewerDisplayScaleRef.current = 1;
+    viewerTargetScaleRef.current = 1;
+    zoomPivotRef.current = null;
+    middlePanStateRef.current = {
+      active: false,
+      startPointer: { x: 0, y: 0 },
+      startPan: { x: 0, y: 0 },
+    };
+
+    viewerStageRef.current?.classList.remove("media-viewer__stage--panning");
+
+    const canvas = viewerCanvasRef.current;
+    if (!canvas) {
+      return;
+    }
+
+    canvas.style.removeProperty("width");
+    canvas.style.removeProperty("height");
+    canvas.style.removeProperty("transform");
+  }, [stopZoomAnimation]);
+
   useEffect(() => {
-    setViewerBaseSize(null);
-    setViewerStageSize(null);
-    previousViewerCanvasSizeRef.current = null;
-  }, [viewer?.src]);
+    resetViewerSurface();
+  }, [resetViewerSurface, viewer?.src]);
 
   useEffect(() => {
     if (!viewer) {
@@ -150,67 +321,21 @@ export function useMediaViewerController(): MediaViewerProps | null {
     return () => window.removeEventListener("resize", measureViewerLayout);
   }, [measureViewerLayout, viewer]);
 
-  const viewerRenderedSize = useMemo(() => {
-    if (!viewerBaseSize) {
-      return null;
-    }
-
-    return {
-      width: Math.max(1, Math.round(viewerBaseSize.width * viewerScale)),
-      height: Math.max(1, Math.round(viewerBaseSize.height * viewerScale)),
-    } satisfies ViewerSize;
-  }, [viewerBaseSize, viewerScale]);
-
-  const viewerCanvasSize = useMemo(() => {
-    if (!viewerRenderedSize) {
-      return null;
-    }
-
-    return {
-      width: Math.max(viewerStageSize?.width ?? 0, viewerRenderedSize.width),
-      height: Math.max(viewerStageSize?.height ?? 0, viewerRenderedSize.height),
-    } satisfies ViewerSize;
-  }, [viewerRenderedSize, viewerStageSize]);
-
-  useLayoutEffect(() => {
-    if (!viewer || !viewerCanvasSize) {
+  useEffect(() => {
+    if (!viewer) {
       return;
     }
 
-    const stage = viewerStageRef.current;
-    if (!stage) {
+    viewerTargetScaleRef.current = viewerScale;
+    if (!viewerBaseSizeRef.current || !viewerStageSizeRef.current) {
       return;
     }
 
-    const previousCanvasSize = previousViewerCanvasSizeRef.current;
-    if (!previousCanvasSize) {
-      stage.scrollLeft = Math.max(
-        0,
-        (viewerCanvasSize.width - stage.clientWidth) / 2,
-      );
-      stage.scrollTop = Math.max(
-        0,
-        (viewerCanvasSize.height - stage.clientHeight) / 2,
-      );
-      previousViewerCanvasSizeRef.current = viewerCanvasSize;
-      return;
+    if (!zoomPivotRef.current) {
+      setZoomPivotToStageCenter();
     }
-
-    const viewportCenterX = stage.scrollLeft + stage.clientWidth / 2;
-    const viewportCenterY = stage.scrollTop + stage.clientHeight / 2;
-    const scaleRatioX = viewerCanvasSize.width / previousCanvasSize.width;
-    const scaleRatioY = viewerCanvasSize.height / previousCanvasSize.height;
-
-    stage.scrollLeft = Math.max(
-      0,
-      viewportCenterX * scaleRatioX - stage.clientWidth / 2,
-    );
-    stage.scrollTop = Math.max(
-      0,
-      viewportCenterY * scaleRatioY - stage.clientHeight / 2,
-    );
-    previousViewerCanvasSizeRef.current = viewerCanvasSize;
-  }, [viewer, viewerCanvasSize]);
+    startZoomAnimation();
+  }, [setZoomPivotToStageCenter, startZoomAnimation, viewer, viewerScale]);
 
   useEffect(() => {
     if (!viewer) {
@@ -243,12 +368,80 @@ export function useMediaViewerController(): MediaViewerProps | null {
 
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
-      zoomByWheel(event.deltaY);
+      zoomPivotRef.current = getPointWithinStage(
+        stage,
+        event.clientX,
+        event.clientY,
+      );
+      zoomByWheel(event.deltaY, event.deltaMode);
     };
 
     stage.addEventListener("wheel", onWheel, { passive: false });
     return () => stage.removeEventListener("wheel", onWheel);
   }, [viewer, zoomByWheel]);
+
+  useEffect(() => {
+    if (!viewer) {
+      return;
+    }
+
+    const stage = viewerStageRef.current;
+    if (!stage) {
+      return;
+    }
+
+    const onMouseDown = (event: MouseEvent) => {
+      if (event.button !== 1) {
+        return;
+      }
+
+      event.preventDefault();
+      stopZoomAnimation();
+      middlePanStateRef.current = {
+        active: true,
+        startPointer: { x: event.clientX, y: event.clientY },
+        startPan: { ...viewerPanRef.current },
+      };
+      stage.classList.add("media-viewer__stage--panning");
+    };
+
+    const onMouseMove = (event: globalThis.MouseEvent) => {
+      if (!middlePanStateRef.current.active) {
+        return;
+      }
+
+      viewerPanRef.current = {
+        x:
+          middlePanStateRef.current.startPan.x +
+          (event.clientX - middlePanStateRef.current.startPointer.x),
+        y:
+          middlePanStateRef.current.startPan.y +
+          (event.clientY - middlePanStateRef.current.startPointer.y),
+      };
+      renderViewerTransform();
+    };
+
+    const onMouseUp = (event: globalThis.MouseEvent) => {
+      if (event.button !== 1 || !middlePanStateRef.current.active) {
+        return;
+      }
+
+      middlePanStateRef.current.active = false;
+      stage.classList.remove("media-viewer__stage--panning");
+    };
+
+    stage.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    return () => {
+      stage.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+      stage.classList.remove("media-viewer__stage--panning");
+    };
+  }, [renderViewerTransform, stopZoomAnimation, viewer]);
+
+  useEffect(() => () => stopZoomAnimation(), [stopZoomAnimation]);
 
   if (!viewer) {
     return null;
@@ -257,9 +450,8 @@ export function useMediaViewerController(): MediaViewerProps | null {
   return {
     viewer,
     viewerStageRef,
+    viewerCanvasRef,
     viewerImageRef,
-    viewerCanvasSize,
-    viewerRenderedSize,
     canNavigateViewerPrev: !!viewer.images && (viewer.currentIndex ?? 0) > 0,
     canNavigateViewerNext:
       !!viewer.images && (viewer.currentIndex ?? 0) < viewer.images.length - 1,
@@ -267,9 +459,18 @@ export function useMediaViewerController(): MediaViewerProps | null {
     onChromeClick: (event) => event.stopPropagation(),
     onNavigatePrev: () => navigateViewer(-1),
     onNavigateNext: () => navigateViewer(1),
-    onZoomOut: zoomOut,
-    onZoomReset: resetScale,
-    onZoomIn: zoomIn,
+    onZoomOut: () => {
+      setZoomPivotToStageCenter();
+      zoomOut();
+    },
+    onZoomReset: () => {
+      setZoomPivotToStageCenter();
+      resetScale();
+    },
+    onZoomIn: () => {
+      setZoomPivotToStageCenter();
+      zoomIn();
+    },
     onClose: closeViewer,
     onImageLoad: measureViewerLayout,
   };

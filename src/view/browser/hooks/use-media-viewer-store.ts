@@ -5,7 +5,17 @@ import { create } from "zustand";
 const MIN_VIEWER_SCALE = 0.25;
 const MAX_VIEWER_SCALE = 5;
 const TOOLBAR_ZOOM_STEP = 0.25;
-const WHEEL_ZOOM_STEP = 0.15;
+const WHEEL_ZOOM_BASE = 1.5;
+
+function normalizeWheelZoomDelta(deltaY: number, deltaMode = 0): number {
+  if (deltaMode === 1) {
+    return deltaY * 40;
+  }
+  if (deltaMode === 2) {
+    return deltaY * 800;
+  }
+  return deltaY;
+}
 
 function clampViewerScale(scale: number): number {
   return Math.min(
@@ -23,7 +33,7 @@ interface MediaViewerStoreState {
   zoomIn: () => void;
   zoomOut: () => void;
   resetScale: () => void;
-  zoomByWheel: (deltaY: number) => void;
+  zoomByWheel: (deltaY: number, deltaMode?: number) => void;
 }
 
 export const useMediaViewerStore = create<MediaViewerStoreState>(
@@ -103,12 +113,12 @@ export const useMediaViewerStore = create<MediaViewerStoreState>(
       set({ viewerScale: 1 });
     },
 
-    zoomByWheel: (deltaY) => {
+    zoomByWheel: (deltaY, deltaMode = 0) => {
       set((state) => {
+        // trackpad / マウスホイール差を吸収しつつ Pixi 風の倍率ズームへ寄せる。
+        const normalizedDelta = normalizeWheelZoomDelta(deltaY, deltaMode);
         const nextScale =
-          deltaY < 0
-            ? state.viewerScale + WHEEL_ZOOM_STEP
-            : state.viewerScale - WHEEL_ZOOM_STEP;
+          state.viewerScale * Math.pow(WHEEL_ZOOM_BASE, -normalizedDelta / 120);
         return { viewerScale: clampViewerScale(nextScale) };
       });
     },
