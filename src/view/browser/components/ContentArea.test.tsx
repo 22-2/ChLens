@@ -1,10 +1,15 @@
 import "@testing-library/jest-dom/vitest";
 import { render } from "@testing-library/react";
+import React from "react";
 import { ContentArea } from "src/view/browser/components/ContentArea";
 import type { Page, Tab } from "src/view/browser/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockUseTabStore = vi.fn();
+const threadPageLifecycle = vi.hoisted(() => ({
+  mountCount: 0,
+  unmountCount: 0,
+}));
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => mockUseTabStore(),
@@ -31,7 +36,30 @@ vi.mock("src/view/browser/pages/ThreadListPage", () => ({
 }));
 
 vi.mock("src/view/browser/pages/ThreadPage", () => ({
-  ThreadPage: () => <div data-testid="page-thread">thread</div>,
+  ThreadPage: ({ refreshKey }: { refreshKey: number }) => {
+    // reloadKey はデータ再取得トリガにだけ使い、コンポーネント実体は再マウントさせない。
+    const mountIdRef = React.useRef<number | null>(null);
+    if (mountIdRef.current == null) {
+      threadPageLifecycle.mountCount += 1;
+      mountIdRef.current = threadPageLifecycle.mountCount;
+    }
+
+    React.useEffect(() => {
+      return () => {
+        threadPageLifecycle.unmountCount += 1;
+      };
+    }, []);
+
+    return (
+      <div
+        data-testid="page-thread"
+        data-mount-id={String(mountIdRef.current)}
+        data-refresh-key={String(refreshKey)}
+      >
+        thread
+      </div>
+    );
+  },
 }));
 
 function createTab(id: string): Tab {
@@ -71,6 +99,8 @@ function mockState(tabs: Tab[], activeTabId: string) {
 describe("ContentArea tab switching", () => {
   beforeEach(() => {
     mockUseTabStore.mockReset();
+    threadPageLifecycle.mountCount = 0;
+    threadPageLifecycle.unmountCount = 0;
   });
 
   it("アクティブでないタブは display:none で隠す", () => {
@@ -134,5 +164,37 @@ describe("ContentArea tab switching", () => {
 
     expect(panel1.scrollTop).toBe(240);
     expect(panel2.scrollTop).toBe(32);
+  });
+
+  it("reloadKey の更新ではページを再マウントしない", () => {
+    const threadPage: Page = {
+      type: "thread",
+      title: "スレッド",
+      threadUrl: "https://example.com/test/read.cgi/board/123/",
+    };
+    const tab = createTabWithPage("tab-1", threadPage);
+
+    mockState([tab], "tab-1");
+    const { container, rerender } = render(<ContentArea />);
+
+    const first = container.querySelector(
+      '[data-testid="page-thread"]',
+    ) as HTMLDivElement;
+    expect(first.dataset.mountId).toBe("1");
+    expect(first.dataset.refreshKey).toBe("0");
+
+    const reloadedTab: Tab = {
+      ...tab,
+      reloadKey: 1,
+    };
+    mockState([reloadedTab], "tab-1");
+    rerender(<ContentArea />);
+
+    const second = container.querySelector(
+      '[data-testid="page-thread"]',
+    ) as HTMLDivElement;
+    expect(second.dataset.mountId).toBe("1");
+    expect(second.dataset.refreshKey).toBe("1");
+    expect(threadPageLifecycle.unmountCount).toBe(0);
   });
 });

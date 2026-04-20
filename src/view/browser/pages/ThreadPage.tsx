@@ -429,12 +429,14 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
         `.thread-page__responses [data-res-num="${resNum}"]`,
       );
       if (!target) return;
-      const scrollContainer = host.closest(".content-area");
+      // 実スクロールは content-area ではなく tab panel 側なので、
+      // ここを誤ると scrollTop を更新しても見た目が動かずジャンプ不能になる。
+      const scrollContainer = host.closest(".content-area__tab-panel");
       if (
         scrollContainer instanceof HTMLElement &&
         target instanceof HTMLElement
       ) {
-        // ThreadPageでは content-area が実スクロールコンテナなので、そこへ直接位置合わせする。
+        // ThreadPageでは tab panel が実スクロールコンテナなので、そこへ直接位置合わせする。
         const targetRect = target.getBoundingClientRect();
         const containerRect = scrollContainer.getBoundingClientRect();
         const nextScrollTop =

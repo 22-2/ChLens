@@ -10,20 +10,19 @@ import { getCurrentPage } from "src/view/browser/types";
 function buildPageRenderKey(
   tabId: string,
   historyIndex: number,
-  reloadKey: number,
   page: ReturnType<typeof getCurrentPage>,
 ): string {
   switch (page.type) {
     case "thread":
-      return `${tabId}:${historyIndex}:${reloadKey}:thread:${page.threadUrl}`;
+      return `${tabId}:${historyIndex}:thread:${page.threadUrl}`;
     case "threadList":
-      return `${tabId}:${historyIndex}:${reloadKey}:threadList:${page.boardUrl}`;
+      return `${tabId}:${historyIndex}:threadList:${page.boardUrl}`;
     case "boardList":
-      return `${tabId}:${historyIndex}:${reloadKey}:boardList`;
+      return `${tabId}:${historyIndex}:boardList`;
     case "settings":
-      return `${tabId}:${historyIndex}:${reloadKey}:settings`;
+      return `${tabId}:${historyIndex}:settings`;
     case "home":
-      return `${tabId}:${historyIndex}:${reloadKey}:home`;
+      return `${tabId}:${historyIndex}:home`;
   }
 }
 
@@ -72,13 +71,13 @@ export const ContentArea: React.FC = () => {
       >
         {
           // タブ切替は display:none で行い、非アクティブタブのDOM/scroll状態を保持する。
-          // 一方で同一タブ内の履歴移動・更新(reload)は従来どおり再描画を保証するため、
+          // 一方で同一タブ内の履歴移動は従来どおり再描画を保証しつつ、
+          // reload はページ内部の再取得フローへ委譲してスクロール位置を維持する。
           // ページ識別子を key にしてタブ内コンテンツだけ差し替える。
           <React.Fragment
             key={buildPageRenderKey(
               tab.id,
               tab.currentIndex,
-              tab.reloadKey,
               page,
             )}
           >
