@@ -43,11 +43,29 @@ function getViewerStageViewportSize(stage: HTMLDivElement): ViewerSize {
   const paddingY =
     Number.parseFloat(styles.paddingTop || "0") +
     Number.parseFloat(styles.paddingBottom || "0");
+  const borderX =
+    Number.parseFloat(styles.borderLeftWidth || "0") +
+    Number.parseFloat(styles.borderRightWidth || "0");
+  const borderY =
+    Number.parseFloat(styles.borderTopWidth || "0") +
+    Number.parseFloat(styles.borderBottomWidth || "0");
+
+  // clientWidth/clientHeight はスクロールバーの出入りで揺れやすく、
+  // 狭い表示幅だと「計測→style更新→スクロールバー変化→再計測」のループを起こすことがある。
+  // border-box 基準で固定サイズを取り、padding/border を差し引いて安定化する。
+  const rect = stage.getBoundingClientRect();
 
   return {
-    width: Math.max(1, Math.round(stage.clientWidth - paddingX)),
-    height: Math.max(1, Math.round(stage.clientHeight - paddingY)),
+    width: Math.max(1, Math.round(rect.width - paddingX - borderX)),
+    height: Math.max(1, Math.round(rect.height - paddingY - borderY)),
   };
+}
+
+function isSameViewerSize(
+  current: ViewerSize | null,
+  next: ViewerSize,
+): boolean {
+  return current?.width === next.width && current?.height === next.height;
 }
 
 export function useMediaViewerController(): MediaViewerProps | null {
@@ -87,13 +105,19 @@ export function useMediaViewerController(): MediaViewerProps | null {
       nextStageSize.height / image.naturalHeight,
     );
 
-    setViewerStageSize(nextStageSize);
-    // transform だけで拡大するとスクロール領域が拡大されず操作感が崩れるため、
-    // fit 後の実レイアウトサイズを基準にして描画サイズを更新する。
-    setViewerBaseSize({
+    const nextBaseSize: ViewerSize = {
       width: Math.max(1, Math.round(image.naturalWidth * fitRatio)),
       height: Math.max(1, Math.round(image.naturalHeight * fitRatio)),
-    });
+    };
+
+    setViewerStageSize((current) =>
+      isSameViewerSize(current, nextStageSize) ? current : nextStageSize,
+    );
+    // transform だけで拡大するとスクロール領域が拡大されず操作感が崩れるため、
+    // fit 後の実レイアウトサイズを基準にして描画サイズを更新する。
+    setViewerBaseSize((current) =>
+      isSameViewerSize(current, nextBaseSize) ? current : nextBaseSize,
+    );
   }, []);
 
   useEffect(() => {
