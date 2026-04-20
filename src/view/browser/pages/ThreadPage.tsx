@@ -2,46 +2,26 @@ import { ArrowDown, Ban, Copy, Globe, History, Reply, Search, Type } from "lucid
 import React, {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 import { container } from "src/service-container/index";
 import type { IRes } from "src/service-container/interfaces";
+import { MediaViewerContainer } from "src/view/browser/components/MediaViewerContainer";
 import { PopupRenderer } from "src/view/browser/components/PopupRenderer";
 import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import { StatusBarItem, StatusBarMode } from "src/view/browser/components/StatusBar";
 import { useAutoRefresh } from "src/view/browser/hooks/use-auto-refresh";
 import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
-import { useMediaViewer } from "src/view/browser/hooks/use-media-viewer";
+import { useMediaViewerStore } from "src/view/browser/hooks/use-media-viewer-store";
 import { useThreadPopupLifecycle } from "src/view/browser/hooks/use-popup-manager";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";
 import { ResItem } from "src/view/browser/components/ResItem";
 import type { Props, ThreadFilter } from "src/view/browser/utils/types";
 import { buildKyodemoUrl, copyText, stripHtml } from "src/view/browser/utils/utils";
-
-interface ViewerSize {
-  width: number;
-  height: number;
-}
-
-function getViewerStageViewportSize(stage: HTMLDivElement): ViewerSize {
-  const styles = window.getComputedStyle(stage);
-  const paddingX =
-    Number.parseFloat(styles.paddingLeft || "0") +
-    Number.parseFloat(styles.paddingRight || "0");
-  const paddingY =
-    Number.parseFloat(styles.paddingTop || "0") +
-    Number.parseFloat(styles.paddingBottom || "0");
-
-  return {
-    width: Math.max(1, Math.round(stage.clientWidth - paddingX)),
-    height: Math.max(1, Math.round(stage.clientHeight - paddingY)),
-  };
-}
 
 export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -64,19 +44,7 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
     messageProtocol,
   } = useThreadData(tabId, page, refreshKey);
   const { dispatch, activeTab } = useTabStore();
-  const {
-    viewer,
-    viewerScale,
-    viewerStageRef,
-    openMediaFromUrl,
-    closeViewer,
-    navigateViewer,
-    setViewerScale,
-  } = useMediaViewer();
-  const viewerImageRef = useRef<HTMLImageElement>(null);
-  const previousViewerCanvasSizeRef = useRef<ViewerSize | null>(null);
-  const [viewerBaseSize, setViewerBaseSize] = useState<ViewerSize | null>(null);
-  const [viewerStageSize, setViewerStageSize] = useState<ViewerSize | null>(null);
+  const openMediaFromUrl = useMediaViewerStore((state) => state.openMediaFromUrl);
 
   useMouseGesture(rootRef);
 
@@ -150,124 +118,6 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
     }
     return "追従待機外";
   }, [canAutoScroll, isAutoScrolling, popups.length]);
-
-  const measureViewerLayout = useCallback(() => {
-    const stage = viewerStageRef.current;
-    const image = viewerImageRef.current;
-    if (!stage || !image || image.naturalWidth <= 0 || image.naturalHeight <= 0) {
-      return;
-    }
-
-    const nextStageSize = getViewerStageViewportSize(stage);
-    const fitRatio = Math.min(
-      1,
-      nextStageSize.width / image.naturalWidth,
-      nextStageSize.height / image.naturalHeight,
-    );
-
-    setViewerStageSize(nextStageSize);
-    // transform だけで拡大するとスクロール可能領域が元サイズのまま残るため、
-    // まず fit 後の基準サイズを持っておき、ズーム時は実レイアウトサイズ自体を拡大する。
-    setViewerBaseSize({
-      width: Math.max(1, Math.round(image.naturalWidth * fitRatio)),
-      height: Math.max(1, Math.round(image.naturalHeight * fitRatio)),
-    });
-  }, [viewerStageRef]);
-
-  useEffect(() => {
-    setViewerBaseSize(null);
-    setViewerStageSize(null);
-    previousViewerCanvasSizeRef.current = null;
-  }, [viewer?.src]);
-
-  useEffect(() => {
-    if (!viewer) {
-      return;
-    }
-
-    const stage = viewerStageRef.current;
-    if (!stage) {
-      return;
-    }
-
-    measureViewerLayout();
-
-    if (typeof ResizeObserver !== "undefined") {
-      const observer = new ResizeObserver(() => {
-        measureViewerLayout();
-      });
-      observer.observe(stage);
-      return () => observer.disconnect();
-    }
-
-    window.addEventListener("resize", measureViewerLayout);
-    return () => window.removeEventListener("resize", measureViewerLayout);
-  }, [measureViewerLayout, viewer, viewerStageRef]);
-
-  const viewerRenderedSize = useMemo(() => {
-    if (!viewerBaseSize) {
-      return null;
-    }
-    return {
-      width: Math.max(1, Math.round(viewerBaseSize.width * viewerScale)),
-      height: Math.max(1, Math.round(viewerBaseSize.height * viewerScale)),
-    } satisfies ViewerSize;
-  }, [viewerBaseSize, viewerScale]);
-
-  const viewerCanvasSize = useMemo(() => {
-    if (!viewerRenderedSize) {
-      return null;
-    }
-    return {
-      width: Math.max(viewerStageSize?.width ?? 0, viewerRenderedSize.width),
-      height: Math.max(viewerStageSize?.height ?? 0, viewerRenderedSize.height),
-    } satisfies ViewerSize;
-  }, [viewerRenderedSize, viewerStageSize]);
-
-  useLayoutEffect(() => {
-    if (!viewer || !viewerCanvasSize) {
-      return;
-    }
-
-    const stage = viewerStageRef.current;
-    if (!stage) {
-      return;
-    }
-
-    const previousCanvasSize = previousViewerCanvasSizeRef.current;
-    if (!previousCanvasSize) {
-      stage.scrollLeft = Math.max(
-        0,
-        (viewerCanvasSize.width - stage.clientWidth) / 2,
-      );
-      stage.scrollTop = Math.max(
-        0,
-        (viewerCanvasSize.height - stage.clientHeight) / 2,
-      );
-      previousViewerCanvasSizeRef.current = viewerCanvasSize;
-      return;
-    }
-
-    const viewportCenterX = stage.scrollLeft + stage.clientWidth / 2;
-    const viewportCenterY = stage.scrollTop + stage.clientHeight / 2;
-    const scaleRatioX = viewerCanvasSize.width / previousCanvasSize.width;
-    const scaleRatioY = viewerCanvasSize.height / previousCanvasSize.height;
-    stage.scrollLeft = Math.max(
-      0,
-      viewportCenterX * scaleRatioX - stage.clientWidth / 2,
-    );
-    stage.scrollTop = Math.max(
-      0,
-      viewportCenterY * scaleRatioY - stage.clientHeight / 2,
-    );
-    previousViewerCanvasSizeRef.current = viewerCanvasSize;
-  }, [viewer, viewerCanvasSize, viewerScale, viewerStageRef]);
-
-  const canNavigateViewerPrev =
-    !!viewer?.images && (viewer.currentIndex ?? 0) > 0;
-  const canNavigateViewerNext =
-    !!viewer?.images &&
-    (viewer.currentIndex ?? 0) < viewer.images.length - 1;
 
   // 検索バーはURLバー右メニューからのみ開く。
   // （Ctrl+F割り当ては無効化して、ブラウザ/OS標準ショートカットを優先する）
@@ -910,121 +760,7 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
             onUrlClick={handleUrlClick}
             onUrlContextMenuOpen={openPopupUrlContextMenu}
           />
-
-          {viewer && (
-            <div className="media-viewer" onClick={closeViewer}>
-              <div
-                className="media-viewer__chrome"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="media-viewer__toolbar">
-                  <span className="media-viewer__label">{viewer.label}</span>
-                  <div className="media-viewer__actions">
-                    {viewer.images && viewer.images.length > 1 && (
-                      <>
-                        <button
-                          type="button"
-                          className="media-viewer__btn"
-                          disabled={!canNavigateViewerPrev}
-                          onClick={() => navigateViewer(-1)}
-                          title="前の画像"
-                        >
-                          ←
-                        </button>
-                        <span className="media-viewer__nav-pos">
-                          {(viewer.currentIndex ?? 0) + 1}/
-                          {viewer.images.length}
-                        </span>
-                        <button
-                          type="button"
-                          className="media-viewer__btn"
-                          disabled={!canNavigateViewerNext}
-                          onClick={() => navigateViewer(1)}
-                          title="次の画像"
-                        >
-                          →
-                        </button>
-                      </>
-                    )}
-                    <button
-                      type="button"
-                      className="media-viewer__btn"
-                      onClick={() =>
-                        setViewerScale((prev) =>
-                          Math.max(0.25, +(prev - 0.25).toFixed(2)),
-                        )
-                      }
-                      title="縮小"
-                    >
-                      -
-                    </button>
-                    <button
-                      type="button"
-                      className="media-viewer__btn"
-                      onClick={() => setViewerScale(1)}
-                      title="等倍"
-                    >
-                      100%
-                    </button>
-                    <button
-                      type="button"
-                      className="media-viewer__btn"
-                      onClick={() =>
-                        setViewerScale((prev) =>
-                          Math.min(5, +(prev + 0.25).toFixed(2)),
-                        )
-                      }
-                      title="拡大"
-                    >
-                      +
-                    </button>
-                    <button
-                      type="button"
-                      className="media-viewer__btn"
-                      onClick={closeViewer}
-                      title="閉じる"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </div>
-                <div
-                  ref={viewerStageRef}
-                  className="media-viewer__stage"
-                >
-                  <div
-                    className="media-viewer__canvas"
-                    style={
-                      viewerCanvasSize
-                        ? {
-                            width: `${viewerCanvasSize.width}px`,
-                            height: `${viewerCanvasSize.height}px`,
-                          }
-                        : undefined
-                    }
-                  >
-                    <img
-                      ref={viewerImageRef}
-                      className="media-viewer__image"
-                      src={viewer.src}
-                      alt={viewer.label}
-                      onLoad={measureViewerLayout}
-                      style={
-                        viewerRenderedSize
-                          ? {
-                              width: `${viewerRenderedSize.width}px`,
-                              height: `${viewerRenderedSize.height}px`,
-                              maxWidth: "none",
-                              maxHeight: "none",
-                            }
-                          : undefined
-                      }
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          <MediaViewerContainer />
         </>
       )}
     </div>
