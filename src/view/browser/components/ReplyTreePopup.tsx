@@ -5,7 +5,7 @@ import type { IRes } from "src/service-container";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import { ReplyTree } from "src/view/browser/components/ReplyTree";
-import { usePopupSurfaceLifecycle } from "src/view/browser/hooks/use-popup-surface-lifecycle";
+import { usePopupSurfaceLifecycle } from "src/view/browser/hooks/use-popup-manager";
 import { useAdjustOverflow } from "src/view/browser/utils/use-adjust-overflow";
 import { copyText, stripHtml } from "src/view/browser/utils/utils";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";

@@ -2,7 +2,7 @@ import React from "react";
 import { useRef } from "react";
 import type { IRes } from "src/service-container";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
-import { usePopupSurfaceLifecycle } from "src/view/browser/hooks/use-popup-surface-lifecycle";
+import { usePopupSurfaceLifecycle } from "src/view/browser/hooks/use-popup-manager";
 import { useAdjustOverflow } from "src/view/browser/utils/use-adjust-overflow";
 
 // --- IDポップアップ ---

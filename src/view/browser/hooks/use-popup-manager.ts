@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type React from "react";
 import type { RefObject } from "react";
 import { create } from "zustand";
 import type { StateCreator } from "zustand";
@@ -8,6 +9,7 @@ import {
   ANCHOR_PREVIEW_HIDE_DELAY_MS,
   ANCHOR_PREVIEW_MAX_WIDTH,
   ANCHOR_PREVIEW_OFFSET,
+  POPUP_SURFACE_SELECTOR,
 } from "src/view/browser/utils/constants";
 import type { IRes } from "src/service-container/interfaces";
 import type {
@@ -19,9 +21,12 @@ import type {
   TreePopupItem,
 } from "src/view/browser/utils/types";
 import { getPopupViewportBounds } from "src/view/browser/utils/use-adjust-overflow";
+import { getEventTargetElement } from "src/view/browser/utils/utils";
 
 const DEFAULT_POPUP_SCOPE_ID = "default";
 const EMPTY_POPUPS: PopupItem[] = [];
+const POPUP_KEEP_OPEN_TARGET_SELECTOR = "a, .res__link, .res__thumb";
+const POPUP_MOUSELEAVE_SUPPRESS_MS = 250;
 
 interface PopupScopeState {
   popups: PopupItem[];
@@ -46,7 +51,12 @@ interface PopupCollectionSlice {
   ) => void;
 }
 
-type PopupStoreState = PopupScopeSlice & PopupCollectionSlice;
+interface PopupGraphSlice {
+  closeNonContextPopupsInScope: (scopeId: string) => void;
+  closePopupChildrenInScope: (scopeId: string, popupId: string) => void;
+}
+
+type PopupStoreState = PopupScopeSlice & PopupCollectionSlice & PopupGraphSlice;
 
 function createPopupScope(): PopupScopeState {
   return {
@@ -200,9 +210,24 @@ const createPopupCollectionSlice: StateCreator<
   },
 });
 
+const createPopupGraphSlice: StateCreator<PopupStoreState, [], [], PopupGraphSlice> = (
+  _set,
+  get,
+) => ({
+  closeNonContextPopupsInScope: (scopeId) => {
+    // スレ本文へ戻る時はメニューだけ残し、popup本体の枝をまとめて落とせるようにする。
+    get().closePopupsByPredicateInScope(scopeId, (item) => item.type !== "contextMenu");
+  },
+  closePopupChildrenInScope: (scopeId, popupId) => {
+    // root を残したまま branch をリセットしたいので、popup 自身ではなく direct child を起点に閉じる。
+    get().closePopupsByPredicateInScope(scopeId, (item) => item.parentId === popupId);
+  },
+});
+
 const usePopupStore = create<PopupStoreState>()((...args) => ({
   ...createPopupScopeSlice(...args),
   ...createPopupCollectionSlice(...args),
+  ...createPopupGraphSlice(...args),
 }));
 
 export interface PopupManagerResult {
@@ -211,6 +236,24 @@ export interface PopupManagerResult {
   closePopupById: (id: string) => void;
   closeAllPopups: () => void;
   closePopupsByPredicate: (predicate: (item: PopupItem) => boolean) => void;
+  closeNonContextPopups: () => void;
+  closePopupChildren: (popupId: string) => void;
+}
+
+interface PopupSurfaceLifecycleParams {
+  closeDisabled?: boolean;
+  onClose: () => void;
+  onSurfaceMouseDown?: () => void;
+  onSurfaceMouseEnter?: () => void;
+  onSurfaceMouseLeave?: () => void;
+}
+
+interface PopupSurfaceLifecycleResult {
+  armMouseLeaveCloseSuppression: () => void;
+  handleAuxClickCapture: (event: React.MouseEvent<HTMLElement>) => void;
+  handleMouseDownCapture: (event: React.MouseEvent<HTMLElement>) => void;
+  handleMouseEnter: () => void;
+  handleMouseLeave: (event: React.MouseEvent<HTMLElement>) => void;
 }
 
 export interface ThreadPopupLifecycleParams {
@@ -280,6 +323,12 @@ export function usePopupManager(
   const closePopupsByPredicateInScope = usePopupStore(
     (state) => state.closePopupsByPredicateInScope,
   );
+  const closeNonContextPopupsInScope = usePopupStore(
+    (state) => state.closeNonContextPopupsInScope,
+  );
+  const closePopupChildrenInScope = usePopupStore(
+    (state) => state.closePopupChildrenInScope,
+  );
 
   useEffect(() => {
     mountScope(scopeId);
@@ -303,6 +352,14 @@ export function usePopupManager(
       closePopupsByPredicateInScope(scopeId, predicate),
     [closePopupsByPredicateInScope, scopeId],
   );
+  const closeNonContextPopups = useCallback(
+    () => closeNonContextPopupsInScope(scopeId),
+    [closeNonContextPopupsInScope, scopeId],
+  );
+  const closePopupChildren = useCallback(
+    (popupId: string) => closePopupChildrenInScope(scopeId, popupId),
+    [closePopupChildrenInScope, scopeId],
+  );
 
   return {
     popups,
@@ -310,6 +367,155 @@ export function usePopupManager(
     closePopupById,
     closeAllPopups,
     closePopupsByPredicate,
+    closeNonContextPopups,
+    closePopupChildren,
+  };
+}
+
+export function usePopupSurfaceCloseGuard(onSurfaceMouseDown?: () => void) {
+  const suppressCloseUntilRef = useRef(0);
+  const suppressNextMouseLeaveRef = useRef(false);
+
+  const armMouseLeaveCloseSuppression = useCallback(() => {
+    // middle click 後の close はブラウザやデバイス差で発火タイミングが揺れるため、
+    // 時間窓だけでなく「次の mouseleave を1回だけ必ず無視」するガードを併用する。
+    suppressNextMouseLeaveRef.current = true;
+    suppressCloseUntilRef.current = Date.now() + POPUP_MOUSELEAVE_SUPPRESS_MS;
+  }, []);
+
+  const handleMouseDownCapture = useCallback(
+    (event: React.MouseEvent<HTMLElement>) => {
+      onSurfaceMouseDown?.();
+
+      if (event.button !== 1) {
+        return;
+      }
+
+      const target = event.target instanceof Element ? event.target : null;
+      if (!target?.closest(POPUP_KEEP_OPEN_TARGET_SELECTOR)) {
+        return;
+      }
+
+      // 中クリックで新規タブを開く瞬間はブラウザ側のフォーカス/hover判定が揺れて
+      // mouseleave が先に飛ぶことがあるため、その直後だけ自動 close を抑止する。
+      armMouseLeaveCloseSuppression();
+    },
+    [armMouseLeaveCloseSuppression, onSurfaceMouseDown],
+  );
+
+  const shouldSuppressMouseLeaveClose = useCallback(() => {
+    if (suppressNextMouseLeaveRef.current) {
+      suppressNextMouseLeaveRef.current = false;
+      return true;
+    }
+    return suppressCloseUntilRef.current > Date.now();
+  }, []);
+
+  const handleAuxClickCapture = useCallback(
+    (event: React.MouseEvent<HTMLElement>) => {
+      if (event.button !== 1) {
+        return;
+      }
+
+      const target = event.target instanceof Element ? event.target : null;
+      if (!target?.closest(POPUP_KEEP_OPEN_TARGET_SELECTOR)) {
+        return;
+      }
+
+      armMouseLeaveCloseSuppression();
+    },
+    [armMouseLeaveCloseSuppression],
+  );
+
+  return {
+    armMouseLeaveCloseSuppression,
+    handleAuxClickCapture,
+    handleMouseDownCapture,
+    shouldSuppressMouseLeaveClose,
+  };
+}
+
+export function usePopupSurfaceLifecycle({
+  closeDisabled,
+  onClose,
+  onSurfaceMouseDown,
+  onSurfaceMouseEnter,
+  onSurfaceMouseLeave,
+}: PopupSurfaceLifecycleParams): PopupSurfaceLifecycleResult {
+  const [isHovering, setIsHovering] = useState(false);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  const {
+    armMouseLeaveCloseSuppression,
+    handleAuxClickCapture,
+    handleMouseDownCapture,
+    shouldSuppressMouseLeaveClose,
+  } = usePopupSurfaceCloseGuard(onSurfaceMouseDown);
+
+  const prevCloseDisabledRef = useRef(!!closeDisabled);
+  useEffect(() => {
+    const wasDisabled = prevCloseDisabledRef.current;
+    prevCloseDisabledRef.current = !!closeDisabled;
+    // 子popupが閉じた直後に mouseleave を取り逃したケースは、
+    // closeDisabled の解除タイミングで hover 状態を見て補完 close する。
+    if (wasDisabled && !closeDisabled && !isHovering) {
+      onCloseRef.current();
+    }
+  }, [closeDisabled, isHovering]);
+
+  useEffect(() => {
+    if (closeDisabled) {
+      return;
+    }
+    const handleOutsideMouseDown = (event: MouseEvent) => {
+      const target = getEventTargetElement(event.target);
+      if (target?.closest(POPUP_SURFACE_SELECTOR)) {
+        return;
+      }
+      onCloseRef.current();
+    };
+    document.addEventListener("mousedown", handleOutsideMouseDown);
+    return () => document.removeEventListener("mousedown", handleOutsideMouseDown);
+  }, [closeDisabled]);
+
+  const handleMouseEnter = () => {
+    setIsHovering(true);
+    onSurfaceMouseEnter?.();
+  };
+
+  const handleMouseLeave = (event: React.MouseEvent<HTMLElement>) => {
+    if (
+      event.relatedTarget instanceof Node &&
+      event.currentTarget.contains(event.relatedTarget)
+    ) {
+      return;
+    }
+    if (
+      event.relatedTarget instanceof Element &&
+      event.relatedTarget.closest(POPUP_SURFACE_SELECTOR)
+    ) {
+      return;
+    }
+    if (shouldSuppressMouseLeaveClose()) {
+      return;
+    }
+    // popup surface 間の移動では親子チェーンを維持し、
+    // 実際に surface 外へ出た時だけ leave callback と close 判定を走らせる。
+    onSurfaceMouseLeave?.();
+    setIsHovering(false);
+    if (closeDisabled) {
+      return;
+    }
+    onCloseRef.current();
+  };
+
+  return {
+    armMouseLeaveCloseSuppression,
+    handleAuxClickCapture,
+    handleMouseDownCapture,
+    handleMouseEnter,
+    handleMouseLeave,
   };
 }
 
@@ -318,8 +524,14 @@ export function useThreadPopupLifecycle({
   rootRef,
   resMap,
 }: ThreadPopupLifecycleParams): ThreadPopupLifecycleResult {
-  const { popups, addPopup, closePopupById, closePopupsByPredicate } =
-    usePopupManager(scopeId);
+  const {
+    popups,
+    addPopup,
+    closePopupById,
+    closePopupsByPredicate,
+    closeNonContextPopups,
+    closePopupChildren,
+  } = usePopupManager(scopeId);
   const anchorPreviewHideTimerRef = useRef<number | null>(null);
 
   const anchorPreviews = useMemo(
@@ -527,22 +739,9 @@ export function useThreadPopupLifecycle({
     [addPopup, toPageCoords],
   );
 
-  const closeNonContextPopups = useCallback(() => {
-    closePopupsByPredicate((item) => item.type !== "contextMenu");
-  }, [closePopupsByPredicate]);
-
   const hasPopupChild = useCallback(
     (popupId: string) => popups.some((item) => item.parentId === popupId),
     [popups],
-  );
-
-  const closePopupChildren = useCallback(
-    (popupId: string) => {
-      // 親popupを操作した時は、その枝配下の子孫だけを畳んでから次の操作を始める。
-      // root を残したまま branch をリセットしたいので、popup 自身ではなく direct child を起点に閉じる。
-      closePopupsByPredicate((item) => item.parentId === popupId);
-    },
-    [closePopupsByPredicate],
   );
 
   useEffect(() => {

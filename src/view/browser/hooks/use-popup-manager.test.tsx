@@ -68,7 +68,13 @@ function PopupSequenceHarness({
   repIndex?: Map<number, Set<number>>;
   rootResNum?: number;
 }) {
-  const { popups, addPopup, closePopupById, closePopupsByPredicate } =
+  const {
+    popups,
+    addPopup,
+    closePopupById,
+    closePopupsByPredicate,
+    closePopupChildren,
+  } =
     usePopupManager();
 
   const anchorPreviews = popups.filter(
@@ -150,10 +156,6 @@ function PopupSequenceHarness({
       },
       parentId,
     });
-  };
-
-  const closePopupChildren = (popupId: string) => {
-    closePopupsByPredicate((item) => item.parentId === popupId);
   };
 
   return (
@@ -860,6 +862,51 @@ describe("ResPopup mouseleave behavior", () => {
 describe("usePopupManager zustand scopes", () => {
   afterEach(() => {
     cleanup();
+  });
+
+  it("closeNonContextPopups は contextMenu だけを残す", () => {
+    function CloseNonContextHarness() {
+      const popupManager = usePopupManager("close-non-context");
+
+      return (
+        <div>
+          <button
+            onClick={() => {
+              popupManager.addPopup({
+                type: "tree",
+                x: 8,
+                y: 8,
+                payload: { resNum: 1, anchorPreviewDepth: 0 },
+              });
+              popupManager.addPopup({
+                type: "contextMenu",
+                x: 16,
+                y: 16,
+                payload: { items: [] },
+              });
+            }}
+          >
+            open
+          </button>
+          <button onClick={popupManager.closeNonContextPopups}>close-non-context</button>
+          <output data-testid="close-non-context-types">
+            {popupManager.popups.map((item) => item.type).join("|")}
+          </output>
+        </div>
+      );
+    }
+
+    render(<CloseNonContextHarness />);
+
+    fireEvent.click(screen.getByRole("button", { name: "open" }));
+    expect(screen.getByTestId("close-non-context-types")).toHaveTextContent(
+      "tree|contextMenu",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "close-non-context" }));
+    expect(screen.getByTestId("close-non-context-types")).toHaveTextContent(
+      "contextMenu",
+    );
   });
 
   it("scope ごとに popup state を分離する", () => {

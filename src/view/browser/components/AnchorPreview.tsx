@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import type { IRes } from "src/service-container";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
-import { usePopupSurfaceCloseGuard } from "src/view/browser/hooks/use-popup-surface-close-guard";
+import { usePopupSurfaceCloseGuard } from "src/view/browser/hooks/use-popup-manager";
 import { POPUP_SURFACE_SELECTOR } from "src/view/browser/utils/constants";
 import { useAdjustOverflow } from "../utils/use-adjust-overflow";
 import { getEventTargetElement } from "src/view/browser/utils/utils";
