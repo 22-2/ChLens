@@ -42,39 +42,93 @@ function createTab(id: string): Tab {
   };
 }
 
-function mockState(currentPage: Page, activeTab: Tab) {
-  mockUseTabStore.mockReturnValue({ currentPage, activeTab });
+function createTabWithPage(id: string, page: Page): Tab {
+  return {
+    ...createTab(id),
+    history: [page],
+    currentIndex: 0,
+  };
 }
 
-describe("ContentArea scroll restoration", () => {
+function mockState(tabs: Tab[], activeTabId: string) {
+  const activeTab = tabs.find((tab) => tab.id === activeTabId) as Tab;
+  mockUseTabStore.mockReturnValue({
+    state: {
+      tabs,
+      activeTabId,
+      closedTabs: [],
+    },
+    activeTab,
+    currentPage: activeTab.history[activeTab.currentIndex],
+    dispatch: vi.fn(),
+  });
+}
+
+describe("ContentArea tab switching", () => {
   beforeEach(() => {
     mockUseTabStore.mockReset();
   });
 
-  it("タブ切り替え時に content-area の scroll 位置を復元する", () => {
-    const homePage: Page = { type: "home", title: "ホーム" };
-    const tab1 = createTab("tab-1");
-    const tab2 = createTab("tab-2");
+  it("アクティブでないタブは display:none で隠す", () => {
+    const tab1 = createTabWithPage("tab-1", {
+      type: "home",
+      title: "ホーム",
+    });
+    const tab2 = createTabWithPage("tab-2", {
+      type: "boardList",
+      title: "板一覧",
+    });
 
-    mockState(homePage, tab1);
+    mockState([tab1, tab2], "tab-1");
     const { container, rerender } = render(<ContentArea />);
 
-    const contentArea = container.querySelector(".content-area") as HTMLDivElement;
-    contentArea.scrollTop = 240;
-    contentArea.scrollLeft = 18;
+    const panel1 = container.querySelector(
+      '[data-tab-panel-id="tab-1"]',
+    ) as HTMLDivElement;
+    const panel2 = container.querySelector(
+      '[data-tab-panel-id="tab-2"]',
+    ) as HTMLDivElement;
 
-    mockState(homePage, tab2);
+    expect(panel1).toHaveStyle({ display: "block" });
+    expect(panel2).toHaveStyle({ display: "none" });
+
+    mockState([tab1, tab2], "tab-2");
     rerender(<ContentArea />);
 
-    expect(contentArea.scrollTop).toBe(0);
-    expect(contentArea.scrollLeft).toBe(0);
+    expect(panel1).toHaveStyle({ display: "none" });
+    expect(panel2).toHaveStyle({ display: "block" });
+  });
 
-    contentArea.scrollTop = 84;
+  it("非アクティブ化してもタブごとの scroll 状態を保持する", () => {
+    const tab1 = createTabWithPage("tab-1", {
+      type: "home",
+      title: "ホーム",
+    });
+    const tab2 = createTabWithPage("tab-2", {
+      type: "boardList",
+      title: "板一覧",
+    });
 
-    mockState(homePage, tab1);
+    mockState([tab1, tab2], "tab-1");
+    const { container, rerender } = render(<ContentArea />);
+
+    const panel1 = container.querySelector(
+      '[data-tab-panel-id="tab-1"]',
+    ) as HTMLDivElement;
+    const panel2 = container.querySelector(
+      '[data-tab-panel-id="tab-2"]',
+    ) as HTMLDivElement;
+
+    panel1.scrollTop = 240;
+    panel2.scrollTop = 32;
+
+    mockState([tab1, tab2], "tab-2");
     rerender(<ContentArea />);
 
-    expect(contentArea.scrollTop).toBe(240);
-    expect(contentArea.scrollLeft).toBe(18);
+    mockState([tab1, tab2], "tab-1");
+    rerender(<ContentArea />);
+
+    expect(panel1.scrollTop).toBe(240);
+    expect(panel2.scrollTop).toBe(32);
   });
 });

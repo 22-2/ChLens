@@ -35,6 +35,7 @@ export type TabAction =
   | { type: "GO_FORWARD" }
   | { type: "GO_TO_HISTORY_INDEX"; index: number }
   | { type: "UPDATE_TITLE"; title: string }
+  | { type: "UPDATE_TITLE_FOR_TAB"; tabId: string; title: string }
   | { type: "RELOAD" }
   | {
       type: "SET_AUTO_REFRESH_ENABLED";
@@ -316,6 +317,33 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
         ...tab,
         history: newHistory,
       }));
+    }
+
+    case "UPDATE_TITLE_FOR_TAB": {
+      return {
+        ...state,
+        tabs: state.tabs.map((tab) => {
+          if (tab.id !== action.tabId) {
+            return tab;
+          }
+
+          const currentPage = tab.history[tab.currentIndex];
+          if (!currentPage || currentPage.title === action.title) {
+            return tab;
+          }
+
+          const updatedHistory = [...tab.history];
+          updatedHistory[tab.currentIndex] = {
+            ...currentPage,
+            title: action.title,
+          };
+
+          return {
+            ...tab,
+            history: updatedHistory,
+          };
+        }),
+      };
     }
 
     case "RELOAD":

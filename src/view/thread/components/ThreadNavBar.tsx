@@ -74,7 +74,7 @@ export const ThreadNavBar: React.FC = () => {
         variant="ghost"
         size="icon"
         title="再読み込み"
-        className="h-8 w-8"
+        className="h-8 w-8 button_reload"
       >
         <RotateCw size={16} />
       </Button>

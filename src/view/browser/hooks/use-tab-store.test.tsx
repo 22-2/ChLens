@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("TabProvider auto refresh state", () => {
@@ -8,6 +8,7 @@ describe("TabProvider auto refresh state", () => {
   });
 
   afterEach(() => {
+    cleanup();
     vi.resetModules();
   });
 
@@ -98,6 +99,162 @@ describe("TabProvider auto refresh state", () => {
     );
     expect(screen.getByTestId("current-thread-enabled")).toHaveTextContent(
       "disabled",
+    );
+  });
+
+  it("OPEN_IN_NEW_TAB では現在タブのページタイトルを変更しない", async () => {
+    vi.resetModules();
+    const { TabProvider, useTabStore } = await import(
+      "src/view/browser/hooks/use-tab-store"
+    );
+
+    function Harness() {
+      const { state, activeTab, currentPage, dispatch } = useTabStore();
+
+      return (
+        <>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "NAVIGATE",
+                page: {
+                  type: "threadList",
+                  title: "板A",
+                  boardUrl: "https://example.com/board-a/",
+                  boardTitle: "板A",
+                },
+              })
+            }
+          >
+            板Aへ移動
+          </button>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "OPEN_IN_NEW_TAB",
+                page: {
+                  type: "thread",
+                  title: "新規スレ",
+                  threadUrl: "https://example.com/test/read.cgi/board-a/1/",
+                },
+              })
+            }
+          >
+            新規タブで開く
+          </button>
+          <output data-testid="active-tab-id">{activeTab.id}</output>
+          <output data-testid="current-page-title">{currentPage.title}</output>
+          <output data-testid="current-page-type">{currentPage.type}</output>
+          <output data-testid="tabs-count">{state.tabs.length}</output>
+        </>
+      );
+    }
+
+    render(
+      <TabProvider>
+        <Harness />
+      </TabProvider>,
+    );
+
+    fireEvent.click(screen.getByText("板Aへ移動"));
+    const activeTabIdBefore = screen.getByTestId("active-tab-id").textContent;
+
+    expect(screen.getByTestId("current-page-title")).toHaveTextContent("板A");
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent("threadList");
+
+    fireEvent.click(screen.getByText("新規タブで開く"));
+
+    expect(screen.getByTestId("tabs-count")).toHaveTextContent("2");
+    expect(screen.getByTestId("active-tab-id").textContent).toBe(activeTabIdBefore);
+    expect(screen.getByTestId("current-page-title")).toHaveTextContent("板A");
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent("threadList");
+  });
+
+  it("UPDATE_TITLE_FOR_TAB は対象タブだけを更新し、アクティブタブを汚染しない", async () => {
+    vi.resetModules();
+    const { TabProvider, useTabStore } = await import(
+      "src/view/browser/hooks/use-tab-store"
+    );
+
+    function Harness() {
+      const { state, activeTab, currentPage, dispatch } = useTabStore();
+
+      return (
+        <>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "NAVIGATE",
+                page: {
+                  type: "threadList",
+                  title: "アクティブ板",
+                  boardUrl: "https://example.com/board-a/",
+                  boardTitle: "アクティブ板",
+                },
+              })
+            }
+          >
+            activeを板Aへ
+          </button>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "OPEN_IN_NEW_TAB",
+                page: {
+                  type: "thread",
+                  title: "背景タブ初期",
+                  threadUrl: "https://example.com/test/read.cgi/board-a/1/",
+                },
+              })
+            }
+          >
+            背景タブを開く
+          </button>
+          <button
+            onClick={() => {
+              const target = state.tabs.find((tab) => tab.id !== state.activeTabId);
+              if (!target) return;
+              dispatch({
+                type: "UPDATE_TITLE_FOR_TAB",
+                tabId: target.id,
+                title: "背景タブ更新後",
+              });
+            }}
+          >
+            背景タブのタイトル更新
+          </button>
+          <output data-testid="tabs-count">{state.tabs.length}</output>
+          <output data-testid="active-tab-id">{activeTab.id}</output>
+          <output data-testid="active-page-title">{currentPage.title}</output>
+          <output data-testid="background-page-title">
+            {
+              state.tabs
+                .find((tab) => tab.id !== state.activeTabId)
+                ?.history.at(-1)?.title ?? ""
+            }
+          </output>
+        </>
+      );
+    }
+
+    render(
+      <TabProvider>
+        <Harness />
+      </TabProvider>,
+    );
+
+    fireEvent.click(screen.getByText("activeを板Aへ"));
+    const activeTabIdBefore = screen.getByTestId("active-tab-id").textContent;
+
+    fireEvent.click(screen.getByText("背景タブを開く"));
+    expect(screen.getByTestId("tabs-count")).toHaveTextContent("2");
+
+    fireEvent.click(screen.getByText("背景タブのタイトル更新"));
+
+    expect(screen.getByTestId("active-tab-id").textContent).toBe(activeTabIdBefore);
+    expect(screen.getByTestId("active-page-title")).toHaveTextContent("アクティブ板");
+    expect(screen.getByTestId("background-page-title")).toHaveTextContent(
+      "背景タブ更新後",
     );
   });
 });

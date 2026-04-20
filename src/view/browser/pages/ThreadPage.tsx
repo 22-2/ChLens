@@ -63,7 +63,7 @@ function getViewerStageViewportSize(stage: HTMLDivElement): ViewerSize {
   };
 }
 
-export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
+export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
   const rootRef = useRef<HTMLDivElement>(null);
   const {
     responses,
@@ -82,7 +82,7 @@ export const ThreadPage: React.FC<Props> = ({ page, refreshKey }) => {
     idPositions,
     setResponses,
     messageProtocol,
-  } = useThreadData(page, refreshKey);
+  } = useThreadData(tabId, page, refreshKey);
   const { dispatch, activeTab } = useTabStore();
   const {
     viewer,

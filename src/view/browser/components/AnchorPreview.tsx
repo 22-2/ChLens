@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import type { IRes } from "src/service-container";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
+import { usePopupSurfaceCloseGuard } from "src/view/browser/components/use-popup-surface-close-guard";
 import { POPUP_SURFACE_SELECTOR } from "src/view/browser/utils/constants";
 import { useAdjustOverflow } from "../utils/use-adjust-overflow";
+import { getEventTargetElement } from "src/view/browser/utils/utils";
 
 export interface AnchorPreviewProps {
   depth: number;
@@ -60,6 +62,12 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
   const ref = useRef<HTMLDivElement>(null);
   const [isHovering, setIsHovering] = useState(false);
   const onMouseLeaveRef = useRef(onMouseLeave);
+  const {
+    armMouseLeaveCloseSuppression,
+    handleAuxClickCapture,
+    handleMouseDownCapture,
+    shouldSuppressMouseLeaveClose,
+  } = usePopupSurfaceCloseGuard(onSurfaceMouseDown);
   onMouseLeaveRef.current = onMouseLeave;
 
   const isActuallyHovering = () => ref.current?.matches(":hover") ?? false;
@@ -81,7 +89,8 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
   useEffect(() => {
     if (hasChildPopup) return;
     const handler = (e: MouseEvent) => {
-      if (e.target instanceof Element && e.target.closest(POPUP_SURFACE_SELECTOR)) {
+      const target = getEventTargetElement(e.target);
+      if (target?.closest(POPUP_SURFACE_SELECTOR)) {
         return;
       }
       onMouseLeaveRef.current();
@@ -100,9 +109,8 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
         top: y,
         zIndex,
       }}
-      onMouseDownCapture={() => {
-        onSurfaceMouseDown?.();
-      }}
+      onMouseDownCapture={handleMouseDownCapture}
+      onAuxClickCapture={handleAuxClickCapture}
       onMouseEnter={() => {
         setIsHovering(true);
         onMouseEnter();
@@ -115,6 +123,9 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
           e.relatedTarget instanceof Element &&
           e.relatedTarget.closest(POPUP_SURFACE_SELECTOR)
         ) {
+          return;
+        }
+        if (shouldSuppressMouseLeaveClose()) {
           return;
         }
         setIsHovering(false);
@@ -133,6 +144,7 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
             repIndex={repIndex}
             onUrlClick={onUrlClick}
             onUrlContextMenu={onUrlContextMenu}
+            onLinkMiddleClickStart={armMouseLeaveCloseSuppression}
             onIdLinkClick={onIdLinkClick}
             onRepClick={onRepClick}
             onAnchorClick={onAnchorClick}

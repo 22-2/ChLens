@@ -5,10 +5,12 @@ import type { IRes } from "src/service-container";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import { ReplyTree } from "src/view/browser/components/ReplyTree";
+import { usePopupSurfaceCloseGuard } from "src/view/browser/components/use-popup-surface-close-guard";
 import { POPUP_SURFACE_SELECTOR } from "src/view/browser/utils/constants";
 import { useAdjustOverflow } from "src/view/browser/utils/use-adjust-overflow";
 import { copyText, stripHtml } from "src/view/browser/utils/utils";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
+import { getEventTargetElement } from "src/view/browser/utils/utils";
 
 interface TreeMenuPosition {
   x: number;
@@ -124,6 +126,12 @@ export const ReplyTreePopup: React.FC<{
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const {
+    armMouseLeaveCloseSuppression,
+    handleAuxClickCapture,
+    handleMouseDownCapture,
+    shouldSuppressMouseLeaveClose,
+  } = usePopupSurfaceCloseGuard(onSurfaceMouseDown);
   const [menuPosition, setMenuPosition] = useState<TreeMenuPosition | null>(null);
   const sourceRes = resMap.get(resNum) ?? null;
   const replyResponses = sourceRes
@@ -171,7 +179,8 @@ export const ReplyTreePopup: React.FC<{
   useEffect(() => {
     if (disableOutsideClick) return;
     const handler = (e: MouseEvent) => {
-      if (e.target instanceof Element && e.target.closest(POPUP_SURFACE_SELECTOR)) {
+      const target = getEventTargetElement(e.target);
+      if (target?.closest(POPUP_SURFACE_SELECTOR)) {
         return;
       }
       if (ref.current) {
@@ -243,9 +252,8 @@ export const ReplyTreePopup: React.FC<{
       data-popup-surface="true"
       className="res-popup"
       style={{ left: x, top: y, ...(zIndex != null && { zIndex }) }}
-      onMouseDownCapture={() => {
-        onSurfaceMouseDown?.();
-      }}
+      onMouseDownCapture={handleMouseDownCapture}
+      onAuxClickCapture={handleAuxClickCapture}
       onMouseEnter={() => {
         setIsHovering(true);
         onMouseEnter?.();
@@ -258,6 +266,9 @@ export const ReplyTreePopup: React.FC<{
           e.relatedTarget instanceof Element &&
           e.relatedTarget.closest(POPUP_SURFACE_SELECTOR)
         ) {
+          return;
+        }
+        if (shouldSuppressMouseLeaveClose()) {
           return;
         }
         // popup surface間の移動では親子チェーンを維持したいので、
@@ -296,6 +307,7 @@ export const ReplyTreePopup: React.FC<{
               isHighlighted={true}
               onUrlClick={onUrlClick}
               onUrlContextMenu={onUrlContextMenu}
+              onLinkMiddleClickStart={armMouseLeaveCloseSuppression}
               onIdLinkClick={onIdLinkClick}
               onRepClick={onRepClick}
               onAnchorClick={onAnchorClick}
@@ -315,6 +327,7 @@ export const ReplyTreePopup: React.FC<{
           anchorPreviewDepth={anchorPreviewDepth}
           onUrlClick={onUrlClick}
           onUrlContextMenu={onUrlContextMenu}
+          onLinkMiddleClickStart={armMouseLeaveCloseSuppression}
           onIdLinkClick={onIdLinkClick}
           onRepClick={onRepClick}
           onAnchorClick={onAnchorClick}

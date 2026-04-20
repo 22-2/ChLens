@@ -17,12 +17,16 @@ interface BarContextMenuState {
   y: number;
 }
 
+const TAB_SWITCH_WHEEL_MIN_DELTA = 8;
+const TAB_SWITCH_WHEEL_COOLDOWN_MS = 50;
+
 export const TabBar: React.FC = () => {
   const { state, dispatch } = useTabStore();
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [barContextMenu, setBarContextMenu] = useState<BarContextMenuState | null>(null);
   const [highlightedTabIds, setHighlightedTabIds] = useState<Set<string>>(new Set());
   const prevTabIdsRef = useRef<Set<string>>(new Set(state.tabs.map((tab) => tab.id)));
+  const lastWheelSwitchAtRef = useRef(0);
 
   useEffect(() => {
     const prev = prevTabIdsRef.current;
@@ -75,11 +79,23 @@ export const TabBar: React.FC = () => {
   // ホイールでアクティブタブを前後に切り替える
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
+      // 小さい慣性入力や横スクロール成分は無視し、hover中の誤連打切替を防ぐ。
+      if (Math.abs(e.deltaY) < Math.abs(e.deltaX)) return;
+      if (Math.abs(e.deltaY) < TAB_SWITCH_WHEEL_MIN_DELTA) return;
+
+      const now = Date.now();
+      if (now - lastWheelSwitchAtRef.current < TAB_SWITCH_WHEEL_COOLDOWN_MS) {
+        return;
+      }
+
       const tabs = state.tabs;
       const currentIdx = tabs.findIndex((t) => t.id === state.activeTabId);
       if (currentIdx === -1) return;
+
+      e.preventDefault();
       const delta = e.deltaY > 0 ? 1 : -1;
       const nextIdx = (currentIdx + delta + tabs.length) % tabs.length;
+      lastWheelSwitchAtRef.current = now;
       dispatch({ type: "SELECT_TAB", tabId: tabs[nextIdx].id });
     },
     [dispatch, state.activeTabId, state.tabs],

@@ -384,9 +384,14 @@ body {
    ========================================================================== */
 .content-area {
   flex: 1;
+  overflow: hidden;
+  background: #fff;
+}
+
+.content-area__tab-panel {
+  height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  background: #fff;
 }
 
 /* ==========================================================================
@@ -1081,6 +1086,12 @@ body {
 
 .thread-list__row--highlight {
   font-weight: 600;
+  background: #ffffcc;
+  color: #222;
+}
+
+.thread-list__row--highlight:hover {
+  background: #fff5a8;
 }
 
 .thread-list__row--highlight .thread-list__num,
@@ -1762,6 +1773,29 @@ body {
   .thread-list__count,
   .thread-list__heat {
     color: #9aa0a6;
+  }
+
+  .thread-list__row--highlight {
+    background: #a56f00;
+    color: #000;
+  }
+
+  .thread-list__row--highlight:hover {
+    background: #b97f00;
+  }
+
+  .thread-list__row--highlight .thread-list__num,
+  .thread-list__row--highlight .thread-list__title,
+  .thread-list__row--highlight .thread-list__count,
+  .thread-list__row--highlight .thread-list__heat,
+  .thread-list__row--highlight .thread-list__label {
+    // ダークテーマ通常色（青/グレー）より優先して黒文字を固定し、
+    // 強調行の可読性をぶらさないようにする。
+    color: #000;
+  }
+
+  .thread-list__row--highlight .thread-list__label {
+    background: rgba(255, 255, 255, 0.36);
   }
 
   /* --- スレッドページ --- */

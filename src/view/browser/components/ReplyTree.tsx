@@ -12,6 +12,7 @@ export const ReplyTree: React.FC<{
   anchorPreviewDepth: number;
   onUrlClick: (url: string, resImages?: string[], button?: 0 | 1) => void;
   onUrlContextMenu: (url: string, e: React.MouseEvent) => void;
+  onLinkMiddleClickStart?: () => void;
   onIdLinkClick: (id: string, e: React.MouseEvent) => void;
   onRepClick: (resNum: number, e: React.MouseEvent) => void;
   onAnchorClick: (resNum: number) => void;
@@ -33,6 +34,7 @@ export const ReplyTree: React.FC<{
   anchorPreviewDepth,
   onUrlClick,
   onUrlContextMenu,
+  onLinkMiddleClickStart,
   onIdLinkClick,
   onRepClick,
   onAnchorClick,
@@ -76,6 +78,7 @@ export const ReplyTree: React.FC<{
               repIndex={repIndex}
               onUrlClick={onUrlClick}
               onUrlContextMenu={onUrlContextMenu}
+              onLinkMiddleClickStart={onLinkMiddleClickStart}
               onIdLinkClick={onIdLinkClick}
               onRepClick={onRepClick}
               onAnchorClick={onAnchorClick}
@@ -91,6 +94,7 @@ export const ReplyTree: React.FC<{
               anchorPreviewDepth={anchorPreviewDepth}
               onUrlClick={onUrlClick}
               onUrlContextMenu={onUrlContextMenu}
+              onLinkMiddleClickStart={onLinkMiddleClickStart}
               onIdLinkClick={onIdLinkClick}
               onRepClick={onRepClick}
               onAnchorClick={onAnchorClick}

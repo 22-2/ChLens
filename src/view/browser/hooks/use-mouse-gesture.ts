@@ -13,10 +13,27 @@ export function useMouseGesture(
     const host = rootRef.current;
     if (!host) return;
 
-    const scrollContainer = host.closest(".content-area");
-    if (!(scrollContainer instanceof HTMLElement)) {
-      return;
-    }
+    const resolveScrollContainer = (): HTMLElement | null => {
+      const nearestPanel = host.closest(".content-area__tab-panel");
+      if (nearestPanel instanceof HTMLElement) {
+        return nearestPanel;
+      }
+
+      const contentArea = host.closest(".content-area");
+      if (!(contentArea instanceof HTMLElement)) {
+        return null;
+      }
+
+      const activePanel = contentArea.querySelector(
+        ".content-area__tab-panel[data-active='true']",
+      );
+      if (activePanel instanceof HTMLElement) {
+        return activePanel;
+      }
+
+      // 互換性のため、旧構成（content-area 自体がスクロール）の場合は fallback する。
+      return contentArea;
+    };
 
     let points: GesturePoint[] = [];
     let isDrawing = false;
@@ -168,6 +185,11 @@ export function useMouseGesture(
         gestureJustCompleted = false;
         suppressTimerId = null;
       }, GESTURE_CONTEXTMENU_SUPPRESS_MS);
+
+      const scrollContainer = resolveScrollContainer();
+      if (!scrollContainer) {
+        return;
+      }
 
       if (completedGesture === "Up") {
         scrollContainer.scrollTop = 0;

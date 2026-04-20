@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { fireEvent, render } from "@testing-library/react";
-import React, { useState } from "react";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ResBody } from "src/view/browser/components/ResBody";
 
@@ -106,6 +106,28 @@ describe("ResBody anchor behavior", () => {
       anchor,
       new MouseEvent("auxclick", { button: 1, bubbles: true, cancelable: true }),
     );
+
+    expect(onUrlClick).toHaveBeenCalledOnce();
+    expect(onUrlClick).toHaveBeenCalledWith("https://example.com/thread/1", 1);
+  });
+
+  it("auxclick が来ない環境でも middle mousedown だけで新規タブ扱いで開く", () => {
+    const onUrlClick = vi.fn();
+    const { container } = render(
+      <ResBody
+        messageHtml={URL_HTML}
+        anchorPreviewDepth={0}
+        onUrlClick={onUrlClick}
+        onUrlContextMenu={() => {}}
+        onIdLinkClick={() => {}}
+        onAnchorClick={() => {}}
+        onAnchorHover={() => {}}
+        onAnchorLeave={() => {}}
+      />,
+    );
+
+    const anchor = container.querySelector("a") as HTMLAnchorElement;
+    fireEvent.mouseDown(anchor, { button: 1 });
 
     expect(onUrlClick).toHaveBeenCalledOnce();
     expect(onUrlClick).toHaveBeenCalledWith("https://example.com/thread/1", 1);

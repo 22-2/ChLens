@@ -1,105 +1,88 @@
-import React, { useLayoutEffect, useMemo, useRef } from "react";
+import React from "react";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { SettingsPage } from "src/view/browser/pages/SettingsPage";
 import { BoardListPage } from "src/view/browser/pages/BoardListPage";
 import { HomePage } from "src/view/browser/pages/HomePage";
 import { ThreadListPage } from "src/view/browser/pages/ThreadListPage";
 import { ThreadPage } from "src/view/browser/pages/ThreadPage";
-import type { Page } from "src/view/browser/types";
+import { getCurrentPage } from "src/view/browser/types";
 
-function buildContentScrollKey(
+function buildPageRenderKey(
   tabId: string,
   historyIndex: number,
-  page: Page,
+  reloadKey: number,
+  page: ReturnType<typeof getCurrentPage>,
 ): string {
   switch (page.type) {
     case "thread":
-      return `${tabId}:${historyIndex}:thread:${page.threadUrl}`;
+      return `${tabId}:${historyIndex}:${reloadKey}:thread:${page.threadUrl}`;
     case "threadList":
-      return `${tabId}:${historyIndex}:threadList:${page.boardUrl}`;
+      return `${tabId}:${historyIndex}:${reloadKey}:threadList:${page.boardUrl}`;
     case "boardList":
-      return `${tabId}:${historyIndex}:boardList`;
+      return `${tabId}:${historyIndex}:${reloadKey}:boardList`;
     case "settings":
-      return `${tabId}:${historyIndex}:settings`;
+      return `${tabId}:${historyIndex}:${reloadKey}:settings`;
     case "home":
-      return `${tabId}:${historyIndex}:home`;
+      return `${tabId}:${historyIndex}:${reloadKey}:home`;
   }
-}
-
-function restoreScrollPosition(
-  element: HTMLDivElement,
-  position: { top: number; left: number },
-): void {
-  if (typeof element.scrollTo === "function") {
-    element.scrollTo({
-      top: position.top,
-      left: position.left,
-      behavior: "auto",
-    });
-    return;
-  }
-
-  element.scrollTop = position.top;
-  element.scrollLeft = position.left;
 }
 
 export const ContentArea: React.FC = () => {
-  const { currentPage, activeTab } = useTabStore();
-  const refreshKey = activeTab.reloadKey;
-  const contentAreaRef = useRef<HTMLDivElement>(null);
-  const scrollPositionsRef = useRef(
-    new Map<string, { top: number; left: number }>(),
-  );
-  const pageScrollKey = useMemo(
-    () => buildContentScrollKey(activeTab.id, activeTab.currentIndex, currentPage),
-    [activeTab.currentIndex, activeTab.id, currentPage],
-  );
+  const { state } = useTabStore();
 
-  useLayoutEffect(() => {
-    const contentArea = contentAreaRef.current;
-    if (!contentArea) {
-      return;
+  const tabPanels = state.tabs.map((tab) => {
+    const page = getCurrentPage(tab);
+
+    let pageContent: React.ReactNode;
+    switch (page.type) {
+      case "home":
+        pageContent = <HomePage />;
+        break;
+      case "boardList":
+        pageContent = <BoardListPage />;
+        break;
+      case "settings":
+        pageContent = <SettingsPage />;
+        break;
+      case "threadList":
+        pageContent = (
+          <ThreadListPage
+            tabId={tab.id}
+            page={page}
+            refreshKey={tab.reloadKey}
+          />
+        );
+        break;
+      case "thread":
+        pageContent = (
+          <ThreadPage tabId={tab.id} page={page} refreshKey={tab.reloadKey} />
+        );
+        break;
     }
 
-    const storedPosition = scrollPositionsRef.current.get(pageScrollKey) ?? {
-      top: 0,
-      left: 0,
-    };
-    restoreScrollPosition(contentArea, storedPosition);
+    const isActive = tab.id === state.activeTabId;
 
-    return () => {
-      // タブ/ページ切り替えの直前に共有スクロールコンテナの位置を退避して、
-      // 戻ってきた時だけそのページ固有の位置を復元する。
-      scrollPositionsRef.current.set(pageScrollKey, {
-        top: contentArea.scrollTop,
-        left: contentArea.scrollLeft,
-      });
-    };
-  }, [pageScrollKey]);
+    return (
+      <div
+        key={tab.id}
+        data-tab-panel-id={tab.id}
+        data-active={isActive ? "true" : "false"}
+        className="content-area__tab-panel"
+        style={{ display: isActive ? "block" : "none" }}
+      >
+        {
+          // タブ切替は display:none で行い、非アクティブタブのDOM/scroll状態を保持する。
+          // 一方で同一タブ内の履歴移動・更新(reload)は従来どおり再描画を保証するため、
+          // ページ識別子を key にしてタブ内コンテンツだけ差し替える。
+          <React.Fragment
+            key={buildPageRenderKey(tab.id, tab.currentIndex, tab.reloadKey, page)}
+          >
+            {pageContent}
+          </React.Fragment>
+        }
+      </div>
+    );
+  });
 
-  let pageContent: React.ReactNode;
-
-  switch (currentPage.type) {
-    case "home":
-      pageContent = <HomePage />;
-      break;
-    case "boardList":
-      pageContent = <BoardListPage />;
-      break;
-    case "settings":
-      pageContent = <SettingsPage />;
-      break;
-    case "threadList":
-      pageContent = <ThreadListPage page={currentPage} refreshKey={refreshKey} />;
-      break;
-    case "thread":
-      pageContent = <ThreadPage page={currentPage} refreshKey={refreshKey} />;
-      break;
-  }
-
-  return (
-    <div ref={contentAreaRef} className="content-area">
-      {pageContent}
-    </div>
-  );
+  return <div className="content-area">{tabPanels}</div>;
 };

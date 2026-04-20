@@ -17,6 +17,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     isHighlighted,
     onUrlClick,
     onUrlContextMenu,
+    onLinkMiddleClickStart,
     onIdLinkClick,
     onRepClick,
     onAnchorClick,
@@ -81,6 +82,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
           anchorPreviewDepth={anchorPreviewDepth}
           onUrlClick={(url, button) => onUrlClick(url, undefined, button)}
           onUrlContextMenu={onUrlContextMenu}
+          onMiddleClickStart={onLinkMiddleClickStart}
           onIdLinkClick={onIdLinkClick}
           onAnchorClick={onAnchorClick}
           onAnchorHover={onAnchorHover}
@@ -118,6 +120,7 @@ export interface StaticResCardProps {
   isHighlighted?: boolean;
   onUrlClick: (url: string, resImages?: string[], button?: 0 | 1) => void;
   onUrlContextMenu: (url: string, e: React.MouseEvent) => void;
+  onLinkMiddleClickStart?: () => void;
   onIdLinkClick: (id: string, e: React.MouseEvent) => void;
   onRepClick?: (resNum: number, e: React.MouseEvent) => void;
   onAnchorClick: (resNum: number) => void;

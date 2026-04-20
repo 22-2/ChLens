@@ -8,6 +8,7 @@ import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import type { ThreadListPage as ThreadListPageType } from "src/view/browser/types";
 
 interface Props {
+  tabId: string;
   page: ThreadListPageType;
   refreshKey: number;
 }
@@ -28,33 +29,16 @@ const BG_COLOR_PRESETS: Record<string, string> = {
   amber: "#ffecb3",
 };
 
-// 既存実装と同じ方式で、背景色に対する可読色（#222/#eee）を返す
-function getContrastTextColor(bgColor: string): string | null {
-  try {
-    if (!/^#[0-9a-f]{6}$/i.test(bgColor)) return null;
-    const r = parseInt(bgColor.slice(1, 3), 16);
-    const g = parseInt(bgColor.slice(3, 5), 16);
-    const b = parseInt(bgColor.slice(5, 7), 16);
-    const lin = (c: number) => {
-      const x = c / 255;
-      return x <= 0.04045 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
-    };
-    const lum = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
-    return lum > 0.179 ? "#222" : "#eee";
-  } catch {
-    return null;
-  }
-}
-
 function calcHeat(now: number, created: number, resCount: number): string {
   if (!Number.isFinite(created) || created > now) return "0.0";
   const elapsed = Math.max((now - created) / 1000, 1) / (24 * 60 * 60);
   return (resCount / elapsed).toFixed(1);
 }
 
-export const ThreadListPage: React.FC<Props> = ({ page, refreshKey }) => {
+export const ThreadListPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
   const { dispatch } = useTabStore();
   const titleFetched = useRef(false);
+  const suppressNextRowClickRef = useRef(false);
   const [threads, setThreads] = useState<IThread[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -92,15 +76,17 @@ export const ThreadListPage: React.FC<Props> = ({ page, refreshKey }) => {
     titleFetched.current = true;
     // boardTitleがURLと同じ場合（アドレスバー入力など）はBoardTitleSolverで解決する
     if (page.boardTitle && page.boardTitle !== page.boardUrl) {
-      dispatch({ type: "UPDATE_TITLE", title: page.boardTitle });
+      dispatch({ type: "UPDATE_TITLE_FOR_TAB", tabId, title: page.boardTitle });
       return;
     }
     askBoardTitle(new ChURL(page.boardUrl)).then((title) => {
-      if (title) dispatch({ type: "UPDATE_TITLE", title });
+      if (title) {
+        dispatch({ type: "UPDATE_TITLE_FOR_TAB", tabId, title });
+      }
     }).catch((err) => {
       console.error(err);
     });
-  }, [dispatch, page.boardTitle, page.boardUrl]);
+  }, [dispatch, page.boardTitle, page.boardUrl, tabId]);
 
   // Ctrl+Fで検索バーを開く
   useEffect(() => {
@@ -264,18 +250,26 @@ export const ThreadListPage: React.FC<Props> = ({ page, refreshKey }) => {
               const bgColor =
                 BG_COLOR_PRESETS[hlParams.bgColor] ?? hlParams.bgColor;
               rowStyle.backgroundColor = bgColor;
-              const textColor = getContrastTextColor(bgColor);
-              if (textColor) rowStyle.color = textColor;
             }
             return (
               <tr
                 key={thread.url}
                 className={`thread-list__row${isNG ? " thread-list__row--ng" : ""}${isHighlight ? " thread-list__row--highlight" : ""}`}
                 style={rowStyle}
-                onClick={() => handleThreadClick(thread.url, thread.title)}
+                onClick={() => {
+                  if (suppressNextRowClickRef.current) {
+                    // 中クリック直後に click が続けて発火する環境では、
+                    // ここを抑止しないと現在タブまで thread 遷移してしまう。
+                    suppressNextRowClickRef.current = false;
+                    return;
+                  }
+                  handleThreadClick(thread.url, thread.title);
+                }}
                 onMouseDown={(e) => {
                   if (e.button === 1) {
                     e.preventDefault();
+                    e.stopPropagation();
+                    suppressNextRowClickRef.current = true;
                     openThreadInNewTab(thread.url, thread.title);
                   }
                 }}

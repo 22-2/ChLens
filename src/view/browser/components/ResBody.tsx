@@ -15,6 +15,7 @@ interface ResBodyProps {
   anchorPreviewDepth: number;
   onUrlClick: (url: string, button: 0 | 1) => void;
   onUrlContextMenu: (url: string, e: React.MouseEvent) => void;
+  onMiddleClickStart?: () => void;
   onIdLinkClick: (id: string, e: React.MouseEvent) => void;
   onAnchorClick: (resNum: number) => void;
   onAnchorHover: (
@@ -54,12 +55,14 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
     anchorPreviewDepth,
     onUrlClick,
     onUrlContextMenu,
+    onMiddleClickStart,
     onIdLinkClick,
     onAnchorClick,
     onAnchorHover,
     onAnchorLeave,
   }) => {
     const hoveredAnchorKeyRef = useRef<string | null>(null);
+    const handledMiddleClickHrefRef = useRef<string | null>(null);
 
     return (
       <div
@@ -107,6 +110,7 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
           if (!anchor) {
             return;
           }
+          onMiddleClickStart?.();
           if (anchor.matches(ANCHOR_SELECTOR) || anchor.matches(ID_LINK_SELECTOR)) {
             e.preventDefault();
             e.stopPropagation();
@@ -116,9 +120,16 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
             return;
           }
           // popup 内リンクの中クリックでは default の中ボタン挙動を止めて自前遷移に寄せる。
-          // これで auxclick 後に親popupが閉じるブラウザ依存挙動を避ける。
+          // さらに auxclick が飛ばない環境でも確実に新規タブ動作させるため、
+          // middle down 時点で onUrlClick(,1) を実行しておく。
           e.preventDefault();
           e.stopPropagation();
+          const href = getNavigableHref(anchor);
+          if (!href) {
+            return;
+          }
+          handledMiddleClickHrefRef.current = href;
+          onUrlClick(href, 1);
         }}
         onClick={(e) => {
           const anchor = getAnchorElement(e.target);
@@ -153,6 +164,9 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
         onAuxClick={(e) => {
           const anchor = getAnchorElement(e.target);
           if (!anchor) return;
+          if (e.button === 1) {
+            onMiddleClickStart?.();
+          }
           if (anchor.matches(ID_LINK_SELECTOR)) {
             e.preventDefault();
             e.stopPropagation();
@@ -165,6 +179,10 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
           if (e.button !== 1) return;
           e.preventDefault();
           e.stopPropagation();
+          if (handledMiddleClickHrefRef.current === href) {
+            handledMiddleClickHrefRef.current = null;
+            return;
+          }
           onUrlClick(href, 1);
         }}
         onContextMenu={(e) => {

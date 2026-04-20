@@ -32,6 +32,7 @@ interface ThreadData {
 }
 
 export function useThreadData(
+  tabId: string,
   page: ThreadPageType,
   refreshKey: number,
 ): ThreadData {
@@ -66,7 +67,11 @@ export function useThreadData(
             setResponses(cached.res);
           }
           if (cached.title && !titleUpdatedRef.current) {
-            dispatch({ type: "UPDATE_TITLE", title: cached.title });
+            dispatch({
+              type: "UPDATE_TITLE_FOR_TAB",
+              tabId,
+              title: cached.title,
+            });
             titleUpdatedRef.current = true;
           }
           // 自動更新では cache 描画のあとに本体レスポンスが続くことがある。
@@ -78,7 +83,11 @@ export function useThreadData(
       setResponses(result.res);
       setExpired(result.expired ?? false);
       if (result.title && !titleUpdatedRef.current) {
-        dispatch({ type: "UPDATE_TITLE", title: result.title });
+        dispatch({
+          type: "UPDATE_TITLE_FOR_TAB",
+          tabId,
+          title: result.title,
+        });
       }
       if (result.message) {
         setError(result.message);
@@ -88,7 +97,7 @@ export function useThreadData(
     } finally {
       setLoading(false);
     }
-  }, [page.threadUrl, refreshKey, dispatch]);
+  }, [page.threadUrl, refreshKey, dispatch, tabId]);
 
   useEffect(() => {
     void fetchThread();
