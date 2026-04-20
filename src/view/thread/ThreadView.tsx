@@ -43,7 +43,11 @@ export const ThreadView: React.FC<ThreadViewProps> = ({ viewUrl }) => {
     if (!isReady || !viewUrl) return;
 
     const loadThread = async ({ forceUpdate = false } = {}) => {
-      if (!viewRef.current || !contentRef.current || !threadContentRef.current) {
+      if (
+        !viewRef.current ||
+        !contentRef.current ||
+        !threadContentRef.current
+      ) {
         return;
       }
       if (loadingRef.current) {
@@ -53,9 +57,8 @@ export const ThreadView: React.FC<ThreadViewProps> = ({ viewUrl }) => {
       const $view = viewRef.current;
       const $content = contentRef.current;
       const threadContent = threadContentRef.current;
-      const reloadButton = $view.querySelector<HTMLButtonElement>(
-        ".button_reload",
-      );
+      const reloadButton =
+        $view.querySelector<HTMLButtonElement>(".button_reload");
 
       let cacheApplied = Promise.resolve();
       loadingRef.current = true;

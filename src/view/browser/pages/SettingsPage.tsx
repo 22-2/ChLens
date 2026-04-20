@@ -1,7 +1,13 @@
 import Form, { type IChangeEvent } from "@rjsf/core";
-import validator from "@rjsf/validator-ajv8";
 import type { RJSFSchema, UiSchema, ValidatorType } from "@rjsf/utils";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import validator from "@rjsf/validator-ajv8";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { container } from "src/service-container/index";
 
 type SettingsSectionId =
@@ -117,8 +123,10 @@ const HOW_TO_JUDGMENT_ID_OPTIONS = [
   { const: "exists_once", title: "1つでも存在する場合" },
 ] as const satisfies readonly SettingsOption[];
 
-const settingsValidator =
-  validator as unknown as ValidatorType<SettingsSectionFormData, RJSFSchema>;
+const settingsValidator = validator as unknown as ValidatorType<
+  SettingsSectionFormData,
+  RJSFSchema
+>;
 const AUTO_SAVE_DELAY_MS = 350;
 
 function buildFieldSchema(field: SettingsFieldDefinition): RJSFSchema {
@@ -275,9 +283,25 @@ const SETTINGS_SECTIONS = [
     "自動更新と更新後のスクロール挙動を調整します。",
     [
       // TODO: スクロールで更新するようにする
-      { kind: "boolean", key: "dblclick_reload", title: "空白をダブルクリックで更新する" },
-      { kind: "number", key: "auto_load_second", title: "スレッド自動更新間隔 (秒)", minimum: 0, step: 1 },
-      { kind: "number", key: "auto_load_second_board", title: "板自動更新間隔 (秒)", minimum: 0, step: 1 },
+      {
+        kind: "boolean",
+        key: "dblclick_reload",
+        title: "空白をダブルクリックで更新する",
+      },
+      {
+        kind: "number",
+        key: "auto_load_second",
+        title: "スレッド自動更新間隔 (秒)",
+        minimum: 0,
+        step: 1,
+      },
+      {
+        kind: "number",
+        key: "auto_load_second_board",
+        title: "板自動更新間隔 (秒)",
+        minimum: 0,
+        step: 1,
+      },
       // {
       //   kind: "number",
       //   key: "auto_load_second_bookmark",
@@ -315,7 +339,11 @@ const SETTINGS_SECTIONS = [
     "画像・動画の読み込みとプレビューサイズを調整します。",
     [
       // TODO: Not implemented
-      { kind: "boolean", key: "manual_image_load", title: "画像を手動で読み込む" },
+      {
+        kind: "boolean",
+        key: "manual_image_load",
+        title: "画像を手動で読み込む",
+      },
       // TODO: Not implemented
       { kind: "boolean", key: "image_blur", title: "画像にぼかしを適用する" },
       {
@@ -419,95 +447,113 @@ const SETTINGS_SECTIONS = [
   //     },
   //   ],
   // ),
-  defineSection(
-    "ng",
-    "NG",
-    "NGワードと非表示関連の設定をまとめています。",
-    [
-      {
-        kind: "string",
-        key: "ngwords",
-        title: "NGワード一覧",
-        description: "1行に1件ずつ、旧設定画面と同じ形式で保存します。",
-        widget: "textarea",
-        rows: 10,
-      },
-      { kind: "boolean", key: "chain_ng", title: "NGレスへの返信を連鎖NGにする" },
-      { kind: "boolean", key: "chain_ng_id", title: "NG ID を連鎖NGにする" },
-      { kind: "boolean", key: "chain_ng_slip", title: "NG SLIP を連鎖NGにする" },
-      { kind: "boolean", key: "forward_link_ng", title: "前方リンクをNG判定に含める" },
-      { kind: "boolean", key: "display_ng", title: "NGレスを展開可能なまま表示する" },
-      { kind: "boolean", key: "bookmark_show_dat", title: "dat落ちしたブックマークを表示する" },
-      { kind: "boolean", key: "reject_ng_rep", title: "NGレスへの返信も非表示にする" },
-      // TODO: どういう意味か分かりづらいので、調査してから説明を加える
-      { kind: "boolean", key: "use_siki_guard", title: "しきい値ガードを有効にする" },
-      { kind: "boolean", key: "nothing_id_ng", title: "IDありスレのIDなしレスをNGにする" },
-      { kind: "boolean", key: "nothing_slip_ng", title: "SLIPありスレのSLIPなしレスをNGにする" },
-      {
-        kind: "string",
-        key: "how_to_judgment_id",
-        title: "ID / SLIP 判定方法",
-        options: HOW_TO_JUDGMENT_ID_OPTIONS,
-        widget: "radio",
-      },
-      {
-        kind: "number",
-        key: "repeat_message_ng_count",
-        title: "連投レスをNGにする回数（0で無効）",
-        minimum: 0,
-        maximum: 99,
-        step: 1,
-      },
-    ],
-  ),
-  defineSection(
-    "other",
-    "その他",
-    "書き込み時の既定値や外部データ設定です。",
-    [
-      { kind: "string", key: "default_name", title: "既定の名前" },
-      { kind: "string", key: "default_mail", title: "既定のメール欄" },
-      {
-        kind: "number",
-        key: "bbsmenu_update_interval",
-        title: "BBSMENU更新間隔 (日)",
-        minimum: 1,
-        step: 1,
-      },
-      {
-        kind: "string",
-        key: "bbsmenu",
-        title: "BBSMENU URL一覧",
-        widget: "textarea",
-        rows: 6,
-      },
+  defineSection("ng", "NG", "NGワードと非表示関連の設定をまとめています。", [
+    {
+      kind: "string",
+      key: "ngwords",
+      title: "NGワード一覧",
+      description: "1行に1件ずつ、旧設定画面と同じ形式で保存します。",
+      widget: "textarea",
+      rows: 10,
+    },
+    { kind: "boolean", key: "chain_ng", title: "NGレスへの返信を連鎖NGにする" },
+    { kind: "boolean", key: "chain_ng_id", title: "NG ID を連鎖NGにする" },
+    { kind: "boolean", key: "chain_ng_slip", title: "NG SLIP を連鎖NGにする" },
+    {
+      kind: "boolean",
+      key: "forward_link_ng",
+      title: "前方リンクをNG判定に含める",
+    },
+    {
+      kind: "boolean",
+      key: "display_ng",
+      title: "NGレスを展開可能なまま表示する",
+    },
+    {
+      kind: "boolean",
+      key: "bookmark_show_dat",
+      title: "dat落ちしたブックマークを表示する",
+    },
+    {
+      kind: "boolean",
+      key: "reject_ng_rep",
+      title: "NGレスへの返信も非表示にする",
+    },
+    // TODO: どういう意味か分かりづらいので、調査してから説明を加える
+    {
+      kind: "boolean",
+      key: "use_siki_guard",
+      title: "しきい値ガードを有効にする",
+    },
+    {
+      kind: "boolean",
+      key: "nothing_id_ng",
+      title: "IDありスレのIDなしレスをNGにする",
+    },
+    {
+      kind: "boolean",
+      key: "nothing_slip_ng",
+      title: "SLIPありスレのSLIPなしレスをNGにする",
+    },
+    {
+      kind: "string",
+      key: "how_to_judgment_id",
+      title: "ID / SLIP 判定方法",
+      options: HOW_TO_JUDGMENT_ID_OPTIONS,
+      widget: "radio",
+    },
+    {
+      kind: "number",
+      key: "repeat_message_ng_count",
+      title: "連投レスをNGにする回数（0で無効）",
+      minimum: 0,
+      maximum: 99,
+      step: 1,
+    },
+  ]),
+  defineSection("other", "その他", "書き込み時の既定値や外部データ設定です。", [
+    { kind: "string", key: "default_name", title: "既定の名前" },
+    { kind: "string", key: "default_mail", title: "既定のメール欄" },
+    {
+      kind: "number",
+      key: "bbsmenu_update_interval",
+      title: "BBSMENU更新間隔 (日)",
+      minimum: 1,
+      step: 1,
+    },
+    {
+      kind: "string",
+      key: "bbsmenu",
+      title: "BBSMENU URL一覧",
+      widget: "textarea",
+      rows: 6,
+    },
 
-      // TODO: どういう意味か分かりづらいので、調査してから説明を加える
-      {
-        kind: "string",
-        key: "bbsmenu_option",
-        title: "BBSMENUオプション",
-        widget: "textarea",
-        rows: 4,
-      },
-      // {
-      //   kind: "string",
-      //   key: "user_css",
-      //   title: "ユーザーCSS",
-      //   widget: "textarea",
-      //   rows: 8,
-      // },
-      // { kind: "boolean", key: "default_scrollbar", title: "既定のスクロールバーを使う" },
-      {
-        kind: "string",
-        key: "replace_str_txt",
-        title: "文字列置換ルール",
-        widget: "textarea",
-        rows: 6,
-      },
-      // { kind: "string", key: "useragent", title: "ユーザーエージェント" },
-    ],
-  ),
+    // TODO: どういう意味か分かりづらいので、調査してから説明を加える
+    {
+      kind: "string",
+      key: "bbsmenu_option",
+      title: "BBSMENUオプション",
+      widget: "textarea",
+      rows: 4,
+    },
+    // {
+    //   kind: "string",
+    //   key: "user_css",
+    //   title: "ユーザーCSS",
+    //   widget: "textarea",
+    //   rows: 8,
+    // },
+    // { kind: "boolean", key: "default_scrollbar", title: "既定のスクロールバーを使う" },
+    {
+      kind: "string",
+      key: "replace_str_txt",
+      title: "文字列置換ルール",
+      widget: "textarea",
+      rows: 6,
+    },
+    // { kind: "string", key: "useragent", title: "ユーザーエージェント" },
+  ]),
   // TODO: インポートやエクスポートなど、既存の設定を移植する
   // defineSection(
   //   "data",
@@ -520,9 +566,10 @@ const SETTINGS_SECTIONS = [
   // ),
 ] as const satisfies readonly SettingsSectionDefinition[];
 
-const SETTINGS_SECTION_MAP = new Map<SettingsSectionId, SettingsSectionDefinition>(
-  SETTINGS_SECTIONS.map((section) => [section.id, section]),
-);
+const SETTINGS_SECTION_MAP = new Map<
+  SettingsSectionId,
+  SettingsSectionDefinition
+>(SETTINGS_SECTIONS.map((section) => [section.id, section]));
 
 function readFieldValue(field: SettingsFieldDefinition): SettingsFormValue {
   const rawValue = container.config.get(field.key);
@@ -546,7 +593,9 @@ function writeFieldValue(
     case "boolean":
       return value ? "on" : "off";
     case "number":
-      return String(typeof value === "number" && Number.isFinite(value) ? value : 0);
+      return String(
+        typeof value === "number" && Number.isFinite(value) ? value : 0,
+      );
     case "string":
       return typeof value === "string" ? value : "";
   }
@@ -575,7 +624,10 @@ async function saveSectionFormData(
   await Promise.all(
     section.fields.map((field) =>
       Promise.resolve(
-        container.config.set(field.key, writeFieldValue(field, formData[field.key])),
+        container.config.set(
+          field.key,
+          writeFieldValue(field, formData[field.key]),
+        ),
       ),
     ),
   );
@@ -621,7 +673,10 @@ export const SettingsPage: React.FC = () => {
   }, [loadSettings]);
 
   const scheduleAutoSave = useCallback(
-    (sectionId: SettingsSectionId, sectionFormData: SettingsSectionFormData) => {
+    (
+      sectionId: SettingsSectionId,
+      sectionFormData: SettingsSectionFormData,
+    ) => {
       const section = SETTINGS_SECTION_MAP.get(sectionId);
       if (!section) {
         return;
@@ -714,7 +769,9 @@ export const SettingsPage: React.FC = () => {
               }`}
               onClick={() => setActiveSectionId(section.id)}
             >
-              <span className="settings-page__section-name">{section.title}</span>
+              <span className="settings-page__section-name">
+                {section.title}
+              </span>
               <span className="settings-page__section-desc">
                 {section.description}
               </span>
@@ -727,7 +784,9 @@ export const SettingsPage: React.FC = () => {
         <div className="settings-page__card">
           <div className="settings-page__eyebrow">React Settings</div>
           <h1 className="settings-page__title">{activeSection.title}</h1>
-          <p className="settings-page__description">{activeSection.description}</p>
+          <p className="settings-page__description">
+            {activeSection.description}
+          </p>
           <p className="settings-page__note">
             旧設定画面の保存形式をそのまま使いながら、React版で利用頻度の高い項目から段階的に移植しています。
           </p>

@@ -1,8 +1,14 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { container } from "src/service-container/index";
-import type { IThread } from "src/service-container/interfaces";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
 import { URL as ChURL } from "src/core/URL";
+import { container } from "src/service-container/index";
+import type { IThread } from "src/service-container/interfaces";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import type { ThreadListPage as ThreadListPageType } from "src/view/browser/types";
@@ -35,7 +41,11 @@ function calcHeat(now: number, created: number, resCount: number): string {
   return (resCount / elapsed).toFixed(1);
 }
 
-export const ThreadListPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
+export const ThreadListPage: React.FC<Props> = ({
+  tabId,
+  page,
+  refreshKey,
+}) => {
   const { dispatch } = useTabStore();
   const titleFetched = useRef(false);
   const suppressNextRowClickRef = useRef(false);
@@ -64,7 +74,7 @@ export const ThreadListPage: React.FC<Props> = ({ tabId, page, refreshKey }) => 
     } finally {
       setLoading(false);
     }
-  // refreshKeyが変わったとき（更新ボタン押下）に再取得を走らせる
+    // refreshKeyが変わったとき（更新ボタン押下）に再取得を走らせる
   }, [page.boardUrl, refreshKey]);
 
   useEffect(() => {
@@ -79,13 +89,15 @@ export const ThreadListPage: React.FC<Props> = ({ tabId, page, refreshKey }) => 
       dispatch({ type: "UPDATE_TITLE_FOR_TAB", tabId, title: page.boardTitle });
       return;
     }
-    askBoardTitle(new ChURL(page.boardUrl)).then((title) => {
-      if (title) {
-        dispatch({ type: "UPDATE_TITLE_FOR_TAB", tabId, title });
-      }
-    }).catch((err) => {
-      console.error(err);
-    });
+    askBoardTitle(new ChURL(page.boardUrl))
+      .then((title) => {
+        if (title) {
+          dispatch({ type: "UPDATE_TITLE_FOR_TAB", tabId, title });
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+      });
   }, [dispatch, page.boardTitle, page.boardUrl, tabId]);
 
   // Ctrl+Fで検索バーを開く

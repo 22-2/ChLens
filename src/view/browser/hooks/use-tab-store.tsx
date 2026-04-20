@@ -71,15 +71,19 @@ function loadSession(): TabStoreState | null {
       for (const tab of parsed.tabs) {
         if (tab.pinned === undefined) tab.pinned = false;
         if (tab.reloadKey === undefined) tab.reloadKey = 0;
-        if (tab.autoRefreshEnabled === undefined) tab.autoRefreshEnabled = false;
-        if (tab.autoRefreshThreadUrl === undefined) tab.autoRefreshThreadUrl = null;
+        if (tab.autoRefreshEnabled === undefined)
+          tab.autoRefreshEnabled = false;
+        if (tab.autoRefreshThreadUrl === undefined)
+          tab.autoRefreshThreadUrl = null;
       }
       if (!parsed.closedTabs) parsed.closedTabs = [];
       for (const tab of parsed.closedTabs) {
         if (tab.pinned === undefined) tab.pinned = false;
         if (tab.reloadKey === undefined) tab.reloadKey = 0;
-        if (tab.autoRefreshEnabled === undefined) tab.autoRefreshEnabled = false;
-        if (tab.autoRefreshThreadUrl === undefined) tab.autoRefreshThreadUrl = null;
+        if (tab.autoRefreshEnabled === undefined)
+          tab.autoRefreshEnabled = false;
+        if (tab.autoRefreshThreadUrl === undefined)
+          tab.autoRefreshThreadUrl = null;
       }
       return parsed;
     }
@@ -358,7 +362,9 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
       return updateActiveTab(state, (tab) => ({
         ...tab,
         autoRefreshEnabled: action.enabled,
-        autoRefreshThreadUrl: action.enabled ? action.threadUrl ?? tab.autoRefreshThreadUrl : null,
+        autoRefreshThreadUrl: action.enabled
+          ? (action.threadUrl ?? tab.autoRefreshThreadUrl)
+          : null,
       }));
 
     case "RESTORE":

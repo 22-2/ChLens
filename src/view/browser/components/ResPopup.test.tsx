@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
 import { usePopupSurfaceCloseGuard } from "src/view/browser/hooks/use-popup-manager";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 afterEach(() => {
   cleanup();
@@ -36,7 +36,9 @@ describe("usePopupSurfaceCloseGuard", () => {
     render(<PopupCloseGuardHarness onClose={onClose} />);
 
     fireEvent.click(screen.getByRole("button", { name: "arm guard" }));
-    fireEvent.mouseLeave(screen.getByTestId("surface"), { relatedTarget: null });
+    fireEvent.mouseLeave(screen.getByTestId("surface"), {
+      relatedTarget: null,
+    });
 
     expect(onClose).not.toHaveBeenCalled();
   });
@@ -49,7 +51,9 @@ describe("usePopupSurfaceCloseGuard", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "arm guard" }));
     vi.advanceTimersByTime(1000);
-    fireEvent.mouseLeave(screen.getByTestId("surface"), { relatedTarget: null });
+    fireEvent.mouseLeave(screen.getByTestId("surface"), {
+      relatedTarget: null,
+    });
 
     expect(onClose).not.toHaveBeenCalled();
   });

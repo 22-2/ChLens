@@ -1,5 +1,4 @@
-import { useMemo } from "react";
-import React from "react";
+import React, { useMemo } from "react";
 import type { IRes } from "src/service-container";
 import { ResBody } from "src/view/browser/components/ResBody";
 import {
@@ -142,7 +141,11 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
                 className="res__thumb"
                 onClick={() =>
                   // 同レス内の全画像URLを渡してビューア内で前後移動できるようにする
-                  onUrlClick(raw, imageUrls.map((x) => x.raw), 0)
+                  onUrlClick(
+                    raw,
+                    imageUrls.map((x) => x.raw),
+                    0,
+                  )
                 }
                 title={raw}
               >

@@ -1,4 +1,12 @@
-import { ArrowLeft, ArrowRight, Menu, Pause, RotateCw, Search, Settings } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Menu,
+  Pause,
+  RotateCw,
+  Search,
+  Settings,
+} from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
@@ -276,7 +284,11 @@ export const NavigationBar: React.FC = () => {
               label: isThreadAutoRefreshEnabled
                 ? "自動更新を停止"
                 : "自動更新を開始",
-              icon: isThreadAutoRefreshEnabled ? <Pause size={14} /> : <RotateCw size={14} />,
+              icon: isThreadAutoRefreshEnabled ? (
+                <Pause size={14} />
+              ) : (
+                <RotateCw size={14} />
+              ),
               onSelect: () => {
                 dispatch({
                   type: "SET_AUTO_REFRESH_ENABLED",
@@ -338,7 +350,11 @@ export const NavigationBar: React.FC = () => {
         />
       </div>
 
-      <button className="nav-bar__btn" title="メニュー" onClick={handleMenuClick}>
+      <button
+        className="nav-bar__btn"
+        title="メニュー"
+        onClick={handleMenuClick}
+      >
         <Menu size={18} />
       </button>
 

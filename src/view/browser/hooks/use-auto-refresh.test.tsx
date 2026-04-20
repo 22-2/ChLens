@@ -1,10 +1,16 @@
 import "@testing-library/jest-dom/vitest";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import React, { useState } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { IConfig, IMessage } from "src/service-container/interfaces";
 import { container } from "src/service-container/index";
+import type { IConfig, IMessage } from "src/service-container/interfaces";
 import { useAutoRefresh } from "src/view/browser/hooks/use-auto-refresh";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 interface TestRectOptions {
   top: number;
@@ -44,7 +50,8 @@ function AutoRefreshHarness({
       loading,
       pauseAutoScroll,
       responseCount: responses.length,
-      lastResponseNum: responses.length > 0 ? responses[responses.length - 1] : null,
+      lastResponseNum:
+        responses.length > 0 ? responses[responses.length - 1] : null,
       rootRef,
       requestRefresh: () => {
         setLoading(true);
@@ -97,15 +104,13 @@ describe("useAutoRefresh", () => {
       value: "visible",
     });
 
-    vi.stubGlobal(
-      "requestAnimationFrame",
-      ((callback: FrameRequestCallback) =>
-        window.setTimeout(() => callback(performance.now()), 0)) as typeof requestAnimationFrame,
-    );
-    vi.stubGlobal(
-      "cancelAnimationFrame",
-      ((id: number) => window.clearTimeout(id)) as typeof cancelAnimationFrame,
-    );
+    vi.stubGlobal("requestAnimationFrame", ((callback: FrameRequestCallback) =>
+      window.setTimeout(
+        () => callback(performance.now()),
+        0,
+      )) as typeof requestAnimationFrame);
+    vi.stubGlobal("cancelAnimationFrame", ((id: number) =>
+      window.clearTimeout(id)) as typeof cancelAnimationFrame);
 
     configMock = {
       get: vi.fn(() => "3000"),
@@ -132,7 +137,9 @@ describe("useAutoRefresh", () => {
     const onRequestRefresh = vi.fn();
     render(<AutoRefreshHarness onRequestRefresh={onRequestRefresh} />);
 
-    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
+    const scrollContainer = screen.getByTestId(
+      "scroll-container",
+    ) as HTMLDivElement;
     const boundary = screen.getByTestId("boundary") as HTMLDivElement;
 
     let scrollTopValue = 200;
@@ -188,7 +195,9 @@ describe("useAutoRefresh", () => {
     const onRequestRefresh = vi.fn();
     render(<AutoRefreshHarness onRequestRefresh={onRequestRefresh} />);
 
-    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
+    const scrollContainer = screen.getByTestId(
+      "scroll-container",
+    ) as HTMLDivElement;
     const boundary = screen.getByTestId("boundary") as HTMLDivElement;
 
     let scrollTopValue = 200;
@@ -236,7 +245,9 @@ describe("useAutoRefresh", () => {
     const onRequestRefresh = vi.fn();
     render(<AutoRefreshHarness onRequestRefresh={onRequestRefresh} />);
 
-    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
+    const scrollContainer = screen.getByTestId(
+      "scroll-container",
+    ) as HTMLDivElement;
     const boundary = screen.getByTestId("boundary") as HTMLDivElement;
 
     let scrollTopValue = 200;
@@ -270,7 +281,9 @@ describe("useAutoRefresh", () => {
     scrollHeightValue = 360;
     fireEvent.click(screen.getByText("新着ありで完了"));
 
-    expect(screen.getByTestId("is-auto-scrolling")).toHaveTextContent("running");
+    expect(screen.getByTestId("is-auto-scrolling")).toHaveTextContent(
+      "running",
+    );
 
     act(() => {
       vi.advanceTimersByTime(900);
@@ -288,7 +301,9 @@ describe("useAutoRefresh", () => {
       />,
     );
 
-    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
+    const scrollContainer = screen.getByTestId(
+      "scroll-container",
+    ) as HTMLDivElement;
     const boundary = screen.getByTestId("boundary") as HTMLDivElement;
 
     let scrollTopValue = 200;

@@ -1,5 +1,4 @@
-import { useRef } from "react";
-import React from "react";
+import React, { useRef } from "react";
 import {
   ANCHOR_SELECTOR,
   ID_LINK_SELECTOR,
@@ -35,7 +34,9 @@ function getAnchorHoverKey(anchor: HTMLAnchorElement): string {
   return `${label}:${Math.round(rect.left)}:${Math.round(rect.top)}`;
 }
 
-function getAnchorElement(target: EventTarget | null): HTMLAnchorElement | null {
+function getAnchorElement(
+  target: EventTarget | null,
+): HTMLAnchorElement | null {
   const element = getEventTargetElement(target);
   const anchor = element?.closest("a");
   return anchor instanceof HTMLAnchorElement ? anchor : null;
@@ -111,7 +112,10 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
             return;
           }
           onMiddleClickStart?.();
-          if (anchor.matches(ANCHOR_SELECTOR) || anchor.matches(ID_LINK_SELECTOR)) {
+          if (
+            anchor.matches(ANCHOR_SELECTOR) ||
+            anchor.matches(ID_LINK_SELECTOR)
+          ) {
             e.preventDefault();
             e.stopPropagation();
             return;
@@ -188,7 +192,11 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
         onContextMenu={(e) => {
           const anchor = getAnchorElement(e.target);
           if (!anchor) return;
-          if (anchor.matches(ANCHOR_SELECTOR) || anchor.matches(ID_LINK_SELECTOR)) return;
+          if (
+            anchor.matches(ANCHOR_SELECTOR) ||
+            anchor.matches(ID_LINK_SELECTOR)
+          )
+            return;
           const href = getNavigableHref(anchor);
           if (!href) {
             return;

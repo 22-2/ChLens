@@ -47,9 +47,13 @@ interface PopupRendererProps {
     parentId?: string,
     anchorPreviewDepth?: number,
   ) => (resNum: number, e: React.MouseEvent) => void;
-  onResContextMenuOpen: (parentId: string) => (targetRes: IRes, e: React.MouseEvent) => void;
+  onResContextMenuOpen: (
+    parentId: string,
+  ) => (targetRes: IRes, e: React.MouseEvent) => void;
   onUrlClick: (rawUrl: string, resImages?: string[], button?: 0 | 1) => void;
-  onUrlContextMenuOpen: (parentId: string) => (rawUrl: string, e: React.MouseEvent) => void;
+  onUrlContextMenuOpen: (
+    parentId: string,
+  ) => (rawUrl: string, e: React.MouseEvent) => void;
 }
 
 export const PopupRenderer: React.FC<PopupRendererProps> = ({

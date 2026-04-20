@@ -14,9 +14,8 @@ describe("TabProvider auto refresh state", () => {
 
   it("現在のスレッドURLにだけ自動更新を束縛する", async () => {
     vi.resetModules();
-    const { TabProvider, useTabStore } = await import(
-      "src/view/browser/hooks/use-tab-store"
-    );
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
       const { activeTab, currentPage, dispatch } = useTabStore();
@@ -104,9 +103,8 @@ describe("TabProvider auto refresh state", () => {
 
   it("OPEN_IN_NEW_TAB では現在タブのページタイトルを変更しない", async () => {
     vi.resetModules();
-    const { TabProvider, useTabStore } = await import(
-      "src/view/browser/hooks/use-tab-store"
-    );
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
       const { state, activeTab, currentPage, dispatch } = useTabStore();
@@ -160,21 +158,26 @@ describe("TabProvider auto refresh state", () => {
     const activeTabIdBefore = screen.getByTestId("active-tab-id").textContent;
 
     expect(screen.getByTestId("current-page-title")).toHaveTextContent("板A");
-    expect(screen.getByTestId("current-page-type")).toHaveTextContent("threadList");
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent(
+      "threadList",
+    );
 
     fireEvent.click(screen.getByText("新規タブで開く"));
 
     expect(screen.getByTestId("tabs-count")).toHaveTextContent("2");
-    expect(screen.getByTestId("active-tab-id").textContent).toBe(activeTabIdBefore);
+    expect(screen.getByTestId("active-tab-id").textContent).toBe(
+      activeTabIdBefore,
+    );
     expect(screen.getByTestId("current-page-title")).toHaveTextContent("板A");
-    expect(screen.getByTestId("current-page-type")).toHaveTextContent("threadList");
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent(
+      "threadList",
+    );
   });
 
   it("UPDATE_TITLE_FOR_TAB は対象タブだけを更新し、アクティブタブを汚染しない", async () => {
     vi.resetModules();
-    const { TabProvider, useTabStore } = await import(
-      "src/view/browser/hooks/use-tab-store"
-    );
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
       const { state, activeTab, currentPage, dispatch } = useTabStore();
@@ -212,7 +215,9 @@ describe("TabProvider auto refresh state", () => {
           </button>
           <button
             onClick={() => {
-              const target = state.tabs.find((tab) => tab.id !== state.activeTabId);
+              const target = state.tabs.find(
+                (tab) => tab.id !== state.activeTabId,
+              );
               if (!target) return;
               dispatch({
                 type: "UPDATE_TITLE_FOR_TAB",
@@ -227,11 +232,9 @@ describe("TabProvider auto refresh state", () => {
           <output data-testid="active-tab-id">{activeTab.id}</output>
           <output data-testid="active-page-title">{currentPage.title}</output>
           <output data-testid="background-page-title">
-            {
-              state.tabs
-                .find((tab) => tab.id !== state.activeTabId)
-                ?.history.at(-1)?.title ?? ""
-            }
+            {state.tabs
+              .find((tab) => tab.id !== state.activeTabId)
+              ?.history.at(-1)?.title ?? ""}
           </output>
         </>
       );
@@ -251,8 +254,12 @@ describe("TabProvider auto refresh state", () => {
 
     fireEvent.click(screen.getByText("背景タブのタイトル更新"));
 
-    expect(screen.getByTestId("active-tab-id").textContent).toBe(activeTabIdBefore);
-    expect(screen.getByTestId("active-page-title")).toHaveTextContent("アクティブ板");
+    expect(screen.getByTestId("active-tab-id").textContent).toBe(
+      activeTabIdBefore,
+    );
+    expect(screen.getByTestId("active-page-title")).toHaveTextContent(
+      "アクティブ板",
+    );
     expect(screen.getByTestId("background-page-title")).toHaveTextContent(
       "背景タブ更新後",
     );

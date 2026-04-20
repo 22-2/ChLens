@@ -1,8 +1,14 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import type { IRes } from "src/service-container";
 import { ReplyTreePopup } from "src/view/browser/components/ReplyTreePopup";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 function createRes(num: number, message: string): IRes {
   return {
@@ -79,8 +85,12 @@ describe("ReplyTreePopup", () => {
     expect(screen.getByText("reply message")).toBeInTheDocument();
     expect(screen.getByText("nested reply message")).toBeInTheDocument();
 
-    const sourceSection = screen.getByText("参照元レス").closest("section") as HTMLElement;
-    const sourceCard = within(sourceSection).getByText("source message").closest("article");
+    const sourceSection = screen
+      .getByText("参照元レス")
+      .closest("section") as HTMLElement;
+    const sourceCard = within(sourceSection)
+      .getByText("source message")
+      .closest("article");
     expect(sourceCard).toHaveClass("res--highlighted-persistent");
   });
 
@@ -88,7 +98,9 @@ describe("ReplyTreePopup", () => {
     render(<ReplyTreePopup {...BASE_PROPS} />);
 
     fireEvent.click(screen.getByRole("button", { name: "返信ツリーメニュー" }));
-    fireEvent.click(screen.getByRole("button", { name: "返信ツリーを一括コピー" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "返信ツリーを一括コピー" }),
+    );
 
     expect(writeText).toHaveBeenCalledOnce();
     expect(writeText.mock.calls[0]?.[0]).toContain("[参照元レス]");
@@ -103,10 +115,14 @@ describe("ReplyTreePopup", () => {
     render(<ReplyTreePopup {...BASE_PROPS} />);
 
     fireEvent.click(screen.getByRole("button", { name: "返信ツリーメニュー" }));
-    expect(screen.getByRole("button", { name: "返信ツリーを一括コピー" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "返信ツリーを一括コピー" }),
+    ).toBeInTheDocument();
 
     fireEvent.mouseDown(document.body);
 
-    expect(screen.queryByRole("button", { name: "返信ツリーを一括コピー" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "返信ツリーを一括コピー" }),
+    ).not.toBeInTheDocument();
   });
 });

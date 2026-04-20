@@ -1,4 +1,3 @@
-import React from "react";
 import type { MediaViewerProps } from "src/view/browser/hooks/use-media-viewer-controller";
 
 export function MediaViewer({

@@ -1,8 +1,8 @@
 import "@testing-library/jest-dom/vitest";
 import { render } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Page, Tab } from "src/view/browser/types";
 import { ContentArea } from "src/view/browser/components/ContentArea";
+import type { Page, Tab } from "src/view/browser/types";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockUseTabStore = vi.fn();
 
@@ -11,7 +11,11 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
 }));
 
 vi.mock("src/view/browser/pages/HomePage", () => ({
-  HomePage: () => <div data-testid="page-home" style={{ height: "2400px" }}>home</div>,
+  HomePage: () => (
+    <div data-testid="page-home" style={{ height: "2400px" }}>
+      home
+    </div>
+  ),
 }));
 
 vi.mock("src/view/browser/pages/BoardListPage", () => ({

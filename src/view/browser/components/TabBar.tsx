@@ -1,5 +1,11 @@
 import { Plus, X } from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { TabContextMenu } from "src/view/browser/components/TabContextMenu";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
@@ -23,9 +29,14 @@ const TAB_SWITCH_WHEEL_COOLDOWN_MS = 50;
 export const TabBar: React.FC = () => {
   const { state, dispatch } = useTabStore();
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
-  const [barContextMenu, setBarContextMenu] = useState<BarContextMenuState | null>(null);
-  const [highlightedTabIds, setHighlightedTabIds] = useState<Set<string>>(new Set());
-  const prevTabIdsRef = useRef<Set<string>>(new Set(state.tabs.map((tab) => tab.id)));
+  const [barContextMenu, setBarContextMenu] =
+    useState<BarContextMenuState | null>(null);
+  const [highlightedTabIds, setHighlightedTabIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const prevTabIdsRef = useRef<Set<string>>(
+    new Set(state.tabs.map((tab) => tab.id)),
+  );
   const lastWheelSwitchAtRef = useRef(0);
 
   useEffect(() => {
@@ -118,22 +129,29 @@ export const TabBar: React.FC = () => {
 
   const closeBarContextMenu = useCallback(() => setBarContextMenu(null), []);
 
-  const barMenuItems = useMemo(() => [
-    {
-      id: "new-tab",
-      label: "新しいタブを開く",
-      onSelect: () => dispatch({ type: "ADD_TAB" }),
-    },
-    {
-      id: "reopen",
-      label: "閉じたタブを開く",
-      disabled: state.closedTabs.length === 0,
-      onSelect: () => dispatch({ type: "REOPEN_CLOSED_TAB" }),
-    },
-  ], [dispatch, state.closedTabs.length]);
+  const barMenuItems = useMemo(
+    () => [
+      {
+        id: "new-tab",
+        label: "新しいタブを開く",
+        onSelect: () => dispatch({ type: "ADD_TAB" }),
+      },
+      {
+        id: "reopen",
+        label: "閉じたタブを開く",
+        disabled: state.closedTabs.length === 0,
+        onSelect: () => dispatch({ type: "REOPEN_CLOSED_TAB" }),
+      },
+    ],
+    [dispatch, state.closedTabs.length],
+  );
 
   return (
-    <div className="tab-bar" onWheel={handleWheel} onContextMenu={handleBarContextMenu}>
+    <div
+      className="tab-bar"
+      onWheel={handleWheel}
+      onContextMenu={handleBarContextMenu}
+    >
       <div className="tab-list">
         {state.tabs.map((tab) => {
           const page = getCurrentPage(tab);

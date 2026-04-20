@@ -1,8 +1,8 @@
 import "@testing-library/jest-dom/vitest";
 import { fireEvent, render } from "@testing-library/react";
 import { useState } from "react";
-import { describe, expect, it, vi } from "vitest";
 import { ResBody } from "src/view/browser/components/ResBody";
+import { describe, expect, it, vi } from "vitest";
 
 const ANCHOR_HTML = '<a class="anchor">&gt;&gt;5</a>';
 const URL_HTML = '<a href="https://example.com/thread/1">link</a>';
@@ -52,11 +52,15 @@ describe("ResBody anchor behavior", () => {
 
     const { container } = render(<Harness />);
 
-    const firstAnchor = container.querySelector("a.anchor") as HTMLAnchorElement;
+    const firstAnchor = container.querySelector(
+      "a.anchor",
+    ) as HTMLAnchorElement;
     fireEvent.mouseOver(firstAnchor);
     expect(onAnchorHover).toHaveBeenCalledTimes(1);
 
-    const secondAnchor = container.querySelector("a.anchor") as HTMLAnchorElement;
+    const secondAnchor = container.querySelector(
+      "a.anchor",
+    ) as HTMLAnchorElement;
     fireEvent.mouseOver(secondAnchor);
     expect(onAnchorHover).toHaveBeenCalledTimes(1);
 
@@ -104,7 +108,11 @@ describe("ResBody anchor behavior", () => {
     fireEvent.mouseDown(anchor, { button: 1 });
     fireEvent(
       anchor,
-      new MouseEvent("auxclick", { button: 1, bubbles: true, cancelable: true }),
+      new MouseEvent("auxclick", {
+        button: 1,
+        bubbles: true,
+        cancelable: true,
+      }),
     );
 
     expect(onUrlClick).toHaveBeenCalledOnce();

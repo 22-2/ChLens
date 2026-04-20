@@ -1,14 +1,13 @@
 import { Copy, MoreVertical } from "lucide-react";
-import React from "react";
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import type { IRes } from "src/service-container";
-import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
+import { ContextMenu } from "src/view/browser/components/ContextMenu";
+import { PopupResCard } from "src/view/browser/components/PopupResCard";
 import { ReplyTree } from "src/view/browser/components/ReplyTree";
 import { usePopupSurfaceLifecycle } from "src/view/browser/hooks/use-popup-manager";
 import { useAdjustOverflow } from "src/view/browser/utils/use-adjust-overflow";
 import { copyText, stripHtml } from "src/view/browser/utils/utils";
-import { PopupResCard } from "src/view/browser/components/PopupResCard";
 
 interface TreeMenuPosition {
   x: number;
@@ -31,7 +30,9 @@ function collectReplyTreeResponses(
       return;
     }
 
-    const orderedReplyNums = Array.from(replies).sort((left, right) => left - right);
+    const orderedReplyNums = Array.from(replies).sort(
+      (left, right) => left - right,
+    );
     for (const replyNum of orderedReplyNums) {
       if (visited.has(replyNum)) {
         continue;
@@ -58,10 +59,17 @@ function formatResForCopy(res: IRes): string {
   return `${res.num} ${plainName}  ${res.date ?? res.other}\n${plainMessage}`;
 }
 
-function buildReplyTreeCopyText(sourceRes: IRes, replyResponses: IRes[]): string {
+function buildReplyTreeCopyText(
+  sourceRes: IRes,
+  replyResponses: IRes[],
+): string {
   const sections = ["[参照元レス]", formatResForCopy(sourceRes)];
   if (replyResponses.length > 0) {
-    sections.push("", "[返信レス]", replyResponses.map(formatResForCopy).join("\n\n"));
+    sections.push(
+      "",
+      "[返信レス]",
+      replyResponses.map(formatResForCopy).join("\n\n"),
+    );
   }
   return sections.join("\n");
 }
@@ -137,7 +145,9 @@ export const ReplyTreePopup: React.FC<{
     onSurfaceMouseEnter: onMouseEnter,
     onSurfaceMouseLeave: onMouseLeave,
   });
-  const [menuPosition, setMenuPosition] = useState<TreeMenuPosition | null>(null);
+  const [menuPosition, setMenuPosition] = useState<TreeMenuPosition | null>(
+    null,
+  );
   const sourceRes = resMap.get(resNum) ?? null;
   const replyResponses = sourceRes
     ? collectReplyTreeResponses(resNum, repIndex, resMap)
@@ -182,7 +192,8 @@ export const ReplyTreePopup: React.FC<{
     };
 
     document.addEventListener("mousedown", handleOutsideMenuClick);
-    return () => document.removeEventListener("mousedown", handleOutsideMenuClick);
+    return () =>
+      document.removeEventListener("mousedown", handleOutsideMenuClick);
   }, [menuPosition]);
 
   const handleResContextMenu = (e: React.MouseEvent, targetRes: IRes) => {
@@ -260,24 +271,24 @@ export const ReplyTreePopup: React.FC<{
         )}
         <section className="res-popup__section">
           <div className="res-popup__section-title">返信レス</div>
-        <ReplyTree
-          resNum={resNum}
-          repIndex={repIndex}
-          resMap={resMap}
-          messageProtocol={messageProtocol}
-          anchorPreviewDepth={anchorPreviewDepth}
-          onUrlClick={onUrlClick}
-          onUrlContextMenu={onUrlContextMenu}
-          onLinkMiddleClickStart={armMouseLeaveCloseSuppression}
-          onIdLinkClick={onIdLinkClick}
-          onRepClick={onRepClick}
-          onAnchorClick={onAnchorClick}
-          onAnchorHover={onAnchorHover}
-          onAnchorLeave={onAnchorLeave}
-          onResContextMenu={handleResContextMenu}
-          visited={new Set()}
-          depth={0}
-        />
+          <ReplyTree
+            resNum={resNum}
+            repIndex={repIndex}
+            resMap={resMap}
+            messageProtocol={messageProtocol}
+            anchorPreviewDepth={anchorPreviewDepth}
+            onUrlClick={onUrlClick}
+            onUrlContextMenu={onUrlContextMenu}
+            onLinkMiddleClickStart={armMouseLeaveCloseSuppression}
+            onIdLinkClick={onIdLinkClick}
+            onRepClick={onRepClick}
+            onAnchorClick={onAnchorClick}
+            onAnchorHover={onAnchorHover}
+            onAnchorLeave={onAnchorLeave}
+            onResContextMenu={handleResContextMenu}
+            visited={new Set()}
+            depth={0}
+          />
         </section>
       </div>
       {menuPosition && treeMenuItems.length > 0 && (
@@ -292,7 +303,4 @@ export const ReplyTreePopup: React.FC<{
   );
 };
 
-export {
-  buildReplyTreeCopyText,
-  collectReplyTreeResponses,
-};
+export { buildReplyTreeCopyText, collectReplyTreeResponses };

@@ -107,9 +107,7 @@ export async function copyText(text: string): Promise<void> {
 // --- フィルタ判定 ---
 export function hasImage(message: string): boolean {
   return (
-    /\.(jpe?g|png|gif|webp|bmp|avif)(?:\?[^"<]*)?(?=["<\s]|$)/i.test(
-      message,
-    ) ||
+    /\.(jpe?g|png|gif|webp|bmp|avif)(?:\?[^"<]*)?(?=["<\s]|$)/i.test(message) ||
     /https?:\/\/pbs\.twimg\.com\/media\/[^\s"'<>?]+\?[^\s"'<>]*format=(?:jpe?g|png|gif|webp|bmp|avif)\b/i.test(
       message,
     )

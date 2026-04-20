@@ -1,4 +1,13 @@
-import { ArrowDown, Ban, Copy, Globe, History, Reply, Search, Type } from "lucide-react";
+import {
+  ArrowDown,
+  Ban,
+  Copy,
+  Globe,
+  History,
+  Reply,
+  Search,
+  Type,
+} from "lucide-react";
 import React, {
   useCallback,
   useEffect,
@@ -8,20 +17,27 @@ import React, {
 } from "react";
 import { container } from "src/service-container/index";
 import type { IRes } from "src/service-container/interfaces";
+import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import { MediaViewerContainer } from "src/view/browser/components/MediaViewerContainer";
 import { PopupRenderer } from "src/view/browser/components/PopupRenderer";
-import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
+import { ResItem } from "src/view/browser/components/ResItem";
 import { SearchBar } from "src/view/browser/components/SearchBar";
-import { StatusBarItem, StatusBarMode } from "src/view/browser/components/StatusBar";
+import {
+  StatusBarItem,
+  StatusBarMode,
+} from "src/view/browser/components/StatusBar";
 import { useAutoRefresh } from "src/view/browser/hooks/use-auto-refresh";
-import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
 import { useMediaViewerStore } from "src/view/browser/hooks/use-media-viewer-store";
+import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
 import { useThreadPopupLifecycle } from "src/view/browser/hooks/use-popup-manager";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";
-import { ResItem } from "src/view/browser/components/ResItem";
 import type { Props, ThreadFilter } from "src/view/browser/utils/types";
-import { buildKyodemoUrl, copyText, stripHtml } from "src/view/browser/utils/utils";
+import {
+  buildKyodemoUrl,
+  copyText,
+  stripHtml,
+} from "src/view/browser/utils/utils";
 
 export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -44,7 +60,9 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
     messageProtocol,
   } = useThreadData(tabId, page, refreshKey);
   const { dispatch, activeTab } = useTabStore();
-  const openMediaFromUrl = useMediaViewerStore((state) => state.openMediaFromUrl);
+  const openMediaFromUrl = useMediaViewerStore(
+    (state) => state.openMediaFromUrl,
+  );
 
   useMouseGesture(rootRef);
 
@@ -81,12 +99,7 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
     dispatch({ type: "RELOAD" });
   }, [dispatch]);
 
-  const {
-    autoScrollBoundaryRef,
-    canAutoScroll,
-    isAutoScrolling,
-    intervalMs,
-  } =
+  const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling, intervalMs } =
     useAutoRefresh({
       enabled: isAutoRefreshEnabled,
       expired,
@@ -123,10 +136,11 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
   // （Ctrl+F割り当ては無効化して、ブラウザ/OS標準ショートカットを優先する）
   useEffect(() => {
     const handleOpenSearch = () => {
-        setShowSearch(true);
+      setShowSearch(true);
     };
     window.addEventListener("thread-search-open", handleOpenSearch);
-    return () => window.removeEventListener("thread-search-open", handleOpenSearch);
+    return () =>
+      window.removeEventListener("thread-search-open", handleOpenSearch);
   }, [setShowSearch]);
 
   const openAnchorPreviewFromPopup = useCallback(
@@ -275,7 +289,9 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
       const candidateIds = id.startsWith("ID:")
         ? [id, id.replace(/^ID:/i, "")]
         : [id, `ID:${id}`];
-      const resolvedId = candidateIds.find((candidate) => indexes.idIndex.has(candidate));
+      const resolvedId = candidateIds.find((candidate) =>
+        indexes.idIndex.has(candidate),
+      );
       const resNums = resolvedId ? indexes.idIndex.get(resolvedId) : undefined;
       if (!resNums) return;
       hideAnchorPreviewImmediately();
@@ -285,7 +301,7 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
         .filter((r): r is IRes => !!r);
       closeNonContextPopups();
       const displayId = (resolvedId ?? id).startsWith("ID:")
-        ? resolvedId ?? id
+        ? (resolvedId ?? id)
         : `ID:${resolvedId ?? id}`;
       addIdPopup(
         e.clientX,

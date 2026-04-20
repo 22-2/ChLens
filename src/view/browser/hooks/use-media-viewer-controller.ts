@@ -8,8 +8,8 @@ import {
   type MouseEvent,
   type RefObject,
 } from "react";
-import type { ViewerState } from "src/view/browser/utils/types";
 import { useMediaViewerStore } from "src/view/browser/hooks/use-media-viewer-store";
+import type { ViewerState } from "src/view/browser/utils/types";
 
 interface ViewerSize {
   width: number;
@@ -64,12 +64,19 @@ export function useMediaViewerController(): MediaViewerProps | null {
   const viewerImageRef = useRef<HTMLImageElement>(null);
   const previousViewerCanvasSizeRef = useRef<ViewerSize | null>(null);
   const [viewerBaseSize, setViewerBaseSize] = useState<ViewerSize | null>(null);
-  const [viewerStageSize, setViewerStageSize] = useState<ViewerSize | null>(null);
+  const [viewerStageSize, setViewerStageSize] = useState<ViewerSize | null>(
+    null,
+  );
 
   const measureViewerLayout = useCallback(() => {
     const stage = viewerStageRef.current;
     const image = viewerImageRef.current;
-    if (!stage || !image || image.naturalWidth <= 0 || image.naturalHeight <= 0) {
+    if (
+      !stage ||
+      !image ||
+      image.naturalWidth <= 0 ||
+      image.naturalHeight <= 0
+    ) {
       return;
     }
 
@@ -153,8 +160,14 @@ export function useMediaViewerController(): MediaViewerProps | null {
 
     const previousCanvasSize = previousViewerCanvasSizeRef.current;
     if (!previousCanvasSize) {
-      stage.scrollLeft = Math.max(0, (viewerCanvasSize.width - stage.clientWidth) / 2);
-      stage.scrollTop = Math.max(0, (viewerCanvasSize.height - stage.clientHeight) / 2);
+      stage.scrollLeft = Math.max(
+        0,
+        (viewerCanvasSize.width - stage.clientWidth) / 2,
+      );
+      stage.scrollTop = Math.max(
+        0,
+        (viewerCanvasSize.height - stage.clientHeight) / 2,
+      );
       previousViewerCanvasSizeRef.current = viewerCanvasSize;
       return;
     }
@@ -164,8 +177,14 @@ export function useMediaViewerController(): MediaViewerProps | null {
     const scaleRatioX = viewerCanvasSize.width / previousCanvasSize.width;
     const scaleRatioY = viewerCanvasSize.height / previousCanvasSize.height;
 
-    stage.scrollLeft = Math.max(0, viewportCenterX * scaleRatioX - stage.clientWidth / 2);
-    stage.scrollTop = Math.max(0, viewportCenterY * scaleRatioY - stage.clientHeight / 2);
+    stage.scrollLeft = Math.max(
+      0,
+      viewportCenterX * scaleRatioX - stage.clientWidth / 2,
+    );
+    stage.scrollTop = Math.max(
+      0,
+      viewportCenterY * scaleRatioY - stage.clientHeight / 2,
+    );
     previousViewerCanvasSizeRef.current = viewerCanvasSize;
   }, [viewer, viewerCanvasSize]);
 

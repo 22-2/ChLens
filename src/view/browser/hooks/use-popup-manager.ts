@@ -1,17 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 import type { RefObject } from "react";
-import { create } from "zustand";
-import type { StateCreator } from "zustand";
-import { POPUP_BASE_Z } from "src/view/browser/utils/constants";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { IRes } from "src/service-container/interfaces";
 import {
   ANCHOR_PREVIEW_GUTTER,
   ANCHOR_PREVIEW_HIDE_DELAY_MS,
   ANCHOR_PREVIEW_MAX_WIDTH,
   ANCHOR_PREVIEW_OFFSET,
+  POPUP_BASE_Z,
   POPUP_SURFACE_SELECTOR,
 } from "src/view/browser/utils/constants";
-import type { IRes } from "src/service-container/interfaces";
 import type {
   AnchorPopupItem,
   ContextMenuPopupItem,
@@ -22,6 +20,8 @@ import type {
 } from "src/view/browser/utils/types";
 import { getPopupViewportBounds } from "src/view/browser/utils/use-adjust-overflow";
 import { getEventTargetElement } from "src/view/browser/utils/utils";
+import type { StateCreator } from "zustand";
+import { create } from "zustand";
 
 const DEFAULT_POPUP_SCOPE_ID = "default";
 const EMPTY_POPUPS: PopupItem[] = [];
@@ -42,7 +42,10 @@ interface PopupScopeSlice {
 }
 
 interface PopupCollectionSlice {
-  addPopupToScope: (scopeId: string, popup: Omit<PopupItem, "id" | "z">) => string;
+  addPopupToScope: (
+    scopeId: string,
+    popup: Omit<PopupItem, "id" | "z">,
+  ) => string;
   closePopupByIdInScope: (scopeId: string, id: string) => void;
   closeAllPopupsInScope: (scopeId: string) => void;
   closePopupsByPredicateInScope: (
@@ -74,49 +77,53 @@ function getOrCreatePopupScope(
   return scopes[scopeId] ?? createPopupScope();
 }
 
-const createPopupScopeSlice: StateCreator<PopupStoreState, [], [], PopupScopeSlice> =
-  (set) => ({
-    scopes: {},
-    mountScope: (scopeId) => {
-      set((state) => {
-        const currentScope = getOrCreatePopupScope(state.scopes, scopeId);
+const createPopupScopeSlice: StateCreator<
+  PopupStoreState,
+  [],
+  [],
+  PopupScopeSlice
+> = (set) => ({
+  scopes: {},
+  mountScope: (scopeId) => {
+    set((state) => {
+      const currentScope = getOrCreatePopupScope(state.scopes, scopeId);
+      return {
+        scopes: {
+          ...state.scopes,
+          [scopeId]: {
+            ...currentScope,
+            // display:none でタブを保持する構成では popup state を tab 単位で分離しないと、
+            // hidden page の popup が active page に混ざるので scope を参照カウントで生存管理する。
+            refCount: currentScope.refCount + 1,
+          },
+        },
+      };
+    });
+  },
+  unmountScope: (scopeId) => {
+    set((state) => {
+      const currentScope = state.scopes[scopeId];
+      if (!currentScope) {
+        return state;
+      }
+      const nextRefCount = currentScope.refCount - 1;
+      if (nextRefCount > 0) {
         return {
           scopes: {
             ...state.scopes,
             [scopeId]: {
               ...currentScope,
-              // display:none でタブを保持する構成では popup state を tab 単位で分離しないと、
-              // hidden page の popup が active page に混ざるので scope を参照カウントで生存管理する。
-              refCount: currentScope.refCount + 1,
+              refCount: nextRefCount,
             },
           },
         };
-      });
-    },
-    unmountScope: (scopeId) => {
-      set((state) => {
-        const currentScope = state.scopes[scopeId];
-        if (!currentScope) {
-          return state;
-        }
-        const nextRefCount = currentScope.refCount - 1;
-        if (nextRefCount > 0) {
-          return {
-            scopes: {
-              ...state.scopes,
-              [scopeId]: {
-                ...currentScope,
-                refCount: nextRefCount,
-              },
-            },
-          };
-        }
+      }
 
-        const { [scopeId]: _removedScope, ...remainingScopes } = state.scopes;
-        return { scopes: remainingScopes };
-      });
-    },
-  });
+      const { [scopeId]: _removedScope, ...remainingScopes } = state.scopes;
+      return { scopes: remainingScopes };
+    });
+  },
+});
 
 const createPopupCollectionSlice: StateCreator<
   PopupStoreState,
@@ -202,7 +209,9 @@ const createPopupCollectionSlice: StateCreator<
           ...state.scopes,
           [scopeId]: {
             ...currentScope,
-            popups: currentScope.popups.filter((item) => !removedIds.has(item.id)),
+            popups: currentScope.popups.filter(
+              (item) => !removedIds.has(item.id),
+            ),
           },
         },
       };
@@ -210,17 +219,25 @@ const createPopupCollectionSlice: StateCreator<
   },
 });
 
-const createPopupGraphSlice: StateCreator<PopupStoreState, [], [], PopupGraphSlice> = (
-  _set,
-  get,
-) => ({
+const createPopupGraphSlice: StateCreator<
+  PopupStoreState,
+  [],
+  [],
+  PopupGraphSlice
+> = (_set, get) => ({
   closeNonContextPopupsInScope: (scopeId) => {
     // スレ本文へ戻る時はメニューだけ残し、popup本体の枝をまとめて落とせるようにする。
-    get().closePopupsByPredicateInScope(scopeId, (item) => item.type !== "contextMenu");
+    get().closePopupsByPredicateInScope(
+      scopeId,
+      (item) => item.type !== "contextMenu",
+    );
   },
   closePopupChildrenInScope: (scopeId, popupId) => {
     // root を残したまま branch をリセットしたいので、popup 自身ではなく direct child を起点に閉じる。
-    get().closePopupsByPredicateInScope(scopeId, (item) => item.parentId === popupId);
+    get().closePopupsByPredicateInScope(
+      scopeId,
+      (item) => item.parentId === popupId,
+    );
   },
 });
 
@@ -318,8 +335,12 @@ export function usePopupManager(
   const mountScope = usePopupStore((state) => state.mountScope);
   const unmountScope = usePopupStore((state) => state.unmountScope);
   const addPopupToScope = usePopupStore((state) => state.addPopupToScope);
-  const closePopupByIdInScope = usePopupStore((state) => state.closePopupByIdInScope);
-  const closeAllPopupsInScope = usePopupStore((state) => state.closeAllPopupsInScope);
+  const closePopupByIdInScope = usePopupStore(
+    (state) => state.closePopupByIdInScope,
+  );
+  const closeAllPopupsInScope = usePopupStore(
+    (state) => state.closeAllPopupsInScope,
+  );
   const closePopupsByPredicateInScope = usePopupStore(
     (state) => state.closePopupsByPredicateInScope,
   );
@@ -476,7 +497,8 @@ export function usePopupSurfaceLifecycle({
       onCloseRef.current();
     };
     document.addEventListener("mousedown", handleOutsideMouseDown);
-    return () => document.removeEventListener("mousedown", handleOutsideMouseDown);
+    return () =>
+      document.removeEventListener("mousedown", handleOutsideMouseDown);
   }, [closeDisabled]);
 
   const handleMouseEnter = () => {

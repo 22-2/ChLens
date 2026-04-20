@@ -134,7 +134,8 @@ export function useAutoRefresh({
 
     const containerRect = scrollContainer.getBoundingClientRect();
     const boundaryRect = boundary.getBoundingClientRect();
-    const viewportBottom = scrollContainer.scrollTop + scrollContainer.clientHeight;
+    const viewportBottom =
+      scrollContainer.scrollTop + scrollContainer.clientHeight;
     const boundaryBottom =
       scrollContainer.scrollTop + boundaryRect.bottom - containerRect.top;
     const nextValue = viewportBottom >= boundaryBottom;
@@ -308,7 +309,8 @@ export function useAutoRefresh({
       return;
     }
 
-    const deltaHeight = scrollContainer.scrollHeight - pendingRefresh.scrollHeight;
+    const deltaHeight =
+      scrollContainer.scrollHeight - pendingRefresh.scrollHeight;
     if (!pendingRefresh.shouldScroll || deltaHeight <= 0) {
       return;
     }

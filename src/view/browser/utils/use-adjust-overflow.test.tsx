@@ -1,11 +1,11 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, render } from "@testing-library/react";
-import React, { useRef } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useRef } from "react";
 import {
   getPopupViewportBounds,
   useAdjustOverflow,
 } from "src/view/browser/utils/use-adjust-overflow";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("getPopupViewportBounds", () => {
   beforeEach(() => {
@@ -29,7 +29,7 @@ describe("getPopupViewportBounds", () => {
     const statusBar = document.createElement("footer");
     statusBar.className = "status-bar";
     statusBar.getBoundingClientRect = () =>
-      ({ top: 696, bottom: 720, height: 24 } as DOMRect);
+      ({ top: 696, bottom: 720, height: 24 }) as DOMRect;
     document.body.appendChild(statusBar);
 
     expect(getPopupViewportBounds()).toEqual({
@@ -74,12 +74,14 @@ describe("useAdjustOverflow", () => {
     const statusBar = document.createElement("footer");
     statusBar.className = "status-bar";
     statusBar.getBoundingClientRect = () =>
-      ({ top: 696, bottom: 720, height: 24 } as DOMRect);
+      ({ top: 696, bottom: 720, height: 24 }) as DOMRect;
     document.body.appendChild(statusBar);
 
     const getBoundingClientRectSpy = vi
       .spyOn(HTMLElement.prototype, "getBoundingClientRect")
-      .mockImplementation(function mockGetBoundingClientRect(this: HTMLElement) {
+      .mockImplementation(function mockGetBoundingClientRect(
+        this: HTMLElement,
+      ) {
         if (this.classList.contains("status-bar")) {
           return { top: 696, bottom: 720, height: 24 } as DOMRect;
         }
@@ -107,7 +109,9 @@ describe("useAdjustOverflow", () => {
       const ref = useRef<HTMLDivElement>(null);
       useAdjustOverflow(ref, 8);
 
-      return <div ref={ref} data-testid="popup" style={{ left: 100, top: 650 }} />;
+      return (
+        <div ref={ref} data-testid="popup" style={{ left: 100, top: 650 }} />
+      );
     }
 
     const { getByTestId } = render(<Harness />);

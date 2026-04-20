@@ -3,7 +3,7 @@ import type { IRes } from "src/service-container";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
 import { usePopupSurfaceCloseGuard } from "src/view/browser/hooks/use-popup-manager";
 import { POPUP_SURFACE_SELECTOR } from "src/view/browser/utils/constants";
-import { useAdjustOverflow } from "../utils/use-adjust-overflow";
+import { useAdjustOverflow } from "src/view/browser/utils/use-adjust-overflow";
 import { getEventTargetElement } from "src/view/browser/utils/utils";
 
 export interface AnchorPreviewProps {
@@ -116,7 +116,10 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
         onMouseEnter();
       }}
       onMouseLeave={(e) => {
-        if (e.relatedTarget instanceof Node && ref.current?.contains(e.relatedTarget)) {
+        if (
+          e.relatedTarget instanceof Node &&
+          ref.current?.contains(e.relatedTarget)
+        ) {
           return;
         }
         if (

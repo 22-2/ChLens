@@ -1,7 +1,13 @@
 import "@testing-library/jest-dom/vitest";
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import type { MouseEvent as ReactMouseEvent } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { IRes } from "src/service-container/interfaces";
 import { AnchorPreview } from "src/view/browser/components/AnchorPreview";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
@@ -14,6 +20,7 @@ import type {
   PopupItem,
   TreePopupItem,
 } from "src/view/browser/utils/types";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 function createRes(num: number, message: string): IRes {
   return {
@@ -42,9 +49,7 @@ const DUPLICATE_REPLY_RES_MAP = new Map<number, IRes>([
   [6, createRes(6, "&gt;&gt;3")],
 ]);
 
-const DUPLICATE_REPLY_INDEX = new Map<number, Set<number>>([
-  [3, new Set([6])],
-]);
+const DUPLICATE_REPLY_INDEX = new Map<number, Set<number>>([[3, new Set([6])]]);
 
 function summarizePopup(item: PopupItem): string {
   if (item.type === "tree") {
@@ -74,8 +79,7 @@ function PopupSequenceHarness({
     closePopupById,
     closePopupsByPredicate,
     closePopupChildren,
-  } =
-    usePopupManager();
+  } = usePopupManager();
 
   const anchorPreviews = popups.filter(
     (item): item is AnchorPopupItem => item.type === "anchor",
@@ -373,7 +377,9 @@ describe("usePopupManager popup behavior", () => {
     fireEvent.mouseEnter(rootPopup);
     fireEvent.mouseOver(within(rootPopup).getByRole("link", { name: ">>3" }));
 
-    const anchorPreview = document.querySelector(".anchor-preview") as HTMLElement;
+    const anchorPreview = document.querySelector(
+      ".anchor-preview",
+    ) as HTMLElement;
     fireEvent.mouseEnter(anchorPreview);
     fireEvent.click(within(anchorPreview).getByText("返信(1)"));
 
@@ -416,7 +422,9 @@ describe("usePopupManager popup behavior", () => {
     const rootPopup = document.querySelectorAll(".res-popup")[0] as HTMLElement;
     fireEvent.mouseOver(within(rootPopup).getByRole("link", { name: ">>3" }));
 
-    const anchorPreview = document.querySelector(".anchor-preview") as HTMLElement;
+    const anchorPreview = document.querySelector(
+      ".anchor-preview",
+    ) as HTMLElement;
     fireEvent.click(within(anchorPreview).getByText("返信(1)"));
 
     expect(document.querySelectorAll(".res-popup")).toHaveLength(2);
@@ -426,7 +434,9 @@ describe("usePopupManager popup behavior", () => {
 
     expect(document.querySelectorAll(".res-popup")).toHaveLength(1);
     expect(document.querySelectorAll(".anchor-preview")).toHaveLength(0);
-    expect(screen.getByTestId("popup-stack").textContent).toBe("tree:3:depth=0");
+    expect(screen.getByTestId("popup-stack").textContent).toBe(
+      "tree:3:depth=0",
+    );
   });
 
   it("right-clicking the root popup closes descendants before opening its menu", () => {
@@ -443,7 +453,9 @@ describe("usePopupManager popup behavior", () => {
     const rootPopup = document.querySelectorAll(".res-popup")[0] as HTMLElement;
     fireEvent.mouseOver(within(rootPopup).getByRole("link", { name: ">>3" }));
 
-    const anchorPreview = document.querySelector(".anchor-preview") as HTMLElement;
+    const anchorPreview = document.querySelector(
+      ".anchor-preview",
+    ) as HTMLElement;
     fireEvent.click(within(anchorPreview).getByText("返信(1)"));
 
     const rootResNum = within(rootPopup).getByText("6");
@@ -811,10 +823,7 @@ describe("AnchorPreview child popup behavior", () => {
     const onMouseLeave = vi.fn();
     render(
       <>
-        <AnchorPreview
-          {...ANCHOR_BASE_PROPS}
-          onMouseLeave={onMouseLeave}
-        />
+        <AnchorPreview {...ANCHOR_BASE_PROPS} onMouseLeave={onMouseLeave} />
         <div data-popup-surface="true">menu</div>
       </>,
     );
@@ -888,7 +897,9 @@ describe("usePopupManager zustand scopes", () => {
           >
             open
           </button>
-          <button onClick={popupManager.closeNonContextPopups}>close-non-context</button>
+          <button onClick={popupManager.closeNonContextPopups}>
+            close-non-context
+          </button>
           <output data-testid="close-non-context-types">
             {popupManager.popups.map((item) => item.type).join("|")}
           </output>

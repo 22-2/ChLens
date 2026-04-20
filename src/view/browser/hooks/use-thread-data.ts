@@ -1,16 +1,24 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { container } from "src/service-container/index";
 import type { IRes, IThreadDetail } from "src/service-container/interfaces";
+import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import type { ThreadPage as ThreadPageType } from "src/view/browser/types";
 import { buildIndexes } from "src/view/browser/utils/thread-index";
+import type { ThreadFilter } from "src/view/browser/utils/types";
 import {
   hasExternalLink,
   hasImage,
   hasVideo,
   stripHtml,
 } from "src/view/browser/utils/utils";
-import { useTabStore } from "src/view/browser/hooks/use-tab-store";
-import type { ThreadFilter } from "src/view/browser/utils/types";
-import type { ThreadPage as ThreadPageType } from "src/view/browser/types";
 
 interface ThreadData {
   responses: IRes[];

@@ -1,12 +1,12 @@
 import "@testing-library/jest-dom/vitest";
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
 import {
   StatusBar,
   StatusBarItem,
   StatusBarMode,
   StatusBarProvider,
 } from "src/view/browser/components/StatusBar";
+import { describe, expect, it } from "vitest";
 
 describe("StatusBar", () => {
   it("左右にアイテムを登録でき、appearanceも切り替えられる", () => {

@@ -1,10 +1,13 @@
 import React from "react";
 import { ContentArea } from "src/view/browser/components/ContentArea";
 import { NavigationBar } from "src/view/browser/components/NavigationBar";
-import { StatusBar, StatusBarProvider } from "src/view/browser/components/StatusBar";
+import {
+  StatusBar,
+  StatusBarProvider,
+} from "src/view/browser/components/StatusBar";
 import { TabBar } from "src/view/browser/components/TabBar";
-import { useTheme } from "src/view/browser/hooks/use-theme";
 import { TabProvider } from "src/view/browser/hooks/use-tab-store";
+import { useTheme } from "src/view/browser/hooks/use-theme";
 
 export const BrowserApp: React.FC = () => {
   const theme = useTheme();

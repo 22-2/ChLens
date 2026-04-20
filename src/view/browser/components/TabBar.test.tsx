@@ -1,8 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render } from "@testing-library/react";
-import React from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TabBar } from "src/view/browser/components/TabBar";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const dispatchMock = vi.fn();
 
