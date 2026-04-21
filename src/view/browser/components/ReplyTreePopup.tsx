@@ -246,6 +246,10 @@ export const ReplyTreePopup: React.FC<{
       onAuxClickCapture={handleAuxClickCapture}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      // ポップアップ内のレス間マウス移動で ResBody の handleMouseLeave が起動した
+      // アンカープレビュー hide タイマーをキャンセルする。mouseover はバブルするため、
+      // 子孫要素への移動時も発火し、mouseenter と異なりポップアップ外からの進入に限定されない。
+      onMouseOver={onMouseEnter}
     >
       <div className="res-popup__header">
         <span>{`>>${resNum} への返信ツリー`}</span>
