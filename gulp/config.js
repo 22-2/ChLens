@@ -17,7 +17,6 @@ let paths = {};
       submitRes: `${i}/write/submit_res.js`,
       submitThread: `${i}/write/submit_thread.js`,
       threadReact: `${i}/view/thread/index.tsx`,
-      mainLayout: `${i}/view/main_layout/index.tsx`,
       browser: `${i}/view/browser/index.tsx`,
       background: `${i}/background.js`,
       csAddlink: `${i}/cs_addlink.js`,

@@ -80,17 +80,6 @@ const getRolldownIOConfigs = function (name, browser) {
         plugins: [replace],
       };
       break;
-
-    case "mainLayout":
-      return {
-        pathname: "mainLayout",
-        output: "view/main_layout.js",
-        plugins: [replace],
-        outObj: {
-          name: "MainLayout",
-        },
-      };
-      break;
     case "browser":
       return {
         pathname: "browser",
@@ -127,8 +116,6 @@ const core = (browser) => makeFunc(browser, "core");
 const ui = (browser) => makeFunc(browser, "ui");
 const submitRes = (browser) => makeFunc(browser, "submitRes");
 const submitThread = (browser) => makeFunc(browser, "submitThread");
-// thread_react is removed from JS build outputs per request
-const mainLayout = (browser) => makeFunc(browser, "mainLayout");
 const browserView = (browser) => makeFunc(browser, "browser");
 
 /*
@@ -210,7 +197,6 @@ for (let browser of browsers) {
       ui(browser),
       submitRes(browser),
       submitThread(browser),
-      mainLayout(browser),
       browserView(browser),
       `js:background.js:${browser}`,
       `js:cs_addlink.js:${browser}`,
