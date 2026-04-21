@@ -21,6 +21,17 @@ interface Props {
 
 type SortColumn = "num" | "title" | "resCount" | "heat";
 type SortDirection = "asc" | "desc";
+type ThreadListSortPreference = {
+  column: SortColumn;
+  direction: SortDirection;
+};
+
+const THREAD_LIST_SORT_STORAGE_KEY =
+  "readcrx_browser_thread_list_sort_by_site";
+const DEFAULT_THREAD_LIST_SORT: ThreadListSortPreference = {
+  column: "num",
+  direction: "asc",
+};
 
 const BG_COLOR_PRESETS: Record<string, string> = {
   yellow: "#ffeb3b",
@@ -34,6 +45,86 @@ const BG_COLOR_PRESETS: Record<string, string> = {
   lime: "#f0f4c3",
   amber: "#ffecb3",
 };
+
+function isSortColumn(value: string): value is SortColumn {
+  return (
+    value === "num" ||
+    value === "title" ||
+    value === "resCount" ||
+    value === "heat"
+  );
+}
+
+function isSortDirection(value: string): value is SortDirection {
+  return value === "asc" || value === "desc";
+}
+
+function resolveThreadListSortSiteKey(boardUrl: string): string {
+  try {
+    const normalizedUrl = new ChURL(boardUrl);
+    const tsld = normalizedUrl.getTsld();
+    if (tsld) {
+      return tsld;
+    }
+  } catch {
+    // URL 正規化に失敗しても hostname fallback で復元可能なら sort 設定を維持する。
+  }
+
+  try {
+    return new window.URL(boardUrl).hostname.toLowerCase();
+  } catch {
+    return boardUrl;
+  }
+}
+
+function readThreadListSortPreference(
+  boardUrl: string,
+): ThreadListSortPreference {
+  try {
+    const raw = window.localStorage.getItem(THREAD_LIST_SORT_STORAGE_KEY);
+    if (!raw) {
+      return DEFAULT_THREAD_LIST_SORT;
+    }
+
+    const stored = JSON.parse(raw) as Record<
+      string,
+      Partial<ThreadListSortPreference> | undefined
+    >;
+    const currentSitePreference = stored[resolveThreadListSortSiteKey(boardUrl)];
+    const column = currentSitePreference?.column;
+    const direction = currentSitePreference?.direction;
+    if (column && direction && isSortColumn(column) && isSortDirection(direction)) {
+      return {
+        column,
+        direction,
+      };
+    }
+  } catch {
+    // 保存値が壊れていても一覧表示自体は継続できるよう default へ戻す。
+  }
+
+  return DEFAULT_THREAD_LIST_SORT;
+}
+
+function writeThreadListSortPreference(
+  boardUrl: string,
+  preference: ThreadListSortPreference,
+): void {
+  try {
+    const raw = window.localStorage.getItem(THREAD_LIST_SORT_STORAGE_KEY);
+    const stored = raw
+      ? (JSON.parse(raw) as Record<string, ThreadListSortPreference>)
+      : {};
+
+    stored[resolveThreadListSortSiteKey(boardUrl)] = preference;
+    window.localStorage.setItem(
+      THREAD_LIST_SORT_STORAGE_KEY,
+      JSON.stringify(stored),
+    );
+  } catch {
+    // localStorage 書き込み不可でも一覧操作は止めない。
+  }
+}
 
 function calcHeat(now: number, created: number, resCount: number): string {
   if (!Number.isFinite(created) || created > now) return "0.0";
@@ -52,10 +143,13 @@ export const ThreadListPage: React.FC<Props> = ({
   const [threads, setThreads] = useState<IThread[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sortColumn, setSortColumn] = useState<SortColumn>("num");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [sortPreference, setSortPreference] =
+    useState<ThreadListSortPreference>(() =>
+      readThreadListSortPreference(page.boardUrl),
+    );
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
+  const { column: sortColumn, direction: sortDirection } = sortPreference;
 
   const fetchThreads = useCallback(async () => {
     setLoading(true);
@@ -80,6 +174,15 @@ export const ThreadListPage: React.FC<Props> = ({
   useEffect(() => {
     fetchThreads();
   }, [fetchThreads]);
+
+  useEffect(() => {
+    // 板ごとではなく site 単位で揃えると、同一サイト内を移動しても header sort が毎回初期化されない。
+    setSortPreference(readThreadListSortPreference(page.boardUrl));
+  }, [page.boardUrl]);
+
+  useEffect(() => {
+    writeThreadListSortPreference(page.boardUrl, sortPreference);
+  }, [page.boardUrl, sortPreference]);
 
   useEffect(() => {
     if (titleFetched.current) return;
@@ -113,14 +216,18 @@ export const ThreadListPage: React.FC<Props> = ({
   }, []);
 
   const handleSort = useCallback((column: SortColumn) => {
-    setSortColumn((prev) => {
-      if (prev === column) {
+    setSortPreference((prev) => {
+      if (prev.column === column) {
         // 同じカラムクリック時は方向を反転
-        setSortDirection((d) => (d === "asc" ? "desc" : "asc"));
-        return prev;
+        return {
+          column,
+          direction: prev.direction === "asc" ? "desc" : "asc",
+        };
       }
-      setSortDirection("asc");
-      return column;
+      return {
+        column,
+        direction: "asc",
+      };
     });
   }, []);
 

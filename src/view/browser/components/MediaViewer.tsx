@@ -14,6 +14,7 @@ export function MediaViewer({
   onZoomOut,
   onZoomReset,
   onZoomIn,
+  onSave,
   onClose,
   onImageLoad,
 }: MediaViewerProps) {
@@ -71,6 +72,14 @@ export function MediaViewer({
               title="拡大"
             >
               +
+            </button>
+            <button
+              type="button"
+              className="media-viewer__btn"
+              onClick={onSave}
+              title="保存"
+            >
+              保存
             </button>
             <button
               type="button"

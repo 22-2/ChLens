@@ -239,6 +239,7 @@ body {
   /* レスポップアップ内で開いても確実に前面へ出す。 */
   z-index: 20000;
   min-width: 200px;
+  max-width: min(420px, calc(100vw - 16px));
   padding: 4px 0;
   background: #fff;
   border: 1px solid #dadce0;
@@ -263,6 +264,11 @@ body {
   font-size: inherit;
 }
 
+.context-menu__item--multiline {
+  align-items: flex-start;
+  white-space: normal;
+}
+
 .context-menu__icon {
   width: 16px;
   height: 16px;
@@ -274,9 +280,17 @@ body {
 }
 
 .context-menu__label {
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.context-menu__label--multiline {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
 }
 
 .context-menu__item:hover:not(:disabled) {
@@ -1253,6 +1267,8 @@ body {
 }
 
 .res__link {
+  display: inline-flex;
+  align-items: center;
   max-width: 100%;
   border: 1px solid #d2e3fc;
   background: #f8fbff;
@@ -1262,6 +1278,7 @@ body {
   font-size: 12px;
   line-height: 1.4;
   cursor: pointer;
+  text-decoration: none;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1279,6 +1296,7 @@ body {
 }
 
 .res__thumb {
+  display: block;
   border: 1px solid #dadce0;
   background: #fff;
   border-radius: 6px;
@@ -1321,17 +1339,19 @@ body {
 }
 
 .media-viewer__toolbar {
-  height: 40px;
-  padding: 0 10px;
+  min-height: 40px;
+  padding: 6px 10px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.15);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  flex-wrap: wrap;
   color: #e8eaed;
 }
 
 .media-viewer__label {
+  flex: 1 1 180px;
   min-width: 0;
   font-size: 12px;
   color: #bdc1c6;
@@ -1343,6 +1363,8 @@ body {
 .media-viewer__actions {
   display: flex;
   gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .media-viewer__btn {
@@ -1355,6 +1377,7 @@ body {
   cursor: pointer;
   font-size: 12px;
   padding: 0 8px;
+  white-space: nowrap;
 }
 
 .media-viewer__btn:hover {

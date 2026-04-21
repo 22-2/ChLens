@@ -217,6 +217,9 @@ export const NavigationBar: React.FC = () => {
     }
   }, [currentPage.type]);
 
+  // 履歴タイトルは板名とスレ名が連結されて長くなりやすいため、
+  // 戻る/進むメニューでは省略せず全文を折り返して見せる。
+
   const backHistoryItems = useMemo(
     () =>
       activeTab.history
@@ -226,6 +229,7 @@ export const NavigationBar: React.FC = () => {
         .map(({ page, index }) => ({
           id: `back-${index}`,
           label: page.title,
+          allowMultilineLabel: true,
           onSelect: () => dispatch({ type: "GO_TO_HISTORY_INDEX", index }),
           onAuxSelect: (button: number) => {
             if (button !== 1) return;
@@ -244,6 +248,7 @@ export const NavigationBar: React.FC = () => {
         .map(({ page, index }) => ({
           id: `forward-${index}`,
           label: page.title,
+          allowMultilineLabel: true,
           onSelect: () => dispatch({ type: "GO_TO_HISTORY_INDEX", index }),
           onAuxSelect: (button: number) => {
             if (button !== 1) return;

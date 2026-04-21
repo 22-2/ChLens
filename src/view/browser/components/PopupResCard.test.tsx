@@ -50,7 +50,7 @@ describe("PopupResCard", () => {
       />,
     );
 
-    const thumb = container.querySelector("button.res__thumb") as HTMLButtonElement;
+    const thumb = container.querySelector("a.res__thumb") as HTMLAnchorElement;
     fireEvent.mouseDown(thumb, { button: 1 });
     fireEvent(
       thumb,
@@ -68,5 +68,35 @@ describe("PopupResCard", () => {
       1,
     );
     expect(onLinkMiddleClickStart).toHaveBeenCalled();
+  });
+
+  it("サムネイル右クリックでは既定コンテキストメニューを維持する", () => {
+    const onContextMenu = vi.fn();
+
+    const { container } = render(
+      <PopupResCard
+        res={BASE_RES}
+        messageProtocol="https:"
+        anchorPreviewDepth={0}
+        onUrlClick={() => {}}
+        onUrlContextMenu={() => {}}
+        onIdLinkClick={() => {}}
+        onAnchorClick={() => {}}
+        onAnchorHover={() => {}}
+        onAnchorLeave={() => {}}
+        onContextMenu={onContextMenu}
+      />,
+    );
+
+    const thumb = container.querySelector("a.res__thumb") as HTMLAnchorElement;
+    const contextMenuEvent = new MouseEvent("contextmenu", {
+      bubbles: true,
+      cancelable: true,
+    });
+
+    thumb.dispatchEvent(contextMenuEvent);
+
+    expect(onContextMenu).not.toHaveBeenCalled();
+    expect(contextMenuEvent.defaultPrevented).toBe(false);
   });
 });

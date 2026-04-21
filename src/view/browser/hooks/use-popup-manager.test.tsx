@@ -580,6 +580,31 @@ describe("usePopupManager popup behavior", () => {
     );
   });
 
+  it("keeps ancestor popups when clicking a context menu item opened from a nested popup", () => {
+    render(<PopupSequenceHarness />);
+
+    fireEvent.click(screen.getByRole("button", { name: "返信を開く" }));
+    fireEvent.mouseOver(screen.getByRole("link", { name: ">>3" }));
+    fireEvent.click(screen.getByText("返信(1)"));
+    fireEvent.contextMenu(screen.getByText("4"));
+
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Inspect" }));
+    });
+
+    expect(
+      screen.queryByRole("button", { name: "Inspect" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("参照: >>3")).toBeInTheDocument();
+    expect(screen.getByText(">>3 への返信ツリー")).toBeInTheDocument();
+    expect(screen.getByTestId("popup-stack").textContent).not.toContain(
+      "contextMenu",
+    );
+    expect(screen.getByTestId("popup-stack").textContent).toContain(
+      "tree:3:depth=1",
+    );
+  });
+
   it("moving from a child reply popup back to its parent closes the entire descendant branch", () => {
     render(
       <PopupSequenceHarness
@@ -903,7 +928,7 @@ describe("ReplyTreePopup close behavior", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it("子がいる状態（disableOutsideClick=true）では外側 mousedown しても close しない", () => {
+  it("子がいる状態（disableOutsideClick=true）でも外側 mousedown で close する", () => {
     const onClose = vi.fn();
     render(
       <ReplyTreePopup
@@ -915,7 +940,7 @@ describe("ReplyTreePopup close behavior", () => {
 
     fireEvent.mouseDown(document.body);
 
-    expect(onClose).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledOnce();
   });
 
   it("兄弟のpopup surfaceへマウス移動しても close しない", () => {

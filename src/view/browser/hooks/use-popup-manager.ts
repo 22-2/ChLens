@@ -568,10 +568,19 @@ export function usePopupSurfaceLifecycle({
   }, [closeDisabled, isHovering, surfaceRef]);
 
   useEffect(() => {
-    if (closeDisabled) {
-      return;
-    }
     const handleOutsideMouseDown = (event: MouseEvent) => {
+      const targetPopupId = getPopupSurfaceId(event.target);
+      if (
+        popupId &&
+        targetPopupId &&
+        targetPopupId !== popupId &&
+        isPopupBranchTarget(event.target)
+      ) {
+        // 子メニュー内 click で child branch が閉じた直後は、
+        // 親 popup まで disable 復帰 auto-close で巻き込まないように1回だけ抑止する。
+        suppressNextDisableReleaseCloseRef.current = true;
+      }
+
       if (
         event.target instanceof Node &&
         surfaceRef?.current?.contains(event.target)
@@ -599,7 +608,7 @@ export function usePopupSurfaceLifecycle({
     document.addEventListener("mousedown", handleOutsideMouseDown);
     return () =>
       document.removeEventListener("mousedown", handleOutsideMouseDown);
-  }, [closeDisabled, isPopupBranchTarget, popupId, surfaceRef]);
+  }, [isPopupBranchTarget, popupId, surfaceRef]);
 
   const handleMouseEnter = (event: React.MouseEvent<HTMLElement>) => {
     setIsHovering(true);

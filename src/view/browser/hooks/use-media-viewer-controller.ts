@@ -32,8 +32,27 @@ export interface MediaViewerProps {
   onZoomOut: () => void;
   onZoomReset: () => void;
   onZoomIn: () => void;
+  onSave: () => void;
   onClose: () => void;
   onImageLoad: () => void;
+}
+
+function sanitizeDownloadFilename(name: string): string {
+  return name.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "_");
+}
+
+function getViewerDownloadFilename(url: string): string {
+  try {
+    const parsed = new window.URL(url);
+    const lastSegment = parsed.pathname.split("/").filter(Boolean).at(-1);
+    if (lastSegment) {
+      return sanitizeDownloadFilename(lastSegment);
+    }
+  } catch {
+    // URL パース失敗時は fallback 名で保存する。
+  }
+
+  return "image";
 }
 
 function getViewerStageViewportSize(stage: HTMLDivElement): ViewerSize {
@@ -450,6 +469,32 @@ export function useMediaViewerController(): MediaViewerProps | null {
     return null;
   }
 
+  const saveViewerImage = async () => {
+    try {
+      // download 属性だけだと cross-origin 画像で保存名が落ちやすいので、
+      // blob 化して拡張ページ側から保存トリガーを作る。
+      const response = await fetch(viewer.src);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const objectUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = getViewerDownloadFilename(viewer.src);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => {
+        window.URL.revokeObjectURL(objectUrl);
+      }, 0);
+    } catch (error) {
+      console.error(error);
+      window.open(viewer.src, "_blank", "noopener,noreferrer");
+    }
+  };
+
   return {
     viewer,
     viewerStageRef,
@@ -473,6 +518,9 @@ export function useMediaViewerController(): MediaViewerProps | null {
     onZoomIn: () => {
       setZoomPivotToStageCenter();
       zoomIn();
+    },
+    onSave: () => {
+      void saveViewerImage();
     },
     onClose: closeViewer,
     onImageLoad: measureViewerLayout,

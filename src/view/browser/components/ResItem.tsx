@@ -51,7 +51,16 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
       <article
         data-res-num={res.num}
         className={`res${isNG ? " res--ng" : ""}${miniAa ? " res--aa" : ""}`}
-        onContextMenu={(e) => onContextMenu(e, res)}
+        onContextMenu={(e) => {
+          if (
+            e.target instanceof Element &&
+            e.target.closest("a, .res__link, .res__thumb")
+          ) {
+            // リンクや画像の右クリックはブラウザ既定メニューへ委譲する。
+            return;
+          }
+          onContextMenu(e, res);
+        }}
       >
         <header className="res__header">
           <span className="res__num">{res.num}</span>
@@ -105,11 +114,12 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
         {urls.length > 0 && (
           <div className="res__links">
             {urls.map((url) => (
-              <button
-                type="button"
+              <a
                 key={`${res.num}:${url}`}
+                href={url}
                 className="res__link"
                 onClick={(e) => {
+                  e.preventDefault();
                   e.stopPropagation();
                   onUrlClick(url, undefined, 0);
                 }}
@@ -126,37 +136,53 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
                   e.stopPropagation();
                   onUrlClick(url, undefined, 1);
                 }}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onUrlContextMenu(url, e);
-                }}
                 title={url}
               >
                 {url}
-              </button>
+              </a>
             ))}
           </div>
         )}
         {imageUrls.length > 0 && (
           <div className="res__thumbs">
             {imageUrls.map(({ raw, src }) => (
-              <button
-                type="button"
+              <a
                 key={`${res.num}:thumb:${raw}`}
+                href={raw}
                 className="res__thumb"
-                onClick={() =>
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   // 同レス内の全画像URLを渡してビューア内で前後移動できるようにする
                   onUrlClick(
                     raw,
                     imageUrls.map((x) => x.raw),
                     0,
-                  )
-                }
+                  );
+                }}
+                onMouseDown={(e) => {
+                  if (e.button !== 1) {
+                    return;
+                  }
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onAuxClick={(e) => {
+                  if (e.button !== 1) {
+                    return;
+                  }
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onUrlClick(
+                    raw,
+                    imageUrls.map((x) => x.raw),
+                    1,
+                  );
+                }}
                 title={raw}
               >
                 <img src={src ?? ""} alt={raw} loading="lazy" />
-              </button>
+              </a>
             ))}
           </div>
         )}

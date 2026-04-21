@@ -197,6 +197,54 @@ describe("useAutoRefresh", () => {
     expect(scrollBy).toHaveBeenCalledWith({ top: 60, behavior: "auto" });
   });
 
+  it("自動更新を有効化した瞬間に最下部へ移動して即時 refresh する", () => {
+    const onRequestRefresh = vi.fn();
+    const { rerender } = render(
+      <AutoRefreshHarness enabled={false} onRequestRefresh={onRequestRefresh} />,
+    );
+
+    const scrollContainer = screen.getByTestId(
+      "scroll-container",
+    ) as HTMLDivElement;
+    const boundary = screen.getByTestId("boundary") as HTMLDivElement;
+
+    let scrollTopValue = 12;
+    let scrollHeightValue = 300;
+    Object.defineProperty(scrollContainer, "clientHeight", {
+      configurable: true,
+      get: () => 100,
+    });
+    Object.defineProperty(scrollContainer, "scrollTop", {
+      configurable: true,
+      get: () => scrollTopValue,
+      set: (value: number) => {
+        scrollTopValue = value;
+      },
+    });
+    Object.defineProperty(scrollContainer, "scrollHeight", {
+      configurable: true,
+      get: () => scrollHeightValue,
+    });
+    scrollContainer.getBoundingClientRect = () =>
+      createRect({ top: 0, bottom: 100 });
+    boundary.getBoundingClientRect = () => createRect({ top: 80, bottom: 100 });
+
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
+
+    expect(onRequestRefresh).not.toHaveBeenCalled();
+
+    act(() => {
+      rerender(
+        <AutoRefreshHarness enabled={true} onRequestRefresh={onRequestRefresh} />,
+      );
+    });
+
+    expect(scrollTopValue).toBe(300);
+    expect(onRequestRefresh).toHaveBeenCalledOnce();
+  });
+
   it("自動追従前に wheel 割り込みが入ったらユーザー操作を優先する", () => {
     const onRequestRefresh = vi.fn();
     render(<AutoRefreshHarness onRequestRefresh={onRequestRefresh} />);

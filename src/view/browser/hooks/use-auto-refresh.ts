@@ -66,6 +66,7 @@ export function useAutoRefresh({
   const pendingRefreshRef = useRef<PendingRefreshSnapshot | null>(null);
   const requestRefreshRef = useRef(requestRefresh);
   const loadingRef = useRef(loading);
+  const prevEnabledRef = useRef(enabled);
   const latestSnapshotRef = useRef({ responseCount, lastResponseNum });
   const canAutoScrollRef = useRef(false);
   const userInterruptedRef = useRef(false);
@@ -139,6 +140,20 @@ export function useAutoRefresh({
     return contentArea;
   }, [rootRef]);
 
+  const moveToThreadBottom = useCallback((): HTMLElement | null => {
+    const scrollContainer = getScrollContainer();
+    if (!scrollContainer) {
+      return null;
+    }
+
+    // 自動更新ON直後に途中位置のままだと、初回更新だけは追従せず「開始した感」が薄い。
+    // 先に最下部へ寄せてから refresh を投げることで、legacy と同じ感覚に揃える。
+    scrollContainer.scrollTop = scrollContainer.scrollHeight;
+    canAutoScrollRef.current = true;
+    setCanAutoScroll(true);
+    return scrollContainer;
+  }, [getScrollContainer]);
+
   const syncCanAutoScroll = useCallback(() => {
     const scrollContainer = getScrollContainer();
     const boundary = autoScrollBoundaryRef.current;
@@ -201,6 +216,34 @@ export function useAutoRefresh({
     userInterruptedRef.current = false;
     clearScrollingIndicator();
   }, [clearScrollingIndicator, enabled]);
+
+  useEffect(() => {
+    const wasEnabled = prevEnabledRef.current;
+    prevEnabledRef.current = enabled;
+
+    if (wasEnabled || !enabled) {
+      return;
+    }
+
+    const scrollContainer = moveToThreadBottom();
+    window.requestAnimationFrame(() => {
+      syncCanAutoScroll();
+    });
+
+    if (!scrollContainer || expired || loadingRef.current || pendingRefreshRef.current) {
+      return;
+    }
+
+    const currentSnapshot = latestSnapshotRef.current;
+    pendingRefreshRef.current = {
+      responseCount: currentSnapshot.responseCount,
+      lastResponseNum: currentSnapshot.lastResponseNum,
+      scrollHeight: scrollContainer.scrollHeight,
+      shouldScroll: true,
+    };
+    userInterruptedRef.current = false;
+    requestRefreshRef.current();
+  }, [enabled, expired, moveToThreadBottom, syncCanAutoScroll]);
 
   useEffect(() => {
     const scrollContainer = getScrollContainer();

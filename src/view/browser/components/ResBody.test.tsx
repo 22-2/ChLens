@@ -7,6 +7,8 @@ import { describe, expect, it, vi } from "vitest";
 
 const ANCHOR_HTML = '<a class="anchor">&gt;&gt;5</a>';
 const URL_HTML = '<a href="https://example.com/thread/1">link</a>';
+const INTERNAL_URL_HTML =
+  '<a href="https://egg.5ch.net/test/read.cgi/software/1000000010/">internal</a>';
 const ID_LINK_HTML =
   '<a href="javascript:undefined;" class="anchor_id">id:ABC123(4)</a>';
 
@@ -293,11 +295,34 @@ describe("ResBody anchor behavior", () => {
 
     anchor.dispatchEvent(contextMenuEvent);
 
-    expect(onUrlContextMenu).toHaveBeenCalledWith(
-      "https://example.com/thread/1",
-      expect.any(Object),
-      RESPECT_DEFAULT_EXTERNAL,
+    expect(onUrlContextMenu).not.toHaveBeenCalled();
+    expect(contextMenuEvent.defaultPrevented).toBe(false);
+  });
+
+  it("5ch互換URLでも右クリックはブラウザ既定メニューを維持する", () => {
+    const onUrlContextMenu = vi.fn(() => true);
+    const { container } = render(
+      <ResBody
+        messageHtml={INTERNAL_URL_HTML}
+        anchorPreviewDepth={0}
+        onUrlClick={() => true}
+        onUrlContextMenu={onUrlContextMenu}
+        onIdLinkClick={() => {}}
+        onAnchorClick={() => {}}
+        onAnchorHover={() => {}}
+        onAnchorLeave={() => {}}
+      />,
     );
+
+    const anchor = container.querySelector("a") as HTMLAnchorElement;
+    const contextMenuEvent = new MouseEvent("contextmenu", {
+      bubbles: true,
+      cancelable: true,
+    });
+
+    anchor.dispatchEvent(contextMenuEvent);
+
+    expect(onUrlContextMenu).not.toHaveBeenCalled();
     expect(contextMenuEvent.defaultPrevented).toBe(false);
   });
 });

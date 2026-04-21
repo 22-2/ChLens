@@ -142,14 +142,6 @@ function shouldHandleUrlClick(
   return onUrlClick(href, button, RESPECT_DEFAULT_EXTERNAL) === true;
 }
 
-function shouldHandleUrlContextMenu(
-  onUrlContextMenu: UrlContextMenuHandler,
-  href: string,
-  event: React.MouseEvent,
-): boolean {
-  return onUrlContextMenu(href, event, RESPECT_DEFAULT_EXTERNAL) === true;
-}
-
 function useResBodyInteractionHandlers({
   anchorPreviewDepth,
   onUrlClick,
@@ -166,6 +158,10 @@ function useResBodyInteractionHandlers({
     handled: false,
   });
   const suppressNextAnchorLeaveRef = useRef(false);
+
+  // React view では本文リンクの右クリックを URL 種別に関係なく既定メニューへ委譲する。
+  // handler 型は共有しているため prop は受けるが、この hook では敢えて使わない。
+  void onUrlContextMenu;
 
   const notifyAnchorLeave = useCallback(() => {
     if (consumeAnchorLeaveSuppression(suppressNextAnchorLeaveRef)) {
@@ -341,16 +337,13 @@ function useResBodyInteractionHandlers({
         return;
       }
 
-      const href = getNavigableHref(anchor);
-      if (!href) {
+      if (!getNavigableHref(anchor)) {
         return;
       }
 
-      if (shouldHandleUrlContextMenu(onUrlContextMenu, href, e)) {
-        stopEvent(e);
-      }
+      // 画像/リンクの右クリックは拡張内リンクでもネイティブメニューを優先する。
     },
-    [onUrlContextMenu],
+    [],
   );
 
   return {

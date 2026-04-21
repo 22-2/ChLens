@@ -49,7 +49,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     // repIndex が渡された場合のみ返信数を表示する
     const repCount = repIndex?.get(res.num)?.size ?? 0;
     // idIndex が渡された場合のみ同一IDのレス数を表示してクリック可能にする
-    const idCount = (res.id && idIndex?.get(res.id)?.size) ?? 0;
+    const idCount = res.id ? (idIndex?.get(res.id)?.size ?? 0) : 0;
 
     // NG 判定は ResItem と同じロジック
     const isNG = res.ng != null || res.class?.includes("ng");
@@ -60,6 +60,13 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
         className={`res${isHighlighted ? " res--highlighted-persistent" : ""}`}
         onContextMenu={(e) => {
           if (!onContextMenu) return;
+          if (
+            e.target instanceof Element &&
+            e.target.closest("a, .res__thumb")
+          ) {
+            // popup 内でもリンク/画像の右クリックは既定メニューを優先する。
+            return;
+          }
           e.preventDefault();
           onContextMenu(e, res);
         }}
@@ -117,18 +124,20 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
         {imageUrls.length > 0 && (
           <div className="res__thumbs">
             {imageUrls.map(({ raw, src }) => (
-              <button
-                type="button"
+              <a
                 key={`${res.num}:thumb:${raw}`}
+                href={raw}
                 className="res__thumb"
-                onClick={() =>
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   // 同レス内の全画像URLを渡してビューア内で前後移動できるようにする
                   onUrlClick(
                     raw,
                     imageUrls.map((x) => x.raw),
                     0,
-                  )
-                }
+                  );
+                }}
                 onMouseDown={(e) => {
                   if (e.button !== 1) {
                     return;
@@ -165,7 +174,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
                 title={raw}
               >
                 <img src={src ?? ""} alt={raw} loading="lazy" />
-              </button>
+              </a>
             ))}
           </div>
         )}
