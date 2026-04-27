@@ -204,16 +204,16 @@ export const ThreadListPage: React.FC<Props> = ({
   }, [dispatch, page.boardTitle, page.boardUrl, tabId]);
 
   // Ctrl+Fで検索バーを開く
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key === "f") {
-        e.preventDefault();
-        setShowSearch(true);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  // useEffect(() => {
+  //   const handleKeyDown = (e: KeyboardEvent) => {
+  //     if (e.ctrlKey && e.key === "f") {
+  //       e.preventDefault();
+  //       setShowSearch(true);
+  //     }
+  //   };
+  //   window.addEventListener("keydown", handleKeyDown);
+  //   return () => window.removeEventListener("keydown", handleKeyDown);
+  // }, []);
 
   const handleSort = useCallback((column: SortColumn) => {
     setSortPreference((prev) => {
