@@ -1,12 +1,12 @@
 const gulp = require("gulp");
 const path = require("path");
-const { gulp: $, rollup: _ } = require("./plugins");
+const { gulp: $, rolldown: _ } = require("./plugins");
 const { browsers, paths, defaultOptions } = require("./config");
-const { makeInOut, getRollupIOConfigs } = require("./js");
+const { makeInOut, getRolldownIOConfigs } = require("./js");
 const util = require("./util");
 
-const makeRollupConfig = function (browser, configName) {
-  const config = getRollupIOConfigs(configName, browser);
+const makeRolldownConfig = function (browser, configName) {
+  const config = getRolldownIOConfigs(configName, browser);
   const c = makeInOut(browser, config);
   return {
     ...c.input,
@@ -14,26 +14,27 @@ const makeRollupConfig = function (browser, configName) {
   };
 };
 
-const rollupWatch = function (config) {
+const rolldownWatch = function (config) {
   const filename = path.basename(config.output.file);
-  _.rollup.watch(config).on("event", util.onRollupWatch(filename));
+  const watcher = _.rolldown.watch(config);
+  watcher.on("event", util.onRollupWatch(filename));
 };
 
 /*
   tasks
 */
 const watch = function (browser) {
-  const appjsConfig = makeRollupConfig(browser, "app");
-  const corejsConfig = makeRollupConfig(browser, "core");
-  const uijsConfig = makeRollupConfig(browser, "ui");
-  const submitResjsConfig = makeRollupConfig(browser, "submitRes");
-  const submitThreadjsConfig = makeRollupConfig(browser, "submitThread");
+  const appjsConfig = makeRolldownConfig(browser, "app");
+  const corejsConfig = makeRolldownConfig(browser, "core");
+  const uijsConfig = makeRolldownConfig(browser, "ui");
+  const submitResjsConfig = makeRolldownConfig(browser, "submitRes");
+  const submitThreadjsConfig = makeRolldownConfig(browser, "submitThread");
   return function () {
-    rollupWatch(appjsConfig);
-    rollupWatch(corejsConfig);
-    rollupWatch(uijsConfig);
-    rollupWatch(submitResjsConfig);
-    rollupWatch(submitThreadjsConfig);
+    rolldownWatch(appjsConfig);
+    rolldownWatch(corejsConfig);
+    rolldownWatch(uijsConfig);
+    rolldownWatch(submitResjsConfig);
+    rolldownWatch(submitThreadjsConfig);
     gulp.watch(
       [paths.lib.webExtPolyfill, paths.js.background],
       gulp.task(`js:background.js:${browser}`)

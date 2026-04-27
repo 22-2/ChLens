@@ -14,18 +14,17 @@ export default TableSorter = (function () {
       this.table = table;
       this.table.addClass("table_sort");
       this.table.on("click", ({ target }) => {
-        if (target.tagName !== "TH") {
+        const th = target.closest("th");
+        if (!th) {
           return;
         }
 
-        const order = target.hasClass("table_sort_desc") ? "asc" : "desc";
+        const order = th.hasClass("table_sort_desc") ? "asc" : "desc";
 
         this.clearSortClass();
 
-        target.addClass(`table_sort_${order}`);
-        this.table
-          .$(`col.${target.dataset.key}`)
-          .addClass(`table_sort_${order}`);
+        th.addClass(`table_sort_${order}`);
+        this.table.$(`col.${th.dataset.key}`).addClass(`table_sort_${order}`);
 
         this.update();
       });
@@ -106,10 +105,26 @@ export default TableSorter = (function () {
 
       const $tbody = this.table.$("tbody");
       $tbody.innerHTML = "";
+
+      // ハイライトされたスレッドを先に追加
+      const highlightRows = [];
+      const normalRows = [];
+
       for (let key of dataKeys) {
         for ($tr of data[key]) {
-          $tbody.addLast($tr);
+          if ($tr.hasClass("highlight")) {
+            highlightRows.push($tr);
+          } else {
+            normalRows.push($tr);
+          }
         }
+      }
+
+      for ($tr of highlightRows) {
+        $tbody.addLast($tr);
+      }
+      for ($tr of normalRows) {
+        $tbody.addLast($tr);
       }
 
       const exparam = { sort_order: sortOrder };
@@ -121,7 +136,7 @@ export default TableSorter = (function () {
       }
 
       this.table.emit(
-        new CustomEvent("table_sort_updated", { detail: exparam })
+        new CustomEvent("table_sort_updated", { detail: exparam }),
       );
     }
 

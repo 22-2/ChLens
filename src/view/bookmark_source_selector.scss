@@ -1,6 +1,6 @@
-@import "../_common.scss";
+@use "../_common.scss";
 
-@include common;
+@include common.common;
 
 html {
   background-image: radial-gradient(#666666, #333333);
@@ -9,7 +9,7 @@ html {
 }
 
 body {
-  @include drop-shadow;
+  @include common.drop-shadow;
   font-size: 14px;
   width: 500px;
   margin: 20px auto;
@@ -64,5 +64,5 @@ ul {
 }
 
 button {
-  @include button;
+  @include common.button;
 }

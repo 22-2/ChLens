@@ -66,7 +66,7 @@ browser.contextMenus.create({
   documentUrlPatterns: ["http://*/*", "https://*/*", "file://*/*"],
   targetUrlPatterns: [
     "*://*.2ch.net/*",
-    "*://*.5ch.net/*",
+    "*://*.5ch.io/*",
     "*://*.2ch.sc/*",
     "*://*.open2ch.net/*",
     "*://*.bbspink.com/*",
@@ -79,7 +79,7 @@ browser.contextMenus.create({
 // コンテキストメニューのクリック時の動作
 browser.contextMenus.onClicked.addListener(async function (
   { menuItemId, linkUrl: url },
-  tab
+  tab,
 ) {
   if (menuItemId !== "open_link_in_rcrx") {
     return;

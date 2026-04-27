@@ -1,17 +1,34 @@
 ///<reference path="global.d.ts" />
-import Config from "./app/Config";
+import Config from "src/app/Config";
+
+import { setupContainer } from "src/service-container/setup";
 
 export { default as Callbacks } from "./app/Callbacks";
 export * from "./app/Defer";
-export * from "./app/Log";
 export { default as LocalStorage } from "./app/LocalStorage";
+export * from "./app/Log";
 export { default as message } from "./app/Message";
 export * from "./app/Util";
+// 親ウィンドウからアクセスできるように内部configも公開
+export { _config };
 
-export let config: Config;
+let _config: Config | undefined;
 if (!frameElement) {
-  config = new Config();
+  _config = new Config();
 }
+
+// iframe内外で統一的にconfigにアクセスできるようにProxyを使用
+export const config = new Proxy({} as Config, {
+  get(_target, prop) {
+    const actualConfig =
+      _config || (self !== top && (parent as any).app?._config);
+    if (!actualConfig) {
+      console.error("config is not initialized");
+      return undefined;
+    }
+    return actualConfig[prop as keyof Config];
+  },
+});
 
 export const manifest = (async () => {
   if (!/^(?:chrome|moz)-extension:$/.test(location.protocol)) {
@@ -26,7 +43,7 @@ export const manifest = (async () => {
 export async function boot(
   path: string,
   requirements: Function | string[] | null,
-  fn: Function
+  fn: Function,
 ) {
   if (!fn && typeof requirements === "function") {
     fn = requirements;
@@ -48,6 +65,8 @@ export async function boot(
 
     const onload = () => {
       config.ready(() => {
+        setupContainer(parent.app || (window as any).app);
+
         if (!requirements) {
           fn();
           return;

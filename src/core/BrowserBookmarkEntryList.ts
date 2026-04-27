@@ -1,5 +1,9 @@
-import { Entry, SyncableEntryList, newerEntry } from "./BookmarkEntryList";
-import { URL } from "./URL";
+import {
+  Entry,
+  newerEntry,
+  SyncableEntryList,
+} from "src/core/BookmarkEntryList";
+import { URL } from "src/core/URL";
 
 export default class BrowserBookmarkEntryList extends SyncableEntryList {
   private rootNodeId = "";
@@ -221,7 +225,7 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
         } else if (oldParentId === this.rootNodeId) {
           this.applyNodeRemoveToEntryList(nodeId);
         }
-      }
+      },
     );
   }
 
@@ -239,14 +243,15 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
   }
 
   private async loadFromBrowserBookmark(): Promise<boolean> {
-    // EntryListクリア
-    for (const entry of this.getAll()) {
-      this.remove(entry.url, false);
-    }
-
     // ロード
     try {
       const res = await browser.bookmarks.getChildren(this.rootNodeId);
+
+      // EntryListクリア
+      for (const entry of this.getAll()) {
+        this.remove(entry.url, false);
+      }
+      this.nodeIdStore.clear();
 
       for (const node of res) {
         this.applyNodeAddToEntryList(node);
@@ -335,7 +340,7 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
         return browser.bookmarks.remove(id).catch((e) => {
           return;
         });
-      })
+      }),
     );
     return true;
   }

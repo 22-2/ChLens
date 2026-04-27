@@ -18,12 +18,64 @@ app.boot("/view/board.html", ["Board"], function (Board) {
     th: ["bookmark", "title", "res", "unread", "heat", "createdDate"],
     searchColumn: $view.C("search_item_selector")[0],
     searchbox: $view.C("searchbox")[0],
+    columnPreferencesKey: "board_column_preferences",
   });
   app.DOMData.set($view, "threadList", threadList);
   app.DOMData.set($view, "selectableItemList", threadList);
   const tableSorter = new UI.TableSorter($table);
   app.DOMData.set($table, "tableSorter", tableSorter);
   $$.C("content")[0].addLast($table);
+
+  // 列表示設定メニュー
+  (function () {
+    const $menuList = $view.C("column_toggle_list")[0];
+    const $resetBtn = $view.C("column_menu_reset")[0];
+
+    if (!$menuList) return;
+
+    const updateMenu = () => {
+      $menuList.textContent = "";
+      const columns = threadList.getColumnStates();
+
+      for (const col of columns) {
+        const $li = $__("li");
+        const $label = $__("label");
+        const $input = $__("input");
+        $input.type = "checkbox";
+        $input.checked = !col.hidden;
+
+        if (!col.canHide) {
+          $input.disabled = true;
+        }
+
+        $input.on("change", () => {
+          const success = threadList.setColumnVisibility(
+            col.key,
+            $input.checked,
+          );
+          if (!success) {
+            $input.checked = !$input.checked; // 最後の1列などは非表示にできない場合があるため戻す
+          }
+        });
+
+        $label.addLast($input);
+        $label.addLast(document.createTextNode(" " + col.label));
+        $li.addLast($label);
+        $menuList.addLast($li);
+      }
+    };
+
+    $table.on("threadlist_column_state", updateMenu);
+
+    if ($resetBtn) {
+      $resetBtn.on("click", () => {
+        threadList.resetColumnPreferences();
+      });
+    }
+
+    // 初期表示
+    updateMenu();
+  })();
 
   const write = function (param) {
     if (param == null) {
@@ -38,7 +90,7 @@ app.boot("/view/board.html", ["Board"], function (Board) {
       open(
         openUrl,
         undefined,
-        `width=600,height=300,left=${windowX},top=${windowY}`
+        `width=600,height=300,left=${windowX},top=${windowY}`,
       );
     } else if ("&[BROWSER]" === "chrome") {
       parent.browser.windows.create({
@@ -56,7 +108,7 @@ app.boot("/view/board.html", ["Board"], function (Board) {
   if (
     ((needle = url.getTsld()),
     [
-      "5ch.net",
+      "5ch.io",
       "shitaraba.net",
       "bbspink.com",
       "2ch.sc",
@@ -83,7 +135,8 @@ app.boot("/view/board.html", ["Board"], function (Board) {
     //.sort_item_selectorが非表示の時、各種項目のソート切り替えを
     //降順ソート→昇順ソート→標準ソートとする
     $table.on("click", function ({ target }) {
-      if (target.tagName !== "TH" || !target.hasClass("table_sort_asc")) {
+      const th = target.closest("th");
+      if (!th || !th.hasClass("table_sort_asc")) {
         return;
       }
       if ($view.C("sort_item_selector")[0].offsetWidth !== 0) {
@@ -98,7 +151,7 @@ app.boot("/view/board.html", ["Board"], function (Board) {
             sortOrder: "asc",
           });
         },
-        { once: true }
+        { once: true },
       );
     });
   })();
@@ -117,62 +170,26 @@ app.boot("/view/board.html", ["Board"], function (Board) {
 
   const load = async function (ex) {
     $view.addClass("loading");
-    app.message.send("request_update_read_state", { board_url: urlStr });
 
-    const getReadStatePromise = (async function () {
-      // request_update_read_stateを待つ
+    try {
+      // 既読状態の更新リクエスト（バックグラウンドでの同期を待つためのハック）
+      app.message.send("request_update_read_state", { board_url: urlStr });
       await app.wait(150);
-      return await app.ReadState.getByBoard(urlStr);
-    })();
-    const getBoardPromise = (async function () {
-      const { status, message, data } = await Board.get(url);
+
+      // Service層を使ってスレ一覧（既読・ブックマーク統合済み）を取得
+      const { threads, message } = await container.board.getThreads(url);
+
       const $messageBar = $view.C("message_bar")[0];
-      if (status === "error") {
+      if (message) {
         $messageBar.addClass("error");
         $messageBar.innerHTML = message;
       } else {
         $messageBar.removeClass("error");
         $messageBar.removeChildren();
       }
-      if (data != null) {
-        return data;
-      }
-      throw new Error("板の取得に失敗しました");
-    })();
-
-    try {
-      let readState, thread;
-      const [readStateArray, board] = await Promise.all([
-        getReadStatePromise,
-        getBoardPromise,
-      ]);
-      const readStateIndex = {};
-      for (let key = 0; key < readStateArray.length; key++) {
-        readState = readStateArray[key];
-        readStateIndex[readState.url] = key;
-      }
 
       threadList.empty();
-      const item = [];
-      for (let threadNumber = 0; threadNumber < board.length; threadNumber++) {
-        var bookmark;
-        thread = board[threadNumber];
-        readState = readStateArray[readStateIndex[thread.url]];
-        if (
-          __guard__(
-            (bookmark = app.bookmark.get(thread.url)),
-            (x) => x.readState
-          ) != null
-        ) {
-          if (app.util.isNewerReadState(readState, bookmark.readState)) {
-            ({ readState } = bookmark);
-          }
-        }
-        thread.readState = readState;
-        thread.threadNumber = threadNumber;
-        item.push(thread);
-      }
-      threadList.addItem(item);
+      threadList.addItem(threads);
 
       // スレ建て後の処理
       if (ex != null) {
@@ -191,7 +208,7 @@ app.boot("/view/board.html", ["Board"], function (Board) {
           }
           app.message.send("open", { url: ex.thread_url, new_tab: true });
         } else {
-          for (thread of board) {
+          for (let thread of threads) {
             if (thread.title.includes(ex.title)) {
               if (writeFlag) {
                 await app.WriteHistory.add({
@@ -212,7 +229,12 @@ app.boot("/view/board.html", ["Board"], function (Board) {
       }
 
       tableSorter.update();
-    } catch (error1) {}
+    } catch (error1) {
+      console.error(error1);
+      const $messageBar = $view.C("message_bar")[0];
+      $messageBar.addClass("error");
+      $messageBar.innerHTML = error1.message || "板の取得に失敗しました";
+    }
 
     $view.removeClass("loading");
 

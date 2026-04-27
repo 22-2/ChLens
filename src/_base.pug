@@ -19,7 +19,7 @@ html(class=htmlClasses data-app-version=version)&attributes(html)
     script(src=`/lib/shortQuery.min.js?v=${version}` defer)
     script(src=`/lib/browser-polyfill.min.js?v=${version}` defer)
     script(src=`/app.js?v=${version}` defer)
-    if name === "index"
+    if name === "index" || needCore
       script(src=`/app_core.js?v=${version}` defer)
     if needUI
       script(src=`/ui.js?v=${version}` defer)

@@ -1,15 +1,18 @@
+import { Point, QDollarRecognizer } from "./$Q.ts";
 import * as BBSMenu from "./BBSMenu.js";
 import Board from "./Board.js";
+import BoardService from "./BoardService.js";
 import * as BoardTitleSolver from "./BoardTitleSolver.js";
 import Bookmark from "./Bookmark.ts";
-import BrowserBookmarkEntryList from "./BrowserBookmarkEntryList.ts";
 import * as BookmarkEntryList from "./BookmarkEntryList.ts";
+import BrowserBookmarkEntryList from "./BrowserBookmarkEntryList.ts";
 import Cache from "./Cache.js";
 import * as ContextMenus from "./ContextMenus.js";
 import * as DOMData from "./DOMData.js";
 import * as History from "./History.js";
 import * as HTTP from "./HTTP.ts";
 import * as ImageReplaceDat from "./ImageReplaceDat.js";
+import * as util from "./jsutil.js";
 import * as NG from "./NG.js";
 import Notification from "./Notification.js";
 import * as ReadState from "./ReadState.js";
@@ -17,14 +20,16 @@ import * as ReplaceStrTxt from "./ReplaceStrTxt.js";
 import SikiGuard from "./SikiGuard.js";
 import Thread from "./Thread.js";
 import ThreadSearch from "./ThreadSearch.js";
+import ThreadService from "./ThreadService.js";
 import * as URL from "./URL.ts";
-import * as util from "./jsutil.js";
 import * as Util from "./Util.ts";
 import * as WriteHistory from "./WriteHistory.js";
 
 export {
   BBSMenu,
   Board,
+  BoardService,
+  ThreadService,
   BoardTitleSolver,
   Bookmark,
   BookmarkEntryList,
@@ -46,4 +51,6 @@ export {
   util,
   Util,
   WriteHistory,
+  QDollarRecognizer,
+  Point,
 };

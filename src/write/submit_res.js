@@ -1,5 +1,5 @@
-import Write from "./write.js";
 import { getByUrl as getWriteHistoryByUrl } from "../core/WriteHistory.js";
+import Write from "./write.js";
 
 Write.setFont();
 
@@ -14,7 +14,7 @@ class SubmitRes extends Write {
     const extraInfoSpec = ["requestHeaders", "blocking"];
     if (
       browser.webRequest.OnBeforeSendHeadersOptions.hasOwnProperty(
-        "EXTRA_HEADERS"
+        "EXTRA_HEADERS",
       )
     ) {
       extraInfoSpec.push("extraHeaders");
@@ -27,7 +27,7 @@ class SubmitRes extends Write {
         types: ["sub_frame"],
         urls: ["*://*/test/bbs.cgi*", "*://jbbs.shitaraba.net/bbs/write.cgi/*"],
       },
-      extraInfoSpec
+      extraInfoSpec,
     );
     browser.webRequest.onHeadersReceived.addListener(
       function ({ responseHeaders }) {
@@ -45,7 +45,7 @@ class SubmitRes extends Write {
         types: ["sub_frame"],
         urls: ["*://*/test/bbs.cgi*", "*://jbbs.shitaraba.net/bbs/write.cgi/*"],
       },
-      ["blocking", "responseHeaders"]
+      ["blocking", "responseHeaders"],
     );
   }
 
@@ -133,11 +133,13 @@ class SubmitRes extends Write {
           },
         };
       } else {
+        // eddibb
+        const submit = hostname === "bbs.eddibb.cc" ? "書き込む" : "書きこむ";
         return {
           action: `${protocol}//${hostname}/test/bbs.cgi`,
           charset: "Shift_JIS",
           input: {
-            submit: "書きこむ",
+            submit,
             time: Math.floor(Date.now() / 1000) - 60,
             bbs: splittedUrl[3],
             key: splittedUrl[4],

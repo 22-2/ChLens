@@ -1,3 +1,7 @@
+packages:
+  - "."
+  - "packages/*"
+
 onlyBuiltDependencies:
   - core-js
   - dtrace-provider

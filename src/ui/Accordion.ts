@@ -1,5 +1,5 @@
 // @ts-ignore
-import { slideDown, slideUp } from "./Animate.js";
+import { slideDown, slideUp } from "src/ui/Animate.js";
 
 export default class Accordion {
   protected readonly $element: HTMLElement;

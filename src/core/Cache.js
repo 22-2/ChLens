@@ -145,7 +145,7 @@ export default Cache = (function () {
           keys.map(async function (key) {
             req = store.delete(key);
             await indexedDBRequestToPromise(req);
-          })
+          }),
         );
       } catch (e) {
         app.log("error", "Cache.clearRange: トランザクション中断");

@@ -1,5 +1,7 @@
+@use "../common";
+
 .contextmenu_menu {
-  @include drop-shadow;
+  @include common.drop-shadow;
   contain: content;
   display: flex;
   flex-flow: column nowrap;

@@ -1,6 +1,6 @@
-﻿@import "../_common.scss";
+﻿@use "../_common.scss";
 
-@include common;
+@include common.common;
 
 body {
   margin: 0;

@@ -1,14 +1,36 @@
+import { container } from "../service-container/index";
 import { decodeCharReference, normalize, stringToDate } from "./jsutil.js";
 
 /**
 @class NG
 @static
+
+使用例:
+- ラベル付きハイライト: HighlightTitle(bbs.eddibb.cc/liveedge, label=VTuber): vtuber
+- プリセット色使用: HighlightTitle(bbs.eddibb.cc/liveedge, label=VTuber, bgColor=yellow): vtuber
+- カラーコード使用: HighlightTitle(bbs.eddibb.cc/liveedge, label=重要, bgColor=#ffcdd2): 速報
+- 背景色のみ: HighlightTitle(bbs.eddibb.cc/liveedge, bgColor=blue): 実況
+
+背景色プリセット:
+- yellow: 黄色 (警告・注目)
+- blue: 青 (情報)
+- green: 緑 (成功・OK)
+- red: 赤 (重要・緊急)
+- purple: 紫 (特別)
+- orange: オレンジ (注意)
+- pink: ピンク (お気に入り)
+- cyan: シアン (クール)
+- lime: ライム (軽い注目)
+- amber: アンバー (中程度の注意)
+
+※プリセット名またはカラーコード(#rrggbb)が使用可能
 */
 
 export var TYPE = {
   INVALID: "invalid",
   REG_EXP: "RegExp",
   REG_EXP_TITLE: "RegExpTitle",
+  REG_EXP_HIGHLIGHT_TITLE: "RegExpHighlightTitle",
   REG_EXP_NAME: "RegExpName",
   REG_EXP_MAIL: "RegExpMail",
   REG_EXP_ID: "RegExpId",
@@ -16,6 +38,7 @@ export var TYPE = {
   REG_EXP_BODY: "RegExpBody",
   REG_EXP_URL: "RegExpUrl",
   TITLE: "Title",
+  HIGHLIGHT_TITLE: "HighlightTitle",
   NAME: "Name",
   MAIL: "Mail",
   ID: "ID",
@@ -44,6 +67,7 @@ const _ignoreNgType = /^ignoreNgType:(?:\$\((.*?)\):)?(.*)$/;
 const _expireDate = /^expireDate:(\d{4}\/\d{1,2}\/\d{1,2}),(.*)$/;
 const _attachName = /^attachName:([^,]*),(.*)$/;
 const _expNgWords = /^\$\[(.*?)\]\$:(.*)$/;
+const _scope = /^([^(]+)\(([^)]+)\):(.*)$/;
 
 //jsonには正規表現のオブジェクトが含めれないので
 //それを展開
@@ -51,15 +75,15 @@ const _setupReg = function (obj) {
   const _convReg = function ({ type, word }) {
     let reg = null;
     try {
-      reg = new RegExp(word);
+      reg = new RegExp(word, "i");
     } catch (error) {
-      app.message.send("notify", {
-        message: `\
+      container.notification.notify(
+        `\
 NG機能の正規表現(${type}: ${word})を読み込むのに失敗しました
 この行は無効化されます\
 `,
-        background_color: "red",
-      });
+        { backgroundColor: "red" },
+      );
     }
     return reg;
   };
@@ -93,16 +117,16 @@ NG機能の正規表現(${type}: ${word})を読み込むのに失敗しました
 
 const _config = {
   get() {
-    return JSON.parse(app.config.get(_CONFIG_NAME));
+    return JSON.parse(container.config.get(_CONFIG_NAME));
   },
   set(str) {
-    app.config.set(_CONFIG_NAME, JSON.stringify(str));
+    container.config.set(_CONFIG_NAME, JSON.stringify(str));
   },
   getString() {
-    return app.config.get(_CONFIG_STRING_NAME);
+    return container.config.get(_CONFIG_STRING_NAME);
   },
   setString(str) {
-    app.config.set(_CONFIG_STRING_NAME, str);
+    container.config.set(_CONFIG_STRING_NAME, str);
   },
 };
 
@@ -139,43 +163,80 @@ const parse = function (string) {
       word: "",
       subElements: [],
     };
+
+    // スコープとパラメータの抽出 (例: HighlightTitle(bbs.eddibb.cc/liveedge, label=VTuber): vtuber)
+    let scopeMatch = _scope.exec(ngWord);
+    if (scopeMatch) {
+      const keyword = scopeMatch[1].trim();
+      const scopeContent = scopeMatch[2].trim();
+      const restWord = scopeMatch[3].trim();
+
+      // スコープ内容をパースしてパラメータを抽出
+      const parts = scopeContent.split(",").map((p) => p.trim());
+      const scopePath = parts[0]; // 最初の部分はスコープパス
+      ngElement.scope = { value: scopePath };
+
+      // 残りの部分をパラメータとして処理 (KEY=VALUE形式)
+      ngElement.params = {};
+      for (let i = 1; i < parts.length; i++) {
+        const paramMatch = parts[i].match(/^(\w+)=(.+)$/);
+        if (paramMatch) {
+          ngElement.params[paramMatch[1]] = paramMatch[2];
+        }
+      }
+
+      // キーワード部分を再構築して処理を続ける
+      ngWord = keyword + ":" + restWord;
+    }
+
+    // 右クリックメニュー経由などで `id:` 小文字が入るケースを吸収する。
+    ngWord = ngWord.replace(/^id:/i, "ID:");
+
     // キーワードごとのNG処理
     switch (false) {
       case !ngWord.startsWith("RegExp:"):
         ngElement.type = TYPE.REG_EXP;
-        ngElement.word = ngWord.substr(7);
+        ngElement.word = ngWord.substr(7).trim();
         break;
       case !ngWord.startsWith("RegExpTitle:"):
         ngElement.type = TYPE.REG_EXP_TITLE;
-        ngElement.word = ngWord.substr(12);
+        ngElement.word = ngWord.substr(12).trim();
+        break;
+      case !ngWord.startsWith("RegExpHighlightTitle:"):
+        ngElement.type = TYPE.REG_EXP_HIGHLIGHT_TITLE;
+        ngElement.word = ngWord.substr(21).trim();
         break;
       case !ngWord.startsWith("RegExpName:"):
         ngElement.type = TYPE.REG_EXP_NAME;
-        ngElement.word = ngWord.substr(11);
+        ngElement.word = ngWord.substr(11).trim();
         break;
       case !ngWord.startsWith("RegExpMail:"):
         ngElement.type = TYPE.REG_EXP_MAIL;
-        ngElement.word = ngWord.substr(11);
+        ngElement.word = ngWord.substr(11).trim();
         break;
       case !ngWord.startsWith("RegExpID:"):
         ngElement.type = TYPE.REG_EXP_ID;
-        ngElement.word = ngWord.substr(9);
+        ngElement.word = ngWord.substr(9).trim();
         break;
       case !ngWord.startsWith("RegExpSlip:"):
         ngElement.type = TYPE.REG_EXP_SLIP;
-        ngElement.word = ngWord.substr(11);
+        ngElement.word = ngWord.substr(11).trim();
         break;
       case !ngWord.startsWith("RegExpBody:"):
         ngElement.type = TYPE.REG_EXP_BODY;
-        ngElement.word = ngWord.substr(11);
+        ngElement.word = ngWord.substr(11).trim();
         break;
       case !ngWord.startsWith("RegExpUrl:"):
         ngElement.type = TYPE.REG_EXP_URL;
-        ngElement.word = ngWord.substr(10);
+        ngElement.word = ngWord.substr(10).trim();
         break;
       case !ngWord.startsWith("Title:"):
         ngElement.type = TYPE.TITLE;
-        ngElement.word = normalize(ngWord.substr(6));
+        ngElement.word = normalize(ngWord.substr(6).trim());
+        break;
+      case !ngWord.startsWith("HighlightTitle:"):
+        ngElement.type = TYPE.HIGHLIGHT_TITLE;
+        ngElement.word = normalize(ngWord.substr(15).trim());
         break;
       case !ngWord.startsWith("Name:"):
         ngElement.type = TYPE.NAME;
@@ -186,6 +247,10 @@ const parse = function (string) {
         ngElement.word = normalize(ngWord.substr(5));
         break;
       case !ngWord.startsWith("ID:"):
+        ngElement.type = TYPE.ID;
+        ngElement.word = ngWord;
+        break;
+      case !ngWord.startsWith("発信元:"):
         ngElement.type = TYPE.ID;
         ngElement.word = ngWord;
         break;
@@ -291,6 +356,12 @@ const parse = function (string) {
     if (ele.subElements != null) {
       ngElement.subElements = ele.subElements;
     }
+    if (ele.scope != null) {
+      ngElement.scope = ele.scope;
+    }
+    if (ele.params != null) {
+      ngElement.params = ele.params;
+    }
     // 拡張項目の設定
     if (ngElement.exception == null) {
       ngElement.exception = false;
@@ -326,10 +397,23 @@ export var set = function (string) {
 };
 
 /**
+@method invalidateCache
+iframe内からのNG追加後に親ウィンドウ側のキャッシュを無効化し、
+共有configから最新のNGリストを再読み込みさせるために使用する。
+*/
+export var invalidateCache = function () {
+  _ng = null;
+};
+
+/**
 @method add
 @param {String} string
 */
 export var add = function (string) {
+  // _ng が未初期化の場合は get() で初期化する
+  // 最初のNG登録時に _ng は null のままなので、明示的に初期化が必要
+  get();
+
   _config.setString(string + "\n" + _config.getString());
   const addNg = parse(string);
   _config.set([..._config.get()].concat([...addNg]));
@@ -348,7 +432,7 @@ export var add = function (string) {
 */
 const _checkWord = function (
   { type, reg, word },
-  { all, name, mail, id, slip, mes, title, url, resCount }
+  { all, name, mail, id, slip, mes, title, url, resCount },
 ) {
   if (
     (type === TYPE.REG_EXP && reg.test(all)) ||
@@ -358,8 +442,10 @@ const _checkWord = function (
     (type === TYPE.REG_EXP_SLIP && slip != null && reg.test(slip)) ||
     (type === TYPE.REG_EXP_BODY && reg.test(mes)) ||
     (type === TYPE.REG_EXP_TITLE && reg.test(title)) ||
+    (type === TYPE.REG_EXP_HIGHLIGHT_TITLE && reg.test(title)) ||
     (type === TYPE.REG_EXP_URL && reg.test(url)) ||
     (type === TYPE.TITLE && normalize(title).includes(word)) ||
+    (type === TYPE.HIGHLIGHT_TITLE && normalize(title).includes(word)) ||
     (type === TYPE.NAME && normalize(name).includes(word)) ||
     (type === TYPE.MAIL && normalize(mail).includes(word)) ||
     (type === TYPE.ID && (id != null ? id.includes(word) : undefined)) ||
@@ -372,6 +458,46 @@ const _checkWord = function (
     return type;
   }
   return null;
+};
+
+/**
+@method _checkScope
+@param {Object} ngObj
+@param {String} url
+@private
+*/
+const _checkScope = function (ngObj, url) {
+  if (!ngObj.scope) {
+    return true;
+  }
+
+  const { value } = ngObj.scope;
+
+  // URLの形式: http://DOMAIN/test/read.cgi/BOARD/NUM/
+  // スコープの形式例:
+  // - "bbs.eddibb.cc/liveedge" -> ドメインと板の両方を指定
+  // - "bbs.eddibb.cc" -> ドメインのみ指定
+  // - "liveedge" -> 板のみ指定
+
+  // スラッシュが含まれている場合はドメイン/板の形式
+  if (value.includes("/")) {
+    // "bbs.eddibb.cc/liveedge" のような形式
+    // URLに含まれているかチェック
+    return url.includes(value);
+  } else {
+    // スラッシュがない場合は、ドメインまたは板名として扱う
+    // ドメインチェック（://の後に続く）
+    const domainMatch = url.match(/^https?:\/\/([^/]+)/);
+    if (domainMatch && domainMatch[1].includes(value)) {
+      return true;
+    }
+    // 板名チェック（/test/read.cgi/の後に続く）
+    const boardMatch = url.match(/\/test\/read\.cgi\/([^/]+)/);
+    if (boardMatch && boardMatch[1] === value) {
+      return true;
+    }
+    return false;
+  }
 };
 
 /**
@@ -399,7 +525,7 @@ export var isNGBoard = function (
   url,
   resCount,
   exceptionFlg,
-  subType = null
+  subType = null,
 ) {
   if (exceptionFlg == null) {
     exceptionFlg = false;
@@ -420,13 +546,19 @@ export var isNGBoard = function (
       ![
         TYPE.REG_EXP,
         TYPE.REG_EXP_TITLE,
+        TYPE.REG_EXP_HIGHLIGHT_TITLE,
         TYPE.TITLE,
+        TYPE.HIGHLIGHT_TITLE,
         TYPE.WORD,
         TYPE.REG_EXP_URL,
         TYPE.URL,
         TYPE.RES_COUNT,
       ].includes(n.type)
     ) {
+      continue;
+    }
+    // スコープのチェック
+    if (!_checkScope(n, url)) {
       continue;
     }
     // 有効期限のチェック
@@ -453,7 +585,7 @@ export var isNGBoard = function (
     // メイン条件のチェック
     const ngType = _checkWord(n, threadObj);
     if (ngType) {
-      return { type: ngType, name: n.name };
+      return { type: ngType, name: n.name, params: n.params };
     }
   }
   return null;
@@ -474,7 +606,7 @@ export var isNGThread = function (
   title,
   url,
   exceptionFlg,
-  subType = null
+  subType = null,
 ) {
   if (exceptionFlg == null) {
     exceptionFlg = false;
@@ -498,6 +630,14 @@ export var isNGThread = function (
   const now = Date.now();
   for (let n of get()) {
     if (n.type === TYPE.INVALID || n.type === "" || n.word === "") {
+      continue;
+    }
+    // ハイライト用はスキップ
+    if ([TYPE.HIGHLIGHT_TITLE, TYPE.REG_EXP_HIGHLIGHT_TITLE].includes(n.type)) {
+      continue;
+    }
+    // スコープのチェック
+    if (!_checkScope(n, url)) {
       continue;
     }
     // ignoreResNumber用レス番号のチェック

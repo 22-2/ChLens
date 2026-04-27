@@ -1,3 +1,5 @@
+@use "../common";
+
 * {
   box-sizing: border-box;
 }
@@ -36,7 +38,7 @@ header {
   bottom: 0;
   left: 0;
   > pre {
-    @include ascii-art;
+    @include common.ascii-art;
     margin: 0;
     padding: 5px;
     width: 100%;
@@ -59,12 +61,12 @@ form {
 
 input[type="submit"],
 button {
-  @include button;
+  @include common.button;
 }
 
 textarea,
 input:not([type="submit"]) {
-  @include input-text;
+  @include common.input-text;
 }
 
 #main {

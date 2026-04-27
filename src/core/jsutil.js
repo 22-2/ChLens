@@ -24,12 +24,12 @@ export var Anchor = {
 
     str = app.replaceAll(str, "\u30fc", "-");
     str = str.replace(Anchor.reg._FW_NUMBER, ($0) =>
-      String.fromCharCode($0.charCodeAt(0) - 65248)
+      String.fromCharCode($0.charCodeAt(0) - 65248),
     );
 
     if (
       !/^(?:&gt;|＞){0,2}([\d]+(?:-\d+)?(?:\s*[,、]\s*\d+(?:-\d+)?)*)$/.test(
-        str
+        str,
       )
     ) {
       return data;
@@ -91,7 +91,7 @@ export var chServerMoveDetect = async function (oldBoardUrl, html) {
 
   //htmlから移転を判定
   const res = new RegExp(
-    `location\\.href="(https?://(\\w+\\.)?5ch\\.net/\\w*/)"`
+    `location\\.href="(https?://(\\w+\\.)?5ch\\.net/\\w*/)"`,
   ).exec(html);
   if (res) {
     let newBoardUrlTmp;
@@ -162,7 +162,7 @@ export var decodeCharReference = (str) =>
         return $span.textContent;
       }
       return $0;
-    }
+    },
   );
 
 //マウスクリックのイベントオブジェクトから、リンク先をどう開くべきかの情報を導く
@@ -200,7 +200,7 @@ export var getHowToOpen = function ({
 export var searchNextThread = async function (
   threadUrlStr,
   threadTitle,
-  resString
+  resString,
 ) {
   const threadUrl = new URL(threadUrlStr);
   const boardUrl = threadUrl.toBoard();
@@ -218,7 +218,7 @@ export var searchNextThread = async function (
       const m = url.match(/(?:https:\/\/)?(?:\w+(\.[25]ch\.net\/.+)|(.+))$/);
       if (
         resString.includes(
-          (left = m[1] != null ? m[1] : m[2]) != null ? left : url
+          (left = m[1] != null ? m[1] : m[2]) != null ? left : url,
         )
       ) {
         score -= 3;
@@ -236,13 +236,13 @@ const wideSlimNormalizeReg = new RegExp(
 \
 \\uff66-\\uff9d\
 ]+`,
-  "g"
+  "g",
 );
 const kataHiraReg = new RegExp(
   `[\
 \\u30a1-\\u30f3\
 ]`,
-  "g"
+  "g",
 );
 // 検索用に全角/半角や大文字/小文字を揃える
 export var normalize = function (str) {
@@ -277,7 +277,7 @@ export var promiseWithState = function (promise) {
     },
     function () {
       state = "rejected";
-    }
+    },
   );
   return {
     isResolved() {
@@ -303,7 +303,7 @@ export var stampToDate = (stamp) => new Date(stamp * 1000);
 
 export var stringToDate = function (string) {
   const date = string.match(
-    /(\d{4})\/(\d{1,2})\/(\d{1,2})(?:\(.\))?\s?(\d{1,2}):(\d\d)(?::(\d\d)(?:\.\d+)?)?/
+    /(\d{4})\/(\d{1,2})\/(\d{1,2})(?:\(.\))?\s?(\d{1,2}):(\d\d)(?::(\d\d)(?:\.\d+)?)?/,
   );
   let flg = false;
   if (date != null) {

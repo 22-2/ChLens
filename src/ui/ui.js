@@ -4,6 +4,7 @@ import ContextMenu from "./ContextMenu.js";
 import Dialog from "./Dialog.js";
 import LazyLoad from "./LazyLoad.ts";
 import MediaContainer from "./MediaContainer.js";
+import Minimap from "./Minimap.js";
 import PopupView from "./PopupView.js";
 import SearchNextThread from "./SearchNextThread.ts";
 import SelectableAccordion from "./SelectableAccordion.ts";
@@ -22,6 +23,7 @@ export {
   Dialog,
   LazyLoad,
   MediaContainer,
+  Minimap,
   PopupView,
   SearchNextThread,
   SelectableAccordion,

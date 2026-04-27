@@ -1,4 +1,4 @@
-import VirtualNotch from "./VirtualNotch";
+import VirtualNotch from "src/ui/VirtualNotch";
 
 // T型のK以外のプロパティを持つ型
 type Omit<T, K> = Pick<T, Exclude<keyof T, K>>;
@@ -68,9 +68,14 @@ export default class Tab {
   constructor(private $element: Element) {
     const $ele = this.$element.addClass("tab");
     const $ul = $__("ul").addClass("tab_tabbar");
+    let lastTabWheel = 0;
     $ul.on("notchedmousewheel", (e: any) => {
       if (app.config.isOn("mousewheel_change_tab")) {
         e.preventDefault();
+
+        const now = Date.now();
+        if (now - lastTabWheel < 50) return;
+        lastTabWheel = now;
 
         const tmp = e.wheelDelta < 0 ? "prev" : "next";
         const next = (this.$element.$("li.tab_selected") || {})[tmp]();
@@ -142,7 +147,7 @@ export default class Tab {
                 type: "responseTabHistory",
                 history,
               },
-              origin
+              origin,
             );
             break;
           case "requestTabBack":
@@ -182,7 +187,7 @@ export default class Tab {
             }
             break;
         }
-      }
+      },
     );
   }
 
@@ -226,7 +231,7 @@ export default class Tab {
       locked = false,
       lazy = false,
       restore = false,
-    }: Partial<AddTabInfo> = {}
+    }: Partial<AddTabInfo> = {},
   ): string {
     title = title === null ? url : title;
 
@@ -308,7 +313,7 @@ export default class Tab {
       const selectedTab = this.getSelected();
       if (selectedTab) {
         const iframe = this.$element.$(
-          `iframe[data-tabid="${selectedTab.tabId}"]`
+          `iframe[data-tabid="${selectedTab.tabId}"]`,
         );
         if (iframe.getAttr("src") !== selectedTab.url) {
           iframe.src = selectedTab.url;

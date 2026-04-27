@@ -1,12 +1,11 @@
-import Board from "./Board.js";
-import Cache from "./Cache.js";
-import { Request } from "./HTTP.ts";
+import { ChURL } from "../../packages/ch-lib/src/index";
+import { container } from "../service-container/index";
+import { Request } from "./HTTP";
 import {
   chServerMoveDetect,
   decodeCharReference,
   removeNeedlessFromTitle,
 } from "./jsutil.js";
-import { URL } from "./URL.ts";
 
 /**
 @class Thread
@@ -15,7 +14,7 @@ import { URL } from "./URL.ts";
 */
 export default class Thread {
   constructor(url) {
-    this.url = new URL(url);
+    this.url = new ChURL(url);
     this.title = null;
     this.res = null;
     this.message = null;
@@ -25,17 +24,18 @@ export default class Thread {
 
   get(forceUpdate, progress) {
     const getCachedInfo = (async () => {
-      if (["shitaraba.net", "machi.to"].includes(this.tsld)) {
-        try {
-          return {
-            status: "success",
-            cachedInfo: await Board.getCachedResCount(this.url),
-          };
-        } catch (error2) {
-          return { status: "none" };
+      try {
+        const cachedInfo = await container.board.getCachedResCount(this.url);
+        return {
+          status: "success",
+          cachedInfo,
+        };
+      } catch (error2) {
+        if (error2.message === "板のスレ一覧にそのスレが存在しません") {
+          return { status: "not_found" };
         }
+        return { status: "none" };
       }
-      return { status: "none" };
     })();
 
     return new Promise(async (resolve, reject) => {
@@ -48,14 +48,14 @@ export default class Thread {
       }
       let { path: xhrPath, charset: xhrCharset } = xhrInfo;
 
-      const cache = new Cache(xhrPath);
+      const cache = container.cache.getCache(xhrPath);
       let hasCache = false;
       let deltaFlg = false;
       let readcgiVer = 5;
       let noChangeFlg = false;
       const isHtml =
-        (app.config.get("format_2chnet") !== "dat" &&
-          this.tsld === "5ch.net") ||
+        (container.config.get("format_2chnet") !== "dat" &&
+          this.tsld === "5ch.io") ||
         this.tsld === "bbspink.com";
 
       // キャッシュ取得
@@ -65,7 +65,7 @@ export default class Thread {
         hasCache = true;
         if (forceUpdate || Date.now() - cache.lastUpdated > 1000 * 3) {
           // 通信が生じる場合のみ、progressでキャッシュを送出する
-          await app.defer();
+          await container.util.defer();
           const tmp =
             cache.parsed != null
               ? cache.parsed
@@ -91,17 +91,17 @@ export default class Thread {
           ) {
             if (hasCache) {
               deltaFlg = true;
-              xhrPath += +cache.resLength + 1 + "-";
+              xhrPath += +(cache.resLength || 0) + 1 + "-";
             }
             // 2ch.netは差分を-nで取得
           } else if (isHtml) {
             if (hasCache) {
               deltaFlg = true;
-              ({ readcgiVer } = cache);
+              readcgiVer = cache.readcgiVer || 5;
               if (readcgiVer >= 6) {
-                xhrPath += +cache.resLength + 1 + "-n";
+                xhrPath += +(cache.resLength || 0) + 1 + "-n";
               } else {
-                xhrPath += +cache.resLength + "-n";
+                xhrPath += +(cache.resLength || 0) + "-n";
               }
             }
             xhrPath += "?v=pc";
@@ -115,7 +115,7 @@ export default class Thread {
           if (hasCache) {
             if (cache.lastModified != null) {
               request.headers["If-Modified-Since"] = new Date(
-                cache.lastModified
+                cache.lastModified,
               ).toUTCString();
             }
             if (cache.etag != null) {
@@ -127,7 +127,7 @@ export default class Thread {
         }
 
         // パース
-        const { bbsType } = this.url.guessType();
+        const bbsType = this.url.bbsType;
 
         if (
           (response != null ? response.status : undefined) === 200 ||
@@ -146,7 +146,7 @@ export default class Thread {
                 const threadResponse = Thread.parse(
                   this.url,
                   response.body,
-                  +cache.resLength
+                  +(cache.resLength || 0),
                 );
                 // 新しいレスがない場合は最後のレスのみ表示されるのでその場合はキャッシュを送る
                 if (readcgiVer < 6 && threadResponse.res.length === 1) {
@@ -217,7 +217,7 @@ export default class Thread {
 
         //したらば/まちBBS最新レス削除対策
         ({ status, cachedInfo } = await getCachedInfo);
-        if (status === "sucess") {
+        if (status === "success" || status === "sucess") {
           while (thread.res.length < cachedInfo.resCount) {
             thread.res.push({
               name: "あぼーん",
@@ -226,6 +226,8 @@ export default class Thread {
               other: "あぼーん",
             });
           }
+        } else if (status === "not_found") {
+          thread.expired = true;
         }
 
         //コールバック
@@ -249,7 +251,7 @@ export default class Thread {
 
           if (isHtml) {
             const readcgiPlace = response.body.indexOf(
-              '<div class="footer push">read.cgi ver '
+              '<div class="footer push">read.cgi ver ',
             );
             if (readcgiPlace !== -1) {
               readcgiVer = parseInt(response.body.substr(readcgiPlace + 38, 2));
@@ -259,7 +261,7 @@ export default class Thread {
 
             // 2ch(html)のみ
             if (thread.expired) {
-              app.bookmark.updateExpired(this.url.href, true);
+              container.bookmark.updateExpired(this.url.url.href, true);
             }
           }
 
@@ -282,7 +284,7 @@ export default class Thread {
           }
 
           const lastModified = new Date(
-            response.headers["Last-Modified"] || "dummy"
+            response.headers["Last-Modified"] || "dummy",
           ).getTime();
 
           if (Number.isFinite(lastModified)) {
@@ -313,18 +315,20 @@ export default class Thread {
         this.message = "";
 
         //2chでrejectされてる場合は移転を疑う
-        if (this.tsld === "5ch.net" && response) {
+        if (this.tsld === "5ch.io" && response) {
           try {
             const newBoardURL = await chServerMoveDetect(this.url.toBoard());
             //移転検出時
-            const newUrl = new URL(this.url);
-            newUrl.hostname = newBoardURL.hostname;
+            const newUrl = new ChURL(this.url.url.href);
+            newUrl.url.hostname = newBoardURL.hostname;
 
             this.message += `\
 スレッドの読み込みに失敗しました。
 サーバーが移転している可能性が有ります
-(<a href="${app.escapeHtml(app.safeHref(newURL.href))}"
-  class="open_in_rcrx">${app.escapeHtml(newURL.href)}</a>)\
+(<a href="${container.util.escapeHtml(
+              container.util.safeHref(newUrl.url.href),
+            )}"
+  class="open_in_rcrx">${container.util.escapeHtml(newUrl.url.href)}</a>)\
 `;
           } catch (error4) {
             //移転検出出来なかった場合
@@ -360,12 +364,12 @@ URLが間違っているか過去ログに移動せずに削除されていま�
               case "STORAGE IN":
                 var newURL = this.url.href.replace(
                   "/read.cgi/",
-                  "/read_archive.cgi/"
+                  "/read_archive.cgi/",
                 );
                 this.message += `\
 過去ログが存在します
-(<a href="${app.escapeHtml(app.safeHref(newURL))}"
-  class="open_in_rcrx">${app.escapeHtml(newURL)}</a>)\
+(<a href="${container.util.escapeHtml(container.util.safeHref(newURL))}"
+  class="open_in_rcrx">${container.util.escapeHtml(newURL)}</a>)\
 `;
                 break;
             }
@@ -384,12 +388,12 @@ URLが間違っているか過去ログに移動せずに削除されていま�
 
       //ブックマーク更新部
       if (thread != null) {
-        app.bookmark.updateResCount(this.url.href, thread.res.length);
+        container.bookmark.updateResCount(this.url.url.href, thread.res.length);
       }
 
       //dat落ち検出
       if ((response != null ? response.status : undefined) === 203) {
-        app.bookmark.updateExpired(this.url.href, true);
+        container.bookmark.updateExpired(this.url.url.href, true);
       }
     });
   }
@@ -402,49 +406,49 @@ URLが間違っているか過去ログに移動せずに削除されていま�
   */
   static _getXhrInfo(url) {
     const tmp = new RegExp(
-      `^/(?:test|bbs)/read(?:_archive)?\\.cgi/(\\w+)/(\\d+)/(?:(\\d+)/)?$`
-    ).exec(url.pathname);
+      `^/(?:test|bbs)/read(?:_archive)?\\.cgi/(\\w+)/(\\d+)/(?:(\\d+)/)?$`,
+    ).exec(url.url.pathname);
     if (!tmp) {
       return null;
     }
     switch (url.getTsld()) {
       case "machi.to":
         return {
-          path: `${url.origin}/bbs/offlaw.cgi/${tmp[1]}/${tmp[2]}/`,
+          path: `${url.url.origin}/bbs/offlaw.cgi/${tmp[1]}/${tmp[2]}/`,
           charset: "Shift_JIS",
         };
       case "shitaraba.net":
         if (url.isArchive()) {
           return {
-            path: url.href,
+            path: url.url.href,
             charset: "EUC-JP",
           };
         } else {
           return {
-            path: `${url.origin}/bbs/rawmode.cgi/${tmp[1]}/${tmp[2]}/${tmp[3]}/`,
+            path: `${url.url.origin}/bbs/rawmode.cgi/${tmp[1]}/${tmp[2]}/${tmp[3]}/`,
             charset: "EUC-JP",
           };
         }
-      case "5ch.net":
-        if (app.config.get("format_2chnet") === "dat") {
+      case "5ch.io":
+        if (container.config.get("format_2chnet") === "dat") {
           return {
-            path: `${url.origin}/${tmp[1]}/dat/${tmp[2]}.dat`,
+            path: `${url.url.origin}/${tmp[1]}/dat/${tmp[2]}.dat`,
             charset: "Shift_JIS",
           };
         } else {
           return {
-            path: url.href,
+            path: url.url.href,
             charset: "Shift_JIS",
           };
         }
       case "bbspink.com":
         return {
-          path: url.href,
+          path: url.url.href,
           charset: "Shift_JIS",
         };
       default:
         return {
-          path: `${url.origin}/${tmp[1]}/dat/${tmp[2]}.dat`,
+          path: `${url.url.origin}/${tmp[1]}/dat/${tmp[2]}.dat`,
           charset: "Shift_JIS",
         };
     }
@@ -470,8 +474,8 @@ URLが間違っているか過去ログに移動せずに削除されていま�
         } else {
           return Thread._parseJbbs(text);
         }
-      case "5ch.net":
-        if (app.config.get("format_2chnet") === "dat") {
+      case "5ch.io":
+        if (container.config.get("format_2chnet") === "dat") {
           return Thread._parseCh(text);
         } else {
           return Thread._parseNet(text);

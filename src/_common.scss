@@ -1,9 +1,12 @@
+@use "sass:list";
 $z-indexes: (
   "tab-content",
   "selected-tab-content",
+  "minimap",
   "tabbed-view-nav-bar",
   "popup",
   "tabbed-view-overlay",
+  "thread-tooltip",
   "contextmenu",
   "dialog",
   "modal",
@@ -13,7 +16,7 @@ $z-indexes: (
 
 :root {
   @each $name in $z-indexes {
-    --z-index-#{$name}: #{index($z-indexes, $name)};
+    --z-index-#{$name}: #{list.index($z-indexes, $name)};
   }
   --z-index-thumnail-zoom: 20;
 
@@ -206,6 +209,16 @@ $z-indexes: (
           background-image: img(pause_19x19_#{$pause-icon-color});
         }
       }
+      &.button_filter {
+        background-image: img(filter_19x19_#{$icon-color});
+        > ul {
+          background-color: $nav-bar-background-color;
+          border-color: $nav-bar-item-border-color;
+          > li:hover {
+            background: $tool-menu-hover-background;
+          }
+        }
+      }
       &.button_regexp {
         background-image: img(regexp_19x19_#{$icon-color});
         &.regexp {
@@ -273,12 +286,13 @@ $z-indexes: (
     border-bottom: 2px solid hsla(0, 0%, 0%, 0.2);
     z-index: var(--z-index-tabbed-view-nav-bar);
     position: relative;
+    display: flex;
+    align-items: center;
     > label,
     > .button {
-      float: left;
+      flex-shrink: 0;
     }
     > .button,
-    > .breadcrumb,
     > .sort_item_selector,
     > .search_item_selector {
       border-width: 1px;
@@ -371,16 +385,34 @@ $z-indexes: (
         }
       }
     }
+    > .button_filter {
+      position: relative;
+      > ul {
+        position: absolute;
+        top: 19px;
+        left: 0px;
+        list-style-type: none;
+        white-space: nowrap;
+        margin: 0;
+        padding: 0;
+        border: 1px solid;
+        user-select: none;
+        font-size: 14px;
+        cursor: pointer;
+        > li {
+          padding: 5px;
+        }
+      }
+    }
   }
   .breadcrumb {
     list-style-type: none;
-    float: right;
     padding: 0;
     font-size: 14px;
     border-radius: 3px;
     border-color: transparent;
+    display: flex;
     > li {
-      float: left;
       margin: 0 3px;
       > a {
         color: inherit !important;
@@ -508,6 +540,23 @@ $z-indexes: (
     border-collapse: collapse;
     user-select: none;
   }
+  table.thread_list_single_column {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  table.thread_list_single_column col:not(.column_hidden) {
+    width: 100% !important;
+  }
+  table.thread_list_single_column th,
+  table.thread_list_single_column td {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  table.thread_list_single_column img {
+    max-width: 100%;
+    height: auto;
+  }
   tr {
     border-bottom: 1px solid;
     scroll-snap-align: start;
@@ -560,6 +609,14 @@ $z-indexes: (
     padding: 10px;
     text-align: center;
     font-size: 18px;
+  }
+  col.column_hidden {
+    width: 0 !important;
+    display: none;
+  }
+  th.column_hidden,
+  td.column_hidden {
+    display: none !important;
   }
   table[data-table-search-hit-count="0"] > tbody:not(:empty) {
     display: block;

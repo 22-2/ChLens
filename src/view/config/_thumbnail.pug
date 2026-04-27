@@ -101,25 +101,41 @@
       |マウスを重ねた時に拡大表示
       br
       label
-        input.direct(type="checkbox" name="hover_zoom_image")
-        |サムネイル
+        |画像のズーム:
+        select.direct(name="zoom_image_mode")
+          option(value="off") 無効
+          option(value="hover") ホバー
+          option(value="click") クリック
       br
       label
         |拡大率:
-        input.direct(type="range" name="zoom_ratio_image" min="100" max="500" step="5")
-        span#zoom_ratio_image_text
-        |%
+        select.direct(name="zoom_ratio_image")
+          option(value="original") オリジナル
+          option(value="150") 150%
+          option(value="200") 200%
+          option(value="250") 250%
+          option(value="300") 300%
+          option(value="400") 400%
+          option(value="500") 500%
     div
       br
       label
-        input.direct(type="checkbox" name="hover_zoom_video")
-        |動画
+        |動画のズーム:
+        select.direct(name="zoom_video_mode")
+          option(value="off") 無効
+          option(value="hover") ホバー
+          option(value="click") クリック
       br
       label
         |拡大率:
-        input.direct(type="range" name="zoom_ratio_video" min="100" max="500" step="5")
-        span#zoom_ratio_video_text
-        |%
+        select.direct(name="zoom_ratio_video")
+          option(value="original") オリジナル
+          option(value="150") 150%
+          option(value="200") 200%
+          option(value="250") 250%
+          option(value="300") 300%
+          option(value="400") 400%
+          option(value="500") 500%
 
   section
     h2 位置合わせの制御方法
@@ -141,5 +157,5 @@
       br
       label
         |遅延スクロールの待機時間:
-        input.direct.seconds(type="number" name="delay_scroll_time" min="0" max="5000")
+        input.direct.seconds(type="number" name="delay_scroll_time" min="0" max="3000")
         |ms

@@ -1,4 +1,6 @@
 let ThreadContent;
+import MessageProcessor from "../core/MessageProcessor.js";
+import ThreadModel from "../core/ThreadModel.js";
 import MediaContainer from "./MediaContainer.js";
 
 /**
@@ -8,11 +10,8 @@ import MediaContainer from "./MediaContainer.js";
 @param {Element} container
 */
 export default ThreadContent = (function () {
-  let _OVER1000_DATA = undefined;
   ThreadContent = class ThreadContent {
-    static initClass() {
-      _OVER1000_DATA = "Over 1000";
-    }
+    static initClass() {}
 
     /**
     @method constructor
@@ -22,77 +21,19 @@ export default ThreadContent = (function () {
     constructor(url, container) {
       /**
       @property url
-      @type app.URL.URL
+      @type {any}
       */
       this.setNG = this.setNG.bind(this);
       this._chainNG = this._chainNG.bind(this);
       this._chainNgById = this._chainNgById.bind(this);
       this._chainNgBySlip = this._chainNgBySlip.bind(this);
       this._checkNG = this._checkNG.bind(this);
-      this._getNgType = this._getNgType.bind(this);
       this.refreshNG = this.refreshNG.bind(this);
       this.container = container;
       this.url = url;
 
-      /**
-      @property urlStr
-      @type String
-      */
-      this.urlStr = this.url.href;
-
-      /**
-      @property idIndex
-      @type Object
-      */
-      this.idIndex = new Map();
-
-      /**
-      @property slipIndex
-      @type Object
-      */
-      this.slipIndex = new Map();
-
-      /**
-      @property tripIndex
-      @type Object
-      */
-      this.tripIndex = new Map();
-
-      /**
-      @property repIndex
-      @type Object
-      */
-      this.repIndex = new Map();
-
-      /**
-      @property repNgIndex
-      @type Object
-      */
-      this.repNgIndex = new Map();
-
-      /**
-      @property ancIndex
-      @type Object
-      */
-      this.ancIndex = new Map();
-
-      /**
-      @property harmImgIndex
-      @type Array
-      */
-      this.harmImgIndex = new Set();
-
-      /**
-      @property oneId
-      @type null | String
-      */
-      this.oneId = null;
-
-      /**
-      @property over1000ResNum
-      @type Number
-      */
-      this.over1000ResNum = null;
+      this.model = new ThreadModel(url);
+      this.urlStr = this.model.url.href;
 
       /**
       @property _lastScrollInfo
@@ -115,22 +56,8 @@ export default ThreadContent = (function () {
       this._timeoutID = 0;
 
       /**
-      @property _existIdAtFirstRes
-      @type Boolean
-      @private
-      */
-      this._existIdAtFirstRes = false;
-
-      /**
-      @property _existSlipAtFirstRes
-      @type Boolean
-      @private
-      */
-      this._existSlipAtFirstRes = false;
-
-      /**
       @property _hiddenSelectors
-      @type
+      @type {string[] | null}
       @private
       */
       this._hiddenSelectors = null;
@@ -148,48 +75,6 @@ export default ThreadContent = (function () {
       @private
       */
       this._scrollRequestID = 0;
-
-      /**
-      @property _rawResData
-      @type Array
-      @private
-      */
-      this._rawResData = [];
-
-      /**
-      @property _ngIdForChain
-      @type Object
-      @private
-      */
-      this._ngIdForChain = new Set();
-
-      /**
-      @property _ngSlipForChain
-      @type Object
-      @private
-      */
-      this._ngSlipForChain = new Set();
-
-      /**
-      @property _resMessageMap
-      @type Object
-      @private
-      */
-      this._resMessageMap = new Map();
-
-      /**
-      @property _threadTitle
-      @type String|null
-      @private
-      */
-      this._threadTitle = null;
-
-      /**
-      @property _sikiGuardNgIdMap
-      @type Object
-      @private
-      */
-      this._sikiGuardNgIdMap = new Map();
 
       try {
         this.harmfulReg = new RegExp(app.config.get("image_blur_word"));
@@ -211,6 +96,25 @@ export default ThreadContent = (function () {
       this.container.on("scrollfinish", () => {
         this._isScrolling = false;
       });
+    }
+
+    get idIndex() {
+      return this.model.idIndex;
+    }
+    get slipIndex() {
+      return this.model.slipIndex;
+    }
+    get tripIndex() {
+      return this.model.tripIndex;
+    }
+    get repIndex() {
+      return this.model.repIndex;
+    }
+    get repNgIndex() {
+      return this.model.repNgIndex;
+    }
+    get ancIndex() {
+      return this.model.ancIndex;
     }
 
     /**
@@ -236,7 +140,8 @@ export default ThreadContent = (function () {
         if (status !== "success") {
           app.message.send("notify", { message });
         }
-        this._sikiGuardNgIdMap = data;
+        // @ts-ignore
+        this.model._sikiGuardNgIdMap = data;
       }
     }
 
@@ -249,7 +154,7 @@ export default ThreadContent = (function () {
         this._lastScrollInfo.resNum,
         this._lastScrollInfo.animate,
         this._lastScrollInfo.offset,
-        true
+        true,
       );
     }
 
@@ -378,7 +283,6 @@ export default ThreadContent = (function () {
       this._lastScrollInfo.resNum = resNum;
       this._lastScrollInfo.animate = animate;
       this._lastScrollInfo.offset = offset;
-      let loadFlag = false;
 
       target = this.container.children[resNum - 1];
 
@@ -414,7 +318,7 @@ export default ThreadContent = (function () {
       if (target) {
         // 前後に存在する画像を事前にロードする
         if (!rerun) {
-          loadFlag = this._loadNearlyImages(resNum, offset);
+          this._loadNearlyImages(resNum, offset);
         }
 
         // offsetが比率の場合はpxを求める
@@ -496,7 +400,7 @@ export default ThreadContent = (function () {
                   return;
                 }
                 this._scrollRequestID = requestAnimationFrame(_scrollInterval);
-              })
+              }),
             ));
           })();
         } else {
@@ -662,12 +566,12 @@ export default ThreadContent = (function () {
         offset = 0;
       }
       __guard__(this.container.$("article.selected"), (x) =>
-        x.removeClass("selected")
+        x.removeClass("selected"),
       );
 
       if (typeof target === "number") {
         target = this.container.$(
-          `article:nth-child(${target}), article:last-child`
+          `article:nth-child(${target}), article:last-child`,
         );
       }
 
@@ -844,345 +748,74 @@ export default ThreadContent = (function () {
 
       let resNum = this.container.child().length;
       const startResNum = resNum + 1;
-      const { bbsType } = this.url.guessType();
+      const { bbsType, protocol } = this.url.guessType();
       const writtenRes = await app.WriteHistory.getByUrl(this.urlStr);
       this._threadTitle = threadTitle;
 
       const $fragment = $_F();
 
-      for (res of items) {
-        var ngObj, ngType;
-        resNum++;
+      this.model.title = threadTitle;
+      this.model.addItems(items);
 
-        res.num = resNum;
-        res.class = [];
-        var { protocol } = this.url;
+      for (let i = startResNum; i <= this.model.resData.size; i++) {
+        const res = this.model.getRes(i);
+        if (!res) continue;
 
-        res = app.ReplaceStrTxt.replace(this.urlStr, document.title, res);
-
-        if (
-          /(?:\u3000{5}|\u3000\u0020|[^>]\u0020\u3000)(?!<br>|$)/i.test(
-            res.message
-          )
-        ) {
-          res.class.push("aa");
-        }
-
-        for (let writtenHistory of writtenRes) {
-          if (writtenHistory.res === resNum) {
-            res.class.push("written");
-            break;
-          }
-        }
+        const parts = MessageProcessor.decode(res, protocol);
 
         const $article = $__("article");
         const $header = $__("header");
 
         //.num
         const $num = $__("span").addClass("num");
-        $num.textContent = resNum;
+        $num.textContent = res.num;
         $header.addLast($num);
 
         //.name
         const $name = $__("span").addClass("name");
-        if (
-          /^\s*(?:&gt;|\uff1e){0,2}([\d\uff10-\uff19]+(?:[\-\u30fc][\d\uff10-\uff19]+)?(?:\s*,\s*[\d\uff10-\uff19]+(?:[\-\u30fc][\d\uff10-\uff19]+)?)*)\s*$/.test(
-            res.name
-          )
-        ) {
+        if (parts.isNameAnchor) {
           $name.addClass("name_anchor");
         }
-        $name.innerHTML = res.name
-          .replace(/<\/?a[^>]*>/g, "")
-          .replace(
-            /<(?!\/?(?:b|small|font(?: color="?[#a-zA-Z0-9]+"?)?)>)/g,
-            "&lt;"
-          )
-          .replace(/<\/b>\(([^<>]+? [^<>]+?)\)<b>$/, ($0, $1) => {
-            res.slip = $1;
-            if (resNum === 1) {
-              this._existSlipAtFirstRes = true;
-            }
-
-            if (!this.slipIndex.has($1)) {
-              this.slipIndex.set($1, new Set());
-            }
-            this.slipIndex.get($1).add(resNum);
-            return "";
-          })
-          .replace(/<\/b> ?(◆[^<>]+?) ?<b>/, ($0, $1) => {
-            res.trip = $1;
-
-            if (!this.tripIndex.has($1)) {
-              this.tripIndex.set($1, new Set());
-            }
-            this.tripIndex.get($1).add(resNum);
-
-            return `<span class="trip">${$1}</span>`;
-          })
-          .replace(/<\/b>(.*?)<b>/g, '<span class="ob">$1</span>')
-          .replace(
-            /&lt;span[^>]*?>(.*?)&lt;\/span>/g,
-            '<span class="ob">$1</span>'
-          );
+        $name.innerHTML = parts.nameHtml;
         $header.addLast($name);
 
         //.mail
         const $mail = $__("span").addClass("mail");
-        $mail.innerHTML = res.mail.replace(/<.*?(?:>|$)/g, "");
+        $mail.innerHTML = parts.mailHtml;
         $header.addLast($mail);
 
         //.other
         const $other = $__("span").addClass("other");
-        let tmp = res.other
-          //be
-          .replace(
-            /<\/div><div class="be[^>]*?"><a href="(https?:\/\/be\.[25]ch\.net\/user\/\d+?)"[^>]*>(.*?)<\/a>/,
-            '<a class="beid" href="$1" target="_blank">$2</a>'
-          )
-          //タグ除去
-          .replace(/<(?!(?:a class="beid"[^>]*|\/a)>).*?(?:>|$)/g, "")
-          //.id
-          .replace(" ID:???", "ID:???")
-          .replace(
-            /(?:^| |(\d))(ID:(?!\?\?\?)[^ <>"']+|発信元:\d+.\d+.\d+.\d+)/,
-            ($0, $1, $2) => {
-              let fixedId = $2;
-              //末尾●除去
-              if (fixedId.endsWith("\u25cf")) {
-                fixedId = fixedId.slice(0, -1);
-              }
-
-              res.id = fixedId;
-              if (resNum === 1) {
-                this.oneId = fixedId;
-                this._existIdAtFirstRes = true;
-              }
-
-              if (fixedId === this.oneId) {
-                res.class.push("one");
-              }
-
-              if (fixedId.endsWith(".net")) {
-                res.class.push("net");
-              }
-
-              if (!this.idIndex.has(fixedId)) {
-                this.idIndex.set(fixedId, new Set());
-              }
-              this.idIndex.get(fixedId).add(resNum);
-
-              let str = $1 != null ? $1 : "";
-              // slip追加(IDが存在しているとき)
-              if (res.slip != null) {
-                str += `<span class="slip">SLIP:${res.slip}</span>`;
-              }
-              str += `<span class="id">${$2}</span>`;
-              return str;
-            }
-          )
-          //.beid
-          .replace(
-            /(?:^| )(BE:(\d+)\-[A-Z\d]+\(\d+\))/,
-            `<a class="beid" href="${protocol}//be.5ch.net/test/p.php?i=$3" target="_blank">$1</a>`
-          )
-          //.date
-          .replace(
-            /\d{4}\/\d{1,2}\/\d{1,2}\(.\)\s\d{1,2}:\d\d(?::\d\d(?:\.\d+)?)?/,
-            '<time class="date">$&</time>'
-          );
-        // slip追加(IDが存在していないとき)
-        if (res.slip != null && res.id == null) {
-          tmp += `<span class="slip">SLIP:${res.slip}</span>`;
-        }
-        $other.innerHTML = tmp;
+        $other.innerHTML = parts.otherHtml;
         $header.addLast($other);
         $article.addLast($header);
 
-        // スレッド終端の自動追加メッセージの確認
-        if (
-          bbsType === "2ch" &&
-          tmp.startsWith(_OVER1000_DATA) &&
-          !this.over1000ResNum
-        ) {
-          this.over1000ResNum = resNum;
-        }
-
-        //文字色
-        const color = __guard__(
-          res.message.match(/<font color="(.*?)">/i),
-          (x) => x[1]
-        );
-
-        // id, slip, tripが取り終わったタイミングでNG判定を行う
-        // NG判定されるものは、ReplaceStrTxtで置き換え後のテキストなので注意すること
-        if ((ngObj = this._checkNG(res, bbsType))) {
-          res.class.push("ng");
-          ngType = ngObj.type;
-          if (ngObj.name != null) {
-            ngType += ":" + ngObj.name;
-          }
-        }
-
-        // resデータの保管
-        this._rawResData[resNum] = res;
-
-        tmp = res.message
-          //imgタグ変換
-          .replace(/<img src="([\w]+):\/\/(.*?)"[^>]*>/gi, "$1://$2")
-          .replace(/<img src="\/\/(.*?)"[^>]*>/gi, `${protocol}//$1`)
-          //Rock54
-          .replace(
-            /(?:<small[^>]*>&#128064;|<i>&#128064;<\/i>)<br>Rock54: (Caution|Warning)\(([^<>()]+)\) ?.*?(?:<\/small>)?/gi,
-            '<br><div-block class="rock54">&#128064; Rock54: $1($2)</div-block>'
-          )
-          //SLIPが変わったという表示
-          .replace(
-            /<hr>VIPQ2_EXTDAT: ([^<>]+): EXT was configured /i,
-            '<br><div-block class="slipchange">VIPQ2_EXTDAT: $1: EXT configure</div-block>'
-          )
-          //タグ除去
-          .replace(/<(?!(?:br|hr|\/?div-block[^<>]*|\/?b)>).*?(?:>|$)/gi, "")
-          .replace(/<(\/)?div-block([^<>]*)>/g, "<$1div$2>")
-          //URLリンク
-          .replace(
-            /(h)?(ttps?:\/\/(?!img\.[25]ch\.net\/(?:ico|emoji|premium)\/[\w\-_]+\.gif)(?:[a-hj-zA-HJ-Z\d_\-.!~*'();\/?:@=+$,%#]|\&(?!gt;)|[iI](?![dD]:)+)+)/g,
-            '<a href="h$2" target="_blank">$1$2</a>'
-          )
-          //Beアイコン埋め込み表示
-          .replace(
-            new RegExp(
-              `^(?:\\s*sssp|https?)://(img\\.[25]ch\\.net/(?:ico|premium)/[\\w\\-_]+\\.gif)\\s*<br>`
-            ),
-            ($0, $1) => {
-              let needle;
-              if (
-                ((needle = this.url.getTsld()),
-                ["5ch.net", "bbspink.com", "2ch.sc"].includes(needle))
-              ) {
-                return `<img class="beicon" src="/img/dummy_1x1.&[IMG_EXT]" data-src="${protocol}//${$1}"><br>`;
-              }
-              return $0;
-            }
-          )
-          //エモーティコン埋め込み表示
-          .replace(
-            new RegExp(
-              `(?:\\s*sssp|https?)://(img\\.[25]ch\\.net/emoji/[\\w\\-_]+\\.gif)\\s*`,
-              "g"
-            ),
-            ($0, $1) => {
-              let needle;
-              if (
-                ((needle = this.url.getTsld()),
-                ["5ch.net", "bbspink.com", "2ch.sc"].includes(needle))
-              ) {
-                return `<img class="beicon emoticon" src="/img/dummy_1x1.&[IMG_EXT]" data-src="${protocol}//${$1}">`;
-              }
-              return $0;
-            }
-          )
-          //アンカーリンク
-          .replace(app.util.Anchor.reg.ANCHOR, ($0) => {
-            let disabled, disabledReason;
-            const anchor = app.util.Anchor.parseAnchor($0);
-
-            if (anchor.targetCount >= 25) {
-              disabled = true;
-              disabledReason =
-                "指定されたレスの量が極端に多いため、ポップアップを表示しません";
-            } else if (anchor.targetCount === 0) {
-              disabled = true;
-              disabledReason = "指定されたレスが存在しません";
-            } else {
-              disabled = false;
-            }
-
-            //グロ/死ねの返信レス
-            const isThatHarmImg =
-              this.findHarmfulFlag && this.harmfulReg.test(res.message);
-            if (isThatHarmImg) {
-              res.class.push("has_harm_word");
-            }
-
-            //rep_index更新
-            if (!disabled) {
-              for (let segment of anchor.segments) {
-                let target = segment[0];
-                while (target <= segment[1]) {
-                  if (!this.repIndex.has(target)) {
-                    this.repIndex.set(target, new Set());
-                  }
-                  this.repIndex.get(target).add(resNum);
-                  if (isThatHarmImg) {
-                    this.harmImgIndex.add(target);
-                  }
-                  if (!this.ancIndex.has(resNum)) {
-                    this.ancIndex.set(resNum, new Set());
-                  }
-                  this.ancIndex.get(resNum).add(target);
-                  target++;
-                }
-              }
-            }
-
-            return (
-              '<a href="javascript:undefined;" class="anchor' +
-              (disabled
-                ? ` disabled\" data-disabled-reason=\"${disabledReason}\"`
-                : '"') +
-              `>${$0}</a>`
-            );
-          })
-          //IDリンク
-          .replace(
-            /id:(?:[a-hj-z\d_\+\/\.\!]|i(?!d:))+/gi,
-            '<a href="javascript:undefined;" class="anchor_id">$&</a>'
-          );
-
+        // Message
         const $message = $__("div").addClass("message");
-        if (color != null) {
-          $message.style.color = `#${color}`;
-        }
-        $message.innerHTML = tmp;
+        $message.innerHTML = parts.messageHtml;
         $article.addLast($message);
 
-        if (res.class.length > 0) {
+        if (res.class && res.class.length > 0) {
           $article.setClass(...res.class);
         }
-        if (res.id != null) {
-          $article.dataset.id = res.id;
-        }
-        if (res.slip != null) {
-          $article.dataset.slip = res.slip;
-        }
-        if (res.trip != null) {
-          $article.dataset.trip = res.trip;
-        }
-        if (res.class.includes("ng")) {
-          this.setNG($article, ngType);
+        if (res.id) $article.dataset.id = res.id;
+        if (res.slip) $article.dataset.slip = res.slip;
+        if (res.trip) $article.dataset.trip = res.trip;
+
+        if (res.ng) {
+          let type = res.ng.type;
+          if (res.ng.name) type += ":" + res.ng.name;
+          $article.setAttr("ng-type", type);
+          if (app.config.isOn("display_ng")) $article.addClass("disp_ng");
         }
 
         $fragment.addLast($article);
       }
 
       this.updateFragmentIds($fragment, startResNum);
-
       this.container.addLast($fragment);
+      this.updateIds(this.model.resData.size);
 
-      this.updateIds(startResNum);
-
-      // NG判定されたIDとSLIPの連鎖NG
-      if (app.config.isOn("chain_ng_id")) {
-        for (let id of this._ngIdForChain) {
-          this._chainNgById(id);
-        }
-      }
-      if (app.config.isOn("chain_ng_slip")) {
-        for (let slip of this._ngSlipForChain) {
-          this._chainNgBySlip(slip);
-        }
-      }
       // 返信数の更新
       this.updateRepCount();
 
@@ -1191,8 +824,8 @@ export default ThreadContent = (function () {
         await Promise.all(
           Array.from(
             this.container.$$(
-              ".message > a:not(.anchor):not(.thumbnail):not(.has_thumbnail):not(.expandedURL):not(.has_expandedURL)"
-            )
+              ".message > a:not(.anchor):not(.thumbnail):not(.has_thumbnail):not(.expandedURL):not(.has_expandedURL)",
+            ),
           ).map(async (a) => {
             let err, href, link;
             ({ a, link } = await this.checkUrlExpand(a));
@@ -1217,7 +850,7 @@ export default ThreadContent = (function () {
             if (mediaType) {
               this.addThumbnail(a, href, mediaType, res);
             }
-          })
+          }),
         );
         // harmImg更新
         this.updateHarmImages();
@@ -1259,14 +892,19 @@ export default ThreadContent = (function () {
     */
     updateFragmentIds($fragment, startRes) {
       //id, slip, trip更新
-      this.updateId({ startRes, dom: $fragment }, "id", this.idIndex, "");
+      this.updateId({ startRes, dom: $fragment }, "id", this.model.idIndex, "");
       this.updateId(
         { startRes, dom: $fragment },
         "slip",
-        this.slipIndex,
-        "SLIP:"
+        this.model.slipIndex,
+        "SLIP:",
       );
-      this.updateId({ startRes, dom: $fragment }, "trip", this.tripIndex, "");
+      this.updateId(
+        { startRes, dom: $fragment },
+        "trip",
+        this.model.tripIndex,
+        "",
+      );
     }
 
     /**
@@ -1274,23 +912,28 @@ export default ThreadContent = (function () {
     */
     updateIds(endRes) {
       //id, slip, trip更新
-      this.updateId({ endRes, dom: this.container }, "id", this.idIndex, "");
+      this.updateId(
+        { endRes, dom: this.container },
+        "id",
+        this.model.idIndex,
+        "",
+      );
       this.updateId(
         { endRes, dom: this.container },
         "slip",
-        this.slipIndex,
-        "SLIP:"
+        this.model.slipIndex,
+        "SLIP:",
       );
       this.updateId(
         { endRes, dom: this.container },
         "trip",
-        this.tripIndex,
-        ""
+        this.model.tripIndex,
+        "",
       );
 
       //参照関係再構築
       (() => {
-        for (let [resKey, index] of this.repIndex) {
+        for (let [resKey, index] of this.model.repIndex) {
           const res = this.container.child()[resKey - 1];
           if (!res) {
             continue;
@@ -1313,15 +956,21 @@ export default ThreadContent = (function () {
     @method updateRepCount
     */
     updateRepCount() {
-      for (let [resKey, index] of this.repIndex) {
+      for (let [resKey, index] of this.model.repIndex) {
         var ele, newFlg;
         const res = this.container.child()[resKey - 1];
         if (!res) {
           continue;
         }
         let resCount = index.size;
-        if (app.config.isOn("reject_ng_rep") && this.repNgIndex.has(resKey)) {
-          resCount -= this.repNgIndex.get(resKey).size;
+        if (
+          app.config.isOn("reject_ng_rep") &&
+          this.model.repNgIndex.has(resKey)
+        ) {
+          const ngSet = this.model.repNgIndex.get(resKey);
+          if (ngSet) {
+            resCount -= ngSet.size;
+          }
         }
         if ((ele = res.C("rep")[0])) {
           newFlg = false;
@@ -1334,7 +983,7 @@ export default ThreadContent = (function () {
         if (resCount > 0) {
           ele.textContent = `返信 (${resCount})`;
           ele.className = resCount >= 5 ? "rep freq" : "rep link";
-          res.dataset.rescount = __range__(1, resCount, true).join(" ");
+          res.dataset.rescount = Array.from(index).join(" ");
           if (newFlg) {
             res.C("other")[0].addLast(document.createTextNode(" "), ele);
           }
@@ -1350,21 +999,13 @@ export default ThreadContent = (function () {
     @param {Element} res
     @param {string} ngType
     */
-    setNG(res, ngType) {
-      res.addClass("ng");
+    setNG(resEle, ngType) {
+      resEle.addClass("ng");
       if (app.config.isOn("display_ng")) {
-        res.addClass("disp_ng");
+        resEle.addClass("disp_ng");
       }
-      res.setAttr("ng-type", ngType);
-      const resNum = +res.C("num")[0].textContent;
-      if (this.ancIndex.has(resNum)) {
-        for (let rn of this.ancIndex.get(resNum)) {
-          if (!this.repNgIndex.has(rn)) {
-            this.repNgIndex.set(rn, new Set());
-          }
-          this.repNgIndex.get(rn).add(resNum);
-        }
-      }
+      resEle.setAttr("ng-type", ngType);
+      // Logic for repNgIndex is handled in ThreadModel
     }
 
     /**
@@ -1372,404 +1013,71 @@ export default ThreadContent = (function () {
     @param {Element} res
     @private
     */
-    _chainNG(res) {
-      const resNum = +res.C("num")[0].textContent;
-      if (!this.repIndex.has(resNum)) {
-        return;
-      }
-      for (let r of this.repIndex.get(resNum)) {
-        if (r <= resNum) {
-          continue;
-        }
-        const getRes = this.container.child()[r - 1];
-        if (getRes.hasClass("ng")) {
-          continue;
-        }
-        const rn = +getRes.C("num")[0].textContent;
-        if (app.NG.isIgnoreResNumForAuto(rn, app.NG.TYPE.AUTO_CHAIN)) {
-          continue;
-        }
-        if (
-          app.NG.isThreadIgnoreNgType(
-            this._rawResData[rn],
-            this._threadTitle,
-            this.urlStr,
-            app.NG.TYPE.AUTO_CHAIN
-          )
-        ) {
-          continue;
-        }
-        this.setNG(getRes, app.NG.TYPE.AUTO_CHAIN);
-        // NG連鎖IDの登録
-        if (
-          app.config.isOn("chain_ng_id") &&
-          app.config.isOn("chain_ng_id_by_chain")
-        ) {
-          var id;
-          if ((id = getRes.getAttr("data-id"))) {
-            if (!this._ngIdForChain.has(id)) {
-              this._ngIdForChain.add(id);
-            }
-            this._chainNgById(id);
-          }
-        }
-        // NG連鎖SLIPの登録
-        if (
-          app.config.isOn("chain_ng_slip") &&
-          app.config.isOn("chain_ng_slip_by_chain")
-        ) {
-          var slip;
-          if ((slip = getRes.getAttr("data-slip"))) {
-            if (!this._ngSlipForChain.has(slip)) {
-              this._ngSlipForChain.add(slip);
-            }
-            this._chainNgBySlip(slip);
-          }
-        }
-        this._chainNG(getRes);
-      }
-    }
-
     /**
-    @method _chainNgById
-    @param {String} id
+    @method _chainNG
+    @param {Element} resEle
     @private
     */
+    _chainNG(resEle) {
+      const resNum = +resEle.C("num")[0].textContent;
+      // In ThreadContent, this is called after a manual NG or such.
+      // But we should rely on model and then sync view.
+      this.model._chainNG(resNum);
+      this._syncNgView();
+    }
+
     _chainNgById(id) {
-      // 連鎖IDのNG
-      for (let r of this.container.$$(`article[data-id=\"${id}\"]`)) {
-        if (r.hasClass("ng")) {
-          continue;
-        }
-        const rn = +r.C("num")[0].textContent;
-        if (app.NG.isIgnoreResNumForAuto(rn, app.NG.TYPE.AUTO_CHAIN_ID)) {
-          continue;
-        }
-        if (
-          app.NG.isThreadIgnoreNgType(
-            this._rawResData[rn],
-            this._threadTitle,
-            this.urlStr,
-            app.NG.TYPE.AUTO_CHAIN_ID
-          )
-        ) {
-          continue;
-        }
-        this.setNG(r, app.NG.TYPE.AUTO_CHAIN_ID);
-        // 連鎖NG
-        if (app.config.isOn("chain_ng")) {
-          this._chainNG(r);
-        }
-      }
+      this.model._chainNgById(id);
+      this._syncNgView();
     }
 
-    /**
-    @method _chainNgBySlip
-    @param {String} slip
-    @private
-    */
     _chainNgBySlip(slip) {
-      // 連鎖SLIPのNG
-      for (let r of this.container.$$(`article[data-slip=\"${slip}\"]`)) {
-        if (r.hasClass("ng")) {
-          continue;
-        }
-        const rn = +r.C("num")[0].textContent;
-        if (app.NG.isIgnoreResNumForAuto(rn, app.NG.TYPE.AUTO_CHAIN_SLIP)) {
-          continue;
-        }
-        if (
-          app.NG.isThreadIgnoreNgType(
-            this._rawResData[rn],
-            this._threadTitle,
-            this.urlStr,
-            app.NG.TYPE.AUTO_CHAIN_SLIP
-          )
-        ) {
-          continue;
-        }
-        this.setNG(r, app.NG.TYPE.AUTO_CHAIN_SLIP);
-        // 連鎖NG
-        if (app.config.isOn("chain_ng")) {
-          this._chainNG(r);
+      this.model._chainNgBySlip(slip);
+      this._syncNgView();
+    }
+
+    _syncNgView() {
+      for (const resEle of this.container.$$("article")) {
+        const resNum = +resEle.C("num")[0].textContent;
+        const res = this.model.getRes(resNum);
+        if (!res) continue;
+
+        if (res.ng && !resEle.hasClass("ng")) {
+          let type = res.ng.type;
+          if (res.ng.name) type += ":" + res.ng.name;
+          this.setNG(resEle, type);
         }
       }
     }
 
-    /**
-    @method _checkNG
-    @param {Object} objRes
-    @param {String} bbsType
-    @return {Object|null}
-    @private
-    */
     _checkNG(objRes, bbsType) {
-      let ngObj;
-      if ((ngObj = this._getNgType(objRes, bbsType))) {
-        // NG連鎖IDの登録
-        if (
-          app.config.isOn("chain_ng_id") &&
-          objRes.id != null &&
-          ![app.NG.TYPE.ID, app.NG.TYPE.AUTO_CHAIN_ID].includes(ngObj.type)
-        ) {
-          if (!this._ngIdForChain.has(objRes.id)) {
-            this._ngIdForChain.add(objRes.id);
-          }
-        }
-        // NG連鎖SLIPの登録
-        if (
-          app.config.isOn("chain_ng_slip") &&
-          objRes.slip != null &&
-          ![app.NG.TYPE.SLIP, app.NG.TYPE.AUTO_CHAIN_SLIP].includes(ngObj.type)
-        ) {
-          if (!this._ngSlipForChain.has(objRes.slip)) {
-            this._ngSlipForChain.add(objRes.slip);
-          }
-        }
-      }
-      return ngObj;
-    }
-
-    /**
-    @method _getNgType
-    @param {Object} objRes
-    @param {String} bbsType
-    @return {Object|null}
-    @private
-    */
-    _getNgType(objRes, bbsType) {
-      let ngObj, resMessage;
-      if (this.over1000ResNum != null && objRes.num >= this.over1000ResNum) {
-        return null;
-      }
-
-      // 登録ワードのNG
-      if (
-        (ngObj = app.NG.isNGThread(objRes, this._threadTitle, this.urlStr)) &&
-        !app.NG.isThreadIgnoreNgType(
-          objRes,
-          this._threadTitle,
-          this.urlStr,
-          ngObj.type
-        )
-      ) {
-        return ngObj;
-      }
-
-      if (bbsType === "2ch") {
-        const judgementIdType = app.config.get("how_to_judgment_id");
-        // idなしをNG
-        if (
-          app.config.isOn("nothing_id_ng") &&
-          objRes.id == null &&
-          ((judgementIdType === "first_res" && this._existIdAtFirstRes) ||
-            (judgementIdType === "exists_once" && this.idIndex.size !== 0)) &&
-          !app.NG.isIgnoreResNumForAuto(
-            objRes.num,
-            app.NG.TYPE.AUTO_NOTHING_ID
-          ) &&
-          !app.NG.isThreadIgnoreNgType(
-            objRes,
-            this._threadTitle,
-            this.urlStr,
-            app.NG.TYPE.AUTO_NOTHING_ID
-          )
-        ) {
-          return { type: app.NG.TYPE.AUTO_NOTHING_ID };
-        }
-        // slipなしをNG
-        if (
-          app.config.isOn("nothing_slip_ng") &&
-          objRes.slip == null &&
-          ((judgementIdType === "first_res" && this._existSlipAtFirstRes) ||
-            (judgementIdType === "exists_once" && this.slipIndex.size !== 0)) &&
-          !app.NG.isIgnoreResNumForAuto(
-            objRes.num,
-            app.NG.TYPE.AUTO_NOTHING_SLIP
-          ) &&
-          !app.NG.isThreadIgnoreNgType(
-            objRes,
-            this._threadTitle,
-            this.urlStr,
-            app.NG.TYPE.AUTO_NOTHING_SLIP
-          )
-        ) {
-          return { type: app.NG.TYPE.AUTO_NOTHING_SLIP };
-        }
-      }
-
-      // Siki GuardのNG
-      if (app.config.isOn("use_siki_guard")) {
-        const sikiGuardNgKey = objRes.other.slice(0, 10);
-        const sikiGuardIdSet = this._sikiGuardNgIdMap.get(sikiGuardNgKey);
-        if (sikiGuardIdSet && sikiGuardIdSet.has(objRes.id)) {
-          return { type: app.NG.TYPE.SIKI_GUARD };
-        }
-      }
-
-      // 連鎖IDのNG
-      if (
-        app.config.isOn("chain_ng_id") &&
-        objRes.id != null &&
-        this._ngIdForChain.has(objRes.id) &&
-        !app.NG.isIgnoreResNumForAuto(objRes.num, app.NG.TYPE.AUTO_CHAIN_ID) &&
-        !app.NG.isThreadIgnoreNgType(
-          objRes,
-          this._threadTitle,
-          this.urlStr,
-          app.NG.TYPE.AUTO_CHAIN_ID
-        )
-      ) {
-        return { type: app.NG.TYPE.AUTO_CHAIN_ID };
-      }
-      // 連鎖SLIPのNG
-      if (
-        app.config.isOn("chain_ng_slip") &&
-        objRes.slip != null &&
-        this._ngSlipForChain.has(objRes.slip) &&
-        !app.NG.isIgnoreResNumForAuto(
-          objRes.num,
-          app.NG.TYPE.AUTO_CHAIN_SLIP
-        ) &&
-        !app.NG.isThreadIgnoreNgType(
-          objRes,
-          this._threadTitle,
-          this.urlStr,
-          app.NG.TYPE.AUTO_CHAIN_SLIP
-        )
-      ) {
-        return { type: app.NG.TYPE.AUTO_CHAIN_SLIP };
-      }
-
-      // 連投レスをNG
-      if (app.config.get("repeat_message_ng_count") > 1) {
-        resMessage = objRes.message
-          // アンカーの削除
-          .replace(/<a [^>]*>(?:&gt;){1,2}\d+(?:[-,]\d+)*<\/a>/g, "")
-          // <a>タグの削除
-          .replace(/<\/?a[^>]*>/g, "")
-          // 行末ブランクの削除
-          .replace(/\s+<br>/g, "<br>")
-          // 空行の削除
-          .replace(/^<br>/, "")
-          .replace(/(?:<br>){2,}/g, "<br>")
-          // 前後ブランクの削除
-          .trim();
-        if (!this._resMessageMap.has(resMessage)) {
-          this._resMessageMap.set(resMessage, new Set());
-        }
-        this._resMessageMap.get(resMessage).add(objRes.num);
-        if (
-          this._resMessageMap.get(resMessage).size >=
-            +app.config.get("repeat_message_ng_count") &&
-          !app.NG.isIgnoreResNumForAuto(
-            objRes.num,
-            app.NG.TYPE.AUTO_REPEAT_MESSAGE
-          ) &&
-          !app.NG.isThreadIgnoreNgType(
-            objRes,
-            this._threadTitle,
-            this.urlStr,
-            app.NG.TYPE.AUTO_REPEAT_MESSAGE
-          )
-        ) {
-          return { type: app.NG.TYPE.AUTO_REPEAT_MESSAGE };
-        }
-      }
-
-      // 前方参照をNG
-      if (
-        app.config.isOn("forward_link_ng") &&
-        !app.NG.isIgnoreResNumForAuto(
-          objRes.num,
-          app.NG.TYPE.AUTO_FORWARD_LINK
-        ) &&
-        !app.NG.isThreadIgnoreNgType(
-          objRes,
-          this._threadTitle,
-          this.urlStr,
-          app.NG.TYPE.AUTO_FORWARD_LINK
-        )
-      ) {
-        let ngFlag = false;
-        resMessage = objRes.message
-          // <a>タグの削除
-          .replace(/<\/?a[^>]*>/g, "");
-        const m = resMessage.match(app.util.Anchor.reg.ANCHOR);
-        if (m) {
-          for (let anc of m) {
-            const anchor = app.util.Anchor.parseAnchor(anc);
-            for (let segment of anchor.segments) {
-              let target = segment[0];
-              while (target <= segment[1]) {
-                if (target > objRes.num) {
-                  ngFlag = true;
-                  break;
-                }
-                target++;
-              }
-              if (ngFlag) {
-                break;
-              }
-            }
-            if (ngFlag) {
-              break;
-            }
-          }
-        }
-        if (ngFlag) {
-          return { type: app.NG.TYPE.AUTO_FORWARD_LINK };
-        }
-      }
-
-      return null;
+      return this.model._checkNG(objRes, bbsType);
     }
 
     /**
     @method refreshNG
     */
     refreshNG() {
-      let res;
-      const { bbsType } = this.url.guessType();
-      this._ngIdForChain.clear();
-      this._ngSlipForChain.clear();
-      this._resMessageMap.clear();
-      this.repNgIndex.clear();
-      // NGの解除
-      for (res of this.container.$$("article.ng")) {
-        res.removeClass("ng", "disp_ng");
-        res.removeAttr("ng-type");
-      }
-      // NGの再設定
-      for (res of this.container.$$("article")) {
-        var ngObj;
-        if (res.hasClass("ng")) {
-          continue;
-        }
-        const resNum = +res.C("num")[0].textContent;
-        if ((ngObj = this._checkNG(this._rawResData[resNum], bbsType))) {
-          let ngType = ngObj.type;
-          if (ngObj.name != null) {
-            ngType += ":" + ngObj.name;
+      this.model.refreshNG();
+
+      // NGの解除と再設定
+      for (let resEle of this.container.$$("article")) {
+        const resNum = +resEle.C("num")[0].textContent;
+        const res = this.model.getRes(resNum);
+        if (!res) continue;
+
+        resEle.removeClass("ng", "disp_ng");
+        resEle.removeAttr("ng-type");
+
+        if (res.ng) {
+          let ngType = res.ng.type;
+          if (res.ng.name) {
+            ngType += ":" + res.ng.name;
           }
-          this.setNG(res, ngType);
-          // 連鎖NG
-          if (app.config.isOn("chain_ng") && this.repIndex.has(resNum)) {
-            this._chainNG(res);
-          }
+          this.setNG(resEle, ngType);
         }
       }
-      // NG判定されたIDとSLIPの連鎖NG
-      if (app.config.isOn("chain_ng_id")) {
-        for (let id of this._ngIdForChain) {
-          this._chainNgById(id);
-        }
-      }
-      if (app.config.isOn("chain_ng_slip")) {
-        for (let slip of this._ngSlipForChain) {
-          this._chainNgBySlip(slip);
-        }
-      }
+
       // 返信数の更新
       this.updateRepCount();
       // harmImg更新
@@ -1783,25 +1091,28 @@ export default ThreadContent = (function () {
     */
     updateHarmImages() {
       const imageBlur = app.config.isOn("image_blur");
-      for (let res of this.harmImgIndex) {
-        const ele = this.container.child()[res - 1];
+      for (let resNum of this.model.harmImgIndex) {
+        const ele = this.container.child()[resNum - 1];
         if (!ele) {
           continue;
         }
         let isBlur = false;
-        for (let rep of this.repIndex.get(res)) {
-          const repEle = this.container.child()[rep - 1];
-          if (!repEle) {
-            continue;
+        const repSet = this.model.repIndex.get(resNum);
+        if (repSet) {
+          for (let rep of repSet) {
+            const repEle = this.container.child()[rep - 1];
+            if (!repEle) {
+              continue;
+            }
+            if (!repEle.hasClass("has_harm_word")) {
+              continue;
+            }
+            if (repEle.hasClass("ng")) {
+              continue;
+            }
+            isBlur = true;
+            break;
           }
-          if (!repEle.hasClass("has_harm_word")) {
-            continue;
-          }
-          if (repEle.hasClass("ng")) {
-            continue;
-          }
-          isBlur = true;
-          break;
         }
 
         if (isBlur && !ele.hasClass("has_blur_word")) {
@@ -1890,6 +1201,10 @@ export default ThreadContent = (function () {
           var thumbnailFavicon = $__("img").addClass("favicon");
           thumbnailFavicon.src = "/img/dummy_1x1.&[IMG_EXT]";
           thumbnailFavicon.dataset.src = `https://www.google.com/s2/favicons?domain=${sourceA.hostname}`;
+          thumbnailFavicon.on("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          });
           thumbnailLink.addLast(thumbnailFavicon);
           break;
 
@@ -1907,10 +1222,10 @@ export default ThreadContent = (function () {
             case "video":
               thumbnailLink.style.WebkitFilter = webkitFilter;
               thumbnailLink.style.maxWidth = `${app.config.get(
-                "video_width"
+                "video_width",
               )}px`;
               thumbnailLink.style.maxHeight = `${app.config.get(
-                "video_height"
+                "video_height",
               )}px`;
               if (app.config.isOn("video_controls")) {
                 thumbnailLink.controls = true;
@@ -1938,24 +1253,11 @@ export default ThreadContent = (function () {
         thumbnail.style.height = `${h}px`;
       }
 
-      let sib = sourceA;
-      while (true) {
-        const pre = sib;
-        sib = pre.next();
-        if (sib == null || sib.tagName === "BR") {
-          if (
-            __guard__(sib != null ? sib.next() : undefined, (x) =>
-              x.hasClass("thumbnail")
-            )
-          ) {
-            continue;
-          }
-          pre.addAfter(thumbnail);
-          if (!pre.hasClass("thumbnail")) {
-            pre.addAfter($__("br"));
-          }
-          break;
-        }
+      // サムネイルをレスの一番下（.messageの最後）に追加
+      const messageDiv = sourceA.closest(".message");
+      if (messageDiv) {
+        messageDiv.addLast($__("br"));
+        messageDiv.addLast(thumbnail);
       }
     }
 
@@ -1992,7 +1294,7 @@ export default ThreadContent = (function () {
         if (sib == null || sib.tagName === "BR") {
           if (
             __guard__(sib != null ? sib.next() : undefined, (x) =>
-              x.hasClass("expandedURL")
+              x.hasClass("expandedURL"),
             )
           ) {
             continue;
@@ -2086,13 +1388,4 @@ function __guard__(value, transform) {
   return typeof value !== "undefined" && value !== null
     ? transform(value)
     : undefined;
-}
-function __range__(left, right, inclusive) {
-  let range = [];
-  let ascending = left < right;
-  let end = !inclusive ? right : ascending ? right + 1 : right - 1;
-  for (let i = left; ascending ? i < end : i > end; ascending ? i++ : i--) {
-    range.push(i);
-  }
-  return range;
 }

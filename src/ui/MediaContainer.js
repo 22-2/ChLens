@@ -21,10 +21,55 @@ export default class MediaContainer {
   @method setHoverEvents
   */
   setHoverEvents() {
-    const isImageOn = app.config.isOn("hover_zoom_image");
-    const isVideoOn = app.config.isOn("hover_zoom_video");
-    const imageRatio = app.config.get("zoom_ratio_image") / 100;
-    const videoRatio = app.config.get("zoom_ratio_video") / 100;
+    const imageMode = app.config.get("zoom_image_mode");
+    const videoMode = app.config.get("zoom_video_mode");
+    const isImageHover = imageMode === "hover";
+    const isVideoHover = videoMode === "hover";
+    const isImageClick = imageMode === "click";
+    const isVideoClick = videoMode === "click";
+    const imageRatioConfig = app.config.get("zoom_ratio_image");
+    const videoRatioConfig = app.config.get("zoom_ratio_video");
+    const imageRatio =
+      imageRatioConfig === "original" ? null : imageRatioConfig / 100;
+    const videoRatio =
+      videoRatioConfig === "original" ? null : videoRatioConfig / 100;
+
+    // クリックでトグル表示
+    this.container.on(
+      "click",
+      function (event) {
+        const { target } = event;
+        if (!target.matches(".thumbnail > a > img.image")) {
+          return;
+        }
+        if (isImageClick && target.tagName === "IMG") {
+          event.preventDefault();
+          const thumbnail = target.closest(".thumbnail");
+          if (thumbnail.hasClass("zoom")) {
+            // 縮小
+            thumbnail.removeClass("zoom");
+            target.style.width = null;
+            target.style.maxWidth = `${app.config.get("image_width")}px`;
+            target.style.maxHeight = `${app.config.get("image_height")}px`;
+          } else {
+            // 拡大
+            let zoomWidth;
+            if (imageRatio === null) {
+              zoomWidth = target.naturalWidth;
+            } else {
+              zoomWidth = parseInt(target.offsetWidth * imageRatio);
+            }
+            // 画面の横幅からはみ出さないように調整
+            zoomWidth = Math.min(zoomWidth, window.innerWidth - 20); // 20pxは余裕を持たせたマージン
+            thumbnail.addClass("zoom");
+            target.style.width = `${zoomWidth}px`;
+            target.style.maxWidth = null;
+            target.style.maxHeight = null;
+          }
+        }
+      },
+      true,
+    );
 
     this.container.on(
       "mouseenter",
@@ -33,16 +78,34 @@ export default class MediaContainer {
         if (!target.matches(".thumbnail > a > img.image, .thumbnail > video")) {
           return;
         }
-        if (isImageOn && target.tagName === "IMG") {
-          zoomWidth = parseInt(target.offsetWidth * imageRatio);
-        } else if (isVideoOn && target.tagName === "VIDEO") {
+        // クリックモードの場合はホバーで拡大しない
+        if (isImageClick && target.tagName === "IMG") {
+          return;
+        }
+        if (isVideoClick && target.tagName === "VIDEO") {
+          return;
+        }
+
+        if (isImageHover && target.tagName === "IMG") {
+          if (imageRatio === null) {
+            zoomWidth = target.naturalWidth;
+          } else {
+            zoomWidth = parseInt(target.offsetWidth * imageRatio);
+          }
+          // 画面の横幅からはみ出さないように調整
+          zoomWidth = Math.min(zoomWidth, window.innerWidth - 20); // 20pxは余裕を持たせたマージン
+        } else if (isVideoHover && target.tagName === "VIDEO") {
           // Chromeでmouseenterイベントが複数回発生するのを回避するため
           if ("&[BROWSER]" === "chrome") {
             if (target.style.width !== "") {
               return;
             }
           }
-          zoomWidth = parseInt(target.offsetWidth * videoRatio);
+          if (videoRatio === null) {
+            zoomWidth = target.videoWidth;
+          } else {
+            zoomWidth = parseInt(target.offsetWidth * videoRatio);
+          }
         } else {
           return;
         }
@@ -51,7 +114,7 @@ export default class MediaContainer {
         target.style.maxWidth = null;
         target.style.maxHeight = null;
       },
-      true
+      true,
     );
 
     this.container.on(
@@ -59,11 +122,19 @@ export default class MediaContainer {
       function ({ target }) {
         if (
           !target.matches(".thumbnail > a > img.image, .thumbnail > video") ||
-          ((!isImageOn || target.tagName !== "IMG") &&
-            (!isVideoOn || target.tagName !== "VIDEO"))
+          ((!isImageHover || target.tagName !== "IMG") &&
+            (!isVideoHover || target.tagName !== "VIDEO"))
         ) {
           return;
         }
+        // クリックモードの場合はホバー解除で縮小しない
+        if (isImageClick && target.tagName === "IMG") {
+          return;
+        }
+        if (isVideoClick && target.tagName === "VIDEO") {
+          return;
+        }
+
         target.closest(".thumbnail").removeClass("zoom");
         target.style.width = null;
         if (target.tagName === "IMG") {
@@ -74,7 +145,7 @@ export default class MediaContainer {
           target.style.maxHeight = `${app.config.get("video_height")}px`;
         }
       },
-      true
+      true,
     );
   }
 
@@ -82,11 +153,45 @@ export default class MediaContainer {
   @method setVideoEvents
   */
   setVideoEvents() {
-    // VIDEOの再生/一時停止
-    this.container.on("click", function ({ target }) {
+    const videoMode = app.config.get("zoom_video_mode");
+    const isVideoClick = videoMode === "click";
+    const videoRatioConfig = app.config.get("zoom_ratio_video");
+    const videoRatio =
+      videoRatioConfig === "original" ? null : videoRatioConfig / 100;
+
+    // VIDEOの再生/一時停止とトグル拡大
+    this.container.on("click", function (event) {
+      const { target } = event;
       if (!target.matches(".thumbnail > video:not([data-src])")) {
         return;
       }
+
+      // トグル拡大機能
+      if (isVideoClick) {
+        event.preventDefault();
+        const thumbnail = target.closest(".thumbnail");
+        if (thumbnail.hasClass("zoom")) {
+          // 縮小
+          thumbnail.removeClass("zoom");
+          target.style.width = null;
+          target.style.maxWidth = `${app.config.get("video_width")}px`;
+          target.style.maxHeight = `${app.config.get("video_height")}px`;
+        } else {
+          // 拡大
+          let zoomWidth;
+          if (videoRatio === null) {
+            zoomWidth = target.videoWidth;
+          } else {
+            zoomWidth = parseInt(target.offsetWidth * videoRatio);
+          }
+          thumbnail.addClass("zoom");
+          target.style.width = `${zoomWidth}px`;
+          target.style.maxWidth = null;
+          target.style.maxHeight = null;
+        }
+      }
+
+      // 再生/一時停止
       if (target.preload === "metadata") {
         target.preload = "auto";
       }
@@ -114,7 +219,7 @@ export default class MediaContainer {
         target.on("pause", func);
         target.on("ended", func);
       },
-      true
+      true,
     );
 
     // マウスポインタのリセット
@@ -153,7 +258,7 @@ export default class MediaContainer {
   */
   static setImageBlur(res, blurMode) {
     for (let thumb of res.$$(
-      ".thumbnail[media-type='image'], .thumbnail[media-type='video']"
+      ".thumbnail[media-type='image'], .thumbnail[media-type='video']",
     )) {
       MediaContainer._setImageBlurOne(thumb, blurMode);
     }

@@ -1,7 +1,7 @@
 import { ask as askBoardTitleSolver } from "./BoardTitleSolver.js";
 import { Request } from "./HTTP.ts";
-import { stampToDate, decodeCharReference } from "./jsutil.js";
-import { getProtocol, setProtocol } from "./URL.ts";
+import { decodeCharReference } from "./jsutil.js";
+import { setProtocol } from "./URL.ts";
 
 export default (function () {
   let _parse = undefined;
@@ -74,12 +74,12 @@ export default (function () {
       */
 
     async _read(count) {
-      //{status, body} = await new Request("GET", "https://dig.5ch.net/?keywords=#{encodeURIComponent(@query)}&maxResult=#{count}&json=1",
+      //{status, body} = await new Request("GET", "https://dig.5ch.io/?keywords=#{encodeURIComponent(@query)}&maxResult=#{count}&json=1",
       let result;
       const { status, body } = await new Request(
         "GET",
         `https://ff5ch.syoboi.jp/?q=${encodeURIComponent(this.query)}&alt=rss`,
-        { cache: false }
+        { cache: false },
       ).send();
       if (status !== 200) {
         throw new Error("検索の通信に失敗しました");

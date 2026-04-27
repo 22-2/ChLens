@@ -16,7 +16,7 @@
         div
           input.direct.seconds(type="number" name="auto_load_second" min="0")
           |ms
-        p (最小5000ms、勢いが遅いスレで30000ms未満にするとエラーがでます)
+        p (最小3000ms、勢いが遅いスレで3000ms未満にするとエラーがでます)
         p 板
         div
           input.direct.seconds(type="number" name="auto_load_second_board" min="0")
@@ -38,6 +38,10 @@
       label
         input.direct(type="checkbox" name="auto_bookmark_notify")
         |ブックマークを自動更新しているときに新着レスがあった場合、通知を送る
+      br
+      label
+        input.direct(type="checkbox" name="show_next_unread")
+        |スレッドフッターに未読ブックマークを表示する
 
   section
     h2 自動更新後の移動
@@ -57,3 +61,11 @@
       label
         input.direct(name="auto_load_move" type="radio" value="newest")
         |最終レス
+      label
+        input.direct(name="auto_load_move" type="radio" value="live_style")
+        |ライブチャット風（新着を時系列で表示）
+      div(style="margin-top: 8px;")
+        |ライブチャット風モードの再生速度:
+        input.direct(type="number" name="live_style_playback_rate" min="1" max="10" step="0.5" style="width: 60px; margin: 0 4px;")
+        |倍速
+        span(style="margin-left: 8px; font-size: 0.9em; color: #666;") (新着が多い場合の表示速度)

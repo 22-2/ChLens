@@ -59,6 +59,8 @@ var view = function (browser) {
       .pipe(gulp.dest(output));
 };
 
+// thread_react styles are removed from CSS build per request
+
 var write = function (browser) {
   const output = paths.output[browser] + "/write";
   const sassOptions = Object.assign({}, defaultOptions.sass, {

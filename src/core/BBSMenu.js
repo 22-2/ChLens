@@ -1,239 +1,48 @@
-import Cache from "./Cache.js";
-import { Request } from "./HTTP.ts";
-import { fix as fixUrl, tsld as getTsld } from "./URL.ts";
-
-let bbsmenuOption = null;
-
-export var target = $__("div");
+import { BBSMenuModel } from "./BBSMenuModel";
 
 /**
-@method fetchAll
-@param {Boolean} [forceReload=false]
-*/
-export var fetchAll = async function (forceReload = false) {
-  let menu;
-  const bbsmenu = [];
+ * BBSMenu ファサード
+ * 既存のAPIとの互換性を保ちつつ、内部でBBSMenuModelを使用
+ */
 
-  if (!bbsmenuOption || forceReload) {
-    if (!bbsmenuOption) {
-      bbsmenuOption = new Set();
-    } else {
-      bbsmenuOption.clear();
-    }
-    const tmpOpt = app.config.get("bbsmenu_option").split("\n");
-    for (let opt of tmpOpt) {
-      if (opt === "" || opt.startsWith("//")) {
-        continue;
-      }
-      bbsmenuOption.add(opt);
-    }
-  }
-
-  const bbsmenuUrl = app.config.get("bbsmenu").split("\n");
-  for (let url of bbsmenuUrl) {
-    if (url === "" || url.startsWith("//")) {
-      continue;
-    }
-    try {
-      ({ menu } = await fetch(url, forceReload));
-      bbsmenu.push(...menu);
-    } catch (error) {
-      app.message.send("notify", {
-        html: `板一覧の取得に失敗しました。(<a href="${url}" target="_blank">${url}</a>)`,
-        background_color: "red",
-      });
-    }
-  }
-
-  return { menu: bbsmenu };
-};
+// シングルトンインスタンス
+const _model = new BBSMenuModel();
 
 /**
-@method fetch
-@param {String} url
-@param {Boolean} [force=false]
-*/
-export var fetch = async function (url, force) {
-  //キャッシュ取得
-  let menu, response;
-  const cache = new Cache(url);
-
-  try {
-    await cache.get();
-    if (force) {
-      throw new Error("最新のものを取得するために通信します");
-    }
-    if (
-      Date.now() - cache.lastUpdated >
-      +app.config.get("bbsmenu_update_interval") * 1000 * 60 * 60 * 24
-    ) {
-      throw new Error("キャッシュが期限切れなので通信します");
-    }
-  } catch (error) {
-    //通信
-    const request = new Request("GET", url, {
-      mimeType: "text/plain; charset=Shift_JIS",
-    });
-    if (cache.lastModified != null) {
-      request.headers["If-Modified-Since"] = new Date(
-        cache.lastModified
-      ).toUTCString();
-    }
-
-    if (cache.etag != null) {
-      request.headers["If-None-Match"] = cache.etag;
-    }
-    response = await request.send();
-  }
-
-  if ((response != null ? response.status : undefined) === 200) {
-    menu = parse(response.body);
-
-    //キャッシュ更新
-    cache.data = response.body;
-    cache.lastUpdated = Date.now();
-
-    const lastModified = new Date(
-      response.headers["Last-Modified"] || "dummy"
-    ).getTime();
-
-    if (Number.isFinite(lastModified)) {
-      cache.lastModified = lastModified;
-    }
-    cache.put();
-  } else if (cache.data != null) {
-    menu = parse(cache.data);
-
-    //キャッシュ更新
-    if ((response != null ? response.status : undefined) === 304) {
-      cache.lastUpdated = Date.now();
-      cache.put();
-    }
-  }
-
-  if (!((menu != null ? menu.length : undefined) > 0)) {
-    throw { response };
-  }
-
-  if (
-    (response != null ? response.status : undefined) !== 200 &&
-    (response != null ? response.status : undefined) !== 304 &&
-    (!!response || cache.data == null)
-  ) {
-    throw { response, menu };
-  }
-
-  return { response, menu };
-};
+ * 変更通知用のCallbacks
+ * @deprecated 直接BBSMenuModelのonChangeを使用することを推奨
+ */
+export const onChange = _model.onChange;
 
 /**
-@method get
-@param {Function} Callback
-@param {Boolean} [ForceReload=false]
-*/
-export var get = async function (forceReload = false) {
-  let _updatingPromise, obj;
-  if (_updatingPromise == null) {
-    _updatingPromise = _update(forceReload);
-  }
-  try {
-    obj = await _updatingPromise;
-    obj.status = "success";
-    if (forceReload) {
-      target.emit(new CustomEvent("change", { detail: obj }));
-    }
-  } catch (error) {
-    obj = error;
-    obj.status = "error";
-    if (forceReload) {
-      target.emit(new CustomEvent("change", { detail: obj }));
-    }
-  }
-  return obj;
-};
-
-/**
-@method parse
-@param {String} html
-@return {Array}
-*/
-var parse = function (html) {
-  let regCategoryRes;
-  const regCategory = new RegExp(
-    `<b>(.+?)</b>(?:.*[\\r\\n]+<a\\s.*?>.+?</a>)+`,
-    "gi"
-  );
-  const regBoard = new RegExp(
-    `<a\\shref="?((?:https?:)?//(?!info\\.[25]ch\\.net/|headline\\.bbspink\\.com)\
-(?:\\w+\\.(?:[25]ch\\.net|open2ch\\.net|2ch\\.sc|bbspink\\.com)|(?:\\w+\\.)?machi\\.to)/\\w+/)"?(?:\\s.*?)?>(.+?)</a>`,
-    "gi"
-  );
-  const menu = [];
-  const bbspinkException = bbsmenuOption.has("bbspink.com");
-
-  while ((regCategoryRes = regCategory.exec(html))) {
-    var regBoardRes;
-    const category = {
-      title: regCategoryRes[1],
-      board: [],
-    };
-
-    let subName = null;
-    while ((regBoardRes = regBoard.exec(regCategoryRes[0]))) {
-      const tmpBoardUrl = regBoardRes[1];
-      const boardUrl = tmpBoardUrl.startsWith("//")
-        ? `https:${tmpBoardUrl}`
-        : tmpBoardUrl;
-
-      if (bbsmenuOption.has(getTsld(boardUrl))) {
-        continue;
-      }
-      if (bbspinkException && boardUrl.includes("5ch.net/bbypink")) {
-        continue;
-      }
-      if (!subName) {
-        if (boardUrl.includes("open2ch.net")) {
-          subName = "op";
-        } else if (boardUrl.includes("2ch.sc")) {
-          subName = "sc";
-        } else {
-          subName = "";
-        }
-        if (
-          subName !== "" &&
-          !(
-            category.title.endsWith(`(${subName})`) ||
-            category.title.endsWith(`_${subName}`)
-          )
-        ) {
-          category.title += `(${subName})`;
-        }
-      }
-      if (
-        subName !== "" &&
-        !(
-          regBoardRes[2].endsWith(`(${subName})`) ||
-          regBoardRes[2].endsWith(`_${subName}`)
-        )
-      ) {
-        regBoardRes[2] += `_${subName}`;
-      }
-      category.board.push({
-        url: fixUrl(boardUrl),
-        title: regBoardRes[2],
-      });
-    }
-
-    if (category.board.length > 0) {
-      menu.push(category);
-    }
-  }
-  return menu;
-};
-
-let _updatingPromise = null;
-var _update = async function (forceReload) {
-  const { menu } = await fetchAll(forceReload);
-  _updatingPromise = null;
+ * 複数のURLから板一覧を取得してマージ
+ * @method fetchAll
+ * @param {Boolean} [forceReload=false]
+ * @return {Promise<{menu: Array}>}
+ */
+export const fetchAll = async function (forceReload = false) {
+  const menu = await _model.fetchAll(forceReload);
   return { menu };
+};
+
+/**
+ * 単一のURLから板一覧を取得
+ * @method fetch
+ * @param {String} url
+ * @param {Boolean} [force=false]
+ * @return {Promise<{menu: Array, response?: Object}>}
+ */
+export const fetch = async function (url, force = false) {
+  const menu = await _model.fetchOne(url, force);
+  return { menu };
+};
+
+/**
+ * 板一覧を取得（キャッシュまたは通信）
+ * @method get
+ * @param {Boolean} [forceReload=false]
+ * @return {Promise<Object>}
+ */
+export const get = async function (forceReload = false) {
+  return await _model.get(forceReload);
 };

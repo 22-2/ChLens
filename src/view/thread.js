@@ -10,7 +10,7 @@
     }
   } catch (error) {
     const response = await fetch(
-      "https://readcrx-2.github.io/read.crx-2/textar-min.woff2"
+      "https://readcrx-2.github.io/read.crx-2/textar-min.woff2",
     );
     const blob = await response.blob();
     font = await new Promise(function (resolve) {
@@ -28,7 +28,13 @@
 
 app.viewThread = {};
 
+// ライブスタイルモード用の処理中フラグ
+let isProcessingLiveStyle = false;
+// 初回ロードや手動リロード時に新着を一括表示するかどうか
+let liveStyleShouldBulk = true;
+
 app.boot("/view/thread.html", async function () {
+  liveStyleShouldBulk = true;
   let AANoOverflow, viewUrlStr;
   try {
     viewUrlStr = app.URL.parseQuery(location.search).get("q");
@@ -45,6 +51,7 @@ app.boot("/view/thread.html", async function () {
   const $content = $view.C("content")[0];
   const threadContent = await UI.ThreadContent.init(viewUrl, $content);
   const mediaContainer = new UI.MediaContainer($view);
+  const minimap = new UI.Minimap($view, $content, threadContent);
   const lazyLoad = new UI.LazyLoad($content);
   app.DOMData.set($view, "threadContent", threadContent);
   app.DOMData.set($view, "selectableItemList", threadContent);
@@ -53,7 +60,7 @@ app.boot("/view/thread.html", async function () {
   new app.view.TabContentView($view);
 
   const searchNextThread = new UI.SearchNextThread(
-    $view.C("next_thread_list")[0]
+    $view.C("next_thread_list")[0],
   );
   const popupView = new UI.PopupView($view);
 
@@ -67,18 +74,20 @@ app.boot("/view/thread.html", async function () {
   $view.on(
     "became_expired",
     function () {
-      parent.postMessage({ type: "became_expired" }, location.origin);
+      if (parent !== window)
+        parent.postMessage({ type: "became_expired" }, location.origin);
       return $view.addClass("expired");
     },
-    { once: true }
+    { once: true },
   );
   $view.on(
     "became_over1000",
     function () {
-      parent.postMessage({ type: "became_over1000" }, location.origin);
+      if (parent !== window)
+        parent.postMessage({ type: "became_over1000" }, location.origin);
       return $view.addClass("over1000");
     },
-    { once: true }
+    { once: true },
   );
 
   const write = function (param) {
@@ -94,10 +103,10 @@ app.boot("/view/thread.html", async function () {
       open(
         openUrl,
         undefined,
-        `width=600,height=300,left=${windowX},top=${windowY}`
+        `width=600,height=300,left=${windowX},top=${windowY}`,
       );
     } else if ("&[BROWSER]" === "chrome") {
-      parent.browser.windows.create({
+      (parent.browser || browser).windows.create({
         type: "popup",
         url: openUrl,
         width: 600,
@@ -128,6 +137,114 @@ app.boot("/view/thread.html", async function () {
     popupView.show($popup, e.clientX, e.clientY, that);
   };
 
+  // ライブスタイル用の処理を切り出したヘルパー
+  const processLiveStyle = async (
+    $content,
+    threadContent,
+    forceBulk = false,
+  ) => {
+    // 新着レスを検出
+    const newPosts = [];
+    let foundLastReceived = false;
+    for (const dom of $content.child()) {
+      if (foundLastReceived) {
+        newPosts.push(dom);
+      } else if (dom.matches(".last.received")) {
+        foundLastReceived = true;
+      }
+    }
+
+    // 新着がない場合は何もしない
+    if (newPosts.length === 0) {
+      return false;
+    }
+
+    // 初回ロードや手動リロード時は全てのレスを一括表示
+    if (forceBulk) {
+      // スクロール位置を最初の新着レスへ移動
+      if (newPosts.length > 0) {
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        threadContent.scrollTo(newPosts[0], false);
+      }
+      return true;
+    }
+
+    isProcessingLiveStyle = true;
+    try {
+      const playbackRate = app.config.get("live_style_playback_rate") || 2;
+      const maxDelayMs = 3000; // 最大遅延時間
+      const minDelayMs = 100; // 最小遅延時間
+      // 各レスの投稿時刻を取得
+      const postTimes = newPosts
+        .map((post) => {
+          const timeText = post.C("info")[0]?.C("date")[0]?.textContent;
+          if (!timeText) return null;
+
+          const match = timeText.match(/(\d{2}):(\d{2}):(\d{2})(?:\.(\d{2}))?/);
+          if (!match) return null;
+
+          const hours = parseInt(match[1], 10);
+          const minutes = parseInt(match[2], 10);
+          const seconds = parseInt(match[3], 10);
+          const centiseconds = match[4] ? parseInt(match[4], 10) : 0;
+
+          return hours * 3600 + minutes * 60 + seconds + centiseconds / 100;
+        })
+        .filter(Boolean);
+
+      // display:none で非表示にしてから順次表示する
+      for (const el of newPosts) {
+        try {
+          el.dataset.__live_orig_display = el.style.display || "";
+        } catch (e) {}
+        el.style.display = "none";
+      }
+
+      for (let i = 0; i < newPosts.length; i++) {
+        let delayMs = minDelayMs;
+        if (i > 0 && postTimes[i] != null && postTimes[i - 1] != null) {
+          const timeDiffSec = postTimes[i] - postTimes[i - 1];
+          if (timeDiffSec > 0) {
+            delayMs = Math.min(
+              Math.max((timeDiffSec * 1000) / playbackRate, minDelayMs),
+              maxDelayMs,
+            );
+          }
+        }
+
+        if (i > 0) {
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+        } else {
+          await new Promise((resolve) =>
+            setTimeout(resolve, Math.min(200, minDelayMs)),
+          );
+        }
+
+        const el = newPosts[i];
+
+        // 表示を戻す
+        try {
+          if (
+            el.dataset.__live_orig_display !== undefined &&
+            el.dataset.__live_orig_display !== ""
+          ) {
+            el.style.display = el.dataset.__live_orig_display;
+            delete el.dataset.__live_orig_display;
+          } else {
+            el.style.removeProperty("display");
+          }
+        } catch (e) {}
+
+        // 各レス表示時に末尾へスクロール
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        threadContent.scrollTo(el, false);
+      }
+      return true;
+    } finally {
+      isProcessingLiveStyle = false;
+    }
+  };
+
   const canWrite = () => $view.C("button_write")[0] != null;
 
   const removeWriteButton = function () {
@@ -149,7 +266,18 @@ app.boot("/view/thread.html", async function () {
   //リロード処理
   $view.on("request_reload", async function ({ detail: ex = {} }) {
     let left;
+    // 設定ページ等からの外部NG変更を反映するため、リロード時は
+    // 親ウィンドウ側のNGキャッシュを無効化して共有configから再読み込みさせる
+    parent.app.NG.invalidateCache();
     threadContent.refreshNG();
+    const isAutoReload =
+      typeof ex === "object" &&
+      ex != null &&
+      "isAutoReload" in ex &&
+      ex.isAutoReload === true;
+    if (app.config.get("auto_load_move") === "live_style") {
+      liveStyleShouldBulk = !isAutoReload;
+    }
     //先にread_state更新処理を走らせるために、処理を飛ばす
     await app.defer();
     const jumpResNum = +((left =
@@ -220,10 +348,32 @@ app.boot("/view/thread.html", async function () {
           function () {
             onScroll = true;
           },
-          { once: true }
+          { once: true },
         );
 
-        (defaultScroll = function () {
+        (defaultScroll = async function () {
+          // フィルター適用中または検索中はスクロールをスキップ
+          if (
+            $content.hasClass("filtering") ||
+            $content.hasClass("searching")
+          ) {
+            return;
+          }
+
+          // live_styleモードかつ初回ロード時の処理
+          const moveMode = app.config.get("auto_load_move");
+          if (moveMode === "live_style" && liveStyleShouldBulk) {
+            const handled = await processLiveStyle(
+              $content,
+              threadContent,
+              true,
+            );
+            if (handled) {
+              liveStyleShouldBulk = false;
+            }
+            return;
+          }
+
           const $last = $content.C("last")[0];
           const lastNum = $content
             .$(":scope > article:last-child")
@@ -248,13 +398,13 @@ app.boot("/view/thread.html", async function () {
         //二度目以降のread_state_attached時
         $view.on(
           "read_state_attached",
-          function ({
+          async function ({
             detail: { jumpResNum, requestReloadFlag, loadCount } = {},
           }) {
             // リロード時の一回目の処理
             let $res, dom;
             if (requestReloadFlag && loadCount === 1) {
-              defaultScroll();
+              await defaultScroll();
               return;
             }
 
@@ -266,11 +416,20 @@ app.boot("/view/thread.html", async function () {
             ) {
               moveMode = app.config.get("auto_load_move");
             }
+
+            // フィルター適用中または検索中は自動スクロールをスキップ（位置を維持）
+            if (
+              $content.hasClass("filtering") ||
+              $content.hasClass("searching")
+            ) {
+              return;
+            }
+
             switch (moveMode) {
               case "new":
                 var lastNum = +__guard__(
                   $content.$(":scope > article:last-child"),
-                  (x) => x.C("num")[0].textContent
+                  (x) => x.C("num")[0].textContent,
                 );
                 if (0 < jumpResNum && jumpResNum <= lastNum) {
                   threadContent.select(jumpResNum, false, true, -60);
@@ -319,11 +478,11 @@ app.boot("/view/thread.html", async function () {
               case "latest50":
                 var lastResNum = +__guard__(
                   $content.$(":scope > article.last"),
-                  (x1) => x1.C("num")[0].textContent
+                  (x1) => x1.C("num")[0].textContent,
                 );
                 var latest50ResNum = +__guard__(
                   $content.$(":scope > article.latest50"),
-                  (x2) => x2.C("num")[0].textContent
+                  (x2) => x2.C("num")[0].textContent,
                 );
                 if (latest50ResNum > lastResNum) {
                   threadContent.scrollTo(latest50ResNum, true);
@@ -335,15 +494,33 @@ app.boot("/view/thread.html", async function () {
                   threadContent.scrollTo($res, true);
                 }
                 break;
+              case "live_style":
+                // 処理中なら何もしない
+                if (isProcessingLiveStyle) {
+                  return;
+                }
+
+                const shouldBulk = liveStyleShouldBulk;
+                const handled = await processLiveStyle(
+                  $content,
+                  threadContent,
+                  shouldBulk,
+                );
+                if (shouldBulk && (handled || requestReloadFlag)) {
+                  liveStyleShouldBulk = false;
+                }
+                break;
             }
-          }
+          },
         );
       },
-      { once: true }
+      { once: true },
     );
 
     let jumpResNum = -1;
-    const iframe = parent.$$.$(`iframe[data-url=\"${viewUrlStr}\"]`);
+    const iframe = parent.$$
+      ? parent.$$.$(`iframe[data-url=\"${viewUrlStr}\"]`)
+      : null;
     if (iframe) {
       jumpResNum = +iframe.dataset.writtenResNum;
       if (jumpResNum < 1) {
@@ -375,12 +552,22 @@ app.boot("/view/thread.html", async function () {
       return;
     }
 
+    // リプライリンク上での右クリックは、リプライツリー表示に任せる
+    if (e.type === "contextmenu" && e.target.closest(".rep")) {
+      return;
+    }
+
+    // ID以外での右クリックは無視
+    if (e.type === "contextmenu" && !e.target.closest(".id")) {
+      return;
+    }
+
     // id/参照ポップアップの表示処理との競合回避
     if (
       e.type === "click" &&
       app.config.get("popup_trigger") === "click" &&
       e.target.matches(
-        ".id.link, .id.freq, .anchor_id, .slip.link, .slip.freq, .trip.link, .trip.freq, .rep.link, .rep.freq"
+        ".id.link, .id.freq, .anchor_id, .slip.link, .slip.freq, .trip.link, .trip.freq, .rep.link, .rep.freq",
       )
     ) {
       return;
@@ -396,11 +583,12 @@ app.boot("/view/thread.html", async function () {
       .cloneNode(true);
     $menu.addClass("hidden");
     let altParent = null;
-    if ($article.parent().hasClass("popup")) {
+    const $popup = $article.closest(".popup");
+    if ($popup) {
       altParent = $view.C("popup_area")[0];
       altParent.addLast($menu);
       $menu.setAttr("resnum", $article.C("num")[0].textContent);
-      $article.parent().addClass("has_contextmenu");
+      $popup.addClass("has_contextmenu");
     } else {
       $article.addLast($menu);
     }
@@ -450,7 +638,7 @@ app.boot("/view/thread.html", async function () {
     } else {
       if (
         $article.$(
-          ".thumbnail.image_blur[media-type='image'], .thumbnail.image_blur[media-type='video']"
+          ".thumbnail.image_blur[media-type='image'], .thumbnail.image_blur[media-type='video']",
         ) != null
       ) {
         $menu.C("set_image_blur")[0].remove();
@@ -463,16 +651,138 @@ app.boot("/view/thread.html", async function () {
     if (getSelection().toString().length === 0) {
       $menu.C("copy_selection")[0].remove();
       $menu.C("search_selection")[0].remove();
+      $menu.C("add_selection_to_ngwords")[0].remove();
     }
 
     $menu.removeClass("hidden");
     UI.ContextMenu($menu, e.clientX, e.clientY, altParent);
   };
 
-  $view.on("click", onHeaderMenu);
+  // $view.on("click", onHeaderMenu);
   $view.on("contextmenu", onHeaderMenu);
 
   //レスメニュー表示(内容上)
+  const onMessageMenu = async function (e) {
+    const target = e.target.closest("article > .message");
+    if (target == null) {
+      return;
+    }
+
+    // リプライリンク上での右クリックは、リプライツリー表示に任せる
+    if (e.type === "contextmenu" && e.target.closest(".rep")) {
+      return;
+    }
+
+    if (e.type !== "contextmenu") {
+      return;
+    }
+
+    if (e.target.closest(".thumbnail")) {
+      return;
+    }
+
+    e.preventDefault();
+
+    const $article = target.parent();
+    const $menu = $$.I("template_res_menu")
+      .content.$(".res_menu")
+      .cloneNode(true);
+    $menu.addClass("hidden");
+    let altParent = null;
+    const $popup = $article.closest(".popup");
+    if ($popup) {
+      altParent = $view.C("popup_area")[0];
+      altParent.addLast($menu);
+      $menu.setAttr("resnum", $article.C("num")[0].textContent);
+      $popup.addClass("has_contextmenu");
+    } else {
+      $article.addLast($menu);
+    }
+
+    const $toggleAaMode = $menu.C("toggle_aa_mode")[0];
+    if ($article.parent().hasClass("config_use_aa_font")) {
+      $toggleAaMode.textContent = $article.hasClass("aa")
+        ? "AA表示モードを解除"
+        : "AA表示モードに変更";
+    } else {
+      $toggleAaMode.remove();
+    }
+
+    if ($article.dataset.id == null) {
+      $menu.C("copy_id")[0].remove();
+      $menu.C("add_id_to_ngwords")[0].remove();
+    }
+
+    if ($article.dataset.slip == null) {
+      $menu.C("copy_slip")[0].remove();
+      $menu.C("add_slip_to_ngwords")[0].remove();
+    }
+
+    if ($article.dataset.trip == null) {
+      $menu.C("copy_trip")[0].remove();
+    }
+
+    if (!$article.matches(".popup > article")) {
+      $menu.C("jump_to_this")[0].remove();
+    }
+
+    // 画像にぼかしをかける/画像のぼかしを解除する
+    if (!$article.hasClass("has_image")) {
+      $menu.C("set_image_blur")[0].remove();
+      $menu.C("reset_image_blur")[0].remove();
+    } else {
+      if (
+        $article.$(
+          ".thumbnail.image_blur[media-type='image'], .thumbnail.image_blur[media-type='video']",
+        ) != null
+      ) {
+        $menu.C("set_image_blur")[0].remove();
+      } else {
+        $menu.C("reset_image_blur")[0].remove();
+      }
+    }
+
+    if (!canWrite()) {
+      $menu.C("res_to_this")[0].remove();
+      $menu.C("res_to_this2")[0].remove();
+    }
+
+    if ($article.hasClass("written")) {
+      $menu.C("add_writehistory")[0].remove();
+    } else {
+      $menu.C("del_writehistory")[0].remove();
+    }
+
+    await app.defer();
+    if (getSelection().toString().length === 0) {
+      $menu.C("copy_selection")[0].remove();
+      $menu.C("search_selection")[0].remove();
+      $menu.C("add_selection_to_ngwords")[0].remove();
+    }
+
+    $menu.removeClass("hidden");
+    UI.ContextMenu($menu, e.clientX, e.clientY, altParent);
+  };
+
+  $view.on("click", onMessageMenu);
+  $view.on("contextmenu", onMessageMenu);
+
+  // data-idには ID:xxxx 以外の表記（id:xxxx/発信元:...）も入るため、
+  // NGの型判定で確実に拾える形へ寄せて即時反映の取りこぼしを防ぐ。
+  const normalizeIdForNg = function (idOrIp) {
+    if (typeof idOrIp !== "string") {
+      return "";
+    }
+    const trimmed = idOrIp.trim();
+    if (trimmed === "") {
+      return "";
+    }
+    if (/^id:/i.test(trimmed)) {
+      return trimmed.replace(/^id:/i, "ID:");
+    }
+    return trimmed;
+  };
+
   $view.on("contextmenu", function ({ target }) {
     if (!target.matches("article > .message")) {
       return;
@@ -482,7 +792,9 @@ app.boot("/view/thread.html", async function () {
       onclick(info, tab) {
         const selectedText = getSelection().toString();
         if (selectedText.length > 0) {
-          app.NG.add(selectedText);
+          // iframe内ではapp.NGはローカルのNGモジュールで、refreshNGが参照する
+          // 親ウィンドウ側のNGモジュールとは別インスタンスのため直接更新する
+          parent.app.NG.add(selectedText);
           threadContent.refreshNG();
         }
       },
@@ -490,90 +802,174 @@ app.boot("/view/thread.html", async function () {
   });
 
   //レスメニュー項目クリック
-  $view.on("click", function ({ target }) {
+  $view.on("click", function (e) {
     let addString, exDate, selectedText;
-    if (!target.matches(".res_menu > li")) {
+
+    // TextNode対策: 常にElementへ正規化
+    let $target = e.target;
+    if ($target && $target.nodeType === 3) {
+      $target = $target.parentNode;
+    }
+
+    const $item = $target?.closest?.(".res_menu > li");
+    if (!$item) {
       return;
     }
-    let $res = target.closest("article");
+
+    let $res = $item.closest("article");
     if (!$res) {
-      const rn = target.closest(".res_menu").getAttr("resnum");
-      for (let res of $view.$$(".popup.has_contextmenu > article")) {
-        if (res.C("num")[0].textContent === rn) {
-          $res = res;
-          break;
+      const rn = $item.closest(".res_menu")?.getAttr?.("resnum");
+      if (rn) {
+        for (let res of $view.$$(".popup.has_contextmenu article")) {
+          if (res.C("num")[0].textContent === rn) {
+            $res = res;
+            break;
+          }
+        }
+        if (!$res) {
+          for (let res of $view.$$(".popup article")) {
+            if (res.C("num")[0].textContent === rn) {
+              $res = res;
+              break;
+            }
+          }
         }
       }
     }
 
-    if (target.hasClass("copy_selection")) {
+    // 対象レスを特定できない場合は、例外で全メニューが死ぬのを防ぐ
+    if (!$res) {
+      $item.parent()?.remove?.();
+      return;
+    }
+
+    if ($item.hasClass("copy_res")) {
+      // レスをコピー
+      const threadTitle = document.title;
+      const threadUrl = viewUrlStr;
+      const resNum = $res.C("num")[0].textContent;
+      const name = app.util.decodeCharReference($res.C("name")[0].textContent);
+      const other = app.util.decodeCharReference(
+        $res.C("other")[0].textContent,
+      );
+      const message = $res.C("message")[0].innerText;
+
+      const copyText = `${threadTitle}\n${threadUrl}${resNum}\n${resNum} ${name}  ${other}\n${message}`;
+      app.clipboardWrite(copyText);
+    } else if ($item.hasClass("copy_selection")) {
       selectedText = getSelection().toString();
       if (selectedText.length > 0) {
         document.execCommand("copy");
       }
-    } else if (target.hasClass("search_selection")) {
+    } else if ($item.hasClass("search_selection")) {
       selectedText = getSelection().toString();
       if (selectedText.length > 0) {
         open(`https://www.google.co.jp/search?q=${selectedText}`, "_blank");
       }
-    } else if (target.hasClass("copy_id")) {
+    } else if ($item.hasClass("add_selection_to_ngwords")) {
+      selectedText = getSelection().toString().trim();
+      if (selectedText.length > 0) {
+        // iframe内ではapp.NGはローカルのNGモジュールで、refreshNGが参照する
+        // 親ウィンドウ側のNGモジュールとは別インスタンスのため直接更新する
+        parent.app.NG.add(selectedText);
+        threadContent.refreshNG();
+      }
+    } else if ($item.hasClass("search_id_kyodemo")) {
+      const id = $res.dataset.id.replace("ID:", "");
+      if (id) {
+        const urlObj = new app.URL.URL(viewUrlStr);
+        const pathParts = urlObj.pathname.split("/");
+        const board = pathParts[3];
+        const key = pathParts[4];
+
+        const date = new Date();
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, "0");
+        const dd = String(date.getDate()).padStart(2, "0");
+        const dateStr = `${yyyy}${mm}${dd}`;
+
+        open(
+          `https://www.kyodemo.net/sdemo/b/e_e_${board}/?hi=${id}&key=${key}&date=${dateStr}`,
+          "_blank",
+        );
+      }
+    } else if ($item.hasClass("copy_id")) {
       app.clipboardWrite($res.dataset.id);
-    } else if (target.hasClass("copy_slip")) {
+    } else if ($item.hasClass("copy_slip")) {
       app.clipboardWrite($res.dataset.slip);
-    } else if (target.hasClass("copy_trip")) {
+    } else if ($item.hasClass("copy_trip")) {
       app.clipboardWrite($res.dataset.trip);
-    } else if (target.hasClass("add_id_to_ngwords")) {
-      addString = $res.dataset.id;
+    } else if ($item.hasClass("add_id_to_ngwords")) {
+      addString = normalizeIdForNg($res.dataset.id);
+      if (addString.length === 0) {
+        $item.parent().remove();
+        return;
+      }
       exDate = _getExpireDateString("id");
       if (exDate) {
         addString = `expireDate:${exDate},${addString}`;
       }
-      app.NG.add(addString);
+      // iframe内ではapp.NGはローカルのNGモジュールで、refreshNGが参照する
+      // 親ウィンドウ側のNGモジュールとは別インスタンスのため直接更新する
+      parent.app.NG.add(addString);
       threadContent.refreshNG();
-    } else if (target.hasClass("add_slip_to_ngwords")) {
+    } else if ($item.hasClass("add_slip_to_ngwords")) {
       addString = "Slip:" + $res.dataset.slip;
       exDate = _getExpireDateString("slip");
       if (exDate) {
         addString = `expireDate:${exDate},${addString}`;
       }
-      app.NG.add(addString);
+      parent.app.NG.add(addString);
       threadContent.refreshNG();
-    } else if (target.hasClass("jump_to_this")) {
+    } else if ($item.hasClass("jump_to_this")) {
       threadContent.scrollTo($res, true);
-    } else if (target.hasClass("res_to_this")) {
+    } else if ($item.hasClass("res_to_this")) {
       write({ message: `>>${$res.C("num")[0].textContent}\n` });
-    } else if (target.hasClass("res_to_this2")) {
+    } else if ($item.hasClass("res_to_this2")) {
       write({
         message: `\
 >>${$res.C("num")[0].textContent}
 ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
 `,
       });
-    } else if (target.hasClass("add_writehistory")) {
+    } else if ($item.hasClass("add_writehistory")) {
       threadContent.addWriteHistory($res);
       threadContent.addClassWithOrg($res, "written");
-    } else if (target.hasClass("del_writehistory")) {
+    } else if ($item.hasClass("del_writehistory")) {
       threadContent.removeWriteHistory($res);
       threadContent.removeClassWithOrg($res, "written");
-    } else if (target.hasClass("toggle_aa_mode")) {
+    } else if ($item.hasClass("toggle_aa_mode")) {
       if ($res.hasClass("aa")) {
         AANoOverflow.unsetMiniAA($res);
       } else {
         AANoOverflow.setMiniAA($res);
       }
-    } else if (target.hasClass("res_permalink")) {
+    } else if ($item.hasClass("res_permalink")) {
       open(app.safeHref(viewUrlStr + $res.C("num")[0].textContent));
+    } else if ($item.hasClass("popout_thread")) {
+      const url = `/view/thread.html?${app.URL.buildQuery({ q: viewUrlStr })}`;
+      if (typeof browser !== "undefined" && browser.windows) {
+        browser.windows.create({
+          url,
+          type: "popup",
+          width: 800,
+          height: 600,
+        });
+      } else {
+        open(url, "_blank", "width=800,height=600");
+      }
+      target.parent().remove();
 
       // 画像をぼかす
-    } else if (target.hasClass("set_image_blur")) {
+    } else if ($item.hasClass("set_image_blur")) {
       UI.MediaContainer.setImageBlur($res, true);
 
       // 画像のぼかしを解除する
-    } else if (target.hasClass("reset_image_blur")) {
+    } else if ($item.hasClass("reset_image_blur")) {
       UI.MediaContainer.setImageBlur($res, false);
     }
 
-    target.parent().remove();
+    $item.parent().remove();
   });
 
   // アンカーポップアップ
@@ -644,7 +1040,7 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
         return $popup;
       });
     },
-    true
+    true,
   );
 
   //アンカーリンク
@@ -724,7 +1120,7 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
       //2chタイプの板は誤爆率が高いので、もう少し細かく判定する
       if (srcType === "board" && bbsType === "2ch") {
         //2ch自体の場合の判断はguess_typeを信じて板判定
-        if (targetUrl.getTsld() === "5ch.net") {
+        if (targetUrl.getTsld() === "5ch.io") {
           return true;
         }
         //ブックマークされている場合も板として判定
@@ -790,7 +1186,7 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
         });
       } catch (error1) {}
     },
-    true
+    true,
   );
 
   //IDポップアップ
@@ -800,7 +1196,7 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
       const { target } = e;
       if (
         !target.matches(
-          ".id.link, .id.freq, .anchor_id, .slip.link, .slip.freq, .trip.link, .trip.freq"
+          ".id.link, .id.freq, .anchor_id, .slip.link, .slip.freq, .trip.link, .trip.freq",
         )
       ) {
         return;
@@ -895,7 +1291,7 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
         return $popup;
       });
     },
-    true
+    true,
   );
 
   //リプライポップアップ
@@ -939,7 +1335,71 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
         return $popup;
       });
     },
-    true
+    true,
+  );
+
+  //リプライツリーポップアップ (右クリック)
+  $view.on(
+    "contextmenu",
+    function (e) {
+      const { target } = e;
+      const $rep = target.closest(".rep");
+      if (!$rep) {
+        return;
+      }
+      e.preventDefault();
+
+      popupHelper($rep, e, () => {
+        const $popup = $__("div");
+        const tmp = $content.child();
+        const resNum = +$rep.closest("article").C("num")[0].textContent;
+
+        const buildTree = (currentResNum, visited) => {
+          const replies = threadContent.repIndex.get(currentResNum);
+          if (!replies || replies.size === 0) return null;
+
+          const $container = $__("div").addClass("reply_tree");
+
+          for (let replyResNum of replies) {
+            if (visited.has(replyResNum)) continue;
+            visited.add(replyResNum);
+
+            const replyRes = tmp[replyResNum - 1];
+            if (
+              replyRes.hasClass("ng") &&
+              (!replyRes.hasClass("disp_ng") ||
+                app.config.isOn("reject_ng_rep"))
+            ) {
+              continue;
+            }
+
+            const $clone = replyRes.cloneNode(true);
+            $container.addLast($clone);
+
+            const $subTree = buildTree(replyResNum, visited);
+            if ($subTree) {
+              $subTree.style.marginLeft = "12px";
+              $subTree.style.borderLeft = "2px solid rgba(128, 128, 128, 0.3)";
+              $subTree.style.paddingLeft = "4px";
+              $container.addLast($subTree);
+            }
+          }
+          return $container.child().length > 0 ? $container : null;
+        };
+
+        const $tree = buildTree(resNum, new Set());
+
+        if ($tree) {
+          $popup.addLast($tree);
+        } else {
+          const $div = $__("div").addClass("popup_disabled");
+          $div.textContent = "対象のレスが見つかりません";
+          $popup.addLast($div);
+        }
+        return $popup;
+      });
+    },
+    true,
   );
 
   // 展開済みURLのポップアップ
@@ -975,7 +1435,7 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
         return $popup;
       });
     },
-    true
+    true,
   );
 
   // リンクのコンテキストメニュー
@@ -991,7 +1451,9 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
     app.ContextMenus.update("add_link_to_ngwords", {
       enabled: enableFlg,
       onclick: (info, tab) => {
-        app.NG.add(target.href);
+        // iframe内ではapp.NGはローカルのNGモジュールで、refreshNGが参照する
+        // 親ウィンドウ側のNGモジュールとは別インスタンスのため直接更新する
+        parent.app.NG.add(target.href);
         threadContent.refreshNG();
       },
     });
@@ -1028,7 +1490,7 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
         app.ContextMenus.update("add_link_to_ngwords", {
           enabled: true,
           onclick: (info, tab) => {
-            app.NG.add(target.parent().href);
+            parent.app.NG.add(target.parent().href);
             threadContent.refreshNG();
           },
         });
@@ -1044,7 +1506,7 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
     app.ContextMenus.update("add_media_to_ngwords", {
       title: menuTitle,
       onclick: (info, tab) => {
-        app.NG.add(target.src);
+        parent.app.NG.add(target.src);
         threadContent.refreshNG();
       },
     });
@@ -1098,63 +1560,63 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
   };
 
   //クイックジャンプパネル
-  (function () {
-    const jumpArticleSelector = {
-      ".jump_one": "article:first-child",
-      ".jump_newest": "article:last-child",
-      ".jump_not_read": "article.read + article",
-      ".jump_new": "article.received + article",
-      ".jump_last": "article.last",
-      ".jump_latest50": "article.latest50",
-    };
+  // (function () {
+  //   const jumpArticleSelector = {
+  //     ".jump_one": "article:first-child",
+  //     ".jump_newest": "article:last-child",
+  //     ".jump_not_read": "article.read + article",
+  //     ".jump_new": "article.received + article",
+  //     ".jump_last": "article.last",
+  //     ".jump_latest50": "article.latest50",
+  //   };
 
-    const $jumpPanel = $view.C("jump_panel")[0];
+  //   const $jumpPanel = $view.C("jump_panel")[0];
 
-    $view.on("read_state_attached", function () {
-      const already = {};
-      for (let panelItemSelector in jumpArticleSelector) {
-        var resNum;
-        const targetResSelector = jumpArticleSelector[panelItemSelector];
-        const res = $view.$(targetResSelector);
-        if (res) {
-          resNum = +res.C("num")[0].textContent;
-        }
-        if (res && !already[resNum]) {
-          $jumpPanel.$(panelItemSelector).style.display = "block";
-          already[resNum] = true;
-        } else {
-          $jumpPanel.$(panelItemSelector).style.display = "none";
-        }
-      }
-    });
+  //   $view.on("read_state_attached", function () {
+  //     const already = {};
+  //     for (let panelItemSelector in jumpArticleSelector) {
+  //       var resNum;
+  //       const targetResSelector = jumpArticleSelector[panelItemSelector];
+  //       const res = $view.$(targetResSelector);
+  //       if (res) {
+  //         resNum = +res.C("num")[0].textContent;
+  //       }
+  //       if (res && !already[resNum]) {
+  //         $jumpPanel.$(panelItemSelector).style.display = "block";
+  //         already[resNum] = true;
+  //       } else {
+  //         $jumpPanel.$(panelItemSelector).style.display = "none";
+  //       }
+  //     }
+  //   });
 
-    $jumpPanel.on("click", function ({ target }) {
-      let key, offset, selector;
-      for (key in jumpArticleSelector) {
-        const val = jumpArticleSelector[key];
-        if (target.matches(key)) {
-          selector = val;
-          offset = [".jump_not_read", ".jump_new"].includes(key) ? -100 : 0;
-          break;
-        }
-      }
+  //   $jumpPanel.on("click", function ({ target }) {
+  //     let key, offset, selector;
+  //     for (key in jumpArticleSelector) {
+  //       const val = jumpArticleSelector[key];
+  //       if (target.matches(key)) {
+  //         selector = val;
+  //         offset = [".jump_not_read", ".jump_new"].includes(key) ? -100 : 0;
+  //         break;
+  //       }
+  //     }
 
-      if (!selector) {
-        return;
-      }
-      const $res = $view.$(selector);
+  //     if (!selector) {
+  //       return;
+  //     }
+  //     const $res = $view.$(selector);
 
-      if ($res != null) {
-        if (key === ".jump_last") {
-          let left;
-          offset = (left = $res.attr("last-offset")) != null ? left : offset;
-        }
-        threadContent.scrollTo($res, true, +offset);
-      } else {
-        app.log("warn", "[view_thread] .jump_panel: ターゲットが存在しません");
-      }
-    });
-  })();
+  //     if ($res != null) {
+  //       if (key === ".jump_last") {
+  //         let left;
+  //         offset = (left = $res.attr("last-offset")) != null ? left : offset;
+  //       }
+  //       threadContent.scrollTo($res, true, +offset);
+  //     } else {
+  //       app.log("warn", "[view_thread] .jump_panel: ターゲットが存在しません");
+  //     }
+  //   });
+  // })();
 
   //検索ボックス
   (function () {
@@ -1201,9 +1663,24 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
 
           $content.addClass("searching");
           for (dom of $content.child()) {
+            // 検索対象テキストを取得。（`name` 要素は除外して検索する）
+            let haystackText;
+            try {
+              const clone = dom.cloneNode(true);
+              // クローンから name 要素を削除
+              const names = clone.$$(".name");
+              for (let i = names.length - 1; i >= 0; i--) {
+                names[i].remove();
+              }
+              haystackText = clone.textContent;
+            } catch (e) {
+              // 何らかの理由で失敗したらフォールバックで全文検索（既存挙動）
+              haystackText = dom.textContent;
+            }
+
             if (
-              ((searchRegExp && searchRegExp.test(dom.textContent)) ||
-                app.util.normalize(dom.textContent).includes(query)) &&
+              ((searchRegExp && searchRegExp.test(haystackText)) ||
+                app.util.normalize(haystackText).includes(query)) &&
               (!dom.hasClass("ng") || dom.hasClass("disp_ng"))
             ) {
               dom.addClass("search_hit");
@@ -1235,7 +1712,7 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
         }
 
         $content.emit(new Event("searchfinish"));
-      }
+      },
     );
 
     $searchbox.on("keydown", function ({ key }) {
@@ -1263,6 +1740,137 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
     });
   })();
 
+  //フィルター機能
+  (function () {
+    let currentFilter = "all";
+    let filterStoredScrollTop = null;
+
+    const applyFilter = function (filterType) {
+      let dom,
+        hitCount = 0;
+      const { scrollTop } = $content;
+
+      if (filterType === "all") {
+        // すべて表示
+        $content.removeClass("filtering");
+        $content.removeAttr("data-res-filter-hit-count");
+        const iterable = $view.C("filter_hit");
+        for (let i = iterable.length - 1; i >= 0; i--) {
+          dom = iterable[i];
+          dom.removeClass("filter_hit");
+        }
+        $view.C("hit_count")[0].textContent = "";
+
+        if (typeof filterStoredScrollTop === "number") {
+          $content.scrollTop = filterStoredScrollTop;
+          filterStoredScrollTop = null;
+        }
+      } else {
+        // フィルター適用
+        if (typeof filterStoredScrollTop !== "number") {
+          filterStoredScrollTop = $content.scrollTop;
+        }
+
+        $content.addClass("filtering");
+        for (dom of $content.child()) {
+          let match = false;
+
+          // NGレスは除外
+          if (dom.hasClass("ng") && !dom.hasClass("disp_ng")) {
+            dom.removeClass("filter_hit");
+            continue;
+          }
+
+          switch (filterType) {
+            case "image":
+              // 画像を含むレス
+              match = dom.$(".thumbnail[media-type='image']") != null;
+              break;
+            case "video":
+              // 動画を含むレス
+              match = dom.$(".thumbnail[media-type='video']") != null;
+              break;
+            case "media":
+              // 画像または動画を含むレス
+              match =
+                dom.$(
+                  ".thumbnail[media-type='image'], .thumbnail[media-type='video']",
+                ) != null;
+              break;
+            case "link":
+              // 外部リンクを含むレス
+              match = dom.$(".message a:not(.anchor)") != null;
+              break;
+            case "popular":
+              // 人気レス（5件以上の返信）
+              const resNum = +dom.C("num")[0].textContent;
+              const repCount = threadContent.repIndex.get(resNum);
+              match = repCount != null && repCount.size >= 3;
+              break;
+          }
+
+          if (match) {
+            dom.addClass("filter_hit");
+            hitCount++;
+          } else {
+            dom.removeClass("filter_hit");
+          }
+        }
+
+        $content.dataset.resFilterHitCount = hitCount;
+        $view.C("hit_count")[0].textContent = `${hitCount}hit`;
+
+        if (scrollTop === $content.scrollTop) {
+          $content.emit(new Event("scroll"));
+        }
+      }
+
+      currentFilter = filterType;
+    };
+
+    // フィルターメニューのクリック
+    $view.on("click", function ({ target }) {
+      const closeMenu = () =>
+        document.query(`.button_filter > ul`).addClass("hidden");
+
+      if (target.matches(".button_filter")) {
+        const ul = target.querySelector("ul");
+        if (ul) {
+          return ul.toggleClass("hidden");
+        }
+        return;
+      } else if (!target.closest(".button_filter")) {
+        // クリックが .button_filter の外なら、フィルターメニューを閉じる
+        return closeMenu();
+      }
+
+      let filterType = "all";
+      if (target.hasClass("filter_all")) {
+        filterType = "all";
+      } else if (target.hasClass("filter_image")) {
+        filterType = "image";
+      } else if (target.hasClass("filter_video")) {
+        filterType = "video";
+      } else if (target.hasClass("filter_media")) {
+        filterType = "media";
+      } else if (target.hasClass("filter_link")) {
+        filterType = "link";
+      } else if (target.hasClass("filter_popular")) {
+        filterType = "popular";
+      }
+
+      applyFilter(filterType);
+      closeMenu();
+    });
+
+    // 検索とフィルターの競合を防ぐ
+    $content.on("searchstart", function () {
+      if (currentFilter !== "all") {
+        applyFilter("all");
+      }
+    });
+  })();
+
   //フッター表示処理
   (function () {
     let canBeShown = false;
@@ -1273,7 +1881,7 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
         }
         return updateThreadFooter();
       },
-      { root: $content, threshold: [0, 0.05, 0.5, 0.95, 1.0] }
+      { root: $content, threshold: [0, 0.05, 0.5, 0.95, 1.0] },
     );
     const setObserve = function () {
       observer.disconnect();
@@ -1297,6 +1905,12 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
     const $nextUnread = {
       _ele: $view.C("next_unread")[0],
       show() {
+        // 設定で無効化されている場合は表示しない
+        if (!app.config.isOn("show_next_unread")) {
+          this.hide();
+          return;
+        }
+
         let bookmark, read;
         let next = null;
 
@@ -1319,7 +1933,7 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
               read = __guardMethod__(
                 iframe.contentWindow,
                 "$$",
-                (o) => o.$$(".content > article").length
+                (o) => o.$$(".content > article").length,
               );
             }
 
@@ -1417,17 +2031,42 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
 
     //次スレ検索
     for (let dom of $view.$$(
-      ".button_tool_search_next_thread, .search_next_thread"
+      ".button_tool_search_next_thread, .search_next_thread",
     )) {
       dom.on("click", function () {
         searchNextThread.show();
         searchNextThread.search(
           viewUrlStr,
           document.title,
-          $content.textContent
+          $content.textContent,
         );
       });
     }
+  })();
+
+  // ツールメニューのポップアウトボタン
+  (function () {
+    const $popout = $view.C("button_popout")[0];
+    if (!$popout) return;
+
+    if (window === parent) {
+      $popout.remove();
+      return;
+    }
+
+    $popout.on("click", function () {
+      const url = `/view/thread.html?${app.URL.buildQuery({ q: viewUrlStr })}`;
+      if (typeof browser !== "undefined" && browser.windows) {
+        browser.windows.create({
+          url,
+          type: "popup",
+          width: 800,
+          height: 600,
+        });
+      } else {
+        open(url, "_blank", "width=800,height=600");
+      }
+    });
   })();
 
   //パンくずリスト表示
@@ -1447,11 +2086,214 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
     await app.defer();
     $view.$(".breadcrumb > li > a").style.display = "inline-block";
   })();
+
+  // Gesture implementation
+  if (app.QDollarRecognizer && app.Point) {
+    const recognizer = new app.QDollarRecognizer();
+    // Add Up/Down gestures
+    // Up: (0, 100) -> (0, 0)
+    recognizer.AddGesture("Up", [
+      new app.Point(0, 100, 1),
+      new app.Point(0, 0, 1),
+    ]);
+    // Down: (0, 0) -> (0, 100)
+    recognizer.AddGesture("Down", [
+      new app.Point(0, 0, 1),
+      new app.Point(0, 100, 1),
+    ]);
+
+    const gestureStartThreshold = 12; // ignore short taps so the context menu can open normally
+    let points = [];
+    let isDrawing = false;
+    let gestureCandidate = false;
+    let gestureJustCompleted = false;
+    let detectedGesture = null;
+    let canvas, ctx, label;
+
+    const initCanvas = () => {
+      if (!canvas) {
+        canvas = document.createElement("canvas");
+        canvas.style.position = "fixed";
+        canvas.style.top = "0";
+        canvas.style.left = "0";
+        canvas.style.width = "100%";
+        canvas.style.height = "100%";
+        canvas.style.zIndex = "99999";
+        canvas.style.pointerEvents = "none";
+        document.body.appendChild(canvas);
+        ctx = canvas.getContext("2d");
+        resizeCanvas();
+        window.addEventListener("resize", resizeCanvas);
+      }
+      if (!label) {
+        label = document.createElement("div");
+        label.style.position = "fixed";
+        label.style.top = "50%";
+        label.style.left = "50%";
+        label.style.transform = "translate(-50%, -50%)";
+        label.style.fontSize = "64px";
+        label.style.fontWeight = "bold";
+        label.style.color = "rgba(0, 123, 255, 0.8)";
+        label.style.pointerEvents = "none";
+        label.style.zIndex = "100000";
+        label.style.textShadow =
+          "2px 2px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff";
+        label.style.fontFamily = "sans-serif";
+        document.body.appendChild(label);
+      }
+      canvas.style.display = "block";
+      label.style.display = "block";
+      label.textContent = "";
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.beginPath();
+      ctx.strokeStyle = "rgba(0, 123, 255, 0.8)"; // Blueish
+      ctx.lineWidth = 4;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+    };
+
+    const resizeCanvas = () => {
+      if (canvas) {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+    };
+
+    const drawLine = (x, y) => {
+      if (!ctx) return;
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    };
+
+    const summarizeStroke = (pts) => {
+      if (!pts || pts.length < 2) {
+        return null;
+      }
+      const start = pts[0];
+      const end = pts[pts.length - 1];
+      const totalDx = end.X - start.X;
+      const totalDy = end.Y - start.Y;
+
+      const distance = Math.hypot(totalDx, totalDy);
+      if (distance < 10) {
+        // ignore micro movements
+        return null;
+      }
+      // Simple 45 degree check for vertical gestures
+      if (Math.abs(totalDy) > Math.abs(totalDx)) {
+        return {
+          direction: totalDy < 0 ? "Up" : "Down",
+          distance,
+        };
+      }
+      return null;
+    };
+
+    const stopDrawing = () => {
+      isDrawing = false;
+      gestureCandidate = false;
+      points = [];
+      if (canvas) {
+        canvas.style.display = "none";
+      }
+      if (label) {
+        label.style.display = "none";
+      }
+    };
+
+    document.addEventListener("mousedown", (e) => {
+      if (e.button !== 2) {
+        return;
+      }
+      gestureCandidate = true;
+      isDrawing = false;
+      points = [new app.Point(e.clientX, e.clientY, 1)];
+      detectedGesture = null;
+    });
+
+    document.addEventListener("mousemove", (e) => {
+      if (!gestureCandidate) {
+        return;
+      }
+
+      points.push(new app.Point(e.clientX, e.clientY, 1));
+
+      if (!isDrawing) {
+        const start = points[0];
+        const dx = e.clientX - start.X;
+        const dy = e.clientY - start.Y;
+        if (Math.hypot(dx, dy) < gestureStartThreshold) {
+          return;
+        }
+        initCanvas();
+        ctx.moveTo(start.X, start.Y);
+        isDrawing = true;
+      }
+
+      drawLine(e.clientX, e.clientY);
+
+      // Keep showing the first resolved direction to avoid flicker
+      if (detectedGesture) {
+        return;
+      }
+
+      if (points.length <= 2) {
+        return;
+      }
+
+      const summary = summarizeStroke(points);
+      if (!summary) {
+        return;
+      }
+
+      // For simple directional swipes, vector analysis is more robust than shape recognition.
+      // We skip the recognizer check for Up/Down to improve responsiveness.
+      detectedGesture = summary.direction;
+      label.textContent = summary.direction === "Up" ? "▲ Top" : "▼ Bottom";
+    });
+
+    document.addEventListener("mouseup", (e) => {
+      if (e.button !== 2 || !gestureCandidate) {
+        return;
+      }
+      if (!isDrawing) {
+        gestureCandidate = false;
+        points = [];
+        return;
+      }
+      stopDrawing();
+      // mark that a gesture just completed so the following contextmenu can be suppressed
+      gestureJustCompleted = true;
+      setTimeout(() => (gestureJustCompleted = false), 400);
+      if (detectedGesture === "Up") {
+        $content.scrollTop = 0;
+      } else if (detectedGesture === "Down") {
+        $content.scrollTop = $content.scrollHeight;
+      }
+    });
+
+    document.addEventListener(
+      "contextmenu",
+      (e) => {
+        if (isDrawing || gestureJustCompleted) {
+          // prevent the browser/context menu after a gesture
+          e.preventDefault();
+          e.stopPropagation();
+          stopDrawing();
+          gestureJustCompleted = false;
+        } else {
+          gestureCandidate = false;
+          points = [];
+        }
+      },
+      true,
+    );
+  }
 });
 
 app.viewThread._draw = async function (
   $view,
-  { forceUpdate = false, jumpResNum = -1 } = {}
+  { forceUpdate = false, jumpResNum = -1 } = {},
 ) {
   let ok;
   const threadContent = app.DOMData.get($view, "threadContent");
@@ -1479,9 +2321,30 @@ app.viewThread._draw = async function (
 
     await threadContent.addItem(
       thread.res.slice($view.C("content")[0].child().length),
-      thread.title
+      thread.title,
     );
     loadCount++;
+
+    // スレ情報を更新
+    const resCount = thread.res.length;
+    let momentum = 0;
+    if (thread.res.length > 0 && thread.res[0].other) {
+      try {
+        const firstResDate = app.util.stringToDate(thread.res[0].other);
+        if (firstResDate) {
+          const now = Date.now();
+          const elapsed =
+            (now - firstResDate.valueOf()) / (1000 * 60 * 60 * 24); // 経過日数
+          if (elapsed > 0) {
+            momentum = Math.round((resCount / elapsed) * 10) / 10;
+          }
+        }
+      } catch (e) {}
+    }
+    const $threadInfo = $view.C("thread_info")[0];
+    if ($threadInfo) {
+      $threadInfo.innerHTML = `(レス: <span class="thread_info_num">${resCount}</span>, 勢い: <span class="thread_info_num">${momentum.toLocaleString()}</span>)`;
+    }
     const lazyLoad = app.DOMData.get($view, "lazyload");
     if (!lazyLoad.isManualLoad) {
       lazyLoad.scan();
@@ -1500,31 +2363,28 @@ app.viewThread._draw = async function (
     }
 
     $view.emit(
-      new CustomEvent("view_loaded", { detail: { jumpResNum, loadCount } })
+      new CustomEvent("view_loaded", { detail: { jumpResNum, loadCount } }),
     );
     return thread;
   };
 
-  const thread = new app.Thread($view.dataset.url);
   let threadSetFromCacheBeforeHTTPPromise = Promise.resolve();
-  var threadGetPromise = app.util.promiseWithState(
-    thread.get(forceUpdate, function () {
-      // 通信する前にキャッシュを取得して一旦表示する
-      if (!threadGetPromise.isResolved()) {
-        threadSetFromCacheBeforeHTTPPromise = fn(thread, false);
-      }
-    })
-  );
+  let thread;
+  ok = false;
+
   try {
-    await threadGetPromise.promise;
-  } catch (error) {}
-  try {
+    thread = await window.container.thread.getThread($view.dataset.url, {
+      forceUpdate,
+      onCache: (cachedThread) => {
+        threadSetFromCacheBeforeHTTPPromise = fn(cachedThread, false);
+      },
+    });
+
     await threadSetFromCacheBeforeHTTPPromise;
-  } catch (error1) {}
-  try {
-    await fn(thread, !threadGetPromise.isResolved());
+    await fn(thread, !!thread.message);
     ok = true;
-  } catch (error2) {
+  } catch (error) {
+    console.error(error);
     ok = false;
   }
   $view.removeClass("loading");
@@ -1568,7 +2428,7 @@ app.viewThread._readStateManager = async function ($view) {
     if (
       __guard__(
         (bookmark = app.bookmark.get(viewUrlStr)),
-        (x) => x.readState
+        (x) => x.readState,
       ) != null
     ) {
       ({ readState } = bookmark);
@@ -1593,20 +2453,20 @@ app.viewThread._readStateManager = async function ($view) {
         __guard__($content.C("last")[0], (x) => x.removeClass("last"));
         __guard__($content.C("read")[0], (x1) => x1.removeClass("read"));
         __guard__($content.C("received")[0], (x2) =>
-          x2.removeClass("received")
+          x2.removeClass("received"),
         );
         __guard__($content.C("latest50")[0], (x3) =>
-          x3.removeClass("latest50")
+          x3.removeClass("latest50"),
         );
 
         // キャッシュの内容が古い場合にreadStateの内容の方が大きくなることがあるので
         // その場合は次回の処理に委ねる
         if (readState.last <= contentLength) {
           __guard__(contentChild[readState.last - 1], (x4) =>
-            x4.addClass("last")
+            x4.addClass("last"),
           );
           __guard__(contentChild[readState.last - 1], (x5) =>
-            x5.attr("last-offset", readState.offset)
+            x5.attr("last-offset", readState.offset),
           );
           attachedReadState.last = -1;
         } else {
@@ -1615,7 +2475,7 @@ app.viewThread._readStateManager = async function ($view) {
         }
         if (readState.read <= contentLength) {
           __guard__(contentChild[readState.read - 1], (x6) =>
-            x6.addClass("read")
+            x6.addClass("read"),
           );
           attachedReadState.read = -1;
         } else {
@@ -1623,7 +2483,7 @@ app.viewThread._readStateManager = async function ($view) {
         }
         if (readState.received <= contentLength) {
           __guard__(contentChild[readState.received - 1], (x7) =>
-            x7.addClass("received")
+            x7.addClass("received"),
           );
           attachedReadState.received = -1;
         } else {
@@ -1631,14 +2491,14 @@ app.viewThread._readStateManager = async function ($view) {
         }
         if (contentLength > 50) {
           __guard__(contentChild[contentLength - 51], (x8) =>
-            x8.addClass("latest50")
+            x8.addClass("latest50"),
           );
         }
 
         $view.emit(
           new CustomEvent("read_state_attached", {
             detail: { jumpResNum, requestReloadFlag, loadCount },
-          })
+          }),
         );
         if (attachedReadState.read > 0 && attachedReadState.received > 0) {
           app.message.send("read_state_updated", {
@@ -1661,41 +2521,41 @@ app.viewThread._readStateManager = async function ($view) {
       if (attachedReadState.last > 0) {
         __guard__($content.C("last")[0], (x9) => x9.removeClass("last"));
         __guard__(contentChild[attachedReadState.last - 1], (x10) =>
-          x10.addClass("last")
+          x10.addClass("last"),
         );
         __guard__(contentChild[attachedReadState.last - 1], (x11) =>
-          x11.attr("last-offset", attachedReadState.offset)
+          x11.attr("last-offset", attachedReadState.offset),
         );
       }
       if (attachedReadState.read > 0) {
         __guard__($content.C("read")[0], (x12) => x12.removeClass("read"));
         __guard__(contentChild[attachedReadState.read - 1], (x13) =>
-          x13.addClass("read")
+          x13.addClass("read"),
         );
         tmpReadState.read = attachedReadState.read;
       }
       if (attachedReadState.received > 0) {
         __guard__($content.C("received")[0], (x14) =>
-          x14.removeClass("received")
+          x14.removeClass("received"),
         );
         __guard__(contentChild[attachedReadState.received - 1], (x15) =>
-          x15.addClass("received")
+          x15.addClass("received"),
         );
         tmpReadState.received = attachedReadState.received;
       }
       if (contentLength > 50) {
         __guard__($content.C("latest50")[0], (x16) =>
-          x16.removeClass("latest50")
+          x16.removeClass("latest50"),
         );
         __guard__(contentChild[contentLength - 51], (x17) =>
-          x17.addClass("latest50")
+          x17.addClass("latest50"),
         );
       }
 
       $view.emit(
         new CustomEvent("read_state_attached", {
           detail: { jumpResNum, requestReloadFlag, loadCount },
-        })
+        }),
       );
       if (tmpReadState.read && tmpReadState.received) {
         app.message.send("read_state_updated", {
@@ -1711,7 +2571,7 @@ app.viewThread._readStateManager = async function ($view) {
         }
       }
       requestReloadFlag = false;
-    }
+    },
   );
 
   ({ readState, readStateUpdated } = await getReadState);
@@ -1789,7 +2649,12 @@ app.viewThread._readStateManager = async function ($view) {
     }
   };
 
-  parent.window.on("beforezombie", onBeforezombie);
+  // 親ウィンドウのイベントリスナーか、自身のアンロードイベントか使い分ける
+  if (parent.window.on) {
+    parent.window.on("beforezombie", onBeforezombie);
+  } else {
+    window.addEventListener("beforeunload", onBeforezombie);
+  }
 
   //スクロールされたら定期的にスキャンを実行する
   let doneScroll = false;
@@ -1845,7 +2710,7 @@ app.viewThread._readStateManager = async function ($view) {
     function () {
       doneScroll = true;
     },
-    { passive: true }
+    { passive: true },
   );
   $view.on("request_reload", function () {
     requestReloadFlag = true;
@@ -1858,7 +2723,11 @@ app.viewThread._readStateManager = async function ($view) {
 
   window.on("view_unload", function () {
     clearInterval(scrollWatcher);
-    parent.window.off("beforezombie", onBeforezombie);
+    if (parent.window.off) {
+      parent.window.off("beforezombie", onBeforezombie);
+    } else {
+      window.removeEventListener("beforeunload", onBeforezombie);
+    }
     //ロード中に閉じられた場合、スキャンは行わない
     if ($view.hasClass("loading")) {
       return;

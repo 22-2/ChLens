@@ -1,5 +1,6 @@
 const fs = require("fs-extra");
-const { compiler: c, rollup: _, postcss: p } = require("./plugins");
+const path = require("path");
+const { compiler: c, rolldown: _, postcss: p } = require("./plugins");
 const util = require("./util");
 
 const browsers = ["chrome", "firefox"];
@@ -15,6 +16,8 @@ let paths = {};
       ui: `${i}/ui/ui.js`,
       submitRes: `${i}/write/submit_res.js`,
       submitThread: `${i}/write/submit_thread.js`,
+      threadReact: `${i}/view/thread/index.tsx`,
+      browser: `${i}/view/browser/index.tsx`,
       background: `${i}/background.js`,
       csAddlink: `${i}/cs_addlink.js`,
       view: `${i}/view/*.js`,
@@ -57,6 +60,7 @@ let paths = {};
         "pause_19x19_811.webp",
         "regexp_19x19_333.webp",
         "regexp_19x19_06e.webp",
+        "filter_19x19_333.webp",
 
         "arrow_19x19_ddd_r90.webp",
         "arrow_19x19_ddd_r-90.webp",
@@ -72,6 +76,7 @@ let paths = {};
         "pause_19x19_a33.webp",
         "regexp_19x19_ddd.webp",
         "regexp_19x19_f93.webp",
+        "filter_19x19_ddd.webp",
       ],
       icon: `${i}/image/svg/read.crx.svg`,
       logoBig: `${i}/image/svg/read.crx.svg`,
@@ -104,6 +109,7 @@ const defaultOptions = {
     outputStyle: "compressed",
   },
   postcss: [p.autoprefixer()],
+  postcss_tailwind: [p.tailwindcss(), p.autoprefixer()],
   pug: {
     pug: c.pug,
     locals: manifestJson,
@@ -115,10 +121,18 @@ const defaultOptions = {
   },
 };
 
-defaultOptions.rollup = {
+defaultOptions.rolldown = {
   in: {
-    plugins: [_.ts(defaultOptions.rollupTs)],
-    context: "window",
+    plugins: [],
+    platform: "browser",
+    resolve: {
+      // ソース側の絶対パスimport（src/...）を維持したまま、bundler解決先を明示する。
+      alias: {
+        src: path.resolve(__dirname, "..", "src"),
+        packages: path.resolve(__dirname, "..", "packages"),
+      },
+      extensions: [".tsx", ".ts", ".jsx", ".js"],
+    },
     onwarn: util.rollupOnWarn,
   },
   out: {
