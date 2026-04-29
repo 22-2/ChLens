@@ -11,7 +11,7 @@ import { container } from "src/service-container/index";
 import type { IThread } from "src/service-container/interfaces";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import { ContextMenu, ContextMenuItem } from "src/view/browser/components/ContextMenu";
-import { ThreadListTable, ColumnDef } from "src/view/browser/components/ThreadListTable";
+import { SimpleDataTable, ColumnDef } from "src/view/browser/components/SimpleDataTable";
 import { copyText } from "src/view/browser/utils/utils";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import type { ThreadListPage as ThreadListPageType } from "src/view/browser/types";
@@ -434,7 +434,7 @@ export const ThreadListPage: React.FC<Props> = ({
         />
       )}
       {error && <div className="thread-list-page__notice">{error}</div>}
-      <ThreadListTable
+      <SimpleDataTable
         columns={THREAD_LIST_COLUMNS}
         rows={displayThreads}
         getRowKey={({ thread }) => thread.url}

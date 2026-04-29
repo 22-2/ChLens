@@ -1,5 +1,7 @@
 import React, { useRef } from "react";
 
+// 変更理由: 汎用コンポーネント化のため `ThreadListTable` から名前を変更しました。
+//           既存の動作は保持しつつ、スレッドに限定しない名称に統一します。
 export interface ColumnDef<TRow> {
   key: string;
   header: React.ReactNode;
@@ -23,7 +25,7 @@ interface Props<TRow> {
   onSort?: (key: string) => void;
 }
 
-export function ThreadListTable<TRow>({
+export function SimpleDataTable<TRow>({
   columns,
   rows,
   getRowKey,
@@ -45,7 +47,7 @@ export function ThreadListTable<TRow>({
   };
 
   return (
-    <table className="thread-list">
+    <table className="simple-data-table">
       <thead>
         <tr>
           {columns.map((col) => (
@@ -53,8 +55,8 @@ export function ThreadListTable<TRow>({
               key={col.key}
               className={
                 col.headerClassName
-                  ? `thread-list__th ${col.headerClassName}`
-                  : "thread-list__th"
+                  ? `simple-data-table__th ${col.headerClassName}`
+                  : "simple-data-table__th"
               }
               onClick={
                 col.sortable && onSort ? () => onSort(col.key) : undefined
@@ -74,8 +76,8 @@ export function ThreadListTable<TRow>({
               key={getRowKey(row)}
               className={
                 extraClass
-                  ? `thread-list__row ${extraClass}`
-                  : "thread-list__row"
+                  ? `simple-data-table__row ${extraClass}`
+                  : "simple-data-table__row"
               }
               style={getRowStyle?.(row)}
               onClick={() => {

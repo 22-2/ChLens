@@ -823,22 +823,22 @@ body {
   border-bottom: 1px solid #fde293;
 }
 
-.thread-list {
+.simple-data-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
 }
 
-.thread-list__row {
+.simple-data-table__row {
   cursor: pointer;
   border-bottom: 1px solid #f0f0f0;
 }
 
-.thread-list__row:hover {
+.simple-data-table__row:hover {
   background: #f8f9fa;
 }
 
-.thread-list__num {
+.simple-data-table__num {
   width: 40px;
   padding: 6px 4px 6px 12px;
   text-align: right;
@@ -846,12 +846,12 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-.thread-list__title {
+.simple-data-table__title {
   padding: 6px 8px;
   color: #1a0dab;
 }
 
-.thread-list__count {
+.simple-data-table__count {
   width: 60px;
   padding: 6px 12px 6px 4px;
   text-align: right;
@@ -859,13 +859,13 @@ body {
   white-space: nowrap;
 }
 
-.thread-list__th--heat {
+.simple-data-table__th--heat {
   width: 80px;
   text-align: right;
   padding-right: 12px;
 }
 
-.thread-list__heat {
+.simple-data-table__heat {
   width: 80px;
   padding: 6px 12px 6px 4px;
   text-align: right;
@@ -1055,14 +1055,14 @@ body {
 /* ==========================================================================
    Thread List - ソート可能テーブルヘッダ
    ========================================================================== */
-.thread-list thead {
+.simple-data-table thead {
   position: sticky;
   top: 0;
   background: #f8f9fa;
   z-index: 1;
 }
 
-.thread-list__th {
+.simple-data-table__th {
   padding: 8px 4px;
   text-align: left;
   font-size: 12px;
@@ -1074,50 +1074,49 @@ body {
   border-bottom: 2px solid #e8eaed;
 }
 
-.thread-list__th:hover {
+.simple-data-table__th:hover {
   background: #e8eaed;
 }
 
-.thread-list__th--num {
+.simple-data-table__th--num {
   width: 40px;
   text-align: right;
   padding-right: 8px;
   padding-left: 12px;
 }
 
-.thread-list__th--title {
+.simple-data-table__th--title {
   padding-left: 8px;
 }
 
-.thread-list__th--count {
+.simple-data-table__th--count {
   width: 60px;
   text-align: right;
   padding-right: 12px;
 }
 
-/* NG/ハイライト行 */
-.thread-list__row--ng {
+.simple-data-table__row--ng {
   opacity: 0.4;
 }
 
-.thread-list__row--highlight {
+.simple-data-table__row--highlight {
   font-weight: 600;
   background: #ffffcc;
   color: #222;
 }
 
-.thread-list__row--highlight:hover {
+.simple-data-table__row--highlight:hover {
   background: #fff5a8;
 }
 
-.thread-list__row--highlight .thread-list__num,
-.thread-list__row--highlight .thread-list__title,
-.thread-list__row--highlight .thread-list__count,
-.thread-list__row--highlight .thread-list__heat {
+.simple-data-table__row--highlight .simple-data-table__num,
+.simple-data-table__row--highlight .simple-data-table__title,
+.simple-data-table__row--highlight .simple-data-table__count,
+.simple-data-table__row--highlight .simple-data-table__heat {
   color: inherit;
 }
 
-.thread-list__label {
+.simple-data-table__label {
   display: inline-block;
   margin-left: 6px;
   padding: 1px 6px;
@@ -1776,11 +1775,11 @@ body {
     border-bottom-color: #5f5720;
   }
 
-  .thread-list thead {
+  .simple-data-table thead {
     background: #292a2d;
   }
 
-  .thread-list__th {
+  .simple-data-table__th {
     color: #9aa0a6;
     border-bottom-color: #3c4043;
 
@@ -1789,7 +1788,7 @@ body {
     }
   }
 
-  .thread-list__row {
+  .simple-data-table__row {
     border-bottom-color: #3c4043;
 
     &:hover {
@@ -1797,40 +1796,85 @@ body {
     }
   }
 
-  .thread-list__num {
+  .simple-data-table__num {
     color: #9aa0a6;
   }
 
-  .thread-list__title {
+  .simple-data-table__title {
     color: #8ab4f8;
   }
 
-  .thread-list__count,
-  .thread-list__heat {
+  .simple-data-table__count,
+  .simple-data-table__heat {
     color: #9aa0a6;
   }
 
-  .thread-list__row--highlight {
+  .simple-data-table__row--highlight {
     background: #a56f00;
     color: #000;
   }
 
-  .thread-list__row--highlight:hover {
+  .simple-data-table__row--highlight:hover {
     background: #b97f00;
   }
 
-  .thread-list__row--highlight .thread-list__num,
-  .thread-list__row--highlight .thread-list__title,
-  .thread-list__row--highlight .thread-list__count,
-  .thread-list__row--highlight .thread-list__heat,
-  .thread-list__row--highlight .thread-list__label {
+  .simple-data-table__row--highlight .simple-data-table__num,
+  .simple-data-table__row--highlight .simple-data-table__title,
+  .simple-data-table__row--highlight .simple-data-table__count,
+  .simple-data-table__row--highlight .simple-data-table__heat,
+  .simple-data-table__row--highlight .simple-data-table__label {
     // ダークテーマ通常色（青/グレー）より優先して黒文字を固定し、
     // 強調行の可読性をぶらさないようにする。
     color: #000;
   }
 
-  .thread-list__row--highlight .thread-list__label {
+  .simple-data-table__row--highlight .simple-data-table__label {
     background: rgba(255, 255, 255, 0.36);
+  }
+
+  /* Backwards-compatibility aliases: ThreadList page uses concrete 'thread-list' class names.
+     Keep visual parity by extending the simple-data-table rules. */
+  .thread-list {
+    @extend .simple-data-table;
+  }
+  .thread-list__row {
+    @extend .simple-data-table__row;
+  }
+  .thread-list__num {
+    @extend .simple-data-table__num;
+  }
+  .thread-list__title {
+    @extend .simple-data-table__title;
+  }
+  .thread-list__count {
+    @extend .simple-data-table__count;
+  }
+  .thread-list__th {
+    @extend .simple-data-table__th;
+  }
+  .thread-list__th--num {
+    @extend .simple-data-table__th--num;
+  }
+  .thread-list__th--title {
+    @extend .simple-data-table__th--title;
+  }
+  .thread-list__th--count {
+    @extend .simple-data-table__th--count;
+  }
+  .thread-list__th--heat {
+    @extend .simple-data-table__th--heat;
+  }
+  .thread-list__heat {
+    @extend .simple-data-table__heat;
+  }
+  .thread-list__row--ng {
+    @extend .simple-data-table__row--ng;
+  }
+  .thread-list__row--highlight {
+    @extend .simple-data-table__row--highlight;
+  }
+  .thread-list__label {
+    @extend .simple-data-table__label;
   }
 
   /* --- スレッドページ --- */
