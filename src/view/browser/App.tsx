@@ -1,5 +1,6 @@
 import { PenLine } from "lucide-react";
 import React from "react";
+import { AutoRefreshStatusItem } from "src/view/browser/components/AutoRefreshStatusItem";
 import { BottomPanel } from "src/view/browser/components/BottomPanel";
 import { ContentArea } from "src/view/browser/components/ContentArea";
 import { NavigationBar } from "src/view/browser/components/NavigationBar";
@@ -10,6 +11,7 @@ import {
 } from "src/view/browser/components/StatusBar";
 import { TabBar } from "src/view/browser/components/TabBar";
 import { BottomPanelProvider, useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
+import { AutoScrollStateProvider } from "src/view/browser/hooks/use-auto-scroll-state";
 import { TabProvider } from "src/view/browser/hooks/use-tab-store";
 import { useTheme } from "src/view/browser/hooks/use-theme";
 
@@ -41,6 +43,7 @@ export const BrowserApp: React.FC = () => {
     <TabProvider>
       <StatusBarProvider>
         <BottomPanelProvider>
+          <AutoScrollStateProvider>
           {/* data-theme を使ってダークモード CSS 変数を切り替える */}
           <div className="browser-shell" data-theme={theme}>
             <div className="browser-shell__chrome">
@@ -49,9 +52,11 @@ export const BrowserApp: React.FC = () => {
             </div>
             <ContentArea />
             <BottomPanel />
+            <AutoRefreshStatusItem />
             <WritePanelToggleItem />
             <StatusBar />
           </div>
+          </AutoScrollStateProvider>
         </BottomPanelProvider>
       </StatusBarProvider>
     </TabProvider>

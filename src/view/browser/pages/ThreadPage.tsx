@@ -26,7 +26,7 @@ import {
   StatusBarItem,
   StatusBarMode,
 } from "src/view/browser/components/StatusBar";
-import { useAutoRefresh } from "src/view/browser/hooks/use-auto-refresh";
+import { useThreadAutoRefresh } from "src/view/browser/hooks/use-thread-auto-refresh";
 import { useMediaViewerStore } from "src/view/browser/hooks/use-media-viewer-store";
 import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
 import { useThreadPopupLifecycle } from "src/view/browser/hooks/use-popup-manager";
@@ -101,20 +101,15 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
     activeTab.autoRefreshEnabled &&
     activeTab.autoRefreshThreadUrl === page.threadUrl;
 
-  const requestAutoRefresh = useCallback(() => {
-    dispatch({ type: "RELOAD" });
-  }, [dispatch]);
-
   const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling, intervalMs } =
-    useAutoRefresh({
-      enabled: isAutoRefreshEnabled,
+    useThreadAutoRefresh({
+      threadUrl: page.threadUrl,
       expired,
       loading,
       pauseAutoScroll: popups.length > 0,
       responseCount: responses.length,
       lastResponseNum: responses.at(-1)?.num ?? null,
       rootRef,
-      requestRefresh: requestAutoRefresh,
     });
   const autoRefreshIntervalLabel = useMemo(() => {
     if (intervalMs <= 0) {
@@ -129,11 +124,8 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
     if (popups.length > 0) {
       return "自動追従一時停止（ポップアップ表示中）";
     }
-    if (isAutoScrolling) {
-      return "自動スクロール中";
-    }
-    if (canAutoScroll) {
-      return "自動追従待機";
+    if (isAutoScrolling || canAutoScroll) {
+      return "自動更新＆追従中";
     }
     return "追従待機外";
   }, [canAutoScroll, isAutoScrolling, popups.length]);
@@ -684,16 +676,12 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
           />
           <StatusBarItem
             id="thread-auto-refresh-status"
-            alignment="right"
+            alignment="left"
             priority={200}
             title="自動更新と自動スクロールの状態"
             className={isAutoScrolling ? "status-bar__item--active" : undefined}
           >
             <span className="status-bar__meta">{autoRefreshStatusLabel}</span>
-            <span className="status-bar__divider" />
-            <span className="status-bar__meta">
-              更新間隔 {autoRefreshIntervalLabel}
-            </span>
           </StatusBarItem>
         </>
       )}
