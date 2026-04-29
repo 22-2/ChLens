@@ -1,3 +1,4 @@
+import { platform } from "src/app";
 import Callbacks from "src/app/Callbacks";
 import LocalStorage from "src/app/LocalStorage";
 import { assertArg, log } from "src/app/Log";
@@ -132,14 +133,10 @@ export default class Config {
       ready.call();
     })();
 
-    this._onChanged = (change: object, area: string) => {
-      if (area !== "local") {
-        return;
-      }
-
+    this._onChanged = (change: Record<string, { oldValue: string | null; newValue: string | null }>) => {
       for (const [key, val] of Object.entries(change)) {
         if (!key.startsWith("config_")) continue;
-        const { newValue } = <any>val;
+        const { newValue } = val;
 
         const pendingValue = this._pendingStorageChanges.get(key);
         const normalizedValue = typeof newValue === "string" ? newValue : null;
@@ -153,7 +150,7 @@ export default class Config {
       }
     };
 
-    browser.storage.onChanged.addListener(<any>this._onChanged);
+    platform.storage.kv.onChanged(<any>this._onChanged);
   }
 
   get(key: string): string | null {

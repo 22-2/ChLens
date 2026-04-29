@@ -13,6 +13,7 @@ declare namespace app {
   const deepCopy: any;
   const message: any;
   const defer: any;
+  const platform: import("./app/platform/types").Platform;
 
   const bookmark: any;
   const HTTP: any;

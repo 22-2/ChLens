@@ -1,6 +1,6 @@
+import { platform } from "src/app";
 import { ChURL } from "../../packages/ch-lib/src/index";
 import { container } from "../service-container/index";
-import { Request } from "./HTTP";
 import {
   chServerMoveDetect,
   decodeCharReference,
@@ -107,23 +107,23 @@ export default class Thread {
             xhrPath += "?v=pc";
           }
 
-          const request = new Request("GET", xhrPath, {
-            mimeType: `text/plain; charset=${xhrCharset}`,
-            preventCache: true,
-          });
-
+          const headers = {};
           if (hasCache) {
             if (cache.lastModified != null) {
-              request.headers["If-Modified-Since"] = new Date(
+              headers["If-Modified-Since"] = new Date(
                 cache.lastModified,
               ).toUTCString();
             }
             if (cache.etag != null) {
-              request.headers["If-None-Match"] = cache.etag;
+              headers["If-None-Match"] = cache.etag;
             }
           }
 
-          response = await request.send();
+          response = await platform.http.fetch(xhrPath, {
+            method: "GET",
+            mimeType: `text/plain; charset=${xhrCharset}`,
+            headers: headers,
+          });
         }
 
         // パース

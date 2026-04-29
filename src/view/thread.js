@@ -948,16 +948,11 @@ ${$res.C("message")[0].innerText.replace(/^/gm, ">")}\n\
       open(app.safeHref(viewUrlStr + $res.C("num")[0].textContent));
     } else if ($item.hasClass("popout_thread")) {
       const url = `/view/thread.html?${app.URL.buildQuery({ q: viewUrlStr })}`;
-      if (typeof browser !== "undefined" && browser.windows) {
-        browser.windows.create({
-          url,
-          type: "popup",
-          width: 800,
-          height: 600,
-        });
-      } else {
-        open(url, "_blank", "width=800,height=600");
-      }
+      app.platform.window.openWindow({
+        url,
+        width: 800,
+        height: 600,
+      });
       target.parent().remove();
 
       // 画像をぼかす

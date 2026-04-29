@@ -1,5 +1,5 @@
+import { platform } from "src/app";
 let Cache;
-import { indexedDBRequestToPromise } from "./jsutil.js";
 
 /**
 @class Cache
@@ -86,22 +86,17 @@ export default Cache = (function () {
       this.readcgiVer = null;
     }
 
+    static _getStore() {
+      return platform.storage.getStore("Cache");
+    }
+
     /**
     @method count
     @static
     @return {Promise}
     */
     static async count() {
-      let res;
-      try {
-        const db = await this._dbOpen;
-        const req = db.transaction("Cache").objectStore("Cache").count();
-        res = await indexedDBRequestToPromise(req);
-      } catch (e) {
-        app.log("error", "Cache.count: トランザクション中断");
-        throw new Error(e);
-      }
-      return res.target.result;
+      return this._getStore().count();
     }
 
     /**
@@ -110,17 +105,7 @@ export default Cache = (function () {
     @return {Promise}
     */
     static async delete() {
-      try {
-        const db = await this._dbOpen;
-        const req = db
-          .transaction("Cache", "readwrite")
-          .objectStore("Cache")
-          .clear();
-        await indexedDBRequestToPromise(req);
-      } catch (e) {
-        app.log("error", "Cache.delete: トランザクション中断");
-        throw new Error(e);
-      }
+      return this._getStore().clear();
     }
 
     /**
@@ -131,26 +116,9 @@ export default Cache = (function () {
     */
     static async clearRange(day) {
       const dayUnix = Date.now() - day * 24 * 60 * 60 * 1000;
-      try {
-        const db = await this._dbOpen;
-        const store = db.transaction("Cache", "readwrite").objectStore("Cache");
-        let req = store
-          .index("last_updated")
-          .getAllKeys(IDBKeyRange.upperBound(dayUnix, true));
-        const {
-          target: { result: keys },
-        } = await indexedDBRequestToPromise(req);
-
-        await Promise.all(
-          keys.map(async function (key) {
-            req = store.delete(key);
-            await indexedDBRequestToPromise(req);
-          }),
-        );
-      } catch (e) {
-        app.log("error", "Cache.clearRange: トランザクション中断");
-        throw new Error(e);
-      }
+      const store = this._getStore();
+      const keys = await store.index("last_updated").getAllKeys(IDBKeyRange.upperBound(dayUnix, true));
+      await Promise.all(keys.map(key => store.delete(key)));
     }
 
     /**
@@ -159,11 +127,7 @@ export default Cache = (function () {
     */
     async get() {
       try {
-        const db = await Cache._dbOpen;
-        const req = db.transaction("Cache").objectStore("Cache").get(this.key);
-        const {
-          target: { result },
-        } = await indexedDBRequestToPromise(req);
+        const result = await Cache._getStore().get(this.key);
         if (result == null) {
           throw new Error("キャッシュが存在しません");
         }
@@ -196,10 +160,6 @@ export default Cache = (function () {
       }
     }
 
-    /**
-    @method put
-    @return {Promise}
-    */
     async put() {
       if (
         typeof this.key !== "string" ||
@@ -223,22 +183,17 @@ export default Cache = (function () {
           : null;
 
       try {
-        const db = await Cache._dbOpen;
-        const req = db
-          .transaction("Cache", "readwrite")
-          .objectStore("Cache")
-          .put({
-            url: this.key,
-            data,
-            parsed: this.parsed || null,
-            last_updated: this.lastUpdated,
-            last_modified: this.lastModified || null,
-            etag: this.etag || null,
-            res_length: this.resLength || null,
-            dat_size: this.datSize || null,
-            readcgi_ver: this.readcgiVer || null,
-          });
-        await indexedDBRequestToPromise(req);
+        await Cache._getStore().put({
+          url: this.key,
+          data,
+          parsed: this.parsed || null,
+          last_updated: this.lastUpdated,
+          last_modified: this.lastModified || null,
+          etag: this.etag || null,
+          res_length: this.resLength || null,
+          dat_size: this.datSize || null,
+          readcgi_ver: this.readcgiVer || null,
+        });
       } catch (e) {
         app.log("error", "Cache::put: トランザクション中断");
         throw new Error(e);
@@ -251,12 +206,7 @@ export default Cache = (function () {
     */
     async delete() {
       try {
-        const db = await Cache._dbOpen;
-        const req = db
-          .transaction("Cache", "readwrite")
-          .objectStore("Cache")
-          .delete(url);
-        await indexedDBRequestToPromise(req);
+        await Cache._getStore().delete(this.key);
       } catch (e) {
         app.log("error", "Cache::delete: トランザクション中断");
         throw new Error(e);

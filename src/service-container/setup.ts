@@ -46,17 +46,17 @@ export function setupContainer(app: any) {
 
   // Bookmark Adapter
   const bookmarkAdapter: IBookmark = {
-    get: (url: string) => app.bookmark.get(url),
+    get: (url: string) => app.bookmark?.get(url),
     // container側では `IBookmarkItem` を受け取るため、
     // core の `app.bookmark.add(url, title, resCount?)` へ適切に展開して渡す。
     add: (item: IBookmarkItem) =>
-      app.bookmark.add?.(item.url, item.title, item.resCount),
-    remove: (url: string) => app.bookmark.remove(url),
+      app.bookmark?.add?.(item.url, item.title, item.resCount),
+    remove: (url: string) => app.bookmark?.remove(url),
     updateResCount: (url: string, count: number) =>
-      app.bookmark.updateResCount(url, count),
+      app.bookmark?.updateResCount(url, count),
     updateExpired: (url: string, exp: boolean) =>
-      app.bookmark.updateExpired(url, exp),
-    getByBoard: (url: string) => app.bookmark.getByBoard(url),
+      app.bookmark?.updateExpired(url, exp),
+    getByBoard: (url: string) => app.bookmark?.getByBoard(url),
   };
 
   // Cache Adapter
@@ -68,9 +68,9 @@ export function setupContainer(app: any) {
 
   // ReadState Adapter
   const readStateAdapter: IReadStateService = {
-    get: (url: string) => app.ReadState.get(url),
-    getByBoard: (boardUrl: string) => app.ReadState.getByBoard(boardUrl),
-    set: (readState: any) => app.ReadState.set(readState),
+    get: (url: string) => app.ReadState?.get(url),
+    getByBoard: (boardUrl: string) => app.ReadState?.getByBoard(boardUrl),
+    set: (readState: any) => app.ReadState?.set(readState),
   };
 
   // Board Service Adapter
@@ -102,30 +102,30 @@ export function setupContainer(app: any) {
       if (options?.backgroundColor) {
         data.background_color = options.backgroundColor;
       }
-      app.message.send("notify", data);
+      app.message?.send("notify", data);
     },
     success: (message) => {
-      app.message.send("notify", { message, background_color: "green" });
+      app.message?.send("notify", { message, background_color: "green" });
     },
     error: (message) => {
-      app.message.send("notify", { message, background_color: "red" });
+      app.message?.send("notify", { message, background_color: "red" });
     },
     info: (message) => {
-      app.message.send("notify", { message, background_color: "#777" });
+      app.message?.send("notify", { message, background_color: "#777" });
     },
   };
 
   // NG Service Adapter
   const ngServiceAdapter: INGService = {
-    isNGBoard: (title, url, resCount) => app.NG.isNGBoard(title, url, resCount),
-    isNGThread: (res, title, url) => app.NG.isNGThread(res, title, url),
+    isNGBoard: (title, url, resCount) => app.NG?.isNGBoard(title, url, resCount),
+    isNGThread: (res, title, url) => app.NG?.isNGThread(res, title, url),
     isThreadIgnoreNgType: (res, threadTitle, url, ngType) =>
-      app.NG.isThreadIgnoreNgType(res, threadTitle, url, ngType),
-    add: (ngWord) => app.NG.add(ngWord),
-    invalidateCache: () => app.NG.invalidateCache(),
-    execExpire: () => app.NG.execExpire(),
+      app.NG?.isThreadIgnoreNgType(res, threadTitle, url, ngType),
+    add: (ngWord) => app.NG?.add(ngWord),
+    invalidateCache: () => app.NG?.invalidateCache(),
+    execExpire: () => app.NG?.execExpire(),
     isIgnoreResNumForAuto: (num, type) =>
-      app.NG.isIgnoreResNumForAuto(num, type),
+      app.NG?.isIgnoreResNumForAuto(num, type),
   };
 
   // Util Adapter
@@ -133,9 +133,9 @@ export function setupContainer(app: any) {
     escapeHtml: (str: string) => app.escapeHtml(str),
     safeHref: (url: string) => app.safeHref(url),
     defer: () => app.defer(),
-    isNewerReadState: (a: any, b: any) => app.util.isNewerReadState(a, b),
+    isNewerReadState: (a: any, b: any) => app.util?.isNewerReadState(a, b),
     guessType: (url: string) =>
-      app.util.guessType
+      app.util?.guessType
         ? app.util.guessType(url)
         : { bbsType: "2ch", protocol: "https:" },
   };

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { platform } from "src/app";
 import { URL as ChURL } from "src/core/URL";
 import { container } from "src/service-container/index";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
@@ -126,60 +127,10 @@ function buildFormData(
 
 // -----------------------------------------------------------------------
 // 純粋関数: declarativeNetRequest でリクエストヘッダーを書き換える
-// submit_res.js の _setHeaderModifierDeclarativeNetRequest に相当
+// (プラットフォーム抽象化レイヤーへ委譲)
 // -----------------------------------------------------------------------
 async function setupHeaderModifier(formAction: string): Promise<void> {
-  const api =
-    typeof globalThis.browser !== "undefined"
-      ? (globalThis.browser as typeof chrome)
-      : globalThis.chrome;
-
-  if (!api?.declarativeNetRequest?.updateSessionRules) return;
-
-  try {
-    const tab = await api.tabs.getCurrent();
-    if (!tab?.id) return;
-
-    const existing = await new Promise<chrome.declarativeNetRequest.Rule[]>(
-      (resolve) => {
-        api.declarativeNetRequest.getSessionRules((rules) =>
-          resolve(rules as chrome.declarativeNetRequest.Rule[]),
-        );
-      },
-    );
-
-    const oldRule = existing.find(
-      (r) =>
-        (r as unknown as { condition?: { urlFilter?: string } }).condition
-          ?.urlFilter === formAction,
-    );
-    const actionOrigin = new window.URL(formAction).origin;
-
-    const rule: chrome.declarativeNetRequest.Rule = {
-      id: oldRule ? oldRule.id : existing.length + 1,
-      priority: 1,
-      action: {
-        type: "modifyHeaders",
-        requestHeaders: [
-          { header: "Origin", operation: "set", value: actionOrigin },
-          { header: "Referer", operation: "set", value: formAction },
-        ],
-      },
-      condition: {
-        tabIds: [tab.id],
-        urlFilter: formAction,
-        requestMethods: ["post"],
-        resourceTypes: ["sub_frame"],
-      },
-    };
-
-    await api.declarativeNetRequest.updateSessionRules({
-      addRules: [rule],
-      removeRuleIds: oldRule ? [oldRule.id] : [],
-    });
-  } catch {
-    // ヘッダー修正に失敗しても送信自体は試みる
-  }
+  await platform.http.setupWriteHeaders(formAction);
 }
 
 // -----------------------------------------------------------------------

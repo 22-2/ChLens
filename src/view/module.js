@@ -990,7 +990,7 @@ app.view.TabContentView = class TabContentView extends (
         x2.on("click", function (e) {
           e.preventDefault();
 
-          parent.browser.tabs.create({ url });
+          app.platform.window.openTab(url);
         }),
       );
     })();

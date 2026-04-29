@@ -9,6 +9,22 @@ export { default as LocalStorage } from "./app/LocalStorage";
 export * from "./app/Log";
 export { default as message } from "./app/Message";
 export * from "./app/Util";
+
+import * as platformInternal from "./app/platform";
+
+// iframe内外で統一的にplatformにアクセスできるようにProxyを使用
+export const platform = new Proxy({} as typeof platformInternal.platform, {
+  get(_target, prop) {
+    const actualPlatform =
+      platformInternal.platform || (self !== top && (parent as any).app?.platform);
+    if (!actualPlatform) {
+      console.error("platform is not initialized");
+      return undefined;
+    }
+    return actualPlatform[prop as keyof typeof platformInternal.platform];
+  },
+});
+
 // 親ウィンドウからアクセスできるように内部configも公開
 export { _config };
 

@@ -1,25 +1,26 @@
+import { platform } from "src/app";
+
 export default class LocalStorage {
   static async get(key: string, isJson = false): Promise<string | null> {
-    const val = await browser.storage.local.get(key);
-    if (!val[key]) return null;
+    const val = await platform.storage.kv.get(key);
+    if (!val) return null;
 
     if (isJson) {
-      return JSON.parse(<string>val[key]);
+      return JSON.parse(val);
     }
-    return <string>val[key];
+    return val;
   }
 
   static async getAll(): Promise<Record<string, string | number>> {
-    return await browser.storage.local.get(null);
+    return await platform.storage.kv.getAll();
   }
 
   static async set(key: string, val: string, isJson = false) {
-    const obj: Record<string, string> = {};
-    obj[key] = isJson ? JSON.stringify(val) : val;
-    await browser.storage.local.set(obj);
+    const valueToStore = isJson ? JSON.stringify(val) : val;
+    await platform.storage.kv.set(key, valueToStore);
   }
 
   static async del(key: string) {
-    await browser.storage.local.remove(key);
+    await platform.storage.kv.remove(key);
   }
 }

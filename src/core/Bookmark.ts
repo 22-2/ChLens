@@ -1,3 +1,4 @@
+import { platform, message, Util as util } from "src/app";
 import { Entry } from "src/core/BookmarkEntryList";
 import BrowserBookmarkEntryList from "src/core/BrowserBookmarkEntryList";
 import { get as getReadState } from "src/core/ReadState.js";
@@ -40,11 +41,11 @@ export default class Bookmark {
                 break;
             }
             if (type !== "") {
-              app.message.send("bookmark_updated", { type, bookmark });
+              message.send("bookmark_updated", { type, bookmark });
               return;
             }
             if (typeName === "READ_STATE") {
-              app.message.send("read_state_updated", {
+              message.send("read_state_updated", {
                 board_url: threadToBoard(bookmark.url),
                 read_state: bookmark.readState,
               });
@@ -55,7 +56,7 @@ export default class Bookmark {
     });
 
     // 鯖移転検出時処理
-    app.message.on(
+    message.on(
       "detected_ch_server_move",
       ({ before, after }: { before: string; after: string }) => {
         this.bel.serverMove(before, after);
@@ -137,7 +138,7 @@ export default class Bookmark {
     // TODO
     const entry = this.bel.get(readState.url);
 
-    if (entry && app.util.isNewerReadState(entry.readState, readState)) {
+    if (entry && util.isNewerReadState(entry.readState, readState)) {
       entry.readState = readState;
       return this.bel.update(entry);
     }
@@ -175,7 +176,7 @@ export default class Bookmark {
 
     if (
       newEntry.readState &&
-      app.util.isNewerReadState(entry.readState, newEntry.readState)
+      util.isNewerReadState(entry.readState, newEntry.readState)
     ) {
       entry.readState = newEntry.readState;
       updateEntry = true;
