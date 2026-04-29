@@ -129,6 +129,10 @@ const _formatBoardTitle = function (title, url) {
 @return {Promise}
 */
 const searchFromBookmark = function (url) {
+  // app.bookmarkが未初期化の場合はスキップ
+  if (!app.bookmark) {
+    return null;
+  }
   // スキーム違いについても確認をする
   let left;
   const url2 = url.createProtocolToggled();

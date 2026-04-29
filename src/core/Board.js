@@ -194,7 +194,7 @@ class="open_in_rcrx">${container.util.escapeHtml(newBoardUrl)}
         return;
       }
       const dict = {};
-      for (bookmark of container.bookmark.getByBoard(this.url.url.href)) {
+      for (bookmark of (container.bookmark.getByBoard(this.url.url.href) ?? [])) {
         if (bookmark.type === "thread") {
           dict[bookmark.url] = true;
         }
