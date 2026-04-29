@@ -28,6 +28,7 @@ const TAB_SWITCH_WHEEL_COOLDOWN_MS = 50;
 
 export const TabBar: React.FC = () => {
   const { state, dispatch } = useTabStore();
+  const barRef = useRef<HTMLDivElement | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [barContextMenu, setBarContextMenu] =
     useState<BarContextMenuState | null>(null);
@@ -89,7 +90,7 @@ export const TabBar: React.FC = () => {
 
   // ホイールでアクティブタブを前後に切り替える
   const handleWheel = useCallback(
-    (e: React.WheelEvent) => {
+    (e: WheelEvent) => {
       // 小さい慣性入力や横スクロール成分は無視し、hover中の誤連打切替を防ぐ。
       if (Math.abs(e.deltaY) < Math.abs(e.deltaX)) return;
       if (Math.abs(e.deltaY) < TAB_SWITCH_WHEEL_MIN_DELTA) return;
@@ -111,6 +112,16 @@ export const TabBar: React.FC = () => {
     },
     [dispatch, state.activeTabId, state.tabs],
   );
+
+  useEffect(() => {
+    const el = barRef.current;
+    if (!el) return;
+    const nativeHandler = (ev: WheelEvent) => handleWheel(ev);
+    el.addEventListener("wheel", nativeHandler, { passive: false });
+    return () => {
+      el.removeEventListener("wheel", nativeHandler);
+    };
+  }, [handleWheel]);
 
   const handleContextMenu = useCallback((e: React.MouseEvent, tab: Tab) => {
     e.preventDefault();
@@ -148,8 +159,8 @@ export const TabBar: React.FC = () => {
 
   return (
     <div
+      ref={barRef}
       className="tab-bar"
-      onWheel={handleWheel}
       onContextMenu={handleBarContextMenu}
     >
       <div className="tab-list">
