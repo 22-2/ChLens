@@ -41,6 +41,9 @@ importers:
       monaco-editor:
         specifier: ^0.55.1
         version: 0.55.1
+      monaco-json:
+        specifier: ^3.9.0
+        version: 3.9.0
       react:
         specifier: ^19.2.5
         version: 19.2.5
@@ -4622,6 +4625,9 @@ packages:
 
   monaco-editor@0.55.1:
     resolution: {integrity: sha512-jz4x+TJNFHwHtwuV9vA9rMujcZRb0CEilTEwG2rRSpe/A7Jdkuj8xPKttCgOh+v/lkHy7HsZ64oj+q3xoAFl9A==}
+
+  monaco-json@3.9.0:
+    resolution: {integrity: sha512-Vj8wTxBH29JeqDzO8T8kgv4sk8Hbq8gxiyzmvn+92FAYh3Iba3fnTq9WjKCSR3ALRw65NjDgkFlSwkGyVjT2uA==}
 
   mri@1.2.0:
     resolution: {integrity: sha512-tzzskb3bG8LvYGFF/mDTpq3jpI6Q9wc3LEmBaghu+DdCssd1FakN7Bc0hVNmEyGq1bq3RgfkCb3cmQLpNPOroA==}
@@ -11279,6 +11285,8 @@ snapshots:
     dependencies:
       dompurify: 3.2.7
       marked: 14.0.0
+
+  monaco-json@3.9.0: {}
 
   mri@1.2.0: {}
 

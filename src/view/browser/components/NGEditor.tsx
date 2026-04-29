@@ -4,6 +4,8 @@ import React, { useEffect, useMemo } from "react";
 import { convertDSLToUser } from "src/core/NGConverter";
 import ngSchema from "src/core/ng-schema.json";
 
+const browser = (window as any).browser || (window as any).chrome;
+
 // MonacoEnvironment を loader より先にセットする（loaderの非同期初期化前に確実に差し込む）
 // getWorker で直接 Worker インスタンスを返し blob URL ラッパーを回避する
 const workerMap: Record<string, string> = {
@@ -20,13 +22,15 @@ const workerMap: Record<string, string> = {
 (window as any).MonacoEnvironment = {
   getWorker: function (_moduleId: string, label: string) {
     const file = workerMap[label] ?? "editor.worker-Be8ye1pW.js";
-    return new Worker((browser as any).runtime.getURL(`lib/monaco/vs/assets/${file}`));
+    return new Worker(
+      browser.runtime.getURL(`lib/monaco/vs/assets/${file}`)
+    );
   },
 };
 
-// (browser as any).runtime.getURL で完全なURLを取得する（/から始まる相対パスは拡張では機能しない）
+// browser.runtime.getURL で完全なURLを取得する（/から始まる相対パスは拡張では機能しない）
 loader.config({
-  paths: { vs: (browser as any).runtime.getURL("lib/monaco/vs") },
+  paths: { vs: browser.runtime.getURL("lib/monaco/vs") },
 });
 
 interface NGEditorProps {
@@ -56,22 +60,18 @@ export const NGEditor: React.FC<NGEditorProps> = ({ value, onChange }) => {
   useEffect(() => {
     console.log("Monaco instance:", monaco);
     if (monaco) {
-      console.log((browser as any).runtime.getURL("ng-schema.json"))
-      // @ts-ignore - Monaco's types might flag this as deprecated or mismatch in some environments
-      const jsonLang = monaco.languages.json;
-      if (jsonLang && jsonLang.jsonDefaults) {
-        jsonLang.jsonDefaults.setDiagnosticsOptions({
-          validate: true,
-          allowComments: true,
-          schemas: [
-            {
-              uri: (browser as any).runtime.getURL("ng-schema.json"),
-              fileMatch: ["*"],
-              schema: ngSchema,
-            },
-          ],
-        });
-      }
+      monaco.json.jsonDefaults.setDiagnosticsOptions({
+        // validate: true はAJVがnew Function()でスキーマをコンパイルするためCSP違反になる
+        validate: false,
+        allowComments: true,
+        schemas: [
+          {
+            uri: browser.runtime.getURL("ng-schema.json"),
+            fileMatch: ["*"],
+            schema: ngSchema,
+          },
+        ],
+      });
     }
   }, [monaco]);
 
