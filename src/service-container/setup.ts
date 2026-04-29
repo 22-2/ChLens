@@ -1,9 +1,11 @@
 import { container } from "src/service-container/Container";
 import {
+  IBBSMenuResult,
   IBBSMenuService,
   IBoardResult,
   IBoardService,
   IBookmark,
+  IBookmarkItem,
   ICacheItem,
   ICacheService,
   IConfig,
@@ -45,7 +47,10 @@ export function setupContainer(app: any) {
   // Bookmark Adapter
   const bookmarkAdapter: IBookmark = {
     get: (url: string) => app.bookmark.get(url),
-    add: (item: any) => app.bookmark.add(item),
+    // container側では `IBookmarkItem` を受け取るため、
+    // core の `app.bookmark.add(url, title, resCount?)` へ適切に展開して渡す。
+    add: (item: IBookmarkItem) =>
+      app.bookmark.add?.(item.url, item.title, item.resCount),
     remove: (url: string) => app.bookmark.remove(url),
     updateResCount: (url: string, count: number) =>
       app.bookmark.updateResCount(url, count),
@@ -77,7 +82,7 @@ export function setupContainer(app: any) {
 
   // BBSMenu Service Adapter
   const bbsMenuServiceAdapter: IBBSMenuService = {
-    get: (forceReload?: boolean) => BBSMenu.get(forceReload),
+    get: (forceReload?: boolean) => BBSMenu.get(forceReload) as Promise<IBBSMenuResult>,
   };
 
   // Thread Service Adapter

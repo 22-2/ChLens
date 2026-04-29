@@ -1,9 +1,12 @@
+import { X, Bookmark, BookmarkX, Clipboard, List, Pin, PinOff, ExternalLink } from "lucide-react"
 import React, { useMemo } from "react";
-import { ContextMenu } from "src/view/browser/components/ContextMenu";
+import { container } from "src/service-container";
+import { ContextMenu, ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import type { Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
 import { copyText } from "src/view/browser/utils/utils";
+// `app.bookmark` はグローバルで提供されるサービス
 
 interface MenuPosition {
   x: number;
@@ -33,35 +36,40 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
   const hasClosedTabs = state.closedTabs.length > 0;
 
   const items = useMemo(() => {
-    const result = [
+    const result: ContextMenuItem[] = [
       {
         id: "close",
         label: "タブを閉じる",
         disabled: tab.pinned,
+        icon: <X />,
         onSelect: () => dispatch({ type: "CLOSE_TAB", tabId: tab.id }),
       },
       {
         id: "close-others",
         label: "他のタブを閉じる",
         disabled: !hasOtherClosable,
+        icon: <X />,
         onSelect: () => dispatch({ type: "CLOSE_OTHER_TABS", tabId: tab.id }),
       },
       {
         id: "close-right",
         label: "右側のタブを閉じる",
         disabled: !hasRightClosable,
+        icon: <X />,
         onSelect: () => dispatch({ type: "CLOSE_RIGHT_TABS", tabId: tab.id }),
+      },
+      {
+        id: "close-all",
+        label: "すべて閉じる",
+        icon: <X />,
+        onSelect: () => dispatch({ type: "CLOSE_ALL_TABS" }),
       },
       {
         id: "reopen",
         label: "閉じたタブを開く",
         disabled: !hasClosedTabs,
+        icon: <ExternalLink />,
         onSelect: () => dispatch({ type: "REOPEN_CLOSED_TAB" }),
-      },
-      {
-        id: "close-all",
-        label: "すべて閉じる",
-        onSelect: () => dispatch({ type: "CLOSE_ALL_TABS" }),
       },
       { id: "sep-1", separator: true },
     ];
@@ -69,9 +77,34 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
     if (isThread) {
       const threadPage = currentPage as { threadUrl: string; title: string };
       const boardUrl = deriveBoardUrl(threadPage.threadUrl);
+      const isBookmarked = container.bookmark?.get(
+        threadPage.threadUrl,
+      );
+      result.push({
+        id: "bookmark",
+        label: isBookmarked ? "ブックマークを削除" : "ブックマークに追加",
+        icon: isBookmarked ? <BookmarkX /> : <Bookmark />,
+        onSelect: () => {
+          try {
+            if (isBookmarked) {
+              void container.bookmark.remove(threadPage.threadUrl);
+            } else {
+              void container.bookmark.add({
+                url: threadPage.threadUrl,
+                title: threadPage.title,
+                type: "thread",
+              });
+            }
+          } catch(e) {
+            console.error("Bookmark operation failed", e);
+            // TODO: 共通のNoticeみたいなのがほしいな
+          }
+        },
+      });
       result.push({
         id: "copy-title",
         label: "スレタイをコピー",
+        icon: <Clipboard />,
         onSelect: () => {
           void copyText(threadPage.title);
         },
@@ -79,6 +112,7 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
       result.push({
         id: "copy-title-url",
         label: "スレタイ&URLをコピー",
+        icon: <Clipboard />,
         onSelect: () => {
           void copyText(`${threadPage.title}\n${threadPage.threadUrl}`);
         },
@@ -87,6 +121,7 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
       result.push({
         id: "to-board",
         label: "板を開く",
+        icon: <List />,
         onSelect: () => {
           // 元スレの履歴を残したまま板を見比べられるように、新しいタブで開く。
           dispatch({ type: "ADD_TAB" });
@@ -107,6 +142,7 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
     result.push({
       id: "pin",
       label: tab.pinned ? "タブの固定を解除" : "タブを固定",
+      icon: tab.pinned ? <PinOff /> : <Pin />,
       onSelect: () => dispatch({ type: "TOGGLE_PIN", tabId: tab.id }),
     });
     return result;

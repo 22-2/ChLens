@@ -10,8 +10,11 @@ import { URL as ChURL } from "src/core/URL";
 import { container } from "src/service-container/index";
 import type { IThread } from "src/service-container/interfaces";
 import { SearchBar } from "src/view/browser/components/SearchBar";
+import { ContextMenu, ContextMenuItem } from "src/view/browser/components/ContextMenu";
+import { copyText } from "src/view/browser/utils/utils";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import type { ThreadListPage as ThreadListPageType } from "src/view/browser/types";
+import { Bookmark, BookmarkX } from "lucide-react";
 
 interface Props {
   tabId: string;
@@ -149,6 +152,10 @@ export const ThreadListPage: React.FC<Props> = ({
     );
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
+  const [contextMenuState, setContextMenuState] = useState<
+    | { x: number; y: number; thread: IThread }
+    | null
+  >(null);
   const { column: sortColumn, direction: sortDirection } = sortPreference;
 
   const fetchThreads = useCallback(async () => {
@@ -295,6 +302,50 @@ export const ThreadListPage: React.FC<Props> = ({
     [dispatch],
   );
 
+  const contextMenuItems = useMemo(() => {
+    if (!contextMenuState) return [];
+    const { thread } = contextMenuState;
+    const isBookmarked = container.bookmark?.get(thread.url);
+    const items: ContextMenuItem[] = [
+      {
+        id: "bookmark",
+        label: isBookmarked ? "ブックマークを削除" : "ブックマークに追加",
+        icon: isBookmarked ? <BookmarkX /> : <Bookmark />,
+        onSelect: () => {
+          try {
+            if (isBookmarked) {
+              void container.bookmark.remove(thread.url);
+            } else {
+              void container.bookmark.add({
+                url: thread.url,
+                title: thread.title,
+                type: "thread",
+              });
+            }
+          } catch {
+            // noop
+          }
+        },
+      },
+      {
+        id: "copy-title",
+        label: "スレタイをコピー",
+        onSelect: () => void copyText(thread.title),
+      },
+      {
+        id: "copy-url",
+        label: "URLをコピー",
+        onSelect: () => void copyText(thread.url),
+      },
+      {
+        id: "copy-title-url",
+        label: "スレタイ&URLをコピー",
+        onSelect: () => void copyText(`${thread.title}\n${thread.url}`),
+      },
+    ];
+    return items;
+  }, [contextMenuState]);
+
   // threads が既にある場合（更新中）はチラつき防止のため loading 表示をスキップする
   if (loading && threads.length === 0) {
     return <div className="page-status">読み込み中...</div>;
@@ -392,6 +443,10 @@ export const ThreadListPage: React.FC<Props> = ({
                     openThreadInNewTab(thread.url, thread.title);
                   }
                 }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setContextMenuState({ x: e.clientX, y: e.clientY, thread });
+                }}
               >
                 <td className="thread-list__num">{originalIndex}</td>
                 <td className="thread-list__title">
@@ -407,6 +462,14 @@ export const ThreadListPage: React.FC<Props> = ({
           })}
         </tbody>
       </table>
+      {contextMenuState && (
+        <ContextMenu
+          x={contextMenuState.x}
+          y={contextMenuState.y}
+          items={contextMenuItems}
+          onClose={() => setContextMenuState(null)}
+        />
+      )}
     </div>
   );
 };
