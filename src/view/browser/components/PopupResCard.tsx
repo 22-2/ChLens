@@ -98,7 +98,9 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
           <span className="res__date">{res.date ?? res.other}</span>
           {repCount > 0 && onRepClick && (
             <span
-              className={`res__rep${repCount >= 5 ? " res__rep--freq" : " res__rep--link"}`}
+              className={`res__rep${
+                repCount >= 5 ? " res__rep--freq" : " res__rep--link"
+              }`}
               onClick={(e) => {
                 e.stopPropagation();
                 onRepClick(res.num, e);

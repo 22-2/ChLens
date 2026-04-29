@@ -191,7 +191,7 @@ for (let browser of browsers) {
 
   gulp.task(
     `js:${browser}`,
-      gulp.parallel(
+    gulp.parallel(
       app(browser),
       core(browser),
       ui(browser),

@@ -84,7 +84,9 @@ export function buildKyodemoUrl(
     const dd = String(date.getDate()).padStart(2, "0");
     const dateStr = `${yyyy}${mm}${dd}`;
 
-    return `https://www.kyodemo.net/sdemo/b/e_e_${board}/?hi=${encodeURIComponent(rawId)}&key=${encodeURIComponent(key)}&date=${dateStr}`;
+    return `https://www.kyodemo.net/sdemo/b/e_e_${board}/?hi=${encodeURIComponent(
+      rawId,
+    )}&key=${encodeURIComponent(key)}&date=${dateStr}`;
   } catch {
     return null;
   }

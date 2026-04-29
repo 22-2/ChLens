@@ -511,7 +511,11 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
           label: "レスをコピー",
           icon: <Copy size={14} />,
           onSelect: async () => {
-            const copyBody = `${page.title}\n${page.threadUrl}${targetRes.num}\n${targetRes.num} ${plainName}  ${targetRes.date ?? targetRes.other ?? ""}\n${plainMessage}`;
+            const copyBody = `${page.title}\n${page.threadUrl}${
+              targetRes.num
+            }\n${targetRes.num} ${plainName}  ${
+              targetRes.date ?? targetRes.other ?? ""
+            }\n${plainMessage}`;
             await copyText(copyBody);
           },
         },
@@ -701,7 +705,9 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
               {filterButtons.map(({ key, label }) => (
                 <button
                   key={key}
-                  className={`thread-page__filter-btn${filter === key ? " thread-page__filter-btn--active" : ""}`}
+                  className={`thread-page__filter-btn${
+                    filter === key ? " thread-page__filter-btn--active" : ""
+                  }`}
                   onClick={() => setFilter(key)}
                 >
                   {label}
@@ -764,7 +770,15 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
           {isAutoRefreshEnabled && (
             <div
               ref={autoScrollBoundaryRef}
-              className={`thread-page__auto-scroll-threshold${canAutoScroll ? " thread-page__auto-scroll-threshold--armed" : ""}${isAutoScrolling ? " thread-page__auto-scroll-threshold--scrolling" : ""}`}
+              className={`thread-page__auto-scroll-threshold${
+                canAutoScroll
+                  ? " thread-page__auto-scroll-threshold--armed"
+                  : ""
+              }${
+                isAutoScrolling
+                  ? " thread-page__auto-scroll-threshold--scrolling"
+                  : ""
+              }`}
             >
               <span className="thread-page__auto-scroll-threshold-label">
                 {canAutoScroll

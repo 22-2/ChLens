@@ -167,7 +167,9 @@ export const TabBar: React.FC = () => {
           return (
             <div
               key={tab.id}
-              className={`tab ${isActive ? "tab--active" : ""} ${tab.pinned ? "tab--pinned" : ""}${highlightedTabIds.has(tab.id) ? " tab--highlighted" : ""}`}
+              className={`tab ${isActive ? "tab--active" : ""} ${
+                tab.pinned ? "tab--pinned" : ""
+              }${highlightedTabIds.has(tab.id) ? " tab--highlighted" : ""}`}
               title={page.title}
               onClick={() => dispatch({ type: "SELECT_TAB", tabId: tab.id })}
               onMouseDown={(e) => handleMouseDown(e, tab.id)}

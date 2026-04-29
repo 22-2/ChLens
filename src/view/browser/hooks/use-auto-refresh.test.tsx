@@ -212,7 +212,7 @@ describe("useAutoRefresh", () => {
     const boundary = screen.getByTestId("boundary") as HTMLDivElement;
 
     let scrollTopValue = 12;
-    let scrollHeightValue = 300;
+    const scrollHeightValue = 300;
     Object.defineProperty(scrollContainer, "clientHeight", {
       configurable: true,
       get: () => 100,

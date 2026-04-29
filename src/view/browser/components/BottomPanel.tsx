@@ -61,7 +61,9 @@ export const BottomPanel: React.FC = () => {
               key={tab.id}
               role="tab"
               aria-selected={activeTabId === tab.id}
-              className={`bottom-panel__tab${activeTabId === tab.id ? " bottom-panel__tab--active" : ""}`}
+              className={`bottom-panel__tab${
+                activeTabId === tab.id ? " bottom-panel__tab--active" : ""
+              }`}
               onClick={() => setActiveTab(tab.id)}
             >
               {tab.label}

@@ -234,7 +234,9 @@ export const StatusBar: React.FC = () => {
         {leftItems.map((item) => (
           <div
             key={item.id}
-            className={`status-bar__item${item.className ? ` ${item.className}` : ""}`}
+            className={`status-bar__item${
+              item.className ? ` ${item.className}` : ""
+            }`}
             title={item.title}
           >
             {item.content}
@@ -245,7 +247,9 @@ export const StatusBar: React.FC = () => {
         {rightItems.map((item) => (
           <div
             key={item.id}
-            className={`status-bar__item${item.className ? ` ${item.className}` : ""}`}
+            className={`status-bar__item${
+              item.className ? ` ${item.className}` : ""
+            }`}
             title={item.title}
           >
             {item.content}

@@ -69,7 +69,9 @@ function summarizePopup(item: PopupItem): string {
     return `tree:${item.payload.resNum}:depth=${item.payload.anchorPreviewDepth}`;
   }
   if (item.type === "anchor") {
-    return `anchor:${item.payload.label}:depth=${item.payload.depth}:parent=${item.parentId ?? "root"}`;
+    return `anchor:${item.payload.label}:depth=${item.payload.depth}:parent=${
+      item.parentId ?? "root"
+    }`;
   }
   if (item.type === "contextMenu") {
     return `contextMenu:parent=${item.parentId ?? "root"}`;

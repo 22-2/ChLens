@@ -4,7 +4,7 @@ import { WindowManager, WindowOptions } from "../types";
  * ブラウザ拡張機能環境用のWindowManager実装
  */
 export const BrowserWindowManager: WindowManager = {
-  async openTab(url: string, active: boolean = true): Promise<void> {
+  async openTab(url: string, active = true): Promise<void> {
     await browser.tabs.create({ url, active });
   },
 

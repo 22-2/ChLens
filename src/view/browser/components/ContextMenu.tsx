@@ -103,7 +103,11 @@ export const ContextMenu: React.FC<Props> = ({
         return (
           <button
             key={item.id}
-            className={`context-menu__item${item.danger ? " context-menu__item--danger" : ""}${item.allowMultilineLabel ? " context-menu__item--multiline" : ""}`}
+            className={`context-menu__item${
+              item.danger ? " context-menu__item--danger" : ""
+            }${
+              item.allowMultilineLabel ? " context-menu__item--multiline" : ""
+            }`}
             disabled={item.disabled}
             title={item.label}
             onClick={() => {
@@ -127,7 +131,11 @@ export const ContextMenu: React.FC<Props> = ({
               <span className="context-menu__icon">{item.icon}</span>
             )}
             <span
-              className={`context-menu__label${item.allowMultilineLabel ? " context-menu__label--multiline" : ""}`}
+              className={`context-menu__label${
+                item.allowMultilineLabel
+                  ? " context-menu__label--multiline"
+                  : ""
+              }`}
             >
               {item.label}
             </span>
