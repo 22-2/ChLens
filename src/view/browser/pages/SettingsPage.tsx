@@ -9,6 +9,7 @@ import React, {
   useState,
 } from "react";
 import { container } from "src/service-container/index";
+import { NGEditor } from "../components/NGEditor";
 
 type SettingsSectionId =
   | "general"
@@ -452,9 +453,8 @@ const SETTINGS_SECTIONS = [
       kind: "string",
       key: "ngwords",
       title: "NGワード一覧",
-      description: "1行に1件ずつ、旧設定画面と同じ形式で保存します。",
-      widget: "textarea",
-      rows: 10,
+      description: "JSON5形式、または旧来のテキスト形式で編集できます。",
+      widget: "ng_editor" as any,
     },
     { kind: "boolean", key: "chain_ng", title: "NGレスへの返信を連鎖NGにする" },
     { kind: "boolean", key: "chain_ng_id", title: "NG ID を連鎖NGにする" },
@@ -633,6 +633,12 @@ async function saveSectionFormData(
   );
 }
 
+const widgets = {
+  ng_editor: (props: any) => {
+    return <NGEditor value={props.value} onChange={props.onChange} />;
+  },
+};
+
 export const SettingsPage: React.FC = () => {
   const [activeSectionId, setActiveSectionId] =
     useState<SettingsSectionId>("general");
@@ -807,6 +813,7 @@ export const SettingsPage: React.FC = () => {
               noHtml5Validate
               showErrorList={false}
               onChange={(event) => handleFormChange(activeSection.id, event)}
+              widgets={widgets}
             />
           </div>
         </div>

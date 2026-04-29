@@ -235,12 +235,17 @@ monaco editor搭載してjson schemaで編集する方式にしたいかも
 ```typescript
 interface NGRule {
   word: string;
-  scoee: string[];
-  type: "highlight" | "ng",
-  target: "thread" | "resname" | "resbody" | "id" | "slip",
+  scope: string[];
+  type: NGType;
+  target: NGTarget;
   useRegex: boolean;
 }
+
+type NGType = "highlight" | "ng";
+type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 ```
+データ型はこんな感じでいいんすかね🤔
+調査して教えてほしいっす
 
 - [x] feat: ダークモード
 - [x] テーブルをモジュール化して使いまわせるように

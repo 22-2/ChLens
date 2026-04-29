@@ -73,6 +73,14 @@ var webExtPolyfill = function (browser) {
       .pipe(gulp.dest(output));
 };
 
+var monaco = function (browser) {
+  const output = paths.output[browser] + "/lib/monaco/vs";
+  return () =>
+    gulp
+      .src(paths.lib.monaco, { base: "./node_modules/monaco-editor/min/vs" })
+      .pipe(gulp.dest(output));
+};
+
 /*
   gulp task
 */
@@ -82,10 +90,15 @@ for (let browser of browsers) {
 
   gulp.task(`lib:shortQuery:${browser}`, shortQuery(browser));
   gulp.task(`lib:webExtPolyfill:${browser}`, webExtPolyfill(browser));
+  gulp.task(`lib:monaco:${browser}`, monaco(browser));
 
   gulp.task(
     `lib:${browser}`,
-    gulp.parallel(`lib:shortQuery:${browser}`, `lib:webExtPolyfill:${browser}`)
+    gulp.parallel(
+      `lib:shortQuery:${browser}`,
+      `lib:webExtPolyfill:${browser}`,
+      `lib:monaco:${browser}`
+    )
   );
 }
 

@@ -86,6 +86,7 @@ let paths = {};
       shortQuery: "./node_modules/ShortQuery.js/bin/shortQuery.chrome.min.js",
       webExtPolyfill:
         "./node_modules/webextension-polyfill/dist/browser-polyfill.min.js",
+      monaco: "./node_modules/monaco-editor/min/vs/**/*",
     },
     manifest: `${i}/manifest.json`,
     rules: `${i}/rules.json`,

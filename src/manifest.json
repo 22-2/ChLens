@@ -98,7 +98,8 @@
         "/view/sidemenu.html",
         "/view/thread.html",
         "/write/submit_res.html",
-        "/write/submit_thread.html"
+        "/write/submit_thread.html",
+        "/lib/monaco/vs/**/*"
       ],
       "matches": [
         "*://*.2ch.net/*",
