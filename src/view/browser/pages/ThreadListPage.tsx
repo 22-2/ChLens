@@ -11,6 +11,7 @@ import { container } from "src/service-container/index";
 import type { IThread } from "src/service-container/interfaces";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import { ContextMenu, ContextMenuItem } from "src/view/browser/components/ContextMenu";
+import { ThreadListTable, ColumnDef } from "src/view/browser/components/ThreadListTable";
 import { copyText } from "src/view/browser/utils/utils";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import type { ThreadListPage as ThreadListPageType } from "src/view/browser/types";
@@ -135,6 +136,57 @@ function calcHeat(now: number, created: number, resCount: number): string {
   return (resCount / elapsed).toFixed(1);
 }
 
+type DisplayThread = {
+  thread: IThread;
+  originalIndex: number;
+  heat: number;
+};
+
+const THREAD_LIST_COLUMNS: ColumnDef<DisplayThread>[] = [
+  {
+    key: "num",
+    header: "No.",
+    headerClassName: "thread-list__th--num",
+    cellClassName: "thread-list__num",
+    sortable: true,
+    cell: ({ originalIndex }) => originalIndex,
+  },
+  {
+    key: "title",
+    header: "タイトル",
+    headerClassName: "thread-list__th--title",
+    cellClassName: "thread-list__title",
+    sortable: true,
+    cell: ({ thread }) => {
+      const hlParams = thread.highlight?.params;
+      return (
+        <>
+          {thread.title}
+          {hlParams?.label && (
+            <span className="thread-list__label">{hlParams.label}</span>
+          )}
+        </>
+      );
+    },
+  },
+  {
+    key: "resCount",
+    header: "レス",
+    headerClassName: "thread-list__th--count",
+    cellClassName: "thread-list__count",
+    sortable: true,
+    cell: ({ thread }) => thread.resCount,
+  },
+  {
+    key: "heat",
+    header: "勢い",
+    headerClassName: "thread-list__th--heat",
+    cellClassName: "thread-list__heat",
+    sortable: true,
+    cell: ({ heat }) => heat.toFixed(1),
+  },
+];
+
 export const ThreadListPage: React.FC<Props> = ({
   tabId,
   page,
@@ -142,7 +194,6 @@ export const ThreadListPage: React.FC<Props> = ({
 }) => {
   const { dispatch } = useTabStore();
   const titleFetched = useRef(false);
-  const suppressNextRowClickRef = useRef(false);
   const [threads, setThreads] = useState<IThread[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -282,24 +333,31 @@ export const ThreadListPage: React.FC<Props> = ({
   }, [threads, sortColumn, sortDirection, searchQuery]);
 
   const handleThreadClick = useCallback(
-    (threadUrl: string, threadTitle: string) => {
+    ({ thread }: DisplayThread) => {
       dispatch({
         type: "NAVIGATE",
-        page: { type: "thread", title: threadTitle, threadUrl },
+        page: { type: "thread", title: thread.title, threadUrl: thread.url },
       });
     },
     [dispatch],
   );
 
   const openThreadInNewTab = useCallback(
-    (threadUrl: string, threadTitle: string) => {
+    ({ thread }: DisplayThread) => {
       // ミドルクリックはバックグラウンドで開く（アクティブタブを切り替えない）
       dispatch({
         type: "OPEN_IN_NEW_TAB",
-        page: { type: "thread", title: threadTitle, threadUrl },
+        page: { type: "thread", title: thread.title, threadUrl: thread.url },
       });
     },
     [dispatch],
+  );
+
+  const handleTableSort = useCallback(
+    (key: string) => {
+      if (isSortColumn(key)) handleSort(key);
+    },
+    [handleSort],
   );
 
   const contextMenuItems = useMemo(() => {
@@ -362,11 +420,6 @@ export const ThreadListPage: React.FC<Props> = ({
     );
   }
 
-  const sortIndicator = (col: SortColumn) => {
-    if (sortColumn !== col) return "";
-    return sortDirection === "asc" ? " ▲" : " ▼";
-  };
-
   return (
     <div className="thread-list-page">
       {showSearch && (
@@ -381,87 +434,30 @@ export const ThreadListPage: React.FC<Props> = ({
         />
       )}
       {error && <div className="thread-list-page__notice">{error}</div>}
-      <table className="thread-list">
-        <thead>
-          <tr>
-            <th
-              className="thread-list__th thread-list__th--num"
-              onClick={() => handleSort("num")}
-            >
-              No.{sortIndicator("num")}
-            </th>
-            <th
-              className="thread-list__th thread-list__th--title"
-              onClick={() => handleSort("title")}
-            >
-              タイトル{sortIndicator("title")}
-            </th>
-            <th
-              className="thread-list__th thread-list__th--count"
-              onClick={() => handleSort("resCount")}
-            >
-              レス{sortIndicator("resCount")}
-            </th>
-            <th
-              className="thread-list__th thread-list__th--heat"
-              onClick={() => handleSort("heat")}
-            >
-              勢い{sortIndicator("heat")}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {displayThreads.map(({ thread, originalIndex, heat }) => {
-            const isNG = !!thread.ng;
-            const isHighlight = !!thread.highlight;
-            const hlParams = thread.highlight?.params;
-            const rowStyle: React.CSSProperties = {};
-            if (isHighlight && hlParams?.bgColor) {
-              const bgColor =
-                BG_COLOR_PRESETS[hlParams.bgColor] ?? hlParams.bgColor;
-              rowStyle.backgroundColor = bgColor;
-            }
-            return (
-              <tr
-                key={thread.url}
-                className={`thread-list__row${isNG ? " thread-list__row--ng" : ""}${isHighlight ? " thread-list__row--highlight" : ""}`}
-                style={rowStyle}
-                onClick={() => {
-                  if (suppressNextRowClickRef.current) {
-                    // 中クリック直後に click が続けて発火する環境では、
-                    // ここを抑止しないと現在タブまで thread 遷移してしまう。
-                    suppressNextRowClickRef.current = false;
-                    return;
-                  }
-                  handleThreadClick(thread.url, thread.title);
-                }}
-                onMouseDown={(e) => {
-                  if (e.button === 1) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    suppressNextRowClickRef.current = true;
-                    openThreadInNewTab(thread.url, thread.title);
-                  }
-                }}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  setContextMenuState({ x: e.clientX, y: e.clientY, thread });
-                }}
-              >
-                <td className="thread-list__num">{originalIndex}</td>
-                <td className="thread-list__title">
-                  {thread.title}
-                  {isHighlight && hlParams?.label && (
-                    <span className="thread-list__label">{hlParams.label}</span>
-                  )}
-                </td>
-                <td className="thread-list__count">{thread.resCount}</td>
-                <td className="thread-list__heat">{heat.toFixed(1)}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <ThreadListTable
+        columns={THREAD_LIST_COLUMNS}
+        rows={displayThreads}
+        getRowKey={({ thread }) => thread.url}
+        getRowClassName={({ thread }) => {
+          const classes: string[] = [];
+          if (thread.ng) classes.push("thread-list__row--ng");
+          if (thread.highlight) classes.push("thread-list__row--highlight");
+          return classes.join(" ") || undefined;
+        }}
+        getRowStyle={({ thread }) => {
+          const bgColor = thread.highlight?.params?.bgColor;
+          if (!bgColor) return {};
+          return { backgroundColor: BG_COLOR_PRESETS[bgColor] ?? bgColor };
+        }}
+        onRowClick={handleThreadClick}
+        onRowMiddleClick={openThreadInNewTab}
+        onRowContextMenu={({ thread }, x, y) =>
+          setContextMenuState({ x, y, thread })
+        }
+        sortColumn={sortColumn}
+        sortDirection={sortDirection}
+        onSort={handleTableSort}
+      />
       {contextMenuState && (
         <ContextMenu
           x={contextMenuState.x}
