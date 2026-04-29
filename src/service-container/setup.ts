@@ -82,7 +82,8 @@ export function setupContainer(app: any) {
 
   // BBSMenu Service Adapter
   const bbsMenuServiceAdapter: IBBSMenuService = {
-    get: (forceReload?: boolean) => BBSMenu.get(forceReload) as Promise<IBBSMenuResult>,
+    get: (forceReload?: boolean) =>
+      BBSMenu.get(forceReload) as Promise<IBBSMenuResult>,
   };
 
   // Thread Service Adapter
@@ -117,7 +118,8 @@ export function setupContainer(app: any) {
 
   // NG Service Adapter
   const ngServiceAdapter: INGService = {
-    isNGBoard: (title, url, resCount) => app.NG?.isNGBoard(title, url, resCount),
+    isNGBoard: (title, url, resCount) =>
+      app.NG?.isNGBoard(title, url, resCount),
     isNGThread: (res, title, url) => app.NG?.isNGThread(res, title, url),
     isThreadIgnoreNgType: (res, threadTitle, url, ngType) =>
       app.NG?.isThreadIgnoreNgType(res, threadTitle, url, ngType),

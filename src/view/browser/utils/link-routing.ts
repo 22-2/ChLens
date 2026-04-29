@@ -62,13 +62,10 @@ const MACHI_THREAD_PATTERN = /^\/bbs\/read\.cgi\/([\w-]+)\/(\d+)\/?/;
 const MACHI_BOARD_PATTERN = /^\/([\w-]+)\/?(?:#.*)?$/;
 const SHITARABA_THREAD_PATTERN =
   /^\/bbs\/read(?:_archive)?\.cgi\/([\w-]+)\/(\d+)\/(\d+)\/?/;
-const SHITARABA_STORAGE_PATTERN =
-  /^\/([\w-]+)\/(\d+)\/storage\/(\d+)\.html$/;
+const SHITARABA_STORAGE_PATTERN = /^\/([\w-]+)\/(\d+)\/storage\/(\d+)\.html$/;
 const SHITARABA_BOARD_PATTERN = /^\/([\w-]+)\/(\d+)\/?(?:#.*)?$/;
-const EDDIBB_THREAD_PATTERN =
-  /^\/(?:test\/read\.cgi\/)?([\w-]+)\/(\d+)\/?/;
-const EDDIBB_BOARD_PATTERN =
-  /^\/(?:test\/read\.cgi\/)?([\w-]+)\/?(?:#.*)?$/;
+const EDDIBB_THREAD_PATTERN = /^\/(?:test\/read\.cgi\/)?([\w-]+)\/(\d+)\/?/;
+const EDDIBB_BOARD_PATTERN = /^\/(?:test\/read\.cgi\/)?([\w-]+)\/?(?:#.*)?$/;
 const ITEST_THREAD_PATTERN =
   /^\/(?:test\/read\.cgi\/([\w-]+)\/(\d+)\/|(?:subback\/)?([\w-]+)\/?)/;
 
@@ -127,7 +124,9 @@ function normalizeItestUrl(url: URL): void {
     return;
   }
 
-  url.pathname = threadId ? `/test/read.cgi/${board}/${threadId}/` : `/${board}/`;
+  url.pathname = threadId
+    ? `/test/read.cgi/${board}/${threadId}/`
+    : `/${board}/`;
 }
 
 function toThreadPage(url: URL): InternalThreadPage {

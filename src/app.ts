@@ -16,7 +16,8 @@ import * as platformInternal from "./app/platform";
 export const platform = new Proxy({} as typeof platformInternal.platform, {
   get(_target, prop) {
     const actualPlatform =
-      platformInternal.platform || (self !== top && (parent as any).app?.platform);
+      platformInternal.platform ||
+      (self !== top && (parent as any).app?.platform);
     if (!actualPlatform) {
       console.error("platform is not initialized");
       return undefined;

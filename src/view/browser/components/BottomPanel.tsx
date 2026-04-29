@@ -1,7 +1,7 @@
 import { X } from "lucide-react";
 import React, { useCallback, useRef } from "react";
-import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { WritePanelContent } from "src/view/browser/components/WritePanelContent";
+import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 
 export const BottomPanel: React.FC = () => {
   const {

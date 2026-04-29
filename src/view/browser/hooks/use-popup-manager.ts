@@ -552,8 +552,13 @@ export function usePopupSurfaceLifecycle({
   useEffect(() => {
     const wasDisabled = prevCloseDisabledRef.current;
     prevCloseDisabledRef.current = !!closeDisabled;
-    const isActuallyHovering = surfaceRef?.current?.matches(":hover") ?? isHovering;
-    if (wasDisabled && !closeDisabled && suppressNextDisableReleaseCloseRef.current) {
+    const isActuallyHovering =
+      surfaceRef?.current?.matches(":hover") ?? isHovering;
+    if (
+      wasDisabled &&
+      !closeDisabled &&
+      suppressNextDisableReleaseCloseRef.current
+    ) {
       // 子から親へ戻る途中は child branch を先に落とすので、
       // disable 復帰の瞬間だけ親の自動 close を1回抑止して hover 遷移を待つ。
       suppressNextDisableReleaseCloseRef.current = false;
@@ -614,7 +619,10 @@ export function usePopupSurfaceLifecycle({
     setIsHovering(true);
     if (
       popupId &&
-      isPopupDescendantOf?.(getPopupSurfaceId(event.relatedTarget) ?? "", popupId)
+      isPopupDescendantOf?.(
+        getPopupSurfaceId(event.relatedTarget) ?? "",
+        popupId,
+      )
     ) {
       // 親へ戻った瞬間にその親配下の枝を畳むと、子から親へ戻った後に古い子孫が残らない。
       suppressNextDisableReleaseCloseRef.current = true;

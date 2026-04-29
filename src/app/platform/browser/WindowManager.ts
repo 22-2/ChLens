@@ -21,7 +21,9 @@ export const BrowserWindowManager: WindowManager = {
       const features = [
         options.width ? `width=${options.width}` : "",
         options.height ? `height=${options.height}` : "",
-      ].filter(Boolean).join(",");
+      ]
+        .filter(Boolean)
+        .join(",");
       window.open(options.url, "_blank", features);
     }
   },

@@ -75,11 +75,7 @@ export const ContentArea: React.FC = () => {
           // reload はページ内部の再取得フローへ委譲してスクロール位置を維持する。
           // ページ識別子を key にしてタブ内コンテンツだけ差し替える。
           <React.Fragment
-            key={buildPageRenderKey(
-              tab.id,
-              tab.currentIndex,
-              page,
-            )}
+            key={buildPageRenderKey(tab.id, tab.currentIndex, page)}
           >
             {pageContent}
           </React.Fragment>

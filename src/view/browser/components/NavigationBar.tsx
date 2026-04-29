@@ -273,10 +273,12 @@ export const NavigationBar: React.FC = () => {
             },
             {
               id: "open-write-panel",
-              label: isPanelOpen ? "書き込みパネルを閉じる" : "書き込みパネルを開く",
+              label: isPanelOpen
+                ? "書き込みパネルを閉じる"
+                : "書き込みパネルを開く",
               icon: <PenLine size={14} />,
               onSelect: () => togglePanel("write"),
-            }
+            },
           ]
         : []),
       {

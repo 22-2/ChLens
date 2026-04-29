@@ -1,5 +1,11 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { container as serviceContainer } from "src/service-container/index";
 import type { IBoardService, IThread } from "src/service-container/interfaces";
 import { ThreadListPage } from "src/view/browser/pages/ThreadListPage";
@@ -80,9 +86,9 @@ function createMemoryStorage(): Storage {
 }
 
 function getRenderedThreadTitles(): string[] {
-  return Array.from(document.querySelectorAll(".thread-list tbody .thread-list__title")).map(
-    (node) => node.textContent?.trim() ?? "",
-  );
+  return Array.from(
+    document.querySelectorAll(".thread-list tbody .thread-list__title"),
+  ).map((node) => node.textContent?.trim() ?? "");
 }
 
 describe("ThreadListPage", () => {

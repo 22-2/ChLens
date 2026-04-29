@@ -230,7 +230,12 @@ export function useAutoRefresh({
       syncCanAutoScroll();
     });
 
-    if (!scrollContainer || expired || loadingRef.current || pendingRefreshRef.current) {
+    if (
+      !scrollContainer ||
+      expired ||
+      loadingRef.current ||
+      pendingRefreshRef.current
+    ) {
       return;
     }
 

@@ -1,11 +1,10 @@
 import React from "react";
-import { useWrite } from "src/view/browser/hooks/use-write";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { useWrite } from "src/view/browser/hooks/use-write";
 
 export const WritePanelContent: React.FC = () => {
   const { currentPage } = useTabStore();
-  const threadUrl =
-    currentPage.type === "thread" ? currentPage.threadUrl : "";
+  const threadUrl = currentPage.type === "thread" ? currentPage.threadUrl : "";
 
   const {
     name,

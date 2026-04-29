@@ -15,7 +15,12 @@ const PONG_MSG = "write_iframe_pong";
 // -----------------------------------------------------------------------
 // 型
 // -----------------------------------------------------------------------
-export type WriteStatus = "idle" | "submitting" | "confirm" | "success" | "error";
+export type WriteStatus =
+  | "idle"
+  | "submitting"
+  | "confirm"
+  | "success"
+  | "error";
 
 interface WriteFormData {
   action: string;

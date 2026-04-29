@@ -1,4 +1,4 @@
-import { platform, message, Util as util } from "src/app";
+import { message, Util as util } from "src/app";
 import { Entry } from "src/core/BookmarkEntryList";
 import BrowserBookmarkEntryList from "src/core/BrowserBookmarkEntryList";
 import { get as getReadState } from "src/core/ReadState.js";

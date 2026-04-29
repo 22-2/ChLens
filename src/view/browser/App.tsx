@@ -10,8 +10,11 @@ import {
   StatusBarProvider,
 } from "src/view/browser/components/StatusBar";
 import { TabBar } from "src/view/browser/components/TabBar";
-import { BottomPanelProvider, useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { AutoScrollStateProvider } from "src/view/browser/hooks/use-auto-scroll-state";
+import {
+  BottomPanelProvider,
+  useBottomPanel,
+} from "src/view/browser/hooks/use-bottom-panel";
 import { TabProvider } from "src/view/browser/hooks/use-tab-store";
 import { useTheme } from "src/view/browser/hooks/use-theme";
 
@@ -44,18 +47,18 @@ export const BrowserApp: React.FC = () => {
       <StatusBarProvider>
         <BottomPanelProvider>
           <AutoScrollStateProvider>
-          {/* data-theme を使ってダークモード CSS 変数を切り替える */}
-          <div className="browser-shell" data-theme={theme}>
-            <div className="browser-shell__chrome">
-              <TabBar />
-              <NavigationBar />
+            {/* data-theme を使ってダークモード CSS 変数を切り替える */}
+            <div className="browser-shell" data-theme={theme}>
+              <div className="browser-shell__chrome">
+                <TabBar />
+                <NavigationBar />
+              </div>
+              <ContentArea />
+              <BottomPanel />
+              <AutoRefreshStatusItem />
+              <WritePanelToggleItem />
+              <StatusBar />
             </div>
-            <ContentArea />
-            <BottomPanel />
-            <AutoRefreshStatusItem />
-            <WritePanelToggleItem />
-            <StatusBar />
-          </div>
           </AutoScrollStateProvider>
         </BottomPanelProvider>
       </StatusBarProvider>

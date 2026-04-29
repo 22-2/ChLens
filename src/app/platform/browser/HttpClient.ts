@@ -5,7 +5,10 @@ import { HttpClient, HttpRequestOptions, HttpResponse } from "../types";
  * ブラウザ拡張機能環境用のHttpClient実装
  */
 export const BrowserHttpClient: HttpClient = {
-  async fetch(url: string, options: HttpRequestOptions = {}): Promise<HttpResponse> {
+  async fetch(
+    url: string,
+    options: HttpRequestOptions = {},
+  ): Promise<HttpResponse> {
     const request = new Request(options.method || "GET", url, {
       mimeType: options.mimeType,
       headers: options.headers,
@@ -43,8 +46,7 @@ export const BrowserHttpClient: HttpClient = {
       );
 
       const oldRule = existing.find(
-        (r) =>
-          (r as any).condition?.urlFilter === formAction,
+        (r) => (r as any).condition?.urlFilter === formAction,
       );
       const actionOrigin = new URL(formAction).origin;
 

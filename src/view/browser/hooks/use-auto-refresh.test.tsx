@@ -200,7 +200,10 @@ describe("useAutoRefresh", () => {
   it("自動更新を有効化した瞬間に最下部へ移動して即時 refresh する", () => {
     const onRequestRefresh = vi.fn();
     const { rerender } = render(
-      <AutoRefreshHarness enabled={false} onRequestRefresh={onRequestRefresh} />,
+      <AutoRefreshHarness
+        enabled={false}
+        onRequestRefresh={onRequestRefresh}
+      />,
     );
 
     const scrollContainer = screen.getByTestId(
@@ -237,7 +240,10 @@ describe("useAutoRefresh", () => {
 
     act(() => {
       rerender(
-        <AutoRefreshHarness enabled={true} onRequestRefresh={onRequestRefresh} />,
+        <AutoRefreshHarness
+          enabled={true}
+          onRequestRefresh={onRequestRefresh}
+        />,
       );
     });
 

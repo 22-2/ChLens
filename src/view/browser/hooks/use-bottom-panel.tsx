@@ -97,20 +97,17 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({
     persist({ isOpen: false });
   }, []);
 
-  const togglePanel = useCallback(
-    (tabId?: string) => {
-      setIsOpen((prev) => {
-        const next = !prev;
-        persist({ isOpen: next });
-        return next;
-      });
-      if (tabId) {
-        setActiveTabIdState(tabId);
-        persist({ activeTabId: tabId });
-      }
-    },
-    [],
-  );
+  const togglePanel = useCallback((tabId?: string) => {
+    setIsOpen((prev) => {
+      const next = !prev;
+      persist({ isOpen: next });
+      return next;
+    });
+    if (tabId) {
+      setActiveTabIdState(tabId);
+      persist({ activeTabId: tabId });
+    }
+  }, []);
 
   return (
     <BottomPanelContext.Provider

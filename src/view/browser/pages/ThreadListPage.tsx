@@ -1,3 +1,4 @@
+import { Bookmark, BookmarkX } from "lucide-react";
 import React, {
   useCallback,
   useEffect,
@@ -9,13 +10,18 @@ import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
 import { URL as ChURL } from "src/core/URL";
 import { container } from "src/service-container/index";
 import type { IThread } from "src/service-container/interfaces";
+import {
+  ContextMenu,
+  ContextMenuItem,
+} from "src/view/browser/components/ContextMenu";
 import { SearchBar } from "src/view/browser/components/SearchBar";
-import { ContextMenu, ContextMenuItem } from "src/view/browser/components/ContextMenu";
-import { SimpleDataTable, ColumnDef } from "src/view/browser/components/SimpleDataTable";
-import { copyText } from "src/view/browser/utils/utils";
+import {
+  ColumnDef,
+  SimpleDataTable,
+} from "src/view/browser/components/SimpleDataTable";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import type { ThreadListPage as ThreadListPageType } from "src/view/browser/types";
-import { Bookmark, BookmarkX } from "lucide-react";
+import { copyText } from "src/view/browser/utils/utils";
 
 interface Props {
   tabId: string;
@@ -30,8 +36,7 @@ type ThreadListSortPreference = {
   direction: SortDirection;
 };
 
-const THREAD_LIST_SORT_STORAGE_KEY =
-  "readcrx_browser_thread_list_sort_by_site";
+const THREAD_LIST_SORT_STORAGE_KEY = "readcrx_browser_thread_list_sort_by_site";
 const DEFAULT_THREAD_LIST_SORT: ThreadListSortPreference = {
   column: "num",
   direction: "asc",
@@ -94,10 +99,16 @@ function readThreadListSortPreference(
       string,
       Partial<ThreadListSortPreference> | undefined
     >;
-    const currentSitePreference = stored[resolveThreadListSortSiteKey(boardUrl)];
+    const currentSitePreference =
+      stored[resolveThreadListSortSiteKey(boardUrl)];
     const column = currentSitePreference?.column;
     const direction = currentSitePreference?.direction;
-    if (column && direction && isSortColumn(column) && isSortDirection(direction)) {
+    if (
+      column &&
+      direction &&
+      isSortColumn(column) &&
+      isSortDirection(direction)
+    ) {
       return {
         column,
         direction,
@@ -203,10 +214,11 @@ export const ThreadListPage: React.FC<Props> = ({
     );
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
-  const [contextMenuState, setContextMenuState] = useState<
-    | { x: number; y: number; thread: IThread }
-    | null
-  >(null);
+  const [contextMenuState, setContextMenuState] = useState<{
+    x: number;
+    y: number;
+    thread: IThread;
+  } | null>(null);
   const { column: sortColumn, direction: sortDirection } = sortPreference;
 
   const fetchThreads = useCallback(async () => {

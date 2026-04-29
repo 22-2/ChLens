@@ -51,7 +51,14 @@ export interface KeyValueStore {
   set(key: string, value: string): Promise<void>;
   remove(key: string): Promise<void>;
   getAll(): Promise<Record<string, string>>;
-  onChanged(callback: (changes: Record<string, { oldValue: string | null; newValue: string | null }>) => void): void;
+  onChanged(
+    callback: (
+      changes: Record<
+        string,
+        { oldValue: string | null; newValue: string | null }
+      >,
+    ) => void,
+  ): void;
 }
 
 export interface ObjectStore {
@@ -61,7 +68,7 @@ export interface ObjectStore {
   getAll(): Promise<any[]>;
   clear(): Promise<void>;
   count(): Promise<number>;
-  /** 
+  /**
    * インデックスによる検索 (IndexedDB互換)
    */
   index(name: string): {
@@ -71,11 +78,11 @@ export interface ObjectStore {
 }
 
 export interface StorageManager {
-  /** 
+  /**
    * 設定保存などのシンプルなキーバリューストア (LocalStorage相当)
    */
   kv: KeyValueStore;
-  
+
   /**
    * 構造化データ保存用のオブジェクトストア (IndexedDB相当)
    * 引数によって異なるストア（名前空間）を返せるようにする

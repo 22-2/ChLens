@@ -1,8 +1,9 @@
 import { useEffect, type RefObject } from "react";
-import { useAutoRefresh, type UseAutoRefreshResult } from "src/view/browser/hooks/use-auto-refresh";
 import {
-  useSetAutoScrollState,
-} from "src/view/browser/hooks/use-auto-scroll-state";
+  useAutoRefresh,
+  type UseAutoRefreshResult,
+} from "src/view/browser/hooks/use-auto-refresh";
+import { useSetAutoScrollState } from "src/view/browser/hooks/use-auto-scroll-state";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 
 interface UseThreadAutoRefreshOptions {
@@ -60,10 +61,18 @@ export function useThreadAutoRefresh(
   useEffect(() => {
     setAutoScrollState(
       enabled
-        ? { canAutoScroll: result.canAutoScroll, isAutoScrolling: result.isAutoScrolling }
+        ? {
+            canAutoScroll: result.canAutoScroll,
+            isAutoScrolling: result.isAutoScrolling,
+          }
         : { canAutoScroll: false, isAutoScrolling: false },
     );
-  }, [enabled, result.canAutoScroll, result.isAutoScrolling, setAutoScrollState]);
+  }, [
+    enabled,
+    result.canAutoScroll,
+    result.isAutoScrolling,
+    setAutoScrollState,
+  ]);
 
   return result;
 }

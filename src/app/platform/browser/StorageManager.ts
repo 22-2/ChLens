@@ -1,4 +1,4 @@
-import { StorageManager, KeyValueStore, ObjectStore } from "../types";
+import { KeyValueStore, ObjectStore, StorageManager } from "../types";
 
 /**
  * ブラウザ拡張機能環境用のKeyValueStore実装 (browser.storage.localを使用)
@@ -20,7 +20,10 @@ const BrowserKeyValueStore: KeyValueStore = {
   onChanged(callback) {
     browser.storage.onChanged.addListener((changes, area) => {
       if (area === "local") {
-        const result: Record<string, { oldValue: string | null; newValue: string | null }> = {};
+        const result: Record<
+          string,
+          { oldValue: string | null; newValue: string | null }
+        > = {};
         for (const [key, { oldValue, newValue }] of Object.entries(changes)) {
           result[key] = {
             oldValue: (oldValue as string) ?? null,
@@ -59,7 +62,10 @@ class BrowserObjectStore implements ObjectStore {
   async put(value: any): Promise<void> {
     const db = await this.getDB();
     return new Promise((resolve, reject) => {
-      const req = db.transaction(this.dbName, "readwrite").objectStore(this.dbName).put(value);
+      const req = db
+        .transaction(this.dbName, "readwrite")
+        .objectStore(this.dbName)
+        .put(value);
       req.onerror = () => reject(req.error);
       req.onsuccess = () => resolve();
     });
@@ -68,7 +74,10 @@ class BrowserObjectStore implements ObjectStore {
   async delete(key: string): Promise<void> {
     const db = await this.getDB();
     return new Promise((resolve, reject) => {
-      const req = db.transaction(this.dbName, "readwrite").objectStore(this.dbName).delete(key);
+      const req = db
+        .transaction(this.dbName, "readwrite")
+        .objectStore(this.dbName)
+        .delete(key);
       req.onerror = () => reject(req.error);
       req.onsuccess = () => resolve();
     });
@@ -86,7 +95,10 @@ class BrowserObjectStore implements ObjectStore {
   async clear(): Promise<void> {
     const db = await this.getDB();
     return new Promise((resolve, reject) => {
-      const req = db.transaction(this.dbName, "readwrite").objectStore(this.dbName).clear();
+      const req = db
+        .transaction(this.dbName, "readwrite")
+        .objectStore(this.dbName)
+        .clear();
       req.onerror = () => reject(req.error);
       req.onsuccess = () => resolve();
     });

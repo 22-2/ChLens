@@ -1,4 +1,4 @@
-import { get as getBBSMenu, onChange as BBSMenuOnChange } from "./BBSMenu.js";
+import { onChange as BBSMenuOnChange, get as getBBSMenu } from "./BBSMenu.js";
 import { Request } from "./HTTP.ts";
 import { URL } from "./URL.ts";
 

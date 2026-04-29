@@ -315,7 +315,10 @@ function useResBodyInteractionHandlers({
         return;
       }
 
-      const remembered = consumeRememberedMiddleClick(middleClickStateRef, href);
+      const remembered = consumeRememberedMiddleClick(
+        middleClickStateRef,
+        href,
+      );
       if (remembered) {
         if (remembered.handled) {
           stopEvent(e);

@@ -1,7 +1,19 @@
-import { X, Bookmark, BookmarkX, Clipboard, List, Pin, PinOff, ExternalLink } from "lucide-react"
+import {
+  Bookmark,
+  BookmarkX,
+  Clipboard,
+  ExternalLink,
+  List,
+  Pin,
+  PinOff,
+  X,
+} from "lucide-react";
 import React, { useMemo } from "react";
 import { container } from "src/service-container";
-import { ContextMenu, ContextMenuItem } from "src/view/browser/components/ContextMenu";
+import {
+  ContextMenu,
+  ContextMenuItem,
+} from "src/view/browser/components/ContextMenu";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import type { Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
@@ -77,9 +89,7 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
     if (isThread) {
       const threadPage = currentPage as { threadUrl: string; title: string };
       const boardUrl = deriveBoardUrl(threadPage.threadUrl);
-      const isBookmarked = container.bookmark?.get(
-        threadPage.threadUrl,
-      );
+      const isBookmarked = container.bookmark?.get(threadPage.threadUrl);
       result.push({
         id: "bookmark",
         label: isBookmarked ? "ブックマークを削除" : "ブックマークに追加",
@@ -95,7 +105,7 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
                 type: "thread",
               });
             }
-          } catch(e) {
+          } catch (e) {
             console.error("Bookmark operation failed", e);
             // TODO: 共通のNoticeみたいなのがほしいな
           }

@@ -25,10 +25,7 @@ export const MiniWindow: React.FC<MiniWindowProps> = ({
   // クリックアウトサイドで閉じる
   useEffect(() => {
     const handlePointerDown = (e: PointerEvent) => {
-      if (
-        windowRef.current &&
-        !windowRef.current.contains(e.target as Node)
-      ) {
+      if (windowRef.current && !windowRef.current.contains(e.target as Node)) {
         onClose();
       }
     };
@@ -70,11 +67,7 @@ export const MiniWindow: React.FC<MiniWindowProps> = ({
     >
       <div className="mini-window__header">
         <span className="mini-window__title">{title}</span>
-        <button
-          className="mini-window__close"
-          onClick={onClose}
-          title="閉じる"
-        >
+        <button className="mini-window__close" onClick={onClose} title="閉じる">
           <X size={13} />
         </button>
       </div>

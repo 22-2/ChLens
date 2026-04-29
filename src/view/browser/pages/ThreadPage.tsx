@@ -26,23 +26,23 @@ import {
   StatusBarItem,
   StatusBarMode,
 } from "src/view/browser/components/StatusBar";
-import { useThreadAutoRefresh } from "src/view/browser/hooks/use-thread-auto-refresh";
 import { useMediaViewerStore } from "src/view/browser/hooks/use-media-viewer-store";
 import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
 import { useThreadPopupLifecycle } from "src/view/browser/hooks/use-popup-manager";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { useThreadAutoRefresh } from "src/view/browser/hooks/use-thread-auto-refresh";
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";
+import {
+  parseInternalBrowserPage,
+  resolveAbsoluteUrl,
+  RESPECT_DEFAULT_EXTERNAL,
+} from "src/view/browser/utils/link-routing";
 import type { Props, ThreadFilter } from "src/view/browser/utils/types";
 import {
   buildKyodemoUrl,
   copyText,
   stripHtml,
 } from "src/view/browser/utils/utils";
-import {
-  parseInternalBrowserPage,
-  resolveAbsoluteUrl,
-  RESPECT_DEFAULT_EXTERNAL,
-} from "src/view/browser/utils/link-routing";
 
 export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -210,17 +210,18 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
       absoluteUrl: string,
       internalPage = parseInternalBrowserPage(absoluteUrl),
     ): ContextMenuItem[] => {
-
       return [
         {
           id: "open-in-current",
           label: internalPage ? "拡張内で開く" : "開く",
-          onSelect: () => openResolvedUrl(absoluteUrl, 0, undefined, internalPage),
+          onSelect: () =>
+            openResolvedUrl(absoluteUrl, 0, undefined, internalPage),
         },
         {
           id: "open-in-new-tab",
           label: internalPage ? "拡張内の新しいタブで開く" : "新しいタブで開く",
-          onSelect: () => openResolvedUrl(absoluteUrl, 1, undefined, internalPage),
+          onSelect: () =>
+            openResolvedUrl(absoluteUrl, 1, undefined, internalPage),
         },
         { id: "sep-url-1", separator: true },
         {
@@ -643,16 +644,14 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
   );
 
   const openPopupUrlContextMenu = useCallback(
-    (
-      parentId: string,
-    ) =>
-    (
-      rawUrl: string,
-      e: React.MouseEvent,
-      mode?: typeof RESPECT_DEFAULT_EXTERNAL,
-    ) => {
-      handleUrlContextMenu(rawUrl, e, parentId, mode);
-    },
+    (parentId: string) =>
+      (
+        rawUrl: string,
+        e: React.MouseEvent,
+        mode?: typeof RESPECT_DEFAULT_EXTERNAL,
+      ) => {
+        handleUrlContextMenu(rawUrl, e, parentId, mode);
+      },
     [handleUrlContextMenu],
   );
 

@@ -1,7 +1,7 @@
 import {
   parseInternalBrowserPage,
-  RESPECT_DEFAULT_EXTERNAL,
   resolveAbsoluteUrl,
+  RESPECT_DEFAULT_EXTERNAL,
   shouldHandleUrlWithApp,
 } from "src/view/browser/utils/link-routing";
 import { describe, expect, it } from "vitest";
@@ -20,7 +20,9 @@ describe("link-routing", () => {
     expect(
       parseInternalBrowserPage("https://example.com/test/read.cgi/software/1/"),
     ).toBeNull();
-    expect(parseInternalBrowserPage("https://example.com/software/")).toBeNull();
+    expect(
+      parseInternalBrowserPage("https://example.com/software/"),
+    ).toBeNull();
   });
 
   it("eddibb の簡略 thread URL も内部スレURLへ正規化する", () => {
@@ -34,7 +36,10 @@ describe("link-routing", () => {
   });
 
   it("非対応ホストは respect-default-external 時にアプリ側で横取りしない", () => {
-    const absoluteUrl = resolveAbsoluteUrl("/software/", "https://example.com/thread/");
+    const absoluteUrl = resolveAbsoluteUrl(
+      "/software/",
+      "https://example.com/thread/",
+    );
     expect(shouldHandleUrlWithApp(absoluteUrl, RESPECT_DEFAULT_EXTERNAL)).toBe(
       false,
     );

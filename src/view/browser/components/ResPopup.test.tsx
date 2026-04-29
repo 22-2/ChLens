@@ -41,7 +41,8 @@ function PopupSurfaceMouseDownHarness({
 }: {
   onSurfaceMouseDown: () => void;
 }) {
-  const { handleMouseDownCapture } = usePopupSurfaceCloseGuard(onSurfaceMouseDown);
+  const { handleMouseDownCapture } =
+    usePopupSurfaceCloseGuard(onSurfaceMouseDown);
 
   return (
     <div data-testid="surface" onMouseDownCapture={handleMouseDownCapture}>

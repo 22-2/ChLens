@@ -158,11 +158,7 @@ export const TabBar: React.FC = () => {
   );
 
   return (
-    <div
-      ref={barRef}
-      className="tab-bar"
-      onContextMenu={handleBarContextMenu}
-    >
+    <div ref={barRef} className="tab-bar" onContextMenu={handleBarContextMenu}>
       <div className="tab-list">
         {state.tabs.map((tab) => {
           const page = getCurrentPage(tab);

@@ -133,7 +133,12 @@ export default class Config {
       ready.call();
     })();
 
-    this._onChanged = (change: Record<string, { oldValue: string | null; newValue: string | null }>) => {
+    this._onChanged = (
+      change: Record<
+        string,
+        { oldValue: string | null; newValue: string | null }
+      >,
+    ) => {
       for (const [key, val] of Object.entries(change)) {
         if (!key.startsWith("config_")) continue;
         const { newValue } = val;

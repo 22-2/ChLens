@@ -328,7 +328,9 @@ function PopupIdChainHarness() {
   };
 
   const resolveIdItems = (id: string): IRes[] => {
-    const ids = id.startsWith("ID:") ? [id, id.replace(/^ID:/i, "")] : [id, `ID:${id}`];
+    const ids = id.startsWith("ID:")
+      ? [id, id.replace(/^ID:/i, "")]
+      : [id, `ID:${id}`];
     const resolvedId = ids.find((candidate) => ID_CHAIN_INDEX.has(candidate));
     const resNums = resolvedId ? ID_CHAIN_INDEX.get(resolvedId) : undefined;
     if (!resNums) {
@@ -624,7 +626,9 @@ describe("usePopupManager popup behavior", () => {
     ) as HTMLElement;
     fireEvent.click(within(anchorPreview).getByText("返信(1)"));
 
-    const nestedPopup = document.querySelectorAll(".res-popup")[1] as HTMLElement;
+    const nestedPopup = document.querySelectorAll(
+      ".res-popup",
+    )[1] as HTMLElement;
     fireEvent.mouseEnter(rootPopup, { relatedTarget: nestedPopup });
     fireEvent.mouseLeave(nestedPopup, { relatedTarget: rootPopup });
 
@@ -747,16 +751,22 @@ describe("usePopupManager popup behavior", () => {
     fireEvent.click(screen.getByRole("button", { name: "ID親チェーンを開く" }));
     expect(screen.getAllByText(">>10 への返信ツリー")).toHaveLength(1);
 
-    const firstTreePopup = document.querySelectorAll(".res-popup")[0] as HTMLElement;
+    const firstTreePopup = document.querySelectorAll(
+      ".res-popup",
+    )[0] as HTMLElement;
     fireEvent.click(within(firstTreePopup).getAllByText("ID:AAA(2)")[0]);
 
     expect(document.querySelectorAll(".res-popup")).toHaveLength(2);
     expect(screen.getByText(">>10 への返信ツリー")).toBeInTheDocument();
 
-    const firstIdPopup = document.querySelectorAll(".res-popup")[1] as HTMLElement;
+    const firstIdPopup = document.querySelectorAll(
+      ".res-popup",
+    )[1] as HTMLElement;
     fireEvent.click(within(firstIdPopup).getByText("返信(1)"));
 
-    const nestedTreePopup = document.querySelectorAll(".res-popup")[2] as HTMLElement;
+    const nestedTreePopup = document.querySelectorAll(
+      ".res-popup",
+    )[2] as HTMLElement;
     fireEvent.click(within(nestedTreePopup).getAllByText("ID:AAA(2)")[0]);
 
     // ID popup配下の返信popupからさらにID popupを開いても、既存の祖先枝は残ること。

@@ -60,9 +60,7 @@ interface PopupRendererProps {
     parentId: string,
   ) => (targetRes: IRes, e: React.MouseEvent) => void;
   onUrlClick: UrlClickHandler;
-  onUrlContextMenuOpen: (
-    parentId: string,
-  ) => UrlContextMenuHandler;
+  onUrlContextMenuOpen: (parentId: string) => UrlContextMenuHandler;
 }
 
 export const PopupRenderer: React.FC<PopupRendererProps> = ({

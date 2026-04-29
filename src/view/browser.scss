@@ -1696,7 +1696,10 @@ body {
   font-weight: 700;
   font-family: inherit;
   cursor: pointer;
-  transition: background 0.1s, color 0.1s, border-color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s,
+    border-color 0.1s;
 }
 
 .mini-window__toggle-btn--on {
@@ -1751,8 +1754,12 @@ body {
    Auto Refresh - ステータスバーアイコンのスピンアニメーション
    ========================================================================== */
 @keyframes icon-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .icon--spinning {

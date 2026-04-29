@@ -63,10 +63,7 @@ export function useAutoRefreshPanel(): UseAutoRefreshPanelResult {
   }, [dispatch, isEnabled, isOnThread, currentPage]);
 
   const setIntervalSec = useCallback((sec: number) => {
-    const clamped = Math.max(
-      MIN_INTERVAL_SEC,
-      Math.min(MAX_INTERVAL_SEC, sec),
-    );
+    const clamped = Math.max(MIN_INTERVAL_SEC, Math.min(MAX_INTERVAL_SEC, sec));
     // UI をすぐ反映するためローカル状態も即時更新する
     setIntervalSecState(clamped);
     // config に ms で保存することで use-auto-refresh.ts のタイマーにも反映される

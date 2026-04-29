@@ -73,7 +73,10 @@ function getViewerStageViewportSize(stage: HTMLDivElement): ViewerSize {
   };
 }
 
-function isSameViewerSize(current: ViewerSize | null, next: ViewerSize): boolean {
+function isSameViewerSize(
+  current: ViewerSize | null,
+  next: ViewerSize,
+): boolean {
   return current?.width === next.width && current?.height === next.height;
 }
 
@@ -160,14 +163,17 @@ export function useMediaViewerController(): MediaViewerProps | null {
     }
   }, []);
 
-  const centerViewer = useCallback((stageSize: ViewerSize, baseSize: ViewerSize) => {
-    const scale = viewerDisplayScaleRef.current;
-    const stageCenter = getViewerStageCenter(stageSize);
-    viewerPanRef.current = {
-      x: stageCenter.x - (baseSize.width * scale) / 2,
-      y: stageCenter.y - (baseSize.height * scale) / 2,
-    };
-  }, []);
+  const centerViewer = useCallback(
+    (stageSize: ViewerSize, baseSize: ViewerSize) => {
+      const scale = viewerDisplayScaleRef.current;
+      const stageCenter = getViewerStageCenter(stageSize);
+      viewerPanRef.current = {
+        x: stageCenter.x - (baseSize.width * scale) / 2,
+        y: stageCenter.y - (baseSize.height * scale) / 2,
+      };
+    },
+    [],
+  );
 
   const measureViewerLayout = useCallback(() => {
     const stage = viewerStageRef.current;
@@ -228,7 +234,8 @@ export function useMediaViewerController(): MediaViewerProps | null {
         : 0.5;
     const focusRatioY =
       scaledPreviousHeight > 0
-        ? (previousStageCenter.y - viewerPanRef.current.y) / scaledPreviousHeight
+        ? (previousStageCenter.y - viewerPanRef.current.y) /
+          scaledPreviousHeight
         : 0.5;
 
     viewerPanRef.current = {

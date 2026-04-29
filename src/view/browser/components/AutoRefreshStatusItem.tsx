@@ -120,7 +120,9 @@ export const AutoRefreshStatusItem: React.FC = () => {
         >
           <RefreshCw
             size={12}
-            className={isEnabled && canAutoScroll ? "icon--spinning" : undefined}
+            className={
+              isEnabled && canAutoScroll ? "icon--spinning" : undefined
+            }
           />
           <span>{isEnabled ? `${intervalSec}s` : "自動更新"}</span>
         </button>

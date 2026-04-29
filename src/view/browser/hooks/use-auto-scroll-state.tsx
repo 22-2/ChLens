@@ -13,7 +13,10 @@ export interface AutoScrollState {
   isAutoScrolling: boolean;
 }
 
-const INITIAL: AutoScrollState = { canAutoScroll: false, isAutoScrolling: false };
+const INITIAL: AutoScrollState = {
+  canAutoScroll: false,
+  isAutoScrolling: false,
+};
 
 const ReadContext = createContext<AutoScrollState>(INITIAL);
 const WriteContext = createContext<(state: AutoScrollState) => void>(() => {});
