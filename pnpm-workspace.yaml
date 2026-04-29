@@ -3,9 +3,12 @@ packages:
   - "packages/*"
 
 onlyBuiltDependencies:
+  - '@parcel/watcher'
   - core-js
   - dtrace-provider
   - es5-ext
+  - esbuild
   - fsevents
+  - msw
   - sharp
   - spawn-sync
