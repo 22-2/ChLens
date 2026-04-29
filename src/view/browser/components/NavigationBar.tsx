@@ -3,12 +3,14 @@ import {
   ArrowRight,
   Menu,
   Pause,
+  PenLine,
   RotateCw,
   Search,
   Settings,
 } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
+import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import {
   canGoBack,
@@ -56,6 +58,7 @@ function navigateByUrl(
 
 export const NavigationBar: React.FC = () => {
   const { state, activeTab, currentPage, dispatch } = useTabStore();
+  const { isOpen: isPanelOpen, togglePanel } = useBottomPanel();
 
   const back = canGoBack(activeTab);
   const forward = canGoForward(activeTab);
@@ -268,6 +271,12 @@ export const NavigationBar: React.FC = () => {
               icon: <Search size={14} />,
               onSelect: openSearchFromMenu,
             },
+            {
+              id: "open-write-panel",
+              label: isPanelOpen ? "書き込みパネルを閉じる" : "書き込みパネルを開く",
+              icon: <PenLine size={14} />,
+              onSelect: () => togglePanel("write"),
+            }
           ]
         : []),
       {

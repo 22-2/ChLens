@@ -17,20 +17,36 @@ body {
 
 /* --- Shell --- */
 .browser-shell {
+  /* --- 基本サーフェス --- */
   --browser-color-bg: #fff;
   --browser-color-tab-strip-bg: #dee1e6;
   --browser-color-tab-strip-hover: rgba(255, 255, 255, 0.4);
   --browser-color-tab-strip-active-hover: #d4d7da;
+  --browser-color-surface-muted: #f1f3f4;
+  --browser-color-border: #dadce0;
+  /* --- テキスト --- */
   --browser-color-text-primary: #202124;
   --browser-color-text-muted: #5f6368;
   --browser-color-text-disabled: #c4c7c9;
-  --browser-color-border: #dadce0;
-  --browser-color-surface-muted: #f1f3f4;
+  --browser-color-placeholder: #9aa0a6;
+  --browser-color-selection: #c8d7f5;
+  /* --- インタラクティブ (アクセント) --- */
+  --browser-color-accent: #1a73e8;
+  --browser-color-accent-hover: #1765cc;
+  --browser-color-accent-fg: #fff;
+  /* フォーカスリング・アクティブ下線は accent より明るい青にする */
+  --browser-color-focus-ring: #1a73e8;
+  /* --- フォーム入力 --- */
+  --browser-color-input-bg: #fff;
+  --browser-color-input-border: #dadce0;
+  /* --- セマンティック --- */
+  --browser-color-success: #0b8043;
+  --browser-color-error: #d93025;
+  --browser-color-warning: #c47800;
+  /* --- ステータスバー --- */
   --browser-color-status-active-bg: #007acc;
   --browser-color-status-active-fg: #fff;
   --browser-color-status-default-fg: var(--browser-color-text-muted);
-  --browser-color-selection: #c8d7f5;
-  --browser-color-placeholder: #9aa0a6;
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -1553,26 +1569,377 @@ body {
 }
 
 /* ==========================================================================
+   Status Bar - クリック可能ボタン (書き込みパネルトグルなど)
+   ========================================================================== */
+.status-bar__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+  padding: 0 6px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.1s;
+}
+
+.status-bar__btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+/* パネルが開いているときはアクセントカラーで強調 */
+.status-bar__btn--active {
+  background: var(--browser-color-accent);
+  color: var(--browser-color-accent-fg);
+}
+
+.status-bar__btn--active:hover {
+  background: var(--browser-color-accent-hover);
+}
+
+/* ==========================================================================
+   Bottom Panel - VS Code 風の下部リサイズパネル
+   ========================================================================== */
+.bottom-panel {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--browser-color-border);
+  background: var(--browser-color-bg);
+  overflow: hidden;
+}
+
+.bottom-panel__resize-handle {
+  height: 4px;
+  cursor: ns-resize;
+  background: transparent;
+  flex-shrink: 0;
+  transition: background 0.1s;
+}
+
+.bottom-panel__resize-handle:hover {
+  background: var(--browser-color-border);
+}
+
+.bottom-panel__header {
+  display: flex;
+  align-items: stretch;
+  height: 30px;
+  border-bottom: 1px solid var(--browser-color-border);
+  background: var(--browser-color-surface-muted);
+  flex-shrink: 0;
+}
+
+.bottom-panel__tab-strip {
+  display: flex;
+  align-items: flex-end;
+  flex: 1;
+  min-width: 0;
+  padding: 0 4px;
+}
+
+.bottom-panel__tab {
+  padding: 0 12px;
+  height: 28px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  font-size: 12px;
+  color: var(--browser-color-text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: inherit;
+  transition: color 0.1s;
+}
+
+.bottom-panel__tab:hover {
+  color: var(--browser-color-text-primary);
+}
+
+.bottom-panel__tab--active {
+  color: var(--browser-color-text-primary);
+  border-bottom-color: var(--browser-color-focus-ring);
+}
+
+.bottom-panel__header-actions {
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+  gap: 2px;
+}
+
+.bottom-panel__icon-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--browser-color-text-muted);
+  transition: background 0.1s;
+}
+
+.bottom-panel__icon-btn:hover {
+  background: var(--browser-color-border);
+  color: var(--browser-color-text-primary);
+}
+
+.bottom-panel__body {
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ==========================================================================
+   Write Panel - 書き込みフォーム
+   ========================================================================== */
+.write-panel {
+  height: 100%;
+  overflow: hidden;
+}
+
+.write-panel__form {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 6px 8px;
+  gap: 4px;
+}
+
+.write-panel__header-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.write-panel__field-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--browser-color-text-muted);
+  white-space: nowrap;
+}
+
+.write-panel__field-group--grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.write-panel__field-label {
+  flex-shrink: 0;
+}
+
+.write-panel__input {
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid var(--browser-color-input-border);
+  border-radius: 4px;
+  font-size: 12px;
+  background: var(--browser-color-input-bg);
+  color: var(--browser-color-text-primary);
+  font-family: inherit;
+  min-width: 0;
+  flex: 1;
+  transition: border-color 0.1s;
+}
+
+.write-panel__input:focus {
+  outline: none;
+  border-color: var(--browser-color-focus-ring);
+}
+
+.write-panel__input:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.write-panel__sage {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--browser-color-text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.write-panel__body-row {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+}
+
+.write-panel__textarea {
+  flex: 1;
+  resize: none;
+  border: 1px solid var(--browser-color-input-border);
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--browser-color-input-bg);
+  color: var(--browser-color-text-primary);
+  min-height: 0;
+  transition: border-color 0.1s;
+}
+
+.write-panel__textarea:focus {
+  outline: none;
+  border-color: var(--browser-color-focus-ring);
+}
+
+.write-panel__textarea:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.write-panel__side {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+  justify-content: flex-start;
+  align-items: stretch;
+}
+
+.write-panel__btn {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: background 0.1s;
+}
+
+.write-panel__btn--primary {
+  background: var(--browser-color-accent);
+  color: var(--browser-color-accent-fg);
+}
+
+.write-panel__btn--primary:hover:not(:disabled) {
+  background: var(--browser-color-accent-hover);
+}
+
+.write-panel__btn--primary:disabled {
+  background: var(--browser-color-border);
+  color: var(--browser-color-text-disabled);
+  cursor: default;
+}
+
+.write-panel__btn--secondary {
+  background: var(--browser-color-surface-muted);
+  color: var(--browser-color-text-primary);
+  border: 1px solid var(--browser-color-border);
+}
+
+.write-panel__btn--secondary:hover {
+  background: var(--browser-color-border);
+}
+
+.write-panel__status {
+  font-size: 11px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  word-break: break-all;
+}
+
+.write-panel__status--success {
+  color: var(--browser-color-success);
+}
+
+.write-panel__status--error {
+  color: var(--browser-color-error);
+}
+
+.write-panel__status--submitting {
+  color: var(--browser-color-text-muted);
+}
+
+.write-panel__status--confirm {
+  color: var(--browser-color-warning);
+}
+
+/* 通常は非表示。confirm 時のみ表示 */
+.write-panel__iframe {
+  display: none;
+  border: none;
+}
+
+.write-panel__iframe--visible {
+  display: block;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+}
+
+/* 確認ページ表示レイアウト */
+.write-panel__confirm {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.write-panel__confirm-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--browser-color-text-muted);
+  background: var(--browser-color-surface-muted);
+  border-bottom: 1px solid var(--browser-color-border);
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
    Dark mode - browser-shell[data-theme="dark"]
    タブバーはChromeのダークモードカラーを踏襲する
    ========================================================================== */
 
 .browser-shell[data-theme="dark"] {
-  /* --- CSS変数: Chrome風ダークモードカラー --- */
+  /* --- 基本サーフェス --- */
   --browser-color-bg: #202124;
   /* タブストリップ背景: Chrome dark の --color-toolbar に相当 */
   --browser-color-tab-strip-bg: #292a2d;
   --browser-color-tab-strip-hover: rgba(255, 255, 255, 0.08);
   --browser-color-tab-strip-active-hover: rgba(255, 255, 255, 0.16);
+  --browser-color-surface-muted: #35363a;
+  --browser-color-border: #3c4043;
+  /* --- テキスト --- */
   --browser-color-text-primary: #e8eaed;
   --browser-color-text-muted: #9aa0a6;
   --browser-color-text-disabled: #5f6368;
-  --browser-color-border: #3c4043;
-  --browser-color-surface-muted: #35363a;
+  --browser-color-placeholder: #5f6368;
+  --browser-color-selection: rgba(26, 115, 232, 0.4);
+  /* --- インタラクティブ (アクセント) --- */
+  --browser-color-accent: #1a6fc4;
+  --browser-color-accent-hover: #1558a4;
+  --browser-color-accent-fg: #fff;
+  /* ダークモードのフォーカスリングは視認性を上げるため明るい青 */
+  --browser-color-focus-ring: #8ab4f8;
+  /* --- フォーム入力 --- */
+  --browser-color-input-bg: #35363a;
+  --browser-color-input-border: #5f6368;
+  /* --- セマンティック --- */
+  --browser-color-success: #81c995;
+  --browser-color-error: #f28b82;
+  --browser-color-warning: #fba94c;
+  /* --- ステータスバー --- */
   --browser-color-status-active-bg: #1a6fc4;
   --browser-color-status-active-fg: #fff;
-  --browser-color-selection: rgba(26, 115, 232, 0.4);
-  --browser-color-placeholder: #5f6368;
 
   /* スクロールバーなどのブラウザ標準UIをダークに */
   color-scheme: dark;
@@ -2068,5 +2435,10 @@ body {
 
   .status-bar__divider {
     background: rgba(255, 255, 255, 0.18);
+  }
+
+  /* --- ステータスバーボタン --- */
+  .status-bar__btn:hover {
+    background: rgba(255, 255, 255, 0.12);
   }
 }
