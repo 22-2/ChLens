@@ -1,7 +1,7 @@
-import { BrowserHttpClient } from "./browser/HttpClient";
-import { BrowserStorageManager } from "./browser/StorageManager";
-import { BrowserWindowManager } from "./browser/WindowManager";
-import { Platform } from "./types";
+import { BrowserHttpClient } from "src/app/platform/browser/HttpClient";
+import { BrowserStorageManager } from "src/app/platform/browser/StorageManager";
+import { BrowserWindowManager } from "src/app/platform/browser/WindowManager";
+import { Platform } from "src/app/platform/types";
 
 /**
  * プラットフォーム依存のAPIを提供するオブジェクト

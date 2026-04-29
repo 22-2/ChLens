@@ -1,7 +1,7 @@
 import { platform } from "src/app";
-import { BoardParser, ChURL } from "../../packages/ch-lib/src/index";
-import { container } from "../service-container/index";
-import { chServerMoveDetect } from "./jsutil.js";
+import { BoardParser, ChURL } from "packages/ch-lib/src/index";
+import { container } from "src/service-container/index";
+import { chServerMoveDetect } from "src/core/jsutil.js";
 
 /**
 @class Board

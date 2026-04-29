@@ -1,7 +1,7 @@
-import { ask as askBoardTitleSolver } from "./BoardTitleSolver.js";
-import { Request } from "./HTTP.ts";
-import { decodeCharReference } from "./jsutil.js";
-import { setProtocol } from "./URL.ts";
+import { ask as askBoardTitleSolver } from "src/core/BoardTitleSolver.js";
+import { Request } from "src/core/HTTP.ts";
+import { decodeCharReference } from "src/core/jsutil.js";
+import { setProtocol } from "src/core/URL.ts";
 
 export default (function () {
   let _parse = undefined;

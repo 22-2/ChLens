@@ -1,6 +1,6 @@
-import { onChange as BBSMenuOnChange, get as getBBSMenu } from "./BBSMenu.js";
-import { Request } from "./HTTP.ts";
-import { URL } from "./URL.ts";
+import { onChange as BBSMenuOnChange, get as getBBSMenu } from "src/core/BBSMenu.js";
+import { Request } from "src/core/HTTP.ts";
+import { URL } from "src/core/URL.ts";
 
 /**
 @class BoardTitleSolver

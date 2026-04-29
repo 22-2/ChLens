@@ -1,5 +1,5 @@
-import { container } from "../service-container/index";
-import Thread from "./Thread.js";
+import { container } from "src/service-container/index";
+import Thread from "src/core/Thread.js";
 
 /**
  * @typedef {import("../service-container/interfaces").IThreadService} IThreadService

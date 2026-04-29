@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BBSMenuParser } from './BBSMenuParser';
+import { BBSMenuParser } from 'packages/ch-lib/src/parser/BBSMenuParser';
 
 describe('BBSMenuParser', () => {
   it('should parse BBS menu HTML', () => {

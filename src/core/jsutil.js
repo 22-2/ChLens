@@ -1,8 +1,8 @@
-import { get as getBBSMenu } from "./BBSMenu.js";
-import Board from "./Board.js";
-import { Request } from "./HTTP.ts";
-import { URL } from "./URL.ts";
-import { levenshteinDistance } from "./Util.ts";
+import { get as getBBSMenu } from "src/core/BBSMenu.js";
+import Board from "src/core/Board.js";
+import { Request } from "src/core/HTTP.ts";
+import { URL } from "src/core/URL.ts";
+import { levenshteinDistance } from "src/core/Util.ts";
 
 /**
 @class Anchor

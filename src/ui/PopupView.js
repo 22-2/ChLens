@@ -1,4 +1,4 @@
-import ContextMenu from "./ContextMenu.js";
+import ContextMenu from "src/ui/ContextMenu.js";
 
 /**
 @class PopupView

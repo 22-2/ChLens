@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ChURL } from '../url/ChURL';
-import { BoardParser } from './BoardParser';
+import { ChURL } from 'packages/ch-lib/src/url/ChURL';
+import { BoardParser } from 'packages/ch-lib/src/parser/BoardParser';
 
 describe('BoardParser', () => {
   it('should parse 5ch style subject.txt', () => {

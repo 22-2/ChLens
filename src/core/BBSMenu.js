@@ -1,4 +1,4 @@
-import { BBSMenuModel } from "./BBSMenuModel";
+import { BBSMenuModel } from "src/core/BBSMenuModel";
 
 /**
  * BBSMenu ファサード

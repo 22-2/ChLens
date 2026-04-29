@@ -1,5 +1,5 @@
-import { getByUrl as getWriteHistoryByUrl } from "../core/WriteHistory.js";
-import Write from "./write.js";
+import { getByUrl as getWriteHistoryByUrl } from "src/core/WriteHistory.js";
+import Write from "src/write/write.js";
 
 Write.setFont();
 

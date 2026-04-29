@@ -1,6 +1,6 @@
-import { AnchorParser, MetadataParser } from "../../packages/ch-lib/src/index";
-import { container } from "../service-container/index";
-import { replace as replaceStrTxt } from "./ReplaceStrTxt.js";
+import { AnchorParser, MetadataParser } from "packages/ch-lib/src/index";
+import { container } from "src/service-container/index";
+import { replace as replaceStrTxt } from "src/core/ReplaceStrTxt.js";
 
 /**
  * @typedef {import("../service-container/interfaces").IRes} IRes

@@ -1,12 +1,13 @@
-import { message, Util as util } from "src/app";
+import { message } from "src/app";
 import { Entry } from "src/core/BookmarkEntryList";
 import BrowserBookmarkEntryList from "src/core/BrowserBookmarkEntryList";
 import { get as getReadState } from "src/core/ReadState.js";
 import { threadToBoard } from "src/core/URL";
+import { isNewerReadState } from "src/core/jsutil";
 
 export default class Bookmark {
   readonly bel: BrowserBookmarkEntryList;
-  readonly promiseFirstScan;
+  readonly promiseFirstScan: Promise<boolean>;
 
   constructor(rootIdNode: string) {
     this.bel = new BrowserBookmarkEntryList(rootIdNode);
@@ -138,7 +139,7 @@ export default class Bookmark {
     // TODO
     const entry = this.bel.get(readState.url);
 
-    if (entry && util.isNewerReadState(entry.readState, readState)) {
+    if (entry && isNewerReadState(entry.readState, readState)) {
       entry.readState = readState;
       return this.bel.update(entry);
     }
@@ -176,7 +177,7 @@ export default class Bookmark {
 
     if (
       newEntry.readState &&
-      util.isNewerReadState(entry.readState, newEntry.readState)
+      isNewerReadState(entry.readState, newEntry.readState)
     ) {
       entry.readState = newEntry.readState;
       updateEntry = true;

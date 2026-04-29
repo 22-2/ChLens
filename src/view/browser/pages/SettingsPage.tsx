@@ -9,7 +9,7 @@ import React, {
   useState,
 } from "react";
 import { container } from "src/service-container/index";
-import { NGEditor } from "../components/NGEditor";
+import { NGEditor } from "src/view/browser/components/NGEditor";
 
 type SettingsSectionId =
   | "general"

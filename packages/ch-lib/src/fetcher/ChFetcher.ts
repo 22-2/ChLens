@@ -1,7 +1,7 @@
-import { BBSCategory, BBSMenuParser } from "../parser/BBSMenuParser";
-import { BoardParser, BoardThread } from "../parser/BoardParser";
-import { ThreadData, ThreadParser } from "../parser/ThreadParser";
-import { ChURL } from "../url/ChURL";
+import { BBSCategory, BBSMenuParser } from "packages/ch-lib/src/parser/BBSMenuParser";
+import { BoardParser, BoardThread } from "packages/ch-lib/src/parser/BoardParser";
+import { ThreadData, ThreadParser } from "packages/ch-lib/src/parser/ThreadParser";
+import { ChURL } from "packages/ch-lib/src/url/ChURL";
 
 export class ChFetcher {
   private async fetchText(url: string, charset: string): Promise<string> {

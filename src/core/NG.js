@@ -1,7 +1,7 @@
 import JSON5 from "json5";
-import { container } from "../service-container/index";
-import { decodeCharReference, normalize, stringToDate } from "./jsutil.js";
-import { convertUserToInternal } from "./NGConverter";
+import { container } from "src/service-container/index";
+import { decodeCharReference, normalize, stringToDate } from "src/core/jsutil.js";
+import { convertUserToInternal } from "src/core/NGConverter";
 
 /**
 @class NG

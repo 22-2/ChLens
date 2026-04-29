@@ -1,11 +1,11 @@
 import { platform } from "src/app";
-import { ChURL } from "../../packages/ch-lib/src/index";
-import { container } from "../service-container/index";
+import { ChURL } from "packages/ch-lib/src/index";
+import { container } from "src/service-container/index";
 import {
   chServerMoveDetect,
   decodeCharReference,
   removeNeedlessFromTitle,
-} from "./jsutil.js";
+} from "src/core/jsutil.js";
 
 /**
 @class Thread

@@ -1,6 +1,6 @@
 let Write;
-import { parseQuery, URL } from "../core/URL.ts";
-import { fadeIn, fadeOut } from "../ui/Animate.js";
+import { parseQuery, URL } from "src/core/URL.ts";
+import { fadeIn, fadeOut } from "src/ui/Animate.js";
 
 class Timer {
   static initClass() {

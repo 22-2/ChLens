@@ -1,4 +1,4 @@
-import { WindowManager, WindowOptions } from "../types";
+import { WindowManager, WindowOptions } from "src/app/platform/types";
 
 /**
  * ブラウザ拡張機能環境用のWindowManager実装

@@ -1,5 +1,5 @@
 import JSON5 from "json5";
-import { TYPE, parse as parseDSL } from "./NG.js";
+import { TYPE, parse as parseDSL } from "src/core/NG.js";
 
 export interface NGRule {
   enabled?: boolean;

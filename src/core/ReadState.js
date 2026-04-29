@@ -1,5 +1,5 @@
-import { indexedDBRequestToPromise } from "./jsutil.js";
-import { URL } from "./URL.ts";
+import { indexedDBRequestToPromise } from "src/core/jsutil.js";
+import { URL } from "src/core/URL.ts";
 
 /**
 @class ReadState

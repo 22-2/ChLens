@@ -1,5 +1,5 @@
-import { indexedDBRequestToPromise } from "./jsutil.js";
-import { isHttps } from "./URL.ts";
+import { indexedDBRequestToPromise } from "src/core/jsutil.js";
+import { isHttps } from "src/core/URL.ts";
 
 /**
 @class WriteHistory

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ChURL } from '../url/ChURL';
-import { ThreadParser } from './ThreadParser';
+import { ChURL } from 'packages/ch-lib/src/url/ChURL';
+import { ThreadParser } from 'packages/ch-lib/src/parser/ThreadParser';
 
 describe('ThreadParser', () => {
   it('should parse 2ch style dat with metadata', () => {

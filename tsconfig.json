@@ -1,7 +1,8 @@
 {
   "compilerOptions": {
     "paths": {
-      "*": ["./*"]
+      "*": ["./*"],
+      "src/*": ["./src/*"]
     },
     "target": "esnext",
     "lib": [
@@ -25,6 +26,10 @@
     "noUnusedLocals": true,
     "noEmit": true
   },
+  "include": [
+    "./**/*.ts",
+    "./**/*.tsx"
+  ],
   "exclude": [
     "node_modules",
     "tests"

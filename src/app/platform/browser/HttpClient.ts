@@ -1,5 +1,5 @@
 import { Request } from "src/core/HTTP";
-import { HttpClient, HttpRequestOptions, HttpResponse } from "../types";
+import { HttpClient, HttpRequestOptions, HttpResponse } from "src/app/platform/types";
 
 /**
  * ブラウザ拡張機能環境用のHttpClient実装

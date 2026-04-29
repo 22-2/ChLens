@@ -1,5 +1,5 @@
-import { container } from "../service-container/index";
-import Board from "./Board.js";
+import { container } from "src/service-container/index";
+import Board from "src/core/Board.js";
 
 /**
  * Service for board-related operations.

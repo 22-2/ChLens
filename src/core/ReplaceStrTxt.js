@@ -1,4 +1,4 @@
-import { ReplaceStrParser } from "../../packages/ch-lib/src/index";
+import { ReplaceStrParser } from "packages/ch-lib/src/index";
 
 let _replaceTable = null;
 const _CONFIG_NAME = "replace_str_txt_obj";

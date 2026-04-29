@@ -4,8 +4,30 @@ import React, { useEffect, useMemo } from "react";
 import { convertDSLToUser } from "src/core/NGConverter";
 import ngSchema from "src/core/ng-schema.json";
 
-// Set local monaco path to avoid CSP errors in browser extensions
-loader.config({ paths: { vs: "/lib/monaco/vs" } });
+// MonacoEnvironment を loader より先にセットする（loaderの非同期初期化前に確実に差し込む）
+// getWorker で直接 Worker インスタンスを返し blob URL ラッパーを回避する
+const workerMap: Record<string, string> = {
+  json: "json.worker-DKiEKt88.js",
+  css: "css.worker-HnVq6Ewq.js",
+  scss: "css.worker-HnVq6Ewq.js",
+  less: "css.worker-HnVq6Ewq.js",
+  html: "html.worker-B51mlPHg.js",
+  handlebars: "html.worker-B51mlPHg.js",
+  razor: "html.worker-B51mlPHg.js",
+  typescript: "ts.worker-CMbG-7ft.js",
+  javascript: "ts.worker-CMbG-7ft.js",
+};
+(window as any).MonacoEnvironment = {
+  getWorker: function (_moduleId: string, label: string) {
+    const file = workerMap[label] ?? "editor.worker-Be8ye1pW.js";
+    return new Worker((browser as any).runtime.getURL(`lib/monaco/vs/assets/${file}`));
+  },
+};
+
+// (browser as any).runtime.getURL で完全なURLを取得する（/から始まる相対パスは拡張では機能しない）
+loader.config({
+  paths: { vs: (browser as any).runtime.getURL("lib/monaco/vs") },
+});
 
 interface NGEditorProps {
   value: string; // DSL or JSON5 string
@@ -32,7 +54,9 @@ export const NGEditor: React.FC<NGEditorProps> = ({ value, onChange }) => {
   }, [value]);
 
   useEffect(() => {
+    console.log("Monaco instance:", monaco);
     if (monaco) {
+      console.log((browser as any).runtime.getURL("ng-schema.json"))
       // @ts-ignore - Monaco's types might flag this as deprecated or mismatch in some environments
       const jsonLang = monaco.languages.json;
       if (jsonLang && jsonLang.jsonDefaults) {
@@ -41,7 +65,7 @@ export const NGEditor: React.FC<NGEditorProps> = ({ value, onChange }) => {
           allowComments: true,
           schemas: [
             {
-              uri: "https://read.crx/ng-schema.json",
+              uri: (browser as any).runtime.getURL("ng-schema.json"),
               fileMatch: ["*"],
               schema: ngSchema,
             },

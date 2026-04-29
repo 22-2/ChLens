@@ -1,6 +1,6 @@
 let ThreadList;
-import ContextMenu from "./ContextMenu.js";
-import TableSearch from "./TableSearch.js";
+import ContextMenu from "src/ui/ContextMenu.js";
+import TableSearch from "src/ui/TableSearch.js";
 
 // 背景色に対してコントラストの高いテキスト色（#222 or #eee）を返す
 function _getContrastTextColor(hex) {

@@ -1,4 +1,4 @@
-import { KeyValueStore, ObjectStore, StorageManager } from "../types";
+import { KeyValueStore, ObjectStore, StorageManager } from "src/app/platform/types";
 
 /**
  * ブラウザ拡張機能環境用のKeyValueStore実装 (browser.storage.localを使用)

@@ -10,7 +10,7 @@ export * from "./app/Log";
 export { default as message } from "./app/Message";
 export * from "./app/Util";
 
-import * as platformInternal from "./app/platform";
+import * as platformInternal from "src/app/platform";
 
 // iframe内外で統一的にplatformにアクセスできるようにProxyを使用
 export const platform = new Proxy({} as typeof platformInternal.platform, {

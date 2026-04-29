@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import MessageProcessor from "./MessageProcessor.js";
+import MessageProcessor from "src/core/MessageProcessor.js";
 
 describe("MessageProcessor", () => {
   describe("decode", () => {

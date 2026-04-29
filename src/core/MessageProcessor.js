@@ -1,4 +1,4 @@
-import { AnchorParser } from "../../packages/ch-lib/src/index";
+import { AnchorParser } from "packages/ch-lib/src/index";
 
 /**
  * MessageProcessor handles the transformation of response data into displayable HTML segments.

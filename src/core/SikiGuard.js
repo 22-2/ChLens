@@ -1,6 +1,6 @@
-import Cache from "./Cache.js";
-import { Request } from "./HTTP.ts";
-import { URL } from "./URL.ts";
+import Cache from "src/core/Cache.js";
+import { Request } from "src/core/HTTP.ts";
+import { URL } from "src/core/URL.ts";
 
 /**
 @class SikiGuard

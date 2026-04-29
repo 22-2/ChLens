@@ -1,4 +1,4 @@
-import Write from "./write.js";
+import Write from "src/write/write.js";
 
 Write.setFont();
 

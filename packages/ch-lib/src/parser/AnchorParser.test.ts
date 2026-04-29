@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AnchorParser } from './AnchorParser';
+import { AnchorParser } from 'packages/ch-lib/src/parser/AnchorParser';
 
 describe('AnchorParser', () => {
   it('should parse single anchor', () => {

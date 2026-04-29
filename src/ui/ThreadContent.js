@@ -1,7 +1,7 @@
 let ThreadContent;
-import MessageProcessor from "../core/MessageProcessor.js";
-import ThreadModel from "../core/ThreadModel.js";
-import MediaContainer from "./MediaContainer.js";
+import MessageProcessor from "src/core/MessageProcessor.js";
+import ThreadModel from "src/core/ThreadModel.js";
+import MediaContainer from "src/ui/MediaContainer.js";
 
 /**
 @class ThreadContent
