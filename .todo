@@ -221,7 +221,8 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 データ型はこんな感じでいいんすかね🤔
 調査して教えてほしいっす
 
-
+- [ ] fix: https://kes.5ch.io/newsbot/ のsubject.txtがが読み込めない
+- [ ] chore: tauriで検索
 - [ ] chore: フィルタリング中にジャンプを押したら解除してジャンプ
 - [ ] chore: ようつべの埋め込み
 - [ ] chore: 設定項目を減らす
@@ -231,6 +232,9 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 - [ ] feat: ポップアップを含め、レスをDnDで選択できるように -> 一括でコピーなど専用メニューを表示
 - [ ] feat: ミニマップ移植
 - [ ] feat: ライブチャットビュー
+- [ ] feat: NGミニウィンドウ
+- [ ] feat: NGミニウィンドウから、betterdiscordみたいにフローティングウィンドウを出して、プレビューしながらngを編集できるように
+- [ ] chore: ミニウィンドウ内のラジオボタンからセレクトボックスにする
 - [ ] fix: スレ一覧がズームしてもはみ出ないように
 - [ ] fix: 必死チェッカーが「idを指定してください」って出る
 - [ ] urlをクリックしたあと、戻るときはスレ一覧ではなく前のスレに戻るように
