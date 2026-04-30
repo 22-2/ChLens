@@ -3,7 +3,7 @@ const path = require("path");
 const { compiler: c, rolldown: _, postcss: p } = require("./plugins");
 const util = require("./util");
 
-const browsers = ["chrome", "firefox"];
+const browsers = ["chrome", "firefox", "tauri"];
 
 let paths = {};
 (function () {
@@ -96,6 +96,9 @@ let paths = {};
 for (let browser of browsers) {
   paths.output[browser] = `./debug/${browser}`;
 }
+
+// tauri用: browser-polyfillの代わりにシムを使う
+paths.lib.browserShim = "./src/browser-shim.js";
 
 const manifestJson = fs.readJsonSync(paths.manifest);
 

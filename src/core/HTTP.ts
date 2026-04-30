@@ -1,3 +1,5 @@
+import { platform } from "src/app";
+
 type headerList = Record<string, string>;
 
 export class Request {
@@ -7,7 +9,6 @@ export class Request {
   readonly timeout: number;
   readonly headers: headerList;
   readonly preventCache: boolean;
-  private xhr?: XMLHttpRequest;
 
   constructor(
     method: string,
@@ -33,7 +34,7 @@ export class Request {
     this.preventCache = preventCache;
   }
 
-  send(): Promise<Response> {
+  async send(): Promise<Response> {
     const url = this.url;
 
     if (this.preventCache) {
@@ -41,53 +42,27 @@ export class Request {
       this.headers["Cache-Control"] = "no-cache";
     }
 
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-
-      xhr.open(this.method, url);
-
-      if (this.mimeType !== null) {
-        xhr.overrideMimeType(this.mimeType);
-      }
-
-      xhr.timeout = this.timeout;
-
-      for (const [key, val] of Object.entries(this.headers)) {
-        xhr.setRequestHeader(key, val);
-      }
-
-      xhr.on("loadend", () => {
-        const resonseHeaders = Request.parseHTTPHeader(
-          xhr.getAllResponseHeaders(),
-        );
-
-        resolve(
-          new Response(
-            xhr.status,
-            resonseHeaders,
-            xhr.responseText,
-            xhr.responseURL,
-          ),
-        );
+    try {
+      const response = await platform.http.fetch(url, {
+        method: this.method,
+        headers: this.headers,
+        mimeType: this.mimeType || undefined,
+        timeout: this.timeout,
       });
 
-      xhr.on("timeout", () => {
-        reject("timeout");
-      });
-
-      xhr.on("abort", () => {
-        reject("abort");
-      });
-
-      xhr.send();
-
-      this.xhr = xhr;
-      return;
-    });
+      return new Response(
+        response.status,
+        response.headers,
+        response.body,
+        response.url,
+      );
+    } catch (e) {
+      return Promise.reject(e);
+    }
   }
 
   abort(): void {
-    this.xhr?.abort();
+    // XMLHttpRequestに依存していたため、platform abstractionではサポートしていません
   }
 
   static parseHTTPHeader(str: string): headerList {

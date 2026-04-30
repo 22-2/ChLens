@@ -179,6 +179,19 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
   }
 
   private setUpBrowserBookmarkWatcher() {
+    // ブラウザのブックマークAPIが存在しない環境（Tauri等）では
+    // ウォッチャーを起動せず、ブックマーク同期はスキップする。
+    if (typeof browser === "undefined" || typeof browser.bookmarks === "undefined") {
+      app.log(
+        "warn",
+        "ブラウザのブックマークAPIが利用できません。ブックマーク同期をスキップします。",
+      );
+      // 初期化完了を通知して待機している箇所が進めるようにする
+      if (!this.ready.wasCalled) this.ready.call();
+      this.needReconfigureRootNodeId.call();
+      return;
+    }
+
     let watching = true;
 
     // Firefoxではbookmarks.onImportBegan/Endedは実装されていない

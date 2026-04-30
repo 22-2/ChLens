@@ -4,17 +4,17 @@
   "version": "0.1.0",
   "identifier": "com.tauri.dev",
   "build": {
-    "frontendDist": "../build",
-    "devUrl": "http://localhost:3000",
-    "beforeDevCommand": "pnpm dev",
-    "beforeBuildCommand": "pnpm build"
+    "frontendDist": "../debug/tauri",
+    "beforeDevCommand": "pnpm run build:tauri",
+    "beforeBuildCommand": "pnpm run build:tauri"
   },
   "app": {
     "windows": [
       {
         "title": "read.crx-2",
-        "width": 800,
-        "height": 600,
+        "url": "view/browser.html",
+        "width": 1200,
+        "height": 800,
         "resizable": true,
         "fullscreen": false
       }

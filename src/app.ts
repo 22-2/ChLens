@@ -15,9 +15,13 @@ import * as platformInternal from "src/app/platform";
 // iframe内外で統一的にplatformにアクセスできるようにProxyを使用
 export const platform = new Proxy({} as typeof platformInternal.platform, {
   get(_target, prop) {
+    // iframeはTauriのIPC橋がないため__TAURIがwindowに存在せず、
+    // platformInternal.platformがBrowserHttpClientになる。
+    // そのため親ウィンドウのplatformを優先して使用する。
     const actualPlatform =
-      platformInternal.platform ||
-      (self !== top && (parent as any).app?.platform);
+      (self !== top && (parent as any).app?.platform) ||
+      platformInternal.platform;
+      console.log("Accessing platform:", prop, "Actual platform:", actualPlatform);
     if (!actualPlatform) {
       console.error("platform is not initialized");
       return undefined;
@@ -48,19 +52,31 @@ export const config = new Proxy({} as Config, {
 });
 
 export const manifest = (async () => {
+  // ブラウザ拡張の環境では拡張マニフェストを取得するが、
+  // Tauriやローカル実行など拡張APIが無い環境では失敗させず
+  // フォールバックでHTML側のバージョン情報を返す。
   if (!/^(?:chrome|moz)-extension:$/.test(location.protocol)) {
-    throw new Error("manifest.jsonの取得に失敗しました");
+    try {
+      const response = await fetch("/manifest.json");
+      return await response.json();
+    } catch {
+      return { version: document.documentElement.dataset.appVersion || "" };
+    }
   }
+
   try {
     const response = await fetch("/manifest.json");
     return await response.json();
-  } catch {}
+  } catch (e) {
+    console.error("manifest.json fetch failed:", e);
+    return { version: document.documentElement.dataset.appVersion || "" };
+  }
 })();
 
 export async function boot(
   path: string,
   requirements: Function | string[] | null,
-  fn: Function,
+  fn: Function
 ) {
   if (!fn && typeof requirements === "function") {
     fn = requirements;

@@ -7,6 +7,11 @@ const { browsers, paths } = require("./config");
   tasks
 */
 const manifest = function (browser) {
+  if (browser === "tauri") {
+    // TauriはChrome拡張機能ではないためmanifest.jsonは不要
+    return async function () {};
+  }
+
   const output = paths.output[browser];
   const bin = `${output}/manifest.json`;
 
@@ -45,7 +50,7 @@ const manifest = function (browser) {
 };
 
 const rules = function (browser) {
-  if (browser === "firefox") {
+  if (browser === "firefox" || browser === "tauri") {
     return async () => {};
   }
 
@@ -67,6 +72,15 @@ var shortQuery = function (browser) {
 
 var webExtPolyfill = function (browser) {
   const output = paths.output[browser] + "/lib";
+  if (browser === "tauri") {
+    // Tauri環境ではbrowser拡張機能APIが存在しないため、
+    // 本物のpolyfillの代わりにシムをbrowser-polyfill.min.jsとして配置する
+    return () =>
+      gulp
+        .src(paths.lib.browserShim)
+        .pipe($.rename("browser-polyfill.min.js"))
+        .pipe(gulp.dest(output));
+  }
   return () =>
     gulp
       .src(paths.lib.webExtPolyfill, { since: gulp.lastRun(webExtPolyfill) })
@@ -111,6 +125,7 @@ gulp.task("clean", () =>
     fs.remove("./.rpt2_cache"),
     fs.remove("./debug/chrome"),
     fs.remove("./debug/firefox"),
+    fs.remove("./debug/tauri"),
     fs.remove("./read.crx_2.zip"),
   ])
 );

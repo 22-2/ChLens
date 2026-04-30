@@ -1,5 +1,22 @@
-import { Request } from "src/core/HTTP";
 import { HttpClient, HttpRequestOptions, HttpResponse } from "src/app/platform/types";
+
+function parseHTTPHeader(str: string): Record<string, string> {
+  const reg = /^(?:([a-z\-]+):\s*|([ \t]+))(.+)\s*$/gim;
+  const headers: Record<string, string> = {};
+  let last: string | undefined;
+  let res: RegExpExecArray | null;
+
+  while ((res = reg.exec(str))) {
+    if (typeof res[1] !== "undefined") {
+      headers[res[1]] = res[3];
+      last = res[1];
+    } else if (typeof last !== "undefined") {
+      headers[last] += res[2] + res[3];
+    }
+  }
+
+  return headers;
+}
 
 /**
  * ブラウザ拡張機能環境用のHttpClient実装
@@ -9,20 +26,40 @@ export const BrowserHttpClient: HttpClient = {
     url: string,
     options: HttpRequestOptions = {},
   ): Promise<HttpResponse> {
-    const request = new Request(options.method || "GET", url, {
-      mimeType: options.mimeType,
-      headers: options.headers,
-      timeout: options.timeout,
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open(options.method || "GET", url);
+
+      if (options.mimeType) {
+        xhr.overrideMimeType(options.mimeType);
+      }
+
+      if (options.timeout) {
+        xhr.timeout = options.timeout;
+      }
+
+      if (options.headers) {
+        for (const [key, val] of Object.entries(options.headers)) {
+          xhr.setRequestHeader(key, val);
+        }
+      }
+
+      xhr.onloadend = () => {
+        const responseHeaders = parseHTTPHeader(xhr.getAllResponseHeaders());
+        resolve({
+          status: xhr.status,
+          headers: responseHeaders,
+          body: xhr.responseText,
+          url: xhr.responseURL,
+        });
+      };
+
+      xhr.ontimeout = () => reject("timeout");
+      xhr.onabort = () => reject("abort");
+      xhr.onerror = () => reject("error");
+
+      xhr.send(options.body);
     });
-
-    const response = await request.send();
-
-    return {
-      status: response.status,
-      headers: response.headers,
-      body: response.body,
-      url: response.responseURL,
-    };
   },
 
   async setupWriteHeaders(formAction: string): Promise<void> {
