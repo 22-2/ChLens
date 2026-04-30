@@ -190,6 +190,7 @@ useAutoRefresh.ts
 - [ ] tauri移行
   - [x] ブラウザapi抽象化
 - [ ] chrome風タブバーを、全部vscode風に作り変える
+- [ ] ライトモードで一部スタイルが利かない
 
 ## prior 1
 - [ ] refactor: ビューとロジックの切り離し、コンポーネントは表示と命令にだけ特化する
