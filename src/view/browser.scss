@@ -36,6 +36,8 @@ body {
   --browser-color-accent-fg: #fff;
   /* フォーカスリング・アクティブ下線は accent より明るい青にする */
   --browser-color-focus-ring: #1a73e8;
+  --browser-color-hover-overlay: rgba(0, 0, 0, 0.08);
+  --browser-color-status-hover-overlay: rgba(0, 0, 0, 0.1);
   /* --- フォーム入力 --- */
   --browser-color-input-bg: #fff;
   --browser-color-input-border: #dadce0;
@@ -107,6 +109,11 @@ body {
   white-space: nowrap;
 }
 
+.status-bar__item--interactive {
+  padding: 0;
+  cursor: pointer;
+}
+
 .status-bar__item--active {
   background: rgba(0, 0, 0, 0.14);
 }
@@ -147,28 +154,38 @@ body {
 .tab-list {
   display: flex;
   align-items: flex-end;
+  flex: 1 1 auto;
   min-width: 0;
-  gap: 1px;
+  gap: 4px;
+  overflow: hidden;
+  padding-right: 4px;
 }
 
 .tab {
   display: flex;
   align-items: center;
+  flex: 1 1 0;
   height: 34px;
   padding: 0 8px 0 12px;
   border-radius: 8px 8px 0 0;
   cursor: pointer;
-  max-width: 240px;
-  min-width: 80px;
+  max-width: 180px;
+  min-width: 72px;
   font-size: 12px;
   color: var(--browser-color-text-muted);
   position: relative;
-  transition: background 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s,
+    flex-grow 0.1s,
+    max-width 0.1s;
 }
 
 .tab--active {
   background: var(--browser-color-bg);
   color: var(--browser-color-text-primary);
+  flex-grow: 1.35;
+  max-width: 240px;
 }
 
 .tab:not(.tab--active):hover {
@@ -230,6 +247,7 @@ body {
 
 /* 固定タブ: 幅を狭くしてタイトルを非表示 */
 .tab--pinned {
+  flex: 0 0 36px;
   min-width: 36px;
   max-width: 36px;
   padding: 0;
@@ -1121,8 +1139,12 @@ body {
   color: #222;
 }
 
-.simple-data-table__row--highlight:hover {
-  background: #fff5a8;
+.simple-data-table__row--highlight > td {
+  transition: box-shadow 0.1s;
+}
+
+.simple-data-table__row--highlight:hover > td {
+  box-shadow: inset 0 0 0 999px var(--browser-color-hover-overlay);
 }
 
 .simple-data-table__row--highlight .simple-data-table__num,
@@ -1584,11 +1606,24 @@ body {
   font-family: inherit;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s;
 }
 
+.status-bar__item--interactive .status-bar__btn {
+  width: 100%;
+  padding: 0 10px;
+}
+
+.status-bar__item--interactive:hover .status-bar__btn,
 .status-bar__btn:hover {
-  background: rgba(0, 0, 0, 0.1);
+  background: var(--browser-color-status-hover-overlay);
+}
+
+.status-bar--active .status-bar__item--interactive:hover .status-bar__btn,
+.status-bar--active .status-bar__btn:hover {
+  background: rgba(255, 255, 255, 0.12);
 }
 
 /* パネルが開いているときはアクセントカラーで強調 */
@@ -1738,6 +1773,27 @@ body {
   color: var(--browser-color-text-primary);
   min-width: 36px;
   text-align: right;
+}
+
+.mini-window__select-row {
+  display: flex;
+  align-items: center;
+}
+
+.mini-window__select {
+  width: 100%;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--browser-color-input-border);
+  border-radius: 6px;
+  background: var(--browser-color-input-bg);
+  color: var(--browser-color-text-primary);
+  font: inherit;
+}
+
+.mini-window__select:focus {
+  outline: none;
+  border-color: var(--browser-color-focus-ring);
 }
 
 .mini-window__radio-row {
@@ -2101,6 +2157,8 @@ body {
   --browser-color-accent-fg: #fff;
   /* ダークモードのフォーカスリングは視認性を上げるため明るい青 */
   --browser-color-focus-ring: #8ab4f8;
+  --browser-color-hover-overlay: rgba(255, 255, 255, 0.08);
+  --browser-color-status-hover-overlay: rgba(255, 255, 255, 0.12);
   /* --- フォーム入力 --- */
   --browser-color-input-bg: #35363a;
   --browser-color-input-border: #5f6368;
@@ -2352,8 +2410,8 @@ body {
     color: #000;
   }
 
-  .simple-data-table__row--highlight:hover {
-    background: #b97f00;
+  .simple-data-table__row--highlight:hover > td {
+    box-shadow: inset 0 0 0 999px var(--browser-color-hover-overlay)!important;
   }
 
   .simple-data-table__row--highlight .simple-data-table__num,
@@ -2606,11 +2664,6 @@ body {
 
   .status-bar__divider {
     background: rgba(255, 255, 255, 0.18);
-  }
-
-  /* --- ステータスバーボタン --- */
-  .status-bar__btn:hover {
-    background: rgba(255, 255, 255, 0.12);
   }
 
   /* --- ミニウィンドウ --- */

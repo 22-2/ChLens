@@ -1,9 +1,11 @@
 import { X } from "lucide-react";
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import { WritePanelContent } from "src/view/browser/components/WritePanelContent";
 import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
+import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 
 export const BottomPanel: React.FC = () => {
+  const { currentPage } = useTabStore();
   const {
     isOpen,
     height,
@@ -16,6 +18,13 @@ export const BottomPanel: React.FC = () => {
 
   const dragStartY = useRef<number | null>(null);
   const dragStartHeight = useRef<number>(height);
+
+  useEffect(() => {
+    // 書き込みパネルはスレッド URL を前提にしているため、別ページへ移動したら閉じて状態を揃える。
+    if (isOpen && currentPage.type !== "thread") {
+      closePanel();
+    }
+  }, [closePanel, currentPage.type, isOpen]);
 
   const handleResizeMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -42,7 +51,7 @@ export const BottomPanel: React.FC = () => {
     [height, setHeight],
   );
 
-  if (!isOpen) return null;
+  if (!isOpen || currentPage.type !== "thread") return null;
 
   return (
     <div className="bottom-panel" style={{ height }}>

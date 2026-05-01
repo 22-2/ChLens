@@ -17,6 +17,7 @@ interface StatusBarEntry {
   priority: number;
   title?: string;
   className?: string;
+  interactive: boolean;
   content: ReactNode;
 }
 
@@ -41,6 +42,7 @@ interface StatusBarItemProps {
   priority?: number;
   title?: string;
   className?: string;
+  interactive?: boolean;
   children: ReactNode;
 }
 
@@ -92,6 +94,7 @@ export const StatusBarProvider: React.FC<StatusBarProviderProps> = ({
         current.priority === item.priority &&
         current.title === item.title &&
         current.className === item.className &&
+        current.interactive === item.interactive &&
         current.content === item.content
       ) {
         return prev;
@@ -175,6 +178,7 @@ export const StatusBarItem: React.FC<StatusBarItemProps> = ({
   priority = 0,
   title,
   className,
+  interactive = false,
   children,
 }) => {
   const { removeItem, setItem } = useStatusBarRegistryContext();
@@ -186,6 +190,7 @@ export const StatusBarItem: React.FC<StatusBarItemProps> = ({
       priority,
       title,
       className,
+      interactive,
       content: children,
     });
 
@@ -197,6 +202,7 @@ export const StatusBarItem: React.FC<StatusBarItemProps> = ({
     children,
     className,
     id,
+    interactive,
     priority,
     removeItem,
     setItem,
@@ -235,6 +241,8 @@ export const StatusBar: React.FC = () => {
           <div
             key={item.id}
             className={`status-bar__item${
+              item.interactive ? " status-bar__item--interactive" : ""
+            }${
               item.className ? ` ${item.className}` : ""
             }`}
             title={item.title}
@@ -248,6 +256,8 @@ export const StatusBar: React.FC = () => {
           <div
             key={item.id}
             className={`status-bar__item${
+              item.interactive ? " status-bar__item--interactive" : ""
+            }${
               item.className ? ` ${item.className}` : ""
             }`}
             title={item.title}

@@ -15,17 +15,28 @@ import {
   BottomPanelProvider,
   useBottomPanel,
 } from "src/view/browser/hooks/use-bottom-panel";
-import { TabProvider } from "src/view/browser/hooks/use-tab-store";
+import {
+  TabProvider,
+  useTabStore,
+} from "src/view/browser/hooks/use-tab-store";
 import { useTheme } from "src/view/browser/hooks/use-theme";
 
 // ステータスバー左端に常設される書き込みパネル開閉ボタン
 const WritePanelToggleItem: React.FC = () => {
   const { togglePanel } = useBottomPanel();
+  const { currentPage } = useTabStore();
+
+  // 書き込み UI はスレッド専用なので、他ページではステータスバーに出さない。
+  if (currentPage.type !== "thread") {
+    return null;
+  }
+
   return (
     <StatusBarItem
       id="write-panel-toggle"
       alignment="right"
       priority={0}
+      interactive
       // title={isOpen ? "書き込みパネルを閉じる" : "書き込みパネルを開く"}
     >
       <button

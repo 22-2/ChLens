@@ -6,6 +6,7 @@ export interface MiniWindowProps {
   /** トリガーボタンの getBoundingClientRect() を渡す。位置計算に使用する。 */
   anchor: DOMRect;
   onClose: () => void;
+  triggerRef?: React.RefObject<HTMLElement | null>;
   children: React.ReactNode;
 }
 
@@ -18,6 +19,7 @@ export const MiniWindow: React.FC<MiniWindowProps> = ({
   title,
   anchor,
   onClose,
+  triggerRef,
   children,
 }) => {
   const windowRef = useRef<HTMLDivElement>(null);
@@ -25,14 +27,17 @@ export const MiniWindow: React.FC<MiniWindowProps> = ({
   // クリックアウトサイドで閉じる
   useEffect(() => {
     const handlePointerDown = (e: PointerEvent) => {
-      if (windowRef.current && !windowRef.current.contains(e.target as Node)) {
-        onClose();
-      }
+      const target = e.target;
+      if (!(target instanceof Node)) return;
+      if (windowRef.current?.contains(target)) return;
+      // トリガー自身の pointerdown では閉じず、後段の onClick トグルに委ねる。
+      if (triggerRef?.current?.contains(target)) return;
+      onClose();
     };
     window.addEventListener("pointerdown", handlePointerDown, true);
     return () =>
       window.removeEventListener("pointerdown", handlePointerDown, true);
-  }, [onClose]);
+  }, [onClose, triggerRef]);
 
   // ESC キーで閉じる
   useEffect(() => {
