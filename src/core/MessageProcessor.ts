@@ -8,6 +8,31 @@ interface DecodedMessage {
   messageHtml: string;
 }
 
+const TRAILING_PUNCTUATION = /[.,!?;:)]$/;
+
+const trimLinkTrailingPunctuation = (rawUrl: string): string => {
+  let url = rawUrl;
+
+  // 意図: 本文末尾の句読点や括弧閉じがURLに誤って含まれるとリンク切れになるため、末尾だけを最小限トリムする。
+  while (TRAILING_PUNCTUATION.test(url)) {
+    const tail = url.at(-1);
+    if (tail !== ")") {
+      url = url.slice(0, -1);
+      continue;
+    }
+
+    const openingParenCount = (url.match(/\(/g) || []).length;
+    const closingParenCount = (url.match(/\)/g) || []).length;
+    if (closingParenCount > openingParenCount) {
+      url = url.slice(0, -1);
+      continue;
+    }
+    break;
+  }
+
+  return url;
+};
+
 interface DecodableRes {
   name: string;
   mail: string;
@@ -121,8 +146,11 @@ export default class MessageProcessor {
 
         if (!insideAnchor) {
           return part.replace(
-            /(https?:\/\/[^\s<>"]+)/gi,
-            '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>',
+            /(https?:\/\/[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+)/gi,
+            (matchedUrl: string) => {
+              const linkUrl = trimLinkTrailingPunctuation(matchedUrl);
+              return `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer">${linkUrl}</a>`;
+            },
           );
         }
         return part;

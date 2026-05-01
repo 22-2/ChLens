@@ -53,6 +53,27 @@ describe("MessageProcessor", () => {
       );
     });
 
+    it("should parse URLs wrapped by full-width parentheses", () => {
+      const res = {
+        name: "テスト",
+        mail: "",
+        other: "",
+        message:
+          "superpowers（https://example.test/project-a）とかagent-skills（https://example.test/project-b）いれたら流れでやってくれるわ",
+      };
+
+      const result = MessageProcessor.decode(res, "https:");
+      expect(result.messageHtml).toContain(
+        '<a href="https://example.test/project-a" target="_blank" rel="noopener noreferrer">https://example.test/project-a</a>',
+      );
+      expect(result.messageHtml).toContain(
+        '<a href="https://example.test/project-b" target="_blank" rel="noopener noreferrer">https://example.test/project-b</a>',
+      );
+      expect(result.messageHtml).not.toContain(
+        'https://example.test/project-a）とかagent-skills（https://example.test/project-b',
+      );
+    });
+
     it("should not double-convert already linked URLs", () => {
       const res = {
         name: "テスト",
