@@ -1,6 +1,6 @@
-import { ChURL } from "packages/ch-lib/src/url/ChURL";
-import { decodeCharReference } from "packages/ch-lib/src/utils/entities";
-import { MetadataParser } from "packages/ch-lib/src/parser/MetadataParser";
+import { ChURL } from "../url/ChURL";
+import { decodeCharReference } from "../utils/entities";
+import { MetadataParser } from "./MetadataParser";
 
 export interface Post {
   number: number;
@@ -35,7 +35,7 @@ export class ThreadParser {
     const posts: Post[] = [];
     let title: string | undefined;
     const lines = text.split("\n");
-    
+
     lines.forEach((line, index) => {
       if (!line) return;
       const sp = line.split("<>");

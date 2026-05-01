@@ -53,23 +53,29 @@ export default class MessageProcessor {
     let otherHtml = res.other || "";
     // ID & SLIP markup
     if (res.id) {
-      const idHtml = `<span class="id">${res.id}</span>`;
+      const idHtml = `<span class="id">ID:${res.id}</span>`;
       if (res.slip) {
         const slipHtml = `<span class="slip">SLIP:${res.slip}</span>`;
         // Replace ID with SLIP + ID if both exist
-        // Be careful not to double the ID: prefix if res.id already includes it
-        const searchId = res.id.startsWith("ID:") ? res.id : `ID:${res.id}`;
+        const searchId = `ID:${res.id}`;
         if (otherHtml.includes(searchId)) {
           otherHtml = otherHtml.replace(searchId, slipHtml + idHtml);
         } else {
-          // Fallback: replace ID directly and append SLIP
-          otherHtml = otherHtml.replace(res.id, idHtml);
+          // Fallback: search without prefix or try 発信元 format
+          if (otherHtml.includes(res.id)) {
+            otherHtml = otherHtml.replace(res.id, idHtml);
+          }
           if (!otherHtml.includes(slipHtml)) {
             otherHtml += slipHtml;
           }
         }
       } else {
-        otherHtml = otherHtml.replace(res.id, idHtml);
+        const searchId = `ID:${res.id}`;
+        if (otherHtml.includes(searchId)) {
+          otherHtml = otherHtml.replace(searchId, idHtml);
+        } else if (otherHtml.includes(res.id)) {
+          otherHtml = otherHtml.replace(res.id, idHtml);
+        }
       }
     } else if (res.slip) {
       otherHtml += `<span class="slip">SLIP:${res.slip}</span>`;

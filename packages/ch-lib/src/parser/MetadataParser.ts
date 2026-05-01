@@ -43,12 +43,20 @@ export class MetadataParser {
       if (fixedId.endsWith("\u25cf")) {
         fixedId = fixedId.slice(0, -1);
       }
+      // Extract the ID value without the "ID:" or "発信元:" prefix
+      // Reason: The id field should store only the identifier value (e.g., "TestImage5"),
+      // not the prefix, so that UI/indexing can work without assuming prefix format
+      if (fixedId.startsWith("ID:")) {
+        fixedId = fixedId.slice(3);
+      } else if (fixedId.startsWith("発信元:")) {
+        fixedId = fixedId.slice(4);
+      }
       result.id = fixedId;
     }
 
     // 4. Extract pure date (optional, but good for cleanup)
     // We keep the original dateStr for now as 'date' to match main app expectations
-    
+
     return result;
   }
 }
