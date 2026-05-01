@@ -167,6 +167,22 @@ function updateActiveTab(
   };
 }
 
+function pushPageToTabHistory(tab: Tab, page: Page): Tab {
+  const currentPage = getCurrentPage(tab);
+  if (getPageIdentity(currentPage) === getPageIdentity(page)) {
+    return tab;
+  }
+
+  // タブ内クリック遷移は「実際に辿った順序」を履歴に残す。
+  // 毎回階層を再構築すると前スレが履歴から落ち、戻るでスレ一覧へ飛んでしまうため。
+  const historyUntilCurrent = tab.history.slice(0, tab.currentIndex + 1);
+  return {
+    ...tab,
+    history: [...historyUntilCurrent, page],
+    currentIndex: historyUntilCurrent.length,
+  };
+}
+
 // 閉じたタブを記録するヘルパー
 function pushClosed(closedTabs: Tab[], tab: Tab): Tab[] {
   return [tab, ...closedTabs].slice(0, MAX_CLOSED_TABS);
@@ -345,12 +361,7 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
         };
       }
 
-      const newHistory = buildHierarchy(action.page);
-      return updateActiveTab(state, (tab) => ({
-        ...tab,
-        history: newHistory,
-        currentIndex: newHistory.length - 1,
-      }));
+      return updateActiveTab(state, (tab) => pushPageToTabHistory(tab, action.page));
     }
 
     case "NAVIGATE_TAB": {
@@ -380,14 +391,13 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
         };
       }
 
-      // 指定タブにナビゲートしてアクティブにする
-      const newHistory = buildHierarchy(action.page);
+      // 指定タブの実履歴を保ったままページを追加する。
       return {
         ...state,
         activeTabId: action.tabId,
         tabs: state.tabs.map((t) =>
           t.id === action.tabId
-            ? { ...t, history: newHistory, currentIndex: newHistory.length - 1 }
+            ? pushPageToTabHistory(t, action.page)
             : t,
         ),
       };

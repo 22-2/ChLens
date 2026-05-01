@@ -380,6 +380,99 @@ describe("TabProvider auto refresh state", () => {
     );
   });
 
+  it("同一タブでスレURLへ遷移した時は戻るで前のスレへ戻る", async () => {
+    vi.resetModules();
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
+
+    function Harness() {
+      const { currentPage, activeTab, dispatch } = useTabStore();
+
+      return (
+        <>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "NAVIGATE",
+                page: {
+                  type: "threadList",
+                  title: "板A",
+                  boardUrl: "https://example.com/board-a/",
+                  boardTitle: "板A",
+                },
+              })
+            }
+          >
+            板Aへ移動
+          </button>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "NAVIGATE",
+                page: {
+                  type: "thread",
+                  title: "thread-1",
+                  threadUrl: "https://example.com/test/read.cgi/board-a/1/",
+                },
+              })
+            }
+          >
+            thread-1 へ移動
+          </button>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "NAVIGATE",
+                page: {
+                  type: "thread",
+                  title: "thread-2",
+                  threadUrl: "https://example.com/test/read.cgi/board-a/2/",
+                },
+              })
+            }
+          >
+            thread-2 へ移動
+          </button>
+          <button onClick={() => dispatch({ type: "GO_BACK" })}>戻る</button>
+          <output data-testid="current-page-title">{currentPage.title}</output>
+          <output data-testid="current-page-type">{currentPage.type}</output>
+          <output data-testid="history-titles">
+            {activeTab.history.map((page) => page.title).join("|")}
+          </output>
+          <output data-testid="history-index">{String(activeTab.currentIndex)}</output>
+        </>
+      );
+    }
+
+    render(
+      <TabProvider>
+        <Harness />
+      </TabProvider>,
+    );
+
+    fireEvent.click(screen.getByText("板Aへ移動"));
+    fireEvent.click(screen.getByText("thread-1 へ移動"));
+    fireEvent.click(screen.getByText("thread-2 へ移動"));
+
+    expect(screen.getByTestId("current-page-title")).toHaveTextContent(
+      "thread-2",
+    );
+    expect(screen.getByTestId("history-titles")).toHaveTextContent(
+      "ホーム|板A|thread-1|thread-2",
+    );
+    expect(screen.getByTestId("history-index")).toHaveTextContent("3");
+
+    fireEvent.click(screen.getByText("戻る"));
+
+    expect(screen.getByTestId("current-page-title")).toHaveTextContent(
+      "thread-1",
+    );
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent(
+      "thread",
+    );
+    expect(screen.getByTestId("history-index")).toHaveTextContent("2");
+  });
+
   it("UPDATE_TITLE_FOR_TAB は対象タブだけを更新し、アクティブタブを汚染しない", async () => {
     vi.resetModules();
     const { TabProvider, useTabStore } =
