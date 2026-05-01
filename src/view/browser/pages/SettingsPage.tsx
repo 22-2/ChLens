@@ -1,6 +1,5 @@
 import Form, { type IChangeEvent } from "@rjsf/core";
 import type { RJSFSchema, UiSchema, ValidatorType } from "@rjsf/utils";
-import validator from "@rjsf/validator-ajv8";
 import React, {
   useCallback,
   useEffect,
@@ -124,10 +123,13 @@ const HOW_TO_JUDGMENT_ID_OPTIONS = [
   { const: "exists_once", title: "1つでも存在する場合" },
 ] as const satisfies readonly SettingsOption[];
 
-const settingsValidator = validator as unknown as ValidatorType<
-  SettingsSectionFormData,
-  RJSFSchema
->;
+// 拡張機能ページのCSPではAJVの実行時コンパイル(new Function)が失敗するため、
+// 設定画面は保存を優先した最小バリデータで動かし、コンソールエラーを防ぐ。
+const settingsValidator: ValidatorType<SettingsSectionFormData, RJSFSchema> = {
+  validateFormData: () => ({ errors: [], errorSchema: {} }),
+  isValid: () => true,
+  rawValidation: () => ({ errors: [] }),
+};
 const AUTO_SAVE_DELAY_MS = 350;
 
 function buildFieldSchema(field: SettingsFieldDefinition): RJSFSchema {
