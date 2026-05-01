@@ -18,7 +18,6 @@ import {
 } from "src/service-container/interfaces";
 // @ts-ignore
 import Cache from "src/core/Cache.js";
-// @ts-ignore
 import BoardService from "src/core/BoardService.js";
 // @ts-ignore
 import * as BBSMenu from "src/core/BBSMenu.js";

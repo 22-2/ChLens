@@ -1,37 +1,35 @@
 import { AnchorParser } from "packages/ch-lib/src/index";
 
-/**
- * MessageProcessor handles the transformation of response data into displayable HTML segments.
- */
+interface DecodedMessage {
+  nameHtml: string;
+  isNameAnchor: boolean;
+  mailHtml: string;
+  otherHtml: string;
+  messageHtml: string;
+}
+
+interface DecodableRes {
+  name: string;
+  mail: string;
+  other?: string;
+  message?: string;
+  trip?: string;
+  id?: string;
+  slip?: string;
+  date?: string;
+}
+
 export default class MessageProcessor {
-  /**
-   * @typedef {Object} DecodedMessage
-   * @property {string} nameHtml
-   * @property {boolean} isNameAnchor
-   * @property {string} mailHtml
-   * @property {string} otherHtml
-   * @property {string} messageHtml
-   */
+  static decode(res: DecodableRes, protocol: string): DecodedMessage {
+    const parts = {} as DecodedMessage;
 
-  /**
-   * Processes a response object and returns HTML segments for its various parts.
-   * @param {any} res The response data from ThreadModel
-   * @param {string} protocol The current protocol (http: or https:)
-   * @returns {DecodedMessage} An object containing html segments
-   */
-  static decode(res, protocol) {
-    const parts = {};
-
-    // 1. Name processing
-    // Remove <a> tags and escape some characters, but keep basic formatting
-    let nameHtml = res.name
+    let nameHtml = (res.name || "")
       .replace(/<\/?a[^>]*>/g, "")
       .replace(
         /<(?!\/?(?:b|small|font(?: color="?[#a-zA-Z0-9]+"?)?)>)/g,
         "&lt;",
       );
 
-    // TRIP markup
     if (res.trip) {
       nameHtml = nameHtml.replace(
         res.trip,
@@ -40,29 +38,27 @@ export default class MessageProcessor {
     }
     parts.nameHtml = nameHtml;
 
-    // Name Anchor detection (pattern for '>>1' style names)
     parts.isNameAnchor =
       /^\s*(?:&gt;|\uff1e){0,2}([\d\uff10-\uff19]+(?:[\-\u30fc][\d\uff10-\uff19]+)?(?:\s*,\s*[\d\uff10-\uff19]+(?:[\-\u30fc][\d\uff10-\uff19]+)?)*)\s*$/.test(
-        res.name,
+        res.name || "",
       );
 
-    // 2. Mail processing
-    parts.mailHtml = res.mail.replace(/<.*?(?:>|$)/g, "");
+    parts.mailHtml = (res.mail || "").replace(/<.*?(?:>|$)/g, "");
 
-    // 3. Other processing (ID, Slip, Date)
     let otherHtml = res.other || "";
-    // ID & SLIP markup
     if (res.id) {
-      const idHtml = `<span class="id">ID:${res.id}</span>`;
+      // 意図: 受け取るID文字列が "ID:xxxx" / "xxxx" のどちらでも二重プレフィックスを防ぐ。
+      const normalizedId = res.id.replace(/^ID:/i, "");
+      const idHtml = `<span class="id">ID:${normalizedId}</span>`;
       if (res.slip) {
         const slipHtml = `<span class="slip">SLIP:${res.slip}</span>`;
-        // Replace ID with SLIP + ID if both exist
-        const searchId = `ID:${res.id}`;
+        const searchId = `ID:${normalizedId}`;
         if (otherHtml.includes(searchId)) {
           otherHtml = otherHtml.replace(searchId, slipHtml + idHtml);
         } else {
-          // Fallback: search without prefix or try 発信元 format
-          if (otherHtml.includes(res.id)) {
+          if (otherHtml.includes(normalizedId)) {
+            otherHtml = otherHtml.replace(normalizedId, idHtml);
+          } else if (otherHtml.includes(res.id)) {
             otherHtml = otherHtml.replace(res.id, idHtml);
           }
           if (!otherHtml.includes(slipHtml)) {
@@ -70,9 +66,11 @@ export default class MessageProcessor {
           }
         }
       } else {
-        const searchId = `ID:${res.id}`;
+        const searchId = `ID:${normalizedId}`;
         if (otherHtml.includes(searchId)) {
           otherHtml = otherHtml.replace(searchId, idHtml);
+        } else if (otherHtml.includes(normalizedId)) {
+          otherHtml = otherHtml.replace(normalizedId, idHtml);
         } else if (otherHtml.includes(res.id)) {
           otherHtml = otherHtml.replace(res.id, idHtml);
         }
@@ -81,7 +79,6 @@ export default class MessageProcessor {
       otherHtml += `<span class="slip">SLIP:${res.slip}</span>`;
     }
 
-    // Date markup
     if (res.date) {
       otherHtml = otherHtml.replace(
         res.date,
@@ -90,15 +87,13 @@ export default class MessageProcessor {
     }
     parts.otherHtml = otherHtml;
 
-    // 4. Message processing
-    // Fix image tags and convert anchors/ID links
     let messageHtml = (res.message || "")
       .replace(/<img src="([\w]+):\/\/(.*?)"[^>]*>/gi, "$1://$2")
       .replace(/<img src="\/\/(.*?)"[^>]*>/gi, `${protocol}//$1`)
-      .replace(AnchorParser.REG.ANCHOR, (/** @type {string} */ $0) => {
+      .replace(AnchorParser.REG.ANCHOR, ($0: string) => {
         const anchor = AnchorParser.parse($0);
-        let disabled = anchor.targetCount >= 25 || anchor.targetCount === 0;
-        let disabledReason =
+        const disabled = anchor.targetCount >= 25 || anchor.targetCount === 0;
+        const disabledReason =
           anchor.targetCount >= 25
             ? "指定されたレスの量が極端に多いため、ポップアップを表示しません"
             : "指定されたレスが存在しません";
@@ -114,19 +109,16 @@ export default class MessageProcessor {
         '<a href="javascript:undefined;" class="anchor_id">$&</a>',
       );
 
-    // Convert plain URLs to anchor tags
-    // Split by existing tags to avoid double-converting
     const htmlParts = messageHtml.split(/(<[^>]+>)/);
     let insideAnchor = false;
     messageHtml = htmlParts
       .map((part, index) => {
-        // odd indices are tags
         if (index % 2 === 1) {
           if (part.startsWith("<a")) insideAnchor = true;
           if (part.startsWith("</a>")) insideAnchor = false;
           return part;
         }
-        // Only process text parts that are not inside an anchor tag
+
         if (!insideAnchor) {
           return part.replace(
             /(https?:\/\/[^\s<>"]+)/gi,
