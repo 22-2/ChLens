@@ -6,6 +6,12 @@ import ngSchema from "src/core/ng-schema.json";
 
 const browser = (window as any).browser || (window as any).chrome;
 
+type MonacoEnvironmentLike = {
+  getWorker?: (moduleId: string, label: string) => Worker;
+  getWorkerUrl?: (moduleId: string, label: string) => string;
+  [key: string]: unknown;
+};
+
 // MonacoEnvironment を loader より先にセットする（loaderの非同期初期化前に確実に差し込む）
 // getWorker で直接 Worker インスタンスを返し blob URL ラッパーを回避する
 const workerMap: Record<string, string> = {
@@ -19,14 +25,34 @@ const workerMap: Record<string, string> = {
   typescript: "ts.worker-CMbG-7ft.js",
   javascript: "ts.worker-CMbG-7ft.js",
 };
-(window as any).MonacoEnvironment = {
-  getWorker: function (_moduleId: string, label: string) {
-    const file = workerMap[label] ?? "editor.worker-Be8ye1pW.js";
-    return new Worker(
-      browser.runtime.getURL(`lib/monaco/vs/assets/${file}`)
-    );
-  },
+
+const resolveWorkerUrl = (label: string): string => {
+  const file = workerMap[label] ?? "editor.worker-Be8ye1pW.js";
+  return browser.runtime.getURL(`lib/monaco/vs/assets/${file}`);
 };
+
+const configureMonacoEnvironment = (): void => {
+  const globalScope = globalThis as typeof globalThis & {
+    MonacoEnvironment?: MonacoEnvironmentLike;
+  };
+
+  // monaco側が初期化時にMonacoEnvironmentを書き換えるため、必要なキーを維持しつつworker解決だけ固定化する
+  const previous = globalScope.MonacoEnvironment ?? {};
+  globalScope.MonacoEnvironment = {
+    ...previous,
+    getWorker: (_moduleId: string, label: string) => {
+      return new Worker(resolveWorkerUrl(label), {
+        type: "module",
+        name: `monaco-${label || "editor"}`,
+      });
+    },
+    getWorkerUrl: (_moduleId: string, label: string) => {
+      return resolveWorkerUrl(label);
+    },
+  };
+};
+
+configureMonacoEnvironment();
 
 // browser.runtime.getURL で完全なURLを取得する（/から始まる相対パスは拡張では機能しない）
 loader.config({
@@ -58,8 +84,10 @@ export const NGEditor: React.FC<NGEditorProps> = ({ value, onChange }) => {
   }, [value]);
 
   useEffect(() => {
-    console.log("Monaco instance:", monaco);
+    // editor.main.js 側でMonacoEnvironmentが上書きされるケースがあるため、mount後にも再適用する
+    configureMonacoEnvironment();
     if (monaco) {
+      monaco.editor.setTheme("vs-dark");
       monaco.json.jsonDefaults.setDiagnosticsOptions({
         // validate: true はAJVがnew Function()でスキーマをコンパイルするためCSP違反になる
         validate: false,
@@ -94,6 +122,9 @@ export const NGEditor: React.FC<NGEditorProps> = ({ value, onChange }) => {
         defaultLanguage="json"
         value={initialValue}
         onChange={handleEditorChange}
+        beforeMount={() => {
+          configureMonacoEnvironment();
+        }}
         options={{
           minimap: { enabled: false },
           fontSize: 14,
