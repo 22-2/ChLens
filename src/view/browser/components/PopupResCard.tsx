@@ -1,6 +1,7 @@
 import React, { useMemo, useRef } from "react";
 import type { IRes } from "src/service-container";
 import { ResBody } from "src/view/browser/components/ResBody";
+import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
 import type {
   UrlClickHandler,
   UrlContextMenuHandler,
@@ -29,6 +30,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     onAnchorLeave,
     onContextMenu,
   }) => {
+    const { isNgTemporarilyDisabled } = useNgStatus();
     const handledMiddleClickThumbUrlRef = useRef<string | null>(null);
     const decoded = useMemo(
       () => decodeResponseHtml(res, messageProtocol),
@@ -52,7 +54,9 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     const idCount = res.id ? (idIndex?.get(res.id)?.size ?? 0) : 0;
 
     // NG 判定は ResItem と同じロジック
-    const isNG = res.ng != null || res.class?.includes("ng");
+    const isNG =
+      !isNgTemporarilyDisabled &&
+      (res.ng != null || res.class?.includes("ng"));
     if (isNG) return null;
 
     return (

@@ -3,6 +3,7 @@ import React from "react";
 import { AutoRefreshStatusItem } from "src/view/browser/components/AutoRefreshStatusItem";
 import { BottomPanel } from "src/view/browser/components/BottomPanel";
 import { ContentArea } from "src/view/browser/components/ContentArea";
+import { NgStatusItem } from "src/view/browser/components/NgStatusItem";
 import { NavigationBar } from "src/view/browser/components/NavigationBar";
 import {
   StatusBar,
@@ -15,6 +16,7 @@ import {
   BottomPanelProvider,
   useBottomPanel,
 } from "src/view/browser/hooks/use-bottom-panel";
+import { NgStatusProvider } from "src/view/browser/hooks/use-ng-status";
 import {
   TabProvider,
   useTabStore,
@@ -56,22 +58,25 @@ export const BrowserApp: React.FC = () => {
   return (
     <TabProvider>
       <StatusBarProvider>
-        <BottomPanelProvider>
-          <AutoScrollStateProvider>
-            {/* data-theme を使ってダークモード CSS 変数を切り替える */}
-            <div className="browser-shell" data-theme={theme}>
-              <div className="browser-shell__chrome">
-                <TabBar />
-                <NavigationBar />
+        <NgStatusProvider>
+          <BottomPanelProvider>
+            <AutoScrollStateProvider>
+              {/* data-theme を使ってダークモード CSS 変数を切り替える */}
+              <div className="browser-shell" data-theme={theme}>
+                <div className="browser-shell__chrome">
+                  <TabBar />
+                  <NavigationBar />
+                </div>
+                <ContentArea />
+                <BottomPanel />
+                <NgStatusItem />
+                <AutoRefreshStatusItem />
+                <WritePanelToggleItem />
+                <StatusBar />
               </div>
-              <ContentArea />
-              <BottomPanel />
-              <AutoRefreshStatusItem />
-              <WritePanelToggleItem />
-              <StatusBar />
-            </div>
-          </AutoScrollStateProvider>
-        </BottomPanelProvider>
+            </AutoScrollStateProvider>
+          </BottomPanelProvider>
+        </NgStatusProvider>
       </StatusBarProvider>
     </TabProvider>
   );

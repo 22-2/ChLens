@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import type { IRes } from "src/service-container";
 import { ResBody } from "src/view/browser/components/ResBody";
+import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
 import type {
   UrlClickHandler,
   UrlContextMenuHandler,
@@ -28,9 +29,13 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
     onAnchorLeave,
     onContextMenu,
   }) => {
+    const { isNgTemporarilyDisabled } = useNgStatus();
     // res.ng はサービス層がNGワード照合した結果を格納するフィールド。
     // 古いビューは class[] の "ng" 要素で判定していたが、new viewでは res.ng を優先チェックする。
-    const isNG = res.ng != null || res.class?.includes("ng");
+    // 一時解除中はデータ自体を消さずに表示判定だけをオフにして、復帰時の再評価コストを避ける。
+    const isNG =
+      !isNgTemporarilyDisabled &&
+      (res.ng != null || res.class?.includes("ng"));
     const decoded = useMemo(
       () => decodeResponseHtml(res, messageProtocol),
       [messageProtocol, res],

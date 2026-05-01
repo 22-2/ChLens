@@ -19,6 +19,7 @@ import {
   ColumnDef,
   SimpleDataTable,
 } from "src/view/browser/components/SimpleDataTable";
+import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import {
   useTheme,
@@ -311,6 +312,7 @@ export const ThreadListPage: React.FC<Props> = ({
   refreshKey,
 }) => {
   const { dispatch, state } = useTabStore();
+  const { isNgTemporarilyDisabled, setThreadListStats } = useNgStatus();
   const theme = useTheme();
   const titleFetched = useRef(false);
   const [threads, setThreads] = useState<IThread[]>([]);
@@ -601,6 +603,26 @@ export const ThreadListPage: React.FC<Props> = ({
     return items;
   }, [contextMenuState]);
 
+  const threadListNgCount = useMemo(
+    () => threads.filter((thread) => thread.ng != null).length,
+    [threads],
+  );
+  const threadListHighlightCount = useMemo(
+    () => threads.filter((thread) => thread.highlight != null).length,
+    [threads],
+  );
+
+  useEffect(() => {
+    // 件数表示は検索/ソートの表示結果ではなく、取得済み一覧全体を基準にする。
+    setThreadListStats({
+      ngCount: threadListNgCount,
+      highlightCount: threadListHighlightCount,
+    });
+    return () => {
+      setThreadListStats({ ngCount: 0, highlightCount: 0 });
+    };
+  }, [setThreadListStats, threadListHighlightCount, threadListNgCount]);
+
   // 条件付きで早期返却するとhooksの呼び出し数が変わってReactエラーになるため、
   // JSXレベルで条件分岐をして、すべてのhooksをレンダーパスの上部で呼び出す
   if (loading && threads.length === 0) {
@@ -638,7 +660,9 @@ export const ThreadListPage: React.FC<Props> = ({
         getRowKey={({ thread }) => thread.url}
         getRowClassName={({ thread }) => {
           const classes: string[] = [];
-          if (thread.ng) classes.push("thread-list__row--ng");
+          if (thread.ng && !isNgTemporarilyDisabled) {
+            classes.push("thread-list__row--ng");
+          }
           if (thread.highlight) classes.push("thread-list__row--highlight");
           return classes.join(" ") || undefined;
         }}

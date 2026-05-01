@@ -28,6 +28,7 @@ import {
 } from "src/view/browser/components/StatusBar";
 import { useMediaViewerStore } from "src/view/browser/hooks/use-media-viewer-store";
 import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
+import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
 import { useThreadPopupLifecycle } from "src/view/browser/hooks/use-popup-manager";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useThreadAutoRefresh } from "src/view/browser/hooks/use-thread-auto-refresh";
@@ -65,6 +66,7 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
     messageProtocol,
   } = useThreadData(tabId, page, refreshKey);
   const { dispatch, activeTab } = useTabStore();
+  const { setThreadStats } = useNgStatus();
   const openMediaFromUrl = useMediaViewerStore(
     (state) => state.openMediaFromUrl,
   );
@@ -129,6 +131,21 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
     }
     return "追従待機外";
   }, [canAutoScroll, isAutoScrolling, popups.length]);
+
+  const threadNgCount = useMemo(
+    () =>
+      responses.filter((res) => res.ng != null || res.class?.includes("ng")).length,
+    [responses],
+  );
+
+  useEffect(() => {
+    // ステータスバーの件数はページ外コンポーネントから参照するため、
+    // スレッド側で集計して共有ストアへ反映する。
+    setThreadStats({ ngCount: threadNgCount, highlightCount: 0 });
+    return () => {
+      setThreadStats({ ngCount: 0, highlightCount: 0 });
+    };
+  }, [setThreadStats, threadNgCount]);
 
   // 検索バーはURLバー右メニューからのみ開く。
   // （Ctrl+F割り当ては無効化して、ブラウザ/OS標準ショートカットを優先する）
