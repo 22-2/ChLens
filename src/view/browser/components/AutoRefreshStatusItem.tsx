@@ -184,13 +184,12 @@ export const AutoRefreshStatusItem: React.FC = () => {
         : null;
   const isBoardIntervalEnabled = boardIntervalSec >= MIN_BOARD_INTERVAL_SEC;
 
+  // 早期returnする前にすべてのhooksを呼び出す必要があるため、
+  // panelKindのチェックはif文で早期return前に移動するのではなく、
+  // JSXレベルで条件分岐を実装する
   useEffect(() => {
     setIsWindowOpen(false);
   }, [panelKind]);
-
-  if (panelKind == null) {
-    return null;
-  }
 
   const handleClick = useCallback(() => {
     if (btnRef.current) {
@@ -200,6 +199,11 @@ export const AutoRefreshStatusItem: React.FC = () => {
   }, []);
 
   const closeWindow = useCallback(() => setIsWindowOpen(false), []);
+
+  // panelKindがnullの場合はこのコンポーネント全体を表示しない
+  if (panelKind == null) {
+    return null;
+  }
 
   const itemTitle =
     panelKind === "thread"

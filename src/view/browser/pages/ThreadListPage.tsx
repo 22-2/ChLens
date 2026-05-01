@@ -20,6 +20,10 @@ import {
   SimpleDataTable,
 } from "src/view/browser/components/SimpleDataTable";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import {
+  useTheme,
+  type ResolvedTheme,
+} from "src/view/browser/hooks/use-theme";
 import type { ThreadListPage as ThreadListPageType } from "src/view/browser/types";
 import { copyText } from "src/view/browser/utils/utils";
 
@@ -54,6 +58,96 @@ const BG_COLOR_PRESETS: Record<string, string> = {
   lime: "#f0f4c3",
   amber: "#ffecb3",
 };
+
+type Rgb = {
+  r: number;
+  g: number;
+  b: number;
+};
+
+type HighlightRowStyle = React.CSSProperties & {
+  "--thread-list-highlight-bg"?: string;
+  "--thread-list-highlight-hover-bg"?: string;
+};
+
+function parseColorToRgb(rawColor: string): Rgb | null {
+  const color = rawColor.trim();
+  const shortHex = color.match(/^#([0-9a-f]{3})$/i);
+  if (shortHex) {
+    const [r, g, b] = shortHex[1].split("").map((char) => `${char}${char}`);
+    return {
+      r: Number.parseInt(r, 16),
+      g: Number.parseInt(g, 16),
+      b: Number.parseInt(b, 16),
+    };
+  }
+
+  const longHex = color.match(/^#([0-9a-f]{6})$/i);
+  if (longHex) {
+    return {
+      r: Number.parseInt(longHex[1].slice(0, 2), 16),
+      g: Number.parseInt(longHex[1].slice(2, 4), 16),
+      b: Number.parseInt(longHex[1].slice(4, 6), 16),
+    };
+  }
+
+  const rgb = color.match(
+    /^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})(?:\s*,\s*[\d.]+)?\s*\)$/i,
+  );
+  if (rgb) {
+    return {
+      r: Number.parseInt(rgb[1], 10),
+      g: Number.parseInt(rgb[2], 10),
+      b: Number.parseInt(rgb[3], 10),
+    };
+  }
+
+  return null;
+}
+
+function blendRgb(base: Rgb, overlay: Rgb, alpha: number): string {
+  const blendChannel = (baseChannel: number, overlayChannel: number) =>
+    Math.round(baseChannel * (1 - alpha) + overlayChannel * alpha);
+
+  return `rgb(${blendChannel(base.r, overlay.r)}, ${blendChannel(
+    base.g,
+    overlay.g,
+  )}, ${blendChannel(base.b, overlay.b)})`;
+}
+
+function resolveHighlightColor(bgColor: string): string {
+  return BG_COLOR_PRESETS[bgColor] ?? bgColor;
+}
+
+function createHighlightRowStyle(
+  bgColor: string,
+  theme: ResolvedTheme,
+): HighlightRowStyle {
+  const resolvedBackground = resolveHighlightColor(bgColor);
+  const parsed = parseColorToRgb(resolvedBackground);
+
+  if (!parsed) {
+    return {
+      "--thread-list-highlight-bg": resolvedBackground,
+    };
+  }
+
+  const overlay =
+    theme === "dark"
+      // hover時の差をもう少し明確にして、強調行だと一目で分かるようにする。
+      ? { color: { r: 255, g: 255, b: 255 }, alpha: 0.3 }
+      : { color: { r: 0, g: 0, b: 0 }, alpha: 0.16 };
+
+  // inline background-color だと hover 時に上書きしづらいので、通常色と hover 色を CSS 変数で渡す。
+  return {
+    "--thread-list-highlight-bg": resolvedBackground,
+    "--thread-list-highlight-hover-bg": blendRgb(
+      parsed,
+      overlay.color,
+      overlay.alpha,
+    ),
+  };
+}
 
 function isSortColumn(value: string): value is SortColumn {
   return (
@@ -204,6 +298,7 @@ export const ThreadListPage: React.FC<Props> = ({
   refreshKey,
 }) => {
   const { dispatch } = useTabStore();
+  const theme = useTheme();
   const titleFetched = useRef(false);
   const [threads, setThreads] = useState<IThread[]>([]);
   const [loading, setLoading] = useState(true);
@@ -416,7 +511,8 @@ export const ThreadListPage: React.FC<Props> = ({
     return items;
   }, [contextMenuState]);
 
-  // threads が既にある場合（更新中）はチラつき防止のため loading 表示をスキップする
+  // 条件付きで早期返却するとhooksの呼び出し数が変わってReactエラーになるため、
+  // JSXレベルで条件分岐をして、すべてのhooksをレンダーパスの上部で呼び出す
   if (loading && threads.length === 0) {
     return <div className="page-status">読み込み中...</div>;
   }
@@ -459,7 +555,7 @@ export const ThreadListPage: React.FC<Props> = ({
         getRowStyle={({ thread }) => {
           const bgColor = thread.highlight?.params?.bgColor;
           if (!bgColor) return {};
-          return { backgroundColor: BG_COLOR_PRESETS[bgColor] ?? bgColor };
+          return createHighlightRowStyle(bgColor, theme);
         }}
         onRowClick={handleThreadClick}
         onRowMiddleClick={openThreadInNewTab}

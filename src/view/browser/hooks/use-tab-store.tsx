@@ -48,6 +48,46 @@ export type TabAction =
 const MAX_CLOSED_TABS = 20;
 const SESSION_KEY = "readcrx_browser_session";
 
+function normalizePageLocation(rawLocation: string): string {
+  try {
+    const parsed = new window.URL(rawLocation);
+    parsed.hash = "";
+    return parsed.toString().replace(/\/+$/, "/");
+  } catch {
+    return rawLocation.trim().replace(/\/+$/, "");
+  }
+}
+
+function getPageIdentity(page: Page): string {
+  switch (page.type) {
+    case "home":
+      return "home";
+    case "boardList":
+      return "boardList";
+    case "settings":
+      return "settings";
+    case "threadList":
+      return `threadList:${normalizePageLocation(page.boardUrl)}`;
+    case "thread":
+      return `thread:${normalizePageLocation(page.threadUrl)}`;
+  }
+}
+
+function findTabByCurrentPage(
+  tabs: Tab[],
+  page: Page,
+  excludeTabId?: string,
+): Tab | null {
+  const targetIdentity = getPageIdentity(page);
+  return (
+    tabs.find(
+      (tab) =>
+        tab.id !== excludeTabId &&
+        getPageIdentity(getCurrentPage(tab)) === targetIdentity,
+    ) ?? null
+  );
+}
+
 function createTab(): Tab {
   return {
     id: crypto.randomUUID(),
@@ -144,6 +184,15 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
     }
 
     case "OPEN_IN_NEW_TAB": {
+      // 同じページを複製すると管理しづらいので、既存タブがあればそちらへ集約する。
+      const existingTab = findTabByCurrentPage(state.tabs, action.page);
+      if (existingTab) {
+        return {
+          ...state,
+          activeTabId: existingTab.id,
+        };
+      }
+
       // バックグラウンドで新規タブを開く（アクティブタブを切り替えない）
       const newTab = createTab();
       const newHistory = buildHierarchy(action.page);
@@ -261,6 +310,24 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
       return { ...state, activeTabId: action.tabId };
 
     case "NAVIGATE": {
+      const currentPage = getCurrentPage(getActiveTab(state));
+      if (getPageIdentity(currentPage) === getPageIdentity(action.page)) {
+        return state;
+      }
+
+      // 左クリック遷移でも既存タブがあればそちらを前面に出し、重複タブ化を防ぐ。
+      const existingTab = findTabByCurrentPage(
+        state.tabs,
+        action.page,
+        state.activeTabId,
+      );
+      if (existingTab) {
+        return {
+          ...state,
+          activeTabId: existingTab.id,
+        };
+      }
+
       const newHistory = buildHierarchy(action.page);
       return updateActiveTab(state, (tab) => ({
         ...tab,
@@ -270,6 +337,32 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
     }
 
     case "NAVIGATE_TAB": {
+      const targetTab = state.tabs.find((tab) => tab.id === action.tabId);
+      if (!targetTab) {
+        return state;
+      }
+
+      if (
+        getPageIdentity(getCurrentPage(targetTab)) === getPageIdentity(action.page)
+      ) {
+        return {
+          ...state,
+          activeTabId: action.tabId,
+        };
+      }
+
+      const existingTab = findTabByCurrentPage(
+        state.tabs,
+        action.page,
+        action.tabId,
+      );
+      if (existingTab) {
+        return {
+          ...state,
+          activeTabId: existingTab.id,
+        };
+      }
+
       // 指定タブにナビゲートしてアクティブにする
       const newHistory = buildHierarchy(action.page);
       return {

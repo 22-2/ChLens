@@ -2,14 +2,46 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+function createMemoryStorage(): Storage {
+  const items = new Map<string, string>();
+
+  return {
+    get length() {
+      return items.size;
+    },
+    clear() {
+      items.clear();
+    },
+    getItem(key: string) {
+      return items.get(key) ?? null;
+    },
+    key(index: number) {
+      return Array.from(items.keys())[index] ?? null;
+    },
+    removeItem(key: string) {
+      items.delete(key);
+    },
+    setItem(key: string, value: string) {
+      items.set(key, value);
+    },
+  };
+}
+
 describe("TabProvider auto refresh state", () => {
   beforeEach(() => {
+    const localStorageMock = createMemoryStorage();
+    vi.stubGlobal("localStorage", localStorageMock);
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      value: localStorageMock,
+    });
     localStorage.removeItem("readcrx_browser_session");
   });
 
   afterEach(() => {
     cleanup();
     vi.resetModules();
+    vi.unstubAllGlobals();
   });
 
   it("現在のスレッドURLにだけ自動更新を束縛する", async () => {
@@ -171,6 +203,180 @@ describe("TabProvider auto refresh state", () => {
     expect(screen.getByTestId("current-page-title")).toHaveTextContent("板A");
     expect(screen.getByTestId("current-page-type")).toHaveTextContent(
       "threadList",
+    );
+  });
+
+  it("OPEN_IN_NEW_TAB で既存ページがある時は重複を作らず既存タブへフォーカスする", async () => {
+    vi.resetModules();
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
+
+    function Harness() {
+      const { state, activeTab, currentPage, dispatch } = useTabStore();
+
+      return (
+        <>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "NAVIGATE",
+                page: {
+                  type: "threadList",
+                  title: "板A",
+                  boardUrl: "https://example.com/board-a/",
+                  boardTitle: "板A",
+                },
+              })
+            }
+          >
+            板Aへ移動
+          </button>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "OPEN_IN_NEW_TAB",
+                page: {
+                  type: "thread",
+                  title: "既存スレ",
+                  threadUrl: "https://example.com/test/read.cgi/board-a/1/",
+                },
+              })
+            }
+          >
+            既存スレを新しいタブで開く
+          </button>
+          <output data-testid="tabs-count">{state.tabs.length}</output>
+          <output data-testid="active-tab-id">{activeTab.id}</output>
+          <output data-testid="current-page-title">{currentPage.title}</output>
+        </>
+      );
+    }
+
+    render(
+      <TabProvider>
+        <Harness />
+      </TabProvider>,
+    );
+
+    fireEvent.click(screen.getByText("板Aへ移動"));
+    const originalActiveTabId = screen.getByTestId("active-tab-id").textContent;
+
+    fireEvent.click(screen.getByText("既存スレを新しいタブで開く"));
+    expect(screen.getByTestId("tabs-count")).toHaveTextContent("2");
+    expect(screen.getByTestId("active-tab-id").textContent).toBe(
+      originalActiveTabId,
+    );
+
+    fireEvent.click(screen.getByText("既存スレを新しいタブで開く"));
+
+    expect(screen.getByTestId("tabs-count")).toHaveTextContent("2");
+    expect(screen.getByTestId("active-tab-id").textContent).not.toBe(
+      originalActiveTabId,
+    );
+    expect(screen.getByTestId("current-page-title")).toHaveTextContent(
+      "既存スレ",
+    );
+  });
+
+  it("NAVIGATE で既存ページがある時は現在タブを書き換えず既存タブへ移動する", async () => {
+    vi.resetModules();
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
+
+    function Harness() {
+      const { state, currentPage, dispatch } = useTabStore();
+
+      return (
+        <>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "NAVIGATE",
+                page: {
+                  type: "threadList",
+                  title: "板A",
+                  boardUrl: "https://example.com/board-a/",
+                  boardTitle: "板A",
+                },
+              })
+            }
+          >
+            板Aへ移動
+          </button>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "OPEN_IN_NEW_TAB",
+                page: {
+                  type: "thread",
+                  title: "既存スレ",
+                  threadUrl: "https://example.com/test/read.cgi/board-a/1/",
+                },
+              })
+            }
+          >
+            既存スレを背景で開く
+          </button>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "NAVIGATE",
+                page: {
+                  type: "threadList",
+                  title: "板B",
+                  boardUrl: "https://example.com/board-b/",
+                  boardTitle: "板B",
+                },
+              })
+            }
+          >
+            板Bへ移動
+          </button>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "NAVIGATE",
+                page: {
+                  type: "thread",
+                  title: "既存スレ",
+                  threadUrl: "https://example.com/test/read.cgi/board-a/1/",
+                },
+              })
+            }
+          >
+            既存スレをクリック
+          </button>
+          <output data-testid="tabs-count">{state.tabs.length}</output>
+          <output data-testid="current-page-title">{currentPage.title}</output>
+          <output data-testid="tab-titles">
+            {state.tabs
+              .map((tab) => tab.history[tab.currentIndex]?.title ?? "")
+              .join("|")}
+          </output>
+        </>
+      );
+    }
+
+    render(
+      <TabProvider>
+        <Harness />
+      </TabProvider>,
+    );
+
+    fireEvent.click(screen.getByText("板Aへ移動"));
+    fireEvent.click(screen.getByText("既存スレを背景で開く"));
+    fireEvent.click(screen.getByText("板Bへ移動"));
+
+    expect(screen.getByTestId("current-page-title")).toHaveTextContent("板B");
+
+    fireEvent.click(screen.getByText("既存スレをクリック"));
+
+    expect(screen.getByTestId("tabs-count")).toHaveTextContent("2");
+    expect(screen.getByTestId("current-page-title")).toHaveTextContent(
+      "既存スレ",
+    );
+    expect(screen.getByTestId("tab-titles")).toHaveTextContent(
+      "板B|既存スレ",
     );
   });
 
