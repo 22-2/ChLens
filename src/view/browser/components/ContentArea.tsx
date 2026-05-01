@@ -1,10 +1,13 @@
 import React from "react";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { BoardListPage } from "src/view/browser/pages/BoardListPage";
+import { BookmarkListPage } from "src/view/browser/pages/BookmarkListPage";
+import { HistoryListPage } from "src/view/browser/pages/HistoryListPage";
 import { HomePage } from "src/view/browser/pages/HomePage";
 import { SettingsPage } from "src/view/browser/pages/SettingsPage";
 import { ThreadListPage } from "src/view/browser/pages/ThreadListPage";
 import { ThreadPage } from "src/view/browser/pages/ThreadPage";
+import { WriteHistoryListPage } from "src/view/browser/pages/WriteHistoryListPage";
 import { getCurrentPage } from "src/view/browser/types";
 
 function buildPageRenderKey(
@@ -21,6 +24,12 @@ function buildPageRenderKey(
       return `${tabId}:${historyIndex}:boardList`;
     case "settings":
       return `${tabId}:${historyIndex}:settings`;
+    case "bookmarkList":
+      return `${tabId}:${historyIndex}:bookmarkList`;
+    case "historyList":
+      return `${tabId}:${historyIndex}:historyList`;
+    case "writeHistoryList":
+      return `${tabId}:${historyIndex}:writeHistoryList`;
     case "home":
       return `${tabId}:${historyIndex}:home`;
   }
@@ -42,6 +51,15 @@ export const ContentArea: React.FC = () => {
         break;
       case "settings":
         pageContent = <SettingsPage />;
+        break;
+      case "bookmarkList":
+        pageContent = <BookmarkListPage />;
+        break;
+      case "historyList":
+        pageContent = <HistoryListPage />;
+        break;
+      case "writeHistoryList":
+        pageContent = <WriteHistoryListPage />;
         break;
       case "threadList":
         pageContent = (

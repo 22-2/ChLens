@@ -304,6 +304,7 @@ export interface PopupManagerResult {
 
 interface PopupSurfaceLifecycleParams {
   surfaceRef?: RefObject<HTMLElement | null>;
+  outsideClickIgnoreRefs?: Array<RefObject<HTMLElement | null>>;
   popupId?: string;
   isPopupDescendantOf?: (popupId: string, ancestorId: string) => boolean;
   onEnterFromDescendant?: () => void;
@@ -512,6 +513,7 @@ export function usePopupSurfaceCloseGuard(onSurfaceMouseDown?: () => void) {
 
 export function usePopupSurfaceLifecycle({
   surfaceRef,
+  outsideClickIgnoreRefs,
   popupId,
   isPopupDescendantOf,
   onEnterFromDescendant,
@@ -546,6 +548,21 @@ export function usePopupSurfaceLifecycle({
       );
     },
     [isPopupDescendantOf, popupId],
+  );
+
+  const isWithinIgnoredOutsideTarget = useCallback(
+    (target: EventTarget | null) => {
+      if (!(target instanceof Node)) {
+        return false;
+      }
+
+      return (
+        outsideClickIgnoreRefs?.some((ignoreRef) =>
+          ignoreRef.current?.contains(target),
+        ) ?? false
+      );
+    },
+    [outsideClickIgnoreRefs],
   );
 
   const prevCloseDisabledRef = useRef(!!closeDisabled);
@@ -586,6 +603,12 @@ export function usePopupSurfaceLifecycle({
         suppressNextDisableReleaseCloseRef.current = true;
       }
 
+      // トリガー上の pointer/mouse down では先に close せず、
+      // 後段の click トグルに開閉の責務を寄せて「閉じるつもりが再オープン」を防ぐ。
+      if (isWithinIgnoredOutsideTarget(event.target)) {
+        return;
+      }
+
       if (
         event.target instanceof Node &&
         surfaceRef?.current?.contains(event.target)
@@ -613,7 +636,7 @@ export function usePopupSurfaceLifecycle({
     document.addEventListener("mousedown", handleOutsideMouseDown);
     return () =>
       document.removeEventListener("mousedown", handleOutsideMouseDown);
-  }, [isPopupBranchTarget, popupId, surfaceRef]);
+  }, [isPopupBranchTarget, isWithinIgnoredOutsideTarget, popupId, surfaceRef]);
 
   const handleMouseEnter = (event: React.MouseEvent<HTMLElement>) => {
     setIsHovering(true);

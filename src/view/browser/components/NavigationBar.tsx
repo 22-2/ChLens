@@ -1,6 +1,8 @@
 import {
   ArrowLeft,
   ArrowRight,
+  Bookmark,
+  History,
   Menu,
   Pause,
   PenLine,
@@ -8,7 +10,7 @@ import {
   Search,
   Settings,
 } from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
@@ -74,6 +76,10 @@ export const NavigationBar: React.FC = () => {
     useState<MenuPosition | null>(null);
   const [forwardMenuPosition, setForwardMenuPosition] =
     useState<MenuPosition | null>(null);
+  const backButtonRef = useRef<HTMLButtonElement>(null);
+  const forwardButtonRef = useRef<HTMLButtonElement>(null);
+  const refreshButtonRef = useRef<HTMLButtonElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   const isThreadAutoRefreshEnabled =
     currentPage.type === "thread" &&
@@ -91,6 +97,26 @@ export const NavigationBar: React.FC = () => {
     setRefreshMenuPosition(null);
     dispatch({ type: "RELOAD" });
   }, [dispatch]);
+
+  const openQuickAccessPage = useCallback(
+    (page: {
+      type: "bookmarkList" | "historyList" | "writeHistoryList";
+      title: string;
+    }) => {
+      dispatch({ type: "NAVIGATE", page });
+    },
+    [dispatch],
+  );
+
+  const openQuickAccessPageInNewTab = useCallback(
+    (page: {
+      type: "bookmarkList" | "historyList" | "writeHistoryList";
+      title: string;
+    }) => {
+      dispatch({ type: "OPEN_IN_NEW_TAB_FORCE", page });
+    },
+    [dispatch],
+  );
 
   const handleRefreshContextMenu = useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -287,8 +313,71 @@ export const NavigationBar: React.FC = () => {
         icon: <Settings size={14} />,
         onSelect: openSettingsTab,
       },
+      {
+        id: "quick-access-separator",
+        separator: true,
+      },
+      {
+        id: "open-bookmark-list",
+        label: "ブックマークリストを開く",
+        icon: <Bookmark size={14} />,
+        onSelect: () =>
+          openQuickAccessPage({
+            type: "bookmarkList",
+            title: "ブックマークリスト",
+          }),
+        onAuxSelect: (button: number) => {
+          if (button !== 1) return;
+          openQuickAccessPageInNewTab({
+            type: "bookmarkList",
+            title: "ブックマークリスト",
+          });
+        },
+      },
+      {
+        id: "open-history-list",
+        label: "閲覧履歴を開く",
+        icon: <History size={14} />,
+        onSelect: () =>
+          openQuickAccessPage({
+            type: "historyList",
+            title: "閲覧履歴",
+          }),
+        onAuxSelect: (button: number) => {
+          if (button !== 1) return;
+          openQuickAccessPageInNewTab({
+            type: "historyList",
+            title: "閲覧履歴",
+          });
+        },
+      },
+      {
+        id: "open-write-history-list",
+        label: "書き込み履歴を開く",
+        icon: <PenLine size={14} />,
+        onSelect: () =>
+          openQuickAccessPage({
+            type: "writeHistoryList",
+            title: "書き込み履歴",
+          }),
+        onAuxSelect: (button: number) => {
+          if (button !== 1) return;
+          openQuickAccessPageInNewTab({
+            type: "writeHistoryList",
+            title: "書き込み履歴",
+          });
+        },
+      },
     ],
-    [currentPage.type, openSearchFromMenu, openSettingsTab],
+    [
+      currentPage.type,
+      openQuickAccessPage,
+      openQuickAccessPageInNewTab,
+      openSearchFromMenu,
+      openSettingsTab,
+      isPanelOpen,
+      togglePanel,
+    ],
   );
 
   const refreshMenuItems = useMemo(
@@ -326,6 +415,7 @@ export const NavigationBar: React.FC = () => {
   return (
     <div className="nav-bar">
       <button
+        ref={backButtonRef}
         className="nav-bar__btn"
         disabled={!back}
         onClick={() => dispatch({ type: "GO_BACK" })}
@@ -335,6 +425,7 @@ export const NavigationBar: React.FC = () => {
         <ArrowLeft size={18} />
       </button>
       <button
+        ref={forwardButtonRef}
         className="nav-bar__btn"
         disabled={!forward}
         onClick={() => dispatch({ type: "GO_FORWARD" })}
@@ -344,6 +435,7 @@ export const NavigationBar: React.FC = () => {
         <ArrowRight size={18} />
       </button>
       <button
+        ref={refreshButtonRef}
         className="nav-bar__btn"
         onClick={handleRefresh}
         onContextMenu={handleRefreshContextMenu}
@@ -367,9 +459,14 @@ export const NavigationBar: React.FC = () => {
       </div>
 
       <button
+        ref={menuButtonRef}
         className="nav-bar__btn"
         title="メニュー"
         onClick={handleMenuClick}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          handleMenuClick(e);
+        }}
       >
         <Menu size={18} />
       </button>
@@ -380,6 +477,7 @@ export const NavigationBar: React.FC = () => {
           y={menuPosition.y}
           items={menuItems}
           onClose={closeMenu}
+          triggerRef={menuButtonRef}
         />
       )}
 
@@ -389,6 +487,7 @@ export const NavigationBar: React.FC = () => {
           y={backMenuPosition.y}
           items={backHistoryItems}
           onClose={closeBackMenu}
+          triggerRef={backButtonRef}
         />
       )}
 
@@ -398,6 +497,7 @@ export const NavigationBar: React.FC = () => {
           y={forwardMenuPosition.y}
           items={forwardHistoryItems}
           onClose={closeForwardMenu}
+          triggerRef={forwardButtonRef}
         />
       )}
 
@@ -407,6 +507,7 @@ export const NavigationBar: React.FC = () => {
           y={refreshMenuPosition.y}
           items={refreshMenuItems}
           onClose={closeRefreshMenu}
+          triggerRef={refreshButtonRef}
         />
       )}
     </div>

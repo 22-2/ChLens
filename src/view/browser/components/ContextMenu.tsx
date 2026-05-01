@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, RefObject } from "react";
 import React, { useEffect, useMemo, useRef } from "react";
 import { usePopupSurfaceLifecycle } from "src/view/browser/hooks/use-popup-manager";
 import { useAdjustOverflow } from "src/view/browser/utils/use-adjust-overflow";
@@ -20,6 +20,7 @@ interface Props {
   y: number;
   items: ContextMenuItem[];
   onClose: () => void;
+  triggerRef?: RefObject<HTMLElement | null>;
   popupId?: string;
   isPopupDescendantOf?: (popupId: string, ancestorId: string) => boolean;
   onEnterFromDescendant?: () => void;
@@ -34,6 +35,7 @@ export const ContextMenu: React.FC<Props> = ({
   y,
   items,
   onClose,
+  triggerRef,
   popupId,
   isPopupDescendantOf,
   onEnterFromDescendant,
@@ -50,6 +52,7 @@ export const ContextMenu: React.FC<Props> = ({
     handleMouseLeave,
   } = usePopupSurfaceLifecycle({
     surfaceRef: menuRef,
+    outsideClickIgnoreRefs: triggerRef ? [triggerRef] : undefined,
     popupId,
     isPopupDescendantOf,
     onEnterFromDescendant,

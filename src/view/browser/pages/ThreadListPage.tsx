@@ -48,13 +48,13 @@ interface Props {
 type SortColumn = "num" | "title" | "resCount" | "heat";
 type SortDirection = "asc" | "desc";
 type ThreadListSortPreference = {
-  column: SortColumn;
+  column: SortColumn | null;
   direction: SortDirection;
 };
 
 const THREAD_LIST_SORT_STORAGE_KEY = "readcrx_browser_thread_list_sort_by_site";
 const DEFAULT_THREAD_LIST_SORT: ThreadListSortPreference = {
-  column: "num",
+  column: null,
   direction: "asc",
 };
 
@@ -209,12 +209,13 @@ function readThreadListSortPreference(
       stored[resolveThreadListSortSiteKey(boardUrl)];
     const column = currentSitePreference?.column;
     const direction = currentSitePreference?.direction;
-    if (
-      column &&
-      direction &&
-      isSortColumn(column) &&
-      isSortDirection(direction)
-    ) {
+    if (column === null) {
+      return {
+        column: null,
+        direction: "asc",
+      };
+    }
+    if (column && direction && isSortColumn(column) && isSortDirection(direction)) {
       return {
         column,
         direction,
@@ -461,15 +462,23 @@ export const ThreadListPage: React.FC<Props> = ({
 
   const handleSort = useCallback((column: SortColumn) => {
     setSortPreference((prev) => {
-      if (prev.column === column) {
-        // 同じカラムクリック時は方向を反転
+      if (prev.column !== column) {
         return {
           column,
-          direction: prev.direction === "asc" ? "desc" : "asc",
+          direction: "asc",
         };
       }
+
+      if (prev.direction === "asc") {
+        return {
+          column,
+          direction: "desc",
+        };
+      }
+
+      // 3状態ソート: 昇順 → 降順 → デフォルト(未ソート)
       return {
-        column,
+        column: null,
         direction: "asc",
       };
     });
@@ -492,25 +501,27 @@ export const ThreadListPage: React.FC<Props> = ({
       );
     }
 
-    // ソート
-    list.sort((a, b) => {
-      let cmp = 0;
-      switch (sortColumn) {
-        case "num":
-          cmp = a.originalIndex - b.originalIndex;
-          break;
-        case "title":
-          cmp = a.thread.title.localeCompare(b.thread.title, "ja");
-          break;
-        case "resCount":
-          cmp = a.thread.resCount - b.thread.resCount;
-          break;
-        case "heat":
-          cmp = a.heat - b.heat;
-          break;
-      }
-      return sortDirection === "asc" ? cmp : -cmp;
-    });
+    // sortColumn が null の間は取得順を維持し、デフォルト状態へ戻せるようにする。
+    if (sortColumn) {
+      list.sort((a, b) => {
+        let cmp = 0;
+        switch (sortColumn) {
+          case "num":
+            cmp = a.originalIndex - b.originalIndex;
+            break;
+          case "title":
+            cmp = a.thread.title.localeCompare(b.thread.title, "ja");
+            break;
+          case "resCount":
+            cmp = a.thread.resCount - b.thread.resCount;
+            break;
+          case "heat":
+            cmp = a.heat - b.heat;
+            break;
+        }
+        return sortDirection === "asc" ? cmp : -cmp;
+      });
+    }
 
     // 既存動作に合わせ、ハイライトスレッドを常に先頭に表示
     const highlighted = list.filter(({ thread }) => thread.highlight);

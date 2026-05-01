@@ -43,6 +43,13 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   }),
 }));
 
+vi.mock("src/view/browser/hooks/use-bottom-panel", () => ({
+  useBottomPanel: () => ({
+    isOpen: false,
+    togglePanel: vi.fn(),
+  }),
+}));
+
 describe("NavigationBar", () => {
   afterEach(() => {
     cleanup();
@@ -61,5 +68,25 @@ describe("NavigationBar", () => {
 
     expect(item).toHaveClass("context-menu__item--multiline");
     expect(label).toHaveTextContent(longTitle);
+  });
+
+  it("メニューを開いている間に同じボタンを押すと閉じる", () => {
+    render(<NavigationBar />);
+
+    const menuButton = screen.getByTitle("メニュー");
+
+    fireEvent.click(menuButton);
+    expect(
+      screen.getByRole("button", { name: "設定を開く" }),
+    ).toBeInTheDocument();
+
+    // mousedown で先に close してしまうと click トグルで再オープンするため、
+    // トリガー上の mousedown は無視して click 側で閉じることを保証する。
+    fireEvent.mouseDown(menuButton);
+    fireEvent.click(menuButton);
+
+    expect(
+      screen.queryByRole("button", { name: "設定を開く" }),
+    ).not.toBeInTheDocument();
   });
 });
