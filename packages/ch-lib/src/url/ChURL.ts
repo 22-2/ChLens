@@ -26,6 +26,12 @@ const PATTERNS = {
   CH_RESNUM_ULA: /^\/2ch\/\w+\/[\w\.]+\/\d+\/(\d+).*$/,
   CH_TO_BOARD: /^\/(?:test|bbs)\/read\.cgi\/(\w+)\/\d+\/$/,
 
+  // eddibb系
+  EDDIBB_THREAD: /^\/(\w+)\/(\d+).*$/,
+  EDDIBB_THREAD_2: /^\/test\/read\.cgi\/(\w+)\/(\d+).*$/,
+  EDDIBB_BOARD: /^\/(\w+)\/?(?:#.*)?$/,
+  EDDIBB_BOARD_2: /^\/test\/read\.cgi\/(\w+)\/?(?:#.*)?$/,
+
   // まちBBS系
   MACHI_THREAD: /^\/bbs\/read\.cgi\/(\w+\/\d+).*$/,
   MACHI_BOARD: /^\/(\w+\/)(?:#.*)?$/,
@@ -59,7 +65,6 @@ export class ChURL {
 
   private normalizeAndGuessType(): void {
     const hostname = this.url.hostname;
-    const pathname = this.url.pathname;
 
     // したらば
     if (hostname === HOSTNAME.NEW_JBBS) {
@@ -81,6 +86,24 @@ export class ChURL {
         return;
       }
       this.tryFixPattern(PATTERNS.MACHI_BOARD, (m) => `/${m[1]}`, { type: "board", bbsType: "machi" });
+      return;
+    }
+
+    // eddibb は /board/threadKey 形式のURLが混在するため、
+    // ここで /test/read.cgi/... に正規化して以降の処理を統一する。
+    if (hostname === HOSTNAME.EDDIBB) {
+      if (this.tryFixPattern(PATTERNS.EDDIBB_THREAD_2, (m) => `/test/read.cgi/${m[1]}/${m[2]}/`, { type: "thread", bbsType: "2ch" })) {
+        this.url.protocol = "http:";
+        return;
+      }
+      if (this.tryFixPattern(PATTERNS.EDDIBB_THREAD, (m) => `/test/read.cgi/${m[1]}/${m[2]}/`, { type: "thread", bbsType: "2ch" })) {
+        this.url.protocol = "http:";
+        return;
+      }
+      if (this.tryFixPattern(PATTERNS.EDDIBB_BOARD_2, (m) => `/test/read.cgi/${m[1]}/`, { type: "board", bbsType: "2ch" })) {
+        return;
+      }
+      this.tryFixPattern(PATTERNS.EDDIBB_BOARD, (m) => `/${m[1]}/`, { type: "board", bbsType: "2ch" });
       return;
     }
 

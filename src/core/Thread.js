@@ -55,7 +55,8 @@ export default class Thread {
       let noChangeFlg = false;
       const isHtml =
         (container.config.get("format_2chnet") !== "dat" &&
-          this.tsld === "5ch.io") ||
+          this.tsld === "5ch.io" &&
+          this.url.url.hostname !== "headline.5ch.io") ||
         this.tsld === "bbspink.com";
 
       // キャッシュ取得
@@ -430,6 +431,14 @@ URLが間違っているか過去ログに移動せずに削除されていま�
           };
         }
       case "5ch.io":
+        // headline.5ch.io は read.cgi を提供せず dat のみ取得可能なため、
+        // 設定に関係なく dat を使って直接URLオープン失敗を防ぐ。
+        if (url.url.hostname === "headline.5ch.io") {
+          return {
+            path: `${url.url.origin}/${tmp[1]}/dat/${tmp[2]}.dat`,
+            charset: "Shift_JIS",
+          };
+        }
         if (container.config.get("format_2chnet") === "dat") {
           return {
             path: `${url.url.origin}/${tmp[1]}/dat/${tmp[2]}.dat`,
@@ -475,6 +484,11 @@ URLが間違っているか過去ログに移動せずに削除されていま�
           return Thread._parseJbbs(text);
         }
       case "5ch.io":
+        // headline.5ch.io は dat 形式しか提供しないため、
+        // 設定値に関係なく dat パーサを使って再取得ループを防ぐ。
+        if (url.url.hostname === "headline.5ch.io") {
+          return Thread._parseCh(text);
+        }
         if (container.config.get("format_2chnet") === "dat") {
           return Thread._parseCh(text);
         } else {

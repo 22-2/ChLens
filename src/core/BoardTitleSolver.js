@@ -166,6 +166,12 @@ const searchFromSettingTXT = async function (url) {
   if ((res = /^BBS_TITLE=(.+)$/m.exec(body))) {
     return _formatBoardTitle(res[1], url);
   }
+  // 一部互換/集約系サーバーは SETTING.TXT があっても板名項目を返さないため、
+  // 板キーをフォールバックして例外連鎖でスレ表示自体が不安定になるのを防ぐ。
+  const boardKey = url.pathname.split("/")[1];
+  if (boardKey) {
+    return boardKey;
+  }
   throw new Error("SETTING.TXTに名前の情報がありません");
 };
 

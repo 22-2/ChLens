@@ -75,12 +75,22 @@ const boardUrlReg = /^https?:\/\/\w+\.5ch\.net\/(\w+)\/$/;
 //検出出来なかった場合はrejectする
 //htmlを渡す事で通信をスキップする事が出来る
 export var chServerMoveDetect = async function (oldBoardUrl, html) {
+  // 呼び出し元によって app.URL.URL と ch-lib の ChURL が混在するため、
+  // ここで生の URL インスタンスへ正規化して undefined URL リクエストを防ぐ。
+  const normalizedOldBoardUrl =
+    oldBoardUrl != null && oldBoardUrl.url instanceof window.URL
+      ? oldBoardUrl.url
+      : oldBoardUrl;
+  if (!(normalizedOldBoardUrl instanceof window.URL)) {
+    throw new Error("板URLの型が不正です");
+  }
+
   let newBoardUrl;
-  oldBoardUrl.protocol = "http:";
+  normalizedOldBoardUrl.protocol = "http:";
   if (typeof html !== "string") {
     //htmlが渡されなかった場合は通信する
     let status;
-    ({ status, body: html } = await new Request("GET", oldBoardUrl.href, {
+    ({ status, body: html } = await new Request("GET", normalizedOldBoardUrl.href, {
       mimeType: "text/html; charset=Shift_JIS",
       cache: false,
     }).send());
@@ -102,7 +112,7 @@ export var chServerMoveDetect = async function (oldBoardUrl, html) {
       newBoardUrlTmp = new URL(responseURL);
     }
     newBoardUrlTmp.protocol = "http";
-    if (newBoardUrlTmp.hostname !== oldBoardUrl.hostname) {
+    if (newBoardUrlTmp.hostname !== normalizedOldBoardUrl.hostname) {
       newBoardUrl = newBoardUrlTmp;
     }
   }
@@ -114,7 +124,7 @@ export var chServerMoveDetect = async function (oldBoardUrl, html) {
       if (data == null) {
         throw new Error("BBSMenuの取得に失敗しました");
       }
-      const boardKey = __guard__(oldBoardUrl.pathname.split("/"), (x) => x[1]);
+      const boardKey = __guard__(normalizedOldBoardUrl.pathname.split("/"), (x) => x[1]);
       if (!boardKey) {
         throw new Error("板のURL形式が不明です");
       }
@@ -124,7 +134,7 @@ export var chServerMoveDetect = async function (oldBoardUrl, html) {
           if (m != null) {
             const newUrl = new URL(m[0]);
             newUrl.protocol = "http:";
-            if (boardKey === m[1] && oldBoardUrl.hostname !== newUrl.hostname) {
+            if (boardKey === m[1] && normalizedOldBoardUrl.hostname !== newUrl.hostname) {
               return newUrl;
             }
           }
@@ -136,7 +146,7 @@ export var chServerMoveDetect = async function (oldBoardUrl, html) {
 
   //移転を検出した場合は移転検出メッセージを送出
   app.message.send("detected_ch_server_move", {
-    before: oldBoardUrl.href,
+    before: normalizedOldBoardUrl.href,
     after: newBoardUrl.href,
   });
   return newBoardUrl;
