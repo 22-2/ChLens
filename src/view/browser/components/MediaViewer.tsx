@@ -1,3 +1,4 @@
+import { Maximize, Minimize } from "lucide-react";
 import type { MediaViewerProps } from "src/view/browser/hooks/use-media-viewer-controller";
 
 export function MediaViewer({
@@ -7,6 +8,7 @@ export function MediaViewer({
   viewerImageRef,
   canNavigateViewerPrev,
   canNavigateViewerNext,
+  isMaximized,
   onOverlayClick,
   onChromeClick,
   onNavigatePrev,
@@ -16,11 +18,15 @@ export function MediaViewer({
   onZoomIn,
   onSave,
   onClose,
+  onToggleMaximize,
   onImageLoad,
 }: MediaViewerProps) {
   return (
     <div className="media-viewer" onClick={onOverlayClick}>
-      <div className="media-viewer__chrome" onClick={onChromeClick}>
+      <div
+        className={`media-viewer__chrome${isMaximized ? " media-viewer__chrome--maximized" : ""}`}
+        onClick={onChromeClick}
+      >
         <div className="media-viewer__toolbar">
           <span className="media-viewer__label">{viewer.label}</span>
           <div className="media-viewer__actions">
@@ -72,6 +78,14 @@ export function MediaViewer({
               title="拡大"
             >
               +
+            </button>
+            <button
+              type="button"
+              className="media-viewer__btn"
+              onClick={onToggleMaximize}
+              title={isMaximized ? "元のサイズに戻す" : "最大化"}
+            >
+              {isMaximized ? <Minimize size={16} /> : <Maximize size={16} />}
             </button>
             <button
               type="button"

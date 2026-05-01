@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useRef,
+  useState,
   type MouseEvent as ReactMouseEvent,
   type RefObject,
 } from "react";
@@ -25,6 +26,7 @@ export interface MediaViewerProps {
   viewerImageRef: RefObject<HTMLImageElement | null>;
   canNavigateViewerPrev: boolean;
   canNavigateViewerNext: boolean;
+  isMaximized: boolean;
   onOverlayClick: () => void;
   onChromeClick: (event: ReactMouseEvent<HTMLDivElement>) => void;
   onNavigatePrev: () => void;
@@ -34,6 +36,7 @@ export interface MediaViewerProps {
   onZoomIn: () => void;
   onSave: () => void;
   onClose: () => void;
+  onToggleMaximize: () => void;
   onImageLoad: () => void;
 }
 
@@ -117,6 +120,10 @@ export function useMediaViewerController(): MediaViewerProps | null {
   const zoomOut = useMediaViewerStore((state) => state.zoomOut);
   const resetScale = useMediaViewerStore((state) => state.resetScale);
   const zoomByWheel = useMediaViewerStore((state) => state.zoomByWheel);
+
+  // ビューポートの最大化状態をローカルで管理する。
+  // viewer が閉じて再開した時にリセットが必要なので useEffect で監視する。
+  const [isMaximized, setIsMaximized] = useState(false);
 
   const viewerStageRef = useRef<HTMLDivElement>(null);
   const viewerCanvasRef = useRef<HTMLDivElement>(null);
@@ -322,6 +329,11 @@ export function useMediaViewerController(): MediaViewerProps | null {
   useEffect(() => {
     resetViewerSurface();
   }, [resetViewerSurface, viewer?.src]);
+
+  // 画像が切り替わった時に最大化状態を引き継ぐと違和感があるためリセットする。
+  useEffect(() => {
+    setIsMaximized(false);
+  }, [viewer?.src]);
 
   useEffect(() => {
     if (!viewer) {
@@ -529,7 +541,9 @@ export function useMediaViewerController(): MediaViewerProps | null {
     onSave: () => {
       void saveViewerImage();
     },
+    isMaximized,
     onClose: closeViewer,
+    onToggleMaximize: () => setIsMaximized((prev) => !prev),
     onImageLoad: measureViewerLayout,
   };
 }

@@ -1370,6 +1370,15 @@ body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  /* サイズ変化を滑らかにする */
+  transition: width 0.18s ease, height 0.18s ease, border-radius 0.18s ease;
+}
+
+/* 最大化時はビューポートいっぱいに広げる */
+.media-viewer__chrome--maximized {
+  width: calc(100vw - 32px);
+  height: calc(100vh - 32px);
+  border-radius: 4px;
 }
 
 .media-viewer__toolbar {
