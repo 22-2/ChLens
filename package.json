@@ -80,9 +80,7 @@
     "lint": "run-s -c -l lint:*",
     "lint:eslint": "eslint --cache --fix src/",
     "lint:prettier": "prettier --write src/ gulp/",
-    "test": "playwright test",
-    "test:ui": "playwright test --ui",
-    "test:headed": "playwright test --headed"
+    "test": "vitest run"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

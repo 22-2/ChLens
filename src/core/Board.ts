@@ -1,47 +1,58 @@
 import { platform } from "src/app";
 import { BoardParser, ChURL } from "packages/ch-lib/src/index";
 import { container } from "src/service-container/index";
-import { chServerMoveDetect } from "src/core/jsutil.js";
+import { chServerMoveDetect } from "src/core/jsutil";
+import { Response } from "src/core/HTTP";
+
+// JSDocの型情報をTypeScriptに変換
+interface BoardThread {
+  url: string;
+  title: string;
+  resCount: number;
+  ng?: unknown;
+  highlight?: unknown;
+  isNet?: boolean | null;
+}
+
+interface XhrInfo {
+  path: string;
+  charset: string;
+}
+
+interface BoardResponse {
+  status: "success" | "error";
+  message?: string | null;
+  data: BoardThread[] | null;
+}
 
 /**
-@class Board
-@constructor
-@param {String} url
-*/
+ * 板（スレ一覧）を取得・解析するクラス
+ */
 export default class Board {
-  constructor(url) {
-    /**
-    @property url
-    @type String
-    */
-    this.url = new ChURL(url);
+  url: ChURL;
+  thread: BoardThread[] | null = null;
+  message: string | null = null;
 
-    /**
-    @property thread
-    @type Array | null
-    */
-    this.thread = null;
-
-    /**
-    @property message
-    @type String | null
-    */
-    this.message = null;
+  constructor(url: string | ChURL) {
+    this.url = url instanceof ChURL ? url : new ChURL(url);
   }
 
   /**
-  @method get
-  @return {Promise}
-  */
-  get() {
+   * 板のスレ一覧を取得して解析します
+   */
+  get(): Promise<void> {
     const tmp = Board._getXhrInfo(this.url);
     if (!tmp) {
-      return Promise.reject();
+      return Promise.reject(new Error("取得方法が不明な板です"));
     }
     const { path: xhrPath, charset: xhrCharset } = tmp;
 
     return new Promise(async (resolve, reject) => {
-      let bookmark, newBoardUrl, response, thread, threadList;
+      let bookmark;
+      let newBoardUrl: string | undefined;
+      let response: Response | undefined;
+      let thread;
+      let threadList: BoardThread[] | null | undefined;
       let hasCache = false;
 
       // キャッシュ取得
@@ -51,17 +62,18 @@ export default class Board {
       try {
         await cache.get();
         hasCache = true;
+        // キャッシュが3秒以内の場合のみ使用
         if (!(Date.now() - cache.lastUpdated < 1000 * 3)) {
           throw new Error("キャッシュの期限が切れているため通信します");
         }
-      } catch (error1) {
+      } catch {
         needFetch = true;
       }
 
       try {
         if (needFetch) {
-          // 通信
-          const headers = {};
+          // 条件付きGETリクエストの設定
+          const headers: Record<string, string> = {};
           if (hasCache) {
             if (cache.lastModified != null) {
               headers["If-Modified-Since"] = new Date(
@@ -73,14 +85,21 @@ export default class Board {
             }
           }
 
-          response = await platform.http.fetch(xhrPath, {
+          const httpResponse = await platform.http.fetch(xhrPath, {
             method: "GET",
             mimeType: `text/plain; charset=${xhrCharset}`,
             headers: headers,
           });
+          // HttpResponseをResponseに変換
+          response = new Response(
+            httpResponse.status,
+            httpResponse.headers,
+            httpResponse.body,
+            httpResponse.url,
+          );
         }
 
-        // パース
+        // サーバー移転判定
         // 2chで自動移動しているときはサーバー移転
         if (
           response != null &&
@@ -92,11 +111,11 @@ export default class Board {
           throw { response, newBoardUrl };
         }
 
-        // レスポンスボディが存在し、ステータスが200の場合にパース
-        if ((response != null ? response.status : undefined) === 200) {
+        // レスポンスボディの処理とパース
+        if (response?.status === 200) {
           if (response.body == null) {
             // レスポンスボディが空の場合はキャッシュを使用
-            if (hasCache) {
+            if (hasCache && cache.data) {
               threadList = Board.parse(this.url, cache.data);
             } else {
               throw new Error("レスポンスボディが空です");
@@ -104,28 +123,29 @@ export default class Board {
           } else {
             threadList = Board.parse(this.url, response.body);
           }
-        } else if (hasCache) {
+        } else if (hasCache && cache.data) {
           threadList = Board.parse(this.url, cache.data);
         }
 
         if (threadList == null) {
           throw { response };
         }
+
+        // ステータスコードの検証
         if (
-          (response != null ? response.status : undefined) !== 200 &&
-          (response != null ? response.status : undefined) !== 304 &&
-          (!(response == null) || !hasCache)
+          response?.status !== 200 &&
+          response?.status !== 304 &&
+          (response == null || !hasCache)
         ) {
           throw { response, threadList };
         }
 
-        //コールバック
+        // 成功時の処理
         this.thread = threadList;
         resolve();
 
-        //キャッシュ更新部
-        if ((response != null ? response.status : undefined) === 200) {
-          let etag;
+        // キャッシュ更新処理
+        if (response?.status === 200) {
           cache.data = response.body;
           cache.lastUpdated = Date.now();
 
@@ -137,28 +157,34 @@ export default class Board {
             cache.lastModified = lastModified;
           }
 
-          if ((etag = response.headers["ETag"])) {
+          const etag = response.headers["ETag"];
+          if (etag) {
             cache.etag = etag;
           }
 
-          cache.put();
+          await cache.put();
 
+          // ブックマークのレス数を更新
           for (thread of threadList) {
             container.bookmark.updateResCount(thread.url, thread.resCount);
           }
-        } else if (
-          hasCache &&
-          (response != null ? response.status : undefined) === 304
-        ) {
+        } else if (hasCache && response?.status === 304) {
+          // 304 Not Modifiedの場合、最終更新時刻のみ更新
           cache.lastUpdated = Date.now();
-          cache.put();
+          await cache.put();
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("Board GET error:", error);
-        //コールバック
-        ({ response, threadList, newBoardUrl } = error);
+
+        // エラーの詳細を取得
+        const errorObj = error as Record<string, unknown>;
+        response = (errorObj.response as Response) || response;
+        threadList = (errorObj.threadList as BoardThread[]) || threadList;
+        newBoardUrl = (errorObj.newBoardUrl as string) || newBoardUrl;
+
         this.message = "板の読み込みに失敗しました。";
 
+        // サーバー移転の検出試行
         if (newBoardUrl != null && this.url.getTsld() === "5ch.io") {
           try {
             newBoardUrl = (await chServerMoveDetect(this.url)).href;
@@ -168,19 +194,22 @@ export default class Board {
 class="open_in_rcrx">${container.util.escapeHtml(newBoardUrl)}
 </a>)\
 `;
-          } catch (error2) {}
-          //2chでrejectされている場合は移転を疑う
+          } catch {
+            // サーバー移転検出失敗
+          }
         } else if (this.url.getTsld() === "5ch.io" && response != null) {
           try {
             newBoardUrl = (await chServerMoveDetect(this.url)).href;
-            //移転検出時
             this.message += `\
 サーバーが移転している可能性が有ります
 (<a href="${container.util.escapeHtml(container.util.safeHref(newBoardUrl))}"
 class="open_in_rcrx">${container.util.escapeHtml(newBoardUrl)}
 </a>)\
 `;
-          } catch (error3) {}
+          } catch {
+            // サーバー移転検出失敗
+          }
+
           if (hasCache && threadList != null) {
             this.message += "キャッシュに残っていたデータを表示します。";
           }
@@ -204,21 +233,25 @@ class="open_in_rcrx">${container.util.escapeHtml(newBoardUrl)}
       if (!threadList || threadList.length === 0) {
         return;
       }
-      const dict = {};
-      for (bookmark of (container.bookmark.getByBoard(this.url.url.href) ?? [])) {
+
+      const dict: Record<string, boolean> = {};
+      const bookmarks = container.bookmark.getByBoard(this.url.url.href) ?? [];
+      for (bookmark of bookmarks) {
         if (bookmark.type === "thread") {
           dict[bookmark.url] = true;
         }
       }
 
+      // 存在するスレッドをマーク
       for (thread of threadList) {
-        if (dict[thread.url] != null) {
+        if (thread.url in dict) {
           dict[thread.url] = false;
           container.bookmark.updateExpired(thread.url, false);
         }
       }
 
-      for (let threadUrl in dict) {
+      // dat落ちしたスレッドをマーク
+      for (const threadUrl in dict) {
         const val = dict[threadUrl];
         if (val) {
           container.bookmark.updateExpired(threadUrl, true);
@@ -228,70 +261,68 @@ class="open_in_rcrx">${container.util.escapeHtml(newBoardUrl)}
   }
 
   /**
-  @method get
-  @static
-  @param {String} url
-  @return {Promise}
-  */
-  static async get(url) {
+   * 板のスレ一覧を取得する（静的メソッド）
+   */
+  static async get(url: string): Promise<BoardResponse> {
     const board = new Board(url);
     try {
       await board.get();
       return { status: "success", data: board.thread };
-    } catch (error) {
+    } catch {
       return {
         status: "error",
-        message: board.message != null ? board.message : null,
-        data: board.thread != null ? board.thread : null,
+        message: board.message ?? null,
+        data: board.thread ?? null,
       };
     }
   }
 
   /**
-  @method _getXhrInfo
-  @private
-  @static
-  @param {app.URL.URL} boardUrl
-  @return {Object | null} xhrInfo
-  */
-  static _getXhrInfo(boardUrl) {
+   * 板のURLから取得方法の情報を取得します
+   */
+  private static _getXhrInfo(boardUrl: ChURL): XhrInfo | null {
     const tmp = new RegExp(`^/(\\w+)(?:/(\\d+)/|/?)$`).exec(
       boardUrl.url.pathname,
     );
     if (!tmp) {
       return null;
     }
+
+    const boardName = tmp[1];
+    const categoryId = tmp[2];
+
     switch (boardUrl.getTsld()) {
       case "machi.to":
         return {
-          path: `${boardUrl.url.origin}/bbs/offlaw.cgi/${tmp[1]}/`,
+          path: `${boardUrl.url.origin}/bbs/offlaw.cgi/${boardName}/`,
           charset: "Shift_JIS",
         };
       case "shitaraba.net":
         return {
-          path: `${boardUrl.url.protocol}//jbbs.shitaraba.net/${tmp[1]}/${tmp[2]}/subject.txt`,
+          path: `${boardUrl.url.protocol}//jbbs.shitaraba.net/${boardName}/${categoryId}/subject.txt`,
           charset: "EUC-JP",
         };
       default:
         return {
-          path: `${boardUrl.url.origin}/${tmp[1]}/subject.txt`,
+          path: `${boardUrl.url.origin}/${boardName}/subject.txt`,
           charset: "Shift_JIS",
         };
     }
   }
 
   /**
-  @method parse
-  @static
-  @param {app.URL.URL} url
-  @param {String} text
-  @return {Array | null} board
-  */
-  static parse(url, text) {
+   * 板のテキストをパースして、スレ一覧を取得します
+   */
+  static parse(url: ChURL, text: string): BoardThread[] | null {
     const scFlg = url.getTsld() === "2ch.sc";
     const threads = BoardParser.parse(url, text);
 
-    return threads.map((thread) => {
+    // nullチェック
+    if (!threads || threads.length === 0) {
+      return null;
+    }
+
+    return threads.map((thread: any) => {
       const ngResult = container.ng.isNGBoard(
         thread.title,
         url.url.href,
@@ -312,44 +343,45 @@ class="open_in_rcrx">${container.util.escapeHtml(newBoardUrl)}
   }
 
   /**
-  @method getCachedResCount
-  @static
-  @param {String} threadUrl
-  @return {Promise}
-  */
-  static async getCachedResCount(threadUrl) {
-    const boardUrl = threadUrl.toBoardURL();
-    const xhrPath = __guard__(Board._getXhrInfo(boardUrl), (x) => x.path);
+   * キャッシュからスレッドのレス数を取得します
+   */
+  static async getCachedResCount(
+    threadUrl: string,
+  ): Promise<{ resCount: number; modified: number }> {
+    // ChURLのメソッドを呼び出すために、threadUrlをChURLに変換
+    const chUrl = new ChURL(threadUrl);
+    const boardUrl = chUrl.toBoard?.();
+    if (!boardUrl) {
+      throw new Error("スレッドURLの形式が不正です");
+    }
 
-    if (xhrPath == null) {
+    const xhrInfo = Board._getXhrInfo(boardUrl);
+    if (!xhrInfo) {
       throw new Error("その板の取得方法の情報が存在しません");
     }
 
-    const cache = container.cache.getCache(xhrPath);
+    const cache = container.cache.getCache(xhrInfo.path);
     try {
       await cache.get();
-    } catch (e) {
+    } catch {
       throw new Error("No cached board data");
     }
+
     const { lastModified, data } = cache;
-    const threads = Board.parse(boardUrl, data);
+    const threads = Board.parse(boardUrl, data!);
     if (!threads) {
       throw new Error("No cached board data");
     }
-    for (let { url, resCount } of threads) {
-      if (url === threadUrl.url.href) {
+
+    for (const { url: threadUrl_, resCount } of threads) {
+      if (threadUrl_ === threadUrl) {
         return {
           resCount,
-          modified: lastModified,
+          modified: lastModified ?? Date.now(),
         };
       }
     }
+
     throw new Error("板のスレ一覧にそのスレが存在しません");
   }
-}
-
-function __guard__(value, transform) {
-  return typeof value !== "undefined" && value !== null
-    ? transform(value)
-    : undefined;
 }
