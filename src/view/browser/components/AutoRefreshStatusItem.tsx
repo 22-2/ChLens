@@ -236,7 +236,7 @@ export const AutoRefreshStatusItem: React.FC = () => {
       <StatusBarItem
         id="auto-refresh-status"
         alignment="left"
-        priority={10}
+        priority={0}
         title={itemTitle}
         interactive
       >
