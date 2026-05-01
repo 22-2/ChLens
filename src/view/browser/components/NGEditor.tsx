@@ -1,7 +1,7 @@
 import Editor, { loader, useMonaco } from "@monaco-editor/react";
 import JSON5 from "json5";
 import React, { useEffect, useMemo } from "react";
-import { convertDSLToUser } from "src/core/NGConverter";
+import { convertDSLToUser, tryParseJSON5Rules } from "src/core/NGConverter";
 import ngSchema from "src/core/ng-schema.json";
 
 const browser = (window as any).browser || (window as any).chrome;
@@ -70,7 +70,8 @@ export const NGEditor: React.FC<NGEditorProps> = ({ value, onChange }) => {
   // DSLを検出したらJSON5に変換して表示する
   const initialValue = useMemo(() => {
     const trimmed = value.trim();
-    if (trimmed === "" || trimmed.startsWith("[") || trimmed.startsWith("{")) {
+    // JSON5はコメント始まりでも有効なので、先頭文字ではなく実際にparseできるかで判定する。
+    if (trimmed === "" || tryParseJSON5Rules(value) != null) {
       return value;
     }
     try {

@@ -41,6 +41,136 @@ interface InternalNGElement {
   [key: string]: unknown;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function normalizeScope(value: unknown): string[] | undefined {
+  if (typeof value === "string" && value.length > 0) {
+    return [value];
+  }
+
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const scope = value.filter(
+    (item): item is string => typeof item === "string" && item.length > 0,
+  );
+  return scope.length > 0 ? scope : undefined;
+}
+
+function normalizeHighlightParams(
+  value: unknown,
+): NGRule["highlightParams"] | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const bgColor =
+    typeof value.bgColor === "string"
+      ? value.bgColor
+      : typeof value.bgcolor === "string"
+        ? value.bgcolor
+        : undefined;
+  const label = typeof value.label === "string" ? value.label : undefined;
+
+  if (bgColor == null && label == null) {
+    return undefined;
+  }
+
+  return {
+    ...(bgColor != null ? { bgColor } : {}),
+    ...(label != null ? { label } : {}),
+  };
+}
+
+function normalizeRuleType(value: unknown): NGRule["type"] | undefined {
+  return value === "ng" || value === "highlight" || value === "auto"
+    ? value
+    : undefined;
+}
+
+function normalizeRuleTarget(value: unknown): NGRule["target"] | undefined {
+  switch (value) {
+    case "all":
+    case "title":
+    case "name":
+    case "mail":
+    case "id":
+    case "slip":
+    case "body":
+    case "url":
+    case "res_count":
+      return value;
+    default:
+      return undefined;
+  }
+}
+
+function normalizeRule(input: unknown): NGRule | null {
+  if (!isRecord(input) || typeof input.word !== "string") {
+    return null;
+  }
+
+  const useRegex =
+    typeof input.useRegex === "boolean"
+      ? input.useRegex
+      : typeof input.useregex === "boolean"
+        ? input.useregex
+        : undefined;
+  const normalizedType = normalizeRuleType(input.type);
+  const normalizedTarget = normalizeRuleTarget(input.target);
+  const highlightParams = normalizeHighlightParams(
+    input.highlightParams ?? input.highlightparams,
+  );
+  const scope = normalizeScope(input.scope);
+  const andConditions = Array.isArray(input.andConditions)
+    ? input.andConditions
+        .map(normalizeRule)
+        .filter((rule): rule is NGRule => rule != null)
+    : undefined;
+
+  return {
+    word: input.word,
+    ...(typeof input.enabled === "boolean" ? { enabled: input.enabled } : {}),
+    ...(useRegex != null ? { useRegex } : {}),
+    ...(normalizedType != null ? { type: normalizedType } : {}),
+    ...(normalizedTarget != null ? { target: normalizedTarget } : {}),
+    ...(scope != null ? { scope } : {}),
+    ...(highlightParams != null ? { highlightParams } : {}),
+    ...(typeof input.expireDate === "string"
+      ? { expireDate: input.expireDate }
+      : {}),
+    ...(andConditions != null && andConditions.length > 0
+      ? { andConditions }
+      : {}),
+    ...(typeof input.ignoreResNumber === "string"
+      ? { ignoreResNumber: input.ignoreResNumber }
+      : {}),
+    ...(typeof input.name === "string" ? { name: input.name } : {}),
+  };
+}
+
+export function tryParseJSON5Rules(json5Str: string): NGRule[] | null {
+  let parsed: unknown;
+
+  try {
+    parsed = JSON5.parse(json5Str);
+  } catch {
+    return null;
+  }
+
+  const rawRules = Array.isArray(parsed) ? parsed : [parsed];
+  const normalizedRules = rawRules.map(normalizeRule);
+
+  if (normalizedRules.some((rule) => rule == null)) {
+    return null;
+  }
+
+  return normalizedRules.filter((rule): rule is NGRule => rule != null);
+}
+
 /**
  * NGRule 形式を内部の NG オブジェクト形式に変換する
  */
@@ -197,7 +327,10 @@ export function convertInternalToUser(
  */
 export function convertDSLToUser(dslStr: string): NGRule[] {
   const ngSet = parseDSL(dslStr);
-  return convertInternalToUser([...ngSet] as InternalNGElement[]);
+  // parseDSLはJS実装由来で型が緩いため、配列化時にSetであることを明示して扱う。
+  return convertInternalToUser(
+    Array.from(ngSet as Set<InternalNGElement>),
+  );
 }
 
 /**
@@ -288,12 +421,13 @@ export function convertUserToDSL(rules: NGRule[]): string {
 }
 
 export function parseJSON5(json5Str: string): NGRule[] {
-  try {
-    return JSON5.parse(json5Str);
-  } catch (e) {
-    console.error("Failed to parse JSON5 NG rules", e);
-    return [];
+  const rules = tryParseJSON5Rules(json5Str);
+  if (rules != null) {
+    return rules;
   }
+
+  console.error("Failed to parse JSON5 NG rules");
+  return [];
 }
 
 export function stringifyToJSON5(rules: NGRule[]): string {

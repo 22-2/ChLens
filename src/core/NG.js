@@ -1,7 +1,6 @@
-import JSON5 from "json5";
 import { container } from "src/service-container/index";
 import { decodeCharReference, normalize, stringToDate } from "src/core/jsutil.js";
-import { convertUserToInternal } from "src/core/NGConverter";
+import { convertUserToInternal, tryParseJSON5Rules } from "src/core/NGConverter";
 
 /**
 @class NG
@@ -155,23 +154,14 @@ export var parse = function (string) {
     return ng;
   }
 
-  // JSON5形式の検知
-  if (string.trim().startsWith("[") || string.trim().startsWith("{")) {
-    try {
-      const rules = JSON5.parse(string);
-      const internalObjs = convertUserToInternal(
-        Array.isArray(rules) ? rules : [rules],
-      );
-      for (const obj of internalObjs) {
-        ng.add(obj);
-      }
-      return ng;
-    } catch (e) {
-      console.error(
-        "Failed to parse NG rules as JSON5, falling back to DSL",
-        e,
-      );
+  // コメント付きJSON5や旧lowercaseキーもここで正規化してから取り込む。
+  const json5Rules = tryParseJSON5Rules(string);
+  if (json5Rules != null) {
+    const internalObjs = convertUserToInternal(json5Rules);
+    for (const obj of internalObjs) {
+      ng.add(obj);
     }
+    return ng;
   }
 
   var _getNgElement = function (ngWord) {
