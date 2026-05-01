@@ -12,7 +12,10 @@ import { ThreadListPage } from "src/view/browser/pages/ThreadListPage";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const THREAD_LIST_SORT_STORAGE_KEY = "readcrx_browser_thread_list_sort_by_site";
-const { dispatchMock } = vi.hoisted(() => ({ dispatchMock: vi.fn() }));
+const { dispatchMock, activeTabIdRef } = vi.hoisted(() => ({
+  dispatchMock: vi.fn(),
+  activeTabIdRef: { current: "tab-1" },
+}));
 
 vi.mock("src/core/BoardTitleSolver.js", () => ({
   ask: vi.fn(async () => null),
@@ -36,7 +39,10 @@ vi.mock("src/core/URL", () => ({
 }));
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
-  useTabStore: () => ({ dispatch: dispatchMock }),
+  useTabStore: () => ({
+    dispatch: dispatchMock,
+    state: { activeTabId: activeTabIdRef.current },
+  }),
 }));
 
 const THREADS: IThread[] = [
@@ -93,9 +99,12 @@ function getRenderedThreadTitles(): string[] {
 
 describe("ThreadListPage", () => {
   let getThreadsMock: ReturnType<typeof vi.fn>;
+  const configUpdatedListeners = new Set<(payload: { key?: string }) => void>();
 
   beforeEach(() => {
+    vi.useFakeTimers();
     dispatchMock.mockReset();
+    activeTabIdRef.current = "tab-1";
     const localStorageMock = createMemoryStorage();
     vi.stubGlobal("localStorage", localStorageMock);
     Object.defineProperty(window, "localStorage", {
@@ -111,12 +120,85 @@ describe("ThreadListPage", () => {
       getThreads: getThreadsMock,
       getCachedResCount: vi.fn(),
     } as unknown as IBoardService;
+    serviceContainer.config = {
+      get: vi.fn((key: string) =>
+        key === "auto_load_second_board" ? "20000" : "0",
+      ),
+      set: vi.fn(),
+      ready: (callback: () => void) => callback(),
+    };
+    serviceContainer.message = {
+      send: vi.fn(),
+      on: vi.fn((type: string, handler: (payload: { key?: string }) => void) => {
+        if (type === "config_updated") {
+          configUpdatedListeners.add(handler);
+        }
+      }),
+      off: vi.fn(
+        (type: string, handler: (payload: { key?: string }) => void) => {
+          if (type === "config_updated") {
+            configUpdatedListeners.delete(handler);
+          }
+        },
+      ),
+    };
   });
 
   afterEach(() => {
     cleanup();
     window.localStorage.removeItem(THREAD_LIST_SORT_STORAGE_KEY);
     vi.unstubAllGlobals();
+    configUpdatedListeners.clear();
+    vi.useRealTimers();
+  });
+
+  it("一覧の自動更新は表示中タブでのみ発火する", async () => {
+    const props = {
+      tabId: "tab-1",
+      page: {
+        type: "threadList" as const,
+        title: "Software",
+        boardUrl: "https://egg.5ch.net/software/",
+        boardTitle: "Software",
+      },
+      refreshKey: 0,
+    };
+
+    const { rerender } = render(
+      <ThreadListPage
+        tabId={props.tabId}
+        page={props.page}
+        refreshKey={props.refreshKey}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getThreadsMock).toHaveBeenCalledTimes(1);
+    });
+
+    dispatchMock.mockClear();
+
+    activeTabIdRef.current = "tab-2";
+    rerender(
+      <ThreadListPage
+        tabId={props.tabId}
+        page={props.page}
+        refreshKey={props.refreshKey}
+      />,
+    );
+    await vi.advanceTimersByTimeAsync(20000);
+    expect(dispatchMock).not.toHaveBeenCalledWith({ type: "RELOAD" });
+
+    activeTabIdRef.current = "tab-1";
+    rerender(
+      <ThreadListPage
+        tabId={props.tabId}
+        page={props.page}
+        refreshKey={props.refreshKey}
+      />,
+    );
+    await vi.advanceTimersByTimeAsync(20000);
+    expect(dispatchMock).toHaveBeenCalledWith({ type: "RELOAD" });
   });
 
   it("同じsiteでは保存したソート順を復元し、別siteには持ち込まない", async () => {

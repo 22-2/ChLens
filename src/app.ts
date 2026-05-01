@@ -21,7 +21,6 @@ export const platform = new Proxy({} as typeof platformInternal.platform, {
     const actualPlatform =
       (self !== top && (parent as any).app?.platform) ||
       platformInternal.platform;
-      console.log("Accessing platform:", prop, "Actual platform:", actualPlatform);
     if (!actualPlatform) {
       console.error("platform is not initialized");
       return undefined;

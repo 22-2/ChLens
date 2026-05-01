@@ -85,14 +85,25 @@ export default class Board {
         if (
           response != null &&
           this.url.getTsld() === "5ch.io" &&
+          response.responseURL != null &&
           this.url.url.hostname !== response.responseURL.split("/")[2]
         ) {
           newBoardUrl = response.responseURL.slice(0, -"subject.txt".length);
           throw { response, newBoardUrl };
         }
 
+        // レスポンスボディが存在し、ステータスが200の場合にパース
         if ((response != null ? response.status : undefined) === 200) {
-          threadList = Board.parse(this.url, response.body);
+          if (response.body == null) {
+            // レスポンスボディが空の場合はキャッシュを使用
+            if (hasCache) {
+              threadList = Board.parse(this.url, cache.data);
+            } else {
+              throw new Error("レスポンスボディが空です");
+            }
+          } else {
+            threadList = Board.parse(this.url, response.body);
+          }
         } else if (hasCache) {
           threadList = Board.parse(this.url, cache.data);
         }

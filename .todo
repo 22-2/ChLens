@@ -222,7 +222,7 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 データ型はこんな感じでいいんすかね🤔
 調査して教えてほしいっす
 
-- [ ] fix: https://kes.5ch.io/newsbot/ のsubject.txtがが読み込めない
+- [x] fix: https://kes.5ch.io/newsbot/ のsubject.txtがが読み込めない
 - [ ] chore: tauriで検索
 - [ ] chore: フィルタリング中にジャンプを押したら解除してジャンプ
 - [ ] chore: ようつべの埋め込み
@@ -235,10 +235,12 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 - [ ] feat: ライブチャットビュー
 - [ ] feat: NGミニウィンドウ
 - [ ] feat: NGミニウィンドウから、betterdiscordみたいにフローティングウィンドウを出して、プレビューしながらngを編集できるように
-- [ ] fix: スレ一覧でブラウザでズームしてもテーブルがはみ出ないように
+- [x] fix: スレ一覧でブラウザでズームしてもテーブルがはみ出ないように
 - [x] fix: 必死チェッカーが「idを指定してください」って出る
 - [ ] urlをクリックしたあと、戻るときはスレ一覧ではなく前のスレに戻るように
 - [ ] urlをクリックしたとき5ch互換urlでない場合、デフォルトの開くを実行するように
+- [x] chore: タブは表示中のみ自動更新する
+- [ ] スレのurlが直接開けない
 
 - [x] chore: ミニウィンドウ内のラジオボタンからセレクトボックスにする
 - [x] fix: ステータスバーアイテムのホバーの挙動を統一(要素は変更せず、文字としてでなくボタンとしてホバーしたら色が変わるようにcursorpointerに)

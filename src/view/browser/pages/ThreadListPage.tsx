@@ -27,6 +27,18 @@ import {
 import type { ThreadListPage as ThreadListPageType } from "src/view/browser/types";
 import { copyText } from "src/view/browser/utils/utils";
 
+const BOARD_AUTO_REFRESH_CONFIG_KEY = "auto_load_second_board";
+const MIN_BOARD_AUTO_REFRESH_MS = 20000;
+
+function readBoardAutoRefreshIntervalMs(): number {
+  const rawValue = container.config.get(BOARD_AUTO_REFRESH_CONFIG_KEY);
+  const parsedValue = Number.parseInt(rawValue ?? "0", 10);
+  if (Number.isNaN(parsedValue)) {
+    return 0;
+  }
+  return parsedValue;
+}
+
 interface Props {
   tabId: string;
   page: ThreadListPageType;
@@ -297,12 +309,18 @@ export const ThreadListPage: React.FC<Props> = ({
   page,
   refreshKey,
 }) => {
-  const { dispatch } = useTabStore();
+  const { dispatch, state } = useTabStore();
   const theme = useTheme();
   const titleFetched = useRef(false);
   const [threads, setThreads] = useState<IThread[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [boardAutoRefreshIntervalMs, setBoardAutoRefreshIntervalMs] = useState(
+    readBoardAutoRefreshIntervalMs,
+  );
+  const [isDocumentVisible, setIsDocumentVisible] = useState(
+    document.visibilityState === "visible",
+  );
   const [sortPreference, setSortPreference] =
     useState<ThreadListSortPreference>(() =>
       readThreadListSortPreference(page.boardUrl),
@@ -367,6 +385,67 @@ export const ThreadListPage: React.FC<Props> = ({
         console.error(err);
       });
   }, [dispatch, page.boardTitle, page.boardUrl, tabId]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsDocumentVisible(document.visibilityState === "visible");
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    const applyInterval = () => {
+      setBoardAutoRefreshIntervalMs(readBoardAutoRefreshIntervalMs());
+    };
+
+    const handleConfigUpdated = ({ key }: { key?: string }) => {
+      if (key === BOARD_AUTO_REFRESH_CONFIG_KEY) {
+        applyInterval();
+      }
+    };
+
+    container.config.ready(applyInterval);
+    container.message.on("config_updated", handleConfigUpdated);
+
+    return () => {
+      container.message.off("config_updated", handleConfigUpdated);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (
+      state.activeTabId !== tabId ||
+      !isDocumentVisible ||
+      boardAutoRefreshIntervalMs < MIN_BOARD_AUTO_REFRESH_MS
+    ) {
+      return;
+    }
+
+    const timerId = window.setInterval(() => {
+      if (loading) {
+        return;
+      }
+
+      // タブを切り替えた瞬間に旧タブの更新が走ると体感が悪いため、
+      // 一覧の自動更新は表示中タブの RELOAD 経路だけを使って発火する。
+      dispatch({ type: "RELOAD" });
+    }, boardAutoRefreshIntervalMs);
+
+    return () => {
+      window.clearInterval(timerId);
+    };
+  }, [
+    boardAutoRefreshIntervalMs,
+    dispatch,
+    isDocumentVisible,
+    loading,
+    state.activeTabId,
+    tabId,
+  ]);
 
   // Ctrl+Fで検索バーを開く
   // useEffect(() => {
