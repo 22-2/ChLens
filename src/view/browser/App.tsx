@@ -3,6 +3,7 @@ import React from "react";
 import { AutoRefreshStatusItem } from "src/view/browser/components/AutoRefreshStatusItem";
 import { BottomPanel } from "src/view/browser/components/BottomPanel";
 import { ContentArea } from "src/view/browser/components/ContentArea";
+import { IkioiStatusItem } from "src/view/browser/components/IkioiStatusItem";
 import { NgStatusItem } from "src/view/browser/components/NgStatusItem";
 import { NavigationBar } from "src/view/browser/components/NavigationBar";
 import {
@@ -11,6 +12,7 @@ import {
   StatusBarProvider,
 } from "src/view/browser/components/StatusBar";
 import { TabBar } from "src/view/browser/components/TabBar";
+import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
 import { AutoScrollStateProvider } from "src/view/browser/hooks/use-auto-scroll-state";
 import {
   BottomPanelProvider,
@@ -37,7 +39,7 @@ const WritePanelToggleItem: React.FC = () => {
     <StatusBarItem
       id="write-panel-toggle"
       alignment="right"
-      priority={0}
+      priority={STATUS_BAR_PRIORITY.right.writePanelToggle}
       interactive
       // title={isOpen ? "書き込みパネルを閉じる" : "書き込みパネルを開く"}
     >
@@ -70,6 +72,7 @@ export const BrowserApp: React.FC = () => {
                 <ContentArea />
                 <BottomPanel />
                 <NgStatusItem />
+                <IkioiStatusItem />
                 <AutoRefreshStatusItem />
                 <WritePanelToggleItem />
                 <StatusBar />

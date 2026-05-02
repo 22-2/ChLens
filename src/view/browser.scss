@@ -1817,6 +1817,7 @@ body {
   font-family: inherit;
   cursor: pointer;
   white-space: nowrap;
+  line-height: 1;
   transition:
     background 0.1s,
     color 0.1s;
@@ -1824,12 +1825,36 @@ body {
 
 .status-bar__item--interactive .status-bar__btn {
   width: 100%;
-  padding: 0 10px;
+  padding: 0 6px;
 }
 
 .status-bar__item--interactive:hover .status-bar__btn,
 .status-bar__btn:hover {
   background: var(--browser-color-status-hover-overlay);
+}
+
+.status-bar__ikioi {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  height: 100%;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.status-bar__ikioi-value {
+  min-width: 2ch;
+}
+
+/* ステータスバー内のLucideアイコンはコンポーネント側のsize指定に関係なく統一サイズで描画する。 */
+.status-bar__btn svg,
+.status-bar__ikioi svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  display: block;
 }
 
 .status-bar--active .status-bar__item--interactive:hover .status-bar__btn,
@@ -2015,6 +2040,26 @@ body {
   color: var(--browser-color-text-primary);
   cursor: pointer;
   user-select: none;
+}
+
+.mini-window__momentum-chart-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mini-window__momentum-chart {
+  width: 252px;
+  height: 82px;
+  border: 1px solid var(--browser-color-border);
+  border-radius: 6px;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--browser-color-accent) 4%, transparent) 0%,
+      transparent 100%
+    ),
+    var(--browser-color-input-bg);
 }
 
 /* ==========================================================================

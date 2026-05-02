@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { container } from "src/service-container/index";
 import { MiniWindow } from "src/view/browser/components/MiniWindow";
 import { StatusBarItem } from "src/view/browser/components/StatusBar";
+import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
 import {
   MAX_INTERVAL_SEC,
   MIN_INTERVAL_SEC,
@@ -254,7 +255,7 @@ export const AutoRefreshStatusItem: React.FC = () => {
       <StatusBarItem
         id="auto-refresh-status"
         alignment="left"
-        priority={0}
+        priority={STATUS_BAR_PRIORITY.left.autoRefresh}
         title={itemTitle}
         interactive
       >

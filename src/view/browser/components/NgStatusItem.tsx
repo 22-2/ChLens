@@ -2,6 +2,7 @@ import { Ban } from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { MiniWindow } from "src/view/browser/components/MiniWindow";
 import { StatusBarItem } from "src/view/browser/components/StatusBar";
+import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
 import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 
@@ -55,7 +56,7 @@ export const NgStatusItem: React.FC = () => {
       <StatusBarItem
         id="ng-status"
         alignment="left"
-        priority={5}
+        priority={STATUS_BAR_PRIORITY.left.ng}
         title={itemTitle}
         interactive
       >
