@@ -53,6 +53,13 @@ interface ThreadPageProps {
   isAutoRefreshEnabled: boolean;
 }
 
+type TopBarMode = "none" | "search" | "filter";
+
+const TOP_BAR_EVENT_BY_MODE = {
+  search: "thread-search-toggle",
+  filter: "thread-filter-toolbar-toggle",
+} as const;
+
 export const ThreadPage: React.FC<ThreadPageProps> = ({
   tabId,
   page,
@@ -71,8 +78,6 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     setFilter,
     searchQuery,
     setSearchQuery,
-    showSearch,
-    setShowSearch,
     fetchThread,
     idPositions,
     setResponses,
@@ -112,6 +117,9 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   });
 
   const [miniAaResNums, setMiniAaResNums] = useState<Set<number>>(new Set());
+  const [activeTopBar, setActiveTopBar] = useState<TopBarMode>("none");
+  const isFilterToolbarVisible = activeTopBar === "filter";
+  const isSearchBarVisible = activeTopBar === "search";
 
   // フィルタを解除した直後にジャンプ先のレス番号を保持するref。
   // setFilter後のDOMが確定してからhandleAnchorClickを呼ぶためにuseEffectと組み合わせる。
@@ -145,16 +153,39 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     };
   }, [setThreadStats, threadNgCount]);
 
-  // 検索バーはURLバー右メニューからのみ開く。
-  // （Ctrl+F割り当ては無効化して、ブラウザ/OS標準ショートカットを優先する）
+  const closeTopBar = useCallback(() => {
+    setActiveTopBar("none");
+  }, []);
+
+  const toggleTopBar = useCallback((panel: Exclude<TopBarMode, "none">) => {
+    // 検索とフィルタを同時に開くとUI責務が競合するため、
+    // 単一モードでトグルし、再選択時は閉じる。
+    setActiveTopBar((prev) => (prev === panel ? "none" : panel));
+  }, []);
+
   useEffect(() => {
-    const handleOpenSearch = () => {
-      setShowSearch(true);
+    // 検索バーを閉じたあと古いクエリが残ると次回表示時に意図せず絞り込まれるため、
+    // 検索モードを抜けた時点で検索語をクリアする。
+    if (activeTopBar !== "search" && searchQuery) {
+      setSearchQuery("");
+    }
+  }, [activeTopBar, searchQuery, setSearchQuery]);
+
+  useEffect(() => {
+    const cleanups = Object.entries(TOP_BAR_EVENT_BY_MODE).map(
+      ([mode, eventName]) => {
+        const handleToggleTopBar = () => {
+          toggleTopBar(mode as Exclude<TopBarMode, "none">);
+        };
+        window.addEventListener(eventName, handleToggleTopBar);
+        return () => window.removeEventListener(eventName, handleToggleTopBar);
+      },
+    );
+
+    return () => {
+      cleanups.forEach((cleanup) => cleanup());
     };
-    window.addEventListener("thread-search-open", handleOpenSearch);
-    return () =>
-      window.removeEventListener("thread-search-open", handleOpenSearch);
-  }, [setShowSearch]);
+  }, [toggleTopBar]);
 
   const openAnchorPreviewFromPopup = useCallback(
     (popupId: string) =>
@@ -486,6 +517,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     { key: "link", label: "リンク" },
   ];
 
+  const topBarCountLabel = `${filteredResponses.length}/${responses.length}件`;
+
   // アンカークリックで該当レスへスクロール
   const handleAnchorClick = useCallback(
     (resNum: number) => {
@@ -815,34 +848,41 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         </div>
       ) : (
         <>
-          {/* フィルタツールバー */}
-          <div className="thread-page__toolbar">
-            <div className="thread-page__filters">
-              {filterButtons.map(({ key, label }) => (
+          {isFilterToolbarVisible && (
+            <div className="thread-page__top-bar thread-page__toolbar">
+              <div className="thread-page__filters">
+                {filterButtons.map(({ key, label }) => (
+                  <button
+                    key={key}
+                    className={`thread-page__filter-btn${
+                      filter === key ? " thread-page__filter-btn--active" : ""
+                    }`}
+                    onClick={() => setFilter(key)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="thread-page__toolbar-right">
+                <span className="thread-page__count">{topBarCountLabel}</span>
                 <button
-                  key={key}
-                  className={`thread-page__filter-btn${
-                    filter === key ? " thread-page__filter-btn--active" : ""
-                  }`}
-                  onClick={() => setFilter(key)}
+                  type="button"
+                  className="thread-page__toolbar-close"
+                  onClick={closeTopBar}
+                  aria-label="フィルターを閉じる"
                 >
-                  {label}
+                  ✕
                 </button>
-              ))}
+              </div>
             </div>
-            <span className="thread-page__count">
-              {filteredResponses.length}/{responses.length}件
-            </span>
-          </div>
+          )}
 
-          {showSearch && (
+          {isSearchBarVisible && (
             <SearchBar
+              className="thread-page__top-bar"
               query={searchQuery}
               onQueryChange={setSearchQuery}
-              onClose={() => {
-                setShowSearch(false);
-                setSearchQuery("");
-              }}
+              onClose={closeTopBar}
               hitCount={filteredResponses.length}
             />
           )}
@@ -936,6 +976,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             rootRef={rootRef}
             repIndex={indexes.repIndex}
             responseCount={filteredResponses.length}
+            activeTopBar={activeTopBar}
             onMarkerClick={handleAnchorClick}
           />
           <MediaViewerContainer />

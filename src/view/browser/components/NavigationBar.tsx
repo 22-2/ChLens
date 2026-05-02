@@ -2,6 +2,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Bookmark,
+  Filter,
   History,
   Menu,
   Pause,
@@ -10,7 +11,13 @@ import {
   Search,
   Settings,
 } from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
@@ -234,10 +241,18 @@ export const NavigationBar: React.FC = () => {
     [forward],
   );
 
-  const openSearchFromMenu = useCallback(() => {
+  const toggleSearchFromMenu = useCallback(() => {
     // Ctrl+Fでは開かず、URLバー右メニューからのみ開く要件のため、
-    // NavigationBarからThreadPageへ明示イベントを送る。
-    window.dispatchEvent(new window.CustomEvent("thread-search-open"));
+    // NavigationBarからThreadPageへトグルイベントを送る。
+    window.dispatchEvent(new window.CustomEvent("thread-search-toggle"));
+  }, []);
+
+  const toggleFilterFromMenu = useCallback(() => {
+    // フィルタUIはメニュー項目からのみ開くことで、
+    // メニューボタン押下そのものをトリガーにしない。
+    window.dispatchEvent(
+      new window.CustomEvent("thread-filter-toolbar-toggle"),
+    );
   }, []);
 
   useEffect(() => {
@@ -295,7 +310,13 @@ export const NavigationBar: React.FC = () => {
               id: "open-search",
               label: "検索を開く",
               icon: <Search size={14} />,
-              onSelect: openSearchFromMenu,
+              onSelect: toggleSearchFromMenu,
+            },
+            {
+              id: "open-filter-toolbar",
+              label: "フィルターを開く",
+              icon: <Filter size={14} />,
+              onSelect: toggleFilterFromMenu,
             },
             {
               id: "open-write-panel",
@@ -373,7 +394,8 @@ export const NavigationBar: React.FC = () => {
       currentPage.type,
       openQuickAccessPage,
       openQuickAccessPageInNewTab,
-      openSearchFromMenu,
+      toggleFilterFromMenu,
+      toggleSearchFromMenu,
       openSettingsTab,
       isPanelOpen,
       togglePanel,

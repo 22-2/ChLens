@@ -346,7 +346,9 @@ export const ThreadListPage: React.FC<Props> = ({
       // container経由でBoardサービスにアクセス
       const result = await container.board.getThreads(page.boardUrl);
       setThreads(result.threads);
-      if (result.message) {
+      // 戻る操作直後は「取得成功 + 注意メッセージ」が返る場合があるため、
+      // 一覧を描画できる件数がある間はエラー文言を出さずUIの連続性を優先する。
+      if (result.message && result.threads.length === 0) {
         setError(result.message);
       }
     } catch (e) {

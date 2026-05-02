@@ -304,5 +304,10 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 これらは変数として再利用可能にする
 
 - [x] idはレス数に応じて灰色から青になって、だんだん赤くしていく
-- [ ] gutterはミニマップだけにする
-- [ ] sonnarの追加
+- [x] gutterはミニマップだけにする
+- [ ] sonnarの追加(container.notification)
+- [x] fix: スレ一覧に戻るをした時に板の読み込みに失敗しましたとでる
+- [x] fix: ミニマップはthread-page__toolbarより下に表示&フィルタはnav-bar__btnを押すまで非表示に
+ミニマップはthread-page__toolbarより下に表示というのは、ミニマップとtoolbarを前面にも後面にも重ねるんじゃなくて、ミニマップの一番上はtoolbarのbottomにしてってことっす
+
+- [ ] ThreadPageのコンポーネント分離

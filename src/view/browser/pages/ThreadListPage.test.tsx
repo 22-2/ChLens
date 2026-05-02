@@ -291,4 +291,37 @@ describe("ThreadListPage", () => {
       ]);
     });
   });
+
+  it("一覧データがある場合はresult.messageをエラー表示しない", async () => {
+    vi.useRealTimers();
+
+    getThreadsMock.mockResolvedValueOnce({
+      threads: THREADS,
+      message: "板の読み込みに失敗しました",
+    });
+
+    render(
+      <ThreadListPage
+        tabId="tab-1"
+        page={{
+          type: "threadList",
+          title: "Software",
+          boardUrl: "https://egg.5ch.net/software/",
+          boardTitle: "Software",
+        }}
+        refreshKey={0}
+        isActive={true}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getRenderedThreadTitles()).toEqual([
+        "B Thread",
+        "A Thread",
+        "C Thread",
+      ]);
+    });
+
+    expect(screen.queryByText("板の読み込みに失敗しました")).toBeNull();
+  });
 });

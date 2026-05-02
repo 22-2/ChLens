@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 
 interface Props {
+  className?: string;
   query: string;
   onQueryChange: (q: string) => void;
   onClose: () => void;
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export const SearchBar: React.FC<Props> = ({
+  className,
   query,
   onQueryChange,
   onClose,
@@ -20,7 +22,7 @@ export const SearchBar: React.FC<Props> = ({
   }, []);
 
   return (
-    <div className="search-bar">
+    <div className={["search-bar", className].filter(Boolean).join(" ")}>
       <input
         ref={inputRef}
         type="text"

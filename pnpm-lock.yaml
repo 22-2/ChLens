@@ -59,6 +59,9 @@ importers:
       react-dom:
         specifier: ^19.2.5
         version: 19.2.5(react@19.2.5)
+      sonnar:
+        specifier: ^1.0.0
+        version: 1.0.0
       tailwind-merge:
         specifier: ^3.5.0
         version: 3.5.0
@@ -5348,6 +5351,9 @@ packages:
 
   sonic-boom@4.2.1:
     resolution: {integrity: sha512-w6AxtubXa2wTXAUsZMMWERrsIRAdrK0Sc+FUytWvYAhBJLyuI4llrMIC1DtlNSdI99EI86KZum2MMq3EAZlF9Q==}
+
+  sonnar@1.0.0:
+    resolution: {integrity: sha512-pv2qlVkbmy2tfA0e2m9SrUdW/B6t+Nb6XR/f4WJq7TC+cLu1mhmv/qhMeZnePIJWMpB7cl0WTRAxQTlUJm+kmg==}
 
   source-map-js@1.2.1:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
@@ -11466,6 +11472,8 @@ snapshots:
   sonic-boom@4.2.1:
     dependencies:
       atomic-sleep: 1.0.0
+
+  sonnar@1.0.0: {}
 
   source-map-js@1.2.1: {}
 

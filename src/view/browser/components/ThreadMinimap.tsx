@@ -4,6 +4,7 @@ interface ThreadMinimapProps {
   rootRef: React.RefObject<HTMLDivElement | null>;
   repIndex: Map<number, Set<number>>;
   responseCount: number;
+  activeTopBar: "none" | "search" | "filter";
   onMarkerClick: (resNum: number) => void;
 }
 
@@ -82,6 +83,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
   rootRef,
   repIndex,
   responseCount,
+  activeTopBar,
   onMarkerClick,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -117,6 +119,15 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     return responses instanceof HTMLElement ? responses : null;
   }, [rootRef]);
 
+  const getTopBarRoot = useCallback((): HTMLElement | null => {
+    const host = rootRef.current;
+    if (!host) {
+      return null;
+    }
+    const topBar = host.querySelector(".thread-page__top-bar");
+    return topBar instanceof HTMLElement ? topBar : null;
+  }, [rootRef]);
+
   const setHostMinimapWidth = useCallback(
     (widthPx: number) => {
       const host = rootRef.current;
@@ -131,6 +142,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
 
   const updateFrame = useCallback(() => {
     const scrollContainer = getScrollContainer();
+    const topBar = getTopBarRoot();
     if (!scrollContainer || responseCount === 0) {
       setFrame((prev) => (prev === null ? prev : null));
       setHostMinimapWidth(0);
@@ -138,7 +150,11 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     }
 
     const rect = scrollContainer.getBoundingClientRect();
-    if (rect.height < MINIMAP_MIN_DRAWABLE_HEIGHT || rect.width < 280) {
+    const topBarRect = topBar?.getBoundingClientRect() ?? null;
+    // 上部バーの種類に関係なく bottom をミニマップ上端に揃え、重なりを避ける。
+    const top = clamp(topBarRect?.bottom ?? rect.top, rect.top, rect.bottom);
+    const availableHeight = rect.bottom - top;
+    if (availableHeight < MINIMAP_MIN_DRAWABLE_HEIGHT || rect.width < 280) {
       setFrame((prev) => (prev === null ? prev : null));
       setHostMinimapWidth(0);
       return;
@@ -156,10 +172,11 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     const left = Math.max(rect.left + 8, preferredLeft);
 
     const nextFrame: MinimapFrame = {
-      top: rect.top,
+      // ミニマップ上端 = toolbar bottom を満たし、重なりを完全に避ける。
+      top,
       left,
       width,
-      height: rect.height,
+      height: availableHeight,
     };
 
     setFrame((prev) => {
@@ -169,7 +186,13 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     });
     // 本文をミニマップの下に潜り込ませないため、同じ幅を右余白として予約する。
     setHostMinimapWidth(width + MINIMAP_GAP);
-  }, [getScrollContainer, responseCount, setHostMinimapWidth]);
+  }, [
+    activeTopBar,
+    getScrollContainer,
+    getTopBarRoot,
+    responseCount,
+    setHostMinimapWidth,
+  ]);
 
   const getMetrics = useCallback((): MinimapMetrics | null => {
     const scrollContainer = getScrollContainer();
