@@ -380,6 +380,80 @@ describe("TabProvider auto refresh state", () => {
     );
   });
 
+  it("クイックアクセス間の遷移で既存ページ判定が誤爆せず切り替わる", async () => {
+    vi.resetModules();
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
+
+    function Harness() {
+      const { currentPage, dispatch } = useTabStore();
+
+      return (
+        <>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "NAVIGATE",
+                page: { type: "bookmarkList", title: "ブックマークリスト" },
+              })
+            }
+          >
+            ブックマークを開く
+          </button>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "NAVIGATE",
+                page: { type: "historyList", title: "閲覧履歴" },
+              })
+            }
+          >
+            履歴を開く
+          </button>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "NAVIGATE",
+                page: { type: "writeHistoryList", title: "書き込み履歴" },
+              })
+            }
+          >
+            書き込み履歴を開く
+          </button>
+          <output data-testid="current-page-type">{currentPage.type}</output>
+          <output data-testid="current-page-title">{currentPage.title}</output>
+        </>
+      );
+    }
+
+    render(
+      <TabProvider>
+        <Harness />
+      </TabProvider>,
+    );
+
+    fireEvent.click(screen.getByText("ブックマークを開く"));
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent(
+      "bookmarkList",
+    );
+
+    fireEvent.click(screen.getByText("履歴を開く"));
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent(
+      "historyList",
+    );
+    expect(screen.getByTestId("current-page-title")).toHaveTextContent(
+      "閲覧履歴",
+    );
+
+    fireEvent.click(screen.getByText("書き込み履歴を開く"));
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent(
+      "writeHistoryList",
+    );
+    expect(screen.getByTestId("current-page-title")).toHaveTextContent(
+      "書き込み履歴",
+    );
+  });
+
   it("同一タブでスレURLへ遷移した時は戻るで前のスレへ戻る", async () => {
     vi.resetModules();
     const { TabProvider, useTabStore } =

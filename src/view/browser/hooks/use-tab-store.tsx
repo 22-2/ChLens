@@ -67,6 +67,14 @@ function getPageIdentity(page: Page): string {
       return "boardList";
     case "settings":
       return "settings";
+    // クイックアクセス3種を別IDとして扱い、
+    // 「既に開いている判定」で相互に潰し合って遷移不能になる回帰を防ぐ。
+    case "bookmarkList":
+      return "bookmarkList";
+    case "historyList":
+      return "historyList";
+    case "writeHistoryList":
+      return "writeHistoryList";
     case "threadList":
       return `threadList:${normalizePageLocation(page.boardUrl)}`;
     case "thread":
