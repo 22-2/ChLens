@@ -995,6 +995,9 @@ body {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+  /* table-layout: fixed にすることで、ズーム時もテーブルが画面幅を超えず
+     タイトル列が残り幅に収まるようにする（他列の隠れを防ぐ） */
+  table-layout: fixed;
 }
 
 .simple-data-table__row {
@@ -1017,6 +1020,8 @@ body {
 .simple-data-table__title {
   padding: 6px 8px;
   color: #1a0dab;
+  /* table-layout: fixed 環境でタイトルを折り返して他列が隠れないようにする */
+  overflow-wrap: anywhere;
 }
 
 .simple-data-table__count {
@@ -1925,7 +1930,6 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 0 8px;
   height: 100%;
   font-size: 11px;
   font-variant-numeric: tabular-nums;
