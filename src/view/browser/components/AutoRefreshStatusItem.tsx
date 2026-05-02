@@ -1,4 +1,4 @@
-import { RefreshCw } from "lucide-react";
+import { Clock3, Pause, RefreshCw } from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { container } from "src/service-container/index";
 import { MiniWindow } from "src/view/browser/components/MiniWindow";
@@ -170,7 +170,7 @@ export const AutoRefreshStatusItem: React.FC = () => {
     useAutoRefreshPanel();
   const { intervalSec: boardIntervalSec, setIntervalSec: setBoardIntervalSec } =
     useBoardIntervalSec();
-  const { canAutoScroll } = useAutoScrollState();
+  const { canAutoScroll, isAutoScrolling, isPaused } = useAutoScrollState();
 
   const [isWindowOpen, setIsWindowOpen] = useState(false);
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
@@ -207,20 +207,38 @@ export const AutoRefreshStatusItem: React.FC = () => {
 
   const itemTitle =
     panelKind === "thread"
-      ? isEnabled
-        ? `スレッド自動更新中 (${intervalSec}秒間隔)`
-        : "スレッド自動更新の設定"
+      ? !isEnabled
+        ? "スレッド自動更新: OFF"
+        : isPaused
+          ? `スレッド自動更新: 一時停止中（ポップアップ表示中, ${intervalSec}秒間隔）`
+          : canAutoScroll || isAutoScrolling
+            ? `スレッド自動更新: 追従中（${intervalSec}秒間隔）`
+            : `スレッド自動更新: 待機中（しきい線より上, ${intervalSec}秒間隔）`
       : isBoardIntervalEnabled
         ? `スレ一覧自動更新の設定 (${boardIntervalSec}秒間隔)`
         : "スレ一覧自動更新の設定";
-  const itemLabel =
-    panelKind === "thread"
-      ? isEnabled
-        ? `${intervalSec}s`
-        : "自動更新"
-      : isBoardIntervalEnabled
-        ? `${boardIntervalSec}s`
-        : "板更新";
+
+  const renderStatusIcon = () => {
+    if (panelKind === "thread") {
+      if (!isEnabled) {
+        return <RefreshCw size={13} aria-hidden="true" />;
+      }
+      if (isPaused) {
+        return <Pause size={13} aria-hidden="true" />;
+      }
+      if (canAutoScroll || isAutoScrolling) {
+        return <RefreshCw size={13} className="icon--spinning" aria-hidden="true" />;
+      }
+      return <Clock3 size={13} aria-hidden="true" />;
+    }
+
+    if (isBoardIntervalEnabled) {
+      return <RefreshCw size={13} className="icon--spinning" aria-hidden="true" />;
+    }
+
+    return <Pause size={13} aria-hidden="true" />;
+  };
+
   const buttonClassName = `status-bar__btn${
     panelKind === "thread" && isEnabled ? " status-bar__btn--active" : ""
   }${
@@ -240,16 +258,14 @@ export const AutoRefreshStatusItem: React.FC = () => {
         title={itemTitle}
         interactive
       >
-        <button ref={btnRef} className={buttonClassName} onClick={handleClick}>
-          <RefreshCw
-            size={12}
-            className={
-              panelKind === "thread" && isEnabled && canAutoScroll
-                ? "icon--spinning"
-                : undefined
-            }
-          />
-          <span>{itemLabel}</span>
+        <button
+          ref={btnRef}
+          className={buttonClassName}
+          onClick={handleClick}
+          title={itemTitle}
+          aria-label={itemTitle}
+        >
+          {renderStatusIcon()}
         </button>
       </StatusBarItem>
 

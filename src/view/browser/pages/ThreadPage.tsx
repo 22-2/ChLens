@@ -22,10 +22,7 @@ import { MediaViewerContainer } from "src/view/browser/components/MediaViewerCon
 import { PopupRenderer } from "src/view/browser/components/PopupRenderer";
 import { ResItem } from "src/view/browser/components/ResItem";
 import { SearchBar } from "src/view/browser/components/SearchBar";
-import {
-  StatusBarItem,
-  StatusBarMode,
-} from "src/view/browser/components/StatusBar";
+import { StatusBarMode } from "src/view/browser/components/StatusBar";
 import { useMediaViewerStore } from "src/view/browser/hooks/use-media-viewer-store";
 import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
 import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
@@ -103,7 +100,7 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
     activeTab.autoRefreshEnabled &&
     activeTab.autoRefreshThreadUrl === page.threadUrl;
 
-  const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling, intervalMs } =
+  const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling } =
     useThreadAutoRefresh({
       threadUrl: page.threadUrl,
       expired,
@@ -113,25 +110,6 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
       lastResponseNum: responses.at(-1)?.num ?? null,
       rootRef,
     });
-  const autoRefreshIntervalLabel = useMemo(() => {
-    if (intervalMs <= 0) {
-      return "OFF";
-    }
-    if (intervalMs % 1000 === 0) {
-      return `${intervalMs / 1000}s`;
-    }
-    return `${(intervalMs / 1000).toFixed(1)}s`;
-  }, [intervalMs]);
-  const autoRefreshStatusLabel = useMemo(() => {
-    if (popups.length > 0) {
-      return "自動追従一時停止（ポップアップ表示中）";
-    }
-    if (isAutoScrolling || canAutoScroll) {
-      return "自動更新＆追従中";
-    }
-    return "追従待機外";
-  }, [canAutoScroll, isAutoScrolling, popups.length]);
-
   const threadNgCount = useMemo(
     () =>
       responses.filter((res) => res.ng != null || res.class?.includes("ng")).length,
@@ -694,15 +672,6 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
             id="thread-auto-scroll-mode"
             appearance={canAutoScroll || isAutoScrolling ? "active" : null}
           />
-          <StatusBarItem
-            id="thread-auto-refresh-status"
-            alignment="left"
-            priority={1}
-            title="自動更新と自動スクロールの状態"
-            className={isAutoScrolling ? "status-bar__item--active" : undefined}
-          >
-            <span className="status-bar__meta">{autoRefreshStatusLabel}</span>
-          </StatusBarItem>
         </>
       )}
       {loading && responses.length === 0 ? (

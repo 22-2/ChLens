@@ -11,11 +11,14 @@ export interface AutoScrollState {
   canAutoScroll: boolean;
   /** 自動スクロールが実行中 */
   isAutoScrolling: boolean;
+  /** ポップアップ表示などで自動追従だけ一時停止中 */
+  isPaused: boolean;
 }
 
 const INITIAL: AutoScrollState = {
   canAutoScroll: false,
   isAutoScrolling: false,
+  isPaused: false,
 };
 
 const ReadContext = createContext<AutoScrollState>(INITIAL);

@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
     setIntervalSec: vi.fn(),
   },
   canAutoScroll: false,
+  isPaused: false,
 }));
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
@@ -36,7 +37,11 @@ vi.mock("src/view/browser/hooks/use-auto-refresh-panel", () => ({
 }));
 
 vi.mock("src/view/browser/hooks/use-auto-scroll-state", () => ({
-  useAutoScrollState: () => ({ canAutoScroll: mocks.canAutoScroll }),
+  useAutoScrollState: () => ({
+    canAutoScroll: mocks.canAutoScroll,
+    isAutoScrolling: false,
+    isPaused: mocks.isPaused,
+  }),
 }));
 
 function createRect(): DOMRect {
@@ -77,6 +82,7 @@ describe("AutoRefreshStatusItem", () => {
       setIntervalSec: vi.fn(),
     };
     mocks.canAutoScroll = false;
+    mocks.isPaused = false;
 
     container.config = {
       get: vi.fn((key: string) => {
@@ -132,7 +138,7 @@ describe("AutoRefreshStatusItem", () => {
 
     renderItem();
 
-    const button = screen.getByRole("button", { name: /板更新/ });
+    const button = screen.getByRole("button", { name: /スレ一覧自動更新/ });
     Object.defineProperty(button, "getBoundingClientRect", {
       configurable: true,
       value: () => createRect(),
@@ -153,6 +159,25 @@ describe("AutoRefreshStatusItem", () => {
 
     renderItem();
 
-    expect(screen.queryByRole("button", { name: /自動更新|板更新/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /自動更新/ })).toBeNull();
+  });
+
+  it("ポップアップ表示中の一時停止状態をホバーラベルで示す", () => {
+    mocks.autoRefreshPanel = {
+      isOnThread: true,
+      isEnabled: true,
+      intervalSec: 30,
+      toggle: vi.fn(),
+      setIntervalSec: vi.fn(),
+    };
+    mocks.isPaused = true;
+
+    renderItem();
+
+    expect(
+      screen.getByRole("button", {
+        name: /一時停止中（ポップアップ表示中, 30秒間隔）/,
+      }),
+    ).toBeInTheDocument();
   });
 });

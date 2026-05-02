@@ -64,11 +64,15 @@ export function useThreadAutoRefresh(
         ? {
             canAutoScroll: result.canAutoScroll,
             isAutoScrolling: result.isAutoScrolling,
+            // 自動更新は継続しつつ追従だけ止めている状態を明示し、
+            // スピナー以外のアイコンでも一時停止理由を判別できるようにする。
+            isPaused: pauseAutoScroll,
           }
-        : { canAutoScroll: false, isAutoScrolling: false },
+        : { canAutoScroll: false, isAutoScrolling: false, isPaused: false },
     );
   }, [
     enabled,
+    pauseAutoScroll,
     result.canAutoScroll,
     result.isAutoScrolling,
     setAutoScrollState,
