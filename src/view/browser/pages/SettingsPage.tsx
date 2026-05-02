@@ -455,7 +455,7 @@ const SETTINGS_SECTIONS = [
       kind: "string",
       key: "ngwords",
       title: "NGワード一覧",
-      description: "JSON5形式、または旧来のテキスト形式で編集できます。",
+      description: "JSON5形式、で編集できます。",
       widget: "ng_editor" as any,
     },
     { kind: "boolean", key: "chain_ng", title: "NGレスへの返信を連鎖NGにする" },
