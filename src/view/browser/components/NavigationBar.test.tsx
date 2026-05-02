@@ -90,19 +90,6 @@ describe("NavigationBar", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("メニュー項目の『検索を開く』で検索トグルイベントを送る", () => {
-    const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
-    render(<NavigationBar />);
-
-    fireEvent.click(screen.getByTitle("メニュー"));
-    fireEvent.click(screen.getByRole("button", { name: "検索を開く" }));
-
-    expect(dispatchEventSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "thread-search-toggle" }),
-    );
-    dispatchEventSpy.mockRestore();
-  });
-
   it("メニュー項目の『フィルターを開く』でフィルタトグルイベントを送る", () => {
     const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
     render(<NavigationBar />);

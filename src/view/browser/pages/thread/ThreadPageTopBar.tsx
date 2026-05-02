@@ -1,5 +1,4 @@
-import React from "react";
-import { SearchBar } from "src/view/browser/components/SearchBar";
+import React, { useEffect, useRef } from "react";
 import type { ThreadFilter } from "src/view/browser/utils/types";
 
 import type { TopBarMode } from "src/view/browser/pages/thread/use-thread-top-bar";
@@ -12,6 +11,7 @@ interface ThreadPageTopBarProps {
   onFilterChange: (filter: ThreadFilter) => void;
   onSearchQueryChange: (query: string) => void;
   responseCount: number;
+  searchFocusKey: number;
   searchQuery: string;
 }
 
@@ -31,15 +31,34 @@ export const ThreadPageTopBar: React.FC<ThreadPageTopBarProps> = ({
   onFilterChange,
   onSearchQueryChange,
   responseCount,
+  searchFocusKey,
   searchQuery,
 }) => {
+  const inputRef = useRef<HTMLInputElement>(null);
   const topBarCountLabel = `${filteredResponseCount}/${responseCount}件`;
 
-  // ThreadPage本体は「どのバーを出すか」の判断だけに絞り、
-  // バー自体の描画詳細は専用コンポーネントへ寄せて見通しを保つ。
-  if (activeTopBar === "filter") {
-    return (
-      <div className="thread-page__top-bar thread-page__toolbar">
+  useEffect(() => {
+    if (activeTopBar === "none") {
+      return;
+    }
+
+    // スクロール途中でツールバーを開いても input focus による scroll jump を起こしにくくする。
+    try {
+      inputRef.current?.focus({ preventScroll: true });
+    } catch {
+      inputRef.current?.focus();
+    }
+  }, [activeTopBar, searchFocusKey]);
+
+  // ThreadPage本体は「バーを出すか」だけを判断し、
+  // 検索とフィルタの複合UIは専用コンポーネントへ閉じ込めて見通しを保つ。
+  if (activeTopBar === "none") {
+    return null;
+  }
+
+  return (
+    <div className="thread-page__top-bar thread-page__toolbar">
+      <div className="thread-page__toolbar-main">
         <div className="thread-page__filters">
           {FILTER_BUTTONS.map(({ key, label }) => (
             <button
@@ -53,32 +72,33 @@ export const ThreadPageTopBar: React.FC<ThreadPageTopBarProps> = ({
             </button>
           ))}
         </div>
-        <div className="thread-page__toolbar-right">
-          <span className="thread-page__count">{topBarCountLabel}</span>
-          <button
-            type="button"
-            className="thread-page__toolbar-close"
-            onClick={onClose}
-            aria-label="フィルターを閉じる"
-          >
-            ✕
-          </button>
+        <div className="thread-page__toolbar-search">
+          <input
+            ref={inputRef}
+            type="text"
+            className="thread-page__toolbar-search-input"
+            placeholder="検索..."
+            value={searchQuery}
+            onChange={(event) => onSearchQueryChange(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                onClose();
+              }
+            }}
+          />
         </div>
       </div>
-    );
-  }
-
-  if (activeTopBar === "search") {
-    return (
-      <SearchBar
-        className="thread-page__top-bar"
-        query={searchQuery}
-        onQueryChange={onSearchQueryChange}
-        onClose={onClose}
-        hitCount={filteredResponseCount}
-      />
-    );
-  }
-
-  return null;
+      <div className="thread-page__toolbar-right">
+        <span className="thread-page__count">{topBarCountLabel}</span>
+        <button
+          type="button"
+          className="thread-page__toolbar-close"
+          onClick={onClose}
+          aria-label="フィルターを閉じる"
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+  );
 };

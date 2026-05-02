@@ -310,4 +310,6 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 - [x] fix: ミニマップはthread-page__toolbarより下に表示&フィルタはnav-bar__btnを押すまで非表示に
 ミニマップはthread-page__toolbarより下に表示というのは、ミニマップとtoolbarを前面にも後面にも重ねるんじゃなくて、ミニマップの一番上はtoolbarのbottomにしてってことっす
 
-- [ ] ThreadPageのコンポーネント分離
+- [x] フィルタ改善
+- [x] ThreadPageのコンポーネント分離
+- [ ] 板、スレ、ホーム、板一覧にそれぞれタブアイコンをつける

@@ -1338,18 +1338,36 @@ body {
 /* ==========================================================================
    Thread Page - フィルタツールバー
    ========================================================================== */
+.thread-page__top-bar {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+
 .thread-page__toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
   padding: 4px 8px;
   background: #f8f9fa;
   border-bottom: 1px solid #e8eaed;
 }
 
+.thread-page__toolbar-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 360px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
 .thread-page__filters {
   display: flex;
   gap: 2px;
+  flex-wrap: wrap;
 }
 
 .thread-page__filter-btn {
@@ -1385,10 +1403,37 @@ body {
   color: #70757a;
 }
 
+.thread-page__toolbar-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 220px;
+  min-width: 180px;
+}
+
+.thread-page__toolbar-search-input {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid #dadce0;
+  border-radius: 4px;
+  font-size: 13px;
+  outline: none;
+  font-family: inherit;
+  background: #fff;
+  color: inherit;
+}
+
+.thread-page__toolbar-search-input:focus {
+  border-color: #1a73e8;
+}
+
 .thread-page__toolbar-right {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-left: auto;
 }
 
 .thread-page__toolbar-close {
@@ -1407,6 +1452,21 @@ body {
 
 .thread-page__toolbar-close:hover {
   background: #e8eaed;
+}
+
+@media (max-width: 720px) {
+  .thread-page__toolbar-main {
+    flex-basis: 100%;
+  }
+
+  .thread-page__toolbar-search {
+    min-width: 100%;
+  }
+
+  .thread-page__toolbar-right {
+    width: 100%;
+    justify-content: flex-end;
+  }
 }
 
 /* ==========================================================================
@@ -1600,7 +1660,10 @@ body {
   display: flex;
   flex-direction: column;
   /* サイズ変化を滑らかにする */
-  transition: width 0.18s ease, height 0.18s ease, border-radius 0.18s ease;
+  transition:
+    width 0.18s ease,
+    height 0.18s ease,
+    border-radius 0.18s ease;
 }
 
 /* 最大化時はビューポートいっぱいに広げる */
@@ -2834,6 +2897,20 @@ body {
 
   .thread-page__count {
     color: #9aa0a6;
+  }
+
+  .thread-page__toolbar-search-input {
+    background: #35363a;
+    border-color: #5f6368;
+    color: #e8eaed;
+
+    &::placeholder {
+      color: #9aa0a6;
+    }
+
+    &:focus {
+      border-color: #8ab4f8;
+    }
   }
 
   .thread-page__toolbar-close {

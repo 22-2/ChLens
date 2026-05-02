@@ -307,12 +307,6 @@ export const NavigationBar: React.FC = () => {
       ...(currentPage.type === "thread"
         ? [
             {
-              id: "open-search",
-              label: "検索を開く",
-              icon: <Search size={14} />,
-              onSelect: toggleSearchFromMenu,
-            },
-            {
               id: "open-filter-toolbar",
               label: "フィルターを開く",
               icon: <Filter size={14} />,

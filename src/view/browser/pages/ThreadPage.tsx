@@ -94,7 +94,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   });
 
   const [miniAaResNums, setMiniAaResNums] = useState<Set<number>>(new Set());
-  const { activeTopBar, closeTopBar } = useThreadTopBar({
+  const { activeTopBar, closeTopBar, searchFocusKey } = useThreadTopBar({
     searchQuery,
     setSearchQuery,
   });
@@ -481,6 +481,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             onFilterChange={setFilter}
             onSearchQueryChange={setSearchQuery}
             responseCount={responses.length}
+            searchFocusKey={searchFocusKey}
             searchQuery={searchQuery}
           />
 
