@@ -45,6 +45,13 @@ body {
   --browser-color-success: #0b8043;
   --browser-color-error: #d93025;
   --browser-color-warning: #c47800;
+  /* --- レス強調色（レス番号/返信/IDで共通利用） --- */
+  --browser-color-res-num: #0000cc;
+  --browser-color-res-heat-warm: #c47800;
+  --browser-color-res-heat-hot: #d93025;
+  --browser-color-res-reply-link: #1a73e8;
+  --browser-color-res-id-muted: #888;
+  --browser-color-res-id-cool: #1a73e8;
   /* --- ステータスバー --- */
   --browser-color-status-active-bg: #007acc;
   --browser-color-status-active-fg: #fff;
@@ -1032,6 +1039,7 @@ body {
   /* ポップアップ・メニューを position:absolute でスクロール連動させるための基点 */
   position: relative;
   padding: 4px 0;
+  --thread-minimap-width: 0px;
 }
 
 .thread-page__popup-layer {
@@ -1054,6 +1062,35 @@ body {
 
 .thread-page__responses {
   padding: 0 0 24px;
+}
+
+.thread-page--with-minimap .thread-page__toolbar,
+.thread-page--with-minimap .thread-page__notice,
+.thread-page--with-minimap .thread-page__responses,
+.thread-page--with-minimap .thread-page__auto-scroll-threshold {
+  padding-right: calc(16px + var(--thread-minimap-width, 0px));
+}
+
+.thread-page__minimap {
+  position: fixed;
+  pointer-events: none;
+  z-index: var(--z-index-minimap);
+  border-left: 1px solid rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: saturate(0.9) blur(2px);
+}
+
+.thread-page__minimap-canvas {
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  opacity: 0.82;
+  pointer-events: auto;
+  transition: opacity 0.2s;
+}
+
+.thread-page__minimap-canvas:hover {
+  opacity: 1;
 }
 
 .thread-page__auto-scroll-threshold {
@@ -1116,7 +1153,15 @@ body {
 
 .res__num {
   font-weight: bold;
-  color: #0000cc;
+  color: var(--browser-color-res-num);
+}
+
+.res__num--warm {
+  color: var(--browser-color-res-heat-warm);
+}
+
+.res__num--hot {
+  color: var(--browser-color-res-heat-hot);
 }
 
 .res__name {
@@ -1126,7 +1171,7 @@ body {
 
 .res__id {
   /* IDが1件しかない場合は控えめな色でノイズを抑える */
-  color: #888;
+  color: var(--browser-color-res-id-muted);
   font-size: 12px;
 }
 
@@ -1333,7 +1378,7 @@ body {
    ========================================================================== */
 .res__id--link {
   /* 同一IDが2件以上: 中間色（アンバー）で「複数回登場」を示す */
-  color: #c47800;
+  color: var(--browser-color-res-heat-warm);
   cursor: pointer;
 }
 
@@ -1344,7 +1389,7 @@ body {
 .res__id--freq {
   /* 同一IDが5件以上: 赤で「多投稿」を強調 */
   cursor: pointer;
-  color: #d93025;
+  color: var(--browser-color-res-heat-hot);
   font-weight: 600;
 }
 
@@ -1358,7 +1403,7 @@ body {
 }
 
 .res__rep--link {
-  color: #1a73e8;
+  color: var(--browser-color-res-reply-link);
   cursor: pointer;
 }
 
@@ -1366,13 +1411,23 @@ body {
   text-decoration: underline;
 }
 
-.res__rep--freq {
-  color: #d93025;
+.res__rep--warm {
+  color: var(--browser-color-res-heat-warm);
   font-weight: 600;
   cursor: pointer;
 }
 
-.res__rep--freq:hover {
+.res__rep--warm:hover {
+  text-decoration: underline;
+}
+
+.res__rep--hot {
+  color: var(--browser-color-res-heat-hot);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.res__rep--hot:hover {
   text-decoration: underline;
 }
 
@@ -2295,6 +2350,12 @@ body {
   --browser-color-success: #81c995;
   --browser-color-error: #f28b82;
   --browser-color-warning: #fba94c;
+  --browser-color-res-num: #8ab4f8;
+  --browser-color-res-heat-warm: #fba94c;
+  --browser-color-res-heat-hot: #f28b82;
+  --browser-color-res-reply-link: #8ab4f8;
+  --browser-color-res-id-muted: #9aa0a6;
+  --browser-color-res-id-cool: #8ab4f8;
   /* --- ステータスバー --- */
   --browser-color-status-active-bg: #1a6fc4;
   --browser-color-status-active-fg: #fff;
@@ -2688,7 +2749,15 @@ body {
 
   /* --- レス --- */
   .res__num {
-    color: #8ab4f8;
+    color: var(--browser-color-res-num);
+  }
+
+  .res__num--warm {
+    color: var(--browser-color-res-heat-warm);
+  }
+
+  .res__num--hot {
+    color: var(--browser-color-res-heat-hot);
   }
 
   .res__name {
@@ -2700,15 +2769,15 @@ body {
   }
 
   .res__id {
-    color: #9aa0a6;
+    color: var(--browser-color-res-id-muted);
   }
 
   .res__id--link {
-    color: #fba94c;
+    color: var(--browser-color-res-heat-warm);
   }
 
   .res__id--freq {
-    color: #f28b82;
+    color: var(--browser-color-res-heat-hot);
   }
 
   .res__body {
@@ -2724,11 +2793,15 @@ body {
   }
 
   .res__rep--link {
-    color: #8ab4f8;
+    color: var(--browser-color-res-reply-link);
   }
 
-  .res__rep--freq {
-    color: #f28b82;
+  .res__rep--warm {
+    color: var(--browser-color-res-heat-warm);
+  }
+
+  .res__rep--hot {
+    color: var(--browser-color-res-heat-hot);
   }
 
   .res__link {

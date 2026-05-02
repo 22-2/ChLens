@@ -2,10 +2,12 @@ import React, { useMemo, useRef } from "react";
 import type { IRes } from "src/service-container";
 import { ResBody } from "src/view/browser/components/ResBody";
 import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
+import { getIdHeatColor } from "src/view/browser/utils/id-heat";
 import type {
   UrlClickHandler,
   UrlContextMenuHandler,
 } from "src/view/browser/utils/link-routing";
+import { getReplyHeatLevel } from "src/view/browser/utils/reply-heat";
 import {
   decodeResponseHtml,
   extractUrlsFromMessage,
@@ -51,6 +53,21 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
 
     // repIndex が渡された場合のみ返信数を表示する
     const repCount = repIndex?.get(res.num)?.size ?? 0;
+    const replyHeat = getReplyHeatLevel(repCount);
+    const resNumClassName = `res__num${
+      replyHeat === "hot"
+        ? " res__num--hot"
+        : replyHeat === "warm"
+          ? " res__num--warm"
+          : ""
+    }`;
+    const repClassName = `res__rep${
+      replyHeat === "hot"
+        ? " res__rep--hot"
+        : replyHeat === "warm"
+          ? " res__rep--warm"
+          : " res__rep--link"
+    }`;
     // idIndex が渡された場合のみ同一IDのレス数を表示してクリック可能にする
     const idCount = res.id ? (idIndex?.get(res.id)?.size ?? 0) : 0;
 
@@ -77,7 +94,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
         }}
       >
         <header className="res__header">
-          <span className="res__num">{res.num}</span>
+          <span className={resNumClassName}>{res.num}</span>
           <span
             className="res__name"
             dangerouslySetInnerHTML={{ __html: decoded.nameHtml }}
@@ -91,6 +108,8 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
                     ? " res__id--link"
                     : ""
               }`}
+              // popup側も本文と同じ色スケールを使い、ID密度の見え方を統一する。
+              style={{ color: getIdHeatColor(idCount) }}
               onClick={(e) => {
                 e.stopPropagation();
                 onIdLinkClick(res.id!, e);
@@ -103,9 +122,9 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
           <span className="res__date">{res.date ?? res.other}</span>
           {repCount > 0 && onRepClick && (
             <span
-              className={`res__rep${
-                repCount >= 5 ? " res__rep--freq" : " res__rep--link"
-              }${disableRepClick ? " res__rep--disabled" : ""}`}
+              className={`${repClassName}${
+                disableRepClick ? " res__rep--disabled" : ""
+              }`}
               aria-disabled={disableRepClick ? true : undefined}
               title={disableRepClick ? "参照元レスの返信はこのポップアップ内では開けません" : undefined}
               onClick={(e) => {

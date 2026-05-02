@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import type { IRes } from "src/service-container/interfaces";
 import { ResItem } from "src/view/browser/components/ResItem";
 import { describe, expect, it, vi } from "vitest";
@@ -35,6 +35,52 @@ const BASE_RES: IRes = {
 };
 
 describe("ResItem", () => {
+  it("返信数に応じてレス番号と返信ラベルに同じ強調色クラスを付与する", () => {
+    const { rerender } = render(
+      <ResItem
+        res={BASE_RES}
+        idPos={0}
+        idCount={0}
+        repCount={3}
+        miniAa={false}
+        messageProtocol="https:"
+        onIdClick={() => {}}
+        onRepClick={() => {}}
+        onUrlClick={() => true}
+        onUrlContextMenu={() => true}
+        onAnchorClick={() => {}}
+        onAnchorHover={() => {}}
+        onAnchorLeave={() => {}}
+        onContextMenu={() => {}}
+      />,
+    );
+
+    expect(containerQueryByClass("res__num")).toHaveClass("res__num--warm");
+    expect(screen.getByText("返信(3)")).toHaveClass("res__rep--warm");
+
+    rerender(
+      <ResItem
+        res={BASE_RES}
+        idPos={0}
+        idCount={0}
+        repCount={5}
+        miniAa={false}
+        messageProtocol="https:"
+        onIdClick={() => {}}
+        onRepClick={() => {}}
+        onUrlClick={() => true}
+        onUrlContextMenu={() => true}
+        onAnchorClick={() => {}}
+        onAnchorHover={() => {}}
+        onAnchorLeave={() => {}}
+        onContextMenu={() => {}}
+      />,
+    );
+
+    expect(containerQueryByClass("res__num")).toHaveClass("res__num--hot");
+    expect(screen.getByText("返信(5)")).toHaveClass("res__rep--hot");
+  });
+
   it("リンクと画像の右クリックでは既定コンテキストメニューを維持する", () => {
     const onContextMenu = vi.fn();
 
@@ -76,3 +122,11 @@ describe("ResItem", () => {
     expect(thumbEvent.defaultPrevented).toBe(false);
   });
 });
+
+function containerQueryByClass(className: string): HTMLElement {
+  const el = document.querySelector(`.${className}`);
+  if (!(el instanceof HTMLElement)) {
+    throw new Error(`Element not found: .${className}`);
+  }
+  return el;
+}

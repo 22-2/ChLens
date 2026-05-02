@@ -25,6 +25,7 @@ import { PopupRenderer } from "src/view/browser/components/PopupRenderer";
 import { ResItem } from "src/view/browser/components/ResItem";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import { StatusBarMode } from "src/view/browser/components/StatusBar";
+import { ThreadMinimap } from "src/view/browser/components/ThreadMinimap";
 import { useMediaViewerStore } from "src/view/browser/hooks/use-media-viewer-store";
 import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
 import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
@@ -855,6 +856,11 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             onResContextMenuOpen={openPopupResContextMenu}
             onUrlClick={handleUrlClick}
             onUrlContextMenuOpen={openPopupUrlContextMenu}
+          />
+          <ThreadMinimap
+            rootRef={rootRef}
+            repIndex={indexes.repIndex}
+            responseCount={filteredResponses.length}
           />
           <MediaViewerContainer />
         </>

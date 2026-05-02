@@ -2,10 +2,12 @@ import React, { useMemo } from "react";
 import type { IRes } from "src/service-container";
 import { ResBody } from "src/view/browser/components/ResBody";
 import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
+import { getIdHeatColor } from "src/view/browser/utils/id-heat";
 import type {
   UrlClickHandler,
   UrlContextMenuHandler,
 } from "src/view/browser/utils/link-routing";
+import { getReplyHeatLevel } from "src/view/browser/utils/reply-heat";
 import {
   decodeResponseHtml,
   extractUrlsFromMessage,
@@ -51,6 +53,21 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
           .filter((x) => !!x.src),
       [urls],
     );
+    const replyHeat = getReplyHeatLevel(repCount);
+    const resNumClassName = `res__num${
+      replyHeat === "hot"
+        ? " res__num--hot"
+        : replyHeat === "warm"
+          ? " res__num--warm"
+          : ""
+    }`;
+    const repClassName = `res__rep${
+      replyHeat === "hot"
+        ? " res__rep--hot"
+        : replyHeat === "warm"
+          ? " res__rep--warm"
+          : " res__rep--link"
+    }`;
 
     return (
       <article
@@ -68,7 +85,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
         }}
       >
         <header className="res__header">
-          <span className="res__num">{res.num}</span>
+          <span className={resNumClassName}>{res.num}</span>
           <span
             className="res__name"
             dangerouslySetInnerHTML={{ __html: decoded.nameHtml }}
@@ -82,6 +99,8 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
                     ? " res__id--link"
                     : ""
               }`}
+              // IDは出現数に応じて連続色にして、少数/中間/多投稿の密度差を一目で判別しやすくする。
+              style={{ color: getIdHeatColor(idCount) }}
               onClick={(e) => {
                 e.stopPropagation();
                 onIdClick(res.id!, e);
@@ -94,9 +113,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
           <span className="res__date">{res.date ?? res.other}</span>
           {repCount > 0 && (
             <span
-              className={`res__rep${
-                repCount >= 5 ? " res__rep--freq" : " res__rep--link"
-              }`}
+              className={repClassName}
               onClick={(e) => {
                 e.stopPropagation();
                 onRepClick(res.num, e);

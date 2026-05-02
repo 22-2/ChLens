@@ -31,6 +31,54 @@ const BASE_RES: IRes = {
 };
 
 describe("PopupResCard", () => {
+  it("返信数に応じてレス番号と返信ラベルへ同じ強調色クラスを適用する", () => {
+    const repIndex = new Map<number, Set<number>>([
+      [10, new Set([1, 2, 3])],
+    ]);
+
+    const { container, rerender } = render(
+      <PopupResCard
+        res={BASE_RES}
+        messageProtocol="https:"
+        anchorPreviewDepth={0}
+        repIndex={repIndex}
+        onUrlClick={() => {}}
+        onUrlContextMenu={() => {}}
+        onIdLinkClick={() => {}}
+        onAnchorClick={() => {}}
+        onAnchorHover={() => {}}
+        onAnchorLeave={() => {}}
+        onRepClick={() => {}}
+      />,
+    );
+
+    expect(container.querySelector(".res__num")).toHaveClass("res__num--warm");
+    expect(container.querySelector(".res__rep")).toHaveClass("res__rep--warm");
+
+    const hotRepIndex = new Map<number, Set<number>>([
+      [10, new Set([1, 2, 3, 4, 5])],
+    ]);
+
+    rerender(
+      <PopupResCard
+        res={BASE_RES}
+        messageProtocol="https:"
+        anchorPreviewDepth={0}
+        repIndex={hotRepIndex}
+        onUrlClick={() => {}}
+        onUrlContextMenu={() => {}}
+        onIdLinkClick={() => {}}
+        onAnchorClick={() => {}}
+        onAnchorHover={() => {}}
+        onAnchorLeave={() => {}}
+        onRepClick={() => {}}
+      />,
+    );
+
+    expect(container.querySelector(".res__num")).toHaveClass("res__num--hot");
+    expect(container.querySelector(".res__rep")).toHaveClass("res__rep--hot");
+  });
+
   it("サムネイルのミドルクリックで新規タブ扱いを1回だけ発火する", () => {
     const onUrlClick = vi.fn();
     const onLinkMiddleClickStart = vi.fn();
