@@ -4,16 +4,30 @@ const { compiler: c, gulp: $ } = require("./plugins");
 const { browsers, paths, defaultOptions } = require("./config");
 const util = require("./util");
 
+const getSassStringValue = (value) => {
+  if (value && typeof value.getValue === "function") {
+    return value.getValue();
+  }
+  if (value && typeof value.assertString === "function") {
+    return value.assertString("value").text;
+  }
+  if (value && typeof value.text === "string") {
+    return value.text;
+  }
+  return String(value);
+};
+
 const transform = function (browser) {
   const ext = util.getExt(browser);
   return {
     "img($name)"(name) {
-      const nameVal = name.getValue();
+      // Keep custom Sass functions working across both legacy and modern Sass value APIs.
+      const nameVal = getSassStringValue(name);
       const transformedStr = `url(/img/${nameVal}.${ext})`;
       return new c.sass.SassString(transformedStr, { quotes: false });
     },
     "vals($name)"(name) {
-      const nameVal = name.getValue();
+      const nameVal = getSassStringValue(name);
       let str = "";
       switch (nameVal) {
         case "scroll":

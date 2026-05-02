@@ -131,10 +131,10 @@ const background = function (browser) {
   const output = paths.output[browser];
   const ro = makeReplaceOptions(browser);
   return () =>
-    $.merge(
-      gulp.src(paths.lib.webExtPolyfill),
-      gulp.src(paths.js.background).pipe($.replace(rr, ro))
-    )
+    // Keep this task as a single vinyl stream to ensure gulp can always detect completion in parallel builds.
+    gulp
+      .src([paths.lib.webExtPolyfill, paths.js.background])
+      .pipe($.replace(rr, ro))
       .pipe($.concat("background.js"))
       .pipe(gulp.dest(output));
 };

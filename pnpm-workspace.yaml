@@ -1,6 +1,15 @@
 packages:
   - "."
   - "packages/*"
+allowBuilds:
+  '@parcel/watcher': true
+  core-js: true
+  dtrace-provider: true
+  es5-ext: true
+  esbuild: true
+  msw: true
+  sharp: true
+  spawn-sync: true
 
 onlyBuiltDependencies:
   - '@parcel/watcher'
