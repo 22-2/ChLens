@@ -4,6 +4,11 @@ import { WindowManager, WindowOptions } from "src/app/platform/types";
  * ブラウザ拡張機能環境用のWindowManager実装
  */
 export const BrowserWindowManager: WindowManager = {
+  getAssetUrl(path: string): string {
+    // 拡張機能環境ではruntime.getURLで絶対URL化しないと、画面コンテキストによって解決先がぶれる。
+    return browser.runtime.getURL(path);
+  },
+
   async openTab(url: string, active = true): Promise<void> {
     await browser.tabs.create({ url, active });
   },

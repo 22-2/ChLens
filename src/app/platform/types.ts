@@ -7,6 +7,11 @@ export interface WindowOptions {
 
 export interface WindowManager {
   /**
+   * プラットフォーム内で管理される静的アセットへのURLを解決する
+   */
+  getAssetUrl(path: string): string;
+
+  /**
    * 新しいタブでURLを開く
    */
   openTab(url: string, active?: boolean): Promise<void>;

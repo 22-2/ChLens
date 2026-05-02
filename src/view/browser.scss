@@ -646,7 +646,7 @@ body {
 
 .settings-page__form .form-group,
 .settings-page__form .field {
-  margin-bottom: 16px;
+  // margin-bottom: 16px;
 }
 
 .settings-page__form label,
@@ -727,6 +727,8 @@ body {
   align-items: center;
   justify-content: center;
   gap: 8px;
+  // モバイル時にwidth: 100%を適用しても、padding/border分でカードからはみ出さないようにする。
+  box-sizing: border-box;
   min-width: 120px;
   padding: 10px 16px;
   border: 1px solid #dadce0;
@@ -759,6 +761,107 @@ body {
 .settings-page__button--primary:hover:not(:disabled) {
   background: #1765cc;
   border-color: #1765cc;
+}
+
+.ng-editor__actions {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.ng-editor__help {
+  width: 100%;
+  margin-bottom: 0;
+  border: 1px solid #dadce0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.ng-editor__help-summary {
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  background: #f8f9fa;
+}
+
+.ng-editor__help-body {
+  padding: 10px 12px;
+}
+
+.ng-editor__help-label {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #5f6368;
+}
+
+.ng-editor__help-code {
+  margin: 0 0 10px;
+  padding: 10px;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ng-editor__help-code:last-child {
+  margin-bottom: 0;
+}
+
+.ng-editor__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid #d93025;
+  border-radius: 999px;
+  background: #fff5f5;
+  border-color: #d93025;
+  color: #b3261e;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.ng-editor__icon-btn:hover:not(:disabled) {
+  border-color: #b3261e;
+  background: #fde8e7;
+  color: #8f1d18;
+}
+
+.ng-editor__icon-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.settings-page__advanced-group {
+  margin-top: 10px;
+  border: 1px solid #dadce0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.settings-page__advanced-summary {
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  background: #f8f9fa;
+}
+
+.settings-page__advanced-body {
+  padding: 12px;
 }
 
 @media (max-width: 900px) {
@@ -2351,6 +2454,46 @@ body {
     &:hover:not(:disabled) {
       background: #1558a4;
     }
+  }
+
+  .ng-editor__icon-btn {
+    border-color: #f28b82;
+    background: #4a2b2b;
+    color: #f28b82;
+
+    &:hover:not(:disabled) {
+      border-color: #f6aea9;
+      background: #5a3232;
+      color: #f6aea9;
+    }
+  }
+
+  .ng-editor__help {
+    border-color: #5f6368;
+  }
+
+  .ng-editor__help-summary {
+    background: #35363a;
+    color: #e8eaed;
+  }
+
+  .ng-editor__help-label {
+    color: #9aa0a6;
+  }
+
+  .ng-editor__help-code {
+    border-color: #5f6368;
+    background: #292a2d;
+    color: #e8eaed;
+  }
+
+  .settings-page__advanced-group {
+    border-color: #5f6368;
+  }
+
+  .settings-page__advanced-summary {
+    background: #35363a;
+    color: #e8eaed;
   }
 
   /* --- 板一覧 --- */

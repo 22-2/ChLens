@@ -131,6 +131,13 @@ const settingsValidator: ValidatorType<SettingsSectionFormData, RJSFSchema> = {
   rawValidation: () => ({ errors: [] }),
 };
 const AUTO_SAVE_DELAY_MS = 350;
+const SETTINGS_PAGE_STATE_KEY = "readcrx.settings-page.state.v1";
+
+interface SettingsPageUiState {
+  activeSectionId?: SettingsSectionId;
+  mainScrollTop?: number;
+  ngAdvancedOpen?: boolean;
+}
 
 function buildFieldSchema(field: SettingsFieldDefinition): RJSFSchema {
   const schema: RJSFSchema = {
@@ -573,6 +580,8 @@ const SETTINGS_SECTION_MAP = new Map<
   SettingsSectionDefinition
 >(SETTINGS_SECTIONS.map((section) => [section.id, section]));
 
+const NG_PRIMARY_FIELD_KEYS = new Set(["ngwords"]);
+
 function readFieldValue(field: SettingsFieldDefinition): SettingsFormValue {
   const rawValue = container.config.get(field.key);
   switch (field.kind) {
@@ -650,12 +659,113 @@ export const SettingsPage: React.FC = () => {
   const [savingSectionId, setSavingSectionId] =
     useState<SettingsSectionId | null>(null);
   const [autoSaveError, setAutoSaveError] = useState<string | null>(null);
+  const [isNgAdvancedOpen, setIsNgAdvancedOpen] = useState(false);
   const autoSaveTimerRef = useRef<number | null>(null);
+  const mainPanelRef = useRef<HTMLDivElement | null>(null);
+  const restoredScrollTopRef = useRef<number>(0);
+  const shouldRestoreScrollRef = useRef(false);
 
   const activeSection = useMemo(
     () => SETTINGS_SECTION_MAP.get(activeSectionId) ?? SETTINGS_SECTIONS[0],
     [activeSectionId],
   );
+
+  const ngPrimaryFields = useMemo(() => {
+    if (activeSection.id !== "ng") {
+      return [] as SettingsFieldDefinition[];
+    }
+    return activeSection.fields.filter((field) =>
+      NG_PRIMARY_FIELD_KEYS.has(field.key),
+    );
+  }, [activeSection]);
+
+  const ngAdvancedFields = useMemo(() => {
+    if (activeSection.id !== "ng") {
+      return [] as SettingsFieldDefinition[];
+    }
+    return activeSection.fields.filter(
+      (field) => !NG_PRIMARY_FIELD_KEYS.has(field.key),
+    );
+  }, [activeSection]);
+
+  const ngPrimarySchema = useMemo<RJSFSchema>(() => {
+    if (ngPrimaryFields.length === 0) {
+      return { type: "object", properties: {}, additionalProperties: false };
+    }
+    return {
+      type: "object",
+      properties: Object.fromEntries(
+        ngPrimaryFields.map((field) => [field.key, buildFieldSchema(field)]),
+      ),
+      additionalProperties: false,
+    };
+  }, [ngPrimaryFields]);
+
+  const ngAdvancedSchema = useMemo<RJSFSchema>(() => {
+    if (ngAdvancedFields.length === 0) {
+      return { type: "object", properties: {}, additionalProperties: false };
+    }
+    return {
+      type: "object",
+      properties: Object.fromEntries(
+        ngAdvancedFields.map((field) => [field.key, buildFieldSchema(field)]),
+      ),
+      additionalProperties: false,
+    };
+  }, [ngAdvancedFields]);
+
+  const ngPrimaryUiSchema = useMemo<UiSchema<SettingsSectionFormData>>(
+    () => buildUiSchema(ngPrimaryFields),
+    [ngPrimaryFields],
+  );
+
+  const ngAdvancedUiSchema = useMemo<UiSchema<SettingsSectionFormData>>(
+    () => buildUiSchema(ngAdvancedFields),
+    [ngAdvancedFields],
+  );
+
+  useEffect(() => {
+    try {
+      const rawState = localStorage.getItem(SETTINGS_PAGE_STATE_KEY);
+      if (!rawState) {
+        return;
+      }
+      const parsed = JSON.parse(rawState) as SettingsPageUiState;
+      if (
+        typeof parsed.activeSectionId === "string" &&
+        SETTINGS_SECTION_MAP.has(parsed.activeSectionId as SettingsSectionId)
+      ) {
+        setActiveSectionId(parsed.activeSectionId as SettingsSectionId);
+      }
+      if (typeof parsed.ngAdvancedOpen === "boolean") {
+        setIsNgAdvancedOpen(parsed.ngAdvancedOpen);
+      }
+      if (
+        typeof parsed.mainScrollTop === "number" &&
+        Number.isFinite(parsed.mainScrollTop) &&
+        parsed.mainScrollTop >= 0
+      ) {
+        restoredScrollTopRef.current = parsed.mainScrollTop;
+        shouldRestoreScrollRef.current = true;
+      }
+    } catch {
+      // 破損データは読み飛ばして既定状態で表示する。
+    }
+  }, []);
+
+  const persistPageUiState = useCallback(() => {
+    const nextState: SettingsPageUiState = {
+      activeSectionId,
+      mainScrollTop: mainPanelRef.current?.scrollTop ?? 0,
+      ngAdvancedOpen: isNgAdvancedOpen,
+    };
+
+    try {
+      localStorage.setItem(SETTINGS_PAGE_STATE_KEY, JSON.stringify(nextState));
+    } catch {
+      // private modeなどでlocalStorageが使えない場合は永続化をスキップする。
+    }
+  }, [activeSectionId, isNgAdvancedOpen]);
 
   const loadSettings = useCallback(() => {
     setLoading(true);
@@ -679,6 +789,25 @@ export const SettingsPage: React.FC = () => {
   useEffect(() => {
     loadSettings();
   }, [loadSettings]);
+
+  useEffect(() => {
+    persistPageUiState();
+  }, [persistPageUiState]);
+
+  useEffect(() => {
+    if (loading) {
+      return;
+    }
+    if (!shouldRestoreScrollRef.current) {
+      return;
+    }
+    if (mainPanelRef.current == null) {
+      return;
+    }
+
+    mainPanelRef.current.scrollTop = restoredScrollTopRef.current;
+    shouldRestoreScrollRef.current = false;
+  }, [loading]);
 
   const scheduleAutoSave = useCallback(
     (
@@ -739,6 +868,33 @@ export const SettingsPage: React.FC = () => {
     [scheduleAutoSave],
   );
 
+  const handleNgPartialFormChange = useCallback(
+    (event: IChangeEvent<SettingsSectionFormData>) => {
+      const partialFormData = event.formData ?? {};
+      let mergedSectionFormData: SettingsSectionFormData | null = null;
+
+      setFormState((prev) => {
+        if (!prev) {
+          return prev;
+        }
+        mergedSectionFormData = {
+          ...(prev.ng ?? {}),
+          ...partialFormData,
+        };
+        return {
+          ...prev,
+          ng: mergedSectionFormData,
+        };
+      });
+
+      // NGセクションはUIを2つに分割しているため、部分更新をマージしてから保存する。
+      if (mergedSectionFormData != null) {
+        scheduleAutoSave("ng", mergedSectionFormData);
+      }
+    },
+    [scheduleAutoSave],
+  );
+
   useEffect(() => {
     return () => {
       if (autoSaveTimerRef.current != null) {
@@ -788,7 +944,11 @@ export const SettingsPage: React.FC = () => {
         </div>
       </aside>
 
-      <div className="settings-page__main">
+      <div
+        className="settings-page__main"
+        ref={mainPanelRef}
+        onScroll={persistPageUiState}
+      >
         <div className="settings-page__card">
           <div className="settings-page__eyebrow">React Settings</div>
           <h1 className="settings-page__title">{activeSection.title}</h1>
@@ -807,16 +967,56 @@ export const SettingsPage: React.FC = () => {
           </p>
 
           <div className="settings-page__form">
-            <Form<SettingsSectionFormData>
-              schema={activeSection.schema}
-              uiSchema={activeSection.uiSchema}
-              validator={settingsValidator}
-              formData={formState[activeSection.id]}
-              noHtml5Validate
-              showErrorList={false}
-              onChange={(event) => handleFormChange(activeSection.id, event)}
-              widgets={widgets}
-            />
+            {activeSection.id !== "ng" ? (
+              <Form<SettingsSectionFormData>
+                schema={activeSection.schema}
+                uiSchema={activeSection.uiSchema}
+                validator={settingsValidator}
+                formData={formState[activeSection.id]}
+                noHtml5Validate
+                showErrorList={false}
+                onChange={(event) => handleFormChange(activeSection.id, event)}
+                widgets={widgets}
+              />
+            ) : (
+              <>
+                <Form<SettingsSectionFormData>
+                  schema={ngPrimarySchema}
+                  uiSchema={ngPrimaryUiSchema}
+                  validator={settingsValidator}
+                  formData={formState.ng}
+                  noHtml5Validate
+                  showErrorList={false}
+                  onChange={handleNgPartialFormChange}
+                  widgets={widgets}
+                />
+
+                <details
+                  className="settings-page__advanced-group"
+                  open={isNgAdvancedOpen}
+                  onToggle={(event) => {
+                    const nextOpen = event.currentTarget.open;
+                    setIsNgAdvancedOpen(nextOpen);
+                  }}
+                >
+                  <summary className="settings-page__advanced-summary">
+                    高度なNG設定
+                  </summary>
+                  <div className="settings-page__advanced-body">
+                    <Form<SettingsSectionFormData>
+                      schema={ngAdvancedSchema}
+                      uiSchema={ngAdvancedUiSchema}
+                      validator={settingsValidator}
+                      formData={formState.ng}
+                      noHtml5Validate
+                      showErrorList={false}
+                      onChange={handleNgPartialFormChange}
+                      widgets={widgets}
+                    />
+                  </div>
+                </details>
+              </>
+            )}
           </div>
         </div>
       </div>
