@@ -1,4 +1,4 @@
-import { Plus, X } from "lucide-react";
+import { Pin, Plus, X } from "lucide-react";
 import React, {
   useCallback,
   useEffect,
@@ -175,7 +175,7 @@ export const TabBar: React.FC = () => {
               onMouseDown={(e) => handleMouseDown(e, tab.id)}
               onContextMenu={(e) => handleContextMenu(e, tab)}
             >
-              <span className="tab__title">{page.title}</span>
+              {tab.pinned ? <Pin size={12} /> : <span className="tab__title">{page.title}</span>}
               {!tab.pinned && state.tabs.length > 1 && (
                 <button
                   className="tab__close"
