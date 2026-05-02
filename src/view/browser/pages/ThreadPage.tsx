@@ -697,7 +697,7 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
           <StatusBarItem
             id="thread-auto-refresh-status"
             alignment="left"
-            priority={200}
+            priority={1}
             title="自動更新と自動スクロールの状態"
             className={isAutoScrolling ? "status-bar__item--active" : undefined}
           >
