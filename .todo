@@ -192,7 +192,7 @@ useAutoRefresh.ts
 ## prior 1
 - [ ] chore: 型チェック突破
 - [ ] feat: タブをドラッグで移動できるように
-- [ ] feat: テキスト選択時専用コンテキストメニュー（選択範囲）
+- [x] feat: スレでテキスト選択時専用コンテキストメニュー（選択範囲を検索、NGなど）divider挟んで一番上
 - [ ] feat: 勢いミニパネルに、勢いグラフ表示
 - [ ] feat: 画像n個でng
 - [ ] feat: 画像サムネの読み込みの高速化 -> imgurとかフルサイズで取得してるかもしれない
@@ -304,3 +304,4 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 
 - [x] idはレス数に応じて灰色から青になって、だんだん赤くしていく
 - [ ] gutterはミニマップだけにする
+- [ ] sonnarの追加

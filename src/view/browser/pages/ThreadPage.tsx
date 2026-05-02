@@ -425,6 +425,19 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     container.notification.info(`NGに追加しました: ${ngWord}`);
   }, []);
 
+  const addSelectionToNg = useCallback(
+    async (selectedText: string) => {
+      const ngWord = selectedText.trim();
+      if (!ngWord) return;
+      // 選択テキストNGはID NGと違って局所更新だと取りこぼしやすいため、
+      // 追加後に再取得して既存NG判定ロジックの結果でUIを揃える。
+      container.ng.add(ngWord);
+      container.notification.info(`NGに追加しました: ${ngWord}`);
+      await fetchThread();
+    },
+    [fetchThread],
+  );
+
   const addWriteHistory = useCallback(
     async (res: IRes) => {
       const globalObj = window as unknown as {
@@ -537,8 +550,45 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       const kyodemoUrl = rawId ? buildKyodemoUrl(page.threadUrl, rawId) : null;
       const permalink = `${page.threadUrl}${targetRes.num}`;
       const isMiniAa = miniAaResNums.has(targetRes.num);
+      const selectedText = window.getSelection()?.toString().trim() ?? "";
+      const hasSelection = selectedText.length > 0;
 
       return [
+        // 選択テキスト向け操作は誤クリックを減らすため最上段に固定する。
+        ...(hasSelection
+          ? [
+              {
+                id: "copy-selection",
+                label: "選択範囲をコピー",
+                icon: <Copy size={14} />,
+                onSelect: async () => {
+                  await copyText(selectedText);
+                },
+              },
+              {
+                id: "search-selection",
+                label: "選択範囲をGoogle検索",
+                icon: <Search size={14} />,
+                onSelect: () => {
+                  const encoded = encodeURIComponent(selectedText);
+                  window.open(
+                    `https://www.google.co.jp/search?q=${encoded}`,
+                    "_blank",
+                    "noopener,noreferrer",
+                  );
+                },
+              },
+              {
+                id: "add-selection-to-ng",
+                label: "選択範囲をNG指定",
+                icon: <Ban size={14} />,
+                onSelect: () => {
+                  void addSelectionToNg(selectedText);
+                },
+              },
+              { id: "sep-selection-top", separator: true },
+            ]
+          : []),
         ...(fromPopup
           ? [
               {
@@ -679,6 +729,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     },
     [
       addIdToNg,
+      addSelectionToNg,
       addWriteHistory,
       closePopup,
       filter,
