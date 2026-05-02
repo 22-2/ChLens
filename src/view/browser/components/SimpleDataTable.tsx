@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React from "react";
 
 // 変更理由: 汎用コンポーネント化のため `ThreadListTable` から名前を変更しました。
 //           既存の動作は保持しつつ、スレッドに限定しない名称に統一します。
@@ -38,9 +38,6 @@ export function SimpleDataTable<TRow>({
   sortDirection,
   onSort,
 }: Props<TRow>): React.ReactElement {
-  // 中クリック後に続けて発火する click イベントで誤遷移しないよう抑止する
-  const suppressNextRowClickRef = useRef(false);
-
   const sortIndicator = (key: string): string => {
     if (sortColumn !== key) return "";
     return sortDirection === "asc" ? " ▲" : " ▼";
@@ -81,18 +78,14 @@ export function SimpleDataTable<TRow>({
               }
               style={getRowStyle?.(row)}
               onClick={() => {
-                if (suppressNextRowClickRef.current) {
-                  suppressNextRowClickRef.current = false;
-                  return;
-                }
                 onRowClick?.(row);
               }}
               onMouseDown={(e) => {
                 if (e.button === 1) {
                   e.preventDefault();
                   e.stopPropagation();
-                  // 中クリック直後の click イベントを 1 回だけ無視する
-                  suppressNextRowClickRef.current = true;
+                  // 中クリックは別ハンドラとして処理し、次回の左クリックは抑止しない。
+                  // ここで抑止フラグを持つと「中クリック後の最初の左クリック無効化」が再発するため。
                   onRowMiddleClick?.(row);
                 }
               }}

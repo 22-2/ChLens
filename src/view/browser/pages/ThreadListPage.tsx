@@ -676,7 +676,7 @@ export const ThreadListPage: React.FC<Props> = ({
         onRowContextMenu={({ thread }, x, y) =>
           setContextMenuState({ x, y, thread })
         }
-        sortColumn={sortColumn}
+        sortColumn={sortColumn ?? undefined}
         sortDirection={sortDirection}
         onSort={handleTableSort}
       />
