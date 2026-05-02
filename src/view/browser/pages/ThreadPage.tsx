@@ -861,6 +861,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             rootRef={rootRef}
             repIndex={indexes.repIndex}
             responseCount={filteredResponses.length}
+            onMarkerClick={handleAnchorClick}
           />
           <MediaViewerContainer />
         </>

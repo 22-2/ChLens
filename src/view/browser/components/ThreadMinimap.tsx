@@ -4,6 +4,7 @@ interface ThreadMinimapProps {
   rootRef: React.RefObject<HTMLDivElement | null>;
   repIndex: Map<number, Set<number>>;
   responseCount: number;
+  onMarkerClick: (resNum: number) => void;
 }
 
 interface MinimapFrame {
@@ -20,6 +21,13 @@ interface MinimapMetrics {
   viewportHeightPx: number;
   viewportTopPx: number;
   maxViewportTop: number;
+}
+
+interface MinimapMarkerHit {
+  resNum: number;
+  x: number;
+  y: number;
+  radius: number;
 }
 
 const MINIMAP_MIN_WIDTH = 30;
@@ -55,13 +63,19 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
   rootRef,
   repIndex,
   responseCount,
+  onMarkerClick,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawRafRef = useRef<number | null>(null);
+  const markerHitsRef = useRef<MinimapMarkerHit[]>([]);
   const pointerStateRef = useRef({
     isDragging: false,
     pointerId: -1,
+    mode: "idle" as "idle" | "scroll" | "marker",
     dragOffset: 0,
+    startX: 0,
+    startY: 0,
+    markerResNum: null as number | null,
   });
   const [frame, setFrame] = useState<MinimapFrame | null>(null);
 
@@ -157,6 +171,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
   }, [frame, getScrollContainer]);
 
   const draw = useCallback(() => {
+    markerHitsRef.current = [];
     const canvas = canvasRef.current;
     const scrollContainer = getScrollContainer();
     const responsesRoot = getResponsesRoot();
@@ -191,6 +206,9 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     const responsesTop = getOffsetTopWithinAncestor(responsesRoot, scrollContainer);
     const minY = 6;
     const maxY = cssHeight - 6;
+    const markerX = cssWidth - 6;
+    const markerHitRadius = 12;
+    const markerHits: MinimapMarkerHit[] = [];
 
     ctx.textAlign = "right";
     ctx.textBaseline = "middle";
@@ -212,8 +230,16 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
       const y = clamp(centerY, minY, maxY);
 
       ctx.fillStyle = count >= 5 ? "rgba(220, 40, 40, 0.95)" : "rgba(255, 140, 0, 0.9)";
-      ctx.fillText("◀", cssWidth - 6, y);
+      ctx.fillText("◀", markerX, y);
+      // 実際の三角記号より広い当たり判定を持たせ、細いミニマップでもクリックしやすくする。
+      markerHits.push({
+        resNum,
+        x: markerX,
+        y,
+        radius: markerHitRadius,
+      });
     }
+    markerHitsRef.current = markerHits;
 
     ctx.fillStyle = "rgba(26, 115, 232, 0.28)";
     ctx.fillRect(0, metrics.viewportTopPx, cssWidth, metrics.viewportHeightPx);
@@ -230,6 +256,23 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     ctx.strokeRect(0.5, 0.5, cssWidth - 1, cssHeight - 1);
     ctx.restore();
   }, [frame, getMetrics, getResponsesRoot, getScrollContainer, repIndex]);
+
+  const findMarkerByPoint = useCallback((relativeX: number, relativeY: number): MinimapMarkerHit | null => {
+    let nearest: MinimapMarkerHit | null = null;
+    let nearestDistSq = Number.POSITIVE_INFINITY;
+
+    for (const marker of markerHitsRef.current) {
+      const dx = relativeX - marker.x;
+      const dy = relativeY - marker.y;
+      const distSq = dx * dx + dy * dy;
+      if (distSq <= marker.radius * marker.radius && distSq < nearestDistSq) {
+        nearest = marker;
+        nearestDistSq = distSq;
+      }
+    }
+
+    return nearest;
+  }, []);
 
   const scheduleDraw = useCallback(() => {
     if (drawRafRef.current != null) {
@@ -279,20 +322,37 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
       event.preventDefault();
       event.currentTarget.setPointerCapture(event.pointerId);
 
+      const relativeX = event.clientX - currentFrame.left;
       const relativeY = clamp(event.clientY - currentFrame.top, 0, currentFrame.height);
+      const markerHit = findMarkerByPoint(relativeX, relativeY);
+      if (markerHit) {
+        pointerStateRef.current.isDragging = true;
+        pointerStateRef.current.pointerId = event.pointerId;
+        pointerStateRef.current.mode = "marker";
+        pointerStateRef.current.dragOffset = 0;
+        pointerStateRef.current.startX = relativeX;
+        pointerStateRef.current.startY = relativeY;
+        pointerStateRef.current.markerResNum = markerHit.resNum;
+        return;
+      }
+
       const inViewport =
         relativeY >= metrics.viewportTopPx &&
         relativeY <= metrics.viewportTopPx + metrics.viewportHeightPx;
 
       pointerStateRef.current.isDragging = true;
       pointerStateRef.current.pointerId = event.pointerId;
+      pointerStateRef.current.mode = "scroll";
       pointerStateRef.current.dragOffset = inViewport
         ? relativeY - metrics.viewportTopPx
         : metrics.viewportHeightPx / 2;
+      pointerStateRef.current.startX = relativeX;
+      pointerStateRef.current.startY = relativeY;
+      pointerStateRef.current.markerResNum = null;
 
       scrollByPointer(relativeY, inViewport);
     },
-    [frame, getMetrics, scrollByPointer],
+    [findMarkerByPoint, frame, getMetrics, scrollByPointer],
   );
 
   const handlePointerMove = useCallback(
@@ -302,6 +362,9 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
         return;
       }
       if (!pointerStateRef.current.isDragging || pointerStateRef.current.pointerId !== event.pointerId) {
+        return;
+      }
+      if (pointerStateRef.current.mode !== "scroll") {
         return;
       }
 
@@ -315,7 +378,11 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
   const releasePointerState = useCallback(() => {
     pointerStateRef.current.isDragging = false;
     pointerStateRef.current.pointerId = -1;
+    pointerStateRef.current.mode = "idle";
     pointerStateRef.current.dragOffset = 0;
+    pointerStateRef.current.startX = 0;
+    pointerStateRef.current.startY = 0;
+    pointerStateRef.current.markerResNum = null;
   }, []);
 
   const handlePointerUp = useCallback(
@@ -328,9 +395,25 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
       if (event.currentTarget.hasPointerCapture(event.pointerId)) {
         event.currentTarget.releasePointerCapture(event.pointerId);
       }
+
+      if (pointerStateRef.current.mode === "marker") {
+        const currentFrame = frame;
+        if (currentFrame && pointerStateRef.current.markerResNum != null) {
+          const relativeX = event.clientX - currentFrame.left;
+          const relativeY = clamp(event.clientY - currentFrame.top, 0, currentFrame.height);
+          const moveX = relativeX - pointerStateRef.current.startX;
+          const moveY = relativeY - pointerStateRef.current.startY;
+          const movedDistanceSq = moveX * moveX + moveY * moveY;
+          // 軽微なブレはクリックとして扱い、既存のジャンプ＆ハイライトへ委譲する。
+          if (movedDistanceSq <= 144) {
+            onMarkerClick(pointerStateRef.current.markerResNum);
+          }
+        }
+      }
+
       releasePointerState();
     },
-    [releasePointerState],
+    [frame, onMarkerClick, releasePointerState],
   );
 
   useEffect(() => {
