@@ -1,4 +1,41 @@
 const isTabReadcrx = (tab) => tab.url.startsWith(browser.runtime.getURL(""));
+const NEW_UI_URL_PREFIX = browser.runtime.getURL("view/browser.html");
+let newUiPrimaryTabId = null;
+
+const isNewUiTab = (tab) =>
+  typeof tab?.url === "string" && tab.url.startsWith(NEW_UI_URL_PREFIX);
+
+const focusTabById = async function (tabId) {
+  const tab = await browser.tabs.get(tabId);
+  await browser.windows.update(tab.windowId, { focused: true });
+  await browser.tabs.update(tab.id, { active: true });
+};
+
+browser.tabs.onRemoved.addListener(function (tabId) {
+  if (newUiPrimaryTabId === tabId) {
+    newUiPrimaryTabId = null;
+  }
+});
+
+browser.tabs.onUpdated.addListener(async function (tabId, changeInfo, tab) {
+  if (changeInfo.status !== "complete" || !isNewUiTab(tab)) {
+    return;
+  }
+
+  // new-uiは単一インスタンスに制限し、タブ間での状態競合を防ぐ。
+  if (newUiPrimaryTabId == null || newUiPrimaryTabId === tabId) {
+    newUiPrimaryTabId = tabId;
+    return;
+  }
+
+  try {
+    await focusTabById(newUiPrimaryTabId);
+    await browser.tabs.remove(tabId);
+  } catch {
+    // primaryが既に閉じられていたら現在タブをprimaryとして採用する。
+    newUiPrimaryTabId = tabId;
+  }
+});
 
 // 実行中のread.crxを探す
 const searchRcrx = async function () {
