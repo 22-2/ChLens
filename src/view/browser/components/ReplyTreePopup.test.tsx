@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+import type React from "react";
 import {
   cleanup,
   fireEvent,
@@ -31,13 +32,13 @@ const TEST_REP_INDEX = new Map<number, Set<number>>([
   [2, new Set([4])],
 ]);
 
-const BASE_PROPS = {
+const BASE_PROPS: React.ComponentProps<typeof ReplyTreePopup> = {
   x: 16,
   y: 16,
   resNum: 1,
   repIndex: TEST_REP_INDEX,
   resMap: TEST_RES_MAP,
-  messageProtocol: "https:" as const,
+  messageProtocol: "https:",
   anchorPreviewDepth: 0,
   onUrlClick: () => {},
   onUrlContextMenu: () => {},
@@ -48,7 +49,7 @@ const BASE_PROPS = {
   onResContextMenu: () => {},
   onIdLinkClick: () => {},
   onClose: () => {},
-} as const;
+};
 
 describe("ReplyTreePopup", () => {
   const writeText = vi.fn<() => Promise<void>>();
@@ -104,11 +105,17 @@ describe("ReplyTreePopup", () => {
     );
 
     expect(writeText).toHaveBeenCalledOnce();
+    // @ts-expect-error
     expect(writeText.mock.calls[0]?.[0]).toContain("[参照元レス]");
+    // @ts-expect-error
     expect(writeText.mock.calls[0]?.[0]).toContain("1 name-1");
+    // @ts-expect-error
     expect(writeText.mock.calls[0]?.[0]).toContain("source message");
+    // @ts-expect-error
     expect(writeText.mock.calls[0]?.[0]).toContain("[返信レス]");
+    // @ts-expect-error
     expect(writeText.mock.calls[0]?.[0]).toContain("2 name-2");
+    // @ts-expect-error
     expect(writeText.mock.calls[0]?.[0]).toContain("4 name-4");
   });
 

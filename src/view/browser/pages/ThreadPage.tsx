@@ -8,6 +8,7 @@ import {
   Reply,
   Search,
   Type,
+  RotateCw,
 } from "lucide-react";
 import React, {
   useCallback,
@@ -128,7 +129,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     });
   const threadNgCount = useMemo(
     () =>
-      responses.filter((res) => res.ng != null || res.class?.includes("ng")).length,
+      responses.filter((res) => res.ng != null || res.class?.includes("ng"))
+        .length,
     [responses],
   );
 
@@ -543,6 +545,15 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
               { id: "sep-filter", separator: true },
             ]
           : []),
+        {
+          id: "refresh-thread",
+          label: "スレッドを更新",
+          icon: <RotateCw size={14} />,
+          onSelect: () => {
+            fetchThread();
+          },
+        },
+        { id: "sep-1", separator: true },
         {
           id: "copy-res",
           label: "レスをコピー",
