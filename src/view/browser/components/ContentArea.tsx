@@ -1,5 +1,6 @@
 import React from "react";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import type { Tab } from "src/view/browser/types";
 import { BoardListPage } from "src/view/browser/pages/BoardListPage";
 import { BookmarkListPage } from "src/view/browser/pages/BookmarkListPage";
 import { HistoryListPage } from "src/view/browser/pages/HistoryListPage";
@@ -35,72 +36,95 @@ function buildPageRenderKey(
   }
 }
 
+interface TabPageContentProps {
+  tab: Tab;
+  threadListActive?: boolean;
+}
+
+const TabPageContent = React.memo(function TabPageContent({
+  tab,
+  threadListActive,
+}: TabPageContentProps) {
+  const page = getCurrentPage(tab);
+
+  switch (page.type) {
+    case "home":
+      return <HomePage />;
+    case "boardList":
+      return <BoardListPage />;
+    case "settings":
+      return <SettingsPage />;
+    case "bookmarkList":
+      return <BookmarkListPage />;
+    case "historyList":
+      return <HistoryListPage />;
+    case "writeHistoryList":
+      return <WriteHistoryListPage />;
+    case "threadList":
+      return (
+        <ThreadListPage
+          tabId={tab.id}
+          page={page}
+          refreshKey={tab.reloadKey}
+          isActive={threadListActive ?? false}
+        />
+      );
+    case "thread":
+      return (
+        <ThreadPage
+          tabId={tab.id}
+          page={page}
+          refreshKey={tab.reloadKey}
+          // 自動更新の可否をタブ自身の状態へ固定すると、
+          // アクティブタブ変更だけで他スレッドまで再計算されなくなる。
+          isAutoRefreshEnabled={
+            tab.autoRefreshEnabled && tab.autoRefreshThreadUrl === page.threadUrl
+          }
+        />
+      );
+  }
+});
+
+interface TabPanelProps {
+  tab: Tab;
+  isActive: boolean;
+}
+
+const TabPanel = React.memo(function TabPanel({ tab, isActive }: TabPanelProps) {
+  const page = getCurrentPage(tab);
+
+  return (
+    <div
+      data-tab-panel-id={tab.id}
+      data-active={isActive ? "true" : "false"}
+      className="content-area__tab-panel"
+      style={{ display: isActive ? "block" : "none" }}
+    >
+      {
+        // display 切替で DOM/scroll を残しつつ、
+        // ページ本体はタブ自身が変わった時だけ再実行させる。
+        <TabPageContent
+          key={buildPageRenderKey(tab.id, tab.currentIndex, page)}
+          tab={tab}
+          threadListActive={page.type === "threadList" ? isActive : undefined}
+        />
+      }
+    </div>
+  );
+});
+
 export const ContentArea: React.FC = () => {
   const { state } = useTabStore();
 
-  const tabPanels = state.tabs.map((tab) => {
-    const page = getCurrentPage(tab);
-
-    let pageContent: React.ReactNode;
-    switch (page.type) {
-      case "home":
-        pageContent = <HomePage />;
-        break;
-      case "boardList":
-        pageContent = <BoardListPage />;
-        break;
-      case "settings":
-        pageContent = <SettingsPage />;
-        break;
-      case "bookmarkList":
-        pageContent = <BookmarkListPage />;
-        break;
-      case "historyList":
-        pageContent = <HistoryListPage />;
-        break;
-      case "writeHistoryList":
-        pageContent = <WriteHistoryListPage />;
-        break;
-      case "threadList":
-        pageContent = (
-          <ThreadListPage
-            tabId={tab.id}
-            page={page}
-            refreshKey={tab.reloadKey}
-          />
-        );
-        break;
-      case "thread":
-        pageContent = (
-          <ThreadPage tabId={tab.id} page={page} refreshKey={tab.reloadKey} />
-        );
-        break;
-    }
-
-    const isActive = tab.id === state.activeTabId;
-
-    return (
-      <div
-        key={tab.id}
-        data-tab-panel-id={tab.id}
-        data-active={isActive ? "true" : "false"}
-        className="content-area__tab-panel"
-        style={{ display: isActive ? "block" : "none" }}
-      >
-        {
-          // タブ切替は display:none で行い、非アクティブタブのDOM/scroll状態を保持する。
-          // 一方で同一タブ内の履歴移動は従来どおり再描画を保証しつつ、
-          // reload はページ内部の再取得フローへ委譲してスクロール位置を維持する。
-          // ページ識別子を key にしてタブ内コンテンツだけ差し替える。
-          <React.Fragment
-            key={buildPageRenderKey(tab.id, tab.currentIndex, page)}
-          >
-            {pageContent}
-          </React.Fragment>
-        }
-      </div>
-    );
-  });
-
-  return <div className="content-area">{tabPanels}</div>;
+  return (
+    <div className="content-area">
+      {state.tabs.map((tab) => (
+        <TabPanel
+          key={tab.id}
+          tab={tab}
+          isActive={tab.id === state.activeTabId}
+        />
+      ))}
+    </div>
+  );
 };

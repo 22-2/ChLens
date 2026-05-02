@@ -9,6 +9,7 @@ const mockUseTabStore = vi.fn();
 const threadPageLifecycle = vi.hoisted(() => ({
   mountCount: 0,
   unmountCount: 0,
+  renderCount: 0,
 }));
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
@@ -37,6 +38,7 @@ vi.mock("src/view/browser/pages/ThreadListPage", () => ({
 
 vi.mock("src/view/browser/pages/ThreadPage", () => ({
   ThreadPage: ({ refreshKey }: { refreshKey: number }) => {
+    threadPageLifecycle.renderCount += 1;
     // reloadKey はデータ再取得トリガにだけ使い、コンポーネント実体は再マウントさせない。
     const mountIdRef = React.useRef<number | null>(null);
     if (mountIdRef.current == null) {
@@ -101,6 +103,7 @@ describe("ContentArea tab switching", () => {
     mockUseTabStore.mockReset();
     threadPageLifecycle.mountCount = 0;
     threadPageLifecycle.unmountCount = 0;
+    threadPageLifecycle.renderCount = 0;
   });
 
   it("アクティブでないタブは display:none で隠す", () => {
@@ -195,6 +198,29 @@ describe("ContentArea tab switching", () => {
     ) as HTMLDivElement;
     expect(second.dataset.mountId).toBe("1");
     expect(second.dataset.refreshKey).toBe("1");
+    expect(threadPageLifecycle.unmountCount).toBe(0);
+  });
+
+  it("別タブの追加だけでは既存スレッドページを再描画しない", () => {
+    const threadTab = createTabWithPage("tab-1", {
+      type: "thread",
+      title: "スレッド",
+      threadUrl: "https://example.com/test/read.cgi/board/123/",
+    });
+    const homeTab = createTabWithPage("tab-2", {
+      type: "home",
+      title: "ホーム",
+    });
+
+    mockState([threadTab], "tab-1");
+    const { rerender } = render(<ContentArea />);
+
+    expect(threadPageLifecycle.renderCount).toBe(1);
+
+    mockState([threadTab, homeTab], "tab-2");
+    rerender(<ContentArea />);
+
+    expect(threadPageLifecycle.renderCount).toBe(1);
     expect(threadPageLifecycle.unmountCount).toBe(0);
   });
 });

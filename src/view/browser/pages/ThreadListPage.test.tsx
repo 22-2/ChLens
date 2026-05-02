@@ -43,6 +43,7 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
     dispatch: dispatchMock,
     state: { activeTabId: activeTabIdRef.current },
   }),
+  useTabDispatch: () => dispatchMock,
 }));
 
 const THREADS: IThread[] = [
@@ -92,9 +93,14 @@ function createMemoryStorage(): Storage {
 }
 
 function getRenderedThreadTitles(): string[] {
-  return Array.from(
-    document.querySelectorAll(".thread-list tbody .thread-list__title"),
-  ).map((node) => node.textContent?.trim() ?? "");
+  return Array.from(document.querySelectorAll(".thread-list__title")).map(
+    (node) => node.textContent?.trim() ?? "",
+  );
+}
+
+async function flushAsyncRender(): Promise<void> {
+  await Promise.resolve();
+  await Promise.resolve();
 }
 
 describe("ThreadListPage", () => {
@@ -162,6 +168,7 @@ describe("ThreadListPage", () => {
         boardTitle: "Software",
       },
       refreshKey: 0,
+      isActive: true,
     };
 
     const { rerender } = render(
@@ -169,12 +176,12 @@ describe("ThreadListPage", () => {
         tabId={props.tabId}
         page={props.page}
         refreshKey={props.refreshKey}
+        isActive={props.isActive}
       />,
     );
 
-    await waitFor(() => {
-      expect(getThreadsMock).toHaveBeenCalledTimes(1);
-    });
+    await flushAsyncRender();
+    expect(getThreadsMock).toHaveBeenCalledTimes(1);
 
     dispatchMock.mockClear();
 
@@ -184,6 +191,7 @@ describe("ThreadListPage", () => {
         tabId={props.tabId}
         page={props.page}
         refreshKey={props.refreshKey}
+        isActive={false}
       />,
     );
     await vi.advanceTimersByTimeAsync(20000);
@@ -195,6 +203,7 @@ describe("ThreadListPage", () => {
         tabId={props.tabId}
         page={props.page}
         refreshKey={props.refreshKey}
+        isActive={true}
       />,
     );
     await vi.advanceTimersByTimeAsync(20000);
@@ -202,6 +211,8 @@ describe("ThreadListPage", () => {
   });
 
   it("同じsiteでは保存したソート順を復元し、別siteには持ち込まない", async () => {
+    vi.useRealTimers();
+
     const { rerender } = render(
       <ThreadListPage
         tabId="tab-1"
@@ -212,6 +223,7 @@ describe("ThreadListPage", () => {
           boardTitle: "Software",
         }}
         refreshKey={0}
+        isActive={true}
       />,
     );
 
@@ -243,6 +255,7 @@ describe("ThreadListPage", () => {
           boardTitle: "VIP",
         }}
         refreshKey={0}
+        isActive={true}
       />,
     );
 
@@ -265,6 +278,7 @@ describe("ThreadListPage", () => {
           boardTitle: "Open2ch",
         }}
         refreshKey={0}
+        isActive={true}
       />,
     );
 

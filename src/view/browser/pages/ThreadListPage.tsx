@@ -20,7 +20,7 @@ import {
   SimpleDataTable,
 } from "src/view/browser/components/SimpleDataTable";
 import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
-import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
 import {
   useTheme,
   type ResolvedTheme,
@@ -44,6 +44,7 @@ interface Props {
   tabId: string;
   page: ThreadListPageType;
   refreshKey: number;
+  isActive: boolean;
 }
 
 type SortColumn = "num" | "title" | "resCount" | "heat";
@@ -310,8 +311,9 @@ export const ThreadListPage: React.FC<Props> = ({
   tabId,
   page,
   refreshKey,
+  isActive,
 }) => {
-  const { dispatch, state } = useTabStore();
+  const dispatch = useTabDispatch();
   const { isNgTemporarilyDisabled, setThreadListStats } = useNgStatus();
   const theme = useTheme();
   const titleFetched = useRef(false);
@@ -421,7 +423,7 @@ export const ThreadListPage: React.FC<Props> = ({
 
   useEffect(() => {
     if (
-      state.activeTabId !== tabId ||
+      !isActive ||
       !isDocumentVisible ||
       boardAutoRefreshIntervalMs < MIN_BOARD_AUTO_REFRESH_MS
     ) {
@@ -444,10 +446,9 @@ export const ThreadListPage: React.FC<Props> = ({
   }, [
     boardAutoRefreshIntervalMs,
     dispatch,
+    isActive,
     isDocumentVisible,
     loading,
-    state.activeTabId,
-    tabId,
   ]);
 
   // Ctrl+Fで検索バーを開く

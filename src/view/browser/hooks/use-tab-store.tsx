@@ -72,6 +72,8 @@ function getPageIdentity(page: Page): string {
     case "thread":
       return `thread:${normalizePageLocation(page.threadUrl)}`;
   }
+
+  throw new Error("Unsupported page type");
 }
 
 function findTabByCurrentPage(
@@ -505,6 +507,7 @@ interface TabContextValue {
 }
 
 const TabContext = createContext<TabContextValue | null>(null);
+const TabDispatchContext = createContext<Dispatch<TabAction> | null>(null);
 
 export const TabProvider: React.FC<{ children: ReactNode }> = ({
   children,
@@ -566,9 +569,11 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({
   }, [dispatch]);
 
   return (
-    <TabContext.Provider value={{ state, dispatch, activeTab, currentPage }}>
-      {children}
-    </TabContext.Provider>
+    <TabDispatchContext.Provider value={dispatch}>
+      <TabContext.Provider value={{ state, dispatch, activeTab, currentPage }}>
+        {children}
+      </TabContext.Provider>
+    </TabDispatchContext.Provider>
   );
 };
 
@@ -578,4 +583,12 @@ export function useTabStore(): TabContextValue {
     throw new Error("useTabStore must be used within TabProvider");
   }
   return ctx;
+}
+
+export function useTabDispatch(): Dispatch<TabAction> {
+  const dispatch = useContext(TabDispatchContext);
+  if (!dispatch) {
+    throw new Error("useTabDispatch must be used within TabProvider");
+  }
+  return dispatch;
 }

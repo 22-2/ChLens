@@ -9,7 +9,7 @@ import {
 } from "react";
 import { container } from "src/service-container/index";
 import type { IRes, IThreadDetail } from "src/service-container/interfaces";
-import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
 import type { ThreadPage as ThreadPageType } from "src/view/browser/types";
 import { buildIndexes } from "src/view/browser/utils/thread-index";
 import type { ThreadFilter } from "src/view/browser/utils/types";
@@ -44,7 +44,7 @@ export function useThreadData(
   page: ThreadPageType,
   refreshKey: number,
 ): ThreadData {
-  const { dispatch } = useTabStore();
+  const dispatch = useTabDispatch();
   const [responses, setResponses] = useState<IRes[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

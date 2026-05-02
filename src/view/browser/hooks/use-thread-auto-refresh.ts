@@ -4,15 +4,16 @@ import {
   type UseAutoRefreshResult,
 } from "src/view/browser/hooks/use-auto-refresh";
 import { useSetAutoScrollState } from "src/view/browser/hooks/use-auto-scroll-state";
-import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 
 interface UseThreadAutoRefreshOptions {
+  enabled: boolean;
   threadUrl: string;
   expired: boolean;
   loading: boolean;
   responseCount: number;
   lastResponseNum: number | null;
   rootRef: RefObject<HTMLDivElement | null>;
+  requestRefresh: () => void;
   /** ポップアップ表示中など、自動スクロールを一時停止すべきとき。省略時は false */
   pauseAutoScroll?: boolean;
 }
@@ -29,21 +30,18 @@ export function useThreadAutoRefresh(
   options: UseThreadAutoRefreshOptions,
 ): UseAutoRefreshResult {
   const {
+    enabled,
     threadUrl,
     expired,
     loading,
     responseCount,
     lastResponseNum,
     rootRef,
+    requestRefresh,
     pauseAutoScroll = false,
   } = options;
 
-  const { activeTab, dispatch } = useTabStore();
   const setAutoScrollState = useSetAutoScrollState();
-
-  const enabled =
-    activeTab.autoRefreshEnabled &&
-    activeTab.autoRefreshThreadUrl === threadUrl;
 
   const result = useAutoRefresh({
     enabled,
@@ -53,7 +51,7 @@ export function useThreadAutoRefresh(
     responseCount,
     lastResponseNum,
     rootRef,
-    requestRefresh: () => dispatch({ type: "RELOAD" }),
+    requestRefresh,
   });
 
   // canAutoScroll / isAutoScrolling をコンテキストへ同期して

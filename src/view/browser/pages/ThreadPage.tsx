@@ -27,7 +27,7 @@ import { useMediaViewerStore } from "src/view/browser/hooks/use-media-viewer-sto
 import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
 import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
 import { useThreadPopupLifecycle } from "src/view/browser/hooks/use-popup-manager";
-import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
 import { useThreadAutoRefresh } from "src/view/browser/hooks/use-thread-auto-refresh";
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";
 import {
@@ -42,7 +42,19 @@ import {
   stripHtml,
 } from "src/view/browser/utils/utils";
 
-export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
+interface ThreadPageProps {
+  tabId: string;
+  page: Props["page"];
+  refreshKey: number;
+  isAutoRefreshEnabled: boolean;
+}
+
+export const ThreadPage: React.FC<ThreadPageProps> = ({
+  tabId,
+  page,
+  refreshKey,
+  isAutoRefreshEnabled,
+}) => {
   const rootRef = useRef<HTMLDivElement>(null);
   const {
     responses,
@@ -62,7 +74,7 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
     setResponses,
     messageProtocol,
   } = useThreadData(tabId, page, refreshKey);
-  const { dispatch, activeTab } = useTabStore();
+  const dispatch = useTabDispatch();
   const { setThreadStats } = useNgStatus();
   const openMediaFromUrl = useMediaViewerStore(
     (state) => state.openMediaFromUrl,
@@ -96,12 +108,10 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
   });
 
   const [miniAaResNums, setMiniAaResNums] = useState<Set<number>>(new Set());
-  const isAutoRefreshEnabled =
-    activeTab.autoRefreshEnabled &&
-    activeTab.autoRefreshThreadUrl === page.threadUrl;
 
   const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling } =
     useThreadAutoRefresh({
+      enabled: isAutoRefreshEnabled,
       threadUrl: page.threadUrl,
       expired,
       loading,
@@ -109,6 +119,7 @@ export const ThreadPage: React.FC<Props> = ({ tabId, page, refreshKey }) => {
       responseCount: responses.length,
       lastResponseNum: responses.at(-1)?.num ?? null,
       rootRef,
+      requestRefresh: () => dispatch({ type: "RELOAD" }),
     });
   const threadNgCount = useMemo(
     () =>
