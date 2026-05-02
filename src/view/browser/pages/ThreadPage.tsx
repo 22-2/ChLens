@@ -1,15 +1,3 @@
-import {
-  ArrowDown,
-  Ban,
-  Copy,
-  FilterX,
-  Globe,
-  History,
-  Reply,
-  Search,
-  Type,
-  RotateCw,
-} from "lucide-react";
 import React, {
   useCallback,
   useEffect,
@@ -17,13 +5,11 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { container } from "src/service-container/index";
 import type { IRes } from "src/service-container/interfaces";
 import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import { MediaViewerContainer } from "src/view/browser/components/MediaViewerContainer";
 import { PopupRenderer } from "src/view/browser/components/PopupRenderer";
 import { ResItem } from "src/view/browser/components/ResItem";
-import { SearchBar } from "src/view/browser/components/SearchBar";
 import { StatusBarMode } from "src/view/browser/components/StatusBar";
 import { ThreadMinimap } from "src/view/browser/components/ThreadMinimap";
 import { useMediaViewerStore } from "src/view/browser/hooks/use-media-viewer-store";
@@ -38,13 +24,12 @@ import {
   resolveAbsoluteUrl,
   RESPECT_DEFAULT_EXTERNAL,
 } from "src/view/browser/utils/link-routing";
+import { ThreadPageTopBar } from "src/view/browser/pages/thread/ThreadPageTopBar";
+import { useThreadResContextMenu } from "src/view/browser/pages/thread/use-thread-res-context-menu";
+import { useThreadTopBar } from "src/view/browser/pages/thread/use-thread-top-bar";
 import { resolveReplyTreeRootResNum } from "src/view/browser/utils/reply-tree-root";
-import type { Props, ThreadFilter } from "src/view/browser/utils/types";
-import {
-  buildKyodemoUrl,
-  copyText,
-  stripHtml,
-} from "src/view/browser/utils/utils";
+import type { Props } from "src/view/browser/utils/types";
+import { copyText } from "src/view/browser/utils/utils";
 
 interface ThreadPageProps {
   tabId: string;
@@ -52,14 +37,6 @@ interface ThreadPageProps {
   refreshKey: number;
   isAutoRefreshEnabled: boolean;
 }
-
-type TopBarMode = "none" | "search" | "filter";
-
-const TOP_BAR_EVENT_BY_MODE = {
-  search: "thread-search-toggle",
-  filter: "thread-filter-toolbar-toggle",
-} as const;
-
 export const ThreadPage: React.FC<ThreadPageProps> = ({
   tabId,
   page,
@@ -117,13 +94,10 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   });
 
   const [miniAaResNums, setMiniAaResNums] = useState<Set<number>>(new Set());
-  const [activeTopBar, setActiveTopBar] = useState<TopBarMode>("none");
-  const isFilterToolbarVisible = activeTopBar === "filter";
-  const isSearchBarVisible = activeTopBar === "search";
-
-  // フィルタを解除した直後にジャンプ先のレス番号を保持するref。
-  // setFilter後のDOMが確定してからhandleAnchorClickを呼ぶためにuseEffectと組み合わせる。
-  const pendingJumpNumRef = useRef<number | null>(null);
+  const { activeTopBar, closeTopBar } = useThreadTopBar({
+    searchQuery,
+    setSearchQuery,
+  });
 
   const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling } =
     useThreadAutoRefresh({
@@ -152,40 +126,6 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       setThreadStats({ ngCount: 0, highlightCount: 0 });
     };
   }, [setThreadStats, threadNgCount]);
-
-  const closeTopBar = useCallback(() => {
-    setActiveTopBar("none");
-  }, []);
-
-  const toggleTopBar = useCallback((panel: Exclude<TopBarMode, "none">) => {
-    // 検索とフィルタを同時に開くとUI責務が競合するため、
-    // 単一モードでトグルし、再選択時は閉じる。
-    setActiveTopBar((prev) => (prev === panel ? "none" : panel));
-  }, []);
-
-  useEffect(() => {
-    // 検索バーを閉じたあと古いクエリが残ると次回表示時に意図せず絞り込まれるため、
-    // 検索モードを抜けた時点で検索語をクリアする。
-    if (activeTopBar !== "search" && searchQuery) {
-      setSearchQuery("");
-    }
-  }, [activeTopBar, searchQuery, setSearchQuery]);
-
-  useEffect(() => {
-    const cleanups = Object.entries(TOP_BAR_EVENT_BY_MODE).map(
-      ([mode, eventName]) => {
-        const handleToggleTopBar = () => {
-          toggleTopBar(mode as Exclude<TopBarMode, "none">);
-        };
-        window.addEventListener(eventName, handleToggleTopBar);
-        return () => window.removeEventListener(eventName, handleToggleTopBar);
-      },
-    );
-
-    return () => {
-      cleanups.forEach((cleanup) => cleanup());
-    };
-  }, [toggleTopBar]);
 
   const openAnchorPreviewFromPopup = useCallback(
     (popupId: string) =>
@@ -431,93 +371,13 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
           anchorPreviewDepth,
         );
       },
-    [addTreePopup, clearAnchorPreviewHideTimer, indexes.ancIndex, indexes.resMap],
+    [
+      addTreePopup,
+      clearAnchorPreviewHideTimer,
+      indexes.ancIndex,
+      indexes.resMap,
+    ],
   );
-
-  const addIdToNg = useCallback(async (id: string | undefined) => {
-    if (!id) return;
-    const ngWord = id.startsWith("ID:") ? id : `ID:${id}`;
-    // 既存実装の「ID/IPをNG指定」と同じくNGサービスへ直接追加
-    container.ng.add(ngWord);
-    // サービス側への追加だけでは再取得するまでUIに反映されないため、ローカルのstateも即時更新する。
-    // id は targetRes.id そのもの（"ID:xxx" 形式の場合もある）なので、そのまま res.id と比較する。
-    setResponses((prev) =>
-      prev.map((res) =>
-        res.id === id
-          ? {
-              ...res,
-              // res.ng を設定することで ResItem の isNG 判定が即座に true になる
-              ng: { type: "id" },
-              class: [...(res.class ?? []).filter((c) => c !== "ng"), "ng"],
-            }
-          : res,
-      ),
-    );
-    container.notification.info(`NGに追加しました: ${ngWord}`);
-  }, []);
-
-  const addSelectionToNg = useCallback(
-    async (selectedText: string) => {
-      const ngWord = selectedText.trim();
-      if (!ngWord) return;
-      // 選択テキストNGはID NGと違って局所更新だと取りこぼしやすいため、
-      // 追加後に再取得して既存NG判定ロジックの結果でUIを揃える。
-      container.ng.add(ngWord);
-      container.notification.info(`NGに追加しました: ${ngWord}`);
-      await fetchThread();
-    },
-    [fetchThread],
-  );
-
-  const addWriteHistory = useCallback(
-    async (res: IRes) => {
-      const globalObj = window as unknown as {
-        app?: {
-          WriteHistory?: {
-            add: (item: {
-              url: string;
-              res: number;
-              title: string;
-              name: string;
-              mail: string;
-              message: string;
-              date: number;
-            }) => Promise<void> | void;
-          };
-        };
-      };
-
-      if (!globalObj.app?.WriteHistory?.add) {
-        container.notification.info("書込履歴サービスが利用できません");
-        return;
-      }
-
-      const name = stripHtml(res.name);
-      const message = stripHtml(res.message);
-      const baseTime = Date.parse(res.date ?? res.other ?? "");
-      await globalObj.app.WriteHistory.add({
-        url: page.threadUrl,
-        res: res.num,
-        title: document.title,
-        name,
-        mail: res.mail,
-        message,
-        date: Number.isNaN(baseTime) ? Date.now() : baseTime,
-      });
-      container.notification.success("書込履歴に追加しました");
-    },
-    [page.threadUrl],
-  );
-
-  const filterButtons: { key: ThreadFilter; label: string }[] = [
-    { key: "all", label: "全て" },
-    { key: "popular", label: "多レス" },
-    { key: "image", label: "画像" },
-    { key: "video", label: "動画" },
-    { key: "link", label: "リンク" },
-  ];
-
-  const topBarCountLabel = `${filteredResponses.length}/${responses.length}件`;
 
   // アンカークリックで該当レスへスクロール
   const handleAnchorClick = useCallback(
@@ -561,249 +421,21 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     [closeNonContextPopups],
   );
 
-  // フィルタ解除後のジャンプ: setFilter("all")で再描画が終わり filteredResponses が変化した後に実行する。
-  // useRefで「意図的にセットされた時だけ」発火させ、通常の更新では副作用を起こさない。
-  // handleAnchorClick の宣言後に配置してブロックスコープ前方参照エラーを回避する。
-  useEffect(() => {
-    if (pendingJumpNumRef.current == null) return;
-    const num = pendingJumpNumRef.current;
-    pendingJumpNumRef.current = null;
-    handleAnchorClick(num);
-  }, [filteredResponses, handleAnchorClick]);
-
-  /**
-   * コンテキストメニュー項目を生成する汎用関数。
-   * fromPopup=true のときはポップアップ固有の「このレスにジャンプ」を先頭に追加する。
-   */
-  const buildContextMenuItems = useCallback(
-    (targetRes: IRes, fromPopup: boolean) => {
-      const plainName = stripHtml(targetRes.name);
-      const plainMessage = stripHtml(targetRes.message);
-      const rawId = targetRes.id ?? "";
-      const kyodemoUrl = rawId ? buildKyodemoUrl(page.threadUrl, rawId) : null;
-      const permalink = `${page.threadUrl}${targetRes.num}`;
-      const isMiniAa = miniAaResNums.has(targetRes.num);
-      const selectedText = window.getSelection()?.toString().trim() ?? "";
-      const hasSelection = selectedText.length > 0;
-
-      return [
-        // 選択テキスト向け操作は誤クリックを減らすため最上段に固定する。
-        ...(hasSelection
-          ? [
-              {
-                id: "copy-selection",
-                label: "選択範囲をコピー",
-                icon: <Copy size={14} />,
-                onSelect: async () => {
-                  await copyText(selectedText);
-                },
-              },
-              {
-                id: "search-selection",
-                label: "選択範囲をGoogle検索",
-                icon: <Search size={14} />,
-                onSelect: () => {
-                  const encoded = encodeURIComponent(selectedText);
-                  window.open(
-                    `https://www.google.co.jp/search?q=${encoded}`,
-                    "_blank",
-                    "noopener,noreferrer",
-                  );
-                },
-              },
-              {
-                id: "add-selection-to-ng",
-                label: "選択範囲をNG指定",
-                icon: <Ban size={14} />,
-                onSelect: () => {
-                  void addSelectionToNg(selectedText);
-                },
-              },
-              { id: "sep-selection-top", separator: true },
-            ]
-          : []),
-        ...(fromPopup
-          ? [
-              {
-                id: "jump-to-res",
-                label: "このレスにジャンプ",
-                icon: <ArrowDown size={14} />,
-                onSelect: () => {
-                  handleAnchorClick(targetRes.num);
-                  closePopup();
-                },
-              },
-              { id: "sep-jump", separator: true },
-            ]
-          : []),
-        // フィルタ適用中のみ「フィルタを解除してジャンプ」を先頭に挿入する。
-        // setFilter後はDOMがまだ更新されていないため、pendingJumpNumRefとuseEffectで遅延ジャンプする。
-        ...(filter !== "all" && !fromPopup
-          ? [
-              {
-                id: "clear-filter-jump",
-                label: "フィルタリングを解除してこのレスにジャンプ",
-                icon: <FilterX size={14} />,
-                onSelect: () => {
-                  pendingJumpNumRef.current = targetRes.num;
-                  setFilter("all");
-                },
-              },
-              { id: "sep-filter", separator: true },
-            ]
-          : []),
-        {
-          id: "refresh-thread",
-          label: "スレッドを更新",
-          icon: <RotateCw size={14} />,
-          onSelect: () => {
-            fetchThread();
-          },
-        },
-        { id: "sep-1", separator: true },
-        {
-          id: "copy-res",
-          label: "レスをコピー",
-          icon: <Copy size={14} />,
-          onSelect: async () => {
-            const copyBody = `${page.title}\n${page.threadUrl}${
-              targetRes.num
-            }\n${targetRes.num} ${plainName}  ${
-              targetRes.date ?? targetRes.other ?? ""
-            }\n${plainMessage}`;
-            await copyText(copyBody);
-          },
-        },
-        {
-          id: "copy-id",
-          label: "ID/IPをコピー",
-          icon: <Copy size={14} />,
-          disabled: !rawId,
-          onSelect: async () => {
-            await copyText(rawId);
-          },
-        },
-        {
-          id: "search-id",
-          label: "IDを必死チェッカーで検索",
-          icon: <Search size={14} />,
-          disabled: !kyodemoUrl,
-          onSelect: () => {
-            if (kyodemoUrl) {
-              window.open(kyodemoUrl, "_blank", "noopener,noreferrer");
-            }
-          },
-        },
-        {
-          id: "add-ng-id",
-          label: "ID/IPをNG指定",
-          icon: <Ban size={14} />,
-          disabled: !rawId,
-          onSelect: () => {
-            void addIdToNg(rawId);
-          },
-        },
-        { id: "sep-1", separator: true },
-        {
-          id: "reply",
-          label: "返信",
-          icon: <Reply size={14} />,
-          onSelect: () => {
-            void copyText(`>>${targetRes.num}\n`);
-            container.notification.info("返信アンカーをコピーしました");
-          },
-        },
-        {
-          id: "quote-reply",
-          label: "引用して返信",
-          icon: <Reply size={14} />,
-          onSelect: () => {
-            const quoted = plainMessage
-              .split(/\r?\n/)
-              .map((line) => `>${line}`)
-              .join("\n");
-            void copyText(`>>${targetRes.num}\n${quoted}\n`);
-            container.notification.info("引用テンプレートをコピーしました");
-          },
-        },
-        {
-          id: "add-write-history",
-          label: "書込履歴に追加",
-          icon: <History size={14} />,
-          onSelect: () => {
-            void addWriteHistory(targetRes);
-          },
-        },
-        {
-          id: "toggle-aa",
-          label: isMiniAa ? "AA表示モードを解除" : "AA表示モードに変更",
-          icon: <Type size={14} />,
-          onSelect: () => {
-            setMiniAaResNums((prev) => {
-              const next = new Set(prev);
-              if (next.has(targetRes.num)) {
-                next.delete(targetRes.num);
-              } else {
-                next.add(targetRes.num);
-              }
-              return next;
-            });
-          },
-        },
-        {
-          id: "open-browser",
-          label: "ブラウザで開く",
-          icon: <Globe size={14} />,
-          onSelect: () => {
-            window.open(permalink, "_blank", "noopener,noreferrer");
-          },
-        },
-      ];
-    },
-    [
-      addIdToNg,
-      addSelectionToNg,
-      addWriteHistory,
+  const { openPopupResContextMenu, openThreadResContextMenu } =
+    useThreadResContextMenu({
+      addPopupContextMenu,
       closePopup,
+      fetchThread,
       filter,
+      filteredResponses,
       handleAnchorClick,
+      hideAnchorPreviewImmediately,
       miniAaResNums,
-      page.threadUrl,
-      page.title,
+      page,
       setFilter,
       setMiniAaResNums,
-    ],
-  );
-
-  const openResContextMenu = useCallback(
-    (
-      targetRes: IRes,
-      e: React.MouseEvent,
-      fromPopup: boolean,
-      parentId?: string,
-    ) => {
-      e.preventDefault();
-      if (!fromPopup) {
-        hideAnchorPreviewImmediately();
-      }
-
-      // メニュー本体も同じスタックへ積み、parentId で親ポップアップとの寿命を揃える。
-      addPopupContextMenu(
-        e.clientX,
-        e.clientY,
-        buildContextMenuItems(targetRes, fromPopup),
-        parentId,
-      );
-    },
-    [addPopupContextMenu, buildContextMenuItems, hideAnchorPreviewImmediately],
-  );
-
-  const openPopupResContextMenu = useCallback(
-    (parentId: string) => (targetRes: IRes, e: React.MouseEvent) => {
-      openResContextMenu(targetRes, e, true, parentId);
-    },
-    [openResContextMenu],
-  );
+      setResponses,
+    });
 
   const openPopupUrlContextMenu = useCallback(
     (parentId: string) =>
@@ -815,13 +447,6 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         handleUrlContextMenu(rawUrl, e, parentId, mode);
       },
     [handleUrlContextMenu],
-  );
-
-  const openThreadResContextMenu = useCallback(
-    (e: React.MouseEvent, res: IRes) => {
-      openResContextMenu(res, e, false);
-    },
-    [openResContextMenu],
   );
 
   // ジェスチャーuseEffectでrootRefが確実にマウント済みになるよう、loading中の早期returnを廃止し常にrootRef付きdivを描画する
@@ -848,44 +473,16 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         </div>
       ) : (
         <>
-          {isFilterToolbarVisible && (
-            <div className="thread-page__top-bar thread-page__toolbar">
-              <div className="thread-page__filters">
-                {filterButtons.map(({ key, label }) => (
-                  <button
-                    key={key}
-                    className={`thread-page__filter-btn${
-                      filter === key ? " thread-page__filter-btn--active" : ""
-                    }`}
-                    onClick={() => setFilter(key)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <div className="thread-page__toolbar-right">
-                <span className="thread-page__count">{topBarCountLabel}</span>
-                <button
-                  type="button"
-                  className="thread-page__toolbar-close"
-                  onClick={closeTopBar}
-                  aria-label="フィルターを閉じる"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-          )}
-
-          {isSearchBarVisible && (
-            <SearchBar
-              className="thread-page__top-bar"
-              query={searchQuery}
-              onQueryChange={setSearchQuery}
-              onClose={closeTopBar}
-              hitCount={filteredResponses.length}
-            />
-          )}
+          <ThreadPageTopBar
+            activeTopBar={activeTopBar}
+            filter={filter}
+            filteredResponseCount={filteredResponses.length}
+            onClose={closeTopBar}
+            onFilterChange={setFilter}
+            onSearchQueryChange={setSearchQuery}
+            responseCount={responses.length}
+            searchQuery={searchQuery}
+          />
 
           {expired && (
             <div className="thread-page__notice">
