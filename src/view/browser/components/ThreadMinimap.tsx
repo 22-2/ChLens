@@ -59,6 +59,25 @@ function getOffsetTopWithinAncestor(el: HTMLElement, ancestor: HTMLElement): num
   return ancestor.scrollTop + (elRect.top - ancestorRect.top);
 }
 
+function isSameFrame(
+  left: MinimapFrame | null,
+  right: MinimapFrame | null,
+): boolean {
+  if (left === right) {
+    return true;
+  }
+  if (!left || !right) {
+    return false;
+  }
+
+  return (
+    left.top === right.top &&
+    left.left === right.left &&
+    left.width === right.width &&
+    left.height === right.height
+  );
+}
+
 export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
   rootRef,
   repIndex,
@@ -113,14 +132,14 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
   const updateFrame = useCallback(() => {
     const scrollContainer = getScrollContainer();
     if (!scrollContainer || responseCount === 0) {
-      setFrame(null);
+      setFrame((prev) => (prev === null ? prev : null));
       setHostMinimapWidth(0);
       return;
     }
 
     const rect = scrollContainer.getBoundingClientRect();
     if (rect.height < MINIMAP_MIN_DRAWABLE_HEIGHT || rect.width < 280) {
-      setFrame(null);
+      setFrame((prev) => (prev === null ? prev : null));
       setHostMinimapWidth(0);
       return;
     }
@@ -136,11 +155,17 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     const preferredLeft = rect.right - scrollbarWidth - width - MINIMAP_GAP;
     const left = Math.max(rect.left + 8, preferredLeft);
 
-    setFrame({
+    const nextFrame: MinimapFrame = {
       top: rect.top,
       left,
       width,
       height: rect.height,
+    };
+
+    setFrame((prev) => {
+      // レイアウトが不変なのに毎回新しい object を入れると、
+      // frame 依存 callback/effect が連鎖して passive effect loop になる。
+      return isSameFrame(prev, nextFrame) ? prev : nextFrame;
     });
     // 本文をミニマップの下に潜り込ませないため、同じ幅を右余白として予約する。
     setHostMinimapWidth(width + MINIMAP_GAP);
@@ -418,8 +443,13 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
 
   useEffect(() => {
     updateFrame();
+  }, [responseCount, updateFrame]);
+
+  useEffect(() => {
+    // 描画は frame/返信分布の変化にだけ追従させ、
+    // レイアウト計算 effect と分離して再入ループを防ぐ。
     scheduleDraw();
-  }, [responseCount, repIndex, scheduleDraw, updateFrame]);
+  }, [frame, repIndex, responseCount, scheduleDraw]);
 
   useEffect(() => {
     const scrollContainer = getScrollContainer();
