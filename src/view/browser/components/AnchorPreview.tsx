@@ -21,6 +21,7 @@ export interface AnchorPreviewProps {
   onUrlContextMenu: UrlContextMenuHandler;
   onIdLinkClick: (id: string, e: React.MouseEvent) => void;
   onRepClick: (resNum: number, e: React.MouseEvent) => void;
+  onOpenRootReplyTree: (resNum: number, e: React.MouseEvent) => void;
   onAnchorClick: (resNum: number) => void;
   onAnchorHover: (
     targets: number[],
@@ -56,6 +57,7 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
   onUrlContextMenu,
   onIdLinkClick,
   onRepClick,
+  onOpenRootReplyTree,
   onAnchorClick,
   onAnchorHover,
   onAnchorLeave,
@@ -120,6 +122,7 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
             onLinkMiddleClickStart={armMouseLeaveCloseSuppression}
             onIdLinkClick={onIdLinkClick}
             onRepClick={onRepClick}
+            onOpenRootReplyTree={onOpenRootReplyTree}
             onAnchorClick={onAnchorClick}
             onAnchorHover={onAnchorHover}
             onAnchorLeave={onAnchorLeave}

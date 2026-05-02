@@ -56,6 +56,10 @@ interface PopupRendererProps {
     parentId?: string,
     anchorPreviewDepth?: number,
   ) => (resNum: number, e: React.MouseEvent) => void;
+  onOpenRootReplyTreeInPopup: (
+    parentId?: string,
+    anchorPreviewDepth?: number,
+  ) => (resNum: number, e: React.MouseEvent) => void;
   onResContextMenuOpen: (
     parentId: string,
   ) => (targetRes: IRes, e: React.MouseEvent) => void;
@@ -86,6 +90,7 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
   onIdLinkClick,
   onPopupIdLinkClick,
   onRepClickInPopup,
+  onOpenRootReplyTreeInPopup,
   onResContextMenuOpen,
   onUrlClick,
   onUrlContextMenuOpen,
@@ -107,6 +112,10 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
           onUrlContextMenu={onUrlContextMenuOpen(anchorPreview.id)}
           onIdLinkClick={onPopupIdLinkClick(anchorPreview.id)}
           onRepClick={onRepClickInPopup(
+            anchorPreview.id,
+            anchorPreview.payload.depth + 1,
+          )}
+          onOpenRootReplyTree={onOpenRootReplyTreeInPopup(
             anchorPreview.id,
             anchorPreview.payload.depth + 1,
           )}

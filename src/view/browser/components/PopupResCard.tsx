@@ -28,6 +28,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     onLinkMiddleClickStart,
     onIdLinkClick,
     onRepClick,
+    onOpenRootReplyTree,
     onAnchorClick,
     onAnchorHover,
     onAnchorLeave,
@@ -141,6 +142,20 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
               返信({repCount})
             </span>
           )}
+          {onOpenRootReplyTree && (
+            <button
+              type="button"
+              className="res__open-root-tree-btn"
+              onClick={(e) => {
+                // アンカーの葉からでも議論の起点へ辿れるよう、
+                // 返信ツリーの開始レスを呼び出し元で解決してから開く。
+                e.stopPropagation();
+                onOpenRootReplyTree(res.num, e);
+              }}
+            >
+              ツリー先頭から
+            </button>
+          )}
         </header>
         <ResBody
           messageHtml={decoded.messageHtml}
@@ -233,6 +248,7 @@ export interface StaticResCardProps {
   onLinkMiddleClickStart?: () => void;
   onIdLinkClick: (id: string, e: React.MouseEvent) => void;
   onRepClick?: (resNum: number, e: React.MouseEvent) => void;
+  onOpenRootReplyTree?: (resNum: number, e: React.MouseEvent) => void;
   onAnchorClick: (resNum: number) => void;
   onAnchorHover: (
     targets: number[],

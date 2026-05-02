@@ -1437,6 +1437,22 @@ body {
   text-decoration: none !important;
 }
 
+.res__open-root-tree-btn {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  color: var(--browser-color-res-reply-link);
+  font-size: 11px;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.res__open-root-tree-btn:hover {
+  text-decoration: underline;
+}
+
 /* NG済みレス */
 .res--highlighted {
   animation: surface-highlight-flash 1.5s ease-out;

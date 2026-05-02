@@ -147,4 +147,31 @@ describe("PopupResCard", () => {
     expect(onContextMenu).not.toHaveBeenCalled();
     expect(contextMenuEvent.defaultPrevented).toBe(false);
   });
+
+  it("ルート起点ボタン押下で先頭ツリー展開ハンドラを呼ぶ", () => {
+    const onOpenRootReplyTree = vi.fn();
+    const repIndex = new Map<number, Set<number>>([
+      [10, new Set([1, 2])],
+    ]);
+
+    const { getByRole } = render(
+      <PopupResCard
+        res={BASE_RES}
+        messageProtocol="https:"
+        anchorPreviewDepth={0}
+        repIndex={repIndex}
+        onUrlClick={() => {}}
+        onUrlContextMenu={() => {}}
+        onIdLinkClick={() => {}}
+        onAnchorClick={() => {}}
+        onAnchorHover={() => {}}
+        onAnchorLeave={() => {}}
+        onRepClick={() => {}}
+        onOpenRootReplyTree={onOpenRootReplyTree}
+      />,
+    );
+
+    fireEvent.click(getByRole("button", { name: "ツリー先頭から" }));
+    expect(onOpenRootReplyTree).toHaveBeenCalledWith(10, expect.any(Object));
+  });
 });

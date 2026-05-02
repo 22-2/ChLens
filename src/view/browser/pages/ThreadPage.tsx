@@ -38,6 +38,7 @@ import {
   resolveAbsoluteUrl,
   RESPECT_DEFAULT_EXTERNAL,
 } from "src/view/browser/utils/link-routing";
+import { resolveReplyTreeRootResNum } from "src/view/browser/utils/reply-tree-root";
 import type { Props, ThreadFilter } from "src/view/browser/utils/types";
 import {
   buildKyodemoUrl,
@@ -378,6 +379,28 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         );
       },
     [addTreePopup, clearAnchorPreviewHideTimer],
+  );
+
+  const handleOpenRootReplyTreeInPopup = useCallback(
+    (parentId?: string, anchorPreviewDepth = 0) =>
+      (resNum: number, e: React.MouseEvent) => {
+        clearAnchorPreviewHideTimer();
+        // 葉のアンカーから辿る時は起点レスを ancIndex で逆引きしてから開くことで、
+        // 相互アンカーが続くケースでも最初の流れを辿りやすくする。
+        const rootResNum = resolveReplyTreeRootResNum(
+          resNum,
+          indexes.ancIndex,
+          indexes.resMap,
+        );
+        addTreePopup(
+          rootResNum,
+          e.clientX,
+          e.clientY,
+          parentId,
+          anchorPreviewDepth,
+        );
+      },
+    [addTreePopup, clearAnchorPreviewHideTimer, indexes.ancIndex, indexes.resMap],
   );
 
   const addIdToNg = useCallback(async (id: string | undefined) => {
@@ -853,6 +876,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             onIdLinkClick={handleIdClick}
             onPopupIdLinkClick={handlePopupIdClick}
             onRepClickInPopup={handleRepClickInPopup}
+            onOpenRootReplyTreeInPopup={handleOpenRootReplyTreeInPopup}
             onResContextMenuOpen={openPopupResContextMenu}
             onUrlClick={handleUrlClick}
             onUrlContextMenuOpen={openPopupUrlContextMenu}
