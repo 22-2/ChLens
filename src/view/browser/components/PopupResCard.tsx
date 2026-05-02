@@ -19,6 +19,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     anchorPreviewDepth,
     repIndex,
     idIndex,
+    disableRepClick,
     isHighlighted,
     onUrlClick,
     onUrlContextMenu,
@@ -104,8 +105,16 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
             <span
               className={`res__rep${
                 repCount >= 5 ? " res__rep--freq" : " res__rep--link"
-              }`}
+              }${disableRepClick ? " res__rep--disabled" : ""}`}
+              aria-disabled={disableRepClick ? true : undefined}
+              title={disableRepClick ? "参照元レスの返信はこのポップアップ内では開けません" : undefined}
               onClick={(e) => {
+                // 参照元レスの「返信」は同一ツリーを再帰的に開いてしまうため、
+                // 返信ポップアップ内では明示的に無効化する。
+                if (disableRepClick) {
+                  e.stopPropagation();
+                  return;
+                }
                 e.stopPropagation();
                 onRepClick(res.num, e);
               }}
@@ -197,6 +206,8 @@ export interface StaticResCardProps {
   repIndex?: Map<number, Set<number>>;
   /** 渡された場合、ヘッダーのIDに同一IDのレス数を表示してクリック可能にする */
   idIndex?: Map<string, Set<number>>;
+  /** 参照元レスの返信を再帰的に開くのを防ぐための無効化フラグ */
+  disableRepClick?: boolean;
   isHighlighted?: boolean;
   onUrlClick: UrlClickHandler;
   onUrlContextMenu: UrlContextMenuHandler;

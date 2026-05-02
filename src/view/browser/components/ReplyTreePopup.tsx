@@ -278,6 +278,8 @@ export const ReplyTreePopup: React.FC<{
               anchorPreviewDepth={anchorPreviewDepth}
               repIndex={repIndex}
               idIndex={idIndex}
+              // 参照元レスの「返信」を押すと同じツリーを重ね続けるだけなので無効化する。
+              disableRepClick={true}
               isHighlighted={true}
               onUrlClick={onUrlClick}
               onUrlContextMenu={onUrlContextMenu}

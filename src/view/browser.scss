@@ -1376,6 +1376,12 @@ body {
   text-decoration: underline;
 }
 
+.res__rep--disabled {
+  cursor: default;
+  opacity: 0.55;
+  text-decoration: none !important;
+}
+
 /* NG済みレス */
 .res--highlighted {
   animation: surface-highlight-flash 1.5s ease-out;

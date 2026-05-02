@@ -46,6 +46,7 @@ const BASE_PROPS = {
   onAnchorHover: () => {},
   onAnchorLeave: () => {},
   onResContextMenu: () => {},
+  onIdLinkClick: () => {},
   onClose: () => {},
 } as const;
 
@@ -124,5 +125,21 @@ describe("ReplyTreePopup", () => {
     expect(
       screen.queryByRole("button", { name: "返信ツリーを一括コピー" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("参照元レスの返信リンクは無効化されていてクリックしても開かない", () => {
+    const onRepClick = vi.fn();
+    render(<ReplyTreePopup {...BASE_PROPS} onRepClick={onRepClick} />);
+
+    const sourceSection = screen
+      .getByText("参照元レス")
+      .closest("section") as HTMLElement;
+    const sourceReplyLink = within(sourceSection).getByText("返信(1)");
+
+    expect(sourceReplyLink).toHaveAttribute("aria-disabled", "true");
+
+    fireEvent.click(sourceReplyLink);
+
+    expect(onRepClick).not.toHaveBeenCalled();
   });
 });
