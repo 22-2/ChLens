@@ -284,4 +284,4 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 
 - [x] 複数タブ開けないように
 - [x] コンテキストメニューだけはmouseoverしても閉じないように（outside clickだけ）
-- [ ] autoRefreshStatusLabelじゃなくて、くるくる回ってるアイコンを置き換える（一時停止とか、ホバーでラベルを出す）
+- [x] autoRefreshStatusLabelじゃなくて、くるくる回ってるアイコンを置き換える（一時停止とか、ホバーでラベルを出す）
