@@ -29,6 +29,10 @@ const EMPTY_POPUPS: PopupItem[] = [];
 const POPUP_KEEP_OPEN_TARGET_SELECTOR = "a, .res__link, .res__thumb";
 const POPUP_MOUSELEAVE_SUPPRESS_MS = 250;
 
+function isContextMenuPopupId(popupId: string | null): boolean {
+  return popupId?.startsWith("contextMenu-") ?? false;
+}
+
 interface PopupScopeState {
   popups: PopupItem[];
   refCount: number;
@@ -309,6 +313,7 @@ interface PopupSurfaceLifecycleParams {
   isPopupDescendantOf?: (popupId: string, ancestorId: string) => boolean;
   onEnterFromDescendant?: () => void;
   closeDisabled?: boolean;
+  closeOnMouseLeave?: boolean;
   onClose: () => void;
   onSurfaceMouseDown?: () => void;
   onSurfaceMouseEnter?: () => void;
@@ -518,6 +523,7 @@ export function usePopupSurfaceLifecycle({
   isPopupDescendantOf,
   onEnterFromDescendant,
   closeDisabled,
+  closeOnMouseLeave = true,
   onClose,
   onSurfaceMouseDown,
   onSurfaceMouseEnter,
@@ -571,6 +577,11 @@ export function usePopupSurfaceLifecycle({
     prevCloseDisabledRef.current = !!closeDisabled;
     const isActuallyHovering =
       surfaceRef?.current?.matches(":hover") ?? isHovering;
+    if (!closeOnMouseLeave) {
+      // コンテキストメニューは outside click でのみ閉じる仕様なので、
+      // 子popup終了時の disable 復帰で親まで自動 close しない。
+      return;
+    }
     if (
       wasDisabled &&
       !closeDisabled &&
@@ -587,7 +598,7 @@ export function usePopupSurfaceLifecycle({
     if (wasDisabled && !closeDisabled && !isActuallyHovering) {
       onCloseRef.current();
     }
-  }, [closeDisabled, isHovering, surfaceRef]);
+  }, [closeDisabled, closeOnMouseLeave, isHovering, surfaceRef]);
 
   useEffect(() => {
     const handleOutsideMouseDown = (event: MouseEvent) => {
@@ -640,13 +651,20 @@ export function usePopupSurfaceLifecycle({
 
   const handleMouseEnter = (event: React.MouseEvent<HTMLElement>) => {
     setIsHovering(true);
+    const relatedPopupId = getPopupSurfaceId(event.relatedTarget);
     if (
       popupId &&
       isPopupDescendantOf?.(
-        getPopupSurfaceId(event.relatedTarget) ?? "",
+        relatedPopupId ?? "",
         popupId,
       )
     ) {
+      if (isContextMenuPopupId(relatedPopupId)) {
+        // コンテキストメニューは outside click まで維持したいので、
+        // 子メニューから親へ戻っても branch を自動で閉じない。
+        onSurfaceMouseEnter?.();
+        return;
+      }
       // 親へ戻った瞬間にその親配下の枝を畳むと、子から親へ戻った後に古い子孫が残らない。
       suppressNextDisableReleaseCloseRef.current = true;
       onEnterFromDescendant?.();
@@ -683,6 +701,9 @@ export function usePopupSurfaceLifecycle({
     // 子孫へ抜ける時だけ枝を維持し、それ以外の遷移は種類に関係なく現在のpopupを閉じる。
     onSurfaceMouseLeave?.();
     setIsHovering(false);
+    if (!closeOnMouseLeave) {
+      return;
+    }
     if (closeDisabled) {
       return;
     }

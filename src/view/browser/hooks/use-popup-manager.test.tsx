@@ -641,7 +641,7 @@ describe("usePopupManager popup behavior", () => {
     );
   });
 
-  it("moving from a context menu back to its parent surface closes the menu", () => {
+  it("context menu does not close on mouseleave and closes on outside click", () => {
     const onClose = vi.fn();
     render(
       <>
@@ -661,7 +661,112 @@ describe("usePopupManager popup behavior", () => {
     const menu = document.querySelector(".context-menu") as HTMLElement;
     const parentSurface = screen.getByText("parent popup");
     fireEvent.mouseLeave(menu, { relatedTarget: parentSurface });
+    expect(onClose).not.toHaveBeenCalled();
 
+    fireEvent.mouseDown(document.body);
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("while a child context menu is open, ancestor popups do not close on mouseleave", () => {
+    render(
+      <PopupSequenceHarness
+        resMap={DUPLICATE_REPLY_RES_MAP}
+        repIndex={DUPLICATE_REPLY_INDEX}
+        rootResNum={3}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "返信を開く" }));
+
+    const rootPopup = document.querySelectorAll(".res-popup")[0] as HTMLElement;
+    fireEvent.mouseOver(within(rootPopup).getByRole("link", { name: ">>3" }));
+
+    const anchorPreview = document.querySelector(
+      ".anchor-preview",
+    ) as HTMLElement;
+    fireEvent.click(within(anchorPreview).getByText("返信(1)"));
+
+    const nestedPopup = document.querySelectorAll(
+      ".res-popup",
+    )[1] as HTMLElement;
+    fireEvent.contextMenu(within(nestedPopup).getByText("6"));
+
+    expect(screen.getByRole("button", { name: "Inspect" })).toBeInTheDocument();
+
+    fireEvent.mouseLeave(nestedPopup, { relatedTarget: null });
+    fireEvent.mouseLeave(anchorPreview, { relatedTarget: null });
+    fireEvent.mouseLeave(rootPopup, { relatedTarget: null });
+
+    expect(document.querySelectorAll(".res-popup")).toHaveLength(2);
+    expect(document.querySelectorAll(".anchor-preview")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Inspect" })).toBeInTheDocument();
+  });
+
+  it("moving from child context menu to ancestor popup keeps the menu open", () => {
+    render(
+      <PopupSequenceHarness
+        resMap={DUPLICATE_REPLY_RES_MAP}
+        repIndex={DUPLICATE_REPLY_INDEX}
+        rootResNum={3}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "返信を開く" }));
+
+    const rootPopup = document.querySelectorAll(".res-popup")[0] as HTMLElement;
+    fireEvent.mouseOver(within(rootPopup).getByRole("link", { name: ">>3" }));
+
+    const anchorPreview = document.querySelector(
+      ".anchor-preview",
+    ) as HTMLElement;
+    fireEvent.click(within(anchorPreview).getByText("返信(1)"));
+
+    const nestedPopup = document.querySelectorAll(
+      ".res-popup",
+    )[1] as HTMLElement;
+    fireEvent.contextMenu(within(nestedPopup).getByText("6"));
+
+    const menu = document.querySelector(".context-menu") as HTMLElement;
+    expect(menu).toBeInTheDocument();
+
+    fireEvent.mouseEnter(nestedPopup, { relatedTarget: menu });
+    expect(screen.getByRole("button", { name: "Inspect" })).toBeInTheDocument();
+
+    fireEvent.mouseEnter(rootPopup, { relatedTarget: menu });
+    expect(screen.getByRole("button", { name: "Inspect" })).toBeInTheDocument();
+  });
+
+  it("context menu configured for outside-click close does not auto-close when child menu closes", () => {
+    const onClose = vi.fn();
+    const { rerender } = render(
+      <ContextMenu
+        x={0}
+        y={0}
+        items={[{ id: "inspect", label: "Inspect" }]}
+        onClose={onClose}
+        popupId="contextMenu-parent"
+        closeDisabled={true}
+      />,
+    );
+
+    const menu = document.querySelector(".context-menu") as HTMLElement;
+    fireEvent.mouseLeave(menu, { relatedTarget: null });
+    expect(onClose).not.toHaveBeenCalled();
+
+    rerender(
+      <ContextMenu
+        x={0}
+        y={0}
+        items={[{ id: "inspect", label: "Inspect" }]}
+        onClose={onClose}
+        popupId="contextMenu-parent"
+        closeDisabled={false}
+      />,
+    );
+
+    expect(onClose).not.toHaveBeenCalled();
+
+    fireEvent.mouseDown(document.body);
     expect(onClose).toHaveBeenCalledOnce();
   });
 

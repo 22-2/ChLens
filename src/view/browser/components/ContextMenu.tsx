@@ -57,6 +57,9 @@ export const ContextMenu: React.FC<Props> = ({
     isPopupDescendantOf,
     onEnterFromDescendant,
     closeDisabled,
+    // コンテキストメニューは hover/mouseleave で閉じると誤操作になりやすいため、
+    // 明示操作（outside click / 選択 / Escape）だけで閉じる。
+    closeOnMouseLeave: false,
     onClose,
     onSurfaceMouseDown,
     onSurfaceMouseEnter: onMouseEnter,
