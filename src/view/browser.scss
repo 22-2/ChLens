@@ -204,6 +204,17 @@ body {
   line-height: 34px;
 }
 
+/* 自動更新有効時にタブタイトル右端に表示する小さな状態インジケータードット */
+.tab__auto-refresh-dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--browser-color-error);
+  margin-left: 4px;
+  opacity: 0.85;
+}
+
 .tab__close {
   flex-shrink: 0;
   margin-left: 4px;
@@ -1573,7 +1584,8 @@ body {
   max-height: none;
   user-select: none;
   -webkit-user-drag: none;
-  pointer-events: none;
+  /* pointer-events: none を外して右クリックメニュー（名前を付けて保存等）を使えるようにする。
+     パンのmousedownはstageレベルのネイティブリスナーがバブリングで受け取るため問題なし。 */
 }
 
 /* ==========================================================================

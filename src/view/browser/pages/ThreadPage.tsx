@@ -2,6 +2,7 @@ import {
   ArrowDown,
   Ban,
   Copy,
+  FilterX,
   Globe,
   History,
   Reply,
@@ -108,6 +109,10 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   });
 
   const [miniAaResNums, setMiniAaResNums] = useState<Set<number>>(new Set());
+
+  // フィルタを解除した直後にジャンプ先のレス番号を保持するref。
+  // setFilter後のDOMが確定してからhandleAnchorClickを呼ぶためにuseEffectと組み合わせる。
+  const pendingJumpNumRef = useRef<number | null>(null);
 
   const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling } =
     useThreadAutoRefresh({
@@ -484,6 +489,16 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     [closeNonContextPopups],
   );
 
+  // フィルタ解除後のジャンプ: setFilter("all")で再描画が終わり filteredResponses が変化した後に実行する。
+  // useRefで「意図的にセットされた時だけ」発火させ、通常の更新では副作用を起こさない。
+  // handleAnchorClick の宣言後に配置してブロックスコープ前方参照エラーを回避する。
+  useEffect(() => {
+    if (pendingJumpNumRef.current == null) return;
+    const num = pendingJumpNumRef.current;
+    pendingJumpNumRef.current = null;
+    handleAnchorClick(num);
+  }, [filteredResponses, handleAnchorClick]);
+
   /**
    * コンテキストメニュー項目を生成する汎用関数。
    * fromPopup=true のときはポップアップ固有の「このレスにジャンプ」を先頭に追加する。
@@ -510,6 +525,22 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
                 },
               },
               { id: "sep-jump", separator: true },
+            ]
+          : []),
+        // フィルタ適用中のみ「フィルタを解除してジャンプ」を先頭に挿入する。
+        // setFilter後はDOMがまだ更新されていないため、pendingJumpNumRefとuseEffectで遅延ジャンプする。
+        ...(filter !== "all" && !fromPopup
+          ? [
+              {
+                id: "clear-filter-jump",
+                label: "フィルタリングを解除してこのレスにジャンプ",
+                icon: <FilterX size={14} />,
+                onSelect: () => {
+                  pendingJumpNumRef.current = targetRes.num;
+                  setFilter("all");
+                },
+              },
+              { id: "sep-filter", separator: true },
             ]
           : []),
         {
@@ -615,10 +646,12 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       addIdToNg,
       addWriteHistory,
       closePopup,
+      filter,
       handleAnchorClick,
       miniAaResNums,
       page.threadUrl,
       page.title,
+      setFilter,
       setMiniAaResNums,
     ],
   );

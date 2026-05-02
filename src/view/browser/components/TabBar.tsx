@@ -163,6 +163,12 @@ export const TabBar: React.FC = () => {
         {state.tabs.map((tab) => {
           const page = getCurrentPage(tab);
           const isActive = tab.id === state.activeTabId;
+          // 自動更新有効判定: タブに登録された URL と現在ページの URL が一致する時のみ有効扣。
+          // 別スレへ遷移後に無案内に再読み込みが走るのを防ぐため。
+          const isAutoRefreshActive =
+            page.type === "thread" &&
+            tab.autoRefreshEnabled &&
+            tab.autoRefreshThreadUrl === page.threadUrl;
 
           return (
             <div
@@ -176,6 +182,14 @@ export const TabBar: React.FC = () => {
               onContextMenu={(e) => handleContextMenu(e, tab)}
             >
               {tab.pinned ? <Pin size={12} /> : <span className="tab__title">{page.title}</span>}
+              {/* 自動更新が有効なタブにはタイトルの右隣に状態インジケーターを表示する */}
+              {isAutoRefreshActive && !tab.pinned && (
+                <span
+                  className="tab__auto-refresh-dot"
+                  title="自動更新: ON"
+                  aria-label="自動更新有効"
+                />
+              )}
               {!tab.pinned && state.tabs.length > 1 && (
                 <button
                   className="tab__close"
