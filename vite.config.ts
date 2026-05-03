@@ -354,6 +354,10 @@ export default defineConfig(() => {
       alias: {
         src: path.resolve(__dirname, "./src"),
         packages: path.resolve(__dirname, "./packages"),
+        "webextension-polyfill":
+          platform === "tauri"
+            ? path.resolve(__dirname, "./src/browser-shim.js")
+            : "webextension-polyfill",
       },
       extensions: [".tsx", ".ts", ".jsx", ".js"],
     },

@@ -134,3 +134,5 @@
 
   window.chrome = window.browser;
 })();
+
+export default window.browser;

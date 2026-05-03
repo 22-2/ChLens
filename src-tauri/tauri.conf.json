@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "read.crx-2",
+  "productName": "chlens",
   "version": "3.0.1",
   "identifier": "com.chlens.app",
   "build": {
@@ -11,7 +11,7 @@
   "app": {
     "windows": [
       {
-        "title": "read.crx-2",
+        "title": "chlens",
         "url": "view/browser.html",
         "width": 1200,
         "height": 800,
