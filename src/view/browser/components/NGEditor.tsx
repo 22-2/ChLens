@@ -68,11 +68,11 @@ interface NGEditorProps {
   onChange: (value: string) => void;
 }
 
-const NG_DSL_EXAMPLE = `Body(word="荒らし")
+export const NG_DSL_EXAMPLE = `Body(word="荒らし")
 HighlightTitle(word="重要" bgColor=#ffcdd2 label="注目")
 ID(word="abc123")`;
 
-const NG_DSL_MULTILINE_EXAMPLE = `RegExpHighlightTitle(
+export const NG_DSL_MULTILINE_EXAMPLE = `RegExpHighlightTitle(
   word="VTuber"
   sites=[
     eddibb.cc
@@ -230,38 +230,6 @@ export const NGEditor: React.FC<NGEditorProps> = ({ value, onChange }) => {
           }}
         />
       </div>
-
-      <div className="ng-editor__actions">
-        <button
-          type="button"
-          className="ng-editor__icon-btn"
-          onClick={handleRemoveNgId}
-          disabled={idRuleCount == null || idRuleCount === 0}
-          title={
-            idRuleCount == null
-              ? "NG設定を解析できないため実行できません"
-              : idRuleCount === 0
-                ? "削除対象のNG IDルールはありません"
-                : `NG IDルールを${idRuleCount}件削除します`
-          }
-        >
-          <Trash2 size={16} aria-hidden="true" />
-        </button>
-      </div>
-
-      <details className="ng-editor__help">
-        <summary className="ng-editor__help-summary">記法の例</summary>
-        <div className="ng-editor__help-body">
-          <div className="ng-editor__help-label">DSL</div>
-          <pre className="ng-editor__help-code">{NG_DSL_EXAMPLE}</pre>
-          <div className="ng-editor__help-label">複数行 DSL</div>
-          <pre className="ng-editor__help-code">{NG_DSL_MULTILINE_EXAMPLE}</pre>
-          <div className="ng-editor__help-label">補足</div>
-          <p className="ng-editor__help-note">
-            NGワードを1行に1つずつ記述します。
-          </p>
-        </div>
-      </details>
     </div>
   );
 };

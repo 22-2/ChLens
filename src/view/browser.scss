@@ -65,6 +65,8 @@ body {
     -apple-system,
     "Segoe UI",
     sans-serif;
+  --browser-font-mono: SFMono-Regular, Consolas, "Liberation Mono", Menlo,
+    monospace;
   font-size: 14px;
   color: var(--browser-color-text-primary);
   background: var(--browser-color-bg);
@@ -885,43 +887,54 @@ body {
 }
 
 .settings-page__advanced-group {
-  margin-top: 40px;
-  border: 1px solid #dadce0;
-  border-radius: 16px;
+  margin-top: 8px;
+  border: 1px solid var(--browser-color-border);
+  border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
 }
 
 .settings-page__advanced-summary {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 18px 24px;
-  background: #f8f9fa;
+  padding: 8px 12px;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
   list-style: none;
-  color: #3c4043;
-  transition: background 0.2s;
+  background: var(--browser-color-surface-muted);
+  color: var(--browser-color-text-primary);
+  transition: background 0.15s;
+  user-select: none;
 
   &::-webkit-details-marker {
     display: none;
   }
 
-  &:hover {
-    background: #f1f3f4;
+  &::before {
+    content: "▸";
+    display: inline-block;
+    margin-right: 8px;
+    font-size: 10px;
+    transition: transform 0.15s;
+    color: var(--browser-color-text-muted);
   }
 
-  svg {
-    color: #5f6368;
+  &:hover {
+    background: var(--browser-color-border);
+  }
+}
+
+.settings-page__advanced-group[open] > .settings-page__advanced-summary {
+  border-bottom: 1px solid var(--browser-color-border);
+
+  &::before {
+    transform: rotate(90deg);
   }
 }
 
 .settings-page__advanced-body {
-  padding: 32px 24px;
-  background: #fff;
-  border-top: 1px solid #dadce0;
+  padding: 24px;
+  background: var(--browser-color-bg);
 }
 
 @media (max-width: 900px) {
@@ -943,6 +956,100 @@ body {
   .settings-page__card {
     padding: 24px 16px;
   }
+}
+
+/* ==========================================================================
+   NG Editor - Monaco Editor wrapper and DSL help
+   ========================================================================== */
+.ng-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+  margin-right: 32px;
+  margin-left: 32px;
+}
+
+.ng-editor__help {
+  border: 1px solid var(--browser-color-border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 12px;
+}
+
+.ng-editor__help-summary {
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--browser-color-surface-muted);
+  color: var(--browser-color-text-primary);
+  user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  transition: background 0.15s;
+
+  &::-webkit-details-marker {
+    display: none;
+  }
+
+  &::before {
+    content: "▸";
+    display: inline-block;
+    margin-right: 8px;
+    font-size: 10px;
+    transition: transform 0.15s;
+    color: var(--browser-color-text-muted);
+  }
+
+  &:hover {
+    background: var(--browser-color-border);
+  }
+}
+
+.ng-editor__help[open] > .ng-editor__help-summary {
+  border-bottom: 1px solid var(--browser-color-border);
+
+  &::before {
+    transform: rotate(90deg);
+  }
+}
+
+.ng-editor__help-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ng-editor__help-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--browser-color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: -4px;
+}
+
+.ng-editor__help-code {
+  margin: 0;
+  padding: 12px;
+  background: var(--browser-color-surface-muted);
+  border: 1px solid var(--browser-color-border);
+  border-radius: 6px;
+  font-family: var(--browser-font-mono, monospace);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--browser-color-text-primary);
+}
+
+.ng-editor__help-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--browser-color-text-muted);
 }
 
 /* ==========================================================================
@@ -2395,6 +2502,38 @@ body {
   cursor: default;
 }
 
+.mini-window__action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--browser-color-input-border);
+  border-radius: 6px;
+  background: var(--browser-color-input-bg);
+  color: var(--browser-color-text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: var(--browser-color-surface-muted);
+    border-color: var(--browser-color-border);
+  }
+
+  &:active {
+    background: var(--browser-color-border);
+    transform: translateY(1px);
+  }
+
+  svg {
+    color: var(--browser-color-text-muted);
+  }
+}
+
 .mini-window__note {
   margin-top: 6px;
   font-size: 11px;
@@ -3021,54 +3160,8 @@ body {
     }
   }
 
-  .ng-editor__icon-btn {
-    border-color: #f28b82;
-    background: #4a2b2b;
-    color: #f28b82;
-
-    &:hover:not(:disabled) {
-      border-color: #f6aea9;
-      background: #5a3232;
-      color: #f6aea9;
-    }
-  }
-
-  .ng-editor__help {
-    border-color: #5f6368;
-  }
-
-  .ng-editor__help-summary {
-    background: #35363a;
-    color: #e8eaed;
-  }
-
-  .ng-editor__help-label {
-    color: #9aa0a6;
-  }
-
-  .ng-editor__help-code {
-    border-color: #5f6368;
-    background: #292a2d;
-    color: #e8eaed;
-  }
-
-  .settings-page__advanced-group {
-    border-color: #5f6368;
-    box-shadow: none;
-  }
-
-  .settings-page__advanced-summary {
-    background: #35363a;
-    color: #e8eaed;
-
-    svg {
-      color: #9aa0a6;
-    }
-  }
-
   .settings-page__advanced-body {
     background: #292a2d;
-    border-top-color: #3c4043;
   }
 
   /* アクティブでない section-icon のデフォルト背景 */

@@ -6,8 +6,6 @@ import {
   ShieldAlert,
   MoreHorizontal,
   Database,
-  ChevronDown,
-  ChevronRight,
   Info,
 } from "lucide-react";
 import Form, { type IChangeEvent } from "@rjsf/core";
@@ -26,7 +24,12 @@ import React, {
   useState,
 } from "react";
 import { container } from "src/service-container/index";
-import { NGEditor } from "src/view/browser/components/NGEditor";
+import {
+  NGEditor,
+  NG_DSL_EXAMPLE,
+  NG_DSL_MULTILINE_EXAMPLE,
+} from "src/view/browser/components/NGEditor";
+import type { SettingsPage as SettingsPageType } from "src/view/browser/types";
 
 type SettingsSectionId =
   | "general"
@@ -273,7 +276,9 @@ function CustomFieldTemplate(props: FieldTemplateProps) {
     return <div style={{ display: "none" }}>{children}</div>;
   }
 
-  const hasDescription = !!(uiSchema?.["ui:description"] || schema?.description);
+  const hasDescription = !!(
+    uiSchema?.["ui:description"] || schema?.description
+  );
 
   return (
     <div className={`settings-form-field settings-form-field--${id}`}>
@@ -377,7 +382,12 @@ const SETTINGS_SECTIONS = [
         title: "画像を手動で読み込む",
         header: "読み込み設定",
       },
-      { kind: "boolean", key: "image_blur", title: "画像にぼかしを適用する", header: "ぼかし設定" },
+      {
+        kind: "boolean",
+        key: "image_blur",
+        title: "画像にぼかしを適用する",
+        header: "ぼかし設定",
+      },
       {
         kind: "number",
         key: "image_blur_length",
@@ -622,9 +632,12 @@ const widgets = {
   },
 };
 
-export const SettingsPage: React.FC = () => {
-  const [activeSectionId, setActiveSectionId] =
-    useState<SettingsSectionId>("general");
+export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({
+  page,
+}) => {
+  const [activeSectionId, setActiveSectionId] = useState<SettingsSectionId>(
+    (page.sectionId as SettingsSectionId) ?? "general",
+  );
   const [formState, setFormState] = useState<SettingsFormState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -707,7 +720,10 @@ export const SettingsPage: React.FC = () => {
         typeof parsed.activeSectionId === "string" &&
         SETTINGS_SECTION_MAP.has(parsed.activeSectionId as SettingsSectionId)
       ) {
-        setActiveSectionId(parsed.activeSectionId as SettingsSectionId);
+        // ナビゲーションで指定されたセクションがある場合は、保存された状態よりも優先する。
+        if (!page.sectionId) {
+          setActiveSectionId(parsed.activeSectionId as SettingsSectionId);
+        }
       }
       if (typeof parsed.ngAdvancedOpen === "boolean") {
         setIsNgAdvancedOpen(parsed.ngAdvancedOpen);
@@ -970,35 +986,48 @@ export const SettingsPage: React.FC = () => {
                   widgets={widgets}
                 />
 
-                  <details
-                    className="settings-page__advanced-group"
-                    open={isNgAdvancedOpen}
-                    onToggle={(event) => {
-                      const nextOpen = event.currentTarget.open;
-                      setIsNgAdvancedOpen(nextOpen);
-                    }}
-                  >
-                    <summary className="settings-page__advanced-summary">
-                      {isNgAdvancedOpen ? (
-                        <ChevronDown size={18} />
-                      ) : (
-                        <ChevronRight size={18} />
-                      )}
-                      高度なNG設定
-                    </summary>
-                    <div className="settings-page__advanced-body">
-                      <Form<SettingsSectionFormData>
-                        schema={ngAdvancedSchema}
-                        uiSchema={ngAdvancedUiSchema}
-                        validator={settingsValidator}
-                        formData={formState.ng}
-                        noHtml5Validate
-                        showErrorList={false}
-                        onChange={handleNgPartialFormChange}
-                        widgets={widgets}
-                      />
-                    </div>
-                  </details>
+                <details className="ng-editor__help">
+                  <summary className="ng-editor__help-summary">
+                    記法の例
+                  </summary>
+                  <div className="ng-editor__help-body">
+                    <div className="ng-editor__help-label">DSL</div>
+                    <pre className="ng-editor__help-code">{NG_DSL_EXAMPLE}</pre>
+                    <div className="ng-editor__help-label">複数行 DSL</div>
+                    <pre className="ng-editor__help-code">
+                      {NG_DSL_MULTILINE_EXAMPLE}
+                    </pre>
+                    <div className="ng-editor__help-label">補足</div>
+                    <p className="ng-editor__help-note">
+                      NGワードを1行に1つずつ記述します。
+                    </p>
+                  </div>
+                </details>
+
+                <details
+                  className="settings-page__advanced-group"
+                  open={isNgAdvancedOpen}
+                  onToggle={(event) => {
+                    const nextOpen = event.currentTarget.open;
+                    setIsNgAdvancedOpen(nextOpen);
+                  }}
+                >
+                  <summary className="settings-page__advanced-summary">
+                    高度なNG設定
+                  </summary>
+                  <div className="settings-page__advanced-body">
+                    <Form<SettingsSectionFormData>
+                      schema={ngAdvancedSchema}
+                      uiSchema={ngAdvancedUiSchema}
+                      validator={settingsValidator}
+                      formData={formState.ng}
+                      noHtml5Validate
+                      showErrorList={false}
+                      onChange={handleNgPartialFormChange}
+                      widgets={widgets}
+                    />
+                  </div>
+                </details>
               </>
             )}
           </div>

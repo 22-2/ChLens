@@ -1,4 +1,4 @@
-import { Ban } from "lucide-react";
+import { Ban, Settings2 } from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { MiniWindow } from "src/view/browser/components/MiniWindow";
 import { StatusBarItem } from "src/view/browser/components/StatusBar";
@@ -7,7 +7,7 @@ import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 
 export const NgStatusItem: React.FC = () => {
-  const { currentPage } = useTabStore();
+  const { currentPage, dispatch } = useTabStore();
   const {
     isNgTemporarilyDisabled,
     toggleNgTemporarilyDisabled,
@@ -37,6 +37,13 @@ export const NgStatusItem: React.FC = () => {
   }, []);
 
   const closeWindow = useCallback(() => setIsWindowOpen(false), []);
+  const handleEditNg = useCallback(() => {
+    setIsWindowOpen(false);
+    dispatch({
+      type: "NAVIGATE",
+      page: { type: "settings", title: "設定", sectionId: "ng" },
+    });
+  }, [dispatch]);
 
   if (panelKind == null) {
     return null;
@@ -101,6 +108,15 @@ export const NgStatusItem: React.FC = () => {
             <p className="mini-window__note">
               ハイライト表示はこの切り替えの対象外です
             </p>
+          </div>
+
+          <div className="mini-window__separator" />
+
+          <div className="mini-window__section">
+            <button className="mini-window__action-btn" onClick={handleEditNg}>
+              <Settings2 size={14} />
+              <span>NGワード設定を編集</span>
+            </button>
           </div>
         </MiniWindow>
       )}

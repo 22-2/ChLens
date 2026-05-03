@@ -303,7 +303,9 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 
 - [x] スレッドを自動更新・停止を右クリックメニューに追加
 - [x] ポップアップツリーもっと広く表示
-- [ ] sonnarの追加(container.notification)
+- [x] sonnarの追加(container.notification)
+- [ ] 閲覧履歴・スレ一覧未読数追加
+- [ ] 実況用・自動次スレ移動
 
 - [ ] ホームのビュー追加
   - 最近開いた板、最近開いたスレのアコーディオンを置いとくか？

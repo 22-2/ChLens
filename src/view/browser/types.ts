@@ -36,6 +36,7 @@ export interface ThreadPage {
 export interface SettingsPage {
   type: "settings";
   title: string;
+  sectionId?: string;
 }
 
 export interface BookmarkListPage {

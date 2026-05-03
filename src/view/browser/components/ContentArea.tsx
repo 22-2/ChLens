@@ -53,7 +53,7 @@ const TabPageContent = React.memo(function TabPageContent({
     case "boardList":
       return <BoardListPage />;
     case "settings":
-      return <SettingsPage />;
+      return <SettingsPage page={page} />;
     case "bookmarkList":
       return <BookmarkListPage />;
     case "historyList":
