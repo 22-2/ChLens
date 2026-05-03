@@ -1,3 +1,4 @@
+import { BBSMenu } from "src/core/parseBBSMenu";
 export interface IConfig {
   get(key: string): any;
   set(key: string, value: any): void;
@@ -164,7 +165,7 @@ export interface IBBSMenuCategory {
 }
 
 export interface IBBSMenuResult {
-  menu: IBBSMenuCategory[];
+  menu: BBSMenu[];
   status: "success" | "error";
   message?: string;
 }

@@ -31,8 +31,14 @@ export function parseBBSMenu(html: string): BBSMenu {
   const menu: BBSMenu = { name: "", categories: [] };
   let currentCategory: BBSMenuCategory | null = null;
 
+  const titleRegex = /<TITLE>(.*?)<\/TITLE>/i;
   const categoryRegex = /<BR><BR><B>(.*?)<\/B><BR>/i;
   const boardRegex = /<A HREF=(.*?)>(.*?)<\/A>/i;
+
+  const titleMatch = html.match(titleRegex);
+  if (titleMatch && titleMatch[1]) {
+    menu.name = decodeHtmlEntities(titleMatch[1].trim());
+  }
 
   for (const line of lines) {
     const trimmedLine = line.trim();

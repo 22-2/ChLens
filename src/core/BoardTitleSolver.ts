@@ -20,7 +20,7 @@ interface BBSMenuResponse {
 let _bbsmenu: Map<string, string> | null = null;
 let _bbsmenuPromise: Promise<void> | null = null;
 
-const _generateBBSMenu = ({ status, menu, message }: BBSMenuResponse): void => {
+const _generateBBSMenu = ({ status, menu, message }: any): void => {
   if (status === "error") {
     void (async () => {
       await app.defer();
@@ -36,9 +36,11 @@ const _generateBBSMenu = ({ status, menu, message }: BBSMenuResponse): void => {
   }
 
   const bbsmenu = new Map<string, string>();
-  for (const { board } of menu) {
-    for (const { url, title } of board) {
-      bbsmenu.set(url, title);
+  for (const item of menu) {
+    for (const category of item.categories) {
+      for (const board of category.boards) {
+        bbsmenu.set(board.url, board.name);
+      }
     }
   }
   _bbsmenu = bbsmenu;

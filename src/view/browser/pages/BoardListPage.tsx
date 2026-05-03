@@ -1,13 +1,33 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { container } from "src/service-container/index";
-import type { IBBSMenuCategory } from "src/service-container/interfaces";
+import { BBSMenu } from "src/core/parseBBSMenu";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 
 export const BoardListPage: React.FC = () => {
   const { dispatch } = useTabStore();
-  const [categories, setCategories] = useState<IBBSMenuCategory[]>([]);
+  const [categories, setCategories] = useState<BBSMenu[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [openStates, setOpenStates] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    const saved = container.config.get("board_list_open_states");
+    if (saved) {
+      try {
+        setOpenStates(JSON.parse(saved));
+      } catch (e) {
+        // ignore parse error
+      }
+    }
+  }, []);
+
+  const handleToggle = useCallback((id: string, isOpen: boolean) => {
+    setOpenStates((prev) => {
+      const next = { ...prev, [id]: isOpen };
+      container.config.set("board_list_open_states", JSON.stringify(next));
+      return next;
+    });
+  }, []);
 
   const fetchMenu = useCallback(async () => {
     setLoading(true);
@@ -63,20 +83,48 @@ export const BoardListPage: React.FC = () => {
 
   return (
     <div className="board-list-page">
-      {categories.map((category, i) => (
-        <details key={i} className="board-category" open>
-          <summary className="board-category__title">{category.title}</summary>
-          <ul className="board-category__list">
-            {category.board.map((board, j) => (
-              <li
-                key={j}
-                className="board-item"
-                onClick={() => handleBoardClick(board.url, board.title)}
-              >
-                {board.title}
-              </li>
-            ))}
-          </ul>
+      {categories.map((menu, i) => (
+        <details
+          key={i}
+          className="board-menu"
+          open={openStates[menu.name] ?? false}
+          onToggle={(e) => {
+            if (e.target === e.currentTarget) {
+              handleToggle(menu.name, (e.target as HTMLDetailsElement).open);
+            }
+          }}
+        >
+          <summary className="board-menu__title">{menu.name}</summary>
+          <div className="board-menu__content">
+            {menu.categories.map((category, j) => {
+              const categoryId = `${menu.name}:${category.name}`;
+              return (
+                <details
+                  key={j}
+                  className="board-category"
+                  open={openStates[categoryId] ?? false}
+                  onToggle={(e) => {
+                    if (e.target === e.currentTarget) {
+                      handleToggle(categoryId, (e.target as HTMLDetailsElement).open);
+                    }
+                  }}
+                >
+                  <summary className="board-category__title">{category.name}</summary>
+                  <ul className="board-category__list">
+                    {category.boards.map((board, k) => (
+                      <li
+                        key={k}
+                        className="board-item"
+                        onClick={() => handleBoardClick(board.url, board.name)}
+                      >
+                        {board.name}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              );
+            })}
+          </div>
         </details>
       ))}
     </div>

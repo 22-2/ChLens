@@ -56,6 +56,7 @@ body {
   --browser-color-status-active-bg: #007acc;
   --browser-color-status-active-fg: #fff;
   --browser-color-status-default-fg: var(--browser-color-text-muted);
+  --browser-color-list-hover-bg: #f1f3f4;
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -930,11 +931,9 @@ body {
   padding: 8px 0;
 }
 
-.board-category {
-  border-bottom: 1px solid #f0f0f0;
-}
-
+.board-menu__title,
 .board-category__title {
+  display: block;
   font-size: 13px;
   font-weight: 600;
   padding: 8px 16px;
@@ -942,12 +941,20 @@ body {
   cursor: pointer;
   user-select: none;
   list-style: none;
+  transition: background-color 0.15s;
 }
 
+.board-menu__title:hover,
+.board-category__title:hover {
+  background-color: var(--browser-color-list-hover-bg);
+}
+
+.board-menu__title::-webkit-details-marker,
 .board-category__title::-webkit-details-marker {
   display: none;
 }
 
+.board-menu__title::before,
 .board-category__title::before {
   content: "▸";
   display: inline-block;
@@ -955,15 +962,19 @@ body {
   transition: transform 0.15s;
 }
 
+.board-menu[open] > .board-menu__title::before,
 .board-category[open] > .board-category__title::before {
   transform: rotate(90deg);
+}
+
+.board-menu__content {
+  padding-left: 12px;
 }
 
 .board-category__list {
   list-style: none;
   padding: 0 0 4px;
 }
-
 .board-item {
   padding: 4px 16px 4px 32px;
   cursor: pointer;
@@ -973,7 +984,7 @@ body {
 }
 
 .board-item:hover {
-  background: #f1f3f4;
+  background: var(--browser-color-list-hover-bg);
 }
 
 /* ==========================================================================
@@ -1025,7 +1036,7 @@ body {
 }
 
 .simple-data-table__row:hover {
-  background: #f8f9fa;
+  background: var(--browser-color-list-hover-bg);
 }
 
 .simple-data-table__num {
@@ -2810,6 +2821,7 @@ body {
   /* --- ステータスバー --- */
   --browser-color-status-active-bg: #1a6fc4;
   --browser-color-status-active-fg: #fff;
+  --browser-color-list-hover-bg: #3c4043;
 
   /* スクロールバーなどのブラウザ標準UIをダークに */
   color-scheme: dark;
@@ -3030,7 +3042,7 @@ body {
 
   /* --- 板一覧 --- */
   .board-category {
-    border-bottom-color: #3c4043;
+    border-bottom-color: transparent;
   }
 
   .board-category__title {
