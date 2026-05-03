@@ -3531,4 +3531,21 @@ body {
   .mini-window__close:hover {
     background: #3c4043;
   }
+
+  /* --- Sonner トースト通知 ---
+     sonner のダークモードデフォルト (--normal-bg: #000) は真っ黒すぎて
+     Chrome 風ダークパレットから浮いてしまうため、サーフェスカラーを統一する。
+     具体的には:
+       - 背景: タブストリップと同じ #292a2d
+       - ホバー背景: surface-muted と同じ #35363a
+       - ボーダー: border と同じ #3c4043
+       - テキスト: text-primary と同じ #e8eaed
+  */
+  [data-sonner-toast] {
+    --normal-bg: #292a2d;
+    --normal-bg-hover: #35363a;
+    --normal-border: #3c4043;
+    --normal-border-hover: #5f6368;
+    --normal-text: #e8eaed;
+  }
 }

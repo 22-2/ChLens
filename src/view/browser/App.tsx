@@ -75,7 +75,6 @@ export const BrowserApp: React.FC = () => {
                   }}
                   duration={1500}
                   closeButton
-                  richColors
                 />
                 <div className="browser-shell__chrome">
                   <TabBar />
