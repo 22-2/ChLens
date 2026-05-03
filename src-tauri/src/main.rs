@@ -2,5 +2,5 @@
 #![cfg_attr(all(), windows_subsystem = "windows")]
 
 fn main() {
-  app_lib::run();
+  chlens_lib::run();
 }
