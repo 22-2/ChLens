@@ -19,7 +19,7 @@ export * from "./app/ImageExt";
 
 import { log, criticalError, assertArg } from "./app/Log";
 import { defer } from "./app/Defer";
-import { deepCopy, replaceAll, escapeHtml, safeHref, clipboardWrite } from "./app/Util";
+import { deepCopy, replaceAll, escapeHtml, safeHref } from "./app/Util";
 import messageInstance from "./app/Message";
 import CallbacksClass from "./app/Callbacks";
 import LocalStorageClass from "./app/LocalStorage";
@@ -34,7 +34,6 @@ const appObj: any = {
   replaceAll,
   escapeHtml,
   safeHref,
-  clipboardWrite,
   message: messageInstance,
   Callbacks: CallbacksClass,
   LocalStorage: LocalStorageClass,
