@@ -5,6 +5,8 @@ import {
   SimpleDataTable,
 } from "src/view/browser/components/SimpleDataTable";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
+
 
 type SortDirection = "asc" | "desc";
 type SortColumn =
@@ -275,33 +277,44 @@ export const BookmarkListPage: React.FC = () => {
     return sorted;
   }, [entries, searchQuery, sortState]);
 
-  const openThread = useCallback(
+  const openEntry = useCallback(
     (entry: BookmarkEntry) => {
+      const parsed = parseInternalBrowserPage(entry.url);
+      if (!parsed) return;
+
       dispatch({
         type: "NAVIGATE",
         page: {
-          type: "thread",
+          ...parsed,
           title: entry.title,
-          threadUrl: entry.url,
+          ...(parsed.type === "threadList"
+            ? { boardTitle: entry.boardTitle || entry.title }
+            : {}),
         },
       });
     },
     [dispatch],
   );
 
-  const openThreadInNewTab = useCallback(
+  const openEntryInNewTab = useCallback(
     (entry: BookmarkEntry) => {
+      const parsed = parseInternalBrowserPage(entry.url);
+      if (!parsed) return;
+
       dispatch({
         type: "OPEN_IN_NEW_TAB",
         page: {
-          type: "thread",
+          ...parsed,
           title: entry.title,
-          threadUrl: entry.url,
+          ...(parsed.type === "threadList"
+            ? { boardTitle: entry.boardTitle || entry.title }
+            : {}),
         },
       });
     },
     [dispatch],
   );
+
 
   if (loading) {
     return <div className="page-status">読み込み中...</div>;
@@ -330,8 +343,9 @@ export const BookmarkListPage: React.FC = () => {
         columns={COLUMNS}
         rows={filtered}
         getRowKey={(row) => row.url}
-        onRowClick={openThread}
-        onRowMiddleClick={openThreadInNewTab}
+        onRowClick={openEntry}
+        onRowMiddleClick={openEntryInNewTab}
+
         sortColumn={sortState.column ?? undefined}
         sortDirection={sortState.direction}
         onSort={handleSort}

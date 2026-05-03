@@ -5,6 +5,8 @@ import {
   SimpleDataTable,
 } from "src/view/browser/components/SimpleDataTable";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
+
 import {
   formatCompactDateTime,
   normalizeLegacyTimestamp,
@@ -268,33 +270,38 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
     return sorted;
   }, [entries, searchQuery, sortState]);
 
-  const openThread = useCallback(
+  const openEntry = useCallback(
     (entry: WriteHistoryEntry) => {
+      const parsed = parseInternalBrowserPage(entry.url);
+      if (!parsed) return;
+
       dispatch({
         type: "NAVIGATE",
         page: {
-          type: "thread",
+          ...parsed,
           title: entry.title,
-          threadUrl: entry.url,
         },
       });
     },
     [dispatch],
   );
 
-  const openThreadInNewTab = useCallback(
+  const openEntryInNewTab = useCallback(
     (entry: WriteHistoryEntry) => {
+      const parsed = parseInternalBrowserPage(entry.url);
+      if (!parsed) return;
+
       dispatch({
         type: "OPEN_IN_NEW_TAB",
         page: {
-          type: "thread",
+          ...parsed,
           title: entry.title,
-          threadUrl: entry.url,
         },
       });
     },
     [dispatch],
   );
+
 
   if (loading) {
     return <div className="page-status">読み込み中...</div>;
@@ -325,8 +332,9 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
         columns={COLUMNS}
         rows={filtered}
         getRowKey={(row) => `${row.url}:${row.originalIndex}`}
-        onRowClick={openThread}
-        onRowMiddleClick={openThreadInNewTab}
+        onRowClick={openEntry}
+        onRowMiddleClick={openEntryInNewTab}
+
         sortColumn={sortState.column ?? undefined}
         sortDirection={sortState.direction}
         onSort={handleSort}

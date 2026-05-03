@@ -10,6 +10,8 @@ import {
   normalizeLegacyTimestamp,
 } from "src/view/browser/utils/date-time";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
+import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
+
 
 const PAGE_SIZE = 500;
 const LOAD_MORE_THRESHOLD = 12;
@@ -307,33 +309,44 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({ tabId }) => {
     return sorted;
   }, [entries, searchQuery, sortState]);
 
-  const openThread = useCallback(
+  const openEntry = useCallback(
     (entry: HistoryEntry) => {
+      const parsed = parseInternalBrowserPage(entry.url);
+      if (!parsed) return;
+
       dispatch({
         type: "NAVIGATE",
         page: {
-          type: "thread",
+          ...parsed,
           title: entry.title,
-          threadUrl: entry.url,
+          ...(parsed.type === "threadList"
+            ? { boardTitle: entry.boardTitle || entry.title }
+            : {}),
         },
       });
     },
     [dispatch],
   );
 
-  const openThreadInNewTab = useCallback(
+  const openEntryInNewTab = useCallback(
     (entry: HistoryEntry) => {
+      const parsed = parseInternalBrowserPage(entry.url);
+      if (!parsed) return;
+
       dispatch({
         type: "OPEN_IN_NEW_TAB",
         page: {
-          type: "thread",
+          ...parsed,
           title: entry.title,
-          threadUrl: entry.url,
+          ...(parsed.type === "threadList"
+            ? { boardTitle: entry.boardTitle || entry.title }
+            : {}),
         },
       });
     },
     [dispatch],
   );
+
 
   const handleEndReached = useCallback(() => {
     if (
@@ -387,8 +400,9 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({ tabId }) => {
           columns={COLUMNS}
           rows={filtered}
           getRowKey={(row) => row.url}
-          onRowClick={openThread}
-          onRowMiddleClick={openThreadInNewTab}
+          onRowClick={openEntry}
+          onRowMiddleClick={openEntryInNewTab}
+
           sortColumn={sortState.column ?? undefined}
           sortDirection={sortState.direction}
           onSort={handleSort}

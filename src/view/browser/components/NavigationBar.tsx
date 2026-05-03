@@ -30,6 +30,8 @@ import {
   getCurrentPage,
   getDisplayUrl,
 } from "src/view/browser/types";
+import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
+
 
 interface MenuPosition {
   x: number;
@@ -44,29 +46,15 @@ function navigateByUrl(
   const trimmed = url.trim();
   if (!trimmed) return;
 
-  // スレッドURL判定: /test/read.cgi/ を含む
-  if (/\/test\/read\.cgi\//.test(trimmed)) {
+  const parsed = parseInternalBrowserPage(trimmed);
+  if (parsed) {
     dispatch({
       type: "NAVIGATE",
-      page: { type: "thread", title: trimmed, threadUrl: trimmed },
+      page: parsed,
     });
-    return;
-  }
-
-  // 板URL判定: http(s)で始まるURL
-  if (/^https?:\/\//.test(trimmed)) {
-    dispatch({
-      type: "NAVIGATE",
-      page: {
-        type: "threadList",
-        title: trimmed,
-        boardUrl: trimmed,
-        boardTitle: trimmed,
-      },
-    });
-    return;
   }
 }
+
 
 export const NavigationBar: React.FC = () => {
   const { state, activeTab, currentPage, dispatch } = useTabStore();
