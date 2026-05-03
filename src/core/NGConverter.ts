@@ -1,4 +1,5 @@
-import { TYPE, parse as parseDSL } from "src/core/NG.js";
+import { TYPE, parse as parseDSL } from "src/core/NG";
+import { InternalNGElement } from "src/core/NGTypes";
 import { stringifyNgDslSitesValue, stringifyNgDslValue } from "src/core/ngDsl";
 
 export interface NGRule {
@@ -25,20 +26,6 @@ export interface NGRule {
   andConditions?: Omit<NGRule, "andConditions">[];
   ignoreResNumber?: string;
   name?: string;
-}
-
-interface InternalNGElement {
-  type: string;
-  word: string;
-  exception: boolean;
-  scope?: { value: string | string[] };
-  params?: Record<string, string>;
-  expire?: number;
-  name?: string;
-  start?: string;
-  finish?: string;
-  subElements?: InternalNGElement[];
-  [key: string]: unknown;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

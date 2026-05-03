@@ -5,7 +5,7 @@ import {
   convertUserToInternal,
 } from "src/core/NGConverter";
 
-vi.mock("src/core/NG.js", () => ({
+vi.mock("src/core/NG", () => ({
   TYPE: {
     REG_EXP: "RegExp",
     REG_EXP_TITLE: "RegExpTitle",

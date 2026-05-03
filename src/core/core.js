@@ -14,7 +14,7 @@ import * as History from "src/core/History.js";
 import * as HTTP from "src/core/HTTP.ts";
 import * as ImageReplaceDat from "src/core/ImageReplaceDat.js";
 import * as util from "src/core/jsutil.js";
-import * as NG from "src/core/NG.js";
+import * as NG from "src/core/NG";
 import Notification from "src/core/Notification.js";
 import * as ReadState from "src/core/ReadState.js";
 import * as ReplaceStrTxt from "src/core/ReplaceStrTxt.js";
