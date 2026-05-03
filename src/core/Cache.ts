@@ -126,7 +126,7 @@ export default class Cache {
     } catch (e) {
       const error = e as Error;
       if (error.message !== "キャッシュが存在しません") {
-        console.error("Cache::get: トランザクション中断");
+        console.error("Cache::get: トランザクション中断", error);
       }
       throw e;
     }
@@ -135,20 +135,35 @@ export default class Cache {
   /**
    * キャッシュを保存します
    */
-  async put(): Promise<void> {
+  async put(
+    data?: string,
+    options?: { lastModified?: number; etag?: string },
+  ): Promise<void> {
+    // 引数が渡された場合はプロパティを更新
+    if (data !== undefined) {
+      this.data = data;
+      this.lastUpdated = Date.now();
+    }
+    if (options?.lastModified !== undefined) {
+      this.lastModified = options.lastModified;
+    }
+    if (options?.etag !== undefined) {
+      this.etag = options.etag;
+    }
+
     // データの妥当性を検証
     if (!this._validateData()) {
       throw new Error("キャッシュしようとしたデータが不正です");
     }
 
     // NULLを空白に置換
-    const data =
+    const dataToStore =
       this.data != null ? this.data.replaceAll("\u0000", "\u0020") : null;
 
     try {
       await Cache._getStore().put({
         url: this.key,
-        data,
+        data: dataToStore,
         parsed: this.parsed || null,
         last_updated: this.lastUpdated,
         last_modified: this.lastModified || null,
@@ -158,7 +173,7 @@ export default class Cache {
         readcgi_ver: this.readcgiVer || null,
       });
     } catch (e) {
-      console.error("Cache::put: トランザクション中断");
+      console.error("Cache::put: トランザクション中断", e);
       throw e;
     }
   }

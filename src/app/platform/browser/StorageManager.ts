@@ -44,14 +44,52 @@ const BrowserKeyValueStore: KeyValueStore = {
  * ブラウザ拡張機能環境用のObjectStore実装 (IndexedDBをラップ)
  */
 class BrowserObjectStore implements ObjectStore {
+  private static dbCache = new Map<string, IDBDatabase>();
+
   constructor(private dbName: string) {}
 
   private async getDB(): Promise<IDBDatabase> {
-    return new Promise((resolve, reject) => {
-      const req = indexedDB.open(this.dbName);
+    // 既存の接続をキャッシュから取得
+    if (BrowserObjectStore.dbCache.has(this.dbName)) {
+      const cachedDb = BrowserObjectStore.dbCache.get(this.dbName)!;
+      // キャッシュされたDBが有効か確認
+      if (!cachedDb.objectStoreNames.contains(this.dbName)) {
+        // オブジェクトストアが存在しない場合はキャッシュをクリア
+        BrowserObjectStore.dbCache.delete(this.dbName);
+      } else {
+        return cachedDb;
+      }
+    }
+
+    // 新しい接続を作成
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const req = indexedDB.open(this.dbName, 2);
       req.onerror = () => reject(req.error);
       req.onsuccess = () => resolve(req.result);
+      req.onupgradeneeded = (event: IDBVersionChangeEvent) => {
+        const db = (event.target as IDBOpenDBRequest).result;
+        const tx = (event.target as IDBOpenDBRequest).transaction;
+        if (!tx) {
+          reject(new Error("Transaction not available"));
+          return;
+        }
+
+        // オブジェクトストアが存在しない場合は作成
+        if (!db.objectStoreNames.contains(this.dbName)) {
+          console.log(`[BrowserObjectStore] Creating object store: ${this.dbName}`);
+          const objStore = db.createObjectStore(this.dbName, { keyPath: "url" });
+          objStore.createIndex("last_updated", "last_updated", {
+            unique: false,
+          });
+          objStore.createIndex("last_modified", "last_modified", {
+            unique: false,
+          });
+        }
+      };
     });
+
+    BrowserObjectStore.dbCache.set(this.dbName, db);
+    return db;
   }
 
   async get(key: string): Promise<any> {

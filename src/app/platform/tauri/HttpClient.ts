@@ -16,11 +16,15 @@ export const TauriHttpClient: HttpClient = {
     url: string,
     options: HttpRequestOptions = {},
   ): Promise<HttpResponse> {
+    console.log(`[TauriHttpClient] Fetching: ${url}`, options);
+
     const response = await tauriFetch(url, {
       method: options.method || "GET",
       headers: options.headers,
       body: options.body,
     });
+
+    console.log(`[TauriHttpClient] Response status: ${response.status}`);
 
     const headers: Record<string, string> = {};
     response.headers.forEach((value: string, key: string) => {
@@ -29,9 +33,22 @@ export const TauriHttpClient: HttpClient = {
 
     // XHRのoverrideMimeTypeと同様に、mimeTypeのcharsetを優先してデコードする
     const charset = options.mimeType ? extractCharset(options.mimeType) : null;
-    const body = charset
-      ? new TextDecoder(charset).decode(await response.arrayBuffer())
-      : await response.text();
+    let body: string;
+
+    try {
+      if (charset) {
+        // Shift_JISなどのレガシーエンコーディングをサポート
+        console.log(`[TauriHttpClient] Decoding with charset: ${charset}`);
+        body = new TextDecoder(charset).decode(await response.arrayBuffer());
+      } else {
+        body = await response.text();
+      }
+      console.log(`[TauriHttpClient] Body length: ${body.length}`);
+    } catch (e) {
+      console.error(`[TauriHttpClient] Failed to decode response with charset ${charset}:`, e);
+      // フォールバック: UTF-8として読み込む
+      body = await response.text();
+    }
 
     return {
       status: response.status,
