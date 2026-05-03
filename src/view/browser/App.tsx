@@ -69,6 +69,11 @@ export const BrowserApp: React.FC = () => {
                 <Toaster
                   position="top-right"
                   theme={theme === "dark" ? "dark" : "light"}
+                  offset={{
+                    top: "88px",
+                    right: "78px",
+                  }}
+                  duration={1500}
                   closeButton
                   richColors
                 />
