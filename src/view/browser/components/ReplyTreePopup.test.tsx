@@ -5,6 +5,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
   within,
 } from "@testing-library/react";
 import type { IRes } from "src/service-container";
@@ -53,9 +54,36 @@ const BASE_PROPS: React.ComponentProps<typeof ReplyTreePopup> = {
 
 describe("ReplyTreePopup", () => {
   const writeText = vi.fn<() => Promise<void>>();
+  const writeClipboard = vi.fn<() => Promise<void>>();
+  const clipboardItemCtor = vi.fn();
+  class ClipboardItemMock {
+    public readonly items: Record<string, Blob>;
+
+    constructor(items: Record<string, Blob>) {
+      this.items = items;
+      clipboardItemCtor(items);
+    }
+  }
+  const canvasContextStub = {
+    beginPath: vi.fn(),
+    clearRect: vi.fn(),
+    fillRect: vi.fn(),
+    fillText: vi.fn(),
+    lineTo: vi.fn(),
+    measureText: vi.fn((text: string) => ({ width: text.length * 7 })),
+    moveTo: vi.fn(),
+    scale: vi.fn(),
+    stroke: vi.fn(),
+    strokeRect: vi.fn(),
+    fillStyle: "",
+    font: "",
+    lineWidth: 1,
+    strokeStyle: "",
+  };
 
   beforeEach(() => {
     writeText.mockResolvedValue();
+    writeClipboard.mockResolvedValue();
     vi.stubGlobal(
       "requestAnimationFrame",
       (callback: FrameRequestCallback): number => {
@@ -67,15 +95,28 @@ describe("ReplyTreePopup", () => {
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
       value: {
+        write: writeClipboard,
         writeText,
       },
     });
+    vi.stubGlobal("ClipboardItem", ClipboardItemMock);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
+      () => canvasContextStub as unknown as CanvasRenderingContext2D,
+    );
+    vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation(
+      (callback: BlobCallback) => {
+        callback(new Blob(["png"], { type: "image/png" }));
+      },
+    );
   });
 
   afterEach(() => {
     cleanup();
     writeText.mockReset();
+    writeClipboard.mockReset();
+    clipboardItemCtor.mockReset();
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it("参照元レスと返信レスを分けて表示する", () => {
@@ -119,6 +160,20 @@ describe("ReplyTreePopup", () => {
     expect(writeText.mock.calls[0]?.[0]).toContain("4 name-4");
   });
 
+  it("返信ツリー専用メニューから画像としてコピーできる", async () => {
+    render(<ReplyTreePopup {...BASE_PROPS} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "返信ツリーメニュー" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "返信ツリーを画像としてコピー" }),
+    );
+
+    await waitFor(() => {
+      expect(writeClipboard).toHaveBeenCalledOnce();
+    });
+    expect(clipboardItemCtor).toHaveBeenCalledOnce();
+  });
+
   it("返信ツリーメニューは outside click で閉じる", () => {
     render(<ReplyTreePopup {...BASE_PROPS} />);
 
@@ -126,11 +181,17 @@ describe("ReplyTreePopup", () => {
     expect(
       screen.getByRole("button", { name: "返信ツリーを一括コピー" }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "返信ツリーを画像としてコピー" }),
+    ).toBeInTheDocument();
 
     fireEvent.mouseDown(document.body);
 
     expect(
       screen.queryByRole("button", { name: "返信ツリーを一括コピー" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "返信ツリーを画像としてコピー" }),
     ).not.toBeInTheDocument();
   });
 

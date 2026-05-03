@@ -315,3 +315,4 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 - [ ] 板、スレ、ホーム、板一覧にそれぞれタブアイコンをつける
 - [x] 自動スクロール中、書き込み欄を展開しても一番下に固定されるように
 - [x] ctrl+enterで書き込むオプション
+- [ ] 板一覧はtreeに

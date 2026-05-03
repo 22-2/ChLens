@@ -106,6 +106,28 @@ export async function copyText(text: string): Promise<void> {
     textarea.remove();
   }
 }
+
+export function canCopyImageToClipboard(): boolean {
+  return (
+    typeof navigator !== "undefined" &&
+    typeof navigator.clipboard?.write === "function" &&
+    typeof globalThis.ClipboardItem !== "undefined"
+  );
+}
+
+export async function copyImageBlob(blob: Blob): Promise<void> {
+  if (!canCopyImageToClipboard()) {
+    throw new Error("Image clipboard API is not available");
+  }
+
+  // 画像コピーはテキストのような安全なフォールバックがないため、
+  // 対応ブラウザだけで明示的に ClipboardItem を使う。
+  await navigator.clipboard.write([
+    new globalThis.ClipboardItem({
+      [blob.type]: blob,
+    }),
+  ]);
+}
 // --- フィルタ判定 ---
 export function hasImage(message: string): boolean {
   return (
