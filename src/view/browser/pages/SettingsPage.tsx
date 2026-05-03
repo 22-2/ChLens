@@ -276,15 +276,15 @@ const SETTINGS_SECTIONS = [
       //   options: AA_FONT_OPTIONS,
       //   widget: "radio",
       // },
-      {
-        kind: "number",
-        key: "aa_min_ratio",
-        title: "AA最小縮小率",
-        description: "AAを自動縮小する下限値です。",
-        minimum: 1,
-        maximum: 100,
-        step: 1,
-      },
+      // {
+      //   kind: "number",
+      //   key: "aa_min_ratio",
+      //   title: "AA最小縮小率",
+      //   description: "AAを自動縮小する下限値です。",
+      //   minimum: 1,
+      //   maximum: 100,
+      //   step: 1,
+      // },
       {
         kind: "string",
         key: "format_2chnet",
@@ -305,20 +305,20 @@ const SETTINGS_SECTIONS = [
         key: "dblclick_reload",
         title: "空白をダブルクリックで更新する",
       },
-      {
-        kind: "number",
-        key: "auto_load_second",
-        title: "スレッド自動更新間隔 (秒)",
-        minimum: 0,
-        step: 1,
-      },
-      {
-        kind: "number",
-        key: "auto_load_second_board",
-        title: "板自動更新間隔 (秒)",
-        minimum: 0,
-        step: 1,
-      },
+      // {
+      //   kind: "number",
+      //   key: "auto_load_second",
+      //   title: "スレッド自動更新間隔 (秒)",
+      //   minimum: 0,
+      //   step: 1,
+      // },
+      // {
+      //   kind: "number",
+      //   key: "auto_load_second_board",
+      //   title: "板自動更新間隔 (秒)",
+      //   minimum: 0,
+      //   step: 1,
+      // },
       // {
       //   kind: "number",
       //   key: "auto_load_second_bookmark",
@@ -339,15 +339,15 @@ const SETTINGS_SECTIONS = [
       //   options: AUTO_LOAD_MOVE_OPTIONS,
       //   widget: "radio",
       // },
-      {
-        kind: "number",
-        key: "live_style_playback_rate",
-        title: "ライブチャット風の再生速度",
-        description: "auto_load_move が live_style の時に使われます。",
-        minimum: 1,
-        maximum: 10,
-        step: 0.5,
-      },
+      // {
+      //   kind: "number",
+      //   key: "live_style_playback_rate",
+      //   title: "ライブチャット風の再生速度",
+      //   description: "auto_load_move が live_style の時に使われます。",
+      //   minimum: 1,
+      //   maximum: 10,
+      //   step: 0.5,
+      // },
     ],
   ),
   defineSection(
@@ -540,8 +540,8 @@ const SETTINGS_SECTIONS = [
     // },
   ]),
   defineSection("other", "その他", "書き込み時の既定値や外部データ設定です。", [
-    { kind: "string", key: "default_name", title: "既定の名前" },
-    { kind: "string", key: "default_mail", title: "既定のメール欄" },
+    // { kind: "string", key: "default_name", title: "既定の名前" },
+    // { kind: "string", key: "default_mail", title: "既定のメール欄" },
     {
       kind: "number",
       key: "bbsmenu_update_interval",
@@ -975,14 +975,7 @@ export const SettingsPage: React.FC = () => {
             {activeSection.description}
           </p>
           <p className="settings-page__note">
-            旧設定画面の保存形式をそのまま使いながら、React版で利用頻度の高い項目から段階的に移植しています。
-          </p>
-          <p className="settings-page__autosave-status">
-            {autoSaveError
-              ? `自動保存エラー: ${autoSaveError}`
-              : savingSectionId === activeSection.id
-                ? "自動保存中..."
-                : "変更は自動保存されます"}
+            設定は自動保存されます
           </p>
 
           <div className="settings-page__form">
