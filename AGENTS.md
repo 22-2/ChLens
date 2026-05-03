@@ -2,82 +2,57 @@
 
 ### Project Overview
 
-これは、TypeScriptとSCSSを使用して構築された5ch互換掲示板ブラウザ拡張機能（ChromeおよびFirefox）です。
+これは、TypeScript (React) と SCSS を使用して構築された 5ch 互換掲示板クライアントです。
+ブラウザ拡張機能（Chrome/Firefox）およびデスクトップアプリ（Tauri）として動作します。
 
 *   **パッケージマネージャ:** pnpm
-*   **ビルドシステム:** Gulp + Rolldown (Rollupの後継)
-*   **言語/テンプレート:** TypeScript, SCSS, Pug
-*   **テスト環境:** Playwright (E2Eテスト)
+*   **ビルドシステム:** Vite
+*   **言語/UIライブラリ:** TypeScript, React, SCSS, Pug (HTMLテンプレート用)
+*   **プラットフォーム:** Chrome, Firefox, Tauri
+*   **テスト環境:** Vitest (ユニットテスト), Playwright (E2Eテスト)
 
 ### Building instructions
 
-ビルドとウォッチはGulpタスクを通じて実行されます。変更をコミットする前に、Rolldownが正常に完了し、エラーが出ていないことを確認してください。
+ビルドは Vite を通じて行われます。`PLATFORM` 環境変数でターゲットを指定します。
 
-*   **Chrome向け開発ビルドを実行:**
+*   **Chrome 向けビルド:**
     ```bash
     pnpm run build:chrome
     ```
-*   **Firefox向け開発ビルドを実行:**
+*   **Tauri (Windows) 向けビルド:**
+    ```bash
+    pnpm run build:tauri
+    ```
+*   **Firefox 向けビルド:**
     ```bash
     pnpm run build:firefox
     ```
-*   **開発中にファイルの変更を監視（Chrome用）:**
+*   **開発中のウォッチモード (Chrome):**
     ```bash
     pnpm run watch:chrome
-    ```
-*   **すべてのファイルとバンドルをクリーンアップ:**
-    ```bash
-    pnpm run clean
     ```
 *   **すべてのビルドとパッケージの作成:**
     ```bash
     pnpm run pack:all
     ```
 
-### Testing instructions
+### Architecture & Design Decisions
 
-すべてのコード変更は、自動テストとリンティングチェックをパスする必要があります。
-
-*   **すべてのテスト（Playwright E2E）を実行:**
-    ```bash
-    pnpm test
-    ```
-*   **Playwright UIモードでテストを実行 (デバッグ用):**
-    ```bash
-    pnpm test:ui
-    ```
-*   **リンティングとコードフォーマットを修正:**
-    ```bash
-    pnpm lint
-    ```
-*   **TypeScriptの型チェック:**
-    ```bash
-    pnpm tsc
-    ```
-
-> **注意:** 拡張機能のテストは、`tests/fixtures.mts`で定義されたカスタムPlaywrightフィクスチャを使用し、ローカルの`debug/chrome`ディレクトリをロードして実行されます。テスト失敗の原因が拡張機能の読み込みにある場合は、フィクスチャ定義を確認してください。
+*   **単一ビューへの集約:** 以前は複数のビュー（bookmark, thread等）がありましたが、現在は `src/view/browser` (Reactベース) に全ての機能が統合されています。
+*   **グローバル `app` の廃止:** レガシーな `window.app` への直接参照は非推奨です。新しいモジュールは ES module インポートを使用してください。
+*   **サービスコンテナ:** 依存注入（DI）には `src/service-container/` を使用しています。
+*   **スタイル管理:** 全てのスタイルは `src/bundle.scss` に集約され、ビルド時に単一の CSS ファイルとして出力されます。
+*   **Tauri シム:** Tauri 環境では拡張機能 API が存在しないため、`src/browser-shim.js` を通じてシムを提供しています。
 
 ### Coding Conventions
 
-*   **ファイルの種類:** `src/app/`以下のコアロジックはTypeScriptで記述します。
-*   **SCSS:** `src/_common.scss`に共通の変数とミックスインが定義されています。UIのスタイル調整時にはこれを参照してください。
-*   **HTMLテンプレート:** Pug形式（`.pug`）で記述されています。HTMLへの変換はビルド時に行われます。
-*   **`src/app.ts` の `config`:** iframeのコンテキスト内外で設定に安定してアクセスするためにProxyが使用されています。設定値の読み書きの際は、このProxy機構を意識して修正してください。
-
-### New Feature Highlights (Context for Recent Changes)
-
-AIエージェントが最近導入された機能に取り組む際は、以下のファイルの変更点を参照してください。
-
-*   **NG/ハイライト機能の拡張:**
-    *   `src/core/NG.js`: NGワードにスコープ（適用範囲）とハイライト用パラメータ（`bgColor`, `label`）が追加されました。
-    *   `src/core/Board.js`: NGチェックの結果に基づき、スレッド一覧でハイライトを適用するロジックが追加されました。
-*   **ビルドシステムの移行:**
-    *   `gulp/config.js`, `gulp/js.js`, `gulp/plugins.js`: Rollup関連の参照はすべてRolldownに置き換えられました。バンドルに関する問題をデバッグする場合は、これらの設定ファイルを参照してください。
-*   **メディアズームの改善:**
-    *   `src/ui/MediaContainer.js`: サムネイルズームが「ホバー」だけでなく「クリックトグル」でも動作するように拡張されました。設定名も`hover_zoom_*`から`zoom_*_mode`に変更されています。
+*   **ES Modules:** 名前付きエクスポートを優先してください。
+*   **型定義:** `any` の使用は避け、厳密な型定義を心がけてください。
+*   **プラットフォーム抽象化:** ストレージや通信などのプラットフォーム固有の機能は `src/app/platform/` 以下のインターフェースを通じて利用してください。
+*   **意図の明文化:** バグ修正や意図的な変更を行う際は、コード内に「なぜそのように書いたか」という背景をコメントとして残してください。
 
 ### PR instructions
 
 *   **Title format:** `[<module_name>] <Descriptive Title>` (例: `[thread] Add filter functionality`)
-*   **Pre-commit check:** `pnpm lint` および `pnpm test` を必ず実行し、変更がクリーンであることを確認してください。
+*   **Pre-commit check:** `pnpm lint` および `pnpm tsc` を実行し、型エラーやリンターエラーがないことを確認してください。
 *   **コミットメッセージ:** 変更の意図が明確になるよう、詳細な説明を含めてください。
