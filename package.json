@@ -1,6 +1,6 @@
 {
-  "name": "read.crx-2",
-  "version": "0.0.0",
+  "name": "chlens",
+  "version": "3.0.0",
   "engines": {
     "node": ">=18.0"
   },
