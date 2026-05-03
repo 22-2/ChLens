@@ -1,26 +1,9 @@
 const sassCompiler = require("sass");
 const sass = require("gulp-sass")(sassCompiler);
-// Some gulp plugins moved to ESM default exports in newer versions.
-// This loader keeps existing CommonJS task code working across both module formats.
-const loadPlugin = (id) => {
-  try {
-    const mod = require(id);
-    return mod && typeof mod === "object" && "default" in mod ? mod.default : mod;
-  } catch (e) {
-    // ESMモジュールの場合はrequireが失敗するため、動的importを使用
-    if (e.code === "ERR_REQUIRE_ESM") {
-      throw new Error(
-        `ESM module "${id}" cannot be loaded with require(). ` +
-        `Please use dynamic import() instead or update the build configuration.`
-      );
-    }
-    throw e;
-  }
-};
 
-// ESMモジュールを動的にインポート
-const loadPluginAsync = async (id) => {
-  const mod = await import(id);
+// ESMモジュールをrequireで読み込むためのヘルパー
+const loadPlugin = (id) => {
+  const mod = require(id);
   return mod && typeof mod === "object" && "default" in mod ? mod.default : mod;
 };
 
@@ -37,7 +20,6 @@ module.exports = {
   gulp: {
     gulp: require("gulp"),
     plumber: require("gulp-plumber"),
-    filter: require("gulp-filter"),
     concat: require("gulp-concat"),
     notify: require("gulp-notify"),
     merge: require("merge2"),

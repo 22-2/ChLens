@@ -362,3 +362,4 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 ## メタ
 
 - [x] 専ブラの名前
+- [ ] ビルドの単純化

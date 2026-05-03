@@ -20,9 +20,8 @@ var view = function (browser) {
   const output = paths.output[browser] + "/view";
   return () =>
     gulp
-      .src(paths.html.view, { since: gulp.lastRun(view) })
+      .src(paths.html.view, { since: gulp.lastRun(view), ignore: ["**/_*.pug"] })
       .pipe($.plumber(util.onPugError))
-      .pipe($.filter(paths.html.notBasePugs))
       .pipe($.pug(pugOptions[browser]))
       .pipe(gulp.dest(output));
 };
@@ -31,9 +30,8 @@ var zombie = function (browser) {
   const output = paths.output[browser];
   return () =>
     gulp
-      .src(paths.html.zombie, { since: gulp.lastRun(zombie) })
+      .src(paths.html.zombie, { since: gulp.lastRun(zombie), ignore: ["**/_*.pug"] })
       .pipe($.plumber(util.onPugError))
-      .pipe($.filter(paths.html.notBasePugs))
       .pipe($.pug(pugOptions[browser]))
       .pipe(gulp.dest(output));
 };
@@ -42,9 +40,8 @@ var write = function (browser) {
   const output = paths.output[browser] + "/write";
   return () =>
     gulp
-      .src(paths.html.write, { since: gulp.lastRun(write) })
+      .src(paths.html.write, { since: gulp.lastRun(write), ignore: ["**/_*.pug"] })
       .pipe($.plumber(util.onPugError))
-      .pipe($.filter(paths.html.notBasePugs))
       .pipe($.pug(pugOptions[browser]))
       .pipe(gulp.dest(output));
 };
