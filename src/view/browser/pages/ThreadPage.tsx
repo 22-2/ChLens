@@ -29,6 +29,7 @@ import { useThreadResContextMenu } from "src/view/browser/pages/thread/use-threa
 import { useThreadTopBar } from "src/view/browser/pages/thread/use-thread-top-bar";
 import { resolveReplyTreeRootResNum } from "src/view/browser/utils/reply-tree-root";
 import type { Props } from "src/view/browser/utils/types";
+import { container } from "src/service-container/index";
 import { copyText } from "src/view/browser/utils/utils";
 
 interface ThreadPageProps {
@@ -437,6 +438,35 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       setResponses,
     });
 
+  // 空白部分のダブルクリックによる更新。
+  // 設定が有効な場合に動作し、誤操作防止のためリンクや画像、テキスト選択中などは除外する。
+  const handleDoubleClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (container.config.get("dblclick_reload") !== "on") {
+        return;
+      }
+
+      const target = e.target as HTMLElement;
+
+      // リンク、画像、入力系要素、ボタンなどは除外
+      if (
+        target.closest(
+          "a, button, input, textarea, .res__thumb, .res__media-embed, .res__link",
+        )
+      ) {
+        return;
+      }
+
+      // テキスト選択中はリロードしない
+      if (window.getSelection()?.toString()) {
+        return;
+      }
+
+      dispatch({ type: "RELOAD" });
+    },
+    [dispatch],
+  );
+
   const openPopupUrlContextMenu = useCallback(
     (parentId: string) =>
       (
@@ -451,7 +481,11 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
 
   // ジェスチャーuseEffectでrootRefが確実にマウント済みになるよう、loading中の早期returnを廃止し常にrootRef付きdivを描画する
   return (
-    <div ref={rootRef} className="thread-page">
+    <div
+      ref={rootRef}
+      className="thread-page"
+      onDoubleClick={handleDoubleClick}
+    >
       {isAutoRefreshEnabled && (
         <>
           {/* 線より下にいて新着追従が有効な間だけステータスバーを accent 化し、

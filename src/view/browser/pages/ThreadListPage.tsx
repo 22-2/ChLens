@@ -546,6 +546,31 @@ export const ThreadListPage: React.FC<Props> = ({
     [dispatch],
   );
 
+  // 空白部分のダブルクリックによる更新。
+  // 設定が有効な場合に動作し、誤操作防止のためリンクやテキスト選択中などは除外する。
+  const handleDoubleClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (container.config.get("dblclick_reload") !== "on") {
+        return;
+      }
+
+      const target = e.target as HTMLElement;
+
+      // リンク、ボタン、入力系要素などは除外
+      if (target.closest("a, button, input, textarea")) {
+        return;
+      }
+
+      // テキスト選択中はリロードしない
+      if (window.getSelection()?.toString()) {
+        return;
+      }
+
+      dispatch({ type: "RELOAD" });
+    },
+    [dispatch],
+  );
+
   const openThreadInNewTab = useCallback(
     ({ thread }: DisplayThread) => {
       // ミドルクリックはバックグラウンドで開く（アクティブタブを切り替えない）
@@ -646,7 +671,7 @@ export const ThreadListPage: React.FC<Props> = ({
   }
 
   return (
-    <div className="thread-list-page">
+    <div className="thread-list-page" onDoubleClick={handleDoubleClick}>
       {showSearch && (
         <SearchBar
           query={searchQuery}
