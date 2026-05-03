@@ -6,7 +6,6 @@ import * as sass from "sass";
 import postcss from "postcss";
 import autoprefixer from "autoprefixer";
 import pug from "pug";
-import sharp from "sharp";
 import { glob } from "fs/promises";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -59,21 +58,12 @@ function scssPlugin(platform: string, outputDir: string): Plugin {
     name: "scss-build",
     async buildStart() {
       const jobs: Array<[string, string]> = [
-        // ui
-        [path.resolve("src/ui/ui.scss"), `${outputDir}/ui.css`],
         // view
         ...(await Array.fromAsync(
           glob("src/view/*.scss"),
         )).map((f): [string, string] => [
           path.resolve(f),
           `${outputDir}/view/${path.basename(f, ".scss")}.css`,
-        ]),
-        // write
-        ...(await Array.fromAsync(
-          glob("src/write/*.scss"),
-        )).filter(f => !path.basename(f).startsWith("_")).map((f): [string, string] => [
-          path.resolve(f),
-          `${outputDir}/write/${path.basename(f, ".scss")}.css`,
         ]),
       ];
 
@@ -173,72 +163,6 @@ const IMG_LIST = [
   "filter_19x19_ddd.webp",
 ];
 
-function imgPlugin(platform: string, outputDir: string): Plugin {
-  const isChrome = platform === "chrome";
-  const imgDir = `${outputDir}/img`;
-  const svgDir = "src/image/svg";
-
-  return {
-    name: "img-build",
-    async buildStart() {
-      await fs.ensureDir(imgDir);
-
-      const jobs: Promise<void>[] = [];
-
-      // SVG → webp/png icons
-      for (let img of IMG_LIST) {
-        if (!isChrome) img = img.replace(".webp", ".png");
-        const m = img.match(
-          /^(.+)_(\d+)x(\d+)(?:_([a-fA-F0-9]*))?(?:_r(-?\d+))?\.(webp|png)$/,
-        );
-        if (!m) continue;
-        const src = `${svgDir}/${m[1]}.svg`;
-        const bin = `${imgDir}/${img}`;
-        if (!isSrcNewer(src, bin)) continue;
-
-        jobs.push((async () => {
-          let data = await fs.readFile(src, "utf-8");
-          if (m[4] != null) data = data.replace(/#333/g, `#${m[4]}`);
-          const buf = Buffer.from(data, "utf8");
-          let sh = sharp(buf);
-          if (m[5] != null) sh = sh.rotate(parseInt(m[5]));
-          sh = sh.resize(parseInt(m[2]), parseInt(m[3]));
-          if (m[6] === "webp") sh = sh.webp({ lossless: true });
-          await sh.toFile(bin);
-        })());
-      }
-
-      // logo PNGs (96, 128)
-      for (const size of [96, 128]) {
-        const src = `${svgDir}/read.crx.svg`;
-        const bin = `${imgDir}/read.crx_${size}x${size}.png`;
-        if (!isSrcNewer(src, bin)) continue;
-        const margin = size / 8;
-        const inner = size - margin * 2;
-        jobs.push(
-          sharp(src)
-            .resize(inner, inner)
-            .extend({ top: margin, bottom: margin, left: margin, right: margin,
-              background: { r: 0, g: 0, b: 0, alpha: 0 } })
-            .toFile(bin)
-            .then(() => {}),
-        );
-      }
-
-      // loading animation
-      const loadingSrc = `${svgDir}/loading.svg`;
-      const loadingBin = `${imgDir}/loading.${isChrome ? "webp" : "png"}`;
-      if (isSrcNewer(loadingSrc, loadingBin)) {
-        let sh = sharp(loadingSrc).resize(100, 100);
-        if (isChrome) sh = sh.webp({ lossless: true });
-        jobs.push(sh.toFile(loadingBin).then(() => {}));
-      }
-
-      await Promise.all(jobs);
-    },
-  };
-}
-
 // ─── plugin: manifest.json ───────────────────────────────────────────────────
 
 function manifestPlugin(platform: string, outputDir: string): Plugin {
@@ -285,11 +209,6 @@ function staticCopyPlugin(platform: string, outputDir: string): Plugin {
     name: "static-copy",
     async buildStart() {
       const copies: Array<[string, string]> = [
-        // shortQuery
-        [
-          "node_modules/ShortQuery.js/bin/shortQuery.chrome.min.js",
-          `${outputDir}/lib/shortQuery.min.js`,
-        ],
         // rules.json (chrome only)
         ...(platform !== "firefox" && platform !== "tauri"
           ? [["src/rules.json", `${outputDir}/rules.json`] as [string, string]]
@@ -346,7 +265,6 @@ export default defineConfig(() => {
       react(),
       scssPlugin(platform, outputDir),
       pugPlugin(platform, outputDir),
-      imgPlugin(platform, outputDir),
       manifestPlugin(platform, outputDir),
       staticCopyPlugin(platform, outputDir),
     ],

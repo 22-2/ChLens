@@ -1,5 +1,3 @@
-///<reference path="./shortQuery.d.ts" />
-
 interface Window {
   app: any;
   container: import("./service-container/interfaces").IServiceContainer;
