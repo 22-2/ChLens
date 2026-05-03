@@ -6,7 +6,7 @@ export const HomePage: React.FC = () => {
 
   return (
     <div className="home-page">
-      <h1 className="home-page__title">read.crx-2</h1>
+      <h1 className="home-page__title">ChLens</h1>
       <p className="home-page__subtitle">5ch互換掲示板ブラウザ</p>
       <div className="home-page__actions">
         <button
