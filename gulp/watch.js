@@ -25,13 +25,11 @@ const rolldownWatch = function (config) {
 */
 const watch = function (browser) {
   const appjsConfig = makeRolldownConfig(browser, "app");
-  const corejsConfig = makeRolldownConfig(browser, "core");
   const uijsConfig = makeRolldownConfig(browser, "ui");
   const submitResjsConfig = makeRolldownConfig(browser, "submitRes");
   const submitThreadjsConfig = makeRolldownConfig(browser, "submitThread");
   return function () {
     rolldownWatch(appjsConfig);
-    rolldownWatch(corejsConfig);
     rolldownWatch(uijsConfig);
     rolldownWatch(submitResjsConfig);
     rolldownWatch(submitThreadjsConfig);

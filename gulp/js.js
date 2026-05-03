@@ -45,17 +45,6 @@ const getRolldownIOConfigs = function (name, browser) {
         },
       };
       break;
-    case "core":
-      return {
-        pathname: "core",
-        output: "app_core.js",
-        plugins: [replace],
-        outObj: {
-          name: "app",
-          extend: true,
-        },
-      };
-      break;
     case "ui":
       return {
         pathname: "ui",
@@ -112,7 +101,6 @@ const makeFunc = function (browser, configName) {
 };
 
 const app = (browser) => makeFunc(browser, "app");
-const core = (browser) => makeFunc(browser, "core");
 const ui = (browser) => makeFunc(browser, "ui");
 const submitRes = (browser) => makeFunc(browser, "submitRes");
 const submitThread = (browser) => makeFunc(browser, "submitThread");
@@ -193,7 +181,6 @@ for (let browser of browsers) {
     `js:${browser}`,
     gulp.parallel(
       app(browser),
-      core(browser),
       ui(browser),
       submitRes(browser),
       submitThread(browser),

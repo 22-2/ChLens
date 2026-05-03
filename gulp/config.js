@@ -12,7 +12,6 @@ let paths = {};
     output: {},
     js: {
       app: `${i}/app.ts`,
-      core: `${i}/core/core.js`,
       ui: `${i}/ui/ui.js`,
       submitRes: `${i}/write/submit_res.js`,
       submitThread: `${i}/write/submit_thread.js`,
