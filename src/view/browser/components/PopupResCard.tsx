@@ -1,7 +1,7 @@
 import React, { useMemo, useRef } from "react";
 import type { IRes } from "src/service-container";
 import { ResBody } from "src/view/browser/components/ResBody";
-import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
+import { useIsNgTemporarilyDisabled } from "src/view/browser/hooks/use-ng-status";
 import { getIdHeatColor } from "src/view/browser/utils/id-heat";
 import type {
   UrlClickHandler,
@@ -34,7 +34,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     onAnchorLeave,
     onContextMenu,
   }) => {
-    const { isNgTemporarilyDisabled } = useNgStatus();
+    const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
     const handledMiddleClickThumbUrlRef = useRef<string | null>(null);
     const decoded = useMemo(
       () => decodeResponseHtml(res, messageProtocol),

@@ -320,6 +320,7 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 - [ ] 書き込み履歴で書き込みを表示
 - [ ] chore: tauriで検索
 - [ ] chore: ようつべの埋め込み
+- [x] タブを切り替えで表示した時にちょっと重い
 
 ### low prior
 - [ ] feat: ブラウザのようなアドレスバーのブックマークボタン

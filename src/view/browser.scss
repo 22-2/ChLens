@@ -1158,6 +1158,17 @@ body {
 
 .res {
   padding: 2px 16px 6px;
+  // 大量レスのタブ復帰時に初回ペイントが詰まらないよう、
+  // viewport外レスの描画をブラウザに遅延させる。
+  content-visibility: auto;
+  contain-intrinsic-size: auto 140px;
+}
+
+.thread-page--with-minimap .res {
+  // ミニマップは各レスの実寸/位置を使ってマーカーを計算するため、
+  // 表示中は遅延レイアウトを無効化して座標ずれを防ぐ。
+  content-visibility: visible;
+  contain-intrinsic-size: none;
 }
 
 .res__header {
