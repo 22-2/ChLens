@@ -98,6 +98,7 @@
     "@types/webextension-polyfill": "^0.12.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "idb": "^8.0.3",
     "json5": "^2.2.3",
     "lucide-react": "^1.14.0",
     "monaco-editor": "^0.55.1",
