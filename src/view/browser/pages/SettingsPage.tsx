@@ -1,5 +1,23 @@
+import {
+  Settings,
+  RefreshCw,
+  Image as ImageIcon,
+  MessageSquare,
+  ShieldAlert,
+  MoreHorizontal,
+  Database,
+  ChevronDown,
+  ChevronRight,
+  Info,
+} from "lucide-react";
 import Form, { type IChangeEvent } from "@rjsf/core";
-import type { RJSFSchema, UiSchema, ValidatorType } from "@rjsf/utils";
+import type {
+  ObjectFieldTemplateProps,
+  RJSFSchema,
+  UiSchema,
+  ValidatorType,
+  FieldTemplateProps,
+} from "@rjsf/utils";
 import React, {
   useCallback,
   useEffect,
@@ -32,6 +50,7 @@ interface SettingsFieldBase {
   key: string;
   title: string;
   description?: string;
+  header?: string; // 小セクション（見出し）を表示するためのプロパティ
   widget?: "radio" | "textarea";
   rows?: number;
 }
@@ -61,6 +80,7 @@ interface SettingsSectionDefinition {
   id: SettingsSectionId;
   title: string;
   description: string;
+  icon: React.ReactNode;
   fields: readonly SettingsFieldDefinition[];
   schema: RJSFSchema;
   uiSchema: UiSchema<SettingsSectionFormData>;
@@ -85,6 +105,7 @@ const AUTO_LOAD_MOVE_OPTIONS = [
   { const: "live_style", title: "ライブチャット風" },
 ] as const satisfies readonly SettingsOption[];
 
+/*
 const POPUP_TRIGGER_OPTIONS = [
   { const: "click", title: "クリック" },
   { const: "mouseenter", title: "マウスを重ねる" },
@@ -111,6 +132,7 @@ const ZOOM_RATIO_OPTIONS = [
   { const: "400", title: "400%" },
   { const: "500", title: "500%" },
 ] as const satisfies readonly SettingsOption[];
+*/
 
 const THEME_ID_OPTIONS = [
   { const: "system", title: "システム（OSに合わせる）" },
@@ -182,12 +204,17 @@ function buildUiSchema(
     "ui:submitButtonOptions": {
       norender: true,
     },
+    "ui:ObjectFieldTemplate": CustomObjectFieldTemplate as any,
+    "ui:FieldTemplate": CustomFieldTemplate as any,
   };
 
   for (const field of fields) {
     const fieldUi: Record<string, unknown> = {};
     if (field.widget) {
       fieldUi["ui:widget"] = field.widget;
+    }
+    if (field.header) {
+      fieldUi["ui:header"] = field.header;
     }
     if (field.kind === "number" && field.step !== undefined) {
       fieldUi["ui:options"] = {
@@ -205,16 +232,82 @@ function buildUiSchema(
   return uiSchema;
 }
 
+function CustomObjectFieldTemplate(props: ObjectFieldTemplateProps) {
+  const { properties, uiSchema, title, description } = props;
+  return (
+    <div className="settings-form-object">
+      {title && <h2 className="settings-form-object-title">{title}</h2>}
+      {description && (
+        <p className="settings-form-object-description">{description}</p>
+      )}
+      <div className="settings-form-properties">
+        {properties.map((element) => {
+          const fieldUiSchema = uiSchema?.[element.name];
+          const header = fieldUiSchema?.["ui:header"];
+          return (
+            <React.Fragment key={element.name}>
+              {header && <h3 className="settings-form-subsection">{header}</h3>}
+              <div className="settings-form-property">{element.content}</div>
+            </React.Fragment>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function CustomFieldTemplate(props: FieldTemplateProps) {
+  const {
+    id,
+    label,
+    children,
+    errors,
+    help,
+    description,
+    hidden,
+    required,
+    schema,
+    uiSchema,
+  } = props;
+  if (hidden) {
+    return <div style={{ display: "none" }}>{children}</div>;
+  }
+
+  const hasDescription = !!(uiSchema?.["ui:description"] || schema?.description);
+
+  return (
+    <div className={`settings-form-field settings-form-field--${id}`}>
+      {label && (
+        <label htmlFor={id} className="settings-form-field-label">
+          {label}
+          {required && <span className="required">*</span>}
+        </label>
+      )}
+      {hasDescription && description && (
+        <div className="settings-form-field-description">
+          <Info size={14} />
+          {description}
+        </div>
+      )}
+      <div className="settings-form-field-content">{children}</div>
+      {errors}
+      {help}
+    </div>
+  );
+}
+
 function defineSection(
   id: SettingsSectionId,
   title: string,
   description: string,
+  icon: React.ReactNode,
   fields: readonly SettingsFieldDefinition[],
 ): SettingsSectionDefinition {
   return {
     id,
     title,
     description,
+    icon,
     fields,
     schema: {
       type: "object",
@@ -231,64 +324,28 @@ const SETTINGS_SECTIONS = [
   defineSection(
     "general",
     "一般",
-    "タブ動作やAA表示など、ブラウザ全体の基本設定です。",
+    "タブ動作や表示設定など、ブラウザ全体の基本設定です。",
+    <Settings size={20} />,
     [
       {
         kind: "string",
         key: "theme_id",
         title: "テーマ",
+        header: "外観",
         options: THEME_ID_OPTIONS,
         widget: "radio",
       },
       {
-        // 書き込み欄のショートカットは日常的に切り替える需要があるため、
-        // 「その他」ではなく一般設定に置いて到達しやすくする。
         kind: "boolean",
         key: "write_submit_ctrl_enter",
         title: "Ctrl+Enterで書き込む",
+        header: "書き込み",
       },
-      // { kind: "boolean", key: "always_new_tab", title: "スレッドを常に新しいタブで開く" },
-      // {
-      //   kind: "boolean",
-      //   key: "button_change_netsc_newtab",
-      //   title: "5ch / 2ch.sc 切り替えを新しいタブで開く",
-      // },
-      // {
-      //   kind: "boolean",
-      //   key: "button_change_scheme_newtab",
-      //   title: "http / https 切り替えを新しいタブで開く",
-      // },
-
-      // TODO: どういう意味か分かりづらいので、調査してから説明を加える
-      // { kind: "boolean", key: "open_all_unread_lazy", title: "未読一括オープンを遅延実行する" },
-      // { kind: "boolean", key: "mousewheel_change_tab", title: "マウスホイールでタブを切り替える" },
-
-      // TODO: どういう意味か分かりづらいので、調査してから説明を加える
-      // {
-      //   kind: "boolean",
-      //   key: "enable_link_with_res_number",
-      //   title: "レス番号付きリンクを開く機能を有効にする",
-      // },
-      // {
-      //   kind: "string",
-      //   key: "aa_font",
-      //   title: "AA表示フォント",
-      //   options: AA_FONT_OPTIONS,
-      //   widget: "radio",
-      // },
-      // {
-      //   kind: "number",
-      //   key: "aa_min_ratio",
-      //   title: "AA最小縮小率",
-      //   description: "AAを自動縮小する下限値です。",
-      //   minimum: 1,
-      //   maximum: 100,
-      //   step: 1,
-      // },
       {
         kind: "string",
         key: "format_2chnet",
         title: "2chnetの取得形式",
+        header: "通信",
         options: FORMAT_2CH_OPTIONS,
         widget: "radio",
       },
@@ -298,71 +355,29 @@ const SETTINGS_SECTIONS = [
     "reload",
     "更新関連",
     "自動更新と更新後のスクロール挙動を調整します。",
+    <RefreshCw size={20} />,
     [
-      // TODO: スクロールで更新するようにする
       {
         kind: "boolean",
         key: "dblclick_reload",
         title: "空白をダブルクリックで更新する",
+        header: "操作",
       },
-      // {
-      //   kind: "number",
-      //   key: "auto_load_second",
-      //   title: "スレッド自動更新間隔 (秒)",
-      //   minimum: 0,
-      //   step: 1,
-      // },
-      // {
-      //   kind: "number",
-      //   key: "auto_load_second_board",
-      //   title: "板自動更新間隔 (秒)",
-      //   minimum: 0,
-      //   step: 1,
-      // },
-      // {
-      //   kind: "number",
-      //   key: "auto_load_second_bookmark",
-      //   title: "ブックマーク自動更新間隔 (秒)",
-      //   minimum: 0,
-      //   step: 1,
-      // },
-      // { kind: "boolean", key: "auto_load_all", title: "自動更新時に全文を再取得する" },
-      // { kind: "boolean", key: "auto_bookmark_notify", title: "ブックマーク更新を通知する" },
-      // { kind: "boolean", key: "show_next_unread", title: "次の未読ブックマークを表示する" },
-
-      // TODO: 自動でスレを移動する機能（EdgeLiveViewerの機能を参考にする）
-
-      // {
-      //   kind: "string",
-      //   key: "auto_load_move",
-      //   title: "自動更新後の移動",
-      //   options: AUTO_LOAD_MOVE_OPTIONS,
-      //   widget: "radio",
-      // },
-      // {
-      //   kind: "number",
-      //   key: "live_style_playback_rate",
-      //   title: "ライブチャット風の再生速度",
-      //   description: "auto_load_move が live_style の時に使われます。",
-      //   minimum: 1,
-      //   maximum: 10,
-      //   step: 0.5,
-      // },
     ],
   ),
   defineSection(
     "thumbnail",
     "サムネイル",
     "画像・動画の読み込みとプレビューサイズを調整します。",
+    <ImageIcon size={20} />,
     [
-      // TODO: Not implemented
       {
         kind: "boolean",
         key: "manual_image_load",
         title: "画像を手動で読み込む",
+        header: "読み込み設定",
       },
-      // TODO: Not implemented
-      { kind: "boolean", key: "image_blur", title: "画像にぼかしを適用する" },
+      { kind: "boolean", key: "image_blur", title: "画像にぼかしを適用する", header: "ぼかし設定" },
       {
         kind: "number",
         key: "image_blur_length",
@@ -377,17 +392,6 @@ const SETTINGS_SECTIONS = [
         title: "ぼかし判定ワード",
         description: "正規表現で指定します。",
       },
-      // { kind: "number", key: "image_width", title: "画像サムネイル幅", minimum: 150, maximum: 800, step: 10 },
-      // { kind: "number", key: "image_height", title: "画像サムネイル高さ", minimum: 100, maximum: 600, step: 10 },
-      // { kind: "boolean", key: "audio_supported", title: "音声サムネイルを有効にする" },
-
-      // TODO: 項目を削除し、デフォルトで有効にする
-      // { kind: "boolean", key: "audio_supported_ogg", title: "OGG音声を有効にする" },
-      // { kind: "number", key: "audio_width", title: "音声サムネイル幅", minimum: 240, maximum: 480, step: 10 },
-
-      // TODO: Not implemented -> 画像ビューアと同じUIで拡大表示するようにする
-      // { kind: "boolean", key: "video_supported", title: "動画サムネイルを有効にする" },
-      // TODO: 項目を削除し、デフォルトで有効にする
       // { kind: "boolean", key: "video_supported_ogg", title: "OGG動画を有効にする" },
       // TODO: 項目を削除し、デフォルトで有効にする
       // { kind: "boolean", key: "video_controls", title: "動画コントロールを表示する" },
@@ -464,124 +468,73 @@ const SETTINGS_SECTIONS = [
   //     },
   //   ],
   // ),
-  defineSection("ng", "NG", "NGワードと非表示関連の設定をまとめています。", [
-    {
-      kind: "string",
-      key: "ngwords",
-      title: "NGワード一覧",
-      description: "DSL形式で編集できます。",
-      widget: "ng_editor" as any,
-    },
-    { kind: "boolean", key: "chain_ng", title: "NGレスへの返信を連鎖NGにする" },
-
-    // TODO: どういう意味か分かりづらいので、調査してから説明を加える
-    // TODO: Not implemented
-    // { kind: "boolean", key: "chain_ng_id", title: "NG ID を連鎖NGにする" },
-    // { kind: "boolean", key: "chain_ng_slip", title: "NG SLIP を連鎖NGにする" },
-
-    // TODO: どういう意味か分かりづらいので、調査してから説明を加える
-    // TODO: Not implemented
-    // {
-    //   kind: "boolean",
-    //   key: "forward_link_ng",
-    //   title: "前方リンクをNG判定に含める",
-    // },
-
-    // TODO: Not implemented
-    // {
-    //   kind: "boolean",
-    //   key: "display_ng",
-    //   title: "NGレスを展開可能なまま表示する",
-    // },
-    // {
-    //   kind: "boolean",
-    //   key: "bookmark_show_dat",
-    //   title: "dat落ちしたブックマークを表示する",
-    // },
-
-    // TODO: Not implemented
-    // {
-    //   kind: "boolean",
-    //   key: "reject_ng_rep",
-    //   title: "NGレスへの返信も非表示にする",
-    // },
-
-    // TODO: どういう意味か分かりづらいので、調査してから説明を加える
-    {
-      kind: "boolean",
-      key: "use_siki_guard",
-      title: "しきい値ガードを有効にする",
-    },
-    {
-      kind: "boolean",
-      key: "nothing_id_ng",
-      title: "IDありスレのIDなしレスをNGにする",
-    },
-    {
-      kind: "boolean",
-      key: "nothing_slip_ng",
-      title: "SLIPありスレのSLIPなしレスをNGにする",
-    },
-    {
-      kind: "string",
-      key: "how_to_judgment_id",
-      title: "ID / SLIP 判定方法",
-      options: HOW_TO_JUDGMENT_ID_OPTIONS,
-      widget: "radio",
-    },
-    // TODO: Not implemented
-    // {
-    //   kind: "number",
-    //   key: "repeat_message_ng_count",
-    //   title: "連投レスをNGにする回数（0で無効）",
-    //   minimum: 0,
-    //   maximum: 99,
-    //   step: 1,
-    // },
-  ]),
-  defineSection("other", "その他", "書き込み時の既定値や外部データ設定です。", [
-    // { kind: "string", key: "default_name", title: "既定の名前" },
-    // { kind: "string", key: "default_mail", title: "既定のメール欄" },
-    {
-      kind: "number",
-      key: "bbsmenu_update_interval",
-      title: "BBSMENU更新間隔 (日)",
-      minimum: 1,
-      step: 1,
-    },
-    {
-      kind: "string",
-      key: "bbsmenu",
-      title: "BBSMENU URL一覧",
-      widget: "textarea",
-      rows: 6,
-    },
-
-    // TODO: どういう意味か分かりづらいので、調査してから説明を加える
-    // {
-    //   kind: "string",
-    //   key: "bbsmenu_option",
-    //   title: "BBSMENUオプション",
-    //   widget: "textarea",
-    //   rows: 4,
-    // },
-    // {
-    //   kind: "string",
-    //   key: "user_css",
-    //   title: "ユーザーCSS",
-    //   widget: "textarea",
-    //   rows: 8,
-    // },
-    // { kind: "boolean", key: "default_scrollbar", title: "既定のスクロールバーを使う" },
-    // {
-    //   kind: "string",
-    //   key: "replace_str_txt",
-    //   title: "文字列置換ルール",
-    //   widget: "textarea",
-    //   rows: 6,
-    // },
-    // { kind: "string", key: "useragent", title: "ユーザーエージェント" },
-  ]),
+  defineSection(
+    "ng",
+    "NG",
+    "NGワードと非表示関連の設定をまとめています。",
+    <ShieldAlert size={20} />,
+    [
+      {
+        kind: "string",
+        key: "ngwords",
+        title: "NGワード一覧",
+        description: "DSL形式で編集できます。",
+        widget: "ng_editor" as any,
+      },
+      {
+        kind: "boolean",
+        key: "chain_ng",
+        title: "NGレスへの返信を連鎖NGにする",
+        header: "連鎖NG",
+      },
+      {
+        kind: "boolean",
+        key: "use_siki_guard",
+        title: "しきい値ガードを有効にする",
+        header: "判定基準",
+      },
+      {
+        kind: "boolean",
+        key: "nothing_id_ng",
+        title: "IDありスレのIDなしレスをNGにする",
+      },
+      {
+        kind: "boolean",
+        key: "nothing_slip_ng",
+        title: "SLIPありスレのSLIPなしレスをNGにする",
+      },
+      {
+        kind: "string",
+        key: "how_to_judgment_id",
+        title: "ID / SLIP 判定方法",
+        options: HOW_TO_JUDGMENT_ID_OPTIONS,
+        widget: "radio",
+      },
+    ],
+  ),
+  defineSection(
+    "other",
+    "その他",
+    "書き込み時の既定値や外部データ設定です。",
+    <MoreHorizontal size={20} />,
+    [
+      {
+        kind: "number",
+        key: "bbsmenu_update_interval",
+        title: "BBSMENU更新間隔 (日)",
+        header: "外部データ",
+        minimum: 1,
+        step: 1,
+      },
+      {
+        kind: "string",
+        key: "bbsmenu",
+        title: "BBSMENU URL一覧",
+        widget: "textarea",
+        rows: 6,
+      },
+    ],
+  ),
   // TODO: インポートやエクスポートなど、既存の設定を移植する
   // defineSection(
   //   "data",
@@ -952,12 +905,15 @@ export const SettingsPage: React.FC = () => {
               }`}
               onClick={() => setActiveSectionId(section.id)}
             >
-              <span className="settings-page__section-name">
-                {section.title}
-              </span>
-              <span className="settings-page__section-desc">
-                {section.description}
-              </span>
+              <div className="settings-page__section-icon">{section.icon}</div>
+              <div className="settings-page__section-content">
+                <span className="settings-page__section-name">
+                  {section.title}
+                </span>
+                <span className="settings-page__section-desc">
+                  {section.description}
+                </span>
+              </div>
             </button>
           ))}
         </div>
@@ -974,7 +930,20 @@ export const SettingsPage: React.FC = () => {
           <p className="settings-page__description">
             {activeSection.description}
           </p>
-          <p className="settings-page__note">設定は自動保存されます</p>
+          <div className="settings-page__status-row">
+            <p className="settings-page__note">設定は自動保存されます</p>
+            {savingSectionId === activeSection.id && (
+              <span className="settings-page__saving">
+                <RefreshCw size={14} className="animate-spin" />
+                保存中...
+              </span>
+            )}
+            {autoSaveError && (
+              <span className="settings-page__auto-save-error">
+                {autoSaveError}
+              </span>
+            )}
+          </div>
 
           <div className="settings-page__form">
             {activeSection.id !== "ng" ? (
@@ -1001,30 +970,35 @@ export const SettingsPage: React.FC = () => {
                   widgets={widgets}
                 />
 
-                <details
-                  className="settings-page__advanced-group"
-                  open={isNgAdvancedOpen}
-                  onToggle={(event) => {
-                    const nextOpen = event.currentTarget.open;
-                    setIsNgAdvancedOpen(nextOpen);
-                  }}
-                >
-                  <summary className="settings-page__advanced-summary">
-                    高度なNG設定
-                  </summary>
-                  <div className="settings-page__advanced-body">
-                    <Form<SettingsSectionFormData>
-                      schema={ngAdvancedSchema}
-                      uiSchema={ngAdvancedUiSchema}
-                      validator={settingsValidator}
-                      formData={formState.ng}
-                      noHtml5Validate
-                      showErrorList={false}
-                      onChange={handleNgPartialFormChange}
-                      widgets={widgets}
-                    />
-                  </div>
-                </details>
+                  <details
+                    className="settings-page__advanced-group"
+                    open={isNgAdvancedOpen}
+                    onToggle={(event) => {
+                      const nextOpen = event.currentTarget.open;
+                      setIsNgAdvancedOpen(nextOpen);
+                    }}
+                  >
+                    <summary className="settings-page__advanced-summary">
+                      {isNgAdvancedOpen ? (
+                        <ChevronDown size={18} />
+                      ) : (
+                        <ChevronRight size={18} />
+                      )}
+                      高度なNG設定
+                    </summary>
+                    <div className="settings-page__advanced-body">
+                      <Form<SettingsSectionFormData>
+                        schema={ngAdvancedSchema}
+                        uiSchema={ngAdvancedUiSchema}
+                        validator={settingsValidator}
+                        formData={formState.ng}
+                        noHtml5Validate
+                        showErrorList={false}
+                        onChange={handleNgPartialFormChange}
+                        widgets={widgets}
+                      />
+                    </div>
+                  </details>
               </>
             )}
           </div>
