@@ -16,6 +16,7 @@ describe("Thread.parse (headline.5ch.io)", () => {
         },
       },
       runtime: {
+        id: "dummy",
         sendMessage: async () => {},
         onMessage: { addListener: () => {} },
       },
@@ -27,6 +28,8 @@ describe("Thread.parse (headline.5ch.io)", () => {
         updateSessionRules: async () => {},
       },
     };
+
+    globalThis.chrome = { runtime: { id: "dummy" } };
 
     globalThis.indexedDB = {
       open: () => {
@@ -45,6 +48,7 @@ describe("Thread.parse (headline.5ch.io)", () => {
     };
 
     globalThis.BroadcastChannel = class {
+      addEventListener() {}
       on() {}
       postMessage() {}
       close() {}

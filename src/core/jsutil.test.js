@@ -36,6 +36,7 @@ describe("chServerMoveDetect", () => {
         },
       },
       runtime: {
+        id: "dummy",
         sendMessage: async () => {},
         onMessage: { addListener: () => {} },
       },
@@ -47,6 +48,8 @@ describe("chServerMoveDetect", () => {
         updateSessionRules: async () => {},
       },
     };
+
+    globalThis.chrome = { runtime: { id: "dummy" } };
 
     globalThis.indexedDB = {
       open: () => {
@@ -65,6 +68,7 @@ describe("chServerMoveDetect", () => {
     };
 
     globalThis.BroadcastChannel = class {
+      addEventListener() {}
       on() {}
       postMessage() {}
       close() {}
