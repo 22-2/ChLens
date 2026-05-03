@@ -1,4 +1,4 @@
-import { BBSMenu } from "src/core/parseBBSMenu";
+import { BBSMenu } from "src/core/BBSMenuParser";
 import Callbacks from "src/app/Callbacks";
 import { container } from "src/service-container/index";
 import { URL } from "src/core/URL";

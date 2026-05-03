@@ -3,7 +3,7 @@ import {
   OtherBoardsCollector,
   IOtherBoardsDeps,
 } from "src/core/OtherBoardsCollector";
-import { BBSMenu } from "src/core/parseBBSMenu";
+import { BBSMenu } from "src/core/BBSMenuParser";
 
 // src/core/URL は BroadcastChannel に依存する src/app を間接的にインポートするため、
 // jsdom 環境では動作しない。OtherBoardsCollector が使う機能のみをモックする。

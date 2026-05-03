@@ -184,8 +184,8 @@ export var get = function (offset, limit) {
 
 /**
 @method getUnique
-@param {Number} offset
-@param {Number} limit
+@param {Number} [offset]
+@param {Number} [limit]
 @return {Promise}
 */
 export var getUnique = function (offset, limit) {

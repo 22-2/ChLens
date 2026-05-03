@@ -1,4 +1,4 @@
-import { BBSMenu } from "src/core/parseBBSMenu";
+import { BBSMenu } from "src/core/BBSMenuParser";
 import { Request } from "src/core/HTTP";
 import { ICacheItem } from "src/service-container/interfaces";
 import { BBSMenuParser } from "src/core/BBSMenuParser";

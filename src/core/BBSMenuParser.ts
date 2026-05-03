@@ -1,5 +1,21 @@
-import { parseBBSMenu, BBSMenu } from "src/core/parseBBSMenu";
 import { URL } from "src/core/URL";
+
+export interface Board {
+  name: string;
+  url: string;
+}
+
+export interface BBSMenuCategory {
+  name: string;
+  boards: Board[];
+}
+
+export type BBSMenu = {
+  /** bbs_menu.htmlのタイトル or domain */
+  name: string;
+  /** カテゴリリスト */
+  categories: BBSMenuCategory[];
+};
 
 /**
  * BBSMenuのHTMLパースとフィルタリングを担当する純粋ロジッククラス。
@@ -31,7 +47,8 @@ export class BBSMenuParser {
    * @param excludeTslds 除外するTLDのSet（parseExcludeOptionsの戻り値）
    */
   static parse(html: string, url: string, excludeTslds: Set<string>): BBSMenu {
-    const menu = parseBBSMenu(html);
+    // 内部の rawParse を使用するように変更（src/core/parseBBSMenu.ts のロジックを統合したため）
+    const menu = this.rawParse(html);
 
     // メニュー名が無い場合はURLのホスト名をフォールバックとして使用
     if (!menu.name) {
@@ -65,5 +82,78 @@ export class BBSMenuParser {
       .filter((cat) => cat.boards.length > 0);
 
     return menu;
+  }
+
+  /**
+   * src/core/parseBBSMenu.ts から統合された生パースロジック。
+   * HTML文字列からカテゴリと板の構造を抽出する。
+   */
+  private static rawParse(html: string): BBSMenu {
+    const lines = html.split(/\r?\n/);
+    const menu: BBSMenu = { name: "", categories: [] };
+    let currentCategory: BBSMenuCategory | null = null;
+
+    const titleRegex = /<TITLE>(.*?)<\/TITLE>/i;
+    const categoryRegex = /<BR><BR><B>(.*?)<\/B><BR>/i;
+    const boardRegex = /<A HREF=(.*?)>(.*?)<\/A>/i;
+
+    const titleMatch = html.match(titleRegex);
+    if (titleMatch && titleMatch[1]) {
+      menu.name = this.decodeHtmlEntities(titleMatch[1].trim());
+    }
+
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      if (!trimmedLine) continue;
+
+      const categoryMatch = trimmedLine.match(categoryRegex);
+      if (categoryMatch && categoryMatch[1]) {
+        currentCategory = {
+          name: this.decodeHtmlEntities(categoryMatch[1].trim()),
+          boards: [],
+        };
+        menu.categories.push(currentCategory);
+        continue;
+      }
+
+      if (currentCategory) {
+        const boardMatch = trimmedLine.match(boardRegex);
+        if (boardMatch && boardMatch[1] && boardMatch[2]) {
+          const url = boardMatch[1].trim().replace(/^"|"$/g, ""); // クォートを除去
+          const name = this.decodeHtmlEntities(boardMatch[2].trim());
+
+          // 不要なリンクを除外
+          if (
+            url &&
+            name &&
+            !url.includes("index.html") &&
+            !url.endsWith("../") &&
+            !name.toLowerCase().includes("top")
+          ) {
+            currentCategory.boards.push({ name, url });
+          }
+        }
+      }
+    }
+
+    // 板が空のカテゴリを除去
+    menu.categories = menu.categories.filter(
+      (category) => category.boards.length > 0,
+    );
+
+    return menu;
+  }
+
+  /**
+   * HTMLエンティティをデコードする。
+   */
+  private static decodeHtmlEntities(text: string): string {
+    return text
+      .replace(/&quot;/g, '"')
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&amp;/g, "&")
+      .replace(/&#39;/g, "'")
+      .replace(/&nbsp;/g, " ");
   }
 }

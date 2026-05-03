@@ -1,4 +1,4 @@
-import { BBSMenu } from "src/core/parseBBSMenu";
+import { BBSMenu } from "src/core/BBSMenuParser";
 import { URL } from "src/core/URL";
 
 export interface ReadStateEntry {

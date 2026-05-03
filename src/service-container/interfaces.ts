@@ -1,4 +1,4 @@
-import { BBSMenu } from "src/core/parseBBSMenu";
+import { BBSMenu } from "src/core/BBSMenuParser";
 export interface IConfig {
   get(key: string): any;
   set(key: string, value: any): void;
