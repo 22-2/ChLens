@@ -1,16 +1,29 @@
-import { message } from "src/app";
-import { Entry } from "src/core/BookmarkEntryList";
+import { message, platform } from "src/app";
+import { Entry, SyncableEntryList } from "src/core/BookmarkEntryList";
 import BrowserBookmarkEntryList from "src/core/BrowserBookmarkEntryList";
+import IDBBookmarkEntryList from "src/core/IDBBookmarkEntryList";
 import { get as getReadState } from "src/core/ReadState.js";
 import { threadToBoard } from "src/core/URL";
 import { isNewerReadState } from "src/core/jsutil";
 
+/** Tauri 環境かどうかを判定する */
+function isTauriEnv(): boolean {
+  return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+}
+
 export default class Bookmark {
-  readonly bel: BrowserBookmarkEntryList;
+  readonly bel: SyncableEntryList & {
+    ready: any;
+    needReconfigureRootNodeId?: any;
+  };
   readonly promiseFirstScan: Promise<boolean>;
 
   constructor(rootIdNode: string) {
-    this.bel = new BrowserBookmarkEntryList(rootIdNode);
+    if (isTauriEnv()) {
+      this.bel = new IDBBookmarkEntryList();
+    } else {
+      this.bel = new BrowserBookmarkEntryList(rootIdNode);
+    }
     this.promiseFirstScan = new Promise((resolve, _reject) => {
       this.bel.ready.add(() => {
         resolve(true);

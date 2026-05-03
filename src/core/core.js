@@ -6,6 +6,7 @@ import * as BoardTitleSolver from "src/core/BoardTitleSolver.js";
 import Bookmark from "src/core/Bookmark.ts";
 import * as BookmarkEntryList from "src/core/BookmarkEntryList.ts";
 import BrowserBookmarkEntryList from "src/core/BrowserBookmarkEntryList.ts";
+import IDBBookmarkEntryList from "src/core/IDBBookmarkEntryList.ts";
 import Cache from "src/core/Cache.js";
 import * as ContextMenus from "src/core/ContextMenus.js";
 import * as DOMData from "src/core/DOMData.js";
@@ -33,6 +34,7 @@ export {
   Bookmark,
   BookmarkEntryList,
   BrowserBookmarkEntryList,
+  IDBBookmarkEntryList,
   Cache,
   ContextMenus,
   DOMData,
