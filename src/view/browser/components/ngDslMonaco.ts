@@ -234,11 +234,11 @@ function createRuleSnippet(spec: NGDslRuleSpec): string {
     }
   }
 
-  return `${spec.keyword}(${args.join(", ")})`;
+  return `${spec.keyword}(${args.join(" ")})`;
 }
 
 function createMultilineHighlightSnippet(spec: NGDslRuleSpec): string {
-  return `${spec.keyword}(\n  word="\${1:${spec.wordDescription}}",\n  sites=[\n    \${2:eddibb.cc},\n    \${3:5ch.net},\n  ],\n  bgColor=\${4:red},\n  label="\${5:注目}",\n)`;
+  return `${spec.keyword}(\n  word="\${1:${spec.wordDescription}}"\n  sites=[\n    \${2:eddibb.cc}\n    \${3:5ch.net}\n  ]\n  bgColor=\${4:red}\n  label="\${5:注目}"\n)`;
 }
 
 function createRuleCompletionItems(
@@ -334,7 +334,7 @@ function createParameterCompletionItems(
       documentation: createMarkdown(
         "複数のドメインや板を sites 配列で指定します。",
       ),
-      insertText: "sites=[\n  ${1:eddibb.cc},\n  ${2:5ch.net},\n]",
+      insertText: "sites=[\n  ${1:eddibb.cc}\n  ${2:5ch.net}\n]",
       insertTextRules:
         monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
       range,

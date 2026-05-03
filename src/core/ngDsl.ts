@@ -311,12 +311,17 @@ function isTopLevelState(state: SplitNgDslState): boolean {
 
 export function splitNgDslTopLevel(
   source: string,
-  separator: string,
+  separator: string | readonly string[],
   options: SplitNgDslOptions = {},
 ): string[] {
   const state = createSplitState();
   const segments: string[] = [];
   let current = "";
+
+  const isSeparator =
+    typeof separator === "string"
+      ? (c: string) => c === separator
+      : (c: string) => separator.includes(c);
 
   const pushCurrent = () => {
     const segment = current.trim();
@@ -327,7 +332,7 @@ export function splitNgDslTopLevel(
   };
 
   for (const char of source) {
-    if (char === separator && isTopLevelState(state)) {
+    if (isSeparator(char) && isTopLevelState(state)) {
       pushCurrent();
       continue;
     }
@@ -341,7 +346,7 @@ export function splitNgDslTopLevel(
 }
 
 export function splitNgDslEntries(source: string): string[] {
-  return splitNgDslTopLevel(source, "\n");
+  return splitNgDslTopLevel(source, ["\n", "\r"]);
 }
 
 function stripOptionalQuotes(value: string): string {
@@ -384,7 +389,7 @@ export function parseNgDslScopeValue(value: string): string[] | undefined {
 
   if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
     const inner = trimmed.slice(1, -1);
-    const scopes = splitNgDslTopLevel(inner, ",")
+    const scopes = splitNgDslTopLevel(inner, [",", "\n", "\r", " ", "\t"])
       .map(stripOptionalQuotes)
       .filter((scope) => scope !== "" && scope !== "*");
     return scopes.length > 0 ? scopes : undefined;
@@ -407,7 +412,7 @@ export function parseNgDslArguments(
   argsSource: string,
   options: ParseNgDslArgumentsOptions = {},
 ): ParsedNgDslArguments {
-  const args = splitNgDslTopLevel(argsSource, ",");
+  const args = splitNgDslTopLevel(argsSource, [",", "\n", "\r", " ", "\t"]);
   const params: Record<string, string> = {};
   let word: string | undefined;
   let scope: string[] | undefined;
@@ -533,5 +538,5 @@ export function stringifyNgDslSitesValue(sites: readonly string[]): string {
   if (sites.length === 1) {
     return stringifyNgDslValue(sites[0]);
   }
-  return `[${sites.map((site) => stringifyNgDslValue(site)).join(", ")}]`;
+  return `[${sites.map((site) => stringifyNgDslValue(site)).join(" ")}]`;
 }

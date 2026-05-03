@@ -408,7 +408,7 @@ export function convertUserToDSL(rules: NGRule[]): string {
       const args: string[] = [];
 
       // 新DSLでは値を必ず named argument で持たせて、補完とシグネチャ表示を安定させる。
-      args.push(`word=${stringifyNgDslValue(rule.word, { alwaysQuote: true })}`);
+      args.push(`word=${stringifyNgDslValue(rule.word)}`);
 
       if (rule.scope && rule.scope.length > 0) {
         args.push(`sites=${stringifyNgDslSitesValue(rule.scope)}`);
@@ -418,14 +418,12 @@ export function convertUserToDSL(rules: NGRule[]): string {
         args.push(
           ...Object.entries(rule.highlightParams).map(
             ([key, value]) =>
-              `${key}=${stringifyNgDslValue(value, {
-                alwaysQuote: key === "label",
-              })}`,
+              `${key}=${stringifyNgDslValue(value)}`,
           ),
         );
       }
 
-      const mainPart = `${targetType}(${args.join(", ")})`;
+      const mainPart = `${targetType}(${args.join(" ")})`;
 
       if (rule.andConditions && rule.andConditions.length > 0) {
         const sub = rule.andConditions[0];

@@ -95,7 +95,7 @@ describe("NGConverter JSON5 parsing", () => {
     ]);
 
     expect(dsl).toBe(
-      'HighlightTitle(word="VTuber", sites=[eddibb.cc, 5ch.net], bgColor=red, label="注目")',
+      'HighlightTitle(word=VTuber sites=[eddibb.cc 5ch.net] bgColor=red label=注目)',
     );
   });
 

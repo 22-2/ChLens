@@ -70,17 +70,17 @@ interface NGEditorProps {
 }
 
 const NG_DSL_EXAMPLE = `Body(word="荒らし")
-HighlightTitle(word="重要", bgColor=#ffcdd2, label="注目")
+HighlightTitle(word="重要" bgColor=#ffcdd2 label="注目")
 ID(word="abc123")`;
 
 const NG_DSL_MULTILINE_EXAMPLE = `RegExpHighlightTitle(
-  word="VTuber",
+  word="VTuber"
   sites=[
-    eddibb.cc,
-    5ch.net,
-  ],
-  bgColor=red,
-  label="注目",
+    eddibb.cc
+    5ch.net
+  ]
+  bgColor=red
+  label="注目"
 )`;
 
 function parseRulesForBulkEdit(source: string): NGRule[] | null {

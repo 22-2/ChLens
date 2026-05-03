@@ -473,28 +473,39 @@ const SETTINGS_SECTIONS = [
       widget: "ng_editor" as any,
     },
     { kind: "boolean", key: "chain_ng", title: "NGレスへの返信を連鎖NGにする" },
-    { kind: "boolean", key: "chain_ng_id", title: "NG ID を連鎖NGにする" },
-    { kind: "boolean", key: "chain_ng_slip", title: "NG SLIP を連鎖NGにする" },
-    {
-      kind: "boolean",
-      key: "forward_link_ng",
-      title: "前方リンクをNG判定に含める",
-    },
-    {
-      kind: "boolean",
-      key: "display_ng",
-      title: "NGレスを展開可能なまま表示する",
-    },
-    {
-      kind: "boolean",
-      key: "bookmark_show_dat",
-      title: "dat落ちしたブックマークを表示する",
-    },
-    {
-      kind: "boolean",
-      key: "reject_ng_rep",
-      title: "NGレスへの返信も非表示にする",
-    },
+
+    // TODO: どういう意味か分かりづらいので、調査してから説明を加える
+    // TODO: Not implemented
+    // { kind: "boolean", key: "chain_ng_id", title: "NG ID を連鎖NGにする" },
+    // { kind: "boolean", key: "chain_ng_slip", title: "NG SLIP を連鎖NGにする" },
+
+    // TODO: どういう意味か分かりづらいので、調査してから説明を加える
+    // TODO: Not implemented
+    // {
+    //   kind: "boolean",
+    //   key: "forward_link_ng",
+    //   title: "前方リンクをNG判定に含める",
+    // },
+
+    // TODO: Not implemented
+    // {
+    //   kind: "boolean",
+    //   key: "display_ng",
+    //   title: "NGレスを展開可能なまま表示する",
+    // },
+    // {
+    //   kind: "boolean",
+    //   key: "bookmark_show_dat",
+    //   title: "dat落ちしたブックマークを表示する",
+    // },
+
+    // TODO: Not implemented
+    // {
+    //   kind: "boolean",
+    //   key: "reject_ng_rep",
+    //   title: "NGレスへの返信も非表示にする",
+    // },
+
     // TODO: どういう意味か分かりづらいので、調査してから説明を加える
     {
       kind: "boolean",
@@ -518,14 +529,15 @@ const SETTINGS_SECTIONS = [
       options: HOW_TO_JUDGMENT_ID_OPTIONS,
       widget: "radio",
     },
-    {
-      kind: "number",
-      key: "repeat_message_ng_count",
-      title: "連投レスをNGにする回数（0で無効）",
-      minimum: 0,
-      maximum: 99,
-      step: 1,
-    },
+    // TODO: Not implemented
+    // {
+    //   kind: "number",
+    //   key: "repeat_message_ng_count",
+    //   title: "連投レスをNGにする回数（0で無効）",
+    //   minimum: 0,
+    //   maximum: 99,
+    //   step: 1,
+    // },
   ]),
   defineSection("other", "その他", "書き込み時の既定値や外部データ設定です。", [
     { kind: "string", key: "default_name", title: "既定の名前" },
