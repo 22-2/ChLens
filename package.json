@@ -65,7 +65,7 @@
     "build": "gulp build",
     "build:chrome": "gulp build:chrome",
     "build:firefox": "gulp build:firefox",
-    "build:tauri": "gulp build:tauri",
+    "build:tauri": "pnpm build && tauri build",
     "build:all": "gulp build:all",
     "dev": "tauri dev",
     "dev:watch": "run-p watch:tauri tauri:dev",
