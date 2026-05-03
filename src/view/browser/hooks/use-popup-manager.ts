@@ -26,7 +26,8 @@ import { create } from "zustand";
 
 const DEFAULT_POPUP_SCOPE_ID = "default";
 const EMPTY_POPUPS: PopupItem[] = [];
-const POPUP_KEEP_OPEN_TARGET_SELECTOR = "a, .res__link, .res__thumb";
+const POPUP_KEEP_OPEN_TARGET_SELECTOR =
+  "a, .res__link, .res__thumb, .res__media-embed";
 const POPUP_MOUSELEAVE_SUPPRESS_MS = 250;
 
 function isContextMenuPopupId(popupId: string | null): boolean {

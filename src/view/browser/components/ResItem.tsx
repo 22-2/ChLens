@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import type { IRes } from "src/service-container";
 import { ResBody } from "src/view/browser/components/ResBody";
+import { ResMediaGallery } from "src/view/browser/components/ResMediaGallery";
 import { useIsNgTemporarilyDisabled } from "src/view/browser/hooks/use-ng-status";
 import { getIdHeatColor } from "src/view/browser/utils/id-heat";
 import type {
@@ -11,7 +12,6 @@ import { getReplyHeatLevel } from "src/view/browser/utils/reply-heat";
 import {
   decodeResponseHtml,
   extractUrlsFromMessage,
-  toViewerImageUrl,
 } from "src/view/browser/utils/utils";
 
 export const ResItem: React.FC<ResItemProps> = React.memo(
@@ -46,13 +46,6 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
       () => extractUrlsFromMessage(decoded.messageHtml),
       [decoded.messageHtml],
     );
-    const imageUrls = useMemo(
-      () =>
-        urls
-          .map((url) => ({ raw: url, src: toViewerImageUrl(url) }))
-          .filter((x) => !!x.src),
-      [urls],
-    );
     const replyHeat = getReplyHeatLevel(repCount);
     const resNumClassName = `res__num${
       replyHeat === "hot"
@@ -76,7 +69,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
         onContextMenu={(e) => {
           if (
             e.target instanceof Element &&
-            e.target.closest("a, .res__link, .res__thumb")
+            e.target.closest("a, .res__link, .res__thumb, .res__media-embed")
           ) {
             // リンクや画像の右クリックはブラウザ既定メニューへ委譲する。
             return;
@@ -167,49 +160,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
             ))}
           </div>
         )}
-        {imageUrls.length > 0 && (
-          <div className="res__thumbs">
-            {imageUrls.map(({ raw, src }) => (
-              <a
-                key={`${res.num}:thumb:${raw}`}
-                href={raw}
-                className="res__thumb"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  // 同レス内の全画像URLを渡してビューア内で前後移動できるようにする
-                  onUrlClick(
-                    raw,
-                    imageUrls.map((x) => x.raw),
-                    0,
-                  );
-                }}
-                onMouseDown={(e) => {
-                  if (e.button !== 1) {
-                    return;
-                  }
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-                onAuxClick={(e) => {
-                  if (e.button !== 1) {
-                    return;
-                  }
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onUrlClick(
-                    raw,
-                    imageUrls.map((x) => x.raw),
-                    1,
-                  );
-                }}
-                title={raw}
-              >
-                <img src={src ?? ""} alt={raw} loading="lazy" />
-              </a>
-            ))}
-          </div>
-        )}
+        <ResMediaGallery urls={urls} onUrlClick={onUrlClick} />
       </article>
     );
   },

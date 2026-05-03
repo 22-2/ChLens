@@ -1,5 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import {
+  hasVideo,
   hasImage,
   normalizeIdLinkText,
   stripHtml,
@@ -18,6 +19,15 @@ describe("browser utils", () => {
 
     expect(toViewerImageUrl(url)).toBe(url);
     expect(hasImage(url)).toBe(true);
+  });
+
+  it("YouTube と直リンク mp4 を動画として判定する", () => {
+    expect(hasVideo("https://youtu.be/TestVideo01")).toBe(true);
+    expect(
+      hasVideo(
+        "https://video.twimg.com/amplify_video/0000000000000000000/vid/avc1/1280x720/test-video.mp4?tag=14",
+      ),
+    ).toBe(true);
   });
 
   it("anchor_id の表示文字列をIDポップアップ向けに正規化する", () => {

@@ -1,5 +1,6 @@
 import MessageProcessor from "src/core/MessageProcessor";
 import type { IRes } from "src/service-container";
+import { isInlineVideoEmbedUrl } from "src/view/browser/utils/external-media";
 
 const decodeEntitySpan =
   typeof document !== "undefined" ? document.createElement("span") : null;
@@ -140,7 +141,9 @@ export function hasImage(message: string): boolean {
 export function hasVideo(message: string): boolean {
   return (
     /\.(mp4|webm|avi|mov)(?:\?[^"<]*)?(?=["<\s]|$)/i.test(message) ||
-    /<video\b/i.test(message)
+    /<video\b/i.test(message) ||
+    (message.match(/https?:\/\/[^\s"'<>]+/gi)?.some((url) => isInlineVideoEmbedUrl(url)) ??
+      false)
   );
 }
 export function hasExternalLink(message: string): boolean {

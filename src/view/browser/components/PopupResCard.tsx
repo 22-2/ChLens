@@ -1,6 +1,7 @@
-import React, { useMemo, useRef } from "react";
+import React, { useMemo } from "react";
 import type { IRes } from "src/service-container";
 import { ResBody } from "src/view/browser/components/ResBody";
+import { ResMediaGallery } from "src/view/browser/components/ResMediaGallery";
 import { useIsNgTemporarilyDisabled } from "src/view/browser/hooks/use-ng-status";
 import { getIdHeatColor } from "src/view/browser/utils/id-heat";
 import type {
@@ -11,7 +12,6 @@ import { getReplyHeatLevel } from "src/view/browser/utils/reply-heat";
 import {
   decodeResponseHtml,
   extractUrlsFromMessage,
-  toViewerImageUrl,
 } from "src/view/browser/utils/utils";
 
 export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
@@ -35,7 +35,6 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     onContextMenu,
   }) => {
     const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
-    const handledMiddleClickThumbUrlRef = useRef<string | null>(null);
     const decoded = useMemo(
       () => decodeResponseHtml(res, messageProtocol),
       [messageProtocol, res],
@@ -43,13 +42,6 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     const urls = useMemo(
       () => extractUrlsFromMessage(decoded.messageHtml),
       [decoded.messageHtml],
-    );
-    const imageUrls = useMemo(
-      () =>
-        urls
-          .map((url) => ({ raw: url, src: toViewerImageUrl(url) }))
-          .filter((x) => !!x.src),
-      [urls],
     );
 
     // repIndex が渡された場合のみ返信数を表示する
@@ -85,7 +77,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
           if (!onContextMenu) return;
           if (
             e.target instanceof Element &&
-            e.target.closest("a, .res__thumb")
+            e.target.closest("a, .res__thumb, .res__media-embed")
           ) {
             // popup 内でもリンク/画像の右クリックは既定メニューを優先する。
             return;
@@ -170,63 +162,12 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
           onAnchorHover={onAnchorHover}
           onAnchorLeave={onAnchorLeave}
         />
-        {imageUrls.length > 0 && (
-          <div className="res__thumbs">
-            {imageUrls.map(({ raw, src }) => (
-              <a
-                key={`${res.num}:thumb:${raw}`}
-                href={raw}
-                className="res__thumb"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  // 同レス内の全画像URLを渡してビューア内で前後移動できるようにする
-                  onUrlClick(
-                    raw,
-                    imageUrls.map((x) => x.raw),
-                    0,
-                  );
-                }}
-                onMouseDown={(e) => {
-                  if (e.button !== 1) {
-                    return;
-                  }
-                  // ポップアップ内 middle click は mouseleave close と競合しやすいため、
-                  // 先に suppress を張ってから新規タブ側ハンドラを実行する。
-                  onLinkMiddleClickStart?.();
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handledMiddleClickThumbUrlRef.current = raw;
-                  onUrlClick(
-                    raw,
-                    imageUrls.map((x) => x.raw),
-                    1,
-                  );
-                }}
-                onAuxClick={(e) => {
-                  if (e.button !== 1) {
-                    return;
-                  }
-                  onLinkMiddleClickStart?.();
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (handledMiddleClickThumbUrlRef.current === raw) {
-                    handledMiddleClickThumbUrlRef.current = null;
-                    return;
-                  }
-                  onUrlClick(
-                    raw,
-                    imageUrls.map((x) => x.raw),
-                    1,
-                  );
-                }}
-                title={raw}
-              >
-                <img src={src ?? ""} alt={raw} loading="lazy" />
-              </a>
-            ))}
-          </div>
-        )}
+        <ResMediaGallery
+          urls={urls}
+          onUrlClick={onUrlClick}
+          onMiddleClickStart={onLinkMiddleClickStart}
+          openOnMiddleMouseDown
+        />
       </article>
     );
   },
