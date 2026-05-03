@@ -1,5 +1,9 @@
 import JSON5 from "json5";
 import { TYPE, parse as parseDSL } from "src/core/NG.js";
+import {
+  stringifyNgDslSitesValue,
+  stringifyNgDslValue,
+} from "src/core/ngDsl";
 
 export interface NGRule {
   enabled?: boolean;
@@ -31,7 +35,7 @@ interface InternalNGElement {
   type: string;
   word: string;
   exception: boolean;
-  scope?: { value: string };
+  scope?: { value: string | string[] };
   params?: Record<string, string>;
   expire?: number;
   name?: string;
@@ -223,7 +227,9 @@ export function convertUserToInternal(rules: NGRule[]): InternalNGElement[] {
     };
 
     if (rule.scope && rule.scope.length > 0) {
-      internal.scope = { value: rule.scope[0] };
+      internal.scope = {
+        value: rule.scope.length === 1 ? rule.scope[0] : [...rule.scope],
+      };
     }
 
     if (rule.highlightParams) {
@@ -261,8 +267,9 @@ export function convertInternalToUser(
   internalObjs: InternalNGElement[],
 ): NGRule[] {
   return internalObjs.map((obj) => {
+    const rawWord = String(obj.word || "");
     const rule: NGRule = {
-      word: String(obj.word || ""),
+      word: rawWord,
     };
 
     const typeStr = String(obj.type || "");
@@ -292,8 +299,17 @@ export function convertInternalToUser(
     else if (typeStr === TYPE.WORD || typeStr === TYPE.REG_EXP)
       rule.target = "all";
 
+    if (rule.target === "id") {
+      rule.word = rawWord.replace(/^(?:ID|発信元):\s*/u, "");
+    }
+
     if (obj.scope?.value) {
-      rule.scope = [obj.scope.value];
+      const scopeValue = Array.isArray(obj.scope.value)
+        ? obj.scope.value
+        : [obj.scope.value];
+      if (scopeValue.length > 0) {
+        rule.scope = [...scopeValue];
+      }
     }
 
     if (obj.params) {
@@ -389,23 +405,27 @@ export function convertUserToDSL(rules: NGRule[]): string {
         }
       }
 
-      let mainPart = `${targetType}: ${rule.word}`;
+      const args: string[] = [];
+
+      // 新DSLでは値を必ず named argument で持たせて、補完とシグネチャ表示を安定させる。
+      args.push(`word=${stringifyNgDslValue(rule.word, { alwaysQuote: true })}`);
 
       if (rule.scope && rule.scope.length > 0) {
-        let scopeStr = rule.scope[0];
-        if (rule.highlightParams) {
-          const params = Object.entries(rule.highlightParams)
-            .map(([k, v]) => `${k}=v`)
-            .join(", ");
-          if (params) scopeStr += `, ${params}`;
-        }
-        mainPart = `${targetType}(${scopeStr}): ${rule.word}`;
-      } else if (rule.highlightParams) {
-        const params = Object.entries(rule.highlightParams)
-          .map(([k, v]) => `${k}=${v}`)
-          .join(", ");
-        mainPart = `${targetType}(*, ${params}): ${rule.word}`;
+        args.push(`sites=${stringifyNgDslSitesValue(rule.scope)}`);
       }
+
+      if (rule.highlightParams) {
+        args.push(
+          ...Object.entries(rule.highlightParams).map(
+            ([key, value]) =>
+              `${key}=${stringifyNgDslValue(value, {
+                alwaysQuote: key === "label",
+              })}`,
+          ),
+        );
+      }
+
+      const mainPart = `${targetType}(${args.join(", ")})`;
 
       if (rule.andConditions && rule.andConditions.length > 0) {
         const sub = rule.andConditions[0];

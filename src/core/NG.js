@@ -1,6 +1,12 @@
 import { container } from "src/service-container/index";
 import { decodeCharReference, normalize, stringToDate } from "src/core/jsutil.js";
 import { convertUserToInternal, tryParseJSON5Rules } from "src/core/NGConverter";
+import {
+  extractNgDslFunctionCall,
+  normalizeNgDslKeyword,
+  parseNgDslArguments,
+  splitNgDslEntries,
+} from "src/core/ngDsl";
 
 /**
 @class NG
@@ -68,7 +74,6 @@ const _ignoreNgType = /^ignoreNgType:(?:\$\((.*?)\):)?(.*)$/;
 const _expireDate = /^expireDate:(\d{4}\/\d{1,2}\/\d{1,2}),(.*)$/;
 const _attachName = /^attachName:([^,]*),(.*)$/;
 const _expNgWords = /^\$\[(.*?)\]\$:(.*)$/;
-const _scope = /^([^(]+)\(([^)]+)\):(.*)$/;
 
 //jsonには正規表現のオブジェクトが含めれないので
 //それを展開
@@ -114,6 +119,16 @@ NG機能の正規表現(${type}: ${word})を読み込むのに失敗しました
       n.type = TYPE.INVALID;
     }
   }
+};
+
+const _normalizeMainKeyword = function (ngWord) {
+  const colonIndex = ngWord.indexOf(":");
+  if (colonIndex < 0) {
+    return ngWord;
+  }
+
+  const keyword = normalizeNgDslKeyword(ngWord.slice(0, colonIndex));
+  return `${keyword}:${ngWord.slice(colonIndex + 1)}`;
 };
 
 const _config = {
@@ -166,6 +181,7 @@ export var parse = function (string) {
 
   var _getNgElement = function (ngWord) {
     let tmp;
+    ngWord = ngWord.trim();
     if (ngWord.startsWith("Comment:") || ngWord === "") {
       return null;
     }
@@ -175,33 +191,31 @@ export var parse = function (string) {
       subElements: [],
     };
 
-    // スコープとパラメータの抽出 (例: HighlightTitle(bbs.eddibb.cc/liveedge, label=VTuber): vtuber)
-    let scopeMatch = _scope.exec(ngWord);
-    if (scopeMatch) {
-      const keyword = scopeMatch[1].trim();
-      const scopeContent = scopeMatch[2].trim();
-      const restWord = scopeMatch[3].trim();
-
-      // スコープ内容をパースしてパラメータを抽出
-      const parts = scopeContent.split(",").map((p) => p.trim());
-      const scopePath = parts[0]; // 最初の部分はスコープパス
-      ngElement.scope = { value: scopePath };
-
-      // 残りの部分をパラメータとして処理 (KEY=VALUE形式)
-      ngElement.params = {};
-      for (let i = 1; i < parts.length; i++) {
-        const paramMatch = parts[i].match(/^(\w+)=(.+)$/);
-        if (paramMatch) {
-          ngElement.params[paramMatch[1]] = paramMatch[2];
-        }
+    // 補完UIでは関数呼び出し風 DSL を扱うため、ここで旧1行記法へ正規化する。
+    const functionCall = extractNgDslFunctionCall(ngWord);
+    if (functionCall) {
+      const { word, scope, params } = parseNgDslArguments(functionCall.argsSource, {
+        positionalWord: functionCall.valueSource == null,
+      });
+      if (scope != null && scope.length > 0) {
+        ngElement.scope = {
+          value: scope.length === 1 ? scope[0] : scope,
+        };
+      }
+      if (params != null) {
+        ngElement.params = params;
       }
 
-      // キーワード部分を再構築して処理を続ける
-      ngWord = keyword + ":" + restWord;
+      const functionWord = word ?? functionCall.valueSource;
+      ngWord =
+        functionWord != null && functionWord !== ""
+          ? `${functionCall.keyword}:${functionWord}`
+          : `${functionCall.keyword}:`;
     }
 
     // 右クリックメニュー経由などで `id:` 小文字が入るケースを吸収する。
     ngWord = ngWord.replace(/^id:/i, "ID:");
+    ngWord = _normalizeMainKeyword(ngWord);
 
     // キーワードごとのNG処理
     switch (false) {
@@ -225,7 +239,7 @@ export var parse = function (string) {
         ngElement.type = TYPE.REG_EXP_MAIL;
         ngElement.word = ngWord.substr(11).trim();
         break;
-      case !ngWord.startsWith("RegExpID:"):
+      case !ngWord.startsWith("RegExpId:"):
         ngElement.type = TYPE.REG_EXP_ID;
         ngElement.word = ngWord.substr(9).trim();
         break;
@@ -323,8 +337,9 @@ export var parse = function (string) {
     return ngElement;
   };
 
-  const ngStrSplit = string.split("\n");
+  const ngStrSplit = splitNgDslEntries(string);
   for (let ngWord of ngStrSplit) {
+    ngWord = ngWord.trim();
     // 関係ないプレフィックスは飛ばす
     var m;
     if (ngWord.startsWith("Comment:") || ngWord === "") {
@@ -333,32 +348,59 @@ export var parse = function (string) {
 
     let ngElement = {};
 
-    // 指定したレス番号はNG除外する
-    if ((m = ngWord.match(_ignoreResRegNumber)) != null) {
-      ngElement = {
-        start: m[1],
-        finish: m[2],
-      };
-      ngWord = m[3];
+    // DSL変換時に prefix が複数並ぶことがあるため、先頭の装飾は1回で打ち切らず順に剥がす。
+    while (true) {
+      // 指定したレス番号はNG除外する
+      if ((m = ngWord.match(_ignoreResRegNumber)) != null) {
+        ngElement = {
+          ...ngElement,
+          start: m[1],
+          finish: m[2],
+        };
+        ngWord = m[3].trim();
+        continue;
+      }
+
       // 例外NgTypeの指定
-    } else if ((m = ngWord.match(_ignoreNgType)) != null) {
-      ngElement = {
-        exception: true,
-        subType: m[1] != null ? m[1].split(",") : undefined,
-      };
-      ngWord = m[2];
+      if ((m = ngWord.match(_ignoreNgType)) != null) {
+        ngElement = {
+          ...ngElement,
+          exception: true,
+          subType: m[1] != null ? m[1].split(",") : undefined,
+        };
+        ngWord = m[2].trim();
+        continue;
+      }
+
       // 有効期限の指定
-    } else if ((m = ngWord.match(_expireDate)) != null) {
-      const expire = stringToDate(`${m[1]} 23:59:59`);
-      ngElement = { expire: expire.valueOf() + 1000 };
-      ngWord = m[2];
+      if ((m = ngWord.match(_expireDate)) != null) {
+        const expire = stringToDate(`${m[1]} 23:59:59`);
+        ngElement = {
+          ...ngElement,
+          expire: expire.valueOf() + 1000,
+        };
+        ngWord = m[2].trim();
+        continue;
+      }
+
       // 名前の付与
-    } else if ((m = ngWord.match(_attachName)) != null) {
-      ngElement = { name: m[1] };
-      ngWord = m[2];
+      if ((m = ngWord.match(_attachName)) != null) {
+        ngElement = {
+          ...ngElement,
+          name: m[1],
+        };
+        ngWord = m[2].trim();
+        continue;
+      }
+
+      break;
     }
+
     // キーワードごとの取り出し
     const ele = _getNgElement(ngWord);
+    if (ele == null) {
+      continue;
+    }
     ngElement.type = ele.type;
     ngElement.word = ele.word;
     if (ele.subType != null) {
@@ -483,6 +525,11 @@ const _checkScope = function (ngObj, url) {
   }
 
   const { value } = ngObj.scope;
+  const scopeValues = Array.isArray(value) ? value : [value];
+
+  if (scopeValues.some((scopeValue) => scopeValue === "*")) {
+    return true;
+  }
 
   // URLの形式: http://DOMAIN/test/read.cgi/BOARD/NUM/
   // スコープの形式例:
@@ -490,25 +537,19 @@ const _checkScope = function (ngObj, url) {
   // - "bbs.eddibb.cc" -> ドメインのみ指定
   // - "liveedge" -> 板のみ指定
 
-  // スラッシュが含まれている場合はドメイン/板の形式
-  if (value.includes("/")) {
-    // "bbs.eddibb.cc/liveedge" のような形式
-    // URLに含まれているかチェック
-    return url.includes(value);
-  } else {
-    // スラッシュがない場合は、ドメインまたは板名として扱う
-    // ドメインチェック（://の後に続く）
+  return scopeValues.some((scopeValue) => {
+    if (scopeValue.includes("/")) {
+      return url.includes(scopeValue);
+    }
+
     const domainMatch = url.match(/^https?:\/\/([^/]+)/);
-    if (domainMatch && domainMatch[1].includes(value)) {
+    if (domainMatch && domainMatch[1].includes(scopeValue)) {
       return true;
     }
-    // 板名チェック（/test/read.cgi/の後に続く）
+
     const boardMatch = url.match(/\/test\/read\.cgi\/([^/]+)/);
-    if (boardMatch && boardMatch[1] === value) {
-      return true;
-    }
-    return false;
-  }
+    return boardMatch ? boardMatch[1] === scopeValue : false;
+  });
 };
 
 /**
@@ -728,9 +769,10 @@ export var execExpire = function () {
   let newConfigStr = "";
   let updateFlag = false;
 
-  const ngStrSplit = configStr.split("\n");
+  const ngStrSplit = splitNgDslEntries(configStr);
   const now = Date.now();
   for (let ngWord of ngStrSplit) {
+    ngWord = ngWord.trim();
     // 有効期限の確認
     if (_expireDate.test(ngWord)) {
       const m = ngWord.match(_expireDate);

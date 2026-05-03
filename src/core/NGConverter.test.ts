@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { convertUserToInternal, tryParseJSON5Rules } from "src/core/NGConverter";
+import {
+  convertInternalToUser,
+  convertUserToDSL,
+  convertUserToInternal,
+  tryParseJSON5Rules,
+} from "src/core/NGConverter";
 
 vi.mock("src/core/NG.js", () => ({
   TYPE: {
@@ -57,5 +62,58 @@ describe("NGConverter JSON5 parsing", () => {
         label: "watch",
       },
     });
+  });
+
+  it("keeps all scopes when converting to the internal NG format", () => {
+    const internalRules = convertUserToInternal([
+      {
+        word: "foo",
+        target: "body",
+        scope: ["eddibb.cc", "5ch.net"],
+      },
+    ]);
+
+    expect(internalRules[0]).toMatchObject({
+      scope: {
+        value: ["eddibb.cc", "5ch.net"],
+      },
+    });
+  });
+
+  it("serializes DSL with named arguments and scope arrays", () => {
+    const dsl = convertUserToDSL([
+      {
+        word: "VTuber",
+        type: "highlight",
+        target: "title",
+        scope: ["eddibb.cc", "5ch.net"],
+        highlightParams: {
+          bgColor: "red",
+          label: "注目",
+        },
+      },
+    ]);
+
+    expect(dsl).toBe(
+      'HighlightTitle(word="VTuber", sites=[eddibb.cc, 5ch.net], bgColor=red, label="注目")',
+    );
+  });
+
+  it("drops legacy ID prefixes when converting internal rules to user-facing rules", () => {
+    const rules = convertInternalToUser([
+      {
+        type: "ID",
+        word: "ID:abc123",
+        exception: false,
+      },
+    ]);
+
+    expect(rules).toEqual([
+      {
+        word: "abc123",
+        type: "ng",
+        target: "id",
+      },
+    ]);
   });
 });

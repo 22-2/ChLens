@@ -1,15 +1,15 @@
 import Editor, { loader, useMonaco } from "@monaco-editor/react";
-import JSON5 from "json5";
 import { Trash2 } from "lucide-react";
 import React, { useEffect, useMemo } from "react";
 import { platform } from "src/app/platform";
 import {
   convertDSLToUser,
-  stringifyToJSON5,
+  convertUserToDSL,
   tryParseJSON5Rules,
   type NGRule,
 } from "src/core/NGConverter";
-import ngSchema from "src/core/ng-schema.json";
+import { NG_DSL_LANGUAGE_ID } from "src/core/ngDsl";
+import { ensureNgDslLanguage } from "src/view/browser/components/ngDslMonaco";
 
 type MonacoEnvironmentLike = {
   getWorker?: (moduleId: string, label: string) => Worker;
@@ -69,30 +69,19 @@ interface NGEditorProps {
   onChange: (value: string) => void;
 }
 
-const NG_JSON5_EXAMPLE = `[
-  {
-    word: "荒らし",
-    target: "body",
-  },
-  {
-    word: "重要",
-    type: "highlight",
-    target: "title",
-    highlightParams: {
-      bgColor: "red",
-      label: "注目",
-    },
-  },
-  {
-    word: "abc123",
-    target: "id",
-  },
-]`;
+const NG_DSL_EXAMPLE = `Body(word="荒らし")
+HighlightTitle(word="重要", bgColor=#ffcdd2, label="注目")
+ID(word="abc123")`;
 
-// 旧設定から移行するユーザー向けに、JSON5だけでなくDSL形式の最小例も明示する。
-const NG_DSL_EXAMPLE = `Body: 荒らし
-HighlightTitle(*, bgColor=#ffcdd2, label=注目): 重要
-ID: abc123`;
+const NG_DSL_MULTILINE_EXAMPLE = `RegExpHighlightTitle(
+  word="VTuber",
+  sites=[
+    eddibb.cc,
+    5ch.net,
+  ],
+  bgColor=red,
+  label="注目",
+)`;
 
 function parseRulesForBulkEdit(source: string): NGRule[] | null {
   const trimmed = source.trim();
@@ -131,19 +120,23 @@ function removeIdTargetRules(rules: NGRule[]): {
 export const NGEditor: React.FC<NGEditorProps> = ({ value, onChange }) => {
   const monaco = useMonaco();
 
-  // DSLを検出したらJSON5に変換して表示する
+  // 保存済み設定がJSON5でも、編集面はDSLへ寄せて一覧性と補完を両立させる。
   const initialValue = useMemo(() => {
     const trimmed = value.trim();
-    // JSON5はコメント始まりでも有効なので、先頭文字ではなく実際にparseできるかで判定する。
-    if (trimmed === "" || tryParseJSON5Rules(value) != null) {
+    if (trimmed === "") {
       return value;
     }
+
+    const json5Rules = tryParseJSON5Rules(value);
+    if (json5Rules != null) {
+      return convertUserToDSL(json5Rules);
+    }
+
     try {
-      // 既存のDSLを検知したので、JSON5に変換する
-      const rules = convertDSLToUser(value);
-      return JSON5.stringify(rules, { space: 2, quote: '"' });
+      convertDSLToUser(value);
+      return value;
     } catch (e) {
-      console.error("Failed to convert DSL to JSON5", e);
+      console.error("Failed to normalize NG rules as DSL", e);
       return value;
     }
   }, [value]);
@@ -160,19 +153,8 @@ export const NGEditor: React.FC<NGEditorProps> = ({ value, onChange }) => {
     // editor.main.js 側でMonacoEnvironmentが上書きされるケースがあるため、mount後にも再適用する
     configureMonacoEnvironment();
     if (monaco) {
+      ensureNgDslLanguage(monaco);
       monaco.editor.setTheme("vs-dark");
-      monaco.json.jsonDefaults.setDiagnosticsOptions({
-        // validate: true はAJVがnew Function()でスキーマをコンパイルするためCSP違反になる
-        validate: false,
-        allowComments: true,
-        schemas: [
-          {
-            uri: platform.window.getAssetUrl("ng-schema.json"),
-            fileMatch: ["*"],
-            schema: ngSchema,
-          },
-        ],
-      });
     }
   }, [monaco]);
 
@@ -203,8 +185,8 @@ export const NGEditor: React.FC<NGEditorProps> = ({ value, onChange }) => {
       return;
     }
 
-    // 一括編集後の保存形式をJSON5へ統一して、次回編集時の解釈差分を避ける。
-    onChange(stringifyToJSON5(filteredRules));
+    // 一括編集の後も DSL 表示と補完を維持したいため、保存形式を DSL に寄せる。
+    onChange(convertUserToDSL(filteredRules));
   };
 
   return (
@@ -219,20 +201,27 @@ export const NGEditor: React.FC<NGEditorProps> = ({ value, onChange }) => {
       >
         <Editor
           height="100%"
-          defaultLanguage="json"
+          defaultLanguage={NG_DSL_LANGUAGE_ID}
           value={initialValue}
           onChange={handleEditorChange}
-          beforeMount={() => {
+          beforeMount={(beforeMountMonaco) => {
             configureMonacoEnvironment();
+            ensureNgDslLanguage(beforeMountMonaco);
           }}
           options={{
             minimap: { enabled: false },
             fontSize: 14,
-            formatOnPaste: true,
-            formatOnType: true,
+            formatOnPaste: false,
+            formatOnType: false,
             automaticLayout: true,
             tabSize: 2,
             scrollBeyondLastLine: false,
+            quickSuggestions: {
+              other: true,
+              comments: false,
+              strings: true,
+            },
+            suggestOnTriggerCharacters: true,
           }}
         />
       </div>
@@ -258,8 +247,14 @@ export const NGEditor: React.FC<NGEditorProps> = ({ value, onChange }) => {
       <details className="ng-editor__help">
         <summary className="ng-editor__help-summary">記法の例</summary>
         <div className="ng-editor__help-body">
-          <div className="ng-editor__help-label">JSON5</div>
-          <pre className="ng-editor__help-code">{NG_JSON5_EXAMPLE}</pre>
+          <div className="ng-editor__help-label">DSL</div>
+          <pre className="ng-editor__help-code">{NG_DSL_EXAMPLE}</pre>
+          <div className="ng-editor__help-label">複数行 DSL</div>
+          <pre className="ng-editor__help-code">{NG_DSL_MULTILINE_EXAMPLE}</pre>
+          <div className="ng-editor__help-label">補足</div>
+          <p className="ng-editor__help-note">
+            JSON5 を貼り付けても読み込めますが、編集画面では DSL として扱います。
+          </p>
         </div>
       </details>
     </div>

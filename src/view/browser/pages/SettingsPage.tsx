@@ -469,7 +469,7 @@ const SETTINGS_SECTIONS = [
       kind: "string",
       key: "ngwords",
       title: "NGワード一覧",
-      description: "JSON5形式、で編集できます。",
+      description: "DSL形式で編集できます。JSON5を貼り付けても読み込みます。",
       widget: "ng_editor" as any,
     },
     { kind: "boolean", key: "chain_ng", title: "NGレスへの返信を連鎖NGにする" },
@@ -546,13 +546,13 @@ const SETTINGS_SECTIONS = [
     },
 
     // TODO: どういう意味か分かりづらいので、調査してから説明を加える
-    {
-      kind: "string",
-      key: "bbsmenu_option",
-      title: "BBSMENUオプション",
-      widget: "textarea",
-      rows: 4,
-    },
+    // {
+    //   kind: "string",
+    //   key: "bbsmenu_option",
+    //   title: "BBSMENUオプション",
+    //   widget: "textarea",
+    //   rows: 4,
+    // },
     // {
     //   kind: "string",
     //   key: "user_css",
@@ -561,13 +561,13 @@ const SETTINGS_SECTIONS = [
     //   rows: 8,
     // },
     // { kind: "boolean", key: "default_scrollbar", title: "既定のスクロールバーを使う" },
-    {
-      kind: "string",
-      key: "replace_str_txt",
-      title: "文字列置換ルール",
-      widget: "textarea",
-      rows: 6,
-    },
+    // {
+    //   kind: "string",
+    //   key: "replace_str_txt",
+    //   title: "文字列置換ルール",
+    //   widget: "textarea",
+    //   rows: 6,
+    // },
     // { kind: "string", key: "useragent", title: "ユーザーエージェント" },
   ]),
   // TODO: インポートやエクスポートなど、既存の設定を移植する

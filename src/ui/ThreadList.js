@@ -1,6 +1,7 @@
 let ThreadList;
 import ContextMenu from "src/ui/ContextMenu.js";
 import TableSearch from "src/ui/TableSearch.js";
+import { NG_HIGHLIGHT_COLOR_PRESETS } from "src/core/ngDsl.ts";
 
 // 背景色に対してコントラストの高いテキスト色（#222 or #eee）を返す
 function _getContrastTextColor(hex) {
@@ -20,19 +21,7 @@ function _getContrastTextColor(hex) {
   }
 }
 
-// 背景色プリセット
-const BG_COLOR_PRESETS = {
-  yellow: "#ffeb3b", // 黄色 (警告・注目)
-  blue: "#e3f2fd", // 青 (情報)
-  green: "#c8e6c9", // 緑 (成功・OK)
-  red: "#ffcdd2", // 赤 (重要・緊急)
-  purple: "#e1bee7", // 紫 (特別)
-  orange: "#ffe0b2", // オレンジ (注意)
-  pink: "#f8bbd0", // ピンク (お気に入り)
-  cyan: "#b2ebf2", // シアン (クール)
-  lime: "#f0f4c3", // ライム (軽い注目)
-  amber: "#ffecb3", // アンバー (中程度の注意)
-};
+const BG_COLOR_PRESETS = NG_HIGHLIGHT_COLOR_PRESETS;
 
 const COLUMN_DEFINITIONS = {
   bookmark: { label: "★", minWidth: 36 },

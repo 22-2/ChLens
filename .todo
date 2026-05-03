@@ -306,7 +306,7 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
   - gitkrakenみたいな感じにしたら使いやすいかも🤔
   - 新しいタブで開くビューも設定できるようにするか
     - ホーム、新しいタブを開いたスレの板- [ ] NGを初心者でも使いやすく！
-- [ ] 板一覧はtreeに
+- [ ] 板一覧はtreeに、一番上位はbbsmenuのurlかページ名に
 - [ ] NGスタジオ
 - [ ] sonnarの追加(container.notification)
 - [ ] 自分のレスと、人からの返信を強調
@@ -332,10 +332,18 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
   - [x] nav-bar__btn以下のメニューのスレでのフィルタのように、閲覧履歴・書き込み履歴でのフィルタを同じ方法で開けるように
   - [x] 閲覧・書き込み履歴のフィルタが出ずっぱりで閉じられない
 - [ ] スレッドを自動更新・停止を右クリックメニューに追加
+- [ ] export/import
+  - 旧uiみたいにボタンをたくさんつくるんじゃなくてgoogle takeoutみたいにチェックボックス形式
+- [] tauriでのブクマ
+  - データベースは何でつくる？
+  - ブクマ消失したりするバグがあったり不安定なイメージなのでindexeddbに寄せようかな🤔
+  - ポップアウト書き込みウィンドウ
 
 
 ### low prior
 - [ ] feat: ブラウザのようなアドレスバーのブックマークボタン
+- [ ] tauriでのみホットキー
+- [ ] コマンドパレット
 
 ## メタ
 
@@ -343,3 +351,5 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 - [ ] ChLens
 - [ ] 書き込み履歴でクリックしたら該当位置にジャンプできるように
 - [ ] 閲覧履歴で、要素が多いとフィルタ開閉が重い
+- [ ] NG Studio構想
+  - [ ] [5ch互換専ブラを今更作ってるっす | Google Gemini](https://gemini.google.com/app/5d3fdd3bc7ec4cbf?hl=ja)
