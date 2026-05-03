@@ -16,7 +16,6 @@ vi.mock("src/core/jsutil.js", () => ({
 
 vi.mock("src/core/NGConverter", () => ({
   convertUserToInternal: vi.fn(),
-  tryParseJSON5Rules: vi.fn(() => null),
 }));
 
 describe("NG DSL parsing", () => {

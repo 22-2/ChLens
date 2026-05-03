@@ -5,7 +5,6 @@ import { platform } from "src/app/platform";
 import {
   convertDSLToUser,
   convertUserToDSL,
-  tryParseJSON5Rules,
   type NGRule,
 } from "src/core/NGConverter";
 import { NG_DSL_LANGUAGE_ID } from "src/core/ngDsl";
@@ -65,7 +64,7 @@ loader.config({
 });
 
 interface NGEditorProps {
-  value: string; // DSL or JSON5 string
+  value: string; // DSL string
   onChange: (value: string) => void;
 }
 
@@ -87,11 +86,6 @@ function parseRulesForBulkEdit(source: string): NGRule[] | null {
   const trimmed = source.trim();
   if (trimmed === "") {
     return [];
-  }
-
-  const json5Rules = tryParseJSON5Rules(source);
-  if (json5Rules != null) {
-    return json5Rules;
   }
 
   try {
@@ -120,16 +114,10 @@ function removeIdTargetRules(rules: NGRule[]): {
 export const NGEditor: React.FC<NGEditorProps> = ({ value, onChange }) => {
   const monaco = useMonaco();
 
-  // 保存済み設定がJSON5でも、編集面はDSLへ寄せて一覧性と補完を両立させる。
   const initialValue = useMemo(() => {
     const trimmed = value.trim();
     if (trimmed === "") {
       return value;
-    }
-
-    const json5Rules = tryParseJSON5Rules(value);
-    if (json5Rules != null) {
-      return convertUserToDSL(json5Rules);
     }
 
     try {
@@ -270,8 +258,7 @@ export const NGEditor: React.FC<NGEditorProps> = ({ value, onChange }) => {
           <pre className="ng-editor__help-code">{NG_DSL_MULTILINE_EXAMPLE}</pre>
           <div className="ng-editor__help-label">補足</div>
           <p className="ng-editor__help-note">
-            JSON5 を貼り付けても読み込めますが、編集画面では DSL
-            として扱います。
+            NGワードを1行に1つずつ記述します。
           </p>
         </div>
       </details>

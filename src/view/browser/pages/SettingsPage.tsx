@@ -469,7 +469,7 @@ const SETTINGS_SECTIONS = [
       kind: "string",
       key: "ngwords",
       title: "NGワード一覧",
-      description: "DSL形式で編集できます。JSON5を貼り付けても読み込みます。",
+      description: "DSL形式で編集できます。",
       widget: "ng_editor" as any,
     },
     { kind: "boolean", key: "chain_ng", title: "NGレスへの返信を連鎖NGにする" },

@@ -1,4 +1,3 @@
-import JSON5 from "json5";
 import { TYPE, parse as parseDSL } from "src/core/NG.js";
 import { stringifyNgDslSitesValue, stringifyNgDslValue } from "src/core/ngDsl";
 
@@ -151,25 +150,6 @@ function normalizeRule(input: unknown): NGRule | null {
       : {}),
     ...(typeof input.name === "string" ? { name: input.name } : {}),
   };
-}
-
-export function tryParseJSON5Rules(json5Str: string): NGRule[] | null {
-  let parsed: unknown;
-
-  try {
-    parsed = JSON5.parse(json5Str);
-  } catch {
-    return null;
-  }
-
-  const rawRules = Array.isArray(parsed) ? parsed : [parsed];
-  const normalizedRules = rawRules.map(normalizeRule);
-
-  if (normalizedRules.some((rule) => rule == null)) {
-    return null;
-  }
-
-  return normalizedRules.filter((rule): rule is NGRule => rule != null);
 }
 
 /**
@@ -430,18 +410,4 @@ export function convertUserToDSL(rules: NGRule[]): string {
       return line;
     })
     .join("\n");
-}
-
-export function parseJSON5(json5Str: string): NGRule[] {
-  const rules = tryParseJSON5Rules(json5Str);
-  if (rules != null) {
-    return rules;
-  }
-
-  console.error("Failed to parse JSON5 NG rules");
-  return [];
-}
-
-export function stringifyToJSON5(rules: NGRule[]): string {
-  return JSON5.stringify(rules, { space: 2, quote: '"' });
 }

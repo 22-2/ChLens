@@ -47,7 +47,7 @@ jobs:
           workspaces: "./src-tauri -> target"
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Update version in tauri.conf.json
         run: |

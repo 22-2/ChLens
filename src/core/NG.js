@@ -6,7 +6,6 @@ import {
 } from "src/core/jsutil.js";
 import {
   convertUserToInternal,
-  tryParseJSON5Rules,
 } from "src/core/NGConverter";
 import {
   extractNgDslFunctionCall,
@@ -173,16 +172,6 @@ export var get = function () {
 export var parse = function (string) {
   const ng = new Set();
   if (string === "") {
-    return ng;
-  }
-
-  // コメント付きJSON5や旧lowercaseキーもここで正規化してから取り込む。
-  const json5Rules = tryParseJSON5Rules(string);
-  if (json5Rules != null) {
-    const internalObjs = convertUserToInternal(json5Rules);
-    for (const obj of internalObjs) {
-      ng.add(obj);
-    }
     return ng;
   }
 
