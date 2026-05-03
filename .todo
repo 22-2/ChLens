@@ -306,8 +306,6 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
   - gitkrakenみたいな感じにしたら使いやすいかも🤔
   - 新しいタブで開くビューも設定できるようにするか
     - ホーム、新しいタブを開いたスレの板- [ ] NGを初心者でも使いやすく！
-- [ ] 板一覧はtreeに、一番上位はbbsmenuのurlかページ名に
-- [ ] NGスタジオ
 - [ ] sonnarの追加(container.notification)
 - [ ] 自分のレスと、人からの返信を強調
 - [ ] feat: タブをドラッグで移動できるように
@@ -339,11 +337,17 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
   - ブクマ消失したりするバグがあったり不安定なイメージなのでindexeddbに寄せようかな🤔
   - ポップアウト書き込みウィンドウ
 - [ ] ポップアップツリーもっと広く表示
+- [ ] bbsmenu改善
+  - [ ] 板一覧はtreeに、一番上位はbbsmenuのurlかページ名に
+  - [ ] 一度開いた板はその他カテゴリにに登録されるように
 
 ### low prior
 - [ ] feat: ブラウザのようなアドレスバーのブックマークボタン
 - [ ] tauriでのみホットキー
 - [ ] コマンドパレット
+
+- bbsmenuページ
+  - 
 
 ## メタ
 
