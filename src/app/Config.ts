@@ -7,7 +7,7 @@ import message from "src/app/Message";
 export default class Config {
   private static readonly _default: ReadonlyMap<string, string> = new Map([
     ["layout", "pane-3"],
-    ["theme_id", "default"],
+    ["theme_id", "system"],
     ["default_scrollbar", "off"],
     ["write_window_x", "0"],
     ["write_window_y", "0"],
