@@ -67,8 +67,8 @@
   "license": "MIT",
   "scripts": {
     "build": "pnpm build:chrome",
-    "build:chrome": "cross-env BROWSER=chrome ENTRY=browser vite build",
-    "build:tauri": "tauri build",
+    "build:chrome": "cross-env PLATFORM=chrome ENTRY=browser vite build",
+    "build:tauri": "cross-env PLATFORM=tauri ENTRY=browser vite build",
     "build:all": "pnpm run build:chrome && pnpm run build:firefox",
     "dev": "tauri dev",
     "dev:watch": "run-p watch:tauri tauri:dev",

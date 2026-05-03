@@ -11,7 +11,7 @@ import { glob } from "fs/promises";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
-const imgExt = (browser: string) => (browser === "chrome" ? "webp" : "png");
+const imgExt = (platform: string) => (platform === "chrome" ? "webp" : "png");
 
 function isSrcNewer(src: string, bin: string): boolean {
   const srcTime = fs.statSync(src).mtimeMs;
@@ -24,9 +24,9 @@ function isSrcNewer(src: string, bin: string): boolean {
 
 // ─── plugin: SCSS ────────────────────────────────────────────────────────────
 
-function scssPlugin(browser: string, outputDir: string): Plugin {
-  const ext = imgExt(browser);
-  const isFirefox = browser === "firefox";
+function scssPlugin(platform: string, outputDir: string): Plugin {
+  const ext = imgExt(platform);
+  const isFirefox = platform === "firefox";
 
   const sassFunctions = {
     "img($name)": (args: sass.Value[]) => {
@@ -84,11 +84,11 @@ function scssPlugin(browser: string, outputDir: string): Plugin {
 
 // ─── plugin: Pug → HTML ──────────────────────────────────────────────────────
 
-function pugPlugin(browser: string, outputDir: string): Plugin {
+function pugPlugin(platform: string, outputDir: string): Plugin {
   const manifestJson = fs.readJsonSync("src/manifest.json");
   const locals = {
     ...manifestJson,
-    image_ext: imgExt(browser),
+    image_ext: imgExt(platform),
   };
 
   async function buildPug(srcFile: string, destFile: string) {
@@ -173,8 +173,8 @@ const IMG_LIST = [
   "filter_19x19_ddd.webp",
 ];
 
-function imgPlugin(browser: string, outputDir: string): Plugin {
-  const isChrome = browser === "chrome";
+function imgPlugin(platform: string, outputDir: string): Plugin {
+  const isChrome = platform === "chrome";
   const imgDir = `${outputDir}/img`;
   const svgDir = "src/image/svg";
 
@@ -241,21 +241,21 @@ function imgPlugin(browser: string, outputDir: string): Plugin {
 
 // ─── plugin: manifest.json ───────────────────────────────────────────────────
 
-function manifestPlugin(browser: string, outputDir: string): Plugin {
+function manifestPlugin(platform: string, outputDir: string): Plugin {
   return {
     name: "manifest-build",
     async buildStart() {
-      if (browser === "tauri") return;
+      if (platform === "tauri") return;
       await fs.ensureDir(outputDir);
       const m = await fs.readJson("src/manifest.json");
 
-      if (browser === "chrome") {
+      if (platform === "chrome") {
         m.permissions = m.permissions.filter(
           (v: string) => !["webRequest", "webRequestBlocking"].includes(v),
         );
         delete m.background.scripts;
         delete m.applications;
-      } else if (browser === "firefox") {
+      } else if (platform === "firefox") {
         m.manifest_version = 2;
         delete m.update_url;
         delete m.minimum_chrome_version;
@@ -280,7 +280,7 @@ function manifestPlugin(browser: string, outputDir: string): Plugin {
 
 // ─── plugin: static file copies ──────────────────────────────────────────────
 
-function staticCopyPlugin(browser: string, outputDir: string): Plugin {
+function staticCopyPlugin(platform: string, outputDir: string): Plugin {
   return {
     name: "static-copy",
     async buildStart() {
@@ -291,13 +291,13 @@ function staticCopyPlugin(browser: string, outputDir: string): Plugin {
           `${outputDir}/lib/shortQuery.min.js`,
         ],
         // rules.json (chrome only)
-        ...(browser !== "firefox" && browser !== "tauri"
+        ...(platform !== "firefox" && platform !== "tauri"
           ? [["src/rules.json", `${outputDir}/rules.json`] as [string, string]]
           : []),
       ];
 
       // browser-polyfill
-      if (browser === "tauri") {
+      if (platform === "tauri") {
         copies.push(["src/browser-shim.js", `${outputDir}/lib/browser-polyfill.min.js`]);
       } else {
         copies.push([
@@ -324,9 +324,9 @@ function staticCopyPlugin(browser: string, outputDir: string): Plugin {
 // ─── main config ─────────────────────────────────────────────────────────────
 
 export default defineConfig(() => {
-  const browser = process.env.BROWSER || "chrome";
+  const platform = process.env.PLATFORM || "chrome";
   const entry = process.env.ENTRY || "app";
-  const outputDir = `./debug/${browser}`;
+  const outputDir = `./debug/${platform}`;
 
   const entryMap: Record<string, { file: string; name: string }> = {
     // app:           { file: "src/app.ts",                      name: "app" },
@@ -344,11 +344,11 @@ export default defineConfig(() => {
     },
     plugins: [
       react(),
-      scssPlugin(browser, outputDir),
-      pugPlugin(browser, outputDir),
-      imgPlugin(browser, outputDir),
-      manifestPlugin(browser, outputDir),
-      staticCopyPlugin(browser, outputDir),
+      scssPlugin(platform, outputDir),
+      pugPlugin(platform, outputDir),
+      imgPlugin(platform, outputDir),
+      manifestPlugin(platform, outputDir),
+      staticCopyPlugin(platform, outputDir),
     ],
     resolve: {
       alias: {
@@ -363,12 +363,12 @@ export default defineConfig(() => {
           functions: {
             "img($name)": (args: sass.Value[]) => {
               const name = (args[0] as sass.SassString).text;
-              const ext = imgExt(browser);
+              const ext = imgExt(platform);
               return new sass.SassString(`url(/img/${name}.${ext})`, { quotes: false });
             },
             "vals($name)": (args: sass.Value[]) => {
               const name = (args[0] as sass.SassString).text;
-              const isFirefox = browser === "firefox";
+              const isFirefox = platform === "firefox";
               let str = "";
               if (name === "scroll") {
                 str = isFirefox ? "scroll" : "auto";
