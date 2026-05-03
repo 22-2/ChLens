@@ -240,6 +240,13 @@ export function useThreadResContextMenu({
             void fetchThread();
           },
         },
+        {
+          id: "auto-refresh",
+          label: "スレッドを自動更新",
+          onSelect: () => {
+
+          }
+        },
         { id: "sep-1", separator: true },
         {
           id: "copy-res",

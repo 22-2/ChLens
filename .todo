@@ -334,7 +334,8 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 - [ ] スレッドを自動更新・停止を右クリックメニューに追加
 - [ ] export/import
   - 旧uiみたいにボタンをたくさんつくるんじゃなくてgoogle takeoutみたいにチェックボックス形式
-- [] tauriでのブクマ
+  - zipで複数のファイルをひとつにまとめて出力
+- [x] tauriでのブクマ
   - データベースは何でつくる？
   - ブクマ消失したりするバグがあったり不安定なイメージなのでindexeddbに寄せようかな🤔
   - ポップアウト書き込みウィンドウ
@@ -354,6 +355,7 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 - [ ] コマンドパレット
 [-] NG Studio構想
   - [ ] [5ch互換専ブラを今更作ってるっす | Google Gemini](https://gemini.google.com/app/5d3fdd3bc7ec4cbf?hl=ja)
+- [x] タブのスレや板でwindowタイトルを変更するように
 
 ## メタ
 

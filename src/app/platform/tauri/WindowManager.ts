@@ -1,3 +1,4 @@
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { WindowManager, WindowOptions } from "src/app/platform/types";
 
 // Tauri環境ではbrowser.tabs/windowsが使えないため、
@@ -23,5 +24,9 @@ export const TauriWindowManager: WindowManager = {
 
   async closeCurrent(): Promise<void> {
     window.close();
+  },
+
+  async setTitle(title: string): Promise<void> {
+    await getCurrentWindow().setTitle(title);
   },
 };

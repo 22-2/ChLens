@@ -25,6 +25,11 @@ export interface WindowManager {
    * 現在のウィンドウ/タブを閉じる
    */
   closeCurrent(): Promise<void>;
+
+  /**
+   * ウィンドウ/タブのタイトルを設定する
+   */
+  setTitle(title: string): Promise<void>;
 }
 
 export interface HttpResponse {

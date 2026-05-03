@@ -39,4 +39,8 @@ export const BrowserWindowManager: WindowManager = {
       await browser.tabs.remove(current.id);
     }
   },
+
+  async setTitle(title: string): Promise<void> {
+    document.title = title;
+  },
 };

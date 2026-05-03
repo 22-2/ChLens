@@ -6,6 +6,7 @@ import React, {
   type Dispatch,
   type ReactNode,
 } from "react";
+import { platform } from "src/app/platform";
 import {
   buildHierarchy,
   getCurrentPage,
@@ -528,6 +529,14 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({
   useEffect(() => {
     saveSession(state);
   }, [state]);
+
+  // アクティブタブのページタイトルが変わったらウィンドウタイトルを更新する
+  useEffect(() => {
+    const title = currentPage.title
+      ? `${currentPage.title} - read.crx 2`
+      : "read.crx 2";
+    platform.window.setTitle(title).catch(() => {});
+  }, [currentPage.title]);
 
   // ブラウザの戻る/進むをアプリ内ナビゲーションに接続
   // history.pushState/popstateの状態同期に頼らず、キーボード/マウスイベントで直接制御する
