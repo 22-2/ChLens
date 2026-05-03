@@ -204,10 +204,28 @@ export const NGEditor: React.FC<NGEditorProps> = ({ value, onChange }) => {
           defaultLanguage={NG_DSL_LANGUAGE_ID}
           value={initialValue}
           onChange={handleEditorChange}
-          beforeMount={(beforeMountMonaco) => {
-            configureMonacoEnvironment();
-            ensureNgDslLanguage(beforeMountMonaco);
-          }}
+            beforeMount={(beforeMountMonaco) => {
+              configureMonacoEnvironment();
+              ensureNgDslLanguage(beforeMountMonaco);
+              // Editor インスタンス作成前にテーマを固定しておく（再生成時のフラッシュ対策）
+              try {
+                beforeMountMonaco.editor.setTheme("vs-dark");
+              } catch (e) {
+                // 万が一 monaco.editor が使えない環境でも安全に処理を続行する
+                // ここは副作用であり、失敗しても動作に致命的な影響は与えない
+                // eslint-disable-next-line no-console
+                console.warn("Failed to set monaco theme in beforeMount", e);
+              }
+            }}
+            onMount={(editor, mountedMonaco) => {
+              // エディタがマウントされるタイミングでもテーマを再適用する
+              try {
+                mountedMonaco.editor.setTheme("vs-dark");
+              } catch (e) {
+                // eslint-disable-next-line no-console
+                console.warn("Failed to set monaco theme on mount", e);
+              }
+            }}
           options={{
             minimap: { enabled: false },
             fontSize: 14,

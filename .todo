@@ -315,6 +315,7 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 - [ ] chore: 設定に応じてngがどう表示されるか設定できるように(非表示、隠す、強調など)
 - [ ] chore: 設定項目を減らす
 - [ ] グロ対策
+  - 既存の設定を使う
 - [ ] スレ立て
 - [ ] chore: tauriで検索
 - [x] feat: ついったーやようつべの動画埋め込み
@@ -347,7 +348,7 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 - [ ] コマンドパレット
 
 - bbsmenuページ
-  - 
+  -
 
 ## メタ
 
@@ -357,3 +358,4 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 - [ ] 閲覧履歴で、要素が多いとフィルタ開閉が重い
 - [ ] NG Studio構想
   - [ ] [5ch互換専ブラを今更作ってるっす | Google Gemini](https://gemini.google.com/app/5d3fdd3bc7ec4cbf?hl=ja)
+- [ ] 専スレでだけsageみたいな設定ができるように
