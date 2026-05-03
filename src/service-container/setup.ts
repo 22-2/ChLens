@@ -33,7 +33,14 @@ export function setupContainer(app: any) {
   // Config Adapter
   const configAdapter: IConfig = {
     get: (key: string) => app.config.get(key),
-    set: (key: string, val: any) => app.config.set(key, val),
+    set: (key: string, val: any) => {
+      app.config.set(key, val);
+      // NGワード設定が更新されたら、NGサービス側の内部状態とキャッシュも同期する。
+      // これにより、設定画面での保存が即座にNG判定ロジックへ反映されるようになる。
+      if (key === "ngwords" && app.NG?.set) {
+        app.NG.set(val);
+      }
+    },
     ready: (cb: () => void) => app.config.ready(cb),
   };
 

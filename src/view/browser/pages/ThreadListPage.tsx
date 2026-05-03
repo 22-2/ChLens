@@ -368,6 +368,36 @@ export const ThreadListPage: React.FC<Props> = ({
   }, [fetchThreads]);
 
   useEffect(() => {
+    // NG設定が更新されたら、一覧のスレッドに対しても判定を再実行する。
+    const handleNgChanged = () => {
+      setThreads((prev) =>
+        prev.map((thread) => {
+          const ngResult = container.ng.isNGBoard(
+            thread.title,
+            page.boardUrl,
+            thread.resCount,
+          );
+          const highlight =
+            ngResult &&
+            (ngResult.type === "HighlightTitle" ||
+              ngResult.type === "RegExpHighlightTitle");
+
+          return {
+            ...thread,
+            ng: highlight ? null : ngResult,
+            highlight: highlight ? ngResult : null,
+          };
+        }),
+      );
+    };
+
+    container.message.on("ng_changed", handleNgChanged);
+    return () => {
+      container.message.off("ng_changed", handleNgChanged);
+    };
+  }, [page.boardUrl]);
+
+  useEffect(() => {
     // 板ごとではなく site 単位で揃えると、同一サイト内を移動しても header sort が毎回初期化されない。
     setSortPreference(readThreadListSortPreference(page.boardUrl));
   }, [page.boardUrl]);

@@ -5,6 +5,7 @@ import {
   FilterX,
   Globe,
   History,
+  RefreshCw,
   Reply,
   RotateCw,
   Search,
@@ -245,6 +246,7 @@ export function useThreadResContextMenu({
         {
           id: "auto-refresh",
           label: "スレッドを自動更新",
+          icon: <RefreshCw size={14} />,
           onSelect: () => {
             dispatch({
               type: "SET_AUTO_REFRESH_ENABLED",

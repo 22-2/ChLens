@@ -111,6 +111,28 @@ export function useThreadData(
     void fetchThread();
   }, [fetchThread]);
 
+  useEffect(() => {
+    // NG設定が更新された通知を受け取ったら、現在表示中のレスに対して判定を再実行する。
+    // これにより、設定画面での変更が即座にスレッド表示へ反映される。
+    const handleNgChanged = () => {
+      setResponses((prev) =>
+        prev.map((res) => ({
+          ...res,
+          // res.ng が undefined の場合は ResItem 側で非NGとして扱われるため、
+          // 判定結果をそのまま（null の場合は undefined へ変換して）上書きする。
+          ng:
+            container.ng.isNGThread(res, page.title, page.threadUrl) ??
+            undefined,
+        })),
+      );
+    };
+
+    container.message.on("ng_changed", handleNgChanged);
+    return () => {
+      container.message.off("ng_changed", handleNgChanged);
+    };
+  }, [page.title, page.threadUrl]);
+
   const indexes = useMemo(() => buildIndexes(responses), [responses]);
 
   const filteredResponses = useMemo(() => {

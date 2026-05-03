@@ -448,6 +448,7 @@ export var set = function (string) {
   _ng = parse(string);
   _config.set([..._ng]);
   _setupReg(_ng);
+  container.message.send("ng_changed");
 };
 
 /**
@@ -483,6 +484,7 @@ export var add = function (string) {
   for (let ang of addNg) {
     _ng.add(ang);
   }
+  container.message.send("ng_changed");
 };
 
 /**
@@ -801,5 +803,6 @@ export var execExpire = function () {
     _ng = parse(newConfigStr);
     _config.set([..._ng]);
     _setupReg(_ng);
+    container.message.send("ng_changed");
   }
 };
