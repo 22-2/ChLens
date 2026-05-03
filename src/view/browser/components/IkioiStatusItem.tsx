@@ -225,7 +225,8 @@ const MomentumLineChart: React.FC<MomentumLineChartProps> = ({
       {loading && <p className="mini-window__note">勢いデータを読み込み中...</p>}
       {!loading && data && (
         <p className="mini-window__note">
-          {data.rangeLabel} / 最新: {data.latestValue.toLocaleString()} 勢い
+          {/* {data.rangeLabel} / 最新: {data.latestValue.toLocaleString()} 勢い */}
+          {data.rangeLabel} / 勢い
         </p>
       )}
       {!loading && !data && (
