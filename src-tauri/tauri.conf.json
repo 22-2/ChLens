@@ -2,11 +2,11 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "read.crx-2",
   "version": "0.1.0",
-  "identifier": "com.tauri.dev",
+  "identifier": "com.chlens.app",
   "build": {
     "frontendDist": "../debug/tauri",
-    "beforeDevCommand": "pnpm run build:tauri",
-    "beforeBuildCommand": "pnpm run build:tauri"
+    "beforeDevCommand": "pnpm run build:chrome",
+    "beforeBuildCommand": "pnpm run build:chrome"
   },
   "app": {
     "windows": [
