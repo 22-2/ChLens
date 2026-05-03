@@ -129,7 +129,8 @@ export default class LazyLoad {
 
     const mdata = $media.dataset;
     if (imgFlg && !faviconFlg) {
-      $media.src = "/img/loading.&[IMG_EXT]";
+      const imgExt = navigator.userAgent.includes("Firefox") ? "png" : "webp";
+      $media.src = `/img/loading.${imgExt}`;
       switch (mdata.type) {
         case "default":
           $newImg.src = mdata.src!;

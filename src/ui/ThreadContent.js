@@ -1169,7 +1169,8 @@ export default ThreadContent = (function () {
           thumbnailLink.target = "_blank";
 
           var thumbnailImg = $__("img").addClass("image");
-          thumbnailImg.src = "/img/dummy_1x1.&[IMG_EXT]";
+          const imgExt = navigator.userAgent.includes("Firefox") ? "png" : "webp";
+          thumbnailImg.src = `/img/dummy_1x1.${imgExt}`;
           thumbnailImg.style.WebkitFilter = webkitFilter;
           thumbnailImg.style.maxWidth = `${app.config.get("image_width")}px`;
           thumbnailImg.style.maxHeight = `${app.config.get("image_height")}px`;
@@ -1199,7 +1200,7 @@ export default ThreadContent = (function () {
           thumbnailLink.addLast(thumbnailImg);
 
           var thumbnailFavicon = $__("img").addClass("favicon");
-          thumbnailFavicon.src = "/img/dummy_1x1.&[IMG_EXT]";
+          thumbnailFavicon.src = `/img/dummy_1x1.${imgExt}`;
           thumbnailFavicon.dataset.src = `https://www.google.com/s2/favicons?domain=${sourceA.hostname}`;
           thumbnailFavicon.on("click", (e) => {
             e.preventDefault();

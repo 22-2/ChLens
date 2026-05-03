@@ -251,7 +251,8 @@ export default class Tab {
     $li.dataset.tabid = tabId;
     $li.dataset.tabsrc = url;
     const $img = $__("img");
-    $img.src = "/img/close_16x16.&[IMG_EXT]";
+    const imgExt = navigator.userAgent.includes("Firefox") ? "png" : "webp";
+    $img.src = `/img/close_16x16.${imgExt}`;
     $img.title = "閉じる";
     $li.addLast($__("span"), $img);
     this.$element.$(".tab_tabbar").addLast($li);

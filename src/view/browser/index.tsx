@@ -1,3 +1,4 @@
+import "src/app";
 import { createRoot } from "react-dom/client";
 import { BrowserApp } from "src/view/browser/App";
 

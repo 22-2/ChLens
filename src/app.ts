@@ -9,6 +9,8 @@ export { default as LocalStorage } from "./app/LocalStorage";
 export * from "./app/Log";
 export { default as message } from "./app/Message";
 export * from "./app/Util";
+export * from "./app/BrowserDetect";
+export * from "./app/ImageExt";
 
 import * as platformInternal from "src/app/platform";
 

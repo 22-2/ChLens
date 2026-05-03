@@ -186,7 +186,8 @@ export default Write = (function () {
     }
 
     async _setHeaderModifier() {
-      if ("&[BROWSER]" === "firefox") {
+      const isFirefox = navigator.userAgent.includes("Firefox");
+      if (isFirefox) {
         await this._setHeaderModifierWebRequest();
       } else {
         await this._setHeaderModifierDeclarativeNetRequest();

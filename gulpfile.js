@@ -5,8 +5,8 @@ const {browsers} = require("./gulp/config");
 dir("./gulp");
 
 for (let browser of browsers) {
-  gulp.task(`build:${browser}`, gulp.parallel(
-    `js:${browser}`,
+  // Viteで処理されないタスク（CSS、HTML、画像、ライブラリなど）
+  gulp.task(`build:other:${browser}`, gulp.parallel(
     `css:${browser}`,
     `html:${browser}`,
     `img:${browser}`,
@@ -17,22 +17,22 @@ for (let browser of browsers) {
   );
   gulp.task(`pack:${browser}`, gulp.series(
     "clean",
-    `build:${browser}`,
+    `build:other:${browser}`,
     `scan:${browser}`,
     `pack-in:${browser}`
   )
   );
   gulp.task(`watch:${browser}`, gulp.series(
-    `build:${browser}`,
+    `build:other:${browser}`,
     `watch-in:${browser}`
   )
   );
 }
-gulp.task("build", gulp.task("build:chrome"));
+gulp.task("build", gulp.task("build:other:chrome"));
 gulp.task("pack", gulp.task("pack:chrome"));
 gulp.task("watch", gulp.task("watch:chrome"));
 
 gulp.task("default", gulp.task("build"));
 
-gulp.task("build:all", gulp.parallel("build:chrome", "build:firefox"));
+gulp.task("build:all", gulp.parallel("build:other:chrome", "build:other:firefox"));
 gulp.task("pack:all", gulp.parallel("pack:chrome", "pack:firefox"));

@@ -96,7 +96,8 @@ export default class MediaContainer {
           zoomWidth = Math.min(zoomWidth, window.innerWidth - 20); // 20pxは余裕を持たせたマージン
         } else if (isVideoHover && target.tagName === "VIDEO") {
           // Chromeでmouseenterイベントが複数回発生するのを回避するため
-          if ("&[BROWSER]" === "chrome") {
+          const isChrome = !navigator.userAgent.includes("Firefox");
+          if (isChrome) {
             if (target.style.width !== "") {
               return;
             }

@@ -99,13 +99,14 @@ app.boot("/view/thread.html", async function () {
     const windowX = app.config.get("write_window_x");
     const windowY = app.config.get("write_window_y");
     const openUrl = `/write/submit_res.html?${app.URL.buildQuery(param)}`;
-    if ("&[BROWSER]" === "firefox" || navigator.userAgent.includes("Vivaldi")) {
+    const isFirefox = navigator.userAgent.includes("Firefox");
+    if (isFirefox || navigator.userAgent.includes("Vivaldi")) {
       open(
         openUrl,
         undefined,
         `width=600,height=300,left=${windowX},top=${windowY}`,
       );
-    } else if ("&[BROWSER]" === "chrome") {
+    } else {
       (parent.browser || browser).windows.create({
         type: "popup",
         url: openUrl,

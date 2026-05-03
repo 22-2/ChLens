@@ -850,7 +850,8 @@ ${name} の ${newVer} が利用可能です\
     window.emit(new Event("beforezombie"));
 
     // zombieの起動
-    if ("&[BROWSER]" === "chrome") {
+    const isChrome = !navigator.userAgent.includes("Firefox");
+    if (isChrome) {
       const { id } = await browser.windows.create({
         top: 0,
         left: 0,
@@ -861,7 +862,7 @@ ${name} の ${newVer} が利用可能です\
         focused: false,
       });
       await browser.windows.update(id, { state: "minimized" });
-    } else if ("&[BROWSER]" === "firefox") {
+    } else {
       await browser.windows.create({
         url: "/zombie.html",
         type: "popup",
@@ -1027,7 +1028,8 @@ ${name} の ${newVer} が利用可能です\
 
   // リクエスト・ヘッダーの監視
   // TODO: firefox manifest v3
-  if ("&[BROWSER]" === "firefox") {
+  const isFirefox = navigator.userAgent.includes("Firefox");
+  if (isFirefox) {
     browser.webRequest.onBeforeSendHeaders.addListener(
       function ({ method, url, requestHeaders }) {
         const replaceHeader = function (name, value) {

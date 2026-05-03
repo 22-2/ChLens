@@ -975,7 +975,8 @@ app.view.TabContentView = class TabContentView extends (
       let { url } = this.$element.dataset;
 
       if (url === "bookmark") {
-        if ("&[BROWSER]" === "chrome") {
+        const isChrome = !navigator.userAgent.includes("Firefox");
+        if (isChrome) {
           url = `chrome://bookmarks/?id=${app.config.get("bookmark_id")}`;
         } else {
           __guard__(this.$element.$(".button_link > a"), (x1) => x1.remove());

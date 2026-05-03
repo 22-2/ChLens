@@ -12,18 +12,7 @@ html(class=htmlClasses data-app-version=version)&attributes(html)
       link(rel="icon" href="/img/read.crx_64x64.png" sizes="64x64")
       link(rel="icon" href="/img/read.crx_96x96.png" sizes="96x96")
       link(rel="icon" href="/img/read.crx_128x128.png" sizes="128x128")
-    if needUI
-      link(rel="stylesheet" href=`/ui.css?v=${version}`)
-    if needCss
-      link(rel="stylesheet" href=`${name}.css?v=${version}`)
-    script(src=`/lib/shortQuery.min.js?v=${version}` defer)
-    script(src=`/lib/browser-polyfill.min.js?v=${version}` defer)
-    script(src=`/app.js?v=${version}` defer)
-    if needUI
-      script(src=`/ui.js?v=${version}` defer)
-    if needModule
-      script(src=`module.js?v=${version}` defer)
-    script(src=`${name}.js?v=${version}` defer)
+    script(src=`../browser.js?v=${version}` defer)
   body&attributes(body)
     block body
   block temp

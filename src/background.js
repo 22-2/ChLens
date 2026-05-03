@@ -50,7 +50,9 @@ const searchRcrx = async function () {
 
 // アイコンクリック時の動作
 const browserAction =
-  "&[BROWSER]" === "chrome" ? browser.action : browser.browserAction;
+  typeof browser !== "undefined" && navigator.userAgent.includes("Firefox")
+    ? browser.browserAction
+    : browser.action;
 browserAction.onClicked.addListener(async function (currentTab) {
   // 現在のタブが自分自身なら何もしない
   if (isTabReadcrx(currentTab)) {
@@ -96,46 +98,46 @@ const supportedURL = new RegExp(`https?:\\/\\/(?:\
 )`);
 
 // コンテキストメニューの作成
-browser.contextMenus.create({
-  id: "open_link_in_rcrx",
-  title: "リンクをread.crx-2で開く",
-  contexts: ["link"],
-  documentUrlPatterns: ["http://*/*", "https://*/*", "file://*/*"],
-  targetUrlPatterns: [
-    "*://*.2ch.net/*",
-    "*://*.5ch.io/*",
-    "*://*.2ch.sc/*",
-    "*://*.open2ch.net/*",
-    "*://*.bbspink.com/*",
-    "*://jbbs.shitaraba.net/*",
-    "*://jbbs.livedoor.jp/*",
-    "*://*.machi.to/*",
-  ],
-});
+// browser.contextMenus.create({
+//   id: "open_link_in_rcrx",
+//   title: "リンクをread.crx-2で開く",
+//   contexts: ["link"],
+//   documentUrlPatterns: ["http://*/*", "https://*/*", "file://*/*"],
+//   targetUrlPatterns: [
+//     "*://*.2ch.net/*",
+//     "*://*.5ch.io/*",
+//     "*://*.2ch.sc/*",
+//     "*://*.open2ch.net/*",
+//     "*://*.bbspink.com/*",
+//     "*://jbbs.shitaraba.net/*",
+//     "*://jbbs.livedoor.jp/*",
+//     "*://*.machi.to/*",
+//   ],
+// });
 
 // コンテキストメニューのクリック時の動作
-browser.contextMenus.onClicked.addListener(async function (
-  { menuItemId, linkUrl: url },
-  tab,
-) {
-  if (menuItemId !== "open_link_in_rcrx") {
-    return;
-  }
+// browser.contextMenus.onClicked.addListener(async function (
+//   { menuItemId, linkUrl: url },
+//   tab,
+// ) {
+//   if (menuItemId !== "open_link_in_rcrx") {
+//     return;
+//   }
 
-  // 対応URLであるか確認
-  if (!supportedURL.test(url)) {
-    new Notification("未対応のURLです");
-    return;
-  }
+//   // 対応URLであるか確認
+//   if (!supportedURL.test(url)) {
+//     new Notification("未対応のURLです");
+//     return;
+//   }
 
-  const rcrx = await searchRcrx();
-  if (rcrx != null) {
-    // 実行中のread.crxが存在すればそれを開く
-    browser.windows.update(rcrx.windowId, { focused: true });
-    browser.tabs.update(rcrx.id, { active: true });
-    browser.runtime.sendMessage({ type: "open", query: url });
-  } else {
-    // 存在しなければタブを作成する
-    browser.tabs.create({ url: `view/index.html?q=${url}` });
-  }
-});
+//   const rcrx = await searchRcrx();
+//   if (rcrx != null) {
+//     // 実行中のread.crxが存在すればそれを開く
+//     browser.windows.update(rcrx.windowId, { focused: true });
+//     browser.tabs.update(rcrx.id, { active: true });
+//     browser.runtime.sendMessage({ type: "open", query: url });
+//   } else {
+//     // 存在しなければタブを作成する
+//     browser.tabs.create({ url: `view/index.html?q=${url}` });
+//   }
+// });
