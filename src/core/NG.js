@@ -6,6 +6,8 @@ import {
 } from "src/core/jsutil.js";
 import {
   convertUserToInternal,
+  convertInternalToUser,
+  convertUserToDSL,
 } from "src/core/NGConverter";
 import {
   extractNgDslFunctionCall,
@@ -466,8 +468,15 @@ export var add = function (string) {
   // 最初のNG登録時に _ng は null のままなので、明示的に初期化が必要
   get();
 
-  _config.setString(string + "\n" + _config.getString());
   const addNg = parse(string);
+
+  // 新規追加分を DSL 形式へ変換してから設定文字列へ保存する。
+  // これにより、右クリックメニュー等からの追加時も最新の構文が維持される。
+  const dslString = convertUserToDSL(convertInternalToUser([...addNg]));
+  if (dslString) {
+    _config.setString(dslString + "\n" + _config.getString());
+  }
+
   _config.set([..._config.get()].concat([...addNg]));
 
   _setupReg(addNg);
