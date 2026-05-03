@@ -6,7 +6,7 @@
   "build": {
     "frontendDist": "../debug/tauri",
     "beforeDevCommand": "pnpm run build:tauri",
-    "beforeBuildCommand": "pnpm run build:tauri"
+    "beforeBuildCommand": "gulp build:tauri"
   },
   "app": {
     "windows": [
