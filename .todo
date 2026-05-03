@@ -361,3 +361,4 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
   - [ ] [5ch互換専ブラを今更作ってるっす | Google Gemini](https://gemini.google.com/app/5d3fdd3bc7ec4cbf?hl=ja)
 - [ ] 専スレでだけsageみたいな設定ができるように
 - [ ] 設定画面にセクションがほしい
+- [ ] 開いていないタブは、初回表示までfetchしない
