@@ -42,6 +42,7 @@ export interface UseWriteResult {
   setMail: (v: string) => void;
   setSage: (v: boolean) => void;
   setMessage: (v: string) => void;
+  submit: () => Promise<void>;
   handleSubmit: (e: React.FormEvent) => Promise<void>;
   handleRetry: () => void;
 }
@@ -221,9 +222,7 @@ export function useWrite(threadUrl: string): UseWriteResult {
     return () => window.removeEventListener("message", handleMessage);
   }, [dispatch]);
 
-  const handleSubmit = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
+  const submit = useCallback(async () => {
       if (!canSubmit) return;
 
       const effectiveMail = sage ? "sage" : mail;
@@ -274,8 +273,14 @@ export function useWrite(threadUrl: string): UseWriteResult {
 
       iframe.addEventListener("load", onLoad);
       iframe.src = "/view/empty.html";
+    }, [canSubmit, threadUrl, name, mail, sage, message]);
+
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      await submit();
     },
-    [canSubmit, threadUrl, name, mail, sage, message],
+    [submit],
   );
 
   const handleRetry = useCallback(() => {
@@ -296,6 +301,7 @@ export function useWrite(threadUrl: string): UseWriteResult {
     setMail,
     setSage,
     setMessage,
+    submit,
     handleSubmit,
     handleRetry,
   };

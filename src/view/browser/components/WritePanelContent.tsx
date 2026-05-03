@@ -1,10 +1,16 @@
-import React from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import { container } from "src/service-container/index";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useWrite } from "src/view/browser/hooks/use-write";
+
+const WRITE_SUBMIT_CTRL_ENTER_KEY = "write_submit_ctrl_enter";
 
 export const WritePanelContent: React.FC = () => {
   const { currentPage } = useTabStore();
   const threadUrl = currentPage.type === "thread" ? currentPage.threadUrl : "";
+  const [submitWithCtrlEnter, setSubmitWithCtrlEnter] = useState(
+    () => container.config.get(WRITE_SUBMIT_CTRL_ENTER_KEY) === "on",
+  );
 
   const {
     name,
@@ -19,12 +25,59 @@ export const WritePanelContent: React.FC = () => {
     setMail,
     setSage,
     setMessage,
+    submit,
     handleSubmit,
     handleRetry,
   } = useWrite(threadUrl);
 
   const isSubmitting = status === "submitting";
   const isConfirm = status === "confirm";
+
+  useEffect(() => {
+    const handleConfigUpdated = ({ key }: { key?: string }) => {
+      if (key !== WRITE_SUBMIT_CTRL_ENTER_KEY) {
+        return;
+      }
+      setSubmitWithCtrlEnter(
+        container.config.get(WRITE_SUBMIT_CTRL_ENTER_KEY) === "on",
+      );
+    };
+
+    container.message.on("config_updated", handleConfigUpdated);
+    return () => {
+      container.message.off("config_updated", handleConfigUpdated);
+    };
+  }, []);
+
+  const handleSubmitWithCtrlEnterChange = useCallback(
+    (checked: boolean) => {
+      setSubmitWithCtrlEnter(checked);
+      void container.config.set(
+        WRITE_SUBMIT_CTRL_ENTER_KEY,
+        checked ? "on" : "off",
+      );
+    },
+    [],
+  );
+
+  const handleTextareaKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (
+        !submitWithCtrlEnter ||
+        isSubmitting ||
+        !canSubmit ||
+        e.key !== "Enter" ||
+        !(e.ctrlKey || e.metaKey)
+      ) {
+        return;
+      }
+
+      // textarea の改行より投稿を優先し、送信ショートカットとして一貫動作させる。
+      e.preventDefault();
+      void submit();
+    },
+    [canSubmit, isSubmitting, submit, submitWithCtrlEnter],
+  );
 
   return (
     <div className="write-panel">
@@ -80,12 +133,24 @@ export const WritePanelContent: React.FC = () => {
               />
               sage
             </label>
+            <label className="write-panel__sage">
+              <input
+                type="checkbox"
+                checked={submitWithCtrlEnter}
+                onChange={(e) =>
+                  handleSubmitWithCtrlEnterChange(e.target.checked)
+                }
+                disabled={isSubmitting}
+              />
+              Ctrl+Enterで書き込む
+            </label>
           </div>
           <div className="write-panel__body-row">
             <textarea
               className="write-panel__textarea"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={handleTextareaKeyDown}
               disabled={isSubmitting}
               placeholder={
                 threadUrl

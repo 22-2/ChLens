@@ -240,6 +240,13 @@ const SETTINGS_SECTIONS = [
         options: THEME_ID_OPTIONS,
         widget: "radio",
       },
+      {
+        // 書き込み欄のショートカットは日常的に切り替える需要があるため、
+        // 「その他」ではなく一般設定に置いて到達しやすくする。
+        kind: "boolean",
+        key: "write_submit_ctrl_enter",
+        title: "Ctrl+Enterで書き込む",
+      },
       // { kind: "boolean", key: "always_new_tab", title: "スレッドを常に新しいタブで開く" },
       // {
       //   kind: "boolean",

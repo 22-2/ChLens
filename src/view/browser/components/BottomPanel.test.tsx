@@ -6,6 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   closePanel: vi.fn(),
+  canAutoScroll: false,
+  isAutoScrolling: false,
   currentPage: {
     type: "thread",
     title: "スレッド",
@@ -31,6 +33,14 @@ vi.mock("src/view/browser/hooks/use-bottom-panel", () => ({
   }),
 }));
 
+vi.mock("src/view/browser/hooks/use-auto-scroll-state", () => ({
+  useAutoScrollState: () => ({
+    canAutoScroll: mocks.canAutoScroll,
+    isAutoScrolling: mocks.isAutoScrolling,
+    isPaused: false,
+  }),
+}));
+
 vi.mock("src/view/browser/components/WritePanelContent", () => ({
   WritePanelContent: () => <div>write panel</div>,
 }));
@@ -38,6 +48,8 @@ vi.mock("src/view/browser/components/WritePanelContent", () => ({
 describe("BottomPanel", () => {
   beforeEach(() => {
     mocks.closePanel.mockReset();
+    mocks.canAutoScroll = false;
+    mocks.isAutoScrolling = false;
     mocks.currentPage = {
       type: "thread",
       title: "スレッド",
@@ -68,5 +80,33 @@ describe("BottomPanel", () => {
       expect(mocks.closePanel).toHaveBeenCalledTimes(1);
     });
     expect(screen.queryByText("write panel")).not.toBeInTheDocument();
+  });
+
+  it("自動追従有効中にパネルが開いてもスレッド末尾へ同期する", () => {
+    mocks.canAutoScroll = true;
+
+    const scrollContainer = document.createElement("div");
+    scrollContainer.className = "content-area__tab-panel";
+    scrollContainer.setAttribute("data-active", "true");
+
+    let scrollTopValue = 10;
+    Object.defineProperty(scrollContainer, "scrollTop", {
+      configurable: true,
+      get: () => scrollTopValue,
+      set: (value: number) => {
+        scrollTopValue = value;
+      },
+    });
+    Object.defineProperty(scrollContainer, "scrollHeight", {
+      configurable: true,
+      get: () => 480,
+    });
+
+    document.body.appendChild(scrollContainer);
+
+    render(<BottomPanel />);
+
+    expect(scrollTopValue).toBe(480);
+    scrollContainer.remove();
   });
 });
