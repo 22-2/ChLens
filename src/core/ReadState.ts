@@ -1,3 +1,6 @@
+import { log, criticalError, assertArg } from "src/app/Log";
+import message from "src/app/Message";
+import { deepCopy } from "src/app/Util";
 import { indexedDBRequestToPromise } from "src/core/jsutil.js";
 import { URL } from "src/core/URL";
 import type { IReadState } from "src/service-container/interfaces";
@@ -13,12 +16,10 @@ interface UrlFilterResult {
   replaced: URL;
 }
 
-const appAny = app as any;
-
 const _openDB: Promise<IDBDatabase> = new Promise((resolve, reject) => {
   const req = indexedDB.open("ReadState", DB_VERSION);
   req.onerror = (e) => {
-    appAny.criticalError("既読情報管理システムの起動に失敗しました");
+    criticalError("既読情報管理システムの起動に失敗しました");
     reject(e);
   };
   req.onupgradeneeded = (event) => {
@@ -59,12 +60,12 @@ const _urlFilter = (originalUrlStr: string): UrlFilterResult => {
 
 export const set = async (readState: ReadStateRecord): Promise<void> => {
   if (readState == null || typeof readState !== "object") {
-    appAny.log("error", "app.ReadState.set: 引数が不正です", readState);
+    log("error", "app.ReadState.set: 引数が不正です", readState);
     throw new Error("既読情報に登録しようとしたデータが不正です");
   }
 
   if (
-    appAny.assertArg("app.ReadState.set", [
+    assertArg("app.ReadState.set", [
       [readState.url, "string"],
       [readState.last, "number"],
       [readState.read, "number"],
@@ -76,7 +77,7 @@ export const set = async (readState: ReadStateRecord): Promise<void> => {
     throw new Error("既読情報に登録しようとしたデータが不正です");
   }
 
-  const nextReadState = appAny.deepCopy(readState) as ReadStateRecord;
+  const nextReadState = deepCopy(readState) as ReadStateRecord;
 
   const url = _urlFilter(nextReadState.url);
   nextReadState.url = url.replaced.href;
@@ -93,18 +94,18 @@ export const set = async (readState: ReadStateRecord): Promise<void> => {
 
     delete nextReadState.board_url;
     nextReadState.url = url.original.href;
-    appAny.message.send("read_state_updated", {
+    message.send("read_state_updated", {
       board_url: boardUrl.href,
       read_state: nextReadState,
     });
   } catch (e) {
-    appAny.log("error", "app.ReadState.set: トランザクション失敗");
+    log("error", "app.ReadState.set: トランザクション失敗");
     throw new Error(String(e));
   }
 };
 
 export const get = async (url: string): Promise<ReadStateRecord | null> => {
-  if (appAny.assertArg("app.read_state.get", [[url, "string"]])) {
+  if (assertArg("app.read_state.get", [[url, "string"]])) {
     throw new Error("既読情報を取得しようとしたデータが不正です");
   }
 
@@ -122,13 +123,13 @@ export const get = async (url: string): Promise<ReadStateRecord | null> => {
       target: { result: ReadStateRecord | null };
     };
 
-    const data = appAny.deepCopy(result) as ReadStateRecord | null;
+    const data = deepCopy(result) as ReadStateRecord | null;
     if (data != null) {
       data.url = filteredUrl.original.href;
     }
     return data;
   } catch (e) {
-    appAny.log("error", "app.ReadState.get: トランザクション中断");
+    log("error", "app.ReadState.get: トランザクション中断");
     throw new Error(String(e));
   }
 };
@@ -142,13 +143,13 @@ export const getAll = async (): Promise<ReadStateRecord[]> => {
     };
     return event.target.result;
   } catch (e) {
-    appAny.log("error", "app.ReadState.getAll: トランザクション中断");
+    log("error", "app.ReadState.getAll: トランザクション中断");
     throw new Error(String(e));
   }
 };
 
 export const getByBoard = async (url: string): Promise<ReadStateRecord[]> => {
-  if (appAny.assertArg("app.ReadState.getByBoard", [[url, "string"]])) {
+  if (assertArg("app.ReadState.getByBoard", [[url, "string"]])) {
     throw new Error("既読情報を取得しようとしたデータが不正です");
   }
 
@@ -177,13 +178,13 @@ export const getByBoard = async (url: string): Promise<ReadStateRecord[]> => {
 
     return data;
   } catch (e) {
-    appAny.log("error", "app.ReadState.getByBoard: トランザクション中断");
+    log("error", "app.ReadState.getByBoard: トランザクション中断");
     throw new Error(String(e));
   }
 };
 
 export const remove = async (url: string): Promise<void> => {
-  if (appAny.assertArg("app.ReadState.remove", [[url, "string"]])) {
+  if (assertArg("app.ReadState.remove", [[url, "string"]])) {
     throw new Error("既読情報を削除しようとしたデータが不正です");
   }
 
@@ -196,11 +197,11 @@ export const remove = async (url: string): Promise<void> => {
       .objectStore("ReadState")
       .delete(filteredUrl.replaced.href);
     await indexedDBRequestToPromise(req);
-    appAny.message.send("read_state_removed", {
+    message.send("read_state_removed", {
       url: filteredUrl.original.href,
     });
   } catch (e) {
-    appAny.log("error", "app.ReadState.remove: トランザクション中断");
+    log("error", "app.ReadState.remove: トランザクション中断");
     throw new Error(String(e));
   }
 };
@@ -214,7 +215,7 @@ export const clear = async (): Promise<void> => {
       .clear();
     await indexedDBRequestToPromise(req);
   } catch (e) {
-    appAny.log("error", "app.ReadState.clear: トランザクション中断");
+    log("error", "app.ReadState.clear: トランザクション中断");
     throw new Error(String(e));
   }
 };
@@ -235,7 +236,7 @@ const _recoveryOfDate = (_db: IDBDatabase, tx: IDBTransaction): Promise<void> =>
       }
     };
     req.onerror = (e) => {
-      appAny.log(
+      log(
         "error",
         "app.ReadState._recoveryOfDate: トランザクション中断",
       );

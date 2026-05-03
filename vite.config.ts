@@ -339,6 +339,9 @@ export default defineConfig(() => {
   const { file, name } = entryMap[entry];
 
   return {
+    define: {
+      "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV || "development"),
+    },
     plugins: [
       react(),
       scssPlugin(browser, outputDir),
@@ -354,6 +357,28 @@ export default defineConfig(() => {
       },
       extensions: [".tsx", ".ts", ".jsx", ".js"],
     },
+    css: {
+      preprocessorOptions: {
+        scss: {
+          functions: {
+            "img($name)": (args: sass.Value[]) => {
+              const name = (args[0] as sass.SassString).text;
+              const ext = imgExt(browser);
+              return new sass.SassString(`url(/img/${name}.${ext})`, { quotes: false });
+            },
+            "vals($name)": (args: sass.Value[]) => {
+              const name = (args[0] as sass.SassString).text;
+              const isFirefox = browser === "firefox";
+              let str = "";
+              if (name === "scroll") {
+                str = isFirefox ? "scroll" : "auto";
+              }
+              return new sass.SassString(str, { quotes: false });
+            },
+          },
+        },
+      },
+    },
     build: {
       outDir: outputDir,
       emptyOutDir: false,
@@ -365,6 +390,12 @@ export default defineConfig(() => {
       rollupOptions: {
         output: {
           entryFileNames: `${entry}.js`,
+          assetFileNames: (assetInfo) => {
+            if (assetInfo.name?.endsWith(".css")) {
+              return `${entry}.css`;
+            }
+            return "[name].[ext]";
+          },
         },
       },
     },

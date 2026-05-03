@@ -9,7 +9,7 @@ class Message {
 
   constructor() {
     this._bc = new BroadcastChannel(Message.CHANNEL_NAME);
-    this._bc.on(
+    this._bc.addEventListener(
       "message",
       ({
         data: { type, message },

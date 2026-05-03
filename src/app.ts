@@ -1,7 +1,12 @@
-///<reference path="global.d.ts" />
+import "webextension-polyfill";
+import "ShortQuery.js";
+///<reference path="global.d" />
 import Config from "src/app/Config";
 
 import { setupContainer } from "src/service-container/setup";
+
+import { default as platformInternal_default } from "src/app/platform";
+import * as platformInternal from "src/app/platform";
 
 export { default as Callbacks } from "./app/Callbacks";
 export * from "./app/Defer";
@@ -12,7 +17,30 @@ export * from "./app/Util";
 export * from "./app/BrowserDetect";
 export * from "./app/ImageExt";
 
-import * as platformInternal from "src/app/platform";
+import { log, criticalError, assertArg } from "./app/Log";
+import { defer } from "./app/Defer";
+import { deepCopy, replaceAll, escapeHtml, safeHref, clipboardWrite } from "./app/Util";
+import messageInstance from "./app/Message";
+import CallbacksClass from "./app/Callbacks";
+import LocalStorageClass from "./app/LocalStorage";
+
+// Create global app object early to satisfy legacy code
+const appObj: any = {
+  log,
+  criticalError,
+  assertArg,
+  defer,
+  deepCopy,
+  replaceAll,
+  escapeHtml,
+  safeHref,
+  clipboardWrite,
+  message: messageInstance,
+  Callbacks: CallbacksClass,
+  LocalStorage: LocalStorageClass,
+};
+(window as any).app = appObj;
+
 
 // iframe内外で統一的にplatformにアクセスできるようにProxyを使用
 export const platform = new Proxy({} as typeof platformInternal.platform, {
@@ -52,21 +80,25 @@ export const config = new Proxy({} as Config, {
   },
 });
 
+appObj.platform = platform;
+appObj.config = config;
+appObj._config = _config;
+
 // Core modules - previously in app_core.js
-import { Point, QDollarRecognizer } from "src/core/$Q.ts";
+import { Point, QDollarRecognizer } from "src/core/$Q";
 import * as BBSMenu from "src/core/BBSMenu.js";
 import Board from "src/core/Board.js";
 import BoardService from "src/core/BoardService.js";
 import * as BoardTitleSolver from "src/core/BoardTitleSolver.js";
-import Bookmark from "src/core/Bookmark.ts";
-import * as BookmarkEntryList from "src/core/BookmarkEntryList.ts";
-import BrowserBookmarkEntryList from "src/core/BrowserBookmarkEntryList.ts";
-import IDBBookmarkEntryList from "src/core/IDBBookmarkEntryList.ts";
+import Bookmark from "src/core/Bookmark";
+import * as BookmarkEntryList from "src/core/BookmarkEntryList";
+import BrowserBookmarkEntryList from "src/core/BrowserBookmarkEntryList";
+import IDBBookmarkEntryList from "src/core/IDBBookmarkEntryList";
 import Cache from "src/core/Cache.js";
 import * as ContextMenus from "src/core/ContextMenus.js";
 import * as DOMData from "src/core/DOMData.js";
 import * as History from "src/core/History.js";
-import * as HTTP from "src/core/HTTP.ts";
+import * as HTTP from "src/core/HTTP";
 import * as ImageReplaceDat from "src/core/ImageReplaceDat.js";
 import * as util from "src/core/jsutil.js";
 import * as NG from "src/core/NG.js";
@@ -77,9 +109,45 @@ import SikiGuard from "src/core/SikiGuard.js";
 import Thread from "src/core/Thread.js";
 import ThreadSearch from "src/core/ThreadSearch.js";
 import ThreadService from "src/core/ThreadService.js";
-import * as URL from "src/core/URL.ts";
-import * as Util from "src/core/Util.ts";
+import * as URL from "src/core/URL";
+import * as Util from "src/core/Util";
 import * as WriteHistory from "src/core/WriteHistory.js";
+
+// Populate app object with core modules
+Object.assign(appObj, {
+  BBSMenu,
+  Board,
+  BoardService,
+  BoardTitleSolver,
+  Bookmark,
+  BookmarkEntryList,
+  BrowserBookmarkEntryList,
+  IDBBookmarkEntryList,
+  Cache,
+  ContextMenus,
+  DOMData,
+  History,
+  HTTP,
+  ImageReplaceDat,
+  NG,
+  Notification,
+  Point,
+  QDollarRecognizer,
+  ReadState,
+  ReplaceStrTxt,
+  SikiGuard,
+  Thread,
+  ThreadSearch,
+  ThreadService,
+  URL,
+  util,
+  Util,
+  WriteHistory,
+});
+
+appObj.boot = boot; // Will be defined later
+
+
 
 export {
   BBSMenu,
@@ -176,7 +244,7 @@ export async function boot(
 
     // async関数のためDOMContentLoadedに間に合わないことがある
     if (document.readyState === "loading") {
-      document.on("DOMContentLoaded", onload);
+      document.addEventListener("DOMContentLoaded", onload);
     } else {
       onload();
     }
