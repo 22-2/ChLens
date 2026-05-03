@@ -1453,6 +1453,52 @@ body {
   color: inherit;
 }
 
+/* Backwards-compatibility aliases: ThreadList page uses concrete 'thread-list' class names.
+   Ensure these aliases exist for the default (light) theme as well so older markup
+   that uses `.thread-list*` still receives the `simple-data-table` styles. */
+.thread-list {
+  @extend .simple-data-table;
+}
+.thread-list__row {
+  @extend .simple-data-table__row;
+}
+.thread-list__num {
+  @extend .simple-data-table__num;
+}
+.thread-list__title {
+  @extend .simple-data-table__title;
+}
+.thread-list__count {
+  @extend .simple-data-table__count;
+}
+.thread-list__th {
+  @extend .simple-data-table__th;
+}
+.thread-list__th--num {
+  @extend .simple-data-table__th--num;
+}
+.thread-list__th--title {
+  @extend .simple-data-table__th--title;
+}
+.thread-list__th--count {
+  @extend .simple-data-table__th--count;
+}
+.thread-list__th--heat {
+  @extend .simple-data-table__th--heat;
+}
+.thread-list__heat {
+  @extend .simple-data-table__heat;
+}
+.thread-list__row--ng {
+  @extend .simple-data-table__row--ng;
+}
+.thread-list__row--highlight {
+  @extend .simple-data-table__row--highlight;
+}
+.thread-list__label {
+  @extend .simple-data-table__label;
+}
+
 /* ==========================================================================
    Thread Page - フィルタツールバー
    ========================================================================== */
