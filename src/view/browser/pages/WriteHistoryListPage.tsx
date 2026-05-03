@@ -73,10 +73,7 @@ function normalizeNumber(value: unknown): number {
 async function readWriteHistoryEntries(): Promise<WriteHistoryEntry[]> {
   const writeHistoryService = window.app?.WriteHistory as
     | {
-        get?: (
-          offset?: number,
-          count?: number,
-        ) => Promise<unknown> | unknown;
+        get?: (offset?: number, count?: number) => Promise<unknown> | unknown;
       }
     | undefined;
 
@@ -99,7 +96,9 @@ async function readWriteHistoryEntries(): Promise<WriteHistoryEntry[]> {
 
       // 変更理由: 旧UIの書込履歴は `date` フィールドで残っている場合があるため、
       // new-ui でも両形式を受けて日時列を欠損させない。
-      const parsedDate = normalizeLegacyTimestamp(item.writtenDate ?? item.date);
+      const parsedDate = normalizeLegacyTimestamp(
+        item.writtenDate ?? item.date,
+      );
 
       return {
         url,
@@ -164,7 +163,8 @@ const COLUMNS: ColumnDef<WriteHistoryEntry>[] = [
     headerClassName: "simple-data-table__th--writehistory-date",
     cellClassName: "simple-data-table__writehistory-date",
     sortable: true,
-    cell: (row) => (row.writtenDate ? formatCompactDateTime(row.writtenDate) : "-"),
+    cell: (row) =>
+      row.writtenDate ? formatCompactDateTime(row.writtenDate) : "-",
   },
 ];
 
@@ -198,7 +198,9 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
       const rows = await readWriteHistoryEntries();
       setEntries(rows);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "書き込み履歴の読み込みに失敗しました");
+      setError(
+        e instanceof Error ? e.message : "書き込み履歴の読み込みに失敗しました",
+      );
       setEntries([]);
     } finally {
       setLoading(false);
@@ -302,7 +304,6 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
     [dispatch],
   );
 
-
   if (loading) {
     return <div className="page-status">読み込み中...</div>;
   }
@@ -311,7 +312,10 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
     return (
       <div className="page-status page-status--error">
         <p>{error}</p>
-        <button className="page-status__retry" onClick={() => void loadEntries()}>
+        <button
+          className="page-status__retry"
+          onClick={() => void loadEntries()}
+        >
           再試行
         </button>
       </div>
@@ -334,7 +338,6 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
         getRowKey={(row) => `${row.url}:${row.originalIndex}`}
         onRowClick={openEntry}
         onRowMiddleClick={openEntryInNewTab}
-
         sortColumn={sortState.column ?? undefined}
         sortDirection={sortState.direction}
         onSort={handleSort}

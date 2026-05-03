@@ -974,9 +974,7 @@ export const SettingsPage: React.FC = () => {
           <p className="settings-page__description">
             {activeSection.description}
           </p>
-          <p className="settings-page__note">
-            設定は自動保存されます
-          </p>
+          <p className="settings-page__note">設定は自動保存されます</p>
 
           <div className="settings-page__form">
             {activeSection.id !== "ng" ? (

@@ -223,57 +223,57 @@ export function useWrite(threadUrl: string): UseWriteResult {
   }, [dispatch]);
 
   const submit = useCallback(async () => {
-      if (!canSubmit) return;
+    if (!canSubmit) return;
 
-      const effectiveMail = sage ? "sage" : mail;
-      const formData = buildFormData(threadUrl, name, effectiveMail, message);
-      if (!formData) {
-        setStatus("error");
-        setStatusText("このURLへの書き込み形式を判定できませんでした");
-        return;
+    const effectiveMail = sage ? "sage" : mail;
+    const formData = buildFormData(threadUrl, name, effectiveMail, message);
+    if (!formData) {
+      setStatus("error");
+      setStatusText("このURLへの書き込み形式を判定できませんでした");
+      return;
+    }
+
+    setStatus("submitting");
+    setStatusText("書き込み中...");
+
+    await setupHeaderModifier(formData.action);
+
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    // 空ページをロードしてから iframe の contentDocument にフォームを生成して送信する。
+    // submit_res.js の _setupForm と同じアプローチ。
+    const onLoad = () => {
+      iframe.removeEventListener("load", onLoad);
+      const doc = iframe.contentDocument;
+      if (!doc) return;
+
+      const form = doc.createElement("form");
+      form.acceptCharset = formData.charset;
+      form.action = formData.action;
+      form.method = "POST";
+
+      for (const [key, val] of Object.entries(formData.input)) {
+        const input = doc.createElement("input");
+        input.name = key;
+        input.value = val;
+        form.appendChild(input);
+      }
+      for (const [key, val] of Object.entries(formData.textarea)) {
+        const ta = doc.createElement("textarea");
+        ta.name = key;
+        ta.textContent = val;
+        form.appendChild(ta);
       }
 
-      setStatus("submitting");
-      setStatusText("書き込み中...");
+      doc.body.appendChild(form);
+      // prototype 経由で呼ぶことで React が合成したイベントをバイパスする
+      Object.getPrototypeOf(form).submit.call(form);
+    };
 
-      await setupHeaderModifier(formData.action);
-
-      const iframe = iframeRef.current;
-      if (!iframe) return;
-
-      // 空ページをロードしてから iframe の contentDocument にフォームを生成して送信する。
-      // submit_res.js の _setupForm と同じアプローチ。
-      const onLoad = () => {
-        iframe.removeEventListener("load", onLoad);
-        const doc = iframe.contentDocument;
-        if (!doc) return;
-
-        const form = doc.createElement("form");
-        form.acceptCharset = formData.charset;
-        form.action = formData.action;
-        form.method = "POST";
-
-        for (const [key, val] of Object.entries(formData.input)) {
-          const input = doc.createElement("input");
-          input.name = key;
-          input.value = val;
-          form.appendChild(input);
-        }
-        for (const [key, val] of Object.entries(formData.textarea)) {
-          const ta = doc.createElement("textarea");
-          ta.name = key;
-          ta.textContent = val;
-          form.appendChild(ta);
-        }
-
-        doc.body.appendChild(form);
-        // prototype 経由で呼ぶことで React が合成したイベントをバイパスする
-        Object.getPrototypeOf(form).submit.call(form);
-      };
-
-      iframe.addEventListener("load", onLoad);
-      iframe.src = "/view/empty.html";
-    }, [canSubmit, threadUrl, name, mail, sage, message]);
+    iframe.addEventListener("load", onLoad);
+    iframe.src = "/view/empty.html";
+  }, [canSubmit, threadUrl, name, mail, sage, message]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {

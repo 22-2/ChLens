@@ -1,12 +1,11 @@
-
 export interface Board {
-    name: string;
-    url: string;
+  name: string;
+  url: string;
 }
 
 export interface BBSMenuCategory {
-    name: string;
-    boards: Board[];
+  name: string;
+  boards: Board[];
 }
 
 export type BBSMenu = {
@@ -14,14 +13,14 @@ export type BBSMenu = {
   name: string;
   // カテゴリリスト
   categories: BBSMenuCategory[];
-}
+};
 
 const decodeHtmlEntities = (text: string): string => {
   return text
     .replace(/&quot;/g, '"')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&")
     .replace(/&#39;/g, "'")
     .replace(/&nbsp;/g, " ");
 };
@@ -74,7 +73,9 @@ export function parseBBSMenu(html: string): BBSMenu {
     }
   }
 
-  menu.categories = menu.categories.filter((category) => category.boards.length > 0);
+  menu.categories = menu.categories.filter(
+    (category) => category.boards.length > 0,
+  );
 
   return menu;
 }

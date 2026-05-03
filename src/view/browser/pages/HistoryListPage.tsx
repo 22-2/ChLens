@@ -1,8 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { SearchBar } from "src/view/browser/components/SearchBar";
-import {
-  ColumnDef,
-} from "src/view/browser/components/SimpleDataTable";
+import { ColumnDef } from "src/view/browser/components/SimpleDataTable";
 import { VirtualizedDataTable } from "src/view/browser/components/VirtualizedDataTable";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import {
@@ -11,7 +9,6 @@ import {
 } from "src/view/browser/utils/date-time";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
-
 
 const PAGE_SIZE = 500;
 const LOAD_MORE_THRESHOLD = 12;
@@ -59,10 +56,7 @@ async function readHistoryEntriesPage(
 ): Promise<HistoryPageResult> {
   const historyService = window.app?.History as
     | {
-        get?: (
-          offset?: number,
-          count?: number,
-        ) => Promise<unknown> | unknown;
+        get?: (offset?: number, count?: number) => Promise<unknown> | unknown;
       }
     | undefined;
 
@@ -125,7 +119,8 @@ const COLUMNS: ColumnDef<HistoryEntry>[] = [
     headerClassName: "simple-data-table__th--history-date",
     cellClassName: "simple-data-table__history-date",
     sortable: true,
-    cell: (row) => (row.viewedDate ? formatCompactDateTime(row.viewedDate) : "-"),
+    cell: (row) =>
+      row.viewedDate ? formatCompactDateTime(row.viewedDate) : "-",
   },
 ];
 
@@ -255,7 +250,14 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({ tabId }) => {
     }
 
     void loadNextPage();
-  }, [error, hasMore, loadNextPage, loading, loadingMore, shouldLoadCompleteDataset]);
+  }, [
+    error,
+    hasMore,
+    loadNextPage,
+    loading,
+    loadingMore,
+    shouldLoadCompleteDataset,
+  ]);
 
   const handleSort = useCallback((key: string) => {
     if (!COLUMNS.some((column) => column.key === key)) {
@@ -347,7 +349,6 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({ tabId }) => {
     [dispatch],
   );
 
-
   const handleEndReached = useCallback(() => {
     if (
       shouldLoadCompleteDataset ||
@@ -377,7 +378,10 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({ tabId }) => {
     return (
       <div className="page-status page-status--error">
         <p>{error}</p>
-        <button className="page-status__retry" onClick={() => void loadEntries()}>
+        <button
+          className="page-status__retry"
+          onClick={() => void loadEntries()}
+        >
           再試行
         </button>
       </div>
@@ -402,7 +406,6 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({ tabId }) => {
           getRowKey={(row) => row.url}
           onRowClick={openEntry}
           onRowMiddleClick={openEntryInNewTab}
-
           sortColumn={sortState.column ?? undefined}
           sortDirection={sortState.direction}
           onSort={handleSort}

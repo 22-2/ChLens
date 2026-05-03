@@ -8,7 +8,9 @@ import {
 
 describe("NG DSL helpers", () => {
   it("keeps multiline function syntax as a single logical entry", () => {
-    const entries = splitNgDslEntries(`RegExpHighlightTitle(\n  word="VTuber"\n  sites=[\n    eddibb.cc\n    5ch.net\n  ]\n  bgColor=red\n)\nBody(word="荒らし")`);
+    const entries = splitNgDslEntries(
+      `RegExpHighlightTitle(\n  word="VTuber"\n  sites=[\n    eddibb.cc\n    5ch.net\n  ]\n  bgColor=red\n)\nBody(word="荒らし")`,
+    );
 
     expect(entries).toEqual([
       `RegExpHighlightTitle(\n  word="VTuber"\n  sites=[\n    eddibb.cc\n    5ch.net\n  ]\n  bgColor=red\n)`,
@@ -17,7 +19,9 @@ describe("NG DSL helpers", () => {
   });
 
   it("parses named arguments including word and sites arrays", () => {
-    const extracted = extractNgDslFunctionCall(`RegExpHighlightTitle(\n  word="VTuber"\n  sites=[\n    eddibb.cc\n    5ch.net\n  ]\n  bgColor=red\n  label=注目\n)`);
+    const extracted = extractNgDslFunctionCall(
+      `RegExpHighlightTitle(\n  word="VTuber"\n  sites=[\n    eddibb.cc\n    5ch.net\n  ]\n  bgColor=red\n  label=注目\n)`,
+    );
 
     expect(extracted).not.toBeNull();
     expect(extracted?.keyword).toBe("RegExpHighlightTitle");
@@ -36,7 +40,11 @@ describe("NG DSL helpers", () => {
       `RegExpHighlightTitle("VTuber" sites=[eddibb.cc 5ch.net] bgColor=red)`,
     );
 
-    expect(parseNgDslArguments(extracted?.argsSource ?? "", { positionalWord: true })).toEqual({
+    expect(
+      parseNgDslArguments(extracted?.argsSource ?? "", {
+        positionalWord: true,
+      }),
+    ).toEqual({
       word: "VTuber",
       scope: ["eddibb.cc", "5ch.net"],
       params: {

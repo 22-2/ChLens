@@ -105,11 +105,16 @@ export const BoardListPage: React.FC = () => {
                   open={openStates[categoryId] ?? false}
                   onToggle={(e) => {
                     if (e.target === e.currentTarget) {
-                      handleToggle(categoryId, (e.target as HTMLDetailsElement).open);
+                      handleToggle(
+                        categoryId,
+                        (e.target as HTMLDetailsElement).open,
+                      );
                     }
                   }}
                 >
-                  <summary className="board-category__title">{category.name}</summary>
+                  <summary className="board-category__title">
+                    {category.name}
+                  </summary>
                   <ul className="board-category__list">
                     {category.boards.map((board, k) => (
                       <li

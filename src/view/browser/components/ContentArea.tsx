@@ -78,7 +78,8 @@ const TabPageContent = React.memo(function TabPageContent({
           // 自動更新の可否をタブ自身の状態へ固定すると、
           // アクティブタブ変更だけで他スレッドまで再計算されなくなる。
           isAutoRefreshEnabled={
-            tab.autoRefreshEnabled && tab.autoRefreshThreadUrl === page.threadUrl
+            tab.autoRefreshEnabled &&
+            tab.autoRefreshThreadUrl === page.threadUrl
           }
         />
       );
@@ -90,7 +91,10 @@ interface TabPanelProps {
   isActive: boolean;
 }
 
-const TabPanel = React.memo(function TabPanel({ tab, isActive }: TabPanelProps) {
+const TabPanel = React.memo(function TabPanel({
+  tab,
+  isActive,
+}: TabPanelProps) {
   const page = getCurrentPage(tab);
 
   return (

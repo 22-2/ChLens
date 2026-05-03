@@ -35,7 +35,7 @@ const transform = function (browser) {
           break;
         default:
           console.error(
-            `Error: Scss vals not found. Unknown val name: ${nameVal}`
+            `Error: Scss vals not found. Unknown val name: ${nameVal}`,
           );
       }
       return new c.sass.SassString(str, { quotes: false });
@@ -101,8 +101,8 @@ for (browser of browsers) {
     gulp.parallel(
       `css:ui.css:${browser}`,
       `css:view:${browser}`,
-      `css:write:${browser}`
-    )
+      `css:write:${browser}`,
+    ),
   );
 }
 

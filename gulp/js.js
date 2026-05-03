@@ -14,7 +14,7 @@ const getReplaceMap = (browser) => ({
 */
 const makeInOut = function (
   browser,
-  { output, pathname, plugins, outObj = {} }
+  { output, pathname, plugins, outObj = {} },
 ) {
   const i = Object.assign({}, defaultOptions.rolldown.in);
   i.input = paths.js[pathname];
@@ -202,8 +202,8 @@ for (let browser of browsers) {
       `js:cs_addlink.js:${browser}`,
       `js:view:${browser}`,
       `js:zombie.js:${browser}`,
-      `js:cs_write.js:${browser}`
-    )
+      `js:cs_write.js:${browser}`,
+    ),
   );
 }
 

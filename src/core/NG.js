@@ -1,6 +1,13 @@
 import { container } from "src/service-container/index";
-import { decodeCharReference, normalize, stringToDate } from "src/core/jsutil.js";
-import { convertUserToInternal, tryParseJSON5Rules } from "src/core/NGConverter";
+import {
+  decodeCharReference,
+  normalize,
+  stringToDate,
+} from "src/core/jsutil.js";
+import {
+  convertUserToInternal,
+  tryParseJSON5Rules,
+} from "src/core/NGConverter";
 import {
   extractNgDslFunctionCall,
   normalizeNgDslKeyword,
@@ -194,9 +201,12 @@ export var parse = function (string) {
     // 補完UIでは関数呼び出し風 DSL を扱うため、ここで旧1行記法へ正規化する。
     const functionCall = extractNgDslFunctionCall(ngWord);
     if (functionCall) {
-      const { word, scope, params } = parseNgDslArguments(functionCall.argsSource, {
-        positionalWord: functionCall.valueSource == null,
-      });
+      const { word, scope, params } = parseNgDslArguments(
+        functionCall.argsSource,
+        {
+          positionalWord: functionCall.valueSource == null,
+        },
+      );
       if (scope != null && scope.length > 0) {
         ngElement.scope = {
           value: scope.length === 1 ? scope[0] : scope,

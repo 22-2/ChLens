@@ -143,10 +143,7 @@ export function SimpleDataTable<TRow>({
                 const colDef = colDefMap.get(cell.column.id);
                 return (
                   <td key={cell.id} className={colDef?.cellClassName ?? ""}>
-                    {flexRender(
-                      cell.column.columnDef.cell,
-                      cell.getContext(),
-                    )}
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 );
               })}

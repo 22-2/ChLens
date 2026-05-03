@@ -1,4 +1,8 @@
-import { KeyValueStore, ObjectStore, StorageManager } from "src/app/platform/types";
+import {
+  KeyValueStore,
+  ObjectStore,
+  StorageManager,
+} from "src/app/platform/types";
 
 // localStorageはTauri webview内でサンドボックスされており、
 // 拡張機能のbrowser.storage.localと同様に永続化される
@@ -26,7 +30,10 @@ const TauriKeyValueStore: KeyValueStore = {
 
   onChanged(
     callback: (
-      changes: Record<string, { oldValue: string | null; newValue: string | null }>,
+      changes: Record<
+        string,
+        { oldValue: string | null; newValue: string | null }
+      >,
     ) => void,
   ): void {
     window.addEventListener("storage", (event) => {

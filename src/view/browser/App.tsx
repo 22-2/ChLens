@@ -19,10 +19,7 @@ import {
   useBottomPanel,
 } from "src/view/browser/hooks/use-bottom-panel";
 import { NgStatusProvider } from "src/view/browser/hooks/use-ng-status";
-import {
-  TabProvider,
-  useTabStore,
-} from "src/view/browser/hooks/use-tab-store";
+import { TabProvider, useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useTheme } from "src/view/browser/hooks/use-theme";
 
 // ステータスバー左端に常設される書き込みパネル開閉ボタン

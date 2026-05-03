@@ -142,7 +142,9 @@ export function hasVideo(message: string): boolean {
   return (
     /\.(mp4|webm|avi|mov)(?:\?[^"<]*)?(?=["<\s]|$)/i.test(message) ||
     /<video\b/i.test(message) ||
-    (message.match(/https?:\/\/[^\s"'<>]+/gi)?.some((url) => isInlineVideoEmbedUrl(url)) ??
+    (message
+      .match(/https?:\/\/[^\s"'<>]+/gi)
+      ?.some((url) => isInlineVideoEmbedUrl(url)) ??
       false)
   );
 }

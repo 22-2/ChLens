@@ -7,7 +7,6 @@ import {
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
 
-
 type SortDirection = "asc" | "desc";
 type SortColumn =
   | "title"
@@ -117,10 +116,7 @@ function readBookmarks(): BookmarkEntry[] {
 
       const title = normalizeString(item.title, url);
       const resCount = Math.max(0, Math.trunc(toNumber(item.resCount)));
-      const readCount = Math.max(
-        0,
-        Math.trunc(toNumber(item.readState?.read)),
-      );
+      const readCount = Math.max(0, Math.trunc(toNumber(item.readState?.read)));
       const unreadCount = Math.max(0, resCount - readCount);
       const createdAt = parseCreatedAt(url);
 
@@ -198,7 +194,8 @@ export const BookmarkListPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortState, setSortState] = useState<BookmarkSortState>(DEFAULT_SORT_STATE);
+  const [sortState, setSortState] =
+    useState<BookmarkSortState>(DEFAULT_SORT_STATE);
 
   const loadEntries = useCallback(() => {
     setLoading(true);
@@ -206,7 +203,9 @@ export const BookmarkListPage: React.FC = () => {
     try {
       setEntries(readBookmarks());
     } catch (e) {
-      setError(e instanceof Error ? e.message : "ブックマークの読み込みに失敗しました");
+      setError(
+        e instanceof Error ? e.message : "ブックマークの読み込みに失敗しました",
+      );
       setEntries([]);
     } finally {
       setLoading(false);
@@ -239,7 +238,9 @@ export const BookmarkListPage: React.FC = () => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
     const rows = normalizedQuery
       ? entries.filter((entry) =>
-          `${entry.title} ${entry.boardTitle}`.toLowerCase().includes(normalizedQuery),
+          `${entry.title} ${entry.boardTitle}`
+            .toLowerCase()
+            .includes(normalizedQuery),
         )
       : entries;
 
@@ -315,7 +316,6 @@ export const BookmarkListPage: React.FC = () => {
     [dispatch],
   );
 
-
   if (loading) {
     return <div className="page-status">読み込み中...</div>;
   }
@@ -345,7 +345,6 @@ export const BookmarkListPage: React.FC = () => {
         getRowKey={(row) => row.url}
         onRowClick={openEntry}
         onRowMiddleClick={openEntryInNewTab}
-
         sortColumn={sortState.column ?? undefined}
         sortDirection={sortState.direction}
         onSort={handleSort}

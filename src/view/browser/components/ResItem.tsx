@@ -36,8 +36,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
     // 古いビューは class[] の "ng" 要素で判定していたが、new viewでは res.ng を優先チェックする。
     // 一時解除中はデータ自体を消さずに表示判定だけをオフにして、復帰時の再評価コストを避ける。
     const isNG =
-      !isNgTemporarilyDisabled &&
-      (res.ng != null || res.class?.includes("ng"));
+      !isNgTemporarilyDisabled && (res.ng != null || res.class?.includes("ng"));
     const decoded = useMemo(
       () => decodeResponseHtml(res, messageProtocol),
       [messageProtocol, res],

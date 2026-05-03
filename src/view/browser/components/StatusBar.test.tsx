@@ -34,6 +34,8 @@ describe("StatusBar", () => {
     const groups = statusBar.querySelectorAll(".status-bar__group");
     expect(groups[0]).toHaveTextContent("左側");
     expect(groups[1]).toHaveTextContent("右側");
-    expect(groups[0].firstElementChild).toHaveClass("status-bar__item--interactive");
+    expect(groups[0].firstElementChild).toHaveClass(
+      "status-bar__item--interactive",
+    );
   });
 });

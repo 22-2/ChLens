@@ -14,6 +14,7 @@ import React, { useCallback, useEffect, useRef } from "react";
 import { container } from "src/service-container/index";
 import type { IRes } from "src/service-container/interfaces";
 import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
+import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
 import type { Props, ThreadFilter } from "src/view/browser/utils/types";
 import {
   buildKyodemoUrl,
@@ -67,6 +68,7 @@ export function useThreadResContextMenu({
   // フィルタ解除直後のDOM更新完了を待ってからジャンプしないと、
   // 対象レスがまだ存在せずスクロールに失敗するため hook 内で保留する。
   const pendingJumpNumRef = useRef<number | null>(null);
+  const dispatch = useTabDispatch();
 
   const addIdToNg = useCallback(
     async (id: string | undefined) => {
@@ -244,8 +246,13 @@ export function useThreadResContextMenu({
           id: "auto-refresh",
           label: "スレッドを自動更新",
           onSelect: () => {
-
-          }
+            dispatch({
+              type: "SET_AUTO_REFRESH_ENABLED",
+              enabled: true,
+              threadUrl: page.threadUrl,
+            });
+            container.notification.info("スレッドの自動更新を開始しました");
+          },
         },
         { id: "sep-1", separator: true },
         {
@@ -352,6 +359,7 @@ export function useThreadResContextMenu({
       addSelectionToNg,
       addWriteHistory,
       closePopup,
+      dispatch,
       fetchThread,
       filter,
       handleAnchorClick,

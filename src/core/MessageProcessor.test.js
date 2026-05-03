@@ -70,7 +70,7 @@ describe("MessageProcessor", () => {
         '<a href="https://example.test/project-b" target="_blank" rel="noopener noreferrer">https://example.test/project-b</a>',
       );
       expect(result.messageHtml).not.toContain(
-        'https://example.test/project-a）とかagent-skills（https://example.test/project-b',
+        "https://example.test/project-a）とかagent-skills（https://example.test/project-b",
       );
     });
 

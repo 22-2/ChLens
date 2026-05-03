@@ -242,9 +242,7 @@ export const StatusBar: React.FC = () => {
             key={item.id}
             className={`status-bar__item${
               item.interactive ? " status-bar__item--interactive" : ""
-            }${
-              item.className ? ` ${item.className}` : ""
-            }`}
+            }${item.className ? ` ${item.className}` : ""}`}
             title={item.title}
           >
             {item.content}
@@ -257,9 +255,7 @@ export const StatusBar: React.FC = () => {
             key={item.id}
             className={`status-bar__item${
               item.interactive ? " status-bar__item--interactive" : ""
-            }${
-              item.className ? ` ${item.className}` : ""
-            }`}
+            }${item.className ? ` ${item.className}` : ""}`}
             title={item.title}
           >
             {item.content}

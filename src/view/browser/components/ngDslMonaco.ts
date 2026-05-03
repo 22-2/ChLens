@@ -19,9 +19,7 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function createMarkdown(
-  value: string,
-): Monaco.IMarkdownString {
+function createMarkdown(value: string): Monaco.IMarkdownString {
   return {
     value,
     isTrusted: false,
@@ -85,7 +83,9 @@ function advanceTopLevelState(
   }
 }
 
-function isTopLevelState(state: ReturnType<typeof createTopLevelState>): boolean {
+function isTopLevelState(
+  state: ReturnType<typeof createTopLevelState>,
+): boolean {
   return (
     state.quote == null &&
     state.parenDepth === 0 &&
@@ -151,7 +151,9 @@ interface NgDslArgumentContext {
   usedNamedArgs: Set<string>;
 }
 
-function getArgumentContext(entryTextUntilCursor: string): NgDslArgumentContext | null {
+function getArgumentContext(
+  entryTextUntilCursor: string,
+): NgDslArgumentContext | null {
   const trimmedEntry = entryTextUntilCursor.trimStart();
   const openParenIndex = trimmedEntry.indexOf("(");
   if (openParenIndex <= 0) {
@@ -260,8 +262,8 @@ function createRuleCompletionItems(
     range,
   }));
 
-  for (const spec of NG_DSL_RULE_SPECS.filter(
-    (candidate) => candidate.parameters.some((parameter) => parameter.name === "bgColor"),
+  for (const spec of NG_DSL_RULE_SPECS.filter((candidate) =>
+    candidate.parameters.some((parameter) => parameter.name === "bgColor"),
   )) {
     items.push({
       label: `${spec.keyword} (複数行)`,
@@ -283,13 +285,13 @@ function createRuleCompletionItems(
 function createParameterSnippet(parameter: NGDslParameterSpec): string {
   switch (parameter.name) {
     case "word":
-      return "word=\"${1:キーワード}\"";
+      return 'word="${1:キーワード}"';
     case "sites":
       return "sites=${1:eddibb.cc}";
     case "bgColor":
       return "bgColor=${1:red}";
     case "label":
-      return "label=\"${1:注目}\"";
+      return 'label="${1:注目}"';
   }
 }
 
@@ -302,7 +304,7 @@ function createParameterCompletionItems(
   const range = createCompletionRange(model, position);
   const currentKeyMatch = context.currentArgText.match(/^\s*(\w+)\s*=/);
   const currentKey = currentKeyMatch?.[1]
-    ? normalizeNgDslParameterName(currentKeyMatch[1]) ?? currentKeyMatch[1]
+    ? (normalizeNgDslParameterName(currentKeyMatch[1]) ?? currentKeyMatch[1])
     : null;
   const items: Monaco.languages.CompletionItem[] = [];
 
@@ -394,14 +396,19 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
   ])
     .map(escapeRegExp)
     .join("|");
-  const colorPattern = NG_HIGHLIGHT_COLOR_PRESET_ITEMS.map((preset) => preset.name)
+  const colorPattern = NG_HIGHLIGHT_COLOR_PRESET_ITEMS.map(
+    (preset) => preset.name,
+  )
     .map(escapeRegExp)
     .join("|");
 
   monaco.languages.setMonarchTokensProvider(NG_DSL_LANGUAGE_ID, {
     tokenizer: {
       root: [
-        [/^\s*(?:attachName|expireDate|ignoreResNumber|ignoreNgType):/, "keyword"],
+        [
+          /^\s*(?:attachName|expireDate|ignoreResNumber|ignoreNgType):/,
+          "keyword",
+        ],
         [new RegExp(`\\b(?:${keywordPattern})\\b`), "type.identifier"],
         [/\b(?:word|sites|scope|bgColor|label)\b(?=\s*=)/, "attribute.name"],
         [new RegExp(`\\b(?:${colorPattern})\\b`), "string"],
@@ -445,9 +452,8 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
       const argumentContext = getArgumentContext(entryTextUntilCursor);
 
       if (argumentContext) {
-        const currentKeyMatch = argumentContext.currentArgText.match(
-          /^\s*(\w+)\s*=/,
-        );
+        const currentKeyMatch =
+          argumentContext.currentArgText.match(/^\s*(\w+)\s*=/);
         const currentKey = currentKeyMatch?.[1]
           ? normalizeNgDslParameterName(currentKeyMatch[1])
           : null;
@@ -493,9 +499,11 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
         return null;
       }
 
-      const currentKeyMatch = argumentContext.currentArgText.match(/^\s*(\w+)\s*=/);
+      const currentKeyMatch =
+        argumentContext.currentArgText.match(/^\s*(\w+)\s*=/);
       const currentKey = currentKeyMatch?.[1]
-        ? normalizeNgDslParameterName(currentKeyMatch[1]) ?? currentKeyMatch[1]
+        ? (normalizeNgDslParameterName(currentKeyMatch[1]) ??
+          currentKeyMatch[1])
         : null;
       let activeParameter = argumentContext.currentArgIndex;
       if (currentKey) {

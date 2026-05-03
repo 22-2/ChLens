@@ -6,7 +6,11 @@
 
   const noOp = () => {};
   const asyncNoOp = async () => {};
-  const listener = { addListener: noOp, removeListener: noOp, hasListener: () => false };
+  const listener = {
+    addListener: noOp,
+    removeListener: noOp,
+    hasListener: () => false,
+  };
 
   const storage = {
     local: {
@@ -98,7 +102,9 @@
     },
     declarativeNetRequest: {
       updateSessionRules: asyncNoOp,
-      getSessionRules: (cb) => { cb([]); },
+      getSessionRules: (cb) => {
+        cb([]);
+      },
     },
     bookmarks: {
       onImportBegan: listener,

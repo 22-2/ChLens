@@ -181,7 +181,11 @@ export const TabBar: React.FC = () => {
               onMouseDown={(e) => handleMouseDown(e, tab.id)}
               onContextMenu={(e) => handleContextMenu(e, tab)}
             >
-              {tab.pinned ? <Pin size={12} /> : <span className="tab__title">{page.title}</span>}
+              {tab.pinned ? (
+                <Pin size={12} />
+              ) : (
+                <span className="tab__title">{page.title}</span>
+              )}
               {/* 自動更新が有効なタブにはタイトルの右隣に状態インジケーターを表示する */}
               {isAutoRefreshActive && !tab.pinned && (
                 <span

@@ -1,9 +1,6 @@
 import JSON5 from "json5";
 import { TYPE, parse as parseDSL } from "src/core/NG.js";
-import {
-  stringifyNgDslSitesValue,
-  stringifyNgDslValue,
-} from "src/core/ngDsl";
+import { stringifyNgDslSitesValue, stringifyNgDslValue } from "src/core/ngDsl";
 
 export interface NGRule {
   enabled?: boolean;
@@ -344,9 +341,7 @@ export function convertInternalToUser(
 export function convertDSLToUser(dslStr: string): NGRule[] {
   const ngSet = parseDSL(dslStr);
   // parseDSLはJS実装由来で型が緩いため、配列化時にSetであることを明示して扱う。
-  return convertInternalToUser(
-    Array.from(ngSet as Set<InternalNGElement>),
-  );
+  return convertInternalToUser(Array.from(ngSet as Set<InternalNGElement>));
 }
 
 /**
@@ -417,8 +412,7 @@ export function convertUserToDSL(rules: NGRule[]): string {
       if (rule.highlightParams) {
         args.push(
           ...Object.entries(rule.highlightParams).map(
-            ([key, value]) =>
-              `${key}=${stringifyNgDslValue(value)}`,
+            ([key, value]) => `${key}=${stringifyNgDslValue(value)}`,
           ),
         );
       }

@@ -148,7 +148,9 @@ describe("AutoRefreshStatusItem", () => {
 
     expect(screen.getByText("スレ一覧自動更新")).toBeInTheDocument();
     expect(screen.getByText("20秒未満では無効になります")).toBeInTheDocument();
-    expect(screen.queryByText("自動スクロールスタイル")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("自動スクロールスタイル"),
+    ).not.toBeInTheDocument();
   });
 
   it("スレッドでもスレ一覧でもないページでは表示しない", () => {

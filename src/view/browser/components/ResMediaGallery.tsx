@@ -127,7 +127,10 @@ export function ResMediaGallery({
   const [expandedVideoUrl, setExpandedVideoUrl] = useState<string | null>(null);
 
   const mediaItems = useMemo(
-    () => urls.map(buildResMediaItem).filter((item): item is ResMediaItem => item != null),
+    () =>
+      urls
+        .map(buildResMediaItem)
+        .filter((item): item is ResMediaItem => item != null),
     [urls],
   );
   const imageUrls = useMemo(
@@ -164,10 +167,7 @@ export function ResMediaGallery({
     return null;
   }
 
-  const openByMiddleClick = (
-    url: string,
-    resImages: string[] | undefined,
-  ) => {
+  const openByMiddleClick = (url: string, resImages: string[] | undefined) => {
     onUrlClick(url, resImages, 1);
   };
 
@@ -300,7 +300,9 @@ export function ResMediaGallery({
               }
             >
               <VideoThumbImage embed={item.embed} />
-              <span className="res__thumb-badge">{item.embed.providerLabel}</span>
+              <span className="res__thumb-badge">
+                {item.embed.providerLabel}
+              </span>
               <span className="res__thumb-play" aria-hidden="true">
                 ▶
               </span>

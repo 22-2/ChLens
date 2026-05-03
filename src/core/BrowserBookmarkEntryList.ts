@@ -181,7 +181,10 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
   private setUpBrowserBookmarkWatcher() {
     // ブラウザのブックマークAPIが存在しない環境（Tauri等）では
     // ウォッチャーを起動せず、ブックマーク同期はスキップする。
-    if (typeof browser === "undefined" || typeof browser.bookmarks === "undefined") {
+    if (
+      typeof browser === "undefined" ||
+      typeof browser.bookmarks === "undefined"
+    ) {
       app.log(
         "warn",
         "ブラウザのブックマークAPIが利用できません。ブックマーク同期をスキップします。",

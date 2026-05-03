@@ -32,9 +32,7 @@ const BASE_RES: IRes = {
 
 describe("PopupResCard", () => {
   it("返信数に応じてレス番号と返信ラベルへ同じ強調色クラスを適用する", () => {
-    const repIndex = new Map<number, Set<number>>([
-      [10, new Set([1, 2, 3])],
-    ]);
+    const repIndex = new Map<number, Set<number>>([[10, new Set([1, 2, 3])]]);
 
     const { container, rerender } = render(
       <PopupResCard
@@ -150,9 +148,7 @@ describe("PopupResCard", () => {
 
   it("ルート起点ボタン押下で先頭ツリー展開ハンドラを呼ぶ", () => {
     const onOpenRootReplyTree = vi.fn();
-    const repIndex = new Map<number, Set<number>>([
-      [10, new Set([1, 2])],
-    ]);
+    const repIndex = new Map<number, Set<number>>([[10, new Set([1, 2])]]);
 
     const { getByRole } = render(
       <PopupResCard

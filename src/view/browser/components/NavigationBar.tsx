@@ -32,7 +32,6 @@ import {
 } from "src/view/browser/types";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
 
-
 interface MenuPosition {
   x: number;
   y: number;
@@ -54,7 +53,6 @@ function navigateByUrl(
     });
   }
 }
-
 
 export const NavigationBar: React.FC = () => {
   const { state, activeTab, currentPage, dispatch } = useTabStore();
@@ -307,9 +305,9 @@ export const NavigationBar: React.FC = () => {
 
   const menuItems = useMemo(
     () => [
-      ...((currentPage.type === "thread" ||
-        currentPage.type === "historyList" ||
-        currentPage.type === "writeHistoryList")
+      ...(currentPage.type === "thread" ||
+      currentPage.type === "historyList" ||
+      currentPage.type === "writeHistoryList"
         ? [
             {
               id: "open-filter-toolbar",

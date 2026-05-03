@@ -90,10 +90,14 @@ export var chServerMoveDetect = async function (oldBoardUrl, html) {
   if (typeof html !== "string") {
     //htmlが渡されなかった場合は通信する
     let status;
-    ({ status, body: html } = await new Request("GET", normalizedOldBoardUrl.href, {
-      mimeType: "text/html; charset=Shift_JIS",
-      cache: false,
-    }).send());
+    ({ status, body: html } = await new Request(
+      "GET",
+      normalizedOldBoardUrl.href,
+      {
+        mimeType: "text/html; charset=Shift_JIS",
+        cache: false,
+      },
+    ).send());
     if (status !== 200) {
       throw new Error("サーバー移転判定のための通信に失敗しました");
     }
@@ -124,7 +128,10 @@ export var chServerMoveDetect = async function (oldBoardUrl, html) {
       if (data == null) {
         throw new Error("BBSMenuの取得に失敗しました");
       }
-      const boardKey = __guard__(normalizedOldBoardUrl.pathname.split("/"), (x) => x[1]);
+      const boardKey = __guard__(
+        normalizedOldBoardUrl.pathname.split("/"),
+        (x) => x[1],
+      );
       if (!boardKey) {
         throw new Error("板のURL形式が不明です");
       }
@@ -134,7 +141,10 @@ export var chServerMoveDetect = async function (oldBoardUrl, html) {
           if (m != null) {
             const newUrl = new URL(m[0]);
             newUrl.protocol = "http:";
-            if (boardKey === m[1] && normalizedOldBoardUrl.hostname !== newUrl.hostname) {
+            if (
+              boardKey === m[1] &&
+              normalizedOldBoardUrl.hostname !== newUrl.hostname
+            ) {
               return newUrl;
             }
           }

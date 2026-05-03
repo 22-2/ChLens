@@ -20,7 +20,7 @@ const manifest = function (browser) {
 
     if (browser === "chrome") {
       tmpManifest.permissions = tmpManifest.permissions.filter(
-        (v) => !["webRequest", "webRequestBlocking"].includes(v)
+        (v) => !["webRequest", "webRequestBlocking"].includes(v),
       );
       delete tmpManifest.background.scripts;
       delete tmpManifest.applications;
@@ -32,7 +32,7 @@ const manifest = function (browser) {
         tmpManifest.content_security_policy.extension_pages;
       delete tmpManifest.incognito;
       tmpManifest.permissions = tmpManifest.permissions.filter(
-        (v) => !["declarativeNetRequest"].includes(v)
+        (v) => !["declarativeNetRequest"].includes(v),
       );
       delete tmpManifest.declarative_net_request;
       delete tmpManifest.background.service_worker;
@@ -111,8 +111,8 @@ for (let browser of browsers) {
     gulp.parallel(
       `lib:shortQuery:${browser}`,
       `lib:webExtPolyfill:${browser}`,
-      `lib:monaco:${browser}`
-    )
+      `lib:monaco:${browser}`,
+    ),
   );
 }
 
@@ -127,5 +127,5 @@ gulp.task("clean", () =>
     fs.remove("./debug/firefox"),
     fs.remove("./debug/tauri"),
     fs.remove("./read.crx_2.zip"),
-  ])
+  ]),
 );

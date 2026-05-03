@@ -67,13 +67,7 @@ interface ThreadAutoRefreshPanelContentProps {
 
 const ThreadAutoRefreshPanelContent: React.FC<
   ThreadAutoRefreshPanelContentProps
-> = ({
-  isEnabled,
-  isOnThread,
-  intervalSec,
-  onToggle,
-  onIntervalChange,
-}) => (
+> = ({ isEnabled, isOnThread, intervalSec, onToggle, onIntervalChange }) => (
   <>
     {/* 自動更新トグル */}
     <div className="mini-window__section">
@@ -228,13 +222,17 @@ export const AutoRefreshStatusItem: React.FC = () => {
         return <Pause size={13} aria-hidden="true" />;
       }
       if (canAutoScroll || isAutoScrolling) {
-        return <RefreshCw size={13} className="icon--spinning" aria-hidden="true" />;
+        return (
+          <RefreshCw size={13} className="icon--spinning" aria-hidden="true" />
+        );
       }
       return <Clock3 size={13} aria-hidden="true" />;
     }
 
     if (isBoardIntervalEnabled) {
-      return <RefreshCw size={13} className="icon--spinning" aria-hidden="true" />;
+      return (
+        <RefreshCw size={13} className="icon--spinning" aria-hidden="true" />
+      );
     }
 
     return <Pause size={13} aria-hidden="true" />;

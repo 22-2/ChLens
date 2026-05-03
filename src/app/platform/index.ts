@@ -15,8 +15,9 @@ if (typeof window !== "undefined" && self !== top) {
       top != null &&
       "__TAURI_INTERNALS__" in top
     ) {
-      (window as unknown as Record<string, unknown>)["__TAURI_INTERNALS__"] =
-        (top as unknown as Record<string, unknown>)["__TAURI_INTERNALS__"];
+      (window as unknown as Record<string, unknown>)["__TAURI_INTERNALS__"] = (
+        top as unknown as Record<string, unknown>
+      )["__TAURI_INTERNALS__"];
     }
   } catch {
     // cross-originのiframeではtopへのアクセスが禁止されるため無視

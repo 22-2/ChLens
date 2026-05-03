@@ -118,7 +118,9 @@ export const get = async (url: string): Promise<ReadStateRecord | null> => {
       .get(filteredUrl.replaced.href);
     const {
       target: { result },
-    } = (await indexedDBRequestToPromise(req)) as { target: { result: ReadStateRecord | null } };
+    } = (await indexedDBRequestToPromise(req)) as {
+      target: { result: ReadStateRecord | null };
+    };
 
     const data = appAny.deepCopy(result) as ReadStateRecord | null;
     if (data != null) {
@@ -135,7 +137,9 @@ export const getAll = async (): Promise<ReadStateRecord[]> => {
   try {
     const db = await _openDB;
     const req = db.transaction("ReadState").objectStore("ReadState").getAll();
-    const event = (await indexedDBRequestToPromise(req)) as { target: { result: ReadStateRecord[] } };
+    const event = (await indexedDBRequestToPromise(req)) as {
+      target: { result: ReadStateRecord[] };
+    };
     return event.target.result;
   } catch (e) {
     appAny.log("error", "app.ReadState.getAll: トランザクション中断");
@@ -160,7 +164,9 @@ export const getByBoard = async (url: string): Promise<ReadStateRecord[]> => {
 
     const {
       target: { result: data },
-    } = (await indexedDBRequestToPromise(req)) as { target: { result: ReadStateRecord[] } };
+    } = (await indexedDBRequestToPromise(req)) as {
+      target: { result: ReadStateRecord[] };
+    };
 
     for (const readState of data) {
       readState.url = readState.url.replace(
@@ -190,7 +196,9 @@ export const remove = async (url: string): Promise<void> => {
       .objectStore("ReadState")
       .delete(filteredUrl.replaced.href);
     await indexedDBRequestToPromise(req);
-    appAny.message.send("read_state_removed", { url: filteredUrl.original.href });
+    appAny.message.send("read_state_removed", {
+      url: filteredUrl.original.href,
+    });
   } catch (e) {
     appAny.log("error", "app.ReadState.remove: トランザクション中断");
     throw new Error(String(e));
@@ -215,7 +223,8 @@ const _recoveryOfDate = (_db: IDBDatabase, tx: IDBTransaction): Promise<void> =>
   new Promise((resolve, reject) => {
     const req = tx.objectStore("ReadState").openCursor();
     req.onsuccess = (event) => {
-      const cursor = (event.target as IDBRequest<IDBCursorWithValue | null>).result;
+      const cursor = (event.target as IDBRequest<IDBCursorWithValue | null>)
+        .result;
       if (cursor) {
         const value = cursor.value as ReadStateRecord;
         value.date = undefined;
@@ -226,7 +235,10 @@ const _recoveryOfDate = (_db: IDBDatabase, tx: IDBTransaction): Promise<void> =>
       }
     };
     req.onerror = (e) => {
-      appAny.log("error", "app.ReadState._recoveryOfDate: トランザクション中断");
+      appAny.log(
+        "error",
+        "app.ReadState._recoveryOfDate: トランザクション中断",
+      );
       reject(e);
     };
   });

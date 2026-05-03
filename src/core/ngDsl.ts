@@ -59,7 +59,7 @@ const WORD_PARAMETER: NGDslParameterSpec = {
   name: "word",
   detail: "マッチ文字列",
   documentation:
-    "マッチさせる文字列または正規表現です。編集時は word=\"VTuber\" のように書けます。",
+    'マッチさせる文字列または正規表現です。編集時は word="VTuber" のように書けます。',
 };
 
 const SITES_PARAMETER: NGDslParameterSpec = {
@@ -101,7 +101,12 @@ export const NG_DSL_RULE_SPECS: readonly NGDslRuleSpec[] = [
     keyword: "RegExpHighlightTitle",
     description: "タイトルを正規表現でハイライトします。",
     wordDescription: "正規表現",
-    parameters: [WORD_PARAMETER, SITES_PARAMETER, BGCOLOR_PARAMETER, LABEL_PARAMETER],
+    parameters: [
+      WORD_PARAMETER,
+      SITES_PARAMETER,
+      BGCOLOR_PARAMETER,
+      LABEL_PARAMETER,
+    ],
   },
   {
     keyword: "RegExpName",
@@ -150,7 +155,12 @@ export const NG_DSL_RULE_SPECS: readonly NGDslRuleSpec[] = [
     keyword: "HighlightTitle",
     description: "タイトルを部分一致でハイライトします。",
     wordDescription: "キーワード",
-    parameters: [WORD_PARAMETER, SITES_PARAMETER, BGCOLOR_PARAMETER, LABEL_PARAMETER],
+    parameters: [
+      WORD_PARAMETER,
+      SITES_PARAMETER,
+      BGCOLOR_PARAMETER,
+      LABEL_PARAMETER,
+    ],
   },
   {
     keyword: "Name",
@@ -469,7 +479,10 @@ export function parseNgDslArguments(
   };
 }
 
-function findMatchingParenIndex(source: string, openParenIndex: number): number {
+function findMatchingParenIndex(
+  source: string,
+  openParenIndex: number,
+): number {
   const state = createSplitState();
 
   for (let index = openParenIndex; index < source.length; index += 1) {

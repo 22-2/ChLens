@@ -49,16 +49,13 @@ export const WritePanelContent: React.FC = () => {
     };
   }, []);
 
-  const handleSubmitWithCtrlEnterChange = useCallback(
-    (checked: boolean) => {
-      setSubmitWithCtrlEnter(checked);
-      void container.config.set(
-        WRITE_SUBMIT_CTRL_ENTER_KEY,
-        checked ? "on" : "off",
-      );
-    },
-    [],
-  );
+  const handleSubmitWithCtrlEnterChange = useCallback((checked: boolean) => {
+    setSubmitWithCtrlEnter(checked);
+    void container.config.set(
+      WRITE_SUBMIT_CTRL_ENTER_KEY,
+      checked ? "on" : "off",
+    );
+  }, []);
 
   const handleTextareaKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

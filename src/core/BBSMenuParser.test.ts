@@ -34,9 +34,7 @@ function buildHtml(
     .map(
       (cat) =>
         `<BR><BR><B>${cat.name}</B><BR>\n` +
-        cat.boards
-          .map((b) => `<A HREF=${b.url}>${b.name}</A><BR>`)
-          .join("\n"),
+        cat.boards.map((b) => `<A HREF=${b.url}>${b.name}</A><BR>`).join("\n"),
     )
     .join("\n");
   return `<HTML><HEAD><TITLE>${title}</TITLE></HEAD><BODY>\n${cats}\n</BODY></HTML>`;
@@ -86,7 +84,11 @@ describe("BBSMenuParser.parse", () => {
       },
     ]);
 
-    const menu = BBSMenuParser.parse(html, "https://menu.5ch.io/bbsmenu.html", new Set());
+    const menu = BBSMenuParser.parse(
+      html,
+      "https://menu.5ch.io/bbsmenu.html",
+      new Set(),
+    );
 
     expect(menu.name).toBe("テスト板一覧");
     expect(menu.categories).toHaveLength(1);
@@ -102,7 +104,11 @@ describe("BBSMenuParser.parse", () => {
       },
     ]).replace("<TITLE></TITLE>", "");
 
-    const menu = BBSMenuParser.parse(html, "https://menu.5ch.io/bbsmenu.html", new Set());
+    const menu = BBSMenuParser.parse(
+      html,
+      "https://menu.5ch.io/bbsmenu.html",
+      new Set(),
+    );
 
     expect(menu.name).toBe("menu.5ch.io");
   });
@@ -121,7 +127,11 @@ describe("BBSMenuParser.parse", () => {
 
     // bbspink.com と 2ch.sc を除外オプションに指定
     const excludeTslds = new Set(["bbspink.com", "2ch.sc"]);
-    const menu = BBSMenuParser.parse(html, "https://menu.5ch.io/bbsmenu.html", excludeTslds);
+    const menu = BBSMenuParser.parse(
+      html,
+      "https://menu.5ch.io/bbsmenu.html",
+      excludeTslds,
+    );
 
     const boards = menu.categories.flatMap((c) => c.boards);
     // bbspink.com は例外扱いで除外されない
@@ -145,7 +155,11 @@ describe("BBSMenuParser.parse", () => {
     ]);
 
     const excludeTslds = new Set(["2ch.sc"]);
-    const menu = BBSMenuParser.parse(html, "https://menu.5ch.io/bbsmenu.html", excludeTslds);
+    const menu = BBSMenuParser.parse(
+      html,
+      "https://menu.5ch.io/bbsmenu.html",
+      excludeTslds,
+    );
 
     expect(menu.categories).toHaveLength(1);
     expect(menu.categories[0].name).toBe("残るカテゴリ");
@@ -163,7 +177,11 @@ describe("BBSMenuParser.parse", () => {
       },
     ]);
 
-    const menu = BBSMenuParser.parse(html, "https://menu.5ch.io/bbsmenu.html", new Set());
+    const menu = BBSMenuParser.parse(
+      html,
+      "https://menu.5ch.io/bbsmenu.html",
+      new Set(),
+    );
 
     expect(menu.categories[0].boards).toHaveLength(3);
   });
@@ -179,7 +197,11 @@ describe("BBSMenuParser.parse", () => {
       },
     ]);
 
-    const menu = BBSMenuParser.parse(html, "https://menu.5ch.io/bbsmenu.html", new Set(["5ch.io"]));
+    const menu = BBSMenuParser.parse(
+      html,
+      "https://menu.5ch.io/bbsmenu.html",
+      new Set(["5ch.io"]),
+    );
 
     // 不正URLは除外されない（URLパースエラーで除外ロジックをスキップ）
     const boards = menu.categories.flatMap((c) => c.boards);

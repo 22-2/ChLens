@@ -180,9 +180,7 @@ function buildReplyTreeImageCardLayouts(
     const cardX = TREE_IMAGE_LAYOUT.paddingX + indent;
     const cardWidth = Math.max(
       TREE_IMAGE_LAYOUT.cardMinWidth,
-      TREE_IMAGE_LAYOUT.width -
-        TREE_IMAGE_LAYOUT.paddingX * 2 -
-        indent,
+      TREE_IMAGE_LAYOUT.width - TREE_IMAGE_LAYOUT.paddingX * 2 - indent,
     );
     const headerLine = `${entry.res.num} ${stripHtml(entry.res.name)}`;
     const dateLine = entry.res.date ?? entry.res.other ?? "";
@@ -246,12 +244,20 @@ function drawReplyTreeImageCard(
 
   context.font = "600 15px sans-serif";
   context.fillStyle = "#162033";
-  context.fillText(card.headerLine, card.x + TREE_IMAGE_LAYOUT.cardPaddingX, textY);
+  context.fillText(
+    card.headerLine,
+    card.x + TREE_IMAGE_LAYOUT.cardPaddingX,
+    textY,
+  );
 
   textY += TREE_IMAGE_LAYOUT.lineHeight;
   context.font = "12px sans-serif";
   context.fillStyle = "#5b6475";
-  context.fillText(card.dateLine, card.x + TREE_IMAGE_LAYOUT.cardPaddingX, textY);
+  context.fillText(
+    card.dateLine,
+    card.x + TREE_IMAGE_LAYOUT.cardPaddingX,
+    textY,
+  );
 
   textY += TREE_IMAGE_LAYOUT.cardHeaderGap + 6;
   context.font = "14px sans-serif";
@@ -276,7 +282,11 @@ function renderReplyTreeImageCanvas(
     throw new Error("Canvas 2D context is not available");
   }
 
-  const measured = buildReplyTreeImageCardLayouts(context, sourceRes, replyEntries);
+  const measured = buildReplyTreeImageCardLayouts(
+    context,
+    sourceRes,
+    replyEntries,
+  );
   canvas.width = Math.round(TREE_IMAGE_LAYOUT.width * dpr);
   canvas.height = Math.round(measured.height * dpr);
   canvas.style.width = `${TREE_IMAGE_LAYOUT.width}px`;
@@ -303,7 +313,10 @@ function renderReplyTreeImageCanvas(
   );
 
   const repliesSectionY =
-    measured.cards[0].y + measured.cards[0].height + TREE_IMAGE_LAYOUT.sectionGap + 18;
+    measured.cards[0].y +
+    measured.cards[0].height +
+    TREE_IMAGE_LAYOUT.sectionGap +
+    18;
   context.fillText("返信レス", TREE_IMAGE_LAYOUT.paddingX, repliesSectionY);
 
   // DOM の見た目依存を避けるため、コピー画像は返信データから専用レイアウトを描画する。

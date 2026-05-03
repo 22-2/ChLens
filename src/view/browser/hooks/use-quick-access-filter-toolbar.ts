@@ -42,7 +42,8 @@ export function useQuickAccessFilterToolbar({
   useEffect(() => {
     const eventName = QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE[pageType];
     const handleToggle = (event: Event) => {
-      const detail = (event as CustomEvent<QuickAccessFilterToggleDetail>).detail;
+      const detail = (event as CustomEvent<QuickAccessFilterToggleDetail>)
+        .detail;
       if (!isActive || detail?.tabId !== tabId) {
         return;
       }

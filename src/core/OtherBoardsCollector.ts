@@ -77,7 +77,10 @@ export class OtherBoardsCollector {
     const addIfNew = (url: string, name: string) => {
       try {
         const normalizedUrl = new URL(url).href;
-        if (!registeredUrls.has(normalizedUrl) && !seenUrls.has(normalizedUrl)) {
+        if (
+          !registeredUrls.has(normalizedUrl) &&
+          !seenUrls.has(normalizedUrl)
+        ) {
           otherBoards.push({ name, url: normalizedUrl });
           seenUrls.add(normalizedUrl);
         }
@@ -123,9 +126,7 @@ export class OtherBoardsCollector {
   /**
    * キャッシュ済みの板名を即座に適用する（ブロッキングなし）。
    */
-  private _applyBoardTitles(
-    boards: { name: string; url: string }[],
-  ): void {
+  private _applyBoardTitles(boards: { name: string; url: string }[]): void {
     const cached = this.deps.getCachedBoardTitles();
     for (const board of boards) {
       if (board.name === board.url && cached[board.url]) {
@@ -149,7 +150,9 @@ export class OtherBoardsCollector {
         boards.map(async (board) => {
           if (board.name === board.url) {
             try {
-              const title = await this.deps.resolveBoardTitle(new URL(board.url));
+              const title = await this.deps.resolveBoardTitle(
+                new URL(board.url),
+              );
               if (title) {
                 board.name = title;
                 cached[board.url] = title;

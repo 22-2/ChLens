@@ -100,9 +100,9 @@ export default class Cache {
   static async clearRange(day: number): Promise<void> {
     const dayUnix = Date.now() - day * 24 * 60 * 60 * 1000;
     const store = this._getStore();
-    const keys = await store.index("last_updated").getAllKeys(
-      IDBKeyRange.upperBound(dayUnix, true),
-    );
+    const keys = await store
+      .index("last_updated")
+      .getAllKeys(IDBKeyRange.upperBound(dayUnix, true));
     await Promise.all(keys.map((key) => store.delete(key as string)));
   }
 

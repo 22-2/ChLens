@@ -53,13 +53,34 @@ describe("ThreadMinimap", () => {
     panel.append(host);
     document.body.append(panel);
 
-    Object.defineProperty(panel, "clientWidth", { configurable: true, value: 1000 });
-    Object.defineProperty(panel, "offsetWidth", { configurable: true, value: 1012 });
-    Object.defineProperty(panel, "clientHeight", { configurable: true, value: 600 });
-    Object.defineProperty(panel, "scrollHeight", { configurable: true, value: 2400 });
-    Object.defineProperty(panel, "scrollTop", { configurable: true, value: 120 });
-    Object.defineProperty(response, "offsetHeight", { configurable: true, value: 48 });
-    Object.defineProperty(response, "offsetTop", { configurable: true, value: 300 });
+    Object.defineProperty(panel, "clientWidth", {
+      configurable: true,
+      value: 1000,
+    });
+    Object.defineProperty(panel, "offsetWidth", {
+      configurable: true,
+      value: 1012,
+    });
+    Object.defineProperty(panel, "clientHeight", {
+      configurable: true,
+      value: 600,
+    });
+    Object.defineProperty(panel, "scrollHeight", {
+      configurable: true,
+      value: 2400,
+    });
+    Object.defineProperty(panel, "scrollTop", {
+      configurable: true,
+      value: 120,
+    });
+    Object.defineProperty(response, "offsetHeight", {
+      configurable: true,
+      value: 48,
+    });
+    Object.defineProperty(response, "offsetTop", {
+      configurable: true,
+      value: 300,
+    });
     panel.scrollTo = vi.fn();
     panel.getBoundingClientRect = () =>
       ({
@@ -77,9 +98,13 @@ describe("ThreadMinimap", () => {
     responses.getBoundingClientRect = () => panel.getBoundingClientRect();
 
     const rootRef = { current: host } as React.RefObject<HTMLDivElement | null>;
-    const repIndex = new Map<number, Set<number>>([[10, new Set([11, 12, 13])]]);
+    const repIndex = new Map<number, Set<number>>([
+      [10, new Set([11, 12, 13])],
+    ]);
 
-    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
 
     const { container } = render(
       <ThreadMinimap
@@ -91,7 +116,9 @@ describe("ThreadMinimap", () => {
     );
 
     await waitFor(() => {
-      expect(container.querySelector(".thread-page__minimap")).toBeInTheDocument();
+      expect(
+        container.querySelector(".thread-page__minimap"),
+      ).toBeInTheDocument();
     });
 
     expect(

@@ -21,10 +21,7 @@ import {
 } from "src/view/browser/components/SimpleDataTable";
 import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
 import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
-import {
-  useTheme,
-  type ResolvedTheme,
-} from "src/view/browser/hooks/use-theme";
+import { useTheme, type ResolvedTheme } from "src/view/browser/hooks/use-theme";
 import type { ThreadListPage as ThreadListPageType } from "src/view/browser/types";
 import { copyText } from "src/view/browser/utils/utils";
 
@@ -148,8 +145,8 @@ function createHighlightRowStyle(
 
   const overlay =
     theme === "dark"
-      // hover時の差をもう少し明確にして、強調行だと一目で分かるようにする。
-      ? { color: { r: 255, g: 255, b: 255 }, alpha: 0.3 }
+      ? // hover時の差をもう少し明確にして、強調行だと一目で分かるようにする。
+        { color: { r: 255, g: 255, b: 255 }, alpha: 0.3 }
       : { color: { r: 0, g: 0, b: 0 }, alpha: 0.16 };
 
   // inline background-color だと hover 時に上書きしづらいので、通常色と hover 色を CSS 変数で渡す。
@@ -217,7 +214,12 @@ function readThreadListSortPreference(
         direction: "asc",
       };
     }
-    if (column && direction && isSortColumn(column) && isSortDirection(direction)) {
+    if (
+      column &&
+      direction &&
+      isSortColumn(column) &&
+      isSortDirection(direction)
+    ) {
       return {
         column,
         direction,

@@ -653,13 +653,7 @@ export function usePopupSurfaceLifecycle({
   const handleMouseEnter = (event: React.MouseEvent<HTMLElement>) => {
     setIsHovering(true);
     const relatedPopupId = getPopupSurfaceId(event.relatedTarget);
-    if (
-      popupId &&
-      isPopupDescendantOf?.(
-        relatedPopupId ?? "",
-        popupId,
-      )
-    ) {
+    if (popupId && isPopupDescendantOf?.(relatedPopupId ?? "", popupId)) {
       if (isContextMenuPopupId(relatedPopupId)) {
         // コンテキストメニューは outside click まで維持したいので、
         // 子メニューから親へ戻っても branch を自動で閉じない。

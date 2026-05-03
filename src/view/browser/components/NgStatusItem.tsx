@@ -86,7 +86,9 @@ export const NgStatusItem: React.FC = () => {
           <div className="mini-window__section">
             {/* 一時解除はUI表示の切り替えだけに限定し、既存NG定義は保持する。 */}
             <div className="mini-window__toggle-row">
-              <span className="mini-window__toggle-label">一時的にNGを解除</span>
+              <span className="mini-window__toggle-label">
+                一時的にNGを解除
+              </span>
               <button
                 className={`mini-window__toggle-btn${
                   isNgTemporarilyDisabled ? " mini-window__toggle-btn--on" : ""

@@ -23,7 +23,9 @@ describe("NG DSL parsing", () => {
   it("parses multiline function-style DSL with word and sites arrays", async () => {
     const { parse, TYPE } = await import("src/core/NG.js");
 
-    const rules = parse(`RegExpHighlightTitle(\n  word="VTuber",\n  sites=[\n    eddibb.cc,\n    5ch.net,\n  ],\n  bgColor=red,\n  label=注目,\n)`);
+    const rules = parse(
+      `RegExpHighlightTitle(\n  word="VTuber",\n  sites=[\n    eddibb.cc,\n    5ch.net,\n  ],\n  bgColor=red,\n  label=注目,\n)`,
+    );
 
     const parsed = Array.from(rules as Set<unknown>);
     expect(parsed).toHaveLength(1);

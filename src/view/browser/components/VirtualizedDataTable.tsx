@@ -143,7 +143,10 @@ export function VirtualizedDataTable<TRow>({
                 {columns.map((column) => {
                   const colDef = colDefMap.get(column.key);
                   return (
-                    <td key={column.key} className={colDef?.cellClassName ?? ""}>
+                    <td
+                      key={column.key}
+                      className={colDef?.cellClassName ?? ""}
+                    >
                       {column.cell(row)}
                     </td>
                   );

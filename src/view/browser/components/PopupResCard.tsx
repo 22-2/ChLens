@@ -66,8 +66,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
 
     // NG 判定は ResItem と同じロジック
     const isNG =
-      !isNgTemporarilyDisabled &&
-      (res.ng != null || res.class?.includes("ng"));
+      !isNgTemporarilyDisabled && (res.ng != null || res.class?.includes("ng"));
     if (isNG) return null;
 
     return (
@@ -119,7 +118,11 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
                 disableRepClick ? " res__rep--disabled" : ""
               }`}
               aria-disabled={disableRepClick ? true : undefined}
-              title={disableRepClick ? "参照元レスの返信はこのポップアップ内では開けません" : undefined}
+              title={
+                disableRepClick
+                  ? "参照元レスの返信はこのポップアップ内では開けません"
+                  : undefined
+              }
               onClick={(e) => {
                 // 参照元レスの「返信」は同一ツリーを再帰的に開いてしまうため、
                 // 返信ポップアップ内では明示的に無効化する。

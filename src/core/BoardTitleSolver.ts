@@ -1,4 +1,7 @@
-import { onChange as BBSMenuOnChange, get as getBBSMenu } from "src/core/BBSMenu.js";
+import {
+  onChange as BBSMenuOnChange,
+  get as getBBSMenu,
+} from "src/core/BBSMenu.js";
 import { Request } from "src/core/HTTP";
 import { URL } from "src/core/URL";
 

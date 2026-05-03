@@ -135,11 +135,13 @@ describe("ThreadListPage", () => {
     };
     serviceContainer.message = {
       send: vi.fn(),
-      on: vi.fn((type: string, handler: (payload: { key?: string }) => void) => {
-        if (type === "config_updated") {
-          configUpdatedListeners.add(handler);
-        }
-      }),
+      on: vi.fn(
+        (type: string, handler: (payload: { key?: string }) => void) => {
+          if (type === "config_updated") {
+            configUpdatedListeners.add(handler);
+          }
+        },
+      ),
       off: vi.fn(
         (type: string, handler: (payload: { key?: string }) => void) => {
           if (type === "config_updated") {

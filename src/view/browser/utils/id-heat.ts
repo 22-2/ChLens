@@ -16,7 +16,10 @@ export function getIdHeatColor(idCount: number): string {
   }
 
   if (idCount <= ID_HEAT_COOL_PEAK_COUNT) {
-    const range = Math.max(ID_HEAT_COOL_PEAK_COUNT - ID_HEAT_MIN_ACTIVE_COUNT, 1);
+    const range = Math.max(
+      ID_HEAT_COOL_PEAK_COUNT - ID_HEAT_MIN_ACTIVE_COUNT,
+      1,
+    );
     const ratio = clamp01((idCount - ID_HEAT_MIN_ACTIVE_COUNT) / range);
     const coolPercent = Math.round(ratio * 100);
     const mutedPercent = 100 - coolPercent;

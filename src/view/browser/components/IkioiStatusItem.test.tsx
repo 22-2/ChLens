@@ -1,5 +1,11 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import React from "react";
 import { container } from "src/service-container/index";
 import { IkioiStatusItem } from "src/view/browser/components/IkioiStatusItem";
@@ -63,7 +69,10 @@ describe("IkioiStatusItem", () => {
 
     container.thread = {
       getThread: vi.fn(async () => ({
-        url: mocks.currentPage.type === "thread" ? mocks.currentPage.threadUrl : "",
+        url:
+          mocks.currentPage.type === "thread"
+            ? mocks.currentPage.threadUrl
+            : "",
         title: "スレッド",
         res: [
           {
@@ -96,7 +105,8 @@ describe("IkioiStatusItem", () => {
     renderItem();
 
     await waitFor(() => {
-      const label = screen.getByLabelText(/勢い/).getAttribute("aria-label") ?? "";
+      const label =
+        screen.getByLabelText(/勢い/).getAttribute("aria-label") ?? "";
       expect(label).not.toContain("...");
     });
 
@@ -115,7 +125,9 @@ describe("IkioiStatusItem", () => {
     fireEvent.click(button);
 
     expect(screen.getByText("勢いグラフ")).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "勢い推移グラフ" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: "勢い推移グラフ" }),
+    ).toBeInTheDocument();
   });
 
   it("スレッド以外では表示しない", () => {

@@ -372,7 +372,9 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
         };
       }
 
-      return updateActiveTab(state, (tab) => pushPageToTabHistory(tab, action.page));
+      return updateActiveTab(state, (tab) =>
+        pushPageToTabHistory(tab, action.page),
+      );
     }
 
     case "NAVIGATE_TAB": {
@@ -382,7 +384,8 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
       }
 
       if (
-        getPageIdentity(getCurrentPage(targetTab)) === getPageIdentity(action.page)
+        getPageIdentity(getCurrentPage(targetTab)) ===
+        getPageIdentity(action.page)
       ) {
         return {
           ...state,
@@ -407,9 +410,7 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
         ...state,
         activeTabId: action.tabId,
         tabs: state.tabs.map((t) =>
-          t.id === action.tabId
-            ? pushPageToTabHistory(t, action.page)
-            : t,
+          t.id === action.tabId ? pushPageToTabHistory(t, action.page) : t,
         ),
       };
     }

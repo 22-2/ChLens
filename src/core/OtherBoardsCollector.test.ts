@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { OtherBoardsCollector, IOtherBoardsDeps } from "src/core/OtherBoardsCollector";
+import {
+  OtherBoardsCollector,
+  IOtherBoardsDeps,
+} from "src/core/OtherBoardsCollector";
 import { BBSMenu } from "src/core/parseBBSMenu";
 
 // src/core/URL は BroadcastChannel に依存する src/app を間接的にインポートするため、
@@ -73,7 +76,9 @@ describe("OtherBoardsCollector.collect", () => {
     const deps = makeDeps();
     const collector = new OtherBoardsCollector(deps);
     const menus: BBSMenu[] = [
-      makeMenu("メニュー1", [{ name: "板1", url: "https://foo.5ch.io/board1/" }]),
+      makeMenu("メニュー1", [
+        { name: "板1", url: "https://foo.5ch.io/board1/" },
+      ]),
     ];
 
     await collector.collect(menus);
@@ -84,9 +89,11 @@ describe("OtherBoardsCollector.collect", () => {
 
   it("ReadStateに未登録のスレッドURLがある場合、板URLを「その他」に追加する", async () => {
     const deps = makeDeps({
-      getAllReadStates: vi.fn().mockResolvedValue([
-        { url: "https://foo.5ch.io/test/read.cgi/board1/1000000010/" },
-      ]),
+      getAllReadStates: vi
+        .fn()
+        .mockResolvedValue([
+          { url: "https://foo.5ch.io/test/read.cgi/board1/1000000010/" },
+        ]),
     });
     const collector = new OtherBoardsCollector(deps);
     const menus: BBSMenu[] = [];
@@ -140,9 +147,11 @@ describe("OtherBoardsCollector.collect", () => {
   it("既にメニューに登録済みの板はその他に追加しない", async () => {
     const registeredUrl = "https://foo.5ch.io/board1/";
     const deps = makeDeps({
-      getAllReadStates: vi.fn().mockResolvedValue([
-        { url: "https://foo.5ch.io/test/read.cgi/board1/1000000010/" },
-      ]),
+      getAllReadStates: vi
+        .fn()
+        .mockResolvedValue([
+          { url: "https://foo.5ch.io/test/read.cgi/board1/1000000010/" },
+        ]),
     });
     const collector = new OtherBoardsCollector(deps);
     const menus: BBSMenu[] = [
@@ -165,9 +174,9 @@ describe("OtherBoardsCollector.collect", () => {
     const threadUrl = "https://foo.5ch.io/test/read.cgi/board1/1000000010/";
     const deps = makeDeps({
       getAllReadStates: vi.fn().mockResolvedValue([{ url: threadUrl }]),
-      getUniqueHistory: vi.fn().mockResolvedValue([
-        { url: threadUrl, boardTitle: "板1" },
-      ]),
+      getUniqueHistory: vi
+        .fn()
+        .mockResolvedValue([{ url: threadUrl, boardTitle: "板1" }]),
     });
     const collector = new OtherBoardsCollector(deps);
     const menus: BBSMenu[] = [];
@@ -183,9 +192,11 @@ describe("OtherBoardsCollector.collect", () => {
   it("キャッシュ済みの板名を即座に適用する", async () => {
     const boardUrl = "https://foo.5ch.io/board1/";
     const deps = makeDeps({
-      getAllReadStates: vi.fn().mockResolvedValue([
-        { url: "https://foo.5ch.io/test/read.cgi/board1/1000000010/" },
-      ]),
+      getAllReadStates: vi
+        .fn()
+        .mockResolvedValue([
+          { url: "https://foo.5ch.io/test/read.cgi/board1/1000000010/" },
+        ]),
       getCachedBoardTitles: vi.fn().mockReturnValue({
         [boardUrl]: "キャッシュ済み板名",
       }),
@@ -202,9 +213,11 @@ describe("OtherBoardsCollector.collect", () => {
 
   it("既存の「その他」メニューがある場合は新規作成せず既存に追加する", async () => {
     const deps = makeDeps({
-      getUniqueHistory: vi.fn().mockResolvedValue([
-        { url: "https://foo.5ch.io/test/read.cgi/news/1000000011/" },
-      ]),
+      getUniqueHistory: vi
+        .fn()
+        .mockResolvedValue([
+          { url: "https://foo.5ch.io/test/read.cgi/news/1000000011/" },
+        ]),
     });
     const collector = new OtherBoardsCollector(deps);
     const existingOtherMenu: BBSMenu = {
@@ -219,15 +232,19 @@ describe("OtherBoardsCollector.collect", () => {
     const otherMenus = menus.filter((m) => m.name === "その他");
     expect(otherMenus).toHaveLength(1);
     // 「一度開いた板」カテゴリが追加されていること
-    expect(otherMenus[0].categories.some((c) => c.name === "一度開いた板")).toBe(true);
+    expect(
+      otherMenus[0].categories.some((c) => c.name === "一度開いた板"),
+    ).toBe(true);
   });
 
   it("ReadStateの取得が失敗してもエラーをスローせず処理を続ける", async () => {
     const deps = makeDeps({
       getAllReadStates: vi.fn().mockRejectedValue(new Error("DB error")),
-      getUniqueHistory: vi.fn().mockResolvedValue([
-        { url: "https://foo.5ch.io/test/read.cgi/news/1000000011/" },
-      ]),
+      getUniqueHistory: vi
+        .fn()
+        .mockResolvedValue([
+          { url: "https://foo.5ch.io/test/read.cgi/news/1000000011/" },
+        ]),
     });
     const collector = new OtherBoardsCollector(deps);
     const menus: BBSMenu[] = [];
@@ -242,9 +259,11 @@ describe("OtherBoardsCollector.collect", () => {
 
   it("履歴の取得が失敗してもエラーをスローせず処理を続ける", async () => {
     const deps = makeDeps({
-      getAllReadStates: vi.fn().mockResolvedValue([
-        { url: "https://foo.5ch.io/test/read.cgi/board1/1000000010/" },
-      ]),
+      getAllReadStates: vi
+        .fn()
+        .mockResolvedValue([
+          { url: "https://foo.5ch.io/test/read.cgi/board1/1000000010/" },
+        ]),
       getUniqueHistory: vi.fn().mockRejectedValue(new Error("History error")),
     });
     const collector = new OtherBoardsCollector(deps);
@@ -259,9 +278,9 @@ describe("OtherBoardsCollector.collect", () => {
   it("板URLではないURLはReadStateから無視する", async () => {
     const deps = makeDeps({
       // board タイプのURLを渡す（スレッドではない）
-      getAllReadStates: vi.fn().mockResolvedValue([
-        { url: "https://foo.5ch.io/board1/" },
-      ]),
+      getAllReadStates: vi
+        .fn()
+        .mockResolvedValue([{ url: "https://foo.5ch.io/board1/" }]),
     });
     const collector = new OtherBoardsCollector(deps);
     const menus: BBSMenu[] = [];

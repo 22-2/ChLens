@@ -1,4 +1,8 @@
-import { HttpClient, HttpRequestOptions, HttpResponse } from "src/app/platform/types";
+import {
+  HttpClient,
+  HttpRequestOptions,
+  HttpResponse,
+} from "src/app/platform/types";
 
 function parseHTTPHeader(str: string): Record<string, string> {
   const reg = /^(?:([a-z\-]+):\s*|([ \t]+))(.+)\s*$/gim;

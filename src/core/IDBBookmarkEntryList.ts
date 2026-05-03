@@ -1,8 +1,5 @@
 import { openDB, type IDBPDatabase, type DBSchema } from "idb";
-import {
-  Entry,
-  SyncableEntryList,
-} from "src/core/BookmarkEntryList";
+import { Entry, SyncableEntryList } from "src/core/BookmarkEntryList";
 
 /**
  * IndexedDB を使ってブックマークを永続化する EntryList 実装。
@@ -47,7 +44,10 @@ export default class IDBBookmarkEntryList extends SyncableEntryList {
         await super.add(entry);
       }
     } catch (e) {
-      app.log("error", `IDBBookmarkEntryList._load: 読み込みに失敗しました: ${e}`);
+      app.log(
+        "error",
+        `IDBBookmarkEntryList._load: 読み込みに失敗しました: ${e}`,
+      );
     }
     if (!this.ready.wasCalled) {
       this.ready.call();
@@ -59,7 +59,10 @@ export default class IDBBookmarkEntryList extends SyncableEntryList {
       const db = await getDB();
       await db.put(STORE_NAME, entry);
     } catch (e) {
-      app.log("error", `IDBBookmarkEntryList._persist: 保存に失敗しました: ${e}`);
+      app.log(
+        "error",
+        `IDBBookmarkEntryList._persist: 保存に失敗しました: ${e}`,
+      );
     }
   }
 
@@ -68,7 +71,10 @@ export default class IDBBookmarkEntryList extends SyncableEntryList {
       const db = await getDB();
       await db.delete(STORE_NAME, url);
     } catch (e) {
-      app.log("error", `IDBBookmarkEntryList._delete: 削除に失敗しました: ${e}`);
+      app.log(
+        "error",
+        `IDBBookmarkEntryList._delete: 削除に失敗しました: ${e}`,
+      );
     }
   }
 

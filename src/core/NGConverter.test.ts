@@ -34,7 +34,9 @@ vi.mock("src/core/NG.js", () => ({
 
 describe("NGConverter JSON5 parsing", () => {
   it("treats comment-prefixed JSON5 as JSON5 instead of DSL", () => {
-    const rules = tryParseJSON5Rules(`// migrated config\n[\n  {\n    word: \"ID:WfiMRoM4i\",\n    type: \"ng\",\n    target: \"id\",\n  },\n]`);
+    const rules = tryParseJSON5Rules(
+      `// migrated config\n[\n  {\n    word: \"ID:WfiMRoM4i\",\n    type: \"ng\",\n    target: \"id\",\n  },\n]`,
+    );
 
     expect(rules).not.toBeNull();
     expect(rules).toEqual([
@@ -47,7 +49,9 @@ describe("NGConverter JSON5 parsing", () => {
   });
 
   it("normalizes legacy lowercase JSON5 keys before internal conversion", () => {
-    const rules = tryParseJSON5Rules(`[\n  {\n    word: \"foo\",\n    useregex: true,\n    type: \"highlight\",\n    target: \"title\",\n    highlightparams: {\n      bgcolor: \"orange\",\n      label: \"watch\",\n    },\n  },\n]`);
+    const rules = tryParseJSON5Rules(
+      `[\n  {\n    word: \"foo\",\n    useregex: true,\n    type: \"highlight\",\n    target: \"title\",\n    highlightparams: {\n      bgcolor: \"orange\",\n      label: \"watch\",\n    },\n  },\n]`,
+    );
 
     expect(rules).not.toBeNull();
 
@@ -95,7 +99,7 @@ describe("NGConverter JSON5 parsing", () => {
     ]);
 
     expect(dsl).toBe(
-      'HighlightTitle(word=VTuber sites=[eddibb.cc 5ch.net] bgColor=red label=注目)',
+      "HighlightTitle(word=VTuber sites=[eddibb.cc 5ch.net] bgColor=red label=注目)",
     );
   });
 

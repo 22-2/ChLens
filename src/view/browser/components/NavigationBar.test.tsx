@@ -4,38 +4,40 @@ import { NavigationBar } from "src/view/browser/components/NavigationBar";
 import { QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE } from "src/view/browser/utils/filter-toolbar-events";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const { activeTab, defaultHistory, dispatchMock, longTitle } = vi.hoisted(() => {
-  const longTitle = "かなり長い履歴タイトル".repeat(12);
-  const defaultHistory = [
-    {
-      type: "threadList" as const,
-      title: longTitle,
-      boardUrl: "https://egg.5ch.net/software/",
-      boardTitle: "Software",
-    },
-    {
-      type: "thread" as const,
-      title: "Current Thread",
-      threadUrl: "https://egg.5ch.net/test/read.cgi/software/1/",
-    },
-  ];
-  const activeTab = {
-    id: "tab-1",
-    history: [...defaultHistory],
-    currentIndex: 1,
-    pinned: false,
-    reloadKey: 0,
-    autoRefreshEnabled: false,
-    autoRefreshThreadUrl: null,
-  };
+const { activeTab, defaultHistory, dispatchMock, longTitle } = vi.hoisted(
+  () => {
+    const longTitle = "かなり長い履歴タイトル".repeat(12);
+    const defaultHistory = [
+      {
+        type: "threadList" as const,
+        title: longTitle,
+        boardUrl: "https://egg.5ch.net/software/",
+        boardTitle: "Software",
+      },
+      {
+        type: "thread" as const,
+        title: "Current Thread",
+        threadUrl: "https://egg.5ch.net/test/read.cgi/software/1/",
+      },
+    ];
+    const activeTab = {
+      id: "tab-1",
+      history: [...defaultHistory],
+      currentIndex: 1,
+      pinned: false,
+      reloadKey: 0,
+      autoRefreshEnabled: false,
+      autoRefreshThreadUrl: null,
+    };
 
-  return {
-    activeTab,
-    defaultHistory,
-    dispatchMock: vi.fn(),
-    longTitle,
-  };
-});
+    return {
+      activeTab,
+      defaultHistory,
+      dispatchMock: vi.fn(),
+      longTitle,
+    };
+  },
+);
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => ({

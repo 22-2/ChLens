@@ -375,9 +375,7 @@ describe("TabProvider auto refresh state", () => {
     expect(screen.getByTestId("current-page-title")).toHaveTextContent(
       "既存スレ",
     );
-    expect(screen.getByTestId("tab-titles")).toHaveTextContent(
-      "板B|既存スレ",
-    );
+    expect(screen.getByTestId("tab-titles")).toHaveTextContent("板B|既存スレ");
   });
 
   it("クイックアクセス間の遷移で既存ページ判定が誤爆せず切り替わる", async () => {
@@ -513,7 +511,9 @@ describe("TabProvider auto refresh state", () => {
           <output data-testid="history-titles">
             {activeTab.history.map((page) => page.title).join("|")}
           </output>
-          <output data-testid="history-index">{String(activeTab.currentIndex)}</output>
+          <output data-testid="history-index">
+            {String(activeTab.currentIndex)}
+          </output>
         </>
       );
     }
@@ -541,9 +541,7 @@ describe("TabProvider auto refresh state", () => {
     expect(screen.getByTestId("current-page-title")).toHaveTextContent(
       "thread-1",
     );
-    expect(screen.getByTestId("current-page-type")).toHaveTextContent(
-      "thread",
-    );
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent("thread");
     expect(screen.getByTestId("history-index")).toHaveTextContent("2");
   });
 
