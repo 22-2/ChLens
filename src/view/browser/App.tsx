@@ -21,6 +21,9 @@ import {
 import { NgStatusProvider } from "src/view/browser/hooks/use-ng-status";
 import { TabProvider, useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useTheme } from "src/view/browser/hooks/use-theme";
+import { useNotificationListener } from "src/view/browser/hooks/use-notification-listener";
+import { Toaster } from "sonner";
+import "sonner/dist/styles.css";
 
 // ステータスバー左端に常設される書き込みパネル開閉ボタン
 const WritePanelToggleItem: React.FC = () => {
@@ -53,6 +56,7 @@ const WritePanelToggleItem: React.FC = () => {
 
 export const BrowserApp: React.FC = () => {
   const theme = useTheme();
+  useNotificationListener();
 
   return (
     <TabProvider>
@@ -62,6 +66,12 @@ export const BrowserApp: React.FC = () => {
             <AutoScrollStateProvider>
               {/* data-theme を使ってダークモード CSS 変数を切り替える */}
               <div className="browser-shell" data-theme={theme}>
+                <Toaster
+                  position="top-right"
+                  theme={theme === "dark" ? "dark" : "light"}
+                  closeButton
+                  richColors
+                />
                 <div className="browser-shell__chrome">
                   <TabBar />
                   <NavigationBar />

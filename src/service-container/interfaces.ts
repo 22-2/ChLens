@@ -182,6 +182,7 @@ export interface INotificationService {
   success(message: string): void;
   error(message: string): void;
   info(message: string): void;
+  toast: any;
 }
 
 export interface INGResult {

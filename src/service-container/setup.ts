@@ -23,6 +23,7 @@ import BoardService from "src/core/BoardService.js";
 import * as BBSMenu from "src/core/BBSMenu.js";
 // @ts-ignore
 import ThreadService from "src/core/ThreadService.js";
+import { toast } from "sonner";
 
 /**
  * Initializes the service container with the current app implementations.
@@ -93,26 +94,24 @@ export function setupContainer(app: any) {
   // Notification Service Adapter
   const notificationServiceAdapter: INotificationService = {
     notify: (message, options) => {
-      const data: any = {};
-      if (options?.html) {
-        data.html = message;
-      } else {
-        data.message = message;
-      }
       if (options?.backgroundColor) {
-        data.background_color = options.backgroundColor;
+        toast(message, {
+          style: { backgroundColor: options.backgroundColor },
+        });
+      } else {
+        toast(message);
       }
-      app.message?.send("notify", data);
     },
     success: (message) => {
-      app.message?.send("notify", { message, background_color: "green" });
+      toast.success(message);
     },
     error: (message) => {
-      app.message?.send("notify", { message, background_color: "red" });
+      toast.error(message);
     },
     info: (message) => {
-      app.message?.send("notify", { message, background_color: "#777" });
+      toast.info(message);
     },
+    toast: toast,
   };
 
   // NG Service Adapter
