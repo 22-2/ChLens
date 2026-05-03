@@ -1,25 +1,27 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { NavigationBar } from "src/view/browser/components/NavigationBar";
+import { QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE } from "src/view/browser/utils/filter-toolbar-events";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const { activeTab, dispatchMock, longTitle } = vi.hoisted(() => {
+const { activeTab, defaultHistory, dispatchMock, longTitle } = vi.hoisted(() => {
   const longTitle = "かなり長い履歴タイトル".repeat(12);
+  const defaultHistory = [
+    {
+      type: "threadList" as const,
+      title: longTitle,
+      boardUrl: "https://egg.5ch.net/software/",
+      boardTitle: "Software",
+    },
+    {
+      type: "thread" as const,
+      title: "Current Thread",
+      threadUrl: "https://egg.5ch.net/test/read.cgi/software/1/",
+    },
+  ];
   const activeTab = {
     id: "tab-1",
-    history: [
-      {
-        type: "threadList" as const,
-        title: longTitle,
-        boardUrl: "https://egg.5ch.net/software/",
-        boardTitle: "Software",
-      },
-      {
-        type: "thread" as const,
-        title: "Current Thread",
-        threadUrl: "https://egg.5ch.net/test/read.cgi/software/1/",
-      },
-    ],
+    history: [...defaultHistory],
     currentIndex: 1,
     pinned: false,
     reloadKey: 0,
@@ -29,6 +31,7 @@ const { activeTab, dispatchMock, longTitle } = vi.hoisted(() => {
 
   return {
     activeTab,
+    defaultHistory,
     dispatchMock: vi.fn(),
     longTitle,
   };
@@ -54,6 +57,8 @@ describe("NavigationBar", () => {
   afterEach(() => {
     cleanup();
     dispatchMock.mockReset();
+    activeTab.history = [...defaultHistory];
+    activeTab.currentIndex = 1;
   });
 
   it("戻る履歴メニューのタイトルを複数行表示にする", () => {
@@ -99,6 +104,30 @@ describe("NavigationBar", () => {
 
     expect(dispatchEventSpy).toHaveBeenCalledWith(
       expect.objectContaining({ type: "thread-filter-toolbar-toggle" }),
+    );
+    dispatchEventSpy.mockRestore();
+  });
+
+  it("閲覧履歴ではメニュー項目の『フィルターを開く』で履歴用トグルイベントを送る", () => {
+    const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
+    activeTab.history = [
+      {
+        type: "historyList",
+        title: "閲覧履歴",
+      },
+    ];
+    activeTab.currentIndex = 0;
+
+    render(<NavigationBar />);
+
+    fireEvent.click(screen.getByTitle("メニュー"));
+    fireEvent.click(screen.getByRole("button", { name: "フィルターを開く" }));
+
+    expect(dispatchEventSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.historyList,
+        detail: { tabId: "tab-1" },
+      }),
     );
     dispatchEventSpy.mockRestore();
   });

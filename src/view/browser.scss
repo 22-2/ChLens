@@ -983,6 +983,17 @@ body {
   padding: 0;
 }
 
+.history-list-page {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.history-list-page__table {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .thread-list-page__notice {
   padding: 8px 16px;
   background: #fef7e0;
@@ -998,6 +1009,14 @@ body {
   /* table-layout: fixed にすることで、ズーム時もテーブルが画面幅を超えず
      タイトル列が残り幅に収まるようにする（他列の隠れを防ぐ） */
   table-layout: fixed;
+}
+
+.simple-data-table__scroller {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
 }
 
 .simple-data-table__row {
@@ -1045,6 +1064,57 @@ body {
   color: #70757a;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+}
+
+.simple-data-table__history-board,
+.simple-data-table__writehistory-name,
+.simple-data-table__writehistory-mail {
+  padding: 6px 8px;
+  color: var(--browser-color-text-muted);
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.simple-data-table__history-board {
+  width: 120px;
+}
+
+.simple-data-table__history-date,
+.simple-data-table__writehistory-date,
+.simple-data-table__writehistory-res {
+  color: var(--browser-color-text-muted);
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.simple-data-table__history-date,
+.simple-data-table__writehistory-date {
+  width: 136px;
+  padding: 6px 12px 6px 4px;
+}
+
+.simple-data-table__writehistory-res {
+  width: 56px;
+  padding: 6px 12px 6px 4px;
+}
+
+.simple-data-table__writehistory-name,
+.simple-data-table__writehistory-mail {
+  width: 96px;
+}
+
+.simple-data-table__writehistory-message {
+  padding: 6px 8px;
+  color: var(--browser-color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.simple-data-table__spacer > td {
+  padding: 0;
+  border: 0;
 }
 
 /* ==========================================================================
@@ -1316,6 +1386,38 @@ body {
   width: 60px;
   text-align: right;
   padding-right: 12px;
+}
+
+.simple-data-table__th--history-board,
+.simple-data-table__th--writehistory-name,
+.simple-data-table__th--writehistory-mail {
+  text-align: left;
+  padding: 8px;
+}
+
+.simple-data-table__th--history-board {
+  width: 120px;
+}
+
+.simple-data-table__th--history-date,
+.simple-data-table__th--writehistory-date,
+.simple-data-table__th--writehistory-res {
+  text-align: right;
+  padding-right: 12px;
+}
+
+.simple-data-table__th--history-date,
+.simple-data-table__th--writehistory-date {
+  width: 136px;
+}
+
+.simple-data-table__th--writehistory-res {
+  width: 56px;
+}
+
+.simple-data-table__th--writehistory-name,
+.simple-data-table__th--writehistory-mail {
+  width: 96px;
 }
 
 .simple-data-table__row--ng {
@@ -2808,6 +2910,18 @@ body {
   .simple-data-table__count,
   .simple-data-table__heat {
     color: #9aa0a6;
+  }
+
+  .simple-data-table__history-board,
+  .simple-data-table__history-date,
+  .simple-data-table__writehistory-res,
+  .simple-data-table__writehistory-name,
+  .simple-data-table__writehistory-mail {
+    color: #9aa0a6;
+  }
+
+  .simple-data-table__writehistory-message {
+    color: #e8eaed;
   }
 
   .simple-data-table__row--highlight {

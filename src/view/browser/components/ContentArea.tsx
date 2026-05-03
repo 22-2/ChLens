@@ -57,9 +57,9 @@ const TabPageContent = React.memo(function TabPageContent({
     case "bookmarkList":
       return <BookmarkListPage />;
     case "historyList":
-      return <HistoryListPage />;
+      return <HistoryListPage tabId={tab.id} />;
     case "writeHistoryList":
-      return <WriteHistoryListPage />;
+      return <WriteHistoryListPage tabId={tab.id} />;
     case "threadList":
       return (
         <ThreadListPage

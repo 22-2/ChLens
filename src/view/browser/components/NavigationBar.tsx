@@ -8,7 +8,6 @@ import {
   Pause,
   PenLine,
   RotateCw,
-  Search,
   Settings,
 } from "lucide-react";
 import React, {
@@ -21,6 +20,10 @@ import React, {
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import {
+  QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE,
+  type QuickAccessFilterPageType,
+} from "src/view/browser/utils/filter-toolbar-events";
 import {
   canGoBack,
   canGoForward,
@@ -241,19 +244,31 @@ export const NavigationBar: React.FC = () => {
     [forward],
   );
 
-  const toggleSearchFromMenu = useCallback(() => {
-    // Ctrl+Fでは開かず、URLバー右メニューからのみ開く要件のため、
-    // NavigationBarからThreadPageへトグルイベントを送る。
-    window.dispatchEvent(new window.CustomEvent("thread-search-toggle"));
-  }, []);
-
   const toggleFilterFromMenu = useCallback(() => {
     // フィルタUIはメニュー項目からのみ開くことで、
     // メニューボタン押下そのものをトリガーにしない。
-    window.dispatchEvent(
-      new window.CustomEvent("thread-filter-toolbar-toggle"),
-    );
-  }, []);
+    if (currentPage.type === "thread") {
+      window.dispatchEvent(
+        new window.CustomEvent("thread-filter-toolbar-toggle"),
+      );
+      return;
+    }
+
+    if (
+      currentPage.type === "historyList" ||
+      currentPage.type === "writeHistoryList"
+    ) {
+      const eventName =
+        QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE[
+          currentPage.type as QuickAccessFilterPageType
+        ];
+      window.dispatchEvent(
+        new window.CustomEvent(eventName, {
+          detail: { tabId: activeTab.id },
+        }),
+      );
+    }
+  }, [activeTab.id, currentPage.type]);
 
   useEffect(() => {
     if (currentPage.type !== "thread") {
@@ -304,7 +319,9 @@ export const NavigationBar: React.FC = () => {
 
   const menuItems = useMemo(
     () => [
-      ...(currentPage.type === "thread"
+      ...((currentPage.type === "thread" ||
+        currentPage.type === "historyList" ||
+        currentPage.type === "writeHistoryList")
         ? [
             {
               id: "open-filter-toolbar",
@@ -312,6 +329,10 @@ export const NavigationBar: React.FC = () => {
               icon: <Filter size={14} />,
               onSelect: toggleFilterFromMenu,
             },
+          ]
+        : []),
+      ...(currentPage.type === "thread"
+        ? [
             {
               id: "open-write-panel",
               label: isPanelOpen
@@ -389,7 +410,6 @@ export const NavigationBar: React.FC = () => {
       openQuickAccessPage,
       openQuickAccessPageInNewTab,
       toggleFilterFromMenu,
-      toggleSearchFromMenu,
       openSettingsTab,
       isPanelOpen,
       togglePanel,

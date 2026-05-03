@@ -5,9 +5,20 @@ import {
   SimpleDataTable,
 } from "src/view/browser/components/SimpleDataTable";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import {
+  formatCompactDateTime,
+  normalizeLegacyTimestamp,
+} from "src/view/browser/utils/date-time";
+import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 
 type SortDirection = "asc" | "desc";
-type SortColumn = "title" | "writtenRes" | "name" | "mail" | "writtenDate";
+type SortColumn =
+  | "title"
+  | "writtenRes"
+  | "name"
+  | "mail"
+  | "message"
+  | "writtenDate";
 
 interface SortState {
   column: SortColumn | null;
@@ -84,8 +95,9 @@ async function readWriteHistoryEntries(): Promise<WriteHistoryEntry[]> {
         return null;
       }
 
-      const dateSource = item.writtenDate ?? item.date;
-      const parsedDate = normalizeNumber(dateSource);
+      // 変更理由: 旧UIの書込履歴は `date` フィールドで残っている場合があるため、
+      // new-ui でも両形式を受けて日時列を欠損させない。
+      const parsedDate = normalizeLegacyTimestamp(item.writtenDate ?? item.date);
 
       return {
         url,
@@ -116,46 +128,66 @@ const COLUMNS: ColumnDef<WriteHistoryEntry>[] = [
   {
     key: "writtenRes",
     header: "レス",
-    headerClassName: "simple-data-table__th--count",
-    cellClassName: "simple-data-table__count",
+    headerClassName: "simple-data-table__th--writehistory-res",
+    cellClassName: "simple-data-table__writehistory-res",
     sortable: true,
     cell: (row) => row.writtenRes,
   },
   {
     key: "name",
     header: "名前",
-    cellClassName: "simple-data-table__count",
+    headerClassName: "simple-data-table__th--writehistory-name",
+    cellClassName: "simple-data-table__writehistory-name",
     sortable: true,
     cell: (row) => row.name || "-",
   },
   {
     key: "mail",
     header: "メール",
-    cellClassName: "simple-data-table__count",
+    headerClassName: "simple-data-table__th--writehistory-mail",
+    cellClassName: "simple-data-table__writehistory-mail",
     sortable: true,
     cell: (row) => row.mail || "-",
   },
   {
+    key: "message",
+    header: "本文",
+    cellClassName: "simple-data-table__writehistory-message",
+    sortable: true,
+    cell: (row) => row.message || "-",
+  },
+  {
     key: "writtenDate",
     header: "書込日時",
-    cellClassName: "simple-data-table__count",
+    headerClassName: "simple-data-table__th--writehistory-date",
+    cellClassName: "simple-data-table__writehistory-date",
     sortable: true,
-    cell: (row) =>
-      row.writtenDate
-        ? new Date(row.writtenDate).toLocaleString("ja-JP", {
-            hour12: false,
-          })
-        : "-",
+    cell: (row) => (row.writtenDate ? formatCompactDateTime(row.writtenDate) : "-"),
   },
 ];
 
-export const WriteHistoryListPage: React.FC = () => {
-  const { dispatch } = useTabStore();
+interface WriteHistoryListPageProps {
+  tabId: string;
+}
+
+export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
+  tabId,
+}) => {
+  const { dispatch, state, currentPage } = useTabStore();
   const [entries, setEntries] = useState<WriteHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortState, setSortState] = useState<SortState>(DEFAULT_SORT_STATE);
+
+  const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
+    pageType: "writeHistoryList",
+    tabId,
+    isActive:
+      state.activeTabId === tabId && currentPage.type === "writeHistoryList",
+    searchQuery,
+    setSearchQuery,
+  });
 
   const loadEntries = useCallback(async () => {
     setLoading(true);
@@ -223,6 +255,9 @@ export const WriteHistoryListPage: React.FC = () => {
         case "mail":
           result = a.mail.localeCompare(b.mail, "ja");
           break;
+        case "message":
+          result = a.message.localeCompare(b.message, "ja");
+          break;
         case "writtenDate":
           result = a.writtenDate - b.writtenDate;
           break;
@@ -278,12 +313,14 @@ export const WriteHistoryListPage: React.FC = () => {
 
   return (
     <div className="thread-list-page">
-      <SearchBar
-        query={searchQuery}
-        onQueryChange={setSearchQuery}
-        onClose={() => setSearchQuery("")}
-        hitCount={filtered.length}
-      />
+      {isFilterOpen ? (
+        <SearchBar
+          query={searchQuery}
+          onQueryChange={setSearchQuery}
+          onClose={closeFilterToolbar}
+          hitCount={filtered.length}
+        />
+      ) : null}
       <SimpleDataTable
         columns={COLUMNS}
         rows={filtered}
