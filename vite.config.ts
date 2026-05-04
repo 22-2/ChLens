@@ -4,7 +4,6 @@ import fs from "fs-extra";
 import { glob } from "fs/promises";
 import path from "path";
 import postcss from "postcss";
-import pug from "pug";
 import * as sass from "sass";
 import { defineConfig, Plugin } from "vite";
 
@@ -65,48 +64,23 @@ function scssPlugin(platform: string, outputDir: string): Plugin {
   };
 }
 
-// ─── plugin: Pug → HTML ──────────────────────────────────────────────────────
+// ─── plugin: browser HTML (without Pug) ─────────────────────────────────────
 
-function pugPlugin(platform: string, outputDir: string): Plugin {
+function browserHtmlPlugin(outputDir: string): Plugin {
   const manifestJson = fs.readJsonSync("src/manifest.json");
-  const locals = {
-    ...manifestJson,
-    image_ext: imgExt(platform),
-  };
-
-  async function buildPug(srcFile: string, destFile: string) {
-    await fs.ensureDir(path.dirname(destFile));
-    const html = pug.renderFile(srcFile, { ...locals, filename: srcFile });
-    await fs.writeFile(destFile, html);
-  }
 
   return {
-    name: "pug-build",
+    name: "browser-html-build",
     async buildStart() {
-      const jobs: Array<[string, string]> = [];
+      const version = String(manifestJson.version ?? "");
 
-      // view/*.pug (exclude _*.pug)
-      for await (const f of glob("src/view/*.pug")) {
-        if (path.basename(f).startsWith("_")) continue;
-        jobs.push([
-          path.resolve(f),
-          `${outputDir}/view/${path.basename(f, ".pug")}.html`,
-        ]);
-      }
+      // browserビューは新UI(React)のエントリを直接起動したいため、
+      // 旧Pugテンプレートを経由せずに互換HTMLをここで固定生成する。
+      const html = `<!DOCTYPE html><html class="view view_browser" data-app-version="${version}"><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><title>read.crx-2</title><script src="../browser.js?v=${version}" defer></script><link rel="stylesheet" href="/browser.css?v=${version}"></head><body><div id="root"></div></body></html>`;
 
-      // zombie.pug
-      jobs.push([path.resolve("src/zombie.pug"), `${outputDir}/zombie.html`]);
-
-      // write/*.pug (exclude _*.pug)
-      for await (const f of glob("src/write/*.pug")) {
-        if (path.basename(f).startsWith("_")) continue;
-        jobs.push([
-          path.resolve(f),
-          `${outputDir}/write/${path.basename(f, ".pug")}.html`,
-        ]);
-      }
-
-      await Promise.all(jobs.map(([src, dest]) => buildPug(src, dest)));
+      const outputFile = path.join(outputDir, "view", "browser.html");
+      await fs.ensureDir(path.dirname(outputFile));
+      await fs.writeFile(outputFile, html);
     },
   };
 }
@@ -274,8 +248,8 @@ export default defineConfig(() => {
     },
     plugins: [
       react(),
+      browserHtmlPlugin(outputDir),
       scssPlugin(platform, outputDir),
-      pugPlugin(platform, outputDir),
       manifestPlugin(platform, outputDir),
       staticCopyPlugin(platform, outputDir),
     ],
