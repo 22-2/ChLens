@@ -31,9 +31,11 @@ import {
   type QuickAccessFilterPageType,
 } from "src/view/browser/utils/filter-toolbar-events";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
+import { container } from "src/service-container/index";
 import {
   buildOmnibarSuggestions,
   mergeOmnibarSources,
+  type OmnibarBoardSource,
   type OmnibarBookmarkSource,
   type OmnibarHistorySource,
   type OmnibarMergedEntry,
@@ -165,6 +167,36 @@ async function readHistorySources(): Promise<OmnibarHistorySource[]> {
     .filter((item): item is OmnibarHistorySource => item !== null);
 }
 
+function deriveBoardTitleFromBoardUrl(boardUrl: string): string {
+  try {
+    const parsed = new URL(boardUrl);
+    const pathPart = parsed.pathname.replace(/^\/|\/$/g, "");
+    return pathPart ? `${parsed.hostname}/${pathPart}` : parsed.hostname;
+  } catch {
+    return "";
+  }
+}
+
+async function readBBSMenuBoardSources(): Promise<OmnibarBoardSource[]> {
+  try {
+    const result = await container.bbsMenu.get(false);
+    if (result.status !== "success" || !result.menu) {
+      return [];
+    }
+    return result.menu.flatMap((menu) =>
+      menu.categories.flatMap((category) =>
+        category.boards.map((board) => ({
+          url: board.url,
+          name: board.name,
+          boardTitle: deriveBoardTitleFromBoardUrl(board.url),
+        })),
+      ),
+    );
+  } catch {
+    return [];
+  }
+}
+
 // URLバーからの入力でページ種別を推定してナビゲートする
 function navigateByUrl(
   url: string,
@@ -237,15 +269,18 @@ export const NavigationBar: React.FC = () => {
     void Promise.all([
       readHistorySources(),
       Promise.resolve(readBookmarkSources()),
+      readBBSMenuBoardSources(),
     ])
-      .then(([historyItems, bookmarkItems]) => {
+      .then(([historyItems, bookmarkItems, boardItems]) => {
         if (cancelled) {
           return;
         }
 
-        // 変更理由: URLバー候補は履歴とお気に入りを同じ選択UIに統合し、
-        // 利用者の直近行動と明示的なお気に入りを1ストロークで辿れるようにする。
-        setOmnibarEntries(mergeOmnibarSources(bookmarkItems, historyItems));
+        // 変更理由: URLバー候補は履歴・お気に入り・bbsmenu板を統合し、
+        // 利用者の直近行動と明示的なお気に入りおよび板一覧を1ストロークで辿れるようにする。
+        setOmnibarEntries(
+          mergeOmnibarSources(bookmarkItems, historyItems, boardItems),
+        );
         setIsOmnibarLoaded(true);
       })
       .catch(() => {

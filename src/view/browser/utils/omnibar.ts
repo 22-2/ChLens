@@ -4,6 +4,12 @@ export interface OmnibarBookmarkSource {
   boardTitle?: string;
 }
 
+export interface OmnibarBoardSource {
+  url: string;
+  name: string;
+  boardTitle?: string;
+}
+
 export interface OmnibarHistorySource {
   url: string;
   title: string;
@@ -101,6 +107,7 @@ function calcRecencyBoost(historyRank: number | null): number {
 export function mergeOmnibarSources(
   bookmarks: readonly OmnibarBookmarkSource[],
   historyEntries: readonly OmnibarHistorySource[],
+  boardSources: readonly OmnibarBoardSource[] = [],
 ): OmnibarMergedEntry[] {
   const byUrl = new Map<string, OmnibarMergedEntry>();
 
@@ -177,6 +184,22 @@ export function mergeOmnibarSources(
     if (!existing.boardTitle && boardTitle) {
       existing.boardTitle = boardTitle;
     }
+  }
+
+  // bbsmenuの板をエントリに追加（履歴・ブックマークに同URLがある場合は上書きしない）
+  for (const board of boardSources) {
+    const url = normalizeString(board.url);
+    if (!url || byUrl.has(url)) {
+      continue;
+    }
+    byUrl.set(url, {
+      url,
+      title: normalizeString(board.name, url),
+      boardTitle: normalizeString(board.boardTitle),
+      isBookmark: false,
+      historyRank: null,
+      viewedDate: 0,
+    });
   }
 
   return [...byUrl.values()];

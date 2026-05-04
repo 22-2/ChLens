@@ -366,13 +366,17 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 - [ ] 画像サムネにグロぼかし
 
 ## 次
-- [ ] bbsmenuの項目もomnibarのサジェストに含めるようにしてくださいっす
+- [x] enhance: bbsmenuの項目もomnibarのサジェストに含めるように
 - [ ] navbarリファクタリング
   - [ ] omnibar coomponentを独立させる
 - [ ] test: tauri環境を再現してsqliteで取得
-- [ ] fix: bbsmenuが毎回fetchされる
+- [x] fix: bbsmenuが毎回fetchされる
+- [x] chore: 板一覧の板はミドルクリック（バックグラウンドで開く）できるように
+- [ ] あと保存されたbbsmenuの項目もomnibarのサジェストに含めるようにしてくださいっす
+- [ ] bbsmenu読み込みテスト
 
 ### low prior
+- [ ] siki過去ログ流し込み
 - [ ] feat: ブラウザのようなアドレスバーのブックマークボタン
 - [ ] feat: ライブチャットビュー
 - [ ] 書き込み後末尾に移動（オプション）
