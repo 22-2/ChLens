@@ -1,5 +1,5 @@
-import "webextension-polyfill";
 import "ShortQuery.js";
+import "webextension-polyfill";
 ///<reference path="global.d" />
 import Config from "src/app/Config";
 
@@ -7,21 +7,21 @@ import { setupContainer } from "src/service-container/setup";
 
 import * as platformInternal from "src/app/platform";
 
+export * from "./app/BrowserDetect";
 export { default as Callbacks } from "./app/Callbacks";
 export * from "./app/Defer";
+export * from "./app/ImageExt";
 export { default as LocalStorage } from "./app/LocalStorage";
 export * from "./app/Log";
 export { default as message } from "./app/Message";
 export * from "./app/Util";
-export * from "./app/BrowserDetect";
-export * from "./app/ImageExt";
 
-import { log, criticalError, assertArg } from "./app/Log";
-import { defer } from "./app/Defer";
-import { deepCopy, replaceAll, escapeHtml, safeHref } from "./app/Util";
-import messageInstance from "./app/Message";
 import CallbacksClass from "./app/Callbacks";
+import { defer } from "./app/Defer";
 import LocalStorageClass from "./app/LocalStorage";
+import { assertArg, criticalError, log } from "./app/Log";
+import messageInstance from "./app/Message";
+import { deepCopy, escapeHtml, replaceAll, safeHref } from "./app/Util";
 
 // Create global app object early to satisfy legacy code
 const appObj: any = {
@@ -38,7 +38,6 @@ const appObj: any = {
   LocalStorage: LocalStorageClass,
 };
 (window as any).app = appObj;
-
 
 // iframe内外で統一的にplatformにアクセスできるようにProxyを使用
 export const platform = new Proxy({} as typeof platformInternal.platform, {
@@ -91,10 +90,10 @@ import * as BoardTitleSolver from "src/core/BoardTitleSolver.js";
 import Bookmark from "src/core/Bookmark";
 import * as BookmarkEntryList from "src/core/BookmarkEntryList";
 import BrowserBookmarkEntryList from "src/core/BrowserBookmarkEntryList";
-import IDBBookmarkEntryList from "src/core/IDBBookmarkEntryList";
 import Cache from "src/core/Cache.js";
 import * as History from "src/core/History";
 import * as HTTP from "src/core/HTTP";
+import IDBBookmarkEntryList from "src/core/IDBBookmarkEntryList";
 import * as ImageReplaceDat from "src/core/ImageReplaceDat.js";
 import * as util from "src/core/jsutil.js";
 import * as NG from "src/core/NG";
@@ -141,8 +140,6 @@ Object.assign(appObj, {
 
 appObj.boot = boot; // Will be defined later
 
-
-
 export {
   BBSMenu,
   Board,
@@ -151,10 +148,10 @@ export {
   Bookmark,
   BookmarkEntryList,
   BrowserBookmarkEntryList,
-  IDBBookmarkEntryList,
   Cache,
   History,
   HTTP,
+  IDBBookmarkEntryList,
   ImageReplaceDat,
   NG,
   Notification,

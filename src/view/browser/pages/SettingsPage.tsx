@@ -1,21 +1,19 @@
-import {
-  Settings,
-  RefreshCw,
-  Image as ImageIcon,
-  MessageSquare,
-  ShieldAlert,
-  MoreHorizontal,
-  Database,
-  Info,
-} from "lucide-react";
 import Form, { type IChangeEvent } from "@rjsf/core";
 import type {
+  FieldTemplateProps,
   ObjectFieldTemplateProps,
   RJSFSchema,
   UiSchema,
   ValidatorType,
-  FieldTemplateProps,
 } from "@rjsf/utils";
+import {
+  Image as ImageIcon,
+  Info,
+  MoreHorizontal,
+  RefreshCw,
+  Settings,
+  ShieldAlert,
+} from "lucide-react";
 import React, {
   useCallback,
   useEffect,

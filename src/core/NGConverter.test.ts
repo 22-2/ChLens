@@ -1,9 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
 import {
   convertInternalToUser,
   convertUserToDSL,
   convertUserToInternal,
 } from "src/core/NGConverter";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("src/core/NG", () => ({
   TYPE: {

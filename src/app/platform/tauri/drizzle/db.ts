@@ -45,7 +45,9 @@ async function runMigrations(raw: SqlPluginDatabase): Promise<void> {
       board_title TEXT NOT NULL
     )
   `);
-  await raw.execute("CREATE INDEX IF NOT EXISTS idx_history_url ON history(url)");
+  await raw.execute(
+    "CREATE INDEX IF NOT EXISTS idx_history_url ON history(url)",
+  );
   await raw.execute(
     "CREATE INDEX IF NOT EXISTS idx_history_title ON history(title)",
   );

@@ -65,8 +65,8 @@ body {
     -apple-system,
     "Segoe UI",
     sans-serif;
-  --browser-font-mono: SFMono-Regular, Consolas, "Liberation Mono", Menlo,
-    monospace;
+  --browser-font-mono:
+    SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
   font-size: 14px;
   color: var(--browser-color-text-primary);
   background: var(--browser-color-bg);

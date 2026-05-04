@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { container } from "src/service-container/index";
 import { BBSMenu } from "src/core/BBSMenuParser";
+import { container } from "src/service-container/index";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 
 export const BoardListPage: React.FC = () => {

@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import type { UrlClickHandler } from "src/view/browser/utils/link-routing";
 import {
   getDirectVideoFallbackThumbnailUrl,
   getDirectVideoLabel,
@@ -7,6 +6,7 @@ import {
   toInlineVideoEmbed,
   type ExternalVideoEmbed,
 } from "src/view/browser/utils/external-media";
+import type { UrlClickHandler } from "src/view/browser/utils/link-routing";
 import { toViewerImageUrl } from "src/view/browser/utils/utils";
 
 interface ResMediaGalleryProps {

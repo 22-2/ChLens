@@ -1,11 +1,11 @@
-import { TYPE, InternalNGElement } from "./NGTypes";
+import { InternalNGElement, TYPE } from "./NGTypes";
+import { normalize, stringToDate } from "./jsutil";
 import {
   extractNgDslFunctionCall,
   normalizeNgDslKeyword,
   parseNgDslArguments,
   splitNgDslEntries,
 } from "./ngDsl";
-import { normalize, stringToDate } from "./jsutil";
 
 const _ignoreResRegNumber = /^ignoreResNumber:(\d+)(?:-?(\d+))?,(.*)$/;
 const _ignoreNgType = /^ignoreNgType:(?:\$\((.*?)\):)?(.*)$/;
@@ -198,9 +198,12 @@ export function parseNgString(string: string): Set<InternalNGElement> {
 
 export function setupNgRegex(
   obj: Iterable<InternalNGElement>,
-  notifyError: (type: string, word: string) => void
+  notifyError: (type: string, word: string) => void,
 ): void {
-  const _convReg = function ({ type, word }: InternalNGElement): RegExp | undefined {
+  const _convReg = function ({
+    type,
+    word,
+  }: InternalNGElement): RegExp | undefined {
     let reg: RegExp | undefined;
     try {
       reg = new RegExp(word, "i");

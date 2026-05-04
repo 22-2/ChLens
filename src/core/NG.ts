@@ -1,11 +1,17 @@
-import { container, INGResult } from "src/service-container/index";
 import { decodeCharReference, normalize, stringToDate } from "src/core/jsutil";
 import { convertInternalToUser, convertUserToDSL } from "src/core/NGConverter";
 import { splitNgDslEntries } from "src/core/ngDsl";
+import { container, INGResult } from "src/service-container/index";
 
-import { TYPE, InternalNGElement } from "./NGTypes";
+import {
+  checkResNum,
+  checkScope,
+  checkWord,
+  NGResObj,
+  NGThreadObj,
+} from "./NGMatcher";
 import { parseNgString, setupNgRegex } from "./NGParser";
-import { checkWord, checkScope, checkResNum, NGResObj, NGThreadObj } from "./NGMatcher";
+import { InternalNGElement, TYPE } from "./NGTypes";
 
 export { TYPE };
 
@@ -37,7 +43,7 @@ export function get(): Set<InternalNGElement> {
     setupNgRegex(_ng, (type, word) => {
       container.toast.notify(
         `NG機能の正規表現(${type}: ${word})を読み込むのに失敗しました\nこの行は無効化されます`,
-        { backgroundColor: "red" }
+        { backgroundColor: "red" },
       );
     });
   }
@@ -54,7 +60,7 @@ export function set(string: string): void {
   setupNgRegex(_ng, (type, word) => {
     container.toast.notify(
       `NG機能の正規表現(${type}: ${word})を読み込むのに失敗しました\nこの行は無効化されます`,
-      { backgroundColor: "red" }
+      { backgroundColor: "red" },
     );
   });
   container.message.send("ng_changed");
@@ -79,7 +85,7 @@ export function add(string: string): void {
   setupNgRegex(addNg, (type, word) => {
     container.toast.notify(
       `NG機能の正規表現(${type}: ${word})を読み込むのに失敗しました\nこの行は無効化されます`,
-      { backgroundColor: "red" }
+      { backgroundColor: "red" },
     );
   });
 
@@ -97,7 +103,7 @@ export function isNGBoard(
   url: string,
   resCount: number,
   exceptionFlg: boolean = false,
-  subType: string | null = null
+  subType: string | null = null,
 ): INGResult | null {
   const threadObj: Partial<NGResObj & NGThreadObj> = {
     all: normalize(threadTitle),
@@ -140,7 +146,9 @@ export function isNGBoard(
     }
 
     if (n.subElements != null) {
-      if (!n.subElements.every((subElement) => checkWord(subElement, threadObj))) {
+      if (
+        !n.subElements.every((subElement) => checkWord(subElement, threadObj))
+      ) {
         continue;
       }
     }
@@ -157,7 +165,7 @@ export function isNGThread(
   title: string,
   url: string,
   exceptionFlg: boolean = false,
-  subType: string | null = null
+  subType: string | null = null,
 ): INGResult | null {
   const name = decodeCharReference(res.name);
   const mail = decodeCharReference(res.mail);
@@ -180,7 +188,11 @@ export function isNGThread(
     if (n.type === TYPE.INVALID || n.type === "" || n.word === "") {
       continue;
     }
-    if ([TYPE.HIGHLIGHT_TITLE, TYPE.REG_EXP_HIGHLIGHT_TITLE].includes(n.type as any)) {
+    if (
+      [TYPE.HIGHLIGHT_TITLE, TYPE.REG_EXP_HIGHLIGHT_TITLE].includes(
+        n.type as any,
+      )
+    ) {
       continue;
     }
     if (!checkScope(n, url)) {
@@ -212,7 +224,10 @@ export function isNGThread(
   return null;
 }
 
-export function isIgnoreResNumForAuto(resNum: number, subType: string = ""): boolean {
+export function isIgnoreResNumForAuto(
+  resNum: number,
+  subType: string = "",
+): boolean {
   for (const n of get()) {
     if (n.type !== TYPE.AUTO) {
       continue;
@@ -231,7 +246,7 @@ export function isThreadIgnoreNgType(
   res: any,
   threadTitle: string,
   url: string,
-  ngType: string
+  ngType: string,
 ): INGResult | null {
   return isNGThread(res, threadTitle, url, true, ngType);
 }
@@ -266,7 +281,7 @@ export function execExpire(): void {
     setupNgRegex(_ng, (type, word) => {
       container.toast.notify(
         `NG機能の正規表現(${type}: ${word})を読み込むのに失敗しました\nこの行は無効化されます`,
-        { backgroundColor: "red" }
+        { backgroundColor: "red" },
       );
     });
     container.message.send("ng_changed");

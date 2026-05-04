@@ -45,7 +45,10 @@ export const TauriHttpClient: HttpClient = {
       }
       console.log(`[TauriHttpClient] Body length: ${body.length}`);
     } catch (e) {
-      console.error(`[TauriHttpClient] Failed to decode response with charset ${charset}:`, e);
+      console.error(
+        `[TauriHttpClient] Failed to decode response with charset ${charset}:`,
+        e,
+      );
       // フォールバック: UTF-8として読み込む
       body = await response.text();
     }

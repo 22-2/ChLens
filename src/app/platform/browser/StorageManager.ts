@@ -1,9 +1,9 @@
-import browser from "webextension-polyfill"
 import {
   KeyValueStore,
   ObjectStore,
   StorageManager,
 } from "src/app/platform/types";
+import browser from "webextension-polyfill";
 
 /**
  * ブラウザ拡張機能環境用のKeyValueStore実装 (browser.storage.localを使用)
@@ -11,7 +11,7 @@ import {
 const BrowserKeyValueStore: KeyValueStore = {
   async get(key: string): Promise<string | null> {
     const val = await browser.storage.local.get(key);
-    return val[key] as string ?? null;
+    return (val[key] as string) ?? null;
   },
   async set(key: string, value: string): Promise<void> {
     await browser.storage.local.set({ [key]: value });
@@ -20,7 +20,7 @@ const BrowserKeyValueStore: KeyValueStore = {
     await browser.storage.local.remove(key);
   },
   async getAll(): Promise<Record<string, string>> {
-    return await browser.storage.local.get(null) as Record<string, string>  ;
+    return (await browser.storage.local.get(null)) as Record<string, string>;
   },
   onChanged(callback) {
     browser.storage.onChanged.addListener((changes, area) => {
@@ -77,8 +77,12 @@ class BrowserObjectStore implements ObjectStore {
 
         // オブジェクトストアが存在しない場合は作成
         if (!db.objectStoreNames.contains(this.dbName)) {
-          console.log(`[BrowserObjectStore] Creating object store: ${this.dbName}`);
-          const objStore = db.createObjectStore(this.dbName, { keyPath: "url" });
+          console.log(
+            `[BrowserObjectStore] Creating object store: ${this.dbName}`,
+          );
+          const objStore = db.createObjectStore(this.dbName, {
+            keyPath: "url",
+          });
           objStore.createIndex("last_updated", "last_updated", {
             unique: false,
           });

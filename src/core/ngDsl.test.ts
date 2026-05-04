@@ -1,10 +1,10 @@
-import { describe, expect, it } from "vitest";
 import {
   extractNgDslFunctionCall,
   normalizeNgDslKeyword,
   parseNgDslArguments,
   splitNgDslEntries,
 } from "src/core/ngDsl";
+import { describe, expect, it } from "vitest";
 
 describe("NG DSL helpers", () => {
   it("keeps multiline function syntax as a single logical entry", () => {

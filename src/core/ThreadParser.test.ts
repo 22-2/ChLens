@@ -1,10 +1,10 @@
-import { describe, expect, it } from "vitest";
 import { ChURL } from "packages/ch-lib/src/url/ChURL";
 import {
   getThreadXhrInfo,
   parseJbbsThread,
   parseThread,
 } from "src/core/ThreadParser.js";
+import { describe, expect, it } from "vitest";
 
 describe("ThreadParser", () => {
   it("headline.5ch.io は format_2chnet=html でも dat URL を使う", () => {

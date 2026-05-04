@@ -1,13 +1,13 @@
-import { log, criticalError, assertArg } from "src/app/Log";
+import { assertArg, criticalError, log } from "src/app/Log";
 import message from "src/app/Message";
 import { deepCopy } from "src/app/Util";
 import { indexedDBRequestToPromise } from "src/core/jsutil.js";
-import { URL } from "src/core/URL";
-import type { IReadState } from "src/service-container/interfaces";
 import {
   getTauriRepositories,
   isTauriRuntime,
 } from "src/core/TauriDrizzleBridge";
+import { URL } from "src/core/URL";
+import type { IReadState } from "src/service-container/interfaces";
 
 const DB_VERSION = 2;
 
@@ -136,7 +136,9 @@ export const get = async (url: string): Promise<ReadStateRecord | null> => {
     try {
       // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
       const { tauriReadStateRepository } = await getTauriRepositories();
-      const data = await tauriReadStateRepository.get(filteredUrl.original.href);
+      const data = await tauriReadStateRepository.get(
+        filteredUrl.original.href,
+      );
       return data as ReadStateRecord | null;
     } catch (e) {
       log("error", "app.ReadState.get: トランザクション中断");
@@ -322,10 +324,7 @@ const _recoveryOfDate = (_db: IDBDatabase, tx: IDBTransaction): Promise<void> =>
       }
     };
     req.onerror = (e) => {
-      log(
-        "error",
-        "app.ReadState._recoveryOfDate: トランザクション中断",
-      );
+      log("error", "app.ReadState._recoveryOfDate: トランザクション中断");
       reject(e);
     };
   });

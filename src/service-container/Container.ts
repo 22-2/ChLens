@@ -9,8 +9,8 @@ import {
   INotificationService,
   IReadStateService,
   IServiceContainer,
-  IToastService,
   IThreadService,
+  IToastService,
   IUtil,
 } from "src/service-container/interfaces";
 

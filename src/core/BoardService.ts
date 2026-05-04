@@ -1,10 +1,10 @@
+import Board from "src/core/Board.js";
 import { container } from "src/service-container/index";
 import type {
   IBoardResult,
   IReadState,
   IThread,
 } from "src/service-container/interfaces";
-import Board from "src/core/Board.js";
 
 interface BoardGetResult {
   status: "success" | "error";

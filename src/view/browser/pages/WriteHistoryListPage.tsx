@@ -7,11 +7,11 @@ import {
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
 
+import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 import {
   formatCompactDateTime,
   normalizeLegacyTimestamp,
 } from "src/view/browser/utils/date-time";
-import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 
 type SortDirection = "asc" | "desc";
 type SortColumn =

@@ -1,4 +1,5 @@
-type TauriRepositoriesModule = typeof import("src/app/platform/tauri/drizzle/repositories");
+type TauriRepositoriesModule =
+  typeof import("src/app/platform/tauri/drizzle/repositories");
 
 import { isTauriRuntime as detectTauriRuntime } from "src/app/platform/runtime";
 

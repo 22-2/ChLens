@@ -1,8 +1,8 @@
-import { platform } from "src/app";
 import { BoardParser, ChURL } from "packages/ch-lib/src/index";
-import { container } from "src/service-container/index";
-import { chServerMoveDetect } from "src/core/jsutil";
+import { platform } from "src/app";
 import { Response } from "src/core/HTTP";
+import { chServerMoveDetect } from "src/core/jsutil";
+import { container } from "src/service-container/index";
 
 // JSDocの型情報をTypeScriptに変換
 interface BoardThread {

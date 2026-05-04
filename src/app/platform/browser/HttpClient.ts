@@ -34,9 +34,10 @@ async function getSessionRules(dnr: DnrApi): Promise<DnrRule[]> {
   }
 
   return await new Promise((resolve) => {
-    (
-      getSessionRulesFn as (callback: (rules: DnrRule[]) => void) => void
-    ).call(dnr, (rules) => resolve(rules));
+    (getSessionRulesFn as (callback: (rules: DnrRule[]) => void) => void).call(
+      dnr,
+      (rules) => resolve(rules),
+    );
   });
 }
 
@@ -49,7 +50,11 @@ function getNextRuleId(rules: DnrRule[]): number {
   return nextId;
 }
 
-function isSameWriteRule(rule: DnrRule, formAction: string, tabId: number): boolean {
+function isSameWriteRule(
+  rule: DnrRule,
+  formAction: string,
+  tabId: number,
+): boolean {
   return (
     rule.condition.urlFilter === formAction &&
     rule.condition.tabIds?.includes(tabId) === true

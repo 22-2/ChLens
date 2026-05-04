@@ -6,7 +6,6 @@ import {
   render,
   screen,
 } from "@testing-library/react";
-import React from "react";
 import { WriteHistoryListPage } from "src/view/browser/pages/WriteHistoryListPage";
 import { QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE } from "src/view/browser/utils/filter-toolbar-events";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";

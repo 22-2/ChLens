@@ -149,3 +149,4 @@ dist
 /blob-report/
 /playwright/.cache/
 myfiles/
+.VSCodeCounter/

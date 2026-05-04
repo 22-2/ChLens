@@ -21,15 +21,15 @@ import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import {
-  QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE,
-  type QuickAccessFilterPageType,
-} from "src/view/browser/utils/filter-toolbar-events";
-import {
   canGoBack,
   canGoForward,
   getCurrentPage,
   getDisplayUrl,
 } from "src/view/browser/types";
+import {
+  QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE,
+  type QuickAccessFilterPageType,
+} from "src/view/browser/utils/filter-toolbar-events";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
 
 interface MenuPosition {

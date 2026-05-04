@@ -91,12 +91,17 @@ export const buildThreadFetchPlan = ({
   // しらたば / まちBBS: 差分取得のみ。readcgiVer は使用しない
   if ((tsld === "shitaraba.net" && !isArchive) || tsld === "machi.to") {
     if (!hasCache) return { xhrPath: basePath, deltaFlg: false, readcgiVer: 5 };
-    return { xhrPath: `${basePath}${resLength + 1}-`, deltaFlg: true, readcgiVer: 5 };
+    return {
+      xhrPath: `${basePath}${resLength + 1}-`,
+      deltaFlg: true,
+      readcgiVer: 5,
+    };
   }
 
   // HTML スレ (5ch 系 read.cgi)
   if (isHtml) {
-    if (!hasCache) return { xhrPath: `${basePath}?v=pc`, deltaFlg: false, readcgiVer: 5 };
+    if (!hasCache)
+      return { xhrPath: `${basePath}?v=pc`, deltaFlg: false, readcgiVer: 5 };
     const readcgiVer = cacheReadcgiVer || 5;
     const suffix = readcgiVer >= 6 ? `${resLength + 1}-n` : `${resLength}-n`;
     return { xhrPath: `${basePath}${suffix}?v=pc`, deltaFlg: true, readcgiVer };
@@ -148,7 +153,13 @@ interface ResolveCommonParams<TUrl> {
 const resolveDeltaHtml = <TUrl>(
   response: HttpResponse,
   readcgiVer: number,
-  { url, format2chnet, parseThreadFn, cacheParsed, cacheResLength }: ResolveCommonParams<TUrl>,
+  {
+    url,
+    format2chnet,
+    parseThreadFn,
+    cacheParsed,
+    cacheResLength,
+  }: ResolveCommonParams<TUrl>,
 ): ResolveThreadFromResponseResult => {
   const threadCache = cacheParsed as ParsedThread;
 
@@ -176,7 +187,10 @@ const resolveDeltaHtml = <TUrl>(
   }
 
   return {
-    thread: { ...threadResponse, res: threadCache.res.concat(threadResponse.res) },
+    thread: {
+      ...threadResponse,
+      res: threadCache.res.concat(threadResponse.res),
+    },
     noChangeFlg: false,
     parseFailed: false,
   };
@@ -208,7 +222,9 @@ const resolveSuccessResponse = <TUrl>(
   if (!isHtml) {
     return {
       thread:
-        parseThreadFn(url, (cacheData ?? "") + response.body, { format2chnet }) ?? undefined,
+        parseThreadFn(url, (cacheData ?? "") + response.body, {
+          format2chnet,
+        }) ?? undefined,
       noChangeFlg: false,
       parseFailed: false,
     };
@@ -227,10 +243,18 @@ const resolve203Response = <TUrl>(
   hasCache: boolean,
   deltaFlg: boolean,
   isHtml: boolean,
-  { url, format2chnet, parseThreadFn, cacheData, cacheParsed }: ResolveCommonParams<TUrl>,
+  {
+    url,
+    format2chnet,
+    parseThreadFn,
+    cacheData,
+    cacheParsed,
+  }: ResolveCommonParams<TUrl>,
 ): ParsedThread | undefined => {
   if (!hasCache) {
-    return parseThreadFn(url, response?.body ?? "", { format2chnet }) ?? undefined;
+    return (
+      parseThreadFn(url, response?.body ?? "", { format2chnet }) ?? undefined
+    );
   }
   if (deltaFlg && isHtml) {
     return cacheParsed as ParsedThread;
@@ -244,7 +268,13 @@ const resolve203Response = <TUrl>(
  */
 const resolveFromCache = <TUrl>(
   isHtml: boolean,
-  { url, format2chnet, parseThreadFn, cacheData, cacheParsed }: ResolveCommonParams<TUrl>,
+  {
+    url,
+    format2chnet,
+    parseThreadFn,
+    cacheData,
+    cacheParsed,
+  }: ResolveCommonParams<TUrl>,
 ): ParsedThread | undefined => {
   if (isHtml) return cacheParsed as ParsedThread;
   return parseThreadFn(url, cacheData ?? "", { format2chnet }) ?? undefined;
@@ -284,7 +314,13 @@ export const resolveThreadFromResponse = <TUrl>({
   const status = response?.status;
 
   if (status === 200 || (readcgiVer >= 6 && status === 500)) {
-    return resolveSuccessResponse(response!, deltaFlg, isHtml, readcgiVer, common);
+    return resolveSuccessResponse(
+      response!,
+      deltaFlg,
+      isHtml,
+      readcgiVer,
+      common,
+    );
   }
 
   if (bbsType === "2ch" && status === 203) {

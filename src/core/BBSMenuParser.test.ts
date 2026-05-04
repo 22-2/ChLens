@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
 import { BBSMenuParser } from "src/core/BBSMenuParser";
+import { describe, expect, it, vi } from "vitest";
 
 // src/core/URL は BroadcastChannel に依存する src/app を間接的にインポートするため、
 // jsdom 環境では動作しない。BBSMenuParser が使う機能（hostname, getTsld）のみをモックする。

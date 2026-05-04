@@ -13,19 +13,19 @@ import {
   INGService,
   INotificationService,
   IReadStateService,
-  IToastService,
   IThreadService,
+  IToastService,
   IUtil,
 } from "src/service-container/interfaces";
 // @ts-ignore
-import Cache from "src/core/Cache.js";
 import BoardService from "src/core/BoardService.js";
+import Cache from "src/core/Cache.js";
 // @ts-ignore
 import * as BBSMenu from "src/core/BBSMenu.js";
 // @ts-ignore
-import ThreadService from "src/core/ThreadService.js";
-import Notification from "src/core/Notification";
 import { toast } from "sonner";
+import Notification from "src/core/Notification";
+import ThreadService from "src/core/ThreadService.js";
 
 /**
  * Initializes the service container with the current app implementations.

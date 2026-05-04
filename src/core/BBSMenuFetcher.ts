@@ -1,7 +1,6 @@
-import { BBSMenu } from "src/core/BBSMenuParser";
+import { BBSMenu, BBSMenuParser } from "src/core/BBSMenuParser";
 import { Request } from "src/core/HTTP";
 import { ICacheItem } from "src/service-container/interfaces";
-import { BBSMenuParser } from "src/core/BBSMenuParser";
 
 /**
  * キャッシュとHTTP通信を抽象化するインターフェース。

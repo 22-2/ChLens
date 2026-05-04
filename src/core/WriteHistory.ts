@@ -1,10 +1,10 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
-import { isHttps } from "src/core/URL";
+import { assertArg, log } from "src/app/Log";
 import {
   getTauriRepositories,
   isTauriRuntime,
 } from "src/core/TauriDrizzleBridge";
-import { log, assertArg } from "src/app/Log";
+import { isHttps } from "src/core/URL";
 
 const DB_NAME = "WriteHistory";
 const STORE_NAME = "WriteHistory";
@@ -217,7 +217,9 @@ const removeByUrlAndRes = async (url: string, res: number): Promise<void> => {
   await tx.done;
 };
 
-const getRowsByUrl = async (url: string): Promise<PersistedWriteHistoryRecord[]> => {
+const getRowsByUrl = async (
+  url: string,
+): Promise<PersistedWriteHistoryRecord[]> => {
   const db = await getDB();
   const rows = await db.getAllFromIndex(STORE_NAME, "url", url);
   return rows.map((row) => ensurePersistedRecord(row));
@@ -341,7 +343,8 @@ export const add = async function ({
   try {
     if (isTauriRuntime()) {
       // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
-      const tauriWriteHistoryRepository = await safeGetTauriWriteHistoryRepository();
+      const tauriWriteHistoryRepository =
+        await safeGetTauriWriteHistoryRepository();
       await tauriWriteHistoryRepository.add({
         url,
         res,
@@ -378,23 +381,23 @@ export const add = async function ({
 @param {Number} res
 @return {Promise}
 */
-export const remove = async function (
-  url: string,
-  res: number,
-): Promise<void> {
+export const remove = async function (url: string, res: number): Promise<void> {
   if (
     assertArg("WriteHistory.remove", [
       [url, "string"],
       [res, "number"],
     ])
   ) {
-    return Promise.reject(new Error("書込履歴から削除しようとしたデータが不正です"));
+    return Promise.reject(
+      new Error("書込履歴から削除しようとしたデータが不正です"),
+    );
   }
 
   try {
     if (isTauriRuntime()) {
       // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
-      const tauriWriteHistoryRepository = await safeGetTauriWriteHistoryRepository();
+      const tauriWriteHistoryRepository =
+        await safeGetTauriWriteHistoryRepository();
       await tauriWriteHistoryRepository.remove(url, res);
       return;
     }
@@ -428,7 +431,8 @@ export const get = function (
   if (isTauriRuntime()) {
     // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
     return (async () => {
-      const tauriWriteHistoryRepository = await safeGetTauriWriteHistoryRepository();
+      const tauriWriteHistoryRepository =
+        await safeGetTauriWriteHistoryRepository();
       const histories = await tauriWriteHistoryRepository.get(
         normalized.offset,
         normalized.limit,
@@ -455,7 +459,8 @@ export const getByUrl = async function (
   try {
     if (isTauriRuntime()) {
       // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
-      const tauriWriteHistoryRepository = await safeGetTauriWriteHistoryRepository();
+      const tauriWriteHistoryRepository =
+        await safeGetTauriWriteHistoryRepository();
       const rows = await tauriWriteHistoryRepository.getByUrl(url);
       return rows as PersistedWriteHistoryRecord[];
     }
@@ -470,11 +475,14 @@ export const getByUrl = async function (
 @method getAll
 @return {Promise}
 */
-export const getAll = async function (): Promise<PersistedWriteHistoryRecord[]> {
+export const getAll = async function (): Promise<
+  PersistedWriteHistoryRecord[]
+> {
   try {
     if (isTauriRuntime()) {
       // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
-      const tauriWriteHistoryRepository = await safeGetTauriWriteHistoryRepository();
+      const tauriWriteHistoryRepository =
+        await safeGetTauriWriteHistoryRepository();
       const rows = await tauriWriteHistoryRepository.getAll();
       return rows as PersistedWriteHistoryRecord[];
     }
@@ -493,7 +501,8 @@ export const count = async function (): Promise<number> {
   try {
     if (isTauriRuntime()) {
       // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
-      const tauriWriteHistoryRepository = await safeGetTauriWriteHistoryRepository();
+      const tauriWriteHistoryRepository =
+        await safeGetTauriWriteHistoryRepository();
       return await tauriWriteHistoryRepository.count();
     }
 
@@ -517,7 +526,8 @@ export const clear = function (offset?: number): Promise<void> {
   if (isTauriRuntime()) {
     // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
     return (async () => {
-      const tauriWriteHistoryRepository = await safeGetTauriWriteHistoryRepository();
+      const tauriWriteHistoryRepository =
+        await safeGetTauriWriteHistoryRepository();
       await tauriWriteHistoryRepository.clear(normalizedOffset);
     })();
   }
@@ -543,7 +553,8 @@ export const clearRange = async function (day: number): Promise<void> {
   try {
     if (isTauriRuntime()) {
       // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
-      const tauriWriteHistoryRepository = await safeGetTauriWriteHistoryRepository();
+      const tauriWriteHistoryRepository =
+        await safeGetTauriWriteHistoryRepository();
       await tauriWriteHistoryRepository.clearRange(dayUnix);
       return;
     }

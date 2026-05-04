@@ -1,14 +1,14 @@
-import { BBSMenu } from "src/core/BBSMenuParser";
 import Callbacks from "src/app/Callbacks";
-import { container } from "src/service-container/index";
-import { URL } from "src/core/URL";
+import { BBSMenu } from "src/core/BBSMenuParser";
 import * as History from "src/core/History.ts";
+import { URL } from "src/core/URL";
+import { container } from "src/service-container/index";
 // @ts-ignore
-import * as ReadState from "src/core/ReadState.js";
-import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
-import { BBSMenuParser } from "src/core/BBSMenuParser";
 import { BBSMenuFetcher } from "src/core/BBSMenuFetcher";
+import { BBSMenuParser } from "src/core/BBSMenuParser";
+import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
 import { OtherBoardsCollector } from "src/core/OtherBoardsCollector";
+import * as ReadState from "src/core/ReadState.js";
 
 export interface BBSMenuData {
   status: "success" | "error";

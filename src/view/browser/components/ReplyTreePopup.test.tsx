@@ -1,5 +1,4 @@
 import "@testing-library/jest-dom/vitest";
-import type React from "react";
 import {
   cleanup,
   fireEvent,
@@ -8,6 +7,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import type React from "react";
 import type { IRes } from "src/service-container";
 import { ReplyTreePopup } from "src/view/browser/components/ReplyTreePopup";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";

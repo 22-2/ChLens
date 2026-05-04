@@ -14,7 +14,10 @@ interface AppGlobal {
 }
 
 function getNotificationApi(): NotificationApi | null {
-  if (typeof window === "undefined" || typeof window.Notification === "undefined") {
+  if (
+    typeof window === "undefined" ||
+    typeof window.Notification === "undefined"
+  ) {
     return null;
   }
   return window.Notification;

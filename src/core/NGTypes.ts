@@ -30,7 +30,7 @@ export const TYPE = {
   SIKI_GUARD: "Siki Guard",
 } as const;
 
-export type NGType = typeof TYPE[keyof typeof TYPE];
+export type NGType = (typeof TYPE)[keyof typeof TYPE];
 
 export interface InternalNGElement {
   type: string;

@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import { resolveReplyTreeRootResNum } from "src/view/browser/utils/reply-tree-root";
+import { describe, expect, it } from "vitest";
 
 describe("resolveReplyTreeRootResNum", () => {
   it("単純なアンカー連鎖で最古レスを返す", () => {

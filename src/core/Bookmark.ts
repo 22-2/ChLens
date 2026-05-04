@@ -1,11 +1,11 @@
-import { message, platform } from "src/app";
+import { message } from "src/app";
+import { isTauriRuntime } from "src/app/platform/runtime";
 import { Entry, SyncableEntryList } from "src/core/BookmarkEntryList";
 import BrowserBookmarkEntryList from "src/core/BrowserBookmarkEntryList";
 import IDBBookmarkEntryList from "src/core/IDBBookmarkEntryList";
 import { get as getReadState } from "src/core/ReadState.js";
 import { threadToBoard } from "src/core/URL";
 import { isNewerReadState } from "src/core/jsutil";
-import { isTauriRuntime } from "src/app/platform/runtime";
 
 export default class Bookmark {
   readonly bel: SyncableEntryList & {

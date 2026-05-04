@@ -1,4 +1,4 @@
-import { openDB, type IDBPDatabase, type DBSchema } from "idb";
+import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import { Entry, SyncableEntryList } from "src/core/BookmarkEntryList";
 
 /**

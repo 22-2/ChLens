@@ -1,5 +1,4 @@
 import Editor, { loader, useMonaco } from "@monaco-editor/react";
-import { Trash2 } from "lucide-react";
 import React, { useEffect, useMemo } from "react";
 import { platform } from "src/app/platform";
 import {

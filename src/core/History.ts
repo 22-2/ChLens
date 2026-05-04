@@ -1,14 +1,10 @@
-import {
-  openDB,
-  type DBSchema,
-  type IDBPDatabase,
-} from "idb";
-import { isHttps } from "src/core/URL";
+import { openDB, type DBSchema, type IDBPDatabase } from "idb";
+import { assertArg, log } from "src/app/Log";
 import {
   getTauriRepositories,
   isTauriRuntime,
 } from "src/core/TauriDrizzleBridge";
-import { log, assertArg } from "src/app/Log";
+import { isHttps } from "src/core/URL";
 
 const DB_NAME = "History";
 const STORE_NAME = "History";
@@ -42,7 +38,9 @@ interface HistoryDBSchema extends DBSchema {
   };
 }
 
-const ensurePersistedRecord = (record: HistoryRecord): PersistedHistoryRecord => {
+const ensurePersistedRecord = (
+  record: HistoryRecord,
+): PersistedHistoryRecord => {
   if (record.id == null) {
     throw new Error("履歴レコードのIDが不正です");
   }
@@ -235,7 +233,9 @@ const clearAllRows = async (): Promise<void> => {
   await db.clear(STORE_NAME);
 };
 
-const toRowsWithHttps = (rows: PersistedHistoryRecord[]): HistoryRecordWithHttps[] => {
+const toRowsWithHttps = (
+  rows: PersistedHistoryRecord[],
+): HistoryRecordWithHttps[] => {
   return rows.map((value) => ({
     ...value,
     isHttps: isHttps(value.url),
@@ -249,14 +249,20 @@ const isInvalidPagingArg = (offset: number, limit: number): boolean => {
   ]);
 };
 
-const isInvalidPagingArgForUnique = (offset: number, limit: number): boolean => {
+const isInvalidPagingArgForUnique = (
+  offset: number,
+  limit: number,
+): boolean => {
   return assertArg("History.getUnique", [
     [offset, "number"],
     [limit, "number"],
   ]);
 };
 
-const normalizePaging = (offset?: number, limit?: number): { offset: number; limit: number } => {
+const normalizePaging = (
+  offset?: number,
+  limit?: number,
+): { offset: number; limit: number } => {
   return {
     offset: offset == null ? -1 : offset,
     limit: limit == null ? -1 : limit,
@@ -337,7 +343,10 @@ const addTauriRow = async (
   await tauriHistoryRepository.add(url, title, date, boardTitle);
 };
 
-const removeTauriRow = async (url: string, date: number | null): Promise<void> => {
+const removeTauriRow = async (
+  url: string,
+  date: number | null,
+): Promise<void> => {
   const tauriHistoryRepository = await safeGetTauriHistoryRepository();
   await tauriHistoryRepository.remove(url, date);
 };

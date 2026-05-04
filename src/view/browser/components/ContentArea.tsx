@@ -1,6 +1,5 @@
 import React from "react";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
-import type { Tab } from "src/view/browser/types";
 import { BoardListPage } from "src/view/browser/pages/BoardListPage";
 import { BookmarkListPage } from "src/view/browser/pages/BookmarkListPage";
 import { HistoryListPage } from "src/view/browser/pages/HistoryListPage";
@@ -9,6 +8,7 @@ import { SettingsPage } from "src/view/browser/pages/SettingsPage";
 import { ThreadListPage } from "src/view/browser/pages/ThreadListPage";
 import { ThreadPage } from "src/view/browser/pages/ThreadPage";
 import { WriteHistoryListPage } from "src/view/browser/pages/WriteHistoryListPage";
+import type { Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
 
 function buildPageRenderKey(

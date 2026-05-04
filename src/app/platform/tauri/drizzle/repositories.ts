@@ -1,6 +1,4 @@
-import { and, asc, desc, eq, inArray, lt, sql } from "drizzle-orm";
-import { URL } from "src/core/URL";
-import type { IReadState } from "src/service-container/interfaces";
+import { and, asc, desc, eq, lt, sql } from "drizzle-orm";
 import { getTauriDrizzleContext } from "src/app/platform/tauri/drizzle/db";
 import {
   cacheTable,
@@ -8,6 +6,8 @@ import {
   readStateTable,
   writeHistoryTable,
 } from "src/app/platform/tauri/drizzle/schema";
+import { URL } from "src/core/URL";
+import type { IReadState } from "src/service-container/interfaces";
 
 interface CacheRecordInput {
   url: string;
@@ -129,7 +129,9 @@ export const tauriCacheRepository = {
 
   async count(): Promise<number> {
     const { db } = await getTauriDrizzleContext();
-    const rows = await db.select({ count: sql<number>`count(*)` }).from(cacheTable);
+    const rows = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(cacheTable);
     return Number(rows[0]?.count ?? 0);
   },
 
@@ -140,7 +142,12 @@ export const tauriCacheRepository = {
 };
 
 export const tauriHistoryRepository = {
-  async add(url: string, title: string, date: number, boardTitle: string): Promise<void> {
+  async add(
+    url: string,
+    title: string,
+    date: number,
+    boardTitle: string,
+  ): Promise<void> {
     const { db } = await getTauriDrizzleContext();
     await db.insert(historyTable).values({ url, title, date, boardTitle });
   },
@@ -210,7 +217,9 @@ export const tauriHistoryRepository = {
 
   async count(): Promise<number> {
     const { db } = await getTauriDrizzleContext();
-    const rows = await db.select({ count: sql<number>`count(*)` }).from(historyTable);
+    const rows = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(historyTable);
     return Number(rows[0]?.count ?? 0);
   },
 
@@ -234,7 +243,9 @@ export const tauriHistoryRepository = {
 };
 
 export const tauriReadStateRepository = {
-  async set(readState: IReadState): Promise<{ boardUrl: string; normalizedUrl: string }> {
+  async set(
+    readState: IReadState,
+  ): Promise<{ boardUrl: string; normalizedUrl: string }> {
     const { db } = await getTauriDrizzleContext();
 
     const normalized = { ...readState };
@@ -330,7 +341,9 @@ export const tauriReadStateRepository = {
   async remove(url: string): Promise<string> {
     const { db } = await getTauriDrizzleContext();
     const filtered = urlFilter(url);
-    await db.delete(readStateTable).where(eq(readStateTable.url, filtered.replaced.href));
+    await db
+      .delete(readStateTable)
+      .where(eq(readStateTable.url, filtered.replaced.href));
     return filtered.original.href;
   },
 
@@ -370,7 +383,9 @@ export const tauriWriteHistoryRepository = {
     const { db } = await getTauriDrizzleContext();
     await db
       .delete(writeHistoryTable)
-      .where(and(eq(writeHistoryTable.url, url), eq(writeHistoryTable.res, res)));
+      .where(
+        and(eq(writeHistoryTable.url, url), eq(writeHistoryTable.res, res)),
+      );
   },
 
   async get(offset: number, limit: number): Promise<WriteHistoryRecord[]> {
@@ -463,6 +478,8 @@ export const tauriWriteHistoryRepository = {
 
   async clearRange(dayUnix: number): Promise<void> {
     const { db } = await getTauriDrizzleContext();
-    await db.delete(writeHistoryTable).where(lt(writeHistoryTable.date, dayUnix));
+    await db
+      .delete(writeHistoryTable)
+      .where(lt(writeHistoryTable.date, dayUnix));
   },
 };

@@ -1,4 +1,4 @@
-import { TYPE, InternalNGElement } from "./NGTypes";
+import { InternalNGElement, TYPE } from "./NGTypes";
 import { normalize } from "./jsutil";
 
 export interface NGThreadObj {
@@ -27,7 +27,17 @@ export interface NGResObj {
 
 export function checkWord(
   { type, reg, word }: InternalNGElement,
-  { all, name, mail, id, slip, mes, title, url, resCount }: Partial<NGResObj & NGThreadObj>
+  {
+    all,
+    name,
+    mail,
+    id,
+    slip,
+    mes,
+    title,
+    url,
+    resCount,
+  }: Partial<NGResObj & NGThreadObj>,
 ): string | null {
   if (
     (type === TYPE.REG_EXP && reg && reg.test(all || "")) ||
@@ -48,7 +58,9 @@ export function checkWord(
     (type === TYPE.BODY && normalize(mes || "").includes(word)) ||
     (type === TYPE.WORD && normalize(all || "").includes(word)) ||
     (type === TYPE.URL && (url || "").includes(word)) ||
-    (type === TYPE.RES_COUNT && resCount != null && parseInt(word, 10) < resCount)
+    (type === TYPE.RES_COUNT &&
+      resCount != null &&
+      parseInt(word, 10) < resCount)
   ) {
     return type;
   }
@@ -84,11 +96,13 @@ export function checkScope(ngObj: InternalNGElement, url: string): boolean {
 
 export function checkResNum(
   { start, finish }: InternalNGElement,
-  resNum: number
+  resNum: number,
 ): boolean {
   return (
     start != null &&
-    ((finish != null && parseInt(start, 10) <= resNum && resNum <= parseInt(finish, 10)) ||
+    ((finish != null &&
+      parseInt(start, 10) <= resNum &&
+      resNum <= parseInt(finish, 10)) ||
       parseInt(start, 10) === resNum)
   );
 }

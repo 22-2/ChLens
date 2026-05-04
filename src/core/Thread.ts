@@ -1,9 +1,12 @@
-import { platform } from "src/app";
 import { ChURL } from "packages/ch-lib/src/index";
-import type Cache from "src/core/Cache.js";
+import { platform } from "src/app";
 import type { HttpResponse } from "src/app/platform/types";
-import { container } from "src/service-container/index";
+import type Cache from "src/core/Cache.js";
 import { chServerMoveDetect } from "src/core/jsutil.js";
+import {
+  buildConditionalRequestHeaders,
+  buildThreadFetchPlan,
+} from "src/core/ThreadGetHelpers";
 import {
   getThreadXhrInfo,
   isHtmlThread,
@@ -18,10 +21,7 @@ import {
   type ThreadRes,
   type XhrInfo,
 } from "src/core/ThreadParser.js";
-import {
-  buildConditionalRequestHeaders,
-  buildThreadFetchPlan,
-} from "src/core/ThreadGetHelpers";
+import { container } from "src/service-container/index";
 
 // ---------------------------------------------------------------------------
 // Internal types
@@ -108,8 +108,14 @@ export default class Thread {
   // Public API
   // -------------------------------------------------------------------------
 
-  async get(forceUpdate?: boolean, progress: () => void = () => {}): Promise<void> {
-    const format2chnet = container.config.get("format_2chnet") as string | null | undefined;
+  async get(
+    forceUpdate?: boolean,
+    progress: () => void = () => {},
+  ): Promise<void> {
+    const format2chnet = container.config.get("format_2chnet") as
+      | string
+      | null
+      | undefined;
     const xhrInfo = getThreadXhrInfo(this.url, format2chnet);
 
     if (!xhrInfo) {
@@ -141,7 +147,13 @@ export default class Thread {
     try {
       // --- フェッチ ---
       if (needFetch) {
-        const fetched = await this._doFetch({ cache, hasCache, isHtml, xhrBasePath, xhrCharset });
+        const fetched = await this._doFetch({
+          cache,
+          hasCache,
+          isHtml,
+          xhrBasePath,
+          xhrCharset,
+        });
         response = fetched.response;
         deltaFlg = fetched.deltaFlg;
         readcgiVer = fetched.readcgiVer;
@@ -193,7 +205,9 @@ export default class Thread {
       }).catch(() => {});
     } catch (error: unknown) {
       const failure =
-        typeof error === "object" && error != null ? (error as ThreadFailure) : {};
+        typeof error === "object" && error != null
+          ? (error as ThreadFailure)
+          : {};
       response = failure.response;
       thread = failure.thread;
 
@@ -201,7 +215,11 @@ export default class Thread {
         this.title = thread.title ?? null;
         this.res = thread.res;
       }
-      this.message = await this._buildDomainErrorMessage({ response, hasCache, thread });
+      this.message = await this._buildDomainErrorMessage({
+        response,
+        hasCache,
+        thread,
+      });
       failed = true;
     } finally {
       // ブックマーク更新は成否に関わらず実行する
@@ -354,7 +372,10 @@ export default class Thread {
     bbsType: string;
     format2chnet: string | null | undefined;
   }): ParseResult {
-    if (response?.status === 200 || (readcgiVer >= 6 && response?.status === 500)) {
+    if (
+      response?.status === 200 ||
+      (readcgiVer >= 6 && response?.status === 500)
+    ) {
       return this._parseSuccessResponse({
         response,
         cache,
@@ -367,7 +388,14 @@ export default class Thread {
 
     if (bbsType === "2ch" && response?.status === 203) {
       return {
-        thread: this._parse203Response({ response, cache, hasCache, deltaFlg, isHtml, format2chnet }),
+        thread: this._parse203Response({
+          response,
+          cache,
+          hasCache,
+          deltaFlg,
+          isHtml,
+          format2chnet,
+        }),
         noChangeFlg: false,
       };
     }
@@ -375,7 +403,8 @@ export default class Thread {
     if (hasCache) {
       const thread = isHtml
         ? (cache.parsed as ParsedThread)
-        : (parseThread(this.url, cache.data ?? "", { format2chnet }) ?? undefined);
+        : (parseThread(this.url, cache.data ?? "", { format2chnet }) ??
+          undefined);
       return { thread, noChangeFlg: false };
     }
 
@@ -404,7 +433,8 @@ export default class Thread {
     // 全取得
     if (!deltaFlg) {
       return {
-        thread: parseThread(this.url, response.body, { format2chnet }) ?? undefined,
+        thread:
+          parseThread(this.url, response.body, { format2chnet }) ?? undefined,
         noChangeFlg: false,
       };
     }
@@ -413,7 +443,9 @@ export default class Thread {
     if (!isHtml) {
       return {
         thread:
-          parseThread(this.url, (cache.data ?? "") + response.body, { format2chnet }) ?? undefined,
+          parseThread(this.url, (cache.data ?? "") + response.body, {
+            format2chnet,
+          }) ?? undefined,
         noChangeFlg: false,
       };
     }
@@ -445,7 +477,10 @@ export default class Thread {
     }
 
     return {
-      thread: { ...threadResponse, res: threadCache.res.concat(threadResponse.res) },
+      thread: {
+        ...threadResponse,
+        res: threadCache.res.concat(threadResponse.res),
+      },
       noChangeFlg: false,
     };
   }
@@ -470,12 +505,16 @@ export default class Thread {
     format2chnet: string | null | undefined;
   }): ParsedThread | undefined {
     if (!hasCache) {
-      return parseThread(this.url, response.body, { format2chnet }) ?? undefined;
+      return (
+        parseThread(this.url, response.body, { format2chnet }) ?? undefined
+      );
     }
     if (deltaFlg && isHtml) {
       return cache.parsed as ParsedThread;
     }
-    return parseThread(this.url, cache.data ?? "", { format2chnet }) ?? undefined;
+    return (
+      parseThread(this.url, cache.data ?? "", { format2chnet }) ?? undefined
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -486,7 +525,10 @@ export default class Thread {
    * 板スレ一覧のレス数と突き合わせ、不足分をあぼーんで補填する。
    * スレがリストに存在しない場合は expired フラグを立てる。
    */
-  private _padAbobunIfNeeded(thread: ParsedThread, result: CachedInfoResult): void {
+  private _padAbobunIfNeeded(
+    thread: ParsedThread,
+    result: CachedInfoResult,
+  ): void {
     if (result.status === "success" || result.status === "sucess") {
       while (thread.res.length < (result.cachedInfo?.resCount ?? 0)) {
         thread.res.push({
@@ -526,7 +568,10 @@ export default class Thread {
     noChangeFlg,
     hasCache,
   }: UpdateCacheParams): Promise<void> {
-    if (response?.status === 200 || (readcgiVer >= 6 && response?.status === 500)) {
+    if (
+      response?.status === 200 ||
+      (readcgiVer >= 6 && response?.status === 500)
+    ) {
       cache.lastUpdated = Date.now();
 
       if (isHtml && response) {
@@ -632,7 +677,9 @@ export default class Thread {
       const newBoardURL = await chServerMoveDetect(this.url.toBoard());
       const newUrl = new ChURL(this.url.url.href);
       newUrl.url.hostname = newBoardURL.hostname;
-      const href = container.util.escapeHtml(container.util.safeHref(newUrl.url.href));
+      const href = container.util.escapeHtml(
+        container.util.safeHref(newUrl.url.href),
+      );
       const label = container.util.escapeHtml(newUrl.url.href);
       message += `スレッドの読み込みに失敗しました。\nサーバーが移転している可能性が有ります\n(<a href="${href}" class="open_in_rcrx">${label}</a>)`;
     } catch {
@@ -653,7 +700,9 @@ export default class Thread {
    * したらば向けエラーメッセージ。
    * レスポンスの error ヘッダーによって詳細なメッセージを付加する。
    */
-  private _buildShitarabaErrorMessage(response: HttpResponse | undefined): string {
+  private _buildShitarabaErrorMessage(
+    response: HttpResponse | undefined,
+  ): string {
     let message = "スレッドの読み込みに失敗しました。";
     const errorHeader = response?.headers?.error;
     if (errorHeader == null) return message;
@@ -666,10 +715,14 @@ export default class Thread {
         message += "\nURLのスレッド番号が間違っています。";
         break;
       case "THREAD NOT FOUND":
-        message += "\n該当するスレッドは存在しません。\nURLが間違っているか過去ログに移動せずに削除されています。";
+        message +=
+          "\n該当するスレッドは存在しません。\nURLが間違っているか過去ログに移動せずに削除されています。";
         break;
       case "STORAGE IN": {
-        const newUrl = this.url.url.href.replace("/read.cgi/", "/read_archive.cgi/");
+        const newUrl = this.url.url.href.replace(
+          "/read.cgi/",
+          "/read_archive.cgi/",
+        );
         const href = container.util.escapeHtml(container.util.safeHref(newUrl));
         const label = container.util.escapeHtml(newUrl);
         message += `\n過去ログが存在します\n(<a href="${href}" class="open_in_rcrx">${label}</a>)`;
@@ -702,7 +755,11 @@ export default class Thread {
     return getThreadXhrInfo(url, container.config.get("format_2chnet"));
   }
 
-  static parse(url: ChURL, text: string, resLength?: number): ParsedThread | null {
+  static parse(
+    url: ChURL,
+    text: string,
+    resLength?: number,
+  ): ParsedThread | null {
     return parseThread(url, text, {
       format2chnet: container.config.get("format_2chnet"),
       resLength,

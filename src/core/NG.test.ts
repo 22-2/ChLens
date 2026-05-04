@@ -23,7 +23,7 @@ describe("NG DSL parsing", () => {
     const { parse, TYPE } = await import("src/core/NG");
 
     const rules = parse(
-      `RegExpHighlightTitle(\n  word="VTuber",\n  sites=[\n    eddibb.cc,\n    5ch.net,\n  ],\n  bgColor=red,\n  label=注目,\n)`
+      `RegExpHighlightTitle(\n  word="VTuber",\n  sites=[\n    eddibb.cc,\n    5ch.net,\n  ],\n  bgColor=red,\n  label=注目,\n)`,
     );
 
     const parsed = Array.from(rules as Set<unknown>);
@@ -45,7 +45,7 @@ describe("NG DSL parsing", () => {
     const { parse, TYPE } = await import("src/core/NG");
 
     const rules = parse(
-      `RegExpHighlightTitle("VTuber", sites=[eddibb.cc, 5ch.net], bgColor=red, label="注目")`
+      `RegExpHighlightTitle("VTuber", sites=[eddibb.cc, 5ch.net], bgColor=red, label="注目")`,
     );
     const parsed = Array.from(rules as Set<unknown>);
 
@@ -79,7 +79,7 @@ describe("NG DSL parsing", () => {
   it("handles non-DSL formats as simple Word NG", async () => {
     const { parse, TYPE } = await import("src/core/NG");
 
-    const rules = parse('some raw text here');
+    const rules = parse("some raw text here");
     const parsed = Array.from(rules as Set<unknown>);
 
     expect(parsed).toHaveLength(1);
@@ -92,7 +92,7 @@ describe("NG DSL parsing", () => {
   it("handles old legacy prefix formats as simple Word NG (dropped legacy syntax)", async () => {
     const { parse, TYPE } = await import("src/core/NG");
 
-    const rules = parse('ID:abc123');
+    const rules = parse("ID:abc123");
     const parsed = Array.from(rules as Set<unknown>);
 
     expect(parsed).toHaveLength(1);

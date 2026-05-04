@@ -1,12 +1,12 @@
-import { defineConfig, Plugin } from "vite";
 import react from "@vitejs/plugin-react";
-import path from "path";
-import fs from "fs-extra";
-import * as sass from "sass";
-import postcss from "postcss";
 import autoprefixer from "autoprefixer";
-import pug from "pug";
+import fs from "fs-extra";
 import { glob } from "fs/promises";
+import path from "path";
+import postcss from "postcss";
+import pug from "pug";
+import * as sass from "sass";
+import { defineConfig, Plugin } from "vite";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 

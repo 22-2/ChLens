@@ -82,10 +82,10 @@ export const isHtmlThread = (
   format2chnet: string | null | undefined,
 ): boolean => {
   return (
-    ((format2chnet !== "dat" &&
+    (format2chnet !== "dat" &&
       url.getTsld() === "5ch.io" &&
       url.url.hostname !== "headline.5ch.io") ||
-      url.getTsld() === "bbspink.com")
+    url.getTsld() === "bbspink.com"
   );
 };
 

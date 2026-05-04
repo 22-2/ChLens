@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import {
   applyCachedInfoToThread,
   buildConditionalRequestHeaders,
@@ -7,6 +6,7 @@ import {
   shouldRejectThreadResult,
 } from "src/core/ThreadGetHelpers";
 import type { ParsedThread } from "src/core/ThreadParser.js";
+import { describe, expect, it } from "vitest";
 
 const createThread = (title = "t", count = 1): ParsedThread => ({
   title,
@@ -50,7 +50,9 @@ describe("ThreadGetHelpers", () => {
 
     expect(plan.deltaFlg).toBe(true);
     expect(plan.readcgiVer).toBe(6);
-    expect(plan.xhrPath).toBe("https://example.com/test/read.cgi/a/123/51-n?v=pc");
+    expect(plan.xhrPath).toBe(
+      "https://example.com/test/read.cgi/a/123/51-n?v=pc",
+    );
   });
 
   it("html thread + cache(read.cgi v5) builds legacy -n range and query", () => {
@@ -66,7 +68,9 @@ describe("ThreadGetHelpers", () => {
 
     expect(plan.deltaFlg).toBe(true);
     expect(plan.readcgiVer).toBe(5);
-    expect(plan.xhrPath).toBe("https://example.com/test/read.cgi/a/123/50-n?v=pc");
+    expect(plan.xhrPath).toBe(
+      "https://example.com/test/read.cgi/a/123/50-n?v=pc",
+    );
   });
 
   it("buildConditionalRequestHeaders emits both validators when available", () => {

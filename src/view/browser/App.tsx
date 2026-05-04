@@ -1,11 +1,13 @@
 import { PenLine } from "lucide-react";
 import React from "react";
+import { Toaster } from "sonner";
+import "sonner/dist/styles.css";
 import { AutoRefreshStatusItem } from "src/view/browser/components/AutoRefreshStatusItem";
 import { BottomPanel } from "src/view/browser/components/BottomPanel";
 import { ContentArea } from "src/view/browser/components/ContentArea";
 import { IkioiStatusItem } from "src/view/browser/components/IkioiStatusItem";
-import { NgStatusItem } from "src/view/browser/components/NgStatusItem";
 import { NavigationBar } from "src/view/browser/components/NavigationBar";
+import { NgStatusItem } from "src/view/browser/components/NgStatusItem";
 import {
   StatusBar,
   StatusBarItem,
@@ -19,11 +21,9 @@ import {
   useBottomPanel,
 } from "src/view/browser/hooks/use-bottom-panel";
 import { NgStatusProvider } from "src/view/browser/hooks/use-ng-status";
+import { useNotificationListener } from "src/view/browser/hooks/use-notification-listener";
 import { TabProvider, useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useTheme } from "src/view/browser/hooks/use-theme";
-import { useNotificationListener } from "src/view/browser/hooks/use-notification-listener";
-import { Toaster } from "sonner";
-import "sonner/dist/styles.css";
 
 // ステータスバー左端に常設される書き込みパネル開閉ボタン
 const WritePanelToggleItem: React.FC = () => {

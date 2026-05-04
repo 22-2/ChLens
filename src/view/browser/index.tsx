@@ -1,6 +1,6 @@
+import { createRoot } from "react-dom/client";
 import "src/app";
 import "src/bundle.scss";
-import { createRoot } from "react-dom/client";
 import { BrowserApp } from "src/view/browser/App";
 
 // app.boot() 経由で初期化し、core モジュールの準備完了を待つ

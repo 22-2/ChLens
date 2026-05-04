@@ -5,6 +5,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { container } from "src/service-container/index";
 import type { IRes } from "src/service-container/interfaces";
 import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import { MediaViewerContainer } from "src/view/browser/components/MediaViewerContainer";
@@ -19,17 +20,16 @@ import { useThreadPopupLifecycle } from "src/view/browser/hooks/use-popup-manage
 import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
 import { useThreadAutoRefresh } from "src/view/browser/hooks/use-thread-auto-refresh";
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";
+import { ThreadPageTopBar } from "src/view/browser/pages/thread/ThreadPageTopBar";
+import { useThreadResContextMenu } from "src/view/browser/pages/thread/use-thread-res-context-menu";
+import { useThreadTopBar } from "src/view/browser/pages/thread/use-thread-top-bar";
 import {
   parseInternalBrowserPage,
   resolveAbsoluteUrl,
   RESPECT_DEFAULT_EXTERNAL,
 } from "src/view/browser/utils/link-routing";
-import { ThreadPageTopBar } from "src/view/browser/pages/thread/ThreadPageTopBar";
-import { useThreadResContextMenu } from "src/view/browser/pages/thread/use-thread-res-context-menu";
-import { useThreadTopBar } from "src/view/browser/pages/thread/use-thread-top-bar";
 import { resolveReplyTreeRootResNum } from "src/view/browser/utils/reply-tree-root";
 import type { Props } from "src/view/browser/utils/types";
-import { container } from "src/service-container/index";
 import { copyText } from "src/view/browser/utils/utils";
 
 interface ThreadPageProps {

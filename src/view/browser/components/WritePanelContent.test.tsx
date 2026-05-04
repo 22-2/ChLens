@@ -1,6 +1,5 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import React from "react";
 import { container } from "src/service-container/index";
 import type { IConfig, IMessage } from "src/service-container/interfaces";
 import { WritePanelContent } from "src/view/browser/components/WritePanelContent";

@@ -6,7 +6,7 @@ import {
   render,
   screen,
 } from "@testing-library/react";
-import React, { useState } from "react";
+import { useState } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { useThreadTopBar } from "src/view/browser/pages/thread/use-thread-top-bar";

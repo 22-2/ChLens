@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import { ReplaceStrParser } from "packages/ch-lib/src/parser/ReplaceStrParser";
+import { describe, expect, it } from "vitest";
 
 describe("ReplaceStrParser", () => {
   describe("parse", () => {

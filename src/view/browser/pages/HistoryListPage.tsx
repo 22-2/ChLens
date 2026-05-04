@@ -2,12 +2,12 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import { ColumnDef } from "src/view/browser/components/SimpleDataTable";
 import { VirtualizedDataTable } from "src/view/browser/components/VirtualizedDataTable";
+import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import {
   formatCompactDateTime,
   normalizeLegacyTimestamp,
 } from "src/view/browser/utils/date-time";
-import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
 
 const PAGE_SIZE = 500;

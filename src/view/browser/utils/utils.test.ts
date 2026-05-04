@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import {
-  hasVideo,
   hasImage,
+  hasVideo,
   normalizeIdLinkText,
   stripHtml,
   toViewerImageUrl,

@@ -83,8 +83,12 @@ class TauriObjectStore implements ObjectStore {
 
         // オブジェクトストアが存在しない場合は作成
         if (!db.objectStoreNames.contains(this.dbName)) {
-          console.log(`[TauriObjectStore] Creating object store: ${this.dbName}`);
-          const objStore = db.createObjectStore(this.dbName, { keyPath: "url" });
+          console.log(
+            `[TauriObjectStore] Creating object store: ${this.dbName}`,
+          );
+          const objStore = db.createObjectStore(this.dbName, {
+            keyPath: "url",
+          });
           objStore.createIndex("last_updated", "last_updated", {
             unique: false,
           });
