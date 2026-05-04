@@ -30,6 +30,7 @@ export type TabAction =
   | { type: "CLOSE_ALL_TABS" }
   | { type: "REOPEN_CLOSED_TAB" }
   | { type: "TOGGLE_PIN"; tabId: string }
+  | { type: "MOVE_TAB"; dragTabId: string; targetTabId: string }
   | { type: "SELECT_TAB"; tabId: string }
   | { type: "NAVIGATE"; page: Page }
   | { type: "NAVIGATE_TAB"; tabId: string; page: Page }
@@ -348,6 +349,29 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
       // 固定タブを左に、非固定タブを右に並び替え
       tabs.sort((a, b) => (a.pinned === b.pinned ? 0 : a.pinned ? -1 : 1));
       return { ...state, tabs };
+    }
+
+    case "MOVE_TAB": {
+      const fromIndex = state.tabs.findIndex((t) => t.id === action.dragTabId);
+      const toIndex = state.tabs.findIndex((t) => t.id === action.targetTabId);
+      if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) {
+        return state;
+      }
+
+      const dragTab = state.tabs[fromIndex];
+      const targetTab = state.tabs[toIndex];
+      // 固定/非固定の境界を跨ぐ移動を禁止し、ピン領域と通常領域の分離を維持する。
+      if (dragTab.pinned !== targetTab.pinned) {
+        return state;
+      }
+
+      const nextTabs = [...state.tabs];
+      const [movedTab] = nextTabs.splice(fromIndex, 1);
+      nextTabs.splice(toIndex, 0, movedTab);
+      return {
+        ...state,
+        tabs: nextTabs,
+      };
     }
 
     case "SELECT_TAB":
