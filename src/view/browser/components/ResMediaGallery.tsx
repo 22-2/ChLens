@@ -14,7 +14,13 @@ interface ResMediaGalleryProps {
   onUrlClick: UrlClickHandler;
   onMiddleClickStart?: () => void;
   openOnMiddleMouseDown?: boolean;
+  isBlurred?: boolean;
+  imageBlurRadius?: number;
 }
+
+type ThumbStyle = React.CSSProperties & {
+  "--res-thumb-blur-radius"?: string;
+};
 
 interface ImageMediaItem {
   type: "image";
@@ -122,9 +128,16 @@ export function ResMediaGallery({
   onUrlClick,
   onMiddleClickStart,
   openOnMiddleMouseDown = false,
+  isBlurred = false,
+  imageBlurRadius = 4,
 }: ResMediaGalleryProps): JSX.Element | null {
   const handledMiddleClickUrlRef = useRef<string | null>(null);
   const [expandedVideoUrl, setExpandedVideoUrl] = useState<string | null>(null);
+  const thumbStyle: ThumbStyle | undefined = isBlurred
+    ? {
+        "--res-thumb-blur-radius": `${imageBlurRadius}px`,
+      }
+    : undefined;
 
   const mediaItems = useMemo(
     () =>
@@ -223,7 +236,8 @@ export function ResMediaGallery({
               <a
                 key={`image:${item.rawUrl}`}
                 href={item.rawUrl}
-                className="res__thumb"
+                className={`res__thumb${isBlurred ? " res__thumb--blurred" : ""}`}
+                style={thumbStyle}
                 onClick={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
@@ -248,7 +262,8 @@ export function ResMediaGallery({
               <button
                 key={`nativeVideo:${item.rawUrl}`}
                 type="button"
-                className="res__thumb res__thumb--video"
+                className={`res__thumb res__thumb--video${isBlurred ? " res__thumb--blurred" : ""}`}
+                style={thumbStyle}
                 aria-pressed={isExpanded}
                 aria-label={`${item.providerLabel} を${isExpanded ? "閉じる" : "展開する"}`}
                 title={item.rawUrl}
@@ -280,7 +295,8 @@ export function ResMediaGallery({
             <button
               key={`video:${item.embed.rawUrl}`}
               type="button"
-              className="res__thumb res__thumb--video"
+              className={`res__thumb res__thumb--video${isBlurred ? " res__thumb--blurred" : ""}`}
+              style={thumbStyle}
               aria-pressed={isExpanded}
               aria-label={`${item.embed.providerLabel} の動画を${isExpanded ? "閉じる" : "展開する"}`}
               title={item.embed.rawUrl}

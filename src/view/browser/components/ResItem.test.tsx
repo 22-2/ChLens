@@ -42,6 +42,10 @@ describe("ResItem", () => {
         idPos={0}
         idCount={0}
         repCount={3}
+        isOwn={false}
+        isReplyToOwn={false}
+        isImageBlurred={false}
+        imageBlurRadius={4}
         miniAa={false}
         messageProtocol="https:"
         onIdClick={() => {}}
@@ -64,6 +68,10 @@ describe("ResItem", () => {
         idPos={0}
         idCount={0}
         repCount={5}
+        isOwn={false}
+        isReplyToOwn={false}
+        isImageBlurred={false}
+        imageBlurRadius={4}
         miniAa={false}
         messageProtocol="https:"
         onIdClick={() => {}}
@@ -90,6 +98,10 @@ describe("ResItem", () => {
         idPos={0}
         idCount={0}
         repCount={0}
+        isOwn={false}
+        isReplyToOwn={false}
+        isImageBlurred={false}
+        imageBlurRadius={4}
         miniAa={false}
         messageProtocol="https:"
         onIdClick={() => {}}
@@ -120,6 +132,37 @@ describe("ResItem", () => {
     expect(onContextMenu).not.toHaveBeenCalled();
     expect(linkEvent.defaultPrevented).toBe(false);
     expect(thumbEvent.defaultPrevented).toBe(false);
+  });
+
+  it("自分のレスと自分宛て返信に強調クラスとバッジを付ける", () => {
+    const { container } = render(
+      <ResItem
+        res={BASE_RES}
+        idPos={0}
+        idCount={0}
+        repCount={0}
+        isOwn
+        isReplyToOwn
+        isImageBlurred={false}
+        imageBlurRadius={4}
+        miniAa={false}
+        messageProtocol="https:"
+        onIdClick={() => {}}
+        onRepClick={() => {}}
+        onUrlClick={() => true}
+        onUrlContextMenu={() => true}
+        onAnchorClick={() => {}}
+        onAnchorHover={() => {}}
+        onAnchorLeave={() => {}}
+        onContextMenu={() => {}}
+      />,
+    );
+
+    const article = container.querySelector("[data-res-num='1']");
+    expect(article).toHaveClass("res--own");
+    expect(article).toHaveClass("res--reply-to-own");
+    expect(screen.getByText("自分")).toBeInTheDocument();
+    expect(screen.getByText("返信")).toBeInTheDocument();
   });
 });
 

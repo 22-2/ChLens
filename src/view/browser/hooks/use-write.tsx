@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { wait } from "src/app/Defer";
 import { platform } from "src/app";
 import { URL as ChURL } from "src/core/URL";
 import { container } from "src/service-container/index";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import {
+  THREAD_WRITE_COMPLETED_EVENT,
+  type PendingWritePayload,
+  resolveWriteSuccessDelayMs,
+} from "src/view/browser/utils/thread-write-sync";
 
 // -----------------------------------------------------------------------
 // 定数
@@ -163,6 +169,7 @@ export function useWrite(threadUrl: string): UseWriteResult {
   const [statusText, setStatusText] = useState("");
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const pendingSubmittedWriteRef = useRef<PendingWritePayload | null>(null);
 
   const canSubmit =
     status === "idle" && threadUrl !== "" && message.trim() !== "";
@@ -191,7 +198,7 @@ export function useWrite(threadUrl: string): UseWriteResult {
   // iframe からの postMessage を処理する (cs_write.js との通信)
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
-      const data = e.data as { type?: string; message?: string };
+      const data = e.data as { type?: string; message?: unknown };
       switch (data?.type) {
         case "ping":
           (e.source as Window | null)?.postMessage(PONG_MSG, "*");
@@ -200,8 +207,27 @@ export function useWrite(threadUrl: string): UseWriteResult {
           setStatus("success");
           setStatusText("書き込みました");
           setMessage("");
-          // 書き込み先スレッドのタブを再取得して最新レスを反映する
-          dispatch({ type: "RELOAD" });
+
+          void (async () => {
+            const delayMs = resolveWriteSuccessDelayMs(data.message);
+            const pendingSubmittedWrite = pendingSubmittedWriteRef.current;
+            pendingSubmittedWriteRef.current = null;
+
+            // 変更理由: 旧UIは投稿完了ページが要求する待ち時間だけ待ってから再取得しており、
+            // 即 reload すると dat 反映前の内容を掴んで「もう一度更新しないと見えない」回帰になる。
+            await wait(delayMs);
+
+            if (pendingSubmittedWrite) {
+              container.message.send(
+                THREAD_WRITE_COMPLETED_EVENT,
+                pendingSubmittedWrite,
+              );
+            }
+
+            // 変更理由: 投稿後の強制再取得も通常の RELOAD 経路へ寄せ、
+            // manual reload / auto refresh と同じ forceUpdate 振る舞いを保つ。
+            dispatch({ type: "RELOAD" });
+          })();
           break;
         case "confirm":
           // 確認ページが表示された: iframe を見せてユーザーに操作させる
@@ -209,6 +235,7 @@ export function useWrite(threadUrl: string): UseWriteResult {
           setStatusText("確認ページが表示されています");
           break;
         case "error":
+          pendingSubmittedWriteRef.current = null;
           setStatus("error");
           setStatusText(
             data.message
@@ -228,10 +255,18 @@ export function useWrite(threadUrl: string): UseWriteResult {
     const effectiveMail = sage ? "sage" : mail;
     const formData = buildFormData(threadUrl, name, effectiveMail, message);
     if (!formData) {
+      pendingSubmittedWriteRef.current = null;
       setStatus("error");
       setStatusText("このURLへの書き込み形式を判定できませんでした");
       return;
     }
+
+    pendingSubmittedWriteRef.current = {
+      threadUrl,
+      message,
+      inputName: name,
+      inputMail: effectiveMail,
+    };
 
     setStatus("submitting");
     setStatusText("書き込み中...");
@@ -239,7 +274,10 @@ export function useWrite(threadUrl: string): UseWriteResult {
     await setupHeaderModifier(formData.action);
 
     const iframe = iframeRef.current;
-    if (!iframe) return;
+    if (!iframe) {
+      pendingSubmittedWriteRef.current = null;
+      return;
+    }
 
     // 空ページをロードしてから iframe の contentDocument にフォームを生成して送信する。
     // submit_res.js の _setupForm と同じアプローチ。
@@ -284,6 +322,7 @@ export function useWrite(threadUrl: string): UseWriteResult {
   );
 
   const handleRetry = useCallback(() => {
+    pendingSubmittedWriteRef.current = null;
     setStatus("idle");
     setStatusText("");
   }, []);

@@ -30,6 +30,10 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
     onAnchorHover,
     onAnchorLeave,
     onContextMenu,
+    isOwn,
+    isReplyToOwn,
+    isImageBlurred,
+    imageBlurRadius,
   }) => {
     const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
     // res.ng はサービス層がNGワード照合した結果を格納するフィールド。
@@ -60,11 +64,27 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
           ? " res__rep--warm"
           : " res__rep--link"
     }`;
+    const articleClassName = [
+      "res",
+      isNG ? "res--ng" : "",
+      miniAa ? "res--aa" : "",
+      isOwn ? "res--own" : "",
+      isReplyToOwn ? "res--reply-to-own" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+    const nameClassName = [
+      "res__name",
+      isOwn ? "res__name--own" : "",
+      isReplyToOwn ? "res__name--reply-to-own" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
 
     return (
       <article
         data-res-num={res.num}
-        className={`res${isNG ? " res--ng" : ""}${miniAa ? " res--aa" : ""}`}
+        className={articleClassName}
         onContextMenu={(e) => {
           if (
             e.target instanceof Element &&
@@ -79,9 +99,13 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
         <header className="res__header">
           <span className={resNumClassName}>{res.num}</span>
           <span
-            className="res__name"
+            className={nameClassName}
             dangerouslySetInnerHTML={{ __html: decoded.nameHtml }}
           />
+          {isOwn ? <span className="res__badge res__badge--own">自分</span> : null}
+          {isReplyToOwn ? (
+            <span className="res__badge res__badge--reply-to-own">返信</span>
+          ) : null}
           {res.id && (
             <span
               className={`res__id${
@@ -159,7 +183,12 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
             ))}
           </div>
         )}
-        <ResMediaGallery urls={urls} onUrlClick={onUrlClick} />
+        <ResMediaGallery
+          urls={urls}
+          onUrlClick={onUrlClick}
+          isBlurred={isImageBlurred}
+          imageBlurRadius={imageBlurRadius}
+        />
       </article>
     );
   },
@@ -187,4 +216,8 @@ export interface ResItemProps {
   ) => void;
   onAnchorLeave: (fromDepth: number) => void;
   onContextMenu: (e: React.MouseEvent, res: IRes) => void;
+  isOwn: boolean;
+  isReplyToOwn: boolean;
+  isImageBlurred: boolean;
+  imageBlurRadius: number;
 }

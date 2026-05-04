@@ -62,9 +62,14 @@ interface HistoryService {
   get: (offset?: number, count?: number) => Promise<unknown[]>;
 }
 
+interface ReadStateService {
+  getAll: () => Promise<unknown[]>;
+}
+
 interface AppLikeWindow extends Window {
   app?: {
     History?: HistoryService;
+    ReadState?: ReadStateService;
   };
 }
 
@@ -82,8 +87,17 @@ function createHistoryItem(
   };
 }
 
+function createReadStateItem(url: string, read: number, received: number) {
+  return {
+    url,
+    read,
+    received,
+  };
+}
+
 describe("HistoryListPage", () => {
   const historyGet = vi.fn<HistoryService["get"]>();
+  const readStateGetAll = vi.fn<ReadStateService["getAll"]>();
 
   afterEach(() => {
     cleanup();
@@ -92,6 +106,7 @@ describe("HistoryListPage", () => {
   beforeEach(() => {
     mockUseTabStore.mockReset();
     historyGet.mockReset();
+    readStateGetAll.mockReset();
     virtualizedTableState.onEndReached = undefined;
 
     mockUseTabStore.mockReturnValue({
@@ -111,17 +126,25 @@ describe("HistoryListPage", () => {
       History: {
         get: historyGet,
       },
+      ReadState: {
+        getAll: readStateGetAll,
+      },
     };
+
+    readStateGetAll.mockResolvedValue([]);
   });
 
   it("旧履歴の date を閲覧日時として表示する", async () => {
     historyGet.mockResolvedValueOnce([
       createHistoryItem(
-        "https://example.com/test/read.cgi/live/1/",
+        "https://hayabusa.5ch.io/test/read.cgi/live/1/",
         "スレ1",
         "なんでも実況J",
         new Date(2026, 4, 3, 1, 2).getTime(),
       ),
+    ]);
+    readStateGetAll.mockResolvedValueOnce([
+      createReadStateItem("https://*.5ch.io/test/read.cgi/live/1/", 4, 9),
     ]);
 
     render(<HistoryListPage tabId="tab-1" />);
@@ -129,7 +152,9 @@ describe("HistoryListPage", () => {
     await screen.findByTestId("virtualized-table");
 
     expect(screen.getByText("2026/05/03 01:02")).toBeInTheDocument();
+    expect(screen.getByText("5")).toBeInTheDocument();
     expect(historyGet).toHaveBeenCalledWith(undefined, 500);
+    expect(readStateGetAll).toHaveBeenCalledTimes(1);
   });
 
   it("スクロール終端で次ページを読み込み、URL重複を除外する", async () => {

@@ -85,4 +85,24 @@ describe("ResMediaGallery", () => {
     expect(onUrlClick).toHaveBeenCalledWith(rawUrl, undefined, 1);
     expect(onMiddleClickStart).toHaveBeenCalledTimes(1);
   });
+
+  it("ぼかし指定時はサムネにぼかしクラスと半径を付ける", () => {
+    render(
+      <ResMediaGallery
+        urls={["https://example.com/image.jpg"]}
+        onUrlClick={() => {}}
+        isBlurred
+        imageBlurRadius={8}
+      />,
+    );
+
+    const thumb = screen.getByRole("link", {
+      name: "https://example.com/image.jpg",
+    });
+
+    expect(thumb).toHaveClass("res__thumb--blurred");
+    expect(thumb.getAttribute("style")).toContain(
+      "--res-thumb-blur-radius: 8px",
+    );
+  });
 });

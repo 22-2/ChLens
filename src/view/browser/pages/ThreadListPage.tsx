@@ -44,7 +44,7 @@ interface Props {
   isActive: boolean;
 }
 
-type SortColumn = "num" | "title" | "resCount" | "heat";
+type SortColumn = "num" | "title" | "resCount" | "unreadCount" | "heat";
 type SortDirection = "asc" | "desc";
 type ThreadListSortPreference = {
   column: SortColumn | null;
@@ -165,6 +165,7 @@ function isSortColumn(value: string): value is SortColumn {
     value === "num" ||
     value === "title" ||
     value === "resCount" ||
+    value === "unreadCount" ||
     value === "heat"
   );
 }
@@ -261,6 +262,7 @@ function calcHeat(now: number, created: number, resCount: number): string {
 type DisplayThread = {
   thread: IThread;
   originalIndex: number;
+  unreadCount: number;
   heat: number;
 };
 
@@ -298,6 +300,14 @@ const THREAD_LIST_COLUMNS: ColumnDef<DisplayThread>[] = [
     cellClassName: "thread-list__count",
     sortable: true,
     cell: ({ thread }) => thread.resCount,
+  },
+  {
+    key: "unreadCount",
+    header: "未読",
+    headerClassName: "thread-list__th--count",
+    cellClassName: "thread-list__count",
+    sortable: true,
+    cell: ({ unreadCount }) => (unreadCount > 0 ? unreadCount : ""),
   },
   {
     key: "heat",
@@ -527,6 +537,13 @@ export const ThreadListPage: React.FC<Props> = ({
     let list = threads.map((t, i) => ({
       thread: t,
       originalIndex: i + 1,
+      unreadCount: Math.max(
+        // 変更理由: read_state_updated で received が先行しているケースもあるため、
+        // 既知レス数はスレ一覧の resCount と readState.received の大きい方を採用する。
+        Math.max(t.resCount, t.readState?.received ?? 0) -
+          (t.readState?.read ?? 0),
+        0,
+      ),
       heat: parseFloat(calcHeat(now, t.createdAt, t.resCount)),
     }));
 
@@ -551,6 +568,9 @@ export const ThreadListPage: React.FC<Props> = ({
             break;
           case "resCount":
             cmp = a.thread.resCount - b.thread.resCount;
+            break;
+          case "unreadCount":
+            cmp = a.unreadCount - b.unreadCount;
             break;
           case "heat":
             cmp = a.heat - b.heat;

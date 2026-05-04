@@ -1415,6 +1415,37 @@ body {
   color: #009900;
 }
 
+.res__name--own {
+  color: #d65a00;
+}
+
+.res__name--reply-to-own {
+  color: #b36c00;
+}
+
+.res__badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.res__badge--own {
+  border: 1px solid rgba(214, 90, 0, 0.22);
+  background: rgba(214, 90, 0, 0.12);
+  color: #a14a00;
+}
+
+.res__badge--reply-to-own {
+  border: 1px solid rgba(179, 108, 0, 0.22);
+  background: rgba(179, 108, 0, 0.1);
+  color: #8a5a00;
+}
+
 .res__id {
   /* IDが1件しかない場合は控えめな色でノイズを抑える */
   color: var(--browser-color-res-id-muted);
@@ -1440,6 +1471,30 @@ body {
 
 .res__body a:visited {
   color: #681da8;
+}
+
+.res--own,
+.res--reply-to-own {
+  border-left: 3px solid transparent;
+  padding-left: 13px;
+}
+
+.res--own {
+  border-left-color: rgba(214, 90, 0, 0.7);
+  background: rgba(214, 90, 0, 0.05);
+}
+
+.res--reply-to-own {
+  border-left-color: rgba(179, 108, 0, 0.68);
+  background: rgba(179, 108, 0, 0.05);
+}
+
+.res--own.res--reply-to-own {
+  background: linear-gradient(
+    90deg,
+    rgba(214, 90, 0, 0.08) 0%,
+    rgba(179, 108, 0, 0.05) 100%
+  );
 }
 
 /* ==========================================================================
@@ -1943,6 +1998,21 @@ body {
   height: 104px;
 }
 
+.res__thumb--blurred::after {
+  content: "ぼかし中";
+  position: absolute;
+  inset: auto 8px 8px auto;
+  z-index: 2;
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: rgba(15, 23, 42, 0.78);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.4;
+  pointer-events: none;
+}
+
 .res__thumb--video {
   appearance: none;
   color: inherit;
@@ -1956,8 +2026,19 @@ body {
   display: block;
 }
 
+.res__thumb--blurred img,
+.res__thumb--blurred .res__thumb-video-fallback,
+.res__thumb--blurred .res__thumb-video-preview {
+  filter: blur(var(--res-thumb-blur-radius, 4px));
+  transform: scale(1.06);
+}
+
 .res__thumb--video img {
   filter: brightness(0.82);
+}
+
+.res__thumb--blurred.res__thumb--video img {
+  filter: blur(var(--res-thumb-blur-radius, 4px)) brightness(0.82);
 }
 
 .res__thumb-video-fallback,

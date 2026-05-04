@@ -5,6 +5,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { add as addWriteHistoryRecord, getByUrl as getWriteHistoryByUrl } from "src/core/WriteHistory";
 import { container } from "src/service-container/index";
 import type { IRes } from "src/service-container/interfaces";
 import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
@@ -29,8 +30,52 @@ import {
   RESPECT_DEFAULT_EXTERNAL,
 } from "src/view/browser/utils/link-routing";
 import { resolveReplyTreeRootResNum } from "src/view/browser/utils/reply-tree-root";
+import {
+  buildBlurredResSet,
+  buildReplyToWrittenResSet,
+  buildWrittenResSet,
+  compileImageBlurPattern,
+  resolveImageBlurRadius,
+} from "src/view/browser/utils/thread-emphasis";
+import {
+  findLatestWrittenRes,
+  resolveWrittenResTimestamp,
+  THREAD_WRITE_COMPLETED_EVENT,
+  type PendingWritePayload,
+} from "src/view/browser/utils/thread-write-sync";
 import type { Props } from "src/view/browser/utils/types";
-import { copyText } from "src/view/browser/utils/utils";
+import { copyText, stripHtml } from "src/view/browser/utils/utils";
+
+interface ImageBlurConfigState {
+  enabled: boolean;
+  radius: number;
+  harmfulWordPattern: RegExp | null;
+}
+
+interface PendingWriteMatchState extends PendingWritePayload {
+  baselineResponseCount: number;
+  baselineLastResNum: number | null;
+}
+
+const IMAGE_BLUR_CONFIG_KEYS = new Set([
+  "image_blur",
+  "image_blur_length",
+  "image_blur_word",
+]);
+
+function readImageBlurConfig(): ImageBlurConfigState {
+  const enabled = container.config.get("image_blur") === "on";
+  const radius = resolveImageBlurRadius(container.config.get("image_blur_length"));
+  const rawPattern = container.config.get("image_blur_word");
+  const harmfulWordPattern =
+    typeof rawPattern === "string" ? compileImageBlurPattern(rawPattern) : null;
+
+  return {
+    enabled,
+    radius,
+    harmfulWordPattern,
+  };
+}
 
 interface ThreadPageProps {
   tabId: string;
@@ -66,6 +111,13 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const openMediaFromUrl = useMediaViewerStore(
     (state) => state.openMediaFromUrl,
   );
+  const [ownResNums, setOwnResNums] = useState<Set<number>>(new Set());
+  const [pendingWrite, setPendingWrite] =
+    useState<PendingWriteMatchState | null>(null);
+  const [imageBlurConfig, setImageBlurConfig] =
+    useState<ImageBlurConfigState>(readImageBlurConfig);
+  const responseCountRef = useRef(0);
+  const lastResponseNumRef = useRef<number | null>(null);
 
   useMouseGesture(rootRef);
 
@@ -118,15 +170,185 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         .length,
     [responses],
   );
+  const replyToOwnResNums = useMemo(
+    () => buildReplyToWrittenResSet(ownResNums, indexes.repIndex),
+    [indexes.repIndex, ownResNums],
+  );
+  const ownHighlightCount = useMemo(() => {
+    const highlightedResNums = new Set<number>(ownResNums);
+    for (const resNum of replyToOwnResNums) {
+      highlightedResNums.add(resNum);
+    }
+    return highlightedResNums.size;
+  }, [ownResNums, replyToOwnResNums]);
+  const blurredResNums = useMemo(() => {
+    if (!imageBlurConfig.enabled) {
+      return new Set<number>();
+    }
+
+    return buildBlurredResSet(
+      responses,
+      indexes.repIndex,
+      imageBlurConfig.harmfulWordPattern,
+    );
+  }, [imageBlurConfig, indexes.repIndex, responses]);
+
+  useEffect(() => {
+    responseCountRef.current = responses.length;
+    lastResponseNumRef.current = responses.at(-1)?.num ?? null;
+  }, [responses]);
 
   useEffect(() => {
     // ステータスバーの件数はページ外コンポーネントから参照するため、
     // スレッド側で集計して共有ストアへ反映する。
-    setThreadStats({ ngCount: threadNgCount, highlightCount: 0 });
+    setThreadStats({ ngCount: threadNgCount, highlightCount: ownHighlightCount });
     return () => {
       setThreadStats({ ngCount: 0, highlightCount: 0 });
     };
-  }, [setThreadStats, threadNgCount]);
+  }, [ownHighlightCount, setThreadStats, threadNgCount]);
+
+  useEffect(() => {
+    let alive = true;
+
+    const loadOwnResNums = async () => {
+      try {
+        const rows = await getWriteHistoryByUrl(page.threadUrl);
+        if (!alive) {
+          return;
+        }
+        setOwnResNums(buildWrittenResSet(rows));
+      } catch {
+        if (alive) {
+          setOwnResNums(new Set());
+        }
+      }
+    };
+
+    void loadOwnResNums();
+
+    return () => {
+      alive = false;
+    };
+  }, [page.threadUrl]);
+
+  useEffect(() => {
+    setPendingWrite(null);
+  }, [page.threadUrl]);
+
+  useEffect(() => {
+    const handleThreadWriteCompleted = (payload: PendingWritePayload) => {
+      if (payload.threadUrl !== page.threadUrl) {
+        return;
+      }
+
+      // 変更理由: 送信前時点の末尾レス位置を覚えておくと、同文レスが既にあるスレでも
+      // 新着到着前の古いレスを誤って「今書いたレス」と認定する事故を避けられる。
+      setPendingWrite({
+        ...payload,
+        baselineResponseCount: responseCountRef.current,
+        baselineLastResNum: lastResponseNumRef.current,
+      });
+    };
+
+    container.message.on(
+      THREAD_WRITE_COMPLETED_EVENT,
+      handleThreadWriteCompleted,
+    );
+
+    return () => {
+      container.message.off(
+        THREAD_WRITE_COMPLETED_EVENT,
+        handleThreadWriteCompleted,
+      );
+    };
+  }, [page.threadUrl]);
+
+  useEffect(() => {
+    if (!pendingWrite || responses.length === 0) {
+      return;
+    }
+
+    const currentLastResNum = responses.at(-1)?.num ?? null;
+    const hasAdvancedSinceSubmit =
+      responses.length > pendingWrite.baselineResponseCount ||
+      (pendingWrite.baselineLastResNum != null &&
+        currentLastResNum != null &&
+        currentLastResNum > pendingWrite.baselineLastResNum);
+    if (!hasAdvancedSinceSubmit) {
+      return;
+    }
+
+    const matchedRes = findLatestWrittenRes(
+      responses,
+      pendingWrite.message,
+      ownResNums,
+    );
+    if (!matchedRes) {
+      return;
+    }
+
+    setPendingWrite(null);
+
+    let alive = true;
+    void (async () => {
+      if (container.config.get("no_writehistory") !== "on") {
+        try {
+          await addWriteHistoryRecord({
+            url: page.threadUrl,
+            res: matchedRes.num,
+            title: page.title,
+            name: stripHtml(matchedRes.name),
+            mail: matchedRes.mail,
+            inputName: pendingWrite.inputName,
+            inputMail: pendingWrite.inputMail,
+            message: pendingWrite.message,
+            date: resolveWrittenResTimestamp(matchedRes),
+          });
+        } catch {
+          // 書込履歴の永続化に失敗しても、画面上の自分レス強調までは失わない。
+        }
+      }
+
+      if (!alive) {
+        return;
+      }
+
+      // 変更理由: 投稿直後のレス番号が確定した瞬間に ownResNums へ反映し、
+      // 書込履歴の再読込を待たずに自分レス強調をその場で見せる。
+      setOwnResNums((prev) => {
+        if (prev.has(matchedRes.num)) {
+          return prev;
+        }
+
+        const next = new Set(prev);
+        next.add(matchedRes.num);
+        return next;
+      });
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [ownResNums, page.threadUrl, page.title, pendingWrite, responses]);
+
+  useEffect(() => {
+    const applyImageBlurConfig = () => {
+      setImageBlurConfig(readImageBlurConfig());
+    };
+
+    const handleConfigUpdated = ({ key }: { key?: string }) => {
+      if (!key || IMAGE_BLUR_CONFIG_KEYS.has(key)) {
+        applyImageBlurConfig();
+      }
+    };
+
+    container.config.ready(applyImageBlurConfig);
+    container.message.on("config_updated", handleConfigUpdated);
+
+    return () => {
+      container.message.off("config_updated", handleConfigUpdated);
+    };
+  }, []);
 
   const openAnchorPreviewFromPopup = useCallback(
     (popupId: string) =>
@@ -433,6 +655,17 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       hideAnchorPreviewImmediately,
       miniAaResNums,
       page,
+      onWriteHistoryAdded: (resNum) => {
+        setOwnResNums((prev) => {
+          if (prev.has(resNum)) {
+            return prev;
+          }
+
+          const next = new Set(prev);
+          next.add(resNum);
+          return next;
+        });
+      },
       setFilter,
       setMiniAaResNums,
       setResponses,
@@ -550,6 +783,10 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
                   onAnchorHover={showAnchorPreview}
                   onAnchorLeave={hideAnchorPreview}
                   onContextMenu={openThreadResContextMenu}
+                  isOwn={ownResNums.has(res.num)}
+                  isReplyToOwn={replyToOwnResNums.has(res.num)}
+                  isImageBlurred={blurredResNums.has(res.num)}
+                  imageBlurRadius={imageBlurConfig.radius}
                 />
               );
             })}

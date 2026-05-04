@@ -52,18 +52,36 @@ const THREADS: IThread[] = [
     title: "B Thread",
     resCount: 20,
     createdAt: 1,
+    readState: {
+      url: "https://egg.5ch.net/test/read.cgi/software/1/",
+      read: 14,
+      received: 20,
+      last: 14,
+    },
   },
   {
     url: "https://egg.5ch.net/test/read.cgi/software/2/",
     title: "A Thread",
     resCount: 5,
     createdAt: 2,
+    readState: {
+      url: "https://egg.5ch.net/test/read.cgi/software/2/",
+      read: 5,
+      received: 5,
+      last: 5,
+    },
   },
   {
     url: "https://egg.5ch.net/test/read.cgi/software/3/",
     title: "C Thread",
     resCount: 12,
     createdAt: 3,
+    readState: {
+      url: "https://egg.5ch.net/test/read.cgi/software/3/",
+      read: 3,
+      received: 12,
+      last: 3,
+    },
   },
 ];
 
@@ -325,5 +343,47 @@ describe("ThreadListPage", () => {
     });
 
     expect(screen.queryByText("板の読み込みに失敗しました")).toBeNull();
+  });
+
+  it("未読数列を表示して未読数でソートできる", async () => {
+    vi.useRealTimers();
+
+    render(
+      <ThreadListPage
+        tabId="tab-1"
+        page={{
+          type: "threadList",
+          title: "Software",
+          boardUrl: "https://egg.5ch.net/software/",
+          boardTitle: "Software",
+        }}
+        refreshKey={0}
+        isActive={true}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("columnheader", { name: /未読/ })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("columnheader", { name: /未読/ }));
+
+    await waitFor(() => {
+      expect(getRenderedThreadTitles()).toEqual([
+        "A Thread",
+        "B Thread",
+        "C Thread",
+      ]);
+    });
+
+    fireEvent.click(screen.getByRole("columnheader", { name: /未読/ }));
+
+    await waitFor(() => {
+      expect(getRenderedThreadTitles()).toEqual([
+        "C Thread",
+        "B Thread",
+        "A Thread",
+      ]);
+    });
   });
 });

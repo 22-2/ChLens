@@ -40,6 +40,7 @@ interface UseThreadResContextMenuParams {
   hideAnchorPreviewImmediately: () => void;
   miniAaResNums: Set<number>;
   page: Props["page"];
+  onWriteHistoryAdded?: (resNum: number) => void;
   setFilter: (filter: ThreadFilter) => void;
   setMiniAaResNums: React.Dispatch<React.SetStateAction<Set<number>>>;
   setResponses: React.Dispatch<React.SetStateAction<IRes[]>>;
@@ -62,6 +63,7 @@ export function useThreadResContextMenu({
   hideAnchorPreviewImmediately,
   miniAaResNums,
   page,
+  onWriteHistoryAdded,
   setFilter,
   setMiniAaResNums,
   setResponses,
@@ -153,9 +155,12 @@ export function useThreadResContextMenu({
         message,
         date: Number.isNaN(baseTime) ? Date.now() : baseTime,
       });
+      // 変更理由: 右クリックから書込履歴へ追加した直後も強調表示を即時反映し、
+      // 再読込しないと「自分のレス」扱いにならないズレを避ける。
+      onWriteHistoryAdded?.(res.num);
       container.toast.success("書込履歴に追加しました");
     },
-    [page.threadUrl],
+    [onWriteHistoryAdded, page.threadUrl],
   );
 
   const buildContextMenuItems = useCallback(

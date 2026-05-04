@@ -14,7 +14,7 @@ const PAGE_SIZE = 500;
 const LOAD_MORE_THRESHOLD = 12;
 
 type SortDirection = "asc" | "desc";
-type SortColumn = "title" | "boardTitle" | "viewedDate";
+type SortColumn = "title" | "boardTitle" | "unreadCount" | "viewedDate";
 
 interface SortState {
   column: SortColumn | null;
@@ -30,6 +30,7 @@ interface HistoryEntry {
   url: string;
   title: string;
   boardTitle: string;
+  unreadCount: number;
   viewedDate: number;
 }
 
@@ -41,6 +42,12 @@ interface LegacyHistoryLike {
   viewedDate?: unknown;
 }
 
+interface LegacyReadStateLike {
+  url?: unknown;
+  read?: unknown;
+  received?: unknown;
+}
+
 interface HistoryPageResult {
   entries: HistoryEntry[];
   hasMore: boolean;
@@ -50,9 +57,82 @@ function normalizeString(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
 }
 
+function normalizeNumber(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  return 0;
+}
+
+function normalizeReadStateLookupUrl(url: string): string {
+  try {
+    const parsedUrl = new window.URL(url);
+    // 変更理由: ReadState.getAll() の IndexedDB 実装は *.5ch.io に正規化された URL を返すため、
+    // 履歴側も同じ規則で揃えて未読数の突き合わせ漏れを防ぐ。
+    if (parsedUrl.hostname.endsWith(".5ch.io")) {
+      parsedUrl.hostname = "*.5ch.io";
+    }
+    return parsedUrl.href;
+  } catch {
+    return url;
+  }
+}
+
+async function readHistoryUnreadCountIndex(): Promise<Map<string, number>> {
+  const readStateService = window.app?.ReadState as
+    | {
+        getAll?: () => Promise<unknown> | unknown;
+      }
+    | undefined;
+
+  if (!readStateService?.getAll) {
+    return new Map();
+  }
+
+  try {
+    const raw = await readStateService.getAll();
+    if (!Array.isArray(raw)) {
+      return new Map();
+    }
+
+    const unreadCountIndex = new Map<string, number>();
+    for (const value of raw) {
+      const item = value as LegacyReadStateLike;
+      const url = normalizeString(item.url);
+      if (!url) {
+        continue;
+      }
+
+      const unreadCount = Math.max(
+        Math.trunc(normalizeNumber(item.received)) -
+          Math.trunc(normalizeNumber(item.read)),
+        0,
+      );
+
+      const lookupUrl = normalizeReadStateLookupUrl(url);
+      const prevUnreadCount = unreadCountIndex.get(lookupUrl) ?? 0;
+      if (unreadCount > prevUnreadCount) {
+        unreadCountIndex.set(lookupUrl, unreadCount);
+      }
+    }
+
+    return unreadCountIndex;
+  } catch {
+    // 未読数取得に失敗しても履歴一覧自体は表示を続ける。
+    return new Map();
+  }
+}
+
 async function readHistoryEntriesPage(
   offset: number | undefined,
   count: number,
+  unreadCountIndex: ReadonlyMap<string, number>,
 ): Promise<HistoryPageResult> {
   const historyService = window.app?.History as
     | {
@@ -85,6 +165,8 @@ async function readHistoryEntriesPage(
         url,
         title: normalizeString(item.title, url),
         boardTitle: normalizeString(item.boardTitle),
+        unreadCount:
+          unreadCountIndex.get(normalizeReadStateLookupUrl(url)) ?? 0,
         viewedDate,
       } satisfies HistoryEntry;
     })
@@ -112,6 +194,14 @@ const COLUMNS: ColumnDef<HistoryEntry>[] = [
     cellClassName: "simple-data-table__history-board",
     sortable: true,
     cell: (row) => row.boardTitle || "-",
+  },
+  {
+    key: "unreadCount",
+    header: "未読",
+    headerClassName: "simple-data-table__th--count",
+    cellClassName: "simple-data-table__count",
+    sortable: true,
+    cell: (row) => (row.unreadCount > 0 ? row.unreadCount : ""),
   },
   {
     key: "viewedDate",
@@ -150,6 +240,7 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({ tabId }) => {
   const nextOffsetRef = React.useRef(0);
   const hasMoreRef = React.useRef(true);
   const isLoadingPageRef = React.useRef(false);
+  const unreadCountIndexRef = React.useRef<Map<string, number>>(new Map());
 
   const loadNextPage = useCallback(async (reset = false) => {
     if (isLoadingPageRef.current) {
@@ -168,6 +259,7 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({ tabId }) => {
       nextOffsetRef.current = 0;
       hasMoreRef.current = true;
       setHasMore(true);
+      unreadCountIndexRef.current = await readHistoryUnreadCountIndex();
     } else {
       setLoadingMore(true);
     }
@@ -187,6 +279,7 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({ tabId }) => {
         const page = await readHistoryEntriesPage(
           currentOffset > 0 ? currentOffset : undefined,
           PAGE_SIZE,
+          unreadCountIndexRef.current,
         );
         currentOffset += PAGE_SIZE;
         nextHasMore = page.hasMore;
@@ -300,6 +393,9 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({ tabId }) => {
           break;
         case "boardTitle":
           result = a.boardTitle.localeCompare(b.boardTitle, "ja");
+          break;
+        case "unreadCount":
+          result = a.unreadCount - b.unreadCount;
           break;
         case "viewedDate":
           result = a.viewedDate - b.viewedDate;
