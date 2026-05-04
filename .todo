@@ -344,24 +344,9 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
   - [x] 強調表示
 - [x] feat: omnibar(履歴やお気に入りから検索、お気に入り、直近の履歴は重めに)
   - chromeのomnibarみたいに1行につき「タイトル url」って感じに表示
-
-## 未確認
-- [ ] 画像サムネにグロぼかし
-- [x] readstateの復旧
-  - [x] 書き込み履歴でクリックしたら該当位置にジャンプできるように
-  - [x] スクロール位置の復元
-  - [x] 閲覧履歴・スレ一覧未読数追加
-- [x] 実況用・自動次スレ移動
-- [ ] 板のお気に入り
-
-## 次
 - [x] 開いていないタブは、初回タブ表示までレンダリングしない
-- [ ] ciでコンパイルってキャッシュできないのか
-- [ ] bbsmenuの項目もomnibarに含める
-- [ ] navbarリファクタリング
-  - [ ] omnibar coomponentを独立させる
-- [ ] tauriでmonacoが読み込まれない
-- [ ] test: tauri環境を再現してsqliteで取得
+- [-] ciでコンパイルってキャッシュできないのか
+- [x] tauriでmonacoが読み込まれない
 - [x] fix: tauriで板一覧が読み込まれない
 - [x] タブのスレや板でwindowタイトルを変更するように
 - [x] 設定画面にセクションがほしい
@@ -370,6 +355,21 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 - [x] refactor: BBSMenuParserの統合
 - [x] 専ブラの名前
 - [x] feat: タブをドラッグで移動できるように
+- [x] readstateの復旧
+  - [x] 書き込み履歴でクリックしたら該当位置にジャンプできるように
+  - [x] スクロール位置の復元
+  - [x] 閲覧履歴・スレ一覧未読数追加
+- [x] 実況用・自動次スレ移動
+- [ ] 板のお気に入り
+
+## 未確認
+- [ ] 画像サムネにグロぼかし
+
+## 次
+- [ ] bbsmenuの項目もomnibarのサジェストに含めるようにしてくださいっす
+- [ ] navbarリファクタリング
+  - [ ] omnibar coomponentを独立させる
+- [ ] test: tauri環境を再現してsqliteで取得
 - [ ] fix: bbsmenuが毎回fetchされる
 
 ### low prior
