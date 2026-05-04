@@ -24,7 +24,7 @@ import ThreadSearch from "src/core/ThreadSearch.js";
 import ThreadService from "src/core/ThreadService.js";
 import * as URL from "src/core/URL.ts";
 import * as Util from "src/core/Util.ts";
-import * as WriteHistory from "src/core/WriteHistory.js";
+import * as WriteHistory from "src/core/WriteHistory.ts";
 
 export {
   BBSMenu,

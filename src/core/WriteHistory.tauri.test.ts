@@ -39,7 +39,7 @@ describe("WriteHistory Tauri branch", () => {
   });
 
   it("add delegates with fallback input_name/input_mail", async () => {
-    const WriteHistory = await import("src/core/WriteHistory.js");
+    const WriteHistory = await import("src/core/WriteHistory.ts");
 
     await WriteHistory.add({
       url: "https://example.com/thread",
@@ -80,7 +80,7 @@ describe("WriteHistory Tauri branch", () => {
       },
     ]);
 
-    const WriteHistory = await import("src/core/WriteHistory.js");
+    const WriteHistory = await import("src/core/WriteHistory.ts");
     const rows = await WriteHistory.get(0, 10);
 
     expect(state.tauriWriteHistoryRepository.get).toHaveBeenCalledWith(0, 10);

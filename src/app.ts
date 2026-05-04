@@ -96,7 +96,7 @@ import IDBBookmarkEntryList from "src/core/IDBBookmarkEntryList";
 import Cache from "src/core/Cache.js";
 import * as ContextMenus from "src/core/ContextMenus.js";
 import * as DOMData from "src/core/DOMData.js";
-import * as History from "src/core/History.ts";
+import * as History from "src/core/History";
 import * as HTTP from "src/core/HTTP";
 import * as ImageReplaceDat from "src/core/ImageReplaceDat.js";
 import * as util from "src/core/jsutil.js";
@@ -110,7 +110,7 @@ import ThreadSearch from "src/core/ThreadSearch.js";
 import ThreadService from "src/core/ThreadService.js";
 import * as URL from "src/core/URL";
 import * as Util from "src/core/Util";
-import * as WriteHistory from "src/core/WriteHistory.js";
+import * as WriteHistory from "src/core/WriteHistory";
 
 // Populate app object with core modules
 Object.assign(appObj, {
