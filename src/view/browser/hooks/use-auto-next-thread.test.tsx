@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { act, cleanup, render, screen } from "@testing-library/react";
-import type { IThread } from "src/service-container/interfaces";
 import { container } from "src/service-container/index";
+import type { IThread } from "src/service-container/interfaces";
 import { useAutoNextThread } from "src/view/browser/hooks/use-auto-next-thread";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 

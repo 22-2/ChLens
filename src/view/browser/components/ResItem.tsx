@@ -102,7 +102,9 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
             className={nameClassName}
             dangerouslySetInnerHTML={{ __html: decoded.nameHtml }}
           />
-          {isOwn ? <span className="res__badge res__badge--own">自分</span> : null}
+          {isOwn ? (
+            <span className="res__badge res__badge--own">自分</span>
+          ) : null}
           {isReplyToOwn ? (
             <span className="res__badge res__badge--reply-to-own">返信</span>
           ) : null}

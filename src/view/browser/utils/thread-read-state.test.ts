@@ -1,4 +1,3 @@
-import { afterEach, describe, expect, it } from "vitest";
 import {
   consumePendingThreadResJump,
   measureThreadReadState,
@@ -6,6 +5,7 @@ import {
   requestThreadResJump,
   scrollThreadToResponse,
 } from "src/view/browser/utils/thread-read-state";
+import { afterEach, describe, expect, it } from "vitest";
 
 function createRect({
   top,

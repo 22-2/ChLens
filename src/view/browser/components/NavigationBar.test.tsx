@@ -66,9 +66,10 @@ describe("NavigationBar", () => {
     dispatchMock.mockReset();
     bookmarkGetAllThreadsMock.mockReset();
     historyGetMock.mockReset();
-    const mutableWindow = window as Window & typeof globalThis & {
-      app?: unknown;
-    };
+    const mutableWindow = window as Window &
+      typeof globalThis & {
+        app?: unknown;
+      };
     delete mutableWindow.app;
     activeTab.history = [...defaultHistory];
     activeTab.currentIndex = 1;
@@ -89,9 +90,10 @@ describe("NavigationBar", () => {
       },
     ]);
 
-    const mutableWindow = window as Window & typeof globalThis & {
-      app?: unknown;
-    };
+    const mutableWindow = window as Window &
+      typeof globalThis & {
+        app?: unknown;
+      };
     mutableWindow.app = {
       bookmark: {
         getAllThreads: bookmarkGetAllThreadsMock,

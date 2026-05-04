@@ -27,18 +27,18 @@ import {
   getDisplayUrl,
 } from "src/view/browser/types";
 import {
-  buildOmnibarSuggestions,
-  mergeOmnibarSources,
-  type OmnibarBookmarkSource,
-  type OmnibarHistorySource,
-  type OmnibarSuggestion,
-  type OmnibarMergedEntry,
-} from "src/view/browser/utils/omnibar";
-import {
   QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE,
   type QuickAccessFilterPageType,
 } from "src/view/browser/utils/filter-toolbar-events";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
+import {
+  buildOmnibarSuggestions,
+  mergeOmnibarSources,
+  type OmnibarBookmarkSource,
+  type OmnibarHistorySource,
+  type OmnibarMergedEntry,
+  type OmnibarSuggestion,
+} from "src/view/browser/utils/omnibar";
 
 interface MenuPosition {
   x: number;
@@ -234,7 +234,10 @@ export const NavigationBar: React.FC = () => {
     setIsOmnibarLoading(true);
 
     let cancelled = false;
-    void Promise.all([readHistorySources(), Promise.resolve(readBookmarkSources())])
+    void Promise.all([
+      readHistorySources(),
+      Promise.resolve(readBookmarkSources()),
+    ])
       .then(([historyItems, bookmarkItems]) => {
         if (cancelled) {
           return;
@@ -784,14 +787,20 @@ export const NavigationBar: React.FC = () => {
                     onClick={() => openSuggestion(suggestion)}
                     title={`${suggestion.title} ${suggestion.url}`}
                   >
-                    <span className="nav-bar__omnibar-title">{suggestion.title}</span>
-                    <span className="nav-bar__omnibar-url">{suggestion.url}</span>
+                    <span className="nav-bar__omnibar-title">
+                      {suggestion.title}
+                    </span>
+                    <span className="nav-bar__omnibar-url">
+                      {suggestion.url}
+                    </span>
                   </button>
                 ))
               : null}
 
             {shouldShowNoMatch ? (
-              <div className="nav-bar__omnibar-empty">一致する候補がありません</div>
+              <div className="nav-bar__omnibar-empty">
+                一致する候補がありません
+              </div>
             ) : null}
           </div>
         ) : null}

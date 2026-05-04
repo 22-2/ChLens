@@ -92,7 +92,10 @@ function calcRecencyBoost(historyRank: number | null): number {
     return 0;
   }
 
-  return Math.max(0, MAX_HISTORY_RECENCY_BOOST - historyRank * HISTORY_RECENCY_STEP);
+  return Math.max(
+    0,
+    MAX_HISTORY_RECENCY_BOOST - historyRank * HISTORY_RECENCY_STEP,
+  );
 }
 
 export function mergeOmnibarSources(
@@ -230,5 +233,7 @@ export function buildOmnibarSuggestions(
       return a.url.localeCompare(b.url, "ja");
     });
 
-  return ranked.slice(0, limit).map(({ viewedDate: _viewedDate, ...rest }) => rest);
+  return ranked
+    .slice(0, limit)
+    .map(({ viewedDate: _viewedDate, ...rest }) => rest);
 }

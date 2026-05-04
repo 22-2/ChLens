@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import type { IThread } from "src/service-container/interfaces";
 import { container } from "src/service-container/index";
+import type { IThread } from "src/service-container/interfaces";
 import {
   findMainstreamThreadMatch,
   findNextThreadMatch,
@@ -220,7 +220,9 @@ export function useAutoNextThread({
 
           if (match) {
             followThreadRef.current(match.thread);
-            container.toast.info(`本流スレへ移動しました: ${match.thread.title}`);
+            container.toast.info(
+              `本流スレへ移動しました: ${match.thread.title}`,
+            );
             setWatchState(null);
             setStatus("idle");
             return;

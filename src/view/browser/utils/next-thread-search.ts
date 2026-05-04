@@ -225,7 +225,10 @@ function buildCandidateScores(
 ): CandidateScore[] {
   return threads
     .map((thread) => {
-      const similarity = calculateTitleSimilarity(currentThreadTitle, thread.title);
+      const similarity = calculateTitleSimilarity(
+        currentThreadTitle,
+        thread.title,
+      );
       const number = extractThreadSequenceNumber(thread.title);
 
       return {
@@ -239,7 +242,9 @@ function buildCandidateScores(
     .filter((candidate) => candidate.similarity >= NEXT_THREAD_MIN_SIMILARITY);
 }
 
-function sortBySimilarity(candidates: readonly CandidateScore[]): CandidateScore[] {
+function sortBySimilarity(
+  candidates: readonly CandidateScore[],
+): CandidateScore[] {
   return [...candidates].sort((left, right) => {
     if (right.similarity !== left.similarity) {
       return right.similarity - left.similarity;
@@ -346,7 +351,10 @@ export function findNextThreadMatch(
     }
   }
 
-  const candidateScores = buildCandidateScores(availableThreads, currentThread.title);
+  const candidateScores = buildCandidateScores(
+    availableThreads,
+    currentThread.title,
+  );
   const { expectedNumbers, hasCurrentNumber } = buildExpectedNumbers(
     currentThread.title,
   );
@@ -432,21 +440,28 @@ function filterMainstreamCandidates(
   }
 
   const current = extractThreadSequenceNumber(originalThreadTitle);
-  const expectedNumbers = current.hasNumber ? [current.value + 1, current.value] : [2];
+  const expectedNumbers = current.hasNumber
+    ? [current.value + 1, current.value]
+    : [2];
 
-  return buildCandidateScores(candidates, originalThreadTitle).filter((candidate) => {
-    if (expectedNumbers.includes(candidate.number)) {
-      return true;
-    }
-    if (candidate.isStar && (candidate.number === 1 || candidate.number === 2)) {
-      return true;
-    }
-    return (
-      !current.hasNumber &&
-      candidate.number === 2 &&
-      PART2_PATTERN.test(candidate.thread.title)
-    );
-  });
+  return buildCandidateScores(candidates, originalThreadTitle).filter(
+    (candidate) => {
+      if (expectedNumbers.includes(candidate.number)) {
+        return true;
+      }
+      if (
+        candidate.isStar &&
+        (candidate.number === 1 || candidate.number === 2)
+      ) {
+        return true;
+      }
+      return (
+        !current.hasNumber &&
+        candidate.number === 2 &&
+        PART2_PATTERN.test(candidate.thread.title)
+      );
+    },
+  );
 }
 
 export function findMainstreamThreadMatch(
@@ -461,7 +476,9 @@ export function findMainstreamThreadMatch(
     momentumRatio = 1.5,
     now = Date.now(),
   } = options;
-  const currentThread = threads.find((thread) => thread.url === currentThreadUrl);
+  const currentThread = threads.find(
+    (thread) => thread.url === currentThreadUrl,
+  );
 
   if (!currentThread) {
     return null;

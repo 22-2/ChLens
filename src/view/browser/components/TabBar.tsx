@@ -1,3 +1,5 @@
+import { DragDropProvider } from "@dnd-kit/react";
+import { isSortableOperation, useSortable } from "@dnd-kit/react/sortable";
 import { Pin, Plus, X } from "lucide-react";
 import React, {
   useCallback,
@@ -6,8 +8,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { DragDropProvider } from "@dnd-kit/react";
-import { isSortableOperation, useSortable } from "@dnd-kit/react/sortable";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { TabContextMenu } from "src/view/browser/components/TabContextMenu";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";

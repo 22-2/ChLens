@@ -363,7 +363,9 @@ describe("ThreadListPage", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole("columnheader", { name: /未読/ })).toBeInTheDocument();
+      expect(
+        screen.getByRole("columnheader", { name: /未読/ }),
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole("columnheader", { name: /未読/ }));

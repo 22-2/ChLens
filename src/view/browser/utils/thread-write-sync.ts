@@ -13,9 +13,7 @@ export interface PendingWritePayload {
   inputMail: string;
 }
 
-export function notifyThreadWriteCompleted(
-  payload: PendingWritePayload,
-): void {
+export function notifyThreadWriteCompleted(payload: PendingWritePayload): void {
   // 変更理由: app.message は内部で defer() を挟むため、投稿完了通知が RELOAD より後に届くと
   // baseline のレス数が新着反映後の値になり、自分レス照合が永久に走らないレースになる。
   // 同一ウィンドウ内の書き込みパネル→ThreadPage 連携だけは同期イベントで順序を固定する。

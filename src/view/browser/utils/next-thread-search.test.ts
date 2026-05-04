@@ -1,9 +1,9 @@
-import { describe, expect, it } from "vitest";
 import type { IThread } from "src/service-container/interfaces";
 import {
   findMainstreamThreadMatch,
   findNextThreadMatch,
 } from "src/view/browser/utils/next-thread-search";
+import { describe, expect, it } from "vitest";
 
 function createThread(
   overrides: Partial<IThread> &

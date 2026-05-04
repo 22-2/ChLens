@@ -4,7 +4,10 @@ import {
   ColumnDef,
   SimpleDataTable,
 } from "src/view/browser/components/SimpleDataTable";
-import { useTabStore, type TabAction } from "src/view/browser/hooks/use-tab-store";
+import {
+  useTabStore,
+  type TabAction,
+} from "src/view/browser/hooks/use-tab-store";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
 import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
 

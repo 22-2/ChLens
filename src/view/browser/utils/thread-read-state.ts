@@ -38,7 +38,9 @@ function parseResNum(element: HTMLElement | null): number | null {
 
 function getResponseElements(host: HTMLElement): HTMLElement[] {
   return Array.from(
-    host.querySelectorAll<HTMLElement>(".thread-page__responses [data-res-num]"),
+    host.querySelectorAll<HTMLElement>(
+      ".thread-page__responses [data-res-num]",
+    ),
   );
 }
 

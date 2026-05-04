@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { wait } from "src/app/Defer";
 import { platform } from "src/app";
+import { wait } from "src/app/Defer";
 import { URL as ChURL } from "src/core/URL";
 import { container } from "src/service-container/index";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";

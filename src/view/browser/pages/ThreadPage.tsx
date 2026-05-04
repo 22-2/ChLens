@@ -6,9 +6,16 @@ import React, {
   useState,
 } from "react";
 import { getResNumber } from "src/core/URL";
-import { add as addWriteHistoryRecord, getByUrl as getWriteHistoryByUrl } from "src/core/WriteHistory";
+import {
+  add as addWriteHistoryRecord,
+  getByUrl as getWriteHistoryByUrl,
+} from "src/core/WriteHistory";
 import { container } from "src/service-container/index";
-import type { IReadState, IRes, IThread } from "src/service-container/interfaces";
+import type {
+  IReadState,
+  IRes,
+  IThread,
+} from "src/service-container/interfaces";
 import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import { MediaViewerContainer } from "src/view/browser/components/MediaViewerContainer";
 import { PopupRenderer } from "src/view/browser/components/PopupRenderer";
@@ -53,8 +60,8 @@ import {
 import {
   findLatestWrittenRes,
   resolveWrittenResTimestamp,
-  type PendingWritePayload,
   subscribeThreadWriteCompleted,
+  type PendingWritePayload,
 } from "src/view/browser/utils/thread-write-sync";
 import type { Props } from "src/view/browser/utils/types";
 import { copyText, stripHtml } from "src/view/browser/utils/utils";
@@ -78,7 +85,9 @@ const IMAGE_BLUR_CONFIG_KEYS = new Set([
 
 function readImageBlurConfig(): ImageBlurConfigState {
   const enabled = container.config.get("image_blur") === "on";
-  const radius = resolveImageBlurRadius(container.config.get("image_blur_length"));
+  const radius = resolveImageBlurRadius(
+    container.config.get("image_blur_length"),
+  );
   const rawPattern = container.config.get("image_blur_word");
   const harmfulWordPattern =
     typeof rawPattern === "string" ? compileImageBlurPattern(rawPattern) : null;
@@ -252,7 +261,10 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   useEffect(() => {
     // ステータスバーの件数はページ外コンポーネントから参照するため、
     // スレッド側で集計して共有ストアへ反映する。
-    setThreadStats({ ngCount: threadNgCount, highlightCount: ownHighlightCount });
+    setThreadStats({
+      ngCount: threadNgCount,
+      highlightCount: ownHighlightCount,
+    });
     return () => {
       setThreadStats({ ngCount: 0, highlightCount: 0 });
     };
@@ -402,7 +414,10 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       return;
     }
 
-    const measuredReadState = measureThreadReadState(rootRef.current, responses.length);
+    const measuredReadState = measureThreadReadState(
+      rootRef.current,
+      responses.length,
+    );
     if (!measuredReadState) {
       return;
     }
@@ -459,7 +474,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     latestReadStateRef.current = null;
 
     const loadInitialThreadReadState = async () => {
-      let nextReadState = container.bookmark.get(page.threadUrl)?.readState ?? null;
+      let nextReadState =
+        container.bookmark.get(page.threadUrl)?.readState ?? null;
 
       try {
         const storedReadState = await container.readState.get(page.threadUrl);
@@ -595,7 +611,12 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   ]);
 
   useEffect(() => {
-    if (!isActive || !isInitialReadStateResolved || loading || responses.length === 0) {
+    if (
+      !isActive ||
+      !isInitialReadStateResolved ||
+      loading ||
+      responses.length === 0
+    ) {
       return;
     }
 
@@ -649,7 +670,10 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     ) => {
       if (internalPage) {
         if (internalPage.type === "thread") {
-          const jumpResNum = Number.parseInt(getResNumber(absoluteUrl) ?? "", 10);
+          const jumpResNum = Number.parseInt(
+            getResNumber(absoluteUrl) ?? "",
+            10,
+          );
           if (Number.isFinite(jumpResNum) && jumpResNum > 0) {
             requestThreadResJump(internalPage.threadUrl, jumpResNum);
           }

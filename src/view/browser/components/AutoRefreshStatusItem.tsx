@@ -4,12 +4,12 @@ import { container } from "src/service-container/index";
 import { MiniWindow } from "src/view/browser/components/MiniWindow";
 import { StatusBarItem } from "src/view/browser/components/StatusBar";
 import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
+import { useAutoNextThreadSetting } from "src/view/browser/hooks/use-auto-next-thread-setting";
 import {
   MAX_INTERVAL_SEC,
   MIN_INTERVAL_SEC,
   useAutoRefreshPanel,
 } from "src/view/browser/hooks/use-auto-refresh-panel";
-import { useAutoNextThreadSetting } from "src/view/browser/hooks/use-auto-next-thread-setting";
 import { useAutoScrollState } from "src/view/browser/hooks/use-auto-scroll-state";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 

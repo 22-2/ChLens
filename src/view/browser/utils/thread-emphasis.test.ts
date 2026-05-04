@@ -27,11 +27,7 @@ describe("thread-emphasis", () => {
   it("書込履歴から自分のレス番号集合を組み立てる", () => {
     expect(
       Array.from(
-        buildWrittenResSet([
-          { res: 3 },
-          { writtenRes: "9" },
-          { res: 0 },
-        ]),
+        buildWrittenResSet([{ res: 3 }, { writtenRes: "9" }, { res: 0 }]),
       ).sort((a, b) => a - b),
     ).toEqual([3, 9]);
   });

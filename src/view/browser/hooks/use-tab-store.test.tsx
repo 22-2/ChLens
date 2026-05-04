@@ -200,8 +200,12 @@ describe("TabProvider auto refresh state", () => {
           <output data-testid="stored-thread-url">
             {activeTab.autoRefreshThreadUrl ?? ""}
           </output>
-          <output data-testid="history-length">{activeTab.history.length}</output>
-          <output data-testid="current-thread-title">{currentPage.title}</output>
+          <output data-testid="history-length">
+            {activeTab.history.length}
+          </output>
+          <output data-testid="current-thread-title">
+            {currentPage.title}
+          </output>
           <output data-testid="current-thread-enabled">
             {isCurrentThreadAutoRefreshEnabled ? "enabled" : "disabled"}
           </output>

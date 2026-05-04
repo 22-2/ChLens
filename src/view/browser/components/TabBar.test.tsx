@@ -70,8 +70,7 @@ vi.mock("@dnd-kit/react/sortable", () => ({
     isDropping: false,
   }),
   // テスト用モックでは operation が object であれば sortable 操作として扱う。
-  isSortableOperation: (op: unknown) =>
-    op !== null && typeof op === "object",
+  isSortableOperation: (op: unknown) => op !== null && typeof op === "object",
 }));
 
 describe("TabBar wheel switching", () => {
@@ -219,4 +218,3 @@ describe("TabBar tab interactions", () => {
     });
   });
 });
-
