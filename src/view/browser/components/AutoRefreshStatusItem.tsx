@@ -80,26 +80,6 @@ const ThreadAutoRefreshPanelContent: React.FC<
   onIntervalChange,
 }) => (
   <>
-    {/* 自動更新トグル */}
-    <div className="mini-window__section">
-      <div className="mini-window__toggle-row">
-        <span className="mini-window__toggle-label">自動更新</span>
-        <button
-          className={`mini-window__toggle-btn${
-            isEnabled ? " mini-window__toggle-btn--on" : ""
-          }`}
-          onClick={onToggle}
-          disabled={!isOnThread}
-          title={!isOnThread ? "スレッドを開いているときに有効です" : undefined}
-        >
-          {isEnabled ? "ON" : "OFF"}
-        </button>
-      </div>
-      {!isOnThread && (
-        <p className="mini-window__note">スレッドを開いているときに有効です</p>
-      )}
-    </div>
-
     <div className="mini-window__separator" />
 
     {/* 更新間隔スライダー */}
@@ -157,6 +137,30 @@ const ThreadAutoRefreshPanelContent: React.FC<
       <p className="mini-window__note">
         移動直後は、より勢いのある本流候補も短時間だけ監視します
       </p>
+
+      {/* 自動更新トグル */}
+      <div className="mini-window__section">
+        <div className="mini-window__toggle-row">
+          <span className="mini-window__toggle-label">自動更新</span>
+          <button
+            className={`mini-window__toggle-btn${
+              isEnabled ? " mini-window__toggle-btn--on" : ""
+            }`}
+            onClick={onToggle}
+            disabled={!isOnThread}
+            title={
+              !isOnThread ? "スレッドを開いているときに有効です" : undefined
+            }
+          >
+            {isEnabled ? "ON" : "OFF"}
+          </button>
+        </div>
+        {!isOnThread && (
+          <p className="mini-window__note">
+            スレッドを開いているときに有効です
+          </p>
+        )}
+      </div>
     </div>
   </>
 );
