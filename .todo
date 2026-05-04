@@ -375,6 +375,7 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 - [x] chore: 板一覧の板はミドルクリック（バックグラウンドで開く）できるように
 - [ ] あと保存されたbbsmenuの項目もomnibarのサジェストに含めるようにしてくださいっす
 - [ ] bbsmenu読み込みテスト
+- [ ] 画像添付＆自動アップロード
 
 ### low prior
 - [ ] siki過去ログ流し込み
