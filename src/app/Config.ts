@@ -23,6 +23,7 @@ export default class Config {
     ["auto_load_second_bookmark", "0"],
     ["auto_load_all", "off"],
     ["auto_load_move", "off"],
+    ["auto_next_thread", "off"],
     ["auto_bookmark_notify", "on"],
     ["show_next_unread", "off"],
     ["manual_image_load", "off"],

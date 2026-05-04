@@ -41,6 +41,11 @@ export type TabAction =
   | { type: "UPDATE_TITLE_FOR_TAB"; tabId: string; title: string }
   | { type: "RELOAD" }
   | {
+      type: "FOLLOW_NEXT_THREAD";
+      page: Extract<Page, { type: "thread" }>;
+      keepAutoRefresh?: boolean;
+    }
+  | {
       type: "SET_AUTO_REFRESH_ENABLED";
       enabled: boolean;
       threadUrl?: string;
@@ -513,6 +518,22 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
         ...tab,
         reloadKey: tab.reloadKey + 1,
       }));
+
+    case "FOLLOW_NEXT_THREAD":
+      return updateActiveTab(state, (tab) => {
+        const nextTab = pushPageToTabHistory(tab, action.page);
+        // 自動次スレ移動は「このタブの流れ」を保つのが目的なので、
+        // 既存タブ集約を経由せず現在タブの履歴と自動更新束縛を同時に更新する。
+        return {
+          ...nextTab,
+          autoRefreshEnabled: action.keepAutoRefresh
+            ? true
+            : nextTab.autoRefreshEnabled,
+          autoRefreshThreadUrl: action.keepAutoRefresh
+            ? action.page.threadUrl
+            : nextTab.autoRefreshThreadUrl,
+        };
+      });
 
     case "SET_AUTO_REFRESH_ENABLED":
       return updateActiveTab(state, (tab) => ({

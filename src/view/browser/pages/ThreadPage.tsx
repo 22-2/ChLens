@@ -7,13 +7,15 @@ import React, {
 } from "react";
 import { add as addWriteHistoryRecord, getByUrl as getWriteHistoryByUrl } from "src/core/WriteHistory";
 import { container } from "src/service-container/index";
-import type { IRes } from "src/service-container/interfaces";
+import type { IRes, IThread } from "src/service-container/interfaces";
 import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import { MediaViewerContainer } from "src/view/browser/components/MediaViewerContainer";
 import { PopupRenderer } from "src/view/browser/components/PopupRenderer";
 import { ResItem } from "src/view/browser/components/ResItem";
 import { StatusBarMode } from "src/view/browser/components/StatusBar";
 import { ThreadMinimap } from "src/view/browser/components/ThreadMinimap";
+import { useAutoNextThread } from "src/view/browser/hooks/use-auto-next-thread";
+import { useAutoNextThreadSetting } from "src/view/browser/hooks/use-auto-next-thread-setting";
 import { useMediaViewerStore } from "src/view/browser/hooks/use-media-viewer-store";
 import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
 import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
@@ -111,6 +113,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const openMediaFromUrl = useMediaViewerStore(
     (state) => state.openMediaFromUrl,
   );
+  const { enabled: isAutoNextThreadEnabled } = useAutoNextThreadSetting();
   const [ownResNums, setOwnResNums] = useState<Set<number>>(new Set());
   const [pendingWrite, setPendingWrite] =
     useState<PendingWriteMatchState | null>(null);
@@ -164,6 +167,30 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       rootRef,
       requestRefresh: () => dispatch({ type: "RELOAD" }),
     });
+  const handleFollowNextThread = useCallback(
+    (nextThread: Pick<IThread, "title" | "url">) => {
+      dispatch({
+        type: "FOLLOW_NEXT_THREAD",
+        page: {
+          type: "thread",
+          title: nextThread.title,
+          threadUrl: nextThread.url,
+        },
+        keepAutoRefresh: isAutoRefreshEnabled,
+      });
+    },
+    [dispatch, isAutoRefreshEnabled],
+  );
+
+  useAutoNextThread({
+    autoRefreshEnabled: isAutoRefreshEnabled,
+    featureEnabled: isAutoNextThreadEnabled,
+    threadUrl: page.threadUrl,
+    threadTitle: page.title,
+    responseCount: responses.length,
+    expired,
+    followThread: handleFollowNextThread,
+  });
   const threadNgCount = useMemo(
     () =>
       responses.filter((res) => res.ng != null || res.class?.includes("ng"))

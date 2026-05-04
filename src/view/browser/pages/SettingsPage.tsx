@@ -357,7 +357,7 @@ const SETTINGS_SECTIONS = [
   defineSection(
     "reload",
     "更新関連",
-    "自動更新と更新後のスクロール挙動を調整します。",
+    "自動更新と次スレ追従、更新後のスクロール挙動を調整します。",
     <RefreshCw size={20} />,
     [
       {
@@ -365,6 +365,14 @@ const SETTINGS_SECTIONS = [
         key: "dblclick_reload",
         title: "空白をダブルクリックで更新する",
         header: "操作",
+      },
+      {
+        kind: "boolean",
+        key: "auto_next_thread",
+        title: "1000到達やdat落ち後に次スレへ自動移動する",
+        header: "自動次スレ移動",
+        description:
+          "3秒ごとに最大180秒探索し、移動後は勢い差を見て本流候補を短時間だけ監視します。",
       },
     ],
   ),

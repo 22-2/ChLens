@@ -143,6 +143,94 @@ describe("TabProvider auto refresh state", () => {
     );
   });
 
+  it("FOLLOW_NEXT_THREAD は現在タブの履歴と自動更新束縛を次スレへ引き継ぐ", async () => {
+    vi.resetModules();
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
+
+    function Harness() {
+      const { activeTab, currentPage, dispatch } = useTabStore();
+      const isCurrentThreadAutoRefreshEnabled =
+        currentPage.type === "thread" &&
+        activeTab.autoRefreshEnabled &&
+        activeTab.autoRefreshThreadUrl === currentPage.threadUrl;
+
+      return (
+        <>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "NAVIGATE",
+                page: {
+                  type: "thread",
+                  title: "thread-1",
+                  threadUrl: "https://example.com/test/read.cgi/foo/1/",
+                },
+              })
+            }
+          >
+            thread-1 へ移動
+          </button>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "SET_AUTO_REFRESH_ENABLED",
+                enabled: true,
+                threadUrl: "https://example.com/test/read.cgi/foo/1/",
+              })
+            }
+          >
+            thread-1 で自動更新ON
+          </button>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "FOLLOW_NEXT_THREAD",
+                page: {
+                  type: "thread",
+                  title: "thread-2",
+                  threadUrl: "https://example.com/test/read.cgi/foo/2/",
+                },
+                keepAutoRefresh: true,
+              })
+            }
+          >
+            次スレへ追従
+          </button>
+          <output data-testid="stored-thread-url">
+            {activeTab.autoRefreshThreadUrl ?? ""}
+          </output>
+          <output data-testid="history-length">{activeTab.history.length}</output>
+          <output data-testid="current-thread-title">{currentPage.title}</output>
+          <output data-testid="current-thread-enabled">
+            {isCurrentThreadAutoRefreshEnabled ? "enabled" : "disabled"}
+          </output>
+        </>
+      );
+    }
+
+    render(
+      <TabProvider>
+        <Harness />
+      </TabProvider>,
+    );
+
+    fireEvent.click(screen.getByText("thread-1 へ移動"));
+    fireEvent.click(screen.getByText("thread-1 で自動更新ON"));
+    fireEvent.click(screen.getByText("次スレへ追従"));
+
+    expect(screen.getByTestId("stored-thread-url")).toHaveTextContent(
+      "https://example.com/test/read.cgi/foo/2/",
+    );
+    expect(screen.getByTestId("history-length")).toHaveTextContent("3");
+    expect(screen.getByTestId("current-thread-title")).toHaveTextContent(
+      "thread-2",
+    );
+    expect(screen.getByTestId("current-thread-enabled")).toHaveTextContent(
+      "enabled",
+    );
+  });
+
   it("OPEN_IN_NEW_TAB では現在タブのページタイトルを変更しない", async () => {
     vi.resetModules();
     const { TabProvider, useTabStore } =

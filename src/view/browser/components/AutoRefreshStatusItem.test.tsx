@@ -21,6 +21,10 @@ const mocks = vi.hoisted(() => ({
     toggle: vi.fn(),
     setIntervalSec: vi.fn(),
   },
+  autoNextThreadSetting: {
+    enabled: false,
+    setEnabled: vi.fn(),
+  },
   canAutoScroll: false,
   isPaused: false,
 }));
@@ -33,6 +37,10 @@ vi.mock("src/view/browser/hooks/use-auto-refresh-panel", () => ({
   MIN_INTERVAL_SEC: 5,
   MAX_INTERVAL_SEC: 120,
   useAutoRefreshPanel: () => mocks.autoRefreshPanel,
+}));
+
+vi.mock("src/view/browser/hooks/use-auto-next-thread-setting", () => ({
+  useAutoNextThreadSetting: () => mocks.autoNextThreadSetting,
 }));
 
 vi.mock("src/view/browser/hooks/use-auto-scroll-state", () => ({
@@ -80,6 +88,10 @@ describe("AutoRefreshStatusItem", () => {
       toggle: vi.fn(),
       setIntervalSec: vi.fn(),
     };
+    mocks.autoNextThreadSetting = {
+      enabled: false,
+      setEnabled: vi.fn(),
+    };
     mocks.canAutoScroll = false;
     mocks.isPaused = false;
 
@@ -116,6 +128,7 @@ describe("AutoRefreshStatusItem", () => {
     fireEvent.click(button);
 
     expect(screen.getByText("スレッド自動更新")).toBeInTheDocument();
+    expect(screen.getByText("自動次スレ移動")).toBeInTheDocument();
     expect(
       screen.getByRole("combobox", { name: "自動スクロールスタイル" }),
     ).toBeInTheDocument();
@@ -180,5 +193,27 @@ describe("AutoRefreshStatusItem", () => {
         name: /一時停止中（ポップアップ表示中, 30秒間隔）/,
       }),
     ).toBeInTheDocument();
+  });
+
+  it("ミニウィンドウから自動次スレ移動を切り替えられる", () => {
+    renderItem();
+
+    const button = screen.getByRole("button", { name: /自動更新/ });
+    Object.defineProperty(button, "getBoundingClientRect", {
+      configurable: true,
+      value: () => createRect(),
+    });
+
+    fireEvent.click(button);
+
+    const nextThreadToggle = screen
+      .getByText("自動次スレ移動")
+      .closest(".mini-window__toggle-row")
+      ?.querySelector("button");
+
+    expect(nextThreadToggle).not.toBeNull();
+    fireEvent.click(nextThreadToggle as HTMLButtonElement);
+
+    expect(mocks.autoNextThreadSetting.setEnabled).toHaveBeenCalledWith(true);
   });
 });

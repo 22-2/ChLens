@@ -9,6 +9,7 @@ import {
   MIN_INTERVAL_SEC,
   useAutoRefreshPanel,
 } from "src/view/browser/hooks/use-auto-refresh-panel";
+import { useAutoNextThreadSetting } from "src/view/browser/hooks/use-auto-next-thread-setting";
 import { useAutoScrollState } from "src/view/browser/hooks/use-auto-scroll-state";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 
@@ -60,14 +61,24 @@ function useBoardIntervalSec(): {
 interface ThreadAutoRefreshPanelContentProps {
   isEnabled: boolean;
   isOnThread: boolean;
+  isAutoNextThreadEnabled: boolean;
   intervalSec: number;
+  onAutoNextThreadToggle: () => void;
   onToggle: () => void;
   onIntervalChange: (sec: number) => void;
 }
 
 const ThreadAutoRefreshPanelContent: React.FC<
   ThreadAutoRefreshPanelContentProps
-> = ({ isEnabled, isOnThread, intervalSec, onToggle, onIntervalChange }) => (
+> = ({
+  isEnabled,
+  isOnThread,
+  isAutoNextThreadEnabled,
+  intervalSec,
+  onAutoNextThreadToggle,
+  onToggle,
+  onIntervalChange,
+}) => (
   <>
     {/* 自動更新トグル */}
     <div className="mini-window__section">
@@ -123,6 +134,30 @@ const ThreadAutoRefreshPanelContent: React.FC<
         </select>
       </div>
     </div>
+
+    <div className="mini-window__separator" />
+
+    <div className="mini-window__section">
+      <div className="mini-window__toggle-row">
+        <span className="mini-window__toggle-label">自動次スレ移動</span>
+        <button
+          className={`mini-window__toggle-btn${
+            isAutoNextThreadEnabled ? " mini-window__toggle-btn--on" : ""
+          }`}
+          onClick={onAutoNextThreadToggle}
+          disabled={!isOnThread}
+          title={!isOnThread ? "スレッドを開いているときに有効です" : undefined}
+        >
+          {isAutoNextThreadEnabled ? "ON" : "OFF"}
+        </button>
+      </div>
+      <p className="mini-window__note">
+        1000到達やdat落ち後に3秒ごとに次スレを探し、見つかれば同じタブで移動します
+      </p>
+      <p className="mini-window__note">
+        移動直後は、より勢いのある本流候補も短時間だけ監視します
+      </p>
+    </div>
   </>
 );
 
@@ -163,6 +198,10 @@ export const AutoRefreshStatusItem: React.FC = () => {
   const { currentPage } = useTabStore();
   const { isOnThread, isEnabled, intervalSec, toggle, setIntervalSec } =
     useAutoRefreshPanel();
+  const {
+    enabled: isAutoNextThreadEnabled,
+    setEnabled: setAutoNextThreadEnabled,
+  } = useAutoNextThreadSetting();
   const { intervalSec: boardIntervalSec, setIntervalSec: setBoardIntervalSec } =
     useBoardIntervalSec();
   const { canAutoScroll, isAutoScrolling, isPaused } = useAutoScrollState();
@@ -279,7 +318,11 @@ export const AutoRefreshStatusItem: React.FC = () => {
             <ThreadAutoRefreshPanelContent
               isEnabled={isEnabled}
               isOnThread={isOnThread}
+              isAutoNextThreadEnabled={isAutoNextThreadEnabled}
               intervalSec={intervalSec}
+              onAutoNextThreadToggle={() =>
+                setAutoNextThreadEnabled(!isAutoNextThreadEnabled)
+              }
               onToggle={toggle}
               onIntervalChange={setIntervalSec}
             />
