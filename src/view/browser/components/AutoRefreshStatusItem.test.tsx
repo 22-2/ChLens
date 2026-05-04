@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { container } from "src/service-container/index";
+import type { Page } from "src/view/browser/types";
 import { AutoRefreshStatusItem } from "src/view/browser/components/AutoRefreshStatusItem";
 import {
   StatusBar,
@@ -13,7 +14,7 @@ const mocks = vi.hoisted(() => ({
     type: "thread",
     title: "スレッド",
     threadUrl: "https://example.com/test/read.cgi/software/1/",
-  },
+  } as Page,
   autoRefreshPanel: {
     isOnThread: true,
     isEnabled: false,
@@ -108,6 +109,7 @@ describe("AutoRefreshStatusItem", () => {
     container.message = {
       on: vi.fn(),
       off: vi.fn(),
+      send: vi.fn(),
     };
   });
 
