@@ -1,5 +1,9 @@
 import { indexedDBRequestToPromise } from "src/core/jsutil.js";
 import { isHttps } from "src/core/URL.ts";
+import {
+  getTauriRepositories,
+  isTauriRuntime,
+} from "src/core/TauriDrizzleBridge";
 
 /**
 @class History
@@ -60,6 +64,13 @@ export var add = async function (url, title, date, boardTitle) {
   }
 
   try {
+    // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
+    if (isTauriRuntime()) {
+      const { tauriHistoryRepository } = await getTauriRepositories();
+      await tauriHistoryRepository.add(url, title, date, boardTitle);
+      return;
+    }
+
     const db = await openDB();
     const req = db
       .transaction("History", "readwrite")
@@ -89,6 +100,13 @@ export var remove = async function (url, date = null) {
   }
 
   try {
+    // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
+    if (isTauriRuntime()) {
+      const { tauriHistoryRepository } = await getTauriRepositories();
+      await tauriHistoryRepository.remove(url, date);
+      return;
+    }
+
     let req;
     const db = await openDB();
     const store = db.transaction("History", "readwrite").objectStore("History");
@@ -145,6 +163,18 @@ export var get = function (offset, limit) {
     ])
   ) {
     return Promise.reject();
+  }
+
+  if (isTauriRuntime()) {
+    // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
+    return (async () => {
+      const { tauriHistoryRepository } = await getTauriRepositories();
+      const histories = await tauriHistoryRepository.get(offset, limit);
+      return histories.map((value) => ({
+        ...value,
+        isHttps: isHttps(value.url),
+      }));
+    })();
   }
 
   return openDB().then(
@@ -204,6 +234,18 @@ export var getUnique = function (offset, limit) {
     return Promise.reject();
   }
 
+  if (isTauriRuntime()) {
+    // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
+    return (async () => {
+      const { tauriHistoryRepository } = await getTauriRepositories();
+      const histories = await tauriHistoryRepository.getUnique(offset, limit);
+      return histories.map((value) => ({
+        ...value,
+        isHttps: isHttps(value.url),
+      }));
+    })();
+  }
+
   return openDB().then(
     (db) =>
       new Promise(function (resolve, reject) {
@@ -250,6 +292,12 @@ export var getUnique = function (offset, limit) {
 export var getAll = async function () {
   let res;
   try {
+    if (isTauriRuntime()) {
+      // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
+      const { tauriHistoryRepository } = await getTauriRepositories();
+      return await tauriHistoryRepository.getAll();
+    }
+
     const db = await openDB();
     const req = db.transaction("History").objectStore("History").getAll();
     res = await indexedDBRequestToPromise(req);
@@ -267,6 +315,12 @@ export var getAll = async function () {
 export var count = async function () {
   let res;
   try {
+    if (isTauriRuntime()) {
+      // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
+      const { tauriHistoryRepository } = await getTauriRepositories();
+      return await tauriHistoryRepository.count();
+    }
+
     const db = await openDB();
     const req = db.transaction("History").objectStore("History").count();
     res = await indexedDBRequestToPromise(req);
@@ -288,6 +342,14 @@ export var clear = function (offset) {
   }
   if (app.assertArg("History.clear", [[offset, "number"]])) {
     return Promise.reject();
+  }
+
+  if (isTauriRuntime()) {
+    // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
+    return (async () => {
+      const { tauriHistoryRepository } = await getTauriRepositories();
+      await tauriHistoryRepository.clear(offset);
+    })();
   }
 
   return openDB().then(
@@ -333,6 +395,13 @@ export var clearRange = async function (day) {
 
   const dayUnix = Date.now() - day * 24 * 60 * 60 * 1000;
   try {
+    if (isTauriRuntime()) {
+      // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
+      const { tauriHistoryRepository } = await getTauriRepositories();
+      await tauriHistoryRepository.clearRange(dayUnix);
+      return;
+    }
+
     const db = await openDB();
     const store = db.transaction("History", "readwrite").objectStore("History");
     let req = store

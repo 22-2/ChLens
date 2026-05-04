@@ -1,5 +1,9 @@
 import { indexedDBRequestToPromise } from "src/core/jsutil.js";
 import { isHttps } from "src/core/URL.ts";
+import {
+  getTauriRepositories,
+  isTauriRuntime,
+} from "src/core/TauriDrizzleBridge";
 
 /**
 @class WriteHistory
@@ -82,6 +86,23 @@ export var add = async function ({
   }
 
   try {
+    // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
+    if (isTauriRuntime()) {
+      const { tauriWriteHistoryRepository } = await getTauriRepositories();
+      await tauriWriteHistoryRepository.add({
+        url,
+        res,
+        title,
+        name,
+        mail,
+        inputName: inputName != null ? inputName : name,
+        inputMail: inputMail != null ? inputMail : mail,
+        message,
+        date,
+      });
+      return;
+    }
+
     const db = await _openDB();
     const req = db
       .transaction("WriteHistory", "readwrite")
@@ -121,6 +142,13 @@ export var remove = async function (url, res) {
   }
 
   try {
+    // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
+    if (isTauriRuntime()) {
+      const { tauriWriteHistoryRepository } = await getTauriRepositories();
+      await tauriWriteHistoryRepository.remove(url, res);
+      return;
+    }
+
     const db = await _openDB();
     const store = db
       .transaction("WriteHistory", "readwrite")
@@ -164,6 +192,18 @@ export var get = function (offset, limit) {
     ])
   ) {
     return Promise.reject();
+  }
+
+  if (isTauriRuntime()) {
+    // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
+    return (async () => {
+      const { tauriWriteHistoryRepository } = await getTauriRepositories();
+      const histories = await tauriWriteHistoryRepository.get(offset, limit);
+      return histories.map((value) => ({
+        ...value,
+        isHttps: isHttps(value.url),
+      }));
+    })();
   }
 
   return _openDB().then(
@@ -213,6 +253,12 @@ export var getByUrl = async function (url) {
   }
 
   try {
+    if (isTauriRuntime()) {
+      // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
+      const { tauriWriteHistoryRepository } = await getTauriRepositories();
+      return await tauriWriteHistoryRepository.getByUrl(url);
+    }
+
     const db = await _openDB();
     const req = db
       .transaction("WriteHistory")
@@ -234,6 +280,12 @@ export var getByUrl = async function (url) {
 export var getAll = async function () {
   let res;
   try {
+    if (isTauriRuntime()) {
+      // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
+      const { tauriWriteHistoryRepository } = await getTauriRepositories();
+      return await tauriWriteHistoryRepository.getAll();
+    }
+
     const db = await _openDB();
     const req = db
       .transaction("WriteHistory")
@@ -254,6 +306,12 @@ export var getAll = async function () {
 export var count = async function () {
   let res;
   try {
+    if (isTauriRuntime()) {
+      // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
+      const { tauriWriteHistoryRepository } = await getTauriRepositories();
+      return await tauriWriteHistoryRepository.count();
+    }
+
     const db = await _openDB();
     const req = db
       .transaction("WriteHistory")
@@ -278,6 +336,14 @@ export var clear = function (offset) {
   }
   if (app.assertArg("WriteHistory.clear", [[offset, "number"]])) {
     return Promise.reject();
+  }
+
+  if (isTauriRuntime()) {
+    // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
+    return (async () => {
+      const { tauriWriteHistoryRepository } = await getTauriRepositories();
+      await tauriWriteHistoryRepository.clear(offset);
+    })();
   }
 
   return _openDB().then(
@@ -323,6 +389,13 @@ export var clearRange = async function (day) {
 
   const dayUnix = Date.now() - day * 24 * 60 * 60 * 1000;
   try {
+    if (isTauriRuntime()) {
+      // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
+      const { tauriWriteHistoryRepository } = await getTauriRepositories();
+      await tauriWriteHistoryRepository.clearRange(dayUnix);
+      return;
+    }
+
     const db = await _openDB();
     const store = db
       .transaction("WriteHistory", "readwrite")

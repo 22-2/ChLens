@@ -1,17 +1,9 @@
 import { platform } from "src/app";
 import type { ObjectStore } from "src/app/platform/types";
-
-interface CacheData {
-  url: string;
-  data: string | null;
-  parsed: unknown | null;
-  last_updated: number;
-  last_modified: number | null;
-  etag: string | null;
-  res_length: number | null;
-  dat_size: number | null;
-  readcgi_ver: number | null;
-}
+import {
+  getTauriRepositories,
+  isTauriRuntime,
+} from "src/core/TauriDrizzleBridge";
 
 /**
  * キャッシュデータを管理するクラス
@@ -28,47 +20,6 @@ export default class Cache {
   datSize: number | null = null;
   readcgiVer: number | null = null;
 
-  // 静的なIndexedDB接続
-  private static _dbOpen: Promise<IDBDatabase> | undefined;
-
-  /**
-   * IndexedDBの初期化を実行します
-   */
-  private static async _initDB(): Promise<IDBDatabase> {
-    if (this._dbOpen) {
-      return this._dbOpen;
-    }
-
-    this._dbOpen = new Promise((resolve, reject) => {
-      const req = indexedDB.open("Cache", 1);
-      req.onerror = () => reject(req.error);
-      req.onupgradeneeded = (event: IDBVersionChangeEvent) => {
-        const db = (event.target as IDBOpenDBRequest).result;
-        const tx = (event.target as IDBOpenDBRequest).transaction;
-        if (!tx) {
-          reject(new Error("Transaction not available"));
-          return;
-        }
-
-        // オブジェクトストアを作成
-        const objStore = db.createObjectStore("Cache", { keyPath: "url" });
-        objStore.createIndex("last_updated", "last_updated", {
-          unique: false,
-        });
-        objStore.createIndex("last_modified", "last_modified", {
-          unique: false,
-        });
-
-        tx.oncomplete = () => resolve(db);
-      };
-      req.onsuccess = () => {
-        resolve(req.result);
-      };
-    });
-
-    return this._dbOpen;
-  }
-
   constructor(key: string) {
     this.key = key;
   }
@@ -84,6 +35,12 @@ export default class Cache {
    * キャッシュの件数を取得します
    */
   static async count(): Promise<number> {
+    // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
+    if (isTauriRuntime()) {
+      const { tauriCacheRepository } = await getTauriRepositories();
+      return tauriCacheRepository.count();
+    }
+
     return this._getStore().count();
   }
 
@@ -91,6 +48,13 @@ export default class Cache {
    * 全キャッシュを削除します
    */
   static async delete(): Promise<void> {
+    // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
+    if (isTauriRuntime()) {
+      const { tauriCacheRepository } = await getTauriRepositories();
+      await tauriCacheRepository.clear();
+      return;
+    }
+
     await this._getStore().clear();
   }
 
@@ -99,6 +63,14 @@ export default class Cache {
    */
   static async clearRange(day: number): Promise<void> {
     const dayUnix = Date.now() - day * 24 * 60 * 60 * 1000;
+
+    // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
+    if (isTauriRuntime()) {
+      const { tauriCacheRepository } = await getTauriRepositories();
+      await tauriCacheRepository.clearOlderThan(dayUnix);
+      return;
+    }
+
     const store = this._getStore();
     const keys = await store
       .index("last_updated")
@@ -111,6 +83,25 @@ export default class Cache {
    */
   async get(): Promise<void> {
     try {
+      if (isTauriRuntime()) {
+        // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
+        const { tauriCacheRepository } = await getTauriRepositories();
+        const result = await tauriCacheRepository.get(this.key);
+        if (result == null) {
+          throw new Error("キャッシュが存在しません");
+        }
+
+        this.data = result.data;
+        this.parsed = result.parsed;
+        this.lastUpdated = result.lastUpdated;
+        this.lastModified = result.lastModified;
+        this.etag = result.etag;
+        this.resLength = result.resLength;
+        this.datSize = result.datSize;
+        this.readcgiVer = result.readcgiVer;
+        return;
+      }
+
       const result = await Cache._getStore().get(this.key);
       if (result == null) {
         throw new Error("キャッシュが存在しません");
@@ -161,6 +152,23 @@ export default class Cache {
       this.data != null ? this.data.replaceAll("\u0000", "\u0020") : null;
 
     try {
+      if (isTauriRuntime()) {
+        // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
+        const { tauriCacheRepository } = await getTauriRepositories();
+        await tauriCacheRepository.put({
+          url: this.key,
+          data: dataToStore,
+          parsed: this.parsed || null,
+          lastUpdated: this.lastUpdated!,
+          lastModified: this.lastModified || null,
+          etag: this.etag || null,
+          resLength: this.resLength || null,
+          datSize: this.datSize || null,
+          readcgiVer: this.readcgiVer || null,
+        });
+        return;
+      }
+
       await Cache._getStore().put({
         url: this.key,
         data: dataToStore,
@@ -183,6 +191,13 @@ export default class Cache {
    */
   async delete(): Promise<void> {
     try {
+      if (isTauriRuntime()) {
+        // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
+        const { tauriCacheRepository } = await getTauriRepositories();
+        await tauriCacheRepository.remove(this.key);
+        return;
+      }
+
       await Cache._getStore().delete(this.key);
     } catch (e) {
       console.error("Cache::delete: トランザクション中断");

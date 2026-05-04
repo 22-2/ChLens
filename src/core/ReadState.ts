@@ -4,6 +4,10 @@ import { deepCopy } from "src/app/Util";
 import { indexedDBRequestToPromise } from "src/core/jsutil.js";
 import { URL } from "src/core/URL";
 import type { IReadState } from "src/service-container/interfaces";
+import {
+  getTauriRepositories,
+  isTauriRuntime,
+} from "src/core/TauriDrizzleBridge";
 
 const DB_VERSION = 2;
 
@@ -79,6 +83,23 @@ export const set = async (readState: ReadStateRecord): Promise<void> => {
 
   const nextReadState = deepCopy(readState) as ReadStateRecord;
 
+  if (isTauriRuntime()) {
+    try {
+      // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
+      const { tauriReadStateRepository } = await getTauriRepositories();
+      const result = await tauriReadStateRepository.set(nextReadState);
+      nextReadState.url = result.normalizedUrl;
+      message.send("read_state_updated", {
+        board_url: result.boardUrl,
+        read_state: nextReadState,
+      });
+      return;
+    } catch (e) {
+      log("error", "app.ReadState.set: トランザクション失敗");
+      throw new Error(String(e));
+    }
+  }
+
   const url = _urlFilter(nextReadState.url);
   nextReadState.url = url.replaced.href;
   const boardUrl = url.original.toBoard();
@@ -111,6 +132,18 @@ export const get = async (url: string): Promise<ReadStateRecord | null> => {
 
   const filteredUrl = _urlFilter(url);
 
+  if (isTauriRuntime()) {
+    try {
+      // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
+      const { tauriReadStateRepository } = await getTauriRepositories();
+      const data = await tauriReadStateRepository.get(filteredUrl.original.href);
+      return data as ReadStateRecord | null;
+    } catch (e) {
+      log("error", "app.ReadState.get: トランザクション中断");
+      throw new Error(String(e));
+    }
+  }
+
   try {
     const db = await _openDB;
     const req = db
@@ -135,6 +168,17 @@ export const get = async (url: string): Promise<ReadStateRecord | null> => {
 };
 
 export const getAll = async (): Promise<ReadStateRecord[]> => {
+  if (isTauriRuntime()) {
+    try {
+      // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
+      const { tauriReadStateRepository } = await getTauriRepositories();
+      return (await tauriReadStateRepository.getAll()) as ReadStateRecord[];
+    } catch (e) {
+      log("error", "app.ReadState.getAll: トランザクション中断");
+      throw new Error(String(e));
+    }
+  }
+
   try {
     const db = await _openDB;
     const req = db.transaction("ReadState").objectStore("ReadState").getAll();
@@ -154,6 +198,19 @@ export const getByBoard = async (url: string): Promise<ReadStateRecord[]> => {
   }
 
   const filteredUrl = _urlFilter(url);
+
+  if (isTauriRuntime()) {
+    try {
+      // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
+      const { tauriReadStateRepository } = await getTauriRepositories();
+      return (await tauriReadStateRepository.getByBoard(
+        filteredUrl.original.href,
+      )) as ReadStateRecord[];
+    } catch (e) {
+      log("error", "app.ReadState.getByBoard: トランザクション中断");
+      throw new Error(String(e));
+    }
+  }
 
   try {
     const db = await _openDB;
@@ -190,6 +247,23 @@ export const remove = async (url: string): Promise<void> => {
 
   const filteredUrl = _urlFilter(url);
 
+  if (isTauriRuntime()) {
+    try {
+      // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
+      const { tauriReadStateRepository } = await getTauriRepositories();
+      const normalizedUrl = await tauriReadStateRepository.remove(
+        filteredUrl.original.href,
+      );
+      message.send("read_state_removed", {
+        url: normalizedUrl,
+      });
+      return;
+    } catch (e) {
+      log("error", "app.ReadState.remove: トランザクション中断");
+      throw new Error(String(e));
+    }
+  }
+
   try {
     const db = await _openDB;
     const req = db
@@ -207,6 +281,18 @@ export const remove = async (url: string): Promise<void> => {
 };
 
 export const clear = async (): Promise<void> => {
+  if (isTauriRuntime()) {
+    try {
+      // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
+      const { tauriReadStateRepository } = await getTauriRepositories();
+      await tauriReadStateRepository.clear();
+      return;
+    } catch (e) {
+      log("error", "app.ReadState.clear: トランザクション中断");
+      throw new Error(String(e));
+    }
+  }
+
   try {
     const db = await _openDB;
     const req = db

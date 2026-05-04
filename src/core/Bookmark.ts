@@ -5,11 +5,7 @@ import IDBBookmarkEntryList from "src/core/IDBBookmarkEntryList";
 import { get as getReadState } from "src/core/ReadState.js";
 import { threadToBoard } from "src/core/URL";
 import { isNewerReadState } from "src/core/jsutil";
-
-/** Tauri 環境かどうかを判定する */
-function isTauriEnv(): boolean {
-  return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
-}
+import { isTauriRuntime } from "src/app/platform/runtime";
 
 export default class Bookmark {
   readonly bel: SyncableEntryList & {
@@ -19,7 +15,7 @@ export default class Bookmark {
   readonly promiseFirstScan: Promise<boolean>;
 
   constructor(rootIdNode: string) {
-    if (isTauriEnv()) {
+    if (isTauriRuntime()) {
       this.bel = new IDBBookmarkEntryList();
     } else {
       this.bel = new BrowserBookmarkEntryList(rootIdNode);

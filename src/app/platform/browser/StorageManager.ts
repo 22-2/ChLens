@@ -1,3 +1,4 @@
+import browser from "webextension-polyfill"
 import {
   KeyValueStore,
   ObjectStore,
@@ -10,7 +11,7 @@ import {
 const BrowserKeyValueStore: KeyValueStore = {
   async get(key: string): Promise<string | null> {
     const val = await browser.storage.local.get(key);
-    return val[key] ?? null;
+    return val[key] as string ?? null;
   },
   async set(key: string, value: string): Promise<void> {
     await browser.storage.local.set({ [key]: value });
@@ -19,7 +20,7 @@ const BrowserKeyValueStore: KeyValueStore = {
     await browser.storage.local.remove(key);
   },
   async getAll(): Promise<Record<string, string>> {
-    return await browser.storage.local.get(null);
+    return await browser.storage.local.get(null) as Record<string, string>  ;
   },
   onChanged(callback) {
     browser.storage.onChanged.addListener((changes, area) => {

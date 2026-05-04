@@ -8,8 +8,11 @@ allowBuilds:
   es5-ext: true
   esbuild: true
   msw: true
+  optipng-bin: true
+  pngquant-bin: true
   sharp: true
   spawn-sync: true
+  zopflipng-bin: true
 
 onlyBuiltDependencies:
   - '@parcel/watcher'
