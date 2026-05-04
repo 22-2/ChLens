@@ -7,8 +7,10 @@ export interface IConfig {
 
 export interface ICacheItem {
   get(): Promise<any>;
+  // 既存実装では、事前に data/lastUpdated を設定済みなら put() を引数なしで呼べる。
+  // 呼び出し側（Board/Thread/URL 等）との整合を保つため data は optional にする。
   put(
-    data: any,
+    data?: string,
     options?: { lastModified?: number; etag?: string },
   ): Promise<void>;
   data: any;
