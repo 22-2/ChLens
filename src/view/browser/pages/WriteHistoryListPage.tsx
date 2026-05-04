@@ -4,8 +4,9 @@ import {
   ColumnDef,
   SimpleDataTable,
 } from "src/view/browser/components/SimpleDataTable";
-import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { useTabStore, type TabAction } from "src/view/browser/hooks/use-tab-store";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
+import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
 
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 import {
@@ -115,6 +116,26 @@ async function readWriteHistoryEntries(): Promise<WriteHistoryEntry[]> {
       } satisfies WriteHistoryEntry;
     })
     .filter((item): item is WriteHistoryEntry => item !== null);
+}
+
+export function navigateToWriteHistoryEntry(
+  dispatch: React.Dispatch<TabAction>,
+  entry: Pick<WriteHistoryEntry, "url" | "title" | "writtenRes">,
+  mode: "current" | "new-tab" = "current",
+): void {
+  const parsed = parseInternalBrowserPage(entry.url);
+  if (!parsed || parsed.type !== "thread") {
+    return;
+  }
+
+  requestThreadResJump(parsed.threadUrl, entry.writtenRes);
+  dispatch({
+    type: mode === "new-tab" ? "OPEN_IN_NEW_TAB" : "NAVIGATE",
+    page: {
+      ...parsed,
+      title: entry.title,
+    },
+  });
 }
 
 const COLUMNS: ColumnDef<WriteHistoryEntry>[] = [
@@ -274,32 +295,14 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
 
   const openEntry = useCallback(
     (entry: WriteHistoryEntry) => {
-      const parsed = parseInternalBrowserPage(entry.url);
-      if (!parsed) return;
-
-      dispatch({
-        type: "NAVIGATE",
-        page: {
-          ...parsed,
-          title: entry.title,
-        },
-      });
+      navigateToWriteHistoryEntry(dispatch, entry, "current");
     },
     [dispatch],
   );
 
   const openEntryInNewTab = useCallback(
     (entry: WriteHistoryEntry) => {
-      const parsed = parseInternalBrowserPage(entry.url);
-      if (!parsed) return;
-
-      dispatch({
-        type: "OPEN_IN_NEW_TAB",
-        page: {
-          ...parsed,
-          title: entry.title,
-        },
-      });
+      navigateToWriteHistoryEntry(dispatch, entry, "new-tab");
     },
     [dispatch],
   );

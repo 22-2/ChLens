@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { container } from "src/service-container/index";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import { ColumnDef } from "src/view/browser/components/SimpleDataTable";
 import { VirtualizedDataTable } from "src/view/browser/components/VirtualizedDataTable";
@@ -325,6 +326,66 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({ tabId }) => {
   useEffect(() => {
     void loadEntries();
   }, [loadEntries]);
+
+  useEffect(() => {
+    const handleReadStateUpdated = ({
+      read_state: readState,
+    }: {
+      read_state?: LegacyReadStateLike;
+    }) => {
+      const url = normalizeString(readState?.url);
+      if (!url) {
+        return;
+      }
+
+      const unreadCount = Math.max(
+        Math.trunc(normalizeNumber(readState?.received)) -
+          Math.trunc(normalizeNumber(readState?.read)),
+        0,
+      );
+      const lookupUrl = normalizeReadStateLookupUrl(url);
+      unreadCountIndexRef.current.set(lookupUrl, unreadCount);
+      setEntries((prev) =>
+        prev.map((entry) =>
+          normalizeReadStateLookupUrl(entry.url) === lookupUrl
+            ? {
+                ...entry,
+                unreadCount,
+              }
+            : entry,
+        ),
+      );
+    };
+
+    const handleReadStateRemoved = ({ url }: { url?: string }) => {
+      const lookupUrl = normalizeReadStateLookupUrl(normalizeString(url));
+      if (!lookupUrl) {
+        return;
+      }
+
+      unreadCountIndexRef.current.delete(lookupUrl);
+      // 変更理由: 閲覧履歴タブも hidden のまま状態保持されるため、
+      // スレを読んだ後に戻った時点で未読数が追従している状態を維持する。
+      setEntries((prev) =>
+        prev.map((entry) =>
+          normalizeReadStateLookupUrl(entry.url) === lookupUrl
+            ? {
+                ...entry,
+                unreadCount: 0,
+              }
+            : entry,
+        ),
+      );
+    };
+
+    container.message.on("read_state_updated", handleReadStateUpdated);
+    container.message.on("read_state_removed", handleReadStateRemoved);
+
+    return () => {
+      container.message.off("read_state_updated", handleReadStateUpdated);
+      container.message.off("read_state_removed", handleReadStateRemoved);
+    };
+  }, []);
 
   const shouldLoadCompleteDataset =
     searchQuery.trim().length > 0 || sortState.column !== null;

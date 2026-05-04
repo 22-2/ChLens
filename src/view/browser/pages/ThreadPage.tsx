@@ -5,9 +5,10 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { getResNumber } from "src/core/URL";
 import { add as addWriteHistoryRecord, getByUrl as getWriteHistoryByUrl } from "src/core/WriteHistory";
 import { container } from "src/service-container/index";
-import type { IRes, IThread } from "src/service-container/interfaces";
+import type { IReadState, IRes, IThread } from "src/service-container/interfaces";
 import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import { MediaViewerContainer } from "src/view/browser/components/MediaViewerContainer";
 import { PopupRenderer } from "src/view/browser/components/PopupRenderer";
@@ -39,6 +40,16 @@ import {
   compileImageBlurPattern,
   resolveImageBlurRadius,
 } from "src/view/browser/utils/thread-emphasis";
+import {
+  consumePendingThreadResJump,
+  findThreadScrollContainer,
+  measureThreadReadState,
+  peekPendingThreadResJump,
+  requestThreadResJump,
+  scrollThreadToResponse,
+  subscribeThreadResJump,
+  type PendingThreadJump,
+} from "src/view/browser/utils/thread-read-state";
 import {
   findLatestWrittenRes,
   resolveWrittenResTimestamp,
@@ -83,12 +94,14 @@ interface ThreadPageProps {
   tabId: string;
   page: Props["page"];
   refreshKey: number;
+  isActive: boolean;
   isAutoRefreshEnabled: boolean;
 }
 export const ThreadPage: React.FC<ThreadPageProps> = ({
   tabId,
   page,
   refreshKey,
+  isActive,
   isAutoRefreshEnabled,
 }) => {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -119,8 +132,19 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     useState<PendingWriteMatchState | null>(null);
   const [imageBlurConfig, setImageBlurConfig] =
     useState<ImageBlurConfigState>(readImageBlurConfig);
+  const [initialReadState, setInitialReadState] = useState<IReadState | null>(
+    null,
+  );
+  const [hasLoadedInitialReadState, setHasLoadedInitialReadState] =
+    useState(false);
+  const [isInitialReadStateResolved, setIsInitialReadStateResolved] =
+    useState(false);
+  const [pendingThreadJump, setPendingThreadJump] =
+    useState<PendingThreadJump | null>(null);
   const responseCountRef = useRef(0);
   const lastResponseNumRef = useRef<number | null>(null);
+  const latestReadStateRef = useRef<IReadState | null>(null);
+  const saveReadStateTimerRef = useRef<number | null>(null);
 
   useMouseGesture(rootRef);
 
@@ -367,6 +391,240 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     };
   }, []);
 
+  const scrollToResponse = useCallback(
+    (resNum: number, options?: { highlight?: boolean; offset?: number }) =>
+      scrollThreadToResponse(rootRef.current, resNum, options),
+    [],
+  );
+
+  const saveCurrentReadState = useCallback(async () => {
+    if (!isActive || !isInitialReadStateResolved) {
+      return;
+    }
+
+    const measuredReadState = measureThreadReadState(rootRef.current, responses.length);
+    if (!measuredReadState) {
+      return;
+    }
+
+    const previousReadState = latestReadStateRef.current;
+    const nextReadState: IReadState = {
+      url: page.threadUrl,
+      last: measuredReadState.last,
+      read: Math.max(previousReadState?.read ?? 0, measuredReadState.read),
+      received: Math.max(
+        previousReadState?.received ?? 0,
+        measuredReadState.received,
+      ),
+      offset: measuredReadState.offset,
+      date: Date.now(),
+    };
+
+    if (
+      previousReadState &&
+      previousReadState.last === nextReadState.last &&
+      previousReadState.read === nextReadState.read &&
+      previousReadState.received === nextReadState.received &&
+      (previousReadState.offset ?? null) === (nextReadState.offset ?? null)
+    ) {
+      return;
+    }
+
+    latestReadStateRef.current = nextReadState;
+    try {
+      await container.readState.set(nextReadState);
+    } catch (error) {
+      console.error(error);
+    }
+  }, [isActive, isInitialReadStateResolved, page.threadUrl, responses.length]);
+
+  const scheduleReadStateSave = useCallback(() => {
+    if (saveReadStateTimerRef.current != null) {
+      window.clearTimeout(saveReadStateTimerRef.current);
+    }
+
+    saveReadStateTimerRef.current = window.setTimeout(() => {
+      saveReadStateTimerRef.current = null;
+      void saveCurrentReadState();
+    }, 150);
+  }, [saveCurrentReadState]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    setInitialReadState(null);
+    setHasLoadedInitialReadState(false);
+    setIsInitialReadStateResolved(false);
+    setPendingThreadJump(peekPendingThreadResJump(page.threadUrl));
+    latestReadStateRef.current = null;
+
+    const loadInitialThreadReadState = async () => {
+      let nextReadState = container.bookmark.get(page.threadUrl)?.readState ?? null;
+
+      try {
+        const storedReadState = await container.readState.get(page.threadUrl);
+        if (
+          storedReadState &&
+          (!nextReadState ||
+            container.util.isNewerReadState(nextReadState, storedReadState))
+        ) {
+          nextReadState = storedReadState;
+        }
+      } catch (error) {
+        console.error(error);
+      }
+
+      if (cancelled) {
+        return;
+      }
+
+      latestReadStateRef.current = nextReadState;
+      setInitialReadState(nextReadState);
+      setHasLoadedInitialReadState(true);
+    };
+
+    void loadInitialThreadReadState();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [page.threadUrl]);
+
+  useEffect(() => {
+    return subscribeThreadResJump((jump) => {
+      if (jump.threadUrl !== page.threadUrl) {
+        return;
+      }
+
+      setPendingThreadJump(jump);
+    });
+  }, [page.threadUrl]);
+
+  useEffect(() => {
+    if (!isActive || !pendingThreadJump || responses.length === 0 || loading) {
+      return;
+    }
+
+    scrollToResponse(pendingThreadJump.resNum);
+    consumePendingThreadResJump(page.threadUrl, pendingThreadJump.token);
+    setPendingThreadJump((current) =>
+      current?.token === pendingThreadJump.token ? null : current,
+    );
+    setIsInitialReadStateResolved(true);
+
+    window.requestAnimationFrame(() => {
+      void saveCurrentReadState();
+    });
+  }, [
+    isActive,
+    loading,
+    page.threadUrl,
+    pendingThreadJump,
+    responses.length,
+    saveCurrentReadState,
+    scrollToResponse,
+  ]);
+
+  useEffect(() => {
+    if (
+      !isActive ||
+      isInitialReadStateResolved ||
+      pendingThreadJump ||
+      !hasLoadedInitialReadState ||
+      responses.length === 0 ||
+      loading
+    ) {
+      return;
+    }
+
+    if (initialReadState?.last) {
+      scrollToResponse(initialReadState.last, {
+        highlight: false,
+        offset: initialReadState.offset,
+      });
+    }
+
+    setIsInitialReadStateResolved(true);
+    window.requestAnimationFrame(() => {
+      void saveCurrentReadState();
+    });
+  }, [
+    hasLoadedInitialReadState,
+    initialReadState,
+    isActive,
+    isInitialReadStateResolved,
+    loading,
+    pendingThreadJump,
+    responses.length,
+    saveCurrentReadState,
+    scrollToResponse,
+  ]);
+
+  useEffect(() => {
+    if (!isActive || !isInitialReadStateResolved || responses.length === 0) {
+      return;
+    }
+
+    const scrollContainer = findThreadScrollContainer(rootRef.current);
+    if (!scrollContainer) {
+      return;
+    }
+
+    const handleScroll = () => {
+      scheduleReadStateSave();
+    };
+
+    scrollContainer.addEventListener("scroll", handleScroll, {
+      passive: true,
+    });
+
+    return () => {
+      scrollContainer.removeEventListener("scroll", handleScroll);
+      if (saveReadStateTimerRef.current != null) {
+        window.clearTimeout(saveReadStateTimerRef.current);
+        saveReadStateTimerRef.current = null;
+      }
+      void saveCurrentReadState();
+    };
+  }, [
+    isActive,
+    isInitialReadStateResolved,
+    responses.length,
+    saveCurrentReadState,
+    scheduleReadStateSave,
+  ]);
+
+  useEffect(() => {
+    if (!isActive || !isInitialReadStateResolved || loading || responses.length === 0) {
+      return;
+    }
+
+    // 変更理由: 自動更新で received だけ増えたケースはスクロールイベントが発生しないため、
+    // レス数変化時にも保存を予約して未読数の取りこぼしを防ぐ。
+    scheduleReadStateSave();
+  }, [
+    isActive,
+    isInitialReadStateResolved,
+    loading,
+    responses.length,
+    scheduleReadStateSave,
+  ]);
+
+  useEffect(() => {
+    const handlePageHide = () => {
+      if (saveReadStateTimerRef.current != null) {
+        window.clearTimeout(saveReadStateTimerRef.current);
+        saveReadStateTimerRef.current = null;
+      }
+      void saveCurrentReadState();
+    };
+
+    window.addEventListener("pagehide", handlePageHide);
+    return () => {
+      window.removeEventListener("pagehide", handlePageHide);
+    };
+  }, [saveCurrentReadState]);
+
   const openAnchorPreviewFromPopup = useCallback(
     (popupId: string) =>
       (
@@ -390,6 +648,13 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       internalPage = parseInternalBrowserPage(absoluteUrl),
     ) => {
       if (internalPage) {
+        if (internalPage.type === "thread") {
+          const jumpResNum = Number.parseInt(getResNumber(absoluteUrl) ?? "", 10);
+          if (Number.isFinite(jumpResNum) && jumpResNum > 0) {
+            requestThreadResJump(internalPage.threadUrl, jumpResNum);
+          }
+        }
+
         // 5ch互換URLは外部ブラウザではなく拡張内で開く。
         if (button === 1) {
           dispatch({ type: "OPEN_IN_NEW_TAB", page: internalPage });
@@ -622,43 +887,12 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   // アンカークリックで該当レスへスクロール
   const handleAnchorClick = useCallback(
     (resNum: number) => {
-      const host = rootRef.current;
-      if (!host) return;
       // ポップアップ上のアンカークリックでも遷移先を確実に視認できるよう、
       // ジャンプ時はいったん非メニュー系ポップアップを閉じて本文へフォーカスを戻す。
       closeNonContextPopups();
-      const target = host.querySelector(
-        `.thread-page__responses [data-res-num="${resNum}"]`,
-      );
-      if (!target) return;
-      // 実スクロールは content-area ではなく tab panel 側なので、
-      // ここを誤ると scrollTop を更新しても見た目が動かずジャンプ不能になる。
-      const scrollContainer = host.closest(".content-area__tab-panel");
-      if (
-        scrollContainer instanceof HTMLElement &&
-        target instanceof HTMLElement
-      ) {
-        // ThreadPageでは tab panel が実スクロールコンテナなので、そこへ直接位置合わせする。
-        const targetRect = target.getBoundingClientRect();
-        const containerRect = scrollContainer.getBoundingClientRect();
-        const nextScrollTop =
-          scrollContainer.scrollTop + targetRect.top - containerRect.top;
-        scrollContainer.scrollTo({
-          top: Math.max(0, nextScrollTop),
-          behavior: "auto",
-        });
-      } else {
-        target.scrollIntoView({ behavior: "auto", block: "start" });
-      }
-      // 視認性のためハイライトアニメーションを付与
-      target.classList.add("res--highlighted");
-      target.addEventListener(
-        "animationend",
-        () => target.classList.remove("res--highlighted"),
-        { once: true },
-      );
+      scrollToResponse(resNum);
     },
-    [closeNonContextPopups],
+    [closeNonContextPopups, scrollToResponse],
   );
 
   const { openPopupResContextMenu, openThreadResContextMenu } =

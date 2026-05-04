@@ -6,8 +6,15 @@ import {
   render,
   screen,
 } from "@testing-library/react";
-import { WriteHistoryListPage } from "src/view/browser/pages/WriteHistoryListPage";
+import {
+  navigateToWriteHistoryEntry,
+  WriteHistoryListPage,
+} from "src/view/browser/pages/WriteHistoryListPage";
 import { QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE } from "src/view/browser/utils/filter-toolbar-events";
+import {
+  consumePendingThreadResJump,
+  peekPendingThreadResJump,
+} from "src/view/browser/utils/thread-read-state";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockUseTabStore = vi.fn();
@@ -20,16 +27,11 @@ interface WriteHistoryService {
   get: (offset?: number, count?: number) => Promise<unknown[]>;
 }
 
-interface AppLikeWindow extends Window {
-  app?: {
-    WriteHistory?: WriteHistoryService;
-  };
-}
-
 describe("WriteHistoryListPage", () => {
   const writeHistoryGet = vi.fn<WriteHistoryService["get"]>();
 
   afterEach(() => {
+    consumePendingThreadResJump("https://egg.5ch.io/test/read.cgi/software/1/");
     cleanup();
   });
 
@@ -50,7 +52,13 @@ describe("WriteHistoryListPage", () => {
       },
     });
 
-    (window as AppLikeWindow).app = {
+    (
+      window as Window & {
+        app: {
+          WriteHistory: WriteHistoryService;
+        };
+      }
+    ).app = {
       WriteHistory: {
         get: writeHistoryGet,
       },
@@ -60,7 +68,7 @@ describe("WriteHistoryListPage", () => {
   it("本文列と短い日時表記を表示する", async () => {
     writeHistoryGet.mockResolvedValueOnce([
       {
-        url: "https://example.com/test/read.cgi/live/1/",
+        url: "https://egg.5ch.io/test/read.cgi/software/1/",
         title: "スレ1",
         writtenRes: 42,
         name: "風吹けば名無し",
@@ -126,5 +134,71 @@ describe("WriteHistoryListPage", () => {
     });
 
     expect(screen.getByPlaceholderText("検索...")).toHaveValue("");
+  });
+
+  it("書き込み履歴の遷移ヘルパーがjump予約と遷移先を組み立てる", () => {
+    const dispatch = vi.fn();
+    navigateToWriteHistoryEntry(
+      dispatch,
+      {
+        url: "https://egg.5ch.io/test/read.cgi/software/1/",
+        title: "スレ1",
+        writtenRes: 42,
+      },
+      "current",
+    );
+
+    expect(
+      peekPendingThreadResJump("https://egg.5ch.io/test/read.cgi/software/1/"),
+    ).toMatchObject({
+      resNum: 42,
+      threadUrl: "https://egg.5ch.io/test/read.cgi/software/1/",
+    });
+    expect(dispatch).toHaveBeenCalledWith({
+      type: "NAVIGATE",
+      page: {
+        type: "thread",
+        title: "スレ1",
+        threadUrl: "https://egg.5ch.io/test/read.cgi/software/1/",
+      },
+    });
+  });
+
+  it("対応外URLはjumpを積まずに遷移もしない", async () => {
+    const dispatch = vi.fn();
+    mockUseTabStore.mockReturnValue({
+      dispatch,
+      state: {
+        tabs: [],
+        activeTabId: "tab-1",
+        closedTabs: [],
+      },
+      currentPage: {
+        type: "writeHistoryList",
+        title: "書き込み履歴",
+      },
+    });
+    writeHistoryGet.mockResolvedValueOnce([
+      {
+        url: "https://example.com/test/read.cgi/software/1/",
+        title: "外部URL",
+        writtenRes: 10,
+        name: "風吹けば名無し",
+        mail: "sage",
+        message: "本文",
+        date: new Date(2026, 4, 3, 9, 8).getTime(),
+      },
+    ]);
+
+    render(<WriteHistoryListPage tabId="tab-1" />);
+
+    const row = (await screen.findByText("外部URL")).closest("tr");
+    expect(row).not.toBeNull();
+    fireEvent.click(row!);
+
+    expect(
+      peekPendingThreadResJump("https://example.com/test/read.cgi/software/1/"),
+    ).toBeNull();
+    expect(dispatch).not.toHaveBeenCalled();
   });
 });

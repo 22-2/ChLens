@@ -38,11 +38,13 @@ function buildPageRenderKey(
 
 interface TabPageContentProps {
   tab: Tab;
+  isActive: boolean;
   threadListActive?: boolean;
 }
 
 const TabPageContent = React.memo(function TabPageContent({
   tab,
+  isActive,
   threadListActive,
 }: TabPageContentProps) {
   const page = getCurrentPage(tab);
@@ -75,6 +77,7 @@ const TabPageContent = React.memo(function TabPageContent({
           tabId={tab.id}
           page={page}
           refreshKey={tab.reloadKey}
+          isActive={isActive}
           // 自動更新の可否をタブ自身の状態へ固定すると、
           // アクティブタブ変更だけで他スレッドまで再計算されなくなる。
           isAutoRefreshEnabled={
@@ -110,6 +113,7 @@ const TabPanel = React.memo(function TabPanel({
         <TabPageContent
           key={buildPageRenderKey(tab.id, tab.currentIndex, page)}
           tab={tab}
+          isActive={isActive}
           threadListActive={page.type === "threadList" ? isActive : undefined}
         />
       }

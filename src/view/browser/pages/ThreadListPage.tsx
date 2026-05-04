@@ -9,7 +9,7 @@ import React, {
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
 import { URL as ChURL } from "src/core/URL";
 import { container } from "src/service-container/index";
-import type { IThread } from "src/service-container/interfaces";
+import type { IReadState, IThread } from "src/service-container/interfaces";
 import {
   ContextMenu,
   ContextMenuItem,
@@ -404,6 +404,67 @@ export const ThreadListPage: React.FC<Props> = ({
     container.message.on("ng_changed", handleNgChanged);
     return () => {
       container.message.off("ng_changed", handleNgChanged);
+    };
+  }, [page.boardUrl]);
+
+  useEffect(() => {
+    const handleReadStateUpdated = ({
+      board_url: boardUrl,
+      read_state: readState,
+    }: {
+      board_url?: string;
+      read_state?: IReadState;
+    }) => {
+      if (!readState || boardUrl !== page.boardUrl) {
+        return;
+      }
+
+      setThreads((prev) =>
+        prev.map((thread) => {
+          if (thread.url !== readState.url) {
+            return thread;
+          }
+
+          if (
+            thread.readState &&
+            !container.util.isNewerReadState(thread.readState, readState)
+          ) {
+            return thread;
+          }
+
+          return {
+            ...thread,
+            readState,
+          };
+        }),
+      );
+    };
+
+    const handleReadStateRemoved = ({ url }: { url?: string }) => {
+      if (!url) {
+        return;
+      }
+
+      // 変更理由: スレ一覧タブは非アクティブ時も mounted のまま残るため、
+      // 読了後に戻った時点で未読列が古いままにならないよう message で追従する。
+      setThreads((prev) =>
+        prev.map((thread) =>
+          thread.url === url
+            ? {
+                ...thread,
+                readState: undefined,
+              }
+            : thread,
+        ),
+      );
+    };
+
+    container.message.on("read_state_updated", handleReadStateUpdated);
+    container.message.on("read_state_removed", handleReadStateRemoved);
+
+    return () => {
+      container.message.off("read_state_updated", handleReadStateUpdated);
+      container.message.off("read_state_removed", handleReadStateRemoved);
     };
   }, [page.boardUrl]);
 
