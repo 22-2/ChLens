@@ -2490,6 +2490,12 @@ body {
     color 0.1s;
 }
 
+.status-bar__btn-label {
+  min-width: 3ch;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
 .status-bar__item--interactive .status-bar__btn {
   width: 100%;
   padding: 0 6px;

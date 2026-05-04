@@ -193,6 +193,36 @@ describe("AutoRefreshStatusItem", () => {
         name: /一時停止中（ポップアップ表示中, 30秒間隔）/,
       }),
     ).toBeInTheDocument();
+    expect(screen.getByText("30 s")).toBeInTheDocument();
+  });
+
+  it("アイコンの横に現在の更新間隔を表示する", () => {
+    renderItem();
+
+    expect(screen.getByText("30 s")).toBeInTheDocument();
+  });
+
+  it("スレ一覧では一覧用の更新間隔をアイコン横に表示する", () => {
+    mocks.currentPage = {
+      type: "threadList",
+      title: "板",
+      boardUrl: "https://example.com/software/",
+      boardTitle: "Software",
+    };
+    container.config = {
+      get: vi.fn((key: string) => {
+        if (key === "auto_load_second_board") {
+          return "40000";
+        }
+        return "0";
+      }),
+      set: vi.fn(),
+      ready: (callback: () => void) => callback(),
+    };
+
+    renderItem();
+
+    expect(screen.getByText("40 s")).toBeInTheDocument();
   });
 
   it("ミニウィンドウから自動次スレ移動を切り替えられる", () => {

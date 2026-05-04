@@ -217,6 +217,9 @@ export const AutoRefreshStatusItem: React.FC = () => {
         ? "threadList"
         : null;
   const isBoardIntervalEnabled = boardIntervalSec >= MIN_BOARD_INTERVAL_SEC;
+  const intervalLabel = `${
+    panelKind === "thread" ? intervalSec : boardIntervalSec
+  } s`;
 
   // 早期returnする前にすべてのhooksを呼び出す必要があるため、
   // panelKindのチェックはif文で早期return前に移動するのではなく、
@@ -304,6 +307,11 @@ export const AutoRefreshStatusItem: React.FC = () => {
           aria-label={itemTitle}
         >
           {renderStatusIcon()}
+          {
+            // 変更理由: ステータスバー上で現在値が見えないと、
+            // ミニウィンドウを開くまで更新間隔を確認できず操作往復が増えるため。
+          }
+          <span className="status-bar__btn-label">{intervalLabel}</span>
         </button>
       </StatusBarItem>
 
