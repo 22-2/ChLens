@@ -7,6 +7,10 @@
   ],
   "permissions": [
     "core:default",
+    "sql:allow-close",
+    "sql:allow-execute",
+    "sql:allow-load",
+    "sql:allow-select",
     "sql:default",
     {
       "identifier": "http:default",
