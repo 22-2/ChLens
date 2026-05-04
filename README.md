@@ -1,47 +1,61 @@
-# read.crx 2 [![GitHub version](https://badge.fury.io/gh/readcrx-2%2Fread.crx-2.svg)][repolink] [![MIT License](http://img.shields.io/badge/license-MIT-blue.svg?style=flat)](LICENSE)
-read.crx 2は[Google Chrome][chrome]/[Mozilla Firefox][firefox] extensionとして作られた2chブラウザです。
-[2ch.net(5ch.io)][5ch.io]、[2ch.sc][2ch.sc]、[open2ch.net][open2ch.net]及びその互換BBS、[まちBBS][machi]、[したらば][jbbs]の閲覧に対応しています。
+# ChLens
 
-一般の利用者向けの配布は[こちら](https://readcrx-2.github.io/read.crx-2/)
+スクショ準備中
 
-# ビルド手順
-[pnpm][pnpm], [ClamAV][clamav]が予め導入されている必要が有ります。
+[![MIT License](http://img.shields.io/badge/license-MIT-blue.svg?style=flat)](LICENSE)
 
-    git clone git://github.com/readcrx-2/read.crx-2.git
+ChLens は readcrx をフォークした、Web 技術で作られた 5ch 互換掲示板ブラウザです。
+主に Chrome/Firefox 向け拡張とデスクトップアプリ（Tauri）として動作します。
 
-    cd read.crx-2
+**特徴**
+- 5ch 系サービスや互換 BBS（2ch.sc, open2ch, まちBBS, したらば など）に対応
+- TypeScript + React を中心としたモダンなフロントエンド構成
+- 拡張機能と Tauri 両対応でデスクトップ/ブラウザ両方で利用可能
 
-    pnpm install
+**サポートプラットフォーム**: Chrome, Firefox, Tauri
 
-    pnpm run build
-    pnpm run watch
-    pnpm run pack
-    pnpm run clean
+**主要技術スタック**: TypeScript, React, SCSS, Vite, pnpm
 
-詳細 : [Windows][winbuild]  [macOS][macosbuild]  [Linux][linuxbuild]
+## クイックスタート
+事前に `pnpm` がインストールされている必要があります。
 
-# 商用利用時の注意
-read.crx 2のソースコードはMITライセンスですが、read.crx 2がアクセスするサービスの中には商用利用に制限が存在する場合が有ります。ご注意下さい。
+```bash
+git clone git://github.com/22-2/ChLens.git
+cd ChLens
+pnpm install
+```
 
-# 謝辞
-「[read.crx総合 part6](http://jbbs.shitaraba.net/bbs/read.cgi/computer/42710/1418134797/)」スレの507さん、663さん、663さん、698さん、708さん、773さん、780さん、835さん、897さんの変更を反映させていただきました。ありがとうございます。
+開発やビルドの主なコマンド:
 
-また、作者である[awef](https://github.com/awef)さんにも感謝の意を表します。
+```bash
+# Chrome 拡張をビルド
+pnpm run build:chrome
 
-# Maintainer
-* [Kazuki Hashimoto](https://github.com/eru)
-* [S](https://github.com/S--Minecraft)
+# Firefox 拡張をビルド
+pnpm run build:firefox
 
-[5ch.io]: http://www.5ch.io/
-[2ch.sc]: http://2ch.sc/
-[open2ch.net]: http://open2ch.net/
-[chrome]: https://www.google.com/chrome
-[firefox]: https://www.mozilla.org/firefox/
-[clamav]: http://www.clamav.net/
-[jbbs]: http://rentalbbs.livedoor.com/
-[machi]: http://www.machi.to/
-[pnpm]: https://pnpm.io/
-[winbuild]: https://github.com/readcrx-2/read.crx-2/wiki/Windows%E3%81%A7%E3%81%AE%E3%83%93%E3%83%AB%E3%83%89%E6%96%B9%E6%B3%95
-[macosbuild]: https://github.com/readcrx-2/read.crx-2/wiki/macOS%E3%81%A7%E3%81%AE%E3%83%93%E3%83%AB%E3%83%89%E6%96%B9%E6%B3%95
-[linuxbuild]: https://github.com/readcrx-2/read.crx-2/wiki/Linux%E3%81%A7%E3%81%AE%E3%83%93%E3%83%AB%E3%83%89%E6%96%B9%E6%B3%95
-[repolink]: http://badge.fury.io/gh/readcrx-2%2Fread.crx-2
+# Tauri デスクトップアプリをビルド（Windows など）
+pnpm run build:tauri
+
+# 開発ウォッチ（Chrome 用）
+pnpm run watch:chrome
+
+# すべてのビルドとパッケージ作成
+pnpm run pack:all
+```
+
+## 商用利用についての注意
+このリポジトリ自体は MIT ライセンスですが、ChLens がアクセスする外部サービスやデータには別途利用規約・商用制限が存在する場合があります。商用利用時は各サービス規約を確認してください。
+
+## 貢献ガイド
+- PR のタイトル形式: `[<module_name>] <説明>`（例: `[thread] Add filter functionality`）
+- `pnpm lint` と `pnpm tsc` を実行して型エラーやリンターエラーがないことを確認してください
+- バグ修正や意図的な実装変更を行う際は、ソース内に「なぜそのようにしたか」の短いコメントを残してください
+
+詳しい開発ルールやコントリビュート手順はプロジェクトの CONTRIBUTING.md（存在する場合）を参照してください。
+
+## 謝辞
+本プロジェクトは read.crx-2 の成果をベースにしています。オリジナルの作者並びにコミュニティに感謝します。
+
+## ライセンス
+MIT
