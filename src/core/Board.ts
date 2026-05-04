@@ -135,7 +135,9 @@ export default class Board {
         if (
           response?.status !== 200 &&
           response?.status !== 304 &&
-          (response == null || !hasCache)
+          // ネットワーク応答が無くても、キャッシュから一覧を復元できた場合は成功扱いにする。
+          // （戻る遷移などで3秒以内キャッシュを読むケースで誤ってエラー化しないため）
+          !hasCache
         ) {
           throw { response, threadList };
         }
