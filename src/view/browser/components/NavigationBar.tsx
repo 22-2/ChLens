@@ -225,7 +225,9 @@ export const NavigationBar: React.FC = () => {
   }, [displayUrl, isFocused]);
 
   useEffect(() => {
-    if (!isFocused || isOmnibarLoaded || isOmnibarLoading) {
+    // 変更理由: isOmnibarLoadingを依存配列に含めると、ロード開始時のstate変更で
+    // 再度effectが発火し、直前のロードをキャンセルしてしまう依存関係ループが発生するため除外。
+    if (!isFocused || isOmnibarLoaded) {
       return;
     }
 
@@ -259,7 +261,7 @@ export const NavigationBar: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [isFocused, isOmnibarLoaded, isOmnibarLoading]);
+  }, [isFocused, isOmnibarLoaded]);
 
   const omnibarSuggestions = useMemo(
     () =>
