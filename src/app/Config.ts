@@ -3,6 +3,7 @@ import Callbacks from "src/app/Callbacks";
 import LocalStorage from "src/app/LocalStorage";
 import { assertArg, log } from "src/app/Log";
 import message from "src/app/Message";
+import browser from "webextension-polyfill";
 
 export default class Config {
   private static readonly _default: ReadonlyMap<string, string> = new Map([
@@ -92,7 +93,7 @@ export default class Config {
     ["user_css", ""],
     [
       "bbsmenu",
-      "https://menu.5ch.io/bbsmenu.html\nhttps://menu.2ch.sc/bbsmenu.html\n// open2chは一度手動でbbsmenuのURLへアクセスする必要があります。\n// https://menu.open2ch.net/bbsmenu.html\n",
+      "https://menu.5ch.io/bbsmenu.html\nhttps://menu.2ch.sc/bbsmenu.html\nhttps://fox-tools.pages.dev/html/hinan-bbsmenu.html\n// open2chは一度手動でbbsmenuのURLへアクセスする必要があります。\n// https://menu.open2ch.net/bbsmenu.html\n",
     ],
     ["bbsmenu_update_interval", "7"],
     ["bbsmenu_option", ""],
