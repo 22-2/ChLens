@@ -52,14 +52,12 @@
     "build:chrome": "cross-env PLATFORM=chrome ENTRY=browser vite build",
     "build:tauri": "cross-env PLATFORM=tauri ENTRY=browser vite build",
     "build:all": "run-s build:chrome build:firefox",
-
     "// --- Development & Watch ---": "",
     "dev:chrome": "run-s build:chrome --watch",
     "watch:chrome": "pnpm dev:chrome",
     "watch:tauri": "pnpm build:tauri --watch",
     "tauri": "tauri",
     "dev:tauri": "tauri dev",
-
     "// --- Utility & Lint ---": "",
     "clean": "node -e \"const fs=require('fs-extra'); ['debug/chrome','debug/firefox','debug/tauri'].forEach(d=>fs.removeSync(d))\"",
     "lint": "run-s -c -l lint:*",
@@ -83,6 +81,7 @@
     "@types/webextension-polyfill": "^0.12.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "consola": "^3.4.2",
     "drizzle-kit": "^0.31.10",
     "drizzle-orm": "^0.45.2",
     "escape-html": "^1.0.3",

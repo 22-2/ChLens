@@ -1,4 +1,7 @@
 import { platform } from "src/app";
+import { createLogger } from "src/core/logger";
+
+const logger = createLogger("HTTP");
 
 type headerList = Record<string, string>;
 
@@ -43,11 +46,23 @@ export class Request {
     }
 
     try {
+      logger.debug(`Sending HTTP request: ${this.method} ${url}`, {
+        method: this.method,
+        url,
+        mimeType: this.mimeType,
+        timeout: this.timeout,
+        headers: this.headers,
+      });
       const response = await platform.http.fetch(url, {
         method: this.method,
         headers: this.headers,
         mimeType: this.mimeType || undefined,
         timeout: this.timeout,
+      });
+      logger.debug(`Received HTTP response: ${response.status} ${url}`, {
+        status: response.status,
+        url,
+        headers: response.headers,
       });
 
       return new Response(
@@ -57,6 +72,7 @@ export class Request {
         response.url,
       );
     } catch (e) {
+      logger.error(`HTTP request failed: ${this.method} ${url}`, { error: e });
       return Promise.reject(e);
     }
   }

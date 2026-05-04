@@ -360,6 +360,9 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 - [ ] bbsmenuの項目もomnibarに含める
 - [ ] navbarリファクタリング
   - [ ] omnibar coomponentを独立させる
+- [ ] tauriでmonacoが読み込まれない
+- [ ] tauriで板一覧が読み込まれない
+- [ ] tauri環境を再現してsqliteで取得
 
 ### low prior
 - [ ] feat: ブラウザのようなアドレスバーのブックマークボタン

@@ -1,91 +1,155 @@
 import { BBSMenu, BBSMenuParser } from "src/core/BBSMenuParser";
 import { Request } from "src/core/HTTP";
 import { ICacheItem } from "src/service-container/interfaces";
+import { createLogger } from "src/core/logger";
 
-/**
- * キャッシュとHTTP通信を抽象化するインターフェース。
- * テスト時にモックに差し替えられる。
- */
+const logger = createLogger("BBSMenuFetcher");
+
 export interface IFetcherDeps {
   getCache(url: string): ICacheItem;
   getUpdateIntervalDays(): number;
   getExcludeTslds(): Set<string>;
 }
 
+// -------------------------------
+// 内部ユーティリティ
+// -------------------------------
+
+/**
+ * Last-Modified ヘッダ文字列をタイムスタンプに変換する。
+ * 不正な値の場合は undefined を返す。
+ */
+function parseLastModified(value: string | undefined): number | undefined {
+  if (!value) return undefined;
+  const ts = new Date(value).getTime();
+  return Number.isFinite(ts) ? ts : undefined;
+}
+
+// レスポンス型（Request.send() の戻り値に合わせて調整すること）
+type HttpResponse = Awaited<ReturnType<InstanceType<typeof Request>["send"]>>;
+
+// -------------------------------
+// BBSMenuFetcher
+// -------------------------------
+
 /**
  * 単一URLからBBSMenuを取得する責務を担うクラス。
  * キャッシュ判定・HTTPリクエスト・キャッシュ更新を行う。
- * 依存はコンストラクタ注入で受け取るためテスト可能。
  */
 export class BBSMenuFetcher {
   constructor(private readonly deps: IFetcherDeps) {}
 
   /**
    * 指定URLからBBSMenuを取得する。
-   * キャッシュが有効な場合はキャッシュを使用し、期限切れまたは強制更新時はHTTP通信を行う。
    *
-   * @param url         取得先URL
-   * @param force       trueの場合はキャッシュを無視して強制取得
+   * - キャッシュが存在し、期限内かつ force=false → キャッシュから返す
+   * - キャッシュ未存在 / 期限切れ / force=true  → HTTP通信し結果を返す
+   *   - 304 の場合は lastUpdated だけ更新してキャッシュデータを返す
    */
   async fetch(url: string, force = false): Promise<BBSMenu> {
     const cache = this.deps.getCache(url);
-    let response: any;
 
+    logger.debug(`Cache を確認します: ${url}`, { cache });
+
+    const cacheLoaded = await this.tryLoadCache(cache);
+    const shouldFetch = !cacheLoaded || force || this.isCacheExpired(cache);
+
+    logger.debug(`Fetching BBSMenu from ${url}`, {
+      force,
+      cacheLoaded,
+      shouldFetch,
+      cacheLastUpdated: cache.lastUpdated,
+    });
+
+    const response = shouldFetch
+      ? await this.sendRequest(url, cacheLoaded ? cache : undefined)
+      : undefined;
+
+    return this.resolveMenu(url, cache, response);
+  }
+
+  // -------------------------------
+  // Private helpers
+  // -------------------------------
+
+  /** キャッシュのロードを試みる。失敗またはデータが空の場合は false を返す。 */
+  private async tryLoadCache(cache: ICacheItem): Promise<boolean> {
     try {
       await cache.get();
-      if (force) {
-        throw new Error("最新のものを取得するために通信します");
-      }
-      const intervalMs =
-        this.deps.getUpdateIntervalDays() * 1000 * 60 * 60 * 24;
-      if (Date.now() - cache.lastUpdated > intervalMs) {
-        throw new Error("キャッシュが期限切れなので通信します");
-      }
+      // get() が例外なく完了しても data が未設定の場合はキャッシュなしと扱う
+      return cache.data != null;
     } catch {
-      // キャッシュが無効 → HTTP通信
-      const request = new Request("GET", url, {
-        mimeType: "text/plain; charset=Shift_JIS",
-      });
-      if (cache.lastModified != null) {
-        request.headers["If-Modified-Since"] = new Date(
-          cache.lastModified,
-        ).toUTCString();
-      }
-      if (cache.etag != null) {
-        request.headers["If-None-Match"] = cache.etag;
-      }
-      response = await request.send();
+      return false;
+    }
+  }
+
+  /** キャッシュが更新インターバルを超えているか判定する。 */
+  private isCacheExpired(cache: ICacheItem): boolean {
+    // lastUpdated が未設定の場合は必ず期限切れとみなす
+    if (cache.lastUpdated == null) return true;
+    const intervalMs = this.deps.getUpdateIntervalDays() * 24 * 60 * 60 * 1000;
+    const expired = Date.now() - cache.lastUpdated > intervalMs;
+    if (expired) logger.debug("キャッシュが期限切れです");
+    return expired;
+  }
+
+  /**
+   * 条件付き GET リクエストを送信する。
+   * キャッシュが存在する場合は If-Modified-Since / If-None-Match を付与する。
+   */
+  private async sendRequest(
+    url: string,
+    cache: ICacheItem | undefined,
+  ): Promise<HttpResponse> {
+    const request = new Request("GET", url, {
+      mimeType: "text/plain; charset=Shift_JIS",
+    });
+
+    if (cache?.lastModified != null) {
+      request.headers["If-Modified-Since"] = new Date(
+        cache.lastModified,
+      ).toUTCString();
+    }
+    if (cache?.etag != null) {
+      request.headers["If-None-Match"] = cache.etag;
     }
 
+    logger.debug("HTTP通信します", { url });
+    return request.send();
+  }
+
+  /**
+   * レスポンス（または undefined）とキャッシュからメニューを解決する。
+   * - 200 → 新鮮なデータを保存して返す
+   * - 304 / 通信なし → キャッシュデータを返す（304 は lastUpdated を更新）
+   * - キャッシュなし・通信失敗 → エラーをスロー
+   */
+  private async resolveMenu(
+    url: string,
+    cache: ICacheItem,
+    response: HttpResponse | undefined,
+  ): Promise<BBSMenu> {
     const excludeTslds = this.deps.getExcludeTslds();
 
     if (response?.status === 200) {
       const menu = BBSMenuParser.parse(response.body, url, excludeTslds);
 
-      cache.data = response.body;
-      cache.lastUpdated = Date.now();
-
-      const lastModified = new Date(
-        response.headers["Last-Modified"] || "dummy",
-      ).getTime();
-
       await cache.put(response.body, {
-        lastModified: Number.isFinite(lastModified) ? lastModified : undefined,
+        lastModified: parseLastModified(response.headers["Last-Modified"]),
         etag: response.headers["ETag"],
       });
 
       return menu;
-    } else if (cache.data != null) {
-      const menu = BBSMenuParser.parse(cache.data, url, excludeTslds);
+    }
 
+    if (cache.data != null) {
       if (response?.status === 304) {
-        cache.lastUpdated = Date.now();
+        logger.debug("304 Not Modified: キャッシュを更新します");
         await cache.put(cache.data);
       }
-
-      return menu;
-    } else {
-      throw new Error("板一覧の取得に失敗しました");
+      return BBSMenuParser.parse(cache.data, url, excludeTslds);
     }
+
+    throw new Error("板一覧の取得に失敗しました");
   }
 }

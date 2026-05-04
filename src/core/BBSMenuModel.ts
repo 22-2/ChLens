@@ -1,6 +1,6 @@
 import Callbacks from "src/app/Callbacks";
 import { BBSMenu } from "src/core/BBSMenuParser";
-import * as History from "src/core/History.ts";
+import * as History from "src/core/History";
 import { URL } from "src/core/URL";
 import { container } from "src/service-container/index";
 // @ts-ignore
@@ -90,7 +90,8 @@ export class BBSMenuModel {
       try {
         const menu = await this.fetchOne(url, forceReload);
         menus.push(menu);
-      } catch {
+      } catch (error) {
+        console.error(error);
         container.toast.notify(
           `板一覧の取得に失敗しました。(<a href="${url}" target="_blank">${url}</a>)`,
           { html: true, backgroundColor: "red" },
