@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { container } from "src/service-container/index";
+import {
+  MAX_THREAD_AUTO_REFRESH_SEC,
+  MIN_THREAD_AUTO_REFRESH_SEC,
+  readThreadAutoRefreshIntervalSec,
+  THREAD_AUTO_REFRESH_CONFIG_KEY,
+} from "src/view/browser/hooks/auto-refresh-config";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 
-// use-auto-refresh.ts と同じキー
-const CONFIG_KEY = "auto_load_second";
-
-export const MIN_INTERVAL_SEC = 5;
-export const MAX_INTERVAL_SEC = 120;
-const DEFAULT_INTERVAL_SEC = 30;
+export const MIN_INTERVAL_SEC = MIN_THREAD_AUTO_REFRESH_SEC;
+export const MAX_INTERVAL_SEC = MAX_THREAD_AUTO_REFRESH_SEC;
 
 export interface UseAutoRefreshPanelResult {
   /** 現在アクティブタブがスレッドページかどうか */
@@ -22,18 +24,11 @@ export interface UseAutoRefreshPanelResult {
   setIntervalSec: (sec: number) => void;
 }
 
-// config から更新間隔を秒単位で読む。
-// config は ms で保存されている（use-auto-refresh.ts の仕様に準拠）。
-function readIntervalSec(): number {
-  const raw = container.config.get(CONFIG_KEY);
-  const ms = Number.parseInt(raw ?? "0", 10);
-  if (Number.isNaN(ms) || ms <= 0) return DEFAULT_INTERVAL_SEC;
-  return Math.max(MIN_INTERVAL_SEC, Math.round(ms / 1000));
-}
-
 export function useAutoRefreshPanel(): UseAutoRefreshPanelResult {
   const { currentPage, activeTab, dispatch } = useTabStore();
-  const [intervalSec, setIntervalSecState] = useState(readIntervalSec);
+  const [intervalSec, setIntervalSecState] = useState(
+    readThreadAutoRefreshIntervalSec,
+  );
 
   const isOnThread = currentPage.type === "thread";
   const isEnabled =
@@ -43,13 +38,15 @@ export function useAutoRefreshPanel(): UseAutoRefreshPanelResult {
 
   // config の変更を購読して intervalSec を同期する
   useEffect(() => {
-    const sync = () => setIntervalSecState(readIntervalSec());
+    const sync = () => setIntervalSecState(readThreadAutoRefreshIntervalSec());
+    const handleConfigUpdated = ({ key }: { key?: string }) => {
+      if (key === THREAD_AUTO_REFRESH_CONFIG_KEY) sync();
+    };
+
     container.config.ready(sync);
-    container.message.on("config_updated", ({ key }: { key?: string }) => {
-      if (key === CONFIG_KEY) sync();
-    });
+    container.message.on("config_updated", handleConfigUpdated);
     return () => {
-      container.message.off("config_updated", sync);
+      container.message.off("config_updated", handleConfigUpdated);
     };
   }, []);
 
@@ -67,7 +64,7 @@ export function useAutoRefreshPanel(): UseAutoRefreshPanelResult {
     // UI をすぐ反映するためローカル状態も即時更新する
     setIntervalSecState(clamped);
     // config に ms で保存することで use-auto-refresh.ts のタイマーにも反映される
-    container.config.set(CONFIG_KEY, String(clamped * 1000));
+    container.config.set(THREAD_AUTO_REFRESH_CONFIG_KEY, String(clamped * 1000));
   }, []);
 
   return { isOnThread, isEnabled, intervalSec, toggle, setIntervalSec };

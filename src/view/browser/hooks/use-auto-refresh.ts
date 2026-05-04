@@ -7,9 +7,11 @@ import {
   type RefObject,
 } from "react";
 import { container } from "src/service-container/index";
-
-const THREAD_AUTO_REFRESH_CONFIG_KEY = "auto_load_second";
-const MIN_THREAD_AUTO_REFRESH_MS = 3000;
+import {
+  MIN_THREAD_AUTO_REFRESH_MS,
+  readThreadAutoRefreshIntervalMs,
+  THREAD_AUTO_REFRESH_CONFIG_KEY,
+} from "src/view/browser/hooks/auto-refresh-config";
 
 interface PendingRefreshSnapshot {
   responseCount: number;
@@ -43,15 +45,6 @@ export interface UseAutoRefreshResult {
   phase: AutoRefreshPhase;
 }
 
-function readThreadAutoRefreshInterval(): number {
-  const rawValue = container.config.get(THREAD_AUTO_REFRESH_CONFIG_KEY);
-  const parsedValue = Number.parseInt(rawValue ?? "0", 10);
-  if (Number.isNaN(parsedValue)) {
-    return 0;
-  }
-  return parsedValue;
-}
-
 export function useAutoRefresh({
   enabled,
   expired,
@@ -77,7 +70,7 @@ export function useAutoRefresh({
   const [isDocumentVisible, setIsDocumentVisible] = useState(
     document.visibilityState === "visible",
   );
-  const [intervalMs, setIntervalMs] = useState(readThreadAutoRefreshInterval);
+  const [intervalMs, setIntervalMs] = useState(readThreadAutoRefreshIntervalMs);
 
   const clearScrollingIndicator = useCallback(() => {
     if (scrollingIndicatorTimerRef.current != null) {
@@ -189,7 +182,7 @@ export function useAutoRefresh({
 
   useEffect(() => {
     const applyInterval = () => {
-      setIntervalMs(readThreadAutoRefreshInterval());
+      setIntervalMs(readThreadAutoRefreshIntervalMs());
     };
 
     const handleConfigUpdated = ({ key }: ConfigUpdatedMessage) => {
