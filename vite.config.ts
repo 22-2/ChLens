@@ -8,18 +8,11 @@ import pug from "pug";
 import * as sass from "sass";
 import { defineConfig, Plugin } from "vite";
 
+const mode = process.env.NODE_ENV || "development";
+
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 const imgExt = (platform: string) => (platform === "chrome" ? "webp" : "png");
-
-function isSrcNewer(src: string, bin: string): boolean {
-  const srcTime = fs.statSync(src).mtimeMs;
-  try {
-    return srcTime > fs.statSync(bin).mtimeMs;
-  } catch {
-    return true;
-  }
-}
 
 // ─── plugin: SCSS ────────────────────────────────────────────────────────────
 
@@ -59,12 +52,12 @@ function scssPlugin(platform: string, outputDir: string): Plugin {
     async buildStart() {
       const jobs: Array<[string, string]> = [
         // view
-        ...(await Array.fromAsync(
-          glob("src/view/*.scss"),
-        )).map((f): [string, string] => [
-          path.resolve(f),
-          `${outputDir}/view/${path.basename(f, ".scss")}.css`,
-        ]),
+        ...(await Array.fromAsync(glob("src/view/*.scss"))).map(
+          (f): [string, string] => [
+            path.resolve(f),
+            `${outputDir}/view/${path.basename(f, ".scss")}.css`,
+          ],
+        ),
       ];
 
       await Promise.all(jobs.map(([src, dest]) => buildScss(src, dest)));
@@ -102,10 +95,7 @@ function pugPlugin(platform: string, outputDir: string): Plugin {
       }
 
       // zombie.pug
-      jobs.push([
-        path.resolve("src/zombie.pug"),
-        `${outputDir}/zombie.html`,
-      ]);
+      jobs.push([path.resolve("src/zombie.pug"), `${outputDir}/zombie.html`]);
 
       // write/*.pug (exclude _*.pug)
       for await (const f of glob("src/write/*.pug")) {
@@ -217,7 +207,10 @@ function staticCopyPlugin(platform: string, outputDir: string): Plugin {
 
       // browser-polyfill
       if (platform === "tauri") {
-        copies.push(["src/browser-shim.js", `${outputDir}/lib/browser-polyfill.min.js`]);
+        copies.push([
+          "src/browser-shim.js",
+          `${outputDir}/lib/browser-polyfill.min.js`,
+        ]);
       } else {
         copies.push([
           "node_modules/webextension-polyfill/dist/browser-polyfill.min.js",
@@ -232,10 +225,28 @@ function staticCopyPlugin(platform: string, outputDir: string): Plugin {
         }),
       );
 
-      // monaco (large, copy whole dir)
+      // vite.config.ts 内
       const monacoSrc = "node_modules/monaco-editor/min/vs";
       const monacoDest = `${outputDir}/lib/monaco/vs`;
+      await fs.ensureDir(monacoDest);
       await fs.copy(monacoSrc, monacoDest, { overwrite: true });
+
+      // ★ ハッシュ付き Worker をハッシュなしの名前にリネーム（コピー）するっす
+      const assetsDir = path.join(monacoDest, "assets");
+      if (await fs.pathExists(assetsDir)) {
+        const files = await fs.readdir(assetsDir);
+        for (const file of files) {
+          // 例: json.worker-DKiEKt88.js -> json.worker.js に変換
+          const match = file.match(/^(.+?\.worker)-[a-zA-Z0-9]+\.js$/);
+          if (match) {
+            await fs.copy(
+              path.join(assetsDir, file),
+              path.join(assetsDir, `${match[1]}.js`),
+              { overwrite: true },
+            );
+          }
+        }
+      }
     },
   };
 }
@@ -252,14 +263,14 @@ export default defineConfig(() => {
     // ui:            { file: "src/ui/ui.js",                    name: "UI" },
     // submit_res:    { file: "src/write/submit_res.js",         name: "submit_res" },
     // submit_thread: { file: "src/write/submit_thread.js",      name: "submit_thread" },
-    browser:       { file: "src/view/browser/index.tsx",      name: "BrowserView" },
+    browser: { file: "src/view/browser/index.tsx", name: "BrowserView" },
   };
 
   const { file, name } = entryMap[entry];
 
   return {
     define: {
-      "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV || "development"),
+      "process.env.NODE_ENV": JSON.stringify(mode),
     },
     plugins: [
       react(),
@@ -286,7 +297,9 @@ export default defineConfig(() => {
             "img($name)": (args: sass.Value[]) => {
               const name = (args[0] as sass.SassString).text;
               const ext = imgExt(platform);
-              return new sass.SassString(`url(/img/${name}.${ext})`, { quotes: false });
+              return new sass.SassString(`url(/img/${name}.${ext})`, {
+                quotes: false,
+              });
             },
             "vals($name)": (args: sass.Value[]) => {
               const name = (args[0] as sass.SassString).text;

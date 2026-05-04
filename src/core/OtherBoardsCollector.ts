@@ -93,15 +93,17 @@ export class OtherBoardsCollector {
     try {
       const readStates = await this.deps.getAllReadStates();
       for (const rs of readStates) {
-        let boardUrl: string;
-        if (rs.board_url) {
-          boardUrl = rs.board_url;
-        } else {
-          const u = new URL(rs.url);
-          if (u.guessType().type !== "thread") continue;
-          boardUrl = u.toBoard().href;
+        try {
+          let boardUrl = rs.board_url;
+          if (!boardUrl) {
+            const u = new URL(rs.url);
+            if (u.guessType().type !== "thread") continue;
+            boardUrl = u.toBoard().href;
+          }
+          addIfNew(boardUrl, boardUrl);
+        } catch {
+          // 不正なURLは無視
         }
-        addIfNew(boardUrl, boardUrl);
       }
     } catch (e) {
       console.error("Failed to fetch read states for Other category", e);
@@ -111,10 +113,14 @@ export class OtherBoardsCollector {
     try {
       const historyEntries = await this.deps.getUniqueHistory();
       for (const entry of historyEntries) {
-        const u = new URL(entry.url);
-        if (u.guessType().type !== "thread") continue;
-        const boardUrl = u.toBoard().href;
-        addIfNew(boardUrl, entry.boardTitle || boardUrl);
+        try {
+          const u = new URL(entry.url);
+          if (u.guessType().type !== "thread") continue;
+          const boardUrl = u.toBoard().href;
+          addIfNew(boardUrl, entry.boardTitle || boardUrl);
+        } catch {
+          // 不正なURLは無視
+        }
       }
     } catch (e) {
       console.error("Failed to fetch history for Other category", e);

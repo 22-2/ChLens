@@ -15,52 +15,55 @@ type MonacoEnvironmentLike = {
   [key: string]: unknown;
 };
 
-// MonacoEnvironment を loader より先にセットする（loaderの非同期初期化前に確実に差し込む）
-// getWorker で直接 Worker インスタンスを返し blob URL ラッパーを回避する
+// NGEditor.tsx 内の定数を修正
 const workerMap: Record<string, string> = {
-  json: "json.worker-DKiEKt88.js",
-  css: "css.worker-HnVq6Ewq.js",
-  scss: "css.worker-HnVq6Ewq.js",
-  less: "css.worker-HnVq6Ewq.js",
-  html: "html.worker-B51mlPHg.js",
-  handlebars: "html.worker-B51mlPHg.js",
-  razor: "html.worker-B51mlPHg.js",
-  typescript: "ts.worker-CMbG-7ft.js",
-  javascript: "ts.worker-CMbG-7ft.js",
+  json: "json.worker.js",
+  css: "css.worker.js",
+  scss: "css.worker.js",
+  less: "css.worker.js",
+  html: "html.worker.js",
+  handlebars: "html.worker.js",
+  razor: "html.worker.js",
+  typescript: "ts.worker.js",
+  javascript: "ts.worker.js",
 };
 
+// パス解決を絶対パスにするっす
 const resolveWorkerUrl = (label: string): string => {
-  const file = workerMap[label] ?? "editor.worker-Be8ye1pW.js";
-  return platform.window.getAssetUrl(`lib/monaco/vs/assets/${file}`);
+  const file = workerMap[label] ?? "editor.worker.js";
+  const rawUrl = platform.window.getAssetUrl(`lib/monaco/vs/assets/${file}`);
+  // 先頭に / がなければ付与して絶対パスにするっす
+  return rawUrl.startsWith("/") ? rawUrl : "/" + rawUrl;
 };
+
+// loader.config も絶対パスにするっす
+loader.config({
+  paths: {
+    vs: "/lib/monaco/vs" // 直接指定するのが一番確実っす
+  },
+});
 
 const configureMonacoEnvironment = (): void => {
   const globalScope = globalThis as typeof globalThis & {
     MonacoEnvironment?: MonacoEnvironmentLike;
   };
 
-  // monaco側が初期化時にMonacoEnvironmentを書き換えるため、必要なキーを維持しつつworker解決だけ固定化する
-  const previous = globalScope.MonacoEnvironment ?? {};
   globalScope.MonacoEnvironment = {
-    ...previous,
+    ...globalScope.MonacoEnvironment,
     getWorker: (_moduleId: string, label: string) => {
-      return new Worker(resolveWorkerUrl(label), {
-        type: "module",
+      const url = resolveWorkerUrl(label);
+      // 同期的に Worker を返すために Blob ラッパーを使用
+      const blob = new Blob([`importScripts("${url}")`], {
+        type: "application/javascript",
+      });
+      return new Worker(URL.createObjectURL(blob), {
         name: `monaco-${label || "editor"}`,
       });
-    },
-    getWorkerUrl: (_moduleId: string, label: string) => {
-      return resolveWorkerUrl(label);
     },
   };
 };
 
 configureMonacoEnvironment();
-
-// platform経由でURL解決を統一し、コンポーネント側のブラウザAPI直参照を避ける。
-loader.config({
-  paths: { vs: platform.window.getAssetUrl("lib/monaco/vs") },
-});
 
 interface NGEditorProps {
   value: string; // DSL string

@@ -361,8 +361,16 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 - [ ] navbarリファクタリング
   - [ ] omnibar coomponentを独立させる
 - [ ] tauriでmonacoが読み込まれない
-- [ ] tauriで板一覧が読み込まれない
-- [ ] tauri環境を再現してsqliteで取得
+- [ ] test: tauri環境を再現してsqliteで取得
+- [x] fix: tauriで板一覧が読み込まれない
+- [x] タブのスレや板でwindowタイトルを変更するように
+- [x] 設定画面にセクションがほしい
+- [x] refactor: ビルドの単純化
+- [x] refactor: 古いuiシステム削除
+- [x] refactor: BBSMenuParserの統合
+- [x] 専ブラの名前
+- [x] feat: タブをドラッグで移動できるように
+- [ ] fix: bbsmenuが毎回fetchされる
 
 ### low prior
 - [ ] feat: ブラウザのようなアドレスバーのブックマークボタン
@@ -372,16 +380,9 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 - [ ] コマンドパレット
 [-] NG Studio構想
   - [ ] [5ch互換専ブラを今更作ってるっす | Google Gemini](https://gemini.google.com/app/5d3fdd3bc7ec4cbf?hl=ja)
-- [x] タブのスレや板でwindowタイトルを変更するように
 - [ ] 閲覧履歴で、要素が多いとフィルタ開閉が重い
-- - [ ] 専スレでだけsageみたいな設定ができるように
-- [x] 設定画面にセクションがほしい
-- [x] feat: タブをドラッグで移動できるように
+- [ ] 専スレでだけsageみたいな設定ができるように
 - [ ] feat: 画像サムネの読み込みの高速化 -> imgurとかフルサイズで取得してるかもしれない
-- [x] 専ブラの名前
-- [x] refactor: ビルドの単純化
-- [x] refactor: 古いuiシステム削除
-- [x] refactor: BBSMenuParserの統合
 - [ ] メモリセーバー（自動タブunmount）
 
 ## メタ

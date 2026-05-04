@@ -27,6 +27,8 @@ export interface BBSMenuData {
 export class BBSMenuModel {
   private _bbsmenuOption: Set<string> | null = null;
   private _updatingPromise: Promise<BBSMenuData> | null = null;
+  // セッション中のメモリキャッシュ。毎回DBルックアップ+パースを繰り返さないようにする
+  private _cachedResult: BBSMenuData | null = null;
   public readonly onChange = new Callbacks({ persistent: true });
 
   private _fetcher: BBSMenuFetcher;
@@ -109,12 +111,18 @@ export class BBSMenuModel {
    * 既に取得中の場合は同じPromiseを返す。
    */
   async get(forceReload = false): Promise<BBSMenuData> {
+    // 強制更新でなくメモリキャッシュがある場合はそのまま返す（毎回のDB/HTTP再取得を避ける）
+    if (!forceReload && this._cachedResult != null) {
+      return this._cachedResult;
+    }
+
     if (this._updatingPromise == null) {
       this._updatingPromise = this._update(forceReload);
     }
 
     try {
       const result = await this._updatingPromise;
+      this._cachedResult = result;
       if (forceReload) {
         this.onChange.call(result);
       }

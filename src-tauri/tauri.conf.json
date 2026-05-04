@@ -20,7 +20,7 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; worker-src 'self' blob:; script-src 'self' 'wasm-unsafe-eval';"
     }
   },
   "bundle": {
