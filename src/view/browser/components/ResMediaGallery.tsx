@@ -74,7 +74,7 @@ function VideoThumbImage({
   embed,
 }: {
   embed: ExternalVideoEmbed;
-}): JSX.Element {
+}): React.ReactElement {
   const [posterUrl, setPosterUrl] = useState(embed.thumbnailUrl);
 
   useEffect(() => {
@@ -95,7 +95,7 @@ function VideoThumbImage({
   );
 }
 
-function NativeVideoThumb({ rawUrl }: { rawUrl: string }): JSX.Element {
+function NativeVideoThumb({ rawUrl }: { rawUrl: string }): React.ReactElement {
   const [isPreviewReady, setIsPreviewReady] = useState(false);
   const fallbackPosterUrl = getDirectVideoFallbackThumbnailUrl();
 
@@ -130,7 +130,7 @@ export function ResMediaGallery({
   openOnMiddleMouseDown = false,
   isBlurred = false,
   imageBlurRadius = 4,
-}: ResMediaGalleryProps): JSX.Element | null {
+}: ResMediaGalleryProps): React.ReactElement | null {
   const handledMiddleClickUrlRef = useRef<string | null>(null);
   const [expandedVideoUrl, setExpandedVideoUrl] = useState<string | null>(null);
   const thumbStyle: ThumbStyle | undefined = isBlurred
@@ -290,7 +290,9 @@ export function ResMediaGallery({
             );
           }
 
-          const isExpanded = expandedVideo?.embed.rawUrl === item.embed.rawUrl;
+          const isExpanded =
+            expandedVideo?.type === "video" &&
+            expandedVideo?.embed.rawUrl === item.embed.rawUrl;
           return (
             <button
               key={`video:${item.embed.rawUrl}`}
