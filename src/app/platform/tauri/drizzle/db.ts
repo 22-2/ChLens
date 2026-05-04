@@ -1,5 +1,8 @@
 import Database from "@tauri-apps/plugin-sql";
 import { drizzle } from "drizzle-orm/sqlite-proxy";
+import { createLogger } from "src/core/logger";
+
+const logger = createLogger("TauriDrizzle");
 
 interface SqlPluginDatabase {
   execute(query: string, bindValues?: unknown[]): Promise<unknown>;
@@ -14,6 +17,7 @@ interface TauriDrizzleContext {
 }
 
 let dbContextPromise: Promise<TauriDrizzleContext> | null = null;
+let dbContextError: Error | null = null;
 
 async function runMigrations(raw: SqlPluginDatabase): Promise<void> {
   await raw.execute(`
@@ -107,30 +111,72 @@ async function runMigrations(raw: SqlPluginDatabase): Promise<void> {
 }
 
 async function createContext(): Promise<TauriDrizzleContext> {
-  const raw = (await Database.load("sqlite:chlens.db")) as SqlPluginDatabase;
+  logger.debug("SQLite contextの初期化開始");
 
-  await runMigrations(raw);
+  // Why: Tauri plugin が完全に初期化されるまで待機。prodビルドでは
+  // タイミングの問題が起きるため、最大3回までリトライ
+  const maxRetries = 3;
+  let lastError: Error | null = null;
 
-  const db = drizzle(async (query, params, method) => {
-    const bindValues = (params ?? []) as unknown[];
-    if ((method as ProxyMethod) === "run") {
-      await raw.execute(query, bindValues);
-      return { rows: [] };
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      // 初回は50ms、その後は累積待機
+      const waitMs = attempt === 1 ? 50 : 100 * attempt;
+      await new Promise(resolve => setTimeout(resolve, waitMs));
+
+      logger.debug(`Database.load試行 (${attempt}/${maxRetries})`);
+      const raw = (await Database.load("sqlite:chlens.db")) as SqlPluginDatabase;
+      logger.debug("Database.load成功");
+
+      await runMigrations(raw);
+
+      const db = drizzle(async (query, params, method) => {
+        const bindValues = (params ?? []) as unknown[];
+        if ((method as ProxyMethod) === "run") {
+          await raw.execute(query, bindValues);
+          return { rows: [] };
+        }
+
+        const rows = await raw.select<Record<string, unknown>>(query, bindValues);
+        // Drizzle sqlite-proxy は rows を unknown[][] (配列の配列) として期待する。
+        // Tauri SQL は名前付きオブジェクトで返すため、Object.values で変換する。
+        // Object.values の順序は SQLite が返すカラム順と一致する。
+        return { rows: rows.map((row) => Object.values(row)) };
+      });
+
+      logger.debug("SQLite context初期化完了");
+      return { db, raw };
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      logger.warn(
+        `Database.load失敗 (試行 ${attempt}/${maxRetries}): ${lastError.message}`,
+      );
+
+      if (attempt === maxRetries) {
+        const message = `Database.load全リトライ失敗 (${attempt}回試行): ${lastError.message}`;
+        logger.error(message);
+        throw new Error(message);
+      }
     }
+  }
 
-    const rows = await raw.select<Record<string, unknown>>(query, bindValues);
-    // Drizzle sqlite-proxy は rows を unknown[][] (配列の配列) として期待する。
-    // Tauri SQL は名前付きオブジェクトで返すため、Object.values で変換する。
-    // Object.values の順序は SQLite が返すカラム順と一致する。
-    return { rows: rows.map((row) => Object.values(row)) };
-  });
-
-  return { db, raw };
+  // 到達しないはずだが、念のため
+  throw lastError || new Error("SQLite初期化失敗（予期しないエラー）");
 }
 
 export async function getTauriDrizzleContext(): Promise<TauriDrizzleContext> {
+  // Why: 前回の初期化で失敗していた場合、キャッシュされたエラーを再スロー
+  if (dbContextError != null) {
+    logger.debug("前回のSQLite初期化エラーを再スロー", dbContextError);
+    throw dbContextError;
+  }
+
   if (dbContextPromise == null) {
-    dbContextPromise = createContext();
+    dbContextPromise = createContext().catch((err) => {
+      // Why: エラーを保存して、次回呼び出し時に同じエラーを再スロー（重複初期化を防止）
+      dbContextError = err instanceof Error ? err : new Error(String(err));
+      throw dbContextError;
+    });
   }
   return dbContextPromise;
 }

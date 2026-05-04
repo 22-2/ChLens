@@ -143,11 +143,8 @@ export class BBSMenuModel {
       const result = await this._updatingPromise;
       this._cachedResult = result;
       if (tauri && result.status === "success") {
-        try {
-          await this._saveToSQLite(result);
-        } catch (e) {
-          logger.error("bbsmenu SQLite保存失敗", e);
-        }
+        // Why: SQLite保存は非同期エラーを内部で記録するため、ここでは呼び出すだけでOK
+        await this._saveToSQLite(result);
       }
       if (forceReload) {
         this.onChange.call(result);
@@ -183,21 +180,35 @@ export class BBSMenuModel {
 
       return { status: "success", menu: JSON.parse(record.data) as BBSMenu[] };
     } catch (e) {
-      logger.error("SQLiteキャッシュ読み込みエラー", e);
+      // Why: Tauri SQLiteの初期化に失敗してもアプリがクラッシュしないよう、
+      // エラーを記録するのみでnullを返す。呼び出し元はHTTP fetchにフォールバックする
+      logger.warn("SQLiteキャッシュ読み込みエラー（Tauri初期化失敗の可能性）", {
+        name: e instanceof Error ? e.name : "unknown",
+        message: e instanceof Error ? e.message : String(e),
+      });
       return null;
     }
   }
 
   private async _saveToSQLite(result: BBSMenuData): Promise<void> {
     if (result.menu == null) return;
-    logger.debug("SQLiteキャッシュ保存開始");
-    const { tauriBBSMenuCacheRepository } = await getTauriRepositories();
-    await tauriBBSMenuCacheRepository.put({
-      key: BBSMENU_CACHE_KEY,
-      data: JSON.stringify(result.menu),
-      lastUpdated: Date.now(),
-    });
-    logger.debug("SQLiteキャッシュ保存完了");
+    try {
+      logger.debug("SQLiteキャッシュ保存開始");
+      const { tauriBBSMenuCacheRepository } = await getTauriRepositories();
+      await tauriBBSMenuCacheRepository.put({
+        key: BBSMENU_CACHE_KEY,
+        data: JSON.stringify(result.menu),
+        lastUpdated: Date.now(),
+      });
+      logger.debug("SQLiteキャッシュ保存完了");
+    } catch (e) {
+      // Why: Tauri SQLiteの初期化に失敗してもアプリがクラッシュしないよう、
+      // エラーを記録するのみ。メモリキャッシュ(_cachedResult)で対応する
+      logger.warn("SQLiteキャッシュ保存失敗（Tauri初期化失敗の可能性）", {
+        name: e instanceof Error ? e.name : "unknown",
+        message: e instanceof Error ? e.message : String(e),
+      });
+    }
   }
 
   private async _update(forceReload: boolean): Promise<BBSMenuData> {
