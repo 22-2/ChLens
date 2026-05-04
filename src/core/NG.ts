@@ -9,9 +9,9 @@ import {
   checkWord,
   NGResObj,
   NGThreadObj,
-} from "./NGMatcher";
-import { parseNgString, setupNgRegex } from "./NGParser";
-import { InternalNGElement, TYPE } from "./NGTypes";
+} from "src/core/NGMatcher";
+import { parseNgString, setupNgRegex } from "src/core/NGParser";
+import { InternalNGElement, TYPE } from "src/core/NGTypes";
 
 export { TYPE };
 

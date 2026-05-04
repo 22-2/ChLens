@@ -1,11 +1,11 @@
-import { InternalNGElement, TYPE } from "./NGTypes";
-import { normalize, stringToDate } from "./jsutil";
+import { InternalNGElement, TYPE } from "src/core/NGTypes";
+import { normalize, stringToDate } from "src/core/jsutil";
 import {
   extractNgDslFunctionCall,
   normalizeNgDslKeyword,
   parseNgDslArguments,
   splitNgDslEntries,
-} from "./ngDsl";
+} from "src/core/ngDsl";
 
 const _ignoreResRegNumber = /^ignoreResNumber:(\d+)(?:-?(\d+))?,(.*)$/;
 const _ignoreNgType = /^ignoreNgType:(?:\$\((.*?)\):)?(.*)$/;

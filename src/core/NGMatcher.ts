@@ -1,5 +1,5 @@
-import { InternalNGElement, TYPE } from "./NGTypes";
-import { normalize } from "./jsutil";
+import { InternalNGElement, TYPE } from "src/core/NGTypes";
+import { normalize } from "src/core/jsutil";
 
 export interface NGThreadObj {
   all: string;

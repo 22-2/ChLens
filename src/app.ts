@@ -16,12 +16,12 @@ export * from "./app/Log";
 export { default as message } from "./app/Message";
 export * from "./app/Util";
 
-import CallbacksClass from "./app/Callbacks";
-import { defer } from "./app/Defer";
-import LocalStorageClass from "./app/LocalStorage";
-import { assertArg, criticalError, log } from "./app/Log";
-import messageInstance from "./app/Message";
-import { deepCopy, escapeHtml, replaceAll, safeHref } from "./app/Util";
+import CallbacksClass from "src/app/Callbacks";
+import { defer } from "src/app/Defer";
+import LocalStorageClass from "src/app/LocalStorage";
+import { assertArg, criticalError, log } from "src/app/Log";
+import messageInstance from "src/app/Message";
+import { deepCopy, escapeHtml, replaceAll, safeHref } from "src/app/Util";
 
 // Create global app object early to satisfy legacy code
 const appObj: any = {
