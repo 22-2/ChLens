@@ -356,6 +356,7 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 
 ## 次
 - [x] 開いていないタブは、初回タブ表示までレンダリングしない
+- [ ] ciでコンパイルってキャッシュできないのか
 - [ ] bbsmenuの項目もomnibarに含める
 - [ ] navbarリファクタリング
   - [ ] omnibar coomponentを独立させる
