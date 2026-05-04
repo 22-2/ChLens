@@ -18,7 +18,9 @@ import React, {
   useState,
 } from "react";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
+import { Omnibar } from "src/view/browser/components/Omnibar";
 import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
+import { useOmnibar } from "src/view/browser/hooks/use-omnibar";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import {
   canGoBack,
@@ -33,12 +35,10 @@ import {
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
 import { container } from "src/service-container/index";
 import {
-  buildOmnibarSuggestions,
   mergeOmnibarSources,
   type OmnibarBoardSource,
   type OmnibarBookmarkSource,
   type OmnibarHistorySource,
-  type OmnibarMergedEntry,
   type OmnibarSuggestion,
 } from "src/view/browser/utils/omnibar";
 
@@ -222,14 +222,6 @@ export const NavigationBar: React.FC = () => {
   const forward = canGoForward(activeTab);
   const displayUrl = getDisplayUrl(currentPage);
 
-  const [inputValue, setInputValue] = useState(displayUrl);
-  const [isFocused, setIsFocused] = useState(false);
-  const [omnibarEntries, setOmnibarEntries] = useState<OmnibarMergedEntry[]>(
-    [],
-  );
-  const [isOmnibarLoaded, setIsOmnibarLoaded] = useState(false);
-  const [isOmnibarLoading, setIsOmnibarLoading] = useState(false);
-  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
   const [backMenuPosition, setBackMenuPosition] = useState<MenuPosition | null>(
     null,
@@ -249,83 +241,17 @@ export const NavigationBar: React.FC = () => {
     activeTab.autoRefreshEnabled &&
     activeTab.autoRefreshThreadUrl === currentPage.threadUrl;
 
-  // ページ遷移時にURLバーの表示を同期
-  useEffect(() => {
-    if (!isFocused) {
-      setInputValue(displayUrl);
-    }
-  }, [displayUrl, isFocused]);
-
-  useEffect(() => {
-    // 変更理由: isOmnibarLoadingを依存配列に含めると、ロード開始時のstate変更で
-    // 再度effectが発火し、直前のロードをキャンセルしてしまう依存関係ループが発生するため除外。
-    if (!isFocused || isOmnibarLoaded) {
-      return;
-    }
-
-    setIsOmnibarLoading(true);
-
-    let cancelled = false;
-    void Promise.all([
+  const loadOmnibarEntries = useCallback(async () => {
+    const [historyItems, bookmarkItems, boardItems] = await Promise.all([
       readHistorySources(),
       Promise.resolve(readBookmarkSources()),
       readBBSMenuBoardSources(),
-    ])
-      .then(([historyItems, bookmarkItems, boardItems]) => {
-        if (cancelled) {
-          return;
-        }
+    ]);
 
-        // 変更理由: URLバー候補は履歴・お気に入り・bbsmenu板を統合し、
-        // 利用者の直近行動と明示的なお気に入りおよび板一覧を1ストロークで辿れるようにする。
-        setOmnibarEntries(
-          mergeOmnibarSources(bookmarkItems, historyItems, boardItems),
-        );
-        setIsOmnibarLoaded(true);
-      })
-      .catch(() => {
-        if (cancelled) {
-          return;
-        }
-        setOmnibarEntries([]);
-        setIsOmnibarLoaded(true);
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsOmnibarLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isFocused, isOmnibarLoaded]);
-
-  const omnibarSuggestions = useMemo(
-    () =>
-      buildOmnibarSuggestions(
-        omnibarEntries,
-        inputValue,
-        OMNIBAR_MAX_SUGGESTIONS,
-      ),
-    [inputValue, omnibarEntries],
-  );
-
-  const shouldShowNoMatch =
-    isFocused &&
-    !isOmnibarLoading &&
-    inputValue.trim().length > 0 &&
-    omnibarSuggestions.length === 0;
-  const isOmnibarOpen =
-    isFocused &&
-    (isOmnibarLoading || omnibarSuggestions.length > 0 || shouldShowNoMatch);
-
-  useEffect(() => {
-    if (activeSuggestionIndex < omnibarSuggestions.length) {
-      return;
-    }
-    setActiveSuggestionIndex(0);
-  }, [activeSuggestionIndex, omnibarSuggestions.length]);
+    // 変更理由: URLバー候補は履歴・お気に入り・bbsmenu板を統合し、
+    // 利用者の直近行動と明示的なお気に入りおよび板一覧を1ストロークで辿れるようにする。
+    return mergeOmnibarSources(bookmarkItems, historyItems, boardItems);
+  }, []);
 
   const openSuggestion = useCallback(
     (suggestion: OmnibarSuggestion) => {
@@ -345,13 +271,33 @@ export const NavigationBar: React.FC = () => {
         },
       });
 
-      setInputValue(suggestion.url);
-      setIsFocused(false);
-      setActiveSuggestionIndex(0);
       urlInputRef.current?.blur();
     },
     [dispatch],
   );
+
+  const {
+    inputValue,
+    isOpen: isOmnibarOpen,
+    isLoading: isOmnibarLoading,
+    suggestions: omnibarSuggestions,
+    shouldShowNoMatch,
+    activeSuggestionIndex,
+    setActiveSuggestionIndex,
+    handleInputChange,
+    handleKeyDown,
+    handleFocus,
+    handleBlur,
+    handleSelectSuggestion,
+  } = useOmnibar({
+    displayUrl,
+    maxSuggestions: OMNIBAR_MAX_SUGGESTIONS,
+    loadEntries: loadOmnibarEntries,
+    onSelectSuggestion: openSuggestion,
+    onSubmitInput: (url) => {
+      navigateByUrl(url, dispatch);
+    },
+  });
 
   const handleRefresh = useCallback(() => {
     setRefreshMenuPosition(null);
@@ -394,73 +340,6 @@ export const NavigationBar: React.FC = () => {
     },
     [currentPage.type],
   );
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === "ArrowDown") {
-        if (omnibarSuggestions.length > 0) {
-          e.preventDefault();
-          setActiveSuggestionIndex((prev) =>
-            prev + 1 >= omnibarSuggestions.length ? 0 : prev + 1,
-          );
-        }
-        return;
-      }
-
-      if (e.key === "ArrowUp") {
-        if (omnibarSuggestions.length > 0) {
-          e.preventDefault();
-          setActiveSuggestionIndex((prev) =>
-            prev - 1 < 0 ? omnibarSuggestions.length - 1 : prev - 1,
-          );
-        }
-        return;
-      }
-
-      if (e.key === "Enter") {
-        const selected =
-          omnibarSuggestions[activeSuggestionIndex] ?? omnibarSuggestions[0];
-        if (selected) {
-          e.preventDefault();
-          openSuggestion(selected);
-          return;
-        }
-
-        navigateByUrl(inputValue, dispatch);
-        (e.target as HTMLInputElement).blur();
-        return;
-      }
-
-      if (e.key === "Escape") {
-        setIsFocused(false);
-        setInputValue(displayUrl);
-        setActiveSuggestionIndex(0);
-        (e.target as HTMLInputElement).blur();
-      }
-    },
-    [
-      activeSuggestionIndex,
-      dispatch,
-      displayUrl,
-      inputValue,
-      omnibarSuggestions,
-      openSuggestion,
-    ],
-  );
-
-  const handleFocus = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
-    setIsFocused(true);
-    setActiveSuggestionIndex(0);
-    // Chrome風: フォーカス時に全選択
-    e.target.select();
-  }, []);
-
-  const handleBlur = useCallback(() => {
-    setIsFocused(false);
-    setActiveSuggestionIndex(0);
-    // フォーカスを外したら現在のURLに戻す
-    setInputValue(displayUrl);
-  }, [displayUrl]);
 
   const openSettingsTab = useCallback(() => {
     // 設定タブを毎回増やすより既存タブを再利用した方が往復しやすいため、まず開いている設定を探す。
@@ -779,67 +658,22 @@ export const NavigationBar: React.FC = () => {
         <RotateCw size={16} />
       </button>
 
-      <div className="nav-bar__url">
-        <input
-          ref={urlInputRef}
-          className="nav-bar__url-input"
-          type="text"
-          value={inputValue}
-          onChange={(e) => {
-            setInputValue(e.target.value);
-            setActiveSuggestionIndex(0);
-          }}
-          onKeyDown={handleKeyDown}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          placeholder="URLを入力"
-          spellCheck={false}
-        />
-
-        {isOmnibarOpen ? (
-          <div className="nav-bar__omnibar" role="listbox" aria-label="候補">
-            {isOmnibarLoading ? (
-              <div className="nav-bar__omnibar-empty">候補を読み込み中...</div>
-            ) : null}
-
-            {!isOmnibarLoading && omnibarSuggestions.length > 0
-              ? omnibarSuggestions.map((suggestion, index) => (
-                  <button
-                    key={suggestion.url}
-                    type="button"
-                    className={`nav-bar__omnibar-item${
-                      index === activeSuggestionIndex
-                        ? " nav-bar__omnibar-item--active"
-                        : ""
-                    }`}
-                    role="option"
-                    aria-selected={index === activeSuggestionIndex}
-                    onMouseDown={(e) => {
-                      // blur が先に発火して候補クリックが失われるのを防ぐ。
-                      e.preventDefault();
-                    }}
-                    onMouseEnter={() => setActiveSuggestionIndex(index)}
-                    onClick={() => openSuggestion(suggestion)}
-                    title={`${suggestion.title} ${suggestion.url}`}
-                  >
-                    <span className="nav-bar__omnibar-title">
-                      {suggestion.title}
-                    </span>
-                    <span className="nav-bar__omnibar-url">
-                      {suggestion.url}
-                    </span>
-                  </button>
-                ))
-              : null}
-
-            {shouldShowNoMatch ? (
-              <div className="nav-bar__omnibar-empty">
-                一致する候補がありません
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
+      <Omnibar
+        inputRef={urlInputRef}
+        inputValue={inputValue}
+        placeholder="URLを入力"
+        isOpen={isOmnibarOpen}
+        isLoading={isOmnibarLoading}
+        suggestions={omnibarSuggestions}
+        activeSuggestionIndex={activeSuggestionIndex}
+        shouldShowNoMatch={shouldShowNoMatch}
+        onInputChange={handleInputChange}
+        onKeyDown={handleKeyDown}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        onSuggestionHover={setActiveSuggestionIndex}
+        onSuggestionSelect={handleSelectSuggestion}
+      />
 
       <button
         ref={menuButtonRef}
