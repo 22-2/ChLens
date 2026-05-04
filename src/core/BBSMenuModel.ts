@@ -2,8 +2,7 @@ import { BBSMenu } from "src/core/BBSMenuParser";
 import Callbacks from "src/app/Callbacks";
 import { container } from "src/service-container/index";
 import { URL } from "src/core/URL";
-// @ts-ignore
-import * as History from "src/core/History.js";
+import * as History from "src/core/History.ts";
 // @ts-ignore
 import * as ReadState from "src/core/ReadState.js";
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";

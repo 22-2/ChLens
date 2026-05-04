@@ -40,7 +40,7 @@ describe("History Tauri branch", () => {
   });
 
   it("add delegates to tauriHistoryRepository", async () => {
-    const History = await import("src/core/History.js");
+    const History = await import("src/core/History.ts");
 
     await History.add("https://example.com/thread", "title", 123, "board");
 
@@ -63,7 +63,7 @@ describe("History Tauri branch", () => {
       },
     ]);
 
-    const History = await import("src/core/History.js");
+    const History = await import("src/core/History.ts");
     const rows = await History.get(0, 10);
 
     expect(state.tauriHistoryRepository.get).toHaveBeenCalledWith(0, 10);
@@ -75,7 +75,7 @@ describe("History Tauri branch", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-04T00:00:00.000Z"));
 
-    const History = await import("src/core/History.js");
+    const History = await import("src/core/History.ts");
     await History.clearRange(7);
 
     const expected = Date.now() - 7 * 24 * 60 * 60 * 1000;
