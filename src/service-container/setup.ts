@@ -24,7 +24,7 @@ import BoardService from "src/core/BoardService.js";
 import * as BBSMenu from "src/core/BBSMenu.js";
 // @ts-ignore
 import ThreadService from "src/core/ThreadService.js";
-import Notification from "src/core/Notification.ts";
+import Notification from "src/core/Notification";
 import { toast } from "sonner";
 
 /**
