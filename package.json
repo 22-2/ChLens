@@ -56,9 +56,9 @@
     "// --- Development & Watch ---": "",
     "dev:chrome": "run-s build:chrome --watch",
     "watch:chrome": "pnpm dev:chrome",
-    "watch:tauri": "run-s build:tauri --watch",
+    "watch:tauri": "pnpm build:tauri --watch",
     "tauri": "tauri",
-    "dev:tauri": "run-p watch:tauri \"tauri dev\"",
+    "dev:tauri": "tauri dev",
 
     "// --- Utility & Lint ---": "",
     "clean": "node -e \"const fs=require('fs-extra'); ['debug/chrome','debug/firefox','debug/tauri'].forEach(d=>fs.removeSync(d))\"",
