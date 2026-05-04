@@ -20,7 +20,12 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; worker-src 'self' blob:; script-src 'self' 'wasm-unsafe-eval';"
+      "csp": {
+        "default-src": "'self' customprotocol: asset:",
+        "connect-src": "ipc: http://ipc.localhost https://ipc.localhost",
+        "worker-src": "'self' blob:",
+        "script-src": "'self' 'wasm-unsafe-eval'"
+      }
     }
   },
   "bundle": {
