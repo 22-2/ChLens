@@ -364,5 +364,6 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 - [x] refactor: ビルドの単純化
 - [x] refactor: 古いuiシステム削除
 - [x] refactor: BBSMenuParserの統合
+- [ ] omnibar
 
 ## メタ

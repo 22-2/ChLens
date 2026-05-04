@@ -61,6 +61,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@dnd-kit/react": "^0.4.0",
     "@monaco-editor/react": "^4.7.0",
     "@rjsf/core": "^6.5.1",
     "@rjsf/utils": "^6.5.1",

@@ -1,5 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render } from "@testing-library/react";
+import React from "react";
 import { TabBar } from "src/view/browser/components/TabBar";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -43,6 +44,36 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   }),
 }));
 
+// DragDropProvider はテスト環境ではシムで置き換え、onDragEnd を外部から呼べるようにする。
+let capturedOnDragEnd: ((event: Record<string, unknown>) => void) | undefined;
+
+vi.mock("@dnd-kit/react", () => ({
+  DragDropProvider: ({
+    children,
+    onDragEnd,
+  }: {
+    children: React.ReactNode;
+    onDragEnd?: (event: Record<string, unknown>) => void;
+  }) => {
+    capturedOnDragEnd = onDragEnd;
+    return <>{children}</>;
+  },
+}));
+
+vi.mock("@dnd-kit/react/sortable", () => ({
+  useSortable: ({ id }: { id: string; index: number; group?: string }) => ({
+    // ref は DOM アタッチ不要なためノーオプとして返す。
+    ref: vi.fn(),
+    isDragSource: false,
+    isDropTarget: false,
+    isDragging: false,
+    isDropping: false,
+  }),
+  // テスト用モックでは operation が object であれば sortable 操作として扱う。
+  isSortableOperation: (op: unknown) =>
+    op !== null && typeof op === "object",
+}));
+
 describe("TabBar wheel switching", () => {
   beforeEach(() => {
     dispatchMock.mockReset();
@@ -81,64 +112,29 @@ describe("TabBar wheel switching", () => {
     expect(selectCalls).toHaveLength(1);
     expect(selectCalls[0][0]).toEqual({ type: "SELECT_TAB", tabId: "tab-2" });
   });
+});
 
-  it("隣タブの中心線を越えた時だけリアルタイムに MOVE_TAB を dispatch する", () => {
-    const { container } = render(<TabBar />);
-    const tabs = container.querySelectorAll(".tab");
-    const firstTab = tabs[0] as HTMLDivElement;
-    const secondTab = tabs[1] as HTMLDivElement;
+describe("TabBar drag-to-reorder", () => {
+  beforeEach(() => {
+    dispatchMock.mockReset();
+    capturedOnDragEnd = undefined;
+  });
 
-    vi.spyOn(firstTab, "getBoundingClientRect").mockReturnValue({
-      x: 0,
-      y: 0,
-      top: 0,
-      left: 0,
-      right: 100,
-      bottom: 30,
-      width: 100,
-      height: 30,
-      toJSON: () => ({}),
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("ドラッグ終了時に MOVE_TAB が dispatch される", () => {
+    render(<TabBar />);
+
+    // DragDropProvider の onDragEnd を直接呼び出してドラッグ完了をシミュレートする。
+    capturedOnDragEnd?.({
+      canceled: false,
+      operation: {
+        source: { id: "tab-1" },
+        target: { id: "tab-2" },
+      },
     });
-    vi.spyOn(secondTab, "getBoundingClientRect").mockReturnValue({
-      x: 100,
-      y: 0,
-      top: 0,
-      left: 100,
-      right: 200,
-      bottom: 30,
-      width: 100,
-      height: 30,
-      toJSON: () => ({}),
-    });
-
-    const tabBar = container.querySelector(".tab-bar") as HTMLDivElement;
-    vi.spyOn(tabBar, "getBoundingClientRect").mockReturnValue({
-      x: 0,
-      y: 0,
-      top: 0,
-      left: 0,
-      right: 300,
-      bottom: 40,
-      width: 300,
-      height: 40,
-      toJSON: () => ({}),
-    });
-
-    fireEvent.mouseDown(firstTab, {
-      button: 0,
-      clientX: 10,
-      clientY: 10,
-    });
-    // 閾値超えだけではまだ移動せず、隣タブ中心(150px)を越えたら初めて入れ替わる。
-    fireEvent.mouseMove(window, { clientX: 24, clientY: 10 });
-    fireEvent.mouseMove(window, { clientX: 120, clientY: 10 });
-
-    expect(dispatchMock).not.toHaveBeenCalledWith(
-      expect.objectContaining({ type: "MOVE_TAB" }),
-    );
-
-    fireEvent.mouseMove(window, { clientX: 151, clientY: 10 });
-    fireEvent.mouseUp(window);
 
     expect(dispatchMock).toHaveBeenCalledWith({
       type: "MOVE_TAB",
@@ -147,64 +143,80 @@ describe("TabBar wheel switching", () => {
     });
   });
 
-  it("ドラッグで移動した直後の click ではタブ選択を誤発火しない", () => {
+  it("canceled なドラッグでは MOVE_TAB を dispatch しない", () => {
+    render(<TabBar />);
+
+    capturedOnDragEnd?.({
+      canceled: true,
+      operation: {
+        source: { id: "tab-1" },
+        target: { id: "tab-2" },
+      },
+    });
+
+    expect(dispatchMock).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: "MOVE_TAB" }),
+    );
+  });
+
+  it("ドラッグ終了直後の click ではタブ選択を誤発火しない", () => {
     const { container } = render(<TabBar />);
-    const tabs = container.querySelectorAll(".tab");
-    const firstTab = tabs[0] as HTMLDivElement;
-    const secondTab = tabs[1] as HTMLDivElement;
 
-    vi.spyOn(firstTab, "getBoundingClientRect").mockReturnValue({
-      x: 0,
-      y: 0,
-      top: 0,
-      left: 0,
-      right: 100,
-      bottom: 30,
-      width: 100,
-      height: 30,
-      toJSON: () => ({}),
+    // ドラッグ完了イベントを発火して wasDraggingRef を立てる。
+    capturedOnDragEnd?.({
+      canceled: false,
+      operation: {
+        source: { id: "tab-1" },
+        target: { id: "tab-2" },
+      },
     });
-    vi.spyOn(secondTab, "getBoundingClientRect").mockReturnValue({
-      x: 100,
-      y: 0,
-      top: 0,
-      left: 100,
-      right: 200,
-      bottom: 30,
-      width: 100,
-      height: 30,
-      toJSON: () => ({}),
-    });
-
-    const tabBar = container.querySelector(".tab-bar") as HTMLDivElement;
-    vi.spyOn(tabBar, "getBoundingClientRect").mockReturnValue({
-      x: 0,
-      y: 0,
-      top: 0,
-      left: 0,
-      right: 300,
-      bottom: 40,
-      width: 300,
-      height: 40,
-      toJSON: () => ({}),
-    });
-
-    fireEvent.mouseDown(firstTab, {
-      button: 0,
-      clientX: 10,
-      clientY: 10,
-    });
-    fireEvent.mouseMove(window, { clientX: 24, clientY: 10 });
-    fireEvent.mouseMove(window, { clientX: 151, clientY: 10 });
-    fireEvent.mouseUp(window);
 
     dispatchMock.mockClear();
 
-    fireEvent.click(secondTab);
+    // ドラッグ直後の click は1回だけ抑止される。
+    const tabs = container.querySelectorAll(".tab");
+    fireEvent.click(tabs[1]);
 
-    expect(dispatchMock).not.toHaveBeenCalledWith({
+    expect(dispatchMock).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: "SELECT_TAB" }),
+    );
+  });
+});
+
+describe("TabBar tab interactions", () => {
+  beforeEach(() => {
+    dispatchMock.mockReset();
+    capturedOnDragEnd = undefined;
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("タブをクリックすると SELECT_TAB が dispatch される", () => {
+    const { container } = render(<TabBar />);
+    const tabs = container.querySelectorAll(".tab");
+
+    fireEvent.click(tabs[1]);
+
+    expect(dispatchMock).toHaveBeenCalledWith({
       type: "SELECT_TAB",
       tabId: "tab-2",
     });
   });
+
+  it("× ボタンをクリックすると CLOSE_TAB が dispatch される", () => {
+    const { container } = render(<TabBar />);
+    const closeBtn = container.querySelectorAll(
+      ".tab__close",
+    )[0] as HTMLButtonElement;
+
+    fireEvent.click(closeBtn);
+
+    expect(dispatchMock).toHaveBeenCalledWith({
+      type: "CLOSE_TAB",
+      tabId: "tab-1",
+    });
+  });
 });
+

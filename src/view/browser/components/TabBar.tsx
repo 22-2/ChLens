@@ -6,6 +6,8 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { DragDropProvider } from "@dnd-kit/react";
+import { isSortableOperation, useSortable } from "@dnd-kit/react/sortable";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { TabContextMenu } from "src/view/browser/components/TabContextMenu";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
@@ -25,15 +27,112 @@ interface BarContextMenuState {
 
 const TAB_SWITCH_WHEEL_MIN_DELTA = 8;
 const TAB_SWITCH_WHEEL_COOLDOWN_MS = 50;
-const TAB_REORDER_DRAG_THRESHOLD_PX = 3;
 
-interface TabDragState {
-  dragTabId: string;
-  startX: number;
-  startY: number;
-  isDragging: boolean;
-  orderedTabIds: string[];
+// Material Design の Fast-out, Slow-in カーブで Chrome 風の吸い付く感を再現する。
+const SORTABLE_TRANSITION = {
+  duration: 200,
+  easing: "cubic-bezier(0.4, 0, 0.2, 1)",
+};
+
+interface SortableTabProps {
+  tab: Tab;
+  index: number;
+  isActive: boolean;
+  isHighlighted: boolean;
+  isAutoRefreshActive: boolean;
+  tabCount: number;
+  wasDraggingRef: React.MutableRefObject<boolean>;
+  onSelect: (tabId: string) => void;
+  onClose: (tabId: string) => void;
+  onContextMenu: (e: React.MouseEvent, tab: Tab) => void;
 }
+
+// タブ1枚分の Sortable ラッパー。
+// useSortable は各タブが独自に DragDropManager と紐付くため、TabBar 外のコンポーネントとして定義する。
+const SortableTab: React.FC<SortableTabProps> = ({
+  tab,
+  index,
+  isActive,
+  isHighlighted,
+  isAutoRefreshActive,
+  tabCount,
+  wasDraggingRef,
+  onSelect,
+  onClose,
+  onContextMenu,
+}) => {
+  const { ref, isDragSource } = useSortable({
+    id: tab.id,
+    index,
+    // ピン留めタブと通常タブが境界を越えないようにグループで分離する。
+    group: tab.pinned ? "pinned" : "normal",
+    transition: SORTABLE_TRANSITION,
+  });
+
+  const page = getCurrentPage(tab);
+
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      // 中クリックはドラッグではなく閉じる操作として処理する。
+      if (e.button === 1) {
+        e.preventDefault();
+        onClose(tab.id);
+      }
+    },
+    [tab.id, onClose],
+  );
+
+  const handleClick = useCallback(() => {
+    // ドラッグ終了直後に合成される click でタブが切り替わるのを1回だけ抑止する。
+    if (wasDraggingRef.current) {
+      wasDraggingRef.current = false;
+      return;
+    }
+    onSelect(tab.id);
+  }, [tab.id, wasDraggingRef, onSelect]);
+
+  return (
+    <div
+      ref={ref}
+      className={`tab${isActive ? " tab--active" : ""}${
+        tab.pinned ? " tab--pinned" : ""
+      }${isHighlighted ? " tab--highlighted" : ""}${
+        isDragSource ? " tab--dragging" : ""
+      }`}
+      data-tab-id={tab.id}
+      title={page.title}
+      onClick={handleClick}
+      onMouseDown={handleMouseDown}
+      onContextMenu={(e) => onContextMenu(e, tab)}
+    >
+      {tab.pinned ? (
+        <Pin size={12} />
+      ) : (
+        <span className="tab__title">{page.title}</span>
+      )}
+      {/* 自動更新が有効なタブにはタイトルの右隣に状態インジケーターを表示する */}
+      {isAutoRefreshActive && !tab.pinned && (
+        <span
+          className="tab__auto-refresh-dot"
+          title="自動更新: ON"
+          aria-label="自動更新有効"
+        />
+      )}
+      {!tab.pinned && tabCount > 1 && (
+        <button
+          className="tab__close"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose(tab.id);
+          }}
+          title="タブを閉じる"
+        >
+          <X size={14} />
+        </button>
+      )}
+    </div>
+  );
+};
 
 export const TabBar: React.FC = () => {
   const { state, dispatch } = useTabStore();
@@ -41,7 +140,6 @@ export const TabBar: React.FC = () => {
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [barContextMenu, setBarContextMenu] =
     useState<BarContextMenuState | null>(null);
-  const [draggingTabId, setDraggingTabId] = useState<string | null>(null);
   const [highlightedTabIds, setHighlightedTabIds] = useState<Set<string>>(
     new Set(),
   );
@@ -49,8 +147,8 @@ export const TabBar: React.FC = () => {
     new Set(state.tabs.map((tab) => tab.id)),
   );
   const lastWheelSwitchAtRef = useRef(0);
-  const movedDuringDragRef = useRef(false);
-  const tabDragStateRef = useRef<TabDragState | null>(null);
+  // ドラッグ終了直後の click イベントによるタブ選択を抑止するためのフラグ。
+  const wasDraggingRef = useRef(false);
 
   useEffect(() => {
     const prev = prevTabIdsRef.current;
@@ -88,35 +186,6 @@ export const TabBar: React.FC = () => {
   useEffect(() => {
     prevTabIdsRef.current = new Set(state.tabs.map((tab) => tab.id));
   }, [state.tabs]);
-
-  // 中クリックで閉じる操作を維持しつつ、左クリックではタブ並べ替えのドラッグ候補を開始する。
-  const handleTabMouseDown = useCallback(
-    (e: React.MouseEvent, tabId: string) => {
-      if (e.button === 1) {
-        e.preventDefault();
-        dispatch({ type: "CLOSE_TAB", tabId });
-        return;
-      }
-      if (e.button !== 0) {
-        return;
-      }
-
-      const target = e.target as HTMLElement | null;
-      if (target?.closest(".tab__close")) {
-        return;
-      }
-
-      movedDuringDragRef.current = false;
-      tabDragStateRef.current = {
-        dragTabId: tabId,
-        startX: e.clientX,
-        startY: e.clientY,
-        isDragging: false,
-        orderedTabIds: state.tabs.map((tab) => tab.id),
-      };
-    },
-    [dispatch, state.tabs],
-  );
 
   // ホイールでアクティブタブを前後に切り替える
   const handleWheel = useCallback(
@@ -170,142 +239,36 @@ export const TabBar: React.FC = () => {
 
   const closeBarContextMenu = useCallback(() => setBarContextMenu(null), []);
 
-  const handleWindowMouseMove = useCallback(
-    (e: MouseEvent) => {
-      const drag = tabDragStateRef.current;
-      if (!drag) {
-        return;
-      }
-
-      if (!drag.isDragging) {
-        const dx = e.clientX - drag.startX;
-        const dy = e.clientY - drag.startY;
-        if (Math.hypot(dx, dy) < TAB_REORDER_DRAG_THRESHOLD_PX) {
-          return;
-        }
-        drag.isDragging = true;
-        setDraggingTabId(drag.dragTabId);
-      }
-
-      const bar = barRef.current;
-      if (!bar) {
-        return;
-      }
-
-      const rect = bar.getBoundingClientRect();
-      // バー外へ出た位置では並べ替えを止め、タブ列の秩序を崩さないようにする。
-      if (
-        rect.width > 0 &&
-        rect.height > 0 &&
-        (e.clientX < rect.left ||
-          e.clientX > rect.right ||
-          e.clientY < rect.top ||
-          e.clientY > rect.bottom)
-      ) {
-        return;
-      }
-
-      const tabElements = Array.from(
-        bar.querySelectorAll<HTMLElement>(".tab[data-tab-id]"),
-      );
-      if (tabElements.length <= 1) {
-        return;
-      }
-
-      const tabElementById = new Map<string, HTMLElement>();
-      for (const element of tabElements) {
-        const tabId = element.dataset.tabId;
-        if (tabId) {
-          tabElementById.set(tabId, element);
-        }
-      }
-
-      let currentIndex = drag.orderedTabIds.indexOf(drag.dragTabId);
-      if (currentIndex === -1) {
-        return;
-      }
-
-      while (true) {
-        const nextTabId = drag.orderedTabIds[currentIndex + 1];
-        const prevTabId = drag.orderedTabIds[currentIndex - 1];
-        const nextTabElement = nextTabId ? tabElementById.get(nextTabId) : null;
-        const prevTabElement = prevTabId ? tabElementById.get(prevTabId) : null;
-
-        if (nextTabId && nextTabElement) {
-          const nextRect = nextTabElement.getBoundingClientRect();
-          const nextMidX = nextRect.left + nextRect.width / 2;
-          if (e.clientX > nextMidX) {
-            dispatch({
-              type: "MOVE_TAB",
-              dragTabId: drag.dragTabId,
-              targetTabId: nextTabId,
-            });
-            movedDuringDragRef.current = true;
-            const reordered = [...drag.orderedTabIds];
-            [reordered[currentIndex], reordered[currentIndex + 1]] = [
-              reordered[currentIndex + 1],
-              reordered[currentIndex],
-            ];
-            drag.orderedTabIds = reordered;
-            currentIndex += 1;
-            continue;
-          }
-        }
-
-        if (prevTabId && prevTabElement) {
-          const prevRect = prevTabElement.getBoundingClientRect();
-          const prevMidX = prevRect.left + prevRect.width / 2;
-          if (e.clientX < prevMidX) {
-            dispatch({
-              type: "MOVE_TAB",
-              dragTabId: drag.dragTabId,
-              targetTabId: prevTabId,
-            });
-            movedDuringDragRef.current = true;
-            const reordered = [...drag.orderedTabIds];
-            [reordered[currentIndex - 1], reordered[currentIndex]] = [
-              reordered[currentIndex],
-              reordered[currentIndex - 1],
-            ];
-            drag.orderedTabIds = reordered;
-            currentIndex -= 1;
-            continue;
-          }
-        }
-
-        break;
-      }
+  const handleDragEnd = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (event: any) => {
+      // event.canceled はドラッグがキャンセル（Esc キーなど）された場合に true になる。
+      if (event.canceled) return;
+      const { operation } = event;
+      if (!isSortableOperation(operation)) return;
+      const { source, target } = operation;
+      if (!target || source?.id === target.id) return;
+      // ドラッグ完了直後の click イベントによるタブ選択を1回だけ抑止する。
+      wasDraggingRef.current = true;
+      dispatch({
+        type: "MOVE_TAB",
+        dragTabId: String(source?.id),
+        targetTabId: String(target.id),
+      });
     },
     [dispatch],
   );
 
-  const handleWindowMouseUp = useCallback(() => {
-    if (!tabDragStateRef.current) {
-      return;
-    }
-    tabDragStateRef.current = null;
-    setDraggingTabId(null);
-  }, []);
-
-  useEffect(() => {
-    window.addEventListener("mousemove", handleWindowMouseMove);
-    window.addEventListener("mouseup", handleWindowMouseUp);
-    window.addEventListener("blur", handleWindowMouseUp);
-    return () => {
-      window.removeEventListener("mousemove", handleWindowMouseMove);
-      window.removeEventListener("mouseup", handleWindowMouseUp);
-      window.removeEventListener("blur", handleWindowMouseUp);
-    };
-  }, [handleWindowMouseMove, handleWindowMouseUp]);
-
-  const handleTabClick = useCallback(
+  const handleTabSelect = useCallback(
     (tabId: string) => {
-      if (movedDuringDragRef.current) {
-        // ドラッグ直後に click が合成される環境があるため、意図しないタブ選択を1回だけ抑止する。
-        movedDuringDragRef.current = false;
-        return;
-      }
       dispatch({ type: "SELECT_TAB", tabId });
+    },
+    [dispatch],
+  );
+
+  const handleTabClose = useCallback(
+    (tabId: string) => {
+      dispatch({ type: "CLOSE_TAB", tabId });
     },
     [dispatch],
   );
@@ -329,69 +292,45 @@ export const TabBar: React.FC = () => {
 
   return (
     <div ref={barRef} className="tab-bar" onContextMenu={handleBarContextMenu}>
-      <div className="tab-list">
-        {state.tabs.map((tab) => {
-          const page = getCurrentPage(tab);
-          const isActive = tab.id === state.activeTabId;
-          // 自動更新有効判定: タブに登録された URL と現在ページの URL が一致する時のみ有効扣。
-          // 別スレへ遷移後に無案内に再読み込みが走るのを防ぐため。
-          const isAutoRefreshActive =
-            page.type === "thread" &&
-            tab.autoRefreshEnabled &&
-            tab.autoRefreshThreadUrl === page.threadUrl;
+      <DragDropProvider onDragEnd={handleDragEnd}>
+        <div className="tab-list">
+          {state.tabs.map((tab, index) => {
+            const page = getCurrentPage(tab);
+            const isActive = tab.id === state.activeTabId;
+            // 自動更新有効判定: タブに登録された URL と現在ページの URL が一致する時のみ有効。
+            // 別スレへ遷移後に無案内に再読み込みが走るのを防ぐため。
+            const isAutoRefreshActive =
+              page.type === "thread" &&
+              tab.autoRefreshEnabled &&
+              tab.autoRefreshThreadUrl === page.threadUrl;
 
-          return (
-            <div
-              key={tab.id}
-              className={`tab ${isActive ? "tab--active" : ""} ${
-                tab.pinned ? "tab--pinned" : ""
-              }${highlightedTabIds.has(tab.id) ? " tab--highlighted" : ""}${
-                draggingTabId === tab.id ? " tab--dragging" : ""
-              }`}
-              data-tab-id={tab.id}
-              title={page.title}
-              onClick={() => handleTabClick(tab.id)}
-              onMouseDown={(e) => handleTabMouseDown(e, tab.id)}
-              onContextMenu={(e) => handleContextMenu(e, tab)}
-            >
-              {tab.pinned ? (
-                <Pin size={12} />
-              ) : (
-                <span className="tab__title">{page.title}</span>
-              )}
-              {/* 自動更新が有効なタブにはタイトルの右隣に状態インジケーターを表示する */}
-              {isAutoRefreshActive && !tab.pinned && (
-                <span
-                  className="tab__auto-refresh-dot"
-                  title="自動更新: ON"
-                  aria-label="自動更新有効"
-                />
-              )}
-              {!tab.pinned && state.tabs.length > 1 && (
-                <button
-                  className="tab__close"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    dispatch({ type: "CLOSE_TAB", tabId: tab.id });
-                  }}
-                  title="タブを閉じる"
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
-          );
-        })}
-        {/* タブリスト内に配置して最後のタブのすぐ隣に表示 */}
-        <button
-          className="tab-bar__add"
-          onClick={() => dispatch({ type: "ADD_TAB" })}
-          onContextMenu={(e) => e.stopPropagation()}
-          title="新しいタブ"
-        >
-          <Plus size={18} />
-        </button>
-      </div>
+            return (
+              <SortableTab
+                key={tab.id}
+                tab={tab}
+                index={index}
+                isActive={isActive}
+                isHighlighted={highlightedTabIds.has(tab.id)}
+                isAutoRefreshActive={isAutoRefreshActive}
+                tabCount={state.tabs.length}
+                wasDraggingRef={wasDraggingRef}
+                onSelect={handleTabSelect}
+                onClose={handleTabClose}
+                onContextMenu={handleContextMenu}
+              />
+            );
+          })}
+          {/* タブリスト内に配置して最後のタブのすぐ隣に表示 */}
+          <button
+            className="tab-bar__add"
+            onClick={() => dispatch({ type: "ADD_TAB" })}
+            onContextMenu={(e) => e.stopPropagation()}
+            title="新しいタブ"
+          >
+            <Plus size={18} />
+          </button>
+        </div>
+      </DragDropProvider>
 
       {contextMenu && (
         <TabContextMenu

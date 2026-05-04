@@ -189,6 +189,7 @@ body {
     color 0.1s,
     flex-grow 0.1s,
     max-width 0.1s;
+  // transform は dnd-kit が useSortable の transition prop で管理するため CSS から除外する。
 }
 
 .tab--active {
@@ -207,7 +208,11 @@ body {
 }
 
 .tab--dragging {
-  opacity: 0.7;
+  opacity: 0.95;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  // ドラッグ中は transform の変更が頻繁に起きるため GPU レイヤーへ昇格させる。
+  will-change: transform;
+  z-index: 3;
 }
 
 .tab__title {
