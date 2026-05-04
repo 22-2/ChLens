@@ -3,6 +3,10 @@ import {
   HttpRequestOptions,
   HttpResponse,
 } from "src/app/platform/types";
+import browser from "webextension-polyfill";
+
+type DnrRule = browser.DeclarativeNetRequest.Rule;
+type DnrApi = NonNullable<(typeof browser)["declarativeNetRequest"]>;
 
 function parseHTTPHeader(str: string): Record<string, string> {
   const reg = /^(?:([a-z\-]+):\s*|([ \t]+))(.+)\s*$/gim;
@@ -22,6 +26,36 @@ function parseHTTPHeader(str: string): Record<string, string> {
   return headers;
 }
 
+async function getSessionRules(dnr: DnrApi): Promise<DnrRule[]> {
+  const getSessionRulesFn = dnr.getSessionRules;
+
+  if (getSessionRulesFn.length === 0) {
+    return await (getSessionRulesFn as () => Promise<DnrRule[]>).call(dnr);
+  }
+
+  return await new Promise((resolve) => {
+    (
+      getSessionRulesFn as (callback: (rules: DnrRule[]) => void) => void
+    ).call(dnr, (rules) => resolve(rules));
+  });
+}
+
+function getNextRuleId(rules: DnrRule[]): number {
+  const usedIds = new Set(rules.map((rule) => rule.id));
+  let nextId = 1;
+  while (usedIds.has(nextId)) {
+    nextId += 1;
+  }
+  return nextId;
+}
+
+function isSameWriteRule(rule: DnrRule, formAction: string, tabId: number): boolean {
+  return (
+    rule.condition.urlFilter === formAction &&
+    rule.condition.tabIds?.includes(tabId) === true
+  );
+}
+
 /**
  * ブラウザ拡張機能環境用のHttpClient実装
  */
@@ -32,7 +66,7 @@ export const BrowserHttpClient: HttpClient = {
   ): Promise<HttpResponse> {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      xhr.open(options.method || "GET", url);
+      xhr.open(options.method ?? "GET", url);
 
       if (options.mimeType) {
         xhr.overrideMimeType(options.mimeType);
@@ -48,13 +82,14 @@ export const BrowserHttpClient: HttpClient = {
         }
       }
 
-      xhr.onloadend = () => {
+      // onloadend は error/abort 後にも呼ばれるため、成功時だけ onload で確定させる
+      xhr.onload = () => {
         const responseHeaders = parseHTTPHeader(xhr.getAllResponseHeaders());
         resolve({
           status: xhr.status,
           headers: responseHeaders,
           body: xhr.responseText,
-          url: xhr.responseURL,
+          url: xhr.responseURL || url,
         });
       };
 
@@ -67,9 +102,12 @@ export const BrowserHttpClient: HttpClient = {
   },
 
   async setupWriteHeaders(formAction: string): Promise<void> {
-    const api = typeof browser !== "undefined" ? browser : chrome;
+    const api = browser;
 
-    if (!api?.declarativeNetRequest?.updateSessionRules) {
+    if (
+      !api?.declarativeNetRequest?.updateSessionRules ||
+      !api.declarativeNetRequest.getSessionRules
+    ) {
       console.warn("declarativeNetRequest is not available");
       return;
     }
@@ -78,21 +116,18 @@ export const BrowserHttpClient: HttpClient = {
       const tab = await api.tabs.getCurrent();
       if (!tab?.id) return;
 
-      const existing = await new Promise<chrome.declarativeNetRequest.Rule[]>(
-        (resolve) => {
-          api.declarativeNetRequest.getSessionRules((rules) =>
-            resolve(rules as chrome.declarativeNetRequest.Rule[]),
-          );
-        },
-      );
-
-      const oldRule = existing.find(
-        (r) => (r as any).condition?.urlFilter === formAction,
+      const dnr = api.declarativeNetRequest;
+      const existing = await getSessionRules(dnr);
+      const oldRule = existing.find((rule) =>
+        isSameWriteRule(rule, formAction, tab.id!),
       );
       const actionOrigin = new URL(formAction).origin;
 
-      const rule: chrome.declarativeNetRequest.Rule = {
-        id: oldRule ? oldRule.id : existing.length + 1,
+      // ルール削除でIDが欠番化しても衝突しないよう、未使用IDを探索して再利用する
+      const ruleId = oldRule?.id ?? getNextRuleId(existing);
+
+      const rule: browser.DeclarativeNetRequest.Rule = {
+        id: ruleId,
         priority: 1,
         action: {
           type: "modifyHeaders",
@@ -109,7 +144,7 @@ export const BrowserHttpClient: HttpClient = {
         },
       };
 
-      await api.declarativeNetRequest.updateSessionRules({
+      await dnr.updateSessionRules({
         addRules: [rule],
         removeRuleIds: oldRule ? [oldRule.id] : [],
       });
