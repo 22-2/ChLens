@@ -2,6 +2,16 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("src/app/platform", () => ({
+  // use-tab-store はタイトル更新以外で platform を使わないため、
+  // 拡張機能専用 polyfill を読み込まずに reducer の振る舞い検証へ集中する。
+  platform: {
+    window: {
+      setTitle: vi.fn().mockResolvedValue(undefined),
+    },
+  },
+}));
+
 function createMemoryStorage(): Storage {
   const items = new Map<string, string>();
 
