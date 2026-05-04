@@ -91,7 +91,7 @@ export class BBSMenuModel {
         const menu = await this.fetchOne(url, forceReload);
         menus.push(menu);
       } catch {
-        container.notification.notify(
+        container.toast.notify(
           `板一覧の取得に失敗しました。(<a href="${url}" target="_blank">${url}</a>)`,
           { html: true, backgroundColor: "red" },
         );

@@ -826,7 +826,7 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({
                 ? saveError.message
                 : "設定の自動保存に失敗しました";
             setAutoSaveError(message);
-            container.notification.error(message);
+            container.toast.error(message);
           } finally {
             setSavingSectionId((prev) => (prev === sectionId ? null : prev));
           }

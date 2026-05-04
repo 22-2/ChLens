@@ -98,7 +98,7 @@ export function useThreadResContextMenu({
             : res,
         ),
       );
-      container.notification.info(`NGに追加しました: ${ngWord}`);
+      container.toast.info(`NGに追加しました: ${ngWord}`);
     },
     [setResponses],
   );
@@ -112,7 +112,7 @@ export function useThreadResContextMenu({
       // 選択テキストNGはID NGと違って局所更新だと取りこぼしやすいため、
       // 追加後に再取得して既存NG判定ロジックの結果でUIを揃える。
       container.ng.add(ngWord);
-      container.notification.info(`NGに追加しました: ${ngWord}`);
+      container.toast.info(`NGに追加しました: ${ngWord}`);
       await fetchThread();
     },
     [fetchThread],
@@ -137,7 +137,7 @@ export function useThreadResContextMenu({
       };
 
       if (!globalObj.app?.WriteHistory?.add) {
-        container.notification.info("書込履歴サービスが利用できません");
+        container.toast.info("書込履歴サービスが利用できません");
         return;
       }
 
@@ -153,7 +153,7 @@ export function useThreadResContextMenu({
         message,
         date: Number.isNaN(baseTime) ? Date.now() : baseTime,
       });
-      container.notification.success("書込履歴に追加しました");
+      container.toast.success("書込履歴に追加しました");
     },
     [page.threadUrl],
   );
@@ -253,7 +253,7 @@ export function useThreadResContextMenu({
               enabled: true,
               threadUrl: page.threadUrl,
             });
-            container.notification.info("スレッドの自動更新を開始しました");
+            container.toast.info("スレッドの自動更新を開始しました");
           },
         },
         { id: "sep-1", separator: true },
@@ -306,7 +306,7 @@ export function useThreadResContextMenu({
           icon: <Reply size={14} />,
           onSelect: () => {
             void copyText(`>>${targetRes.num}\n`);
-            container.notification.info("返信アンカーをコピーしました");
+            container.toast.info("返信アンカーをコピーしました");
           },
         },
         {
@@ -319,7 +319,7 @@ export function useThreadResContextMenu({
               .map((line) => `>${line}`)
               .join("\n");
             void copyText(`>>${targetRes.num}\n${quoted}\n`);
-            container.notification.info("引用テンプレートをコピーしました");
+            container.toast.info("引用テンプレートをコピーしました");
           },
         },
         {

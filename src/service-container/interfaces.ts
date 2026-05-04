@@ -174,7 +174,7 @@ export interface IBBSMenuService {
   get(forceReload?: boolean): Promise<IBBSMenuResult>;
 }
 
-export interface INotificationService {
+export interface IToastService {
   notify(
     message: string,
     options?: { html?: boolean; backgroundColor?: string },
@@ -182,7 +182,14 @@ export interface INotificationService {
   success(message: string): void;
   error(message: string): void;
   info(message: string): void;
-  toast: any;
+}
+
+export interface INotificationService {
+  notify(
+    title: string,
+    options?: { message?: string; url?: string; tag?: string },
+  ): Promise<boolean>;
+  isSupported(): boolean;
 }
 
 export interface INGResult {
@@ -215,6 +222,7 @@ export interface IServiceContainer {
   readState: IReadStateService;
   board: IBoardService;
   bbsMenu: IBBSMenuService;
+  toast: IToastService;
   notification: INotificationService;
   thread: IThreadService;
   ng: INGService;

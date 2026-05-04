@@ -35,7 +35,7 @@ export function get(): Set<InternalNGElement> {
   if (_ng == null) {
     _ng = new Set(_config.get());
     setupNgRegex(_ng, (type, word) => {
-      container.notification.notify(
+      container.toast.notify(
         `NG機能の正規表現(${type}: ${word})を読み込むのに失敗しました\nこの行は無効化されます`,
         { backgroundColor: "red" }
       );
@@ -52,7 +52,7 @@ export function set(string: string): void {
   _ng = parse(string);
   _config.set(Array.from(_ng));
   setupNgRegex(_ng, (type, word) => {
-    container.notification.notify(
+    container.toast.notify(
       `NG機能の正規表現(${type}: ${word})を読み込むのに失敗しました\nこの行は無効化されます`,
       { backgroundColor: "red" }
     );
@@ -77,18 +77,18 @@ export function add(string: string): void {
   _config.set([..._config.get(), ...Array.from(addNg)]);
 
   setupNgRegex(addNg, (type, word) => {
-    container.notification.notify(
+    container.toast.notify(
       `NG機能の正規表現(${type}: ${word})を読み込むのに失敗しました\nこの行は無効化されます`,
       { backgroundColor: "red" }
     );
   });
-  
+
   if (_ng) {
     for (const ang of addNg) {
       _ng.add(ang);
     }
   }
-  
+
   container.message.send("ng_changed");
 }
 
@@ -258,13 +258,13 @@ export function execExpire(): void {
     }
     newConfigStr += ngWord;
   }
-  
+
   if (updateFlag) {
     _config.setString(newConfigStr);
     _ng = parse(newConfigStr);
     _config.set(Array.from(_ng));
     setupNgRegex(_ng, (type, word) => {
-      container.notification.notify(
+      container.toast.notify(
         `NG機能の正規表現(${type}: ${word})を読み込むのに失敗しました\nこの行は無効化されます`,
         { backgroundColor: "red" }
       );

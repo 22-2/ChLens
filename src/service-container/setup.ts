@@ -13,6 +13,7 @@ import {
   INGService,
   INotificationService,
   IReadStateService,
+  IToastService,
   IThreadService,
   IUtil,
 } from "src/service-container/interfaces";
@@ -23,6 +24,7 @@ import BoardService from "src/core/BoardService.js";
 import * as BBSMenu from "src/core/BBSMenu.js";
 // @ts-ignore
 import ThreadService from "src/core/ThreadService.js";
+import Notification from "src/core/Notification.ts";
 import { toast } from "sonner";
 
 /**
@@ -98,8 +100,8 @@ export function setupContainer(app: any) {
     getThread: (url, options) => ThreadService.getThread(url, options),
   };
 
-  // Notification Service Adapter
-  const notificationServiceAdapter: INotificationService = {
+  // Toast Service Adapter
+  const toastServiceAdapter: IToastService = {
     notify: (message, options) => {
       if (options?.backgroundColor) {
         toast(message, {
@@ -118,7 +120,22 @@ export function setupContainer(app: any) {
     info: (message) => {
       toast.info(message);
     },
-    toast: toast,
+  };
+
+  // Notification Service Adapter
+  const notificationServiceAdapter: INotificationService = {
+    notify: async (title, options) => {
+      // container.notification は OS 通知専用に分離し、
+      // UI向けメッセージは container.toast 側で扱う。
+      const instance = new Notification(
+        title,
+        options?.message ?? "",
+        options?.url ?? "",
+        options?.tag,
+      );
+      return instance.ready;
+    },
+    isSupported: () => Notification.isSupported(),
   };
 
   // NG Service Adapter
@@ -156,6 +173,7 @@ export function setupContainer(app: any) {
   container.board = boardServiceAdapter;
   container.bbsMenu = bbsMenuServiceAdapter;
   container.thread = threadServiceAdapter;
+  container.toast = toastServiceAdapter;
   container.notification = notificationServiceAdapter;
   container.ng = ngServiceAdapter;
 }

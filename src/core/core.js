@@ -8,14 +8,12 @@ import * as BookmarkEntryList from "src/core/BookmarkEntryList.ts";
 import BrowserBookmarkEntryList from "src/core/BrowserBookmarkEntryList.ts";
 import IDBBookmarkEntryList from "src/core/IDBBookmarkEntryList.ts";
 import Cache from "src/core/Cache.js";
-import * as ContextMenus from "src/core/ContextMenus.js";
-import * as DOMData from "src/core/DOMData.js";
 import * as History from "src/core/History.ts";
 import * as HTTP from "src/core/HTTP.ts";
 import * as ImageReplaceDat from "src/core/ImageReplaceDat.js";
 import * as util from "src/core/jsutil.js";
 import * as NG from "src/core/NG";
-import Notification from "src/core/Notification.js";
+import Notification from "src/core/Notification.ts";
 import * as ReadState from "src/core/ReadState.js";
 import * as ReplaceStrTxt from "src/core/ReplaceStrTxt.js";
 import SikiGuard from "src/core/SikiGuard.js";
@@ -36,8 +34,6 @@ export {
   BrowserBookmarkEntryList,
   IDBBookmarkEntryList,
   Cache,
-  ContextMenus,
-  DOMData,
   History,
   HTTP,
   ImageReplaceDat,

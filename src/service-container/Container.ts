@@ -9,6 +9,7 @@ import {
   INotificationService,
   IReadStateService,
   IServiceContainer,
+  IToastService,
   IThreadService,
   IUtil,
 } from "src/service-container/interfaces";
@@ -25,6 +26,7 @@ if (!globalObj.__ServiceContainer) {
     _readState: undefined,
     _board: undefined,
     _bbsMenu: undefined,
+    _toast: undefined,
     _notification: undefined,
     _thread: undefined,
     _ng: undefined,
@@ -91,6 +93,14 @@ if (!globalObj.__ServiceContainer) {
     },
     set bbsMenu(value: IBBSMenuService) {
       this._bbsMenu = value;
+    },
+
+    get toast(): IToastService {
+      if (!this._toast) throw new Error("Toast service not registered");
+      return this._toast;
+    },
+    set toast(value: IToastService) {
+      this._toast = value;
     },
 
     get notification(): INotificationService {
