@@ -25,7 +25,7 @@ log = "0.4"
 tauri = { version = "2.11.0", features = ["devtools"] }
 tauri-plugin-log = "2"
 tauri-plugin-http = "2"
-tauri-plugin-sql = "2"
+tauri-plugin-sql = { version = "2", features = ["sqlite"] }
 
 [[bin]]
 name = "chlens"

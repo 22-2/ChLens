@@ -5,7 +5,7 @@
   "identifier": "com.chlens.app",
   "build": {
     "frontendDist": "../debug/tauri",
-    "beforeDevCommand": "pnpm dev:tauri",
+    "beforeDevCommand": "pnpm watch:tauri",
     "beforeBuildCommand": "pnpm build:tauri"
   },
   "app": {

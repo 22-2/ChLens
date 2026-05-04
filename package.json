@@ -47,17 +47,25 @@
   },
   "license": "MIT",
   "scripts": {
+    "// --- Base Build Commands ---": "",
     "build": "pnpm build:chrome",
     "build:chrome": "cross-env PLATFORM=chrome ENTRY=browser vite build",
     "build:tauri": "cross-env PLATFORM=tauri ENTRY=browser vite build",
-    "build:all": "pnpm run build:chrome && pnpm run build:firefox",
-    "dev:tauri": "pnpm exec run-p watch:tauri tauri dev",
-    "dev:chrome": "pnpm exec run-s build:chrome --watch",
-    "clean": "node -e \"const fs=require('fs-extra'); Promise.all(['debug/chrome','debug/firefox','debug/tauri'].map(d=>fs.remove(d)))\"",
-    "lint": "pnpm exec run-s -c -l lint:*",
+    "build:all": "run-s build:chrome build:firefox",
+
+    "// --- Development & Watch ---": "",
+    "dev:chrome": "run-s build:chrome --watch",
+    "watch:chrome": "pnpm dev:chrome",
+    "watch:tauri": "run-s build:tauri --watch",
+    "tauri": "tauri",
+    "dev:tauri": "run-p watch:tauri \"tauri dev\"",
+
+    "// --- Utility & Lint ---": "",
+    "clean": "node -e \"const fs=require('fs-extra'); ['debug/chrome','debug/firefox','debug/tauri'].forEach(d=>fs.removeSync(d))\"",
+    "lint": "run-s -c -l lint:*",
     "lint:eslint": "eslint --cache --fix src/",
-    "lint:imports": "pnpm dlx organize-imports-cli tsconfig.json",
-    "lint:prettier": "pnpm dlx prettier --editorconfig --write ./src/",
+    "lint:imports": "organize-imports-cli tsconfig.json",
+    "lint:prettier": "prettier --editorconfig --write ./src/",
     "test": "vitest run"
   },
   "dependencies": {
