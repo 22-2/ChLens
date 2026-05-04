@@ -1,4 +1,4 @@
-import React from "react";
+import { type FC, memo, useEffect, useState } from "react";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { BoardListPage } from "src/view/browser/pages/BoardListPage";
 import { BookmarkListPage } from "src/view/browser/pages/BookmarkListPage";
@@ -42,7 +42,7 @@ interface TabPageContentProps {
   threadListActive?: boolean;
 }
 
-const TabPageContent = React.memo(function TabPageContent({
+const TabPageContent = memo(function TabPageContent({
   tab,
   isActive,
   threadListActive,
@@ -94,11 +94,25 @@ interface TabPanelProps {
   isActive: boolean;
 }
 
-const TabPanel = React.memo(function TabPanel({
+const TabPanel = memo(function TabPanel({
   tab,
   isActive,
 }: TabPanelProps) {
   const page = getCurrentPage(tab);
+
+  // パフォーマンス向上とメモリ節約のため、バックグラウンドで開かれたタブ（まだ一度も表示されていないタブ）は
+  // 初回表示（アクティブ化）されるまでDOMのマウントおよびレンダリングを遅延させる。
+  const [hasRendered, setHasRendered] = useState(isActive);
+
+  useEffect(() => {
+    if (isActive && !hasRendered) {
+      setHasRendered(true);
+    }
+  }, [isActive, hasRendered]);
+
+  if (!hasRendered && !isActive) {
+    return null;
+  }
 
   return (
     <div
@@ -121,7 +135,7 @@ const TabPanel = React.memo(function TabPanel({
   );
 });
 
-export const ContentArea: React.FC = () => {
+export const ContentArea: FC = () => {
   const { state } = useTabStore();
 
   return (

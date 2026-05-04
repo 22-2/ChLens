@@ -342,6 +342,8 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 - [x] 自分のレスと、人からの返信を強調表示
   - [x] 自動更新
   - [x] 強調表示
+- [x] feat: omnibar(履歴やお気に入りから検索、お気に入り、直近の履歴は重めに)
+  - chromeのomnibarみたいに1行につき「タイトル url」って感じに表示
 
 ## 未確認
 - [ ] 画像サムネにグロぼかし
@@ -352,10 +354,9 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 - [x] 実況用・自動次スレ移動
 
 ## 次
-- [ ] 開いていないタブは、初回タブ表示までレンダリングしない
+- [ ] 板のお気に入り
+- [x] 開いていないタブは、初回タブ表示までレンダリングしない
 - [ ] feat: ブラウザのようなアドレスバーのブックマークボタン
-- [ ] feat: omnibar(履歴やお気に入りから検索、お気に入り、直近の履歴は重めに)
-  - chromeのomnibarみたいに1行につき「タイトル url」って感じに表示
 
 ### low prior
 - [ ] feat: ライブチャットビュー
@@ -374,5 +375,6 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 - [x] refactor: ビルドの単純化
 - [x] refactor: 古いuiシステム削除
 - [x] refactor: BBSMenuParserの統合
+- [ ] メモリセーバー（自動タブunmount）
 
 ## メタ
