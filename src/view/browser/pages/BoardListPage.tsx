@@ -120,7 +120,22 @@ export const BoardListPage: React.FC = () => {
                       <li
                         key={k}
                         className="board-item"
-                        onClick={() => handleBoardClick(board.url, board.name)}
+                        onMouseDown={(e) => {
+                          if (e.button === 0) {
+                            handleBoardClick(board.url, board.name);
+                          } else if (e.button === 1) {
+                            // 中クリックで新しいタブで開く
+                            dispatch({
+                              type: "OPEN_IN_NEW_TAB",
+                              page: {
+                                type: "threadList",
+                                title: board.name,
+                                boardUrl: board.url,
+                                boardTitle: board.name,
+                              },
+                            });
+                          }
+                        }}
                       >
                         {board.name}
                       </li>
