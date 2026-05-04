@@ -4,12 +4,50 @@ import { stripHtml } from "src/view/browser/utils/utils";
 const DEFAULT_WRITE_SUCCESS_DELAY_MS = 3000;
 
 export const THREAD_WRITE_COMPLETED_EVENT = "thread_write_completed";
+const threadWriteSyncEventTarget = new EventTarget();
 
 export interface PendingWritePayload {
   threadUrl: string;
   message: string;
   inputName: string;
   inputMail: string;
+}
+
+export function notifyThreadWriteCompleted(
+  payload: PendingWritePayload,
+): void {
+  // 変更理由: app.message は内部で defer() を挟むため、投稿完了通知が RELOAD より後に届くと
+  // baseline のレス数が新着反映後の値になり、自分レス照合が永久に走らないレースになる。
+  // 同一ウィンドウ内の書き込みパネル→ThreadPage 連携だけは同期イベントで順序を固定する。
+  threadWriteSyncEventTarget.dispatchEvent(
+    new CustomEvent<PendingWritePayload>(THREAD_WRITE_COMPLETED_EVENT, {
+      detail: payload,
+    }),
+  );
+}
+
+export function subscribeThreadWriteCompleted(
+  listener: (payload: PendingWritePayload) => void,
+): () => void {
+  const handleEvent: EventListener = (event) => {
+    if (!(event instanceof CustomEvent)) {
+      return;
+    }
+
+    listener(event.detail as PendingWritePayload);
+  };
+
+  threadWriteSyncEventTarget.addEventListener(
+    THREAD_WRITE_COMPLETED_EVENT,
+    handleEvent,
+  );
+
+  return () => {
+    threadWriteSyncEventTarget.removeEventListener(
+      THREAD_WRITE_COMPLETED_EVENT,
+      handleEvent,
+    );
+  };
 }
 
 export function normalizeWrittenMessage(message: string): string {

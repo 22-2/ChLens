@@ -1,8 +1,10 @@
 import type { IRes } from "src/service-container/interfaces";
 import {
   findLatestWrittenRes,
+  notifyThreadWriteCompleted,
   resolveWriteSuccessDelayMs,
   resolveWrittenResTimestamp,
+  subscribeThreadWriteCompleted,
 } from "src/view/browser/utils/thread-write-sync";
 import { describe, expect, it, vi } from "vitest";
 
@@ -22,6 +24,21 @@ function createRes(
 }
 
 describe("thread-write-sync", () => {
+  it("投稿完了通知は同期的に配信される", () => {
+    const listener = vi.fn();
+    const unsubscribe = subscribeThreadWriteCompleted(listener);
+
+    notifyThreadWriteCompleted({
+      threadUrl: "https://example.com/test/read.cgi/software/1/",
+      message: "本文",
+      inputName: "name",
+      inputMail: "sage",
+    });
+
+    expect(listener).toHaveBeenCalledTimes(1);
+    unsubscribe();
+  });
+
   it("投稿完了待ち時間は旧UI互換で解釈する", () => {
     expect(resolveWriteSuccessDelayMs("3000")).toBe(3000);
     expect(resolveWriteSuccessDelayMs(-50)).toBe(0);

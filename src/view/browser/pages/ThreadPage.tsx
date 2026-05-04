@@ -42,8 +42,8 @@ import {
 import {
   findLatestWrittenRes,
   resolveWrittenResTimestamp,
-  THREAD_WRITE_COMPLETED_EVENT,
   type PendingWritePayload,
+  subscribeThreadWriteCompleted,
 } from "src/view/browser/utils/thread-write-sync";
 import type { Props } from "src/view/browser/utils/types";
 import { copyText, stripHtml } from "src/view/browser/utils/utils";
@@ -277,17 +277,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       });
     };
 
-    container.message.on(
-      THREAD_WRITE_COMPLETED_EVENT,
-      handleThreadWriteCompleted,
-    );
-
-    return () => {
-      container.message.off(
-        THREAD_WRITE_COMPLETED_EVENT,
-        handleThreadWriteCompleted,
-      );
-    };
+    return subscribeThreadWriteCompleted(handleThreadWriteCompleted);
   }, [page.threadUrl]);
 
   useEffect(() => {

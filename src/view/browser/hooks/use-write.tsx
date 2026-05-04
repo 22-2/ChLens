@@ -5,7 +5,7 @@ import { URL as ChURL } from "src/core/URL";
 import { container } from "src/service-container/index";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import {
-  THREAD_WRITE_COMPLETED_EVENT,
+  notifyThreadWriteCompleted,
   type PendingWritePayload,
   resolveWriteSuccessDelayMs,
 } from "src/view/browser/utils/thread-write-sync";
@@ -218,10 +218,7 @@ export function useWrite(threadUrl: string): UseWriteResult {
             await wait(delayMs);
 
             if (pendingSubmittedWrite) {
-              container.message.send(
-                THREAD_WRITE_COMPLETED_EVENT,
-                pendingSubmittedWrite,
-              );
+              notifyThreadWriteCompleted(pendingSubmittedWrite);
             }
 
             // 変更理由: 投稿後の強制再取得も通常の RELOAD 経路へ寄せ、
