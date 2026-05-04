@@ -71,6 +71,14 @@ async function runMigrations(raw: SqlPluginDatabase): Promise<void> {
   );
 
   await raw.execute(`
+    CREATE TABLE IF NOT EXISTS bbsmenu_cache (
+      key TEXT PRIMARY KEY,
+      data TEXT NOT NULL,
+      last_updated INTEGER NOT NULL
+    )
+  `);
+
+  await raw.execute(`
     CREATE TABLE IF NOT EXISTS write_history (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       url TEXT NOT NULL,
@@ -111,7 +119,10 @@ async function createContext(): Promise<TauriDrizzleContext> {
     }
 
     const rows = await raw.select<Record<string, unknown>>(query, bindValues);
-    return { rows };
+    // Drizzle sqlite-proxy は rows を unknown[][] (配列の配列) として期待する。
+    // Tauri SQL は名前付きオブジェクトで返すため、Object.values で変換する。
+    // Object.values の順序は SQLite が返すカラム順と一致する。
+    return { rows: rows.map((row) => Object.values(row)) };
   });
 
   return { db, raw };

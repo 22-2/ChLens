@@ -76,9 +76,14 @@ export class BBSMenuFetcher {
   private async tryLoadCache(cache: ICacheItem): Promise<boolean> {
     try {
       await cache.get();
+      const loaded = cache.data != null;
       // get() が例外なく完了しても data が未設定の場合はキャッシュなしと扱う
-      return cache.data != null;
-    } catch {
+      if (!loaded) {
+        logger.debug("キャッシュは存在するが data が null");
+      }
+      return loaded;
+    } catch (e) {
+      logger.debug("キャッシュ読み込み失敗", { error: String(e) });
       return false;
     }
   }

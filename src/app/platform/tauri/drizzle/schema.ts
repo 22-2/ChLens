@@ -49,6 +49,12 @@ export const readStateTable = sqliteTable(
   (table) => [index("idx_read_state_board_url").on(table.boardUrl)],
 );
 
+export const bbsMenuCacheTable = sqliteTable("bbsmenu_cache", {
+  key: text("key").primaryKey(),
+  data: text("data").notNull(),
+  lastUpdated: integer("last_updated").notNull(),
+});
+
 export const writeHistoryTable = sqliteTable(
   "write_history",
   {

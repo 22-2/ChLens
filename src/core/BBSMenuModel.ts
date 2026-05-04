@@ -9,6 +9,14 @@ import { BBSMenuParser } from "src/core/BBSMenuParser";
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
 import { OtherBoardsCollector } from "src/core/OtherBoardsCollector";
 import * as ReadState from "src/core/ReadState.js";
+import {
+  getTauriRepositories,
+  isTauriRuntime,
+} from "src/core/TauriDrizzleBridge";
+import { createLogger } from "src/core/logger";
+
+const logger = createLogger("BBSMenuModel");
+const BBSMENU_CACHE_KEY = "bbsmenu";
 
 export interface BBSMenuData {
   status: "success" | "error";
@@ -111,9 +119,20 @@ export class BBSMenuModel {
    * 既に取得中の場合は同じPromiseを返す。
    */
   async get(forceReload = false): Promise<BBSMenuData> {
-    // 強制更新でなくメモリキャッシュがある場合はそのまま返す（毎回のDB/HTTP再取得を避ける）
+    // L1: セッション中のメモリキャッシュ
     if (!forceReload && this._cachedResult != null) {
       return this._cachedResult;
+    }
+
+    // L2: SQLite キャッシュ（Tauri のみ）
+    const tauri = isTauriRuntime();
+    logger.debug("isTauriRuntime", { tauri });
+    if (!forceReload && tauri) {
+      const cached = await this._loadFromSQLite();
+      if (cached != null) {
+        this._cachedResult = cached;
+        return cached;
+      }
     }
 
     if (this._updatingPromise == null) {
@@ -123,6 +142,13 @@ export class BBSMenuModel {
     try {
       const result = await this._updatingPromise;
       this._cachedResult = result;
+      if (tauri && result.status === "success") {
+        try {
+          await this._saveToSQLite(result);
+        } catch (e) {
+          logger.error("bbsmenu SQLite保存失敗", e);
+        }
+      }
       if (forceReload) {
         this.onChange.call(result);
       }
@@ -137,6 +163,41 @@ export class BBSMenuModel {
       }
       return errorResult;
     }
+  }
+
+  private async _loadFromSQLite(): Promise<BBSMenuData | null> {
+    try {
+      const { tauriBBSMenuCacheRepository } = await getTauriRepositories();
+      const record = await tauriBBSMenuCacheRepository.get(BBSMENU_CACHE_KEY);
+      logger.debug("SQLiteキャッシュ読み込み", {
+        found: record != null,
+        lastUpdated: record?.lastUpdated,
+      });
+      if (record == null) return null;
+
+      const intervalMs =
+        +container.config.get("bbsmenu_update_interval") * 24 * 60 * 60 * 1000;
+      const expired = Date.now() - record.lastUpdated > intervalMs;
+      logger.debug("SQLiteキャッシュ有効期限", { expired, intervalMs });
+      if (expired) return null;
+
+      return { status: "success", menu: JSON.parse(record.data) as BBSMenu[] };
+    } catch (e) {
+      logger.error("SQLiteキャッシュ読み込みエラー", e);
+      return null;
+    }
+  }
+
+  private async _saveToSQLite(result: BBSMenuData): Promise<void> {
+    if (result.menu == null) return;
+    logger.debug("SQLiteキャッシュ保存開始");
+    const { tauriBBSMenuCacheRepository } = await getTauriRepositories();
+    await tauriBBSMenuCacheRepository.put({
+      key: BBSMENU_CACHE_KEY,
+      data: JSON.stringify(result.menu),
+      lastUpdated: Date.now(),
+    });
+    logger.debug("SQLiteキャッシュ保存完了");
   }
 
   private async _update(forceReload: boolean): Promise<BBSMenuData> {

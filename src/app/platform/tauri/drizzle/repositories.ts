@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, lt, sql } from "drizzle-orm";
 import { getTauriDrizzleContext } from "src/app/platform/tauri/drizzle/db";
 import {
+  bbsMenuCacheTable,
   cacheTable,
   historyTable,
   readStateTable,
@@ -8,6 +9,12 @@ import {
 } from "src/app/platform/tauri/drizzle/schema";
 import { URL } from "src/core/URL";
 import type { IReadState } from "src/service-container/interfaces";
+
+interface BBSMenuCacheRecord {
+  key: string;
+  data: string;
+  lastUpdated: number;
+}
 
 interface CacheRecordInput {
   url: string;
@@ -56,6 +63,37 @@ function urlFilter(originalUrlStr: string): UrlFilterResult {
 
   return { original, replaced };
 }
+
+export const tauriBBSMenuCacheRepository = {
+  async get(key: string): Promise<BBSMenuCacheRecord | null> {
+    const { db } = await getTauriDrizzleContext();
+    const rows = await db
+      .select()
+      .from(bbsMenuCacheTable)
+      .where(eq(bbsMenuCacheTable.key, key))
+      .limit(1);
+
+    const row = rows[0];
+    if (row == null) return null;
+
+    return { key: row.key, data: row.data, lastUpdated: row.lastUpdated };
+  },
+
+  async put(record: BBSMenuCacheRecord): Promise<void> {
+    const { db } = await getTauriDrizzleContext();
+    await db
+      .insert(bbsMenuCacheTable)
+      .values({
+        key: record.key,
+        data: record.data,
+        lastUpdated: record.lastUpdated,
+      })
+      .onConflictDoUpdate({
+        target: bbsMenuCacheTable.key,
+        set: { data: record.data, lastUpdated: record.lastUpdated },
+      });
+  },
+};
 
 export const tauriCacheRepository = {
   async get(url: string): Promise<CacheRecordInput | null> {
