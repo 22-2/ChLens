@@ -4,7 +4,7 @@ import {
   getTauriRepositories,
   isTauriRuntime,
 } from "src/core/TauriDrizzleBridge";
-import { log, assertArg } from "src/app";
+import { log, assertArg } from "src/app/Log";
 
 const DB_NAME = "WriteHistory";
 const STORE_NAME = "WriteHistory";

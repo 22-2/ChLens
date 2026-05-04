@@ -5,7 +5,6 @@ import Config from "src/app/Config";
 
 import { setupContainer } from "src/service-container/setup";
 
-import { default as platformInternal_default } from "src/app/platform";
 import * as platformInternal from "src/app/platform";
 
 export { default as Callbacks } from "./app/Callbacks";
