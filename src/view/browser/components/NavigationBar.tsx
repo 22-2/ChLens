@@ -27,6 +27,14 @@ import {
   getDisplayUrl,
 } from "src/view/browser/types";
 import {
+  buildOmnibarSuggestions,
+  mergeOmnibarSources,
+  type OmnibarBookmarkSource,
+  type OmnibarHistorySource,
+  type OmnibarSuggestion,
+  type OmnibarMergedEntry,
+} from "src/view/browser/utils/omnibar";
+import {
   QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE,
   type QuickAccessFilterPageType,
 } from "src/view/browser/utils/filter-toolbar-events";
@@ -35,6 +43,126 @@ import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
 interface MenuPosition {
   x: number;
   y: number;
+}
+
+interface LegacyReadStateLike {
+  read?: unknown;
+}
+
+interface LegacyBookmarkLike {
+  url?: unknown;
+  title?: unknown;
+  boardTitle?: unknown;
+  readState?: LegacyReadStateLike | undefined;
+}
+
+interface LegacyHistoryLike {
+  url?: unknown;
+  title?: unknown;
+  boardTitle?: unknown;
+  viewedDate?: unknown;
+  date?: unknown;
+}
+
+const OMNIBAR_HISTORY_FETCH_COUNT = 300;
+const OMNIBAR_MAX_SUGGESTIONS = 8;
+
+function normalizeString(value: unknown, fallback = ""): string {
+  return typeof value === "string" ? value : fallback;
+}
+
+function toFiniteNumber(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+}
+
+function normalizeLegacyTimestamp(value: unknown): number {
+  const normalized = Math.trunc(toFiniteNumber(value));
+  return normalized > 0 ? normalized : 0;
+}
+
+function deriveBoardTitle(threadUrl: string): string {
+  try {
+    const parsed = new window.URL(threadUrl);
+    const match = parsed.pathname.match(/^\/test\/read\.cgi\/([^/]+)\//);
+    if (match) {
+      return `${parsed.hostname}/${match[1]}`;
+    }
+    return parsed.hostname;
+  } catch {
+    return "";
+  }
+}
+
+function readBookmarkSources(): OmnibarBookmarkSource[] {
+  const bookmarkService = window.app?.bookmark as
+    | { getAllThreads?: () => unknown }
+    | undefined;
+
+  if (!bookmarkService?.getAllThreads) {
+    return [];
+  }
+
+  const rawItems = bookmarkService.getAllThreads();
+  if (!Array.isArray(rawItems)) {
+    return [];
+  }
+
+  return rawItems
+    .map<OmnibarBookmarkSource | null>((rawItem) => {
+      const item = rawItem as LegacyBookmarkLike;
+      const url = normalizeString(item.url);
+      if (!url) {
+        return null;
+      }
+
+      return {
+        url,
+        title: normalizeString(item.title, url),
+        boardTitle: normalizeString(item.boardTitle, deriveBoardTitle(url)),
+      };
+    })
+    .filter((item): item is OmnibarBookmarkSource => item !== null);
+}
+
+async function readHistorySources(): Promise<OmnibarHistorySource[]> {
+  const historyService = window.app?.History as
+    | {
+        get?: (offset?: number, count?: number) => Promise<unknown> | unknown;
+      }
+    | undefined;
+
+  if (!historyService?.get) {
+    return [];
+  }
+
+  const raw = await historyService.get(0, OMNIBAR_HISTORY_FETCH_COUNT);
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
+  return raw
+    .map<OmnibarHistorySource | null>((value) => {
+      const item = value as LegacyHistoryLike;
+      const url = normalizeString(item.url);
+      if (!url) {
+        return null;
+      }
+
+      return {
+        url,
+        title: normalizeString(item.title, url),
+        boardTitle: normalizeString(item.boardTitle, deriveBoardTitle(url)),
+        viewedDate: normalizeLegacyTimestamp(item.viewedDate ?? item.date),
+      };
+    })
+    .filter((item): item is OmnibarHistorySource => item !== null);
 }
 
 // URLバーからの入力でページ種別を推定してナビゲートする
@@ -64,6 +192,12 @@ export const NavigationBar: React.FC = () => {
 
   const [inputValue, setInputValue] = useState(displayUrl);
   const [isFocused, setIsFocused] = useState(false);
+  const [omnibarEntries, setOmnibarEntries] = useState<OmnibarMergedEntry[]>(
+    [],
+  );
+  const [isOmnibarLoaded, setIsOmnibarLoaded] = useState(false);
+  const [isOmnibarLoading, setIsOmnibarLoading] = useState(false);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
   const [backMenuPosition, setBackMenuPosition] = useState<MenuPosition | null>(
     null,
@@ -76,6 +210,7 @@ export const NavigationBar: React.FC = () => {
   const forwardButtonRef = useRef<HTMLButtonElement>(null);
   const refreshButtonRef = useRef<HTMLButtonElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const urlInputRef = useRef<HTMLInputElement>(null);
 
   const isThreadAutoRefreshEnabled =
     currentPage.type === "thread" &&
@@ -88,6 +223,95 @@ export const NavigationBar: React.FC = () => {
       setInputValue(displayUrl);
     }
   }, [displayUrl, isFocused]);
+
+  useEffect(() => {
+    if (!isFocused || isOmnibarLoaded || isOmnibarLoading) {
+      return;
+    }
+
+    setIsOmnibarLoading(true);
+
+    let cancelled = false;
+    void Promise.all([readHistorySources(), Promise.resolve(readBookmarkSources())])
+      .then(([historyItems, bookmarkItems]) => {
+        if (cancelled) {
+          return;
+        }
+
+        // 変更理由: URLバー候補は履歴とお気に入りを同じ選択UIに統合し、
+        // 利用者の直近行動と明示的なお気に入りを1ストロークで辿れるようにする。
+        setOmnibarEntries(mergeOmnibarSources(bookmarkItems, historyItems));
+        setIsOmnibarLoaded(true);
+      })
+      .catch(() => {
+        if (cancelled) {
+          return;
+        }
+        setOmnibarEntries([]);
+        setIsOmnibarLoaded(true);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsOmnibarLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isFocused, isOmnibarLoaded, isOmnibarLoading]);
+
+  const omnibarSuggestions = useMemo(
+    () =>
+      buildOmnibarSuggestions(
+        omnibarEntries,
+        inputValue,
+        OMNIBAR_MAX_SUGGESTIONS,
+      ),
+    [inputValue, omnibarEntries],
+  );
+
+  const shouldShowNoMatch =
+    isFocused &&
+    !isOmnibarLoading &&
+    inputValue.trim().length > 0 &&
+    omnibarSuggestions.length === 0;
+  const isOmnibarOpen =
+    isFocused &&
+    (isOmnibarLoading || omnibarSuggestions.length > 0 || shouldShowNoMatch);
+
+  useEffect(() => {
+    if (activeSuggestionIndex < omnibarSuggestions.length) {
+      return;
+    }
+    setActiveSuggestionIndex(0);
+  }, [activeSuggestionIndex, omnibarSuggestions.length]);
+
+  const openSuggestion = useCallback(
+    (suggestion: OmnibarSuggestion) => {
+      const parsed = parseInternalBrowserPage(suggestion.url);
+      if (!parsed) {
+        return;
+      }
+
+      dispatch({
+        type: "NAVIGATE",
+        page: {
+          ...parsed,
+          title: suggestion.title,
+          ...(parsed.type === "threadList"
+            ? { boardTitle: suggestion.boardTitle || suggestion.title }
+            : {}),
+        },
+      });
+
+      setInputValue(suggestion.url);
+      setIsFocused(false);
+      setActiveSuggestionIndex(0);
+      urlInputRef.current?.blur();
+    },
+    [dispatch],
+  );
 
   const handleRefresh = useCallback(() => {
     setRefreshMenuPosition(null);
@@ -133,22 +357,67 @@ export const NavigationBar: React.FC = () => {
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "ArrowDown") {
+        if (omnibarSuggestions.length > 0) {
+          e.preventDefault();
+          setActiveSuggestionIndex((prev) =>
+            prev + 1 >= omnibarSuggestions.length ? 0 : prev + 1,
+          );
+        }
+        return;
+      }
+
+      if (e.key === "ArrowUp") {
+        if (omnibarSuggestions.length > 0) {
+          e.preventDefault();
+          setActiveSuggestionIndex((prev) =>
+            prev - 1 < 0 ? omnibarSuggestions.length - 1 : prev - 1,
+          );
+        }
+        return;
+      }
+
       if (e.key === "Enter") {
+        const selected =
+          omnibarSuggestions[activeSuggestionIndex] ?? omnibarSuggestions[0];
+        if (selected) {
+          e.preventDefault();
+          openSuggestion(selected);
+          return;
+        }
+
         navigateByUrl(inputValue, dispatch);
+        (e.target as HTMLInputElement).blur();
+        return;
+      }
+
+      if (e.key === "Escape") {
+        setIsFocused(false);
+        setInputValue(displayUrl);
+        setActiveSuggestionIndex(0);
         (e.target as HTMLInputElement).blur();
       }
     },
-    [inputValue, dispatch],
+    [
+      activeSuggestionIndex,
+      dispatch,
+      displayUrl,
+      inputValue,
+      omnibarSuggestions,
+      openSuggestion,
+    ],
   );
 
   const handleFocus = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
     setIsFocused(true);
+    setActiveSuggestionIndex(0);
     // Chrome風: フォーカス時に全選択
     e.target.select();
   }, []);
 
   const handleBlur = useCallback(() => {
     setIsFocused(false);
+    setActiveSuggestionIndex(0);
     // フォーカスを外したら現在のURLに戻す
     setInputValue(displayUrl);
   }, [displayUrl]);
@@ -472,16 +741,58 @@ export const NavigationBar: React.FC = () => {
 
       <div className="nav-bar__url">
         <input
+          ref={urlInputRef}
           className="nav-bar__url-input"
           type="text"
           value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
+          onChange={(e) => {
+            setInputValue(e.target.value);
+            setActiveSuggestionIndex(0);
+          }}
           onKeyDown={handleKeyDown}
           onFocus={handleFocus}
           onBlur={handleBlur}
           placeholder="URLを入力"
           spellCheck={false}
         />
+
+        {isOmnibarOpen ? (
+          <div className="nav-bar__omnibar" role="listbox" aria-label="候補">
+            {isOmnibarLoading ? (
+              <div className="nav-bar__omnibar-empty">候補を読み込み中...</div>
+            ) : null}
+
+            {!isOmnibarLoading && omnibarSuggestions.length > 0
+              ? omnibarSuggestions.map((suggestion, index) => (
+                  <button
+                    key={suggestion.url}
+                    type="button"
+                    className={`nav-bar__omnibar-item${
+                      index === activeSuggestionIndex
+                        ? " nav-bar__omnibar-item--active"
+                        : ""
+                    }`}
+                    role="option"
+                    aria-selected={index === activeSuggestionIndex}
+                    onMouseDown={(e) => {
+                      // blur が先に発火して候補クリックが失われるのを防ぐ。
+                      e.preventDefault();
+                    }}
+                    onMouseEnter={() => setActiveSuggestionIndex(index)}
+                    onClick={() => openSuggestion(suggestion)}
+                    title={`${suggestion.title} ${suggestion.url}`}
+                  >
+                    <span className="nav-bar__omnibar-title">{suggestion.title}</span>
+                    <span className="nav-bar__omnibar-url">{suggestion.url}</span>
+                  </button>
+                ))
+              : null}
+
+            {shouldShowNoMatch ? (
+              <div className="nav-bar__omnibar-empty">一致する候補がありません</div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       <button

@@ -421,11 +421,12 @@ body {
   flex: 1;
   height: 32px;
   margin: 0 4px;
+  position: relative;
   border-radius: 24px;
   background: var(--browser-color-surface-muted);
   display: flex;
   align-items: center;
-  overflow: hidden;
+  overflow: visible;
   transition:
     background 0.15s,
     box-shadow 0.15s;
@@ -455,6 +456,63 @@ body {
 
 .nav-bar__url-input::selection {
   background: var(--browser-color-selection);
+}
+
+.nav-bar__omnibar {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 25000;
+  max-height: min(320px, calc(100vh - 96px));
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--browser-color-border);
+  border-radius: 12px;
+  background: var(--browser-color-bg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
+}
+
+.nav-bar__omnibar-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--browser-color-text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.nav-bar__omnibar-item:hover,
+.nav-bar__omnibar-item--active {
+  background: var(--browser-color-list-hover-bg);
+}
+
+.nav-bar__omnibar-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-bar__omnibar-url {
+  flex: 0 1 42%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--browser-color-text-muted);
+  font-size: 12px;
+}
+
+.nav-bar__omnibar-empty {
+  padding: 8px 10px;
+  color: var(--browser-color-text-muted);
 }
 
 /* ==========================================================================
@@ -3114,6 +3172,17 @@ body {
   /* --- コンテンツエリア --- */
   .content-area {
     background: #202124;
+  }
+
+  .nav-bar__omnibar {
+    border-color: #3c4043;
+    background: #292a2d;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  }
+
+  .nav-bar__omnibar-item:hover,
+  .nav-bar__omnibar-item--active {
+    background: #35363a;
   }
 
   /* --- ステータス表示 --- */

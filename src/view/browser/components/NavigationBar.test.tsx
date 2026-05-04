@@ -39,6 +39,11 @@ const { activeTab, defaultHistory, dispatchMock, longTitle } = vi.hoisted(
   },
 );
 
+const { bookmarkGetAllThreadsMock, historyGetMock } = vi.hoisted(() => ({
+  bookmarkGetAllThreadsMock: vi.fn(),
+  historyGetMock: vi.fn(),
+}));
+
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => ({
     state: { tabs: [activeTab] },
@@ -59,8 +64,55 @@ describe("NavigationBar", () => {
   afterEach(() => {
     cleanup();
     dispatchMock.mockReset();
+    bookmarkGetAllThreadsMock.mockReset();
+    historyGetMock.mockReset();
+    const mutableWindow = window as Window & typeof globalThis & {
+      app?: unknown;
+    };
+    delete mutableWindow.app;
     activeTab.history = [...defaultHistory];
     activeTab.currentIndex = 1;
+  });
+
+  it("URLバー候補は『タイトル URL』の並びで表示し、お気に入りを優先する", async () => {
+    bookmarkGetAllThreadsMock.mockReturnValue([
+      {
+        url: "https://egg.5ch.io/test/read.cgi/software/111/",
+        title: "openai bookmark",
+      },
+    ]);
+    historyGetMock.mockResolvedValue([
+      {
+        url: "https://egg.5ch.io/test/read.cgi/software/222/",
+        title: "openai history",
+        viewedDate: 1000000001000,
+      },
+    ]);
+
+    const mutableWindow = window as Window & typeof globalThis & {
+      app?: unknown;
+    };
+    mutableWindow.app = {
+      bookmark: {
+        getAllThreads: bookmarkGetAllThreadsMock,
+      },
+      History: {
+        get: historyGetMock,
+      },
+    };
+
+    render(<NavigationBar />);
+
+    const input = screen.getByPlaceholderText("URLを入力");
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "openai" } });
+
+    const options = await screen.findAllByRole("option");
+    expect(options).toHaveLength(2);
+    expect(options[0]).toHaveTextContent("openai bookmark");
+    expect(options[0]).toHaveTextContent(
+      "https://egg.5ch.io/test/read.cgi/software/111/",
+    );
   });
 
   it("戻る履歴メニューのタイトルを複数行表示にする", () => {
