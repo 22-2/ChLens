@@ -11,7 +11,10 @@ import {
   getLegacyBookmarkService,
   waitForLegacyBookmarkReady,
 } from "src/view/browser/utils/legacy-app";
-import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
+import {
+  getBoardUrlFromThreadUrl,
+  parseInternalBrowserPage,
+} from "src/view/browser/utils/link-routing";
 
 type SortDirection = "asc" | "desc";
 type SortColumn =
@@ -90,10 +93,15 @@ function calcHeat(createdAt: number, resCount: number): number {
 function deriveBoardTitle(threadUrl: string): string {
   try {
     const parsed = new window.URL(threadUrl);
-    const match = parsed.pathname.match(/^\/test\/read\.cgi\/([^/]+)\//);
-    if (match) {
-      return `${parsed.hostname}/${match[1]}`;
+    // 変更理由: read.cgi 系URLの板抽出を link-routing 側へ寄せ、UIごとの判定ブレを防ぐ。
+    const boardUrl = getBoardUrlFromThreadUrl(threadUrl);
+    if (boardUrl !== threadUrl) {
+      const boardParsed = new window.URL(boardUrl);
+      if (/^\/[^/]+\/$/.test(boardParsed.pathname)) {
+        return `${parsed.hostname}/${boardParsed.pathname.replace(/^\//, "").replace(/\/$/, "")}`;
+      }
     }
+
     return parsed.hostname;
   } catch {
     return "";

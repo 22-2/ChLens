@@ -56,6 +56,8 @@ const COMPATIBLE_EXACT_HOSTS = [
 
 const CH_STYLE_THREAD_PATTERN =
   /^\/((?:[\w-]+\/)?test\/read\.cgi\/[\w-]+\/\d+)\/?/;
+const CH_STYLE_BOARD_FROM_THREAD_PATTERN =
+  /^\/(?:[\w-]+\/)?test\/read\.cgi\/([\w-]+)\/\d+\/?/;
 const CH_STYLE_BOARD_PATTERN =
   /^\/(?:subback\/|test\/-\/)?([\w-]+)\/?(?:index\.html)?(?:#.*)?$/;
 const MACHI_THREAD_PATTERN = /^\/bbs\/read\.cgi\/([\w-]+)\/(\d+)\/?/;
@@ -218,6 +220,59 @@ function parseEddibbPage(url: URL): InternalBrowserPage | null {
   }
 
   return null;
+}
+
+export function getBoardUrlFromThreadUrl(threadUrl: string): string {
+  try {
+    const normalizedUrl = new window.URL(threadUrl);
+    normalizeHostname(normalizedUrl);
+    normalizeItestUrl(normalizedUrl);
+
+    if (!isCompatibleBoardHost(normalizedUrl.hostname)) {
+      return threadUrl;
+    }
+
+    if (normalizedUrl.hostname === "bbs.eddibb.cc") {
+      const threadMatch = EDDIBB_THREAD_PATTERN.exec(normalizedUrl.pathname);
+      if (threadMatch && threadMatch[2]) {
+        return `${normalizedUrl.origin}/${threadMatch[1]}/`;
+      }
+      return threadUrl;
+    }
+
+    if (normalizedUrl.hostname === "jbbs.shitaraba.net") {
+      const threadMatch = SHITARABA_THREAD_PATTERN.exec(normalizedUrl.pathname);
+      if (threadMatch) {
+        return `${normalizedUrl.origin}/bbs/read.cgi/${threadMatch[1]}/${threadMatch[2]}/`;
+      }
+
+      const storageMatch = SHITARABA_STORAGE_PATTERN.exec(normalizedUrl.pathname);
+      if (storageMatch) {
+        return `${normalizedUrl.origin}/bbs/read.cgi/${storageMatch[1]}/${storageMatch[2]}/`;
+      }
+
+      return threadUrl;
+    }
+
+    if (hasHostnameSuffix(normalizedUrl.hostname, "machi.to")) {
+      const threadMatch = MACHI_THREAD_PATTERN.exec(normalizedUrl.pathname);
+      if (threadMatch) {
+        return `${normalizedUrl.origin}/${threadMatch[1]}/`;
+      }
+      return threadUrl;
+    }
+
+    const chThreadMatch = CH_STYLE_BOARD_FROM_THREAD_PATTERN.exec(
+      normalizedUrl.pathname,
+    );
+    if (chThreadMatch) {
+      return `${normalizedUrl.origin}/${chThreadMatch[1]}/`;
+    }
+  } catch {
+    return threadUrl;
+  }
+
+  return threadUrl;
 }
 
 export function parseInternalBrowserPage(

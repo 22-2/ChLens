@@ -24,6 +24,8 @@ const STYLES = {
 };
 
 // URL パターン定義
+// 変更理由: content script は単体配信前提のため core/ch-lib の TS モジュールへ直接依存させず、
+// ここは互換性優先で独立維持する（正規化仕様は src/core/URL.ts と同期して運用）。
 const URL_PATTERNS = [
   // 2ch系の通常板・スレッド
   /^https?:\/\/(?!find|info|p2)\w+(?:\.[25]ch\.net|\.2ch\.sc|\.open2ch\.net|\.bbspink\.com)\/(?:subback\/)?\w+\/?(?:index\.html)?(?:#\d+)?$/,

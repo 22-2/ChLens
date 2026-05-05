@@ -17,6 +17,7 @@ import {
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import type { Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
+import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
 import { copyText } from "src/view/browser/utils/utils";
 // `app.bookmark` はグローバルで提供されるサービス
 
@@ -179,16 +180,6 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
 
 // スレッドURLから板URLを導出（types.ts の threadUrlToBoardUrl と同等）
 function deriveBoardUrl(threadUrl: string): string {
-  try {
-    const url = new window.URL(threadUrl);
-    const chMatch = url.pathname.match(/^\/test\/read\.cgi\/([^/]+)\//);
-    if (chMatch) return `${url.origin}/${chMatch[1]}/`;
-    const jbbsMatch = url.pathname.match(/^\/bbs\/read\.cgi\/([^/]+\/[^/]+)\//);
-    if (jbbsMatch) return `${url.origin}/bbs/read.cgi/${jbbsMatch[1]}/`;
-    const machiMatch = url.pathname.match(/^\/bbs\/read\.cgi\/([^/]+)\//);
-    if (machiMatch) return `${url.origin}/${machiMatch[1]}/`;
-  } catch {
-    // パース不能
-  }
-  return threadUrl;
+  // 変更理由: コンテキストメニューだけ判定がズレると「板を開く」の遷移先が不一致になる。
+  return getBoardUrlFromThreadUrl(threadUrl);
 }

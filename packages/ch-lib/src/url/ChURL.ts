@@ -1,3 +1,5 @@
+import { PATTERNS } from "packages/ch-lib/src/url/patterns";
+
 export type BBSType = "2ch" | "machi" | "jbbs" | "unknown";
 export type ContentType = "thread" | "board" | "unknown";
 
@@ -15,34 +17,6 @@ const HOSTNAME = {
   EDDIBB: "bbs.eddibb.cc",
   ITEST_5CH: "itest.5ch.io",
   ITEST_BBSPINK: "itest.bbspink.com",
-} as const;
-
-const PATTERNS = {
-  // 2ch系
-  CH_THREAD: /^\/((?:\w+\/)?test\/(?:read\.cgi|-)\/\w+\/\d+).*$/,
-  CH_THREAD_ULA: /^\/2ch\/(\w+)\/([\w\.]+)\/(\d+).*$/,
-  CH_BOARD: /^\/((?:subback\/|test\/-\/)?\w+\/)(?:#.*)?$/,
-  CH_RESNUM: /^https?:\/\/[\w\.]+\/(?:\w+\/)?test\/(?:read\.cgi|-)\/\w+\/\d+\/(?:i|g\?g=)?(\d+).*$/,
-  CH_RESNUM_ULA: /^\/2ch\/\w+\/[\w\.]+\/\d+\/(\d+).*$/,
-  CH_TO_BOARD: /^\/(?:test|bbs)\/read\.cgi\/(\w+)\/\d+\/$/,
-
-  // eddibb系
-  EDDIBB_THREAD: /^\/(\w+)\/(\d+).*$/,
-  EDDIBB_THREAD_2: /^\/test\/read\.cgi\/(\w+)\/(\d+).*$/,
-  EDDIBB_BOARD: /^\/(\w+)\/?(?:#.*)?$/,
-  EDDIBB_BOARD_2: /^\/test\/read\.cgi\/(\w+)\/?(?:#.*)?$/,
-
-  // まちBBS系
-  MACHI_THREAD: /^\/bbs\/read\.cgi\/(\w+\/\d+).*$/,
-  MACHI_BOARD: /^\/(\w+\/)(?:#.*)?$/,
-  MACHI_RESNUM: /^\/bbs\/read\.cgi\/\w+\/\d+\/(\d+).*$/,
-
-  // したらば系
-  SHITARABA_THREAD: /^\/bbs\/(read(?:_archive)?\.cgi\/\w+\/\d+\/\d+).*$/,
-  SHITARABA_ARCHIVE: /^\/(\w+\/\d+)\/storage\/(\d+)\.html$/,
-  SHITARABA_BOARD: /^\/(\w+\/\d+\/)(?:#.*)?$/,
-  SHITARABA_RESNUM: /^\/bbs\/read(?:_archive)?\.cgi\/\w+\/\d+\/\d+\/(\d+).*$/,
-  SHITARABA_TO_BOARD: /^\/bbs\/read(?:_archive)?\.cgi\/(\w+\/\d+)\/\d+\/$/,
 } as const;
 
 export class ChURL {

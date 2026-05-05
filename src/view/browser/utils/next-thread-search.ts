@@ -1,5 +1,9 @@
 import type { IThread } from "src/service-container/interfaces";
 
+// 変更理由: read.cgi 系URLの判定ロジックを link-routing に集約し、
+// 次スレ探索側は互換のために再エクスポートだけを維持する。
+export { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
+
 const TITLE_DECORATION_PATTERN =
   / ?(?:\[(?:無断)?転載禁止\]|(?:\(c\)|©|�|&copy;|&#169;)(?:2ch\.net|@?bbspink\.com)) ?/g;
 const KATAKANA_PATTERN = /[\u30a1-\u30f6]/g;
@@ -277,33 +281,6 @@ function buildExpectedNumbers(currentTitle: string): {
 
 function isMarkedThread(title: string): boolean {
   return title.trimStart().startsWith("●");
-}
-
-export function getBoardUrlFromThreadUrl(threadUrl: string): string {
-  const parsed = new window.URL(threadUrl);
-  const chMatch = parsed.pathname.match(/^\/test\/read\.cgi\/([^/]+)\//);
-  if (chMatch) {
-    return `${parsed.origin}/${chMatch[1]}/`;
-  }
-
-  const shitarabaMatch = parsed.pathname.match(
-    /^\/bbs\/read(?:_archive)?\.cgi\/([^/]+\/[^/]+)\//,
-  );
-  if (shitarabaMatch) {
-    return `${parsed.origin}/bbs/read.cgi/${shitarabaMatch[1]}/`;
-  }
-
-  const machiMatch = parsed.pathname.match(/^\/bbs\/read\.cgi\/([^/]+)\//);
-  if (machiMatch) {
-    return `${parsed.origin}/${machiMatch[1]}/`;
-  }
-
-  const eddibbMatch = parsed.pathname.match(/^\/([^/]+)\/\d+\/?$/);
-  if (eddibbMatch) {
-    return `${parsed.origin}/${eddibbMatch[1]}/`;
-  }
-
-  return threadUrl;
 }
 
 export function calculateThreadMomentum(

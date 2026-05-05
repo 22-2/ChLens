@@ -39,7 +39,10 @@ import {
   getLegacyHistoryService,
   waitForLegacyBookmarkReady,
 } from "src/view/browser/utils/legacy-app";
-import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
+import {
+  getBoardUrlFromThreadUrl,
+  parseInternalBrowserPage,
+} from "src/view/browser/utils/link-routing";
 import { container } from "src/service-container/index";
 import {
   mergeOmnibarSources,
@@ -163,10 +166,15 @@ function readBookmarkStatus(url: string): boolean {
 function deriveBoardTitle(threadUrl: string): string {
   try {
     const parsed = new window.URL(threadUrl);
-    const match = parsed.pathname.match(/^\/test\/read\.cgi\/([^/]+)\//);
-    if (match) {
-      return `${parsed.hostname}/${match[1]}`;
+    // 変更理由: read.cgi 系のURL揺れを helper 側に集約し、表示名だけこの関数で整形する。
+    const boardUrl = getBoardUrlFromThreadUrl(threadUrl);
+    if (boardUrl !== threadUrl) {
+      const boardParsed = new window.URL(boardUrl);
+      if (/^\/[^/]+\/$/.test(boardParsed.pathname)) {
+        return `${parsed.hostname}/${boardParsed.pathname.replace(/^\//, "").replace(/\/$/, "")}`;
+      }
     }
+
     return parsed.hostname;
   } catch {
     return "";

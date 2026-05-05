@@ -1,4 +1,5 @@
 import { InternalNGElement, TYPE } from "src/core/NGTypes";
+import { PATTERNS } from "packages/ch-lib/src/url/patterns";
 import { normalize } from "src/core/jsutil";
 
 export interface NGThreadObj {
@@ -89,8 +90,56 @@ export function checkScope(ngObj: InternalNGElement, url: string): boolean {
       return true;
     }
 
-    const boardMatch = url.match(/\/test\/read\.cgi\/([^/]+)/);
-    return boardMatch ? boardMatch[1] === scopeValue : false;
+    // 変更理由: /test/read.cgi 固定抽出だと machi/jbbs 等で scope 判定が漏れるため、
+    // 共有PATTERNSを使って BBS種別に依存しない board キー抽出へ寄せる。
+    try {
+      const parsed = new window.URL(url);
+      const { pathname } = parsed;
+
+      const chThreadMatch = PATTERNS.CH_THREAD.exec(pathname);
+      if (chThreadMatch) {
+        const segments = chThreadMatch[1].split("/");
+        return segments[segments.length - 2] === scopeValue;
+      }
+
+      const machiThreadMatch = PATTERNS.MACHI_THREAD.exec(pathname);
+      if (machiThreadMatch) {
+        return machiThreadMatch[1].split("/")[0] === scopeValue;
+      }
+
+      const shitarabaThreadMatch = PATTERNS.SHITARABA_THREAD.exec(pathname);
+      if (shitarabaThreadMatch) {
+        const segments = shitarabaThreadMatch[1].split("/");
+        return segments[segments.length - 2] === scopeValue;
+      }
+
+      const eddibbThreadMatch =
+        PATTERNS.EDDIBB_THREAD_2.exec(pathname) ?? PATTERNS.EDDIBB_THREAD.exec(pathname);
+      if (eddibbThreadMatch) {
+        return eddibbThreadMatch[1] === scopeValue;
+      }
+
+      const chBoardMatch = PATTERNS.CH_BOARD.exec(pathname);
+      if (chBoardMatch) {
+        return chBoardMatch[1].replace(/\/$/, "") === scopeValue;
+      }
+
+      const machiBoardMatch = PATTERNS.MACHI_BOARD.exec(pathname);
+      if (machiBoardMatch) {
+        return machiBoardMatch[1].replace(/\/$/, "") === scopeValue;
+      }
+
+      const shitarabaBoardMatch = PATTERNS.SHITARABA_BOARD.exec(pathname);
+      if (shitarabaBoardMatch) {
+        return shitarabaBoardMatch[1].split("/")[1] === scopeValue;
+      }
+
+      const eddibbBoardMatch =
+        PATTERNS.EDDIBB_BOARD_2.exec(pathname) ?? PATTERNS.EDDIBB_BOARD.exec(pathname);
+      return eddibbBoardMatch ? eddibbBoardMatch[1] === scopeValue : false;
+    } catch {
+      return false;
+    }
   });
 }
 

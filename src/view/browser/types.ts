@@ -1,3 +1,5 @@
+import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
+
 // ページ種別の定義
 // ナビゲーション階層: ホーム → 板一覧 → スレッド一覧 → スレッド
 export type PageType =
@@ -172,27 +174,8 @@ export function getDisplayUrl(page: Page): string {
 // スレッドURLから板URLを導出する
 // /test/read.cgi/board_name/thread_id/ → /board_name/
 function threadUrlToBoardUrl(threadUrl: string): string {
-  try {
-    const url = new window.URL(threadUrl);
-    // 5ch, bbspink, eddibb: /test/read.cgi/BOARD/THREAD_ID/
-    const chMatch = url.pathname.match(/^\/test\/read\.cgi\/([^/]+)\//);
-    if (chMatch) {
-      return `${url.origin}/${chMatch[1]}/`;
-    }
-    // したらば: /bbs/read.cgi/CATEGORY/BOARD/THREAD_ID/
-    const jbbsMatch = url.pathname.match(/^\/bbs\/read\.cgi\/([^/]+\/[^/]+)\//);
-    if (jbbsMatch) {
-      return `${url.origin}/bbs/read.cgi/${jbbsMatch[1]}/`;
-    }
-    // まちBBS: /bbs/read.cgi/BOARD/THREAD_ID/
-    const machiMatch = url.pathname.match(/^\/bbs\/read\.cgi\/([^/]+)\//);
-    if (machiMatch) {
-      return `${url.origin}/${machiMatch[1]}/`;
-    }
-  } catch {
-    // パース不能時はそのまま返す
-  }
-  return threadUrl;
+  // 変更理由: read.cgi 系の分岐を 1 箇所に寄せ、画面ごとの判定ズレ再発を防ぐ。
+  return getBoardUrlFromThreadUrl(threadUrl);
 }
 
 // ナビゲーション先のページに対して、必ず正しい階層スタックを構築する

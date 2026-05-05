@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { container } from "src/service-container/index";
 import type { IThread } from "src/service-container/interfaces";
+import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
 import {
   findMainstreamThreadMatch,
   findNextThreadMatch,
-  getBoardUrlFromThreadUrl,
 } from "src/view/browser/utils/next-thread-search";
 
 const NEXT_THREAD_SEARCH_DURATION_MS = 180_000;

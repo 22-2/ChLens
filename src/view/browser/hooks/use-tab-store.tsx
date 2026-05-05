@@ -13,6 +13,7 @@ import {
   type Page,
   type Tab,
 } from "src/view/browser/types";
+import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
 
 export interface TabStoreState {
   tabs: Tab[];
@@ -201,29 +202,9 @@ function pushPageToTabHistory(tab: Tab, page: Page): Tab {
 }
 
 function deriveBoardUrlFromThreadUrl(threadUrl: string): string | null {
-  try {
-    const parsed = new window.URL(threadUrl);
-    const chMatch = parsed.pathname.match(/^\/test\/read\.cgi\/([^/]+)\//);
-    if (chMatch) {
-      return `${parsed.origin}/${chMatch[1]}/`;
-    }
-
-    const jbbsMatch = parsed.pathname.match(
-      /^\/bbs\/read\.cgi\/([^/]+\/[^/]+)\//,
-    );
-    if (jbbsMatch) {
-      return `${parsed.origin}/bbs/read.cgi/${jbbsMatch[1]}/`;
-    }
-
-    const machiMatch = parsed.pathname.match(/^\/bbs\/read\.cgi\/([^/]+)\//);
-    if (machiMatch) {
-      return `${parsed.origin}/${machiMatch[1]}/`;
-    }
-  } catch {
-    // 無効URL時は派生不可のため null を返して既定の階層構築へフォールバックする。
-  }
-
-  return null;
+  // 変更理由: URL判定を link-routing に集約し、タブ生成時だけ null フォールバック契約を維持する。
+  const boardUrl = getBoardUrlFromThreadUrl(threadUrl);
+  return boardUrl === threadUrl ? null : boardUrl;
 }
 
 function buildHierarchyForNewTab(sourcePage: Page, targetPage: Page): Page[] {
