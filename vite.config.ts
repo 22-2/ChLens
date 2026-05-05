@@ -1,5 +1,6 @@
 import react from "@vitejs/plugin-react";
 import autoprefixer from "autoprefixer";
+import { build as esbuildBuild } from "esbuild";
 import fs from "fs-extra";
 import { glob } from "fs/promises";
 import path from "path";
@@ -166,10 +167,26 @@ function manifestPlugin(platform: string, outputDir: string): Plugin {
 
 // ─── plugin: static file copies ──────────────────────────────────────────────
 
-function staticCopyPlugin(platform: string, outputDir: string): Plugin {
+function staticCopyPlugin(
+  platform: string,
+  outputDir: string,
+  minifyJs: boolean,
+): Plugin {
   return {
     name: "static-copy",
     async buildStart() {
+      // 変更理由: content_scripts は manifest で単一JSを参照するため、
+      // TS実装をここで bundle して常に最新の cs_addlink.js を出力する。
+      await esbuildBuild({
+        entryPoints: [path.resolve(__dirname, "src/cs_addlink.ts")],
+        bundle: true,
+        format: "iife",
+        platform: "browser",
+        target: ["chrome103", "firefox103"],
+        outfile: path.resolve(__dirname, `${outputDir}/cs_addlink.js`),
+        minify: minifyJs,
+      });
+
       const copies: Array<[string, string]> = [
         // rules.json (chrome only)
         ...(platform !== "firefox" && platform !== "tauri"
@@ -253,7 +270,7 @@ export default defineConfig(({ mode }) => {
       browserHtmlPlugin(outputDir),
       scssPlugin(platform, outputDir, minifyOutput),
       manifestPlugin(platform, outputDir),
-      staticCopyPlugin(platform, outputDir),
+      staticCopyPlugin(platform, outputDir, minifyOutput),
     ],
     resolve: {
       alias: {

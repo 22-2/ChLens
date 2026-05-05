@@ -23,6 +23,7 @@
     "ShortQuery.js": "github:S--Minecraft/ShortQuery.js#1.1.0",
     "autoprefixer": "^10.5.0",
     "cross-env": "^10.1.0",
+    "esbuild": "^0.28.0",
     "eslint": "^10.2.1",
     "eslint-config-prettier": "^10.1.8",
     "fake-indexeddb": "^6.2.5",
@@ -64,7 +65,8 @@
     "lint:eslint": "eslint --cache --fix src/",
     "lint:imports": "organize-imports-cli tsconfig.json",
     "lint:prettier": "prettier --editorconfig --write ./src/",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:url-commonization": "pnpm vitest run src/content-scripts/url-targets.test.ts src/core/NGMatcher.test.ts src/view/browser/pages/BookmarkListPage.test.tsx && pnpm --filter @read-crx/ch-lib exec vitest run src/parser/BoardParser.test.ts src/parser/ThreadParser.test.ts"
   },
   "dependencies": {
     "@dnd-kit/react": "^0.4.0",
