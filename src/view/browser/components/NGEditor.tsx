@@ -80,32 +80,30 @@ Body("荒らし")
 Body(荒らし)
 
 // タイトルを部分一致でハイライト
-HighlightTitle(word="重要" bgColor=#ffcdd2 label="注目")
+HighlightTitle(重要 bgColor=#ffcdd2 label=注目)
 
 // 特定IDをNG
-ID(word="abc123")
+ID(abc123)
 
 // URLを正規表現でNG
-RegExpUrl(word="https?://(?:x|twitter)\\\\.com/.+")
+RegExpUrl("https?://(?:x|twitter)\\\\.com/.+")
 
 // 10回以上の画像連投を正規表現でNG
-RegExpBody(word="(imgur\.com\/.+?){10}")`;
+RegExpBody("(imgur\.com\/.+?){10}")`;
 
 export const NG_DSL_MULTILINE_EXAMPLE = `// 複数サイト向けの正規表現ハイライト
 RegExpHighlightTitle(
-  word="(imgur\\\\.com\\\\/.+?){15}"
+  "(imgur\\\\.com\\\\/.+?){15}"
   sites=[
     eddibb.cc
     5ch.io
   ]
   bgColor=red
-  label="連投疑い"
+  label=連投疑い
 )`;
-
 
 // // 複雑なand条件: 名前の正規表現 + 本文の正規表現 + 期限 + ラベル
 // ANDやら期限などあるが、これは複雑なので隠しておいて、基本的には上のシンプルな例だけ見せるのが良さそう
-
 interface NGDslHelpSnippetProps {
   code: string;
   minHeight?: number;
