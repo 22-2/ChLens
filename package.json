@@ -1,6 +1,6 @@
 {
   "name": "chlens",
-  "version": "3.1.2",
+  "version": "3.1.4",
   "engines": {
     "node": ">=25.0"
   },
