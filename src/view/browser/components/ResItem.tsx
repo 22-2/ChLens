@@ -153,38 +153,6 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
           onAnchorHover={onAnchorHover}
           onAnchorLeave={onAnchorLeave}
         />
-        {urls.length > 0 && (
-          <div className="res__links">
-            {urls.map((url) => (
-              <a
-                key={`${res.num}:${url}`}
-                href={url}
-                className="res__link"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onUrlClick(url, undefined, 0);
-                }}
-                onMouseDown={(e) => {
-                  if (e.button !== 1) {
-                    return;
-                  }
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-                onAuxClick={(e) => {
-                  if (e.button !== 1) return;
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onUrlClick(url, undefined, 1);
-                }}
-                title={url}
-              >
-                {url}
-              </a>
-            ))}
-          </div>
-        )}
         <ResMediaGallery
           urls={urls}
           onUrlClick={onUrlClick}
