@@ -80,7 +80,9 @@ export async function readBookmarkFolderName(
 
   try {
     const [node] = await browser.bookmarks.get(bookmarkId);
-    if (!node || !Array.isArray(node.children)) {
+    // 変更理由: browser.bookmarks.get() は実装差分で folder node の children を
+    // 返さないことがあり、存在する保存先でも未設定扱いになる不具合を防ぐ。
+    if (!node || typeof node.url === "string") {
       return null;
     }
     return normalizeBookmarkFolderTitle(node.title);
