@@ -226,7 +226,7 @@ describe("TabProvider auto refresh state", () => {
     expect(screen.getByTestId("stored-thread-url")).toHaveTextContent(
       "https://example.com/test/read.cgi/foo/2/",
     );
-    expect(screen.getByTestId("history-length")).toHaveTextContent("3");
+    expect(screen.getByTestId("history-length")).toHaveTextContent("5");
     expect(screen.getByTestId("current-thread-title")).toHaveTextContent(
       "thread-2",
     );
@@ -634,9 +634,9 @@ describe("TabProvider auto refresh state", () => {
       "thread-2",
     );
     expect(screen.getByTestId("history-titles")).toHaveTextContent(
-      "ホーム|板A|thread-1|thread-2",
+      "ホーム|板一覧|板A|thread-1|thread-2",
     );
-    expect(screen.getByTestId("history-index")).toHaveTextContent("3");
+    expect(screen.getByTestId("history-index")).toHaveTextContent("4");
 
     fireEvent.click(screen.getByText("戻る"));
 
@@ -644,7 +644,63 @@ describe("TabProvider auto refresh state", () => {
       "thread-1",
     );
     expect(screen.getByTestId("current-page-type")).toHaveTextContent("thread");
-    expect(screen.getByTestId("history-index")).toHaveTextContent("2");
+    expect(screen.getByTestId("history-index")).toHaveTextContent("3");
+  });
+
+  it("ホームからURL直開きしたスレで戻ると板ページへ戻る", async () => {
+    vi.resetModules();
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
+
+    function Harness() {
+      const { currentPage, activeTab, dispatch } = useTabStore();
+
+      return (
+        <>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "NAVIGATE",
+                page: {
+                  type: "thread",
+                  title: "direct-thread",
+                  threadUrl: "https://example.com/test/read.cgi/board-a/1/",
+                },
+              })
+            }
+          >
+            スレをURL直開き
+          </button>
+          <button onClick={() => dispatch({ type: "GO_BACK" })}>戻る</button>
+          <output data-testid="current-page-type">{currentPage.type}</output>
+          <output data-testid="current-page-title">{currentPage.title}</output>
+          <output data-testid="history-titles">
+            {activeTab.history.map((page) => page.title).join("|")}
+          </output>
+        </>
+      );
+    }
+
+    render(
+      <TabProvider>
+        <Harness />
+      </TabProvider>,
+    );
+
+    fireEvent.click(screen.getByText("スレをURL直開き"));
+
+    expect(screen.getByTestId("history-titles")).toHaveTextContent(
+      "ホーム|板一覧|https://example.com/board-a/|direct-thread",
+    );
+
+    fireEvent.click(screen.getByText("戻る"));
+
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent(
+      "threadList",
+    );
+    expect(screen.getByTestId("current-page-title")).toHaveTextContent(
+      "https://example.com/board-a/",
+    );
   });
 
   it("UPDATE_TITLE_FOR_TAB は対象タブだけを更新し、アクティブタブを汚染しない", async () => {
@@ -736,6 +792,106 @@ describe("TabProvider auto refresh state", () => {
     expect(screen.getByTestId("background-page-title")).toHaveTextContent(
       "背景タブ更新後",
     );
+  });
+
+  it("ホームから板URLを直接開くと canonical stack になり、進むは効かない", async () => {
+    vi.resetModules();
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
+
+    function Harness() {
+      const { currentPage, activeTab, dispatch } = useTabStore();
+
+      return (
+        <>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "NAVIGATE",
+                page: {
+                  type: "threadList",
+                  title: "板A",
+                  boardUrl: "https://example.com/board-a/",
+                  boardTitle: "板A",
+                },
+              })
+            }
+          >
+            板URL直開き
+          </button>
+          <button onClick={() => dispatch({ type: "GO_FORWARD" })}>進む</button>
+          <output data-testid="current-page-type">{currentPage.type}</output>
+          <output data-testid="history-titles">
+            {activeTab.history.map((page) => page.title).join("|")}
+          </output>
+          <output data-testid="history-index">
+            {String(activeTab.currentIndex)}
+          </output>
+        </>
+      );
+    }
+
+    render(
+      <TabProvider>
+        <Harness />
+      </TabProvider>,
+    );
+
+    fireEvent.click(screen.getByText("板URL直開き"));
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent(
+      "threadList",
+    );
+    expect(screen.getByTestId("history-titles")).toHaveTextContent(
+      "ホーム|板一覧|板A",
+    );
+    expect(screen.getByTestId("history-index")).toHaveTextContent("2");
+
+    fireEvent.click(screen.getByText("進む"));
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent(
+      "threadList",
+    );
+    expect(screen.getByTestId("history-index")).toHaveTextContent("2");
+  });
+
+  it("新規タブ直後は進むが効かない", async () => {
+    vi.resetModules();
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
+
+    function Harness() {
+      const { state, currentPage, dispatch } = useTabStore();
+
+      return (
+        <>
+          <button onClick={() => dispatch({ type: "ADD_TAB" })}>新規タブ</button>
+          <button onClick={() => dispatch({ type: "GO_FORWARD" })}>進む</button>
+          <output data-testid="tabs-count">{state.tabs.length}</output>
+          <output data-testid="current-page-type">{currentPage.type}</output>
+          <output data-testid="history-length">
+            {String(state.tabs.find((tab) => tab.id === state.activeTabId)?.history.length ?? 0)}
+          </output>
+          <output data-testid="history-index">
+            {String(state.tabs.find((tab) => tab.id === state.activeTabId)?.currentIndex ?? -1)}
+          </output>
+        </>
+      );
+    }
+
+    render(
+      <TabProvider>
+        <Harness />
+      </TabProvider>,
+    );
+
+    fireEvent.click(screen.getByText("新規タブ"));
+    expect(screen.getByTestId("tabs-count")).toHaveTextContent("2");
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent("home");
+    expect(screen.getByTestId("history-length")).toHaveTextContent("1");
+    expect(screen.getByTestId("history-index")).toHaveTextContent("0");
+
+    fireEvent.click(screen.getByText("進む"));
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent("home");
+    expect(screen.getByTestId("history-index")).toHaveTextContent("0");
   });
 
   it("板ページから新規タブで開いたスレは戻る時に板URLではなく板タイトルを維持する", async () => {

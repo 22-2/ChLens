@@ -191,6 +191,38 @@ function pushPageToTabHistory(tab: Tab, page: Page): Tab {
     return tab;
   }
 
+  if (page.type === "thread") {
+    if (currentPage.type === "thread") {
+      // 変更理由: スレ内リンクで別スレを開いた時は「辿った順」を残す必要があるため、
+      // thread -> thread のみ append 履歴を維持する。
+      const historyUntilCurrent = tab.history.slice(0, tab.currentIndex + 1);
+      return {
+        ...tab,
+        history: [...historyUntilCurrent, page],
+        currentIndex: historyUntilCurrent.length,
+      };
+    }
+
+    const stack = buildCanonicalThreadStack(
+      page,
+      currentPage.type === "threadList" ? currentPage : null,
+    );
+    return {
+      ...tab,
+      history: stack,
+      currentIndex: stack.length - 1,
+    };
+  }
+
+  if (page.type === "threadList") {
+    const stack = buildCanonicalThreadListStack(page);
+    return {
+      ...tab,
+      history: stack,
+      currentIndex: stack.length - 1,
+    };
+  }
+
   // タブ内クリック遷移は「実際に辿った順序」を履歴に残す。
   // 毎回階層を再構築すると前スレが履歴から落ち、戻るでスレ一覧へ飛んでしまうため。
   const historyUntilCurrent = tab.history.slice(0, tab.currentIndex + 1);
@@ -204,36 +236,78 @@ function pushPageToTabHistory(tab: Tab, page: Page): Tab {
 function deriveBoardUrlFromThreadUrl(threadUrl: string): string | null {
   // 変更理由: URL判定を link-routing に集約し、タブ生成時だけ null フォールバック契約を維持する。
   const boardUrl = getBoardUrlFromThreadUrl(threadUrl);
-  return boardUrl === threadUrl ? null : boardUrl;
+  if (boardUrl !== threadUrl) {
+    return boardUrl;
+  }
+
+  try {
+    const parsed = new window.URL(threadUrl);
+    const match = parsed.pathname.match(/^(?:\/[\w-]+)?\/test\/read\.cgi\/([\w-]+)\/\d+\/?/);
+    if (!match) {
+      return null;
+    }
+
+    // 変更理由: 互換ホスト判定外でも read.cgi 形式のURL直開きは存在するため、
+    // 最低限 board セグメントだけ復元して canonical stack を壊さないようにする。
+    return `${parsed.origin}/${match[1]}/`;
+  } catch {
+    return null;
+  }
 }
 
-function buildHierarchyForNewTab(sourcePage: Page, targetPage: Page): Page[] {
-  if (sourcePage.type !== "threadList" || targetPage.type !== "thread") {
-    return buildHierarchy(targetPage);
-  }
-
-  const targetBoardUrl = deriveBoardUrlFromThreadUrl(targetPage.threadUrl);
-  if (
-    !targetBoardUrl ||
-    normalizePageLocation(sourcePage.boardUrl) !==
-      normalizePageLocation(targetBoardUrl)
-  ) {
-    return buildHierarchy(targetPage);
-  }
-
-  // 変更理由: 板ページから「新しいタブでスレを開く」時は、遷移元で解決済みの板タイトルを
-  // 新規タブの履歴に引き継ぐ。ここをURL初期値にすると戻るで boardUrl が見えてしまう。
+function buildCanonicalThreadListStack(
+  threadListPage: Extract<Page, { type: "threadList" }>,
+): Page[] {
   return [
     { type: "home", title: "ホーム" },
     { type: "boardList", title: "板一覧" },
-    {
-      type: "threadList",
-      title: sourcePage.title,
-      boardUrl: sourcePage.boardUrl,
-      boardTitle: sourcePage.boardTitle,
-    },
-    targetPage,
+    threadListPage,
   ];
+}
+
+function buildCanonicalThreadStack(
+  threadPage: Extract<Page, { type: "thread" }>,
+  sourceThreadListPage: Extract<Page, { type: "threadList" }> | null,
+): Page[] {
+  const targetBoardUrl = deriveBoardUrlFromThreadUrl(threadPage.threadUrl);
+  const normalizedTargetBoardUrl = targetBoardUrl
+    ? normalizePageLocation(targetBoardUrl)
+    : null;
+
+  const boardPageFromSource =
+    sourceThreadListPage &&
+    normalizedTargetBoardUrl &&
+    normalizePageLocation(sourceThreadListPage.boardUrl) ===
+      normalizedTargetBoardUrl
+      ? sourceThreadListPage
+      : null;
+
+  const boardPage: Extract<Page, { type: "threadList" }> =
+    boardPageFromSource ?? {
+      type: "threadList",
+      title: targetBoardUrl ?? threadPage.threadUrl,
+      boardUrl: targetBoardUrl ?? threadPage.threadUrl,
+      boardTitle: targetBoardUrl ?? threadPage.threadUrl,
+    };
+
+  // 変更理由: 板/スレ導線は「ホーム -> 板一覧 -> 板 -> スレ」を常に基本形に統一し、
+  // URL直開き・オムニバー遷移・新規タブ遷移で戻る挙動が揺れないようにする。
+  return [...buildCanonicalThreadListStack(boardPage), threadPage];
+}
+
+function buildHierarchyForNewTab(sourcePage: Page, targetPage: Page): Page[] {
+  if (targetPage.type === "thread") {
+    return buildCanonicalThreadStack(
+      targetPage,
+      sourcePage.type === "threadList" ? sourcePage : null,
+    );
+  }
+
+  if (targetPage.type === "threadList") {
+    return buildCanonicalThreadListStack(targetPage);
+  }
+
+  return buildHierarchy(targetPage);
 }
 
 // 閉じたタブを記録するヘルパー
