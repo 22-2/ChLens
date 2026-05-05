@@ -1,7 +1,7 @@
 import { MediaViewer } from "src/view/browser/components/MediaViewer";
 import { useMediaViewerController } from "src/view/browser/hooks/use-media-viewer-controller";
 
-export function MediaViewerContainer(): JSX.Element | null {
+export function MediaViewerContainer(): React.ReactElement | null {
   const mediaViewerProps = useMediaViewerController();
   if (!mediaViewerProps) {
     return null;
