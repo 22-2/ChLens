@@ -148,7 +148,50 @@ function resolveRelatedBoardPage(sourcePage: Page | null): Extract<Page, { type:
   return null;
 }
 
-function resolveConfiguredNewTabPage(sourcePage: Page | null): Page {
+function resolveRelatedBoardPageFromTabHistory(
+  sourceTab: Tab | null,
+): Extract<Page, { type: "threadList" }> | null {
+  if (!sourceTab) {
+    return null;
+  }
+
+  const currentPage = getCurrentPage(sourceTab);
+  if (currentPage.type !== "thread") {
+    return null;
+  }
+
+  const targetBoardUrl = deriveBoardUrlFromThreadUrl(currentPage.threadUrl);
+  if (!targetBoardUrl) {
+    return null;
+  }
+
+  const normalizedTargetBoardUrl = normalizePageLocation(targetBoardUrl);
+
+  for (let index = sourceTab.currentIndex - 1; index >= 0; index -= 1) {
+    const candidate = sourceTab.history[index];
+    if (candidate.type !== "threadList") {
+      continue;
+    }
+
+    if (normalizePageLocation(candidate.boardUrl) !== normalizedTargetBoardUrl) {
+      continue;
+    }
+
+    return {
+      ...candidate,
+      boardUrl: normalizedTargetBoardUrl,
+      boardTitle: candidate.boardTitle || candidate.title || normalizedTargetBoardUrl,
+      title: candidate.title || candidate.boardTitle || normalizedTargetBoardUrl,
+    };
+  }
+
+  return null;
+}
+
+function resolveConfiguredNewTabPage(
+  sourcePage: Page | null,
+  sourceTab: Tab | null = null,
+): Page {
   const mode = resolveNewTabPageMode(readConfigValue("new_tab_page_mode"));
 
   if (mode === "home") {
@@ -164,7 +207,11 @@ function resolveConfiguredNewTabPage(sourcePage: Page | null): Page {
     return { type: "home", title: "ホーム" };
   }
 
-  const relatedBoardPage = resolveRelatedBoardPage(sourcePage);
+  // 変更理由: 「関連する板」タブをスレッドから開くとき、
+  // 直前の threadList 履歴にある確定板名を再利用して URL 仮タイトルの残留を防ぐ。
+  const relatedBoardPage =
+    resolveRelatedBoardPageFromTabHistory(sourceTab) ??
+    resolveRelatedBoardPage(sourcePage);
   if (relatedBoardPage) {
     return relatedBoardPage;
   }
@@ -187,8 +234,8 @@ function findTabByCurrentPage(
   );
 }
 
-function createTab(sourcePage: Page | null = null): Tab {
-  const initialPage = resolveConfiguredNewTabPage(sourcePage);
+function createTab(sourcePage: Page | null = null, sourceTab: Tab | null = null): Tab {
+  const initialPage = resolveConfiguredNewTabPage(sourcePage, sourceTab);
   return {
     id: crypto.randomUUID(),
     history: buildHierarchy(initialPage),
@@ -399,8 +446,9 @@ function pushClosed(closedTabs: Tab[], tab: Tab): Tab[] {
 function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
   switch (action.type) {
     case "ADD_TAB": {
-      const sourcePage = getCurrentPage(getActiveTab(state));
-      const newTab = createTab(sourcePage);
+      const activeTab = getActiveTab(state);
+      const sourcePage = getCurrentPage(activeTab);
+      const newTab = createTab(sourcePage, activeTab);
       // 固定タブの後ろに非固定タブを追加
       return {
         ...state,
@@ -521,8 +569,9 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
       for (const t of closed) {
         newClosed = pushClosed(newClosed, t);
       }
-      const sourcePage = getCurrentPage(getActiveTab(state));
-      const newTab = createTab(sourcePage);
+      const activeTab = getActiveTab(state);
+      const sourcePage = getCurrentPage(activeTab);
+      const newTab = createTab(sourcePage, activeTab);
       return {
         tabs: [...pinned, newTab],
         activeTabId: newTab.id,
@@ -693,10 +742,19 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
           }
 
           const updatedHistory = [...tab.history];
-          updatedHistory[tab.currentIndex] = {
-            ...currentPage,
-            title: action.title,
-          };
+          updatedHistory[tab.currentIndex] =
+            currentPage.type === "threadList"
+              ? {
+                  ...currentPage,
+                  // 変更理由: 板名解決後に title だけ更新すると boardTitle が URL のまま残り、
+                  // 履歴候補や関連板導線で未解決ラベルが再利用されるため同時更新する。
+                  title: action.title,
+                  boardTitle: action.title,
+                }
+              : {
+                  ...currentPage,
+                  title: action.title,
+                };
 
           return {
             ...tab,

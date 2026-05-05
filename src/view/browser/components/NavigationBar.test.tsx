@@ -277,6 +277,30 @@ describe("NavigationBar", () => {
     dispatchEventSpy.mockRestore();
   });
 
+  it("板一覧ではメニュー項目の『フィルターを開く』で板一覧用トグルイベントを送る", () => {
+    const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
+    activeTab.history = [
+      {
+        type: "boardList" as const,
+        title: "板一覧",
+      },
+    ];
+    activeTab.currentIndex = 0;
+
+    render(<NavigationBar />);
+
+    fireEvent.click(screen.getByTitle("メニュー"));
+    fireEvent.click(screen.getByRole("button", { name: "フィルターを開く" }));
+
+    expect(dispatchEventSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.boardList,
+        detail: { tabId: "tab-1" },
+      }),
+    );
+    dispatchEventSpy.mockRestore();
+  });
+
   it("ブックマークリストではメニュー項目の『フィルターを開く』でブックマーク用トグルイベントを送る", () => {
     const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
     activeTab.history = [

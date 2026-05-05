@@ -49,6 +49,7 @@ vi.mock("src/core/URL", () => {
 /** デフォルトの deps モックを生成する */
 function makeDeps(overrides: Partial<IOtherBoardsDeps> = {}): IOtherBoardsDeps {
   return {
+    getOpenedBoards: vi.fn().mockResolvedValue([]),
     getAllReadStates: vi.fn().mockResolvedValue([]),
     getUniqueHistory: vi.fn().mockResolvedValue([]),
     getCachedBoardTitles: vi.fn().mockReturnValue({}),
@@ -255,6 +256,32 @@ describe("OtherBoardsCollector.collect", () => {
     // 履歴からは追加されていること
     const otherMenu = menus.find((m) => m.name === "その他");
     expect(otherMenu).toBeDefined();
+  });
+
+  it("明示的に開いた未登録板は ReadState/履歴がなくても「一度開いた板」に追加する", async () => {
+    const deps = makeDeps({
+      getOpenedBoards: vi.fn().mockResolvedValue([
+        {
+          url: "https://foo.5ch.io/opened-board/",
+          title: "開いた板",
+        },
+      ]),
+    });
+    const collector = new OtherBoardsCollector(deps);
+    const menus: BBSMenu[] = [];
+
+    await collector.collect(menus);
+
+    const otherMenu = menus.find((menu) => menu.name === "その他");
+    expect(otherMenu).toBeDefined();
+    const boards = otherMenu!.categories.flatMap((category) => category.boards);
+    expect(
+      boards.some(
+        (board) =>
+          board.url === "https://foo.5ch.io/opened-board/" &&
+          board.name === "開いた板",
+      ),
+    ).toBe(true);
   });
 
   it("履歴の取得が失敗してもエラーをスローせず処理を続ける", async () => {

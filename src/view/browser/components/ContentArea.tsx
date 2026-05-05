@@ -53,7 +53,7 @@ const TabPageContent = memo(function TabPageContent({
     case "home":
       return <HomePage />;
     case "boardList":
-      return <BoardListPage />;
+      return <BoardListPage tabId={tab.id} isActive={isActive} />;
     case "settings":
       return <SettingsPage page={page} />;
     case "bookmarkList":

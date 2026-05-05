@@ -21,6 +21,8 @@ import { copyText } from "src/view/browser/utils/utils";
 
 const BOARD_AUTO_REFRESH_CONFIG_KEY = "auto_load_second_board";
 const MIN_BOARD_AUTO_REFRESH_MS = 20000;
+const OPENED_BOARDS_CONFIG_KEY = "opened_board_entries";
+const MAX_OPENED_BOARD_ENTRIES = 500;
 
 function readBoardAutoRefreshIntervalMs(): number {
   const rawValue = container.config.get(BOARD_AUTO_REFRESH_CONFIG_KEY);
@@ -255,6 +257,81 @@ function deriveBoardTitlePlaceholder(boardUrl: string): string | null {
   } catch {
     return null;
   }
+}
+
+interface OpenedBoardEntry {
+  url: string;
+  title?: string;
+}
+
+function normalizeBoardUrl(rawUrl: string): string {
+  try {
+    return new window.URL(rawUrl).href;
+  } catch {
+    return rawUrl;
+  }
+}
+
+function readOpenedBoardEntries(): OpenedBoardEntry[] {
+  const raw = container.config.get(OPENED_BOARDS_CONFIG_KEY);
+  if (!raw) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Array<{ url?: unknown; title?: unknown }>;
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed
+      .map((entry) => {
+        if (!entry || typeof entry.url !== "string") {
+          return null;
+        }
+
+        return {
+          url: normalizeBoardUrl(entry.url),
+          title: typeof entry.title === "string" ? entry.title : undefined,
+        } satisfies OpenedBoardEntry;
+      })
+      .filter((entry): entry is OpenedBoardEntry => entry !== null);
+  } catch {
+    // 破損データは空扱いで継続し、閲覧導線を止めない。
+    return [];
+  }
+}
+
+function writeOpenedBoardEntries(entries: OpenedBoardEntry[]): void {
+  void container.config.set(
+    OPENED_BOARDS_CONFIG_KEY,
+    JSON.stringify(entries.slice(0, MAX_OPENED_BOARD_ENTRIES)),
+  );
+}
+
+function upsertOpenedBoardEntry(boardUrl: string, boardTitle: string | null): void {
+  const normalizedUrl = normalizeBoardUrl(boardUrl);
+  const nextTitle = boardTitle && boardTitle.trim() !== "" ? boardTitle : undefined;
+  const existingEntries = readOpenedBoardEntries();
+  const existingIndex = existingEntries.findIndex(
+    (entry) => normalizeBoardUrl(entry.url) === normalizedUrl,
+  );
+
+  if (existingIndex >= 0) {
+    const existing = existingEntries[existingIndex];
+    if (!nextTitle || existing.title === nextTitle) {
+      return;
+    }
+
+    const updated = [...existingEntries];
+    updated[existingIndex] = { ...existing, title: nextTitle };
+    writeOpenedBoardEntries(updated);
+    return;
+  }
+
+  // 変更理由: readState/history 未生成でも「一度開いた板」に残せるよう、
+  // スレ一覧を開いた時点で板URLを明示記録する。
+  writeOpenedBoardEntries([{ url: normalizedUrl, title: nextTitle }, ...existingEntries]);
 }
 
 function isResolvedBoardTitle(boardUrl: string, candidate: string): boolean {
@@ -501,6 +578,11 @@ export const ThreadListPage: React.FC<Props> = ({
   useEffect(() => {
     writeThreadListSortPreference(page.boardUrl, sortPreference);
   }, [page.boardUrl, sortPreference]);
+
+  useEffect(() => {
+    const resolvedTitle = resolveInitialBoardTitle(page);
+    upsertOpenedBoardEntry(page.boardUrl, resolvedTitle);
+  }, [page.boardTitle, page.boardUrl, page.title]);
 
   useEffect(() => {
     let cancelled = false;

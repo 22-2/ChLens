@@ -11,11 +11,17 @@ export interface HistoryEntry {
   boardTitle?: string;
 }
 
+export interface OpenedBoardEntry {
+  url: string;
+  title?: string;
+}
+
 /**
  * ReadState・履歴から未登録板を収集する責務を担うインターフェース。
  * テスト時にモックに差し替えられる。
  */
 export interface IOtherBoardsDeps {
+  getOpenedBoards(): Promise<OpenedBoardEntry[]> | OpenedBoardEntry[];
   getAllReadStates(): Promise<ReadStateEntry[]>;
   getUniqueHistory(): Promise<HistoryEntry[]>;
   getCachedBoardTitles(): Record<string, string>;
@@ -88,6 +94,30 @@ export class OtherBoardsCollector {
         // 不正なURLは無視
       }
     };
+
+    // 明示的に「板を開いた」操作は readState/history より先に取り込み、
+    // 未登録板でも「一度開いた板」に必ず残るようにする。
+    try {
+      const openedBoards = await this.deps.getOpenedBoards();
+      for (const opened of openedBoards) {
+        if (!opened || typeof opened.url !== "string") {
+          continue;
+        }
+
+        const trimmedUrl = opened.url.trim();
+        if (trimmedUrl === "") {
+          continue;
+        }
+
+        const title =
+          typeof opened.title === "string" && opened.title.trim() !== ""
+            ? opened.title
+            : trimmedUrl;
+        addIfNew(trimmedUrl, title);
+      }
+    } catch (e) {
+      console.error("Failed to fetch opened boards for Other category", e);
+    }
 
     // ReadStateから収集
     try {

@@ -17,6 +17,7 @@ import { createLogger } from "src/core/logger";
 
 const logger = createLogger("BBSMenuModel");
 const BBSMENU_CACHE_KEY = "bbsmenu";
+const OPENED_BOARDS_CONFIG_KEY = "opened_board_entries";
 
 export interface BBSMenuData {
   status: "success" | "error";
@@ -51,6 +52,45 @@ export class BBSMenuModel {
     });
 
     this._collector = new OtherBoardsCollector({
+      getOpenedBoards: () => {
+        const raw = container.config.get(OPENED_BOARDS_CONFIG_KEY);
+        if (!raw) {
+          return [];
+        }
+
+        try {
+          const parsed = JSON.parse(raw) as Array<{
+            url?: unknown;
+            title?: unknown;
+          }>;
+          if (!Array.isArray(parsed)) {
+            return [];
+          }
+
+          return parsed
+            .map((entry) => {
+              if (!entry || typeof entry.url !== "string") {
+                return null;
+              }
+
+              return {
+                url: entry.url,
+                title: typeof entry.title === "string" ? entry.title : undefined,
+              };
+            })
+            .filter(
+              (
+                entry,
+              ): entry is {
+                url: string;
+                title?: string;
+              } => entry !== null,
+            );
+        } catch {
+          // 破損データは空扱いにして板一覧表示を継続する。
+          return [];
+        }
+      },
       getAllReadStates: () => ReadState.getAll(),
       getUniqueHistory: () => History.getUnique(),
       getCachedBoardTitles: () => {

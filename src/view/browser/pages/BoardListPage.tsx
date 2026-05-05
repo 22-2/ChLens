@@ -1,101 +1,65 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { BBSMenu } from "src/core/BBSMenuParser";
-import { container } from "src/service-container/index";
-import {
-  ContextMenu,
-  type ContextMenuItem,
-} from "src/view/browser/components/ContextMenu";
+import { Box } from "@mantine/core";
+import React, { useCallback, useState } from "react";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
+import { useBoardListLogic } from "src/view/browser/pages/board-list/use-board-list-logic";
+import { useBoardListDisplay } from "src/view/browser/pages/board-list/use-board-list-display";
+import { BoardListContent } from "src/view/browser/pages/board-list/BoardListContent";
+import { SearchBarSection } from "src/view/browser/pages/board-list/SearchBarSection";
+import { ContextMenuHandler } from "src/view/browser/pages/board-list/ContextMenuHandler";
+import { buildCategoryId } from "src/view/browser/pages/board-list/board-list-utils";
 
-const BOARD_LIST_REMOVED_URLS_KEY = "board_list_removed_urls";
-
-interface BoardContextMenuState {
-  x: number;
-  y: number;
-  boardName: string;
-  boardUrl: string;
+interface BoardListPageProps {
+  tabId: string;
+  isActive: boolean;
 }
 
-function normalizeBoardUrlForRemove(url: string): string {
-  try {
-    return new window.URL(url).href;
-  } catch {
-    return url;
-  }
-}
-
-export const BoardListPage: React.FC = () => {
+export const BoardListPage: React.FC<BoardListPageProps> = ({
+  tabId,
+  isActive,
+}) => {
   const { dispatch } = useTabStore();
-  const [categories, setCategories] = useState<BBSMenu[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [openStates, setOpenStates] = useState<Record<string, boolean>>({});
-  const [removedBoardUrls, setRemovedBoardUrls] = useState<Set<string>>(
-    new Set(),
-  );
-  const [contextMenuState, setContextMenuState] =
-    useState<BoardContextMenuState | null>(null);
+  const {
+    categories,
+    loading,
+    error,
+    openStates,
+    removedBoardUrls,
+    removedMenuNames,
+    removedCategoryIds,
+    openedBoardEntries,
+    fetchMenu,
+    handleRemoveBoard,
+    handleRemoveMenu,
+    handleRemoveCategory,
+    updateOpenStates,
+  } = useBoardListLogic();
 
-  useEffect(() => {
-    const saved = container.config.get("board_list_open_states");
-    if (saved) {
-      try {
-        setOpenStates(JSON.parse(saved));
-      } catch (e) {
-        // ignore parse error
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    const saved = container.config.get(BOARD_LIST_REMOVED_URLS_KEY);
-    if (!saved) {
-      return;
-    }
-
-    try {
-      const parsed = JSON.parse(saved) as string[];
-      if (!Array.isArray(parsed)) {
-        return;
-      }
-
-      setRemovedBoardUrls(
-        new Set(parsed.map((url) => normalizeBoardUrlForRemove(url))),
-      );
-    } catch {
-      // 破損データは無視して通常表示を優先する。
-    }
-  }, []);
-
-  const handleToggle = useCallback((id: string, isOpen: boolean) => {
-    setOpenStates((prev) => {
-      const next = { ...prev, [id]: isOpen };
-      container.config.set("board_list_open_states", JSON.stringify(next));
-      return next;
+  const { displayMenus, searchQuery, setSearchQuery, openedMenuValues } =
+    useBoardListDisplay({
+      categories,
+      openStates,
+      removedBoardUrls,
+      removedMenuNames,
+      removedCategoryIds,
+      openedBoardEntries,
+      updateOpenStates,
     });
-  }, []);
 
-  const fetchMenu = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      // container経由でBBSMenuサービスにアクセス
-      const result = await container.bbsMenu.get(false);
-      if (result.status === "success" && result.menu) {
-        setCategories(result.menu);
-      } else {
-        setError(result.message ?? "板一覧の取得に失敗しました");
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "不明なエラー");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
+    pageType: "boardList",
+    tabId,
+    isActive,
+    searchQuery,
+    setSearchQuery,
+  });
 
-  useEffect(() => {
-    fetchMenu();
-  }, [fetchMenu]);
+  const [contextMenuState, setContextMenuState] = useState<
+    | { type: "board"; x: number; y: number; boardName: string; boardUrl: string }
+    | { type: "menu"; x: number; y: number; menuName: string }
+    | { type: "category"; x: number; y: number; menuName: string; categoryName: string }
+    | null
+  >(null);
 
   const handleBoardClick = useCallback(
     (boardUrl: string, boardTitle: string) => {
@@ -112,165 +76,96 @@ export const BoardListPage: React.FC = () => {
     [dispatch],
   );
 
-  const persistRemovedBoardUrls = useCallback((nextSet: Set<string>) => {
-    void container.config.set(
-      BOARD_LIST_REMOVED_URLS_KEY,
-      JSON.stringify(Array.from(nextSet)),
-    );
-  }, []);
-
-  const handleRemoveBoard = useCallback(
-    (url: string) => {
-      const normalizedUrl = normalizeBoardUrlForRemove(url);
-      setRemovedBoardUrls((prev) => {
-        if (prev.has(normalizedUrl)) {
-          return prev;
-        }
-
-        const next = new Set(prev);
-        next.add(normalizedUrl);
-        persistRemovedBoardUrls(next);
-        return next;
+  const handleBoardMiddleClick = useCallback(
+    (boardUrl: string, boardTitle: string) => {
+      dispatch({
+        type: "OPEN_IN_NEW_TAB",
+        page: {
+          type: "threadList",
+          title: boardTitle,
+          boardUrl,
+          boardTitle,
+        },
       });
-      container.toast.info("板一覧から削除しました");
     },
-    [persistRemovedBoardUrls],
+    [dispatch],
   );
 
-  const displayMenus = useMemo(() => {
-    return categories
-      .map((menu) => {
-        const nextCategories = menu.categories
-          .map((category) => ({
-            ...category,
-            boards: category.boards.filter(
-              (board) =>
-                !removedBoardUrls.has(normalizeBoardUrlForRemove(board.url)),
-            ),
-          }))
-          .filter((category) => category.boards.length > 0);
-        return {
-          ...menu,
-          categories: nextCategories,
-        };
-      })
-      .filter((menu) => menu.categories.length > 0);
-  }, [categories, removedBoardUrls]);
+  const handleMenuAccordionChange = useCallback(
+    (openedMenuNames: string[]) => {
+      updateOpenStates((prev) => {
+        const next = { ...prev };
+        for (const menu of categories) {
+          next[menu.name] = openedMenuNames.includes(menu.name);
+        }
+        return next;
+      });
+    },
+    [categories, updateOpenStates],
+  );
 
-  const contextMenuItems = useMemo<ContextMenuItem[]>(() => {
-    if (!contextMenuState) {
-      return [];
-    }
+  const handleCategoryAccordionChange = useCallback(
+    (menuName: string, openedCategoryIds: string[]) => {
+      updateOpenStates((prev) => {
+        const next = { ...prev };
+        const menu = categories.find((entry) => entry.name === menuName);
+        if (!menu) {
+          return next;
+        }
 
-    return [
-      {
-        id: "remove-board",
-        label: `この板を一覧から削除 (${contextMenuState.boardName})`,
-        danger: true,
-        onSelect: () => handleRemoveBoard(contextMenuState.boardUrl),
-      },
-    ];
-  }, [contextMenuState, handleRemoveBoard]);
+        for (const category of menu.categories) {
+          const categoryId = buildCategoryId(menuName, category.name);
+          next[categoryId] = openedCategoryIds.includes(categoryId);
+        }
 
-  if (loading) {
-    return <div className="page-status">読み込み中...</div>;
-  }
+        return next;
+      });
+    },
+    [categories, updateOpenStates],
+  );
 
-  if (error) {
-    return (
-      <div className="page-status page-status--error">
-        <p>{error}</p>
-        <button className="page-status__retry" onClick={fetchMenu}>
-          再試行
-        </button>
-      </div>
-    );
-  }
+  // 表示されている板数をカウント
+  const hitCount = displayMenus.reduce(
+    (sum, menu) =>
+      sum +
+      menu.categories.reduce(
+        (categorySum, category) => categorySum + category.boards.length,
+        0,
+      ),
+    0,
+  );
 
   return (
-    <div className="board-list-page">
-      {displayMenus.map((menu, i) => (
-        <details
-          key={i}
-          className="board-menu"
-          open={openStates[menu.name] ?? false}
-          onToggle={(e) => {
-            if (e.target === e.currentTarget) {
-              handleToggle(menu.name, (e.target as HTMLDetailsElement).open);
-            }
-          }}
-        >
-          <summary className="board-menu__title">{menu.name}</summary>
-          <div className="board-menu__content">
-            {menu.categories.map((category, j) => {
-              const categoryId = `${menu.name}:${category.name}`;
-              return (
-                <details
-                  key={j}
-                  className="board-category"
-                  open={openStates[categoryId] ?? false}
-                  onToggle={(e) => {
-                    if (e.target === e.currentTarget) {
-                      handleToggle(
-                        categoryId,
-                        (e.target as HTMLDetailsElement).open,
-                      );
-                    }
-                  }}
-                >
-                  <summary className="board-category__title">
-                    {category.name}
-                  </summary>
-                  <ul className="board-category__list">
-                    {category.boards.map((board, k) => (
-                      <li
-                        key={k}
-                        className="board-item"
-                        onMouseDown={(e) => {
-                          if (e.button === 0) {
-                            handleBoardClick(board.url, board.name);
-                          } else if (e.button === 1) {
-                            // 中クリックで新しいタブで開く
-                            dispatch({
-                              type: "OPEN_IN_NEW_TAB",
-                              page: {
-                                type: "threadList",
-                                title: board.name,
-                                boardUrl: board.url,
-                                boardTitle: board.name,
-                              },
-                            });
-                          }
-                        }}
-                        onContextMenu={(event) => {
-                          event.preventDefault();
-                          setContextMenuState({
-                            x: event.clientX,
-                            y: event.clientY,
-                            boardName: board.name,
-                            boardUrl: board.url,
-                          });
-                        }}
-                      >
-                        {board.name}
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              );
-            })}
-          </div>
-        </details>
-      ))}
+    <Box>
+      <SearchBarSection
+        isOpen={isFilterOpen}
+        query={searchQuery}
+        onQueryChange={setSearchQuery}
+        onClose={closeFilterToolbar}
+        hitCount={hitCount}
+      />
 
-      {contextMenuState && (
-        <ContextMenu
-          x={contextMenuState.x}
-          y={contextMenuState.y}
-          items={contextMenuItems}
-          onClose={() => setContextMenuState(null)}
-        />
-      )}
-    </div>
+      <BoardListContent
+        loading={loading}
+        error={error}
+        displayMenus={displayMenus}
+        openStates={openStates}
+        openedMenuValues={openedMenuValues}
+        onMenuAccordionChange={handleMenuAccordionChange}
+        onCategoryAccordionChange={handleCategoryAccordionChange}
+        onBoardClick={handleBoardClick}
+        onBoardMiddleClick={handleBoardMiddleClick}
+        onContextMenu={setContextMenuState}
+        onRetry={fetchMenu}
+      />
+
+      <ContextMenuHandler
+        state={contextMenuState}
+        onRemoveBoard={handleRemoveBoard}
+        onRemoveMenu={handleRemoveMenu}
+        onRemoveCategory={handleRemoveCategory}
+        onClose={() => setContextMenuState(null)}
+      />
+    </Box>
   );
 };

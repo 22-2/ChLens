@@ -894,6 +894,79 @@ describe("TabProvider auto refresh state", () => {
     expect(screen.getByTestId("history-index")).toHaveTextContent("0");
   });
 
+  it("関連する板モードの新規タブはスレ履歴内の確定板名を再利用する", async () => {
+    localStorage.setItem("config_new_tab_page_mode", "related_board");
+
+    vi.resetModules();
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
+
+    function Harness() {
+      const { currentPage, dispatch } = useTabStore();
+
+      return (
+        <>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "NAVIGATE",
+                page: {
+                  type: "threadList",
+                  title: "Software",
+                  boardUrl: "https://egg.5ch.net/software/",
+                  boardTitle: "Software",
+                },
+              })
+            }
+          >
+            板へ移動
+          </button>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "NAVIGATE",
+                page: {
+                  type: "thread",
+                  title: "スレA",
+                  threadUrl:
+                    "https://egg.5ch.net/test/read.cgi/software/1000000010/",
+                },
+              })
+            }
+          >
+            スレへ移動
+          </button>
+          <button onClick={() => dispatch({ type: "ADD_TAB" })}>新規タブ</button>
+          <output data-testid="current-page-type">{currentPage.type}</output>
+          <output data-testid="current-page-title">{currentPage.title}</output>
+          <output data-testid="current-page-board-title">
+            {currentPage.type === "threadList" ? currentPage.boardTitle : ""}
+          </output>
+        </>
+      );
+    }
+
+    render(
+      <TabProvider>
+        <Harness />
+      </TabProvider>,
+    );
+
+    fireEvent.click(screen.getByText("板へ移動"));
+    fireEvent.click(screen.getByText("スレへ移動"));
+    fireEvent.click(screen.getByText("新規タブ"));
+
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent(
+      "threadList",
+    );
+    expect(screen.getByTestId("current-page-title")).toHaveTextContent(
+      "Software",
+    );
+    expect(screen.getByTestId("current-page-board-title")).toHaveTextContent(
+      "Software",
+    );
+  });
+
   it("板ページから新規タブで開いたスレは戻る時に板URLではなく板タイトルを維持する", async () => {
     vi.resetModules();
     const { TabProvider, useTabStore } =
