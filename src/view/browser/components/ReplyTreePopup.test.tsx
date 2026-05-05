@@ -50,6 +50,8 @@ const BASE_PROPS: React.ComponentProps<typeof ReplyTreePopup> = {
   onResContextMenu: () => {},
   onIdLinkClick: () => {},
   onClose: () => {},
+  threadTitle: "テストスレタイ",
+  threadUrl: "https://example.com/test/read.cgi/board/123/",
 };
 
 describe("ReplyTreePopup", () => {
@@ -158,6 +160,11 @@ describe("ReplyTreePopup", () => {
     expect(writeText.mock.calls[0]?.[0]).toContain("2 name-2");
     // @ts-expect-error
     expect(writeText.mock.calls[0]?.[0]).toContain("4 name-4");
+    // 末尾にスレタイとURLが付加されることを検証する。
+    // @ts-expect-error
+    expect(writeText.mock.calls[0]?.[0]).toContain("テストスレタイ");
+    // @ts-expect-error
+    expect(writeText.mock.calls[0]?.[0]).toContain("https://example.com/test/read.cgi/board/123/");
   });
 
   it("返信ツリー専用メニューから画像としてコピーできる", async () => {
