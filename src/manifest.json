@@ -67,7 +67,8 @@
         "*://*.2ch.sc/*",
         "*://*.bbspink.com/*",
         "*://bbs.eddibb.cc/*"
-      ]
+      ],
+      "js": ["./cs_addlink.js"]
     },
     {
       "matches": [
@@ -77,7 +78,8 @@
         "*://bbs.eddibb.cc/*"
       ],
       "run_at": "document_end",
-      "all_frames": true
+      "all_frames": true,
+      "js": ["./cs_addlink.js"]
     }
   ],
   "web_accessible_resources": [

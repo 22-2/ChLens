@@ -14,7 +14,11 @@ const imgExt = (platform: string) => (platform === "chrome" ? "webp" : "png");
 
 // ─── plugin: SCSS ────────────────────────────────────────────────────────────
 
-function scssPlugin(platform: string, outputDir: string, minifyCss: boolean): Plugin {
+function scssPlugin(
+  platform: string,
+  outputDir: string,
+  minifyCss: boolean,
+): Plugin {
   const ext = imgExt(platform);
   const isFirefox = platform === "firefox";
 
@@ -178,12 +182,15 @@ function staticCopyPlugin(
       // 変更理由: content_scripts は manifest で単一JSを参照するため、
       // TS実装をここで bundle して常に最新の cs_addlink.js を出力する。
       await esbuildBuild({
-        entryPoints: [path.resolve(__dirname, "src/cs_addlink.ts")],
+        entryPoints: [
+          path.resolve(__dirname, "src/cs_addlink.ts"),
+          path.resolve(__dirname, "src/background.ts"),
+        ],
         bundle: true,
         format: "iife",
         platform: "browser",
-        target: ["chrome103", "firefox103"],
-        outfile: path.resolve(__dirname, `${outputDir}/cs_addlink.js`),
+        target: "esnext",
+        outdir: outputDir,
         minify: minifyJs,
       });
 
@@ -247,7 +254,9 @@ export default defineConfig(({ mode }) => {
   const entry = process.env.ENTRY || "app";
   const outputDir = `./debug/${platform}`;
   const isWatchMode = process.argv.includes("--watch");
-  const isWatchDev = isWatchMode && (mode === "development" || process.env.VITE_WATCH_DEV === "true");
+  const isWatchDev =
+    isWatchMode &&
+    (mode === "development" || process.env.VITE_WATCH_DEV === "true");
   const minifyOutput = !isWatchDev;
 
   const entryMap: Record<string, { file: string; name: string }> = {
