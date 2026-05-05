@@ -330,10 +330,13 @@ export function useMediaViewerController(): MediaViewerProps | null {
     resetViewerSurface();
   }, [resetViewerSurface, viewer?.src]);
 
-  // 画像が切り替わった時に最大化状態を引き継ぐと違和感があるためリセットする。
+  // 左右移動で viewer.src が変わるたびに解除すると操作体験が崩れるため、
+  // 最大化状態はビューアを閉じたタイミングだけ初期化する。
   useEffect(() => {
-    setIsMaximized(false);
-  }, [viewer?.src]);
+    if (!viewer) {
+      setIsMaximized(false);
+    }
+  }, [viewer]);
 
   useEffect(() => {
     if (!viewer) {
