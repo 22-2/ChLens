@@ -1,4 +1,4 @@
-import type { RefObject } from "react";
+import type { ReactNode, RefObject } from "react";
 import React from "react";
 import type { OmnibarSuggestion } from "src/view/browser/utils/omnibar";
 
@@ -17,6 +17,7 @@ interface OmnibarProps {
   onBlur: () => void;
   onSuggestionHover: (index: number) => void;
   onSuggestionSelect: (suggestion: OmnibarSuggestion) => void;
+  trailingAction?: ReactNode;
 }
 
 export const Omnibar: React.FC<OmnibarProps> = ({
@@ -34,9 +35,12 @@ export const Omnibar: React.FC<OmnibarProps> = ({
   onBlur,
   onSuggestionHover,
   onSuggestionSelect,
+  trailingAction,
 }) => {
   return (
-    <div className="nav-bar__url">
+    <div
+      className={`nav-bar__url${trailingAction ? " nav-bar__url--has-action" : ""}`}
+    >
       <input
         ref={inputRef}
         className="nav-bar__url-input"
@@ -49,6 +53,10 @@ export const Omnibar: React.FC<OmnibarProps> = ({
         placeholder={placeholder}
         spellCheck={false}
       />
+
+      {trailingAction ? (
+        <div className="nav-bar__url-action">{trailingAction}</div>
+      ) : null}
 
       {isOpen ? (
         <div className="nav-bar__omnibar" role="listbox" aria-label="候補">

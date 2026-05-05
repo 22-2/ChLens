@@ -9,6 +9,7 @@ import {
   PenLine,
   RotateCw,
   Settings,
+  Star,
 } from "lucide-react";
 import React, {
   useCallback,
@@ -27,6 +28,7 @@ import {
   canGoForward,
   getCurrentPage,
   getDisplayUrl,
+  type Page,
 } from "src/view/browser/types";
 import {
   QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE,
@@ -66,6 +68,18 @@ interface LegacyHistoryLike {
   date?: unknown;
 }
 
+interface BookmarkTarget {
+  url: string;
+  title: string;
+  type: "thread" | "board";
+}
+
+interface BookmarkUpdatePayload {
+  bookmark?: {
+    url?: unknown;
+  };
+}
+
 const OMNIBAR_HISTORY_FETCH_COUNT = 300;
 const OMNIBAR_MAX_SUGGESTIONS = 8;
 
@@ -87,6 +101,45 @@ function toFiniteNumber(value: unknown): number {
 function normalizeLegacyTimestamp(value: unknown): number {
   const normalized = Math.trunc(toFiniteNumber(value));
   return normalized > 0 ? normalized : 0;
+}
+
+function normalizeBookmarkTitle(value: string, fallback: string): string {
+  const trimmed = value.trim();
+  return trimmed || fallback;
+}
+
+function deriveBookmarkTarget(page: Page): BookmarkTarget | null {
+  switch (page.type) {
+    case "thread":
+      return {
+        url: page.threadUrl,
+        title: normalizeBookmarkTitle(page.title, page.threadUrl),
+        type: "thread",
+      };
+
+    case "threadList": {
+      const title = normalizeBookmarkTitle(
+        normalizeString(page.boardTitle, page.title),
+        page.boardUrl,
+      );
+      return {
+        url: page.boardUrl,
+        title,
+        type: "board",
+      };
+    }
+
+    default:
+      return null;
+  }
+}
+
+function readBookmarkStatus(url: string): boolean {
+  try {
+    return Boolean(container.bookmark.get(url));
+  } catch {
+    return false;
+  }
 }
 
 function deriveBoardTitle(threadUrl: string): string {
@@ -167,16 +220,6 @@ async function readHistorySources(): Promise<OmnibarHistorySource[]> {
     .filter((item): item is OmnibarHistorySource => item !== null);
 }
 
-function deriveBoardTitleFromBoardUrl(boardUrl: string): string {
-  try {
-    const parsed = new URL(boardUrl);
-    const pathPart = parsed.pathname.replace(/^\/|\/$/g, "");
-    return pathPart ? `${parsed.hostname}/${pathPart}` : parsed.hostname;
-  } catch {
-    return "";
-  }
-}
-
 async function readBBSMenuBoardSources(): Promise<OmnibarBoardSource[]> {
   try {
     const result = await container.bbsMenu.get(false);
@@ -188,7 +231,9 @@ async function readBBSMenuBoardSources(): Promise<OmnibarBoardSource[]> {
         category.boards.map((board) => ({
           url: board.url,
           name: board.name,
-          boardTitle: deriveBoardTitleFromBoardUrl(board.url),
+          // 変更理由: bbsmenu の板候補は board.name が既に正式な板名なので、
+          // URL 派生ラベルを boardTitle に入れると遷移直後の再解決判定を誤らせる。
+          boardTitle: normalizeString(board.name),
         })),
       ),
     );
@@ -221,6 +266,10 @@ export const NavigationBar: React.FC = () => {
   const back = canGoBack(activeTab);
   const forward = canGoForward(activeTab);
   const displayUrl = getDisplayUrl(currentPage);
+  const bookmarkTarget = useMemo(
+    () => deriveBookmarkTarget(currentPage),
+    [currentPage],
+  );
 
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
   const [backMenuPosition, setBackMenuPosition] = useState<MenuPosition | null>(
@@ -235,11 +284,46 @@ export const NavigationBar: React.FC = () => {
   const refreshButtonRef = useRef<HTMLButtonElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const urlInputRef = useRef<HTMLInputElement>(null);
+  const [isBookmarked, setIsBookmarked] = useState<boolean>(() =>
+    bookmarkTarget ? readBookmarkStatus(bookmarkTarget.url) : false,
+  );
+  const [isBookmarkPending, setIsBookmarkPending] = useState(false);
 
   const isThreadAutoRefreshEnabled =
     currentPage.type === "thread" &&
     activeTab.autoRefreshEnabled &&
     activeTab.autoRefreshThreadUrl === currentPage.threadUrl;
+
+  useEffect(() => {
+    setIsBookmarkPending(false);
+    setIsBookmarked(bookmarkTarget ? readBookmarkStatus(bookmarkTarget.url) : false);
+  }, [bookmarkTarget]);
+
+  useEffect(() => {
+    if (!bookmarkTarget) {
+      return;
+    }
+
+    const handleBookmarkUpdated = ({ bookmark }: BookmarkUpdatePayload = {}) => {
+      if (typeof bookmark?.url === "string" && bookmark.url !== bookmarkTarget.url) {
+        return;
+      }
+
+      // 変更理由: 現在ページの星は他UIからの追加・削除にも追従しないと、
+      // オムニバー上だけ古い状態に見えて Chrome 風の一貫性が崩れる。
+      setIsBookmarked(readBookmarkStatus(bookmarkTarget.url));
+      setIsBookmarkPending(false);
+    };
+
+    try {
+      container.message.on("bookmark_updated", handleBookmarkUpdated);
+      return () => {
+        container.message.off("bookmark_updated", handleBookmarkUpdated);
+      };
+    } catch {
+      return;
+    }
+  }, [bookmarkTarget]);
 
   const loadOmnibarEntries = useCallback(async () => {
     const [historyItems, bookmarkItems, boardItems] = await Promise.all([
@@ -303,6 +387,53 @@ export const NavigationBar: React.FC = () => {
     setRefreshMenuPosition(null);
     dispatch({ type: "RELOAD" });
   }, [dispatch]);
+
+  const handleToggleBookmark = useCallback(() => {
+    if (!bookmarkTarget || isBookmarkPending) {
+      return;
+    }
+
+    const nextBookmarkedState = !isBookmarked;
+
+    // 変更理由: 永続化イベントを待つだけだとクリック直後に無反応に見えるため、
+    // まず星を反転してから bookmark_updated で最終状態へ揃える。
+    setIsBookmarkPending(true);
+    setIsBookmarked(nextBookmarkedState);
+
+    void Promise.resolve()
+      .then(() => {
+        if (isBookmarked) {
+          return container.bookmark.remove(bookmarkTarget.url);
+        }
+
+        return container.bookmark.add({
+          url: bookmarkTarget.url,
+          title: bookmarkTarget.title,
+          type: bookmarkTarget.type,
+        });
+      })
+      .then(() => {
+        container.toast.info(
+          nextBookmarkedState
+            ? "ブックマークに追加しました"
+            : "ブックマークを削除しました",
+        );
+        setIsBookmarked(readBookmarkStatus(bookmarkTarget.url));
+      })
+      .catch((error: unknown) => {
+        setIsBookmarked(readBookmarkStatus(bookmarkTarget.url));
+        setIsBookmarkPending(false);
+        container.toast.error(
+          nextBookmarkedState
+            ? "ブックマークの追加に失敗しました"
+            : "ブックマークの削除に失敗しました",
+        );
+        console.error("Bookmark operation failed", error);
+      })
+      .finally(() => {
+        setIsBookmarkPending(false);
+      });
+  }, [bookmarkTarget, isBookmarked, isBookmarkPending]);
 
   const openQuickAccessPage = useCallback(
     (page: {
@@ -673,6 +804,34 @@ export const NavigationBar: React.FC = () => {
         onBlur={handleBlur}
         onSuggestionHover={setActiveSuggestionIndex}
         onSuggestionSelect={handleSelectSuggestion}
+        trailingAction={
+          bookmarkTarget ? (
+            <button
+              type="button"
+              className={`nav-bar__url-action-btn${
+                isBookmarked ? " nav-bar__url-action-btn--active" : ""
+              }`}
+              aria-label={
+                isBookmarked
+                  ? "このページをブックマークから削除"
+                  : "このページをブックマークに追加"
+              }
+              aria-pressed={isBookmarked}
+              title={
+                isBookmarked
+                  ? "このページをブックマークから削除"
+                  : "このページをブックマークに追加"
+              }
+              disabled={isBookmarkPending}
+              onMouseDown={(event) => {
+                event.preventDefault();
+              }}
+              onClick={handleToggleBookmark}
+            >
+              <Star size={16} fill={isBookmarked ? "currentColor" : "none"} />
+            </button>
+          ) : null
+        }
       />
 
       <button

@@ -432,9 +432,65 @@ body {
     box-shadow 0.15s;
 }
 
+.nav-bar__url--has-action .nav-bar__url-input {
+  padding-right: 44px;
+}
+
 .nav-bar__url:focus-within {
   background: var(--browser-color-bg);
   box-shadow: 0 1px 6px rgba(32, 33, 36, 0.28);
+}
+
+.nav-bar__url-action {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  transform: translateY(-50%);
+}
+
+.nav-bar__url-action-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--browser-color-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background 0.12s,
+    color 0.12s;
+}
+
+.nav-bar__url-action-btn:hover:not(:disabled) {
+  background: var(--browser-color-surface-muted);
+}
+
+.nav-bar__url-action-btn:focus-visible {
+  outline: 2px solid var(--browser-color-focus-ring);
+  outline-offset: 2px;
+}
+
+.nav-bar__url-action-btn:disabled {
+  color: var(--browser-color-text-disabled);
+  cursor: default;
+}
+
+.nav-bar__url-action-btn--active {
+  color: var(--browser-color-warning);
+}
+
+.nav-bar__url-action-btn--active:hover:not(:disabled) {
+  background: color-mix(
+    in srgb,
+    var(--browser-color-warning) 14%,
+    transparent
+  );
 }
 
 .nav-bar__url-input {

@@ -1,8 +1,9 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { container } from "src/service-container";
 import { NavigationBar } from "src/view/browser/components/NavigationBar";
 import { QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE } from "src/view/browser/utils/filter-toolbar-events";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { activeTab, defaultHistory, dispatchMock, longTitle } = vi.hoisted(
   () => {
@@ -44,6 +45,25 @@ const { bookmarkGetAllThreadsMock, historyGetMock } = vi.hoisted(() => ({
   historyGetMock: vi.fn(),
 }));
 
+const {
+  bookmarkGetMock,
+  bookmarkAddMock,
+  bookmarkRemoveMock,
+  toastInfoMock,
+  toastErrorMock,
+} = vi.hoisted(() => ({
+  bookmarkGetMock: vi.fn(),
+  bookmarkAddMock: vi.fn(),
+  bookmarkRemoveMock: vi.fn(),
+  toastInfoMock: vi.fn(),
+  toastErrorMock: vi.fn(),
+}));
+
+let bookmarkUpdatedHandler:
+  | ((payload?: { bookmark?: { url?: string } }) => void)
+  | null = null;
+let bookmarkedUrls = new Set<string>();
+
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => ({
     state: { tabs: [activeTab] },
@@ -61,11 +81,71 @@ vi.mock("src/view/browser/hooks/use-bottom-panel", () => ({
 }));
 
 describe("NavigationBar", () => {
+  beforeEach(() => {
+    bookmarkedUrls = new Set<string>();
+    bookmarkUpdatedHandler = null;
+
+    bookmarkGetMock.mockImplementation((url: string) =>
+      bookmarkedUrls.has(url)
+        ? {
+            url,
+            title: url,
+            type: url.includes("/test/read.cgi/") ? "thread" : "board",
+          }
+        : undefined,
+    );
+    bookmarkAddMock.mockImplementation(
+      (item: { url: string; title: string; type: "thread" | "board" }) => {
+        bookmarkedUrls.add(item.url);
+        bookmarkUpdatedHandler?.({ bookmark: { url: item.url } });
+      },
+    );
+    bookmarkRemoveMock.mockImplementation((url: string) => {
+      bookmarkedUrls.delete(url);
+      bookmarkUpdatedHandler?.({ bookmark: { url } });
+    });
+
+    container.bookmark = {
+      get: bookmarkGetMock,
+      add: bookmarkAddMock,
+      remove: bookmarkRemoveMock,
+      updateResCount: vi.fn(),
+      updateExpired: vi.fn(),
+      getByBoard: vi.fn(),
+    };
+    container.message = {
+      send: vi.fn(),
+      on: (type, callback) => {
+        if (type === "bookmark_updated") {
+          bookmarkUpdatedHandler = callback as typeof bookmarkUpdatedHandler;
+        }
+      },
+      off: (type, callback) => {
+        if (type === "bookmark_updated" && bookmarkUpdatedHandler === callback) {
+          bookmarkUpdatedHandler = null;
+        }
+      },
+    };
+    container.toast = {
+      notify: vi.fn(),
+      success: vi.fn(),
+      error: toastErrorMock,
+      info: toastInfoMock,
+    };
+  });
+
   afterEach(() => {
     cleanup();
     dispatchMock.mockReset();
     bookmarkGetAllThreadsMock.mockReset();
     historyGetMock.mockReset();
+    bookmarkGetMock.mockReset();
+    bookmarkAddMock.mockReset();
+    bookmarkRemoveMock.mockReset();
+    toastInfoMock.mockReset();
+    toastErrorMock.mockReset();
+    bookmarkUpdatedHandler = null;
+    bookmarkedUrls = new Set<string>();
     const mutableWindow = window as Window &
       typeof globalThis & {
         app?: unknown;
@@ -168,7 +248,7 @@ describe("NavigationBar", () => {
     const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
     activeTab.history = [
       {
-        type: "historyList",
+        type: " historyList" as const,
         title: "閲覧履歴",
       },
     ];
@@ -186,5 +266,76 @@ describe("NavigationBar", () => {
       }),
     );
     dispatchEventSpy.mockRestore();
+  });
+
+  it("オムニバー右端の星で現在スレッドのブックマークを切り替える", async () => {
+    render(<NavigationBar />);
+
+    const starButton = screen.getByRole("button", {
+      name: "このページをブックマークに追加",
+    });
+
+    expect(starButton).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(starButton);
+
+    await waitFor(() => {
+      expect(bookmarkAddMock).toHaveBeenCalledWith({
+        url: "https://egg.5ch.net/test/read.cgi/software/1/",
+        title: "Current Thread",
+        type: "thread",
+      });
+    });
+    await waitFor(() => {
+      expect(toastInfoMock).toHaveBeenCalledWith("ブックマークに追加しました");
+    });
+    expect(
+      screen.getByRole("button", {
+        name: "このページをブックマークから削除",
+      }),
+    ).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "このページをブックマークから削除",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(bookmarkRemoveMock).toHaveBeenCalledWith(
+        "https://egg.5ch.net/test/read.cgi/software/1/",
+      );
+    });
+    await waitFor(() => {
+      expect(toastInfoMock).toHaveBeenCalledWith("ブックマークを削除しました");
+    });
+  });
+
+  it("板一覧ページでもオムニバー右端の星から板をブックマークできる", async () => {
+    activeTab.history = [
+      {
+        type: "threadList",
+        title: "Software",
+        boardUrl: "https://egg.5ch.net/software/",
+        boardTitle: "Software",
+      },
+    ];
+    activeTab.currentIndex = 0;
+
+    render(<NavigationBar />);
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "このページをブックマークに追加",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(bookmarkAddMock).toHaveBeenCalledWith({
+        url: "https://egg.5ch.net/software/",
+        title: "Software",
+        type: "board",
+      });
+    });
   });
 });
