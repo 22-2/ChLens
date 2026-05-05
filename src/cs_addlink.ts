@@ -48,7 +48,11 @@ function createViewerUrl(currentUrl: string): string {
   return `${baseUrl}?q=${encodeURIComponent(normalizedUrl)}`;
 }
 
-function createButton(id: string, text: string, additionalStyles = ""): HTMLSpanElement {
+function createButton(
+  id: string,
+  text: string,
+  additionalStyles = "",
+): HTMLSpanElement {
   const button = document.createElement("span");
   button.id = id;
   button.textContent = text;
@@ -60,7 +64,11 @@ function createContainer(): HTMLDivElement {
   const container = document.createElement("div");
   container.style.cssText = STYLES.container;
 
-  const openButton = createButton(BUTTON_IDS.open, "read.crx 2 で開く", STYLES.underline);
+  const openButton = createButton(
+    BUTTON_IDS.open,
+    "read.crx 2 で開く",
+    STYLES.underline,
+  );
   const closeButton = createButton(BUTTON_IDS.close, " x", STYLES.closeButton);
 
   container.appendChild(openButton);
@@ -69,7 +77,12 @@ function createContainer(): HTMLDivElement {
   return container;
 }
 
-function openLink(url: string, button: 0 | 1 | 2, ctrlKey: boolean, shiftKey: boolean): void {
+function openLink(
+  url: string,
+  button: 0 | 1 | 2,
+  ctrlKey: boolean,
+  shiftKey: boolean,
+): void {
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.dispatchEvent(new MouseEvent("click", { button, ctrlKey, shiftKey }));
@@ -82,7 +95,12 @@ function handleMouseDown(event: MouseEvent, viewerUrl: string): void {
   }
 
   if (target.id === BUTTON_IDS.open) {
-    openLink(viewerUrl, event.button as 0 | 1 | 2, event.ctrlKey, event.shiftKey);
+    openLink(
+      viewerUrl,
+      event.button as 0 | 1 | 2,
+      event.ctrlKey,
+      event.shiftKey,
+    );
     return;
   }
 

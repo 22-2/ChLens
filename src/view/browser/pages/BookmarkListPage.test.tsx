@@ -67,7 +67,10 @@ describe("BookmarkListPage", () => {
         }
       },
       off: (type, callback) => {
-        if (type === "bookmark_updated" && bookmarkUpdatedHandler === callback) {
+        if (
+          type === "bookmark_updated" &&
+          bookmarkUpdatedHandler === callback
+        ) {
           bookmarkUpdatedHandler = null;
         }
       },
@@ -145,14 +148,12 @@ describe("BookmarkListPage", () => {
   });
 
   it("bookmark_updated を受けたら一覧を再読込する", async () => {
-    getAllBookmarks
-      .mockReturnValueOnce([])
-      .mockReturnValueOnce([
-        {
-          url: "https://egg.5ch.io/test/read.cgi/software/1/",
-          title: "Current Thread",
-        },
-      ]);
+    getAllBookmarks.mockReturnValueOnce([]).mockReturnValueOnce([
+      {
+        url: "https://egg.5ch.io/test/read.cgi/software/1/",
+        title: "Current Thread",
+      },
+    ]);
 
     render(<BookmarkListPage tabId="tab-1" isActive={true} />);
 

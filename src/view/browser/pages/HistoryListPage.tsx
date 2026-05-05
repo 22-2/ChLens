@@ -216,7 +216,10 @@ interface HistoryListPageProps {
   isActive: boolean;
 }
 
-export const HistoryListPage: React.FC<HistoryListPageProps> = ({ tabId, isActive }) => {
+export const HistoryListPage: React.FC<HistoryListPageProps> = ({
+  tabId,
+  isActive,
+}) => {
   // タブ切り替えなど他タブ操作のたびにフル状態を再購読して再レンダリングされないよう、
   // dispatch のみ取得する安定したフックを使う。isActive は親から props で受け取る。
   const dispatch = useTabDispatch();

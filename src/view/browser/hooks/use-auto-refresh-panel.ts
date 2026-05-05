@@ -64,7 +64,10 @@ export function useAutoRefreshPanel(): UseAutoRefreshPanelResult {
     // UI をすぐ反映するためローカル状態も即時更新する
     setIntervalSecState(clamped);
     // config に ms で保存することで use-auto-refresh.ts のタイマーにも反映される
-    container.config.set(THREAD_AUTO_REFRESH_CONFIG_KEY, String(clamped * 1000));
+    container.config.set(
+      THREAD_AUTO_REFRESH_CONFIG_KEY,
+      String(clamped * 1000),
+    );
   }, []);
 
   return { isOnThread, isEnabled, intervalSec, toggle, setIntervalSec };

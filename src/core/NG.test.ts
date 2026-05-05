@@ -59,7 +59,10 @@ describe("NG DSL parsing", () => {
 
   it("falls back to ngwords when ngobj is malformed JSON", async () => {
     configStore.clear();
-    configStore.set("ngwords", 'RegExpBody(word="(imgur\\\\.com\\\\/.+?){15}")');
+    configStore.set(
+      "ngwords",
+      'RegExpBody(word="(imgur\\\\.com\\\\/.+?){15}")',
+    );
     configStore.set("ngobj", "{broken-json");
 
     const { get, invalidateCache, TYPE } = await import("src/core/NG");

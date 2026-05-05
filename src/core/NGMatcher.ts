@@ -55,7 +55,8 @@ export function checkWord(
     (type === TYPE.REG_EXP_HIGHLIGHT_TITLE && reg && reg.test(title || "")) ||
     (type === TYPE.REG_EXP_URL && reg && reg.test(url || "")) ||
     (type === TYPE.TITLE && normalize(title || "").includes(normalizedWord)) ||
-    (type === TYPE.HIGHLIGHT_TITLE && normalize(title || "").includes(normalizedWord)) ||
+    (type === TYPE.HIGHLIGHT_TITLE &&
+      normalize(title || "").includes(normalizedWord)) ||
     (type === TYPE.NAME && normalize(name || "").includes(normalizedWord)) ||
     (type === TYPE.MAIL && normalize(mail || "").includes(normalizedWord)) ||
     (type === TYPE.ID && (id != null ? id.includes(word) : false)) ||
@@ -118,7 +119,8 @@ export function checkScope(ngObj: InternalNGElement, url: string): boolean {
       }
 
       const eddibbThreadMatch =
-        PATTERNS.EDDIBB_THREAD_2.exec(pathname) ?? PATTERNS.EDDIBB_THREAD.exec(pathname);
+        PATTERNS.EDDIBB_THREAD_2.exec(pathname) ??
+        PATTERNS.EDDIBB_THREAD.exec(pathname);
       if (eddibbThreadMatch) {
         return eddibbThreadMatch[1] === scopeValue;
       }
@@ -139,7 +141,8 @@ export function checkScope(ngObj: InternalNGElement, url: string): boolean {
       }
 
       const eddibbBoardMatch =
-        PATTERNS.EDDIBB_BOARD_2.exec(pathname) ?? PATTERNS.EDDIBB_BOARD.exec(pathname);
+        PATTERNS.EDDIBB_BOARD_2.exec(pathname) ??
+        PATTERNS.EDDIBB_BOARD.exec(pathname);
       return eddibbBoardMatch ? eddibbBoardMatch[1] === scopeValue : false;
     } catch {
       return false;

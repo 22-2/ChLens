@@ -36,7 +36,9 @@ const BookmarkFolderTree: React.FC<BookmarkFolderTreeProps> = ({
               <span className="bookmark-root-dialog__tree-title">
                 {node.title}
               </span>
-              <span className="bookmark-root-dialog__tree-id">ID: {node.id}</span>
+              <span className="bookmark-root-dialog__tree-id">
+                ID: {node.id}
+              </span>
             </button>
             {node.children.length > 0 && (
               <BookmarkFolderTree

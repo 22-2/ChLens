@@ -65,7 +65,9 @@ describe("NGParser", () => {
 
   it("should ignore // comment lines in DSL", () => {
     const rules = Array.from(
-      parseNgString(`// コメント\nID(word="abc")\n// もう1行\nTitle(word="def")`),
+      parseNgString(
+        `// コメント\nID(word="abc")\n// もう1行\nTitle(word="def")`,
+      ),
     );
 
     expect(rules).toHaveLength(2);

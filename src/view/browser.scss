@@ -486,11 +486,7 @@ body {
 }
 
 .nav-bar__url-action-btn--active:hover:not(:disabled) {
-  background: color-mix(
-    in srgb,
-    var(--browser-color-warning) 14%,
-    transparent
-  );
+  background: color-mix(in srgb, var(--browser-color-warning) 14%, transparent);
 }
 
 .nav-bar__url-input {

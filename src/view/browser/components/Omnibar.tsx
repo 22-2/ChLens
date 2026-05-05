@@ -93,7 +93,9 @@ export const Omnibar: React.FC<OmnibarProps> = ({
             : null}
 
           {shouldShowNoMatch ? (
-            <div className="nav-bar__omnibar-empty">一致する候補がありません</div>
+            <div className="nav-bar__omnibar-empty">
+              一致する候補がありません
+            </div>
           ) : null}
         </div>
       ) : null}

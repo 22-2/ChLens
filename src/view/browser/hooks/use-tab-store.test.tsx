@@ -770,7 +770,8 @@ describe("TabProvider auto refresh state", () => {
                 page: {
                   type: "thread",
                   title: "スレ1",
-                  threadUrl: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000005/",
+                  threadUrl:
+                    "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000005/",
                 },
               })
             }
@@ -779,7 +780,9 @@ describe("TabProvider auto refresh state", () => {
           </button>
           <button
             onClick={() => {
-              const background = state.tabs.find((tab) => tab.id !== state.activeTabId);
+              const background = state.tabs.find(
+                (tab) => tab.id !== state.activeTabId,
+              );
               if (!background) return;
               dispatch({ type: "SELECT_TAB", tabId: background.id });
             }}
@@ -808,7 +811,11 @@ describe("TabProvider auto refresh state", () => {
 
     fireEvent.click(screen.getByText("戻る"));
 
-    expect(screen.getByTestId("current-page-type")).toHaveTextContent("threadList");
-    expect(screen.getByTestId("current-page-title")).toHaveTextContent("エッヂ");
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent(
+      "threadList",
+    );
+    expect(screen.getByTestId("current-page-title")).toHaveTextContent(
+      "エッヂ",
+    );
   });
 });

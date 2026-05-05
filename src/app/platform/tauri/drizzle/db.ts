@@ -122,10 +122,12 @@ async function createContext(): Promise<TauriDrizzleContext> {
     try {
       // 初回は50ms、その後は累積待機
       const waitMs = attempt === 1 ? 50 : 100 * attempt;
-      await new Promise(resolve => setTimeout(resolve, waitMs));
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
 
       logger.debug(`Database.load試行 (${attempt}/${maxRetries})`);
-      const raw = (await Database.load("sqlite:chlens.db")) as SqlPluginDatabase;
+      const raw = (await Database.load(
+        "sqlite:chlens.db",
+      )) as SqlPluginDatabase;
       logger.debug("Database.load成功");
 
       await runMigrations(raw);
@@ -137,7 +139,10 @@ async function createContext(): Promise<TauriDrizzleContext> {
           return { rows: [] };
         }
 
-        const rows = await raw.select<Record<string, unknown>>(query, bindValues);
+        const rows = await raw.select<Record<string, unknown>>(
+          query,
+          bindValues,
+        );
         // Drizzle sqlite-proxy は rows を unknown[][] (配列の配列) として期待する。
         // Tauri SQL は名前付きオブジェクトで返すため、Object.values で変換する。
         // Object.values の順序は SQLite が返すカラム順と一致する。

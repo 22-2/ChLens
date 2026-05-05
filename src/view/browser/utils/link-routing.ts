@@ -246,7 +246,9 @@ export function getBoardUrlFromThreadUrl(threadUrl: string): string {
         return `${normalizedUrl.origin}/bbs/read.cgi/${threadMatch[1]}/${threadMatch[2]}/`;
       }
 
-      const storageMatch = SHITARABA_STORAGE_PATTERN.exec(normalizedUrl.pathname);
+      const storageMatch = SHITARABA_STORAGE_PATTERN.exec(
+        normalizedUrl.pathname,
+      );
       if (storageMatch) {
         return `${normalizedUrl.origin}/bbs/read.cgi/${storageMatch[1]}/${storageMatch[2]}/`;
       }

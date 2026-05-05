@@ -95,10 +95,7 @@ interface TabPanelProps {
   isActive: boolean;
 }
 
-const TabPanel = memo(function TabPanel({
-  tab,
-  isActive,
-}: TabPanelProps) {
+const TabPanel = memo(function TabPanel({ tab, isActive }: TabPanelProps) {
   const page = getCurrentPage(tab);
 
   // パフォーマンス向上とメモリ節約のため、バックグラウンドで開かれたタブ（まだ一度も表示されていないタブ）は

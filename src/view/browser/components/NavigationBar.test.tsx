@@ -1,5 +1,11 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { container } from "src/service-container";
 import { NavigationBar } from "src/view/browser/components/NavigationBar";
 import { QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE } from "src/view/browser/utils/filter-toolbar-events";
@@ -121,7 +127,10 @@ describe("NavigationBar", () => {
         }
       },
       off: (type, callback) => {
-        if (type === "bookmark_updated" && bookmarkUpdatedHandler === callback) {
+        if (
+          type === "bookmark_updated" &&
+          bookmarkUpdatedHandler === callback
+        ) {
           bookmarkUpdatedHandler = null;
         }
       },
@@ -365,7 +374,11 @@ describe("NavigationBar", () => {
 
   it("bookmark反映が遅れても同期失敗toastを出さず、後から星状態が揃う", async () => {
     bookmarkAddMock.mockImplementation(
-      async (item: { url: string; title: string; type: "thread" | "board" }) => {
+      async (item: {
+        url: string;
+        title: string;
+        type: "thread" | "board";
+      }) => {
         setTimeout(() => {
           bookmarkedUrls.add(item.url);
           bookmarkUpdatedHandler?.({ bookmark: { url: item.url } });

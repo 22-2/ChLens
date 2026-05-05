@@ -213,7 +213,11 @@ function buildHierarchyForNewTab(sourcePage: Page, targetPage: Page): Page[] {
   }
 
   const targetBoardUrl = deriveBoardUrlFromThreadUrl(targetPage.threadUrl);
-  if (!targetBoardUrl || normalizePageLocation(sourcePage.boardUrl) !== normalizePageLocation(targetBoardUrl)) {
+  if (
+    !targetBoardUrl ||
+    normalizePageLocation(sourcePage.boardUrl) !==
+      normalizePageLocation(targetBoardUrl)
+  ) {
     return buildHierarchy(targetPage);
   }
 

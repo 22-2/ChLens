@@ -500,7 +500,8 @@ const SETTINGS_SECTIONS = [
         kind: "string",
         key: "ngwords",
         title: "NGワード一覧",
-        description: "NGワードを1行に1つずつ記述します。説明文は // で始めるとメモとして残せます。（例: 「Body(荒らし)」は「Body(word=\"荒らし\")」と同じ意味です）。詳しくは下の例を参照してください。",
+        description:
+          'NGワードを1行に1つずつ記述します。説明文は // で始めるとメモとして残せます。（例: 「Body(荒らし)」は「Body(word="荒らし")」と同じ意味です）。詳しくは下の例を参照してください。',
         widget: "ng_editor" as any,
       },
       {
@@ -559,8 +560,7 @@ const SETTINGS_SECTIONS = [
         kind: "boolean",
         key: "debug_log",
         title: "ログを有効にする",
-        description:
-          "ONで詳細ログを出力します。",
+        description: "ONで詳細ログを出力します。",
       },
     ],
   ),
@@ -726,7 +726,7 @@ const BookmarkSourceSettingsCard: React.FC = () => {
       </div>
       <div className="settings-page__bookmark-source-meta">
         <div className="settings-page__bookmark-source-value">
-          {loading ? "読み込み中..." : folderName ?? "未設定"}
+          {loading ? "読み込み中..." : (folderName ?? "未設定")}
         </div>
         {error && (
           <div className="settings-page__bookmark-source-error">{error}</div>
@@ -1104,9 +1104,7 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({
                   <div className="ng-editor__help-body">
                     <div className="ng-editor__help-label">基本</div>
                     <NGDslHelpSnippet code={NG_DSL_EXAMPLE} minHeight={140} />
-                    <div className="ng-editor__help-label">
-                      複数行
-                    </div>
+                    <div className="ng-editor__help-label">複数行</div>
                     <NGDslHelpSnippet
                       code={NG_DSL_MULTILINE_EXAMPLE}
                       minHeight={180}

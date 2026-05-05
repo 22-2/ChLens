@@ -928,19 +928,16 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   // 連鎖的に新参照になって ResItem が re-render される。
   // ResItem 内の dangerouslySetInnerHTML による innerHTML 置換でテキスト選択が消えるため、
   // useCallback で参照を安定化してその re-render を防ぐ。
-  const handleWriteHistoryAdded = useCallback(
-    (resNum: number) => {
-      setOwnResNums((prev) => {
-        if (prev.has(resNum)) {
-          return prev;
-        }
-        const next = new Set(prev);
-        next.add(resNum);
-        return next;
-      });
-    },
-    [],
-  );
+  const handleWriteHistoryAdded = useCallback((resNum: number) => {
+    setOwnResNums((prev) => {
+      if (prev.has(resNum)) {
+        return prev;
+      }
+      const next = new Set(prev);
+      next.add(resNum);
+      return next;
+    });
+  }, []);
 
   const { openPopupResContextMenu, openThreadResContextMenu } =
     useThreadResContextMenu({

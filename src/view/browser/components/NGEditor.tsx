@@ -39,7 +39,7 @@ const resolveWorkerUrl = (label: string): string => {
 // loader.config も絶対パスにするっす
 loader.config({
   paths: {
-    vs: "/lib/monaco/vs" // 直接指定するのが一番確実っす
+    vs: "/lib/monaco/vs", // 直接指定するのが一番確実っす
   },
 });
 
@@ -130,7 +130,10 @@ export const NGDslHelpSnippet: React.FC<NGDslHelpSnippetProps> = ({
   }, [code, minHeight]);
 
   return (
-    <div className="ng-editor__help-code-editor" style={{ height: snippetHeight }}>
+    <div
+      className="ng-editor__help-code-editor"
+      style={{ height: snippetHeight }}
+    >
       <Editor
         height="100%"
         defaultLanguage={NG_DSL_LANGUAGE_ID}

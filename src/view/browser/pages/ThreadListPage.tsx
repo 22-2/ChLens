@@ -1,10 +1,5 @@
 import { Bookmark, BookmarkX } from "lucide-react";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
 import { URL as ChURL } from "src/core/URL";
 import { container } from "src/service-container/index";
@@ -515,7 +510,11 @@ export const ThreadListPage: React.FC<Props> = ({
     const initialBoardTitle = resolveInitialBoardTitle(page);
     if (initialBoardTitle) {
       if (initialBoardTitle !== page.title) {
-        dispatch({ type: "UPDATE_TITLE_FOR_TAB", tabId, title: initialBoardTitle });
+        dispatch({
+          type: "UPDATE_TITLE_FOR_TAB",
+          tabId,
+          title: initialBoardTitle,
+        });
       }
       return;
     }

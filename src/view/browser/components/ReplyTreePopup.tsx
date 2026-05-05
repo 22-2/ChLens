@@ -295,7 +295,8 @@ function renderReplyTreeImageCanvas(
   const footerLineCount =
     (threadTitle != null ? 1 : 0) + (threadUrl != null ? 1 : 0);
   const footerHeight = hasFooter
-    ? TREE_IMAGE_LAYOUT.paddingY + TREE_IMAGE_LAYOUT.lineHeight * footerLineCount
+    ? TREE_IMAGE_LAYOUT.paddingY +
+      TREE_IMAGE_LAYOUT.lineHeight * footerLineCount
     : 0;
   const totalHeight = measured.height + footerHeight;
 
@@ -543,7 +544,14 @@ export const ReplyTreePopup: React.FC<{
           icon: <Copy size={14} />,
           onSelect: () => {
             // 参照元レスも一緒に入れておくと、コピー先だけ見ても何への返信ツリーか判別できる。
-            void copyText(buildReplyTreeCopyText(sourceRes, replyResponses, threadTitle, threadUrl));
+            void copyText(
+              buildReplyTreeCopyText(
+                sourceRes,
+                replyResponses,
+                threadTitle,
+                threadUrl,
+              ),
+            );
           },
         },
         {

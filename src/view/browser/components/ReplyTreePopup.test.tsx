@@ -164,7 +164,9 @@ describe("ReplyTreePopup", () => {
     // @ts-expect-error
     expect(writeText.mock.calls[0]?.[0]).toContain("テストスレタイ");
     // @ts-expect-error
-    expect(writeText.mock.calls[0]?.[0]).toContain("https://example.com/test/read.cgi/board/123/");
+    expect(writeText.mock.calls[0]?.[0]).toContain(
+      "https://example.com/test/read.cgi/board/123/",
+    );
   });
 
   it("返信ツリー専用メニューから画像としてコピーできる", async () => {

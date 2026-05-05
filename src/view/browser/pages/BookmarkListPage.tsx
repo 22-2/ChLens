@@ -123,16 +123,14 @@ async function readBookmarks(): Promise<BookmarkEntry[]> {
 
   const bookmarkService = getLegacyBookmarkService();
 
-  const rawItems =
-    bookmarkService?.getAll?.() ??
-    [
-      ...(Array.isArray(bookmarkService?.getAllThreads?.())
-        ? (bookmarkService?.getAllThreads?.() as unknown[])
-        : []),
-      ...(Array.isArray(bookmarkService?.getAllBoards?.())
-        ? (bookmarkService?.getAllBoards?.() as unknown[])
-        : []),
-    ];
+  const rawItems = bookmarkService?.getAll?.() ?? [
+    ...(Array.isArray(bookmarkService?.getAllThreads?.())
+      ? (bookmarkService?.getAllThreads?.() as unknown[])
+      : []),
+    ...(Array.isArray(bookmarkService?.getAllBoards?.())
+      ? (bookmarkService?.getAllBoards?.() as unknown[])
+      : []),
+  ];
   if (!Array.isArray(rawItems)) {
     return [];
   }
@@ -154,7 +152,9 @@ async function readBookmarks(): Promise<BookmarkEntry[]> {
       const resCount = Math.max(0, Math.trunc(toNumber(item.resCount)));
       const readCount = Math.max(0, Math.trunc(toNumber(item.readState?.read)));
       const isThreadBookmark = parsed.type === "thread";
-      const unreadCount = isThreadBookmark ? Math.max(0, resCount - readCount) : 0;
+      const unreadCount = isThreadBookmark
+        ? Math.max(0, resCount - readCount)
+        : 0;
       const createdAt = isThreadBookmark ? parseCreatedAt(url) : 0;
 
       return {
@@ -163,7 +163,10 @@ async function readBookmarks(): Promise<BookmarkEntry[]> {
         pageType: parsed.type,
         boardTitle:
           parsed.type === "threadList"
-            ? normalizeString(item.boardTitle, deriveBoardTitleFromBoardUrl(url))
+            ? normalizeString(
+                item.boardTitle,
+                deriveBoardTitleFromBoardUrl(url),
+              )
             : normalizeString(item.boardTitle, deriveBoardTitle(url)),
         resCount,
         unreadCount,
@@ -234,7 +237,10 @@ interface BookmarkListPageProps {
   isActive: boolean;
 }
 
-export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({ tabId, isActive }) => {
+export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({
+  tabId,
+  isActive,
+}) => {
   // タブ切り替えなど他タブ操作のたびにフル状態を再購読して再レンダリングされないよう、
   // dispatch のみ取得する安定したフックを使う。isActive は親から props で受け取る。
   const dispatch = useTabDispatch();
@@ -394,7 +400,10 @@ export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({ tabId, isAct
     return (
       <div className="page-status page-status--error">
         <p>{error}</p>
-        <button className="page-status__retry" onClick={() => void loadEntries()}>
+        <button
+          className="page-status__retry"
+          onClick={() => void loadEntries()}
+        >
           再試行
         </button>
       </div>
