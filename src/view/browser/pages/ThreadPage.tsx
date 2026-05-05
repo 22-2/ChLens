@@ -1119,6 +1119,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             onResContextMenuOpen={openPopupResContextMenu}
             onUrlClick={handleUrlClick}
             onUrlContextMenuOpen={openPopupUrlContextMenu}
+            threadTitle={page.title}
+            threadUrl={page.threadUrl}
           />
           <ThreadMinimap
             rootRef={rootRef}

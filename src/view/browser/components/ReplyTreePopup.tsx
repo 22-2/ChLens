@@ -274,6 +274,8 @@ function drawReplyTreeImageCard(
 function renderReplyTreeImageCanvas(
   sourceRes: IRes,
   replyEntries: ReplyTreeImageEntry[],
+  threadTitle?: string,
+  threadUrl?: string,
 ): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   const dpr = Math.max(window.devicePixelRatio || 1, 2);
@@ -287,14 +289,24 @@ function renderReplyTreeImageCanvas(
     sourceRes,
     replyEntries,
   );
+
+  // コピー先でスレッドを特定できるよう画像下部にスレタイとURLを付加する。
+  const hasFooter = threadTitle != null || threadUrl != null;
+  const footerLineCount =
+    (threadTitle != null ? 1 : 0) + (threadUrl != null ? 1 : 0);
+  const footerHeight = hasFooter
+    ? TREE_IMAGE_LAYOUT.paddingY + TREE_IMAGE_LAYOUT.lineHeight * footerLineCount
+    : 0;
+  const totalHeight = measured.height + footerHeight;
+
   canvas.width = Math.round(TREE_IMAGE_LAYOUT.width * dpr);
-  canvas.height = Math.round(measured.height * dpr);
+  canvas.height = Math.round(totalHeight * dpr);
   canvas.style.width = `${TREE_IMAGE_LAYOUT.width}px`;
-  canvas.style.height = `${measured.height}px`;
+  canvas.style.height = `${totalHeight}px`;
 
   context.scale(dpr, dpr);
   context.fillStyle = "#f7f9fc";
-  context.fillRect(0, 0, TREE_IMAGE_LAYOUT.width, measured.height);
+  context.fillRect(0, 0, TREE_IMAGE_LAYOUT.width, totalHeight);
 
   context.font = "600 22px sans-serif";
   context.fillStyle = "#111827";
@@ -322,6 +334,19 @@ function renderReplyTreeImageCanvas(
   // DOM の見た目依存を避けるため、コピー画像は返信データから専用レイアウトを描画する。
   for (const card of measured.cards) {
     drawReplyTreeImageCard(context, card);
+  }
+
+  if (hasFooter) {
+    let footerY = measured.height + TREE_IMAGE_LAYOUT.lineHeight;
+    context.font = "13px sans-serif";
+    context.fillStyle = "#6b7280";
+    if (threadTitle != null) {
+      context.fillText(threadTitle, TREE_IMAGE_LAYOUT.paddingX, footerY);
+      footerY += TREE_IMAGE_LAYOUT.lineHeight;
+    }
+    if (threadUrl != null) {
+      context.fillText(threadUrl, TREE_IMAGE_LAYOUT.paddingX, footerY);
+    }
   }
 
   return canvas;
@@ -387,6 +412,8 @@ function formatResForCopy(res: IRes): string {
 function buildReplyTreeCopyText(
   sourceRes: IRes,
   replyResponses: IRes[],
+  threadTitle?: string,
+  threadUrl?: string,
 ): string {
   const sections = ["[参照元レス]", formatResForCopy(sourceRes)];
   if (replyResponses.length > 0) {
@@ -395,6 +422,16 @@ function buildReplyTreeCopyText(
       "[返信レス]",
       replyResponses.map(formatResForCopy).join("\n\n"),
     );
+  }
+  // コピー先でスレッドを特定できるよう末尾にスレタイとURLを付加する。
+  if (threadTitle != null || threadUrl != null) {
+    sections.push("");
+    if (threadTitle != null) {
+      sections.push(threadTitle);
+    }
+    if (threadUrl != null) {
+      sections.push(threadUrl);
+    }
   }
   return sections.join("\n");
 }
@@ -436,6 +473,10 @@ export const ReplyTreePopup: React.FC<{
   disableOutsideClick?: boolean;
   /** z-indexを明示指定（省略時はCSSのデフォルト値を使用） */
   zIndex?: number;
+  /** 一括コピー末尾に付加するスレタイ */
+  threadTitle?: string;
+  /** 一括コピー末尾に付加するスレッドURL */
+  threadUrl?: string;
 }> = ({
   x,
   y,
@@ -462,6 +503,8 @@ export const ReplyTreePopup: React.FC<{
   onSurfaceMouseDown,
   disableOutsideClick,
   zIndex,
+  threadTitle,
+  threadUrl,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -500,7 +543,7 @@ export const ReplyTreePopup: React.FC<{
           icon: <Copy size={14} />,
           onSelect: () => {
             // 参照元レスも一緒に入れておくと、コピー先だけ見ても何への返信ツリーか判別できる。
-            void copyText(buildReplyTreeCopyText(sourceRes, replyResponses));
+            void copyText(buildReplyTreeCopyText(sourceRes, replyResponses, threadTitle, threadUrl));
           },
         },
         {
@@ -513,6 +556,8 @@ export const ReplyTreePopup: React.FC<{
               const canvas = renderReplyTreeImageCanvas(
                 sourceRes,
                 replyImageEntries,
+                threadTitle,
+                threadUrl,
               );
               const blob = await canvasToBlob(canvas);
               await copyImageBlob(blob);

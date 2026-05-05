@@ -65,6 +65,8 @@ interface PopupRendererProps {
   ) => (targetRes: IRes, e: React.MouseEvent) => void;
   onUrlClick: UrlClickHandler;
   onUrlContextMenuOpen: (parentId: string) => UrlContextMenuHandler;
+  threadTitle?: string;
+  threadUrl?: string;
 }
 
 export const PopupRenderer: React.FC<PopupRendererProps> = ({
@@ -94,6 +96,8 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
   onResContextMenuOpen,
   onUrlClick,
   onUrlContextMenuOpen,
+  threadTitle,
+  threadUrl,
 }) => {
   return (
     <PopupPortalLayer host={host}>
@@ -199,6 +203,8 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
           onClose={() => onClosePopupById(treePopup.id)}
           onMouseEnter={onClearAnchorPreviewHideTimer}
           onMouseLeave={() => onAnchorLeave(0)}
+          threadTitle={threadTitle}
+          threadUrl={threadUrl}
         />
       ))}
 
