@@ -368,8 +368,8 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 ## 次
 - [ ] chore: デフォルトのurlのときはちゃんとサジェストするように
 - [x] enhance: bbsmenuの項目もomnibarのサジェストに含めるように
-- [ ] navbarリファクタリング
-  - [ ] omnibar coomponentを独立させる
+- [x] navbarリファクタリング
+  - [x] omnibar coomponentを独立させる
 - [ ] test: tauri環境を再現してsqliteで取得
 - [x] fix: bbsmenuが毎回fetchされる
 - [x] chore: 板一覧の板はミドルクリック（バックグラウンドで開く）できるように
@@ -380,8 +380,8 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 - [x] 閲覧履歴を開いているとき、タブを新しく開こうとすると重い
 
 ### low prior
+- [x] feat: ブラウザのようなアドレスバーのブックマークボタン
 - [ ] siki過去ログ流し込み
-- [ ] feat: ブラウザのようなアドレスバーのブックマークボタン
 - [ ] feat: ライブチャットビュー
 - [ ] 書き込み後末尾に移動（オプション）
 - [ ] tauriでのみホットキー
@@ -392,5 +392,6 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 - [ ] 専スレでだけsageみたいな設定ができるように
 - [ ] feat: 画像サムネの読み込みの高速化 -> imgurとかフルサイズで取得してるかもしれない
 - [ ] メモリセーバー（自動タブunmount）
+- [ ] スクロール位置の復元が出来たから、もうdisplay: hiddenでタブ切り替えはいらない？
 
 ## メタ
