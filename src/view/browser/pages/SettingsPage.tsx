@@ -636,8 +636,8 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({
 
                 <Button
                   variant="subtle"
-                  justify="space-between"
-                  rightSection={
+                  justify="start"
+                  leftSection={
                     <ChevronDown
                       size={16}
                       style={{
@@ -673,8 +673,8 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({
 
                 <Button
                   variant="subtle"
-                  justify="space-between"
-                  rightSection={
+                  justify="start"
+                  leftSection={
                     <ChevronDown
                       size={16}
                       style={{
