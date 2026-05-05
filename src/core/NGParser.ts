@@ -15,7 +15,8 @@ const _expNgWords = /^\$\[(.*?)\]\$:(.*)$/;
 
 const _getNgElement = function (ngWord: string): InternalNGElement | null {
   ngWord = ngWord.trim();
-  if (ngWord.startsWith("Comment:") || ngWord === "") {
+  // 設定画面のDSL例をそのまま貼り付けても動くように、`//` 行コメントを無視する。
+  if (ngWord.startsWith("//") || ngWord === "") {
     return null;
   }
   const ngElement: InternalNGElement = {
@@ -104,7 +105,7 @@ export function parseNgString(string: string): Set<InternalNGElement> {
   const ngStrSplit = splitNgDslEntries(string);
   for (let ngWord of ngStrSplit) {
     ngWord = ngWord.trim();
-    if (ngWord.startsWith("Comment:") || ngWord === "") {
+    if (ngWord.startsWith("//") || ngWord === "") {
       continue;
     }
 

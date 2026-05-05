@@ -70,19 +70,101 @@ interface NGEditorProps {
   onChange: (value: string) => void;
 }
 
-export const NG_DSL_EXAMPLE = `Body(word="荒らし")
-HighlightTitle(word="重要" bgColor=#ffcdd2 label="注目")
-ID(word="abc123")`;
+export const NG_DSL_EXAMPLE = `// 基本の部分一致NG
+Body(word="荒らし")
 
-export const NG_DSL_MULTILINE_EXAMPLE = `RegExpHighlightTitle(
-  word="VTuber"
+// word= は省略可能（Body(荒らし)も同じ意味）
+Body("荒らし")
+
+// 引用符「"」も省略可能（ただしスペースを含む場合は必要）
+Body(荒らし)
+
+// タイトルを部分一致でハイライト
+HighlightTitle(word="重要" bgColor=#ffcdd2 label="注目")
+
+// 特定IDをNG
+ID(word="abc123")
+
+// URLを正規表現でNG
+RegExpUrl(word="https?://(?:x|twitter)\\\\.com/.+")
+
+// 10回以上の画像連投を正規表現でNG
+RegExpBody(word="(imgur\.com\/.+?){10}")`;
+
+export const NG_DSL_MULTILINE_EXAMPLE = `// 複数サイト向けの正規表現ハイライト
+RegExpHighlightTitle(
+  word="(imgur\\\\.com\\\\/.+?){15}"
   sites=[
     eddibb.cc
-    5ch.net
+    5ch.io
   ]
   bgColor=red
-  label="注目"
+  label="連投疑い"
 )`;
+
+
+// // 複雑なand条件: 名前の正規表現 + 本文の正規表現 + 期限 + ラベル
+// ANDやら期限などあるが、これは複雑なので隠しておいて、基本的には上のシンプルな例だけ見せるのが良さそう
+
+interface NGDslHelpSnippetProps {
+  code: string;
+  minHeight?: number;
+}
+
+export const NGDslHelpSnippet: React.FC<NGDslHelpSnippetProps> = ({
+  code,
+  minHeight = 120,
+}) => {
+  const monaco = useMonaco();
+
+  useEffect(() => {
+    configureMonacoEnvironment();
+    if (monaco) {
+      ensureNgDslLanguage(monaco);
+      monaco.editor.setTheme("vs-dark");
+    }
+  }, [monaco]);
+
+  const snippetHeight = useMemo(() => {
+    const lineCount = code.split("\n").length;
+    const estimated = lineCount * 20 + 20;
+    return `${Math.max(minHeight, Math.min(360, estimated))}px`;
+  }, [code, minHeight]);
+
+  return (
+    <div className="ng-editor__help-code-editor" style={{ height: snippetHeight }}>
+      <Editor
+        height="100%"
+        defaultLanguage={NG_DSL_LANGUAGE_ID}
+        value={code}
+        beforeMount={(beforeMountMonaco) => {
+          configureMonacoEnvironment();
+          ensureNgDslLanguage(beforeMountMonaco);
+          try {
+            beforeMountMonaco.editor.setTheme("vs-dark");
+          } catch (e) {
+            console.warn("Failed to set monaco theme in help snippet", e);
+          }
+        }}
+        options={{
+          readOnly: true,
+          domReadOnly: true,
+          minimap: { enabled: false },
+          lineNumbers: "on",
+          glyphMargin: false,
+          folding: false,
+          lineDecorationsWidth: 10,
+          lineNumbersMinChars: 2,
+          scrollBeyondLastLine: false,
+          wordWrap: "on",
+          automaticLayout: true,
+          renderLineHighlight: "none",
+          fontSize: 12,
+        }}
+      />
+    </div>
+  );
+};
 
 function parseRulesForBulkEdit(source: string): NGRule[] | null {
   const trimmed = source.trim();

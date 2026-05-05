@@ -1404,6 +1404,12 @@ body {
   color: var(--browser-color-text-primary);
 }
 
+.ng-editor__help-code-editor {
+  border: 1px solid var(--browser-color-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
 .ng-editor__help-note {
   margin: 0;
   font-size: 12px;

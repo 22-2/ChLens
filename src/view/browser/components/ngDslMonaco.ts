@@ -405,6 +405,7 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
   monaco.languages.setMonarchTokensProvider(NG_DSL_LANGUAGE_ID, {
     tokenizer: {
       root: [
+        [/^\s*\/\/.*/, "comment"],
         [
           /^\s*(?:attachName|expireDate|ignoreResNumber|ignoreNgType):/,
           "keyword",

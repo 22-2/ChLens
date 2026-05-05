@@ -62,4 +62,20 @@ describe("NGParser", () => {
     expect(rules[1].type).toBe(TYPE.TITLE);
     expect(rules[1].word).toBe("def");
   });
+
+  it("should ignore // comment lines in DSL", () => {
+    const rules = Array.from(
+      parseNgString(`// コメント\nID(word="abc")\n// もう1行\nTitle(word="def")`),
+    );
+
+    expect(rules).toHaveLength(2);
+    expect(rules[0]).toMatchObject({
+      type: TYPE.ID,
+      word: "abc",
+    });
+    expect(rules[1]).toMatchObject({
+      type: TYPE.TITLE,
+      word: "def",
+    });
+  });
 });

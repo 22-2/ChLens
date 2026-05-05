@@ -23,6 +23,7 @@ import React, {
 } from "react";
 import { container } from "src/service-container/index";
 import {
+  NGDslHelpSnippet,
   NGEditor,
   NG_DSL_EXAMPLE,
   NG_DSL_MULTILINE_EXAMPLE,
@@ -1098,19 +1099,18 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({
 
                 <details className="ng-editor__help">
                   <summary className="ng-editor__help-summary">
-                    記法の例
+                    NG記法例
                   </summary>
                   <div className="ng-editor__help-body">
-                    <div className="ng-editor__help-label">DSL</div>
-                    <pre className="ng-editor__help-code">{NG_DSL_EXAMPLE}</pre>
-                    <div className="ng-editor__help-label">複数行 DSL</div>
-                    <pre className="ng-editor__help-code">
-                      {NG_DSL_MULTILINE_EXAMPLE}
-                    </pre>
-                    <div className="ng-editor__help-label">補足</div>
-                    <p className="ng-editor__help-note">
-                      NGワードを1行に1つずつ記述します。
-                    </p>
+                    <div className="ng-editor__help-label">基本</div>
+                    <NGDslHelpSnippet code={NG_DSL_EXAMPLE} minHeight={140} />
+                    <div className="ng-editor__help-label">
+                      複数行
+                    </div>
+                    <NGDslHelpSnippet
+                      code={NG_DSL_MULTILINE_EXAMPLE}
+                      minHeight={180}
+                    />
                   </div>
                 </details>
 
