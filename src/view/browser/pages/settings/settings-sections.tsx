@@ -28,6 +28,12 @@ const THEME_ID_OPTIONS = [
   { const: "dark", title: "ダーク" },
 ] as const satisfies readonly SettingsOption[];
 
+const NEW_TAB_PAGE_MODE_OPTIONS = [
+  { const: "home", title: "ホーム（整備中）" },
+  { const: "related_board", title: "関連する板" },
+  { const: "custom_board", title: "指定の板（入力）" },
+] as const satisfies readonly SettingsOption[];
+
 const HOW_TO_JUDGMENT_ID_OPTIONS = [
   { const: "first_res", title: "1レス目に存在する場合" },
   { const: "exists_once", title: "1つでも存在する場合" },
@@ -78,6 +84,25 @@ export const SETTINGS_SECTIONS = [
     [
       {
         kind: "divider",
+        id: "new-tab",
+        title: "新規タブ",
+      },
+      {
+        kind: "string",
+        key: "new_tab_page_mode",
+        title: "新しいタブで開くページ",
+        options: NEW_TAB_PAGE_MODE_OPTIONS,
+        widget: "radio",
+      },
+      {
+        kind: "string",
+        key: "new_tab_page_board_url",
+        title: "指定の板 URL",
+        description:
+          "『指定の板（入力）』を選んだ時に開く板URLです（例: https://example.com/test/read.cgi/software/）。",
+      },
+      {
+        kind: "divider",
         id: "appearance",
         title: "外観",
       },
@@ -98,18 +123,18 @@ export const SETTINGS_SECTIONS = [
         key: "write_submit_ctrl_enter",
         title: "Ctrl+Enterで書き込む",
       },
-      {
-        kind: "divider",
-        id: "network",
-        title: "通信",
-      },
-      {
-        kind: "string",
-        key: "format_2chnet",
-        title: "2chnetの取得形式",
-        options: FORMAT_2CH_OPTIONS,
-        widget: "radio",
-      },
+      // {
+      //   kind: "divider",
+      //   id: "network",
+      //   title: "通信",
+      // },
+      // {
+      //   kind: "string",
+      //   key: "format_2chnet",
+      //   title: "2chnetの取得形式",
+      //   options: FORMAT_2CH_OPTIONS,
+      //   widget: "radio",
+      // },
     ],
   ),
   defineSection(
@@ -304,6 +329,13 @@ function readFieldValue(field: SettingsFieldDefinition): SettingsFormValue {
       return Number.isFinite(parsed) ? parsed : 0;
     }
     case "string":
+      // 変更理由: 未設定時でもラジオ選択が空表示にならないよう、
+      // 新規タブ初期ページは実挙動と同じ既定値をUIにも反映する。
+      if (field.key === "new_tab_page_mode") {
+        return typeof rawValue === "string" && rawValue !== ""
+          ? rawValue
+          : "related_board";
+      }
       return typeof rawValue === "string" ? rawValue : "";
   }
 }

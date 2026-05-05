@@ -56,6 +56,26 @@ export type TabAction =
 // 閉じたタブの最大保持数
 const MAX_CLOSED_TABS = 20;
 const SESSION_KEY = "readcrx_browser_session";
+const CONFIG_KEY_PREFIX = "config_";
+
+type NewTabPageMode = "home" | "related_board" | "custom_board";
+
+function readConfigValue(key: string): string | null {
+  try {
+    return localStorage.getItem(`${CONFIG_KEY_PREFIX}${key}`);
+  } catch {
+    return null;
+  }
+}
+
+function resolveNewTabPageMode(raw: string | null): NewTabPageMode {
+  if (raw === "home" || raw === "custom_board") {
+    return raw;
+  }
+
+  // 未設定時は「関連する板」を既定にして、スレ閲覧中の導線を短縮する。
+  return "related_board";
+}
 
 function normalizePageLocation(rawLocation: string): string {
   try {
@@ -92,6 +112,66 @@ function getPageIdentity(page: Page): string {
   throw new Error("Unsupported page type");
 }
 
+function createThreadListPageFromBoardUrl(boardUrl: string): Extract<Page, { type: "threadList" }> {
+  const normalized = normalizePageLocation(boardUrl);
+  return {
+    type: "threadList",
+    title: normalized,
+    boardUrl: normalized,
+    boardTitle: normalized,
+  };
+}
+
+function resolveRelatedBoardPage(sourcePage: Page | null): Extract<Page, { type: "threadList" }> | null {
+  if (!sourcePage) {
+    return null;
+  }
+
+  if (sourcePage.type === "threadList") {
+    return {
+      ...sourcePage,
+      boardUrl: normalizePageLocation(sourcePage.boardUrl),
+      boardTitle: sourcePage.boardTitle || normalizePageLocation(sourcePage.boardUrl),
+      title: sourcePage.title || sourcePage.boardTitle || normalizePageLocation(sourcePage.boardUrl),
+    };
+  }
+
+  if (sourcePage.type === "thread") {
+    const boardUrl = deriveBoardUrlFromThreadUrl(sourcePage.threadUrl);
+    if (!boardUrl) {
+      return null;
+    }
+
+    return createThreadListPageFromBoardUrl(boardUrl);
+  }
+
+  return null;
+}
+
+function resolveConfiguredNewTabPage(sourcePage: Page | null): Page {
+  const mode = resolveNewTabPageMode(readConfigValue("new_tab_page_mode"));
+
+  if (mode === "home") {
+    return { type: "home", title: "ホーム" };
+  }
+
+  if (mode === "custom_board") {
+    const rawBoardUrl = readConfigValue("new_tab_page_board_url");
+    if (typeof rawBoardUrl === "string" && rawBoardUrl.trim() !== "") {
+      return createThreadListPageFromBoardUrl(rawBoardUrl);
+    }
+
+    return { type: "home", title: "ホーム" };
+  }
+
+  const relatedBoardPage = resolveRelatedBoardPage(sourcePage);
+  if (relatedBoardPage) {
+    return relatedBoardPage;
+  }
+
+  return { type: "home", title: "ホーム" };
+}
+
 function findTabByCurrentPage(
   tabs: Tab[],
   page: Page,
@@ -107,11 +187,12 @@ function findTabByCurrentPage(
   );
 }
 
-function createTab(): Tab {
+function createTab(sourcePage: Page | null = null): Tab {
+  const initialPage = resolveConfiguredNewTabPage(sourcePage);
   return {
     id: crypto.randomUUID(),
-    history: [{ type: "home", title: "ホーム" }],
-    currentIndex: 0,
+    history: buildHierarchy(initialPage),
+    currentIndex: buildHierarchy(initialPage).length - 1,
     pinned: false,
     reloadKey: 0,
     autoRefreshEnabled: false,
@@ -318,7 +399,8 @@ function pushClosed(closedTabs: Tab[], tab: Tab): Tab[] {
 function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
   switch (action.type) {
     case "ADD_TAB": {
-      const newTab = createTab();
+      const sourcePage = getCurrentPage(getActiveTab(state));
+      const newTab = createTab(sourcePage);
       // 固定タブの後ろに非固定タブを追加
       return {
         ...state,
@@ -439,7 +521,8 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
       for (const t of closed) {
         newClosed = pushClosed(newClosed, t);
       }
-      const newTab = createTab();
+      const sourcePage = getCurrentPage(getActiveTab(state));
+      const newTab = createTab(sourcePage);
       return {
         tabs: [...pinned, newTab],
         activeTabId: newTab.id,

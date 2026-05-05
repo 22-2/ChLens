@@ -28,7 +28,7 @@ export default class Config {
     ["auto_bookmark_notify", "on"],
     ["show_next_unread", "off"],
     ["manual_image_load", "off"],
-    ["image_blur", "off"],
+    ["image_blur", "on"],
     ["image_blur_length", "4"],
     [
       "image_blur_word",
