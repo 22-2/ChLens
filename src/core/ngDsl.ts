@@ -371,7 +371,9 @@ function stripOptionalQuotes(value: string): string {
     (firstChar === '"' && lastChar === '"') ||
     (firstChar === "'" && lastChar === "'")
   ) {
-    return trimmed.slice(1, -1);
+    // ngDSL入力欄では正規表現をJS文字列風に貼り付けるケースが多いため、
+    // 引用符付き値に限って `\\` を1層だけ解釈し、`\` と同等に扱う。
+    return trimmed.slice(1, -1).replace(/\\\\/g, "\\");
   }
 
   return trimmed;

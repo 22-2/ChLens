@@ -71,4 +71,14 @@ describe("NG DSL helpers", () => {
     expect(normalizeNgDslKeyword("RegExpID")).toBe("RegExpId");
     expect(normalizeNgDslKeyword("id")).toBe("ID");
   });
+
+  it("treats double-backslash quoted regex input as a single-backslash pattern", () => {
+    const extracted = extractNgDslFunctionCall(
+      'RegExpBody(word="(imgur\\\\.com\\\\/.+?){15}")',
+    );
+
+    expect(parseNgDslArguments(extracted?.argsSource ?? "")).toEqual({
+      word: "(imgur\\.com\\/.+?){15}",
+    });
+  });
 });

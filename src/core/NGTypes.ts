@@ -27,7 +27,7 @@ export const TYPE = {
   AUTO_NOTHING_SLIP: "NothingSLIP",
   AUTO_REPEAT_MESSAGE: "RepeatMessage",
   AUTO_FORWARD_LINK: "ForwardLink",
-  SIKI_GUARD: "Siki Guard",
+  SIKI_GUARD: "SikiGuard",
 } as const;
 
 export type NGType = (typeof TYPE)[keyof typeof TYPE];
