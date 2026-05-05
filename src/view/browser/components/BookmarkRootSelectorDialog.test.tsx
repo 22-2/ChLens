@@ -36,6 +36,20 @@ function setLegacyApp(appValue: unknown): void {
   ).app = appValue;
 }
 
+function setTauriRuntime(enabled: boolean): void {
+  const runtimeHost = window as Window &
+    typeof globalThis & {
+      __TAURI_INTERNALS__?: Record<string, unknown>;
+    };
+
+  if (enabled) {
+    runtimeHost.__TAURI_INTERNALS__ = {};
+    return;
+  }
+
+  delete runtimeHost.__TAURI_INTERNALS__;
+}
+
 describe("BookmarkRootSelectorDialog", () => {
   beforeEach(() => {
     messageHandlers = new Map<string, Set<MessageHandler>>();
@@ -112,6 +126,7 @@ describe("BookmarkRootSelectorDialog", () => {
           app?: unknown;
         }
     ).app;
+    setTauriRuntime(false);
   });
 
   it("bookmark root 未設定時は自動で開き、選択したフォルダを保存する", async () => {
@@ -171,6 +186,29 @@ describe("BookmarkRootSelectorDialog", () => {
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "キャンセル" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+  });
+
+  it("Tauriランタイムでは保存先選択ダイアログを表示しない", async () => {
+    setTauriRuntime(true);
+
+    setLegacyApp({
+      config: {
+        get: (key: string) => (key === "bookmark_id" ? "" : null),
+        set: configSetMock,
+      },
+      bookmarkEntryList: {
+        needReconfigureRootNodeId: {
+          wasCalled: true,
+        },
+      },
+    });
+
+    render(<BookmarkRootSelectorDialog />);
+    container.message.send("bookmark_root_selector_open");
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
