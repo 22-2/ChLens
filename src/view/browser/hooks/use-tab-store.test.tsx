@@ -737,4 +737,78 @@ describe("TabProvider auto refresh state", () => {
       "背景タブ更新後",
     );
   });
+
+  it("板ページから新規タブで開いたスレは戻る時に板URLではなく板タイトルを維持する", async () => {
+    vi.resetModules();
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
+
+    function Harness() {
+      const { state, currentPage, dispatch } = useTabStore();
+
+      return (
+        <>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "NAVIGATE",
+                page: {
+                  type: "threadList",
+                  title: "エッヂ",
+                  boardUrl: "http://bbs.eddibb.cc/liveedge/",
+                  boardTitle: "エッヂ",
+                },
+              })
+            }
+          >
+            板へ移動
+          </button>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "OPEN_IN_NEW_TAB_FORCE",
+                page: {
+                  type: "thread",
+                  title: "スレ1",
+                  threadUrl: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000005/",
+                },
+              })
+            }
+          >
+            新規タブでスレ
+          </button>
+          <button
+            onClick={() => {
+              const background = state.tabs.find((tab) => tab.id !== state.activeTabId);
+              if (!background) return;
+              dispatch({ type: "SELECT_TAB", tabId: background.id });
+            }}
+          >
+            背景タブへ切替
+          </button>
+          <button onClick={() => dispatch({ type: "GO_BACK" })}>戻る</button>
+          <output data-testid="current-page-type">{currentPage.type}</output>
+          <output data-testid="current-page-title">{currentPage.title}</output>
+        </>
+      );
+    }
+
+    render(
+      <TabProvider>
+        <Harness />
+      </TabProvider>,
+    );
+
+    fireEvent.click(screen.getByText("板へ移動"));
+    fireEvent.click(screen.getByText("新規タブでスレ"));
+    fireEvent.click(screen.getByText("背景タブへ切替"));
+
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent("thread");
+    expect(screen.getByTestId("current-page-title")).toHaveTextContent("スレ1");
+
+    fireEvent.click(screen.getByText("戻る"));
+
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent("threadList");
+    expect(screen.getByTestId("current-page-title")).toHaveTextContent("エッヂ");
+  });
 });

@@ -200,6 +200,57 @@ function pushPageToTabHistory(tab: Tab, page: Page): Tab {
   };
 }
 
+function deriveBoardUrlFromThreadUrl(threadUrl: string): string | null {
+  try {
+    const parsed = new window.URL(threadUrl);
+    const chMatch = parsed.pathname.match(/^\/test\/read\.cgi\/([^/]+)\//);
+    if (chMatch) {
+      return `${parsed.origin}/${chMatch[1]}/`;
+    }
+
+    const jbbsMatch = parsed.pathname.match(
+      /^\/bbs\/read\.cgi\/([^/]+\/[^/]+)\//,
+    );
+    if (jbbsMatch) {
+      return `${parsed.origin}/bbs/read.cgi/${jbbsMatch[1]}/`;
+    }
+
+    const machiMatch = parsed.pathname.match(/^\/bbs\/read\.cgi\/([^/]+)\//);
+    if (machiMatch) {
+      return `${parsed.origin}/${machiMatch[1]}/`;
+    }
+  } catch {
+    // 無効URL時は派生不可のため null を返して既定の階層構築へフォールバックする。
+  }
+
+  return null;
+}
+
+function buildHierarchyForNewTab(sourcePage: Page, targetPage: Page): Page[] {
+  if (sourcePage.type !== "threadList" || targetPage.type !== "thread") {
+    return buildHierarchy(targetPage);
+  }
+
+  const targetBoardUrl = deriveBoardUrlFromThreadUrl(targetPage.threadUrl);
+  if (!targetBoardUrl || normalizePageLocation(sourcePage.boardUrl) !== normalizePageLocation(targetBoardUrl)) {
+    return buildHierarchy(targetPage);
+  }
+
+  // 変更理由: 板ページから「新しいタブでスレを開く」時は、遷移元で解決済みの板タイトルを
+  // 新規タブの履歴に引き継ぐ。ここをURL初期値にすると戻るで boardUrl が見えてしまう。
+  return [
+    { type: "home", title: "ホーム" },
+    { type: "boardList", title: "板一覧" },
+    {
+      type: "threadList",
+      title: sourcePage.title,
+      boardUrl: sourcePage.boardUrl,
+      boardTitle: sourcePage.boardTitle,
+    },
+    targetPage,
+  ];
+}
+
 // 閉じたタブを記録するヘルパー
 function pushClosed(closedTabs: Tab[], tab: Tab): Tab[] {
   return [tab, ...closedTabs].slice(0, MAX_CLOSED_TABS);
@@ -229,7 +280,8 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
 
       // バックグラウンドで新規タブを開く（アクティブタブを切り替えない）
       const newTab = createTab();
-      const newHistory = buildHierarchy(action.page);
+      const sourcePage = getCurrentPage(getActiveTab(state));
+      const newHistory = buildHierarchyForNewTab(sourcePage, action.page);
       const navigatedTab = {
         ...newTab,
         history: newHistory,
@@ -245,7 +297,8 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
     case "OPEN_IN_NEW_TAB_FORCE": {
       // 中クリック要件では「常に新規タブ」を優先するため、重複チェックを行わない。
       const newTab = createTab();
-      const newHistory = buildHierarchy(action.page);
+      const sourcePage = getCurrentPage(getActiveTab(state));
+      const newHistory = buildHierarchyForNewTab(sourcePage, action.page);
       const navigatedTab = {
         ...newTab,
         history: newHistory,
