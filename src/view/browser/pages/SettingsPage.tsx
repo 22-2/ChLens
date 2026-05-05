@@ -559,6 +559,7 @@ const SETTINGS_SECTIONS = [
       {
         kind: "boolean",
         key: "debug_log",
+        header: "デバッグ",
         title: "ログを有効にする",
         description: "ONで詳細ログを出力します。",
       },
