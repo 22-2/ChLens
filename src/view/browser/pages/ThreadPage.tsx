@@ -188,9 +188,13 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     setSearchQuery,
   });
 
+  // 変更理由: 自動更新とステータスバー強調の条件を同一ソースに統一し、
+  // タブ切替後に非アクティブタブの状態がステータスバーへ残留するのを防ぐ。
+  const isActiveAutoRefreshEnabled = isActive && isAutoRefreshEnabled;
+
   const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling } =
     useThreadAutoRefresh({
-      enabled: isAutoRefreshEnabled,
+      enabled: isActiveAutoRefreshEnabled,
       threadUrl: page.threadUrl,
       expired,
       loading,
@@ -216,7 +220,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   );
 
   useAutoNextThread({
-    autoRefreshEnabled: isAutoRefreshEnabled,
+    autoRefreshEnabled: isActiveAutoRefreshEnabled,
     featureEnabled: isAutoNextThreadEnabled,
     threadUrl: page.threadUrl,
     threadTitle: page.title,
@@ -994,7 +998,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       className="thread-page"
       onDoubleClick={handleDoubleClick}
     >
-      {isAutoRefreshEnabled && (
+      {isActiveAutoRefreshEnabled && (
         <>
           {/* 線より下にいて新着追従が有効な間だけステータスバーを accent 化し、
               「今の位置なら自動スクロールされる」を常時見分けやすくする。 */}
@@ -1067,7 +1071,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             })}
           </div>
 
-          {isAutoRefreshEnabled && (
+          {isActiveAutoRefreshEnabled && (
             <div
               ref={autoScrollBoundaryRef}
               className={`thread-page__auto-scroll-threshold${
