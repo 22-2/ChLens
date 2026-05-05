@@ -3,7 +3,6 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
@@ -253,6 +252,38 @@ function writeThreadListSortPreference(
   }
 }
 
+function deriveBoardTitlePlaceholder(boardUrl: string): string | null {
+  try {
+    const parsed = new window.URL(boardUrl);
+    const pathPart = parsed.pathname.replace(/^\/|\/$/g, "");
+    return pathPart ? `${parsed.hostname}/${pathPart}` : parsed.hostname;
+  } catch {
+    return null;
+  }
+}
+
+function isResolvedBoardTitle(boardUrl: string, candidate: string): boolean {
+  if (!candidate || candidate === boardUrl) {
+    return false;
+  }
+
+  // 変更理由: 履歴/候補生成の一部は boardTitle に host/path 形式の仮ラベルを入れるため、
+  // それを確定タイトル扱いすると実板名の再解決が止まり URL 風タイトルが残る。
+  return candidate !== deriveBoardTitlePlaceholder(boardUrl);
+}
+
+function resolveInitialBoardTitle(page: ThreadListPageType): string | null {
+  if (isResolvedBoardTitle(page.boardUrl, page.title)) {
+    return page.title;
+  }
+
+  if (isResolvedBoardTitle(page.boardUrl, page.boardTitle)) {
+    return page.boardTitle;
+  }
+
+  return null;
+}
+
 function calcHeat(now: number, created: number, resCount: number): string {
   if (!Number.isFinite(created) || created > now) return "0.0";
   const elapsed = Math.max((now - created) / 1000, 1) / (24 * 60 * 60);
@@ -328,7 +359,6 @@ export const ThreadListPage: React.FC<Props> = ({
   const dispatch = useTabDispatch();
   const { isNgTemporarilyDisabled, setThreadListStats } = useNgStatus();
   const theme = useTheme();
-  const titleFetched = useRef(false);
   const [threads, setThreads] = useState<IThread[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -478,22 +508,31 @@ export const ThreadListPage: React.FC<Props> = ({
   }, [page.boardUrl, sortPreference]);
 
   useEffect(() => {
-    if (titleFetched.current) return;
-    titleFetched.current = true;
-    // boardTitleがURLと同じ場合（アドレスバー入力など）はBoardTitleSolverで解決する
-    if (page.boardTitle && page.boardTitle !== page.boardUrl) {
-      dispatch({ type: "UPDATE_TITLE_FOR_TAB", tabId, title: page.boardTitle });
+    let cancelled = false;
+
+    // 変更理由: スレ一覧コンポーネントは再マウントされない経路があるため、
+    // 「初回だけ取得」だと別板へ遷移した後のタイトルが更新されないことがある。
+    const initialBoardTitle = resolveInitialBoardTitle(page);
+    if (initialBoardTitle) {
+      if (initialBoardTitle !== page.title) {
+        dispatch({ type: "UPDATE_TITLE_FOR_TAB", tabId, title: initialBoardTitle });
+      }
       return;
     }
+
     askBoardTitle(new ChURL(page.boardUrl))
       .then((title) => {
-        if (title) {
+        if (!cancelled && title) {
           dispatch({ type: "UPDATE_TITLE_FOR_TAB", tabId, title });
         }
       })
       .catch((err) => {
         console.error(err);
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [dispatch, page.boardTitle, page.boardUrl, tabId]);
 
   useEffect(() => {

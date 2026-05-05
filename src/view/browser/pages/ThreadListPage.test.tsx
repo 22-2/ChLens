@@ -6,6 +6,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
 import { container as serviceContainer } from "src/service-container/index";
 import type { IBoardService, IThread } from "src/service-container/interfaces";
 import { ThreadListPage } from "src/view/browser/pages/ThreadListPage";
@@ -128,6 +129,9 @@ describe("ThreadListPage", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     dispatchMock.mockReset();
+    const askBoardTitleMock = vi.mocked(askBoardTitle);
+    askBoardTitleMock.mockReset();
+    askBoardTitleMock.mockResolvedValue(null);
     activeTabIdRef.current = "tab-1";
     const localStorageMock = createMemoryStorage();
     vi.stubGlobal("localStorage", localStorageMock);
@@ -386,6 +390,136 @@ describe("ThreadListPage", () => {
         "B Thread",
         "A Thread",
       ]);
+    });
+  });
+
+  it("板URLが変わったらタイトル解決を再実行する", async () => {
+    vi.useRealTimers();
+
+    const askBoardTitleMock = vi.mocked(askBoardTitle);
+    askBoardTitleMock.mockResolvedValueOnce("Software");
+    askBoardTitleMock.mockResolvedValueOnce("News");
+
+    const { rerender } = render(
+      <ThreadListPage
+        tabId="tab-1"
+        page={{
+          type: "threadList",
+          title: "https://egg.5ch.net/software/",
+          boardUrl: "https://egg.5ch.net/software/",
+          boardTitle: "https://egg.5ch.net/software/",
+        }}
+        refreshKey={0}
+        isActive={true}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(dispatchMock).toHaveBeenCalledWith({
+        type: "UPDATE_TITLE_FOR_TAB",
+        tabId: "tab-1",
+        title: "Software",
+      });
+    });
+
+    rerender(
+      <ThreadListPage
+        tabId="tab-1"
+        page={{
+          type: "threadList",
+          title: "https://egg.5ch.net/news/",
+          boardUrl: "https://egg.5ch.net/news/",
+          boardTitle: "https://egg.5ch.net/news/",
+        }}
+        refreshKey={0}
+        isActive={true}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(dispatchMock).toHaveBeenCalledWith({
+        type: "UPDATE_TITLE_FOR_TAB",
+        tabId: "tab-1",
+        title: "News",
+      });
+    });
+
+    expect(askBoardTitleMock).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    {
+      boardUrl: "http://bbs.eddibb.cc/liveedge/",
+      placeholderTitle: "bbs.eddibb.cc/liveedge",
+      resolvedTitle: "エッヂ",
+    },
+    {
+      boardUrl: "https://tulip-garden.net/garden/",
+      placeholderTitle: "tulip-garden.net/garden",
+      resolvedTitle: "チューリップ庭園",
+    },
+  ])(
+    "URL由来の仮タイトルでは板名再解決をスキップしない: $boardUrl",
+    async ({ boardUrl, placeholderTitle, resolvedTitle }) => {
+      vi.useRealTimers();
+
+      const askBoardTitleMock = vi.mocked(askBoardTitle);
+      askBoardTitleMock.mockResolvedValueOnce(resolvedTitle);
+
+      render(
+        <ThreadListPage
+          tabId="tab-1"
+          page={{
+            type: "threadList",
+            title: boardUrl,
+            boardUrl,
+            boardTitle: placeholderTitle,
+          }}
+          refreshKey={0}
+          isActive={true}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(dispatchMock).toHaveBeenCalledWith({
+          type: "UPDATE_TITLE_FOR_TAB",
+          tabId: "tab-1",
+          title: resolvedTitle,
+        });
+      });
+
+      expect(askBoardTitleMock).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("既に解決済みの title があるときは URL由来 boardTitle で上書きしない", async () => {
+    vi.useRealTimers();
+
+    const askBoardTitleMock = vi.mocked(askBoardTitle);
+
+    render(
+      <ThreadListPage
+        tabId="tab-1"
+        page={{
+          type: "threadList",
+          title: "チューリップ庭園",
+          boardUrl: "https://tulip-garden.net/garden/",
+          boardTitle: "tulip-garden.net/garden",
+        }}
+        refreshKey={0}
+        isActive={true}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(serviceContainer.board.getThreads).toHaveBeenCalled();
+    });
+
+    expect(askBoardTitleMock).not.toHaveBeenCalled();
+    expect(dispatchMock).not.toHaveBeenCalledWith({
+      type: "UPDATE_TITLE_FOR_TAB",
+      tabId: "tab-1",
+      title: "tulip-garden.net/garden",
     });
   });
 });
