@@ -57,7 +57,7 @@ const TabPageContent = memo(function TabPageContent({
     case "settings":
       return <SettingsPage page={page} />;
     case "bookmarkList":
-      return <BookmarkListPage />;
+      return <BookmarkListPage tabId={tab.id} />;
     case "historyList":
       return <HistoryListPage tabId={tab.id} />;
     case "writeHistoryList":

@@ -377,6 +377,7 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 - [ ] bbsmenu読み込みテスト
 - [ ] 画像添付＆自動アップロード
 - [ ] ブックマークを開いても何も出ない
+- [ ] 閲覧履歴を開いているとき、タブを新しく開こうとすると重い
 
 ### low prior
 - [ ] siki過去ログ流し込み

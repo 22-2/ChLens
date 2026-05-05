@@ -1,10 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { container } from "src/service-container/index";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import {
   ColumnDef,
   SimpleDataTable,
 } from "src/view/browser/components/SimpleDataTable";
+import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import {
+  getLegacyBookmarkService,
+  waitForLegacyBookmarkReady,
+} from "src/view/browser/utils/legacy-app";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
 
 type SortDirection = "asc" | "desc";
@@ -29,6 +35,7 @@ const DEFAULT_SORT_STATE: BookmarkSortState = {
 interface BookmarkEntry {
   url: string;
   title: string;
+  pageType: "thread" | "threadList";
   boardTitle: string;
   resCount: number;
   unreadCount: number;
@@ -44,6 +51,7 @@ interface LegacyReadStateLike {
 interface LegacyBookmarkLike {
   url?: unknown;
   title?: unknown;
+  boardTitle?: unknown;
   resCount?: unknown;
   readState?: LegacyReadStateLike | undefined;
 }
@@ -92,16 +100,31 @@ function deriveBoardTitle(threadUrl: string): string {
   }
 }
 
-function readBookmarks(): BookmarkEntry[] {
-  const bookmarkService = window.app?.bookmark as
-    | { getAllThreads?: () => unknown }
-    | undefined;
-
-  if (!bookmarkService?.getAllThreads) {
-    return [];
+function deriveBoardTitleFromBoardUrl(boardUrl: string): string {
+  try {
+    const parsed = new window.URL(boardUrl);
+    const pathPart = parsed.pathname.replace(/^\/|\/$/g, "");
+    return pathPart ? `${parsed.hostname}/${pathPart}` : parsed.hostname;
+  } catch {
+    return "";
   }
+}
 
-  const rawItems = bookmarkService.getAllThreads();
+async function readBookmarks(): Promise<BookmarkEntry[]> {
+  await waitForLegacyBookmarkReady();
+
+  const bookmarkService = getLegacyBookmarkService();
+
+  const rawItems =
+    bookmarkService?.getAll?.() ??
+    [
+      ...(Array.isArray(bookmarkService?.getAllThreads?.())
+        ? (bookmarkService?.getAllThreads?.() as unknown[])
+        : []),
+      ...(Array.isArray(bookmarkService?.getAllBoards?.())
+        ? (bookmarkService?.getAllBoards?.() as unknown[])
+        : []),
+    ];
   if (!Array.isArray(rawItems)) {
     return [];
   }
@@ -114,19 +137,29 @@ function readBookmarks(): BookmarkEntry[] {
         return null;
       }
 
+      const parsed = parseInternalBrowserPage(url);
+      if (!parsed) {
+        return null;
+      }
+
       const title = normalizeString(item.title, url);
       const resCount = Math.max(0, Math.trunc(toNumber(item.resCount)));
       const readCount = Math.max(0, Math.trunc(toNumber(item.readState?.read)));
-      const unreadCount = Math.max(0, resCount - readCount);
-      const createdAt = parseCreatedAt(url);
+      const isThreadBookmark = parsed.type === "thread";
+      const unreadCount = isThreadBookmark ? Math.max(0, resCount - readCount) : 0;
+      const createdAt = isThreadBookmark ? parseCreatedAt(url) : 0;
 
       return {
         url,
         title,
-        boardTitle: deriveBoardTitle(url),
+        pageType: parsed.type,
+        boardTitle:
+          parsed.type === "threadList"
+            ? normalizeString(item.boardTitle, deriveBoardTitleFromBoardUrl(url))
+            : normalizeString(item.boardTitle, deriveBoardTitle(url)),
         resCount,
         unreadCount,
-        heat: calcHeat(createdAt, resCount),
+        heat: isThreadBookmark ? calcHeat(createdAt, resCount) : 0,
         createdAt,
         originalIndex: index,
       } satisfies BookmarkEntry;
@@ -156,7 +189,7 @@ const COLUMNS: ColumnDef<BookmarkEntry>[] = [
     headerClassName: "simple-data-table__th--count",
     cellClassName: "simple-data-table__count",
     sortable: true,
-    cell: (row) => row.resCount,
+    cell: (row) => (row.pageType === "thread" ? row.resCount : "-"),
   },
   {
     key: "unreadCount",
@@ -164,7 +197,7 @@ const COLUMNS: ColumnDef<BookmarkEntry>[] = [
     headerClassName: "simple-data-table__th--count",
     cellClassName: "simple-data-table__count",
     sortable: true,
-    cell: (row) => row.unreadCount,
+    cell: (row) => (row.pageType === "thread" ? row.unreadCount : "-"),
   },
   {
     key: "heat",
@@ -172,7 +205,7 @@ const COLUMNS: ColumnDef<BookmarkEntry>[] = [
     headerClassName: "simple-data-table__th--heat",
     cellClassName: "simple-data-table__heat",
     sortable: true,
-    cell: (row) => row.heat.toFixed(1),
+    cell: (row) => (row.pageType === "thread" ? row.heat.toFixed(1) : "-"),
   },
   {
     key: "createdAt",
@@ -180,7 +213,7 @@ const COLUMNS: ColumnDef<BookmarkEntry>[] = [
     cellClassName: "simple-data-table__count",
     sortable: true,
     cell: (row) =>
-      row.createdAt
+      row.pageType === "thread" && row.createdAt
         ? new Date(row.createdAt).toLocaleString("ja-JP", {
             hour12: false,
           })
@@ -188,8 +221,12 @@ const COLUMNS: ColumnDef<BookmarkEntry>[] = [
   },
 ];
 
-export const BookmarkListPage: React.FC = () => {
-  const { dispatch } = useTabStore();
+interface BookmarkListPageProps {
+  tabId: string;
+}
+
+export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({ tabId }) => {
+  const { dispatch, state, currentPage } = useTabStore();
   const [entries, setEntries] = useState<BookmarkEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -197,11 +234,19 @@ export const BookmarkListPage: React.FC = () => {
   const [sortState, setSortState] =
     useState<BookmarkSortState>(DEFAULT_SORT_STATE);
 
-  const loadEntries = useCallback(() => {
+  const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
+    pageType: "bookmarkList",
+    tabId,
+    isActive: state.activeTabId === tabId && currentPage.type === "bookmarkList",
+    searchQuery,
+    setSearchQuery,
+  });
+
+  const loadEntries = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      setEntries(readBookmarks());
+      setEntries(await readBookmarks());
     } catch (e) {
       setError(
         e instanceof Error ? e.message : "ブックマークの読み込みに失敗しました",
@@ -213,7 +258,21 @@ export const BookmarkListPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    loadEntries();
+    void loadEntries();
+  }, [loadEntries]);
+
+  useEffect(() => {
+    const handleBookmarkUpdated = () => {
+      // 変更理由: ブックマーク一覧タブは hidden のまま保持されるため、
+      // 追加・削除イベントで再読込しないと開き直しても古い一覧が残る。
+      void loadEntries();
+    };
+
+    container.message.on("bookmark_updated", handleBookmarkUpdated);
+
+    return () => {
+      container.message.off("bookmark_updated", handleBookmarkUpdated);
+    };
   }, [loadEntries]);
 
   const handleSort = useCallback((key: string) => {
@@ -324,7 +383,7 @@ export const BookmarkListPage: React.FC = () => {
     return (
       <div className="page-status page-status--error">
         <p>{error}</p>
-        <button className="page-status__retry" onClick={loadEntries}>
+        <button className="page-status__retry" onClick={() => void loadEntries()}>
           再試行
         </button>
       </div>
@@ -333,12 +392,14 @@ export const BookmarkListPage: React.FC = () => {
 
   return (
     <div className="thread-list-page">
-      <SearchBar
-        query={searchQuery}
-        onQueryChange={setSearchQuery}
-        onClose={() => setSearchQuery("")}
-        hitCount={filtered.length}
-      />
+      {isFilterOpen ? (
+        <SearchBar
+          query={searchQuery}
+          onQueryChange={setSearchQuery}
+          onClose={closeFilterToolbar}
+          hitCount={filtered.length}
+        />
+      ) : null}
       <SimpleDataTable
         columns={COLUMNS}
         rows={filtered}

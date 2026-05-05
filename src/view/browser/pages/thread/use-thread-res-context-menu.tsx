@@ -16,6 +16,7 @@ import { container } from "src/service-container/index";
 import type { IRes } from "src/service-container/interfaces";
 import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
+import { getLegacyWriteHistoryService } from "src/view/browser/utils/legacy-app";
 import type { Props, ThreadFilter } from "src/view/browser/utils/types";
 import {
   buildKyodemoUrl,
@@ -122,23 +123,9 @@ export function useThreadResContextMenu({
 
   const addWriteHistory = useCallback(
     async (res: IRes) => {
-      const globalObj = window as unknown as {
-        app?: {
-          WriteHistory?: {
-            add: (item: {
-              date: number;
-              mail: string;
-              message: string;
-              name: string;
-              res: number;
-              title: string;
-              url: string;
-            }) => Promise<void> | void;
-          };
-        };
-      };
+      const writeHistoryService = getLegacyWriteHistoryService();
 
-      if (!globalObj.app?.WriteHistory?.add) {
+      if (!writeHistoryService?.add) {
         container.toast.info("書込履歴サービスが利用できません");
         return;
       }
@@ -146,7 +133,7 @@ export function useThreadResContextMenu({
       const name = stripHtml(res.name);
       const message = stripHtml(res.message);
       const baseTime = Date.parse(res.date ?? res.other ?? "");
-      await globalObj.app.WriteHistory.add({
+      await writeHistoryService.add({
         url: page.threadUrl,
         res: res.num,
         title: document.title,

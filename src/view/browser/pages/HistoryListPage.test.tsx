@@ -8,6 +8,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import React from "react";
+import { container } from "src/service-container";
 import { HistoryListPage } from "src/view/browser/pages/HistoryListPage";
 import { QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE } from "src/view/browser/utils/filter-toolbar-events";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -129,6 +130,12 @@ describe("HistoryListPage", () => {
       ReadState: {
         getAll: readStateGetAll,
       },
+    };
+
+    container.message = {
+      send: vi.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
     };
 
     readStateGetAll.mockResolvedValue([]);

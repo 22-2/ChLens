@@ -248,7 +248,7 @@ describe("NavigationBar", () => {
     const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
     activeTab.history = [
       {
-        type: " historyList" as const,
+        type: "historyList" as const,
         title: "閲覧履歴",
       },
     ];
@@ -262,6 +262,30 @@ describe("NavigationBar", () => {
     expect(dispatchEventSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         type: QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.historyList,
+        detail: { tabId: "tab-1" },
+      }),
+    );
+    dispatchEventSpy.mockRestore();
+  });
+
+  it("ブックマークリストではメニュー項目の『フィルターを開く』でブックマーク用トグルイベントを送る", () => {
+    const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
+    activeTab.history = [
+      {
+        type: "bookmarkList" as const,
+        title: "ブックマークリスト",
+      },
+    ];
+    activeTab.currentIndex = 0;
+
+    render(<NavigationBar />);
+
+    fireEvent.click(screen.getByTitle("メニュー"));
+    fireEvent.click(screen.getByRole("button", { name: "フィルターを開く" }));
+
+    expect(dispatchEventSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.bookmarkList,
         detail: { tabId: "tab-1" },
       }),
     );
@@ -336,6 +360,40 @@ describe("NavigationBar", () => {
         title: "Software",
         type: "board",
       });
+    });
+  });
+
+  it("bookmark反映が遅れても同期失敗toastを出さず、後から星状態が揃う", async () => {
+    bookmarkAddMock.mockImplementation(
+      async (item: { url: string; title: string; type: "thread" | "board" }) => {
+        setTimeout(() => {
+          bookmarkedUrls.add(item.url);
+          bookmarkUpdatedHandler?.({ bookmark: { url: item.url } });
+        }, 0);
+      },
+    );
+
+    render(<NavigationBar />);
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "このページをブックマークに追加",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(toastInfoMock).toHaveBeenCalledWith("ブックマークに追加しました");
+    });
+    expect(toastErrorMock).not.toHaveBeenCalledWith(
+      "ブックマーク状態の同期に失敗しました",
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", {
+          name: "このページをブックマークから削除",
+        }),
+      ).toHaveAttribute("aria-pressed", "true");
     });
   });
 });

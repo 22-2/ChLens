@@ -16,6 +16,7 @@ import {
   formatCompactDateTime,
   normalizeLegacyTimestamp,
 } from "src/view/browser/utils/date-time";
+import { getLegacyWriteHistoryService } from "src/view/browser/utils/legacy-app";
 
 type SortDirection = "asc" | "desc";
 type SortColumn =
@@ -75,11 +76,7 @@ function normalizeNumber(value: unknown): number {
 }
 
 async function readWriteHistoryEntries(): Promise<WriteHistoryEntry[]> {
-  const writeHistoryService = window.app?.WriteHistory as
-    | {
-        get?: (offset?: number, count?: number) => Promise<unknown> | unknown;
-      }
-    | undefined;
+  const writeHistoryService = getLegacyWriteHistoryService();
 
   if (!writeHistoryService?.get) {
     return [];

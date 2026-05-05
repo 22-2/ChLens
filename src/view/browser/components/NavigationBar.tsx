@@ -34,6 +34,11 @@ import {
   QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE,
   type QuickAccessFilterPageType,
 } from "src/view/browser/utils/filter-toolbar-events";
+import {
+  getLegacyBookmarkService,
+  getLegacyHistoryService,
+  waitForLegacyBookmarkReady,
+} from "src/view/browser/utils/legacy-app";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
 import { container } from "src/service-container/index";
 import {
@@ -134,6 +139,19 @@ function deriveBookmarkTarget(page: Page): BookmarkTarget | null {
   }
 }
 
+function normalizeBookmarkComparableUrl(url: string): string {
+  const parsed = parseInternalBrowserPage(url);
+  if (parsed) {
+    return parsed.type === "thread" ? parsed.threadUrl : parsed.boardUrl;
+  }
+
+  try {
+    return new window.URL(url).href;
+  } catch {
+    return url.trim();
+  }
+}
+
 function readBookmarkStatus(url: string): boolean {
   try {
     return Boolean(container.bookmark.get(url));
@@ -155,16 +173,31 @@ function deriveBoardTitle(threadUrl: string): string {
   }
 }
 
-function readBookmarkSources(): OmnibarBookmarkSource[] {
-  const bookmarkService = window.app?.bookmark as
-    | { getAllThreads?: () => unknown }
-    | undefined;
-
-  if (!bookmarkService?.getAllThreads) {
-    return [];
+function deriveBoardTitleFromBoardUrl(boardUrl: string): string {
+  try {
+    const parsed = new URL(boardUrl);
+    const pathPart = parsed.pathname.replace(/^\/|\/$/g, "");
+    return pathPart ? `${parsed.hostname}/${pathPart}` : parsed.hostname;
+  } catch {
+    return "";
   }
+}
 
-  const rawItems = bookmarkService.getAllThreads();
+async function readBookmarkSources(): Promise<OmnibarBookmarkSource[]> {
+  await waitForLegacyBookmarkReady();
+
+  const bookmarkService = getLegacyBookmarkService();
+
+  const rawItems =
+    bookmarkService?.getAll?.() ??
+    [
+      ...(Array.isArray(bookmarkService?.getAllThreads?.())
+        ? (bookmarkService?.getAllThreads?.() as unknown[])
+        : []),
+      ...(Array.isArray(bookmarkService?.getAllBoards?.())
+        ? (bookmarkService?.getAllBoards?.() as unknown[])
+        : []),
+    ];
   if (!Array.isArray(rawItems)) {
     return [];
   }
@@ -177,21 +210,23 @@ function readBookmarkSources(): OmnibarBookmarkSource[] {
         return null;
       }
 
+      const parsed = parseInternalBrowserPage(url);
+      const boardTitle = normalizeString(item.boardTitle);
+
       return {
         url,
         title: normalizeString(item.title, url),
-        boardTitle: normalizeString(item.boardTitle, deriveBoardTitle(url)),
+        boardTitle:
+          parsed?.type === "threadList"
+            ? boardTitle || deriveBoardTitleFromBoardUrl(url)
+            : boardTitle || deriveBoardTitle(url),
       };
     })
     .filter((item): item is OmnibarBookmarkSource => item !== null);
 }
 
 async function readHistorySources(): Promise<OmnibarHistorySource[]> {
-  const historyService = window.app?.History as
-    | {
-        get?: (offset?: number, count?: number) => Promise<unknown> | unknown;
-      }
-    | undefined;
+  const historyService = getLegacyHistoryService();
 
   if (!historyService?.get) {
     return [];
@@ -270,6 +305,13 @@ export const NavigationBar: React.FC = () => {
     () => deriveBookmarkTarget(currentPage),
     [currentPage],
   );
+  const normalizedBookmarkTargetUrl = useMemo(
+    () =>
+      bookmarkTarget
+        ? normalizeBookmarkComparableUrl(bookmarkTarget.url)
+        : null,
+    [bookmarkTarget],
+  );
 
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
   const [backMenuPosition, setBackMenuPosition] = useState<MenuPosition | null>(
@@ -295,8 +337,28 @@ export const NavigationBar: React.FC = () => {
     activeTab.autoRefreshThreadUrl === currentPage.threadUrl;
 
   useEffect(() => {
+    let cancelled = false;
+
     setIsBookmarkPending(false);
     setIsBookmarked(bookmarkTarget ? readBookmarkStatus(bookmarkTarget.url) : false);
+
+    if (!bookmarkTarget) {
+      return;
+    }
+
+    void waitForLegacyBookmarkReady().then(() => {
+      if (cancelled) {
+        return;
+      }
+
+      // 変更理由: 既存ブックマークの初回 scan より先に描画されると星が未登録のまま固まるため、
+      // ready 後に source of truth を再読込して見た目を揃える。
+      setIsBookmarked(readBookmarkStatus(bookmarkTarget.url));
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [bookmarkTarget]);
 
   useEffect(() => {
@@ -305,7 +367,10 @@ export const NavigationBar: React.FC = () => {
     }
 
     const handleBookmarkUpdated = ({ bookmark }: BookmarkUpdatePayload = {}) => {
-      if (typeof bookmark?.url === "string" && bookmark.url !== bookmarkTarget.url) {
+      if (
+        typeof bookmark?.url === "string" &&
+        normalizeBookmarkComparableUrl(bookmark.url) !== normalizedBookmarkTargetUrl
+      ) {
         return;
       }
 
@@ -323,12 +388,12 @@ export const NavigationBar: React.FC = () => {
     } catch {
       return;
     }
-  }, [bookmarkTarget]);
+  }, [bookmarkTarget, normalizedBookmarkTargetUrl]);
 
   const loadOmnibarEntries = useCallback(async () => {
     const [historyItems, bookmarkItems, boardItems] = await Promise.all([
       readHistorySources(),
-      Promise.resolve(readBookmarkSources()),
+      readBookmarkSources(),
       readBBSMenuBoardSources(),
     ]);
 
@@ -393,16 +458,18 @@ export const NavigationBar: React.FC = () => {
       return;
     }
 
-    const nextBookmarkedState = !isBookmarked;
+    const currentBookmarkedState = readBookmarkStatus(bookmarkTarget.url);
+    const nextBookmarkedState = !currentBookmarkedState;
 
     // 変更理由: 永続化イベントを待つだけだとクリック直後に無反応に見えるため、
-    // まず星を反転してから bookmark_updated で最終状態へ揃える。
+    // source of truth から次状態を決めておくことで、見た目が stale な瞬間に再クリックしても
+    // add/remove を取り違えず、常に実ストア基準で反転できるようにする。
     setIsBookmarkPending(true);
     setIsBookmarked(nextBookmarkedState);
 
     void Promise.resolve()
       .then(() => {
-        if (isBookmarked) {
+        if (currentBookmarkedState) {
           return container.bookmark.remove(bookmarkTarget.url);
         }
 
@@ -413,12 +480,19 @@ export const NavigationBar: React.FC = () => {
         });
       })
       .then(() => {
+        const actualBookmarkedState = readBookmarkStatus(bookmarkTarget.url);
+
+        // 変更理由: 実環境では add/remove 完了と get()/message 反映が非同期に前後しうるため、
+        // この時点で未反映でも失敗扱いにせず optimistic state を維持し、後続の bookmark_updated で揃える。
+        if (actualBookmarkedState === nextBookmarkedState) {
+          setIsBookmarked(actualBookmarkedState);
+        }
+
         container.toast.info(
           nextBookmarkedState
             ? "ブックマークに追加しました"
             : "ブックマークを削除しました",
         );
-        setIsBookmarked(readBookmarkStatus(bookmarkTarget.url));
       })
       .catch((error: unknown) => {
         setIsBookmarked(readBookmarkStatus(bookmarkTarget.url));
@@ -433,7 +507,7 @@ export const NavigationBar: React.FC = () => {
       .finally(() => {
         setIsBookmarkPending(false);
       });
-  }, [bookmarkTarget, isBookmarked, isBookmarkPending]);
+  }, [bookmarkTarget, isBookmarkPending]);
 
   const openQuickAccessPage = useCallback(
     (page: {
@@ -560,6 +634,7 @@ export const NavigationBar: React.FC = () => {
     }
 
     if (
+      currentPage.type === "bookmarkList" ||
       currentPage.type === "historyList" ||
       currentPage.type === "writeHistoryList"
     ) {
@@ -625,6 +700,7 @@ export const NavigationBar: React.FC = () => {
   const menuItems = useMemo(
     () => [
       ...(currentPage.type === "thread" ||
+      currentPage.type === "bookmarkList" ||
       currentPage.type === "historyList" ||
       currentPage.type === "writeHistoryList"
         ? [

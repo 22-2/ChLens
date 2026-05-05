@@ -39,15 +39,55 @@ const appObj: any = {
 };
 (window as any).app = appObj;
 
-// iframe内外で統一的にplatformにアクセスできるようにProxyを使用
+function readSameOriginParentApp(): Record<string, unknown> | null {
+  if (typeof window === "undefined" || self === top) {
+    return null;
+  }
+
+  try {
+    const candidate = (parent as { app?: unknown }).app;
+    return candidate != null && typeof candidate === "object"
+      ? (candidate as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function bridgeMissingRuntimeAppState(target: Record<string, unknown>): void {
+  const parentApp = readSameOriginParentApp();
+  if (!parentApp) {
+    return;
+  }
+
+  // 変更理由: new-ui は iframe 内でも local window.app だけを見たい。
+  // 親が後付けで差し込む runtime state は getter bridge で吸収し、各画面の parent.app 直参照をなくす。
+  for (const key of ["bookmark"]) {
+    if (Object.prototype.hasOwnProperty.call(target, key)) {
+      continue;
+    }
+
+    let hasLocalOverride = false;
+    let localOverride: unknown;
+
+    Object.defineProperty(target, key, {
+      configurable: true,
+      enumerable: true,
+      get() {
+        return hasLocalOverride ? localOverride : parentApp[key];
+      },
+      set(value) {
+        hasLocalOverride = true;
+        localOverride = value;
+      },
+    });
+  }
+}
+
+// runtime.ts 側で必要な内部値は吸収済みなので、new-ui は常にローカル platform を使う。
 export const platform = new Proxy({} as typeof platformInternal.platform, {
   get(_target, prop) {
-    // iframeはTauriのIPC橋がないため__TAURIがwindowに存在せず、
-    // platformInternal.platformがBrowserHttpClientになる。
-    // そのため親ウィンドウのplatformを優先して使用する。
-    const actualPlatform =
-      (self !== top && (parent as any).app?.platform) ||
-      platformInternal.platform;
+    const actualPlatform = platformInternal.platform;
     if (!actualPlatform) {
       console.error("platform is not initialized");
       return undefined;
@@ -60,15 +100,13 @@ export const platform = new Proxy({} as typeof platformInternal.platform, {
 export { _config };
 
 let _config: Config | undefined;
-if (!frameElement) {
-  _config = new Config();
-}
+_config = new Config();
 
-// iframe内外で統一的にconfigにアクセスできるようにProxyを使用
+// 変更理由: Config は共有ストレージを監視して同期できるため、
+// iframe でもローカルインスタンスを持たせて親依存を減らす。
 export const config = new Proxy({} as Config, {
   get(_target, prop) {
-    const actualConfig =
-      _config || (self !== top && (parent as any).app?._config);
+    const actualConfig = _config;
     if (!actualConfig) {
       console.error("config is not initialized");
       return undefined;
@@ -137,6 +175,8 @@ Object.assign(appObj, {
   Util,
   WriteHistory,
 });
+
+bridgeMissingRuntimeAppState(appObj);
 
 appObj.boot = boot; // Will be defined later
 
@@ -216,7 +256,8 @@ export async function boot(
 
     const onload = () => {
       config.ready(() => {
-        setupContainer(parent.app || (window as any).app);
+        const localApp = (window as any).app;
+        setupContainer(localApp);
 
         if (!requirements) {
           fn();
@@ -225,7 +266,7 @@ export async function boot(
 
         const modules: any[] = [];
         for (const module of <string[]>requirements) {
-          modules.push(parent.app[module]);
+          modules.push(localApp[module]);
         }
         fn(...modules);
       });

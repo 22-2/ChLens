@@ -9,6 +9,10 @@ import {
   formatCompactDateTime,
   normalizeLegacyTimestamp,
 } from "src/view/browser/utils/date-time";
+import {
+  getLegacyHistoryService,
+  getLegacyReadStateService,
+} from "src/view/browser/utils/legacy-app";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
 
 const PAGE_SIZE = 500;
@@ -86,11 +90,7 @@ function normalizeReadStateLookupUrl(url: string): string {
 }
 
 async function readHistoryUnreadCountIndex(): Promise<Map<string, number>> {
-  const readStateService = window.app?.ReadState as
-    | {
-        getAll?: () => Promise<unknown> | unknown;
-      }
-    | undefined;
+  const readStateService = getLegacyReadStateService();
 
   if (!readStateService?.getAll) {
     return new Map();
@@ -135,11 +135,7 @@ async function readHistoryEntriesPage(
   count: number,
   unreadCountIndex: ReadonlyMap<string, number>,
 ): Promise<HistoryPageResult> {
-  const historyService = window.app?.History as
-    | {
-        get?: (offset?: number, count?: number) => Promise<unknown> | unknown;
-      }
-    | undefined;
+  const historyService = getLegacyHistoryService();
 
   if (!historyService?.get) {
     return { entries: [], hasMore: false };
