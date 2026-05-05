@@ -66,8 +66,7 @@ export const ContextMenuHandler: React.FC<ContextMenuHandlerProps> = ({
           id: "remove-category",
           label: `このカテゴリを一覧から削除 (${state.categoryName})`,
           danger: true,
-          onSelect: () =>
-            onRemoveCategory(state.menuName, state.categoryName),
+          onSelect: () => onRemoveCategory(state.menuName, state.categoryName),
         },
       ];
     }

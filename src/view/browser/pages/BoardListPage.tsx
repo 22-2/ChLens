@@ -55,9 +55,21 @@ export const BoardListPage: React.FC<BoardListPageProps> = ({
   });
 
   const [contextMenuState, setContextMenuState] = useState<
-    | { type: "board"; x: number; y: number; boardName: string; boardUrl: string }
+    | {
+        type: "board";
+        x: number;
+        y: number;
+        boardName: string;
+        boardUrl: string;
+      }
     | { type: "menu"; x: number; y: number; menuName: string }
-    | { type: "category"; x: number; y: number; menuName: string; categoryName: string }
+    | {
+        type: "category";
+        x: number;
+        y: number;
+        menuName: string;
+        categoryName: string;
+      }
     | null
   >(null);
 

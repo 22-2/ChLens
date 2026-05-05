@@ -75,7 +75,8 @@ export class BBSMenuModel {
 
               return {
                 url: entry.url,
-                title: typeof entry.title === "string" ? entry.title : undefined,
+                title:
+                  typeof entry.title === "string" ? entry.title : undefined,
               };
             })
             .filter(

@@ -98,9 +98,7 @@ export function useSettingsMaintenanceActions({
       // 「その他」は履歴/既読由来の収集で再構成されるため実質維持される。
       const result = await container.bbsMenu.get(true);
       if (result.status === "success") {
-        container.toast.success(
-          "BBSMENUをリフレッシュしました",
-        );
+        container.toast.success("BBSMENUをリフレッシュしました");
       } else {
         container.toast.error(result.message ?? "BBSMENUの更新に失敗しました");
       }

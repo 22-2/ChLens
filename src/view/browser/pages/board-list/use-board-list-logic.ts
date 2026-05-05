@@ -226,9 +226,7 @@ export function useBoardListLogic() {
         persistRemovedCategoryIds(next);
         return next;
       });
-      container.toast.info(
-        `カテゴリ「${categoryName}」を一覧から削除しました`,
-      );
+      container.toast.info(`カテゴリ「${categoryName}」を一覧から削除しました`);
     },
     [persistRemovedCategoryIds],
   );

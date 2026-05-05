@@ -120,7 +120,9 @@ export function SettingsSupplementaryPanels({
                 )}
 
                 <Button
-                  onClick={() => container.message.send("bookmark_root_selector_open")}
+                  onClick={() =>
+                    container.message.send("bookmark_root_selector_open")
+                  }
                 >
                   {folderName ? "保存先を変更" : "保存先を選択"}
                 </Button>
@@ -140,7 +142,9 @@ export function SettingsSupplementaryPanels({
                 <Button
                   color="red"
                   variant="light"
-                  onClick={() => void maintenanceActions.handleResetAllSettings()}
+                  onClick={() =>
+                    void maintenanceActions.handleResetAllSettings()
+                  }
                   loading={maintenanceActions.isResettingAllSettings}
                 >
                   すべての設定をデフォルトに戻す

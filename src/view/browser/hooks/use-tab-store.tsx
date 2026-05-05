@@ -112,7 +112,9 @@ function getPageIdentity(page: Page): string {
   throw new Error("Unsupported page type");
 }
 
-function createThreadListPageFromBoardUrl(boardUrl: string): Extract<Page, { type: "threadList" }> {
+function createThreadListPageFromBoardUrl(
+  boardUrl: string,
+): Extract<Page, { type: "threadList" }> {
   const normalized = normalizePageLocation(boardUrl);
   return {
     type: "threadList",
@@ -122,7 +124,9 @@ function createThreadListPageFromBoardUrl(boardUrl: string): Extract<Page, { typ
   };
 }
 
-function resolveRelatedBoardPage(sourcePage: Page | null): Extract<Page, { type: "threadList" }> | null {
+function resolveRelatedBoardPage(
+  sourcePage: Page | null,
+): Extract<Page, { type: "threadList" }> | null {
   if (!sourcePage) {
     return null;
   }
@@ -131,8 +135,12 @@ function resolveRelatedBoardPage(sourcePage: Page | null): Extract<Page, { type:
     return {
       ...sourcePage,
       boardUrl: normalizePageLocation(sourcePage.boardUrl),
-      boardTitle: sourcePage.boardTitle || normalizePageLocation(sourcePage.boardUrl),
-      title: sourcePage.title || sourcePage.boardTitle || normalizePageLocation(sourcePage.boardUrl),
+      boardTitle:
+        sourcePage.boardTitle || normalizePageLocation(sourcePage.boardUrl),
+      title:
+        sourcePage.title ||
+        sourcePage.boardTitle ||
+        normalizePageLocation(sourcePage.boardUrl),
     };
   }
 
@@ -173,15 +181,19 @@ function resolveRelatedBoardPageFromTabHistory(
       continue;
     }
 
-    if (normalizePageLocation(candidate.boardUrl) !== normalizedTargetBoardUrl) {
+    if (
+      normalizePageLocation(candidate.boardUrl) !== normalizedTargetBoardUrl
+    ) {
       continue;
     }
 
     return {
       ...candidate,
       boardUrl: normalizedTargetBoardUrl,
-      boardTitle: candidate.boardTitle || candidate.title || normalizedTargetBoardUrl,
-      title: candidate.title || candidate.boardTitle || normalizedTargetBoardUrl,
+      boardTitle:
+        candidate.boardTitle || candidate.title || normalizedTargetBoardUrl,
+      title:
+        candidate.title || candidate.boardTitle || normalizedTargetBoardUrl,
     };
   }
 
@@ -234,7 +246,10 @@ function findTabByCurrentPage(
   );
 }
 
-function createTab(sourcePage: Page | null = null, sourceTab: Tab | null = null): Tab {
+function createTab(
+  sourcePage: Page | null = null,
+  sourceTab: Tab | null = null,
+): Tab {
   const initialPage = resolveConfiguredNewTabPage(sourcePage, sourceTab);
   return {
     id: crypto.randomUUID(),
@@ -370,7 +385,9 @@ function deriveBoardUrlFromThreadUrl(threadUrl: string): string | null {
 
   try {
     const parsed = new window.URL(threadUrl);
-    const match = parsed.pathname.match(/^(?:\/[\w-]+)?\/test\/read\.cgi\/([\w-]+)\/\d+\/?/);
+    const match = parsed.pathname.match(
+      /^(?:\/[\w-]+)?\/test\/read\.cgi\/([\w-]+)\/\d+\/?/,
+    );
     if (!match) {
       return null;
     }

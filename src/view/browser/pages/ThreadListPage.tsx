@@ -309,9 +309,13 @@ function writeOpenedBoardEntries(entries: OpenedBoardEntry[]): void {
   );
 }
 
-function upsertOpenedBoardEntry(boardUrl: string, boardTitle: string | null): void {
+function upsertOpenedBoardEntry(
+  boardUrl: string,
+  boardTitle: string | null,
+): void {
   const normalizedUrl = normalizeBoardUrl(boardUrl);
-  const nextTitle = boardTitle && boardTitle.trim() !== "" ? boardTitle : undefined;
+  const nextTitle =
+    boardTitle && boardTitle.trim() !== "" ? boardTitle : undefined;
   const existingEntries = readOpenedBoardEntries();
   const existingIndex = existingEntries.findIndex(
     (entry) => normalizeBoardUrl(entry.url) === normalizedUrl,
@@ -331,7 +335,10 @@ function upsertOpenedBoardEntry(boardUrl: string, boardTitle: string | null): vo
 
   // 変更理由: readState/history 未生成でも「一度開いた板」に残せるよう、
   // スレ一覧を開いた時点で板URLを明示記録する。
-  writeOpenedBoardEntries([{ url: normalizedUrl, title: nextTitle }, ...existingEntries]);
+  writeOpenedBoardEntries([
+    { url: normalizedUrl, title: nextTitle },
+    ...existingEntries,
+  ]);
 }
 
 function isResolvedBoardTitle(boardUrl: string, candidate: string): boolean {

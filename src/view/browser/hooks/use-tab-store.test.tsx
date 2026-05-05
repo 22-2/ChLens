@@ -863,15 +863,23 @@ describe("TabProvider auto refresh state", () => {
 
       return (
         <>
-          <button onClick={() => dispatch({ type: "ADD_TAB" })}>新規タブ</button>
+          <button onClick={() => dispatch({ type: "ADD_TAB" })}>
+            新規タブ
+          </button>
           <button onClick={() => dispatch({ type: "GO_FORWARD" })}>進む</button>
           <output data-testid="tabs-count">{state.tabs.length}</output>
           <output data-testid="current-page-type">{currentPage.type}</output>
           <output data-testid="history-length">
-            {String(state.tabs.find((tab) => tab.id === state.activeTabId)?.history.length ?? 0)}
+            {String(
+              state.tabs.find((tab) => tab.id === state.activeTabId)?.history
+                .length ?? 0,
+            )}
           </output>
           <output data-testid="history-index">
-            {String(state.tabs.find((tab) => tab.id === state.activeTabId)?.currentIndex ?? -1)}
+            {String(
+              state.tabs.find((tab) => tab.id === state.activeTabId)
+                ?.currentIndex ?? -1,
+            )}
           </output>
         </>
       );
@@ -936,7 +944,9 @@ describe("TabProvider auto refresh state", () => {
           >
             スレへ移動
           </button>
-          <button onClick={() => dispatch({ type: "ADD_TAB" })}>新規タブ</button>
+          <button onClick={() => dispatch({ type: "ADD_TAB" })}>
+            新規タブ
+          </button>
           <output data-testid="current-page-type">{currentPage.type}</output>
           <output data-testid="current-page-title">{currentPage.title}</output>
           <output data-testid="current-page-board-title">

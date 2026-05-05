@@ -8,9 +8,7 @@ export type SettingsSectionId =
   | "ng"
   | "other";
 
-export type SettingsSupplementaryPanelId =
-  | "externalIntegration"
-  | "dangerZone";
+export type SettingsSupplementaryPanelId = "externalIntegration" | "dangerZone";
 
 export type SettingsFormWidget = "radio" | "textarea" | "ng_editor";
 export type SettingsFormValue = boolean | number | string | undefined;

@@ -1616,7 +1616,9 @@ body {
 }
 
 .board-list-page .mantine-Accordion-chevron[data-rotate],
-.board-list-page .mantine-Accordion-control[data-active="true"] .mantine-Accordion-chevron {
+.board-list-page
+  .mantine-Accordion-control[data-active="true"]
+  .mantine-Accordion-chevron {
   transform: rotate(90deg);
 }
 

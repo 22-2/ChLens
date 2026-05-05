@@ -1,4 +1,10 @@
-import { Image as ImageIcon, MoreHorizontal, RefreshCw, Settings, ShieldAlert } from "lucide-react";
+import {
+  Image as ImageIcon,
+  MoreHorizontal,
+  RefreshCw,
+  Settings,
+  ShieldAlert,
+} from "lucide-react";
 import { container } from "src/service-container/index";
 import {
   buildFieldSchema,
@@ -300,10 +306,7 @@ export const SETTINGS_SECTIONS = [
       },
     ],
     {
-      supplementaryPanelIds: [
-        "externalIntegration",
-        "dangerZone",
-      ],
+      supplementaryPanelIds: ["externalIntegration", "dangerZone"],
     },
   ),
 ] as const satisfies readonly SettingsSectionDefinition[];
@@ -313,9 +316,7 @@ export const SETTINGS_SECTION_MAP = new Map<
   SettingsSectionDefinition
 >(SETTINGS_SECTIONS.map((section) => [section.id, section]));
 
-export function isSettingsSectionId(
-  value: string,
-): value is SettingsSectionId {
+export function isSettingsSectionId(value: string): value is SettingsSectionId {
   return SETTINGS_SECTION_MAP.has(value as SettingsSectionId);
 }
 
@@ -368,7 +369,10 @@ function readSectionFormData(
 
 export function readAllSettings(): SettingsFormState {
   return Object.fromEntries(
-    SETTINGS_SECTIONS.map((section) => [section.id, readSectionFormData(section)]),
+    SETTINGS_SECTIONS.map((section) => [
+      section.id,
+      readSectionFormData(section),
+    ]),
   ) as SettingsFormState;
 }
 
@@ -377,14 +381,16 @@ export async function saveSectionFormData(
   formData: SettingsSectionFormData,
 ): Promise<void> {
   await Promise.all(
-    section.fields.filter(isSettingsFieldItem).map((field) =>
-      Promise.resolve(
-        container.config.set(
-          field.key,
-          writeFieldValue(field, formData[field.key]),
+    section.fields
+      .filter(isSettingsFieldItem)
+      .map((field) =>
+        Promise.resolve(
+          container.config.set(
+            field.key,
+            writeFieldValue(field, formData[field.key]),
+          ),
         ),
       ),
-    ),
   );
 }
 

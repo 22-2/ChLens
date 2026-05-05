@@ -84,10 +84,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": [
-        "/view/index.html",
-        "/lib/monaco/vs/**/*"
-      ],
+      "resources": ["/view/index.html", "/lib/monaco/vs/**/*"],
       "matches": [
         "*://*.2ch.net/*",
         "*://*.5ch.io/*",

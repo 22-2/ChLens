@@ -57,7 +57,9 @@ export function useBoardListDisplay(params: {
         const nextCategories = menu.categories
           .filter(
             (category) =>
-              !removedCategoryIds.has(buildCategoryId(menu.name, category.name)),
+              !removedCategoryIds.has(
+                buildCategoryId(menu.name, category.name),
+              ),
           )
           .map((category) => ({
             ...category,
@@ -226,8 +228,7 @@ function applySearchFilter(
       const nextCategories = menu.categories
         .map((category) => {
           const categoryMatch =
-            menuMatch ||
-            category.name.toLowerCase().includes(normalizedQuery);
+            menuMatch || category.name.toLowerCase().includes(normalizedQuery);
           const filteredBoards = categoryMatch
             ? category.boards
             : category.boards.filter((board) => {

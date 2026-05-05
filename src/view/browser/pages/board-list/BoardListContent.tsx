@@ -48,7 +48,10 @@ interface BoardListContentProps {
   openStates: Record<string, boolean>;
   openedMenuValues: string[];
   onMenuAccordionChange: (openedMenuNames: string[]) => void;
-  onCategoryAccordionChange: (menuName: string, openedCategoryIds: string[]) => void;
+  onCategoryAccordionChange: (
+    menuName: string,
+    openedCategoryIds: string[],
+  ) => void;
   onBoardClick: (boardUrl: string, boardTitle: string) => void;
   onBoardMiddleClick: (boardUrl: string, boardTitle: string) => void;
   onContextMenu: (state: BoardContextMenuState) => void;
