@@ -379,6 +379,24 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 - [x] ブックマークを開いても何も出ない
 - [x] 閲覧履歴を開いているとき、タブを新しく開こうとすると重い
 
+```
+設定にimport/exportページを追加してくださいっす
+
+importは
+
+Exportセクションは
+チェックボックスがあるっす
+
+ブックマーク
+書き込み履歴
+閲覧履歴
+ログ
+
+一番下にエクスポートがあって
+```
+
+- [ ] 設定画面再設計
+
 ### low prior
 - [x] feat: ブラウザのようなアドレスバーのブックマークボタン
 - [ ] siki過去ログ流し込み
@@ -395,3 +413,4 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 - [ ] スクロール位置の復元が出来たから、もうdisplay: hiddenでタブ切り替えはいらない？
 
 ## メタ
+

@@ -3,6 +3,8 @@ export interface IConfig {
   get(key: string): any;
   set(key: string, value: any): void;
   ready(callback: () => void): void;
+  getAll?(): Record<string, string>;
+  del?(key: string): Promise<void>;
 }
 
 export interface ICacheItem {

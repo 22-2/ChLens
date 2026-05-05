@@ -910,6 +910,92 @@ body {
   color: #d93025;
 }
 
+.settings-page__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 8px 14px;
+  border: 1px solid #dadce0;
+  border-radius: 10px;
+  background: #fff;
+  color: #202124;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+
+  &:hover:not(:disabled) {
+    background: #f8f9fa;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.settings-page__button--primary {
+  background: #1a73e8;
+  border-color: #1a73e8;
+  color: #fff;
+
+  &:hover:not(:disabled) {
+    background: #1765ca;
+    border-color: #1765ca;
+  }
+}
+
+.settings-page__button--danger {
+  background: #d93025;
+  border-color: #d93025;
+  color: #fff;
+
+  &:hover:not(:disabled) {
+    background: #b3261e;
+    border-color: #b3261e;
+  }
+}
+
+.settings-page__maintenance-actions {
+  margin-top: 28px;
+  display: grid;
+  gap: 12px;
+  padding: 18px 20px;
+  border: 1px solid #dadce0;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.settings-page__maintenance-actions--danger {
+  border-color: #f2b8b5;
+  background: #fff8f7;
+}
+
+.settings-page__maintenance-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #202124;
+}
+
+.settings-page__maintenance-description {
+  margin: 0;
+  font-size: 13px;
+  color: #5f6368;
+  line-height: 1.6;
+}
+
+.settings-page__maintenance-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .bookmark-root-dialog {
   position: fixed;
   inset: 0;
@@ -3644,6 +3730,24 @@ body {
 
   .settings-page__bookmark-source-error {
     color: #f28b82;
+  }
+
+  .settings-page__maintenance-actions {
+    background: #202124;
+    border-color: #3c4043;
+  }
+
+  .settings-page__maintenance-actions--danger {
+    background: #2b1a1a;
+    border-color: #8c3d3d;
+  }
+
+  .settings-page__maintenance-title {
+    color: #e8eaed;
+  }
+
+  .settings-page__maintenance-description {
+    color: #9aa0a6;
   }
 
   .bookmark-root-dialog__backdrop {

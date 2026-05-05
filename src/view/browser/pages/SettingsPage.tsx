@@ -652,6 +652,13 @@ const widgets = {
   },
 };
 
+function readBBSMenuUrlsForCheck(raw: string): string[] {
+  return raw
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line !== "" && !line.startsWith("//"));
+}
+
 const BookmarkSourceSettingsCard: React.FC = () => {
   const [folderName, setFolderName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -757,6 +764,9 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({
     useState<SettingsSectionId | null>(null);
   const [autoSaveError, setAutoSaveError] = useState<string | null>(null);
   const [isNgAdvancedOpen, setIsNgAdvancedOpen] = useState(false);
+  const [isBbsMenuChecking, setIsBbsMenuChecking] = useState(false);
+  const [isBbsMenuRefreshing, setIsBbsMenuRefreshing] = useState(false);
+  const [isResettingAllSettings, setIsResettingAllSettings] = useState(false);
   const autoSaveTimerRef = useRef<number | null>(null);
   const mainPanelRef = useRef<HTMLDivElement | null>(null);
   const restoredScrollTopRef = useRef<number>(0);
@@ -995,6 +1005,138 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({
     [scheduleAutoSave],
   );
 
+  const handleBBSMenuCheck = useCallback(async () => {
+    if (isBbsMenuChecking || !formState) {
+      return;
+    }
+
+    const raw = formState.other?.bbsmenu;
+    const targets = readBBSMenuUrlsForCheck(typeof raw === "string" ? raw : "");
+    if (targets.length === 0) {
+      container.toast.error("チェック対象のBBSMENU URLがありません");
+      return;
+    }
+
+    setIsBbsMenuChecking(true);
+    try {
+      const results = await Promise.all(
+        targets.map(async (targetUrl) => {
+          try {
+            const response = await fetch(targetUrl, {
+              method: "GET",
+              cache: "no-store",
+            });
+            return {
+              ok: response.ok,
+              status: response.status,
+              url: targetUrl,
+            };
+          } catch {
+            return {
+              ok: false,
+              status: 0,
+              url: targetUrl,
+            };
+          }
+        }),
+      );
+
+      const failed = results.filter((result) => !result.ok);
+      if (failed.length === 0) {
+        container.toast.success(
+          `BBSMENU読み込みチェック成功 (${results.length}件)`,
+        );
+      } else {
+        const summary = failed
+          .slice(0, 3)
+          .map((entry) => `${entry.status || "ERR"}: ${entry.url}`)
+          .join(" / ");
+        container.toast.error(
+          `BBSMENU読み込みチェック失敗 (${failed.length}/${results.length}件): ${summary}`,
+        );
+      }
+    } finally {
+      setIsBbsMenuChecking(false);
+    }
+  }, [formState, isBbsMenuChecking]);
+
+  const handleBBSMenuRefresh = useCallback(async () => {
+    if (isBbsMenuRefreshing) {
+      return;
+    }
+
+    setIsBbsMenuRefreshing(true);
+    try {
+      // 通常メニューは forceReload で再取得して上書きしつつ、
+      // 「その他」は履歴/既読由来の収集で再構成されるため実質維持される。
+      const result = await container.bbsMenu.get(true);
+      if (result.status === "success") {
+        container.toast.success(
+          "BBSMENUをリフレッシュしました（その他以外を上書き）",
+        );
+      } else {
+        container.toast.error(result.message ?? "BBSMENUの更新に失敗しました");
+      }
+    } catch (refreshError) {
+      container.toast.error(
+        refreshError instanceof Error
+          ? refreshError.message
+          : "BBSMENUの更新に失敗しました",
+      );
+    } finally {
+      setIsBbsMenuRefreshing(false);
+    }
+  }, [isBbsMenuRefreshing]);
+
+  const handleResetAllSettings = useCallback(async () => {
+    if (isResettingAllSettings) {
+      return;
+    }
+
+    const accepted = window.confirm(
+      "すべての設定をデフォルトに戻します。よろしいですか？",
+    );
+    if (!accepted) {
+      return;
+    }
+
+    setIsResettingAllSettings(true);
+    setAutoSaveError(null);
+    try {
+      if (autoSaveTimerRef.current != null) {
+        window.clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = null;
+      }
+
+      const getAll = container.config.getAll;
+      const del = container.config.del;
+      if (!getAll || !del) {
+        throw new Error("設定リセットAPIが利用できません");
+      }
+
+      const allConfigEntries = getAll();
+      const keys = Object.keys(allConfigEntries)
+        .filter((key) => key.startsWith("config_"))
+        .map((key) => key.slice(7));
+
+      // 既定値へ戻す目的なので set(default) ではなく del を使い、
+      // 既定に存在しない一時キー（例: board_list_open_states）も同時に掃除する。
+      await Promise.all(keys.map((key) => Promise.resolve(del(key))));
+
+      setFormState(readAllSettings());
+      container.toast.success("すべての設定をデフォルトに戻しました");
+    } catch (resetError) {
+      const message =
+        resetError instanceof Error
+          ? resetError.message
+          : "設定の初期化に失敗しました";
+      setAutoSaveError(message);
+      container.toast.error(message);
+    } finally {
+      setIsResettingAllSettings(false);
+    }
+  }, [isResettingAllSettings]);
+
   useEffect(() => {
     return () => {
       if (autoSaveTimerRef.current != null) {
@@ -1140,7 +1282,63 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({
               </>
             )}
 
-            {activeSection.id === "other" && <BookmarkSourceSettingsCard />}
+            {activeSection.id === "other" && (
+              <>
+                <section className="settings-page__maintenance-actions">
+                  <p className="settings-page__maintenance-title">
+                    BBSMENUメンテナンス
+                  </p>
+                  <p className="settings-page__maintenance-description">
+                    読み込み確認と強制リフレッシュを実行できます。
+                  </p>
+                  <div className="settings-page__maintenance-buttons">
+                    <button
+                      type="button"
+                      className="settings-page__button"
+                      onClick={() => void handleBBSMenuCheck()}
+                      disabled={isBbsMenuChecking || isBbsMenuRefreshing}
+                    >
+                      {isBbsMenuChecking
+                        ? "BBSMENUをチェック中..."
+                        : "BBSMENU読み込みチェック"}
+                    </button>
+                    <button
+                      type="button"
+                      className="settings-page__button settings-page__button--primary"
+                      onClick={() => void handleBBSMenuRefresh()}
+                      disabled={isBbsMenuRefreshing || isBbsMenuChecking}
+                    >
+                      {isBbsMenuRefreshing
+                        ? "BBSMENUを更新中..."
+                        : "BBSMENUリフレッシュ（その他以外すべて上書き）"}
+                    </button>
+                  </div>
+                </section>
+
+                <section className="settings-page__maintenance-actions settings-page__maintenance-actions--danger">
+                  <p className="settings-page__maintenance-title">
+                    設定の初期化
+                  </p>
+                  <p className="settings-page__maintenance-description">
+                    すべての設定をデフォルト値へ戻します。
+                  </p>
+                  <div className="settings-page__maintenance-buttons">
+                    <button
+                      type="button"
+                      className="settings-page__button settings-page__button--danger"
+                      onClick={() => void handleResetAllSettings()}
+                      disabled={isResettingAllSettings}
+                    >
+                      {isResettingAllSettings
+                        ? "設定を初期化中..."
+                        : "すべての設定をデフォルトに戻す"}
+                    </button>
+                  </div>
+                </section>
+
+                <BookmarkSourceSettingsCard />
+              </>
+            )}
           </div>
         </div>
       </div>

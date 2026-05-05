@@ -57,6 +57,8 @@ export function setupContainer(app: any) {
       }
     },
     ready: (cb: () => void) => app.config.ready(cb),
+    getAll: () => app.config.getAll(),
+    del: (key: string) => app.config.del(key),
   };
 
   app.message.on("config_updated", ({ key }: { key?: string }) => {
