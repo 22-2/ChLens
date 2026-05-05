@@ -951,7 +951,9 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       miniAaResNums,
       page,
       onWriteHistoryAdded: handleWriteHistoryAdded,
+      searchQuery,
       setFilter,
+      setSearchQuery,
       setMiniAaResNums,
       setResponses,
     });

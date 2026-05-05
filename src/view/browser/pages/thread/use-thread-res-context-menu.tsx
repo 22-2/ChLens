@@ -42,7 +42,9 @@ interface UseThreadResContextMenuParams {
   miniAaResNums: Set<number>;
   page: Props["page"];
   onWriteHistoryAdded?: (resNum: number) => void;
+  searchQuery: string;
   setFilter: (filter: ThreadFilter) => void;
+  setSearchQuery: React.Dispatch<React.SetStateAction<string>>;
   setMiniAaResNums: React.Dispatch<React.SetStateAction<Set<number>>>;
   setResponses: React.Dispatch<React.SetStateAction<IRes[]>>;
 }
@@ -65,7 +67,9 @@ export function useThreadResContextMenu({
   miniAaResNums,
   page,
   onWriteHistoryAdded,
+  searchQuery,
   setFilter,
+  setSearchQuery,
   setMiniAaResNums,
   setResponses,
 }: UseThreadResContextMenuParams): UseThreadResContextMenuResult {
@@ -160,6 +164,7 @@ export function useThreadResContextMenu({
       const isMiniAa = miniAaResNums.has(targetRes.num);
       const selectedText = window.getSelection()?.toString().trim() ?? "";
       const hasSelection = selectedText.length > 0;
+      const hasKeywordFilter = searchQuery.trim().length > 0;
 
       return [
         // 選択テキスト向け操作は誤クリックを減らすため最上段に固定する。
@@ -213,15 +218,18 @@ export function useThreadResContextMenu({
           : []),
         // フィルタ適用中のみ「フィルタを解除してジャンプ」を先頭に挿入する。
         // setFilter後はDOMがまだ更新されていないため、pendingJumpNumRefとeffectで遅延ジャンプする。
-        ...(filter !== "all" && !fromPopup
+        ...((filter !== "all" || hasKeywordFilter) && !fromPopup
           ? [
               {
                 id: "clear-filter-jump",
                 label: "フィルタリングを解除してこのレスにジャンプ",
                 icon: <FilterX size={14} />,
                 onSelect: () => {
+                  // キーワード絞り込み中も同じ導線で確実に到達できるよう、
+                  // 種別フィルタと検索語の両方を解除してから遅延ジャンプする。
                   pendingJumpNumRef.current = targetRes.num;
                   setFilter("all");
+                  setSearchQuery("");
                 },
               },
               { id: "sep-filter", separator: true },
@@ -360,7 +368,9 @@ export function useThreadResContextMenu({
       miniAaResNums,
       page.threadUrl,
       page.title,
+      searchQuery,
       setFilter,
+      setSearchQuery,
       setMiniAaResNums,
     ],
   );
