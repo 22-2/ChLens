@@ -1,0 +1,94 @@
+import type { RJSFSchema, UiSchema } from "@rjsf/utils";
+import type { ReactNode } from "react";
+
+export type SettingsSectionId =
+  | "general"
+  | "reload"
+  | "thumbnail"
+  | "ng"
+  | "other";
+
+export type SettingsSupplementaryPanelId =
+  | "externalIntegration"
+  | "dangerZone";
+
+export type SettingsFormWidget = "radio" | "textarea" | "ng_editor";
+export type SettingsFormValue = boolean | number | string | undefined;
+export type SettingsSectionFormData = Record<string, SettingsFormValue>;
+export type SettingsFormState = Record<
+  SettingsSectionId,
+  SettingsSectionFormData
+>;
+
+export interface SettingsOption {
+  const: string;
+  title: string;
+}
+
+export interface SettingsFieldBase {
+  key: string;
+  title: string;
+  description?: string;
+  widget?: SettingsFormWidget;
+  rows?: number;
+}
+
+export interface SettingsBooleanField extends SettingsFieldBase {
+  kind: "boolean";
+}
+
+export interface SettingsNumberField extends SettingsFieldBase {
+  kind: "number";
+  minimum?: number;
+  maximum?: number;
+  step?: number;
+}
+
+export interface SettingsStringField extends SettingsFieldBase {
+  kind: "string";
+  options?: readonly SettingsOption[];
+}
+
+export type SettingsFieldDefinition =
+  | SettingsBooleanField
+  | SettingsNumberField
+  | SettingsStringField;
+
+export interface SettingsDividerItem {
+  kind: "divider";
+  id: string;
+  title: string;
+  description?: string;
+}
+
+export type SettingsSectionItem = SettingsFieldDefinition | SettingsDividerItem;
+
+export function isSettingsDividerItem(
+  item: SettingsSectionItem,
+): item is SettingsDividerItem {
+  return item.kind === "divider";
+}
+
+export function isSettingsFieldItem(
+  item: SettingsSectionItem,
+): item is SettingsFieldDefinition {
+  return item.kind !== "divider";
+}
+
+export interface SettingsSectionDefinition {
+  id: SettingsSectionId;
+  title: string;
+  description: string;
+  icon: ReactNode;
+  fields: readonly SettingsSectionItem[];
+  schema: RJSFSchema;
+  uiSchema: UiSchema<SettingsSectionFormData>;
+  supplementaryPanelIds?: readonly SettingsSupplementaryPanelId[];
+}
+
+export interface SettingsPageUiState {
+  activeSectionId?: SettingsSectionId;
+  mainScrollTop?: number;
+  ngExamplesOpen?: boolean;
+  ngAdvancedOpen?: boolean;
+}

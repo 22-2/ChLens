@@ -1,4 +1,5 @@
 import { createRoot } from "react-dom/client";
+import "@mantine/core/styles.css";
 import "src/app";
 import "src/bundle.scss";
 import { BrowserApp } from "src/view/browser/App";

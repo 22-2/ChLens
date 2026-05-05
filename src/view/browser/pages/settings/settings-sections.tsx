@@ -1,0 +1,364 @@
+import { Image as ImageIcon, MoreHorizontal, RefreshCw, Settings, ShieldAlert } from "lucide-react";
+import { container } from "src/service-container/index";
+import {
+  buildFieldSchema,
+  buildUiSchema,
+} from "src/view/browser/pages/settings/settings-form-registry";
+import type {
+  SettingsFieldDefinition,
+  SettingsFormState,
+  SettingsFormValue,
+  SettingsSectionItem,
+  SettingsOption,
+  SettingsSectionDefinition,
+  SettingsSectionFormData,
+  SettingsSectionId,
+  SettingsSupplementaryPanelId,
+} from "src/view/browser/pages/settings/settings-types";
+import { isSettingsFieldItem } from "src/view/browser/pages/settings/settings-types";
+
+const FORMAT_2CH_OPTIONS = [
+  { const: "html", title: "HTML" },
+  { const: "dat", title: "dat" },
+] as const satisfies readonly SettingsOption[];
+
+const THEME_ID_OPTIONS = [
+  { const: "system", title: "システム（OSに合わせる）" },
+  { const: "default", title: "ライト" },
+  { const: "dark", title: "ダーク" },
+] as const satisfies readonly SettingsOption[];
+
+const HOW_TO_JUDGMENT_ID_OPTIONS = [
+  { const: "first_res", title: "1レス目に存在する場合" },
+  { const: "exists_once", title: "1つでも存在する場合" },
+] as const satisfies readonly SettingsOption[];
+
+export const SETTINGS_PAGE_STATE_KEY = "readcrx.settings-page.state.v1";
+export const AUTO_SAVE_DELAY_MS = 350;
+export const NG_PRIMARY_FIELD_KEYS = new Set(["ngwords"]);
+
+function defineSection(
+  id: SettingsSectionId,
+  title: string,
+  description: string,
+  icon: React.ReactNode,
+  fields: readonly SettingsSectionItem[],
+  options?: {
+    supplementaryPanelIds?: readonly SettingsSupplementaryPanelId[];
+  },
+): SettingsSectionDefinition {
+  const fieldItems = fields.filter(isSettingsFieldItem);
+
+  // 変更理由: セクション定義を data 中心に寄せると、
+  // 設定項目の追加・移動時に巨大 JSX を触らずに済む。
+  return {
+    id,
+    title,
+    description,
+    icon,
+    fields,
+    schema: {
+      type: "object",
+      properties: Object.fromEntries(
+        fieldItems.map((field) => [field.key, buildFieldSchema(field)]),
+      ),
+      additionalProperties: false,
+    },
+    uiSchema: buildUiSchema(fieldItems),
+    supplementaryPanelIds: options?.supplementaryPanelIds,
+  };
+}
+
+export const SETTINGS_SECTIONS = [
+  defineSection(
+    "general",
+    "一般",
+    "タブ動作や表示設定など、ブラウザ全体の基本設定です。",
+    <Settings size={20} />,
+    [
+      {
+        kind: "divider",
+        id: "appearance",
+        title: "外観",
+      },
+      {
+        kind: "string",
+        key: "theme_id",
+        title: "テーマ",
+        options: THEME_ID_OPTIONS,
+        widget: "radio",
+      },
+      {
+        kind: "divider",
+        id: "write",
+        title: "書き込み",
+      },
+      {
+        kind: "boolean",
+        key: "write_submit_ctrl_enter",
+        title: "Ctrl+Enterで書き込む",
+      },
+      {
+        kind: "divider",
+        id: "network",
+        title: "通信",
+      },
+      {
+        kind: "string",
+        key: "format_2chnet",
+        title: "2chnetの取得形式",
+        options: FORMAT_2CH_OPTIONS,
+        widget: "radio",
+      },
+    ],
+  ),
+  defineSection(
+    "reload",
+    "更新関連",
+    "自動更新と次スレ追従、更新後のスクロール挙動を調整します。",
+    <RefreshCw size={20} />,
+    [
+      {
+        kind: "divider",
+        id: "operation",
+        title: "操作",
+      },
+      {
+        kind: "boolean",
+        key: "dblclick_reload",
+        title: "空白をダブルクリックで更新する",
+      },
+      {
+        kind: "divider",
+        id: "auto-next-thread",
+        title: "自動次スレ移動",
+      },
+      {
+        kind: "boolean",
+        key: "auto_next_thread",
+        title: "1000到達やdat落ち後に次スレへ自動移動する",
+        description:
+          "3秒ごとに最大180秒探索し、移動後は勢い差を見て本流候補を短時間だけ監視します。",
+      },
+    ],
+  ),
+  defineSection(
+    "thumbnail",
+    "サムネイル",
+    "画像・動画の読み込みとプレビューサイズを調整します。",
+    <ImageIcon size={20} />,
+    [
+      {
+        kind: "divider",
+        id: "load",
+        title: "読み込み設定",
+      },
+      // {
+      //   kind: "boolean",
+      //   key: "manual_image_load",
+      //   title: "画像を手動で読み込む",
+      // },
+      {
+        kind: "divider",
+        id: "blur",
+        title: "ぼかし設定",
+      },
+      {
+        kind: "boolean",
+        key: "image_blur",
+        title: "画像にぼかしを適用する",
+      },
+      {
+        kind: "number",
+        key: "image_blur_length",
+        title: "ぼかし量",
+        minimum: 1,
+        maximum: 9,
+        step: 1,
+      },
+      {
+        kind: "string",
+        key: "image_blur_word",
+        title: "ぼかし判定ワード",
+        description: "正規表現で指定します。",
+      },
+    ],
+  ),
+  defineSection(
+    "ng",
+    "NG",
+    "NGワードと非表示関連の設定をまとめています。",
+    <ShieldAlert size={20} />,
+    [
+      {
+        kind: "string",
+        key: "ngwords",
+        title: "NGワード一覧",
+        description:
+          'NGワードを1行に1つずつ記述します。説明文は // で始めるとメモとして残せます。（例: 「Body(荒らし)」は「Body(word="荒らし")」と同じ意味です）。詳しくは下の例を参照してください。',
+        widget: "ng_editor",
+      },
+      {
+        kind: "divider",
+        id: "chain",
+        title: "連鎖NG",
+      },
+      {
+        kind: "boolean",
+        key: "chain_ng",
+        title: "NGレスへの返信を連鎖NGにする",
+      },
+      {
+        kind: "divider",
+        id: "judgement",
+        title: "判定基準",
+      },
+      {
+        kind: "boolean",
+        key: "use_siki_guard",
+        title: "しきい値ガードを有効にする",
+      },
+      {
+        kind: "boolean",
+        key: "nothing_id_ng",
+        title: "IDありスレのIDなしレスをNGにする",
+      },
+      {
+        kind: "boolean",
+        key: "nothing_slip_ng",
+        title: "SLIPありスレのSLIPなしレスをNGにする",
+      },
+      {
+        kind: "string",
+        key: "how_to_judgment_id",
+        title: "ID / SLIP 判定方法",
+        options: HOW_TO_JUDGMENT_ID_OPTIONS,
+        widget: "radio",
+      },
+    ],
+  ),
+  defineSection(
+    "other",
+    "その他",
+    "書き込み時の既定値や外部データ設定です。",
+    <MoreHorizontal size={20} />,
+    [
+      {
+        kind: "divider",
+        id: "external-data",
+        title: "bbsmenu",
+      },
+      {
+        kind: "number",
+        key: "bbsmenu_update_interval",
+        title: "更新間隔 (日)",
+        minimum: 1,
+        step: 1,
+      },
+      {
+        kind: "string",
+        key: "bbsmenu",
+        title: "URL一覧",
+        widget: "textarea",
+        rows: 6,
+      },
+      {
+        kind: "divider",
+        id: "debug",
+        title: "デバッグ",
+      },
+      {
+        kind: "boolean",
+        key: "debug_log",
+        title: "ログを有効にする",
+        description: "ONで詳細ログを出力します。",
+      },
+    ],
+    {
+      supplementaryPanelIds: [
+        "externalIntegration",
+        "dangerZone",
+      ],
+    },
+  ),
+] as const satisfies readonly SettingsSectionDefinition[];
+
+export const SETTINGS_SECTION_MAP = new Map<
+  SettingsSectionId,
+  SettingsSectionDefinition
+>(SETTINGS_SECTIONS.map((section) => [section.id, section]));
+
+export function isSettingsSectionId(
+  value: string,
+): value is SettingsSectionId {
+  return SETTINGS_SECTION_MAP.has(value as SettingsSectionId);
+}
+
+function readFieldValue(field: SettingsFieldDefinition): SettingsFormValue {
+  const rawValue = container.config.get(field.key);
+  switch (field.kind) {
+    case "boolean":
+      return rawValue === "on";
+    case "number": {
+      const parsed = Number(rawValue ?? 0);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+    case "string":
+      return typeof rawValue === "string" ? rawValue : "";
+  }
+}
+
+function writeFieldValue(
+  field: SettingsFieldDefinition,
+  value: SettingsFormValue,
+): string {
+  switch (field.kind) {
+    case "boolean":
+      return value ? "on" : "off";
+    case "number":
+      return String(
+        typeof value === "number" && Number.isFinite(value) ? value : 0,
+      );
+    case "string":
+      return typeof value === "string" ? value : "";
+  }
+}
+
+function readSectionFormData(
+  section: SettingsSectionDefinition,
+): SettingsSectionFormData {
+  return Object.fromEntries(
+    section.fields
+      .filter(isSettingsFieldItem)
+      .map((field) => [field.key, readFieldValue(field)]),
+  );
+}
+
+export function readAllSettings(): SettingsFormState {
+  return Object.fromEntries(
+    SETTINGS_SECTIONS.map((section) => [section.id, readSectionFormData(section)]),
+  ) as SettingsFormState;
+}
+
+export async function saveSectionFormData(
+  section: SettingsSectionDefinition,
+  formData: SettingsSectionFormData,
+): Promise<void> {
+  await Promise.all(
+    section.fields.filter(isSettingsFieldItem).map((field) =>
+      Promise.resolve(
+        container.config.set(
+          field.key,
+          writeFieldValue(field, formData[field.key]),
+        ),
+      ),
+    ),
+  );
+}
+
+export function readBBSMenuUrlsForCheck(raw: string): string[] {
+  return raw
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line !== "" && !line.startsWith("//"));
+}

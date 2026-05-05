@@ -8,6 +8,7 @@ import {
 } from "src/core/NGConverter";
 import { NG_DSL_LANGUAGE_ID } from "src/core/ngDsl";
 import { ensureNgDslLanguage } from "src/view/browser/components/ngDslMonaco";
+import { useTheme } from "src/view/browser/hooks/use-theme";
 
 type MonacoEnvironmentLike = {
   getWorker?: (moduleId: string, label: string) => Worker;
@@ -65,6 +66,10 @@ const configureMonacoEnvironment = (): void => {
 
 configureMonacoEnvironment();
 
+function resolveMonacoTheme(theme: "light" | "dark"): "vs" | "vs-dark" {
+  return theme === "dark" ? "vs-dark" : "vs";
+}
+
 interface NGEditorProps {
   value: string; // DSL string
   onChange: (value: string) => void;
@@ -114,14 +119,16 @@ export const NGDslHelpSnippet: React.FC<NGDslHelpSnippetProps> = ({
   minHeight = 120,
 }) => {
   const monaco = useMonaco();
+  const theme = useTheme();
+  const monacoTheme = resolveMonacoTheme(theme);
 
   useEffect(() => {
     configureMonacoEnvironment();
     if (monaco) {
       ensureNgDslLanguage(monaco);
-      monaco.editor.setTheme("vs-dark");
+      monaco.editor.setTheme(monacoTheme);
     }
-  }, [monaco]);
+  }, [monaco, monacoTheme]);
 
   const snippetHeight = useMemo(() => {
     const lineCount = code.split("\n").length;
@@ -142,7 +149,7 @@ export const NGDslHelpSnippet: React.FC<NGDslHelpSnippetProps> = ({
           configureMonacoEnvironment();
           ensureNgDslLanguage(beforeMountMonaco);
           try {
-            beforeMountMonaco.editor.setTheme("vs-dark");
+            beforeMountMonaco.editor.setTheme(monacoTheme);
           } catch (e) {
             console.warn("Failed to set monaco theme in help snippet", e);
           }
@@ -198,6 +205,8 @@ function removeIdTargetRules(rules: NGRule[]): {
 
 export const NGEditor: React.FC<NGEditorProps> = ({ value, onChange }) => {
   const monaco = useMonaco();
+  const theme = useTheme();
+  const monacoTheme = resolveMonacoTheme(theme);
 
   const initialValue = useMemo(() => {
     const trimmed = value.trim();
@@ -227,9 +236,9 @@ export const NGEditor: React.FC<NGEditorProps> = ({ value, onChange }) => {
     configureMonacoEnvironment();
     if (monaco) {
       ensureNgDslLanguage(monaco);
-      monaco.editor.setTheme("vs-dark");
+      monaco.editor.setTheme(monacoTheme);
     }
-  }, [monaco]);
+  }, [monaco, monacoTheme]);
 
   const handleEditorChange = (newValue: string | undefined) => {
     if (newValue === undefined) return;
@@ -282,7 +291,7 @@ export const NGEditor: React.FC<NGEditorProps> = ({ value, onChange }) => {
             ensureNgDslLanguage(beforeMountMonaco);
             // Editor インスタンス作成前にテーマを固定しておく（再生成時のフラッシュ対策）
             try {
-              beforeMountMonaco.editor.setTheme("vs-dark");
+              beforeMountMonaco.editor.setTheme(monacoTheme);
             } catch (e) {
               // 万が一 monaco.editor が使えない環境でも安全に処理を続行する
               // ここは副作用であり、失敗しても動作に致命的な影響は与えない
@@ -293,7 +302,7 @@ export const NGEditor: React.FC<NGEditorProps> = ({ value, onChange }) => {
           onMount={(editor, mountedMonaco) => {
             // エディタがマウントされるタイミングでもテーマを再適用する
             try {
-              mountedMonaco.editor.setTheme("vs-dark");
+              mountedMonaco.editor.setTheme(monacoTheme);
             } catch (e) {
               console.warn("Failed to set monaco theme on mount", e);
             }

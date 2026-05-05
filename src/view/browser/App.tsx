@@ -1,3 +1,4 @@
+import { MantineProvider, createTheme } from "@mantine/core";
 import { PenLine } from "lucide-react";
 import React from "react";
 import { Toaster } from "sonner";
@@ -25,6 +26,12 @@ import { NgStatusProvider } from "src/view/browser/hooks/use-ng-status";
 import { useNotificationListener } from "src/view/browser/hooks/use-notification-listener";
 import { TabProvider, useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useTheme } from "src/view/browser/hooks/use-theme";
+
+const mantineTheme = createTheme({
+  fontFamily: '"Noto Sans JP", "Yu Gothic UI", sans-serif',
+  defaultRadius: "md",
+  primaryColor: "blue",
+});
 
 // ステータスバー左端に常設される書き込みパネル開閉ボタン
 const WritePanelToggleItem: React.FC = () => {
@@ -60,40 +67,45 @@ export const BrowserApp: React.FC = () => {
   useNotificationListener();
 
   return (
-    <TabProvider>
-      <StatusBarProvider>
-        <NgStatusProvider>
-          <BottomPanelProvider>
-            <AutoScrollStateProvider>
-              {/* data-theme を使ってダークモード CSS 変数を切り替える */}
-              <div className="browser-shell" data-theme={theme}>
-                <Toaster
-                  position="top-right"
-                  theme={theme === "dark" ? "dark" : "light"}
-                  offset={{
-                    top: "88px",
-                    right: "78px",
-                  }}
-                  duration={1500}
-                  closeButton
-                />
-                <div className="browser-shell__chrome">
-                  <TabBar />
-                  <NavigationBar />
+    <MantineProvider
+      theme={mantineTheme}
+      forceColorScheme={theme === "dark" ? "dark" : "light"}
+    >
+      <TabProvider>
+        <StatusBarProvider>
+          <NgStatusProvider>
+            <BottomPanelProvider>
+              <AutoScrollStateProvider>
+                {/* data-theme を使ってダークモード CSS 変数を切り替える */}
+                <div className="browser-shell" data-theme={theme}>
+                  <Toaster
+                    position="top-right"
+                    theme={theme === "dark" ? "dark" : "light"}
+                    offset={{
+                      top: "88px",
+                      right: "78px",
+                    }}
+                    duration={1500}
+                    closeButton
+                  />
+                  <div className="browser-shell__chrome">
+                    <TabBar />
+                    <NavigationBar />
+                  </div>
+                  <ContentArea />
+                  <BottomPanel />
+                  <BookmarkRootSelectorDialog />
+                  <NgStatusItem />
+                  <IkioiStatusItem />
+                  <AutoRefreshStatusItem />
+                  <WritePanelToggleItem />
+                  <StatusBar />
                 </div>
-                <ContentArea />
-                <BottomPanel />
-                <BookmarkRootSelectorDialog />
-                <NgStatusItem />
-                <IkioiStatusItem />
-                <AutoRefreshStatusItem />
-                <WritePanelToggleItem />
-                <StatusBar />
-              </div>
-            </AutoScrollStateProvider>
-          </BottomPanelProvider>
-        </NgStatusProvider>
-      </StatusBarProvider>
-    </TabProvider>
+              </AutoScrollStateProvider>
+            </BottomPanelProvider>
+          </NgStatusProvider>
+        </StatusBarProvider>
+      </TabProvider>
+    </MantineProvider>
   );
 };
