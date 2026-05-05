@@ -291,7 +291,7 @@ export function useThreadResContextMenu({
             void addIdToNg(rawId);
           },
         },
-        { id: "sep-1", separator: true },
+        { id: "sep-2", separator: true },
         {
           id: "reply",
           label: "返信",
