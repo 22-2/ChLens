@@ -15,6 +15,8 @@ const mockUseTabStore = vi.fn();
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => mockUseTabStore(),
+  // useTabDispatch は dispatch のみを返す安定した関数。ページのフル状態購読回避後もdispatchが使える。
+  useTabDispatch: () => vi.fn(),
 }));
 
 interface BookmarkService {
@@ -90,7 +92,7 @@ describe("BookmarkListPage", () => {
       },
     ]);
 
-    render(<BookmarkListPage tabId="tab-1" />);
+    render(<BookmarkListPage tabId="tab-1" isActive={true} />);
 
     expect(await screen.findByText("Current Thread")).toBeInTheDocument();
     expect(screen.getByText("Software")).toBeInTheDocument();
@@ -106,7 +108,7 @@ describe("BookmarkListPage", () => {
       },
     ]);
 
-    render(<BookmarkListPage tabId="tab-1" />);
+    render(<BookmarkListPage tabId="tab-1" isActive={true} />);
 
     await screen.findByText("Current Thread");
     expect(screen.queryByPlaceholderText("検索...")).not.toBeInTheDocument();
@@ -152,7 +154,7 @@ describe("BookmarkListPage", () => {
         },
       ]);
 
-    render(<BookmarkListPage tabId="tab-1" />);
+    render(<BookmarkListPage tabId="tab-1" isActive={true} />);
 
     expect(screen.queryByText("Current Thread")).not.toBeInTheDocument();
 
@@ -189,7 +191,7 @@ describe("BookmarkListPage", () => {
       },
     };
 
-    render(<BookmarkListPage tabId="tab-1" />);
+    render(<BookmarkListPage tabId="tab-1" isActive={true} />);
 
     expect(screen.getByText("読み込み中...")).toBeInTheDocument();
     expect(getAllBookmarks).not.toHaveBeenCalled();

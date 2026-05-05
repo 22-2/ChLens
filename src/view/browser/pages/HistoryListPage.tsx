@@ -4,7 +4,7 @@ import { SearchBar } from "src/view/browser/components/SearchBar";
 import { ColumnDef } from "src/view/browser/components/SimpleDataTable";
 import { VirtualizedDataTable } from "src/view/browser/components/VirtualizedDataTable";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
-import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
 import {
   formatCompactDateTime,
   normalizeLegacyTimestamp,
@@ -213,10 +213,13 @@ const COLUMNS: ColumnDef<HistoryEntry>[] = [
 
 interface HistoryListPageProps {
   tabId: string;
+  isActive: boolean;
 }
 
-export const HistoryListPage: React.FC<HistoryListPageProps> = ({ tabId }) => {
-  const { dispatch, state, currentPage } = useTabStore();
+export const HistoryListPage: React.FC<HistoryListPageProps> = ({ tabId, isActive }) => {
+  // タブ切り替えなど他タブ操作のたびにフル状態を再購読して再レンダリングされないよう、
+  // dispatch のみ取得する安定したフックを使う。isActive は親から props で受け取る。
+  const dispatch = useTabDispatch();
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -228,7 +231,7 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({ tabId }) => {
   const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
     pageType: "historyList",
     tabId,
-    isActive: state.activeTabId === tabId && currentPage.type === "historyList",
+    isActive,
     searchQuery,
     setSearchQuery,
   });

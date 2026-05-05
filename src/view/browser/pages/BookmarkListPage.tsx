@@ -6,7 +6,7 @@ import {
   SimpleDataTable,
 } from "src/view/browser/components/SimpleDataTable";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
-import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
 import {
   getLegacyBookmarkService,
   waitForLegacyBookmarkReady,
@@ -223,10 +223,13 @@ const COLUMNS: ColumnDef<BookmarkEntry>[] = [
 
 interface BookmarkListPageProps {
   tabId: string;
+  isActive: boolean;
 }
 
-export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({ tabId }) => {
-  const { dispatch, state, currentPage } = useTabStore();
+export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({ tabId, isActive }) => {
+  // タブ切り替えなど他タブ操作のたびにフル状態を再購読して再レンダリングされないよう、
+  // dispatch のみ取得する安定したフックを使う。isActive は親から props で受け取る。
+  const dispatch = useTabDispatch();
   const [entries, setEntries] = useState<BookmarkEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -237,7 +240,7 @@ export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({ tabId }) => 
   const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
     pageType: "bookmarkList",
     tabId,
-    isActive: state.activeTabId === tabId && currentPage.type === "bookmarkList",
+    isActive,
     searchQuery,
     setSearchQuery,
   });

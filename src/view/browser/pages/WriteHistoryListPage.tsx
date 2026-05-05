@@ -5,7 +5,7 @@ import {
   SimpleDataTable,
 } from "src/view/browser/components/SimpleDataTable";
 import {
-  useTabStore,
+  useTabDispatch,
   type TabAction,
 } from "src/view/browser/hooks/use-tab-store";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
@@ -191,12 +191,16 @@ const COLUMNS: ColumnDef<WriteHistoryEntry>[] = [
 
 interface WriteHistoryListPageProps {
   tabId: string;
+  isActive: boolean;
 }
 
 export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
   tabId,
+  isActive,
 }) => {
-  const { dispatch, state, currentPage } = useTabStore();
+  // タブ切り替えなど他タブ操作のたびにフル状態を再購読して再レンダリングされないよう、
+  // dispatch のみ取得する安定したフックを使う。isActive は親から props で受け取る。
+  const dispatch = useTabDispatch();
   const [entries, setEntries] = useState<WriteHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -206,8 +210,7 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
   const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
     pageType: "writeHistoryList",
     tabId,
-    isActive:
-      state.activeTabId === tabId && currentPage.type === "writeHistoryList",
+    isActive,
     searchQuery,
     setSearchQuery,
   });

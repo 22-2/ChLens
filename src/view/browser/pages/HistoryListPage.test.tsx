@@ -20,6 +20,8 @@ const virtualizedTableState = vi.hoisted(() => ({
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => mockUseTabStore(),
+  // useTabDispatch は dispatch のみを返す安定した関数。ページのフル状態購読回避後もdispatchが使える。
+  useTabDispatch: () => vi.fn(),
 }));
 
 vi.mock("src/view/browser/components/VirtualizedDataTable", () => ({
@@ -154,7 +156,7 @@ describe("HistoryListPage", () => {
       createReadStateItem("https://*.5ch.io/test/read.cgi/live/1/", 4, 9),
     ]);
 
-    render(<HistoryListPage tabId="tab-1" />);
+    render(<HistoryListPage tabId="tab-1" isActive={true} />);
 
     await screen.findByTestId("virtualized-table");
 
@@ -191,7 +193,7 @@ describe("HistoryListPage", () => {
         ),
       ]);
 
-    render(<HistoryListPage tabId="tab-1" />);
+    render(<HistoryListPage tabId="tab-1" isActive={true} />);
 
     await screen.findByText("スレ1");
 
@@ -217,7 +219,7 @@ describe("HistoryListPage", () => {
       ),
     ]);
 
-    render(<HistoryListPage tabId="tab-1" />);
+    render(<HistoryListPage tabId="tab-1" isActive={true} />);
 
     await screen.findByTestId("virtualized-table");
     expect(screen.queryByPlaceholderText("検索...")).not.toBeInTheDocument();

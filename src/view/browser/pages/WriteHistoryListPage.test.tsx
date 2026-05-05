@@ -21,6 +21,8 @@ const mockUseTabStore = vi.fn();
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => mockUseTabStore(),
+  // useTabDispatch は dispatch のみを返す安定した関数。ページのフル状態購読回避後もdispatchが使える。
+  useTabDispatch: () => vi.fn(),
 }));
 
 interface WriteHistoryService {
@@ -78,7 +80,7 @@ describe("WriteHistoryListPage", () => {
       },
     ]);
 
-    render(<WriteHistoryListPage tabId="tab-1" />);
+    render(<WriteHistoryListPage tabId="tab-1" isActive={true} />);
 
     expect(await screen.findByText("本文")).toBeInTheDocument();
     expect(screen.getByText("これは書き込み本文です")).toBeInTheDocument();
@@ -98,7 +100,7 @@ describe("WriteHistoryListPage", () => {
       },
     ]);
 
-    render(<WriteHistoryListPage tabId="tab-1" />);
+    render(<WriteHistoryListPage tabId="tab-1" isActive={true} />);
 
     await screen.findByText("本文");
     expect(screen.queryByPlaceholderText("検索...")).not.toBeInTheDocument();
@@ -190,7 +192,7 @@ describe("WriteHistoryListPage", () => {
       },
     ]);
 
-    render(<WriteHistoryListPage tabId="tab-1" />);
+    render(<WriteHistoryListPage tabId="tab-1" isActive={true} />);
 
     const row = (await screen.findByText("外部URL")).closest("tr");
     expect(row).not.toBeNull();
