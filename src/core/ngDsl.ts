@@ -1,5 +1,7 @@
 export const NG_DSL_LANGUAGE_ID = "readcrx-ngdsl";
 
+import { TYPE, type NGType } from "src/core/NGTypes";
+
 export const NG_HIGHLIGHT_COLOR_PRESETS = {
   yellow: "#ffeb3b",
   blue: "#e3f2fd",
@@ -48,7 +50,7 @@ export interface NGDslParameterSpec {
 }
 
 export interface NGDslRuleSpec {
-  readonly keyword: string;
+  readonly keyword: NGType;
   readonly aliases?: readonly string[];
   readonly description: string;
   readonly wordDescription: string;
@@ -86,19 +88,20 @@ const DEFAULT_RULE_PARAMETERS = [WORD_PARAMETER, SITES_PARAMETER] as const;
 
 export const NG_DSL_RULE_SPECS: readonly NGDslRuleSpec[] = [
   {
-    keyword: "RegExp",
+    // ルール識別子はNGTypesに集約し、DSLだけの独自文字列と乖離しないようにする。
+    keyword: TYPE.REG_EXP,
     description: "全文を正規表現でNGにします。",
     wordDescription: "正規表現",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
   {
-    keyword: "RegExpTitle",
+    keyword: TYPE.REG_EXP_TITLE,
     description: "タイトルを正規表現でNGにします。",
     wordDescription: "正規表現",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
   {
-    keyword: "RegExpHighlightTitle",
+    keyword: TYPE.REG_EXP_HIGHLIGHT_TITLE,
     description: "タイトルを正規表現でハイライトします。",
     wordDescription: "正規表現",
     parameters: [
@@ -109,50 +112,50 @@ export const NG_DSL_RULE_SPECS: readonly NGDslRuleSpec[] = [
     ],
   },
   {
-    keyword: "RegExpName",
+    keyword: TYPE.REG_EXP_NAME,
     description: "名前欄を正規表現でNGにします。",
     wordDescription: "正規表現",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
   {
-    keyword: "RegExpMail",
+    keyword: TYPE.REG_EXP_MAIL,
     description: "メール欄を正規表現でNGにします。",
     wordDescription: "正規表現",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
   {
-    keyword: "RegExpId",
+    keyword: TYPE.REG_EXP_ID,
     aliases: ["RegExpID"],
     description: "ID を正規表現でNGにします。",
     wordDescription: "正規表現",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
   {
-    keyword: "RegExpSlip",
+    keyword: TYPE.REG_EXP_SLIP,
     description: "SLIP を正規表現でNGにします。",
     wordDescription: "正規表現",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
   {
-    keyword: "RegExpBody",
+    keyword: TYPE.REG_EXP_BODY,
     description: "本文を正規表現でNGにします。",
     wordDescription: "正規表現",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
   {
-    keyword: "RegExpUrl",
+    keyword: TYPE.REG_EXP_URL,
     description: "URL を正規表現でNGにします。",
     wordDescription: "正規表現",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
   {
-    keyword: "Title",
+    keyword: TYPE.TITLE,
     description: "タイトルを部分一致でNGにします。",
     wordDescription: "キーワード",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
   {
-    keyword: "HighlightTitle",
+    keyword: TYPE.HIGHLIGHT_TITLE,
     description: "タイトルを部分一致でハイライトします。",
     wordDescription: "キーワード",
     parameters: [
@@ -163,44 +166,50 @@ export const NG_DSL_RULE_SPECS: readonly NGDslRuleSpec[] = [
     ],
   },
   {
-    keyword: "Name",
+    keyword: TYPE.NAME,
     description: "名前欄を部分一致でNGにします。",
     wordDescription: "キーワード",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
   {
-    keyword: "Mail",
+    keyword: TYPE.MAIL,
     description: "メール欄を部分一致でNGにします。",
     wordDescription: "キーワード",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
   {
-    keyword: "ID",
+    keyword: TYPE.ID,
     aliases: ["Id", "id"],
     description: "ID を部分一致でNGにします。",
     wordDescription: "ID",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
   {
-    keyword: "Slip",
+    keyword: TYPE.SLIP,
     description: "SLIP を部分一致でNGにします。",
     wordDescription: "SLIP",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
   {
-    keyword: "Body",
+    keyword: TYPE.BODY,
     description: "本文を部分一致でNGにします。",
     wordDescription: "キーワード",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
   {
-    keyword: "Url",
+    keyword: TYPE.URL,
     description: "URL を部分一致でNGにします。",
     wordDescription: "URL",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
   {
-    keyword: "ResCount",
+    keyword: TYPE.WORD,
+    description: "全文を部分一致でNGにします。",
+    wordDescription: "キーワード",
+    parameters: DEFAULT_RULE_PARAMETERS,
+  },
+  {
+    keyword: TYPE.RES_COUNT,
     description: "レス数でスレッドをNGにします。",
     wordDescription: "レス数",
     parameters: DEFAULT_RULE_PARAMETERS,

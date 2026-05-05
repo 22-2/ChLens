@@ -1,5 +1,6 @@
 import {
   extractNgDslFunctionCall,
+  getNgDslRuleSpec,
   normalizeNgDslKeyword,
   parseNgDslArguments,
   splitNgDslEntries,
@@ -80,5 +81,9 @@ describe("NG DSL helpers", () => {
     expect(parseNgDslArguments(extracted?.argsSource ?? "")).toEqual({
       word: "(imgur\\.com\\/.+?){15}",
     });
+  });
+
+  it("registers Word keyword from NGTypes as a DSL rule", () => {
+    expect(getNgDslRuleSpec("Word")?.keyword).toBe("Word");
   });
 });
