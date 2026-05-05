@@ -73,7 +73,9 @@ describe("NG DSL parsing", () => {
     expect(parsed).toHaveLength(1);
     expect(parsed[0]).toMatchObject({
       type: TYPE.REG_EXP_BODY,
-      word: "(imgur\\\\.com\\\\/.+?){15}",
+      // ngDSL パーサーは引用符内の `\\` を1層解釈して `\` に変換するため、
+      // ngwords に書いた `\\.` は word フィールドでは `\.` として保持される。
+      word: "(imgur\\.com\\/.+?){15}",
     });
   });
 

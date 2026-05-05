@@ -14,7 +14,10 @@ vi.mock("src/view/browser/utils/utils", async () => {
       nameHtml: "名無しさん",
       mailHtml: "",
       otherHtml: "",
-      messageHtml: "本文",
+      // res__link クラス付きのアンカーを含めることで、
+      // 右クリックのコンテキストメニュー委譲テストで a.res__link セレクタが解決できるようにする。
+      messageHtml:
+        '<a href="https://example.com/page" class="res__link">リンク</a>',
       isNameAnchor: false,
     }),
     extractUrlsFromMessage: () => [

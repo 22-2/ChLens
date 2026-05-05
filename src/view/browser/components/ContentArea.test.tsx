@@ -119,6 +119,11 @@ describe("ContentArea tab switching", () => {
     mockState([tab1, tab2], "tab-1");
     const { container, rerender } = render(<ContentArea />);
 
+    // 遅延レンダリング：未アクティブタブは初回アクティブ化まで DOM に存在しない。
+    // tab-2 へ切り替えることで panel2 を初回マウントさせてから表示状態を検証する。
+    mockState([tab1, tab2], "tab-2");
+    rerender(<ContentArea />);
+
     const panel1 = container.querySelector(
       '[data-tab-panel-id="tab-1"]',
     ) as HTMLDivElement;
@@ -126,14 +131,14 @@ describe("ContentArea tab switching", () => {
       '[data-tab-panel-id="tab-2"]',
     ) as HTMLDivElement;
 
-    expect(panel1).toHaveStyle({ display: "block" });
-    expect(panel2).toHaveStyle({ display: "none" });
-
-    mockState([tab1, tab2], "tab-2");
-    rerender(<ContentArea />);
-
     expect(panel1).toHaveStyle({ display: "none" });
     expect(panel2).toHaveStyle({ display: "block" });
+
+    mockState([tab1, tab2], "tab-1");
+    rerender(<ContentArea />);
+
+    expect(panel1).toHaveStyle({ display: "block" });
+    expect(panel2).toHaveStyle({ display: "none" });
   });
 
   it("非アクティブ化してもタブごとの scroll 状態を保持する", () => {
@@ -149,6 +154,11 @@ describe("ContentArea tab switching", () => {
     mockState([tab1, tab2], "tab-1");
     const { container, rerender } = render(<ContentArea />);
 
+    // 遅延レンダリング：panel2 は一度もアクティブになっていないと DOM に存在しない。
+    // tab-2 を先にアクティブ化して両パネルをマウントしてから scroll 値を設定する。
+    mockState([tab1, tab2], "tab-2");
+    rerender(<ContentArea />);
+
     const panel1 = container.querySelector(
       '[data-tab-panel-id="tab-1"]',
     ) as HTMLDivElement;
@@ -158,9 +168,6 @@ describe("ContentArea tab switching", () => {
 
     panel1.scrollTop = 240;
     panel2.scrollTop = 32;
-
-    mockState([tab1, tab2], "tab-2");
-    rerender(<ContentArea />);
 
     mockState([tab1, tab2], "tab-1");
     rerender(<ContentArea />);
@@ -217,7 +224,10 @@ describe("ContentArea tab switching", () => {
 
     expect(threadPageLifecycle.renderCount).toBe(1);
 
-    mockState([threadTab, homeTab], "tab-2");
+    // アクティブタブを変えずに別タブを追加する。
+    // threadTab の isActive が変わらないため TabPanel の memo がバイルアウトし、
+    // ThreadPage の再描画は発生しないことを確認する。
+    mockState([threadTab, homeTab], "tab-1");
     rerender(<ContentArea />);
 
     expect(threadPageLifecycle.renderCount).toBe(1);

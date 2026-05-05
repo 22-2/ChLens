@@ -251,7 +251,7 @@ describe("useAutoRefresh", () => {
     expect(onRequestRefresh).toHaveBeenCalledOnce();
   });
 
-  it("更新間隔が未設定でも既定の30秒で自動更新する", () => {
+  it("更新間隔が未設定でも既定の5秒で自動更新する", () => {
     configMock = {
       get: vi.fn(() => "0"),
       set: vi.fn(),
@@ -289,7 +289,7 @@ describe("useAutoRefresh", () => {
     scrollContainer.scrollBy = vi.fn();
 
     act(() => {
-      vi.advanceTimersByTime(29999);
+      vi.advanceTimersByTime(4999);
     });
 
     expect(onRequestRefresh).not.toHaveBeenCalled();
