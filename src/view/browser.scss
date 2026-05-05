@@ -2324,8 +2324,9 @@ body {
 }
 
 .res__thumbs {
-  display: flex;
-  flex-wrap: wrap;
+  // レス末尾の画像配置を毎回同じ見た目にして視線移動を減らすため、3列で固定改行する。
+  display: grid;
+  grid-template-columns: repeat(3, max-content);
   gap: 8px;
   padding: 6px 0 2px 16px;
 }
