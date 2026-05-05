@@ -1,4 +1,5 @@
 import { DragDropProvider } from "@dnd-kit/react";
+import type { DragEndEvent } from "@dnd-kit/react";
 import { isSortableOperation, useSortable } from "@dnd-kit/react/sortable";
 import { Pin, Plus, X } from "lucide-react";
 import React, {
@@ -33,6 +34,11 @@ const SORTABLE_TRANSITION = {
   duration: 200,
   easing: "cubic-bezier(0.4, 0, 0.2, 1)",
 };
+
+type DragDropPluginsCustomizer = Extract<
+  NonNullable<React.ComponentProps<typeof DragDropProvider>["plugins"]>,
+  (...args: never[]) => unknown
+>;
 
 interface SortableTabProps {
   tab: Tab;
@@ -137,6 +143,7 @@ const SortableTab: React.FC<SortableTabProps> = ({
 export const TabBar: React.FC = () => {
   const { state, dispatch } = useTabStore();
   const barRef = useRef<HTMLDivElement | null>(null);
+  const dragMoveTimerIdRef = useRef<number | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [barContextMenu, setBarContextMenu] =
     useState<BarContextMenuState | null>(null);
@@ -239,22 +246,40 @@ export const TabBar: React.FC = () => {
 
   const closeBarContextMenu = useCallback(() => setBarContextMenu(null), []);
 
+  useEffect(() => {
+    return () => {
+      if (dragMoveTimerIdRef.current !== null) {
+        window.clearTimeout(dragMoveTimerIdRef.current);
+        dragMoveTimerIdRef.current = null;
+      }
+    };
+  }, []);
+
   const handleDragEnd = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (event: any) => {
+    (event: DragEndEvent) => {
       // event.canceled はドラッグがキャンセル（Esc キーなど）された場合に true になる。
       if (event.canceled) return;
-      const { operation } = event;
+      const operation = event.operation;
+      if (!operation) return;
       if (!isSortableOperation(operation)) return;
       const { source, target } = operation;
       if (!target || source?.id === target.id) return;
       // ドラッグ完了直後の click イベントによるタブ選択を1回だけ抑止する。
       wasDraggingRef.current = true;
-      dispatch({
-        type: "MOVE_TAB",
-        dragTabId: String(source?.id),
-        targetTabId: String(target.id),
-      });
+
+      // dnd-kit の DOM cleanup（replaceWith/replaceChild）完了前に state を更新すると、
+      // 稀に cleanup 対象ノードが detach 済みとなり null 参照エラーになるため、1tick 遅らせる。
+      if (dragMoveTimerIdRef.current !== null) {
+        window.clearTimeout(dragMoveTimerIdRef.current);
+      }
+      dragMoveTimerIdRef.current = window.setTimeout(() => {
+        dispatch({
+          type: "MOVE_TAB",
+          dragTabId: String(source?.id),
+          targetTabId: String(target.id),
+        });
+        dragMoveTimerIdRef.current = null;
+      }, 0);
     },
     [dispatch],
   );
@@ -290,9 +315,33 @@ export const TabBar: React.FC = () => {
     [dispatch, state.closedTabs.length],
   );
 
+  const dragDropPlugins = useCallback<DragDropPluginsCustomizer>((defaults) => {
+        // Feedback plugin の dropAnimation を常に無効化し、cleanup 中の replaceWith race を防ぐ。
+        // 関数自体をメモ化して、TabBar 再描画ごとの plugin 入れ替えを避ける。
+        return defaults.map((entry) => {
+          const descriptor =
+            typeof entry === "function" ? { plugin: entry } : entry;
+
+          return {
+          plugin: descriptor.plugin,
+          options: {
+            ...descriptor.options,
+            dropAnimation: null,
+          },
+          };
+        });
+      }, []);
+
   return (
     <div ref={barRef} className="tab-bar" onContextMenu={handleBarContextMenu}>
-      <DragDropProvider onDragEnd={handleDragEnd}>
+      {/*
+        dnd-kit の Feedback plugin は drop animation cleanup で placeholder.replaceWith を行う。
+        タブ再配置の再描画と競合すると null 参照クラッシュしうるため、plugin 側で無効化する。
+      */}
+      <DragDropProvider
+        onDragEnd={handleDragEnd}
+        plugins={dragDropPlugins}
+      >
         <div className="tab-list">
           {state.tabs.map((tab, index) => {
             const page = getCurrentPage(tab);

@@ -46,16 +46,32 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
 
 // DragDropProvider はテスト環境ではシムで置き換え、onDragEnd を外部から呼べるようにする。
 let capturedOnDragEnd: ((event: Record<string, unknown>) => void) | undefined;
+let capturedPlugins:
+  | ((
+      defaults: Array<
+        | { plugin: (...args: unknown[]) => unknown; options?: Record<string, unknown> }
+        | ((...args: unknown[]) => unknown)
+      >,
+    ) => Array<{ plugin: (...args: unknown[]) => unknown; options?: Record<string, unknown> }>)
+  | undefined;
 
 vi.mock("@dnd-kit/react", () => ({
   DragDropProvider: ({
     children,
     onDragEnd,
+    plugins,
   }: {
     children: React.ReactNode;
     onDragEnd?: (event: Record<string, unknown>) => void;
+    plugins?: (
+      defaults: Array<
+        | { plugin: (...args: unknown[]) => unknown; options?: Record<string, unknown> }
+        | ((...args: unknown[]) => unknown)
+      >,
+    ) => Array<{ plugin: (...args: unknown[]) => unknown; options?: Record<string, unknown> }>;
   }) => {
     capturedOnDragEnd = onDragEnd;
+    capturedPlugins = plugins;
     return <>{children}</>;
   },
 }));
@@ -117,14 +133,30 @@ describe("TabBar drag-to-reorder", () => {
   beforeEach(() => {
     dispatchMock.mockReset();
     capturedOnDragEnd = undefined;
+    capturedPlugins = undefined;
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
+    vi.runOnlyPendingTimers();
+    vi.useRealTimers();
     cleanup();
   });
 
   it("ドラッグ終了時に MOVE_TAB が dispatch される", () => {
     render(<TabBar />);
+
+    const feedbackLikePlugin = () => undefined;
+    const transformed = capturedPlugins?.([
+      feedbackLikePlugin,
+      { plugin: feedbackLikePlugin, options: { foo: 1 } },
+    ]);
+
+    // placeholder cleanup race を避けるため、Feedback plugin の dropAnimation は常に無効化する。
+    expect(transformed).toEqual([
+      { plugin: feedbackLikePlugin, options: { dropAnimation: null } },
+      { plugin: feedbackLikePlugin, options: { foo: 1, dropAnimation: null } },
+    ]);
 
     // DragDropProvider の onDragEnd を直接呼び出してドラッグ完了をシミュレートする。
     capturedOnDragEnd?.({
@@ -134,6 +166,9 @@ describe("TabBar drag-to-reorder", () => {
         target: { id: "tab-2" },
       },
     });
+
+    // MOVE_TAB は dnd cleanup と競合しないよう次ティックで dispatch される。
+    vi.runAllTimers();
 
     expect(dispatchMock).toHaveBeenCalledWith({
       type: "MOVE_TAB",
