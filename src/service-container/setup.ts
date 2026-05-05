@@ -17,11 +17,13 @@ import {
   IToastService,
   IUtil,
 } from "src/service-container/interfaces";
+import { LogLevels } from "consola";
 // @ts-ignore
 import BoardService from "src/core/BoardService.js";
 import Cache from "src/core/Cache.js";
 // @ts-ignore
 import * as BBSMenu from "src/core/BBSMenu.js";
+import { setConsolaLevel } from "src/core/logger";
 // @ts-ignore
 import { toast } from "sonner";
 import Notification from "src/core/Notification";
@@ -32,6 +34,14 @@ import ThreadService from "src/core/ThreadService.js";
  * This should be called during the application boot process.
  */
 export function setupContainer(app: any) {
+  const syncConsolaLevel = () => {
+    setConsolaLevel(
+      app.config.get("debug_log") === "on" ? LogLevels.debug : LogLevels.info,
+    );
+  };
+
+  syncConsolaLevel();
+
   // Config Adapter
   const configAdapter: IConfig = {
     get: (key: string) => app.config.get(key),
@@ -42,9 +52,18 @@ export function setupContainer(app: any) {
       if (key === "ngwords" && app.NG?.set) {
         app.NG.set(val);
       }
+      if (key === "debug_log") {
+        syncConsolaLevel();
+      }
     },
     ready: (cb: () => void) => app.config.ready(cb),
   };
+
+  app.message.on("config_updated", ({ key }: { key?: string }) => {
+    if (key === "debug_log") {
+      syncConsolaLevel();
+    }
+  });
 
   // Message Adapter
   const messageAdapter: IMessage = {

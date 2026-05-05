@@ -40,6 +40,10 @@ export function checkWord(
     resCount,
   }: Partial<NGResObj & NGThreadObj>,
 ): string | null {
+  // キャッシュ(ngobj)からロードしたwordは正規化されていない場合があるため、
+  // 比較対象と同じnormalizeを両辺に適用する。これにより全角/半角・カタカナ/ひらがな・
+  // 大文字/小文字の違いを吸収してケースインセンシティブなマッチングも実現する。
+  const normalizedWord = normalize(word);
   if (
     (type === TYPE.REG_EXP && reg && reg.test(all || "")) ||
     (type === TYPE.REG_EXP_NAME && reg && reg.test(name || "")) ||
@@ -50,14 +54,14 @@ export function checkWord(
     (type === TYPE.REG_EXP_TITLE && reg && reg.test(title || "")) ||
     (type === TYPE.REG_EXP_HIGHLIGHT_TITLE && reg && reg.test(title || "")) ||
     (type === TYPE.REG_EXP_URL && reg && reg.test(url || "")) ||
-    (type === TYPE.TITLE && normalize(title || "").includes(word)) ||
-    (type === TYPE.HIGHLIGHT_TITLE && normalize(title || "").includes(word)) ||
-    (type === TYPE.NAME && normalize(name || "").includes(word)) ||
-    (type === TYPE.MAIL && normalize(mail || "").includes(word)) ||
+    (type === TYPE.TITLE && normalize(title || "").includes(normalizedWord)) ||
+    (type === TYPE.HIGHLIGHT_TITLE && normalize(title || "").includes(normalizedWord)) ||
+    (type === TYPE.NAME && normalize(name || "").includes(normalizedWord)) ||
+    (type === TYPE.MAIL && normalize(mail || "").includes(normalizedWord)) ||
     (type === TYPE.ID && (id != null ? id.includes(word) : false)) ||
     (type === TYPE.SLIP && (slip != null ? slip.includes(word) : false)) ||
-    (type === TYPE.BODY && normalize(mes || "").includes(word)) ||
-    (type === TYPE.WORD && normalize(all || "").includes(word)) ||
+    (type === TYPE.BODY && normalize(mes || "").includes(normalizedWord)) ||
+    (type === TYPE.WORD && normalize(all || "").includes(normalizedWord)) ||
     (type === TYPE.URL && (url || "").includes(word)) ||
     (type === TYPE.RES_COUNT &&
       resCount != null &&

@@ -62,7 +62,9 @@ const _getNgElement = function (ngWord: string): InternalNGElement | null {
 
     const normalizedKeyword = normalizeNgDslKeyword(functionCall.keyword);
     ngElement.type = normalizedKeyword;
-    ngElement.word = word ?? functionCall.valueSource ?? "";
+    // DSL解析したwordも非DSLパスと同様にnormalizeする。
+    // normalize済みのタイトルと比較するため、word側もnormalizeしないとkatakana→hiragana変換などで不一致になる。
+    ngElement.word = normalize(word ?? functionCall.valueSource ?? "");
 
     if (scope != null && scope.length > 0) {
       ngElement.scope = {

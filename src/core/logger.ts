@@ -1,8 +1,6 @@
-import { consola, LogLevels } from "consola";
+import { consola } from "consola";
 
 const rootLogger = consola.withTag("chlens");
-// rootLogger.level = process.env.NODE_ENV === "production" ? LogLevels.warn : LogLevels.debug;
-rootLogger.level = LogLevels.debug;
 
 type Logger = typeof rootLogger;
 

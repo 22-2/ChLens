@@ -554,6 +554,13 @@ const SETTINGS_SECTIONS = [
         widget: "textarea",
         rows: 6,
       },
+      {
+        kind: "boolean",
+        key: "debug_log",
+        title: "ログを有効にする",
+        description:
+          "ONで詳細ログを出力します。",
+      },
     ],
   ),
   // TODO: インポートやエクスポートなど、既存の設定を移植する
