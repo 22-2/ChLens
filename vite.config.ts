@@ -7,15 +7,13 @@ import postcss from "postcss";
 import * as sass from "sass";
 import { defineConfig, Plugin } from "vite";
 
-const mode = process.env.NODE_ENV || "development";
-
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 const imgExt = (platform: string) => (platform === "chrome" ? "webp" : "png");
 
 // ─── plugin: SCSS ────────────────────────────────────────────────────────────
 
-function scssPlugin(platform: string, outputDir: string): Plugin {
+function scssPlugin(platform: string, outputDir: string, minifyCss: boolean): Plugin {
   const ext = imgExt(platform);
   const isFirefox = platform === "firefox";
 
@@ -39,7 +37,7 @@ function scssPlugin(platform: string, outputDir: string): Plugin {
   async function buildScss(srcFile: string, destFile: string) {
     await fs.ensureDir(path.dirname(destFile));
     const result = sass.compile(srcFile, {
-      style: "compressed",
+      style: minifyCss ? "compressed" : "expanded",
       functions: sassFunctions,
     });
     const pcResult = await pc.process(result.css, { from: srcFile });
@@ -227,10 +225,13 @@ function staticCopyPlugin(platform: string, outputDir: string): Plugin {
 
 // ─── main config ─────────────────────────────────────────────────────────────
 
-export default defineConfig(() => {
+export default defineConfig(({ mode }) => {
   const platform = process.env.PLATFORM || "chrome";
   const entry = process.env.ENTRY || "app";
   const outputDir = `./debug/${platform}`;
+  const isWatchMode = process.argv.includes("--watch");
+  const isWatchDev = isWatchMode && (mode === "development" || process.env.VITE_WATCH_DEV === "true");
+  const minifyOutput = !isWatchDev;
 
   const entryMap: Record<string, { file: string; name: string }> = {
     // app:           { file: "src/app.ts",                      name: "app" },
@@ -244,12 +245,13 @@ export default defineConfig(() => {
 
   return {
     define: {
+      // watch/dev でも production が注入されると分岐が壊れるため、Vite の mode を正として注入する。
       "process.env.NODE_ENV": JSON.stringify(mode),
     },
     plugins: [
       react(),
       browserHtmlPlugin(outputDir),
-      scssPlugin(platform, outputDir),
+      scssPlugin(platform, outputDir, minifyOutput),
       manifestPlugin(platform, outputDir),
       staticCopyPlugin(platform, outputDir),
     ],
@@ -291,6 +293,7 @@ export default defineConfig(() => {
     build: {
       outDir: outputDir,
       emptyOutDir: false,
+      minify: minifyOutput,
       lib: {
         entry: path.resolve(__dirname, file),
         formats: ["iife"],
