@@ -188,16 +188,14 @@ async function readBookmarkSources(): Promise<OmnibarBookmarkSource[]> {
 
   const bookmarkService = getLegacyBookmarkService();
 
-  const rawItems =
-    bookmarkService?.getAll?.() ??
-    [
-      ...(Array.isArray(bookmarkService?.getAllThreads?.())
-        ? (bookmarkService?.getAllThreads?.() as unknown[])
-        : []),
-      ...(Array.isArray(bookmarkService?.getAllBoards?.())
-        ? (bookmarkService?.getAllBoards?.() as unknown[])
-        : []),
-    ];
+  const rawItems = bookmarkService?.getAll?.() ?? [
+    ...(Array.isArray(bookmarkService?.getAllThreads?.())
+      ? (bookmarkService?.getAllThreads?.() as unknown[])
+      : []),
+    ...(Array.isArray(bookmarkService?.getAllBoards?.())
+      ? (bookmarkService?.getAllBoards?.() as unknown[])
+      : []),
+  ];
   if (!Array.isArray(rawItems)) {
     return [];
   }
@@ -340,7 +338,9 @@ export const NavigationBar: React.FC = () => {
     let cancelled = false;
 
     setIsBookmarkPending(false);
-    setIsBookmarked(bookmarkTarget ? readBookmarkStatus(bookmarkTarget.url) : false);
+    setIsBookmarked(
+      bookmarkTarget ? readBookmarkStatus(bookmarkTarget.url) : false,
+    );
 
     if (!bookmarkTarget) {
       return;
@@ -366,10 +366,13 @@ export const NavigationBar: React.FC = () => {
       return;
     }
 
-    const handleBookmarkUpdated = ({ bookmark }: BookmarkUpdatePayload = {}) => {
+    const handleBookmarkUpdated = ({
+      bookmark,
+    }: BookmarkUpdatePayload = {}) => {
       if (
         typeof bookmark?.url === "string" &&
-        normalizeBookmarkComparableUrl(bookmark.url) !== normalizedBookmarkTargetUrl
+        normalizeBookmarkComparableUrl(bookmark.url) !==
+          normalizedBookmarkTargetUrl
       ) {
         return;
       }
@@ -699,6 +702,12 @@ export const NavigationBar: React.FC = () => {
 
   const menuItems = useMemo(
     () => [
+      {
+        id: "open-settings",
+        label: "設定を開く",
+        icon: <Settings size={14} />,
+        onSelect: openSettingsTab,
+      },
       ...(currentPage.type === "thread" ||
       currentPage.type === "bookmarkList" ||
       currentPage.type === "historyList" ||
@@ -724,12 +733,6 @@ export const NavigationBar: React.FC = () => {
             },
           ]
         : []),
-      {
-        id: "open-settings",
-        label: "設定を開く",
-        icon: <Settings size={14} />,
-        onSelect: openSettingsTab,
-      },
       {
         id: "quick-access-separator",
         separator: true,
