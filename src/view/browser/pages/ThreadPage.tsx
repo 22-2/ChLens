@@ -923,6 +923,25 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     [closeNonContextPopups, scrollToResponse],
   );
 
+  // popup store の状態変化で ThreadPage が re-render されると、インラインアロー関数は
+  // 毎回新しい参照を生成し、buildContextMenuItems → openThreadResContextMenu まで
+  // 連鎖的に新参照になって ResItem が re-render される。
+  // ResItem 内の dangerouslySetInnerHTML による innerHTML 置換でテキスト選択が消えるため、
+  // useCallback で参照を安定化してその re-render を防ぐ。
+  const handleWriteHistoryAdded = useCallback(
+    (resNum: number) => {
+      setOwnResNums((prev) => {
+        if (prev.has(resNum)) {
+          return prev;
+        }
+        const next = new Set(prev);
+        next.add(resNum);
+        return next;
+      });
+    },
+    [],
+  );
+
   const { openPopupResContextMenu, openThreadResContextMenu } =
     useThreadResContextMenu({
       addPopupContextMenu,
@@ -934,17 +953,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       hideAnchorPreviewImmediately,
       miniAaResNums,
       page,
-      onWriteHistoryAdded: (resNum) => {
-        setOwnResNums((prev) => {
-          if (prev.has(resNum)) {
-            return prev;
-          }
-
-          const next = new Set(prev);
-          next.add(resNum);
-          return next;
-        });
-      },
+      onWriteHistoryAdded: handleWriteHistoryAdded,
       setFilter,
       setMiniAaResNums,
       setResponses,
