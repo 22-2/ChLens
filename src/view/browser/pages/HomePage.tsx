@@ -44,7 +44,10 @@ async function readFavoriteBoards(): Promise<FavoriteBoard[]> {
     seenUrls.add(url);
     favorites.push({
       url,
-      title: normalizeString(entry.boardTitle, normalizeString(entry.title, url)),
+      title: normalizeString(
+        entry.boardTitle,
+        normalizeString(entry.title, url),
+      ),
     });
   }
 
@@ -65,7 +68,9 @@ export const HomePage: React.FC = () => {
     try {
       setFavoriteBoards(await readFavoriteBoards());
     } catch (e) {
-      setError(e instanceof Error ? e.message : "お気に入り板の読み込みに失敗しました");
+      setError(
+        e instanceof Error ? e.message : "お気に入り板の読み込みに失敗しました",
+      );
     } finally {
       setLoading(false);
     }
@@ -122,39 +127,6 @@ export const HomePage: React.FC = () => {
 
   return (
     <Box className="home-page">
-      <Text className="home-page__heading">お気に入り板</Text>
-
-      {loading ? (
-        <Box className="home-page__status">
-          <Loader size="xs" />
-          <Text size="sm" c="dimmed">
-            お気に入り板を読み込み中...
-          </Text>
-        </Box>
-      ) : error ? (
-        <Alert className="home-page__alert" color="red" title="読み込みエラー">
-          {error}
-        </Alert>
-      ) : (
-        <Box className="home-page__list">
-          {favoriteBoards.length === 0 ? (
-            <Text className="home-page__empty">お気に入り板はまだありません。</Text>
-          ) : (
-            favoriteBoards.map((board) => (
-              <UnstyledButton
-                key={board.url}
-                className="home-page__link"
-                onClick={() => openBoard(board)}
-              >
-                <Text size="sm">{board.title}</Text>
-              </UnstyledButton>
-            ))
-          )}
-        </Box>
-      )}
-
-      <Text className="home-page__heading">その他</Text>
-
       <UnstyledButton
         className="home-page__link home-page__link--action"
         onClick={openBoardList}
@@ -173,6 +145,38 @@ export const HomePage: React.FC = () => {
       >
         <Text size="sm">ブックマークを開く</Text>
       </UnstyledButton> */}
+      <Text className="home-page__heading">お気に入り板</Text>
+
+      {loading ? (
+        <Box className="home-page__status">
+          <Loader size="xs" />
+          <Text size="sm" c="dimmed">
+            お気に入り板を読み込み中...
+          </Text>
+        </Box>
+      ) : error ? (
+        <Alert className="home-page__alert" color="red" title="読み込みエラー">
+          {error}
+        </Alert>
+      ) : (
+        <Box className="home-page__list">
+          {favoriteBoards.length === 0 ? (
+            <Text className="home-page__empty">
+              お気に入り板はまだありません。
+            </Text>
+          ) : (
+            favoriteBoards.map((board) => (
+              <UnstyledButton
+                key={board.url}
+                className="home-page__link"
+                onClick={() => openBoard(board)}
+              >
+                <Text size="sm">{board.title}</Text>
+              </UnstyledButton>
+            ))
+          )}
+        </Box>
+      )}
     </Box>
   );
 };
