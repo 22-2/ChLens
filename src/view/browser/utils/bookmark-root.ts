@@ -1,0 +1,98 @@
+import browser from "webextension-polyfill";
+import { container } from "src/service-container/index";
+import {
+  getLegacyBookmarkEntryList,
+  getLegacyConfigService,
+} from "src/view/browser/utils/legacy-app";
+
+export interface BookmarkFolderNode {
+  id: string;
+  title: string;
+  children: BookmarkFolderNode[];
+}
+
+function normalizeBookmarkFolderTitle(title: string): string {
+  const normalizedTitle = title.trim();
+  return normalizedTitle.length > 0 ? normalizedTitle : "名称未設定フォルダ";
+}
+
+function toBookmarkFolderNode(
+  node: browser.Bookmarks.BookmarkTreeNode,
+): BookmarkFolderNode | null {
+  if (!Array.isArray(node.children)) {
+    return null;
+  }
+
+  return {
+    id: node.id,
+    title: normalizeBookmarkFolderTitle(node.title),
+    children: node.children
+      .map((childNode) => toBookmarkFolderNode(childNode))
+      .filter(
+        (childNode): childNode is BookmarkFolderNode => childNode !== null,
+      ),
+  };
+}
+
+export function supportsBookmarkFolderSelection(): boolean {
+  return typeof browser !== "undefined" && browser.bookmarks !== undefined;
+}
+
+export function readConfiguredBookmarkFolderId(): string {
+  const bookmarkId = getLegacyConfigService()?.get?.("bookmark_id");
+  return typeof bookmarkId === "string" ? bookmarkId : "";
+}
+
+export function isBookmarkRootSelectionRequired(): boolean {
+  const bookmarkEntryList = getLegacyBookmarkEntryList();
+  return (
+    readConfiguredBookmarkFolderId().length === 0 ||
+    bookmarkEntryList?.needReconfigureRootNodeId?.wasCalled === true
+  );
+}
+
+export async function readBookmarkFolderTree(): Promise<BookmarkFolderNode[]> {
+  if (!supportsBookmarkFolderSelection()) {
+    return [];
+  }
+
+  const tree = await browser.bookmarks.getTree();
+  const rootChildren = Array.isArray(tree[0]?.children) ? tree[0].children : [];
+
+  return rootChildren
+    .map((node) => toBookmarkFolderNode(node))
+    .filter((node): node is BookmarkFolderNode => node !== null);
+}
+
+export async function readBookmarkFolderName(
+  bookmarkId: string,
+): Promise<string | null> {
+  if (!supportsBookmarkFolderSelection() || bookmarkId.length === 0) {
+    return null;
+  }
+
+  try {
+    const [node] = await browser.bookmarks.get(bookmarkId);
+    if (!node || !Array.isArray(node.children)) {
+      return null;
+    }
+    return normalizeBookmarkFolderTitle(node.title);
+  } catch {
+    return null;
+  }
+}
+
+export async function updateBookmarkFolderId(
+  bookmarkId: string,
+): Promise<void> {
+  const configService = getLegacyConfigService();
+
+  // 変更理由: bookmark root の切替は app.ts 側の config_updated listener が
+  // runtime へ反映するため、UI は config 更新だけを責務にして同期経路を一本化する。
+  if (typeof configService?.set === "function") {
+    await configService.set("bookmark_id", bookmarkId);
+    return;
+  }
+
+  container.config.set("bookmark_id", bookmarkId);
+}

@@ -3,6 +3,7 @@ import React from "react";
 import { Toaster } from "sonner";
 import "sonner/dist/styles.css";
 import { AutoRefreshStatusItem } from "src/view/browser/components/AutoRefreshStatusItem";
+import { BookmarkRootSelectorDialog } from "src/view/browser/components/BookmarkRootSelectorDialog";
 import { BottomPanel } from "src/view/browser/components/BottomPanel";
 import { ContentArea } from "src/view/browser/components/ContentArea";
 import { IkioiStatusItem } from "src/view/browser/components/IkioiStatusItem";
@@ -82,6 +83,7 @@ export const BrowserApp: React.FC = () => {
                 </div>
                 <ContentArea />
                 <BottomPanel />
+                <BookmarkRootSelectorDialog />
                 <NgStatusItem />
                 <IkioiStatusItem />
                 <AutoRefreshStatusItem />

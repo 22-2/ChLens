@@ -5,6 +5,21 @@ interface LegacyBookmarkService {
   promiseFirstScan?: Promise<boolean>;
 }
 
+interface LegacyCallbacksLike {
+  add?: (callback: () => void) => void;
+  wasCalled?: boolean;
+}
+
+interface LegacyBookmarkEntryList {
+  setRootNodeId?: (rootNodeId: string) => Promise<boolean> | boolean;
+  needReconfigureRootNodeId?: LegacyCallbacksLike;
+}
+
+interface LegacyConfigService {
+  get?: (key: string) => string | null;
+  set?: (key: string, value: string) => Promise<void> | void;
+}
+
 interface LegacyHistoryService {
   get?: (offset?: number, count?: number) => Promise<unknown> | unknown;
 }
@@ -28,6 +43,8 @@ interface LegacyWriteHistoryService {
 
 interface LegacyAppShape {
   bookmark?: LegacyBookmarkService;
+  bookmarkEntryList?: LegacyBookmarkEntryList;
+  config?: LegacyConfigService;
   History?: LegacyHistoryService;
   ReadState?: LegacyReadStateService;
   WriteHistory?: LegacyWriteHistoryService;
@@ -44,6 +61,16 @@ function getLegacyApp(): LegacyAppShape | undefined {
 
 export function getLegacyBookmarkService(): LegacyBookmarkService | undefined {
   return getLegacyApp()?.bookmark;
+}
+
+export function getLegacyBookmarkEntryList():
+  | LegacyBookmarkEntryList
+  | undefined {
+  return getLegacyApp()?.bookmarkEntryList;
+}
+
+export function getLegacyConfigService(): LegacyConfigService | undefined {
+  return getLegacyApp()?.config;
 }
 
 export async function waitForLegacyBookmarkReady(): Promise<void> {

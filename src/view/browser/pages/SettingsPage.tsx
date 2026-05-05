@@ -27,6 +27,11 @@ import {
   NG_DSL_EXAMPLE,
   NG_DSL_MULTILINE_EXAMPLE,
 } from "src/view/browser/components/NGEditor";
+import {
+  readBookmarkFolderName,
+  readConfiguredBookmarkFolderId,
+  supportsBookmarkFolderSelection,
+} from "src/view/browser/utils/bookmark-root";
 import type { SettingsPage as SettingsPageType } from "src/view/browser/types";
 
 type SettingsSectionId =
@@ -638,6 +643,98 @@ const widgets = {
   },
 };
 
+const BookmarkSourceSettingsCard: React.FC = () => {
+  const [folderName, setFolderName] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadBookmarkFolder = useCallback(async () => {
+    if (!supportsBookmarkFolderSelection()) {
+      setLoading(false);
+      setFolderName(null);
+      setError(null);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const bookmarkId = readConfiguredBookmarkFolderId();
+      if (!bookmarkId) {
+        setFolderName(null);
+        return;
+      }
+
+      const nextFolderName = await readBookmarkFolderName(bookmarkId);
+      setFolderName(nextFolderName);
+
+      if (!nextFolderName) {
+        setError("保存先フォルダが未設定か、すでに削除されています");
+      }
+    } catch (loadError) {
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "ブックマーク保存先の取得に失敗しました",
+      );
+      setFolderName(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadBookmarkFolder();
+  }, [loadBookmarkFolder]);
+
+  useEffect(() => {
+    const handleConfigUpdated = ({ key }: { key?: string }) => {
+      if (key === "bookmark_id") {
+        void loadBookmarkFolder();
+      }
+    };
+
+    container.message.on("config_updated", handleConfigUpdated);
+
+    return () => {
+      container.message.off("config_updated", handleConfigUpdated);
+    };
+  }, [loadBookmarkFolder]);
+
+  if (!supportsBookmarkFolderSelection()) {
+    return null;
+  }
+
+  return (
+    <section className="settings-page__bookmark-source">
+      <div className="settings-page__bookmark-source-copy">
+        <p className="settings-page__bookmark-source-label">
+          ブックマーク保存先
+        </p>
+        <p className="settings-page__bookmark-source-description">
+          Chrome のブックマーク内で、read.crx が同期対象として使うフォルダです。
+        </p>
+      </div>
+      <div className="settings-page__bookmark-source-meta">
+        <div className="settings-page__bookmark-source-value">
+          {loading ? "読み込み中..." : folderName ?? "未設定"}
+        </div>
+        {error && (
+          <div className="settings-page__bookmark-source-error">{error}</div>
+        )}
+      </div>
+      <button
+        type="button"
+        className="settings-page__button settings-page__button--primary"
+        onClick={() => container.message.send("bookmark_root_selector_open")}
+      >
+        {folderName ? "保存先を変更" : "保存先を選択"}
+      </button>
+    </section>
+  );
+};
+
 export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({
   page,
 }) => {
@@ -1036,6 +1133,8 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({
                 </details>
               </>
             )}
+
+            {activeSection.id === "other" && <BookmarkSourceSettingsCard />}
           </div>
         </div>
       </div>

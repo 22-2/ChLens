@@ -39,51 +39,6 @@ const appObj: any = {
 };
 (window as any).app = appObj;
 
-function readSameOriginParentApp(): Record<string, unknown> | null {
-  if (typeof window === "undefined" || self === top) {
-    return null;
-  }
-
-  try {
-    const candidate = (parent as { app?: unknown }).app;
-    return candidate != null && typeof candidate === "object"
-      ? (candidate as Record<string, unknown>)
-      : null;
-  } catch {
-    return null;
-  }
-}
-
-function bridgeMissingRuntimeAppState(target: Record<string, unknown>): void {
-  const parentApp = readSameOriginParentApp();
-  if (!parentApp) {
-    return;
-  }
-
-  // 変更理由: new-ui は iframe 内でも local window.app だけを見たい。
-  // 親が後付けで差し込む runtime state は getter bridge で吸収し、各画面の parent.app 直参照をなくす。
-  for (const key of ["bookmark"]) {
-    if (Object.prototype.hasOwnProperty.call(target, key)) {
-      continue;
-    }
-
-    let hasLocalOverride = false;
-    let localOverride: unknown;
-
-    Object.defineProperty(target, key, {
-      configurable: true,
-      enumerable: true,
-      get() {
-        return hasLocalOverride ? localOverride : parentApp[key];
-      },
-      set(value) {
-        hasLocalOverride = true;
-        localOverride = value;
-      },
-    });
-  }
-}
-
 // runtime.ts 側で必要な内部値は吸収済みなので、new-ui は常にローカル platform を使う。
 export const platform = new Proxy({} as typeof platformInternal.platform, {
   get(_target, prop) {
@@ -146,6 +101,78 @@ import * as URL from "src/core/URL";
 import * as Util from "src/core/Util";
 import * as WriteHistory from "src/core/WriteHistory";
 
+type BookmarkEntryListRuntime = Bookmark["bel"] & {
+  needReconfigureRootNodeId?: {
+    add: (callback: () => void) => void;
+    wasCalled: boolean;
+  };
+  setRootNodeId?: (rootNodeId: string) => Promise<boolean>;
+};
+
+type RuntimeAppShape = {
+  config: Config;
+  message: typeof messageInstance;
+  bookmark?: Bookmark;
+  bookmarkEntryList?: BookmarkEntryListRuntime;
+};
+
+const MISSING_BOOKMARK_ROOT_NODE_ID = "dummy";
+
+let bookmarkRuntimeInitialized = false;
+
+function resolveBookmarkRootNodeId(configInstance: Config): string {
+  const bookmarkId = configInstance.get("bookmark_id");
+  return typeof bookmarkId === "string" && bookmarkId.length > 0
+    ? bookmarkId
+    : MISSING_BOOKMARK_ROOT_NODE_ID;
+}
+
+function initializeBookmarkRuntime(target: RuntimeAppShape): void {
+  if (bookmarkRuntimeInitialized) {
+    return;
+  }
+  bookmarkRuntimeInitialized = true;
+
+  target.config.ready(() => {
+    if (!target.bookmark) {
+      // 変更理由: bookmark は旧 browser view 側でのみ初期化されていたため、
+      // new-ui 単独では外部 window に依存しないと永続ブックマークが動かなかった。
+      target.bookmark = new Bookmark(resolveBookmarkRootNodeId(target.config));
+    }
+
+    const entryList = target.bookmark.bel as BookmarkEntryListRuntime;
+    target.bookmarkEntryList = entryList;
+
+    const notifyRootSelectionRequired = () => {
+      target.message.send("bookmark_root_reconfigure_required");
+    };
+
+    entryList.needReconfigureRootNodeId?.add(notifyRootSelectionRequired);
+
+    // 変更理由: persistent callback は過去の call を replay しないため、
+    // 初期化直後に rootNodeId 不正が確定していたケースも UI へ明示的に伝える。
+    if (entryList.needReconfigureRootNodeId?.wasCalled) {
+      notifyRootSelectionRequired();
+    }
+
+    target.message.on(
+      "config_updated",
+      ({ key, val }: { key?: string; val?: unknown }) => {
+        if (key !== "bookmark_id") {
+          return;
+        }
+
+        const rootNodeId =
+          typeof val === "string" && val.length > 0
+            ? val
+            : MISSING_BOOKMARK_ROOT_NODE_ID;
+
+        void entryList.setRootNodeId?.(rootNodeId);
+      },
+    );
+  });
+}
+
 // Populate app object with core modules
 Object.assign(appObj, {
   BBSMenu,
@@ -176,7 +203,7 @@ Object.assign(appObj, {
   WriteHistory,
 });
 
-bridgeMissingRuntimeAppState(appObj);
+initializeBookmarkRuntime(appObj as RuntimeAppShape);
 
 appObj.boot = boot; // Will be defined later
 
