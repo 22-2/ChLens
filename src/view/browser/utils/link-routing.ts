@@ -287,9 +287,9 @@ export function parseInternalBrowserPage(
 
     // path だけで判定すると https://example.com/software/ のような外部URLまで
     // 板URL扱いになるため、まず対応ホストかどうかを厳密に絞る。
-    if (!isCompatibleBoardHost(normalizedUrl.hostname)) {
-      return null;
-    }
+    // if (!isCompatibleBoardHost(normalizedUrl.hostname)) {
+    //   return null;
+    // }
 
     if (normalizedUrl.hostname === "bbs.eddibb.cc") {
       return parseEddibbPage(normalizedUrl);
