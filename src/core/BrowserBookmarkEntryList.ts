@@ -4,6 +4,7 @@ import {
   SyncableEntryList,
 } from "src/core/BookmarkEntryList";
 import { URL } from "src/core/URL";
+import browser from "webextension-polyfill";
 
 export default class BrowserBookmarkEntryList extends SyncableEntryList {
   private rootNodeId = "";
@@ -92,7 +93,7 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
     this.setUpBrowserBookmarkWatcher();
   }
 
-  private applyNodeAddToEntryList(node: browser.bookmarks.BookmarkTreeNode) {
+  private applyNodeAddToEntryList(node: browser.Bookmarks.BookmarkTreeNode) {
     if (!node.url || !node.title) return;
 
     const entry = BrowserBookmarkEntryList.URLToEntry(node.url);
@@ -198,16 +199,16 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
     let watching = true;
 
     // Firefoxではbookmarks.onImportBegan/Endedは実装されていない
-    if (browser.bookmarks.onImportBegan !== void 0) {
-      browser.bookmarks.onImportBegan.addListener(() => {
-        watching = false;
-      });
+    // if (browser.bookmarks.onImportBegan !== void 0) {
+    //   browser.bookmarks.onImportBegan.addListener(() => {
+    //     watching = false;
+    //   });
 
-      browser.bookmarks.onImportEnded.addListener(() => {
-        watching = true;
-        this.loadFromBrowserBookmark();
-      });
-    }
+    //   browser.bookmarks.onImportEnded.addListener(() => {
+    //     watching = true;
+    //     this.loadFromBrowserBookmark();
+    //   });
+    // }
 
     browser.bookmarks.onCreated.addListener((_nodeId, node) => {
       if (!watching) return;
@@ -278,7 +279,8 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
       }
 
       return true;
-    } catch {
+    } catch(err) {
+      app.log(err);
       app.log("warn", "ブラウザのブックマークからの読み込みに失敗しました。");
       this.validateRootNodeSettings();
 
