@@ -464,7 +464,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     saveReadStateTimerRef.current = window.setTimeout(() => {
       saveReadStateTimerRef.current = null;
       void saveCurrentReadState();
-    }, 150);
+    });
   }, [saveCurrentReadState]);
 
   useEffect(() => {
