@@ -90,8 +90,8 @@ const _getNgElement = function (ngWord: string): InternalNGElement | null {
     return ngElement;
   }
 
-  // 完全な新DSLへ移行するため、DSL書式でないものはすべてただのテキスト(WORD)NGとして扱う
-  ngElement.type = TYPE.WORD;
+  // 完全な新DSLへ移行するため、DSL書式でないものはすべてただのテキスト(BODY)NGとして扱う
+  ngElement.type = TYPE.BODY;
   ngElement.word = normalize(ngWord);
   return ngElement;
 };

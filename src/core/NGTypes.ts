@@ -16,6 +16,9 @@ export const TYPE = {
   ID: "ID",
   SLIP: "Slip",
   BODY: "Body",
+  /**
+   * @deprecated use body instead
+   * */
   WORD: "Word",
   URL: "Url",
   RES_COUNT: "ResCount",

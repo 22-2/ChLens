@@ -202,12 +202,12 @@ export const NG_DSL_RULE_SPECS: readonly NGDslRuleSpec[] = [
     wordDescription: "URL",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
-  {
-    keyword: TYPE.WORD,
-    description: "全文を部分一致でNGにします。",
-    wordDescription: "キーワード",
-    parameters: DEFAULT_RULE_PARAMETERS,
-  },
+  // {
+  //   keyword: TYPE.WORD,
+  //   description: "全文を部分一致でNGにします。",
+  //   wordDescription: "キーワード",
+  //   parameters: DEFAULT_RULE_PARAMETERS,
+  // },
   {
     keyword: TYPE.RES_COUNT,
     description: "レス数でスレッドをNGにします。",
