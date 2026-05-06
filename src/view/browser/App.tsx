@@ -85,6 +85,14 @@ export const BrowserApp: React.FC = () => {
                       top: "88px",
                       right: "78px",
                     }}
+                    toastOptions={{
+                      style: {
+                        fontSize: "12px",
+                        padding: "8px 12px",
+                        minHeight: "auto",
+                        width: "fit-content",
+                      },
+                    }}
                     duration={1500}
                     closeButton
                   />
