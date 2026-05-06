@@ -998,6 +998,11 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     [handleUrlContextMenu],
   );
 
+  const isFilterEnabled = useMemo(
+    () => filter !== "all" || searchQuery.trim() !== "",
+    [filter, searchQuery],
+  );
+
   // ジェスチャーuseEffectでrootRefが確実にマウント済みになるよう、loading中の早期returnを廃止し常にrootRef付きdivを描画する
   return (
     <div
@@ -1068,26 +1073,28 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             })}
           </div>
 
-          {isActiveAutoRefreshEnabled && (
-            <div
-              ref={autoScrollBoundaryRef}
-              className={`thread-page__auto-scroll-threshold${
-                canAutoScroll
-                  ? " thread-page__auto-scroll-threshold--armed"
-                  : ""
-              }${
-                isAutoScrolling
-                  ? " thread-page__auto-scroll-threshold--scrolling"
-                  : ""
-              }`}
-            >
-              <span className="thread-page__auto-scroll-threshold-label">
-                {canAutoScroll
-                  ? "この線より下なので新着に追従します"
-                  : "この線より下にいる時だけ新着に追従します"}
-              </span>
-            </div>
-          )}
+          {isActiveAutoRefreshEnabled &&
+            /* 自動更新はフィルターが有効な場合は無効化 */
+            !isFilterEnabled && (
+              <div
+                ref={autoScrollBoundaryRef}
+                className={`thread-page__auto-scroll-threshold${
+                  canAutoScroll
+                    ? " thread-page__auto-scroll-threshold--armed"
+                    : ""
+                }${
+                  isAutoScrolling
+                    ? " thread-page__auto-scroll-threshold--scrolling"
+                    : ""
+                }`}
+              >
+                <span className="thread-page__auto-scroll-threshold-label">
+                  {canAutoScroll
+                    ? "この線より下なので新着に追従します"
+                    : "この線より下にいる時だけ新着に追従します"}
+                </span>
+              </div>
+            )}
 
           <PopupRenderer
             host={rootRef.current}
