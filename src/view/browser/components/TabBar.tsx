@@ -10,9 +10,11 @@ import React, {
 } from "react";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { TabContextMenu } from "src/view/browser/components/TabContextMenu";
+import { useAutoScrollState } from "src/view/browser/hooks/use-auto-scroll-state";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import type { Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
+import { isAutoRefreshEnabledForPage } from "src/view/browser/utils/auto-refresh-pages";
 
 interface ContextMenuState {
   tab: Tab;
@@ -39,7 +41,7 @@ interface SortableTabProps {
   index: number;
   isActive: boolean;
   isHighlighted: boolean;
-  isAutoRefreshActive: boolean;
+  autoRefreshIndicatorState: "active" | "inactive" | null;
   tabCount: number;
   wasDraggingRef: React.MutableRefObject<boolean>;
   onSelect: (tabId: string) => void;
@@ -54,7 +56,7 @@ const SortableTab: React.FC<SortableTabProps> = ({
   index,
   isActive,
   isHighlighted,
-  isAutoRefreshActive,
+  autoRefreshIndicatorState,
   tabCount,
   wasDraggingRef,
   onSelect,
@@ -110,12 +112,25 @@ const SortableTab: React.FC<SortableTabProps> = ({
       ) : (
         <span className="tab__title">{page.title}</span>
       )}
-      {/* 自動更新が有効なタブにはタイトルの右隣に状態インジケーターを表示する */}
-      {isAutoRefreshActive && !tab.pinned && (
+      {/* 変更理由: タブが非アクティブでも自動更新設定は残るため、
+          実行中/待機中を区別できるインジケーターを常時表示する。 */}
+      {autoRefreshIndicatorState != null && !tab.pinned && (
         <span
-          className="tab__auto-refresh-dot"
-          title="自動更新: ON"
-          aria-label="自動更新有効"
+          className={`tab__auto-refresh-indicator${
+            autoRefreshIndicatorState === "inactive"
+              ? " tab__auto-refresh-indicator--inactive"
+              : ""
+          }`}
+          title={
+            autoRefreshIndicatorState === "active"
+              ? "自動更新: 動作中"
+              : "自動更新: 待機中"
+          }
+          aria-label={
+            autoRefreshIndicatorState === "active"
+              ? "自動更新動作中"
+              : "自動更新待機中"
+          }
         />
       )}
       {!tab.pinned && tabCount > 1 && (
@@ -136,6 +151,7 @@ const SortableTab: React.FC<SortableTabProps> = ({
 
 export const TabBar: React.FC = () => {
   const { state, dispatch } = useTabStore();
+  const { canAutoScroll, isAutoScrolling, isPaused } = useAutoScrollState();
   const barRef = useRef<HTMLDivElement | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [barContextMenu, setBarContextMenu] =
@@ -297,12 +313,21 @@ export const TabBar: React.FC = () => {
           {state.tabs.map((tab, index) => {
             const page = getCurrentPage(tab);
             const isActive = tab.id === state.activeTabId;
-            // 自動更新有効判定: タブに登録された URL と現在ページの URL が一致する時のみ有効。
-            // 別スレへ遷移後に無案内に再読み込みが走るのを防ぐため。
-            const isAutoRefreshActive =
-              page.type === "thread" &&
-              tab.autoRefreshEnabled &&
-              tab.autoRefreshThreadUrl === page.threadUrl;
+            const isPageAutoRefreshEnabled = isAutoRefreshEnabledForPage(tab, page);
+            // 変更理由: スレ/スレ一覧どちらも同じページ単位の自動更新として扱い、
+            // タブ上の表示だけ別判定になってズレるのを防ぐ。
+            const autoRefreshIndicatorState: "active" | "inactive" | null =
+              page.type === "thread" || page.type === "threadList"
+                ? isPageAutoRefreshEnabled
+                  ? page.type === "thread"
+                    ? isActive && !isPaused && (canAutoScroll || isAutoScrolling)
+                      ? "active"
+                      : "inactive"
+                    : isActive
+                      ? "active"
+                      : "inactive"
+                  : null
+                : null;
 
             return (
               <SortableTab
@@ -311,7 +336,7 @@ export const TabBar: React.FC = () => {
                 index={index}
                 isActive={isActive}
                 isHighlighted={highlightedTabIds.has(tab.id)}
-                isAutoRefreshActive={isAutoRefreshActive}
+                autoRefreshIndicatorState={autoRefreshIndicatorState}
                 tabCount={state.tabs.length}
                 wasDraggingRef={wasDraggingRef}
                 onSelect={handleTabSelect}

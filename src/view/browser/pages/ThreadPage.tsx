@@ -20,7 +20,6 @@ import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import { MediaViewerContainer } from "src/view/browser/components/MediaViewerContainer";
 import { PopupRenderer } from "src/view/browser/components/PopupRenderer";
 import { ResItem } from "src/view/browser/components/ResItem";
-import { StatusBarMode } from "src/view/browser/components/StatusBar";
 import { ThreadMinimap } from "src/view/browser/components/ThreadMinimap";
 import { useAutoNextThread } from "src/view/browser/hooks/use-auto-next-thread";
 import { useAutoNextThreadSetting } from "src/view/browser/hooks/use-auto-next-thread-setting";
@@ -1006,16 +1005,6 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       className="thread-page"
       onDoubleClick={handleDoubleClick}
     >
-      {isActiveAutoRefreshEnabled && (
-        <>
-          {/* 線より下にいて新着追従が有効な間だけステータスバーを accent 化し、
-              「今の位置なら自動スクロールされる」を常時見分けやすくする。 */}
-          <StatusBarMode
-            id="thread-auto-scroll-mode"
-            appearance={canAutoScroll || isAutoScrolling ? "active" : null}
-          />
-        </>
-      )}
       {loading && responses.length === 0 ? (
         <div className="page-status">読み込み中...</div>
       ) : error && responses.length === 0 ? (

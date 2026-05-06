@@ -35,6 +35,10 @@ import {
   type QuickAccessFilterPageType,
 } from "src/view/browser/utils/filter-toolbar-events";
 import {
+  getAutoRefreshPageKey,
+  isAutoRefreshEnabledForPage,
+} from "src/view/browser/utils/auto-refresh-pages";
+import {
   getLegacyBookmarkService,
   getLegacyHistoryService,
   waitForLegacyBookmarkReady,
@@ -337,10 +341,11 @@ export const NavigationBar: React.FC = () => {
   );
   const [isBookmarkPending, setIsBookmarkPending] = useState(false);
 
-  const isThreadAutoRefreshEnabled =
-    currentPage.type === "thread" &&
-    activeTab.autoRefreshEnabled &&
-    activeTab.autoRefreshThreadUrl === currentPage.threadUrl;
+  const currentAutoRefreshPageKey = getAutoRefreshPageKey(currentPage);
+  const isCurrentPageAutoRefreshEnabled = isAutoRefreshEnabledForPage(
+    activeTab,
+    currentPage,
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -542,7 +547,7 @@ export const NavigationBar: React.FC = () => {
 
   const handleRefreshContextMenu = useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {
-      if (currentPage.type !== "thread") {
+      if (currentPage.type !== "thread" && currentPage.type !== "threadList") {
         return;
       }
 
@@ -812,14 +817,14 @@ export const NavigationBar: React.FC = () => {
 
   const refreshMenuItems = useMemo(
     () =>
-      currentPage.type === "thread"
+      currentAutoRefreshPageKey != null
         ? [
             {
-              id: "toggle-thread-auto-refresh",
-              label: isThreadAutoRefreshEnabled
+              id: "toggle-page-auto-refresh",
+              label: isCurrentPageAutoRefreshEnabled
                 ? "自動更新を停止"
                 : "自動更新を開始",
-              icon: isThreadAutoRefreshEnabled ? (
+              icon: isCurrentPageAutoRefreshEnabled ? (
                 <Pause size={14} />
               ) : (
                 <RotateCw size={14} />
@@ -827,19 +832,19 @@ export const NavigationBar: React.FC = () => {
               onSelect: () => {
                 dispatch({
                   type: "SET_AUTO_REFRESH_ENABLED",
-                  enabled: !isThreadAutoRefreshEnabled,
-                  threadUrl: currentPage.threadUrl,
+                  enabled: !isCurrentPageAutoRefreshEnabled,
+                  pageKey: currentAutoRefreshPageKey,
                 });
               },
             },
             {
-              id: "thread-auto-refresh-note",
+              id: "page-auto-refresh-note",
               label: "アクティブなタブでのみ動作",
               disabled: true,
             },
           ]
         : [],
-    [currentPage, dispatch, isThreadAutoRefreshEnabled],
+    [currentAutoRefreshPageKey, dispatch, isCurrentPageAutoRefreshEnabled],
   );
 
   return (

@@ -221,15 +221,21 @@ body {
   line-height: 34px;
 }
 
-/* 自動更新有効時にタブタイトル右端に表示する小さな状態インジケータードット */
-.tab__auto-refresh-dot {
+/* 自動更新有効時にタブタイトル右端へ状態インジケーターを表示する */
+.tab__auto-refresh-indicator {
   flex-shrink: 0;
   width: 10px;
   height: 10px;
   border-radius: 50%;
   background: var(--browser-color-error);
   margin-left: 4px;
+  margin-right: 8px;
   opacity: 0.85;
+}
+
+.tab__auto-refresh-indicator--inactive {
+  border-radius: 2px;
+  background: var(--browser-color-accent);
 }
 
 .tab__close {
@@ -3009,16 +3015,6 @@ body {
   background: rgba(255, 255, 255, 0.12);
 }
 
-/* パネルが開いているときはアクセントカラーで強調 */
-// .status-bar__btn--active {
-//   background: var(--browser-color-accent);
-//   color: var(--browser-color-accent-fg);
-// }
-
-// .status-bar__btn--active:hover {
-//   background: var(--browser-color-accent-hover);
-// }
-
 /* ==========================================================================
    Mini Window - VS Code Quick Settings 風ミニポップアップ（汎用）
    ========================================================================== */
@@ -3256,6 +3252,19 @@ body {
 .icon--spinning {
   display: block;
   animation: icon-spin 2s linear infinite;
+}
+
+.auto-refresh-indicator {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--browser-color-error);
+}
+
+.auto-refresh-indicator--inactive {
+  border-radius: 2px;
+  background: var(--browser-color-accent);
 }
 
 /* ステータスバーボタンの非アクティブ（スレッド以外）表示 */

@@ -73,10 +73,10 @@ export interface Tab {
   pinned: boolean;
   // ページの強制再読み込みに使うカウンター。インクリメントするとContentAreaがページを再マウントする
   reloadKey: number;
-  // 右クリックメニューで有効化した自動更新は、その時点のスレッドURLにだけ結び付ける。
-  // 同じタブで別スレへ移動した時に意図せず自動更新が走らないようにするため。
+  // 自動更新は現在ページだけに結び付け、別ページへ移動した時点で解除する。
+  // スレ/スレ一覧を同じロジックで扱うため、URLそのものではなくページ識別キーを保持する。
   autoRefreshEnabled: boolean;
-  autoRefreshThreadUrl: string | null;
+  autoRefreshPageKey: string | null;
 }
 
 // --- Core API の型定義 ---

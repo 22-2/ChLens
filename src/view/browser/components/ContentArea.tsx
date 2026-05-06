@@ -10,6 +10,7 @@ import { ThreadPage } from "src/view/browser/pages/ThreadPage";
 import { WriteHistoryListPage } from "src/view/browser/pages/WriteHistoryListPage";
 import type { Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
+import { isAutoRefreshEnabledForPage } from "src/view/browser/utils/auto-refresh-pages";
 
 function buildPageRenderKey(
   tabId: string,
@@ -70,6 +71,7 @@ const TabPageContent = memo(function TabPageContent({
           page={page}
           refreshKey={tab.reloadKey}
           isActive={threadListActive ?? false}
+          isAutoRefreshEnabled={isAutoRefreshEnabledForPage(tab, page)}
         />
       );
     case "thread":
@@ -79,12 +81,7 @@ const TabPageContent = memo(function TabPageContent({
           page={page}
           refreshKey={tab.reloadKey}
           isActive={isActive}
-          // 自動更新の可否をタブ自身の状態へ固定すると、
-          // アクティブタブ変更だけで他スレッドまで再計算されなくなる。
-          isAutoRefreshEnabled={
-            tab.autoRefreshEnabled &&
-            tab.autoRefreshThreadUrl === page.threadUrl
-          }
+          isAutoRefreshEnabled={isAutoRefreshEnabledForPage(tab, page)}
         />
       );
   }

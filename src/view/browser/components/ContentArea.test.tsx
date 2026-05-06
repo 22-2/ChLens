@@ -72,7 +72,7 @@ function createTab(id: string): Tab {
     pinned: false,
     reloadKey: 0,
     autoRefreshEnabled: false,
-    autoRefreshThreadUrl: null,
+    autoRefreshPageKey: null,
   };
 }
 

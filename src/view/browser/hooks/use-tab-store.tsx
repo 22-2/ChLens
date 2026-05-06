@@ -13,6 +13,10 @@ import {
   type Page,
   type Tab,
 } from "src/view/browser/types";
+import {
+  getAutoRefreshPageKey,
+  resetAutoRefreshState,
+} from "src/view/browser/utils/auto-refresh-pages";
 import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
 
 export interface TabStoreState {
@@ -49,7 +53,7 @@ export type TabAction =
   | {
       type: "SET_AUTO_REFRESH_ENABLED";
       enabled: boolean;
-      threadUrl?: string;
+      pageKey?: string;
     }
   | { type: "RESTORE"; state: TabStoreState };
 
@@ -104,9 +108,9 @@ function getPageIdentity(page: Page): string {
     case "writeHistoryList":
       return "writeHistoryList";
     case "threadList":
-      return `threadList:${normalizePageLocation(page.boardUrl)}`;
+      return getAutoRefreshPageKey(page) ?? "threadList";
     case "thread":
-      return `thread:${normalizePageLocation(page.threadUrl)}`;
+      return getAutoRefreshPageKey(page) ?? "thread";
   }
 
   throw new Error("Unsupported page type");
@@ -258,7 +262,16 @@ function createTab(
     pinned: false,
     reloadKey: 0,
     autoRefreshEnabled: false,
-    autoRefreshThreadUrl: null,
+    autoRefreshPageKey: null,
+  };
+}
+
+function sanitizeSessionState(state: TabStoreState): TabStoreState {
+  return {
+    ...state,
+    // 変更理由: 自動更新は実行時状態として扱い、タブ復元/複製で意図せず再開しないよう永続化しない。
+    tabs: state.tabs.map((tab) => resetAutoRefreshState(tab)),
+    closedTabs: state.closedTabs.map((tab) => resetAutoRefreshState(tab)),
   };
 }
 
@@ -269,25 +282,23 @@ function loadSession(): TabStoreState | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as TabStoreState;
     if (parsed.tabs?.length > 0 && parsed.activeTabId) {
-      // 旧フォーマット互換: 無いフィールドを補完
-      for (const tab of parsed.tabs) {
-        if (tab.pinned === undefined) tab.pinned = false;
-        if (tab.reloadKey === undefined) tab.reloadKey = 0;
-        if (tab.autoRefreshEnabled === undefined)
-          tab.autoRefreshEnabled = false;
-        if (tab.autoRefreshThreadUrl === undefined)
-          tab.autoRefreshThreadUrl = null;
-      }
-      if (!parsed.closedTabs) parsed.closedTabs = [];
-      for (const tab of parsed.closedTabs) {
-        if (tab.pinned === undefined) tab.pinned = false;
-        if (tab.reloadKey === undefined) tab.reloadKey = 0;
-        if (tab.autoRefreshEnabled === undefined)
-          tab.autoRefreshEnabled = false;
-        if (tab.autoRefreshThreadUrl === undefined)
-          tab.autoRefreshThreadUrl = null;
-      }
-      return parsed;
+      const normalizeLoadedTab = (tab: Tab): Tab => {
+        const normalized = {
+          ...tab,
+          pinned: tab.pinned ?? false,
+          reloadKey: tab.reloadKey ?? 0,
+        };
+        // 変更理由: 旧セッションに自動更新状態が残っていても復元時は常にOFFへ正規化する。
+        return resetAutoRefreshState(normalized);
+      };
+
+      return {
+        ...parsed,
+        tabs: parsed.tabs.map((tab) => normalizeLoadedTab(tab)),
+        closedTabs: (parsed.closedTabs ?? []).map((tab) =>
+          normalizeLoadedTab(tab),
+        ),
+      };
     }
   } catch {
     // パース失敗時は無視
@@ -297,7 +308,7 @@ function loadSession(): TabStoreState | null {
 
 function saveSession(state: TabStoreState): void {
   try {
-    localStorage.setItem(SESSION_KEY, JSON.stringify(state));
+    localStorage.setItem(SESSION_KEY, JSON.stringify(sanitizeSessionState(state)));
   } catch {
     // 容量超過等は無視
   }
@@ -599,8 +610,11 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
     case "REOPEN_CLOSED_TAB": {
       if (state.closedTabs.length === 0) return state;
       const [reopened, ...rest] = state.closedTabs;
-      // 新しいIDを振り直して復元
-      const restored: Tab = { ...reopened, id: crypto.randomUUID() };
+      // 変更理由: 閉じたタブを新規タブとして開き直す時は、自動更新状態を引き継がない。
+      const restored: Tab = {
+        ...resetAutoRefreshState(reopened),
+        id: crypto.randomUUID(),
+      };
       return {
         tabs: [...state.tabs, restored],
         activeTabId: restored.id,
@@ -663,7 +677,7 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
       }
 
       return updateActiveTab(state, (tab) =>
-        pushPageToTabHistory(tab, action.page),
+        resetAutoRefreshState(pushPageToTabHistory(tab, action.page)),
       );
     }
 
@@ -700,7 +714,9 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
         ...state,
         activeTabId: action.tabId,
         tabs: state.tabs.map((t) =>
-          t.id === action.tabId ? pushPageToTabHistory(t, action.page) : t,
+          t.id === action.tabId
+            ? resetAutoRefreshState(pushPageToTabHistory(t, action.page))
+            : t,
         ),
       };
     }
@@ -708,29 +724,35 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
     case "GO_BACK": {
       const tab = getActiveTab(state);
       if (tab.currentIndex <= 0) return state;
-      return updateActiveTab(state, () => ({
-        ...tab,
-        currentIndex: tab.currentIndex - 1,
-      }));
+      return updateActiveTab(state, () =>
+        resetAutoRefreshState({
+          ...tab,
+          currentIndex: tab.currentIndex - 1,
+        }),
+      );
     }
 
     case "GO_FORWARD": {
       const tab = getActiveTab(state);
       if (tab.currentIndex >= tab.history.length - 1) return state;
-      return updateActiveTab(state, () => ({
-        ...tab,
-        currentIndex: tab.currentIndex + 1,
-      }));
+      return updateActiveTab(state, () =>
+        resetAutoRefreshState({
+          ...tab,
+          currentIndex: tab.currentIndex + 1,
+        }),
+      );
     }
 
     case "GO_TO_HISTORY_INDEX": {
       const tab = getActiveTab(state);
       if (action.index < 0 || action.index >= tab.history.length) return state;
       if (action.index === tab.currentIndex) return state;
-      return updateActiveTab(state, () => ({
-        ...tab,
-        currentIndex: action.index,
-      }));
+      return updateActiveTab(state, () =>
+        resetAutoRefreshState({
+          ...tab,
+          currentIndex: action.index,
+        }),
+      );
     }
 
     case "UPDATE_TITLE": {
@@ -799,9 +821,9 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
           autoRefreshEnabled: action.keepAutoRefresh
             ? true
             : nextTab.autoRefreshEnabled,
-          autoRefreshThreadUrl: action.keepAutoRefresh
-            ? action.page.threadUrl
-            : nextTab.autoRefreshThreadUrl,
+          autoRefreshPageKey: action.keepAutoRefresh
+            ? getAutoRefreshPageKey(action.page)
+            : nextTab.autoRefreshPageKey,
         };
       });
 
@@ -809,13 +831,13 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
       return updateActiveTab(state, (tab) => ({
         ...tab,
         autoRefreshEnabled: action.enabled,
-        autoRefreshThreadUrl: action.enabled
-          ? (action.threadUrl ?? tab.autoRefreshThreadUrl)
+        autoRefreshPageKey: action.enabled
+          ? (action.pageKey ?? tab.autoRefreshPageKey)
           : null,
       }));
 
     case "RESTORE":
-      return action.state;
+      return sanitizeSessionState(action.state);
 
     default:
       return state;

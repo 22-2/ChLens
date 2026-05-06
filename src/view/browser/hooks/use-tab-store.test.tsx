@@ -1,5 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { getAutoRefreshPageKey } from "src/view/browser/utils/auto-refresh-pages";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("src/app/platform", () => ({
@@ -54,7 +55,7 @@ describe("TabProvider auto refresh state", () => {
     vi.unstubAllGlobals();
   });
 
-  it("現在のスレッドURLにだけ自動更新を束縛する", async () => {
+  it("別ページへ移動した時点で自動更新状態を解除する", async () => {
     vi.resetModules();
     const { TabProvider, useTabStore } =
       await import("src/view/browser/hooks/use-tab-store");
@@ -64,7 +65,7 @@ describe("TabProvider auto refresh state", () => {
       const isCurrentThreadAutoRefreshEnabled =
         currentPage.type === "thread" &&
         activeTab.autoRefreshEnabled &&
-        activeTab.autoRefreshThreadUrl === currentPage.threadUrl;
+        activeTab.autoRefreshPageKey === getAutoRefreshPageKey(currentPage);
 
       return (
         <>
@@ -87,7 +88,7 @@ describe("TabProvider auto refresh state", () => {
               dispatch({
                 type: "SET_AUTO_REFRESH_ENABLED",
                 enabled: true,
-                threadUrl: "https://example.com/test/read.cgi/foo/1/",
+                pageKey: "thread:https://example.com/test/read.cgi/foo/1/",
               })
             }
           >
@@ -108,7 +109,7 @@ describe("TabProvider auto refresh state", () => {
             thread-2 へ移動
           </button>
           <output data-testid="stored-thread-url">
-            {activeTab.autoRefreshThreadUrl ?? ""}
+            {activeTab.autoRefreshPageKey ?? ""}
           </output>
           <output data-testid="current-thread-enabled">
             {isCurrentThreadAutoRefreshEnabled ? "enabled" : "disabled"}
@@ -127,7 +128,7 @@ describe("TabProvider auto refresh state", () => {
     fireEvent.click(screen.getByText("thread-1 で自動更新ON"));
 
     expect(screen.getByTestId("stored-thread-url")).toHaveTextContent(
-      "https://example.com/test/read.cgi/foo/1/",
+      "thread:https://example.com/test/read.cgi/foo/1/",
     );
     expect(screen.getByTestId("current-thread-enabled")).toHaveTextContent(
       "enabled",
@@ -135,15 +136,13 @@ describe("TabProvider auto refresh state", () => {
 
     fireEvent.click(screen.getByText("thread-2 へ移動"));
 
-    expect(screen.getByTestId("stored-thread-url")).toHaveTextContent(
-      "https://example.com/test/read.cgi/foo/1/",
-    );
+    expect(screen.getByTestId("stored-thread-url")).toHaveTextContent("");
     expect(screen.getByTestId("current-thread-enabled")).toHaveTextContent(
       "disabled",
     );
   });
 
-  it("FOLLOW_NEXT_THREAD は現在タブの履歴と自動更新束縛を次スレへ引き継ぐ", async () => {
+  it("戻るで移動してきたページでも自動更新状態は復元しない", async () => {
     vi.resetModules();
     const { TabProvider, useTabStore } =
       await import("src/view/browser/hooks/use-tab-store");
@@ -153,7 +152,7 @@ describe("TabProvider auto refresh state", () => {
       const isCurrentThreadAutoRefreshEnabled =
         currentPage.type === "thread" &&
         activeTab.autoRefreshEnabled &&
-        activeTab.autoRefreshThreadUrl === currentPage.threadUrl;
+        activeTab.autoRefreshPageKey === getAutoRefreshPageKey(currentPage);
 
       return (
         <>
@@ -176,7 +175,198 @@ describe("TabProvider auto refresh state", () => {
               dispatch({
                 type: "SET_AUTO_REFRESH_ENABLED",
                 enabled: true,
+                pageKey: "thread:https://example.com/test/read.cgi/foo/1/",
+              })
+            }
+          >
+            thread-1 で自動更新ON
+          </button>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "NAVIGATE",
+                page: {
+                  type: "thread",
+                  title: "thread-2",
+                  threadUrl: "https://example.com/test/read.cgi/foo/2/",
+                },
+              })
+            }
+          >
+            thread-2 へ移動
+          </button>
+          <button onClick={() => dispatch({ type: "GO_BACK" })}>戻る</button>
+          <output data-testid="stored-thread-url">
+            {activeTab.autoRefreshPageKey ?? ""}
+          </output>
+          <output data-testid="current-thread-enabled">
+            {isCurrentThreadAutoRefreshEnabled ? "enabled" : "disabled"}
+          </output>
+        </>
+      );
+    }
+
+    render(
+      <TabProvider>
+        <Harness />
+      </TabProvider>,
+    );
+
+    fireEvent.click(screen.getByText("thread-1 へ移動"));
+    fireEvent.click(screen.getByText("thread-1 で自動更新ON"));
+    fireEvent.click(screen.getByText("thread-2 へ移動"));
+    fireEvent.click(screen.getByText("戻る"));
+
+    expect(screen.getByTestId("stored-thread-url")).toHaveTextContent("");
+    expect(screen.getByTestId("current-thread-enabled")).toHaveTextContent(
+      "disabled",
+    );
+  });
+
+  it("セッション保存時に自動更新状態を永続化しない", async () => {
+    vi.resetModules();
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
+
+    function Harness() {
+      const { dispatch } = useTabStore();
+
+      return (
+        <>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "NAVIGATE",
+                page: {
+                  type: "thread",
+                  title: "thread-1",
+                  threadUrl: "https://example.com/test/read.cgi/foo/1/",
+                },
+              })
+            }
+          >
+            thread-1 へ移動
+          </button>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "SET_AUTO_REFRESH_ENABLED",
+                enabled: true,
+                pageKey: "thread:https://example.com/test/read.cgi/foo/1/",
+              })
+            }
+          >
+            thread-1 で自動更新ON
+          </button>
+        </>
+      );
+    }
+
+    render(
+      <TabProvider>
+        <Harness />
+      </TabProvider>,
+    );
+
+    fireEvent.click(screen.getByText("thread-1 へ移動"));
+    fireEvent.click(screen.getByText("thread-1 で自動更新ON"));
+
+    const raw = localStorage.getItem("readcrx_browser_session");
+    expect(raw).not.toBeNull();
+    const parsed = JSON.parse(raw ?? "{}") as {
+      tabs: Array<{ autoRefreshEnabled: boolean; autoRefreshPageKey: string | null }>;
+    };
+
+    expect(parsed.tabs[0].autoRefreshEnabled).toBe(false);
+    expect(parsed.tabs[0].autoRefreshPageKey).toBeNull();
+  });
+
+  it("セッション復元時に保存済み自動更新状態をリセットする", async () => {
+    localStorage.setItem(
+      "readcrx_browser_session",
+      JSON.stringify({
+        tabs: [
+          {
+            id: "tab-1",
+            history: [
+              {
+                type: "thread",
+                title: "thread-1",
                 threadUrl: "https://example.com/test/read.cgi/foo/1/",
+              },
+            ],
+            currentIndex: 0,
+            pinned: false,
+            reloadKey: 0,
+            autoRefreshEnabled: true,
+            autoRefreshPageKey: "thread:https://example.com/test/read.cgi/foo/1/",
+          },
+        ],
+        activeTabId: "tab-1",
+        closedTabs: [],
+      }),
+    );
+
+    vi.resetModules();
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
+
+    function Harness() {
+      const { activeTab } = useTabStore();
+      return (
+        <>
+          <output data-testid="saved-enabled">
+            {activeTab.autoRefreshEnabled ? "enabled" : "disabled"}
+          </output>
+          <output data-testid="saved-url">{activeTab.autoRefreshPageKey ?? ""}</output>
+        </>
+      );
+    }
+
+    render(
+      <TabProvider>
+        <Harness />
+      </TabProvider>,
+    );
+
+    expect(screen.getByTestId("saved-enabled")).toHaveTextContent("disabled");
+    expect(screen.getByTestId("saved-url")).toHaveTextContent("");
+  });
+
+  it("FOLLOW_NEXT_THREAD は現在タブの履歴と自動更新束縛を次スレへ引き継ぐ", async () => {
+    vi.resetModules();
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
+
+    function Harness() {
+      const { activeTab, currentPage, dispatch } = useTabStore();
+      const isCurrentThreadAutoRefreshEnabled =
+        currentPage.type === "thread" &&
+        activeTab.autoRefreshEnabled &&
+        activeTab.autoRefreshPageKey === getAutoRefreshPageKey(currentPage);
+
+      return (
+        <>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "NAVIGATE",
+                page: {
+                  type: "thread",
+                  title: "thread-1",
+                  threadUrl: "https://example.com/test/read.cgi/foo/1/",
+                },
+              })
+            }
+          >
+            thread-1 へ移動
+          </button>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "SET_AUTO_REFRESH_ENABLED",
+                enabled: true,
+                pageKey: "thread:https://example.com/test/read.cgi/foo/1/",
               })
             }
           >
@@ -198,7 +388,7 @@ describe("TabProvider auto refresh state", () => {
             次スレへ追従
           </button>
           <output data-testid="stored-thread-url">
-            {activeTab.autoRefreshThreadUrl ?? ""}
+            {activeTab.autoRefreshPageKey ?? ""}
           </output>
           <output data-testid="history-length">
             {activeTab.history.length}
@@ -224,7 +414,7 @@ describe("TabProvider auto refresh state", () => {
     fireEvent.click(screen.getByText("次スレへ追従"));
 
     expect(screen.getByTestId("stored-thread-url")).toHaveTextContent(
-      "https://example.com/test/read.cgi/foo/2/",
+      "thread:https://example.com/test/read.cgi/foo/2/",
     );
     expect(screen.getByTestId("history-length")).toHaveTextContent("5");
     expect(screen.getByTestId("current-thread-title")).toHaveTextContent(

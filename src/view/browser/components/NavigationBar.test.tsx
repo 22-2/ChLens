@@ -34,7 +34,7 @@ const { activeTab, defaultHistory, dispatchMock, longTitle } = vi.hoisted(
       pinned: false,
       reloadKey: 0,
       autoRefreshEnabled: false,
-      autoRefreshThreadUrl: null,
+      autoRefreshPageKey: null,
     };
 
     return {

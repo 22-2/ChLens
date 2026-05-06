@@ -193,6 +193,7 @@ describe("ThreadListPage", () => {
       },
       refreshKey: 0,
       isActive: true,
+      isAutoRefreshEnabled: true,
     };
 
     const { rerender } = render(
@@ -201,6 +202,7 @@ describe("ThreadListPage", () => {
         page={props.page}
         refreshKey={props.refreshKey}
         isActive={props.isActive}
+        isAutoRefreshEnabled={props.isAutoRefreshEnabled}
       />,
     );
 
@@ -216,6 +218,7 @@ describe("ThreadListPage", () => {
         page={props.page}
         refreshKey={props.refreshKey}
         isActive={false}
+        isAutoRefreshEnabled={props.isAutoRefreshEnabled}
       />,
     );
     await vi.advanceTimersByTimeAsync(20000);
@@ -228,6 +231,7 @@ describe("ThreadListPage", () => {
         page={props.page}
         refreshKey={props.refreshKey}
         isActive={true}
+        isAutoRefreshEnabled={props.isAutoRefreshEnabled}
       />,
     );
     await vi.advanceTimersByTimeAsync(20000);

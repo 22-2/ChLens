@@ -16,6 +16,7 @@ import { container } from "src/service-container/index";
 import type { IRes } from "src/service-container/interfaces";
 import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
+import { getAutoRefreshPageKey } from "src/view/browser/utils/auto-refresh-pages";
 import { getLegacyWriteHistoryService } from "src/view/browser/utils/legacy-app";
 import type { Props, ThreadFilter } from "src/view/browser/utils/types";
 import {
@@ -251,7 +252,7 @@ export function useThreadResContextMenu({
             dispatch({
               type: "SET_AUTO_REFRESH_ENABLED",
               enabled: true,
-              threadUrl: page.threadUrl,
+              pageKey: getAutoRefreshPageKey(page) ?? undefined,
             });
             container.toast.info("スレッドの自動更新を開始しました");
           },

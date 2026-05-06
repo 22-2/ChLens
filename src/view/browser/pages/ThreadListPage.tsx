@@ -13,31 +13,25 @@ import {
   ColumnDef,
   SimpleDataTable,
 } from "src/view/browser/components/SimpleDataTable";
+import {
+  BOARD_AUTO_REFRESH_CONFIG_KEY,
+  MIN_BOARD_AUTO_REFRESH_MS,
+  readBoardAutoRefreshIntervalMs,
+} from "src/view/browser/hooks/auto-refresh-config";
 import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
 import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
 import { useTheme, type ResolvedTheme } from "src/view/browser/hooks/use-theme";
 import type { ThreadListPage as ThreadListPageType } from "src/view/browser/types";
 import { copyText } from "src/view/browser/utils/utils";
-
-const BOARD_AUTO_REFRESH_CONFIG_KEY = "auto_load_second_board";
-const MIN_BOARD_AUTO_REFRESH_MS = 20000;
 const OPENED_BOARDS_CONFIG_KEY = "opened_board_entries";
 const MAX_OPENED_BOARD_ENTRIES = 500;
-
-function readBoardAutoRefreshIntervalMs(): number {
-  const rawValue = container.config.get(BOARD_AUTO_REFRESH_CONFIG_KEY);
-  const parsedValue = Number.parseInt(rawValue ?? "0", 10);
-  if (Number.isNaN(parsedValue)) {
-    return 0;
-  }
-  return parsedValue;
-}
 
 interface Props {
   tabId: string;
   page: ThreadListPageType;
   refreshKey: number;
   isActive: boolean;
+  isAutoRefreshEnabled?: boolean;
 }
 
 type SortColumn = "num" | "title" | "resCount" | "unreadCount" | "heat";
@@ -434,6 +428,7 @@ export const ThreadListPage: React.FC<Props> = ({
   page,
   refreshKey,
   isActive,
+  isAutoRefreshEnabled = false,
 }) => {
   const dispatch = useTabDispatch();
   const { isNgTemporarilyDisabled, setThreadListStats } = useNgStatus();
@@ -655,6 +650,7 @@ export const ThreadListPage: React.FC<Props> = ({
 
   useEffect(() => {
     if (
+      !isAutoRefreshEnabled ||
       !isActive ||
       !isDocumentVisible ||
       boardAutoRefreshIntervalMs < MIN_BOARD_AUTO_REFRESH_MS
@@ -679,6 +675,7 @@ export const ThreadListPage: React.FC<Props> = ({
     boardAutoRefreshIntervalMs,
     dispatch,
     isActive,
+    isAutoRefreshEnabled,
     isDocumentVisible,
     loading,
   ]);

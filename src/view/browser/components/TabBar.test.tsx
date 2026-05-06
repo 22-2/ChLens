@@ -1,10 +1,44 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render } from "@testing-library/react";
 import React from "react";
+import { container } from "src/service-container/index";
 import { TabBar } from "src/view/browser/components/TabBar";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const dispatchMock = vi.fn();
+const mocks = vi.hoisted(() => ({
+  tabStore: {
+    state: {
+      tabs: [
+        {
+          id: "tab-1",
+          history: [{ type: "home", title: "ホーム" }],
+          currentIndex: 0,
+          pinned: false,
+          reloadKey: 0,
+          autoRefreshEnabled: false,
+          autoRefreshPageKey: null,
+        },
+        {
+          id: "tab-2",
+          history: [{ type: "boardList", title: "板一覧" }],
+          currentIndex: 0,
+          pinned: false,
+          reloadKey: 0,
+          autoRefreshEnabled: false,
+          autoRefreshPageKey: null,
+        },
+      ],
+      activeTabId: "tab-1",
+      closedTabs: [],
+    },
+  },
+  autoScrollState: {
+    canAutoScroll: false,
+    isAutoScrolling: false,
+    isPaused: false,
+  },
+}));
 
 vi.mock("src/view/browser/components/ContextMenu", () => ({
   ContextMenu: () => null,
@@ -16,32 +50,13 @@ vi.mock("src/view/browser/components/TabContextMenu", () => ({
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => ({
-    state: {
-      tabs: [
-        {
-          id: "tab-1",
-          history: [{ type: "home", title: "ホーム" }],
-          currentIndex: 0,
-          pinned: false,
-          reloadKey: 0,
-          autoRefreshEnabled: false,
-          autoRefreshThreadUrl: null,
-        },
-        {
-          id: "tab-2",
-          history: [{ type: "boardList", title: "板一覧" }],
-          currentIndex: 0,
-          pinned: false,
-          reloadKey: 0,
-          autoRefreshEnabled: false,
-          autoRefreshThreadUrl: null,
-        },
-      ],
-      activeTabId: "tab-1",
-      closedTabs: [],
-    },
+    state: mocks.tabStore.state,
     dispatch: dispatchMock,
   }),
+}));
+
+vi.mock("src/view/browser/hooks/use-auto-scroll-state", () => ({
+  useAutoScrollState: () => mocks.autoScrollState,
 }));
 
 // DragDropProvider はテスト環境ではシムで置き換え、onDragEnd を外部から呼べるようにする。
@@ -75,6 +90,45 @@ vi.mock("@dnd-kit/react/sortable", () => ({
 
 describe("TabBar wheel switching", () => {
   beforeEach(() => {
+    mocks.tabStore.state = {
+      tabs: [
+        {
+          id: "tab-1",
+          history: [{ type: "home", title: "ホーム" }],
+          currentIndex: 0,
+          pinned: false,
+          reloadKey: 0,
+          autoRefreshEnabled: false,
+          autoRefreshPageKey: null,
+        },
+        {
+          id: "tab-2",
+          history: [{ type: "boardList", title: "板一覧" }],
+          currentIndex: 0,
+          pinned: false,
+          reloadKey: 0,
+          autoRefreshEnabled: false,
+          autoRefreshPageKey: null,
+        },
+      ],
+      activeTabId: "tab-1",
+      closedTabs: [],
+    };
+    mocks.autoScrollState = {
+      canAutoScroll: false,
+      isAutoScrolling: false,
+      isPaused: false,
+    };
+    container.config = {
+      get: vi.fn(() => "0"),
+      set: vi.fn(),
+      ready: (callback: () => void) => callback(),
+    };
+    container.message = {
+      on: vi.fn(),
+      off: vi.fn(),
+      send: vi.fn(),
+    };
     dispatchMock.mockReset();
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-04-20T00:00:00.000Z"));
@@ -115,6 +169,45 @@ describe("TabBar wheel switching", () => {
 
 describe("TabBar drag-to-reorder", () => {
   beforeEach(() => {
+    mocks.tabStore.state = {
+      tabs: [
+        {
+          id: "tab-1",
+          history: [{ type: "home", title: "ホーム" }],
+          currentIndex: 0,
+          pinned: false,
+          reloadKey: 0,
+          autoRefreshEnabled: false,
+          autoRefreshPageKey: null,
+        },
+        {
+          id: "tab-2",
+          history: [{ type: "boardList", title: "板一覧" }],
+          currentIndex: 0,
+          pinned: false,
+          reloadKey: 0,
+          autoRefreshEnabled: false,
+          autoRefreshPageKey: null,
+        },
+      ],
+      activeTabId: "tab-1",
+      closedTabs: [],
+    };
+    mocks.autoScrollState = {
+      canAutoScroll: false,
+      isAutoScrolling: false,
+      isPaused: false,
+    };
+    container.config = {
+      get: vi.fn(() => "0"),
+      set: vi.fn(),
+      ready: (callback: () => void) => callback(),
+    };
+    container.message = {
+      on: vi.fn(),
+      off: vi.fn(),
+      send: vi.fn(),
+    };
     dispatchMock.mockReset();
     capturedOnDragEnd = undefined;
   });
@@ -184,6 +277,45 @@ describe("TabBar drag-to-reorder", () => {
 
 describe("TabBar tab interactions", () => {
   beforeEach(() => {
+    mocks.tabStore.state = {
+      tabs: [
+        {
+          id: "tab-1",
+          history: [{ type: "home", title: "ホーム" }],
+          currentIndex: 0,
+          pinned: false,
+          reloadKey: 0,
+          autoRefreshEnabled: false,
+          autoRefreshPageKey: null,
+        },
+        {
+          id: "tab-2",
+          history: [{ type: "boardList", title: "板一覧" }],
+          currentIndex: 0,
+          pinned: false,
+          reloadKey: 0,
+          autoRefreshEnabled: false,
+          autoRefreshPageKey: null,
+        },
+      ],
+      activeTabId: "tab-1",
+      closedTabs: [],
+    };
+    mocks.autoScrollState = {
+      canAutoScroll: false,
+      isAutoScrolling: false,
+      isPaused: false,
+    };
+    container.config = {
+      get: vi.fn(() => "0"),
+      set: vi.fn(),
+      ready: (callback: () => void) => callback(),
+    };
+    container.message = {
+      on: vi.fn(),
+      off: vi.fn(),
+      send: vi.fn(),
+    };
     dispatchMock.mockReset();
     capturedOnDragEnd = undefined;
   });
@@ -216,5 +348,46 @@ describe("TabBar tab interactions", () => {
       type: "CLOSE_TAB",
       tabId: "tab-1",
     });
+  });
+
+  it("スレ一覧タブで自動更新が有効なとき、非アクティブ側に青い四角インジケーターを出す", () => {
+    mocks.tabStore.state = {
+      tabs: [
+        {
+          id: "tab-1",
+          history: [{ type: "home", title: "ホーム" }],
+          currentIndex: 0,
+          pinned: false,
+          reloadKey: 0,
+          autoRefreshEnabled: false,
+          autoRefreshPageKey: null,
+        },
+        {
+          id: "tab-2",
+          history: [
+            {
+              type: "threadList",
+              title: "板",
+              boardUrl: "https://example.com/software/",
+              boardTitle: "Software",
+            },
+          ],
+          currentIndex: 0,
+          pinned: false,
+          reloadKey: 0,
+          autoRefreshEnabled: true,
+          autoRefreshPageKey: "threadList:https://example.com/software/",
+        },
+      ],
+      activeTabId: "tab-1",
+      closedTabs: [],
+    };
+
+    const { container: rendered } = render(<TabBar />);
+    const indicator = rendered.querySelector(
+      "[data-tab-id='tab-2'] .tab__auto-refresh-indicator--inactive",
+    );
+
+    expect(indicator).not.toBeNull();
   });
 });

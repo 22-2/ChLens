@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
     threadUrl: "https://example.com/test/read.cgi/software/1/",
   } as Page,
   autoRefreshPanel: {
+    panelKind: "thread" as const,
     isOnThread: true,
     isEnabled: false,
     intervalSec: 30,
@@ -37,6 +38,8 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
 vi.mock("src/view/browser/hooks/use-auto-refresh-panel", () => ({
   MIN_INTERVAL_SEC: 5,
   MAX_INTERVAL_SEC: 120,
+  MIN_BOARD_INTERVAL_SEC: 20,
+  MAX_BOARD_INTERVAL_SEC: 300,
   useAutoRefreshPanel: () => mocks.autoRefreshPanel,
 }));
 
@@ -66,8 +69,8 @@ function createRect(): DOMRect {
   } as DOMRect;
 }
 
-function renderItem(): void {
-  render(
+function renderItem() {
+  return render(
     <StatusBarProvider>
       <AutoRefreshStatusItem />
       <StatusBar />
@@ -83,6 +86,7 @@ describe("AutoRefreshStatusItem", () => {
       threadUrl: "https://example.com/test/read.cgi/software/1/",
     };
     mocks.autoRefreshPanel = {
+      panelKind: "thread",
       isOnThread: true,
       isEnabled: false,
       intervalSec: 30,
@@ -149,6 +153,14 @@ describe("AutoRefreshStatusItem", () => {
       boardUrl: "https://example.com/software/",
       boardTitle: "Software",
     };
+    mocks.autoRefreshPanel = {
+      panelKind: "threadList",
+      isOnThread: false,
+      isEnabled: false,
+      intervalSec: 40,
+      toggle: vi.fn(),
+      setIntervalSec: vi.fn(),
+    };
 
     renderItem();
 
@@ -161,7 +173,9 @@ describe("AutoRefreshStatusItem", () => {
     fireEvent.click(button);
 
     expect(screen.getByText("スレ一覧自動更新")).toBeInTheDocument();
-    expect(screen.getByText("20秒未満では無効になります")).toBeInTheDocument();
+    expect(
+      screen.getByText("スレ一覧を開いている間だけ、同じタブで自動更新します"),
+    ).toBeInTheDocument();
     expect(
       screen.queryByText("自動スクロールスタイル"),
     ).not.toBeInTheDocument();
@@ -172,6 +186,14 @@ describe("AutoRefreshStatusItem", () => {
       type: "home",
       title: "ホーム",
     };
+    mocks.autoRefreshPanel = {
+      panelKind: null,
+      isOnThread: false,
+      isEnabled: false,
+      intervalSec: 30,
+      toggle: vi.fn(),
+      setIntervalSec: vi.fn(),
+    };
 
     renderItem();
 
@@ -180,6 +202,7 @@ describe("AutoRefreshStatusItem", () => {
 
   it("ポップアップ表示中の一時停止状態をホバーラベルで示す", () => {
     mocks.autoRefreshPanel = {
+      panelKind: "thread",
       isOnThread: true,
       isEnabled: true,
       intervalSec: 30,
@@ -211,15 +234,13 @@ describe("AutoRefreshStatusItem", () => {
       boardUrl: "https://example.com/software/",
       boardTitle: "Software",
     };
-    container.config = {
-      get: vi.fn((key: string) => {
-        if (key === "auto_load_second_board") {
-          return "40000";
-        }
-        return "0";
-      }),
-      set: vi.fn(),
-      ready: (callback: () => void) => callback(),
+    mocks.autoRefreshPanel = {
+      panelKind: "threadList",
+      isOnThread: false,
+      isEnabled: false,
+      intervalSec: 40,
+      toggle: vi.fn(),
+      setIntervalSec: vi.fn(),
     };
 
     renderItem();
@@ -247,5 +268,64 @@ describe("AutoRefreshStatusItem", () => {
     fireEvent.click(nextThreadToggle as HTMLButtonElement);
 
     expect(mocks.autoNextThreadSetting.setEnabled).toHaveBeenCalledWith(true);
+  });
+
+  it("スレ一覧で自動更新間隔が有効なときはアクティブ色になる", () => {
+    mocks.currentPage = {
+      type: "threadList",
+      title: "板",
+      boardUrl: "https://example.com/software/",
+      boardTitle: "Software",
+    };
+    mocks.autoRefreshPanel = {
+      panelKind: "threadList",
+      isOnThread: false,
+      isEnabled: true,
+      intervalSec: 40,
+      toggle: vi.fn(),
+      setIntervalSec: vi.fn(),
+    };
+
+    const { container: rendered } = renderItem();
+
+    const statusBar = rendered.querySelector(".status-bar");
+    expect(statusBar?.className).toContain("status-bar--active");
+  });
+
+  it("スレ一覧ミニウィンドウから自動更新を切り替えられる", () => {
+    mocks.currentPage = {
+      type: "threadList",
+      title: "板",
+      boardUrl: "https://example.com/software/",
+      boardTitle: "Software",
+    };
+    mocks.autoRefreshPanel = {
+      panelKind: "threadList",
+      isOnThread: false,
+      isEnabled: false,
+      intervalSec: 40,
+      toggle: vi.fn(),
+      setIntervalSec: vi.fn(),
+    };
+
+    renderItem();
+
+    const button = screen.getByRole("button", { name: /スレ一覧自動更新/ });
+    Object.defineProperty(button, "getBoundingClientRect", {
+      configurable: true,
+      value: () => createRect(),
+    });
+
+    fireEvent.click(button);
+
+    const toggleButton = screen
+      .getByText("自動更新")
+      .closest(".mini-window__toggle-row")
+      ?.querySelector("button");
+
+    expect(toggleButton).not.toBeNull();
+    fireEvent.click(toggleButton as HTMLButtonElement);
+
+    expect(mocks.autoRefreshPanel.toggle).toHaveBeenCalledTimes(1);
   });
 });

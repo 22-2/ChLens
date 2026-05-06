@@ -1,59 +1,20 @@
 import { Clock3, Pause, RefreshCw } from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { container } from "src/service-container/index";
 import { MiniWindow } from "src/view/browser/components/MiniWindow";
-import { StatusBarItem } from "src/view/browser/components/StatusBar";
+import {
+  StatusBarItem,
+  StatusBarMode,
+} from "src/view/browser/components/StatusBar";
 import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
 import { useAutoNextThreadSetting } from "src/view/browser/hooks/use-auto-next-thread-setting";
 import {
+  MAX_BOARD_INTERVAL_SEC,
   MAX_INTERVAL_SEC,
+  MIN_BOARD_INTERVAL_SEC,
   MIN_INTERVAL_SEC,
   useAutoRefreshPanel,
 } from "src/view/browser/hooks/use-auto-refresh-panel";
 import { useAutoScrollState } from "src/view/browser/hooks/use-auto-scroll-state";
-import { useTabStore } from "src/view/browser/hooks/use-tab-store";
-
-const BOARD_CONFIG_KEY = "auto_load_second_board";
-const MAX_BOARD_INTERVAL_SEC = 300;
-const MIN_BOARD_INTERVAL_SEC = 20;
-
-function readBoardIntervalSec(): number {
-  const raw = container.config.get(BOARD_CONFIG_KEY);
-  const ms = Number.parseInt(raw ?? "0", 10);
-  if (Number.isNaN(ms) || ms <= 0) return 0;
-  return Math.max(0, Math.min(MAX_BOARD_INTERVAL_SEC, Math.round(ms / 1000)));
-}
-
-function useBoardIntervalSec(): {
-  intervalSec: number;
-  setIntervalSec: (sec: number) => void;
-} {
-  const [intervalSec, setIntervalSecState] = useState(readBoardIntervalSec);
-
-  useEffect(() => {
-    const sync = () => setIntervalSecState(readBoardIntervalSec());
-    const handleConfigUpdated = ({ key }: { key?: string }) => {
-      if (key === BOARD_CONFIG_KEY) {
-        sync();
-      }
-    };
-
-    container.config.ready(sync);
-    container.message.on("config_updated", handleConfigUpdated);
-    return () => {
-      container.message.off("config_updated", handleConfigUpdated);
-    };
-  }, []);
-
-  const setIntervalSec = useCallback((sec: number) => {
-    const clamped = Math.max(0, Math.min(MAX_BOARD_INTERVAL_SEC, sec));
-    setIntervalSecState(clamped);
-    // legacy 設定と揃えるため、内部保存値は秒ではなく ms のまま扱う。
-    container.config.set(BOARD_CONFIG_KEY, String(clamped * 1000));
-  }, []);
-
-  return { intervalSec, setIntervalSec };
-}
 
 // -----------------------------------------------------------------------
 // ミニウィンドウの中身（UI のみ、ロジックは props 経由）
@@ -166,14 +127,35 @@ const ThreadAutoRefreshPanelContent: React.FC<
 );
 
 interface ThreadListAutoRefreshPanelContentProps {
+  isEnabled: boolean;
   intervalSec: number;
+  onToggle: () => void;
   onIntervalChange: (sec: number) => void;
 }
 
 const ThreadListAutoRefreshPanelContent: React.FC<
   ThreadListAutoRefreshPanelContentProps
-> = ({ intervalSec, onIntervalChange }) => (
+> = ({ isEnabled, intervalSec, onToggle, onIntervalChange }) => (
   <>
+    <div className="mini-window__section">
+      <div className="mini-window__toggle-row">
+        <span className="mini-window__toggle-label">自動更新</span>
+        <button
+          className={`mini-window__toggle-btn${
+            isEnabled ? " mini-window__toggle-btn--on" : ""
+          }`}
+          onClick={onToggle}
+        >
+          {isEnabled ? "ON" : "OFF"}
+        </button>
+      </div>
+      <p className="mini-window__note">
+        スレ一覧を開いている間だけ、同じタブで自動更新します
+      </p>
+    </div>
+
+    <div className="mini-window__separator" />
+
     <div className="mini-window__section">
       <div className="mini-window__section-header">更新間隔</div>
       <div className="mini-window__slider-row">
@@ -186,11 +168,9 @@ const ThreadListAutoRefreshPanelContent: React.FC<
           value={intervalSec}
           onChange={(e) => onIntervalChange(Number(e.target.value))}
         />
-        <span className="mini-window__slider-value">
-          {intervalSec > 0 ? `${intervalSec}秒` : "OFF"}
-        </span>
+        <span className="mini-window__slider-value">{intervalSec}秒</span>
       </div>
-      <p className="mini-window__note">20秒未満では無効になります</p>
+      <p className="mini-window__note">20秒から300秒の範囲で設定できます</p>
     </div>
   </>
 );
@@ -199,31 +179,27 @@ const ThreadListAutoRefreshPanelContent: React.FC<
 // ステータスバーアイテム本体
 // -----------------------------------------------------------------------
 export const AutoRefreshStatusItem: React.FC = () => {
-  const { currentPage } = useTabStore();
-  const { isOnThread, isEnabled, intervalSec, toggle, setIntervalSec } =
+  const { panelKind, isOnThread, isEnabled, intervalSec, toggle, setIntervalSec } =
     useAutoRefreshPanel();
   const {
     enabled: isAutoNextThreadEnabled,
     setEnabled: setAutoNextThreadEnabled,
   } = useAutoNextThreadSetting();
-  const { intervalSec: boardIntervalSec, setIntervalSec: setBoardIntervalSec } =
-    useBoardIntervalSec();
   const { canAutoScroll, isAutoScrolling, isPaused } = useAutoScrollState();
 
   const [isWindowOpen, setIsWindowOpen] = useState(false);
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
 
-  const panelKind =
-    currentPage.type === "thread"
-      ? "thread"
-      : currentPage.type === "threadList"
-        ? "threadList"
-        : null;
-  const isBoardIntervalEnabled = boardIntervalSec >= MIN_BOARD_INTERVAL_SEC;
-  const intervalLabel = `${
-    panelKind === "thread" ? intervalSec : boardIntervalSec
-  } s`;
+  // 変更理由: 全体の status-bar accent は StatusBarMode が source of truth なので、
+  // スレ/スレ一覧の両方で同じ active 判定をここに集約する。
+  const isStatusActive =
+    panelKind === "thread"
+      ? isEnabled && !isPaused && (canAutoScroll || isAutoScrolling)
+      : panelKind === "threadList"
+        ? isEnabled
+        : false;
+  const intervalLabel = `${intervalSec} s`;
 
   // 早期returnする前にすべてのhooksを呼び出す必要があるため、
   // panelKindのチェックはif文で早期return前に移動するのではなく、
@@ -255,9 +231,9 @@ export const AutoRefreshStatusItem: React.FC = () => {
           : canAutoScroll || isAutoScrolling
             ? `スレッド自動更新: 追従中（${intervalSec}秒間隔）`
             : `スレッド自動更新: 待機中（しきい線より上, ${intervalSec}秒間隔）`
-      : isBoardIntervalEnabled
-        ? `スレ一覧自動更新の設定 (${boardIntervalSec}秒間隔)`
-        : "スレ一覧自動更新の設定";
+      : !isEnabled
+        ? "スレ一覧自動更新: OFF"
+        : `スレ一覧自動更新: ON（${intervalSec}秒間隔）`;
 
   const renderStatusIcon = () => {
     if (panelKind === "thread") {
@@ -275,7 +251,7 @@ export const AutoRefreshStatusItem: React.FC = () => {
       return <Clock3 size={13} aria-hidden="true" />;
     }
 
-    if (isBoardIntervalEnabled) {
+    if (isEnabled) {
       return (
         <RefreshCw size={13} className="icon--spinning" aria-hidden="true" />
       );
@@ -285,17 +261,18 @@ export const AutoRefreshStatusItem: React.FC = () => {
   };
 
   const buttonClassName = `status-bar__btn${
-    panelKind === "thread" && isEnabled ? " status-bar__btn--active" : ""
-  }${
-    panelKind === "threadList" && !isBoardIntervalEnabled
-      ? " status-bar__btn--muted"
-      : ""
+    panelKind === "threadList" && !isEnabled ? " status-bar__btn--muted" : ""
   }`;
   const windowTitle =
     panelKind === "thread" ? "スレッド自動更新" : "スレ一覧自動更新";
 
   return (
     <>
+      <StatusBarMode
+        id="auto-refresh-status-mode"
+        appearance={isStatusActive ? "active" : null}
+      />
+
       <StatusBarItem
         id="auto-refresh-status"
         alignment="left"
@@ -340,8 +317,10 @@ export const AutoRefreshStatusItem: React.FC = () => {
             />
           ) : (
             <ThreadListAutoRefreshPanelContent
-              intervalSec={boardIntervalSec}
-              onIntervalChange={setBoardIntervalSec}
+              isEnabled={isEnabled}
+              intervalSec={intervalSec}
+              onToggle={toggle}
+              onIntervalChange={setIntervalSec}
             />
           )}
         </MiniWindow>
