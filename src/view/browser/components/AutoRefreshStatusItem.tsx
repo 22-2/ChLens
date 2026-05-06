@@ -180,7 +180,7 @@ const ThreadListAutoRefreshPanelContent: React.FC<
         <input
           className="mini-window__slider"
           type="range"
-          min={0}
+          min={MIN_BOARD_INTERVAL_SEC}
           max={MAX_BOARD_INTERVAL_SEC}
           step={10}
           value={intervalSec}
