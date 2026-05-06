@@ -158,7 +158,7 @@ export function parseNgString(string: string): Set<InternalNGElement> {
     }
 
     const ele = _getNgElement(ngWord);
-    if (ele == null) {
+    if (ele == null || ele?.params?.disabled) {
       continue;
     }
     ngElement.type = ele.type;

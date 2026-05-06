@@ -41,7 +41,7 @@ export const NG_HIGHLIGHT_COLOR_PRESET_ITEMS = Object.entries(
     ],
 }));
 
-export type NGDslParameterName = "word" | "sites" | "bgColor" | "label";
+export type NGDslParameterName = "word" | "sites" | "bgColor" | "label" | "disabled";
 
 export interface NGDslParameterSpec {
   readonly name: NGDslParameterName;
@@ -84,7 +84,14 @@ const LABEL_PARAMETER: NGDslParameterSpec = {
   documentation: "スレ一覧上に表示する短いラベルです。",
 };
 
-const DEFAULT_RULE_PARAMETERS = [WORD_PARAMETER, SITES_PARAMETER] as const;
+const DISABLED_PARAMETER: NGDslParameterSpec = {
+  name: "disabled",
+  detail: "ルールの有効/無効",
+  documentation:
+    "true にするとルールが無効になります。ngDSL入力欄で一時的にルールを無効化したいときなどに便利です。",
+};
+
+const DEFAULT_RULE_PARAMETERS = [WORD_PARAMETER, SITES_PARAMETER, DISABLED_PARAMETER] as const;
 
 export const NG_DSL_RULE_SPECS: readonly NGDslRuleSpec[] = [
   {
@@ -202,12 +209,6 @@ export const NG_DSL_RULE_SPECS: readonly NGDslRuleSpec[] = [
     wordDescription: "URL",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
-  // {
-  //   keyword: TYPE.WORD,
-  //   description: "全文を部分一致でNGにします。",
-  //   wordDescription: "キーワード",
-  //   parameters: DEFAULT_RULE_PARAMETERS,
-  // },
   {
     keyword: TYPE.RES_COUNT,
     description: "レス数でスレッドをNGにします。",
@@ -232,6 +233,7 @@ const NG_DSL_PARAMETER_ALIASES = new Map<string, NGDslParameterName>([
   ["bgcolor", "bgColor"],
   ["bgColor", "bgColor"],
   ["label", "label"],
+  ["disabled", "disabled"],
 ]);
 
 export function getNgDslRuleSpec(keyword: string): NGDslRuleSpec | null {
