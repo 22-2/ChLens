@@ -101,7 +101,7 @@ export function isCompatibleBoardHost(hostname: string): boolean {
 type BoardType = "eddibb" | "shitaraba" | "machi" | "ch-style";
 
 function classifyBoardHost(hostname: string): BoardType | null {
-  if (hostname === "bbs.eddibb.cc") return "eddibb";
+  // if (hostname === "bbs.eddibb.cc") return "eddibb";
   if (hostname === "jbbs.shitaraba.net") return "shitaraba";
   if (hasHostnameSuffix(hostname, "machi.to")) return "machi";
   if (isCompatibleBoardHost(hostname)) return "ch-style";
