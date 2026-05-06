@@ -1,7 +1,10 @@
 import type { MouseEvent } from "react";
 
-export type UrlHandlingMode = "respect-default-external";
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
+export type UrlHandlingMode = "respect-default-external";
 export const RESPECT_DEFAULT_EXTERNAL: UrlHandlingMode =
   "respect-default-external";
 
@@ -39,6 +42,10 @@ export interface InternalThreadListPage {
 
 export type InternalBrowserPage = InternalThreadPage | InternalThreadListPage;
 
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
 const COMPATIBLE_HOST_SUFFIXES = [
   "5ch.io",
   "2ch.sc",
@@ -53,6 +60,10 @@ const COMPATIBLE_EXACT_HOSTS = [
   "jbbs.livedoor.jp",
   "bbs.eddibb.cc",
 ] as const;
+
+// ---------------------------------------------------------------------------
+// Regex patterns
+// ---------------------------------------------------------------------------
 
 const CH_STYLE_THREAD_PATTERN =
   /^\/((?:[\w-]+\/)?test\/read\.cgi\/[\w-]+\/\d+)\/?/;
@@ -71,21 +82,35 @@ const EDDIBB_BOARD_PATTERN = /^\/(?:test\/read\.cgi\/)?([\w-]+)\/?(?:#.*)?$/;
 const ITEST_THREAD_PATTERN =
   /^\/(?:test\/read\.cgi\/([\w-]+)\/(\d+)\/|(?:subback\/)?([\w-]+)\/?)/;
 
+// ---------------------------------------------------------------------------
+// Host utilities
+// ---------------------------------------------------------------------------
+
 function hasHostnameSuffix(hostname: string, suffix: string): boolean {
   return hostname === suffix || hostname.endsWith(`.${suffix}`);
 }
 
 export function isCompatibleBoardHost(hostname: string): boolean {
-  const normalizedHostname = hostname.toLowerCase();
+  const h = hostname.toLowerCase();
   return (
-    COMPATIBLE_EXACT_HOSTS.some(
-      (candidate) => normalizedHostname === candidate,
-    ) ||
-    COMPATIBLE_HOST_SUFFIXES.some((suffix) =>
-      hasHostnameSuffix(normalizedHostname, suffix),
-    )
+    COMPATIBLE_EXACT_HOSTS.some((host) => h === host) ||
+    COMPATIBLE_HOST_SUFFIXES.some((suffix) => hasHostnameSuffix(h, suffix))
   );
 }
+
+type BoardType = "eddibb" | "shitaraba" | "machi" | "ch-style";
+
+function classifyBoardHost(hostname: string): BoardType | null {
+  if (hostname === "bbs.eddibb.cc") return "eddibb";
+  if (hostname === "jbbs.shitaraba.net") return "shitaraba";
+  if (hasHostnameSuffix(hostname, "machi.to")) return "machi";
+  if (isCompatibleBoardHost(hostname)) return "ch-style";
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// URL normalization
+// ---------------------------------------------------------------------------
 
 export function resolveAbsoluteUrl(rawUrl: string, baseUrl: string): string {
   try {
@@ -100,43 +125,46 @@ function normalizeHostname(url: URL): void {
     url.hostname = "jbbs.shitaraba.net";
     return;
   }
-
   if (hasHostnameSuffix(url.hostname, "2ch.net")) {
     url.hostname = url.hostname.replace(/2ch\.net$/i, "5ch.io");
   }
 }
 
-function isItestHost(hostname: string): boolean {
-  return hostname === "itest.5ch.io" || hostname === "itest.bbspink.com";
-}
-
 function normalizeItestUrl(url: URL): void {
-  if (!isItestHost(url.hostname)) {
-    return;
-  }
+  const isItestHost =
+    url.hostname === "itest.5ch.io" || url.hostname === "itest.bbspink.com";
+  if (!isItestHost) return;
 
   const match = ITEST_THREAD_PATTERN.exec(url.pathname);
-  if (!match) {
-    return;
-  }
+  if (!match) return;
 
   const board = match[1] || match[3];
-  const threadId = match[2] ?? null;
-  if (!board) {
-    return;
-  }
+  if (!board) return;
 
+  const threadId = match[2] ?? null;
   url.pathname = threadId
     ? `/test/read.cgi/${board}/${threadId}/`
     : `/${board}/`;
 }
 
+/** Parse, normalize, and return a URL object; returns null on failure. */
+function normalizeUrl(raw: string): URL | null {
+  try {
+    const url = new window.URL(raw);
+    normalizeHostname(url);
+    normalizeItestUrl(url);
+    return url;
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Page builders
+// ---------------------------------------------------------------------------
+
 function toThreadPage(url: URL): InternalThreadPage {
-  return {
-    type: "thread",
-    title: url.href,
-    threadUrl: url.href,
-  };
+  return { type: "thread", title: url.href, threadUrl: url.href };
 }
 
 function toThreadListPage(url: URL): InternalThreadListPage {
@@ -147,6 +175,10 @@ function toThreadListPage(url: URL): InternalThreadListPage {
     boardTitle: url.href,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Board-specific parsers
+// ---------------------------------------------------------------------------
 
 function parseChStylePage(url: URL): InternalBrowserPage | null {
   const threadMatch = CH_STYLE_THREAD_PATTERN.exec(url.pathname);
@@ -207,7 +239,7 @@ function parseShitarabaPage(url: URL): InternalBrowserPage | null {
 
 function parseEddibbPage(url: URL): InternalBrowserPage | null {
   const threadMatch = EDDIBB_THREAD_PATTERN.exec(url.pathname);
-  if (threadMatch && threadMatch[2]) {
+  if (threadMatch?.[2]) {
     url.protocol = "http:";
     url.pathname = `/test/read.cgi/${threadMatch[1]}/${threadMatch[2]}/`;
     return toThreadPage(url);
@@ -222,56 +254,61 @@ function parseEddibbPage(url: URL): InternalBrowserPage | null {
   return null;
 }
 
+// ---------------------------------------------------------------------------
+// Dispatch table
+// ---------------------------------------------------------------------------
+
+const BOARD_PARSERS: Record<BoardType, (url: URL) => InternalBrowserPage | null> =
+  {
+    eddibb: parseEddibbPage,
+    shitaraba: parseShitarabaPage,
+    machi: parseMachiPage,
+    "ch-style": parseChStylePage,
+  };
+
+function dispatchParser(url: URL): InternalBrowserPage | null {
+  const boardType = classifyBoardHost(url.hostname);
+  return boardType ? BOARD_PARSERS[boardType](url) : null;
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
 export function getBoardUrlFromThreadUrl(threadUrl: string): string {
-  try {
-    const normalizedUrl = new window.URL(threadUrl);
-    normalizeHostname(normalizedUrl);
-    normalizeItestUrl(normalizedUrl);
+  const url = normalizeUrl(threadUrl);
+  if (!url) return threadUrl;
 
-    if (!isCompatibleBoardHost(normalizedUrl.hostname)) {
-      return threadUrl;
+  const boardType = classifyBoardHost(url.hostname);
+  if (!boardType) return threadUrl;
+
+  switch (boardType) {
+    case "eddibb": {
+      const match = EDDIBB_THREAD_PATTERN.exec(url.pathname);
+      if (match?.[2]) return `${url.origin}/${match[1]}/`;
+      break;
     }
-
-    if (normalizedUrl.hostname === "bbs.eddibb.cc") {
-      const threadMatch = EDDIBB_THREAD_PATTERN.exec(normalizedUrl.pathname);
-      if (threadMatch && threadMatch[2]) {
-        return `${normalizedUrl.origin}/${threadMatch[1]}/`;
-      }
-      return threadUrl;
-    }
-
-    if (normalizedUrl.hostname === "jbbs.shitaraba.net") {
-      const threadMatch = SHITARABA_THREAD_PATTERN.exec(normalizedUrl.pathname);
+    case "shitaraba": {
+      const threadMatch = SHITARABA_THREAD_PATTERN.exec(url.pathname);
       if (threadMatch) {
-        return `${normalizedUrl.origin}/bbs/read.cgi/${threadMatch[1]}/${threadMatch[2]}/`;
+        return `${url.origin}/bbs/read.cgi/${threadMatch[1]}/${threadMatch[2]}/`;
       }
-
-      const storageMatch = SHITARABA_STORAGE_PATTERN.exec(
-        normalizedUrl.pathname,
-      );
+      const storageMatch = SHITARABA_STORAGE_PATTERN.exec(url.pathname);
       if (storageMatch) {
-        return `${normalizedUrl.origin}/bbs/read.cgi/${storageMatch[1]}/${storageMatch[2]}/`;
+        return `${url.origin}/bbs/read.cgi/${storageMatch[1]}/${storageMatch[2]}/`;
       }
-
-      return threadUrl;
+      break;
     }
-
-    if (hasHostnameSuffix(normalizedUrl.hostname, "machi.to")) {
-      const threadMatch = MACHI_THREAD_PATTERN.exec(normalizedUrl.pathname);
-      if (threadMatch) {
-        return `${normalizedUrl.origin}/${threadMatch[1]}/`;
-      }
-      return threadUrl;
+    case "machi": {
+      const match = MACHI_THREAD_PATTERN.exec(url.pathname);
+      if (match) return `${url.origin}/${match[1]}/`;
+      break;
     }
-
-    const chThreadMatch = CH_STYLE_BOARD_FROM_THREAD_PATTERN.exec(
-      normalizedUrl.pathname,
-    );
-    if (chThreadMatch) {
-      return `${normalizedUrl.origin}/${chThreadMatch[1]}/`;
+    case "ch-style": {
+      const match = CH_STYLE_BOARD_FROM_THREAD_PATTERN.exec(url.pathname);
+      if (match) return `${url.origin}/${match[1]}/`;
+      break;
     }
-  } catch {
-    return threadUrl;
   }
 
   return threadUrl;
@@ -280,44 +317,14 @@ export function getBoardUrlFromThreadUrl(threadUrl: string): string {
 export function parseInternalBrowserPage(
   absoluteUrl: string,
 ): InternalBrowserPage | null {
-  try {
-    const normalizedUrl = new window.URL(absoluteUrl);
-    normalizeHostname(normalizedUrl);
-    normalizeItestUrl(normalizedUrl);
-
-    // path だけで判定すると https://example.com/software/ のような外部URLまで
-    // 板URL扱いになるため、まず対応ホストかどうかを厳密に絞る。
-    // if (!isCompatibleBoardHost(normalizedUrl.hostname)) {
-    //   return null;
-    // }
-
-    if (normalizedUrl.hostname === "bbs.eddibb.cc") {
-      return parseEddibbPage(normalizedUrl);
-    }
-
-    if (normalizedUrl.hostname === "jbbs.shitaraba.net") {
-      return parseShitarabaPage(normalizedUrl);
-    }
-
-    if (hasHostnameSuffix(normalizedUrl.hostname, "machi.to")) {
-      return parseMachiPage(normalizedUrl);
-    }
-
-    return parseChStylePage(normalizedUrl);
-  } catch {
-    return null;
-  }
-
-  return null;
+  const url = normalizeUrl(absoluteUrl);
+  return url ? dispatchParser(url) : null;
 }
 
 export function shouldHandleUrlWithApp(
   absoluteUrl: string,
   mode?: UrlHandlingMode,
 ): boolean {
-  if (mode !== RESPECT_DEFAULT_EXTERNAL) {
-    return true;
-  }
-
+  if (mode !== RESPECT_DEFAULT_EXTERNAL) return true;
   return parseInternalBrowserPage(absoluteUrl) != null;
 }
