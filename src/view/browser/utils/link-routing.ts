@@ -104,8 +104,8 @@ function classifyBoardHost(hostname: string): BoardType | null {
   // if (hostname === "bbs.eddibb.cc") return "eddibb";
   if (hostname === "jbbs.shitaraba.net") return "shitaraba";
   if (hasHostnameSuffix(hostname, "machi.to")) return "machi";
-  if (isCompatibleBoardHost(hostname)) return "ch-style";
-  return null;
+  // if (isCompatibleBoardHost(hostname)) return "ch-style";
+  return "ch-style";
 }
 
 // ---------------------------------------------------------------------------
