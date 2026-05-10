@@ -271,14 +271,23 @@ function drawReplyTreeImageCard(
   context.clearRect(cardRight, card.y, 0, 0);
 }
 
+type ImageQuality = 'low' | 'medium' | 'high';
+
+const QUALITY_MAP: Record<ImageQuality, number> = {
+  low: 1,     // 標準（等倍）
+  medium: 1.2,  // 高解像度（Retina相当）
+  high: 4     // 超高解像度（印刷や拡大用）
+};
+
 function renderReplyTreeImageCanvas(
   sourceRes: IRes,
   replyEntries: ReplyTreeImageEntry[],
   threadTitle?: string,
   threadUrl?: string,
+  quality: ImageQuality = 'medium',
 ): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
-  const dpr = Math.max(window.devicePixelRatio || 1, 2);
+  const dpr = QUALITY_MAP[quality];
   const context = canvas.getContext("2d");
   if (!context) {
     throw new Error("Canvas 2D context is not available");
