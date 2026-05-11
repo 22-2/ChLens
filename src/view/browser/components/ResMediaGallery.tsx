@@ -3,6 +3,8 @@ import {
   getDirectVideoFallbackThumbnailUrl,
   getDirectVideoLabel,
   isDirectVideoUrl,
+  shouldOpenYouTubeExternally,
+  toRuntimeVideoEmbedUrl,
   toInlineVideoEmbed,
   type ExternalVideoEmbed,
 } from "src/view/browser/utils/external-media";
@@ -153,6 +155,7 @@ export function ResMediaGallery({
         .map((item) => item.rawUrl),
     [mediaItems],
   );
+  const pageOrigin = typeof window === "undefined" ? undefined : window.location.origin;
   const expandedVideo = useMemo(
     () =>
       mediaItems.find(
@@ -162,6 +165,16 @@ export function ResMediaGallery({
       ) ?? null,
     [expandedVideoUrl, mediaItems],
   );
+  const expandedVideoIframeSrc = useMemo(() => {
+    if (expandedVideo?.type !== "video") {
+      return null;
+    }
+
+    return toRuntimeVideoEmbedUrl(
+      expandedVideo.embed,
+      pageOrigin,
+    );
+  }, [expandedVideo, pageOrigin]);
 
   useEffect(() => {
     if (
@@ -293,28 +306,47 @@ export function ResMediaGallery({
           const isExpanded =
             expandedVideo?.type === "video" &&
             expandedVideo?.embed.rawUrl === item.embed.rawUrl;
+          const shouldOpenExternally = shouldOpenYouTubeExternally(
+            item.embed,
+            pageOrigin,
+          );
           return (
             <button
               key={`video:${item.embed.rawUrl}`}
               type="button"
               className={`res__thumb res__thumb--video${isBlurred ? " res__thumb--blurred" : ""}`}
               style={thumbStyle}
-              aria-pressed={isExpanded}
-              aria-label={`${item.embed.providerLabel} の動画を${isExpanded ? "閉じる" : "展開する"}`}
+              aria-pressed={shouldOpenExternally ? undefined : isExpanded}
+              aria-label={`${item.embed.providerLabel} を${shouldOpenExternally ? "新しいタブで開く" : isExpanded ? "閉じる" : "展開する"}`}
               title={item.embed.rawUrl}
               onClick={(event) => {
                 event.preventDefault();
                 event.stopPropagation();
+                if (shouldOpenExternally) {
+                  // 拡張ページの YouTube iframe は Referer 欠落と他拡張の介入で 153 が再発しやすい。
+                  // 左クリックは失敗しない通常タブへ逃がして、壊れた埋め込み UI を見せない。
+                  window.open(item.embed.externalUrl, "_blank", "noopener,noreferrer");
+                  return;
+                }
+
                 // 動画はモーダルへ送らずレス内で1件だけ開閉し、4chan風のその場再生に寄せる。
                 setExpandedVideoUrl((currentUrl) =>
                   currentUrl === item.embed.rawUrl ? null : item.embed.rawUrl,
                 );
               }}
               onMouseDown={(event) =>
-                handleMiddleMouseDown(event, item.embed.rawUrl, undefined)
+                handleMiddleMouseDown(
+                  event,
+                  shouldOpenExternally ? item.embed.externalUrl : item.embed.rawUrl,
+                  undefined,
+                )
               }
               onAuxClick={(event) =>
-                handleMiddleAuxClick(event, item.embed.rawUrl, undefined)
+                handleMiddleAuxClick(
+                  event,
+                  shouldOpenExternally ? item.embed.externalUrl : item.embed.rawUrl,
+                  undefined,
+                )
               }
             >
               <VideoThumbImage embed={item.embed} />
@@ -354,11 +386,13 @@ export function ResMediaGallery({
           {expandedVideo.type === "video" ? (
             <iframe
               className={`res__media-embed-frame res__media-embed-frame--${expandedVideo.embed.provider}`}
-              src={expandedVideo.embed.embedUrl}
+              src={expandedVideoIframeSrc ?? expandedVideo.embed.embedUrl}
               title={expandedVideo.embed.iframeTitle}
               loading="lazy"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
+              // ここへ来るのは通常の Web/Tauri 側だけで、拡張ページはクリック時点で外部タブへ逃がす。
+              referrerPolicy="strict-origin-when-cross-origin"
             />
           ) : (
             <video

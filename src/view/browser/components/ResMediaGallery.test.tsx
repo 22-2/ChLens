@@ -18,14 +18,14 @@ describe("ResMediaGallery", () => {
     );
 
     fireEvent.click(
-      screen.getByRole("button", { name: "YouTube の動画を展開する" }),
+      screen.getByRole("button", { name: "YouTube を展開する" }),
     );
 
     const frame = screen.getByTitle("YouTube 動画プレーヤー");
     expect(frame).toBeInTheDocument();
     expect(frame).toHaveAttribute(
       "src",
-      expect.stringContaining("youtube-nocookie.com/embed/TestVideo01"),
+      expect.stringContaining("youtube.com/embed/TestVideo01"),
     );
     expect(onUrlClick).not.toHaveBeenCalled();
   });

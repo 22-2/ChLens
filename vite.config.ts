@@ -79,7 +79,9 @@ function browserHtmlPlugin(outputDir: string): Plugin {
 
       // browserビューは新UI(React)のエントリを直接起動したいため、
       // 旧Pugテンプレートを経由せずに互換HTMLをここで固定生成する。
-      const html = `<!DOCTYPE html><html class="view view_browser" data-app-version="${version}"><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><title>read.crx-2</title><script src="../browser.js?v=${version}" defer></script><link rel="stylesheet" href="/browser.css?v=${version}"></head><body><div id="root"></div></body></html>`;
+      // no-referrer だと YouTube 埋め込みが client identity 不足で 153 になりやすいため、
+      // クロスオリジンでは origin だけ送る既定寄りの方針にして他の外部埋め込みとも両立させる。
+      const html = `<!DOCTYPE html><html class="view view_browser" data-app-version="${version}"><head><meta charset="utf-8"><meta name="referrer" content="strict-origin-when-cross-origin"><title>read.crx-2</title><script src="../browser.js?v=${version}" defer></script><link rel="stylesheet" href="/browser.css?v=${version}"></head><body><div id="root"></div></body></html>`;
 
       const outputFile = path.join(outputDir, "view", "browser.html");
       await fs.ensureDir(path.dirname(outputFile));

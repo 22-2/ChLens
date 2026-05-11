@@ -4,6 +4,7 @@ export interface ExternalVideoEmbed {
   provider: ExternalVideoProvider;
   rawUrl: string;
   embedUrl: string;
+  externalUrl: string;
   thumbnailUrl: string;
   fallbackThumbnailUrl: string;
   providerLabel: string;
@@ -77,6 +78,70 @@ function extractYouTubeVideoId(url: URL): string | null {
   return null;
 }
 
+function buildYouTubeEmbedUrl(youtubeVideoId: string): string {
+  // ベースURLは環境非依存に保ち、拡張機能固有の origin は表示時に付与する。
+  const embedUrl = new URL(
+    `https://www.youtube.com/embed/${youtubeVideoId}`,
+  );
+  embedUrl.searchParams.set("rel", "0");
+  embedUrl.searchParams.set("playsinline", "1");
+  return embedUrl.toString();
+}
+
+function buildYouTubeExternalUrl(
+  youtubeVideoId: string,
+  sourceUrl: URL,
+): string {
+  const externalUrl = new URL("https://www.youtube.com/watch");
+  externalUrl.searchParams.set("v", youtubeVideoId);
+
+  const playlistId = sourceUrl.searchParams.get("list");
+  if (playlistId) {
+    externalUrl.searchParams.set("list", playlistId);
+  }
+
+  const timeParam = sourceUrl.searchParams.get("t");
+  if (timeParam) {
+    externalUrl.searchParams.set("t", timeParam);
+  }
+
+  return externalUrl.toString();
+}
+
+export function shouldOpenYouTubeExternally(
+  embed: ExternalVideoEmbed,
+  pageOrigin: string | null | undefined,
+): boolean {
+  if (embed.provider !== "youtube" || pageOrigin == null || pageOrigin === "null") {
+    return false;
+  }
+
+  // 拡張ページの YouTube iframe は Referer が欠けやすく、さらに他拡張の content script が
+  // 介入すると 153 へ直行しやすいので、extension origin では通常の watch URL へ逃がす。
+  return /^[a-z-]+extension:\/\//.test(pageOrigin);
+}
+
+export function toRuntimeVideoEmbedUrl(
+  embed: ExternalVideoEmbed,
+  pageOrigin: string | null | undefined,
+): string {
+  if (embed.provider !== "youtube" || pageOrigin == null || pageOrigin === "null") {
+    return embed.embedUrl;
+  }
+
+  if (shouldOpenYouTubeExternally(embed, pageOrigin) || !/^https?:\/\//.test(pageOrigin)) {
+    // 拡張機能の chrome-extension:// origin を付けると YouTube 側が API client として
+    // 受け入れず 153 になることがあるため、拡張環境では通常の Referer 判定に任せる。
+    return embed.embedUrl;
+  }
+
+  const runtimeEmbedUrl = new URL(embed.embedUrl);
+  // Web配信時は https origin を明示して YouTube 側へ API client identity を渡す。
+  runtimeEmbedUrl.searchParams.set("enablejsapi", "1");
+  runtimeEmbedUrl.searchParams.set("origin", pageOrigin);
+  return runtimeEmbedUrl.toString();
+}
+
 export function toInlineVideoEmbed(rawUrl: string): ExternalVideoEmbed | null {
   try {
     const parsedUrl = new URL(rawUrl);
@@ -86,7 +151,9 @@ export function toInlineVideoEmbed(rawUrl: string): ExternalVideoEmbed | null {
         provider: "youtube",
         rawUrl,
         // モーダルではなくレス内で開くため、通常ページではなく iframe 用URLをここで確定させる。
-        embedUrl: `https://www.youtube-nocookie.com/embed/${youtubeVideoId}?rel=0&modestbranding=1`,
+        embedUrl: buildYouTubeEmbedUrl(youtubeVideoId),
+        // 拡張ページでは iframe 再生を諦めるため、失敗しない通常視聴 URL も保持しておく。
+        externalUrl: buildYouTubeExternalUrl(youtubeVideoId, parsedUrl),
         thumbnailUrl: `https://img.youtube.com/vi/${youtubeVideoId}/hqdefault.jpg`,
         fallbackThumbnailUrl: youtubeFallbackThumbnailUrl,
         providerLabel: "YouTube",
