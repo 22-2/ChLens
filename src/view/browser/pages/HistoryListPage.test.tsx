@@ -76,6 +76,21 @@ interface AppLikeWindow extends Window {
   };
 }
 
+type MessageListener = (data?: unknown) => void;
+
+let messageListeners = new Map<string, Set<MessageListener>>();
+
+function emitMessage(type: string, data?: unknown): void {
+  const listeners = messageListeners.get(type);
+  if (!listeners) {
+    return;
+  }
+
+  for (const listener of [...listeners]) {
+    listener(data);
+  }
+}
+
 function createHistoryItem(
   url: string,
   title: string,
@@ -111,6 +126,7 @@ describe("HistoryListPage", () => {
     historyGet.mockReset();
     readStateGetAll.mockReset();
     virtualizedTableState.onEndReached = undefined;
+    messageListeners = new Map();
 
     mockUseTabStore.mockReturnValue({
       dispatch: vi.fn(),
@@ -136,8 +152,14 @@ describe("HistoryListPage", () => {
 
     container.message = {
       send: vi.fn(),
-      on: vi.fn(),
-      off: vi.fn(),
+      on: vi.fn((type: string, listener: MessageListener) => {
+        const listeners = messageListeners.get(type) ?? new Set();
+        listeners.add(listener);
+        messageListeners.set(type, listeners);
+      }),
+      off: vi.fn((type: string, listener: MessageListener) => {
+        messageListeners.get(type)?.delete(listener);
+      }),
     };
 
     readStateGetAll.mockResolvedValue([]);
@@ -255,5 +277,75 @@ describe("HistoryListPage", () => {
     });
 
     expect(screen.getByPlaceholderText("検索...")).toHaveValue("");
+  });
+
+  it("history_updated 通知で一覧を再読込する", async () => {
+    historyGet
+      .mockResolvedValueOnce([
+        createHistoryItem(
+          "https://example.com/test/read.cgi/live/1/",
+          "スレ1",
+          "板A",
+          new Date(2026, 4, 3, 1, 2).getTime(),
+        ),
+      ])
+      .mockResolvedValueOnce([
+        createHistoryItem(
+          "https://example.com/test/read.cgi/live/2/",
+          "スレ2",
+          "板B",
+          new Date(2026, 4, 3, 1, 3).getTime(),
+        ),
+      ]);
+
+    render(<HistoryListPage tabId="tab-1" isActive={true} />);
+
+    await screen.findByText("スレ1");
+
+    act(() => {
+      emitMessage("history_updated", { type: "added" });
+    });
+
+    await waitFor(() => {
+      expect(historyGet).toHaveBeenNthCalledWith(2, undefined, 500);
+    });
+
+    expect(screen.getByText("スレ2")).toBeInTheDocument();
+    expect(screen.queryByText("スレ1")).not.toBeInTheDocument();
+  });
+
+  it("非アクティブから再表示された時に一覧を再読込する", async () => {
+    historyGet
+      .mockResolvedValueOnce([
+        createHistoryItem(
+          "https://example.com/test/read.cgi/live/1/",
+          "スレ1",
+          "板A",
+          new Date(2026, 4, 3, 1, 2).getTime(),
+        ),
+      ])
+      .mockResolvedValueOnce([
+        createHistoryItem(
+          "https://example.com/test/read.cgi/live/2/",
+          "スレ2",
+          "板B",
+          new Date(2026, 4, 3, 1, 3).getTime(),
+        ),
+      ]);
+
+    const { rerender } = render(
+      <HistoryListPage tabId="tab-1" isActive={false} />,
+    );
+
+    await screen.findByText("スレ1");
+
+    rerender(<HistoryListPage tabId="tab-1" isActive={true} />);
+
+    await waitFor(() => {
+      expect(historyGet).toHaveBeenNthCalledWith(2, undefined, 500);
+    });
+
+    expect(screen.getByText("スレ2")).toBeInTheDocument();
+    expect(screen.queryByText("スレ1")).not.toBeInTheDocument();
   });
 });

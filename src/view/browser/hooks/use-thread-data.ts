@@ -7,6 +7,8 @@ import {
   type Dispatch,
   type SetStateAction,
 } from "react";
+import { add as addHistoryRecord } from "src/core/History";
+import { threadToBoard } from "src/core/URL";
 import { container } from "src/service-container/index";
 import type { IRes, IThreadDetail } from "src/service-container/interfaces";
 import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
@@ -19,6 +21,14 @@ import {
   hasVideo,
   stripHtml,
 } from "src/view/browser/utils/utils";
+
+function deriveHistoryBoardTitle(threadUrl: string): string {
+  // 変更理由: 板名解決の非同期処理を待つと履歴追加自体が遅れ、
+  // hiddenの履歴ページへ戻った直後に未反映に見えやすいため、まずは同期的な板キーで確実に保存する。
+  const boardUrl = new window.URL(threadToBoard(threadUrl));
+  const pathSegments = boardUrl.pathname.split("/").filter(Boolean);
+  return decodeURIComponent(pathSegments.at(-1) ?? "");
+}
 
 interface ThreadData {
   responses: IRes[];
@@ -99,6 +109,25 @@ export function useThreadData(
       }
       if (result.message) {
         setError(result.message);
+      }
+
+      // 閲覧履歴への記録: no_history 設定が on の場合は記録しない。
+      // 初回ロード時（refreshKey === 0）のみ記録し、手動/自動更新では重複追加しない。
+      if (refreshKey === 0 && container.config.get("no_history") !== "on") {
+        const title = result.title ?? page.title;
+        const boardTitle = deriveHistoryBoardTitle(page.threadUrl);
+
+        try {
+          await addHistoryRecord(page.threadUrl, title, Date.now(), boardTitle);
+        } catch (e) {
+          const message =
+            e instanceof Error ? e.message : "閲覧履歴の保存に失敗しました";
+          container.message.send("notify", {
+            message,
+            background_color: "red",
+          });
+          throw e;
+        }
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "スレッドの取得に失敗しました");

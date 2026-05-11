@@ -244,6 +244,7 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
   const hasMoreRef = React.useRef(true);
   const isLoadingPageRef = React.useRef(false);
   const unreadCountIndexRef = React.useRef<Map<string, number>>(new Map());
+  const wasActiveRef = React.useRef(isActive);
 
   const loadNextPage = useCallback(async (reset = false) => {
     if (isLoadingPageRef.current) {
@@ -327,6 +328,30 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
 
   useEffect(() => {
     void loadEntries();
+  }, [loadEntries]);
+
+  useEffect(() => {
+    if (isActive && !wasActiveRef.current) {
+      // 変更理由: hidden のまま保持された履歴ページで通知を取りこぼしても、
+      // 前面復帰時に再同期して stale 一覧のまま戻るのを防ぐ。
+      void loadEntries();
+    }
+
+    wasActiveRef.current = isActive;
+  }, [isActive, loadEntries]);
+
+  useEffect(() => {
+    const handleHistoryUpdated = () => {
+      // 変更理由: 閲覧履歴ページは hidden のまま保持されるため、
+      // スレ閲覧後に戻った時点で新着行を反映できるよう保存通知で先に再読込する。
+      void loadEntries();
+    };
+
+    container.message.on("history_updated", handleHistoryUpdated);
+
+    return () => {
+      container.message.off("history_updated", handleHistoryUpdated);
+    };
   }, [loadEntries]);
 
   useEffect(() => {

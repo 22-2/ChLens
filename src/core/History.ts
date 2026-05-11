@@ -1,3 +1,4 @@
+import { message } from "src/app";
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import { assertArg, log } from "src/app/Log";
 import {
@@ -38,6 +39,14 @@ interface HistoryDBSchema extends DBSchema {
   };
 }
 
+interface HistoryUpdatedPayload {
+  type: "added" | "removed" | "cleared" | "range_cleared";
+  url?: string;
+  date?: number | null;
+  offset?: number;
+  day?: number;
+}
+
 const ensurePersistedRecord = (
   record: HistoryRecord,
 ): PersistedHistoryRecord => {
@@ -51,6 +60,12 @@ const ensurePersistedRecord = (
     date: record.date,
     boardTitle: record.boardTitle,
   };
+};
+
+const notifyHistoryUpdated = (payload: HistoryUpdatedPayload): void => {
+  // 変更理由: 閲覧履歴ページは hidden のまま保持されるため、
+  // 永続化完了のたびに一覧へ再読込を促して stale 表示を避ける。
+  message.send("history_updated", payload);
 };
 
 let dbPromise: Promise<IDBPDatabase<HistoryDBSchema>> | null = null;
@@ -394,10 +409,12 @@ export const add = async function (
     // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
     if (isTauriRuntime()) {
       await addTauriRow(url, title, date, boardTitle);
+      notifyHistoryUpdated({ type: "added", url, date });
       return;
     }
 
     await addRow({ url, title, date, boardTitle });
+    notifyHistoryUpdated({ type: "added", url, date });
   } catch (e) {
     reportError("History.add: データの格納に失敗しました", e);
   }
@@ -421,10 +438,12 @@ export const remove = async function (
     // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
     if (isTauriRuntime()) {
       await removeTauriRow(url, date);
+      notifyHistoryUpdated({ type: "removed", url, date });
       return;
     }
 
     await removeByUrlAndOptionalDate(url, date);
+    notifyHistoryUpdated({ type: "removed", url, date });
   } catch (e) {
     reportError("History.remove: トランザクション中断", e);
   }
@@ -523,18 +542,22 @@ export const clear = function (offset?: number): Promise<void> {
     return rejectInvalidArgs("History.clear: 引数が不正です");
   }
 
-  if (isTauriRuntime()) {
-    // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
-    return (async () => {
-      await clearTauriRows(normalizedOffset);
-    })();
-  }
+  return (async () => {
+    try {
+      if (isTauriRuntime()) {
+        // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
+        await clearTauriRows(normalizedOffset);
+      } else if (normalizedOffset === -1) {
+        await clearAllRows();
+      } else {
+        await clearByOffset(normalizedOffset);
+      }
 
-  if (normalizedOffset === -1) {
-    return clearAllRows();
-  }
-
-  return clearByOffset(normalizedOffset);
+      notifyHistoryUpdated({ type: "cleared", offset: normalizedOffset });
+    } catch (e) {
+      reportError("History.clear: トランザクション中断", e);
+    }
+  })();
 };
 
 /**
@@ -552,10 +575,12 @@ export const clearRange = async function (day: number): Promise<void> {
     if (isTauriRuntime()) {
       // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
       await clearTauriRowsByDateBefore(dayUnix);
+      notifyHistoryUpdated({ type: "range_cleared", day });
       return;
     }
 
     await clearByDateBefore(dayUnix);
+    notifyHistoryUpdated({ type: "range_cleared", day });
   } catch (e) {
     reportError("History.clearRange: トランザクション中断", e);
   }

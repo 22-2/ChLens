@@ -1,6 +1,16 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const { messageSend } = vi.hoisted(() => ({
+  messageSend: vi.fn(),
+}));
+
+vi.mock("src/app", () => ({
+  message: {
+    send: messageSend,
+  },
+}));
+
 vi.mock("src/core/TauriDrizzleBridge", () => ({
   isTauriRuntime: () => false,
   getTauriRepositories: async () => {
@@ -23,6 +33,19 @@ describe("History browser branch", () => {
     vi.useRealTimers();
     const History = await import("src/core/History");
     await History.clear();
+    messageSend.mockClear();
+  });
+
+  it("add notifies history_updated after persistence", async () => {
+    const History = await import("src/core/History");
+
+    await History.add("https://example.com/thread", "t1", 100, "board");
+
+    expect(messageSend).toHaveBeenCalledWith("history_updated", {
+      type: "added",
+      url: "https://example.com/thread",
+      date: 100,
+    });
   });
 
   it("getUnique dedupes by url and adds isHttps", async () => {
