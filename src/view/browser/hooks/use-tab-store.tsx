@@ -444,51 +444,57 @@ function updateActiveTab(
   };
 }
 
+// 変更理由: 「履歴の書き換え（replace）」を廃止し、常に push 方式に統一する。
+// 新しいページを開く際に「足りない親ページ」だけを算出して積むことで、
+// どこから飛んできても「戻れば親がいる」chmate式の体験を実現しつつ、
+// 直前の閲覧履歴（さっきまで見ていたページ）が消えない動作にする。
+function getMissingAncestors(
+  currentPage: Page,
+  targetPage: Page,
+): Page[] {
+  if (targetPage.type === "thread") {
+    // 直前が threadList（板）なら親は揃っているので補完不要
+    if (currentPage.type === "threadList") {
+      return [];
+    }
+    // それ以外は [板一覧, 板] を補完してスレに戻れる経路を保証する
+    const targetBoardUrl = deriveBoardUrlFromThreadUrl(targetPage.threadUrl);
+    const boardPage: Extract<Page, { type: "threadList" }> = {
+      type: "threadList",
+      title: targetBoardUrl ?? targetPage.threadUrl,
+      boardUrl: targetBoardUrl ?? targetPage.threadUrl,
+      boardTitle: targetBoardUrl ?? targetPage.threadUrl,
+    };
+    return [{ type: "boardList", title: "板一覧" }, boardPage];
+  }
+
+  if (targetPage.type === "threadList") {
+    // 直前が boardList（板一覧）なら親は揃っているので補完不要
+    if (currentPage.type === "boardList") {
+      return [];
+    }
+    return [{ type: "boardList", title: "板一覧" }];
+  }
+
+  return [];
+}
+
 function pushPageToTabHistory(tab: Tab, page: Page): Tab {
   const currentPage = getCurrentPage(tab);
   if (getPageIdentity(currentPage) === getPageIdentity(page)) {
     return tab;
   }
 
-  if (page.type === "thread") {
-    if (currentPage.type === "thread") {
-      // 変更理由: スレ内リンクで別スレを開いた時は「辿った順」を残す必要があるため、
-      // thread -> thread のみ append 履歴を維持する。
-      const historyUntilCurrent = tab.history.slice(0, tab.currentIndex + 1);
-      return {
-        ...tab,
-        history: [...historyUntilCurrent, page],
-        currentIndex: historyUntilCurrent.length,
-      };
-    }
-
-    const stack = buildCanonicalThreadStack(
-      page,
-      currentPage.type === "threadList" ? currentPage : null,
-    );
-    return {
-      ...tab,
-      history: stack,
-      currentIndex: stack.length - 1,
-    };
-  }
-
-  if (page.type === "threadList") {
-    const stack = buildCanonicalThreadListStack(page);
-    return {
-      ...tab,
-      history: stack,
-      currentIndex: stack.length - 1,
-    };
-  }
-
-  // タブ内クリック遷移は「実際に辿った順序」を履歴に残す。
-  // 毎回階層を再構築すると前スレが履歴から落ち、戻るでスレ一覧へ飛んでしまうため。
+  // 常に push: 現在位置以降の「進む」履歴を切り捨て、
+  // 足りない祖先ページを補完してから新ページを追加する。
+  // 履歴を丸ごと書き換えないことで「さっきまで見ていたページ」が戻るで復元できる。
   const historyUntilCurrent = tab.history.slice(0, tab.currentIndex + 1);
+  const missingAncestors = getMissingAncestors(currentPage, page);
+  const newHistory = [...historyUntilCurrent, ...missingAncestors, page];
   return {
     ...tab,
-    history: [...historyUntilCurrent, page],
-    currentIndex: historyUntilCurrent.length,
+    history: newHistory,
+    currentIndex: newHistory.length - 1,
   };
 }
 
