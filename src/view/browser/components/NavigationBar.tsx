@@ -872,9 +872,13 @@ export const NavigationBar: React.FC = () => {
       <button
         ref={refreshButtonRef}
         className="nav-bar__btn"
-        // ブックマーク・履歴・設定などのビューはリロード対象外のため更新を封印する
+        // 変更理由: 閲覧履歴・書き込み履歴は手動更新で再取得したい要望があるため、
+        // RELOADを扱えるページとしてボタンを有効化する。
         disabled={
-          currentPage.type !== "thread" && currentPage.type !== "threadList"
+          currentPage.type !== "thread" &&
+          currentPage.type !== "threadList" &&
+          currentPage.type !== "historyList" &&
+          currentPage.type !== "writeHistoryList"
         }
         onClick={handleRefresh}
         onContextMenu={handleRefreshContextMenu}

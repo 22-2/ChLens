@@ -61,9 +61,21 @@ const TabPageContent = memo(function TabPageContent({
       // isActive をpropsで渡すことで、ページ内部のuseTabStoreフル購読を避けて不要な再レンダリングを防ぐ。
       return <BookmarkListPage tabId={tab.id} isActive={isActive} />;
     case "historyList":
-      return <HistoryListPage tabId={tab.id} isActive={isActive} />;
+      return (
+        <HistoryListPage
+          tabId={tab.id}
+          isActive={isActive}
+          refreshKey={tab.reloadKey}
+        />
+      );
     case "writeHistoryList":
-      return <WriteHistoryListPage tabId={tab.id} isActive={isActive} />;
+      return (
+        <WriteHistoryListPage
+          tabId={tab.id}
+          isActive={isActive}
+          refreshKey={tab.reloadKey}
+        />
+      );
     case "threadList":
       return (
         <ThreadListPage

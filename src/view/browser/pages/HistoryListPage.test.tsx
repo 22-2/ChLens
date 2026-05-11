@@ -178,7 +178,7 @@ describe("HistoryListPage", () => {
       createReadStateItem("https://*.5ch.io/test/read.cgi/live/1/", 4, 9),
     ]);
 
-    render(<HistoryListPage tabId="tab-1" isActive={true} />);
+    render(<HistoryListPage tabId="tab-1" isActive={true} refreshKey={0} />);
 
     await screen.findByTestId("virtualized-table");
 
@@ -215,7 +215,7 @@ describe("HistoryListPage", () => {
         ),
       ]);
 
-    render(<HistoryListPage tabId="tab-1" isActive={true} />);
+    render(<HistoryListPage tabId="tab-1" isActive={true} refreshKey={0} />);
 
     await screen.findByText("スレ1");
 
@@ -241,7 +241,7 @@ describe("HistoryListPage", () => {
       ),
     ]);
 
-    render(<HistoryListPage tabId="tab-1" isActive={true} />);
+    render(<HistoryListPage tabId="tab-1" isActive={true} refreshKey={0} />);
 
     await screen.findByTestId("virtualized-table");
     expect(screen.queryByPlaceholderText("検索...")).not.toBeInTheDocument();
@@ -298,7 +298,7 @@ describe("HistoryListPage", () => {
         ),
       ]);
 
-    render(<HistoryListPage tabId="tab-1" isActive={true} />);
+    render(<HistoryListPage tabId="tab-1" isActive={true} refreshKey={0} />);
 
     await screen.findByText("スレ1");
 
@@ -334,12 +334,47 @@ describe("HistoryListPage", () => {
       ]);
 
     const { rerender } = render(
-      <HistoryListPage tabId="tab-1" isActive={false} />,
+      <HistoryListPage tabId="tab-1" isActive={false} refreshKey={0} />,
     );
 
     await screen.findByText("スレ1");
 
-    rerender(<HistoryListPage tabId="tab-1" isActive={true} />);
+    rerender(<HistoryListPage tabId="tab-1" isActive={true} refreshKey={0} />);
+
+    await waitFor(() => {
+      expect(historyGet).toHaveBeenNthCalledWith(2, undefined, 500);
+    });
+
+    expect(screen.getByText("スレ2")).toBeInTheDocument();
+    expect(screen.queryByText("スレ1")).not.toBeInTheDocument();
+  });
+
+  it("refreshKey が変わった時に一覧を再読込する", async () => {
+    historyGet
+      .mockResolvedValueOnce([
+        createHistoryItem(
+          "https://example.com/test/read.cgi/live/1/",
+          "スレ1",
+          "板A",
+          new Date(2026, 4, 3, 1, 2).getTime(),
+        ),
+      ])
+      .mockResolvedValueOnce([
+        createHistoryItem(
+          "https://example.com/test/read.cgi/live/2/",
+          "スレ2",
+          "板B",
+          new Date(2026, 4, 3, 1, 3).getTime(),
+        ),
+      ]);
+
+    const { rerender } = render(
+      <HistoryListPage tabId="tab-1" isActive={true} refreshKey={0} />,
+    );
+
+    await screen.findByText("スレ1");
+
+    rerender(<HistoryListPage tabId="tab-1" isActive={true} refreshKey={1} />);
 
     await waitFor(() => {
       expect(historyGet).toHaveBeenNthCalledWith(2, undefined, 500);

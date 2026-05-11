@@ -192,11 +192,13 @@ const COLUMNS: ColumnDef<WriteHistoryEntry>[] = [
 interface WriteHistoryListPageProps {
   tabId: string;
   isActive: boolean;
+  refreshKey: number;
 }
 
 export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
   tabId,
   isActive,
+  refreshKey,
 }) => {
   // タブ切り替えなど他タブ操作のたびにフル状態を再購読して再レンダリングされないよう、
   // dispatch のみ取得する安定したフックを使う。isActive は親から props で受け取る。
@@ -232,8 +234,10 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
   }, []);
 
   useEffect(() => {
+    // 変更理由: ナビバー更新ボタンの RELOAD を受けて、
+    // 書き込み履歴一覧でも明示的に最新データを再取得できるようにする。
     void loadEntries();
-  }, [loadEntries]);
+  }, [loadEntries, refreshKey]);
 
   const handleSort = useCallback((key: string) => {
     if (!COLUMNS.some((column) => column.key === key)) {

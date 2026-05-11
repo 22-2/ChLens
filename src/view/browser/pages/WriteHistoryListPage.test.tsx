@@ -5,6 +5,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from "@testing-library/react";
 import {
   navigateToWriteHistoryEntry,
@@ -80,7 +81,9 @@ describe("WriteHistoryListPage", () => {
       },
     ]);
 
-    render(<WriteHistoryListPage tabId="tab-1" isActive={true} />);
+    render(
+      <WriteHistoryListPage tabId="tab-1" isActive={true} refreshKey={0} />,
+    );
 
     expect(await screen.findByText("本文")).toBeInTheDocument();
     expect(screen.getByText("これは書き込み本文です")).toBeInTheDocument();
@@ -100,7 +103,9 @@ describe("WriteHistoryListPage", () => {
       },
     ]);
 
-    render(<WriteHistoryListPage tabId="tab-1" isActive={true} />);
+    render(
+      <WriteHistoryListPage tabId="tab-1" isActive={true} refreshKey={0} />,
+    );
 
     await screen.findByText("本文");
     expect(screen.queryByPlaceholderText("検索...")).not.toBeInTheDocument();
@@ -182,7 +187,7 @@ describe("WriteHistoryListPage", () => {
     });
     writeHistoryGet.mockResolvedValueOnce([
       {
-        url: "https://example.com/test/read.cgi/software/1/",
+        url: "https://example.com/not-thread/1/",
         title: "外部URL",
         writtenRes: 10,
         name: "風吹けば名無し",
@@ -192,15 +197,60 @@ describe("WriteHistoryListPage", () => {
       },
     ]);
 
-    render(<WriteHistoryListPage tabId="tab-1" isActive={true} />);
+    render(
+      <WriteHistoryListPage tabId="tab-1" isActive={true} refreshKey={0} />,
+    );
 
     const row = (await screen.findByText("外部URL")).closest("tr");
     expect(row).not.toBeNull();
     fireEvent.click(row!);
 
     expect(
-      peekPendingThreadResJump("https://example.com/test/read.cgi/software/1/"),
+      peekPendingThreadResJump("https://example.com/not-thread/1/"),
     ).toBeNull();
     expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  it("refreshKey が変わった時に一覧を再読込する", async () => {
+    writeHistoryGet
+      .mockResolvedValueOnce([
+        {
+          url: "https://egg.5ch.io/test/read.cgi/software/1/",
+          title: "スレ1",
+          writtenRes: 42,
+          name: "風吹けば名無し",
+          mail: "sage",
+          message: "本文1",
+          date: new Date(2026, 4, 3, 9, 8).getTime(),
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          url: "https://egg.5ch.io/test/read.cgi/software/2/",
+          title: "スレ2",
+          writtenRes: 24,
+          name: "風吹けば名無し",
+          mail: "sage",
+          message: "本文2",
+          date: new Date(2026, 4, 3, 9, 9).getTime(),
+        },
+      ]);
+
+    const { rerender } = render(
+      <WriteHistoryListPage tabId="tab-1" isActive={true} refreshKey={0} />,
+    );
+
+    await screen.findByText("スレ1");
+
+    rerender(
+      <WriteHistoryListPage tabId="tab-1" isActive={true} refreshKey={1} />,
+    );
+
+    await waitFor(() => {
+      expect(writeHistoryGet).toHaveBeenCalledTimes(2);
+    });
+
+    expect(screen.getByText("スレ2")).toBeInTheDocument();
+    expect(screen.queryByText("スレ1")).not.toBeInTheDocument();
   });
 });

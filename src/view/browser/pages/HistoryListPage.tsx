@@ -214,11 +214,13 @@ const COLUMNS: ColumnDef<HistoryEntry>[] = [
 interface HistoryListPageProps {
   tabId: string;
   isActive: boolean;
+  refreshKey: number;
 }
 
 export const HistoryListPage: React.FC<HistoryListPageProps> = ({
   tabId,
   isActive,
+  refreshKey,
 }) => {
   // タブ切り替えなど他タブ操作のたびにフル状態を再購読して再レンダリングされないよう、
   // dispatch のみ取得する安定したフックを使う。isActive は親から props で受け取る。
@@ -327,8 +329,10 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
   }, [loadNextPage]);
 
   useEffect(() => {
+    // 変更理由: ナビバーの「更新」は RELOAD で reloadKey を進める実装なので、
+    // 履歴ページ側で refreshKey 変化を購読して明示的に再読込する。
     void loadEntries();
-  }, [loadEntries]);
+  }, [loadEntries, refreshKey]);
 
   useEffect(() => {
     if (isActive && !wasActiveRef.current) {
