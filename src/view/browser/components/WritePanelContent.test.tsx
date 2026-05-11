@@ -6,6 +6,9 @@ import { WritePanelContent } from "src/view/browser/components/WritePanelContent
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  clearWritePanelInsertRequest: vi.fn(),
+  message: "本文",
+  writePanelInsertRequest: null as { id: number; text: string } | null,
   submit: vi.fn().mockResolvedValue(undefined),
   setName: vi.fn(),
   setMail: vi.fn(),
@@ -25,12 +28,19 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   }),
 }));
 
+vi.mock("src/view/browser/hooks/use-bottom-panel", () => ({
+  useBottomPanel: () => ({
+    writePanelInsertRequest: mocks.writePanelInsertRequest,
+    clearWritePanelInsertRequest: mocks.clearWritePanelInsertRequest,
+  }),
+}));
+
 vi.mock("src/view/browser/hooks/use-write", () => ({
   useWrite: () => ({
     name: "",
     mail: "",
     sage: false,
-    message: "本文",
+    message: mocks.message,
     status: "idle",
     statusText: "",
     canSubmit: true,
@@ -50,6 +60,9 @@ describe("WritePanelContent", () => {
   let messageMock: IMessage;
 
   beforeEach(() => {
+    mocks.clearWritePanelInsertRequest.mockClear();
+    mocks.message = "本文";
+    mocks.writePanelInsertRequest = null;
     mocks.submit.mockClear();
     mocks.setName.mockClear();
     mocks.setMail.mockClear();
@@ -98,5 +111,17 @@ describe("WritePanelContent", () => {
     fireEvent.keyDown(textarea, { key: "Enter", ctrlKey: true });
 
     expect(mocks.submit).not.toHaveBeenCalled();
+  });
+
+  it("右クリック返信の挿入要求が来たら既存本文へ追記する", async () => {
+    mocks.writePanelInsertRequest = {
+      id: 1,
+      text: ">>10\n",
+    };
+
+    render(<WritePanelContent />);
+
+    expect(mocks.setMessage).toHaveBeenCalledWith("本文\n>>10\n");
+    expect(mocks.clearWritePanelInsertRequest).toHaveBeenCalledWith(1);
   });
 });

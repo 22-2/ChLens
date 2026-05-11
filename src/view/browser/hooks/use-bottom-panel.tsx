@@ -2,6 +2,7 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -9,6 +10,11 @@ import React, {
 export interface PanelTab {
   id: string;
   label: string;
+}
+
+export interface WritePanelInsertRequest {
+  id: number;
+  text: string;
 }
 
 const STORAGE_KEY = "readcrx_bottom_panel_v1";
@@ -51,11 +57,14 @@ interface BottomPanelContextValue {
   height: number;
   activeTabId: string;
   tabs: PanelTab[];
+  writePanelInsertRequest: WritePanelInsertRequest | null;
   openPanel: (tabId?: string) => void;
+  openWritePanelWithText: (text: string) => void;
   closePanel: () => void;
   togglePanel: (tabId?: string) => void;
   setHeight: (h: number) => void;
   setActiveTab: (id: string) => void;
+  clearWritePanelInsertRequest: (requestId: number) => void;
 }
 
 const BottomPanelContext = createContext<BottomPanelContextValue | null>(null);
@@ -64,6 +73,7 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
   const saved = loadSaved();
+  const nextWritePanelInsertIdRef = useRef(0);
   const [isOpen, setIsOpen] = useState(saved.isOpen ?? false);
   const [height, setHeightState] = useState(() =>
     Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, saved.height ?? DEFAULT_HEIGHT)),
@@ -71,6 +81,8 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({
   const [activeTabId, setActiveTabIdState] = useState(
     saved.activeTabId ?? BOTTOM_PANEL_TABS[0].id,
   );
+  const [writePanelInsertRequest, setWritePanelInsertRequest] =
+    useState<WritePanelInsertRequest | null>(null);
 
   const setHeight = useCallback((h: number) => {
     const clamped = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, h));
@@ -92,6 +104,17 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({
     }
   }, []);
 
+  const openWritePanelWithText = useCallback((text: string) => {
+    // 変更理由: 右クリックの「返信」はクリップボード経由だと既存入力を壊しやすいため、
+    // 書き込みパネルを開いたうえで本文へ直接追記できる要求として扱う。
+    openPanel("write");
+    nextWritePanelInsertIdRef.current += 1;
+    setWritePanelInsertRequest({
+      id: nextWritePanelInsertIdRef.current,
+      text,
+    });
+  }, [openPanel]);
+
   const closePanel = useCallback(() => {
     setIsOpen(false);
     persist({ isOpen: false });
@@ -109,6 +132,15 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({
     }
   }, []);
 
+  const clearWritePanelInsertRequest = useCallback((requestId: number) => {
+    setWritePanelInsertRequest((prev) => {
+      if (prev?.id !== requestId) {
+        return prev;
+      }
+      return null;
+    });
+  }, []);
+
   return (
     <BottomPanelContext.Provider
       value={{
@@ -116,11 +148,14 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({
         height,
         activeTabId,
         tabs: BOTTOM_PANEL_TABS,
+        writePanelInsertRequest,
         openPanel,
+        openWritePanelWithText,
         closePanel,
         togglePanel,
         setHeight,
         setActiveTab,
+        clearWritePanelInsertRequest,
       }}
     >
       {children}

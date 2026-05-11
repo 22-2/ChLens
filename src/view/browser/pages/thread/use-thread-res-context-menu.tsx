@@ -17,6 +17,7 @@ import { stringifyNgDslValue } from "src/core/ngDsl";
 import { container } from "src/service-container/index";
 import type { IRes } from "src/service-container/interfaces";
 import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
+import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useTabDispatch, useTabStore } from "src/view/browser/hooks/use-tab-store";
 import {
   getAutoRefreshPageKey,
@@ -84,6 +85,7 @@ export function useThreadResContextMenu({
   const pendingJumpNumRef = useRef<number | null>(null);
   const dispatch = useTabDispatch();
   const { activeTab } = useTabStore();
+  const { openWritePanelWithText } = useBottomPanel();
   const isAutoRefreshEnabled = isAutoRefreshEnabledForPage(activeTab, page);
 
   const addIdToNg = useCallback(
@@ -329,8 +331,7 @@ export function useThreadResContextMenu({
           label: "返信",
           icon: <Reply size={14} />,
           onSelect: () => {
-            void copyText(`>>${targetRes.num}\n`);
-            container.toast.info("返信アンカーをコピーしました");
+            openWritePanelWithText(`>>${targetRes.num}\n`);
           },
         },
         {
@@ -342,8 +343,7 @@ export function useThreadResContextMenu({
               .split(/\r?\n/)
               .map((line) => `>${line}`)
               .join("\n");
-            void copyText(`>>${targetRes.num}\n${quoted}\n`);
-            container.toast.info("引用テンプレートをコピーしました");
+            openWritePanelWithText(`>>${targetRes.num}\n${quoted}\n`);
           },
         },
         {
@@ -391,6 +391,7 @@ export function useThreadResContextMenu({
       handleAnchorClick,
       isAutoRefreshEnabled,
       miniAaResNums,
+      openWritePanelWithText,
       page.threadUrl,
       page.title,
       searchQuery,

@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { container } from "src/service-container/index";
+import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useWrite } from "src/view/browser/hooks/use-write";
 
@@ -7,7 +8,10 @@ const WRITE_SUBMIT_CTRL_ENTER_KEY = "write_submit_ctrl_enter";
 
 export const WritePanelContent: React.FC = () => {
   const { currentPage } = useTabStore();
+  const { writePanelInsertRequest, clearWritePanelInsertRequest } =
+    useBottomPanel();
   const threadUrl = currentPage.type === "thread" ? currentPage.threadUrl : "";
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [submitWithCtrlEnter, setSubmitWithCtrlEnter] = useState(
     () => container.config.get(WRITE_SUBMIT_CTRL_ENTER_KEY) === "on",
   );
@@ -48,6 +52,33 @@ export const WritePanelContent: React.FC = () => {
       container.message.off("config_updated", handleConfigUpdated);
     };
   }, []);
+
+  useEffect(() => {
+    if (!writePanelInsertRequest) {
+      return;
+    }
+
+    const separator = message === "" || message.endsWith("\n") ? "" : "\n";
+    // 変更理由: 右クリックからの返信文は現在の下書きへ自然に追記し、
+    // 毎回置き換えるより「開いて貼り付けた」感覚に近い挙動へ揃える。
+    const nextMessage = `${message}${separator}${writePanelInsertRequest.text}`;
+    setMessage(nextMessage);
+    clearWritePanelInsertRequest(writePanelInsertRequest.id);
+
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      return;
+    }
+
+    textarea.focus();
+    const caretPosition = nextMessage.length;
+    textarea.setSelectionRange(caretPosition, caretPosition);
+  }, [
+    clearWritePanelInsertRequest,
+    message,
+    setMessage,
+    writePanelInsertRequest,
+  ]);
 
   const handleSubmitWithCtrlEnterChange = useCallback((checked: boolean) => {
     setSubmitWithCtrlEnter(checked);
@@ -144,6 +175,7 @@ export const WritePanelContent: React.FC = () => {
           </div>
           <div className="write-panel__body-row">
             <textarea
+              ref={textareaRef}
               className="write-panel__textarea"
               value={message}
               onChange={(e) => setMessage(e.target.value)}

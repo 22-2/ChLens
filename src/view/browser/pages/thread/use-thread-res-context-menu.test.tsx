@@ -9,6 +9,7 @@ import type { IRes } from "src/service-container/interfaces";
 
 const mocks = vi.hoisted(() => ({
   ngAdd: vi.fn(),
+  openWritePanelWithText: vi.fn(),
   toastInfo: vi.fn(),
   dispatch: vi.fn(),
   isAutoRefreshEnabled: false,
@@ -39,6 +40,12 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
       autoRefreshPageKey: null,
       reloadKey: 0,
     },
+  }),
+}));
+
+vi.mock("src/view/browser/hooks/use-bottom-panel", () => ({
+  useBottomPanel: () => ({
+    openWritePanelWithText: mocks.openWritePanelWithText,
   }),
 }));
 
@@ -115,6 +122,20 @@ function HookHarness() {
       </button>
       <button
         onClick={() => {
+          capturedItems.find((item) => item.id === "reply")?.onSelect?.();
+        }}
+      >
+        reply
+      </button>
+      <button
+        onClick={() => {
+          capturedItems.find((item) => item.id === "quote-reply")?.onSelect?.();
+        }}
+      >
+        quote-reply
+      </button>
+      <button
+        onClick={() => {
           capturedItems.find((item) => item.id === "auto-refresh")?.onSelect?.();
         }}
       >
@@ -128,6 +149,7 @@ describe("useThreadResContextMenu", () => {
   afterEach(() => {
     cleanup();
     mocks.ngAdd.mockReset();
+    mocks.openWritePanelWithText.mockReset();
     mocks.toastInfo.mockReset();
     mocks.dispatch.mockReset();
     mocks.isAutoRefreshEnabled = false;
@@ -174,6 +196,26 @@ describe("useThreadResContextMenu", () => {
     expect(screen.getByTestId("response-class")).toHaveTextContent("ng");
     expect(mocks.toastInfo).toHaveBeenCalledWith(
       "NGに追加しました: ID(word=abc123)",
+    );
+  });
+
+  it("返信は書き込み欄を開いてアンカーを直接入力する", () => {
+    render(<HookHarness />);
+
+    fireEvent.click(screen.getByRole("button", { name: "open" }));
+    fireEvent.click(screen.getByRole("button", { name: "reply" }));
+
+    expect(mocks.openWritePanelWithText).toHaveBeenCalledWith(">>10\n");
+  });
+
+  it("引用して返信は書き込み欄を開いて引用文を直接入力する", () => {
+    render(<HookHarness />);
+
+    fireEvent.click(screen.getByRole("button", { name: "open" }));
+    fireEvent.click(screen.getByRole("button", { name: "quote-reply" }));
+
+    expect(mocks.openWritePanelWithText).toHaveBeenCalledWith(
+      ">>10\n>message\n",
     );
   });
 
