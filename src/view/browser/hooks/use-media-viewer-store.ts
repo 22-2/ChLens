@@ -70,7 +70,9 @@ export const useMediaViewerStore = create<MediaViewerStoreState>(
     },
 
     closeViewer: () => {
-      set({ viewer: null });
+      // ビューアを閉じた時に前回倍率が残ると次回表示で意図せず拡大状態になるため、
+      // close 時点で必ず等倍へ戻して初期表示の一貫性を保つ。
+      set({ viewer: null, viewerScale: 1 });
     },
 
     navigateViewer: (delta) => {
