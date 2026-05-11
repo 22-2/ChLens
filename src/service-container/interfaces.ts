@@ -1,7 +1,7 @@
 import { BBSMenu } from "src/core/BBSMenuParser";
 export interface IConfig {
   get(key: string): any;
-  set(key: string, value: any): void;
+  set(key: string, value: any): Promise<void> | void;
   ready(callback: () => void): void;
   getAll?(): Record<string, string>;
   del?(key: string): Promise<void>;
@@ -211,7 +211,7 @@ export interface INGService {
     url: string,
     ngType: string,
   ): INGResult | null;
-  add(ngWord: string): void;
+  add(ngWord: string): Promise<void> | void;
   invalidateCache(): void;
   execExpire(): void;
   isIgnoreResNumForAuto(resNum: number, subType: string): boolean;

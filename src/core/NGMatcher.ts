@@ -44,6 +44,8 @@ export function checkWord(
   // 比較対象と同じnormalizeを両辺に適用する。これにより全角/半角・カタカナ/ひらがな・
   // 大文字/小文字の違いを吸収してケースインセンシティブなマッチングも実現する。
   const normalizedWord = normalize(word);
+  const normalizedId = id != null ? normalize(id) : null;
+  const normalizedSlip = slip != null ? normalize(slip) : null;
   if (
     (type === TYPE.REG_EXP && reg && reg.test(all || "")) ||
     (type === TYPE.REG_EXP_NAME && reg && reg.test(name || "")) ||
@@ -59,8 +61,12 @@ export function checkWord(
       normalize(title || "").includes(normalizedWord)) ||
     (type === TYPE.NAME && normalize(name || "").includes(normalizedWord)) ||
     (type === TYPE.MAIL && normalize(mail || "").includes(normalizedWord)) ||
-    (type === TYPE.ID && (id != null ? id.includes(word) : false)) ||
-    (type === TYPE.SLIP && (slip != null ? slip.includes(word) : false)) ||
+    (type === TYPE.ID &&
+      (normalizedId != null ? normalizedId.includes(normalizedWord) : false)) ||
+    (type === TYPE.SLIP &&
+      (normalizedSlip != null
+        ? normalizedSlip.includes(normalizedWord)
+        : false)) ||
     (type === TYPE.BODY && normalize(mes || "").includes(normalizedWord)) ||
     (type === TYPE.WORD && normalize(all || "").includes(normalizedWord)) ||
     (type === TYPE.URL && (url || "").includes(word)) ||

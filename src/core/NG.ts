@@ -40,11 +40,12 @@ function applyRegex(ng: Set<InternalNGElement>): void {
 }
 
 /** NG変更を保存・通知する共通処理 */
-function commitNg(ng: Set<InternalNGElement>): void {
+async function commitNg(ng: Set<InternalNGElement>): Promise<void> {
   _ng = ng;
-  _config.set(Array.from(ng));
   applyRegex(ng);
+  await _config.set(Array.from(ng));
   container.message.send("ng_changed");
+  return;
 }
 
 // ─── config アクセサ ─────────────────────────────────────────
@@ -63,14 +64,14 @@ const _config = {
       return [];
     }
   },
-  set(str: InternalNGElement[]): void {
-    container.config.set(_CONFIG_NAME, JSON.stringify(str));
+  set(str: InternalNGElement[]): Promise<void> {
+    return Promise.resolve(container.config.set(_CONFIG_NAME, JSON.stringify(str)));
   },
   getString(): string {
     return container.config.get(_CONFIG_STRING_NAME) || "";
   },
-  setString(str: string): void {
-    container.config.set(_CONFIG_STRING_NAME, str);
+  setString(str: string): Promise<void> {
+    return Promise.resolve(container.config.set(_CONFIG_STRING_NAME, str));
   },
 };
 
@@ -122,7 +123,7 @@ export function get(): Set<InternalNGElement> {
     // ngobj が空/破損でも ngwords があれば復元可能にして、
     // 「設定はあるのに NG/ハイライトが効かない」状態を避ける。
     _ng = parse(ngString);
-    _config.set(Array.from(_ng));
+    void _config.set(Array.from(_ng));
     logger.debug("load.rebuild_from_ngwords", {
       dslLength: ngString.length,
       ruleCount: _ng.size,
@@ -140,32 +141,36 @@ export function parse(string: string): Set<InternalNGElement> {
   return parseNgString(string);
 }
 
-export function set(string: string): void {
+export function set(string: string): Promise<void> {
   logger.debug("set", { dslLength: string.length });
-  commitNg(parse(string));
+  return commitNg(parse(string));
 }
 
 export function invalidateCache(): void {
   _ng = null;
 }
 
-export function add(string: string): void {
-  const current = get(); // キャッシュを確実に初期化
+export async function add(string: string): Promise<void> {
+  const current = new Set(get());
   const addNg = parse(string);
+
+  for (const rule of addNg) {
+    current.add(rule);
+  }
+
+  _ng = current;
+  applyRegex(current);
+
+  // 変更理由: 先にUI更新通知を飛ばすと「見た目だけ消えた直後にF5」で永続化前の状態へ戻りうる。
+  // ngobj / ngwords の両方を書き終えてから通知することで、見えた状態と保存済み状態を一致させる。
+  await _config.set(Array.from(current));
 
   // ngwords 文字列の先頭に追記
   const dslString = convertUserToDSL(convertInternalToUser(Array.from(addNg)));
   if (dslString) {
-    _config.setString(dslString + "\n" + _config.getString());
+    await _config.setString(dslString + "\n" + _config.getString());
   }
 
-  // インメモリキャッシュ (_ng) に直接マージ — _config.get() の二重読みを排除
-  for (const rule of addNg) {
-    current.add(rule);
-  }
-  _config.set(Array.from(current));
-
-  applyRegex(addNg);
   container.message.send("ng_changed");
 }
 
@@ -373,7 +378,7 @@ export function execExpire(): void {
     .join("\n");
 
   if (updateFlag) {
-    _config.setString(newConfigStr);
-    commitNg(parse(newConfigStr));
+    void _config.setString(newConfigStr);
+    void commitNg(parse(newConfigStr));
   }
 }

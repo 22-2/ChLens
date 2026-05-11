@@ -12,6 +12,7 @@ import {
   Type,
 } from "lucide-react";
 import React, { useCallback, useEffect, useRef } from "react";
+import { stringifyNgDslValue } from "src/core/ngDsl";
 import { container } from "src/service-container/index";
 import type { IRes } from "src/service-container/interfaces";
 import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
@@ -84,14 +85,21 @@ export function useThreadResContextMenu({
       if (!id) {
         return;
       }
-      const ngWord = id.startsWith("ID:") ? id : `ID:${id}`;
-      // 既存実装の「ID/IPをNG指定」と同じくNGサービスへ直接追加
-      container.ng.add(ngWord);
+      const normalizedId = id.startsWith("ID:") ? id.slice(3) : id;
+      if (!normalizedId) {
+        return;
+      }
+      // 変更理由: 旧式の `ID:xxx` を保存すると再読込後に「ただの本文NG」として扱われるため、
+      // 永続化時点で DSL の ID ルール形式へ正規化して再起動後も同じ判定になるようにする。
+      const ngWord = `ID(word=${stringifyNgDslValue(normalizedId)})`;
+      // 変更理由: 保存完了前に「追加済み」扱いへ進むと、直後の F5 で永続化前の状態へ戻りうる。
+      // ここでは保存完了を待ってから UI を成功状態へ進める。
+      await container.ng.add(ngWord);
       // サービス側への追加だけでは再取得するまでUIに反映されないため、ローカルのstateも即時更新する。
-      // id は targetRes.id そのもの（"ID:xxx" 形式の場合もある）なので、そのまま res.id と比較する。
+      // targetRes.id の形式が "ID:xxx" / "xxx" で揺れても即時反映を落とさないよう、比較前に正規化する。
       setResponses((prev) =>
         prev.map((res) =>
-          res.id === id
+          (res.id?.startsWith("ID:") ? res.id.slice(3) : res.id) === normalizedId
             ? {
                 ...res,
                 // res.ng を設定することで ResItem の isNG 判定が即座に true になる
@@ -119,7 +127,7 @@ export function useThreadResContextMenu({
       }
       // 選択テキストNGはID NGと違って局所更新だと取りこぼしやすいため、
       // 追加後に再取得して既存NG判定ロジックの結果でUIを揃える。
-      container.ng.add(ngWord);
+      await container.ng.add(ngWord);
       container.toast.info(`NGに追加しました: ${ngWord}`);
       await fetchThread();
     },

@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("src/core/jsutil", () => ({
   decodeCharReference: (value: string) => value,
-  normalize: (value: string) => value,
+  normalize: (value: string) => value.toLowerCase(),
 }));
 
 describe("NGMatcher", () => {
@@ -23,6 +23,38 @@ describe("NGMatcher", () => {
         },
       );
       expect(result).toBe(TYPE.ID);
+    });
+
+    it("should match ID NG even when stored word and response id differ in case", () => {
+      const result = checkWord(
+        { type: TYPE.ID, word: "mbmnczwh4" },
+        {
+          id: "mbMNczWH4",
+          all: "",
+          name: "",
+          mail: "",
+          mes: "",
+          title: "",
+          url: "",
+        },
+      );
+      expect(result).toBe(TYPE.ID);
+    });
+
+    it("should match SLIP NG even when stored word and response slip differ in case", () => {
+      const result = checkWord(
+        { type: TYPE.SLIP, word: "slip-abcd" },
+        {
+          slip: "SLIP-ABCD",
+          all: "",
+          name: "",
+          mail: "",
+          mes: "",
+          title: "",
+          url: "",
+        },
+      );
+      expect(result).toBe(TYPE.SLIP);
     });
 
     it("should match Title NG", () => {

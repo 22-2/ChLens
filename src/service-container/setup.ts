@@ -45,12 +45,14 @@ export function setupContainer(app: any) {
   // Config Adapter
   const configAdapter: IConfig = {
     get: (key: string) => app.config.get(key),
-    set: (key: string, val: any) => {
-      app.config.set(key, val);
+    set: async (key: string, val: any) => {
+      // 変更理由: 設定保存は非同期ストレージへ書き込むため、ここで Promise を落とすと
+      // 「見た目は更新されたのにリロード直後に戻る」競合を呼び込みやすい。
+      await app.config.set(key, val);
       // NGワード設定が更新されたら、NGサービス側の内部状態とキャッシュも同期する。
       // これにより、設定画面での保存が即座にNG判定ロジックへ反映されるようになる。
       if (key === "ngwords" && app.NG?.set) {
-        app.NG.set(val);
+        await app.NG.set(val);
       }
       if (key === "debug_log") {
         syncConsolaLevel();
