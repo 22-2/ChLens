@@ -116,6 +116,9 @@ export const ContextMenu: React.FC<Props> = ({
             }`}
             disabled={item.disabled}
             title={item.label}
+            // mousedown でフォーカスが移動するとページ上のテキスト選択が消えるため
+            // preventDefault でフォーカス移動を抑止し、選択状態を維持する。
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => {
               if (!item.disabled && item.onSelect) {
                 item.onSelect();

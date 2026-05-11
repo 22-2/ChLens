@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import type { IRes } from "src/service-container/interfaces";
 import { AnchorPreview } from "src/view/browser/components/AnchorPreview";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
@@ -69,6 +69,36 @@ interface PopupRendererProps {
   threadUrl?: string;
 }
 
+function useStablePopupHandlerCache(resetDeps: readonly unknown[]) {
+  const cacheRef = useRef(new Map<string, unknown>());
+  const hasMountedRef = useRef(false);
+
+  useEffect(() => {
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return;
+    }
+    cacheRef.current.clear();
+  }, resetDeps);
+
+  return useCallback(
+    function getStablePopupHandler<Handler>(
+      key: string,
+      createHandler: () => Handler,
+    ): Handler {
+      const cachedHandler = cacheRef.current.get(key);
+      if (cachedHandler !== undefined) {
+        return cachedHandler as Handler;
+      }
+
+      const nextHandler = createHandler();
+      cacheRef.current.set(key, nextHandler as unknown);
+      return nextHandler;
+    },
+    [],
+  );
+}
+
 export const PopupRenderer: React.FC<PopupRendererProps> = ({
   host,
   anchorPreviews,
@@ -99,6 +129,26 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
   threadTitle,
   threadUrl,
 }) => {
+  const anchorPreviewDepthByIdRef = useRef(new Map<string, number>());
+  anchorPreviewDepthByIdRef.current = new Map(
+    anchorPreviews.map((anchorPreview) => [
+      anchorPreview.id,
+      anchorPreview.payload.depth,
+    ]),
+  );
+
+  const getStablePopupHandler = useStablePopupHandlerCache([
+    onAnchorLeave,
+    onClosePopupById,
+    onClosePopupChildren,
+    onOpenRootReplyTreeInPopup,
+    onPopupAnchorHover,
+    onPopupIdLinkClick,
+    onRepClickInPopup,
+    onResContextMenuOpen,
+    onUrlContextMenuOpen,
+  ]);
+
   return (
     <PopupPortalLayer host={host}>
       {anchorPreviews.map((anchorPreview) => (
@@ -113,15 +163,29 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
           repIndex={repIndex}
           idIndex={idIndex}
           onUrlClick={onUrlClick}
-          onUrlContextMenu={onUrlContextMenuOpen(anchorPreview.id)}
-          onIdLinkClick={onPopupIdLinkClick(anchorPreview.id)}
-          onRepClick={onRepClickInPopup(
-            anchorPreview.id,
-            anchorPreview.payload.depth + 1,
+          onUrlContextMenu={getStablePopupHandler(
+            `url-context-menu:${anchorPreview.id}`,
+            () => onUrlContextMenuOpen(anchorPreview.id),
           )}
-          onOpenRootReplyTree={onOpenRootReplyTreeInPopup(
-            anchorPreview.id,
-            anchorPreview.payload.depth + 1,
+          onIdLinkClick={getStablePopupHandler(
+            `id-link:${anchorPreview.id}`,
+            () => onPopupIdLinkClick(anchorPreview.id),
+          )}
+          onRepClick={getStablePopupHandler(
+            `rep-click:${anchorPreview.id}:${anchorPreview.payload.depth + 1}`,
+            () =>
+              onRepClickInPopup(
+                anchorPreview.id,
+                anchorPreview.payload.depth + 1,
+              ),
+          )}
+          onOpenRootReplyTree={getStablePopupHandler(
+            `root-tree:${anchorPreview.id}:${anchorPreview.payload.depth + 1}`,
+            () =>
+              onOpenRootReplyTreeInPopup(
+                anchorPreview.id,
+                anchorPreview.payload.depth + 1,
+              ),
           )}
           onAnchorClick={onAnchorClick}
           onAnchorHover={onAnchorHover}
@@ -129,10 +193,26 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
           onMouseEnter={onClearAnchorPreviewHideTimer}
           popupId={anchorPreview.id}
           isPopupDescendantOf={isPopupDescendantOf}
-          onEnterFromDescendant={() => onClosePopupChildren(anchorPreview.id)}
-          onMouseLeave={() => onAnchorLeave(anchorPreview.payload.depth)}
-          onSurfaceMouseDown={() => onClosePopupChildren(anchorPreview.id)}
-          onResContextMenu={onResContextMenuOpen(anchorPreview.id)}
+          onEnterFromDescendant={getStablePopupHandler(
+            `enter-from-descendant:${anchorPreview.id}`,
+            () => () => onClosePopupChildren(anchorPreview.id),
+          )}
+          onMouseLeave={getStablePopupHandler(
+            `mouse-leave:${anchorPreview.id}`,
+            () => () => {
+              const depth =
+                anchorPreviewDepthByIdRef.current.get(anchorPreview.id) ?? 0;
+              onAnchorLeave(depth);
+            },
+          )}
+          onSurfaceMouseDown={getStablePopupHandler(
+            `surface-mouse-down:${anchorPreview.id}`,
+            () => () => onClosePopupChildren(anchorPreview.id),
+          )}
+          onResContextMenu={getStablePopupHandler(
+            `res-context-menu:${anchorPreview.id}`,
+            () => onResContextMenuOpen(anchorPreview.id),
+          )}
           hasChildPopup={hasPopupChild(anchorPreview.id)}
           zIndex={anchorPreview.z}
         />
@@ -149,22 +229,49 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
           repIndex={repIndex}
           idIndex={idIndex}
           onUrlClick={onUrlClick}
-          onUrlContextMenu={onUrlContextMenuOpen(idPopup.id)}
-          onIdLinkClick={onPopupIdLinkClick(idPopup.id)}
-          onRepClick={onRepClickInPopup(idPopup.id)}
+          onUrlContextMenu={getStablePopupHandler(
+            `url-context-menu:${idPopup.id}`,
+            () => onUrlContextMenuOpen(idPopup.id),
+          )}
+          onIdLinkClick={getStablePopupHandler(
+            `id-link:${idPopup.id}`,
+            () => onPopupIdLinkClick(idPopup.id),
+          )}
+          onRepClick={getStablePopupHandler(
+            `rep-click:${idPopup.id}`,
+            () => onRepClickInPopup(idPopup.id),
+          )}
           onAnchorClick={onAnchorClick}
-          onAnchorHover={onPopupAnchorHover(idPopup.id)}
+          onAnchorHover={getStablePopupHandler(
+            `anchor-hover:${idPopup.id}`,
+            () => onPopupAnchorHover(idPopup.id),
+          )}
           onAnchorLeave={onAnchorLeave}
           popupId={idPopup.id}
           isPopupDescendantOf={isPopupDescendantOf}
-          onEnterFromDescendant={() => onClosePopupChildren(idPopup.id)}
-          onSurfaceMouseDown={() => onClosePopupChildren(idPopup.id)}
-          onResContextMenu={onResContextMenuOpen(idPopup.id)}
+          onEnterFromDescendant={getStablePopupHandler(
+            `enter-from-descendant:${idPopup.id}`,
+            () => () => onClosePopupChildren(idPopup.id),
+          )}
+          onSurfaceMouseDown={getStablePopupHandler(
+            `surface-mouse-down:${idPopup.id}`,
+            () => () => onClosePopupChildren(idPopup.id),
+          )}
+          onResContextMenu={getStablePopupHandler(
+            `res-context-menu:${idPopup.id}`,
+            () => onResContextMenuOpen(idPopup.id),
+          )}
           disableOutsideClick={hasPopupChild(idPopup.id) || hasAnchorPreviews}
           zIndex={idPopup.z}
-          onClose={() => onClosePopupById(idPopup.id)}
+          onClose={getStablePopupHandler(
+            `close:${idPopup.id}`,
+            () => () => onClosePopupById(idPopup.id),
+          )}
           onMouseEnter={onClearAnchorPreviewHideTimer}
-          onMouseLeave={() => onAnchorLeave(0)}
+          onMouseLeave={getStablePopupHandler(
+            `mouse-leave:${idPopup.id}`,
+            () => () => onAnchorLeave(0),
+          )}
         />
       ))}
 
@@ -180,29 +287,57 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
           messageProtocol={messageProtocol}
           anchorPreviewDepth={treePopup.payload.anchorPreviewDepth}
           onUrlClick={onUrlClick}
-          onUrlContextMenu={onUrlContextMenuOpen(treePopup.id)}
-          onIdLinkClick={onPopupIdLinkClick(treePopup.id)}
-          onRepClick={onRepClickInPopup(
-            treePopup.id,
-            treePopup.payload.anchorPreviewDepth,
+          onUrlContextMenu={getStablePopupHandler(
+            `url-context-menu:${treePopup.id}`,
+            () => onUrlContextMenuOpen(treePopup.id),
+          )}
+          onIdLinkClick={getStablePopupHandler(
+            `id-link:${treePopup.id}`,
+            () => onPopupIdLinkClick(treePopup.id),
+          )}
+          onRepClick={getStablePopupHandler(
+            `rep-click:${treePopup.id}:${treePopup.payload.anchorPreviewDepth}`,
+            () =>
+              onRepClickInPopup(
+                treePopup.id,
+                treePopup.payload.anchorPreviewDepth,
+              ),
           )}
           onAnchorClick={onAnchorClick}
-          onAnchorHover={onPopupAnchorHover(treePopup.id)}
+          onAnchorHover={getStablePopupHandler(
+            `anchor-hover:${treePopup.id}`,
+            () => onPopupAnchorHover(treePopup.id),
+          )}
           onAnchorLeave={onAnchorLeave}
           popupId={treePopup.id}
           isPopupDescendantOf={isPopupDescendantOf}
-          onEnterFromDescendant={() => onClosePopupChildren(treePopup.id)}
-          onSurfaceMouseDown={() => onClosePopupChildren(treePopup.id)}
-          onResContextMenu={onResContextMenuOpen(treePopup.id)}
+          onEnterFromDescendant={getStablePopupHandler(
+            `enter-from-descendant:${treePopup.id}`,
+            () => () => onClosePopupChildren(treePopup.id),
+          )}
+          onSurfaceMouseDown={getStablePopupHandler(
+            `surface-mouse-down:${treePopup.id}`,
+            () => () => onClosePopupChildren(treePopup.id),
+          )}
+          onResContextMenu={getStablePopupHandler(
+            `res-context-menu:${treePopup.id}`,
+            () => onResContextMenuOpen(treePopup.id),
+          )}
           disableOutsideClick={
             index < treePopupItems.length - 1 ||
             hasAnchorPreviews ||
             hasPopupChild(treePopup.id)
           }
           zIndex={treePopup.z}
-          onClose={() => onClosePopupById(treePopup.id)}
+          onClose={getStablePopupHandler(
+            `close:${treePopup.id}`,
+            () => () => onClosePopupById(treePopup.id),
+          )}
           onMouseEnter={onClearAnchorPreviewHideTimer}
-          onMouseLeave={() => onAnchorLeave(0)}
+          onMouseLeave={getStablePopupHandler(
+            `mouse-leave:${treePopup.id}`,
+            () => () => onAnchorLeave(0),
+          )}
           threadTitle={threadTitle}
           threadUrl={threadUrl}
         />
@@ -214,11 +349,20 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
           x={menu.x}
           y={menu.y}
           items={menu.payload.items}
-          onClose={() => onClosePopupById(menu.id)}
+          onClose={getStablePopupHandler(
+            `close:${menu.id}`,
+            () => () => onClosePopupById(menu.id),
+          )}
           popupId={menu.id}
           isPopupDescendantOf={isPopupDescendantOf}
-          onEnterFromDescendant={() => onClosePopupChildren(menu.id)}
-          onSurfaceMouseDown={() => onClosePopupChildren(menu.id)}
+          onEnterFromDescendant={getStablePopupHandler(
+            `enter-from-descendant:${menu.id}`,
+            () => () => onClosePopupChildren(menu.id),
+          )}
+          onSurfaceMouseDown={getStablePopupHandler(
+            `surface-mouse-down:${menu.id}`,
+            () => () => onClosePopupChildren(menu.id),
+          )}
           closeDisabled={hasPopupChild(menu.id)}
           zIndex={menu.z}
         />

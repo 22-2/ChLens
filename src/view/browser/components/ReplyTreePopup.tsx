@@ -1,5 +1,5 @@
 import { Copy, Image as ImageIcon, MoreVertical } from "lucide-react";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { IRes } from "src/service-container";
 import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
@@ -614,10 +614,13 @@ export const ReplyTreePopup: React.FC<{
       document.removeEventListener("mousedown", handleOutsideMenuClick);
   }, [menuPosition]);
 
-  const handleResContextMenu = (e: React.MouseEvent, targetRes: IRes) => {
-    e.stopPropagation();
-    onResContextMenu(targetRes, e);
-  };
+  const handleResContextMenu = useCallback(
+    (event: React.MouseEvent, targetRes: IRes) => {
+      event.stopPropagation();
+      onResContextMenu(targetRes, event);
+    },
+    [onResContextMenu],
+  );
 
   const handleMenuClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();

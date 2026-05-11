@@ -480,6 +480,13 @@ export function usePopupSurfaceCloseGuard(onSurfaceMouseDown?: () => void) {
         return;
       }
 
+      // 右クリック（button=2）は contextmenu イベントで処理するため、
+      // onSurfaceMouseDown を呼ばない。呼ぶと Zustand 状態更新が
+      // contextmenu より先に同期レンダリングされ、テキスト選択が消えてしまう。
+      if (event.button === 2) {
+        return;
+      }
+
       onSurfaceMouseDown?.();
     },
     [armMouseLeaveCloseSuppression, onSurfaceMouseDown],
@@ -857,7 +864,21 @@ export function useThreadPopupLifecycle({
 
       const parentId =
         depth > 0 ? anchorPreviewsRef.current[depth - 1]?.id : sourcePopupId;
-      hideAnchorPreviewsFromDepth(depth);
+      // sourcePopupId が設定されている時（popup内のアンカーホバー）は、
+      // sourcePopupId の祖先になっているアンカープレビューを閉じてはいけない。
+      // hideAnchorPreviewsFromDepth は cascade で子孫ごと閉じるため、
+      // 「アンカー → ID → アンカー」の順に操作すると IDポップアップの親アンカーが
+      // 消えて IDポップアップ自体も一緒に閉じてしまう問題を防ぐためこの分岐が必要。
+      if (sourcePopupId) {
+        closePopupsByPredicate(
+          (item) =>
+            item.type === "anchor" &&
+            item.payload.depth >= depth &&
+            !isPopupDescendantOf(sourcePopupId, item.id),
+        );
+      } else {
+        hideAnchorPreviewsFromDepth(depth);
+      }
       addPopup({
         type: "anchor",
         x,
@@ -869,7 +890,9 @@ export function useThreadPopupLifecycle({
     [
       addPopup,
       clearAnchorPreviewHideTimer,
+      closePopupsByPredicate,
       hideAnchorPreviewsFromDepth,
+      isPopupDescendantOf,
       resMap,
       toPageCoords,
     ],

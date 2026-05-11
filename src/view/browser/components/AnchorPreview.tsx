@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useCallback, useRef } from "react";
 import type { IRes } from "src/service-container";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
 import { usePopupSurfaceLifecycle } from "src/view/browser/hooks/use-popup-manager";
@@ -72,6 +72,13 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
   zIndex,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
+  const handleResContextMenu = useCallback(
+    (event: React.MouseEvent, targetRes: IRes) => {
+      event.stopPropagation();
+      onResContextMenu(targetRes, event);
+    },
+    [onResContextMenu],
+  );
   const {
     armMouseLeaveCloseSuppression,
     handleAuxClickCapture,
@@ -126,10 +133,7 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
             onAnchorClick={onAnchorClick}
             onAnchorHover={onAnchorHover}
             onAnchorLeave={onAnchorLeave}
-            onContextMenu={(e, targetRes) => {
-              e.stopPropagation();
-              onResContextMenu(targetRes, e);
-            }}
+            onContextMenu={handleResContextMenu}
           />
         ))}
       </div>
