@@ -1,9 +1,7 @@
-import { platform } from "src/app";
 import Callbacks from "src/app/Callbacks";
 import LocalStorage from "src/app/LocalStorage";
 import { assertArg, log } from "src/app/Log";
 import message from "src/app/Message";
-import browser from "webextension-polyfill";
 
 export default class Config {
   private static readonly _default: ReadonlyMap<string, string> = new Map([
@@ -117,7 +115,30 @@ export default class Config {
   private readonly _cache = new Map<string, string>();
   private readonly _pendingStorageChanges = new Map<string, string | null>();
   readonly ready: Function;
-  private readonly _onChanged: Function;
+  private readonly _onChanged: (
+    change: Record<string, { oldValue: string | null; newValue: string | null }>,
+  ) => void;
+  private readonly _storageListener: ((event: StorageEvent) => void) | null;
+
+  private _normalizeStorageEventValue(rawValue: string | null): string | null {
+    if (rawValue == null) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(rawValue) as unknown;
+      if (typeof parsed === "string") {
+        return parsed;
+      }
+      if (typeof parsed === "number" || typeof parsed === "boolean") {
+        return String(parsed);
+      }
+    } catch {
+      // 旧実装などで生文字列が格納されている場合はそのまま扱う。
+    }
+
+    return rawValue;
+  }
 
   constructor() {
     const ready = new Callbacks();
@@ -162,7 +183,26 @@ export default class Config {
       }
     };
 
-    platform.storage.kv.onChanged(<any>this._onChanged);
+    if (typeof window !== "undefined") {
+      this._storageListener = (event: StorageEvent) => {
+        if (typeof event.key !== "string" || !event.key.startsWith("config_")) {
+          return;
+        }
+
+        this._onChanged({
+          [event.key]: {
+            oldValue: this._normalizeStorageEventValue(event.oldValue),
+            newValue: this._normalizeStorageEventValue(event.newValue),
+          },
+        });
+      };
+
+      // 変更理由: config保存をstore2(localStorage)に統一したため、
+      // 同期通知もbrowser.storage.onChangedではなくstorageイベントで受ける。
+      window.addEventListener("storage", this._storageListener);
+    } else {
+      this._storageListener = null;
+    }
   }
 
   get(key: string): string | null {
@@ -223,6 +263,9 @@ export default class Config {
     await LocalStorage.set(storageKey, nextValue);
     this._pendingStorageChanges.set(storageKey, nextValue);
     this._applyChange(storageKey, nextValue);
+    // 変更理由: store2ベースの同一タブ更新ではstorage changeイベントを前提にできないため、
+    // pendingを即時解放して不要なメモリ保持を避ける。
+    this._pendingStorageChanges.delete(storageKey);
   }
 
   async del(key: string) {
@@ -234,11 +277,15 @@ export default class Config {
     await LocalStorage.del(storageKey);
     this._pendingStorageChanges.set(storageKey, null);
     this._applyChange(storageKey, null);
+    // 変更理由: setと同様に、イベント待ちせず同期的に反映した更新は即時確定する。
+    this._pendingStorageChanges.delete(storageKey);
   }
 
   destroy() {
     this._cache.clear();
     this._pendingStorageChanges.clear();
-    browser.storage.onChanged.removeListener(<any>this._onChanged);
+    if (this._storageListener && typeof window !== "undefined") {
+      window.removeEventListener("storage", this._storageListener);
+    }
   }
 }

@@ -1,3 +1,10 @@
+import {
+  getStore2All,
+  getStore2String,
+  removeStore2Value,
+  setStore2String,
+} from "src/app/Store2Storage";
+
 // Tauri環境ではbrowser拡張機能APIが存在しないため、
 // アプリがクラッシュしないよう最小限のシムを提供する。
 // 実際の機能はTauriプラットフォーム実装（src/app/platform/tauri/）が担う。
@@ -16,21 +23,16 @@
     local: {
       get: async (keys) => {
         if (keys === null || keys === undefined) {
-          const result = {};
-          for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            result[key] = localStorage.getItem(key);
-          }
-          return result;
+          return getStore2All();
         }
         if (typeof keys === "string") {
-          const val = localStorage.getItem(keys);
+          const val = getStore2String(keys);
           return val !== null ? { [keys]: val } : {};
         }
         if (Array.isArray(keys)) {
           const result = {};
           for (const key of keys) {
-            const val = localStorage.getItem(key);
+            const val = getStore2String(key);
             if (val !== null) result[key] = val;
           }
           return result;
@@ -39,15 +41,15 @@
       },
       set: async (items) => {
         for (const [key, value] of Object.entries(items)) {
-          localStorage.setItem(key, String(value));
+          setStore2String(key, String(value));
         }
       },
       remove: async (keys) => {
         if (typeof keys === "string") {
-          localStorage.removeItem(keys);
+          removeStore2Value(keys);
         } else if (Array.isArray(keys)) {
           for (const key of keys) {
-            localStorage.removeItem(key);
+            removeStore2Value(key);
           }
         }
       },

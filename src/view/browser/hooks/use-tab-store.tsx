@@ -11,6 +11,10 @@ import React, {
 import { add as addHistoryRecord, remove as removeHistoryRecord } from "src/core/History";
 import { platform } from "src/app/platform";
 import {
+  getStore2String,
+  setStore2String,
+} from "src/app/Store2Storage";
+import {
   buildHierarchy,
   getCurrentPage,
   type Page,
@@ -72,7 +76,7 @@ type NewTabPageMode = "home" | "related_board" | "custom_board";
 
 function readConfigValue(key: string): string | null {
   try {
-    return localStorage.getItem(`${CONFIG_KEY_PREFIX}${key}`);
+    return getStore2String(`${CONFIG_KEY_PREFIX}${key}`);
   } catch {
     return null;
   }
@@ -371,7 +375,7 @@ function sanitizeSessionState(state: TabStoreState): TabStoreState {
 // セッション復元: localStorageから前回の状態を読み込む
 function loadSession(): TabStoreState | null {
   try {
-    const raw = localStorage.getItem(SESSION_KEY);
+    const raw = getStore2String(SESSION_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as TabStoreState;
     if (parsed.tabs?.length > 0 && parsed.activeTabId) {
@@ -401,7 +405,7 @@ function loadSession(): TabStoreState | null {
 
 function saveSession(state: TabStoreState): void {
   try {
-    localStorage.setItem(SESSION_KEY, JSON.stringify(sanitizeSessionState(state)));
+    setStore2String(SESSION_KEY, JSON.stringify(sanitizeSessionState(state)));
   } catch {
     // 容量超過等は無視
   }

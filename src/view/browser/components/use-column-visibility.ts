@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { getStore2String, setStore2String } from "src/app/Store2Storage";
 import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import type { ColumnDef } from "src/view/browser/components/SimpleDataTable";
 
@@ -16,7 +17,7 @@ export interface ColumnVisibilityOptions {
 
 function readHiddenColumnKeys(storageKey: string): Set<string> {
   try {
-    const raw = localStorage.getItem(storageKey);
+    const raw = getStore2String(storageKey);
     if (!raw) {
       return new Set();
     }
@@ -119,7 +120,7 @@ export function useColumnVisibility<TRow>(
     }
 
     try {
-      localStorage.setItem(
+      setStore2String(
         options.storageKey,
         JSON.stringify(Array.from(normalizedHiddenColumnKeys)),
       );

@@ -27,6 +27,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { getStore2String, setStore2String } from "src/app/Store2Storage";
 import { container } from "src/service-container/index";
 import {
   NGDslHelpSnippet,
@@ -116,7 +117,7 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({
     }
 
     try {
-      const rawState = localStorage.getItem(SETTINGS_PAGE_STATE_KEY);
+      const rawState = getStore2String(SETTINGS_PAGE_STATE_KEY);
       if (!rawState) {
         return;
       }
@@ -160,10 +161,7 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({
       };
 
       try {
-        localStorage.setItem(
-          SETTINGS_PAGE_STATE_KEY,
-          JSON.stringify(nextState),
-        );
+        setStore2String(SETTINGS_PAGE_STATE_KEY, JSON.stringify(nextState));
       } catch {
         // 一部環境では localStorage が使えないため、永続化失敗は黙殺する。
       }

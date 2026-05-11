@@ -6,6 +6,7 @@ import React, {
   useState,
   type ReactNode,
 } from "react";
+import { getStore2String, setStore2String } from "src/app/Store2Storage";
 
 export interface PanelTab {
   id: string;
@@ -35,7 +36,7 @@ interface SavedState {
 
 function loadSaved(): SavedState {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = getStore2String(STORAGE_KEY);
     if (raw) return JSON.parse(raw) as SavedState;
   } catch {
     // パース失敗は無視
@@ -46,7 +47,7 @@ function loadSaved(): SavedState {
 function persist(patch: SavedState): void {
   try {
     const prev = loadSaved();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...prev, ...patch }));
+    setStore2String(STORAGE_KEY, JSON.stringify({ ...prev, ...patch }));
   } catch {
     // 書き込み失敗は無視
   }

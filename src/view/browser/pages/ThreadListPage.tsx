@@ -1,5 +1,6 @@
 import { Bookmark, BookmarkX } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { getStore2String, setStore2String } from "src/app/Store2Storage";
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
 import { URL as ChURL } from "src/core/URL";
 import { container } from "src/service-container/index";
@@ -189,7 +190,7 @@ function readThreadListSortPreference(
   boardUrl: string,
 ): ThreadListSortPreference {
   try {
-    const raw = window.localStorage.getItem(THREAD_LIST_SORT_STORAGE_KEY);
+    const raw = getStore2String(THREAD_LIST_SORT_STORAGE_KEY);
     if (!raw) {
       return DEFAULT_THREAD_LIST_SORT;
     }
@@ -231,16 +232,13 @@ function writeThreadListSortPreference(
   preference: ThreadListSortPreference,
 ): void {
   try {
-    const raw = window.localStorage.getItem(THREAD_LIST_SORT_STORAGE_KEY);
+    const raw = getStore2String(THREAD_LIST_SORT_STORAGE_KEY);
     const stored = raw
       ? (JSON.parse(raw) as Record<string, ThreadListSortPreference>)
       : {};
 
     stored[resolveThreadListSortSiteKey(boardUrl)] = preference;
-    window.localStorage.setItem(
-      THREAD_LIST_SORT_STORAGE_KEY,
-      JSON.stringify(stored),
-    );
+    setStore2String(THREAD_LIST_SORT_STORAGE_KEY, JSON.stringify(stored));
   } catch {
     // localStorage 書き込み不可でも一覧操作は止めない。
   }

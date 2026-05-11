@@ -8,6 +8,7 @@ import {
 } from "react";
 import { platform } from "src/app";
 import { wait } from "src/app/Defer";
+import { getStore2String, setStore2String } from "src/app/Store2Storage";
 import { URL as ChURL } from "src/core/URL";
 import { container } from "src/service-container/index";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
@@ -162,13 +163,13 @@ export function useWrite(threadUrl: string): UseWriteResult {
 
   const [name, setNameState] = useState(
     () =>
-      localStorage.getItem(NAME_KEY) ??
+      getStore2String(NAME_KEY) ??
       container.config.get("default_name") ??
       "",
   );
   const [mail, setMailState] = useState(
     () =>
-      localStorage.getItem(MAIL_KEY) ??
+      getStore2String(MAIL_KEY) ??
       container.config.get("default_mail") ??
       "",
   );
@@ -218,12 +219,12 @@ export function useWrite(threadUrl: string): UseWriteResult {
   // 名前・メールを localStorage に保存
   const setName = useCallback((v: string) => {
     setNameState(v);
-    localStorage.setItem(NAME_KEY, v);
+    setStore2String(NAME_KEY, v);
   }, []);
 
   const setMail = useCallback((v: string) => {
     setMailState(v);
-    localStorage.setItem(MAIL_KEY, v);
+    setStore2String(MAIL_KEY, v);
   }, []);
 
   // 書き込み成功後、少し待ってから idle に戻す

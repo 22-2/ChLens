@@ -1,8 +1,13 @@
-import { platform } from "src/app";
+import {
+  getStore2All,
+  getStore2String,
+  removeStore2Value,
+  setStore2String,
+} from "src/app/Store2Storage";
 
 export default class LocalStorage {
   static async get(key: string, isJson = false): Promise<string | null> {
-    const val = await platform.storage.kv.get(key);
+    const val = getStore2String(key);
     if (!val) return null;
 
     if (isJson) {
@@ -12,15 +17,15 @@ export default class LocalStorage {
   }
 
   static async getAll(): Promise<Record<string, string | number>> {
-    return await platform.storage.kv.getAll();
+    return getStore2All();
   }
 
   static async set(key: string, val: string, isJson = false) {
     const valueToStore = isJson ? JSON.stringify(val) : val;
-    await platform.storage.kv.set(key, valueToStore);
+    setStore2String(key, valueToStore);
   }
 
   static async del(key: string) {
-    await platform.storage.kv.remove(key);
+    removeStore2Value(key);
   }
 }

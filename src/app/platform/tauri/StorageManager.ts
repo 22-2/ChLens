@@ -3,27 +3,59 @@ import {
   ObjectStore,
   StorageManager,
 } from "src/app/platform/types";
+import {
+  getStore2All,
+  getStore2String,
+  removeStore2Value,
+  setStore2String,
+} from "src/app/Store2Storage";
+
+function parseStorageEventValue(rawValue: string | null): string | null {
+  if (rawValue == null) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue) as unknown;
+    if (typeof parsed === "string") {
+      return parsed;
+    }
+    if (typeof parsed === "number" || typeof parsed === "boolean") {
+      return String(parsed);
+    }
+  } catch {
+    // localStorageへ生文字列が入っている場合はそのまま扱う。
+  }
+
+  return rawValue;
+}
 
 // localStorageはTauri webview内でサンドボックスされており、
 // 拡張機能のbrowser.storage.localと同様に永続化される
 const TauriKeyValueStore: KeyValueStore = {
   async get(key: string): Promise<string | null> {
-    return localStorage.getItem(key);
+    return getStore2String(key);
   },
 
   async set(key: string, value: string): Promise<void> {
-    localStorage.setItem(key, value);
+    setStore2String(key, value);
   },
 
   async remove(key: string): Promise<void> {
-    localStorage.removeItem(key);
+    removeStore2Value(key);
   },
 
   async getAll(): Promise<Record<string, string>> {
     const result: Record<string, string> = {};
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i)!;
-      result[key] = localStorage.getItem(key)!;
+    const allValues = getStore2All();
+    for (const [key, value] of Object.entries(allValues)) {
+      if (typeof value === "string") {
+        result[key] = value;
+        continue;
+      }
+      if (typeof value === "number" || typeof value === "boolean") {
+        result[key] = String(value);
+      }
     }
     return result;
   },
@@ -40,8 +72,8 @@ const TauriKeyValueStore: KeyValueStore = {
       if (event.key !== null) {
         callback({
           [event.key]: {
-            oldValue: event.oldValue,
-            newValue: event.newValue,
+            oldValue: parseStorageEventValue(event.oldValue),
+            newValue: parseStorageEventValue(event.newValue),
           },
         });
       }
