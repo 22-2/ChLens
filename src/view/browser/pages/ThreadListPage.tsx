@@ -42,6 +42,9 @@ type ThreadListSortPreference = {
 };
 
 const THREAD_LIST_SORT_STORAGE_KEY = "readcrx_browser_thread_list_sort_by_site";
+const THREAD_LIST_COLUMN_VISIBILITY_STORAGE_KEY =
+  "readcrx_browser_thread_list_columns_visibility";
+const THREAD_LIST_COLUMN_VISIBILITY_LOCKED_KEYS = ["title"] as const;
 const DEFAULT_THREAD_LIST_SORT: ThreadListSortPreference = {
   column: null,
   direction: "asc",
@@ -944,6 +947,8 @@ export const ThreadListPage: React.FC<Props> = ({
         sortColumn={sortColumn ?? undefined}
         sortDirection={sortDirection}
         onSort={handleTableSort}
+        columnVisibilityStorageKey={THREAD_LIST_COLUMN_VISIBILITY_STORAGE_KEY}
+        columnVisibilityLockedKeys={THREAD_LIST_COLUMN_VISIBILITY_LOCKED_KEYS}
       />
       {contextMenuState && (
         <ContextMenu

@@ -211,6 +211,10 @@ const COLUMNS: ColumnDef<HistoryEntry>[] = [
   },
 ];
 
+const COLUMN_VISIBILITY_STORAGE_KEY =
+  "readcrx_browser_history_list_columns_visibility";
+const COLUMN_VISIBILITY_LOCKED_KEYS = ["title"] as const;
+
 interface HistoryListPageProps {
   tabId: string;
   isActive: boolean;
@@ -271,7 +275,6 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
     }
 
     let currentOffset = reset ? 0 : nextOffsetRef.current;
-    let nextHasMore = hasMoreRef.current;
     const uniqueRows: HistoryEntry[] = [];
 
     try {
@@ -288,7 +291,8 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
           unreadCountIndexRef.current,
         );
         currentOffset += PAGE_SIZE;
-        nextHasMore = page.hasMore;
+        hasMoreRef.current = page.hasMore;
+        setHasMore(page.hasMore);
 
         for (const row of page.entries) {
           if (seenUrlsRef.current.has(row.url)) {
@@ -298,14 +302,12 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
           uniqueRows.push(row);
         }
 
-        if (uniqueRows.length > 0 || !nextHasMore) {
+        if (uniqueRows.length > 0 || !page.hasMore) {
           break;
         }
       }
 
       nextOffsetRef.current = currentOffset;
-      hasMoreRef.current = nextHasMore;
-      setHasMore(nextHasMore);
       setEntries((prev) => (reset ? uniqueRows : [...prev, ...uniqueRows]));
     } catch (e) {
       const message =
@@ -600,6 +602,8 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
           estimatedRowHeight={52}
           endReachedThreshold={LOAD_MORE_THRESHOLD}
           onEndReached={handleEndReached}
+          columnVisibilityStorageKey={COLUMN_VISIBILITY_STORAGE_KEY}
+          columnVisibilityLockedKeys={COLUMN_VISIBILITY_LOCKED_KEYS}
         />
       </div>
     </div>

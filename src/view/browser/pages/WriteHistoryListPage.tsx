@@ -189,6 +189,10 @@ const COLUMNS: ColumnDef<WriteHistoryEntry>[] = [
   },
 ];
 
+const COLUMN_VISIBILITY_STORAGE_KEY =
+  "readcrx_browser_write_history_list_columns_visibility";
+const COLUMN_VISIBILITY_LOCKED_KEYS = ["title"] as const;
+
 interface WriteHistoryListPageProps {
   tabId: string;
   isActive: boolean;
@@ -351,6 +355,8 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
         sortColumn={sortState.column ?? undefined}
         sortDirection={sortState.direction}
         onSort={handleSort}
+        columnVisibilityStorageKey={COLUMN_VISIBILITY_STORAGE_KEY}
+        columnVisibilityLockedKeys={COLUMN_VISIBILITY_LOCKED_KEYS}
       />
     </div>
   );

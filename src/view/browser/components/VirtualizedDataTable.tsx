@@ -1,6 +1,8 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import React, { useEffect, useMemo, useRef } from "react";
+import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { type ColumnDef } from "src/view/browser/components/SimpleDataTable";
+import { useColumnVisibility } from "src/view/browser/components/use-column-visibility";
 
 interface Props<TRow> {
   columns: ColumnDef<TRow>[];
@@ -18,6 +20,8 @@ interface Props<TRow> {
   overscan?: number;
   endReachedThreshold?: number;
   onEndReached?: () => void;
+  columnVisibilityStorageKey?: string;
+  columnVisibilityLockedKeys?: readonly string[];
 }
 
 export function VirtualizedDataTable<TRow>({
@@ -36,8 +40,20 @@ export function VirtualizedDataTable<TRow>({
   overscan = 8,
   endReachedThreshold = 10,
   onEndReached,
+  columnVisibilityStorageKey,
+  columnVisibilityLockedKeys,
 }: Props<TRow>): React.ReactElement {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const {
+    visibleColumns,
+    columnVisibilityMenuItems,
+    openHeaderContextMenu,
+    closeHeaderContextMenu,
+    headerContextMenuState,
+  } = useColumnVisibility(columns, {
+    storageKey: columnVisibilityStorageKey,
+    lockedColumnKeys: columnVisibilityLockedKeys,
+  });
 
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
@@ -66,8 +82,8 @@ export function VirtualizedDataTable<TRow>({
       : 0;
 
   const colDefMap = useMemo(
-    () => new Map(columns.map((column) => [column.key, column])),
-    [columns],
+    () => new Map(visibleColumns.map((column) => [column.key, column])),
+    [visibleColumns],
   );
 
   const sortIndicator = (key: string): string => {
@@ -80,7 +96,7 @@ export function VirtualizedDataTable<TRow>({
       <table className="simple-data-table">
         <thead>
           <tr>
-            {columns.map((column) => {
+            {visibleColumns.map((column) => {
               const className = column.headerClassName
                 ? `simple-data-table__th ${column.headerClassName}`
                 : "simple-data-table__th";
@@ -94,6 +110,14 @@ export function VirtualizedDataTable<TRow>({
                       ? () => onSort(column.key)
                       : undefined
                   }
+                  onContextMenu={(event) => {
+                    if (!columnVisibilityStorageKey) {
+                      return;
+                    }
+
+                    event.preventDefault();
+                    openHeaderContextMenu(event.clientX, event.clientY);
+                  }}
                 >
                   {column.header}
                   {column.sortable ? sortIndicator(column.key) : ""}
@@ -106,7 +130,7 @@ export function VirtualizedDataTable<TRow>({
           {paddingTop > 0 ? (
             <tr className="simple-data-table__spacer" aria-hidden="true">
               <td
-                colSpan={Math.max(columns.length, 1)}
+                colSpan={Math.max(visibleColumns.length, 1)}
                 style={{ height: `${paddingTop}px` }}
               />
             </tr>
@@ -140,7 +164,7 @@ export function VirtualizedDataTable<TRow>({
                   onRowContextMenu?.(row, event.clientX, event.clientY);
                 }}
               >
-                {columns.map((column) => {
+                {visibleColumns.map((column) => {
                   const colDef = colDefMap.get(column.key);
                   return (
                     <td
@@ -158,13 +182,21 @@ export function VirtualizedDataTable<TRow>({
           {paddingBottom > 0 ? (
             <tr className="simple-data-table__spacer" aria-hidden="true">
               <td
-                colSpan={Math.max(columns.length, 1)}
+                colSpan={Math.max(visibleColumns.length, 1)}
                 style={{ height: `${paddingBottom}px` }}
               />
             </tr>
           ) : null}
         </tbody>
       </table>
+      {headerContextMenuState ? (
+        <ContextMenu
+          x={headerContextMenuState.x}
+          y={headerContextMenuState.y}
+          items={columnVisibilityMenuItems}
+          onClose={closeHeaderContextMenu}
+        />
+      ) : null}
     </div>
   );
 }

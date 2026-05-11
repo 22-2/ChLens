@@ -232,6 +232,10 @@ const COLUMNS: ColumnDef<BookmarkEntry>[] = [
   },
 ];
 
+const COLUMN_VISIBILITY_STORAGE_KEY =
+  "readcrx_browser_bookmark_list_columns_visibility";
+const COLUMN_VISIBILITY_LOCKED_KEYS = ["title"] as const;
+
 interface BookmarkListPageProps {
   tabId: string;
   isActive: boolean;
@@ -429,6 +433,8 @@ export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({
         sortColumn={sortState.column ?? undefined}
         sortDirection={sortState.direction}
         onSort={handleSort}
+        columnVisibilityStorageKey={COLUMN_VISIBILITY_STORAGE_KEY}
+        columnVisibilityLockedKeys={COLUMN_VISIBILITY_LOCKED_KEYS}
       />
     </div>
   );
