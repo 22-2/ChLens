@@ -31,6 +31,8 @@ export const ReplyTree: React.FC<{
   onResContextMenu: (e: React.MouseEvent, res: IRes) => void;
   visited: Set<number>;
   depth: number;
+  /** ポップアップ内でも画像ぼかしを適用するためのセット */
+  blurredResNums?: Set<number>;
 }> = ({
   resNum,
   repIndex,
@@ -49,6 +51,7 @@ export const ReplyTree: React.FC<{
   onResContextMenu,
   visited,
   depth,
+  blurredResNums,
 }) => {
   if (depth >= MAX_TREE_DEPTH) return null;
   const replies = repIndex.get(resNum);
@@ -92,6 +95,7 @@ export const ReplyTree: React.FC<{
               onAnchorHover={onAnchorHover}
               onAnchorLeave={onAnchorLeave}
               onContextMenu={onResContextMenu}
+              isImageBlurred={blurredResNums?.has(res.num)}
             />
             <ReplyTree
               resNum={replyNum}
@@ -111,6 +115,7 @@ export const ReplyTree: React.FC<{
               onResContextMenu={onResContextMenu}
               visited={visited}
               depth={depth + 1}
+              blurredResNums={blurredResNums}
             />
           </React.Fragment>
         );

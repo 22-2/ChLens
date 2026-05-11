@@ -33,6 +33,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     onAnchorHover,
     onAnchorLeave,
     onContextMenu,
+    isImageBlurred,
   }) => {
     const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
     const decoded = useMemo(
@@ -170,6 +171,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
           onUrlClick={onUrlClick}
           onMiddleClickStart={onLinkMiddleClickStart}
           openOnMiddleMouseDown
+          isBlurred={isImageBlurred}
         />
       </article>
     );
@@ -202,4 +204,6 @@ export interface StaticResCardProps {
   ) => void;
   onAnchorLeave: (fromDepth: number) => void;
   onContextMenu?: (e: React.MouseEvent, res: IRes) => void;
+  /** ポップアップ内でも画像ぼかしを適用するためのフラグ */
+  isImageBlurred?: boolean;
 }

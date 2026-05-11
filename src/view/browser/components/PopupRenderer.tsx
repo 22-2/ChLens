@@ -67,6 +67,8 @@ interface PopupRendererProps {
   onUrlContextMenuOpen: (parentId: string) => UrlContextMenuHandler;
   threadTitle?: string;
   threadUrl?: string;
+  /** ポップアップ内でも画像ぼかしを適用するためのセット */
+  blurredResNums?: Set<number>;
 }
 
 function useStablePopupHandlerCache(resetDeps: readonly unknown[]) {
@@ -128,6 +130,7 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
   onUrlContextMenuOpen,
   threadTitle,
   threadUrl,
+  blurredResNums,
 }) => {
   const anchorPreviewDepthByIdRef = useRef(new Map<string, number>());
   anchorPreviewDepthByIdRef.current = new Map(
@@ -215,6 +218,7 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
           )}
           hasChildPopup={hasPopupChild(anchorPreview.id)}
           zIndex={anchorPreview.z}
+          blurredResNums={blurredResNums}
         />
       ))}
 
@@ -272,6 +276,7 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
             `mouse-leave:${idPopup.id}`,
             () => () => onAnchorLeave(0),
           )}
+          blurredResNums={blurredResNums}
         />
       ))}
 
@@ -340,6 +345,7 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
           )}
           threadTitle={threadTitle}
           threadUrl={threadUrl}
+          blurredResNums={blurredResNums}
         />
       ))}
 

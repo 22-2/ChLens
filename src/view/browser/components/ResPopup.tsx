@@ -47,6 +47,8 @@ export const ResPopup: React.FC<{
   disableOutsideClick?: boolean;
   /** z-indexを明示指定（省略時はCSSのデフォルト値を使用） */
   zIndex?: number;
+  /** ポップアップ内でも画像ぼかしを適用するためのセット */
+  blurredResNums?: Set<number>;
 }> = ({
   x,
   y,
@@ -72,6 +74,7 @@ export const ResPopup: React.FC<{
   onSurfaceMouseDown,
   disableOutsideClick,
   zIndex,
+  blurredResNums,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const handleResContextMenu = useCallback(
@@ -142,6 +145,7 @@ export const ResPopup: React.FC<{
             onAnchorHover={onAnchorHover}
             onAnchorLeave={onAnchorLeave}
             onContextMenu={handleResContextMenu}
+            isImageBlurred={blurredResNums?.has(res.num)}
           />
         ))}
       </div>

@@ -42,6 +42,8 @@ export interface AnchorPreviewProps {
   hasChildPopup?: boolean;
   /** z-indexを明示指定（後から開いたポップアップが前面に出るよう呼び出し元が管理する） */
   zIndex: number;
+  /** ポップアップ内でも画像ぼかしを適用するためのセット */
+  blurredResNums?: Set<number>;
 }
 
 export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
@@ -70,6 +72,7 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
   onResContextMenu,
   hasChildPopup,
   zIndex,
+  blurredResNums,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const handleResContextMenu = useCallback(
@@ -134,6 +137,7 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
             onAnchorHover={onAnchorHover}
             onAnchorLeave={onAnchorLeave}
             onContextMenu={handleResContextMenu}
+            isImageBlurred={blurredResNums?.has(res.num)}
           />
         ))}
       </div>
