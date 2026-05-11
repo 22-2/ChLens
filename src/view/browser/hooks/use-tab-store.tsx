@@ -1,11 +1,14 @@
 import React, {
+  useCallback,
   createContext,
   useContext,
   useEffect,
   useReducer,
+  useRef,
   type Dispatch,
   type ReactNode,
 } from "react";
+import { add as addHistoryRecord, remove as removeHistoryRecord } from "src/core/History";
 import { platform } from "src/app/platform";
 import {
   buildHierarchy,
@@ -88,6 +91,67 @@ function normalizePageLocation(rawLocation: string): string {
     return parsed.toString().replace(/\/+$/, "/");
   } catch {
     return rawLocation.trim().replace(/\/+$/, "");
+  }
+}
+
+interface ThreadHistoryVisit {
+  tabId: string;
+  threadUrl: string;
+  title: string;
+  boardTitle: string;
+  date: number;
+  pending: Promise<void>;
+}
+
+function isHistoryDisabled(): boolean {
+  return readConfigValue("no_history") === "on";
+}
+
+function deriveHistoryBoardTitle(threadUrl: string): string {
+  try {
+    const parsed = new window.URL(threadUrl);
+    const match = parsed.pathname.match(
+      /^(?:\/[\w-]+)?\/test\/read\.cgi\/([\w-]+)\/\d+\/?/,
+    );
+    return decodeURIComponent(match?.[1] ?? "");
+  } catch {
+    return "";
+  }
+}
+
+function getThreadVisitKey(tabId: string, threadUrl: string): string {
+  return `${tabId}:${threadUrl}`;
+}
+
+function reportHistoryPersistenceError(context: string, error: unknown): void {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(`${context}: ${message}`, error);
+
+  const appMessage = (
+    window as Window &
+      typeof globalThis & {
+        app?: {
+          message?: {
+            send?: (type: string, payload?: unknown) => void;
+          };
+        };
+      }
+  ).app?.message;
+
+  appMessage?.send?.("notify", {
+    message: `${context}: ${message}`,
+    background_color: "red",
+  });
+}
+
+function clearThreadVisitsForTab(
+  visitStore: Map<string, ThreadHistoryVisit>,
+  tabId: string,
+): void {
+  for (const key of visitStore.keys()) {
+    if (key.startsWith(`${tabId}:`)) {
+      visitStore.delete(key);
+    }
   }
 }
 
@@ -859,9 +923,153 @@ const TabDispatchContext = createContext<Dispatch<TabAction> | null>(null);
 export const TabProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  const [state, dispatch] = useReducer(tabReducer, initialState);
+  const [state, baseDispatch] = useReducer(tabReducer, initialState);
+  const stateRef = useRef(state);
+  const threadVisitRef = useRef<Map<string, ThreadHistoryVisit>>(new Map());
   const activeTab = getActiveTab(state);
   const currentPage = getCurrentPage(activeTab);
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  const persistThreadVisit = useCallback(
+    (tabId: string, page: Extract<Page, { type: "thread" }>) => {
+      if (isHistoryDisabled()) {
+        clearThreadVisitsForTab(threadVisitRef.current, tabId);
+        return;
+      }
+
+      const date = Date.now();
+      const visitKey = getThreadVisitKey(tabId, page.threadUrl);
+      const visit: ThreadHistoryVisit = {
+        tabId,
+        threadUrl: page.threadUrl,
+        title: page.title,
+        boardTitle: deriveHistoryBoardTitle(page.threadUrl),
+        date,
+        pending: Promise.resolve(),
+      };
+
+      clearThreadVisitsForTab(threadVisitRef.current, tabId);
+
+      visit.pending = addHistoryRecord(
+        visit.threadUrl,
+        visit.title,
+        visit.date,
+        visit.boardTitle,
+      ).catch((error) => {
+        reportHistoryPersistenceError("閲覧履歴の保存に失敗しました", error);
+      });
+
+      threadVisitRef.current.set(visitKey, visit);
+    },
+    [],
+  );
+
+  const syncThreadVisitTitle = useCallback(
+    (tabId: string, page: Extract<Page, { type: "thread" }>, title: string) => {
+      const visitKey = getThreadVisitKey(tabId, page.threadUrl);
+      const visit = threadVisitRef.current.get(visitKey);
+      if (!visit || visit.title === title || title.trim() === "") {
+        return;
+      }
+
+      visit.pending = visit.pending
+        .then(async () => {
+          await removeHistoryRecord(visit.threadUrl, visit.date);
+          await addHistoryRecord(
+            visit.threadUrl,
+            title,
+            visit.date,
+            visit.boardTitle,
+          );
+          visit.title = title;
+        })
+        .catch((error) => {
+          reportHistoryPersistenceError(
+            "閲覧履歴タイトルの更新に失敗しました",
+            error,
+          );
+        });
+    },
+    [],
+  );
+
+  const dispatch = useCallback<Dispatch<TabAction>>(
+    (action) => {
+      const prevState = stateRef.current;
+      const nextState = tabReducer(prevState, action);
+      stateRef.current = nextState;
+      baseDispatch(action);
+
+      const recordThreadVisitForTab = (tabId: string) => {
+        const nextTab = nextState.tabs.find((tab) => tab.id === tabId);
+        if (!nextTab) {
+          return;
+        }
+
+        const nextPage = getCurrentPage(nextTab);
+        if (nextPage.type !== "thread") {
+          return;
+        }
+
+        const prevTab = prevState.tabs.find((tab) => tab.id === tabId) ?? null;
+        const prevPage = prevTab ? getCurrentPage(prevTab) : null;
+        if (prevPage?.type === "thread" && prevPage.threadUrl === nextPage.threadUrl) {
+          return;
+        }
+
+        // 変更理由: 戻る/進むではなく「開く系 action」で current page が thread に変わった瞬間に記録し、
+        // 背景タブでも表示待ちなしで履歴へ出るようにする。
+        persistThreadVisit(tabId, nextPage);
+      };
+
+      switch (action.type) {
+        case "NAVIGATE":
+        case "FOLLOW_NEXT_THREAD":
+          recordThreadVisitForTab(nextState.activeTabId);
+          return;
+
+        case "NAVIGATE_TAB":
+          recordThreadVisitForTab(nextState.activeTabId);
+          return;
+
+        case "OPEN_IN_NEW_TAB":
+        case "OPEN_IN_NEW_TAB_FORCE":
+        case "REOPEN_CLOSED_TAB": {
+          const prevTabIds = new Set(prevState.tabs.map((tab) => tab.id));
+          const insertedTab = nextState.tabs.find((tab) => !prevTabIds.has(tab.id));
+          if (insertedTab) {
+            recordThreadVisitForTab(insertedTab.id);
+          }
+          return;
+        }
+
+        case "UPDATE_TITLE": {
+          const nextTab = nextState.tabs.find((tab) => tab.id === nextState.activeTabId);
+          const nextPage = nextTab ? getCurrentPage(nextTab) : null;
+          if (nextPage?.type === "thread") {
+            syncThreadVisitTitle(nextState.activeTabId, nextPage, action.title);
+          }
+          return;
+        }
+
+        case "UPDATE_TITLE_FOR_TAB": {
+          const nextTab = nextState.tabs.find((tab) => tab.id === action.tabId);
+          const nextPage = nextTab ? getCurrentPage(nextTab) : null;
+          if (nextPage?.type === "thread") {
+            syncThreadVisitTitle(action.tabId, nextPage, action.title);
+          }
+          return;
+        }
+
+        default:
+          return;
+      }
+    },
+    [baseDispatch, persistThreadVisit, syncThreadVisitTitle],
+  );
 
   // セッション永続化: state変更時にlocalStorageへ保存
   useEffect(() => {

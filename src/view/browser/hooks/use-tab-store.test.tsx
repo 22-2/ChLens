@@ -1,7 +1,12 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { getAutoRefreshPageKey } from "src/view/browser/utils/auto-refresh-pages";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const { historyAddMock, historyRemoveMock } = vi.hoisted(() => ({
+  historyAddMock: vi.fn().mockResolvedValue(undefined),
+  historyRemoveMock: vi.fn().mockResolvedValue(undefined),
+}));
 
 vi.mock("src/app/platform", () => ({
   // use-tab-store はタイトル更新以外で platform を使わないため、
@@ -11,6 +16,11 @@ vi.mock("src/app/platform", () => ({
       setTitle: vi.fn().mockResolvedValue(undefined),
     },
   },
+}));
+
+vi.mock("src/core/History", () => ({
+  add: historyAddMock,
+  remove: historyRemoveMock,
 }));
 
 function createMemoryStorage(): Storage {
@@ -47,6 +57,10 @@ describe("TabProvider auto refresh state", () => {
       value: localStorageMock,
     });
     localStorage.removeItem("readcrx_browser_session");
+    historyAddMock.mockReset();
+    historyRemoveMock.mockReset();
+    historyAddMock.mockResolvedValue(undefined);
+    historyRemoveMock.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -496,6 +510,142 @@ describe("TabProvider auto refresh state", () => {
     expect(screen.getByTestId("current-page-type")).toHaveTextContent(
       "threadList",
     );
+  });
+
+  it("OPEN_IN_NEW_TAB した背景スレは表示前でも閲覧履歴へ記録する", async () => {
+    vi.resetModules();
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
+
+    function Harness() {
+      const { dispatch } = useTabStore();
+
+      return (
+        <>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "NAVIGATE",
+                page: {
+                  type: "threadList",
+                  title: "板A",
+                  boardUrl: "https://example.com/board-a/",
+                  boardTitle: "板A",
+                },
+              })
+            }
+          >
+            板Aへ移動
+          </button>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "OPEN_IN_NEW_TAB",
+                page: {
+                  type: "thread",
+                  title: "背景スレ",
+                  threadUrl: "https://example.com/test/read.cgi/board-a/1/",
+                },
+              })
+            }
+          >
+            背景タブでスレを開く
+          </button>
+        </>
+      );
+    }
+
+    render(
+      <TabProvider>
+        <Harness />
+      </TabProvider>,
+    );
+
+    fireEvent.click(screen.getByText("板Aへ移動"));
+    historyAddMock.mockClear();
+
+    fireEvent.click(screen.getByText("背景タブでスレを開く"));
+
+    expect(historyAddMock).toHaveBeenCalledTimes(1);
+    expect(historyAddMock).toHaveBeenCalledWith(
+      "https://example.com/test/read.cgi/board-a/1/",
+      "背景スレ",
+      expect.any(Number),
+      "board-a",
+    );
+  });
+
+  it("URL直開きのスレはタイトル解決後に同じ履歴レコードを補正する", async () => {
+    vi.resetModules();
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
+
+    function Harness() {
+      const { state, dispatch } = useTabStore();
+
+      return (
+        <>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "NAVIGATE",
+                page: {
+                  type: "thread",
+                  title: "https://example.com/test/read.cgi/board-a/1/",
+                  threadUrl: "https://example.com/test/read.cgi/board-a/1/",
+                },
+              })
+            }
+          >
+            URL直開き
+          </button>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "UPDATE_TITLE_FOR_TAB",
+                tabId: state.activeTabId,
+                title: "解決後タイトル",
+              })
+            }
+          >
+            タイトル解決
+          </button>
+        </>
+      );
+    }
+
+    render(
+      <TabProvider>
+        <Harness />
+      </TabProvider>,
+    );
+
+    fireEvent.click(screen.getByText("URL直開き"));
+
+    expect(historyAddMock).toHaveBeenCalledWith(
+      "https://example.com/test/read.cgi/board-a/1/",
+      "https://example.com/test/read.cgi/board-a/1/",
+      expect.any(Number),
+      "board-a",
+    );
+
+    const recordedDate = historyAddMock.mock.calls[0][2] as number;
+    historyAddMock.mockClear();
+
+    fireEvent.click(screen.getByText("タイトル解決"));
+
+    await waitFor(() => {
+      expect(historyRemoveMock).toHaveBeenCalledWith(
+        "https://example.com/test/read.cgi/board-a/1/",
+        recordedDate,
+      );
+      expect(historyAddMock).toHaveBeenCalledWith(
+        "https://example.com/test/read.cgi/board-a/1/",
+        "解決後タイトル",
+        recordedDate,
+        "board-a",
+      );
+    });
   });
 
   it("OPEN_IN_NEW_TAB で既存ページがある時は重複を作らず既存タブへフォーカスする", async () => {
