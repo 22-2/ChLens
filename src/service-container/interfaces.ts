@@ -200,6 +200,8 @@ export interface INGResult {
   type: string;
   name?: string;
   params?: any;
+  /** NG ルールが一時的に無効化されているかどうか */
+  disabled?: boolean;
 }
 
 export interface INGService {

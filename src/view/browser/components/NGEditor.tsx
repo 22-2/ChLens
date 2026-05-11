@@ -81,7 +81,9 @@ Body(word="荒らし")
 // word= は省略可能（Body(荒らし)も同じ意味）
 Body("荒らし")
 
-// 引用符「"」も省略可能（ただしスペースを含む場合は必要）
+/* ブロックコメントも使用可能
+   複数行にまたがる説明や
+   コメントアウトしたルールを記述できます */
 Body(荒らし)
 
 // タイトルを部分一致でハイライト
@@ -96,7 +98,8 @@ RegExpUrl("https?://(?:x|twitter)\\\\.com/.+")
 // 10回以上の画像連投を正規表現でNG
 RegExpBody("(imgur\.com\/.+?){10}")`;
 
-export const NG_DSL_MULTILINE_EXAMPLE = `// 複数サイト向けの正規表現ハイライト
+export const NG_DSL_MULTILINE_EXAMPLE = `/* 複数サイト向けの正規表現ハイライト
+   ブロックコメントも使用可能です */
 RegExpHighlightTitle(
   "(imgur\\\\.com\\\\/.+?){15}"
   sites=[

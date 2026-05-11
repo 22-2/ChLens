@@ -233,6 +233,9 @@ function createRuleSnippet(spec: NGDslRuleSpec): string {
     } else if (parameter.name === "label") {
       args.push(`label="\${${placeholderIndex}:注目}"`);
       placeholderIndex += 1;
+    } else if (parameter.name === "disabled") {
+      args.push(`disabled=\${${placeholderIndex}:false}`);
+      placeholderIndex += 1;
     }
   }
 
@@ -240,7 +243,7 @@ function createRuleSnippet(spec: NGDslRuleSpec): string {
 }
 
 function createMultilineHighlightSnippet(spec: NGDslRuleSpec): string {
-  return `${spec.keyword}(\n  word="\${1:${spec.wordDescription}}"\n  sites=[\n    \${2:eddibb.cc}\n    \${3:5ch.net}\n  ]\n  bgColor=\${4:red}\n  label="\${5:注目}"\n)`;
+  return `${spec.keyword}(\n  word="\${1:\${spec.wordDescription}}"\n  sites=[\n    \${2:eddibb.cc}\n    \${3:5ch.net}\n  ]\n  bgColor=\${4:red}\n  label="\${5:注目}"\n  disabled=\${6:false}\n)`;
 }
 
 function createRuleCompletionItems(
@@ -249,24 +252,26 @@ function createRuleCompletionItems(
   position: Monaco.Position,
 ): Monaco.languages.CompletionItem[] {
   const range = createCompletionRange(model, position);
-  const items = NG_DSL_RULE_SPECS.map((spec) => ({
-    label: spec.keyword,
-    kind: monaco.languages.CompletionItemKind.Function,
-    detail: spec.description,
-    documentation: createMarkdown(
-      `${spec.keyword}: ${spec.description}\n\n値: ${spec.wordDescription}`,
-    ),
-    insertText: createRuleSnippet(spec),
-    insertTextRules:
-      monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-    range,
-  }));
+  const items: Monaco.languages.CompletionItem[] = NG_DSL_RULE_SPECS.map(
+    (spec) => ({
+      label: spec.keyword,
+      kind: monaco.languages.CompletionItemKind.Function,
+      detail: spec.description,
+      documentation: createMarkdown(
+        `${spec.keyword}: ${spec.description}\n\n値: ${spec.wordDescription}`,
+      ),
+      insertText: createRuleSnippet(spec),
+      insertTextRules:
+        monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+      range,
+    }),
+  );
 
   for (const spec of NG_DSL_RULE_SPECS.filter((candidate) =>
     candidate.parameters.some((parameter) => parameter.name === "bgColor"),
   )) {
     items.push({
-      label: `${spec.keyword} (複数行)`,
+      label: `${spec.keyword} (複数行)` as string,
       kind: monaco.languages.CompletionItemKind.Snippet,
       detail: `${spec.keyword} の複数行テンプレート`,
       documentation: createMarkdown(
@@ -292,6 +297,8 @@ function createParameterSnippet(parameter: NGDslParameterSpec): string {
       return "bgColor=${1:red}";
     case "label":
       return 'label="${1:注目}"';
+    case "disabled":
+      return 'disabled=true';
   }
 }
 
@@ -405,13 +412,14 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
   monaco.languages.setMonarchTokensProvider(NG_DSL_LANGUAGE_ID, {
     tokenizer: {
       root: [
+        [/\/\*/, "comment", "@blockComment"],
         [/^\s*\/\/.*/, "comment"],
         [
           /^\s*(?:attachName|expireDate|ignoreResNumber|ignoreNgType):/,
           "keyword",
         ],
         [new RegExp(`\\b(?:${keywordPattern})\\b`), "type.identifier"],
-        [/\b(?:word|sites|scope|bgColor|label)\b(?=\s*=)/, "attribute.name"],
+        [/\b(?:word|sites|scope|bgColor|label|disabled)\b(?=\s*=)/, "attribute.name"],
         [new RegExp(`\\b(?:${colorPattern})\\b`), "string"],
         [/#(?:[0-9a-fA-F]{6})\b/, "number.hex"],
         [/\b\d{4}\/\d{1,2}\/\d{1,2}\b/, "number"],
@@ -419,6 +427,12 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
         [/:|,|=/, "delimiter"],
         [/"(?:[^"\\]|\\.)*"/, "string"],
         [/'(?:[^'\\]|\\.)*'/, "string"],
+      ],
+      blockComment: [
+        [/[^/*]/, "comment"],
+        [/\/\*/, "comment", "@push"],
+        [/\*\//, "comment", "@pop"],
+        [/[/*]/, "comment"],
       ],
     },
   });

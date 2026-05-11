@@ -13,6 +13,19 @@ const _expireDate = /^expireDate:(\d{4}\/\d{1,2}\/\d{1,2}),(.*)$/;
 const _attachName = /^attachName:([^,]*),(.*)$/;
 const _expNgWords = /^\$\[(.*?)\]\$:(.*)$/;
 
+/**
+ * NG DSL から \/* *\/ 形式のブロックコメントと // 形式の行コメントを除去する。
+ * ネストは非対応で、最初の \/* と最初の *\/ でペアを作る。
+ */
+function removeNgDslComments(source: string): string {
+  let result = source;
+  // /* */ ブロックコメントを除去（ネスト非対応、最初にマッチしたもの）
+  result = result.replace(/\/\*[\s\S]*?\*\//g, "");
+  // // 行コメントを除去
+  result = result.replace(/^[ \t]*\/\/.*$/gm, "");
+  return result;
+}
+
 const _getNgElement = function (ngWord: string): InternalNGElement | null {
   ngWord = ngWord.trim();
   // 設定画面のDSL例をそのまま貼り付けても動くように、`//` 行コメントを無視する。
@@ -102,7 +115,9 @@ export function parseNgString(string: string): Set<InternalNGElement> {
     return ng;
   }
 
-  const ngStrSplit = splitNgDslEntries(string);
+  // NG DSL からコメント（// と /* */）を除去
+  const cleaned = removeNgDslComments(string);
+  const ngStrSplit = splitNgDslEntries(cleaned);
   for (let ngWord of ngStrSplit) {
     ngWord = ngWord.trim();
     if (ngWord.startsWith("//") || ngWord === "") {

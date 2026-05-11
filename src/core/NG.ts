@@ -238,7 +238,14 @@ export function isNGBoard(
         url,
         checkedCount,
       });
-      return { type: ngType, name: n.name, params: n.params };
+      return {
+        type: ngType,
+        name: n.name,
+        params: n.params,
+        // NG ルール側で disabled フラグが設定されている場合は、
+        // そのNG判定を一時無効化フラグとして区別できるようにする。
+        disabled: n.params?.disabled === "true",
+      };
     }
   }
 
@@ -311,7 +318,13 @@ export function isNGThread(
         resNum: res?.num,
         checkedCount,
       });
-      return { type: ngType, name: n.name };
+      return {
+        type: ngType,
+        name: n.name,
+        // NG ルール側で disabled フラグが設定されている場合は、
+        // そのNG判定を一時無効化フラグとして区別できるようにする。
+        disabled: n.params?.disabled === "true",
+      };
     }
   }
 

@@ -116,6 +116,7 @@ export const NG_DSL_RULE_SPECS: readonly NGDslRuleSpec[] = [
       SITES_PARAMETER,
       BGCOLOR_PARAMETER,
       LABEL_PARAMETER,
+      DISABLED_PARAMETER,
     ],
   },
   {
@@ -170,6 +171,7 @@ export const NG_DSL_RULE_SPECS: readonly NGDslRuleSpec[] = [
       SITES_PARAMETER,
       BGCOLOR_PARAMETER,
       LABEL_PARAMETER,
+      DISABLED_PARAMETER,
     ],
   },
   {
