@@ -188,6 +188,10 @@ export function useMediaViewerController(): MediaViewerProps | null {
     if (
       !stage ||
       !image ||
+      // img.src が切り替わった直後は前の画像の naturalWidth/naturalHeight が残っていることがある。
+      // image.complete が false の間は旧画像の寸法で誤ったレイアウトを組んでしまうため、
+      // 必ず読み込み完了（onLoad 発火済み）を確認してから計算する。
+      !image.complete ||
       image.naturalWidth <= 0 ||
       image.naturalHeight <= 0
     ) {
