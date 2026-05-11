@@ -33,4 +33,46 @@ describe("browser utils", () => {
   it("anchor_id の表示文字列をIDポップアップ向けに正規化する", () => {
     expect(normalizeIdLinkText("id:ABC123(4)")).toBe("ID:ABC123");
   });
+
+  describe("imgur URL変換（リサイズパラメータ付き）", () => {
+    it("imgur.com/[id] をサムネイル形式に変換する", () => {
+      expect(toViewerImageUrl("https://imgur.com/TestImage")).toBe(
+        "https://i.imgur.com/TestImagem.jpg",
+      );
+    });
+
+    it("imgur.com/[id]/ （末尾スラッシュあり）をサムネイル形式に変換する", () => {
+      expect(toViewerImageUrl("https://imgur.com/TestImage/")).toBe(
+        "https://i.imgur.com/TestImagem.jpg",
+      );
+    });
+
+    it("imgur.com/a/[album_id] は画像URLへ変換しない", () => {
+      expect(toViewerImageUrl("https://imgur.com/a/TestAlbum")).toBeNull();
+    });
+
+    it("m.imgur.com/[id] をサムネイル形式に変換する", () => {
+      expect(toViewerImageUrl("https://m.imgur.com/TestID")).toBe(
+        "https://i.imgur.com/TestIDm.jpg",
+      );
+    });
+
+    it("既存の i.imgur.com 画像にリサイズパラメータを追加する", () => {
+      expect(toViewerImageUrl("https://i.imgur.com/TestImage.jpg")).toBe(
+        "https://i.imgur.com/TestImagem.jpg",
+      );
+    });
+
+    it("i.imgur.com の png 画像にもリサイズパラメータを追加する", () => {
+      expect(toViewerImageUrl("https://i.imgur.com/TestImage.png")).toBe(
+        "https://i.imgur.com/TestImagem.png",
+      );
+    });
+
+    it("末尾スラッシュと拡張子を含むURLを処理する", () => {
+      expect(toViewerImageUrl("https://imgur.com/TestImage.jpg/")).toBe(
+        "https://i.imgur.com/TestImagem.jpg",
+      );
+    });
+  });
 });

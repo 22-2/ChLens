@@ -1,5 +1,5 @@
 import type { ViewerState } from "src/view/browser/utils/types";
-import { toViewerImageUrl } from "src/view/browser/utils/utils";
+import { toOriginalImageUrl, toViewerImageUrl } from "src/view/browser/utils/utils";
 import { create } from "zustand";
 
 const MIN_VIEWER_SCALE = 0.25;
@@ -53,9 +53,13 @@ export const useMediaViewerStore = create<MediaViewerStoreState>(
         ? Math.max(0, images.indexOf(url))
         : undefined;
 
+      // ズーム途中で画像が切り替わると視覚的な違和感が大きいため、
+      // 最初からオリジナル解像度を表示して表示の一貫性を優先する。
+      const initialSrc = toOriginalImageUrl(imageUrl) ?? imageUrl;
+
       set({
         viewer: {
-          src: imageUrl,
+          src: initialSrc,
           label: url,
           images,
           currentIndex,
@@ -85,11 +89,12 @@ export const useMediaViewerStore = create<MediaViewerStoreState>(
 
       const rawUrl = viewer.images[nextIndex];
       const nextSrc = toViewerImageUrl(rawUrl) ?? rawUrl;
+      const nextInitialSrc = toOriginalImageUrl(nextSrc) ?? nextSrc;
 
       set({
         viewer: {
           ...viewer,
-          src: nextSrc,
+          src: nextInitialSrc,
           label: rawUrl,
           currentIndex: nextIndex,
         },
