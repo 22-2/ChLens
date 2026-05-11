@@ -15,6 +15,7 @@ interface UseThreadTopBarParams {
 interface UseThreadTopBarResult {
   activeTopBar: TopBarMode;
   closeTopBar: () => void;
+  openFilterToolbar: () => void;
   searchFocusKey: number;
 }
 
@@ -32,6 +33,12 @@ export function useThreadTopBar({
   const toggleFilterToolbar = useCallback(() => {
     // 検索欄を同じツールバーへ統合したので、フィルタ操作は表示状態だけを反転させる。
     setActiveTopBar((prev) => (prev === "filter" ? "none" : "filter"));
+  }, []);
+
+  const openFilterToolbar = useCallback(() => {
+    // 変更理由: ホイールなどの「開くだけでよい」導線では toggle だと閉じ戻り得るため、
+    // 明示的な open API を用意して入力欄の表示を安定させる。
+    setActiveTopBar("filter");
   }, []);
 
   const openFilterToolbarForSearch = useCallback(() => {
@@ -75,6 +82,7 @@ export function useThreadTopBar({
   return {
     activeTopBar,
     closeTopBar,
+    openFilterToolbar,
     searchFocusKey,
   };
 }

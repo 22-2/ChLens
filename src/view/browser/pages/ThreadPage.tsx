@@ -31,6 +31,7 @@ import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
 import { useThreadAutoRefresh } from "src/view/browser/hooks/use-thread-auto-refresh";
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";
 import { ThreadPageTopBar } from "src/view/browser/pages/thread/ThreadPageTopBar";
+import { useThreadTopScrollOpenFilter } from "src/view/browser/pages/thread/use-thread-top-scroll-open-filter";
 import { useThreadResContextMenu } from "src/view/browser/pages/thread/use-thread-res-context-menu";
 import { useThreadTopBar } from "src/view/browser/pages/thread/use-thread-top-bar";
 import {
@@ -182,9 +183,17 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   });
 
   const [miniAaResNums, setMiniAaResNums] = useState<Set<number>>(new Set());
-  const { activeTopBar, closeTopBar, searchFocusKey } = useThreadTopBar({
-    searchQuery,
-    setSearchQuery,
+  const { activeTopBar, closeTopBar, openFilterToolbar, searchFocusKey } =
+    useThreadTopBar({
+      searchQuery,
+      setSearchQuery,
+    });
+
+  useThreadTopScrollOpenFilter({
+    activeTopBar,
+    isActive,
+    openFilterToolbar,
+    rootRef,
   });
 
   // 変更理由: 自動更新とステータスバー強調の条件を同一ソースに統一し、
