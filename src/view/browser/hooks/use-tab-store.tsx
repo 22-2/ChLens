@@ -20,7 +20,10 @@ import {
   getAutoRefreshPageKey,
   resetAutoRefreshState,
 } from "src/view/browser/utils/auto-refresh-pages";
-import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
+import {
+  getBoardUrlFromThreadUrl,
+  parseInternalBrowserPage,
+} from "src/view/browser/utils/link-routing";
 
 export interface TabStoreState {
   tabs: Tab[];
@@ -330,6 +333,32 @@ function createTab(
   };
 }
 
+function createTabFromPage(page: Page): Tab {
+  const history = buildHierarchy(page);
+  return {
+    id: crypto.randomUUID(),
+    history,
+    currentIndex: history.length - 1,
+    pinned: false,
+    reloadKey: 0,
+    autoRefreshEnabled: false,
+    autoRefreshPageKey: null,
+  };
+}
+
+function readInitialPageFromLocation(): Page | null {
+  try {
+    const query = new window.URL(window.location.href).searchParams.get("q");
+    if (typeof query !== "string" || query.trim() === "") {
+      return null;
+    }
+
+    return parseInternalBrowserPage(query);
+  } catch {
+    return null;
+  }
+}
+
 function sanitizeSessionState(state: TabStoreState): TabStoreState {
   return {
     ...state,
@@ -378,14 +407,26 @@ function saveSession(state: TabStoreState): void {
   }
 }
 
-const restoredSession = loadSession();
-const initialState: TabStoreState = restoredSession ?? {
-  tabs: [createTab()],
-  activeTabId: "",
-  closedTabs: [],
-};
+const initialPageFromLocation = readInitialPageFromLocation();
+const restoredSession = initialPageFromLocation ? null : loadSession();
+const initialState: TabStoreState =
+  restoredSession ??
+  (initialPageFromLocation
+    ? (() => {
+        const tab = createTabFromPage(initialPageFromLocation);
+        return {
+          tabs: [tab],
+          activeTabId: tab.id,
+          closedTabs: [],
+        };
+      })()
+    : {
+        tabs: [createTab()],
+        activeTabId: "",
+        closedTabs: [],
+      });
 // 新規作成時にactiveTabIdを設定
-if (!restoredSession) {
+if (!restoredSession && !initialPageFromLocation) {
   initialState.activeTabId = initialState.tabs[0].id;
 }
 

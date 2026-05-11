@@ -2,6 +2,7 @@ import {
   isTargetContentScriptUrl,
   normalizeContentScriptTargetUrl,
 } from "src/content-scripts/url-targets";
+import browser from "webextension-polyfill";
 
 const BUTTON_IDS = {
   open: "36e5cda5",
@@ -27,25 +28,21 @@ const STYLES = {
   closeButton: "display: inline-block; margin-left: 5px;",
 } as const;
 
-type BrowserApiLike = {
-  runtime: {
-    getURL: (path: string) => string;
-  };
-};
-
-function getBrowserApi(): BrowserApiLike {
-  const maybeBrowser = (globalThis as { browser?: BrowserApiLike }).browser;
-  if (maybeBrowser) {
-    return maybeBrowser;
-  }
-
-  return (globalThis as { chrome: BrowserApiLike }).chrome;
-}
-
 function createViewerUrl(currentUrl: string): string {
-  const baseUrl = getBrowserApi().runtime.getURL("/view/index.html");
+  // 変更理由: この導線は旧ビューではなく new-ui を開くためのものなので、
+  // 入口を browser.html に揃えて遷移先を統一する。
+  const baseUrl = browser.runtime.getURL("/view/browser.html");
   const normalizedUrl = normalizeContentScriptTargetUrl(currentUrl);
   return `${baseUrl}?q=${encodeURIComponent(normalizedUrl)}`;
+}
+
+function openViewerFromCurrentTab(currentUrl: string): void {
+  // 変更理由: 左クリック時は background 側に current tab の URL を渡し、
+  // 既存の new-ui があればそれを再利用して「今のタブ」を開く。
+  void browser.runtime.sendMessage({
+    type: "open-new-ui",
+    url: currentUrl,
+  });
 }
 
 function createButton(
@@ -66,7 +63,7 @@ function createContainer(): HTMLDivElement {
 
   const openButton = createButton(
     BUTTON_IDS.open,
-    "read.crx 2 で開く",
+    "chlens で開く",
     STYLES.underline,
   );
   const closeButton = createButton(BUTTON_IDS.close, " x", STYLES.closeButton);
@@ -95,6 +92,11 @@ function handleMouseDown(event: MouseEvent, viewerUrl: string): void {
   }
 
   if (target.id === BUTTON_IDS.open) {
+    if (event.button === 0 && !event.ctrlKey && !event.shiftKey) {
+      openViewerFromCurrentTab(viewerUrl);
+      return;
+    }
+
     openLink(
       viewerUrl,
       event.button as 0 | 1 | 2,

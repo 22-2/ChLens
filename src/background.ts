@@ -3,7 +3,13 @@ import browser from "webextension-polyfill";
 const isTabReadcrx = (tab: browser.Tabs.Tab) =>
   tab.url?.startsWith(browser.runtime.getURL(""));
 const NEW_UI_URL_PREFIX = browser.runtime.getURL("view/browser.html");
+const NEW_UI_URL_QUERY = `${browser.runtime.getURL("view/browser.html")}*`;
 let newUiPrimaryTabId: number | null = null;
+
+type OpenNewUiMessage = {
+  type: "open-new-ui";
+  url: string;
+};
 
 const isNewUiTab = (tab: browser.Tabs.Tab | undefined): boolean =>
   typeof tab?.url === "string" && tab.url.startsWith(NEW_UI_URL_PREFIX);
@@ -12,6 +18,52 @@ const focusTabById = async (tabId: number): Promise<void> => {
   const tab = await browser.tabs.get(tabId);
   await browser.windows.update(tab.windowId!, { focused: true });
   await browser.tabs.update(tab.id!, { active: true });
+};
+
+const createNewUiUrl = (currentUrl: string): string =>
+  `${browser.runtime.getURL("view/browser.html")}?q=${encodeURIComponent(currentUrl)}`;
+
+const findNewUiTab = async (): Promise<browser.Tabs.Tab | null> => {
+  const tabs = await browser.tabs.query({ url: NEW_UI_URL_QUERY });
+  if (tabs.length === 0) {
+    return null;
+  }
+
+  if (newUiPrimaryTabId != null) {
+    const primaryTab = tabs.find((tab) => tab.id === newUiPrimaryTabId);
+    if (primaryTab) {
+      return primaryTab;
+    }
+  }
+
+  return tabs[0] ?? null;
+};
+
+const openOrFocusNewUiTab = async (currentUrl: string): Promise<void> => {
+  const viewerUrl = createNewUiUrl(currentUrl);
+  const existingTab = await findNewUiTab();
+
+  if (existingTab?.id != null) {
+    // 変更理由: new-ui は単一インスタンス運用なので、既存タブがある場合は
+    // URL を差し替えて「現在のタブ」をそのまま表示し直す。
+    await browser.tabs.update(existingTab.id, {
+      url: viewerUrl,
+      active: true,
+    });
+    if (existingTab.windowId != null) {
+      await browser.windows.update(existingTab.windowId, { focused: true });
+    }
+    newUiPrimaryTabId = existingTab.id;
+    return;
+  }
+
+  const createdTab = await browser.tabs.create({
+    url: viewerUrl,
+    active: true,
+  });
+  if (createdTab.id != null) {
+    newUiPrimaryTabId = createdTab.id;
+  }
 };
 
 browser.tabs.onRemoved.addListener((tabId: number) => {
@@ -42,6 +94,14 @@ browser.tabs.onUpdated.addListener(
   },
 );
 
+browser.runtime.onMessage.addListener((message: OpenNewUiMessage) => {
+  if (message.type !== "open-new-ui") {
+    return;
+  }
+
+  void openOrFocusNewUiTab(message.url);
+});
+
 // 実行中のread.crxを探す
 const searchRcrx = async () => {
   const tabs = await browser.tabs.query({
@@ -64,6 +124,11 @@ browserAction.onClicked.addListener(async (currentTab) => {
     return;
   }
 
+  if (typeof currentTab.url === "string" && currentTab.url.length > 0) {
+    await openOrFocusNewUiTab(currentTab.url);
+    return;
+  }
+
   const rcrx = await searchRcrx();
   if (rcrx != null) {
     // 実行中のread.crxが存在すればそれを開く
@@ -71,6 +136,6 @@ browserAction.onClicked.addListener(async (currentTab) => {
     browser.tabs.update(rcrx.id!, { active: true });
   } else {
     // 存在しなければタブを作成する
-    browser.tabs.create({ url: "view/index.html" });
+    browser.tabs.create({ url: "view/browser.html" });
   }
 });
