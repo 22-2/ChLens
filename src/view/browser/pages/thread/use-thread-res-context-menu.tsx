@@ -5,6 +5,7 @@ import {
   FilterX,
   Globe,
   History,
+  Pause,
   RefreshCw,
   Reply,
   RotateCw,
@@ -16,8 +17,11 @@ import { stringifyNgDslValue } from "src/core/ngDsl";
 import { container } from "src/service-container/index";
 import type { IRes } from "src/service-container/interfaces";
 import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
-import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
-import { getAutoRefreshPageKey } from "src/view/browser/utils/auto-refresh-pages";
+import { useTabDispatch, useTabStore } from "src/view/browser/hooks/use-tab-store";
+import {
+  getAutoRefreshPageKey,
+  isAutoRefreshEnabledForPage,
+} from "src/view/browser/utils/auto-refresh-pages";
 import { getLegacyWriteHistoryService } from "src/view/browser/utils/legacy-app";
 import type { Props, ThreadFilter } from "src/view/browser/utils/types";
 import {
@@ -79,6 +83,8 @@ export function useThreadResContextMenu({
   // 対象レスがまだ存在せずスクロールに失敗するため hook 内で保留する。
   const pendingJumpNumRef = useRef<number | null>(null);
   const dispatch = useTabDispatch();
+  const { activeTab } = useTabStore();
+  const isAutoRefreshEnabled = isAutoRefreshEnabledForPage(activeTab, page);
 
   const addIdToNg = useCallback(
     async (id: string | undefined) => {
@@ -254,15 +260,24 @@ export function useThreadResContextMenu({
         },
         {
           id: "auto-refresh",
-          label: "スレッドを自動更新",
-          icon: <RefreshCw size={14} />,
+          label: isAutoRefreshEnabled
+            ? "スレッドの自動更新を停止"
+            : "スレッドを自動更新",
+          icon: isAutoRefreshEnabled ? <Pause size={14} /> : <RefreshCw size={14} />,
           onSelect: () => {
+            const nextEnabled = !isAutoRefreshEnabled;
+            // 変更理由: 右クリックメニュー経由でも開始/停止を同一導線で扱い、
+            // 「停止したつもりで実際は一時停止表示だけ」の誤認を防ぐ。
             dispatch({
               type: "SET_AUTO_REFRESH_ENABLED",
-              enabled: true,
+              enabled: nextEnabled,
               pageKey: getAutoRefreshPageKey(page) ?? undefined,
             });
-            container.toast.info("スレッドの自動更新を開始しました");
+            container.toast.info(
+              nextEnabled
+                ? "スレッドの自動更新を開始しました"
+                : "スレッドの自動更新を停止しました",
+            );
           },
         },
         { id: "sep-1", separator: true },
@@ -374,6 +389,7 @@ export function useThreadResContextMenu({
       fetchThread,
       filter,
       handleAnchorClick,
+      isAutoRefreshEnabled,
       miniAaResNums,
       page.threadUrl,
       page.title,

@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   ngAdd: vi.fn(),
   toastInfo: vi.fn(),
   dispatch: vi.fn(),
+  isAutoRefreshEnabled: false,
 }));
 
 vi.mock("src/service-container/index", () => ({
@@ -27,10 +28,23 @@ vi.mock("src/service-container/index", () => ({
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabDispatch: () => mocks.dispatch,
+  useTabStore: () => ({
+    activeTab: {
+      id: "tab-1",
+      title: "tab",
+      history: [],
+      currentIndex: 0,
+      pinned: false,
+      autoRefreshEnabled: false,
+      autoRefreshPageKey: null,
+      reloadKey: 0,
+    },
+  }),
 }));
 
 vi.mock("src/view/browser/utils/auto-refresh-pages", () => ({
   getAutoRefreshPageKey: () => "thread:test",
+  isAutoRefreshEnabledForPage: () => mocks.isAutoRefreshEnabled,
 }));
 
 vi.mock("src/view/browser/utils/legacy-app", () => ({
@@ -99,6 +113,13 @@ function HookHarness() {
       >
         add-ng-id
       </button>
+      <button
+        onClick={() => {
+          capturedItems.find((item) => item.id === "auto-refresh")?.onSelect?.();
+        }}
+      >
+        toggle-auto-refresh
+      </button>
     </div>
   );
 }
@@ -109,6 +130,7 @@ describe("useThreadResContextMenu", () => {
     mocks.ngAdd.mockReset();
     mocks.toastInfo.mockReset();
     mocks.dispatch.mockReset();
+    mocks.isAutoRefreshEnabled = false;
   });
 
   it("ID/IPのNG追加は再起動後も有効なDSL形式で保存する", async () => {
@@ -152,6 +174,23 @@ describe("useThreadResContextMenu", () => {
     expect(screen.getByTestId("response-class")).toHaveTextContent("ng");
     expect(mocks.toastInfo).toHaveBeenCalledWith(
       "NGに追加しました: ID(word=abc123)",
+    );
+  });
+
+  it("自動更新中は右クリックメニューから停止できる", () => {
+    mocks.isAutoRefreshEnabled = true;
+    render(<HookHarness />);
+
+    fireEvent.click(screen.getByRole("button", { name: "open" }));
+    fireEvent.click(screen.getByRole("button", { name: "toggle-auto-refresh" }));
+
+    expect(mocks.dispatch).toHaveBeenCalledWith({
+      type: "SET_AUTO_REFRESH_ENABLED",
+      enabled: false,
+      pageKey: "thread:test",
+    });
+    expect(mocks.toastInfo).toHaveBeenCalledWith(
+      "スレッドの自動更新を停止しました",
     );
   });
 });
