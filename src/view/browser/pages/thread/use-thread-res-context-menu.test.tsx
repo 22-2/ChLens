@@ -208,16 +208,16 @@ describe("useThreadResContextMenu", () => {
     expect(mocks.openWritePanelWithText).toHaveBeenCalledWith(">>10\n");
   });
 
-  it("引用して返信は書き込み欄を開いて引用文を直接入力する", () => {
-    render(<HookHarness />);
+  // it("引用して返信は書き込み欄を開いて引用文を直接入力する", () => {
+  //   render(<HookHarness />);
 
-    fireEvent.click(screen.getByRole("button", { name: "open" }));
-    fireEvent.click(screen.getByRole("button", { name: "quote-reply" }));
+  //   fireEvent.click(screen.getByRole("button", { name: "open" }));
+  //   fireEvent.click(screen.getByRole("button", { name: "quote-reply" }));
 
-    expect(mocks.openWritePanelWithText).toHaveBeenCalledWith(
-      ">>10\n>message\n",
-    );
-  });
+  //   expect(mocks.openWritePanelWithText).toHaveBeenCalledWith(
+  //     ">>10\n>message\n",
+  //   );
+  // });
 
   it("自動更新中は右クリックメニューから停止できる", () => {
     mocks.isAutoRefreshEnabled = true;

@@ -3,7 +3,6 @@ import {
   Ban,
   Copy,
   FilterX,
-  Globe,
   History,
   Pause,
   RefreshCw,
@@ -334,18 +333,18 @@ export function useThreadResContextMenu({
             openWritePanelWithText(`>>${targetRes.num}\n`);
           },
         },
-        {
-          id: "quote-reply",
-          label: "引用して返信",
-          icon: <Reply size={14} />,
-          onSelect: () => {
-            const quoted = plainMessage
-              .split(/\r?\n/)
-              .map((line) => `>${line}`)
-              .join("\n");
-            openWritePanelWithText(`>>${targetRes.num}\n${quoted}\n`);
-          },
-        },
+        // {
+        //   id: "quote-reply",
+        //   label: "引用して返信",
+        //   icon: <Reply size={14} />,
+        //   onSelect: () => {
+        //     const quoted = plainMessage
+        //       .split(/\r?\n/)
+        //       .map((line) => `>${line}`)
+        //       .join("\n");
+        //     openWritePanelWithText(`>>${targetRes.num}\n${quoted}\n`);
+        //   },
+        // },
         {
           id: "add-write-history",
           label: "書込履歴に追加",
@@ -370,14 +369,7 @@ export function useThreadResContextMenu({
             });
           },
         },
-        {
-          id: "open-browser",
-          label: "ブラウザで開く",
-          icon: <Globe size={14} />,
-          onSelect: () => {
-            window.open(permalink, "_blank", "noopener,noreferrer");
-          },
-        },
+
       ];
     },
     [

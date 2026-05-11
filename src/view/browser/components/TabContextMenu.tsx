@@ -147,6 +147,14 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
           });
         },
       });
+      result.push({
+        id: "open-in-browser",
+        label: "ブラウザで開く",
+        icon: <ExternalLink />,
+        onSelect: () => {
+          window.open(threadPage.threadUrl, "_blank", "noopener,noreferrer");
+        },
+      });
       result.push({ id: "sep-2", separator: true });
     }
 
