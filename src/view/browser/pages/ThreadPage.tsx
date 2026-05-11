@@ -34,7 +34,7 @@ import { ThreadPageTopBar } from "src/view/browser/pages/thread/ThreadPageTopBar
 import { useThreadResContextMenu } from "src/view/browser/pages/thread/use-thread-res-context-menu";
 import { useThreadTopBar } from "src/view/browser/pages/thread/use-thread-top-bar";
 import {
-  parseInternalBrowserPage,
+  parseInternalBrowserPageStrict,
   resolveAbsoluteUrl,
   RESPECT_DEFAULT_EXTERNAL,
 } from "src/view/browser/utils/link-routing";
@@ -63,7 +63,7 @@ import {
   type PendingWritePayload,
 } from "src/view/browser/utils/thread-write-sync";
 import type { Props } from "src/view/browser/utils/types";
-import { copyText, stripHtml } from "src/view/browser/utils/utils";
+import { copyText, stripHtml, toViewerImageUrl } from "src/view/browser/utils/utils";
 
 interface ImageBlurConfigState {
   enabled: boolean;
@@ -669,8 +669,18 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       absoluteUrl: string,
       button: 0 | 1,
       resImages?: string[],
-      internalPage = parseInternalBrowserPage(absoluteUrl),
+      // 変更理由: クリック経路はホスト互換チェック付きのstrict版を使う。
+      // オムニバー入力では parseInternalBrowserPage（広い許容）が使われる。
+      internalPage = parseInternalBrowserPageStrict(absoluteUrl),
     ) => {
+      // 変更理由: /<board>/ 形式が全ドメインで内部遷移対象になったため、
+      // imgur のようにURLが画像として解釈できる場合は button=0 で画像ビューアを優先する。
+      // こうすることで「板URL広受け入れ」と「imgur サムネクリック → 画像ビューア」が共存できる。
+      if (button === 0 && toViewerImageUrl(absoluteUrl) != null) {
+        openMediaFromUrl(absoluteUrl, resImages);
+        return;
+      }
+
       if (internalPage) {
         if (internalPage.type === "thread") {
           const jumpResNum = Number.parseInt(
@@ -709,10 +719,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       mode?: typeof RESPECT_DEFAULT_EXTERNAL,
     ) => {
       const absoluteUrl = resolveAbsoluteUrl(rawUrl, page.threadUrl);
-      const internalPage = parseInternalBrowserPage(absoluteUrl);
+      const internalPage = parseInternalBrowserPageStrict(absoluteUrl);
       if (mode === RESPECT_DEFAULT_EXTERNAL) {
-        // 本文中の通常リンクでは、対応ホストのURLだけ拡張内遷移で横取りする。
-        // 非対応ホストは未処理(false)を返してブラウザ既定の左/中/右挙動へ委譲する。
         if (!internalPage) {
           return false;
         }
@@ -726,7 +734,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const buildUrlContextMenuItems = useCallback(
     (
       absoluteUrl: string,
-      internalPage = parseInternalBrowserPage(absoluteUrl),
+      internalPage = parseInternalBrowserPageStrict(absoluteUrl),
     ): ContextMenuItem[] => {
       return [
         {
@@ -769,7 +777,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       mode?: typeof RESPECT_DEFAULT_EXTERNAL,
     ) => {
       const absoluteUrl = resolveAbsoluteUrl(rawUrl, page.threadUrl);
-      const internalPage = parseInternalBrowserPage(absoluteUrl);
+      const internalPage = parseInternalBrowserPageStrict(absoluteUrl);
       if (mode === RESPECT_DEFAULT_EXTERNAL) {
         // 非5ch互換URLはネイティブの右クリックメニューを優先する。
         if (!internalPage) {

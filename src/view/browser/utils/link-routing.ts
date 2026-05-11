@@ -101,11 +101,13 @@ export function isCompatibleBoardHost(hostname: string): boolean {
 type BoardType = "eddibb" | "shitaraba" | "machi" | "ch-style";
 
 function classifyBoardHost(hostname: string): BoardType | null {
-  // if (hostname === "bbs.eddibb.cc") return "eddibb";
+  // 変更理由: ここで全ホストを ch-style 扱いすると、imgur のような外部URLまで
+  // 内部遷移対象に誤判定してしまうため、互換ホストだけを明示的に許可する。
+  if (hostname === "bbs.eddibb.cc") return "eddibb";
   if (hostname === "jbbs.shitaraba.net") return "shitaraba";
   if (hasHostnameSuffix(hostname, "machi.to")) return "machi";
-  // if (isCompatibleBoardHost(hostname)) return "ch-style";
-  return "ch-style";
+  if (isCompatibleBoardHost(hostname)) return "ch-style";
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -266,9 +268,34 @@ const BOARD_PARSERS: Record<BoardType, (url: URL) => InternalBrowserPage | null>
     "ch-style": parseChStylePage,
   };
 
-function dispatchParser(url: URL): InternalBrowserPage | null {
+function dispatchParser(url: URL, strict: boolean): InternalBrowserPage | null {
   const boardType = classifyBoardHost(url.hostname);
-  return boardType ? BOARD_PARSERS[boardType](url) : null;
+  if (boardType) {
+    return BOARD_PARSERS[boardType](url);
+  }
+
+  // 変更理由: /test/read.cgi/<board>/<thread> や /<board>/ 形式は要望により
+  // ドメインに依存せず内部スレ/板として扱いたいため、ホスト分類失敗時の
+  // フォールバックとして許可する。画像として解釈できるURLの保護は
+  // openResolvedUrl 側（toViewerImageUrl チェック）が担う。
+  // ただし strict=true（クリック経路）ではこのフォールバックを適用しない。
+  if (strict) {
+    return null;
+  }
+
+  const threadMatch = CH_STYLE_THREAD_PATTERN.exec(url.pathname);
+  if (threadMatch) {
+    url.pathname = `/${threadMatch[1]}/`;
+    return toThreadPage(url);
+  }
+
+  const boardMatch = CH_STYLE_BOARD_PATTERN.exec(url.pathname);
+  if (boardMatch) {
+    url.pathname = `/${boardMatch[1]}/`;
+    return toThreadListPage(url);
+  }
+
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -318,7 +345,18 @@ export function parseInternalBrowserPage(
   absoluteUrl: string,
 ): InternalBrowserPage | null {
   const url = normalizeUrl(absoluteUrl);
-  return url ? dispatchParser(url) : null;
+  return url ? dispatchParser(url, false) : null;
+}
+
+/**
+ * クリック経路専用。互換ホスト以外のURLはスレ/板として扱わない。
+ * オムニバー入力には parseInternalBrowserPage（広い許容）を使う。
+ */
+export function parseInternalBrowserPageStrict(
+  absoluteUrl: string,
+): InternalBrowserPage | null {
+  const url = normalizeUrl(absoluteUrl);
+  return url ? dispatchParser(url, true) : null;
 }
 
 export function shouldHandleUrlWithApp(
