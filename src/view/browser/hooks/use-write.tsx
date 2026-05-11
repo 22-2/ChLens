@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type RefObject,
+} from "react";
 import { platform } from "src/app";
 import { wait } from "src/app/Defer";
 import { URL as ChURL } from "src/core/URL";
@@ -17,6 +24,8 @@ const NAME_KEY = "readcrx_write_name";
 const MAIL_KEY = "readcrx_write_mail";
 // cs_write.js が ping に対して期待する応答文字列
 const PONG_MSG = "write_iframe_pong";
+// postMessage を受け取れない環境でも「書き込み中...」で固着しないための上限待機時間
+const SUBMIT_WATCHDOG_MS = 20_000;
 
 // -----------------------------------------------------------------------
 // 型
@@ -43,13 +52,13 @@ export interface UseWriteResult {
   status: WriteStatus;
   statusText: string;
   canSubmit: boolean;
-  iframeRef: React.RefObject<HTMLIFrameElement | null>;
+  iframeRef: RefObject<HTMLIFrameElement | null>;
   setName: (v: string) => void;
   setMail: (v: string) => void;
   setSage: (v: boolean) => void;
   setMessage: (v: string) => void;
   submit: () => Promise<void>;
-  handleSubmit: (e: React.FormEvent) => Promise<void>;
+  handleSubmit: (e: FormEvent) => Promise<void>;
   handleRetry: () => void;
 }
 
@@ -170,6 +179,38 @@ export function useWrite(threadUrl: string): UseWriteResult {
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const pendingSubmittedWriteRef = useRef<PendingWritePayload | null>(null);
+  const submitWatchdogTimerRef = useRef<number | null>(null);
+  const statusRef = useRef<WriteStatus>("idle");
+
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
+
+  const clearSubmitWatchdog = useCallback(() => {
+    const timerId = submitWatchdogTimerRef.current;
+    if (timerId == null) {
+      return;
+    }
+    window.clearTimeout(timerId);
+    submitWatchdogTimerRef.current = null;
+  }, []);
+
+  const armSubmitWatchdog = useCallback(() => {
+    clearSubmitWatchdog();
+    submitWatchdogTimerRef.current = window.setTimeout(() => {
+      if (statusRef.current !== "submitting") {
+        return;
+      }
+
+      pendingSubmittedWriteRef.current = null;
+      setStatus("idle");
+      // 変更理由: 一部環境で iframe 側の postMessage が欠落することがあり、
+      // その場合も入力UIを復帰させて再試行・継続操作できるようにする。
+      setStatusText("書き込み結果の通知を受信できなかったため待機を解除しました");
+    }, SUBMIT_WATCHDOG_MS);
+  }, [clearSubmitWatchdog]);
+
+  useEffect(() => clearSubmitWatchdog, [clearSubmitWatchdog]);
 
   const canSubmit =
     status === "idle" && threadUrl !== "" && message.trim() !== "";
@@ -204,6 +245,7 @@ export function useWrite(threadUrl: string): UseWriteResult {
           (e.source as Window | null)?.postMessage(PONG_MSG, "*");
           break;
         case "success":
+          clearSubmitWatchdog();
           setStatus("success");
           setStatusText("書き込みました");
           setMessage("");
@@ -227,11 +269,13 @@ export function useWrite(threadUrl: string): UseWriteResult {
           })();
           break;
         case "confirm":
+          clearSubmitWatchdog();
           // 確認ページが表示された: iframe を見せてユーザーに操作させる
           setStatus("confirm");
           setStatusText("確認ページが表示されています");
           break;
         case "error":
+          clearSubmitWatchdog();
           pendingSubmittedWriteRef.current = null;
           setStatus("error");
           setStatusText(
@@ -244,7 +288,7 @@ export function useWrite(threadUrl: string): UseWriteResult {
     };
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [dispatch]);
+  }, [clearSubmitWatchdog, dispatch]);
 
   const submit = useCallback(async () => {
     if (!canSubmit) return;
@@ -267,12 +311,16 @@ export function useWrite(threadUrl: string): UseWriteResult {
 
     setStatus("submitting");
     setStatusText("書き込み中...");
+    armSubmitWatchdog();
 
     await setupHeaderModifier(formData.action);
 
     const iframe = iframeRef.current;
     if (!iframe) {
+      clearSubmitWatchdog();
       pendingSubmittedWriteRef.current = null;
+      setStatus("idle");
+      setStatusText("書き込みフォームを初期化できませんでした");
       return;
     }
 
@@ -308,10 +356,19 @@ export function useWrite(threadUrl: string): UseWriteResult {
 
     iframe.addEventListener("load", onLoad);
     iframe.src = "/view/empty.html";
-  }, [canSubmit, threadUrl, name, mail, sage, message]);
+  }, [
+    armSubmitWatchdog,
+    canSubmit,
+    clearSubmitWatchdog,
+    threadUrl,
+    name,
+    mail,
+    sage,
+    message,
+  ]);
 
   const handleSubmit = useCallback(
-    async (e: React.FormEvent) => {
+    async (e: FormEvent) => {
       e.preventDefault();
       await submit();
     },
@@ -319,10 +376,11 @@ export function useWrite(threadUrl: string): UseWriteResult {
   );
 
   const handleRetry = useCallback(() => {
+    clearSubmitWatchdog();
     pendingSubmittedWriteRef.current = null;
     setStatus("idle");
     setStatusText("");
-  }, []);
+  }, [clearSubmitWatchdog]);
 
   return {
     name,
