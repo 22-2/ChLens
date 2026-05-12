@@ -12,7 +12,7 @@ import type { IBoardService, IThread } from "src/service-container/interfaces";
 import { ThreadListPage } from "src/view/browser/pages/ThreadListPage";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const THREAD_LIST_SORT_STORAGE_KEY = "readcrx_browser_thread_list_sort_by_site";
+const THREAD_LIST_SORT_STORAGE_KEY = "chlens_browser_thread_list_sort_by_site";
 const { dispatchMock, activeTabIdRef } = vi.hoisted(() => ({
   dispatchMock: vi.fn(),
   activeTabIdRef: { current: "tab-1" },

@@ -18,7 +18,7 @@ function getStoreArea(): StoreBase {
   // localStorage操作と保存先が分離すると状態初期化・復元が不安定になる。
   const nativeLocalStorage = getNativeLocalStorage();
   if (nativeLocalStorage) {
-    return store.area("readcrx_local", nativeLocalStorage);
+    return store.area("chlens_local", nativeLocalStorage);
   }
 
   return store.local;

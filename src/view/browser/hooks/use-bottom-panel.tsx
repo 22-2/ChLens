@@ -18,7 +18,7 @@ export interface WritePanelInsertRequest {
   text: string;
 }
 
-const STORAGE_KEY = "readcrx_bottom_panel_v1";
+const STORAGE_KEY = "chlens_bottom_panel_v1";
 const DEFAULT_HEIGHT = 200;
 const MIN_HEIGHT = 80;
 const MAX_HEIGHT = 600;

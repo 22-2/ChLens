@@ -56,7 +56,7 @@ describe("TabProvider auto refresh state", () => {
       configurable: true,
       value: localStorageMock,
     });
-    localStorage.removeItem("readcrx_browser_session");
+    localStorage.removeItem("chlens_browser_session");
     historyAddMock.mockReset();
     historyRemoveMock.mockReset();
     historyAddMock.mockResolvedValue(undefined);
@@ -285,7 +285,7 @@ describe("TabProvider auto refresh state", () => {
     fireEvent.click(screen.getByText("thread-1 へ移動"));
     fireEvent.click(screen.getByText("thread-1 で自動更新ON"));
 
-    const raw = localStorage.getItem("readcrx_browser_session");
+    const raw = localStorage.getItem("chlens_browser_session");
     expect(raw).not.toBeNull();
     const parsed = JSON.parse(raw ?? "{}") as {
       tabs: Array<{ autoRefreshEnabled: boolean; autoRefreshPageKey: string | null }>;
@@ -297,7 +297,7 @@ describe("TabProvider auto refresh state", () => {
 
   it("セッション復元時に保存済み自動更新状態をリセットする", async () => {
     localStorage.setItem(
-      "readcrx_browser_session",
+      "chlens_browser_session",
       JSON.stringify({
         tabs: [
           {

@@ -190,7 +190,7 @@ const COLUMNS: ColumnDef<WriteHistoryEntry>[] = [
 ];
 
 const COLUMN_VISIBILITY_STORAGE_KEY =
-  "readcrx_browser_write_history_list_columns_visibility";
+  "chlens_browser_write_history_list_columns_visibility";
 const COLUMN_VISIBILITY_LOCKED_KEYS = ["title"] as const;
 
 interface WriteHistoryListPageProps {

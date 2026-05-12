@@ -69,7 +69,7 @@ export type TabAction =
 
 // 閉じたタブの最大保持数
 const MAX_CLOSED_TABS = 20;
-const SESSION_KEY = "readcrx_browser_session";
+const SESSION_KEY = "chlens_browser_session";
 const CONFIG_KEY_PREFIX = "config_";
 
 type NewTabPageMode = "home" | "related_board" | "custom_board";

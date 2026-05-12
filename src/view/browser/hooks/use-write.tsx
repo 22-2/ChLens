@@ -21,8 +21,8 @@ import {
 // -----------------------------------------------------------------------
 // 定数
 // -----------------------------------------------------------------------
-const NAME_KEY = "readcrx_write_name";
-const MAIL_KEY = "readcrx_write_mail";
+const NAME_KEY = "chlens_write_name";
+const MAIL_KEY = "chlens_write_mail";
 // cs_write.js が ping に対して期待する応答文字列
 const PONG_MSG = "write_iframe_pong";
 // postMessage を受け取れない環境でも「書き込み中...」で固着しないための上限待機時間

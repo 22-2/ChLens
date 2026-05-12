@@ -1,4 +1,4 @@
-export const NG_DSL_LANGUAGE_ID = "readcrx-ngdsl";
+export const NG_DSL_LANGUAGE_ID = "chlens-ngdsl";
 
 import { TYPE, type NGType } from "src/core/NGTypes";
 

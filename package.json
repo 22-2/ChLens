@@ -46,7 +46,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/readcrx-2/read.crx-2.git"
+    "url": "https://github.com/22-2/chlens.git"
   },
   "license": "MIT",
   "scripts": {
@@ -94,6 +94,7 @@
     "drizzle-orm": "^0.45.2",
     "escape-html": "^1.0.3",
     "idb": "^8.0.3",
+    "jszip": "^3.10.1",
     "lucide-react": "^1.14.0",
     "monaco-editor": "^0.55.1",
     "react": "^19.2.5",

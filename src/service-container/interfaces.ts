@@ -3,7 +3,7 @@ export interface IConfig {
   get(key: string): any;
   set(key: string, value: any): Promise<void> | void;
   ready(callback: () => void): void;
-  getAll?(): Record<string, string>;
+  getAll(): Record<string, string>;
   del?(key: string): Promise<void>;
 }
 

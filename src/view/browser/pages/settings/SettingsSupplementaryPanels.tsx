@@ -1,7 +1,21 @@
-import { Alert, Button, Card, Skeleton, Stack, Text } from "@mantine/core";
+import {
+  Alert,
+  Button,
+  Card,
+  Checkbox,
+  Group,
+  Skeleton,
+  Stack,
+  Text,
+} from "@mantine/core";
 import { AlertTriangle } from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { container } from "src/service-container/index";
+import {
+  buildDataExportFilename,
+  exportDataArchive,
+  importDataArchive,
+} from "src/view/browser/pages/settings/settings-data-transfer";
 import type { SettingsMaintenanceActions } from "src/view/browser/pages/settings/use-settings-maintenance";
 import type { SettingsSupplementaryPanelId } from "src/view/browser/pages/settings/settings-types";
 import {
@@ -22,6 +36,12 @@ export function SettingsSupplementaryPanels({
   const [folderName, setFolderName] = useState<string | null>(null);
   const [bookmarkLoading, setBookmarkLoading] = useState(false);
   const [bookmarkError, setBookmarkError] = useState<string | null>(null);
+  const [includeHistoryInExport, setIncludeHistoryInExport] = useState(false);
+  const [includeWriteHistoryInExport, setIncludeWriteHistoryInExport] =
+    useState(false);
+  const [isExportingArchive, setIsExportingArchive] = useState(false);
+  const [isImportingArchive, setIsImportingArchive] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const loadBookmarkFolder = useCallback(async () => {
     if (!supportsBookmarkFolderSelection()) {
@@ -80,6 +100,77 @@ export function SettingsSupplementaryPanels({
       container.message.off("config_updated", handleConfigUpdated);
     };
   }, [loadBookmarkFolder]);
+
+  const handleExportArchive = useCallback(async () => {
+    if (isExportingArchive) {
+      return;
+    }
+
+    setIsExportingArchive(true);
+    try {
+      const blob = await exportDataArchive({
+        includeHistory: includeHistoryInExport,
+        includeWriteHistory: includeWriteHistoryInExport,
+      });
+
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = buildDataExportFilename();
+      anchor.click();
+      URL.revokeObjectURL(objectUrl);
+
+      container.toast.success("データをzipでエクスポートしました");
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "データのエクスポートに失敗しました";
+      container.toast.error(message);
+    } finally {
+      setIsExportingArchive(false);
+    }
+  }, [
+    includeHistoryInExport,
+    includeWriteHistoryInExport,
+    isExportingArchive,
+  ]);
+
+  const handleImportArchiveFile = useCallback(async (file: File) => {
+    if (isImportingArchive) {
+      return;
+    }
+
+    setIsImportingArchive(true);
+    try {
+      const result = await importDataArchive(file);
+
+      const historySummary =
+        result.importedHistoryCount > 0
+          ? `閲覧履歴 ${result.importedHistoryCount}件`
+          : "閲覧履歴 0件";
+      const writeHistorySummary =
+        result.importedWriteHistoryCount > 0
+          ? `書込履歴 ${result.importedWriteHistoryCount}件`
+          : "書込履歴 0件";
+
+      container.toast.success(
+        `インポート完了: 設定 ${result.importedSettingsCount}件 / ${historySummary} / ${writeHistorySummary}`,
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "データのインポートに失敗しました";
+      container.toast.error(message);
+    } finally {
+      setIsImportingArchive(false);
+    }
+  }, [isImportingArchive]);
+
+  const handleImportButtonClick = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
 
   const panels = useMemo(() => {
     if (!panelIds || panelIds.length === 0) {
@@ -152,12 +243,75 @@ export function SettingsSupplementaryPanels({
               </Stack>
             </Card>
           );
+        case "dataManagement":
+          return (
+            <Card key={panelId} withBorder radius="lg" p="md">
+              <Stack gap="sm">
+                <Text fw={700} size="sm">
+                  データ管理
+                </Text>
+                <Text size="xs" c="dimmed">
+                  設定や履歴をzip（JSON複数ファイル）でバックアップ/復元します。
+                </Text>
+
+                <Checkbox
+                  checked={includeHistoryInExport}
+                  label="閲覧履歴を含める"
+                  onChange={(event) =>
+                    setIncludeHistoryInExport(event.currentTarget.checked)
+                  }
+                />
+                <Checkbox
+                  checked={includeWriteHistoryInExport}
+                  label="書き込み履歴を含める"
+                  onChange={(event) =>
+                    setIncludeWriteHistoryInExport(event.currentTarget.checked)
+                  }
+                />
+
+                <Group wrap="wrap" gap="sm">
+                  <Button onClick={() => void handleExportArchive()} loading={isExportingArchive}>
+                    zipをエクスポート
+                  </Button>
+                  <Button
+                    variant="light"
+                    onClick={handleImportButtonClick}
+                    loading={isImportingArchive}
+                  >
+                    zipをインポート
+                  </Button>
+                </Group>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".zip,application/zip"
+                  style={{ display: "none" }}
+                  onChange={(event) => {
+                    const file = event.currentTarget.files?.[0] ?? null;
+                    if (file) {
+                      void handleImportArchiveFile(file);
+                    }
+                    // 同じzipを連続選択できるようvalueを毎回クリアする。
+                    event.currentTarget.value = "";
+                  }}
+                />
+              </Stack>
+            </Card>
+          );
       }
     });
   }, [
     bookmarkError,
     bookmarkLoading,
     folderName,
+    handleExportArchive,
+    handleImportArchiveFile,
+    handleImportButtonClick,
+    includeHistoryInExport,
+    includeWriteHistoryInExport,
+    isExportingArchive,
+    isImportingArchive,
     maintenanceActions,
     panelIds,
   ]);

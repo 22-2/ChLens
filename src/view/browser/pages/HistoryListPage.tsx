@@ -212,7 +212,7 @@ const COLUMNS: ColumnDef<HistoryEntry>[] = [
 ];
 
 const COLUMN_VISIBILITY_STORAGE_KEY =
-  "readcrx_browser_history_list_columns_visibility";
+  "chlens_browser_history_list_columns_visibility";
 const COLUMN_VISIBILITY_LOCKED_KEYS = ["title"] as const;
 
 interface HistoryListPageProps {

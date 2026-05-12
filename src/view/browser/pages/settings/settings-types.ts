@@ -6,9 +6,13 @@ export type SettingsSectionId =
   | "reload"
   | "thumbnail"
   | "ng"
-  | "other";
+  | "other"
+  | "data";
 
-export type SettingsSupplementaryPanelId = "externalIntegration" | "dangerZone";
+export type SettingsSupplementaryPanelId =
+  | "externalIntegration"
+  | "dangerZone"
+  | "dataManagement";
 
 export type SettingsFormWidget = "radio" | "textarea" | "ng_editor";
 export type SettingsFormValue = boolean | number | string | undefined;

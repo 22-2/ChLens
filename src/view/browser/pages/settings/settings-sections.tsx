@@ -1,4 +1,5 @@
 import {
+  Archive,
   Image as ImageIcon,
   MoreHorizontal,
   RefreshCw,
@@ -45,7 +46,7 @@ const HOW_TO_JUDGMENT_ID_OPTIONS = [
   { const: "exists_once", title: "1つでも存在する場合" },
 ] as const satisfies readonly SettingsOption[];
 
-export const SETTINGS_PAGE_STATE_KEY = "readcrx.settings-page.state.v1";
+export const SETTINGS_PAGE_STATE_KEY = "chlens.settings-page.state.v1";
 export const AUTO_SAVE_DELAY_MS = 350;
 export const NG_PRIMARY_FIELD_KEYS = new Set(["ngwords"]);
 
@@ -267,6 +268,16 @@ export const SETTINGS_SECTIONS = [
         widget: "radio",
       },
     ],
+  ),
+  defineSection(
+    "data",
+    "データ",
+    "設定・履歴のエクスポート / インポートを行います。",
+    <Archive size={20} />,
+    [],
+    {
+      supplementaryPanelIds: ["dataManagement"],
+    },
   ),
   defineSection(
     "other",

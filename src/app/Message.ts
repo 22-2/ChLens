@@ -3,7 +3,7 @@ import { defer } from "src/app/Defer";
 import { deepCopy } from "src/app/Util";
 
 class Message {
-  private static readonly CHANNEL_NAME = "readcrx";
+  private static readonly CHANNEL_NAME = "chlens";
   private readonly _listenerStore: Map<string, Callbacks> = new Map();
   private readonly _bc: BroadcastChannel;
 
