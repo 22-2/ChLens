@@ -65,26 +65,24 @@ export class BBSMenuModel {
             return [];
           }
 
-          return parsed
-            .map((entry) => {
+          // Why: null混入配列を返すと OtherBoardsCollector の契約型(OpenedBoardEntry[])に
+          // 合わず型エラーになるため、reduce で有効要素のみを積み上げる。
+          return parsed.reduce<Array<{ url: string; title?: string }>>(
+            (acc, entry) => {
               if (!entry || typeof entry.url !== "string") {
-                return null;
+                return acc;
               }
 
-              return {
-                url: entry.url,
-                title:
-                  typeof entry.title === "string" ? entry.title : undefined,
-              };
-            })
-            .filter(
-              (
-                entry,
-              ): entry is {
-                url: string;
-                title?: string;
-              } => entry !== null,
-            );
+              if (typeof entry.title === "string") {
+                acc.push({ url: entry.url, title: entry.title });
+                return acc;
+              }
+
+              acc.push({ url: entry.url });
+              return acc;
+            },
+            [],
+          );
         } catch {
           // 破損データは空扱いにして板一覧表示を継続する。
           return [];
