@@ -88,7 +88,9 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({
   const [autoSaveError, setAutoSaveError] = useState<string | null>(null);
   const [isNgExamplesOpen, setIsNgExamplesOpen] = useState(false);
   const [isNgAdvancedOpen, setIsNgAdvancedOpen] = useState(false);
+  const [isCompactMenuOpen, setIsCompactMenuOpen] = useState(false);
   const autoSaveTimerRef = useRef<number | null>(null);
+  const compactMenuCloseTimerRef = useRef<number | null>(null);
   const scrollViewportRef = useRef<HTMLDivElement | null>(null);
   const restoredScrollTopRef = useRef(0);
   const shouldRestoreScrollRef = useRef(false);
@@ -284,8 +286,40 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({
       if (autoSaveTimerRef.current != null) {
         window.clearTimeout(autoSaveTimerRef.current);
       }
+
+      if (compactMenuCloseTimerRef.current != null) {
+        window.clearTimeout(compactMenuCloseTimerRef.current);
+      }
     };
   }, []);
+
+  const clearCompactMenuCloseTimer = useCallback(() => {
+    if (compactMenuCloseTimerRef.current != null) {
+      window.clearTimeout(compactMenuCloseTimerRef.current);
+      compactMenuCloseTimerRef.current = null;
+    }
+  }, []);
+
+  const openCompactMenu = useCallback(() => {
+    clearCompactMenuCloseTimer();
+    setIsCompactMenuOpen(true);
+  }, [clearCompactMenuCloseTimer]);
+
+  const scheduleCompactMenuClose = useCallback(() => {
+    clearCompactMenuCloseTimer();
+    // 変更理由: ホットゾーンからメニュー本体へカーソルを移動する短時間で閉じないよう遅延を設ける。
+    compactMenuCloseTimerRef.current = window.setTimeout(() => {
+      compactMenuCloseTimerRef.current = null;
+      setIsCompactMenuOpen(false);
+    }, 120);
+  }, [clearCompactMenuCloseTimer]);
+
+  useEffect(() => {
+    if (!isCompact) {
+      clearCompactMenuCloseTimer();
+      setIsCompactMenuOpen(false);
+    }
+  }, [clearCompactMenuCloseTimer, isCompact]);
 
   const renderField = useCallback(
     (sectionId: SettingsSectionId, field: SettingsFieldDefinition) => {
@@ -512,6 +546,7 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({
   return (
     <Box
       style={{
+        position: "relative",
         display: "grid",
         gridTemplateColumns: isCompact ? "1fr" : "300px minmax(0, 1fr)",
         gap: 16,
@@ -519,8 +554,8 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({
         height: "100%",
       }}
     >
-      <Paper withBorder radius="lg" p="md">
-        {!isCompact && (
+      {!isCompact && (
+        <Paper withBorder radius="lg" p="md">
           <Stack gap="xs">
             <Text fw={700} size="sm" c="dimmed">
               設定カテゴリ
@@ -537,36 +572,70 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({
               />
             ))}
           </Stack>
-        )}
+        </Paper>
+      )}
 
-        {isCompact && (
-          <Stack gap="xs">
-            <Text fw={700} size="sm" c="dimmed">
-              設定カテゴリ
-            </Text>
-            {/* 変更理由: 画面幅が狭い場合は縦ナビより横スクロールのタブバーの方が可視領域を確保しやすい。 */}
-            <ScrollArea type="never" offsetScrollbars="x">
-              <Group wrap="nowrap" gap="xs">
-                {SETTINGS_SECTIONS.map((section) => {
-                  const active = activeSectionId === section.id;
-                  return (
-                    <Button
+      {isCompact && (
+        <>
+          <Box
+            role="button"
+            tabIndex={0}
+            aria-label="設定カテゴリメニューを開く"
+            style={{
+              position: "absolute",
+              top: 0,
+              bottom: 0,
+              left: 0,
+              width: 12,
+              zIndex: 10,
+            }}
+            onMouseEnter={openCompactMenu}
+            onFocus={openCompactMenu}
+            onBlur={scheduleCompactMenuClose}
+          />
+
+          {isCompactMenuOpen && (
+            <Paper
+              withBorder
+              radius="lg"
+              p="md"
+              style={{
+                position: "absolute",
+                top: 16,
+                left: 16,
+                width: "min(300px, calc(100vw - 32px))",
+                maxHeight: "calc(100% - 32px)",
+                zIndex: 20,
+                overflow: "hidden",
+              }}
+              onMouseEnter={openCompactMenu}
+              onMouseLeave={scheduleCompactMenuClose}
+            >
+              <ScrollArea style={{ height: "100%" }}>
+                <Stack gap="xs">
+                  <Text fw={700} size="sm" c="dimmed">
+                    設定カテゴリ
+                  </Text>
+                  {SETTINGS_SECTIONS.map((section) => (
+                    <NavLink
                       key={section.id}
-                      size="compact-sm"
-                      radius="xl"
-                      variant={active ? "filled" : "light"}
+                      active={activeSectionId === section.id}
+                      onClick={() => {
+                        setActiveSectionId(section.id);
+                        setIsCompactMenuOpen(false);
+                      }}
                       leftSection={section.icon}
-                      onClick={() => setActiveSectionId(section.id)}
-                    >
-                      {section.title}
-                    </Button>
-                  );
-                })}
-              </Group>
-            </ScrollArea>
-          </Stack>
-        )}
-      </Paper>
+                      label={section.title}
+                      description={section.description}
+                      variant="filled"
+                    />
+                  ))}
+                </Stack>
+              </ScrollArea>
+            </Paper>
+          )}
+        </>
+      )}
 
       <ScrollArea
         viewportRef={scrollViewportRef}
