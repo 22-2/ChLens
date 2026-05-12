@@ -7,7 +7,6 @@ const logger = createLogger("BBSMenuFetcher");
 
 export interface IFetcherDeps {
   getCache(url: string): ICacheItem;
-  getUpdateIntervalDays(): number;
   getExcludeTslds(): Set<string>;
 }
 
@@ -42,8 +41,8 @@ export class BBSMenuFetcher {
   /**
    * 指定URLからBBSMenuを取得する。
    *
-   * - キャッシュが存在し、期限内かつ force=false → キャッシュから返す
-   * - キャッシュ未存在 / 期限切れ / force=true  → HTTP通信し結果を返す
+    * - キャッシュが存在し、force=false → キャッシュから返す
+    * - キャッシュ未存在 / force=true  → HTTP通信し結果を返す
    *   - 304 の場合は lastUpdated だけ更新してキャッシュデータを返す
    */
   async fetch(url: string, force = false): Promise<BBSMenu> {
@@ -52,7 +51,9 @@ export class BBSMenuFetcher {
     logger.debug(`Cache を確認します: ${url}`, { cache });
 
     const cacheLoaded = await this.tryLoadCache(cache);
-    const shouldFetch = !cacheLoaded || force || this.isCacheExpired(cache);
+    // Why: bbsmenu_update_interval 設定を廃止し、期限切れ判定では再取得しない。
+    // 明示的な force 更新時のみHTTPへ行くことで挙動を単純化する。
+    const shouldFetch = !cacheLoaded || force;
 
     logger.debug(`Fetching BBSMenu from ${url}`, {
       force,
@@ -86,16 +87,6 @@ export class BBSMenuFetcher {
       logger.debug("キャッシュ読み込み失敗", { error: String(e) });
       return false;
     }
-  }
-
-  /** キャッシュが更新インターバルを超えているか判定する。 */
-  private isCacheExpired(cache: ICacheItem): boolean {
-    // lastUpdated が未設定の場合は必ず期限切れとみなす
-    if (cache.lastUpdated == null) return true;
-    const intervalMs = this.deps.getUpdateIntervalDays() * 24 * 60 * 60 * 1000;
-    const expired = Date.now() - cache.lastUpdated > intervalMs;
-    if (expired) logger.debug("キャッシュが期限切れです");
-    return expired;
   }
 
   /**

@@ -97,7 +97,6 @@ export default class Config {
       "bbsmenu",
       "https://menu.5ch.io/bbsmenu.html\nhttps://menu.2ch.sc/bbsmenu.html\nhttps://fox-tools.pages.dev/html/hinan-bbsmenu.html\nhttps://fox-tools.pages.dev/html/tulip-hinan-bbsmenu.html\n// open2chは一度手動でbbsmenuのURLへアクセスする必要があります。\n// https://menu.open2ch.net/bbsmenu.html\n",
     ],
-    ["bbsmenu_update_interval", "7"],
     ["bbsmenu_option", ""],
     ["useragent", ""],
     ["format_2chnet", "html"],

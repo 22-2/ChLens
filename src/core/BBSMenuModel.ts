@@ -46,8 +46,6 @@ export class BBSMenuModel {
   constructor() {
     this._fetcher = new BBSMenuFetcher({
       getCache: (url) => container.cache.getCache(url),
-      getUpdateIntervalDays: () =>
-        +container.config.get("bbsmenu_update_interval"),
       getExcludeTslds: () => this._getExcludeTslds(),
     });
 
@@ -118,7 +116,7 @@ export class BBSMenuModel {
 
   /**
    * 単一のURLから板一覧を取得する。
-   * キャッシュが有効な場合はキャッシュを使用し、期限切れまたは強制更新時はHTTP通信を行う。
+    * キャッシュが存在する場合はキャッシュを使用し、強制更新時のみHTTP通信を行う。
    */
   async fetchOne(url: string, force = false): Promise<BBSMenu> {
     return this._fetcher.fetch(url, force);
@@ -213,11 +211,8 @@ export class BBSMenuModel {
       });
       if (record == null) return null;
 
-      const intervalMs =
-        +container.config.get("bbsmenu_update_interval") * 24 * 60 * 60 * 1000;
-      const expired = Date.now() - record.lastUpdated > intervalMs;
-      logger.debug("SQLiteキャッシュ有効期限", { expired, intervalMs });
-      if (expired) return null;
+      // Why: bbsmenu_update_interval 設定を廃止したため、
+      // SQLiteキャッシュは forceReload されるまで常に利用する。
 
       return { status: "success", menu: JSON.parse(record.data) as BBSMenu[] };
     } catch (e) {

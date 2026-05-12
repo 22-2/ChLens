@@ -280,13 +280,6 @@ export const SETTINGS_SECTIONS = [
         title: "bbsmenu",
       },
       {
-        kind: "number",
-        key: "bbsmenu_update_interval",
-        title: "更新間隔 (日)",
-        minimum: 1,
-        step: 1,
-      },
-      {
         kind: "string",
         key: "bbsmenu",
         title: "URL一覧",
