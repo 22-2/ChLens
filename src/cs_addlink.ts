@@ -45,6 +45,11 @@ type WriteResultMessage =
   | { type: "confirm" }
   | { type: "error"; message?: string };
 
+type ViewerTargets = {
+  targetUrl: string;
+  viewerUrl: string;
+};
+
 function isWriteResultPageUrl(rawUrl: string): boolean {
   return WRITE_RESULT_URL_PATTERNS.some((pattern) => pattern.test(rawUrl));
 }
@@ -128,20 +133,23 @@ function notifyWriteResult(): void {
   }
 }
 
-function createViewerUrl(currentUrl: string): string {
-  // 変更理由: この導線は旧ビューではなく new-ui を開くためのものなので、
-  // 入口を browser.html に揃えて遷移先を統一する。
+export function createViewerTargets(currentUrl: string): ViewerTargets {
+  // 変更理由: 左クリックは background へ元ページURL、補助クリックは拡張ページURLを使うため、
+  // 同じ正規化済みURLから両方を組み立てて取り違えを防ぐ。
+  const targetUrl = normalizeContentScriptTargetUrl(currentUrl);
   const baseUrl = browser.runtime.getURL("/view/browser.html");
-  const normalizedUrl = normalizeContentScriptTargetUrl(currentUrl);
-  return `${baseUrl}?q=${encodeURIComponent(normalizedUrl)}`;
+  return {
+    targetUrl,
+    viewerUrl: `${baseUrl}?q=${encodeURIComponent(targetUrl)}`,
+  };
 }
 
-function openViewerFromCurrentTab(currentUrl: string): void {
-  // 変更理由: 左クリック時は background 側に current tab の URL を渡し、
-  // 既存の new-ui があればそれを再利用して「今のタブ」を開く。
+function openViewerFromCurrentTab(targetUrl: string): void {
+  // 変更理由: background 側は受け取ったURLを browser.html?q=... に包み直すので、
+  // ここで拡張ページURLを渡すと二重ラップになり目的のページを開けなくなる。
   void browser.runtime.sendMessage({
     type: "open-new-ui",
-    url: currentUrl,
+    url: targetUrl,
   });
 }
 
@@ -185,7 +193,7 @@ function openLink(
   anchor.dispatchEvent(new MouseEvent("click", { button, ctrlKey, shiftKey }));
 }
 
-function handleMouseDown(event: MouseEvent, viewerUrl: string): void {
+function handleMouseDown(event: MouseEvent, viewerTargets: ViewerTargets): void {
   const target = event.target;
   if (!(target instanceof HTMLElement)) {
     return;
@@ -193,12 +201,12 @@ function handleMouseDown(event: MouseEvent, viewerUrl: string): void {
 
   if (target.id === BUTTON_IDS.open) {
     if (event.button === 0 && !event.ctrlKey && !event.shiftKey) {
-      openViewerFromCurrentTab(viewerUrl);
+      openViewerFromCurrentTab(viewerTargets.targetUrl);
       return;
     }
 
     openLink(
-      viewerUrl,
+      viewerTargets.viewerUrl,
       event.button as 0 | 1 | 2,
       event.ctrlKey,
       event.shiftKey,
@@ -226,11 +234,11 @@ function init(): void {
     return;
   }
 
-  const viewerUrl = createViewerUrl(currentUrl);
+  const viewerTargets = createViewerTargets(currentUrl);
   const container = createContainer();
 
   document.body.addEventListener("mousedown", (event) => {
-    handleMouseDown(event, viewerUrl);
+    handleMouseDown(event, viewerTargets);
   });
 
   document.body.appendChild(container);
