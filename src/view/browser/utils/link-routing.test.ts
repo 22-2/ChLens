@@ -36,6 +36,18 @@ describe("link-routing", () => {
     });
   });
 
+  it("itest の prefix 付き test/read.cgi URL を thread として正規化する", () => {
+    expect(
+      parseInternalBrowserPage(
+        "https://itest.5ch.io/krsw/test/read.cgi/AAAA/1000000007/",
+      ),
+    ).toEqual({
+      type: "thread",
+      title: "https://itest.5ch.io/test/read.cgi/AAAA/1000000007/",
+      threadUrl: "https://itest.5ch.io/test/read.cgi/AAAA/1000000007/",
+    });
+  });
+
   it("任意ドメインの /<board>/ パスも threadList として扱う", () => {
     expect(parseInternalBrowserPage("https://example.com/software/")).toEqual({
       type: "threadList",

@@ -80,7 +80,8 @@ const SHITARABA_BOARD_PATTERN = /^\/([\w-]+)\/(\d+)\/?(?:#.*)?$/;
 const EDDIBB_THREAD_PATTERN = /^\/(?:test\/read\.cgi\/)?([\w-]+)\/(\d+)\/?/;
 const EDDIBB_BOARD_PATTERN = /^\/(?:test\/read\.cgi\/)?([\w-]+)\/?(?:#.*)?$/;
 const ITEST_THREAD_PATTERN =
-  /^\/(?:test\/read\.cgi\/([\w-]+)\/(\d+)\/|(?:subback\/)?([\w-]+)\/?)/;
+  /^\/(?:[\w-]+\/)?test\/read\.cgi\/([\w-]+)\/(\d+)\/?$/;
+const ITEST_BOARD_PATTERN = /^\/(?:[\w-]+\/)?(?:subback\/)?([\w-]+)\/?$/;
 
 // ---------------------------------------------------------------------------
 // Host utilities
@@ -137,16 +138,18 @@ function normalizeItestUrl(url: URL): void {
     url.hostname === "itest.5ch.io" || url.hostname === "itest.bbspink.com";
   if (!isItestHost) return;
 
-  const match = ITEST_THREAD_PATTERN.exec(url.pathname);
-  if (!match) return;
+  const threadMatch = ITEST_THREAD_PATTERN.exec(url.pathname);
+  if (threadMatch) {
+    url.pathname = `/test/read.cgi/${threadMatch[1]}/${threadMatch[2]}/`;
+    return;
+  }
 
-  const board = match[1] || match[3];
-  if (!board) return;
-
-  const threadId = match[2] ?? null;
-  url.pathname = threadId
-    ? `/test/read.cgi/${board}/${threadId}/`
-    : `/${board}/`;
+  const boardMatch = ITEST_BOARD_PATTERN.exec(url.pathname);
+  if (boardMatch) {
+    // 変更理由: iTest の /<prefix>/test/read.cgi/... を board と誤認して
+    // /<prefix>/ へ潰れる不具合を防ぐため、板URL判定は完全一致のときだけ許可する。
+    url.pathname = `/${boardMatch[1]}/`;
+  }
 }
 
 /** Parse, normalize, and return a URL object; returns null on failure. */
