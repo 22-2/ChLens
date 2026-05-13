@@ -1,8 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const { messageSend } = vi.hoisted(() => ({
+  messageSend: vi.fn(),
+}));
+
 const state = vi.hoisted(() => ({
   tauriWriteHistoryRepository: {
     add: vi.fn(),
+    update: vi.fn(),
     remove: vi.fn(),
     get: vi.fn(),
     getByUrl: vi.fn(),
@@ -10,6 +15,12 @@ const state = vi.hoisted(() => ({
     count: vi.fn(),
     clear: vi.fn(),
     clearRange: vi.fn(),
+  },
+}));
+
+vi.mock("src/app", () => ({
+  message: {
+    send: messageSend,
   },
 }));
 
@@ -31,6 +42,7 @@ vi.mock("src/core/jsutil.js", () => ({
 describe("WriteHistory Tauri branch", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    messageSend.mockClear();
 
     globalThis.app = {
       assertArg: () => false,
@@ -39,6 +51,21 @@ describe("WriteHistory Tauri branch", () => {
   });
 
   it("add delegates with fallback input_name/input_mail", async () => {
+    state.tauriWriteHistoryRepository.getByUrl.mockResolvedValueOnce([
+      {
+        id: 1,
+        url: "https://example.com/thread",
+        res: 42,
+        title: "title",
+        name: "name",
+        mail: "mail",
+        input_name: "name",
+        input_mail: "mail",
+        message: "message",
+        date: 123,
+      },
+    ]);
+
     const WriteHistory = await import("src/core/WriteHistory.ts");
 
     await WriteHistory.add({
@@ -61,6 +88,40 @@ describe("WriteHistory Tauri branch", () => {
       inputMail: "mail",
       message: "message",
       date: 123,
+    });
+    expect(messageSend).toHaveBeenCalledWith("write_history_updated", {
+      type: "added",
+      id: 1,
+      url: "https://example.com/thread",
+      res: 42,
+    });
+  });
+
+  it("update delegates with explicit id", async () => {
+    const WriteHistory = await import("src/core/WriteHistory.ts");
+
+    await WriteHistory.update({
+      id: 99,
+      url: "https://example.com/thread",
+      res: 100,
+      title: "title",
+      name: "name",
+      mail: "mail",
+      message: "message",
+      date: 456,
+    });
+
+    expect(state.tauriWriteHistoryRepository.update).toHaveBeenCalledWith({
+      id: 99,
+      url: "https://example.com/thread",
+      res: 100,
+      title: "title",
+      name: "name",
+      mail: "mail",
+      inputName: "name",
+      inputMail: "mail",
+      message: "message",
+      date: 456,
     });
   });
 

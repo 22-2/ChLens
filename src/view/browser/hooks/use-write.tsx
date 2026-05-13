@@ -308,6 +308,7 @@ export function useWrite(threadUrl: string): UseWriteResult {
       message,
       inputName: name,
       inputMail: effectiveMail,
+      submittedAt: Date.now(),
     };
 
     setStatus("submitting");

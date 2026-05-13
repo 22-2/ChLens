@@ -417,6 +417,35 @@ export const tauriWriteHistoryRepository = {
     });
   },
 
+  async update(record: {
+    id: number;
+    url: string;
+    res: number;
+    title: string;
+    name: string;
+    mail: string;
+    inputName: string;
+    inputMail: string;
+    message: string;
+    date: number;
+  }): Promise<void> {
+    const { db } = await getTauriDrizzleContext();
+    await db
+      .update(writeHistoryTable)
+      .set({
+        url: record.url,
+        res: record.res,
+        title: record.title,
+        name: record.name,
+        mail: record.mail,
+        inputName: record.inputName,
+        inputMail: record.inputMail,
+        message: record.message,
+        date: record.date,
+      })
+      .where(eq(writeHistoryTable.id, record.id));
+  },
+
   async remove(url: string, res: number): Promise<void> {
     const { db } = await getTauriDrizzleContext();
     await db

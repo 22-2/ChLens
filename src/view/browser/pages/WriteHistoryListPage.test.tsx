@@ -19,11 +19,24 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockUseTabStore = vi.fn();
+const { messageOn, messageOff } = vi.hoisted(() => ({
+  messageOn: vi.fn(),
+  messageOff: vi.fn(),
+}));
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => mockUseTabStore(),
   // useTabDispatch は dispatch のみを返す安定した関数。ページのフル状態購読回避後もdispatchが使える。
   useTabDispatch: () => vi.fn(),
+}));
+
+vi.mock("src/service-container/index", () => ({
+  container: {
+    message: {
+      on: messageOn,
+      off: messageOff,
+    },
+  },
 }));
 
 interface WriteHistoryService {
@@ -41,6 +54,8 @@ describe("WriteHistoryListPage", () => {
   beforeEach(() => {
     mockUseTabStore.mockReset();
     writeHistoryGet.mockReset();
+    messageOn.mockReset();
+    messageOff.mockReset();
 
     mockUseTabStore.mockReturnValue({
       dispatch: vi.fn(),
@@ -252,5 +267,54 @@ describe("WriteHistoryListPage", () => {
 
     expect(screen.getByText("スレ2")).toBeInTheDocument();
     expect(screen.queryByText("スレ1")).not.toBeInTheDocument();
+  });
+
+  it("write_history_updated 通知で一覧を再読込する", async () => {
+    writeHistoryGet
+      .mockResolvedValueOnce([
+        {
+          url: "https://egg.5ch.io/test/read.cgi/software/1/",
+          title: "スレ1",
+          writtenRes: 0,
+          name: "風吹けば名無し",
+          mail: "sage",
+          message: "本文1",
+          date: new Date(2026, 4, 3, 9, 8).getTime(),
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          url: "https://egg.5ch.io/test/read.cgi/software/1/",
+          title: "スレ1",
+          writtenRes: 42,
+          name: "風吹けば名無し",
+          mail: "sage",
+          message: "本文1",
+          date: new Date(2026, 4, 3, 9, 9).getTime(),
+        },
+      ]);
+
+    render(
+      <WriteHistoryListPage tabId="tab-1" isActive={true} refreshKey={0} />,
+    );
+
+    expect(await screen.findByText("スレ1")).toBeInTheDocument();
+    expect(screen.getByText("-")).toBeInTheDocument();
+
+    const handler = messageOn.mock.calls.find(
+      ([eventName]) => eventName === "write_history_updated",
+    )?.[1] as (() => void) | undefined;
+
+    expect(handler).toBeTypeOf("function");
+
+    await act(async () => {
+      handler?.();
+    });
+
+    await waitFor(() => {
+      expect(writeHistoryGet).toHaveBeenCalledTimes(2);
+    });
+
+    expect(screen.getByText("42")).toBeInTheDocument();
   });
 });

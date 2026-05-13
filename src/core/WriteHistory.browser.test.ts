@@ -1,6 +1,16 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const { messageSend } = vi.hoisted(() => ({
+  messageSend: vi.fn(),
+}));
+
+vi.mock("src/app", () => ({
+  message: {
+    send: messageSend,
+  },
+}));
+
 vi.mock("src/core/TauriDrizzleBridge", () => ({
   isTauriRuntime: () => false,
   getTauriRepositories: async () => {
@@ -23,6 +33,7 @@ describe("WriteHistory browser branch", () => {
     vi.useRealTimers();
     const WriteHistory = await import("src/core/WriteHistory");
     await WriteHistory.clear();
+    messageSend.mockClear();
   });
 
   it("add stores fallback input_name/input_mail and get adds isHttps", async () => {
@@ -46,6 +57,51 @@ describe("WriteHistory browser branch", () => {
     const rows = await WriteHistory.get(0, 10);
     expect(rows).toHaveLength(1);
     expect(rows[0]?.isHttps).toBe(true);
+    expect(messageSend).toHaveBeenCalledWith("write_history_updated", {
+      type: "added",
+      id: expect.any(Number),
+      url: "https://example.com/thread",
+      res: 42,
+    });
+  });
+
+  it("update rewrites an existing provisional entry", async () => {
+    const WriteHistory = await import("src/core/WriteHistory");
+
+    const provisionalId = await WriteHistory.add({
+      url: "https://example.com/thread",
+      res: 0,
+      title: "title",
+      name: "input name",
+      mail: "sage",
+      message: "message",
+      date: 123,
+    });
+
+    await WriteHistory.update({
+      id: provisionalId,
+      url: "https://example.com/thread",
+      res: 42,
+      title: "title",
+      name: "actual name",
+      mail: "actual mail",
+      inputName: "input name",
+      inputMail: "sage",
+      message: "message",
+      date: 456,
+    });
+
+    const byUrl = await WriteHistory.getByUrl("https://example.com/thread");
+    expect(byUrl).toHaveLength(1);
+    expect(byUrl[0]).toMatchObject({
+      id: provisionalId,
+      res: 42,
+      name: "actual name",
+      mail: "actual mail",
+      input_name: "input name",
+      input_mail: "sage",
+      date: 456,
+    });
   });
 
   it("clearRange removes only old entries", async () => {

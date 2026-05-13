@@ -11,6 +11,7 @@ export interface PendingWritePayload {
   message: string;
   inputName: string;
   inputMail: string;
+  submittedAt: number;
 }
 
 export function notifyThreadWriteCompleted(payload: PendingWritePayload): void {

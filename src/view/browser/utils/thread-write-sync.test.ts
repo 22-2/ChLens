@@ -33,6 +33,7 @@ describe("thread-write-sync", () => {
       message: "本文",
       inputName: "name",
       inputMail: "sage",
+      submittedAt: 123,
     });
 
     expect(listener).toHaveBeenCalledTimes(1);

@@ -9,6 +9,7 @@ import { getResNumber } from "src/core/URL";
 import {
   add as addWriteHistoryRecord,
   getByUrl as getWriteHistoryByUrl,
+  update as updateWriteHistoryRecord,
 } from "src/core/WriteHistory";
 import { container } from "src/service-container/index";
 import type {
@@ -75,6 +76,11 @@ interface ImageBlurConfigState {
 interface PendingWriteMatchState extends PendingWritePayload {
   baselineResponseCount: number;
   baselineLastResNum: number | null;
+}
+
+interface PendingWriteHistoryPersistence {
+  submittedAt: number;
+  promise: Promise<number | null>;
 }
 
 const IMAGE_BLUR_CONFIG_KEYS = new Set([
@@ -154,6 +160,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const lastResponseNumRef = useRef<number | null>(null);
   const latestReadStateRef = useRef<IReadState | null>(null);
   const saveReadStateTimerRef = useRef<number | null>(null);
+  const pendingWriteHistoryRef =
+    useRef<PendingWriteHistoryPersistence | null>(null);
 
   useMouseGesture(rootRef);
 
@@ -308,6 +316,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
 
   useEffect(() => {
     setPendingWrite(null);
+    pendingWriteHistoryRef.current = null;
   }, [page.threadUrl]);
 
   useEffect(() => {
@@ -323,10 +332,40 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         baselineResponseCount: responseCountRef.current,
         baselineLastResNum: lastResponseNumRef.current,
       });
+
+      if (container.config.get("no_writehistory") === "on") {
+        pendingWriteHistoryRef.current = null;
+        return;
+      }
+
+      const historyPromise = (async () => {
+        try {
+          return await addWriteHistoryRecord({
+            url: page.threadUrl,
+            res: 0,
+            title: page.title,
+            // 変更理由: レス番号確定前でも成功直後の離脱で履歴を失わないよう、
+            // 入力値ベースの仮エントリを先に保存して後から確定情報へ更新する。
+            name: payload.inputName,
+            mail: payload.inputMail,
+            inputName: payload.inputName,
+            inputMail: payload.inputMail,
+            message: payload.message,
+            date: payload.submittedAt,
+          });
+        } catch {
+          return null;
+        }
+      })();
+
+      pendingWriteHistoryRef.current = {
+        submittedAt: payload.submittedAt,
+        promise: historyPromise,
+      };
     };
 
     return subscribeThreadWriteCompleted(handleThreadWriteCompleted);
-  }, [page.threadUrl]);
+  }, [page.threadUrl, page.title]);
 
   useEffect(() => {
     if (!pendingWrite || responses.length === 0) {
@@ -358,7 +397,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     void (async () => {
       if (container.config.get("no_writehistory") !== "on") {
         try {
-          await addWriteHistoryRecord({
+          const finalizedRecord = {
             url: page.threadUrl,
             res: matchedRes.num,
             title: page.title,
@@ -368,7 +407,26 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             inputMail: pendingWrite.inputMail,
             message: pendingWrite.message,
             date: resolveWrittenResTimestamp(matchedRes),
-          });
+          };
+
+          const pendingHistory = pendingWriteHistoryRef.current;
+          const provisionalHistoryId =
+            pendingHistory?.submittedAt === pendingWrite.submittedAt
+              ? await pendingHistory.promise
+              : null;
+
+          if (pendingHistory?.submittedAt === pendingWrite.submittedAt) {
+            pendingWriteHistoryRef.current = null;
+          }
+
+          if (provisionalHistoryId != null) {
+            await updateWriteHistoryRecord({
+              id: provisionalHistoryId,
+              ...finalizedRecord,
+            });
+          } else {
+            await addWriteHistoryRecord(finalizedRecord);
+          }
         } catch {
           // 書込履歴の永続化に失敗しても、画面上の自分レス強調までは失わない。
         }

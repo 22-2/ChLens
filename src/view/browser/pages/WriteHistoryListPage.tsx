@@ -17,6 +17,7 @@ import {
   normalizeLegacyTimestamp,
 } from "src/view/browser/utils/date-time";
 import { getLegacyWriteHistoryService } from "src/view/browser/utils/legacy-app";
+import { container } from "src/service-container/index";
 
 type SortDirection = "asc" | "desc";
 type SortColumn =
@@ -153,7 +154,7 @@ const COLUMNS: ColumnDef<WriteHistoryEntry>[] = [
     headerClassName: "simple-data-table__th--writehistory-res",
     cellClassName: "simple-data-table__writehistory-res",
     sortable: true,
-    cell: (row) => row.writtenRes,
+    cell: (row) => (row.writtenRes > 0 ? row.writtenRes : "-"),
   },
   {
     key: "name",
@@ -242,6 +243,23 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
     // 書き込み履歴一覧でも明示的に最新データを再取得できるようにする。
     void loadEntries();
   }, [loadEntries, refreshKey]);
+
+  useEffect(() => {
+    const handleWriteHistoryUpdated = () => {
+      // 変更理由: 書き込み履歴タブは hidden のまま保持されるため、
+      // 投稿直後の仮追加や確定更新を通知で取り込み stale 一覧を避ける。
+      void loadEntries();
+    };
+
+    container.message.on("write_history_updated", handleWriteHistoryUpdated);
+
+    return () => {
+      container.message.off(
+        "write_history_updated",
+        handleWriteHistoryUpdated,
+      );
+    };
+  }, [loadEntries]);
 
   const handleSort = useCallback((key: string) => {
     if (!COLUMNS.some((column) => column.key === key)) {

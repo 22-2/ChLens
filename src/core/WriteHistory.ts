@@ -1,3 +1,4 @@
+import { message } from "src/app";
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import { assertArg, log } from "src/app/Log";
 import {
@@ -44,6 +45,10 @@ interface WriteHistoryAddInput {
   date: number;
 }
 
+interface WriteHistoryUpdateInput extends WriteHistoryAddInput {
+  id: number;
+}
+
 interface WriteHistoryDBSchema extends DBSchema {
   [STORE_NAME]: {
     key: number;
@@ -57,6 +62,15 @@ interface WriteHistoryDBSchema extends DBSchema {
   };
 }
 
+interface WriteHistoryUpdatedPayload {
+  type: "added" | "updated" | "removed" | "cleared" | "range_cleared";
+  id?: number;
+  url?: string;
+  res?: number;
+  offset?: number;
+  day?: number;
+}
+
 const parseErrorMessage = (error: unknown): string => {
   if (error instanceof Error) {
     return error.message;
@@ -67,6 +81,14 @@ const parseErrorMessage = (error: unknown): string => {
 const reportError = (context: string, error: unknown): never => {
   log("error", `${context}: ${parseErrorMessage(error)}`, error);
   throw new Error(parseErrorMessage(error));
+};
+
+const notifyWriteHistoryUpdated = (
+  payload: WriteHistoryUpdatedPayload,
+): void => {
+  // 変更理由: 書き込み履歴ページは hidden のまま保持されるため、
+  // 永続化完了通知で明示更新なしでも一覧の stale 表示を避ける。
+  message.send("write_history_updated", payload);
 };
 
 const ensurePersistedRecord = (
@@ -170,6 +192,32 @@ const rejectInvalidArgs = (message: string): Promise<never> => {
 const safeGetTauriWriteHistoryRepository = async () => {
   const { tauriWriteHistoryRepository } = await getTauriRepositories();
   return tauriWriteHistoryRepository;
+};
+
+const findMatchingPersistedRowId = (
+  rows: PersistedWriteHistoryRecord[],
+  record: WriteHistoryAddInput,
+): number => {
+  const matched = [...rows]
+    .reverse()
+    .find(
+      (row) =>
+        row.url === record.url &&
+        row.res === record.res &&
+        row.title === record.title &&
+        row.name === record.name &&
+        row.mail === record.mail &&
+        row.input_name === (record.inputName != null ? record.inputName : record.name) &&
+        row.input_mail === (record.inputMail != null ? record.inputMail : record.mail) &&
+        row.message === record.message &&
+        row.date === record.date,
+    );
+
+  if (matched == null) {
+    throw new Error("書込履歴のID取得に失敗しました");
+  }
+
+  return matched.id;
 };
 
 const loadByDateDesc = async (
@@ -284,9 +332,36 @@ const addToBrowserStore = async ({
   inputMail,
   message,
   date,
-}: WriteHistoryAddInput): Promise<void> => {
+}: WriteHistoryAddInput): Promise<number> => {
   const db = await getDB();
-  await db.add(STORE_NAME, {
+  return await db.add(STORE_NAME, {
+    url,
+    res,
+    title,
+    name,
+    mail,
+    input_name: inputName != null ? inputName : name,
+    input_mail: inputMail != null ? inputMail : mail,
+    message,
+    date,
+  });
+};
+
+const updateBrowserStore = async ({
+  id,
+  url,
+  res,
+  title,
+  name,
+  mail,
+  inputName,
+  inputMail,
+  message,
+  date,
+}: WriteHistoryUpdateInput): Promise<void> => {
+  const db = await getDB();
+  await db.put(STORE_NAME, {
+    id,
     url,
     res,
     title,
@@ -323,7 +398,7 @@ export const add = async function ({
   inputMail = null,
   message,
   date,
-}: WriteHistoryAddInput): Promise<void> {
+}: WriteHistoryAddInput): Promise<number> {
   if (
     assertArg("WriteHistory.add", [
       [url, "string"],
@@ -345,7 +420,7 @@ export const add = async function ({
       // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
       const tauriWriteHistoryRepository =
         await safeGetTauriWriteHistoryRepository();
-      await tauriWriteHistoryRepository.add({
+      const persistedRecord = {
         url,
         res,
         title,
@@ -355,11 +430,18 @@ export const add = async function ({
         inputMail: inputMail != null ? inputMail : mail,
         message,
         date,
-      });
-      return;
+      };
+      await tauriWriteHistoryRepository.add(persistedRecord);
+      const rows = await tauriWriteHistoryRepository.getByUrl(url);
+      const id = findMatchingPersistedRowId(
+        rows as PersistedWriteHistoryRecord[],
+        persistedRecord,
+      );
+      notifyWriteHistoryUpdated({ type: "added", id, url, res });
+      return id;
     }
 
-    await addToBrowserStore({
+    const id = await addToBrowserStore({
       url,
       res,
       title,
@@ -370,8 +452,83 @@ export const add = async function ({
       message,
       date,
     });
+    notifyWriteHistoryUpdated({ type: "added", id, url, res });
+    return id;
   } catch (e) {
     reportError("WriteHistory.add: データの格納に失敗しました", e);
+  }
+};
+
+/**
+@method update
+@param {Object}
+@return {Promise}
+*/
+export const update = async function ({
+  id,
+  url,
+  res,
+  title,
+  name,
+  mail,
+  inputName = null,
+  inputMail = null,
+  message,
+  date,
+}: WriteHistoryUpdateInput): Promise<void> {
+  if (
+    assertArg("WriteHistory.update", [
+      [id, "number"],
+      [url, "string"],
+      [res, "number"],
+      [title, "string"],
+      [name, "string"],
+      [mail, "string"],
+      [inputName, "string", true],
+      [inputMail, "string", true],
+      [message, "string"],
+      [date, "number"],
+    ])
+  ) {
+    throw new Error("書込履歴を更新しようとしたデータが不正です");
+  }
+
+  try {
+    if (isTauriRuntime()) {
+      // 変更理由: 成功直後の仮エントリを確定レス番号へ更新し、
+      // 再読込前の離脱でも書き込み履歴が欠落しないようにする。
+      const tauriWriteHistoryRepository =
+        await safeGetTauriWriteHistoryRepository();
+      await tauriWriteHistoryRepository.update({
+        id,
+        url,
+        res,
+        title,
+        name,
+        mail,
+        inputName: inputName != null ? inputName : name,
+        inputMail: inputMail != null ? inputMail : mail,
+        message,
+        date,
+      });
+    } else {
+      await updateBrowserStore({
+        id,
+        url,
+        res,
+        title,
+        name,
+        mail,
+        inputName,
+        inputMail,
+        message,
+        date,
+      });
+    }
+
+    notifyWriteHistoryUpdated({ type: "updated", id, url, res });
+  } catch (e) {
+    reportError("WriteHistory.update: データの更新に失敗しました", e);
   }
 };
 
@@ -399,10 +556,11 @@ export const remove = async function (url: string, res: number): Promise<void> {
       const tauriWriteHistoryRepository =
         await safeGetTauriWriteHistoryRepository();
       await tauriWriteHistoryRepository.remove(url, res);
-      return;
+    } else {
+      await removeByUrlAndRes(url, res);
     }
 
-    await removeByUrlAndRes(url, res);
+    notifyWriteHistoryUpdated({ type: "removed", url, res });
   } catch (e) {
     reportError("WriteHistory.remove: トランザクション中断", e);
   }
@@ -523,20 +681,27 @@ export const clear = function (offset?: number): Promise<void> {
     return rejectInvalidArgs("WriteHistory.clear: 引数が不正です");
   }
 
-  if (isTauriRuntime()) {
-    // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
-    return (async () => {
-      const tauriWriteHistoryRepository =
-        await safeGetTauriWriteHistoryRepository();
-      await tauriWriteHistoryRepository.clear(normalizedOffset);
-    })();
-  }
+  return (async () => {
+    try {
+      if (isTauriRuntime()) {
+        // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
+        const tauriWriteHistoryRepository =
+          await safeGetTauriWriteHistoryRepository();
+        await tauriWriteHistoryRepository.clear(normalizedOffset);
+      } else if (normalizedOffset === -1) {
+        await clearAllRows();
+      } else {
+        await clearByOffset(normalizedOffset);
+      }
 
-  if (normalizedOffset === -1) {
-    return clearAllRows();
-  }
-
-  return clearByOffset(normalizedOffset);
+      notifyWriteHistoryUpdated({
+        type: "cleared",
+        offset: normalizedOffset,
+      });
+    } catch (e) {
+      reportError("WriteHistory.clear: トランザクション中断", e);
+    }
+  })();
 };
 
 /**
@@ -556,10 +721,11 @@ export const clearRange = async function (day: number): Promise<void> {
       const tauriWriteHistoryRepository =
         await safeGetTauriWriteHistoryRepository();
       await tauriWriteHistoryRepository.clearRange(dayUnix);
-      return;
+    } else {
+      await clearByDateBefore(dayUnix);
     }
 
-    await clearByDateBefore(dayUnix);
+    notifyWriteHistoryUpdated({ type: "range_cleared", day });
   } catch (e) {
     return reportError("WriteHistory.clearRange: トランザクション中断", e);
   }
