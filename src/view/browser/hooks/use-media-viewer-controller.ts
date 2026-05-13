@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
@@ -333,7 +334,9 @@ export function useMediaViewerController(): MediaViewerProps | null {
     canvas.style.removeProperty("transform");
   }, [stopZoomAnimation]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    // src 切り替え直後の1フレームで旧transformが見えると拡大ちらつきになるため、
+    // paint前にサーフェス状態を初期化してから次画像の描画に入る。
     resetViewerSurface();
   }, [resetViewerSurface, viewer?.src]);
 

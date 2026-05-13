@@ -122,7 +122,12 @@ export function MediaViewer({
               alt={viewer.label}
               onLoad={onImageLoad}
               draggable={false}
-              style={{ opacity: isLoading ? 0 : 1 }}
+              style={{
+                // 画像切り替え時は即座に不可視化し、前画像がフェードアウトで見えるちらつきを防ぐ。
+                opacity: isLoading ? 0 : 1,
+                visibility: isLoading ? "hidden" : "visible",
+                transition: isLoading ? "none" : "opacity 0.2s ease",
+              }}
             />
           </div>
         </div>
