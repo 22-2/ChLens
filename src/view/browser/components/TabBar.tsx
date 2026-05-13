@@ -27,8 +27,8 @@ interface BarContextMenuState {
   y: number;
 }
 
-const TAB_SWITCH_WHEEL_MIN_DELTA = 8;
-const TAB_SWITCH_WHEEL_COOLDOWN_MS = 50;
+const TAB_SWITCH_WHEEL_DISTANCE_THRESHOLD = 1.5;
+const TAB_SWITCH_WHEEL_BASE_COOLDOWN_MS = 150;
 
 // Material Design の Fast-out, Slow-in カーブで Chrome 風の吸い付く感を再現する。
 const SORTABLE_TRANSITION = {
@@ -206,12 +206,18 @@ export const TabBar: React.FC = () => {
   // ホイールでアクティブタブを前後に切り替える
   const handleWheel = useCallback(
     (e: WheelEvent) => {
-      // 小さい慣性入力や横スクロール成分は無視し、hover中の誤連打切替を防ぐ。
-      if (Math.abs(e.deltaY) < Math.abs(e.deltaX)) return;
-      if (Math.abs(e.deltaY) < TAB_SWITCH_WHEEL_MIN_DELTA) return;
+      const wheelDistance = e.deltaX + e.deltaY;
+      if (Math.abs(wheelDistance) < TAB_SWITCH_WHEEL_DISTANCE_THRESHOLD) {
+        return;
+      }
 
       const now = Date.now();
-      if (now - lastWheelSwitchAtRef.current < TAB_SWITCH_WHEEL_COOLDOWN_MS) {
+      const cooldownMs = Math.max(
+        0,
+        TAB_SWITCH_WHEEL_BASE_COOLDOWN_MS -
+          2 * (Math.abs(e.deltaX) + Math.abs(e.deltaY)),
+      );
+      if (now - lastWheelSwitchAtRef.current < cooldownMs) {
         return;
       }
 
@@ -219,10 +225,12 @@ export const TabBar: React.FC = () => {
       const currentIdx = tabs.findIndex((t) => t.id === state.activeTabId);
       if (currentIdx === -1) return;
 
-      e.preventDefault();
-      // OS/ブラウザ既定のタブホイール感覚に寄せるため、下スクロールで左・上スクロールで右へ反転する。
-      const delta = e.deltaY > 0 ? -1 : 1;
+      const delta = wheelDistance > 0 ? 1 : -1;
+      // 変更理由: このアプリでは端で止めるよりも巡回の方が期待操作に合うため、
+      // 末尾から先頭、先頭から末尾へ戻れる循環切替にする。
       const nextIdx = (currentIdx + delta + tabs.length) % tabs.length;
+
+      e.preventDefault();
       lastWheelSwitchAtRef.current = now;
       dispatch({ type: "SELECT_TAB", tabId: tabs[nextIdx].id });
     },

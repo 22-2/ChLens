@@ -144,7 +144,8 @@ describe("TabBar wheel switching", () => {
     const tabBar = container.querySelector(".tab-bar") as HTMLDivElement;
 
     fireEvent.wheel(tabBar, { deltaY: 0 });
-    fireEvent.wheel(tabBar, { deltaY: 4 });
+    fireEvent.wheel(tabBar, { deltaY: 1 });
+    fireEvent.wheel(tabBar, { deltaX: 0.5, deltaY: 0.5 });
 
     expect(dispatchMock).not.toHaveBeenCalledWith(
       expect.objectContaining({ type: "SELECT_TAB" }),
@@ -166,7 +167,32 @@ describe("TabBar wheel switching", () => {
     expect(selectCalls[0][0]).toEqual({ type: "SELECT_TAB", tabId: "tab-2" });
   });
 
-  it("下ホイールで左隣のタブへ切り替える", () => {
+  it("最後のタブで下方向へ回すと先頭へ循環する", () => {
+    mocks.tabStore.state = {
+      ...mocks.tabStore.state,
+      tabs: [
+        {
+          id: "tab-1",
+          history: [{ type: "home", title: "ホーム" }],
+          currentIndex: 0,
+          pinned: false,
+          reloadKey: 0,
+          autoRefreshEnabled: false,
+          autoRefreshPageKey: null,
+        },
+        {
+          id: "tab-2",
+          history: [{ type: "boardList", title: "板一覧" }],
+          currentIndex: 0,
+          pinned: false,
+          reloadKey: 0,
+          autoRefreshEnabled: false,
+          autoRefreshPageKey: null,
+        },
+      ],
+      activeTabId: "tab-2",
+    };
+
     const { container } = render(<TabBar />);
     const tabBar = container.querySelector(".tab-bar") as HTMLDivElement;
 
@@ -174,13 +200,48 @@ describe("TabBar wheel switching", () => {
 
     expect(dispatchMock).toHaveBeenCalledWith({
       type: "SELECT_TAB",
-      tabId: "tab-2",
+      tabId: "tab-1",
     });
   });
 
-  it("上ホイールで右隣のタブへ切り替える", () => {
-    mocks.tabStore.state.activeTabId = "tab-2";
+  it("横成分込みのホイール方向で前のタブへ切り替える", () => {
+    mocks.tabStore.state = {
+      ...mocks.tabStore.state,
+      tabs: [
+        {
+          id: "tab-1",
+          history: [{ type: "home", title: "ホーム" }],
+          currentIndex: 0,
+          pinned: false,
+          reloadKey: 0,
+          autoRefreshEnabled: false,
+          autoRefreshPageKey: null,
+        },
+        {
+          id: "tab-2",
+          history: [{ type: "boardList", title: "板一覧" }],
+          currentIndex: 0,
+          pinned: false,
+          reloadKey: 0,
+          autoRefreshEnabled: false,
+          autoRefreshPageKey: null,
+        },
+      ],
+      activeTabId: "tab-2",
+    };
 
+    const { container } = render(<TabBar />);
+    const tabBar = container.querySelector(".tab-bar") as HTMLDivElement;
+
+    fireEvent.wheel(tabBar, { deltaX: -2, deltaY: 0 });
+
+    expect(dispatchMock).toHaveBeenCalledWith({
+      type: "SELECT_TAB",
+      tabId: "tab-1",
+    });
+  });
+
+  it("先頭のタブで上方向へ回すと最後尾へ循環する", () => {
     const { container } = render(<TabBar />);
     const tabBar = container.querySelector(".tab-bar") as HTMLDivElement;
 
@@ -188,7 +249,7 @@ describe("TabBar wheel switching", () => {
 
     expect(dispatchMock).toHaveBeenCalledWith({
       type: "SELECT_TAB",
-      tabId: "tab-1",
+      tabId: "tab-2",
     });
   });
 });
