@@ -156,8 +156,9 @@ describe("TabBar wheel switching", () => {
     const { container } = render(<TabBar />);
     const tabBar = container.querySelector(".tab-bar") as HTMLDivElement;
 
-    fireEvent.wheel(tabBar, { deltaY: 40 });
-    fireEvent.wheel(tabBar, { deltaY: 50 });
+    // deltaY < 0 は下スクロール（次のタブへ）
+    fireEvent.wheel(tabBar, { deltaY: -40 });
+    fireEvent.wheel(tabBar, { deltaY: -50 });
 
     const selectCalls = dispatchMock.mock.calls.filter(
       ([action]) => action?.type === "SELECT_TAB",
@@ -196,7 +197,8 @@ describe("TabBar wheel switching", () => {
     const { container } = render(<TabBar />);
     const tabBar = container.querySelector(".tab-bar") as HTMLDivElement;
 
-    fireEvent.wheel(tabBar, { deltaY: 40 });
+    // deltaY < 0 は下スクロール→ 次のタブへ（循環して先頭へ）
+    fireEvent.wheel(tabBar, { deltaY: -40 });
 
     expect(dispatchMock).toHaveBeenCalledWith({
       type: "SELECT_TAB",
@@ -233,7 +235,8 @@ describe("TabBar wheel switching", () => {
     const { container } = render(<TabBar />);
     const tabBar = container.querySelector(".tab-bar") as HTMLDivElement;
 
-    fireEvent.wheel(tabBar, { deltaX: -2, deltaY: 0 });
+    // deltaX > 0（左スクロール）→ wheelDistance > 0 → 前のタブへ
+    fireEvent.wheel(tabBar, { deltaX: 2, deltaY: 0 });
 
     expect(dispatchMock).toHaveBeenCalledWith({
       type: "SELECT_TAB",
@@ -245,7 +248,8 @@ describe("TabBar wheel switching", () => {
     const { container } = render(<TabBar />);
     const tabBar = container.querySelector(".tab-bar") as HTMLDivElement;
 
-    fireEvent.wheel(tabBar, { deltaY: -40 });
+    // deltaY > 0 は上スクロール（前のタブへ）→ 先頭から前へ（循環して最後尾へ）
+    fireEvent.wheel(tabBar, { deltaY: 40 });
 
     expect(dispatchMock).toHaveBeenCalledWith({
       type: "SELECT_TAB",

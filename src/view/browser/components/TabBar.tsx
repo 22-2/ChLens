@@ -225,9 +225,9 @@ export const TabBar: React.FC = () => {
       const currentIdx = tabs.findIndex((t) => t.id === state.activeTabId);
       if (currentIdx === -1) return;
 
-      const delta = wheelDistance > 0 ? 1 : -1;
-      // 変更理由: このアプリでは端で止めるよりも巡回の方が期待操作に合うため、
-      // 末尾から先頭、先頭から末尾へ戻れる循環切替にする。
+      // 変更理由: wheelEvent は下スクロール時に deltaY が負になるため、
+      // 直感的には下スクロール = 次へ（右移動）、上スクロール = 前へ（左移動）。
+      const delta = wheelDistance > 0 ? -1 : 1;
       const nextIdx = (currentIdx + delta + tabs.length) % tabs.length;
 
       e.preventDefault();
