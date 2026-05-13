@@ -457,6 +457,12 @@ function getMissingAncestors(
   targetPage: Page,
 ): Page[] {
   if (targetPage.type === "thread") {
+    // 変更理由: スレ -> スレ遷移では「直前に見ていたスレ」自体を戻る先として残したい。
+    // ここで板一覧/板を差し込むと Back が前スレではなく板へ着地してしまう。
+    if (currentPage.type === "thread") {
+      return [];
+    }
+
     // 直前が threadList（板）なら親は揃っているので補完不要
     if (currentPage.type === "threadList") {
       return [];
