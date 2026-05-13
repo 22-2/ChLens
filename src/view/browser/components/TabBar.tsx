@@ -220,7 +220,8 @@ export const TabBar: React.FC = () => {
       if (currentIdx === -1) return;
 
       e.preventDefault();
-      const delta = e.deltaY > 0 ? 1 : -1;
+      // OS/ブラウザ既定のタブホイール感覚に寄せるため、下スクロールで左・上スクロールで右へ反転する。
+      const delta = e.deltaY > 0 ? -1 : 1;
       const nextIdx = (currentIdx + delta + tabs.length) % tabs.length;
       lastWheelSwitchAtRef.current = now;
       dispatch({ type: "SELECT_TAB", tabId: tabs[nextIdx].id });

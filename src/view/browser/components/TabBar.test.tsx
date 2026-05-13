@@ -165,6 +165,32 @@ describe("TabBar wheel switching", () => {
     expect(selectCalls).toHaveLength(1);
     expect(selectCalls[0][0]).toEqual({ type: "SELECT_TAB", tabId: "tab-2" });
   });
+
+  it("下ホイールで左隣のタブへ切り替える", () => {
+    const { container } = render(<TabBar />);
+    const tabBar = container.querySelector(".tab-bar") as HTMLDivElement;
+
+    fireEvent.wheel(tabBar, { deltaY: 40 });
+
+    expect(dispatchMock).toHaveBeenCalledWith({
+      type: "SELECT_TAB",
+      tabId: "tab-2",
+    });
+  });
+
+  it("上ホイールで右隣のタブへ切り替える", () => {
+    mocks.tabStore.state.activeTabId = "tab-2";
+
+    const { container } = render(<TabBar />);
+    const tabBar = container.querySelector(".tab-bar") as HTMLDivElement;
+
+    fireEvent.wheel(tabBar, { deltaY: -40 });
+
+    expect(dispatchMock).toHaveBeenCalledWith({
+      type: "SELECT_TAB",
+      tabId: "tab-1",
+    });
+  });
 });
 
 describe("TabBar drag-to-reorder", () => {
