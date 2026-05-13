@@ -109,12 +109,12 @@ export function MediaViewer({
         </div>
 
         <div ref={viewerStageRef} className="media-viewer__stage">
+          {isLoading && (
+            <div className="media-viewer__loader">
+              <Loader size="lg" />
+            </div>
+          )}
           <div ref={viewerCanvasRef} className="media-viewer__canvas">
-            {isLoading && (
-              <div className="media-viewer__loader">
-                <Loader size="lg" />
-              </div>
-            )}
             <img
               ref={viewerImageRef}
               className="media-viewer__image"
