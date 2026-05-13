@@ -11,6 +11,7 @@ import {
   getByUrl as getWriteHistoryByUrl,
   update as updateWriteHistoryRecord,
 } from "src/core/WriteHistory";
+import { platform } from "src/app/platform/index";
 import { container } from "src/service-container/index";
 import type {
   IReadState,
@@ -769,7 +770,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       }
 
       if (button === 1) {
-        window.open(absoluteUrl, "_blank", "noopener,noreferrer");
+        // ミドルクリック時はバックグラウンドタブで開く
+        void platform.window.openTab(absoluteUrl, false);
         return;
       }
 
