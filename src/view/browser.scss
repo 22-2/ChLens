@@ -2822,6 +2822,18 @@ body {
   -webkit-user-drag: none;
   /* pointer-events: none を外して右クリックメニュー（名前を付けて保存等）を使えるようにする。
      パンのmousedownはstageレベルのネイティブリスナーがバブリングで受け取るため問題なし。 */
+  transition: opacity 0.2s ease;
+}
+
+.media-viewer__loader {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.02);
+  pointer-events: none;
+  z-index: 1;
 }
 
 /* ==========================================================================

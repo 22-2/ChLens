@@ -27,6 +27,7 @@ export interface MediaViewerProps {
   canNavigateViewerPrev: boolean;
   canNavigateViewerNext: boolean;
   isMaximized: boolean;
+  isLoading: boolean;
   onOverlayClick: () => void;
   onChromeClick: (event: ReactMouseEvent<HTMLDivElement>) => void;
   onNavigatePrev: () => void;
@@ -114,12 +115,14 @@ function getPointWithinStage(
 export function useMediaViewerController(): MediaViewerProps | null {
   const viewer = useMediaViewerStore((state) => state.viewer);
   const viewerScale = useMediaViewerStore((state) => state.viewerScale);
+  const isLoading = useMediaViewerStore((state) => state.isLoading);
   const closeViewer = useMediaViewerStore((state) => state.closeViewer);
   const navigateViewer = useMediaViewerStore((state) => state.navigateViewer);
   const zoomIn = useMediaViewerStore((state) => state.zoomIn);
   const zoomOut = useMediaViewerStore((state) => state.zoomOut);
   const resetScale = useMediaViewerStore((state) => state.resetScale);
   const zoomByWheel = useMediaViewerStore((state) => state.zoomByWheel);
+  const setImageLoading = useMediaViewerStore((state) => state.setImageLoading);
 
   // ビューポートの最大化状態をローカルで管理する。
   // viewer が閉じて再開した時にリセットが必要なので useEffect で監視する。
@@ -529,6 +532,7 @@ export function useMediaViewerController(): MediaViewerProps | null {
     canNavigateViewerPrev: !!viewer.images && (viewer.currentIndex ?? 0) > 0,
     canNavigateViewerNext:
       !!viewer.images && (viewer.currentIndex ?? 0) < viewer.images.length - 1,
+    isLoading,
     onOverlayClick: closeViewer,
     onChromeClick: (event) => event.stopPropagation(),
     onNavigatePrev: () => navigateViewer(-1),
@@ -551,6 +555,9 @@ export function useMediaViewerController(): MediaViewerProps | null {
     isMaximized,
     onClose: closeViewer,
     onToggleMaximize: () => setIsMaximized((prev) => !prev),
-    onImageLoad: measureViewerLayout,
+    onImageLoad: () => {
+      setImageLoading(false);
+      measureViewerLayout();
+    },
   };
 }

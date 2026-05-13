@@ -27,6 +27,7 @@ function clampViewerScale(scale: number): number {
 interface MediaViewerStoreState {
   viewer: ViewerState | null;
   viewerScale: number;
+  isLoading: boolean;
   openMediaFromUrl: (url: string, resImages?: string[]) => void;
   closeViewer: () => void;
   navigateViewer: (delta: number) => void;
@@ -34,12 +35,14 @@ interface MediaViewerStoreState {
   zoomOut: () => void;
   resetScale: () => void;
   zoomByWheel: (deltaY: number, deltaMode?: number) => void;
+  setImageLoading: (isLoading: boolean) => void;
 }
 
 export const useMediaViewerStore = create<MediaViewerStoreState>(
   (set, get) => ({
     viewer: null,
     viewerScale: 1,
+    isLoading: false,
 
     openMediaFromUrl: (url, resImages) => {
       const imageUrl = toViewerImageUrl(url);
@@ -66,13 +69,15 @@ export const useMediaViewerStore = create<MediaViewerStoreState>(
         },
         // 画像を切り替えた時に前回のズーム倍率を引き継ぐと初見画像の全体把握が難しいため、毎回等倍に戻す。
         viewerScale: 1,
+        // 画像が切り替わるたびに読み込み中状態に戻す。
+        isLoading: true,
       });
     },
 
     closeViewer: () => {
       // ビューアを閉じた時に前回倍率が残ると次回表示で意図せず拡大状態になるため、
       // close 時点で必ず等倍へ戻して初期表示の一貫性を保つ。
-      set({ viewer: null, viewerScale: 1 });
+      set({ viewer: null, viewerScale: 1, isLoading: false });
     },
 
     navigateViewer: (delta) => {
@@ -101,6 +106,8 @@ export const useMediaViewerStore = create<MediaViewerStoreState>(
           currentIndex: nextIndex,
         },
         viewerScale: 1,
+        // 画像が切り替わるたびに読み込み中状態に戻す。
+        isLoading: true,
       });
     },
 
@@ -128,6 +135,10 @@ export const useMediaViewerStore = create<MediaViewerStoreState>(
           state.viewerScale * Math.pow(WHEEL_ZOOM_BASE, -normalizedDelta / 120);
         return { viewerScale: clampViewerScale(nextScale) };
       });
+    },
+
+    setImageLoading: (isLoading) => {
+      set({ isLoading });
     },
   }),
 );

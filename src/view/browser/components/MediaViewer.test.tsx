@@ -19,6 +19,8 @@ describe("MediaViewer", () => {
         viewerImageRef={createRef<HTMLImageElement>()}
         canNavigateViewerPrev={false}
         canNavigateViewerNext={false}
+        isMaximized={false}
+        isLoading={false}
         onOverlayClick={() => {}}
         onChromeClick={() => {}}
         onNavigatePrev={() => {}}
@@ -28,6 +30,7 @@ describe("MediaViewer", () => {
         onZoomIn={() => {}}
         onSave={onSave}
         onClose={() => {}}
+        onToggleMaximize={() => {}}
         onImageLoad={() => {}}
       />,
     );

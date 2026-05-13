@@ -1,3 +1,4 @@
+import { Loader } from "@mantine/core";
 import { Maximize, Minimize } from "lucide-react";
 import type { MediaViewerProps } from "src/view/browser/hooks/use-media-viewer-controller";
 
@@ -9,6 +10,7 @@ export function MediaViewer({
   canNavigateViewerPrev,
   canNavigateViewerNext,
   isMaximized,
+  isLoading,
   onOverlayClick,
   onChromeClick,
   onNavigatePrev,
@@ -108,6 +110,11 @@ export function MediaViewer({
 
         <div ref={viewerStageRef} className="media-viewer__stage">
           <div ref={viewerCanvasRef} className="media-viewer__canvas">
+            {isLoading && (
+              <div className="media-viewer__loader">
+                <Loader size="lg" />
+              </div>
+            )}
             <img
               ref={viewerImageRef}
               className="media-viewer__image"
@@ -115,6 +122,7 @@ export function MediaViewer({
               alt={viewer.label}
               onLoad={onImageLoad}
               draggable={false}
+              style={{ opacity: isLoading ? 0 : 1 }}
             />
           </div>
         </div>
