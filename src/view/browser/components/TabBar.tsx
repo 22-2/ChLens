@@ -1,6 +1,7 @@
 import { DragDropProvider } from "@dnd-kit/react";
 import { isSortableOperation, useSortable } from "@dnd-kit/react/sortable";
 import { Pin, Plus, X } from "lucide-react";
+import normalizeWheel from "normalize-wheel";
 import React, {
   useCallback,
   useEffect,
@@ -206,7 +207,8 @@ export const TabBar: React.FC = () => {
   // ホイールでアクティブタブを前後に切り替える
   const handleWheel = useCallback(
     (e: WheelEvent) => {
-      const wheelDistance = e.deltaX + e.deltaY;
+      const normalizedWheel = normalizeWheel(e);
+      const wheelDistance = normalizedWheel.pixelX + normalizedWheel.pixelY;
       if (Math.abs(wheelDistance) < TAB_SWITCH_WHEEL_DISTANCE_THRESHOLD) {
         return;
       }
@@ -215,7 +217,9 @@ export const TabBar: React.FC = () => {
       const cooldownMs = Math.max(
         0,
         TAB_SWITCH_WHEEL_BASE_COOLDOWN_MS -
-          2 * (Math.abs(e.deltaX) + Math.abs(e.deltaY)),
+          2 *
+            (Math.abs(normalizedWheel.pixelX) +
+              Math.abs(normalizedWheel.pixelY)),
       );
       if (now - lastWheelSwitchAtRef.current < cooldownMs) {
         return;
@@ -225,9 +229,9 @@ export const TabBar: React.FC = () => {
       const currentIdx = tabs.findIndex((t) => t.id === state.activeTabId);
       if (currentIdx === -1) return;
 
-      // 変更理由: wheelEvent は下スクロール時に deltaY が負になるため、
-      // 直感的には下スクロール = 次へ（右移動）、上スクロール = 前へ（左移動）。
-      const delta = wheelDistance > 0 ? -1 : 1;
+      // 変更理由: ブラウザごとの生の delta 符号差を normalize-wheel で吸収し、
+      // 正規化後に正なら下/右、負なら上/左として一貫して扱う。
+      const delta = wheelDistance > 0 ? 1 : -1;
       const nextIdx = (currentIdx + delta + tabs.length) % tabs.length;
 
       e.preventDefault();

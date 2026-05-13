@@ -3,6 +3,19 @@ interface Window {
   container: import("./service-container/interfaces").IServiceContainer;
 }
 
+declare module "normalize-wheel" {
+  interface NormalizedWheelEvent {
+    spinX: number;
+    spinY: number;
+    pixelX: number;
+    pixelY: number;
+  }
+
+  export default function normalizeWheel(
+    event: WheelEvent | MouseEvent,
+  ): NormalizedWheelEvent;
+}
+
 declare namespace app {
   const config: any;
   const Callbacks: any;
