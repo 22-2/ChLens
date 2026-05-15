@@ -1,7 +1,5 @@
 import browser from "webextension-polyfill";
 
-const isTabReadcrx = (tab: browser.Tabs.Tab) =>
-  tab.url?.startsWith(browser.runtime.getURL(""));
 const NEW_UI_URL_PREFIX = browser.runtime.getURL("view/browser.html");
 const NEW_UI_URL_QUERY = `${browser.runtime.getURL("view/browser.html")}*`;
 let newUiPrimaryTabId: number | null = null;
@@ -11,131 +9,116 @@ type OpenNewUiMessage = {
   url: string;
 };
 
+// 指定されたタブがこの拡張機能のUIかどうか判定
 const isNewUiTab = (tab: browser.Tabs.Tab | undefined): boolean =>
   typeof tab?.url === "string" && tab.url.startsWith(NEW_UI_URL_PREFIX);
 
-const focusTabById = async (tabId: number): Promise<void> => {
-  const tab = await browser.tabs.get(tabId);
-  await browser.windows.update(tab.windowId!, { focused: true });
-  await browser.tabs.update(tab.id!, { active: true });
-};
-
-const createNewUiUrl = (currentUrl: string): string =>
-  `${browser.runtime.getURL("view/browser.html")}?q=${encodeURIComponent(currentUrl)}`;
-
+// 既存のread.crx UIタブを探す
 const findNewUiTab = async (): Promise<browser.Tabs.Tab | null> => {
   const tabs = await browser.tabs.query({ url: NEW_UI_URL_QUERY });
-  if (tabs.length === 0) {
-    return null;
-  }
+  if (tabs.length === 0) return null;
 
+  // 保存されているIDと一致するタブがあれば優先
   if (newUiPrimaryTabId != null) {
     const primaryTab = tabs.find((tab) => tab.id === newUiPrimaryTabId);
-    if (primaryTab) {
-      return primaryTab;
-    }
+    if (primaryTab) return primaryTab;
   }
-
-  return tabs[0] ?? null;
+  return tabs[0];
 };
 
-const openOrFocusNewUiTab = async (currentUrl: string): Promise<void> => {
-  const viewerUrl = createNewUiUrl(currentUrl);
+const focusTabById = async (tabId: number): Promise<void> => {
+  const tab = await browser.tabs.get(tabId);
+  if (tab.windowId != null) {
+    await browser.windows.update(tab.windowId, { focused: true });
+  }
+  await browser.tabs.update(tabId, { active: true });
+};
+
+// URLを開く、または既存のタブを更新してフォーカスする（唯一の入り口）
+const openOrFocusNewUiTab = async (currentUrl?: string): Promise<void> => {
   const existingTab = await findNewUiTab();
+  const viewerUrl = currentUrl
+    ? `${NEW_UI_URL_PREFIX}?q=${encodeURIComponent(currentUrl)}`
+    : NEW_UI_URL_PREFIX;
 
   if (existingTab?.id != null) {
-    // 変更理由: new-ui は単一インスタンス運用なので、既存タブがある場合は
-    // URL を差し替えて「現在のタブ」をそのまま表示し直す。
+    // 既存タブがある場合：URLを更新してフォーカス
     await browser.tabs.update(existingTab.id, {
       url: viewerUrl,
       active: true,
     });
-    if (existingTab.windowId != null) {
-      await browser.windows.update(existingTab.windowId, { focused: true });
-    }
+    await focusTabById(existingTab.id);
     newUiPrimaryTabId = existingTab.id;
-    return;
-  }
-
-  const createdTab = await browser.tabs.create({
-    url: viewerUrl,
-    active: true,
-  });
-  if (createdTab.id != null) {
-    newUiPrimaryTabId = createdTab.id;
+  } else {
+    // 既存タブがない場合：新規作成
+    const createdTab = await browser.tabs.create({
+      url: viewerUrl,
+      active: true,
+    });
+    if (createdTab.id != null) {
+      newUiPrimaryTabId = createdTab.id;
+    }
   }
 };
 
+/**
+ * 強制的な単一インスタンス管理ロジック
+ * 他のスクリプトや手入力で新しいタブが開かれた場合に対処
+ */
+const enforceSingleInstance = async (tab: browser.Tabs.Tab) => {
+  if (!isNewUiTab(tab) || tab.id === undefined) return;
+
+  const existingTab = await findNewUiTab();
+
+  // 自分自身が唯一のインスタンスならそれをプライマリにする
+  if (!existingTab || existingTab.id === tab.id) {
+    newUiPrimaryTabId = tab.id;
+    return;
+  }
+
+  // 他に既にタブが存在する場合：
+  // 1. 既存のタブにフォーカス
+  await focusTabById(existingTab.id!);
+  // 2. 新しく作られた方のタブを閉じる
+  await browser.tabs.remove(tab.id);
+};
+
+// タブが作成された瞬間
+browser.tabs.onCreated.addListener((tab) => {
+  void enforceSingleInstance(tab);
+});
+
+// タブのURLが更新された瞬間（アドレスバーからの入力等に対応）
+browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.url || changeInfo.status === "loading") {
+    void enforceSingleInstance(tab);
+  }
+});
+
+// タブが閉じられた時のクリーンアップ
 browser.tabs.onRemoved.addListener((tabId: number) => {
   if (newUiPrimaryTabId === tabId) {
     newUiPrimaryTabId = null;
   }
 });
 
-browser.tabs.onUpdated.addListener(
-  async (tabId: number, changeInfo, tab: browser.Tabs.Tab) => {
-    if (changeInfo.status !== "complete" || !isNewUiTab(tab)) {
-      return;
-    }
-
-    // new-uiは単一インスタンスに制限し、タブ間での状態競合を防ぐ。
-    if (newUiPrimaryTabId == null || newUiPrimaryTabId === tabId) {
-      newUiPrimaryTabId = tabId;
-      return;
-    }
-
-    try {
-      await focusTabById(newUiPrimaryTabId);
-      await browser.tabs.remove(tabId);
-    } catch {
-      // primaryが既に閉じられていたら現在タブをprimaryとして採用する。
-      newUiPrimaryTabId = tabId;
-    }
-  },
-);
-
-browser.runtime.onMessage.addListener((message: OpenNewUiMessage) => {
-  if (message.type !== "open-new-ui") {
-    return;
+// メッセージ経由の起動
+browser.runtime.onMessage.addListener((message: unknown) => {
+  const msg = message as OpenNewUiMessage;
+  if (msg.type === "open-new-ui") {
+    void openOrFocusNewUiTab(msg.url);
   }
-
-  void openOrFocusNewUiTab(message.url);
 });
 
-// 実行中のread.crxを探す
-const searchRcrx = async () => {
-  const tabs = await browser.tabs.query({
-    url: browser.runtime.getURL("*"),
-  });
-  if (tabs.length === 0) {
-    return null;
-  }
-  return tabs[0];
-};
+// ツールバーアイコンクリック時の動作
+browser.action.onClicked.addListener(async (currentTab) => {
+  // 現在のタブが既にread.crxなら何もしない
+  if (isNewUiTab(currentTab)) return;
 
-// アイコンクリック時の動作
-const browserAction =
-  typeof browser !== "undefined" && navigator.userAgent.includes("Firefox")
-    ? browser.browserAction
-    : browser.action;
-browserAction.onClicked.addListener(async (currentTab) => {
-  // 現在のタブが自分自身なら何もしない
-  if (isTabReadcrx(currentTab)) {
-    return;
-  }
+  // 現在のページURLを渡して開く（URLがない場合はトップを開く）
+  const urlToOpen = (typeof currentTab.url === "string" && currentTab.url.startsWith("http"))
+    ? currentTab.url
+    : undefined;
 
-  if (typeof currentTab.url === "string" && currentTab.url.length > 0) {
-    await openOrFocusNewUiTab(currentTab.url);
-    return;
-  }
-
-  const rcrx = await searchRcrx();
-  if (rcrx != null) {
-    // 実行中のread.crxが存在すればそれを開く
-    browser.windows.update(rcrx.windowId!, { focused: true });
-    browser.tabs.update(rcrx.id!, { active: true });
-  } else {
-    // 存在しなければタブを作成する
-    browser.tabs.create({ url: "view/browser.html" });
-  }
+  await openOrFocusNewUiTab(urlToOpen);
 });
