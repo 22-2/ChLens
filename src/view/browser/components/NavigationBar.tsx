@@ -651,6 +651,7 @@ export const NavigationBar: React.FC = () => {
 
     if (
       currentPage.type === "boardList" ||
+      currentPage.type === "threadList" ||
       currentPage.type === "bookmarkList" ||
       currentPage.type === "historyList" ||
       currentPage.type === "writeHistoryList"
@@ -724,6 +725,7 @@ export const NavigationBar: React.FC = () => {
       },
       ...(currentPage.type === "thread" ||
       currentPage.type === "boardList" ||
+      currentPage.type === "threadList" ||
       currentPage.type === "bookmarkList" ||
       currentPage.type === "historyList" ||
       currentPage.type === "writeHistoryList"

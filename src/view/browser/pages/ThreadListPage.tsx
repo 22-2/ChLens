@@ -20,6 +20,7 @@ import {
   readBoardAutoRefreshIntervalMs,
 } from "src/view/browser/hooks/auto-refresh-config";
 import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
+import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
 import { useTheme, type ResolvedTheme } from "src/view/browser/hooks/use-theme";
 import type { ThreadListPage as ThreadListPageType } from "src/view/browser/types";
@@ -256,7 +257,7 @@ function deriveBoardTitlePlaceholder(boardUrl: string): string | null {
 
 interface OpenedBoardEntry {
   url: string;
-  title?: string;
+  title: string;
 }
 
 function normalizeBoardUrl(rawUrl: string): string {
@@ -287,7 +288,7 @@ function readOpenedBoardEntries(): OpenedBoardEntry[] {
 
         return {
           url: normalizeBoardUrl(entry.url),
-          title: typeof entry.title === "string" ? entry.title : undefined,
+          title: entry.title as string || "",
         } satisfies OpenedBoardEntry;
       })
       .filter((entry): entry is OpenedBoardEntry => entry !== null);
@@ -331,7 +332,7 @@ function upsertOpenedBoardEntry(
   // 変更理由: readState/history 未生成でも「一度開いた板」に残せるよう、
   // スレ一覧を開いた時点で板URLを明示記録する。
   writeOpenedBoardEntries([
-    { url: normalizedUrl, title: nextTitle },
+    { url: normalizedUrl, title: nextTitle || "" },
     ...existingEntries,
   ]);
 }
@@ -448,7 +449,13 @@ export const ThreadListPage: React.FC<Props> = ({
       readThreadListSortPreference(page.boardUrl),
     );
   const [searchQuery, setSearchQuery] = useState("");
-  const [showSearch, setShowSearch] = useState(false);
+  const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
+    pageType: "threadList",
+    tabId,
+    isActive,
+    searchQuery,
+    setSearchQuery,
+  });
   const [contextMenuState, setContextMenuState] = useState<{
     x: number;
     y: number;
@@ -908,17 +915,14 @@ export const ThreadListPage: React.FC<Props> = ({
 
   return (
     <div className="thread-list-page" onDoubleClick={handleDoubleClick}>
-      {showSearch && (
+      {isFilterOpen ? (
         <SearchBar
           query={searchQuery}
           onQueryChange={setSearchQuery}
-          onClose={() => {
-            setShowSearch(false);
-            setSearchQuery("");
-          }}
+          onClose={closeFilterToolbar}
           hitCount={displayThreads.length}
         />
-      )}
+      ) : null}
       {error && <div className="thread-list-page__notice">{error}</div>}
       <SimpleDataTable
         columns={THREAD_LIST_COLUMNS}
