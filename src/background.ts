@@ -9,6 +9,11 @@ type OpenNewUiMessage = {
   url: string;
 };
 
+type OpenInNewViewerTabMessage = {
+  type: "open-in-new-viewer-tab";
+  url: string;
+};
+
 // 指定されたタブがこの拡張機能のUIかどうか判定
 const isNewUiTab = (tab: browser.Tabs.Tab | undefined): boolean =>
   typeof tab?.url === "string" && tab.url.startsWith(NEW_UI_URL_PREFIX);
@@ -102,11 +107,34 @@ browser.tabs.onRemoved.addListener((tabId: number) => {
   }
 });
 
+// 既存ビューアータブへ新しい専ブラタブで開くよう指示する。タブがなければ新規作成する。
+const openInNewViewerTab = async (currentUrl: string): Promise<void> => {
+  const existingTab = await findNewUiTab();
+  const viewerUrl = `${NEW_UI_URL_PREFIX}?q=${encodeURIComponent(currentUrl)}`;
+
+  if (existingTab?.id != null) {
+    // 変更理由: タブのURLを上書きするとビューアーがリロードされ既存の専ブラタブが消えるため、
+    // sendMessage でビューアー側に新タブ追加を委譲する。
+    await browser.tabs.sendMessage(existingTab.id, {
+      type: "open-tab-in-viewer",
+      url: currentUrl,
+    });
+    await focusTabById(existingTab.id);
+  } else {
+    const createdTab = await browser.tabs.create({ url: viewerUrl, active: true });
+    if (createdTab.id != null) {
+      newUiPrimaryTabId = createdTab.id;
+    }
+  }
+};
+
 // メッセージ経由の起動
 browser.runtime.onMessage.addListener((message: unknown) => {
-  const msg = message as OpenNewUiMessage;
+  const msg = message as OpenNewUiMessage | OpenInNewViewerTabMessage;
   if (msg.type === "open-new-ui") {
     void openOrFocusNewUiTab(msg.url);
+  } else if (msg.type === "open-in-new-viewer-tab") {
+    void openInNewViewerTab(msg.url);
   }
 });
 

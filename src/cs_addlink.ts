@@ -144,11 +144,13 @@ export function createViewerTargets(currentUrl: string): ViewerTargets {
   };
 }
 
-function openViewerFromCurrentTab(targetUrl: string): void {
+function openViewerInNewTab(targetUrl: string): void {
   // 変更理由: background 側は受け取ったURLを browser.html?q=... に包み直すので、
   // ここで拡張ページURLを渡すと二重ラップになり目的のページを開けなくなる。
+  // open-in-new-viewer-tab を使うことで、既存ビューアータブがある場合は
+  // そのタブを上書きせず新しい専ブラタブとして開く。
   void browser.runtime.sendMessage({
-    type: "open-new-ui",
+    type: "open-in-new-viewer-tab",
     url: targetUrl,
   });
 }
@@ -201,7 +203,7 @@ function handleMouseDown(event: MouseEvent, viewerTargets: ViewerTargets): void 
 
   if (target.id === BUTTON_IDS.open) {
     if (event.button === 0 && !event.ctrlKey && !event.shiftKey) {
-      openViewerFromCurrentTab(viewerTargets.targetUrl);
+      openViewerInNewTab(viewerTargets.targetUrl);
       return;
     }
 

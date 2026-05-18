@@ -10,6 +10,7 @@ import React, {
 } from "react";
 import { add as addHistoryRecord, remove as removeHistoryRecord } from "src/core/History";
 import { platform } from "src/app/platform";
+import browser from "webextension-polyfill";
 import {
   getStore2String,
   setStore2String,
@@ -1127,6 +1128,23 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({
     },
     [baseDispatch, persistThreadVisit, syncThreadVisitTitle],
   );
+
+  // background からの新タブ追加指示を受け取り OPEN_IN_NEW_TAB をディスパッチする
+  useEffect(() => {
+    const handleMessage = (message: unknown) => {
+      const msg = message as { type?: unknown; url?: unknown };
+      if (msg.type === "open-tab-in-viewer" && typeof msg.url === "string") {
+        const page = parseInternalBrowserPage(msg.url);
+        if (page) {
+          dispatch({ type: "OPEN_IN_NEW_TAB", page });
+        }
+      }
+    };
+    browser.runtime.onMessage.addListener(handleMessage);
+    return () => {
+      browser.runtime.onMessage.removeListener(handleMessage);
+    };
+  }, [dispatch]);
 
   // セッション永続化: state変更時にlocalStorageへ保存
   useEffect(() => {
