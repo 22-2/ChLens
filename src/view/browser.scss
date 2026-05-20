@@ -1815,9 +1815,14 @@ body {
 }
 
 .thread-page__popup-layer {
-  position: absolute;
+  // ポップアップ自身は position:absolute のまま、ラッパーを fixed にすることで
+  // (1) 下部パネルや content-area の overflow:hidden に隠れないようにし、
+  // (2) スレ本文のスクロールに連動して位置がズレないようにする。
+  position: fixed;
   inset: 0;
   pointer-events: none;
+  // bottom-panel(z-index 既定値=0) より前面に出すための新しいスタッキングコンテキスト。
+  z-index: 10000;
 }
 
 .thread-page__popup-layer > * {

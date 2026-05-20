@@ -723,7 +723,7 @@ export function usePopupSurfaceLifecycle({
 
 export function useThreadPopupLifecycle({
   scopeId = DEFAULT_POPUP_SCOPE_ID,
-  rootRef,
+  // rootRef はAPI互換のため受け取るが、座標系は viewport(clientX/Y) を直接使うので未使用。
   resMap,
 }: ThreadPopupLifecycleParams): ThreadPopupLifecycleResult {
   const {
@@ -765,13 +765,12 @@ export function useThreadPopupLifecycle({
 
   const toPageCoords = useCallback(
     (clientX: number, clientY: number): { x: number; y: number } => {
-      if (!rootRef.current) {
-        return { x: clientX, y: clientY };
-      }
-      const rect = rootRef.current.getBoundingClientRect();
-      return { x: clientX - rect.left, y: clientY - rect.top };
+      // popup-portal-layer を position:fixed (viewport基準) にしたため、
+      // ポップアップ要素の offsetParent もそのレイヤー(=viewport左上)になる。
+      // clientX/clientY をそのまま左上座標として渡すのが正しい。
+      return { x: clientX, y: clientY };
     },
-    [rootRef],
+    [],
   );
 
   const clearAnchorPreviewHideTimer = useCallback(() => {
