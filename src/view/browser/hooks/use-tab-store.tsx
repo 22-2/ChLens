@@ -307,21 +307,6 @@ function resolveConfiguredNewTabPage(
   return { type: "home", title: "ホーム" };
 }
 
-function findTabByCurrentPage(
-  tabs: Tab[],
-  page: Page,
-  excludeTabId?: string,
-): Tab | null {
-  const targetIdentity = getPageIdentity(page);
-  return (
-    tabs.find(
-      (tab) =>
-        tab.id !== excludeTabId &&
-        getPageIdentity(getCurrentPage(tab)) === targetIdentity,
-    ) ?? null
-  );
-}
-
 function createTab(
   sourcePage: Page | null = null,
   sourceTab: Tab | null = null,
@@ -449,59 +434,16 @@ function updateActiveTab(
   };
 }
 
-// 変更理由: 「履歴の書き換え（replace）」を廃止し、常に push 方式に統一する。
-// 新しいページを開く際に「足りない親ページ」だけを算出して積むことで、
-// どこから飛んできても「戻れば親がいる」chmate式の体験を実現しつつ、
-// 直前の閲覧履歴（さっきまで見ていたページ）が消えない動作にする。
-function getMissingAncestors(
-  currentPage: Page,
-  targetPage: Page,
-): Page[] {
-  if (targetPage.type === "thread") {
-    // 変更理由: スレ -> スレ遷移では「直前に見ていたスレ」自体を戻る先として残したい。
-    // ここで板一覧/板を差し込むと Back が前スレではなく板へ着地してしまう。
-    if (currentPage.type === "thread") {
-      return [];
-    }
-
-    // 直前が threadList（板）なら親は揃っているので補完不要
-    if (currentPage.type === "threadList") {
-      return [];
-    }
-    // それ以外は [板一覧, 板] を補完してスレに戻れる経路を保証する
-    const targetBoardUrl = deriveBoardUrlFromThreadUrl(targetPage.threadUrl);
-    const boardPage: Extract<Page, { type: "threadList" }> = {
-      type: "threadList",
-      title: targetBoardUrl ?? targetPage.threadUrl,
-      boardUrl: targetBoardUrl ?? targetPage.threadUrl,
-      boardTitle: targetBoardUrl ?? targetPage.threadUrl,
-    };
-    return [{ type: "boardList", title: "板一覧" }, boardPage];
-  }
-
-  if (targetPage.type === "threadList") {
-    // 直前が boardList（板一覧）なら親は揃っているので補完不要
-    if (currentPage.type === "boardList") {
-      return [];
-    }
-    return [{ type: "boardList", title: "板一覧" }];
-  }
-
-  return [];
-}
-
 function pushPageToTabHistory(tab: Tab, page: Page): Tab {
   const currentPage = getCurrentPage(tab);
   if (getPageIdentity(currentPage) === getPageIdentity(page)) {
     return tab;
   }
 
-  // 常に push: 現在位置以降の「進む」履歴を切り捨て、
-  // 足りない祖先ページを補完してから新ページを追加する。
-  // 履歴を丸ごと書き換えないことで「さっきまで見ていたページ」が戻るで復元できる。
+  // 現在位置以降の「進む」履歴を切り捨て、新ページを追加する。
+  // 魔法なし: 祖先の自動補完はせず、ユーザーが実際に訪れたページだけを積む。
   const historyUntilCurrent = tab.history.slice(0, tab.currentIndex + 1);
-  const missingAncestors = getMissingAncestors(currentPage, page);
-  const newHistory = [...historyUntilCurrent, ...missingAncestors, page];
+  const newHistory = [...historyUntilCurrent, page];
   return {
     ...tab,
     history: newHistory,
@@ -568,11 +510,11 @@ function buildCanonicalThreadStack(
       boardTitle: targetBoardUrl ?? threadPage.threadUrl,
     };
 
-  // 変更理由: 板/スレ導線は「ホーム -> 板一覧 -> 板 -> スレ」を常に基本形に統一し、
-  // URL直開き・オムニバー遷移・新規タブ遷移で戻る挙動が揺れないようにする。
   return [...buildCanonicalThreadListStack(boardPage), threadPage];
 }
 
+// 新規タブ専用: 現在ページをコンテキストにカノニカルな祖先履歴を生成する。
+// インタブのナビゲーション（NAVIGATE）では使わず、祖先の自動補完はしない。
 function buildHierarchyForNewTab(sourcePage: Page, targetPage: Page): Page[] {
   if (targetPage.type === "thread") {
     return buildCanonicalThreadStack(
@@ -608,44 +550,31 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
     }
 
     case "OPEN_IN_NEW_TAB": {
-      // 同じページを複製すると管理しづらいので、既存タブがあればそちらへ集約する。
-      const existingTab = findTabByCurrentPage(state.tabs, action.page);
-      if (existingTab) {
-        return {
-          ...state,
-          activeTabId: existingTab.id,
-        };
-      }
-
-      // バックグラウンドで新規タブを開く（アクティブタブを切り替えない）
-      const newTab = createTab();
-      const sourcePage = getCurrentPage(getActiveTab(state));
-      const newHistory = buildHierarchyForNewTab(sourcePage, action.page);
-      const navigatedTab = {
-        ...newTab,
-        history: newHistory,
-        currentIndex: newHistory.length - 1,
-      };
+      // バックグラウンドで新規タブを開く（アクティブタブを切り替えない）。
+      // buildHierarchyForNewTab で現在ページの板名を引き継いだカノニカルな祖先履歴を付与する。
+      const newTabForOpen = createTab();
+      const sourcePageForOpen = getCurrentPage(getActiveTab(state));
+      const newHistoryForOpen = buildHierarchyForNewTab(sourcePageForOpen, action.page);
       return {
         ...state,
-        tabs: [...state.tabs, navigatedTab],
+        tabs: [
+          ...state.tabs,
+          { ...newTabForOpen, history: newHistoryForOpen, currentIndex: newHistoryForOpen.length - 1 },
+        ],
         // activeTabId は変更しない
       };
     }
 
     case "OPEN_IN_NEW_TAB_FORCE": {
-      // 中クリック要件では「常に新規タブ」を優先するため、重複チェックを行わない。
-      const newTab = createTab();
-      const sourcePage = getCurrentPage(getActiveTab(state));
-      const newHistory = buildHierarchyForNewTab(sourcePage, action.page);
-      const navigatedTab = {
-        ...newTab,
-        history: newHistory,
-        currentIndex: newHistory.length - 1,
-      };
+      const newTabForForce = createTab();
+      const sourcePageForForce = getCurrentPage(getActiveTab(state));
+      const newHistoryForForce = buildHierarchyForNewTab(sourcePageForForce, action.page);
       return {
         ...state,
-        tabs: [...state.tabs, navigatedTab],
+        tabs: [
+          ...state.tabs,
+          { ...newTabForForce, history: newHistoryForForce, currentIndex: newHistoryForForce.length - 1 },
+        ],
         // activeTabId は変更しない
       };
     }
@@ -785,19 +714,6 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
         return state;
       }
 
-      // 左クリック遷移でも既存タブがあればそちらを前面に出し、重複タブ化を防ぐ。
-      const existingTab = findTabByCurrentPage(
-        state.tabs,
-        action.page,
-        state.activeTabId,
-      );
-      if (existingTab) {
-        return {
-          ...state,
-          activeTabId: existingTab.id,
-        };
-      }
-
       return updateActiveTab(state, (tab) =>
         resetAutoRefreshState(pushPageToTabHistory(tab, action.page)),
       );
@@ -816,18 +732,6 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
         return {
           ...state,
           activeTabId: action.tabId,
-        };
-      }
-
-      const existingTab = findTabByCurrentPage(
-        state.tabs,
-        action.page,
-        action.tabId,
-      );
-      if (existingTab) {
-        return {
-          ...state,
-          activeTabId: existingTab.id,
         };
       }
 

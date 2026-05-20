@@ -174,11 +174,10 @@ export function getDisplayUrl(page: Page): string {
 // スレッドURLから板URLを導出する
 // /test/read.cgi/board_name/thread_id/ → /board_name/
 function threadUrlToBoardUrl(threadUrl: string): string {
-  // 変更理由: read.cgi 系の分岐を 1 箇所に寄せ、画面ごとの判定ズレ再発を防ぐ。
   return getBoardUrlFromThreadUrl(threadUrl);
 }
 
-// ナビゲーション先のページに対して、必ず正しい階層スタックを構築する
+// 新規タブ用: ページに対してカノニカルな階層スタックを構築する
 // ホーム → 板一覧 → スレッド一覧 → スレッド
 export function buildHierarchy(page: Page): Page[] {
   switch (page.type) {
