@@ -5,20 +5,8 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { getResNumber } from "src/core/URL";
-import {
-  add as addWriteHistoryRecord,
-  getByUrl as getWriteHistoryByUrl,
-  update as updateWriteHistoryRecord,
-} from "src/core/WriteHistory";
-import { platform } from "src/app/platform/index";
 import { container } from "src/service-container/index";
-import type {
-  IReadState,
-  IRes,
-  IThread,
-} from "src/service-container/interfaces";
-import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
+import type { IThread } from "src/service-container/interfaces";
 import { MediaViewerContainer } from "src/view/browser/components/MediaViewerContainer";
 import { PopupRenderer } from "src/view/browser/components/PopupRenderer";
 import { ResItem } from "src/view/browser/components/ResItem";
@@ -33,78 +21,19 @@ import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
 import { useThreadAutoRefresh } from "src/view/browser/hooks/use-thread-auto-refresh";
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";
 import { ThreadPageTopBar } from "src/view/browser/pages/thread/ThreadPageTopBar";
-import { useThreadTopScrollOpenFilter } from "src/view/browser/pages/thread/use-thread-top-scroll-open-filter";
+import { useImageBlurConfig } from "src/view/browser/pages/thread/use-image-blur-config";
+import { useOwnResTracking } from "src/view/browser/pages/thread/use-own-res-tracking";
+import { useResInteractionHandlers } from "src/view/browser/pages/thread/use-res-interaction-handlers";
+import { useThreadReadState } from "src/view/browser/pages/thread/use-thread-read-state";
 import { useThreadResContextMenu } from "src/view/browser/pages/thread/use-thread-res-context-menu";
 import { useThreadTopBar } from "src/view/browser/pages/thread/use-thread-top-bar";
-import {
-  parseInternalBrowserPageStrict,
-  resolveAbsoluteUrl,
-  RESPECT_DEFAULT_EXTERNAL,
-} from "src/view/browser/utils/link-routing";
-import { resolveReplyTreeRootResNum } from "src/view/browser/utils/reply-tree-root";
+import { useThreadTopScrollOpenFilter } from "src/view/browser/pages/thread/use-thread-top-scroll-open-filter";
+import { useUrlHandlers } from "src/view/browser/pages/thread/use-url-handlers";
 import {
   buildBlurredResSet,
   buildReplyToWrittenResSet,
-  buildWrittenResSet,
-  compileImageBlurPattern,
-  resolveImageBlurRadius,
 } from "src/view/browser/utils/thread-emphasis";
-import {
-  consumePendingThreadResJump,
-  findThreadScrollContainer,
-  measureThreadReadState,
-  peekPendingThreadResJump,
-  requestThreadResJump,
-  scrollThreadToResponse,
-  subscribeThreadResJump,
-  type PendingThreadJump,
-} from "src/view/browser/utils/thread-read-state";
-import {
-  findLatestWrittenRes,
-  resolveWrittenResTimestamp,
-  subscribeThreadWriteCompleted,
-  type PendingWritePayload,
-} from "src/view/browser/utils/thread-write-sync";
 import type { Props } from "src/view/browser/utils/types";
-import { copyText, stripHtml, toViewerImageUrl } from "src/view/browser/utils/utils";
-
-interface ImageBlurConfigState {
-  enabled: boolean;
-  radius: number;
-  harmfulWordPattern: RegExp | null;
-}
-
-interface PendingWriteMatchState extends PendingWritePayload {
-  baselineResponseCount: number;
-  baselineLastResNum: number | null;
-}
-
-interface PendingWriteHistoryPersistence {
-  submittedAt: number;
-  promise: Promise<number | null>;
-}
-
-const IMAGE_BLUR_CONFIG_KEYS = new Set([
-  "image_blur",
-  "image_blur_length",
-  "image_blur_word",
-]);
-
-function readImageBlurConfig(): ImageBlurConfigState {
-  const enabled = container.config.get("image_blur") === "on";
-  const radius = resolveImageBlurRadius(
-    container.config.get("image_blur_length"),
-  );
-  const rawPattern = container.config.get("image_blur_word");
-  const harmfulWordPattern =
-    typeof rawPattern === "string" ? compileImageBlurPattern(rawPattern) : null;
-
-  return {
-    enabled,
-    radius,
-    harmfulWordPattern,
-  };
-}
 
 interface ThreadPageProps {
   tabId: string;
@@ -113,6 +42,7 @@ interface ThreadPageProps {
   isActive: boolean;
   isAutoRefreshEnabled: boolean;
 }
+
 export const ThreadPage: React.FC<ThreadPageProps> = ({
   tabId,
   page,
@@ -143,26 +73,10 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     (state) => state.openMediaFromUrl,
   );
   const { enabled: isAutoNextThreadEnabled } = useAutoNextThreadSetting();
-  const [ownResNums, setOwnResNums] = useState<Set<number>>(new Set());
-  const [pendingWrite, setPendingWrite] =
-    useState<PendingWriteMatchState | null>(null);
-  const [imageBlurConfig, setImageBlurConfig] =
-    useState<ImageBlurConfigState>(readImageBlurConfig);
-  const [initialReadState, setInitialReadState] = useState<IReadState | null>(
-    null,
-  );
-  const [hasLoadedInitialReadState, setHasLoadedInitialReadState] =
-    useState(false);
-  const [isInitialReadStateResolved, setIsInitialReadStateResolved] =
-    useState(false);
-  const [pendingThreadJump, setPendingThreadJump] =
-    useState<PendingThreadJump | null>(null);
-  const responseCountRef = useRef(0);
-  const lastResponseNumRef = useRef<number | null>(null);
-  const latestReadStateRef = useRef<IReadState | null>(null);
-  const saveReadStateTimerRef = useRef<number | null>(null);
-  const pendingWriteHistoryRef =
-    useRef<PendingWriteHistoryPersistence | null>(null);
+
+  const [miniAaResNums, setMiniAaResNums] = useState<Set<number>>(new Set());
+  const { activeTopBar, closeTopBar, openFilterToolbar, searchFocusKey } =
+    useThreadTopBar({ searchQuery, setSearchQuery });
 
   useMouseGesture(rootRef);
 
@@ -191,13 +105,6 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     resMap: indexes.resMap,
   });
 
-  const [miniAaResNums, setMiniAaResNums] = useState<Set<number>>(new Set());
-  const { activeTopBar, closeTopBar, openFilterToolbar, searchFocusKey } =
-    useThreadTopBar({
-      searchQuery,
-      setSearchQuery,
-    });
-
   useThreadTopScrollOpenFilter({
     activeTopBar,
     isActive,
@@ -221,6 +128,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       rootRef,
       requestRefresh: () => dispatch({ type: "RELOAD" }),
     });
+
   const handleFollowNextThread = useCallback(
     (nextThread: Pick<IThread, "title" | "url">) => {
       dispatch({
@@ -245,16 +153,64 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     expired,
     followThread: handleFollowNextThread,
   });
+
+  const imageBlurConfig = useImageBlurConfig();
+
+  const { ownResNums, handleWriteHistoryAdded } = useOwnResTracking({
+    threadUrl: page.threadUrl,
+    threadTitle: page.title,
+    responses,
+  });
+
+  const { scrollToResponse } = useThreadReadState({
+    threadUrl: page.threadUrl,
+    isActive,
+    responses,
+    loading,
+    rootRef,
+  });
+
+  const { handleUrlClick, handleUrlContextMenu, openPopupUrlContextMenu } =
+    useUrlHandlers({
+      threadUrl: page.threadUrl,
+      dispatch,
+      openMediaFromUrl,
+      addPopupContextMenu,
+    });
+
+  const {
+    openAnchorPreviewFromPopup,
+    handleIdClick,
+    handlePopupIdClick,
+    handleRepClick,
+    closePopup,
+    handleRepClickInPopup,
+    handleOpenRootReplyTreeInPopup,
+    handleAnchorClick,
+  } = useResInteractionHandlers({
+    indexes,
+    addTreePopup,
+    addIdPopup,
+    showAnchorPreview,
+    hideAnchorPreview,
+    hideAnchorPreviewImmediately,
+    clearAnchorPreviewHideTimer,
+    closeNonContextPopups,
+    scrollToResponse,
+  });
+
+  const replyToOwnResNums = useMemo(
+    () => buildReplyToWrittenResSet(ownResNums, indexes.repIndex),
+    [indexes.repIndex, ownResNums],
+  );
+
   const threadNgCount = useMemo(
     () =>
       responses.filter((res) => res.ng != null || res.class?.includes("ng"))
         .length,
     [responses],
   );
-  const replyToOwnResNums = useMemo(
-    () => buildReplyToWrittenResSet(ownResNums, indexes.repIndex),
-    [indexes.repIndex, ownResNums],
-  );
+
   const ownHighlightCount = useMemo(() => {
     const highlightedResNums = new Set<number>(ownResNums);
     for (const resNum of replyToOwnResNums) {
@@ -262,11 +218,9 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     }
     return highlightedResNums.size;
   }, [ownResNums, replyToOwnResNums]);
-  const blurredResNums = useMemo(() => {
-    if (!imageBlurConfig.enabled) {
-      return new Set<number>();
-    }
 
+  const blurredResNums = useMemo(() => {
+    if (!imageBlurConfig.enabled) return new Set<number>();
     return buildBlurredResSet(
       responses,
       indexes.repIndex,
@@ -275,745 +229,13 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   }, [imageBlurConfig, indexes.repIndex, responses]);
 
   useEffect(() => {
-    responseCountRef.current = responses.length;
-    lastResponseNumRef.current = responses.at(-1)?.num ?? null;
-  }, [responses]);
-
-  useEffect(() => {
     // ステータスバーの件数はページ外コンポーネントから参照するため、
     // スレッド側で集計して共有ストアへ反映する。
-    setThreadStats({
-      ngCount: threadNgCount,
-      highlightCount: ownHighlightCount,
-    });
+    setThreadStats({ ngCount: threadNgCount, highlightCount: ownHighlightCount });
     return () => {
       setThreadStats({ ngCount: 0, highlightCount: 0 });
     };
   }, [ownHighlightCount, setThreadStats, threadNgCount]);
-
-  useEffect(() => {
-    let alive = true;
-
-    const loadOwnResNums = async () => {
-      try {
-        const rows = await getWriteHistoryByUrl(page.threadUrl);
-        if (!alive) {
-          return;
-        }
-        setOwnResNums(buildWrittenResSet(rows));
-      } catch {
-        if (alive) {
-          setOwnResNums(new Set());
-        }
-      }
-    };
-
-    void loadOwnResNums();
-
-    return () => {
-      alive = false;
-    };
-  }, [page.threadUrl]);
-
-  useEffect(() => {
-    setPendingWrite(null);
-    pendingWriteHistoryRef.current = null;
-  }, [page.threadUrl]);
-
-  useEffect(() => {
-    const handleThreadWriteCompleted = (payload: PendingWritePayload) => {
-      if (payload.threadUrl !== page.threadUrl) {
-        return;
-      }
-
-      // 変更理由: 送信前時点の末尾レス位置を覚えておくと、同文レスが既にあるスレでも
-      // 新着到着前の古いレスを誤って「今書いたレス」と認定する事故を避けられる。
-      setPendingWrite({
-        ...payload,
-        baselineResponseCount: responseCountRef.current,
-        baselineLastResNum: lastResponseNumRef.current,
-      });
-
-      if (container.config.get("no_writehistory") === "on") {
-        pendingWriteHistoryRef.current = null;
-        return;
-      }
-
-      const historyPromise = (async () => {
-        try {
-          return await addWriteHistoryRecord({
-            url: page.threadUrl,
-            res: 0,
-            title: page.title,
-            // 変更理由: レス番号確定前でも成功直後の離脱で履歴を失わないよう、
-            // 入力値ベースの仮エントリを先に保存して後から確定情報へ更新する。
-            name: payload.inputName,
-            mail: payload.inputMail,
-            inputName: payload.inputName,
-            inputMail: payload.inputMail,
-            message: payload.message,
-            date: payload.submittedAt,
-          });
-        } catch {
-          return null;
-        }
-      })();
-
-      pendingWriteHistoryRef.current = {
-        submittedAt: payload.submittedAt,
-        promise: historyPromise,
-      };
-    };
-
-    return subscribeThreadWriteCompleted(handleThreadWriteCompleted);
-  }, [page.threadUrl, page.title]);
-
-  useEffect(() => {
-    if (!pendingWrite || responses.length === 0) {
-      return;
-    }
-
-    const currentLastResNum = responses.at(-1)?.num ?? null;
-    const hasAdvancedSinceSubmit =
-      responses.length > pendingWrite.baselineResponseCount ||
-      (pendingWrite.baselineLastResNum != null &&
-        currentLastResNum != null &&
-        currentLastResNum > pendingWrite.baselineLastResNum);
-    if (!hasAdvancedSinceSubmit) {
-      return;
-    }
-
-    const matchedRes = findLatestWrittenRes(
-      responses,
-      pendingWrite.message,
-      ownResNums,
-    );
-    if (!matchedRes) {
-      return;
-    }
-
-    setPendingWrite(null);
-
-    let alive = true;
-    void (async () => {
-      if (container.config.get("no_writehistory") !== "on") {
-        try {
-          const finalizedRecord = {
-            url: page.threadUrl,
-            res: matchedRes.num,
-            title: page.title,
-            name: stripHtml(matchedRes.name),
-            mail: matchedRes.mail,
-            inputName: pendingWrite.inputName,
-            inputMail: pendingWrite.inputMail,
-            message: pendingWrite.message,
-            date: resolveWrittenResTimestamp(matchedRes),
-          };
-
-          const pendingHistory = pendingWriteHistoryRef.current;
-          const provisionalHistoryId =
-            pendingHistory?.submittedAt === pendingWrite.submittedAt
-              ? await pendingHistory.promise
-              : null;
-
-          if (pendingHistory?.submittedAt === pendingWrite.submittedAt) {
-            pendingWriteHistoryRef.current = null;
-          }
-
-          if (provisionalHistoryId != null) {
-            await updateWriteHistoryRecord({
-              id: provisionalHistoryId,
-              ...finalizedRecord,
-            });
-          } else {
-            await addWriteHistoryRecord(finalizedRecord);
-          }
-        } catch {
-          // 書込履歴の永続化に失敗しても、画面上の自分レス強調までは失わない。
-        }
-      }
-
-      if (!alive) {
-        return;
-      }
-
-      // 変更理由: 投稿直後のレス番号が確定した瞬間に ownResNums へ反映し、
-      // 書込履歴の再読込を待たずに自分レス強調をその場で見せる。
-      setOwnResNums((prev) => {
-        if (prev.has(matchedRes.num)) {
-          return prev;
-        }
-
-        const next = new Set(prev);
-        next.add(matchedRes.num);
-        return next;
-      });
-    })();
-
-    return () => {
-      alive = false;
-    };
-  }, [ownResNums, page.threadUrl, page.title, pendingWrite, responses]);
-
-  useEffect(() => {
-    const applyImageBlurConfig = () => {
-      setImageBlurConfig(readImageBlurConfig());
-    };
-
-    const handleConfigUpdated = ({ key }: { key?: string }) => {
-      if (!key || IMAGE_BLUR_CONFIG_KEYS.has(key)) {
-        applyImageBlurConfig();
-      }
-    };
-
-    container.config.ready(applyImageBlurConfig);
-    container.message.on("config_updated", handleConfigUpdated);
-
-    return () => {
-      container.message.off("config_updated", handleConfigUpdated);
-    };
-  }, []);
-
-  const scrollToResponse = useCallback(
-    (resNum: number, options?: { highlight?: boolean; offset?: number }) =>
-      scrollThreadToResponse(rootRef.current, resNum, options),
-    [],
-  );
-
-  const saveCurrentReadState = useCallback(async () => {
-    if (!isActive || !isInitialReadStateResolved) {
-      return;
-    }
-
-    const measuredReadState = measureThreadReadState(
-      rootRef.current,
-      responses.length,
-    );
-    if (!measuredReadState) {
-      return;
-    }
-
-    const previousReadState = latestReadStateRef.current;
-    const nextReadState: IReadState = {
-      url: page.threadUrl,
-      last: measuredReadState.last,
-      read: Math.max(previousReadState?.read ?? 0, measuredReadState.read),
-      received: Math.max(
-        previousReadState?.received ?? 0,
-        measuredReadState.received,
-      ),
-      offset: measuredReadState.offset,
-      date: Date.now(),
-    };
-
-    if (
-      previousReadState &&
-      previousReadState.last === nextReadState.last &&
-      previousReadState.read === nextReadState.read &&
-      previousReadState.received === nextReadState.received &&
-      (previousReadState.offset ?? null) === (nextReadState.offset ?? null)
-    ) {
-      return;
-    }
-
-    latestReadStateRef.current = nextReadState;
-    try {
-      await container.readState.set(nextReadState);
-    } catch (error) {
-      console.error(error);
-    }
-  }, [isActive, isInitialReadStateResolved, page.threadUrl, responses.length]);
-
-  const scheduleReadStateSave = useCallback(() => {
-    if (saveReadStateTimerRef.current != null) {
-      window.clearTimeout(saveReadStateTimerRef.current);
-    }
-
-    saveReadStateTimerRef.current = window.setTimeout(() => {
-      saveReadStateTimerRef.current = null;
-      void saveCurrentReadState();
-    });
-  }, [saveCurrentReadState]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    setInitialReadState(null);
-    setHasLoadedInitialReadState(false);
-    setIsInitialReadStateResolved(false);
-    setPendingThreadJump(peekPendingThreadResJump(page.threadUrl));
-    latestReadStateRef.current = null;
-
-    const loadInitialThreadReadState = async () => {
-      let nextReadState =
-        container.bookmark.get(page.threadUrl)?.readState ?? null;
-
-      try {
-        const storedReadState = await container.readState.get(page.threadUrl);
-        if (
-          storedReadState &&
-          (!nextReadState ||
-            container.util.isNewerReadState(nextReadState, storedReadState))
-        ) {
-          nextReadState = storedReadState;
-        }
-      } catch (error) {
-        console.error(error);
-      }
-
-      if (cancelled) {
-        return;
-      }
-
-      latestReadStateRef.current = nextReadState;
-      setInitialReadState(nextReadState);
-      setHasLoadedInitialReadState(true);
-    };
-
-    void loadInitialThreadReadState();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [page.threadUrl]);
-
-  useEffect(() => {
-    return subscribeThreadResJump((jump) => {
-      if (jump.threadUrl !== page.threadUrl) {
-        return;
-      }
-
-      setPendingThreadJump(jump);
-    });
-  }, [page.threadUrl]);
-
-  useEffect(() => {
-    if (!isActive || !pendingThreadJump || responses.length === 0 || loading) {
-      return;
-    }
-
-    scrollToResponse(pendingThreadJump.resNum);
-    consumePendingThreadResJump(page.threadUrl, pendingThreadJump.token);
-    setPendingThreadJump((current) =>
-      current?.token === pendingThreadJump.token ? null : current,
-    );
-    setIsInitialReadStateResolved(true);
-
-    window.requestAnimationFrame(() => {
-      void saveCurrentReadState();
-    });
-  }, [
-    isActive,
-    loading,
-    page.threadUrl,
-    pendingThreadJump,
-    responses.length,
-    saveCurrentReadState,
-    scrollToResponse,
-  ]);
-
-  useEffect(() => {
-    if (
-      !isActive ||
-      isInitialReadStateResolved ||
-      pendingThreadJump ||
-      !hasLoadedInitialReadState ||
-      responses.length === 0 ||
-      loading
-    ) {
-      return;
-    }
-
-    if (initialReadState?.last) {
-      scrollToResponse(initialReadState.last, {
-        highlight: false,
-        offset: initialReadState.offset,
-      });
-    }
-
-    setIsInitialReadStateResolved(true);
-    window.requestAnimationFrame(() => {
-      void saveCurrentReadState();
-    });
-  }, [
-    hasLoadedInitialReadState,
-    initialReadState,
-    isActive,
-    isInitialReadStateResolved,
-    loading,
-    pendingThreadJump,
-    responses.length,
-    saveCurrentReadState,
-    scrollToResponse,
-  ]);
-
-  useEffect(() => {
-    if (!isActive || !isInitialReadStateResolved || responses.length === 0) {
-      return;
-    }
-
-    const scrollContainer = findThreadScrollContainer(rootRef.current);
-    if (!scrollContainer) {
-      return;
-    }
-
-    const handleScroll = () => {
-      scheduleReadStateSave();
-    };
-
-    scrollContainer.addEventListener("scroll", handleScroll, {
-      passive: true,
-    });
-
-    return () => {
-      scrollContainer.removeEventListener("scroll", handleScroll);
-      if (saveReadStateTimerRef.current != null) {
-        window.clearTimeout(saveReadStateTimerRef.current);
-        saveReadStateTimerRef.current = null;
-      }
-      void saveCurrentReadState();
-    };
-  }, [
-    isActive,
-    isInitialReadStateResolved,
-    responses.length,
-    saveCurrentReadState,
-    scheduleReadStateSave,
-  ]);
-
-  useEffect(() => {
-    if (
-      !isActive ||
-      !isInitialReadStateResolved ||
-      loading ||
-      responses.length === 0
-    ) {
-      return;
-    }
-
-    // 変更理由: 自動更新で received だけ増えたケースはスクロールイベントが発生しないため、
-    // レス数変化時にも保存を予約して未読数の取りこぼしを防ぐ。
-    scheduleReadStateSave();
-  }, [
-    isActive,
-    isInitialReadStateResolved,
-    loading,
-    responses.length,
-    scheduleReadStateSave,
-  ]);
-
-  useEffect(() => {
-    const handlePageHide = () => {
-      if (saveReadStateTimerRef.current != null) {
-        window.clearTimeout(saveReadStateTimerRef.current);
-        saveReadStateTimerRef.current = null;
-      }
-      void saveCurrentReadState();
-    };
-
-    window.addEventListener("pagehide", handlePageHide);
-    return () => {
-      window.removeEventListener("pagehide", handlePageHide);
-    };
-  }, [saveCurrentReadState]);
-
-  const openAnchorPreviewFromPopup = useCallback(
-    (popupId: string) =>
-      (
-        targets: number[],
-        anchorRect: DOMRect,
-        label: string,
-        depth: number,
-      ) => {
-        // depth=0 のアンカーは popup 内から開かれたことを親子ツリーへ残さないと、
-        // その後の返信/右クリックメニューで root 扱いになって祖先との寿命がずれる。
-        showAnchorPreview(targets, anchorRect, label, depth, popupId);
-      },
-    [showAnchorPreview],
-  );
-
-  const openResolvedUrl = useCallback(
-    (
-      absoluteUrl: string,
-      button: 0 | 1,
-      resImages?: string[],
-      // 変更理由: クリック経路はホスト互換チェック付きのstrict版を使う。
-      // オムニバー入力では parseInternalBrowserPage（広い許容）が使われる。
-      internalPage = parseInternalBrowserPageStrict(absoluteUrl),
-    ) => {
-      // 変更理由: /<board>/ 形式が全ドメインで内部遷移対象になったため、
-      // imgur のようにURLが画像として解釈できる場合は button=0 で画像ビューアを優先する。
-      // こうすることで「板URL広受け入れ」と「imgur サムネクリック → 画像ビューア」が共存できる。
-      if (button === 0 && toViewerImageUrl(absoluteUrl) != null) {
-        openMediaFromUrl(absoluteUrl, resImages);
-        return;
-      }
-
-      if (internalPage) {
-        if (internalPage.type === "thread") {
-          const jumpResNum = Number.parseInt(
-            getResNumber(absoluteUrl) ?? "",
-            10,
-          );
-          if (Number.isFinite(jumpResNum) && jumpResNum > 0) {
-            requestThreadResJump(internalPage.threadUrl, jumpResNum);
-          }
-        }
-
-        // 5ch互換URLは外部ブラウザではなく拡張内で開く。
-        if (button === 1) {
-          dispatch({ type: "OPEN_IN_NEW_TAB", page: internalPage });
-        } else {
-          dispatch({ type: "NAVIGATE", page: internalPage });
-        }
-        return;
-      }
-
-      if (button === 1) {
-        // ミドルクリック時はバックグラウンドタブで開く
-        void platform.window.openTab(absoluteUrl, false);
-        return;
-      }
-
-      openMediaFromUrl(absoluteUrl, resImages);
-    },
-    [dispatch, openMediaFromUrl],
-  );
-
-  const handleUrlClick = useCallback(
-    (
-      rawUrl: string,
-      resImages?: string[],
-      button: 0 | 1 = 0,
-      mode?: typeof RESPECT_DEFAULT_EXTERNAL,
-    ) => {
-      const absoluteUrl = resolveAbsoluteUrl(rawUrl, page.threadUrl);
-      const internalPage = parseInternalBrowserPageStrict(absoluteUrl);
-      if (mode === RESPECT_DEFAULT_EXTERNAL) {
-        if (!internalPage) {
-          return false;
-        }
-      }
-      openResolvedUrl(absoluteUrl, button, resImages, internalPage);
-      return true;
-    },
-    [openResolvedUrl, page.threadUrl],
-  );
-
-  const buildUrlContextMenuItems = useCallback(
-    (
-      absoluteUrl: string,
-      internalPage = parseInternalBrowserPageStrict(absoluteUrl),
-    ): ContextMenuItem[] => {
-      return [
-        {
-          id: "open-in-current",
-          label: internalPage ? "拡張内で開く" : "開く",
-          onSelect: () =>
-            openResolvedUrl(absoluteUrl, 0, undefined, internalPage),
-        },
-        {
-          id: "open-in-new-tab",
-          label: internalPage ? "拡張内の新しいタブで開く" : "新しいタブで開く",
-          onSelect: () =>
-            openResolvedUrl(absoluteUrl, 1, undefined, internalPage),
-        },
-        { id: "sep-url-1", separator: true },
-        {
-          id: "copy-url",
-          label: "URLをコピー",
-          onSelect: () => {
-            void copyText(absoluteUrl);
-          },
-        },
-        {
-          id: "open-in-browser",
-          label: "ブラウザで開く",
-          onSelect: () => {
-            window.open(absoluteUrl, "_blank", "noopener,noreferrer");
-          },
-        },
-      ];
-    },
-    [openResolvedUrl],
-  );
-
-  const handleUrlContextMenu = useCallback(
-    (
-      rawUrl: string,
-      e: React.MouseEvent,
-      parentId?: string,
-      mode?: typeof RESPECT_DEFAULT_EXTERNAL,
-    ) => {
-      const absoluteUrl = resolveAbsoluteUrl(rawUrl, page.threadUrl);
-      const internalPage = parseInternalBrowserPageStrict(absoluteUrl);
-      if (mode === RESPECT_DEFAULT_EXTERNAL) {
-        // 非5ch互換URLはネイティブの右クリックメニューを優先する。
-        if (!internalPage) {
-          return false;
-        }
-      }
-      addPopupContextMenu(
-        e.clientX,
-        e.clientY,
-        buildUrlContextMenuItems(absoluteUrl, internalPage),
-        parentId,
-      );
-      return true;
-    },
-    [addPopupContextMenu, buildUrlContextMenuItems, page.threadUrl],
-  );
-
-  // IDクリック → そのIDの全レスをポップアップ表示
-  const handleIdClick = useCallback(
-    (id: string, e: React.MouseEvent) => {
-      // message 内の anchor_id は ID: 付き、ヘッダー側は生値、のように揺れることがあるため
-      // 両方を試して同じIDインデックスへ合流させる。
-      const candidateIds = id.startsWith("ID:")
-        ? [id, id.replace(/^ID:/i, "")]
-        : [id, `ID:${id}`];
-      const resolvedId = candidateIds.find((candidate) =>
-        indexes.idIndex.has(candidate),
-      );
-      const resNums = resolvedId ? indexes.idIndex.get(resolvedId) : undefined;
-      if (!resNums) return;
-      hideAnchorPreviewImmediately();
-      const items = Array.from(resNums)
-        .sort((a, b) => a - b)
-        .map((num) => indexes.resMap.get(num))
-        .filter((r): r is IRes => !!r);
-      closeNonContextPopups();
-      const displayId = (resolvedId ?? id).startsWith("ID:")
-        ? (resolvedId ?? id)
-        : `ID:${resolvedId ?? id}`;
-      addIdPopup(
-        e.clientX,
-        e.clientY,
-        items,
-        `${displayId} (${items.length}件)`,
-      );
-    },
-    [indexes, hideAnchorPreviewImmediately, closeNonContextPopups, addIdPopup],
-  );
-
-  const handlePopupIdClick = useCallback(
-    (parentId: string) => (id: string, e: React.MouseEvent) => {
-      // popup内クリックは親popupスタックを維持し、子としてID popupを開く。
-      // ここで全閉じすると「anchor_idで開いた瞬間に親が消える」ため closeNonContextPopups は呼ばない。
-      const candidateIds = id.startsWith("ID:")
-        ? [id, id.replace(/^ID:/i, "")]
-        : [id, `ID:${id}`];
-      const resolvedId = candidateIds.find((candidate) =>
-        indexes.idIndex.has(candidate),
-      );
-      const resNums = resolvedId ? indexes.idIndex.get(resolvedId) : undefined;
-      if (!resNums) return;
-      clearAnchorPreviewHideTimer();
-      const items = Array.from(resNums)
-        .sort((a, b) => a - b)
-        .map((num) => indexes.resMap.get(num))
-        .filter((r): r is IRes => !!r);
-      const displayId = (resolvedId ?? id).startsWith("ID:")
-        ? (resolvedId ?? id)
-        : `ID:${resolvedId ?? id}`;
-      addIdPopup(
-        e.clientX,
-        e.clientY,
-        items,
-        `${displayId} (${items.length}件)`,
-        parentId,
-      );
-    },
-    [addIdPopup, clearAnchorPreviewHideTimer, indexes.idIndex, indexes.resMap],
-  );
-
-  // 返信クリック → 返信ツリーをポップアップ表示（スレッド本文から）
-  const handleRepClick = useCallback(
-    (resNum: number, e: React.MouseEvent) => {
-      hideAnchorPreviewImmediately();
-      closeNonContextPopups();
-      addTreePopup(resNum, e.clientX, e.clientY);
-    },
-    [hideAnchorPreviewImmediately, closeNonContextPopups, addTreePopup],
-  );
-
-  const closePopup = useCallback(() => {
-    hideAnchorPreviewImmediately();
-    closeNonContextPopups();
-  }, [hideAnchorPreviewImmediately, closeNonContextPopups]);
-
-  // ポップアップ/アンカープレビュー内からの返信クリック。
-  // アンカープレビューを即時消去せず、スタックに積んで親子関係を維持する。
-  const handleRepClickInPopup = useCallback(
-    (parentId?: string, anchorPreviewDepth = 0) =>
-      (resNum: number, e: React.MouseEvent) => {
-        clearAnchorPreviewHideTimer();
-        // アンカープレビュー配下で開いた返信ツリーは、その深さを持ち回って
-        // 次のアンカーホバーでも親プレビューを巻き込んで閉じないようにする。
-        addTreePopup(
-          resNum,
-          e.clientX,
-          e.clientY,
-          parentId,
-          anchorPreviewDepth,
-        );
-      },
-    [addTreePopup, clearAnchorPreviewHideTimer],
-  );
-
-  const handleOpenRootReplyTreeInPopup = useCallback(
-    (parentId?: string, anchorPreviewDepth = 0) =>
-      (resNum: number, e: React.MouseEvent) => {
-        clearAnchorPreviewHideTimer();
-        // 葉のアンカーから辿る時は起点レスを ancIndex で逆引きしてから開くことで、
-        // 相互アンカーが続くケースでも最初の流れを辿りやすくする。
-        const rootResNum = resolveReplyTreeRootResNum(
-          resNum,
-          indexes.ancIndex,
-          indexes.resMap,
-        );
-        addTreePopup(
-          rootResNum,
-          e.clientX,
-          e.clientY,
-          parentId,
-          anchorPreviewDepth,
-        );
-      },
-    [
-      addTreePopup,
-      clearAnchorPreviewHideTimer,
-      indexes.ancIndex,
-      indexes.resMap,
-    ],
-  );
-
-  // アンカークリックで該当レスへスクロール
-  const handleAnchorClick = useCallback(
-    (resNum: number) => {
-      // ポップアップ上のアンカークリックでも遷移先を確実に視認できるよう、
-      // ジャンプ時はいったん非メニュー系ポップアップを閉じて本文へフォーカスを戻す。
-      closeNonContextPopups();
-      scrollToResponse(resNum);
-    },
-    [closeNonContextPopups, scrollToResponse],
-  );
-
-  // popup store の状態変化で ThreadPage が re-render されると、インラインアロー関数は
-  // 毎回新しい参照を生成し、buildContextMenuItems → openThreadResContextMenu まで
-  // 連鎖的に新参照になって ResItem が re-render される。
-  // ResItem 内の dangerouslySetInnerHTML による innerHTML 置換でテキスト選択が消えるため、
-  // useCallback で参照を安定化してその re-render を防ぐ。
-  const handleWriteHistoryAdded = useCallback((resNum: number) => {
-    setOwnResNums((prev) => {
-      if (prev.has(resNum)) {
-        return prev;
-      }
-      const next = new Set(prev);
-      next.add(resNum);
-      return next;
-    });
-  }, []);
 
   const { openPopupResContextMenu, openThreadResContextMenu } =
     useThreadResContextMenu({
@@ -1038,9 +260,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   // 設定が有効な場合に動作し、誤操作防止のためリンクや画像、テキスト選択中などは除外する。
   const handleDoubleClick = useCallback(
     (e: React.MouseEvent) => {
-      if (container.config.get("dblclick_reload") !== "on") {
-        return;
-      }
+      if (container.config.get("dblclick_reload") !== "on") return;
 
       const target = e.target as HTMLElement;
 
@@ -1054,25 +274,11 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       }
 
       // テキスト選択中はリロードしない
-      if (window.getSelection()?.toString()) {
-        return;
-      }
+      if (window.getSelection()?.toString()) return;
 
       dispatch({ type: "RELOAD" });
     },
     [dispatch],
-  );
-
-  const openPopupUrlContextMenu = useCallback(
-    (parentId: string) =>
-      (
-        rawUrl: string,
-        e: React.MouseEvent,
-        mode?: typeof RESPECT_DEFAULT_EXTERNAL,
-      ) => {
-        handleUrlContextMenu(rawUrl, e, parentId, mode);
-      },
-    [handleUrlContextMenu],
   );
 
   const isFilterEnabled = useMemo(

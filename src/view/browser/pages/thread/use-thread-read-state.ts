@@ -1,0 +1,270 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { RefObject } from "react";
+import { container } from "src/service-container/index";
+import type { IReadState, IRes } from "src/service-container/interfaces";
+import {
+  consumePendingThreadResJump,
+  findThreadScrollContainer,
+  measureThreadReadState,
+  peekPendingThreadResJump,
+  scrollThreadToResponse,
+  subscribeThreadResJump,
+  type PendingThreadJump,
+} from "src/view/browser/utils/thread-read-state";
+
+interface UseThreadReadStateParams {
+  threadUrl: string;
+  isActive: boolean;
+  responses: IRes[];
+  loading: boolean;
+  rootRef: RefObject<HTMLDivElement | null>;
+}
+
+interface UseThreadReadStateResult {
+  isInitialReadStateResolved: boolean;
+  scrollToResponse: (
+    resNum: number,
+    options?: { highlight?: boolean; offset?: number },
+  ) => void;
+}
+
+export function useThreadReadState({
+  threadUrl,
+  isActive,
+  responses,
+  loading,
+  rootRef,
+}: UseThreadReadStateParams): UseThreadReadStateResult {
+  const [initialReadState, setInitialReadState] = useState<IReadState | null>(null);
+  const [hasLoadedInitialReadState, setHasLoadedInitialReadState] = useState(false);
+  const [isInitialReadStateResolved, setIsInitialReadStateResolved] = useState(false);
+  const [pendingThreadJump, setPendingThreadJump] =
+    useState<PendingThreadJump | null>(null);
+  const latestReadStateRef = useRef<IReadState | null>(null);
+  const saveReadStateTimerRef = useRef<number | null>(null);
+
+  const scrollToResponse = useCallback(
+    (resNum: number, options?: { highlight?: boolean; offset?: number }) =>
+      scrollThreadToResponse(rootRef.current, resNum, options),
+    // rootRef は安定した参照なので依存配列から除外する
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  const saveCurrentReadState = useCallback(async () => {
+    if (!isActive || !isInitialReadStateResolved) return;
+
+    const measuredReadState = measureThreadReadState(rootRef.current, responses.length);
+    if (!measuredReadState) return;
+
+    const previousReadState = latestReadStateRef.current;
+    const nextReadState: IReadState = {
+      url: threadUrl,
+      last: measuredReadState.last,
+      read: Math.max(previousReadState?.read ?? 0, measuredReadState.read),
+      received: Math.max(
+        previousReadState?.received ?? 0,
+        measuredReadState.received,
+      ),
+      offset: measuredReadState.offset,
+      date: Date.now(),
+    };
+
+    if (
+      previousReadState &&
+      previousReadState.last === nextReadState.last &&
+      previousReadState.read === nextReadState.read &&
+      previousReadState.received === nextReadState.received &&
+      (previousReadState.offset ?? null) === (nextReadState.offset ?? null)
+    ) {
+      return;
+    }
+
+    latestReadStateRef.current = nextReadState;
+    try {
+      await container.readState.set(nextReadState);
+    } catch (error) {
+      console.error(error);
+    }
+  }, [isActive, isInitialReadStateResolved, threadUrl, responses.length]);
+
+  const scheduleReadStateSave = useCallback(() => {
+    if (saveReadStateTimerRef.current != null) {
+      window.clearTimeout(saveReadStateTimerRef.current);
+    }
+    saveReadStateTimerRef.current = window.setTimeout(() => {
+      saveReadStateTimerRef.current = null;
+      void saveCurrentReadState();
+    });
+  }, [saveCurrentReadState]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    setInitialReadState(null);
+    setHasLoadedInitialReadState(false);
+    setIsInitialReadStateResolved(false);
+    setPendingThreadJump(peekPendingThreadResJump(threadUrl));
+    latestReadStateRef.current = null;
+
+    const loadInitialThreadReadState = async () => {
+      let nextReadState =
+        container.bookmark.get(threadUrl)?.readState ?? null;
+
+      try {
+        const storedReadState = await container.readState.get(threadUrl);
+        if (
+          storedReadState &&
+          (!nextReadState ||
+            container.util.isNewerReadState(nextReadState, storedReadState))
+        ) {
+          nextReadState = storedReadState;
+        }
+      } catch (error) {
+        console.error(error);
+      }
+
+      if (cancelled) return;
+
+      latestReadStateRef.current = nextReadState;
+      setInitialReadState(nextReadState);
+      setHasLoadedInitialReadState(true);
+    };
+
+    void loadInitialThreadReadState();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [threadUrl]);
+
+  useEffect(() => {
+    return subscribeThreadResJump((jump) => {
+      if (jump.threadUrl !== threadUrl) return;
+      setPendingThreadJump(jump);
+    });
+  }, [threadUrl]);
+
+  useEffect(() => {
+    if (!isActive || !pendingThreadJump || responses.length === 0 || loading) return;
+
+    scrollToResponse(pendingThreadJump.resNum);
+    consumePendingThreadResJump(threadUrl, pendingThreadJump.token);
+    setPendingThreadJump((current) =>
+      current?.token === pendingThreadJump.token ? null : current,
+    );
+    setIsInitialReadStateResolved(true);
+
+    window.requestAnimationFrame(() => {
+      void saveCurrentReadState();
+    });
+  }, [
+    isActive,
+    loading,
+    threadUrl,
+    pendingThreadJump,
+    responses.length,
+    saveCurrentReadState,
+    scrollToResponse,
+  ]);
+
+  useEffect(() => {
+    if (
+      !isActive ||
+      isInitialReadStateResolved ||
+      pendingThreadJump ||
+      !hasLoadedInitialReadState ||
+      responses.length === 0 ||
+      loading
+    ) {
+      return;
+    }
+
+    if (initialReadState?.last) {
+      scrollToResponse(initialReadState.last, {
+        highlight: false,
+        offset: initialReadState.offset,
+      });
+    }
+
+    setIsInitialReadStateResolved(true);
+    window.requestAnimationFrame(() => {
+      void saveCurrentReadState();
+    });
+  }, [
+    hasLoadedInitialReadState,
+    initialReadState,
+    isActive,
+    isInitialReadStateResolved,
+    loading,
+    pendingThreadJump,
+    responses.length,
+    saveCurrentReadState,
+    scrollToResponse,
+  ]);
+
+  useEffect(() => {
+    if (!isActive || !isInitialReadStateResolved || responses.length === 0) return;
+
+    const scrollContainer = findThreadScrollContainer(rootRef.current);
+    if (!scrollContainer) return;
+
+    const handleScroll = () => {
+      scheduleReadStateSave();
+    };
+
+    scrollContainer.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      scrollContainer.removeEventListener("scroll", handleScroll);
+      if (saveReadStateTimerRef.current != null) {
+        window.clearTimeout(saveReadStateTimerRef.current);
+        saveReadStateTimerRef.current = null;
+      }
+      void saveCurrentReadState();
+    };
+  }, [
+    isActive,
+    isInitialReadStateResolved,
+    responses.length,
+    saveCurrentReadState,
+    scheduleReadStateSave,
+  ]);
+
+  useEffect(() => {
+    if (
+      !isActive ||
+      !isInitialReadStateResolved ||
+      loading ||
+      responses.length === 0
+    ) {
+      return;
+    }
+
+    // 変更理由: 自動更新で received だけ増えたケースはスクロールイベントが発生しないため、
+    // レス数変化時にも保存を予約して未読数の取りこぼしを防ぐ。
+    scheduleReadStateSave();
+  }, [
+    isActive,
+    isInitialReadStateResolved,
+    loading,
+    responses.length,
+    scheduleReadStateSave,
+  ]);
+
+  useEffect(() => {
+    const handlePageHide = () => {
+      if (saveReadStateTimerRef.current != null) {
+        window.clearTimeout(saveReadStateTimerRef.current);
+        saveReadStateTimerRef.current = null;
+      }
+      void saveCurrentReadState();
+    };
+    window.addEventListener("pagehide", handlePageHide);
+    return () => {
+      window.removeEventListener("pagehide", handlePageHide);
+    };
+  }, [saveCurrentReadState]);
+
+  return { isInitialReadStateResolved, scrollToResponse };
+}

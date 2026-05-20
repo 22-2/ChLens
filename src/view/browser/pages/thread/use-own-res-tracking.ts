@@ -1,0 +1,199 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  add as addWriteHistoryRecord,
+  getByUrl as getWriteHistoryByUrl,
+  update as updateWriteHistoryRecord,
+} from "src/core/WriteHistory";
+import { container } from "src/service-container/index";
+import type { IRes } from "src/service-container/interfaces";
+import { buildWrittenResSet } from "src/view/browser/utils/thread-emphasis";
+import {
+  findLatestWrittenRes,
+  resolveWrittenResTimestamp,
+  subscribeThreadWriteCompleted,
+  type PendingWritePayload,
+} from "src/view/browser/utils/thread-write-sync";
+import { stripHtml } from "src/view/browser/utils/utils";
+
+interface PendingWriteMatchState extends PendingWritePayload {
+  baselineResponseCount: number;
+  baselineLastResNum: number | null;
+}
+
+interface PendingWriteHistoryPersistence {
+  submittedAt: number;
+  promise: Promise<number | null>;
+}
+
+interface UseOwnResTrackingParams {
+  threadUrl: string;
+  threadTitle: string;
+  responses: IRes[];
+}
+
+interface UseOwnResTrackingResult {
+  ownResNums: Set<number>;
+  handleWriteHistoryAdded: (resNum: number) => void;
+}
+
+export function useOwnResTracking({
+  threadUrl,
+  threadTitle,
+  responses,
+}: UseOwnResTrackingParams): UseOwnResTrackingResult {
+  const [ownResNums, setOwnResNums] = useState<Set<number>>(new Set());
+  const [pendingWrite, setPendingWrite] =
+    useState<PendingWriteMatchState | null>(null);
+  const responseCountRef = useRef(0);
+  const lastResponseNumRef = useRef<number | null>(null);
+  const pendingWriteHistoryRef = useRef<PendingWriteHistoryPersistence | null>(null);
+
+  useEffect(() => {
+    responseCountRef.current = responses.length;
+    lastResponseNumRef.current = responses.at(-1)?.num ?? null;
+  }, [responses]);
+
+  useEffect(() => {
+    let alive = true;
+    const loadOwnResNums = async () => {
+      try {
+        const rows = await getWriteHistoryByUrl(threadUrl);
+        if (!alive) return;
+        setOwnResNums(buildWrittenResSet(rows));
+      } catch {
+        if (alive) setOwnResNums(new Set());
+      }
+    };
+    void loadOwnResNums();
+    return () => {
+      alive = false;
+    };
+  }, [threadUrl]);
+
+  useEffect(() => {
+    setPendingWrite(null);
+    pendingWriteHistoryRef.current = null;
+  }, [threadUrl]);
+
+  useEffect(() => {
+    const handleThreadWriteCompleted = (payload: PendingWritePayload) => {
+      if (payload.threadUrl !== threadUrl) return;
+
+      // 変更理由: 送信前時点の末尾レス位置を覚えておくと、同文レスが既にあるスレでも
+      // 新着到着前の古いレスを誤って「今書いたレス」と認定する事故を避けられる。
+      setPendingWrite({
+        ...payload,
+        baselineResponseCount: responseCountRef.current,
+        baselineLastResNum: lastResponseNumRef.current,
+      });
+
+      if (container.config.get("no_writehistory") === "on") {
+        pendingWriteHistoryRef.current = null;
+        return;
+      }
+
+      const historyPromise = (async () => {
+        try {
+          return await addWriteHistoryRecord({
+            url: threadUrl,
+            res: 0,
+            title: threadTitle,
+            // 変更理由: レス番号確定前でも成功直後の離脱で履歴を失わないよう、
+            // 入力値ベースの仮エントリを先に保存して後から確定情報へ更新する。
+            name: payload.inputName,
+            mail: payload.inputMail,
+            inputName: payload.inputName,
+            inputMail: payload.inputMail,
+            message: payload.message,
+            date: payload.submittedAt,
+          });
+        } catch {
+          return null;
+        }
+      })();
+
+      pendingWriteHistoryRef.current = {
+        submittedAt: payload.submittedAt,
+        promise: historyPromise,
+      };
+    };
+
+    return subscribeThreadWriteCompleted(handleThreadWriteCompleted);
+  }, [threadUrl, threadTitle]);
+
+  useEffect(() => {
+    if (!pendingWrite || responses.length === 0) return;
+
+    const currentLastResNum = responses.at(-1)?.num ?? null;
+    const hasAdvancedSinceSubmit =
+      responses.length > pendingWrite.baselineResponseCount ||
+      (pendingWrite.baselineLastResNum != null &&
+        currentLastResNum != null &&
+        currentLastResNum > pendingWrite.baselineLastResNum);
+    if (!hasAdvancedSinceSubmit) return;
+
+    const matchedRes = findLatestWrittenRes(responses, pendingWrite.message, ownResNums);
+    if (!matchedRes) return;
+
+    setPendingWrite(null);
+
+    // 変更理由: DB 書き込みの完了を待つと強調反映が遅延するため、
+    // レス番号確定直後に同期的に ownResNums へ反映して即時強調を保証する。
+    setOwnResNums((prev) => {
+      if (prev.has(matchedRes.num)) return prev;
+      const next = new Set(prev);
+      next.add(matchedRes.num);
+      return next;
+    });
+
+    void (async () => {
+      if (container.config.get("no_writehistory") !== "on") {
+        try {
+          const finalizedRecord = {
+            url: threadUrl,
+            res: matchedRes.num,
+            title: threadTitle,
+            name: stripHtml(matchedRes.name),
+            mail: matchedRes.mail,
+            inputName: pendingWrite.inputName,
+            inputMail: pendingWrite.inputMail,
+            message: pendingWrite.message,
+            date: resolveWrittenResTimestamp(matchedRes),
+          };
+
+          const pendingHistory = pendingWriteHistoryRef.current;
+          const provisionalHistoryId =
+            pendingHistory?.submittedAt === pendingWrite.submittedAt
+              ? await pendingHistory.promise
+              : null;
+
+          if (pendingHistory?.submittedAt === pendingWrite.submittedAt) {
+            pendingWriteHistoryRef.current = null;
+          }
+
+          if (provisionalHistoryId != null) {
+            await updateWriteHistoryRecord({
+              id: provisionalHistoryId,
+              ...finalizedRecord,
+            });
+          } else {
+            await addWriteHistoryRecord(finalizedRecord);
+          }
+        } catch {
+          // 書込履歴の永続化に失敗しても、画面上の自分レス強調までは失わない。
+        }
+      }
+    })();
+  }, [ownResNums, threadUrl, threadTitle, pendingWrite, responses]);
+
+  const handleWriteHistoryAdded = useCallback((resNum: number) => {
+    setOwnResNums((prev) => {
+      if (prev.has(resNum)) return prev;
+      const next = new Set(prev);
+      next.add(resNum);
+      return next;
+    });
+  }, []);
+
+  return { ownResNums, handleWriteHistoryAdded };
+}
