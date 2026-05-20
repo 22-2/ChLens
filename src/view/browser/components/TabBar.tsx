@@ -5,6 +5,7 @@ import normalizeWheel from "normalize-wheel";
 import React, {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -166,6 +167,15 @@ export const TabBar: React.FC = () => {
   const lastWheelSwitchAtRef = useRef(0);
   // ドラッグ終了直後の click イベントによるタブ選択を抑止するためのフラグ。
   const wasDraggingRef = useRef(false);
+  // @dnd-kit が onDragEnd を startTransition 内で呼ぶため state の更新が遅延し
+  // handleWheel が古い tabs を掴みっぱなしになる。useLayoutEffect でコミット確定後に
+  // 更新することで、ユーザー操作が起きる前に必ず最新順序を参照できるようにする。
+  const tabsRef = useRef(state.tabs);
+  const activeTabIdRef = useRef(state.activeTabId);
+  useLayoutEffect(() => {
+    tabsRef.current = state.tabs;
+    activeTabIdRef.current = state.activeTabId;
+  });
 
   useEffect(() => {
     const prev = prevTabIdsRef.current;
@@ -225,8 +235,8 @@ export const TabBar: React.FC = () => {
         return;
       }
 
-      const tabs = state.tabs;
-      const currentIdx = tabs.findIndex((t) => t.id === state.activeTabId);
+      const tabs = tabsRef.current;
+      const currentIdx = tabs.findIndex((t) => t.id === activeTabIdRef.current);
       if (currentIdx === -1) return;
 
       // 変更理由: ブラウザごとの生の delta 符号差を normalize-wheel で吸収し、
@@ -238,7 +248,7 @@ export const TabBar: React.FC = () => {
       lastWheelSwitchAtRef.current = now;
       dispatch({ type: "SELECT_TAB", tabId: tabs[nextIdx].id });
     },
-    [dispatch, state.activeTabId, state.tabs],
+    [dispatch],
   );
 
   useEffect(() => {
