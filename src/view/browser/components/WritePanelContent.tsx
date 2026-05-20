@@ -8,7 +8,7 @@ const WRITE_SUBMIT_CTRL_ENTER_KEY = "write_submit_ctrl_enter";
 
 export const WritePanelContent: React.FC = () => {
   const { currentPage } = useTabStore();
-  const { writePanelInsertRequest, clearWritePanelInsertRequest } =
+  const { writePanelInsertRequest, clearWritePanelInsertRequest, closePanel } =
     useBottomPanel();
   const threadUrl = currentPage.type === "thread" ? currentPage.threadUrl : "";
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -90,6 +90,12 @@ export const WritePanelContent: React.FC = () => {
 
   const handleTextareaKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === "Escape") {
+        // IME確定など他のEscapeと区別せず、素直にパネルを閉じる。
+        closePanel();
+        return;
+      }
+
       if (
         !submitWithCtrlEnter ||
         isSubmitting ||
@@ -104,7 +110,7 @@ export const WritePanelContent: React.FC = () => {
       e.preventDefault();
       void submit();
     },
-    [canSubmit, isSubmitting, submit, submitWithCtrlEnter],
+    [canSubmit, closePanel, isSubmitting, submit, submitWithCtrlEnter],
   );
 
   return (
