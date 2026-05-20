@@ -236,6 +236,11 @@ function init(): void {
     return;
   }
 
+  // 同一フレームに複数回インジェクトされた場合にボタンとリスナーが重複するのを防ぐ
+  if (document.getElementById(BUTTON_IDS.open)) {
+    return;
+  }
+
   const viewerTargets = createViewerTargets(currentUrl);
   const container = createContainer();
 
