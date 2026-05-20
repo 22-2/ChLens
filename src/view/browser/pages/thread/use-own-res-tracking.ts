@@ -11,6 +11,7 @@ import {
   findLatestWrittenRes,
   resolveWrittenResTimestamp,
   subscribeThreadWriteCompleted,
+  subscribeThreadWriteStarted,
   type PendingWritePayload,
 } from "src/view/browser/utils/thread-write-sync";
 import { stripHtml } from "src/view/browser/utils/utils";
@@ -47,6 +48,14 @@ export function useOwnResTracking({
   const responseCountRef = useRef(0);
   const lastResponseNumRef = useRef<number | null>(null);
   const pendingWriteHistoryRef = useRef<PendingWriteHistoryPersistence | null>(null);
+  // 変更理由: notifyThreadWriteCompleted は 3 秒後に発火するため、その間に自動更新が走ると
+  // responseCountRef が新着込みの値になり hasAdvancedSinceSubmit が永久に false になる。
+  // 送信直後の notifyThreadWriteStarted でベースラインを先取りしておくことで競合を防ぐ。
+  const writeBaselineRef = useRef<{
+    responseCount: number;
+    lastResNum: number | null;
+    submittedAt: number;
+  } | null>(null);
 
   useEffect(() => {
     responseCountRef.current = responses.length;
@@ -76,15 +85,34 @@ export function useOwnResTracking({
   }, [threadUrl]);
 
   useEffect(() => {
+    return subscribeThreadWriteStarted((payload) => {
+      if (payload.threadUrl !== threadUrl) return;
+      writeBaselineRef.current = {
+        responseCount: responseCountRef.current,
+        lastResNum: lastResponseNumRef.current,
+        submittedAt: payload.submittedAt,
+      };
+    });
+  }, [threadUrl]);
+
+  useEffect(() => {
     const handleThreadWriteCompleted = (payload: PendingWritePayload) => {
       if (payload.threadUrl !== threadUrl) return;
 
       // 変更理由: 送信前時点の末尾レス位置を覚えておくと、同文レスが既にあるスレでも
       // 新着到着前の古いレスを誤って「今書いたレス」と認定する事故を避けられる。
+      // ベースラインは送信直後の writeBaselineRef を優先し、3 秒待機中の自動更新で
+      // responseCountRef が更新されても競合が起きないようにする。
+      const baseline =
+        writeBaselineRef.current?.submittedAt === payload.submittedAt
+          ? writeBaselineRef.current
+          : null;
+      writeBaselineRef.current = null;
+
       setPendingWrite({
         ...payload,
-        baselineResponseCount: responseCountRef.current,
-        baselineLastResNum: lastResponseNumRef.current,
+        baselineResponseCount: baseline?.responseCount ?? responseCountRef.current,
+        baselineLastResNum: baseline?.lastResNum ?? lastResponseNumRef.current,
       });
 
       if (container.config.get("no_writehistory") === "on") {

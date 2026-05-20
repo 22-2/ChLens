@@ -3,8 +3,41 @@ import { stripHtml } from "src/view/browser/utils/utils";
 
 const DEFAULT_WRITE_SUCCESS_DELAY_MS = 3000;
 
+export const THREAD_WRITE_STARTED_EVENT = "thread_write_started";
 export const THREAD_WRITE_COMPLETED_EVENT = "thread_write_completed";
 const threadWriteSyncEventTarget = new EventTarget();
+
+export interface WriteStartedPayload {
+  threadUrl: string;
+  submittedAt: number;
+}
+
+export function notifyThreadWriteStarted(payload: WriteStartedPayload): void {
+  threadWriteSyncEventTarget.dispatchEvent(
+    new CustomEvent<WriteStartedPayload>(THREAD_WRITE_STARTED_EVENT, {
+      detail: payload,
+    }),
+  );
+}
+
+export function subscribeThreadWriteStarted(
+  listener: (payload: WriteStartedPayload) => void,
+): () => void {
+  const handleEvent: EventListener = (event) => {
+    if (!(event instanceof CustomEvent)) return;
+    listener(event.detail as WriteStartedPayload);
+  };
+  threadWriteSyncEventTarget.addEventListener(
+    THREAD_WRITE_STARTED_EVENT,
+    handleEvent,
+  );
+  return () => {
+    threadWriteSyncEventTarget.removeEventListener(
+      THREAD_WRITE_STARTED_EVENT,
+      handleEvent,
+    );
+  };
+}
 
 export interface PendingWritePayload {
   threadUrl: string;

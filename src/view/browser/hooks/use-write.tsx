@@ -14,6 +14,7 @@ import { container } from "src/service-container/index";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import {
   notifyThreadWriteCompleted,
+  notifyThreadWriteStarted,
   type PendingWritePayload,
   resolveWriteSuccessDelayMs,
 } from "src/view/browser/utils/thread-write-sync";
@@ -303,13 +304,19 @@ export function useWrite(threadUrl: string): UseWriteResult {
       return;
     }
 
+    const submittedAt = Date.now();
     pendingSubmittedWriteRef.current = {
       threadUrl,
       message,
       inputName: name,
       inputMail: effectiveMail,
-      submittedAt: Date.now(),
+      submittedAt,
     };
+
+    // 変更理由: ベースラインを送信時点で確定させる。3 秒の待機中に自動更新が走ると
+    // responseCountRef が新着込みの値に更新され、hasAdvancedSinceSubmit が永久に
+    // false になる競合を防ぐため、送信直後に同期イベントで通知する。
+    notifyThreadWriteStarted({ threadUrl, submittedAt });
 
     setStatus("submitting");
     setStatusText("書き込み中...");
