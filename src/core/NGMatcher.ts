@@ -79,6 +79,65 @@ export function checkWord(
   return null;
 }
 
+// 変更理由: /test/read.cgi 固定抽出だと machi/jbbs 等で scope 判定が漏れるため、
+// 共有PATTERNSを使って BBS種別に依存しない board キー抽出へ寄せる。
+// DOMAIN/BOARD 形式のスコープ照合でも再利用できるよう独立したヘルパーに切り出す。
+function getBoardFromUrl(url: string): string | null {
+  try {
+    const parsed = new window.URL(url);
+    const { pathname } = parsed;
+
+    const chThreadMatch = PATTERNS.CH_THREAD.exec(pathname);
+    if (chThreadMatch) {
+      const segments = chThreadMatch[1].split("/");
+      return segments[segments.length - 2] ?? null;
+    }
+
+    const machiThreadMatch = PATTERNS.MACHI_THREAD.exec(pathname);
+    if (machiThreadMatch) {
+      return machiThreadMatch[1].split("/")[0] ?? null;
+    }
+
+    const shitarabaThreadMatch = PATTERNS.SHITARABA_THREAD.exec(pathname);
+    if (shitarabaThreadMatch) {
+      const segments = shitarabaThreadMatch[1].split("/");
+      return segments[segments.length - 2] ?? null;
+    }
+
+    const eddibbThreadMatch =
+      PATTERNS.EDDIBB_THREAD_2.exec(pathname) ??
+      PATTERNS.EDDIBB_THREAD.exec(pathname);
+    if (eddibbThreadMatch) {
+      return eddibbThreadMatch[1] ?? null;
+    }
+
+    const chBoardMatch = PATTERNS.CH_BOARD.exec(pathname);
+    if (chBoardMatch) {
+      return chBoardMatch[1].replace(/\/$/, "");
+    }
+
+    const machiBoardMatch = PATTERNS.MACHI_BOARD.exec(pathname);
+    if (machiBoardMatch) {
+      return machiBoardMatch[1].replace(/\/$/, "");
+    }
+
+    const shitarabaBoardMatch = PATTERNS.SHITARABA_BOARD.exec(pathname);
+    if (shitarabaBoardMatch) {
+      return shitarabaBoardMatch[1].split("/")[1] ?? null;
+    }
+
+    const eddibbBoardMatch =
+      PATTERNS.EDDIBB_BOARD_2.exec(pathname) ??
+      PATTERNS.EDDIBB_BOARD.exec(pathname);
+    if (eddibbBoardMatch) {
+      return eddibbBoardMatch[1] ?? null;
+    }
+  } catch {
+    // 不正なURLは null を返す
+  }
+  return null;
+}
+
 export function checkScope(ngObj: InternalNGElement, url: string): boolean {
   if (!ngObj.scope) {
     return true;
@@ -92,8 +151,29 @@ export function checkScope(ngObj: InternalNGElement, url: string): boolean {
   }
 
   return scopeValues.some((scopeValue) => {
-    if (scopeValue.includes("/")) {
-      return url.includes(scopeValue);
+    const slashIndex = scopeValue.indexOf("/");
+
+    if (slashIndex >= 0) {
+      // DOMAIN/BOARD 形式: ドメインとボードを個別に照合する。
+      // 単純な url.includes() では "5ch.net/news" が "5ch.net/newsplus" にも
+      // マッチしてしまうため、ドメインとボードを別々に厳密照合する。
+      const domainPart = scopeValue.slice(0, slashIndex);
+      const boardPart = scopeValue.slice(slashIndex + 1);
+
+      const domainMatch = url.match(/^https?:\/\/([^/]+)/);
+
+      if (domainPart !== "") {
+        if (!domainMatch || !domainMatch[1].includes(domainPart)) {
+          return false;
+        }
+      }
+
+      if (boardPart !== "") {
+        return getBoardFromUrl(url) === boardPart;
+      }
+
+      // "DOMAIN/" のように末尾スラッシュのみの場合はドメインのみで判断する
+      return domainPart !== "" && domainMatch != null;
     }
 
     const domainMatch = url.match(/^https?:\/\/([^/]+)/);
@@ -101,58 +181,7 @@ export function checkScope(ngObj: InternalNGElement, url: string): boolean {
       return true;
     }
 
-    // 変更理由: /test/read.cgi 固定抽出だと machi/jbbs 等で scope 判定が漏れるため、
-    // 共有PATTERNSを使って BBS種別に依存しない board キー抽出へ寄せる。
-    try {
-      const parsed = new window.URL(url);
-      const { pathname } = parsed;
-
-      const chThreadMatch = PATTERNS.CH_THREAD.exec(pathname);
-      if (chThreadMatch) {
-        const segments = chThreadMatch[1].split("/");
-        return segments[segments.length - 2] === scopeValue;
-      }
-
-      const machiThreadMatch = PATTERNS.MACHI_THREAD.exec(pathname);
-      if (machiThreadMatch) {
-        return machiThreadMatch[1].split("/")[0] === scopeValue;
-      }
-
-      const shitarabaThreadMatch = PATTERNS.SHITARABA_THREAD.exec(pathname);
-      if (shitarabaThreadMatch) {
-        const segments = shitarabaThreadMatch[1].split("/");
-        return segments[segments.length - 2] === scopeValue;
-      }
-
-      const eddibbThreadMatch =
-        PATTERNS.EDDIBB_THREAD_2.exec(pathname) ??
-        PATTERNS.EDDIBB_THREAD.exec(pathname);
-      if (eddibbThreadMatch) {
-        return eddibbThreadMatch[1] === scopeValue;
-      }
-
-      const chBoardMatch = PATTERNS.CH_BOARD.exec(pathname);
-      if (chBoardMatch) {
-        return chBoardMatch[1].replace(/\/$/, "") === scopeValue;
-      }
-
-      const machiBoardMatch = PATTERNS.MACHI_BOARD.exec(pathname);
-      if (machiBoardMatch) {
-        return machiBoardMatch[1].replace(/\/$/, "") === scopeValue;
-      }
-
-      const shitarabaBoardMatch = PATTERNS.SHITARABA_BOARD.exec(pathname);
-      if (shitarabaBoardMatch) {
-        return shitarabaBoardMatch[1].split("/")[1] === scopeValue;
-      }
-
-      const eddibbBoardMatch =
-        PATTERNS.EDDIBB_BOARD_2.exec(pathname) ??
-        PATTERNS.EDDIBB_BOARD.exec(pathname);
-      return eddibbBoardMatch ? eddibbBoardMatch[1] === scopeValue : false;
-    } catch {
-      return false;
-    }
+    return getBoardFromUrl(url) === scopeValue;
   });
 }
 

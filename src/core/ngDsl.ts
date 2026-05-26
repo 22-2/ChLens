@@ -68,7 +68,7 @@ const SITES_PARAMETER: NGDslParameterSpec = {
   name: "sites",
   detail: "適用サイト",
   documentation:
-    "単一値なら sites=eddibb.cc、複数なら sites=[eddibb.cc, 5ch.net] の形で指定します。* は全体適用なので通常は省略できます。",
+    "ドメインのみ (sites=5ch.io)、ドメイン+ボード (sites=5ch.io/livejupiter)、複数指定 (sites=[5ch.io/livejupiter, eddibb.cc]) の形で指定します。* は全体適用なので通常は省略できます。",
 };
 
 const BGCOLOR_PARAMETER: NGDslParameterSpec = {

@@ -127,6 +127,78 @@ describe("NGMatcher", () => {
         ),
       ).toBe(false);
     });
+
+    it("should match DOMAIN/BOARD when both domain and board match", () => {
+      expect(
+        checkScope(
+          { type: TYPE.ID, word: "abc", scope: { value: "example.com/board" } },
+          "http://example.com/test/read.cgi/board/123/",
+        ),
+      ).toBe(true);
+    });
+
+    it("should not match DOMAIN/BOARD when domain matches but board differs", () => {
+      expect(
+        checkScope(
+          {
+            type: TYPE.ID,
+            word: "abc",
+            scope: { value: "example.com/otherboard" },
+          },
+          "http://example.com/test/read.cgi/board/123/",
+        ),
+      ).toBe(false);
+    });
+
+    it("should not match DOMAIN/BOARD when board is prefix of actual board name", () => {
+      // "news" は "newsplus" の先頭と一致するが、ボード名の厳密照合なので false
+      expect(
+        checkScope(
+          { type: TYPE.ID, word: "abc", scope: { value: "example.com/news" } },
+          "http://example.com/test/read.cgi/newsplus/123/",
+        ),
+      ).toBe(false);
+    });
+
+    it("should not match DOMAIN/BOARD when domain differs", () => {
+      expect(
+        checkScope(
+          {
+            type: TYPE.ID,
+            word: "abc",
+            scope: { value: "other.com/board" },
+          },
+          "http://example.com/test/read.cgi/board/123/",
+        ),
+      ).toBe(false);
+    });
+
+    it("should match DOMAIN/BOARD with subdomain URL", () => {
+      // 5ch.net 系スレッドURLは /test/read.cgi/{board}/{thread_id}/ の形式
+      expect(
+        checkScope(
+          {
+            type: TYPE.ID,
+            word: "abc",
+            scope: { value: "5ch.net/livejupiter" },
+          },
+          "https://livejupiter.5ch.net/test/read.cgi/livejupiter/1000000010/",
+        ),
+      ).toBe(true);
+    });
+
+    it("should match multiple scopes including DOMAIN/BOARD", () => {
+      expect(
+        checkScope(
+          {
+            type: TYPE.ID,
+            word: "abc",
+            scope: { value: ["other.com/board", "example.com/board"] },
+          },
+          "http://example.com/test/read.cgi/board/123/",
+        ),
+      ).toBe(true);
+    });
   });
 
   describe("checkResNum", () => {
