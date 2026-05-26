@@ -151,6 +151,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     threadTitle: page.title,
     responseCount: responses.length,
     expired,
+    canAutoScroll,
     followThread: handleFollowNextThread,
   });
 

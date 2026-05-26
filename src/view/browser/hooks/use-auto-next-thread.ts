@@ -23,6 +23,12 @@ interface UseAutoNextThreadOptions {
   threadTitle: string;
   responseCount: number;
   expired: boolean;
+  /**
+   * 自動スクロール閾値より下に居るかどうか。
+   * 上の方を読んでいる最中に勝手に次スレへ飛ばすとユーザーの文脈を壊すので、
+   * 閾値より下(=追従可能位置)に居るときだけ次スレ移動を行う。
+   */
+  canAutoScroll: boolean;
   followThread: (thread: Pick<IThread, "title" | "url">) => void;
 }
 
@@ -41,6 +47,7 @@ export function useAutoNextThread({
   threadTitle,
   responseCount,
   expired,
+  canAutoScroll,
   followThread,
 }: UseAutoNextThreadOptions): { status: AutoNextThreadStatus } {
   const [status, setStatus] = useState<AutoNextThreadStatus>("idle");
@@ -49,10 +56,28 @@ export function useAutoNextThread({
   );
   const lastSearchKeyRef = useRef<string | null>(null);
   const followThreadRef = useRef(followThread);
+  // ブラウザのタブ/ウィンドウを裏に回している間は、ユーザーが見ていないところで
+  // 勝手にタブを次スレへ差し替えてしまわないよう、可視状態でのみ動かす。
+  const [isDocumentVisible, setIsDocumentVisible] = useState(
+    () =>
+      typeof document === "undefined" ||
+      document.visibilityState === "visible",
+  );
 
   useEffect(() => {
     followThreadRef.current = followThread;
   }, [followThread]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsDocumentVisible(document.visibilityState === "visible");
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
 
   useEffect(() => {
     lastSearchKeyRef.current = null;
@@ -85,7 +110,12 @@ export function useAutoNextThread({
   }, [threadUrl, watchState]);
 
   useEffect(() => {
-    if (!autoRefreshEnabled || !featureEnabled) {
+    if (
+      !autoRefreshEnabled ||
+      !featureEnabled ||
+      !isDocumentVisible ||
+      !canAutoScroll
+    ) {
       return;
     }
     if (!expired && responseCount < NEXT_THREAD_TRIGGER_RES_COUNT) {
@@ -168,8 +198,10 @@ export function useAutoNextThread({
     };
   }, [
     autoRefreshEnabled,
+    canAutoScroll,
     expired,
     featureEnabled,
+    isDocumentVisible,
     responseCount,
     threadTitle,
     threadUrl,
@@ -180,6 +212,8 @@ export function useAutoNextThread({
       watchState == null ||
       !autoRefreshEnabled ||
       !featureEnabled ||
+      !isDocumentVisible ||
+      !canAutoScroll ||
       threadUrl !== watchState.currentThreadUrl
     ) {
       return;
@@ -248,7 +282,14 @@ export function useAutoNextThread({
         window.clearTimeout(timerId);
       }
     };
-  }, [autoRefreshEnabled, featureEnabled, threadUrl, watchState]);
+  }, [
+    autoRefreshEnabled,
+    canAutoScroll,
+    featureEnabled,
+    isDocumentVisible,
+    threadUrl,
+    watchState,
+  ]);
 
   return { status };
 }

@@ -27,12 +27,14 @@ function AutoNextThreadHarness({
   featureEnabled = true,
   expired = false,
   responseCount = 1000,
+  canAutoScroll = true,
   onFollowThread,
 }: {
   autoRefreshEnabled?: boolean;
   featureEnabled?: boolean;
   expired?: boolean;
   responseCount?: number;
+  canAutoScroll?: boolean;
   onFollowThread: (thread: Pick<IThread, "title" | "url">) => void;
 }) {
   const { status } = useAutoNextThread({
@@ -42,6 +44,7 @@ function AutoNextThreadHarness({
     threadTitle: "実況スレ Part.20",
     responseCount,
     expired,
+    canAutoScroll,
     followThread: onFollowThread,
   });
 
