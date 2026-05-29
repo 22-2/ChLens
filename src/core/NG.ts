@@ -1,4 +1,4 @@
-import { decodeCharReference, normalize, stringToDate } from "src/core/jsutil";
+import { decodeCharReference, stringToDate } from "src/core/jsutil";
 import { convertInternalToUser, convertUserToDSL } from "src/core/NGConverter";
 import { splitNgDslEntries } from "src/core/ngDsl";
 import { container, INGResult } from "src/service-container/index";
@@ -196,7 +196,9 @@ export function isNGBoard(
   subType: string | null = null,
 ): INGResult | null {
   const threadObj: Partial<NGResObj & NGThreadObj> = {
-    all: normalize(threadTitle),
+    // 変更理由: RegExp型を文字通り照合するため all は生タイトルを渡す。
+    // Word型は checkWord 内で normalize(all) し直すため、生のままでも判定は変わらない。
+    all: threadTitle,
     title: threadTitle,
     url,
     resCount,

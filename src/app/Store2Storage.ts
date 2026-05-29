@@ -74,36 +74,40 @@ export function getStore2All(): Record<string, unknown> {
   return getStoreArea().getAll() as Record<string, unknown>;
 }
 
-export function setStore2String(key: string, value: string): void {
+export function setStore2String(key: string, value: string): Promise<void> {
   const nativeLocalStorage = getNativeLocalStorage();
   if (nativeLocalStorage) {
     // 変更理由: 既存コードはlocalStorage上の生文字列を前提にしているため、
     // store2のJSONエンコード形式ではなく従来フォーマットを維持する。
-    nativeLocalStorage.setItem(key, value);
-    return;
+    // Promiseでラップすることで、キャッシュとストレージの同期を明示的に制御する。
+    return Promise.resolve().then(() => {
+      nativeLocalStorage.setItem(key, value);
+    });
   }
 
-  getStoreArea().set(key, value);
+  return Promise.resolve(getStoreArea().set(key, value));
 }
 
-export function setStore2Value(key: string, value: unknown): void {
+export function setStore2Value(key: string, value: unknown): Promise<void> {
   const nativeLocalStorage = getNativeLocalStorage();
   if (nativeLocalStorage) {
-    nativeLocalStorage.setItem(key, JSON.stringify(value));
-    return;
+    return Promise.resolve().then(() => {
+      nativeLocalStorage.setItem(key, JSON.stringify(value));
+    });
   }
 
-  getStoreArea().set(key, value);
+  return Promise.resolve(getStoreArea().set(key, value));
 }
 
-export function removeStore2Value(key: string): void {
+export function removeStore2Value(key: string): Promise<void> {
   const nativeLocalStorage = getNativeLocalStorage();
   if (nativeLocalStorage) {
-    nativeLocalStorage.removeItem(key);
-    return;
+    return Promise.resolve().then(() => {
+      nativeLocalStorage.removeItem(key);
+    });
   }
 
-  getStoreArea().remove(key);
+  return Promise.resolve(getStoreArea().remove(key));
 }
 
 export function getStore2Keys(): string[] {

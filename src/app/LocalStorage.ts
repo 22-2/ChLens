@@ -16,16 +16,16 @@ export default class LocalStorage {
     return val;
   }
 
-  static async getAll(): Promise<Record<string, string | number>> {
+  static async getAll(): Promise<Record<string, unknown>> {
     return getStore2All();
   }
 
   static async set(key: string, val: string, isJson = false) {
     const valueToStore = isJson ? JSON.stringify(val) : val;
-    setStore2String(key, valueToStore);
+    await setStore2String(key, valueToStore);
   }
 
   static async del(key: string) {
-    removeStore2Value(key);
+    await removeStore2Value(key);
   }
 }

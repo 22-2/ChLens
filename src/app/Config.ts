@@ -143,11 +143,9 @@ export default class Config {
     const ready = new Callbacks();
     this.ready = ready.add.bind(ready);
 
+    // キャッシュを常にLocalStorageから再読み込みして、最新の設定値を確保する。
+    // ページリロード後や他のタブからの更新を反映するため、cached.size チェックを削除した。
     (async () => {
-      if (this._cache.size > 0) {
-        return;
-      }
-
       const res = await LocalStorage.getAll();
       for (const [key, val] of Object.entries(res)) {
         if (

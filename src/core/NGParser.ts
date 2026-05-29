@@ -76,9 +76,14 @@ const _getNgElement = function (ngWord: string): InternalNGElement | null {
 
     const normalizedKeyword = normalizeNgDslKeyword(functionCall.keyword);
     ngElement.type = normalizedKeyword;
-    // DSL解析したwordも非DSLパスと同様にnormalizeする。
-    // normalize済みのタイトルと比較するため、word側もnormalizeしないとkatakana→hiragana変換などで不一致になる。
-    ngElement.word = normalize(word ?? functionCall.valueSource ?? "");
+    const rawWord = word ?? functionCall.valueSource ?? "";
+    // 変更理由: 正規表現型のwordをnormalizeすると、カタカナ→ひらがな・小文字化・空白除去・NFKCで
+    // パターン自体が壊れてしまう(例: ラノベ→らのべ で生タイトルと不一致、\S→\s、スペース消失)。
+    // 正規表現は文字通り扱い(照合側の生フィールドへtest)、.includes()系の非正規表現型のみ
+    // 従来どおりnormalizeして正規化済みテキストと比較する。
+    ngElement.word = ngElement.type.startsWith(TYPE.REG_EXP)
+      ? rawWord
+      : normalize(rawWord);
 
     if (scope != null && scope.length > 0) {
       ngElement.scope = {
