@@ -550,6 +550,16 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
     }
 
     case "OPEN_IN_NEW_TAB": {
+      // 同一 URL のタブが既に存在する場合はそちらをフォーカスして重複を防ぐ。
+      // 強制的に新タブを開きたい場合は OPEN_IN_NEW_TAB_FORCE を使う。
+      const targetIdentity = getPageIdentity(action.page);
+      const existingDuplicate = state.tabs.find(
+        (t) => getPageIdentity(getCurrentPage(t)) === targetIdentity,
+      );
+      if (existingDuplicate) {
+        return { ...state, activeTabId: existingDuplicate.id };
+      }
+
       // バックグラウンドで新規タブを開く（アクティブタブを切り替えない）。
       // buildHierarchyForNewTab で現在ページの板名を引き継いだカノニカルな祖先履歴を付与する。
       const newTabForOpen = createTab();
@@ -874,6 +884,8 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
 
 interface TabContextValue {
   state: TabStoreState;
+  // startTransition 配下の dispatch でも常に最新 state を参照できるよう同期 ref を公開する。
+  stateRef: React.RefObject<TabStoreState>;
   dispatch: Dispatch<TabAction>;
   activeTab: Tab;
   currentPage: Page;
@@ -1112,7 +1124,7 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({
 
   return (
     <TabDispatchContext.Provider value={dispatch}>
-      <TabContext.Provider value={{ state, dispatch, activeTab, currentPage }}>
+      <TabContext.Provider value={{ state, stateRef, dispatch, activeTab, currentPage }}>
         {children}
       </TabContext.Provider>
     </TabDispatchContext.Provider>
