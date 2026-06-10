@@ -275,14 +275,22 @@ export const TabBar: React.FC = () => {
       if (event.canceled) return;
       const { operation } = event;
       if (!isSortableOperation(operation)) return;
-      const { source, target } = operation;
-      if (!target || source?.id === target.id) return;
+      const { source } = operation;
+      if (!source) return;
+      // 変更理由: OptimisticSortingPlugin がドラッグ中に確定させたグループ内の最終位置を
+      // source.sortable.index として受け取り、それをそのまま並べ替えの真実にする。
+      // ドロップ先タブIDから逆算すると投影インデックスとズレるため使わない。
+      const toIndex = source.index;
+      const initialIndex = source.sortable?.initialIndex;
+      if (typeof toIndex !== "number") return;
+      // 実際に位置が変わっていなければ、click 抑止も並べ替えも行わない。
+      if (typeof initialIndex === "number" && toIndex === initialIndex) return;
       // ドラッグ完了直後の click イベントによるタブ選択を1回だけ抑止する。
       wasDraggingRef.current = true;
       dispatch({
         type: "MOVE_TAB",
-        dragTabId: String(source?.id),
-        targetTabId: String(target.id),
+        dragTabId: String(source.id),
+        toIndex,
       });
     },
     [dispatch],

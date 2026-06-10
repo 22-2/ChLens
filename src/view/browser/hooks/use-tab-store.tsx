@@ -46,7 +46,7 @@ export type TabAction =
   | { type: "CLOSE_ALL_TABS" }
   | { type: "REOPEN_CLOSED_TAB" }
   | { type: "TOGGLE_PIN"; tabId: string }
-  | { type: "MOVE_TAB"; dragTabId: string; targetTabId: string }
+  | { type: "MOVE_TAB"; dragTabId: string; toIndex: number }
   | { type: "SELECT_TAB"; tabId: string }
   | { type: "NAVIGATE"; page: Page }
   | { type: "NAVIGATE_TAB"; tabId: string; page: Page }
@@ -693,25 +693,31 @@ function tabReducer(state: TabStoreState, action: TabAction): TabStoreState {
     }
 
     case "MOVE_TAB": {
-      const fromIndex = state.tabs.findIndex((t) => t.id === action.dragTabId);
-      const toIndex = state.tabs.findIndex((t) => t.id === action.targetTabId);
-      if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) {
+      const dragTab = state.tabs.find((t) => t.id === action.dragTabId);
+      if (!dragTab) {
         return state;
       }
 
-      const dragTab = state.tabs[fromIndex];
-      const targetTab = state.tabs[toIndex];
-      // 固定/非固定の境界を跨ぐ移動を禁止し、ピン領域と通常領域の分離を維持する。
-      if (dragTab.pinned !== targetTab.pinned) {
+      // 変更理由: @dnd-kit の OptimisticSortingPlugin はドラッグ中に DOM を物理的に
+      // 並べ替え、最終位置を source.sortable.index（グループ内インデックス）として確定する。
+      // ドロップ先タブIDから移動先を逆算すると、その投影インデックスとズレてホイール順序が
+      // 表示順と食い違うため、グループ内インデックスを直接の真実として並べ替える。
+      const group = state.tabs.filter((t) => t.pinned === dragTab.pinned);
+      const others = state.tabs.filter((t) => t.pinned !== dragTab.pinned);
+      const fromIndex = group.findIndex((t) => t.id === action.dragTabId);
+      const toIndex = Math.max(0, Math.min(action.toIndex, group.length - 1));
+      if (fromIndex === -1 || fromIndex === toIndex) {
         return state;
       }
 
-      const nextTabs = [...state.tabs];
-      const [movedTab] = nextTabs.splice(fromIndex, 1);
-      nextTabs.splice(toIndex, 0, movedTab);
+      const reorderedGroup = [...group];
+      reorderedGroup.splice(toIndex, 0, reorderedGroup.splice(fromIndex, 1)[0]);
+      // ピン留めタブは常に左、通常タブは常に右、の不変条件を保って再結合する。
       return {
         ...state,
-        tabs: nextTabs,
+        tabs: dragTab.pinned
+          ? [...reorderedGroup, ...others]
+          : [...others, ...reorderedGroup],
       };
     }
 

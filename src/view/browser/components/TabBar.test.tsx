@@ -51,6 +51,12 @@ vi.mock("src/view/browser/components/TabContextMenu", () => ({
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => ({
     state: mocks.tabStore.state,
+    // 本物同様、ホイールハンドラが常に最新 state を同期参照できる ref を模す。
+    stateRef: {
+      get current() {
+        return mocks.tabStore.state;
+      },
+    },
     dispatch: dispatchMock,
   }),
 }));
@@ -311,10 +317,11 @@ describe("TabBar drag-to-reorder", () => {
     render(<TabBar />);
 
     // DragDropProvider の onDragEnd を直接呼び出してドラッグ完了をシミュレートする。
+    // source.index は OptimisticSortingPlugin が確定したグループ内の最終位置を表す。
     capturedOnDragEnd?.({
       canceled: false,
       operation: {
-        source: { id: "tab-1" },
+        source: { id: "tab-1", index: 1, sortable: { initialIndex: 0 } },
         target: { id: "tab-2" },
       },
     });
@@ -322,7 +329,7 @@ describe("TabBar drag-to-reorder", () => {
     expect(dispatchMock).toHaveBeenCalledWith({
       type: "MOVE_TAB",
       dragTabId: "tab-1",
-      targetTabId: "tab-2",
+      toIndex: 1,
     });
   });
 
@@ -349,7 +356,7 @@ describe("TabBar drag-to-reorder", () => {
     capturedOnDragEnd?.({
       canceled: false,
       operation: {
-        source: { id: "tab-1" },
+        source: { id: "tab-1", index: 1, sortable: { initialIndex: 0 } },
         target: { id: "tab-2" },
       },
     });
