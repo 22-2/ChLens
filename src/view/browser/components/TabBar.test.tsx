@@ -52,12 +52,25 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => ({
     state: mocks.tabStore.state,
     // 本物同様、ホイールハンドラが常に最新 state を同期参照できる ref を模す。
+    // stateRef はグローバル状態（panes 配列）を指すので、単一ペインに包んで返す。
     stateRef: {
       get current() {
-        return mocks.tabStore.state;
+        const slice = mocks.tabStore.state;
+        return {
+          panes: [
+            {
+              id: "pane-1",
+              tabs: slice.tabs,
+              activeTabId: slice.activeTabId,
+            },
+          ],
+          activePaneId: "pane-1",
+          closedTabs: slice.closedTabs,
+        };
       },
     },
     dispatch: dispatchMock,
+    paneId: "pane-1",
   }),
 }));
 

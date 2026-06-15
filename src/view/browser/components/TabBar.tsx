@@ -1,6 +1,6 @@
 import { DragDropProvider } from "@dnd-kit/react";
 import { isSortableOperation, useSortable } from "@dnd-kit/react/sortable";
-import { Pin, Plus, X } from "lucide-react";
+import { Pin, Plus, SplitSquareHorizontal, X } from "lucide-react";
 import normalizeWheel from "normalize-wheel";
 import React, {
   useCallback,
@@ -151,7 +151,7 @@ const SortableTab: React.FC<SortableTabProps> = ({
 };
 
 export const TabBar: React.FC = () => {
-  const { state, stateRef, dispatch } = useTabStore();
+  const { state, stateRef, dispatch, paneId } = useTabStore();
   const { canAutoScroll, isAutoScrolling, isPaused } = useAutoScrollState();
   const barRef = useRef<HTMLDivElement | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
@@ -225,8 +225,15 @@ export const TabBar: React.FC = () => {
         return;
       }
 
-      const tabs = stateRef.current.tabs;
-      const currentIdx = tabs.findIndex((t) => t.id === stateRef.current.activeTabId);
+      // stateRef はグローバル状態を指すので、自ペインを解決してからタブ列を取り出す。
+      const pane =
+        stateRef.current.panes.find((p) => p.id === paneId) ??
+        stateRef.current.panes.find(
+          (p) => p.id === stateRef.current.activePaneId,
+        );
+      if (!pane) return;
+      const tabs = pane.tabs;
+      const currentIdx = tabs.findIndex((t) => t.id === pane.activeTabId);
       if (currentIdx === -1) return;
 
       // 変更理由: ブラウザごとの生の delta 符号差を normalize-wheel で吸収し、
@@ -238,7 +245,7 @@ export const TabBar: React.FC = () => {
       lastWheelSwitchAtRef.current = now;
       dispatch({ type: "SELECT_TAB", tabId: tabs[nextIdx].id });
     },
-    [dispatch],
+    [dispatch, paneId, stateRef],
   );
 
   useEffect(() => {
@@ -374,6 +381,15 @@ export const TabBar: React.FC = () => {
             title="新しいタブ"
           >
             <Plus size={18} />
+          </button>
+          {/* このペインの右隣に新しいペインを開く（横分割） */}
+          <button
+            className="tab-bar__split"
+            onClick={() => dispatch({ type: "SPLIT_PANE" })}
+            onContextMenu={(e) => e.stopPropagation()}
+            title="右に分割"
+          >
+            <SplitSquareHorizontal size={16} />
           </button>
         </div>
       </DragDropProvider>

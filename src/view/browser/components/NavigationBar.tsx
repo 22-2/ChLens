@@ -5,6 +5,7 @@ import {
   Filter,
   History,
   Menu,
+  PanelRightClose,
   Pause,
   PenLine,
   RotateCw,
@@ -22,7 +23,7 @@ import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { Omnibar } from "src/view/browser/components/Omnibar";
 import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useOmnibar } from "src/view/browser/hooks/use-omnibar";
-import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { useTabPanes, useTabStore } from "src/view/browser/hooks/use-tab-store";
 import {
   canGoBack,
   canGoForward,
@@ -306,6 +307,8 @@ function navigateByUrl(
 
 export const NavigationBar: React.FC = () => {
   const { state, activeTab, currentPage, dispatch } = useTabStore();
+  // 複数ペインがあるときだけ「ペインを閉じる」ボタンを出す。
+  const { panes } = useTabPanes();
   const { isOpen: isPanelOpen, togglePanel } = useBottomPanel();
 
   const back = canGoBack(activeTab);
@@ -946,6 +949,16 @@ export const NavigationBar: React.FC = () => {
       >
         <Menu size={18} />
       </button>
+
+      {panes.length > 1 && (
+        <button
+          className="nav-bar__btn"
+          title="このペインを閉じる"
+          onClick={() => dispatch({ type: "CLOSE_PANE" })}
+        >
+          <PanelRightClose size={18} />
+        </button>
+      )}
 
       {menuPosition && (
         <ContextMenu

@@ -79,6 +79,14 @@ export interface Tab {
   autoRefreshPageKey: string | null;
 }
 
+// 横分割の1カラム。各ペインが独立したタブ群とアクティブタブを持つ。
+// 配列順がそのまま画面上の横並び順になる。
+export interface Pane {
+  id: string;
+  tabs: Tab[];
+  activeTabId: string;
+}
+
 // --- Core API の型定義 ---
 // app_core.js から提供されるモジュールの型
 

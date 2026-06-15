@@ -23,6 +23,19 @@ vi.mock("src/core/History", () => ({
   remove: historyRemoveMock,
 }));
 
+// webextension-polyfill は拡張機能環境以外では import 時に例外を投げるため、
+// reducer の振る舞い検証に不要な runtime API を最小モックで差し替える。
+vi.mock("webextension-polyfill", () => ({
+  default: {
+    runtime: {
+      onMessage: {
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+      },
+    },
+  },
+}));
+
 function createMemoryStorage(): Storage {
   const items = new Map<string, string>();
 
@@ -288,11 +301,16 @@ describe("TabProvider auto refresh state", () => {
     const raw = localStorage.getItem("chlens_browser_session");
     expect(raw).not.toBeNull();
     const parsed = JSON.parse(raw ?? "{}") as {
-      tabs: Array<{ autoRefreshEnabled: boolean; autoRefreshPageKey: string | null }>;
+      panes: Array<{
+        tabs: Array<{
+          autoRefreshEnabled: boolean;
+          autoRefreshPageKey: string | null;
+        }>;
+      }>;
     };
 
-    expect(parsed.tabs[0].autoRefreshEnabled).toBe(false);
-    expect(parsed.tabs[0].autoRefreshPageKey).toBeNull();
+    expect(parsed.panes[0].tabs[0].autoRefreshEnabled).toBe(false);
+    expect(parsed.panes[0].tabs[0].autoRefreshPageKey).toBeNull();
   });
 
   it("セッション復元時に保存済み自動更新状態をリセットする", async () => {

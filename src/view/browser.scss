@@ -79,6 +79,51 @@ body {
 }
 
 /* ==========================================================================
+   ペイン（横分割）
+   ========================================================================== */
+.pane-row {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  min-height: 0;
+  // 将来の Sliding Panes 向け: ペインが増えたら横スクロールできる余地を残す。
+  overflow-x: auto;
+}
+
+.pane-column {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+
+  // ペイン間の境界線（2ペイン目以降の左側に引く）。
+  & + .pane-column {
+    border-left: 1px solid var(--browser-color-border);
+  }
+
+  // 単独ペインのときはフォーカス装飾を出さない（通常の1カラム表示と同じ見た目）。
+  &:not(:only-child)[data-active="true"] {
+    box-shadow: inset 0 2px 0 0 var(--browser-color-accent);
+  }
+
+  &:not(:only-child)[data-active="false"] .pane-column__chrome {
+    // 非アクティブペインの chrome をわずかにトーンダウンしてフォーカス位置を示す。
+    opacity: 0.82;
+  }
+}
+
+.pane-column__chrome {
+  flex-shrink: 0;
+}
+
+// ペイン内のコンテンツは縦スクロール用に縮小可能にしておく。
+.pane-column > .content-area {
+  min-height: 0;
+}
+
+/* ==========================================================================
    Status Bar - VS Code風の左右スロット
    ========================================================================== */
 .status-bar {
@@ -258,7 +303,8 @@ body {
   background: var(--browser-color-tab-strip-active-hover);
 }
 
-.tab-bar__add {
+.tab-bar__add,
+.tab-bar__split {
   flex-shrink: 0;
   width: 28px;
   height: 28px;
@@ -275,7 +321,8 @@ body {
   transition: background 0.1s;
 }
 
-.tab-bar__add:hover {
+.tab-bar__add:hover,
+.tab-bar__split:hover {
   background: var(--browser-color-tab-strip-hover);
 }
 

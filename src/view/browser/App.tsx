@@ -24,7 +24,13 @@ import {
 } from "src/view/browser/hooks/use-bottom-panel";
 import { NgStatusProvider } from "src/view/browser/hooks/use-ng-status";
 import { useNotificationListener } from "src/view/browser/hooks/use-notification-listener";
-import { TabProvider, useTabStore } from "src/view/browser/hooks/use-tab-store";
+import {
+  PaneProvider,
+  TabProvider,
+  useTabDispatch,
+  useTabPanes,
+  useTabStore,
+} from "src/view/browser/hooks/use-tab-store";
 import { useTheme } from "src/view/browser/hooks/use-theme";
 
 const mantineTheme = createTheme({
@@ -62,6 +68,76 @@ const WritePanelToggleItem: React.FC = () => {
   );
 };
 
+// 1ペイン分の縦カラム（タブバー＋ナビゲーション＋コンテンツ）。
+// PaneProvider で囲うことで、配下の TabBar/ContentArea/各ページが自ペインのスライスを透過的に操作する。
+const PaneColumn: React.FC<{ paneId: string; isActive: boolean }> = ({
+  paneId,
+  isActive,
+}) => {
+  return (
+    <PaneProvider paneId={paneId}>
+      <PaneColumnInner isActive={isActive} />
+    </PaneProvider>
+  );
+};
+
+// PaneProvider 配下でしか使えない（ペインスコープの dispatch を取るため）。
+const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
+  const dispatch = useTabDispatch();
+
+  return (
+    <section
+      className="pane-column"
+      data-active={isActive ? "true" : "false"}
+      // ペイン内のどこかを操作したらそのペインをフォーカスする。
+      // capture フェーズで拾い、子要素の操作前にアクティブペインを確定させる。
+      onPointerDownCapture={() => {
+        if (!isActive) {
+          dispatch({ type: "SET_ACTIVE_PANE" });
+        }
+      }}
+    >
+      <div className="pane-column__chrome">
+        <TabBar />
+        <NavigationBar />
+      </div>
+      <ContentArea />
+    </section>
+  );
+};
+
+// ペイン群を横に並べる行。
+const PaneRow: React.FC = () => {
+  const { panes, activePaneId } = useTabPanes();
+
+  return (
+    <div className="pane-row">
+      {panes.map((pane) => (
+        <PaneColumn
+          key={pane.id}
+          paneId={pane.id}
+          isActive={pane.id === activePaneId}
+        />
+      ))}
+    </div>
+  );
+};
+
+// アクティブペインに束縛するグローバル UI（書き込みパネル・ステータス系・ダイアログ）。
+const ActivePaneBoundUI: React.FC = () => {
+  const { activePaneId } = useTabPanes();
+
+  return (
+    <PaneProvider paneId={activePaneId}>
+      <BottomPanel />
+      <NgStatusItem />
+      <IkioiStatusItem />
+      <AutoRefreshStatusItem />
+      <WritePanelToggleItem />
+    </PaneProvider>
+  );
+};
+
 export const BrowserApp: React.FC = () => {
   const theme = useTheme();
   useNotificationListener();
@@ -96,17 +172,9 @@ export const BrowserApp: React.FC = () => {
                     duration={1500}
                     closeButton
                   />
-                  <div className="browser-shell__chrome">
-                    <TabBar />
-                    <NavigationBar />
-                  </div>
-                  <ContentArea />
-                  <BottomPanel />
+                  <PaneRow />
                   <BookmarkRootSelectorDialog />
-                  <NgStatusItem />
-                  <IkioiStatusItem />
-                  <AutoRefreshStatusItem />
-                  <WritePanelToggleItem />
+                  <ActivePaneBoundUI />
                   <StatusBar />
                 </div>
               </AutoScrollStateProvider>
