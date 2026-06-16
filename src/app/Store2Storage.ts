@@ -79,10 +79,11 @@ export function setStore2String(key: string, value: string): Promise<void> {
   if (nativeLocalStorage) {
     // 変更理由: 既存コードはlocalStorage上の生文字列を前提にしているため、
     // store2のJSONエンコード形式ではなく従来フォーマットを維持する。
-    // Promiseでラップすることで、キャッシュとストレージの同期を明示的に制御する。
-    return Promise.resolve().then(() => {
-      nativeLocalStorage.setItem(key, value);
-    });
+    // ここでは即時に localStorage に書き込みを行い、互換のため Promise を返す。
+    // テストや同期的な直後読み取りを行う呼び出しがあるため、書き込みを
+    // マイクロタスクへ遅延させないようにする。
+    nativeLocalStorage.setItem(key, value);
+    return Promise.resolve();
   }
 
   return Promise.resolve(getStoreArea().set(key, value));
