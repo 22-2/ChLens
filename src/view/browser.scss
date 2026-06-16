@@ -303,8 +303,7 @@ body {
   background: var(--browser-color-tab-strip-active-hover);
 }
 
-.tab-bar__add,
-.tab-bar__split {
+.tab-bar__add {
   flex-shrink: 0;
   width: 28px;
   height: 28px;
@@ -321,8 +320,7 @@ body {
   transition: background 0.1s;
 }
 
-.tab-bar__add:hover,
-.tab-bar__split:hover {
+.tab-bar__add:hover {
   background: var(--browser-color-tab-strip-hover);
 }
 
@@ -466,6 +464,15 @@ body {
 .nav-bar__btn:disabled {
   color: var(--browser-color-text-disabled);
   cursor: default;
+}
+
+/* トグルがオン（2ペイン表示中）の状態を示す */
+.nav-bar__btn--active {
+  color: var(--browser-color-accent);
+}
+
+.nav-bar__btn--active:hover:not(:disabled) {
+  background: var(--browser-color-surface-muted);
 }
 
 .nav-bar__url {

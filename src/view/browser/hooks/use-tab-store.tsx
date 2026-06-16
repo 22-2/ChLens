@@ -92,6 +92,8 @@ export type ScopedTabAction = TabAction & { paneId?: string };
 
 // 閉じたタブの最大保持数
 const MAX_CLOSED_TABS = 20;
+// 横分割ペインの最大数。現状は2ペイン固定のオン/オフ運用にする。
+const MAX_PANES = 2;
 const SESSION_KEY = "chlens_browser_session";
 const CONFIG_KEY_PREFIX = "config_";
 
@@ -1110,6 +1112,8 @@ function tabReducer(
     // --- ペイン操作 ---
 
     case "SPLIT_PANE": {
+      // 最大ペイン数に達していれば分割しない（2ペイン固定運用）。
+      if (state.panes.length >= MAX_PANES) return state;
       // 操作元ペインの右隣に、現在ページを引き継いだ新規ペインを作成してフォーカスする。
       const sourcePaneId = resolvePaneId(state, action.paneId);
       const sourceIndex = state.panes.findIndex((p) => p.id === sourcePaneId);
@@ -1192,6 +1196,9 @@ function tabReducer(
         );
         return { ...state, panes, activePaneId: rightPane.id };
       }
+
+      // 右隣が無く、かつ最大ペイン数に達している場合は移動先が作れないので何もしない。
+      if (state.panes.length >= MAX_PANES) return state;
 
       const newPane = createPane(movingTab);
       const panes = state.panes.map((p) =>

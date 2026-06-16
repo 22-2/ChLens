@@ -2,10 +2,10 @@ import {
   ArrowLeft,
   ArrowRight,
   Bookmark,
+  Columns2,
   Filter,
   History,
   Menu,
-  PanelRightClose,
   Pause,
   PenLine,
   RotateCw,
@@ -307,8 +307,9 @@ function navigateByUrl(
 
 export const NavigationBar: React.FC = () => {
   const { state, activeTab, currentPage, dispatch } = useTabStore();
-  // 複数ペインがあるときだけ「ペインを閉じる」ボタンを出す。
+  // 2ペイン表示中かどうか（トグルボタンの状態に使う）。
   const { panes } = useTabPanes();
+  const isTwoPane = panes.length >= 2;
   const { isOpen: isPanelOpen, togglePanel } = useBottomPanel();
 
   const back = canGoBack(activeTab);
@@ -937,6 +938,19 @@ export const NavigationBar: React.FC = () => {
         }
       />
 
+      {/* 2ペイン表示のオン/オフトグル。
+          1ペイン時は右に2ペイン目を開き、2ペイン時はこのペインを閉じて1ペインへ戻す。 */}
+      <button
+        className={`nav-bar__btn${isTwoPane ? " nav-bar__btn--active" : ""}`}
+        title={isTwoPane ? "2ペイン表示を解除" : "2ペインで表示"}
+        aria-pressed={isTwoPane}
+        onClick={() =>
+          dispatch({ type: isTwoPane ? "CLOSE_PANE" : "SPLIT_PANE" })
+        }
+      >
+        <Columns2 size={18} />
+      </button>
+
       <button
         ref={menuButtonRef}
         className="nav-bar__btn"
@@ -949,16 +963,6 @@ export const NavigationBar: React.FC = () => {
       >
         <Menu size={18} />
       </button>
-
-      {panes.length > 1 && (
-        <button
-          className="nav-bar__btn"
-          title="このペインを閉じる"
-          onClick={() => dispatch({ type: "CLOSE_PANE" })}
-        >
-          <PanelRightClose size={18} />
-        </button>
-      )}
 
       {menuPosition && (
         <ContextMenu

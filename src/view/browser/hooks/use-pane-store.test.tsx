@@ -180,6 +180,19 @@ describe("ペイン（横分割）", () => {
     expect(screen.getByTestId("active-pane-index")).toHaveTextContent("1");
   });
 
+  it("ペインは最大2つまでで、2ペイン時の SPLIT_PANE は無視される", async () => {
+    const { paneIds } = await setup();
+    const [first] = paneIds();
+
+    fireEvent.click(screen.getByText(`split-${first}`));
+    expect(screen.getByTestId("pane-count")).toHaveTextContent("2");
+
+    // 2ペイン目から更に分割しても増えない（2ペイン固定）。
+    const ids = paneIds();
+    fireEvent.click(screen.getByText(`split-${ids[1]}`));
+    expect(screen.getByTestId("pane-count")).toHaveTextContent("2");
+  });
+
   it("各ペインのタブ操作は独立している", async () => {
     const { paneIds } = await setup();
     const [first] = paneIds();

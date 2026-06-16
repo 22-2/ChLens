@@ -1,6 +1,6 @@
 import { DragDropProvider } from "@dnd-kit/react";
 import { isSortableOperation, useSortable } from "@dnd-kit/react/sortable";
-import { Pin, Plus, SplitSquareHorizontal, X } from "lucide-react";
+import { Pin, Plus, X } from "lucide-react";
 import normalizeWheel from "normalize-wheel";
 import React, {
   useCallback,
@@ -381,15 +381,6 @@ export const TabBar: React.FC = () => {
             title="新しいタブ"
           >
             <Plus size={18} />
-          </button>
-          {/* このペインの右隣に新しいペインを開く（横分割） */}
-          <button
-            className="tab-bar__split"
-            onClick={() => dispatch({ type: "SPLIT_PANE" })}
-            onContextMenu={(e) => e.stopPropagation()}
-            title="右に分割"
-          >
-            <SplitSquareHorizontal size={16} />
           </button>
         </div>
       </DragDropProvider>
