@@ -116,6 +116,14 @@ function resolveNewTabPageMode(raw: string | null): NewTabPageMode {
   return "related_board";
 }
 
+function shouldFocusNewTabOnOpen(): boolean {
+  const rawValue = readConfigValue("focus_new_tab_on_open");
+  if (rawValue === null) {
+    return true;
+  }
+  return rawValue === "on";
+}
+
 function normalizePageLocation(rawLocation: string): string {
   try {
     const parsed = new window.URL(rawLocation);
@@ -707,7 +715,7 @@ function tabReducer(
         sourcePageForOpen,
         action.page,
       );
-      return updatePane(state, paneId, (p) => ({
+      const nextPane = updatePane(state, paneId, (p) => ({
         ...p,
         tabs: [
           ...p.tabs,
@@ -717,8 +725,15 @@ function tabReducer(
             currentIndex: newHistoryForOpen.length - 1,
           },
         ],
-        // activeTabId は変更しない
+        activeTabId: shouldFocusNewTabOnOpen()
+          ? newTabForOpen.id
+          : p.activeTabId,
       }));
+
+      return {
+        ...nextPane,
+        activePaneId: shouldFocusNewTabOnOpen() ? paneId : state.activePaneId,
+      };
     }
 
     case "OPEN_IN_NEW_TAB_FORCE": {

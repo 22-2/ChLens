@@ -666,8 +666,9 @@ describe("TabProvider auto refresh state", () => {
     });
   });
 
-  it("OPEN_IN_NEW_TAB は常に新規タブを作りアクティブタブを切り替えない", async () => {
+  it("OPEN_IN_NEW_TAB は設定オフ時にバックグラウンドで新規タブを作成する", async () => {
     vi.resetModules();
+    localStorage.setItem("config_focus_new_tab_on_open", "off");
     const { TabProvider, useTabStore } =
       await import("src/view/browser/hooks/use-tab-store");
 
@@ -735,6 +736,72 @@ describe("TabProvider auto refresh state", () => {
       originalActiveTabId,
     );
     expect(screen.getByTestId("current-page-title")).toHaveTextContent("板A");
+  });
+
+  it("OPEN_IN_NEW_TAB は設定オン時に新しいタブをアクティブにする", async () => {
+    vi.resetModules();
+    localStorage.setItem("config_focus_new_tab_on_open", "on");
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
+
+    function Harness() {
+      const { state, activeTab, currentPage, dispatch } = useTabStore();
+
+      return (
+        <>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "NAVIGATE",
+                page: {
+                  type: "threadList",
+                  title: "板A",
+                  boardUrl: "https://example.com/board-a/",
+                  boardTitle: "板A",
+                },
+              })
+            }
+          >
+            板Aへ移動
+          </button>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "OPEN_IN_NEW_TAB",
+                page: {
+                  type: "thread",
+                  title: "既存スレ",
+                  threadUrl: "https://example.com/test/read.cgi/board-a/1/",
+                },
+              })
+            }
+          >
+            既存スレを新しいタブで開く
+          </button>
+          <output data-testid="tabs-count">{state.tabs.length}</output>
+          <output data-testid="active-tab-id">{activeTab.id}</output>
+          <output data-testid="current-page-title">{currentPage.title}</output>
+        </>
+      );
+    }
+
+    render(
+      <TabProvider>
+        <Harness />
+      </TabProvider>,
+    );
+
+    fireEvent.click(screen.getByText("板Aへ移動"));
+    const originalActiveTabId = screen.getByTestId("active-tab-id").textContent;
+
+    fireEvent.click(screen.getByText("既存スレを新しいタブで開く"));
+    expect(screen.getByTestId("tabs-count")).toHaveTextContent("2");
+    expect(screen.getByTestId("active-tab-id").textContent).not.toBe(
+      originalActiveTabId,
+    );
+    expect(screen.getByTestId("current-page-title")).toHaveTextContent(
+      "既存スレ",
+    );
   });
 
   it("NAVIGATE は別タブに同じページがあっても現在タブの履歴に積む", async () => {

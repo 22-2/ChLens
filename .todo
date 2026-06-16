@@ -366,6 +366,8 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 - [ ] 画像サムネにグロぼかし
 
 ## 次
+
+- [ ] omnibarは最短一致順にソート
 - [ ] chore: デフォルトのurlのときはちゃんとサジェストするように
 - [x] enhance: bbsmenuの項目もomnibarのサジェストに含めるように
 - [x] navbarリファクタリング
