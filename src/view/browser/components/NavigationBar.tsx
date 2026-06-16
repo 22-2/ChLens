@@ -694,7 +694,7 @@ export const NavigationBar: React.FC = () => {
           onSelect: () => dispatch({ type: "GO_TO_HISTORY_INDEX", index }),
           onAuxSelect: (button: number) => {
             if (button !== 1) return;
-            dispatch({ type: "OPEN_IN_NEW_TAB", page });
+            dispatch({ type: "OPEN_IN_NEW_TAB", page, background: true });
           },
         })),
     [activeTab.currentIndex, activeTab.history, dispatch],
@@ -713,7 +713,7 @@ export const NavigationBar: React.FC = () => {
           onSelect: () => dispatch({ type: "GO_TO_HISTORY_INDEX", index }),
           onAuxSelect: (button: number) => {
             if (button !== 1) return;
-            dispatch({ type: "OPEN_IN_NEW_TAB", page });
+            dispatch({ type: "OPEN_IN_NEW_TAB", page, background: true });
           },
         })),
     [activeTab.currentIndex, activeTab.history, dispatch],

@@ -816,10 +816,11 @@ export const ThreadListPage: React.FC<Props> = ({
 
   const openThreadInNewTab = useCallback(
     ({ thread }: DisplayThread) => {
-      // ミドルクリックはバックグラウンドで開く（アクティブタブを切り替えない）
+      // ミドルクリックはバックグラウンドで開く（設定に関わらず常にバックグラウンドタブ）
       dispatch({
         type: "OPEN_IN_NEW_TAB",
         page: { type: "thread", title: thread.title, threadUrl: thread.url },
+        background: true,
       });
     },
     [dispatch],

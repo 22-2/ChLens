@@ -525,6 +525,7 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
       const parsed = parseInternalBrowserPage(entry.url);
       if (!parsed) return;
 
+      // ミドルクリックはバックグラウンドで開く（設定に関わらず常にバックグラウンドタブ）
       dispatch({
         type: "OPEN_IN_NEW_TAB",
         page: {
@@ -534,6 +535,7 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
             ? { boardTitle: entry.boardTitle || entry.title }
             : {}),
         },
+        background: true,
       });
     },
     [dispatch],

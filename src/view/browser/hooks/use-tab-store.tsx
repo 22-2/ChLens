@@ -43,7 +43,7 @@ export interface TabStoreState {
 
 export type TabAction =
   | { type: "ADD_TAB" }
-  | { type: "OPEN_IN_NEW_TAB"; page: Page }
+  | { type: "OPEN_IN_NEW_TAB"; page: Page; background?: boolean }
   | { type: "OPEN_IN_NEW_TAB_FORCE"; page: Page }
   | { type: "CLOSE_TAB"; tabId: string }
   | { type: "CLOSE_OTHER_TABS"; tabId: string }
@@ -709,12 +709,14 @@ function tabReducer(
 
       // バックグラウンドで新規タブを開く（アクティブタブ/ペインを切り替えない）。
       // buildHierarchyForNewTab で現在ページの板名を引き継いだカノニカルな祖先履歴を付与する。
+      // background フラグが true の場合は、設定値を無視して常にバックグラウンドで開く。
       const newTabForOpen = createTab();
       const sourcePageForOpen = getCurrentPage(getPaneActiveTab(pane));
       const newHistoryForOpen = buildHierarchyForNewTab(
         sourcePageForOpen,
         action.page,
       );
+      const shouldFocus = action.background ? false : shouldFocusNewTabOnOpen();
       const nextPane = updatePane(state, paneId, (p) => ({
         ...p,
         tabs: [
@@ -725,14 +727,12 @@ function tabReducer(
             currentIndex: newHistoryForOpen.length - 1,
           },
         ],
-        activeTabId: shouldFocusNewTabOnOpen()
-          ? newTabForOpen.id
-          : p.activeTabId,
+        activeTabId: shouldFocus ? newTabForOpen.id : p.activeTabId,
       }));
 
       return {
         ...nextPane,
-        activePaneId: shouldFocusNewTabOnOpen() ? paneId : state.activePaneId,
+        activePaneId: shouldFocus ? paneId : state.activePaneId,
       };
     }
 

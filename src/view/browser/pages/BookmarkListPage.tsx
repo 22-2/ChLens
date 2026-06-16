@@ -382,6 +382,7 @@ export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({
       const parsed = parseInternalBrowserPage(entry.url);
       if (!parsed) return;
 
+      // ミドルクリックはバックグラウンドで開く（設定に関わらず常にバックグラウンドタブ）
       dispatch({
         type: "OPEN_IN_NEW_TAB",
         page: {
@@ -391,6 +392,7 @@ export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({
             ? { boardTitle: entry.boardTitle || entry.title }
             : {}),
         },
+        background: true,
       });
     },
     [dispatch],

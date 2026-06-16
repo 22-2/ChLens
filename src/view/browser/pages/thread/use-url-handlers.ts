@@ -81,8 +81,9 @@ export function useUrlHandlers({
         }
 
         // 5ch互換URLは外部ブラウザではなく拡張内で開く。
+        // ミドルクリック時はバックグラウンドタブで開く（設定に関わらず常にバックグラウンド）
         if (button === 1) {
-          dispatch({ type: "OPEN_IN_NEW_TAB", page: internalPage });
+          dispatch({ type: "OPEN_IN_NEW_TAB", page: internalPage, background: true });
         } else {
           dispatch({ type: "NAVIGATE", page: internalPage });
         }
