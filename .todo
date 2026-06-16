@@ -367,6 +367,7 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 
 ## 次
 
+- [ ] 2ペインでフォーカス切り替えたときの自動更新が再度onにならない
 - [ ] omnibarは最短一致順にソート
 - [ ] chore: デフォルトのurlのときはちゃんとサジェストするように
 - [x] enhance: bbsmenuの項目もomnibarのサジェストに含めるように
