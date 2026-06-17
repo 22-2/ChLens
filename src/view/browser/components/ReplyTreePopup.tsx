@@ -620,9 +620,14 @@ export const ReplyTreePopup: React.FC<{
   const handleResContextMenu = useCallback(
     (event: React.MouseEvent, targetRes: IRes) => {
       event.stopPropagation();
+      // 右クリックで文脈メニューを開く前に、このポップアップ配下の子孫
+      // (アンカープレビュー/子ツリー)を畳む。テキスト選択を消さないため右クリックの
+      // mousedown では閉じない設計（button=2 をスキップ）になっており、選択が確定した
+      // contextmenu のこの時点で onSurfaceMouseDown(=子孫クローズ) を呼んで畳む。
+      onSurfaceMouseDown?.();
       onResContextMenu(targetRes, event);
     },
-    [onResContextMenu],
+    [onResContextMenu, onSurfaceMouseDown],
   );
 
   const handleMenuClick = (e: React.MouseEvent<HTMLButtonElement>) => {
