@@ -97,11 +97,34 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
         }
       }}
     >
-      <div className="pane-column__chrome">
-        <TabBar />
-        <NavigationBar />
-      </div>
-      <ContentArea />
+      {/*
+        ステータス／NG／書き込みパネル／自動スクロールの各状態をペイン単位に分離する。
+        これらのプロバイダをペイン内に降ろすことで、2ペイン時に左右それぞれが
+        独立したステータスバーと書き込みパネルを持てるようにする（旧構成はシェル直下に
+        1個だけ置き、アクティブペインの情報しか映せなかった）。
+        StatusBar の項目登録は固定 ID なので、プロバイダがペイン単位になることで
+        左右の項目衝突も自然に解消される。
+      */}
+      <StatusBarProvider>
+        <NgStatusProvider>
+          <BottomPanelProvider>
+            <AutoScrollStateProvider>
+              <div className="pane-column__chrome">
+                <TabBar />
+                <NavigationBar />
+              </div>
+              <ContentArea />
+              <BottomPanel />
+              {/* 以下はこのペインの StatusBarProvider に項目を登録する。 */}
+              <NgStatusItem />
+              <IkioiStatusItem />
+              <AutoRefreshStatusItem />
+              <WritePanelToggleItem />
+              <StatusBar />
+            </AutoScrollStateProvider>
+          </BottomPanelProvider>
+        </NgStatusProvider>
+      </StatusBarProvider>
     </section>
   );
 };
@@ -123,21 +146,6 @@ const PaneRow: React.FC = () => {
   );
 };
 
-// アクティブペインに束縛するグローバル UI（書き込みパネル・ステータス系・ダイアログ）。
-const ActivePaneBoundUI: React.FC = () => {
-  const { activePaneId } = useTabPanes();
-
-  return (
-    <PaneProvider paneId={activePaneId}>
-      <BottomPanel />
-      <NgStatusItem />
-      <IkioiStatusItem />
-      <AutoRefreshStatusItem />
-      <WritePanelToggleItem />
-    </PaneProvider>
-  );
-};
-
 export const BrowserApp: React.FC = () => {
   const theme = useTheme();
   useNotificationListener();
@@ -148,39 +156,33 @@ export const BrowserApp: React.FC = () => {
       forceColorScheme={theme === "dark" ? "dark" : "light"}
     >
       <TabProvider>
-        <StatusBarProvider>
-          <NgStatusProvider>
-            <BottomPanelProvider>
-              <AutoScrollStateProvider>
-                {/* data-theme を使ってダークモード CSS 変数を切り替える */}
-                <div className="browser-shell" data-theme={theme}>
-                  <Toaster
-                    position="top-right"
-                    theme={theme === "dark" ? "dark" : "light"}
-                    offset={{
-                      top: "88px",
-                      right: "78px",
-                    }}
-                    toastOptions={{
-                      style: {
-                        fontSize: "12px",
-                        padding: "8px 12px",
-                        minHeight: "auto",
-                        width: "fit-content",
-                      },
-                    }}
-                    duration={1500}
-                    closeButton
-                  />
-                  <PaneRow />
-                  <BookmarkRootSelectorDialog />
-                  <ActivePaneBoundUI />
-                  <StatusBar />
-                </div>
-              </AutoScrollStateProvider>
-            </BottomPanelProvider>
-          </NgStatusProvider>
-        </StatusBarProvider>
+        {/*
+          ステータス／NG／書き込み／自動スクロールの各プロバイダは PaneColumn 内へ移設した。
+          シェル直下には全ペイン共通のグローバル UI（トースト・ダイアログ）だけを残す。
+        */}
+        {/* data-theme を使ってダークモード CSS 変数を切り替える */}
+        <div className="browser-shell" data-theme={theme}>
+          <Toaster
+            position="top-right"
+            theme={theme === "dark" ? "dark" : "light"}
+            offset={{
+              top: "88px",
+              right: "78px",
+            }}
+            toastOptions={{
+              style: {
+                fontSize: "12px",
+                padding: "8px 12px",
+                minHeight: "auto",
+                width: "fit-content",
+              },
+            }}
+            duration={1500}
+            closeButton
+          />
+          <PaneRow />
+          <BookmarkRootSelectorDialog />
+        </div>
       </TabProvider>
     </MantineProvider>
   );
