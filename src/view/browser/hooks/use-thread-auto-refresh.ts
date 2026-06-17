@@ -16,6 +16,8 @@ interface UseThreadAutoRefreshOptions {
   requestRefresh: () => void;
   /** ポップアップ表示中など、自動スクロールを一時停止すべきとき。省略時は false */
   pauseAutoScroll?: boolean;
+  /** 新着が一定回数(=間隔×N)来ず放置と判断したとき、自動更新を止めるために呼ぶ。 */
+  onAutoStop?: () => void;
 }
 
 /**
@@ -39,6 +41,7 @@ export function useThreadAutoRefresh(
     rootRef,
     requestRefresh,
     pauseAutoScroll = false,
+    onAutoStop,
   } = options;
 
   const setAutoScrollState = useSetAutoScrollState();
@@ -52,6 +55,7 @@ export function useThreadAutoRefresh(
     lastResponseNum,
     rootRef,
     requestRefresh,
+    onAutoStop,
   });
 
   // canAutoScroll / isAutoScrolling をコンテキストへ同期して

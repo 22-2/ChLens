@@ -9,6 +9,7 @@ import {
 import React, { useState } from "react";
 import { container } from "src/service-container/index";
 import type { IConfig, IMessage } from "src/service-container/interfaces";
+import { THREAD_AUTO_REFRESH_IDLE_STOP_COUNT } from "src/view/browser/hooks/auto-refresh-config";
 import { useAutoRefresh } from "src/view/browser/hooks/use-auto-refresh";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -35,10 +36,12 @@ function AutoRefreshHarness({
   enabled = true,
   pauseAutoScroll = false,
   onRequestRefresh,
+  onAutoStop,
 }: {
   enabled?: boolean;
   pauseAutoScroll?: boolean;
   onRequestRefresh: () => void;
+  onAutoStop?: () => void;
 }) {
   const [responses, setResponses] = useState([1, 2]);
   const [loading, setLoading] = useState(false);
@@ -57,6 +60,7 @@ function AutoRefreshHarness({
         setLoading(true);
         onRequestRefresh();
       },
+      onAutoStop,
     });
 
   return (
@@ -456,5 +460,127 @@ describe("useAutoRefresh", () => {
 
     expect(scrollBy).not.toHaveBeenCalled();
     expect(screen.getByTestId("is-auto-scrolling")).toHaveTextContent("idle");
+  });
+
+  it("新着が連続で来ない更新が一定回数に達したら自動停止する", () => {
+    const onRequestRefresh = vi.fn();
+    const onAutoStop = vi.fn();
+    render(
+      <AutoRefreshHarness
+        onRequestRefresh={onRequestRefresh}
+        onAutoStop={onAutoStop}
+      />,
+    );
+
+    const scrollContainer = screen.getByTestId(
+      "scroll-container",
+    ) as HTMLDivElement;
+    const boundary = screen.getByTestId("boundary") as HTMLDivElement;
+
+    Object.defineProperty(scrollContainer, "clientHeight", {
+      configurable: true,
+      get: () => 100,
+    });
+    Object.defineProperty(scrollContainer, "scrollTop", {
+      configurable: true,
+      get: () => 200,
+      set: () => {},
+    });
+    Object.defineProperty(scrollContainer, "scrollHeight", {
+      configurable: true,
+      get: () => 300,
+    });
+    scrollContainer.getBoundingClientRect = () =>
+      createRect({ top: 0, bottom: 100 });
+    boundary.getBoundingClientRect = () => createRect({ top: 80, bottom: 100 });
+    scrollContainer.scrollBy = vi.fn();
+
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
+
+    // 1 回ぶんの「新着なし更新」を完了させるヘルパ。
+    const runIdleRefreshCycle = () => {
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+      fireEvent.click(screen.getByText("新着なしで完了"));
+      act(() => {
+        vi.runOnlyPendingTimers();
+      });
+    };
+
+    // 閾値の手前までは停止しない。
+    for (let i = 0; i < THREAD_AUTO_REFRESH_IDLE_STOP_COUNT - 1; i += 1) {
+      runIdleRefreshCycle();
+    }
+    expect(onAutoStop).not.toHaveBeenCalled();
+
+    // 閾値ちょうどに達した回で停止する。
+    runIdleRefreshCycle();
+    expect(onAutoStop).toHaveBeenCalledOnce();
+  });
+
+  it("新着が来たらアイドル累積がリセットされ自動停止しない", () => {
+    const onRequestRefresh = vi.fn();
+    const onAutoStop = vi.fn();
+    render(
+      <AutoRefreshHarness
+        onRequestRefresh={onRequestRefresh}
+        onAutoStop={onAutoStop}
+      />,
+    );
+
+    const scrollContainer = screen.getByTestId(
+      "scroll-container",
+    ) as HTMLDivElement;
+    const boundary = screen.getByTestId("boundary") as HTMLDivElement;
+
+    Object.defineProperty(scrollContainer, "clientHeight", {
+      configurable: true,
+      get: () => 100,
+    });
+    Object.defineProperty(scrollContainer, "scrollTop", {
+      configurable: true,
+      get: () => 200,
+      set: () => {},
+    });
+    Object.defineProperty(scrollContainer, "scrollHeight", {
+      configurable: true,
+      get: () => 300,
+    });
+    scrollContainer.getBoundingClientRect = () =>
+      createRect({ top: 0, bottom: 100 });
+    boundary.getBoundingClientRect = () => createRect({ top: 80, bottom: 100 });
+    scrollContainer.scrollBy = vi.fn();
+
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
+
+    const runRefreshCycle = (completeButtonLabel: string) => {
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+      fireEvent.click(screen.getByText(completeButtonLabel));
+      act(() => {
+        vi.runOnlyPendingTimers();
+      });
+    };
+
+    // あと 1 回で閾値に届く所まで idle を積む。
+    for (let i = 0; i < THREAD_AUTO_REFRESH_IDLE_STOP_COUNT - 1; i += 1) {
+      runRefreshCycle("新着なしで完了");
+    }
+
+    // 新着が来たら累積がリセットされるので、ここでは止まらない。
+    runRefreshCycle("新着ありで完了");
+    expect(onAutoStop).not.toHaveBeenCalled();
+
+    // リセット後はまた閾値ぶん idle が必要。手前までは止まらない。
+    for (let i = 0; i < THREAD_AUTO_REFRESH_IDLE_STOP_COUNT - 1; i += 1) {
+      runRefreshCycle("新着なしで完了");
+    }
+    expect(onAutoStop).not.toHaveBeenCalled();
   });
 });
