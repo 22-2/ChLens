@@ -32,6 +32,10 @@ vi.mock("src/view/browser/pages/SettingsPage", () => ({
   SettingsPage: () => <div data-testid="page-settings">settings</div>,
 }));
 
+vi.mock("src/view/browser/pages/LogListPage", () => ({
+  LogListPage: () => <div data-testid="page-log-list">log-list</div>,
+}));
+
 vi.mock("src/view/browser/pages/ThreadListPage", () => ({
   ThreadListPage: () => <div data-testid="page-thread-list">thread-list</div>,
 }));

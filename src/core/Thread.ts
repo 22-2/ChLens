@@ -614,11 +614,38 @@ export default class Thread {
         }
       }
 
-      cache.put();
+      // 変更理由: 閲覧ログとして恒久保存できるよう、スレのメタ情報を付与する。
+      this._applyLogMetadata(cache, thread);
+      await cache.put();
+      this._notifyLogUpdated();
     } else if (hasCache && response?.status === 304) {
       cache.lastUpdated = Date.now();
-      cache.put();
+      // 304(変化なし)でもログのメタを最新化しておく（kind 未設定の旧キャッシュ救済）。
+      this._applyLogMetadata(cache, thread);
+      await cache.put();
+      this._notifyLogUpdated();
     }
+  }
+
+  /**
+   * キャッシュにログ用のメタ情報（スレタイ・板URL・種別）を付与する。
+   * 閲覧したスレは常にログとして恒久保存する（kind="thread"）。
+   */
+  private _applyLogMetadata(cache: Cache, thread: ParsedThread): void {
+    cache.title = thread.title ?? cache.title ?? "";
+    // url(キャッシュキー)は dat パスのため、スレ再表示用の URL を別途保存する。
+    cache.threadUrl = this.url.url.href;
+    try {
+      cache.boardUrl = this.url.toBoard().url.href;
+    } catch {
+      // toBoard() はスレURL以外で例外。その場合は板URLを空のままにする。
+    }
+    cache.kind = "thread";
+  }
+
+  /** ログ一覧へ更新を通知する（一覧側で再読込させる）。 */
+  private _notifyLogUpdated(): void {
+    container.message.send("log_updated", { url: this.url.url.href });
   }
 
   /**

@@ -23,6 +23,12 @@ export interface ICacheItem {
   parsed?: any;
   readcgiVer?: number;
   datSize?: number;
+  // 閲覧ログ用メタ情報
+  title?: string | null;
+  threadUrl?: string | null;
+  boardUrl?: string | null;
+  boardTitle?: string | null;
+  kind?: string | null;
 }
 
 export interface ICacheService {

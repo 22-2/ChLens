@@ -10,7 +10,8 @@ export type PageType =
   | "settings"
   | "bookmarkList"
   | "historyList"
-  | "writeHistoryList";
+  | "writeHistoryList"
+  | "logList";
 
 export interface HomePage {
   type: "home";
@@ -56,6 +57,11 @@ export interface WriteHistoryListPage {
   title: string;
 }
 
+export interface LogListPage {
+  type: "logList";
+  title: string;
+}
+
 export type Page =
   | HomePage
   | BoardListPage
@@ -64,7 +70,8 @@ export type Page =
   | SettingsPage
   | BookmarkListPage
   | HistoryListPage
-  | WriteHistoryListPage;
+  | WriteHistoryListPage
+  | LogListPage;
 
 export interface Tab {
   id: string;
@@ -172,6 +179,8 @@ export function getDisplayUrl(page: Page): string {
       return "閲覧履歴";
     case "writeHistoryList":
       return "書き込み履歴";
+    case "logList":
+      return "ログ検索";
     case "threadList":
       return (page as ThreadListPage).boardUrl;
     case "thread":
@@ -205,6 +214,9 @@ export function buildHierarchy(page: Page): Page[] {
       return [{ type: "home", title: "ホーム" }, page];
 
     case "writeHistoryList":
+      return [{ type: "home", title: "ホーム" }, page];
+
+    case "logList":
       return [{ type: "home", title: "ホーム" }, page];
 
     case "threadList":

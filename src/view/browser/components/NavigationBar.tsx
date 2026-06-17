@@ -1,6 +1,7 @@
 import {
   ArrowLeft,
   ArrowRight,
+  Archive,
   Bookmark,
   Columns2,
   Filter,
@@ -531,7 +532,7 @@ export const NavigationBar: React.FC = () => {
 
   const openQuickAccessPage = useCallback(
     (page: {
-      type: "bookmarkList" | "historyList" | "writeHistoryList";
+      type: "bookmarkList" | "historyList" | "writeHistoryList" | "logList";
       title: string;
     }) => {
       dispatch({ type: "NAVIGATE", page });
@@ -541,7 +542,7 @@ export const NavigationBar: React.FC = () => {
 
   const openQuickAccessPageInNewTab = useCallback(
     (page: {
-      type: "bookmarkList" | "historyList" | "writeHistoryList";
+      type: "bookmarkList" | "historyList" | "writeHistoryList" | "logList";
       title: string;
     }) => {
       dispatch({ type: "OPEN_IN_NEW_TAB_FORCE", page });
@@ -658,7 +659,8 @@ export const NavigationBar: React.FC = () => {
       currentPage.type === "threadList" ||
       currentPage.type === "bookmarkList" ||
       currentPage.type === "historyList" ||
-      currentPage.type === "writeHistoryList"
+      currentPage.type === "writeHistoryList" ||
+      currentPage.type === "logList"
     ) {
       const eventName =
         QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE[
@@ -732,7 +734,8 @@ export const NavigationBar: React.FC = () => {
       currentPage.type === "threadList" ||
       currentPage.type === "bookmarkList" ||
       currentPage.type === "historyList" ||
-      currentPage.type === "writeHistoryList"
+      currentPage.type === "writeHistoryList" ||
+      currentPage.type === "logList"
         ? [
             {
               id: "open-filter-toolbar",
@@ -806,6 +809,23 @@ export const NavigationBar: React.FC = () => {
           openQuickAccessPageInNewTab({
             type: "writeHistoryList",
             title: "書き込み履歴",
+          });
+        },
+      },
+      {
+        id: "open-log-list",
+        label: "ログ検索を開く",
+        icon: <Archive size={14} />,
+        onSelect: () =>
+          openQuickAccessPage({
+            type: "logList",
+            title: "ログ検索",
+          }),
+        onAuxSelect: (button: number) => {
+          if (button !== 1) return;
+          openQuickAccessPageInNewTab({
+            type: "logList",
+            title: "ログ検索",
           });
         },
       },
@@ -884,7 +904,8 @@ export const NavigationBar: React.FC = () => {
           currentPage.type !== "thread" &&
           currentPage.type !== "threadList" &&
           currentPage.type !== "historyList" &&
-          currentPage.type !== "writeHistoryList"
+          currentPage.type !== "writeHistoryList" &&
+          currentPage.type !== "logList"
         }
         onClick={handleRefresh}
         onContextMenu={handleRefreshContextMenu}

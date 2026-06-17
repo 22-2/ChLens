@@ -26,6 +26,22 @@ interface CacheRecordInput {
   resLength: number | null;
   datSize: number | null;
   readcgiVer: number | null;
+  title?: string | null;
+  threadUrl?: string | null;
+  boardUrl?: string | null;
+  boardTitle?: string | null;
+  kind?: string | null;
+}
+
+interface CacheLogRecord {
+  url: string;
+  title: string | null;
+  threadUrl: string | null;
+  boardUrl: string | null;
+  boardTitle: string | null;
+  resLength: number | null;
+  datSize: number | null;
+  lastUpdated: number;
 }
 
 interface HistoryRecord {
@@ -119,6 +135,11 @@ export const tauriCacheRepository = {
       resLength: row.resLength,
       datSize: row.datSize,
       readcgiVer: row.readcgiVer,
+      title: row.title,
+      threadUrl: row.threadUrl,
+      boardUrl: row.boardUrl,
+      boardTitle: row.boardTitle,
+      kind: row.kind,
     };
   },
 
@@ -138,6 +159,11 @@ export const tauriCacheRepository = {
         resLength: record.resLength,
         datSize: record.datSize,
         readcgiVer: record.readcgiVer,
+        title: record.title ?? null,
+        threadUrl: record.threadUrl ?? null,
+        boardUrl: record.boardUrl ?? null,
+        boardTitle: record.boardTitle ?? null,
+        kind: record.kind ?? null,
       })
       .onConflictDoUpdate({
         target: cacheTable.url,
@@ -151,6 +177,11 @@ export const tauriCacheRepository = {
           resLength: record.resLength,
           datSize: record.datSize,
           readcgiVer: record.readcgiVer,
+          title: record.title ?? null,
+          threadUrl: record.threadUrl ?? null,
+          boardUrl: record.boardUrl ?? null,
+          boardTitle: record.boardTitle ?? null,
+          kind: record.kind ?? null,
         },
       });
   },
@@ -175,7 +206,74 @@ export const tauriCacheRepository = {
 
   async clearOlderThan(dayUnix: number): Promise<void> {
     const { db } = await getTauriDrizzleContext();
-    await db.delete(cacheTable).where(lt(cacheTable.lastUpdated, dayUnix));
+    // 変更理由: 閲覧ログ(kind="thread")は恒久保存のため自動掃除では消さない。
+    await db
+      .delete(cacheTable)
+      .where(
+        and(
+          lt(cacheTable.lastUpdated, dayUnix),
+          sql`(${cacheTable.kind} IS NULL OR ${cacheTable.kind} != 'thread')`,
+        ),
+      );
+  },
+
+  async listLogs(offset: number, limit: number): Promise<CacheLogRecord[]> {
+    const { db } = await getTauriDrizzleContext();
+    const query = db
+      .select({
+        url: cacheTable.url,
+        title: cacheTable.title,
+        threadUrl: cacheTable.threadUrl,
+        boardUrl: cacheTable.boardUrl,
+        boardTitle: cacheTable.boardTitle,
+        resLength: cacheTable.resLength,
+        datSize: cacheTable.datSize,
+        lastUpdated: cacheTable.lastUpdated,
+      })
+      .from(cacheTable)
+      .where(eq(cacheTable.kind, "thread"))
+      .orderBy(desc(cacheTable.lastUpdated));
+
+    if (limit >= 0) {
+      return query.limit(limit).offset(offset < 0 ? 0 : offset);
+    }
+    if (offset > 0) {
+      // drizzle は limit 無しの offset を許さないため、十分大きい limit を指定する。
+      return query.limit(-1).offset(offset);
+    }
+    return query;
+  },
+
+  async searchLogs(query: string): Promise<CacheLogRecord[]> {
+    const { db } = await getTauriDrizzleContext();
+    // 本文(data)・parsed_json・タイトルを LIKE で横断検索する。
+    // % と _ は LIKE のワイルドカードなのでエスケープする。
+    const escaped = query.replace(/[\\%_]/g, (c) => `\\${c}`);
+    const pattern = `%${escaped}%`;
+    return db
+      .select({
+        url: cacheTable.url,
+        title: cacheTable.title,
+        threadUrl: cacheTable.threadUrl,
+        boardUrl: cacheTable.boardUrl,
+        boardTitle: cacheTable.boardTitle,
+        resLength: cacheTable.resLength,
+        datSize: cacheTable.datSize,
+        lastUpdated: cacheTable.lastUpdated,
+      })
+      .from(cacheTable)
+      .where(
+        and(
+          eq(cacheTable.kind, "thread"),
+          sql`(${cacheTable.title} LIKE ${pattern} ESCAPE '\\' OR ${cacheTable.data} LIKE ${pattern} ESCAPE '\\' OR ${cacheTable.parsedJson} LIKE ${pattern} ESCAPE '\\')`,
+        ),
+      )
+      .orderBy(desc(cacheTable.lastUpdated));
+  },
+
+  async deleteLogs(): Promise<void> {
+    const { db } = await getTauriDrizzleContext();
+    await db.delete(cacheTable).where(eq(cacheTable.kind, "thread"));
   },
 };
 
