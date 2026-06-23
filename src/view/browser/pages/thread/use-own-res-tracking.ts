@@ -35,6 +35,7 @@ interface UseOwnResTrackingParams {
 interface UseOwnResTrackingResult {
   ownResNums: Set<number>;
   handleWriteHistoryAdded: (resNum: number) => void;
+  handleWriteHistoryRemoved: (resNum: number) => void;
 }
 
 export function useOwnResTracking({
@@ -223,5 +224,14 @@ export function useOwnResTracking({
     });
   }, []);
 
-  return { ownResNums, handleWriteHistoryAdded };
+  const handleWriteHistoryRemoved = useCallback((resNum: number) => {
+    setOwnResNums((prev) => {
+      if (!prev.has(resNum)) return prev;
+      const next = new Set(prev);
+      next.delete(resNum);
+      return next;
+    });
+  }, []);
+
+  return { ownResNums, handleWriteHistoryAdded, handleWriteHistoryRemoved };
 }

@@ -172,11 +172,12 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
 
   const imageBlurConfig = useImageBlurConfig();
 
-  const { ownResNums, handleWriteHistoryAdded } = useOwnResTracking({
-    threadUrl: page.threadUrl,
-    threadTitle: page.title,
-    responses,
-  });
+  const { ownResNums, handleWriteHistoryAdded, handleWriteHistoryRemoved } =
+    useOwnResTracking({
+      threadUrl: page.threadUrl,
+      threadTitle: page.title,
+      responses,
+    });
 
   const { scrollToResponse } = useThreadReadState({
     threadUrl: page.threadUrl,
@@ -266,8 +267,10 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       handleAnchorClick,
       hideAnchorPreviewImmediately,
       miniAaResNums,
+      ownResNums,
       page,
       onWriteHistoryAdded: handleWriteHistoryAdded,
+      onWriteHistoryRemoved: handleWriteHistoryRemoved,
       searchQuery,
       setFilter,
       setSearchQuery,

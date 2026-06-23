@@ -39,6 +39,7 @@ interface LegacyWriteHistoryService {
     title: string;
     url: string;
   }) => Promise<void> | void;
+  remove?: (url: string, res: number) => Promise<void> | void;
 }
 
 interface LegacyAppShape {

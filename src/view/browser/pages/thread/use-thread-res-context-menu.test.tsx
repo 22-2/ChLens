@@ -84,6 +84,7 @@ function HookHarness() {
     handleAnchorClick: () => {},
     hideAnchorPreviewImmediately: () => {},
     miniAaResNums,
+    ownResNums: new Set<number>(),
     page: {
       type: "thread",
       title: "thread title",
