@@ -136,7 +136,9 @@ function buildReplyTreeImageCardLayouts(
   replyEntries: ReplyTreeImageEntry[],
 ): { cards: ReplyTreeImageCardLayout[]; height: number } {
   const cards: ReplyTreeImageCardLayout[] = [];
-  const sourceHeader = `${sourceRes.num} ${stripHtml(sourceRes.name)}`;
+  const sourceHeader = `${sourceRes.num} ${stripHtml(sourceRes.name)}${
+    sourceRes.id ? ` ${sourceRes.id}` : ""
+  }`;
   const sourceDate = sourceRes.date ?? sourceRes.other ?? "";
   const sourceBody = wrapCanvasText(
     context,
@@ -182,7 +184,9 @@ function buildReplyTreeImageCardLayouts(
       TREE_IMAGE_LAYOUT.cardMinWidth,
       TREE_IMAGE_LAYOUT.width - TREE_IMAGE_LAYOUT.paddingX * 2 - indent,
     );
-    const headerLine = `${entry.res.num} ${stripHtml(entry.res.name)}`;
+    const headerLine = `${entry.res.num} ${stripHtml(entry.res.name)}${
+      entry.res.id ? ` ${entry.res.id}` : ""
+    }`;
     const dateLine = entry.res.date ?? entry.res.other ?? "";
     const bodyLines = wrapCanvasText(
       context,
@@ -416,7 +420,8 @@ function collectReplyTreeResponses(
 function formatResForCopy(res: IRes): string {
   const plainName = stripHtml(res.name);
   const plainMessage = stripHtml(res.message);
-  return `${res.num} ${plainName}  ${res.date ?? res.other}\n${plainMessage}`;
+  const idSuffix = res.id ? ` ${res.id}` : "";
+  return `${res.num} ${plainName}${idSuffix}  ${res.date ?? res.other}\n${plainMessage}`;
 }
 
 function buildReplyTreeCopyText(
@@ -620,9 +625,14 @@ export const ReplyTreePopup: React.FC<{
   const handleResContextMenu = useCallback(
     (event: React.MouseEvent, targetRes: IRes) => {
       event.stopPropagation();
+      // 右クリックで文脈メニューを開く前に、このポップアップ配下の子孫
+      // (アンカープレビュー/子ツリー)を畳む。テキスト選択を消さないため右クリックの
+      // mousedown では閉じない設計（button=2 をスキップ）になっており、選択が確定した
+      // contextmenu のこの時点で onSurfaceMouseDown(=子孫クローズ) を呼んで畳む。
+      onSurfaceMouseDown?.();
       onResContextMenu(targetRes, event);
     },
-    [onResContextMenu],
+    [onResContextMenu, onSurfaceMouseDown],
   );
 
   const handleMenuClick = (e: React.MouseEvent<HTMLButtonElement>) => {

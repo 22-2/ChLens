@@ -92,7 +92,7 @@ export const SETTINGS_SECTIONS = [
       {
         kind: "divider",
         id: "new-tab",
-        title: "新規タブ",
+        title: "タブ",
       },
       {
         kind: "string",
@@ -100,6 +100,13 @@ export const SETTINGS_SECTIONS = [
         title: "新しいタブで開くページ",
         options: NEW_TAB_PAGE_MODE_OPTIONS,
         widget: "radio",
+      },
+      {
+        kind: "boolean",
+        key: "focus_new_tab_on_open",
+        title: "外部ページから開いたときに新しいタブをフォーカスする",
+        description:
+          "外部ページの「chlens で開く」からスレを開いたとき、新しいタブをアクティブにします。",
       },
       {
         kind: "string",
@@ -125,7 +132,7 @@ export const SETTINGS_SECTIONS = [
         id: "write",
         title: "書き込み",
       },
-      {
+{
         kind: "boolean",
         key: "write_submit_ctrl_enter",
         title: "Ctrl+Enterで書き込む",

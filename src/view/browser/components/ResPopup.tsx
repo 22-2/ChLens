@@ -80,9 +80,12 @@ export const ResPopup: React.FC<{
   const handleResContextMenu = useCallback(
     (event: React.MouseEvent, targetRes: IRes) => {
       event.stopPropagation();
+      // 右クリックの mousedown では選択保護のため子孫を畳まない設計なので、
+      // 選択が確定した contextmenu のこの時点で配下の子孫ポップアップを畳む。
+      onSurfaceMouseDown?.();
       onResContextMenu(targetRes, event);
     },
-    [onResContextMenu],
+    [onResContextMenu, onSurfaceMouseDown],
   );
   const {
     armMouseLeaveCloseSuppression,

@@ -29,6 +29,7 @@ import { useThreadResContextMenu } from "src/view/browser/pages/thread/use-threa
 import { useThreadTopBar } from "src/view/browser/pages/thread/use-thread-top-bar";
 import { useThreadTopScrollOpenFilter } from "src/view/browser/pages/thread/use-thread-top-scroll-open-filter";
 import { useUrlHandlers } from "src/view/browser/pages/thread/use-url-handlers";
+import { getAutoRefreshPageKey } from "src/view/browser/utils/auto-refresh-pages";
 import {
   buildBlurredResSet,
   buildReplyToWrittenResSet,
@@ -127,6 +128,20 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       lastResponseNum: responses.at(-1)?.num ?? null,
       rootRef,
       requestRefresh: () => dispatch({ type: "RELOAD" }),
+      // 新着が一定回数(=間隔×N)来なかったら、放置スレと判断して自動更新を止める。
+      onAutoStop: () => {
+        const pageKey = getAutoRefreshPageKey(page);
+        if (pageKey == null) {
+          return;
+        }
+        dispatch({
+          type: "SET_AUTO_REFRESH_ENABLED",
+          enabled: false,
+          pageKey,
+        });
+        // 状態アイコンが消えるだけだと「いつ止まったか」が分かりにくいので明示する。
+        container.toast.info("新着が止まったため自動更新を停止しました");
+      },
     });
 
   const handleFollowNextThread = useCallback(
@@ -157,11 +172,12 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
 
   const imageBlurConfig = useImageBlurConfig();
 
-  const { ownResNums, handleWriteHistoryAdded } = useOwnResTracking({
-    threadUrl: page.threadUrl,
-    threadTitle: page.title,
-    responses,
-  });
+  const { ownResNums, handleWriteHistoryAdded, handleWriteHistoryRemoved } =
+    useOwnResTracking({
+      threadUrl: page.threadUrl,
+      threadTitle: page.title,
+      responses,
+    });
 
   const { scrollToResponse } = useThreadReadState({
     threadUrl: page.threadUrl,
@@ -232,7 +248,10 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   useEffect(() => {
     // ステータスバーの件数はページ外コンポーネントから参照するため、
     // スレッド側で集計して共有ストアへ反映する。
-    setThreadStats({ ngCount: threadNgCount, highlightCount: ownHighlightCount });
+    setThreadStats({
+      ngCount: threadNgCount,
+      highlightCount: ownHighlightCount,
+    });
     return () => {
       setThreadStats({ ngCount: 0, highlightCount: 0 });
     };
@@ -248,8 +267,10 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       handleAnchorClick,
       hideAnchorPreviewImmediately,
       miniAaResNums,
+      ownResNums,
       page,
       onWriteHistoryAdded: handleWriteHistoryAdded,
+      onWriteHistoryRemoved: handleWriteHistoryRemoved,
       searchQuery,
       setFilter,
       setSearchQuery,

@@ -151,7 +151,7 @@ const SortableTab: React.FC<SortableTabProps> = ({
 };
 
 export const TabBar: React.FC = () => {
-  const { state, stateRef, dispatch } = useTabStore();
+  const { state, stateRef, dispatch, paneId } = useTabStore();
   const { canAutoScroll, isAutoScrolling, isPaused } = useAutoScrollState();
   const barRef = useRef<HTMLDivElement | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
@@ -225,8 +225,15 @@ export const TabBar: React.FC = () => {
         return;
       }
 
-      const tabs = stateRef.current.tabs;
-      const currentIdx = tabs.findIndex((t) => t.id === stateRef.current.activeTabId);
+      // stateRef はグローバル状態を指すので、自ペインを解決してからタブ列を取り出す。
+      const pane =
+        stateRef.current.panes.find((p) => p.id === paneId) ??
+        stateRef.current.panes.find(
+          (p) => p.id === stateRef.current.activePaneId,
+        );
+      if (!pane) return;
+      const tabs = pane.tabs;
+      const currentIdx = tabs.findIndex((t) => t.id === pane.activeTabId);
       if (currentIdx === -1) return;
 
       // 変更理由: ブラウザごとの生の delta 符号差を normalize-wheel で吸収し、
@@ -238,7 +245,7 @@ export const TabBar: React.FC = () => {
       lastWheelSwitchAtRef.current = now;
       dispatch({ type: "SELECT_TAB", tabId: tabs[nextIdx].id });
     },
-    [dispatch],
+    [dispatch, paneId, stateRef],
   );
 
   useEffect(() => {

@@ -76,7 +76,10 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
     activeTab,
     currentPage: activeTab.history[activeTab.currentIndex],
     dispatch: dispatchMock,
+    paneId: "pane-1",
   }),
+  // NavigationBar は複数ペイン時のみ「ペインを閉じる」を出すため、単一ペインを返す。
+  useTabPanes: () => ({ panes: [{ id: "pane-1" }], activePaneId: "pane-1" }),
 }));
 
 vi.mock("src/view/browser/hooks/use-bottom-panel", () => ({

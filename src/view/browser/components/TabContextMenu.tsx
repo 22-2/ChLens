@@ -4,6 +4,7 @@ import {
   Clipboard,
   ExternalLink,
   List,
+  PanelRight,
   Pin,
   PinOff,
   X,
@@ -85,6 +86,14 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
         onSelect: () => dispatch({ type: "REOPEN_CLOSED_TAB" }),
       },
       { id: "sep-1", separator: true },
+      {
+        id: "open-in-right-pane",
+        label: "右のペインで開く",
+        icon: <PanelRight />,
+        onSelect: () =>
+          dispatch({ type: "OPEN_IN_RIGHT_PANE", tabId: tab.id }),
+      },
+      { id: "sep-pane", separator: true },
     ];
 
     if (isThread) {

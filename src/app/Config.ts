@@ -89,6 +89,7 @@ export default class Config {
     ["bookmark_show_dat", "on"],
     ["default_name", ""],
     ["default_mail", ""],
+    ["focus_new_tab_on_open", "on"],
     ["write_submit_ctrl_enter", "off"],
     ["no_history", "off"],
     ["no_writehistory", "off"],

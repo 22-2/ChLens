@@ -19,6 +19,25 @@ interface TauriDrizzleContext {
 let dbContextPromise: Promise<TauriDrizzleContext> | null = null;
 let dbContextError: Error | null = null;
 
+/**
+ * 既存テーブルに列を冪等に追加する。
+ * 列が既に存在する場合 SQLite は "duplicate column name" エラーを投げるため、握りつぶす。
+ */
+async function addColumnIfMissing(
+  raw: SqlPluginDatabase,
+  table: string,
+  column: string,
+  type: string,
+): Promise<void> {
+  const cols = await raw.select<{ name: string }>(
+    `PRAGMA table_info(${table})`,
+  );
+  if (cols.some((col) => col.name === column)) {
+    return;
+  }
+  await raw.execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
+}
+
 async function runMigrations(raw: SqlPluginDatabase): Promise<void> {
   await raw.execute(`
     CREATE TABLE IF NOT EXISTS cache (
@@ -30,14 +49,29 @@ async function runMigrations(raw: SqlPluginDatabase): Promise<void> {
       etag TEXT,
       res_length INTEGER,
       dat_size INTEGER,
-      readcgi_ver INTEGER
+      readcgi_ver INTEGER,
+      title TEXT,
+      thread_url TEXT,
+      board_url TEXT,
+      board_title TEXT,
+      kind TEXT
     )
   `);
+  // 変更理由: 閲覧ログ機能のメタ列を、既存DBにも後付けで追加する。
+  // SQLite は ADD COLUMN IF NOT EXISTS 非対応のため、重複エラーは無視する。
+  await addColumnIfMissing(raw, "cache", "title", "TEXT");
+  await addColumnIfMissing(raw, "cache", "thread_url", "TEXT");
+  await addColumnIfMissing(raw, "cache", "board_url", "TEXT");
+  await addColumnIfMissing(raw, "cache", "board_title", "TEXT");
+  await addColumnIfMissing(raw, "cache", "kind", "TEXT");
   await raw.execute(
     "CREATE INDEX IF NOT EXISTS idx_cache_last_updated ON cache(last_updated)",
   );
   await raw.execute(
     "CREATE INDEX IF NOT EXISTS idx_cache_last_modified ON cache(last_modified)",
+  );
+  await raw.execute(
+    "CREATE INDEX IF NOT EXISTS idx_cache_kind ON cache(kind)",
   );
 
   await raw.execute(`

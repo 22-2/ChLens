@@ -18,6 +18,7 @@ export const BottomPanel: React.FC = () => {
     setActiveTab,
   } = useBottomPanel();
 
+  const rootRef = useRef<HTMLDivElement>(null);
   const dragStartY = useRef<number | null>(null);
   const dragStartHeight = useRef<number>(height);
   const wasOpenRef = useRef(false);
@@ -49,7 +50,11 @@ export const BottomPanel: React.FC = () => {
       return;
     }
 
-    const activePanel = document.querySelector(
+    // 2ペイン時は data-active な tab-panel が左右に1個ずつ存在するため、
+    // document 全体ではなく自ペイン（.pane-column）配下に限定して、
+    // 他ペインのスレッドを誤ってスクロールしないようにする。
+    const scope = rootRef.current?.closest(".pane-column") ?? document;
+    const activePanel = scope.querySelector(
       ".content-area__tab-panel[data-active='true']",
     );
     if (!(activePanel instanceof HTMLElement)) {
@@ -97,7 +102,7 @@ export const BottomPanel: React.FC = () => {
   if (!isOpen || currentPage.type !== "thread") return null;
 
   return (
-    <div className="bottom-panel" style={{ height }}>
+    <div ref={rootRef} className="bottom-panel" style={{ height }}>
       {/* ドラッグリサイズハンドル */}
       <div
         className="bottom-panel__resize-handle"

@@ -4,6 +4,7 @@ import { BoardListPage } from "src/view/browser/pages/BoardListPage";
 import { BookmarkListPage } from "src/view/browser/pages/BookmarkListPage";
 import { HistoryListPage } from "src/view/browser/pages/HistoryListPage";
 import { HomePage } from "src/view/browser/pages/HomePage";
+import { LogListPage } from "src/view/browser/pages/LogListPage";
 import { SettingsPage } from "src/view/browser/pages/SettingsPage";
 import { ThreadListPage } from "src/view/browser/pages/ThreadListPage";
 import { ThreadPage } from "src/view/browser/pages/ThreadPage";
@@ -32,6 +33,8 @@ function buildPageRenderKey(
       return `${tabId}:${historyIndex}:historyList`;
     case "writeHistoryList":
       return `${tabId}:${historyIndex}:writeHistoryList`;
+    case "logList":
+      return `${tabId}:${historyIndex}:logList`;
     case "home":
       return `${tabId}:${historyIndex}:home`;
   }
@@ -71,6 +74,14 @@ const TabPageContent = memo(function TabPageContent({
     case "writeHistoryList":
       return (
         <WriteHistoryListPage
+          tabId={tab.id}
+          isActive={isActive}
+          refreshKey={tab.reloadKey}
+        />
+      );
+    case "logList":
+      return (
+        <LogListPage
           tabId={tab.id}
           isActive={isActive}
           refreshKey={tab.reloadKey}

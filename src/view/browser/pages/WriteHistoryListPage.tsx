@@ -136,6 +136,7 @@ export function navigateToWriteHistoryEntry(
       ...parsed,
       title: entry.title,
     },
+    ...(mode === "new-tab" ? { background: true } : {}),
   });
 }
 

@@ -366,6 +366,9 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 - [ ] 画像サムネにグロぼかし
 
 ## 次
+
+- [ ] 2ペインでフォーカス切り替えたときの自動更新が再度onにならない
+- [ ] omnibarは最短一致順にソート
 - [ ] chore: デフォルトのurlのときはちゃんとサジェストするように
 - [x] enhance: bbsmenuの項目もomnibarのサジェストに含めるように
 - [x] navbarリファクタリング
@@ -381,6 +384,8 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 
 - [ ] スレの2ペイン
 - [ ] スレを別ウィンドウで開く
+- [ ] スレでバックグラウンドでも更新し続ける設定
+  - レッドアイコンから何色にするか？
 
 ```
 設定にimport/exportページを追加してくださいっす

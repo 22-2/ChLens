@@ -10,6 +10,7 @@ import {
 } from "@mantine/core";
 import { AlertTriangle } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Cache from "src/core/Cache";
 import { container } from "src/service-container/index";
 import {
   buildDataExportFilename,
@@ -41,6 +42,7 @@ export function SettingsSupplementaryPanels({
     useState(false);
   const [isExportingArchive, setIsExportingArchive] = useState(false);
   const [isImportingArchive, setIsImportingArchive] = useState(false);
+  const [isDeletingLogs, setIsDeletingLogs] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const loadBookmarkFolder = useCallback(async () => {
@@ -172,6 +174,33 @@ export function SettingsSupplementaryPanels({
     fileInputRef.current?.click();
   }, []);
 
+  const handleDeleteLogs = useCallback(async () => {
+    if (isDeletingLogs) {
+      return;
+    }
+    // 恒久保存されたログを消すため、誤操作防止の確認を挟む。
+    if (
+      !window.confirm(
+        "保存済みのログ（過去ログ）をすべて削除します。元に戻せません。よろしいっすか？",
+      )
+    ) {
+      return;
+    }
+
+    setIsDeletingLogs(true);
+    try {
+      await Cache.deleteLogs();
+      container.message.send("log_updated", { type: "cleared" });
+      container.toast.success("ログをすべて削除しました");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "ログの削除に失敗しました";
+      container.toast.error(message);
+    } finally {
+      setIsDeletingLogs(false);
+    }
+  }, [isDeletingLogs]);
+
   const panels = useMemo(() => {
     if (!panelIds || panelIds.length === 0) {
       return [] as React.ReactNode[];
@@ -296,6 +325,21 @@ export function SettingsSupplementaryPanels({
                     event.currentTarget.value = "";
                   }}
                 />
+
+                <Text fw={600} size="xs" mt="sm">
+                  ログ（過去ログ）
+                </Text>
+                <Text size="xs" c="dimmed">
+                  閲覧したスレの本文を恒久保存したログをすべて削除します。
+                </Text>
+                <Button
+                  color="red"
+                  variant="light"
+                  onClick={() => void handleDeleteLogs()}
+                  loading={isDeletingLogs}
+                >
+                  ログをすべて削除
+                </Button>
               </Stack>
             </Card>
           );
@@ -305,11 +349,13 @@ export function SettingsSupplementaryPanels({
     bookmarkError,
     bookmarkLoading,
     folderName,
+    handleDeleteLogs,
     handleExportArchive,
     handleImportArchiveFile,
     handleImportButtonClick,
     includeHistoryInExport,
     includeWriteHistoryInExport,
+    isDeletingLogs,
     isExportingArchive,
     isImportingArchive,
     maintenanceActions,

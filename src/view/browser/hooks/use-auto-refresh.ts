@@ -11,6 +11,7 @@ import {
   MIN_THREAD_AUTO_REFRESH_MS,
   readThreadAutoRefreshIntervalMs,
   THREAD_AUTO_REFRESH_CONFIG_KEY,
+  THREAD_AUTO_REFRESH_IDLE_STOP_COUNT,
 } from "src/view/browser/hooks/auto-refresh-config";
 
 interface PendingRefreshSnapshot {
@@ -18,6 +19,9 @@ interface PendingRefreshSnapshot {
   lastResponseNum: number | null;
   scrollHeight: number;
   shouldScroll: boolean;
+  // 自動停止のアイドル判定に数えてよい更新かどうか。
+  // ON直後の初回更新は「新着ゼロ」でも放置とは見なさないので false にする。
+  isIdleStopCandidate: boolean;
 }
 
 type AutoRefreshPhase = "idle" | "scrolling";
@@ -31,6 +35,8 @@ interface UseAutoRefreshOptions {
   lastResponseNum: number | null;
   rootRef: RefObject<HTMLDivElement | null>;
   requestRefresh: () => void;
+  /** 新着が一定回数(=間隔×N)来ず放置と判断したとき、自動更新を止めるために呼ぶ。 */
+  onAutoStop?: () => void;
 }
 
 interface ConfigUpdatedMessage {
@@ -54,10 +60,14 @@ export function useAutoRefresh({
   lastResponseNum,
   rootRef,
   requestRefresh,
+  onAutoStop,
 }: UseAutoRefreshOptions): UseAutoRefreshResult {
   const autoScrollBoundaryRef = useRef<HTMLDivElement>(null);
   const pendingRefreshRef = useRef<PendingRefreshSnapshot | null>(null);
   const requestRefreshRef = useRef(requestRefresh);
+  const onAutoStopRef = useRef(onAutoStop);
+  // 新着が来なかった更新が何回連続したか。新着が来たら 0 に戻す。
+  const consecutiveIdleRefreshRef = useRef(0);
   const loadingRef = useRef(loading);
   const prevEnabledRef = useRef(enabled);
   const latestSnapshotRef = useRef({ responseCount, lastResponseNum });
@@ -98,6 +108,10 @@ export function useAutoRefresh({
   useEffect(() => {
     requestRefreshRef.current = requestRefresh;
   }, [requestRefresh]);
+
+  useEffect(() => {
+    onAutoStopRef.current = onAutoStop;
+  }, [onAutoStop]);
 
   useEffect(() => {
     loadingRef.current = loading;
@@ -207,6 +221,8 @@ export function useAutoRefresh({
     // OFF にした瞬間に保留中スクロールまで実行すると「止めたのに動く」感触になるので破棄する。
     pendingRefreshRef.current = null;
     userInterruptedRef.current = false;
+    // 次に ON にしたとき前回のアイドル累積を引き継がないようリセットする。
+    consecutiveIdleRefreshRef.current = 0;
     clearScrollingIndicator();
   }, [clearScrollingIndicator, enabled]);
 
@@ -233,11 +249,15 @@ export function useAutoRefresh({
     }
 
     const currentSnapshot = latestSnapshotRef.current;
+    // ON 直後の初回更新。アイドル累積は ON のタイミングでリセットし、
+    // この回は「新着ゼロ」でも放置とは数えない。
+    consecutiveIdleRefreshRef.current = 0;
     pendingRefreshRef.current = {
       responseCount: currentSnapshot.responseCount,
       lastResponseNum: currentSnapshot.lastResponseNum,
       scrollHeight: scrollContainer.scrollHeight,
       shouldScroll: true,
+      isIdleStopCandidate: false,
     };
     userInterruptedRef.current = false;
     requestRefreshRef.current();
@@ -319,6 +339,7 @@ export function useAutoRefresh({
         lastResponseNum: currentSnapshot.lastResponseNum,
         scrollHeight: scrollContainer.scrollHeight,
         shouldScroll: canAutoScrollRef.current,
+        isIdleStopCandidate: true,
       };
       userInterruptedRef.current = false;
 
@@ -352,6 +373,26 @@ export function useAutoRefresh({
     const hasNewResponses =
       pendingRefresh.responseCount !== responseCount ||
       pendingRefresh.lastResponseNum !== lastResponseNum;
+
+    // 自動停止（アイドル検知）。
+    // 新着が来た回はカウントを 0 に戻し、来なかった回だけ加算する。
+    // ユーザー割り込みの有無は「新着が来たか」とは無関係なので判定には混ぜない。
+    if (pendingRefresh.isIdleStopCandidate) {
+      if (hasNewResponses) {
+        consecutiveIdleRefreshRef.current = 0;
+      } else {
+        consecutiveIdleRefreshRef.current += 1;
+        if (
+          consecutiveIdleRefreshRef.current >=
+          THREAD_AUTO_REFRESH_IDLE_STOP_COUNT
+        ) {
+          consecutiveIdleRefreshRef.current = 0;
+          onAutoStopRef.current?.();
+          return;
+        }
+      }
+    }
+
     if (!hasNewResponses || userInterruptedRef.current) {
       return;
     }

@@ -1,7 +1,9 @@
 import {
   ArrowLeft,
   ArrowRight,
+  Archive,
   Bookmark,
+  Columns2,
   Filter,
   History,
   Menu,
@@ -22,7 +24,7 @@ import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { Omnibar } from "src/view/browser/components/Omnibar";
 import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useOmnibar } from "src/view/browser/hooks/use-omnibar";
-import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { useTabPanes, useTabStore } from "src/view/browser/hooks/use-tab-store";
 import {
   canGoBack,
   canGoForward,
@@ -306,6 +308,9 @@ function navigateByUrl(
 
 export const NavigationBar: React.FC = () => {
   const { state, activeTab, currentPage, dispatch } = useTabStore();
+  // 2ペイン表示中かどうか（トグルボタンの状態に使う）。
+  const { panes } = useTabPanes();
+  const isTwoPane = panes.length >= 2;
   const { isOpen: isPanelOpen, togglePanel } = useBottomPanel();
 
   const back = canGoBack(activeTab);
@@ -527,7 +532,7 @@ export const NavigationBar: React.FC = () => {
 
   const openQuickAccessPage = useCallback(
     (page: {
-      type: "bookmarkList" | "historyList" | "writeHistoryList";
+      type: "bookmarkList" | "historyList" | "writeHistoryList" | "logList";
       title: string;
     }) => {
       dispatch({ type: "NAVIGATE", page });
@@ -537,7 +542,7 @@ export const NavigationBar: React.FC = () => {
 
   const openQuickAccessPageInNewTab = useCallback(
     (page: {
-      type: "bookmarkList" | "historyList" | "writeHistoryList";
+      type: "bookmarkList" | "historyList" | "writeHistoryList" | "logList";
       title: string;
     }) => {
       dispatch({ type: "OPEN_IN_NEW_TAB_FORCE", page });
@@ -654,7 +659,8 @@ export const NavigationBar: React.FC = () => {
       currentPage.type === "threadList" ||
       currentPage.type === "bookmarkList" ||
       currentPage.type === "historyList" ||
-      currentPage.type === "writeHistoryList"
+      currentPage.type === "writeHistoryList" ||
+      currentPage.type === "logList"
     ) {
       const eventName =
         QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE[
@@ -690,7 +696,7 @@ export const NavigationBar: React.FC = () => {
           onSelect: () => dispatch({ type: "GO_TO_HISTORY_INDEX", index }),
           onAuxSelect: (button: number) => {
             if (button !== 1) return;
-            dispatch({ type: "OPEN_IN_NEW_TAB", page });
+            dispatch({ type: "OPEN_IN_NEW_TAB", page, background: true });
           },
         })),
     [activeTab.currentIndex, activeTab.history, dispatch],
@@ -709,7 +715,7 @@ export const NavigationBar: React.FC = () => {
           onSelect: () => dispatch({ type: "GO_TO_HISTORY_INDEX", index }),
           onAuxSelect: (button: number) => {
             if (button !== 1) return;
-            dispatch({ type: "OPEN_IN_NEW_TAB", page });
+            dispatch({ type: "OPEN_IN_NEW_TAB", page, background: true });
           },
         })),
     [activeTab.currentIndex, activeTab.history, dispatch],
@@ -728,7 +734,8 @@ export const NavigationBar: React.FC = () => {
       currentPage.type === "threadList" ||
       currentPage.type === "bookmarkList" ||
       currentPage.type === "historyList" ||
-      currentPage.type === "writeHistoryList"
+      currentPage.type === "writeHistoryList" ||
+      currentPage.type === "logList"
         ? [
             {
               id: "open-filter-toolbar",
@@ -802,6 +809,23 @@ export const NavigationBar: React.FC = () => {
           openQuickAccessPageInNewTab({
             type: "writeHistoryList",
             title: "書き込み履歴",
+          });
+        },
+      },
+      {
+        id: "open-log-list",
+        label: "ログ検索を開く",
+        icon: <Archive size={14} />,
+        onSelect: () =>
+          openQuickAccessPage({
+            type: "logList",
+            title: "ログ検索",
+          }),
+        onAuxSelect: (button: number) => {
+          if (button !== 1) return;
+          openQuickAccessPageInNewTab({
+            type: "logList",
+            title: "ログ検索",
           });
         },
       },
@@ -880,7 +904,8 @@ export const NavigationBar: React.FC = () => {
           currentPage.type !== "thread" &&
           currentPage.type !== "threadList" &&
           currentPage.type !== "historyList" &&
-          currentPage.type !== "writeHistoryList"
+          currentPage.type !== "writeHistoryList" &&
+          currentPage.type !== "logList"
         }
         onClick={handleRefresh}
         onContextMenu={handleRefreshContextMenu}
@@ -933,6 +958,19 @@ export const NavigationBar: React.FC = () => {
           ) : null
         }
       />
+
+      {/* 2ペイン表示のオン/オフトグル。
+          1ペイン時は右に2ペイン目を開き、2ペイン時はこのペインを閉じて1ペインへ戻す。 */}
+      <button
+        className={`nav-bar__btn${isTwoPane ? " nav-bar__btn--active" : ""}`}
+        title={isTwoPane ? "2ペイン表示を解除" : "2ペインで表示"}
+        aria-pressed={isTwoPane}
+        onClick={() =>
+          dispatch({ type: isTwoPane ? "CLOSE_PANE" : "SPLIT_PANE" })
+        }
+      >
+        <Columns2 size={18} />
+      </button>
 
       <button
         ref={menuButtonRef}

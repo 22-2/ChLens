@@ -23,6 +23,19 @@ vi.mock("src/core/History", () => ({
   remove: historyRemoveMock,
 }));
 
+// webextension-polyfill は拡張機能環境以外では import 時に例外を投げるため、
+// reducer の振る舞い検証に不要な runtime API を最小モックで差し替える。
+vi.mock("webextension-polyfill", () => ({
+  default: {
+    runtime: {
+      onMessage: {
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+      },
+    },
+  },
+}));
+
 function createMemoryStorage(): Storage {
   const items = new Map<string, string>();
 
@@ -288,11 +301,16 @@ describe("TabProvider auto refresh state", () => {
     const raw = localStorage.getItem("chlens_browser_session");
     expect(raw).not.toBeNull();
     const parsed = JSON.parse(raw ?? "{}") as {
-      tabs: Array<{ autoRefreshEnabled: boolean; autoRefreshPageKey: string | null }>;
+      panes: Array<{
+        tabs: Array<{
+          autoRefreshEnabled: boolean;
+          autoRefreshPageKey: string | null;
+        }>;
+      }>;
     };
 
-    expect(parsed.tabs[0].autoRefreshEnabled).toBe(false);
-    expect(parsed.tabs[0].autoRefreshPageKey).toBeNull();
+    expect(parsed.panes[0].tabs[0].autoRefreshEnabled).toBe(false);
+    expect(parsed.panes[0].tabs[0].autoRefreshPageKey).toBeNull();
   });
 
   it("セッション復元時に保存済み自動更新状態をリセットする", async () => {
@@ -430,7 +448,9 @@ describe("TabProvider auto refresh state", () => {
     expect(screen.getByTestId("stored-thread-url")).toHaveTextContent(
       "thread:https://example.com/test/read.cgi/foo/2/",
     );
-    expect(screen.getByTestId("history-length")).toHaveTextContent("5");
+    // 現仕様の NAVIGATE は祖先(home/板/スレ一覧)を自動補完しないため、
+    // 初期[home] → thread-1 で1段 → thread-2 で1段の計3エントリになる。
+    expect(screen.getByTestId("history-length")).toHaveTextContent("3");
     expect(screen.getByTestId("current-thread-title")).toHaveTextContent(
       "thread-2",
     );
@@ -441,6 +461,10 @@ describe("TabProvider auto refresh state", () => {
 
   it("OPEN_IN_NEW_TAB では現在タブのページタイトルを変更しない", async () => {
     vi.resetModules();
+    // 現仕様では新規タブを開くと既定でそちらへフォーカスが移る。
+    // このテストの主眼は「元タブのページが汚染されないこと」なので、
+    // 背景オープン設定にしてアクティブタブを元のままに固定して検証する。
+    localStorage.setItem("config_focus_new_tab_on_open", "off");
     const { TabProvider, useTabStore } =
       await import("src/view/browser/hooks/use-tab-store");
 
@@ -648,8 +672,9 @@ describe("TabProvider auto refresh state", () => {
     });
   });
 
-  it("OPEN_IN_NEW_TAB は常に新規タブを作りアクティブタブを切り替えない", async () => {
+  it("OPEN_IN_NEW_TAB は設定オフ時にバックグラウンドで新規タブを作成する", async () => {
     vi.resetModules();
+    localStorage.setItem("config_focus_new_tab_on_open", "off");
     const { TabProvider, useTabStore } =
       await import("src/view/browser/hooks/use-tab-store");
 
@@ -709,18 +734,90 @@ describe("TabProvider auto refresh state", () => {
       originalActiveTabId,
     );
 
-    // 同じページを再度開いても新規タブが増え、アクティブタブは変わらない
+    // 現仕様では重複防止が働くため、同じURLを再度開いても新規タブは増えず、
+    // 既存の該当タブへフォーカスが移る（背景設定でも重複時はそのタブを表示する）。
     fireEvent.click(screen.getByText("既存スレを新しいタブで開く"));
 
-    expect(screen.getByTestId("tabs-count")).toHaveTextContent("3");
-    expect(screen.getByTestId("active-tab-id").textContent).toBe(
+    expect(screen.getByTestId("tabs-count")).toHaveTextContent("2");
+    expect(screen.getByTestId("active-tab-id").textContent).not.toBe(
       originalActiveTabId,
     );
-    expect(screen.getByTestId("current-page-title")).toHaveTextContent("板A");
+    expect(screen.getByTestId("current-page-title")).toHaveTextContent(
+      "既存スレ",
+    );
+  });
+
+  it("OPEN_IN_NEW_TAB は設定オン時に新しいタブをアクティブにする", async () => {
+    vi.resetModules();
+    localStorage.setItem("config_focus_new_tab_on_open", "on");
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
+
+    function Harness() {
+      const { state, activeTab, currentPage, dispatch } = useTabStore();
+
+      return (
+        <>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "NAVIGATE",
+                page: {
+                  type: "threadList",
+                  title: "板A",
+                  boardUrl: "https://example.com/board-a/",
+                  boardTitle: "板A",
+                },
+              })
+            }
+          >
+            板Aへ移動
+          </button>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "OPEN_IN_NEW_TAB",
+                page: {
+                  type: "thread",
+                  title: "既存スレ",
+                  threadUrl: "https://example.com/test/read.cgi/board-a/1/",
+                },
+              })
+            }
+          >
+            既存スレを新しいタブで開く
+          </button>
+          <output data-testid="tabs-count">{state.tabs.length}</output>
+          <output data-testid="active-tab-id">{activeTab.id}</output>
+          <output data-testid="current-page-title">{currentPage.title}</output>
+        </>
+      );
+    }
+
+    render(
+      <TabProvider>
+        <Harness />
+      </TabProvider>,
+    );
+
+    fireEvent.click(screen.getByText("板Aへ移動"));
+    const originalActiveTabId = screen.getByTestId("active-tab-id").textContent;
+
+    fireEvent.click(screen.getByText("既存スレを新しいタブで開く"));
+    expect(screen.getByTestId("tabs-count")).toHaveTextContent("2");
+    expect(screen.getByTestId("active-tab-id").textContent).not.toBe(
+      originalActiveTabId,
+    );
+    expect(screen.getByTestId("current-page-title")).toHaveTextContent(
+      "既存スレ",
+    );
   });
 
   it("NAVIGATE は別タブに同じページがあっても現在タブの履歴に積む", async () => {
     vi.resetModules();
+    // 既存スレを別タブで開く操作は背景前提なので、
+    // フォーカス移動でアクティブタブが入れ替わらないよう背景オープン設定にする。
+    localStorage.setItem("config_focus_new_tab_on_open", "off");
     const { TabProvider, useTabStore } =
       await import("src/view/browser/hooks/use-tab-store");
 
@@ -1043,6 +1140,8 @@ describe("TabProvider auto refresh state", () => {
 
   it("UPDATE_TITLE_FOR_TAB は対象タブだけを更新し、アクティブタブを汚染しない", async () => {
     vi.resetModules();
+    // 背景タブを開いた状態を作るため、新規タブのフォーカス移動を無効化する。
+    localStorage.setItem("config_focus_new_tab_on_open", "off");
     const { TabProvider, useTabStore } =
       await import("src/view/browser/hooks/use-tab-store");
 

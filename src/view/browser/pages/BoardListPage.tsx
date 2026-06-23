@@ -90,6 +90,7 @@ export const BoardListPage: React.FC<BoardListPageProps> = ({
 
   const handleBoardMiddleClick = useCallback(
     (boardUrl: string, boardTitle: string) => {
+      // ミドルクリックはバックグラウンドで開く（設定に関わらず常にバックグラウンドタブ）
       dispatch({
         type: "OPEN_IN_NEW_TAB",
         page: {
@@ -98,6 +99,7 @@ export const BoardListPage: React.FC<BoardListPageProps> = ({
           boardUrl,
           boardTitle,
         },
+        background: true,
       });
     },
     [dispatch],

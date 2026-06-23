@@ -46,8 +46,10 @@ interface UseThreadResContextMenuParams {
   handleAnchorClick: (resNum: number) => void;
   hideAnchorPreviewImmediately: () => void;
   miniAaResNums: Set<number>;
+  ownResNums: Set<number>;
   page: Props["page"];
   onWriteHistoryAdded?: (resNum: number) => void;
+  onWriteHistoryRemoved?: (resNum: number) => void;
   searchQuery: string;
   setFilter: (filter: ThreadFilter) => void;
   setSearchQuery: React.Dispatch<React.SetStateAction<string>>;
@@ -71,8 +73,10 @@ export function useThreadResContextMenu({
   handleAnchorClick,
   hideAnchorPreviewImmediately,
   miniAaResNums,
+  ownResNums,
   page,
   onWriteHistoryAdded,
+  onWriteHistoryRemoved,
   searchQuery,
   setFilter,
   setSearchQuery,
@@ -170,6 +174,24 @@ export function useThreadResContextMenu({
     [onWriteHistoryAdded, page.threadUrl],
   );
 
+  const removeWriteHistory = useCallback(
+    async (res: IRes) => {
+      const writeHistoryService = getLegacyWriteHistoryService();
+
+      if (!writeHistoryService?.remove) {
+        container.toast.info("書込履歴サービスが利用できません");
+        return;
+      }
+
+      await writeHistoryService.remove(page.threadUrl, res.num);
+      // 変更理由: 追加時と同様に削除直後も「自分のレス」強調を即時解除し、
+      // 再読込しないと強調が残るズレを避ける。
+      onWriteHistoryRemoved?.(res.num);
+      container.toast.success("書込履歴から削除しました");
+    },
+    [onWriteHistoryRemoved, page.threadUrl],
+  );
+
   const buildContextMenuItems = useCallback(
     (targetRes: IRes, fromPopup: boolean): ContextMenuItem[] => {
       const plainName = stripHtml(targetRes.name);
@@ -178,6 +200,7 @@ export function useThreadResContextMenu({
       const kyodemoUrl = rawId ? buildKyodemoUrl(page.threadUrl, rawId) : null;
       const permalink = `${page.threadUrl}${targetRes.num}`;
       const isMiniAa = miniAaResNums.has(targetRes.num);
+      const isInWriteHistory = ownResNums.has(targetRes.num);
       const selectedText = window.getSelection()?.toString().trim() ?? "";
       const hasSelection = selectedText.length > 0;
       const hasKeywordFilter = searchQuery.trim().length > 0;
@@ -347,10 +370,16 @@ export function useThreadResContextMenu({
         // },
         {
           id: "add-write-history",
-          label: "書込履歴に追加",
+          // 変更理由: すでに書込履歴へ登録済みなら同じ導線で解除できるよう、
+          // 登録状態に応じてラベルと操作をトグルする。
+          label: isInWriteHistory ? "書込履歴から削除" : "書込履歴に追加",
           icon: <History size={14} />,
           onSelect: () => {
-            void addWriteHistory(targetRes);
+            if (isInWriteHistory) {
+              void removeWriteHistory(targetRes);
+            } else {
+              void addWriteHistory(targetRes);
+            }
           },
         },
         {
@@ -384,8 +413,10 @@ export function useThreadResContextMenu({
       isAutoRefreshEnabled,
       miniAaResNums,
       openWritePanelWithText,
+      ownResNums,
       page.threadUrl,
       page.title,
+      removeWriteHistory,
       searchQuery,
       setFilter,
       setSearchQuery,

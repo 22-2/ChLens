@@ -6,6 +6,9 @@ interface Props {
   onQueryChange: (q: string) => void;
   onClose: () => void;
   hitCount?: number;
+  /** 検索バー先頭に差し込む補助コントロール（例: 検索モード切替）。 */
+  prefix?: React.ReactNode;
+  placeholder?: string;
 }
 
 export const SearchBar: React.FC<Props> = ({
@@ -14,6 +17,8 @@ export const SearchBar: React.FC<Props> = ({
   onQueryChange,
   onClose,
   hitCount,
+  prefix,
+  placeholder = "検索...",
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -23,11 +28,12 @@ export const SearchBar: React.FC<Props> = ({
 
   return (
     <div className={["search-bar", className].filter(Boolean).join(" ")}>
+      {prefix}
       <input
         ref={inputRef}
         type="text"
         className="search-bar__input"
-        placeholder="検索..."
+        placeholder={placeholder}
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
         onKeyDown={(e) => {
