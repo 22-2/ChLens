@@ -9,6 +9,7 @@ import {
 } from "@testing-library/react";
 import type React from "react";
 import type { IRes } from "src/service-container";
+import { container } from "src/service-container/index";
 import { ReplyTreePopup } from "src/view/browser/components/ReplyTreePopup";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -86,6 +87,16 @@ describe("ReplyTreePopup", () => {
   beforeEach(() => {
     writeText.mockResolvedValue();
     writeClipboard.mockResolvedValue();
+    container.config = {
+      get: vi.fn(() => "default"),
+      set: vi.fn(),
+      ready: (callback: () => void) => callback(),
+    };
+    container.message = {
+      on: vi.fn(),
+      off: vi.fn(),
+      send: vi.fn(),
+    };
     vi.stubGlobal(
       "requestAnimationFrame",
       (callback: FrameRequestCallback): number => {

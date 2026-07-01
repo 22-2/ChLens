@@ -5,6 +5,8 @@ import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
 import { ReplyTree } from "src/view/browser/components/ReplyTree";
+import type { ResolvedTheme } from "src/view/browser/hooks/use-theme";
+import { useTheme } from "src/view/browser/hooks/use-theme";
 import { usePopupSurfaceLifecycle } from "src/view/browser/hooks/use-popup-manager";
 import type {
   UrlClickHandler,
@@ -219,16 +221,65 @@ function buildReplyTreeImageCardLayouts(
   };
 }
 
+// res-popup の配色 (browser.scss) に合わせ、画像コピーでもダークモードを再現する。
+const TREE_IMAGE_PALETTE: Record<
+  ResolvedTheme,
+  {
+    background: string;
+    title: string;
+    sectionTitle: string;
+    guideLine: string;
+    cardSourceFill: string;
+    cardSourceStroke: string;
+    cardFill: string;
+    cardStroke: string;
+    cardHeader: string;
+    cardDate: string;
+    cardBody: string;
+    footer: string;
+  }
+> = {
+  light: {
+    background: "#f7f9fc",
+    title: "#111827",
+    sectionTitle: "#334155",
+    guideLine: "rgba(148, 163, 184, 0.85)",
+    cardSourceFill: "#eef4ff",
+    cardSourceStroke: "#7aa2ff",
+    cardFill: "#ffffff",
+    cardStroke: "#d7deea",
+    cardHeader: "#162033",
+    cardDate: "#5b6475",
+    cardBody: "#1f2937",
+    footer: "#6b7280",
+  },
+  dark: {
+    background: "#292a2d",
+    title: "#e8eaed",
+    sectionTitle: "#9aa0a6",
+    guideLine: "rgba(154, 160, 166, 0.6)",
+    cardSourceFill: "#2a3a52",
+    cardSourceStroke: "#5b8def",
+    cardFill: "#333438",
+    cardStroke: "#3c4043",
+    cardHeader: "#e8eaed",
+    cardDate: "#9aa0a6",
+    cardBody: "#cdd0d5",
+    footer: "#9aa0a6",
+  },
+};
+
 function drawReplyTreeImageCard(
   context: CanvasRenderingContext2D,
   card: ReplyTreeImageCardLayout,
+  palette: (typeof TREE_IMAGE_PALETTE)[ResolvedTheme],
 ): void {
   const cardRight = card.x + card.width;
   const cardBottom = card.y + card.height;
 
   if (card.depth > 0) {
     const guideX = card.x - 11;
-    context.strokeStyle = "rgba(148, 163, 184, 0.85)";
+    context.strokeStyle = palette.guideLine;
     context.lineWidth = 2;
     context.beginPath();
     context.moveTo(guideX, card.y + 4);
@@ -238,8 +289,10 @@ function drawReplyTreeImageCard(
     context.stroke();
   }
 
-  context.fillStyle = card.isSource ? "#eef4ff" : "#ffffff";
-  context.strokeStyle = card.isSource ? "#7aa2ff" : "#d7deea";
+  context.fillStyle = card.isSource ? palette.cardSourceFill : palette.cardFill;
+  context.strokeStyle = card.isSource
+    ? palette.cardSourceStroke
+    : palette.cardStroke;
   context.lineWidth = 1;
   context.fillRect(card.x, card.y, card.width, card.height);
   context.strokeRect(card.x, card.y, card.width, card.height);
@@ -247,7 +300,7 @@ function drawReplyTreeImageCard(
   let textY = card.y + TREE_IMAGE_LAYOUT.cardPaddingY + 14;
 
   context.font = "600 15px sans-serif";
-  context.fillStyle = "#162033";
+  context.fillStyle = palette.cardHeader;
   context.fillText(
     card.headerLine,
     card.x + TREE_IMAGE_LAYOUT.cardPaddingX,
@@ -256,7 +309,7 @@ function drawReplyTreeImageCard(
 
   textY += TREE_IMAGE_LAYOUT.lineHeight;
   context.font = "12px sans-serif";
-  context.fillStyle = "#5b6475";
+  context.fillStyle = palette.cardDate;
   context.fillText(
     card.dateLine,
     card.x + TREE_IMAGE_LAYOUT.cardPaddingX,
@@ -265,7 +318,7 @@ function drawReplyTreeImageCard(
 
   textY += TREE_IMAGE_LAYOUT.cardHeaderGap + 6;
   context.font = "14px sans-serif";
-  context.fillStyle = "#1f2937";
+  context.fillStyle = palette.cardBody;
 
   for (const line of card.bodyLines) {
     textY += TREE_IMAGE_LAYOUT.lineHeight;
@@ -289,6 +342,7 @@ function renderReplyTreeImageCanvas(
   threadTitle?: string,
   threadUrl?: string,
   quality: ImageQuality = 'medium',
+  theme: ResolvedTheme = "light",
 ): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   const dpr = QUALITY_MAP[quality];
@@ -296,6 +350,7 @@ function renderReplyTreeImageCanvas(
   if (!context) {
     throw new Error("Canvas 2D context is not available");
   }
+  const palette = TREE_IMAGE_PALETTE[theme];
 
   const measured = buildReplyTreeImageCardLayouts(
     context,
@@ -319,11 +374,11 @@ function renderReplyTreeImageCanvas(
   canvas.style.height = `${totalHeight}px`;
 
   context.scale(dpr, dpr);
-  context.fillStyle = "#f7f9fc";
+  context.fillStyle = palette.background;
   context.fillRect(0, 0, TREE_IMAGE_LAYOUT.width, totalHeight);
 
   context.font = "600 22px sans-serif";
-  context.fillStyle = "#111827";
+  context.fillStyle = palette.title;
   context.fillText(
     `>>${sourceRes.num} への返信ツリー`,
     TREE_IMAGE_LAYOUT.paddingX,
@@ -331,7 +386,7 @@ function renderReplyTreeImageCanvas(
   );
 
   context.font = "600 15px sans-serif";
-  context.fillStyle = "#334155";
+  context.fillStyle = palette.sectionTitle;
   context.fillText(
     "参照元レス",
     TREE_IMAGE_LAYOUT.paddingX,
@@ -347,13 +402,13 @@ function renderReplyTreeImageCanvas(
 
   // DOM の見た目依存を避けるため、コピー画像は返信データから専用レイアウトを描画する。
   for (const card of measured.cards) {
-    drawReplyTreeImageCard(context, card);
+    drawReplyTreeImageCard(context, card, palette);
   }
 
   if (hasFooter) {
     let footerY = measured.height + TREE_IMAGE_LAYOUT.lineHeight;
     context.font = "13px sans-serif";
-    context.fillStyle = "#6b7280";
+    context.fillStyle = palette.footer;
     if (threadTitle != null) {
       context.fillText(threadTitle, TREE_IMAGE_LAYOUT.paddingX, footerY);
       footerY += TREE_IMAGE_LAYOUT.lineHeight;
@@ -546,6 +601,7 @@ export const ReplyTreePopup: React.FC<{
   const [menuPosition, setMenuPosition] = useState<TreeMenuPosition | null>(
     null,
   );
+  const theme = useTheme();
   const sourceRes = resMap.get(resNum) ?? null;
   const replyResponses = sourceRes
     ? collectReplyTreeResponses(resNum, repIndex, resMap)
@@ -583,6 +639,8 @@ export const ReplyTreePopup: React.FC<{
                 replyImageEntries,
                 threadTitle,
                 threadUrl,
+                undefined,
+                theme,
               );
               const blob = await canvasToBlob(canvas);
               await copyImageBlob(blob);
