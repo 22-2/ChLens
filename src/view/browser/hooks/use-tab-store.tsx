@@ -211,6 +211,8 @@ function getPageIdentity(page: Page): string {
       return "historyList";
     case "writeHistoryList":
       return "writeHistoryList";
+    case "logList":
+      return "logList";
     case "threadList":
       return getAutoRefreshPageKey(page) ?? "threadList";
     case "thread":
