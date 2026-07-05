@@ -18,11 +18,11 @@ describe("NGParser", () => {
     });
   });
 
-  it("should treat old syntax as simple WORD NG", () => {
+  it("should treat old syntax as simple BODY NG", () => {
     const rules = Array.from(parseNgString("ID:abc"));
     expect(rules).toHaveLength(1);
     expect(rules[0]).toMatchObject({
-      type: TYPE.WORD,
+      type: TYPE.BODY,
       word: "ID:abc",
     });
   });

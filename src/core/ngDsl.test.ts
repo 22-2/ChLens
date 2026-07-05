@@ -83,7 +83,7 @@ describe("NG DSL helpers", () => {
     });
   });
 
-  it("registers Word keyword from NGTypes as a DSL rule", () => {
-    expect(getNgDslRuleSpec("Word")?.keyword).toBe("Word");
+  it("does not register the deprecated Word keyword as a DSL rule", () => {
+    expect(getNgDslRuleSpec("Word")).toBeNull();
   });
 });

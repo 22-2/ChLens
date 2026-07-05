@@ -8,6 +8,7 @@ import {
   within,
 } from "@testing-library/react";
 import type { MouseEvent as ReactMouseEvent } from "react";
+import { container } from "src/service-container/index";
 import type { IRes } from "src/service-container/interfaces";
 import { AnchorPreview } from "src/view/browser/components/AnchorPreview";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
@@ -435,6 +436,16 @@ function PopupIdChainHarness() {
 
 describe("usePopupManager popup behavior", () => {
   beforeEach(() => {
+    container.config = {
+      get: vi.fn(() => "default"),
+      set: vi.fn(),
+      ready: (callback: () => void) => callback(),
+    };
+    container.message = {
+      on: vi.fn(),
+      off: vi.fn(),
+      send: vi.fn(),
+    };
     vi.stubGlobal(
       "requestAnimationFrame",
       (callback: FrameRequestCallback): number => {
@@ -953,6 +964,16 @@ const RES_BASE_PROPS = {
 
 describe("ReplyTreePopup close behavior", () => {
   beforeEach(() => {
+    container.config = {
+      get: vi.fn(() => "default"),
+      set: vi.fn(),
+      ready: (callback: () => void) => callback(),
+    };
+    container.message = {
+      on: vi.fn(),
+      off: vi.fn(),
+      send: vi.fn(),
+    };
     vi.stubGlobal(
       "requestAnimationFrame",
       (callback: FrameRequestCallback): number => {

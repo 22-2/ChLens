@@ -13,6 +13,12 @@ const state = vi.hoisted(() => ({
   },
 }));
 
+vi.mock("src/app", () => ({
+  message: {
+    send: vi.fn(),
+  },
+}));
+
 vi.mock("src/core/TauriDrizzleBridge", () => ({
   isTauriRuntime: () => true,
   getTauriRepositories: async () => ({

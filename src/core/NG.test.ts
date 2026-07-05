@@ -139,7 +139,7 @@ describe("NG DSL parsing", () => {
     });
   });
 
-  it("handles non-DSL formats as simple Word NG", async () => {
+  it("handles non-DSL formats as simple Body NG", async () => {
     configStore.clear();
     const { parse, TYPE } = await import("src/core/NG");
 
@@ -148,12 +148,12 @@ describe("NG DSL parsing", () => {
 
     expect(parsed).toHaveLength(1);
     expect(parsed[0]).toMatchObject({
-      type: TYPE.WORD,
+      type: TYPE.BODY,
       word: "some raw text here",
     });
   });
 
-  it("handles old legacy prefix formats as simple Word NG (dropped legacy syntax)", async () => {
+  it("handles old legacy prefix formats as simple Body NG (dropped legacy syntax)", async () => {
     configStore.clear();
     const { parse, TYPE } = await import("src/core/NG");
 
@@ -162,7 +162,7 @@ describe("NG DSL parsing", () => {
 
     expect(parsed).toHaveLength(1);
     expect(parsed[0]).toMatchObject({
-      type: TYPE.WORD,
+      type: TYPE.BODY,
       word: "ID:abc123",
     });
   });
