@@ -1,6 +1,8 @@
 import { MantineProvider, createTheme } from "@mantine/core";
 import { PenLine } from "lucide-react";
-import React from "react";
+import React, { useEffect } from "react";
+import { container } from "src/service-container/index";
+import { applyBBSMenuToItestServerMap } from "src/view/browser/utils/itest-server-map";
 import { Toaster } from "sonner";
 import "sonner/dist/styles.css";
 import { AutoRefreshStatusItem } from "src/view/browser/components/AutoRefreshStatusItem";
@@ -149,6 +151,20 @@ const PaneRow: React.FC = () => {
 export const BrowserApp: React.FC = () => {
   const theme = useTheme();
   useNotificationListener();
+
+  // itest（携帯版）URLを実サーバーへ変換するための対応表を bbsmenu から構築する。
+  // 前回セッションの localStorage キャッシュがあるため、ここでの取得は
+  // 次回以降の起動に備えた更新も兼ねる。
+  useEffect(() => {
+    void container.bbsMenu
+      .get(false)
+      .then((result) => {
+        if (result.status === "success" && result.menu) {
+          applyBBSMenuToItestServerMap(result.menu);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <MantineProvider

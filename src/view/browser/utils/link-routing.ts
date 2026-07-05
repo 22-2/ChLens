@@ -1,5 +1,7 @@
 import type { MouseEvent } from "react";
 
+import { resolveItestServerHostname } from "src/view/browser/utils/itest-server-map";
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -141,6 +143,7 @@ function normalizeItestUrl(url: URL): void {
   const threadMatch = ITEST_THREAD_PATTERN.exec(url.pathname);
   if (threadMatch) {
     url.pathname = `/test/read.cgi/${threadMatch[1]}/${threadMatch[2]}/`;
+    convertItestHostname(url, threadMatch[1]);
     return;
   }
 
@@ -149,6 +152,17 @@ function normalizeItestUrl(url: URL): void {
     // 変更理由: iTest の /<prefix>/test/read.cgi/... を board と誤認して
     // /<prefix>/ へ潰れる不具合を防ぐため、板URL判定は完全一致のときだけ許可する。
     url.pathname = `/${boardMatch[1]}/`;
+    convertItestHostname(url, boardMatch[1]);
+  }
+}
+
+function convertItestHostname(url: URL, boardKey: string): void {
+  // 変更理由: itest ホストのままでは dat/subject.txt を取得できないため、
+  // bbsmenu 由来の対応表で実サーバー（例: mercury.bbspink.com）へ変換する。
+  // 対応表に無い板は変換せず残す（従来どおり読み込み失敗となるが誤変換よりまし）。
+  const hostname = resolveItestServerHostname(boardKey);
+  if (hostname) {
+    url.hostname = hostname;
   }
 }
 

@@ -5,9 +5,14 @@ import {
   RESPECT_DEFAULT_EXTERNAL,
   shouldHandleUrlWithApp,
 } from "src/view/browser/utils/link-routing";
-import { describe, expect, it } from "vitest";
+import { setItestServerMapForTesting } from "src/view/browser/utils/itest-server-map";
+import { beforeEach, describe, expect, it } from "vitest";
 
 describe("link-routing", () => {
+  beforeEach(() => {
+    setItestServerMapForTesting([]);
+  });
+
   it("対応ホストの板URLだけを threadList として扱う", () => {
     expect(parseInternalBrowserPage("https://egg.5ch.io/software/")).toEqual({
       type: "threadList",
@@ -45,6 +50,45 @@ describe("link-routing", () => {
       type: "thread",
       title: "https://itest.5ch.io/test/read.cgi/AAAA/1000000007/",
       threadUrl: "https://itest.5ch.io/test/read.cgi/AAAA/1000000007/",
+    });
+  });
+
+  it("itest.bbspink.com のスレURLを対応表で実サーバーへ変換する", () => {
+    setItestServerMapForTesting([["adultgoods", "mercury.bbspink.com"]]);
+    expect(
+      parseInternalBrowserPage(
+        "https://itest.bbspink.com/test/read.cgi/adultgoods/1000000008/",
+      ),
+    ).toEqual({
+      type: "thread",
+      title: "https://mercury.bbspink.com/test/read.cgi/adultgoods/1000000008/",
+      threadUrl:
+        "https://mercury.bbspink.com/test/read.cgi/adultgoods/1000000008/",
+    });
+  });
+
+  it("itest の板URLも対応表で実サーバーへ変換する", () => {
+    setItestServerMapForTesting([["software", "egg.5ch.io"]]);
+    expect(
+      parseInternalBrowserPage("https://itest.5ch.io/subback/software"),
+    ).toEqual({
+      type: "threadList",
+      title: "https://egg.5ch.io/software/",
+      boardUrl: "https://egg.5ch.io/software/",
+      boardTitle: "https://egg.5ch.io/software/",
+    });
+  });
+
+  it("対応表に無い itest URL はホスト名を変換せず残す", () => {
+    expect(
+      parseInternalBrowserPage(
+        "https://itest.bbspink.com/test/read.cgi/adultgoods/1000000008/",
+      ),
+    ).toEqual({
+      type: "thread",
+      title: "https://itest.bbspink.com/test/read.cgi/adultgoods/1000000008/",
+      threadUrl:
+        "https://itest.bbspink.com/test/read.cgi/adultgoods/1000000008/",
     });
   });
 
