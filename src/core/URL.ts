@@ -254,11 +254,8 @@ export class URL extends window.URL {
     const pattern = patternMap[bbsType];
     if (!pattern) return null;
 
-    const target =
-      bbsType === "2ch" && raw.hostname !== HOSTNAME.ULA_5CH
-        ? raw.href
-        : raw.pathname;
-    const match = pattern.exec(target);
+    // itest形式ではレス番が ?g= クエリに載るため pathname に search を連結して照合する
+    const match = pattern.exec(raw.pathname + raw.search);
     return match ? match[1] : null;
   }
 
@@ -308,15 +305,14 @@ export class URL extends window.URL {
   convertFromPhone(): void {
     const tsld = this.getTsld();
 
-    const patternMap: Record<string, RegExp> = {
-      [HOSTNAME.ITEST_5CH]: PATTERNS.ITEST_5CH,
-      [HOSTNAME.ITEST_BBSPINK]: PATTERNS.ITEST_BBSPINK,
-    };
+    if (
+      this.hostname !== HOSTNAME.ITEST_5CH &&
+      this.hostname !== HOSTNAME.ITEST_BBSPINK
+    ) {
+      return;
+    }
 
-    const pattern = patternMap[this.hostname];
-    if (!pattern) return;
-
-    const match = pattern.exec(this.pathname);
+    const match = PATTERNS.ITEST.exec(this.pathname);
     if (!match) return;
 
     const board = match[1] || match[3];
