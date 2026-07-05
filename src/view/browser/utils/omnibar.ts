@@ -93,6 +93,29 @@ function calcTextScore(
   return score;
 }
 
+function calcMatchLength(
+  query: string,
+  title: string,
+  url: string,
+  boardTitle: string,
+): number {
+  if (!query) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  const candidates = [title, url, boardTitle];
+  let shortest = Number.POSITIVE_INFINITY;
+
+  for (const candidate of candidates) {
+    const normalized = candidate.toLowerCase();
+    if (normalized.includes(query) && normalized.length < shortest) {
+      shortest = normalized.length;
+    }
+  }
+
+  return shortest;
+}
+
 function calcRecencyBoost(historyRank: number | null): number {
   if (historyRank === null) {
     return 0;
@@ -227,6 +250,12 @@ export function buildOmnibarSuggestions(
 
       const bookmarkBoost = entry.isBookmark ? 140 : 0;
       const recencyBoost = calcRecencyBoost(entry.historyRank);
+      const matchLength = calcMatchLength(
+        query,
+        entry.title,
+        entry.url,
+        entry.boardTitle,
+      );
 
       return {
         url: entry.url,
@@ -234,6 +263,7 @@ export function buildOmnibarSuggestions(
         boardTitle: entry.boardTitle,
         isBookmark: entry.isBookmark,
         score: textScore + bookmarkBoost + recencyBoost,
+        matchLength,
         viewedDate: entry.viewedDate,
       };
     })
@@ -241,10 +271,16 @@ export function buildOmnibarSuggestions(
       (
         suggestion,
       ): suggestion is OmnibarSuggestion & {
+        matchLength: number;
         viewedDate: number;
       } => suggestion !== null,
     )
     .sort((a, b) => {
+      // 最短一致（マッチしたタイトル/URL/板名が短いもの）を優先する
+      if (a.matchLength !== b.matchLength) {
+        return a.matchLength - b.matchLength;
+      }
+
       if (b.score !== a.score) {
         return b.score - a.score;
       }
@@ -258,5 +294,5 @@ export function buildOmnibarSuggestions(
 
   return ranked
     .slice(0, limit)
-    .map(({ viewedDate: _viewedDate, ...rest }) => rest);
+    .map(({ viewedDate: _viewedDate, matchLength: _matchLength, ...rest }) => rest);
 }
