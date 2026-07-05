@@ -1,3 +1,4 @@
+import { Tooltip } from "@mantine/core";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import React, { useEffect, useMemo, useRef } from "react";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
@@ -16,6 +17,9 @@ interface Props<TRow> {
   sortColumn?: string;
   sortDirection?: "asc" | "desc";
   onSort?: (key: string) => void;
+  // 変更理由: タイトル列を1行省略表示にした分、全文は行全体のホバーで
+  // 確認できるようにするため、行単位のツールチップ文言を受け取れるようにする。
+  getRowTooltip?: (row: TRow) => string;
   estimatedRowHeight?: number;
   overscan?: number;
   endReachedThreshold?: number;
@@ -36,6 +40,7 @@ export function VirtualizedDataTable<TRow>({
   sortColumn,
   sortDirection,
   onSort,
+  getRowTooltip,
   estimatedRowHeight = 52,
   overscan = 8,
   endReachedThreshold = 10,
@@ -58,6 +63,10 @@ export function VirtualizedDataTable<TRow>({
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scrollRef.current,
+    // 変更理由: measureElement による行ごとの実測(ResizeObserver)をやめ、
+    // estimateSize を固定値として信頼する。タイトル列が可変高で折り返すと
+    // 推定値とのズレをスクロール中に補正し続けてガタつきの原因になっていたため、
+    // 呼び出し側でタイトルを1行省略表示にして行高を実際に固定する前提にした。
     estimateSize: () => estimatedRowHeight,
     overscan,
   });
@@ -140,10 +149,8 @@ export function VirtualizedDataTable<TRow>({
             const row = rows[virtualRow.index];
             const extraClass = getRowClassName?.(row);
 
-            return (
+            const rowElement = (
               <tr
-                key={getRowKey(row)}
-                ref={rowVirtualizer.measureElement}
                 data-index={virtualRow.index}
                 className={
                   extraClass
@@ -176,6 +183,18 @@ export function VirtualizedDataTable<TRow>({
                   );
                 })}
               </tr>
+            );
+
+            const tooltipLabel = getRowTooltip?.(row);
+            const rowKey = getRowKey(row);
+            if (!tooltipLabel) {
+              return <React.Fragment key={rowKey}>{rowElement}</React.Fragment>;
+            }
+
+            return (
+              <Tooltip.Floating key={rowKey} label={tooltipLabel}>
+                {rowElement}
+              </Tooltip.Floating>
             );
           })}
 

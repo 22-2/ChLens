@@ -334,6 +334,7 @@ export const LogListPage: React.FC<LogListPageProps> = ({
           columns={COLUMNS}
           rows={filtered}
           getRowKey={(row) => row.url}
+          getRowTooltip={(row) => row.title}
           onRowClick={openEntry}
           onRowMiddleClick={openEntryInNewTab}
           sortColumn={sortState.column ?? undefined}

@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+import type { ReactNode } from "react";
 import {
   act,
   cleanup,
@@ -29,6 +30,21 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   // useTabDispatch は dispatch のみを返す安定した関数。ページのフル状態購読回避後もdispatchが使える。
   useTabDispatch: () => vi.fn(),
 }));
+
+// 変更理由: SimpleDataTable は行全体のツールチップに Mantine の Tooltip.Floating を
+// 使うが、MantineProvider を持たないこのテストツリーでは実体を描画できないため、
+// 子要素をそのまま返す薄いモックに差し替える。
+vi.mock("@mantine/core", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@mantine/core")>();
+  const PassthroughTooltip = Object.assign(
+    ({ children }: { children: ReactNode }) => children,
+    { Floating: ({ children }: { children: ReactNode }) => children },
+  );
+  return {
+    ...actual,
+    Tooltip: PassthroughTooltip,
+  };
+});
 
 vi.mock("src/service-container/index", () => ({
   container: {

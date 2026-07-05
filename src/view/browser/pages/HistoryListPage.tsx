@@ -596,6 +596,7 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
           columns={COLUMNS}
           rows={filtered}
           getRowKey={(row) => row.url}
+          getRowTooltip={(row) => row.title}
           onRowClick={openEntry}
           onRowMiddleClick={openEntryInNewTab}
           sortColumn={sortState.column ?? undefined}

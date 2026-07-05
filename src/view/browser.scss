@@ -1779,8 +1779,12 @@ body {
 .simple-data-table__title {
   padding: 6px 8px;
   color: #1a0dab;
-  /* table-layout: fixed 環境でタイトルを折り返して他列が隠れないようにする */
-  overflow-wrap: anywhere;
+  /* 変更理由: 折り返しだと行高が可変になり、仮想スクロールの推定行高とズレて
+     スクロール中にガタつく原因になっていたため、1行省略表示に変更する。
+     省略された全文は TruncatedText のツールチップで確認できる。 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .simple-data-table__count {

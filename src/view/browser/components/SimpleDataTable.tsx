@@ -1,3 +1,4 @@
+import { Tooltip } from "@mantine/core";
 import {
   type ColumnDef as TanstackColumnDef,
   flexRender,
@@ -33,6 +34,9 @@ interface Props<TRow> {
   sortColumn?: string;
   sortDirection?: "asc" | "desc";
   onSort?: (key: string) => void;
+  // 変更理由: タイトル列を1行省略表示にした分、全文は行全体のホバーで
+  // 確認できるようにするため、行単位のツールチップ文言を受け取れるようにする。
+  getRowTooltip?: (row: TRow) => string;
   columnVisibilityStorageKey?: string;
   columnVisibilityLockedKeys?: readonly string[];
 }
@@ -49,6 +53,7 @@ export function SimpleDataTable<TRow>({
   sortColumn,
   sortDirection,
   onSort,
+  getRowTooltip,
   columnVisibilityStorageKey,
   columnVisibilityLockedKeys,
 }: Props<TRow>): React.ReactElement {
@@ -141,9 +146,8 @@ export function SimpleDataTable<TRow>({
           {table.getRowModel().rows.map((row) => {
             const original = row.original;
             const extraClass = getRowClassName?.(original);
-            return (
+            const rowElement = (
               <tr
-                key={row.id}
                 className={
                   extraClass
                     ? `simple-data-table__row ${extraClass}`
@@ -174,6 +178,17 @@ export function SimpleDataTable<TRow>({
                   );
                 })}
               </tr>
+            );
+
+            const tooltipLabel = getRowTooltip?.(original);
+            if (!tooltipLabel) {
+              return <React.Fragment key={row.id}>{rowElement}</React.Fragment>;
+            }
+
+            return (
+              <Tooltip.Floating key={row.id} label={tooltipLabel}>
+                {rowElement}
+              </Tooltip.Floating>
             );
           })}
         </tbody>
