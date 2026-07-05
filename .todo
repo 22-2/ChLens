@@ -360,15 +360,15 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
   - [x] スクロール位置の復元
   - [x] 閲覧履歴・スレ一覧未読数追加
 - [x] 実況用・自動次スレ移動
-- [ ] 板のお気に入り
+- [x] 板のお気に入り
 
 ## 未確認
-- [ ] 画像サムネにグロぼかし
+- [x] 画像サムネにグロぼかし
 
 ## 次
 
 - [ ] 2ペインでフォーカス切り替えたときの自動更新が再度onにならない
-- [ ] omnibarは最短一致順にソート
+- [x] omnibarは最短一致順にソート
 - [ ] chore: デフォルトのurlのときはちゃんとサジェストするように
 - [x] enhance: bbsmenuの項目もomnibarのサジェストに含めるように
 - [x] navbarリファクタリング
@@ -382,7 +382,7 @@ type NGTarget = "thread" | "resname" | "resbody" | "id" | "slip";
 - [x] ブックマークを開いても何も出ない
 - [x] 閲覧履歴を開いているとき、タブを新しく開こうとすると重い
 
-- [ ] スレの2ペイン
+- [x] スレの2ペイン
 - [ ] スレを別ウィンドウで開く
 - [ ] スレでバックグラウンドでも更新し続ける設定
   - レッドアイコンから何色にするか？
@@ -454,7 +454,7 @@ http://bbs.eddibb.cc/test/read.cgi/liveedge/1779114452/
 - [x] toastをもっと小さく
 - [x] 設定画面再設計
 - [ ] obsidianのHover Editorみたいなふうにスレをミニウィンドウで開くやつ
-- [ ] 一致するスレが現れたら通知する自動通知 -> （NGキーワードとして実装すれば捗るかも😳）
+- [-] 一致するスレが現れたら通知する自動通知 -> （NGキーワードとして実装すれば捗るかも😳）
 - [x] 読んだ場所までのスクロールの微妙なラグ
 - [x] 自動スクロール中、フィルタを切り替えたとき更新が一時停止しない
 - [x] fix: 入力しても板一覧を取得しない板やスレがある -> もしかしてomnibarに吸われている？
@@ -474,7 +474,7 @@ http://bbs.eddibb.cc/test/read.cgi/liveedge/1779114452/
 - [ ] tauriでのみホットキー
 - [ ] コマンドパレット
 [-] NG Studio構想
-  - [ ] [5ch互換専ブラを今更作ってるっす | Google Gemini](https://gemini.google.com/app/5d3fdd3bc7ec4cbf?hl=ja)
+  - [5ch互換専ブラを今更作ってるっす | Google Gemini](https://gemini.google.com/app/5d3fdd3bc7ec4cbf?hl=ja)
 - [ ] 閲覧履歴で、要素が多いとフィルタ開閉が重い
 - [ ] 専スレでだけsageみたいな設定ができるように
 - [ ] feat: 画像サムネの読み込みの高速化 -> imgurとかフルサイズで取得してるかもしれない
@@ -482,4 +482,3 @@ http://bbs.eddibb.cc/test/read.cgi/liveedge/1779114452/
 - [ ] スクロール位置の復元が出来たから、もうdisplay: hiddenでタブ切り替えはいらない？
 
 ## メタ
-
