@@ -69,6 +69,7 @@ export function useAutoRefresh({
   // 新着が来なかった更新が何回連続したか。新着が来たら 0 に戻す。
   const consecutiveIdleRefreshRef = useRef(0);
   const loadingRef = useRef(loading);
+  const prevLoadingRef = useRef(loading);
   const prevEnabledRef = useRef(enabled);
   const latestSnapshotRef = useRef({ responseCount, lastResponseNum });
   const canAutoScrollRef = useRef(false);
@@ -262,6 +263,36 @@ export function useAutoRefresh({
     userInterruptedRef.current = false;
     requestRefreshRef.current();
   }, [enabled, expired, moveToThreadBottom, syncCanAutoScroll]);
+
+  useEffect(() => {
+    // 書き込み成功後やダブルクリック更新など、この hook のインターバル外から
+    // dispatch(RELOAD) されたときは pendingRefresh が積まれず、新着分の追従
+    // スクロールが行われない。その結果ビューポートが最下部から外れて
+    // canAutoScroll が false になり自動追従が止まってしまうため、
+    // 読み込み開始の立ち上がりでスナップショットを補完して同じ追従経路に乗せる。
+    const wasLoading = prevLoadingRef.current;
+    prevLoadingRef.current = loading;
+
+    if (!enabled || wasLoading || !loading || pendingRefreshRef.current) {
+      return;
+    }
+
+    const scrollContainer = getScrollContainer();
+    if (!scrollContainer) {
+      return;
+    }
+
+    const currentSnapshot = latestSnapshotRef.current;
+    pendingRefreshRef.current = {
+      responseCount: currentSnapshot.responseCount,
+      lastResponseNum: currentSnapshot.lastResponseNum,
+      scrollHeight: scrollContainer.scrollHeight,
+      shouldScroll: canAutoScrollRef.current,
+      // 手動・書き込み起因の更新は放置判定の対象にしない。
+      isIdleStopCandidate: false,
+    };
+    userInterruptedRef.current = false;
+  }, [enabled, getScrollContainer, loading]);
 
   useEffect(() => {
     const scrollContainer = getScrollContainer();

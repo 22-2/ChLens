@@ -90,6 +90,15 @@ function AutoRefreshHarness({
           >
             新着なしで完了
           </button>
+          <button
+            onClick={() => {
+              // 書き込み成功後の dispatch(RELOAD) など、hook のインターバル外から
+              // 始まるリロードを再現する（requestRefresh を経由しない）。
+              setLoading(true);
+            }}
+          >
+            外部リロード開始
+          </button>
           <output data-testid="can-auto-scroll">
             {canAutoScroll ? "enabled" : "disabled"}
           </output>
@@ -199,6 +208,62 @@ describe("useAutoRefresh", () => {
     });
 
     expect(scrollBy).toHaveBeenCalledWith({ top: 60, behavior: "auto" });
+  });
+
+  it("書き込みなど外部起因のリロードでも最下部にいれば追従スクロールする", () => {
+    const onRequestRefresh = vi.fn();
+    render(<AutoRefreshHarness onRequestRefresh={onRequestRefresh} />);
+
+    const scrollContainer = screen.getByTestId(
+      "scroll-container",
+    ) as HTMLDivElement;
+    const boundary = screen.getByTestId("boundary") as HTMLDivElement;
+
+    let scrollTopValue = 200;
+    let scrollHeightValue = 300;
+    Object.defineProperty(scrollContainer, "clientHeight", {
+      configurable: true,
+      get: () => 100,
+    });
+    Object.defineProperty(scrollContainer, "scrollTop", {
+      configurable: true,
+      get: () => scrollTopValue,
+      set: (value: number) => {
+        scrollTopValue = value;
+      },
+    });
+    Object.defineProperty(scrollContainer, "scrollHeight", {
+      configurable: true,
+      get: () => scrollHeightValue,
+    });
+    scrollContainer.getBoundingClientRect = () =>
+      createRect({ top: 0, bottom: 100 });
+    boundary.getBoundingClientRect = () => createRect({ top: 80, bottom: 100 });
+
+    const scrollBy = vi.fn(({ top }: ScrollToOptions) => {
+      scrollTopValue += top ?? 0;
+    });
+    // @ts-expect-error
+    scrollContainer.scrollBy = scrollBy;
+
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
+
+    expect(screen.getByTestId("can-auto-scroll")).toHaveTextContent("enabled");
+
+    // hook のインターバルを経由しないリロード（書き込み成功後の RELOAD 相当）
+    fireEvent.click(screen.getByText("外部リロード開始"));
+
+    scrollHeightValue = 360;
+    fireEvent.click(screen.getByText("新着ありで完了"));
+
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
+
+    expect(scrollBy).toHaveBeenCalledWith({ top: 60, behavior: "auto" });
+    expect(screen.getByTestId("can-auto-scroll")).toHaveTextContent("enabled");
   });
 
   it("自動更新を有効化した瞬間に最下部へ移動して即時 refresh する", () => {
