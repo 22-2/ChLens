@@ -39,6 +39,15 @@ const focusTabById = async (tabId: number): Promise<void> => {
   await browser.tabs.update(tabId, { active: true });
 };
 
+// 指定されたウィンドウID、または現在のウィンドウにタブを作成
+const createTabInWindow = async (
+  url: string,
+  windowId?: number
+): Promise<browser.Tabs.Tab> => {
+  const targetWindowId = windowId ?? (await browser.windows.getCurrent()).id;
+  return browser.tabs.create({ url, active: true, windowId: targetWindowId });
+};
+
 // URLを開く、または既存のタブを更新してフォーカスする（唯一の入り口）
 const openOrFocusNewUiTab = async (currentUrl?: string): Promise<void> => {
   const existingTab = await findNewUiTab();
@@ -47,7 +56,6 @@ const openOrFocusNewUiTab = async (currentUrl?: string): Promise<void> => {
     : NEW_UI_URL_PREFIX;
 
   if (existingTab?.id != null) {
-    // 既存タブがある場合：URLを更新してフォーカス
     await browser.tabs.update(existingTab.id, {
       url: viewerUrl,
       active: true,
@@ -55,11 +63,9 @@ const openOrFocusNewUiTab = async (currentUrl?: string): Promise<void> => {
     await focusTabById(existingTab.id);
     newUiPrimaryTabId = existingTab.id;
   } else {
-    // 既存タブがない場合：新規作成
-    const createdTab = await browser.tabs.create({
-      url: viewerUrl,
-      active: true,
-    });
+    // 変更理由: windowIdを指定しないと別ウィンドウでタブが開くことがあるため、
+    // 現在のウィンドウにタブを作成する
+    const createdTab = await createTabInWindow(viewerUrl);
     if (createdTab.id != null) {
       newUiPrimaryTabId = createdTab.id;
     }
@@ -85,7 +91,21 @@ const enforceSingleInstance = async (tab: browser.Tabs.Tab) => {
   // 1. 既存のタブにフォーカス
   await focusTabById(existingTab.id!);
   // 2. 新しく作られた方のタブを閉じる
+  const tabWindowId = tab.windowId;
   await browser.tabs.remove(tab.id);
+
+  // 3. 変更理由: 別ウィンドウで開かれたタブを閉じた後、
+  // そのウィンドウに他のタブが残っていなければウィンドウ自体を閉じる
+  if (tabWindowId != null) {
+    try {
+      const remainingTabs = await browser.tabs.query({ windowId: tabWindowId });
+      if (remainingTabs.length === 0) {
+        await browser.windows.remove(tabWindowId);
+      }
+    } catch {
+      // ウィンドウが既に閉じられている場合は無視
+    }
+  }
 };
 
 // タブが作成された瞬間
@@ -121,7 +141,7 @@ const openInNewViewerTab = async (currentUrl: string): Promise<void> => {
     });
     await focusTabById(existingTab.id);
   } else {
-    const createdTab = await browser.tabs.create({ url: viewerUrl, active: true });
+    const createdTab = await createTabInWindow(viewerUrl);
     if (createdTab.id != null) {
       newUiPrimaryTabId = createdTab.id;
     }
