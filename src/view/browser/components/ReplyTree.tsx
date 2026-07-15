@@ -1,3 +1,4 @@
+import { MoreVertical } from "lucide-react";
 import React from "react";
 import type { IRes } from "src/service-container";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
@@ -33,6 +34,8 @@ export const ReplyTree: React.FC<{
   depth: number;
   /** ポップアップ内でも画像ぼかしを適用するためのセット */
   blurredResNums?: Set<number>;
+  /** 個別ツリーの三点メニュークリック時コールバック（渡された場合のみボタン表示） */
+  onSubTreeMenu?: (resNum: number, e: React.MouseEvent<HTMLButtonElement>) => void;
 }> = ({
   resNum,
   repIndex,
@@ -52,6 +55,7 @@ export const ReplyTree: React.FC<{
   visited,
   depth,
   blurredResNums,
+  onSubTreeMenu,
 }) => {
   if (depth >= MAX_TREE_DEPTH) return null;
   const replies = repIndex.get(resNum);
@@ -78,25 +82,41 @@ export const ReplyTree: React.FC<{
         const res = resMap.get(replyNum)!;
         return (
           <React.Fragment key={replyNum}>
-            <PopupResCard
-              res={res}
-              messageProtocol={messageProtocol}
-              // アンカープレビュー配下で開いた返信ツリーは、その階層を子レスにも引き継ぐ。
-              // ここを 0 に戻すと、次のアンカーホバーで親プレビューごと閉じる回帰が起きる。
-              anchorPreviewDepth={anchorPreviewDepth}
-              repIndex={repIndex}
-              idIndex={idIndex}
-              onUrlClick={onUrlClick}
-              onUrlContextMenu={onUrlContextMenu}
-              onLinkMiddleClickStart={onLinkMiddleClickStart}
-              onIdLinkClick={onIdLinkClick}
-              onRepClick={onRepClick}
-              onAnchorClick={onAnchorClick}
-              onAnchorHover={onAnchorHover}
-              onAnchorLeave={onAnchorLeave}
-              onContextMenu={onResContextMenu}
-              isImageBlurred={blurredResNums?.has(res.num)}
-            />
+            <div className="reply-tree-node">
+              <PopupResCard
+                res={res}
+                messageProtocol={messageProtocol}
+                // アンカープレビュー配下で開いた返信ツリーは、その階層を子レスにも引き継ぐ。
+                // ここを 0 に戻すと、次のアンカーホバーで親プレビューごと閉じる回帰が起きる。
+                anchorPreviewDepth={anchorPreviewDepth}
+                repIndex={repIndex}
+                idIndex={idIndex}
+                onUrlClick={onUrlClick}
+                onUrlContextMenu={onUrlContextMenu}
+                onLinkMiddleClickStart={onLinkMiddleClickStart}
+                onIdLinkClick={onIdLinkClick}
+                onRepClick={onRepClick}
+                onAnchorClick={onAnchorClick}
+                onAnchorHover={onAnchorHover}
+                onAnchorLeave={onAnchorLeave}
+                onContextMenu={onResContextMenu}
+                isImageBlurred={blurredResNums?.has(res.num)}
+              />
+              {onSubTreeMenu && (
+                <button
+                  type="button"
+                  className="reply-tree-node__menu-btn"
+                  aria-label="サブツリーメニュー"
+                  title="このレス以降のツリーをコピー"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSubTreeMenu(replyNum, e);
+                  }}
+                >
+                  <MoreVertical size={12} />
+                </button>
+              )}
+            </div>
             <ReplyTree
               resNum={replyNum}
               repIndex={repIndex}
@@ -116,6 +136,7 @@ export const ReplyTree: React.FC<{
               visited={visited}
               depth={depth + 1}
               blurredResNums={blurredResNums}
+              onSubTreeMenu={onSubTreeMenu}
             />
           </React.Fragment>
         );

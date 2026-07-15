@@ -25,6 +25,12 @@ interface TreeMenuPosition {
   y: number;
 }
 
+interface SubTreeMenuState {
+  resNum: number;
+  x: number;
+  y: number;
+}
+
 interface ReplyTreeImageEntry {
   res: IRes;
   depth: number;
@@ -601,6 +607,7 @@ export const ReplyTreePopup: React.FC<{
   const [menuPosition, setMenuPosition] = useState<TreeMenuPosition | null>(
     null,
   );
+  const [subTreeMenu, setSubTreeMenu] = useState<SubTreeMenuState | null>(null);
   const theme = useTheme();
   const sourceRes = resMap.get(resNum) ?? null;
   const replyResponses = sourceRes
@@ -680,6 +687,33 @@ export const ReplyTreePopup: React.FC<{
       document.removeEventListener("mousedown", handleOutsideMenuClick);
   }, [menuPosition]);
 
+  useEffect(() => {
+    if (!subTreeMenu) {
+      return;
+    }
+
+    const handleOutsideSubTreeMenuClick = (e: MouseEvent) => {
+      if (!(e.target instanceof Element)) {
+        setSubTreeMenu(null);
+        return;
+      }
+
+      if (e.target.closest(".context-menu")) {
+        return;
+      }
+
+      if (e.target.closest(".reply-tree-node__menu-btn")) {
+        return;
+      }
+
+      setSubTreeMenu(null);
+    };
+
+    document.addEventListener("mousedown", handleOutsideSubTreeMenuClick);
+    return () =>
+      document.removeEventListener("mousedown", handleOutsideSubTreeMenuClick);
+  }, [subTreeMenu]);
+
   const handleResContextMenu = useCallback(
     (event: React.MouseEvent, targetRes: IRes) => {
       event.stopPropagation();
@@ -709,6 +743,84 @@ export const ReplyTreePopup: React.FC<{
             y: buttonRect.bottom - popupRect.top + 4,
           },
     );
+  };
+
+  const handleSubTreeMenuClick = (
+    targetResNum: number,
+    e: React.MouseEvent<HTMLButtonElement>,
+  ) => {
+    e.stopPropagation();
+    if (!ref.current) {
+      return;
+    }
+
+    const buttonRect = e.currentTarget.getBoundingClientRect();
+    const popupRect = ref.current.getBoundingClientRect();
+    setSubTreeMenu((prev) =>
+      prev?.resNum === targetResNum
+        ? null
+        : {
+            resNum: targetResNum,
+            x: buttonRect.right - popupRect.left - 8,
+            y: buttonRect.bottom - popupRect.top + 4,
+          },
+    );
+  };
+
+  const getSubTreeMenuItems = (targetResNum: number): ContextMenuItem[] => {
+    const targetRes = resMap.get(targetResNum);
+    if (!targetRes) {
+      return [];
+    }
+
+    const subReplyResponses = collectReplyTreeResponses(
+      targetResNum,
+      repIndex,
+      resMap,
+    );
+    const subReplyImageEntries = collectReplyTreeImageEntries(
+      targetResNum,
+      repIndex,
+      resMap,
+    );
+
+    return [
+      {
+        id: "copy-subtree-responses",
+        label: "このレス以降のツリーをコピー",
+        icon: <Copy size={14} />,
+        onSelect: () => {
+          void copyText(
+            buildReplyTreeCopyText(
+              targetRes,
+              subReplyResponses,
+              threadTitle,
+              threadUrl,
+            ),
+          );
+        },
+      },
+      {
+        id: "copy-subtree-image",
+        label: "このレス以降のツリーを画像としてコピー",
+        icon: <ImageIcon size={14} />,
+        disabled: !canCopyImageToClipboard(),
+        onSelect: () => {
+          void (async () => {
+            const canvas = renderReplyTreeImageCanvas(
+              targetRes,
+              subReplyImageEntries,
+              threadTitle,
+              threadUrl,
+              undefined,
+              theme,
+            );
+            const blob = await canvasToBlob(canvas);
+            await copyImageBlob(blob);
+          })();
+        },
+      },
+    ];
   };
 
   return (
@@ -791,6 +903,7 @@ export const ReplyTreePopup: React.FC<{
             visited={new Set()}
             depth={0}
             blurredResNums={blurredResNums}
+            onSubTreeMenu={handleSubTreeMenuClick}
           />
         </section>
       </div>
@@ -800,6 +913,14 @@ export const ReplyTreePopup: React.FC<{
           y={menuPosition.y}
           items={treeMenuItems}
           onClose={() => setMenuPosition(null)}
+        />
+      )}
+      {subTreeMenu && (
+        <ContextMenu
+          x={subTreeMenu.x}
+          y={subTreeMenu.y}
+          items={getSubTreeMenuItems(subTreeMenu.resNum)}
+          onClose={() => setSubTreeMenu(null)}
         />
       )}
     </div>
