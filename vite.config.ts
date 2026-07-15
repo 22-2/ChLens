@@ -252,7 +252,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     staged: {
-      "*": "vp check --fix",
+      "src/**/*.{ts,tsx}": "vp check --fix",
     },
     fmt: {},
     lint: {
