@@ -192,8 +192,49 @@ export function useThreadResContextMenu({
     [onWriteHistoryRemoved, page.threadUrl],
   );
 
+  // レスIDの要素上で右クリックした場合、ID系操作をメニュー最上部へ移動するためのフラグ。
+  const buildIdItems = useCallback(
+    (rawId: string, kyodemoUrl: string | null): ContextMenuItem[] => [
+      {
+        id: "copy-id",
+        label: "ID/IPをコピー",
+        icon: <Copy size={14} />,
+        disabled: !rawId,
+        onSelect: async () => {
+          await copyText(rawId);
+        },
+      },
+      {
+        id: "search-id",
+        label: "IDを必死チェッカーで検索",
+        icon: <Search size={14} />,
+        disabled: !kyodemoUrl,
+        onSelect: () => {
+          if (kyodemoUrl) {
+            window.open(kyodemoUrl, "_blank", "noopener,noreferrer");
+          }
+        },
+      },
+      {
+        id: "add-ng-id",
+        label: "ID/IPをNG指定",
+        icon: <Ban size={14} />,
+        disabled: !rawId,
+        onSelect: () => {
+          void addIdToNg(rawId);
+        },
+      },
+      { id: "sep-id", separator: true },
+    ],
+    [addIdToNg],
+  );
+
   const buildContextMenuItems = useCallback(
-    (targetRes: IRes, fromPopup: boolean): ContextMenuItem[] => {
+    (
+      targetRes: IRes,
+      fromPopup: boolean,
+      clickedOnId: boolean,
+    ): ContextMenuItem[] => {
       const plainName = stripHtml(targetRes.name);
       const plainMessage = stripHtml(targetRes.message);
       const rawId = targetRes.id ?? "";
@@ -205,42 +246,10 @@ export function useThreadResContextMenu({
       const hasSelection = selectedText.length > 0;
       const hasKeywordFilter = searchQuery.trim().length > 0;
 
-      return [
-        // 選択テキスト向け操作は誤クリックを減らすため最上段に固定する。
-        ...(hasSelection
-          ? [
-              {
-                id: "copy-selection",
-                label: "選択範囲をコピー",
-                icon: <Copy size={14} />,
-                onSelect: async () => {
-                  await copyText(selectedText);
-                },
-              },
-              {
-                id: "search-selection",
-                label: "選択範囲をGoogle検索",
-                icon: <Search size={14} />,
-                onSelect: () => {
-                  const encoded = encodeURIComponent(selectedText);
-                  window.open(
-                    `https://www.google.co.jp/search?q=${encoded}`,
-                    "_blank",
-                    "noopener,noreferrer",
-                  );
-                },
-              },
-              {
-                id: "add-selection-to-ng",
-                label: "選択範囲をNG指定",
-                icon: <Ban size={14} />,
-                onSelect: () => {
-                  void addSelectionToNg(selectedText);
-                },
-              },
-              { id: "sep-selection-top", separator: true },
-            ]
-          : []),
+      const idItems = buildIdItems(rawId, kyodemoUrl);
+
+      // 先頭の条件付き項目（フィルタ解除ジャンプ、ポップアップ用ジャンプ）
+      const conditionalTopItems: ContextMenuItem[] = [
         ...(fromPopup
           ? [
               {
@@ -255,8 +264,6 @@ export function useThreadResContextMenu({
               { id: "sep-jump", separator: true },
             ]
           : []),
-        // フィルタ適用中のみ「フィルタを解除してジャンプ」を先頭に挿入する。
-        // setFilter後はDOMがまだ更新されていないため、pendingJumpNumRefとeffectで遅延ジャンプする。
         ...((filter !== "all" || hasKeywordFilter) && !fromPopup
           ? [
               {
@@ -264,8 +271,6 @@ export function useThreadResContextMenu({
                 label: "フィルタリングを解除してこのレスにジャンプ",
                 icon: <FilterX size={14} />,
                 onSelect: () => {
-                  // キーワード絞り込み中も同じ導線で確実に到達できるよう、
-                  // 種別フィルタと検索語の両方を解除してから遅延ジャンプする。
                   pendingJumpNumRef.current = targetRes.num;
                   setFilter("all");
                   setSearchQuery("");
@@ -274,6 +279,10 @@ export function useThreadResContextMenu({
               { id: "sep-filter", separator: true },
             ]
           : []),
+      ];
+
+      // ID系メニューの前後に分割。ID系は通常「コピー」と「返信」の間に配置される。
+      const itemsBeforeIdSlot: ContextMenuItem[] = [
         {
           id: "refresh-thread",
           label: "スレッドを更新",
@@ -290,8 +299,6 @@ export function useThreadResContextMenu({
           icon: isAutoRefreshEnabled ? <Pause size={14} /> : <RefreshCw size={14} />,
           onSelect: () => {
             const nextEnabled = !isAutoRefreshEnabled;
-            // 変更理由: 右クリックメニュー経由でも開始/停止を同一導線で扱い、
-            // 「停止したつもりで実際は一時停止表示だけ」の誤認を防ぐ。
             dispatch({
               type: "SET_AUTO_REFRESH_ENABLED",
               enabled: nextEnabled,
@@ -318,36 +325,9 @@ export function useThreadResContextMenu({
             await copyText(copyBody);
           },
         },
-        {
-          id: "copy-id",
-          label: "ID/IPをコピー",
-          icon: <Copy size={14} />,
-          disabled: !rawId,
-          onSelect: async () => {
-            await copyText(rawId);
-          },
-        },
-        {
-          id: "search-id",
-          label: "IDを必死チェッカーで検索",
-          icon: <Search size={14} />,
-          disabled: !kyodemoUrl,
-          onSelect: () => {
-            if (kyodemoUrl) {
-              window.open(kyodemoUrl, "_blank", "noopener,noreferrer");
-            }
-          },
-        },
-        {
-          id: "add-ng-id",
-          label: "ID/IPをNG指定",
-          icon: <Ban size={14} />,
-          disabled: !rawId,
-          onSelect: () => {
-            void addIdToNg(rawId);
-          },
-        },
-        { id: "sep-2", separator: true },
+      ];
+
+      const itemsAfterIdSlot: ContextMenuItem[] = [
         {
           id: "reply",
           label: "返信",
@@ -356,22 +336,8 @@ export function useThreadResContextMenu({
             openWritePanelWithText(`>>${targetRes.num}\n`);
           },
         },
-        // {
-        //   id: "quote-reply",
-        //   label: "引用して返信",
-        //   icon: <Reply size={14} />,
-        //   onSelect: () => {
-        //     const quoted = plainMessage
-        //       .split(/\r?\n/)
-        //       .map((line) => `>${line}`)
-        //       .join("\n");
-        //     openWritePanelWithText(`>>${targetRes.num}\n${quoted}\n`);
-        //   },
-        // },
         {
           id: "add-write-history",
-          // 変更理由: すでに書込履歴へ登録済みなら同じ導線で解除できるよう、
-          // 登録状態に応じてラベルと操作をトグルする。
           label: isInWriteHistory ? "書込履歴から削除" : "書込履歴に追加",
           icon: <History size={14} />,
           onSelect: () => {
@@ -398,13 +364,66 @@ export function useThreadResContextMenu({
             });
           },
         },
-
       ];
+
+      const selectionItems: ContextMenuItem[] = hasSelection
+        ? [
+            {
+              id: "copy-selection",
+              label: "選択範囲をコピー",
+              icon: <Copy size={14} />,
+              onSelect: async () => {
+                await copyText(selectedText);
+              },
+            },
+            {
+              id: "search-selection",
+              label: "選択範囲をGoogle検索",
+              icon: <Search size={14} />,
+              onSelect: () => {
+                const encoded = encodeURIComponent(selectedText);
+                window.open(
+                  `https://www.google.co.jp/search?q=${encoded}`,
+                  "_blank",
+                  "noopener,noreferrer",
+                );
+              },
+            },
+            {
+              id: "add-selection-to-ng",
+              label: "選択範囲をNG指定",
+              icon: <Ban size={14} />,
+              onSelect: () => {
+                void addSelectionToNg(selectedText);
+              },
+            },
+            { id: "sep-selection-top", separator: true },
+          ]
+        : [];
+
+      // ID要素上で右クリックした場合、ID系メニューを最上部（選択テキストの直下）に表示する。
+      // 選択テキスト向け操作 → ID系操作 → その他の操作 の順で並べる。
+      return clickedOnId
+        ? [
+            ...selectionItems,
+            ...idItems,
+            ...conditionalTopItems,
+            ...itemsBeforeIdSlot,
+            ...itemsAfterIdSlot,
+          ]
+        : [
+            ...selectionItems,
+            ...conditionalTopItems,
+            ...itemsBeforeIdSlot,
+            ...idItems,
+            ...itemsAfterIdSlot,
+          ];
     },
     [
       addIdToNg,
       addSelectionToNg,
       addWriteHistory,
+      buildIdItems,
       closePopup,
       dispatch,
       fetchThread,
@@ -436,11 +455,16 @@ export function useThreadResContextMenu({
         hideAnchorPreviewImmediately();
       }
 
+      // ID要素（.res__id）上で右クリックしたかどうかを判定し、
+      // 該当時はID系メニューを最上部へ移動する。
+      const clickedOnId =
+        e.target instanceof Element && e.target.closest(".res__id") !== null;
+
       // メニュー本体も同じスタックへ積み、parentId で親ポップアップとの寿命を揃える。
       addPopupContextMenu(
         e.clientX,
         e.clientY,
-        buildContextMenuItems(targetRes, fromPopup),
+        buildContextMenuItems(targetRes, fromPopup, clickedOnId),
         parentId,
       );
     },
