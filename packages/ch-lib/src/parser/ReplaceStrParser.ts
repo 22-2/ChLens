@@ -43,7 +43,8 @@ export class ReplaceStrParser {
         continue;
       }
 
-      const match = /(?:<(\w{2,3})>)?(.*)\t(.+)\t(name|mail|date|msg|all)(?:\t(?:<(\d)>)?(.+))?/.exec(line);
+      const match =
+        /(?:<(\w{2,3})>)?(.*)\t(.+)\t(name|mail|date|msg|all)(?:\t(?:<(\d)>)?(.+))?/.exec(line);
       if (!match) continue;
 
       const rule: ReplaceStrRule = {
@@ -78,31 +79,46 @@ export class ReplaceStrParser {
       case "rx2":
         return new RegExp(rule.before, "ig");
       case "ex":
-        return new RegExp(
-          rule.before.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"),
-          "ig"
-        );
+        return new RegExp(rule.before.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&"), "ig");
       default:
         throw new Error("Unknown type");
     }
   }
 
-  static replace(url: string, title: string, target: ReplaceStrTarget, rules: ReplaceStrRule[]): ReplaceStrTarget {
+  static replace(
+    url: string,
+    title: string,
+    target: ReplaceStrTarget,
+    rules: ReplaceStrRule[],
+  ): ReplaceStrTarget {
     let result = { ...target };
 
     for (const rule of rules) {
       if (rule.url) {
         let flag = false;
-        if (rule.urlPattern === URL_PATTERN.CONTAIN || rule.urlPattern === URL_PATTERN.DONTCONTAIN) {
+        if (
+          rule.urlPattern === URL_PATTERN.CONTAIN ||
+          rule.urlPattern === URL_PATTERN.DONTCONTAIN
+        ) {
           flag = url.includes(rule.url) || title.includes(rule.url);
-        } else if (rule.urlPattern === URL_PATTERN.MATCH || rule.urlPattern === URL_PATTERN.DONTMATCH) {
+        } else if (
+          rule.urlPattern === URL_PATTERN.MATCH ||
+          rule.urlPattern === URL_PATTERN.DONTMATCH
+        ) {
           flag = url === rule.url || title === rule.url;
-        } else if (rule.urlPattern === URL_PATTERN.REGEX || rule.urlPattern === URL_PATTERN.DONTREGEX) {
+        } else if (
+          rule.urlPattern === URL_PATTERN.REGEX ||
+          rule.urlPattern === URL_PATTERN.DONTREGEX
+        ) {
           const reg = new RegExp(rule.url);
           flag = reg.test(url) || reg.test(title);
         }
 
-        if (rule.urlPattern === URL_PATTERN.DONTCONTAIN || rule.urlPattern === URL_PATTERN.DONTMATCH || rule.urlPattern === URL_PATTERN.DONTREGEX) {
+        if (
+          rule.urlPattern === URL_PATTERN.DONTCONTAIN ||
+          rule.urlPattern === URL_PATTERN.DONTMATCH ||
+          rule.urlPattern === URL_PATTERN.DONTREGEX
+        ) {
           flag = !flag;
         }
 
@@ -113,9 +129,9 @@ export class ReplaceStrParser {
         // Simple string replacement (case-insensitive literal)
         // Note: original code used app.replaceAll which might be custom
         // We use a safe implementation here
-        const safeBefore = rule.before.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+        const safeBefore = rule.before.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
         const reg = new RegExp(safeBefore, "ig");
-        
+
         if (rule.place === "all") {
           result.name = result.name.replace(reg, rule.after);
           result.mail = result.mail.replace(reg, rule.after);

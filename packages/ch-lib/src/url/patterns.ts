@@ -24,17 +24,13 @@ export const PATTERNS = {
   // まちBBS系
   MACHI_THREAD: new RegExp(String.raw`^/bbs/read\.cgi/(${MACHI_THREAD_PATH}).*$`),
   MACHI_BOARD: /^\/(\w+\/)$/,
-  MACHI_RESNUM: new RegExp(
-    String.raw`^/bbs/read\.cgi/${MACHI_THREAD_PATH}/(\d+).*$`,
-  ),
+  MACHI_RESNUM: new RegExp(String.raw`^/bbs/read\.cgi/${MACHI_THREAD_PATH}/(\d+).*$`),
 
   // したらば系
   SHITARABA_THREAD: new RegExp(String.raw`^/bbs/(${SHITARABA_READ_PATH}).*$`),
   SHITARABA_ARCHIVE: /^\/(\w+\/\d+)\/storage\/(\d+)\.html$/,
   SHITARABA_BOARD: /^\/(\w+\/\d+\/)$/,
-  SHITARABA_RESNUM: new RegExp(
-    String.raw`^/bbs/${SHITARABA_READ_PATH}/(\d+).*$`,
-  ),
+  SHITARABA_RESNUM: new RegExp(String.raw`^/bbs/${SHITARABA_READ_PATH}/(\d+).*$`),
   SHITARABA_TO_BOARD: /^\/bbs\/read(?:_archive)?\.cgi\/(\w+\/\d+)\/\d+\/$/,
 
   // eddibb系
@@ -44,6 +40,5 @@ export const PATTERNS = {
   EDDIBB_BOARD_2: /^\/test\/read\.cgi\/(\w+)\/?$/,
 
   // itest系(5chとbbspinkでパス構造は同一なのでパターンを共有する)
-  ITEST:
-    /\/(?:(?:\w+\/)?test\/read\.cgi\/(\w+)\/(\d+)\/|(?:subback\/)?(\w+)(?:\/)?)/,
+  ITEST: /\/(?:(?:\w+\/)?test\/read\.cgi\/(\w+)\/(\d+)\/|(?:subback\/)?(\w+)(?:\/)?)/,
 } as const;

@@ -7,16 +7,7 @@ export interface NGRule {
   word: string;
   useRegex?: boolean;
   type?: "ng" | "highlight" | "auto";
-  target?:
-    | "all"
-    | "title"
-    | "name"
-    | "mail"
-    | "id"
-    | "slip"
-    | "body"
-    | "url"
-    | "res_count";
+  target?: "all" | "title" | "name" | "mail" | "id" | "slip" | "body" | "url" | "res_count";
   scope?: string[];
   highlightParams?: {
     bgColor?: string;
@@ -28,117 +19,6 @@ export interface NGRule {
   name?: string;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function normalizeScope(value: unknown): string[] | undefined {
-  if (typeof value === "string" && value.length > 0) {
-    return [value];
-  }
-
-  if (!Array.isArray(value)) {
-    return undefined;
-  }
-
-  const scope = value.filter(
-    (item): item is string => typeof item === "string" && item.length > 0,
-  );
-  return scope.length > 0 ? scope : undefined;
-}
-
-function normalizeHighlightParams(
-  value: unknown,
-): NGRule["highlightParams"] | undefined {
-  if (!isRecord(value)) {
-    return undefined;
-  }
-
-  const bgColor =
-    typeof value.bgColor === "string"
-      ? value.bgColor
-      : typeof value.bgcolor === "string"
-        ? value.bgcolor
-        : undefined;
-  const label = typeof value.label === "string" ? value.label : undefined;
-
-  if (bgColor == null && label == null) {
-    return undefined;
-  }
-
-  return {
-    ...(bgColor != null ? { bgColor } : {}),
-    ...(label != null ? { label } : {}),
-  };
-}
-
-function normalizeRuleType(value: unknown): NGRule["type"] | undefined {
-  return value === "ng" || value === "highlight" || value === "auto"
-    ? value
-    : undefined;
-}
-
-function normalizeRuleTarget(value: unknown): NGRule["target"] | undefined {
-  switch (value) {
-    case "all":
-    case "title":
-    case "name":
-    case "mail":
-    case "id":
-    case "slip":
-    case "body":
-    case "url":
-    case "res_count":
-      return value;
-    default:
-      return undefined;
-  }
-}
-
-function normalizeRule(input: unknown): NGRule | null {
-  if (!isRecord(input) || typeof input.word !== "string") {
-    return null;
-  }
-
-  const useRegex =
-    typeof input.useRegex === "boolean"
-      ? input.useRegex
-      : typeof input.useregex === "boolean"
-        ? input.useregex
-        : undefined;
-  const normalizedType = normalizeRuleType(input.type);
-  const normalizedTarget = normalizeRuleTarget(input.target);
-  const highlightParams = normalizeHighlightParams(
-    input.highlightParams ?? input.highlightparams,
-  );
-  const scope = normalizeScope(input.scope);
-  const andConditions = Array.isArray(input.andConditions)
-    ? input.andConditions
-        .map(normalizeRule)
-        .filter((rule): rule is NGRule => rule != null)
-    : undefined;
-
-  return {
-    word: input.word,
-    ...(typeof input.enabled === "boolean" ? { enabled: input.enabled } : {}),
-    ...(useRegex != null ? { useRegex } : {}),
-    ...(normalizedType != null ? { type: normalizedType } : {}),
-    ...(normalizedTarget != null ? { target: normalizedTarget } : {}),
-    ...(scope != null ? { scope } : {}),
-    ...(highlightParams != null ? { highlightParams } : {}),
-    ...(typeof input.expireDate === "string"
-      ? { expireDate: input.expireDate }
-      : {}),
-    ...(andConditions != null && andConditions.length > 0
-      ? { andConditions }
-      : {}),
-    ...(typeof input.ignoreResNumber === "string"
-      ? { ignoreResNumber: input.ignoreResNumber }
-      : {}),
-    ...(typeof input.name === "string" ? { name: input.name } : {}),
-  };
-}
-
 /**
  * NGRule 形式を内部の NG オブジェクト形式に変換する
  */
@@ -148,6 +28,7 @@ export function convertUserToInternal(rules: NGRule[]): InternalNGElement[] {
     const type = rule.type || "ng";
     const target = rule.target || "all";
 
+    // oxlint-disable-next-line no-useless-assignment
     let targetType = "";
     if (type === "highlight") {
       targetType = isReg ? TYPE.REG_EXP_HIGHLIGHT_TITLE : TYPE.HIGHLIGHT_TITLE;
@@ -227,9 +108,7 @@ export function convertUserToInternal(rules: NGRule[]): InternalNGElement[] {
 /**
  * 内部のNGオブジェクト形式をユーザーフレンドリーな NGRule 形式に変換する
  */
-export function convertInternalToUser(
-  internalObjs: InternalNGElement[],
-): NGRule[] {
+export function convertInternalToUser(internalObjs: InternalNGElement[]): NGRule[] {
   return internalObjs.map((obj) => {
     const rawWord = String(obj.word || "");
     const rule: NGRule = {
@@ -241,10 +120,7 @@ export function convertInternalToUser(
       rule.useRegex = true;
     }
 
-    if (
-      typeStr.includes("Highlight") ||
-      typeStr === TYPE.REG_EXP_HIGHLIGHT_TITLE
-    ) {
+    if (typeStr.includes("Highlight") || typeStr === TYPE.REG_EXP_HIGHLIGHT_TITLE) {
       rule.type = "highlight";
     } else if (typeStr.startsWith("Auto") || typeStr === TYPE.AUTO) {
       rule.type = "auto";
@@ -260,17 +136,14 @@ export function convertInternalToUser(
     else if (typeStr.includes("Body")) rule.target = "body";
     else if (typeStr.includes("Url")) rule.target = "url";
     else if (typeStr === TYPE.RES_COUNT) rule.target = "res_count";
-    else if (typeStr === TYPE.WORD || typeStr === TYPE.REG_EXP)
-      rule.target = "all";
+    else if (typeStr === TYPE.WORD || typeStr === TYPE.REG_EXP) rule.target = "all";
 
     if (rule.target === "id") {
       rule.word = rawWord.replace(/^(?:ID|発信元):\s*/u, "");
     }
 
     if (obj.scope?.value) {
-      const scopeValue = Array.isArray(obj.scope.value)
-        ? obj.scope.value
-        : [obj.scope.value];
+      const scopeValue = Array.isArray(obj.scope.value) ? obj.scope.value : [obj.scope.value];
       if (scopeValue.length > 0) {
         rule.scope = [...scopeValue];
       }
@@ -289,9 +162,7 @@ export function convertInternalToUser(
     }
 
     if (obj.start) {
-      rule.ignoreResNumber = obj.finish
-        ? `${obj.start}-${obj.finish}`
-        : `${obj.start}`;
+      rule.ignoreResNumber = obj.finish ? `${obj.start}-${obj.finish}` : `${obj.start}`;
     }
 
     if (obj.subElements && obj.subElements.length > 0) {
@@ -320,20 +191,17 @@ export function convertUserToDSL(rules: NGRule[]): string {
       let line = "";
 
       if (rule.name) line += `attachName:${rule.name},`;
-      if (rule.expireDate)
-        line += `expireDate:${rule.expireDate.replace(/-/g, "/")},`;
-      if (rule.ignoreResNumber)
-        line += `ignoreResNumber:${rule.ignoreResNumber},`;
+      if (rule.expireDate) line += `expireDate:${rule.expireDate.replace(/-/g, "/")},`;
+      if (rule.ignoreResNumber) line += `ignoreResNumber:${rule.ignoreResNumber},`;
 
+      // oxlint-disable-next-line no-useless-assignment
       let targetType = "";
       const isReg = rule.useRegex;
       const type = rule.type || "ng";
       const target = rule.target || "all";
 
       if (type === "highlight") {
-        targetType = isReg
-          ? TYPE.REG_EXP_HIGHLIGHT_TITLE
-          : TYPE.HIGHLIGHT_TITLE;
+        targetType = isReg ? TYPE.REG_EXP_HIGHLIGHT_TITLE : TYPE.HIGHLIGHT_TITLE;
       } else if (type === "auto") {
         targetType = TYPE.AUTO;
       } else {

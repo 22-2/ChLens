@@ -46,9 +46,7 @@ export function useOmnibar({
 }: UseOmnibarOptions): UseOmnibarResult {
   const [inputValue, setInputValue] = useState(displayUrl);
   const [isFocused, setIsFocused] = useState(false);
-  const [omnibarEntries, setOmnibarEntries] = useState<OmnibarMergedEntry[]>(
-    [],
-  );
+  const [omnibarEntries, setOmnibarEntries] = useState<OmnibarMergedEntry[]>([]);
   const [isOmnibarLoaded, setIsOmnibarLoaded] = useState(false);
   const [isOmnibarLoading, setIsOmnibarLoading] = useState(false);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
@@ -108,14 +106,9 @@ export function useOmnibar({
   }, [activeSuggestionIndex, suggestions.length]);
 
   const shouldShowNoMatch =
-    isFocused &&
-    !isOmnibarLoading &&
-    inputValue.trim().length > 0 &&
-    suggestions.length === 0;
+    isFocused && !isOmnibarLoading && inputValue.trim().length > 0 && suggestions.length === 0;
 
-  const isOpen =
-    isFocused &&
-    (isOmnibarLoading || suggestions.length > 0 || shouldShowNoMatch);
+  const isOpen = isFocused && (isOmnibarLoading || suggestions.length > 0 || shouldShowNoMatch);
 
   const handleSelectSuggestion = useCallback(
     (suggestion: OmnibarSuggestion) => {
@@ -132,9 +125,7 @@ export function useOmnibar({
       if (e.key === "ArrowDown") {
         if (suggestions.length > 0) {
           e.preventDefault();
-          setActiveSuggestionIndex((prev) =>
-            prev + 1 >= suggestions.length ? 0 : prev + 1,
-          );
+          setActiveSuggestionIndex((prev) => (prev + 1 >= suggestions.length ? 0 : prev + 1));
         }
         return;
       }
@@ -142,9 +133,7 @@ export function useOmnibar({
       if (e.key === "ArrowUp") {
         if (suggestions.length > 0) {
           e.preventDefault();
-          setActiveSuggestionIndex((prev) =>
-            prev - 1 < 0 ? suggestions.length - 1 : prev - 1,
-          );
+          setActiveSuggestionIndex((prev) => (prev - 1 < 0 ? suggestions.length - 1 : prev - 1));
         }
         return;
       }

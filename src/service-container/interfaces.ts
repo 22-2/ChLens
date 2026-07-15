@@ -1,26 +1,23 @@
 import { BBSMenu } from "src/core/BBSMenuParser";
 export interface IConfig {
-  get(key: string): any;
-  set(key: string, value: any): Promise<void> | void;
+  get(key: string): unknown;
+  set(key: string, value: unknown): Promise<void> | void;
   ready(callback: () => void): void;
   getAll(): Record<string, string>;
   del?(key: string): Promise<void>;
 }
 
 export interface ICacheItem {
-  get(): Promise<any>;
+  get(): Promise<unknown>;
   // 既存実装では、事前に data/lastUpdated を設定済みなら put() を引数なしで呼べる。
   // 呼び出し側（Board/Thread/URL 等）との整合を保つため data は optional にする。
-  put(
-    data?: string,
-    options?: { lastModified?: number; etag?: string },
-  ): Promise<void>;
-  data: any;
+  put(data?: string, options?: { lastModified?: number; etag?: string }): Promise<void>;
+  data: unknown;
   lastUpdated: number;
   lastModified?: number;
   etag?: string;
   resLength?: number;
-  parsed?: any;
+  parsed?: unknown;
   readcgiVer?: number;
   datSize?: number;
   // 閲覧ログ用メタ情報
@@ -69,16 +66,16 @@ export interface IBookmark {
 }
 
 export interface IMessage {
-  send(type: string, data?: any): void;
-  on(type: string, callback: (data: any) => void): void;
-  off(type: string, callback: (data: any) => void): void;
+  send(type: string, data?: unknown): void;
+  on(type: string, callback: (data: unknown) => void): void;
+  off(type: string, callback: (data: unknown) => void): void;
 }
 
 export interface IUtil {
   escapeHtml(str: string): string;
   safeHref(url: string): string;
   defer(): Promise<void>;
-  isNewerReadState(a: any, b: any): boolean;
+  isNewerReadState(a: unknown, b: unknown): boolean;
   guessType(url: string): { bbsType: string; protocol: string };
 }
 
@@ -87,8 +84,8 @@ export interface IThread {
   title: string;
   resCount: number;
   createdAt: number;
-  ng?: any;
-  highlight?: any;
+  ng?: unknown;
+  highlight?: unknown;
   isNet?: boolean | null;
   readState?: IReadState;
   threadNumber?: number;
@@ -160,8 +157,8 @@ export interface IBoardResult {
 }
 
 export interface IBoardService {
-  getThreads(url: any): Promise<IBoardResult>;
-  getCachedResCount(url: any): Promise<any>;
+  getThreads(url: string): Promise<IBoardResult>;
+  getCachedResCount(url: string): Promise<unknown>;
 }
 
 export interface IBBSMenuBoard {
@@ -185,10 +182,7 @@ export interface IBBSMenuService {
 }
 
 export interface IToastService {
-  notify(
-    message: string,
-    options?: { html?: boolean; backgroundColor?: string },
-  ): void;
+  notify(message: string, options?: { html?: boolean; backgroundColor?: string }): void;
   success(message: string): void;
   error(message: string): void;
   info(message: string): void;
@@ -205,16 +199,16 @@ export interface INotificationService {
 export interface INGResult {
   type: string;
   name?: string;
-  params?: any;
+  params?: unknown;
   /** NG ルールが一時的に無効化されているかどうか */
   disabled?: boolean;
 }
 
 export interface INGService {
   isNGBoard(title: string, url: string, resCount: number): INGResult | null;
-  isNGThread(res: any, title: string, url: string): INGResult | null;
+  isNGThread(res: unknown, title: string, url: string): INGResult | null;
   isThreadIgnoreNgType(
-    res: any,
+    res: unknown,
     threadTitle: string,
     url: string,
     ngType: string,

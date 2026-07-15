@@ -54,7 +54,7 @@ function useConfigIntervalSec(options: {
     (sec: number) => {
       const clamped = Math.max(minSec, Math.min(maxSec, sec));
       setIntervalSecState(clamped);
-      container.config.set(configKey, String(clamped * 1000));
+      void container.config.set(configKey, String(clamped * 1000));
     },
     [configKey, maxSec, minSec],
   );
@@ -100,14 +100,11 @@ export function useAutoRefreshPanel(): UseAutoRefreshPanelResult {
         : null;
   const currentPageKey = getAutoRefreshPageKey(currentPage);
   const isOnThread = panelKind === "thread";
-  const isEnabled =
-    currentPageKey != null && isAutoRefreshEnabledForPage(activeTab, currentPage);
+  const isEnabled = currentPageKey != null && isAutoRefreshEnabledForPage(activeTab, currentPage);
   const intervalSec =
     panelKind === "thread" ? threadInterval.intervalSec : boardInterval.intervalSec;
   const setIntervalSec =
-    panelKind === "thread"
-      ? threadInterval.setIntervalSec
-      : boardInterval.setIntervalSec;
+    panelKind === "thread" ? threadInterval.setIntervalSec : boardInterval.setIntervalSec;
 
   const toggle = useCallback(() => {
     if (currentPageKey == null) {

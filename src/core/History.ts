@@ -1,10 +1,7 @@
 import { message } from "src/app";
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import { assertArg, log } from "src/app/Log";
-import {
-  getTauriRepositories,
-  isTauriRuntime,
-} from "src/core/TauriDrizzleBridge";
+import { getTauriRepositories, isTauriRuntime } from "src/core/TauriDrizzleBridge";
 import { isHttps } from "src/core/URL";
 
 const DB_NAME = "History";
@@ -47,9 +44,7 @@ interface HistoryUpdatedPayload {
   day?: number;
 }
 
-const ensurePersistedRecord = (
-  record: HistoryRecord,
-): PersistedHistoryRecord => {
+const ensurePersistedRecord = (record: HistoryRecord): PersistedHistoryRecord => {
   if (record.id == null) {
     throw new Error("履歴レコードのIDが不正です");
   }
@@ -166,10 +161,7 @@ const clearByOffset = async (offset: number): Promise<void> => {
   await tx.done;
 };
 
-const removeByUrlAndOptionalDate = async (
-  url: string,
-  date: number | null,
-): Promise<void> => {
+const removeByUrlAndOptionalDate = async (url: string, date: number | null): Promise<void> => {
   const db = await getDB();
   const tx = db.transaction(STORE_NAME, "readwrite");
   const urlIndex = tx.store.index("url");
@@ -196,9 +188,7 @@ const removeByUrlAndOptionalDate = async (
 const clearByDateBefore = async (dayUnix: number): Promise<void> => {
   const db = await getDB();
   const tx = db.transaction(STORE_NAME, "readwrite");
-  const keys = await tx.store
-    .index("date")
-    .getAllKeys(IDBKeyRange.upperBound(dayUnix, true));
+  const keys = await tx.store.index("date").getAllKeys(IDBKeyRange.upperBound(dayUnix, true));
 
   for (const key of keys) {
     await tx.store.delete(key);
@@ -248,9 +238,7 @@ const clearAllRows = async (): Promise<void> => {
   await db.clear(STORE_NAME);
 };
 
-const toRowsWithHttps = (
-  rows: PersistedHistoryRecord[],
-): HistoryRecordWithHttps[] => {
+const toRowsWithHttps = (rows: PersistedHistoryRecord[]): HistoryRecordWithHttps[] => {
   return rows.map((value) => ({
     ...value,
     isHttps: isHttps(value.url),
@@ -264,20 +252,14 @@ const isInvalidPagingArg = (offset: number, limit: number): boolean => {
   ]);
 };
 
-const isInvalidPagingArgForUnique = (
-  offset: number,
-  limit: number,
-): boolean => {
+const isInvalidPagingArgForUnique = (offset: number, limit: number): boolean => {
   return assertArg("History.getUnique", [
     [offset, "number"],
     [limit, "number"],
   ]);
 };
 
-const normalizePaging = (
-  offset?: number,
-  limit?: number,
-): { offset: number; limit: number } => {
+const normalizePaging = (offset?: number, limit?: number): { offset: number; limit: number } => {
   return {
     offset: offset == null ? -1 : offset,
     limit: limit == null ? -1 : limit,
@@ -358,10 +340,7 @@ const addTauriRow = async (
   await tauriHistoryRepository.add(url, title, date, boardTitle);
 };
 
-const removeTauriRow = async (
-  url: string,
-  date: number | null,
-): Promise<void> => {
+const removeTauriRow = async (url: string, date: number | null): Promise<void> => {
   const tauriHistoryRepository = await safeGetTauriHistoryRepository();
   await tauriHistoryRepository.remove(url, date);
 };
@@ -455,10 +434,7 @@ export const remove = async function (
 @param {Number} limit
 @return {Promise}
 */
-export const get = function (
-  offset?: number,
-  limit?: number,
-): Promise<HistoryRecordWithHttps[]> {
+export const get = function (offset?: number, limit?: number): Promise<HistoryRecordWithHttps[]> {
   const normalized = normalizePaging(offset, limit);
 
   if (isInvalidPagingArg(normalized.offset, normalized.limit)) {

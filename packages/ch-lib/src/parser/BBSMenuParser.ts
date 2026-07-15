@@ -19,7 +19,7 @@ export class BBSMenuParser {
   static parse(html: string, options: BBSMenuParserOptions = {}): BBSCategory[] {
     const categories: BBSCategory[] = [];
     const regCategory = /<b[^>]*>(.+?)<\/b>\s*(?:<br>)?\s*(<a\s[\s\S]+?)(?=<b|$)/gi;
-    const regBoard = /<a\shref="?((?:https?:)?\/\/[\w\.-]+\/(\w+)\/)"?>(.+?)<\/a>/gi;
+    const regBoard = /<a\shref="?((?:https?:)?\/\/[\w.-]+\/(\w+)\/)"?>(.+?)<\/a>/gi;
 
     let catMatch: RegExpExecArray | null;
     while ((catMatch = regCategory.exec(html))) {
@@ -57,7 +57,10 @@ export class BBSMenuParser {
         }
 
         let boardTitle = this.stripHtmlTags(boardMatch[3]);
-        if (subName !== "" && !(boardTitle.endsWith(`(${subName})`) || boardTitle.endsWith(`_${subName}`))) {
+        if (
+          subName !== "" &&
+          !(boardTitle.endsWith(`(${subName})`) || boardTitle.endsWith(`_${subName}`))
+        ) {
           boardTitle += `_${subName}`;
         }
 
@@ -69,7 +72,14 @@ export class BBSMenuParser {
 
       if (boards.length > 0) {
         let finalCategoryTitle = categoryTitle;
-        if (subName && subName !== "" && !(finalCategoryTitle.endsWith(`(${subName})`) || finalCategoryTitle.endsWith(`_${subName}`))) {
+        if (
+          subName &&
+          subName !== "" &&
+          !(
+            finalCategoryTitle.endsWith(`(${subName})`) ||
+            finalCategoryTitle.endsWith(`_${subName}`)
+          )
+        ) {
           finalCategoryTitle += `(${subName})`;
         }
 

@@ -1,15 +1,13 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import React, { useRef, useState } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { useRef, useState } from "react";
+import { afterEach, describe, expect, it } from "vite-plus/test";
 
 import { useThreadTopScrollOpenFilter } from "src/view/browser/pages/thread/use-thread-top-scroll-open-filter";
 
 function WheelFilterHarness({ isActive = true }: { isActive?: boolean }) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const [activeTopBar, setActiveTopBar] = useState<"none" | "filter">(
-    "none",
-  );
+  const [activeTopBar, setActiveTopBar] = useState<"none" | "filter">("none");
   const [openCount, setOpenCount] = useState(0);
   const openFilterToolbar = () => {
     setOpenCount((prev) => prev + 1);
@@ -42,9 +40,7 @@ describe("useThreadTopScrollOpenFilter", () => {
   it("スレ最上部で上方向へホイールするとフィルタバーを開く", () => {
     render(<WheelFilterHarness />);
 
-    const scrollContainer = screen.getByTestId(
-      "scroll-container",
-    ) as HTMLDivElement;
+    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
     Object.defineProperty(scrollContainer, "scrollTop", {
       configurable: true,
       get: () => 0,
@@ -59,9 +55,7 @@ describe("useThreadTopScrollOpenFilter", () => {
   it("まだ上端に達していない時はフィルタバーを開かない", () => {
     render(<WheelFilterHarness />);
 
-    const scrollContainer = screen.getByTestId(
-      "scroll-container",
-    ) as HTMLDivElement;
+    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
     Object.defineProperty(scrollContainer, "scrollTop", {
       configurable: true,
       get: () => 24,
@@ -76,9 +70,7 @@ describe("useThreadTopScrollOpenFilter", () => {
   it("Ctrl+wheel のズーム操作ではフィルタバーを開かない", () => {
     render(<WheelFilterHarness />);
 
-    const scrollContainer = screen.getByTestId(
-      "scroll-container",
-    ) as HTMLDivElement;
+    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
     Object.defineProperty(scrollContainer, "scrollTop", {
       configurable: true,
       get: () => 0,

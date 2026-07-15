@@ -50,21 +50,15 @@ export default class MessageProcessor {
 
     let nameHtml = (res.name || "")
       .replace(/<\/?a[^>]*>/g, "")
-      .replace(
-        /<(?!\/?(?:b|small|font(?: color="?[#a-zA-Z0-9]+"?)?)>)/g,
-        "&lt;",
-      );
+      .replace(/<(?!\/?(?:b|small|font(?: color="?[#a-zA-Z0-9]+"?)?)>)/g, "&lt;");
 
     if (res.trip) {
-      nameHtml = nameHtml.replace(
-        res.trip,
-        `<span class="trip">${res.trip}</span>`,
-      );
+      nameHtml = nameHtml.replace(res.trip, `<span class="trip">${res.trip}</span>`);
     }
     parts.nameHtml = nameHtml;
 
     parts.isNameAnchor =
-      /^\s*(?:&gt;|\uff1e){0,2}([\d\uff10-\uff19]+(?:[\-\u30fc][\d\uff10-\uff19]+)?(?:\s*,\s*[\d\uff10-\uff19]+(?:[\-\u30fc][\d\uff10-\uff19]+)?)*)\s*$/.test(
+      /^\s*(?:&gt;|\uff1e){0,2}([\d\uff10-\uff19]+(?:[-\u30fc][\d\uff10-\uff19]+)?(?:\s*,\s*[\d\uff10-\uff19]+(?:[-\u30fc][\d\uff10-\uff19]+)?)*)\s*$/.test(
         res.name || "",
       );
 
@@ -105,10 +99,7 @@ export default class MessageProcessor {
     }
 
     if (res.date) {
-      otherHtml = otherHtml.replace(
-        res.date,
-        `<time class="date">${res.date}</time>`,
-      );
+      otherHtml = otherHtml.replace(res.date, `<time class="date">${res.date}</time>`);
     }
     parts.otherHtml = otherHtml;
 
@@ -123,14 +114,12 @@ export default class MessageProcessor {
             ? "指定されたレスの量が極端に多いため、ポップアップを表示しません"
             : "指定されたレスが存在しません";
 
-        return `<a href="javascript:undefined;" class="anchor ${
-          disabled ? "disabled" : ""
-        }" ${
+        return `<a href="javascript:undefined;" class="anchor ${disabled ? "disabled" : ""}" ${
           disabled ? `data-disabled-reason="${disabledReason}"` : ""
         }>${$0}</a>`;
       })
       .replace(
-        /id:(?:[a-hj-z\d_\+\/\.\!]|i(?!d:))+/gi,
+        /id:(?:[a-hj-z\d_+/.!]|i(?!d:))+/gi,
         '<a href="javascript:undefined;" class="anchor_id">$&</a>',
       );
 
@@ -146,7 +135,7 @@ export default class MessageProcessor {
 
         if (!insideAnchor) {
           return part.replace(
-            /(https?:\/\/[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+)/gi,
+            /(https?:\/\/[A-Za-z0-9\-._~:/?#[\]@!$&'()*+,;=%]+)/gi,
             (matchedUrl: string) => {
               const linkUrl = trimLinkTrailingPunctuation(matchedUrl);
               return `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer">${linkUrl}</a>`;

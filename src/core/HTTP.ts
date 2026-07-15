@@ -65,12 +65,7 @@ export class Request {
         headers: response.headers,
       });
 
-      return new Response(
-        response.status,
-        response.headers,
-        response.body,
-        response.url,
-      );
+      return new Response(response.status, response.headers, response.body, response.url);
     } catch (e) {
       logger.error(`HTTP request failed: ${this.method} ${url}`, { error: e });
       return Promise.reject(e);
@@ -82,7 +77,7 @@ export class Request {
   }
 
   static parseHTTPHeader(str: string): headerList {
-    const reg = /^(?:([a-z\-]+):\s*|([ \t]+))(.+)\s*$/gim;
+    const reg = /^(?:([a-z-]+):\s*|([ \t]+))(.+)\s*$/gim;
     const headers: headerList = {};
     let last: string | undefined;
     let res: RegExpExecArray | null;

@@ -11,11 +11,7 @@ export interface ImageBlurConfigState {
   harmfulWordPattern: RegExp | null;
 }
 
-const IMAGE_BLUR_CONFIG_KEYS = new Set([
-  "image_blur",
-  "image_blur_length",
-  "image_blur_word",
-]);
+const IMAGE_BLUR_CONFIG_KEYS = new Set(["image_blur", "image_blur_length", "image_blur_word"]);
 
 function readImageBlurConfig(): ImageBlurConfigState {
   const enabled = container.config.get("image_blur") === "on";
@@ -27,8 +23,7 @@ function readImageBlurConfig(): ImageBlurConfigState {
 }
 
 export function useImageBlurConfig(): ImageBlurConfigState {
-  const [imageBlurConfig, setImageBlurConfig] =
-    useState<ImageBlurConfigState>(readImageBlurConfig);
+  const [imageBlurConfig, setImageBlurConfig] = useState<ImageBlurConfigState>(readImageBlurConfig);
 
   useEffect(() => {
     const applyImageBlurConfig = () => setImageBlurConfig(readImageBlurConfig());

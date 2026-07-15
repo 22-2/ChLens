@@ -2,7 +2,7 @@ packages:
   - "."
   - "packages/*"
 allowBuilds:
-  '@parcel/watcher': true
+  "@parcel/watcher": true
   core-js: true
   dtrace-provider: true
   es5-ext: true
@@ -15,7 +15,7 @@ allowBuilds:
   zopflipng-bin: true
 
 onlyBuiltDependencies:
-  - '@parcel/watcher'
+  - "@parcel/watcher"
   - core-js
   - dtrace-provider
   - es5-ext
@@ -24,3 +24,17 @@ onlyBuiltDependencies:
   - msw
   - sharp
   - spawn-sync
+catalog:
+  vite: npm:@voidzero-dev/vite-plus-core@0.2.4
+  vitest: 4.1.10
+  vite-plus: 0.2.4
+overrides:
+  vite: "catalog:"
+  vitest: "catalog:"
+peerDependencyRules:
+  allowAny:
+    - vite
+    - vitest
+  allowedVersions:
+    vite: "*"
+    vitest: "*"

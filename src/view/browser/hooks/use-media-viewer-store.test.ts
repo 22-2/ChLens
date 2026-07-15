@@ -1,5 +1,5 @@
 import { useMediaViewerStore } from "src/view/browser/hooks/use-media-viewer-store";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 describe("useMediaViewerStore", () => {
   beforeEach(() => {

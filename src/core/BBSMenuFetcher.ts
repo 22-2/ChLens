@@ -41,8 +41,8 @@ export class BBSMenuFetcher {
   /**
    * 指定URLからBBSMenuを取得する。
    *
-    * - キャッシュが存在し、force=false → キャッシュから返す
-    * - キャッシュ未存在 / force=true  → HTTP通信し結果を返す
+   * - キャッシュが存在し、force=false → キャッシュから返す
+   * - キャッシュ未存在 / force=true  → HTTP通信し結果を返す
    *   - 304 の場合は lastUpdated だけ更新してキャッシュデータを返す
    */
   async fetch(url: string, force = false): Promise<BBSMenu> {
@@ -93,18 +93,13 @@ export class BBSMenuFetcher {
    * 条件付き GET リクエストを送信する。
    * キャッシュが存在する場合は If-Modified-Since / If-None-Match を付与する。
    */
-  private async sendRequest(
-    url: string,
-    cache: ICacheItem | undefined,
-  ): Promise<HttpResponse> {
+  private async sendRequest(url: string, cache: ICacheItem | undefined): Promise<HttpResponse> {
     const request = new Request("GET", url, {
       mimeType: "text/plain; charset=Shift_JIS",
     });
 
     if (cache?.lastModified != null) {
-      request.headers["If-Modified-Since"] = new Date(
-        cache.lastModified,
-      ).toUTCString();
+      request.headers["If-Modified-Since"] = new Date(cache.lastModified).toUTCString();
     }
     if (cache?.etag != null) {
       request.headers["If-None-Match"] = cache.etag;

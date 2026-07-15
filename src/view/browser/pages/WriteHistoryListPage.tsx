@@ -1,32 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { SearchBar } from "src/view/browser/components/SearchBar";
-import {
-  ColumnDef,
-  SimpleDataTable,
-} from "src/view/browser/components/SimpleDataTable";
-import {
-  useTabDispatch,
-  type TabAction,
-} from "src/view/browser/hooks/use-tab-store";
+import { ColumnDef, SimpleDataTable } from "src/view/browser/components/SimpleDataTable";
+import { useTabDispatch, type TabAction } from "src/view/browser/hooks/use-tab-store";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
 import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
 
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
-import {
-  formatCompactDateTime,
-  normalizeLegacyTimestamp,
-} from "src/view/browser/utils/date-time";
+import { formatCompactDateTime, normalizeLegacyTimestamp } from "src/view/browser/utils/date-time";
 import { getLegacyWriteHistoryService } from "src/view/browser/utils/legacy-app";
 import { container } from "src/service-container/index";
 
 type SortDirection = "asc" | "desc";
-type SortColumn =
-  | "title"
-  | "writtenRes"
-  | "name"
-  | "mail"
-  | "message"
-  | "writtenDate";
+type SortColumn = "title" | "writtenRes" | "name" | "mail" | "message" | "writtenDate";
 
 interface SortState {
   column: SortColumn | null;
@@ -98,17 +83,12 @@ async function readWriteHistoryEntries(): Promise<WriteHistoryEntry[]> {
 
       // 変更理由: 旧UIの書込履歴は `date` フィールドで残っている場合があるため、
       // new-ui でも両形式を受けて日時列を欠損させない。
-      const parsedDate = normalizeLegacyTimestamp(
-        item.writtenDate ?? item.date,
-      );
+      const parsedDate = normalizeLegacyTimestamp(item.writtenDate ?? item.date);
 
       return {
         url,
         title: normalizeString(item.title, url),
-        writtenRes: Math.max(
-          0,
-          Math.trunc(normalizeNumber(item.writtenRes ?? item.res)),
-        ),
+        writtenRes: Math.max(0, Math.trunc(normalizeNumber(item.writtenRes ?? item.res))),
         name: normalizeString(item.name),
         mail: normalizeString(item.mail),
         message: normalizeString(item.message),
@@ -186,13 +166,11 @@ const COLUMNS: ColumnDef<WriteHistoryEntry>[] = [
     headerClassName: "simple-data-table__th--writehistory-date",
     cellClassName: "simple-data-table__writehistory-date",
     sortable: true,
-    cell: (row) =>
-      row.writtenDate ? formatCompactDateTime(row.writtenDate) : "-",
+    cell: (row) => (row.writtenDate ? formatCompactDateTime(row.writtenDate) : "-"),
   },
 ];
 
-const COLUMN_VISIBILITY_STORAGE_KEY =
-  "chlens_browser_write_history_list_columns_visibility";
+const COLUMN_VISIBILITY_STORAGE_KEY = "chlens_browser_write_history_list_columns_visibility";
 const COLUMN_VISIBILITY_LOCKED_KEYS = ["title"] as const;
 
 interface WriteHistoryListPageProps {
@@ -230,9 +208,7 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
       const rows = await readWriteHistoryEntries();
       setEntries(rows);
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "書き込み履歴の読み込みに失敗しました",
-      );
+      setError(e instanceof Error ? e.message : "書き込み履歴の読み込みに失敗しました");
       setEntries([]);
     } finally {
       setLoading(false);
@@ -255,10 +231,7 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
     container.message.on("write_history_updated", handleWriteHistoryUpdated);
 
     return () => {
-      container.message.off(
-        "write_history_updated",
-        handleWriteHistoryUpdated,
-      );
+      container.message.off("write_history_updated", handleWriteHistoryUpdated);
     };
   }, [loadEntries]);
 
@@ -345,10 +318,7 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
     return (
       <div className="page-status page-status--error">
         <p>{error}</p>
-        <button
-          className="page-status__retry"
-          onClick={() => void loadEntries()}
-        >
+        <button className="page-status__retry" onClick={() => void loadEntries()}>
           再試行
         </button>
       </div>

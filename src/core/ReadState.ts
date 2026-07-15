@@ -2,10 +2,7 @@ import { assertArg, criticalError, log } from "src/app/Log";
 import message from "src/app/Message";
 import { deepCopy } from "src/app/Util";
 import { indexedDBRequestToPromise } from "src/core/jsutil.js";
-import {
-  getTauriRepositories,
-  isTauriRuntime,
-} from "src/core/TauriDrizzleBridge";
+import { getTauriRepositories, isTauriRuntime } from "src/core/TauriDrizzleBridge";
 import { URL } from "src/core/URL";
 import type { IReadState } from "src/service-container/interfaces";
 
@@ -23,7 +20,7 @@ interface UrlFilterResult {
 const _openDB: Promise<IDBDatabase> = new Promise((resolve, reject) => {
   const req = indexedDB.open("ReadState", DB_VERSION);
   req.onerror = (e) => {
-    criticalError("既読情報管理システムの起動に失敗しました");
+    void criticalError("既読情報管理システムの起動に失敗しました");
     reject(e);
   };
   req.onupgradeneeded = (event) => {
@@ -96,7 +93,7 @@ export const set = async (readState: ReadStateRecord): Promise<void> => {
       return;
     } catch (e) {
       log("error", "app.ReadState.set: トランザクション失敗");
-      throw new Error(String(e));
+      throw new Error(String(e), { cause: e });
     }
   }
 
@@ -121,7 +118,7 @@ export const set = async (readState: ReadStateRecord): Promise<void> => {
     });
   } catch (e) {
     log("error", "app.ReadState.set: トランザクション失敗");
-    throw new Error(String(e));
+    throw new Error(String(e), { cause: e });
   }
 };
 
@@ -136,22 +133,17 @@ export const get = async (url: string): Promise<ReadStateRecord | null> => {
     try {
       // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
       const { tauriReadStateRepository } = await getTauriRepositories();
-      const data = await tauriReadStateRepository.get(
-        filteredUrl.original.href,
-      );
+      const data = await tauriReadStateRepository.get(filteredUrl.original.href);
       return data as ReadStateRecord | null;
     } catch (e) {
       log("error", "app.ReadState.get: トランザクション中断");
-      throw new Error(String(e));
+      throw new Error(String(e), { cause: e });
     }
   }
 
   try {
     const db = await _openDB;
-    const req = db
-      .transaction("ReadState")
-      .objectStore("ReadState")
-      .get(filteredUrl.replaced.href);
+    const req = db.transaction("ReadState").objectStore("ReadState").get(filteredUrl.replaced.href);
     const {
       target: { result },
     } = (await indexedDBRequestToPromise(req)) as {
@@ -165,7 +157,7 @@ export const get = async (url: string): Promise<ReadStateRecord | null> => {
     return data;
   } catch (e) {
     log("error", "app.ReadState.get: トランザクション中断");
-    throw new Error(String(e));
+    throw new Error(String(e), { cause: e });
   }
 };
 
@@ -177,7 +169,7 @@ export const getAll = async (): Promise<ReadStateRecord[]> => {
       return (await tauriReadStateRepository.getAll()) as ReadStateRecord[];
     } catch (e) {
       log("error", "app.ReadState.getAll: トランザクション中断");
-      throw new Error(String(e));
+      throw new Error(String(e), { cause: e });
     }
   }
 
@@ -190,7 +182,7 @@ export const getAll = async (): Promise<ReadStateRecord[]> => {
     return event.target.result;
   } catch (e) {
     log("error", "app.ReadState.getAll: トランザクション中断");
-    throw new Error(String(e));
+    throw new Error(String(e), { cause: e });
   }
 };
 
@@ -210,7 +202,7 @@ export const getByBoard = async (url: string): Promise<ReadStateRecord[]> => {
       )) as ReadStateRecord[];
     } catch (e) {
       log("error", "app.ReadState.getByBoard: トランザクション中断");
-      throw new Error(String(e));
+      throw new Error(String(e), { cause: e });
     }
   }
 
@@ -238,7 +230,7 @@ export const getByBoard = async (url: string): Promise<ReadStateRecord[]> => {
     return data;
   } catch (e) {
     log("error", "app.ReadState.getByBoard: トランザクション中断");
-    throw new Error(String(e));
+    throw new Error(String(e), { cause: e });
   }
 };
 
@@ -253,16 +245,14 @@ export const remove = async (url: string): Promise<void> => {
     try {
       // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
       const { tauriReadStateRepository } = await getTauriRepositories();
-      const normalizedUrl = await tauriReadStateRepository.remove(
-        filteredUrl.original.href,
-      );
+      const normalizedUrl = await tauriReadStateRepository.remove(filteredUrl.original.href);
       message.send("read_state_removed", {
         url: normalizedUrl,
       });
       return;
     } catch (e) {
       log("error", "app.ReadState.remove: トランザクション中断");
-      throw new Error(String(e));
+      throw new Error(String(e), { cause: e });
     }
   }
 
@@ -278,7 +268,7 @@ export const remove = async (url: string): Promise<void> => {
     });
   } catch (e) {
     log("error", "app.ReadState.remove: トランザクション中断");
-    throw new Error(String(e));
+    throw new Error(String(e), { cause: e });
   }
 };
 
@@ -291,20 +281,17 @@ export const clear = async (): Promise<void> => {
       return;
     } catch (e) {
       log("error", "app.ReadState.clear: トランザクション中断");
-      throw new Error(String(e));
+      throw new Error(String(e), { cause: e });
     }
   }
 
   try {
     const db = await _openDB;
-    const req = db
-      .transaction("ReadState", "readwrite")
-      .objectStore("ReadState")
-      .clear();
+    const req = db.transaction("ReadState", "readwrite").objectStore("ReadState").clear();
     await indexedDBRequestToPromise(req);
   } catch (e) {
     log("error", "app.ReadState.clear: トランザクション中断");
-    throw new Error(String(e));
+    throw new Error(String(e), { cause: e });
   }
 };
 
@@ -312,8 +299,7 @@ const _recoveryOfDate = (_db: IDBDatabase, tx: IDBTransaction): Promise<void> =>
   new Promise((resolve, reject) => {
     const req = tx.objectStore("ReadState").openCursor();
     req.onsuccess = (event) => {
-      const cursor = (event.target as IDBRequest<IDBCursorWithValue | null>)
-        .result;
+      const cursor = (event.target as IDBRequest<IDBCursorWithValue | null>).result;
       if (cursor) {
         const value = cursor.value as ReadStateRecord;
         value.date = undefined;

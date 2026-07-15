@@ -24,12 +24,11 @@ export interface ParseThreadOptions {
   resLength?: number;
 }
 
-const decodeEntityElement =
-  typeof document !== "undefined" ? document.createElement("span") : null;
+const decodeEntityElement = typeof document !== "undefined" ? document.createElement("span") : null;
 
 const decodeCharReference = (str: string): string => {
   return str.replace(
-    /\&(?:#(\d+)|#x([\dA-Fa-f]+)|([\da-zA-Z]+));/g,
+    /&(?:#(\d+)|#x([\dA-Fa-f]+)|([\da-zA-Z]+));/g,
     (_all, decimal, hex, entity) => {
       if (decimal != null) {
         return String.fromCodePoint(Number(decimal));
@@ -69,18 +68,12 @@ const createBrokenRes = (): ThreadRes => ({
   other: "",
 });
 
-const shouldUseDatFor5ch = (
-  url: ChURL,
-  format2chnet: string | null | undefined,
-): boolean => {
+const shouldUseDatFor5ch = (url: ChURL, format2chnet: string | null | undefined): boolean => {
   // headline.5ch.io は read.cgi を返さないため dat を強制して取得失敗を防ぐ。
   return url.url.hostname === "headline.5ch.io" || format2chnet === "dat";
 };
 
-export const isHtmlThread = (
-  url: ChURL,
-  format2chnet: string | null | undefined,
-): boolean => {
+export const isHtmlThread = (url: ChURL, format2chnet: string | null | undefined): boolean => {
   return (
     (format2chnet !== "dat" &&
       url.getTsld() === "5ch.io" &&
@@ -93,9 +86,9 @@ export const getThreadXhrInfo = (
   url: ChURL,
   format2chnet: string | null | undefined,
 ): XhrInfo | null => {
-  const tmp = new RegExp(
-    "^/(?:test|bbs)/read(?:_archive)?\\.cgi/(\\w+)/(\\d+)/(?:(\\d+)/)?$",
-  ).exec(url.url.pathname);
+  const tmp = new RegExp("^/(?:test|bbs)/read(?:_archive)?\\.cgi/(\\w+)/(\\d+)/(?:(\\d+)/)?$").exec(
+    url.url.pathname,
+  );
   if (!tmp) {
     return null;
   }
@@ -154,13 +147,9 @@ export const parseThread = (
     case "machi.to":
       return parseMachiThread(text);
     case "shitaraba.net":
-      return url.isArchive
-        ? parseJbbsArchiveThread(text)
-        : parseJbbsThread(text);
+      return url.isArchive ? parseJbbsArchiveThread(text) : parseJbbsThread(text);
     case "5ch.io":
-      return shouldUseDatFor5ch(url, format2chnet)
-        ? parseChThread(text)
-        : parseNetThread(text);
+      return shouldUseDatFor5ch(url, format2chnet) ? parseChThread(text) : parseNetThread(text);
     case "bbspink.com":
       return parsePinkThread(text, resLength);
     default:
@@ -263,9 +252,7 @@ export const parseChThread = (text: string): ParsedThread | null => {
     }
   }
 
-  return thread.res.length > 0 && thread.res.length > numberOfBroken
-    ? thread
-    : null;
+  return thread.res.length > 0 && thread.res.length > numberOfBroken ? thread : null;
 };
 
 const fillAbonedUntil = (
@@ -309,9 +296,7 @@ export const parseMachiThread = (text: string): ParsedThread | null => {
     }
   }
 
-  return thread.res.length > 0 && thread.res.length > numberOfBroken
-    ? thread
-    : null;
+  return thread.res.length > 0 && thread.res.length > numberOfBroken ? thread : null;
 };
 
 export const parseJbbsThread = (text: string): ParsedThread | null => {
@@ -343,9 +328,7 @@ export const parseJbbsThread = (text: string): ParsedThread | null => {
     }
   }
 
-  return thread.res.length > 0 && thread.res.length > numberOfBroken
-    ? thread
-    : null;
+  return thread.res.length > 0 && thread.res.length > numberOfBroken ? thread : null;
 };
 
 export const parseJbbsArchiveThread = (text: string): ParsedThread | null => {
@@ -380,10 +363,7 @@ export const parseJbbsArchiveThread = (text: string): ParsedThread | null => {
   return thread.res.length > 0 ? thread : null;
 };
 
-export const parsePinkThread = (
-  text: string,
-  resLength?: number,
-): ParsedThread | null => {
+export const parsePinkThread = (text: string, resLength?: number): ParsedThread | null => {
   let titleReg = /<h1 .*?>(.*)\n?<\/h1>/;
   let reg: RegExp;
   let separator: string;
@@ -391,7 +371,7 @@ export const parsePinkThread = (
   if (text.includes('<div class="footer push">read.cgi ver 06')) {
     text = text.replace(/<\/h1>/, "</h1></dd></dl>");
     reg =
-      /^.*?<dl class="post".*><dt class=\"\"><span class="number">(\d+).* : <\/span><span class="name"><b>(?:<a href="mailto:([^<>]*)">|<font [^>]*>)?(.*?)(?:<\/a>|<\/font>)?<\/b><\/span><span class="date">(.*)<\/span><\/dt><dd class="thread_in"> ?(.*)$/;
+      /^.*?<dl class="post".*><dt class=""><span class="number">(\d+).* : <\/span><span class="name"><b>(?:<a href="mailto:([^<>]*)">|<font [^>]*>)?(.*?)(?:<\/a>|<\/font>)?<\/b><\/span><span class="date">(.*)<\/span><\/dt><dd class="thread_in"> ?(.*)$/;
     separator = "</dd></dl>";
   } else if (text.includes('<div class="footer push">read.cgi ver 07')) {
     text = text.replace("</h1>", "</h1></div></div><br>");

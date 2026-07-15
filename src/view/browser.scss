@@ -63,8 +63,7 @@ body {
     -apple-system,
     "Segoe UI",
     sans-serif;
-  --browser-font-mono:
-    SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+  --browser-font-mono: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
   font-size: 14px;
   color: var(--browser-color-text-primary);
   background: var(--browser-color-bg);
@@ -1676,9 +1675,7 @@ body {
 }
 
 .board-list-page .mantine-Accordion-chevron[data-rotate],
-.board-list-page
-  .mantine-Accordion-control[data-active="true"]
-  .mantine-Accordion-chevron {
+.board-list-page .mantine-Accordion-control[data-active="true"] .mantine-Accordion-chevron {
   transform: rotate(90deg);
 }
 
@@ -1965,13 +1962,11 @@ body {
   letter-spacing: 0.01em;
 }
 
-.thread-page__auto-scroll-threshold--armed
-  .thread-page__auto-scroll-threshold-label {
+.thread-page__auto-scroll-threshold--armed .thread-page__auto-scroll-threshold-label {
   color: #1a73e8;
 }
 
-.thread-page__auto-scroll-threshold--scrolling
-  .thread-page__auto-scroll-threshold-label {
+.thread-page__auto-scroll-threshold--scrolling .thread-page__auto-scroll-threshold-label {
   color: #0b8043;
 }
 
@@ -2091,11 +2086,7 @@ body {
 }
 
 .res--own.res--reply-to-own {
-  background: linear-gradient(
-    90deg,
-    rgba(214, 90, 0, 0.08) 0%,
-    rgba(179, 108, 0, 0.05) 100%
-  );
+  background: linear-gradient(90deg, rgba(214, 90, 0, 0.08) 0%, rgba(179, 108, 0, 0.05) 100%);
 }
 
 /* ==========================================================================

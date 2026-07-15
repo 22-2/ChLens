@@ -1,8 +1,4 @@
-import {
-  KeyValueStore,
-  ObjectStore,
-  StorageManager,
-} from "src/app/platform/types";
+import { KeyValueStore, ObjectStore, StorageManager } from "src/app/platform/types";
 import {
   getStore2All,
   getStore2String,
@@ -38,11 +34,11 @@ const TauriKeyValueStore: KeyValueStore = {
   },
 
   async set(key: string, value: string): Promise<void> {
-    setStore2String(key, value);
+    void setStore2String(key, value);
   },
 
   async remove(key: string): Promise<void> {
-    removeStore2Value(key);
+    void removeStore2Value(key);
   },
 
   async getAll(): Promise<Record<string, string>> {
@@ -62,10 +58,7 @@ const TauriKeyValueStore: KeyValueStore = {
 
   onChanged(
     callback: (
-      changes: Record<
-        string,
-        { oldValue: string | null; newValue: string | null }
-      >,
+      changes: Record<string, { oldValue: string | null; newValue: string | null }>,
     ) => void,
   ): void {
     window.addEventListener("storage", (event) => {
@@ -115,9 +108,7 @@ class TauriObjectStore implements ObjectStore {
 
         // オブジェクトストアが存在しない場合は作成
         if (!db.objectStoreNames.contains(this.dbName)) {
-          console.log(
-            `[TauriObjectStore] Creating object store: ${this.dbName}`,
-          );
+          console.log(`[TauriObjectStore] Creating object store: ${this.dbName}`);
           const objStore = db.createObjectStore(this.dbName, {
             keyPath: "url",
           });
@@ -147,10 +138,7 @@ class TauriObjectStore implements ObjectStore {
   async put(value: unknown): Promise<void> {
     const db = await this.getDB();
     return new Promise((resolve, reject) => {
-      const req = db
-        .transaction(this.dbName, "readwrite")
-        .objectStore(this.dbName)
-        .put(value);
+      const req = db.transaction(this.dbName, "readwrite").objectStore(this.dbName).put(value);
       req.onerror = () => reject(req.error);
       req.onsuccess = () => resolve();
     });
@@ -159,10 +147,7 @@ class TauriObjectStore implements ObjectStore {
   async delete(key: string): Promise<void> {
     const db = await this.getDB();
     return new Promise((resolve, reject) => {
-      const req = db
-        .transaction(this.dbName, "readwrite")
-        .objectStore(this.dbName)
-        .delete(key);
+      const req = db.transaction(this.dbName, "readwrite").objectStore(this.dbName).delete(key);
       req.onerror = () => reject(req.error);
       req.onsuccess = () => resolve();
     });
@@ -180,10 +165,7 @@ class TauriObjectStore implements ObjectStore {
   async clear(): Promise<void> {
     const db = await this.getDB();
     return new Promise((resolve, reject) => {
-      const req = db
-        .transaction(this.dbName, "readwrite")
-        .objectStore(this.dbName)
-        .clear();
+      const req = db.transaction(this.dbName, "readwrite").objectStore(this.dbName).clear();
       req.onerror = () => reject(req.error);
       req.onsuccess = () => resolve();
     });

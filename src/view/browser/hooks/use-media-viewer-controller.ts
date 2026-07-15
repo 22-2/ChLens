@@ -43,7 +43,8 @@ export interface MediaViewerProps {
 }
 
 function sanitizeDownloadFilename(name: string): string {
-  return name.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "_");
+  // eslint-disable-next-line no-control-regex
+  return name.replace(/[<>:"/\\|?*\x00-\x1f]/g, "_");
 }
 
 function getViewerDownloadFilename(url: string): string {
@@ -78,10 +79,7 @@ function getViewerStageViewportSize(stage: HTMLDivElement): ViewerSize {
   };
 }
 
-function isSameViewerSize(
-  current: ViewerSize | null,
-  next: ViewerSize,
-): boolean {
+function isSameViewerSize(current: ViewerSize | null, next: ViewerSize): boolean {
   return current?.width === next.width && current?.height === next.height;
 }
 
@@ -97,11 +95,7 @@ function roundViewerScale(value: number): number {
   return Number(value.toFixed(4));
 }
 
-function getPointWithinStage(
-  stage: HTMLDivElement,
-  clientX: number,
-  clientY: number,
-): ViewerPoint {
+function getPointWithinStage(stage: HTMLDivElement, clientX: number, clientY: number): ViewerPoint {
   const rect = stage.getBoundingClientRect();
   const styles = window.getComputedStyle(stage);
   const borderLeft = Number.parseFloat(styles.borderLeftWidth || "0");
@@ -174,17 +168,14 @@ export function useMediaViewerController(): MediaViewerProps | null {
     }
   }, []);
 
-  const centerViewer = useCallback(
-    (stageSize: ViewerSize, baseSize: ViewerSize) => {
-      const scale = viewerDisplayScaleRef.current;
-      const stageCenter = getViewerStageCenter(stageSize);
-      viewerPanRef.current = {
-        x: stageCenter.x - (baseSize.width * scale) / 2,
-        y: stageCenter.y - (baseSize.height * scale) / 2,
-      };
-    },
-    [],
-  );
+  const centerViewer = useCallback((stageSize: ViewerSize, baseSize: ViewerSize) => {
+    const scale = viewerDisplayScaleRef.current;
+    const stageCenter = getViewerStageCenter(stageSize);
+    viewerPanRef.current = {
+      x: stageCenter.x - (baseSize.width * scale) / 2,
+      y: stageCenter.y - (baseSize.height * scale) / 2,
+    };
+  }, []);
 
   const measureViewerLayout = useCallback(() => {
     const stage = viewerStageRef.current;
@@ -239,27 +230,20 @@ export function useMediaViewerController(): MediaViewerProps | null {
     // 半画面化や分割表示でも「勝手に別の場所へ飛ぶ」違和感を減らす。
     const previousStageCenter = getViewerStageCenter(previousStageSize);
     const nextStageCenter = getViewerStageCenter(nextStageSize);
-    const scaledPreviousWidth =
-      previousBaseSize.width * viewerDisplayScaleRef.current;
-    const scaledPreviousHeight =
-      previousBaseSize.height * viewerDisplayScaleRef.current;
+    const scaledPreviousWidth = previousBaseSize.width * viewerDisplayScaleRef.current;
+    const scaledPreviousHeight = previousBaseSize.height * viewerDisplayScaleRef.current;
     const focusRatioX =
       scaledPreviousWidth > 0
         ? (previousStageCenter.x - viewerPanRef.current.x) / scaledPreviousWidth
         : 0.5;
     const focusRatioY =
       scaledPreviousHeight > 0
-        ? (previousStageCenter.y - viewerPanRef.current.y) /
-          scaledPreviousHeight
+        ? (previousStageCenter.y - viewerPanRef.current.y) / scaledPreviousHeight
         : 0.5;
 
     viewerPanRef.current = {
-      x:
-        nextStageCenter.x -
-        focusRatioX * nextBaseSize.width * viewerDisplayScaleRef.current,
-      y:
-        nextStageCenter.y -
-        focusRatioY * nextBaseSize.height * viewerDisplayScaleRef.current,
+      x: nextStageCenter.x - focusRatioX * nextBaseSize.width * viewerDisplayScaleRef.current,
+      y: nextStageCenter.y - focusRatioY * nextBaseSize.height * viewerDisplayScaleRef.current,
     };
     renderViewerTransform();
   }, [centerViewer, renderViewerTransform]);
@@ -419,11 +403,7 @@ export function useMediaViewerController(): MediaViewerProps | null {
 
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
-      zoomPivotRef.current = getPointWithinStage(
-        stage,
-        event.clientX,
-        event.clientY,
-      );
+      zoomPivotRef.current = getPointWithinStage(stage, event.clientX, event.clientY);
       zoomByWheel(event.deltaY, event.deltaMode);
     };
 
@@ -473,10 +453,7 @@ export function useMediaViewerController(): MediaViewerProps | null {
     };
 
     const onMouseUp = (event: globalThis.MouseEvent) => {
-      if (
-        (event.button !== 0 && event.button !== 1) ||
-        !middlePanStateRef.current.active
-      ) {
+      if ((event.button !== 0 && event.button !== 1) || !middlePanStateRef.current.active) {
         return;
       }
 
@@ -533,8 +510,7 @@ export function useMediaViewerController(): MediaViewerProps | null {
     viewerCanvasRef,
     viewerImageRef,
     canNavigateViewerPrev: !!viewer.images && (viewer.currentIndex ?? 0) > 0,
-    canNavigateViewerNext:
-      !!viewer.images && (viewer.currentIndex ?? 0) < viewer.images.length - 1,
+    canNavigateViewerNext: !!viewer.images && (viewer.currentIndex ?? 0) < viewer.images.length - 1,
     isLoading,
     onOverlayClick: closeViewer,
     onChromeClick: (event) => event.stopPropagation(),

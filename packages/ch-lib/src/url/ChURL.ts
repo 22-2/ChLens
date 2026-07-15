@@ -42,53 +42,99 @@ export class ChURL {
 
     // したらば
     if (hostname === HOSTNAME.NEW_JBBS) {
-      if (this.tryFixPattern(PATTERNS.SHITARABA_THREAD, (m) => `/bbs/${m[1]}/`, { type: "thread", bbsType: "jbbs" })) {
+      if (
+        this.tryFixPattern(PATTERNS.SHITARABA_THREAD, (m) => `/bbs/${m[1]}/`, {
+          type: "thread",
+          bbsType: "jbbs",
+        })
+      ) {
         this.archive = this.url.pathname.includes("read_archive");
         return;
       }
-      if (this.tryFixPattern(PATTERNS.SHITARABA_ARCHIVE, (m) => `/bbs/read_archive.cgi/${m[1]}/${m[2]}/`, { type: "thread", bbsType: "jbbs" })) {
+      if (
+        this.tryFixPattern(
+          PATTERNS.SHITARABA_ARCHIVE,
+          (m) => `/bbs/read_archive.cgi/${m[1]}/${m[2]}/`,
+          { type: "thread", bbsType: "jbbs" },
+        )
+      ) {
         this.archive = true;
         return;
       }
-      this.tryFixPattern(PATTERNS.SHITARABA_BOARD, (m) => `/${m[1]}`, { type: "board", bbsType: "jbbs" });
+      this.tryFixPattern(PATTERNS.SHITARABA_BOARD, (m) => `/${m[1]}`, {
+        type: "board",
+        bbsType: "jbbs",
+      });
       return;
     }
 
     // まちBBS
     if (hostname.includes("machi.to")) {
-      if (this.tryFixPattern(PATTERNS.MACHI_THREAD, (m) => `/bbs/read.cgi/${m[1]}/`, { type: "thread", bbsType: "machi" })) {
+      if (
+        this.tryFixPattern(PATTERNS.MACHI_THREAD, (m) => `/bbs/read.cgi/${m[1]}/`, {
+          type: "thread",
+          bbsType: "machi",
+        })
+      ) {
         return;
       }
-      this.tryFixPattern(PATTERNS.MACHI_BOARD, (m) => `/${m[1]}`, { type: "board", bbsType: "machi" });
+      this.tryFixPattern(PATTERNS.MACHI_BOARD, (m) => `/${m[1]}`, {
+        type: "board",
+        bbsType: "machi",
+      });
       return;
     }
 
     // eddibb は /board/threadKey 形式のURLが混在するため、
     // ここで /test/read.cgi/... に正規化して以降の処理を統一する。
     if (hostname === HOSTNAME.EDDIBB) {
-      if (this.tryFixPattern(PATTERNS.EDDIBB_THREAD_2, (m) => `/test/read.cgi/${m[1]}/${m[2]}/`, { type: "thread", bbsType: "2ch" })) {
+      if (
+        this.tryFixPattern(PATTERNS.EDDIBB_THREAD_2, (m) => `/test/read.cgi/${m[1]}/${m[2]}/`, {
+          type: "thread",
+          bbsType: "2ch",
+        })
+      ) {
         this.url.protocol = "http:";
         return;
       }
-      if (this.tryFixPattern(PATTERNS.EDDIBB_THREAD, (m) => `/test/read.cgi/${m[1]}/${m[2]}/`, { type: "thread", bbsType: "2ch" })) {
+      if (
+        this.tryFixPattern(PATTERNS.EDDIBB_THREAD, (m) => `/test/read.cgi/${m[1]}/${m[2]}/`, {
+          type: "thread",
+          bbsType: "2ch",
+        })
+      ) {
         this.url.protocol = "http:";
         return;
       }
-      if (this.tryFixPattern(PATTERNS.EDDIBB_BOARD_2, (m) => `/test/read.cgi/${m[1]}/`, { type: "board", bbsType: "2ch" })) {
+      if (
+        this.tryFixPattern(PATTERNS.EDDIBB_BOARD_2, (m) => `/test/read.cgi/${m[1]}/`, {
+          type: "board",
+          bbsType: "2ch",
+        })
+      ) {
         return;
       }
-      this.tryFixPattern(PATTERNS.EDDIBB_BOARD, (m) => `/${m[1]}/`, { type: "board", bbsType: "2ch" });
+      this.tryFixPattern(PATTERNS.EDDIBB_BOARD, (m) => `/${m[1]}/`, {
+        type: "board",
+        bbsType: "2ch",
+      });
       return;
     }
 
     // 2ch / 5ch
-    if (this.tryFixPattern(PATTERNS.CH_THREAD, (m) => `/${m[1]}/`, { type: "thread", bbsType: "2ch" })) {
+    if (
+      this.tryFixPattern(PATTERNS.CH_THREAD, (m) => `/${m[1]}/`, { type: "thread", bbsType: "2ch" })
+    ) {
       return;
     }
     this.tryFixPattern(PATTERNS.CH_BOARD, (m) => `/${m[1]}`, { type: "board", bbsType: "2ch" });
   }
 
-  private tryFixPattern(pattern: RegExp, pathBuilder: (match: RegExpExecArray) => string, type: GuessResult): boolean {
+  private tryFixPattern(
+    pattern: RegExp,
+    pathBuilder: (match: RegExpExecArray) => string,
+    type: GuessResult,
+  ): boolean {
     const match = pattern.exec(this.url.pathname);
     if (match) {
       this.url.pathname = pathBuilder(match);
@@ -98,9 +144,15 @@ export class ChURL {
     return false;
   }
 
-  get type() { return this.guessedType.type; }
-  get bbsType() { return this.guessedType.bbsType; }
-  get isArchive() { return this.archive; }
+  get type() {
+    return this.guessedType.type;
+  }
+  get bbsType() {
+    return this.guessedType.bbsType;
+  }
+  get isArchive() {
+    return this.archive;
+  }
 
   getTsld(): string {
     const parts = this.url.hostname.split(".");
@@ -110,7 +162,9 @@ export class ChURL {
 
   getDatUrl(): string | null {
     if (this.type !== "thread") return null;
-    const tmp = new RegExp(`^/(?:test|bbs)/read(?:_archive)?\\.cgi/(\\w+)/(\\d+)/(?:(\\d+)/)?$`).exec(this.url.pathname);
+    const tmp = new RegExp(
+      `^/(?:test|bbs)/read(?:_archive)?\\.cgi/(\\w+)/(\\d+)/(?:(\\d+)/)?$`,
+    ).exec(this.url.pathname);
     if (!tmp) return null;
 
     const tsld = this.getTsld();

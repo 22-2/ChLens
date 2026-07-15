@@ -30,16 +30,16 @@ export const NG_HIGHLIGHT_COLOR_PRESET_DESCRIPTIONS = {
 
 export type NgDslColorPresetName = keyof typeof NG_HIGHLIGHT_COLOR_PRESETS;
 
-export const NG_HIGHLIGHT_COLOR_PRESET_ITEMS = Object.entries(
-  NG_HIGHLIGHT_COLOR_PRESETS,
-).map(([name, hex]) => ({
-  name: name as NgDslColorPresetName,
-  hex,
-  description:
-    NG_HIGHLIGHT_COLOR_PRESET_DESCRIPTIONS[
-      name as keyof typeof NG_HIGHLIGHT_COLOR_PRESET_DESCRIPTIONS
-    ],
-}));
+export const NG_HIGHLIGHT_COLOR_PRESET_ITEMS = Object.entries(NG_HIGHLIGHT_COLOR_PRESETS).map(
+  ([name, hex]) => ({
+    name: name as NgDslColorPresetName,
+    hex,
+    description:
+      NG_HIGHLIGHT_COLOR_PRESET_DESCRIPTIONS[
+        name as keyof typeof NG_HIGHLIGHT_COLOR_PRESET_DESCRIPTIONS
+      ],
+  }),
+);
 
 export type NGDslParameterName = "word" | "sites" | "bgColor" | "label" | "disabled";
 
@@ -60,8 +60,7 @@ export interface NGDslRuleSpec {
 const WORD_PARAMETER: NGDslParameterSpec = {
   name: "word",
   detail: "マッチ文字列",
-  documentation:
-    'マッチさせる文字列または正規表現です。編集時は word="VTuber" のように書けます。',
+  documentation: 'マッチさせる文字列または正規表現です。編集時は word="VTuber" のように書けます。',
 };
 
 const SITES_PARAMETER: NGDslParameterSpec = {
@@ -246,9 +245,7 @@ export function normalizeNgDslKeyword(keyword: string): string {
   return getNgDslRuleSpec(keyword)?.keyword ?? keyword.trim();
 }
 
-export function normalizeNgDslParameterName(
-  parameterName: string,
-): NGDslParameterName | null {
+export function normalizeNgDslParameterName(parameterName: string): NGDslParameterName | null {
   const trimmed = parameterName.trim();
   return (
     NG_DSL_PARAMETER_ALIASES.get(trimmed) ??
@@ -380,10 +377,7 @@ function stripOptionalQuotes(value: string): string {
 
   const firstChar = trimmed[0];
   const lastChar = trimmed[trimmed.length - 1];
-  if (
-    (firstChar === '"' && lastChar === '"') ||
-    (firstChar === "'" && lastChar === "'")
-  ) {
+  if ((firstChar === '"' && lastChar === '"') || (firstChar === "'" && lastChar === "'")) {
     // ngDSL入力欄では正規表現をJS文字列風に貼り付けるケースが多いため、
     // 引用符付き値に限って `\\` を1層だけ解釈し、`\` と同等に扱う。
     return trimmed.slice(1, -1).replace(/\\\\/g, "\\");
@@ -494,10 +488,7 @@ export function parseNgDslArguments(
   };
 }
 
-function findMatchingParenIndex(
-  source: string,
-  openParenIndex: number,
-): number {
+function findMatchingParenIndex(source: string, openParenIndex: number): number {
   const state = createSplitState();
 
   for (let index = openParenIndex; index < source.length; index += 1) {
@@ -517,9 +508,7 @@ export interface ExtractedNgDslFunctionCall {
   valueSource?: string;
 }
 
-export function extractNgDslFunctionCall(
-  source: string,
-): ExtractedNgDslFunctionCall | null {
+export function extractNgDslFunctionCall(source: string): ExtractedNgDslFunctionCall | null {
   const trimmed = source.trim();
   const openParenIndex = trimmed.indexOf("(");
   if (openParenIndex <= 0) {
@@ -550,7 +539,7 @@ export function extractNgDslFunctionCall(
   };
 }
 
-const SIMPLE_BARE_VALUE = /^[^,\s()\[\]{}=:"']+$/u;
+const SIMPLE_BARE_VALUE = /^[^,\s()[\]{}=:"']+$/u;
 
 export function stringifyNgDslValue(
   value: string,

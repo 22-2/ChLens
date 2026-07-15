@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const state = vi.hoisted(() => ({
   tauriHistoryRepository: {
@@ -46,7 +46,7 @@ describe("History Tauri branch", () => {
   });
 
   it("add delegates to tauriHistoryRepository", async () => {
-    const History = await import("src/core/History.ts");
+    const History = await import("src/core/History");
 
     await History.add("https://example.com/thread", "title", 123, "board");
 
@@ -69,7 +69,7 @@ describe("History Tauri branch", () => {
       },
     ]);
 
-    const History = await import("src/core/History.ts");
+    const History = await import("src/core/History");
     const rows = await History.get(0, 10);
 
     expect(state.tauriHistoryRepository.get).toHaveBeenCalledWith(0, 10);
@@ -81,12 +81,10 @@ describe("History Tauri branch", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-04T00:00:00.000Z"));
 
-    const History = await import("src/core/History.ts");
+    const History = await import("src/core/History");
     await History.clearRange(7);
 
     const expected = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    expect(state.tauriHistoryRepository.clearRange).toHaveBeenCalledWith(
-      expected,
-    );
+    expect(state.tauriHistoryRepository.clearRange).toHaveBeenCalledWith(expected);
   });
 });

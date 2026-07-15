@@ -220,11 +220,7 @@ export function buildHierarchy(page: Page): Page[] {
       return [{ type: "home", title: "ホーム" }, page];
 
     case "threadList":
-      return [
-        { type: "home", title: "ホーム" },
-        { type: "boardList", title: "板一覧" },
-        page,
-      ];
+      return [{ type: "home", title: "ホーム" }, { type: "boardList", title: "板一覧" }, page];
 
     case "thread": {
       const boardUrl = threadUrlToBoardUrl(page.threadUrl);

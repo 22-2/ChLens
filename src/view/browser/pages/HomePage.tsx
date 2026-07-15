@@ -44,10 +44,7 @@ async function readFavoriteBoards(): Promise<FavoriteBoard[]> {
     seenUrls.add(url);
     favorites.push({
       url,
-      title: normalizeString(
-        entry.boardTitle,
-        normalizeString(entry.title, url),
-      ),
+      title: normalizeString(entry.boardTitle, normalizeString(entry.title, url)),
     });
   }
 
@@ -56,9 +53,7 @@ async function readFavoriteBoards(): Promise<FavoriteBoard[]> {
 
 export const HomePage: React.FC = () => {
   const { dispatch } = useTabStore();
-  const [favoriteBoards, setFavoriteBoards] = React.useState<FavoriteBoard[]>(
-    [],
-  );
+  const [favoriteBoards, setFavoriteBoards] = React.useState<FavoriteBoard[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -68,16 +63,14 @@ export const HomePage: React.FC = () => {
     try {
       setFavoriteBoards(await readFavoriteBoards());
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "お気に入り板の読み込みに失敗しました",
-      );
+      setError(e instanceof Error ? e.message : "お気に入り板の読み込みに失敗しました");
     } finally {
       setLoading(false);
     }
   }, []);
 
   React.useEffect(() => {
-    loadFavoriteBoards();
+    void loadFavoriteBoards();
 
     const handleBookmarkUpdated = () => {
       void loadFavoriteBoards();
@@ -127,10 +120,7 @@ export const HomePage: React.FC = () => {
 
   return (
     <Box className="home-page">
-      <UnstyledButton
-        className="home-page__link home-page__link--action"
-        onClick={openBoardList}
-      >
+      <UnstyledButton className="home-page__link home-page__link--action" onClick={openBoardList}>
         <Text size="sm">板一覧を開く</Text>
       </UnstyledButton>
       {/* <UnstyledButton
@@ -161,9 +151,7 @@ export const HomePage: React.FC = () => {
       ) : (
         <Box className="home-page__list">
           {favoriteBoards.length === 0 ? (
-            <Text className="home-page__empty">
-              お気に入り板はまだありません。
-            </Text>
+            <Text className="home-page__empty">お気に入り板はまだありません。</Text>
           ) : (
             favoriteBoards.map((board) => (
               <UnstyledButton

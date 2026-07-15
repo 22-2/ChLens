@@ -1,11 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type FormEvent,
-  type RefObject,
-} from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent, type RefObject } from "react";
 import { platform } from "src/app";
 import { wait } from "src/app/Defer";
 import { getStore2String, setStore2String } from "src/app/Store2Storage";
@@ -32,12 +25,7 @@ const SUBMIT_WATCHDOG_MS = 20_000;
 // -----------------------------------------------------------------------
 // 型
 // -----------------------------------------------------------------------
-export type WriteStatus =
-  | "idle"
-  | "submitting"
-  | "confirm"
-  | "success"
-  | "error";
+export type WriteStatus = "idle" | "submitting" | "confirm" | "success" | "error";
 
 interface WriteFormData {
   action: string;
@@ -163,16 +151,10 @@ export function useWrite(threadUrl: string): UseWriteResult {
   const { dispatch } = useTabStore();
 
   const [name, setNameState] = useState(
-    () =>
-      getStore2String(NAME_KEY) ??
-      container.config.get("default_name") ??
-      "",
+    () => getStore2String(NAME_KEY) ?? container.config.get("default_name") ?? "",
   );
   const [mail, setMailState] = useState(
-    () =>
-      getStore2String(MAIL_KEY) ??
-      container.config.get("default_mail") ??
-      "",
+    () => getStore2String(MAIL_KEY) ?? container.config.get("default_mail") ?? "",
   );
   const [sage, setSage] = useState(false);
   const [message, setMessage] = useState("");
@@ -214,18 +196,17 @@ export function useWrite(threadUrl: string): UseWriteResult {
 
   useEffect(() => clearSubmitWatchdog, [clearSubmitWatchdog]);
 
-  const canSubmit =
-    status === "idle" && threadUrl !== "" && message.trim() !== "";
+  const canSubmit = status === "idle" && threadUrl !== "" && message.trim() !== "";
 
   // 名前・メールを localStorage に保存
   const setName = useCallback((v: string) => {
     setNameState(v);
-    setStore2String(NAME_KEY, v);
+    void setStore2String(NAME_KEY, v);
   }, []);
 
   const setMail = useCallback((v: string) => {
     setMailState(v);
-    setStore2String(MAIL_KEY, v);
+    void setStore2String(MAIL_KEY, v);
   }, []);
 
   // 書き込み成功後、少し待ってから idle に戻す
@@ -281,9 +262,7 @@ export function useWrite(threadUrl: string): UseWriteResult {
           pendingSubmittedWriteRef.current = null;
           setStatus("error");
           setStatusText(
-            data.message
-              ? `書き込み失敗: ${data.message}`
-              : "書き込みに失敗しました",
+            data.message ? `書き込み失敗: ${String(data.message)}` : "書き込みに失敗しました",
           );
           break;
       }
@@ -365,16 +344,7 @@ export function useWrite(threadUrl: string): UseWriteResult {
 
     iframe.addEventListener("load", onLoad);
     iframe.src = "/view/empty.html";
-  }, [
-    armSubmitWatchdog,
-    canSubmit,
-    clearSubmitWatchdog,
-    threadUrl,
-    name,
-    mail,
-    sage,
-    message,
-  ]);
+  }, [armSubmitWatchdog, canSubmit, clearSubmitWatchdog, threadUrl, name, mail, sage, message]);
 
   const handleSubmit = useCallback(
     async (e: FormEvent) => {

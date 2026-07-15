@@ -49,8 +49,5 @@ export function readBoardAutoRefreshIntervalMs(): number {
 }
 
 export function readBoardAutoRefreshIntervalSec(): number {
-  return Math.max(
-    MIN_BOARD_AUTO_REFRESH_SEC,
-    Math.round(readBoardAutoRefreshIntervalMs() / 1000),
-  );
+  return Math.max(MIN_BOARD_AUTO_REFRESH_SEC, Math.round(readBoardAutoRefreshIntervalMs() / 1000));
 }

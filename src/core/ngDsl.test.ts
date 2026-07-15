@@ -5,7 +5,7 @@ import {
   parseNgDslArguments,
   splitNgDslEntries,
 } from "src/core/ngDsl";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 describe("NG DSL helpers", () => {
   it("keeps multiline function syntax as a single logical entry", () => {
@@ -74,9 +74,7 @@ describe("NG DSL helpers", () => {
   });
 
   it("treats double-backslash quoted regex input as a single-backslash pattern", () => {
-    const extracted = extractNgDslFunctionCall(
-      'RegExpBody(word="(imgur\\\\.com\\\\/.+?){15}")',
-    );
+    const extracted = extractNgDslFunctionCall('RegExpBody(word="(imgur\\\\.com\\\\/.+?){15}")');
 
     expect(parseNgDslArguments(extracted?.argsSource ?? "")).toEqual({
       word: "(imgur\\.com\\/.+?){15}",

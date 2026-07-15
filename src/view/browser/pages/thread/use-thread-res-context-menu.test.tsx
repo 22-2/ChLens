@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React, { useState } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { useThreadResContextMenu } from "src/view/browser/pages/thread/use-thread-res-context-menu";
 import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
@@ -99,9 +99,7 @@ function HookHarness() {
 
   return (
     <div>
-      <output data-testid="response-class">
-        {responses[0]?.class?.join(" ") ?? ""}
-      </output>
+      <output data-testid="response-class">{responses[0]?.class?.join(" ") ?? ""}</output>
       <button
         onClick={() => {
           const event = {
@@ -195,9 +193,7 @@ describe("useThreadResContextMenu", () => {
     });
 
     expect(screen.getByTestId("response-class")).toHaveTextContent("ng");
-    expect(mocks.toastInfo).toHaveBeenCalledWith(
-      "NGに追加しました: ID(word=abc123)",
-    );
+    expect(mocks.toastInfo).toHaveBeenCalledWith("NGに追加しました: ID(word=abc123)");
   });
 
   it("返信は書き込み欄を開いてアンカーを直接入力する", () => {
@@ -232,8 +228,6 @@ describe("useThreadResContextMenu", () => {
       enabled: false,
       pageKey: "thread:test",
     });
-    expect(mocks.toastInfo).toHaveBeenCalledWith(
-      "スレッドの自動更新を停止しました",
-    );
+    expect(mocks.toastInfo).toHaveBeenCalledWith("スレッドの自動更新を停止しました");
   });
 });

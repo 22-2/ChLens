@@ -3,14 +3,13 @@ import { fireEvent, render } from "@testing-library/react";
 import { useState } from "react";
 import { ResBody } from "src/view/browser/components/ResBody";
 import { RESPECT_DEFAULT_EXTERNAL } from "src/view/browser/utils/link-routing";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 
 const ANCHOR_HTML = '<a class="anchor">&gt;&gt;5</a>';
 const URL_HTML = '<a href="https://example.com/thread/1">link</a>';
 const INTERNAL_URL_HTML =
   '<a href="https://egg.5ch.net/test/read.cgi/software/1000000010/">internal</a>';
-const ID_LINK_HTML =
-  '<a href="javascript:undefined;" class="anchor_id">id:ABC123(4)</a>';
+const ID_LINK_HTML = '<a href="javascript:undefined;" class="anchor_id">id:ABC123(4)</a>';
 
 describe("ResBody anchor behavior", () => {
   it("rerender後も同じアンカーhoverで onAnchorHover を再発火しない", () => {
@@ -55,15 +54,11 @@ describe("ResBody anchor behavior", () => {
 
     const { container } = render(<Harness />);
 
-    const firstAnchor = container.querySelector(
-      "a.anchor",
-    ) as HTMLAnchorElement;
+    const firstAnchor = container.querySelector("a.anchor") as HTMLAnchorElement;
     fireEvent.mouseOver(firstAnchor);
     expect(onAnchorHover).toHaveBeenCalledTimes(1);
 
-    const secondAnchor = container.querySelector(
-      "a.anchor",
-    ) as HTMLAnchorElement;
+    const secondAnchor = container.querySelector("a.anchor") as HTMLAnchorElement;
     fireEvent.mouseOver(secondAnchor);
     expect(onAnchorHover).toHaveBeenCalledTimes(1);
 

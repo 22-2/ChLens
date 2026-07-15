@@ -85,12 +85,5 @@ export const ContextMenuHandler: React.FC<ContextMenuHandlerProps> = ({
     return null;
   }
 
-  return (
-    <ContextMenu
-      x={state.x}
-      y={state.y}
-      items={contextMenuItems}
-      onClose={onClose}
-    />
-  );
+  return <ContextMenu x={state.x} y={state.y} items={contextMenuItems} onClose={onClose} />;
 };

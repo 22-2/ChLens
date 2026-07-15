@@ -1,8 +1,4 @@
-import {
-  Entry,
-  newerEntry,
-  SyncableEntryList,
-} from "src/core/BookmarkEntryList";
+import { Entry, newerEntry, SyncableEntryList } from "src/core/BookmarkEntryList";
 import { URL } from "src/core/URL";
 import browser from "webextension-polyfill";
 
@@ -89,7 +85,7 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
   constructor(rootNodeId: string) {
     super();
 
-    this.setRootNodeId(rootNodeId);
+    void this.setRootNodeId(rootNodeId);
     this.setUpBrowserBookmarkWatcher();
   }
 
@@ -109,21 +105,21 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
         // node側の方が新しいと判定された場合のみupdateを行う。
 
         // 重複ブックマークの削除(元のnodeが古いと判定されたため)
-        browser.bookmarks.remove(this.nodeIdStore.get(entry.url)!);
+        void browser.bookmarks.remove(this.nodeIdStore.get(entry.url)!);
 
         this.nodeIdStore.set(entry.url, node.id);
-        this.update(entry, false);
+        void this.update(entry, false);
       } else {
         // 重複ブックマークの削除(node側の方が古いと判定された場合)
-        browser.bookmarks.remove(node.id);
+        void browser.bookmarks.remove(node.id);
       }
     } else {
       this.nodeIdStore.set(entry.url, node.id);
-      this.add(entry, false);
+      void this.add(entry, false);
     }
   }
 
-  private applyNodeUpdateToEntryList(nodeId: string, changes: any) {
+  private applyNodeUpdateToEntryList(nodeId: string, changes: { title?: unknown; url?: unknown }) {
     const url = this.getURLFromNodeId(nodeId);
 
     if (!url) return;
@@ -132,8 +128,7 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
 
     if (typeof changes.url === "string") {
       const newEntry = BrowserBookmarkEntryList.URLToEntry(changes.url)!;
-      newEntry.title =
-        typeof changes.title === "string" ? changes.title : entry.title;
+      newEntry.title = typeof changes.title === "string" ? changes.title : entry.title;
 
       if (entry.url === newEntry.url) {
         if (
@@ -141,20 +136,20 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
             BrowserBookmarkEntryList.entryToURL(newEntry) ||
           entry.title !== newEntry.title
         ) {
-          this.update(newEntry, false);
+          void this.update(newEntry, false);
         }
       } else {
         // ノードのURLが他の板/スレを示す物に変更された時
         this.nodeIdStore.delete(url);
         this.nodeIdStore.set(newEntry.url, nodeId);
 
-        this.remove(entry.url, false);
-        this.add(newEntry, false);
+        void this.remove(entry.url, false);
+        void this.add(newEntry, false);
       }
     } else if (typeof changes.title === "string") {
       if (entry.title !== changes.title) {
         entry.title = changes.title;
-        this.update(entry, false);
+        void this.update(entry, false);
       }
     }
   }
@@ -165,7 +160,7 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
     if (url !== null) {
       this.nodeIdStore.delete(url);
 
-      this.remove(url, false);
+      void this.remove(url, false);
     }
   }
 
@@ -182,10 +177,7 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
   private setUpBrowserBookmarkWatcher() {
     // ブラウザのブックマークAPIが存在しない環境（Tauri等）では
     // ウォッチャーを起動せず、ブックマーク同期はスキップする。
-    if (
-      typeof browser === "undefined" ||
-      typeof browser.bookmarks === "undefined"
-    ) {
+    if (typeof browser === "undefined" || typeof browser.bookmarks === "undefined") {
       app.log(
         "warn",
         "ブラウザのブックマークAPIが利用できません。ブックマーク同期をスキップします。",
@@ -230,20 +222,18 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
       this.applyNodeUpdateToEntryList(nodeId, changes);
     });
 
-    browser.bookmarks.onMoved.addListener(
-      async (nodeId, { parentId, oldParentId }) => {
-        if (!watching) return;
+    browser.bookmarks.onMoved.addListener(async (nodeId, { parentId, oldParentId }) => {
+      if (!watching) return;
 
-        if (parentId === this.rootNodeId) {
-          const res = await browser.bookmarks.get(nodeId);
-          if (res.length === 1 && typeof res[0].url === "string") {
-            this.applyNodeAddToEntryList(res[0]);
-          }
-        } else if (oldParentId === this.rootNodeId) {
-          this.applyNodeRemoveToEntryList(nodeId);
+      if (parentId === this.rootNodeId) {
+        const res = await browser.bookmarks.get(nodeId);
+        if (res.length === 1 && typeof res[0].url === "string") {
+          this.applyNodeAddToEntryList(res[0]);
         }
-      },
-    );
+      } else if (oldParentId === this.rootNodeId) {
+        this.applyNodeRemoveToEntryList(nodeId);
+      }
+    });
   }
 
   setRootNodeId(rootNodeId: string): Promise<boolean> {
@@ -266,7 +256,7 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
 
       // EntryListクリア
       for (const entry of this.getAll()) {
-        this.remove(entry.url, false);
+        void this.remove(entry.url, false);
       }
       this.nodeIdStore.clear();
 
@@ -279,10 +269,10 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
       }
 
       return true;
-    } catch(err) {
+    } catch (err) {
       app.log(err);
       app.log("warn", "ブラウザのブックマークからの読み込みに失敗しました。");
-      this.validateRootNodeSettings();
+      void this.validateRootNodeSettings();
 
       return false;
     }
@@ -296,7 +286,7 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
     });
     if (!res) {
       app.log("error", "ブラウザのブックマークへの追加に失敗しました");
-      this.validateRootNodeSettings();
+      void this.validateRootNodeSettings();
     }
 
     return !!res;
@@ -323,11 +313,11 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
 
     if (Object.keys(changes).length === 0) return true;
 
-    const res2 = await browser.bookmarks.update(id, <any>changes);
+    const res2 = await browser.bookmarks.update(id, changes as { title?: string; url?: string });
     if (res2) return true;
 
     app.log("error", "ブラウザのブックマーク更新に失敗しました");
-    this.validateRootNodeSettings();
+    void this.validateRootNodeSettings();
     return false;
   }
 
@@ -355,7 +345,7 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
 
     await Promise.all(
       removeIdList.map((id) => {
-        return browser.bookmarks.remove(id).catch((e) => {
+        return browser.bookmarks.remove(id).catch((_e) => {
           return;
         });
       }),

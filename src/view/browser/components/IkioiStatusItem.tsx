@@ -1,11 +1,5 @@
 import { Flame } from "lucide-react";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { container } from "src/service-container/index";
 import type { IRes, IThreadDetail } from "src/service-container/interfaces";
 import { MiniWindow } from "src/view/browser/components/MiniWindow";
@@ -84,10 +78,7 @@ function calculateIkioi(responses: IRes[]): number | null {
   }
 
   const firstResAt = timestamps[0];
-  const elapsedDays = Math.max(
-    (Date.now() - firstResAt) / 86_400_000,
-    1 / 1440,
-  );
+  const elapsedDays = Math.max((Date.now() - firstResAt) / 86_400_000, 1 / 1440);
   return Math.round((responses.length / elapsedDays) * 10) / 10;
 }
 
@@ -140,10 +131,7 @@ interface MomentumLineChartProps {
   loading: boolean;
 }
 
-const MomentumLineChart: React.FC<MomentumLineChartProps> = ({
-  data,
-  loading,
-}) => {
+const MomentumLineChart: React.FC<MomentumLineChartProps> = ({ data, loading }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -187,8 +175,7 @@ const MomentumLineChart: React.FC<MomentumLineChartProps> = ({
     }
 
     const points = data.values.map((value, index) => {
-      const x =
-        left + (chartWidth * index) / Math.max(data.values.length - 1, 1);
+      const x = left + (chartWidth * index) / Math.max(data.values.length - 1, 1);
       const y = bottom - (value / data.maxValue) * chartHeight;
       return { x, y };
     });
@@ -232,9 +219,7 @@ const MomentumLineChart: React.FC<MomentumLineChartProps> = ({
         role="img"
         aria-label="勢い推移グラフ"
       />
-      {loading && (
-        <p className="mini-window__note">勢いデータを読み込み中...</p>
-      )}
+      {loading && <p className="mini-window__note">勢いデータを読み込み中...</p>}
       {!loading && data && (
         <p className="mini-window__note">
           {/* {data.rangeLabel} / 最新: {data.latestValue.toLocaleString()} 勢い */}
@@ -242,9 +227,7 @@ const MomentumLineChart: React.FC<MomentumLineChartProps> = ({
         </p>
       )}
       {!loading && !data && (
-        <p className="mini-window__note">
-          投稿時刻の情報が不足しているため描画できません
-        </p>
+        <p className="mini-window__note">投稿時刻の情報が不足しているため描画できません</p>
       )}
     </div>
   );
@@ -254,15 +237,12 @@ export const IkioiStatusItem: React.FC = () => {
   const { activeTab, currentPage } = useTabStore();
   const [ikioi, setIkioi] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
-  const [momentumData, setMomentumData] = useState<MomentumGraphData | null>(
-    null,
-  );
+  const [momentumData, setMomentumData] = useState<MomentumGraphData | null>(null);
   const [isWindowOpen, setIsWindowOpen] = useState(false);
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
 
-  const threadUrl =
-    currentPage.type === "thread" ? currentPage.threadUrl : null;
+  const threadUrl = currentPage.type === "thread" ? currentPage.threadUrl : null;
   const reloadKey = activeTab.reloadKey;
 
   const closeWindow = useCallback(() => setIsWindowOpen(false), []);
@@ -361,12 +341,7 @@ export const IkioiStatusItem: React.FC = () => {
       </StatusBarItem>
 
       {isWindowOpen && anchorRect && (
-        <MiniWindow
-          title="勢い"
-          anchor={anchorRect}
-          onClose={closeWindow}
-          triggerRef={btnRef}
-        >
+        <MiniWindow title="勢い" anchor={anchorRect} onClose={closeWindow} triggerRef={btnRef}>
           <div className="mini-window__section">
             <div className="mini-window__section-header">勢いグラフ</div>
             <MomentumLineChart data={momentumData} loading={loading} />

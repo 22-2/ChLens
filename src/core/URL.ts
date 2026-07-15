@@ -1,7 +1,7 @@
 import { Request } from "src/core/HTTP";
-// @ts-ignore
+// @ts-expect-error
 import { fetch as fetchBBSMenu } from "src/core/BBSMenu.js";
-// @ts-ignore
+// @ts-expect-error
 import Cache from "src/core/Cache.js";
 import { PATTERNS } from "packages/ch-lib/src/url/patterns";
 
@@ -70,10 +70,7 @@ export class URL extends window.URL {
 
   // ホスト名の正規化
   private normalizeHostname(): void {
-    if (
-      this.hostname === HOSTNAME.OLD_2CH ||
-      this.hostname.endsWith(`.${HOSTNAME.OLD_2CH}`)
-    ) {
+    if (this.hostname === HOSTNAME.OLD_2CH || this.hostname.endsWith(`.${HOSTNAME.OLD_2CH}`)) {
       this.hostname = this.hostname.replace(HOSTNAME.OLD_2CH, HOSTNAME.NEW_5CH);
     } else if (this.hostname === HOSTNAME.OLD_JBBS) {
       this.hostname = HOSTNAME.NEW_JBBS;
@@ -110,11 +107,10 @@ export class URL extends window.URL {
   // まちBBS の修正
   private fixMachi(): void {
     if (
-      this.tryFixPattern(
-        PATTERNS.MACHI_THREAD,
-        (match) => `/bbs/read.cgi/${match[1]}/`,
-        { type: "thread", bbsType: "machi" },
-      )
+      this.tryFixPattern(PATTERNS.MACHI_THREAD, (match) => `/bbs/read.cgi/${match[1]}/`, {
+        type: "thread",
+        bbsType: "machi",
+      })
     ) {
       return;
     }
@@ -128,11 +124,10 @@ export class URL extends window.URL {
   // したらば の修正
   private fixShitaraba(): void {
     if (
-      this.tryFixPattern(
-        PATTERNS.SHITARABA_THREAD,
-        (match) => `/bbs/${match[1]}/`,
-        { type: "thread", bbsType: "jbbs" },
-      )
+      this.tryFixPattern(PATTERNS.SHITARABA_THREAD, (match) => `/bbs/${match[1]}/`, {
+        type: "thread",
+        bbsType: "jbbs",
+      })
     ) {
       this.archive = this.pathname.includes("read_archive");
       return;
@@ -183,11 +178,10 @@ export class URL extends window.URL {
 
     // 板 (test/read.cgi形式)
     if (
-      this.tryFixPattern(
-        PATTERNS.EDDIBB_BOARD_2,
-        (match) => `/test/read.cgi/${match[1]}/`,
-        { type: "board", bbsType: "2ch" },
-      )
+      this.tryFixPattern(PATTERNS.EDDIBB_BOARD_2, (match) => `/test/read.cgi/${match[1]}/`, {
+        type: "board",
+        bbsType: "2ch",
+      })
     ) {
       return;
     }
@@ -244,10 +238,7 @@ export class URL extends window.URL {
     const patternMap: Record<BBSType, RegExp | null> = {
       jbbs: PATTERNS.SHITARABA_RESNUM,
       machi: PATTERNS.MACHI_RESNUM,
-      "2ch":
-        raw.hostname === HOSTNAME.ULA_5CH
-          ? PATTERNS.CH_RESNUM_ULA
-          : PATTERNS.CH_RESNUM,
+      "2ch": raw.hostname === HOSTNAME.ULA_5CH ? PATTERNS.CH_RESNUM_ULA : PATTERNS.CH_RESNUM,
       unknown: null,
     };
 
@@ -294,8 +285,7 @@ export class URL extends window.URL {
       throw new Error("toBoard()はThreadでのみ呼び出せます");
     }
 
-    const pattern =
-      bbsType === "jbbs" ? PATTERNS.SHITARABA_TO_BOARD : PATTERNS.CH_TO_BOARD;
+    const pattern = bbsType === "jbbs" ? PATTERNS.SHITARABA_TO_BOARD : PATTERNS.CH_TO_BOARD;
 
     const pathname = this.pathname.replace(pattern, "/$1/");
     return new URL(`${this.origin}${pathname}`);
@@ -305,10 +295,7 @@ export class URL extends window.URL {
   convertFromPhone(): void {
     const tsld = this.getTsld();
 
-    if (
-      this.hostname !== HOSTNAME.ITEST_5CH &&
-      this.hostname !== HOSTNAME.ITEST_BBSPINK
-    ) {
+    if (this.hostname !== HOSTNAME.ITEST_5CH && this.hostname !== HOSTNAME.ITEST_BBSPINK) {
       return;
     }
 
@@ -323,9 +310,7 @@ export class URL extends window.URL {
     if (!server.serverName) return;
 
     this.hostname = `${server.serverName}.${server.domain}`;
-    this.pathname = thread
-      ? `/test/read.cgi/${board}/${thread}/`
-      : `/${board}/`;
+    this.pathname = thread ? `/test/read.cgi/${board}/${thread}/` : `/${board}/`;
     this.guessedType = {
       type: thread ? "thread" : "board",
       bbsType: "2ch",
@@ -333,10 +318,7 @@ export class URL extends window.URL {
   }
 
   // サーバー検索
-  private findServer(
-    board: string,
-    tsld: string,
-  ): { serverName: string | null; domain: string } {
+  private findServer(board: string, tsld: string): { serverName: string | null; domain: string } {
     if (tsld === TSLD.CH_5) {
       if (serverNet.has(board)) {
         return { serverName: serverNet.get(board)!, domain: TSLD.CH_5 };
@@ -381,10 +363,7 @@ export class URL extends window.URL {
     return null;
   }
 
-  private async tryExchangeFromCache(
-    boardKey: string,
-    tsld: string,
-  ): Promise<boolean> {
+  private async tryExchangeFromCache(boardKey: string, tsld: string): Promise<boolean> {
     if (tsld === TSLD.CH_5 && serverSc.has(boardKey)) {
       const server = serverSc.get(boardKey)!;
       this.hostname = `${server}.${TSLD.CH_2_SC}`;
@@ -397,10 +376,7 @@ export class URL extends window.URL {
     return false;
   }
 
-  private async fetchAndExchangeNetSc(
-    boardKey: string,
-    type: ContentType,
-  ): Promise<void> {
+  private async fetchAndExchangeNetSc(boardKey: string, type: ContentType): Promise<void> {
     const hostname = this.hostname.replace(`.${TSLD.CH_5}`, `.${TSLD.CH_2_SC}`);
     const req = new Request("HEAD", `http://${hostname}${this.pathname}`);
     const { status, responseURL: resUrlStr } = await req.send();
@@ -464,9 +440,7 @@ export class URL extends window.URL {
   }
 
   getHashParams(): URLSearchParams {
-    return this.rawHash
-      ? new URLSearchParams(this.rawHash.slice(1))
-      : new URLSearchParams();
+    return this.rawHash ? new URLSearchParams(this.rawHash.slice(1)) : new URLSearchParams();
   }
 
   setHashParams(data: Record<string, string>): void {
@@ -611,7 +585,7 @@ export async function expandShortURL(shortUrl: string): Promise<string> {
   if (res.data === null && res.url !== null) {
     cache.lastUpdated = Date.now();
     cache.data = res.url;
-    cache.put();
+    void cache.put();
     finalUrl = res.url;
   } else if (res.data !== null && res.url === null) {
     finalUrl = res.data;
@@ -619,9 +593,9 @@ export async function expandShortURL(shortUrl: string): Promise<string> {
   return finalUrl;
 }
 
-const AUDIO_REG = /\.(?:mp3|m4a|wav|oga|spx)(?:[\?#:&].*)?$/;
-const VIDEO_REG = /\.(?:mp4|m4v|webm|ogv)(?:[\?#:&].*)?$/;
-const OGG_REG = /\.(?:ogg|ogx)(?:[\?#:&].*)?$/;
+const AUDIO_REG = /\.(?:mp3|m4a|wav|oga|spx)(?:[?#:&].*)?$/;
+const VIDEO_REG = /\.(?:mp4|m4v|webm|ogv)(?:[?#:&].*)?$/;
+const OGG_REG = /\.(?:ogg|ogx)(?:[?#:&].*)?$/;
 export function getExtType(
   filename: string,
   {
@@ -673,11 +647,7 @@ function applyServerInfo(menu: any[]): ResInfo {
     for (const board of category.board) {
       let tmp: string[] | null;
 
-      if (
-        !res.net &&
-        (tmp = /https?:\/\/(\w+)\.5ch\.net\/(\w+)\/.*?/.exec(board.url)) !==
-          null
-      ) {
+      if (!res.net && (tmp = /https?:\/\/(\w+)\.5ch\.net\/(\w+)\/.*?/.exec(board.url)) !== null) {
         boardNet.set(tmp[2], tmp[1]);
       } else if (
         !res.sc &&
@@ -686,8 +656,7 @@ function applyServerInfo(menu: any[]): ResInfo {
         boardSc.set(tmp[2], tmp[1]);
       } else if (
         !res.bbspink &&
-        (tmp = /https?:\/\/(\w+)\.bbspink\.com\/(\w+)\/.*?/.exec(board.url)) !==
-          null
+        (tmp = /https?:\/\/(\w+)\.bbspink\.com\/(\w+)\/.*?/.exec(board.url)) !== null
       ) {
         boardPink.set(tmp[2], tmp[1]);
       }

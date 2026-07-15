@@ -22,10 +22,7 @@ interface UseThreadReadStateParams {
 
 interface UseThreadReadStateResult {
   isInitialReadStateResolved: boolean;
-  scrollToResponse: (
-    resNum: number,
-    options?: { highlight?: boolean; offset?: number },
-  ) => void;
+  scrollToResponse: (resNum: number, options?: { highlight?: boolean; offset?: number }) => void;
 }
 
 export function useThreadReadState({
@@ -38,8 +35,7 @@ export function useThreadReadState({
   const [initialReadState, setInitialReadState] = useState<IReadState | null>(null);
   const [hasLoadedInitialReadState, setHasLoadedInitialReadState] = useState(false);
   const [isInitialReadStateResolved, setIsInitialReadStateResolved] = useState(false);
-  const [pendingThreadJump, setPendingThreadJump] =
-    useState<PendingThreadJump | null>(null);
+  const [pendingThreadJump, setPendingThreadJump] = useState<PendingThreadJump | null>(null);
   const latestReadStateRef = useRef<IReadState | null>(null);
   const saveReadStateTimerRef = useRef<number | null>(null);
 
@@ -47,7 +43,7 @@ export function useThreadReadState({
     (resNum: number, options?: { highlight?: boolean; offset?: number }) =>
       scrollThreadToResponse(rootRef.current, resNum, options),
     // rootRef は安定した参照なので依存配列から除外する
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
@@ -62,10 +58,7 @@ export function useThreadReadState({
       url: threadUrl,
       last: measuredReadState.last,
       read: Math.max(previousReadState?.read ?? 0, measuredReadState.read),
-      received: Math.max(
-        previousReadState?.received ?? 0,
-        measuredReadState.received,
-      ),
+      received: Math.max(previousReadState?.received ?? 0, measuredReadState.received),
       offset: measuredReadState.offset,
       date: Date.now(),
     };
@@ -86,6 +79,8 @@ export function useThreadReadState({
     } catch (error) {
       console.error(error);
     }
+    // rootRef は安定した参照のため依存配列から除外する
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive, isInitialReadStateResolved, threadUrl, responses.length]);
 
   const scheduleReadStateSave = useCallback(() => {
@@ -108,15 +103,13 @@ export function useThreadReadState({
     latestReadStateRef.current = null;
 
     const loadInitialThreadReadState = async () => {
-      let nextReadState =
-        container.bookmark.get(threadUrl)?.readState ?? null;
+      let nextReadState = container.bookmark.get(threadUrl)?.readState ?? null;
 
       try {
         const storedReadState = await container.readState.get(threadUrl);
         if (
           storedReadState &&
-          (!nextReadState ||
-            container.util.isNewerReadState(nextReadState, storedReadState))
+          (!nextReadState || container.util.isNewerReadState(nextReadState, storedReadState))
         ) {
           nextReadState = storedReadState;
         }
@@ -223,6 +216,8 @@ export function useThreadReadState({
       }
       void saveCurrentReadState();
     };
+    // rootRef は安定した参照のため依存配列から除外する
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isActive,
     isInitialReadStateResolved,
@@ -232,25 +227,14 @@ export function useThreadReadState({
   ]);
 
   useEffect(() => {
-    if (
-      !isActive ||
-      !isInitialReadStateResolved ||
-      loading ||
-      responses.length === 0
-    ) {
+    if (!isActive || !isInitialReadStateResolved || loading || responses.length === 0) {
       return;
     }
 
     // 変更理由: 自動更新で received だけ増えたケースはスクロールイベントが発生しないため、
     // レス数変化時にも保存を予約して未読数の取りこぼしを防ぐ。
     scheduleReadStateSave();
-  }, [
-    isActive,
-    isInitialReadStateResolved,
-    loading,
-    responses.length,
-    scheduleReadStateSave,
-  ]);
+  }, [isActive, isInitialReadStateResolved, loading, responses.length, scheduleReadStateSave]);
 
   useEffect(() => {
     const handlePageHide = () => {

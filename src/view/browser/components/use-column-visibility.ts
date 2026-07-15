@@ -27,9 +27,7 @@ function readHiddenColumnKeys(storageKey: string): Set<string> {
       return new Set();
     }
 
-    return new Set(
-      parsed.filter((value): value is string => typeof value === "string"),
-    );
+    return new Set(parsed.filter((value): value is string => typeof value === "string"));
   } catch {
     return new Set();
   }
@@ -99,8 +97,7 @@ export function useColumnVisibility<TRow>(
   );
 
   const normalizedHiddenColumnKeys = useMemo(
-    () =>
-      clampHiddenColumnKeys(hiddenColumnKeys, columns, lockedColumnKeySet),
+    () => clampHiddenColumnKeys(hiddenColumnKeys, columns, lockedColumnKeySet),
     [columns, hiddenColumnKeys, lockedColumnKeySet],
   );
 
@@ -120,7 +117,7 @@ export function useColumnVisibility<TRow>(
     }
 
     try {
-      setStore2String(
+      void setStore2String(
         options.storageKey,
         JSON.stringify(Array.from(normalizedHiddenColumnKeys)),
       );
@@ -130,8 +127,7 @@ export function useColumnVisibility<TRow>(
   }, [normalizedHiddenColumnKeys, options?.storageKey]);
 
   const visibleColumns = useMemo(
-    () =>
-      columns.filter((column) => !normalizedHiddenColumnKeys.has(column.key)),
+    () => columns.filter((column) => !normalizedHiddenColumnKeys.has(column.key)),
     [columns, normalizedHiddenColumnKeys],
   );
 
@@ -168,9 +164,7 @@ export function useColumnVisibility<TRow>(
 
         return {
           id: `column-visibility:${column.key}:${isHidden ? "show" : "hide"}`,
-          label: isHidden
-            ? `${label}を表示する`
-            : `${label}を非表示にする`,
+          label: isHidden ? `${label}を表示する` : `${label}を非表示にする`,
           onSelect: () => toggleColumnVisibility(column.key),
         } satisfies ContextMenuItem;
       }),

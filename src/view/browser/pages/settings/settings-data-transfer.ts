@@ -78,9 +78,7 @@ function toJsonString(payload: unknown): string {
   return JSON.stringify(payload, null, 2);
 }
 
-function normalizeConfigEntries(
-  source: Record<string, unknown>,
-): Record<string, string> {
+function normalizeConfigEntries(source: Record<string, unknown>): Record<string, string> {
   const normalized: Record<string, string> = {};
 
   for (const [rawKey, rawValue] of Object.entries(source)) {
@@ -116,14 +114,11 @@ function toHistoryExportRecord(value: unknown): HistoryExportRecord | null {
     url: record.url,
     title: record.title,
     date: record.date,
-    boardTitle:
-      typeof record.boardTitle === "string" ? record.boardTitle : "",
+    boardTitle: typeof record.boardTitle === "string" ? record.boardTitle : "",
   };
 }
 
-function toWriteHistoryExportRecord(
-  value: unknown,
-): WriteHistoryExportRecord | null {
+function toWriteHistoryExportRecord(value: unknown): WriteHistoryExportRecord | null {
   if (!value || typeof value !== "object") {
     return null;
   }
@@ -149,10 +144,8 @@ function toWriteHistoryExportRecord(
     title: record.title,
     name: record.name,
     mail: record.mail,
-    input_name:
-      typeof record.input_name === "string" ? record.input_name : record.name,
-    input_mail:
-      typeof record.input_mail === "string" ? record.input_mail : record.mail,
+    input_name: typeof record.input_name === "string" ? record.input_name : record.name,
+    input_mail: typeof record.input_mail === "string" ? record.input_mail : record.mail,
     message: record.message,
     date: record.date,
   };
@@ -168,9 +161,7 @@ async function readJsonEntry<T>(zip: JSZip, path: string): Promise<T | null> {
   return JSON.parse(text) as T;
 }
 
-export async function exportDataArchive(
-  options: ExportArchiveOptions,
-): Promise<Blob> {
+export async function exportDataArchive(options: ExportArchiveOptions): Promise<Blob> {
   const zip = new JSZip();
   const exportedAt = new Date().toISOString();
   const includedFiles: string[] = [SETTINGS_JSON_PATH];
@@ -226,17 +217,12 @@ export async function exportDataArchive(
   });
 }
 
-export async function importDataArchive(
-  archiveFile: File,
-): Promise<ImportArchiveResult> {
+export async function importDataArchive(archiveFile: File): Promise<ImportArchiveResult> {
   const zip = await JSZip.loadAsync(archiveFile);
 
-  const settingsPayload =
-    await readJsonEntry<SettingsImportPayload>(zip, SETTINGS_JSON_PATH);
+  const settingsPayload = await readJsonEntry<SettingsImportPayload>(zip, SETTINGS_JSON_PATH);
   const settingsSource =
-    settingsPayload && "settings" in settingsPayload
-      ? settingsPayload.settings
-      : settingsPayload;
+    settingsPayload && "settings" in settingsPayload ? settingsPayload.settings : settingsPayload;
   const normalizedSettings =
     settingsSource && typeof settingsSource === "object"
       ? normalizeConfigEntries(settingsSource as Record<string, unknown>)
@@ -244,14 +230,13 @@ export async function importDataArchive(
 
   // 変更理由: zip一発で復元できるUXを優先し、既存設定は差分ではなく上書きで同期する。
   await Promise.all(
-    Object.entries(normalizedSettings).map(([key, value]) =>
-      container.config.set(key, value),
-    ),
+    Object.entries(normalizedSettings).map(([key, value]) => container.config.set(key, value)),
   );
 
-  const historyPayload = await readJsonEntry<
-    HistoryExportPayload | { items?: unknown[] }
-  >(zip, HISTORY_JSON_PATH);
+  const historyPayload = await readJsonEntry<HistoryExportPayload | { items?: unknown[] }>(
+    zip,
+    HISTORY_JSON_PATH,
+  );
 
   const historyItems = Array.isArray(historyPayload?.items)
     ? historyPayload.items

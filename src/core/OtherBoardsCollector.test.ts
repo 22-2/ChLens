@@ -1,9 +1,6 @@
 import { BBSMenu } from "src/core/BBSMenuParser";
-import {
-  IOtherBoardsDeps,
-  OtherBoardsCollector,
-} from "src/core/OtherBoardsCollector";
-import { describe, expect, it, vi } from "vitest";
+import { IOtherBoardsDeps, OtherBoardsCollector } from "src/core/OtherBoardsCollector";
+import { describe, expect, it, vi } from "vite-plus/test";
 
 // src/core/URL は BroadcastChannel に依存する src/app を間接的にインポートするため、
 // jsdom 環境では動作しない。OtherBoardsCollector が使う機能のみをモックする。
@@ -60,10 +57,7 @@ function makeDeps(overrides: Partial<IOtherBoardsDeps> = {}): IOtherBoardsDeps {
 }
 
 /** 最小限のBBSMenuを生成する */
-function makeMenu(
-  name: string,
-  boards: { name: string; url: string }[],
-): BBSMenu {
+function makeMenu(name: string, boards: { name: string; url: string }[]): BBSMenu {
   return {
     name,
     categories: [{ name: "カテゴリ", boards }],
@@ -77,9 +71,7 @@ describe("OtherBoardsCollector.collect", () => {
     const deps = makeDeps();
     const collector = new OtherBoardsCollector(deps);
     const menus: BBSMenu[] = [
-      makeMenu("メニュー1", [
-        { name: "板1", url: "https://foo.5ch.io/board1/" },
-      ]),
+      makeMenu("メニュー1", [{ name: "板1", url: "https://foo.5ch.io/board1/" }]),
     ];
 
     await collector.collect(menus);
@@ -92,9 +84,7 @@ describe("OtherBoardsCollector.collect", () => {
     const deps = makeDeps({
       getAllReadStates: vi
         .fn()
-        .mockResolvedValue([
-          { url: "https://foo.5ch.io/test/read.cgi/board1/1000000010/" },
-        ]),
+        .mockResolvedValue([{ url: "https://foo.5ch.io/test/read.cgi/board1/1000000010/" }]),
     });
     const collector = new OtherBoardsCollector(deps);
     const menus: BBSMenu[] = [];
@@ -150,14 +140,10 @@ describe("OtherBoardsCollector.collect", () => {
     const deps = makeDeps({
       getAllReadStates: vi
         .fn()
-        .mockResolvedValue([
-          { url: "https://foo.5ch.io/test/read.cgi/board1/1000000010/" },
-        ]),
+        .mockResolvedValue([{ url: "https://foo.5ch.io/test/read.cgi/board1/1000000010/" }]),
     });
     const collector = new OtherBoardsCollector(deps);
-    const menus: BBSMenu[] = [
-      makeMenu("メニュー1", [{ name: "板1", url: registeredUrl }]),
-    ];
+    const menus: BBSMenu[] = [makeMenu("メニュー1", [{ name: "板1", url: registeredUrl }])];
 
     await collector.collect(menus);
 
@@ -175,9 +161,7 @@ describe("OtherBoardsCollector.collect", () => {
     const threadUrl = "https://foo.5ch.io/test/read.cgi/board1/1000000010/";
     const deps = makeDeps({
       getAllReadStates: vi.fn().mockResolvedValue([{ url: threadUrl }]),
-      getUniqueHistory: vi
-        .fn()
-        .mockResolvedValue([{ url: threadUrl, boardTitle: "板1" }]),
+      getUniqueHistory: vi.fn().mockResolvedValue([{ url: threadUrl, boardTitle: "板1" }]),
     });
     const collector = new OtherBoardsCollector(deps);
     const menus: BBSMenu[] = [];
@@ -195,9 +179,7 @@ describe("OtherBoardsCollector.collect", () => {
     const deps = makeDeps({
       getAllReadStates: vi
         .fn()
-        .mockResolvedValue([
-          { url: "https://foo.5ch.io/test/read.cgi/board1/1000000010/" },
-        ]),
+        .mockResolvedValue([{ url: "https://foo.5ch.io/test/read.cgi/board1/1000000010/" }]),
       getCachedBoardTitles: vi.fn().mockReturnValue({
         [boardUrl]: "キャッシュ済み板名",
       }),
@@ -216,9 +198,7 @@ describe("OtherBoardsCollector.collect", () => {
     const deps = makeDeps({
       getUniqueHistory: vi
         .fn()
-        .mockResolvedValue([
-          { url: "https://foo.5ch.io/test/read.cgi/news/1000000011/" },
-        ]),
+        .mockResolvedValue([{ url: "https://foo.5ch.io/test/read.cgi/news/1000000011/" }]),
     });
     const collector = new OtherBoardsCollector(deps);
     const existingOtherMenu: BBSMenu = {
@@ -233,9 +213,7 @@ describe("OtherBoardsCollector.collect", () => {
     const otherMenus = menus.filter((m) => m.name === "その他");
     expect(otherMenus).toHaveLength(1);
     // 「一度開いた板」カテゴリが追加されていること
-    expect(
-      otherMenus[0].categories.some((c) => c.name === "一度開いた板"),
-    ).toBe(true);
+    expect(otherMenus[0].categories.some((c) => c.name === "一度開いた板")).toBe(true);
   });
 
   it("ReadStateの取得が失敗してもエラーをスローせず処理を続ける", async () => {
@@ -243,9 +221,7 @@ describe("OtherBoardsCollector.collect", () => {
       getAllReadStates: vi.fn().mockRejectedValue(new Error("DB error")),
       getUniqueHistory: vi
         .fn()
-        .mockResolvedValue([
-          { url: "https://foo.5ch.io/test/read.cgi/news/1000000011/" },
-        ]),
+        .mockResolvedValue([{ url: "https://foo.5ch.io/test/read.cgi/news/1000000011/" }]),
     });
     const collector = new OtherBoardsCollector(deps);
     const menus: BBSMenu[] = [];
@@ -277,9 +253,7 @@ describe("OtherBoardsCollector.collect", () => {
     const boards = otherMenu!.categories.flatMap((category) => category.boards);
     expect(
       boards.some(
-        (board) =>
-          board.url === "https://foo.5ch.io/opened-board/" &&
-          board.name === "開いた板",
+        (board) => board.url === "https://foo.5ch.io/opened-board/" && board.name === "開いた板",
       ),
     ).toBe(true);
   });
@@ -288,9 +262,7 @@ describe("OtherBoardsCollector.collect", () => {
     const deps = makeDeps({
       getAllReadStates: vi
         .fn()
-        .mockResolvedValue([
-          { url: "https://foo.5ch.io/test/read.cgi/board1/1000000010/" },
-        ]),
+        .mockResolvedValue([{ url: "https://foo.5ch.io/test/read.cgi/board1/1000000010/" }]),
       getUniqueHistory: vi.fn().mockRejectedValue(new Error("History error")),
     });
     const collector = new OtherBoardsCollector(deps);
@@ -305,9 +277,7 @@ describe("OtherBoardsCollector.collect", () => {
   it("板URLではないURLはReadStateから無視する", async () => {
     const deps = makeDeps({
       // board タイプのURLを渡す（スレッドではない）
-      getAllReadStates: vi
-        .fn()
-        .mockResolvedValue([{ url: "https://foo.5ch.io/board1/" }]),
+      getAllReadStates: vi.fn().mockResolvedValue([{ url: "https://foo.5ch.io/board1/" }]),
     });
     const collector = new OtherBoardsCollector(deps);
     const menus: BBSMenu[] = [];

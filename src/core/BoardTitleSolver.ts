@@ -1,7 +1,4 @@
-import {
-  onChange as BBSMenuOnChange,
-  get as getBBSMenu,
-} from "src/core/BBSMenu.js";
+import { onChange as BBSMenuOnChange, get as getBBSMenu } from "src/core/BBSMenu.js";
 import { Request } from "src/core/HTTP";
 import { URL } from "src/core/URL";
 
@@ -184,6 +181,6 @@ export const ask = async (url: URL): Promise<string | null> => {
 
     return null;
   } catch (e) {
-    throw new Error(`板名の取得に失敗しました: ${String(e)}`);
+    throw new Error(`板名の取得に失敗しました: ${String(e)}`, { cause: e });
   }
 };

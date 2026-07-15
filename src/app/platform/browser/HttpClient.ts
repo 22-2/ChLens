@@ -1,15 +1,11 @@
-import {
-  HttpClient,
-  HttpRequestOptions,
-  HttpResponse,
-} from "src/app/platform/types";
+import { HttpClient, HttpRequestOptions, HttpResponse } from "src/app/platform/types";
 import browser from "webextension-polyfill";
 
 type DnrRule = browser.DeclarativeNetRequest.Rule;
 type DnrApi = NonNullable<(typeof browser)["declarativeNetRequest"]>;
 
 function parseHTTPHeader(str: string): Record<string, string> {
-  const reg = /^(?:([a-z\-]+):\s*|([ \t]+))(.+)\s*$/gim;
+  const reg = /^(?:([a-z-]+):\s*|([ \t]+))(.+)\s*$/gim;
   const headers: Record<string, string> = {};
   let last: string | undefined;
   let res: RegExpExecArray | null;
@@ -34,9 +30,8 @@ async function getSessionRules(dnr: DnrApi): Promise<DnrRule[]> {
   }
 
   return await new Promise((resolve) => {
-    (getSessionRulesFn as (callback: (rules: DnrRule[]) => void) => void).call(
-      dnr,
-      (rules) => resolve(rules),
+    (getSessionRulesFn as (callback: (rules: DnrRule[]) => void) => void).call(dnr, (rules) =>
+      resolve(rules),
     );
   });
 }
@@ -50,25 +45,15 @@ function getNextRuleId(rules: DnrRule[]): number {
   return nextId;
 }
 
-function isSameWriteRule(
-  rule: DnrRule,
-  formAction: string,
-  tabId: number,
-): boolean {
-  return (
-    rule.condition.urlFilter === formAction &&
-    rule.condition.tabIds?.includes(tabId) === true
-  );
+function isSameWriteRule(rule: DnrRule, formAction: string, tabId: number): boolean {
+  return rule.condition.urlFilter === formAction && rule.condition.tabIds?.includes(tabId) === true;
 }
 
 /**
  * ブラウザ拡張機能環境用のHttpClient実装
  */
 export const BrowserHttpClient: HttpClient = {
-  async fetch(
-    url: string,
-    options: HttpRequestOptions = {},
-  ): Promise<HttpResponse> {
+  async fetch(url: string, options: HttpRequestOptions = {}): Promise<HttpResponse> {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open(options.method ?? "GET", url);
@@ -123,9 +108,7 @@ export const BrowserHttpClient: HttpClient = {
 
       const dnr = api.declarativeNetRequest;
       const existing = await getSessionRules(dnr);
-      const oldRule = existing.find((rule) =>
-        isSameWriteRule(rule, formAction, tab.id!),
-      );
+      const oldRule = existing.find((rule) => isSameWriteRule(rule, formAction, tab.id!));
       const actionOrigin = new URL(formAction).origin;
 
       // ルール削除でIDが欠番化しても衝突しないよう、未使用IDを探索して再利用する

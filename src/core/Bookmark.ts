@@ -9,8 +9,15 @@ import { isNewerReadState } from "src/core/jsutil";
 
 export default class Bookmark {
   readonly bel: SyncableEntryList & {
-    ready: any;
-    needReconfigureRootNodeId?: any;
+    ready: {
+      add: (cb: () => void) => void;
+      wasCalled: boolean;
+      call: () => void;
+    };
+    needReconfigureRootNodeId?: {
+      add: (cb: () => void) => void;
+      call: () => void;
+    };
   };
   readonly promiseFirstScan: Promise<boolean>;
 
@@ -25,13 +32,7 @@ export default class Bookmark {
         resolve(true);
 
         this.bel.onChanged.add(
-          ({
-            type: typeName,
-            entry: bookmark,
-          }: {
-            type: string;
-            entry: any;
-          }) => {
+          ({ type: typeName, entry: bookmark }: { type: string; entry: Entry }) => {
             let type = "";
             switch (typeName) {
               case "ADD":
@@ -106,10 +107,7 @@ export default class Bookmark {
       entry.readState = readState;
     }
 
-    if (
-      typeof resCount === "number" &&
-      (!entry.resCount || entry.resCount < resCount)
-    ) {
+    if (typeof resCount === "number" && (!entry.resCount || entry.resCount < resCount)) {
       entry.resCount = resCount;
     } else if (entry.readState) {
       entry.resCount = entry.readState.received;
@@ -144,7 +142,14 @@ export default class Bookmark {
     return (await Promise.all(bookmarkData)).every((v) => v);
   }
 
-  async updateReadState(readState: any): Promise<boolean> {
+  async updateReadState(readState: {
+    url: string;
+    last?: number;
+    read?: number;
+    received?: number;
+    offset?: number;
+    date?: number;
+  }): Promise<boolean> {
     // TODO
     const entry = this.bel.get(readState.url);
 
@@ -184,18 +189,12 @@ export default class Bookmark {
       entry = this.bel.get(newEntry.url);
     }
 
-    if (
-      newEntry.readState &&
-      isNewerReadState(entry.readState, newEntry.readState)
-    ) {
+    if (newEntry.readState && isNewerReadState(entry.readState, newEntry.readState)) {
       entry.readState = newEntry.readState;
       updateEntry = true;
     }
 
-    if (
-      newEntry.resCount &&
-      (!entry.resCount || entry.resCount < newEntry.resCount)
-    ) {
+    if (newEntry.resCount && (!entry.resCount || entry.resCount < newEntry.resCount)) {
       entry.resCount = newEntry.resCount;
       updateEntry = true;
     }

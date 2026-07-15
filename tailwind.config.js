@@ -1,9 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: ["class"],
-  content: [
-    "./src/view/thread/**/*.{ts,tsx}",
-  ],
+  content: ["./src/view/thread/**/*.{ts,tsx}"],
   prefix: "",
   theme: {
     container: {
@@ -70,4 +68,4 @@ module.exports = {
       },
     },
   },
-}
+};

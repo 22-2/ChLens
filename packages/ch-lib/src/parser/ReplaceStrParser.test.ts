@@ -1,5 +1,5 @@
 import { ReplaceStrParser } from "packages/ch-lib/src/parser/ReplaceStrParser";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 describe("ReplaceStrParser", () => {
   describe("parse", () => {
@@ -62,7 +62,7 @@ describe("ReplaceStrParser", () => {
 
     it("should respect URL filters", () => {
       const urlRules = ReplaceStrParser.parse("foo\tbar\tmsg\t<0>special.com");
-      
+
       const res1 = ReplaceStrParser.replace("http://special.com/board", "title", target, urlRules);
       expect(res1.message).toBe("hello bar 456");
 

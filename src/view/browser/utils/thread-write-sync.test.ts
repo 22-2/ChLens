@@ -6,13 +6,9 @@ import {
   resolveWrittenResTimestamp,
   subscribeThreadWriteCompleted,
 } from "src/view/browser/utils/thread-write-sync";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 
-function createRes(
-  num: number,
-  message: string,
-  extra: Partial<IRes> = {},
-): IRes {
+function createRes(num: number, message: string, extra: Partial<IRes> = {}): IRes {
   return {
     num,
     name: "名無しさん",
@@ -48,11 +44,7 @@ describe("thread-write-sync", () => {
 
   it("投稿本文に一致する最新レスだけを自分のレス候補にする", () => {
     const matched = findLatestWrittenRes(
-      [
-        createRes(1, "てすと"),
-        createRes(2, "別レス"),
-        createRes(3, "<b>てすと</b>"),
-      ],
+      [createRes(1, "てすと"), createRes(2, "別レス"), createRes(3, "<b>てすと</b>")],
       "て す と\n",
       new Set([3]),
     );

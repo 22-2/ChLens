@@ -3,7 +3,7 @@ import {
   convertUserToDSL,
   convertUserToInternal,
 } from "src/core/NGConverter";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 
 vi.mock("src/core/NG", () => ({
   TYPE: {

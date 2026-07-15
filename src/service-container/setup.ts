@@ -18,26 +18,66 @@ import {
   IUtil,
 } from "src/service-container/interfaces";
 import { LogLevels } from "consola";
-// @ts-ignore
+// @ts-expect-error: side-effect import without own types
 import BoardService from "src/core/BoardService.js";
 import Cache from "src/core/Cache.js";
-// @ts-ignore
+// @ts-expect-error: side-effect import without own types
 import * as BBSMenu from "src/core/BBSMenu.js";
 import { setConsolaLevel } from "src/core/logger";
-// @ts-ignore
+// @ts-expect-error: sonner may lack type declarations
 import { toast } from "sonner";
 import Notification from "src/core/Notification";
 import ThreadService from "src/core/ThreadService.js";
 
-/**
- * Initializes the service container with the current app implementations.
- * This should be called during the application boot process.
- */
-export function setupContainer(app: any) {
+// レガシー window.app の型。IServiceContainer への完全移行後に削除予定。
+interface LegacyAppForSetup {
+  config: {
+    get(key: string): string | null;
+    set(key: string, val: unknown): Promise<void>;
+    ready(cb: () => void): void;
+    getAll(): Record<string, string>;
+    del(key: string): Promise<void>;
+  };
+  message: {
+    send(type: string, data?: unknown): void;
+    on(type: string, cb: (data: unknown) => void): void;
+    off(type: string, cb: (data: unknown) => void): void;
+  };
+  NG?: {
+    isNGBoard(title: string, url: string, resCount: number): unknown;
+    isNGThread(...args: unknown[]): unknown;
+    isThreadIgnoreNgType(...args: unknown[]): unknown;
+    add(ngWord: string): Promise<void>;
+    invalidateCache(): void;
+    execExpire(): void;
+    isIgnoreResNumForAuto(num: number, type: string): boolean;
+    set(val: unknown): Promise<void>;
+  };
+  bookmark?: {
+    get(url: string): unknown;
+    add?(url: string, title: string, resCount?: number): Promise<boolean>;
+    remove(url: string): Promise<boolean>;
+    updateResCount(url: string, count: number): Promise<boolean>;
+    updateExpired(url: string, exp: boolean): Promise<boolean>;
+    getByBoard(url: string): unknown;
+  };
+  ReadState?: {
+    get(url: string): Promise<unknown>;
+    getByBoard(boardUrl: string): Promise<unknown>;
+    set(readState: unknown): Promise<void>;
+  };
+  escapeHtml(str: string): string;
+  safeHref(url: string): string;
+  defer(): Promise<void>;
+  util?: {
+    isNewerReadState(a: unknown, b: unknown): boolean;
+    guessType?(url: string): { bbsType: string; protocol: string };
+  };
+}
+
+export function setupContainer(app: LegacyAppForSetup) {
   const syncConsolaLevel = () => {
-    setConsolaLevel(
-      app.config.get("debug_log") === "on" ? LogLevels.debug : LogLevels.info,
-    );
+    setConsolaLevel(app.config.get("debug_log") === "on" ? LogLevels.debug : LogLevels.info);
   };
 
   syncConsolaLevel();
@@ -45,7 +85,7 @@ export function setupContainer(app: any) {
   // Config Adapter
   const configAdapter: IConfig = {
     get: (key: string) => app.config.get(key),
-    set: async (key: string, val: any) => {
+    set: async (key: string, val: unknown) => {
       // 変更理由: 設定保存は非同期ストレージへ書き込むため、ここで Promise を落とすと
       // 「見た目は更新されたのにリロード直後に戻る」競合を呼び込みやすい。
       await app.config.set(key, val);
@@ -71,9 +111,9 @@ export function setupContainer(app: any) {
 
   // Message Adapter
   const messageAdapter: IMessage = {
-    send: (type: string, data?: any) => app.message.send(type, data),
-    on: (type: string, cb: (data: any) => void) => app.message.on(type, cb),
-    off: (type: string, cb: (data: any) => void) => app.message.off(type, cb),
+    send: (type: string, data?: unknown) => app.message.send(type, data),
+    on: (type: string, cb: (data: unknown) => void) => app.message.on(type, cb),
+    off: (type: string, cb: (data: unknown) => void) => app.message.off(type, cb),
   };
 
   // Bookmark Adapter
@@ -81,13 +121,10 @@ export function setupContainer(app: any) {
     get: (url: string) => app.bookmark?.get(url),
     // container側では `IBookmarkItem` を受け取るため、
     // core の `app.bookmark.add(url, title, resCount?)` へ適切に展開して渡す。
-    add: (item: IBookmarkItem) =>
-      app.bookmark?.add?.(item.url, item.title, item.resCount),
+    add: (item: IBookmarkItem) => app.bookmark?.add?.(item.url, item.title, item.resCount),
     remove: (url: string) => app.bookmark?.remove(url),
-    updateResCount: (url: string, count: number) =>
-      app.bookmark?.updateResCount(url, count),
-    updateExpired: (url: string, exp: boolean) =>
-      app.bookmark?.updateExpired(url, exp),
+    updateResCount: (url: string, count: number) => app.bookmark?.updateResCount(url, count),
+    updateExpired: (url: string, exp: boolean) => app.bookmark?.updateExpired(url, exp),
     getByBoard: (url: string) => app.bookmark?.getByBoard(url),
   };
 
@@ -102,20 +139,18 @@ export function setupContainer(app: any) {
   const readStateAdapter: IReadStateService = {
     get: (url: string) => app.ReadState?.get(url),
     getByBoard: (boardUrl: string) => app.ReadState?.getByBoard(boardUrl),
-    set: (readState: any) => app.ReadState?.set(readState),
+    set: (readState: unknown) => app.ReadState?.set(readState),
   };
 
   // Board Service Adapter
   const boardServiceAdapter: IBoardService = {
-    getThreads: (url: any): Promise<IBoardResult> =>
-      BoardService.getThreads(url),
-    getCachedResCount: (url: any) => BoardService.getCachedResCount(url),
+    getThreads: (url: string): Promise<IBoardResult> => BoardService.getThreads(url),
+    getCachedResCount: (url: string) => BoardService.getCachedResCount(url),
   };
 
   // BBSMenu Service Adapter
   const bbsMenuServiceAdapter: IBBSMenuService = {
-    get: (forceReload?: boolean) =>
-      BBSMenu.get(forceReload) as Promise<IBBSMenuResult>,
+    get: (forceReload?: boolean) => BBSMenu.get(forceReload) as Promise<IBBSMenuResult>,
   };
 
   // Thread Service Adapter
@@ -163,16 +198,14 @@ export function setupContainer(app: any) {
 
   // NG Service Adapter
   const ngServiceAdapter: INGService = {
-    isNGBoard: (title, url, resCount) =>
-      app.NG?.isNGBoard(title, url, resCount),
+    isNGBoard: (title, url, resCount) => app.NG?.isNGBoard(title, url, resCount),
     isNGThread: (res, title, url) => app.NG?.isNGThread(res, title, url),
     isThreadIgnoreNgType: (res, threadTitle, url, ngType) =>
       app.NG?.isThreadIgnoreNgType(res, threadTitle, url, ngType),
     add: (ngWord) => app.NG?.add(ngWord),
     invalidateCache: () => app.NG?.invalidateCache(),
     execExpire: () => app.NG?.execExpire(),
-    isIgnoreResNumForAuto: (num, type) =>
-      app.NG?.isIgnoreResNumForAuto(num, type),
+    isIgnoreResNumForAuto: (num, type) => app.NG?.isIgnoreResNumForAuto(num, type),
   };
 
   // Util Adapter
@@ -180,11 +213,9 @@ export function setupContainer(app: any) {
     escapeHtml: (str: string) => app.escapeHtml(str),
     safeHref: (url: string) => app.safeHref(url),
     defer: () => app.defer(),
-    isNewerReadState: (a: any, b: any) => app.util?.isNewerReadState(a, b),
+    isNewerReadState: (a: unknown, b: unknown) => app.util?.isNewerReadState(a, b),
     guessType: (url: string) =>
-      app.util?.guessType
-        ? app.util.guessType(url)
-        : { bbsType: "2ch", protocol: "https:" },
+      app.util?.guessType ? app.util.guessType(url) : { bbsType: "2ch", protocol: "https:" },
   };
 
   container.config = configAdapter;

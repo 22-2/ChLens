@@ -51,17 +51,13 @@ export function useAutoNextThread({
   followThread,
 }: UseAutoNextThreadOptions): { status: AutoNextThreadStatus } {
   const [status, setStatus] = useState<AutoNextThreadStatus>("idle");
-  const [watchState, setWatchState] = useState<MainstreamWatchState | null>(
-    null,
-  );
+  const [watchState, setWatchState] = useState<MainstreamWatchState | null>(null);
   const lastSearchKeyRef = useRef<string | null>(null);
   const followThreadRef = useRef(followThread);
   // ブラウザのタブ/ウィンドウを裏に回している間は、ユーザーが見ていないところで
   // 勝手にタブを次スレへ差し替えてしまわないよう、可視状態でのみ動かす。
   const [isDocumentVisible, setIsDocumentVisible] = useState(
-    () =>
-      typeof document === "undefined" ||
-      document.visibilityState === "visible",
+    () => typeof document === "undefined" || document.visibilityState === "visible",
   );
 
   useEffect(() => {
@@ -98,10 +94,7 @@ export function useAutoNextThread({
     if (watchState == null) {
       return;
     }
-    if (
-      threadUrl === watchState.originalThreadUrl ||
-      threadUrl === watchState.currentThreadUrl
-    ) {
+    if (threadUrl === watchState.originalThreadUrl || threadUrl === watchState.currentThreadUrl) {
       return;
     }
 
@@ -110,12 +103,7 @@ export function useAutoNextThread({
   }, [threadUrl, watchState]);
 
   useEffect(() => {
-    if (
-      !autoRefreshEnabled ||
-      !featureEnabled ||
-      !isDocumentVisible ||
-      !canAutoScroll
-    ) {
+    if (!autoRefreshEnabled || !featureEnabled || !isDocumentVisible || !canAutoScroll) {
       return;
     }
     if (!expired && responseCount < NEXT_THREAD_TRIGGER_RES_COUNT) {
@@ -143,6 +131,7 @@ export function useAutoNextThread({
       });
 
     const searchNextThread = async () => {
+      // oxlint-disable-next-line no-useless-assignment
       let boardUrl = "";
       try {
         boardUrl = getBoardUrlFromThreadUrl(threadUrl);
@@ -232,9 +221,7 @@ export function useAutoNextThread({
 
     const watchMainstreamThread = async () => {
       const deadline =
-        watchState.startedAt +
-        MAINSTREAM_WATCH_GRACE_PERIOD_MS +
-        MAINSTREAM_WATCH_DURATION_MS;
+        watchState.startedAt + MAINSTREAM_WATCH_GRACE_PERIOD_MS + MAINSTREAM_WATCH_DURATION_MS;
 
       while (!cancelled && Date.now() < deadline) {
         const now = Date.now();
@@ -254,9 +241,7 @@ export function useAutoNextThread({
 
           if (match) {
             followThreadRef.current(match.thread);
-            container.toast.info(
-              `本流スレへ移動しました: ${match.thread.title}`,
-            );
+            container.toast.info(`本流スレへ移動しました: ${match.thread.title}`);
             setWatchState(null);
             setStatus("idle");
             return;
@@ -282,14 +267,7 @@ export function useAutoNextThread({
         window.clearTimeout(timerId);
       }
     };
-  }, [
-    autoRefreshEnabled,
-    canAutoScroll,
-    featureEnabled,
-    isDocumentVisible,
-    threadUrl,
-    watchState,
-  ]);
+  }, [autoRefreshEnabled, canAutoScroll, featureEnabled, isDocumentVisible, threadUrl, watchState]);
 
   return { status };
 }

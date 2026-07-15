@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { BottomPanel } from "src/view/browser/components/BottomPanel";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mocks = vi.hoisted(() => ({
   closePanel: vi.fn(),
@@ -69,8 +69,9 @@ describe("BottomPanel", () => {
 
   it("スレッド以外へ移動したらパネルを閉じて非表示にする", async () => {
     mocks.currentPage = {
-      type: "home",
+      type: "home" as const,
       title: "ホーム",
+      threadUrl: "",
     };
 
     render(<BottomPanel />);

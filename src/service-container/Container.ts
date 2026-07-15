@@ -14,7 +14,7 @@ import {
   IUtil,
 } from "src/service-container/interfaces";
 
-const globalObj = window as any;
+const globalObj = window as unknown as Record<string, unknown>;
 
 if (!globalObj.__ServiceContainer) {
   globalObj.__ServiceContainer = {
@@ -104,8 +104,7 @@ if (!globalObj.__ServiceContainer) {
     },
 
     get notification(): INotificationService {
-      if (!this._notification)
-        throw new Error("Notification service not registered");
+      if (!this._notification) throw new Error("Notification service not registered");
       return this._notification;
     },
     set notification(value: INotificationService) {

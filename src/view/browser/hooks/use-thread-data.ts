@@ -13,12 +13,7 @@ import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
 import type { ThreadPage as ThreadPageType } from "src/view/browser/types";
 import { buildIndexes } from "src/view/browser/utils/thread-index";
 import type { ThreadFilter } from "src/view/browser/utils/types";
-import {
-  hasExternalLink,
-  hasImage,
-  hasVideo,
-  stripHtml,
-} from "src/view/browser/utils/utils";
+import { hasExternalLink, hasImage, hasVideo, stripHtml } from "src/view/browser/utils/utils";
 
 interface ThreadData {
   responses: IRes[];
@@ -39,11 +34,7 @@ interface ThreadData {
   messageProtocol: string;
 }
 
-export function useThreadData(
-  tabId: string,
-  page: ThreadPageType,
-  refreshKey: number,
-): ThreadData {
+export function useThreadData(tabId: string, page: ThreadPageType, refreshKey: number): ThreadData {
   const dispatch = useTabDispatch();
   const [responses, setResponses] = useState<IRes[]>([]);
   const [loading, setLoading] = useState(true);
@@ -120,9 +111,7 @@ export function useThreadData(
           ...res,
           // res.ng が undefined の場合は ResItem 側で非NGとして扱われるため、
           // 判定結果をそのまま（null の場合は undefined へ変換して）上書きする。
-          ng:
-            container.ng.isNGThread(res, page.title, page.threadUrl) ??
-            undefined,
+          ng: container.ng.isNGThread(res, page.title, page.threadUrl) ?? undefined,
         })),
       );
     };
@@ -158,11 +147,7 @@ export function useThreadData(
       list = list.filter((res) => {
         const text = stripHtml(res.message).toLowerCase();
         const name = stripHtml(res.name).toLowerCase();
-        return (
-          text.includes(q) ||
-          name.includes(q) ||
-          (res.id?.toLowerCase().includes(q) ?? false)
-        );
+        return text.includes(q) || name.includes(q) || (res.id?.toLowerCase().includes(q) ?? false);
       });
     }
 

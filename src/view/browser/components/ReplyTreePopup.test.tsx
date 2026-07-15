@@ -1,17 +1,10 @@
 import "@testing-library/jest-dom/vitest";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type React from "react";
 import type { IRes } from "src/service-container";
 import { container } from "src/service-container/index";
 import { ReplyTreePopup } from "src/view/browser/components/ReplyTreePopup";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 function createRes(num: number, message: string): IRes {
   return {
@@ -90,6 +83,7 @@ describe("ReplyTreePopup", () => {
     container.config = {
       get: vi.fn(() => "default"),
       set: vi.fn(),
+      getAll: () => ({}),
       ready: (callback: () => void) => callback(),
     };
     container.message = {
@@ -97,13 +91,10 @@ describe("ReplyTreePopup", () => {
       off: vi.fn(),
       send: vi.fn(),
     };
-    vi.stubGlobal(
-      "requestAnimationFrame",
-      (callback: FrameRequestCallback): number => {
-        callback(0);
-        return 1;
-      },
-    );
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback): number => {
+      callback(0);
+      return 1;
+    });
     vi.stubGlobal("cancelAnimationFrame", () => {});
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
@@ -116,11 +107,9 @@ describe("ReplyTreePopup", () => {
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
       () => canvasContextStub as unknown as CanvasRenderingContext2D,
     );
-    vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation(
-      (callback: BlobCallback) => {
-        callback(new Blob(["png"], { type: "image/png" }));
-      },
-    );
+    vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation((callback: BlobCallback) => {
+      callback(new Blob(["png"], { type: "image/png" }));
+    });
   });
 
   afterEach(() => {
@@ -141,12 +130,8 @@ describe("ReplyTreePopup", () => {
     expect(screen.getByText("reply message")).toBeInTheDocument();
     expect(screen.getByText("nested reply message")).toBeInTheDocument();
 
-    const sourceSection = screen
-      .getByText("参照元レス")
-      .closest("section") as HTMLElement;
-    const sourceCard = within(sourceSection)
-      .getByText("source message")
-      .closest("article");
+    const sourceSection = screen.getByText("参照元レス").closest("section") as HTMLElement;
+    const sourceCard = within(sourceSection).getByText("source message").closest("article");
     expect(sourceCard).toHaveClass("res--highlighted-persistent");
   });
 
@@ -154,39 +139,33 @@ describe("ReplyTreePopup", () => {
     render(<ReplyTreePopup {...BASE_PROPS} />);
 
     fireEvent.click(screen.getByRole("button", { name: "返信ツリーメニュー" }));
-    fireEvent.click(
-      screen.getByRole("button", { name: "返信ツリーを一括コピー" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "返信ツリーを一括コピー" }));
 
     expect(writeText).toHaveBeenCalledOnce();
-    // @ts-expect-error
+    // @ts-expect-error: mock.calls の引数型は vi.fn の型定義から推論されない
     expect(writeText.mock.calls[0]?.[0]).toContain("[参照元レス]");
-    // @ts-expect-error
+    // @ts-expect-error: 同上
     expect(writeText.mock.calls[0]?.[0]).toContain("1 name-1");
-    // @ts-expect-error
+    // @ts-expect-error: 同上
     expect(writeText.mock.calls[0]?.[0]).toContain("source message");
-    // @ts-expect-error
+    // @ts-expect-error: 同上
     expect(writeText.mock.calls[0]?.[0]).toContain("[返信レス]");
-    // @ts-expect-error
+    // @ts-expect-error: 同上
     expect(writeText.mock.calls[0]?.[0]).toContain("2 name-2");
-    // @ts-expect-error
+    // @ts-expect-error: 同上
     expect(writeText.mock.calls[0]?.[0]).toContain("4 name-4");
     // 末尾にスレタイとURLが付加されることを検証する。
-    // @ts-expect-error
+    // @ts-expect-error: 同上
     expect(writeText.mock.calls[0]?.[0]).toContain("テストスレタイ");
-    // @ts-expect-error
-    expect(writeText.mock.calls[0]?.[0]).toContain(
-      "https://example.com/test/read.cgi/board/123/",
-    );
+    // @ts-expect-error: 同上
+    expect(writeText.mock.calls[0]?.[0]).toContain("https://example.com/test/read.cgi/board/123/");
   });
 
   it("返信ツリー専用メニューから画像としてコピーできる", async () => {
     render(<ReplyTreePopup {...BASE_PROPS} />);
 
     fireEvent.click(screen.getByRole("button", { name: "返信ツリーメニュー" }));
-    fireEvent.click(
-      screen.getByRole("button", { name: "返信ツリーを画像としてコピー" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "返信ツリーを画像としてコピー" }));
 
     await waitFor(() => {
       expect(writeClipboard).toHaveBeenCalledOnce();
@@ -198,9 +177,7 @@ describe("ReplyTreePopup", () => {
     render(<ReplyTreePopup {...BASE_PROPS} />);
 
     fireEvent.click(screen.getByRole("button", { name: "返信ツリーメニュー" }));
-    expect(
-      screen.getByRole("button", { name: "返信ツリーを一括コピー" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "返信ツリーを一括コピー" })).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "返信ツリーを画像としてコピー" }),
     ).toBeInTheDocument();
@@ -219,9 +196,7 @@ describe("ReplyTreePopup", () => {
     const onRepClick = vi.fn();
     render(<ReplyTreePopup {...BASE_PROPS} onRepClick={onRepClick} />);
 
-    const sourceSection = screen
-      .getByText("参照元レス")
-      .closest("section") as HTMLElement;
+    const sourceSection = screen.getByText("参照元レス").closest("section") as HTMLElement;
     const sourceReplyLink = within(sourceSection).getByText("返信(1)");
 
     expect(sourceReplyLink).toHaveAttribute("aria-disabled", "true");

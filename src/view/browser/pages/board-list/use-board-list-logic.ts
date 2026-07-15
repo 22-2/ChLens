@@ -8,7 +8,6 @@ import {
   type OpenedBoardEntry,
 } from "src/view/browser/pages/board-list/board-list-utils";
 
-
 // ─── 定数 ────────────────────────────────────────────────────────────────────
 
 const logger = createLogger("useBoardListLogic");
@@ -33,17 +32,12 @@ function loadStringArrayFromConfig(key: string): string[] {
   try {
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) {
-      logger.warn(
-        `[useBoardListLogic] Config key "${key}" is not an array, resetting to empty.`,
-      );
+      logger.warn(`[useBoardListLogic] Config key "${key}" is not an array, resetting to empty.`);
       return [];
     }
     return parsed as string[];
   } catch (e) {
-    logger.warn(
-      `[useBoardListLogic] Failed to parse config key "${key}", resetting to empty.`,
-      e,
-    );
+    logger.warn(`[useBoardListLogic] Failed to parse config key "${key}", resetting to empty.`, e);
     return [];
   }
 }
@@ -64,7 +58,7 @@ function usePersistedSet(
     const arr = loadStringArrayFromConfig(configKey);
     setSet(new Set(transform ? arr.map(transform) : arr));
     // transform は外部で定義された純粋関数なので deps 不要
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [configKey]);
 
   const add = useCallback(
@@ -97,17 +91,13 @@ export function useBoardListLogic() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openStates, setOpenStates] = useState<Record<string, boolean>>({});
-  const [openedBoardEntries, setOpenedBoardEntries] = useState<
-    OpenedBoardEntry[]
-  >([]);
+  const [openedBoardEntries, setOpenedBoardEntries] = useState<OpenedBoardEntry[]>([]);
 
   const [removedBoardUrls, addRemovedBoardUrl] = usePersistedSet(
     CONFIG_KEYS.REMOVED_BOARD_URLS,
     normalizeBoardUrlForRemove,
   );
-  const [removedMenuNames, addRemovedMenuName] = usePersistedSet(
-    CONFIG_KEYS.REMOVED_MENU_NAMES,
-  );
+  const [removedMenuNames, addRemovedMenuName] = usePersistedSet(CONFIG_KEYS.REMOVED_MENU_NAMES);
   const [removedCategoryIds, addRemovedCategoryId] = usePersistedSet(
     CONFIG_KEYS.REMOVED_CATEGORY_IDS,
   );
@@ -209,10 +199,7 @@ export function useBoardListLogic() {
     (updater: (prev: Record<string, boolean>) => Record<string, boolean>) => {
       setOpenStates((prev) => {
         const next = updater(prev);
-        void container.config.set(
-          CONFIG_KEYS.OPEN_STATES,
-          JSON.stringify(next),
-        );
+        void container.config.set(CONFIG_KEYS.OPEN_STATES, JSON.stringify(next));
         return next;
       });
     },

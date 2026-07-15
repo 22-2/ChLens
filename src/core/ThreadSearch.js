@@ -90,7 +90,7 @@ export default (function () {
         result = Array.from(rss.T("item"));
         //{result} = JSON.parse(body)
       } catch (error) {
-        throw new Error("検索のJSONのパースに失敗しました");
+        throw new Error("検索のJSONのパースに失敗しました", { cause: error });
       }
       return Promise.all(result.map(_parse(this.protocol)));
     }

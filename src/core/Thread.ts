@@ -3,10 +3,7 @@ import { platform } from "src/app";
 import type { HttpResponse } from "src/app/platform/types";
 import type Cache from "src/core/Cache.js";
 import { chServerMoveDetect } from "src/core/jsutil.js";
-import {
-  buildConditionalRequestHeaders,
-  buildThreadFetchPlan,
-} from "src/core/ThreadGetHelpers";
+import { buildConditionalRequestHeaders, buildThreadFetchPlan } from "src/core/ThreadGetHelpers";
 import {
   getThreadXhrInfo,
   isHtmlThread,
@@ -108,14 +105,8 @@ export default class Thread {
   // Public API
   // -------------------------------------------------------------------------
 
-  async get(
-    forceUpdate?: boolean,
-    progress: () => void = () => {},
-  ): Promise<void> {
-    const format2chnet = container.config.get("format_2chnet") as
-      | string
-      | null
-      | undefined;
+  async get(forceUpdate?: boolean, progress: () => void = () => {}): Promise<void> {
+    const format2chnet = container.config.get("format_2chnet") as string | null | undefined;
     const xhrInfo = getThreadXhrInfo(this.url, format2chnet);
 
     if (!xhrInfo) {
@@ -204,10 +195,7 @@ export default class Thread {
         hasCache,
       }).catch(() => {});
     } catch (error: unknown) {
-      const failure =
-        typeof error === "object" && error != null
-          ? (error as ThreadFailure)
-          : {};
+      const failure = typeof error === "object" && error != null ? (error as ThreadFailure) : {};
       response = failure.response;
       thread = failure.thread;
 
@@ -246,15 +234,10 @@ export default class Thread {
    */
   private async _fetchCachedResCount(): Promise<CachedInfoResult> {
     try {
-      const cachedInfo = (await container.board.getCachedResCount(
-        this.url,
-      )) as CachedResCount;
+      const cachedInfo = (await container.board.getCachedResCount(this.url)) as CachedResCount;
       return { status: "success", cachedInfo };
     } catch (error: unknown) {
-      if (
-        error instanceof Error &&
-        error.message === "板のスレ一覧にそのスレが存在しません"
-      ) {
+      if (error instanceof Error && error.message === "板のスレ一覧にそのスレが存在しません") {
         return { status: "not_found" };
       }
       return { status: "none" };
@@ -276,8 +259,7 @@ export default class Thread {
   ): Promise<PrepareResult> {
     try {
       await cache.get();
-      const isFresh =
-        !forceUpdate && Date.now() - (cache.lastUpdated ?? 0) <= 1000 * 3;
+      const isFresh = !forceUpdate && Date.now() - (cache.lastUpdated ?? 0) <= 1000 * 3;
       if (isFresh) {
         return { hasCache: true, needFetch: false };
       }
@@ -372,10 +354,7 @@ export default class Thread {
     bbsType: string;
     format2chnet: string | null | undefined;
   }): ParseResult {
-    if (
-      response?.status === 200 ||
-      (readcgiVer >= 6 && response?.status === 500)
-    ) {
+    if (response?.status === 200 || (readcgiVer >= 6 && response?.status === 500)) {
       return this._parseSuccessResponse({
         response,
         cache,
@@ -403,8 +382,7 @@ export default class Thread {
     if (hasCache) {
       const thread = isHtml
         ? (cache.parsed as ParsedThread)
-        : (parseThread(this.url, cache.data ?? "", { format2chnet }) ??
-          undefined);
+        : (parseThread(this.url, cache.data ?? "", { format2chnet }) ?? undefined);
       return { thread, noChangeFlg: false };
     }
 
@@ -433,8 +411,7 @@ export default class Thread {
     // 全取得
     if (!deltaFlg) {
       return {
-        thread:
-          parseThread(this.url, response.body, { format2chnet }) ?? undefined,
+        thread: parseThread(this.url, response.body, { format2chnet }) ?? undefined,
         noChangeFlg: false,
       };
     }
@@ -505,16 +482,12 @@ export default class Thread {
     format2chnet: string | null | undefined;
   }): ParsedThread | undefined {
     if (!hasCache) {
-      return (
-        parseThread(this.url, response.body, { format2chnet }) ?? undefined
-      );
+      return parseThread(this.url, response.body, { format2chnet }) ?? undefined;
     }
     if (deltaFlg && isHtml) {
       return cache.parsed as ParsedThread;
     }
-    return (
-      parseThread(this.url, cache.data ?? "", { format2chnet }) ?? undefined
-    );
+    return parseThread(this.url, cache.data ?? "", { format2chnet }) ?? undefined;
   }
 
   // -------------------------------------------------------------------------
@@ -525,10 +498,7 @@ export default class Thread {
    * 板スレ一覧のレス数と突き合わせ、不足分をあぼーんで補填する。
    * スレがリストに存在しない場合は expired フラグを立てる。
    */
-  private _padAbobunIfNeeded(
-    thread: ParsedThread,
-    result: CachedInfoResult,
-  ): void {
+  private _padAbobunIfNeeded(thread: ParsedThread, result: CachedInfoResult): void {
     if (result.status === "success" || result.status === "sucess") {
       while (thread.res.length < (result.cachedInfo?.resCount ?? 0)) {
         thread.res.push({
@@ -568,10 +538,7 @@ export default class Thread {
     noChangeFlg,
     hasCache,
   }: UpdateCacheParams): Promise<void> {
-    if (
-      response?.status === 200 ||
-      (readcgiVer >= 6 && response?.status === 500)
-    ) {
+    if (response?.status === 200 || (readcgiVer >= 6 && response?.status === 500)) {
       cache.lastUpdated = Date.now();
 
       if (isHtml && response) {
@@ -602,9 +569,7 @@ export default class Thread {
       cache.resLength = thread.res.length;
 
       if (response) {
-        const lastModified = new Date(
-          response.headers["Last-Modified"] || "dummy",
-        ).getTime();
+        const lastModified = new Date(response.headers["Last-Modified"] || "dummy").getTime();
         if (Number.isFinite(lastModified)) {
           cache.lastModified = lastModified;
         }
@@ -704,9 +669,7 @@ export default class Thread {
       const newBoardURL = await chServerMoveDetect(this.url.toBoard());
       const newUrl = new ChURL(this.url.url.href);
       newUrl.url.hostname = newBoardURL.hostname;
-      const href = container.util.escapeHtml(
-        container.util.safeHref(newUrl.url.href),
-      );
+      const href = container.util.escapeHtml(container.util.safeHref(newUrl.url.href));
       const label = container.util.escapeHtml(newUrl.url.href);
       message += `スレッドの読み込みに失敗しました。\nサーバーが移転している可能性が有ります\n(<a href="${href}" class="open_in_rcrx">${label}</a>)`;
     } catch {
@@ -727,9 +690,7 @@ export default class Thread {
    * したらば向けエラーメッセージ。
    * レスポンスの error ヘッダーによって詳細なメッセージを付加する。
    */
-  private _buildShitarabaErrorMessage(
-    response: HttpResponse | undefined,
-  ): string {
+  private _buildShitarabaErrorMessage(response: HttpResponse | undefined): string {
     let message = "スレッドの読み込みに失敗しました。";
     const errorHeader = response?.headers?.error;
     if (errorHeader == null) return message;
@@ -746,10 +707,7 @@ export default class Thread {
           "\n該当するスレッドは存在しません。\nURLが間違っているか過去ログに移動せずに削除されています。";
         break;
       case "STORAGE IN": {
-        const newUrl = this.url.url.href.replace(
-          "/read.cgi/",
-          "/read_archive.cgi/",
-        );
+        const newUrl = this.url.url.href.replace("/read.cgi/", "/read_archive.cgi/");
         const href = container.util.escapeHtml(container.util.safeHref(newUrl));
         const label = container.util.escapeHtml(newUrl);
         message += `\n過去ログが存在します\n(<a href="${href}" class="open_in_rcrx">${label}</a>)`;
@@ -782,11 +740,7 @@ export default class Thread {
     return getThreadXhrInfo(url, container.config.get("format_2chnet"));
   }
 
-  static parse(
-    url: ChURL,
-    text: string,
-    resLength?: number,
-  ): ParsedThread | null {
+  static parse(url: ChURL, text: string, resLength?: number): ParsedThread | null {
     return parseThread(url, text, {
       format2chnet: container.config.get("format_2chnet"),
       resLength,

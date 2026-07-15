@@ -5,7 +5,7 @@ import {
   toRuntimeVideoEmbedUrl,
   toInlineVideoEmbed,
 } from "src/view/browser/utils/external-media";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 describe("external media", () => {
   it("YouTube URL をレス内埋め込み向けURLへ変換する", () => {
@@ -18,18 +18,14 @@ describe("external media", () => {
     // ベースURLは静的に保ち、拡張機能固有の origin は描画時にのみ付ける。
     expect(media?.embedUrl).not.toContain("enablejsapi");
     expect(media?.embedUrl).not.toContain("origin=");
-    expect(media?.thumbnailUrl).toBe(
-      "https://img.youtube.com/vi/TestVideo01/hqdefault.jpg",
-    );
+    expect(media?.thumbnailUrl).toBe("https://img.youtube.com/vi/TestVideo01/hqdefault.jpg");
   });
 
   it("通常のWebオリジンでは実オリジン付きのYouTube埋め込みURLへ変換する", () => {
     const media = toInlineVideoEmbed("https://youtu.be/TestVideo01?t=3");
 
     expect(media).not.toBeNull();
-    const runtimeUrl = new URL(
-      toRuntimeVideoEmbedUrl(media!, "https://example.com"),
-    );
+    const runtimeUrl = new URL(toRuntimeVideoEmbedUrl(media!, "https://example.com"));
 
     expect(runtimeUrl.searchParams.get("enablejsapi")).toBe("1");
     expect(runtimeUrl.searchParams.get("origin")).toBe("https://example.com");
@@ -39,16 +35,8 @@ describe("external media", () => {
     const media = toInlineVideoEmbed("https://youtu.be/TestVideo01?t=3");
 
     expect(media).not.toBeNull();
-    expect(
-      shouldOpenYouTubeExternally(
-        media!,
-        "chrome-extension://abcdefghijklmnop",
-      ),
-    ).toBe(true);
-    const runtimeUrl = toRuntimeVideoEmbedUrl(
-      media!,
-      "chrome-extension://abcdefghijklmnop",
-    );
+    expect(shouldOpenYouTubeExternally(media!, "chrome-extension://abcdefghijklmnop")).toBe(true);
+    const runtimeUrl = toRuntimeVideoEmbedUrl(media!, "chrome-extension://abcdefghijklmnop");
 
     expect(runtimeUrl).toBe(media!.embedUrl);
   });

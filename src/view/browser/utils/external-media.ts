@@ -20,16 +20,8 @@ const YOUTUBE_HOSTS = new Set([
   "youtube-nocookie.com",
   "www.youtube-nocookie.com",
 ]);
-const youtubeFallbackThumbnailUrl = createThumbnailPlaceholder(
-  "YouTube",
-  "#ef4444",
-  "#111827",
-);
-const nativeVideoFallbackThumbnailUrl = createThumbnailPlaceholder(
-  "VIDEO",
-  "#f8fafc",
-  "#0f172a",
-);
+const youtubeFallbackThumbnailUrl = createThumbnailPlaceholder("YouTube", "#ef4444", "#111827");
+const nativeVideoFallbackThumbnailUrl = createThumbnailPlaceholder("VIDEO", "#f8fafc", "#0f172a");
 const DIRECT_VIDEO_REG = /\.(?:mp4|m4v|webm|ogv|mov|avi)(?:[?#:].*)?$/i;
 
 function createThumbnailPlaceholder(
@@ -80,18 +72,13 @@ function extractYouTubeVideoId(url: URL): string | null {
 
 function buildYouTubeEmbedUrl(youtubeVideoId: string): string {
   // ベースURLは環境非依存に保ち、拡張機能固有の origin は表示時に付与する。
-  const embedUrl = new URL(
-    `https://www.youtube.com/embed/${youtubeVideoId}`,
-  );
+  const embedUrl = new URL(`https://www.youtube.com/embed/${youtubeVideoId}`);
   embedUrl.searchParams.set("rel", "0");
   embedUrl.searchParams.set("playsinline", "1");
   return embedUrl.toString();
 }
 
-function buildYouTubeExternalUrl(
-  youtubeVideoId: string,
-  sourceUrl: URL,
-): string {
+function buildYouTubeExternalUrl(youtubeVideoId: string, sourceUrl: URL): string {
   const externalUrl = new URL("https://www.youtube.com/watch");
   externalUrl.searchParams.set("v", youtubeVideoId);
 

@@ -155,21 +155,16 @@ function initializeBookmarkRuntime(target: RuntimeAppShape): void {
       notifyRootSelectionRequired();
     }
 
-    target.message.on(
-      "config_updated",
-      ({ key, val }: { key?: string; val?: unknown }) => {
-        if (key !== "bookmark_id") {
-          return;
-        }
+    target.message.on("config_updated", ({ key, val }: { key?: string; val?: unknown }) => {
+      if (key !== "bookmark_id") {
+        return;
+      }
 
-        const rootNodeId =
-          typeof val === "string" && val.length > 0
-            ? val
-            : MISSING_BOOKMARK_ROOT_NODE_ID;
+      const rootNodeId =
+        typeof val === "string" && val.length > 0 ? val : MISSING_BOOKMARK_ROOT_NODE_ID;
 
-        void entryList.setRootNodeId?.(rootNodeId);
-      },
-    );
+      void entryList.setRootNodeId?.(rootNodeId);
+    });
   });
 }
 
@@ -258,11 +253,7 @@ export const manifest = (async () => {
   }
 })();
 
-export async function boot(
-  path: string,
-  requirements: Function | string[] | null,
-  fn: Function,
-) {
+export async function boot(path: string, requirements: Function | string[] | null, fn: Function) {
   if (!fn && typeof requirements === "function") {
     fn = requirements;
     requirements = null;

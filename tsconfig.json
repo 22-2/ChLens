@@ -5,16 +5,11 @@
       "src/*": ["./src/*"]
     },
     "target": "esnext",
-    "lib": [
-      "dom",
-      "esnext",
-    ],
+    "lib": ["dom", "esnext"],
     "module": "esnext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
-    "typeRoots": [
-      "src/global.d.ts"
-    ],
+    "typeRoots": ["src/global.d.ts"],
     "allowJs": true,
     "checkJs": true,
     "sourceMap": true,
@@ -25,12 +20,6 @@
     "noUnusedLocals": true,
     "noEmit": true
   },
-  "include": [
-    "./**/*.ts",
-    "./**/*.tsx"
-  ],
-  "exclude": [
-    "node_modules",
-    "tests"
-  ]
+  "include": ["./**/*.ts", "./**/*.tsx"],
+  "exclude": ["node_modules", "tests"]
 }

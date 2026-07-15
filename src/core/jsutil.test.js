@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { ChURL } from "packages/ch-lib/src/url/ChURL";
 
 const requestState = vi.hoisted(() => ({
@@ -88,14 +88,10 @@ describe("chServerMoveDetect", () => {
   it("uses board href when ChURL is passed", async () => {
     const { chServerMoveDetect } = await import("src/core/jsutil.js");
 
-    const threadUrl = new ChURL(
-      "https://headline.5ch.io/test/read.cgi/bbynamazu/1000000009/",
-    );
+    const threadUrl = new ChURL("https://headline.5ch.io/test/read.cgi/bbynamazu/1000000009/");
     const boardUrl = threadUrl.toBoard();
 
-    await expect(chServerMoveDetect(boardUrl)).rejects.toThrow(
-      "stop-test-request",
-    );
+    await expect(chServerMoveDetect(boardUrl)).rejects.toThrow("stop-test-request");
 
     // ChURLでもundefinedではなく実URLで通信することを保証し、
     // /view/undefined への誤リクエスト回帰を防ぐ。

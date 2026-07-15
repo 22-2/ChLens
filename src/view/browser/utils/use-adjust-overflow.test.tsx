@@ -5,7 +5,7 @@ import {
   getPopupViewportBounds,
   useAdjustOverflow,
 } from "src/view/browser/utils/use-adjust-overflow";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 describe("getPopupViewportBounds", () => {
   beforeEach(() => {
@@ -28,8 +28,7 @@ describe("getPopupViewportBounds", () => {
   it("ステータスバーがある時はその上端までを有効ビューポートにする", () => {
     const statusBar = document.createElement("footer");
     statusBar.className = "status-bar";
-    statusBar.getBoundingClientRect = () =>
-      ({ top: 696, bottom: 720, height: 24 }) as DOMRect;
+    statusBar.getBoundingClientRect = () => ({ top: 696, bottom: 720, height: 24 }) as DOMRect;
     document.body.appendChild(statusBar);
 
     expect(getPopupViewportBounds()).toEqual({
@@ -73,15 +72,12 @@ describe("useAdjustOverflow", () => {
 
     const statusBar = document.createElement("footer");
     statusBar.className = "status-bar";
-    statusBar.getBoundingClientRect = () =>
-      ({ top: 696, bottom: 720, height: 24 }) as DOMRect;
+    statusBar.getBoundingClientRect = () => ({ top: 696, bottom: 720, height: 24 }) as DOMRect;
     document.body.appendChild(statusBar);
 
     const getBoundingClientRectSpy = vi
       .spyOn(HTMLElement.prototype, "getBoundingClientRect")
-      .mockImplementation(function mockGetBoundingClientRect(
-        this: HTMLElement,
-      ) {
+      .mockImplementation(function mockGetBoundingClientRect(this: HTMLElement) {
         if (this.classList.contains("status-bar")) {
           return { top: 696, bottom: 720, height: 24 } as DOMRect;
         }
@@ -109,9 +105,7 @@ describe("useAdjustOverflow", () => {
       const ref = useRef<HTMLDivElement>(null);
       useAdjustOverflow(ref, 8);
 
-      return (
-        <div ref={ref} data-testid="popup" style={{ left: 100, top: 650 }} />
-      );
+      return <div ref={ref} data-testid="popup" style={{ left: 100, top: 650 }} />;
     }
 
     const { getByTestId } = render(<Harness />);

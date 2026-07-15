@@ -1,6 +1,6 @@
 ---
 description: Describe when these instructions should be loaded by the agent based on task context
-applyTo: '**' # when provided, instructions will automatically be added to the request context when the pattern matches an attached file
+applyTo: "**" # when provided, instructions will automatically be added to the request context when the pattern matches an attached file
 ---
 
 基本的に、new-ui（src/view/browser）を編集してくださいっす

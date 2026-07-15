@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 // インメモリ ObjectStore（url を keyPath とする）で Cache のブラウザ分岐を検証する。
 // fake-indexeddb / webextension-polyfill を避け、Cache のログ用ロジックだけを切り出してテストする。

@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface ThreadMinimapProps {
   rootRef: React.RefObject<HTMLDivElement | null>;
@@ -47,17 +41,13 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-function getOffsetTopWithinAncestor(
-  el: HTMLElement,
-  ancestor: HTMLElement,
-): number {
+function getOffsetTopWithinAncestor(el: HTMLElement, ancestor: HTMLElement): number {
   let top = 0;
   let current: HTMLElement | null = el;
 
   while (current && current !== ancestor) {
     top += current.offsetTop;
-    current =
-      current.offsetParent instanceof HTMLElement ? current.offsetParent : null;
+    current = current.offsetParent instanceof HTMLElement ? current.offsetParent : null;
   }
 
   if (current === ancestor) {
@@ -70,10 +60,7 @@ function getOffsetTopWithinAncestor(
   return ancestor.scrollTop + (elRect.top - ancestorRect.top);
 }
 
-function isSameFrame(
-  left: MinimapFrame | null,
-  right: MinimapFrame | null,
-): boolean {
+function isSameFrame(left: MinimapFrame | null, right: MinimapFrame | null): boolean {
   if (left === right) {
     return true;
   }
@@ -144,10 +131,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
       if (!host) {
         return;
       }
-      host.style.setProperty(
-        "--thread-minimap-width",
-        `${Math.max(0, widthPx)}px`,
-      );
+      host.style.setProperty("--thread-minimap-width", `${Math.max(0, widthPx)}px`);
       host.classList.toggle("thread-page--with-minimap", widthPx > 0);
     },
     [rootRef],
@@ -179,10 +163,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
       MINIMAP_MAX_WIDTH,
     );
 
-    const scrollbarWidth = Math.max(
-      0,
-      scrollContainer.offsetWidth - scrollContainer.clientWidth,
-    );
+    const scrollbarWidth = Math.max(0, scrollContainer.offsetWidth - scrollContainer.clientWidth);
     // スクロールバーと重なるとドラッグ操作が失敗しやすいので、バー幅ぶん左へ逃がす。
     const preferredLeft = rect.right - scrollbarWidth - width - MINIMAP_GAP;
     const left = Math.max(rect.left + 8, preferredLeft);
@@ -202,13 +183,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     });
     // 本文をミニマップの下に潜り込ませないため、同じ幅を右余白として予約する。
     setHostMinimapWidth(width + MINIMAP_GAP);
-  }, [
-    activeTopBar,
-    getScrollContainer,
-    getTopBarRoot,
-    responseCount,
-    setHostMinimapWidth,
-  ]);
+  }, [activeTopBar, getScrollContainer, getTopBarRoot, responseCount, setHostMinimapWidth]);
 
   const getMetrics = useCallback((): MinimapMetrics | null => {
     const scrollContainer = getScrollContainer();
@@ -241,13 +216,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     const responsesRoot = getResponsesRoot();
     const metrics = getMetrics();
     const currentFrame = frame;
-    if (
-      !canvas ||
-      !scrollContainer ||
-      !responsesRoot ||
-      !metrics ||
-      !currentFrame
-    ) {
+    if (!canvas || !scrollContainer || !responsesRoot || !metrics || !currentFrame) {
       return;
     }
 
@@ -273,10 +242,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, cssWidth, cssHeight);
 
-    const responsesTop = getOffsetTopWithinAncestor(
-      responsesRoot,
-      scrollContainer,
-    );
+    const responsesTop = getOffsetTopWithinAncestor(responsesRoot, scrollContainer);
     const minY = 6;
     const maxY = cssHeight - 6;
     const markerX = cssWidth - 6;
@@ -293,18 +259,16 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
         continue;
       }
 
-      const resEl = responsesRoot.querySelector(`[data-res-num=\"${resNum}\"]`);
+      const resEl = responsesRoot.querySelector(`[data-res-num="${resNum}"]`);
       if (!(resEl instanceof HTMLElement) || resEl.offsetHeight === 0) {
         continue;
       }
 
       const markerHeight = Math.max(resEl.offsetHeight * metrics.scale, 4);
-      const centerY =
-        (responsesTop + resEl.offsetTop) * metrics.scale + markerHeight / 2;
+      const centerY = (responsesTop + resEl.offsetTop) * metrics.scale + markerHeight / 2;
       const y = clamp(centerY, minY, maxY);
 
-      ctx.fillStyle =
-        count >= 5 ? "rgba(220, 40, 40, 0.95)" : "rgba(255, 140, 0, 0.9)";
+      ctx.fillStyle = count >= 5 ? "rgba(220, 40, 40, 0.95)" : "rgba(255, 140, 0, 0.9)";
       ctx.fillText("◀", markerX, y);
       // 実際の三角記号より広い当たり判定を持たせ、細いミニマップでもクリックしやすくする。
       markerHits.push({
@@ -377,8 +341,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
       viewportTop = clamp(viewportTop, 0, metrics.maxViewportTop);
 
       const scrollableRange = metrics.scrollHeight - metrics.clientHeight;
-      const ratio =
-        metrics.maxViewportTop === 0 ? 0 : viewportTop / metrics.maxViewportTop;
+      const ratio = metrics.maxViewportTop === 0 ? 0 : viewportTop / metrics.maxViewportTop;
       const targetTop = scrollableRange <= 0 ? 0 : ratio * scrollableRange;
 
       scrollContainer.scrollTo({ top: targetTop, behavior: "auto" });
@@ -402,11 +365,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
       event.currentTarget.setPointerCapture(event.pointerId);
 
       const relativeX = event.clientX - currentFrame.left;
-      const relativeY = clamp(
-        event.clientY - currentFrame.top,
-        0,
-        currentFrame.height,
-      );
+      const relativeY = clamp(event.clientY - currentFrame.top, 0, currentFrame.height);
       const markerHit = findMarkerByPoint(relativeX, relativeY);
       if (markerHit) {
         pointerStateRef.current.isDragging = true;
@@ -455,11 +414,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
       }
 
       event.preventDefault();
-      const relativeY = clamp(
-        event.clientY - currentFrame.top,
-        0,
-        currentFrame.height,
-      );
+      const relativeY = clamp(event.clientY - currentFrame.top, 0, currentFrame.height);
       scrollByPointer(relativeY, true);
     },
     [frame, scrollByPointer],
@@ -493,11 +448,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
         const currentFrame = frame;
         if (currentFrame && pointerStateRef.current.markerResNum != null) {
           const relativeX = event.clientX - currentFrame.left;
-          const relativeY = clamp(
-            event.clientY - currentFrame.top,
-            0,
-            currentFrame.height,
-          );
+          const relativeY = clamp(event.clientY - currentFrame.top, 0, currentFrame.height);
           const moveX = relativeX - pointerStateRef.current.startX;
           const moveY = relativeY - pointerStateRef.current.startY;
           const movedDistanceSq = moveX * moveX + moveY * moveY;

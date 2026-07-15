@@ -40,9 +40,7 @@ export const SearchBar: React.FC<Props> = ({
           if (e.key === "Escape") onClose();
         }}
       />
-      {hitCount !== undefined && (
-        <span className="search-bar__count">{hitCount}件</span>
-      )}
+      {hitCount !== undefined && <span className="search-bar__count">{hitCount}件</span>}
       <button className="search-bar__close" onClick={onClose}>
         ✕
       </button>

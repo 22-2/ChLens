@@ -4,13 +4,7 @@ import { splitNgDslEntries } from "src/core/ngDsl";
 import { container, INGResult } from "src/service-container/index";
 import { createLogger } from "src/core/logger";
 
-import {
-  checkResNum,
-  checkScope,
-  checkWord,
-  NGResObj,
-  NGThreadObj,
-} from "src/core/NGMatcher";
+import { checkResNum, checkScope, checkWord, NGResObj, NGThreadObj } from "src/core/NGMatcher";
 import { parseNgString, setupNgRegex } from "src/core/NGParser";
 import { InternalNGElement, TYPE } from "src/core/NGTypes";
 
@@ -88,17 +82,12 @@ type CommonFilterContext = {
  * isNGBoard / isNGThread で共通するガード条件をまとめたフィルタ。
  * false を返したルールはスキップ対象。
  */
-function passesCommonFilters(
-  n: InternalNGElement,
-  ctx: CommonFilterContext,
-  now: number,
-): boolean {
+function passesCommonFilters(n: InternalNGElement, ctx: CommonFilterContext, now: number): boolean {
   if (n.type === TYPE.INVALID || n.type === "" || n.word === "") return false;
   if (!checkScope(n, ctx.url)) return false;
   if (n.expire != null && now > n.expire) return false;
   if (n.exception !== ctx.exceptionFlg) return false;
-  if (n.subType != null && ctx.subType && !n.subType.includes(ctx.subType))
-    return false;
+  if (n.subType != null && ctx.subType && !n.subType.includes(ctx.subType)) return false;
   return true;
 }
 
@@ -222,10 +211,7 @@ export function isNGBoard(
 
     checkedCount += 1;
 
-    if (
-      n.subElements != null &&
-      !n.subElements.every((sub) => checkWord(sub, threadObj))
-    ) {
+    if (n.subElements != null && !n.subElements.every((sub) => checkWord(sub, threadObj))) {
       continue;
     }
 
@@ -267,23 +253,24 @@ const THREAD_DENIED_TYPES: ReadonlySet<string> = new Set([
 ]);
 
 export function isNGThread(
-  res: any,
+  res: unknown,
   title: string,
   url: string,
   exceptionFlg: boolean = false,
   subType: string | null = null,
 ): INGResult | null {
-  const name = decodeCharReference(res.name);
-  const mail = decodeCharReference(res.mail);
-  const other = decodeCharReference(res.other);
-  const mes = decodeCharReference(res.message);
+  const resObj_raw = res as Record<string, unknown>;
+  const name = decodeCharReference(String(resObj_raw.name ?? ""));
+  const mail = decodeCharReference(String(resObj_raw.mail ?? ""));
+  const other = decodeCharReference(String(resObj_raw.other ?? ""));
+  const mes = decodeCharReference(String(resObj_raw.message ?? ""));
 
   const resObj: Partial<NGResObj & NGThreadObj> = {
     all: `${name} ${mail} ${other} ${mes}`,
     name,
     mail,
-    id: res.id ?? null,
-    slip: res.slip ?? null,
+    id: resObj_raw.id ?? null,
+    slip: resObj_raw.slip ?? null,
     mes,
     title,
     url,
@@ -297,14 +284,11 @@ export function isNGThread(
   for (const n of get()) {
     if (THREAD_DENIED_TYPES.has(n.type)) continue;
     if (!passesCommonFilters(n, ctx, now)) continue;
-    if (checkResNum(n, res.num)) continue;
+    if (checkResNum(n, resObj_raw.num)) continue;
 
     checkedCount += 1;
 
-    if (
-      n.subElements != null &&
-      !n.subElements.every((sub) => checkWord(sub, resObj))
-    ) {
+    if (n.subElements != null && !n.subElements.every((sub) => checkWord(sub, resObj))) {
       continue;
     }
 
@@ -317,7 +301,7 @@ export function isNGThread(
         scope: n.scope?.value,
         title,
         url,
-        resNum: res?.num,
+        resNum: resObj_raw.num,
         checkedCount,
       });
       return {
@@ -334,14 +318,14 @@ export function isNGThread(
   // デフォルトは先頭数件のみ no_hit を出し、必要時は target res 指定で絞れる。
   const shouldLog =
     debugTargetResNum != null
-      ? res?.num === debugTargetResNum
-      : typeof res?.num === "number" && res.num <= 3;
+      ? resObj_raw.num === debugTargetResNum
+      : typeof resObj_raw.num === "number" && resObj_raw.num <= 3;
 
   if (shouldLog) {
     logger.debug("thread.no_hit", {
       title,
       url,
-      resNum: res?.num,
+      resNum: resObj_raw.num,
       checkedCount,
       totalRuleCount: get().size,
       debugTargetResNum,
@@ -351,10 +335,7 @@ export function isNGThread(
   return null;
 }
 
-export function isIgnoreResNumForAuto(
-  resNum: number,
-  subType: string = "",
-): boolean {
+export function isIgnoreResNumForAuto(resNum: number, subType: string = ""): boolean {
   for (const n of get()) {
     if (n.type !== TYPE.AUTO) continue;
     if (n.subType != null && !n.subType.includes(subType)) continue;
@@ -364,7 +345,7 @@ export function isIgnoreResNumForAuto(
 }
 
 export function isThreadIgnoreNgType(
-  res: any,
+  res: unknown,
   threadTitle: string,
   url: string,
   ngType: string,

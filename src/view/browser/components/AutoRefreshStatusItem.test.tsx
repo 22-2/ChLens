@@ -3,11 +3,8 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { container } from "src/service-container/index";
 import type { Page } from "src/view/browser/types";
 import { AutoRefreshStatusItem } from "src/view/browser/components/AutoRefreshStatusItem";
-import {
-  StatusBar,
-  StatusBarProvider,
-} from "src/view/browser/components/StatusBar";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { StatusBar, StatusBarProvider } from "src/view/browser/components/StatusBar";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mocks = vi.hoisted(() => ({
   currentPage: {
@@ -16,7 +13,7 @@ const mocks = vi.hoisted(() => ({
     threadUrl: "https://example.com/test/read.cgi/software/1/",
   } as Page,
   autoRefreshPanel: {
-    panelKind: "thread" as const,
+    panelKind: "thread" as "thread" | "threadList" | null,
     isOnThread: true,
     isEnabled: false,
     intervalSec: 30,
@@ -108,6 +105,7 @@ describe("AutoRefreshStatusItem", () => {
         return "0";
       }),
       set: vi.fn(),
+      getAll: () => ({}),
       ready: (callback: () => void) => callback(),
     };
     container.message = {
@@ -135,9 +133,7 @@ describe("AutoRefreshStatusItem", () => {
 
     expect(screen.getByText("スレッド自動更新")).toBeInTheDocument();
     expect(screen.getByText("自動次スレ移動")).toBeInTheDocument();
-    expect(
-      screen.getByRole("combobox", { name: "自動スクロールスタイル" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "自動スクロールスタイル" })).toBeInTheDocument();
     expect(screen.queryByRole("radio")).not.toBeInTheDocument();
 
     fireEvent.pointerDown(button);
@@ -176,9 +172,7 @@ describe("AutoRefreshStatusItem", () => {
     expect(
       screen.getByText("スレ一覧を開いている間だけ、同じタブで自動更新します"),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByText("自動スクロールスタイル"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("自動スクロールスタイル")).not.toBeInTheDocument();
   });
 
   it("スレッドでもスレ一覧でもないページでは表示しない", () => {

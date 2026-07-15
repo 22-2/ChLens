@@ -11,7 +11,7 @@ import { levenshteinDistance } from "src/core/Util.ts";
 export var Anchor = {
   reg: {
     ANCHOR:
-      /(?:&gt;|＞){1,2}[\d\uff10-\uff19]+(?:[\-\u30fc][\d\uff10-\uff19]+)?(?:\s*[,、]\s*[\d\uff10-\uff19]+(?:[\-\u30fc][\d\uff10-\uff19]+)?)*/g,
+      /(?:&gt;|＞){1,2}[\d\uff10-\uff19]+(?:[-\u30fc][\d\uff10-\uff19]+)?(?:\s*[,、]\s*[\d\uff10-\uff19]+(?:[-\u30fc][\d\uff10-\uff19]+)?)*/g,
     _FW_NUMBER: /[\uff10-\uff19]/g,
   },
 
@@ -23,15 +23,9 @@ export var Anchor = {
     };
 
     str = app.replaceAll(str, "\u30fc", "-");
-    str = str.replace(Anchor.reg._FW_NUMBER, ($0) =>
-      String.fromCharCode($0.charCodeAt(0) - 65248),
-    );
+    str = str.replace(Anchor.reg._FW_NUMBER, ($0) => String.fromCharCode($0.charCodeAt(0) - 65248));
 
-    if (
-      !/^(?:&gt;|＞){0,2}([\d]+(?:-\d+)?(?:\s*[,、]\s*\d+(?:-\d+)?)*)$/.test(
-        str,
-      )
-    ) {
+    if (!/^(?:&gt;|＞){0,2}([\d]+(?:-\d+)?(?:\s*[,、]\s*\d+(?:-\d+)?)*)$/.test(str)) {
       return data;
     }
 
@@ -39,10 +33,7 @@ export var Anchor = {
     while ((segment = segReg.exec(str))) {
       // 桁数の大きすぎる値は無視
       var segrangeEnd, segrangeStart;
-      if (
-        segment[1].length > 5 ||
-        (segment[2] != null ? segment[2].length : undefined) > 5
-      ) {
+      if (segment[1].length > 5 || (segment[2] != null ? segment[2].length : undefined) > 5) {
         continue;
       }
       // 1以下の値は無視
@@ -78,9 +69,7 @@ export var chServerMoveDetect = async function (oldBoardUrl, html) {
   // 呼び出し元によって app.URL.URL と ch-lib の ChURL が混在するため、
   // ここで生の URL インスタンスへ正規化して undefined URL リクエストを防ぐ。
   const normalizedOldBoardUrl =
-    oldBoardUrl != null && oldBoardUrl.url instanceof window.URL
-      ? oldBoardUrl.url
-      : oldBoardUrl;
+    oldBoardUrl != null && oldBoardUrl.url instanceof window.URL ? oldBoardUrl.url : oldBoardUrl;
   if (!(normalizedOldBoardUrl instanceof window.URL)) {
     throw new Error("板URLの型が不正です");
   }
@@ -90,23 +79,17 @@ export var chServerMoveDetect = async function (oldBoardUrl, html) {
   if (typeof html !== "string") {
     //htmlが渡されなかった場合は通信する
     let status;
-    ({ status, body: html } = await new Request(
-      "GET",
-      normalizedOldBoardUrl.href,
-      {
-        mimeType: "text/html; charset=Shift_JIS",
-        cache: false,
-      },
-    ).send());
+    ({ status, body: html } = await new Request("GET", normalizedOldBoardUrl.href, {
+      mimeType: "text/html; charset=Shift_JIS",
+      cache: false,
+    }).send());
     if (status !== 200) {
       throw new Error("サーバー移転判定のための通信に失敗しました");
     }
   }
 
   //htmlから移転を判定
-  const res = new RegExp(
-    `location\\.href="(https?://(\\w+\\.)?5ch\\.net/\\w*/)"`,
-  ).exec(html);
+  const res = new RegExp(`location\\.href="(https?://(\\w+\\.)?5ch\\.net/\\w*/)"`).exec(html);
   if (res) {
     let newBoardUrlTmp;
     if (res[2] != null) {
@@ -128,10 +111,7 @@ export var chServerMoveDetect = async function (oldBoardUrl, html) {
       if (data == null) {
         throw new Error("BBSMenuの取得に失敗しました");
       }
-      const boardKey = __guard__(
-        normalizedOldBoardUrl.pathname.split("/"),
-        (x) => x[1],
-      );
+      const boardKey = __guard__(normalizedOldBoardUrl.pathname.split("/"), (x) => x[1]);
       if (!boardKey) {
         throw new Error("板のURL形式が不明です");
       }
@@ -141,10 +121,7 @@ export var chServerMoveDetect = async function (oldBoardUrl, html) {
           if (m != null) {
             const newUrl = new URL(m[0]);
             newUrl.protocol = "http:";
-            if (
-              boardKey === m[1] &&
-              normalizedOldBoardUrl.hostname !== newUrl.hostname
-            ) {
+            if (boardKey === m[1] && normalizedOldBoardUrl.hostname !== newUrl.hostname) {
               return newUrl;
             }
           }
@@ -165,25 +142,22 @@ export var chServerMoveDetect = async function (oldBoardUrl, html) {
 //文字参照をデコード
 const $span = $__("span");
 export var decodeCharReference = (str) =>
-  str.replace(
-    /\&(?:#(\d+)|#x([\dA-Fa-f]+)|([\da-zA-Z]+));/g,
-    function ($0, $1, $2, $3) {
-      //数値文字参照 - 10進数
-      if ($1 != null) {
-        return String.fromCodePoint($1);
-      }
-      //数値文字参照 - 16進数
-      if ($2 != null) {
-        return String.fromCodePoint(parseInt($2, 16));
-      }
-      //文字実体参照
-      if ($3 != null) {
-        $span.innerHTML = $0;
-        return $span.textContent;
-      }
-      return $0;
-    },
-  );
+  str.replace(/&(?:#(\d+)|#x([\dA-Fa-f]+)|([\da-zA-Z]+));/g, function ($0, $1, $2, $3) {
+    //数値文字参照 - 10進数
+    if ($1 != null) {
+      return String.fromCodePoint($1);
+    }
+    //数値文字参照 - 16進数
+    if ($2 != null) {
+      return String.fromCodePoint(parseInt($2, 16));
+    }
+    //文字実体参照
+    if ($3 != null) {
+      $span.innerHTML = $0;
+      return $span.textContent;
+    }
+    return $0;
+  });
 
 //マウスクリックのイベントオブジェクトから、リンク先をどう開くべきかの情報を導く
 const openMap = new Map([
@@ -197,13 +171,7 @@ const openMap = new Map([
   ["1falsetrue", { newTab: true, newWindow: false, background: true }],
   ["1truetrue", { newTab: true, newWindow: false, background: false }],
 ]);
-export var getHowToOpen = function ({
-  type,
-  button,
-  shiftKey,
-  ctrlKey,
-  metaKey,
-}) {
+export var getHowToOpen = function ({ type, button, shiftKey, ctrlKey, metaKey }) {
   if (!ctrlKey) {
     ctrlKey = metaKey;
   }
@@ -217,11 +185,7 @@ export var getHowToOpen = function ({
   return def;
 };
 
-export var searchNextThread = async function (
-  threadUrlStr,
-  threadTitle,
-  resString,
-) {
+export var searchNextThread = async function (threadUrlStr, threadTitle, resString) {
   const threadUrl = new URL(threadUrlStr);
   const boardUrl = threadUrl.toBoard();
   threadTitle = normalize(threadTitle);
@@ -236,11 +200,7 @@ export var searchNextThread = async function (
       let left;
       let score = levenshteinDistance(threadTitle, normalize(title), false);
       const m = url.match(/(?:https:\/\/)?(?:\w+(\.[25]ch\.net\/.+)|(.+))$/);
-      if (
-        resString.includes(
-          (left = m[1] != null ? m[1] : m[2]) != null ? left : url,
-        )
-      ) {
+      if (resString.includes((left = m[1] != null ? m[1] : m[2]) != null ? left : url)) {
         score -= 3;
       }
       return { score, title, url };
@@ -384,7 +344,5 @@ export var isNewerReadState = function (a, b) {
 };
 
 function __guard__(value, transform) {
-  return typeof value !== "undefined" && value !== null
-    ? transform(value)
-    : undefined;
+  return typeof value !== "undefined" && value !== null ? transform(value) : undefined;
 }

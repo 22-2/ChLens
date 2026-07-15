@@ -8,8 +8,7 @@ const WRITE_SUBMIT_CTRL_ENTER_KEY = "write_submit_ctrl_enter";
 
 export const WritePanelContent: React.FC = () => {
   const { currentPage } = useTabStore();
-  const { writePanelInsertRequest, clearWritePanelInsertRequest, closePanel } =
-    useBottomPanel();
+  const { writePanelInsertRequest, clearWritePanelInsertRequest, closePanel } = useBottomPanel();
   const threadUrl = currentPage.type === "thread" ? currentPage.threadUrl : "";
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [submitWithCtrlEnter, setSubmitWithCtrlEnter] = useState(
@@ -42,9 +41,7 @@ export const WritePanelContent: React.FC = () => {
       if (key !== WRITE_SUBMIT_CTRL_ENTER_KEY) {
         return;
       }
-      setSubmitWithCtrlEnter(
-        container.config.get(WRITE_SUBMIT_CTRL_ENTER_KEY) === "on",
-      );
+      setSubmitWithCtrlEnter(container.config.get(WRITE_SUBMIT_CTRL_ENTER_KEY) === "on");
     };
 
     container.message.on("config_updated", handleConfigUpdated);
@@ -73,19 +70,11 @@ export const WritePanelContent: React.FC = () => {
     textarea.focus();
     const caretPosition = nextMessage.length;
     textarea.setSelectionRange(caretPosition, caretPosition);
-  }, [
-    clearWritePanelInsertRequest,
-    message,
-    setMessage,
-    writePanelInsertRequest,
-  ]);
+  }, [clearWritePanelInsertRequest, message, setMessage, writePanelInsertRequest]);
 
   const handleSubmitWithCtrlEnterChange = useCallback((checked: boolean) => {
     setSubmitWithCtrlEnter(checked);
-    void container.config.set(
-      WRITE_SUBMIT_CTRL_ENTER_KEY,
-      checked ? "on" : "off",
-    );
+    void container.config.set(WRITE_SUBMIT_CTRL_ENTER_KEY, checked ? "on" : "off");
   }, []);
 
   const handleTextareaKeyDown = useCallback(
@@ -171,9 +160,7 @@ export const WritePanelContent: React.FC = () => {
               <input
                 type="checkbox"
                 checked={submitWithCtrlEnter}
-                onChange={(e) =>
-                  handleSubmitWithCtrlEnterChange(e.target.checked)
-                }
+                onChange={(e) => handleSubmitWithCtrlEnterChange(e.target.checked)}
                 disabled={isSubmitting}
               />
               Ctrl+Enterで書き込む
@@ -187,11 +174,7 @@ export const WritePanelContent: React.FC = () => {
               onChange={(e) => setMessage(e.target.value)}
               onKeyDown={handleTextareaKeyDown}
               disabled={isSubmitting}
-              placeholder={
-                threadUrl
-                  ? "本文を入力..."
-                  : "スレッドを開いてから書き込んでください"
-              }
+              placeholder={threadUrl ? "本文を入力..." : "スレッドを開いてから書き込んでください"}
             />
             <div className="write-panel__side">
               <button
@@ -211,9 +194,7 @@ export const WritePanelContent: React.FC = () => {
                 </button>
               )}
               {statusText && (
-                <span
-                  className={`write-panel__status write-panel__status--${status}`}
-                >
+                <span className={`write-panel__status write-panel__status--${status}`}>
                   {statusText}
                 </span>
               )}

@@ -5,15 +5,9 @@ import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
 import { URL as ChURL } from "src/core/URL";
 import { container } from "src/service-container/index";
 import type { IReadState, IThread } from "src/service-container/interfaces";
-import {
-  ContextMenu,
-  ContextMenuItem,
-} from "src/view/browser/components/ContextMenu";
+import { ContextMenu, ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import { SearchBar } from "src/view/browser/components/SearchBar";
-import {
-  ColumnDef,
-  SimpleDataTable,
-} from "src/view/browser/components/SimpleDataTable";
+import { ColumnDef, SimpleDataTable } from "src/view/browser/components/SimpleDataTable";
 import {
   BOARD_AUTO_REFRESH_CONFIG_KEY,
   MIN_BOARD_AUTO_REFRESH_MS,
@@ -44,8 +38,7 @@ type ThreadListSortPreference = {
 };
 
 const THREAD_LIST_SORT_STORAGE_KEY = "chlens_browser_thread_list_sort_by_site";
-const THREAD_LIST_COLUMN_VISIBILITY_STORAGE_KEY =
-  "chlens_browser_thread_list_columns_visibility";
+const THREAD_LIST_COLUMN_VISIBILITY_STORAGE_KEY = "chlens_browser_thread_list_columns_visibility";
 const THREAD_LIST_COLUMN_VISIBILITY_LOCKED_KEYS = ["title"] as const;
 const DEFAULT_THREAD_LIST_SORT: ThreadListSortPreference = {
   column: null,
@@ -125,10 +118,7 @@ function resolveHighlightColor(bgColor: string): string {
   return BG_COLOR_PRESETS[bgColor] ?? bgColor;
 }
 
-function createHighlightRowStyle(
-  bgColor: string,
-  theme: ResolvedTheme,
-): HighlightRowStyle {
+function createHighlightRowStyle(bgColor: string, theme: ResolvedTheme): HighlightRowStyle {
   const resolvedBackground = resolveHighlightColor(bgColor);
   const parsed = parseColorToRgb(resolvedBackground);
 
@@ -147,11 +137,7 @@ function createHighlightRowStyle(
   // inline background-color だと hover 時に上書きしづらいので、通常色と hover 色を CSS 変数で渡す。
   return {
     "--thread-list-highlight-bg": resolvedBackground,
-    "--thread-list-highlight-hover-bg": blendRgb(
-      parsed,
-      overlay.color,
-      overlay.alpha,
-    ),
+    "--thread-list-highlight-hover-bg": blendRgb(parsed, overlay.color, overlay.alpha),
   };
 }
 
@@ -187,21 +173,15 @@ function resolveThreadListSortSiteKey(boardUrl: string): string {
   }
 }
 
-function readThreadListSortPreference(
-  boardUrl: string,
-): ThreadListSortPreference {
+function readThreadListSortPreference(boardUrl: string): ThreadListSortPreference {
   try {
     const raw = getStore2String(THREAD_LIST_SORT_STORAGE_KEY);
     if (!raw) {
       return DEFAULT_THREAD_LIST_SORT;
     }
 
-    const stored = JSON.parse(raw) as Record<
-      string,
-      Partial<ThreadListSortPreference> | undefined
-    >;
-    const currentSitePreference =
-      stored[resolveThreadListSortSiteKey(boardUrl)];
+    const stored = JSON.parse(raw) as Record<string, Partial<ThreadListSortPreference> | undefined>;
+    const currentSitePreference = stored[resolveThreadListSortSiteKey(boardUrl)];
     const column = currentSitePreference?.column;
     const direction = currentSitePreference?.direction;
     if (column === null) {
@@ -210,12 +190,7 @@ function readThreadListSortPreference(
         direction: "asc",
       };
     }
-    if (
-      column &&
-      direction &&
-      isSortColumn(column) &&
-      isSortDirection(direction)
-    ) {
+    if (column && direction && isSortColumn(column) && isSortDirection(direction)) {
       return {
         column,
         direction,
@@ -234,12 +209,10 @@ function writeThreadListSortPreference(
 ): void {
   try {
     const raw = getStore2String(THREAD_LIST_SORT_STORAGE_KEY);
-    const stored = raw
-      ? (JSON.parse(raw) as Record<string, ThreadListSortPreference>)
-      : {};
+    const stored = raw ? (JSON.parse(raw) as Record<string, ThreadListSortPreference>) : {};
 
     stored[resolveThreadListSortSiteKey(boardUrl)] = preference;
-    setStore2String(THREAD_LIST_SORT_STORAGE_KEY, JSON.stringify(stored));
+    void setStore2String(THREAD_LIST_SORT_STORAGE_KEY, JSON.stringify(stored));
   } catch {
     // localStorage 書き込み不可でも一覧操作は止めない。
   }
@@ -288,7 +261,7 @@ function readOpenedBoardEntries(): OpenedBoardEntry[] {
 
         return {
           url: normalizeBoardUrl(entry.url),
-          title: entry.title as string || "",
+          title: (entry.title as string) || "",
         } satisfies OpenedBoardEntry;
       })
       .filter((entry): entry is OpenedBoardEntry => entry !== null);
@@ -305,13 +278,9 @@ function writeOpenedBoardEntries(entries: OpenedBoardEntry[]): void {
   );
 }
 
-function upsertOpenedBoardEntry(
-  boardUrl: string,
-  boardTitle: string | null,
-): void {
+function upsertOpenedBoardEntry(boardUrl: string, boardTitle: string | null): void {
   const normalizedUrl = normalizeBoardUrl(boardUrl);
-  const nextTitle =
-    boardTitle && boardTitle.trim() !== "" ? boardTitle : undefined;
+  const nextTitle = boardTitle && boardTitle.trim() !== "" ? boardTitle : undefined;
   const existingEntries = readOpenedBoardEntries();
   const existingIndex = existingEntries.findIndex(
     (entry) => normalizeBoardUrl(entry.url) === normalizedUrl,
@@ -331,10 +300,7 @@ function upsertOpenedBoardEntry(
 
   // 変更理由: readState/history 未生成でも「一度開いた板」に残せるよう、
   // スレ一覧を開いた時点で板URLを明示記録する。
-  writeOpenedBoardEntries([
-    { url: normalizedUrl, title: nextTitle || "" },
-    ...existingEntries,
-  ]);
+  writeOpenedBoardEntries([{ url: normalizedUrl, title: nextTitle || "" }, ...existingEntries]);
 }
 
 function isResolvedBoardTitle(boardUrl: string, candidate: string): boolean {
@@ -392,9 +358,7 @@ const THREAD_LIST_COLUMNS: ColumnDef<DisplayThread>[] = [
       return (
         <>
           {thread.title}
-          {hlParams?.label && (
-            <span className="thread-list__label">{hlParams.label}</span>
-          )}
+          {hlParams?.label && <span className="thread-list__label">{hlParams.label}</span>}
         </>
       );
     },
@@ -444,10 +408,9 @@ export const ThreadListPage: React.FC<Props> = ({
   const [isDocumentVisible, setIsDocumentVisible] = useState(
     document.visibilityState === "visible",
   );
-  const [sortPreference, setSortPreference] =
-    useState<ThreadListSortPreference>(() =>
-      readThreadListSortPreference(page.boardUrl),
-    );
+  const [sortPreference, setSortPreference] = useState<ThreadListSortPreference>(() =>
+    readThreadListSortPreference(page.boardUrl),
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
     pageType: "threadList",
@@ -476,9 +439,7 @@ export const ThreadListPage: React.FC<Props> = ({
         setError(result.message);
       }
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "スレッド一覧の取得に失敗しました",
-      );
+      setError(e instanceof Error ? e.message : "スレッド一覧の取得に失敗しました");
     } finally {
       setLoading(false);
     }
@@ -486,7 +447,7 @@ export const ThreadListPage: React.FC<Props> = ({
   }, [page.boardUrl, refreshKey]);
 
   useEffect(() => {
-    fetchThreads();
+    void fetchThreads();
   }, [fetchThreads]);
 
   useEffect(() => {
@@ -494,15 +455,10 @@ export const ThreadListPage: React.FC<Props> = ({
     const handleNgChanged = () => {
       setThreads((prev) =>
         prev.map((thread) => {
-          const ngResult = container.ng.isNGBoard(
-            thread.title,
-            page.boardUrl,
-            thread.resCount,
-          );
+          const ngResult = container.ng.isNGBoard(thread.title, page.boardUrl, thread.resCount);
           const highlight =
             ngResult &&
-            (ngResult.type === "HighlightTitle" ||
-              ngResult.type === "RegExpHighlightTitle");
+            (ngResult.type === "HighlightTitle" || ngResult.type === "RegExpHighlightTitle");
 
           return {
             ...thread,
@@ -537,10 +493,7 @@ export const ThreadListPage: React.FC<Props> = ({
             return thread;
           }
 
-          if (
-            thread.readState &&
-            !container.util.isNewerReadState(thread.readState, readState)
-          ) {
+          if (thread.readState && !container.util.isNewerReadState(thread.readState, readState)) {
             return thread;
           }
 
@@ -733,8 +686,7 @@ export const ThreadListPage: React.FC<Props> = ({
       unreadCount: Math.max(
         // 変更理由: read_state_updated で received が先行しているケースもあるため、
         // 既知レス数はスレ一覧の resCount と readState.received の大きい方を採用する。
-        Math.max(t.resCount, t.readState?.received ?? 0) -
-          (t.readState?.read ?? 0),
+        Math.max(t.resCount, t.readState?.received ?? 0) - (t.readState?.read ?? 0),
         0,
       ),
       heat: parseFloat(calcHeat(now, t.createdAt, t.resCount)),
@@ -743,9 +695,7 @@ export const ThreadListPage: React.FC<Props> = ({
     // テキスト検索フィルタ
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      list = list.filter(({ thread }) =>
-        thread.title.toLowerCase().includes(q),
-      );
+      list = list.filter(({ thread }) => thread.title.toLowerCase().includes(q));
     }
 
     // sortColumn が null の間は取得順を維持し、デフォルト状態へ戻せるようにする。
@@ -845,9 +795,9 @@ export const ThreadListPage: React.FC<Props> = ({
         onSelect: () => {
           try {
             if (isBookmarked) {
-              void container.bookmark.remove(thread.url);
+              container.bookmark.remove(thread.url);
             } else {
-              void container.bookmark.add({
+              container.bookmark.add({
                 url: thread.url,
                 title: thread.title,
                 type: "thread",
@@ -944,9 +894,7 @@ export const ThreadListPage: React.FC<Props> = ({
         }}
         onRowClick={handleThreadClick}
         onRowMiddleClick={openThreadInNewTab}
-        onRowContextMenu={({ thread }, x, y) =>
-          setContextMenuState({ x, y, thread })
-        }
+        onRowContextMenu={({ thread }, x, y) => setContextMenuState({ x, y, thread })}
         sortColumn={sortColumn ?? undefined}
         sortDirection={sortDirection}
         onSort={handleTableSort}

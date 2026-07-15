@@ -5,7 +5,7 @@ import {
   requestThreadResJump,
   scrollThreadToResponse,
 } from "src/view/browser/utils/thread-read-state";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vite-plus/test";
 
 function createRect({
   top,
@@ -83,9 +83,9 @@ describe("thread-read-state", () => {
     });
 
     const scrollCalls: ScrollToOptions[] = [];
-    panel.scrollTo = (options: ScrollToOptions) => {
-      scrollCalls.push(options);
-    };
+    panel.scrollTo = ((options?: ScrollToOptions) => {
+      scrollCalls.push(options ?? { top: 0 });
+    }) as typeof panel.scrollTo;
 
     const host = document.createElement("div");
     host.className = "thread-page";
@@ -115,23 +115,15 @@ describe("thread-read-state", () => {
   });
 
   it("pending jumpを保持して後で消費できる", () => {
-    const jump = requestThreadResJump(
-      "https://example.com/test/read.cgi/live/1/",
-      42,
-    );
+    const jump = requestThreadResJump("https://example.com/test/read.cgi/live/1/", 42);
 
     expect(jump?.resNum).toBe(42);
+    expect(peekPendingThreadResJump("https://example.com/test/read.cgi/live/1/")).toMatchObject({
+      resNum: 42,
+    });
     expect(
-      peekPendingThreadResJump("https://example.com/test/read.cgi/live/1/"),
+      consumePendingThreadResJump("https://example.com/test/read.cgi/live/1/", jump?.token),
     ).toMatchObject({ resNum: 42 });
-    expect(
-      consumePendingThreadResJump(
-        "https://example.com/test/read.cgi/live/1/",
-        jump?.token,
-      ),
-    ).toMatchObject({ resNum: 42 });
-    expect(
-      peekPendingThreadResJump("https://example.com/test/read.cgi/live/1/"),
-    ).toBeNull();
+    expect(peekPendingThreadResJump("https://example.com/test/read.cgi/live/1/")).toBeNull();
   });
 });

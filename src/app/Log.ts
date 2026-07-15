@@ -14,11 +14,29 @@ export async function criticalError(message: string) {
     body: `詳細 : ${message}`,
   });
 
-  const { id } = await (<any>parent).browser.tabs.getCurrent();
-  (<any>parent).browser.tabs.remove(id);
+  const { id } = await (
+    parent as unknown as {
+      browser: {
+        tabs: {
+          getCurrent: () => Promise<{ id: number }>;
+          remove: (id: number) => Promise<void>;
+        };
+      };
+    }
+  ).browser.tabs.getCurrent();
+  void (
+    parent as unknown as {
+      browser: {
+        tabs: {
+          getCurrent: () => Promise<{ id: number }>;
+          remove: (id: number) => Promise<void>;
+        };
+      };
+    }
+  ).browser.tabs.remove(id);
 }
 
-export function log(level: logLevel, ...data: any[]) {
+export function log(level: logLevel, ...data: unknown[]) {
   if (!logLevels.has(level)) {
     log("error", "app.log: 引数levelが不正な値です", level);
     return;
@@ -28,15 +46,12 @@ export function log(level: logLevel, ...data: any[]) {
 }
 
 // [Val, Type, isNullable]
-type Assertion = [any, string, boolean] | [any, string];
+type Assertion = [unknown, string, boolean] | [unknown, string];
 
 export function assertArg(name: string, rules: Assertion[]): boolean {
   let isError = false;
   for (const [val, type, canbeNull] of rules) {
-    if (
-      !(canbeNull && (val === null || val === void 0)) &&
-      typeof val !== type
-    ) {
+    if (!(canbeNull && (val === null || val === void 0)) && typeof val !== type) {
       log(
         "error",
         `${name}: 不正な引数(予期していた型: ${type}, 受け取った型: ${typeof val})`,

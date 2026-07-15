@@ -1,6 +1,6 @@
 import { parseNgString } from "src/core/NGParser";
 import { TYPE } from "src/core/NGTypes";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 
 vi.mock("src/core/jsutil", () => ({
   decodeCharReference: (value: string) => value,
@@ -28,9 +28,7 @@ describe("NGParser", () => {
   });
 
   it("should handle AND conditions using $[ ]$:", () => {
-    const rules = Array.from(
-      parseNgString('$[ID(word="xyz")]$:Title(word="abc")'),
-    );
+    const rules = Array.from(parseNgString('$[ID(word="xyz")]$:Title(word="abc")'));
     expect(rules).toHaveLength(1);
     expect(rules[0].type).toBe(TYPE.TITLE);
     expect(rules[0].word).toBe("abc");
@@ -42,9 +40,7 @@ describe("NGParser", () => {
   });
 
   it("should extract modifier prefixes correctly", () => {
-    const rules = Array.from(
-      parseNgString('expireDate:2030/12/31,attachName:spam,ID(word="abc")'),
-    );
+    const rules = Array.from(parseNgString('expireDate:2030/12/31,attachName:spam,ID(word="abc")'));
     expect(rules).toHaveLength(1);
     expect(rules[0].type).toBe(TYPE.ID);
     expect(rules[0].word).toBe("abc");
@@ -53,9 +49,7 @@ describe("NGParser", () => {
   });
 
   it("should handle multiple entries separated by newlines", () => {
-    const rules = Array.from(
-      parseNgString(`ID(word="abc")\nTitle(word="def")`),
-    );
+    const rules = Array.from(parseNgString(`ID(word="abc")\nTitle(word="def")`));
     expect(rules).toHaveLength(2);
     expect(rules[0].type).toBe(TYPE.ID);
     expect(rules[0].word).toBe("abc");
@@ -65,9 +59,7 @@ describe("NGParser", () => {
 
   it("should ignore // comment lines in DSL", () => {
     const rules = Array.from(
-      parseNgString(
-        `// コメント\nID(word="abc")\n// もう1行\nTitle(word="def")`,
-      ),
+      parseNgString(`// コメント\nID(word="abc")\n// もう1行\nTitle(word="def")`),
     );
 
     expect(rules).toHaveLength(2);

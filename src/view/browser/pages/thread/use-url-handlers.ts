@@ -39,11 +39,7 @@ interface UseUrlHandlersResult {
   ) => boolean;
   openPopupUrlContextMenu: (
     parentId: string,
-  ) => (
-    rawUrl: string,
-    e: MouseEvent,
-    mode?: typeof RESPECT_DEFAULT_EXTERNAL,
-  ) => void;
+  ) => (rawUrl: string, e: MouseEvent, mode?: typeof RESPECT_DEFAULT_EXTERNAL) => void;
 }
 
 export function useUrlHandlers({
@@ -71,10 +67,7 @@ export function useUrlHandlers({
 
       if (internalPage) {
         if (internalPage.type === "thread") {
-          const jumpResNum = Number.parseInt(
-            getResNumber(absoluteUrl) ?? "",
-            10,
-          );
+          const jumpResNum = Number.parseInt(getResNumber(absoluteUrl) ?? "", 10);
           if (Number.isFinite(jumpResNum) && jumpResNum > 0) {
             requestThreadResJump(internalPage.threadUrl, jumpResNum);
           }
@@ -83,7 +76,11 @@ export function useUrlHandlers({
         // 5ch互換URLは外部ブラウザではなく拡張内で開く。
         // ミドルクリック時はバックグラウンドタブで開く（設定に関わらず常にバックグラウンド）
         if (button === 1) {
-          dispatch({ type: "OPEN_IN_NEW_TAB", page: internalPage, background: true });
+          dispatch({
+            type: "OPEN_IN_NEW_TAB",
+            page: internalPage,
+            background: true,
+          });
         } else {
           dispatch({ type: "NAVIGATE", page: internalPage });
         }
@@ -156,12 +153,7 @@ export function useUrlHandlers({
   );
 
   const handleUrlContextMenu = useCallback(
-    (
-      rawUrl: string,
-      e: MouseEvent,
-      parentId?: string,
-      mode?: typeof RESPECT_DEFAULT_EXTERNAL,
-    ) => {
+    (rawUrl: string, e: MouseEvent, parentId?: string, mode?: typeof RESPECT_DEFAULT_EXTERNAL) => {
       const absoluteUrl = resolveAbsoluteUrl(rawUrl, threadUrl);
       const internalPage = parseInternalBrowserPageStrict(absoluteUrl);
       if (mode === RESPECT_DEFAULT_EXTERNAL) {
@@ -181,11 +173,7 @@ export function useUrlHandlers({
 
   const openPopupUrlContextMenu = useCallback(
     (parentId: string) =>
-      (
-        rawUrl: string,
-        e: MouseEvent,
-        mode?: typeof RESPECT_DEFAULT_EXTERNAL,
-      ) => {
+      (rawUrl: string, e: MouseEvent, mode?: typeof RESPECT_DEFAULT_EXTERNAL) => {
         handleUrlContextMenu(rawUrl, e, parentId, mode);
       },
     [handleUrlContextMenu],

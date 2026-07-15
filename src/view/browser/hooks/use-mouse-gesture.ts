@@ -1,17 +1,12 @@
 import { useEffect, type RefObject } from "react";
-import type {
-  GestureDirection,
-  GesturePoint,
-} from "src/view/browser/utils/utils";
+import type { GestureDirection, GesturePoint } from "src/view/browser/utils/utils";
 import {
   GESTURE_CONTEXTMENU_SUPPRESS_MS,
   GESTURE_START_THRESHOLD,
   summarizeVerticalGesture,
 } from "src/view/browser/utils/utils";
 
-export function useMouseGesture(
-  rootRef: RefObject<HTMLDivElement | null>,
-): void {
+export function useMouseGesture(rootRef: RefObject<HTMLDivElement | null>): void {
   useEffect(() => {
     const host = rootRef.current;
     if (!host) return;
@@ -27,9 +22,7 @@ export function useMouseGesture(
         return null;
       }
 
-      const activePanel = contentArea.querySelector(
-        ".content-area__tab-panel[data-active='true']",
-      );
+      const activePanel = contentArea.querySelector(".content-area__tab-panel[data-active='true']");
       if (activePanel instanceof HTMLElement) {
         return activePanel;
       }

@@ -16,7 +16,7 @@ export class MetadataParser {
    */
   static parse(name: string, dateStr: string): PostMetadata {
     const result: PostMetadata = {
-      date: dateStr
+      date: dateStr,
     };
 
     // 1. Extract SLIP from name

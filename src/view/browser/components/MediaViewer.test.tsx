@@ -2,7 +2,7 @@ import "@testing-library/jest-dom/vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { createRef } from "react";
 import { MediaViewer } from "src/view/browser/components/MediaViewer";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 
 describe("MediaViewer", () => {
   it("保存ボタンから onSave を呼ぶ", () => {

@@ -1,15 +1,9 @@
 import "@testing-library/jest-dom/vitest";
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { container } from "src/service-container";
 import { BookmarkListPage } from "src/view/browser/pages/BookmarkListPage";
 import { QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE } from "src/view/browser/utils/filter-toolbar-events";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mockUseTabStore = vi.fn();
 
@@ -26,7 +20,7 @@ interface BookmarkService {
 }
 
 describe("BookmarkListPage", () => {
-  const getAllBookmarks = vi.fn<BookmarkService["getAll"]>();
+  const getAllBookmarks = vi.fn<() => unknown[]>();
   let bookmarkUpdatedHandler: (() => void) | null = null;
 
   beforeEach(() => {
@@ -67,10 +61,7 @@ describe("BookmarkListPage", () => {
         }
       },
       off: (type, callback) => {
-        if (
-          type === "bookmark_updated" &&
-          bookmarkUpdatedHandler === callback
-        ) {
+        if (type === "bookmark_updated" && bookmarkUpdatedHandler === callback) {
           bookmarkUpdatedHandler = null;
         }
       },
@@ -118,12 +109,9 @@ describe("BookmarkListPage", () => {
 
     act(() => {
       window.dispatchEvent(
-        new window.CustomEvent(
-          QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.bookmarkList,
-          {
-            detail: { tabId: "tab-1" },
-          },
-        ),
+        new window.CustomEvent(QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.bookmarkList, {
+          detail: { tabId: "tab-1" },
+        }),
       );
     });
 
@@ -135,12 +123,9 @@ describe("BookmarkListPage", () => {
 
     act(() => {
       window.dispatchEvent(
-        new window.CustomEvent(
-          QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.bookmarkList,
-          {
-            detail: { tabId: "tab-1" },
-          },
-        ),
+        new window.CustomEvent(QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.bookmarkList, {
+          detail: { tabId: "tab-1" },
+        }),
       );
     });
 
@@ -197,7 +182,7 @@ describe("BookmarkListPage", () => {
     expect(screen.getByText("読み込み中...")).toBeInTheDocument();
     expect(getAllBookmarks).not.toHaveBeenCalled();
 
-    resolveReady?.(true);
+    resolveReady!(true);
 
     expect(await screen.findByText("Current Thread")).toBeInTheDocument();
     expect(getAllBookmarks).toHaveBeenCalledTimes(1);

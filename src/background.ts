@@ -40,10 +40,7 @@ const focusTabById = async (tabId: number): Promise<void> => {
 };
 
 // 指定されたウィンドウID、または現在のウィンドウにタブを作成
-const createTabInWindow = async (
-  url: string,
-  windowId?: number
-): Promise<browser.Tabs.Tab> => {
+const createTabInWindow = async (url: string, windowId?: number): Promise<browser.Tabs.Tab> => {
   const targetWindowId = windowId ?? (await browser.windows.getCurrent()).id;
   return browser.tabs.create({ url, active: true, windowId: targetWindowId });
 };
@@ -164,9 +161,10 @@ browser.action.onClicked.addListener(async (currentTab) => {
   if (isNewUiTab(currentTab)) return;
 
   // 現在のページURLを渡して開く（URLがない場合はトップを開く）
-  const urlToOpen = (typeof currentTab.url === "string" && currentTab.url.startsWith("http"))
-    ? currentTab.url
-    : undefined;
+  const urlToOpen =
+    typeof currentTab.url === "string" && currentTab.url.startsWith("http")
+      ? currentTab.url
+      : undefined;
 
   await openOrFocusNewUiTab(urlToOpen);
 });

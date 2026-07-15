@@ -42,7 +42,7 @@ export interface HttpResponse {
 export interface HttpRequestOptions {
   method?: string;
   headers?: Record<string, string>;
-  body?: any;
+  body?: unknown;
   timeout?: number;
   mimeType?: string;
 }
@@ -63,27 +63,24 @@ export interface KeyValueStore {
   getAll(): Promise<Record<string, string>>;
   onChanged(
     callback: (
-      changes: Record<
-        string,
-        { oldValue: string | null; newValue: string | null }
-      >,
+      changes: Record<string, { oldValue: string | null; newValue: string | null }>,
     ) => void,
   ): void;
 }
 
 export interface ObjectStore {
-  get(key: string): Promise<any>;
-  put(value: any): Promise<void>;
+  get(key: string): Promise<unknown>;
+  put(value: unknown): Promise<void>;
   delete(key: string): Promise<void>;
-  getAll(): Promise<any[]>;
+  getAll(): Promise<unknown[]>;
   clear(): Promise<void>;
   count(): Promise<number>;
   /**
    * インデックスによる検索 (IndexedDB互換)
    */
   index(name: string): {
-    getAll(query?: any): Promise<any[]>;
-    getAllKeys(query?: any): Promise<any[]>;
+    getAll(query?: unknown): Promise<unknown[]>;
+    getAllKeys(query?: unknown): Promise<unknown[]>;
   };
 }
 

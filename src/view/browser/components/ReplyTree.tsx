@@ -3,10 +3,7 @@ import React from "react";
 import type { IRes } from "src/service-container";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
 import { MAX_TREE_DEPTH } from "src/view/browser/utils/constants";
-import type {
-  UrlClickHandler,
-  UrlContextMenuHandler,
-} from "src/view/browser/utils/link-routing";
+import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
 
 // --- 再帰的返信ツリー ---
 export const ReplyTree: React.FC<{
@@ -22,12 +19,7 @@ export const ReplyTree: React.FC<{
   onIdLinkClick: (id: string, e: React.MouseEvent) => void;
   onRepClick: (resNum: number, e: React.MouseEvent) => void;
   onAnchorClick: (resNum: number) => void;
-  onAnchorHover: (
-    targets: number[],
-    anchorRect: DOMRect,
-    label: string,
-    depth: number,
-  ) => void;
+  onAnchorHover: (targets: number[], anchorRect: DOMRect, label: string, depth: number) => void;
   onAnchorLeave: (fromDepth: number) => void;
   onResContextMenu: (e: React.MouseEvent, res: IRes) => void;
   visited: Set<number>;

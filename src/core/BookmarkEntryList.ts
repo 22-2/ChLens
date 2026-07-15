@@ -81,11 +81,11 @@ export class EntryList {
       if (a) {
         if (a.type === "thread" && b.type === "thread") {
           if (newerEntry(a, b) === b) {
-            this.update(b);
+            void this.update(b);
           }
         }
       } else {
-        this.add(b);
+        void this.add(b);
       }
     }
   }
@@ -94,23 +94,23 @@ export class EntryList {
     // 板ブックマーク移行
     const boardEntry = this.get(from);
     if (boardEntry) {
-      this.remove(boardEntry.url);
+      void this.remove(boardEntry.url);
       boardEntry.url = to;
-      this.add(boardEntry);
+      void this.add(boardEntry);
     }
 
     const tmp = new URL(to).origin;
-    const reg = /^https?:\/\/[\w\.]+\//;
+    const reg = /^https?:\/\/[\w.]+\//;
     // スレブックマーク移行
     for (const entry of this.getThreadsByBoardURL(from)) {
-      this.remove(entry.url);
+      void this.remove(entry.url);
 
       entry.url = entry.url.replace(reg, tmp);
       if (entry.readState) {
         entry.readState.url = entry.url;
       }
 
-      this.add(entry);
+      void this.add(entry);
     }
   }
 
@@ -153,7 +153,7 @@ export interface BookmarkUpdateEvent {
 
 export class SyncableEntryList extends EntryList {
   readonly onChanged = new app.Callbacks({ persistent: true });
-  private readonly observerForSync: Function;
+  private readonly observerForSync: (...args: unknown[]) => void;
 
   constructor() {
     super();
@@ -229,22 +229,19 @@ export class SyncableEntryList extends EntryList {
     return true;
   }
 
-  private manipulateByBookmarkUpdateEvent({
-    type,
-    entry,
-  }: BookmarkUpdateEvent) {
+  private manipulateByBookmarkUpdateEvent({ type, entry }: BookmarkUpdateEvent) {
     switch (type) {
       case "ADD":
-        this.add(entry);
+        void this.add(entry);
         break;
       case "TITLE":
       case "RES_COUNT":
       case "READ_STATE":
       case "EXPIRED":
-        this.update(entry);
+        void this.update(entry);
         break;
       case "REMOVE":
-        this.remove(entry.url);
+        void this.remove(entry.url);
         break;
     }
   }
@@ -255,7 +252,7 @@ export class SyncableEntryList extends EntryList {
 
     for (const { url } of aEntries) {
       if (!bList.has(url)) {
-        this.remove(url);
+        void this.remove(url);
       }
     }
   }

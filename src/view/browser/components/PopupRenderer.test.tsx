@@ -2,11 +2,8 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, render } from "@testing-library/react";
 import type React from "react";
 import { PopupRenderer } from "src/view/browser/components/PopupRenderer";
-import type {
-  ContextMenuPopupItem,
-  IdPopupItem,
-} from "src/view/browser/utils/types";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ContextMenuPopupItem, IdPopupItem } from "src/view/browser/utils/types";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const popupResCardLifecycle = vi.hoisted(() => ({
   renderCounts: new Map<number, number>(),
@@ -79,12 +76,7 @@ describe("PopupRenderer", () => {
     };
 
     const onPopupAnchorHover = (popupId: string) => {
-      return (
-        _targets: number[],
-        _anchorRect: DOMRect,
-        _label: string,
-        _depth: number,
-      ) => {
+      return (_targets: number[], _anchorRect: DOMRect, _label: string, _depth: number) => {
         void popupId;
       };
     };
@@ -94,10 +86,7 @@ describe("PopupRenderer", () => {
     const onRepClickInPopup = (_parentId?: string, _anchorPreviewDepth?: number) => {
       return (_resNum: number, _event: React.MouseEvent) => {};
     };
-    const onOpenRootReplyTreeInPopup = (
-      _parentId?: string,
-      _anchorPreviewDepth?: number,
-    ) => {
+    const onOpenRootReplyTreeInPopup = (_parentId?: string, _anchorPreviewDepth?: number) => {
       return (_resNum: number, _event: React.MouseEvent) => {};
     };
     const onResContextMenuOpen = (_parentId: string) => {

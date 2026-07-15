@@ -4,11 +4,12 @@ import { container } from "src/service-container/Container";
 
 export function useNotificationListener() {
   useEffect(() => {
-    const handleNotify = (data: any) => {
-      const message = data.message || data.html;
+    const handleNotify = (data_: unknown) => {
+      const data = data_ as Record<string, unknown>;
+      const message = (data.message || data.html) as string | undefined;
       if (!message) return;
 
-      const options: any = {};
+      const options: Record<string, unknown> = {};
       if (data.background_color) {
         // sonner doesn't directly support background_color in the same way,
         // but we can map some common ones or use style.

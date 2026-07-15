@@ -24,9 +24,7 @@ const MIN_HEIGHT = 80;
 const MAX_HEIGHT = 600;
 
 // 追加するタブはここに加えるだけでパネルに反映される
-export const BOTTOM_PANEL_TABS: PanelTab[] = [
-  { id: "write", label: "書き込み" },
-];
+export const BOTTOM_PANEL_TABS: PanelTab[] = [{ id: "write", label: "書き込み" }];
 
 interface SavedState {
   isOpen?: boolean;
@@ -47,7 +45,7 @@ function loadSaved(): SavedState {
 function persist(patch: SavedState): void {
   try {
     const prev = loadSaved();
-    setStore2String(STORAGE_KEY, JSON.stringify({ ...prev, ...patch }));
+    void setStore2String(STORAGE_KEY, JSON.stringify({ ...prev, ...patch }));
   } catch {
     // 書き込み失敗は無視
   }
@@ -70,18 +68,14 @@ interface BottomPanelContextValue {
 
 const BottomPanelContext = createContext<BottomPanelContextValue | null>(null);
 
-export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({
-  children,
-}) => {
+export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const saved = loadSaved();
   const nextWritePanelInsertIdRef = useRef(0);
   const [isOpen, setIsOpen] = useState(saved.isOpen ?? false);
   const [height, setHeightState] = useState(() =>
     Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, saved.height ?? DEFAULT_HEIGHT)),
   );
-  const [activeTabId, setActiveTabIdState] = useState(
-    saved.activeTabId ?? BOTTOM_PANEL_TABS[0].id,
-  );
+  const [activeTabId, setActiveTabIdState] = useState(saved.activeTabId ?? BOTTOM_PANEL_TABS[0].id);
   const [writePanelInsertRequest, setWritePanelInsertRequest] =
     useState<WritePanelInsertRequest | null>(null);
 
@@ -105,16 +99,19 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({
     }
   }, []);
 
-  const openWritePanelWithText = useCallback((text: string) => {
-    // 変更理由: 右クリックの「返信」はクリップボード経由だと既存入力を壊しやすいため、
-    // 書き込みパネルを開いたうえで本文へ直接追記できる要求として扱う。
-    openPanel("write");
-    nextWritePanelInsertIdRef.current += 1;
-    setWritePanelInsertRequest({
-      id: nextWritePanelInsertIdRef.current,
-      text,
-    });
-  }, [openPanel]);
+  const openWritePanelWithText = useCallback(
+    (text: string) => {
+      // 変更理由: 右クリックの「返信」はクリップボード経由だと既存入力を壊しやすいため、
+      // 書き込みパネルを開いたうえで本文へ直接追記できる要求として扱う。
+      openPanel("write");
+      nextWritePanelInsertIdRef.current += 1;
+      setWritePanelInsertRequest({
+        id: nextWritePanelInsertIdRef.current,
+        text,
+      });
+    },
+    [openPanel],
+  );
 
   const closePanel = useCallback(() => {
     setIsOpen(false);

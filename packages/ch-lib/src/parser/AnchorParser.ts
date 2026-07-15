@@ -8,7 +8,8 @@ export interface AnchorData {
 
 export class AnchorParser {
   static readonly REG = {
-    ANCHOR: /(?:&gt;|＞){1,2}[\d\uff10-\uff19]+(?:[\-\u30fc][\d\uff10-\uff19]+)?(?:\s*[,、]\s*[\d\uff10-\uff19]+(?:[\-\u30fc][\d\uff10-\uff19]+)?)*/g,
+    ANCHOR:
+      /(?:&gt;|＞){1,2}[\d\uff10-\uff19]+(?:[-\u30fc][\d\uff10-\uff19]+)?(?:\s*[,、]\s*[\d\uff10-\uff19]+(?:[-\u30fc][\d\uff10-\uff19]+)?)*/g,
     _FW_NUMBER: /[\uff10-\uff19]/g,
   };
 
@@ -17,9 +18,7 @@ export class AnchorParser {
    */
   private static normalize(str: string): string {
     str = str.replace(/[\u30fc\uff0d\u2212\u2015\u2010]/g, "-");
-    str = str.replace(this.REG._FW_NUMBER, (s) =>
-      String.fromCharCode(s.charCodeAt(0) - 65248)
-    );
+    str = str.replace(this.REG._FW_NUMBER, (s) => String.fromCharCode(s.charCodeAt(0) - 65248));
     return str;
   }
 
@@ -34,11 +33,7 @@ export class AnchorParser {
 
     const normalized = this.normalize(str);
 
-    if (
-      !/^(?:&gt;|＞){0,2}(\d+(?:-\d+)?(?:\s*[,、]\s*\d+(?:-\d+)?)*)$/.test(
-        normalized
-      )
-    ) {
+    if (!/^(?:&gt;|＞){0,2}(\d+(?:-\d+)?(?:\s*[,、]\s*\d+(?:-\d+)?)*)$/.test(normalized)) {
       return data;
     }
 

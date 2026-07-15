@@ -7,8 +7,7 @@ import { resolveItestServerHostname } from "src/view/browser/utils/itest-server-
 // ---------------------------------------------------------------------------
 
 export type UrlHandlingMode = "respect-default-external";
-export const RESPECT_DEFAULT_EXTERNAL: UrlHandlingMode =
-  "respect-default-external";
+export const RESPECT_DEFAULT_EXTERNAL: UrlHandlingMode = "respect-default-external";
 
 export type ResBodyUrlClickHandler = (
   url: string,
@@ -57,32 +56,23 @@ const COMPATIBLE_HOST_SUFFIXES = [
   "machi.to",
 ] as const;
 
-const COMPATIBLE_EXACT_HOSTS = [
-  "jbbs.shitaraba.net",
-  "jbbs.livedoor.jp",
-  "bbs.eddibb.cc",
-] as const;
+const COMPATIBLE_EXACT_HOSTS = ["jbbs.shitaraba.net", "jbbs.livedoor.jp", "bbs.eddibb.cc"] as const;
 
 // ---------------------------------------------------------------------------
 // Regex patterns
 // ---------------------------------------------------------------------------
 
-const CH_STYLE_THREAD_PATTERN =
-  /^\/((?:[\w-]+\/)?test\/read\.cgi\/[\w-]+\/\d+)\/?/;
-const CH_STYLE_BOARD_FROM_THREAD_PATTERN =
-  /^\/(?:[\w-]+\/)?test\/read\.cgi\/([\w-]+)\/\d+\/?/;
-const CH_STYLE_BOARD_PATTERN =
-  /^\/(?:subback\/|test\/-\/)?([\w-]+)\/?(?:index\.html)?(?:#.*)?$/;
+const CH_STYLE_THREAD_PATTERN = /^\/((?:[\w-]+\/)?test\/read\.cgi\/[\w-]+\/\d+)\/?/;
+const CH_STYLE_BOARD_FROM_THREAD_PATTERN = /^\/(?:[\w-]+\/)?test\/read\.cgi\/([\w-]+)\/\d+\/?/;
+const CH_STYLE_BOARD_PATTERN = /^\/(?:subback\/|test\/-\/)?([\w-]+)\/?(?:index\.html)?(?:#.*)?$/;
 const MACHI_THREAD_PATTERN = /^\/bbs\/read\.cgi\/([\w-]+)\/(\d+)\/?/;
 const MACHI_BOARD_PATTERN = /^\/([\w-]+)\/?(?:#.*)?$/;
-const SHITARABA_THREAD_PATTERN =
-  /^\/bbs\/read(?:_archive)?\.cgi\/([\w-]+)\/(\d+)\/(\d+)\/?/;
+const SHITARABA_THREAD_PATTERN = /^\/bbs\/read(?:_archive)?\.cgi\/([\w-]+)\/(\d+)\/(\d+)\/?/;
 const SHITARABA_STORAGE_PATTERN = /^\/([\w-]+)\/(\d+)\/storage\/(\d+)\.html$/;
 const SHITARABA_BOARD_PATTERN = /^\/([\w-]+)\/(\d+)\/?(?:#.*)?$/;
 const EDDIBB_THREAD_PATTERN = /^\/(?:test\/read\.cgi\/)?([\w-]+)\/(\d+)\/?/;
 const EDDIBB_BOARD_PATTERN = /^\/(?:test\/read\.cgi\/)?([\w-]+)\/?(?:#.*)?$/;
-const ITEST_THREAD_PATTERN =
-  /^\/(?:[\w-]+\/)?test\/read\.cgi\/([\w-]+)\/(\d+)\/?$/;
+const ITEST_THREAD_PATTERN = /^\/(?:[\w-]+\/)?test\/read\.cgi\/([\w-]+)\/(\d+)\/?$/;
 const ITEST_BOARD_PATTERN = /^\/(?:[\w-]+\/)?(?:subback\/)?([\w-]+)\/?$/;
 
 // ---------------------------------------------------------------------------
@@ -136,8 +126,7 @@ function normalizeHostname(url: URL): void {
 }
 
 function normalizeItestUrl(url: URL): void {
-  const isItestHost =
-    url.hostname === "itest.5ch.io" || url.hostname === "itest.bbspink.com";
+  const isItestHost = url.hostname === "itest.5ch.io" || url.hostname === "itest.bbspink.com";
   if (!isItestHost) return;
 
   const threadMatch = ITEST_THREAD_PATTERN.exec(url.pathname);
@@ -234,9 +223,7 @@ function parseMachiPage(url: URL): InternalBrowserPage | null {
 function parseShitarabaPage(url: URL): InternalBrowserPage | null {
   const threadMatch = SHITARABA_THREAD_PATTERN.exec(url.pathname);
   if (threadMatch) {
-    const action = url.pathname.includes("read_archive")
-      ? "read_archive"
-      : "read";
+    const action = url.pathname.includes("read_archive") ? "read_archive" : "read";
     url.pathname = `/bbs/${action}.cgi/${threadMatch[1]}/${threadMatch[2]}/${threadMatch[3]}/`;
     return toThreadPage(url);
   }
@@ -277,13 +264,12 @@ function parseEddibbPage(url: URL): InternalBrowserPage | null {
 // Dispatch table
 // ---------------------------------------------------------------------------
 
-const BOARD_PARSERS: Record<BoardType, (url: URL) => InternalBrowserPage | null> =
-  {
-    eddibb: parseEddibbPage,
-    shitaraba: parseShitarabaPage,
-    machi: parseMachiPage,
-    "ch-style": parseChStylePage,
-  };
+const BOARD_PARSERS: Record<BoardType, (url: URL) => InternalBrowserPage | null> = {
+  eddibb: parseEddibbPage,
+  shitaraba: parseShitarabaPage,
+  machi: parseMachiPage,
+  "ch-style": parseChStylePage,
+};
 
 function dispatchParser(url: URL, strict: boolean): InternalBrowserPage | null {
   const boardType = classifyBoardHost(url.hostname);
@@ -358,9 +344,7 @@ export function getBoardUrlFromThreadUrl(threadUrl: string): string {
   return threadUrl;
 }
 
-export function parseInternalBrowserPage(
-  absoluteUrl: string,
-): InternalBrowserPage | null {
+export function parseInternalBrowserPage(absoluteUrl: string): InternalBrowserPage | null {
   const url = normalizeUrl(absoluteUrl);
   return url ? dispatchParser(url, false) : null;
 }
@@ -369,17 +353,12 @@ export function parseInternalBrowserPage(
  * クリック経路専用。互換ホスト以外のURLはスレ/板として扱わない。
  * オムニバー入力には parseInternalBrowserPage（広い許容）を使う。
  */
-export function parseInternalBrowserPageStrict(
-  absoluteUrl: string,
-): InternalBrowserPage | null {
+export function parseInternalBrowserPageStrict(absoluteUrl: string): InternalBrowserPage | null {
   const url = normalizeUrl(absoluteUrl);
   return url ? dispatchParser(url, true) : null;
 }
 
-export function shouldHandleUrlWithApp(
-  absoluteUrl: string,
-  mode?: UrlHandlingMode,
-): boolean {
+export function shouldHandleUrlWithApp(absoluteUrl: string, mode?: UrlHandlingMode): boolean {
   if (mode !== RESPECT_DEFAULT_EXTERNAL) return true;
   return parseInternalBrowserPage(absoluteUrl) != null;
 }

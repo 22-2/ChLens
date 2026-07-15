@@ -37,16 +37,10 @@ function parseResNum(element: HTMLElement | null): number | null {
 }
 
 function getResponseElements(host: HTMLElement): HTMLElement[] {
-  return Array.from(
-    host.querySelectorAll<HTMLElement>(
-      ".thread-page__responses [data-res-num]",
-    ),
-  );
+  return Array.from(host.querySelectorAll<HTMLElement>(".thread-page__responses [data-res-num]"));
 }
 
-export function findThreadScrollContainer(
-  host: HTMLElement | null,
-): HTMLElement | null {
+export function findThreadScrollContainer(host: HTMLElement | null): HTMLElement | null {
   const container = host?.closest(".content-area__tab-panel");
   return container instanceof HTMLElement ? container : null;
 }
@@ -60,9 +54,7 @@ export function scrollThreadToResponse(
     return false;
   }
 
-  const target = host.querySelector(
-    `.thread-page__responses [data-res-num="${resNum}"]`,
-  );
+  const target = host.querySelector(`.thread-page__responses [data-res-num="${resNum}"]`);
   if (!(target instanceof HTMLElement)) {
     return false;
   }
@@ -72,10 +64,7 @@ export function scrollThreadToResponse(
     const targetRect = target.getBoundingClientRect();
     const containerRect = scrollContainer.getBoundingClientRect();
     const nextScrollTop =
-      scrollContainer.scrollTop +
-      targetRect.top -
-      containerRect.top -
-      (options.offset ?? 0);
+      scrollContainer.scrollTop + targetRect.top - containerRect.top - (options.offset ?? 0);
     scrollContainer.scrollTo({
       top: Math.max(0, nextScrollTop),
       behavior: "auto",
@@ -86,11 +75,9 @@ export function scrollThreadToResponse(
 
   if (options.highlight ?? true) {
     target.classList.add("res--highlighted");
-    target.addEventListener(
-      "animationend",
-      () => target.classList.remove("res--highlighted"),
-      { once: true },
-    );
+    target.addEventListener("animationend", () => target.classList.remove("res--highlighted"), {
+      once: true,
+    });
   }
 
   return true;
@@ -151,10 +138,7 @@ export function measureThreadReadState(
   };
 }
 
-export function requestThreadResJump(
-  threadUrl: string,
-  resNum: number,
-): PendingThreadJump | null {
+export function requestThreadResJump(threadUrl: string, resNum: number): PendingThreadJump | null {
   const normalizedResNum = Math.trunc(resNum);
   if (!Number.isFinite(normalizedResNum) || normalizedResNum <= 0) {
     return null;
@@ -178,9 +162,7 @@ export function requestThreadResJump(
   return jump;
 }
 
-export function peekPendingThreadResJump(
-  threadUrl: string,
-): PendingThreadJump | null {
+export function peekPendingThreadResJump(threadUrl: string): PendingThreadJump | null {
   return pendingThreadJumpByUrl.get(normalizeThreadJumpKey(threadUrl)) ?? null;
 }
 
@@ -201,9 +183,7 @@ export function consumePendingThreadResJump(
   return pendingJump;
 }
 
-export function subscribeThreadResJump(
-  listener: (jump: PendingThreadJump) => void,
-): () => void {
+export function subscribeThreadResJump(listener: (jump: PendingThreadJump) => void): () => void {
   const handleJump = (event: Event) => {
     const detail = (event as CustomEvent<PendingThreadJump>).detail;
     listener(detail);
@@ -211,9 +191,6 @@ export function subscribeThreadResJump(
 
   threadJumpEventTarget.addEventListener(THREAD_RES_JUMP_EVENT, handleJump);
   return () => {
-    threadJumpEventTarget.removeEventListener(
-      THREAD_RES_JUMP_EVENT,
-      handleJump,
-    );
+    threadJumpEventTarget.removeEventListener(THREAD_RES_JUMP_EVENT, handleJump);
   };
 }

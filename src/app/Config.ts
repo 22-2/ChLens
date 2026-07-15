@@ -28,10 +28,7 @@ export default class Config {
     ["manual_image_load", "off"],
     ["image_blur", "on"],
     ["image_blur_length", "4"],
-    [
-      "image_blur_word",
-      ".{0,5}[^ァ-ヺ^ー]グロ(?:[^ァ-ヺ^ー].{0,5}|$)|.{0,5}死ね.{0,5}",
-    ],
+    ["image_blur_word", ".{0,5}[^ァ-ヺ^ー]グロ(?:[^ァ-ヺ^ー].{0,5}|$)|.{0,5}死ね.{0,5}"],
     ["image_width", "150"],
     ["image_height", "100"],
     ["audio_supported", "off"],
@@ -114,7 +111,7 @@ export default class Config {
 
   private readonly _cache = new Map<string, string>();
   private readonly _pendingStorageChanges = new Map<string, string | null>();
-  readonly ready: Function;
+  readonly ready: (callback: (...args: unknown[]) => void) => void;
   private readonly _onChanged: (
     change: Record<string, { oldValue: string | null; newValue: string | null }>,
   ) => void;
@@ -146,13 +143,10 @@ export default class Config {
 
     // キャッシュを常にLocalStorageから再読み込みして、最新の設定値を確保する。
     // ページリロード後や他のタブからの更新を反映するため、cached.size チェックを削除した。
-    (async () => {
+    void (async () => {
       const res = await LocalStorage.getAll();
       for (const [key, val] of Object.entries(res)) {
-        if (
-          key.startsWith("config_") &&
-          (typeof val === "string" || typeof val === "number")
-        ) {
+        if (key.startsWith("config_") && (typeof val === "string" || typeof val === "number")) {
           this._cache.set(key, val.toString());
         }
       }
@@ -160,10 +154,7 @@ export default class Config {
     })();
 
     this._onChanged = (
-      change: Record<
-        string,
-        { oldValue: string | null; newValue: string | null }
-      >,
+      change: Record<string, { oldValue: string | null; newValue: string | null }>,
     ) => {
       for (const [key, val] of Object.entries(change)) {
         if (!key.startsWith("config_")) continue;
@@ -247,10 +238,7 @@ export default class Config {
   }
 
   async set(key: string, val: string) {
-    if (
-      typeof key !== "string" ||
-      !(typeof val === "string" || typeof val === "number")
-    ) {
+    if (typeof key !== "string" || !(typeof val === "string" || typeof val === "number")) {
       log("error", "app.Config::setに不適切な値が渡されました", arguments);
       throw new Error("app.Config::setに不適切な値が渡されました");
     }

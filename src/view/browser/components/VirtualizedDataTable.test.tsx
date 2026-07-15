@@ -1,8 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import React from "react";
 import { VirtualizedDataTable } from "src/view/browser/components/VirtualizedDataTable";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 vi.mock("@tanstack/react-virtual", () => ({
   useVirtualizer: () => ({
@@ -111,8 +110,6 @@ describe("VirtualizedDataTable", () => {
     expect(screen.queryByText("板A")).toBeNull();
 
     fireEvent.contextMenu(screen.getByRole("columnheader", { name: "タイトル" }));
-    expect(
-      screen.getByRole("button", { name: "タイトルは非表示にできません" }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "タイトルは非表示にできません" })).toBeDisabled();
   });
 });

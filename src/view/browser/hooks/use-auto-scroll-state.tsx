@@ -1,10 +1,4 @@
-import React, {
-  createContext,
-  useContext,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import React, { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 
 export interface AutoScrollState {
   /** スレッド最下部付近にいて自動追従が有効な状態 */
@@ -24,9 +18,7 @@ const INITIAL: AutoScrollState = {
 const ReadContext = createContext<AutoScrollState>(INITIAL);
 const WriteContext = createContext<(state: AutoScrollState) => void>(() => {});
 
-export const AutoScrollStateProvider: React.FC<{ children: ReactNode }> = ({
-  children,
-}) => {
+export const AutoScrollStateProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, setState] = useState<AutoScrollState>(INITIAL);
   const write = useMemo(() => setState, []);
   return (

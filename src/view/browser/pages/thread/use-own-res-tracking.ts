@@ -44,8 +44,7 @@ export function useOwnResTracking({
   responses,
 }: UseOwnResTrackingParams): UseOwnResTrackingResult {
   const [ownResNums, setOwnResNums] = useState<Set<number>>(new Set());
-  const [pendingWrite, setPendingWrite] =
-    useState<PendingWriteMatchState | null>(null);
+  const [pendingWrite, setPendingWrite] = useState<PendingWriteMatchState | null>(null);
   const responseCountRef = useRef(0);
   const lastResponseNumRef = useRef<number | null>(null);
   const pendingWriteHistoryRef = useRef<PendingWriteHistoryPersistence | null>(null);

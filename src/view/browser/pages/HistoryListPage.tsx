@@ -5,10 +5,7 @@ import { ColumnDef } from "src/view/browser/components/SimpleDataTable";
 import { VirtualizedDataTable } from "src/view/browser/components/VirtualizedDataTable";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
-import {
-  formatCompactDateTime,
-  normalizeLegacyTimestamp,
-} from "src/view/browser/utils/date-time";
+import { formatCompactDateTime, normalizeLegacyTimestamp } from "src/view/browser/utils/date-time";
 import {
   getLegacyHistoryService,
   getLegacyReadStateService,
@@ -111,8 +108,7 @@ async function readHistoryUnreadCountIndex(): Promise<Map<string, number>> {
       }
 
       const unreadCount = Math.max(
-        Math.trunc(normalizeNumber(item.received)) -
-          Math.trunc(normalizeNumber(item.read)),
+        Math.trunc(normalizeNumber(item.received)) - Math.trunc(normalizeNumber(item.read)),
         0,
       );
 
@@ -162,8 +158,7 @@ async function readHistoryEntriesPage(
         url,
         title: normalizeString(item.title, url),
         boardTitle: normalizeString(item.boardTitle),
-        unreadCount:
-          unreadCountIndex.get(normalizeReadStateLookupUrl(url)) ?? 0,
+        unreadCount: unreadCountIndex.get(normalizeReadStateLookupUrl(url)) ?? 0,
         viewedDate,
       } satisfies HistoryEntry;
     })
@@ -206,13 +201,11 @@ const COLUMNS: ColumnDef<HistoryEntry>[] = [
     headerClassName: "simple-data-table__th--history-date",
     cellClassName: "simple-data-table__history-date",
     sortable: true,
-    cell: (row) =>
-      row.viewedDate ? formatCompactDateTime(row.viewedDate) : "-",
+    cell: (row) => (row.viewedDate ? formatCompactDateTime(row.viewedDate) : "-"),
   },
 ];
 
-const COLUMN_VISIBILITY_STORAGE_KEY =
-  "chlens_browser_history_list_columns_visibility";
+const COLUMN_VISIBILITY_STORAGE_KEY = "chlens_browser_history_list_columns_visibility";
 const COLUMN_VISIBILITY_LOCKED_KEYS = ["title"] as const;
 
 interface HistoryListPageProps {
@@ -310,8 +303,7 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
       nextOffsetRef.current = currentOffset;
       setEntries((prev) => (reset ? uniqueRows : [...prev, ...uniqueRows]));
     } catch (e) {
-      const message =
-        e instanceof Error ? e.message : "閲覧履歴の読み込みに失敗しました";
+      const message = e instanceof Error ? e.message : "閲覧履歴の読み込みに失敗しました";
       setError(message);
       if (reset) {
         setEntries([]);
@@ -420,31 +412,17 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
     };
   }, []);
 
-  const shouldLoadCompleteDataset =
-    searchQuery.trim().length > 0 || sortState.column !== null;
+  const shouldLoadCompleteDataset = searchQuery.trim().length > 0 || sortState.column !== null;
 
   useEffect(() => {
     // 変更理由: 検索やソートは未読込ページが残っていると結果が欠けるため、
     // 明示操作時だけ残りページを順次読み切ってから一覧を確定させる。
-    if (
-      !shouldLoadCompleteDataset ||
-      loading ||
-      loadingMore ||
-      error ||
-      !hasMore
-    ) {
+    if (!shouldLoadCompleteDataset || loading || loadingMore || error || !hasMore) {
       return;
     }
 
     void loadNextPage();
-  }, [
-    error,
-    hasMore,
-    loadNextPage,
-    loading,
-    loadingMore,
-    shouldLoadCompleteDataset,
-  ]);
+  }, [error, hasMore, loadNextPage, loading, loadingMore, shouldLoadCompleteDataset]);
 
   const handleSort = useCallback((key: string) => {
     if (!COLUMNS.some((column) => column.key === key)) {
@@ -468,9 +446,7 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
     const normalizedQuery = searchQuery.trim().toLowerCase();
     const rows = normalizedQuery
       ? entries.filter((entry) =>
-          `${entry.title} ${entry.boardTitle}`
-            .toLowerCase()
-            .includes(normalizedQuery),
+          `${entry.title} ${entry.boardTitle}`.toLowerCase().includes(normalizedQuery),
         )
       : entries;
 
@@ -511,9 +487,7 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
         page: {
           ...parsed,
           title: entry.title,
-          ...(parsed.type === "threadList"
-            ? { boardTitle: entry.boardTitle || entry.title }
-            : {}),
+          ...(parsed.type === "threadList" ? { boardTitle: entry.boardTitle || entry.title } : {}),
         },
       });
     },
@@ -531,9 +505,7 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
         page: {
           ...parsed,
           title: entry.title,
-          ...(parsed.type === "threadList"
-            ? { boardTitle: entry.boardTitle || entry.title }
-            : {}),
+          ...(parsed.type === "threadList" ? { boardTitle: entry.boardTitle || entry.title } : {}),
         },
         background: true,
       });
@@ -542,25 +514,12 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
   );
 
   const handleEndReached = useCallback(() => {
-    if (
-      shouldLoadCompleteDataset ||
-      loading ||
-      loadingMore ||
-      error ||
-      !hasMore
-    ) {
+    if (shouldLoadCompleteDataset || loading || loadingMore || error || !hasMore) {
       return;
     }
 
     void loadNextPage();
-  }, [
-    error,
-    hasMore,
-    loadNextPage,
-    loading,
-    loadingMore,
-    shouldLoadCompleteDataset,
-  ]);
+  }, [error, hasMore, loadNextPage, loading, loadingMore, shouldLoadCompleteDataset]);
 
   if (loading && entries.length === 0) {
     return <div className="page-status">読み込み中...</div>;
@@ -570,10 +529,7 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
     return (
       <div className="page-status page-status--error">
         <p>{error}</p>
-        <button
-          className="page-status__retry"
-          onClick={() => void loadEntries()}
-        >
+        <button className="page-status__retry" onClick={() => void loadEntries()}>
           再試行
         </button>
       </div>

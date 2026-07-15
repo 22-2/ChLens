@@ -6,7 +6,7 @@ import {
   shouldRejectThreadResult,
 } from "src/core/ThreadGetHelpers";
 import type { ParsedThread } from "src/core/ThreadParser.js";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 const createThread = (title = "t", count = 1): ParsedThread => ({
   title,
@@ -32,9 +32,7 @@ describe("ThreadGetHelpers", () => {
 
     expect(plan.deltaFlg).toBe(true);
     expect(plan.readcgiVer).toBe(5);
-    expect(plan.xhrPath).toBe(
-      "https://jbbs.shitaraba.net/bbs/rawmode.cgi/a/b/123/11-",
-    );
+    expect(plan.xhrPath).toBe("https://jbbs.shitaraba.net/bbs/rawmode.cgi/a/b/123/11-");
   });
 
   it("html thread + cache(read.cgi v6) builds +1-n range and query", () => {
@@ -50,9 +48,7 @@ describe("ThreadGetHelpers", () => {
 
     expect(plan.deltaFlg).toBe(true);
     expect(plan.readcgiVer).toBe(6);
-    expect(plan.xhrPath).toBe(
-      "https://example.com/test/read.cgi/a/123/51-n?v=pc",
-    );
+    expect(plan.xhrPath).toBe("https://example.com/test/read.cgi/a/123/51-n?v=pc");
   });
 
   it("html thread + cache(read.cgi v5) builds legacy -n range and query", () => {
@@ -68,9 +64,7 @@ describe("ThreadGetHelpers", () => {
 
     expect(plan.deltaFlg).toBe(true);
     expect(plan.readcgiVer).toBe(5);
-    expect(plan.xhrPath).toBe(
-      "https://example.com/test/read.cgi/a/123/50-n?v=pc",
-    );
+    expect(plan.xhrPath).toBe("https://example.com/test/read.cgi/a/123/50-n?v=pc");
   });
 
   it("buildConditionalRequestHeaders emits both validators when available", () => {
@@ -80,9 +74,7 @@ describe("ThreadGetHelpers", () => {
       etag: '"abc"',
     });
 
-    expect(headers["If-Modified-Since"]).toBe(
-      new Date(1714800000000).toUTCString(),
-    );
+    expect(headers["If-Modified-Since"]).toBe(new Date(1714800000000).toUTCString());
     expect(headers["If-None-Match"]).toBe('"abc"');
   });
 
@@ -106,6 +98,7 @@ describe("ThreadGetHelpers", () => {
         status: 200,
         body: "delta",
         headers: {},
+        url: "https://example.com/",
       },
       readcgiVer: 6,
       deltaFlg: true,
@@ -131,6 +124,7 @@ describe("ThreadGetHelpers", () => {
         status: 200,
         body: "delta",
         headers: {},
+        url: "https://example.com/",
       },
       readcgiVer: 6,
       deltaFlg: true,
@@ -151,7 +145,12 @@ describe("ThreadGetHelpers", () => {
   it("shouldRejectThreadResult rejects 2ch status 203 even when thread exists", () => {
     const rejected = shouldRejectThreadResult({
       thread: createThread(),
-      response: { status: 203, body: "", headers: {} },
+      response: {
+        status: 203,
+        body: "",
+        headers: {},
+        url: "https://example.com/",
+      },
       bbsType: "2ch",
       readcgiVer: 5,
       hasCache: true,

@@ -1,26 +1,14 @@
 import type { RJSFSchema, UiSchema } from "@rjsf/utils";
 import type { ReactNode } from "react";
 
-export type SettingsSectionId =
-  | "general"
-  | "reload"
-  | "thumbnail"
-  | "ng"
-  | "other"
-  | "data";
+export type SettingsSectionId = "general" | "reload" | "thumbnail" | "ng" | "other" | "data";
 
-export type SettingsSupplementaryPanelId =
-  | "externalIntegration"
-  | "dangerZone"
-  | "dataManagement";
+export type SettingsSupplementaryPanelId = "externalIntegration" | "dangerZone" | "dataManagement";
 
 export type SettingsFormWidget = "radio" | "textarea" | "ng_editor";
 export type SettingsFormValue = boolean | number | string | undefined;
 export type SettingsSectionFormData = Record<string, SettingsFormValue>;
-export type SettingsFormState = Record<
-  SettingsSectionId,
-  SettingsSectionFormData
->;
+export type SettingsFormState = Record<SettingsSectionId, SettingsSectionFormData>;
 
 export interface SettingsOption {
   const: string;
@@ -65,15 +53,11 @@ export interface SettingsDividerItem {
 
 export type SettingsSectionItem = SettingsFieldDefinition | SettingsDividerItem;
 
-export function isSettingsDividerItem(
-  item: SettingsSectionItem,
-): item is SettingsDividerItem {
+export function isSettingsDividerItem(item: SettingsSectionItem): item is SettingsDividerItem {
   return item.kind === "divider";
 }
 
-export function isSettingsFieldItem(
-  item: SettingsSectionItem,
-): item is SettingsFieldDefinition {
+export function isSettingsFieldItem(item: SettingsSectionItem): item is SettingsFieldDefinition {
   return item.kind !== "divider";
 }
 

@@ -7,15 +7,15 @@ interface CallbacksConfiguration {
 
 export default class Callbacks {
   private readonly _config: Readonly<CallbacksConfiguration>;
-  private readonly _callbackStore = new Set<Function>();
-  private _latestCallArg: ReadonlyArray<any> | null = null;
+  private readonly _callbackStore = new Set<(...args: unknown[]) => void>();
+  private _latestCallArg: ReadonlyArray<unknown> | null = null;
   wasCalled = false;
 
   constructor(config: CallbacksConfiguration = {}) {
     this._config = config;
   }
 
-  add(callback: Function) {
+  add(callback: (...args: unknown[]) => void) {
     if (!this._config.persistent && this._latestCallArg) {
       callback(...deepCopy(this._latestCallArg));
     } else {
@@ -23,23 +23,17 @@ export default class Callbacks {
     }
   }
 
-  remove(callback: Function) {
+  remove(callback: (...args: unknown[]) => void) {
     if (this._callbackStore.has(callback)) {
       this._callbackStore.delete(callback);
     } else {
-      log(
-        "error",
-        "app.Callbacks: 存在しないコールバックを削除しようとしました。",
-      );
+      log("error", "app.Callbacks: 存在しないコールバックを削除しようとしました。");
     }
   }
 
-  call(...arg: any[]) {
+  call(...arg: unknown[]) {
     if (!this._config.persistent && this._latestCallArg) {
-      log(
-        "error",
-        "app.Callbacks: persistentでないCallbacksが複数回callされました。",
-      );
+      log("error", "app.Callbacks: persistentでないCallbacksが複数回callされました。");
       return;
     }
 

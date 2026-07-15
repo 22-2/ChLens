@@ -6,7 +6,7 @@ import { glob } from "fs/promises";
 import path from "path";
 import postcss from "postcss";
 import * as sass from "sass";
-import { defineConfig, Plugin } from "vite";
+import { defineConfig, Plugin, lazyPlugins } from "vite-plus";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -14,11 +14,7 @@ const imgExt = (platform: string) => (platform === "chrome" ? "webp" : "png");
 
 // ─── plugin: SCSS ────────────────────────────────────────────────────────────
 
-function scssPlugin(
-  platform: string,
-  outputDir: string,
-  minifyCss: boolean,
-): Plugin {
+function scssPlugin(platform: string, outputDir: string, minifyCss: boolean): Plugin {
   const ext = imgExt(platform);
   const isFirefox = platform === "firefox";
 
@@ -52,15 +48,12 @@ function scssPlugin(
   return {
     name: "scss-build",
     async buildStart() {
-      const jobs: Array<[string, string]> = [
-        // view
-        ...(await Array.fromAsync(glob("src/view/*.scss"))).map(
-          (f): [string, string] => [
-            path.resolve(f),
-            `${outputDir}/view/${path.basename(f, ".scss")}.css`,
-          ],
-        ),
-      ];
+      const jobs: Array<[string, string]> = (await Array.fromAsync(glob("src/view/*.scss"))).map(
+        (f): [string, string] => [
+          path.resolve(f),
+          `${outputDir}/view/${path.basename(f, ".scss")}.css`,
+        ],
+      );
 
       await Promise.all(jobs.map(([src, dest]) => buildScss(src, dest)));
     },
@@ -92,7 +85,7 @@ function browserHtmlPlugin(outputDir: string): Plugin {
 
 // ─── plugin: images ──────────────────────────────────────────────────────────
 
-const IMG_LIST = [
+const _IMG_LIST = [
   "read.crx_16x16.png",
   "read.crx_32x32.png",
   "read.crx_48x48.png",
@@ -154,9 +147,7 @@ function manifestPlugin(platform: string, outputDir: string): Plugin {
         delete m.minimum_chrome_version;
         m.content_security_policy = m.content_security_policy.extension_pages;
         delete m.incognito;
-        m.permissions = m.permissions.filter(
-          (v: string) => !["declarativeNetRequest"].includes(v),
-        );
+        m.permissions = m.permissions.filter((v: string) => !["declarativeNetRequest"].includes(v));
         delete m.declarative_net_request;
         delete m.background.service_worker;
         m.permissions.push(...m.host_permissions);
@@ -173,11 +164,7 @@ function manifestPlugin(platform: string, outputDir: string): Plugin {
 
 // ─── plugin: static file copies ──────────────────────────────────────────────
 
-function staticCopyPlugin(
-  platform: string,
-  outputDir: string,
-  minifyJs: boolean,
-): Plugin {
+function staticCopyPlugin(platform: string, outputDir: string, minifyJs: boolean): Plugin {
   return {
     name: "static-copy",
     async buildStart() {
@@ -196,19 +183,14 @@ function staticCopyPlugin(
         minify: minifyJs,
       });
 
-      const copies: Array<[string, string]> = [
-        // rules.json (chrome only)
-        ...(platform !== "firefox" && platform !== "tauri"
+      const copies: Array<[string, string]> =
+        platform !== "firefox" && platform !== "tauri"
           ? [["src/rules.json", `${outputDir}/rules.json`] as [string, string]]
-          : []),
-      ];
+          : [];
 
       // browser-polyfill
       if (platform === "tauri") {
-        copies.push([
-          "src/browser-shim.js",
-          `${outputDir}/lib/browser-polyfill.min.js`,
-        ]);
+        copies.push(["src/browser-shim.js", `${outputDir}/lib/browser-polyfill.min.js`]);
       } else {
         copies.push([
           "node_modules/webextension-polyfill/dist/browser-polyfill.min.js",
@@ -237,11 +219,9 @@ function staticCopyPlugin(
           // 例: json.worker-DKiEKt88.js -> json.worker.js に変換
           const match = file.match(/^(.+?\.worker)-[a-zA-Z0-9]+\.js$/);
           if (match) {
-            await fs.copy(
-              path.join(assetsDir, file),
-              path.join(assetsDir, `${match[1]}.js`),
-              { overwrite: true },
-            );
+            await fs.copy(path.join(assetsDir, file), path.join(assetsDir, `${match[1]}.js`), {
+              overwrite: true,
+            });
           }
         }
       }
@@ -253,12 +233,11 @@ function staticCopyPlugin(
 
 export default defineConfig(({ mode }) => {
   const platform = process.env.PLATFORM || "chrome";
-  const entry = process.env.ENTRY || "app";
+  const entry = process.env.ENTRY || "browser";
   const outputDir = `./debug/${platform}`;
   const isWatchMode = process.argv.includes("--watch");
   const isWatchDev =
-    isWatchMode &&
-    (mode === "development" || process.env.VITE_WATCH_DEV === "true");
+    isWatchMode && (mode === "development" || process.env.VITE_WATCH_DEV === "true");
   const minifyOutput = !isWatchDev;
 
   const entryMap: Record<string, { file: string; name: string }> = {
@@ -272,17 +251,145 @@ export default defineConfig(({ mode }) => {
   const { file, name } = entryMap[entry];
 
   return {
+    staged: {
+      "*": "vp check --fix",
+    },
+    fmt: {},
+    lint: {
+      plugins: ["oxc", "typescript", "unicorn", "react"],
+      categories: {
+        correctness: "warn",
+      },
+      env: {
+        builtin: true,
+      },
+      ignorePatterns: [
+        "debug/**",
+        "playwright-report/**",
+        "test-results/**",
+        "src-tauri/target/**",
+      ],
+      rules: {
+        "vite-plus/prefer-vite-plus-imports": "error",
+      },
+      overrides: [
+        {
+          files: ["src/**/*.{js,mjs,cjs,ts,tsx}"],
+          rules: {
+            "constructor-super": "error",
+            "for-direction": "error",
+            "getter-return": "error",
+            "no-async-promise-executor": "error",
+            "no-case-declarations": "error",
+            "no-class-assign": "error",
+            "no-compare-neg-zero": "error",
+            "no-cond-assign": "error",
+            "no-const-assign": "error",
+            "no-constant-binary-expression": "error",
+            "no-constant-condition": "error",
+            "no-control-regex": "error",
+            "no-debugger": "error",
+            "no-delete-var": "error",
+            "no-dupe-class-members": "error",
+            "no-dupe-else-if": "error",
+            "no-dupe-keys": "error",
+            "no-duplicate-case": "error",
+            "no-empty": "error",
+            "no-empty-character-class": "error",
+            "no-empty-pattern": "error",
+            "no-empty-static-block": "error",
+            "no-ex-assign": "error",
+            "no-extra-boolean-cast": "error",
+            "no-fallthrough": "error",
+            "no-func-assign": "error",
+            "no-global-assign": "error",
+            "no-import-assign": "error",
+            "no-invalid-regexp": "error",
+            "no-irregular-whitespace": "error",
+            "no-loss-of-precision": "error",
+            "no-misleading-character-class": "error",
+            "no-new-native-nonconstructor": "error",
+            "no-nonoctal-decimal-escape": "error",
+            "no-obj-calls": "error",
+            "no-prototype-builtins": "error",
+            "no-redeclare": "error",
+            "no-regex-spaces": "error",
+            "no-self-assign": "error",
+            "no-setter-return": "error",
+            "no-shadow-restricted-names": "error",
+            "no-sparse-arrays": "error",
+            "no-this-before-super": "error",
+            "no-unassigned-vars": "error",
+            "no-undef": "error",
+            "no-unexpected-multiline": "error",
+            "no-unreachable": "error",
+            "no-unsafe-finally": "error",
+            "no-unsafe-negation": "error",
+            "no-unsafe-optional-chaining": "error",
+            "no-unused-labels": "error",
+            "no-unused-private-class-members": "error",
+            "no-unused-vars": "error",
+            "no-useless-assignment": "error",
+            "no-useless-backreference": "error",
+            "no-useless-catch": "error",
+            "no-useless-escape": "error",
+            "no-with": "error",
+            "preserve-caught-error": "error",
+            "require-yield": "error",
+            "use-isnan": "error",
+            "valid-typeof": "error",
+            "no-array-constructor": "error",
+            "no-unused-expressions": "error",
+            "typescript/ban-ts-comment": "error",
+            "typescript/no-duplicate-enum-values": "error",
+            "typescript/no-empty-object-type": "error",
+            "typescript/no-explicit-any": "error",
+            "typescript/no-extra-non-null-assertion": "error",
+            "typescript/no-misused-new": "error",
+            "typescript/no-namespace": "error",
+            "typescript/no-non-null-asserted-optional-chain": "error",
+            "typescript/no-require-imports": "error",
+            "typescript/no-this-alias": "error",
+            "typescript/no-unnecessary-type-constraint": "error",
+            "typescript/no-unsafe-declaration-merging": "error",
+            "typescript/no-unsafe-function-type": "error",
+            "typescript/no-wrapper-object-types": "error",
+            "typescript/prefer-as-const": "error",
+            "typescript/prefer-namespace-keyword": "error",
+            "typescript/triple-slash-reference": "error",
+          },
+          env: {
+            es2026: true,
+            browser: true,
+          },
+          globals: {
+            app: "readonly",
+            browser: "readonly",
+          },
+        },
+      ],
+      options: {
+        typeAware: true,
+        typeCheck: true,
+      },
+      jsPlugins: [
+        {
+          name: "vite-plus",
+          specifier: "vite-plus/oxlint-plugin",
+        },
+      ],
+    },
     define: {
       // watch/dev でも production が注入されると分岐が壊れるため、Vite の mode を正として注入する。
       "process.env.NODE_ENV": JSON.stringify(mode),
     },
-    plugins: [
+    plugins: lazyPlugins(() => [
       react(),
       browserHtmlPlugin(outputDir),
       scssPlugin(platform, outputDir, minifyOutput),
       manifestPlugin(platform, outputDir),
       staticCopyPlugin(platform, outputDir, minifyOutput),
-    ],
+    ]),
     resolve: {
       alias: {
         src: path.resolve(__dirname, "./src"),

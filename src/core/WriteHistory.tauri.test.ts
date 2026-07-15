@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const { messageSend } = vi.hoisted(() => ({
   messageSend: vi.fn(),
@@ -66,7 +66,7 @@ describe("WriteHistory Tauri branch", () => {
       },
     ]);
 
-    const WriteHistory = await import("src/core/WriteHistory.ts");
+    const WriteHistory = await import("src/core/WriteHistory");
 
     await WriteHistory.add({
       url: "https://example.com/thread",
@@ -98,7 +98,7 @@ describe("WriteHistory Tauri branch", () => {
   });
 
   it("update delegates with explicit id", async () => {
-    const WriteHistory = await import("src/core/WriteHistory.ts");
+    const WriteHistory = await import("src/core/WriteHistory");
 
     await WriteHistory.update({
       id: 99,
@@ -141,7 +141,7 @@ describe("WriteHistory Tauri branch", () => {
       },
     ]);
 
-    const WriteHistory = await import("src/core/WriteHistory.ts");
+    const WriteHistory = await import("src/core/WriteHistory");
     const rows = await WriteHistory.get(0, 10);
 
     expect(state.tauriWriteHistoryRepository.get).toHaveBeenCalledWith(0, 10);

@@ -1,9 +1,6 @@
 import { platform } from "src/app";
 import type { ObjectStore } from "src/app/platform/types";
-import {
-  getTauriRepositories,
-  isTauriRuntime,
-} from "src/core/TauriDrizzleBridge";
+import { getTauriRepositories, isTauriRuntime } from "src/core/TauriDrizzleBridge";
 import { isHttps } from "src/core/URL";
 
 /**
@@ -106,9 +103,7 @@ export default class Cache {
       kind?: string | null;
     }>;
     await Promise.all(
-      rows
-        .filter((row) => row.kind !== "thread")
-        .map((row) => store.delete(row.url)),
+      rows.filter((row) => row.kind !== "thread").map((row) => store.delete(row.url)),
     );
   }
 
@@ -126,16 +121,10 @@ export default class Cache {
     // BrowserObjectStore はカーソル非対応のため、last_updated index で
     // 昇順取得 → 反転して降順にし、kind=thread のみ抽出する。
     const store = this._getStore();
-    const all = (await store.index("last_updated").getAll()) as Array<
-      Record<string, unknown>
-    >;
+    const all = (await store.index("last_updated").getAll()) as Array<Record<string, unknown>>;
     const logs = all
       .filter((row) => row.kind === "thread")
-      .sort(
-        (a, b) =>
-          ((b.last_updated as number) ?? 0) -
-          ((a.last_updated as number) ?? 0),
-      )
+      .sort((a, b) => ((b.last_updated as number) ?? 0) - ((a.last_updated as number) ?? 0))
       .map((row) =>
         Cache._toLogRecord({
           url: row.url as string,
@@ -171,9 +160,7 @@ export default class Cache {
       kind?: string | null;
     }>;
     await Promise.all(
-      all
-        .filter((row) => row.kind === "thread")
-        .map((row) => store.delete(row.url)),
+      all.filter((row) => row.kind === "thread").map((row) => store.delete(row.url)),
     );
   }
 
@@ -201,16 +188,11 @@ export default class Cache {
       .filter((row) => {
         const data = typeof row.data === "string" ? row.data : "";
         // read.cgi(HTML)スレは data が無く parsed に本文を持つため、両方を対象にする。
-        const parsed =
-          row.parsed != null ? JSON.stringify(row.parsed) : "";
+        const parsed = row.parsed != null ? JSON.stringify(row.parsed) : "";
         const title = typeof row.title === "string" ? row.title : "";
         return `${title}\n${data}\n${parsed}`.toLowerCase().includes(needle);
       })
-      .sort(
-        (a, b) =>
-          ((b.last_updated as number) ?? 0) -
-          ((a.last_updated as number) ?? 0),
-      )
+      .sort((a, b) => ((b.last_updated as number) ?? 0) - ((a.last_updated as number) ?? 0))
       .map((row) =>
         Cache._toLogRecord({
           url: row.url as string,
@@ -304,10 +286,7 @@ export default class Cache {
   /**
    * キャッシュを保存します
    */
-  async put(
-    data?: string,
-    options?: { lastModified?: number; etag?: string },
-  ): Promise<void> {
+  async put(data?: string, options?: { lastModified?: number; etag?: string }): Promise<void> {
     // 引数が渡された場合はプロパティを更新
     if (data !== undefined) {
       this.data = data;
@@ -326,8 +305,7 @@ export default class Cache {
     }
 
     // NULLを空白に置換
-    const dataToStore =
-      this.data != null ? this.data.replaceAll("\u0000", "\u0020") : null;
+    const dataToStore = this.data != null ? this.data.replaceAll("\u0000", "\u0020") : null;
 
     try {
       if (isTauriRuntime()) {

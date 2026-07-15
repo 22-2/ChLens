@@ -3,7 +3,7 @@ import {
   ID_HEAT_COOL_PEAK_COUNT,
   ID_HEAT_HOT_MAX_COUNT,
 } from "src/view/browser/utils/id-heat";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 describe("getIdHeatColor", () => {
   it("1件以下は灰色を返す", () => {

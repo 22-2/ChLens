@@ -67,12 +67,9 @@ const _getNgElement = function (ngWord: string): InternalNGElement | null {
 
   const functionCall = extractNgDslFunctionCall(ngWord);
   if (functionCall) {
-    const { word, scope, params } = parseNgDslArguments(
-      functionCall.argsSource,
-      {
-        positionalWord: functionCall.valueSource == null,
-      },
-    );
+    const { word, scope, params } = parseNgDslArguments(functionCall.argsSource, {
+      positionalWord: functionCall.valueSource == null,
+    });
 
     const normalizedKeyword = normalizeNgDslKeyword(functionCall.keyword);
     ngElement.type = normalizedKeyword;
@@ -81,9 +78,7 @@ const _getNgElement = function (ngWord: string): InternalNGElement | null {
     // パターン自体が壊れてしまう(例: ラノベ→らのべ で生タイトルと不一致、\S→\s、スペース消失)。
     // 正規表現は文字通り扱い(照合側の生フィールドへtest)、.includes()系の非正規表現型のみ
     // 従来どおりnormalizeして正規化済みテキストと比較する。
-    ngElement.word = ngElement.type.startsWith(TYPE.REG_EXP)
-      ? rawWord
-      : normalize(rawWord);
+    ngElement.word = ngElement.type.startsWith(TYPE.REG_EXP) ? rawWord : normalize(rawWord);
 
     if (scope != null && scope.length > 0) {
       ngElement.scope = {
@@ -223,10 +218,7 @@ export function setupNgRegex(
   obj: Iterable<InternalNGElement>,
   notifyError: (type: string, word: string) => void,
 ): void {
-  const _convReg = function ({
-    type,
-    word,
-  }: InternalNGElement): RegExp | undefined {
+  const _convReg = function ({ type, word }: InternalNGElement): RegExp | undefined {
     let reg: RegExp | undefined;
     try {
       reg = new RegExp(word, "i");

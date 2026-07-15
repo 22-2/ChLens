@@ -92,10 +92,7 @@ export function SimpleDataTable<TRow>({
   });
 
   // key → ColumnDef のルックアップを O(1) にする
-  const colDefMap = useMemo(
-    () => new Map(visibleColumns.map((c) => [c.key, c])),
-    [visibleColumns],
-  );
+  const colDefMap = useMemo(() => new Map(visibleColumns.map((c) => [c.key, c])), [visibleColumns]);
 
   const sortIndicator = (key: string): string => {
     if (sortColumn !== key) return "";
@@ -117,11 +114,7 @@ export function SimpleDataTable<TRow>({
                   <th
                     key={header.id}
                     className={cn}
-                    onClick={
-                      colDef?.sortable && onSort
-                        ? () => onSort(header.id)
-                        : undefined
-                    }
+                    onClick={colDef?.sortable && onSort ? () => onSort(header.id) : undefined}
                     onContextMenu={(event) => {
                       if (!columnVisibilityStorageKey) {
                         return;
@@ -131,10 +124,7 @@ export function SimpleDataTable<TRow>({
                       openHeaderContextMenu(event.clientX, event.clientY);
                     }}
                   >
-                    {flexRender(
-                      header.column.columnDef.header,
-                      header.getContext(),
-                    )}
+                    {flexRender(header.column.columnDef.header, header.getContext())}
                     {colDef?.sortable ? sortIndicator(header.id) : ""}
                   </th>
                 );
@@ -149,9 +139,7 @@ export function SimpleDataTable<TRow>({
             const rowElement = (
               <tr
                 className={
-                  extraClass
-                    ? `simple-data-table__row ${extraClass}`
-                    : "simple-data-table__row"
+                  extraClass ? `simple-data-table__row ${extraClass}` : "simple-data-table__row"
                 }
                 style={getRowStyle?.(original)}
                 onClick={() => onRowClick?.(original)}

@@ -11,17 +11,13 @@ class Message {
     this._bc = new BroadcastChannel(Message.CHANNEL_NAME);
     this._bc.addEventListener(
       "message",
-      ({
-        data: { type, message },
-      }: {
-        data: { type: string; message: any };
-      }) => {
-        this._fire(type, message);
+      ({ data: { type, message } }: { data: { type: string; message: unknown } }) => {
+        void this._fire(type, message);
       },
     );
   }
 
-  private async _fire(type: string, message: any) {
+  private async _fire(type: string, message: unknown) {
     const msg = deepCopy(message);
 
     await defer();
@@ -30,19 +26,19 @@ class Message {
     }
   }
 
-  send(type: string, message: any = {}) {
-    this._fire(type, message);
+  send(type: string, message: unknown = {}) {
+    void this._fire(type, message);
     this._bc.postMessage({ type, message });
   }
 
-  on(type: string, listener: Function) {
+  on(type: string, listener: (...args: unknown[]) => void) {
     if (!this._listenerStore.has(type)) {
       this._listenerStore.set(type, new Callbacks({ persistent: true }));
     }
     this._listenerStore.get(type)!.add(listener);
   }
 
-  off(type: string, listener: Function) {
+  off(type: string, listener: (...args: unknown[]) => void) {
     if (this._listenerStore.has(type)) {
       this._listenerStore.get(type).remove(listener);
     }

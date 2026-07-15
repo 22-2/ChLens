@@ -1,8 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import React from "react";
 import { SimpleDataTable, type ColumnDef } from "src/view/browser/components/SimpleDataTable";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
 interface TestRow {
   id: string;
@@ -106,8 +105,6 @@ describe("SimpleDataTable", () => {
     expect(screen.queryByText("板A")).toBeNull();
 
     fireEvent.contextMenu(screen.getByRole("columnheader", { name: "タイトル" }));
-    expect(
-      screen.getByRole("button", { name: "タイトルは非表示にできません" }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "タイトルは非表示にできません" })).toBeDisabled();
   });
 });

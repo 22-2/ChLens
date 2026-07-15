@@ -82,9 +82,7 @@ export default class ThreadModel {
     res.other = replaced.other;
 
     // AA Detection
-    if (
-      /(?:\u3000{5}|\u3000\u0020|[^>]\u0020\u3000)(?!<br>|$)/i.test(res.message)
-    ) {
+    if (/(?:\u3000{5}|\u3000\u0020|[^>]\u0020\u3000)(?!<br>|$)/i.test(res.message)) {
       res.isAA = true;
       res.class?.push("aa");
     }
@@ -196,16 +194,14 @@ export default class ThreadModel {
     if (meta.slip) {
       res.slip = meta.slip;
       if (resNum === 1) this._existSlipAtFirstRes = true;
-      if (!this.slipIndex.has(meta.slip))
-        this.slipIndex.set(meta.slip, new Set());
+      if (!this.slipIndex.has(meta.slip)) this.slipIndex.set(meta.slip, new Set());
       const set = this.slipIndex.get(meta.slip);
       if (set) set.add(resNum);
     }
 
     if (meta.trip) {
       res.trip = meta.trip;
-      if (!this.tripIndex.has(meta.trip))
-        this.tripIndex.set(meta.trip, new Set());
+      if (!this.tripIndex.has(meta.trip)) this.tripIndex.set(meta.trip, new Set());
       const set = this.tripIndex.get(meta.trip);
       if (set) set.add(resNum);
     }
@@ -235,13 +231,11 @@ export default class ThreadModel {
           /** @type {number} */
           let target = segment[0];
           while (target <= segment[1]) {
-            if (!this.repIndex.has(target))
-              this.repIndex.set(target, new Set());
+            if (!this.repIndex.has(target)) this.repIndex.set(target, new Set());
             const rset = this.repIndex.get(target);
             if (rset) rset.add(resNum);
 
-            if (!this.ancIndex.has(resNum))
-              this.ancIndex.set(resNum, new Set());
+            if (!this.ancIndex.has(resNum)) this.ancIndex.set(resNum, new Set());
             const aset = this.ancIndex.get(resNum);
             if (aset) aset.add(target);
             target++;
@@ -257,20 +251,11 @@ export default class ThreadModel {
    * @returns {INGResult | null}
    */
   checkNG(res, bbsType) {
-    if (this.over1000ResNum != null && res.num >= this.over1000ResNum)
-      return null;
+    if (this.over1000ResNum != null && res.num >= this.over1000ResNum) return null;
 
     // Word/Thread NG
     let ngObj = container.ng.isNGThread(res, this.title, this.urlStr);
-    if (
-      ngObj &&
-      !container.ng.isThreadIgnoreNgType(
-        res,
-        this.title,
-        this.urlStr,
-        ngObj.type,
-      )
-    ) {
+    if (ngObj && !container.ng.isThreadIgnoreNgType(res, this.title, this.urlStr, ngObj.type)) {
       return ngObj;
     }
 
@@ -285,12 +270,7 @@ export default class ThreadModel {
       ) {
         if (
           !container.ng.isIgnoreResNumForAuto(res.num, "NothingID") &&
-          !container.ng.isThreadIgnoreNgType(
-            res,
-            this.title,
-            this.urlStr,
-            "NothingID",
-          )
+          !container.ng.isThreadIgnoreNgType(res, this.title, this.urlStr, "NothingID")
         ) {
           return { type: "NothingID" };
         }
@@ -304,12 +284,7 @@ export default class ThreadModel {
       ) {
         if (
           !container.ng.isIgnoreResNumForAuto(res.num, "NothingSLIP") &&
-          !container.ng.isThreadIgnoreNgType(
-            res,
-            this.title,
-            this.urlStr,
-            "NothingSLIP",
-          )
+          !container.ng.isThreadIgnoreNgType(res, this.title, this.urlStr, "NothingSLIP")
         ) {
           return { type: "NothingSLIP" };
         }
@@ -317,61 +292,35 @@ export default class ThreadModel {
     }
 
     // Chain ID/Slip
-    if (
-      container.config.get("chain_ng_id") &&
-      res.id &&
-      this._ngIdForChain.has(res.id)
-    ) {
+    if (container.config.get("chain_ng_id") && res.id && this._ngIdForChain.has(res.id)) {
       if (
         !container.ng.isIgnoreResNumForAuto(res.num, "ChainID") &&
-        !container.ng.isThreadIgnoreNgType(
-          res,
-          this.title,
-          this.urlStr,
-          "ChainID",
-        )
+        !container.ng.isThreadIgnoreNgType(res, this.title, this.urlStr, "ChainID")
       ) {
         return { type: "ChainID" };
       }
     }
-    if (
-      container.config.get("chain_ng_slip") &&
-      res.slip &&
-      this._ngSlipForChain.has(res.slip)
-    ) {
+    if (container.config.get("chain_ng_slip") && res.slip && this._ngSlipForChain.has(res.slip)) {
       if (
         !container.ng.isIgnoreResNumForAuto(res.num, "ChainSLIP") &&
-        !container.ng.isThreadIgnoreNgType(
-          res,
-          this.title,
-          this.urlStr,
-          "ChainSLIP",
-        )
+        !container.ng.isThreadIgnoreNgType(res, this.title, this.urlStr, "ChainSLIP")
       ) {
         return { type: "ChainSLIP" };
       }
     }
 
     // Repeat Message
-    const repeatCount = parseInt(
-      container.config.get("repeat_message_ng_count"),
-    );
+    const repeatCount = parseInt(container.config.get("repeat_message_ng_count"));
     if (repeatCount > 1) {
       const cleanMsg = res.message.replace(/<[^>]+>/g, "").trim();
-      if (!this._resMessageMap.has(cleanMsg))
-        this._resMessageMap.set(cleanMsg, new Set());
+      if (!this._resMessageMap.has(cleanMsg)) this._resMessageMap.set(cleanMsg, new Set());
       const rset = this._resMessageMap.get(cleanMsg);
       if (rset) {
         rset.add(res.num);
         if (rset.size >= repeatCount) {
           if (
             !container.ng.isIgnoreResNumForAuto(res.num, "RepeatMessage") &&
-            !container.ng.isThreadIgnoreNgType(
-              res,
-              this.title,
-              this.urlStr,
-              "RepeatMessage",
-            )
+            !container.ng.isThreadIgnoreNgType(res, this.title, this.urlStr, "RepeatMessage")
           ) {
             return { type: "RepeatMessage" };
           }
@@ -389,11 +338,7 @@ export default class ThreadModel {
    */
   _handleNgDependencies(res, ngObj) {
     // Collect ID/Slip for chain
-    if (
-      container.config.get("chain_ng_id") &&
-      res.id &&
-      !["ID", "ChainID"].includes(ngObj.type)
-    ) {
+    if (container.config.get("chain_ng_id") && res.id && !["ID", "ChainID"].includes(ngObj.type)) {
       this._ngIdForChain.add(res.id);
     }
     if (
@@ -409,8 +354,7 @@ export default class ThreadModel {
       const set = this.ancIndex.get(res.num);
       if (set) {
         for (const target of set) {
-          if (!this.repNgIndex.has(target))
-            this.repNgIndex.set(target, new Set());
+          if (!this.repNgIndex.has(target)) this.repNgIndex.set(target, new Set());
           const rset = this.repNgIndex.get(target);
           if (rset) rset.add(res.num);
         }
@@ -443,15 +387,7 @@ export default class ThreadModel {
       if (!targetRes || targetRes.class?.includes("ng")) continue;
 
       if (container.ng.isIgnoreResNumForAuto(r, "Chain")) continue;
-      if (
-        container.ng.isThreadIgnoreNgType(
-          targetRes,
-          this.title,
-          this.urlStr,
-          "Chain",
-        )
-      )
-        continue;
+      if (container.ng.isThreadIgnoreNgType(targetRes, this.title, this.urlStr, "Chain")) continue;
 
       targetRes.ng = { type: "Chain" };
       targetRes.class?.push("ng");
@@ -470,15 +406,7 @@ export default class ThreadModel {
       const res = this.resData.get(r);
       if (!res || res.class?.includes("ng")) continue;
       if (container.ng.isIgnoreResNumForAuto(r, "ChainID")) continue;
-      if (
-        container.ng.isThreadIgnoreNgType(
-          res,
-          this.title,
-          this.urlStr,
-          "ChainID",
-        )
-      )
-        continue;
+      if (container.ng.isThreadIgnoreNgType(res, this.title, this.urlStr, "ChainID")) continue;
 
       res.ng = { type: "ChainID" };
       res.class?.push("ng");
@@ -497,15 +425,7 @@ export default class ThreadModel {
       const res = this.resData.get(r);
       if (!res || res.class?.includes("ng")) continue;
       if (container.ng.isIgnoreResNumForAuto(r, "ChainSLIP")) continue;
-      if (
-        container.ng.isThreadIgnoreNgType(
-          res,
-          this.title,
-          this.urlStr,
-          "ChainSLIP",
-        )
-      )
-        continue;
+      if (container.ng.isThreadIgnoreNgType(res, this.title, this.urlStr, "ChainSLIP")) continue;
 
       res.ng = { type: "ChainSLIP" };
       res.class?.push("ng");

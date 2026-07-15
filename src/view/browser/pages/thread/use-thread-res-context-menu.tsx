@@ -24,11 +24,7 @@ import {
 } from "src/view/browser/utils/auto-refresh-pages";
 import { getLegacyWriteHistoryService } from "src/view/browser/utils/legacy-app";
 import type { Props, ThreadFilter } from "src/view/browser/utils/types";
-import {
-  buildKyodemoUrl,
-  copyText,
-  stripHtml,
-} from "src/view/browser/utils/utils";
+import { buildKyodemoUrl, copyText, stripHtml } from "src/view/browser/utils/utils";
 
 type AddPopupContextMenu = (
   x: number,
@@ -58,9 +54,7 @@ interface UseThreadResContextMenuParams {
 }
 
 interface UseThreadResContextMenuResult {
-  openPopupResContextMenu: (
-    parentId: string,
-  ) => (targetRes: IRes, e: React.MouseEvent) => void;
+  openPopupResContextMenu: (parentId: string) => (targetRes: IRes, e: React.MouseEvent) => void;
   openThreadResContextMenu: (e: React.MouseEvent, res: IRes) => void;
 }
 
@@ -115,12 +109,7 @@ export function useThreadResContextMenu({
                 ...res,
                 // res.ng を設定することで ResItem の isNG 判定が即座に true になる
                 ng: { type: "id" },
-                class: [
-                  ...(res.class ?? []).filter(
-                    (className) => className !== "ng",
-                  ),
-                  "ng",
-                ],
+                class: [...(res.class ?? []).filter((className) => className !== "ng"), "ng"],
               }
             : res,
         ),
@@ -230,11 +219,7 @@ export function useThreadResContextMenu({
   );
 
   const buildContextMenuItems = useCallback(
-    (
-      targetRes: IRes,
-      fromPopup: boolean,
-      clickedOnId: boolean,
-    ): ContextMenuItem[] => {
+    (targetRes: IRes, fromPopup: boolean, clickedOnId: boolean): ContextMenuItem[] => {
       const plainName = stripHtml(targetRes.name);
       const plainMessage = stripHtml(targetRes.message);
       const rawId = targetRes.id ?? "";
@@ -293,9 +278,7 @@ export function useThreadResContextMenu({
         },
         {
           id: "auto-refresh",
-          label: isAutoRefreshEnabled
-            ? "スレッドの自動更新を停止"
-            : "スレッドを自動更新",
+          label: isAutoRefreshEnabled ? "スレッドの自動更新を停止" : "スレッドを自動更新",
           icon: isAutoRefreshEnabled ? <Pause size={14} /> : <RefreshCw size={14} />,
           onSelect: () => {
             const nextEnabled = !isAutoRefreshEnabled;
@@ -305,9 +288,7 @@ export function useThreadResContextMenu({
               pageKey: getAutoRefreshPageKey(page) ?? undefined,
             });
             container.toast.info(
-              nextEnabled
-                ? "スレッドの自動更新を開始しました"
-                : "スレッドの自動更新を停止しました",
+              nextEnabled ? "スレッドの自動更新を開始しました" : "スレッドの自動更新を停止しました",
             );
           },
         },
@@ -444,12 +425,7 @@ export function useThreadResContextMenu({
   );
 
   const openResContextMenu = useCallback(
-    (
-      targetRes: IRes,
-      e: React.MouseEvent,
-      fromPopup: boolean,
-      parentId?: string,
-    ) => {
+    (targetRes: IRes, e: React.MouseEvent, fromPopup: boolean, parentId?: string) => {
       e.preventDefault();
       if (!fromPopup) {
         hideAnchorPreviewImmediately();
@@ -457,8 +433,7 @@ export function useThreadResContextMenu({
 
       // ID要素（.res__id）上で右クリックしたかどうかを判定し、
       // 該当時はID系メニューを最上部へ移動する。
-      const clickedOnId =
-        e.target instanceof Element && e.target.closest(".res__id") !== null;
+      const clickedOnId = e.target instanceof Element && e.target.closest(".res__id") !== null;
 
       // メニュー本体も同じスタックへ積み、parentId で親ポップアップとの寿命を揃える。
       addPopupContextMenu(

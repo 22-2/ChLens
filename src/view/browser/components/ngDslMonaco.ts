@@ -36,10 +36,7 @@ function createTopLevelState() {
   };
 }
 
-function advanceTopLevelState(
-  state: ReturnType<typeof createTopLevelState>,
-  char: string,
-): void {
+function advanceTopLevelState(state: ReturnType<typeof createTopLevelState>, char: string): void {
   if (state.escapeNext) {
     state.escapeNext = false;
     return;
@@ -83,9 +80,7 @@ function advanceTopLevelState(
   }
 }
 
-function isTopLevelState(
-  state: ReturnType<typeof createTopLevelState>,
-): boolean {
+function isTopLevelState(state: ReturnType<typeof createTopLevelState>): boolean {
   return (
     state.quote == null &&
     state.parenDepth === 0 &&
@@ -94,10 +89,7 @@ function isTopLevelState(
   );
 }
 
-function getTextUntilPosition(
-  model: Monaco.editor.ITextModel,
-  position: Monaco.Position,
-): string {
+function getTextUntilPosition(model: Monaco.editor.ITextModel, position: Monaco.Position): string {
   return model.getValueInRange({
     startLineNumber: 1,
     startColumn: 1,
@@ -151,9 +143,7 @@ interface NgDslArgumentContext {
   usedNamedArgs: Set<string>;
 }
 
-function getArgumentContext(
-  entryTextUntilCursor: string,
-): NgDslArgumentContext | null {
+function getArgumentContext(entryTextUntilCursor: string): NgDslArgumentContext | null {
   const trimmedEntry = entryTextUntilCursor.trimStart();
   const openParenIndex = trimmedEntry.indexOf("(");
   if (openParenIndex <= 0) {
@@ -252,20 +242,17 @@ function createRuleCompletionItems(
   position: Monaco.Position,
 ): Monaco.languages.CompletionItem[] {
   const range = createCompletionRange(model, position);
-  const items: Monaco.languages.CompletionItem[] = NG_DSL_RULE_SPECS.map(
-    (spec) => ({
-      label: spec.keyword,
-      kind: monaco.languages.CompletionItemKind.Function,
-      detail: spec.description,
-      documentation: createMarkdown(
-        `${spec.keyword}: ${spec.description}\n\n値: ${spec.wordDescription}`,
-      ),
-      insertText: createRuleSnippet(spec),
-      insertTextRules:
-        monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-      range,
-    }),
-  );
+  const items: Monaco.languages.CompletionItem[] = NG_DSL_RULE_SPECS.map((spec) => ({
+    label: spec.keyword,
+    kind: monaco.languages.CompletionItemKind.Function,
+    detail: spec.description,
+    documentation: createMarkdown(
+      `${spec.keyword}: ${spec.description}\n\n値: ${spec.wordDescription}`,
+    ),
+    insertText: createRuleSnippet(spec),
+    insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+    range,
+  }));
 
   for (const spec of NG_DSL_RULE_SPECS.filter((candidate) =>
     candidate.parameters.some((parameter) => parameter.name === "bgColor"),
@@ -274,12 +261,9 @@ function createRuleCompletionItems(
       label: `${spec.keyword} (複数行)` as string,
       kind: monaco.languages.CompletionItemKind.Snippet,
       detail: `${spec.keyword} の複数行テンプレート`,
-      documentation: createMarkdown(
-        "sites 配列とハイライト色を複数行で書くテンプレートです。",
-      ),
+      documentation: createMarkdown("sites 配列とハイライト色を複数行で書くテンプレートです。"),
       insertText: createMultilineHighlightSnippet(spec),
-      insertTextRules:
-        monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+      insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
       range,
     });
   }
@@ -298,7 +282,7 @@ function createParameterSnippet(parameter: NGDslParameterSpec): string {
     case "label":
       return 'label="${1:注目}"';
     case "disabled":
-      return 'disabled=true';
+      return "disabled=true";
   }
 }
 
@@ -316,10 +300,7 @@ function createParameterCompletionItems(
   const items: Monaco.languages.CompletionItem[] = [];
 
   for (const parameter of context.spec.parameters) {
-    if (
-      currentKey !== parameter.name &&
-      context.usedNamedArgs.has(parameter.name)
-    ) {
+    if (currentKey !== parameter.name && context.usedNamedArgs.has(parameter.name)) {
       continue;
     }
 
@@ -329,8 +310,7 @@ function createParameterCompletionItems(
       detail: parameter.detail,
       documentation: createMarkdown(parameter.documentation),
       insertText: createParameterSnippet(parameter),
-      insertTextRules:
-        monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+      insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
       range,
     });
   }
@@ -340,12 +320,9 @@ function createParameterCompletionItems(
       label: "sites=[...]",
       kind: monaco.languages.CompletionItemKind.Snippet,
       detail: "複数サイトテンプレート",
-      documentation: createMarkdown(
-        "複数のドメインや板を sites 配列で指定します。",
-      ),
+      documentation: createMarkdown("複数のドメインや板を sites 配列で指定します。"),
       insertText: "sites=[\n  ${1:eddibb.cc}\n  ${2:5ch.net}\n]",
-      insertTextRules:
-        monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+      insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
       range,
     });
   }
@@ -364,9 +341,7 @@ function createColorCompletionItems(
       label: preset.name,
       kind: monaco.languages.CompletionItemKind.Color,
       detail: `${preset.hex} / ${preset.description}`,
-      documentation: createMarkdown(
-        `${preset.description}\n\n${preset.name}: ${preset.hex}`,
-      ),
+      documentation: createMarkdown(`${preset.description}\n\n${preset.name}: ${preset.hex}`),
       insertText: preset.name,
       range,
     })),
@@ -378,8 +353,7 @@ function createColorCompletionItems(
         "予約色以外の色は #ffcdd2 のような 16 進カラーコードで指定します。",
       ),
       insertText: "#${1:ffcdd2}",
-      insertTextRules:
-        monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+      insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
       range,
     },
   ];
@@ -403,9 +377,7 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
   ])
     .map(escapeRegExp)
     .join("|");
-  const colorPattern = NG_HIGHLIGHT_COLOR_PRESET_ITEMS.map(
-    (preset) => preset.name,
-  )
+  const colorPattern = NG_HIGHLIGHT_COLOR_PRESET_ITEMS.map((preset) => preset.name)
     .map(escapeRegExp)
     .join("|");
 
@@ -414,16 +386,13 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
       root: [
         [/\/\*/, "comment", "@blockComment"],
         [/^\s*\/\/.*/, "comment"],
-        [
-          /^\s*(?:attachName|expireDate|ignoreResNumber|ignoreNgType):/,
-          "keyword",
-        ],
+        [/^\s*(?:attachName|expireDate|ignoreResNumber|ignoreNgType):/, "keyword"],
         [new RegExp(`\\b(?:${keywordPattern})\\b`), "type.identifier"],
         [/\b(?:word|sites|scope|bgColor|label|disabled)\b(?=\s*=)/, "attribute.name"],
         [new RegExp(`\\b(?:${colorPattern})\\b`), "string"],
         [/#(?:[0-9a-fA-F]{6})\b/, "number.hex"],
         [/\b\d{4}\/\d{1,2}\/\d{1,2}\b/, "number"],
-        [/\$\[|\]\$|[()\[\]{}]/, "delimiter.bracket"],
+        [/\$\[|\]\$|[()[\]{}]/, "delimiter.bracket"],
         [/:|,|=/, "delimiter"],
         [/"(?:[^"\\]|\\.)*"/, "string"],
         [/'(?:[^'\\]|\\.)*'/, "string"],
@@ -461,14 +430,11 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
   monaco.languages.registerCompletionItemProvider(NG_DSL_LANGUAGE_ID, {
     triggerCharacters: ["(", ",", "=", "[", '"'],
     provideCompletionItems(model, position) {
-      const entryTextUntilCursor = getCurrentEntryText(
-        getTextUntilPosition(model, position),
-      );
+      const entryTextUntilCursor = getCurrentEntryText(getTextUntilPosition(model, position));
       const argumentContext = getArgumentContext(entryTextUntilCursor);
 
       if (argumentContext) {
-        const currentKeyMatch =
-          argumentContext.currentArgText.match(/^\s*(\w+)\s*=/);
+        const currentKeyMatch = argumentContext.currentArgText.match(/^\s*(\w+)\s*=/);
         const currentKey = currentKeyMatch?.[1]
           ? normalizeNgDslParameterName(currentKeyMatch[1])
           : null;
@@ -483,12 +449,7 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
         }
 
         return {
-          suggestions: createParameterCompletionItems(
-            monaco,
-            model,
-            position,
-            argumentContext,
-          ),
+          suggestions: createParameterCompletionItems(monaco, model, position, argumentContext),
         };
       }
 
@@ -506,19 +467,15 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
   monaco.languages.registerSignatureHelpProvider(NG_DSL_LANGUAGE_ID, {
     signatureHelpTriggerCharacters: ["(", ",", "="],
     provideSignatureHelp(model, position) {
-      const entryTextUntilCursor = getCurrentEntryText(
-        getTextUntilPosition(model, position),
-      );
+      const entryTextUntilCursor = getCurrentEntryText(getTextUntilPosition(model, position));
       const argumentContext = getArgumentContext(entryTextUntilCursor);
       if (!argumentContext) {
         return null;
       }
 
-      const currentKeyMatch =
-        argumentContext.currentArgText.match(/^\s*(\w+)\s*=/);
+      const currentKeyMatch = argumentContext.currentArgText.match(/^\s*(\w+)\s*=/);
       const currentKey = currentKeyMatch?.[1]
-        ? (normalizeNgDslParameterName(currentKeyMatch[1]) ??
-          currentKeyMatch[1])
+        ? (normalizeNgDslParameterName(currentKeyMatch[1]) ?? currentKeyMatch[1])
         : null;
       let activeParameter = argumentContext.currentArgIndex;
       if (currentKey) {

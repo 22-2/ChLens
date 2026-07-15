@@ -3,11 +3,10 @@ import {
   findMainstreamThreadMatch,
   findNextThreadMatch,
 } from "src/view/browser/utils/next-thread-search";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 function createThread(
-  overrides: Partial<IThread> &
-    Pick<IThread, "title" | "url" | "resCount" | "createdAt">,
+  overrides: Partial<IThread> & Pick<IThread, "title" | "url" | "resCount" | "createdAt">,
 ): IThread {
   return {
     title: overrides.title,
@@ -46,9 +45,7 @@ describe("next-thread-search", () => {
     const match = findNextThreadMatch(threads, currentThread);
 
     expect(match?.reason).toBe("number");
-    expect(match?.thread.url).toBe(
-      "https://example.com/test/read.cgi/live/1700000011/",
-    );
+    expect(match?.thread.url).toBe("https://example.com/test/read.cgi/live/1700000011/");
   });
 
   it("通常候補が見つからない時は反省会スレをフォールバック候補にする", () => {
@@ -100,9 +97,7 @@ describe("next-thread-search", () => {
     const match = findNextThreadMatch(threads, currentThread);
 
     expect(match?.reason).toBe("mark");
-    expect(match?.thread.url).toBe(
-      "https://example.com/test/read.cgi/live/1700000032/",
-    );
+    expect(match?.thread.url).toBe("https://example.com/test/read.cgi/live/1700000032/");
   });
 
   it("本流監視では勢い差が大きい候補だけを拾う", () => {
@@ -136,8 +131,6 @@ describe("next-thread-search", () => {
     });
 
     expect(match?.reason).toBe("mainstream");
-    expect(match?.thread.url).toBe(
-      "https://example.com/test/read.cgi/live/1700000102/",
-    );
+    expect(match?.thread.url).toBe("https://example.com/test/read.cgi/live/1700000102/");
   });
 });

@@ -11,10 +11,7 @@ import {
 } from "lucide-react";
 import React, { useMemo } from "react";
 import { container } from "src/service-container";
-import {
-  ContextMenu,
-  ContextMenuItem,
-} from "src/view/browser/components/ContextMenu";
+import { ContextMenu, ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import type { Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
@@ -43,9 +40,7 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
   // 他のタブ（固定タブ除く、自分除く）が存在するか
   const hasOtherClosable = state.tabs.some((t) => t.id !== tab.id && !t.pinned);
   // 右側に閉じられるタブがあるか
-  const hasRightClosable = state.tabs
-    .slice(tabIndex + 1)
-    .some((t) => !t.pinned);
+  const hasRightClosable = state.tabs.slice(tabIndex + 1).some((t) => !t.pinned);
   // 閉じたタブがあるか
   const hasClosedTabs = state.closedTabs.length > 0;
 
@@ -90,8 +85,7 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
         id: "open-in-right-pane",
         label: "右のペインで開く",
         icon: <PanelRight />,
-        onSelect: () =>
-          dispatch({ type: "OPEN_IN_RIGHT_PANE", tabId: tab.id }),
+        onSelect: () => dispatch({ type: "OPEN_IN_RIGHT_PANE", tabId: tab.id }),
       },
       { id: "sep-pane", separator: true },
     ];
@@ -107,9 +101,9 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
         onSelect: () => {
           try {
             if (isBookmarked) {
-              void container.bookmark.remove(threadPage.threadUrl);
+              container.bookmark.remove(threadPage.threadUrl);
             } else {
-              void container.bookmark.add({
+              container.bookmark.add({
                 url: threadPage.threadUrl,
                 title: threadPage.title,
                 type: "thread",
@@ -185,14 +179,7 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
     tab.pinned,
   ]);
 
-  return (
-    <ContextMenu
-      x={position.x}
-      y={position.y}
-      items={items}
-      onClose={onClose}
-    />
-  );
+  return <ContextMenu x={position.x} y={position.y} items={items} onClose={onClose} />;
 };
 
 // スレッドURLから板URLを導出（types.ts の threadUrlToBoardUrl と同等）

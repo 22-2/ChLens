@@ -68,9 +68,7 @@ export default class SikiGuard {
           });
           if (hasCache) {
             if (cache.lastModified != null) {
-              request.headers["If-Modified-Since"] = new Date(
-                cache.lastModified,
-              ).toUTCString();
+              request.headers["If-Modified-Since"] = new Date(cache.lastModified).toUTCString();
             }
             if (cache.etag != null) {
               request.headers["If-None-Match"] = cache.etag;
@@ -94,10 +92,7 @@ export default class SikiGuard {
         if (idMap == null) {
           throw { response };
         }
-        if (
-          ![200, 404].includes(responseStatus) &&
-          (!(response == null) || !hasCache)
-        ) {
+        if (![200, 404].includes(responseStatus) && (!(response == null) || !hasCache)) {
           throw { response, idMap };
         }
 
@@ -111,9 +106,7 @@ export default class SikiGuard {
           cache.data = response.body;
           cache.lastUpdated = Date.now();
 
-          const lastModified = new Date(
-            response.headers["Last-Modified"] || "dummy",
-          ).getTime();
+          const lastModified = new Date(response.headers["Last-Modified"] || "dummy").getTime();
 
           if (Number.isFinite(lastModified)) {
             cache.lastModified = lastModified;
@@ -211,7 +204,5 @@ export default class SikiGuard {
 }
 
 function __guard__(value, transform) {
-  return typeof value !== "undefined" && value !== null
-    ? transform(value)
-    : undefined;
+  return typeof value !== "undefined" && value !== null ? transform(value) : undefined;
 }

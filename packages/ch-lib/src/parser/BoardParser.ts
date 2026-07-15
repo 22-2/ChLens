@@ -35,7 +35,10 @@ export class BoardParser {
     while ((regRes = reg.exec(text))) {
       let title = decodeCharReference(regRes[2]);
       // Remove "Needless from title" logic can be added later if needed or kept simple
-      title = title.replace(/ ?(?:\[(?:無断)?転載禁止\]|(?:\(c\)|©||&copy;|&#169;)(?:2ch\.net|@?bbspink\.com)) ?/g, "");
+      title = title.replace(
+        / ?(?:\[(?:無断)?転載禁止\]|(?:\(c\)|©||&copy;|&#169;)(?:2ch\.net|@?bbspink\.com)) ?/g,
+        "",
+      );
 
       const resCount = parseInt(regRes[3], 10);
 

@@ -1,8 +1,5 @@
-import {
-  buildOmnibarSuggestions,
-  mergeOmnibarSources,
-} from "src/view/browser/utils/omnibar";
-import { describe, expect, it } from "vitest";
+import { buildOmnibarSuggestions, mergeOmnibarSources } from "src/view/browser/utils/omnibar";
+import { describe, expect, it } from "vite-plus/test";
 
 describe("omnibar utils", () => {
   it("ブックマークと履歴をURL単位で統合しブックマークタイトルを優先する", () => {

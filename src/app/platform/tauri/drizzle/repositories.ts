@@ -114,11 +114,7 @@ export const tauriBBSMenuCacheRepository = {
 export const tauriCacheRepository = {
   async get(url: string): Promise<CacheRecordInput | null> {
     const { db } = await getTauriDrizzleContext();
-    const rows = await db
-      .select()
-      .from(cacheTable)
-      .where(eq(cacheTable.url, url))
-      .limit(1);
+    const rows = await db.select().from(cacheTable).where(eq(cacheTable.url, url)).limit(1);
 
     const row = rows[0];
     if (row == null) {
@@ -151,8 +147,7 @@ export const tauriCacheRepository = {
       .values({
         url: record.url,
         data: record.data,
-        parsedJson:
-          record.parsed == null ? null : JSON.stringify(record.parsed),
+        parsedJson: record.parsed == null ? null : JSON.stringify(record.parsed),
         lastUpdated: record.lastUpdated,
         lastModified: record.lastModified,
         etag: record.etag,
@@ -169,8 +164,7 @@ export const tauriCacheRepository = {
         target: cacheTable.url,
         set: {
           data: record.data,
-          parsedJson:
-            record.parsed == null ? null : JSON.stringify(record.parsed),
+          parsedJson: record.parsed == null ? null : JSON.stringify(record.parsed),
           lastUpdated: record.lastUpdated,
           lastModified: record.lastModified,
           etag: record.etag,
@@ -198,9 +192,7 @@ export const tauriCacheRepository = {
 
   async count(): Promise<number> {
     const { db } = await getTauriDrizzleContext();
-    const rows = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(cacheTable);
+    const rows = await db.select({ count: sql<number>`count(*)` }).from(cacheTable);
     return Number(rows[0]?.count ?? 0);
   },
 
@@ -278,12 +270,7 @@ export const tauriCacheRepository = {
 };
 
 export const tauriHistoryRepository = {
-  async add(
-    url: string,
-    title: string,
-    date: number,
-    boardTitle: string,
-  ): Promise<void> {
+  async add(url: string, title: string, date: number, boardTitle: string): Promise<void> {
     const { db } = await getTauriDrizzleContext();
     await db.insert(historyTable).values({ url, title, date, boardTitle });
   },
@@ -353,9 +340,7 @@ export const tauriHistoryRepository = {
 
   async count(): Promise<number> {
     const { db } = await getTauriDrizzleContext();
-    const rows = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(historyTable);
+    const rows = await db.select({ count: sql<number>`count(*)` }).from(historyTable);
     return Number(rows[0]?.count ?? 0);
   },
 
@@ -379,9 +364,7 @@ export const tauriHistoryRepository = {
 };
 
 export const tauriReadStateRepository = {
-  async set(
-    readState: IReadState,
-  ): Promise<{ boardUrl: string; normalizedUrl: string }> {
+  async set(readState: IReadState): Promise<{ boardUrl: string; normalizedUrl: string }> {
     const { db } = await getTauriDrizzleContext();
 
     const normalized = { ...readState };
@@ -477,9 +460,7 @@ export const tauriReadStateRepository = {
   async remove(url: string): Promise<string> {
     const { db } = await getTauriDrizzleContext();
     const filtered = urlFilter(url);
-    await db
-      .delete(readStateTable)
-      .where(eq(readStateTable.url, filtered.replaced.href));
+    await db.delete(readStateTable).where(eq(readStateTable.url, filtered.replaced.href));
     return filtered.original.href;
   },
 
@@ -548,9 +529,7 @@ export const tauriWriteHistoryRepository = {
     const { db } = await getTauriDrizzleContext();
     await db
       .delete(writeHistoryTable)
-      .where(
-        and(eq(writeHistoryTable.url, url), eq(writeHistoryTable.res, res)),
-      );
+      .where(and(eq(writeHistoryTable.url, url), eq(writeHistoryTable.res, res)));
   },
 
   async get(offset: number, limit: number): Promise<WriteHistoryRecord[]> {
@@ -622,9 +601,7 @@ export const tauriWriteHistoryRepository = {
 
   async count(): Promise<number> {
     const { db } = await getTauriDrizzleContext();
-    const rows = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(writeHistoryTable);
+    const rows = await db.select({ count: sql<number>`count(*)` }).from(writeHistoryTable);
     return Number(rows[0]?.count ?? 0);
   },
 
@@ -643,8 +620,6 @@ export const tauriWriteHistoryRepository = {
 
   async clearRange(dayUnix: number): Promise<void> {
     const { db } = await getTauriDrizzleContext();
-    await db
-      .delete(writeHistoryTable)
-      .where(lt(writeHistoryTable.date, dayUnix));
+    await db.delete(writeHistoryTable).where(lt(writeHistoryTable.date, dayUnix));
   },
 };
