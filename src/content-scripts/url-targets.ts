@@ -1,4 +1,4 @@
-import { PATTERNS } from "packages/ch-lib/src/url/patterns";
+import { PATTERNS } from "packages/ch-lib/src/index";
 
 const CH_HOST_SUFFIX_PATTERN =
   /(?:\.5ch\.io|\.[25]ch\.net|\.2ch\.sc|\.open2ch\.net|\.bbspink\.com)$/i;

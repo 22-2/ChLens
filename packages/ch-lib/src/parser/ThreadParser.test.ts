@@ -1,5 +1,5 @@
-import { ThreadParser } from "packages/ch-lib/src/parser/ThreadParser";
-import { ChURL } from "packages/ch-lib/src/url/ChURL";
+import { ThreadParser } from "../parser/ThreadParser";
+import { ChURL } from "../url/ChURL";
 import { describe, expect, it } from "vite-plus/test";
 
 describe("ThreadParser", () => {

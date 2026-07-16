@@ -1,6 +1,6 @@
 import fs from "fs";
-import { BoardParser } from "packages/ch-lib/src/parser/BoardParser";
-import { ChURL } from "packages/ch-lib/src/url/ChURL";
+import { BoardParser } from "../parser/BoardParser";
+import { ChURL } from "../url/ChURL";
 import path from "path";
 import { describe, expect, it } from "vite-plus/test";
 

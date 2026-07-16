@@ -1,5 +1,12 @@
 import type { MouseEvent } from "react";
 
+import {
+  classifyBoardHost,
+  HOSTNAME,
+  normalizeBbsHostname,
+  ROUTE_PATTERNS,
+  type BoardHostType,
+} from "packages/ch-lib/src/index";
 import { resolveItestServerHostname } from "src/view/browser/utils/itest-server-map";
 
 // ---------------------------------------------------------------------------
@@ -44,68 +51,11 @@ export interface InternalThreadListPage {
 export type InternalBrowserPage = InternalThreadPage | InternalThreadListPage;
 
 // ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const COMPATIBLE_HOST_SUFFIXES = [
-  "5ch.io",
-  "2ch.sc",
-  "2ch.net",
-  "open2ch.net",
-  "bbspink.com",
-  "machi.to",
-] as const;
-
-const COMPATIBLE_EXACT_HOSTS = ["jbbs.shitaraba.net", "jbbs.livedoor.jp", "bbs.eddibb.cc"] as const;
-
-// ---------------------------------------------------------------------------
-// Regex patterns
-// ---------------------------------------------------------------------------
-
-const CH_STYLE_THREAD_PATTERN = /^\/((?:[\w-]+\/)?test\/read\.cgi\/[\w-]+\/\d+)\/?/;
-const CH_STYLE_BOARD_FROM_THREAD_PATTERN = /^\/(?:[\w-]+\/)?test\/read\.cgi\/([\w-]+)\/\d+\/?/;
-const CH_STYLE_BOARD_PATTERN = /^\/(?:subback\/|test\/-\/)?([\w-]+)\/?(?:index\.html)?(?:#.*)?$/;
-const MACHI_THREAD_PATTERN = /^\/bbs\/read\.cgi\/([\w-]+)\/(\d+)\/?/;
-const MACHI_BOARD_PATTERN = /^\/([\w-]+)\/?(?:#.*)?$/;
-const SHITARABA_THREAD_PATTERN = /^\/bbs\/read(?:_archive)?\.cgi\/([\w-]+)\/(\d+)\/(\d+)\/?/;
-const SHITARABA_STORAGE_PATTERN = /^\/([\w-]+)\/(\d+)\/storage\/(\d+)\.html$/;
-const SHITARABA_BOARD_PATTERN = /^\/([\w-]+)\/(\d+)\/?(?:#.*)?$/;
-const EDDIBB_THREAD_PATTERN = /^\/(?:test\/read\.cgi\/)?([\w-]+)\/(\d+)\/?/;
-const EDDIBB_BOARD_PATTERN = /^\/(?:test\/read\.cgi\/)?([\w-]+)\/?(?:#.*)?$/;
-const ITEST_THREAD_PATTERN = /^\/(?:[\w-]+\/)?test\/read\.cgi\/([\w-]+)\/(\d+)\/?$/;
-const ITEST_BOARD_PATTERN = /^\/(?:[\w-]+\/)?(?:subback\/)?([\w-]+)\/?$/;
-
-// ---------------------------------------------------------------------------
-// Host utilities
-// ---------------------------------------------------------------------------
-
-function hasHostnameSuffix(hostname: string, suffix: string): boolean {
-  return hostname === suffix || hostname.endsWith(`.${suffix}`);
-}
-
-export function isCompatibleBoardHost(hostname: string): boolean {
-  const h = hostname.toLowerCase();
-  return (
-    COMPATIBLE_EXACT_HOSTS.some((host) => h === host) ||
-    COMPATIBLE_HOST_SUFFIXES.some((suffix) => hasHostnameSuffix(h, suffix))
-  );
-}
-
-type BoardType = "eddibb" | "shitaraba" | "machi" | "ch-style";
-
-function classifyBoardHost(hostname: string): BoardType | null {
-  // 変更理由: ここで全ホストを ch-style 扱いすると、imgur のような外部URLまで
-  // 内部遷移対象に誤判定してしまうため、互換ホストだけを明示的に許可する。
-  if (hostname === "bbs.eddibb.cc") return "eddibb";
-  if (hostname === "jbbs.shitaraba.net") return "shitaraba";
-  if (hasHostnameSuffix(hostname, "machi.to")) return "machi";
-  if (isCompatibleBoardHost(hostname)) return "ch-style";
-  return null;
-}
-
-// ---------------------------------------------------------------------------
 // URL normalization
 // ---------------------------------------------------------------------------
+// 変更理由: 互換ホスト判定・移転マップ・ルーティング用正規表現は ch-lib の
+// hosts.ts / patterns.ts に集約した。このファイルには view 固有のポリシー
+// (strict/オムニバーの許容差、itest サーバー解決)だけを残す。
 
 export function resolveAbsoluteUrl(rawUrl: string, baseUrl: string): string {
   try {
@@ -115,28 +65,19 @@ export function resolveAbsoluteUrl(rawUrl: string, baseUrl: string): string {
   }
 }
 
-function normalizeHostname(url: URL): void {
-  if (url.hostname === "jbbs.livedoor.jp") {
-    url.hostname = "jbbs.shitaraba.net";
-    return;
-  }
-  if (hasHostnameSuffix(url.hostname, "2ch.net")) {
-    url.hostname = url.hostname.replace(/2ch\.net$/i, "5ch.io");
-  }
-}
-
 function normalizeItestUrl(url: URL): void {
-  const isItestHost = url.hostname === "itest.5ch.io" || url.hostname === "itest.bbspink.com";
+  const isItestHost =
+    url.hostname === HOSTNAME.ITEST_5CH || url.hostname === HOSTNAME.ITEST_BBSPINK;
   if (!isItestHost) return;
 
-  const threadMatch = ITEST_THREAD_PATTERN.exec(url.pathname);
+  const threadMatch = ROUTE_PATTERNS.ITEST_THREAD.exec(url.pathname);
   if (threadMatch) {
     url.pathname = `/test/read.cgi/${threadMatch[1]}/${threadMatch[2]}/`;
     convertItestHostname(url, threadMatch[1]);
     return;
   }
 
-  const boardMatch = ITEST_BOARD_PATTERN.exec(url.pathname);
+  const boardMatch = ROUTE_PATTERNS.ITEST_BOARD.exec(url.pathname);
   if (boardMatch) {
     // 変更理由: iTest の /<prefix>/test/read.cgi/... を board と誤認して
     // /<prefix>/ へ潰れる不具合を防ぐため、板URL判定は完全一致のときだけ許可する。
@@ -159,7 +100,7 @@ function convertItestHostname(url: URL, boardKey: string): void {
 function normalizeUrl(raw: string): URL | null {
   try {
     const url = new window.URL(raw);
-    normalizeHostname(url);
+    url.hostname = normalizeBbsHostname(url.hostname);
     normalizeItestUrl(url);
     return url;
   } catch {
@@ -189,13 +130,13 @@ function toThreadListPage(url: URL): InternalThreadListPage {
 // ---------------------------------------------------------------------------
 
 function parseChStylePage(url: URL): InternalBrowserPage | null {
-  const threadMatch = CH_STYLE_THREAD_PATTERN.exec(url.pathname);
+  const threadMatch = ROUTE_PATTERNS.CH_STYLE_THREAD.exec(url.pathname);
   if (threadMatch) {
     url.pathname = `/${threadMatch[1]}/`;
     return toThreadPage(url);
   }
 
-  const boardMatch = CH_STYLE_BOARD_PATTERN.exec(url.pathname);
+  const boardMatch = ROUTE_PATTERNS.CH_STYLE_BOARD.exec(url.pathname);
   if (boardMatch) {
     url.pathname = `/${boardMatch[1]}/`;
     return toThreadListPage(url);
@@ -205,13 +146,13 @@ function parseChStylePage(url: URL): InternalBrowserPage | null {
 }
 
 function parseMachiPage(url: URL): InternalBrowserPage | null {
-  const threadMatch = MACHI_THREAD_PATTERN.exec(url.pathname);
+  const threadMatch = ROUTE_PATTERNS.MACHI_THREAD.exec(url.pathname);
   if (threadMatch) {
     url.pathname = `/bbs/read.cgi/${threadMatch[1]}/${threadMatch[2]}/`;
     return toThreadPage(url);
   }
 
-  const boardMatch = MACHI_BOARD_PATTERN.exec(url.pathname);
+  const boardMatch = ROUTE_PATTERNS.MACHI_BOARD.exec(url.pathname);
   if (boardMatch) {
     url.pathname = `/${boardMatch[1]}/`;
     return toThreadListPage(url);
@@ -221,20 +162,20 @@ function parseMachiPage(url: URL): InternalBrowserPage | null {
 }
 
 function parseShitarabaPage(url: URL): InternalBrowserPage | null {
-  const threadMatch = SHITARABA_THREAD_PATTERN.exec(url.pathname);
+  const threadMatch = ROUTE_PATTERNS.SHITARABA_THREAD.exec(url.pathname);
   if (threadMatch) {
     const action = url.pathname.includes("read_archive") ? "read_archive" : "read";
     url.pathname = `/bbs/${action}.cgi/${threadMatch[1]}/${threadMatch[2]}/${threadMatch[3]}/`;
     return toThreadPage(url);
   }
 
-  const storageMatch = SHITARABA_STORAGE_PATTERN.exec(url.pathname);
+  const storageMatch = ROUTE_PATTERNS.SHITARABA_STORAGE.exec(url.pathname);
   if (storageMatch) {
     url.pathname = `/bbs/read_archive.cgi/${storageMatch[1]}/${storageMatch[2]}/${storageMatch[3]}/`;
     return toThreadPage(url);
   }
 
-  const boardMatch = SHITARABA_BOARD_PATTERN.exec(url.pathname);
+  const boardMatch = ROUTE_PATTERNS.SHITARABA_BOARD.exec(url.pathname);
   if (boardMatch) {
     url.pathname = `/${boardMatch[1]}/${boardMatch[2]}/`;
     return toThreadListPage(url);
@@ -244,14 +185,14 @@ function parseShitarabaPage(url: URL): InternalBrowserPage | null {
 }
 
 function parseEddibbPage(url: URL): InternalBrowserPage | null {
-  const threadMatch = EDDIBB_THREAD_PATTERN.exec(url.pathname);
+  const threadMatch = ROUTE_PATTERNS.EDDIBB_THREAD.exec(url.pathname);
   if (threadMatch?.[2]) {
     url.protocol = "http:";
     url.pathname = `/test/read.cgi/${threadMatch[1]}/${threadMatch[2]}/`;
     return toThreadPage(url);
   }
 
-  const boardMatch = EDDIBB_BOARD_PATTERN.exec(url.pathname);
+  const boardMatch = ROUTE_PATTERNS.EDDIBB_BOARD.exec(url.pathname);
   if (boardMatch) {
     url.pathname = `/${boardMatch[1]}/`;
     return toThreadListPage(url);
@@ -264,7 +205,7 @@ function parseEddibbPage(url: URL): InternalBrowserPage | null {
 // Dispatch table
 // ---------------------------------------------------------------------------
 
-const BOARD_PARSERS: Record<BoardType, (url: URL) => InternalBrowserPage | null> = {
+const BOARD_PARSERS: Record<BoardHostType, (url: URL) => InternalBrowserPage | null> = {
   eddibb: parseEddibbPage,
   shitaraba: parseShitarabaPage,
   machi: parseMachiPage,
@@ -280,7 +221,7 @@ function dispatchParser(url: URL, strict: boolean): InternalBrowserPage | null {
   // 変更理由: /test/read.cgi/<board>/<thread> 形式は 5ch互換掲示板特有の
   // パスで誤爆の恐れがないため、ドメインに依存せず（クリック経路の
   // strict=true でも）内部スレッドとして扱う。
-  const threadMatch = CH_STYLE_THREAD_PATTERN.exec(url.pathname);
+  const threadMatch = ROUTE_PATTERNS.CH_STYLE_THREAD.exec(url.pathname);
   if (threadMatch) {
     url.pathname = `/${threadMatch[1]}/`;
     return toThreadPage(url);
@@ -293,7 +234,7 @@ function dispatchParser(url: URL, strict: boolean): InternalBrowserPage | null {
     return null;
   }
 
-  const boardMatch = CH_STYLE_BOARD_PATTERN.exec(url.pathname);
+  const boardMatch = ROUTE_PATTERNS.CH_STYLE_BOARD.exec(url.pathname);
   if (boardMatch) {
     url.pathname = `/${boardMatch[1]}/`;
     return toThreadListPage(url);
@@ -315,28 +256,28 @@ export function getBoardUrlFromThreadUrl(threadUrl: string): string {
 
   switch (boardType) {
     case "eddibb": {
-      const match = EDDIBB_THREAD_PATTERN.exec(url.pathname);
+      const match = ROUTE_PATTERNS.EDDIBB_THREAD.exec(url.pathname);
       if (match?.[2]) return `${url.origin}/${match[1]}/`;
       break;
     }
     case "shitaraba": {
-      const threadMatch = SHITARABA_THREAD_PATTERN.exec(url.pathname);
+      const threadMatch = ROUTE_PATTERNS.SHITARABA_THREAD.exec(url.pathname);
       if (threadMatch) {
         return `${url.origin}/bbs/read.cgi/${threadMatch[1]}/${threadMatch[2]}/`;
       }
-      const storageMatch = SHITARABA_STORAGE_PATTERN.exec(url.pathname);
+      const storageMatch = ROUTE_PATTERNS.SHITARABA_STORAGE.exec(url.pathname);
       if (storageMatch) {
         return `${url.origin}/bbs/read.cgi/${storageMatch[1]}/${storageMatch[2]}/`;
       }
       break;
     }
     case "machi": {
-      const match = MACHI_THREAD_PATTERN.exec(url.pathname);
+      const match = ROUTE_PATTERNS.MACHI_THREAD.exec(url.pathname);
       if (match) return `${url.origin}/${match[1]}/`;
       break;
     }
     case "ch-style": {
-      const match = CH_STYLE_BOARD_FROM_THREAD_PATTERN.exec(url.pathname);
+      const match = ROUTE_PATTERNS.CH_STYLE_BOARD_FROM_THREAD.exec(url.pathname);
       if (match) return `${url.origin}/${match[1]}/`;
       break;
     }

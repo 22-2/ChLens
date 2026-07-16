@@ -1,4 +1,4 @@
-import { ChURL } from "packages/ch-lib/src/url/ChURL";
+import { ChURL } from "packages/ch-lib/src/index";
 import { getThreadXhrInfo, parseJbbsThread, parseThread } from "src/core/ThreadParser.js";
 import { describe, expect, it } from "vite-plus/test";
 

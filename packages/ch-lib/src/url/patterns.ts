@@ -42,3 +42,23 @@ export const PATTERNS = {
   // itest系(5chとbbspinkでパス構造は同一なのでパターンを共有する)
   ITEST: /\/(?:(?:\w+\/)?test\/read\.cgi\/(\w+)\/(\d+)\/|(?:subback\/)?(\w+)(?:\/)?)/,
 } as const;
+
+// 内部ブラウザのルーティング(クリック/オムニバー入力をスレ・板ページへ解決)用パターン。
+// 変更理由: view 側の link-routing.ts が独自の正規表現を持っていて PATTERNS と
+// 二重管理になっていたため、定義をここへ集約する。
+// PATTERNS と別定義なのは、ルーティングでは板キー・スレキーを個別に捕捉する必要が
+// あることと、板キーにハイフンを許容する([\w-])ためで、意図的な差分である。
+export const ROUTE_PATTERNS = {
+  CH_STYLE_THREAD: /^\/((?:[\w-]+\/)?test\/read\.cgi\/[\w-]+\/\d+)\/?/,
+  CH_STYLE_BOARD_FROM_THREAD: /^\/(?:[\w-]+\/)?test\/read\.cgi\/([\w-]+)\/\d+\/?/,
+  CH_STYLE_BOARD: /^\/(?:subback\/|test\/-\/)?([\w-]+)\/?(?:index\.html)?(?:#.*)?$/,
+  MACHI_THREAD: /^\/bbs\/read\.cgi\/([\w-]+)\/(\d+)\/?/,
+  MACHI_BOARD: /^\/([\w-]+)\/?(?:#.*)?$/,
+  SHITARABA_THREAD: /^\/bbs\/read(?:_archive)?\.cgi\/([\w-]+)\/(\d+)\/(\d+)\/?/,
+  SHITARABA_STORAGE: /^\/([\w-]+)\/(\d+)\/storage\/(\d+)\.html$/,
+  SHITARABA_BOARD: /^\/([\w-]+)\/(\d+)\/?(?:#.*)?$/,
+  EDDIBB_THREAD: /^\/(?:test\/read\.cgi\/)?([\w-]+)\/(\d+)\/?/,
+  EDDIBB_BOARD: /^\/(?:test\/read\.cgi\/)?([\w-]+)\/?(?:#.*)?$/,
+  ITEST_THREAD: /^\/(?:[\w-]+\/)?test\/read\.cgi\/([\w-]+)\/(\d+)\/?$/,
+  ITEST_BOARD: /^\/(?:[\w-]+\/)?(?:subback\/)?([\w-]+)\/?$/,
+} as const;

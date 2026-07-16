@@ -1,4 +1,4 @@
-import { ChURL } from "packages/ch-lib/src/url/ChURL";
+import { ChURL } from "../url/ChURL";
 
 export interface BBSBoard {
   title: string;

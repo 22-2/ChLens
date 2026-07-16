@@ -1,4 +1,4 @@
-import { AnchorParser } from "packages/ch-lib/src/parser/AnchorParser";
+import { AnchorParser } from "../parser/AnchorParser";
 import { describe, expect, it } from "vite-plus/test";
 
 describe("AnchorParser", () => {

@@ -1,5 +1,5 @@
 import { InternalNGElement, TYPE } from "src/core/NGTypes";
-import { PATTERNS } from "packages/ch-lib/src/url/patterns";
+import { PATTERNS } from "packages/ch-lib/src/index";
 import { normalize } from "src/core/jsutil";
 
 export interface NGThreadObj {

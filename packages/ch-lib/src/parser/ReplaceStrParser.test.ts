@@ -1,4 +1,4 @@
-import { ReplaceStrParser } from "packages/ch-lib/src/parser/ReplaceStrParser";
+import { ReplaceStrParser } from "../parser/ReplaceStrParser";
 import { describe, expect, it } from "vite-plus/test";
 
 describe("ReplaceStrParser", () => {

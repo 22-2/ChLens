@@ -1,6 +1,6 @@
-import { MetadataParser } from "packages/ch-lib/src/parser/MetadataParser";
-import { ChURL } from "packages/ch-lib/src/url/ChURL";
-import { decodeCharReference } from "packages/ch-lib/src/utils/entities";
+import { MetadataParser } from "../parser/MetadataParser";
+import { ChURL } from "../url/ChURL";
+import { decodeCharReference } from "../utils/entities";
 
 export interface Post {
   number: number;

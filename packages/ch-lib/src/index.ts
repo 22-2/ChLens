@@ -6,4 +6,6 @@ export * from "./parser/MetadataParser";
 export * from "./parser/ReplaceStrParser";
 export * from "./parser/ThreadParser";
 export * from "./url/ChURL";
+export * from "./url/hosts";
+export * from "./url/patterns";
 export * from "./utils/entities";

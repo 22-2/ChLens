@@ -1,39 +1,20 @@
+import {
+  ChURL,
+  HOSTNAME,
+  normalizeBbsHostname,
+  PATTERNS,
+  TSLD,
+  type BBSType,
+  type ContentType,
+  type GuessResult,
+} from "packages/ch-lib/src/index";
 import { Request } from "src/core/HTTP";
-// @ts-expect-error
 import { fetch as fetchBBSMenu } from "src/core/BBSMenu.js";
-// @ts-expect-error
 import Cache from "src/core/Cache.js";
-import { PATTERNS } from "packages/ch-lib/src/url/patterns";
 
 let serverNet = new Map<string, string>();
 let serverSc = new Map<string, string>();
 let serverPink = new Map<string, string>();
-// 型定義
-type BBSType = "2ch" | "machi" | "jbbs" | "unknown";
-type ContentType = "thread" | "board" | "unknown";
-
-interface GuessResult {
-  type: ContentType;
-  bbsType: BBSType;
-}
-
-// 定数定義
-const HOSTNAME = {
-  OLD_2CH: "2ch.net",
-  NEW_5CH: "5ch.io",
-  OLD_JBBS: "jbbs.livedoor.jp",
-  NEW_JBBS: "jbbs.shitaraba.net",
-  ULA_5CH: "ula.5ch.io",
-  EDDIBB: "bbs.eddibb.cc",
-  ITEST_5CH: "itest.5ch.io",
-  ITEST_BBSPINK: "itest.bbspink.com",
-} as const;
-
-const TSLD = {
-  CH_5: "5ch.io",
-  BBSPINK: "bbspink.com",
-  CH_2_SC: "2ch.sc",
-} as const;
 
 export class URL extends window.URL {
   private guessedType: GuessResult = { type: "unknown", bbsType: "unknown" };
@@ -51,178 +32,30 @@ export class URL extends window.URL {
   }
 
   // メインの正規化処理
+  // 変更理由: 正規化・種別推定のロジックが ChURL と丸ごと重複していたため、
+  // ChURL に委譲する。ULA 形式だけは ChURL 未対応のためこのクラスで処理する。
   private normalizeAndGuessType(): void {
-    this.normalizeHostname();
-
-    // 各BBS形式ごとに処理
-    if (this.isUla5ch()) {
+    if (this.hostname === HOSTNAME.ULA_5CH) {
       this.fixUla5ch();
-    } else if (this.isMachi()) {
-      this.fixMachi();
-    } else if (this.isShitaraba()) {
-      this.fixShitaraba();
-    } else if (this.isEddibb()) {
-      this.fixEddibb();
-    } else {
-      this.fix2ch();
+      return;
     }
-  }
 
-  // ホスト名の正規化
-  private normalizeHostname(): void {
-    if (this.hostname === HOSTNAME.OLD_2CH || this.hostname.endsWith(`.${HOSTNAME.OLD_2CH}`)) {
-      this.hostname = this.hostname.replace(HOSTNAME.OLD_2CH, HOSTNAME.NEW_5CH);
-    } else if (this.hostname === HOSTNAME.OLD_JBBS) {
-      this.hostname = HOSTNAME.NEW_JBBS;
-    }
-  }
-
-  // BBS種別判定
-  private isUla5ch(): boolean {
-    return this.hostname === HOSTNAME.ULA_5CH;
-  }
-
-  private isMachi(): boolean {
-    return this.hostname.includes("machi.to");
-  }
-
-  private isShitaraba(): boolean {
-    return this.hostname === HOSTNAME.NEW_JBBS;
-  }
-
-  private isEddibb(): boolean {
-    return this.hostname === HOSTNAME.EDDIBB;
+    const ch = new ChURL(this.href);
+    this.href = ch.url.href;
+    this.guessedType = { type: ch.type, bbsType: ch.bbsType };
+    this.archive = ch.isArchive;
   }
 
   // ULA 5ch の修正
   private fixUla5ch(): void {
     const match = PATTERNS.CH_THREAD_ULA.exec(this.pathname);
     if (match) {
-      this.hostname = match[2];
+      // 変更理由: ULAパスから取り出したホスト名(egg.5ch.net 等)も移転マップで
+      // 正規化しないと、委譲先の ChURL(getDatUrl 等)と origin の解釈がずれる。
+      this.hostname = normalizeBbsHostname(match[2]);
       this.pathname = `/test/read.cgi/${match[1]}/${match[3]}/`;
       this.guessedType = { type: "thread", bbsType: "2ch" };
     }
-  }
-
-  // まちBBS の修正
-  private fixMachi(): void {
-    if (
-      this.tryFixPattern(PATTERNS.MACHI_THREAD, (match) => `/bbs/read.cgi/${match[1]}/`, {
-        type: "thread",
-        bbsType: "machi",
-      })
-    ) {
-      return;
-    }
-
-    this.tryFixPattern(PATTERNS.MACHI_BOARD, (match) => `/${match[1]}`, {
-      type: "board",
-      bbsType: "machi",
-    });
-  }
-
-  // したらば の修正
-  private fixShitaraba(): void {
-    if (
-      this.tryFixPattern(PATTERNS.SHITARABA_THREAD, (match) => `/bbs/${match[1]}/`, {
-        type: "thread",
-        bbsType: "jbbs",
-      })
-    ) {
-      this.archive = this.pathname.includes("read_archive");
-      return;
-    }
-
-    if (
-      this.tryFixPattern(
-        PATTERNS.SHITARABA_ARCHIVE,
-        (match) => `/bbs/read_archive.cgi/${match[1]}/${match[2]}/`,
-        { type: "thread", bbsType: "jbbs" },
-      )
-    ) {
-      this.archive = true;
-      return;
-    }
-
-    this.tryFixPattern(PATTERNS.SHITARABA_BOARD, (match) => `/${match[1]}`, {
-      type: "board",
-      bbsType: "jbbs",
-    });
-  }
-
-  // eddibb の修正
-  private fixEddibb(): void {
-    // /test/read.cgi/BOARD/NUMBER/ 形式
-    if (
-      this.tryFixPattern(
-        PATTERNS.EDDIBB_THREAD_2,
-        (match) => `/test/read.cgi/${match[1]}/${match[2]}/`,
-        { type: "thread", bbsType: "2ch" },
-      )
-    ) {
-      this.protocol = "http:";
-      return;
-    }
-
-    // /BOARD/NUMBER/ 形式
-    if (
-      this.tryFixPattern(
-        PATTERNS.EDDIBB_THREAD,
-        (match) => `/test/read.cgi/${match[1]}/${match[2]}/`,
-        { type: "thread", bbsType: "2ch" },
-      )
-    ) {
-      this.protocol = "http:";
-      return;
-    }
-
-    // 板 (test/read.cgi形式)
-    if (
-      this.tryFixPattern(PATTERNS.EDDIBB_BOARD_2, (match) => `/test/read.cgi/${match[1]}/`, {
-        type: "board",
-        bbsType: "2ch",
-      })
-    ) {
-      return;
-    }
-
-    // 板 (通常形式)
-    this.tryFixPattern(PATTERNS.EDDIBB_BOARD, (match) => `/${match[1]}/`, {
-      type: "board",
-      bbsType: "2ch",
-    });
-  }
-
-  // 2ch系 の修正
-  private fix2ch(): void {
-    if (
-      this.tryFixPattern(PATTERNS.CH_THREAD, (match) => `/${match[1]}/`, {
-        type: "thread",
-        bbsType: "2ch",
-      })
-    ) {
-      return;
-    }
-
-    this.tryFixPattern(PATTERNS.CH_BOARD, (match) => `/${match[1]}`, {
-      type: "board",
-      bbsType: "2ch",
-    });
-  }
-
-  // パターンマッチング共通処理
-  private tryFixPattern(
-    pattern: RegExp,
-    pathBuilder: (match: RegExpExecArray) => string,
-    type: GuessResult,
-  ): boolean {
-    const match = pattern.exec(this.pathname);
-    if (match) {
-      this.pathname = pathBuilder(match);
-      this.guessedType = type;
-      return true;
-    }
-    return false;
   }
 
   // レス番号の取得
@@ -252,43 +85,22 @@ export class URL extends window.URL {
 
   /**
    * datのURLを取得
+   * 変更理由: ChURL に同一実装があるため委譲する。
+   * (このインスタンスの href は正規化済みなので再パースは冪等)
    */
   getDatUrl(): string | null {
-    const { type } = this.guessedType;
-    if (type !== "thread") return null;
-
-    const tmp = new RegExp(
-      `^/(?:test|bbs)/read(?:_archive)?\\.cgi/(\\w+)/(\\d+)/(?:(\\d+)/)?$`,
-    ).exec(this.pathname);
-    if (!tmp) return null;
-
-    const tsld = this.getTsld();
-    if (tsld === "machi.to") {
-      return `${this.origin}/bbs/offlaw.cgi/${tmp[1]}/${tmp[2]}/`;
-    } else if (tsld === "shitaraba.net") {
-      if (this.isArchive()) {
-        return this.href;
-      } else {
-        return `${this.origin}/bbs/rawmode.cgi/${tmp[1]}/${tmp[2]}/${tmp[3]}/`;
-      }
-    } else {
-      // 5ch.io, bbspink.com, etc.
-      return `${this.origin}/${tmp[1]}/dat/${tmp[2]}.dat`;
-    }
+    if (this.guessedType.type !== "thread") return null;
+    return new ChURL(this.href).getDatUrl();
   }
 
   // スレッドURLから板URLへ変換
+  // 変更理由: パターン置換の実体は ChURL.toBoard と同一のため委譲する。
+  // 非スレッドURLで例外を投げる従来の契約はこちらで維持する。
   toBoard(): URL {
-    const { type, bbsType } = this.guessedType;
-
-    if (type !== "thread") {
+    if (this.guessedType.type !== "thread") {
       throw new Error("toBoard()はThreadでのみ呼び出せます");
     }
-
-    const pattern = bbsType === "jbbs" ? PATTERNS.SHITARABA_TO_BOARD : PATTERNS.CH_TO_BOARD;
-
-    const pathname = this.pathname.replace(pattern, "/$1/");
-    return new URL(`${this.origin}${pathname}`);
+    return new URL(new ChURL(this.href).toBoard().url.href);
   }
 
   // 携帯版URLからの変換
@@ -631,7 +443,16 @@ interface ResInfo {
   bbspink: boolean;
 }
 
-function applyServerInfo(menu: any[]): ResInfo {
+// BBSMenu.js(型なしJS)から渡される生メニューの実際のアクセス形状。
+// 変更理由: any型の使用を避けるため、参照している最小限のフィールドだけを型付けする。
+interface RawBbsMenuBoard {
+  url: string;
+}
+interface RawBbsMenuCategory {
+  board: RawBbsMenuBoard[];
+}
+
+function applyServerInfo(menu: RawBbsMenuCategory[]): ResInfo {
   const boardNet = new Map<string, string>();
   const boardSc = new Map<string, string>();
   const boardPink = new Map<string, string>();
@@ -674,7 +495,7 @@ function applyServerInfo(menu: any[]): ResInfo {
   };
 }
 
-export async function pushServerInfo(menu: any[][]) {
+export async function pushServerInfo(menu: RawBbsMenuCategory[]) {
   const res = applyServerInfo(menu);
 
   if (res.net && res.sc && res.bbspink) {
@@ -683,12 +504,12 @@ export async function pushServerInfo(menu: any[][]) {
 
   if (!res.net || !res.bbspink) {
     const tmpUrl = `https://menu.5ch.io/bbsmenu.html`;
-    const tmpMenu = <any[][]>(await fetchBBSMenu(tmpUrl, false)).menu;
+    const tmpMenu = (await fetchBBSMenu(tmpUrl, false)).menu as RawBbsMenuCategory[];
     applyServerInfo(tmpMenu);
   }
   if (!res.sc) {
     const tmpUrl = `https://menu.2ch.sc/bbsmenu.html`;
-    const tmpMenu = <any[][]>(await fetchBBSMenu(tmpUrl, false)).menu;
+    const tmpMenu = (await fetchBBSMenu(tmpUrl, false)).menu as RawBbsMenuCategory[];
     applyServerInfo(tmpMenu);
   }
 }

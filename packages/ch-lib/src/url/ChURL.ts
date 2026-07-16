@@ -1,4 +1,5 @@
-import { PATTERNS } from "packages/ch-lib/src/url/patterns";
+import { HOSTNAME, normalizeBbsHostname } from "../url/hosts";
+import { PATTERNS } from "../url/patterns";
 
 export type BBSType = "2ch" | "machi" | "jbbs" | "unknown";
 export type ContentType = "thread" | "board" | "unknown";
@@ -8,32 +9,16 @@ export interface GuessResult {
   bbsType: BBSType;
 }
 
-const HOSTNAME = {
-  OLD_2CH: "2ch.net",
-  NEW_5CH: "5ch.io",
-  OLD_JBBS: "jbbs.livedoor.jp",
-  NEW_JBBS: "jbbs.shitaraba.net",
-  ULA_5CH: "ula.5ch.io",
-  EDDIBB: "bbs.eddibb.cc",
-  ITEST_5CH: "itest.5ch.io",
-  ITEST_BBSPINK: "itest.bbspink.com",
-} as const;
-
 export class ChURL {
   public url: URL;
   private guessedType: GuessResult = { type: "unknown", bbsType: "unknown" };
   private archive = false;
 
   constructor(urlInput: string | URL) {
-    // Basic normalization of hostname
-    let normalized = urlInput.toString();
-    if (normalized.includes(HOSTNAME.OLD_2CH)) {
-      normalized = normalized.replace(HOSTNAME.OLD_2CH, HOSTNAME.NEW_5CH);
-    } else if (normalized.includes(HOSTNAME.OLD_JBBS)) {
-      normalized = normalized.replace(HOSTNAME.OLD_JBBS, HOSTNAME.NEW_JBBS);
-    }
-
-    this.url = new URL(normalized);
+    this.url = new URL(urlInput.toString());
+    // 変更理由: URL文字列全体への文字列置換だと、パスやクエリに "2ch.net" を
+    // 含むだけの無関係なURLまで書き換えてしまうため、hostname に限定して正規化する。
+    this.url.hostname = normalizeBbsHostname(this.url.hostname);
     this.normalizeAndGuessType();
   }
 

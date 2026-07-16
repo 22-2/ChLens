@@ -1,4 +1,4 @@
-import { BBSMenuParser } from "packages/ch-lib/src/parser/BBSMenuParser";
+import { BBSMenuParser } from "../parser/BBSMenuParser";
 import { describe, expect, it } from "vite-plus/test";
 
 describe("BBSMenuParser", () => {

@@ -1,5 +1,5 @@
-import { ChURL } from "packages/ch-lib/src/url/ChURL";
-import { decodeCharReference } from "packages/ch-lib/src/utils/entities";
+import { ChURL } from "../url/ChURL";
+import { decodeCharReference } from "../utils/entities";
 
 export interface BoardThread {
   url: string;
