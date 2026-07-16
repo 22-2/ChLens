@@ -2031,15 +2031,17 @@ body {
 }
 
 .res__badge--own {
-  border: 1px solid rgba(214, 90, 0, 0.22);
-  background: rgba(214, 90, 0, 0.12);
-  color: #a14a00;
+  // 行の背景強調をやめた分、バッジ自体を見分けやすくするため半透明ではなく単色塗りにする
+  border: 1px solid transparent;
+  background: #d65a00;
+  color: #fff;
 }
 
 .res__badge--reply-to-own {
-  border: 1px solid rgba(179, 108, 0, 0.22);
-  background: rgba(179, 108, 0, 0.1);
-  color: #8a5a00;
+  // 「自分」と紛らわしくならないよう、同系色ではなく別系統の色相にする
+  border: 1px solid transparent;
+  background: #1a73e8;
+  color: #fff;
 }
 
 .res__id {
@@ -2067,26 +2069,6 @@ body {
 
 .res__body a:visited {
   color: #681da8;
-}
-
-.res--own,
-.res--reply-to-own {
-  border-left: 3px solid transparent;
-  padding-left: 13px;
-}
-
-.res--own {
-  border-left-color: rgba(214, 90, 0, 0.7);
-  background: rgba(214, 90, 0, 0.05);
-}
-
-.res--reply-to-own {
-  border-left-color: rgba(179, 108, 0, 0.68);
-  background: rgba(179, 108, 0, 0.05);
-}
-
-.res--own.res--reply-to-own {
-  background: linear-gradient(90deg, rgba(214, 90, 0, 0.08) 0%, rgba(179, 108, 0, 0.05) 100%);
 }
 
 /* ==========================================================================
