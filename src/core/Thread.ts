@@ -221,7 +221,8 @@ export default class Thread {
       if (thread != null) {
         container.bookmark.updateResCount(this.url.url.href, thread.res.length);
       }
-      if (response?.status === 203) {
+      // サーバーシグナル(203) に加え、スレ一覧不在による dat 落ち判定でも expired 更新を行う
+      if (response?.status === 203 || this.expired) {
         container.bookmark.updateExpired(this.url.url.href, true);
       }
     }
@@ -508,11 +509,10 @@ export default class Thread {
   /**
    * 板スレ一覧のレス数と突き合わせ、不足分をあぼーんで補填する。
    *
-   * 変更理由: 以前はスレが一覧に存在しない場合に expired フラグを立てていたが、
-   * 板一覧のキャッシュ(subject.txt)は1ページ目のみを含むことが多く、
-   * 2ページ目以降のスレやキャッシュが古い場合に誤って dat 落ちと判定されるため、
-   * ここでは expired を設定しない。dat 落ち判定は HTTP 203 ステータスや
-   * HTML 内の stoplight マーカーなど、サーバーからの明示的なシグナルに限定する。
+   * 変更理由: スレが落ちたかどうかの判定は、サーバーからの明示的なシグナル（HTTP 203,
+   * stoplight マーカー）に加え、板スレ一覧に存在しない場合も dat 落ちとみなす。
+   * スレ一覧のキャッシュ(subject.txt)が1ページ目のみを含むことで誤判定の
+   * 可能性はあるが、ユーザーの要求によりこの挙動を採用する。
    */
   private _padAbobunIfNeeded(thread: ParsedThread, result: CachedInfoResult): void {
     if (result.status === "success" || result.status === "sucess") {
@@ -524,6 +524,9 @@ export default class Thread {
           other: "あぼーん",
         });
       }
+    }
+    if (result.status === "not_found") {
+      thread.expired = true;
     }
   }
 
