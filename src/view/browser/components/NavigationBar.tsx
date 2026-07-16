@@ -4,7 +4,6 @@ import {
   Archive,
   Bookmark,
   Columns2,
-  Download,
   Filter,
   History,
   Menu,
@@ -45,7 +44,6 @@ import {
   parseInternalBrowserPage,
 } from "src/view/browser/utils/link-routing";
 import { container } from "src/service-container/index";
-import { saveThreadDat } from "src/view/browser/utils/save-thread-dat";
 import {
   mergeOmnibarSources,
   type OmnibarBoardSource,
@@ -608,14 +606,6 @@ export const NavigationBar: React.FC = () => {
     [forward],
   );
 
-  const handleSaveDat = useCallback(() => {
-    if (currentPage.type !== "thread") {
-      return;
-    }
-    // 保存の成否はユーティリティ側のトーストで通知するため、ここでは投げっぱなしにする。
-    void saveThreadDat(currentPage.threadUrl);
-  }, [currentPage]);
-
   const toggleFilterFromMenu = useCallback(() => {
     // フィルタUIはメニュー項目からのみ開くことで、
     // メニューボタン押下そのものをトリガーにしない。
@@ -723,12 +713,6 @@ export const NavigationBar: React.FC = () => {
               icon: <PenLine size={14} />,
               onSelect: () => togglePanel("write"),
             },
-            {
-              id: "save-thread-dat",
-              label: "datを保存",
-              icon: <Download size={14} />,
-              onSelect: handleSaveDat,
-            },
           ]
         : []),
       {
@@ -806,7 +790,6 @@ export const NavigationBar: React.FC = () => {
     ],
     [
       currentPage.type,
-      handleSaveDat,
       openQuickAccessPage,
       openQuickAccessPageInNewTab,
       toggleFilterFromMenu,

@@ -9,6 +9,7 @@ import {
   PinOff,
   X,
 } from "lucide-react";
+import { ChURL } from "packages/ch-lib/src/index";
 import React, { useMemo } from "react";
 import { container } from "src/service-container";
 import { ContextMenu, ContextMenuItem } from "src/view/browser/components/ContextMenu";
@@ -131,6 +132,17 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
           void copyText(`${threadPage.title}\n${threadPage.threadUrl}`);
         },
       });
+      const datUrl = deriveDatUrl(threadPage.threadUrl);
+      if (datUrl) {
+        result.push({
+          id: "copy-dat-url",
+          label: "datのURLをコピー",
+          icon: <Clipboard />,
+          onSelect: () => {
+            void copyText(datUrl);
+          },
+        });
+      }
       result.push({ id: "sep-copy", separator: true });
       result.push({
         id: "to-board",
@@ -186,4 +198,14 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
 function deriveBoardUrl(threadUrl: string): string {
   // 変更理由: コンテキストメニューだけ判定がズレると「板を開く」の遷移先が不一致になる。
   return getBoardUrlFromThreadUrl(threadUrl);
+}
+
+// read.cgi系以外(shitarabaのrawmode等)や解析不能なURLはnullになるため、
+// その場合はメニュー項目自体を出さない。
+function deriveDatUrl(threadUrl: string): string | null {
+  try {
+    return new ChURL(threadUrl).getDatUrl();
+  } catch {
+    return null;
+  }
 }
