@@ -140,7 +140,10 @@ export function hasVideo(message: string): boolean {
   );
 }
 export function hasExternalLink(message: string): boolean {
-  return /<a\b[^>]*href="https?:\/\/[^"]*"[^>]*>/i.test(message);
+  // res.message はレンダリング前の生HTMLで、通常URLはまだ <a> タグ化されていない
+  // （linkify は MessageProcessor が描画時に行う）ため、<a href> だけを見ると常に不一致になる。
+  // 生テキスト中の http(s) URL も対象にする。
+  return /https?:\/\/[^\s"'<>]+/i.test(message);
 }
 
 export function parseAnchorDisplayTargets(text: string): number[] {
