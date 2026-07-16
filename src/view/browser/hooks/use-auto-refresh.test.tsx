@@ -113,7 +113,10 @@ describe("useAutoRefresh", () => {
       window.clearTimeout(id)) as typeof cancelAnimationFrame);
 
     configMock = {
-      get: vi.fn(() => "3000"),
+      get: vi.fn((key: string) => {
+        if (key === "auto_load_idle_stop_timeout") return "auto";
+        return "3000";
+      }),
       set: vi.fn(),
       getAll: () => ({}),
       ready: (callback: () => void) => callback(),
@@ -287,7 +290,10 @@ describe("useAutoRefresh", () => {
 
   it("更新間隔が未設定でも既定の5秒で自動更新する", () => {
     configMock = {
-      get: vi.fn(() => "0"),
+      get: vi.fn((key: string) => {
+        if (key === "auto_load_idle_stop_timeout") return "auto";
+        return "0";
+      }),
       set: vi.fn(),
       getAll: () => ({}),
       ready: (callback: () => void) => callback(),

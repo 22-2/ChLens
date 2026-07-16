@@ -9,6 +9,10 @@ import {
   MIN_THREAD_AUTO_REFRESH_SEC,
   readThreadAutoRefreshIntervalSec,
   THREAD_AUTO_REFRESH_CONFIG_KEY,
+  THREAD_IDLE_STOP_TIMEOUT_CONFIG_KEY,
+  readIdleStopTimeoutValue,
+  findIdleStopTimeoutOption,
+  type IdleStopTimeoutOption,
 } from "src/view/browser/hooks/auto-refresh-config";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import {
@@ -71,10 +75,16 @@ export interface UseAutoRefreshPanelResult {
   isEnabled: boolean;
   /** 更新間隔（秒） */
   intervalSec: number;
+  /** 現在の自動停止タイムアウト設定値 */
+  idleStopTimeoutValue: string;
+  /** 現在の自動停止タイムアウトの表示用オプション */
+  idleStopTimeoutOption: IdleStopTimeoutOption;
   /** 自動更新の有効/無効をトグルする */
   toggle: () => void;
   /** 更新間隔を変更する（秒単位、MIN〜MAX にクランプ） */
   setIntervalSec: (sec: number) => void;
+  /** 自動停止タイムアウトを変更する */
+  setIdleStopTimeout: (value: string) => void;
 }
 
 export function useAutoRefreshPanel(): UseAutoRefreshPanelResult {
@@ -91,6 +101,30 @@ export function useAutoRefreshPanel(): UseAutoRefreshPanelResult {
     minSec: MIN_BOARD_INTERVAL_SEC,
     maxSec: MAX_BOARD_INTERVAL_SEC,
   });
+
+  const [idleStopTimeoutValue, setIdleStopTimeoutValueState] = useState(readIdleStopTimeoutValue);
+
+  useEffect(() => {
+    const sync = () => setIdleStopTimeoutValueState(readIdleStopTimeoutValue());
+    const handleConfigUpdated = ({ key }: { key?: string }) => {
+      if (key === THREAD_IDLE_STOP_TIMEOUT_CONFIG_KEY) {
+        sync();
+      }
+    };
+
+    container.config.ready(sync);
+    container.message.on("config_updated", handleConfigUpdated);
+    return () => {
+      container.message.off("config_updated", handleConfigUpdated);
+    };
+  }, []);
+
+  const setIdleStopTimeout = useCallback((value: string) => {
+    setIdleStopTimeoutValueState(value);
+    void container.config.set(THREAD_IDLE_STOP_TIMEOUT_CONFIG_KEY, value);
+  }, []);
+
+  const idleStopTimeoutOption = findIdleStopTimeoutOption(idleStopTimeoutValue);
 
   const panelKind: AutoRefreshPanelKind =
     currentPage.type === "thread"
@@ -123,7 +157,10 @@ export function useAutoRefreshPanel(): UseAutoRefreshPanelResult {
     isOnThread,
     isEnabled,
     intervalSec,
+    idleStopTimeoutValue,
+    idleStopTimeoutOption,
     toggle,
     setIntervalSec,
+    setIdleStopTimeout,
   };
 }

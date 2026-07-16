@@ -3,6 +3,8 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { MiniWindow } from "src/view/browser/components/MiniWindow";
 import { StatusBarItem, StatusBarMode } from "src/view/browser/components/StatusBar";
 import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
+import { IDLE_STOP_TIMEOUT_OPTIONS } from "src/view/browser/hooks/auto-refresh-config";
+import type { IdleStopTimeoutOption } from "src/view/browser/hooks/auto-refresh-config";
 import { useAutoNextThreadSetting } from "src/view/browser/hooks/use-auto-next-thread-setting";
 import {
   MAX_BOARD_INTERVAL_SEC,
@@ -21,9 +23,11 @@ interface ThreadAutoRefreshPanelContentProps {
   isOnThread: boolean;
   isAutoNextThreadEnabled: boolean;
   intervalSec: number;
+  idleStopTimeoutValue: string;
   onAutoNextThreadToggle: () => void;
   onToggle: () => void;
   onIntervalChange: (sec: number) => void;
+  onIdleStopTimeoutChange: (value: string) => void;
 }
 
 const ThreadAutoRefreshPanelContent: React.FC<ThreadAutoRefreshPanelContentProps> = ({
@@ -31,14 +35,78 @@ const ThreadAutoRefreshPanelContent: React.FC<ThreadAutoRefreshPanelContentProps
   isOnThread,
   isAutoNextThreadEnabled,
   intervalSec,
+  idleStopTimeoutValue,
   onAutoNextThreadToggle,
   onToggle,
   onIntervalChange,
+  onIdleStopTimeoutChange,
 }) => (
   <>
     <div className="mini-window__separator" />
 
-    {/* 更新間隔スライダー */}
+    {/* 1. 自動次スレ検索 */}
+    <div className="mini-window__section">
+      <div className="mini-window__toggle-row">
+        <span className="mini-window__toggle-label">自動次スレ検索</span>
+        <button
+          className={`mini-window__toggle-btn${
+            isAutoNextThreadEnabled ? " mini-window__toggle-btn--on" : ""
+          }`}
+          onClick={onAutoNextThreadToggle}
+          disabled={!isOnThread}
+          title={!isOnThread ? "スレッドを開いているときに有効です" : undefined}
+        >
+          {isAutoNextThreadEnabled ? "ON" : "OFF"}
+        </button>
+      </div>
+      <p className="mini-window__note">
+        1000到達やdat落ち後に3秒ごとに次スレを探し、見つかれば同じタブで移動します
+      </p>
+      <p className="mini-window__note">移動直後は、より勢いのある本流候補も短時間だけ監視します</p>
+    </div>
+
+    <div className="mini-window__separator" />
+
+    {/* 2. 自動スクロールスタイル */}
+    <div className="mini-window__section">
+      <div className="mini-window__section-header">自動スクロールスタイル</div>
+      <div className="mini-window__select-row">
+        <select
+          className="mini-window__select"
+          aria-label="自動スクロールスタイル"
+          defaultValue="default"
+        >
+          <option value="default">デフォルト</option>
+        </select>
+      </div>
+    </div>
+
+    <div className="mini-window__separator" />
+
+    {/* 3. 自動更新停止までの時間 */}
+    <div className="mini-window__section">
+      <div className="mini-window__section-header">自動更新停止までの時間</div>
+      <div className="mini-window__select-row">
+        <select
+          className="mini-window__select"
+          value={idleStopTimeoutValue}
+          onChange={(e) => onIdleStopTimeoutChange(e.target.value)}
+        >
+          {IDLE_STOP_TIMEOUT_OPTIONS.map((opt: IdleStopTimeoutOption) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <p className="mini-window__note">
+        この時間だけ新着が来ないと自動更新を停止します。「無効」にすると停止しません
+      </p>
+    </div>
+
+    <div className="mini-window__separator" />
+
+    {/* 4. 更新間隔 */}
     <div className="mini-window__section">
       <div className="mini-window__section-header">更新間隔</div>
       <div className="mini-window__slider-row">
@@ -57,56 +125,20 @@ const ThreadAutoRefreshPanelContent: React.FC<ThreadAutoRefreshPanelContentProps
 
     <div className="mini-window__separator" />
 
-    {/* 実装が追いつくまでは選択 UI だけ先に揃え、ラジオの占有面積を減らす。 */}
-    <div className="mini-window__section">
-      <div className="mini-window__section-header">自動スクロールスタイル</div>
-      <div className="mini-window__select-row">
-        <select
-          className="mini-window__select"
-          aria-label="自動スクロールスタイル"
-          defaultValue="default"
-        >
-          <option value="default">デフォルト</option>
-        </select>
-      </div>
-    </div>
-
-    <div className="mini-window__separator" />
-
+    {/* 5. 自動更新 */}
     <div className="mini-window__section">
       <div className="mini-window__toggle-row">
-        <span className="mini-window__toggle-label">自動次スレ移動</span>
+        <span className="mini-window__toggle-label">自動更新</span>
         <button
-          className={`mini-window__toggle-btn${
-            isAutoNextThreadEnabled ? " mini-window__toggle-btn--on" : ""
-          }`}
-          onClick={onAutoNextThreadToggle}
+          className={`mini-window__toggle-btn${isEnabled ? " mini-window__toggle-btn--on" : ""}`}
+          onClick={onToggle}
           disabled={!isOnThread}
           title={!isOnThread ? "スレッドを開いているときに有効です" : undefined}
         >
-          {isAutoNextThreadEnabled ? "ON" : "OFF"}
+          {isEnabled ? "ON" : "OFF"}
         </button>
       </div>
-      <p className="mini-window__note">
-        1000到達やdat落ち後に3秒ごとに次スレを探し、見つかれば同じタブで移動します
-      </p>
-      <p className="mini-window__note">移動直後は、より勢いのある本流候補も短時間だけ監視します</p>
-
-      {/* 自動更新トグル */}
-      <div className="mini-window__section">
-        <div className="mini-window__toggle-row">
-          <span className="mini-window__toggle-label">自動更新</span>
-          <button
-            className={`mini-window__toggle-btn${isEnabled ? " mini-window__toggle-btn--on" : ""}`}
-            onClick={onToggle}
-            disabled={!isOnThread}
-            title={!isOnThread ? "スレッドを開いているときに有効です" : undefined}
-          >
-            {isEnabled ? "ON" : "OFF"}
-          </button>
-        </div>
-        {!isOnThread && <p className="mini-window__note">スレッドを開いているときに有効です</p>}
-      </div>
+      {!isOnThread && <p className="mini-window__note">スレッドを開いているときに有効です</p>}
     </div>
   </>
 );
@@ -163,8 +195,16 @@ const ThreadListAutoRefreshPanelContent: React.FC<ThreadListAutoRefreshPanelCont
 // ステータスバーアイテム本体
 // -----------------------------------------------------------------------
 export const AutoRefreshStatusItem: React.FC = () => {
-  const { panelKind, isOnThread, isEnabled, intervalSec, toggle, setIntervalSec } =
-    useAutoRefreshPanel();
+  const {
+    panelKind,
+    isOnThread,
+    isEnabled,
+    intervalSec,
+    idleStopTimeoutValue,
+    toggle,
+    setIntervalSec,
+    setIdleStopTimeout,
+  } = useAutoRefreshPanel();
   const { enabled: isAutoNextThreadEnabled, setEnabled: setAutoNextThreadEnabled } =
     useAutoNextThreadSetting();
   const { canAutoScroll, isAutoScrolling, isPaused } = useAutoScrollState();
@@ -283,9 +323,11 @@ export const AutoRefreshStatusItem: React.FC = () => {
               isOnThread={isOnThread}
               isAutoNextThreadEnabled={isAutoNextThreadEnabled}
               intervalSec={intervalSec}
+              idleStopTimeoutValue={idleStopTimeoutValue}
               onAutoNextThreadToggle={() => setAutoNextThreadEnabled(!isAutoNextThreadEnabled)}
               onToggle={toggle}
               onIntervalChange={setIntervalSec}
+              onIdleStopTimeoutChange={setIdleStopTimeout}
             />
           ) : (
             <ThreadListAutoRefreshPanelContent

@@ -5,6 +5,8 @@ import {
   readThreadAutoRefreshIntervalMs,
   THREAD_AUTO_REFRESH_CONFIG_KEY,
   THREAD_AUTO_REFRESH_IDLE_STOP_COUNT,
+  readIdleStopTimeoutValue,
+  resolveIdleStopTimeoutMs,
 } from "src/view/browser/hooks/auto-refresh-config";
 
 interface PendingRefreshSnapshot {
@@ -61,6 +63,8 @@ export function useAutoRefresh({
   const onAutoStopRef = useRef(onAutoStop);
   // 新着が来なかった更新が何回連続したか。新着が来たら 0 に戻す。
   const consecutiveIdleRefreshRef = useRef(0);
+  // 最後に新着が来た時刻（epoch ms）。時間ベースの自動停止判定に使う。
+  const lastNewResponseTimeRef = useRef<number | null>(null);
   const loadingRef = useRef(loading);
   const prevLoadingRef = useRef(loading);
   const prevEnabledRef = useRef(enabled);
@@ -384,20 +388,41 @@ export function useAutoRefresh({
       pendingRefresh.responseCount !== responseCount ||
       pendingRefresh.lastResponseNum !== lastResponseNum;
 
+    // 新着があった場合は最終新着時刻を更新（時間ベース停止の判定用）
+    if (hasNewResponses) {
+      lastNewResponseTimeRef.current = Date.now();
+    }
+
     // 自動停止（アイドル検知）。
-    // 新着が来た回はカウントを 0 に戻し、来なかった回だけ加算する。
-    // ユーザー割り込みの有無は「新着が来たか」とは無関係なので判定には混ぜない。
+    // 設定に応じて tick ベース（従来動作）または時間ベースで判定する。
     if (pendingRefresh.isIdleStopCandidate) {
-      if (hasNewResponses) {
-        consecutiveIdleRefreshRef.current = 0;
-      } else {
-        consecutiveIdleRefreshRef.current += 1;
-        if (consecutiveIdleRefreshRef.current >= THREAD_AUTO_REFRESH_IDLE_STOP_COUNT) {
+      const idleStopTimeoutValue = readIdleStopTimeoutValue();
+      const timeoutMs = resolveIdleStopTimeoutMs(idleStopTimeoutValue);
+
+      if (timeoutMs === null && idleStopTimeoutValue === "auto") {
+        // tick ベース（従来動作）: 連続アイドル回数で判定
+        if (hasNewResponses) {
           consecutiveIdleRefreshRef.current = 0;
-          onAutoStopRef.current?.();
-          return;
+        } else {
+          consecutiveIdleRefreshRef.current += 1;
+          if (consecutiveIdleRefreshRef.current >= THREAD_AUTO_REFRESH_IDLE_STOP_COUNT) {
+            consecutiveIdleRefreshRef.current = 0;
+            onAutoStopRef.current?.();
+            return;
+          }
+        }
+      } else if (timeoutMs !== null) {
+        // 時間ベース: 最後の新着から timeoutMs 経過で停止
+        if (!hasNewResponses && lastNewResponseTimeRef.current != null) {
+          const elapsed = Date.now() - lastNewResponseTimeRef.current;
+          if (elapsed >= timeoutMs) {
+            lastNewResponseTimeRef.current = null;
+            onAutoStopRef.current?.();
+            return;
+          }
         }
       }
+      // idleStopTimeoutValue === "0"（無効）の場合は何もしない
     }
 
     if (!hasNewResponses || userInterruptedRef.current) {
