@@ -349,7 +349,11 @@ export const shouldRejectThreadResult = ({
 
 /**
  * 板スレ一覧のレス数と突き合わせ、不足分をあぼーんで補填する。
- * スレが一覧に存在しない場合は expired フラグを立てる。
+ *
+ * 変更理由: 以前はスレが一覧に存在しない場合に expired フラグを立てていたが、
+ * 板一覧のキャッシュ(subject.txt)は1ページ目のみを含むことが多く、
+ * 2ページ目以降のスレやキャッシュが古い場合に誤って dat 落ちと判定されるため、
+ * ここでは expired を設定しない。
  */
 export const applyCachedInfoToThread = ({
   thread,
@@ -365,9 +369,5 @@ export const applyCachedInfoToThread = ({
         other: "あぼーん",
       });
     }
-    return;
-  }
-  if (status === "not_found") {
-    thread.expired = true;
   }
 };

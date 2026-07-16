@@ -208,6 +208,13 @@ export default class Thread {
         hasCache,
         thread,
       });
+      // 変更理由: _buildDomainErrorMessage 内で thread.expired = true が設定される場合
+      // （5ch.io の 203 など）があるため、インスタンス側にも伝播させる。
+      // また、HTTP 203 はサーバーが明示的に dat 落ちを通知するステータスなので、
+      // thread の有無にかかわらず expired とする。
+      if (thread?.expired === true || response?.status === 203) {
+        this.expired = true;
+      }
       failed = true;
     } finally {
       // ブックマーク更新は成否に関わらず実行する
@@ -500,7 +507,12 @@ export default class Thread {
 
   /**
    * 板スレ一覧のレス数と突き合わせ、不足分をあぼーんで補填する。
-   * スレがリストに存在しない場合は expired フラグを立てる。
+   *
+   * 変更理由: 以前はスレが一覧に存在しない場合に expired フラグを立てていたが、
+   * 板一覧のキャッシュ(subject.txt)は1ページ目のみを含むことが多く、
+   * 2ページ目以降のスレやキャッシュが古い場合に誤って dat 落ちと判定されるため、
+   * ここでは expired を設定しない。dat 落ち判定は HTTP 203 ステータスや
+   * HTML 内の stoplight マーカーなど、サーバーからの明示的なシグナルに限定する。
    */
   private _padAbobunIfNeeded(thread: ParsedThread, result: CachedInfoResult): void {
     if (result.status === "success" || result.status === "sucess") {
@@ -512,8 +524,6 @@ export default class Thread {
           other: "あぼーん",
         });
       }
-    } else if (result.status === "not_found") {
-      thread.expired = true;
     }
   }
 
@@ -521,7 +531,9 @@ export default class Thread {
   private _applyThreadToSelf(thread: ParsedThread): void {
     this.title = thread.title ?? null;
     this.res = thread.res;
-    this.expired = thread.expired != null;
+    // 変更理由: `!= null` はプロパティの存在チェックであり、`expired: false` でも
+    // true と判定されてしまう。明示的に true が設定されている場合のみ dat 落ちとみなす。
+    this.expired = thread.expired === true;
   }
 
   // -------------------------------------------------------------------------
