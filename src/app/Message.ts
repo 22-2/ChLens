@@ -31,16 +31,19 @@ class Message {
     this._bc.postMessage({ type, message });
   }
 
-  on(type: string, listener: (...args: unknown[]) => void) {
+  // 購読側が狭い型のコールバックを渡せるようジェネリックにする。
+  // 内部ストアは型消去された Callbacks<unknown[]> のためキャストで受け渡す
+  // (型ごとのストア分離はレガシー互換の観点で行わない)。
+  on<T = unknown>(type: string, listener: (data: T) => void) {
     if (!this._listenerStore.has(type)) {
       this._listenerStore.set(type, new Callbacks({ persistent: true }));
     }
-    this._listenerStore.get(type)!.add(listener);
+    this._listenerStore.get(type)!.add(listener as (...args: unknown[]) => void);
   }
 
-  off(type: string, listener: (...args: unknown[]) => void) {
+  off<T = unknown>(type: string, listener: (data: T) => void) {
     if (this._listenerStore.has(type)) {
-      this._listenerStore.get(type).remove(listener);
+      this._listenerStore.get(type).remove(listener as (...args: unknown[]) => void);
     }
   }
 }

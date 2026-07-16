@@ -260,17 +260,23 @@ export function isNGThread(
   subType: string | null = null,
 ): INGResult | null {
   const resObj_raw = res as Record<string, unknown>;
+  // String() による強制は外部データ (res) の安全な文字列化のため意図的
+  // eslint-disable-next-line @typescript-eslint/no-base-to-string
   const name = decodeCharReference(String(resObj_raw.name ?? ""));
+  // eslint-disable-next-line @typescript-eslint/no-base-to-string
   const mail = decodeCharReference(String(resObj_raw.mail ?? ""));
+  // eslint-disable-next-line @typescript-eslint/no-base-to-string
   const other = decodeCharReference(String(resObj_raw.other ?? ""));
+  // eslint-disable-next-line @typescript-eslint/no-base-to-string
   const mes = decodeCharReference(String(resObj_raw.message ?? ""));
 
   const resObj: Partial<NGResObj & NGThreadObj> = {
     all: `${name} ${mail} ${other} ${mes}`,
     name,
     mail,
-    id: resObj_raw.id ?? null,
-    slip: resObj_raw.slip ?? null,
+    // res は型情報のない外部データのため、実行時表現を変えずに期待する型へキャストする。
+    id: (resObj_raw.id as string | undefined) ?? null,
+    slip: (resObj_raw.slip as string | undefined) ?? null,
     mes,
     title,
     url,
@@ -284,7 +290,7 @@ export function isNGThread(
   for (const n of get()) {
     if (THREAD_DENIED_TYPES.has(n.type)) continue;
     if (!passesCommonFilters(n, ctx, now)) continue;
-    if (checkResNum(n, resObj_raw.num)) continue;
+    if (checkResNum(n, resObj_raw.num as number)) continue;
 
     checkedCount += 1;
 

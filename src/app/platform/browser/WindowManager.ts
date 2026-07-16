@@ -1,3 +1,5 @@
+// グローバル browser には runtime/tabs/windows の型が無いため、polyfill を明示的に import する。
+import browser from "webextension-polyfill";
 import { WindowManager, WindowOptions } from "src/app/platform/types";
 
 /**

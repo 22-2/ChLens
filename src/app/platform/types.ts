@@ -42,7 +42,9 @@ export interface HttpResponse {
 export interface HttpRequestOptions {
   method?: string;
   headers?: Record<string, string>;
-  body?: unknown;
+  // 実装 (XHR.send / tauriFetch) がそのまま受け取れる型に限定する。
+  // unknown だと各実装側でキャストが必要になり型エラーの原因になっていた。
+  body?: string;
   timeout?: number;
   mimeType?: string;
 }

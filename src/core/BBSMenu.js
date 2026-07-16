@@ -16,9 +16,9 @@ export const onChange = _model.onChange;
 
 /**
  * 複数のURLから板一覧を取得してマージ
- * @method fetchAll
- * @param {Boolean} [forceReload=false]
- * @return {Promise<{menu: Array}>}
+ * 戻り値の型は BBSMenuModel からの推論に任せる
+ * (古い `@return {Promise<{menu: Array}>}` 表記は実際の型と食い違い型エラーの原因になっていた)。
+ * @param {boolean} [forceReload=false]
  */
 export const fetchAll = async function (forceReload = false) {
   const menu = await _model.fetchAll(forceReload);
@@ -27,10 +27,8 @@ export const fetchAll = async function (forceReload = false) {
 
 /**
  * 単一のURLから板一覧を取得
- * @method fetch
- * @param {String} url
- * @param {Boolean} [force=false]
- * @return {Promise<{menu: Array, response?: Object}>}
+ * @param {string} url
+ * @param {boolean} [force=false]
  */
 export const fetch = async function (url, force = false) {
   const menu = await _model.fetchOne(url, force);
@@ -39,9 +37,7 @@ export const fetch = async function (url, force = false) {
 
 /**
  * 板一覧を取得（キャッシュまたは通信）
- * @method get
- * @param {Boolean} [forceReload=false]
- * @return {Promise<Object>}
+ * @param {boolean} [forceReload=false]
  */
 export const get = async function (forceReload = false) {
   return await _model.get(forceReload);

@@ -1,26 +1,15 @@
 import { onChange as BBSMenuOnChange, get as getBBSMenu } from "src/core/BBSMenu.js";
+import { BBSMenuData } from "src/core/BBSMenuModel";
 import { Request } from "src/core/HTTP";
 import { URL } from "src/core/URL";
 
-interface BBSMenuBoard {
-  url: string;
-  title: string;
-}
-
-interface BBSMenuCategory {
-  board: BBSMenuBoard[];
-}
-
-interface BBSMenuResponse {
-  status: "success" | "error";
-  menu?: BBSMenuCategory[];
-  message?: string;
-}
-
+// 旧形式 (menu?: {board: []}[]) を表すローカル interface 群は実際のデータ構造
+// (BBSMenuData: menu?: BBSMenu[] = categories/boards 形式) と食い違っていたため削除し、
+// 供給元である BBSMenuModel の型をそのまま使う。
 let _bbsmenu: Map<string, string> | null = null;
 let _bbsmenuPromise: Promise<void> | null = null;
 
-const _generateBBSMenu = ({ status, menu, message }: any): void => {
+const _generateBBSMenu = ({ status, menu, message }: BBSMenuData): void => {
   if (status === "error") {
     void (async () => {
       await app.defer();
@@ -47,10 +36,10 @@ const _generateBBSMenu = ({ status, menu, message }: any): void => {
 };
 
 const _setBBSMenu = async (): Promise<void> => {
-  const obj = (await getBBSMenu()) as BBSMenuResponse;
+  const obj = await getBBSMenu();
   _generateBBSMenu(obj);
   // 意図: 板一覧の更新通知を購読してキャッシュMapを常に最新に保つ。
-  BBSMenuOnChange.add((updatedObj: BBSMenuResponse) => {
+  BBSMenuOnChange.add((updatedObj) => {
     _generateBBSMenu(updatedObj);
   });
 };

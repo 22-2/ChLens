@@ -10,21 +10,20 @@ import {
   ICacheService,
   IConfig,
   IMessage,
+  INGResult,
   INGService,
   INotificationService,
+  IReadState,
   IReadStateService,
   IThreadService,
   IToastService,
   IUtil,
 } from "src/service-container/interfaces";
 import { LogLevels } from "consola";
-// @ts-expect-error: side-effect import without own types
 import BoardService from "src/core/BoardService.js";
 import Cache from "src/core/Cache.js";
-// @ts-expect-error: side-effect import without own types
 import * as BBSMenu from "src/core/BBSMenu.js";
 import { setConsolaLevel } from "src/core/logger";
-// @ts-expect-error: sonner may lack type declarations
 import { toast } from "sonner";
 import Notification from "src/core/Notification";
 import ThreadService from "src/core/ThreadService.js";
@@ -40,13 +39,20 @@ interface LegacyAppForSetup {
   };
   message: {
     send(type: string, data?: unknown): void;
-    on(type: string, cb: (data: unknown) => void): void;
-    off(type: string, cb: (data: unknown) => void): void;
+    // global.d.ts の app.message と同様、コールバック側の型を推論させる。
+    on<T = unknown>(type: string, cb: (data: T) => void): void;
+    off<T = unknown>(type: string, cb: (data: T) => void): void;
   };
   NG?: {
-    isNGBoard(title: string, url: string, resCount: number): unknown;
-    isNGThread(...args: unknown[]): unknown;
-    isThreadIgnoreNgType(...args: unknown[]): unknown;
+    // INGService の戻り値型と揃える。unknown のままだとアダプタ側で代入エラーになる。
+    isNGBoard(title: string, url: string, resCount: number): INGResult | null;
+    isNGThread(res: unknown, title: string, url: string): INGResult | null;
+    isThreadIgnoreNgType(
+      res: unknown,
+      threadTitle: string,
+      url: string,
+      ngType: string,
+    ): INGResult | null;
     add(ngWord: string): Promise<void>;
     invalidateCache(): void;
     execExpire(): void;
@@ -54,17 +60,19 @@ interface LegacyAppForSetup {
     set(val: unknown): Promise<void>;
   };
   bookmark?: {
-    get(url: string): unknown;
+    // IBookmark アダプタの戻り値型と揃える (unknown だと代入エラーになるため)。
+    get(url: string): IBookmarkItem | undefined;
     add?(url: string, title: string, resCount?: number): Promise<boolean>;
     remove(url: string): Promise<boolean>;
     updateResCount(url: string, count: number): Promise<boolean>;
     updateExpired(url: string, exp: boolean): Promise<boolean>;
-    getByBoard(url: string): unknown;
+    getByBoard(url: string): IBookmarkItem[];
   };
   ReadState?: {
-    get(url: string): Promise<unknown>;
-    getByBoard(boardUrl: string): Promise<unknown>;
-    set(readState: unknown): Promise<void>;
+    // IReadStateService の型と揃える。
+    get(url: string): Promise<IReadState | undefined>;
+    getByBoard(boardUrl: string): Promise<IReadState[]>;
+    set(readState: IReadState): Promise<void>;
   };
   escapeHtml(str: string): string;
   safeHref(url: string): string;
@@ -110,10 +118,16 @@ export function setupContainer(app: LegacyAppForSetup) {
   });
 
   // Message Adapter
+  // on/off はジェネリックメソッドのため、アロー関数プロパティではなく
+  // メソッド構文で実装して bivariance を効かせる。
   const messageAdapter: IMessage = {
     send: (type: string, data?: unknown) => app.message.send(type, data),
-    on: (type: string, cb: (data: unknown) => void) => app.message.on(type, cb),
-    off: (type: string, cb: (data: unknown) => void) => app.message.off(type, cb),
+    on(type, cb) {
+      app.message.on(type, cb);
+    },
+    off(type, cb) {
+      app.message.off(type, cb);
+    },
   };
 
   // Bookmark Adapter
@@ -125,7 +139,8 @@ export function setupContainer(app: LegacyAppForSetup) {
     remove: (url: string) => app.bookmark?.remove(url),
     updateResCount: (url: string, count: number) => app.bookmark?.updateResCount(url, count),
     updateExpired: (url: string, exp: boolean) => app.bookmark?.updateExpired(url, exp),
-    getByBoard: (url: string) => app.bookmark?.getByBoard(url),
+    // レガシー app.bookmark が未初期化のときは「ブックマークなし」として扱う。
+    getByBoard: (url: string) => app.bookmark?.getByBoard(url) ?? [],
   };
 
   // Cache Adapter
@@ -136,10 +151,13 @@ export function setupContainer(app: LegacyAppForSetup) {
   };
 
   // ReadState Adapter
+  // レガシー app.ReadState が未初期化でも Promise を返す契約を守るため async にする。
   const readStateAdapter: IReadStateService = {
-    get: (url: string) => app.ReadState?.get(url),
-    getByBoard: (boardUrl: string) => app.ReadState?.getByBoard(boardUrl),
-    set: (readState: unknown) => app.ReadState?.set(readState),
+    get: async (url: string) => app.ReadState?.get(url),
+    getByBoard: async (boardUrl: string) => (await app.ReadState?.getByBoard(boardUrl)) ?? [],
+    set: async (readState: IReadState) => {
+      await app.ReadState?.set(readState);
+    },
   };
 
   // Board Service Adapter
@@ -197,15 +215,16 @@ export function setupContainer(app: LegacyAppForSetup) {
   };
 
   // NG Service Adapter
+  // レガシー app.NG が未初期化のときは「NG該当なし」として扱う (?? null / ?? false)。
   const ngServiceAdapter: INGService = {
-    isNGBoard: (title, url, resCount) => app.NG?.isNGBoard(title, url, resCount),
-    isNGThread: (res, title, url) => app.NG?.isNGThread(res, title, url),
+    isNGBoard: (title, url, resCount) => app.NG?.isNGBoard(title, url, resCount) ?? null,
+    isNGThread: (res, title, url) => app.NG?.isNGThread(res, title, url) ?? null,
     isThreadIgnoreNgType: (res, threadTitle, url, ngType) =>
-      app.NG?.isThreadIgnoreNgType(res, threadTitle, url, ngType),
+      app.NG?.isThreadIgnoreNgType(res, threadTitle, url, ngType) ?? null,
     add: (ngWord) => app.NG?.add(ngWord),
     invalidateCache: () => app.NG?.invalidateCache(),
     execExpire: () => app.NG?.execExpire(),
-    isIgnoreResNumForAuto: (num, type) => app.NG?.isIgnoreResNumForAuto(num, type),
+    isIgnoreResNumForAuto: (num, type) => app.NG?.isIgnoreResNumForAuto(num, type) ?? false,
   };
 
   // Util Adapter
@@ -213,7 +232,8 @@ export function setupContainer(app: LegacyAppForSetup) {
     escapeHtml: (str: string) => app.escapeHtml(str),
     safeHref: (url: string) => app.safeHref(url),
     defer: () => app.defer(),
-    isNewerReadState: (a: unknown, b: unknown) => app.util?.isNewerReadState(a, b),
+    // app.util 未初期化時は「より新しいとは判定しない」= false を返す。
+    isNewerReadState: (a: unknown, b: unknown) => app.util?.isNewerReadState(a, b) ?? false,
     guessType: (url: string) =>
       app.util?.guessType ? app.util.guessType(url) : { bbsType: "2ch", protocol: "https:" },
   };

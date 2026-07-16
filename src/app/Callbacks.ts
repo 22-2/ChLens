@@ -5,17 +5,20 @@ interface CallbacksConfiguration {
   persistent?: boolean;
 }
 
-export default class Callbacks {
+// コールバック引数の型を購読側へ伝えられるよう、引数タプルでジェネリック化する。
+// (unknown[] 固定だと、狭い型のコールバックを add する全箇所が
+//  strictFunctionTypes の反変性チェックで型エラーになるため)
+export default class Callbacks<Args extends unknown[] = unknown[]> {
   private readonly _config: Readonly<CallbacksConfiguration>;
-  private readonly _callbackStore = new Set<(...args: unknown[]) => void>();
-  private _latestCallArg: ReadonlyArray<unknown> | null = null;
+  private readonly _callbackStore = new Set<(...args: Args) => void>();
+  private _latestCallArg: Readonly<Args> | null = null;
   wasCalled = false;
 
   constructor(config: CallbacksConfiguration = {}) {
     this._config = config;
   }
 
-  add(callback: (...args: unknown[]) => void) {
+  add(callback: (...args: Args) => void) {
     if (!this._config.persistent && this._latestCallArg) {
       callback(...deepCopy(this._latestCallArg));
     } else {
@@ -23,7 +26,7 @@ export default class Callbacks {
     }
   }
 
-  remove(callback: (...args: unknown[]) => void) {
+  remove(callback: (...args: Args) => void) {
     if (this._callbackStore.has(callback)) {
       this._callbackStore.delete(callback);
     } else {
@@ -31,7 +34,7 @@ export default class Callbacks {
     }
   }
 
-  call(...arg: unknown[]) {
+  call(...arg: Args) {
     if (!this._config.persistent && this._latestCallArg) {
       log("error", "app.Callbacks: persistentでないCallbacksが複数回callされました。");
       return;

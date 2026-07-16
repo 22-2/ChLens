@@ -19,7 +19,7 @@ interface BBSMenuCacheRecord {
 interface CacheRecordInput {
   url: string;
   data: string | null;
-  parsed: unknown | null;
+  parsed: unknown;
   lastUpdated: number;
   lastModified: number | null;
   etag: string | null;
@@ -290,7 +290,9 @@ export const tauriHistoryRepository = {
   async get(offset: number, limit: number): Promise<HistoryRecord[]> {
     const { db } = await getTauriDrizzleContext();
 
-    let query = db.select().from(historyTable).orderBy(desc(historyTable.date));
+    // 条件付きで offset/limit を積むため $dynamic() で動的ビルダーモードにする
+    // (drizzle は既定で同一メソッドの再呼び出しを型レベルで禁止しており、再代入が型エラーになる)。
+    let query = db.select().from(historyTable).orderBy(desc(historyTable.date)).$dynamic();
 
     if (offset >= 0) {
       query = query.offset(offset);
@@ -548,7 +550,9 @@ export const tauriWriteHistoryRepository = {
         date: writeHistoryTable.date,
       })
       .from(writeHistoryTable)
-      .orderBy(desc(writeHistoryTable.date));
+      .orderBy(desc(writeHistoryTable.date))
+      // 条件付きで offset/limit を積むため $dynamic() で動的ビルダーモードにする。
+      .$dynamic();
 
     if (offset >= 0) {
       query = query.offset(offset);

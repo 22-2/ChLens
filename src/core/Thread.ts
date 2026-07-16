@@ -132,7 +132,7 @@ export default class Thread {
     let thread: ParsedThread | undefined;
     let deltaFlg = false;
     let readcgiVer = 5;
-    let noChangeFlg = false;
+    let noChangeFlg: boolean;
     let failed = false;
 
     try {
@@ -234,7 +234,11 @@ export default class Thread {
    */
   private async _fetchCachedResCount(): Promise<CachedInfoResult> {
     try {
-      const cachedInfo = (await container.board.getCachedResCount(this.url)) as CachedResCount;
+      // getCachedResCount は文字列URLを受け取る契約。ChURL は toString() を持たないため、
+      // インスタンスをそのまま渡すと "[object Object]" が URL として解釈され常に失敗していた。
+      const cachedInfo = (await container.board.getCachedResCount(
+        this.url.url.href,
+      )) as CachedResCount;
       return { status: "success", cachedInfo };
     } catch (error: unknown) {
       if (error instanceof Error && error.message === "板のスレ一覧にそのスレが存在しません") {

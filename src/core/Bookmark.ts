@@ -1,6 +1,6 @@
 import { message } from "src/app";
 import { isTauriRuntime } from "src/app/platform/runtime";
-import { Entry, SyncableEntryList } from "src/core/BookmarkEntryList";
+import { Entry, ReadState, SyncableEntryList } from "src/core/BookmarkEntryList";
 import BrowserBookmarkEntryList from "src/core/BrowserBookmarkEntryList";
 import IDBBookmarkEntryList from "src/core/IDBBookmarkEntryList";
 import { get as getReadState } from "src/core/ReadState.js";
@@ -142,14 +142,8 @@ export default class Bookmark {
     return (await Promise.all(bookmarkData)).every((v) => v);
   }
 
-  async updateReadState(readState: {
-    url: string;
-    last?: number;
-    read?: number;
-    received?: number;
-    offset?: number;
-    date?: number;
-  }): Promise<boolean> {
+  // entry.readState へそのまま代入するため、ReadState (received/read/last 必須) で受ける。
+  async updateReadState(readState: ReadState): Promise<boolean> {
     // TODO
     const entry = this.bel.get(readState.url);
 
@@ -187,6 +181,11 @@ export default class Bookmark {
     if (!entry) {
       await this.add(newEntry.url, newEntry.title);
       entry = this.bel.get(newEntry.url);
+    }
+
+    // add 直後に取得できないのは異常系。従来は null のまま参照して実行時エラーになっていた。
+    if (!entry) {
+      return false;
     }
 
     if (newEntry.readState && isNewerReadState(entry.readState, newEntry.readState)) {

@@ -8,6 +8,9 @@
     "lib": ["dom", "esnext"],
     "module": "esnext",
     "moduleResolution": "bundler",
+    // レガシーJS (jsutil.js 等) が `.ts` 拡張子付きで import しているため許可する。
+    // noEmit: true (ビルドは vite が担当) なのでこのオプションは安全に有効化できる。
+    "allowImportingTsExtensions": true,
     "jsx": "react-jsx",
     "typeRoots": ["src/global.d.ts"],
     "allowJs": true,

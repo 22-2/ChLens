@@ -1,6 +1,8 @@
 import { BBSMenu } from "src/core/BBSMenuParser";
 export interface IConfig {
-  get(key: string): unknown;
+  // 設定ストアは文字列ベース (app.config.get は string | null を返す)。
+  // unknown だと利用側で JSON.parse 等に渡せず型エラーになるため実態に合わせる。
+  get(key: string): string | null;
   set(key: string, value: unknown): Promise<void> | void;
   ready(callback: () => void): void;
   getAll(): Record<string, string>;
@@ -12,7 +14,9 @@ export interface ICacheItem {
   // 既存実装では、事前に data/lastUpdated を設定済みなら put() を引数なしで呼べる。
   // 呼び出し側（Board/Thread/URL 等）との整合を保つため data は optional にする。
   put(data?: string, options?: { lastModified?: number; etag?: string }): Promise<void>;
-  data: unknown;
+  // Cache 実装 (src/core/Cache.ts) は文字列データを保持する。unknown だと
+  // put() や parse 系に渡せず型エラーになるため実態に合わせる。
+  data: string | null;
   lastUpdated: number;
   lastModified?: number;
   etag?: string;
@@ -67,8 +71,11 @@ export interface IBookmark {
 
 export interface IMessage {
   send(type: string, data?: unknown): void;
-  on(type: string, callback: (data: unknown) => void): void;
-  off(type: string, callback: (data: unknown) => void): void;
+  // 購読側は `({ key }: { key?: string }) => void` のような狭い型のコールバックを渡すため、
+  // 引数を `unknown` 固定にすると全呼び出し箇所で型エラーになる。
+  // メソッド構文の bivariance を利用し、ジェネリクスでコールバック側の型を推論させる。
+  on<T = unknown>(type: string, callback: (data: T) => void): void;
+  off<T = unknown>(type: string, callback: (data: T) => void): void;
 }
 
 export interface IUtil {

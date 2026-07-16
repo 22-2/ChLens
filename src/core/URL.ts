@@ -504,12 +504,24 @@ export async function pushServerInfo(menu: RawBbsMenuCategory[]) {
 
   if (!res.net || !res.bbspink) {
     const tmpUrl = `https://menu.5ch.io/bbsmenu.html`;
-    const tmpMenu = (await fetchBBSMenu(tmpUrl, false)).menu as RawBbsMenuCategory[];
-    applyServerInfo(tmpMenu);
+    const tmpMenu = (await fetchBBSMenu(tmpUrl, false)).menu;
+    applyServerInfo(bbsMenuToRawCategories(tmpMenu));
   }
   if (!res.sc) {
     const tmpUrl = `https://menu.2ch.sc/bbsmenu.html`;
-    const tmpMenu = (await fetchBBSMenu(tmpUrl, false)).menu as RawBbsMenuCategory[];
-    applyServerInfo(tmpMenu);
+    const tmpMenu = (await fetchBBSMenu(tmpUrl, false)).menu;
+    applyServerInfo(bbsMenuToRawCategories(tmpMenu));
   }
+}
+
+// fetchBBSMenu は BBSMenuParser 導入後の新形式 (menu.categories[].boards[]) を返すが、
+// applyServerInfo は旧形式 (category.board[]) を前提としている。
+// 旧形式へキャストしていた従来コードは実行時に categories を無視して空走査になっていたため、
+// 明示的に変換して渡す。
+function bbsMenuToRawCategories(
+  menu: import("src/core/BBSMenuParser").BBSMenu,
+): RawBbsMenuCategory[] {
+  return menu.categories.map((category) => ({
+    board: category.boards.map((board) => ({ url: board.url })),
+  }));
 }

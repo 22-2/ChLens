@@ -5,8 +5,10 @@ export interface ReadState {
   received: number;
   read: number;
   last: number;
-  offset: number | null;
-  date: number | null;
+  // ReadState の永続化レイヤ (IReadState / ReadStateRecord) では省略可能なフィールドのため、
+  // 代入互換になるよう optional にする (値が無いことを null でも undefined でも表せる)。
+  offset?: number | null;
+  date?: number | null;
 }
 
 export interface Entry {
@@ -114,7 +116,8 @@ export class EntryList {
     }
   }
 
-  get(url: string): Entry {
+  // 実装は従来から null を返し得るため、戻り値型を実態に合わせる。
+  get(url: string): Entry | null {
     url = fixUrl(url);
 
     return this.cache.has(url) ? app.deepCopy(this.cache.get(url)) : null;
@@ -138,7 +141,12 @@ export class EntryList {
 
     if (this.boardURLIndex.has(url)) {
       for (const threadURL of this.boardURLIndex.get(url)) {
-        res.push(this.get(threadURL));
+        // index に載っている URL は cache にも存在するはずだが、
+        // get の戻り値が null 許容のため型の整合として null を除外する。
+        const entry = this.get(threadURL);
+        if (entry != null) {
+          res.push(entry);
+        }
       }
     }
 
@@ -152,8 +160,8 @@ export interface BookmarkUpdateEvent {
 }
 
 export class SyncableEntryList extends EntryList {
-  readonly onChanged = new app.Callbacks({ persistent: true });
-  private readonly observerForSync: (...args: unknown[]) => void;
+  readonly onChanged = new app.Callbacks<[BookmarkUpdateEvent]>({ persistent: true });
+  private readonly observerForSync: (e: BookmarkUpdateEvent) => void;
 
   constructor() {
     super();
@@ -175,6 +183,10 @@ export class SyncableEntryList extends EntryList {
 
   async update(entry: Entry): Promise<boolean> {
     const before = this.get(entry.url);
+
+    // 存在しないエントリの更新は失敗として扱う。
+    // (従来は before が null のまま下の比較へ進み実行時エラーになっていた)
+    if (before == null) return false;
 
     if (!super.update(entry)) return false;
 
@@ -219,6 +231,10 @@ export class SyncableEntryList extends EntryList {
 
   async remove(url: string): Promise<boolean> {
     const entry = this.get(url);
+
+    // 存在しないエントリの削除は失敗として扱う。
+    // (従来は entry: null のイベントが購読側へ流れ実行時エラーの原因になっていた)
+    if (entry == null) return false;
 
     if (!super.remove(url)) return false;
 

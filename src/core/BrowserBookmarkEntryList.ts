@@ -97,11 +97,13 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
     entry.title = node.title;
 
     // 既に同一URLのEntryが存在する場合、
-    if (this.get(entry.url)) {
+    // (get の戻り値が null 許容のため、変数に受けて非 null に絞り込む)
+    const existingEntry = this.get(entry.url);
+    if (existingEntry) {
       // addによりcreateBrowserBookmarkが呼ばれた場合
       if (!this.nodeIdStore.has(entry.url)) {
         this.nodeIdStore.set(entry.url, node.id);
-      } else if (newerEntry(entry, this.get(entry.url)) === entry) {
+      } else if (newerEntry(entry, existingEntry) === entry) {
         // node側の方が新しいと判定された場合のみupdateを行う。
 
         // 重複ブックマークの削除(元のnodeが古いと判定されたため)
@@ -125,6 +127,10 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
     if (!url) return;
 
     const entry = this.get(url);
+
+    // nodeIdStore に URL がある以上 entry も存在するはずだが、
+    // 従来は null のまま参照して実行時エラーになり得たため明示的に打ち切る。
+    if (!entry) return;
 
     if (typeof changes.url === "string") {
       const newEntry = BrowserBookmarkEntryList.URLToEntry(changes.url)!;

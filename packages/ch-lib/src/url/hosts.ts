@@ -31,7 +31,10 @@ export function hasHostnameSuffix(hostname: string, suffix: string): boolean {
  */
 export function normalizeBbsHostname(hostname: string): string {
   if (hasHostnameSuffix(hostname, HOSTNAME.OLD_2CH)) {
-    return hostname.replace(new RegExp(`${HOSTNAME.OLD_2CH.replace(".", "\\.")}$`), HOSTNAME.NEW_5CH);
+    return hostname.replace(
+      new RegExp(`${HOSTNAME.OLD_2CH.replace(".", "\\.")}$`),
+      HOSTNAME.NEW_5CH,
+    );
   }
   if (hostname === HOSTNAME.OLD_JBBS) {
     return HOSTNAME.NEW_JBBS;

@@ -8,29 +8,22 @@ import { URL } from "src/core/URL.ts";
 @param {String} url
 */
 export default class SikiGuard {
+  /** @param {string} url */
   constructor(url) {
-    /**
-    @property url
-    @type String
-    */
+    // 旧 JSDoc の @type String は実際の代入型 (URL) と食い違っていたため削除し、
+    // 代入からの型推論に任せる。
     this.url = new URL(url);
 
-    /**
-    @property thread
-    @type Object
-    */
+    /** @type {Map<string, Set<string>>} */
     this.idMap = new Map();
 
-    /**
-    @property message
-    @type String | null
-    */
+    /** @type {string | null} */
     this.message = null;
   }
 
   /**
   @method get
-  @return {Promise}
+  @return {Promise<void>}
   */
   get() {
     return new Promise(async (resolve, reject) => {
@@ -53,7 +46,8 @@ export default class SikiGuard {
         await cache.get();
         hasCache = true;
         // NOTE: キャッシュを暫定30分にしてるけど、CDNにCloudflare使ってるっぽいので都度取得にして、取得できない時だけキャッシュ使うでもいいかも。
-        if (!(Date.now() - cache.lastUpdated < 1000 * 60 * 30)) {
+        // lastUpdated が null のときは従来 NaN 比較で「期限切れ」扱いになっていたので、明示的に同じ挙動にする。
+        if (cache.lastUpdated == null || !(Date.now() - cache.lastUpdated < 1000 * 60 * 30)) {
           throw new Error("キャッシュの期限が切れているため通信します");
         }
       } catch (error) {
@@ -80,10 +74,12 @@ export default class SikiGuard {
 
         // パース
         const responseStatus = response != null ? response.status : undefined;
-        if (responseStatus === 200) {
+        if (response != null && responseStatus === 200) {
           idMap = SikiGuard.parse(response.body);
         } else if (hasCache) {
-          idMap = SikiGuard.parse(cache.data);
+          // cache.data は型上 null になり得る。null の場合、旧実装でも parse 内の
+          // try/catch で失敗して空 Map になっていたため、空文字で同じ結果にする。
+          idMap = SikiGuard.parse(cache.data ?? "");
         } else if (responseStatus === 404) {
           // NG対象がない場合404が返ってくる
           idMap = new Map();
@@ -92,7 +88,11 @@ export default class SikiGuard {
         if (idMap == null) {
           throw { response };
         }
-        if (![200, 404].includes(responseStatus) && (!(response == null) || !hasCache)) {
+        // Array.includes は undefined を受け付けないため、等価な比較へ書き換え (挙動は同じ)。
+        if (
+          !(responseStatus === 200 || responseStatus === 404) &&
+          (!(response == null) || !hasCache)
+        ) {
           throw { response, idMap };
         }
 
@@ -101,7 +101,8 @@ export default class SikiGuard {
         resolve();
 
         // キャッシュ更新部
-        if ((response != null ? response.status : undefined) === 200) {
+        // 三項演算子だと TS が response を非 null に絞り込めないため && に書き換え (挙動は同じ)。
+        if (response != null && response.status === 200) {
           let etag;
           cache.data = response.body;
           cache.lastUpdated = Date.now();
@@ -120,7 +121,9 @@ export default class SikiGuard {
         }
       } catch (error) {
         // コールバック
-        ({ response, idMap } = error);
+        // 上の throw {response, idMap} 形式を想定して取り出す。Error 等が飛んできた場合は
+        // idMap が undefined になる (従来の分割代入と同じ挙動)。response は以降未使用のため取り出さない。
+        ({ idMap } = /** @type {{ idMap?: Map<string, Set<string>> }} */ (error));
         this.message = "Siki Guardの読み込みに失敗しました。";
 
         if (hasCache && idMap != null) {
@@ -139,8 +142,7 @@ export default class SikiGuard {
   /**
   @method get
   @static
-  @param {String} url
-  @return {Promise}
+  @param {string} url
   */
   static async get(url) {
     const board = new SikiGuard(url);
@@ -160,8 +162,7 @@ export default class SikiGuard {
   @method _getXhrInfo
   @private
   @static
-  @param {app.URL.URL} threaddUrl
-  @return {Object | null} xhrInfo
+  @param {URL} threadUrl src/core/URL.ts の URL (getTsld を持つ)
   */
   static _getXhrInfo(threadUrl) {
     const tsld = threadUrl.getTsld();
@@ -180,13 +181,15 @@ export default class SikiGuard {
   /**
   @method parse
   @static
-  @param {String} text
-  @return {Object} NG id set
+  @param {string} text
+  @return {Map<string, Set<string>>} NG id set
   */
   static parse(text) {
     try {
-      const { result } = JSON.parse(text);
+      // JSON.parse は any を返すため、期待するレスポンス形状を明示する。
+      const { result } = /** @type {{ result: Record<string, string[]> }} */ (JSON.parse(text));
 
+      /** @type {Map<string, Set<string>>} */
       const idMap = new Map();
       Object.keys(result).forEach((key) => {
         idMap.set(
@@ -201,8 +204,4 @@ export default class SikiGuard {
       return new Map();
     }
   }
-}
-
-function __guard__(value, transform) {
-  return typeof value !== "undefined" && value !== null ? transform(value) : undefined;
 }

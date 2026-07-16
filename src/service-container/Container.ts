@@ -16,8 +16,27 @@ import {
 
 const globalObj = window as unknown as Record<string, unknown>;
 
+// getter/setter 内の `this` を正しく型付けするため、
+// 未登録状態 (undefined) を許容する内部ストア込みの型を明示する。
+// 型注釈なしのオブジェクトリテラルだとアクセサ内の `this` が `{}` に推論され、
+// `this._config` などが全て型エラーになる。
+interface ServiceContainerImpl extends IServiceContainer {
+  _config: IConfig | undefined;
+  _cache: ICacheService | undefined;
+  _bookmark: IBookmark | undefined;
+  _message: IMessage | undefined;
+  _util: IUtil | undefined;
+  _readState: IReadStateService | undefined;
+  _board: IBoardService | undefined;
+  _bbsMenu: IBBSMenuService | undefined;
+  _toast: IToastService | undefined;
+  _notification: INotificationService | undefined;
+  _thread: IThreadService | undefined;
+  _ng: INGService | undefined;
+}
+
 if (!globalObj.__ServiceContainer) {
-  globalObj.__ServiceContainer = {
+  const impl: ServiceContainerImpl = {
     _config: undefined,
     _cache: undefined,
     _bookmark: undefined,
@@ -127,9 +146,11 @@ if (!globalObj.__ServiceContainer) {
       this._ng = value;
     },
   };
+  globalObj.__ServiceContainer = impl;
 }
 
-export const container: IServiceContainer = globalObj.__ServiceContainer;
+// window 上のプロパティは unknown なので、上で登録した実体の型へ戻すキャストが必要。
+export const container: IServiceContainer = globalObj.__ServiceContainer as IServiceContainer;
 globalObj.container = container;
 
 // import { IServiceContainer, IConfig, ICacheService, IBookmark, IMessage, IUtil } from "src/service-container/interfaces";

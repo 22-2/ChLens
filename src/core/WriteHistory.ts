@@ -380,7 +380,7 @@ export const add = async function ({
   inputMail = null,
   message,
   date,
-}: WriteHistoryAddInput): Promise<number> {
+}: WriteHistoryAddInput): Promise<number | undefined> {
   if (
     assertArg("WriteHistory.add", [
       [url, "string"],

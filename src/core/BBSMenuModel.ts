@@ -3,7 +3,6 @@ import { BBSMenu } from "src/core/BBSMenuParser";
 import * as History from "src/core/History";
 import { URL } from "src/core/URL";
 import { container } from "src/service-container/index";
-// @ts-expect-error
 import { BBSMenuFetcher } from "src/core/BBSMenuFetcher";
 import { BBSMenuParser } from "src/core/BBSMenuParser";
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
@@ -35,7 +34,8 @@ export class BBSMenuModel {
   private _updatingPromise: Promise<BBSMenuData> | null = null;
   // セッション中のメモリキャッシュ。毎回DBルックアップ+パースを繰り返さないようにする
   private _cachedResult: BBSMenuData | null = null;
-  public readonly onChange = new Callbacks({ persistent: true });
+  // 購読側 (BoardTitleSolver 等) がペイロードの型を受け取れるよう型引数を明示する。
+  public readonly onChange = new Callbacks<[BBSMenuData]>({ persistent: true });
 
   private _fetcher: BBSMenuFetcher;
   private _collector: OtherBoardsCollector;
@@ -124,7 +124,8 @@ export class BBSMenuModel {
     }
 
     const menus: BBSMenu[] = [];
-    const bbsmenuUrls = container.config.get("bbsmenu").split("\n");
+    // 設定未保存時 (null) は URL なしとして扱う。
+    const bbsmenuUrls = (container.config.get("bbsmenu") ?? "").split("\n");
 
     for (const url of bbsmenuUrls) {
       if (url === "" || url.startsWith("//")) continue;
