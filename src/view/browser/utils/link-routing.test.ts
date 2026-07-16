@@ -142,10 +142,16 @@ describe("link-routing strict", () => {
     expect(parseInternalBrowserPageStrict("https://imgur.com/TestImage/")).toBeNull();
   });
 
-  it("非互換ホストでも test/read.cgi スレッドURLは strict だと null", () => {
-    expect(
-      parseInternalBrowserPageStrict("https://example.com/test/read.cgi/software/1/"),
-    ).toBeNull();
+  it("非互換ホストでも test/read.cgi スレッドURLは strict で内部スレ扱いする", () => {
+    // 変更理由: /test/read.cgi/<board>/<thread>/ は 5ch互換掲示板特有のパスなので、
+    // 任意ドメインでもクリックで内部ジャンプできるようにする要望に対応。
+    expect(parseInternalBrowserPageStrict("https://example.com/test/read.cgi/software/1/")).toEqual(
+      {
+        type: "thread",
+        title: "https://example.com/test/read.cgi/software/1/",
+        threadUrl: "https://example.com/test/read.cgi/software/1/",
+      },
+    );
   });
 
   it("eddibb は strict でも正規化する", () => {

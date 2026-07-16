@@ -277,19 +277,20 @@ function dispatchParser(url: URL, strict: boolean): InternalBrowserPage | null {
     return BOARD_PARSERS[boardType](url);
   }
 
-  // 変更理由: /test/read.cgi/<board>/<thread> や /<board>/ 形式は要望により
-  // ドメインに依存せず内部スレ/板として扱いたいため、ホスト分類失敗時の
-  // フォールバックとして許可する。画像として解釈できるURLの保護は
-  // openResolvedUrl 側（toViewerImageUrl チェック）が担う。
-  // ただし strict=true（クリック経路）ではこのフォールバックを適用しない。
-  if (strict) {
-    return null;
-  }
-
+  // 変更理由: /test/read.cgi/<board>/<thread> 形式は 5ch互換掲示板特有の
+  // パスで誤爆の恐れがないため、ドメインに依存せず（クリック経路の
+  // strict=true でも）内部スレッドとして扱う。
   const threadMatch = CH_STYLE_THREAD_PATTERN.exec(url.pathname);
   if (threadMatch) {
     url.pathname = `/${threadMatch[1]}/`;
     return toThreadPage(url);
+  }
+
+  // 変更理由: /<board>/ 形式は imgur のような一般URLとも一致してしまうため、
+  // strict=true（クリック経路）ではフォールバックを適用しない。
+  // オムニバー入力（strict=false）でのみ板として許可する。
+  if (strict) {
+    return null;
   }
 
   const boardMatch = CH_STYLE_BOARD_PATTERN.exec(url.pathname);
