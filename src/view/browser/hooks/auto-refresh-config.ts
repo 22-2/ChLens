@@ -19,7 +19,8 @@ export const MAX_BOARD_AUTO_REFRESH_SEC = 300;
 // -----------------------------------------------------------------------
 // 自動停止までの時間（idle stop timeout）の設定
 // -----------------------------------------------------------------------
-export const THREAD_IDLE_STOP_TIMEOUT_CONFIG_KEY = "auto_load_idle_stop_timeout";
+export const THREAD_IDLE_STOP_TIMEOUT_CONFIG_KEY =
+  "auto_load_idle_stop_timeout";
 
 export interface IdleStopTimeoutOption {
   /** config に保存する値 */
@@ -62,7 +63,9 @@ export function resolveIdleStopTimeoutMs(value: string): number | null {
   return ms;
 }
 
-export function findIdleStopTimeoutOption(value: string): IdleStopTimeoutOption {
+export function findIdleStopTimeoutOption(
+  value: string,
+): IdleStopTimeoutOption {
   const found = IDLE_STOP_TIMEOUT_OPTIONS.find((opt) => opt.value === value);
   return found ?? IDLE_STOP_TIMEOUT_OPTIONS[0];
 }
@@ -101,5 +104,8 @@ export function readBoardAutoRefreshIntervalMs(): number {
 }
 
 export function readBoardAutoRefreshIntervalSec(): number {
-  return Math.max(MIN_BOARD_AUTO_REFRESH_SEC, Math.round(readBoardAutoRefreshIntervalMs() / 1000));
+  return Math.max(
+    MIN_BOARD_AUTO_REFRESH_SEC,
+    Math.round(readBoardAutoRefreshIntervalMs() / 1000),
+  );
 }

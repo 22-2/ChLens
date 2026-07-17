@@ -7,7 +7,10 @@ import type {
 } from "@rjsf/utils";
 import { Info } from "lucide-react";
 import React from "react";
-import { NGEditor, type NGEditorProps } from "src/view/browser/components/NGEditor";
+import {
+  NGEditor,
+  type NGEditorProps,
+} from "src/view/browser/components/NGEditor";
 import type {
   SettingsFieldDefinition,
   SettingsSectionFormData,
@@ -15,7 +18,10 @@ import type {
 
 // 拡張機能ページのCSPではAJVの実行時コンパイル(new Function)が失敗するため、
 // 設定画面は保存を優先した最小バリデータで動かし、コンソールエラーを防ぐ。
-export const settingsValidator: ValidatorType<SettingsSectionFormData, RJSFSchema> = {
+export const settingsValidator: ValidatorType<
+  SettingsSectionFormData,
+  RJSFSchema
+> = {
   validateFormData: () => ({ errors: [], errorSchema: {} }),
   isValid: () => true,
   rawValidation: () => ({ errors: [] }),
@@ -95,7 +101,9 @@ function SettingsObjectFieldTemplate(props: ObjectFieldTemplateProps) {
   return (
     <div className="settings-form-object">
       {title && <h2 className="settings-form-object-title">{title}</h2>}
-      {description && <p className="settings-form-object-description">{description}</p>}
+      {description && (
+        <p className="settings-form-object-description">{description}</p>
+      )}
       <div className="settings-form-properties">
         {properties.map((element) => {
           return (
@@ -128,7 +136,9 @@ function SettingsFieldTemplate(props: FieldTemplateProps) {
     return <div style={{ display: "none" }}>{children}</div>;
   }
 
-  const hasDescription = !!(uiSchema?.["ui:description"] || schema?.description);
+  const hasDescription = !!(
+    uiSchema?.["ui:description"] || schema?.description
+  );
   const shouldRenderLabel = displayLabel && !!label;
 
   return (

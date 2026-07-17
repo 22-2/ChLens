@@ -1,6 +1,13 @@
 import "@testing-library/jest-dom/vitest";
 import type { ReactNode } from "react";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import {
   navigateToWriteHistoryEntry,
   WriteHistoryListPage,
@@ -10,7 +17,14 @@ import {
   consumePendingThreadResJump,
   peekPendingThreadResJump,
 } from "src/view/browser/utils/thread-read-state";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vite-plus/test";
 
 const mockUseTabStore = vi.fn();
 const { messageOn, messageOff } = vi.hoisted(() => ({
@@ -29,9 +43,12 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
 // 子要素をそのまま返す薄いモックに差し替える。
 vi.mock("@mantine/core", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@mantine/core")>();
-  const PassthroughTooltip = Object.assign(({ children }: { children: ReactNode }) => children, {
-    Floating: ({ children }: { children: ReactNode }) => children,
-  });
+  const PassthroughTooltip = Object.assign(
+    ({ children }: { children: ReactNode }) => children,
+    {
+      Floating: ({ children }: { children: ReactNode }) => children,
+    },
+  );
   return {
     ...actual,
     Tooltip: PassthroughTooltip,
@@ -104,7 +121,9 @@ describe("WriteHistoryListPage", () => {
       },
     ]);
 
-    render(<WriteHistoryListPage tabId="tab-1" isActive={true} refreshKey={0} />);
+    render(
+      <WriteHistoryListPage tabId="tab-1" isActive={true} refreshKey={0} />,
+    );
 
     expect(await screen.findByText("本文")).toBeInTheDocument();
     expect(screen.getByText("これは書き込み本文です")).toBeInTheDocument();
@@ -124,16 +143,21 @@ describe("WriteHistoryListPage", () => {
       },
     ]);
 
-    render(<WriteHistoryListPage tabId="tab-1" isActive={true} refreshKey={0} />);
+    render(
+      <WriteHistoryListPage tabId="tab-1" isActive={true} refreshKey={0} />,
+    );
 
     await screen.findByText("本文");
     expect(screen.queryByPlaceholderText("検索...")).not.toBeInTheDocument();
 
     act(() => {
       window.dispatchEvent(
-        new window.CustomEvent(QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.writeHistoryList, {
-          detail: { tabId: "tab-1" },
-        }),
+        new window.CustomEvent(
+          QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.writeHistoryList,
+          {
+            detail: { tabId: "tab-1" },
+          },
+        ),
       );
     });
 
@@ -147,9 +171,12 @@ describe("WriteHistoryListPage", () => {
 
     act(() => {
       window.dispatchEvent(
-        new window.CustomEvent(QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.writeHistoryList, {
-          detail: { tabId: "tab-1" },
-        }),
+        new window.CustomEvent(
+          QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.writeHistoryList,
+          {
+            detail: { tabId: "tab-1" },
+          },
+        ),
       );
     });
 
@@ -168,7 +195,9 @@ describe("WriteHistoryListPage", () => {
       "current",
     );
 
-    expect(peekPendingThreadResJump("https://egg.5ch.io/test/read.cgi/software/1/")).toMatchObject({
+    expect(
+      peekPendingThreadResJump("https://egg.5ch.io/test/read.cgi/software/1/"),
+    ).toMatchObject({
       resNum: 42,
       threadUrl: "https://egg.5ch.io/test/read.cgi/software/1/",
     });
@@ -208,13 +237,17 @@ describe("WriteHistoryListPage", () => {
       },
     ]);
 
-    render(<WriteHistoryListPage tabId="tab-1" isActive={true} refreshKey={0} />);
+    render(
+      <WriteHistoryListPage tabId="tab-1" isActive={true} refreshKey={0} />,
+    );
 
     const row = (await screen.findByText("外部URL")).closest("tr");
     expect(row).not.toBeNull();
     fireEvent.click(row!);
 
-    expect(peekPendingThreadResJump("https://example.com/not-thread/1/")).toBeNull();
+    expect(
+      peekPendingThreadResJump("https://example.com/not-thread/1/"),
+    ).toBeNull();
     expect(dispatch).not.toHaveBeenCalled();
   });
 
@@ -249,7 +282,9 @@ describe("WriteHistoryListPage", () => {
 
     await screen.findByText("スレ1");
 
-    rerender(<WriteHistoryListPage tabId="tab-1" isActive={true} refreshKey={1} />);
+    rerender(
+      <WriteHistoryListPage tabId="tab-1" isActive={true} refreshKey={1} />,
+    );
 
     await waitFor(() => {
       expect(writeHistoryGet).toHaveBeenCalledTimes(2);
@@ -284,7 +319,9 @@ describe("WriteHistoryListPage", () => {
         },
       ]);
 
-    render(<WriteHistoryListPage tabId="tab-1" isActive={true} refreshKey={0} />);
+    render(
+      <WriteHistoryListPage tabId="tab-1" isActive={true} refreshKey={0} />,
+    );
 
     expect(await screen.findByText("スレ1")).toBeInTheDocument();
     expect(screen.getByText("-")).toBeInTheDocument();

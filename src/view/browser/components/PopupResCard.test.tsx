@@ -5,9 +5,9 @@ import { PopupResCard } from "src/view/browser/components/PopupResCard";
 import { describe, expect, it, vi } from "vite-plus/test";
 
 vi.mock("src/view/browser/utils/utils", async () => {
-  const actual = await vi.importActual<typeof import("src/view/browser/utils/utils")>(
-    "src/view/browser/utils/utils",
-  );
+  const actual = await vi.importActual<
+    typeof import("src/view/browser/utils/utils")
+  >("src/view/browser/utils/utils");
   return {
     ...actual,
     decodeResponseHtml: () => ({
@@ -53,7 +53,9 @@ describe("PopupResCard", () => {
     expect(container.querySelector(".res__num")).toHaveClass("res__num--warm");
     expect(container.querySelector(".res__rep")).toHaveClass("res__rep--warm");
 
-    const hotRepIndex = new Map<number, Set<number>>([[10, new Set([1, 2, 3, 4, 5])]]);
+    const hotRepIndex = new Map<number, Set<number>>([
+      [10, new Set([1, 2, 3, 4, 5])],
+    ]);
 
     rerender(
       <PopupResCard

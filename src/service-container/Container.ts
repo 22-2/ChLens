@@ -123,7 +123,8 @@ if (!globalObj.__ServiceContainer) {
     },
 
     get notification(): INotificationService {
-      if (!this._notification) throw new Error("Notification service not registered");
+      if (!this._notification)
+        throw new Error("Notification service not registered");
       return this._notification;
     },
     set notification(value: INotificationService) {
@@ -150,7 +151,8 @@ if (!globalObj.__ServiceContainer) {
 }
 
 // window 上のプロパティは unknown なので、上で登録した実体の型へ戻すキャストが必要。
-export const container: IServiceContainer = globalObj.__ServiceContainer as IServiceContainer;
+export const container: IServiceContainer =
+  globalObj.__ServiceContainer as IServiceContainer;
 globalObj.container = container;
 
 // import { IServiceContainer, IConfig, ICacheService, IBookmark, IMessage, IUtil } from "src/service-container/interfaces";

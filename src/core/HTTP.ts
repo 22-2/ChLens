@@ -65,7 +65,12 @@ export class Request {
         headers: response.headers,
       });
 
-      return new Response(response.status, response.headers, response.body, response.url);
+      return new Response(
+        response.status,
+        response.headers,
+        response.body,
+        response.url,
+      );
     } catch (e) {
       logger.error(`HTTP request failed: ${this.method} ${url}`, { error: e });
       return Promise.reject(e);

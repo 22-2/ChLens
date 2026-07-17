@@ -160,7 +160,9 @@ export interface BookmarkUpdateEvent {
 }
 
 export class SyncableEntryList extends EntryList {
-  readonly onChanged = new app.Callbacks<[BookmarkUpdateEvent]>({ persistent: true });
+  readonly onChanged = new app.Callbacks<[BookmarkUpdateEvent]>({
+    persistent: true,
+  });
   private readonly observerForSync: (e: BookmarkUpdateEvent) => void;
 
   constructor() {
@@ -245,7 +247,10 @@ export class SyncableEntryList extends EntryList {
     return true;
   }
 
-  private manipulateByBookmarkUpdateEvent({ type, entry }: BookmarkUpdateEvent) {
+  private manipulateByBookmarkUpdateEvent({
+    type,
+    entry,
+  }: BookmarkUpdateEvent) {
     switch (type) {
       case "ADD":
         void this.add(entry);

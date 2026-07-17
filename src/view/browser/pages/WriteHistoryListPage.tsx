@@ -1,17 +1,33 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { platform } from "src/app";
 import { SearchBar } from "src/view/browser/components/SearchBar";
-import { ColumnDef, SimpleDataTable } from "src/view/browser/components/SimpleDataTable";
-import { useTabDispatch, type TabAction } from "src/view/browser/hooks/use-tab-store";
+import {
+  ColumnDef,
+  SimpleDataTable,
+} from "src/view/browser/components/SimpleDataTable";
+import {
+  useTabDispatch,
+  type TabAction,
+} from "src/view/browser/hooks/use-tab-store";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
 import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
 
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
-import { formatCompactDateTime, normalizeLegacyTimestamp } from "src/view/browser/utils/date-time";
+import {
+  formatCompactDateTime,
+  normalizeLegacyTimestamp,
+} from "src/view/browser/utils/date-time";
 import { getLegacyWriteHistoryService } from "src/view/browser/utils/legacy-app";
 import { container } from "src/service-container/index";
 
 type SortDirection = "asc" | "desc";
-type SortColumn = "title" | "writtenRes" | "name" | "mail" | "message" | "writtenDate";
+type SortColumn =
+  | "title"
+  | "writtenRes"
+  | "name"
+  | "mail"
+  | "message"
+  | "writtenDate";
 
 interface SortState {
   column: SortColumn | null;
@@ -33,6 +49,34 @@ interface WriteHistoryEntry {
   writtenDate: number;
   originalIndex: number;
 }
+
+// 変更理由: タブ再マウント時やブラウザ再起動後に「読み込み中」しか表示されないのを防ぐため、
+// 前回の取得結果をIDBに永続化し、新しいデータの取得中は古い結果を表示し続ける。
+const UI_CACHE_STORE = "UICache";
+const WRITE_HISTORY_CACHE_KEY = "writeHistoryList";
+
+const getWriteHistoryCache = async (): Promise<WriteHistoryEntry[] | null> => {
+  try {
+    const store = platform.storage.getStore(UI_CACHE_STORE);
+    const entry = (await store.get(WRITE_HISTORY_CACHE_KEY)) as
+      | { url: string; data: WriteHistoryEntry[] }
+      | undefined;
+    return entry?.data ?? null;
+  } catch {
+    return null;
+  }
+};
+
+const setWriteHistoryCache = async (
+  entries: WriteHistoryEntry[],
+): Promise<void> => {
+  try {
+    const store = platform.storage.getStore(UI_CACHE_STORE);
+    await store.put({ url: WRITE_HISTORY_CACHE_KEY, data: entries });
+  } catch (error) {
+    console.error("[WriteHistoryListPage] cache save failed:", error);
+  }
+};
 
 interface LegacyWriteHistoryLike {
   url?: unknown;
@@ -83,12 +127,17 @@ async function readWriteHistoryEntries(): Promise<WriteHistoryEntry[]> {
 
       // 変更理由: 旧UIの書込履歴は `date` フィールドで残っている場合があるため、
       // new-ui でも両形式を受けて日時列を欠損させない。
-      const parsedDate = normalizeLegacyTimestamp(item.writtenDate ?? item.date);
+      const parsedDate = normalizeLegacyTimestamp(
+        item.writtenDate ?? item.date,
+      );
 
       return {
         url,
         title: normalizeString(item.title, url),
-        writtenRes: Math.max(0, Math.trunc(normalizeNumber(item.writtenRes ?? item.res))),
+        writtenRes: Math.max(
+          0,
+          Math.trunc(normalizeNumber(item.writtenRes ?? item.res)),
+        ),
         name: normalizeString(item.name),
         mail: normalizeString(item.mail),
         message: normalizeString(item.message),
@@ -166,11 +215,13 @@ const COLUMNS: ColumnDef<WriteHistoryEntry>[] = [
     headerClassName: "simple-data-table__th--writehistory-date",
     cellClassName: "simple-data-table__writehistory-date",
     sortable: true,
-    cell: (row) => (row.writtenDate ? formatCompactDateTime(row.writtenDate) : "-"),
+    cell: (row) =>
+      row.writtenDate ? formatCompactDateTime(row.writtenDate) : "-",
   },
 ];
 
-const COLUMN_VISIBILITY_STORAGE_KEY = "chlens_browser_write_history_list_columns_visibility";
+const COLUMN_VISIBILITY_STORAGE_KEY =
+  "chlens_browser_write_history_list_columns_visibility";
 const COLUMN_VISIBILITY_LOCKED_KEYS = ["title"] as const;
 
 interface WriteHistoryListPageProps {
@@ -207,12 +258,24 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
     try {
       const rows = await readWriteHistoryEntries();
       setEntries(rows);
+      void setWriteHistoryCache(rows);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "書き込み履歴の読み込みに失敗しました");
-      setEntries([]);
+      setError(
+        e instanceof Error ? e.message : "書き込み履歴の読み込みに失敗しました",
+      );
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  // 変更理由: IDBキャッシュから前回の書き込み履歴を復元し、新しいデータの取得中は古い結果を表示し続ける。
+  useEffect(() => {
+    void (async () => {
+      const cached = await getWriteHistoryCache();
+      if (cached && cached.length > 0) {
+        setEntries(cached);
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -310,15 +373,20 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
     [dispatch],
   );
 
-  if (loading) {
+  // 変更理由: 前回の結果がある場合は「読み込み中」ではなく古い結果を表示し続ける。
+  // 新しいデータの取得が完了したら自動的に新しい結果に置き換わる。
+  if (loading && entries.length === 0) {
     return <div className="page-status">読み込み中...</div>;
   }
 
-  if (error) {
+  if (error && entries.length === 0) {
     return (
       <div className="page-status page-status--error">
         <p>{error}</p>
-        <button className="page-status__retry" onClick={() => void loadEntries()}>
+        <button
+          className="page-status__retry"
+          onClick={() => void loadEntries()}
+        >
           再試行
         </button>
       </div>
@@ -327,6 +395,7 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
 
   return (
     <div className="thread-list-page">
+      {error && <div className="thread-list-page__notice">{error}</div>}
       {isFilterOpen ? (
         <SearchBar
           query={searchQuery}

@@ -2,7 +2,10 @@ import { assertArg, criticalError, log } from "src/app/Log";
 import message from "src/app/Message";
 import { deepCopy } from "src/app/Util";
 import { indexedDBRequestToPromise } from "src/core/jsutil.js";
-import { getTauriRepositories, isTauriRuntime } from "src/core/TauriDrizzleBridge";
+import {
+  getTauriRepositories,
+  isTauriRuntime,
+} from "src/core/TauriDrizzleBridge";
 import { URL } from "src/core/URL";
 import type { IReadState } from "src/service-container/interfaces";
 
@@ -133,7 +136,9 @@ export const get = async (url: string): Promise<ReadStateRecord | null> => {
     try {
       // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
       const { tauriReadStateRepository } = await getTauriRepositories();
-      const data = await tauriReadStateRepository.get(filteredUrl.original.href);
+      const data = await tauriReadStateRepository.get(
+        filteredUrl.original.href,
+      );
       return data as ReadStateRecord | null;
     } catch (e) {
       log("error", "app.ReadState.get: トランザクション中断");
@@ -143,7 +148,10 @@ export const get = async (url: string): Promise<ReadStateRecord | null> => {
 
   try {
     const db = await _openDB;
-    const req = db.transaction("ReadState").objectStore("ReadState").get(filteredUrl.replaced.href);
+    const req = db
+      .transaction("ReadState")
+      .objectStore("ReadState")
+      .get(filteredUrl.replaced.href);
     const {
       target: { result },
     } = (await indexedDBRequestToPromise(req)) as {
@@ -245,7 +253,9 @@ export const remove = async (url: string): Promise<void> => {
     try {
       // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
       const { tauriReadStateRepository } = await getTauriRepositories();
-      const normalizedUrl = await tauriReadStateRepository.remove(filteredUrl.original.href);
+      const normalizedUrl = await tauriReadStateRepository.remove(
+        filteredUrl.original.href,
+      );
       message.send("read_state_removed", {
         url: normalizedUrl,
       });
@@ -287,7 +297,10 @@ export const clear = async (): Promise<void> => {
 
   try {
     const db = await _openDB;
-    const req = db.transaction("ReadState", "readwrite").objectStore("ReadState").clear();
+    const req = db
+      .transaction("ReadState", "readwrite")
+      .objectStore("ReadState")
+      .clear();
     await indexedDBRequestToPromise(req);
   } catch (e) {
     log("error", "app.ReadState.clear: トランザクション中断");
@@ -299,7 +312,8 @@ const _recoveryOfDate = (_db: IDBDatabase, tx: IDBTransaction): Promise<void> =>
   new Promise((resolve, reject) => {
     const req = tx.objectStore("ReadState").openCursor();
     req.onsuccess = (event) => {
-      const cursor = (event.target as IDBRequest<IDBCursorWithValue | null>).result;
+      const cursor = (event.target as IDBRequest<IDBCursorWithValue | null>)
+        .result;
       if (cursor) {
         const value = cursor.value as ReadStateRecord;
         value.date = undefined;

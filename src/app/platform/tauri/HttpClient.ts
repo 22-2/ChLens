@@ -1,5 +1,9 @@
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
-import { HttpClient, HttpRequestOptions, HttpResponse } from "src/app/platform/types";
+import {
+  HttpClient,
+  HttpRequestOptions,
+  HttpResponse,
+} from "src/app/platform/types";
 
 function extractCharset(mimeType: string): string | null {
   const match = /charset=([^\s;]+)/i.exec(mimeType);
@@ -8,7 +12,10 @@ function extractCharset(mimeType: string): string | null {
 
 // webviewのXHRはCORSに制限されるため、Rust側でHTTPリクエストを行うプラグインを使用する
 export const TauriHttpClient: HttpClient = {
-  async fetch(url: string, options: HttpRequestOptions = {}): Promise<HttpResponse> {
+  async fetch(
+    url: string,
+    options: HttpRequestOptions = {},
+  ): Promise<HttpResponse> {
     console.log(`[TauriHttpClient] Fetching: ${url}`, options);
 
     const response = await tauriFetch(url, {
@@ -38,7 +45,10 @@ export const TauriHttpClient: HttpClient = {
       }
       console.log(`[TauriHttpClient] Body length: ${body.length}`);
     } catch (e) {
-      console.error(`[TauriHttpClient] Failed to decode response with charset ${charset}:`, e);
+      console.error(
+        `[TauriHttpClient] Failed to decode response with charset ${charset}:`,
+        e,
+      );
       // フォールバック: UTF-8として読み込む
       body = await response.text();
     }

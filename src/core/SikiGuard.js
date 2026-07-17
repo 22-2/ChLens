@@ -47,7 +47,10 @@ export default class SikiGuard {
         hasCache = true;
         // NOTE: キャッシュを暫定30分にしてるけど、CDNにCloudflare使ってるっぽいので都度取得にして、取得できない時だけキャッシュ使うでもいいかも。
         // lastUpdated が null のときは従来 NaN 比較で「期限切れ」扱いになっていたので、明示的に同じ挙動にする。
-        if (cache.lastUpdated == null || !(Date.now() - cache.lastUpdated < 1000 * 60 * 30)) {
+        if (
+          cache.lastUpdated == null ||
+          !(Date.now() - cache.lastUpdated < 1000 * 60 * 30)
+        ) {
           throw new Error("キャッシュの期限が切れているため通信します");
         }
       } catch (error) {
@@ -62,7 +65,9 @@ export default class SikiGuard {
           });
           if (hasCache) {
             if (cache.lastModified != null) {
-              request.headers["If-Modified-Since"] = new Date(cache.lastModified).toUTCString();
+              request.headers["If-Modified-Since"] = new Date(
+                cache.lastModified,
+              ).toUTCString();
             }
             if (cache.etag != null) {
               request.headers["If-None-Match"] = cache.etag;
@@ -107,7 +112,9 @@ export default class SikiGuard {
           cache.data = response.body;
           cache.lastUpdated = Date.now();
 
-          const lastModified = new Date(response.headers["Last-Modified"] || "dummy").getTime();
+          const lastModified = new Date(
+            response.headers["Last-Modified"] || "dummy",
+          ).getTime();
 
           if (Number.isFinite(lastModified)) {
             cache.lastModified = lastModified;
@@ -123,7 +130,9 @@ export default class SikiGuard {
         // コールバック
         // 上の throw {response, idMap} 形式を想定して取り出す。Error 等が飛んできた場合は
         // idMap が undefined になる (従来の分割代入と同じ挙動)。response は以降未使用のため取り出さない。
-        ({ idMap } = /** @type {{ idMap?: Map<string, Set<string>> }} */ (error));
+        ({ idMap } = /** @type {{ idMap?: Map<string, Set<string>> }} */ (
+          error
+        ));
         this.message = "Siki Guardの読み込みに失敗しました。";
 
         if (hasCache && idMap != null) {
@@ -187,7 +196,9 @@ export default class SikiGuard {
   static parse(text) {
     try {
       // JSON.parse は any を返すため、期待するレスポンス形状を明示する。
-      const { result } = /** @type {{ result: Record<string, string[]> }} */ (JSON.parse(text));
+      const { result } = /** @type {{ result: Record<string, string[]> }} */ (
+        JSON.parse(text)
+      );
 
       /** @type {Map<string, Set<string>>} */
       const idMap = new Map();

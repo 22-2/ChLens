@@ -48,7 +48,8 @@ function toLogEntry(record: LogRecord): LogEntry {
     url: record.url,
     threadUrl: record.threadUrl,
     title: record.title || record.threadUrl,
-    boardTitle: record.boardTitle || deriveBoardLabel(record.boardUrl, record.threadUrl),
+    boardTitle:
+      record.boardTitle || deriveBoardLabel(record.boardUrl, record.threadUrl),
     resLength: record.resLength ?? 0,
     lastUpdated: record.lastUpdated,
   };
@@ -85,11 +86,13 @@ const COLUMNS: ColumnDef<LogEntry>[] = [
     headerClassName: "simple-data-table__th--history-date",
     cellClassName: "simple-data-table__history-date",
     sortable: true,
-    cell: (row) => (row.lastUpdated ? formatCompactDateTime(row.lastUpdated) : "-"),
+    cell: (row) =>
+      row.lastUpdated ? formatCompactDateTime(row.lastUpdated) : "-",
   },
 ];
 
-const COLUMN_VISIBILITY_STORAGE_KEY = "chlens_browser_log_list_columns_visibility";
+const COLUMN_VISIBILITY_STORAGE_KEY =
+  "chlens_browser_log_list_columns_visibility";
 const COLUMN_VISIBILITY_LOCKED_KEYS = ["title"] as const;
 
 interface LogListPageProps {
@@ -98,7 +101,11 @@ interface LogListPageProps {
   refreshKey: number;
 }
 
-export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refreshKey }) => {
+export const LogListPage: React.FC<LogListPageProps> = ({
+  tabId,
+  isActive,
+  refreshKey,
+}) => {
   const dispatch = useTabDispatch();
   const [entries, setEntries] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -108,7 +115,9 @@ export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refre
   // 既定はタイトル検索。ボタンで本文（全文）検索に切り替える。
   const [searchMode, setSearchMode] = useState<"title" | "body">("title");
   // 本文検索の結果（url 集合）。null のときは本文検索未実行。
-  const [bodyMatchedUrls, setBodyMatchedUrls] = useState<Set<string> | null>(null);
+  const [bodyMatchedUrls, setBodyMatchedUrls] = useState<Set<string> | null>(
+    null,
+  );
 
   const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
     pageType: "logList",
@@ -214,7 +223,9 @@ export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refre
           : entries;
       } else {
         rows = entries.filter((entry) =>
-          `${entry.title} ${entry.boardTitle}`.toLowerCase().includes(normalizedQuery),
+          `${entry.title} ${entry.boardTitle}`
+            .toLowerCase()
+            .includes(normalizedQuery),
         );
       }
     }
@@ -279,7 +290,10 @@ export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refre
     return (
       <div className="page-status page-status--error">
         <p>{error}</p>
-        <button className="page-status__retry" onClick={() => void loadEntries()}>
+        <button
+          className="page-status__retry"
+          onClick={() => void loadEntries()}
+        >
           再試行
         </button>
       </div>
@@ -294,12 +308,16 @@ export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refre
           onQueryChange={setSearchQuery}
           onClose={closeFilterToolbar}
           hitCount={filtered.length}
-          placeholder={searchMode === "body" ? "本文を検索..." : "タイトル・板を検索..."}
+          placeholder={
+            searchMode === "body" ? "本文を検索..." : "タイトル・板を検索..."
+          }
           prefix={
             <button
               type="button"
               className="search-bar__mode-toggle"
-              onClick={() => setSearchMode((prev) => (prev === "title" ? "body" : "title"))}
+              onClick={() =>
+                setSearchMode((prev) => (prev === "title" ? "body" : "title"))
+              }
               title={
                 searchMode === "body"
                   ? "本文検索中（クリックでタイトル検索へ）"

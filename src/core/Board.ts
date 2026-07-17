@@ -76,7 +76,9 @@ export default class Board {
           const headers: Record<string, string> = {};
           if (hasCache) {
             if (cache.lastModified != null) {
-              headers["If-Modified-Since"] = new Date(cache.lastModified).toUTCString();
+              headers["If-Modified-Since"] = new Date(
+                cache.lastModified,
+              ).toUTCString();
             }
             if (cache.etag != null) {
               headers["If-None-Match"] = cache.etag;
@@ -149,7 +151,9 @@ export default class Board {
           cache.data = response.body;
           cache.lastUpdated = Date.now();
 
-          const lastModified = new Date(response.headers["Last-Modified"] || "dummy").getTime();
+          const lastModified = new Date(
+            response.headers["Last-Modified"] || "dummy",
+          ).getTime();
 
           if (Number.isFinite(lastModified)) {
             cache.lastModified = lastModified;
@@ -279,7 +283,9 @@ class="open_in_rcrx">${container.util.escapeHtml(newBoardUrl)}
    * 板のURLから取得方法の情報を取得します
    */
   private static _getXhrInfo(boardUrl: ChURL): XhrInfo | null {
-    const tmp = new RegExp(`^/(\\w+)(?:/(\\d+)/|/?)$`).exec(boardUrl.url.pathname);
+    const tmp = new RegExp(`^/(\\w+)(?:/(\\d+)/|/?)$`).exec(
+      boardUrl.url.pathname,
+    );
     if (!tmp) {
       return null;
     }
@@ -319,10 +325,15 @@ class="open_in_rcrx">${container.util.escapeHtml(newBoardUrl)}
     }
 
     return threads.map((thread: any) => {
-      const ngResult = container.ng.isNGBoard(thread.title, url.url.href, thread.resCount);
+      const ngResult = container.ng.isNGBoard(
+        thread.title,
+        url.url.href,
+        thread.resCount,
+      );
       const highlight =
         ngResult &&
-        (ngResult.type === "HighlightTitle" || ngResult.type === "RegExpHighlightTitle");
+        (ngResult.type === "HighlightTitle" ||
+          ngResult.type === "RegExpHighlightTitle");
 
       return {
         ...thread,

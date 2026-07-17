@@ -1,4 +1,8 @@
-import { Entry, newerEntry, SyncableEntryList } from "src/core/BookmarkEntryList";
+import {
+  Entry,
+  newerEntry,
+  SyncableEntryList,
+} from "src/core/BookmarkEntryList";
 import { URL } from "src/core/URL";
 import browser from "webextension-polyfill";
 
@@ -121,7 +125,10 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
     }
   }
 
-  private applyNodeUpdateToEntryList(nodeId: string, changes: { title?: unknown; url?: unknown }) {
+  private applyNodeUpdateToEntryList(
+    nodeId: string,
+    changes: { title?: unknown; url?: unknown },
+  ) {
     const url = this.getURLFromNodeId(nodeId);
 
     if (!url) return;
@@ -134,7 +141,8 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
 
     if (typeof changes.url === "string") {
       const newEntry = BrowserBookmarkEntryList.URLToEntry(changes.url)!;
-      newEntry.title = typeof changes.title === "string" ? changes.title : entry.title;
+      newEntry.title =
+        typeof changes.title === "string" ? changes.title : entry.title;
 
       if (entry.url === newEntry.url) {
         if (
@@ -183,7 +191,10 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
   private setUpBrowserBookmarkWatcher() {
     // ブラウザのブックマークAPIが存在しない環境（Tauri等）では
     // ウォッチャーを起動せず、ブックマーク同期はスキップする。
-    if (typeof browser === "undefined" || typeof browser.bookmarks === "undefined") {
+    if (
+      typeof browser === "undefined" ||
+      typeof browser.bookmarks === "undefined"
+    ) {
       app.log(
         "warn",
         "ブラウザのブックマークAPIが利用できません。ブックマーク同期をスキップします。",
@@ -228,18 +239,20 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
       this.applyNodeUpdateToEntryList(nodeId, changes);
     });
 
-    browser.bookmarks.onMoved.addListener(async (nodeId, { parentId, oldParentId }) => {
-      if (!watching) return;
+    browser.bookmarks.onMoved.addListener(
+      async (nodeId, { parentId, oldParentId }) => {
+        if (!watching) return;
 
-      if (parentId === this.rootNodeId) {
-        const res = await browser.bookmarks.get(nodeId);
-        if (res.length === 1 && typeof res[0].url === "string") {
-          this.applyNodeAddToEntryList(res[0]);
+        if (parentId === this.rootNodeId) {
+          const res = await browser.bookmarks.get(nodeId);
+          if (res.length === 1 && typeof res[0].url === "string") {
+            this.applyNodeAddToEntryList(res[0]);
+          }
+        } else if (oldParentId === this.rootNodeId) {
+          this.applyNodeRemoveToEntryList(nodeId);
         }
-      } else if (oldParentId === this.rootNodeId) {
-        this.applyNodeRemoveToEntryList(nodeId);
-      }
-    });
+      },
+    );
   }
 
   setRootNodeId(rootNodeId: string): Promise<boolean> {
@@ -319,7 +332,10 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
 
     if (Object.keys(changes).length === 0) return true;
 
-    const res2 = await browser.bookmarks.update(id, changes as { title?: string; url?: string });
+    const res2 = await browser.bookmarks.update(
+      id,
+      changes as { title?: string; url?: string },
+    );
     if (res2) return true;
 
     app.log("error", "ブラウザのブックマーク更新に失敗しました");

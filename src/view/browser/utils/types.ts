@@ -58,7 +58,11 @@ export interface ContextMenuPopupPayload {
   items: ContextMenuItem[];
 }
 
-export type PopupItem = IdPopupItem | TreePopupItem | AnchorPopupItem | ContextMenuPopupItem;
+export type PopupItem =
+  | IdPopupItem
+  | TreePopupItem
+  | AnchorPopupItem
+  | ContextMenuPopupItem;
 
 // --- ポップアップ状態 ---
 export interface PopupState {

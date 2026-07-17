@@ -11,7 +11,8 @@ const STORAGE_KEY = "itestServerMap";
 // board key -> hostname (例: "adultgoods" -> "mercury.bbspink.com")
 let serverMap = new Map<string, string>();
 
-const BOARD_URL_REG = /^https?:\/\/(\w+)\.(5ch\.net|5ch\.io|bbspink\.com)\/(\w+)\/?$/;
+const BOARD_URL_REG =
+  /^https?:\/\/(\w+)\.(5ch\.net|5ch\.io|bbspink\.com)\/(\w+)\/?$/;
 
 function loadPersistedMap(): void {
   try {
@@ -32,7 +33,10 @@ function loadPersistedMap(): void {
 
 function persistMap(): void {
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(Object.fromEntries(serverMap)));
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(Object.fromEntries(serverMap)),
+    );
   } catch {
     // 保存失敗してもメモリ上の対応表で動作は継続できる
   }
@@ -55,7 +59,8 @@ export function applyBBSMenuToItestServerMap(menus: readonly BBSMenu[]): void {
         if (!match) continue;
         const [, server, domain, boardKey] = match;
         // アプリ内では 5ch.net を 5ch.io へ正規化して扱う規約に合わせる
-        const host = domain === "5ch.net" ? `${server}.5ch.io` : `${server}.${domain}`;
+        const host =
+          domain === "5ch.net" ? `${server}.5ch.io` : `${server}.${domain}`;
         if (!next.has(boardKey)) {
           next.set(boardKey, host);
         }
@@ -74,6 +79,8 @@ export function resolveItestServerHostname(boardKey: string): string | null {
 }
 
 /** テスト用: 対応表を直接設定する。 */
-export function setItestServerMapForTesting(entries: readonly [string, string][]): void {
+export function setItestServerMapForTesting(
+  entries: readonly [string, string][],
+): void {
   serverMap = new Map(entries);
 }

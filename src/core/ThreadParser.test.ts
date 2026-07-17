@@ -1,21 +1,32 @@
 import { ChURL } from "packages/ch-lib/src/index";
-import { getThreadXhrInfo, parseJbbsThread, parseThread } from "src/core/ThreadParser.js";
+import {
+  getThreadXhrInfo,
+  parseJbbsThread,
+  parseThread,
+} from "src/core/ThreadParser.js";
 import { describe, expect, it } from "vite-plus/test";
 
 describe("ThreadParser", () => {
   it("headline.5ch.io は format_2chnet=html でも dat URL を使う", () => {
-    const url = new ChURL("https://headline.5ch.io/test/read.cgi/bbynamazu/1000000009/");
+    const url = new ChURL(
+      "https://headline.5ch.io/test/read.cgi/bbynamazu/1000000009/",
+    );
 
     const xhrInfo = getThreadXhrInfo(url, "html");
 
     expect(xhrInfo).not.toBeNull();
-    expect(xhrInfo?.path).toBe("https://headline.5ch.io/bbynamazu/dat/1000000009.dat");
+    expect(xhrInfo?.path).toBe(
+      "https://headline.5ch.io/bbynamazu/dat/1000000009.dat",
+    );
     expect(xhrInfo?.charset).toBe("Shift_JIS");
   });
 
   it("headline.5ch.io は format_2chnet=html でも dat 形式で解釈する", () => {
-    const url = new ChURL("https://headline.5ch.io/test/read.cgi/bbynamazu/1000000009/");
-    const datText = "名無しさん<>sage<>2026/05/01(金) 00:00:00.00 ID:abc<>本文<>スレタイ\n";
+    const url = new ChURL(
+      "https://headline.5ch.io/test/read.cgi/bbynamazu/1000000009/",
+    );
+    const datText =
+      "名無しさん<>sage<>2026/05/01(金) 00:00:00.00 ID:abc<>本文<>スレタイ\n";
 
     const parsed = parseThread(url, datText, { format2chnet: "html" });
 

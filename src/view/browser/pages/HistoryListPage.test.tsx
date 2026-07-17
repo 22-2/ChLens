@@ -1,10 +1,24 @@
 import "@testing-library/jest-dom/vitest";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import React from "react";
 import { container } from "src/service-container";
 import { HistoryListPage } from "src/view/browser/pages/HistoryListPage";
 import { QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE } from "src/view/browser/utils/filter-toolbar-events";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vite-plus/test";
 
 const mockUseTabStore = vi.fn();
 const virtualizedTableState = vi.hoisted(() => ({
@@ -84,7 +98,12 @@ function emitMessage(type: string, data?: unknown): void {
   }
 }
 
-function createHistoryItem(url: string, title: string, boardTitle: string, date: number) {
+function createHistoryItem(
+  url: string,
+  title: string,
+  boardTitle: string,
+  date: number,
+) {
   return {
     url,
     title,
@@ -236,9 +255,12 @@ describe("HistoryListPage", () => {
 
     act(() => {
       window.dispatchEvent(
-        new window.CustomEvent(QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.historyList, {
-          detail: { tabId: "tab-1" },
-        }),
+        new window.CustomEvent(
+          QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.historyList,
+          {
+            detail: { tabId: "tab-1" },
+          },
+        ),
       );
     });
 
@@ -252,9 +274,12 @@ describe("HistoryListPage", () => {
 
     act(() => {
       window.dispatchEvent(
-        new window.CustomEvent(QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.historyList, {
-          detail: { tabId: "tab-1" },
-        }),
+        new window.CustomEvent(
+          QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.historyList,
+          {
+            detail: { tabId: "tab-1" },
+          },
+        ),
       );
     });
 
@@ -315,7 +340,9 @@ describe("HistoryListPage", () => {
         ),
       ]);
 
-    const { rerender } = render(<HistoryListPage tabId="tab-1" isActive={false} refreshKey={0} />);
+    const { rerender } = render(
+      <HistoryListPage tabId="tab-1" isActive={false} refreshKey={0} />,
+    );
 
     await screen.findByText("スレ1");
 
@@ -348,7 +375,9 @@ describe("HistoryListPage", () => {
         ),
       ]);
 
-    const { rerender } = render(<HistoryListPage tabId="tab-1" isActive={true} refreshKey={0} />);
+    const { rerender } = render(
+      <HistoryListPage tabId="tab-1" isActive={true} refreshKey={0} />,
+    );
 
     await screen.findByText("スレ1");
 

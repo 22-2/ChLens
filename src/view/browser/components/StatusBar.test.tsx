@@ -12,7 +12,12 @@ describe("StatusBar", () => {
   it("左右にアイテムを登録でき、appearanceも切り替えられる", () => {
     render(
       <StatusBarProvider>
-        <StatusBarItem id="left-item" alignment="left" priority={10} interactive>
+        <StatusBarItem
+          id="left-item"
+          alignment="left"
+          priority={10}
+          interactive
+        >
           <button type="button">左側</button>
         </StatusBarItem>
         <StatusBarItem id="right-item" alignment="right" priority={10}>
@@ -29,6 +34,8 @@ describe("StatusBar", () => {
     const groups = statusBar.querySelectorAll(".status-bar__group");
     expect(groups[0]).toHaveTextContent("左側");
     expect(groups[1]).toHaveTextContent("右側");
-    expect(groups[0].firstElementChild).toHaveClass("status-bar__item--interactive");
+    expect(groups[0].firstElementChild).toHaveClass(
+      "status-bar__item--interactive",
+    );
   });
 });

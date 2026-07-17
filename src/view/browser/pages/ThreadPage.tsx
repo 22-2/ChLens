@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { container } from "src/service-container/index";
 import type { IThread } from "src/service-container/interfaces";
 import { MediaViewerContainer } from "src/view/browser/components/MediaViewerContainer";
@@ -64,14 +70,17 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   } = useThreadData(tabId, page, refreshKey);
   const dispatch = useTabDispatch();
   const { setThreadStats } = useNgStatus();
-  const openMediaFromUrl = useMediaViewerStore((state) => state.openMediaFromUrl);
+  const openMediaFromUrl = useMediaViewerStore(
+    (state) => state.openMediaFromUrl,
+  );
   const { enabled: isAutoNextThreadEnabled } = useAutoNextThreadSetting();
 
   const [miniAaResNums, setMiniAaResNums] = useState<Set<number>>(new Set());
-  const { activeTopBar, closeTopBar, openFilterToolbar, searchFocusKey } = useThreadTopBar({
-    searchQuery,
-    setSearchQuery,
-  });
+  const { activeTopBar, closeTopBar, openFilterToolbar, searchFocusKey } =
+    useThreadTopBar({
+      searchQuery,
+      setSearchQuery,
+    });
 
   useMouseGesture(rootRef);
 
@@ -111,31 +120,32 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   // タブ切替後に非アクティブタブの状態がステータスバーへ残留するのを防ぐ。
   const isActiveAutoRefreshEnabled = isActive && isAutoRefreshEnabled;
 
-  const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling } = useThreadAutoRefresh({
-    enabled: isActiveAutoRefreshEnabled,
-    threadUrl: page.threadUrl,
-    expired,
-    loading,
-    pauseAutoScroll: popups.length > 0,
-    responseCount: responses.length,
-    lastResponseNum: responses.at(-1)?.num ?? null,
-    rootRef,
-    requestRefresh: () => dispatch({ type: "RELOAD" }),
-    // 新着が一定回数(=間隔×N)来なかったら、放置スレと判断して自動更新を止める。
-    onAutoStop: () => {
-      const pageKey = getAutoRefreshPageKey(page);
-      if (pageKey == null) {
-        return;
-      }
-      dispatch({
-        type: "SET_AUTO_REFRESH_ENABLED",
-        enabled: false,
-        pageKey,
-      });
-      // 状態アイコンが消えるだけだと「いつ止まったか」が分かりにくいので明示する。
-      container.toast.info("新着が止まったため自動更新を停止しました");
-    },
-  });
+  const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling } =
+    useThreadAutoRefresh({
+      enabled: isActiveAutoRefreshEnabled,
+      threadUrl: page.threadUrl,
+      expired,
+      loading,
+      pauseAutoScroll: popups.length > 0,
+      responseCount: responses.length,
+      lastResponseNum: responses.at(-1)?.num ?? null,
+      rootRef,
+      requestRefresh: () => dispatch({ type: "RELOAD" }),
+      // 新着が一定回数(=間隔×N)来なかったら、放置スレと判断して自動更新を止める。
+      onAutoStop: () => {
+        const pageKey = getAutoRefreshPageKey(page);
+        if (pageKey == null) {
+          return;
+        }
+        dispatch({
+          type: "SET_AUTO_REFRESH_ENABLED",
+          enabled: false,
+          pageKey,
+        });
+        // 状態アイコンが消えるだけだと「いつ止まったか」が分かりにくいので明示する。
+        container.toast.info("新着が止まったため自動更新を停止しました");
+      },
+    });
 
   const handleFollowNextThread = useCallback(
     (nextThread: Pick<IThread, "title" | "url">) => {
@@ -165,11 +175,12 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
 
   const imageBlurConfig = useImageBlurConfig();
 
-  const { ownResNums, handleWriteHistoryAdded, handleWriteHistoryRemoved } = useOwnResTracking({
-    threadUrl: page.threadUrl,
-    threadTitle: page.title,
-    responses,
-  });
+  const { ownResNums, handleWriteHistoryAdded, handleWriteHistoryRemoved } =
+    useOwnResTracking({
+      threadUrl: page.threadUrl,
+      threadTitle: page.title,
+      responses,
+    });
 
   const { scrollToResponse } = useThreadReadState({
     threadUrl: page.threadUrl,
@@ -179,12 +190,13 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     rootRef,
   });
 
-  const { handleUrlClick, handleUrlContextMenu, openPopupUrlContextMenu } = useUrlHandlers({
-    threadUrl: page.threadUrl,
-    dispatch,
-    openMediaFromUrl,
-    addPopupContextMenu,
-  });
+  const { handleUrlClick, handleUrlContextMenu, openPopupUrlContextMenu } =
+    useUrlHandlers({
+      threadUrl: page.threadUrl,
+      dispatch,
+      openMediaFromUrl,
+      addPopupContextMenu,
+    });
 
   const {
     openAnchorPreviewFromPopup,
@@ -213,7 +225,9 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   );
 
   const threadNgCount = useMemo(
-    () => responses.filter((res) => res.ng != null || res.class?.includes("ng")).length,
+    () =>
+      responses.filter((res) => res.ng != null || res.class?.includes("ng"))
+        .length,
     [responses],
   );
 
@@ -227,7 +241,11 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
 
   const blurredResNums = useMemo(() => {
     if (!imageBlurConfig.enabled) return new Set<number>();
-    return buildBlurredResSet(responses, indexes.repIndex, imageBlurConfig.harmfulWordPattern);
+    return buildBlurredResSet(
+      responses,
+      indexes.repIndex,
+      imageBlurConfig.harmfulWordPattern,
+    );
   }, [imageBlurConfig, indexes.repIndex, responses]);
 
   useEffect(() => {
@@ -242,25 +260,26 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     };
   }, [ownHighlightCount, setThreadStats, threadNgCount]);
 
-  const { openPopupResContextMenu, openThreadResContextMenu } = useThreadResContextMenu({
-    addPopupContextMenu,
-    closePopup,
-    fetchThread,
-    filter,
-    filteredResponses,
-    handleAnchorClick,
-    hideAnchorPreviewImmediately,
-    miniAaResNums,
-    ownResNums,
-    page,
-    onWriteHistoryAdded: handleWriteHistoryAdded,
-    onWriteHistoryRemoved: handleWriteHistoryRemoved,
-    searchQuery,
-    setFilter,
-    setSearchQuery,
-    setMiniAaResNums,
-    setResponses,
-  });
+  const { openPopupResContextMenu, openThreadResContextMenu } =
+    useThreadResContextMenu({
+      addPopupContextMenu,
+      closePopup,
+      fetchThread,
+      filter,
+      filteredResponses,
+      handleAnchorClick,
+      hideAnchorPreviewImmediately,
+      miniAaResNums,
+      ownResNums,
+      page,
+      onWriteHistoryAdded: handleWriteHistoryAdded,
+      onWriteHistoryRemoved: handleWriteHistoryRemoved,
+      searchQuery,
+      setFilter,
+      setSearchQuery,
+      setMiniAaResNums,
+      setResponses,
+    });
 
   // 空白部分のダブルクリックによる更新。
   // 設定が有効な場合に動作し、誤操作防止のためリンクや画像、テキスト選択中などは除外する。
@@ -272,7 +291,9 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
 
       // リンク、画像、入力系要素、ボタンなどは除外
       if (
-        target.closest("a, button, input, textarea, .res__thumb, .res__media-embed, .res__link")
+        target.closest(
+          "a, button, input, textarea, .res__thumb, .res__media-embed, .res__link",
+        )
       ) {
         return;
       }
@@ -292,7 +313,11 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
 
   // ジェスチャーuseEffectでrootRefが確実にマウント済みになるよう、loading中の早期returnを廃止し常にrootRef付きdivを描画する
   return (
-    <div ref={rootRef} className="thread-page" onDoubleClick={handleDoubleClick}>
+    <div
+      ref={rootRef}
+      className="thread-page"
+      onDoubleClick={handleDoubleClick}
+    >
       {loading && responses.length === 0 ? (
         <div className="page-status">読み込み中...</div>
       ) : error && responses.length === 0 ? (
@@ -316,12 +341,18 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             searchQuery={searchQuery}
           />
 
-          {expired && <div className="thread-page__notice">このスレッドはdat落ちしています</div>}
+          {expired && (
+            <div className="thread-page__notice">
+              このスレッドはdat落ちしています
+            </div>
+          )}
           {error && <div className="thread-page__notice">{error}</div>}
 
           <div className="thread-page__responses">
             {filteredResponses.map((res) => {
-              const idCount = res.id ? (indexes.idIndex.get(res.id)?.size ?? 0) : 0;
+              const idCount = res.id
+                ? (indexes.idIndex.get(res.id)?.size ?? 0)
+                : 0;
               const idPos = res.id ? (idPositions.get(res.num) ?? 0) : 0;
               const repCount = indexes.repIndex.get(res.num)?.size ?? 0;
               return (
@@ -356,7 +387,9 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
               <div
                 ref={autoScrollBoundaryRef}
                 className={`thread-page__auto-scroll-threshold${
-                  canAutoScroll ? " thread-page__auto-scroll-threshold--armed" : ""
+                  canAutoScroll
+                    ? " thread-page__auto-scroll-threshold--armed"
+                    : ""
                 }${isAutoScrolling ? " thread-page__auto-scroll-threshold--scrolling" : ""}`}
               >
                 <span className="thread-page__auto-scroll-threshold-label">

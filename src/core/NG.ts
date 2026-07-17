@@ -4,7 +4,13 @@ import { splitNgDslEntries } from "src/core/ngDsl";
 import { container, INGResult } from "src/service-container/index";
 import { createLogger } from "src/core/logger";
 
-import { checkResNum, checkScope, checkWord, NGResObj, NGThreadObj } from "src/core/NGMatcher";
+import {
+  checkResNum,
+  checkScope,
+  checkWord,
+  NGResObj,
+  NGThreadObj,
+} from "src/core/NGMatcher";
 import { parseNgString, setupNgRegex } from "src/core/NGParser";
 import { InternalNGElement, TYPE } from "src/core/NGTypes";
 
@@ -59,7 +65,9 @@ const _config = {
     }
   },
   set(str: InternalNGElement[]): Promise<void> {
-    return Promise.resolve(container.config.set(_CONFIG_NAME, JSON.stringify(str)));
+    return Promise.resolve(
+      container.config.set(_CONFIG_NAME, JSON.stringify(str)),
+    );
   },
   getString(): string {
     return container.config.get(_CONFIG_STRING_NAME) || "";
@@ -82,12 +90,17 @@ type CommonFilterContext = {
  * isNGBoard / isNGThread で共通するガード条件をまとめたフィルタ。
  * false を返したルールはスキップ対象。
  */
-function passesCommonFilters(n: InternalNGElement, ctx: CommonFilterContext, now: number): boolean {
+function passesCommonFilters(
+  n: InternalNGElement,
+  ctx: CommonFilterContext,
+  now: number,
+): boolean {
   if (n.type === TYPE.INVALID || n.type === "" || n.word === "") return false;
   if (!checkScope(n, ctx.url)) return false;
   if (n.expire != null && now > n.expire) return false;
   if (n.exception !== ctx.exceptionFlg) return false;
-  if (n.subType != null && ctx.subType && !n.subType.includes(ctx.subType)) return false;
+  if (n.subType != null && ctx.subType && !n.subType.includes(ctx.subType))
+    return false;
   return true;
 }
 
@@ -211,7 +224,10 @@ export function isNGBoard(
 
     checkedCount += 1;
 
-    if (n.subElements != null && !n.subElements.every((sub) => checkWord(sub, threadObj))) {
+    if (
+      n.subElements != null &&
+      !n.subElements.every((sub) => checkWord(sub, threadObj))
+    ) {
       continue;
     }
 
@@ -294,7 +310,10 @@ export function isNGThread(
 
     checkedCount += 1;
 
-    if (n.subElements != null && !n.subElements.every((sub) => checkWord(sub, resObj))) {
+    if (
+      n.subElements != null &&
+      !n.subElements.every((sub) => checkWord(sub, resObj))
+    ) {
       continue;
     }
 
@@ -341,7 +360,10 @@ export function isNGThread(
   return null;
 }
 
-export function isIgnoreResNumForAuto(resNum: number, subType: string = ""): boolean {
+export function isIgnoreResNumForAuto(
+  resNum: number,
+  subType: string = "",
+): boolean {
   for (const n of get()) {
     if (n.type !== TYPE.AUTO) continue;
     if (n.subType != null && !n.subType.includes(subType)) continue;

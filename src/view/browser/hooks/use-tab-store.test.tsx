@@ -1,7 +1,20 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { getAutoRefreshPageKey } from "src/view/browser/utils/auto-refresh-pages";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vite-plus/test";
 
 const { historyAddMock, historyRemoveMock } = vi.hoisted(() => ({
   historyAddMock: vi.fn().mockResolvedValue(undefined),
@@ -84,7 +97,8 @@ describe("TabProvider auto refresh state", () => {
 
   it("別ページへ移動した時点で自動更新状態を解除する", async () => {
     vi.resetModules();
-    const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
       const { activeTab, currentPage, dispatch } = useTabStore();
@@ -134,7 +148,9 @@ describe("TabProvider auto refresh state", () => {
           >
             thread-2 へ移動
           </button>
-          <output data-testid="stored-thread-url">{activeTab.autoRefreshPageKey ?? ""}</output>
+          <output data-testid="stored-thread-url">
+            {activeTab.autoRefreshPageKey ?? ""}
+          </output>
           <output data-testid="current-thread-enabled">
             {isCurrentThreadAutoRefreshEnabled ? "enabled" : "disabled"}
           </output>
@@ -154,17 +170,22 @@ describe("TabProvider auto refresh state", () => {
     expect(screen.getByTestId("stored-thread-url")).toHaveTextContent(
       "thread:https://example.com/test/read.cgi/foo/1/",
     );
-    expect(screen.getByTestId("current-thread-enabled")).toHaveTextContent("enabled");
+    expect(screen.getByTestId("current-thread-enabled")).toHaveTextContent(
+      "enabled",
+    );
 
     fireEvent.click(screen.getByText("thread-2 へ移動"));
 
     expect(screen.getByTestId("stored-thread-url")).toHaveTextContent("");
-    expect(screen.getByTestId("current-thread-enabled")).toHaveTextContent("disabled");
+    expect(screen.getByTestId("current-thread-enabled")).toHaveTextContent(
+      "disabled",
+    );
   });
 
   it("戻るで移動してきたページでも自動更新状態は復元しない", async () => {
     vi.resetModules();
-    const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
       const { activeTab, currentPage, dispatch } = useTabStore();
@@ -215,7 +236,9 @@ describe("TabProvider auto refresh state", () => {
             thread-2 へ移動
           </button>
           <button onClick={() => dispatch({ type: "GO_BACK" })}>戻る</button>
-          <output data-testid="stored-thread-url">{activeTab.autoRefreshPageKey ?? ""}</output>
+          <output data-testid="stored-thread-url">
+            {activeTab.autoRefreshPageKey ?? ""}
+          </output>
           <output data-testid="current-thread-enabled">
             {isCurrentThreadAutoRefreshEnabled ? "enabled" : "disabled"}
           </output>
@@ -235,12 +258,15 @@ describe("TabProvider auto refresh state", () => {
     fireEvent.click(screen.getByText("戻る"));
 
     expect(screen.getByTestId("stored-thread-url")).toHaveTextContent("");
-    expect(screen.getByTestId("current-thread-enabled")).toHaveTextContent("disabled");
+    expect(screen.getByTestId("current-thread-enabled")).toHaveTextContent(
+      "disabled",
+    );
   });
 
   it("セッション保存時に自動更新状態を永続化しない", async () => {
     vi.resetModules();
-    const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
       const { dispatch } = useTabStore();
@@ -318,7 +344,8 @@ describe("TabProvider auto refresh state", () => {
             pinned: false,
             reloadKey: 0,
             autoRefreshEnabled: true,
-            autoRefreshPageKey: "thread:https://example.com/test/read.cgi/foo/1/",
+            autoRefreshPageKey:
+              "thread:https://example.com/test/read.cgi/foo/1/",
           },
         ],
         activeTabId: "tab-1",
@@ -327,7 +354,8 @@ describe("TabProvider auto refresh state", () => {
     );
 
     vi.resetModules();
-    const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
       const { activeTab } = useTabStore();
@@ -336,7 +364,9 @@ describe("TabProvider auto refresh state", () => {
           <output data-testid="saved-enabled">
             {activeTab.autoRefreshEnabled ? "enabled" : "disabled"}
           </output>
-          <output data-testid="saved-url">{activeTab.autoRefreshPageKey ?? ""}</output>
+          <output data-testid="saved-url">
+            {activeTab.autoRefreshPageKey ?? ""}
+          </output>
         </>
       );
     }
@@ -353,7 +383,8 @@ describe("TabProvider auto refresh state", () => {
 
   it("FOLLOW_NEXT_THREAD は現在タブの履歴と自動更新束縛を次スレへ引き継ぐ", async () => {
     vi.resetModules();
-    const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
       const { activeTab, currentPage, dispatch } = useTabStore();
@@ -404,9 +435,15 @@ describe("TabProvider auto refresh state", () => {
           >
             次スレへ追従
           </button>
-          <output data-testid="stored-thread-url">{activeTab.autoRefreshPageKey ?? ""}</output>
-          <output data-testid="history-length">{activeTab.history.length}</output>
-          <output data-testid="current-thread-title">{currentPage.title}</output>
+          <output data-testid="stored-thread-url">
+            {activeTab.autoRefreshPageKey ?? ""}
+          </output>
+          <output data-testid="history-length">
+            {activeTab.history.length}
+          </output>
+          <output data-testid="current-thread-title">
+            {currentPage.title}
+          </output>
           <output data-testid="current-thread-enabled">
             {isCurrentThreadAutoRefreshEnabled ? "enabled" : "disabled"}
           </output>
@@ -430,8 +467,12 @@ describe("TabProvider auto refresh state", () => {
     // 現仕様の NAVIGATE は祖先(home/板/スレ一覧)を自動補完しないため、
     // 初期[home] → thread-1 で1段 → thread-2 で1段の計3エントリになる。
     expect(screen.getByTestId("history-length")).toHaveTextContent("3");
-    expect(screen.getByTestId("current-thread-title")).toHaveTextContent("thread-2");
-    expect(screen.getByTestId("current-thread-enabled")).toHaveTextContent("enabled");
+    expect(screen.getByTestId("current-thread-title")).toHaveTextContent(
+      "thread-2",
+    );
+    expect(screen.getByTestId("current-thread-enabled")).toHaveTextContent(
+      "enabled",
+    );
   });
 
   it("OPEN_IN_NEW_TAB では現在タブのページタイトルを変更しない", async () => {
@@ -440,7 +481,8 @@ describe("TabProvider auto refresh state", () => {
     // このテストの主眼は「元タブのページが汚染されないこと」なので、
     // 背景オープン設定にしてアクティブタブを元のままに固定して検証する。
     localStorage.setItem("config_focus_new_tab_on_open", "off");
-    const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
       const { state, activeTab, currentPage, dispatch } = useTabStore();
@@ -494,19 +536,26 @@ describe("TabProvider auto refresh state", () => {
     const activeTabIdBefore = screen.getByTestId("active-tab-id").textContent;
 
     expect(screen.getByTestId("current-page-title")).toHaveTextContent("板A");
-    expect(screen.getByTestId("current-page-type")).toHaveTextContent("threadList");
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent(
+      "threadList",
+    );
 
     fireEvent.click(screen.getByText("新規タブで開く"));
 
     expect(screen.getByTestId("tabs-count")).toHaveTextContent("2");
-    expect(screen.getByTestId("active-tab-id").textContent).toBe(activeTabIdBefore);
+    expect(screen.getByTestId("active-tab-id").textContent).toBe(
+      activeTabIdBefore,
+    );
     expect(screen.getByTestId("current-page-title")).toHaveTextContent("板A");
-    expect(screen.getByTestId("current-page-type")).toHaveTextContent("threadList");
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent(
+      "threadList",
+    );
   });
 
   it("OPEN_IN_NEW_TAB した背景スレは表示前でも閲覧履歴へ記録する", async () => {
     vi.resetModules();
-    const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
       const { dispatch } = useTabStore();
@@ -568,7 +617,8 @@ describe("TabProvider auto refresh state", () => {
 
   it("URL直開きのスレはタイトル解決後に同じ履歴レコードを補正する", async () => {
     vi.resetModules();
-    const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
       const { state, dispatch } = useTabStore();
@@ -641,7 +691,8 @@ describe("TabProvider auto refresh state", () => {
   it("OPEN_IN_NEW_TAB は設定オフ時にバックグラウンドで新規タブを作成する", async () => {
     vi.resetModules();
     localStorage.setItem("config_focus_new_tab_on_open", "off");
-    const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
       const { state, activeTab, currentPage, dispatch } = useTabStore();
@@ -695,21 +746,28 @@ describe("TabProvider auto refresh state", () => {
 
     fireEvent.click(screen.getByText("既存スレを新しいタブで開く"));
     expect(screen.getByTestId("tabs-count")).toHaveTextContent("2");
-    expect(screen.getByTestId("active-tab-id").textContent).toBe(originalActiveTabId);
+    expect(screen.getByTestId("active-tab-id").textContent).toBe(
+      originalActiveTabId,
+    );
 
     // 現仕様では重複防止が働くため、同じURLを再度開いても新規タブは増えず、
     // 既存の該当タブへフォーカスが移る（背景設定でも重複時はそのタブを表示する）。
     fireEvent.click(screen.getByText("既存スレを新しいタブで開く"));
 
     expect(screen.getByTestId("tabs-count")).toHaveTextContent("2");
-    expect(screen.getByTestId("active-tab-id").textContent).not.toBe(originalActiveTabId);
-    expect(screen.getByTestId("current-page-title")).toHaveTextContent("既存スレ");
+    expect(screen.getByTestId("active-tab-id").textContent).not.toBe(
+      originalActiveTabId,
+    );
+    expect(screen.getByTestId("current-page-title")).toHaveTextContent(
+      "既存スレ",
+    );
   });
 
   it("OPEN_IN_NEW_TAB は設定オン時に新しいタブをアクティブにする", async () => {
     vi.resetModules();
     localStorage.setItem("config_focus_new_tab_on_open", "on");
-    const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
       const { state, activeTab, currentPage, dispatch } = useTabStore();
@@ -763,8 +821,12 @@ describe("TabProvider auto refresh state", () => {
 
     fireEvent.click(screen.getByText("既存スレを新しいタブで開く"));
     expect(screen.getByTestId("tabs-count")).toHaveTextContent("2");
-    expect(screen.getByTestId("active-tab-id").textContent).not.toBe(originalActiveTabId);
-    expect(screen.getByTestId("current-page-title")).toHaveTextContent("既存スレ");
+    expect(screen.getByTestId("active-tab-id").textContent).not.toBe(
+      originalActiveTabId,
+    );
+    expect(screen.getByTestId("current-page-title")).toHaveTextContent(
+      "既存スレ",
+    );
   });
 
   it("NAVIGATE は別タブに同じページがあっても現在タブの履歴に積む", async () => {
@@ -772,7 +834,8 @@ describe("TabProvider auto refresh state", () => {
     // 既存スレを別タブで開く操作は背景前提なので、
     // フォーカス移動でアクティブタブが入れ替わらないよう背景オープン設定にする。
     localStorage.setItem("config_focus_new_tab_on_open", "off");
-    const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
       const { state, currentPage, dispatch } = useTabStore();
@@ -840,7 +903,9 @@ describe("TabProvider auto refresh state", () => {
           <output data-testid="tabs-count">{state.tabs.length}</output>
           <output data-testid="current-page-title">{currentPage.title}</output>
           <output data-testid="tab-titles">
-            {state.tabs.map((tab) => tab.history[tab.currentIndex]?.title ?? "").join("|")}
+            {state.tabs
+              .map((tab) => tab.history[tab.currentIndex]?.title ?? "")
+              .join("|")}
           </output>
         </>
       );
@@ -862,13 +927,18 @@ describe("TabProvider auto refresh state", () => {
 
     // タブ数は変わらず、現在タブの履歴に積まれる（別タブへ飛ばない）
     expect(screen.getByTestId("tabs-count")).toHaveTextContent("2");
-    expect(screen.getByTestId("current-page-title")).toHaveTextContent("既存スレ");
-    expect(screen.getByTestId("tab-titles")).toHaveTextContent("既存スレ|既存スレ");
+    expect(screen.getByTestId("current-page-title")).toHaveTextContent(
+      "既存スレ",
+    );
+    expect(screen.getByTestId("tab-titles")).toHaveTextContent(
+      "既存スレ|既存スレ",
+    );
   });
 
   it("クイックアクセス間の遷移で既存ページ判定が誤爆せず切り替わる", async () => {
     vi.resetModules();
-    const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
       const { currentPage, dispatch } = useTabStore();
@@ -918,20 +988,31 @@ describe("TabProvider auto refresh state", () => {
     );
 
     fireEvent.click(screen.getByText("ブックマークを開く"));
-    expect(screen.getByTestId("current-page-type")).toHaveTextContent("bookmarkList");
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent(
+      "bookmarkList",
+    );
 
     fireEvent.click(screen.getByText("履歴を開く"));
-    expect(screen.getByTestId("current-page-type")).toHaveTextContent("historyList");
-    expect(screen.getByTestId("current-page-title")).toHaveTextContent("閲覧履歴");
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent(
+      "historyList",
+    );
+    expect(screen.getByTestId("current-page-title")).toHaveTextContent(
+      "閲覧履歴",
+    );
 
     fireEvent.click(screen.getByText("書き込み履歴を開く"));
-    expect(screen.getByTestId("current-page-type")).toHaveTextContent("writeHistoryList");
-    expect(screen.getByTestId("current-page-title")).toHaveTextContent("書き込み履歴");
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent(
+      "writeHistoryList",
+    );
+    expect(screen.getByTestId("current-page-title")).toHaveTextContent(
+      "書き込み履歴",
+    );
   });
 
   it("同一タブでスレURLへ遷移した時は戻るで前のスレへ戻る", async () => {
     vi.resetModules();
-    const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
       const { currentPage, activeTab, dispatch } = useTabStore();
@@ -987,7 +1068,9 @@ describe("TabProvider auto refresh state", () => {
           <output data-testid="history-titles">
             {activeTab.history.map((page) => page.title).join("|")}
           </output>
-          <output data-testid="history-index">{String(activeTab.currentIndex)}</output>
+          <output data-testid="history-index">
+            {String(activeTab.currentIndex)}
+          </output>
         </>
       );
     }
@@ -1002,21 +1085,28 @@ describe("TabProvider auto refresh state", () => {
     fireEvent.click(screen.getByText("thread-1 へ移動"));
     fireEvent.click(screen.getByText("thread-2 へ移動"));
 
-    expect(screen.getByTestId("current-page-title")).toHaveTextContent("thread-2");
+    expect(screen.getByTestId("current-page-title")).toHaveTextContent(
+      "thread-2",
+    );
     // 祖先の自動補完なし: ユーザーが実際に訪れたページのみ積まれる
-    expect(screen.getByTestId("history-titles")).toHaveTextContent("ホーム|板A|thread-1|thread-2");
+    expect(screen.getByTestId("history-titles")).toHaveTextContent(
+      "ホーム|板A|thread-1|thread-2",
+    );
     expect(screen.getByTestId("history-index")).toHaveTextContent("3");
 
     fireEvent.click(screen.getByText("戻る"));
 
-    expect(screen.getByTestId("current-page-title")).toHaveTextContent("thread-1");
+    expect(screen.getByTestId("current-page-title")).toHaveTextContent(
+      "thread-1",
+    );
     expect(screen.getByTestId("current-page-type")).toHaveTextContent("thread");
     expect(screen.getByTestId("history-index")).toHaveTextContent("2");
   });
 
   it("ホームからURL直開きしたスレで戻るとホームへ戻る", async () => {
     vi.resetModules();
-    const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
       const { currentPage, activeTab, dispatch } = useTabStore();
@@ -1056,19 +1146,24 @@ describe("TabProvider auto refresh state", () => {
     fireEvent.click(screen.getByText("スレをURL直開き"));
 
     // 祖先の自動補完なし: ホームと直開きスレだけが積まれる
-    expect(screen.getByTestId("history-titles")).toHaveTextContent("ホーム|direct-thread");
+    expect(screen.getByTestId("history-titles")).toHaveTextContent(
+      "ホーム|direct-thread",
+    );
 
     fireEvent.click(screen.getByText("戻る"));
 
     expect(screen.getByTestId("current-page-type")).toHaveTextContent("home");
-    expect(screen.getByTestId("current-page-title")).toHaveTextContent("ホーム");
+    expect(screen.getByTestId("current-page-title")).toHaveTextContent(
+      "ホーム",
+    );
   });
 
   it("UPDATE_TITLE_FOR_TAB は対象タブだけを更新し、アクティブタブを汚染しない", async () => {
     vi.resetModules();
     // 背景タブを開いた状態を作るため、新規タブのフォーカス移動を無効化する。
     localStorage.setItem("config_focus_new_tab_on_open", "off");
-    const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
       const { state, activeTab, currentPage, dispatch } = useTabStore();
@@ -1106,7 +1201,9 @@ describe("TabProvider auto refresh state", () => {
           </button>
           <button
             onClick={() => {
-              const target = state.tabs.find((tab) => tab.id !== state.activeTabId);
+              const target = state.tabs.find(
+                (tab) => tab.id !== state.activeTabId,
+              );
               if (!target) return;
               dispatch({
                 type: "UPDATE_TITLE_FOR_TAB",
@@ -1121,7 +1218,9 @@ describe("TabProvider auto refresh state", () => {
           <output data-testid="active-tab-id">{activeTab.id}</output>
           <output data-testid="active-page-title">{currentPage.title}</output>
           <output data-testid="background-page-title">
-            {state.tabs.find((tab) => tab.id !== state.activeTabId)?.history.at(-1)?.title ?? ""}
+            {state.tabs
+              .find((tab) => tab.id !== state.activeTabId)
+              ?.history.at(-1)?.title ?? ""}
           </output>
         </>
       );
@@ -1141,14 +1240,21 @@ describe("TabProvider auto refresh state", () => {
 
     fireEvent.click(screen.getByText("背景タブのタイトル更新"));
 
-    expect(screen.getByTestId("active-tab-id").textContent).toBe(activeTabIdBefore);
-    expect(screen.getByTestId("active-page-title")).toHaveTextContent("アクティブ板");
-    expect(screen.getByTestId("background-page-title")).toHaveTextContent("背景タブ更新後");
+    expect(screen.getByTestId("active-tab-id").textContent).toBe(
+      activeTabIdBefore,
+    );
+    expect(screen.getByTestId("active-page-title")).toHaveTextContent(
+      "アクティブ板",
+    );
+    expect(screen.getByTestId("background-page-title")).toHaveTextContent(
+      "背景タブ更新後",
+    );
   });
 
   it("ホームから板URLを直接開くと履歴に積まれ、進むは効かない", async () => {
     vi.resetModules();
-    const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
       const { currentPage, activeTab, dispatch } = useTabStore();
@@ -1175,7 +1281,9 @@ describe("TabProvider auto refresh state", () => {
           <output data-testid="history-titles">
             {activeTab.history.map((page) => page.title).join("|")}
           </output>
-          <output data-testid="history-index">{String(activeTab.currentIndex)}</output>
+          <output data-testid="history-index">
+            {String(activeTab.currentIndex)}
+          </output>
         </>
       );
     }
@@ -1187,34 +1295,49 @@ describe("TabProvider auto refresh state", () => {
     );
 
     fireEvent.click(screen.getByText("板URL直開き"));
-    expect(screen.getByTestId("current-page-type")).toHaveTextContent("threadList");
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent(
+      "threadList",
+    );
     // 祖先の自動補完なし: ホームと板だけが積まれる
-    expect(screen.getByTestId("history-titles")).toHaveTextContent("ホーム|板A");
+    expect(screen.getByTestId("history-titles")).toHaveTextContent(
+      "ホーム|板A",
+    );
     expect(screen.getByTestId("history-index")).toHaveTextContent("1");
 
     fireEvent.click(screen.getByText("進む"));
-    expect(screen.getByTestId("current-page-type")).toHaveTextContent("threadList");
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent(
+      "threadList",
+    );
     expect(screen.getByTestId("history-index")).toHaveTextContent("1");
   });
 
   it("新規タブ直後は進むが効かない", async () => {
     vi.resetModules();
-    const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
       const { state, currentPage, dispatch } = useTabStore();
 
       return (
         <>
-          <button onClick={() => dispatch({ type: "ADD_TAB" })}>新規タブ</button>
+          <button onClick={() => dispatch({ type: "ADD_TAB" })}>
+            新規タブ
+          </button>
           <button onClick={() => dispatch({ type: "GO_FORWARD" })}>進む</button>
           <output data-testid="tabs-count">{state.tabs.length}</output>
           <output data-testid="current-page-type">{currentPage.type}</output>
           <output data-testid="history-length">
-            {String(state.tabs.find((tab) => tab.id === state.activeTabId)?.history.length ?? 0)}
+            {String(
+              state.tabs.find((tab) => tab.id === state.activeTabId)?.history
+                .length ?? 0,
+            )}
           </output>
           <output data-testid="history-index">
-            {String(state.tabs.find((tab) => tab.id === state.activeTabId)?.currentIndex ?? -1)}
+            {String(
+              state.tabs.find((tab) => tab.id === state.activeTabId)
+                ?.currentIndex ?? -1,
+            )}
           </output>
         </>
       );
@@ -1241,7 +1364,8 @@ describe("TabProvider auto refresh state", () => {
     localStorage.setItem("config_new_tab_page_mode", "related_board");
 
     vi.resetModules();
-    const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
       const { currentPage, dispatch } = useTabStore();
@@ -1270,14 +1394,17 @@ describe("TabProvider auto refresh state", () => {
                 page: {
                   type: "thread",
                   title: "スレA",
-                  threadUrl: "https://egg.5ch.net/test/read.cgi/software/1000000010/",
+                  threadUrl:
+                    "https://egg.5ch.net/test/read.cgi/software/1000000010/",
                 },
               })
             }
           >
             スレへ移動
           </button>
-          <button onClick={() => dispatch({ type: "ADD_TAB" })}>新規タブ</button>
+          <button onClick={() => dispatch({ type: "ADD_TAB" })}>
+            新規タブ
+          </button>
           <output data-testid="current-page-type">{currentPage.type}</output>
           <output data-testid="current-page-title">{currentPage.title}</output>
           <output data-testid="current-page-board-title">
@@ -1297,14 +1424,21 @@ describe("TabProvider auto refresh state", () => {
     fireEvent.click(screen.getByText("スレへ移動"));
     fireEvent.click(screen.getByText("新規タブ"));
 
-    expect(screen.getByTestId("current-page-type")).toHaveTextContent("threadList");
-    expect(screen.getByTestId("current-page-title")).toHaveTextContent("Software");
-    expect(screen.getByTestId("current-page-board-title")).toHaveTextContent("Software");
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent(
+      "threadList",
+    );
+    expect(screen.getByTestId("current-page-title")).toHaveTextContent(
+      "Software",
+    );
+    expect(screen.getByTestId("current-page-board-title")).toHaveTextContent(
+      "Software",
+    );
   });
 
   it("板ページから新規タブで開いたスレは戻る時に板URLではなく板タイトルを維持する", async () => {
     vi.resetModules();
-    const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
+    const { TabProvider, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
       const { state, currentPage, dispatch } = useTabStore();
@@ -1333,7 +1467,8 @@ describe("TabProvider auto refresh state", () => {
                 page: {
                   type: "thread",
                   title: "スレ1",
-                  threadUrl: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000005/",
+                  threadUrl:
+                    "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000005/",
                 },
               })
             }
@@ -1342,7 +1477,9 @@ describe("TabProvider auto refresh state", () => {
           </button>
           <button
             onClick={() => {
-              const background = state.tabs.find((tab) => tab.id !== state.activeTabId);
+              const background = state.tabs.find(
+                (tab) => tab.id !== state.activeTabId,
+              );
               if (!background) return;
               dispatch({ type: "SELECT_TAB", tabId: background.id });
             }}
@@ -1371,7 +1508,11 @@ describe("TabProvider auto refresh state", () => {
 
     fireEvent.click(screen.getByText("戻る"));
 
-    expect(screen.getByTestId("current-page-type")).toHaveTextContent("threadList");
-    expect(screen.getByTestId("current-page-title")).toHaveTextContent("エッヂ");
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent(
+      "threadList",
+    );
+    expect(screen.getByTestId("current-page-title")).toHaveTextContent(
+      "エッヂ",
+    );
   });
 });

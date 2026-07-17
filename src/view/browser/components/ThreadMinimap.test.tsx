@@ -2,7 +2,14 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, render, waitFor } from "@testing-library/react";
 import React from "react";
 import { ThreadMinimap } from "src/view/browser/components/ThreadMinimap";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vite-plus/test";
 
 const CANVAS_CONTEXT_STUB = {
   save: vi.fn(),
@@ -98,9 +105,13 @@ describe("ThreadMinimap", () => {
     responses.getBoundingClientRect = () => panel.getBoundingClientRect();
 
     const rootRef = { current: host } as React.RefObject<HTMLDivElement | null>;
-    const repIndex = new Map<number, Set<number>>([[10, new Set([11, 12, 13])]]);
+    const repIndex = new Map<number, Set<number>>([
+      [10, new Set([11, 12, 13])],
+    ]);
 
-    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
 
     const { container } = render(
       <ThreadMinimap
@@ -113,7 +124,9 @@ describe("ThreadMinimap", () => {
     );
 
     await waitFor(() => {
-      expect(container.querySelector(".thread-page__minimap")).toBeInTheDocument();
+      expect(
+        container.querySelector(".thread-page__minimap"),
+      ).toBeInTheDocument();
     });
 
     expect(

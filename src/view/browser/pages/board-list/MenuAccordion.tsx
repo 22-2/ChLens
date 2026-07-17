@@ -73,7 +73,10 @@ interface MenuAccordionProps {
   openStates: Record<string, boolean>;
   openedMenuValues: string[];
   onMenuAccordionChange: (openedMenuNames: string[]) => void;
-  onCategoryAccordionChange: (menuName: string, openedCategoryIds: string[]) => void;
+  onCategoryAccordionChange: (
+    menuName: string,
+    openedCategoryIds: string[],
+  ) => void;
   onBoardClick: (boardUrl: string, boardTitle: string) => void;
   onBoardMiddleClick: (boardUrl: string, boardTitle: string) => void;
   onContextMenu: (state: BoardContextMenuState) => void;
@@ -119,7 +122,11 @@ export const MenuAccordion: React.FC<MenuAccordionProps> = ({
       styles={BOARD_ACCORDION_STYLES}
     >
       {menus.map((menu) => (
-        <Accordion.Item key={menu.name} value={menu.name} className="board-menu">
+        <Accordion.Item
+          key={menu.name}
+          value={menu.name}
+          className="board-menu"
+        >
           <Accordion.Control
             className="board-menu__title"
             onContextMenu={(event) => {
@@ -140,18 +147,26 @@ export const MenuAccordion: React.FC<MenuAccordionProps> = ({
               multiple
               variant="unstyled"
               chevronPosition="left"
-              chevron={<ChevronRight size={16} className="board-list-page__chevron" />}
+              chevron={
+                <ChevronRight size={16} className="board-list-page__chevron" />
+              }
               transitionDuration={0}
               styles={BOARD_ACCORDION_STYLES}
               value={menu.categories
                 .map((category) => buildCategoryId(menu.name, category.name))
                 .filter((id) => openStates[id] ?? false)}
-              onChange={(values) => onCategoryAccordionChange(menu.name, values)}
+              onChange={(values) =>
+                onCategoryAccordionChange(menu.name, values)
+              }
             >
               {menu.categories.map((category) => {
                 const categoryId = buildCategoryId(menu.name, category.name);
                 return (
-                  <Accordion.Item key={categoryId} value={categoryId} className="board-category">
+                  <Accordion.Item
+                    key={categoryId}
+                    value={categoryId}
+                    className="board-category"
+                  >
                     <Accordion.Control
                       className="board-category__title"
                       onContextMenu={(event) => {
@@ -173,7 +188,9 @@ export const MenuAccordion: React.FC<MenuAccordionProps> = ({
                           <UnstyledButton
                             key={board.url}
                             className="board-item"
-                            onMouseDown={(e) => handleBoardMouseDown(board.url, board.name, e)}
+                            onMouseDown={(e) =>
+                              handleBoardMouseDown(board.url, board.name, e)
+                            }
                             onContextMenu={(event) => {
                               event.preventDefault();
                               onContextMenu({

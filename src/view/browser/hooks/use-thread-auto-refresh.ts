@@ -1,5 +1,8 @@
 import { useEffect, type RefObject } from "react";
-import { useAutoRefresh, type UseAutoRefreshResult } from "src/view/browser/hooks/use-auto-refresh";
+import {
+  useAutoRefresh,
+  type UseAutoRefreshResult,
+} from "src/view/browser/hooks/use-auto-refresh";
 import { useSetAutoScrollState } from "src/view/browser/hooks/use-auto-scroll-state";
 
 interface UseThreadAutoRefreshOptions {
@@ -25,7 +28,9 @@ interface UseThreadAutoRefreshOptions {
  *
  * 低レベルな useAutoRefresh はテスト可能なまま残す。
  */
-export function useThreadAutoRefresh(options: UseThreadAutoRefreshOptions): UseAutoRefreshResult {
+export function useThreadAutoRefresh(
+  options: UseThreadAutoRefreshOptions,
+): UseAutoRefreshResult {
   const {
     enabled,
     threadUrl: _threadUrl,
@@ -67,7 +72,13 @@ export function useThreadAutoRefresh(options: UseThreadAutoRefreshOptions): UseA
           }
         : { canAutoScroll: false, isAutoScrolling: false, isPaused: false },
     );
-  }, [enabled, pauseAutoScroll, result.canAutoScroll, result.isAutoScrolling, setAutoScrollState]);
+  }, [
+    enabled,
+    pauseAutoScroll,
+    result.canAutoScroll,
+    result.isAutoScrolling,
+    setAutoScrollState,
+  ]);
 
   return result;
 }

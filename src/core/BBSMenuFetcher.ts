@@ -93,13 +93,18 @@ export class BBSMenuFetcher {
    * 条件付き GET リクエストを送信する。
    * キャッシュが存在する場合は If-Modified-Since / If-None-Match を付与する。
    */
-  private async sendRequest(url: string, cache: ICacheItem | undefined): Promise<HttpResponse> {
+  private async sendRequest(
+    url: string,
+    cache: ICacheItem | undefined,
+  ): Promise<HttpResponse> {
     const request = new Request("GET", url, {
       mimeType: "text/plain; charset=Shift_JIS",
     });
 
     if (cache?.lastModified != null) {
-      request.headers["If-Modified-Since"] = new Date(cache.lastModified).toUTCString();
+      request.headers["If-Modified-Since"] = new Date(
+        cache.lastModified,
+      ).toUTCString();
     }
     if (cache?.etag != null) {
       request.headers["If-None-Match"] = cache.etag;

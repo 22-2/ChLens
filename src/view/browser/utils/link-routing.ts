@@ -14,7 +14,8 @@ import { resolveItestServerHostname } from "src/view/browser/utils/itest-server-
 // ---------------------------------------------------------------------------
 
 export type UrlHandlingMode = "respect-default-external";
-export const RESPECT_DEFAULT_EXTERNAL: UrlHandlingMode = "respect-default-external";
+export const RESPECT_DEFAULT_EXTERNAL: UrlHandlingMode =
+  "respect-default-external";
 
 export type ResBodyUrlClickHandler = (
   url: string,
@@ -67,7 +68,8 @@ export function resolveAbsoluteUrl(rawUrl: string, baseUrl: string): string {
 
 function normalizeItestUrl(url: URL): void {
   const isItestHost =
-    url.hostname === HOSTNAME.ITEST_5CH || url.hostname === HOSTNAME.ITEST_BBSPINK;
+    url.hostname === HOSTNAME.ITEST_5CH ||
+    url.hostname === HOSTNAME.ITEST_BBSPINK;
   if (!isItestHost) return;
 
   const threadMatch = ROUTE_PATTERNS.ITEST_THREAD.exec(url.pathname);
@@ -164,7 +166,9 @@ function parseMachiPage(url: URL): InternalBrowserPage | null {
 function parseShitarabaPage(url: URL): InternalBrowserPage | null {
   const threadMatch = ROUTE_PATTERNS.SHITARABA_THREAD.exec(url.pathname);
   if (threadMatch) {
-    const action = url.pathname.includes("read_archive") ? "read_archive" : "read";
+    const action = url.pathname.includes("read_archive")
+      ? "read_archive"
+      : "read";
     url.pathname = `/bbs/${action}.cgi/${threadMatch[1]}/${threadMatch[2]}/${threadMatch[3]}/`;
     return toThreadPage(url);
   }
@@ -205,7 +209,10 @@ function parseEddibbPage(url: URL): InternalBrowserPage | null {
 // Dispatch table
 // ---------------------------------------------------------------------------
 
-const BOARD_PARSERS: Record<BoardHostType, (url: URL) => InternalBrowserPage | null> = {
+const BOARD_PARSERS: Record<
+  BoardHostType,
+  (url: URL) => InternalBrowserPage | null
+> = {
   eddibb: parseEddibbPage,
   shitaraba: parseShitarabaPage,
   machi: parseMachiPage,
@@ -277,7 +284,9 @@ export function getBoardUrlFromThreadUrl(threadUrl: string): string {
       break;
     }
     case "ch-style": {
-      const match = ROUTE_PATTERNS.CH_STYLE_BOARD_FROM_THREAD.exec(url.pathname);
+      const match = ROUTE_PATTERNS.CH_STYLE_BOARD_FROM_THREAD.exec(
+        url.pathname,
+      );
       if (match) return `${url.origin}/${match[1]}/`;
       break;
     }
@@ -286,7 +295,9 @@ export function getBoardUrlFromThreadUrl(threadUrl: string): string {
   return threadUrl;
 }
 
-export function parseInternalBrowserPage(absoluteUrl: string): InternalBrowserPage | null {
+export function parseInternalBrowserPage(
+  absoluteUrl: string,
+): InternalBrowserPage | null {
   const url = normalizeUrl(absoluteUrl);
   return url ? dispatchParser(url, false) : null;
 }
@@ -295,12 +306,17 @@ export function parseInternalBrowserPage(absoluteUrl: string): InternalBrowserPa
  * クリック経路専用。互換ホスト以外のURLはスレ/板として扱わない。
  * オムニバー入力には parseInternalBrowserPage（広い許容）を使う。
  */
-export function parseInternalBrowserPageStrict(absoluteUrl: string): InternalBrowserPage | null {
+export function parseInternalBrowserPageStrict(
+  absoluteUrl: string,
+): InternalBrowserPage | null {
   const url = normalizeUrl(absoluteUrl);
   return url ? dispatchParser(url, true) : null;
 }
 
-export function shouldHandleUrlWithApp(absoluteUrl: string, mode?: UrlHandlingMode): boolean {
+export function shouldHandleUrlWithApp(
+  absoluteUrl: string,
+  mode?: UrlHandlingMode,
+): boolean {
   if (mode !== RESPECT_DEFAULT_EXTERNAL) return true;
   return parseInternalBrowserPage(absoluteUrl) != null;
 }

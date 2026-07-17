@@ -119,7 +119,14 @@ function countSequenceMatches(
     return 0;
   }
 
-  const match = findLongestCommonSubstring(left, right, leftStart, leftEnd, rightStart, rightEnd);
+  const match = findLongestCommonSubstring(
+    left,
+    right,
+    leftStart,
+    leftEnd,
+    rightStart,
+    rightEnd,
+  );
 
   if (match.size === 0) {
     return 0;
@@ -127,7 +134,14 @@ function countSequenceMatches(
 
   return (
     match.size +
-    countSequenceMatches(left, right, leftStart, match.aIndex, rightStart, match.bIndex) +
+    countSequenceMatches(
+      left,
+      right,
+      leftStart,
+      match.aIndex,
+      rightStart,
+      match.bIndex,
+    ) +
     countSequenceMatches(
       left,
       right,
@@ -139,7 +153,10 @@ function countSequenceMatches(
   );
 }
 
-export function calculateTitleSimilarity(leftTitle: string, rightTitle: string): number {
+export function calculateTitleSimilarity(
+  leftTitle: string,
+  rightTitle: string,
+): number {
   const left = normalizeThreadTitle(leftTitle);
   const right = normalizeThreadTitle(rightTitle);
 
@@ -212,7 +229,10 @@ function buildCandidateScores(
 ): CandidateScore[] {
   return threads
     .map((thread) => {
-      const similarity = calculateTitleSimilarity(currentThreadTitle, thread.title);
+      const similarity = calculateTitleSimilarity(
+        currentThreadTitle,
+        thread.title,
+      );
       const number = extractThreadSequenceNumber(thread.title);
 
       return {
@@ -226,7 +246,9 @@ function buildCandidateScores(
     .filter((candidate) => candidate.similarity >= NEXT_THREAD_MIN_SIMILARITY);
 }
 
-function sortBySimilarity(candidates: readonly CandidateScore[]): CandidateScore[] {
+function sortBySimilarity(
+  candidates: readonly CandidateScore[],
+): CandidateScore[] {
   return [...candidates].sort((left, right) => {
     if (right.similarity !== left.similarity) {
       return right.similarity - left.similarity;
@@ -244,7 +266,10 @@ function buildExpectedNumbers(currentTitle: string): {
     return { expectedNumbers: [1, 2], hasCurrentNumber: false };
   }
 
-  const start = Math.max(1, Math.floor(current.value) - CURRENT_NUMBER_LOWER_BOUND_OFFSET);
+  const start = Math.max(
+    1,
+    Math.floor(current.value) - CURRENT_NUMBER_LOWER_BOUND_OFFSET,
+  );
   const end = Math.floor(current.value) + CURRENT_NUMBER_UPPER_BOUND_OFFSET;
   const expectedNumbers: number[] = [];
   for (let number = start; number <= end; number += 1) {
@@ -258,12 +283,20 @@ function isMarkedThread(title: string): boolean {
   return title.trimStart().startsWith("●");
 }
 
-export function calculateThreadMomentum(thread: IThread, now = Date.now()): number {
-  if (!Number.isFinite(thread.createdAt) || thread.createdAt <= 0 || thread.createdAt > now) {
+export function calculateThreadMomentum(
+  thread: IThread,
+  now = Date.now(),
+): number {
+  if (
+    !Number.isFinite(thread.createdAt) ||
+    thread.createdAt <= 0 ||
+    thread.createdAt > now
+  ) {
     return 0;
   }
 
-  const elapsedDays = Math.max((now - thread.createdAt) / 1000, 1) / (24 * 60 * 60);
+  const elapsedDays =
+    Math.max((now - thread.createdAt) / 1000, 1) / (24 * 60 * 60);
   return thread.resCount / elapsedDays;
 }
 
@@ -280,7 +313,9 @@ export function findNextThreadMatch(
   }
 
   if (isMarkedThread(currentThread.title)) {
-    const markedCandidates = availableThreads.filter((thread) => isMarkedThread(thread.title));
+    const markedCandidates = availableThreads.filter((thread) =>
+      isMarkedThread(thread.title),
+    );
     if (markedCandidates.length > 0) {
       const thread = [...markedCandidates].sort(
         (left, right) => getThreadSortKey(right) - getThreadSortKey(left),
@@ -293,18 +328,28 @@ export function findNextThreadMatch(
     }
   }
 
-  const candidateScores = buildCandidateScores(availableThreads, currentThread.title);
-  const { expectedNumbers, hasCurrentNumber } = buildExpectedNumbers(currentThread.title);
+  const candidateScores = buildCandidateScores(
+    availableThreads,
+    currentThread.title,
+  );
+  const { expectedNumbers, hasCurrentNumber } = buildExpectedNumbers(
+    currentThread.title,
+  );
   const validCandidates = sortBySimilarity(
     candidateScores.filter((candidate) => {
       if (expectedNumbers.includes(candidate.number)) {
         return true;
       }
-      if (candidate.isStar && (candidate.number === 1 || candidate.number === 2)) {
+      if (
+        candidate.isStar &&
+        (candidate.number === 1 || candidate.number === 2)
+      ) {
         return true;
       }
       return (
-        !hasCurrentNumber && candidate.number === 2 && PART2_PATTERN.test(candidate.thread.title)
+        !hasCurrentNumber &&
+        candidate.number === 2 &&
+        PART2_PATTERN.test(candidate.thread.title)
       );
     }),
   );
@@ -340,12 +385,20 @@ export function findNextThreadMatch(
 function filterMainstreamCandidates(
   threads: readonly IThread[],
   options: Required<
-    Pick<MainstreamSearchOptions, "originalThreadTitle" | "originalThreadUrl" | "currentThreadUrl">
+    Pick<
+      MainstreamSearchOptions,
+      "originalThreadTitle" | "originalThreadUrl" | "currentThreadUrl"
+    >
   > & {
     minimumResCount: number;
   },
 ): CandidateScore[] {
-  const { originalThreadTitle, originalThreadUrl, currentThreadUrl, minimumResCount } = options;
+  const {
+    originalThreadTitle,
+    originalThreadUrl,
+    currentThreadUrl,
+    minimumResCount,
+  } = options;
   const candidates = threads.filter((thread) => {
     if (thread.url === currentThreadUrl || thread.url === originalThreadUrl) {
       return false;
@@ -364,19 +417,28 @@ function filterMainstreamCandidates(
   }
 
   const current = extractThreadSequenceNumber(originalThreadTitle);
-  const expectedNumbers = current.hasNumber ? [current.value + 1, current.value] : [2];
+  const expectedNumbers = current.hasNumber
+    ? [current.value + 1, current.value]
+    : [2];
 
-  return buildCandidateScores(candidates, originalThreadTitle).filter((candidate) => {
-    if (expectedNumbers.includes(candidate.number)) {
-      return true;
-    }
-    if (candidate.isStar && (candidate.number === 1 || candidate.number === 2)) {
-      return true;
-    }
-    return (
-      !current.hasNumber && candidate.number === 2 && PART2_PATTERN.test(candidate.thread.title)
-    );
-  });
+  return buildCandidateScores(candidates, originalThreadTitle).filter(
+    (candidate) => {
+      if (expectedNumbers.includes(candidate.number)) {
+        return true;
+      }
+      if (
+        candidate.isStar &&
+        (candidate.number === 1 || candidate.number === 2)
+      ) {
+        return true;
+      }
+      return (
+        !current.hasNumber &&
+        candidate.number === 2 &&
+        PART2_PATTERN.test(candidate.thread.title)
+      );
+    },
+  );
 }
 
 export function findMainstreamThreadMatch(
@@ -391,7 +453,9 @@ export function findMainstreamThreadMatch(
     momentumRatio = 1.5,
     now = Date.now(),
   } = options;
-  const currentThread = threads.find((thread) => thread.url === currentThreadUrl);
+  const currentThread = threads.find(
+    (thread) => thread.url === currentThreadUrl,
+  );
 
   if (!currentThread) {
     return null;

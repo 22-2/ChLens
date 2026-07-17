@@ -25,9 +25,15 @@ export var Anchor = {
     };
 
     str = app.replaceAll(str, "\u30fc", "-");
-    str = str.replace(Anchor.reg._FW_NUMBER, ($0) => String.fromCharCode($0.charCodeAt(0) - 65248));
+    str = str.replace(Anchor.reg._FW_NUMBER, ($0) =>
+      String.fromCharCode($0.charCodeAt(0) - 65248),
+    );
 
-    if (!/^(?:&gt;|＞){0,2}([\d]+(?:-\d+)?(?:\s*[,、]\s*\d+(?:-\d+)?)*)$/.test(str)) {
+    if (
+      !/^(?:&gt;|＞){0,2}([\d]+(?:-\d+)?(?:\s*[,、]\s*\d+(?:-\d+)?)*)$/.test(
+        str,
+      )
+    ) {
       return data;
     }
 
@@ -36,7 +42,10 @@ export var Anchor = {
       // 桁数の大きすぎる値は無視
       var segrangeEnd, segrangeStart;
       // (undefined > 5) は常に false なので、undefined を比較に混ぜず素直に書き直した (挙動は同じ)。
-      if (segment[1].length > 5 || (segment[2] != null && segment[2].length > 5)) {
+      if (
+        segment[1].length > 5 ||
+        (segment[2] != null && segment[2].length > 5)
+      ) {
         continue;
       }
       // 1以下の値は無視
@@ -93,17 +102,23 @@ export var chServerMoveDetect = async function (oldBoardUrl, html) {
     let status;
     // `cache: false` は Request が持たないオプションで黙って無視されていた。
     // 「キャッシュを使わず最新のHTMLで移転判定する」という本来の意図に合わせ preventCache に修正。
-    ({ status, body: html } = await new Request("GET", normalizedOldBoardUrl.href, {
-      mimeType: "text/html; charset=Shift_JIS",
-      preventCache: true,
-    }).send());
+    ({ status, body: html } = await new Request(
+      "GET",
+      normalizedOldBoardUrl.href,
+      {
+        mimeType: "text/html; charset=Shift_JIS",
+        preventCache: true,
+      },
+    ).send());
     if (status !== 200) {
       throw new Error("サーバー移転判定のための通信に失敗しました");
     }
   }
 
   //htmlから移転を判定
-  const res = new RegExp(`location\\.href="(https?://(\\w+\\.)?5ch\\.net/\\w*/)"`).exec(html);
+  const res = new RegExp(
+    `location\\.href="(https?://(\\w+\\.)?5ch\\.net/\\w*/)"`,
+  ).exec(html);
   if (res) {
     let newBoardUrlTmp;
     if (res[2] != null) {
@@ -125,7 +140,10 @@ export var chServerMoveDetect = async function (oldBoardUrl, html) {
       if (data == null) {
         throw new Error("BBSMenuの取得に失敗しました");
       }
-      const boardKey = __guard__(normalizedOldBoardUrl.pathname.split("/"), (x) => x[1]);
+      const boardKey = __guard__(
+        normalizedOldBoardUrl.pathname.split("/"),
+        (x) => x[1],
+      );
       if (!boardKey) {
         throw new Error("板のURL形式が不明です");
       }
@@ -140,7 +158,10 @@ export var chServerMoveDetect = async function (oldBoardUrl, html) {
             if (m != null) {
               const newUrl = new URL(m[0]);
               newUrl.protocol = "http:";
-              if (boardKey === m[1] && normalizedOldBoardUrl.hostname !== newUrl.hostname) {
+              if (
+                boardKey === m[1] &&
+                normalizedOldBoardUrl.hostname !== newUrl.hostname
+              ) {
                 return newUrl;
               }
             }
@@ -163,23 +184,26 @@ export var chServerMoveDetect = async function (oldBoardUrl, html) {
 const $span = $__("span");
 /** @param {string} str */
 export var decodeCharReference = (str) =>
-  str.replace(/&(?:#(\d+)|#x([\dA-Fa-f]+)|([\da-zA-Z]+));/g, function ($0, $1, $2, $3) {
-    //数値文字参照 - 10進数
-    if ($1 != null) {
-      return String.fromCodePoint($1);
-    }
-    //数値文字参照 - 16進数
-    if ($2 != null) {
-      return String.fromCodePoint(parseInt($2, 16));
-    }
-    //文字実体参照
-    if ($3 != null) {
-      $span.innerHTML = $0;
-      // textContent は型上 null になり得るが、その場合は元の文字列をそのまま返す。
-      return $span.textContent ?? $0;
-    }
-    return $0;
-  });
+  str.replace(
+    /&(?:#(\d+)|#x([\dA-Fa-f]+)|([\da-zA-Z]+));/g,
+    function ($0, $1, $2, $3) {
+      //数値文字参照 - 10進数
+      if ($1 != null) {
+        return String.fromCodePoint($1);
+      }
+      //数値文字参照 - 16進数
+      if ($2 != null) {
+        return String.fromCodePoint(parseInt($2, 16));
+      }
+      //文字実体参照
+      if ($3 != null) {
+        $span.innerHTML = $0;
+        // textContent は型上 null になり得るが、その場合は元の文字列をそのまま返す。
+        return $span.textContent ?? $0;
+      }
+      return $0;
+    },
+  );
 
 //マウスクリックのイベントオブジェクトから、リンク先をどう開くべきかの情報を導く
 const openMap = new Map([
@@ -197,7 +221,13 @@ const openMap = new Map([
  * @param {{ type: string, button: number, shiftKey: boolean, ctrlKey: boolean, metaKey: boolean }} event
  *   MouseEvent 互換のオブジェクト
  */
-export var getHowToOpen = function ({ type, button, shiftKey, ctrlKey, metaKey }) {
+export var getHowToOpen = function ({
+  type,
+  button,
+  shiftKey,
+  ctrlKey,
+  metaKey,
+}) {
   if (!ctrlKey) {
     ctrlKey = metaKey;
   }
@@ -216,7 +246,11 @@ export var getHowToOpen = function ({ type, button, shiftKey, ctrlKey, metaKey }
  * @param {string} threadTitle
  * @param {string} resString
  */
-export var searchNextThread = async function (threadUrlStr, threadTitle, resString) {
+export var searchNextThread = async function (
+  threadUrlStr,
+  threadTitle,
+  resString,
+) {
   const threadUrl = new URL(threadUrlStr);
   const boardUrl = threadUrl.toBoard();
   threadTitle = normalize(threadTitle);
@@ -352,7 +386,14 @@ export var stringToDate = function (string) {
   // flg が true なら date は非 null だが、型の絞り込みのため明示的に併記する。
   // Date コンストラクタは数値を要求するため + で変換する (従来は暗黙変換に依存していた)。
   if (flg && date != null) {
-    return new Date(+date[1], +date[2] - 1, +date[3], +date[4], +date[5], +date[6]);
+    return new Date(
+      +date[1],
+      +date[2] - 1,
+      +date[3],
+      +date[4],
+      +date[5],
+      +date[6],
+    );
   }
   return null;
 };
@@ -402,5 +443,7 @@ export var isNewerReadState = function (a, b) {
  * @returns {R | undefined}
  */
 function __guard__(value, transform) {
-  return typeof value !== "undefined" && value !== null ? transform(value) : undefined;
+  return typeof value !== "undefined" && value !== null
+    ? transform(value)
+    : undefined;
 }

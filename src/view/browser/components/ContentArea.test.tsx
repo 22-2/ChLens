@@ -128,8 +128,12 @@ describe("ContentArea tab switching", () => {
     mockState([tab1, tab2], "tab-2");
     rerender(<ContentArea />);
 
-    const panel1 = container.querySelector('[data-tab-panel-id="tab-1"]') as HTMLDivElement;
-    const panel2 = container.querySelector('[data-tab-panel-id="tab-2"]') as HTMLDivElement;
+    const panel1 = container.querySelector(
+      '[data-tab-panel-id="tab-1"]',
+    ) as HTMLDivElement;
+    const panel2 = container.querySelector(
+      '[data-tab-panel-id="tab-2"]',
+    ) as HTMLDivElement;
 
     expect(panel1).toHaveStyle({ display: "none" });
     expect(panel2).toHaveStyle({ display: "block" });
@@ -159,8 +163,12 @@ describe("ContentArea tab switching", () => {
     mockState([tab1, tab2], "tab-2");
     rerender(<ContentArea />);
 
-    const panel1 = container.querySelector('[data-tab-panel-id="tab-1"]') as HTMLDivElement;
-    const panel2 = container.querySelector('[data-tab-panel-id="tab-2"]') as HTMLDivElement;
+    const panel1 = container.querySelector(
+      '[data-tab-panel-id="tab-1"]',
+    ) as HTMLDivElement;
+    const panel2 = container.querySelector(
+      '[data-tab-panel-id="tab-2"]',
+    ) as HTMLDivElement;
 
     panel1.scrollTop = 240;
     panel2.scrollTop = 32;
@@ -183,7 +191,9 @@ describe("ContentArea tab switching", () => {
     mockState([tab], "tab-1");
     const { container, rerender } = render(<ContentArea />);
 
-    const first = container.querySelector('[data-testid="page-thread"]') as HTMLDivElement;
+    const first = container.querySelector(
+      '[data-testid="page-thread"]',
+    ) as HTMLDivElement;
     expect(first.dataset.mountId).toBe("1");
     expect(first.dataset.refreshKey).toBe("0");
 
@@ -194,7 +204,9 @@ describe("ContentArea tab switching", () => {
     mockState([reloadedTab], "tab-1");
     rerender(<ContentArea />);
 
-    const second = container.querySelector('[data-testid="page-thread"]') as HTMLDivElement;
+    const second = container.querySelector(
+      '[data-testid="page-thread"]',
+    ) as HTMLDivElement;
     expect(second.dataset.mountId).toBe("1");
     expect(second.dataset.refreshKey).toBe("1");
     expect(threadPageLifecycle.unmountCount).toBe(0);

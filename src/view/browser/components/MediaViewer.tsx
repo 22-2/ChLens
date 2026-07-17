@@ -57,13 +57,28 @@ export function MediaViewer({
                 </button>
               </>
             )}
-            <button type="button" className="media-viewer__btn" onClick={onZoomOut} title="縮小">
+            <button
+              type="button"
+              className="media-viewer__btn"
+              onClick={onZoomOut}
+              title="縮小"
+            >
               -
             </button>
-            <button type="button" className="media-viewer__btn" onClick={onZoomReset} title="等倍">
+            <button
+              type="button"
+              className="media-viewer__btn"
+              onClick={onZoomReset}
+              title="等倍"
+            >
               100%
             </button>
-            <button type="button" className="media-viewer__btn" onClick={onZoomIn} title="拡大">
+            <button
+              type="button"
+              className="media-viewer__btn"
+              onClick={onZoomIn}
+              title="拡大"
+            >
               +
             </button>
             <button
@@ -74,10 +89,20 @@ export function MediaViewer({
             >
               {isMaximized ? <Minimize size={16} /> : <Maximize size={16} />}
             </button>
-            <button type="button" className="media-viewer__btn" onClick={onSave} title="保存">
+            <button
+              type="button"
+              className="media-viewer__btn"
+              onClick={onSave}
+              title="保存"
+            >
               保存
             </button>
-            <button type="button" className="media-viewer__btn" onClick={onClose} title="閉じる">
+            <button
+              type="button"
+              className="media-viewer__btn"
+              onClick={onClose}
+              title="閉じる"
+            >
               ✕
             </button>
           </div>

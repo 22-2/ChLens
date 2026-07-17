@@ -1,7 +1,10 @@
 import { BrowserHttpClient } from "src/app/platform/browser/HttpClient";
 import { BrowserStorageManager } from "src/app/platform/browser/StorageManager";
 import { BrowserWindowManager } from "src/app/platform/browser/WindowManager";
-import { inheritTauriInternalsFromTopWindow, isTauriRuntime } from "src/app/platform/runtime";
+import {
+  inheritTauriInternalsFromTopWindow,
+  isTauriRuntime,
+} from "src/app/platform/runtime";
 import { TauriHttpClient } from "src/app/platform/tauri/HttpClient";
 import { TauriStorageManager } from "src/app/platform/tauri/StorageManager";
 import { TauriWindowManager } from "src/app/platform/tauri/WindowManager";

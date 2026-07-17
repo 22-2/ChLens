@@ -3,10 +3,18 @@ import { act, cleanup, render, screen } from "@testing-library/react";
 import { container } from "src/service-container/index";
 import type { IThread } from "src/service-container/interfaces";
 import { useAutoNextThread } from "src/view/browser/hooks/use-auto-next-thread";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vite-plus/test";
 
 function createThread(
-  overrides: Partial<IThread> & Pick<IThread, "title" | "url" | "resCount" | "createdAt">,
+  overrides: Partial<IThread> &
+    Pick<IThread, "title" | "url" | "resCount" | "createdAt">,
 ): IThread {
   return {
     title: overrides.title,
@@ -139,7 +147,9 @@ describe("useAutoNextThread", () => {
       threadNumber: undefined,
     });
     // oxlint-disable-next-line unbound-method
-    expect(container.toast.info).toHaveBeenCalledWith("次スレへ移動しました: 実況スレ Part.21");
+    expect(container.toast.info).toHaveBeenCalledWith(
+      "次スレへ移動しました: 実況スレ Part.21",
+    );
   });
 
   it("機能が無効な間は検索を開始しない", async () => {
@@ -151,7 +161,12 @@ describe("useAutoNextThread", () => {
       getCachedResCount: vi.fn(),
     };
 
-    render(<AutoNextThreadHarness featureEnabled={false} onFollowThread={onFollowThread} />);
+    render(
+      <AutoNextThreadHarness
+        featureEnabled={false}
+        onFollowThread={onFollowThread}
+      />,
+    );
 
     await flushPromises();
 

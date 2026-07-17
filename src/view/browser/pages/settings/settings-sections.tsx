@@ -322,9 +322,10 @@ export const SETTINGS_SECTIONS = [
   ),
 ] as const satisfies readonly SettingsSectionDefinition[];
 
-export const SETTINGS_SECTION_MAP = new Map<SettingsSectionId, SettingsSectionDefinition>(
-  SETTINGS_SECTIONS.map((section) => [section.id, section]),
-);
+export const SETTINGS_SECTION_MAP = new Map<
+  SettingsSectionId,
+  SettingsSectionDefinition
+>(SETTINGS_SECTIONS.map((section) => [section.id, section]));
 
 export function isSettingsSectionId(value: string): value is SettingsSectionId {
   return SETTINGS_SECTION_MAP.has(value as SettingsSectionId);
@@ -343,32 +344,46 @@ function readFieldValue(field: SettingsFieldDefinition): SettingsFormValue {
       // 変更理由: 未設定時でもラジオ選択が空表示にならないよう、
       // 新規タブ初期ページは実挙動と同じ既定値をUIにも反映する。
       if (field.key === "new_tab_page_mode") {
-        return typeof rawValue === "string" && rawValue !== "" ? rawValue : "related_board";
+        return typeof rawValue === "string" && rawValue !== ""
+          ? rawValue
+          : "related_board";
       }
       return typeof rawValue === "string" ? rawValue : "";
   }
 }
 
-function writeFieldValue(field: SettingsFieldDefinition, value: SettingsFormValue): string {
+function writeFieldValue(
+  field: SettingsFieldDefinition,
+  value: SettingsFormValue,
+): string {
   switch (field.kind) {
     case "boolean":
       return value ? "on" : "off";
     case "number":
-      return String(typeof value === "number" && Number.isFinite(value) ? value : 0);
+      return String(
+        typeof value === "number" && Number.isFinite(value) ? value : 0,
+      );
     case "string":
       return typeof value === "string" ? value : "";
   }
 }
 
-function readSectionFormData(section: SettingsSectionDefinition): SettingsSectionFormData {
+function readSectionFormData(
+  section: SettingsSectionDefinition,
+): SettingsSectionFormData {
   return Object.fromEntries(
-    section.fields.filter(isSettingsFieldItem).map((field) => [field.key, readFieldValue(field)]),
+    section.fields
+      .filter(isSettingsFieldItem)
+      .map((field) => [field.key, readFieldValue(field)]),
   );
 }
 
 export function readAllSettings(): SettingsFormState {
   return Object.fromEntries(
-    SETTINGS_SECTIONS.map((section) => [section.id, readSectionFormData(section)]),
+    SETTINGS_SECTIONS.map((section) => [
+      section.id,
+      readSectionFormData(section),
+    ]),
   ) as SettingsFormState;
 }
 
@@ -381,7 +396,10 @@ export async function saveSectionFormData(
       .filter(isSettingsFieldItem)
       .map((field) =>
         Promise.resolve(
-          container.config.set(field.key, writeFieldValue(field, formData[field.key])),
+          container.config.set(
+            field.key,
+            writeFieldValue(field, formData[field.key]),
+          ),
         ),
       ),
   );

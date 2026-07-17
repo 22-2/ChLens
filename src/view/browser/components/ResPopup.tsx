@@ -2,7 +2,10 @@ import React, { useCallback, useRef } from "react";
 import type { IRes } from "src/service-container";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
 import { usePopupSurfaceLifecycle } from "src/view/browser/hooks/use-popup-manager";
-import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
+import type {
+  UrlClickHandler,
+  UrlContextMenuHandler,
+} from "src/view/browser/utils/link-routing";
 import { useAdjustOverflow } from "src/view/browser/utils/use-adjust-overflow";
 
 // --- IDポップアップ ---
@@ -19,7 +22,12 @@ export const ResPopup: React.FC<{
   onIdLinkClick: (id: string, e: React.MouseEvent) => void;
   onRepClick: (resNum: number, e: React.MouseEvent) => void;
   onAnchorClick: (resNum: number) => void;
-  onAnchorHover: (targets: number[], anchorRect: DOMRect, label: string, depth: number) => void;
+  onAnchorHover: (
+    targets: number[],
+    anchorRect: DOMRect,
+    label: string,
+    depth: number,
+  ) => void;
   onAnchorLeave: (fromDepth: number) => void;
   /**
    * メニューを親ポップアップと同じスタックで管理し、

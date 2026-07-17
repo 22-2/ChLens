@@ -1,11 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { platform } from "src/app";
 import { container } from "src/service-container/index";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import { ColumnDef } from "src/view/browser/components/SimpleDataTable";
 import { VirtualizedDataTable } from "src/view/browser/components/VirtualizedDataTable";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
-import { formatCompactDateTime, normalizeLegacyTimestamp } from "src/view/browser/utils/date-time";
+import {
+  formatCompactDateTime,
+  normalizeLegacyTimestamp,
+} from "src/view/browser/utils/date-time";
 import {
   getLegacyHistoryService,
   getLegacyReadStateService,
@@ -54,6 +58,32 @@ interface HistoryPageResult {
   entries: HistoryEntry[];
   hasMore: boolean;
 }
+
+// 変更理由: タブ再マウント時やブラウザ再起動後に「読み込み中」しか表示されないのを防ぐため、
+// 前回の取得結果をIDBに永続化し、新しいデータの取得中は古い結果を表示し続ける。
+const UI_CACHE_STORE = "UICache";
+const HISTORY_CACHE_KEY = "historyList";
+
+const getHistoryCache = async (): Promise<HistoryEntry[] | null> => {
+  try {
+    const store = platform.storage.getStore(UI_CACHE_STORE);
+    const entry = (await store.get(HISTORY_CACHE_KEY)) as
+      | { url: string; data: HistoryEntry[] }
+      | undefined;
+    return entry?.data ?? null;
+  } catch {
+    return null;
+  }
+};
+
+const setHistoryCache = async (entries: HistoryEntry[]): Promise<void> => {
+  try {
+    const store = platform.storage.getStore(UI_CACHE_STORE);
+    await store.put({ url: HISTORY_CACHE_KEY, data: entries });
+  } catch (error) {
+    console.error("[HistoryListPage] cache save failed:", error);
+  }
+};
 
 function normalizeString(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
@@ -108,7 +138,8 @@ async function readHistoryUnreadCountIndex(): Promise<Map<string, number>> {
       }
 
       const unreadCount = Math.max(
-        Math.trunc(normalizeNumber(item.received)) - Math.trunc(normalizeNumber(item.read)),
+        Math.trunc(normalizeNumber(item.received)) -
+          Math.trunc(normalizeNumber(item.read)),
         0,
       );
 
@@ -158,7 +189,8 @@ async function readHistoryEntriesPage(
         url,
         title: normalizeString(item.title, url),
         boardTitle: normalizeString(item.boardTitle),
-        unreadCount: unreadCountIndex.get(normalizeReadStateLookupUrl(url)) ?? 0,
+        unreadCount:
+          unreadCountIndex.get(normalizeReadStateLookupUrl(url)) ?? 0,
         viewedDate,
       } satisfies HistoryEntry;
     })
@@ -201,11 +233,13 @@ const COLUMNS: ColumnDef<HistoryEntry>[] = [
     headerClassName: "simple-data-table__th--history-date",
     cellClassName: "simple-data-table__history-date",
     sortable: true,
-    cell: (row) => (row.viewedDate ? formatCompactDateTime(row.viewedDate) : "-"),
+    cell: (row) =>
+      row.viewedDate ? formatCompactDateTime(row.viewedDate) : "-",
   },
 ];
 
-const COLUMN_VISIBILITY_STORAGE_KEY = "chlens_browser_history_list_columns_visibility";
+const COLUMN_VISIBILITY_STORAGE_KEY =
+  "chlens_browser_history_list_columns_visibility";
 const COLUMN_VISIBILITY_LOCKED_KEYS = ["title"] as const;
 
 interface HistoryListPageProps {
@@ -301,9 +335,14 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
       }
 
       nextOffsetRef.current = currentOffset;
-      setEntries((prev) => (reset ? uniqueRows : [...prev, ...uniqueRows]));
+      setEntries((prev) => {
+        const next = reset ? uniqueRows : [...prev, ...uniqueRows];
+        void setHistoryCache(next);
+        return next;
+      });
     } catch (e) {
-      const message = e instanceof Error ? e.message : "閲覧履歴の読み込みに失敗しました";
+      const message =
+        e instanceof Error ? e.message : "閲覧履歴の読み込みに失敗しました";
       setError(message);
       if (reset) {
         setEntries([]);
@@ -321,6 +360,16 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
   const loadEntries = useCallback(async () => {
     await loadNextPage(true);
   }, [loadNextPage]);
+
+  // 変更理由: IDBキャッシュから前回の閲覧履歴を復元し、新しいデータの取得中は古い結果を表示し続ける。
+  useEffect(() => {
+    void (async () => {
+      const cached = await getHistoryCache();
+      if (cached && cached.length > 0) {
+        setEntries(cached);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     // 変更理由: ナビバーの「更新」は RELOAD で reloadKey を進める実装なので、
@@ -412,17 +461,31 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
     };
   }, []);
 
-  const shouldLoadCompleteDataset = searchQuery.trim().length > 0 || sortState.column !== null;
+  const shouldLoadCompleteDataset =
+    searchQuery.trim().length > 0 || sortState.column !== null;
 
   useEffect(() => {
     // 変更理由: 検索やソートは未読込ページが残っていると結果が欠けるため、
     // 明示操作時だけ残りページを順次読み切ってから一覧を確定させる。
-    if (!shouldLoadCompleteDataset || loading || loadingMore || error || !hasMore) {
+    if (
+      !shouldLoadCompleteDataset ||
+      loading ||
+      loadingMore ||
+      error ||
+      !hasMore
+    ) {
       return;
     }
 
     void loadNextPage();
-  }, [error, hasMore, loadNextPage, loading, loadingMore, shouldLoadCompleteDataset]);
+  }, [
+    error,
+    hasMore,
+    loadNextPage,
+    loading,
+    loadingMore,
+    shouldLoadCompleteDataset,
+  ]);
 
   const handleSort = useCallback((key: string) => {
     if (!COLUMNS.some((column) => column.key === key)) {
@@ -446,7 +509,9 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
     const normalizedQuery = searchQuery.trim().toLowerCase();
     const rows = normalizedQuery
       ? entries.filter((entry) =>
-          `${entry.title} ${entry.boardTitle}`.toLowerCase().includes(normalizedQuery),
+          `${entry.title} ${entry.boardTitle}`
+            .toLowerCase()
+            .includes(normalizedQuery),
         )
       : entries;
 
@@ -487,7 +552,9 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
         page: {
           ...parsed,
           title: entry.title,
-          ...(parsed.type === "threadList" ? { boardTitle: entry.boardTitle || entry.title } : {}),
+          ...(parsed.type === "threadList"
+            ? { boardTitle: entry.boardTitle || entry.title }
+            : {}),
         },
       });
     },
@@ -505,7 +572,9 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
         page: {
           ...parsed,
           title: entry.title,
-          ...(parsed.type === "threadList" ? { boardTitle: entry.boardTitle || entry.title } : {}),
+          ...(parsed.type === "threadList"
+            ? { boardTitle: entry.boardTitle || entry.title }
+            : {}),
         },
         background: true,
       });
@@ -514,12 +583,25 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
   );
 
   const handleEndReached = useCallback(() => {
-    if (shouldLoadCompleteDataset || loading || loadingMore || error || !hasMore) {
+    if (
+      shouldLoadCompleteDataset ||
+      loading ||
+      loadingMore ||
+      error ||
+      !hasMore
+    ) {
       return;
     }
 
     void loadNextPage();
-  }, [error, hasMore, loadNextPage, loading, loadingMore, shouldLoadCompleteDataset]);
+  }, [
+    error,
+    hasMore,
+    loadNextPage,
+    loading,
+    loadingMore,
+    shouldLoadCompleteDataset,
+  ]);
 
   if (loading && entries.length === 0) {
     return <div className="page-status">読み込み中...</div>;
@@ -529,7 +611,10 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
     return (
       <div className="page-status page-status--error">
         <p>{error}</p>
-        <button className="page-status__retry" onClick={() => void loadEntries()}>
+        <button
+          className="page-status__retry"
+          onClick={() => void loadEntries()}
+        >
           再試行
         </button>
       </div>

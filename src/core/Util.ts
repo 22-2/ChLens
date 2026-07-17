@@ -1,4 +1,8 @@
-export function levenshteinDistance(a: string, b: string, allowReplace = true): number {
+export function levenshteinDistance(
+  a: string,
+  b: string,
+  allowReplace = true,
+): number {
   const repCost = allowReplace ? 1 : 2;
   const table: Uint16Array[] = [];
 

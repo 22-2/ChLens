@@ -190,7 +190,10 @@ export class QDollarRecognizer {
       new Point(526, 204, 1),
       new Point(526, 221, 2),
     ]);
-    this.PointClouds[8] = new PointCloud("line", [new Point(12, 347, 1), new Point(119, 347, 1)]);
+    this.PointClouds[8] = new PointCloud("line", [
+      new Point(12, 347, 1),
+      new Point(119, 347, 1),
+    ]);
     this.PointClouds[9] = new PointCloud("five-point star", [
       new Point(177, 396, 1),
       new Point(223, 299, 1),
@@ -362,23 +365,48 @@ export class QDollarRecognizer {
 // Private helper functions
 //
 
-function CloudMatch(candidate: PointCloud, template: PointCloud, minSoFar: number): number {
+function CloudMatch(
+  candidate: PointCloud,
+  template: PointCloud,
+  minSoFar: number,
+): number {
   const n = candidate.Points.length;
   const step = Math.floor(Math.pow(n, 0.5));
 
-  const LB1 = ComputeLowerBound(candidate.Points, template.Points, step, template.LUT);
-  const LB2 = ComputeLowerBound(template.Points, candidate.Points, step, candidate.LUT);
+  const LB1 = ComputeLowerBound(
+    candidate.Points,
+    template.Points,
+    step,
+    template.LUT,
+  );
+  const LB2 = ComputeLowerBound(
+    template.Points,
+    candidate.Points,
+    step,
+    candidate.LUT,
+  );
 
   for (let i = 0, j = 0; i < n; i += step, j++) {
     if (LB1[j] < minSoFar)
-      minSoFar = Math.min(minSoFar, CloudDistance(candidate.Points, template.Points, i, minSoFar));
+      minSoFar = Math.min(
+        minSoFar,
+        CloudDistance(candidate.Points, template.Points, i, minSoFar),
+      );
     if (LB2[j] < minSoFar)
-      minSoFar = Math.min(minSoFar, CloudDistance(template.Points, candidate.Points, i, minSoFar));
+      minSoFar = Math.min(
+        minSoFar,
+        CloudDistance(template.Points, candidate.Points, i, minSoFar),
+      );
   }
   return minSoFar;
 }
 
-function CloudDistance(pts1: Point[], pts2: Point[], start: number, minSoFar: number): number {
+function CloudDistance(
+  pts1: Point[],
+  pts2: Point[],
+  start: number,
+  minSoFar: number,
+): number {
   const n = pts1.length;
   const unmatched: number[] = []; // indices for pts2 that are not matched
   for (let j = 0; j < n; j++) unmatched[j] = j;
@@ -404,7 +432,12 @@ function CloudDistance(pts1: Point[], pts2: Point[], start: number, minSoFar: nu
   return sum;
 }
 
-function ComputeLowerBound(pts1: Point[], pts2: Point[], step: number, LUT: number[][]): number[] {
+function ComputeLowerBound(
+  pts1: Point[],
+  pts2: Point[],
+  step: number,
+  LUT: number[][],
+): number[] {
   const n = pts1.length;
   const LB: number[] = new Array(Math.floor(n / step) + 1);
   const SAT: number[] = new Array(n);
@@ -417,7 +450,8 @@ function ComputeLowerBound(pts1: Point[], pts2: Point[], step: number, LUT: numb
     SAT[i] = i == 0 ? d : SAT[i - 1] + d;
     LB[0] += (n - i) * d;
   }
-  for (let i = step, j = 1; i < n; i += step, j++) LB[j] = LB[0] + i * SAT[n - 1] - n * SAT[i - 1];
+  for (let i = step, j = 1; i < n; i += step, j++)
+    LB[j] = LB[0] + i * SAT[n - 1] - n * SAT[i - 1];
   return LB;
 }
 
@@ -429,8 +463,10 @@ function Resample(points: Point[], n: number): Point[] {
     if (points[i].ID == points[i - 1].ID) {
       const d = EuclideanDistance(points[i - 1], points[i]);
       if (D + d >= I) {
-        const qx = points[i - 1].X + ((I - D) / d) * (points[i].X - points[i - 1].X);
-        const qy = points[i - 1].Y + ((I - D) / d) * (points[i].Y - points[i - 1].Y);
+        const qx =
+          points[i - 1].X + ((I - D) / d) * (points[i].X - points[i - 1].X);
+        const qy =
+          points[i - 1].Y + ((I - D) / d) * (points[i].Y - points[i - 1].Y);
         const q = new Point(qx, qy, points[i].ID);
         newpoints.push(q); // append new point 'q'
         points.splice(i, 0, q); // insert 'q' at position i in points s.t. 'q' will be the next i
@@ -497,15 +533,20 @@ function Centroid(points: Point[]): Point {
 function PathLength(points: Point[]): number {
   let d = 0.0;
   for (let i = 1; i < points.length; i++) {
-    if (points[i].ID == points[i - 1].ID) d += EuclideanDistance(points[i - 1], points[i]);
+    if (points[i].ID == points[i - 1].ID)
+      d += EuclideanDistance(points[i - 1], points[i]);
   }
   return d;
 }
 
 function MakeIntCoords(points: Point[]): Point[] {
   for (let i = 0; i < points.length; i++) {
-    points[i].IntX = Math.round(((points[i].X + 1.0) / 2.0) * (MaxIntCoord - 1));
-    points[i].IntY = Math.round(((points[i].Y + 1.0) / 2.0) * (MaxIntCoord - 1));
+    points[i].IntX = Math.round(
+      ((points[i].X + 1.0) / 2.0) * (MaxIntCoord - 1),
+    );
+    points[i].IntY = Math.round(
+      ((points[i].Y + 1.0) / 2.0) * (MaxIntCoord - 1),
+    );
   }
   return points;
 }

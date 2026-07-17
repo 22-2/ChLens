@@ -3,7 +3,14 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { container } from "src/service-container/index";
 import type { IConfig, IMessage } from "src/service-container/interfaces";
 import { WritePanelContent } from "src/view/browser/components/WritePanelContent";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vite-plus/test";
 
 const mocks = vi.hoisted(() => ({
   clearWritePanelInsertRequest: vi.fn(),
@@ -93,7 +100,9 @@ describe("WritePanelContent", () => {
   });
 
   it("Ctrl+EnterオプションON時はテキストエリアでCtrl+Enter投稿できる", () => {
-    configMock.get = vi.fn((key: string) => (key === "write_submit_ctrl_enter" ? "on" : ""));
+    configMock.get = vi.fn((key: string) =>
+      key === "write_submit_ctrl_enter" ? "on" : "",
+    );
 
     render(<WritePanelContent />);
 

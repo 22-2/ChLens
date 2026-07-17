@@ -1,11 +1,24 @@
 import "@testing-library/jest-dom/vitest";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import React, { useState } from "react";
 import { container } from "src/service-container/index";
 import type { IConfig, IMessage } from "src/service-container/interfaces";
 import { THREAD_AUTO_REFRESH_IDLE_STOP_COUNT } from "src/view/browser/hooks/auto-refresh-config";
 import { useAutoRefresh } from "src/view/browser/hooks/use-auto-refresh";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vite-plus/test";
 
 interface TestRectOptions {
   top: number;
@@ -40,24 +53,30 @@ function AutoRefreshHarness({
   const [responses, setResponses] = useState([1, 2]);
   const [loading, setLoading] = useState(false);
   const rootRef = React.useRef<HTMLDivElement>(null);
-  const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling } = useAutoRefresh({
-    enabled,
-    expired: false,
-    loading,
-    pauseAutoScroll,
-    responseCount: responses.length,
-    lastResponseNum: responses.length > 0 ? responses[responses.length - 1] : null,
-    rootRef,
-    requestRefresh: () => {
-      setLoading(true);
-      onRequestRefresh();
-    },
-    onAutoStop,
-  });
+  const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling } =
+    useAutoRefresh({
+      enabled,
+      expired: false,
+      loading,
+      pauseAutoScroll,
+      responseCount: responses.length,
+      lastResponseNum:
+        responses.length > 0 ? responses[responses.length - 1] : null,
+      rootRef,
+      requestRefresh: () => {
+        setLoading(true);
+        onRequestRefresh();
+      },
+      onAutoStop,
+    });
 
   return (
     <div className="content-area">
-      <div className="content-area__tab-panel" data-active="true" data-testid="scroll-container">
+      <div
+        className="content-area__tab-panel"
+        data-active="true"
+        data-testid="scroll-container"
+      >
         <div ref={rootRef}>
           {responses.map((num) => (
             <div key={num}>{num}</div>
@@ -87,8 +106,12 @@ function AutoRefreshHarness({
           >
             外部リロード開始
           </button>
-          <output data-testid="can-auto-scroll">{canAutoScroll ? "enabled" : "disabled"}</output>
-          <output data-testid="is-auto-scrolling">{isAutoScrolling ? "running" : "idle"}</output>
+          <output data-testid="can-auto-scroll">
+            {canAutoScroll ? "enabled" : "disabled"}
+          </output>
+          <output data-testid="is-auto-scrolling">
+            {isAutoScrolling ? "running" : "idle"}
+          </output>
         </div>
       </div>
     </div>
@@ -108,7 +131,10 @@ describe("useAutoRefresh", () => {
     });
 
     vi.stubGlobal("requestAnimationFrame", ((callback: FrameRequestCallback) =>
-      window.setTimeout(() => callback(performance.now()), 0)) as typeof requestAnimationFrame);
+      window.setTimeout(
+        () => callback(performance.now()),
+        0,
+      )) as typeof requestAnimationFrame);
     vi.stubGlobal("cancelAnimationFrame", ((id: number) =>
       window.clearTimeout(id)) as typeof cancelAnimationFrame);
 
@@ -141,7 +167,9 @@ describe("useAutoRefresh", () => {
     const onRequestRefresh = vi.fn();
     render(<AutoRefreshHarness onRequestRefresh={onRequestRefresh} />);
 
-    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
+    const scrollContainer = screen.getByTestId(
+      "scroll-container",
+    ) as HTMLDivElement;
     const boundary = screen.getByTestId("boundary") as HTMLDivElement;
 
     let scrollTopValue = 200;
@@ -161,7 +189,8 @@ describe("useAutoRefresh", () => {
       configurable: true,
       get: () => scrollHeightValue,
     });
-    scrollContainer.getBoundingClientRect = () => createRect({ top: 0, bottom: 100 });
+    scrollContainer.getBoundingClientRect = () =>
+      createRect({ top: 0, bottom: 100 });
     boundary.getBoundingClientRect = () => createRect({ top: 80, bottom: 100 });
 
     const scrollBy = vi.fn(({ top }: ScrollToOptions) => {
@@ -196,7 +225,9 @@ describe("useAutoRefresh", () => {
     const onRequestRefresh = vi.fn();
     render(<AutoRefreshHarness onRequestRefresh={onRequestRefresh} />);
 
-    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
+    const scrollContainer = screen.getByTestId(
+      "scroll-container",
+    ) as HTMLDivElement;
     const boundary = screen.getByTestId("boundary") as HTMLDivElement;
 
     let scrollTopValue = 200;
@@ -216,7 +247,8 @@ describe("useAutoRefresh", () => {
       configurable: true,
       get: () => scrollHeightValue,
     });
-    scrollContainer.getBoundingClientRect = () => createRect({ top: 0, bottom: 100 });
+    scrollContainer.getBoundingClientRect = () =>
+      createRect({ top: 0, bottom: 100 });
     boundary.getBoundingClientRect = () => createRect({ top: 80, bottom: 100 });
 
     const scrollBy = vi.fn(({ top }: ScrollToOptions) => {
@@ -248,10 +280,15 @@ describe("useAutoRefresh", () => {
   it("自動更新を有効化した瞬間に最下部へ移動して即時 refresh する", () => {
     const onRequestRefresh = vi.fn();
     const { rerender } = render(
-      <AutoRefreshHarness enabled={false} onRequestRefresh={onRequestRefresh} />,
+      <AutoRefreshHarness
+        enabled={false}
+        onRequestRefresh={onRequestRefresh}
+      />,
     );
 
-    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
+    const scrollContainer = screen.getByTestId(
+      "scroll-container",
+    ) as HTMLDivElement;
     const boundary = screen.getByTestId("boundary") as HTMLDivElement;
 
     let scrollTopValue = 12;
@@ -271,7 +308,8 @@ describe("useAutoRefresh", () => {
       configurable: true,
       get: () => scrollHeightValue,
     });
-    scrollContainer.getBoundingClientRect = () => createRect({ top: 0, bottom: 100 });
+    scrollContainer.getBoundingClientRect = () =>
+      createRect({ top: 0, bottom: 100 });
     boundary.getBoundingClientRect = () => createRect({ top: 80, bottom: 100 });
 
     act(() => {
@@ -281,7 +319,12 @@ describe("useAutoRefresh", () => {
     expect(onRequestRefresh).not.toHaveBeenCalled();
 
     act(() => {
-      rerender(<AutoRefreshHarness enabled={true} onRequestRefresh={onRequestRefresh} />);
+      rerender(
+        <AutoRefreshHarness
+          enabled={true}
+          onRequestRefresh={onRequestRefresh}
+        />,
+      );
     });
 
     expect(scrollTopValue).toBe(300);
@@ -303,7 +346,9 @@ describe("useAutoRefresh", () => {
     const onRequestRefresh = vi.fn();
     render(<AutoRefreshHarness onRequestRefresh={onRequestRefresh} />);
 
-    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
+    const scrollContainer = screen.getByTestId(
+      "scroll-container",
+    ) as HTMLDivElement;
     const boundary = screen.getByTestId("boundary") as HTMLDivElement;
 
     let scrollTopValue = 200;
@@ -322,7 +367,8 @@ describe("useAutoRefresh", () => {
       configurable: true,
       get: () => 300,
     });
-    scrollContainer.getBoundingClientRect = () => createRect({ top: 0, bottom: 100 });
+    scrollContainer.getBoundingClientRect = () =>
+      createRect({ top: 0, bottom: 100 });
     boundary.getBoundingClientRect = () => createRect({ top: 80, bottom: 100 });
     scrollContainer.scrollBy = vi.fn();
 
@@ -343,7 +389,9 @@ describe("useAutoRefresh", () => {
     const onRequestRefresh = vi.fn();
     render(<AutoRefreshHarness onRequestRefresh={onRequestRefresh} />);
 
-    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
+    const scrollContainer = screen.getByTestId(
+      "scroll-container",
+    ) as HTMLDivElement;
     const boundary = screen.getByTestId("boundary") as HTMLDivElement;
 
     let scrollTopValue = 200;
@@ -363,7 +411,8 @@ describe("useAutoRefresh", () => {
       configurable: true,
       get: () => scrollHeightValue,
     });
-    scrollContainer.getBoundingClientRect = () => createRect({ top: 0, bottom: 100 });
+    scrollContainer.getBoundingClientRect = () =>
+      createRect({ top: 0, bottom: 100 });
     boundary.getBoundingClientRect = () => createRect({ top: 80, bottom: 100 });
 
     const scrollBy = vi.fn();
@@ -390,7 +439,9 @@ describe("useAutoRefresh", () => {
     const onRequestRefresh = vi.fn();
     render(<AutoRefreshHarness onRequestRefresh={onRequestRefresh} />);
 
-    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
+    const scrollContainer = screen.getByTestId(
+      "scroll-container",
+    ) as HTMLDivElement;
     const boundary = screen.getByTestId("boundary") as HTMLDivElement;
 
     let scrollTopValue = 200;
@@ -410,7 +461,8 @@ describe("useAutoRefresh", () => {
       configurable: true,
       get: () => scrollHeightValue,
     });
-    scrollContainer.getBoundingClientRect = () => createRect({ top: 0, bottom: 100 });
+    scrollContainer.getBoundingClientRect = () =>
+      createRect({ top: 0, bottom: 100 });
     boundary.getBoundingClientRect = () => createRect({ top: 80, bottom: 100 });
 
     scrollContainer.scrollBy = vi.fn();
@@ -423,7 +475,9 @@ describe("useAutoRefresh", () => {
     scrollHeightValue = 360;
     fireEvent.click(screen.getByText("新着ありで完了"));
 
-    expect(screen.getByTestId("is-auto-scrolling")).toHaveTextContent("running");
+    expect(screen.getByTestId("is-auto-scrolling")).toHaveTextContent(
+      "running",
+    );
 
     act(() => {
       vi.advanceTimersByTime(900);
@@ -434,9 +488,16 @@ describe("useAutoRefresh", () => {
 
   it("ポップアップ表示中は自動更新を継続しつつ自動スクロールだけ停止する", () => {
     const onRequestRefresh = vi.fn();
-    render(<AutoRefreshHarness onRequestRefresh={onRequestRefresh} pauseAutoScroll={true} />);
+    render(
+      <AutoRefreshHarness
+        onRequestRefresh={onRequestRefresh}
+        pauseAutoScroll={true}
+      />,
+    );
 
-    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
+    const scrollContainer = screen.getByTestId(
+      "scroll-container",
+    ) as HTMLDivElement;
     const boundary = screen.getByTestId("boundary") as HTMLDivElement;
 
     let scrollTopValue = 200;
@@ -456,7 +517,8 @@ describe("useAutoRefresh", () => {
       configurable: true,
       get: () => scrollHeightValue,
     });
-    scrollContainer.getBoundingClientRect = () => createRect({ top: 0, bottom: 100 });
+    scrollContainer.getBoundingClientRect = () =>
+      createRect({ top: 0, bottom: 100 });
     boundary.getBoundingClientRect = () => createRect({ top: 80, bottom: 100 });
 
     const scrollBy = vi.fn();
@@ -483,9 +545,16 @@ describe("useAutoRefresh", () => {
   it("新着が連続で来ない更新が一定回数に達したら自動停止する", () => {
     const onRequestRefresh = vi.fn();
     const onAutoStop = vi.fn();
-    render(<AutoRefreshHarness onRequestRefresh={onRequestRefresh} onAutoStop={onAutoStop} />);
+    render(
+      <AutoRefreshHarness
+        onRequestRefresh={onRequestRefresh}
+        onAutoStop={onAutoStop}
+      />,
+    );
 
-    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
+    const scrollContainer = screen.getByTestId(
+      "scroll-container",
+    ) as HTMLDivElement;
     const boundary = screen.getByTestId("boundary") as HTMLDivElement;
 
     Object.defineProperty(scrollContainer, "clientHeight", {
@@ -501,7 +570,8 @@ describe("useAutoRefresh", () => {
       configurable: true,
       get: () => 300,
     });
-    scrollContainer.getBoundingClientRect = () => createRect({ top: 0, bottom: 100 });
+    scrollContainer.getBoundingClientRect = () =>
+      createRect({ top: 0, bottom: 100 });
     boundary.getBoundingClientRect = () => createRect({ top: 80, bottom: 100 });
     scrollContainer.scrollBy = vi.fn();
 
@@ -534,9 +604,16 @@ describe("useAutoRefresh", () => {
   it("新着が来たらアイドル累積がリセットされ自動停止しない", () => {
     const onRequestRefresh = vi.fn();
     const onAutoStop = vi.fn();
-    render(<AutoRefreshHarness onRequestRefresh={onRequestRefresh} onAutoStop={onAutoStop} />);
+    render(
+      <AutoRefreshHarness
+        onRequestRefresh={onRequestRefresh}
+        onAutoStop={onAutoStop}
+      />,
+    );
 
-    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
+    const scrollContainer = screen.getByTestId(
+      "scroll-container",
+    ) as HTMLDivElement;
     const boundary = screen.getByTestId("boundary") as HTMLDivElement;
 
     Object.defineProperty(scrollContainer, "clientHeight", {
@@ -552,7 +629,8 @@ describe("useAutoRefresh", () => {
       configurable: true,
       get: () => 300,
     });
-    scrollContainer.getBoundingClientRect = () => createRect({ top: 0, bottom: 100 });
+    scrollContainer.getBoundingClientRect = () =>
+      createRect({ top: 0, bottom: 100 });
     boundary.getBoundingClientRect = () => createRect({ top: 80, bottom: 100 });
     scrollContainer.scrollBy = vi.fn();
 

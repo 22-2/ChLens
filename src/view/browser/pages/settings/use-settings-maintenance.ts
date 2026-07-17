@@ -70,7 +70,9 @@ export function useSettingsMaintenanceActions({
 
       const failed = results.filter((result) => !result.ok);
       if (failed.length === 0) {
-        container.toast.success(`BBSMENU読み込みチェック成功 (${results.length}件)`);
+        container.toast.success(
+          `BBSMENU読み込みチェック成功 (${results.length}件)`,
+        );
       } else {
         const summary = failed
           .slice(0, 3)
@@ -102,7 +104,9 @@ export function useSettingsMaintenanceActions({
       }
     } catch (refreshError) {
       container.toast.error(
-        refreshError instanceof Error ? refreshError.message : "BBSMENUの更新に失敗しました",
+        refreshError instanceof Error
+          ? refreshError.message
+          : "BBSMENUの更新に失敗しました",
       );
     } finally {
       setIsBbsMenuRefreshing(false);
@@ -114,7 +118,9 @@ export function useSettingsMaintenanceActions({
       return;
     }
 
-    const accepted = window.confirm("すべての設定をデフォルトに戻します。よろしいですか？");
+    const accepted = window.confirm(
+      "すべての設定をデフォルトに戻します。よろしいですか？",
+    );
     if (!accepted) {
       return;
     }
@@ -147,13 +153,20 @@ export function useSettingsMaintenanceActions({
       container.toast.success("すべての設定をデフォルトに戻しました");
     } catch (resetError) {
       const message =
-        resetError instanceof Error ? resetError.message : "設定の初期化に失敗しました";
+        resetError instanceof Error
+          ? resetError.message
+          : "設定の初期化に失敗しました";
       onResetError(message);
       container.toast.error(message);
     } finally {
       setIsResettingAllSettings(false);
     }
-  }, [autoSaveTimerRef, isResettingAllSettings, onResetError, onResetFormState]);
+  }, [
+    autoSaveTimerRef,
+    isResettingAllSettings,
+    onResetError,
+    onResetFormState,
+  ]);
 
   return {
     isBbsMenuChecking,

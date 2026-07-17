@@ -20,8 +20,16 @@ const YOUTUBE_HOSTS = new Set([
   "youtube-nocookie.com",
   "www.youtube-nocookie.com",
 ]);
-const youtubeFallbackThumbnailUrl = createThumbnailPlaceholder("YouTube", "#ef4444", "#111827");
-const nativeVideoFallbackThumbnailUrl = createThumbnailPlaceholder("VIDEO", "#f8fafc", "#0f172a");
+const youtubeFallbackThumbnailUrl = createThumbnailPlaceholder(
+  "YouTube",
+  "#ef4444",
+  "#111827",
+);
+const nativeVideoFallbackThumbnailUrl = createThumbnailPlaceholder(
+  "VIDEO",
+  "#f8fafc",
+  "#0f172a",
+);
 const DIRECT_VIDEO_REG = /\.(?:mp4|m4v|webm|ogv|mov|avi)(?:[?#:].*)?$/i;
 
 function createThumbnailPlaceholder(
@@ -78,7 +86,10 @@ function buildYouTubeEmbedUrl(youtubeVideoId: string): string {
   return embedUrl.toString();
 }
 
-function buildYouTubeExternalUrl(youtubeVideoId: string, sourceUrl: URL): string {
+function buildYouTubeExternalUrl(
+  youtubeVideoId: string,
+  sourceUrl: URL,
+): string {
   const externalUrl = new URL("https://www.youtube.com/watch");
   externalUrl.searchParams.set("v", youtubeVideoId);
 
@@ -99,7 +110,11 @@ export function shouldOpenYouTubeExternally(
   embed: ExternalVideoEmbed,
   pageOrigin: string | null | undefined,
 ): boolean {
-  if (embed.provider !== "youtube" || pageOrigin == null || pageOrigin === "null") {
+  if (
+    embed.provider !== "youtube" ||
+    pageOrigin == null ||
+    pageOrigin === "null"
+  ) {
     return false;
   }
 
@@ -112,11 +127,18 @@ export function toRuntimeVideoEmbedUrl(
   embed: ExternalVideoEmbed,
   pageOrigin: string | null | undefined,
 ): string {
-  if (embed.provider !== "youtube" || pageOrigin == null || pageOrigin === "null") {
+  if (
+    embed.provider !== "youtube" ||
+    pageOrigin == null ||
+    pageOrigin === "null"
+  ) {
     return embed.embedUrl;
   }
 
-  if (shouldOpenYouTubeExternally(embed, pageOrigin) || !/^https?:\/\//.test(pageOrigin)) {
+  if (
+    shouldOpenYouTubeExternally(embed, pageOrigin) ||
+    !/^https?:\/\//.test(pageOrigin)
+  ) {
     // 拡張機能の chrome-extension:// origin を付けると YouTube 側が API client として
     // 受け入れず 153 になることがあるため、拡張環境では通常の Referer 判定に任せる。
     return embed.embedUrl;

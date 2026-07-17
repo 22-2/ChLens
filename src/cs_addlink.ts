@@ -56,7 +56,8 @@ function isWriteResultPageUrl(rawUrl: string): boolean {
 
 function getWritePageText(): string {
   const texts = [document.title];
-  const bodyText = document.body?.innerText ?? document.documentElement.textContent ?? "";
+  const bodyText =
+    document.body?.innerText ?? document.documentElement.textContent ?? "";
   if (bodyText !== "") {
     texts.push(bodyText);
   }
@@ -155,7 +156,11 @@ function openViewerInNewTab(targetUrl: string): void {
   });
 }
 
-function createButton(id: string, text: string, additionalStyles = ""): HTMLSpanElement {
+function createButton(
+  id: string,
+  text: string,
+  additionalStyles = "",
+): HTMLSpanElement {
   const button = document.createElement("span");
   button.id = id;
   button.textContent = text;
@@ -167,7 +172,11 @@ function createContainer(): HTMLDivElement {
   const container = document.createElement("div");
   container.style.cssText = STYLES.container;
 
-  const openButton = createButton(BUTTON_IDS.open, "chlens で開く", STYLES.underline);
+  const openButton = createButton(
+    BUTTON_IDS.open,
+    "chlens で開く",
+    STYLES.underline,
+  );
   const closeButton = createButton(BUTTON_IDS.close, " x", STYLES.closeButton);
 
   container.appendChild(openButton);
@@ -176,13 +185,21 @@ function createContainer(): HTMLDivElement {
   return container;
 }
 
-function openLink(url: string, button: 0 | 1 | 2, ctrlKey: boolean, shiftKey: boolean): void {
+function openLink(
+  url: string,
+  button: 0 | 1 | 2,
+  ctrlKey: boolean,
+  shiftKey: boolean,
+): void {
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.dispatchEvent(new MouseEvent("click", { button, ctrlKey, shiftKey }));
 }
 
-function handleMouseDown(event: MouseEvent, viewerTargets: ViewerTargets): void {
+function handleMouseDown(
+  event: MouseEvent,
+  viewerTargets: ViewerTargets,
+): void {
   const target = event.target;
   if (!(target instanceof HTMLElement)) {
     return;
@@ -194,7 +211,12 @@ function handleMouseDown(event: MouseEvent, viewerTargets: ViewerTargets): void 
       return;
     }
 
-    openLink(viewerTargets.viewerUrl, event.button as 0 | 1 | 2, event.ctrlKey, event.shiftKey);
+    openLink(
+      viewerTargets.viewerUrl,
+      event.button as 0 | 1 | 2,
+      event.ctrlKey,
+      event.shiftKey,
+    );
     return;
   }
 

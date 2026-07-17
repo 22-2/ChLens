@@ -32,7 +32,10 @@ export function useAutoNextThreadSetting(): {
   const setEnabled = useCallback((nextEnabled: boolean) => {
     // ミニウィンドウ操作直後に表示を揃えるため、config 更新待ちの前にローカル値も更新する。
     setEnabledState(nextEnabled);
-    void container.config.set(AUTO_NEXT_THREAD_CONFIG_KEY, nextEnabled ? "on" : "off");
+    void container.config.set(
+      AUTO_NEXT_THREAD_CONFIG_KEY,
+      nextEnabled ? "on" : "off",
+    );
   }, []);
 
   return { enabled, setEnabled };

@@ -24,7 +24,9 @@ const MIN_HEIGHT = 80;
 const MAX_HEIGHT = 600;
 
 // 追加するタブはここに加えるだけでパネルに反映される
-export const BOTTOM_PANEL_TABS: PanelTab[] = [{ id: "write", label: "書き込み" }];
+export const BOTTOM_PANEL_TABS: PanelTab[] = [
+  { id: "write", label: "書き込み" },
+];
 
 interface SavedState {
   isOpen?: boolean;
@@ -68,14 +70,18 @@ interface BottomPanelContextValue {
 
 const BottomPanelContext = createContext<BottomPanelContextValue | null>(null);
 
-export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
   const saved = loadSaved();
   const nextWritePanelInsertIdRef = useRef(0);
   const [isOpen, setIsOpen] = useState(saved.isOpen ?? false);
   const [height, setHeightState] = useState(() =>
     Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, saved.height ?? DEFAULT_HEIGHT)),
   );
-  const [activeTabId, setActiveTabIdState] = useState(saved.activeTabId ?? BOTTOM_PANEL_TABS[0].id);
+  const [activeTabId, setActiveTabIdState] = useState(
+    saved.activeTabId ?? BOTTOM_PANEL_TABS[0].id,
+  );
   const [writePanelInsertRequest, setWritePanelInsertRequest] =
     useState<WritePanelInsertRequest | null>(null);
 

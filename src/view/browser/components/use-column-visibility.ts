@@ -27,7 +27,9 @@ function readHiddenColumnKeys(storageKey: string): Set<string> {
       return new Set();
     }
 
-    return new Set(parsed.filter((value): value is string => typeof value === "string"));
+    return new Set(
+      parsed.filter((value): value is string => typeof value === "string"),
+    );
   } catch {
     return new Set();
   }
@@ -51,7 +53,10 @@ function clampHiddenColumnKeys(
   return nextHiddenColumnKeys;
 }
 
-function areSetsEqual(left: ReadonlySet<string>, right: ReadonlySet<string>): boolean {
+function areSetsEqual(
+  left: ReadonlySet<string>,
+  right: ReadonlySet<string>,
+): boolean {
   if (left.size !== right.size) {
     return false;
   }
@@ -127,7 +132,8 @@ export function useColumnVisibility<TRow>(
   }, [normalizedHiddenColumnKeys, options?.storageKey]);
 
   const visibleColumns = useMemo(
-    () => columns.filter((column) => !normalizedHiddenColumnKeys.has(column.key)),
+    () =>
+      columns.filter((column) => !normalizedHiddenColumnKeys.has(column.key)),
     [columns, normalizedHiddenColumnKeys],
   );
 

@@ -7,13 +7,48 @@ import {
   type Dispatch,
   type SetStateAction,
 } from "react";
+import { platform } from "src/app";
 import { container } from "src/service-container/index";
 import type { IRes, IThreadDetail } from "src/service-container/interfaces";
 import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
 import type { ThreadPage as ThreadPageType } from "src/view/browser/types";
 import { buildIndexes } from "src/view/browser/utils/thread-index";
 import type { ThreadFilter } from "src/view/browser/utils/types";
-import { hasExternalLink, hasImage, hasVideo, stripHtml } from "src/view/browser/utils/utils";
+import {
+  hasExternalLink,
+  hasImage,
+  hasVideo,
+  stripHtml,
+} from "src/view/browser/utils/utils";
+
+// 変更理由: タブ再マウント時やブラウザ再起動後に「読み込み中」しか表示されないのを防ぐため、
+// 前回の取得結果をIDBに永続化し、新しいデータの取得中は古い結果を表示し続ける。
+const UI_CACHE_STORE = "UICache";
+const threadCacheKey = (threadUrl: string) => `thread:${threadUrl}`;
+
+const getThreadCache = async (threadUrl: string): Promise<IRes[] | null> => {
+  try {
+    const store = platform.storage.getStore(UI_CACHE_STORE);
+    const entry = (await store.get(threadCacheKey(threadUrl))) as
+      | { url: string; data: IRes[] }
+      | undefined;
+    return entry?.data ?? null;
+  } catch {
+    return null;
+  }
+};
+
+const setThreadCache = async (
+  threadUrl: string,
+  responses: IRes[],
+): Promise<void> => {
+  try {
+    const store = platform.storage.getStore(UI_CACHE_STORE);
+    await store.put({ url: threadCacheKey(threadUrl), data: responses });
+  } catch (error) {
+    console.error("[useThreadData] cache save failed:", error);
+  }
+};
 
 interface ThreadData {
   responses: IRes[];
@@ -34,7 +69,11 @@ interface ThreadData {
   messageProtocol: string;
 }
 
-export function useThreadData(tabId: string, page: ThreadPageType, refreshKey: number): ThreadData {
+export function useThreadData(
+  tabId: string,
+  page: ThreadPageType,
+  refreshKey: number,
+): ThreadData {
   const dispatch = useTabDispatch();
   const [responses, setResponses] = useState<IRes[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,6 +119,7 @@ export function useThreadData(tabId: string, page: ThreadPageType, refreshKey: n
       });
 
       setResponses(result.res);
+      void setThreadCache(page.threadUrl, result.res);
       setExpired(result.expired ?? false);
       if (result.title && !titleUpdatedRef.current) {
         dispatch({
@@ -98,6 +138,16 @@ export function useThreadData(tabId: string, page: ThreadPageType, refreshKey: n
     }
   }, [page.threadUrl, refreshKey, dispatch, tabId]);
 
+  // 変更理由: IDBキャッシュから前回のレスを復元し、新しいデータの取得中は古い結果を表示し続ける。
+  useEffect(() => {
+    void (async () => {
+      const cached = await getThreadCache(page.threadUrl);
+      if (cached && cached.length > 0) {
+        setResponses(cached);
+      }
+    })();
+  }, [page.threadUrl]);
+
   useEffect(() => {
     void fetchThread();
   }, [fetchThread]);
@@ -111,7 +161,9 @@ export function useThreadData(tabId: string, page: ThreadPageType, refreshKey: n
           ...res,
           // res.ng が undefined の場合は ResItem 側で非NGとして扱われるため、
           // 判定結果をそのまま（null の場合は undefined へ変換して）上書きする。
-          ng: container.ng.isNGThread(res, page.title, page.threadUrl) ?? undefined,
+          ng:
+            container.ng.isNGThread(res, page.title, page.threadUrl) ??
+            undefined,
         })),
       );
     };
@@ -147,7 +199,11 @@ export function useThreadData(tabId: string, page: ThreadPageType, refreshKey: n
       list = list.filter((res) => {
         const text = stripHtml(res.message).toLowerCase();
         const name = stripHtml(res.name).toLowerCase();
-        return text.includes(q) || name.includes(q) || (res.id?.toLowerCase().includes(q) ?? false);
+        return (
+          text.includes(q) ||
+          name.includes(q) ||
+          (res.id?.toLowerCase().includes(q) ?? false)
+        );
       });
     }
 

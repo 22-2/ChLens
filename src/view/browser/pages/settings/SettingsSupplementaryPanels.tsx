@@ -1,6 +1,21 @@
-import { Alert, Button, Card, Checkbox, Group, Skeleton, Stack, Text } from "@mantine/core";
+import {
+  Alert,
+  Button,
+  Card,
+  Checkbox,
+  Group,
+  Skeleton,
+  Stack,
+  Text,
+} from "@mantine/core";
 import { AlertTriangle } from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Cache from "src/core/Cache";
 import { container } from "src/service-container/index";
 import {
@@ -29,7 +44,8 @@ export function SettingsSupplementaryPanels({
   const [bookmarkLoading, setBookmarkLoading] = useState(false);
   const [bookmarkError, setBookmarkError] = useState<string | null>(null);
   const [includeHistoryInExport, setIncludeHistoryInExport] = useState(false);
-  const [includeWriteHistoryInExport, setIncludeWriteHistoryInExport] = useState(false);
+  const [includeWriteHistoryInExport, setIncludeWriteHistoryInExport] =
+    useState(false);
   const [isExportingArchive, setIsExportingArchive] = useState(false);
   const [isImportingArchive, setIsImportingArchive] = useState(false);
   const [isDeletingLogs, setIsDeletingLogs] = useState(false);
@@ -61,7 +77,9 @@ export function SettingsSupplementaryPanels({
       }
     } catch (loadError) {
       setBookmarkError(
-        loadError instanceof Error ? loadError.message : "ブックマーク保存先の取得に失敗しました",
+        loadError instanceof Error
+          ? loadError.message
+          : "ブックマーク保存先の取得に失敗しました",
       );
       setFolderName(null);
     } finally {
@@ -112,7 +130,10 @@ export function SettingsSupplementaryPanels({
 
       container.toast.success("データをzipでエクスポートしました");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "データのエクスポートに失敗しました";
+      const message =
+        error instanceof Error
+          ? error.message
+          : "データのエクスポートに失敗しました";
       container.toast.error(message);
     } finally {
       setIsExportingArchive(false);
@@ -142,7 +163,10 @@ export function SettingsSupplementaryPanels({
           `インポート完了: 設定 ${result.importedSettingsCount}件 / ${historySummary} / ${writeHistorySummary}`,
         );
       } catch (error) {
-        const message = error instanceof Error ? error.message : "データのインポートに失敗しました";
+        const message =
+          error instanceof Error
+            ? error.message
+            : "データのインポートに失敗しました";
         container.toast.error(message);
       } finally {
         setIsImportingArchive(false);
@@ -174,7 +198,8 @@ export function SettingsSupplementaryPanels({
       container.message.send("log_updated", { type: "cleared" });
       container.toast.success("ログをすべて削除しました");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "ログの削除に失敗しました";
+      const message =
+        error instanceof Error ? error.message : "ログの削除に失敗しました";
       container.toast.error(message);
     } finally {
       setIsDeletingLogs(false);
@@ -219,7 +244,11 @@ export function SettingsSupplementaryPanels({
                   </Alert>
                 )}
 
-                <Button onClick={() => container.message.send("bookmark_root_selector_open")}>
+                <Button
+                  onClick={() =>
+                    container.message.send("bookmark_root_selector_open")
+                  }
+                >
                   {folderName ? "保存先を変更" : "保存先を選択"}
                 </Button>
               </Stack>
@@ -238,7 +267,9 @@ export function SettingsSupplementaryPanels({
                 <Button
                   color="red"
                   variant="light"
-                  onClick={() => void maintenanceActions.handleResetAllSettings()}
+                  onClick={() =>
+                    void maintenanceActions.handleResetAllSettings()
+                  }
                   loading={maintenanceActions.isResettingAllSettings}
                 >
                   すべての設定をデフォルトに戻す
@@ -260,16 +291,23 @@ export function SettingsSupplementaryPanels({
                 <Checkbox
                   checked={includeHistoryInExport}
                   label="閲覧履歴を含める"
-                  onChange={(event) => setIncludeHistoryInExport(event.currentTarget.checked)}
+                  onChange={(event) =>
+                    setIncludeHistoryInExport(event.currentTarget.checked)
+                  }
                 />
                 <Checkbox
                   checked={includeWriteHistoryInExport}
                   label="書き込み履歴を含める"
-                  onChange={(event) => setIncludeWriteHistoryInExport(event.currentTarget.checked)}
+                  onChange={(event) =>
+                    setIncludeWriteHistoryInExport(event.currentTarget.checked)
+                  }
                 />
 
                 <Group wrap="wrap" gap="sm">
-                  <Button onClick={() => void handleExportArchive()} loading={isExportingArchive}>
+                  <Button
+                    onClick={() => void handleExportArchive()}
+                    loading={isExportingArchive}
+                  >
                     zipをエクスポート
                   </Button>
                   <Button

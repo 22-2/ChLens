@@ -13,7 +13,13 @@ import {
   Settings,
   Star,
 } from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { Omnibar } from "src/view/browser/components/Omnibar";
 import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
@@ -282,7 +288,10 @@ async function readBBSMenuBoardSources(): Promise<OmnibarBoardSource[]> {
 }
 
 // URLバーからの入力でページ種別を推定してナビゲートする
-function navigateByUrl(url: string, dispatch: ReturnType<typeof useTabStore>["dispatch"]) {
+function navigateByUrl(
+  url: string,
+  dispatch: ReturnType<typeof useTabStore>["dispatch"],
+) {
   const trimmed = url.trim();
   if (!trimmed) return;
 
@@ -305,16 +314,26 @@ export const NavigationBar: React.FC = () => {
   const back = canGoBack(activeTab);
   const forward = canGoForward(activeTab);
   const displayUrl = getDisplayUrl(currentPage);
-  const bookmarkTarget = useMemo(() => deriveBookmarkTarget(currentPage), [currentPage]);
+  const bookmarkTarget = useMemo(
+    () => deriveBookmarkTarget(currentPage),
+    [currentPage],
+  );
   const normalizedBookmarkTargetUrl = useMemo(
-    () => (bookmarkTarget ? normalizeBookmarkComparableUrl(bookmarkTarget.url) : null),
+    () =>
+      bookmarkTarget
+        ? normalizeBookmarkComparableUrl(bookmarkTarget.url)
+        : null,
     [bookmarkTarget],
   );
 
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
-  const [backMenuPosition, setBackMenuPosition] = useState<MenuPosition | null>(null);
-  const [refreshMenuPosition, setRefreshMenuPosition] = useState<MenuPosition | null>(null);
-  const [forwardMenuPosition, setForwardMenuPosition] = useState<MenuPosition | null>(null);
+  const [backMenuPosition, setBackMenuPosition] = useState<MenuPosition | null>(
+    null,
+  );
+  const [refreshMenuPosition, setRefreshMenuPosition] =
+    useState<MenuPosition | null>(null);
+  const [forwardMenuPosition, setForwardMenuPosition] =
+    useState<MenuPosition | null>(null);
   const backButtonRef = useRef<HTMLButtonElement>(null);
   const forwardButtonRef = useRef<HTMLButtonElement>(null);
   const refreshButtonRef = useRef<HTMLButtonElement>(null);
@@ -326,13 +345,18 @@ export const NavigationBar: React.FC = () => {
   const [isBookmarkPending, setIsBookmarkPending] = useState(false);
 
   const currentAutoRefreshPageKey = getAutoRefreshPageKey(currentPage);
-  const isCurrentPageAutoRefreshEnabled = isAutoRefreshEnabledForPage(activeTab, currentPage);
+  const isCurrentPageAutoRefreshEnabled = isAutoRefreshEnabledForPage(
+    activeTab,
+    currentPage,
+  );
 
   useEffect(() => {
     let cancelled = false;
 
     setIsBookmarkPending(false);
-    setIsBookmarked(bookmarkTarget ? readBookmarkStatus(bookmarkTarget.url) : false);
+    setIsBookmarked(
+      bookmarkTarget ? readBookmarkStatus(bookmarkTarget.url) : false,
+    );
 
     if (!bookmarkTarget) {
       return;
@@ -358,10 +382,13 @@ export const NavigationBar: React.FC = () => {
       return;
     }
 
-    const handleBookmarkUpdated = ({ bookmark }: BookmarkUpdatePayload = {}) => {
+    const handleBookmarkUpdated = ({
+      bookmark,
+    }: BookmarkUpdatePayload = {}) => {
       if (
         typeof bookmark?.url === "string" &&
-        normalizeBookmarkComparableUrl(bookmark.url) !== normalizedBookmarkTargetUrl
+        normalizeBookmarkComparableUrl(bookmark.url) !==
+          normalizedBookmarkTargetUrl
       ) {
         return;
       }
@@ -481,7 +508,9 @@ export const NavigationBar: React.FC = () => {
         }
 
         container.toast.info(
-          nextBookmarkedState ? "ブックマークに追加しました" : "ブックマークを削除しました",
+          nextBookmarkedState
+            ? "ブックマークに追加しました"
+            : "ブックマークを削除しました",
         );
       })
       .catch((error: unknown) => {
@@ -529,14 +558,18 @@ export const NavigationBar: React.FC = () => {
       setMenuPosition(null);
       setBackMenuPosition(null);
       setForwardMenuPosition(null);
-      setRefreshMenuPosition((prev) => (prev ? null : { x: e.clientX, y: e.clientY }));
+      setRefreshMenuPosition((prev) =>
+        prev ? null : { x: e.clientX, y: e.clientY },
+      );
     },
     [currentPage.type],
   );
 
   const openSettingsTab = useCallback(() => {
     // 設定タブを毎回増やすより既存タブを再利用した方が往復しやすいため、まず開いている設定を探す。
-    const existingSettingsTab = state.tabs.find((tab) => getCurrentPage(tab).type === "settings");
+    const existingSettingsTab = state.tabs.find(
+      (tab) => getCurrentPage(tab).type === "settings",
+    );
 
     if (existingSettingsTab) {
       dispatch({ type: "SELECT_TAB", tabId: existingSettingsTab.id });
@@ -550,21 +583,24 @@ export const NavigationBar: React.FC = () => {
     });
   }, [dispatch, state.tabs]);
 
-  const handleMenuClick = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    setBackMenuPosition(null);
-    setForwardMenuPosition(null);
-    setRefreshMenuPosition(null);
-    setMenuPosition((prev) => {
-      if (prev) {
-        return null;
-      }
-      return {
-        x: Math.max(8, rect.right - 220),
-        y: rect.bottom + 4,
-      };
-    });
-  }, []);
+  const handleMenuClick = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      const rect = e.currentTarget.getBoundingClientRect();
+      setBackMenuPosition(null);
+      setForwardMenuPosition(null);
+      setRefreshMenuPosition(null);
+      setMenuPosition((prev) => {
+        if (prev) {
+          return null;
+        }
+        return {
+          x: Math.max(8, rect.right - 220),
+          y: rect.bottom + 4,
+        };
+      });
+    },
+    [],
+  );
 
   const closeMenu = useCallback(() => {
     setMenuPosition(null);
@@ -610,7 +646,9 @@ export const NavigationBar: React.FC = () => {
     // フィルタUIはメニュー項目からのみ開くことで、
     // メニューボタン押下そのものをトリガーにしない。
     if (currentPage.type === "thread") {
-      window.dispatchEvent(new window.CustomEvent("thread-filter-toolbar-toggle"));
+      window.dispatchEvent(
+        new window.CustomEvent("thread-filter-toolbar-toggle"),
+      );
       return;
     }
 
@@ -709,7 +747,9 @@ export const NavigationBar: React.FC = () => {
         ? [
             {
               id: "open-write-panel",
-              label: isPanelOpen ? "書き込みパネルを閉じる" : "書き込みパネルを開く",
+              label: isPanelOpen
+                ? "書き込みパネルを閉じる"
+                : "書き込みパネルを開く",
               icon: <PenLine size={14} />,
               onSelect: () => togglePanel("write"),
             },
@@ -805,8 +845,14 @@ export const NavigationBar: React.FC = () => {
         ? [
             {
               id: "toggle-page-auto-refresh",
-              label: isCurrentPageAutoRefreshEnabled ? "自動更新を停止" : "自動更新を開始",
-              icon: isCurrentPageAutoRefreshEnabled ? <Pause size={14} /> : <RotateCw size={14} />,
+              label: isCurrentPageAutoRefreshEnabled
+                ? "自動更新を停止"
+                : "自動更新を開始",
+              icon: isCurrentPageAutoRefreshEnabled ? (
+                <Pause size={14} />
+              ) : (
+                <RotateCw size={14} />
+              ),
               onSelect: () => {
                 dispatch({
                   type: "SET_AUTO_REFRESH_ENABLED",
@@ -889,11 +935,15 @@ export const NavigationBar: React.FC = () => {
                 isBookmarked ? " nav-bar__url-action-btn--active" : ""
               }`}
               aria-label={
-                isBookmarked ? "このページをブックマークから削除" : "このページをブックマークに追加"
+                isBookmarked
+                  ? "このページをブックマークから削除"
+                  : "このページをブックマークに追加"
               }
               aria-pressed={isBookmarked}
               title={
-                isBookmarked ? "このページをブックマークから削除" : "このページをブックマークに追加"
+                isBookmarked
+                  ? "このページをブックマークから削除"
+                  : "このページをブックマークに追加"
               }
               disabled={isBookmarkPending}
               onMouseDown={(event) => {
@@ -913,7 +963,9 @@ export const NavigationBar: React.FC = () => {
         className={`nav-bar__btn${isTwoPane ? " nav-bar__btn--active" : ""}`}
         title={isTwoPane ? "2ペイン表示を解除" : "2ペインで表示"}
         aria-pressed={isTwoPane}
-        onClick={() => dispatch({ type: isTwoPane ? "CLOSE_PANE" : "SPLIT_PANE" })}
+        onClick={() =>
+          dispatch({ type: isTwoPane ? "CLOSE_PANE" : "SPLIT_PANE" })
+        }
       >
         <Columns2 size={18} />
       </button>

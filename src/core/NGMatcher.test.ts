@@ -203,15 +203,27 @@ describe("NGMatcher", () => {
 
   describe("checkResNum", () => {
     it("should match single res number", () => {
-      expect(checkResNum({ type: TYPE.ID, word: "", start: "10" }, 10)).toBe(true);
-      expect(checkResNum({ type: TYPE.ID, word: "", start: "10" }, 11)).toBe(false);
+      expect(checkResNum({ type: TYPE.ID, word: "", start: "10" }, 10)).toBe(
+        true,
+      );
+      expect(checkResNum({ type: TYPE.ID, word: "", start: "10" }, 11)).toBe(
+        false,
+      );
     });
 
     it("should match range of res numbers", () => {
-      expect(checkResNum({ type: TYPE.ID, word: "", start: "10", finish: "20" }, 15)).toBe(true);
-      expect(checkResNum({ type: TYPE.ID, word: "", start: "10", finish: "20" }, 10)).toBe(true);
-      expect(checkResNum({ type: TYPE.ID, word: "", start: "10", finish: "20" }, 20)).toBe(true);
-      expect(checkResNum({ type: TYPE.ID, word: "", start: "10", finish: "20" }, 21)).toBe(false);
+      expect(
+        checkResNum({ type: TYPE.ID, word: "", start: "10", finish: "20" }, 15),
+      ).toBe(true);
+      expect(
+        checkResNum({ type: TYPE.ID, word: "", start: "10", finish: "20" }, 10),
+      ).toBe(true);
+      expect(
+        checkResNum({ type: TYPE.ID, word: "", start: "10", finish: "20" }, 20),
+      ).toBe(true);
+      expect(
+        checkResNum({ type: TYPE.ID, word: "", start: "10", finish: "20" }, 21),
+      ).toBe(false);
     });
   });
 });

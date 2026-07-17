@@ -11,7 +11,11 @@ class Message {
     this._bc = new BroadcastChannel(Message.CHANNEL_NAME);
     this._bc.addEventListener(
       "message",
-      ({ data: { type, message } }: { data: { type: string; message: unknown } }) => {
+      ({
+        data: { type, message },
+      }: {
+        data: { type: string; message: unknown };
+      }) => {
         void this._fire(type, message);
       },
     );
@@ -38,12 +42,16 @@ class Message {
     if (!this._listenerStore.has(type)) {
       this._listenerStore.set(type, new Callbacks({ persistent: true }));
     }
-    this._listenerStore.get(type)!.add(listener as (...args: unknown[]) => void);
+    this._listenerStore
+      .get(type)!
+      .add(listener as (...args: unknown[]) => void);
   }
 
   off<T = unknown>(type: string, listener: (data: T) => void) {
     if (this._listenerStore.has(type)) {
-      this._listenerStore.get(type).remove(listener as (...args: unknown[]) => void);
+      this._listenerStore
+        .get(type)
+        .remove(listener as (...args: unknown[]) => void);
     }
   }
 }

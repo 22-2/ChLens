@@ -23,7 +23,11 @@ export function getAutoRefreshPageKey(page: Page): string | null {
 
 export function isAutoRefreshEnabledForPage(tab: Tab, page: Page): boolean {
   const pageKey = getAutoRefreshPageKey(page);
-  return pageKey != null && tab.autoRefreshEnabled && tab.autoRefreshPageKey === pageKey;
+  return (
+    pageKey != null &&
+    tab.autoRefreshEnabled &&
+    tab.autoRefreshPageKey === pageKey
+  );
 }
 
 export function resetAutoRefreshState<

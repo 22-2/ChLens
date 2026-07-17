@@ -13,7 +13,10 @@ export interface ICacheItem {
   get(): Promise<unknown>;
   // 既存実装では、事前に data/lastUpdated を設定済みなら put() を引数なしで呼べる。
   // 呼び出し側（Board/Thread/URL 等）との整合を保つため data は optional にする。
-  put(data?: string, options?: { lastModified?: number; etag?: string }): Promise<void>;
+  put(
+    data?: string,
+    options?: { lastModified?: number; etag?: string },
+  ): Promise<void>;
   // Cache 実装 (src/core/Cache.ts) は文字列データを保持する。unknown だと
   // put() や parse 系に渡せず型エラーになるため実態に合わせる。
   data: string | null;
@@ -189,7 +192,10 @@ export interface IBBSMenuService {
 }
 
 export interface IToastService {
-  notify(message: string, options?: { html?: boolean; backgroundColor?: string }): void;
+  notify(
+    message: string,
+    options?: { html?: boolean; backgroundColor?: string },
+  ): void;
   success(message: string): void;
   error(message: string): void;
   info(message: string): void;

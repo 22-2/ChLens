@@ -17,7 +17,9 @@ function normalizeBookmarkFolderTitle(title: string): string {
   return normalizedTitle.length > 0 ? normalizedTitle : "名称未設定フォルダ";
 }
 
-function toBookmarkFolderNode(node: browser.Bookmarks.BookmarkTreeNode): BookmarkFolderNode | null {
+function toBookmarkFolderNode(
+  node: browser.Bookmarks.BookmarkTreeNode,
+): BookmarkFolderNode | null {
   if (!Array.isArray(node.children)) {
     return null;
   }
@@ -27,14 +29,20 @@ function toBookmarkFolderNode(node: browser.Bookmarks.BookmarkTreeNode): Bookmar
     title: normalizeBookmarkFolderTitle(node.title),
     children: node.children
       .map((childNode) => toBookmarkFolderNode(childNode))
-      .filter((childNode): childNode is BookmarkFolderNode => childNode !== null),
+      .filter(
+        (childNode): childNode is BookmarkFolderNode => childNode !== null,
+      ),
   };
 }
 
 export function supportsBookmarkFolderSelection(): boolean {
   // 変更理由: Tauri はブックマークをブラウザAPIではなく別ストレージで扱うため、
   // 保存先フォルダ選択UIを表示すると誤解を招く。ランタイム判定を優先して無効化する。
-  return !isTauriRuntime() && typeof browser !== "undefined" && browser.bookmarks !== undefined;
+  return (
+    !isTauriRuntime() &&
+    typeof browser !== "undefined" &&
+    browser.bookmarks !== undefined
+  );
 }
 
 export function readConfiguredBookmarkFolderId(): string {
@@ -63,7 +71,9 @@ export async function readBookmarkFolderTree(): Promise<BookmarkFolderNode[]> {
     .filter((node): node is BookmarkFolderNode => node !== null);
 }
 
-export async function readBookmarkFolderName(bookmarkId: string): Promise<string | null> {
+export async function readBookmarkFolderName(
+  bookmarkId: string,
+): Promise<string | null> {
   if (!supportsBookmarkFolderSelection() || bookmarkId.length === 0) {
     return null;
   }
@@ -81,7 +91,9 @@ export async function readBookmarkFolderName(bookmarkId: string): Promise<string
   }
 }
 
-export async function updateBookmarkFolderId(bookmarkId: string): Promise<void> {
+export async function updateBookmarkFolderId(
+  bookmarkId: string,
+): Promise<void> {
   const configService = getLegacyConfigService();
 
   // 変更理由: bookmark root の切替は app.ts 側の config_updated listener が

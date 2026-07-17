@@ -83,7 +83,10 @@ export class OtherBoardsCollector {
     const addIfNew = (url: string, name: string) => {
       try {
         const normalizedUrl = new URL(url).href;
-        if (!registeredUrls.has(normalizedUrl) && !seenUrls.has(normalizedUrl)) {
+        if (
+          !registeredUrls.has(normalizedUrl) &&
+          !seenUrls.has(normalizedUrl)
+        ) {
           otherBoards.push({ name, url: normalizedUrl });
           seenUrls.add(normalizedUrl);
         }
@@ -172,7 +175,9 @@ export class OtherBoardsCollector {
    * 未解決の板名をバックグラウンドで非同期取得しキャッシュに保存する。
    * 板一覧の表示をブロックしないためfire-and-forgetにする。
    */
-  private _resolveUnknownTitlesInBackground(boards: { name: string; url: string }[]): void {
+  private _resolveUnknownTitlesInBackground(
+    boards: { name: string; url: string }[],
+  ): void {
     void (async () => {
       const cached = this.deps.getCachedBoardTitles();
       let hasNewTitles = false;
@@ -181,7 +186,9 @@ export class OtherBoardsCollector {
         boards.map(async (board) => {
           if (board.name === board.url) {
             try {
-              const title = await this.deps.resolveBoardTitle(new URL(board.url));
+              const title = await this.deps.resolveBoardTitle(
+                new URL(board.url),
+              );
               if (title) {
                 board.name = title;
                 cached[board.url] = title;
@@ -203,8 +210,13 @@ export class OtherBoardsCollector {
   /**
    * 収集した板を「その他」メニューとしてmenusに追加する。
    */
-  private _appendToMenus(menus: BBSMenu[], boards: { name: string; url: string }[]): void {
-    let otherMenu = menus.find((m) => m.name === "その他" || m.name === "Other");
+  private _appendToMenus(
+    menus: BBSMenu[],
+    boards: { name: string; url: string }[],
+  ): void {
+    let otherMenu = menus.find(
+      (m) => m.name === "その他" || m.name === "Other",
+    );
     if (!otherMenu) {
       otherMenu = { name: "その他", categories: [] };
       menus.push(otherMenu);

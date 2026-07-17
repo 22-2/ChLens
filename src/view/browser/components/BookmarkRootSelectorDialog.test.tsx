@@ -1,17 +1,34 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vite-plus/test";
 import { container } from "src/service-container/index";
 
-const { getTreeMock, getMock, configSetMock, toastSuccessMock, toastErrorMock } = vi.hoisted(
-  () => ({
-    getTreeMock: vi.fn(),
-    getMock: vi.fn(),
-    configSetMock: vi.fn(),
-    toastSuccessMock: vi.fn(),
-    toastErrorMock: vi.fn(),
-  }),
-);
+const {
+  getTreeMock,
+  getMock,
+  configSetMock,
+  toastSuccessMock,
+  toastErrorMock,
+} = vi.hoisted(() => ({
+  getTreeMock: vi.fn(),
+  getMock: vi.fn(),
+  configSetMock: vi.fn(),
+  toastSuccessMock: vi.fn(),
+  toastErrorMock: vi.fn(),
+}));
 
 vi.mock("webextension-polyfill", () => ({
   default: {
@@ -157,7 +174,9 @@ describe("BookmarkRootSelectorDialog", () => {
     await waitFor(() => {
       expect(configSetMock).toHaveBeenCalledWith("bookmark_id", "3");
     });
-    expect(toastSuccessMock).toHaveBeenCalledWith("ブックマーク保存先を更新しました");
+    expect(toastSuccessMock).toHaveBeenCalledWith(
+      "ブックマーク保存先を更新しました",
+    );
   });
 
   it("手動オープン時はキャンセルで閉じられる", async () => {

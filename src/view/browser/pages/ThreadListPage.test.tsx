@@ -1,10 +1,23 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
 import { container as serviceContainer } from "src/service-container/index";
 import type { IBoardService, IThread } from "src/service-container/interfaces";
 import { ThreadListPage } from "src/view/browser/pages/ThreadListPage";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vite-plus/test";
 
 const THREAD_LIST_SORT_STORAGE_KEY = "chlens_browser_thread_list_sort_by_site";
 const { dispatchMock, activeTabIdRef } = vi.hoisted(() => ({
@@ -26,7 +39,9 @@ vi.mock("src/core/URL", () => ({
 
     getTsld(): string {
       const parts = this.#url.hostname.toLowerCase().split(".");
-      return parts.length >= 2 ? parts.slice(-2).join(".") : this.#url.hostname.toLowerCase();
+      return parts.length >= 2
+        ? parts.slice(-2).join(".")
+        : this.#url.hostname.toLowerCase();
     }
   },
 }));
@@ -141,23 +156,29 @@ describe("ThreadListPage", () => {
       getCachedResCount: vi.fn(),
     } as unknown as IBoardService;
     serviceContainer.config = {
-      get: vi.fn((key: string) => (key === "auto_load_second_board" ? "20000" : "0")),
+      get: vi.fn((key: string) =>
+        key === "auto_load_second_board" ? "20000" : "0",
+      ),
       set: vi.fn(),
       getAll: () => ({}),
       ready: (callback: () => void) => callback(),
     };
     serviceContainer.message = {
       send: vi.fn(),
-      on: vi.fn((type: string, handler: (payload: { key?: string }) => void) => {
-        if (type === "config_updated") {
-          configUpdatedListeners.add(handler);
-        }
-      }),
-      off: vi.fn((type: string, handler: (payload: { key?: string }) => void) => {
-        if (type === "config_updated") {
-          configUpdatedListeners.delete(handler);
-        }
-      }),
+      on: vi.fn(
+        (type: string, handler: (payload: { key?: string }) => void) => {
+          if (type === "config_updated") {
+            configUpdatedListeners.add(handler);
+          }
+        },
+      ),
+      off: vi.fn(
+        (type: string, handler: (payload: { key?: string }) => void) => {
+          if (type === "config_updated") {
+            configUpdatedListeners.delete(handler);
+          }
+        },
+      ),
     };
   });
 
@@ -243,13 +264,21 @@ describe("ThreadListPage", () => {
     );
 
     await waitFor(() => {
-      expect(getRenderedThreadTitles()).toEqual(["B Thread", "A Thread", "C Thread"]);
+      expect(getRenderedThreadTitles()).toEqual([
+        "B Thread",
+        "A Thread",
+        "C Thread",
+      ]);
     });
 
     fireEvent.click(screen.getByRole("columnheader", { name: /レス/ }));
 
     await waitFor(() => {
-      expect(getRenderedThreadTitles()).toEqual(["A Thread", "C Thread", "B Thread"]);
+      expect(getRenderedThreadTitles()).toEqual([
+        "A Thread",
+        "C Thread",
+        "B Thread",
+      ]);
     });
 
     rerender(
@@ -268,7 +297,11 @@ describe("ThreadListPage", () => {
 
     await waitFor(() => {
       expect(getThreadsMock).toHaveBeenCalledTimes(2);
-      expect(getRenderedThreadTitles()).toEqual(["A Thread", "C Thread", "B Thread"]);
+      expect(getRenderedThreadTitles()).toEqual([
+        "A Thread",
+        "C Thread",
+        "B Thread",
+      ]);
     });
 
     rerender(
@@ -287,7 +320,11 @@ describe("ThreadListPage", () => {
 
     await waitFor(() => {
       expect(getThreadsMock).toHaveBeenCalledTimes(3);
-      expect(getRenderedThreadTitles()).toEqual(["B Thread", "A Thread", "C Thread"]);
+      expect(getRenderedThreadTitles()).toEqual([
+        "B Thread",
+        "A Thread",
+        "C Thread",
+      ]);
     });
   });
 
@@ -314,7 +351,11 @@ describe("ThreadListPage", () => {
     );
 
     await waitFor(() => {
-      expect(getRenderedThreadTitles()).toEqual(["B Thread", "A Thread", "C Thread"]);
+      expect(getRenderedThreadTitles()).toEqual([
+        "B Thread",
+        "A Thread",
+        "C Thread",
+      ]);
     });
 
     expect(screen.queryByText("板の読み込みに失敗しました")).toBeNull();
@@ -338,19 +379,29 @@ describe("ThreadListPage", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole("columnheader", { name: /未読/ })).toBeInTheDocument();
+      expect(
+        screen.getByRole("columnheader", { name: /未読/ }),
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole("columnheader", { name: /未読/ }));
 
     await waitFor(() => {
-      expect(getRenderedThreadTitles()).toEqual(["A Thread", "B Thread", "C Thread"]);
+      expect(getRenderedThreadTitles()).toEqual([
+        "A Thread",
+        "B Thread",
+        "C Thread",
+      ]);
     });
 
     fireEvent.click(screen.getByRole("columnheader", { name: /未読/ }));
 
     await waitFor(() => {
-      expect(getRenderedThreadTitles()).toEqual(["C Thread", "B Thread", "A Thread"]);
+      expect(getRenderedThreadTitles()).toEqual([
+        "C Thread",
+        "B Thread",
+        "A Thread",
+      ]);
     });
   });
 

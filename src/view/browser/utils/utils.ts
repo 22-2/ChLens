@@ -2,7 +2,8 @@ import MessageProcessor from "src/core/MessageProcessor";
 import type { IRes } from "src/service-container";
 import { isInlineVideoEmbedUrl } from "src/view/browser/utils/external-media";
 
-const decodeEntitySpan = typeof document !== "undefined" ? document.createElement("span") : null;
+const decodeEntitySpan =
+  typeof document !== "undefined" ? document.createElement("span") : null;
 
 function decodeCharReferences(text: string): string {
   return text.replace(
@@ -55,7 +56,9 @@ export function parseAnchors(message: string): number[] {
 export function stripHtml(html: string): string {
   // レス本文には数値文字参照の絵文字が混ざることがあるため、
   // タグ除去後に既存の文字参照デコーダーへ通してコピー/検索時の文字化けを防ぐ。
-  return decodeCharReferences(html.replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]*>/g, ""));
+  return decodeCharReferences(
+    html.replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]*>/g, ""),
+  );
 }
 
 export function normalizeIdLinkText(text: string): string {
@@ -65,7 +68,10 @@ export function normalizeIdLinkText(text: string): string {
     .replace(/\(\d+\)$/, "")
     .replace(/\u25cf$/, "");
 }
-export function buildKyodemoUrl(threadUrl: string, rawId: string): string | null {
+export function buildKyodemoUrl(
+  threadUrl: string,
+  rawId: string,
+): string | null {
   try {
     const urlObj = new window.URL(threadUrl);
     const pathParts = urlObj.pathname.split("/");
@@ -136,7 +142,10 @@ export function hasVideo(message: string): boolean {
   return (
     /\.(mp4|webm|avi|mov)(?:\?[^"<]*)?(?=["<\s]|$)/i.test(message) ||
     /<video\b/i.test(message) ||
-    (message.match(/https?:\/\/[^\s"'<>]+/gi)?.some((url) => isInlineVideoEmbedUrl(url)) ?? false)
+    (message
+      .match(/https?:\/\/[^\s"'<>]+/gi)
+      ?.some((url) => isInlineVideoEmbedUrl(url)) ??
+      false)
   );
 }
 export function hasExternalLink(message: string): boolean {
@@ -147,14 +156,20 @@ export function hasExternalLink(message: string): boolean {
 }
 
 export function parseAnchorDisplayTargets(text: string): number[] {
-  const raw = text.replace(/&gt;/g, ">").replace(/[＞]/g, ">").replace(/^>+/, "").trim();
+  const raw = text
+    .replace(/&gt;/g, ">")
+    .replace(/[＞]/g, ">")
+    .replace(/^>+/, "")
+    .trim();
   if (!raw) return [];
 
   const result = new Set<number>();
   const parts = raw.split(/\s*[,、]\s*/);
   for (const part of parts) {
     const range = part
-      .replace(FW_NUM_REG, (c) => String.fromCharCode(c.charCodeAt(0) - 0xff10 + 0x30))
+      .replace(FW_NUM_REG, (c) =>
+        String.fromCharCode(c.charCodeAt(0) - 0xff10 + 0x30),
+      )
       .split(/[-\u30fc]/);
     const start = parseInt(range[0], 10);
     const end = range.length > 1 ? parseInt(range[1], 10) : start;
@@ -175,7 +190,10 @@ interface DecodedMessageParts {
   isNameAnchor: boolean;
 }
 
-export function decodeResponseHtml(res: IRes, protocol: string): DecodedMessageParts {
+export function decodeResponseHtml(
+  res: IRes,
+  protocol: string,
+): DecodedMessageParts {
   // React版でも旧ビューと同じHTML化を通しておかないと、>>アンカーが文字列のまま残ってホバー対象を拾えない。
   return MessageProcessor.decode(res, protocol) as DecodedMessageParts;
 }
@@ -314,7 +332,9 @@ export function toViewerImageUrl(rawUrl: string): string | null {
     if (
       host === "pbs.twimg.com" &&
       pathname.startsWith("/media/") &&
-      /^(jpe?g|png|gif|webp|bmp|avif)$/i.test(url.searchParams.get("format") ?? "")
+      /^(jpe?g|png|gif|webp|bmp|avif)$/i.test(
+        url.searchParams.get("format") ?? "",
+      )
     ) {
       return url.href;
     }
@@ -324,7 +344,9 @@ export function toViewerImageUrl(rawUrl: string): string | null {
   return null;
 }
 
-export function getEventTargetElement(target: EventTarget | null): Element | null {
+export function getEventTargetElement(
+  target: EventTarget | null,
+): Element | null {
   if (target instanceof Element) {
     return target;
   }

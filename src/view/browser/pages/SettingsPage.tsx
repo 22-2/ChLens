@@ -20,7 +20,13 @@ import {
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { AlertTriangle, ChevronDown, RefreshCw } from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { getStore2String, setStore2String } from "src/app/Store2Storage";
 import { container } from "src/service-container/index";
 import {
@@ -68,13 +74,17 @@ function toBooleanValue(value: SettingsFormValue): boolean {
   return value === true;
 }
 
-export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => {
+export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({
+  page,
+}) => {
   const isCompact = useMediaQuery("(max-width: 980px)") ?? false;
-  const [activeSectionId, setActiveSectionId] = useState<SettingsSectionId>("general");
+  const [activeSectionId, setActiveSectionId] =
+    useState<SettingsSectionId>("general");
   const [formState, setFormState] = useState<SettingsFormState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [savingSectionId, setSavingSectionId] = useState<SettingsSectionId | null>(null);
+  const [savingSectionId, setSavingSectionId] =
+    useState<SettingsSectionId | null>(null);
   const [autoSaveError, setAutoSaveError] = useState<string | null>(null);
   const [isNgExamplesOpen, setIsNgExamplesOpen] = useState(false);
   const [isNgAdvancedOpen, setIsNgAdvancedOpen] = useState(false);
@@ -115,7 +125,10 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
       }
 
       const parsed = JSON.parse(rawState) as SettingsPageUiState;
-      if (parsed.activeSectionId && isSettingsSectionId(parsed.activeSectionId)) {
+      if (
+        parsed.activeSectionId &&
+        isSettingsSectionId(parsed.activeSectionId)
+      ) {
         setActiveSectionId(parsed.activeSectionId);
       }
       if (typeof parsed.ngAdvancedOpen === "boolean") {
@@ -139,7 +152,8 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
 
   const persistPageUiState = useCallback(
     (nextScrollTop?: number) => {
-      const scrollTop = nextScrollTop ?? scrollViewportRef.current?.scrollTop ?? 0;
+      const scrollTop =
+        nextScrollTop ?? scrollViewportRef.current?.scrollTop ?? 0;
 
       const nextState: SettingsPageUiState = {
         activeSectionId,
@@ -149,7 +163,10 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
       };
 
       try {
-        void setStore2String(SETTINGS_PAGE_STATE_KEY, JSON.stringify(nextState));
+        void setStore2String(
+          SETTINGS_PAGE_STATE_KEY,
+          JSON.stringify(nextState),
+        );
       } catch {
         // 一部環境では localStorage が使えないため、永続化失敗は黙殺する。
       }
@@ -165,7 +182,11 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
       try {
         setFormState(readAllSettings());
       } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : "設定の読み込みに失敗しました");
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : "設定の読み込みに失敗しました",
+        );
       } finally {
         setLoading(false);
       }
@@ -181,7 +202,11 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
   }, [persistPageUiState]);
 
   useEffect(() => {
-    if (loading || !shouldRestoreScrollRef.current || !scrollViewportRef.current) {
+    if (
+      loading ||
+      !shouldRestoreScrollRef.current ||
+      !scrollViewportRef.current
+    ) {
       return;
     }
 
@@ -190,7 +215,10 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
   }, [loading]);
 
   const scheduleAutoSave = useCallback(
-    (sectionId: SettingsSectionId, sectionFormData: SettingsSectionFormData) => {
+    (
+      sectionId: SettingsSectionId,
+      sectionFormData: SettingsSectionFormData,
+    ) => {
       const section = SETTINGS_SECTION_MAP.get(sectionId);
       if (!section) {
         return;
@@ -211,7 +239,9 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
             await saveSectionFormData(section, sectionFormData);
           } catch (saveError) {
             const message =
-              saveError instanceof Error ? saveError.message : "設定の自動保存に失敗しました";
+              saveError instanceof Error
+                ? saveError.message
+                : "設定の自動保存に失敗しました";
             setAutoSaveError(message);
             container.toast.error(message);
           } finally {
@@ -224,7 +254,11 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
   );
 
   const updateFieldValue = useCallback(
-    (sectionId: SettingsSectionId, fieldKey: string, value: SettingsFormValue) => {
+    (
+      sectionId: SettingsSectionId,
+      fieldKey: string,
+      value: SettingsFormValue,
+    ) => {
       let nextSectionData: SettingsSectionFormData | null = null;
 
       setFormState((prev) => {
@@ -303,7 +337,11 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
             label={field.title}
             description={field.description}
             onChange={(event) => {
-              updateFieldValue(sectionId, field.key, event.currentTarget.checked);
+              updateFieldValue(
+                sectionId,
+                field.key,
+                event.currentTarget.checked,
+              );
             }}
           />
         );
@@ -321,7 +359,9 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
             step={field.step}
             onChange={(nextValue) => {
               const normalized =
-                typeof nextValue === "number" && Number.isFinite(nextValue) ? nextValue : 0;
+                typeof nextValue === "number" && Number.isFinite(nextValue)
+                  ? nextValue
+                  : 0;
               updateFieldValue(sectionId, field.key, normalized);
             }}
           />
@@ -341,7 +381,11 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
           >
             <Stack gap="xs" mt="xs">
               {field.options.map((option) => (
-                <Radio key={option.const} value={option.const} label={option.title} />
+                <Radio
+                  key={option.const}
+                  value={option.const}
+                  label={option.title}
+                />
               ))}
             </Stack>
           </Radio.Group>
@@ -461,7 +505,8 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
     }
 
     return activeSection.fields.filter(
-      (item) => isSettingsFieldItem(item) && NG_PRIMARY_FIELD_KEYS.has(item.key),
+      (item) =>
+        isSettingsFieldItem(item) && NG_PRIMARY_FIELD_KEYS.has(item.key),
     );
   }, [activeSection]);
 
@@ -651,14 +696,18 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
                         <Group gap="sm" wrap="wrap">
                           <Button
                             variant="default"
-                            onClick={() => void maintenanceActions.handleBBSMenuCheck()}
+                            onClick={() =>
+                              void maintenanceActions.handleBBSMenuCheck()
+                            }
                             loading={maintenanceActions.isBbsMenuChecking}
                             disabled={maintenanceActions.isBbsMenuRefreshing}
                           >
                             URLチェック
                           </Button>
                           <Button
-                            onClick={() => void maintenanceActions.handleBBSMenuRefresh()}
+                            onClick={() =>
+                              void maintenanceActions.handleBBSMenuRefresh()
+                            }
                             loading={maintenanceActions.isBbsMenuRefreshing}
                             disabled={maintenanceActions.isBbsMenuChecking}
                           >
@@ -685,7 +734,9 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
                     <ChevronDown
                       size={16}
                       style={{
-                        transform: isNgExamplesOpen ? "rotate(180deg)" : "rotate(0deg)",
+                        transform: isNgExamplesOpen
+                          ? "rotate(180deg)"
+                          : "rotate(0deg)",
                         transition: "transform 140ms ease",
                       }}
                     />
@@ -710,7 +761,10 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
                       <Text size="xs" fw={600}>
                         複数行
                       </Text>
-                      <NGDslHelpSnippet code={NG_DSL_MULTILINE_EXAMPLE} minHeight={180} />
+                      <NGDslHelpSnippet
+                        code={NG_DSL_MULTILINE_EXAMPLE}
+                        minHeight={180}
+                      />
                     </Stack>
                   </Card>
                 )}
@@ -722,7 +776,9 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
                     <ChevronDown
                       size={16}
                       style={{
-                        transform: isNgAdvancedOpen ? "rotate(180deg)" : "rotate(0deg)",
+                        transform: isNgAdvancedOpen
+                          ? "rotate(180deg)"
+                          : "rotate(0deg)",
                         transition: "transform 140ms ease",
                       }}
                     />
@@ -735,7 +791,9 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
                 </Button>
 
                 {isNgAdvancedOpen && (
-                  <Stack gap="sm">{renderSectionItems("ng", ngAdvancedSectionItems)}</Stack>
+                  <Stack gap="sm">
+                    {renderSectionItems("ng", ngAdvancedSectionItems)}
+                  </Stack>
                 )}
               </Stack>
             )}

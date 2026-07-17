@@ -68,8 +68,14 @@ export function useThreadTopBar({
     window.addEventListener(TOP_BAR_EVENT_BY_MODE.filter, handleFilterToggle);
 
     return () => {
-      window.removeEventListener(TOP_BAR_EVENT_BY_MODE.search, handleSearchToggle);
-      window.removeEventListener(TOP_BAR_EVENT_BY_MODE.filter, handleFilterToggle);
+      window.removeEventListener(
+        TOP_BAR_EVENT_BY_MODE.search,
+        handleSearchToggle,
+      );
+      window.removeEventListener(
+        TOP_BAR_EVENT_BY_MODE.filter,
+        handleFilterToggle,
+      );
     };
   }, [openFilterToolbarForSearch, toggleFilterToolbar]);
 

@@ -22,7 +22,10 @@ interface UseThreadReadStateParams {
 
 interface UseThreadReadStateResult {
   isInitialReadStateResolved: boolean;
-  scrollToResponse: (resNum: number, options?: { highlight?: boolean; offset?: number }) => void;
+  scrollToResponse: (
+    resNum: number,
+    options?: { highlight?: boolean; offset?: number },
+  ) => void;
 }
 
 export function useThreadReadState({
@@ -32,10 +35,15 @@ export function useThreadReadState({
   loading,
   rootRef,
 }: UseThreadReadStateParams): UseThreadReadStateResult {
-  const [initialReadState, setInitialReadState] = useState<IReadState | null>(null);
-  const [hasLoadedInitialReadState, setHasLoadedInitialReadState] = useState(false);
-  const [isInitialReadStateResolved, setIsInitialReadStateResolved] = useState(false);
-  const [pendingThreadJump, setPendingThreadJump] = useState<PendingThreadJump | null>(null);
+  const [initialReadState, setInitialReadState] = useState<IReadState | null>(
+    null,
+  );
+  const [hasLoadedInitialReadState, setHasLoadedInitialReadState] =
+    useState(false);
+  const [isInitialReadStateResolved, setIsInitialReadStateResolved] =
+    useState(false);
+  const [pendingThreadJump, setPendingThreadJump] =
+    useState<PendingThreadJump | null>(null);
   const latestReadStateRef = useRef<IReadState | null>(null);
   const saveReadStateTimerRef = useRef<number | null>(null);
 
@@ -50,7 +58,10 @@ export function useThreadReadState({
   const saveCurrentReadState = useCallback(async () => {
     if (!isActive || !isInitialReadStateResolved) return;
 
-    const measuredReadState = measureThreadReadState(rootRef.current, responses.length);
+    const measuredReadState = measureThreadReadState(
+      rootRef.current,
+      responses.length,
+    );
     if (!measuredReadState) return;
 
     const previousReadState = latestReadStateRef.current;
@@ -58,7 +69,10 @@ export function useThreadReadState({
       url: threadUrl,
       last: measuredReadState.last,
       read: Math.max(previousReadState?.read ?? 0, measuredReadState.read),
-      received: Math.max(previousReadState?.received ?? 0, measuredReadState.received),
+      received: Math.max(
+        previousReadState?.received ?? 0,
+        measuredReadState.received,
+      ),
       offset: measuredReadState.offset,
       date: Date.now(),
     };
@@ -109,7 +123,8 @@ export function useThreadReadState({
         const storedReadState = await container.readState.get(threadUrl);
         if (
           storedReadState &&
-          (!nextReadState || container.util.isNewerReadState(nextReadState, storedReadState))
+          (!nextReadState ||
+            container.util.isNewerReadState(nextReadState, storedReadState))
         ) {
           nextReadState = storedReadState;
         }
@@ -139,7 +154,8 @@ export function useThreadReadState({
   }, [threadUrl]);
 
   useEffect(() => {
-    if (!isActive || !pendingThreadJump || responses.length === 0 || loading) return;
+    if (!isActive || !pendingThreadJump || responses.length === 0 || loading)
+      return;
 
     scrollToResponse(pendingThreadJump.resNum);
     consumePendingThreadResJump(threadUrl, pendingThreadJump.token);
@@ -197,7 +213,8 @@ export function useThreadReadState({
   ]);
 
   useEffect(() => {
-    if (!isActive || !isInitialReadStateResolved || responses.length === 0) return;
+    if (!isActive || !isInitialReadStateResolved || responses.length === 0)
+      return;
 
     const scrollContainer = findThreadScrollContainer(rootRef.current);
     if (!scrollContainer) return;
@@ -227,14 +244,25 @@ export function useThreadReadState({
   ]);
 
   useEffect(() => {
-    if (!isActive || !isInitialReadStateResolved || loading || responses.length === 0) {
+    if (
+      !isActive ||
+      !isInitialReadStateResolved ||
+      loading ||
+      responses.length === 0
+    ) {
       return;
     }
 
     // 変更理由: 自動更新で received だけ増えたケースはスクロールイベントが発生しないため、
     // レス数変化時にも保存を予約して未読数の取りこぼしを防ぐ。
     scheduleReadStateSave();
-  }, [isActive, isInitialReadStateResolved, loading, responses.length, scheduleReadStateSave]);
+  }, [
+    isActive,
+    isInitialReadStateResolved,
+    loading,
+    responses.length,
+    scheduleReadStateSave,
+  ]);
 
   useEffect(() => {
     const handlePageHide = () => {

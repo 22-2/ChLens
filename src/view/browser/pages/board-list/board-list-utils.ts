@@ -20,7 +20,10 @@ export function normalizeBoardUrlForRemove(url: string): string {
 /**
  * メニュー名とカテゴリ名から一意のカテゴリIDを生成
  */
-export function buildCategoryId(menuName: string, categoryName: string): string {
+export function buildCategoryId(
+  menuName: string,
+  categoryName: string,
+): string {
   return `${menuName}:${categoryName}`;
 }
 
@@ -28,7 +31,9 @@ export function buildCategoryId(menuName: string, categoryName: string): string 
  * JSON文字列から OpenedBoardEntry 配列をパース
  * 破損データや不正な形式は安全に無視する
  */
-export function parseOpenedBoardEntries(raw: string | null): OpenedBoardEntry[] {
+export function parseOpenedBoardEntries(
+  raw: string | null,
+): OpenedBoardEntry[] {
   if (!raw) {
     return [];
   }

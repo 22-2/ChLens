@@ -9,7 +9,9 @@ declare global {
 
   // ShortQuery.js (CoffeeScript製レガシーライブラリ) が定義するグローバルヘルパー。
   // $__ は document.createElement のショートハンド。
-  function $__<K extends keyof HTMLElementTagNameMap>(tagName: K): HTMLElementTagNameMap[K];
+  function $__<K extends keyof HTMLElementTagNameMap>(
+    tagName: K,
+  ): HTMLElementTagNameMap[K];
   function $__(tagName: string): HTMLElement;
 
   // ShortQuery.js は Document/Element の prototype にもショートハンドを生やす。
@@ -56,7 +58,12 @@ declare global {
       remove(key: string): Promise<void>;
       getAll(): Promise<Record<string, string>>;
       onChanged(
-        cb: (changes: Record<string, { oldValue: string | null; newValue: string | null }>) => void,
+        cb: (
+          changes: Record<
+            string,
+            { oldValue: string | null; newValue: string | null }
+          >,
+        ) => void,
       ): void;
     };
     const deepCopy: <T>(obj: T) => T;
@@ -139,7 +146,10 @@ declare global {
       key: CheckedString,
     ): this is ReadonlyMapWith<K, V, CheckedString>;
   }
-  interface ReadonlyMapWith<K, V, DefiniteKey extends K> extends ReadonlyMap<K, V> {
+  interface ReadonlyMapWith<K, V, DefiniteKey extends K> extends ReadonlyMap<
+    K,
+    V
+  > {
     get(k: DefiniteKey): V;
     get(k: K): V | undefined;
   }
@@ -157,5 +167,7 @@ declare module "normalize-wheel" {
     pixelY: number;
   }
 
-  export default function normalizeWheel(event: WheelEvent | MouseEvent): NormalizedWheelEvent;
+  export default function normalizeWheel(
+    event: WheelEvent | MouseEvent,
+  ): NormalizedWheelEvent;
 }

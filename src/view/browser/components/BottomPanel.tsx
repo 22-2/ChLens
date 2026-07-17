@@ -8,8 +8,15 @@ import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 export const BottomPanel: React.FC = () => {
   const { currentPage } = useTabStore();
   const { canAutoScroll } = useAutoScrollState();
-  const { isOpen, height, activeTabId, tabs, closePanel, setHeight, setActiveTab } =
-    useBottomPanel();
+  const {
+    isOpen,
+    height,
+    activeTabId,
+    tabs,
+    closePanel,
+    setHeight,
+    setActiveTab,
+  } = useBottomPanel();
 
   const rootRef = useRef<HTMLDivElement>(null);
   const dragStartY = useRef<number | null>(null);
@@ -47,7 +54,9 @@ export const BottomPanel: React.FC = () => {
     // document 全体ではなく自ペイン（.pane-column）配下に限定して、
     // 他ペインのスレッドを誤ってスクロールしないようにする。
     const scope = rootRef.current?.closest(".pane-column") ?? document;
-    const activePanel = scope.querySelector(".content-area__tab-panel[data-active='true']");
+    const activePanel = scope.querySelector(
+      ".content-area__tab-panel[data-active='true']",
+    );
     if (!(activePanel instanceof HTMLElement)) {
       return;
     }
@@ -119,7 +128,11 @@ export const BottomPanel: React.FC = () => {
           ))}
         </div>
         <div className="bottom-panel__header-actions">
-          <button className="bottom-panel__icon-btn" onClick={closePanel} title="パネルを閉じる">
+          <button
+            className="bottom-panel__icon-btn"
+            onClick={closePanel}
+            title="パネルを閉じる"
+          >
             <X size={14} />
           </button>
         </div>

@@ -1,5 +1,11 @@
 import "@testing-library/jest-dom/vitest";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 
@@ -7,10 +13,11 @@ import { useThreadTopBar } from "src/view/browser/pages/thread/use-thread-top-ba
 
 function TopBarHarness() {
   const [searchQuery, setSearchQuery] = useState("");
-  const { activeTopBar, closeTopBar, openFilterToolbar, searchFocusKey } = useThreadTopBar({
-    searchQuery,
-    setSearchQuery,
-  });
+  const { activeTopBar, closeTopBar, openFilterToolbar, searchFocusKey } =
+    useThreadTopBar({
+      searchQuery,
+      setSearchQuery,
+    });
 
   return (
     <div>

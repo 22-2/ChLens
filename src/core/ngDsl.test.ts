@@ -74,7 +74,9 @@ describe("NG DSL helpers", () => {
   });
 
   it("treats double-backslash quoted regex input as a single-backslash pattern", () => {
-    const extracted = extractNgDslFunctionCall('RegExpBody(word="(imgur\\\\.com\\\\/.+?){15}")');
+    const extracted = extractNgDslFunctionCall(
+      'RegExpBody(word="(imgur\\\\.com\\\\/.+?){15}")',
+    );
 
     expect(parseNgDslArguments(extracted?.argsSource ?? "")).toEqual({
       word: "(imgur\\.com\\/.+?){15}",

@@ -86,7 +86,9 @@ describe("Cache Tauri log branch", () => {
     const { default: Cache } = await import("src/core/Cache");
     await Cache.searchLogs("キーワード");
 
-    expect(state.tauriCacheRepository.searchLogs).toHaveBeenCalledWith("キーワード");
+    expect(state.tauriCacheRepository.searchLogs).toHaveBeenCalledWith(
+      "キーワード",
+    );
   });
 
   it("deleteLogs delegates to the repository", async () => {

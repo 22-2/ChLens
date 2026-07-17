@@ -58,7 +58,12 @@ function normalizeQuery(query: string): string {
   return query.trim().toLowerCase();
 }
 
-function calcTextScore(query: string, title: string, url: string, boardTitle: string): number {
+function calcTextScore(
+  query: string,
+  title: string,
+  url: string,
+  boardTitle: string,
+): number {
   if (!query) {
     return 0;
   }
@@ -88,7 +93,12 @@ function calcTextScore(query: string, title: string, url: string, boardTitle: st
   return score;
 }
 
-function calcMatchLength(query: string, title: string, url: string, boardTitle: string): number {
+function calcMatchLength(
+  query: string,
+  title: string,
+  url: string,
+  boardTitle: string,
+): number {
   if (!query) {
     return Number.POSITIVE_INFINITY;
   }
@@ -111,7 +121,10 @@ function calcRecencyBoost(historyRank: number | null): number {
     return 0;
   }
 
-  return Math.max(0, MAX_HISTORY_RECENCY_BOOST - historyRank * HISTORY_RECENCY_STEP);
+  return Math.max(
+    0,
+    MAX_HISTORY_RECENCY_BOOST - historyRank * HISTORY_RECENCY_STEP,
+  );
 }
 
 export function mergeOmnibarSources(
@@ -224,7 +237,12 @@ export function buildOmnibarSuggestions(
 
   const ranked = entries
     .map((entry) => {
-      const textScore = calcTextScore(query, entry.title, entry.url, entry.boardTitle);
+      const textScore = calcTextScore(
+        query,
+        entry.title,
+        entry.url,
+        entry.boardTitle,
+      );
 
       if (query && textScore === 0) {
         return null;
@@ -232,7 +250,12 @@ export function buildOmnibarSuggestions(
 
       const bookmarkBoost = entry.isBookmark ? 140 : 0;
       const recencyBoost = calcRecencyBoost(entry.historyRank);
-      const matchLength = calcMatchLength(query, entry.title, entry.url, entry.boardTitle);
+      const matchLength = calcMatchLength(
+        query,
+        entry.title,
+        entry.url,
+        entry.boardTitle,
+      );
 
       return {
         url: entry.url,
@@ -271,5 +294,7 @@ export function buildOmnibarSuggestions(
 
   return ranked
     .slice(0, limit)
-    .map(({ viewedDate: _viewedDate, matchLength: _matchLength, ...rest }) => rest);
+    .map(
+      ({ viewedDate: _viewedDate, matchLength: _matchLength, ...rest }) => rest,
+    );
 }

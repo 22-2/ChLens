@@ -35,7 +35,8 @@ export const MiniWindow: React.FC<MiniWindowProps> = ({
       onClose();
     };
     window.addEventListener("pointerdown", handlePointerDown, true);
-    return () => window.removeEventListener("pointerdown", handlePointerDown, true);
+    return () =>
+      window.removeEventListener("pointerdown", handlePointerDown, true);
   }, [onClose, triggerRef]);
 
   // ESC キーで閉じる
@@ -58,10 +59,17 @@ export const MiniWindow: React.FC<MiniWindowProps> = ({
 
   // ステータスバーの上に表示するため bottom 基準で配置する
   const bottom = window.innerHeight - anchor.top + GAP;
-  const left = Math.max(GAP, Math.min(anchor.left, window.innerWidth - WINDOW_WIDTH - GAP));
+  const left = Math.max(
+    GAP,
+    Math.min(anchor.left, window.innerWidth - WINDOW_WIDTH - GAP),
+  );
 
   return (
-    <div ref={windowRef} className="mini-window" style={{ bottom, left, width: WINDOW_WIDTH }}>
+    <div
+      ref={windowRef}
+      className="mini-window"
+      style={{ bottom, left, width: WINDOW_WIDTH }}
+    >
       <div className="mini-window__header">
         <span className="mini-window__title">{title}</span>
         <button className="mini-window__close" onClick={onClose} title="閉じる">

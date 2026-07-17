@@ -137,7 +137,9 @@ export class BBSMenuParser {
     }
 
     // 板が空のカテゴリを除去
-    menu.categories = menu.categories.filter((category) => category.boards.length > 0);
+    menu.categories = menu.categories.filter(
+      (category) => category.boards.length > 0,
+    );
 
     return menu;
   }

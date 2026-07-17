@@ -15,7 +15,11 @@ export function getPopupViewportBounds(): PopupViewportBounds {
 
   if (statusBar instanceof HTMLElement) {
     const statusBarRect = statusBar.getBoundingClientRect();
-    if (statusBarRect.height > 0 && statusBarRect.top >= 0 && statusBarRect.top < bottom) {
+    if (
+      statusBarRect.height > 0 &&
+      statusBarRect.top >= 0 &&
+      statusBarRect.top < bottom
+    ) {
       bottom = statusBarRect.top;
     }
   }
@@ -36,7 +40,10 @@ export function getPopupViewportBounds(): PopupViewportBounds {
  * position:absolute の場合は offsetParent の座標系（getBoundingClientRect）を使って
  * style.left / style.top を補正するため、スクロールコンテナ内に配置されていても正しく動作する。
  */
-export function useAdjustOverflow(ref: RefObject<HTMLElement | null>, margin = 8): void {
+export function useAdjustOverflow(
+  ref: RefObject<HTMLElement | null>,
+  margin = 8,
+): void {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;

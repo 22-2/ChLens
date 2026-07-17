@@ -44,7 +44,9 @@ const store = {
   index(name: string) {
     return {
       async getAll(query?: unknown) {
-        return [...rows.values()].filter((row) => matchesRange(row[name], query));
+        return [...rows.values()].filter((row) =>
+          matchesRange(row[name], query),
+        );
       },
       async getAllKeys(query?: unknown) {
         return [...rows.values()]

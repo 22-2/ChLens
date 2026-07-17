@@ -14,7 +14,10 @@ interface BoardListPageProps {
   isActive: boolean;
 }
 
-export const BoardListPage: React.FC<BoardListPageProps> = ({ tabId, isActive }) => {
+export const BoardListPage: React.FC<BoardListPageProps> = ({
+  tabId,
+  isActive,
+}) => {
   const { dispatch } = useTabStore();
   const {
     categories,
@@ -32,15 +35,16 @@ export const BoardListPage: React.FC<BoardListPageProps> = ({ tabId, isActive })
     updateOpenStates,
   } = useBoardListLogic();
 
-  const { displayMenus, searchQuery, setSearchQuery, openedMenuValues } = useBoardListDisplay({
-    categories,
-    openStates,
-    removedBoardUrls,
-    removedMenuNames,
-    removedCategoryIds,
-    openedBoardEntries,
-    updateOpenStates,
-  });
+  const { displayMenus, searchQuery, setSearchQuery, openedMenuValues } =
+    useBoardListDisplay({
+      categories,
+      openStates,
+      removedBoardUrls,
+      removedMenuNames,
+      removedCategoryIds,
+      openedBoardEntries,
+      updateOpenStates,
+    });
 
   const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
     pageType: "boardList",
@@ -138,7 +142,10 @@ export const BoardListPage: React.FC<BoardListPageProps> = ({ tabId, isActive })
   const hitCount = displayMenus.reduce(
     (sum, menu) =>
       sum +
-      menu.categories.reduce((categorySum, category) => categorySum + category.boards.length, 0),
+      menu.categories.reduce(
+        (categorySum, category) => categorySum + category.boards.length,
+        0,
+      ),
     0,
   );
 

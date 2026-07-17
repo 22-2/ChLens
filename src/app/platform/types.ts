@@ -65,7 +65,10 @@ export interface KeyValueStore {
   getAll(): Promise<Record<string, string>>;
   onChanged(
     callback: (
-      changes: Record<string, { oldValue: string | null; newValue: string | null }>,
+      changes: Record<
+        string,
+        { oldValue: string | null; newValue: string | null }
+      >,
     ) => void,
   ): void;
 }

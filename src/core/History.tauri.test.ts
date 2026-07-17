@@ -85,6 +85,8 @@ describe("History Tauri branch", () => {
     await History.clearRange(7);
 
     const expected = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    expect(state.tauriHistoryRepository.clearRange).toHaveBeenCalledWith(expected);
+    expect(state.tauriHistoryRepository.clearRange).toHaveBeenCalledWith(
+      expected,
+    );
   });
 });

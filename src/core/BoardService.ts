@@ -1,6 +1,10 @@
 import Board from "src/core/Board.js";
 import { container } from "src/service-container/index";
-import type { IBoardResult, IReadState, IThread } from "src/service-container/interfaces";
+import type {
+  IBoardResult,
+  IReadState,
+  IThread,
+} from "src/service-container/interfaces";
 
 interface BoardGetResult {
   status: "success" | "error";
@@ -36,7 +40,10 @@ const BoardService = {
 
       if (bookmark && bookmark.readState) {
         // 意図: readState は bookmark 側の方が新しい場合があるため、比較して新しい方を採用する。
-        if (!readState || container.util.isNewerReadState(readState, bookmark.readState)) {
+        if (
+          !readState ||
+          container.util.isNewerReadState(readState, bookmark.readState)
+        ) {
           readState = bookmark.readState;
         }
       }

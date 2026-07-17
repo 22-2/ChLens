@@ -9,7 +9,10 @@ import React, {
   type Dispatch,
   type ReactNode,
 } from "react";
-import { add as addHistoryRecord, remove as removeHistoryRecord } from "src/core/History";
+import {
+  add as addHistoryRecord,
+  remove as removeHistoryRecord,
+} from "src/core/History";
 import { platform } from "src/app/platform";
 import browser from "webextension-polyfill";
 import { getStore2String, setStore2String } from "src/app/Store2Storage";
@@ -147,7 +150,9 @@ function isHistoryDisabled(): boolean {
 function deriveHistoryBoardTitle(threadUrl: string): string {
   try {
     const parsed = new window.URL(threadUrl);
-    const match = parsed.pathname.match(/^(?:\/[\w-]+)?\/test\/read\.cgi\/([\w-]+)\/\d+\/?/);
+    const match = parsed.pathname.match(
+      /^(?:\/[\w-]+)?\/test\/read\.cgi\/([\w-]+)\/\d+\/?/,
+    );
     return decodeURIComponent(match?.[1] ?? "");
   } catch {
     return "";
@@ -179,7 +184,10 @@ function reportHistoryPersistenceError(context: string, error: unknown): void {
   });
 }
 
-function clearThreadVisitsForTab(visitStore: Map<string, ThreadHistoryVisit>, tabId: string): void {
+function clearThreadVisitsForTab(
+  visitStore: Map<string, ThreadHistoryVisit>,
+  tabId: string,
+): void {
   for (const key of visitStore.keys()) {
     if (key.startsWith(`${tabId}:`)) {
       visitStore.delete(key);
@@ -214,7 +222,9 @@ function getPageIdentity(page: Page): string {
   throw new Error("Unsupported page type");
 }
 
-function createThreadListPageFromBoardUrl(boardUrl: string): Extract<Page, { type: "threadList" }> {
+function createThreadListPageFromBoardUrl(
+  boardUrl: string,
+): Extract<Page, { type: "threadList" }> {
   const normalized = normalizePageLocation(boardUrl);
   return {
     type: "threadList",
@@ -235,9 +245,12 @@ function resolveRelatedBoardPage(
     return {
       ...sourcePage,
       boardUrl: normalizePageLocation(sourcePage.boardUrl),
-      boardTitle: sourcePage.boardTitle || normalizePageLocation(sourcePage.boardUrl),
+      boardTitle:
+        sourcePage.boardTitle || normalizePageLocation(sourcePage.boardUrl),
       title:
-        sourcePage.title || sourcePage.boardTitle || normalizePageLocation(sourcePage.boardUrl),
+        sourcePage.title ||
+        sourcePage.boardTitle ||
+        normalizePageLocation(sourcePage.boardUrl),
     };
   }
 
@@ -278,22 +291,29 @@ function resolveRelatedBoardPageFromTabHistory(
       continue;
     }
 
-    if (normalizePageLocation(candidate.boardUrl) !== normalizedTargetBoardUrl) {
+    if (
+      normalizePageLocation(candidate.boardUrl) !== normalizedTargetBoardUrl
+    ) {
       continue;
     }
 
     return {
       ...candidate,
       boardUrl: normalizedTargetBoardUrl,
-      boardTitle: candidate.boardTitle || candidate.title || normalizedTargetBoardUrl,
-      title: candidate.title || candidate.boardTitle || normalizedTargetBoardUrl,
+      boardTitle:
+        candidate.boardTitle || candidate.title || normalizedTargetBoardUrl,
+      title:
+        candidate.title || candidate.boardTitle || normalizedTargetBoardUrl,
     };
   }
 
   return null;
 }
 
-function resolveConfiguredNewTabPage(sourcePage: Page | null, sourceTab: Tab | null = null): Page {
+function resolveConfiguredNewTabPage(
+  sourcePage: Page | null,
+  sourceTab: Tab | null = null,
+): Page {
   const mode = resolveNewTabPageMode(readConfigValue("new_tab_page_mode"));
 
   if (mode === "home") {
@@ -312,7 +332,8 @@ function resolveConfiguredNewTabPage(sourcePage: Page | null, sourceTab: Tab | n
   // 変更理由: 「関連する板」タブをスレッドから開くとき、
   // 直前の threadList 履歴にある確定板名を再利用して URL 仮タイトルの残留を防ぐ。
   const relatedBoardPage =
-    resolveRelatedBoardPageFromTabHistory(sourceTab) ?? resolveRelatedBoardPage(sourcePage);
+    resolveRelatedBoardPageFromTabHistory(sourceTab) ??
+    resolveRelatedBoardPage(sourcePage);
   if (relatedBoardPage) {
     return relatedBoardPage;
   }
@@ -320,7 +341,10 @@ function resolveConfiguredNewTabPage(sourcePage: Page | null, sourceTab: Tab | n
   return { type: "home", title: "ホーム" };
 }
 
-function createTab(sourcePage: Page | null = null, sourceTab: Tab | null = null): Tab {
+function createTab(
+  sourcePage: Page | null = null,
+  sourceTab: Tab | null = null,
+): Tab {
   const initialPage = resolveConfiguredNewTabPage(sourcePage, sourceTab);
   return {
     id: crypto.randomUUID(),
@@ -423,7 +447,9 @@ function loadSession(): TabStoreState | null {
       return {
         panes,
         activePaneId,
-        closedTabs: (parsed.closedTabs ?? []).map((tab) => normalizeLoadedTab(tab)),
+        closedTabs: (parsed.closedTabs ?? []).map((tab) =>
+          normalizeLoadedTab(tab),
+        ),
       };
     }
 
@@ -441,7 +467,9 @@ function loadSession(): TabStoreState | null {
       return {
         panes: [pane],
         activePaneId: pane.id,
-        closedTabs: (parsed.closedTabs ?? []).map((tab) => normalizeLoadedTab(tab)),
+        closedTabs: (parsed.closedTabs ?? []).map((tab) =>
+          normalizeLoadedTab(tab),
+        ),
       };
     }
   } catch {
@@ -452,7 +480,10 @@ function loadSession(): TabStoreState | null {
 
 function saveSession(state: TabStoreState): void {
   try {
-    void setStore2String(SESSION_KEY, JSON.stringify(sanitizeSessionState(state)));
+    void setStore2String(
+      SESSION_KEY,
+      JSON.stringify(sanitizeSessionState(state)),
+    );
   } catch {
     // 容量超過等は無視
   }
@@ -463,7 +494,9 @@ const restoredSession = initialPageFromLocation ? null : loadSession();
 const initialState: TabStoreState =
   restoredSession ??
   (() => {
-    const tab = initialPageFromLocation ? createTabFromPage(initialPageFromLocation) : createTab();
+    const tab = initialPageFromLocation
+      ? createTabFromPage(initialPageFromLocation)
+      : createTab();
     const pane = createPane(tab);
     return {
       panes: [pane],
@@ -496,7 +529,9 @@ function updatePane(
 ): TabStoreState {
   return {
     ...state,
-    panes: state.panes.map((pane) => (pane.id === paneId ? updater(pane) : pane)),
+    panes: state.panes.map((pane) =>
+      pane.id === paneId ? updater(pane) : pane,
+    ),
   };
 }
 
@@ -556,7 +591,9 @@ function deriveBoardUrlFromThreadUrl(threadUrl: string): string | null {
 
   try {
     const parsed = new window.URL(threadUrl);
-    const match = parsed.pathname.match(/^(?:\/[\w-]+)?\/test\/read\.cgi\/([\w-]+)\/\d+\/?/);
+    const match = parsed.pathname.match(
+      /^(?:\/[\w-]+)?\/test\/read\.cgi\/([\w-]+)\/\d+\/?/,
+    );
     if (!match) {
       return null;
     }
@@ -584,21 +621,25 @@ function buildCanonicalThreadStack(
   sourceThreadListPage: Extract<Page, { type: "threadList" }> | null,
 ): Page[] {
   const targetBoardUrl = deriveBoardUrlFromThreadUrl(threadPage.threadUrl);
-  const normalizedTargetBoardUrl = targetBoardUrl ? normalizePageLocation(targetBoardUrl) : null;
+  const normalizedTargetBoardUrl = targetBoardUrl
+    ? normalizePageLocation(targetBoardUrl)
+    : null;
 
   const boardPageFromSource =
     sourceThreadListPage &&
     normalizedTargetBoardUrl &&
-    normalizePageLocation(sourceThreadListPage.boardUrl) === normalizedTargetBoardUrl
+    normalizePageLocation(sourceThreadListPage.boardUrl) ===
+      normalizedTargetBoardUrl
       ? sourceThreadListPage
       : null;
 
-  const boardPage: Extract<Page, { type: "threadList" }> = boardPageFromSource ?? {
-    type: "threadList",
-    title: targetBoardUrl ?? threadPage.threadUrl,
-    boardUrl: targetBoardUrl ?? threadPage.threadUrl,
-    boardTitle: targetBoardUrl ?? threadPage.threadUrl,
-  };
+  const boardPage: Extract<Page, { type: "threadList" }> =
+    boardPageFromSource ?? {
+      type: "threadList",
+      title: targetBoardUrl ?? threadPage.threadUrl,
+      boardUrl: targetBoardUrl ?? threadPage.threadUrl,
+      boardTitle: targetBoardUrl ?? threadPage.threadUrl,
+    };
 
   return [...buildCanonicalThreadListStack(boardPage), threadPage];
 }
@@ -625,7 +666,10 @@ function pushClosed(closedTabs: Tab[], tab: Tab): Tab[] {
   return [tab, ...closedTabs].slice(0, MAX_CLOSED_TABS);
 }
 
-function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreState {
+function tabReducer(
+  state: TabStoreState,
+  action: ScopedTabAction,
+): TabStoreState {
   switch (action.type) {
     case "ADD_TAB": {
       const paneId = resolvePaneId(state, action.paneId);
@@ -669,7 +713,10 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       // background フラグが true の場合は、設定値を無視して常にバックグラウンドで開く。
       const newTabForOpen = createTab();
       const sourcePageForOpen = getCurrentPage(getPaneActiveTab(pane));
-      const newHistoryForOpen = buildHierarchyForNewTab(sourcePageForOpen, action.page);
+      const newHistoryForOpen = buildHierarchyForNewTab(
+        sourcePageForOpen,
+        action.page,
+      );
       const shouldFocus = action.background ? false : shouldFocusNewTabOnOpen();
       const nextPane = updatePane(state, paneId, (p) => ({
         ...p,
@@ -695,7 +742,10 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       const pane = getPane(state, paneId);
       const newTabForForce = createTab();
       const sourcePageForForce = getCurrentPage(getPaneActiveTab(pane));
-      const newHistoryForForce = buildHierarchyForNewTab(sourcePageForForce, action.page);
+      const newHistoryForForce = buildHierarchyForNewTab(
+        sourcePageForForce,
+        action.page,
+      );
       return updatePane(state, paneId, (p) => ({
         ...p,
         tabs: [
@@ -740,8 +790,12 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       const paneId = resolvePaneId(state, action.paneId);
       const pane = getPane(state, paneId);
       // 指定タブと固定タブ以外を閉じる
-      const closed = pane.tabs.filter((t) => t.id !== action.tabId && !t.pinned);
-      const remaining = pane.tabs.filter((t) => t.id === action.tabId || t.pinned);
+      const closed = pane.tabs.filter(
+        (t) => t.id !== action.tabId && !t.pinned,
+      );
+      const remaining = pane.tabs.filter(
+        (t) => t.id === action.tabId || t.pinned,
+      );
       if (remaining.length === 0) return state;
       let newClosed = state.closedTabs;
       for (const t of closed) {
@@ -833,7 +887,9 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
     case "TOGGLE_PIN": {
       const paneId = resolvePaneId(state, action.paneId);
       return updatePane(state, paneId, (p) => {
-        const tabs = p.tabs.map((t) => (t.id === action.tabId ? { ...t, pinned: !t.pinned } : t));
+        const tabs = p.tabs.map((t) =>
+          t.id === action.tabId ? { ...t, pinned: !t.pinned } : t,
+        );
         // 固定タブを左に、非固定タブを右に並び替え
         tabs.sort((a, b) => (a.pinned === b.pinned ? 0 : a.pinned ? -1 : 1));
         return { ...p, tabs };
@@ -865,7 +921,9 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       // ピン留めタブは常に左、通常タブは常に右、の不変条件を保って再結合する。
       return updatePane(state, paneId, (p) => ({
         ...p,
-        tabs: dragTab.pinned ? [...reorderedGroup, ...others] : [...others, ...reorderedGroup],
+        tabs: dragTab.pinned
+          ? [...reorderedGroup, ...others]
+          : [...others, ...reorderedGroup],
       }));
     }
 
@@ -904,7 +962,10 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
         return state;
       }
 
-      if (getPageIdentity(getCurrentPage(targetTab)) === getPageIdentity(action.page)) {
+      if (
+        getPageIdentity(getCurrentPage(targetTab)) ===
+        getPageIdentity(action.page)
+      ) {
         return {
           ...updatePane(state, paneId, (p) => ({
             ...p,
@@ -920,7 +981,9 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
           ...p,
           activeTabId: action.tabId,
           tabs: p.tabs.map((t) =>
-            t.id === action.tabId ? resetAutoRefreshState(pushPageToTabHistory(t, action.page)) : t,
+            t.id === action.tabId
+              ? resetAutoRefreshState(pushPageToTabHistory(t, action.page))
+              : t,
           ),
         })),
         activePaneId: paneId,
@@ -1041,7 +1104,9 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
         // 既存タブ集約を経由せず現在タブの履歴と自動更新束縛を同時に更新する。
         return {
           ...nextTab,
-          autoRefreshEnabled: action.keepAutoRefresh ? true : nextTab.autoRefreshEnabled,
+          autoRefreshEnabled: action.keepAutoRefresh
+            ? true
+            : nextTab.autoRefreshEnabled,
           autoRefreshPageKey: action.keepAutoRefresh
             ? getAutoRefreshPageKey(action.page)
             : nextTab.autoRefreshPageKey,
@@ -1054,7 +1119,9 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       return updatePaneActiveTab(state, paneId, (tab) => ({
         ...tab,
         autoRefreshEnabled: action.enabled,
-        autoRefreshPageKey: action.enabled ? (action.pageKey ?? tab.autoRefreshPageKey) : null,
+        autoRefreshPageKey: action.enabled
+          ? (action.pageKey ?? tab.autoRefreshPageKey)
+          : null,
       }));
     }
 
@@ -1068,7 +1135,9 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       const sourceIndex = state.panes.findIndex((p) => p.id === sourcePaneId);
       const sourcePane = state.panes[sourceIndex];
       const sourceActiveTab = sourcePane ? getPaneActiveTab(sourcePane) : null;
-      const sourcePage = sourceActiveTab ? getCurrentPage(sourceActiveTab) : null;
+      const sourcePage = sourceActiveTab
+        ? getCurrentPage(sourceActiveTab)
+        : null;
       const newPane = createPane(createTab(sourcePage, sourceActiveTab));
       const panes = [...state.panes];
       panes.splice(sourceIndex + 1, 0, newPane);
@@ -1111,7 +1180,9 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       if (!movingTab) return state;
 
       // 元ペインから対象タブを除く。空になるなら既定タブを補充してペインを維持する。
-      let remainingSourceTabs = sourcePane.tabs.filter((t) => t.id !== action.tabId);
+      let remainingSourceTabs = sourcePane.tabs.filter(
+        (t) => t.id !== action.tabId,
+      );
       if (remainingSourceTabs.length === 0) {
         remainingSourceTabs = [createTab()];
       }
@@ -1133,7 +1204,11 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
           activeTabId: movingTab.id,
         };
         const panes = state.panes.map((p) =>
-          p.id === sourcePaneId ? updatedSourcePane : p.id === rightPane.id ? updatedRightPane : p,
+          p.id === sourcePaneId
+            ? updatedSourcePane
+            : p.id === rightPane.id
+              ? updatedRightPane
+              : p,
         );
         return { ...state, panes, activePaneId: rightPane.id };
       }
@@ -1142,7 +1217,9 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       if (state.panes.length >= MAX_PANES) return state;
 
       const newPane = createPane(movingTab);
-      const panes = state.panes.map((p) => (p.id === sourcePaneId ? updatedSourcePane : p));
+      const panes = state.panes.map((p) =>
+        p.id === sourcePaneId ? updatedSourcePane : p,
+      );
       panes.splice(sourceIndex + 1, 0, newPane);
       return { ...state, panes, activePaneId: newPane.id };
     }
@@ -1216,7 +1293,9 @@ export interface PaneScopedTabStore {
 }
 
 const TabContext = createContext<TabContextValue | null>(null);
-const TabDispatchContext = createContext<Dispatch<ScopedTabAction> | null>(null);
+const TabDispatchContext = createContext<Dispatch<ScopedTabAction> | null>(
+  null,
+);
 // 各ペインのサブツリーに paneId を供給する。未提供時はアクティブペインにフォールバックする。
 const PaneContext = createContext<{ paneId: string } | null>(null);
 
@@ -1228,7 +1307,9 @@ export const PaneProvider: React.FC<{
   return <PaneContext.Provider value={value}>{children}</PaneContext.Provider>;
 };
 
-export const TabProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const TabProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
   const [state, baseDispatch] = useReducer(tabReducer, initialState);
   const stateRef = useRef(state);
   const threadVisitRef = useRef<Map<string, ThreadHistoryVisit>>(new Map());
@@ -1284,11 +1365,19 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       visit.pending = visit.pending
         .then(async () => {
           await removeHistoryRecord(visit.threadUrl, visit.date);
-          await addHistoryRecord(visit.threadUrl, title, visit.date, visit.boardTitle);
+          await addHistoryRecord(
+            visit.threadUrl,
+            title,
+            visit.date,
+            visit.boardTitle,
+          );
           visit.title = title;
         })
         .catch((error) => {
-          reportHistoryPersistenceError("閲覧履歴タイトルの更新に失敗しました", error);
+          reportHistoryPersistenceError(
+            "閲覧履歴タイトルの更新に失敗しました",
+            error,
+          );
         });
     },
     [],
@@ -1314,7 +1403,10 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
         const prevTab = findTabAcrossPanes(prevState, tabId);
         const prevPage = prevTab ? getCurrentPage(prevTab) : null;
-        if (prevPage?.type === "thread" && prevPage.threadUrl === nextPage.threadUrl) {
+        if (
+          prevPage?.type === "thread" &&
+          prevPage.threadUrl === nextPage.threadUrl
+        ) {
           return;
         }
 
@@ -1336,7 +1428,9 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         case "OPEN_IN_NEW_TAB":
         case "OPEN_IN_NEW_TAB_FORCE":
         case "REOPEN_CLOSED_TAB": {
-          const prevTabIds = new Set(prevState.panes.flatMap((p) => p.tabs).map((tab) => tab.id));
+          const prevTabIds = new Set(
+            prevState.panes.flatMap((p) => p.tabs).map((tab) => tab.id),
+          );
           const insertedTab = nextState.panes
             .flatMap((p) => p.tabs)
             .find((tab) => !prevTabIds.has(tab.id));
@@ -1397,7 +1491,9 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // アクティブタブのページタイトルが変わったらウィンドウタイトルを更新する
   useEffect(() => {
-    const title = currentPage.title ? `${currentPage.title} - read.crx 2` : "read.crx 2";
+    const title = currentPage.title
+      ? `${currentPage.title} - read.crx 2`
+      : "read.crx 2";
     platform.window.setTitle(title).catch(() => {});
   }, [currentPage.title]);
 
@@ -1493,7 +1589,9 @@ export function useTabStore(): PaneScopedTabStore {
   const dispatch = useMemo<Dispatch<ScopedTabAction>>(
     () => (action) => {
       // 既に paneId を持つアクション（ペイン管理系の明示指定）はそのまま流す。
-      globalDispatch(action.paneId !== undefined ? action : { ...action, paneId });
+      globalDispatch(
+        action.paneId !== undefined ? action : { ...action, paneId },
+      );
     },
     [globalDispatch, paneId],
   );

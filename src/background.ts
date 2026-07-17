@@ -40,7 +40,10 @@ const focusTabById = async (tabId: number): Promise<void> => {
 };
 
 // 指定されたウィンドウID、または現在のウィンドウにタブを作成
-const createTabInWindow = async (url: string, windowId?: number): Promise<browser.Tabs.Tab> => {
+const createTabInWindow = async (
+  url: string,
+  windowId?: number,
+): Promise<browser.Tabs.Tab> => {
   const targetWindowId = windowId ?? (await browser.windows.getCurrent()).id;
   return browser.tabs.create({ url, active: true, windowId: targetWindowId });
 };

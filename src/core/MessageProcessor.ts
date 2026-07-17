@@ -50,10 +50,16 @@ export default class MessageProcessor {
 
     let nameHtml = (res.name || "")
       .replace(/<\/?a[^>]*>/g, "")
-      .replace(/<(?!\/?(?:b|small|font(?: color="?[#a-zA-Z0-9]+"?)?)>)/g, "&lt;");
+      .replace(
+        /<(?!\/?(?:b|small|font(?: color="?[#a-zA-Z0-9]+"?)?)>)/g,
+        "&lt;",
+      );
 
     if (res.trip) {
-      nameHtml = nameHtml.replace(res.trip, `<span class="trip">${res.trip}</span>`);
+      nameHtml = nameHtml.replace(
+        res.trip,
+        `<span class="trip">${res.trip}</span>`,
+      );
     }
     parts.nameHtml = nameHtml;
 
@@ -99,7 +105,10 @@ export default class MessageProcessor {
     }
 
     if (res.date) {
-      otherHtml = otherHtml.replace(res.date, `<time class="date">${res.date}</time>`);
+      otherHtml = otherHtml.replace(
+        res.date,
+        `<time class="date">${res.date}</time>`,
+      );
     }
     parts.otherHtml = otherHtml;
 

@@ -2,7 +2,13 @@ import { DragDropProvider } from "@dnd-kit/react";
 import { isSortableOperation, useSortable } from "@dnd-kit/react/sortable";
 import { Pin, Plus, X } from "lucide-react";
 import normalizeWheel from "normalize-wheel";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { TabContextMenu } from "src/view/browser/components/TabContextMenu";
 import { useAutoScrollState } from "src/view/browser/hooks/use-auto-scroll-state";
@@ -100,16 +106,30 @@ const SortableTab: React.FC<SortableTabProps> = ({
       onMouseDown={handleMouseDown}
       onContextMenu={(e) => onContextMenu(e, tab)}
     >
-      {tab.pinned ? <Pin size={12} /> : <span className="tab__title">{page.title}</span>}
+      {tab.pinned ? (
+        <Pin size={12} />
+      ) : (
+        <span className="tab__title">{page.title}</span>
+      )}
       {/* 変更理由: タブが非アクティブでも自動更新設定は残るため、
           実行中/待機中を区別できるインジケーターを常時表示する。 */}
       {autoRefreshIndicatorState != null && !tab.pinned && (
         <span
           className={`tab__auto-refresh-indicator${
-            autoRefreshIndicatorState === "inactive" ? " tab__auto-refresh-indicator--inactive" : ""
+            autoRefreshIndicatorState === "inactive"
+              ? " tab__auto-refresh-indicator--inactive"
+              : ""
           }`}
-          title={autoRefreshIndicatorState === "active" ? "自動更新: 動作中" : "自動更新: 待機中"}
-          aria-label={autoRefreshIndicatorState === "active" ? "自動更新動作中" : "自動更新待機中"}
+          title={
+            autoRefreshIndicatorState === "active"
+              ? "自動更新: 動作中"
+              : "自動更新: 待機中"
+          }
+          aria-label={
+            autoRefreshIndicatorState === "active"
+              ? "自動更新動作中"
+              : "自動更新待機中"
+          }
         />
       )}
       {!tab.pinned && tabCount > 1 && (
@@ -133,9 +153,14 @@ export const TabBar: React.FC = () => {
   const { canAutoScroll, isAutoScrolling, isPaused } = useAutoScrollState();
   const barRef = useRef<HTMLDivElement | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
-  const [barContextMenu, setBarContextMenu] = useState<BarContextMenuState | null>(null);
-  const [highlightedTabIds, setHighlightedTabIds] = useState<Set<string>>(new Set());
-  const prevTabIdsRef = useRef<Set<string>>(new Set(state.tabs.map((tab) => tab.id)));
+  const [barContextMenu, setBarContextMenu] =
+    useState<BarContextMenuState | null>(null);
+  const [highlightedTabIds, setHighlightedTabIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const prevTabIdsRef = useRef<Set<string>>(
+    new Set(state.tabs.map((tab) => tab.id)),
+  );
   const lastWheelSwitchAtRef = useRef(0);
   // ドラッグ終了直後の click イベントによるタブ選択を抑止するためのフラグ。
   const wasDraggingRef = useRef(false);
@@ -143,7 +168,9 @@ export const TabBar: React.FC = () => {
   useEffect(() => {
     const prev = prevTabIdsRef.current;
     const current = new Set(state.tabs.map((tab) => tab.id));
-    const newIds = state.tabs.map((tab) => tab.id).filter((tabId) => !prev.has(tabId));
+    const newIds = state.tabs
+      .map((tab) => tab.id)
+      .filter((tabId) => !prev.has(tabId));
 
     if (newIds.length > 0) {
       setHighlightedTabIds((prevIds) => {
@@ -188,7 +215,9 @@ export const TabBar: React.FC = () => {
       const cooldownMs = Math.max(
         0,
         TAB_SWITCH_WHEEL_BASE_COOLDOWN_MS -
-          2 * (Math.abs(normalizedWheel.pixelX) + Math.abs(normalizedWheel.pixelY)),
+          2 *
+            (Math.abs(normalizedWheel.pixelX) +
+              Math.abs(normalizedWheel.pixelY)),
       );
       if (now - lastWheelSwitchAtRef.current < cooldownMs) {
         return;
@@ -197,7 +226,9 @@ export const TabBar: React.FC = () => {
       // stateRef はグローバル状態を指すので、自ペインを解決してからタブ列を取り出す。
       const pane =
         stateRef.current.panes.find((p) => p.id === paneId) ??
-        stateRef.current.panes.find((p) => p.id === stateRef.current.activePaneId);
+        stateRef.current.panes.find(
+          (p) => p.id === stateRef.current.activePaneId,
+        );
       if (!pane) return;
       const tabs = pane.tabs;
       const currentIdx = tabs.findIndex((t) => t.id === pane.activeTabId);
@@ -308,14 +339,19 @@ export const TabBar: React.FC = () => {
           {state.tabs.map((tab, index) => {
             const page = getCurrentPage(tab);
             const isActive = tab.id === state.activeTabId;
-            const isPageAutoRefreshEnabled = isAutoRefreshEnabledForPage(tab, page);
+            const isPageAutoRefreshEnabled = isAutoRefreshEnabledForPage(
+              tab,
+              page,
+            );
             // 変更理由: スレ/スレ一覧どちらも同じページ単位の自動更新として扱い、
             // タブ上の表示だけ別判定になってズレるのを防ぐ。
             const autoRefreshIndicatorState: "active" | "inactive" | null =
               page.type === "thread" || page.type === "threadList"
                 ? isPageAutoRefreshEnabled
                   ? page.type === "thread"
-                    ? isActive && !isPaused && (canAutoScroll || isAutoScrolling)
+                    ? isActive &&
+                      !isPaused &&
+                      (canAutoScroll || isAutoScrolling)
                       ? "active"
                       : "inactive"
                     : isActive

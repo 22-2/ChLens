@@ -38,7 +38,9 @@ export const Omnibar: React.FC<OmnibarProps> = ({
   trailingAction,
 }) => {
   return (
-    <div className={`nav-bar__url${trailingAction ? " nav-bar__url--has-action" : ""}`}>
+    <div
+      className={`nav-bar__url${trailingAction ? " nav-bar__url--has-action" : ""}`}
+    >
       <input
         ref={inputRef}
         className="nav-bar__url-input"
@@ -52,11 +54,15 @@ export const Omnibar: React.FC<OmnibarProps> = ({
         spellCheck={false}
       />
 
-      {trailingAction ? <div className="nav-bar__url-action">{trailingAction}</div> : null}
+      {trailingAction ? (
+        <div className="nav-bar__url-action">{trailingAction}</div>
+      ) : null}
 
       {isOpen ? (
         <div className="nav-bar__omnibar" role="listbox" aria-label="候補">
-          {isLoading ? <div className="nav-bar__omnibar-empty">候補を読み込み中...</div> : null}
+          {isLoading ? (
+            <div className="nav-bar__omnibar-empty">候補を読み込み中...</div>
+          ) : null}
 
           {!isLoading && suggestions.length > 0
             ? suggestions.map((suggestion, index) => (
@@ -64,7 +70,9 @@ export const Omnibar: React.FC<OmnibarProps> = ({
                   key={suggestion.url}
                   type="button"
                   className={`nav-bar__omnibar-item${
-                    index === activeSuggestionIndex ? " nav-bar__omnibar-item--active" : ""
+                    index === activeSuggestionIndex
+                      ? " nav-bar__omnibar-item--active"
+                      : ""
                   }`}
                   role="option"
                   aria-selected={index === activeSuggestionIndex}
@@ -76,14 +84,18 @@ export const Omnibar: React.FC<OmnibarProps> = ({
                   onClick={() => onSuggestionSelect(suggestion)}
                   title={`${suggestion.title} ${suggestion.url}`}
                 >
-                  <span className="nav-bar__omnibar-title">{suggestion.title}</span>
+                  <span className="nav-bar__omnibar-title">
+                    {suggestion.title}
+                  </span>
                   <span className="nav-bar__omnibar-url">{suggestion.url}</span>
                 </button>
               ))
             : null}
 
           {shouldShowNoMatch ? (
-            <div className="nav-bar__omnibar-empty">一致する候補がありません</div>
+            <div className="nav-bar__omnibar-empty">
+              一致する候補がありません
+            </div>
           ) : null}
         </div>
       ) : null}

@@ -4,9 +4,15 @@ import { ResBody } from "src/view/browser/components/ResBody";
 import { ResMediaGallery } from "src/view/browser/components/ResMediaGallery";
 import { useIsNgTemporarilyDisabled } from "src/view/browser/hooks/use-ng-status";
 import { getIdHeatColor } from "src/view/browser/utils/id-heat";
-import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
+import type {
+  UrlClickHandler,
+  UrlContextMenuHandler,
+} from "src/view/browser/utils/link-routing";
 import { getReplyHeatLevel } from "src/view/browser/utils/reply-heat";
-import { decodeResponseHtml, extractUrlsFromMessage } from "src/view/browser/utils/utils";
+import {
+  decodeResponseHtml,
+  extractUrlsFromMessage,
+} from "src/view/browser/utils/utils";
 
 export const ResItem: React.FC<ResItemProps> = React.memo(
   ({
@@ -33,12 +39,23 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
     // res.ng はサービス層がNGワード照合した結果を格納するフィールド。
     // 古いビューは class[] の "ng" 要素で判定していたが、new viewでは res.ng を優先チェックする。
     // 一時解除中はデータ自体を消さずに表示判定だけをオフにして、復帰時の再評価コストを避ける。
-    const isNG = !isNgTemporarilyDisabled && (res.ng != null || res.class?.includes("ng"));
-    const decoded = useMemo(() => decodeResponseHtml(res, messageProtocol), [messageProtocol, res]);
-    const urls = useMemo(() => extractUrlsFromMessage(decoded.messageHtml), [decoded.messageHtml]);
+    const isNG =
+      !isNgTemporarilyDisabled && (res.ng != null || res.class?.includes("ng"));
+    const decoded = useMemo(
+      () => decodeResponseHtml(res, messageProtocol),
+      [messageProtocol, res],
+    );
+    const urls = useMemo(
+      () => extractUrlsFromMessage(decoded.messageHtml),
+      [decoded.messageHtml],
+    );
     const replyHeat = getReplyHeatLevel(repCount);
     const resNumClassName = `res__num${
-      replyHeat === "hot" ? " res__num--hot" : replyHeat === "warm" ? " res__num--warm" : ""
+      replyHeat === "hot"
+        ? " res__num--hot"
+        : replyHeat === "warm"
+          ? " res__num--warm"
+          : ""
     }`;
     const repClassName = `res__rep${
       replyHeat === "hot"
@@ -81,13 +98,24 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
       >
         <header className="res__header">
           <span className={resNumClassName}>{res.num}</span>
-          <span className={nameClassName} dangerouslySetInnerHTML={{ __html: decoded.nameHtml }} />
-          {isOwn ? <span className="res__badge res__badge--own">自分</span> : null}
-          {isReplyToOwn ? <span className="res__badge res__badge--reply-to-own">返信</span> : null}
+          <span
+            className={nameClassName}
+            dangerouslySetInnerHTML={{ __html: decoded.nameHtml }}
+          />
+          {isOwn ? (
+            <span className="res__badge res__badge--own">自分</span>
+          ) : null}
+          {isReplyToOwn ? (
+            <span className="res__badge res__badge--reply-to-own">返信</span>
+          ) : null}
           {res.id && (
             <span
               className={`res__id${
-                idCount >= 5 ? " res__id--freq" : idCount >= 2 ? " res__id--link" : ""
+                idCount >= 5
+                  ? " res__id--freq"
+                  : idCount >= 2
+                    ? " res__id--link"
+                    : ""
               }`}
               // IDは出現数に応じて連続色にして、少数/中間/多投稿の密度差を一目で判別しやすくする。
               style={{ color: getIdHeatColor(idCount) }}
@@ -116,7 +144,9 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
         <ResBody
           messageHtml={decoded.messageHtml}
           anchorPreviewDepth={0}
-          onUrlClick={(url, button, mode) => onUrlClick(url, undefined, button, mode)}
+          onUrlClick={(url, button, mode) =>
+            onUrlClick(url, undefined, button, mode)
+          }
           onUrlContextMenu={(url, e, mode) => onUrlContextMenu(url, e, mode)}
           onIdLinkClick={onIdClick}
           onAnchorClick={onAnchorClick}
@@ -148,7 +178,12 @@ export interface ResItemProps {
   onUrlClick: UrlClickHandler;
   onUrlContextMenu: UrlContextMenuHandler;
   onAnchorClick: (resNum: number) => void;
-  onAnchorHover: (targets: number[], anchorRect: DOMRect, label: string, depth: number) => void;
+  onAnchorHover: (
+    targets: number[],
+    anchorRect: DOMRect,
+    label: string,
+    depth: number,
+  ) => void;
   onAnchorLeave: (fromDepth: number) => void;
   onContextMenu: (e: React.MouseEvent, res: IRes) => void;
   isOwn: boolean;

@@ -40,7 +40,9 @@ describe("useThreadTopScrollOpenFilter", () => {
   it("スレ最上部で上方向へホイールするとフィルタバーを開く", () => {
     render(<WheelFilterHarness />);
 
-    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
+    const scrollContainer = screen.getByTestId(
+      "scroll-container",
+    ) as HTMLDivElement;
     Object.defineProperty(scrollContainer, "scrollTop", {
       configurable: true,
       get: () => 0,
@@ -55,7 +57,9 @@ describe("useThreadTopScrollOpenFilter", () => {
   it("まだ上端に達していない時はフィルタバーを開かない", () => {
     render(<WheelFilterHarness />);
 
-    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
+    const scrollContainer = screen.getByTestId(
+      "scroll-container",
+    ) as HTMLDivElement;
     Object.defineProperty(scrollContainer, "scrollTop", {
       configurable: true,
       get: () => 24,
@@ -70,7 +74,9 @@ describe("useThreadTopScrollOpenFilter", () => {
   it("Ctrl+wheel のズーム操作ではフィルタバーを開かない", () => {
     render(<WheelFilterHarness />);
 
-    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
+    const scrollContainer = screen.getByTestId(
+      "scroll-container",
+    ) as HTMLDivElement;
     Object.defineProperty(scrollContainer, "scrollTop", {
       configurable: true,
       get: () => 0,
