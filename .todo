@@ -481,6 +481,6 @@ http://bbs.eddibb.cc/test/read.cgi/liveedge/1779114452/
 - [ ] メモリセーバー（自動タブunmount）
 - [ ] スクロール位置の復元が出来たから、もうdisplay: hiddenでタブ切り替えはいらない？
 - [ ] 簡易aiチャット
-
+- [ ] コマンドパレット -> [Spotlight | Mantine](https://mantine.dev/x/spotlight/)
+  - 追加するつもりはなかったが、これ以上uiをシンプルにしたまま拡張するのはむりやな
 ## メタ
-
