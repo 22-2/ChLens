@@ -8,6 +8,7 @@ import "sonner/dist/styles.css";
 import { AutoRefreshStatusItem } from "src/view/browser/components/AutoRefreshStatusItem";
 import { BookmarkRootSelectorDialog } from "src/view/browser/components/BookmarkRootSelectorDialog";
 import { BottomPanel } from "src/view/browser/components/BottomPanel";
+import { CommandPalette } from "src/view/browser/components/CommandPalette";
 import { ContentArea } from "src/view/browser/components/ContentArea";
 import { IkioiStatusItem } from "src/view/browser/components/IkioiStatusItem";
 import { NavigationBar } from "src/view/browser/components/NavigationBar";
@@ -117,6 +118,9 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
               </div>
               <ContentArea />
               <BottomPanel />
+              {/* コマンドは操作元のペイン状態を使うためペイン内に置き、
+                  Spotlight本体は重複しないようアクティブペインだけでマウントする。 */}
+              {isActive && <CommandPalette />}
               {/* 以下はこのペインの StatusBarProvider に項目を登録する。 */}
               <NgStatusItem />
               <IkioiStatusItem />

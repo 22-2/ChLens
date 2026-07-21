@@ -1,0 +1,522 @@
+import type { Dispatch } from "react";
+import {
+  Archive,
+  Bookmark,
+  Clipboard,
+  Columns2,
+  ExternalLink,
+  Filter,
+  History,
+  List,
+  PenLine,
+  RotateCw,
+  Settings,
+  Star,
+  type LucideIcon,
+} from "lucide-react";
+import { ChURL, HOSTNAME } from "packages/ch-lib/src/index";
+import { container } from "src/service-container";
+import type { ScopedTabAction } from "src/view/browser/hooks/use-tab-store";
+import type { Page, Tab } from "src/view/browser/types";
+import { getCurrentPage } from "src/view/browser/types";
+import {
+  QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE,
+  type QuickAccessFilterPageType,
+} from "src/view/browser/utils/filter-toolbar-events";
+import {
+  getBoardUrlFromThreadUrl,
+  parseInternalBrowserPage,
+} from "src/view/browser/utils/link-routing";
+import { copyText } from "src/view/browser/utils/utils";
+
+export const BROWSER_COMMAND_GROUP_LABELS = {
+  navigation: "移動",
+  page: "現在のページ",
+  layout: "表示",
+  copy: "コピー",
+} as const;
+
+export type BrowserCommandGroup = keyof typeof BROWSER_COMMAND_GROUP_LABELS;
+
+export const BROWSER_COMMAND_GROUP_ORDER: readonly BrowserCommandGroup[] = [
+  "navigation",
+  "page",
+  "layout",
+  "copy",
+];
+
+export interface BrowserCommandContext {
+  currentPage: Page;
+  activeTab: Tab;
+  tabs: readonly Tab[];
+  isTwoPane: boolean;
+  isWritePanelOpen: boolean;
+  dispatch: Dispatch<ScopedTabAction>;
+  toggleWritePanel: () => void;
+}
+
+export interface BrowserCommandDefinition {
+  id: string;
+  label: string | ((context: BrowserCommandContext) => string);
+  description?: string;
+  keywords?: readonly string[];
+  group: BrowserCommandGroup;
+  icon: LucideIcon;
+  when?: (context: BrowserCommandContext) => boolean;
+  isEnabled?: (context: BrowserCommandContext) => boolean;
+  run: (context: BrowserCommandContext) => void | Promise<void>;
+}
+
+export interface ResolvedBrowserCommand {
+  id: string;
+  label: string;
+  description?: string;
+  keywords: readonly string[];
+  group: BrowserCommandGroup;
+  icon: LucideIcon;
+  enabled: boolean;
+}
+
+interface CommandPageTarget {
+  url: string;
+  title: string;
+  bookmarkType: "thread" | "board";
+}
+
+type QuickAccessPage = Extract<
+  Page,
+  {
+    type: "bookmarkList" | "historyList" | "writeHistoryList" | "logList";
+  }
+>;
+
+const RELOADABLE_PAGE_TYPES = new Set<Page["type"]>([
+  "thread",
+  "threadList",
+  "historyList",
+  "writeHistoryList",
+  "logList",
+]);
+
+const FILTERABLE_PAGE_TYPES = new Set<Page["type"]>([
+  "thread",
+  "boardList",
+  "threadList",
+  "bookmarkList",
+  "historyList",
+  "writeHistoryList",
+  "logList",
+]);
+
+export function getCommandPageTarget(page: Page): CommandPageTarget | null {
+  switch (page.type) {
+    case "thread":
+      return {
+        url: page.threadUrl,
+        title: page.title || page.threadUrl,
+        bookmarkType: "thread",
+      };
+
+    case "threadList":
+      return {
+        url: page.boardUrl,
+        title: page.boardTitle || page.title || page.boardUrl,
+        bookmarkType: "board",
+      };
+
+    default:
+      return null;
+  }
+}
+
+function getNormalizedCommandPageUrl(page: Page): string | null {
+  const target = getCommandPageTarget(page);
+  if (!target) return null;
+
+  const parsed = parseInternalBrowserPage(target.url);
+  const normalizedUrl =
+    parsed?.type === "thread"
+      ? parsed.threadUrl
+      : parsed?.type === "threadList"
+        ? parsed.boardUrl
+        : target.url;
+
+  try {
+    const hostname = new URL(normalizedUrl).hostname;
+    // 変更理由: itest URLのoriginからdat/subject.txtを組み立てても取得不能なので、
+    // bbsmenu由来の実サーバーへ解決できなかった場合はコマンド自体を隠す。
+    if (
+      hostname === HOSTNAME.ITEST_5CH ||
+      hostname === HOSTNAME.ITEST_BBSPINK
+    ) {
+      return null;
+    }
+  } catch {
+    return null;
+  }
+
+  return normalizedUrl;
+}
+
+function deriveRawUrl(
+  page: Page,
+  derive: (url: ChURL) => string | null,
+): string | null {
+  const normalizedUrl = getNormalizedCommandPageUrl(page);
+  if (!normalizedUrl) return null;
+
+  try {
+    return derive(new ChURL(normalizedUrl));
+  } catch {
+    return null;
+  }
+}
+
+export function getSubjectUrlForCommand(page: Page): string | null {
+  return deriveRawUrl(page, (url) => url.getSubjectUrl());
+}
+
+export function getDatUrlForCommand(page: Page): string | null {
+  if (page.type !== "thread") return null;
+  return deriveRawUrl(page, (url) => url.getDatUrl());
+}
+
+function getBoardPageFromThread(
+  page: Page,
+): Extract<Page, { type: "threadList" }> | null {
+  if (page.type !== "thread") return null;
+
+  const boardUrl = getBoardUrlFromThreadUrl(page.threadUrl);
+  if (boardUrl === page.threadUrl) return null;
+
+  return {
+    type: "threadList",
+    title: boardUrl,
+    boardUrl,
+    boardTitle: boardUrl,
+  };
+}
+
+function openSettings(context: BrowserCommandContext): void {
+  const existingSettingsTab = context.tabs.find(
+    (tab) => getCurrentPage(tab).type === "settings",
+  );
+
+  if (existingSettingsTab) {
+    context.dispatch({ type: "SELECT_TAB", tabId: existingSettingsTab.id });
+    return;
+  }
+
+  context.dispatch({ type: "ADD_TAB" });
+  context.dispatch({
+    type: "NAVIGATE",
+    page: { type: "settings", title: "設定" },
+  });
+}
+
+function openQuickAccessPage(
+  context: BrowserCommandContext,
+  page: QuickAccessPage,
+): void {
+  context.dispatch({ type: "NAVIGATE", page });
+}
+
+function toggleFilter(context: BrowserCommandContext): void {
+  if (context.currentPage.type === "thread") {
+    window.dispatchEvent(
+      new window.CustomEvent("thread-filter-toolbar-toggle"),
+    );
+    return;
+  }
+
+  const pageType = context.currentPage.type as QuickAccessFilterPageType;
+  const eventName = QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE[pageType];
+  if (!eventName) return;
+
+  window.dispatchEvent(
+    new window.CustomEvent(eventName, {
+      detail: { tabId: context.activeTab.id },
+    }),
+  );
+}
+
+function toggleBookmark(context: BrowserCommandContext): void {
+  const target = getCommandPageTarget(context.currentPage);
+  if (!target) return;
+
+  const isBookmarked = Boolean(container.bookmark.get(target.url));
+  if (isBookmarked) {
+    container.bookmark.remove(target.url);
+    container.toast.info("ブックマークを削除しました");
+    return;
+  }
+
+  container.bookmark.add({
+    url: target.url,
+    title: target.title,
+    type: target.bookmarkType,
+  });
+  container.toast.info("ブックマークに追加しました");
+}
+
+async function copyWithNotice(text: string, label: string): Promise<void> {
+  await copyText(text);
+  container.toast.success(`${label}をコピーしました`);
+}
+
+function getCommandLabel(
+  definition: BrowserCommandDefinition,
+  context: BrowserCommandContext,
+): string {
+  return typeof definition.label === "function"
+    ? definition.label(context)
+    : definition.label;
+}
+
+export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] =
+  [
+    {
+      id: "navigation.open-settings",
+      label: "設定を開く",
+      description: "アプリの設定画面を開きます",
+      keywords: ["preferences", "config", "オプション"],
+      group: "navigation",
+      icon: Settings,
+      run: openSettings,
+    },
+    {
+      id: "navigation.open-bookmarks",
+      label: "ブックマークリストを開く",
+      keywords: ["お気に入り", "favorite", "bookmark"],
+      group: "navigation",
+      icon: Bookmark,
+      run: (context) =>
+        openQuickAccessPage(context, {
+          type: "bookmarkList",
+          title: "ブックマークリスト",
+        }),
+    },
+    {
+      id: "navigation.open-history",
+      label: "閲覧履歴を開く",
+      keywords: ["history", "最近見た"],
+      group: "navigation",
+      icon: History,
+      run: (context) =>
+        openQuickAccessPage(context, {
+          type: "historyList",
+          title: "閲覧履歴",
+        }),
+    },
+    {
+      id: "navigation.open-write-history",
+      label: "書き込み履歴を開く",
+      keywords: ["投稿履歴", "write history"],
+      group: "navigation",
+      icon: PenLine,
+      run: (context) =>
+        openQuickAccessPage(context, {
+          type: "writeHistoryList",
+          title: "書き込み履歴",
+        }),
+    },
+    {
+      id: "navigation.open-log-search",
+      label: "ログ検索を開く",
+      keywords: ["過去ログ", "archive", "log"],
+      group: "navigation",
+      icon: Archive,
+      run: (context) =>
+        openQuickAccessPage(context, {
+          type: "logList",
+          title: "ログ検索",
+        }),
+    },
+    {
+      id: "page.reload",
+      label: "現在のページを更新",
+      keywords: ["再読み込み", "reload", "refresh"],
+      group: "page",
+      icon: RotateCw,
+      when: ({ currentPage }) => RELOADABLE_PAGE_TYPES.has(currentPage.type),
+      run: ({ dispatch }) => dispatch({ type: "RELOAD" }),
+    },
+    {
+      id: "page.toggle-filter",
+      label: "フィルターを切り替え",
+      keywords: ["検索", "絞り込み", "filter"],
+      group: "page",
+      icon: Filter,
+      when: ({ currentPage }) => FILTERABLE_PAGE_TYPES.has(currentPage.type),
+      run: toggleFilter,
+    },
+    {
+      id: "page.toggle-write-panel",
+      label: ({ isWritePanelOpen }) =>
+        isWritePanelOpen ? "書き込みパネルを閉じる" : "書き込みパネルを開く",
+      keywords: ["投稿", "write", "レス"],
+      group: "page",
+      icon: PenLine,
+      when: ({ currentPage }) => currentPage.type === "thread",
+      run: ({ toggleWritePanel }) => toggleWritePanel(),
+    },
+    {
+      id: "page.toggle-bookmark",
+      label: "現在のページのブックマークを切り替え",
+      keywords: ["お気に入り", "star", "bookmark"],
+      group: "page",
+      icon: Star,
+      when: ({ currentPage }) => getCommandPageTarget(currentPage) != null,
+      run: toggleBookmark,
+    },
+    {
+      id: "page.open-board",
+      label: "このスレッドの板を新しいタブで開く",
+      keywords: ["板に移動", "board", "掲示板"],
+      group: "page",
+      icon: List,
+      when: ({ currentPage }) => getBoardPageFromThread(currentPage) != null,
+      run: ({ currentPage, dispatch }) => {
+        const boardPage = getBoardPageFromThread(currentPage);
+        if (!boardPage) return;
+        dispatch({ type: "OPEN_IN_NEW_TAB", page: boardPage });
+      },
+    },
+    {
+      id: "page.open-external",
+      label: "現在のページを外部ブラウザで開く",
+      keywords: ["browser", "web", "外部"],
+      group: "page",
+      icon: ExternalLink,
+      when: ({ currentPage }) => getCommandPageTarget(currentPage) != null,
+      run: ({ currentPage }) => {
+        const target = getCommandPageTarget(currentPage);
+        if (!target) return;
+        window.open(target.url, "_blank", "noopener,noreferrer");
+      },
+    },
+    {
+      id: "layout.toggle-pane",
+      label: ({ isTwoPane }) =>
+        isTwoPane ? "2ペイン表示を解除" : "2ペインで表示",
+      keywords: ["分割", "split", "pane", "レイアウト"],
+      group: "layout",
+      icon: Columns2,
+      run: ({ dispatch, isTwoPane }) =>
+        dispatch({ type: isTwoPane ? "CLOSE_PANE" : "SPLIT_PANE" }),
+    },
+    {
+      id: "copy.page-title",
+      label: "現在のページタイトルをコピー",
+      keywords: ["スレタイ", "板名", "title"],
+      group: "copy",
+      icon: Clipboard,
+      when: ({ currentPage }) => getCommandPageTarget(currentPage) != null,
+      run: async ({ currentPage }) => {
+        const target = getCommandPageTarget(currentPage);
+        if (!target) return;
+        await copyWithNotice(target.title, "ページタイトル");
+      },
+    },
+    {
+      id: "copy.page-url",
+      label: "現在のページURLをコピー",
+      keywords: ["アドレス", "link", "URL"],
+      group: "copy",
+      icon: Clipboard,
+      when: ({ currentPage }) => getCommandPageTarget(currentPage) != null,
+      run: async ({ currentPage }) => {
+        const target = getCommandPageTarget(currentPage);
+        if (!target) return;
+        await copyWithNotice(target.url, "ページURL");
+      },
+    },
+    {
+      id: "copy.page-title-url",
+      label: "ページタイトルとURLをコピー",
+      keywords: ["スレタイ&URL", "title link"],
+      group: "copy",
+      icon: Clipboard,
+      when: ({ currentPage }) => getCommandPageTarget(currentPage) != null,
+      run: async ({ currentPage }) => {
+        const target = getCommandPageTarget(currentPage);
+        if (!target) return;
+        await copyWithNotice(`${target.title}\n${target.url}`, "タイトルとURL");
+      },
+    },
+    {
+      id: "copy.subject-url",
+      label: "subject.txtのURLをコピー",
+      description: "現在の板のスレッド一覧取得URLをコピーします",
+      keywords: ["subject", "raw", "板一覧", "生URL"],
+      group: "copy",
+      icon: Clipboard,
+      when: ({ currentPage }) => getSubjectUrlForCommand(currentPage) != null,
+      run: async ({ currentPage }) => {
+        const subjectUrl = getSubjectUrlForCommand(currentPage);
+        if (!subjectUrl) return;
+        await copyWithNotice(subjectUrl, "subject.txtのURL");
+      },
+    },
+    {
+      id: "copy.dat-url",
+      label: "datのURLをコピー",
+      description: "現在のスレッドのdat取得URLをコピーします",
+      keywords: ["dat", "raw", "過去ログ", "生URL"],
+      group: "copy",
+      icon: Clipboard,
+      when: ({ currentPage }) => getDatUrlForCommand(currentPage) != null,
+      run: async ({ currentPage }) => {
+        const datUrl = getDatUrlForCommand(currentPage);
+        if (!datUrl) return;
+        await copyWithNotice(datUrl, "datのURL");
+      },
+    },
+  ];
+
+export function resolveBrowserCommands(
+  context: BrowserCommandContext,
+  runningCommandIds: ReadonlySet<string> = new Set(),
+): ResolvedBrowserCommand[] {
+  return BROWSER_COMMAND_DEFINITIONS.filter(
+    (definition) => definition.when?.(context) ?? true,
+  ).map((definition) => ({
+    id: definition.id,
+    label: getCommandLabel(definition, context),
+    description: definition.description,
+    keywords: definition.keywords ?? [],
+    group: definition.group,
+    icon: definition.icon,
+    enabled:
+      !runningCommandIds.has(definition.id) &&
+      (definition.isEnabled?.(context) ?? true),
+  }));
+}
+
+export async function executeBrowserCommand(
+  commandId: string,
+  context: BrowserCommandContext,
+): Promise<boolean> {
+  const definition = BROWSER_COMMAND_DEFINITIONS.find(
+    (command) => command.id === commandId,
+  );
+  if (!definition) return false;
+
+  // 変更理由: パレットを開いたままページ状態が変わる可能性があるため、
+  // 表示時の判定を信用せず実行直前にも可否を確認する。
+  if (!(definition.when?.(context) ?? true)) return false;
+  if (!(definition.isEnabled?.(context) ?? true)) return false;
+
+  await definition.run(context);
+  return true;
+}
+
+export function getBrowserCommandLabel(
+  commandId: string,
+  context: BrowserCommandContext,
+): string {
+  const definition = BROWSER_COMMAND_DEFINITIONS.find(
+    (command) => command.id === commandId,
+  );
+  return definition ? getCommandLabel(definition, context) : commandId;
+}

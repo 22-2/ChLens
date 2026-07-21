@@ -34,6 +34,7 @@
     "@mantine/dates": "^9.1.1",
     "@mantine/form": "^9.1.1",
     "@mantine/hooks": "^9.1.1",
+    "@mantine/spotlight": "^9.1.1",
     "@monaco-editor/react": "^4.7.0",
     "@rjsf/core": "^6.5.1",
     "@rjsf/utils": "^6.5.1",

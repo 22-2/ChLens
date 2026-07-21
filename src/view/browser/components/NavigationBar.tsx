@@ -4,6 +4,7 @@ import {
   Archive,
   Bookmark,
   Columns2,
+  Command,
   Filter,
   History,
   Menu,
@@ -13,6 +14,7 @@ import {
   Settings,
   Star,
 } from "lucide-react";
+import { spotlight } from "@mantine/spotlight";
 import React, {
   useCallback,
   useEffect,
@@ -721,6 +723,12 @@ export const NavigationBar: React.FC = () => {
 
   const menuItems = useMemo(
     () => [
+      {
+        id: "open-command-palette",
+        label: "コマンドパレットを開く",
+        icon: <Command size={14} />,
+        onSelect: spotlight.open,
+      },
       {
         id: "open-settings",
         label: "設定を開く",
