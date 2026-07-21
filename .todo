@@ -480,7 +480,8 @@ http://bbs.eddibb.cc/test/read.cgi/liveedge/1779114452/
 - [ ] feat: 画像サムネの読み込みの高速化 -> imgurとかフルサイズで取得してるかもしれない
 - [ ] メモリセーバー（自動タブunmount）
 - [ ] スクロール位置の復元が出来たから、もうdisplay: hiddenでタブ切り替えはいらない？
-- [ ] 簡易aiチャット
+- [ ] 簡易aiチャット -> openai互換api
 - [ ] コマンドパレット -> [Spotlight | Mantine](https://mantine.dev/x/spotlight/)
   - 追加するつもりはなかったが、これ以上uiをシンプルにしたまま拡張するのはむりやな
+  - コマンド管理基盤とか作ったほうが良いのかな🤔
 ## メタ
