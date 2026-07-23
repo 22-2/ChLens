@@ -26,11 +26,7 @@ vi.mock("@mantine/spotlight", () => ({
     return (
       <div data-testid="spotlight" data-shortcut={String(props.shortcut)}>
         {actions.map((action) => (
-          <button
-            key={action.id}
-            disabled={action.disabled}
-            onClick={action.onClick}
-          >
+          <button key={action.id} disabled={action.disabled} onClick={action.onClick}>
             {action.label}
           </button>
         ))}
@@ -88,31 +84,26 @@ describe("CommandPalette", () => {
   it("Ctrl/Cmd+Shift+Pを登録し、スレッド用raw URLコマンドを表示する", () => {
     render(<CommandPalette />);
 
-    expect(screen.getByTestId("spotlight")).toHaveAttribute(
-      "data-shortcut",
-      "mod + shift + P",
-    );
-    expect(
-      screen.getByRole("button", { name: "subject.txtのURLをコピー" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "datのURLをコピー" }),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId("spotlight")).toHaveAttribute("data-shortcut", "mod + shift + P");
+    expect(screen.getByRole("button", { name: "subject.txtのURLをコピー" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "datのURLをコピー" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "スレ全体をTOON形式でコピー" })).toBeInTheDocument();
   });
 
   it("ホームではページ依存コマンドを表示しない", () => {
     currentPage = { type: "home", title: "ホーム" };
     render(<CommandPalette />);
 
+    expect(screen.queryByRole("button", { name: "datのURLをコピー" })).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "datのURLをコピー" }),
+      screen.queryByRole("button", {
+        name: "スレ全体をTOON形式でコピー",
+      }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "現在のページURLをコピー" }),
     ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "設定を開く" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "設定を開く" })).toBeInTheDocument();
   });
 
   it("2ペイン時は解除コマンドを表示して現在ペインを閉じる", () => {

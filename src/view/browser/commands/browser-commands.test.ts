@@ -9,25 +9,31 @@ import {
 import type { ScopedTabAction } from "src/view/browser/hooks/use-tab-store";
 import type { Page, Tab } from "src/view/browser/types";
 import { setItestServerMapForTesting } from "src/view/browser/utils/itest-server-map";
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-const { copyTextMock, toastSuccessMock } = vi.hoisted(() => ({
+const {
+  copyTextMock,
+  encodeThreadAsToonMock,
+  estimateToonTokenCountMock,
+  getThreadMock,
+  toastSuccessMock,
+} = vi.hoisted(() => ({
   copyTextMock: vi.fn<() => Promise<void>>(),
+  encodeThreadAsToonMock: vi.fn(),
+  estimateToonTokenCountMock: vi.fn<() => number>(),
+  getThreadMock: vi.fn(),
   toastSuccessMock: vi.fn(),
 }));
 
 vi.mock("src/view/browser/utils/utils", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("src/view/browser/utils/utils")>();
+  const actual = await importOriginal<typeof import("src/view/browser/utils/utils")>();
   return { ...actual, copyText: copyTextMock };
 });
+
+vi.mock("src/view/browser/utils/thread-toon", () => ({
+  encodeThreadAsToon: encodeThreadAsToonMock,
+  estimateToonTokenCount: estimateToonTokenCountMock,
+}));
 
 function createTab(page: Page): Tab {
   return {
@@ -64,6 +70,22 @@ function createContext(page: Page): {
 describe("browser commands", () => {
   beforeEach(() => {
     copyTextMock.mockResolvedValue();
+    encodeThreadAsToonMock.mockReturnValue("title: Thread");
+    estimateToonTokenCountMock.mockReturnValue(1234);
+    getThreadMock.mockResolvedValue({
+      url: "https://egg.5ch.net/test/read.cgi/software/123/",
+      title: "Thread",
+      res: [
+        {
+          num: 1,
+          name: "名無しさん",
+          mail: "",
+          date: "2026/07/23(木) 12:34:56",
+          message: "本文",
+        },
+      ],
+    });
+    container.thread = { getThread: getThreadMock };
     container.toast = {
       notify: vi.fn(),
       success: toastSuccessMock,
@@ -74,6 +96,9 @@ describe("browser commands", () => {
 
   afterEach(() => {
     copyTextMock.mockReset();
+    encodeThreadAsToonMock.mockReset();
+    estimateToonTokenCountMock.mockReset();
+    getThreadMock.mockReset();
     toastSuccessMock.mockReset();
     setItestServerMapForTesting([]);
   });
@@ -88,6 +113,7 @@ describe("browser commands", () => {
     expect(ids).not.toContain("copy.page-url");
     expect(ids).not.toContain("copy.subject-url");
     expect(ids).not.toContain("copy.dat-url");
+    expect(ids).not.toContain("copy.thread-toon");
   });
 
   it("スレッドではsubject.txtとdat、板ではsubject.txtだけを表示する", () => {
@@ -108,8 +134,10 @@ describe("browser commands", () => {
 
     expect(threadIds).toContain("copy.subject-url");
     expect(threadIds).toContain("copy.dat-url");
+    expect(threadIds).toContain("copy.thread-toon");
     expect(boardIds).toContain("copy.subject-url");
     expect(boardIds).not.toContain("copy.dat-url");
+    expect(boardIds).not.toContain("copy.thread-toon");
   });
 
   it("5ch・したらば・まちBBSのraw URLを導出する", () => {
@@ -129,12 +157,8 @@ describe("browser commands", () => {
       threadUrl: "https://kanto.machi.to/bbs/read.cgi/kana/123/",
     };
 
-    expect(getSubjectUrlForCommand(fiveChThread)).toBe(
-      "https://egg.5ch.net/software/subject.txt",
-    );
-    expect(getDatUrlForCommand(fiveChThread)).toBe(
-      "https://egg.5ch.net/software/dat/123.dat",
-    );
+    expect(getSubjectUrlForCommand(fiveChThread)).toBe("https://egg.5ch.net/software/subject.txt");
+    expect(getDatUrlForCommand(fiveChThread)).toBe("https://egg.5ch.net/software/dat/123.dat");
     expect(getSubjectUrlForCommand(shitarabaThread)).toBe(
       "https://jbbs.shitaraba.net/computer/1234/subject.txt",
     );
@@ -160,12 +184,8 @@ describe("browser commands", () => {
     expect(getDatUrlForCommand(page)).toBeNull();
 
     setItestServerMapForTesting([["software", "egg.5ch.io"]]);
-    expect(getSubjectUrlForCommand(page)).toBe(
-      "https://egg.5ch.io/software/subject.txt",
-    );
-    expect(getDatUrlForCommand(page)).toBe(
-      "https://egg.5ch.io/software/dat/123.dat",
-    );
+    expect(getSubjectUrlForCommand(page)).toBe("https://egg.5ch.io/software/subject.txt");
+    expect(getDatUrlForCommand(page)).toBe("https://egg.5ch.io/software/dat/123.dat");
   });
 
   it("実行直前にも条件を確認し、条件外コマンドを実行しない", async () => {
@@ -176,9 +196,7 @@ describe("browser commands", () => {
       boardUrl: "https://egg.5ch.net/software/",
     });
 
-    await expect(executeBrowserCommand("copy.dat-url", context)).resolves.toBe(
-      false,
-    );
+    await expect(executeBrowserCommand("copy.dat-url", context)).resolves.toBe(false);
     expect(copyTextMock).not.toHaveBeenCalled();
   });
 
@@ -189,13 +207,32 @@ describe("browser commands", () => {
       threadUrl: "https://egg.5ch.net/test/read.cgi/software/123/",
     });
 
-    await expect(executeBrowserCommand("copy.dat-url", context)).resolves.toBe(
-      true,
-    );
-    expect(copyTextMock).toHaveBeenCalledWith(
-      "https://egg.5ch.net/software/dat/123.dat",
-    );
+    await expect(executeBrowserCommand("copy.dat-url", context)).resolves.toBe(true);
+    expect(copyTextMock).toHaveBeenCalledWith("https://egg.5ch.net/software/dat/123.dat");
     expect(toastSuccessMock).toHaveBeenCalledWith("datのURLをコピーしました");
+  });
+
+  it("スレ全体をTOON形式でコピーし、推定トークン数を通知する", async () => {
+    const threadUrl = "https://egg.5ch.net/test/read.cgi/software/123/";
+    const { context } = createContext({
+      type: "thread",
+      title: "Thread",
+      threadUrl,
+    });
+
+    await expect(executeBrowserCommand("copy.thread-toon", context)).resolves.toBe(true);
+
+    expect(getThreadMock).toHaveBeenCalledWith(threadUrl);
+    expect(encodeThreadAsToonMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Thread",
+        url: threadUrl,
+      }),
+    );
+    expect(copyTextMock).toHaveBeenCalledWith("title: Thread");
+    expect(toastSuccessMock).toHaveBeenCalledWith(
+      "スレ全体をTOON形式でコピーしました（推定 1,234 トークン）",
+    );
   });
 
   it("2ペイン切り替えは現在の表示状態に応じたactionを送る", async () => {
