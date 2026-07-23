@@ -3,14 +3,7 @@ import { cleanup, fireEvent, render } from "@testing-library/react";
 import React from "react";
 import { container } from "src/service-container/index";
 import { TabBar } from "src/view/browser/components/TabBar";
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const dispatchMock = vi.fn();
 const mocks = vi.hoisted(() => ({
@@ -102,13 +95,7 @@ vi.mock("@dnd-kit/react", () => ({
 }));
 
 vi.mock("@dnd-kit/react/sortable", () => ({
-  useSortable: ({
-    id: _id,
-  }: {
-    id: string;
-    index: number;
-    group?: string;
-  }) => ({
+  useSortable: ({ id: _id }: { id: string; index: number; group?: string }) => ({
     // ref は DOM アタッチ不要なためノーオプとして返す。
     ref: vi.fn(),
     isDragSource: false,
@@ -180,9 +167,22 @@ describe("TabBar wheel switching", () => {
     fireEvent.wheel(tabBar, { deltaY: 1 });
     fireEvent.wheel(tabBar, { deltaX: 0.5, deltaY: 0.5 });
 
-    expect(dispatchMock).not.toHaveBeenCalledWith(
-      expect.objectContaining({ type: "SELECT_TAB" }),
-    );
+    expect(dispatchMock).not.toHaveBeenCalledWith(expect.objectContaining({ type: "SELECT_TAB" }));
+  });
+
+  it("タブ列があふれている場合はホイールで横スクロールする", () => {
+    const { container } = render(<TabBar />);
+    const tabBar = container.querySelector(".tab-bar") as HTMLDivElement;
+    const tabList = container.querySelector(".tab-list") as HTMLDivElement;
+    Object.defineProperties(tabList, {
+      clientWidth: { configurable: true, value: 200 },
+      scrollWidth: { configurable: true, value: 500 },
+    });
+
+    fireEvent.wheel(tabBar, { deltaY: 40 });
+
+    expect(tabList.scrollLeft).toBeGreaterThan(0);
+    expect(dispatchMock).not.toHaveBeenCalledWith(expect.objectContaining({ type: "SELECT_TAB" }));
   });
 
   it("短時間に連続したホイール入力では1回だけ切り替える", () => {
@@ -193,9 +193,7 @@ describe("TabBar wheel switching", () => {
     fireEvent.wheel(tabBar, { deltaY: 40 });
     fireEvent.wheel(tabBar, { deltaY: 50 });
 
-    const selectCalls = dispatchMock.mock.calls.filter(
-      ([action]) => action?.type === "SELECT_TAB",
-    );
+    const selectCalls = dispatchMock.mock.calls.filter(([action]) => action?.type === "SELECT_TAB");
 
     expect(selectCalls).toHaveLength(1);
     expect(selectCalls[0][0]).toEqual({ type: "SELECT_TAB", tabId: "tab-2" });
@@ -372,9 +370,7 @@ describe("TabBar drag-to-reorder", () => {
       },
     });
 
-    expect(dispatchMock).not.toHaveBeenCalledWith(
-      expect.objectContaining({ type: "MOVE_TAB" }),
-    );
+    expect(dispatchMock).not.toHaveBeenCalledWith(expect.objectContaining({ type: "MOVE_TAB" }));
   });
 
   it("ドラッグ終了直後の click ではタブ選択を誤発火しない", () => {
@@ -395,9 +391,7 @@ describe("TabBar drag-to-reorder", () => {
     const tabs = container.querySelectorAll(".tab");
     fireEvent.click(tabs[1]);
 
-    expect(dispatchMock).not.toHaveBeenCalledWith(
-      expect.objectContaining({ type: "SELECT_TAB" }),
-    );
+    expect(dispatchMock).not.toHaveBeenCalledWith(expect.objectContaining({ type: "SELECT_TAB" }));
   });
 });
 
@@ -465,9 +459,7 @@ describe("TabBar tab interactions", () => {
 
   it("× ボタンをクリックすると CLOSE_TAB が dispatch される", () => {
     const { container } = render(<TabBar />);
-    const closeBtn = container.querySelectorAll(
-      ".tab__close",
-    )[0] as HTMLButtonElement;
+    const closeBtn = container.querySelectorAll(".tab__close")[0] as HTMLButtonElement;
 
     fireEvent.click(closeBtn);
 

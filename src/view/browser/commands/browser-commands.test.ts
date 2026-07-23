@@ -16,12 +16,16 @@ const {
   encodeThreadAsToonMock,
   estimateToonTokenCountMock,
   getThreadMock,
+  queryTabsMock,
+  toastInfoMock,
   toastSuccessMock,
 } = vi.hoisted(() => ({
   copyTextMock: vi.fn<() => Promise<void>>(),
   encodeThreadAsToonMock: vi.fn(),
   estimateToonTokenCountMock: vi.fn<() => number>(),
   getThreadMock: vi.fn(),
+  queryTabsMock: vi.fn(),
+  toastInfoMock: vi.fn(),
   toastSuccessMock: vi.fn(),
 }));
 
@@ -69,6 +73,10 @@ function createContext(page: Page): {
 
 describe("browser commands", () => {
   beforeEach(() => {
+    vi.stubGlobal("browser", {
+      runtime: { id: "test-extension" },
+      tabs: { query: queryTabsMock },
+    });
     copyTextMock.mockResolvedValue();
     encodeThreadAsToonMock.mockReturnValue("title: Thread");
     estimateToonTokenCountMock.mockReturnValue(1234);
@@ -90,15 +98,18 @@ describe("browser commands", () => {
       notify: vi.fn(),
       success: toastSuccessMock,
       error: vi.fn(),
-      info: vi.fn(),
+      info: toastInfoMock,
     };
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     copyTextMock.mockReset();
     encodeThreadAsToonMock.mockReset();
     estimateToonTokenCountMock.mockReset();
     getThreadMock.mockReset();
+    queryTabsMock.mockReset();
+    toastInfoMock.mockReset();
     toastSuccessMock.mockReset();
     setItestServerMapForTesting([]);
   });
@@ -114,6 +125,64 @@ describe("browser commands", () => {
     expect(ids).not.toContain("copy.subject-url");
     expect(ids).not.toContain("copy.dat-url");
     expect(ids).not.toContain("copy.thread-toon");
+  });
+
+  it("拡張機能でだけ開いているスレタブの取り込みコマンドを表示する", () => {
+    const { context } = createContext({ type: "home", title: "ホーム" });
+
+    expect(resolveBrowserCommands(context).map(({ id }) => id)).toContain(
+      "navigation.import-open-thread-tabs",
+    );
+
+    vi.stubGlobal("browser", {
+      runtime: { id: "tauri" },
+      tabs: { query: queryTabsMock },
+    });
+    expect(resolveBrowserCommands(context).map(({ id }) => id)).not.toContain(
+      "navigation.import-open-thread-tabs",
+    );
+  });
+
+  it("ブラウザで開いている互換スレだけを重複排除して取り込む", async () => {
+    queryTabsMock.mockResolvedValue([
+      {
+        url: "https://egg.5ch.net/test/read.cgi/software/123/",
+        title: "スレッドA",
+      },
+      {
+        url: "https://egg.5ch.net/test/read.cgi/software/123/50",
+        title: "スレッドA（途中）",
+      },
+      {
+        url: "https://jbbs.shitaraba.net/bbs/read.cgi/computer/456/789/",
+        title: "スレッドB",
+      },
+      { url: "https://egg.5ch.net/software/", title: "板トップ" },
+      { url: "https://example.com/article", title: "一般ページ" },
+      { url: "chrome://extensions/", title: "拡張機能" },
+    ]);
+    const { context, dispatch } = createContext({
+      type: "thread",
+      title: "スレッドA",
+      threadUrl: "https://egg.5ch.net/test/read.cgi/software/123/",
+    });
+
+    await expect(
+      executeBrowserCommand("navigation.import-open-thread-tabs", context),
+    ).resolves.toBe(true);
+
+    expect(queryTabsMock).toHaveBeenCalledWith({});
+    expect(dispatch).toHaveBeenCalledTimes(1);
+    expect(dispatch).toHaveBeenCalledWith({
+      type: "OPEN_IN_NEW_TAB",
+      background: true,
+      page: {
+        type: "thread",
+        title: "スレッドB",
+        threadUrl: "https://jbbs.shitaraba.net/bbs/read.cgi/computer/456/789/",
+      },
+    });
+    expect(toastSuccessMock).toHaveBeenCalledWith("1件のスレタブを取り込みました");
   });
 
   it("スレッドではsubject.txtとdat、板ではsubject.txtだけを表示する", () => {

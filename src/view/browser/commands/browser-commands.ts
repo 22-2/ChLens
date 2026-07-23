@@ -7,6 +7,7 @@ import {
   ExternalLink,
   Filter,
   History,
+  Import,
   List,
   PenLine,
   RotateCw,
@@ -27,6 +28,10 @@ import {
   getBoardUrlFromThreadUrl,
   parseInternalBrowserPage,
 } from "src/view/browser/utils/link-routing";
+import {
+  canQueryExtensionTabs,
+  getOpenCompatibleThreadPages,
+} from "src/view/browser/utils/extension-tabs";
 import { encodeThreadAsToon, estimateToonTokenCount } from "src/view/browser/utils/thread-toon";
 import { copyText } from "src/view/browser/utils/utils";
 
@@ -209,6 +214,31 @@ function openQuickAccessPage(context: BrowserCommandContext, page: QuickAccessPa
   context.dispatch({ type: "NAVIGATE", page });
 }
 
+async function importOpenThreadTabs(context: BrowserCommandContext): Promise<void> {
+  const openThreadPages = await getOpenCompatibleThreadPages();
+  const existingThreadUrls = new Set(
+    context.tabs
+      .map((tab) => getCurrentPage(tab))
+      .filter((page): page is Extract<Page, { type: "thread" }> => page.type === "thread")
+      .map((page) => page.threadUrl),
+  );
+  const pagesToImport = openThreadPages.filter((page) => !existingThreadUrls.has(page.threadUrl));
+
+  if (pagesToImport.length === 0) {
+    container.toast.info("取り込める新しいスレタブはありません");
+    return;
+  }
+
+  // 変更理由: 一括取り込みで表示中のページを奪わず、確認したいタブを利用者が選べるよう
+  // すべてバックグラウンド追加に統一する。
+  for (const page of pagesToImport) {
+    context.dispatch({ type: "OPEN_IN_NEW_TAB", page, background: true });
+  }
+  container.toast.success(
+    `${pagesToImport.length.toLocaleString("ja-JP")}件のスレタブを取り込みました`,
+  );
+}
+
 function toggleFilter(context: BrowserCommandContext): void {
   if (context.currentPage.type === "thread") {
     window.dispatchEvent(new window.CustomEvent("thread-filter-toolbar-toggle"));
@@ -314,6 +344,16 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
         type: "logList",
         title: "ログ検索",
       }),
+  },
+  {
+    id: "navigation.import-open-thread-tabs",
+    label: "開いているスレタブをすべて取り込む",
+    description: "ブラウザで開いている5ch互換スレをアプリのタブとして追加します",
+    keywords: ["一括", "import", "browser tabs", "5ch", "スレッド"],
+    group: "navigation",
+    icon: Import,
+    when: canQueryExtensionTabs,
+    run: importOpenThreadTabs,
   },
   {
     id: "page.reload",
