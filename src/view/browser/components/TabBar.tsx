@@ -24,6 +24,7 @@ interface BarContextMenuState {
 
 const TAB_SWITCH_WHEEL_DISTANCE_THRESHOLD = 1.5;
 const TAB_SWITCH_WHEEL_BASE_COOLDOWN_MS = 150;
+const TAB_LIST_EDGE_TOLERANCE_PX = 4;
 
 // Material Design の Fast-out, Slow-in カーブで Chrome 風の吸い付く感を再現する。
 const SORTABLE_TRANSITION = {
@@ -141,12 +142,22 @@ export const TabBar: React.FC = () => {
   // ドラッグ終了直後の click イベントによるタブ選択を抑止するためのフラグ。
   const wasDraggingRef = useRef(false);
 
+  const scrollTabIntoView = useCallback((tabId: string) => {
+    const tabElement = [
+      ...(tabListRef.current?.querySelectorAll<HTMLElement>("[data-tab-id]") ?? []),
+    ].find((tab) => tab.dataset.tabId === tabId);
+    tabElement?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+  }, []);
+
   useEffect(() => {
     const prev = prevTabIdsRef.current;
     const current = new Set(state.tabs.map((tab) => tab.id));
     const newIds = state.tabs.map((tab) => tab.id).filter((tabId) => !prev.has(tabId));
 
     if (newIds.length > 0) {
+      // 変更理由: バックグラウンド追加では activeTabId が変わらないため、
+      // 新規タブ自体を基準にスクロールしないと追加位置を利用者が確認できない。
+      scrollTabIntoView(newIds[newIds.length - 1]);
       setHighlightedTabIds((prevIds) => {
         const next = new Set(prevIds);
         for (const tabId of newIds) {
@@ -170,18 +181,15 @@ export const TabBar: React.FC = () => {
 
     prevTabIdsRef.current = current;
     return;
-  }, [state.tabs]);
+  }, [scrollTabIntoView, state.tabs]);
 
   useEffect(() => {
     prevTabIdsRef.current = new Set(state.tabs.map((tab) => tab.id));
   }, [state.tabs]);
 
   useEffect(() => {
-    const activeTab = [
-      ...(tabListRef.current?.querySelectorAll<HTMLElement>("[data-tab-id]") ?? []),
-    ].find((tab) => tab.dataset.tabId === state.activeTabId);
-    activeTab?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
-  }, [state.activeTabId]);
+    scrollTabIntoView(state.activeTabId);
+  }, [scrollTabIntoView, state.activeTabId]);
 
   // ホイールでアクティブタブを前後に切り替える
   const handleWheel = useCallback(
@@ -194,11 +202,20 @@ export const TabBar: React.FC = () => {
 
       const tabList = tabListRef.current;
       if (tabList && tabList.scrollWidth > tabList.clientWidth) {
-        // 変更理由: タブが収まらない場合はホイールと横トラックパッド入力を
-        // タブ列の横スクロールへ使い、隠れたタブへ到達できるようにする。
-        e.preventDefault();
-        tabList.scrollLeft += wheelDistance;
-        return;
+        const maxScrollLeft = tabList.scrollWidth - tabList.clientWidth;
+        const isAtLeftEdge = tabList.scrollLeft <= TAB_LIST_EDGE_TOLERANCE_PX;
+        const isAtRightEdge = tabList.scrollLeft >= maxScrollLeft - TAB_LIST_EDGE_TOLERANCE_PX;
+
+        if (!isAtLeftEdge && !isAtRightEdge) {
+          // 変更理由: ビューポートが中間にある間だけ横スクロールを優先し、
+          // 左右どちらかの端ではホイール方向に応じたタブ切り替えへ渡す。
+          e.preventDefault();
+          tabList.scrollLeft = Math.max(
+            0,
+            Math.min(maxScrollLeft, tabList.scrollLeft + wheelDistance),
+          );
+          return;
+        }
       }
 
       const now = Date.now();

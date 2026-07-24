@@ -212,22 +212,16 @@ body {
   gap: 4px;
   overflow-x: auto;
   overflow-y: hidden;
-  scrollbar-width: thin;
-  scrollbar-color: var(--browser-color-text-muted) transparent;
+  // 変更理由: ネイティブスクロールバーはタブ34pxとは別に高さを消費し、
+  // 固定高のタブバーからタブ上端を押し出すため、操作はホイール/トラックパッドに任せて隠す。
+  scrollbar-width: none;
   padding-right: 4px;
 }
 
 .tab-list::-webkit-scrollbar {
-  height: 4px;
-}
-
-.tab-list::-webkit-scrollbar-thumb {
-  background: var(--browser-color-text-muted);
-  border-radius: 2px;
-}
-
-.tab-list::-webkit-scrollbar-track {
-  background: transparent;
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .tab {

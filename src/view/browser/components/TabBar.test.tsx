@@ -178,11 +178,91 @@ describe("TabBar wheel switching", () => {
       clientWidth: { configurable: true, value: 200 },
       scrollWidth: { configurable: true, value: 500 },
     });
+    tabList.scrollLeft = 100;
 
     fireEvent.wheel(tabBar, { deltaY: 40 });
 
     expect(tabList.scrollLeft).toBeGreaterThan(0);
     expect(dispatchMock).not.toHaveBeenCalledWith(expect.objectContaining({ type: "SELECT_TAB" }));
+  });
+
+  it("あふれたタブ列の右端では下方向ホイールで次のタブへ切り替える", () => {
+    const { container } = render(<TabBar />);
+    const tabBar = container.querySelector(".tab-bar") as HTMLDivElement;
+    const tabList = container.querySelector(".tab-list") as HTMLDivElement;
+    Object.defineProperties(tabList, {
+      clientWidth: { configurable: true, value: 200 },
+      scrollWidth: { configurable: true, value: 500 },
+    });
+    tabList.scrollLeft = 300;
+
+    fireEvent.wheel(tabBar, { deltaY: 40 });
+
+    expect(dispatchMock).toHaveBeenCalledWith({
+      type: "SELECT_TAB",
+      tabId: "tab-2",
+    });
+  });
+
+  it("あふれたタブ列の左端では下方向ホイールでも次のタブへ切り替える", () => {
+    const { container } = render(<TabBar />);
+    const tabBar = container.querySelector(".tab-bar") as HTMLDivElement;
+    const tabList = container.querySelector(".tab-list") as HTMLDivElement;
+    Object.defineProperties(tabList, {
+      clientWidth: { configurable: true, value: 200 },
+      scrollWidth: { configurable: true, value: 500 },
+    });
+    tabList.scrollLeft = 0;
+
+    fireEvent.wheel(tabBar, { deltaY: 40 });
+
+    expect(dispatchMock).toHaveBeenCalledWith({
+      type: "SELECT_TAB",
+      tabId: "tab-2",
+    });
+  });
+
+  it("バックグラウンドで新規タブが追加されても追加位置までスクロールする", () => {
+    const scrollIntoViewMock = vi.fn();
+    const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scrollIntoViewMock,
+    });
+
+    try {
+      const { container, rerender } = render(<TabBar />);
+      scrollIntoViewMock.mockClear();
+      mocks.tabStore.state = {
+        ...mocks.tabStore.state,
+        tabs: [
+          ...mocks.tabStore.state.tabs,
+          {
+            id: "tab-3",
+            history: [{ type: "home", title: "新しいタブ" }],
+            currentIndex: 0,
+            pinned: false,
+            reloadKey: 0,
+            autoRefreshEnabled: false,
+            autoRefreshPageKey: null,
+          },
+        ],
+      };
+
+      rerender(<TabBar />);
+
+      const newTab = container.querySelector('[data-tab-id="tab-3"]');
+      expect(scrollIntoViewMock.mock.instances).toContain(newTab);
+      expect(scrollIntoViewMock).toHaveBeenCalledWith({
+        block: "nearest",
+        inline: "nearest",
+      });
+    } finally {
+      Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+        configurable: true,
+        value: originalScrollIntoView,
+      });
+    }
   });
 
   it("短時間に連続したホイール入力では1回だけ切り替える", () => {
