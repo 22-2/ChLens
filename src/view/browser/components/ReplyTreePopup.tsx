@@ -8,10 +8,7 @@ import { ReplyTree } from "src/view/browser/components/ReplyTree";
 import type { ResolvedTheme } from "src/view/browser/hooks/use-theme";
 import { useTheme } from "src/view/browser/hooks/use-theme";
 import { usePopupSurfaceLifecycle } from "src/view/browser/hooks/use-popup-manager";
-import type {
-  UrlClickHandler,
-  UrlContextMenuHandler,
-} from "src/view/browser/utils/link-routing";
+import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
 import { useAdjustOverflow } from "src/view/browser/utils/use-adjust-overflow";
 import {
   canCopyImageToClipboard,
@@ -27,6 +24,7 @@ interface TreeMenuPosition {
 
 interface SubTreeMenuState {
   resNum: number;
+  ancestorResNums: number[];
   x: number;
   y: number;
 }
@@ -47,6 +45,12 @@ interface ReplyTreeImageCardLayout {
   dateLine: string;
   bodyLines: string[];
   isSource: boolean;
+}
+
+interface ReplyTreeImagePresentation {
+  title: string;
+  sourceSectionTitle: string;
+  responsesSectionTitle: string;
 }
 
 const TREE_IMAGE_LAYOUT = {
@@ -80,9 +84,7 @@ function collectReplyTreeImageEntries(
       return;
     }
 
-    const orderedReplyNums = Array.from(replies).sort(
-      (left, right) => left - right,
-    );
+    const orderedReplyNums = Array.from(replies).sort((left, right) => left - right);
     for (const replyNum of orderedReplyNums) {
       if (visited.has(replyNum)) {
         continue;
@@ -121,10 +123,7 @@ function wrapCanvasText(
     let currentLine = "";
     for (const char of Array.from(paragraph)) {
       const nextLine = `${currentLine}${char}`;
-      if (
-        currentLine.length > 0 &&
-        context.measureText(nextLine).width > maxWidth
-      ) {
+      if (currentLine.length > 0 && context.measureText(nextLine).width > maxWidth) {
         lines.push(currentLine);
         currentLine = char;
         continue;
@@ -151,9 +150,7 @@ function buildReplyTreeImageCardLayouts(
   const sourceBody = wrapCanvasText(
     context,
     stripHtml(sourceRes.message),
-    TREE_IMAGE_LAYOUT.width -
-      TREE_IMAGE_LAYOUT.paddingX * 2 -
-      TREE_IMAGE_LAYOUT.cardPaddingX * 2,
+    TREE_IMAGE_LAYOUT.width - TREE_IMAGE_LAYOUT.paddingX * 2 - TREE_IMAGE_LAYOUT.cardPaddingX * 2,
   );
 
   let currentY =
@@ -296,9 +293,7 @@ function drawReplyTreeImageCard(
   }
 
   context.fillStyle = card.isSource ? palette.cardSourceFill : palette.cardFill;
-  context.strokeStyle = card.isSource
-    ? palette.cardSourceStroke
-    : palette.cardStroke;
+  context.strokeStyle = card.isSource ? palette.cardSourceStroke : palette.cardStroke;
   context.lineWidth = 1;
   context.fillRect(card.x, card.y, card.width, card.height);
   context.strokeRect(card.x, card.y, card.width, card.height);
@@ -307,20 +302,12 @@ function drawReplyTreeImageCard(
 
   context.font = "600 15px sans-serif";
   context.fillStyle = palette.cardHeader;
-  context.fillText(
-    card.headerLine,
-    card.x + TREE_IMAGE_LAYOUT.cardPaddingX,
-    textY,
-  );
+  context.fillText(card.headerLine, card.x + TREE_IMAGE_LAYOUT.cardPaddingX, textY);
 
   textY += TREE_IMAGE_LAYOUT.lineHeight;
   context.font = "12px sans-serif";
   context.fillStyle = palette.cardDate;
-  context.fillText(
-    card.dateLine,
-    card.x + TREE_IMAGE_LAYOUT.cardPaddingX,
-    textY,
-  );
+  context.fillText(card.dateLine, card.x + TREE_IMAGE_LAYOUT.cardPaddingX, textY);
 
   textY += TREE_IMAGE_LAYOUT.cardHeaderGap + 6;
   context.font = "14px sans-serif";
@@ -349,6 +336,11 @@ function renderReplyTreeImageCanvas(
   threadUrl?: string,
   quality: ImageQuality = "medium",
   theme: ResolvedTheme = "light",
+  presentation: ReplyTreeImagePresentation = {
+    title: `>>${sourceRes.num} への返信ツリー`,
+    sourceSectionTitle: "参照元レス",
+    responsesSectionTitle: "返信レス",
+  },
 ): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   const dpr = QUALITY_MAP[quality];
@@ -358,19 +350,13 @@ function renderReplyTreeImageCanvas(
   }
   const palette = TREE_IMAGE_PALETTE[theme];
 
-  const measured = buildReplyTreeImageCardLayouts(
-    context,
-    sourceRes,
-    replyEntries,
-  );
+  const measured = buildReplyTreeImageCardLayouts(context, sourceRes, replyEntries);
 
   // コピー先でスレッドを特定できるよう画像下部にスレタイとURLを付加する。
   const hasFooter = threadTitle != null || threadUrl != null;
-  const footerLineCount =
-    (threadTitle != null ? 1 : 0) + (threadUrl != null ? 1 : 0);
+  const footerLineCount = (threadTitle != null ? 1 : 0) + (threadUrl != null ? 1 : 0);
   const footerHeight = hasFooter
-    ? TREE_IMAGE_LAYOUT.paddingY +
-      TREE_IMAGE_LAYOUT.lineHeight * footerLineCount
+    ? TREE_IMAGE_LAYOUT.paddingY + TREE_IMAGE_LAYOUT.lineHeight * footerLineCount
     : 0;
   const totalHeight = measured.height + footerHeight;
 
@@ -385,26 +371,19 @@ function renderReplyTreeImageCanvas(
 
   context.font = "600 22px sans-serif";
   context.fillStyle = palette.title;
-  context.fillText(
-    `>>${sourceRes.num} への返信ツリー`,
-    TREE_IMAGE_LAYOUT.paddingX,
-    TREE_IMAGE_LAYOUT.paddingY + 22,
-  );
+  context.fillText(presentation.title, TREE_IMAGE_LAYOUT.paddingX, TREE_IMAGE_LAYOUT.paddingY + 22);
 
   context.font = "600 15px sans-serif";
   context.fillStyle = palette.sectionTitle;
   context.fillText(
-    "参照元レス",
+    presentation.sourceSectionTitle,
     TREE_IMAGE_LAYOUT.paddingX,
     TREE_IMAGE_LAYOUT.paddingY + TREE_IMAGE_LAYOUT.titleHeight + 18,
   );
 
   const repliesSectionY =
-    measured.cards[0].y +
-    measured.cards[0].height +
-    TREE_IMAGE_LAYOUT.sectionGap +
-    18;
-  context.fillText("返信レス", TREE_IMAGE_LAYOUT.paddingX, repliesSectionY);
+    measured.cards[0].y + measured.cards[0].height + TREE_IMAGE_LAYOUT.sectionGap + 18;
+  context.fillText(presentation.responsesSectionTitle, TREE_IMAGE_LAYOUT.paddingX, repliesSectionY);
 
   // DOM の見た目依存を避けるため、コピー画像は返信データから専用レイアウトを描画する。
   for (const card of measured.cards) {
@@ -455,9 +434,7 @@ function collectReplyTreeResponses(
       return;
     }
 
-    const orderedReplyNums = Array.from(replies).sort(
-      (left, right) => left - right,
-    );
+    const orderedReplyNums = Array.from(replies).sort((left, right) => left - right);
     for (const replyNum of orderedReplyNums) {
       if (visited.has(replyNum)) {
         continue;
@@ -493,11 +470,7 @@ function buildReplyTreeCopyText(
 ): string {
   const sections = ["[参照元レス]", formatResForCopy(sourceRes)];
   if (replyResponses.length > 0) {
-    sections.push(
-      "",
-      "[返信レス]",
-      replyResponses.map(formatResForCopy).join("\n\n"),
-    );
+    sections.push("", "[返信レス]", replyResponses.map(formatResForCopy).join("\n\n"));
   }
   // コピー先でスレッドを特定できるよう末尾にスレタイとURLを付加する。
   if (threadTitle != null || threadUrl != null) {
@@ -510,6 +483,25 @@ function buildReplyTreeCopyText(
     }
   }
   return sections.join("\n");
+}
+
+function buildReplyTreeAncestorCopyText(
+  selectedRes: IRes,
+  ancestorResponses: IRes[],
+  threadTitle?: string,
+  threadUrl?: string,
+): string {
+  if (ancestorResponses.length === 0) {
+    return buildReplyTreeCopyText(selectedRes, [], threadTitle, threadUrl);
+  }
+
+  // 枝の特定は選択レスから親へ遡って行うが、出力は既存コピーと同じ上から下に揃える。
+  return buildReplyTreeCopyText(
+    ancestorResponses[0],
+    [...ancestorResponses.slice(1), selectedRes],
+    threadTitle,
+    threadUrl,
+  );
 }
 
 // --- 返信ツリーポップアップ ---
@@ -527,12 +519,7 @@ export const ReplyTreePopup: React.FC<{
   onIdLinkClick: (id: string, e: React.MouseEvent) => void;
   onRepClick: (resNum: number, e: React.MouseEvent) => void;
   onAnchorClick: (resNum: number) => void;
-  onAnchorHover: (
-    targets: number[],
-    anchorRect: DOMRect,
-    label: string,
-    depth: number,
-  ) => void;
+  onAnchorHover: (targets: number[], anchorRect: DOMRect, label: string, depth: number) => void;
   onAnchorLeave: (fromDepth: number) => void;
   /** 親子関係つきのメニュースタックをThreadPage側で一元管理する。 */
   onResContextMenu: (targetRes: IRes, event: React.MouseEvent) => void;
@@ -604,18 +591,12 @@ export const ReplyTreePopup: React.FC<{
     onSurfaceMouseEnter: onMouseEnter,
     onSurfaceMouseLeave: onMouseLeave,
   });
-  const [menuPosition, setMenuPosition] = useState<TreeMenuPosition | null>(
-    null,
-  );
+  const [menuPosition, setMenuPosition] = useState<TreeMenuPosition | null>(null);
   const [subTreeMenu, setSubTreeMenu] = useState<SubTreeMenuState | null>(null);
   const theme = useTheme();
   const sourceRes = resMap.get(resNum) ?? null;
-  const replyResponses = sourceRes
-    ? collectReplyTreeResponses(resNum, repIndex, resMap)
-    : [];
-  const replyImageEntries = sourceRes
-    ? collectReplyTreeImageEntries(resNum, repIndex, resMap)
-    : [];
+  const replyResponses = sourceRes ? collectReplyTreeResponses(resNum, repIndex, resMap) : [];
+  const replyImageEntries = sourceRes ? collectReplyTreeImageEntries(resNum, repIndex, resMap) : [];
   const treeMenuItems: ContextMenuItem[] = sourceRes
     ? [
         {
@@ -625,12 +606,7 @@ export const ReplyTreePopup: React.FC<{
           onSelect: () => {
             // 参照元レスも一緒に入れておくと、コピー先だけ見ても何への返信ツリーか判別できる。
             void copyText(
-              buildReplyTreeCopyText(
-                sourceRes,
-                replyResponses,
-                threadTitle,
-                threadUrl,
-              ),
+              buildReplyTreeCopyText(sourceRes, replyResponses, threadTitle, threadUrl),
             );
           },
         },
@@ -683,8 +659,7 @@ export const ReplyTreePopup: React.FC<{
     };
 
     document.addEventListener("mousedown", handleOutsideMenuClick);
-    return () =>
-      document.removeEventListener("mousedown", handleOutsideMenuClick);
+    return () => document.removeEventListener("mousedown", handleOutsideMenuClick);
   }, [menuPosition]);
 
   useEffect(() => {
@@ -710,8 +685,7 @@ export const ReplyTreePopup: React.FC<{
     };
 
     document.addEventListener("mousedown", handleOutsideSubTreeMenuClick);
-    return () =>
-      document.removeEventListener("mousedown", handleOutsideSubTreeMenuClick);
+    return () => document.removeEventListener("mousedown", handleOutsideSubTreeMenuClick);
   }, [subTreeMenu]);
 
   const handleResContextMenu = useCallback(
@@ -747,6 +721,7 @@ export const ReplyTreePopup: React.FC<{
 
   const handleSubTreeMenuClick = (
     targetResNum: number,
+    ancestorResNums: number[],
     e: React.MouseEvent<HTMLButtonElement>,
   ) => {
     e.stopPropagation();
@@ -761,28 +736,34 @@ export const ReplyTreePopup: React.FC<{
         ? null
         : {
             resNum: targetResNum,
+            ancestorResNums,
             x: buttonRect.right - popupRect.left - 8,
             y: buttonRect.bottom - popupRect.top + 4,
           },
     );
   };
 
-  const getSubTreeMenuItems = (targetResNum: number): ContextMenuItem[] => {
+  const getSubTreeMenuItems = ({
+    resNum: targetResNum,
+    ancestorResNums,
+  }: SubTreeMenuState): ContextMenuItem[] => {
     const targetRes = resMap.get(targetResNum);
     if (!targetRes) {
       return [];
     }
 
-    const subReplyResponses = collectReplyTreeResponses(
-      targetResNum,
-      repIndex,
-      resMap,
-    );
-    const subReplyImageEntries = collectReplyTreeImageEntries(
-      targetResNum,
-      repIndex,
-      resMap,
-    );
+    const subReplyResponses = collectReplyTreeResponses(targetResNum, repIndex, resMap);
+    const subReplyImageEntries = collectReplyTreeImageEntries(targetResNum, repIndex, resMap);
+    const ancestorResponses = ancestorResNums
+      .map((ancestorResNum) => resMap.get(ancestorResNum))
+      .filter((res): res is IRes => res != null);
+    const ancestorPathSourceRes = ancestorResponses[0] ?? targetRes;
+    const ancestorPathReplyResponses =
+      ancestorResponses.length > 0 ? [...ancestorResponses.slice(1), targetRes] : [];
+    const ancestorImageEntries = ancestorPathReplyResponses.map((res, depth) => ({
+      res,
+      depth,
+    }));
 
     return [
       {
@@ -791,12 +772,7 @@ export const ReplyTreePopup: React.FC<{
         icon: <Copy size={14} />,
         onSelect: () => {
           void copyText(
-            buildReplyTreeCopyText(
-              targetRes,
-              subReplyResponses,
-              threadTitle,
-              threadUrl,
-            ),
+            buildReplyTreeCopyText(targetRes, subReplyResponses, threadTitle, threadUrl),
           );
         },
       },
@@ -814,6 +790,41 @@ export const ReplyTreePopup: React.FC<{
               threadUrl,
               undefined,
               theme,
+            );
+            const blob = await canvasToBlob(canvas);
+            await copyImageBlob(blob);
+          })();
+        },
+      },
+      {
+        id: "copy-ancestor-path-responses",
+        label: "ツリー先頭からこのレスまでコピー",
+        icon: <Copy size={14} />,
+        onSelect: () => {
+          void copyText(
+            buildReplyTreeAncestorCopyText(targetRes, ancestorResponses, threadTitle, threadUrl),
+          );
+        },
+      },
+      {
+        id: "copy-ancestor-path-image",
+        label: "ツリー先頭からこのレスまで画像としてコピー",
+        icon: <ImageIcon size={14} />,
+        disabled: !canCopyImageToClipboard(),
+        onSelect: () => {
+          void (async () => {
+            const canvas = renderReplyTreeImageCanvas(
+              ancestorPathSourceRes,
+              ancestorImageEntries,
+              threadTitle,
+              threadUrl,
+              undefined,
+              theme,
+              {
+                title: `>>${targetRes.num} までの返信経路`,
+                sourceSectionTitle: "参照元レス",
+                responsesSectionTitle: "返信レス（上から下）",
+              },
             );
             const blob = await canvasToBlob(canvas);
             await copyImageBlob(blob);
@@ -919,7 +930,7 @@ export const ReplyTreePopup: React.FC<{
         <ContextMenu
           x={subTreeMenu.x}
           y={subTreeMenu.y}
-          items={getSubTreeMenuItems(subTreeMenu.resNum)}
+          items={getSubTreeMenuItems(subTreeMenu)}
           onClose={() => setSubTreeMenu(null)}
         />
       )}
@@ -927,4 +938,4 @@ export const ReplyTreePopup: React.FC<{
   );
 };
 
-export { buildReplyTreeCopyText, collectReplyTreeResponses };
+export { buildReplyTreeAncestorCopyText, buildReplyTreeCopyText, collectReplyTreeResponses };

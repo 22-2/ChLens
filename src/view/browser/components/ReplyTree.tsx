@@ -3,10 +3,7 @@ import React from "react";
 import type { IRes } from "src/service-container";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
 import { MAX_TREE_DEPTH } from "src/view/browser/utils/constants";
-import type {
-  UrlClickHandler,
-  UrlContextMenuHandler,
-} from "src/view/browser/utils/link-routing";
+import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
 
 // --- 再帰的返信ツリー ---
 export const ReplyTree: React.FC<{
@@ -22,12 +19,7 @@ export const ReplyTree: React.FC<{
   onIdLinkClick: (id: string, e: React.MouseEvent) => void;
   onRepClick: (resNum: number, e: React.MouseEvent) => void;
   onAnchorClick: (resNum: number) => void;
-  onAnchorHover: (
-    targets: number[],
-    anchorRect: DOMRect,
-    label: string,
-    depth: number,
-  ) => void;
+  onAnchorHover: (targets: number[], anchorRect: DOMRect, label: string, depth: number) => void;
   onAnchorLeave: (fromDepth: number) => void;
   onResContextMenu: (e: React.MouseEvent, res: IRes) => void;
   visited: Set<number>;
@@ -37,8 +29,11 @@ export const ReplyTree: React.FC<{
   /** 個別ツリーの三点メニュークリック時コールバック（渡された場合のみボタン表示） */
   onSubTreeMenu?: (
     resNum: number,
+    ancestorResNums: number[],
     e: React.MouseEvent<HTMLButtonElement>,
   ) => void;
+  /** 画面に描画された枝を正確に逆引きするための、参照元から親レスまでの経路 */
+  ancestorResNums?: number[];
 }> = ({
   resNum,
   repIndex,
@@ -59,6 +54,7 @@ export const ReplyTree: React.FC<{
   depth,
   blurredResNums,
   onSubTreeMenu,
+  ancestorResNums = [resNum],
 }) => {
   if (depth >= MAX_TREE_DEPTH) return null;
   const replies = repIndex.get(resNum);
@@ -113,7 +109,8 @@ export const ReplyTree: React.FC<{
                   title="このレス以降のツリーをコピー"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onSubTreeMenu(replyNum, e);
+                    // 同じレスが複数レスへアンカーしていても、実際に表示された一本の枝を渡す。
+                    onSubTreeMenu(replyNum, ancestorResNums, e);
                   }}
                 >
                   <MoreVertical size={12} />
@@ -140,6 +137,7 @@ export const ReplyTree: React.FC<{
               depth={depth + 1}
               blurredResNums={blurredResNums}
               onSubTreeMenu={onSubTreeMenu}
+              ancestorResNums={[...ancestorResNums, replyNum]}
             />
           </React.Fragment>
         );
