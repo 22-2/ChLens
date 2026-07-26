@@ -84,7 +84,9 @@ export function filterAndSortBrowserCommands(
       (a, b) =>
         a.rank - b.rank ||
         (a.rank === 6 ? b.fuzzyScore - a.fuzzyScore : 0) ||
-        a.command.label.localeCompare(b.command.label, "ja", { sensitivity: "base" }) ||
+        a.command.label.localeCompare(b.command.label, "ja", {
+          sensitivity: "base",
+        }) ||
         a.command.englishLabel.localeCompare(b.command.englishLabel, "en", {
           sensitivity: "base",
         }) ||

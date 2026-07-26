@@ -142,7 +142,10 @@ export const CommandPalette: React.FC = () => {
 
       list?.querySelector("[data-selected]")?.removeAttribute("data-selected");
       firstAction.setAttribute("data-selected", "true");
-      commandPaletteStore.updateState((current) => ({ ...current, selected: 0 }));
+      commandPaletteStore.updateState((current) => ({
+        ...current,
+        selected: 0,
+      }));
     });
   }, []);
 
