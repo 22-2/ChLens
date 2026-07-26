@@ -3,18 +3,8 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { container } from "src/service-container/index";
 import type { Page } from "src/view/browser/types";
 import { AutoRefreshStatusItem } from "src/view/browser/components/AutoRefreshStatusItem";
-import {
-  StatusBar,
-  StatusBarProvider,
-} from "src/view/browser/components/StatusBar";
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vite-plus/test";
+import { StatusBar, StatusBarProvider } from "src/view/browser/components/StatusBar";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mocks = vi.hoisted(() => ({
   currentPage: {
@@ -32,7 +22,9 @@ const mocks = vi.hoisted(() => ({
   },
   autoNextThreadSetting: {
     enabled: false,
+    mode: "balanced" as const,
     setEnabled: vi.fn(),
+    setMode: vi.fn(),
   },
   popupAutoScrollPauseSetting: {
     enabled: true,
@@ -110,7 +102,9 @@ describe("AutoRefreshStatusItem", () => {
     };
     mocks.autoNextThreadSetting = {
       enabled: false,
+      mode: "balanced",
       setEnabled: vi.fn(),
+      setMode: vi.fn(),
     };
     mocks.popupAutoScrollPauseSetting = {
       enabled: true,
@@ -155,9 +149,7 @@ describe("AutoRefreshStatusItem", () => {
 
     expect(screen.getByText("スレッド自動更新")).toBeInTheDocument();
     expect(screen.getByText("自動次スレ移動")).toBeInTheDocument();
-    expect(
-      screen.getByRole("combobox", { name: "自動スクロールスタイル" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "自動スクロールスタイル" })).toBeInTheDocument();
     expect(screen.queryByRole("radio")).not.toBeInTheDocument();
 
     fireEvent.pointerDown(button);
@@ -196,9 +188,7 @@ describe("AutoRefreshStatusItem", () => {
     expect(
       screen.getByText("スレ一覧を開いている間だけ、同じタブで自動更新します"),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByText("自動スクロールスタイル"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("自動スクロールスタイル")).not.toBeInTheDocument();
   });
 
   it("スレッドでもスレ一覧でもないページでは表示しない", () => {
@@ -290,6 +280,23 @@ describe("AutoRefreshStatusItem", () => {
     expect(mocks.autoNextThreadSetting.setEnabled).toHaveBeenCalledWith(true);
   });
 
+  it("ミニウィンドウから次スレ判定を変更できる", () => {
+    renderItem();
+
+    const button = screen.getByRole("button", { name: /自動更新/ });
+    Object.defineProperty(button, "getBoundingClientRect", {
+      configurable: true,
+      value: () => createRect(),
+    });
+
+    fireEvent.click(button);
+    fireEvent.change(screen.getByRole("combobox", { name: "次スレ判定" }), {
+      target: { value: "cautious" },
+    });
+
+    expect(mocks.autoNextThreadSetting.setMode).toHaveBeenCalledWith("cautious");
+  });
+
   it("ミニウィンドウからポップアップ表示中の一時停止を切り替えられる", () => {
     renderItem();
 
@@ -310,9 +317,7 @@ describe("AutoRefreshStatusItem", () => {
     expect(pauseToggle).toHaveTextContent("ON");
     fireEvent.click(pauseToggle as HTMLButtonElement);
 
-    expect(mocks.popupAutoScrollPauseSetting.setEnabled).toHaveBeenCalledWith(
-      false,
-    );
+    expect(mocks.popupAutoScrollPauseSetting.setEnabled).toHaveBeenCalledWith(false);
   });
 
   it("スレ一覧で自動更新間隔が有効なときはアクティブ色になる", () => {

@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
+import { log } from "src/app/Log";
 import { container } from "src/service-container/index";
 import type { IThread } from "src/service-container/interfaces";
 import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
 import {
   findMainstreamThreadMatch,
   findNextThreadMatch,
+  type AutoNextThreadMode,
 } from "src/view/browser/utils/next-thread-search";
 
 const NEXT_THREAD_SEARCH_DURATION_MS = 180_000;
@@ -13,6 +15,11 @@ const MAINSTREAM_WATCH_GRACE_PERIOD_MS = 15_000;
 const MAINSTREAM_WATCH_DURATION_MS = 60_000;
 const MAINSTREAM_WATCH_RETRY_MS = 5_000;
 const NEXT_THREAD_TRIGGER_RES_COUNT = 1000;
+const REQUIRED_CANDIDATE_CONFIRMATIONS: Record<AutoNextThreadMode, number> = {
+  cautious: 3,
+  balanced: 2,
+  aggressive: 1,
+};
 
 type AutoNextThreadStatus = "idle" | "searching" | "watching";
 
@@ -23,6 +30,8 @@ interface UseAutoNextThreadOptions {
   threadTitle: string;
   responseCount: number;
   expired: boolean;
+  mode: AutoNextThreadMode;
+  responseMessages: readonly string[];
   /**
    * 自動スクロール閾値より下に居るかどうか。
    * 上の方を読んでいる最中に勝手に次スレへ飛ばすとユーザーの文脈を壊すので、
@@ -47,25 +56,30 @@ export function useAutoNextThread({
   threadTitle,
   responseCount,
   expired,
+  mode,
+  responseMessages,
   canAutoScroll,
   followThread,
 }: UseAutoNextThreadOptions): { status: AutoNextThreadStatus } {
   const [status, setStatus] = useState<AutoNextThreadStatus>("idle");
-  const [watchState, setWatchState] = useState<MainstreamWatchState | null>(
-    null,
-  );
+  const [watchState, setWatchState] = useState<MainstreamWatchState | null>(null);
   const lastSearchKeyRef = useRef<string | null>(null);
+  const pendingCandidateRef = useRef<{ url: string; count: number } | null>(null);
+  const responseMessagesRef = useRef(responseMessages);
   const followThreadRef = useRef(followThread);
   // ブラウザのタブ/ウィンドウを裏に回している間は、ユーザーが見ていないところで
   // 勝手にタブを次スレへ差し替えてしまわないよう、可視状態でのみ動かす。
   const [isDocumentVisible, setIsDocumentVisible] = useState(
-    () =>
-      typeof document === "undefined" || document.visibilityState === "visible",
+    () => typeof document === "undefined" || document.visibilityState === "visible",
   );
 
   useEffect(() => {
     followThreadRef.current = followThread;
   }, [followThread]);
+
+  useEffect(() => {
+    responseMessagesRef.current = responseMessages;
+  }, [responseMessages]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -80,8 +94,9 @@ export function useAutoNextThread({
 
   useEffect(() => {
     lastSearchKeyRef.current = null;
+    pendingCandidateRef.current = null;
     setStatus((prev) => (prev === "searching" ? "idle" : prev));
-  }, [threadUrl]);
+  }, [mode, threadUrl]);
 
   useEffect(() => {
     if (autoRefreshEnabled && featureEnabled) {
@@ -89,6 +104,7 @@ export function useAutoNextThread({
     }
 
     lastSearchKeyRef.current = null;
+    pendingCandidateRef.current = null;
     setWatchState(null);
     setStatus("idle");
   }, [autoRefreshEnabled, featureEnabled]);
@@ -97,10 +113,7 @@ export function useAutoNextThread({
     if (watchState == null) {
       return;
     }
-    if (
-      threadUrl === watchState.originalThreadUrl ||
-      threadUrl === watchState.currentThreadUrl
-    ) {
+    if (threadUrl === watchState.originalThreadUrl || threadUrl === watchState.currentThreadUrl) {
       return;
     }
 
@@ -109,12 +122,7 @@ export function useAutoNextThread({
   }, [threadUrl, watchState]);
 
   useEffect(() => {
-    if (
-      !autoRefreshEnabled ||
-      !featureEnabled ||
-      !isDocumentVisible ||
-      !canAutoScroll
-    ) {
+    if (!autoRefreshEnabled || !featureEnabled || !isDocumentVisible || !canAutoScroll) {
       return;
     }
     if (!expired && responseCount < NEXT_THREAD_TRIGGER_RES_COUNT) {
@@ -146,7 +154,11 @@ export function useAutoNextThread({
       let boardUrl = "";
       try {
         boardUrl = getBoardUrlFromThreadUrl(threadUrl);
-      } catch {
+      } catch (error) {
+        log("error", "自動次スレ検索で板URLを解決できませんでした", {
+          error,
+          threadUrl,
+        });
         setStatus("idle");
         return;
       }
@@ -158,26 +170,60 @@ export function useAutoNextThread({
       while (!cancelled && Date.now() < deadline) {
         try {
           const result = await container.board.getThreads(boardUrl);
-          const match = findNextThreadMatch(result.threads, {
-            title: threadTitle,
-            url: threadUrl,
-          });
+          const match = findNextThreadMatch(
+            result.threads,
+            {
+              title: threadTitle,
+              url: threadUrl,
+            },
+            {
+              mode,
+              responseMessages: responseMessagesRef.current,
+            },
+          );
 
           if (match) {
-            followThreadRef.current(match.thread);
-            container.toast.info(`次スレへ移動しました: ${match.thread.title}`);
-            setWatchState({
-              boardUrl,
-              originalThreadUrl: threadUrl,
-              originalThreadTitle: threadTitle,
-              currentThreadUrl: match.thread.url,
-              startedAt: Date.now(),
-            });
-            setStatus("watching");
-            return;
+            const previousPending = pendingCandidateRef.current;
+            const confirmationCount =
+              previousPending?.url === match.thread.url ? previousPending.count + 1 : 1;
+            pendingCandidateRef.current = {
+              url: match.thread.url,
+              count: confirmationCount,
+            };
+            const requiredConfirmations = match.reasons?.includes("explicit-link")
+              ? 1
+              : REQUIRED_CANDIDATE_CONFIRMATIONS[mode];
+
+            if (confirmationCount >= requiredConfirmations) {
+              followThreadRef.current(match.thread);
+              container.toast.info(`次スレへ移動しました: ${match.thread.title}`);
+              // 変更理由: 慎重モードでは、一度移動した後に勢いだけを根拠として
+              // 別候補へ再移動すると「誤移動を避ける」という設定意図に反する。
+              if (mode === "cautious") {
+                setWatchState(null);
+                setStatus("idle");
+              } else {
+                setWatchState({
+                  boardUrl,
+                  originalThreadUrl: threadUrl,
+                  originalThreadTitle: threadTitle,
+                  currentThreadUrl: match.thread.url,
+                  startedAt: Date.now(),
+                });
+                setStatus("watching");
+              }
+              return;
+            }
+          } else {
+            pendingCandidateRef.current = null;
           }
-        } catch {
-          // subject.txtが揺れても探索自体は継続したいので、ここでは停止しない。
+        } catch (error) {
+          // subject.txtが揺れても探索自体は継続するが、原因を追えるよう詳細を残す。
+          log("error", "自動次スレ検索の板一覧取得に失敗しました", {
+            boardUrl,
+            error,
+            threadUrl,
+          });
         }
 
         await delay(NEXT_THREAD_SEARCH_RETRY_MS);
@@ -192,6 +238,11 @@ export function useAutoNextThread({
 
     return () => {
       cancelled = true;
+      // 変更理由: 検索中にタブが非表示になったり読書位置がしきい線より上へ
+      // 移動した場合、再開後に同じ満了スレをもう一度探索できるようにする。
+      if (lastSearchKeyRef.current === searchKey) {
+        lastSearchKeyRef.current = null;
+      }
       if (timerId != null) {
         window.clearTimeout(timerId);
       }
@@ -202,6 +253,7 @@ export function useAutoNextThread({
     expired,
     featureEnabled,
     isDocumentVisible,
+    mode,
     responseCount,
     threadTitle,
     threadUrl,
@@ -232,9 +284,7 @@ export function useAutoNextThread({
 
     const watchMainstreamThread = async () => {
       const deadline =
-        watchState.startedAt +
-        MAINSTREAM_WATCH_GRACE_PERIOD_MS +
-        MAINSTREAM_WATCH_DURATION_MS;
+        watchState.startedAt + MAINSTREAM_WATCH_GRACE_PERIOD_MS + MAINSTREAM_WATCH_DURATION_MS;
 
       while (!cancelled && Date.now() < deadline) {
         const now = Date.now();
@@ -249,20 +299,24 @@ export function useAutoNextThread({
             originalThreadUrl: watchState.originalThreadUrl,
             originalThreadTitle: watchState.originalThreadTitle,
             currentThreadUrl: threadUrl,
+            mode,
             now,
           });
 
           if (match) {
             followThreadRef.current(match.thread);
-            container.toast.info(
-              `本流スレへ移動しました: ${match.thread.title}`,
-            );
+            container.toast.info(`本流スレへ移動しました: ${match.thread.title}`);
             setWatchState(null);
             setStatus("idle");
             return;
           }
-        } catch {
-          // 本流監視は補助機能なので、失敗しても一定時間までは静かに再試行する。
+        } catch (error) {
+          // 本流監視は補助機能なので再試行しつつ、原因を追えるよう詳細を残す。
+          log("error", "自動次スレ検索の本流監視に失敗しました", {
+            boardUrl: watchState.boardUrl,
+            error,
+            threadUrl,
+          });
         }
 
         await delay(MAINSTREAM_WATCH_RETRY_MS);
@@ -287,6 +341,7 @@ export function useAutoNextThread({
     canAutoScroll,
     featureEnabled,
     isDocumentVisible,
+    mode,
     threadUrl,
     watchState,
   ]);

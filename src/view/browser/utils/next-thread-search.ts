@@ -1,8 +1,9 @@
 import type { IThread } from "src/service-container/interfaces";
+import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
 
 // 変更理由: read.cgi 系URLの判定ロジックを link-routing に集約し、
 // 次スレ探索側は互換のために再エクスポートだけを維持する。
-export { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
+export { getBoardUrlFromThreadUrl };
 
 const TITLE_DECORATION_PATTERN =
   / ?(?:\[(?:無断)?転載禁止\]|(?:\(c\)|©|�|&copy;|&#169;)(?:2ch\.net|@?bbspink\.com)) ?/g;
@@ -14,20 +15,35 @@ const PART_NUMBER_PATTERN = /Part(\d+)$/i;
 const PART2_PATTERN = /(★2|Part\.2|Part2)(?:\s+.*)?$/i;
 
 const NEXT_THREAD_MIN_SIMILARITY = 0.3;
-const REFLECTION_MIN_SIMILARITY = 0.6;
-const CURRENT_NUMBER_LOWER_BOUND_OFFSET = 2;
-const CURRENT_NUMBER_UPPER_BOUND_OFFSET = 3;
+
+export type AutoNextThreadMode = "cautious" | "balanced" | "aggressive";
+export type NextThreadEvidence =
+  | "explicit-link"
+  | "exact-next-number"
+  | "nearby-next-number"
+  | "same-base-title"
+  | "similar-title"
+  | "newer-thread"
+  | "active-thread";
 
 export interface NextThreadMatch {
   thread: IThread;
   reason: "mark" | "number" | "reflection" | "mainstream";
   similarity: number;
+  score?: number;
+  reasons?: readonly NextThreadEvidence[];
+}
+
+export interface NextThreadSearchOptions {
+  mode?: AutoNextThreadMode;
+  responseMessages?: readonly string[];
 }
 
 interface ThreadNumberResult {
   value: number;
   hasNumber: boolean;
   isStar: boolean;
+  isExplicitSequence: boolean;
 }
 
 interface CandidateScore {
@@ -38,10 +54,17 @@ interface CandidateScore {
   isStar: boolean;
 }
 
+interface RankedNextThreadCandidate extends CandidateScore {
+  score: number;
+  reasons: NextThreadEvidence[];
+  isReflection: boolean;
+}
+
 export interface MainstreamSearchOptions {
   originalThreadUrl: string;
   originalThreadTitle: string;
   currentThreadUrl: string;
+  mode?: AutoNextThreadMode;
   minimumResCount?: number;
   momentumRatio?: number;
   now?: number;
@@ -51,6 +74,20 @@ function stripTitleDecoration(title: string): string {
   const withoutDecoration = title.replace(TITLE_DECORATION_PATTERN, "");
   const normalizedTitle = withoutDecoration === "" ? title : withoutDecoration;
   return normalizedTitle.replaceAll("<mark>", "").replaceAll("</mark>", "");
+}
+
+function stripSequenceDecoration(title: string): string {
+  return title
+    .replace(/^\s*●\s*/, "")
+    .replace(/(?:★\d+|Part\.?\s*\d+)\s*$/i, "")
+    .trim();
+}
+
+function calculateBaseTitleSimilarity(leftTitle: string, rightTitle: string): number {
+  return calculateTitleSimilarity(
+    stripSequenceDecoration(leftTitle),
+    stripSequenceDecoration(rightTitle),
+  );
 }
 
 function katakanaToHiragana(character: string): string {
@@ -119,14 +156,7 @@ function countSequenceMatches(
     return 0;
   }
 
-  const match = findLongestCommonSubstring(
-    left,
-    right,
-    leftStart,
-    leftEnd,
-    rightStart,
-    rightEnd,
-  );
+  const match = findLongestCommonSubstring(left, right, leftStart, leftEnd, rightStart, rightEnd);
 
   if (match.size === 0) {
     return 0;
@@ -134,14 +164,7 @@ function countSequenceMatches(
 
   return (
     match.size +
-    countSequenceMatches(
-      left,
-      right,
-      leftStart,
-      match.aIndex,
-      rightStart,
-      match.bIndex,
-    ) +
+    countSequenceMatches(left, right, leftStart, match.aIndex, rightStart, match.bIndex) +
     countSequenceMatches(
       left,
       right,
@@ -153,10 +176,7 @@ function countSequenceMatches(
   );
 }
 
-export function calculateTitleSimilarity(
-  leftTitle: string,
-  rightTitle: string,
-): number {
+export function calculateTitleSimilarity(leftTitle: string, rightTitle: string): number {
   const left = normalizeThreadTitle(leftTitle);
   const right = normalizeThreadTitle(rightTitle);
 
@@ -176,6 +196,7 @@ export function extractThreadSequenceNumber(title: string): ThreadNumberResult {
       value: Number.parseFloat(starMatch[1]),
       hasNumber: true,
       isStar: true,
+      isExplicitSequence: true,
     };
   }
 
@@ -185,6 +206,7 @@ export function extractThreadSequenceNumber(title: string): ThreadNumberResult {
       value: Number.parseFloat(partDotMatch[1]),
       hasNumber: true,
       isStar: false,
+      isExplicitSequence: true,
     };
   }
 
@@ -194,18 +216,25 @@ export function extractThreadSequenceNumber(title: string): ThreadNumberResult {
       value: Number.parseFloat(partMatch[1]),
       hasNumber: true,
       isStar: false,
+      isExplicitSequence: true,
     };
   }
 
   const matches = trimmedTitle.match(THREAD_NUMBER_PATTERN);
   if (!matches || matches.length === 0) {
-    return { value: 0, hasNumber: false, isStar: false };
+    return {
+      value: 0,
+      hasNumber: false,
+      isStar: false,
+      isExplicitSequence: false,
+    };
   }
 
   return {
     value: Number.parseFloat(matches[matches.length - 1]),
     hasNumber: true,
     isStar: false,
+    isExplicitSequence: false,
   };
 }
 
@@ -229,10 +258,7 @@ function buildCandidateScores(
 ): CandidateScore[] {
   return threads
     .map((thread) => {
-      const similarity = calculateTitleSimilarity(
-        currentThreadTitle,
-        thread.title,
-      );
+      const similarity = calculateTitleSimilarity(currentThreadTitle, thread.title);
       const number = extractThreadSequenceNumber(thread.title);
 
       return {
@@ -246,159 +272,242 @@ function buildCandidateScores(
     .filter((candidate) => candidate.similarity >= NEXT_THREAD_MIN_SIMILARITY);
 }
 
-function sortBySimilarity(
-  candidates: readonly CandidateScore[],
-): CandidateScore[] {
-  return [...candidates].sort((left, right) => {
-    if (right.similarity !== left.similarity) {
-      return right.similarity - left.similarity;
-    }
-    return getThreadSortKey(right.thread) - getThreadSortKey(left.thread);
-  });
-}
-
-function buildExpectedNumbers(currentTitle: string): {
-  expectedNumbers: number[];
-  hasCurrentNumber: boolean;
-} {
-  const current = extractThreadSequenceNumber(currentTitle);
-  if (!current.hasNumber) {
-    return { expectedNumbers: [1, 2], hasCurrentNumber: false };
-  }
-
-  const start = Math.max(
-    1,
-    Math.floor(current.value) - CURRENT_NUMBER_LOWER_BOUND_OFFSET,
-  );
-  const end = Math.floor(current.value) + CURRENT_NUMBER_UPPER_BOUND_OFFSET;
-  const expectedNumbers: number[] = [];
-  for (let number = start; number <= end; number += 1) {
-    expectedNumbers.push(number);
-  }
-
-  return { expectedNumbers, hasCurrentNumber: true };
-}
-
 function isMarkedThread(title: string): boolean {
   return title.trimStart().startsWith("●");
 }
 
-export function calculateThreadMomentum(
-  thread: IThread,
-  now = Date.now(),
-): number {
-  if (
-    !Number.isFinite(thread.createdAt) ||
-    thread.createdAt <= 0 ||
-    thread.createdAt > now
-  ) {
+function isSameBoard(leftUrl: string, rightUrl: string): boolean {
+  try {
+    const left = new window.URL(leftUrl);
+    const right = new window.URL(rightUrl);
+    const leftBoardKey = left.pathname.match(/\/test\/read\.cgi\/([^/]+)\//)?.[1];
+    const rightBoardKey = right.pathname.match(/\/test\/read\.cgi\/([^/]+)\//)?.[1];
+    if (leftBoardKey && rightBoardKey) {
+      return left.hostname === right.hostname && leftBoardKey === rightBoardKey;
+    }
+    return getBoardUrlFromThreadUrl(leftUrl) === getBoardUrlFromThreadUrl(rightUrl);
+  } catch {
+    return false;
+  }
+}
+
+function countLinkEvidence(
+  responseMessages: readonly string[],
+  threadUrl: string,
+): { count: number; labeled: boolean } {
+  const normalizedUrl = threadUrl.replace(/\/+$/, "");
+  let count = 0;
+  let labeled = false;
+
+  // 変更理由: レス本文はHTML文字列のため、候補URLとの照合だけならDOM化せずに済む。
+  // URLを板一覧の候補に限定した上で照合し、本文中の任意リンクを直接遷移先にはしない。
+  for (const message of responseMessages.slice(-100)) {
+    if (!message.includes(threadUrl) && !message.includes(normalizedUrl)) {
+      continue;
+    }
+    count += 1;
+    if (/次(?:スレ|ｽﾚ)|次スレッド/.test(message)) {
+      labeled = true;
+    }
+  }
+
+  return { count, labeled };
+}
+
+const NEXT_THREAD_MODE_POLICY: Record<
+  AutoNextThreadMode,
+  { minimumScore: number; minimumMargin: number }
+> = {
+  cautious: { minimumScore: 80, minimumMargin: 20 },
+  balanced: { minimumScore: 60, minimumMargin: 12 },
+  aggressive: { minimumScore: 35, minimumMargin: 0 },
+};
+
+function rankNextThreadCandidates(
+  threads: readonly IThread[],
+  currentThread: Pick<IThread, "title" | "url">,
+  options: Required<NextThreadSearchOptions>,
+): RankedNextThreadCandidate[] {
+  const currentNumber = extractThreadSequenceNumber(currentThread.title);
+  const currentSortKey = extractThreadTimestamp(currentThread.url);
+
+  return threads
+    .filter((thread) => {
+      if (
+        thread.url === currentThread.url ||
+        thread.resCount >= 1000 ||
+        !isSameBoard(thread.url, currentThread.url)
+      ) {
+        return false;
+      }
+      const candidateSortKey = extractThreadTimestamp(thread.url);
+      return currentSortKey === 0 || candidateSortKey === 0 || candidateSortKey > currentSortKey;
+    })
+    .map((thread): RankedNextThreadCandidate | null => {
+      const similarity = calculateBaseTitleSimilarity(currentThread.title, thread.title);
+      const candidateNumber = extractThreadSequenceNumber(thread.title);
+      const linkEvidence = countLinkEvidence(options.responseMessages, thread.url);
+      const explicitlyLinked = linkEvidence.count > 0;
+      const currentMarked = isMarkedThread(currentThread.title);
+      const candidateMarked = isMarkedThread(thread.title);
+
+      // 変更理由: 従来は「●付き」というだけで最新の別実況へ移動できた。
+      // 明示案内がない場合は同じ●系統かつ十分似たタイトルだけに限定する。
+      if (currentMarked && !explicitlyLinked && (!candidateMarked || similarity < 0.45)) {
+        return null;
+      }
+
+      let numberScore = 0;
+      let numberReason: NextThreadEvidence | null = null;
+      if (currentNumber.isExplicitSequence) {
+        if (!candidateNumber.isExplicitSequence) {
+          if (!explicitlyLinked) {
+            return null;
+          }
+        } else {
+          const difference = candidateNumber.value - currentNumber.value;
+          if (difference === 1) {
+            numberScore = 40;
+            numberReason = "exact-next-number";
+          } else if (options.mode === "aggressive" && difference > 1 && difference <= 3) {
+            numberScore = 12;
+            numberReason = "nearby-next-number";
+          } else if (!explicitlyLinked) {
+            return null;
+          }
+        }
+      } else if (
+        candidateNumber.isExplicitSequence &&
+        candidateNumber.value > 2 &&
+        !explicitlyLinked
+      ) {
+        return null;
+      }
+
+      const isReflection = thread.title.includes("反省会");
+      if (isReflection && options.mode !== "aggressive" && !explicitlyLinked) {
+        return null;
+      }
+
+      const reasons: NextThreadEvidence[] = [];
+      let score = similarity * 40 + numberScore;
+
+      if (similarity === 1) {
+        score += 30;
+        reasons.push("same-base-title");
+      } else if (similarity >= 0.3) {
+        reasons.push("similar-title");
+      }
+      if (numberReason) {
+        reasons.push(numberReason);
+      }
+      if (explicitlyLinked) {
+        score += 70;
+        reasons.push("explicit-link");
+        if (linkEvidence.labeled) {
+          score += 30;
+        }
+        if (linkEvidence.count > 1) {
+          score += Math.min(20, (linkEvidence.count - 1) * 10);
+        }
+      }
+      score += 5;
+      reasons.push("newer-thread");
+      if (thread.resCount >= 5) {
+        score += 5;
+        reasons.push("active-thread");
+      }
+      if (currentMarked && candidateMarked) {
+        score += 5;
+      }
+      if (isReflection) {
+        score -= 5;
+      }
+
+      return {
+        thread,
+        similarity,
+        number: candidateNumber.value,
+        hasNumber: candidateNumber.hasNumber,
+        isStar: candidateNumber.isStar,
+        score,
+        reasons,
+        isReflection,
+      };
+    })
+    .filter((candidate): candidate is RankedNextThreadCandidate => candidate != null)
+    .sort((left, right) => {
+      if (right.score !== left.score) {
+        return right.score - left.score;
+      }
+      if (right.similarity !== left.similarity) {
+        return right.similarity - left.similarity;
+      }
+      return getThreadSortKey(right.thread) - getThreadSortKey(left.thread);
+    });
+}
+
+export function calculateThreadMomentum(thread: IThread, now = Date.now()): number {
+  if (!Number.isFinite(thread.createdAt) || thread.createdAt <= 0 || thread.createdAt > now) {
     return 0;
   }
 
-  const elapsedDays =
-    Math.max((now - thread.createdAt) / 1000, 1) / (24 * 60 * 60);
+  const elapsedDays = Math.max((now - thread.createdAt) / 1000, 1) / (24 * 60 * 60);
   return thread.resCount / elapsedDays;
 }
 
 export function findNextThreadMatch(
   threads: readonly IThread[],
   currentThread: Pick<IThread, "title" | "url">,
+  options: NextThreadSearchOptions = {},
 ): NextThreadMatch | null {
-  const availableThreads = threads.filter(
-    (thread) => thread.url !== currentThread.url && thread.resCount < 1000,
-  );
-
-  if (availableThreads.length === 0) {
+  const resolvedOptions: Required<NextThreadSearchOptions> = {
+    mode: options.mode ?? "balanced",
+    responseMessages: options.responseMessages ?? [],
+  };
+  const candidates = rankNextThreadCandidates(threads, currentThread, resolvedOptions);
+  const best = candidates[0];
+  if (!best) {
     return null;
   }
 
-  if (isMarkedThread(currentThread.title)) {
-    const markedCandidates = availableThreads.filter((thread) =>
-      isMarkedThread(thread.title),
-    );
-    if (markedCandidates.length > 0) {
-      const thread = [...markedCandidates].sort(
-        (left, right) => getThreadSortKey(right) - getThreadSortKey(left),
-      )[0];
-      return {
-        thread,
-        reason: "mark",
-        similarity: calculateTitleSimilarity(currentThread.title, thread.title),
-      };
-    }
-  }
-
-  const candidateScores = buildCandidateScores(
-    availableThreads,
-    currentThread.title,
-  );
-  const { expectedNumbers, hasCurrentNumber } = buildExpectedNumbers(
-    currentThread.title,
-  );
-  const validCandidates = sortBySimilarity(
-    candidateScores.filter((candidate) => {
-      if (expectedNumbers.includes(candidate.number)) {
-        return true;
-      }
-      if (
-        candidate.isStar &&
-        (candidate.number === 1 || candidate.number === 2)
-      ) {
-        return true;
-      }
-      return (
-        !hasCurrentNumber &&
-        candidate.number === 2 &&
-        PART2_PATTERN.test(candidate.thread.title)
-      );
-    }),
-  );
-
-  if (validCandidates.length > 0) {
-    const best = validCandidates[0];
-    return {
-      thread: best.thread,
-      reason: "number",
-      similarity: best.similarity,
-    };
-  }
-
-  const reflectionCandidates = sortBySimilarity(
-    candidateScores.filter(
-      (candidate) =>
-        candidate.thread.title.includes("反省会") &&
-        candidate.similarity >= REFLECTION_MIN_SIMILARITY,
-    ),
-  );
-
-  if (reflectionCandidates.length === 0) {
+  const policy = NEXT_THREAD_MODE_POLICY[resolvedOptions.mode];
+  if (best.score < policy.minimumScore) {
     return null;
   }
+
+  const second = candidates[1];
+  if (second && best.score - second.score < policy.minimumMargin) {
+    return null;
+  }
+
+  const currentMarked = isMarkedThread(currentThread.title);
+  const reason = best.reasons.includes("exact-next-number")
+    ? "number"
+    : best.isReflection
+      ? "reflection"
+      : currentMarked && isMarkedThread(best.thread.title)
+        ? "mark"
+        : "number";
 
   return {
-    thread: reflectionCandidates[0].thread,
-    reason: "reflection",
-    similarity: reflectionCandidates[0].similarity,
+    thread: best.thread,
+    reason,
+    similarity: best.similarity,
+    score: best.score,
+    reasons: best.reasons,
   };
 }
 
 function filterMainstreamCandidates(
   threads: readonly IThread[],
   options: Required<
-    Pick<
-      MainstreamSearchOptions,
-      "originalThreadTitle" | "originalThreadUrl" | "currentThreadUrl"
-    >
+    Pick<MainstreamSearchOptions, "originalThreadTitle" | "originalThreadUrl" | "currentThreadUrl">
   > & {
     minimumResCount: number;
   },
 ): CandidateScore[] {
-  const {
-    originalThreadTitle,
-    originalThreadUrl,
-    currentThreadUrl,
-    minimumResCount,
-  } = options;
+  const { originalThreadTitle, originalThreadUrl, currentThreadUrl, minimumResCount } = options;
   const candidates = threads.filter((thread) => {
     if (thread.url === currentThreadUrl || thread.url === originalThreadUrl) {
       return false;
@@ -417,28 +526,19 @@ function filterMainstreamCandidates(
   }
 
   const current = extractThreadSequenceNumber(originalThreadTitle);
-  const expectedNumbers = current.hasNumber
-    ? [current.value + 1, current.value]
-    : [2];
+  const expectedNumbers = current.hasNumber ? [current.value + 1, current.value] : [2];
 
-  return buildCandidateScores(candidates, originalThreadTitle).filter(
-    (candidate) => {
-      if (expectedNumbers.includes(candidate.number)) {
-        return true;
-      }
-      if (
-        candidate.isStar &&
-        (candidate.number === 1 || candidate.number === 2)
-      ) {
-        return true;
-      }
-      return (
-        !current.hasNumber &&
-        candidate.number === 2 &&
-        PART2_PATTERN.test(candidate.thread.title)
-      );
-    },
-  );
+  return buildCandidateScores(candidates, originalThreadTitle).filter((candidate) => {
+    if (expectedNumbers.includes(candidate.number)) {
+      return true;
+    }
+    if (candidate.isStar && (candidate.number === 1 || candidate.number === 2)) {
+      return true;
+    }
+    return (
+      !current.hasNumber && candidate.number === 2 && PART2_PATTERN.test(candidate.thread.title)
+    );
+  });
 }
 
 export function findMainstreamThreadMatch(
@@ -449,13 +549,12 @@ export function findMainstreamThreadMatch(
     originalThreadUrl,
     originalThreadTitle,
     currentThreadUrl,
+    mode = "balanced",
     minimumResCount = 10,
     momentumRatio = 1.5,
     now = Date.now(),
   } = options;
-  const currentThread = threads.find(
-    (thread) => thread.url === currentThreadUrl,
-  );
+  const currentThread = threads.find((thread) => thread.url === currentThreadUrl);
 
   if (!currentThread) {
     return null;
@@ -472,13 +571,18 @@ export function findMainstreamThreadMatch(
     currentThreadUrl,
     minimumResCount,
   });
+  const minimumSimilarity = mode === "cautious" ? 0.75 : mode === "balanced" ? 0.5 : 0.3;
 
   const viableCandidates = candidates
     .map((candidate) => ({
       ...candidate,
       momentum: calculateThreadMomentum(candidate.thread, now),
     }))
-    .filter((candidate) => candidate.momentum > currentMomentum * momentumRatio)
+    .filter(
+      (candidate) =>
+        candidate.similarity >= minimumSimilarity &&
+        candidate.momentum > currentMomentum * momentumRatio,
+    )
     .sort((left, right) => {
       if (right.momentum !== left.momentum) {
         return right.momentum - left.momentum;

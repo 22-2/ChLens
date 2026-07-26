@@ -66,7 +66,11 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const dispatch = useTabDispatch();
   const { setThreadStats } = useNgStatus();
   const openMediaFromUrl = useMediaViewerStore((state) => state.openMediaFromUrl);
-  const { enabled: isAutoNextThreadEnabled } = useAutoNextThreadSetting();
+  const { enabled: isAutoNextThreadEnabled, mode: autoNextThreadMode } = useAutoNextThreadSetting();
+  const autoNextThreadResponseMessages = useMemo(
+    () => responses.map((response) => response.message),
+    [responses],
+  );
 
   const [miniAaResNums, setMiniAaResNums] = useState<Set<number>>(new Set());
   const { activeTopBar, closeTopBar, openFilterToolbar, searchFocusKey } = useThreadTopBar({
@@ -163,6 +167,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     threadTitle: page.title,
     responseCount: responses.length,
     expired,
+    mode: autoNextThreadMode,
+    responseMessages: autoNextThreadResponseMessages,
     canAutoScroll,
     followThread: handleFollowNextThread,
   });

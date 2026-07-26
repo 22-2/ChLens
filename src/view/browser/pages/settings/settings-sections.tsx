@@ -41,6 +41,12 @@ const HOW_TO_JUDGMENT_ID_OPTIONS = [
   { const: "exists_once", title: "1つでも存在する場合" },
 ] as const satisfies readonly SettingsOption[];
 
+const AUTO_NEXT_THREAD_MODE_OPTIONS = [
+  { const: "cautious", title: "慎重（誤移動を優先して防ぐ）" },
+  { const: "balanced", title: "標準（精度と追従性のバランス）" },
+  { const: "aggressive", title: "積極（スレタイ変化を広く許容）" },
+] as const satisfies readonly SettingsOption[];
+
 export const SETTINGS_PAGE_STATE_KEY = "chlens.settings-page.state.v1";
 export const AUTO_SAVE_DELAY_MS = 350;
 export const NG_PRIMARY_FIELD_KEYS = new Set(["ngwords"]);
@@ -171,8 +177,7 @@ export const SETTINGS_SECTIONS = [
         kind: "boolean",
         key: "pause_auto_scroll_on_popup",
         title: "ポップアップ表示中は自動スクロールを一時停止する",
-        description:
-          "OFFにすると、レスポップアップなどを表示している間も新着レスへ追従します。",
+        description: "OFFにすると、レスポップアップなどを表示している間も新着レスへ追従します。",
       },
       {
         kind: "divider",
@@ -184,7 +189,16 @@ export const SETTINGS_SECTIONS = [
         key: "auto_next_thread",
         title: "1000到達やdat落ち後に次スレへ自動移動する",
         description:
-          "3秒ごとに最大180秒探索し、移動後は勢い差を見て本流候補を短時間だけ監視します。",
+          "3秒ごとに最大180秒探索し、標準・積極では移動後も本流候補を短時間だけ監視します。",
+      },
+      {
+        kind: "string",
+        key: "auto_next_thread_mode",
+        title: "次スレ判定",
+        description:
+          "慎重ほど有力候補の連続確認と候補間の大きな差を求めます。積極でも別板や古いスレには移動しません。",
+        options: AUTO_NEXT_THREAD_MODE_OPTIONS,
+        widget: "radio",
       },
     ],
   ),
@@ -329,10 +343,9 @@ export const SETTINGS_SECTIONS = [
   ),
 ] as const satisfies readonly SettingsSectionDefinition[];
 
-export const SETTINGS_SECTION_MAP = new Map<
-  SettingsSectionId,
-  SettingsSectionDefinition
->(SETTINGS_SECTIONS.map((section) => [section.id, section]));
+export const SETTINGS_SECTION_MAP = new Map<SettingsSectionId, SettingsSectionDefinition>(
+  SETTINGS_SECTIONS.map((section) => [section.id, section]),
+);
 
 export function isSettingsSectionId(value: string): value is SettingsSectionId {
   return SETTINGS_SECTION_MAP.has(value as SettingsSectionId);
@@ -351,46 +364,32 @@ function readFieldValue(field: SettingsFieldDefinition): SettingsFormValue {
       // 変更理由: 未設定時でもラジオ選択が空表示にならないよう、
       // 新規タブ初期ページは実挙動と同じ既定値をUIにも反映する。
       if (field.key === "new_tab_page_mode") {
-        return typeof rawValue === "string" && rawValue !== ""
-          ? rawValue
-          : "related_board";
+        return typeof rawValue === "string" && rawValue !== "" ? rawValue : "related_board";
       }
       return typeof rawValue === "string" ? rawValue : "";
   }
 }
 
-function writeFieldValue(
-  field: SettingsFieldDefinition,
-  value: SettingsFormValue,
-): string {
+function writeFieldValue(field: SettingsFieldDefinition, value: SettingsFormValue): string {
   switch (field.kind) {
     case "boolean":
       return value ? "on" : "off";
     case "number":
-      return String(
-        typeof value === "number" && Number.isFinite(value) ? value : 0,
-      );
+      return String(typeof value === "number" && Number.isFinite(value) ? value : 0);
     case "string":
       return typeof value === "string" ? value : "";
   }
 }
 
-function readSectionFormData(
-  section: SettingsSectionDefinition,
-): SettingsSectionFormData {
+function readSectionFormData(section: SettingsSectionDefinition): SettingsSectionFormData {
   return Object.fromEntries(
-    section.fields
-      .filter(isSettingsFieldItem)
-      .map((field) => [field.key, readFieldValue(field)]),
+    section.fields.filter(isSettingsFieldItem).map((field) => [field.key, readFieldValue(field)]),
   );
 }
 
 export function readAllSettings(): SettingsFormState {
   return Object.fromEntries(
-    SETTINGS_SECTIONS.map((section) => [
-      section.id,
-      readSectionFormData(section),
-    ]),
+    SETTINGS_SECTIONS.map((section) => [section.id, readSectionFormData(section)]),
   ) as SettingsFormState;
 }
 
@@ -403,10 +402,7 @@ export async function saveSectionFormData(
       .filter(isSettingsFieldItem)
       .map((field) =>
         Promise.resolve(
-          container.config.set(
-            field.key,
-            writeFieldValue(field, formData[field.key]),
-          ),
+          container.config.set(field.key, writeFieldValue(field, formData[field.key])),
         ),
       ),
   );
