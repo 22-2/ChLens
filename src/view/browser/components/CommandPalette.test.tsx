@@ -1,19 +1,30 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import type { SpotlightActionData, SpotlightProps } from "@mantine/spotlight";
+import type {
+  SpotlightActionProps,
+  SpotlightRootProps,
+  SpotlightSearchProps,
+} from "@mantine/spotlight";
 import type React from "react";
 import { CommandPalette } from "src/view/browser/components/CommandPalette";
 import type { Page } from "src/view/browser/types";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
-const { dispatchMock, requestThreadResJumpMock, spotlightCloseMock, spotlightProps } = vi.hoisted(
-  () => ({
-    dispatchMock: vi.fn(),
-    requestThreadResJumpMock: vi.fn(),
-    spotlightCloseMock: vi.fn(),
-    spotlightProps: { current: null as SpotlightProps | null },
-  }),
-);
+const {
+  dispatchMock,
+  loadRecentCommandIdsMock,
+  requestThreadResJumpMock,
+  saveRecentCommandIdsMock,
+  spotlightCloseMock,
+  spotlightRootProps,
+} = vi.hoisted(() => ({
+  dispatchMock: vi.fn(),
+  loadRecentCommandIdsMock: vi.fn(async () => [] as string[]),
+  requestThreadResJumpMock: vi.fn(),
+  saveRecentCommandIdsMock: vi.fn(async () => undefined),
+  spotlightCloseMock: vi.fn(),
+  spotlightRootProps: { current: null as SpotlightRootProps | null },
+}));
 
 let currentPage: Page = {
   type: "thread",
@@ -24,23 +35,43 @@ let paneCount = 1;
 
 vi.mock("@mantine/spotlight", () => ({
   Spotlight: Object.assign(
-    (props: SpotlightProps) => {
-      spotlightProps.current = props;
-      const actions = props.actions.flatMap((entry) =>
-        "actions" in entry ? entry.actions : [entry],
-      ) as SpotlightActionData[];
-      return (
-        <div data-testid="spotlight" data-shortcut={String(props.shortcut)}>
-          {actions.map((action) => (
-            <button key={action.id} disabled={action.disabled} onClick={action.onClick}>
-              {action.label}
-            </button>
-          ))}
-        </div>
-      );
+    {},
+    {
+      Root: ({ children, ...props }: React.PropsWithChildren<SpotlightRootProps>) => {
+        spotlightRootProps.current = props;
+        return (
+          <div data-testid="spotlight" data-shortcut={String(props.shortcut)}>
+            {children}
+          </div>
+        );
+      },
+      Search: (props: SpotlightSearchProps) => (
+        <input
+          aria-label={props["aria-label"]}
+          placeholder={props.placeholder}
+          value={String(spotlightRootProps.current?.query ?? "")}
+          onChange={(event) =>
+            spotlightRootProps.current?.onQueryChange?.(event.currentTarget.value)
+          }
+        />
+      ),
+      ActionsList: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
+      Action: ({ id, label, rightSection, disabled, onClick, ...props }: SpotlightActionProps) => (
+        <button id={id} aria-label={props["aria-label"]} disabled={disabled} onClick={onClick}>
+          {label}
+          {rightSection}
+        </button>
+      ),
+      Empty: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
+      Footer: ({ children }: React.PropsWithChildren) => <footer>{children}</footer>,
+      close: spotlightCloseMock,
     },
-    { close: spotlightCloseMock },
   ),
+}));
+
+vi.mock("src/view/browser/commands/command-palette-history", () => ({
+  loadRecentCommandIds: loadRecentCommandIdsMock,
+  saveRecentCommandIds: saveRecentCommandIdsMock,
 }));
 
 vi.mock("@mantine/core", () => ({
@@ -119,8 +150,10 @@ describe("CommandPalette", () => {
     cleanup();
     dispatchMock.mockReset();
     requestThreadResJumpMock.mockReset();
+    loadRecentCommandIdsMock.mockClear();
+    saveRecentCommandIdsMock.mockReset();
     spotlightCloseMock.mockReset();
-    spotlightProps.current = null;
+    spotlightRootProps.current = null;
     paneCount = 1;
     currentPage = {
       type: "thread",
@@ -133,9 +166,9 @@ describe("CommandPalette", () => {
     render(<CommandPalette />);
 
     expect(screen.getByTestId("spotlight")).toHaveAttribute("data-shortcut", "mod + shift + P");
-    expect(screen.getByRole("button", { name: "subject.txtのURLをコピー" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "datのURLをコピー" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "スレ全体をTOON形式でコピー" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /subject\.txtのURLをコピー/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /datのURLをコピー/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /スレ全体をTOON形式でコピー/ })).toBeInTheDocument();
   });
 
   it("ホームではページ依存コマンドを表示しない", () => {
@@ -151,13 +184,13 @@ describe("CommandPalette", () => {
     expect(
       screen.queryByRole("button", { name: "現在のページURLをコピー" }),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "設定を開く" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /設定を開く/ })).toBeInTheDocument();
   });
 
   it("レス番号ジャンプはパレットを閉じて入力ダイアログを開く", () => {
     render(<CommandPalette />);
 
-    fireEvent.click(screen.getByRole("button", { name: "レス番号を指定してジャンプ" }));
+    fireEvent.click(screen.getByRole("button", { name: /レス番号を指定してジャンプ/ }));
 
     expect(spotlightCloseMock).toHaveBeenCalledOnce();
     expect(screen.getByRole("dialog", { name: "レス番号へジャンプ" })).toBeInTheDocument();
@@ -178,15 +211,28 @@ describe("CommandPalette", () => {
     paneCount = 2;
     render(<CommandPalette />);
 
-    fireEvent.click(screen.getByRole("button", { name: "2ペイン表示を解除" }));
+    fireEvent.click(screen.getByRole("button", { name: /2ペイン表示を解除/ }));
     expect(dispatchMock).toHaveBeenCalledWith({ type: "CLOSE_PANE" });
   });
 
   it("Spotlightをスクロール可能かつ既存ポップアップより前面にする", () => {
     render(<CommandPalette />);
 
-    expect(spotlightProps.current?.scrollable).toBe(true);
-    expect(spotlightProps.current?.maxHeight).toBe("min(420px, 60vh)");
-    expect(spotlightProps.current?.zIndex).toBe(40000);
+    expect(spotlightRootProps.current?.scrollable).toBe(true);
+    expect(spotlightRootProps.current?.maxHeight).toBe("min(480px, 60vh)");
+    expect(spotlightRootProps.current?.size).toBe(800);
+    expect(spotlightRootProps.current?.zIndex).toBe(40000);
+  });
+
+  it("英語名で検索し、説明を表示しない", () => {
+    render(<CommandPalette />);
+
+    fireEvent.change(screen.getByLabelText("コマンドを検索"), {
+      target: { value: "Open Settings" },
+    });
+
+    expect(screen.getByRole("button", { name: /設定を開く/ })).toHaveTextContent("Open Settings");
+    expect(screen.queryByText("アプリの設定画面を開きます")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /現在のページを更新/ })).not.toBeInTheDocument();
   });
 });

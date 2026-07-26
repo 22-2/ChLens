@@ -1,16 +1,23 @@
-import { Spotlight, type SpotlightActionGroupData } from "@mantine/spotlight";
+import { Spotlight } from "@mantine/spotlight";
 import { Button, Modal, TextInput } from "@mantine/core";
 import { Search } from "lucide-react";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { container } from "src/service-container";
 import {
-  BROWSER_COMMAND_GROUP_LABELS,
-  BROWSER_COMMAND_GROUP_ORDER,
   executeBrowserCommand,
   getBrowserCommandLabel,
   resolveBrowserCommands,
   type BrowserCommandContext,
 } from "src/view/browser/commands/browser-commands";
+import {
+  loadRecentCommandIds,
+  saveRecentCommandIds,
+} from "src/view/browser/commands/command-palette-history";
+import {
+  addRecentCommandId,
+  normalizeRecentCommandIds,
+} from "src/view/browser/commands/command-history";
+import { filterAndSortBrowserCommands } from "src/view/browser/commands/command-search";
 import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useTabPanes, useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
@@ -30,6 +37,25 @@ export const CommandPalette: React.FC = () => {
   const [isResponseJumpDialogOpen, setIsResponseJumpDialogOpen] = useState(false);
   const [responseJumpValue, setResponseJumpValue] = useState("");
   const [responseJumpError, setResponseJumpError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [recentCommandIds, setRecentCommandIds] = useState<string[]>([]);
+  const recentCommandIdsRef = useRef(recentCommandIds);
+  recentCommandIdsRef.current = recentCommandIds;
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadRecentCommandIds().then((loaded) => {
+      if (cancelled) return;
+      // 保存済み履歴の読み込み前にコマンドを実行しても、その実行を古い履歴で
+      // 上書きしないよう、現在のメモリ上の履歴を優先して結合する。
+      const merged = normalizeRecentCommandIds([...recentCommandIdsRef.current, ...loaded]);
+      recentCommandIdsRef.current = merged;
+      setRecentCommandIds(merged);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const openResponseJumpDialog = useCallback(() => {
     if (currentPage.type !== "thread") return;
@@ -92,76 +118,110 @@ export const CommandPalette: React.FC = () => {
     () => resolveBrowserCommands(context, runningCommandIds),
     [context, runningCommandIds],
   );
+  const filteredCommands = useMemo(
+    () => filterAndSortBrowserCommands(commands, query, recentCommandIds),
+    [commands, query, recentCommandIds],
+  );
 
-  const execute = useCallback(async (commandId: string) => {
-    setRunningCommandIds((current) => {
-      if (current.has(commandId)) return current;
-      return new Set(current).add(commandId);
-    });
-
-    const currentContext = contextRef.current;
-    try {
-      await executeBrowserCommand(commandId, currentContext);
-    } catch (error: unknown) {
-      const label = getBrowserCommandLabel(commandId, currentContext);
-      // 変更理由: コマンドパレットは多種類の処理を集約するため、失敗時に
-      // コマンドIDとページ種別を残さないと発生元を追跡できない。
-      console.error("Browser command execution failed", {
-        commandId,
-        pageType: currentContext.currentPage.type,
-        error,
-      });
-      container.toast.error(`${label}に失敗しました`);
-    } finally {
-      setRunningCommandIds((current) => {
-        if (!current.has(commandId)) return current;
-        const next = new Set(current);
-        next.delete(commandId);
-        return next;
-      });
-    }
+  const recordCommand = useCallback((commandId: string) => {
+    const next = addRecentCommandId(recentCommandIdsRef.current, commandId);
+    recentCommandIdsRef.current = next;
+    setRecentCommandIds(next);
+    void saveRecentCommandIds(next);
   }, []);
 
-  const actions = useMemo<SpotlightActionGroupData[]>(
-    () =>
-      BROWSER_COMMAND_GROUP_ORDER.map((group) => ({
-        group: BROWSER_COMMAND_GROUP_LABELS[group],
-        actions: commands
-          .filter((command) => command.group === group)
-          .map((command) => {
-            const Icon = command.icon;
-            return {
-              id: command.id,
-              label: command.label,
-              description: command.description,
-              keywords: [...command.keywords],
-              disabled: !command.enabled,
-              leftSection: <Icon size={18} />,
-              onClick: () => void execute(command.id),
-            };
-          }),
-      })).filter((group) => group.actions.length > 0),
-    [commands, execute],
+  const execute = useCallback(
+    async (commandId: string) => {
+      recordCommand(commandId);
+      setRunningCommandIds((current) => {
+        if (current.has(commandId)) return current;
+        return new Set(current).add(commandId);
+      });
+
+      const currentContext = contextRef.current;
+      try {
+        await executeBrowserCommand(commandId, currentContext);
+      } catch (error: unknown) {
+        const label = getBrowserCommandLabel(commandId, currentContext);
+        // 変更理由: コマンドパレットは多種類の処理を集約するため、失敗時に
+        // コマンドIDとページ種別を残さないと発生元を追跡できない。
+        console.error("Browser command execution failed", {
+          commandId,
+          pageType: currentContext.currentPage.type,
+          error,
+        });
+        container.toast.error(`${label}に失敗しました`);
+      } finally {
+        setRunningCommandIds((current) => {
+          if (!current.has(commandId)) return current;
+          const next = new Set(current);
+          next.delete(commandId);
+          return next;
+        });
+      }
+    },
+    [recordCommand],
   );
 
   return (
     <>
-      <Spotlight
-        actions={actions}
+      <Spotlight.Root
+        query={query}
+        onQueryChange={setQuery}
         shortcut="mod + shift + P"
-        nothingFound="該当するコマンドがありません"
-        highlightQuery
         scrollable
-        maxHeight="min(420px, 60vh)"
-        size={560}
-        yOffset={72}
+        maxHeight="min(480px, 60vh)"
+        size={800}
+        yOffset={48}
         zIndex={40000}
-        searchProps={{
-          "aria-label": "コマンドを検索",
-          placeholder: "コマンドを検索...",
-          leftSection: <Search size={18} />,
+        classNames={{
+          content: "command-palette__content",
+          search: "command-palette__search",
+          actionsList: "command-palette__actions-list",
+          action: "command-palette__action",
+          actionBody: "command-palette__action-body",
+          actionLabel: "command-palette__action-label",
+          actionSection: "command-palette__action-section",
+          empty: "command-palette__empty",
+          footer: "command-palette__footer",
         }}
-      />
+      >
+        <Spotlight.Search
+          aria-label="コマンドを検索"
+          placeholder="コマンドを検索..."
+          leftSection={<Search size={17} />}
+        />
+        {filteredCommands.length > 0 ? (
+          <Spotlight.ActionsList>
+            {filteredCommands.map((command) => {
+              const Icon = command.icon;
+              return (
+                <Spotlight.Action
+                  key={command.id}
+                  id={command.id}
+                  label={command.label}
+                  aria-label={`${command.label} (${command.englishLabel})`}
+                  highlightQuery
+                  disabled={!command.enabled}
+                  leftSection={<Icon size={16} />}
+                  rightSection={
+                    <span className="command-palette__english-label">{command.englishLabel}</span>
+                  }
+                  onClick={() => void execute(command.id)}
+                />
+              );
+            })}
+          </Spotlight.ActionsList>
+        ) : (
+          <Spotlight.Empty>該当するコマンドがありません</Spotlight.Empty>
+        )}
+        <Spotlight.Footer>
+          <span>コマンド</span>
+          <span className="command-palette__result-count">
+            {filteredCommands.length} / {commands.length}
+          </span>
+        </Spotlight.Footer>
+      </Spotlight.Root>
       <Modal
         opened={isResponseJumpDialogOpen}
         onClose={closeResponseJumpDialog}

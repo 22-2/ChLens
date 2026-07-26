@@ -4499,3 +4499,106 @@ body {
     --normal-text: #e8eaed;
   }
 }
+
+// コマンドパレットは説明を別行へ出さず、日英名を横一列に収めて
+// 多くの候補をキーボードで素早く走査できる密度にする。
+.command-palette__content {
+  width: min(800px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+}
+
+.command-palette__search {
+  height: 42px;
+  min-height: 42px;
+  font-size: 13px;
+}
+
+.command-palette__actions-list {
+  padding: 4px;
+}
+
+.command-palette__action {
+  min-height: 26px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  gap: 6px;
+  font-size: 12.5px;
+
+  &[data-selected] {
+    background-color: var(--mantine-color-default-hover);
+    color: var(--mantine-color-text);
+  }
+}
+
+.command-palette__action-body {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.command-palette__action-label {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command-palette__action-section {
+  flex: 0 0 auto;
+
+  &[data-position="left"] {
+    margin-inline-end: 2px;
+    color: var(--mantine-color-dimmed);
+  }
+
+  &[data-position="right"] {
+    min-width: 0;
+    margin-inline-start: 2px;
+  }
+}
+
+.command-palette__english-label {
+  display: block;
+  max-width: 340px;
+  overflow: hidden;
+  color: var(--mantine-color-dimmed);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command-palette__action[data-selected] {
+  .command-palette__english-label,
+  .command-palette__action-section[data-position="left"] {
+    color: var(--mantine-color-dimmed);
+  }
+}
+
+.command-palette__empty {
+  padding: 20px 12px;
+  font-size: 12px;
+}
+
+.command-palette__footer {
+  display: flex;
+  align-items: center;
+  min-height: 27px;
+  padding: 4px 10px;
+  color: var(--mantine-color-dimmed);
+  font-size: 11px;
+}
+
+.command-palette__result-count {
+  margin-inline-start: auto;
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .command-palette__content {
+    width: calc(100vw - 16px);
+    max-width: calc(100vw - 16px);
+  }
+
+  .command-palette__english-label {
+    max-width: 38vw;
+  }
+}

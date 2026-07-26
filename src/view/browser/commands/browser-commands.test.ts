@@ -143,6 +143,7 @@ describe("browser commands", () => {
     );
     expect(command).toMatchObject({
       label: "レス番号を指定してジャンプ",
+      englishLabel: "Jump to Response Number",
       enabled: true,
     });
 

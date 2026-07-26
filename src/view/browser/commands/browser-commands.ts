@@ -66,6 +66,7 @@ export interface BrowserCommandContext {
 export interface BrowserCommandDefinition {
   id: string;
   label: string | ((context: BrowserCommandContext) => string);
+  englishLabel: string | ((context: BrowserCommandContext) => string);
   description?: string;
   keywords?: readonly string[];
   group: BrowserCommandGroup;
@@ -78,6 +79,7 @@ export interface BrowserCommandDefinition {
 export interface ResolvedBrowserCommand {
   id: string;
   label: string;
+  englishLabel: string;
   description?: string;
   keywords: readonly string[];
   group: BrowserCommandGroup;
@@ -283,16 +285,17 @@ async function copyWithNotice(text: string, label: string): Promise<void> {
 }
 
 function getCommandLabel(
-  definition: BrowserCommandDefinition,
+  label: BrowserCommandDefinition["label"],
   context: BrowserCommandContext,
 ): string {
-  return typeof definition.label === "function" ? definition.label(context) : definition.label;
+  return typeof label === "function" ? label(context) : label;
 }
 
 export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = [
   {
     id: "navigation.open-settings",
     label: "設定を開く",
+    englishLabel: "Open Settings",
     description: "アプリの設定画面を開きます",
     keywords: ["preferences", "config", "オプション"],
     group: "navigation",
@@ -302,6 +305,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
   {
     id: "navigation.open-bookmarks",
     label: "ブックマークリストを開く",
+    englishLabel: "Open Bookmarks",
     keywords: ["お気に入り", "favorite", "bookmark"],
     group: "navigation",
     icon: Bookmark,
@@ -314,6 +318,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
   {
     id: "navigation.open-history",
     label: "閲覧履歴を開く",
+    englishLabel: "Open Browsing History",
     keywords: ["history", "最近見た"],
     group: "navigation",
     icon: History,
@@ -326,6 +331,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
   {
     id: "navigation.open-write-history",
     label: "書き込み履歴を開く",
+    englishLabel: "Open Post History",
     keywords: ["投稿履歴", "write history"],
     group: "navigation",
     icon: PenLine,
@@ -338,6 +344,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
   {
     id: "navigation.open-log-search",
     label: "ログ検索を開く",
+    englishLabel: "Open Archive Search",
     keywords: ["過去ログ", "archive", "log"],
     group: "navigation",
     icon: Archive,
@@ -350,6 +357,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
   {
     id: "navigation.import-open-thread-tabs",
     label: "開いているスレタブをすべて取り込む",
+    englishLabel: "Import All Open Thread Tabs",
     description: "ブラウザで開いている5ch互換スレをアプリのタブとして追加します",
     keywords: ["一括", "import", "browser tabs", "5ch", "スレッド"],
     group: "navigation",
@@ -360,6 +368,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
   {
     id: "page.reload",
     label: "現在のページを更新",
+    englishLabel: "Reload Current Page",
     keywords: ["再読み込み", "reload", "refresh"],
     group: "page",
     icon: RotateCw,
@@ -369,6 +378,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
   {
     id: "page.jump-to-response",
     label: "レス番号を指定してジャンプ",
+    englishLabel: "Jump to Response Number",
     description: "入力ダイアログでレス番号を指定します",
     keywords: ["レス移動", "番号", "jump", "response"],
     group: "page",
@@ -379,6 +389,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
   {
     id: "page.toggle-filter",
     label: "フィルターを切り替え",
+    englishLabel: "Toggle Filter",
     keywords: ["検索", "絞り込み", "filter"],
     group: "page",
     icon: Filter,
@@ -389,6 +400,8 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     id: "page.toggle-write-panel",
     label: ({ isWritePanelOpen }) =>
       isWritePanelOpen ? "書き込みパネルを閉じる" : "書き込みパネルを開く",
+    englishLabel: ({ isWritePanelOpen }) =>
+      isWritePanelOpen ? "Close Write Panel" : "Open Write Panel",
     keywords: ["投稿", "write", "レス"],
     group: "page",
     icon: PenLine,
@@ -398,6 +411,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
   {
     id: "page.toggle-bookmark",
     label: "現在のページのブックマークを切り替え",
+    englishLabel: "Toggle Bookmark for Current Page",
     keywords: ["お気に入り", "star", "bookmark"],
     group: "page",
     icon: Star,
@@ -407,6 +421,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
   {
     id: "page.open-board",
     label: "このスレッドの板を新しいタブで開く",
+    englishLabel: "Open This Thread's Board in New Tab",
     keywords: ["板に移動", "board", "掲示板"],
     group: "page",
     icon: List,
@@ -420,6 +435,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
   {
     id: "page.open-external",
     label: "現在のページを外部ブラウザで開く",
+    englishLabel: "Open Current Page in External Browser",
     keywords: ["browser", "web", "外部"],
     group: "page",
     icon: ExternalLink,
@@ -433,6 +449,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
   {
     id: "layout.toggle-pane",
     label: ({ isTwoPane }) => (isTwoPane ? "2ペイン表示を解除" : "2ペインで表示"),
+    englishLabel: ({ isTwoPane }) => (isTwoPane ? "Close Two-Pane View" : "Show in Two Panes"),
     keywords: ["分割", "split", "pane", "レイアウト"],
     group: "layout",
     icon: Columns2,
@@ -441,6 +458,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
   {
     id: "copy.page-title",
     label: "現在のページタイトルをコピー",
+    englishLabel: "Copy Current Page Title",
     keywords: ["スレタイ", "板名", "title"],
     group: "copy",
     icon: Clipboard,
@@ -454,6 +472,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
   {
     id: "copy.page-url",
     label: "現在のページURLをコピー",
+    englishLabel: "Copy Current Page URL",
     keywords: ["アドレス", "link", "URL"],
     group: "copy",
     icon: Clipboard,
@@ -467,6 +486,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
   {
     id: "copy.page-title-url",
     label: "ページタイトルとURLをコピー",
+    englishLabel: "Copy Page Title and URL",
     keywords: ["スレタイ&URL", "title link"],
     group: "copy",
     icon: Clipboard,
@@ -480,6 +500,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
   {
     id: "copy.subject-url",
     label: "subject.txtのURLをコピー",
+    englishLabel: "Copy subject.txt URL",
     description: "現在の板のスレッド一覧取得URLをコピーします",
     keywords: ["subject", "raw", "板一覧", "生URL"],
     group: "copy",
@@ -494,6 +515,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
   {
     id: "copy.dat-url",
     label: "datのURLをコピー",
+    englishLabel: "Copy dat URL",
     description: "現在のスレッドのdat取得URLをコピーします",
     keywords: ["dat", "raw", "過去ログ", "生URL"],
     group: "copy",
@@ -508,6 +530,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
   {
     id: "copy.thread-toon",
     label: "スレ全体をTOON形式でコピー",
+    englishLabel: "Copy Entire Thread as TOON",
     description: "LLM向けのTOON形式で全レスをコピーし、推定トークン数を表示します",
     keywords: ["TOON", "AI", "LLM", "全レス", "スレッド全体"],
     group: "copy",
@@ -543,7 +566,8 @@ export function resolveBrowserCommands(
   return BROWSER_COMMAND_DEFINITIONS.filter((definition) => definition.when?.(context) ?? true).map(
     (definition) => ({
       id: definition.id,
-      label: getCommandLabel(definition, context),
+      label: getCommandLabel(definition.label, context),
+      englishLabel: getCommandLabel(definition.englishLabel, context),
       description: definition.description,
       keywords: definition.keywords ?? [],
       group: definition.group,
@@ -571,5 +595,5 @@ export async function executeBrowserCommand(
 
 export function getBrowserCommandLabel(commandId: string, context: BrowserCommandContext): string {
   const definition = BROWSER_COMMAND_DEFINITIONS.find((command) => command.id === commandId);
-  return definition ? getCommandLabel(definition, context) : commandId;
+  return definition ? getCommandLabel(definition.label, context) : commandId;
 }
