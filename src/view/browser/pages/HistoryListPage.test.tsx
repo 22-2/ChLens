@@ -1,28 +1,30 @@
 import "@testing-library/jest-dom/vitest";
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { container } from "src/service-container";
 import { HistoryListPage } from "src/view/browser/pages/HistoryListPage";
 import { QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE } from "src/view/browser/utils/filter-toolbar-events";
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mockUseTabStore = vi.fn();
 const virtualizedTableState = vi.hoisted(() => ({
   onEndReached: undefined as (() => void) | undefined,
+}));
+const { cacheGetMock, cachePutMock } = vi.hoisted(() => ({
+  cacheGetMock: vi.fn(),
+  cachePutMock: vi.fn(),
+}));
+
+vi.mock("src/app", () => ({
+  platform: {
+    storage: {
+      // UIキャッシュの検証はページ表示の責務と分け、拡張機能APIを読まずに単体テストできるようにする。
+      getStore: () => ({
+        get: cacheGetMock,
+        put: cachePutMock,
+      }),
+    },
+  },
 }));
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
@@ -76,7 +78,7 @@ interface ReadStateService {
   getAll: () => Promise<unknown[]>;
 }
 
-type AppLikeWindow = Window & {
+type AppLikeWindow = {
   app?: {
     History?: HistoryService;
     ReadState?: ReadStateService;
@@ -98,12 +100,7 @@ function emitMessage(type: string, data?: unknown): void {
   }
 }
 
-function createHistoryItem(
-  url: string,
-  title: string,
-  boardTitle: string,
-  date: number,
-) {
+function createHistoryItem(url: string, title: string, boardTitle: string, date: number) {
   return {
     url,
     title,
@@ -129,6 +126,9 @@ describe("HistoryListPage", () => {
   });
 
   beforeEach(() => {
+    cacheGetMock.mockReset();
+    cacheGetMock.mockResolvedValue(undefined);
+    cachePutMock.mockReset();
     mockUseTabStore.mockReset();
     historyGet.mockReset();
     readStateGetAll.mockReset();
@@ -148,7 +148,8 @@ describe("HistoryListPage", () => {
       },
     });
 
-    (window as AppLikeWindow).app = {
+    // テストで使うレガシーAPIだけを差し替えるため、実アプリのwindow.app型から切り離す。
+    (window as unknown as AppLikeWindow).app = {
       History: {
         get: historyGet,
       },
@@ -255,12 +256,9 @@ describe("HistoryListPage", () => {
 
     act(() => {
       window.dispatchEvent(
-        new window.CustomEvent(
-          QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.historyList,
-          {
-            detail: { tabId: "tab-1" },
-          },
-        ),
+        new window.CustomEvent(QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.historyList, {
+          detail: { tabId: "tab-1" },
+        }),
       );
     });
 
@@ -274,12 +272,9 @@ describe("HistoryListPage", () => {
 
     act(() => {
       window.dispatchEvent(
-        new window.CustomEvent(
-          QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.historyList,
-          {
-            detail: { tabId: "tab-1" },
-          },
-        ),
+        new window.CustomEvent(QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.historyList, {
+          detail: { tabId: "tab-1" },
+        }),
       );
     });
 
@@ -340,9 +335,7 @@ describe("HistoryListPage", () => {
         ),
       ]);
 
-    const { rerender } = render(
-      <HistoryListPage tabId="tab-1" isActive={false} refreshKey={0} />,
-    );
+    const { rerender } = render(<HistoryListPage tabId="tab-1" isActive={false} refreshKey={0} />);
 
     await screen.findByText("スレ1");
 
@@ -375,9 +368,7 @@ describe("HistoryListPage", () => {
         ),
       ]);
 
-    const { rerender } = render(
-      <HistoryListPage tabId="tab-1" isActive={true} refreshKey={0} />,
-    );
+    const { rerender } = render(<HistoryListPage tabId="tab-1" isActive={true} refreshKey={0} />);
 
     await screen.findByText("スレ1");
 

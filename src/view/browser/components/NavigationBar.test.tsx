@@ -1,81 +1,59 @@
 import "@testing-library/jest-dom/vitest";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { container } from "src/service-container";
 import { NavigationBar } from "src/view/browser/components/NavigationBar";
 import type { Page } from "src/view/browser/types";
 import { QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE } from "src/view/browser/utils/filter-toolbar-events";
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-const { activeTab, defaultHistory, dispatchMock, longTitle } = vi.hoisted(
-  () => {
-    const longTitle = "かなり長い履歴タイトル".repeat(12);
-    const defaultHistory = [
-      {
-        type: "threadList" as const,
-        title: longTitle,
-        boardUrl: "https://egg.5ch.net/software/",
-        boardTitle: "Software",
-      },
-      {
-        type: "thread" as const,
-        title: "Current Thread",
-        threadUrl: "https://egg.5ch.net/test/read.cgi/software/1/",
-      },
-    ];
-    const activeTab = {
-      id: "tab-1",
-      history: [...defaultHistory] as Page[],
-      currentIndex: 1,
-      pinned: false,
-      reloadKey: 0,
-      autoRefreshEnabled: false,
-      autoRefreshPageKey: null,
-    };
+const { activeTab, defaultHistory, dispatchMock, longTitle } = vi.hoisted(() => {
+  const longTitle = "かなり長い履歴タイトル".repeat(12);
+  const defaultHistory = [
+    {
+      type: "threadList" as const,
+      title: longTitle,
+      boardUrl: "https://egg.5ch.net/software/",
+      boardTitle: "Software",
+    },
+    {
+      type: "thread" as const,
+      title: "Current Thread",
+      threadUrl: "https://egg.5ch.net/test/read.cgi/software/1/",
+    },
+  ];
+  const activeTab = {
+    id: "tab-1",
+    history: [...defaultHistory] as Page[],
+    currentIndex: 1,
+    pinned: false,
+    reloadKey: 0,
+    autoRefreshEnabled: false,
+    autoRefreshPageKey: null,
+  };
 
-    return {
-      activeTab,
-      defaultHistory,
-      dispatchMock: vi.fn(),
-      longTitle,
-    };
-  },
-);
+  return {
+    activeTab,
+    defaultHistory,
+    dispatchMock: vi.fn(),
+    longTitle,
+  };
+});
 
 const { bookmarkGetAllThreadsMock, historyGetMock } = vi.hoisted(() => ({
   bookmarkGetAllThreadsMock: vi.fn(),
   historyGetMock: vi.fn(),
 }));
 
-const {
-  bookmarkGetMock,
-  bookmarkAddMock,
-  bookmarkRemoveMock,
-  toastInfoMock,
-  toastErrorMock,
-} = vi.hoisted(() => ({
-  bookmarkGetMock: vi.fn(),
-  bookmarkAddMock: vi.fn(),
-  bookmarkRemoveMock: vi.fn(),
-  toastInfoMock: vi.fn(),
-  toastErrorMock: vi.fn(),
-}));
+const { bookmarkGetMock, bookmarkAddMock, bookmarkRemoveMock, toastInfoMock, toastErrorMock } =
+  vi.hoisted(() => ({
+    bookmarkGetMock: vi.fn(),
+    bookmarkAddMock: vi.fn(),
+    bookmarkRemoveMock: vi.fn(),
+    toastInfoMock: vi.fn(),
+    toastErrorMock: vi.fn(),
+  }));
 
-let bookmarkUpdatedHandler:
-  | ((payload?: { bookmark?: { url?: string } }) => void)
-  | null = null;
+let bookmarkUpdatedHandler: ((payload?: { bookmark?: { url?: string } }) => void) | null = null;
 let bookmarkedUrls = new Set<string>();
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
@@ -138,10 +116,7 @@ describe("NavigationBar", () => {
         }
       },
       off: (type, callback) => {
-        if (
-          type === "bookmark_updated" &&
-          bookmarkUpdatedHandler === callback
-        ) {
+        if (type === "bookmark_updated" && bookmarkUpdatedHandler === callback) {
           bookmarkUpdatedHandler = null;
         }
       },
@@ -166,10 +141,10 @@ describe("NavigationBar", () => {
     toastErrorMock.mockReset();
     bookmarkUpdatedHandler = null;
     bookmarkedUrls = new Set<string>();
-    const mutableWindow = window as Window &
-      typeof globalThis & {
-        app?: unknown;
-      };
+    // テストでは必要なレガシーAPIだけを差し替えるため、実アプリのwindow.app型から切り離す。
+    const mutableWindow = window as unknown as {
+      app?: unknown;
+    };
     delete mutableWindow.app;
     activeTab.history = [...defaultHistory];
     activeTab.currentIndex = 1;
@@ -185,15 +160,16 @@ describe("NavigationBar", () => {
     historyGetMock.mockResolvedValue([
       {
         url: "https://egg.5ch.io/test/read.cgi/software/222/",
-        title: "openai history",
+        // 最短一致の優先度を揃え、お気に入りの加点だけで並び順を検証する。
+        title: "openai archived",
         viewedDate: 1000000001000,
       },
     ]);
 
-    const mutableWindow = window as Window &
-      typeof globalThis & {
-        app?: unknown;
-      };
+    // テストでは必要なレガシーAPIだけを差し替えるため、実アプリのwindow.app型から切り離す。
+    const mutableWindow = window as unknown as {
+      app?: unknown;
+    };
     mutableWindow.app = {
       bookmark: {
         getAllThreads: bookmarkGetAllThreadsMock,
@@ -212,9 +188,7 @@ describe("NavigationBar", () => {
     const options = await screen.findAllByRole("option");
     expect(options).toHaveLength(2);
     expect(options[0]).toHaveTextContent("openai bookmark");
-    expect(options[0]).toHaveTextContent(
-      "https://egg.5ch.io/test/read.cgi/software/111/",
-    );
+    expect(options[0]).toHaveTextContent("https://egg.5ch.io/test/read.cgi/software/111/");
   });
 
   it("戻る履歴メニューのタイトルを複数行表示にする", () => {
@@ -223,9 +197,7 @@ describe("NavigationBar", () => {
     fireEvent.contextMenu(screen.getByTitle("戻る"));
 
     const item = screen.getByRole("button", { name: longTitle });
-    const label = document.querySelector(
-      ".context-menu__label--multiline",
-    ) as HTMLSpanElement;
+    const label = document.querySelector(".context-menu__label--multiline") as HTMLSpanElement;
 
     expect(item).toHaveClass("context-menu__item--multiline");
     expect(label).toHaveTextContent(longTitle);
@@ -237,18 +209,14 @@ describe("NavigationBar", () => {
     const menuButton = screen.getByTitle("メニュー");
 
     fireEvent.click(menuButton);
-    expect(
-      screen.getByRole("button", { name: "設定を開く" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "設定を開く" })).toBeInTheDocument();
 
     // mousedown で先に close してしまうと click トグルで再オープンするため、
     // トリガー上の mousedown は無視して click 側で閉じることを保証する。
     fireEvent.mouseDown(menuButton);
     fireEvent.click(menuButton);
 
-    expect(
-      screen.queryByRole("button", { name: "設定を開く" }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "設定を開く" })).not.toBeInTheDocument();
   });
 
   it("メニュー項目の『フィルターを開く』でフィルタトグルイベントを送る", () => {
@@ -409,11 +377,7 @@ describe("NavigationBar", () => {
 
   it("bookmark反映が遅れても同期失敗toastを出さず、後から星状態が揃う", async () => {
     bookmarkAddMock.mockImplementation(
-      async (item: {
-        url: string;
-        title: string;
-        type: "thread" | "board";
-      }) => {
+      async (item: { url: string; title: string; type: "thread" | "board" }) => {
         setTimeout(() => {
           bookmarkedUrls.add(item.url);
           bookmarkUpdatedHandler?.({ bookmark: { url: item.url } });
@@ -432,9 +396,7 @@ describe("NavigationBar", () => {
     await waitFor(() => {
       expect(toastInfoMock).toHaveBeenCalledWith("ブックマークに追加しました");
     });
-    expect(toastErrorMock).not.toHaveBeenCalledWith(
-      "ブックマーク状態の同期に失敗しました",
-    );
+    expect(toastErrorMock).not.toHaveBeenCalledWith("ブックマーク状態の同期に失敗しました");
 
     await waitFor(() => {
       expect(
