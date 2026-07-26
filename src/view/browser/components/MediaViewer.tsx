@@ -24,7 +24,15 @@ export function MediaViewer({
   onImageLoad,
 }: MediaViewerProps) {
   return (
-    <div className="media-viewer" onClick={onOverlayClick}>
+    <div
+      className="media-viewer"
+      onMouseDown={(event) => {
+        // ビューアをポップアップ内から開いた場合も、オーバーレイのクリックを
+        // 背後のポップアップに対する outside click として扱わせない。
+        event.stopPropagation();
+      }}
+      onClick={onOverlayClick}
+    >
       <div
         className={`media-viewer__chrome${isMaximized ? " media-viewer__chrome--maximized" : ""}`}
         onClick={onChromeClick}
@@ -57,28 +65,13 @@ export function MediaViewer({
                 </button>
               </>
             )}
-            <button
-              type="button"
-              className="media-viewer__btn"
-              onClick={onZoomOut}
-              title="縮小"
-            >
+            <button type="button" className="media-viewer__btn" onClick={onZoomOut} title="縮小">
               -
             </button>
-            <button
-              type="button"
-              className="media-viewer__btn"
-              onClick={onZoomReset}
-              title="等倍"
-            >
+            <button type="button" className="media-viewer__btn" onClick={onZoomReset} title="等倍">
               100%
             </button>
-            <button
-              type="button"
-              className="media-viewer__btn"
-              onClick={onZoomIn}
-              title="拡大"
-            >
+            <button type="button" className="media-viewer__btn" onClick={onZoomIn} title="拡大">
               +
             </button>
             <button
@@ -89,20 +82,10 @@ export function MediaViewer({
             >
               {isMaximized ? <Minimize size={16} /> : <Maximize size={16} />}
             </button>
-            <button
-              type="button"
-              className="media-viewer__btn"
-              onClick={onSave}
-              title="保存"
-            >
+            <button type="button" className="media-viewer__btn" onClick={onSave} title="保存">
               保存
             </button>
-            <button
-              type="button"
-              className="media-viewer__btn"
-              onClick={onClose}
-              title="閉じる"
-            >
+            <button type="button" className="media-viewer__btn" onClick={onClose} title="閉じる">
               ✕
             </button>
           </div>
