@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface ThreadMinimapProps {
   rootRef: React.RefObject<HTMLDivElement | null>;
@@ -42,22 +36,19 @@ const MINIMAP_MAX_WIDTH = 180;
 const MINIMAP_WIDTH_RATIO = 0.08;
 const MINIMAP_GAP = 10;
 const MINIMAP_MIN_DRAWABLE_HEIGHT = 80;
+const MINIMAP_MARKER_SNAP_DISTANCE = 8;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-function getOffsetTopWithinAncestor(
-  el: HTMLElement,
-  ancestor: HTMLElement,
-): number {
+function getOffsetTopWithinAncestor(el: HTMLElement, ancestor: HTMLElement): number {
   let top = 0;
   let current: HTMLElement | null = el;
 
   while (current && current !== ancestor) {
     top += current.offsetTop;
-    current =
-      current.offsetParent instanceof HTMLElement ? current.offsetParent : null;
+    current = current.offsetParent instanceof HTMLElement ? current.offsetParent : null;
   }
 
   if (current === ancestor) {
@@ -70,10 +61,7 @@ function getOffsetTopWithinAncestor(
   return ancestor.scrollTop + (elRect.top - ancestorRect.top);
 }
 
-function isSameFrame(
-  left: MinimapFrame | null,
-  right: MinimapFrame | null,
-): boolean {
+function isSameFrame(left: MinimapFrame | null, right: MinimapFrame | null): boolean {
   if (left === right) {
     return true;
   }
@@ -99,6 +87,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawRafRef = useRef<number | null>(null);
   const markerHitsRef = useRef<MinimapMarkerHit[]>([]);
+  const hoverLineYRef = useRef<number | null>(null);
   const pointerStateRef = useRef({
     isDragging: false,
     pointerId: -1,
@@ -144,10 +133,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
       if (!host) {
         return;
       }
-      host.style.setProperty(
-        "--thread-minimap-width",
-        `${Math.max(0, widthPx)}px`,
-      );
+      host.style.setProperty("--thread-minimap-width", `${Math.max(0, widthPx)}px`);
       host.classList.toggle("thread-page--with-minimap", widthPx > 0);
     },
     [rootRef],
@@ -179,10 +165,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
       MINIMAP_MAX_WIDTH,
     );
 
-    const scrollbarWidth = Math.max(
-      0,
-      scrollContainer.offsetWidth - scrollContainer.clientWidth,
-    );
+    const scrollbarWidth = Math.max(0, scrollContainer.offsetWidth - scrollContainer.clientWidth);
     // スクロールバーと重なるとドラッグ操作が失敗しやすいので、バー幅ぶん左へ逃がす。
     const preferredLeft = rect.right - scrollbarWidth - width - MINIMAP_GAP;
     const left = Math.max(rect.left + 8, preferredLeft);
@@ -202,13 +185,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     });
     // 本文をミニマップの下に潜り込ませないため、同じ幅を右余白として予約する。
     setHostMinimapWidth(width + MINIMAP_GAP);
-  }, [
-    activeTopBar,
-    getScrollContainer,
-    getTopBarRoot,
-    responseCount,
-    setHostMinimapWidth,
-  ]);
+  }, [getScrollContainer, getTopBarRoot, responseCount, setHostMinimapWidth]);
 
   const getMetrics = useCallback((): MinimapMetrics | null => {
     const scrollContainer = getScrollContainer();
@@ -241,13 +218,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     const responsesRoot = getResponsesRoot();
     const metrics = getMetrics();
     const currentFrame = frame;
-    if (
-      !canvas ||
-      !scrollContainer ||
-      !responsesRoot ||
-      !metrics ||
-      !currentFrame
-    ) {
+    if (!canvas || !scrollContainer || !responsesRoot || !metrics || !currentFrame) {
       return;
     }
 
@@ -273,10 +244,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, cssWidth, cssHeight);
 
-    const responsesTop = getOffsetTopWithinAncestor(
-      responsesRoot,
-      scrollContainer,
-    );
+    const responsesTop = getOffsetTopWithinAncestor(responsesRoot, scrollContainer);
     const minY = 6;
     const maxY = cssHeight - 6;
     const markerX = cssWidth - 6;
@@ -299,12 +267,10 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
       }
 
       const markerHeight = Math.max(resEl.offsetHeight * metrics.scale, 4);
-      const centerY =
-        (responsesTop + resEl.offsetTop) * metrics.scale + markerHeight / 2;
+      const centerY = (responsesTop + resEl.offsetTop) * metrics.scale + markerHeight / 2;
       const y = clamp(centerY, minY, maxY);
 
-      ctx.fillStyle =
-        count >= 5 ? "rgba(220, 40, 40, 0.95)" : "rgba(255, 140, 0, 0.9)";
+      ctx.fillStyle = count >= 5 ? "rgba(220, 40, 40, 0.95)" : "rgba(255, 140, 0, 0.9)";
       ctx.fillText("◀", markerX, y);
       // 実際の三角記号より広い当たり判定を持たせ、細いミニマップでもクリックしやすくする。
       markerHits.push({
@@ -326,6 +292,16 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
       cssWidth - 1,
       Math.max(metrics.viewportHeightPx - 1, 1),
     );
+
+    if (hoverLineYRef.current != null) {
+      const hoverLineY = hoverLineYRef.current;
+      ctx.beginPath();
+      ctx.moveTo(0, hoverLineY + 0.5);
+      ctx.lineTo(cssWidth, hoverLineY + 0.5);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = "rgba(26, 115, 232, 0.95)";
+      ctx.stroke();
+    }
 
     ctx.strokeStyle = "rgba(0, 0, 0, 0.12)";
     ctx.strokeRect(0.5, 0.5, cssWidth - 1, cssHeight - 1);
@@ -356,11 +332,37 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     if (drawRafRef.current != null) {
       return;
     }
-    drawRafRef.current = window.requestAnimationFrame(() => {
+    // 同期的な requestAnimationFrame stub でも完了後に予約済み扱いへ戻らないよう、
+    // callback が先に走った場合は null を維持する。
+    drawRafRef.current = -1;
+    const requestId = window.requestAnimationFrame(() => {
       drawRafRef.current = null;
       draw();
     });
+    if (drawRafRef.current != null) {
+      drawRafRef.current = requestId;
+    }
   }, [draw]);
+
+  const updateHoverLine = useCallback(
+    (relativeY: number) => {
+      let nextY = relativeY;
+      let nearestDistance = MINIMAP_MARKER_SNAP_DISTANCE + 1;
+
+      for (const marker of markerHitsRef.current) {
+        const distance = Math.abs(relativeY - marker.y);
+        if (distance <= MINIMAP_MARKER_SNAP_DISTANCE && distance < nearestDistance) {
+          nextY = marker.y;
+          nearestDistance = distance;
+        }
+      }
+
+      // 人気レスの近傍だけマーカー位置へ吸着させ、細いミニマップでも狙いやすくする。
+      hoverLineYRef.current = nextY;
+      scheduleDraw();
+    },
+    [scheduleDraw],
+  );
 
   const scrollByPointer = useCallback(
     (relativeY: number, useDragOffset: boolean) => {
@@ -377,8 +379,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
       viewportTop = clamp(viewportTop, 0, metrics.maxViewportTop);
 
       const scrollableRange = metrics.scrollHeight - metrics.clientHeight;
-      const ratio =
-        metrics.maxViewportTop === 0 ? 0 : viewportTop / metrics.maxViewportTop;
+      const ratio = metrics.maxViewportTop === 0 ? 0 : viewportTop / metrics.maxViewportTop;
       const targetTop = scrollableRange <= 0 ? 0 : ratio * scrollableRange;
 
       scrollContainer.scrollTo({ top: targetTop, behavior: "auto" });
@@ -402,11 +403,8 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
       event.currentTarget.setPointerCapture(event.pointerId);
 
       const relativeX = event.clientX - currentFrame.left;
-      const relativeY = clamp(
-        event.clientY - currentFrame.top,
-        0,
-        currentFrame.height,
-      );
+      const relativeY = clamp(event.clientY - currentFrame.top, 0, currentFrame.height);
+      updateHoverLine(relativeY);
       const markerHit = findMarkerByPoint(relativeX, relativeY);
       if (markerHit) {
         pointerStateRef.current.isDragging = true;
@@ -435,7 +433,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
 
       scrollByPointer(relativeY, inViewport);
     },
-    [findMarkerByPoint, frame, getMetrics, scrollByPointer],
+    [findMarkerByPoint, frame, getMetrics, scrollByPointer, updateHoverLine],
   );
 
   const handlePointerMove = useCallback(
@@ -444,6 +442,9 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
       if (!currentFrame) {
         return;
       }
+      const relativeY = clamp(event.clientY - currentFrame.top, 0, currentFrame.height);
+      updateHoverLine(relativeY);
+
       if (
         !pointerStateRef.current.isDragging ||
         pointerStateRef.current.pointerId !== event.pointerId
@@ -455,15 +456,18 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
       }
 
       event.preventDefault();
-      const relativeY = clamp(
-        event.clientY - currentFrame.top,
-        0,
-        currentFrame.height,
-      );
       scrollByPointer(relativeY, true);
     },
-    [frame, scrollByPointer],
+    [frame, scrollByPointer, updateHoverLine],
   );
+
+  const handlePointerLeave = useCallback(() => {
+    if (pointerStateRef.current.isDragging) {
+      return;
+    }
+    hoverLineYRef.current = null;
+    scheduleDraw();
+  }, [scheduleDraw]);
 
   const releasePointerState = useCallback(() => {
     pointerStateRef.current.isDragging = false;
@@ -493,11 +497,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
         const currentFrame = frame;
         if (currentFrame && pointerStateRef.current.markerResNum != null) {
           const relativeX = event.clientX - currentFrame.left;
-          const relativeY = clamp(
-            event.clientY - currentFrame.top,
-            0,
-            currentFrame.height,
-          );
+          const relativeY = clamp(event.clientY - currentFrame.top, 0, currentFrame.height);
           const moveX = relativeX - pointerStateRef.current.startX;
           const moveY = relativeY - pointerStateRef.current.startY;
           const movedDistanceSq = moveX * moveX + moveY * moveY;
@@ -515,7 +515,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
 
   useEffect(() => {
     updateFrame();
-  }, [responseCount, updateFrame]);
+  }, [activeTopBar, responseCount, updateFrame]);
 
   useEffect(() => {
     // 描画は frame/返信分布の変化にだけ追従させ、
@@ -594,6 +594,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
         className="thread-page__minimap-canvas"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
+        onPointerLeave={handlePointerLeave}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
       />

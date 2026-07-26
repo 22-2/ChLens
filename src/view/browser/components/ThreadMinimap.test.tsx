@@ -1,20 +1,17 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import React from "react";
 import { ThreadMinimap } from "src/view/browser/components/ThreadMinimap";
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const CANVAS_CONTEXT_STUB = {
   save: vi.fn(),
   scale: vi.fn(),
   clearRect: vi.fn(),
+  beginPath: vi.fn(),
+  moveTo: vi.fn(),
+  lineTo: vi.fn(),
+  stroke: vi.fn(),
   fillText: vi.fn(),
   fillRect: vi.fn(),
   strokeRect: vi.fn(),
@@ -23,6 +20,7 @@ const CANVAS_CONTEXT_STUB = {
 
 describe("ThreadMinimap", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
       callback(0);
       return 1;
@@ -105,13 +103,9 @@ describe("ThreadMinimap", () => {
     responses.getBoundingClientRect = () => panel.getBoundingClientRect();
 
     const rootRef = { current: host } as React.RefObject<HTMLDivElement | null>;
-    const repIndex = new Map<number, Set<number>>([
-      [10, new Set([11, 12, 13])],
-    ]);
+    const repIndex = new Map<number, Set<number>>([[10, new Set([11, 12, 13])]]);
 
-    const consoleErrorSpy = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => {});
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     const { container } = render(
       <ThreadMinimap
@@ -124,9 +118,7 @@ describe("ThreadMinimap", () => {
     );
 
     await waitFor(() => {
-      expect(
-        container.querySelector(".thread-page__minimap"),
-      ).toBeInTheDocument();
+      expect(container.querySelector(".thread-page__minimap")).toBeInTheDocument();
     });
 
     expect(
@@ -134,5 +126,87 @@ describe("ThreadMinimap", () => {
         String(call[0] ?? "").includes("Maximum update depth exceeded"),
       ),
     ).toBe(false);
+  });
+
+  it("ホバー位置にラインを描き、近くの人気レスへ吸着する", async () => {
+    const panel = document.createElement("div");
+    panel.className = "content-area__tab-panel";
+    const host = document.createElement("div");
+    host.className = "thread-page";
+    const responses = document.createElement("div");
+    responses.className = "thread-page__responses";
+    const response = document.createElement("div");
+    response.dataset.resNum = "10";
+    responses.append(response);
+    host.append(responses);
+    panel.append(host);
+    document.body.append(panel);
+
+    Object.defineProperties(panel, {
+      clientWidth: { configurable: true, value: 1000 },
+      offsetWidth: { configurable: true, value: 1012 },
+      clientHeight: { configurable: true, value: 600 },
+      scrollHeight: { configurable: true, value: 2400 },
+      scrollTop: { configurable: true, value: 120 },
+    });
+    Object.defineProperties(response, {
+      offsetHeight: { configurable: true, value: 48 },
+      offsetTop: { configurable: true, value: 300 },
+    });
+    Object.defineProperty(responses, "offsetParent", {
+      configurable: true,
+      value: panel,
+    });
+    panel.scrollTo = vi.fn();
+    panel.getBoundingClientRect = () =>
+      ({
+        top: 0,
+        left: 0,
+        right: 1000,
+        bottom: 600,
+        width: 1000,
+        height: 600,
+      }) as DOMRect;
+    responses.getBoundingClientRect = () => panel.getBoundingClientRect();
+
+    const rootRef = { current: host } as React.RefObject<HTMLDivElement | null>;
+    const repIndex = new Map<number, Set<number>>([[10, new Set([11, 12, 13])]]);
+    const { container } = render(
+      <ThreadMinimap
+        rootRef={rootRef}
+        repIndex={repIndex}
+        responseCount={1}
+        activeTopBar="none"
+        onMarkerClick={() => {}}
+      />,
+    );
+
+    const canvas = await waitFor(() => {
+      const element = container.querySelector(".thread-page__minimap-canvas");
+      expect(element).toBeInTheDocument();
+      return element as HTMLCanvasElement;
+    });
+
+    // 人気レスのマーカーは 81px。8px以内の 82px ではその位置へ吸着する。
+    fireEvent.pointerMove(canvas, {
+      clientX: 920,
+      clientY: 82,
+      pointerId: 1,
+      pointerType: "mouse",
+    });
+    expect(CANVAS_CONTEXT_STUB.moveTo).toHaveBeenLastCalledWith(0, 81.5);
+    expect(CANVAS_CONTEXT_STUB.lineTo).toHaveBeenLastCalledWith(82, 81.5);
+
+    fireEvent.pointerMove(canvas, {
+      clientX: 920,
+      clientY: 100,
+      pointerId: 1,
+      pointerType: "mouse",
+    });
+    expect(CANVAS_CONTEXT_STUB.moveTo).toHaveBeenLastCalledWith(0, 100.5);
+
+    const lineCount = CANVAS_CONTEXT_STUB.moveTo.mock.calls.length;
+    fireEvent.pointerLeave(canvas);
+    expect(CANVAS_CONTEXT_STUB.moveTo).toHaveBeenCalledTimes(lineCount);
   });
 });
