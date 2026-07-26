@@ -108,6 +108,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
 
   useThreadTopScrollOpenFilter({
     activeTopBar,
+    closeTopBar,
     isActive,
     openFilterToolbar,
     rootRef,

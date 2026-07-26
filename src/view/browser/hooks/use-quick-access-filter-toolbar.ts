@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE,
   type QuickAccessFilterPageType,
@@ -26,6 +26,7 @@ export function useQuickAccessFilterToolbar({
   setSearchQuery,
 }: UseQuickAccessFilterToolbarParams): UseQuickAccessFilterToolbarResult {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const openedByWheelRef = useRef(false);
 
   const closeFilterToolbar = useCallback(() => {
     setIsFilterOpen(false);
@@ -37,13 +38,15 @@ export function useQuickAccessFilterToolbar({
     if (!isFilterOpen && searchQuery) {
       setSearchQuery("");
     }
+    if (!isFilterOpen) {
+      openedByWheelRef.current = false;
+    }
   }, [isFilterOpen, searchQuery, setSearchQuery]);
 
   useEffect(() => {
     const eventName = QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE[pageType];
     const handleToggle = (event: Event) => {
-      const detail = (event as CustomEvent<QuickAccessFilterToggleDetail>)
-        .detail;
+      const detail = (event as CustomEvent<QuickAccessFilterToggleDetail>).detail;
       if (!isActive || detail?.tabId !== tabId) {
         return;
       }
@@ -57,6 +60,59 @@ export function useQuickAccessFilterToolbar({
       window.removeEventListener(eventName, handleToggle);
     };
   }, [isActive, pageType, tabId]);
+
+  useEffect(() => {
+    if (!isActive) {
+      return;
+    }
+
+    const handleWheel = (event: WheelEvent) => {
+      if (event.ctrlKey || !(event.target instanceof Element)) {
+        return;
+      }
+
+      const tabPanel = event.target.closest<HTMLElement>(".content-area__tab-panel");
+      if (!tabPanel || tabPanel.dataset.tabPanelId !== tabId) {
+        return;
+      }
+
+      const table = tabPanel.querySelector(".simple-data-table");
+      if (!table) {
+        return;
+      }
+
+      const scrollContainer =
+        table.closest<HTMLElement>(".simple-data-table__scroller") ?? tabPanel;
+
+      if (event.deltaY > 0 && isFilterOpen && openedByWheelRef.current) {
+        // 変更理由: ホイールで開いた直後の逆方向操作はフィルタを戻す意図として消費し、
+        // 同じ一操作で一覧までスクロールして位置が飛ぶのを防ぐ。
+        event.preventDefault();
+        openedByWheelRef.current = false;
+        setIsFilterOpen(false);
+        return;
+      }
+
+      if (event.deltaY >= 0 || isFilterOpen) {
+        return;
+      }
+
+      if (scrollContainer.scrollTop > 1) {
+        return;
+      }
+
+      // 変更理由: 通常テーブルと仮想テーブルでスクロール要素が異なるため、
+      // ホイール発生元のテーブルから実際のスクロール要素をたどって上端判定を統一する。
+      openedByWheelRef.current = true;
+      setIsFilterOpen(true);
+    };
+
+    window.addEventListener("wheel", handleWheel, { passive: false });
+
+    return () => {
+      window.removeEventListener("wheel", handleWheel);
+    };
+  }, [isActive, isFilterOpen, tabId]);
 
   return {
     isFilterOpen,

@@ -13,9 +13,13 @@ function WheelFilterHarness({ isActive = true }: { isActive?: boolean }) {
     setOpenCount((prev) => prev + 1);
     setActiveTopBar("filter");
   };
+  const closeTopBar = () => {
+    setActiveTopBar("none");
+  };
 
   useThreadTopScrollOpenFilter({
     activeTopBar,
+    closeTopBar,
     isActive,
     openFilterToolbar,
     rootRef,
@@ -26,6 +30,9 @@ function WheelFilterHarness({ isActive = true }: { isActive?: boolean }) {
       <div ref={rootRef} className="thread-page">
         <output data-testid="active-top-bar">{activeTopBar}</output>
         <output data-testid="open-count">{openCount}</output>
+        <button type="button" onClick={() => setActiveTopBar("filter")}>
+          menu open
+        </button>
         <div style={{ height: 200 }}>body</div>
       </div>
     </div>
@@ -40,9 +47,7 @@ describe("useThreadTopScrollOpenFilter", () => {
   it("スレ最上部で上方向へホイールするとフィルタバーを開く", () => {
     render(<WheelFilterHarness />);
 
-    const scrollContainer = screen.getByTestId(
-      "scroll-container",
-    ) as HTMLDivElement;
+    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
     Object.defineProperty(scrollContainer, "scrollTop", {
       configurable: true,
       get: () => 0,
@@ -57,9 +62,7 @@ describe("useThreadTopScrollOpenFilter", () => {
   it("まだ上端に達していない時はフィルタバーを開かない", () => {
     render(<WheelFilterHarness />);
 
-    const scrollContainer = screen.getByTestId(
-      "scroll-container",
-    ) as HTMLDivElement;
+    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
     Object.defineProperty(scrollContainer, "scrollTop", {
       configurable: true,
       get: () => 24,
@@ -74,9 +77,7 @@ describe("useThreadTopScrollOpenFilter", () => {
   it("Ctrl+wheel のズーム操作ではフィルタバーを開かない", () => {
     render(<WheelFilterHarness />);
 
-    const scrollContainer = screen.getByTestId(
-      "scroll-container",
-    ) as HTMLDivElement;
+    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
     Object.defineProperty(scrollContainer, "scrollTop", {
       configurable: true,
       get: () => 0,
@@ -85,6 +86,49 @@ describe("useThreadTopScrollOpenFilter", () => {
     fireEvent.wheel(scrollContainer, { ctrlKey: true, deltaY: -48 });
 
     expect(screen.getByTestId("active-top-bar")).toHaveTextContent("none");
+    expect(screen.getByTestId("open-count")).toHaveTextContent("0");
+  });
+
+  it("上端ホイールで開いたフィルタは下方向のホイールで閉じる", () => {
+    render(<WheelFilterHarness />);
+
+    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
+    Object.defineProperty(scrollContainer, "scrollTop", {
+      configurable: true,
+      get: () => 0,
+    });
+
+    fireEvent.wheel(scrollContainer, { deltaY: -48 });
+    expect(screen.getByTestId("active-top-bar")).toHaveTextContent("filter");
+
+    const closeWheelEvent = new WheelEvent("wheel", {
+      bubbles: true,
+      cancelable: true,
+      deltaY: 48,
+    });
+    fireEvent(scrollContainer, closeWheelEvent);
+
+    expect(closeWheelEvent.defaultPrevented).toBe(true);
+    expect(screen.getByTestId("active-top-bar")).toHaveTextContent("none");
+
+    const nextWheelEvent = new WheelEvent("wheel", {
+      bubbles: true,
+      cancelable: true,
+      deltaY: 48,
+    });
+    fireEvent(scrollContainer, nextWheelEvent);
+    expect(nextWheelEvent.defaultPrevented).toBe(false);
+  });
+
+  it("別の導線で開いたフィルタは下方向のホイールで閉じない", () => {
+    render(<WheelFilterHarness />);
+
+    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
+    fireEvent.click(screen.getByRole("button", { name: "menu open" }));
+
+    fireEvent.wheel(scrollContainer, { deltaY: 48 });
+
+    expect(screen.getByTestId("active-top-bar")).toHaveTextContent("filter");
     expect(screen.getByTestId("open-count")).toHaveTextContent("0");
   });
 });
