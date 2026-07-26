@@ -71,6 +71,16 @@ export function useQuickAccessFilterToolbar({
         return;
       }
 
+      // メニューやポップアップ上のホイール操作はフィルタ開閉に反映しない。
+      if (
+        event.target.closest("[data-popup-surface='true']") ||
+        event.target.closest(".mini-window") ||
+        event.target.closest(".media-viewer") ||
+        event.target.closest(".bookmark-root-dialog")
+      ) {
+        return;
+      }
+
       const tabPanel = event.target.closest<HTMLElement>(".content-area__tab-panel");
       if (!tabPanel || tabPanel.dataset.tabPanelId !== tabId) {
         return;
