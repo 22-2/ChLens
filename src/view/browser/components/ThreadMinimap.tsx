@@ -1,3 +1,4 @@
+import { Tooltip } from "@mantine/core";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface ThreadMinimapProps {
@@ -29,6 +30,12 @@ interface MinimapMarkerHit {
   x: number;
   y: number;
   radius: number;
+}
+
+interface MinimapResponseHit {
+  resNum: number;
+  top: number;
+  bottom: number;
 }
 
 const MINIMAP_MIN_WIDTH = 30;
@@ -87,6 +94,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawRafRef = useRef<number | null>(null);
   const markerHitsRef = useRef<MinimapMarkerHit[]>([]);
+  const responseHitsRef = useRef<MinimapResponseHit[]>([]);
   const hoverLineYRef = useRef<number | null>(null);
   const pointerStateRef = useRef({
     isDragging: false,
@@ -98,6 +106,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     markerResNum: null as number | null,
   });
   const [frame, setFrame] = useState<MinimapFrame | null>(null);
+  const [hoveredResNum, setHoveredResNum] = useState<number | null>(null);
 
   const getScrollContainer = useCallback((): HTMLElement | null => {
     const host = rootRef.current;
@@ -213,6 +222,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
 
   const draw = useCallback(() => {
     markerHitsRef.current = [];
+    responseHitsRef.current = [];
     const canvas = canvasRef.current;
     const scrollContainer = getScrollContainer();
     const responsesRoot = getResponsesRoot();
@@ -250,6 +260,22 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     const markerX = cssWidth - 6;
     const markerHitRadius = 12;
     const markerHits: MinimapMarkerHit[] = [];
+    const responseHits: MinimapResponseHit[] = [];
+
+    for (const resEl of responsesRoot.querySelectorAll<HTMLElement>("[data-res-num]")) {
+      const resNum = Number.parseInt(resEl.dataset.resNum ?? "", 10);
+      if (!Number.isFinite(resNum) || resNum <= 0 || resEl.offsetHeight === 0) {
+        continue;
+      }
+
+      const top = (responsesTop + resEl.offsetTop) * metrics.scale;
+      responseHits.push({
+        resNum,
+        top,
+        bottom: top + resEl.offsetHeight * metrics.scale,
+      });
+    }
+    responseHitsRef.current = responseHits;
 
     ctx.textAlign = "right";
     ctx.textBaseline = "middle";
@@ -348,17 +374,36 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     (relativeY: number) => {
       let nextY = relativeY;
       let nearestDistance = MINIMAP_MARKER_SNAP_DISTANCE + 1;
+      let nextResNum: number | null = null;
 
       for (const marker of markerHitsRef.current) {
         const distance = Math.abs(relativeY - marker.y);
         if (distance <= MINIMAP_MARKER_SNAP_DISTANCE && distance < nearestDistance) {
           nextY = marker.y;
           nearestDistance = distance;
+          nextResNum = marker.resNum;
+        }
+      }
+
+      if (nextResNum == null) {
+        let nearestResponseDistance = Number.POSITIVE_INFINITY;
+        for (const response of responseHitsRef.current) {
+          const distance =
+            nextY < response.top
+              ? response.top - nextY
+              : nextY > response.bottom
+                ? nextY - response.bottom
+                : 0;
+          if (distance < nearestResponseDistance) {
+            nextResNum = response.resNum;
+            nearestResponseDistance = distance;
+          }
         }
       }
 
       // 人気レスの近傍だけマーカー位置へ吸着させ、細いミニマップでも狙いやすくする。
       hoverLineYRef.current = nextY;
+      setHoveredResNum((current) => (current === nextResNum ? current : nextResNum));
       scheduleDraw();
     },
     [scheduleDraw],
@@ -466,6 +511,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
       return;
     }
     hoverLineYRef.current = null;
+    setHoveredResNum(null);
     scheduleDraw();
   }, [scheduleDraw]);
 
@@ -589,15 +635,23 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
 
   return (
     <div className="thread-page__minimap" style={style} aria-hidden="true">
-      <canvas
-        ref={canvasRef}
-        className="thread-page__minimap-canvas"
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerLeave={handlePointerLeave}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
-      />
+      <Tooltip.Floating
+        label={hoveredResNum == null ? "" : `レス ${hoveredResNum}`}
+        disabled={hoveredResNum == null}
+        position="left"
+        offset={12}
+        zIndex={40000}
+      >
+        <canvas
+          ref={canvasRef}
+          className="thread-page__minimap-canvas"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerLeave={handlePointerLeave}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+        />
+      </Tooltip.Floating>
     </div>
   );
 };

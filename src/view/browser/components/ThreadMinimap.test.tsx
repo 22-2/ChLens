@@ -4,6 +4,25 @@ import React from "react";
 import { ThreadMinimap } from "src/view/browser/components/ThreadMinimap";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
+vi.mock("@mantine/core", () => ({
+  Tooltip: {
+    Floating: ({
+      children,
+      disabled,
+      label,
+    }: {
+      children: React.ReactNode;
+      disabled?: boolean;
+      label: React.ReactNode;
+    }) => (
+      <div data-testid="minimap-tooltip" data-disabled={String(disabled)}>
+        <span>{label}</span>
+        {children}
+      </div>
+    ),
+  },
+}));
+
 const CANVAS_CONTEXT_STUB = {
   save: vi.fn(),
   scale: vi.fn(),
@@ -196,6 +215,7 @@ describe("ThreadMinimap", () => {
     });
     expect(CANVAS_CONTEXT_STUB.moveTo).toHaveBeenLastCalledWith(0, 81.5);
     expect(CANVAS_CONTEXT_STUB.lineTo).toHaveBeenLastCalledWith(82, 81.5);
+    expect(container.querySelector('[data-testid="minimap-tooltip"]')).toHaveTextContent("レス 10");
 
     fireEvent.pointerMove(canvas, {
       clientX: 920,
@@ -208,5 +228,9 @@ describe("ThreadMinimap", () => {
     const lineCount = CANVAS_CONTEXT_STUB.moveTo.mock.calls.length;
     fireEvent.pointerLeave(canvas);
     expect(CANVAS_CONTEXT_STUB.moveTo).toHaveBeenCalledTimes(lineCount);
+    expect(container.querySelector('[data-testid="minimap-tooltip"]')).toHaveAttribute(
+      "data-disabled",
+      "true",
+    );
   });
 });

@@ -191,6 +191,15 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     rootRef,
   });
 
+  const handleMinimapMarkerClick = useCallback(
+    (resNum: number) => {
+      // ミニマップはポップアップを閉じる状態更新を挟むとCSS animationが打ち消されうるため、
+      // 対象レスへ直接ジャンプしてハイライトを確実に開始する。
+      scrollToResponse(resNum, { highlight: true });
+    },
+    [scrollToResponse],
+  );
+
   const { handleUrlClick, handleUrlContextMenu, openPopupUrlContextMenu } = useUrlHandlers({
     threadUrl: page.threadUrl,
     dispatch,
@@ -418,7 +427,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             repIndex={indexes.repIndex}
             responseCount={filteredResponses.length}
             activeTopBar={activeTopBar}
-            onMarkerClick={handleAnchorClick}
+            onMarkerClick={handleMinimapMarkerClick}
           />
           <MediaViewerContainer />
         </>
