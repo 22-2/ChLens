@@ -1,6 +1,7 @@
 import {
   KeyValueStore,
   ObjectStore,
+  ObjectStoreIndex,
   StorageManager,
 } from "src/app/platform/types";
 import browser from "webextension-polyfill";
@@ -25,10 +26,7 @@ const BrowserKeyValueStore: KeyValueStore = {
   onChanged(callback) {
     browser.storage.onChanged.addListener((changes, area) => {
       if (area === "local") {
-        const result: Record<
-          string,
-          { oldValue: string | null; newValue: string | null }
-        > = {};
+        const result: Record<string, { oldValue: string | null; newValue: string | null }> = {};
         for (const [key, { oldValue, newValue }] of Object.entries(changes)) {
           result[key] = {
             oldValue: (oldValue as string) ?? null,
@@ -77,9 +75,7 @@ class BrowserObjectStore implements ObjectStore {
 
         // オブジェクトストアが存在しない場合は作成
         if (!db.objectStoreNames.contains(this.dbName)) {
-          console.log(
-            `[BrowserObjectStore] Creating object store: ${this.dbName}`,
-          );
+          console.log(`[BrowserObjectStore] Creating object store: ${this.dbName}`);
           const objStore = db.createObjectStore(this.dbName, {
             keyPath: "url",
           });
@@ -97,7 +93,7 @@ class BrowserObjectStore implements ObjectStore {
     return db;
   }
 
-  async get(key: string): Promise<any> {
+  async get(key: string): Promise<unknown> {
     const db = await this.getDB();
     return new Promise((resolve, reject) => {
       const req = db.transaction(this.dbName).objectStore(this.dbName).get(key);
@@ -106,13 +102,10 @@ class BrowserObjectStore implements ObjectStore {
     });
   }
 
-  async put(value: any): Promise<void> {
+  async put(value: unknown): Promise<void> {
     const db = await this.getDB();
     return new Promise((resolve, reject) => {
-      const req = db
-        .transaction(this.dbName, "readwrite")
-        .objectStore(this.dbName)
-        .put(value);
+      const req = db.transaction(this.dbName, "readwrite").objectStore(this.dbName).put(value);
       req.onerror = () => reject(req.error);
       req.onsuccess = () => resolve();
     });
@@ -121,16 +114,13 @@ class BrowserObjectStore implements ObjectStore {
   async delete(key: string): Promise<void> {
     const db = await this.getDB();
     return new Promise((resolve, reject) => {
-      const req = db
-        .transaction(this.dbName, "readwrite")
-        .objectStore(this.dbName)
-        .delete(key);
+      const req = db.transaction(this.dbName, "readwrite").objectStore(this.dbName).delete(key);
       req.onerror = () => reject(req.error);
       req.onsuccess = () => resolve();
     });
   }
 
-  async getAll(): Promise<any[]> {
+  async getAll(): Promise<unknown[]> {
     const db = await this.getDB();
     return new Promise((resolve, reject) => {
       const req = db.transaction(this.dbName).objectStore(this.dbName).getAll();
@@ -142,10 +132,7 @@ class BrowserObjectStore implements ObjectStore {
   async clear(): Promise<void> {
     const db = await this.getDB();
     return new Promise((resolve, reject) => {
-      const req = db
-        .transaction(this.dbName, "readwrite")
-        .objectStore(this.dbName)
-        .clear();
+      const req = db.transaction(this.dbName, "readwrite").objectStore(this.dbName).clear();
       req.onerror = () => reject(req.error);
       req.onsuccess = () => resolve();
     });
@@ -160,27 +147,61 @@ class BrowserObjectStore implements ObjectStore {
     });
   }
 
-  index(name: string) {
+  index(name: string): ObjectStoreIndex {
     const getStore = async () => {
       const db = await this.getDB();
       return db.transaction(this.dbName).objectStore(this.dbName);
     };
 
     return {
-      getAll: async (query?: any) => {
+      getAll: async (query?: unknown) => {
         const store = await getStore();
-        return new Promise<any[]>((resolve, reject) => {
-          const req = store.index(name).getAll(query);
+        return new Promise<unknown[]>((resolve, reject) => {
+          const req = store
+            .index(name)
+            .getAll(query as IDBValidKey | IDBKeyRange | null | undefined);
           req.onerror = () => reject(req.error);
           req.onsuccess = () => resolve(req.result);
         });
       },
-      getAllKeys: async (query?: any) => {
+      getAllKeys: async (query?: unknown) => {
         const store = await getStore();
-        return new Promise<any[]>((resolve, reject) => {
-          const req = store.index(name).getAllKeys(query);
+        return new Promise<unknown[]>((resolve, reject) => {
+          const req = store
+            .index(name)
+            .getAllKeys(query as IDBValidKey | IDBKeyRange | null | undefined);
           req.onerror = () => reject(req.error);
           req.onsuccess = () => resolve(req.result);
+        });
+      },
+      getPage: async ({ query, direction = "next", offset = 0, limit, filter }) => {
+        const store = await getStore();
+        return new Promise<{ values: unknown[]; hasMore: boolean }>((resolve, reject) => {
+          const values: unknown[] = [];
+          let matchedCount = 0;
+          const req = store
+            .index(name)
+            .openCursor(query as IDBValidKey | IDBKeyRange | null | undefined, direction);
+          req.onerror = () => reject(req.error);
+          req.onsuccess = () => {
+            const cursor = req.result;
+            if (!cursor) {
+              resolve({ values, hasMore: false });
+              return;
+            }
+            const value = cursor.value as Record<string, unknown>;
+            if (!filter || value[filter.key] === filter.value) {
+              if (matchedCount >= offset) {
+                if (values.length >= limit) {
+                  resolve({ values, hasMore: true });
+                  return;
+                }
+                values.push(value);
+              }
+              matchedCount += 1;
+            }
+            cursor.continue();
+          };
         });
       },
     };

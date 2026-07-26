@@ -1,6 +1,7 @@
 import {
   KeyValueStore,
   ObjectStore,
+  ObjectStoreIndex,
   StorageManager,
 } from "src/app/platform/types";
 import {
@@ -62,10 +63,7 @@ const TauriKeyValueStore: KeyValueStore = {
 
   onChanged(
     callback: (
-      changes: Record<
-        string,
-        { oldValue: string | null; newValue: string | null }
-      >,
+      changes: Record<string, { oldValue: string | null; newValue: string | null }>,
     ) => void,
   ): void {
     window.addEventListener("storage", (event) => {
@@ -115,9 +113,7 @@ class TauriObjectStore implements ObjectStore {
 
         // オブジェクトストアが存在しない場合は作成
         if (!db.objectStoreNames.contains(this.dbName)) {
-          console.log(
-            `[TauriObjectStore] Creating object store: ${this.dbName}`,
-          );
+          console.log(`[TauriObjectStore] Creating object store: ${this.dbName}`);
           const objStore = db.createObjectStore(this.dbName, {
             keyPath: "url",
           });
@@ -147,10 +143,7 @@ class TauriObjectStore implements ObjectStore {
   async put(value: unknown): Promise<void> {
     const db = await this.getDB();
     return new Promise((resolve, reject) => {
-      const req = db
-        .transaction(this.dbName, "readwrite")
-        .objectStore(this.dbName)
-        .put(value);
+      const req = db.transaction(this.dbName, "readwrite").objectStore(this.dbName).put(value);
       req.onerror = () => reject(req.error);
       req.onsuccess = () => resolve();
     });
@@ -159,10 +152,7 @@ class TauriObjectStore implements ObjectStore {
   async delete(key: string): Promise<void> {
     const db = await this.getDB();
     return new Promise((resolve, reject) => {
-      const req = db
-        .transaction(this.dbName, "readwrite")
-        .objectStore(this.dbName)
-        .delete(key);
+      const req = db.transaction(this.dbName, "readwrite").objectStore(this.dbName).delete(key);
       req.onerror = () => reject(req.error);
       req.onsuccess = () => resolve();
     });
@@ -180,10 +170,7 @@ class TauriObjectStore implements ObjectStore {
   async clear(): Promise<void> {
     const db = await this.getDB();
     return new Promise((resolve, reject) => {
-      const req = db
-        .transaction(this.dbName, "readwrite")
-        .objectStore(this.dbName)
-        .clear();
+      const req = db.transaction(this.dbName, "readwrite").objectStore(this.dbName).clear();
       req.onerror = () => reject(req.error);
       req.onsuccess = () => resolve();
     });
@@ -198,7 +185,7 @@ class TauriObjectStore implements ObjectStore {
     });
   }
 
-  index(name: string) {
+  index(name: string): ObjectStoreIndex {
     const getStore = async () => {
       const db = await this.getDB();
       return db.transaction(this.dbName).objectStore(this.dbName);
@@ -208,7 +195,7 @@ class TauriObjectStore implements ObjectStore {
       getAll: async (query?: IDBKeyRange) => {
         const store = await getStore();
         return new Promise<unknown[]>((resolve, reject) => {
-          const req = store.index(name).getAll(query);
+          const req = store.index(name).getAll(query as IDBKeyRange | undefined);
           req.onerror = () => reject(req.error);
           req.onsuccess = () => resolve(req.result);
         });
@@ -216,9 +203,39 @@ class TauriObjectStore implements ObjectStore {
       getAllKeys: async (query?: IDBKeyRange) => {
         const store = await getStore();
         return new Promise<unknown[]>((resolve, reject) => {
-          const req = store.index(name).getAllKeys(query);
+          const req = store.index(name).getAllKeys(query as IDBKeyRange | undefined);
           req.onerror = () => reject(req.error);
           req.onsuccess = () => resolve(req.result);
+        });
+      },
+      getPage: async ({ query, direction = "next", offset = 0, limit, filter }) => {
+        const store = await getStore();
+        return new Promise<{ values: unknown[]; hasMore: boolean }>((resolve, reject) => {
+          const values: unknown[] = [];
+          let matchedCount = 0;
+          const req = store
+            .index(name)
+            .openCursor(query as IDBValidKey | IDBKeyRange | null | undefined, direction);
+          req.onerror = () => reject(req.error);
+          req.onsuccess = () => {
+            const cursor = req.result;
+            if (!cursor) {
+              resolve({ values, hasMore: false });
+              return;
+            }
+            const value = cursor.value as Record<string, unknown>;
+            if (!filter || value[filter.key] === filter.value) {
+              if (matchedCount >= offset) {
+                if (values.length >= limit) {
+                  resolve({ values, hasMore: true });
+                  return;
+                }
+                values.push(value);
+              }
+              matchedCount += 1;
+            }
+            cursor.continue();
+          };
         });
       },
     };

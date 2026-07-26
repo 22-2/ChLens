@@ -65,12 +65,21 @@ export interface KeyValueStore {
   getAll(): Promise<Record<string, string>>;
   onChanged(
     callback: (
-      changes: Record<
-        string,
-        { oldValue: string | null; newValue: string | null }
-      >,
+      changes: Record<string, { oldValue: string | null; newValue: string | null }>,
     ) => void,
   ): void;
+}
+
+export interface ObjectStoreIndex {
+  getAll(query?: unknown): Promise<unknown[]>;
+  getAllKeys(query?: unknown): Promise<unknown[]>;
+  getPage(options: {
+    query?: unknown;
+    direction?: IDBCursorDirection;
+    offset?: number;
+    limit: number;
+    filter?: { key: string; value: unknown };
+  }): Promise<{ values: unknown[]; hasMore: boolean }>;
 }
 
 export interface ObjectStore {
@@ -83,10 +92,7 @@ export interface ObjectStore {
   /**
    * インデックスによる検索 (IndexedDB互換)
    */
-  index(name: string): {
-    getAll(query?: unknown): Promise<unknown[]>;
-    getAllKeys(query?: unknown): Promise<unknown[]>;
-  };
+  index(name: string): ObjectStoreIndex;
 }
 
 export interface StorageManager {

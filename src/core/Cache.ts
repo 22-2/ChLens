@@ -1,9 +1,6 @@
 import { platform } from "src/app";
 import type { ObjectStore } from "src/app/platform/types";
-import {
-  getTauriRepositories,
-  isTauriRuntime,
-} from "src/core/TauriDrizzleBridge";
+import { getTauriRepositories, isTauriRuntime } from "src/core/TauriDrizzleBridge";
 import { isHttps } from "src/core/URL";
 
 /**
@@ -28,10 +25,16 @@ export interface LogRecord {
   isHttps: boolean;
 }
 
+export interface LogSearchPage {
+  logs: LogRecord[];
+  nextOffset: number;
+  hasMore: boolean;
+}
+
 export default class Cache {
   key: string;
   data: string | null = null;
-  parsed: unknown | null = null;
+  parsed: unknown = null;
   lastUpdated: number | null = null;
   lastModified: number | null = null;
   etag: string | null = null;
@@ -106,9 +109,7 @@ export default class Cache {
       kind?: string | null;
     }>;
     await Promise.all(
-      rows
-        .filter((row) => row.kind !== "thread")
-        .map((row) => store.delete(row.url)),
+      rows.filter((row) => row.kind !== "thread").map((row) => store.delete(row.url)),
     );
   }
 
@@ -123,34 +124,27 @@ export default class Cache {
       return rows.map((row) => Cache._toLogRecord(row));
     }
 
-    // BrowserObjectStore はカーソル非対応のため、last_updated index で
-    // 昇順取得 → 反転して降順にし、kind=thread のみ抽出する。
     const store = this._getStore();
-    const all = (await store.index("last_updated").getAll()) as Array<
-      Record<string, unknown>
-    >;
-    const logs = all
-      .filter((row) => row.kind === "thread")
-      .sort(
-        (a, b) =>
-          ((b.last_updated as number) ?? 0) - ((a.last_updated as number) ?? 0),
-      )
-      .map((row) =>
-        Cache._toLogRecord({
-          url: row.url as string,
-          title: (row.title as string) ?? null,
-          threadUrl: (row.thread_url as string) ?? null,
-          boardUrl: (row.board_url as string) ?? null,
-          boardTitle: (row.board_title as string) ?? null,
-          resLength: (row.res_length as number) ?? null,
-          datSize: (row.dat_size as number) ?? null,
-          lastUpdated: (row.last_updated as number) ?? 0,
-        }),
-      );
-
-    const start = offset < 0 ? 0 : offset;
-    const end = limit < 0 ? logs.length : start + limit;
-    return logs.slice(start, end);
+    // 変更理由: ログ本文を含む全レコードを一括展開すると、大量ログ環境で
+    // 一覧を開くだけでもUIが長時間停止するため、降順カーソルで必要件数だけ読む。
+    const { values } = await store.index("last_updated").getPage({
+      direction: "prev",
+      offset: Math.max(offset, 0),
+      limit: limit < 0 ? Number.MAX_SAFE_INTEGER : limit,
+      filter: { key: "kind", value: "thread" },
+    });
+    return (values as Array<Record<string, unknown>>).map((row) =>
+      Cache._toLogRecord({
+        url: row.url as string,
+        title: (row.title as string) ?? null,
+        threadUrl: (row.thread_url as string) ?? null,
+        boardUrl: (row.board_url as string) ?? null,
+        boardTitle: (row.board_title as string) ?? null,
+        resLength: (row.res_length as number) ?? null,
+        datSize: (row.dat_size as number) ?? null,
+        lastUpdated: (row.last_updated as number) ?? 0,
+      }),
+    );
   }
 
   /**
@@ -170,9 +164,7 @@ export default class Cache {
       kind?: string | null;
     }>;
     await Promise.all(
-      all
-        .filter((row) => row.kind === "thread")
-        .map((row) => store.delete(row.url)),
+      all.filter((row) => row.kind === "thread").map((row) => store.delete(row.url)),
     );
   }
 
@@ -204,10 +196,7 @@ export default class Cache {
         const title = typeof row.title === "string" ? row.title : "";
         return `${title}\n${data}\n${parsed}`.toLowerCase().includes(needle);
       })
-      .sort(
-        (a, b) =>
-          ((b.last_updated as number) ?? 0) - ((a.last_updated as number) ?? 0),
-      )
+      .sort((a, b) => ((b.last_updated as number) ?? 0) - ((a.last_updated as number) ?? 0))
       .map((row) =>
         Cache._toLogRecord({
           url: row.url as string,
@@ -221,6 +210,72 @@ export default class Cache {
         }),
       );
     return matched;
+  }
+
+  /**
+   * 本文検索を一定件数ずつ進めます。
+   * ブラウザでは scanLimit 件だけ本文を展開し、Tauri ではSQL検索結果をページングします。
+   */
+  static async searchLogsPage(
+    query: string,
+    offset: number,
+    scanLimit: number,
+  ): Promise<LogSearchPage> {
+    const needle = query.trim().toLowerCase();
+    if (needle === "") {
+      const logs = await Cache.listLogs(offset, scanLimit);
+      return {
+        logs,
+        nextOffset: offset + logs.length,
+        hasMore: logs.length === scanLimit,
+      };
+    }
+
+    if (isTauriRuntime()) {
+      const { tauriCacheRepository } = await getTauriRepositories();
+      const rows = await tauriCacheRepository.searchLogs(query.trim(), offset, scanLimit + 1);
+      const hasMore = rows.length > scanLimit;
+      const pageRows = hasMore ? rows.slice(0, scanLimit) : rows;
+      return {
+        logs: pageRows.map((row) => Cache._toLogRecord(row)),
+        nextOffset: offset + pageRows.length,
+        hasMore,
+      };
+    }
+
+    const { values, hasMore } = await Cache._getStore()
+      .index("last_updated")
+      .getPage({
+        direction: "prev",
+        offset: Math.max(offset, 0),
+        limit: scanLimit,
+        filter: { key: "kind", value: "thread" },
+      });
+    const rows = values as Array<Record<string, unknown>>;
+    const logs = rows
+      .filter((row) => {
+        const data = typeof row.data === "string" ? row.data : "";
+        const parsed = row.parsed != null ? JSON.stringify(row.parsed) : "";
+        const title = typeof row.title === "string" ? row.title : "";
+        return `${title}\n${data}\n${parsed}`.toLowerCase().includes(needle);
+      })
+      .map((row) =>
+        Cache._toLogRecord({
+          url: row.url as string,
+          title: (row.title as string) ?? null,
+          threadUrl: (row.thread_url as string) ?? null,
+          boardUrl: (row.board_url as string) ?? null,
+          boardTitle: (row.board_title as string) ?? null,
+          resLength: (row.res_length as number) ?? null,
+          datSize: (row.dat_size as number) ?? null,
+          lastUpdated: (row.last_updated as number) ?? 0,
+        }),
+      );
+    return {
+      logs,
+      nextOffset: Math.max(offset, 0) + rows.length,
+      hasMore,
+    };
   }
 
   private static _toLogRecord(row: {
@@ -301,10 +356,7 @@ export default class Cache {
   /**
    * キャッシュを保存します
    */
-  async put(
-    data?: string,
-    options?: { lastModified?: number; etag?: string },
-  ): Promise<void> {
+  async put(data?: string, options?: { lastModified?: number; etag?: string }): Promise<void> {
     // 引数が渡された場合はプロパティを更新
     if (data !== undefined) {
       this.data = data;
@@ -323,8 +375,7 @@ export default class Cache {
     }
 
     // NULLを空白に置換
-    const dataToStore =
-      this.data != null ? this.data.replaceAll("\u0000", "\u0020") : null;
+    const dataToStore = this.data != null ? this.data.replaceAll("\u0000", "\u0020") : null;
 
     try {
       if (isTauriRuntime()) {

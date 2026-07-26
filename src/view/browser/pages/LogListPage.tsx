@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Cache, { type LogRecord } from "src/core/Cache";
 import { container } from "src/service-container/index";
 import { SearchBar } from "src/view/browser/components/SearchBar";
@@ -11,6 +11,9 @@ import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
 
 type SortDirection = "asc" | "desc";
 type SortColumn = "title" | "boardTitle" | "resLength" | "lastUpdated";
+const PAGE_SIZE = 200;
+const SEARCH_CHUNK_SIZE = 50;
+const LOAD_MORE_THRESHOLD = 12;
 
 interface SortState {
   column: SortColumn | null;
@@ -48,8 +51,7 @@ function toLogEntry(record: LogRecord): LogEntry {
     url: record.url,
     threadUrl: record.threadUrl,
     title: record.title || record.threadUrl,
-    boardTitle:
-      record.boardTitle || deriveBoardLabel(record.boardUrl, record.threadUrl),
+    boardTitle: record.boardTitle || deriveBoardLabel(record.boardUrl, record.threadUrl),
     resLength: record.resLength ?? 0,
     lastUpdated: record.lastUpdated,
   };
@@ -86,13 +88,11 @@ const COLUMNS: ColumnDef<LogEntry>[] = [
     headerClassName: "simple-data-table__th--history-date",
     cellClassName: "simple-data-table__history-date",
     sortable: true,
-    cell: (row) =>
-      row.lastUpdated ? formatCompactDateTime(row.lastUpdated) : "-",
+    cell: (row) => (row.lastUpdated ? formatCompactDateTime(row.lastUpdated) : "-"),
   },
 ];
 
-const COLUMN_VISIBILITY_STORAGE_KEY =
-  "chlens_browser_log_list_columns_visibility";
+const COLUMN_VISIBILITY_STORAGE_KEY = "chlens_browser_log_list_columns_visibility";
 const COLUMN_VISIBILITY_LOCKED_KEYS = ["title"] as const;
 
 interface LogListPageProps {
@@ -101,23 +101,22 @@ interface LogListPageProps {
   refreshKey: number;
 }
 
-export const LogListPage: React.FC<LogListPageProps> = ({
-  tabId,
-  isActive,
-  refreshKey,
-}) => {
+export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refreshKey }) => {
   const dispatch = useTabDispatch();
   const [entries, setEntries] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const nextOffsetRef = useRef(0);
+  const isLoadingPageRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortState, setSortState] = useState<SortState>(DEFAULT_SORT_STATE);
   // 既定はタイトル検索。ボタンで本文（全文）検索に切り替える。
   const [searchMode, setSearchMode] = useState<"title" | "body">("title");
-  // 本文検索の結果（url 集合）。null のときは本文検索未実行。
-  const [bodyMatchedUrls, setBodyMatchedUrls] = useState<Set<string> | null>(
-    null,
-  );
+  // 本文検索の結果。null のときは本文検索未実行。
+  const [bodyMatchedEntries, setBodyMatchedEntries] = useState<LogEntry[] | null>(null);
+  const [bodySearchLoading, setBodySearchLoading] = useState(false);
 
   const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
     pageType: "logList",
@@ -129,51 +128,101 @@ export const LogListPage: React.FC<LogListPageProps> = ({
 
   const wasActiveRef = React.useRef(isActive);
 
-  const loadEntries = useCallback(async () => {
-    setLoading(true);
+  const loadNextPage = useCallback(async (reset = false) => {
+    if (isLoadingPageRef.current) {
+      return;
+    }
+    isLoadingPageRef.current = true;
+    if (reset) {
+      setLoading(true);
+      nextOffsetRef.current = 0;
+    } else {
+      setLoadingMore(true);
+    }
     setError(null);
     try {
-      const logs = await Cache.listLogs();
-      setEntries(logs.map(toLogEntry));
+      // 変更理由: 保存本文を含むログ全件の一括展開を避け、画面表示に必要な分だけ読む。
+      const logs = await Cache.listLogs(nextOffsetRef.current, PAGE_SIZE + 1);
+      const pageLogs = logs.slice(0, PAGE_SIZE);
+      nextOffsetRef.current += pageLogs.length;
+      setHasMore(logs.length > PAGE_SIZE);
+      setEntries((previous) =>
+        reset ? pageLogs.map(toLogEntry) : [...previous, ...pageLogs.map(toLogEntry)],
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "ログの読み込みに失敗しました");
-      setEntries([]);
+      if (reset) {
+        setEntries([]);
+      }
     } finally {
-      setLoading(false);
+      isLoadingPageRef.current = false;
+      if (reset) {
+        setLoading(false);
+      } else {
+        setLoadingMore(false);
+      }
     }
   }, []);
+
+  const loadEntries = useCallback(async () => {
+    await loadNextPage(true);
+  }, [loadNextPage]);
 
   useEffect(() => {
     void loadEntries();
   }, [loadEntries, refreshKey]);
 
-  // 本文検索: モードが body かつクエリがある時だけ、保存ログ本文を全文検索する。
+  // 本文検索: 保存ログを小分けに走査し、見つかった結果から順に表示する。
   useEffect(() => {
     if (searchMode !== "body") {
-      setBodyMatchedUrls(null);
+      setBodyMatchedEntries(null);
       return;
     }
     const query = searchQuery.trim();
     if (query === "") {
-      setBodyMatchedUrls(null);
+      setBodyMatchedEntries(null);
       return;
     }
 
     let cancelled = false;
-    void (async () => {
-      try {
-        const results = await Cache.searchLogs(query);
-        if (!cancelled) {
-          setBodyMatchedUrls(new Set(results.map((r) => r.url)));
+    setBodyMatchedEntries([]);
+    setBodySearchLoading(true);
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        let offset = 0;
+        const matchedEntries: LogEntry[] = [];
+        try {
+          while (!cancelled) {
+            const page = await Cache.searchLogsPage(query, offset, SEARCH_CHUNK_SIZE);
+            offset = page.nextOffset;
+            for (const result of page.logs) {
+              matchedEntries.push(toLogEntry(result));
+            }
+            if (!cancelled) {
+              setBodyMatchedEntries([...matchedEntries]);
+            }
+            if (!page.hasMore) {
+              break;
+            }
+            // 変更理由: 大量ログの連続走査中も描画と入力処理へ制御を戻す。
+            await new Promise<void>((resolve) => window.setTimeout(resolve, 0));
+          }
+        } catch (searchError) {
+          console.error("[LogListPage] body search failed:", searchError);
+          if (!cancelled) {
+            setBodyMatchedEntries([]);
+          }
+        } finally {
+          if (!cancelled) {
+            setBodySearchLoading(false);
+          }
         }
-      } catch {
-        if (!cancelled) {
-          setBodyMatchedUrls(new Set());
-        }
-      }
-    })();
+      })();
+    }, 200);
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
+      setBodySearchLoading(false);
     };
   }, [searchMode, searchQuery]);
 
@@ -217,15 +266,10 @@ export const LogListPage: React.FC<LogListPageProps> = ({
     let rows = entries;
     if (normalizedQuery) {
       if (searchMode === "body") {
-        // 本文検索: searchLogs の結果 url 集合で絞り込む（未実行なら全件のまま）。
-        rows = bodyMatchedUrls
-          ? entries.filter((entry) => bodyMatchedUrls.has(entry.url))
-          : entries;
+        rows = bodyMatchedEntries ?? [];
       } else {
         rows = entries.filter((entry) =>
-          `${entry.title} ${entry.boardTitle}`
-            .toLowerCase()
-            .includes(normalizedQuery),
+          `${entry.title} ${entry.boardTitle}`.toLowerCase().includes(normalizedQuery),
         );
       }
     }
@@ -254,7 +298,17 @@ export const LogListPage: React.FC<LogListPageProps> = ({
       return sortState.direction === "asc" ? result : -result;
     });
     return sorted;
-  }, [entries, searchQuery, searchMode, bodyMatchedUrls, sortState]);
+  }, [entries, searchQuery, searchMode, bodyMatchedEntries, sortState]);
+
+  const shouldLoadCompleteDataset =
+    searchMode === "title" && (searchQuery.trim().length > 0 || sortState.column !== null);
+
+  useEffect(() => {
+    if (!shouldLoadCompleteDataset || loading || loadingMore || error || !hasMore) {
+      return;
+    }
+    void loadNextPage();
+  }, [error, hasMore, loadNextPage, loading, loadingMore, shouldLoadCompleteDataset]);
 
   const openEntry = useCallback(
     (entry: LogEntry) => {
@@ -282,6 +336,13 @@ export const LogListPage: React.FC<LogListPageProps> = ({
     [dispatch],
   );
 
+  const handleEndReached = useCallback(() => {
+    if (shouldLoadCompleteDataset || loading || loadingMore || error || !hasMore) {
+      return;
+    }
+    void loadNextPage();
+  }, [error, hasMore, loadNextPage, loading, loadingMore, shouldLoadCompleteDataset]);
+
   if (loading && entries.length === 0) {
     return <div className="page-status">読み込み中...</div>;
   }
@@ -290,10 +351,7 @@ export const LogListPage: React.FC<LogListPageProps> = ({
     return (
       <div className="page-status page-status--error">
         <p>{error}</p>
-        <button
-          className="page-status__retry"
-          onClick={() => void loadEntries()}
-        >
+        <button className="page-status__retry" onClick={() => void loadEntries()}>
           再試行
         </button>
       </div>
@@ -308,16 +366,13 @@ export const LogListPage: React.FC<LogListPageProps> = ({
           onQueryChange={setSearchQuery}
           onClose={closeFilterToolbar}
           hitCount={filtered.length}
-          placeholder={
-            searchMode === "body" ? "本文を検索..." : "タイトル・板を検索..."
-          }
+          loading={bodySearchLoading}
+          placeholder={searchMode === "body" ? "本文を検索..." : "タイトル・板を検索..."}
           prefix={
             <button
               type="button"
               className="search-bar__mode-toggle"
-              onClick={() =>
-                setSearchMode((prev) => (prev === "title" ? "body" : "title"))
-              }
+              onClick={() => setSearchMode((prev) => (prev === "title" ? "body" : "title"))}
               title={
                 searchMode === "body"
                   ? "本文検索中（クリックでタイトル検索へ）"
@@ -342,6 +397,8 @@ export const LogListPage: React.FC<LogListPageProps> = ({
           sortDirection={sortState.direction}
           onSort={handleSort}
           estimatedRowHeight={52}
+          endReachedThreshold={LOAD_MORE_THRESHOLD}
+          onEndReached={handleEndReached}
           columnVisibilityStorageKey={COLUMN_VISIBILITY_STORAGE_KEY}
           columnVisibilityLockedKeys={COLUMN_VISIBILITY_LOCKED_KEYS}
         />

@@ -44,14 +44,38 @@ const store = {
   index(name: string) {
     return {
       async getAll(query?: unknown) {
-        return [...rows.values()].filter((row) =>
-          matchesRange(row[name], query),
-        );
+        return [...rows.values()].filter((row) => matchesRange(row[name], query));
       },
       async getAllKeys(query?: unknown) {
         return [...rows.values()]
           .filter((row) => matchesRange(row[name], query))
           .map((row) => row.url);
+      },
+      async getPage({
+        query,
+        direction = "next",
+        offset = 0,
+        limit,
+        filter,
+      }: {
+        query?: unknown;
+        direction?: IDBCursorDirection;
+        offset?: number;
+        limit: number;
+        filter?: { key: string; value: unknown };
+      }) {
+        const ordered = [...rows.values()]
+          .filter((row) => matchesRange(row[name], query))
+          .filter((row) => !filter || row[filter.key] === filter.value)
+          .sort((a, b) => Number(a[name] ?? 0) - Number(b[name] ?? 0));
+        if (direction === "prev" || direction === "prevunique") {
+          ordered.reverse();
+        }
+        const values = ordered.slice(offset, offset + limit);
+        return {
+          values,
+          hasMore: ordered.length > offset + values.length,
+        };
       },
     };
   },
@@ -161,6 +185,27 @@ describe("Cache browser log branch", () => {
     expect(logs[1]?.isHttps).toBe(true);
   });
 
+  it("listLogs returns a requested page without including non-thread caches", async () => {
+    const { default: Cache } = await import("src/core/Cache");
+    for (const [index, lastUpdated] of [100, 200, 300].entries()) {
+      await saveThreadLog({
+        key: `https://ex.com/b/dat/${index}.dat`,
+        threadUrl: `https://ex.com/test/read.cgi/b/${index}/`,
+        title: `thread-${lastUpdated}`,
+        boardUrl: "https://ex.com/b/",
+        lastUpdated,
+      });
+    }
+    await store.put({
+      url: "https://ex.com/b/subject.txt",
+      kind: null,
+      last_updated: 250,
+    });
+
+    const logs = await Cache.listLogs(1, 1);
+    expect(logs.map((log) => log.title)).toEqual(["thread-200"]);
+  });
+
   it("deleteLogs removes only thread logs", async () => {
     const { default: Cache } = await import("src/core/Cache");
 
@@ -211,5 +256,34 @@ describe("Cache browser log branch", () => {
     // クエリが空ならログ全件を返す。
     const all = await Cache.searchLogs("  ");
     expect(all).toHaveLength(2);
+  });
+
+  it("searchLogsPage scans body logs in bounded chunks", async () => {
+    const { default: Cache } = await import("src/core/Cache");
+    await saveThreadLog({
+      key: "https://ex.com/b/dat/1.dat",
+      threadUrl: "https://ex.com/test/read.cgi/b/1/",
+      title: "older",
+      boardUrl: "https://ex.com/b/",
+      data: "needle",
+      lastUpdated: 100,
+    });
+    await saveThreadLog({
+      key: "https://ex.com/b/dat/2.dat",
+      threadUrl: "https://ex.com/test/read.cgi/b/2/",
+      title: "newer",
+      boardUrl: "https://ex.com/b/",
+      data: "no match",
+      lastUpdated: 200,
+    });
+
+    const first = await Cache.searchLogsPage("needle", 0, 1);
+    expect(first.logs).toHaveLength(0);
+    expect(first.nextOffset).toBe(1);
+    expect(first.hasMore).toBe(true);
+
+    const second = await Cache.searchLogsPage("needle", first.nextOffset, 1);
+    expect(second.logs.map((log) => log.title)).toEqual(["older"]);
+    expect(second.hasMore).toBe(false);
   });
 });

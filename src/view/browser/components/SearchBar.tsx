@@ -1,3 +1,4 @@
+import { Loader } from "@mantine/core";
 import React, { useEffect, useRef } from "react";
 
 interface Props {
@@ -6,6 +7,7 @@ interface Props {
   onQueryChange: (q: string) => void;
   onClose: () => void;
   hitCount?: number;
+  loading?: boolean;
   /** 検索バー先頭に差し込む補助コントロール（例: 検索モード切替）。 */
   prefix?: React.ReactNode;
   placeholder?: string;
@@ -17,6 +19,7 @@ export const SearchBar: React.FC<Props> = ({
   onQueryChange,
   onClose,
   hitCount,
+  loading = false,
   prefix,
   placeholder = "検索...",
 }) => {
@@ -40,9 +43,11 @@ export const SearchBar: React.FC<Props> = ({
           if (e.key === "Escape") onClose();
         }}
       />
-      {hitCount !== undefined && (
+      {loading ? (
+        <Loader size="xs" aria-label="検索中" />
+      ) : hitCount !== undefined ? (
         <span className="search-bar__count">{hitCount}件</span>
-      )}
+      ) : null}
       <button className="search-bar__close" onClick={onClose}>
         ✕
       </button>

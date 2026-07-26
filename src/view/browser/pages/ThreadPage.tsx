@@ -1,3 +1,4 @@
+import { Loader } from "@mantine/core";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { container } from "src/service-container/index";
 import type { IThread } from "src/service-container/interfaces";
@@ -304,7 +305,10 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   return (
     <div ref={rootRef} className="thread-page" onDoubleClick={handleDoubleClick}>
       {loading && responses.length === 0 ? (
-        <div className="page-status">読み込み中...</div>
+        <div className="page-status">
+          <Loader size="sm" aria-label="スレッドを読み込み中" />
+          <span>スレッドを読み込み中...</span>
+        </div>
       ) : error && responses.length === 0 ? (
         <div className="page-status page-status--error">
           <p>{error}</p>
