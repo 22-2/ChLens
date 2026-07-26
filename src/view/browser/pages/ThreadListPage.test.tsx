@@ -58,12 +58,9 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
 
 vi.mock("@mantine/core", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@mantine/core")>();
-  const PassthroughTooltip = Object.assign(
-    ({ children }: { children: ReactNode }) => children,
-    {
-      Floating: ({ children }: { children: ReactNode }) => children,
-    },
-  );
+  const PassthroughTooltip = Object.assign(({ children }: { children: ReactNode }) => children, {
+    Floating: ({ children }: { children: ReactNode }) => children,
+  });
   return {
     ...actual,
     Tooltip: PassthroughTooltip,

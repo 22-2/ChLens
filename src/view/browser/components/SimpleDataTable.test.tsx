@@ -1,10 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { container } from "src/service-container/index";
-import {
-  SimpleDataTable,
-  type ColumnDef,
-} from "src/view/browser/components/SimpleDataTable";
+import { SimpleDataTable, type ColumnDef } from "src/view/browser/components/SimpleDataTable";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 interface TestRow {
@@ -115,17 +112,11 @@ describe("SimpleDataTable", () => {
     fireEvent.click(screen.getByRole("button", { name: "板を非表示にする" }));
 
     expect(screen.queryByRole("columnheader", { name: "板" })).toBeNull();
-    expect(
-      screen.getByRole("columnheader", { name: "タイトル" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "タイトル" })).toBeInTheDocument();
     expect(screen.getByText("スレ1")).toBeInTheDocument();
     expect(screen.queryByText("板A")).toBeNull();
 
-    fireEvent.contextMenu(
-      screen.getByRole("columnheader", { name: "タイトル" }),
-    );
-    expect(
-      screen.getByRole("button", { name: "タイトルは非表示にできません" }),
-    ).toBeDisabled();
+    fireEvent.contextMenu(screen.getByRole("columnheader", { name: "タイトル" }));
+    expect(screen.getByRole("button", { name: "タイトルは非表示にできません" })).toBeDisabled();
   });
 });

@@ -132,8 +132,7 @@ export const SETTINGS_SECTIONS = [
         kind: "boolean",
         key: "table_tooltip",
         title: "一覧表でツールチップを表示する",
-        description:
-          "行にマウスを重ねたとき、省略されているタイトルの全文を表示します。",
+        description: "行にマウスを重ねたとき、省略されているタイトルの全文を表示します。",
       },
       {
         kind: "divider",
