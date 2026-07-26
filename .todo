@@ -465,7 +465,7 @@ http://bbs.eddibb.cc/test/read.cgi/liveedge/1779114452/
 - [ ] 類似画像ng
 - [x] 自動次スレ検索の改善
 - [x] テストの修正
-- [ ] ズーム倍率の上限を開放
+- [x] ズーム倍率の上限を開放
 - [ ] すべてのテーブルビューでツールチップ表示（設定からオンオフ可能）
 - [ ] ログ検索を開くとずっと読み込み中になる
 
@@ -478,7 +478,7 @@ http://bbs.eddibb.cc/test/read.cgi/liveedge/1779114452/
 - [ ] feat: ライブチャットビュー
 - [ ] 書き込み後末尾に移動（オプション）
 - [ ] tauriでのみホットキー
-- [ ] コマンドパレット
+- [x] コマンドパレット
 [-] NG Studio構想
   - [5ch互換専ブラを今更作ってるっす | Google Gemini](https://gemini.google.com/app/5d3fdd3bc7ec4cbf?hl=ja)
 - [ ] 閲覧履歴で、要素が多いとフィルタ開閉が重い
