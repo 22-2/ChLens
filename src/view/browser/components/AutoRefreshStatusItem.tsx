@@ -9,6 +9,7 @@ import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-prio
 import { IDLE_STOP_TIMEOUT_OPTIONS } from "src/view/browser/hooks/auto-refresh-config";
 import type { IdleStopTimeoutOption } from "src/view/browser/hooks/auto-refresh-config";
 import { useAutoNextThreadSetting } from "src/view/browser/hooks/use-auto-next-thread-setting";
+import { usePopupAutoScrollPauseSetting } from "src/view/browser/hooks/use-popup-auto-scroll-pause-setting";
 import {
   MAX_BOARD_INTERVAL_SEC,
   MAX_INTERVAL_SEC,
@@ -27,7 +28,9 @@ interface ThreadAutoRefreshPanelContentProps {
   isAutoNextThreadEnabled: boolean;
   intervalSec: number;
   idleStopTimeoutValue: string;
+  pauseAutoScrollOnPopup: boolean;
   onAutoNextThreadToggle: () => void;
+  onPauseAutoScrollOnPopupToggle: () => void;
   onToggle: () => void;
   onIntervalChange: (sec: number) => void;
   onIdleStopTimeoutChange: (value: string) => void;
@@ -41,7 +44,9 @@ const ThreadAutoRefreshPanelContent: React.FC<
   isAutoNextThreadEnabled,
   intervalSec,
   idleStopTimeoutValue,
+  pauseAutoScrollOnPopup,
   onAutoNextThreadToggle,
+  onPauseAutoScrollOnPopupToggle,
   onToggle,
   onIntervalChange,
   onIdleStopTimeoutChange,
@@ -52,7 +57,7 @@ const ThreadAutoRefreshPanelContent: React.FC<
     {/* 1. 自動次スレ検索 */}
     <div className="mini-window__section">
       <div className="mini-window__toggle-row">
-        <span className="mini-window__toggle-label">自動次スレ検索</span>
+        <span className="mini-window__toggle-label">自動次スレ移動</span>
         <button
           className={`mini-window__toggle-btn${
             isAutoNextThreadEnabled ? " mini-window__toggle-btn--on" : ""
@@ -90,7 +95,29 @@ const ThreadAutoRefreshPanelContent: React.FC<
 
     <div className="mini-window__separator" />
 
-    {/* 3. 自動更新停止までの時間 */}
+    {/* 3. ポップアップ表示中の自動スクロール */}
+    <div className="mini-window__section">
+      <div className="mini-window__toggle-row">
+        <span className="mini-window__toggle-label">
+          ポップアップ表示中は一時停止
+        </span>
+        <button
+          className={`mini-window__toggle-btn${
+            pauseAutoScrollOnPopup ? " mini-window__toggle-btn--on" : ""
+          }`}
+          onClick={onPauseAutoScrollOnPopupToggle}
+        >
+          {pauseAutoScrollOnPopup ? "ON" : "OFF"}
+        </button>
+      </div>
+      <p className="mini-window__note">
+        ポップアップを表示している間の自動スクロールを一時停止します
+      </p>
+    </div>
+
+    <div className="mini-window__separator" />
+
+    {/* 4. 自動更新停止までの時間 */}
     <div className="mini-window__section">
       <div className="mini-window__section-header">自動更新停止までの時間</div>
       <div className="mini-window__select-row">
@@ -113,7 +140,7 @@ const ThreadAutoRefreshPanelContent: React.FC<
 
     <div className="mini-window__separator" />
 
-    {/* 4. 更新間隔 */}
+    {/* 5. 更新間隔 */}
     <div className="mini-window__section">
       <div className="mini-window__section-header">更新間隔</div>
       <div className="mini-window__slider-row">
@@ -132,7 +159,7 @@ const ThreadAutoRefreshPanelContent: React.FC<
 
     <div className="mini-window__separator" />
 
-    {/* 5. 自動更新 */}
+    {/* 6. 自動更新 */}
     <div className="mini-window__section">
       <div className="mini-window__toggle-row">
         <span className="mini-window__toggle-label">自動更新</span>
@@ -217,6 +244,10 @@ export const AutoRefreshStatusItem: React.FC = () => {
     enabled: isAutoNextThreadEnabled,
     setEnabled: setAutoNextThreadEnabled,
   } = useAutoNextThreadSetting();
+  const {
+    enabled: pauseAutoScrollOnPopup,
+    setEnabled: setPauseAutoScrollOnPopup,
+  } = usePopupAutoScrollPauseSetting();
   const { canAutoScroll, isAutoScrolling, isPaused } = useAutoScrollState();
 
   const [isWindowOpen, setIsWindowOpen] = useState(false);
@@ -342,8 +373,12 @@ export const AutoRefreshStatusItem: React.FC = () => {
               isAutoNextThreadEnabled={isAutoNextThreadEnabled}
               intervalSec={intervalSec}
               idleStopTimeoutValue={idleStopTimeoutValue}
+              pauseAutoScrollOnPopup={pauseAutoScrollOnPopup}
               onAutoNextThreadToggle={() =>
                 setAutoNextThreadEnabled(!isAutoNextThreadEnabled)
+              }
+              onPauseAutoScrollOnPopupToggle={() =>
+                setPauseAutoScrollOnPopup(!pauseAutoScrollOnPopup)
               }
               onToggle={toggle}
               onIntervalChange={setIntervalSec}

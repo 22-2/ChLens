@@ -34,6 +34,10 @@ const mocks = vi.hoisted(() => ({
     enabled: false,
     setEnabled: vi.fn(),
   },
+  popupAutoScrollPauseSetting: {
+    enabled: true,
+    setEnabled: vi.fn(),
+  },
   canAutoScroll: false,
   isPaused: false,
 }));
@@ -52,6 +56,10 @@ vi.mock("src/view/browser/hooks/use-auto-refresh-panel", () => ({
 
 vi.mock("src/view/browser/hooks/use-auto-next-thread-setting", () => ({
   useAutoNextThreadSetting: () => mocks.autoNextThreadSetting,
+}));
+
+vi.mock("src/view/browser/hooks/use-popup-auto-scroll-pause-setting", () => ({
+  usePopupAutoScrollPauseSetting: () => mocks.popupAutoScrollPauseSetting,
 }));
 
 vi.mock("src/view/browser/hooks/use-auto-scroll-state", () => ({
@@ -102,6 +110,10 @@ describe("AutoRefreshStatusItem", () => {
     };
     mocks.autoNextThreadSetting = {
       enabled: false,
+      setEnabled: vi.fn(),
+    };
+    mocks.popupAutoScrollPauseSetting = {
+      enabled: true,
       setEnabled: vi.fn(),
     };
     mocks.canAutoScroll = false;
@@ -276,6 +288,31 @@ describe("AutoRefreshStatusItem", () => {
     fireEvent.click(nextThreadToggle as HTMLButtonElement);
 
     expect(mocks.autoNextThreadSetting.setEnabled).toHaveBeenCalledWith(true);
+  });
+
+  it("ミニウィンドウからポップアップ表示中の一時停止を切り替えられる", () => {
+    renderItem();
+
+    const button = screen.getByRole("button", { name: /自動更新/ });
+    Object.defineProperty(button, "getBoundingClientRect", {
+      configurable: true,
+      value: () => createRect(),
+    });
+
+    fireEvent.click(button);
+
+    const pauseToggle = screen
+      .getByText("ポップアップ表示中は一時停止")
+      .closest(".mini-window__toggle-row")
+      ?.querySelector("button");
+
+    expect(pauseToggle).not.toBeNull();
+    expect(pauseToggle).toHaveTextContent("ON");
+    fireEvent.click(pauseToggle as HTMLButtonElement);
+
+    expect(mocks.popupAutoScrollPauseSetting.setEnabled).toHaveBeenCalledWith(
+      false,
+    );
   });
 
   it("スレ一覧で自動更新間隔が有効なときはアクティブ色になる", () => {

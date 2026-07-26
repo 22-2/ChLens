@@ -24,11 +24,6 @@ import type {
 } from "src/view/browser/pages/settings/settings-types";
 import { isSettingsFieldItem } from "src/view/browser/pages/settings/settings-types";
 
-const FORMAT_2CH_OPTIONS = [
-  { const: "html", title: "HTML" },
-  { const: "dat", title: "dat" },
-] as const satisfies readonly SettingsOption[];
-
 const THEME_ID_OPTIONS = [
   { const: "system", title: "システム（OSに合わせる）" },
   { const: "default", title: "ライト" },
@@ -166,6 +161,18 @@ export const SETTINGS_SECTIONS = [
         kind: "boolean",
         key: "dblclick_reload",
         title: "空白をダブルクリックで更新する",
+      },
+      {
+        kind: "divider",
+        id: "auto-scroll",
+        title: "自動スクロール",
+      },
+      {
+        kind: "boolean",
+        key: "pause_auto_scroll_on_popup",
+        title: "ポップアップ表示中は自動スクロールを一時停止する",
+        description:
+          "OFFにすると、レスポップアップなどを表示している間も新着レスへ追従します。",
       },
       {
         kind: "divider",

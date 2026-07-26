@@ -11,6 +11,7 @@ import { useMediaViewerStore } from "src/view/browser/hooks/use-media-viewer-sto
 import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
 import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
 import { useThreadPopupLifecycle } from "src/view/browser/hooks/use-popup-manager";
+import { usePopupAutoScrollPauseSetting } from "src/view/browser/hooks/use-popup-auto-scroll-pause-setting";
 import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
 import { useThreadAutoRefresh } from "src/view/browser/hooks/use-thread-auto-refresh";
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";
@@ -110,13 +111,16 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   // 変更理由: 自動更新とステータスバー強調の条件を同一ソースに統一し、
   // タブ切替後に非アクティブタブの状態がステータスバーへ残留するのを防ぐ。
   const isActiveAutoRefreshEnabled = isActive && isAutoRefreshEnabled;
+  const { enabled: pauseAutoScrollOnPopup } = usePopupAutoScrollPauseSetting();
 
   const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling } = useThreadAutoRefresh({
     enabled: isActiveAutoRefreshEnabled,
     threadUrl: page.threadUrl,
     expired,
     loading,
-    pauseAutoScroll: popups.length > 0,
+    // 変更理由: ポップアップを読みながら新着へ流されない従来動作を、
+    // ユーザーが用途に合わせて無効化できるようにする。
+    pauseAutoScroll: pauseAutoScrollOnPopup && popups.length > 0,
     responseCount: responses.length,
     lastResponseNum: responses.at(-1)?.num ?? null,
     rootRef,
