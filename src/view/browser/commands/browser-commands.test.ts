@@ -66,6 +66,7 @@ function createContext(page: Page): {
       isWritePanelOpen: false,
       dispatch,
       toggleWritePanel: vi.fn(),
+      openResponseJumpDialog: vi.fn(),
     },
     dispatch,
   };
@@ -125,6 +126,28 @@ describe("browser commands", () => {
     expect(ids).not.toContain("copy.subject-url");
     expect(ids).not.toContain("copy.dat-url");
     expect(ids).not.toContain("copy.thread-toon");
+    expect(ids).not.toContain("page.jump-to-response");
+  });
+
+  it("スレッドではレス番号ジャンプ用の入力ダイアログを開ける", async () => {
+    const { context } = createContext({
+      type: "thread",
+      title: "Thread",
+      threadUrl: "https://egg.5ch.net/test/read.cgi/software/123/",
+    });
+    const openResponseJumpDialog = vi.fn();
+    context.openResponseJumpDialog = openResponseJumpDialog;
+
+    const command = resolveBrowserCommands(context).find(
+      ({ id }) => id === "page.jump-to-response",
+    );
+    expect(command).toMatchObject({
+      label: "レス番号を指定してジャンプ",
+      enabled: true,
+    });
+
+    await expect(executeBrowserCommand("page.jump-to-response", context)).resolves.toBe(true);
+    expect(openResponseJumpDialog).toHaveBeenCalledOnce();
   });
 
   it("拡張機能でだけ開いているスレタブの取り込みコマンドを表示する", () => {

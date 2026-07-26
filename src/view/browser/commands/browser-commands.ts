@@ -7,6 +7,7 @@ import {
   ExternalLink,
   Filter,
   History,
+  Hash,
   Import,
   List,
   PenLine,
@@ -59,6 +60,7 @@ export interface BrowserCommandContext {
   isWritePanelOpen: boolean;
   dispatch: Dispatch<ScopedTabAction>;
   toggleWritePanel: () => void;
+  openResponseJumpDialog: () => void;
 }
 
 export interface BrowserCommandDefinition {
@@ -363,6 +365,16 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     icon: RotateCw,
     when: ({ currentPage }) => RELOADABLE_PAGE_TYPES.has(currentPage.type),
     run: ({ dispatch }) => dispatch({ type: "RELOAD" }),
+  },
+  {
+    id: "page.jump-to-response",
+    label: "レス番号を指定してジャンプ",
+    description: "入力ダイアログでレス番号を指定します",
+    keywords: ["レス移動", "番号", "jump", "response"],
+    group: "page",
+    icon: Hash,
+    when: ({ currentPage }) => currentPage.type === "thread",
+    run: ({ openResponseJumpDialog }) => openResponseJumpDialog(),
   },
   {
     id: "page.toggle-filter",
