@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef } from "react";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { type ColumnDef } from "src/view/browser/components/SimpleDataTable";
 import { useColumnVisibility } from "src/view/browser/components/use-column-visibility";
+import { useTableTooltipEnabled } from "src/view/browser/hooks/use-table-tooltip-setting";
 
 interface Props<TRow> {
   columns: ColumnDef<TRow>[];
@@ -49,6 +50,7 @@ export function VirtualizedDataTable<TRow>({
   columnVisibilityLockedKeys,
 }: Props<TRow>): React.ReactElement {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const tableTooltipEnabled = useTableTooltipEnabled();
   const {
     visibleColumns,
     columnVisibilityMenuItems,
@@ -185,7 +187,9 @@ export function VirtualizedDataTable<TRow>({
               </tr>
             );
 
-            const tooltipLabel = getRowTooltip?.(row);
+            const tooltipLabel = tableTooltipEnabled
+              ? getRowTooltip?.(row)
+              : undefined;
             const rowKey = getRowKey(row);
             if (!tooltipLabel) {
               return <React.Fragment key={rowKey}>{rowElement}</React.Fragment>;

@@ -1,10 +1,11 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { container } from "src/service-container/index";
 import {
   SimpleDataTable,
   type ColumnDef,
 } from "src/view/browser/components/SimpleDataTable";
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 interface TestRow {
   id: string;
@@ -79,6 +80,17 @@ describe("SimpleDataTable", () => {
       value: localStorageMock,
     });
     localStorage.removeItem(storageKey);
+    container.config = {
+      get: () => "on",
+      set: vi.fn(),
+      getAll: () => ({}),
+      ready: (callback: () => void) => callback(),
+    };
+    container.message = {
+      send: vi.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+    };
   });
 
   afterEach(() => {

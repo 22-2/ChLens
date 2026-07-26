@@ -56,6 +56,10 @@ vi.mock("@mantine/core", async (importOriginal) => {
 
 vi.mock("src/service-container/index", () => ({
   container: {
+    config: {
+      get: vi.fn(() => "on"),
+      ready: (callback: () => void) => callback(),
+    },
     message: {
       on: messageOn,
       off: messageOff,

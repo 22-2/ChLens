@@ -972,6 +972,7 @@ export const ThreadListPage: React.FC<Props> = ({
         columns={THREAD_LIST_COLUMNS}
         rows={displayThreads}
         getRowKey={({ thread }) => thread.url}
+        getRowTooltip={({ thread }) => thread.title}
         getRowClassName={({ thread }) => {
           const classes: string[] = [];
           if (thread.ng && !isNgTemporarilyDisabled) {

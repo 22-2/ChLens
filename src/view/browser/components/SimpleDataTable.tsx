@@ -8,6 +8,7 @@ import {
 import React, { useMemo } from "react";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { useColumnVisibility } from "src/view/browser/components/use-column-visibility";
+import { useTableTooltipEnabled } from "src/view/browser/hooks/use-table-tooltip-setting";
 
 // 変更理由: 汎用コンポーネント化のため `ThreadListTable` から名前を変更しました。
 //           既存の動作は保持しつつ、スレッドに限定しない名称に統一します。
@@ -57,6 +58,7 @@ export function SimpleDataTable<TRow>({
   columnVisibilityStorageKey,
   columnVisibilityLockedKeys,
 }: Props<TRow>): React.ReactElement {
+  const tableTooltipEnabled = useTableTooltipEnabled();
   const {
     visibleColumns,
     columnVisibilityMenuItems,
@@ -183,7 +185,9 @@ export function SimpleDataTable<TRow>({
               </tr>
             );
 
-            const tooltipLabel = getRowTooltip?.(original);
+            const tooltipLabel = tableTooltipEnabled
+              ? getRowTooltip?.(original)
+              : undefined;
             if (!tooltipLabel) {
               return <React.Fragment key={row.id}>{rowElement}</React.Fragment>;
             }

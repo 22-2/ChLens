@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+import type { ReactNode } from "react";
 import {
   act,
   cleanup,
@@ -25,6 +26,20 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   // useTabDispatch は dispatch のみを返す安定した関数。ページのフル状態購読回避後もdispatchが使える。
   useTabDispatch: () => vi.fn(),
 }));
+
+vi.mock("@mantine/core", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@mantine/core")>();
+  const PassthroughTooltip = Object.assign(
+    ({ children }: { children: ReactNode }) => children,
+    {
+      Floating: ({ children }: { children: ReactNode }) => children,
+    },
+  );
+  return {
+    ...actual,
+    Tooltip: PassthroughTooltip,
+  };
+});
 
 interface BookmarkService {
   getAll?: () => unknown[];
@@ -81,6 +96,12 @@ describe("BookmarkListPage", () => {
           bookmarkUpdatedHandler = null;
         }
       },
+    };
+    container.config = {
+      get: vi.fn(() => "on"),
+      set: vi.fn(),
+      getAll: () => ({}),
+      ready: (callback: () => void) => callback(),
     };
   });
 
