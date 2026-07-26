@@ -23,4 +23,28 @@ describe("useMediaViewerStore", () => {
     expect(useMediaViewerStore.getState().viewer).toBeNull();
     expect(useMediaViewerStore.getState().viewerScale).toBe(1);
   });
+
+  it("ツールバーから従来の上限を超えて拡大できる", () => {
+    useMediaViewerStore.setState({ viewerScale: 5 });
+
+    useMediaViewerStore.getState().zoomIn();
+
+    expect(useMediaViewerStore.getState().viewerScale).toBe(5.25);
+  });
+
+  it("ツールバー操作の拡大倍率を10倍に制限する", () => {
+    useMediaViewerStore.setState({ viewerScale: 10 });
+
+    useMediaViewerStore.getState().zoomIn();
+
+    expect(useMediaViewerStore.getState().viewerScale).toBe(10);
+  });
+
+  it("ホイール操作の拡大倍率を10倍に制限する", () => {
+    useMediaViewerStore.setState({ viewerScale: 8 });
+
+    useMediaViewerStore.getState().zoomByWheel(-120);
+
+    expect(useMediaViewerStore.getState().viewerScale).toBe(10);
+  });
 });

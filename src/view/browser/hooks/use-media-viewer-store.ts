@@ -6,7 +6,7 @@ import {
 import { create } from "zustand";
 
 const MIN_VIEWER_SCALE = 0.25;
-const MAX_VIEWER_SCALE = 5;
+const MAX_VIEWER_SCALE = 10;
 const TOOLBAR_ZOOM_STEP = 0.25;
 const WHEEL_ZOOM_BASE = 1.5;
 
@@ -21,6 +21,7 @@ function normalizeWheelZoomDelta(deltaY: number, deltaMode = 0): number {
 }
 
 function clampViewerScale(scale: number): number {
+  // 高解像度メディアの細部を確認しつつ、過大な描画負荷を避けるため拡大は10倍までに制限する。
   return Math.min(
     MAX_VIEWER_SCALE,
     Math.max(MIN_VIEWER_SCALE, +scale.toFixed(2)),
