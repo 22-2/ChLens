@@ -10,6 +10,10 @@ import {
   type BrowserCommandContext,
 } from "src/view/browser/commands/browser-commands";
 import {
+  commandPalette,
+  commandPaletteStore,
+} from "src/view/browser/commands/command-palette-store";
+import {
   loadRecentCommandIds,
   saveRecentCommandIds,
 } from "src/view/browser/commands/command-palette-history";
@@ -61,7 +65,7 @@ export const CommandPalette: React.FC = () => {
     if (currentPage.type !== "thread") return;
 
     // コマンド実行後にSpotlightを確実に閉じ、数値入力へ操作を引き継ぐ。
-    Spotlight.close();
+    commandPalette.close();
     setResponseJumpValue("");
     setResponseJumpError(null);
     setIsResponseJumpDialogOpen(true);
@@ -130,6 +134,23 @@ export const CommandPalette: React.FC = () => {
     void saveRecentCommandIds(next);
   }, []);
 
+  const selectFirstCommand = useCallback(() => {
+    window.requestAnimationFrame(() => {
+      const list = document.getElementById("command-palette-actions");
+      const firstAction = list?.querySelector<HTMLElement>("[data-action]:not([disabled])");
+      if (!firstAction) return;
+
+      list?.querySelector("[data-selected]")?.removeAttribute("data-selected");
+      firstAction.setAttribute("data-selected", "true");
+      commandPaletteStore.updateState((current) => ({ ...current, selected: 0 }));
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!commandPaletteStore.getState().opened) return;
+    selectFirstCommand();
+  }, [filteredCommands, selectFirstCommand]);
+
   const execute = useCallback(
     async (commandId: string) => {
       recordCommand(commandId);
@@ -166,8 +187,10 @@ export const CommandPalette: React.FC = () => {
   return (
     <>
       <Spotlight.Root
+        store={commandPaletteStore}
         query={query}
         onQueryChange={setQuery}
+        onSpotlightOpen={selectFirstCommand}
         shortcut="mod + shift + P"
         scrollable
         maxHeight="min(480px, 60vh)"
@@ -192,7 +215,7 @@ export const CommandPalette: React.FC = () => {
           leftSection={<Search size={17} />}
         />
         {filteredCommands.length > 0 ? (
-          <Spotlight.ActionsList>
+          <Spotlight.ActionsList id="command-palette-actions">
             {filteredCommands.map((command) => {
               const Icon = command.icon;
               return (

@@ -55,9 +55,17 @@ vi.mock("@mantine/spotlight", () => ({
           }
         />
       ),
-      ActionsList: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
+      ActionsList: ({ children, id }: React.PropsWithChildren<{ id?: string }>) => (
+        <div id={id}>{children}</div>
+      ),
       Action: ({ id, label, rightSection, disabled, onClick, ...props }: SpotlightActionProps) => (
-        <button id={id} aria-label={props["aria-label"]} disabled={disabled} onClick={onClick}>
+        <button
+          id={id}
+          data-action
+          aria-label={props["aria-label"]}
+          disabled={disabled}
+          onClick={onClick}
+        >
           {label}
           {rightSection}
         </button>
@@ -68,6 +76,23 @@ vi.mock("@mantine/spotlight", () => ({
     },
   ),
 }));
+
+vi.mock("src/view/browser/commands/command-palette-store", () => {
+  let state = { opened: false, selected: -1 };
+  return {
+    commandPaletteStore: {
+      getState: () => state,
+      updateState: (update: (current: typeof state) => typeof state) => {
+        state = update(state);
+      },
+    },
+    commandPalette: {
+      close: spotlightCloseMock,
+      open: vi.fn(),
+      toggle: vi.fn(),
+    },
+  };
+});
 
 vi.mock("src/view/browser/commands/command-palette-history", () => ({
   loadRecentCommandIds: loadRecentCommandIdsMock,
@@ -154,6 +179,7 @@ describe("CommandPalette", () => {
     saveRecentCommandIdsMock.mockReset();
     spotlightCloseMock.mockReset();
     spotlightRootProps.current = null;
+    vi.unstubAllGlobals();
     paneCount = 1;
     currentPage = {
       type: "thread",
@@ -234,5 +260,20 @@ describe("CommandPalette", () => {
     expect(screen.getByRole("button", { name: /設定を開く/ })).toHaveTextContent("Open Settings");
     expect(screen.queryByText("アプリの設定画面を開きます")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /現在のページを更新/ })).not.toBeInTheDocument();
+  });
+
+  it("開いた直後に先頭のコマンドを選択する", () => {
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      callback(0);
+      return 0;
+    });
+    render(<CommandPalette />);
+
+    spotlightRootProps.current?.onSpotlightOpen?.();
+
+    expect(screen.getByRole("button", { name: /設定を開く/ })).toHaveAttribute(
+      "data-selected",
+      "true",
+    );
   });
 });
