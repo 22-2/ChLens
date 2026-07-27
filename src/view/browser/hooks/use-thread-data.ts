@@ -13,6 +13,7 @@ import { platform } from "src/app";
 import { container } from "src/service-container/index";
 import type { IRes, IThreadDetail } from "src/service-container/interfaces";
 import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
+import { useIsNgTemporarilyDisabled } from "src/view/browser/hooks/use-ng-status";
 import type { ThreadPage as ThreadPageType } from "src/view/browser/types";
 import {
   captureRootSelection,
@@ -51,6 +52,7 @@ const setThreadCache = async (threadUrl: string, responses: IRes[]): Promise<voi
 
 interface ThreadData {
   responses: IRes[];
+  visibleResponses: IRes[];
   loading: boolean;
   error: string | null;
   expired: boolean;
@@ -84,6 +86,7 @@ export function useThreadData(
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const titleUpdatedRef = useRef(false);
+  const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
 
   const setResponses = useCallback<Dispatch<SetStateAction<IRes[]>>>(
     (nextResponses) => {
@@ -195,10 +198,19 @@ export function useThreadData(
     };
   }, [page.title, page.threadUrl, setResponses]);
 
-  const indexes = useMemo(() => buildIndexes(responses), [responses]);
+  const visibleResponses = useMemo(() => {
+    // 変更理由: NGレスを本文だけCSSで隠すと、ミニマップや返信ツリーの索引には残り続ける。
+    // 表示用のレス集合をここで一元化し、関連UIが同じ投稿だけを参照できるようにする。
+    if (isNgTemporarilyDisabled) {
+      return responses;
+    }
+    return responses.filter((res) => res.ng == null && !res.class?.includes("ng"));
+  }, [isNgTemporarilyDisabled, responses]);
+
+  const indexes = useMemo(() => buildIndexes(visibleResponses), [visibleResponses]);
 
   const filteredResponses = useMemo(() => {
-    let list = responses;
+    let list = visibleResponses;
 
     if (filter !== "all") {
       list = list.filter((res) => {
@@ -225,13 +237,13 @@ export function useThreadData(
     }
 
     return list;
-  }, [responses, filter, searchQuery, indexes.repIndex]);
+  }, [visibleResponses, filter, searchQuery, indexes.repIndex]);
 
   const idPositions = useMemo(() => {
     const positions = new Map<number, number>();
     const counters = new Map<string, number>();
 
-    for (const res of responses) {
+    for (const res of visibleResponses) {
       if (!res.id) continue;
       const count = (counters.get(res.id) ?? 0) + 1;
       counters.set(res.id, count);
@@ -239,10 +251,11 @@ export function useThreadData(
     }
 
     return positions;
-  }, [responses]);
+  }, [visibleResponses]);
 
   return {
     responses,
+    visibleResponses,
     loading,
     error,
     expired,

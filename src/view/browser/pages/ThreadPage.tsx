@@ -50,6 +50,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const rootRef = useRef<HTMLDivElement>(null);
   const {
     responses,
+    visibleResponses,
     loading,
     error,
     expired,
@@ -335,7 +336,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             onClose={closeTopBar}
             onFilterChange={setFilter}
             onSearchQueryChange={setSearchQuery}
-            responseCount={responses.length}
+            responseCount={visibleResponses.length}
             searchFocusKey={searchFocusKey}
             searchQuery={searchQuery}
           />
