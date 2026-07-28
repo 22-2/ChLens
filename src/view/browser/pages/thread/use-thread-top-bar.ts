@@ -15,6 +15,7 @@ interface UseThreadTopBarParams {
 interface UseThreadTopBarResult {
   activeTopBar: TopBarMode;
   closeTopBar: () => void;
+  closeTopBarPreservingFilter: () => void;
   openFilterToolbar: () => void;
   searchFocusKey: number;
 }
@@ -27,13 +28,26 @@ export function useThreadTopBar({
   const [searchFocusKey, setSearchFocusKey] = useState(0);
 
   const closeTopBar = useCallback(() => {
+    if (searchQuery) {
+      setSearchQuery("");
+    }
+    setActiveTopBar("none");
+  }, [searchQuery, setSearchQuery]);
+
+  const closeTopBarPreservingFilter = useCallback(() => {
+    // 変更理由: ホイールで閉じる操作はツールバーの表示だけを戻し、
+    // 入力済みの検索語による絞り込みは維持する。
     setActiveTopBar("none");
   }, []);
 
   const toggleFilterToolbar = useCallback(() => {
     // 検索欄を同じツールバーへ統合したので、フィルタ操作は表示状態だけを反転させる。
-    setActiveTopBar((prev) => (prev === "filter" ? "none" : "filter"));
-  }, []);
+    if (activeTopBar === "filter") {
+      closeTopBar();
+    } else {
+      setActiveTopBar("filter");
+    }
+  }, [activeTopBar, closeTopBar]);
 
   const openFilterToolbar = useCallback(() => {
     // 変更理由: ホイールなどの「開くだけでよい」導線では toggle だと閉じ戻り得るため、
@@ -47,14 +61,6 @@ export function useThreadTopBar({
     setActiveTopBar("filter");
     setSearchFocusKey((prev) => prev + 1);
   }, []);
-
-  useEffect(() => {
-    // ツールバーを閉じたあと検索語が残ると、入力欄が見えないのに絞り込みだけ続くため、
-    // 非表示へ戻した時点で検索語をクリアする。
-    if (activeTopBar === "none" && searchQuery) {
-      setSearchQuery("");
-    }
-  }, [activeTopBar, searchQuery, setSearchQuery]);
 
   useEffect(() => {
     const handleSearchToggle = () => {
@@ -76,6 +82,7 @@ export function useThreadTopBar({
   return {
     activeTopBar,
     closeTopBar,
+    closeTopBarPreservingFilter,
     openFilterToolbar,
     searchFocusKey,
   };

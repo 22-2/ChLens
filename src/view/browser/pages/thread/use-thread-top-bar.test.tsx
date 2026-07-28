@@ -7,7 +7,13 @@ import { useThreadTopBar } from "src/view/browser/pages/thread/use-thread-top-ba
 
 function TopBarHarness() {
   const [searchQuery, setSearchQuery] = useState("");
-  const { activeTopBar, closeTopBar, openFilterToolbar, searchFocusKey } = useThreadTopBar({
+  const {
+    activeTopBar,
+    closeTopBar,
+    closeTopBarPreservingFilter,
+    openFilterToolbar,
+    searchFocusKey,
+  } = useThreadTopBar({
     searchQuery,
     setSearchQuery,
   });
@@ -19,6 +25,7 @@ function TopBarHarness() {
       <output data-testid="search-query">{searchQuery}</output>
       <button onClick={() => setSearchQuery("abc")}>set query</button>
       <button onClick={closeTopBar}>close</button>
+      <button onClick={closeTopBarPreservingFilter}>wheel close</button>
       <button onClick={openFilterToolbar}>open filter</button>
     </div>
   );
@@ -63,5 +70,16 @@ describe("useThreadTopBar", () => {
     fireEvent.click(screen.getByRole("button", { name: "open filter" }));
 
     expect(screen.getByTestId("active-top-bar")).toHaveTextContent("filter");
+  });
+
+  it("ホイール相当のクローズでは検索語による絞り込みを維持する", () => {
+    render(<TopBarHarness />);
+
+    fireEvent.click(screen.getByRole("button", { name: "open filter" }));
+    fireEvent.click(screen.getByRole("button", { name: "set query" }));
+    fireEvent.click(screen.getByRole("button", { name: "wheel close" }));
+
+    expect(screen.getByTestId("active-top-bar")).toHaveTextContent("none");
+    expect(screen.getByTestId("search-query")).toHaveTextContent("abc");
   });
 });

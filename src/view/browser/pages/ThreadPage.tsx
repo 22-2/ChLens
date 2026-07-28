@@ -76,7 +76,13 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   );
 
   const [miniAaResNums, setMiniAaResNums] = useState<Set<number>>(new Set());
-  const { activeTopBar, closeTopBar, openFilterToolbar, searchFocusKey } = useThreadTopBar({
+  const {
+    activeTopBar,
+    closeTopBar,
+    closeTopBarPreservingFilter,
+    openFilterToolbar,
+    searchFocusKey,
+  } = useThreadTopBar({
     searchQuery,
     setSearchQuery,
   });
@@ -110,7 +116,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
 
   useThreadTopScrollOpenFilter({
     activeTopBar,
-    closeTopBar,
+    closeTopBar: closeTopBarPreservingFilter,
     isActive,
     openFilterToolbar,
     rootRef,

@@ -13,7 +13,7 @@ function QuickAccessFilterHarness({
   virtualized?: boolean;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
-  const { isFilterOpen } = useQuickAccessFilterToolbar({
+  const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
     pageType: "threadList",
     tabId: "tab-1",
     isActive,
@@ -34,6 +34,14 @@ function QuickAccessFilterHarness({
   return (
     <div className="content-area__tab-panel" data-tab-panel-id="tab-1" data-testid="panel">
       <output data-testid="filter-state">{isFilterOpen ? "open" : "closed"}</output>
+      <input
+        aria-label="search query"
+        value={searchQuery}
+        onChange={(event) => setSearchQuery(event.target.value)}
+      />
+      <button type="button" onClick={closeFilterToolbar}>
+        close
+      </button>
       {virtualized ? (
         <div className="simple-data-table__scroller" data-testid="table-scroller">
           {table}
@@ -108,5 +116,28 @@ describe("useQuickAccessFilterToolbar wheel handling", () => {
     });
     fireEvent(panel, nextWheelEvent);
     expect(nextWheelEvent.defaultPrevented).toBe(false);
+  });
+
+  it("ホイールで閉じても適用中の絞り込みは維持する", () => {
+    render(<QuickAccessFilterHarness />);
+
+    const panel = screen.getByTestId("panel");
+    fireEvent.wheel(panel, { deltaY: -48 });
+    fireEvent.change(screen.getByLabelText("search query"), { target: { value: "検索語" } });
+    fireEvent.wheel(panel, { deltaY: 48 });
+
+    expect(screen.getByTestId("filter-state")).toHaveTextContent("closed");
+    expect(screen.getByLabelText("search query")).toHaveValue("検索語");
+  });
+
+  it("閉じるボタンでは従来どおり絞り込みを解除する", () => {
+    render(<QuickAccessFilterHarness />);
+
+    fireEvent.wheel(screen.getByTestId("panel"), { deltaY: -48 });
+    fireEvent.change(screen.getByLabelText("search query"), { target: { value: "検索語" } });
+    fireEvent.click(screen.getByRole("button", { name: "close" }));
+
+    expect(screen.getByTestId("filter-state")).toHaveTextContent("closed");
+    expect(screen.getByLabelText("search query")).toHaveValue("");
   });
 });

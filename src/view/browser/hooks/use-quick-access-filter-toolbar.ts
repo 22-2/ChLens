@@ -29,19 +29,17 @@ export function useQuickAccessFilterToolbar({
   const openedByWheelRef = useRef(false);
 
   const closeFilterToolbar = useCallback(() => {
-    setIsFilterOpen(false);
-  }, []);
-
-  useEffect(() => {
-    // 変更理由: 履歴フィルタを閉じた後に検索語だけ残ると、
-    // 一覧が絞られたままなのに再編集できず「閉じられない」体験になるため、閉じる時点で検索も戻す。
-    if (!isFilterOpen && searchQuery) {
+    if (searchQuery) {
       setSearchQuery("");
     }
+    setIsFilterOpen(false);
+  }, [searchQuery, setSearchQuery]);
+
+  useEffect(() => {
     if (!isFilterOpen) {
       openedByWheelRef.current = false;
     }
-  }, [isFilterOpen, searchQuery, setSearchQuery]);
+  }, [isFilterOpen]);
 
   useEffect(() => {
     const eventName = QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE[pageType];
@@ -51,7 +49,11 @@ export function useQuickAccessFilterToolbar({
         return;
       }
 
-      setIsFilterOpen((prev) => !prev);
+      if (isFilterOpen) {
+        closeFilterToolbar();
+      } else {
+        setIsFilterOpen(true);
+      }
     };
 
     window.addEventListener(eventName, handleToggle);
@@ -59,7 +61,7 @@ export function useQuickAccessFilterToolbar({
     return () => {
       window.removeEventListener(eventName, handleToggle);
     };
-  }, [isActive, pageType, tabId]);
+  }, [closeFilterToolbar, isActive, isFilterOpen, pageType, tabId]);
 
   useEffect(() => {
     if (!isActive) {
@@ -99,6 +101,8 @@ export function useQuickAccessFilterToolbar({
         // 同じ一操作で一覧までスクロールして位置が飛ぶのを防ぐ。
         event.preventDefault();
         openedByWheelRef.current = false;
+        // 変更理由: ホイール操作はツールバー表示だけを戻す操作として扱い、
+        // 適用中の検索語と絞り込み結果はそのまま維持する。
         setIsFilterOpen(false);
         return;
       }
