@@ -22,8 +22,7 @@
     "clean": "node -e \"const fs=require('fs-extra'); ['debug/chrome','debug/firefox','debug/tauri'].forEach(d=>fs.removeSync(d))\"",
     "lint": "run-s -c -l lint:*",
     "lint:eslint": "vp lint --fix src/",
-    "lint:imports": "organize-imports-cli tsconfig.json",
-    "lint:prettier": "prettier --editorconfig --write ./src/",
+    "lint:imports": "pnpm dlx organize-imports-cli tsconfig.json",
     "test": "vp test run",
     "test:url-commonization": "pnpm vitest run src/content-scripts/url-targets.test.ts src/core/NGMatcher.test.ts src/view/browser/pages/BookmarkListPage.test.tsx && pnpm --filter @read-crx/ch-lib exec vitest run src/parser/BoardParser.test.ts src/parser/ThreadParser.test.ts",
     "prepare": "vp config"
@@ -91,7 +90,6 @@
     "postcss": "^8.5.13",
     "postcss-preset-mantine": "^1.18.0",
     "postcss-simple-vars": "^7.0.1",
-    "prettier": "^3.8.3",
     "pug": "^3.0.4",
     "sass": "^1.99.0",
     "sharp": "^0.34.5",
