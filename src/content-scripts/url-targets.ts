@@ -12,9 +12,7 @@ const C2CH_THREAD_PATTERN = /^\/test\/-\/[\w-]+\/\d+\/(?:[ig]|\d+)?$/;
 const MACHI_BOARD_INDEX_PATTERN = /^\/[\w-]+\/?(?:index\.html)?$/;
 
 export function normalizeContentScriptTargetUrl(url: string): string {
-  const eddibbMatch = url.match(
-    /^https:\/\/bbs\.eddibb\.cc\/(\w+)\/(\d+)\/?$/i,
-  );
+  const eddibbMatch = url.match(/^https:\/\/bbs\.eddibb\.cc\/(\w+)\/(\d+)\/?$/i);
   if (!eddibbMatch) {
     return url;
   }
@@ -25,10 +23,7 @@ export function normalizeContentScriptTargetUrl(url: string): string {
 }
 
 function isChHost(hostname: string): boolean {
-  return (
-    CH_HOST_SUFFIX_PATTERN.test(hostname) &&
-    !DISALLOWED_2CH_PREFIX_PATTERN.test(hostname)
-  );
+  return CH_HOST_SUFFIX_PATTERN.test(hostname) && !DISALLOWED_2CH_PREFIX_PATTERN.test(hostname);
 }
 
 function isChLikeTarget(hostname: string, pathname: string): boolean {
@@ -60,10 +55,7 @@ function isMachiTarget(hostname: string, pathname: string): boolean {
     return false;
   }
 
-  return (
-    PATTERNS.MACHI_THREAD.test(pathname) ||
-    MACHI_BOARD_INDEX_PATTERN.test(pathname)
-  );
+  return PATTERNS.MACHI_THREAD.test(pathname) || MACHI_BOARD_INDEX_PATTERN.test(pathname);
 }
 
 function isEddibbTarget(hostname: string, pathname: string): boolean {
@@ -71,16 +63,11 @@ function isEddibbTarget(hostname: string, pathname: string): boolean {
     return false;
   }
 
-  return (
-    PATTERNS.EDDIBB_THREAD.test(pathname) ||
-    PATTERNS.EDDIBB_THREAD_2.test(pathname)
-  );
+  return PATTERNS.EDDIBB_THREAD.test(pathname) || PATTERNS.EDDIBB_THREAD_2.test(pathname);
 }
 
 function isUlaTarget(hostname: string, pathname: string): boolean {
-  return (
-    ULA_HOST_PATTERN.test(hostname) && PATTERNS.CH_THREAD_ULA.test(pathname)
-  );
+  return ULA_HOST_PATTERN.test(hostname) && PATTERNS.CH_THREAD_ULA.test(pathname);
 }
 
 function isC2chTarget(hostname: string, pathname: string): boolean {
@@ -88,9 +75,7 @@ function isC2chTarget(hostname: string, pathname: string): boolean {
     return false;
   }
 
-  return (
-    CH_BOARD_INDEX_PATTERN.test(pathname) || C2CH_THREAD_PATTERN.test(pathname)
-  );
+  return CH_BOARD_INDEX_PATTERN.test(pathname) || C2CH_THREAD_PATTERN.test(pathname);
 }
 
 export function isTargetContentScriptUrl(rawUrl: string): boolean {

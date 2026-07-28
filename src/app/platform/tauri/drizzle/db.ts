@@ -29,9 +29,7 @@ async function addColumnIfMissing(
   column: string,
   type: string,
 ): Promise<void> {
-  const cols = await raw.select<{ name: string }>(
-    `PRAGMA table_info(${table})`,
-  );
+  const cols = await raw.select<{ name: string }>(`PRAGMA table_info(${table})`);
   if (cols.some((col) => col.name === column)) {
     return;
   }
@@ -64,12 +62,8 @@ async function runMigrations(raw: SqlPluginDatabase): Promise<void> {
   await addColumnIfMissing(raw, "cache", "board_url", "TEXT");
   await addColumnIfMissing(raw, "cache", "board_title", "TEXT");
   await addColumnIfMissing(raw, "cache", "kind", "TEXT");
-  await raw.execute(
-    "CREATE INDEX IF NOT EXISTS idx_cache_last_updated ON cache(last_updated)",
-  );
-  await raw.execute(
-    "CREATE INDEX IF NOT EXISTS idx_cache_last_modified ON cache(last_modified)",
-  );
+  await raw.execute("CREATE INDEX IF NOT EXISTS idx_cache_last_updated ON cache(last_updated)");
+  await raw.execute("CREATE INDEX IF NOT EXISTS idx_cache_last_modified ON cache(last_modified)");
   await raw.execute("CREATE INDEX IF NOT EXISTS idx_cache_kind ON cache(kind)");
 
   await raw.execute(`
@@ -81,15 +75,9 @@ async function runMigrations(raw: SqlPluginDatabase): Promise<void> {
       board_title TEXT NOT NULL
     )
   `);
-  await raw.execute(
-    "CREATE INDEX IF NOT EXISTS idx_history_url ON history(url)",
-  );
-  await raw.execute(
-    "CREATE INDEX IF NOT EXISTS idx_history_title ON history(title)",
-  );
-  await raw.execute(
-    "CREATE INDEX IF NOT EXISTS idx_history_date ON history(date)",
-  );
+  await raw.execute("CREATE INDEX IF NOT EXISTS idx_history_url ON history(url)");
+  await raw.execute("CREATE INDEX IF NOT EXISTS idx_history_title ON history(title)");
+  await raw.execute("CREATE INDEX IF NOT EXISTS idx_history_date ON history(date)");
 
   await raw.execute(`
     CREATE TABLE IF NOT EXISTS read_state (
@@ -102,9 +90,7 @@ async function runMigrations(raw: SqlPluginDatabase): Promise<void> {
       board_url TEXT NOT NULL
     )
   `);
-  await raw.execute(
-    "CREATE INDEX IF NOT EXISTS idx_read_state_board_url ON read_state(board_url)",
-  );
+  await raw.execute("CREATE INDEX IF NOT EXISTS idx_read_state_board_url ON read_state(board_url)");
 
   await raw.execute(`
     CREATE TABLE IF NOT EXISTS bbsmenu_cache (
@@ -128,18 +114,10 @@ async function runMigrations(raw: SqlPluginDatabase): Promise<void> {
       date INTEGER NOT NULL
     )
   `);
-  await raw.execute(
-    "CREATE INDEX IF NOT EXISTS idx_write_history_url ON write_history(url)",
-  );
-  await raw.execute(
-    "CREATE INDEX IF NOT EXISTS idx_write_history_res ON write_history(res)",
-  );
-  await raw.execute(
-    "CREATE INDEX IF NOT EXISTS idx_write_history_title ON write_history(title)",
-  );
-  await raw.execute(
-    "CREATE INDEX IF NOT EXISTS idx_write_history_date ON write_history(date)",
-  );
+  await raw.execute("CREATE INDEX IF NOT EXISTS idx_write_history_url ON write_history(url)");
+  await raw.execute("CREATE INDEX IF NOT EXISTS idx_write_history_res ON write_history(res)");
+  await raw.execute("CREATE INDEX IF NOT EXISTS idx_write_history_title ON write_history(title)");
+  await raw.execute("CREATE INDEX IF NOT EXISTS idx_write_history_date ON write_history(date)");
 }
 
 async function createContext(): Promise<TauriDrizzleContext> {
@@ -157,9 +135,7 @@ async function createContext(): Promise<TauriDrizzleContext> {
       await new Promise((resolve) => setTimeout(resolve, waitMs));
 
       logger.debug(`Database.load試行 (${attempt}/${maxRetries})`);
-      const raw = (await Database.load(
-        "sqlite:chlens.db",
-      )) as SqlPluginDatabase;
+      const raw = (await Database.load("sqlite:chlens.db")) as SqlPluginDatabase;
       logger.debug("Database.load成功");
 
       await runMigrations(raw);
@@ -171,10 +147,7 @@ async function createContext(): Promise<TauriDrizzleContext> {
           return { rows: [] };
         }
 
-        const rows = await raw.select<Record<string, unknown>>(
-          query,
-          bindValues,
-        );
+        const rows = await raw.select<Record<string, unknown>>(query, bindValues);
         // Drizzle sqlite-proxy は rows を unknown[][] (配列の配列) として期待する。
         // Tauri SQL は名前付きオブジェクトで返すため、Object.values で変換する。
         // Object.values の順序は SQLite が返すカラム順と一致する。
@@ -185,9 +158,7 @@ async function createContext(): Promise<TauriDrizzleContext> {
       return { db, raw };
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
-      logger.warn(
-        `Database.load失敗 (試行 ${attempt}/${maxRetries}): ${lastError.message}`,
-      );
+      logger.warn(`Database.load失敗 (試行 ${attempt}/${maxRetries}): ${lastError.message}`);
 
       if (attempt === maxRetries) {
         const message = `Database.load全リトライ失敗 (${attempt}回試行): ${lastError.message}`;

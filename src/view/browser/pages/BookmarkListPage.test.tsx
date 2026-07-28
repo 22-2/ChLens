@@ -1,23 +1,10 @@
 import "@testing-library/jest-dom/vitest";
 import type { ReactNode } from "react";
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { container } from "src/service-container";
 import { BookmarkListPage } from "src/view/browser/pages/BookmarkListPage";
 import { QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE } from "src/view/browser/utils/filter-toolbar-events";
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mockUseTabStore = vi.fn();
 
@@ -29,12 +16,9 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
 
 vi.mock("@mantine/core", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@mantine/core")>();
-  const PassthroughTooltip = Object.assign(
-    ({ children }: { children: ReactNode }) => children,
-    {
-      Floating: ({ children }: { children: ReactNode }) => children,
-    },
-  );
+  const PassthroughTooltip = Object.assign(({ children }: { children: ReactNode }) => children, {
+    Floating: ({ children }: { children: ReactNode }) => children,
+  });
   return {
     ...actual,
     Tooltip: PassthroughTooltip,
@@ -89,10 +73,7 @@ describe("BookmarkListPage", () => {
         }
       },
       off: (type, callback) => {
-        if (
-          type === "bookmark_updated" &&
-          bookmarkUpdatedHandler === callback
-        ) {
+        if (type === "bookmark_updated" && bookmarkUpdatedHandler === callback) {
           bookmarkUpdatedHandler = null;
         }
       },
@@ -146,12 +127,9 @@ describe("BookmarkListPage", () => {
 
     act(() => {
       window.dispatchEvent(
-        new window.CustomEvent(
-          QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.bookmarkList,
-          {
-            detail: { tabId: "tab-1" },
-          },
-        ),
+        new window.CustomEvent(QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.bookmarkList, {
+          detail: { tabId: "tab-1" },
+        }),
       );
     });
 
@@ -163,12 +141,9 @@ describe("BookmarkListPage", () => {
 
     act(() => {
       window.dispatchEvent(
-        new window.CustomEvent(
-          QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.bookmarkList,
-          {
-            detail: { tabId: "tab-1" },
-          },
-        ),
+        new window.CustomEvent(QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.bookmarkList, {
+          detail: { tabId: "tab-1" },
+        }),
       );
     });
 

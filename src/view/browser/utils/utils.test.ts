@@ -14,8 +14,7 @@ describe("browser utils", () => {
   });
 
   it("twitter 画像URLをビューア向けURLとして扱う", () => {
-    const url =
-      "https://pbs.twimg.com/media/TestTwitterImage?format=jpg&name=large";
+    const url = "https://pbs.twimg.com/media/TestTwitterImage?format=jpg&name=large";
 
     expect(toViewerImageUrl(url)).toBe(url);
     expect(hasImage(url)).toBe(true);

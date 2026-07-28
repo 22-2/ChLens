@@ -59,9 +59,7 @@ export function getLegacyBookmarkService(): LegacyBookmarkService | undefined {
   return getLegacyApp()?.bookmark;
 }
 
-export function getLegacyBookmarkEntryList():
-  | LegacyBookmarkEntryList
-  | undefined {
+export function getLegacyBookmarkEntryList(): LegacyBookmarkEntryList | undefined {
   return getLegacyApp()?.bookmarkEntryList;
 }
 
@@ -83,14 +81,10 @@ export function getLegacyHistoryService(): LegacyHistoryService | undefined {
   return getLegacyApp()?.History;
 }
 
-export function getLegacyReadStateService():
-  | LegacyReadStateService
-  | undefined {
+export function getLegacyReadStateService(): LegacyReadStateService | undefined {
   return getLegacyApp()?.ReadState;
 }
 
-export function getLegacyWriteHistoryService():
-  | LegacyWriteHistoryService
-  | undefined {
+export function getLegacyWriteHistoryService(): LegacyWriteHistoryService | undefined {
   return getLegacyApp()?.WriteHistory;
 }

@@ -102,9 +102,7 @@ export function useAutoRefreshPanel(): UseAutoRefreshPanelResult {
     maxSec: MAX_BOARD_INTERVAL_SEC,
   });
 
-  const [idleStopTimeoutValue, setIdleStopTimeoutValueState] = useState(
-    readIdleStopTimeoutValue,
-  );
+  const [idleStopTimeoutValue, setIdleStopTimeoutValueState] = useState(readIdleStopTimeoutValue);
 
   useEffect(() => {
     const sync = () => setIdleStopTimeoutValueState(readIdleStopTimeoutValue());
@@ -136,17 +134,11 @@ export function useAutoRefreshPanel(): UseAutoRefreshPanelResult {
         : null;
   const currentPageKey = getAutoRefreshPageKey(currentPage);
   const isOnThread = panelKind === "thread";
-  const isEnabled =
-    currentPageKey != null &&
-    isAutoRefreshEnabledForPage(activeTab, currentPage);
+  const isEnabled = currentPageKey != null && isAutoRefreshEnabledForPage(activeTab, currentPage);
   const intervalSec =
-    panelKind === "thread"
-      ? threadInterval.intervalSec
-      : boardInterval.intervalSec;
+    panelKind === "thread" ? threadInterval.intervalSec : boardInterval.intervalSec;
   const setIntervalSec =
-    panelKind === "thread"
-      ? threadInterval.setIntervalSec
-      : boardInterval.setIntervalSec;
+    panelKind === "thread" ? threadInterval.setIntervalSec : boardInterval.setIntervalSec;
 
   const toggle = useCallback(() => {
     if (currentPageKey == null) {

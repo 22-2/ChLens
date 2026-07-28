@@ -34,10 +34,7 @@ export function getBrowserSync(): "chrome" | "firefox" {
 
   // Synchronous detection (less reliable but works for most cases)
   try {
-    if (
-      typeof browser !== "undefined" &&
-      navigator.userAgent.includes("Firefox")
-    ) {
+    if (typeof browser !== "undefined" && navigator.userAgent.includes("Firefox")) {
       cachedBrowser = "firefox";
       return cachedBrowser;
     }

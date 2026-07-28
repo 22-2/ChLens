@@ -32,17 +32,12 @@ function loadStringArrayFromConfig(key: string): string[] {
   try {
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) {
-      logger.warn(
-        `[useBoardListLogic] Config key "${key}" is not an array, resetting to empty.`,
-      );
+      logger.warn(`[useBoardListLogic] Config key "${key}" is not an array, resetting to empty.`);
       return [];
     }
     return parsed as string[];
   } catch (e) {
-    logger.warn(
-      `[useBoardListLogic] Failed to parse config key "${key}", resetting to empty.`,
-      e,
-    );
+    logger.warn(`[useBoardListLogic] Failed to parse config key "${key}", resetting to empty.`, e);
     return [];
   }
 }
@@ -96,17 +91,13 @@ export function useBoardListLogic() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openStates, setOpenStates] = useState<Record<string, boolean>>({});
-  const [openedBoardEntries, setOpenedBoardEntries] = useState<
-    OpenedBoardEntry[]
-  >([]);
+  const [openedBoardEntries, setOpenedBoardEntries] = useState<OpenedBoardEntry[]>([]);
 
   const [removedBoardUrls, addRemovedBoardUrl] = usePersistedSet(
     CONFIG_KEYS.REMOVED_BOARD_URLS,
     normalizeBoardUrlForRemove,
   );
-  const [removedMenuNames, addRemovedMenuName] = usePersistedSet(
-    CONFIG_KEYS.REMOVED_MENU_NAMES,
-  );
+  const [removedMenuNames, addRemovedMenuName] = usePersistedSet(CONFIG_KEYS.REMOVED_MENU_NAMES);
   const [removedCategoryIds, addRemovedCategoryId] = usePersistedSet(
     CONFIG_KEYS.REMOVED_CATEGORY_IDS,
   );
@@ -152,9 +143,7 @@ export function useBoardListLogic() {
   useEffect(() => {
     const syncOpenedBoards = () => {
       setOpenedBoardEntries(
-        parseOpenedBoardEntries(
-          container.config.get(CONFIG_KEYS.OPENED_BOARDS),
-        ),
+        parseOpenedBoardEntries(container.config.get(CONFIG_KEYS.OPENED_BOARDS)),
       );
     };
 
@@ -210,10 +199,7 @@ export function useBoardListLogic() {
     (updater: (prev: Record<string, boolean>) => Record<string, boolean>) => {
       setOpenStates((prev) => {
         const next = updater(prev);
-        void container.config.set(
-          CONFIG_KEYS.OPEN_STATES,
-          JSON.stringify(next),
-        );
+        void container.config.set(CONFIG_KEYS.OPEN_STATES, JSON.stringify(next));
         return next;
       });
     },

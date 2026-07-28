@@ -10,44 +10,28 @@ afterEach(() => {
 describe("ResMediaGallery", () => {
   it("YouTube サムネイルをクリックするとレス内 iframe を開く", () => {
     const onUrlClick = vi.fn();
-    render(
-      <ResMediaGallery
-        urls={["https://youtu.be/TestVideo01"]}
-        onUrlClick={onUrlClick}
-      />,
-    );
+    render(<ResMediaGallery urls={["https://youtu.be/TestVideo01"]} onUrlClick={onUrlClick} />);
 
     fireEvent.click(screen.getByRole("button", { name: "YouTube を展開する" }));
 
     const frame = screen.getByTitle("YouTube 動画プレーヤー");
     expect(frame).toBeInTheDocument();
-    expect(frame).toHaveAttribute(
-      "src",
-      expect.stringContaining("youtube.com/embed/TestVideo01"),
-    );
+    expect(frame).toHaveAttribute("src", expect.stringContaining("youtube.com/embed/TestVideo01"));
     expect(onUrlClick).not.toHaveBeenCalled();
   });
 
   it("直リンク動画をクリックするとレス内 video を開閉する", () => {
     const rawUrl =
       "https://video.twimg.com/amplify_video/0000000000000000000/vid/avc1/1280x720/test-video.mp4?tag=14";
-    const { container } = render(
-      <ResMediaGallery urls={[rawUrl]} onUrlClick={() => {}} />,
-    );
+    const { container } = render(<ResMediaGallery urls={[rawUrl]} onUrlClick={() => {}} />);
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Twitter Video を展開する" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Twitter Video を展開する" }));
 
-    const player = container.querySelector(
-      ".res__media-embed-player",
-    ) as HTMLVideoElement;
+    const player = container.querySelector(".res__media-embed-player") as HTMLVideoElement;
     expect(player).toBeInTheDocument();
     expect(player).toHaveAttribute("src", rawUrl);
 
-    fireEvent.click(
-      container.querySelector(".res__media-embed-close") as HTMLButtonElement,
-    );
+    fireEvent.click(container.querySelector(".res__media-embed-close") as HTMLButtonElement);
     expect(container.querySelector(".res__media-embed-player")).toBeNull();
   });
 
@@ -99,8 +83,6 @@ describe("ResMediaGallery", () => {
     });
 
     expect(thumb).toHaveClass("res__thumb--blurred");
-    expect(thumb.getAttribute("style")).toContain(
-      "--res-thumb-blur-radius: 8px",
-    );
+    expect(thumb.getAttribute("style")).toContain("--res-thumb-blur-radius: 8px");
   });
 });

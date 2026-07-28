@@ -55,9 +55,7 @@ describe("resolveReplyTreeRootResNum", () => {
       [199, new Set([200, 10])],
       [198, new Set([200, 11])],
     ]);
-    const resMap = new Map<number, unknown>(
-      Array.from({ length: 271 }, (_v, n) => [n, {}]),
-    );
+    const resMap = new Map<number, unknown>(Array.from({ length: 271 }, (_v, n) => [n, {}]));
 
     // 270 の直接参照候補の最小(40)へ寄せることで、
     // グラフ全体探索を避けてスレ全域への過剰展開を防ぐ。

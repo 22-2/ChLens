@@ -5,9 +5,9 @@ import { ResItem } from "src/view/browser/components/ResItem";
 import { describe, expect, it, vi } from "vite-plus/test";
 
 vi.mock("src/view/browser/utils/utils", async () => {
-  const actual = await vi.importActual<
-    typeof import("src/view/browser/utils/utils")
-  >("src/view/browser/utils/utils");
+  const actual = await vi.importActual<typeof import("src/view/browser/utils/utils")>(
+    "src/view/browser/utils/utils",
+  );
   return {
     ...actual,
     decodeResponseHtml: () => ({
@@ -16,16 +16,11 @@ vi.mock("src/view/browser/utils/utils", async () => {
       otherHtml: "",
       // res__link クラス付きのアンカーを含めることで、
       // 右クリックのコンテキストメニュー委譲テストで a.res__link セレクタが解決できるようにする。
-      messageHtml:
-        '<a href="https://example.com/page" class="res__link">リンク</a>',
+      messageHtml: '<a href="https://example.com/page" class="res__link">リンク</a>',
       isNameAnchor: false,
     }),
-    extractUrlsFromMessage: () => [
-      "https://example.com/page",
-      "https://example.com/image.jpg",
-    ],
-    toViewerImageUrl: (rawUrl: string) =>
-      rawUrl.endsWith(".jpg") ? rawUrl : null,
+    extractUrlsFromMessage: () => ["https://example.com/page", "https://example.com/image.jpg"],
+    toViewerImageUrl: (rawUrl: string) => (rawUrl.endsWith(".jpg") ? rawUrl : null),
   };
 });
 

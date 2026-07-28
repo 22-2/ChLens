@@ -8,11 +8,7 @@ import {
 } from "src/view/browser/utils/thread-emphasis";
 import { describe, expect, it } from "vite-plus/test";
 
-function createRes(
-  num: number,
-  message: string,
-  extra: Partial<IRes> = {},
-): IRes {
+function createRes(num: number, message: string, extra: Partial<IRes> = {}): IRes {
   return {
     num,
     name: "名無しさん",
@@ -26,9 +22,9 @@ function createRes(
 describe("thread-emphasis", () => {
   it("書込履歴から自分のレス番号集合を組み立てる", () => {
     expect(
-      Array.from(
-        buildWrittenResSet([{ res: 3 }, { writtenRes: "9" }, { res: 0 }]),
-      ).sort((a, b) => a - b),
+      Array.from(buildWrittenResSet([{ res: 3 }, { writtenRes: "9" }, { res: 0 }])).sort(
+        (a, b) => a - b,
+      ),
     ).toEqual([3, 9]);
   });
 
@@ -41,9 +37,7 @@ describe("thread-emphasis", () => {
       ]),
     );
 
-    expect(Array.from(replyToWritten).sort((a, b) => a - b)).toEqual([
-      7, 8, 11,
-    ]);
+    expect(Array.from(replyToWritten).sort((a, b) => a - b)).toEqual([7, 8, 11]);
   });
 
   it("NGではないグロ返信だけを返信先サムネぼかし対象にする", () => {

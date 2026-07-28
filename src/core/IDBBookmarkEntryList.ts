@@ -44,10 +44,7 @@ export default class IDBBookmarkEntryList extends SyncableEntryList {
         await super.add(entry);
       }
     } catch (e) {
-      app.log(
-        "error",
-        `IDBBookmarkEntryList._load: 読み込みに失敗しました: ${String(e)}`,
-      );
+      app.log("error", `IDBBookmarkEntryList._load: 読み込みに失敗しました: ${String(e)}`);
     }
     if (!this.ready.wasCalled) {
       this.ready.call();
@@ -59,10 +56,7 @@ export default class IDBBookmarkEntryList extends SyncableEntryList {
       const db = await getDB();
       await db.put(STORE_NAME, entry);
     } catch (e) {
-      app.log(
-        "error",
-        `IDBBookmarkEntryList._persist: 保存に失敗しました: ${String(e)}`,
-      );
+      app.log("error", `IDBBookmarkEntryList._persist: 保存に失敗しました: ${String(e)}`);
     }
   }
 
@@ -71,10 +65,7 @@ export default class IDBBookmarkEntryList extends SyncableEntryList {
       const db = await getDB();
       await db.delete(STORE_NAME, url);
     } catch (e) {
-      app.log(
-        "error",
-        `IDBBookmarkEntryList._delete: 削除に失敗しました: ${String(e)}`,
-      );
+      app.log("error", `IDBBookmarkEntryList._delete: 削除に失敗しました: ${String(e)}`);
     }
   }
 

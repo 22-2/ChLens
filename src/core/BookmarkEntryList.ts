@@ -247,10 +247,7 @@ export class SyncableEntryList extends EntryList {
     return true;
   }
 
-  private manipulateByBookmarkUpdateEvent({
-    type,
-    entry,
-  }: BookmarkUpdateEvent) {
+  private manipulateByBookmarkUpdateEvent({ type, entry }: BookmarkUpdateEvent) {
     switch (type) {
       case "ADD":
         void this.add(entry);

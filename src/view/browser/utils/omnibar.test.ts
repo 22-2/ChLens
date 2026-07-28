@@ -1,7 +1,4 @@
-import {
-  buildOmnibarSuggestions,
-  mergeOmnibarSources,
-} from "src/view/browser/utils/omnibar";
+import { buildOmnibarSuggestions, mergeOmnibarSources } from "src/view/browser/utils/omnibar";
 import { describe, expect, it } from "vite-plus/test";
 
 describe("omnibar utils", () => {

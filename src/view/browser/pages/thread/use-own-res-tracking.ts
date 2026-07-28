@@ -44,13 +44,10 @@ export function useOwnResTracking({
   responses,
 }: UseOwnResTrackingParams): UseOwnResTrackingResult {
   const [ownResNums, setOwnResNums] = useState<Set<number>>(new Set());
-  const [pendingWrite, setPendingWrite] =
-    useState<PendingWriteMatchState | null>(null);
+  const [pendingWrite, setPendingWrite] = useState<PendingWriteMatchState | null>(null);
   const responseCountRef = useRef(0);
   const lastResponseNumRef = useRef<number | null>(null);
-  const pendingWriteHistoryRef = useRef<PendingWriteHistoryPersistence | null>(
-    null,
-  );
+  const pendingWriteHistoryRef = useRef<PendingWriteHistoryPersistence | null>(null);
   // 変更理由: notifyThreadWriteCompleted は 3 秒後に発火するため、その間に自動更新が走ると
   // responseCountRef が新着込みの値になり hasAdvancedSinceSubmit が永久に false になる。
   // 送信直後の notifyThreadWriteStarted でベースラインを先取りしておくことで競合を防ぐ。
@@ -114,8 +111,7 @@ export function useOwnResTracking({
 
       setPendingWrite({
         ...payload,
-        baselineResponseCount:
-          baseline?.responseCount ?? responseCountRef.current,
+        baselineResponseCount: baseline?.responseCount ?? responseCountRef.current,
         baselineLastResNum: baseline?.lastResNum ?? lastResponseNumRef.current,
       });
 
@@ -164,11 +160,7 @@ export function useOwnResTracking({
         currentLastResNum > pendingWrite.baselineLastResNum);
     if (!hasAdvancedSinceSubmit) return;
 
-    const matchedRes = findLatestWrittenRes(
-      responses,
-      pendingWrite.message,
-      ownResNums,
-    );
+    const matchedRes = findLatestWrittenRes(responses, pendingWrite.message, ownResNums);
     if (!matchedRes) return;
 
     setPendingWrite(null);

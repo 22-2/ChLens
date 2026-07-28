@@ -26,8 +26,7 @@ import { create } from "zustand";
 
 const DEFAULT_POPUP_SCOPE_ID = "default";
 const EMPTY_POPUPS: PopupItem[] = [];
-const POPUP_KEEP_OPEN_TARGET_SELECTOR =
-  "a, .res__link, .res__thumb, .res__media-embed";
+const POPUP_KEEP_OPEN_TARGET_SELECTOR = "a, .res__link, .res__thumb, .res__media-embed";
 const POPUP_MOUSELEAVE_SUPPRESS_MS = 250;
 
 function isContextMenuPopupId(popupId: string | null): boolean {
@@ -48,35 +47,21 @@ interface PopupScopeSlice {
 }
 
 interface PopupCollectionSlice {
-  addPopupToScope: (
-    scopeId: string,
-    popup: Omit<PopupItem, "id" | "z">,
-  ) => string;
+  addPopupToScope: (scopeId: string, popup: Omit<PopupItem, "id" | "z">) => string;
   closePopupByIdInScope: (scopeId: string, id: string) => void;
   closeAllPopupsInScope: (scopeId: string) => void;
-  closePopupsByPredicateInScope: (
-    scopeId: string,
-    predicate: (item: PopupItem) => boolean,
-  ) => void;
+  closePopupsByPredicateInScope: (scopeId: string, predicate: (item: PopupItem) => boolean) => void;
 }
 
 interface PopupGraphSlice {
   closeNonContextPopupsInScope: (scopeId: string) => void;
   closePopupChildrenInScope: (scopeId: string, popupId: string) => void;
-  isPopupDescendantOfInScope: (
-    scopeId: string,
-    popupId: string,
-    ancestorId: string,
-  ) => boolean;
+  isPopupDescendantOfInScope: (scopeId: string, popupId: string, ancestorId: string) => boolean;
 }
 
 type PopupStoreState = PopupScopeSlice & PopupCollectionSlice & PopupGraphSlice;
 
-function isPopupDescendantOf(
-  popups: PopupItem[],
-  popupId: string,
-  ancestorId: string,
-): boolean {
+function isPopupDescendantOf(popups: PopupItem[], popupId: string, ancestorId: string): boolean {
   const popupsById = new Map(popups.map((item) => [item.id, item]));
   const visitedIds = new Set<string>();
   let currentId = popupsById.get(popupId)?.parentId;
@@ -118,12 +103,7 @@ function getOrCreatePopupScope(
   return scopes[scopeId] ?? createPopupScope();
 }
 
-const createPopupScopeSlice: StateCreator<
-  PopupStoreState,
-  [],
-  [],
-  PopupScopeSlice
-> = (set) => ({
+const createPopupScopeSlice: StateCreator<PopupStoreState, [], [], PopupScopeSlice> = (set) => ({
   scopes: {},
   mountScope: (scopeId) => {
     set((state) => {
@@ -166,12 +146,10 @@ const createPopupScopeSlice: StateCreator<
   },
 });
 
-const createPopupCollectionSlice: StateCreator<
-  PopupStoreState,
-  [],
-  [],
-  PopupCollectionSlice
-> = (set, get) => ({
+const createPopupCollectionSlice: StateCreator<PopupStoreState, [], [], PopupCollectionSlice> = (
+  set,
+  get,
+) => ({
   addPopupToScope: (scopeId, popup) => {
     const currentScope = getOrCreatePopupScope(get().scopes, scopeId);
     const id = `${popup.type}-${currentScope.nextId + 1}`;
@@ -250,9 +228,7 @@ const createPopupCollectionSlice: StateCreator<
           ...state.scopes,
           [scopeId]: {
             ...currentScope,
-            popups: currentScope.popups.filter(
-              (item) => !removedIds.has(item.id),
-            ),
+            popups: currentScope.popups.filter((item) => !removedIds.has(item.id)),
           },
         },
       };
@@ -260,25 +236,17 @@ const createPopupCollectionSlice: StateCreator<
   },
 });
 
-const createPopupGraphSlice: StateCreator<
-  PopupStoreState,
-  [],
-  [],
-  PopupGraphSlice
-> = (_set, get) => ({
+const createPopupGraphSlice: StateCreator<PopupStoreState, [], [], PopupGraphSlice> = (
+  _set,
+  get,
+) => ({
   closeNonContextPopupsInScope: (scopeId) => {
     // スレ本文へ戻る時はメニューだけ残し、popup本体の枝をまとめて落とせるようにする。
-    get().closePopupsByPredicateInScope(
-      scopeId,
-      (item) => item.type !== "contextMenu",
-    );
+    get().closePopupsByPredicateInScope(scopeId, (item) => item.type !== "contextMenu");
   },
   closePopupChildrenInScope: (scopeId, popupId) => {
     // root を残したまま branch をリセットしたいので、popup 自身ではなく direct child を起点に閉じる。
-    get().closePopupsByPredicateInScope(
-      scopeId,
-      (item) => item.parentId === popupId,
-    );
+    get().closePopupsByPredicateInScope(scopeId, (item) => item.parentId === popupId);
   },
   isPopupDescendantOfInScope: (scopeId, popupId, ancestorId) => {
     const currentScope = get().scopes[scopeId];
@@ -380,36 +348,21 @@ export interface ThreadPopupLifecycleResult {
   ) => void;
 }
 
-export function usePopupManager(
-  scopeId = DEFAULT_POPUP_SCOPE_ID,
-): PopupManagerResult {
+export function usePopupManager(scopeId = DEFAULT_POPUP_SCOPE_ID): PopupManagerResult {
   const popups = usePopupStore(
-    useCallback(
-      (state) => state.scopes[scopeId]?.popups ?? EMPTY_POPUPS,
-      [scopeId],
-    ),
+    useCallback((state) => state.scopes[scopeId]?.popups ?? EMPTY_POPUPS, [scopeId]),
   );
   const mountScope = usePopupStore((state) => state.mountScope);
   const unmountScope = usePopupStore((state) => state.unmountScope);
   const addPopupToScope = usePopupStore((state) => state.addPopupToScope);
-  const closePopupByIdInScope = usePopupStore(
-    (state) => state.closePopupByIdInScope,
-  );
-  const closeAllPopupsInScope = usePopupStore(
-    (state) => state.closeAllPopupsInScope,
-  );
+  const closePopupByIdInScope = usePopupStore((state) => state.closePopupByIdInScope);
+  const closeAllPopupsInScope = usePopupStore((state) => state.closeAllPopupsInScope);
   const closePopupsByPredicateInScope = usePopupStore(
     (state) => state.closePopupsByPredicateInScope,
   );
-  const closeNonContextPopupsInScope = usePopupStore(
-    (state) => state.closeNonContextPopupsInScope,
-  );
-  const closePopupChildrenInScope = usePopupStore(
-    (state) => state.closePopupChildrenInScope,
-  );
-  const isPopupDescendantOfInScope = usePopupStore(
-    (state) => state.isPopupDescendantOfInScope,
-  );
+  const closeNonContextPopupsInScope = usePopupStore((state) => state.closeNonContextPopupsInScope);
+  const closePopupChildrenInScope = usePopupStore((state) => state.closePopupChildrenInScope);
+  const isPopupDescendantOfInScope = usePopupStore((state) => state.isPopupDescendantOfInScope);
 
   useEffect(() => {
     mountScope(scopeId);
@@ -429,8 +382,7 @@ export function usePopupManager(
     [closeAllPopupsInScope, scopeId],
   );
   const closePopupsByPredicate = useCallback(
-    (predicate: (item: PopupItem) => boolean) =>
-      closePopupsByPredicateInScope(scopeId, predicate),
+    (predicate: (item: PopupItem) => boolean) => closePopupsByPredicateInScope(scopeId, predicate),
     [closePopupsByPredicateInScope, scopeId],
   );
   const closeNonContextPopups = useCallback(
@@ -556,10 +508,7 @@ export function usePopupSurfaceLifecycle({
         return false;
       }
 
-      return (
-        targetPopupId === popupId ||
-        isPopupDescendantOf?.(targetPopupId, popupId) === true
-      );
+      return targetPopupId === popupId || isPopupDescendantOf?.(targetPopupId, popupId) === true;
     },
     [isPopupDescendantOf, popupId],
   );
@@ -571,9 +520,7 @@ export function usePopupSurfaceLifecycle({
       }
 
       return (
-        outsideClickIgnoreRefs?.some((ignoreRef) =>
-          ignoreRef.current?.contains(target),
-        ) ?? false
+        outsideClickIgnoreRefs?.some((ignoreRef) => ignoreRef.current?.contains(target)) ?? false
       );
     },
     [outsideClickIgnoreRefs],
@@ -583,18 +530,13 @@ export function usePopupSurfaceLifecycle({
   useEffect(() => {
     const wasDisabled = prevCloseDisabledRef.current;
     prevCloseDisabledRef.current = !!closeDisabled;
-    const isActuallyHovering =
-      surfaceRef?.current?.matches(":hover") ?? isHovering;
+    const isActuallyHovering = surfaceRef?.current?.matches(":hover") ?? isHovering;
     if (!closeOnMouseLeave) {
       // コンテキストメニューは outside click でのみ閉じる仕様なので、
       // 子popup終了時の disable 復帰で親まで自動 close しない。
       return;
     }
-    if (
-      wasDisabled &&
-      !closeDisabled &&
-      suppressNextDisableReleaseCloseRef.current
-    ) {
+    if (wasDisabled && !closeDisabled && suppressNextDisableReleaseCloseRef.current) {
       // 子から親へ戻る途中は child branch を先に落とすので、
       // disable 復帰の瞬間だけ親の自動 close を1回抑止して hover 遷移を待つ。
       suppressNextDisableReleaseCloseRef.current = false;
@@ -628,10 +570,7 @@ export function usePopupSurfaceLifecycle({
         return;
       }
 
-      if (
-        event.target instanceof Node &&
-        surfaceRef?.current?.contains(event.target)
-      ) {
+      if (event.target instanceof Node && surfaceRef?.current?.contains(event.target)) {
         return;
       }
 
@@ -653,8 +592,7 @@ export function usePopupSurfaceLifecycle({
       onCloseRef.current();
     };
     document.addEventListener("mousedown", handleOutsideMouseDown);
-    return () =>
-      document.removeEventListener("mousedown", handleOutsideMouseDown);
+    return () => document.removeEventListener("mousedown", handleOutsideMouseDown);
   }, [isPopupBranchTarget, isWithinIgnoredOutsideTarget, popupId, surfaceRef]);
 
   const handleMouseEnter = (event: React.MouseEvent<HTMLElement>) => {
@@ -675,10 +613,7 @@ export function usePopupSurfaceLifecycle({
   };
 
   const handleMouseLeave = (event: React.MouseEvent<HTMLElement>) => {
-    if (
-      event.relatedTarget instanceof Node &&
-      event.currentTarget.contains(event.relatedTarget)
-    ) {
+    if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) {
       return;
     }
     const relatedPopupId = getPopupSurfaceId(event.relatedTarget);
@@ -756,22 +691,16 @@ export function useThreadPopupLifecycle({
     [popups],
   );
   const contextMenuItems = useMemo(
-    () =>
-      popups.filter(
-        (item): item is ContextMenuPopupItem => item.type === "contextMenu",
-      ),
+    () => popups.filter((item): item is ContextMenuPopupItem => item.type === "contextMenu"),
     [popups],
   );
 
-  const toPageCoords = useCallback(
-    (clientX: number, clientY: number): { x: number; y: number } => {
-      // popup-portal-layer を position:fixed (viewport基準) にしたため、
-      // ポップアップ要素の offsetParent もそのレイヤー(=viewport左上)になる。
-      // clientX/clientY をそのまま左上座標として渡すのが正しい。
-      return { x: clientX, y: clientY };
-    },
-    [],
-  );
+  const toPageCoords = useCallback((clientX: number, clientY: number): { x: number; y: number } => {
+    // popup-portal-layer を position:fixed (viewport基準) にしたため、
+    // ポップアップ要素の offsetParent もそのレイヤー(=viewport左上)になる。
+    // clientX/clientY をそのまま左上座標として渡すのが正しい。
+    return { x: clientX, y: clientY };
+  }, []);
 
   const clearAnchorPreviewHideTimer = useCallback(() => {
     if (anchorPreviewHideTimerRef.current != null) {
@@ -782,9 +711,7 @@ export function useThreadPopupLifecycle({
 
   const hideAnchorPreviewsFromDepth = useCallback(
     (depth: number) => {
-      closePopupsByPredicate(
-        (item) => item.type === "anchor" && item.payload.depth >= depth,
-      );
+      closePopupsByPredicate((item) => item.type === "anchor" && item.payload.depth >= depth);
     },
     [closePopupsByPredicate],
   );
@@ -817,9 +744,7 @@ export function useThreadPopupLifecycle({
       sourcePopupId?: string,
     ) => {
       clearAnchorPreviewHideTimer();
-      const items = targets
-        .map((num) => resMap.get(num))
-        .filter((res): res is IRes => !!res);
+      const items = targets.map((num) => resMap.get(num)).filter((res): res is IRes => !!res);
       if (items.length === 0) {
         hideAnchorPreviewsFromDepth(depth);
         return;
@@ -832,10 +757,7 @@ export function useThreadPopupLifecycle({
       const viewport = getPopupViewportBounds();
       const vx = Math.max(
         ANCHOR_PREVIEW_GUTTER,
-        Math.min(
-          anchorRect.left,
-          window.innerWidth - maxWidth - ANCHOR_PREVIEW_GUTTER,
-        ),
+        Math.min(anchorRect.left, window.innerWidth - maxWidth - ANCHOR_PREVIEW_GUTTER),
       );
       const vy = Math.max(
         ANCHOR_PREVIEW_GUTTER,
@@ -845,24 +767,19 @@ export function useThreadPopupLifecycle({
         ),
       );
       const { x, y } = toPageCoords(vx, vy);
-      const currentPreview = anchorPreviewsRef.current.find(
-        (item) => item.payload.depth === depth,
-      );
+      const currentPreview = anchorPreviewsRef.current.find((item) => item.payload.depth === depth);
       if (
         currentPreview &&
         currentPreview.payload.label === label &&
         currentPreview.x === x &&
         currentPreview.y === y &&
         currentPreview.payload.items.length === items.length &&
-        currentPreview.payload.items.every(
-          (item, index) => item.num === items[index]?.num,
-        )
+        currentPreview.payload.items.every((item, index) => item.num === items[index]?.num)
       ) {
         return;
       }
 
-      const parentId =
-        depth > 0 ? anchorPreviewsRef.current[depth - 1]?.id : sourcePopupId;
+      const parentId = depth > 0 ? anchorPreviewsRef.current[depth - 1]?.id : sourcePopupId;
       // sourcePopupId が設定されている時（popup内のアンカーホバー）は、
       // sourcePopupId の祖先になっているアンカープレビューを閉じてはいけない。
       // hideAnchorPreviewsFromDepth は cascade で子孫ごと閉じるため、
@@ -938,13 +855,7 @@ export function useThreadPopupLifecycle({
   );
 
   const addIdPopup = useCallback(
-    (
-      clientX: number,
-      clientY: number,
-      items: IRes[],
-      title: string,
-      parentId?: string,
-    ) => {
+    (clientX: number, clientY: number, items: IRes[], title: string, parentId?: string) => {
       const { x, y } = toPageCoords(clientX, clientY);
       return addPopup({
         type: "id",

@@ -8,9 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 describe("usePopupAutoScrollPauseSetting", () => {
   let storedValue: string | null;
-  let setConfig: ReturnType<
-    typeof vi.fn<(key: string, value: unknown) => void>
-  >;
+  let setConfig: ReturnType<typeof vi.fn<(key: string, value: unknown) => void>>;
 
   beforeEach(() => {
     storedValue = null;
@@ -45,9 +43,6 @@ describe("usePopupAutoScrollPauseSetting", () => {
     act(() => result.current.setEnabled(false));
 
     expect(result.current.enabled).toBe(false);
-    expect(setConfig).toHaveBeenCalledWith(
-      POPUP_AUTO_SCROLL_PAUSE_CONFIG_KEY,
-      "off",
-    );
+    expect(setConfig).toHaveBeenCalledWith(POPUP_AUTO_SCROLL_PAUSE_CONFIG_KEY, "off");
   });
 });

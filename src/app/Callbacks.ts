@@ -30,19 +30,13 @@ export default class Callbacks<Args extends unknown[] = unknown[]> {
     if (this._callbackStore.has(callback)) {
       this._callbackStore.delete(callback);
     } else {
-      log(
-        "error",
-        "app.Callbacks: 存在しないコールバックを削除しようとしました。",
-      );
+      log("error", "app.Callbacks: 存在しないコールバックを削除しようとしました。");
     }
   }
 
   call(...arg: Args) {
     if (!this._config.persistent && this._latestCallArg) {
-      log(
-        "error",
-        "app.Callbacks: persistentでないCallbacksが複数回callされました。",
-      );
+      log("error", "app.Callbacks: persistentでないCallbacksが複数回callされました。");
       return;
     }
 

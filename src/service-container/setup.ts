@@ -85,9 +85,7 @@ interface LegacyAppForSetup {
 
 export function setupContainer(app: LegacyAppForSetup) {
   const syncConsolaLevel = () => {
-    setConsolaLevel(
-      app.config.get("debug_log") === "on" ? LogLevels.debug : LogLevels.info,
-    );
+    setConsolaLevel(app.config.get("debug_log") === "on" ? LogLevels.debug : LogLevels.info);
   };
 
   syncConsolaLevel();
@@ -137,13 +135,10 @@ export function setupContainer(app: LegacyAppForSetup) {
     get: (url: string) => app.bookmark?.get(url),
     // container側では `IBookmarkItem` を受け取るため、
     // core の `app.bookmark.add(url, title, resCount?)` へ適切に展開して渡す。
-    add: (item: IBookmarkItem) =>
-      app.bookmark?.add?.(item.url, item.title, item.resCount),
+    add: (item: IBookmarkItem) => app.bookmark?.add?.(item.url, item.title, item.resCount),
     remove: (url: string) => app.bookmark?.remove(url),
-    updateResCount: (url: string, count: number) =>
-      app.bookmark?.updateResCount(url, count),
-    updateExpired: (url: string, exp: boolean) =>
-      app.bookmark?.updateExpired(url, exp),
+    updateResCount: (url: string, count: number) => app.bookmark?.updateResCount(url, count),
+    updateExpired: (url: string, exp: boolean) => app.bookmark?.updateExpired(url, exp),
     // レガシー app.bookmark が未初期化のときは「ブックマークなし」として扱う。
     getByBoard: (url: string) => app.bookmark?.getByBoard(url) ?? [],
   };
@@ -159,8 +154,7 @@ export function setupContainer(app: LegacyAppForSetup) {
   // レガシー app.ReadState が未初期化でも Promise を返す契約を守るため async にする。
   const readStateAdapter: IReadStateService = {
     get: async (url: string) => app.ReadState?.get(url),
-    getByBoard: async (boardUrl: string) =>
-      (await app.ReadState?.getByBoard(boardUrl)) ?? [],
+    getByBoard: async (boardUrl: string) => (await app.ReadState?.getByBoard(boardUrl)) ?? [],
     set: async (readState: IReadState) => {
       await app.ReadState?.set(readState);
     },
@@ -168,15 +162,13 @@ export function setupContainer(app: LegacyAppForSetup) {
 
   // Board Service Adapter
   const boardServiceAdapter: IBoardService = {
-    getThreads: (url: string): Promise<IBoardResult> =>
-      BoardService.getThreads(url),
+    getThreads: (url: string): Promise<IBoardResult> => BoardService.getThreads(url),
     getCachedResCount: (url: string) => BoardService.getCachedResCount(url),
   };
 
   // BBSMenu Service Adapter
   const bbsMenuServiceAdapter: IBBSMenuService = {
-    get: (forceReload?: boolean) =>
-      BBSMenu.get(forceReload) as Promise<IBBSMenuResult>,
+    get: (forceReload?: boolean) => BBSMenu.get(forceReload) as Promise<IBBSMenuResult>,
   };
 
   // Thread Service Adapter
@@ -225,17 +217,14 @@ export function setupContainer(app: LegacyAppForSetup) {
   // NG Service Adapter
   // レガシー app.NG が未初期化のときは「NG該当なし」として扱う (?? null / ?? false)。
   const ngServiceAdapter: INGService = {
-    isNGBoard: (title, url, resCount) =>
-      app.NG?.isNGBoard(title, url, resCount) ?? null,
-    isNGThread: (res, title, url) =>
-      app.NG?.isNGThread(res, title, url) ?? null,
+    isNGBoard: (title, url, resCount) => app.NG?.isNGBoard(title, url, resCount) ?? null,
+    isNGThread: (res, title, url) => app.NG?.isNGThread(res, title, url) ?? null,
     isThreadIgnoreNgType: (res, threadTitle, url, ngType) =>
       app.NG?.isThreadIgnoreNgType(res, threadTitle, url, ngType) ?? null,
     add: (ngWord) => app.NG?.add(ngWord),
     invalidateCache: () => app.NG?.invalidateCache(),
     execExpire: () => app.NG?.execExpire(),
-    isIgnoreResNumForAuto: (num, type) =>
-      app.NG?.isIgnoreResNumForAuto(num, type) ?? false,
+    isIgnoreResNumForAuto: (num, type) => app.NG?.isIgnoreResNumForAuto(num, type) ?? false,
   };
 
   // Util Adapter
@@ -244,12 +233,9 @@ export function setupContainer(app: LegacyAppForSetup) {
     safeHref: (url: string) => app.safeHref(url),
     defer: () => app.defer(),
     // app.util 未初期化時は「より新しいとは判定しない」= false を返す。
-    isNewerReadState: (a: unknown, b: unknown) =>
-      app.util?.isNewerReadState(a, b) ?? false,
+    isNewerReadState: (a: unknown, b: unknown) => app.util?.isNewerReadState(a, b) ?? false,
     guessType: (url: string) =>
-      app.util?.guessType
-        ? app.util.guessType(url)
-        : { bbsType: "2ch", protocol: "https:" },
+      app.util?.guessType ? app.util.guessType(url) : { bbsType: "2ch", protocol: "https:" },
   };
 
   container.config = configAdapter;

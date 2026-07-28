@@ -8,10 +8,7 @@ import { BBSMenuParser } from "src/core/BBSMenuParser";
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
 import { OtherBoardsCollector } from "src/core/OtherBoardsCollector";
 import * as ReadState from "src/core/ReadState.js";
-import {
-  getTauriRepositories,
-  isTauriRuntime,
-} from "src/core/TauriDrizzleBridge";
+import { getTauriRepositories, isTauriRuntime } from "src/core/TauriDrizzleBridge";
 import { createLogger } from "src/core/logger";
 
 const logger = createLogger("BBSMenuModel");
@@ -67,22 +64,19 @@ export class BBSMenuModel {
 
           // Why: null混入配列を返すと OtherBoardsCollector の契約型(OpenedBoardEntry[])に
           // 合わず型エラーになるため、reduce で有効要素のみを積み上げる。
-          return parsed.reduce<Array<{ url: string; title?: string }>>(
-            (acc, entry) => {
-              if (!entry || typeof entry.url !== "string") {
-                return acc;
-              }
-
-              if (typeof entry.title === "string") {
-                acc.push({ url: entry.url, title: entry.title });
-                return acc;
-              }
-
-              acc.push({ url: entry.url });
+          return parsed.reduce<Array<{ url: string; title?: string }>>((acc, entry) => {
+            if (!entry || typeof entry.url !== "string") {
               return acc;
-            },
-            [],
-          );
+            }
+
+            if (typeof entry.title === "string") {
+              acc.push({ url: entry.url, title: entry.title });
+              return acc;
+            }
+
+            acc.push({ url: entry.url });
+            return acc;
+          }, []);
         } catch {
           // 破損データは空扱いにして板一覧表示を継続する。
           return [];

@@ -11,9 +11,7 @@ function parseThemeId(raw: string | undefined): ThemeId {
 }
 
 function resolveSystemTheme(): ResolvedTheme {
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
 /** theme_id 設定値を監視し、解決済みの light/dark テーマを返すフック */
@@ -24,13 +22,7 @@ export function useTheme(): ResolvedTheme {
 
   // config_updated メッセージを購読し、theme_id の変更をリアルタイムで反映する
   useEffect(() => {
-    const handleConfigUpdated = ({
-      key,
-      val,
-    }: {
-      key: string;
-      val: string;
-    }) => {
+    const handleConfigUpdated = ({ key, val }: { key: string; val: string }) => {
       if (key === "theme_id") {
         setThemeId(parseThemeId(val));
       }

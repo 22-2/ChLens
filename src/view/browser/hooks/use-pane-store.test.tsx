@@ -1,13 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 vi.mock("src/app/platform", () => ({
   platform: {
@@ -80,22 +73,13 @@ describe("ペイン（横分割）", () => {
   // 各ペインの状態を読み出す共通ハーネス。useTabPanes でグローバルな panes を観測する。
   async function setup() {
     vi.resetModules();
-    const {
-      TabProvider,
-      PaneProvider,
-      useTabPanes,
-      useTabStore,
-      useTabDispatch,
-    } = await import("src/view/browser/hooks/use-tab-store");
+    const { TabProvider, PaneProvider, useTabPanes, useTabStore, useTabDispatch } =
+      await import("src/view/browser/hooks/use-tab-store");
 
     // グローバルな dispatch（paneId 注入なし）= アクティブペインに作用。
     function GlobalControls() {
       const dispatch = useTabDispatch();
-      return (
-        <button onClick={() => dispatch({ type: "SPLIT_PANE" })}>
-          分割（アクティブ）
-        </button>
-      );
+      return <button onClick={() => dispatch({ type: "SPLIT_PANE" })}>分割（アクティブ）</button>;
     }
 
     // 指定ペインに束縛した操作群。
@@ -111,15 +95,9 @@ describe("ペイン（横分割）", () => {
       const { state, dispatch } = useTabStore();
       return (
         <div data-testid={`panebox-${paneId}`}>
-          <button
-            onClick={() => dispatch({ type: "SPLIT_PANE" })}
-          >{`split-${paneId}`}</button>
-          <button
-            onClick={() => dispatch({ type: "CLOSE_PANE" })}
-          >{`close-${paneId}`}</button>
-          <button
-            onClick={() => dispatch({ type: "ADD_TAB" })}
-          >{`addtab-${paneId}`}</button>
+          <button onClick={() => dispatch({ type: "SPLIT_PANE" })}>{`split-${paneId}`}</button>
+          <button onClick={() => dispatch({ type: "CLOSE_PANE" })}>{`close-${paneId}`}</button>
+          <button onClick={() => dispatch({ type: "ADD_TAB" })}>{`addtab-${paneId}`}</button>
           <button
             onClick={() =>
               dispatch({
@@ -130,9 +108,7 @@ describe("ペイン（横分割）", () => {
           >
             {`toright-${paneId}`}
           </button>
-          <output data-testid={`tabcount-${paneId}`}>
-            {state.tabs.length}
-          </output>
+          <output data-testid={`tabcount-${paneId}`}>{state.tabs.length}</output>
         </div>
       );
     }
@@ -142,9 +118,7 @@ describe("ペイン（横分割）", () => {
       return (
         <>
           <output data-testid="pane-count">{panes.length}</output>
-          <output data-testid="pane-ids">
-            {panes.map((p) => p.id).join(",")}
-          </output>
+          <output data-testid="pane-ids">{panes.map((p) => p.id).join(",")}</output>
           <output data-testid="active-pane-index">
             {panes.findIndex((p) => p.id === activePaneId)}
           </output>

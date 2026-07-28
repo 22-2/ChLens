@@ -72,11 +72,7 @@ function buildResMediaItem(rawUrl: string): ResMediaItem | null {
   return null;
 }
 
-function VideoThumbImage({
-  embed,
-}: {
-  embed: ExternalVideoEmbed;
-}): React.ReactElement {
+function VideoThumbImage({ embed }: { embed: ExternalVideoEmbed }): React.ReactElement {
   const [posterUrl, setPosterUrl] = useState(embed.thumbnailUrl);
 
   useEffect(() => {
@@ -142,10 +138,7 @@ export function ResMediaGallery({
     : undefined;
 
   const mediaItems = useMemo(
-    () =>
-      urls
-        .map(buildResMediaItem)
-        .filter((item): item is ResMediaItem => item != null),
+    () => urls.map(buildResMediaItem).filter((item): item is ResMediaItem => item != null),
     [urls],
   );
   const imageUrls = useMemo(
@@ -155,8 +148,7 @@ export function ResMediaGallery({
         .map((item) => item.rawUrl),
     [mediaItems],
   );
-  const pageOrigin =
-    typeof window === "undefined" ? undefined : window.location.origin;
+  const pageOrigin = typeof window === "undefined" ? undefined : window.location.origin;
   const expandedVideo = useMemo(
     () =>
       mediaItems.find(
@@ -254,12 +246,8 @@ export function ResMediaGallery({
                   event.stopPropagation();
                   onUrlClick(item.rawUrl, imageUrls, 0);
                 }}
-                onMouseDown={(event) =>
-                  handleMiddleMouseDown(event, item.rawUrl, imageUrls)
-                }
-                onAuxClick={(event) =>
-                  handleMiddleAuxClick(event, item.rawUrl, imageUrls)
-                }
+                onMouseDown={(event) => handleMiddleMouseDown(event, item.rawUrl, imageUrls)}
+                onAuxClick={(event) => handleMiddleAuxClick(event, item.rawUrl, imageUrls)}
                 title={item.rawUrl}
               >
                 <img src={item.src} alt={item.rawUrl} loading="lazy" />
@@ -285,12 +273,8 @@ export function ResMediaGallery({
                     currentUrl === item.rawUrl ? null : item.rawUrl,
                   );
                 }}
-                onMouseDown={(event) =>
-                  handleMiddleMouseDown(event, item.rawUrl, undefined)
-                }
-                onAuxClick={(event) =>
-                  handleMiddleAuxClick(event, item.rawUrl, undefined)
-                }
+                onMouseDown={(event) => handleMiddleMouseDown(event, item.rawUrl, undefined)}
+                onAuxClick={(event) => handleMiddleAuxClick(event, item.rawUrl, undefined)}
               >
                 <NativeVideoThumb rawUrl={item.rawUrl} />
                 <span className="res__thumb-badge">{item.providerLabel}</span>
@@ -302,12 +286,8 @@ export function ResMediaGallery({
           }
 
           const isExpanded =
-            expandedVideo?.type === "video" &&
-            expandedVideo?.embed.rawUrl === item.embed.rawUrl;
-          const shouldOpenExternally = shouldOpenYouTubeExternally(
-            item.embed,
-            pageOrigin,
-          );
+            expandedVideo?.type === "video" && expandedVideo?.embed.rawUrl === item.embed.rawUrl;
+          const shouldOpenExternally = shouldOpenYouTubeExternally(item.embed, pageOrigin);
           return (
             <button
               key={`video:${item.embed.rawUrl}`}
@@ -323,11 +303,7 @@ export function ResMediaGallery({
                 if (shouldOpenExternally) {
                   // 拡張ページの YouTube iframe は Referer 欠落と他拡張の介入で 153 が再発しやすい。
                   // 左クリックは失敗しない通常タブへ逃がして、壊れた埋め込み UI を見せない。
-                  window.open(
-                    item.embed.externalUrl,
-                    "_blank",
-                    "noopener,noreferrer",
-                  );
+                  window.open(item.embed.externalUrl, "_blank", "noopener,noreferrer");
                   return;
                 }
 
@@ -339,26 +315,20 @@ export function ResMediaGallery({
               onMouseDown={(event) =>
                 handleMiddleMouseDown(
                   event,
-                  shouldOpenExternally
-                    ? item.embed.externalUrl
-                    : item.embed.rawUrl,
+                  shouldOpenExternally ? item.embed.externalUrl : item.embed.rawUrl,
                   undefined,
                 )
               }
               onAuxClick={(event) =>
                 handleMiddleAuxClick(
                   event,
-                  shouldOpenExternally
-                    ? item.embed.externalUrl
-                    : item.embed.rawUrl,
+                  shouldOpenExternally ? item.embed.externalUrl : item.embed.rawUrl,
                   undefined,
                 )
               }
             >
               <VideoThumbImage embed={item.embed} />
-              <span className="res__thumb-badge">
-                {item.embed.providerLabel}
-              </span>
+              <span className="res__thumb-badge">{item.embed.providerLabel}</span>
               <span className="res__thumb-play" aria-hidden="true">
                 ▶
               </span>

@@ -2,10 +2,7 @@ import React, { useCallback, useRef } from "react";
 import type { IRes } from "src/service-container";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
 import { usePopupSurfaceLifecycle } from "src/view/browser/hooks/use-popup-manager";
-import type {
-  UrlClickHandler,
-  UrlContextMenuHandler,
-} from "src/view/browser/utils/link-routing";
+import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
 import { useAdjustOverflow } from "src/view/browser/utils/use-adjust-overflow";
 
 export interface AnchorPreviewProps {
@@ -23,12 +20,7 @@ export interface AnchorPreviewProps {
   onRepClick: (resNum: number, e: React.MouseEvent) => void;
   onOpenRootReplyTree: (resNum: number, e: React.MouseEvent) => void;
   onAnchorClick: (resNum: number) => void;
-  onAnchorHover: (
-    targets: number[],
-    anchorRect: DOMRect,
-    label: string,
-    depth: number,
-  ) => void;
+  onAnchorHover: (targets: number[], anchorRect: DOMRect, label: string, depth: number) => void;
   onAnchorLeave: (fromDepth: number) => void;
   onMouseEnter: () => void;
   onMouseLeave: () => void;

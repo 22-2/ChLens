@@ -26,17 +26,7 @@
       },
       "target": {
         "type": "string",
-        "enum": [
-          "all",
-          "title",
-          "name",
-          "mail",
-          "id",
-          "slip",
-          "body",
-          "url",
-          "res_count"
-        ],
+        "enum": ["all", "title", "name", "mail", "id", "slip", "body", "url", "res_count"],
         "default": "all",
         "description": "対象フィールド"
       },

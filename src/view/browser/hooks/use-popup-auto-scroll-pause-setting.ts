@@ -33,10 +33,7 @@ export function usePopupAutoScrollPauseSetting(): {
 
   const setEnabled = useCallback((nextEnabled: boolean) => {
     setEnabledState(nextEnabled);
-    void container.config.set(
-      POPUP_AUTO_SCROLL_PAUSE_CONFIG_KEY,
-      nextEnabled ? "on" : "off",
-    );
+    void container.config.set(POPUP_AUTO_SCROLL_PAUSE_CONFIG_KEY, nextEnabled ? "on" : "off");
   }, []);
 
   return { enabled, setEnabled };

@@ -52,15 +52,12 @@ interface StatusBarModeProps {
 }
 
 const StatusBarContext = createContext<StatusBarContextValue | null>(null);
-const StatusBarRegistryContext =
-  createContext<StatusBarRegistryContextValue | null>(null);
+const StatusBarRegistryContext = createContext<StatusBarRegistryContextValue | null>(null);
 
 function useStatusBarContext(): StatusBarContextValue {
   const context = useContext(StatusBarContext);
   if (context == null) {
-    throw new Error(
-      "StatusBar components must be used within StatusBarProvider",
-    );
+    throw new Error("StatusBar components must be used within StatusBarProvider");
   }
   return context;
 }
@@ -68,22 +65,14 @@ function useStatusBarContext(): StatusBarContextValue {
 function useStatusBarRegistryContext(): StatusBarRegistryContextValue {
   const context = useContext(StatusBarRegistryContext);
   if (context == null) {
-    throw new Error(
-      "StatusBar components must be used within StatusBarProvider",
-    );
+    throw new Error("StatusBar components must be used within StatusBarProvider");
   }
   return context;
 }
 
-export const StatusBarProvider: React.FC<StatusBarProviderProps> = ({
-  children,
-}) => {
-  const [itemsById, setItemsById] = useState<Record<string, StatusBarEntry>>(
-    {},
-  );
-  const [appearanceById, setAppearanceById] = useState<
-    Record<string, StatusBarAppearance>
-  >({});
+export const StatusBarProvider: React.FC<StatusBarProviderProps> = ({ children }) => {
+  const [itemsById, setItemsById] = useState<Record<string, StatusBarEntry>>({});
+  const [appearanceById, setAppearanceById] = useState<Record<string, StatusBarAppearance>>({});
 
   const setItem = useCallback((item: StatusBarEntry) => {
     setItemsById((prev) => {
@@ -114,25 +103,22 @@ export const StatusBarProvider: React.FC<StatusBarProviderProps> = ({
     });
   }, []);
 
-  const setAppearance = useCallback(
-    (id: string, nextAppearance: StatusBarAppearance | null) => {
-      setAppearanceById((prev) => {
-        if (nextAppearance == null) {
-          if (!(id in prev)) {
-            return prev;
-          }
-          const next = { ...prev };
-          delete next[id];
-          return next;
-        }
-        if (prev[id] === nextAppearance) {
+  const setAppearance = useCallback((id: string, nextAppearance: StatusBarAppearance | null) => {
+    setAppearanceById((prev) => {
+      if (nextAppearance == null) {
+        if (!(id in prev)) {
           return prev;
         }
-        return { ...prev, [id]: nextAppearance };
-      });
-    },
-    [],
-  );
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      }
+      if (prev[id] === nextAppearance) {
+        return prev;
+      }
+      return { ...prev, [id]: nextAppearance };
+    });
+  }, []);
 
   const items = useMemo(
     () =>
@@ -154,10 +140,7 @@ export const StatusBarProvider: React.FC<StatusBarProviderProps> = ({
     return "default";
   }, [appearanceById]);
 
-  const value = useMemo<StatusBarContextValue>(
-    () => ({ items, appearance }),
-    [appearance, items],
-  );
+  const value = useMemo<StatusBarContextValue>(() => ({ items, appearance }), [appearance, items]);
   const registryValue = useMemo<StatusBarRegistryContextValue>(
     () => ({ setItem, removeItem, setAppearance }),
     [removeItem, setAppearance, setItem],
@@ -165,9 +148,7 @@ export const StatusBarProvider: React.FC<StatusBarProviderProps> = ({
 
   return (
     <StatusBarRegistryContext.Provider value={registryValue}>
-      <StatusBarContext.Provider value={value}>
-        {children}
-      </StatusBarContext.Provider>
+      <StatusBarContext.Provider value={value}>{children}</StatusBarContext.Provider>
     </StatusBarRegistryContext.Provider>
   );
 };
@@ -197,25 +178,12 @@ export const StatusBarItem: React.FC<StatusBarItemProps> = ({
     return () => {
       removeItem(id);
     };
-  }, [
-    alignment,
-    children,
-    className,
-    id,
-    interactive,
-    priority,
-    removeItem,
-    setItem,
-    title,
-  ]);
+  }, [alignment, children, className, id, interactive, priority, removeItem, setItem, title]);
 
   return null;
 };
 
-export const StatusBarMode: React.FC<StatusBarModeProps> = ({
-  id,
-  appearance,
-}) => {
+export const StatusBarMode: React.FC<StatusBarModeProps> = ({ id, appearance }) => {
   const { setAppearance } = useStatusBarRegistryContext();
 
   useEffect(() => {

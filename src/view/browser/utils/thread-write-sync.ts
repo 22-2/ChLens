@@ -27,15 +27,9 @@ export function subscribeThreadWriteStarted(
     if (!(event instanceof CustomEvent)) return;
     listener(event.detail as WriteStartedPayload);
   };
-  threadWriteSyncEventTarget.addEventListener(
-    THREAD_WRITE_STARTED_EVENT,
-    handleEvent,
-  );
+  threadWriteSyncEventTarget.addEventListener(THREAD_WRITE_STARTED_EVENT, handleEvent);
   return () => {
-    threadWriteSyncEventTarget.removeEventListener(
-      THREAD_WRITE_STARTED_EVENT,
-      handleEvent,
-    );
+    threadWriteSyncEventTarget.removeEventListener(THREAD_WRITE_STARTED_EVENT, handleEvent);
   };
 }
 
@@ -69,16 +63,10 @@ export function subscribeThreadWriteCompleted(
     listener(event.detail as PendingWritePayload);
   };
 
-  threadWriteSyncEventTarget.addEventListener(
-    THREAD_WRITE_COMPLETED_EVENT,
-    handleEvent,
-  );
+  threadWriteSyncEventTarget.addEventListener(THREAD_WRITE_COMPLETED_EVENT, handleEvent);
 
   return () => {
-    threadWriteSyncEventTarget.removeEventListener(
-      THREAD_WRITE_COMPLETED_EVENT,
-      handleEvent,
-    );
+    threadWriteSyncEventTarget.removeEventListener(THREAD_WRITE_COMPLETED_EVENT, handleEvent);
   };
 }
 
@@ -94,15 +82,8 @@ function parseLegacyThreadDate(rawValue: string): Date | null {
     return null;
   }
 
-  const [
-    _fullMatch,
-    yearText,
-    monthText,
-    dayText,
-    hourText,
-    minuteText,
-    secondText = "0",
-  ] = matched;
+  const [_fullMatch, yearText, monthText, dayText, hourText, minuteText, secondText = "0"] =
+    matched;
 
   const year = Number(yearText);
   const month = Number(monthText);
@@ -162,10 +143,7 @@ export function findLatestWrittenRes(
       continue;
     }
 
-    if (
-      normalizeWrittenMessage(stripHtml(response.message)) ===
-      normalizedSubmittedMessage
-    ) {
+    if (normalizeWrittenMessage(stripHtml(response.message)) === normalizedSubmittedMessage) {
       return response;
     }
   }

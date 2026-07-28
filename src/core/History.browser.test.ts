@@ -94,16 +94,12 @@ describe("History browser branch", () => {
 
     let rows = await History.getAll();
     expect(rows).toHaveLength(2);
-    expect(
-      rows.some(
-        (row) => row.url === "https://example.com/thread" && row.date === 100,
-      ),
-    ).toBe(false);
-    expect(
-      rows.some(
-        (row) => row.url === "https://example.com/thread" && row.date === 200,
-      ),
-    ).toBe(true);
+    expect(rows.some((row) => row.url === "https://example.com/thread" && row.date === 100)).toBe(
+      false,
+    );
+    expect(rows.some((row) => row.url === "https://example.com/thread" && row.date === 200)).toBe(
+      true,
+    );
 
     await History.remove("https://example.com/thread", null);
 

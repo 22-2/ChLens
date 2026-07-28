@@ -60,24 +60,16 @@ const defaultContextValue: NgStatusContextValue = {
   setThreadListStats: () => {},
 };
 
-const NgStatusContext =
-  createContext<NgStatusContextValue>(defaultContextValue);
+const NgStatusContext = createContext<NgStatusContextValue>(defaultContextValue);
 // レス一覧は「一時NG解除フラグ」だけ参照するため、統計更新のたびに
 // 数百〜数千件の ResItem が再レンダーされないよう購読口を分離する。
-const NgToggleContext = createContext<NgToggleContextValue>(
-  defaultToggleContextValue,
-);
-const NgStatsContext = createContext<NgStatsContextValue>(
-  defaultStatsContextValue,
-);
+const NgToggleContext = createContext<NgToggleContextValue>(defaultToggleContextValue);
+const NgStatsContext = createContext<NgStatsContextValue>(defaultStatsContextValue);
 
-export const NgStatusProvider: React.FC<{ children: ReactNode }> = ({
-  children,
-}) => {
+export const NgStatusProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isNgTemporarilyDisabled, setNgTemporarilyDisabled] = useState(false);
   const [threadStats, setThreadStats] = useState<NgStats>(DEFAULT_STATS);
-  const [threadListStats, setThreadListStats] =
-    useState<NgStats>(DEFAULT_STATS);
+  const [threadListStats, setThreadListStats] = useState<NgStats>(DEFAULT_STATS);
 
   const toggleNgTemporarilyDisabled = useCallback(() => {
     setNgTemporarilyDisabled((prev) => !prev);
@@ -112,20 +104,13 @@ export const NgStatusProvider: React.FC<{ children: ReactNode }> = ({
       setThreadStats,
       setThreadListStats,
     }),
-    [
-      isNgTemporarilyDisabled,
-      threadListStats,
-      threadStats,
-      toggleNgTemporarilyDisabled,
-    ],
+    [isNgTemporarilyDisabled, threadListStats, threadStats, toggleNgTemporarilyDisabled],
   );
 
   return (
     <NgToggleContext.Provider value={toggleValue}>
       <NgStatsContext.Provider value={statsValue}>
-        <NgStatusContext.Provider value={value}>
-          {children}
-        </NgStatusContext.Provider>
+        <NgStatusContext.Provider value={value}>{children}</NgStatusContext.Provider>
       </NgStatsContext.Provider>
     </NgToggleContext.Provider>
   );

@@ -45,30 +45,23 @@ export const ContextMenu: React.FC<Props> = ({
   zIndex,
 }) => {
   const menuRef = useRef<HTMLDivElement>(null);
-  const {
-    handleAuxClickCapture,
-    handleMouseDownCapture,
-    handleMouseEnter,
-    handleMouseLeave,
-  } = usePopupSurfaceLifecycle({
-    surfaceRef: menuRef,
-    outsideClickIgnoreRefs: triggerRef ? [triggerRef] : undefined,
-    popupId,
-    isPopupDescendantOf,
-    onEnterFromDescendant,
-    closeDisabled,
-    // コンテキストメニューは hover/mouseleave で閉じると誤操作になりやすいため、
-    // 明示操作（outside click / 選択 / Escape）だけで閉じる。
-    closeOnMouseLeave: false,
-    onClose,
-    onSurfaceMouseDown,
-    onSurfaceMouseEnter: onMouseEnter,
-  });
+  const { handleAuxClickCapture, handleMouseDownCapture, handleMouseEnter, handleMouseLeave } =
+    usePopupSurfaceLifecycle({
+      surfaceRef: menuRef,
+      outsideClickIgnoreRefs: triggerRef ? [triggerRef] : undefined,
+      popupId,
+      isPopupDescendantOf,
+      onEnterFromDescendant,
+      closeDisabled,
+      // コンテキストメニューは hover/mouseleave で閉じると誤操作になりやすいため、
+      // 明示操作（outside click / 選択 / Escape）だけで閉じる。
+      closeOnMouseLeave: false,
+      onClose,
+      onSurfaceMouseDown,
+      onSurfaceMouseEnter: onMouseEnter,
+    });
 
-  const visibleItems = useMemo(
-    () => items.filter((item) => item.separator || item.label),
-    [items],
-  );
+  const visibleItems = useMemo(() => items.filter((item) => item.separator || item.label), [items]);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -134,14 +127,10 @@ export const ContextMenu: React.FC<Props> = ({
               onClose();
             }}
           >
-            {item.icon && (
-              <span className="context-menu__icon">{item.icon}</span>
-            )}
+            {item.icon && <span className="context-menu__icon">{item.icon}</span>}
             <span
               className={`context-menu__label${
-                item.allowMultilineLabel
-                  ? " context-menu__label--multiline"
-                  : ""
+                item.allowMultilineLabel ? " context-menu__label--multiline" : ""
               }`}
             >
               {item.label}

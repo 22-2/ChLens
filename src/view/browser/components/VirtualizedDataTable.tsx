@@ -116,11 +116,7 @@ export function VirtualizedDataTable<TRow>({
                 <th
                   key={column.key}
                   className={className}
-                  onClick={
-                    column.sortable && onSort
-                      ? () => onSort(column.key)
-                      : undefined
-                  }
+                  onClick={column.sortable && onSort ? () => onSort(column.key) : undefined}
                   onContextMenu={(event) => {
                     if (!columnVisibilityStorageKey) {
                       return;
@@ -155,9 +151,7 @@ export function VirtualizedDataTable<TRow>({
               <tr
                 data-index={virtualRow.index}
                 className={
-                  extraClass
-                    ? `simple-data-table__row ${extraClass}`
-                    : "simple-data-table__row"
+                  extraClass ? `simple-data-table__row ${extraClass}` : "simple-data-table__row"
                 }
                 style={getRowStyle?.(row)}
                 onClick={() => onRowClick?.(row)}
@@ -176,10 +170,7 @@ export function VirtualizedDataTable<TRow>({
                 {visibleColumns.map((column) => {
                   const colDef = colDefMap.get(column.key);
                   return (
-                    <td
-                      key={column.key}
-                      className={colDef?.cellClassName ?? ""}
-                    >
+                    <td key={column.key} className={colDef?.cellClassName ?? ""}>
                       {column.cell(row)}
                     </td>
                   );
@@ -187,9 +178,7 @@ export function VirtualizedDataTable<TRow>({
               </tr>
             );
 
-            const tooltipLabel = tableTooltipEnabled
-              ? getRowTooltip?.(row)
-              : undefined;
+            const tooltipLabel = tableTooltipEnabled ? getRowTooltip?.(row) : undefined;
             const rowKey = getRowKey(row);
             if (!tooltipLabel) {
               return <React.Fragment key={rowKey}>{rowElement}</React.Fragment>;

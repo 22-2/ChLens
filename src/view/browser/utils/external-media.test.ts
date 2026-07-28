@@ -13,27 +13,19 @@ describe("external media", () => {
 
     expect(media).not.toBeNull();
     expect(media?.provider).toBe("youtube");
-    expect(media?.embedUrl).toContain(
-      "https://www.youtube.com/embed/TestVideo01",
-    );
-    expect(media?.externalUrl).toBe(
-      "https://www.youtube.com/watch?v=TestVideo01&t=3",
-    );
+    expect(media?.embedUrl).toContain("https://www.youtube.com/embed/TestVideo01");
+    expect(media?.externalUrl).toBe("https://www.youtube.com/watch?v=TestVideo01&t=3");
     // ベースURLは静的に保ち、拡張機能固有の origin は描画時にのみ付ける。
     expect(media?.embedUrl).not.toContain("enablejsapi");
     expect(media?.embedUrl).not.toContain("origin=");
-    expect(media?.thumbnailUrl).toBe(
-      "https://img.youtube.com/vi/TestVideo01/hqdefault.jpg",
-    );
+    expect(media?.thumbnailUrl).toBe("https://img.youtube.com/vi/TestVideo01/hqdefault.jpg");
   });
 
   it("通常のWebオリジンでは実オリジン付きのYouTube埋め込みURLへ変換する", () => {
     const media = toInlineVideoEmbed("https://youtu.be/TestVideo01?t=3");
 
     expect(media).not.toBeNull();
-    const runtimeUrl = new URL(
-      toRuntimeVideoEmbedUrl(media!, "https://example.com"),
-    );
+    const runtimeUrl = new URL(toRuntimeVideoEmbedUrl(media!, "https://example.com"));
 
     expect(runtimeUrl.searchParams.get("enablejsapi")).toBe("1");
     expect(runtimeUrl.searchParams.get("origin")).toBe("https://example.com");
@@ -43,16 +35,8 @@ describe("external media", () => {
     const media = toInlineVideoEmbed("https://youtu.be/TestVideo01?t=3");
 
     expect(media).not.toBeNull();
-    expect(
-      shouldOpenYouTubeExternally(
-        media!,
-        "chrome-extension://abcdefghijklmnop",
-      ),
-    ).toBe(true);
-    const runtimeUrl = toRuntimeVideoEmbedUrl(
-      media!,
-      "chrome-extension://abcdefghijklmnop",
-    );
+    expect(shouldOpenYouTubeExternally(media!, "chrome-extension://abcdefghijklmnop")).toBe(true);
+    const runtimeUrl = toRuntimeVideoEmbedUrl(media!, "chrome-extension://abcdefghijklmnop");
 
     expect(runtimeUrl).toBe(media!.embedUrl);
   });
@@ -61,9 +45,7 @@ describe("external media", () => {
     const media = toInlineVideoEmbed("https://youtu.be/TestVideo01?t=3");
 
     expect(media).not.toBeNull();
-    expect(shouldOpenYouTubeExternally(media!, "https://example.com")).toBe(
-      false,
-    );
+    expect(shouldOpenYouTubeExternally(media!, "https://example.com")).toBe(false);
   });
 
   it("video.twimg.com の直リンクをネイティブ動画として判定する", () => {

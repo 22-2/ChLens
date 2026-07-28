@@ -22,10 +22,7 @@ interface UseResInteractionHandlersParams extends Pick<
   | "closeNonContextPopups"
 > {
   indexes: Indexes;
-  scrollToResponse: (
-    resNum: number,
-    options?: { highlight?: boolean; offset?: number },
-  ) => void;
+  scrollToResponse: (resNum: number, options?: { highlight?: boolean; offset?: number }) => void;
 }
 
 export function useResInteractionHandlers({
@@ -40,17 +37,11 @@ export function useResInteractionHandlers({
   scrollToResponse,
 }: UseResInteractionHandlersParams) {
   const openAnchorPreviewFromPopup = useCallback(
-    (popupId: string) =>
-      (
-        targets: number[],
-        anchorRect: DOMRect,
-        label: string,
-        depth: number,
-      ) => {
-        // depth=0 のアンカーは popup 内から開かれたことを親子ツリーへ残さないと、
-        // その後の返信/右クリックメニューで root 扱いになって祖先との寿命がずれる。
-        showAnchorPreview(targets, anchorRect, label, depth, popupId);
-      },
+    (popupId: string) => (targets: number[], anchorRect: DOMRect, label: string, depth: number) => {
+      // depth=0 のアンカーは popup 内から開かれたことを親子ツリーへ残さないと、
+      // その後の返信/右クリックメニューで root 扱いになって祖先との寿命がずれる。
+      showAnchorPreview(targets, anchorRect, label, depth, popupId);
+    },
     [showAnchorPreview],
   );
 
@@ -59,12 +50,8 @@ export function useResInteractionHandlers({
     (id: string, e: MouseEvent) => {
       // message 内の anchor_id は ID: 付き、ヘッダー側は生値、のように揺れることがあるため
       // 両方を試して同じIDインデックスへ合流させる。
-      const candidateIds = id.startsWith("ID:")
-        ? [id, id.replace(/^ID:/i, "")]
-        : [id, `ID:${id}`];
-      const resolvedId = candidateIds.find((candidate) =>
-        indexes.idIndex.has(candidate),
-      );
+      const candidateIds = id.startsWith("ID:") ? [id, id.replace(/^ID:/i, "")] : [id, `ID:${id}`];
+      const resolvedId = candidateIds.find((candidate) => indexes.idIndex.has(candidate));
       const resNums = resolvedId ? indexes.idIndex.get(resolvedId) : undefined;
       if (!resNums) return;
       hideAnchorPreviewImmediately();
@@ -76,12 +63,7 @@ export function useResInteractionHandlers({
       const displayId = (resolvedId ?? id).startsWith("ID:")
         ? (resolvedId ?? id)
         : `ID:${resolvedId ?? id}`;
-      addIdPopup(
-        e.clientX,
-        e.clientY,
-        items,
-        `${displayId} (${items.length}件)`,
-      );
+      addIdPopup(e.clientX, e.clientY, items, `${displayId} (${items.length}件)`);
     },
     [indexes, hideAnchorPreviewImmediately, closeNonContextPopups, addIdPopup],
   );
@@ -90,12 +72,8 @@ export function useResInteractionHandlers({
     (parentId: string) => (id: string, e: MouseEvent) => {
       // popup内クリックは親popupスタックを維持し、子としてID popupを開く。
       // ここで全閉じすると「anchor_idで開いた瞬間に親が消える」ため closeNonContextPopups は呼ばない。
-      const candidateIds = id.startsWith("ID:")
-        ? [id, id.replace(/^ID:/i, "")]
-        : [id, `ID:${id}`];
-      const resolvedId = candidateIds.find((candidate) =>
-        indexes.idIndex.has(candidate),
-      );
+      const candidateIds = id.startsWith("ID:") ? [id, id.replace(/^ID:/i, "")] : [id, `ID:${id}`];
+      const resolvedId = candidateIds.find((candidate) => indexes.idIndex.has(candidate));
       const resNums = resolvedId ? indexes.idIndex.get(resolvedId) : undefined;
       if (!resNums) return;
       clearAnchorPreviewHideTimer();
@@ -106,13 +84,7 @@ export function useResInteractionHandlers({
       const displayId = (resolvedId ?? id).startsWith("ID:")
         ? (resolvedId ?? id)
         : `ID:${resolvedId ?? id}`;
-      addIdPopup(
-        e.clientX,
-        e.clientY,
-        items,
-        `${displayId} (${items.length}件)`,
-        parentId,
-      );
+      addIdPopup(e.clientX, e.clientY, items, `${displayId} (${items.length}件)`, parentId);
     },
     [addIdPopup, clearAnchorPreviewHideTimer, indexes.idIndex, indexes.resMap],
   );
@@ -140,13 +112,7 @@ export function useResInteractionHandlers({
         clearAnchorPreviewHideTimer();
         // アンカープレビュー配下で開いた返信ツリーは、その深さを持ち回って
         // 次のアンカーホバーでも親プレビューを巻き込んで閉じないようにする。
-        addTreePopup(
-          resNum,
-          e.clientX,
-          e.clientY,
-          parentId,
-          anchorPreviewDepth,
-        );
+        addTreePopup(resNum, e.clientX, e.clientY, parentId, anchorPreviewDepth);
       },
     [addTreePopup, clearAnchorPreviewHideTimer],
   );
@@ -157,25 +123,10 @@ export function useResInteractionHandlers({
         clearAnchorPreviewHideTimer();
         // 葉のアンカーから辿る時は起点レスを ancIndex で逆引きしてから開くことで、
         // 相互アンカーが続くケースでも最初の流れを辿りやすくする。
-        const rootResNum = resolveReplyTreeRootResNum(
-          resNum,
-          indexes.ancIndex,
-          indexes.resMap,
-        );
-        addTreePopup(
-          rootResNum,
-          e.clientX,
-          e.clientY,
-          parentId,
-          anchorPreviewDepth,
-        );
+        const rootResNum = resolveReplyTreeRootResNum(resNum, indexes.ancIndex, indexes.resMap);
+        addTreePopup(rootResNum, e.clientX, e.clientY, parentId, anchorPreviewDepth);
       },
-    [
-      addTreePopup,
-      clearAnchorPreviewHideTimer,
-      indexes.ancIndex,
-      indexes.resMap,
-    ],
+    [addTreePopup, clearAnchorPreviewHideTimer, indexes.ancIndex, indexes.resMap],
   );
 
   // アンカークリックで該当レスへスクロール

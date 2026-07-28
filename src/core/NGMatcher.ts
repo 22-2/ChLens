@@ -28,17 +28,7 @@ export interface NGResObj {
 
 export function checkWord(
   { type, reg, word }: InternalNGElement,
-  {
-    all,
-    name,
-    mail,
-    id,
-    slip,
-    mes,
-    title,
-    url,
-    resCount,
-  }: Partial<NGResObj & NGThreadObj>,
+  { all, name, mail, id, slip, mes, title, url, resCount }: Partial<NGResObj & NGThreadObj>,
 ): string | null {
   // キャッシュ(ngobj)からロードしたwordは正規化されていない場合があるため、
   // 比較対象と同じnormalizeを両辺に適用する。これにより全角/半角・カタカナ/ひらがな・
@@ -57,22 +47,16 @@ export function checkWord(
     (type === TYPE.REG_EXP_HIGHLIGHT_TITLE && reg && reg.test(title || "")) ||
     (type === TYPE.REG_EXP_URL && reg && reg.test(url || "")) ||
     (type === TYPE.TITLE && normalize(title || "").includes(normalizedWord)) ||
-    (type === TYPE.HIGHLIGHT_TITLE &&
-      normalize(title || "").includes(normalizedWord)) ||
+    (type === TYPE.HIGHLIGHT_TITLE && normalize(title || "").includes(normalizedWord)) ||
     (type === TYPE.NAME && normalize(name || "").includes(normalizedWord)) ||
     (type === TYPE.MAIL && normalize(mail || "").includes(normalizedWord)) ||
-    (type === TYPE.ID &&
-      (normalizedId != null ? normalizedId.includes(normalizedWord) : false)) ||
+    (type === TYPE.ID && (normalizedId != null ? normalizedId.includes(normalizedWord) : false)) ||
     (type === TYPE.SLIP &&
-      (normalizedSlip != null
-        ? normalizedSlip.includes(normalizedWord)
-        : false)) ||
+      (normalizedSlip != null ? normalizedSlip.includes(normalizedWord) : false)) ||
     (type === TYPE.BODY && normalize(mes || "").includes(normalizedWord)) ||
     (type === TYPE.WORD && normalize(all || "").includes(normalizedWord)) ||
     (type === TYPE.URL && (url || "").includes(word)) ||
-    (type === TYPE.RES_COUNT &&
-      resCount != null &&
-      parseInt(word, 10) < resCount)
+    (type === TYPE.RES_COUNT && resCount != null && parseInt(word, 10) < resCount)
   ) {
     return type;
   }
@@ -105,8 +89,7 @@ function getBoardFromUrl(url: string): string | null {
     }
 
     const eddibbThreadMatch =
-      PATTERNS.EDDIBB_THREAD_2.exec(pathname) ??
-      PATTERNS.EDDIBB_THREAD.exec(pathname);
+      PATTERNS.EDDIBB_THREAD_2.exec(pathname) ?? PATTERNS.EDDIBB_THREAD.exec(pathname);
     if (eddibbThreadMatch) {
       return eddibbThreadMatch[1] ?? null;
     }
@@ -127,8 +110,7 @@ function getBoardFromUrl(url: string): string | null {
     }
 
     const eddibbBoardMatch =
-      PATTERNS.EDDIBB_BOARD_2.exec(pathname) ??
-      PATTERNS.EDDIBB_BOARD.exec(pathname);
+      PATTERNS.EDDIBB_BOARD_2.exec(pathname) ?? PATTERNS.EDDIBB_BOARD.exec(pathname);
     if (eddibbBoardMatch) {
       return eddibbBoardMatch[1] ?? null;
     }
@@ -185,15 +167,10 @@ export function checkScope(ngObj: InternalNGElement, url: string): boolean {
   });
 }
 
-export function checkResNum(
-  { start, finish }: InternalNGElement,
-  resNum: number,
-): boolean {
+export function checkResNum({ start, finish }: InternalNGElement, resNum: number): boolean {
   return (
     start != null &&
-    ((finish != null &&
-      parseInt(start, 10) <= resNum &&
-      resNum <= parseInt(finish, 10)) ||
+    ((finish != null && parseInt(start, 10) <= resNum && resNum <= parseInt(finish, 10)) ||
       parseInt(start, 10) === resNum)
   );
 }

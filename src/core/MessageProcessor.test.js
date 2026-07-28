@@ -17,12 +17,8 @@ describe("MessageProcessor", () => {
       const result = MessageProcessor.decode(res, "https:");
 
       // URLが<a>タグに変換されていることを確認
-      expect(result.messageHtml).toContain(
-        '<a href="https://i.imgur.com/TestImageA.jpeg"',
-      );
-      expect(result.messageHtml).toContain(
-        '<a href="https://i.imgur.com/TestImageB.jpeg"',
-      );
+      expect(result.messageHtml).toContain('<a href="https://i.imgur.com/TestImageA.jpeg"');
+      expect(result.messageHtml).toContain('<a href="https://i.imgur.com/TestImageB.jpeg"');
       expect(result.messageHtml).toContain('target="_blank"');
       expect(result.messageHtml).toContain('rel="noopener noreferrer"');
     });
@@ -99,9 +95,7 @@ describe("MessageProcessor", () => {
       };
 
       const result = MessageProcessor.decode(res, "https:");
-      expect(result.otherHtml).toContain(
-        '<span class="slip">SLIP:L20 abcd-efgh</span>',
-      );
+      expect(result.otherHtml).toContain('<span class="slip">SLIP:L20 abcd-efgh</span>');
       expect(result.otherHtml).toContain('<span class="id">ID:test123</span>');
     });
   });

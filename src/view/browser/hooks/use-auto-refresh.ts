@@ -1,11 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type RefObject,
-} from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { container } from "src/service-container/index";
 import {
   MIN_THREAD_AUTO_REFRESH_MS,
@@ -141,9 +134,7 @@ export function useAutoRefresh({
       return null;
     }
 
-    const activePanel = contentArea.querySelector(
-      ".content-area__tab-panel[data-active='true']",
-    );
+    const activePanel = contentArea.querySelector(".content-area__tab-panel[data-active='true']");
     if (activePanel instanceof HTMLElement) {
       return activePanel;
     }
@@ -178,10 +169,8 @@ export function useAutoRefresh({
 
     const containerRect = scrollContainer.getBoundingClientRect();
     const boundaryRect = boundary.getBoundingClientRect();
-    const viewportBottom =
-      scrollContainer.scrollTop + scrollContainer.clientHeight;
-    const boundaryBottom =
-      scrollContainer.scrollTop + boundaryRect.bottom - containerRect.top;
+    const viewportBottom = scrollContainer.scrollTop + scrollContainer.clientHeight;
+    const boundaryBottom = scrollContainer.scrollTop + boundaryRect.bottom - containerRect.top;
     const nextValue = viewportBottom >= boundaryBottom;
 
     canAutoScrollRef.current = nextValue;
@@ -244,12 +233,7 @@ export function useAutoRefresh({
       syncCanAutoScroll();
     });
 
-    if (
-      !scrollContainer ||
-      expired ||
-      loadingRef.current ||
-      pendingRefreshRef.current
-    ) {
+    if (!scrollContainer || expired || loadingRef.current || pendingRefreshRef.current) {
       return;
     }
 
@@ -349,12 +333,7 @@ export function useAutoRefresh({
   }, []);
 
   useEffect(() => {
-    if (
-      !enabled ||
-      expired ||
-      !isDocumentVisible ||
-      intervalMs < MIN_THREAD_AUTO_REFRESH_MS
-    ) {
+    if (!enabled || expired || !isDocumentVisible || intervalMs < MIN_THREAD_AUTO_REFRESH_MS) {
       return;
     }
 
@@ -426,10 +405,7 @@ export function useAutoRefresh({
           consecutiveIdleRefreshRef.current = 0;
         } else {
           consecutiveIdleRefreshRef.current += 1;
-          if (
-            consecutiveIdleRefreshRef.current >=
-            THREAD_AUTO_REFRESH_IDLE_STOP_COUNT
-          ) {
+          if (consecutiveIdleRefreshRef.current >= THREAD_AUTO_REFRESH_IDLE_STOP_COUNT) {
             consecutiveIdleRefreshRef.current = 0;
             onAutoStopRef.current?.();
             return;
@@ -464,8 +440,7 @@ export function useAutoRefresh({
       return;
     }
 
-    const deltaHeight =
-      scrollContainer.scrollHeight - pendingRefresh.scrollHeight;
+    const deltaHeight = scrollContainer.scrollHeight - pendingRefresh.scrollHeight;
     if (!pendingRefresh.shouldScroll || deltaHeight <= 0) {
       return;
     }

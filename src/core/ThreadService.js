@@ -43,9 +43,8 @@ class ThreadServiceImpl {
     return {
       url: thread.url.url.href,
       title: thread.title,
-      res: (thread.res || []).map(
-        (/** @type {any} */ r, /** @type {number} */ i) =>
-          this._parseRes(r, i + 1, thread.title, thread.url.url.href),
+      res: (thread.res || []).map((/** @type {any} */ r, /** @type {number} */ i) =>
+        this._parseRes(r, i + 1, thread.title, thread.url.url.href),
       ),
       expired: !!thread.expired,
     };
@@ -88,19 +87,15 @@ class ThreadServiceImpl {
     const other = rawRes.other;
     if (other) {
       // Date extraction
-      const dateMatch =
-        /\d{4}\/\d{1,2}\/\d{1,2}\(.\)\s\d{1,2}:\d\d(?::\d\d(?:\.\d+)?)?/.exec(
-          other,
-        );
+      const dateMatch = /\d{4}\/\d{1,2}\/\d{1,2}\(.\)\s\d{1,2}:\d\d(?::\d\d(?:\.\d+)?)?/.exec(
+        other,
+      );
       if (dateMatch) {
         res.date = dateMatch[0];
       }
 
       // ID extraction
-      const idMatch =
-        /(?:^| |(\d))(ID:(?!\?\?\?)[^ <>"']+|発信元:\d+.\d+.\d+.\d+)/.exec(
-          other,
-        );
+      const idMatch = /(?:^| |(\d))(ID:(?!\?\?\?)[^ <>"']+|発信元:\d+.\d+.\d+.\d+)/.exec(other);
       if (idMatch) {
         let fixedId = idMatch[2];
         if (fixedId.endsWith("\u25cf")) {

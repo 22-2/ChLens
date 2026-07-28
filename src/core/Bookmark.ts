@@ -1,10 +1,6 @@
 import { message } from "src/app";
 import { isTauriRuntime } from "src/app/platform/runtime";
-import {
-  Entry,
-  ReadState,
-  SyncableEntryList,
-} from "src/core/BookmarkEntryList";
+import { Entry, ReadState, SyncableEntryList } from "src/core/BookmarkEntryList";
 import BrowserBookmarkEntryList from "src/core/BrowserBookmarkEntryList";
 import IDBBookmarkEntryList from "src/core/IDBBookmarkEntryList";
 import { get as getReadState } from "src/core/ReadState.js";
@@ -36,13 +32,7 @@ export default class Bookmark {
         resolve(true);
 
         this.bel.onChanged.add(
-          ({
-            type: typeName,
-            entry: bookmark,
-          }: {
-            type: string;
-            entry: Entry;
-          }) => {
+          ({ type: typeName, entry: bookmark }: { type: string; entry: Entry }) => {
             let type = "";
             switch (typeName) {
               case "ADD":
@@ -117,10 +107,7 @@ export default class Bookmark {
       entry.readState = readState;
     }
 
-    if (
-      typeof resCount === "number" &&
-      (!entry.resCount || entry.resCount < resCount)
-    ) {
+    if (typeof resCount === "number" && (!entry.resCount || entry.resCount < resCount)) {
       entry.resCount = resCount;
     } else if (entry.readState) {
       entry.resCount = entry.readState.received;
@@ -201,18 +188,12 @@ export default class Bookmark {
       return false;
     }
 
-    if (
-      newEntry.readState &&
-      isNewerReadState(entry.readState, newEntry.readState)
-    ) {
+    if (newEntry.readState && isNewerReadState(entry.readState, newEntry.readState)) {
       entry.readState = newEntry.readState;
       updateEntry = true;
     }
 
-    if (
-      newEntry.resCount &&
-      (!entry.resCount || entry.resCount < newEntry.resCount)
-    ) {
+    if (newEntry.resCount && (!entry.resCount || entry.resCount < newEntry.resCount)) {
       entry.resCount = newEntry.resCount;
       updateEntry = true;
     }

@@ -1,10 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { container } from "src/service-container/index";
 import { SearchBar } from "src/view/browser/components/SearchBar";
-import {
-  ColumnDef,
-  SimpleDataTable,
-} from "src/view/browser/components/SimpleDataTable";
+import { ColumnDef, SimpleDataTable } from "src/view/browser/components/SimpleDataTable";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
 import {
@@ -17,13 +14,7 @@ import {
 } from "src/view/browser/utils/link-routing";
 
 type SortDirection = "asc" | "desc";
-type SortColumn =
-  | "title"
-  | "boardTitle"
-  | "resCount"
-  | "unreadCount"
-  | "heat"
-  | "createdAt";
+type SortColumn = "title" | "boardTitle" | "resCount" | "unreadCount" | "heat" | "createdAt";
 
 type BookmarkSortState = {
   column: SortColumn | null;
@@ -150,9 +141,7 @@ async function readBookmarks(): Promise<BookmarkEntry[]> {
       const resCount = Math.max(0, Math.trunc(toNumber(item.resCount)));
       const readCount = Math.max(0, Math.trunc(toNumber(item.readState?.read)));
       const isThreadBookmark = parsed.type === "thread";
-      const unreadCount = isThreadBookmark
-        ? Math.max(0, resCount - readCount)
-        : 0;
+      const unreadCount = isThreadBookmark ? Math.max(0, resCount - readCount) : 0;
       const createdAt = isThreadBookmark ? parseCreatedAt(url) : 0;
 
       return {
@@ -161,10 +150,7 @@ async function readBookmarks(): Promise<BookmarkEntry[]> {
         pageType: parsed.type,
         boardTitle:
           parsed.type === "threadList"
-            ? normalizeString(
-                item.boardTitle,
-                deriveBoardTitleFromBoardUrl(url),
-              )
+            ? normalizeString(item.boardTitle, deriveBoardTitleFromBoardUrl(url))
             : normalizeString(item.boardTitle, deriveBoardTitle(url)),
         resCount,
         unreadCount,
@@ -230,8 +216,7 @@ const COLUMNS: ColumnDef<BookmarkEntry>[] = [
   },
 ];
 
-const COLUMN_VISIBILITY_STORAGE_KEY =
-  "chlens_browser_bookmark_list_columns_visibility";
+const COLUMN_VISIBILITY_STORAGE_KEY = "chlens_browser_bookmark_list_columns_visibility";
 const COLUMN_VISIBILITY_LOCKED_KEYS = ["title"] as const;
 
 interface BookmarkListPageProps {
@@ -239,10 +224,7 @@ interface BookmarkListPageProps {
   isActive: boolean;
 }
 
-export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({
-  tabId,
-  isActive,
-}) => {
+export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({ tabId, isActive }) => {
   // タブ切り替えなど他タブ操作のたびにフル状態を再購読して再レンダリングされないよう、
   // dispatch のみ取得する安定したフックを使う。isActive は親から props で受け取る。
   const dispatch = useTabDispatch();
@@ -250,8 +232,7 @@ export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortState, setSortState] =
-    useState<BookmarkSortState>(DEFAULT_SORT_STATE);
+  const [sortState, setSortState] = useState<BookmarkSortState>(DEFAULT_SORT_STATE);
 
   const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
     pageType: "bookmarkList",
@@ -267,9 +248,7 @@ export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({
     try {
       setEntries(await readBookmarks());
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "ブックマークの読み込みに失敗しました",
-      );
+      setError(e instanceof Error ? e.message : "ブックマークの読み込みに失敗しました");
       setEntries([]);
     } finally {
       setLoading(false);
@@ -316,9 +295,7 @@ export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({
     const normalizedQuery = searchQuery.trim().toLowerCase();
     const rows = normalizedQuery
       ? entries.filter((entry) =>
-          `${entry.title} ${entry.boardTitle}`
-            .toLowerCase()
-            .includes(normalizedQuery),
+          `${entry.title} ${entry.boardTitle}`.toLowerCase().includes(normalizedQuery),
         )
       : entries;
 
@@ -366,9 +343,7 @@ export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({
         page: {
           ...parsed,
           title: entry.title,
-          ...(parsed.type === "threadList"
-            ? { boardTitle: entry.boardTitle || entry.title }
-            : {}),
+          ...(parsed.type === "threadList" ? { boardTitle: entry.boardTitle || entry.title } : {}),
         },
       });
     },
@@ -386,9 +361,7 @@ export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({
         page: {
           ...parsed,
           title: entry.title,
-          ...(parsed.type === "threadList"
-            ? { boardTitle: entry.boardTitle || entry.title }
-            : {}),
+          ...(parsed.type === "threadList" ? { boardTitle: entry.boardTitle || entry.title } : {}),
         },
         background: true,
       });
@@ -404,10 +377,7 @@ export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({
     return (
       <div className="page-status page-status--error">
         <p>{error}</p>
-        <button
-          className="page-status__retry"
-          onClick={() => void loadEntries()}
-        >
+        <button className="page-status__retry" onClick={() => void loadEntries()}>
           再試行
         </button>
       </div>

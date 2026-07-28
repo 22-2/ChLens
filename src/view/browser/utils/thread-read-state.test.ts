@@ -115,25 +115,15 @@ describe("thread-read-state", () => {
   });
 
   it("pending jumpを保持して後で消費できる", () => {
-    const jump = requestThreadResJump(
-      "https://example.com/test/read.cgi/live/1/",
-      42,
-    );
+    const jump = requestThreadResJump("https://example.com/test/read.cgi/live/1/", 42);
 
     expect(jump?.resNum).toBe(42);
-    expect(
-      peekPendingThreadResJump("https://example.com/test/read.cgi/live/1/"),
-    ).toMatchObject({
+    expect(peekPendingThreadResJump("https://example.com/test/read.cgi/live/1/")).toMatchObject({
       resNum: 42,
     });
     expect(
-      consumePendingThreadResJump(
-        "https://example.com/test/read.cgi/live/1/",
-        jump?.token,
-      ),
+      consumePendingThreadResJump("https://example.com/test/read.cgi/live/1/", jump?.token),
     ).toMatchObject({ resNum: 42 });
-    expect(
-      peekPendingThreadResJump("https://example.com/test/read.cgi/live/1/"),
-    ).toBeNull();
+    expect(peekPendingThreadResJump("https://example.com/test/read.cgi/live/1/")).toBeNull();
   });
 });

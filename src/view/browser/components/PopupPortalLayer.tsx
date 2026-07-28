@@ -6,10 +6,7 @@ interface PopupPortalLayerProps {
   children: React.ReactNode;
 }
 
-export const PopupPortalLayer: React.FC<PopupPortalLayerProps> = ({
-  host,
-  children,
-}) => {
+export const PopupPortalLayer: React.FC<PopupPortalLayerProps> = ({ host, children }) => {
   const [portalRoot, setPortalRoot] = useState<HTMLDivElement | null>(null);
 
   useEffect(() => {

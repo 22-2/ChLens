@@ -13,18 +13,11 @@ import { ContentArea } from "src/view/browser/components/ContentArea";
 import { IkioiStatusItem } from "src/view/browser/components/IkioiStatusItem";
 import { NavigationBar } from "src/view/browser/components/NavigationBar";
 import { NgStatusItem } from "src/view/browser/components/NgStatusItem";
-import {
-  StatusBar,
-  StatusBarItem,
-  StatusBarProvider,
-} from "src/view/browser/components/StatusBar";
+import { StatusBar, StatusBarItem, StatusBarProvider } from "src/view/browser/components/StatusBar";
 import { TabBar } from "src/view/browser/components/TabBar";
 import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
 import { AutoScrollStateProvider } from "src/view/browser/hooks/use-auto-scroll-state";
-import {
-  BottomPanelProvider,
-  useBottomPanel,
-} from "src/view/browser/hooks/use-bottom-panel";
+import { BottomPanelProvider, useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { NgStatusProvider } from "src/view/browser/hooks/use-ng-status";
 import { useNotificationListener } from "src/view/browser/hooks/use-notification-listener";
 import {
@@ -60,10 +53,7 @@ const WritePanelToggleItem: React.FC = () => {
       interactive
       // title={isOpen ? "書き込みパネルを閉じる" : "書き込みパネルを開く"}
     >
-      <button
-        className={`status-bar__btn`}
-        onClick={() => togglePanel("write")}
-      >
+      <button className={`status-bar__btn`} onClick={() => togglePanel("write")}>
         <PenLine size={12} />
         <span>書き込み</span>
       </button>
@@ -73,10 +63,7 @@ const WritePanelToggleItem: React.FC = () => {
 
 // 1ペイン分の縦カラム（タブバー＋ナビゲーション＋コンテンツ）。
 // PaneProvider で囲うことで、配下の TabBar/ContentArea/各ページが自ペインのスライスを透過的に操作する。
-const PaneColumn: React.FC<{ paneId: string; isActive: boolean }> = ({
-  paneId,
-  isActive,
-}) => {
+const PaneColumn: React.FC<{ paneId: string; isActive: boolean }> = ({ paneId, isActive }) => {
   return (
     <PaneProvider paneId={paneId}>
       <PaneColumnInner isActive={isActive} />
@@ -142,11 +129,7 @@ const PaneRow: React.FC = () => {
   return (
     <div className="pane-row">
       {panes.map((pane) => (
-        <PaneColumn
-          key={pane.id}
-          paneId={pane.id}
-          isActive={pane.id === activePaneId}
-        />
+        <PaneColumn key={pane.id} paneId={pane.id} isActive={pane.id === activePaneId} />
       ))}
     </div>
   );
@@ -171,10 +154,7 @@ export const BrowserApp: React.FC = () => {
   }, []);
 
   return (
-    <MantineProvider
-      theme={mantineTheme}
-      forceColorScheme={theme === "dark" ? "dark" : "light"}
-    >
+    <MantineProvider theme={mantineTheme} forceColorScheme={theme === "dark" ? "dark" : "light"}>
       <TabProvider>
         {/*
           ステータス／NG／書き込み／自動スクロールの各プロバイダは PaneColumn 内へ移設した。

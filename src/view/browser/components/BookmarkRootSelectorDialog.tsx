@@ -15,11 +15,7 @@ interface BookmarkFolderTreeProps {
   onSelect: (bookmarkId: string) => void;
 }
 
-const BookmarkFolderTree: React.FC<BookmarkFolderTreeProps> = ({
-  nodes,
-  selectedId,
-  onSelect,
-}) => {
+const BookmarkFolderTree: React.FC<BookmarkFolderTreeProps> = ({ nodes, selectedId, onSelect }) => {
   return (
     <ul className="bookmark-root-dialog__tree-list">
       {nodes.map((node) => {
@@ -33,12 +29,8 @@ const BookmarkFolderTree: React.FC<BookmarkFolderTreeProps> = ({
               }`}
               onClick={() => onSelect(node.id)}
             >
-              <span className="bookmark-root-dialog__tree-title">
-                {node.title}
-              </span>
-              <span className="bookmark-root-dialog__tree-id">
-                ID: {node.id}
-              </span>
+              <span className="bookmark-root-dialog__tree-title">{node.title}</span>
+              <span className="bookmark-root-dialog__tree-id">ID: {node.id}</span>
             </button>
             {node.children.length > 0 && (
               <BookmarkFolderTree
@@ -108,10 +100,7 @@ export const BookmarkRootSelectorDialog: React.FC = () => {
     }
 
     return () => {
-      container.message.off(
-        "bookmark_root_reconfigure_required",
-        handleRequired,
-      );
+      container.message.off("bookmark_root_reconfigure_required", handleRequired);
       container.message.off("bookmark_root_selector_open", handleManualOpen);
     };
   }, [openDialog]);
@@ -148,9 +137,7 @@ export const BookmarkRootSelectorDialog: React.FC = () => {
       container.toast.success("ブックマーク保存先を更新しました");
     } catch (saveError) {
       const message =
-        saveError instanceof Error
-          ? saveError.message
-          : "ブックマーク保存先の更新に失敗しました";
+        saveError instanceof Error ? saveError.message : "ブックマーク保存先の更新に失敗しました";
       setError(message);
       container.toast.error(message);
     } finally {
@@ -182,11 +169,7 @@ export const BookmarkRootSelectorDialog: React.FC = () => {
             <h2 id="bookmark-root-dialog-title">ブックマーク保存先を選択</h2>
           </div>
           {!isRequiredPrompt && (
-            <button
-              type="button"
-              className="bookmark-root-dialog__close"
-              onClick={handleClose}
-            >
+            <button type="button" className="bookmark-root-dialog__close" onClick={handleClose}>
               閉じる
             </button>
           )}
@@ -200,9 +183,7 @@ export const BookmarkRootSelectorDialog: React.FC = () => {
         {error && <p className="bookmark-root-dialog__error">{error}</p>}
 
         {loading ? (
-          <div className="bookmark-root-dialog__status">
-            ブックマークフォルダを読み込み中...
-          </div>
+          <div className="bookmark-root-dialog__status">ブックマークフォルダを読み込み中...</div>
         ) : folderTree.length === 0 ? (
           <div className="bookmark-root-dialog__status">
             利用可能なブックマークフォルダが見つかりませんでした。

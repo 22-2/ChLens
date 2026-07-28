@@ -1,11 +1,7 @@
 import Editor, { loader, useMonaco } from "@monaco-editor/react";
 import React, { useEffect, useMemo } from "react";
 import { platform } from "src/app/platform";
-import {
-  convertDSLToUser,
-  convertUserToDSL,
-  type NGRule,
-} from "src/core/NGConverter";
+import { convertDSLToUser, convertUserToDSL, type NGRule } from "src/core/NGConverter";
 import { NG_DSL_LANGUAGE_ID } from "src/core/ngDsl";
 import { ensureNgDslLanguage } from "src/view/browser/components/ngDslMonaco";
 import { useTheme } from "src/view/browser/hooks/use-theme";
@@ -118,13 +114,7 @@ interface NGDslHelpSnippetProps {
 }
 
 // monacoの副作用を防ぐため、記述例の表示はEditorコンポーネントを使わずに自前で実装する
-type NgDslTokenType =
-  | "plain"
-  | "comment"
-  | "string"
-  | "rule"
-  | "param"
-  | "color";
+type NgDslTokenType = "plain" | "comment" | "string" | "rule" | "param" | "color";
 
 interface NgDslToken {
   type: NgDslTokenType;
@@ -192,10 +182,7 @@ function getTokenColor(type: NgDslTokenType, dark: boolean): string {
   }
 }
 
-export const NGDslHelpSnippet: React.FC<NGDslHelpSnippetProps> = ({
-  code,
-  minHeight = 120,
-}) => {
+export const NGDslHelpSnippet: React.FC<NGDslHelpSnippetProps> = ({ code, minHeight = 120 }) => {
   const theme = useTheme();
   const dark = theme === "dark";
 
@@ -320,9 +307,7 @@ export const NGEditor: React.FC<NGEditorProps> = ({ value, onChange }) => {
   const _handleRemoveNgId = () => {
     const rules = parseRulesForBulkEdit(value);
     if (rules == null) {
-      window.alert(
-        "現在のNG設定を解析できないため、NG ID一括削除を実行できません。",
-      );
+      window.alert("現在のNG設定を解析できないため、NG ID一括削除を実行できません。");
       return;
     }
 
@@ -332,9 +317,7 @@ export const NGEditor: React.FC<NGEditorProps> = ({ value, onChange }) => {
       return;
     }
 
-    const confirmed = window.confirm(
-      `NG IDルールを${removedCount}件削除します。よろしいですか？`,
-    );
+    const confirmed = window.confirm(`NG IDルールを${removedCount}件削除します。よろしいですか？`);
     if (!confirmed) {
       return;
     }

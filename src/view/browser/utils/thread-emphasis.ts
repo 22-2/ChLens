@@ -23,9 +23,7 @@ function isNgRes(res: IRes): boolean {
   return res.ng != null || res.class?.includes("ng") === true;
 }
 
-export function buildWrittenResSet(
-  records: readonly WriteHistoryLike[],
-): Set<number> {
+export function buildWrittenResSet(records: readonly WriteHistoryLike[]): Set<number> {
   const writtenResNums = new Set<number>();
 
   for (const record of records) {

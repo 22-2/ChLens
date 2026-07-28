@@ -35,9 +35,7 @@ export function useBoardListDisplay(params: {
   removedMenuNames: Set<string>;
   removedCategoryIds: Set<string>;
   openedBoardEntries: OpenedBoardEntry[];
-  updateOpenStates: (
-    updater: (prev: Record<string, boolean>) => Record<string, boolean>,
-  ) => void;
+  updateOpenStates: (updater: (prev: Record<string, boolean>) => Record<string, boolean>) => void;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const savedOpenStatesRef = useRef<Record<string, boolean> | null>(null);
@@ -55,17 +53,11 @@ export function useBoardListDisplay(params: {
       .filter((menu) => !removedMenuNames.has(menu.name))
       .map((menu) => {
         const nextCategories = menu.categories
-          .filter(
-            (category) =>
-              !removedCategoryIds.has(
-                buildCategoryId(menu.name, category.name),
-              ),
-          )
+          .filter((category) => !removedCategoryIds.has(buildCategoryId(menu.name, category.name)))
           .map((category) => ({
             ...category,
             boards: category.boards.filter(
-              (board) =>
-                !removedBoardUrls.has(normalizeBoardUrlForRemove(board.url)),
+              (board) => !removedBoardUrls.has(normalizeBoardUrlForRemove(board.url)),
             ),
           }))
           .filter((category) => category.boards.length > 0);
@@ -135,10 +127,7 @@ export function useBoardListDisplay(params: {
         } else {
           merged[otherMenuIndex] = {
             ...targetMenu,
-            categories: [
-              ...targetMenu.categories,
-              { name: "一度開いた板", boards: openedBoards },
-            ],
+            categories: [...targetMenu.categories, { name: "一度開いた板", boards: openedBoards }],
           };
         }
       } else {
@@ -170,10 +159,7 @@ export function useBoardListDisplay(params: {
   ]);
 
   const openedMenuValues = useMemo(
-    () =>
-      displayMenus
-        .map((menu) => menu.name)
-        .filter((name) => params.openStates[name] ?? false),
+    () => displayMenus.map((menu) => menu.name).filter((name) => params.openStates[name] ?? false),
     [displayMenus, params.openStates],
   );
 
@@ -218,26 +204,19 @@ export function useBoardListDisplay(params: {
 /**
  * メニュー・カテゴリ・板に検索クエリを適用
  */
-function applySearchFilter(
-  menus: DisplayMenu[],
-  normalizedQuery: string,
-): DisplayMenu[] {
+function applySearchFilter(menus: DisplayMenu[], normalizedQuery: string): DisplayMenu[] {
   return menus
     .map((menu) => {
       const menuMatch = menu.name.toLowerCase().includes(normalizedQuery);
       const nextCategories = menu.categories
         .map((category) => {
-          const categoryMatch =
-            menuMatch || category.name.toLowerCase().includes(normalizedQuery);
+          const categoryMatch = menuMatch || category.name.toLowerCase().includes(normalizedQuery);
           const filteredBoards = categoryMatch
             ? category.boards
             : category.boards.filter((board) => {
                 const title = board.name.toLowerCase();
                 const url = board.url.toLowerCase();
-                return (
-                  title.includes(normalizedQuery) ||
-                  url.includes(normalizedQuery)
-                );
+                return title.includes(normalizedQuery) || url.includes(normalizedQuery);
               });
 
           return {

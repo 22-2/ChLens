@@ -4,15 +4,9 @@ import { ResBody } from "src/view/browser/components/ResBody";
 import { ResMediaGallery } from "src/view/browser/components/ResMediaGallery";
 import { useIsNgTemporarilyDisabled } from "src/view/browser/hooks/use-ng-status";
 import { getIdHeatColor } from "src/view/browser/utils/id-heat";
-import type {
-  UrlClickHandler,
-  UrlContextMenuHandler,
-} from "src/view/browser/utils/link-routing";
+import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
 import { getReplyHeatLevel } from "src/view/browser/utils/reply-heat";
-import {
-  decodeResponseHtml,
-  extractUrlsFromMessage,
-} from "src/view/browser/utils/utils";
+import { decodeResponseHtml, extractUrlsFromMessage } from "src/view/browser/utils/utils";
 
 export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
   ({
@@ -36,24 +30,14 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     isImageBlurred,
   }) => {
     const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
-    const decoded = useMemo(
-      () => decodeResponseHtml(res, messageProtocol),
-      [messageProtocol, res],
-    );
-    const urls = useMemo(
-      () => extractUrlsFromMessage(decoded.messageHtml),
-      [decoded.messageHtml],
-    );
+    const decoded = useMemo(() => decodeResponseHtml(res, messageProtocol), [messageProtocol, res]);
+    const urls = useMemo(() => extractUrlsFromMessage(decoded.messageHtml), [decoded.messageHtml]);
 
     // repIndex が渡された場合のみ返信数を表示する
     const repCount = repIndex?.get(res.num)?.size ?? 0;
     const replyHeat = getReplyHeatLevel(repCount);
     const resNumClassName = `res__num${
-      replyHeat === "hot"
-        ? " res__num--hot"
-        : replyHeat === "warm"
-          ? " res__num--warm"
-          : ""
+      replyHeat === "hot" ? " res__num--hot" : replyHeat === "warm" ? " res__num--warm" : ""
     }`;
     const repClassName = `res__rep${
       replyHeat === "hot"
@@ -66,8 +50,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     const idCount = res.id ? (idIndex?.get(res.id)?.size ?? 0) : 0;
 
     // NG 判定は ResItem と同じロジック
-    const isNG =
-      !isNgTemporarilyDisabled && (res.ng != null || res.class?.includes("ng"));
+    const isNG = !isNgTemporarilyDisabled && (res.ng != null || res.class?.includes("ng"));
     if (isNG) return null;
 
     return (
@@ -88,18 +71,11 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
       >
         <header className="res__header">
           <span className={resNumClassName}>{res.num}</span>
-          <span
-            className="res__name"
-            dangerouslySetInnerHTML={{ __html: decoded.nameHtml }}
-          />
+          <span className="res__name" dangerouslySetInnerHTML={{ __html: decoded.nameHtml }} />
           {res.id && (
             <span
               className={`res__id${
-                idCount >= 5
-                  ? " res__id--freq"
-                  : idCount >= 2
-                    ? " res__id--link"
-                    : ""
+                idCount >= 5 ? " res__id--freq" : idCount >= 2 ? " res__id--link" : ""
               }`}
               // popup側も本文と同じ色スケールを使い、ID密度の見え方を統一する。
               style={{ color: getIdHeatColor(idCount) }}
@@ -118,9 +94,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
               className={`${repClassName}${disableRepClick ? " res__rep--disabled" : ""}`}
               aria-disabled={disableRepClick ? true : undefined}
               title={
-                disableRepClick
-                  ? "参照元レスの返信はこのポップアップ内では開けません"
-                  : undefined
+                disableRepClick ? "参照元レスの返信はこのポップアップ内では開けません" : undefined
               }
               onClick={(e) => {
                 // 参照元レスの「返信」は同一ツリーを再帰的に開いてしまうため、
@@ -154,9 +128,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
         <ResBody
           messageHtml={decoded.messageHtml}
           anchorPreviewDepth={anchorPreviewDepth}
-          onUrlClick={(url, button, mode) =>
-            onUrlClick(url, undefined, button, mode)
-          }
+          onUrlClick={(url, button, mode) => onUrlClick(url, undefined, button, mode)}
           onUrlContextMenu={(url, e, mode) => onUrlContextMenu(url, e, mode)}
           onMiddleClickStart={onLinkMiddleClickStart}
           onIdLinkClick={onIdLinkClick}
@@ -194,12 +166,7 @@ export interface StaticResCardProps {
   onRepClick?: (resNum: number, e: React.MouseEvent) => void;
   onOpenRootReplyTree?: (resNum: number, e: React.MouseEvent) => void;
   onAnchorClick: (resNum: number) => void;
-  onAnchorHover: (
-    targets: number[],
-    anchorRect: DOMRect,
-    label: string,
-    depth: number,
-  ) => void;
+  onAnchorHover: (targets: number[], anchorRect: DOMRect, label: string, depth: number) => void;
   onAnchorLeave: (fromDepth: number) => void;
   onContextMenu?: (e: React.MouseEvent, res: IRes) => void;
   /** ポップアップ内でも画像ぼかしを適用するためのフラグ */

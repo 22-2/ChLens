@@ -1,9 +1,7 @@
 const TAURI_INTERNALS_KEY = "__TAURI_INTERNALS__";
 
 function hasTauriInternals(target: unknown): target is Record<string, unknown> {
-  return (
-    target != null && TAURI_INTERNALS_KEY in (target as Record<string, unknown>)
-  );
+  return target != null && TAURI_INTERNALS_KEY in (target as Record<string, unknown>);
 }
 
 // Why: keep Tauri runtime detection logic in one place so feature branches do not drift.
@@ -13,11 +11,7 @@ export function isTauriRuntime(): boolean {
 
 // Why: iframe on Tauri does not always receive injected internals; copy from same-origin top window once.
 export function inheritTauriInternalsFromTopWindow(): void {
-  if (
-    typeof window === "undefined" ||
-    self === top ||
-    hasTauriInternals(window)
-  ) {
+  if (typeof window === "undefined" || self === top || hasTauriInternals(window)) {
     return;
   }
 
