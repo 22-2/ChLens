@@ -166,7 +166,7 @@ export interface IBoardResult {
 
 export interface IBoardService {
   getThreads(url: string): Promise<IBoardResult>;
-  getCachedResCount(url: string): Promise<unknown>;
+  getCachedResCount(url: string, options?: { confirmMissing?: boolean }): Promise<unknown>;
 }
 
 export interface IBBSMenuBoard {
