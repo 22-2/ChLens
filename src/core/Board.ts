@@ -40,7 +40,7 @@ export default class Board {
   /**
    * 板のスレ一覧を取得して解析します
    */
-  get(forceUpdate = false): Promise<void> {
+  get(): Promise<void> {
     const tmp = Board._getXhrInfo(this.url);
     if (!tmp) {
       return Promise.reject(new Error("取得方法が不明な板です"));
@@ -63,9 +63,8 @@ export default class Board {
         try {
           await cache.get();
           hasCache = true;
-          // キャッシュが3秒以内の場合のみ使用。subject.txt 不在を確認する場合は、
-          // 古い一覧による誤判定を避けるため明示的に最新の内容を取得する。
-          if (forceUpdate || !(Date.now() - cache.lastUpdated < 1000 * 3)) {
+          // キャッシュが3秒以内の場合のみ使用
+          if (!(Date.now() - cache.lastUpdated < 1000 * 3)) {
             throw new Error("キャッシュの期限が切れているため通信します");
           }
         } catch {
@@ -341,7 +340,6 @@ class="open_in_rcrx">${container.util.escapeHtml(newBoardUrl)}
    */
   static async getCachedResCount(
     threadUrl: string,
-    { confirmMissing = false }: { confirmMissing?: boolean } = {},
   ): Promise<{ resCount: number; modified: number }> {
     // ChURLのメソッドを呼び出すために、threadUrlをChURLに変換
     const chUrl = new ChURL(threadUrl);
@@ -372,11 +370,11 @@ class="open_in_rcrx">${container.util.escapeHtml(newBoardUrl)}
     const findThread = () => threads.find(({ url }) => new ChURL(url).url.href === chUrl.url.href);
     let thread = findThread();
 
-    // 変更理由: subject キャッシュは古い・不完全なことがある。キャッシュ上で不在でも
-    // dat落ち表示の根拠にする場合だけ最新の subject.txt を取得して確認する。
-    if (!thread && confirmMissing) {
+    // 変更理由: subject キャッシュは古い・不完全なことがあるため、不在時は
+    // 最新のsubject.txtを確認してから dat落ち表示の対象にする。
+    if (!thread) {
       const board = new Board(boardUrl);
-      await board.get(true);
+      await board.get();
       if (!board.thread) {
         throw new Error("No refreshed board data");
       }

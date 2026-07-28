@@ -59,7 +59,6 @@ describe("Board.getCachedResCount", () => {
 
     const result = await Board.getCachedResCount(
       "https://egg.5ch.io/test/read.cgi/software/1000000003/",
-      { confirmMissing: true },
     );
 
     expect(result.resCount).toBe(2);
@@ -75,9 +74,7 @@ describe("Board.getCachedResCount", () => {
     });
 
     await expect(
-      Board.getCachedResCount("https://egg.5ch.io/test/read.cgi/software/1000000003/", {
-        confirmMissing: true,
-      }),
+      Board.getCachedResCount("https://egg.5ch.io/test/read.cgi/software/1000000003/"),
     ).rejects.toThrow("板のスレ一覧にそのスレが存在しません");
   });
 });

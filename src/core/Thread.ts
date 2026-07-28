@@ -125,7 +125,7 @@ export default class Thread {
     const cache = container.cache.getCache(xhrBasePath) as Cache;
 
     // 板スレ一覧のキャッシュ取得はフェッチと並行して開始する
-    const getCachedInfoPromise = this._fetchCachedResCount(!forceUpdate);
+    const getCachedInfoPromise = this._fetchCachedResCount();
 
     const { hasCache, needFetch } = await this._prepareCache(
       cache,
@@ -246,13 +246,13 @@ export default class Thread {
    * 板スレ一覧からキャッシュされたレス数を取得する。
    * get() の最初に呼び出してフェッチと並行して実行する。
    */
-  private async _fetchCachedResCount(confirmMissing: boolean): Promise<CachedInfoResult> {
+  private async _fetchCachedResCount(): Promise<CachedInfoResult> {
     try {
       // getCachedResCount は文字列URLを受け取る契約。ChURL は toString() を持たないため、
       // インスタンスをそのまま渡すと "[object Object]" が URL として解釈され常に失敗していた。
-      const cachedInfo = (await container.board.getCachedResCount(this.url.url.href, {
-        confirmMissing,
-      })) as CachedResCount;
+      const cachedInfo = (await container.board.getCachedResCount(
+        this.url.url.href,
+      )) as CachedResCount;
       return { status: "success", cachedInfo };
     } catch (error: unknown) {
       if (error instanceof Error && error.message === "板のスレ一覧にそのスレが存在しません") {

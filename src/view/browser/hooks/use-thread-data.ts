@@ -123,6 +123,10 @@ export function useThreadData(
   const fetchThread = useCallback(async () => {
     setLoading(true);
     setError(null);
+    // 変更理由: ThreadPage は別スレへの移動時にも再利用される。取得に失敗した場合でも
+    // 前スレの dat落ち・subject不在表示を残さないよう、取得結果を待たずにリセットする。
+    setExpired(false);
+    setMissingFromSubject(false);
     titleUpdatedRef.current = false;
 
     try {
