@@ -2,6 +2,7 @@ import {
   applyCachedInfoToThread,
   buildConditionalRequestHeaders,
   buildThreadFetchPlan,
+  isMissingFromSubject,
   resolveThreadFromResponse,
   shouldRejectThreadResult,
 } from "src/core/ThreadGetHelpers";
@@ -185,5 +186,11 @@ describe("ThreadGetHelpers", () => {
     });
 
     expect(thread.expired).toBe(false);
+  });
+
+  it("reports a subject miss without treating it as an explicit expiration", () => {
+    expect(isMissingFromSubject("not_found")).toBe(true);
+    expect(isMissingFromSubject("success")).toBe(false);
+    expect(isMissingFromSubject("none")).toBe(false);
   });
 });

@@ -3,7 +3,11 @@ import { platform } from "src/app";
 import type { HttpResponse } from "src/app/platform/types";
 import type Cache from "src/core/Cache.js";
 import { chServerMoveDetect } from "src/core/jsutil.js";
-import { buildConditionalRequestHeaders, buildThreadFetchPlan } from "src/core/ThreadGetHelpers";
+import {
+  buildConditionalRequestHeaders,
+  buildThreadFetchPlan,
+  isMissingFromSubject,
+} from "src/core/ThreadGetHelpers";
 import {
   getThreadXhrInfo,
   isHtmlThread,
@@ -91,6 +95,7 @@ export default class Thread {
   message: string | null;
   tsld: string;
   expired: boolean;
+  missingFromSubject: boolean;
 
   constructor(url: string | ChURL) {
     this.url = url instanceof ChURL ? url : new ChURL(url);
@@ -99,6 +104,7 @@ export default class Thread {
     this.message = null;
     this.tsld = this.url.getTsld();
     this.expired = false;
+    this.missingFromSubject = false;
   }
 
   // -------------------------------------------------------------------------
@@ -524,6 +530,9 @@ export default class Thread {
         });
       }
     }
+    // 変更理由: subject.txt 不在を expired と同一視すると、生存中のスレでも
+    // 自動更新が止まるため、画面の案内だけに使う独立した状態として保持する。
+    this.missingFromSubject = isMissingFromSubject(result.status);
   }
 
   /** パース済みスレッドの内容をインスタンスフィールドに反映する */

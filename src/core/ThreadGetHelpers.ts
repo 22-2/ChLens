@@ -69,6 +69,13 @@ export interface ApplyCachedInfoInput {
   cachedResCount?: number;
 }
 
+/**
+ * subject.txt の取得には成功したが、対象スレッドが一覧に存在しなかったかを返す。
+ *
+ * expired とは分離し、一覧の欠落やURL表記揺れで自動更新を止めないための表示専用判定。
+ */
+export const isMissingFromSubject = (status?: string): boolean => status === "not_found";
+
 // ---------------------------------------------------------------------------
 // buildThreadFetchPlan
 // ---------------------------------------------------------------------------
