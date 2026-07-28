@@ -55,7 +55,7 @@
 ### PR instructions
 
 - **Title format:** `[<module_name>] <Descriptive Title>` (例: `[thread] Add filter functionality`)
-- **Pre-commit check:** `pnpm lint` および `pnpm tsc` を実行し、型エラーやリンターエラーがないことを確認してください。
+- **Pre-commit check:** `pnpm lint` および `pnpm tsc6` を実行し、型エラーやリンターエラーがないことを確認してください。
 - **コミットメッセージ:** 変更の意図が明確になるよう、詳細な説明を含めてください。
 
 <!--VITE PLUS START-->
