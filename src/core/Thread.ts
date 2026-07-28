@@ -509,10 +509,9 @@ export default class Thread {
   /**
    * 板スレ一覧のレス数と突き合わせ、不足分をあぼーんで補填する。
    *
-   * 変更理由: スレが落ちたかどうかの判定は、サーバーからの明示的なシグナル（HTTP 203,
-   * stoplight マーカー）に加え、板スレ一覧に存在しない場合も dat 落ちとみなす。
-   * スレ一覧のキャッシュ(subject.txt)が1ページ目のみを含むことで誤判定の
-   * 可能性はあるが、ユーザーの要求によりこの挙動を採用する。
+   * 変更理由: 板一覧キャッシュの未取得・不完全な subject.txt・URL の表記揺れでも
+   * not_found になり得る。ここで dat 落ち扱いにすると生きているスレの自動更新まで
+   * 停止するため、expired は HTTP 203 などサーバーの明示的な通知だけで判定する。
    */
   private _padAbobunIfNeeded(thread: ParsedThread, result: CachedInfoResult): void {
     if (result.status === "success" || result.status === "sucess") {
@@ -524,9 +523,6 @@ export default class Thread {
           other: "あぼーん",
         });
       }
-    }
-    if (result.status === "not_found") {
-      thread.expired = true;
     }
   }
 

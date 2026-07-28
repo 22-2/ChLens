@@ -350,10 +350,8 @@ export const shouldRejectThreadResult = ({
 /**
  * 板スレ一覧のレス数と突き合わせ、不足分をあぼーんで補填する。
  *
- * 変更理由: スレが落ちたかどうかの判定は、サーバーからの明示的なシグナル（HTTP 203,
- * stoplight マーカー）に加え、板スレ一覧に存在しない場合も dat 落ちとみなす。
- * スレ一覧のキャッシュ(subject.txt)が1ページ目のみを含むことで誤判定の
- * 可能性はあるが、ユーザーの要求によりこの挙動を採用する。
+ * 変更理由: 板一覧キャッシュの not_found は不完全な subject.txt や URL の表記揺れでも
+ * 発生するため dat 落ちの根拠にはしない。誤って expired にすると自動更新まで停止する。
  */
 export const applyCachedInfoToThread = ({
   thread,
@@ -369,8 +367,5 @@ export const applyCachedInfoToThread = ({
         other: "あぼーん",
       });
     }
-  }
-  if (status === "not_found") {
-    thread.expired = true;
   }
 };

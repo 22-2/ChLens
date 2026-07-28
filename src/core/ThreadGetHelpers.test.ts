@@ -175,4 +175,15 @@ describe("ThreadGetHelpers", () => {
       other: "あぼーん",
     });
   });
+
+  it("applyCachedInfoToThread does not expire a live thread on a board-cache miss", () => {
+    const thread = createThread();
+
+    applyCachedInfoToThread({
+      thread,
+      status: "not_found",
+    });
+
+    expect(thread.expired).toBe(false);
+  });
 });
