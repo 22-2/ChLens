@@ -56,6 +56,7 @@ interface ThreadData {
   loading: boolean;
   error: string | null;
   expired: boolean;
+  missingFromSubject: boolean;
   indexes: ReturnType<typeof buildIndexes>;
   filteredResponses: IRes[];
   filter: ThreadFilter;
@@ -82,6 +83,7 @@ export function useThreadData(
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expired, setExpired] = useState(false);
+  const [missingFromSubject, setMissingFromSubject] = useState(false);
   const [filter, setFilter] = useState<ThreadFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
@@ -147,6 +149,7 @@ export function useThreadData(
       setResponses(result.res);
       void setThreadCache(page.threadUrl, result.res);
       setExpired(result.expired ?? false);
+      setMissingFromSubject(result.missingFromSubject ?? false);
       if (result.title && !titleUpdatedRef.current) {
         dispatch({
           type: "UPDATE_TITLE_FOR_TAB",
@@ -259,6 +262,7 @@ export function useThreadData(
     loading,
     error,
     expired,
+    missingFromSubject,
     indexes,
     filteredResponses,
     filter,

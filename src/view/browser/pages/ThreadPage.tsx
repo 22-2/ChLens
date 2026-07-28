@@ -54,6 +54,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     loading,
     error,
     expired,
+    missingFromSubject,
     indexes,
     filteredResponses,
     filter,
@@ -341,7 +342,9 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             searchQuery={searchQuery}
           />
 
-          {expired && <div className="thread-page__notice">このスレッドはdat落ちしています</div>}
+          {(expired || missingFromSubject) && (
+            <div className="thread-page__notice">このスレッドはdat落ちしています</div>
+          )}
           {error && <div className="thread-page__notice">{error}</div>}
 
           <div className="thread-page__responses">

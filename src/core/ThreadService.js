@@ -26,7 +26,9 @@ class ThreadServiceImpl {
     try {
       await thread.get(options.forceUpdate, progress);
       return this._formatResult(thread);
-    } catch (e) {
+    } catch (error) {
+      // 変更理由: 取得失敗時もキャッシュ結果を返す従来動作を保ちつつ、原因を追跡可能にする。
+      console.error("[ThreadService] thread fetch failed:", error);
       const result = this._formatResult(thread);
       result.message = thread.message || "スレッドの取得に失敗しました";
       return result;
@@ -47,6 +49,7 @@ class ThreadServiceImpl {
         this._parseRes(r, i + 1, thread.title, thread.url.url.href),
       ),
       expired: !!thread.expired,
+      missingFromSubject: !!thread.missingFromSubject,
     };
   }
 

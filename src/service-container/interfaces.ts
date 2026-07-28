@@ -146,6 +146,7 @@ export interface IThreadDetail {
   res: IRes[];
   message?: string;
   expired?: boolean;
+  missingFromSubject?: boolean;
 }
 
 export interface IThreadService {
