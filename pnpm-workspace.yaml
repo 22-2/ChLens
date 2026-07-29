@@ -27,7 +27,7 @@ onlyBuiltDependencies:
 catalog:
   vite: npm:@voidzero-dev/vite-plus-core@0.2.4
   vitest: 4.1.10
-  vite-plus: 0.2.4
+  vite-plus: 0.2.6
 # Version 4.0.0 is an intentional direct dependency; keep the release-age
 # protection enabled for every other package.
 minimumReleaseAgeExclude:
