@@ -191,6 +191,34 @@ describe("NavigationBar", () => {
     expect(options[0]).toHaveTextContent("https://egg.5ch.io/test/read.cgi/software/111/");
   });
 
+  it("URL欄から別板のスレを開くと、その板を戻る先として履歴に積む", () => {
+    render(<NavigationBar />);
+
+    const input = screen.getByPlaceholderText("URLを入力");
+    fireEvent.change(input, {
+      target: { value: "https://egg.5ch.io/test/read.cgi/board-b/123/" },
+    });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(dispatchMock).toHaveBeenNthCalledWith(1, {
+      type: "NAVIGATE",
+      page: {
+        type: "threadList",
+        title: "https://egg.5ch.io/board-b/",
+        boardUrl: "https://egg.5ch.io/board-b/",
+        boardTitle: "https://egg.5ch.io/board-b/",
+      },
+    });
+    expect(dispatchMock).toHaveBeenNthCalledWith(2, {
+      type: "NAVIGATE",
+      page: {
+        type: "thread",
+        title: "https://egg.5ch.io/test/read.cgi/board-b/123/",
+        threadUrl: "https://egg.5ch.io/test/read.cgi/board-b/123/",
+      },
+    });
+  });
+
   it("戻る履歴メニューのタイトルを複数行表示にする", () => {
     render(<NavigationBar />);
 

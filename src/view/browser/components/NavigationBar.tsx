@@ -1,7 +1,7 @@
 import {
+  Archive,
   ArrowLeft,
   ArrowRight,
-  Archive,
   Bookmark,
   Columns2,
   Command,
@@ -15,9 +15,10 @@ import {
   Star,
 } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { container } from "src/service-container/index";
+import { commandPalette } from "src/view/browser/commands/command-palette-store";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { Omnibar } from "src/view/browser/components/Omnibar";
-import { commandPalette } from "src/view/browser/commands/command-palette-store";
 import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useOmnibar } from "src/view/browser/hooks/use-omnibar";
 import { useTabPanes, useTabStore } from "src/view/browser/hooks/use-tab-store";
@@ -29,13 +30,13 @@ import {
   type Page,
 } from "src/view/browser/types";
 import {
-  QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE,
-  type QuickAccessFilterPageType,
-} from "src/view/browser/utils/filter-toolbar-events";
-import {
   getAutoRefreshPageKey,
   isAutoRefreshEnabledForPage,
 } from "src/view/browser/utils/auto-refresh-pages";
+import {
+  QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE,
+  type QuickAccessFilterPageType,
+} from "src/view/browser/utils/filter-toolbar-events";
 import {
   getLegacyBookmarkService,
   getLegacyHistoryService,
@@ -45,7 +46,6 @@ import {
   getBoardUrlFromThreadUrl,
   parseInternalBrowserPage,
 } from "src/view/browser/utils/link-routing";
-import { container } from "src/service-container/index";
 import {
   mergeOmnibarSources,
   type OmnibarBoardSource,
@@ -289,12 +289,28 @@ function navigateByUrl(url: string, dispatch: ReturnType<typeof useTabStore>["di
   if (!trimmed) return;
 
   const parsed = parseInternalBrowserPage(trimmed);
-  if (parsed) {
+  if (!parsed) return;
+
+  if (parsed.type === "thread") {
+    const boardUrl = getBoardUrlFromThreadUrl(parsed.threadUrl);
+    // 変更理由: URL欄から別板のスレッドを開いたとき、直前に開いていた板を
+    // 戻る先として残すと別板へ戻ってしまう。対象スレッドの板を履歴に積んでから
+    // 遷移することで、戻る操作が常に対象スレッドの板へ戻るようにする。
     dispatch({
       type: "NAVIGATE",
-      page: parsed,
+      page: {
+        type: "threadList",
+        title: boardUrl,
+        boardUrl,
+        boardTitle: boardUrl,
+      },
     });
   }
+
+  dispatch({
+    type: "NAVIGATE",
+    page: parsed,
+  });
 }
 
 export const NavigationBar: React.FC = () => {
