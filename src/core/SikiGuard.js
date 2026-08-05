@@ -25,118 +25,115 @@ export default class SikiGuard {
   @method get
   @return {Promise<void>}
   */
-  get() {
-    return new Promise(async (resolve, reject) => {
-      let response, idMap;
-      let hasCache = false;
+  async get() {
+    let response, idMap;
+    let hasCache = false;
 
-      const xhrInfo = SikiGuard._getXhrInfo(this.url);
-      if (xhrInfo == null) {
-        this.idMap = new Map();
-        resolve();
-        return;
+    const xhrInfo = SikiGuard._getXhrInfo(this.url);
+    if (xhrInfo == null) {
+      this.idMap = new Map();
+      return;
+    }
+
+    // キャッシュ取得
+    const url = `https://sikiguard.net/${xhrInfo.tsld}/${xhrInfo.board}/id.json`;
+    const cache = new Cache(url);
+
+    let needFetch = false;
+    try {
+      await cache.get();
+      hasCache = true;
+      // NOTE: キャッシュを暫定30分にしてるけど、CDNにCloudflare使ってるっぽいので都度取得にして、取得できない時だけキャッシュ使うでもいいかも。
+      // lastUpdated が null のときは従来 NaN 比較で「期限切れ」扱いになっていたので、明示的に同じ挙動にする。
+      if (cache.lastUpdated == null || !(Date.now() - cache.lastUpdated < 1000 * 60 * 30)) {
+        throw new Error("キャッシュの期限が切れているため通信します");
       }
+    } catch {
+      needFetch = true;
+    }
 
-      // キャッシュ取得
-      const url = `https://sikiguard.net/${xhrInfo.tsld}/${xhrInfo.board}/id.json`;
-      const cache = new Cache(url);
-
-      let needFetch = false;
-      try {
-        await cache.get();
-        hasCache = true;
-        // NOTE: キャッシュを暫定30分にしてるけど、CDNにCloudflare使ってるっぽいので都度取得にして、取得できない時だけキャッシュ使うでもいいかも。
-        // lastUpdated が null のときは従来 NaN 比較で「期限切れ」扱いになっていたので、明示的に同じ挙動にする。
-        if (cache.lastUpdated == null || !(Date.now() - cache.lastUpdated < 1000 * 60 * 30)) {
-          throw new Error("キャッシュの期限が切れているため通信します");
-        }
-      } catch (error) {
-        needFetch = true;
-      }
-
-      try {
-        if (needFetch) {
-          // 通信
-          const request = new Request("GET", url, {
-            preventCache: true,
-          });
-          if (hasCache) {
-            if (cache.lastModified != null) {
-              request.headers["If-Modified-Since"] = new Date(cache.lastModified).toUTCString();
-            }
-            if (cache.etag != null) {
-              request.headers["If-None-Match"] = cache.etag;
-            }
+    try {
+      if (needFetch) {
+        // 通信
+        const request = new Request("GET", url, {
+          preventCache: true,
+        });
+        if (hasCache) {
+          if (cache.lastModified != null) {
+            request.headers["If-Modified-Since"] = new Date(cache.lastModified).toUTCString();
           }
-
-          response = await request.send();
+          if (cache.etag != null) {
+            request.headers["If-None-Match"] = cache.etag;
+          }
         }
 
-        // パース
-        const responseStatus = response != null ? response.status : undefined;
-        if (response != null && responseStatus === 200) {
-          idMap = SikiGuard.parse(response.body);
-        } else if (hasCache) {
-          // cache.data は型上 null になり得る。null の場合、旧実装でも parse 内の
-          // try/catch で失敗して空 Map になっていたため、空文字で同じ結果にする。
-          idMap = SikiGuard.parse(cache.data ?? "");
-        } else if (responseStatus === 404) {
-          // NG対象がない場合404が返ってくる
-          idMap = new Map();
+        response = await request.send();
+      }
+
+      // パース
+      const responseStatus = response != null ? response.status : undefined;
+      if (response != null && responseStatus === 200) {
+        idMap = SikiGuard.parse(response.body);
+      } else if (hasCache) {
+        // cache.data は型上 null になり得る。null の場合、旧実装でも parse 内の
+        // try/catch で失敗して空 Map になっていたため、空文字で同じ結果にする。
+        idMap = SikiGuard.parse(cache.data ?? "");
+      } else if (responseStatus === 404) {
+        // NG対象がない場合404が返ってくる
+        idMap = new Map();
+      }
+
+      if (idMap == null) {
+        throw { response };
+      }
+      // Array.includes は undefined を受け付けないため、等価な比較へ書き換え (挙動は同じ)。
+      if (
+        !(responseStatus === 200 || responseStatus === 404) &&
+        (!(response == null) || !hasCache)
+      ) {
+        throw { response, idMap };
+      }
+
+      // コールバック
+      this.idMap = idMap;
+
+      // キャッシュ更新部
+      // 三項演算子だと TS が response を非 null に絞り込めないため && に書き換え (挙動は同じ)。
+      if (response != null && response.status === 200) {
+        let etag;
+        cache.data = response.body;
+        cache.lastUpdated = Date.now();
+
+        const lastModified = new Date(response.headers["Last-Modified"] || "dummy").getTime();
+
+        if (Number.isFinite(lastModified)) {
+          cache.lastModified = lastModified;
         }
 
-        if (idMap == null) {
-          throw { response };
-        }
-        // Array.includes は undefined を受け付けないため、等価な比較へ書き換え (挙動は同じ)。
-        if (
-          !(responseStatus === 200 || responseStatus === 404) &&
-          (!(response == null) || !hasCache)
-        ) {
-          throw { response, idMap };
+        if ((etag = response.headers["ETag"])) {
+          cache.etag = etag;
         }
 
-        // コールバック
+        cache.put();
+      }
+    } catch (error) {
+      // コールバック
+      // 上の throw {response, idMap} 形式を想定して取り出す。Error 等が飛んできた場合は
+      // idMap が undefined になる (従来の分割代入と同じ挙動)。response は以降未使用のため取り出さない。
+      ({ idMap } = /** @type {{ idMap?: Map<string, Set<string>> }} */ (error));
+      this.message = "Siki Guardの読み込みに失敗しました。";
+
+      if (hasCache && idMap != null) {
+        this.message += "キャッシュに残っていたデータを使用します。";
+      }
+
+      if (idMap != null) {
         this.idMap = idMap;
-        resolve();
-
-        // キャッシュ更新部
-        // 三項演算子だと TS が response を非 null に絞り込めないため && に書き換え (挙動は同じ)。
-        if (response != null && response.status === 200) {
-          let etag;
-          cache.data = response.body;
-          cache.lastUpdated = Date.now();
-
-          const lastModified = new Date(response.headers["Last-Modified"] || "dummy").getTime();
-
-          if (Number.isFinite(lastModified)) {
-            cache.lastModified = lastModified;
-          }
-
-          if ((etag = response.headers["ETag"])) {
-            cache.etag = etag;
-          }
-
-          cache.put();
-        }
-      } catch (error) {
-        // コールバック
-        // 上の throw {response, idMap} 形式を想定して取り出す。Error 等が飛んできた場合は
-        // idMap が undefined になる (従来の分割代入と同じ挙動)。response は以降未使用のため取り出さない。
-        ({ idMap } = /** @type {{ idMap?: Map<string, Set<string>> }} */ (error));
-        this.message = "Siki Guardの読み込みに失敗しました。";
-
-        if (hasCache && idMap != null) {
-          this.message += "キャッシュに残っていたデータを使用します。";
-        }
-
-        if (idMap != null) {
-          this.idMap = idMap;
-        }
-
-        reject();
       }
-    });
+
+      // 旧実装は拒否理由を公開していなかったため、呼び出し側との契約を維持する。
+      return Promise.reject();
+    }
   }
 
   /**
@@ -149,7 +146,7 @@ export default class SikiGuard {
     try {
       await board.get();
       return { status: "success", data: board.idMap };
-    } catch (error) {
+    } catch {
       return {
         status: "error",
         message: board.message != null ? board.message : null,
@@ -199,7 +196,7 @@ export default class SikiGuard {
       });
 
       return idMap;
-    } catch (error) {
+    } catch {
       // TODO:
       return new Map();
     }

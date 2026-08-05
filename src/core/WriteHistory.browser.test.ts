@@ -77,6 +77,9 @@ describe("WriteHistory browser branch", () => {
       message: "message",
       date: 123,
     });
+    if (provisionalId == null) {
+      throw new Error("provisional write history ID was not created");
+    }
 
     await WriteHistory.update({
       id: provisionalId,

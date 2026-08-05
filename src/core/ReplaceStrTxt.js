@@ -47,8 +47,10 @@ export var set = function (string) {
   _replaceTable = ReplaceStrParser.parse(string);
   _config.set(
     _replaceTable.map((r) => {
-      const { beforeReg, ...rest } = r;
-      return rest;
+      // beforeReg は実行時に生成する正規表現なので、設定へは保存しない。
+      const serializedRule = { ...r };
+      delete serializedRule.beforeReg;
+      return serializedRule;
     }),
   );
   _config.setString(string);

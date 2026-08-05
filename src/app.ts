@@ -23,8 +23,23 @@ import { assertArg, criticalError, log } from "src/app/Log";
 import messageInstance from "src/app/Message";
 import { deepCopy, escapeHtml, replaceAll, safeHref } from "src/app/Util";
 
+type LegacyAppObject = {
+  log: typeof log;
+  criticalError: typeof criticalError;
+  assertArg: typeof assertArg;
+  defer: typeof defer;
+  deepCopy: typeof deepCopy;
+  replaceAll: typeof replaceAll;
+  escapeHtml: typeof escapeHtml;
+  safeHref: typeof safeHref;
+  message: typeof messageInstance;
+  Callbacks: typeof CallbacksClass;
+  LocalStorage: typeof LocalStorageClass;
+  [key: string]: unknown;
+};
+
 // Create global app object early to satisfy legacy code
-const appObj: any = {
+const appObj: LegacyAppObject = {
   log,
   criticalError,
   assertArg,
@@ -37,7 +52,7 @@ const appObj: any = {
   Callbacks: CallbacksClass,
   LocalStorage: LocalStorageClass,
 };
-(window as any).app = appObj;
+(window as unknown as { app: LegacyAppObject }).app = appObj;
 
 // runtime.ts 側で必要な内部値は吸収済みなので、new-ui は常にローカル platform を使う。
 export const platform = new Proxy({} as typeof platformInternal.platform, {
@@ -198,7 +213,7 @@ Object.assign(appObj, {
   WriteHistory,
 });
 
-initializeBookmarkRuntime(appObj as RuntimeAppShape);
+initializeBookmarkRuntime(appObj as unknown as RuntimeAppShape);
 
 appObj.boot = boot; // Will be defined later
 
@@ -228,7 +243,7 @@ export {
   URL,
   util,
   Util,
-  WriteHistory
+  WriteHistory,
 };
 
 export const manifest = (async () => {
@@ -253,10 +268,18 @@ export const manifest = (async () => {
   }
 })();
 
-export async function boot(path: string, requirements: Function | string[] | null, fn: Function) {
-  if (!fn && typeof requirements === "function") {
-    fn = requirements;
-    requirements = null;
+type BootCallback = (...modules: unknown[]) => void;
+type BootRequirements = BootCallback | string[] | null;
+
+export async function boot(
+  path: string,
+  requirements: BootRequirements,
+  fn?: BootCallback,
+): Promise<void> {
+  let callback = fn;
+  const moduleNames = Array.isArray(requirements) ? requirements : null;
+  if (callback == null && typeof requirements === "function") {
+    callback = requirements;
   }
 
   // Chromeがiframeのsrcと無関係な内容を読み込むバグへの対応
@@ -272,21 +295,28 @@ export async function boot(path: string, requirements: Function | string[] | nul
       return;
     }
 
+    const bootCallback = callback;
+    if (bootCallback == null) {
+      return;
+    }
+
     const onload = () => {
       config.ready(() => {
-        const localApp = (window as any).app;
+        const localApp = (window as unknown as { app: LegacyAppObject })
+          .app as unknown as Parameters<typeof setupContainer>[0];
         setupContainer(localApp);
 
-        if (!requirements) {
-          fn();
+        if (moduleNames == null) {
+          bootCallback();
           return;
         }
 
-        const modules: any[] = [];
-        for (const module of <string[]>requirements) {
-          modules.push(localApp[module]);
+        const modules: unknown[] = [];
+        const modulesByName = localApp as unknown as Record<string, unknown>;
+        for (const module of moduleNames) {
+          modules.push(modulesByName[module]);
         }
-        fn(...modules);
+        bootCallback(...modules);
       });
     };
 

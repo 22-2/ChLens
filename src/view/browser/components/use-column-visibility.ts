@@ -11,7 +11,7 @@ type VisibleColumnDescriptor = {
 };
 
 export interface ColumnVisibilityOptions {
-  storageKey: string;
+  storageKey?: string;
   lockedColumnKeys?: readonly string[];
 }
 

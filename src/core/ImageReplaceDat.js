@@ -28,7 +28,7 @@ const _setupReg = function (dat) {
   for (let d of dat) {
     try {
       d.baseUrlReg = new RegExp(d.baseUrl, "i");
-    } catch (error) {
+    } catch {
       app.message.send("notify", {
         message: `\
 ImageViewURLReplace.datの一致URLの正規表現(${d.baseUrl})を読み込むのに失敗しました

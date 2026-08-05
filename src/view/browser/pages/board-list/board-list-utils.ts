@@ -1,4 +1,3 @@
-
 export interface OpenedBoardEntry {
   url: string;
   title?: string;
@@ -42,7 +41,7 @@ export function parseOpenedBoardEntries(raw: string | null): OpenedBoardEntry[] 
     }
 
     return parsed
-      .map((entry) => {
+      .map((entry): OpenedBoardEntry | null => {
         if (!entry || typeof entry.url !== "string") {
           return null;
         }
@@ -52,10 +51,11 @@ export function parseOpenedBoardEntries(raw: string | null): OpenedBoardEntry[] 
           return null;
         }
 
-        return {
-          url: normalizedUrl,
-          title: typeof entry.title === "string" ? entry.title : undefined,
-        } satisfies OpenedBoardEntry;
+        const normalizedEntry: OpenedBoardEntry = { url: normalizedUrl };
+        if (typeof entry.title === "string") {
+          normalizedEntry.title = entry.title;
+        }
+        return normalizedEntry;
       })
       .filter((entry): entry is OpenedBoardEntry => entry !== null);
   } catch {

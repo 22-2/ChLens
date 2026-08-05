@@ -29,12 +29,7 @@ type MessageHandler = (payload?: unknown) => void;
 let messageHandlers = new Map<string, Set<MessageHandler>>();
 
 function setLegacyApp(appValue: unknown): void {
-  (
-    window as Window &
-      typeof globalThis & {
-        app?: unknown;
-      }
-  ).app = appValue;
+  (window as unknown as { app?: unknown }).app = appValue;
 }
 
 function setTauriRuntime(enabled: boolean): void {
@@ -121,12 +116,7 @@ describe("BookmarkRootSelectorDialog", () => {
     configSetMock.mockReset();
     toastSuccessMock.mockReset();
     toastErrorMock.mockReset();
-    delete (
-      window as Window &
-        typeof globalThis & {
-          app?: unknown;
-        }
-    ).app;
+    delete (window as unknown as { app?: unknown }).app;
     setTauriRuntime(false);
   });
 

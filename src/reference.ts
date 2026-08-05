@@ -1,4 +1,4 @@
-interface SelectableItemList {
+export interface SelectableItemList {
   select(target: number): void;
   select(target: HTMLElement): void;
 

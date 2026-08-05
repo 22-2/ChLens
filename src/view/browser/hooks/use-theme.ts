@@ -4,7 +4,7 @@ import { container } from "src/service-container/index";
 type ThemeId = "default" | "dark" | "system";
 export type ResolvedTheme = "light" | "dark";
 
-function parseThemeId(raw: string | undefined): ThemeId {
+function parseThemeId(raw: string | null | undefined): ThemeId {
   if (raw === "dark" || raw === "system") return raw;
   // "default" および未知の値はライトとして扱う
   return "default";

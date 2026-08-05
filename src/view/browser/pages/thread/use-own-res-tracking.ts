@@ -23,7 +23,7 @@ interface PendingWriteMatchState extends PendingWritePayload {
 
 interface PendingWriteHistoryPersistence {
   submittedAt: number;
-  promise: Promise<number | null>;
+  promise: Promise<number | null | undefined>;
 }
 
 interface UseOwnResTrackingParams {

@@ -48,5 +48,4 @@ export interface InternalNGElement {
   name?: string;
   start?: string;
   finish?: string;
-  [key: string]: any;
 }

@@ -160,7 +160,7 @@ export var chServerMoveDetect = async function (oldBoardUrl, html) {
 };
 
 //文字参照をデコード
-const $span = $__("span");
+const $span = document.createElement("span");
 /** @param {string} str */
 export var decodeCharReference = (str) =>
   str.replace(/&(?:#(\d+)|#x([\dA-Fa-f]+)|([\da-zA-Z]+));/g, function ($0, $1, $2, $3) {

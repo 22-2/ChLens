@@ -224,7 +224,6 @@ export function useThreadResContextMenu({
       const plainMessage = stripHtml(targetRes.message);
       const rawId = targetRes.id ?? "";
       const kyodemoUrl = rawId ? buildKyodemoUrl(page.threadUrl, rawId) : null;
-      const permalink = `${page.threadUrl}${targetRes.num}`;
       const isMiniAa = miniAaResNums.has(targetRes.num);
       const isInWriteHistory = ownResNums.has(targetRes.num);
       const selectedText = window.getSelection()?.toString().trim() ?? "";

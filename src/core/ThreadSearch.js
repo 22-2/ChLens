@@ -25,8 +25,8 @@ const _parse = (protocol) =>
     const boardUrl = new URL(url).toBoard();
     try {
       boardTitle = await askBoardTitleSolver(boardUrl);
-    } catch (error) {
-      boardTitle = "";
+      } catch {
+        boardTitle = "";
     }
     return {
       url: setProtocol(url, protocol),
@@ -88,8 +88,8 @@ export default class ThreadSearch {
       }
     */
 
-  /** @param {number} [count] */
-  async _read(count) {
+  /** @param {number} [_count] */
+  async _read(_count) {
     //{status, body} = await new Request("GET", "https://dig.5ch.io/?keywords=#{encodeURIComponent(@query)}&maxResult=#{count}&json=1",
     let result;
     // `cache: false` は Request に存在しないオプションで黙って無視されていた。

@@ -442,7 +442,7 @@ export default class ThreadModel {
    * @param {(num: number) => number} getOffsetHeight
    * @returns {number}
    */
-  getRead(scrollTop, clientHeight, getOffsetTop, getOffsetHeight) {
+  getRead(scrollTop, clientHeight, getOffsetTop, _getOffsetHeight) {
     const containerBottom = scrollTop + clientHeight;
     const resCount = this.resData.size;
 

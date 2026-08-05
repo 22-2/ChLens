@@ -53,13 +53,7 @@ describe("BookmarkListPage", () => {
       },
     });
 
-    (
-      window as Window & {
-        app?: {
-          bookmark?: BookmarkService;
-        };
-      }
-    ).app = {
+    (window as unknown as { app?: { bookmark?: BookmarkService } }).app = {
       bookmark: {
         getAll: getAllBookmarks,
       },
@@ -182,13 +176,7 @@ describe("BookmarkListPage", () => {
       },
     ]);
 
-    (
-      window as Window & {
-        app?: {
-          bookmark?: BookmarkService;
-        };
-      }
-    ).app = {
+    (window as unknown as { app?: { bookmark?: BookmarkService } }).app = {
       bookmark: {
         getAll: getAllBookmarks,
         promiseFirstScan: readyPromise,

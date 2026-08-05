@@ -17,7 +17,7 @@ export function wait5s() {
 }
 
 export function waitAF() {
-  return new Promise((resolve) => {
-    requestAnimationFrame(<any>resolve);
+  return new Promise<void>((resolve) => {
+    requestAnimationFrame(() => resolve());
   });
 }

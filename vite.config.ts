@@ -83,48 +83,6 @@ function browserHtmlPlugin(outputDir: string): Plugin {
   };
 }
 
-// ─── plugin: images ──────────────────────────────────────────────────────────
-
-const _IMG_LIST = [
-  "read.crx_16x16.png",
-  "read.crx_32x32.png",
-  "read.crx_48x48.png",
-  "read.crx_64x64.png",
-  "close_16x16.webp",
-  "dummy_1x1.webp",
-  "lock_12x12_3a5.webp",
-  "arrow_19x19_333_r90.webp",
-  "arrow_19x19_333_r-90.webp",
-  "search2_19x19_777.webp",
-  "star_19x19_333.webp",
-  "star_19x19_007fff.webp",
-  "reload_19x19_333.webp",
-  "pencil_19x19_333.webp",
-  "menu_19x19_333.webp",
-  "lock_19x19_182.webp",
-  "unlock_19x19_333.webp",
-  "pause_19x19_333.webp",
-  "pause_19x19_811.webp",
-  "regexp_19x19_333.webp",
-  "regexp_19x19_06e.webp",
-  "filter_19x19_333.webp",
-  "arrow_19x19_ddd_r90.webp",
-  "arrow_19x19_ddd_r-90.webp",
-  "search2_19x19_aaa.webp",
-  "star_19x19_ddd.webp",
-  "star_19x19_f93.webp",
-  "reload_19x19_ddd.webp",
-  "pencil_19x19_ddd.webp",
-  "menu_19x19_ddd.webp",
-  "lock_19x19_3a5.webp",
-  "unlock_19x19_ddd.webp",
-  "pause_19x19_ddd.webp",
-  "pause_19x19_a33.webp",
-  "regexp_19x19_ddd.webp",
-  "regexp_19x19_f93.webp",
-  "filter_19x19_ddd.webp",
-];
-
 // ─── plugin: manifest.json ───────────────────────────────────────────────────
 
 function manifestPlugin(platform: string, outputDir: string): Plugin {

@@ -222,7 +222,7 @@ export function setupNgRegex(
     let reg: RegExp | undefined;
     try {
       reg = new RegExp(word, "i");
-    } catch (error) {
+    } catch {
       notifyError(type, word);
     }
     return reg;

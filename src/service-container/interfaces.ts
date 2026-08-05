@@ -91,8 +91,8 @@ export interface IThread {
   title: string;
   resCount: number;
   createdAt: number;
-  ng?: unknown;
-  highlight?: unknown;
+  ng?: INGResult | null;
+  highlight?: INGResult | null;
   isNet?: boolean | null;
   readState?: IReadState;
   threadNumber?: number;
@@ -207,7 +207,7 @@ export interface INotificationService {
 export interface INGResult {
   type: string;
   name?: string;
-  params?: unknown;
+  params?: Record<string, string>;
   /** NG ルールが一時的に無効化されているかどうか */
   disabled?: boolean;
 }

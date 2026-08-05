@@ -30,7 +30,7 @@ export function useResInteractionHandlers({
   addTreePopup,
   addIdPopup,
   showAnchorPreview,
-  hideAnchorPreview,
+  hideAnchorPreview: _hideAnchorPreview,
   hideAnchorPreviewImmediately,
   clearAnchorPreviewHideTimer,
   closeNonContextPopups,
