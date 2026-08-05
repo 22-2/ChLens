@@ -160,11 +160,7 @@ browser.action.onClicked.addListener(async (currentTab) => {
   // 現在のタブが既にread.crxなら何もしない
   if (isNewUiTab(currentTab)) return;
 
-  // 現在のページURLを渡して開く（URLがない場合はトップを開く）
-  const urlToOpen =
-    typeof currentTab.url === "string" && currentTab.url.startsWith("http")
-      ? currentTab.url
-      : undefined;
-
-  await openOrFocusNewUiTab(urlToOpen);
+  // 変更理由: ツールバーアイコンからの起動では、対応可否にかかわらず
+  // 現在のページURLを検索語としてomnibarへ自動入力しない。
+  await openOrFocusNewUiTab();
 });
