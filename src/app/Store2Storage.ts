@@ -1,5 +1,5 @@
-import store from "store2";
 import type { StoreBase } from "store2";
+import store from "store2";
 
 function getNativeLocalStorage(): Storage | null {
   if (typeof window === "undefined") {

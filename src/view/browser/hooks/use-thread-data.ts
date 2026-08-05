@@ -12,8 +12,8 @@ import {
 import { platform } from "src/app";
 import { container } from "src/service-container/index";
 import type { IRes, IThreadDetail } from "src/service-container/interfaces";
-import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
 import { useIsNgTemporarilyDisabled } from "src/view/browser/hooks/use-ng-status";
+import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
 import type { ThreadPage as ThreadPageType } from "src/view/browser/types";
 import {
   captureRootSelection,

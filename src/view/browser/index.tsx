@@ -1,6 +1,6 @@
-import { createRoot } from "react-dom/client";
 import "@mantine/core/styles.css";
 import "@mantine/spotlight/styles.css";
+import { createRoot } from "react-dom/client";
 import "src/app";
 import "src/bundle.scss";
 import { BrowserApp } from "src/view/browser/App";

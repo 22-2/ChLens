@@ -1,5 +1,5 @@
-import { ReplaceStrParser } from "../parser/ReplaceStrParser";
 import { describe, expect, it } from "vite-plus/test";
+import { ReplaceStrParser } from "../parser/ReplaceStrParser";
 
 describe("ReplaceStrParser", () => {
   describe("parse", () => {

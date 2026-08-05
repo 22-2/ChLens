@@ -2,8 +2,8 @@ import {
   getDirectVideoLabel,
   isDirectVideoUrl,
   shouldOpenYouTubeExternally,
-  toRuntimeVideoEmbedUrl,
   toInlineVideoEmbed,
+  toRuntimeVideoEmbedUrl,
 } from "src/view/browser/utils/external-media";
 import { describe, expect, it } from "vite-plus/test";
 

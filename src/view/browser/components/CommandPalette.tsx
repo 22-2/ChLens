@@ -1,5 +1,5 @@
-import { Spotlight } from "@mantine/spotlight";
 import { Button, Modal, TextInput } from "@mantine/core";
+import { Spotlight } from "@mantine/spotlight";
 import { Search } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { container } from "src/service-container";
@@ -10,17 +10,17 @@ import {
   type BrowserCommandContext,
 } from "src/view/browser/commands/browser-commands";
 import {
-  commandPalette,
-  commandPaletteStore,
-} from "src/view/browser/commands/command-palette-store";
+  addRecentCommandId,
+  normalizeRecentCommandIds,
+} from "src/view/browser/commands/command-history";
 import {
   loadRecentCommandIds,
   saveRecentCommandIds,
 } from "src/view/browser/commands/command-palette-history";
 import {
-  addRecentCommandId,
-  normalizeRecentCommandIds,
-} from "src/view/browser/commands/command-history";
+  commandPalette,
+  commandPaletteStore,
+} from "src/view/browser/commands/command-palette-store";
 import { filterAndSortBrowserCommands } from "src/view/browser/commands/command-search";
 import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useTabPanes, useTabStore } from "src/view/browser/hooks/use-tab-store";

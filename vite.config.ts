@@ -6,7 +6,7 @@ import { glob } from "fs/promises";
 import path from "path";
 import postcss from "postcss";
 import * as sass from "sass";
-import { defineConfig, Plugin, lazyPlugins } from "vite-plus";
+import { defineConfig, lazyPlugins, Plugin } from "vite-plus";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 

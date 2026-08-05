@@ -1,13 +1,13 @@
 import { Box } from "@mantine/core";
 import React, { useCallback, useState } from "react";
-import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
-import { useBoardListLogic } from "src/view/browser/pages/board-list/use-board-list-logic";
-import { useBoardListDisplay } from "src/view/browser/pages/board-list/use-board-list-display";
+import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { BoardListContent } from "src/view/browser/pages/board-list/BoardListContent";
-import { SearchBarSection } from "src/view/browser/pages/board-list/SearchBarSection";
 import { ContextMenuHandler } from "src/view/browser/pages/board-list/ContextMenuHandler";
+import { SearchBarSection } from "src/view/browser/pages/board-list/SearchBarSection";
 import { buildCategoryId } from "src/view/browser/pages/board-list/board-list-utils";
+import { useBoardListDisplay } from "src/view/browser/pages/board-list/use-board-list-display";
+import { useBoardListLogic } from "src/view/browser/pages/board-list/use-board-list-logic";
 
 interface BoardListPageProps {
   tabId: string;

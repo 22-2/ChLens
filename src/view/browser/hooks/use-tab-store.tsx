@@ -1,6 +1,6 @@
 import React, {
-  useCallback,
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -9,10 +9,9 @@ import React, {
   type Dispatch,
   type ReactNode,
 } from "react";
-import { add as addHistoryRecord, remove as removeHistoryRecord } from "src/core/History";
 import { platform } from "src/app/platform";
-import browser from "webextension-polyfill";
 import { getStore2String, setStore2String } from "src/app/Store2Storage";
+import { add as addHistoryRecord, remove as removeHistoryRecord } from "src/core/History";
 import {
   buildHierarchy,
   getCurrentPage,
@@ -28,6 +27,7 @@ import {
   getBoardUrlFromThreadUrl,
   parseInternalBrowserPage,
 } from "src/view/browser/utils/link-routing";
+import browser from "webextension-polyfill";
 
 export interface TabStoreState {
   // 横並びのペイン群。配列順がそのまま画面上の左→右の並び。

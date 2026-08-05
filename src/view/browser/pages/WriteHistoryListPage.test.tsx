@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
-import type { ReactNode } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import {
   navigateToWriteHistoryEntry,
   WriteHistoryListPage,

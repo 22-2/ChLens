@@ -8,8 +8,8 @@ import {
   exportDataArchive,
   importDataArchive,
 } from "src/view/browser/pages/settings/settings-data-transfer";
-import type { SettingsMaintenanceActions } from "src/view/browser/pages/settings/use-settings-maintenance";
 import type { SettingsSupplementaryPanelId } from "src/view/browser/pages/settings/settings-types";
+import type { SettingsMaintenanceActions } from "src/view/browser/pages/settings/use-settings-maintenance";
 import {
   readBookmarkFolderName,
   readConfiguredBookmarkFolderId,

@@ -1,3 +1,4 @@
+import { setItestServerMapForTesting } from "src/view/browser/utils/itest-server-map";
 import {
   parseInternalBrowserPage,
   parseInternalBrowserPageStrict,
@@ -5,7 +6,6 @@ import {
   RESPECT_DEFAULT_EXTERNAL,
   shouldHandleUrlWithApp,
 } from "src/view/browser/utils/link-routing";
-import { setItestServerMapForTesting } from "src/view/browser/utils/itest-server-map";
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 describe("link-routing", () => {

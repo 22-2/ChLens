@@ -2,11 +2,11 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObje
 import { container } from "src/service-container/index";
 import {
   MIN_THREAD_AUTO_REFRESH_MS,
+  readIdleStopTimeoutValue,
   readThreadAutoRefreshIntervalMs,
+  resolveIdleStopTimeoutMs,
   THREAD_AUTO_REFRESH_CONFIG_KEY,
   THREAD_AUTO_REFRESH_IDLE_STOP_COUNT,
-  readIdleStopTimeoutValue,
-  resolveIdleStopTimeoutMs,
 } from "src/view/browser/hooks/auto-refresh-config";
 
 interface PendingRefreshSnapshot {

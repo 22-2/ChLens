@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vite-plus/test";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mocks = vi.hoisted(() => ({
   configStore: new Map<string, string>(),

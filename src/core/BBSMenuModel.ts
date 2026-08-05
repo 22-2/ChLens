@@ -1,15 +1,14 @@
 import Callbacks from "src/app/Callbacks";
-import { BBSMenu } from "src/core/BBSMenuParser";
-import * as History from "src/core/History";
-import { URL } from "src/core/URL";
-import { container } from "src/service-container/index";
 import { BBSMenuFetcher } from "src/core/BBSMenuFetcher";
-import { BBSMenuParser } from "src/core/BBSMenuParser";
+import { BBSMenu, BBSMenuParser } from "src/core/BBSMenuParser";
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
+import * as History from "src/core/History";
 import { OtherBoardsCollector } from "src/core/OtherBoardsCollector";
 import * as ReadState from "src/core/ReadState.js";
 import { getTauriRepositories, isTauriRuntime } from "src/core/TauriDrizzleBridge";
+import { URL } from "src/core/URL";
 import { createLogger } from "src/core/logger";
+import { container } from "src/service-container/index";
 
 const logger = createLogger("BBSMenuModel");
 const BBSMENU_CACHE_KEY = "bbsmenu";

@@ -1,5 +1,5 @@
-import { AnchorParser } from "../parser/AnchorParser";
 import { describe, expect, it } from "vite-plus/test";
+import { AnchorParser } from "../parser/AnchorParser";
 
 describe("AnchorParser", () => {
   it("should parse single anchor", () => {

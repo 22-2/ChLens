@@ -6,10 +6,10 @@ import { useTabDispatch, type TabAction } from "src/view/browser/hooks/use-tab-s
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
 import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
 
+import { container } from "src/service-container/index";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 import { formatCompactDateTime, normalizeLegacyTimestamp } from "src/view/browser/utils/date-time";
 import { getLegacyWriteHistoryService } from "src/view/browser/utils/legacy-app";
-import { container } from "src/service-container/index";
 
 type SortDirection = "asc" | "desc";
 type SortColumn = "title" | "writtenRes" | "name" | "mail" | "message" | "writtenDate";

@@ -1,10 +1,10 @@
-import browser from "webextension-polyfill";
-import { container } from "src/service-container/index";
 import { isTauriRuntime } from "src/app/platform/runtime";
+import { container } from "src/service-container/index";
 import {
   getLegacyBookmarkEntryList,
   getLegacyConfigService,
 } from "src/view/browser/utils/legacy-app";
+import browser from "webextension-polyfill";
 
 export interface BookmarkFolderNode {
   id: string;

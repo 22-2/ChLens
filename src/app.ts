@@ -228,7 +228,7 @@ export {
   URL,
   util,
   Util,
-  WriteHistory,
+  WriteHistory
 };
 
 export const manifest = (async () => {

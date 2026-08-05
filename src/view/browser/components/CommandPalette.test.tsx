@@ -1,10 +1,10 @@
-import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type {
   SpotlightActionProps,
   SpotlightRootProps,
   SpotlightSearchProps,
 } from "@mantine/spotlight";
+import "@testing-library/jest-dom/vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type React from "react";
 import { CommandPalette } from "src/view/browser/components/CommandPalette";
 import type { Page } from "src/view/browser/types";

@@ -1,10 +1,8 @@
 import { Accordion, Box, Text, UnstyledButton } from "@mantine/core";
 import { ChevronRight } from "lucide-react";
 import React, { useCallback } from "react";
-import type { BBSMenu } from "src/core/BBSMenuParser";
 import {
-  buildCategoryId,
-  normalizeBoardUrlForRemove,
+  buildCategoryId
 } from "src/view/browser/pages/board-list/board-list-utils";
 
 interface Board {

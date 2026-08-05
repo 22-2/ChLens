@@ -1,3 +1,11 @@
+import { LogLevels } from "consola";
+import { toast } from "sonner";
+import * as BBSMenu from "src/core/BBSMenu.js";
+import BoardService from "src/core/BoardService.js";
+import Cache from "src/core/Cache.js";
+import { setConsolaLevel } from "src/core/logger";
+import Notification from "src/core/Notification";
+import ThreadService from "src/core/ThreadService.js";
 import { container } from "src/service-container/Container";
 import {
   IBBSMenuResult,
@@ -19,14 +27,6 @@ import {
   IToastService,
   IUtil,
 } from "src/service-container/interfaces";
-import { LogLevels } from "consola";
-import BoardService from "src/core/BoardService.js";
-import Cache from "src/core/Cache.js";
-import * as BBSMenu from "src/core/BBSMenu.js";
-import { setConsolaLevel } from "src/core/logger";
-import { toast } from "sonner";
-import Notification from "src/core/Notification";
-import ThreadService from "src/core/ThreadService.js";
 
 // レガシー window.app の型。IServiceContainer への完全移行後に削除予定。
 interface LegacyAppForSetup {

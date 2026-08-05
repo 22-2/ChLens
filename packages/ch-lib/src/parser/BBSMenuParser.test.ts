@@ -1,5 +1,5 @@
-import { BBSMenuParser } from "../parser/BBSMenuParser";
 import { describe, expect, it } from "vite-plus/test";
+import { BBSMenuParser } from "../parser/BBSMenuParser";
 
 describe("BBSMenuParser", () => {
   it("should parse BBS menu HTML", () => {

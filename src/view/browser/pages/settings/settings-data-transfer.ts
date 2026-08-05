@@ -1,7 +1,7 @@
 import JSZip from "jszip";
-import { container } from "src/service-container/index";
 import * as History from "src/core/History";
 import * as WriteHistory from "src/core/WriteHistory";
+import { container } from "src/service-container/index";
 
 const ARCHIVE_SCHEMA_VERSION = 1;
 

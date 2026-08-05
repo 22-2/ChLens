@@ -1,9 +1,9 @@
 import type { Dispatch, MouseEvent } from "react";
 import { useCallback } from "react";
-import { getResNumber } from "src/core/URL";
 import { platform } from "src/app/platform/index";
-import type { TabAction } from "src/view/browser/hooks/use-tab-store";
+import { getResNumber } from "src/core/URL";
 import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
+import type { TabAction } from "src/view/browser/hooks/use-tab-store";
 import {
   parseInternalBrowserPageStrict,
   resolveAbsoluteUrl,

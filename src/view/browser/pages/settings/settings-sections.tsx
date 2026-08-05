@@ -15,11 +15,11 @@ import type {
   SettingsFieldDefinition,
   SettingsFormState,
   SettingsFormValue,
-  SettingsSectionItem,
   SettingsOption,
   SettingsSectionDefinition,
   SettingsSectionFormData,
   SettingsSectionId,
+  SettingsSectionItem,
   SettingsSupplementaryPanelId,
 } from "src/view/browser/pages/settings/settings-types";
 import { isSettingsFieldItem } from "src/view/browser/pages/settings/settings-types";

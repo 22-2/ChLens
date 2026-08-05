@@ -1,10 +1,9 @@
 import { MantineProvider, createTheme } from "@mantine/core";
 import { PenLine } from "lucide-react";
 import React, { useEffect } from "react";
-import { container } from "src/service-container/index";
-import { applyBBSMenuToItestServerMap } from "src/view/browser/utils/itest-server-map";
 import { Toaster } from "sonner";
 import "sonner/dist/styles.css";
+import { container } from "src/service-container/index";
 import { AutoRefreshStatusItem } from "src/view/browser/components/AutoRefreshStatusItem";
 import { BookmarkRootSelectorDialog } from "src/view/browser/components/BookmarkRootSelectorDialog";
 import { BottomPanel } from "src/view/browser/components/BottomPanel";
@@ -28,6 +27,7 @@ import {
   useTabStore,
 } from "src/view/browser/hooks/use-tab-store";
 import { useTheme } from "src/view/browser/hooks/use-theme";
+import { applyBBSMenuToItestServerMap } from "src/view/browser/utils/itest-server-map";
 
 const mantineTheme = createTheme({
   fontFamily: '"Noto Sans JP", "Yu Gothic UI", sans-serif',

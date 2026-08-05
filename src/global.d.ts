@@ -1,5 +1,5 @@
 // ファイルをモジュール化して declare global を有効にする
-export {};
+export { };
 
 declare global {
   interface Window {

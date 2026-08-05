@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
-import type { ReactNode } from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
 import { container as serviceContainer } from "src/service-container/index";
 import type { IBoardService, IThread } from "src/service-container/interfaces";

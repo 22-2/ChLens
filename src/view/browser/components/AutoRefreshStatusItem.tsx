@@ -3,11 +3,9 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { MiniWindow } from "src/view/browser/components/MiniWindow";
 import { StatusBarItem, StatusBarMode } from "src/view/browser/components/StatusBar";
 import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
-import { IDLE_STOP_TIMEOUT_OPTIONS } from "src/view/browser/hooks/auto-refresh-config";
 import type { IdleStopTimeoutOption } from "src/view/browser/hooks/auto-refresh-config";
+import { IDLE_STOP_TIMEOUT_OPTIONS } from "src/view/browser/hooks/auto-refresh-config";
 import { useAutoNextThreadSetting } from "src/view/browser/hooks/use-auto-next-thread-setting";
-import type { AutoNextThreadMode } from "src/view/browser/utils/next-thread-search";
-import { usePopupAutoScrollPauseSetting } from "src/view/browser/hooks/use-popup-auto-scroll-pause-setting";
 import {
   MAX_BOARD_INTERVAL_SEC,
   MAX_INTERVAL_SEC,
@@ -16,6 +14,8 @@ import {
   useAutoRefreshPanel,
 } from "src/view/browser/hooks/use-auto-refresh-panel";
 import { useAutoScrollState } from "src/view/browser/hooks/use-auto-scroll-state";
+import { usePopupAutoScrollPauseSetting } from "src/view/browser/hooks/use-popup-auto-scroll-pause-setting";
+import type { AutoNextThreadMode } from "src/view/browser/utils/next-thread-search";
 
 // -----------------------------------------------------------------------
 // ミニウィンドウの中身（UI のみ、ロジックは props 経由）

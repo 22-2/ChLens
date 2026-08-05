@@ -3,9 +3,9 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import React, { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { useThreadResContextMenu } from "src/view/browser/pages/thread/use-thread-res-context-menu";
-import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import type { IRes } from "src/service-container/interfaces";
+import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
+import { useThreadResContextMenu } from "src/view/browser/pages/thread/use-thread-res-context-menu";
 
 const mocks = vi.hoisted(() => ({
   ngAdd: vi.fn(),

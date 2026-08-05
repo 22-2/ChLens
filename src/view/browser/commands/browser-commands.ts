@@ -1,4 +1,3 @@
-import type { Dispatch } from "react";
 import {
   Archive,
   Bookmark,
@@ -6,8 +5,8 @@ import {
   Columns2,
   ExternalLink,
   Filter,
-  History,
   Hash,
+  History,
   Import,
   List,
   PenLine,
@@ -17,10 +16,15 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { ChURL, HOSTNAME } from "packages/ch-lib/src/index";
+import type { Dispatch } from "react";
 import { container } from "src/service-container";
 import type { ScopedTabAction } from "src/view/browser/hooks/use-tab-store";
 import type { Page, Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
+import {
+  canQueryExtensionTabs,
+  getOpenCompatibleThreadPages,
+} from "src/view/browser/utils/extension-tabs";
 import {
   QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE,
   type QuickAccessFilterPageType,
@@ -29,10 +33,6 @@ import {
   getBoardUrlFromThreadUrl,
   parseInternalBrowserPage,
 } from "src/view/browser/utils/link-routing";
-import {
-  canQueryExtensionTabs,
-  getOpenCompatibleThreadPages,
-} from "src/view/browser/utils/extension-tabs";
 import { encodeThreadAsToon, estimateToonTokenCount } from "src/view/browser/utils/thread-toon";
 import { copyText } from "src/view/browser/utils/utils";
 

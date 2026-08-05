@@ -8,8 +8,8 @@ import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import {
   notifyThreadWriteCompleted,
   notifyThreadWriteStarted,
-  type PendingWritePayload,
   resolveWriteSuccessDelayMs,
+  type PendingWritePayload,
 } from "src/view/browser/utils/thread-write-sync";
 
 // -----------------------------------------------------------------------

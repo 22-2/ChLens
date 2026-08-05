@@ -1,8 +1,6 @@
-import { Alert, Box, Button, Loader, Text } from "@mantine/core";
+import { Alert, Box, Button, Text } from "@mantine/core";
 import React from "react";
-import type { BBSMenu } from "src/core/BBSMenuParser";
 import { MenuAccordion } from "src/view/browser/pages/board-list/MenuAccordion";
-import { buildCategoryId } from "src/view/browser/pages/board-list/board-list-utils";
 
 interface Board {
   name: string;

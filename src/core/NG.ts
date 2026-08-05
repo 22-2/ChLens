@@ -1,8 +1,8 @@
 import { decodeCharReference, stringToDate } from "src/core/jsutil";
+import { createLogger } from "src/core/logger";
 import { convertInternalToUser, convertUserToDSL } from "src/core/NGConverter";
 import { splitNgDslEntries } from "src/core/ngDsl";
 import { container, INGResult } from "src/service-container/index";
-import { createLogger } from "src/core/logger";
 
 import { checkResNum, checkScope, checkWord, NGResObj, NGThreadObj } from "src/core/NGMatcher";
 import { parseNgString, setupNgRegex } from "src/core/NGParser";

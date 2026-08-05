@@ -4,8 +4,8 @@ import {
   getDirectVideoLabel,
   isDirectVideoUrl,
   shouldOpenYouTubeExternally,
-  toRuntimeVideoEmbedUrl,
   toInlineVideoEmbed,
+  toRuntimeVideoEmbedUrl,
   type ExternalVideoEmbed,
 } from "src/view/browser/utils/external-media";
 import type { UrlClickHandler } from "src/view/browser/utils/link-routing";

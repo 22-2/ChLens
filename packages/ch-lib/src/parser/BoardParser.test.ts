@@ -1,8 +1,8 @@
 import fs from "fs";
-import { BoardParser } from "../parser/BoardParser";
-import { ChURL } from "../url/ChURL";
 import path from "path";
 import { describe, expect, it } from "vite-plus/test";
+import { BoardParser } from "../parser/BoardParser";
+import { ChURL } from "../url/ChURL";
 
 describe("BoardParser", () => {
   it("should parse 5ch style subject.txt", () => {

@@ -11,8 +11,8 @@ import { useAutoNextThreadSetting } from "src/view/browser/hooks/use-auto-next-t
 import { useMediaViewerStore } from "src/view/browser/hooks/use-media-viewer-store";
 import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
 import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
-import { useThreadPopupLifecycle } from "src/view/browser/hooks/use-popup-manager";
 import { usePopupAutoScrollPauseSetting } from "src/view/browser/hooks/use-popup-auto-scroll-pause-setting";
+import { useThreadPopupLifecycle } from "src/view/browser/hooks/use-popup-manager";
 import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
 import { useThreadAutoRefresh } from "src/view/browser/hooks/use-thread-auto-refresh";
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";

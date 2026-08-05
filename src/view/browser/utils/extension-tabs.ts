@@ -1,6 +1,6 @@
-import type browser from "webextension-polyfill";
 import type { Page } from "src/view/browser/types";
 import { parseInternalBrowserPageStrict } from "src/view/browser/utils/link-routing";
+import type browser from "webextension-polyfill";
 
 type ExtensionBrowserApi = Pick<typeof browser, "runtime" | "tabs">;
 

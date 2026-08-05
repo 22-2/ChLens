@@ -1,7 +1,7 @@
 import { BBSMenu, BBSMenuParser } from "src/core/BBSMenuParser";
 import { Request } from "src/core/HTTP";
-import { ICacheItem } from "src/service-container/interfaces";
 import { createLogger } from "src/core/logger";
+import { ICacheItem } from "src/service-container/interfaces";
 
 const logger = createLogger("BBSMenuFetcher");
 

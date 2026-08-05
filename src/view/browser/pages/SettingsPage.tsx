@@ -34,8 +34,8 @@ import {
   AUTO_SAVE_DELAY_MS,
   NG_PRIMARY_FIELD_KEYS,
   SETTINGS_PAGE_STATE_KEY,
-  SETTINGS_SECTION_MAP,
   SETTINGS_SECTIONS,
+  SETTINGS_SECTION_MAP,
   isSettingsSectionId,
   readAllSettings,
   saveSectionFormData,
@@ -45,9 +45,9 @@ import type {
   SettingsFormState,
   SettingsFormValue,
   SettingsPageUiState,
-  SettingsSectionItem,
   SettingsSectionFormData,
   SettingsSectionId,
+  SettingsSectionItem,
 } from "src/view/browser/pages/settings/settings-types";
 import {
   isSettingsDividerItem,

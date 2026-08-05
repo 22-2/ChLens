@@ -1,4 +1,3 @@
-import type { BBSMenu } from "src/core/BBSMenuParser";
 
 export interface OpenedBoardEntry {
   url: string;

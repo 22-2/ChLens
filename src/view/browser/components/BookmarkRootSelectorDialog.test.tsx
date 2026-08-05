@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { container } from "src/service-container/index";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const { getTreeMock, getMock, configSetMock, toastSuccessMock, toastErrorMock } = vi.hoisted(
   () => ({

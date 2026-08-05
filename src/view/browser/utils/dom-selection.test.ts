@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it } from "vite-plus/test";
 import { captureRootSelection, restoreRootSelection } from "src/view/browser/utils/dom-selection";
+import { afterEach, describe, expect, it } from "vite-plus/test";
 
 describe("dom-selection", () => {
   afterEach(() => {
