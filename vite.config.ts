@@ -76,9 +76,10 @@ function browserHtmlPlugin(outputDir: string): Plugin {
       // クロスオリジンでは origin だけ送る既定寄りの方針にして他の外部埋め込みとも両立させる。
       const html = `<!DOCTYPE html><html class="view view_browser" data-app-version="${version}"><head><meta charset="utf-8"><meta name="referrer" content="strict-origin-when-cross-origin"><title>read.crx-2</title><script src="../browser.js?v=${version}" defer></script><link rel="stylesheet" href="/browser.css?v=${version}"></head><body><div id="root"></div></body></html>`;
 
-      const outputFile = path.join(outputDir, "view", "browser.html");
+      const outputFile = path.join(outputDir, "view", "index.html");
       await fs.ensureDir(path.dirname(outputFile));
       await fs.writeFile(outputFile, html);
+      await fs.remove(path.join(outputDir, "view", "browser.html"));
     },
   };
 }
@@ -145,6 +146,10 @@ function staticCopyPlugin(platform: string, outputDir: string, minifyJs: boolean
         platform !== "firefox" && platform !== "tauri"
           ? [["src/rules.json", `${outputDir}/rules.json`] as [string, string]]
           : [];
+
+      const imageOutputDir = path.join(outputDir, "img");
+      await fs.remove(imageOutputDir);
+      copies.push(["img", imageOutputDir]);
 
       // browser-polyfill
       if (platform === "tauri") {
