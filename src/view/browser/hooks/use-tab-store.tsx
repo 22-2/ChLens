@@ -10,7 +10,7 @@ import React, {
   type ReactNode,
 } from "react";
 import { platform } from "src/app/platform";
-import { getStore2String, setStore2String } from "src/app/Store2Storage";
+import { getStore2String } from "src/app/Store2Storage";
 import { add as addHistoryRecord, remove as removeHistoryRecord } from "src/core/History";
 import {
   buildHierarchy,
@@ -23,6 +23,10 @@ import {
   getAutoRefreshPageKey,
   resetAutoRefreshState,
 } from "src/view/browser/utils/auto-refresh-pages";
+import {
+  getBrowserSessionJson,
+  setBrowserSessionJson,
+} from "src/view/browser/utils/browser-session-storage";
 import {
   getBoardUrlFromThreadUrl,
   parseInternalBrowserPage,
@@ -91,7 +95,6 @@ export type ScopedTabAction = TabAction & { paneId?: string };
 const MAX_CLOSED_TABS = 20;
 // 横分割ペインの最大数。現状は2ペイン固定のオン/オフ運用にする。
 const MAX_PANES = 2;
-const SESSION_KEY = "chlens_browser_session";
 const CONFIG_KEY_PREFIX = "config_";
 
 type NewTabPageMode = "home" | "related_board" | "custom_board";
@@ -401,7 +404,7 @@ type LegacyTabStoreState = {
 // 旧形状（{ tabs, activeTabId }）は単一ペインに包んで移行する。
 function loadSession(): TabStoreState | null {
   try {
-    const raw = getStore2String(SESSION_KEY);
+    const raw = getBrowserSessionJson();
     if (!raw) return null;
     const parsed = JSON.parse(raw) as TabStoreState & LegacyTabStoreState;
 
@@ -452,7 +455,7 @@ function loadSession(): TabStoreState | null {
 
 function saveSession(state: TabStoreState): void {
   try {
-    void setStore2String(SESSION_KEY, JSON.stringify(sanitizeSessionState(state)));
+    void setBrowserSessionJson(JSON.stringify(sanitizeSessionState(state)));
   } catch {
     // 容量超過等は無視
   }
