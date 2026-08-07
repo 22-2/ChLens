@@ -137,7 +137,7 @@ export function createViewerTargets(currentUrl: string): ViewerTargets {
   // 変更理由: 左クリックは background へ元ページURL、補助クリックは拡張ページURLを使うため、
   // 同じ正規化済みURLから両方を組み立てて取り違えを防ぐ。
   const targetUrl = normalizeContentScriptTargetUrl(currentUrl);
-  const baseUrl = browser.runtime.getURL("/view/browser.html");
+  const baseUrl = browser.runtime.getURL("/view/index.html");
   return {
     targetUrl,
     viewerUrl: `${baseUrl}?q=${encodeURIComponent(targetUrl)}`,
@@ -145,7 +145,7 @@ export function createViewerTargets(currentUrl: string): ViewerTargets {
 }
 
 function openViewerInNewTab(targetUrl: string): void {
-  // 変更理由: background 側は受け取ったURLを browser.html?q=... に包み直すので、
+  // 変更理由: background 側は受け取ったURLを index.html?q=... に包み直すので、
   // ここで拡張ページURLを渡すと二重ラップになり目的のページを開けなくなる。
   // open-in-new-viewer-tab を使うことで、既存ビューアータブがある場合は
   // そのタブを上書きせず新しい専ブラタブとして開く。

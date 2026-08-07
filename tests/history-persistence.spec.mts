@@ -56,7 +56,7 @@ test.describe("History persistence", () => {
       });
     });
 
-    await page.goto(`chrome-extension://${extensionId}/view/browser.html`);
+    await page.goto(`chrome-extension://${extensionId}/view/index.html`);
     await seedExtensionState(page);
     await page.reload();
 

@@ -1,7 +1,7 @@
 import browser from "webextension-polyfill";
 
-const NEW_UI_URL_PREFIX = browser.runtime.getURL("view/browser.html");
-const NEW_UI_URL_QUERY = `${browser.runtime.getURL("view/browser.html")}*`;
+const NEW_UI_URL_PREFIX = browser.runtime.getURL("view/index.html");
+const NEW_UI_URL_QUERY = `${browser.runtime.getURL("view/index.html")}*`;
 let newUiPrimaryTabId: number | null = null;
 
 type OpenNewUiMessage = {

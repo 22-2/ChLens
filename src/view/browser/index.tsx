@@ -10,7 +10,7 @@ declare const app: {
   boot: (path: string, fn: () => void) => void;
 };
 
-app.boot("/view/browser.html", () => {
+app.boot("/view/index.html", () => {
   const container = document.getElementById("root");
   if (!container) return;
   createRoot(container).render(<BrowserApp />);

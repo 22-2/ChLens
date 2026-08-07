@@ -12,7 +12,7 @@
     "windows": [
       {
         "title": "chlens",
-        "url": "view/browser.html",
+        "url": "view/index.html",
         "width": 1200,
         "height": 800,
         "resizable": true,
