@@ -3,6 +3,7 @@ interface LegacyBookmarkService {
   getAllThreads?: () => unknown;
   getAllBoards?: () => unknown;
   promiseFirstScan?: Promise<boolean>;
+  import?: (entry: unknown) => Promise<boolean> | boolean;
 }
 
 interface LegacyCallbacksLike {

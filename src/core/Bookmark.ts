@@ -188,6 +188,12 @@ export default class Bookmark {
       return false;
     }
 
+    if (entry.title !== newEntry.title) {
+      // 既存URLへ復元する場合も、バックアップ時点の表示名を反映する。
+      entry.title = newEntry.title;
+      updateEntry = true;
+    }
+
     if (newEntry.readState && isNewerReadState(entry.readState, newEntry.readState)) {
       entry.readState = newEntry.readState;
       updateEntry = true;

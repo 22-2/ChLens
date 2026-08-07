@@ -1,13 +1,27 @@
 import JSZip from "jszip";
+import Cache, { type LogArchiveRecord } from "src/core/Cache";
+import type { Entry as BookmarkEntry, ReadState } from "src/core/BookmarkEntryList";
 import * as History from "src/core/History";
 import * as WriteHistory from "src/core/WriteHistory";
 import { container } from "src/service-container/index";
+import {
+  getLegacyBookmarkService,
+  getLegacyBookmarkEntryList,
+  waitForLegacyBookmarkReady,
+} from "src/view/browser/utils/legacy-app";
+import {
+  getBrowserSessionJson,
+  setBrowserSessionJson,
+} from "src/view/browser/utils/browser-session-storage";
 
-const ARCHIVE_SCHEMA_VERSION = 1;
+const ARCHIVE_SCHEMA_VERSION = 2;
 
 const SETTINGS_JSON_PATH = "settings.json";
 const HISTORY_JSON_PATH = "history.json";
 const WRITE_HISTORY_JSON_PATH = "write-history.json";
+const BOOKMARKS_JSON_PATH = "bookmarks.json";
+const LOGS_JSON_PATH = "logs.json";
+const SESSION_JSON_PATH = "session.json";
 const MANIFEST_JSON_PATH = "manifest.json";
 
 interface ExportManifest {
@@ -54,6 +68,24 @@ interface WriteHistoryExportPayload {
   items: WriteHistoryExportRecord[];
 }
 
+interface BookmarkExportPayload {
+  schemaVersion: number;
+  exportedAt: string;
+  items: BookmarkEntry[];
+}
+
+interface LogExportPayload {
+  schemaVersion: number;
+  exportedAt: string;
+  items: LogArchiveRecord[];
+}
+
+interface SessionExportPayload {
+  schemaVersion: number;
+  exportedAt: string;
+  state: Record<string, unknown> | null;
+}
+
 type SettingsImportPayload =
   | SettingsExportPayload
   | {
@@ -63,15 +95,21 @@ type SettingsImportPayload =
       [key: string]: unknown;
     };
 
-interface ExportArchiveOptions {
+export interface ExportArchiveOptions {
   includeHistory: boolean;
   includeWriteHistory: boolean;
+  includeBookmarks: boolean;
+  includeLogs: boolean;
+  includeSession: boolean;
 }
 
 export interface ImportArchiveResult {
   importedSettingsCount: number;
   importedHistoryCount: number;
   importedWriteHistoryCount: number;
+  importedBookmarkCount: number;
+  importedLogCount: number;
+  importedSessionCount: number;
 }
 
 function toJsonString(payload: unknown): string {
@@ -151,6 +189,126 @@ function toWriteHistoryExportRecord(value: unknown): WriteHistoryExportRecord | 
   };
 }
 
+function toFiniteNumberOrNull(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function toBookmarkReadState(value: unknown): ReadState | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  if (
+    typeof record.url !== "string" ||
+    typeof record.received !== "number" ||
+    !Number.isFinite(record.received) ||
+    typeof record.read !== "number" ||
+    !Number.isFinite(record.read) ||
+    typeof record.last !== "number" ||
+    !Number.isFinite(record.last)
+  ) {
+    return null;
+  }
+
+  return {
+    url: record.url,
+    received: record.received,
+    read: record.read,
+    last: record.last,
+    offset: toFiniteNumberOrNull(record.offset) ?? undefined,
+    date: toFiniteNumberOrNull(record.date) ?? undefined,
+  };
+}
+
+function toBookmarkExportRecord(value: unknown): BookmarkEntry | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const resCount = record.resCount === null ? null : toFiniteNumberOrNull(record.resCount);
+  if (
+    typeof record.url !== "string" ||
+    typeof record.title !== "string" ||
+    typeof record.type !== "string" ||
+    typeof record.bbsType !== "string" ||
+    resCount === undefined ||
+    typeof record.expired !== "boolean"
+  ) {
+    return null;
+  }
+
+  return {
+    url: record.url,
+    title: record.title,
+    type: record.type,
+    bbsType: record.bbsType,
+    resCount,
+    readState: record.readState === null ? null : toBookmarkReadState(record.readState),
+    expired: record.expired,
+  };
+}
+
+function toLogArchiveRecord(value: unknown): LogArchiveRecord | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const data = record.data === null ? null : typeof record.data === "string" ? record.data : null;
+  const parsed = record.parsed ?? null;
+  if (
+    typeof record.url !== "string" ||
+    typeof record.lastUpdated !== "number" ||
+    !Number.isFinite(record.lastUpdated) ||
+    (data === null && (parsed === null || typeof parsed !== "object"))
+  ) {
+    return null;
+  }
+
+  return {
+    url: record.url,
+    data,
+    parsed,
+    lastUpdated: record.lastUpdated,
+    lastModified: toFiniteNumberOrNull(record.lastModified),
+    etag: typeof record.etag === "string" ? record.etag : null,
+    resLength: toFiniteNumberOrNull(record.resLength),
+    datSize: toFiniteNumberOrNull(record.datSize),
+    readcgiVer: toFiniteNumberOrNull(record.readcgiVer),
+    title: typeof record.title === "string" ? record.title : null,
+    threadUrl: typeof record.threadUrl === "string" ? record.threadUrl : null,
+    boardUrl: typeof record.boardUrl === "string" ? record.boardUrl : null,
+    boardTitle: typeof record.boardTitle === "string" ? record.boardTitle : null,
+    kind: "thread",
+  };
+}
+
+function toSessionExportState(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const hasCurrentState = Array.isArray(record.panes) && typeof record.activePaneId === "string";
+  const hasLegacyState = Array.isArray(record.tabs) && typeof record.activeTabId === "string";
+  return hasCurrentState || hasLegacyState ? record : null;
+}
+
+function readSessionExportState(): Record<string, unknown> | null {
+  const raw = getBrowserSessionJson();
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    return toSessionExportState(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
+
 async function readJsonEntry<T>(zip: JSZip, path: string): Promise<T | null> {
   const file = zip.file(path);
   if (!file) {
@@ -202,6 +360,41 @@ export async function exportDataArchive(options: ExportArchiveOptions): Promise<
     includedFiles.push(WRITE_HISTORY_JSON_PATH);
   }
 
+  if (options.includeBookmarks) {
+    await waitForLegacyBookmarkReady();
+    const bookmarkRows = getLegacyBookmarkService()?.getAll?.();
+    const normalizedRows = (Array.isArray(bookmarkRows) ? bookmarkRows : [])
+      .map((row) => toBookmarkExportRecord(row))
+      .filter((row): row is BookmarkEntry => row != null);
+    const payload: BookmarkExportPayload = {
+      schemaVersion: ARCHIVE_SCHEMA_VERSION,
+      exportedAt,
+      items: normalizedRows,
+    };
+    zip.file(BOOKMARKS_JSON_PATH, toJsonString(payload));
+    includedFiles.push(BOOKMARKS_JSON_PATH);
+  }
+
+  if (options.includeLogs) {
+    const payload: LogExportPayload = {
+      schemaVersion: ARCHIVE_SCHEMA_VERSION,
+      exportedAt,
+      items: await Cache.getLogArchiveRecords(),
+    };
+    zip.file(LOGS_JSON_PATH, toJsonString(payload));
+    includedFiles.push(LOGS_JSON_PATH);
+  }
+
+  if (options.includeSession) {
+    const payload: SessionExportPayload = {
+      schemaVersion: ARCHIVE_SCHEMA_VERSION,
+      exportedAt,
+      state: readSessionExportState(),
+    };
+    zip.file(SESSION_JSON_PATH, toJsonString(payload));
+    includedFiles.push(SESSION_JSON_PATH);
+  }
+
   const manifest: ExportManifest = {
     schemaVersion: ARCHIVE_SCHEMA_VERSION,
     app: "chlens",
@@ -230,8 +423,16 @@ export async function importDataArchive(archiveFile: File): Promise<ImportArchiv
 
   // 変更理由: zip一発で復元できるUXを優先し、既存設定は差分ではなく上書きで同期する。
   await Promise.all(
-    Object.entries(normalizedSettings).map(([key, value]) => container.config.set(key, value)),
+    Object.entries(normalizedSettings).map(async ([key, value]) => {
+      await container.config.set(key, value);
+    }),
   );
+
+  // 設定内のブックマーク保存先を復元した場合、Chrome側の再スキャン完了を待ってから項目を追加する。
+  const bookmarkRootNodeId = normalizedSettings.bookmark_id;
+  if (bookmarkRootNodeId) {
+    await getLegacyBookmarkEntryList()?.setRootNodeId?.(bookmarkRootNodeId);
+  }
 
   const historyPayload = await readJsonEntry<HistoryExportPayload | { items?: unknown[] }>(
     zip,
@@ -244,8 +445,8 @@ export async function importDataArchive(archiveFile: File): Promise<ImportArchiv
         .filter((row): row is HistoryExportRecord => row != null)
     : [];
 
-  if (historyItems.length > 0) {
-    // 変更理由: エクスポート時点の履歴を再現するため、既存履歴を先に全消去する。
+  if (historyPayload !== null) {
+    // 変更理由: 空の履歴も含め、エクスポート時点の状態を再現するため既存履歴を置換する。
     await History.clear();
     for (const row of historyItems) {
       await History.add(row.url, row.title, row.date, row.boardTitle);
@@ -262,8 +463,8 @@ export async function importDataArchive(archiveFile: File): Promise<ImportArchiv
         .filter((row): row is WriteHistoryExportRecord => row != null)
     : [];
 
-  if (writeHistoryItems.length > 0) {
-    // 変更理由: 既存データへ単純追加すると重複投稿履歴が増えるため、復元時は完全置換にする。
+  if (writeHistoryPayload !== null) {
+    // 変更理由: 空の履歴も含め、既存データへ単純追加せず完全置換する。
     await WriteHistory.clear();
     for (const row of writeHistoryItems) {
       await WriteHistory.add({
@@ -280,10 +481,65 @@ export async function importDataArchive(archiveFile: File): Promise<ImportArchiv
     }
   }
 
+  const bookmarksPayload = await readJsonEntry<BookmarkExportPayload | { items?: unknown[] }>(
+    zip,
+    BOOKMARKS_JSON_PATH,
+  );
+  const bookmarkItems = Array.isArray(bookmarksPayload?.items)
+    ? bookmarksPayload.items
+        .map((row) => toBookmarkExportRecord(row))
+        .filter((row): row is BookmarkEntry => row != null)
+    : [];
+
+  let importedBookmarkCount = 0;
+  if (bookmarksPayload !== null) {
+    await waitForLegacyBookmarkReady();
+    const bookmarkService = getLegacyBookmarkService();
+    if (bookmarkService?.import) {
+      for (const row of bookmarkItems) {
+        if (await bookmarkService.import(row)) {
+          importedBookmarkCount += 1;
+        }
+      }
+    }
+  }
+
+  const logsPayload = await readJsonEntry<LogExportPayload | { items?: unknown[] }>(
+    zip,
+    LOGS_JSON_PATH,
+  );
+  const logItems = Array.isArray(logsPayload?.items)
+    ? logsPayload.items
+        .map((row) => toLogArchiveRecord(row))
+        .filter((row): row is LogArchiveRecord => row != null)
+    : [];
+
+  if (logsPayload !== null) {
+    await Cache.replaceLogArchiveRecords(logItems);
+    container.message.send("log_updated", { type: "restored" });
+  }
+
+  const sessionPayload = await readJsonEntry<SessionExportPayload | { state?: unknown }>(
+    zip,
+    SESSION_JSON_PATH,
+  );
+  let importedSessionCount = 0;
+  if (sessionPayload !== null && "state" in sessionPayload) {
+    const sessionState = toSessionExportState(sessionPayload.state);
+    if (sessionPayload.state === null || sessionState !== null) {
+      // セッションは次回ページ再読み込み時に use-tab-store が復元する。
+      await setBrowserSessionJson(JSON.stringify(sessionState));
+      importedSessionCount = sessionState === null ? 0 : 1;
+    }
+  }
+
   return {
     importedSettingsCount: Object.keys(normalizedSettings).length,
     importedHistoryCount: historyItems.length,
     importedWriteHistoryCount: writeHistoryItems.length,
+    importedBookmarkCount,
+    importedLogCount: logItems.length,
+    importedSessionCount,
   };
 }
 

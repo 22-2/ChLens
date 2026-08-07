@@ -229,6 +229,41 @@ describe("Cache browser log branch", () => {
     expect(all[0]?.url).toBe("https://ex.com/b/subject.txt");
   });
 
+  it("exports and restores the full log cache including body and parsed data", async () => {
+    const { default: Cache } = await import("src/core/Cache");
+
+    await saveThreadLog({
+      key: "https://ex.com/b/dat/1.dat",
+      threadUrl: "https://ex.com/test/read.cgi/b/1/",
+      title: "保存対象",
+      boardUrl: "https://ex.com/b/",
+      data: "本文データ",
+      parsed: { responses: [{ num: 1, message: "parsed" }] },
+      lastUpdated: 100,
+    });
+    await store.put({
+      url: "https://ex.com/b/subject.txt",
+      kind: null,
+      last_updated: 300,
+      data: "board",
+    });
+
+    const records = await Cache.getLogArchiveRecords();
+    expect(records).toHaveLength(1);
+    expect(records[0]?.data).toBe("本文データ");
+    expect(records[0]?.parsed).toEqual({ responses: [{ num: 1, message: "parsed" }] });
+
+    await Cache.replaceLogArchiveRecords(records);
+
+    const restored = await store.get("https://ex.com/b/dat/1.dat");
+    expect(restored).toMatchObject({
+      data: "本文データ",
+      parsed: { responses: [{ num: 1, message: "parsed" }] },
+      kind: "thread",
+    });
+    expect(await store.get("https://ex.com/b/subject.txt")).not.toBeNull();
+  });
+
   it("searchLogs matches dat body and parsed content", async () => {
     const { default: Cache } = await import("src/core/Cache");
 

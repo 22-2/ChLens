@@ -30,6 +30,9 @@ export function SettingsSupplementaryPanels({
   const [bookmarkError, setBookmarkError] = useState<string | null>(null);
   const [includeHistoryInExport, setIncludeHistoryInExport] = useState(false);
   const [includeWriteHistoryInExport, setIncludeWriteHistoryInExport] = useState(false);
+  const [includeBookmarksInExport, setIncludeBookmarksInExport] = useState(false);
+  const [includeLogsInExport, setIncludeLogsInExport] = useState(false);
+  const [includeSessionInExport, setIncludeSessionInExport] = useState(false);
   const [isExportingArchive, setIsExportingArchive] = useState(false);
   const [isImportingArchive, setIsImportingArchive] = useState(false);
   const [isDeletingLogs, setIsDeletingLogs] = useState(false);
@@ -101,6 +104,9 @@ export function SettingsSupplementaryPanels({
       const blob = await exportDataArchive({
         includeHistory: includeHistoryInExport,
         includeWriteHistory: includeWriteHistoryInExport,
+        includeBookmarks: includeBookmarksInExport,
+        includeLogs: includeLogsInExport,
+        includeSession: includeSessionInExport,
       });
 
       const objectUrl = URL.createObjectURL(blob);
@@ -117,7 +123,14 @@ export function SettingsSupplementaryPanels({
     } finally {
       setIsExportingArchive(false);
     }
-  }, [includeHistoryInExport, includeWriteHistoryInExport, isExportingArchive]);
+  }, [
+    includeBookmarksInExport,
+    includeHistoryInExport,
+    includeLogsInExport,
+    includeSessionInExport,
+    includeWriteHistoryInExport,
+    isExportingArchive,
+  ]);
 
   const handleImportArchiveFile = useCallback(
     async (file: File) => {
@@ -137,9 +150,13 @@ export function SettingsSupplementaryPanels({
           result.importedWriteHistoryCount > 0
             ? `書込履歴 ${result.importedWriteHistoryCount}件`
             : "書込履歴 0件";
+        const bookmarkSummary = `ブックマーク ${result.importedBookmarkCount}件`;
+        const logSummary = `過去ログ ${result.importedLogCount}件`;
+        const sessionSummary =
+          result.importedSessionCount > 0 ? "セッション 1件" : "セッション 0件";
 
         container.toast.success(
-          `インポート完了: 設定 ${result.importedSettingsCount}件 / ${historySummary} / ${writeHistorySummary}`,
+          `インポート完了: 設定 ${result.importedSettingsCount}件 / ${historySummary} / ${writeHistorySummary} / ${bookmarkSummary} / ${logSummary} / ${sessionSummary}`,
         );
       } catch (error) {
         const message = error instanceof Error ? error.message : "データのインポートに失敗しました";
@@ -254,7 +271,7 @@ export function SettingsSupplementaryPanels({
                   データ管理
                 </Text>
                 <Text size="xs" c="dimmed">
-                  設定や履歴をzip（JSON複数ファイル）でバックアップ/復元します。
+                  設定・履歴・ブックマーク・過去ログ・セッションをzip（JSON複数ファイル）でバックアップ/復元します。
                 </Text>
 
                 <Checkbox
@@ -266,6 +283,21 @@ export function SettingsSupplementaryPanels({
                   checked={includeWriteHistoryInExport}
                   label="書き込み履歴を含める"
                   onChange={(event) => setIncludeWriteHistoryInExport(event.currentTarget.checked)}
+                />
+                <Checkbox
+                  checked={includeBookmarksInExport}
+                  label="ブックマークを含める"
+                  onChange={(event) => setIncludeBookmarksInExport(event.currentTarget.checked)}
+                />
+                <Checkbox
+                  checked={includeLogsInExport}
+                  label="過去ログ（本文）を含める"
+                  onChange={(event) => setIncludeLogsInExport(event.currentTarget.checked)}
+                />
+                <Checkbox
+                  checked={includeSessionInExport}
+                  label="セッション・タブ状態を含める"
+                  onChange={(event) => setIncludeSessionInExport(event.currentTarget.checked)}
                 />
 
                 <Group wrap="wrap" gap="sm">
@@ -324,6 +356,9 @@ export function SettingsSupplementaryPanels({
     handleImportArchiveFile,
     handleImportButtonClick,
     includeHistoryInExport,
+    includeBookmarksInExport,
+    includeLogsInExport,
+    includeSessionInExport,
     includeWriteHistoryInExport,
     isDeletingLogs,
     isExportingArchive,

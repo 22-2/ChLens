@@ -25,6 +25,27 @@ export interface LogRecord {
   isHttps: boolean;
 }
 
+/**
+ * バックアップ用の過去ログ本体。
+ * 一覧用の LogRecord だけでは本文を復元できないため、キャッシュの全フィールドを保持する。
+ */
+export interface LogArchiveRecord {
+  url: string;
+  data: string | null;
+  parsed: unknown;
+  lastUpdated: number;
+  lastModified: number | null;
+  etag: string | null;
+  resLength: number | null;
+  datSize: number | null;
+  readcgiVer: number | null;
+  title: string | null;
+  threadUrl: string | null;
+  boardUrl: string | null;
+  boardTitle: string | null;
+  kind: "thread";
+}
+
 export interface LogSearchPage {
   logs: LogRecord[];
   nextOffset: number;
@@ -145,6 +166,77 @@ export default class Cache {
         lastUpdated: (row.last_updated as number) ?? 0,
       }),
     );
+  }
+
+  /**
+   * 過去ログを本文付きで取得します。
+   * 一覧画面はメタ情報だけで十分だが、バックアップでは dat/parsed も必要になる。
+   */
+  static async getLogArchiveRecords(): Promise<LogArchiveRecord[]> {
+    const rows = await Cache.listLogs();
+    const records: LogArchiveRecord[] = [];
+
+    for (const row of rows) {
+      const cache = new Cache(row.url);
+      try {
+        await cache.get();
+      } catch {
+        // 一覧に残った古い壊れたキャッシュは、他のログのバックアップを妨げない。
+        continue;
+      }
+
+      if (
+        cache.lastUpdated == null ||
+        (cache.data == null && (cache.parsed == null || typeof cache.parsed !== "object"))
+      ) {
+        continue;
+      }
+
+      records.push({
+        url: cache.key,
+        data: cache.data,
+        parsed: cache.parsed,
+        lastUpdated: cache.lastUpdated,
+        lastModified: cache.lastModified,
+        etag: cache.etag,
+        resLength: cache.resLength,
+        datSize: cache.datSize,
+        readcgiVer: cache.readcgiVer,
+        title: cache.title,
+        threadUrl: cache.threadUrl,
+        boardUrl: cache.boardUrl,
+        boardTitle: cache.boardTitle,
+        kind: "thread",
+      });
+    }
+
+    return records;
+  }
+
+  /**
+   * 過去ログをアーカイブの内容へ置き換えます。
+   * ログは「バックアップ時点の状態」を復元するデータなので、既存ログとの混在を避ける。
+   */
+  static async replaceLogArchiveRecords(records: LogArchiveRecord[]): Promise<void> {
+    await Cache.deleteLogs();
+
+    for (const record of records) {
+      const cache = new Cache(record.url);
+      cache.data = record.data;
+      cache.parsed = record.parsed;
+      cache.lastUpdated = record.lastUpdated;
+      cache.lastModified = record.lastModified;
+      cache.etag = record.etag;
+      cache.resLength = record.resLength;
+      cache.datSize = record.datSize;
+      cache.readcgiVer = record.readcgiVer;
+      cache.title = record.title;
+      cache.threadUrl = record.threadUrl;
+      cache.boardUrl = record.boardUrl;
+      cache.boardTitle = record.boardTitle;
+      cache.kind = "thread";
+      await cache.put();
+    }
   }
 
   /**
