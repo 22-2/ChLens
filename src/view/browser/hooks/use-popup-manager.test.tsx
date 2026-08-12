@@ -792,6 +792,55 @@ describe("usePopupManager popup behavior", () => {
       "tree:10:depth=0 | id | tree:10:depth=0 | id",
     );
   });
+
+  it("ID popup配下のレスツリーをコピーしても祖先popupを閉じない", () => {
+    const clipboardDescriptor = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    const writeText = vi.fn<() => Promise<void>>().mockResolvedValue();
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+
+    render(<PopupIdChainHarness />);
+
+    fireEvent.click(screen.getByRole("button", { name: "ID親チェーンを開く" }));
+
+    const firstTreePopup = document.querySelectorAll(".res-popup")[0] as HTMLElement;
+    fireEvent.click(within(firstTreePopup).getAllByText("ID:AAA(2)")[0]);
+
+    const firstIdPopup = document.querySelectorAll(".res-popup")[1] as HTMLElement;
+    fireEvent.click(within(firstIdPopup).getByText("返信(1)"));
+
+    const nestedTreePopup = Array.from(
+      document.querySelectorAll<HTMLElement>('.res-popup[data-popup-id^="tree-"]'),
+    ).at(-1);
+    if (!nestedTreePopup) {
+      throw new Error("返信ツリーポップアップが見つかりません");
+    }
+    fireEvent.click(within(nestedTreePopup).getByRole("button", { name: "返信ツリーメニュー" }));
+
+    const copyButton = within(nestedTreePopup).getByRole("button", {
+      name: "返信ツリーを一括コピー",
+    });
+    fireEvent.mouseDown(copyButton);
+
+    // メニュー項目の mousedown は、IDポップアップから見ても外側クリックではない。
+    expect(document.querySelectorAll(".res-popup")).toHaveLength(3);
+
+    fireEvent.click(copyButton);
+
+    expect(writeText).toHaveBeenCalledOnce();
+    expect(document.querySelectorAll(".res-popup")).toHaveLength(3);
+    expect(
+      within(nestedTreePopup).queryByRole("button", { name: "返信ツリーを一括コピー" }),
+    ).not.toBeInTheDocument();
+
+    if (clipboardDescriptor) {
+      Object.defineProperty(navigator, "clipboard", clipboardDescriptor);
+    } else {
+      Reflect.deleteProperty(navigator, "clipboard");
+    }
+  });
 });
 
 // --- ReplyTreePopup: disableOutsideClick 遷移時の自動 close / outside click ---

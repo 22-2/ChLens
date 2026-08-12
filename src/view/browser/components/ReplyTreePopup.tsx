@@ -923,6 +923,10 @@ export const ReplyTreePopup: React.FC<{
           x={menuPosition.x}
           y={menuPosition.y}
           items={treeMenuItems}
+          // このメニューはDOM上ではツリーポップアップ内にあるが、
+          // 親のIDポップアップから見ると別のsurfaceになる。親子関係を識別できるよう
+          // ツリーポップアップ自身のIDを引き継ぎ、コピー操作で親まで閉じないようにする。
+          popupId={popupId}
           onClose={() => setMenuPosition(null)}
         />
       )}
@@ -931,6 +935,8 @@ export const ReplyTreePopup: React.FC<{
           x={subTreeMenu.x}
           y={subTreeMenu.y}
           items={getSubTreeMenuItems(subTreeMenu)}
+          // サブツリーメニューも同じ理由で、所属するツリーポップアップとして扱う。
+          popupId={popupId}
           onClose={() => setSubTreeMenu(null)}
         />
       )}
