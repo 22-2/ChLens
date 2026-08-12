@@ -2,7 +2,9 @@ import "@testing-library/jest-dom/vitest";
 import {
   hasImage,
   hasVideo,
+  formatIdForCopy,
   normalizeIdLinkText,
+  formatResForCopy,
   stripHtml,
   toViewerImageUrl,
 } from "src/view/browser/utils/utils";
@@ -31,6 +33,25 @@ describe("browser utils", () => {
 
   it("anchor_id の表示文字列をIDポップアップ向けに正規化する", () => {
     expect(normalizeIdLinkText("id:ABC123(4)")).toBe("ID:ABC123");
+  });
+
+  it("コピー用IDをID:形式へ正規化する", () => {
+    expect(formatIdForCopy("abc123")).toBe("ID:abc123");
+    expect(formatIdForCopy("id:ABC123")).toBe("ID:ABC123");
+    expect(formatIdForCopy(undefined)).toBe("");
+  });
+
+  it("レスのコピー形式にIDを含める", () => {
+    expect(
+      formatResForCopy({
+        num: 10,
+        name: "name",
+        mail: "",
+        date: "date",
+        id: "abc123",
+        message: "message",
+      }),
+    ).toBe("10 name ID:abc123  date\nmessage");
   });
 
   describe("imgur URL変換（リサイズパラメータ付き）", () => {

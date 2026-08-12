@@ -14,6 +14,8 @@ import {
   canCopyImageToClipboard,
   copyImageBlob,
   copyText,
+  formatIdForCopy,
+  formatResForCopy,
   stripHtml,
 } from "src/view/browser/utils/utils";
 
@@ -143,8 +145,9 @@ function buildReplyTreeImageCardLayouts(
   replyEntries: ReplyTreeImageEntry[],
 ): { cards: ReplyTreeImageCardLayout[]; height: number } {
   const cards: ReplyTreeImageCardLayout[] = [];
+  const sourceId = formatIdForCopy(sourceRes.id);
   const sourceHeader = `${sourceRes.num} ${stripHtml(sourceRes.name)}${
-    sourceRes.id ? ` ${sourceRes.id}` : ""
+    sourceId ? ` ${sourceId}` : ""
   }`;
   const sourceDate = sourceRes.date ?? sourceRes.other ?? "";
   const sourceBody = wrapCanvasText(
@@ -189,8 +192,9 @@ function buildReplyTreeImageCardLayouts(
       TREE_IMAGE_LAYOUT.cardMinWidth,
       TREE_IMAGE_LAYOUT.width - TREE_IMAGE_LAYOUT.paddingX * 2 - indent,
     );
+    const entryId = formatIdForCopy(entry.res.id);
     const headerLine = `${entry.res.num} ${stripHtml(entry.res.name)}${
-      entry.res.id ? ` ${entry.res.id}` : ""
+      entryId ? ` ${entryId}` : ""
     }`;
     const dateLine = entry.res.date ?? entry.res.other ?? "";
     const bodyLines = wrapCanvasText(
@@ -453,13 +457,6 @@ function collectReplyTreeResponses(
 
   visit(sourceResNum);
   return collected;
-}
-
-function formatResForCopy(res: IRes): string {
-  const plainName = stripHtml(res.name);
-  const plainMessage = stripHtml(res.message);
-  const idSuffix = res.id ? ` ${res.id}` : "";
-  return `${res.num} ${plainName}${idSuffix}  ${res.date ?? res.other}\n${plainMessage}`;
 }
 
 function buildReplyTreeCopyText(

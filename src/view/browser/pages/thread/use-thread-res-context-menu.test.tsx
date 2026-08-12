@@ -8,6 +8,7 @@ import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import { useThreadResContextMenu } from "src/view/browser/pages/thread/use-thread-res-context-menu";
 
 const mocks = vi.hoisted(() => ({
+  copyText: vi.fn<() => Promise<void>>(),
   ngAdd: vi.fn(),
   openWritePanelWithText: vi.fn(),
   toastInfo: vi.fn(),
@@ -57,6 +58,11 @@ vi.mock("src/view/browser/utils/auto-refresh-pages", () => ({
 vi.mock("src/view/browser/utils/legacy-app", () => ({
   getLegacyWriteHistoryService: () => null,
 }));
+
+vi.mock("src/view/browser/utils/utils", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("src/view/browser/utils/utils")>();
+  return { ...actual, copyText: mocks.copyText };
+});
 
 const TARGET_RES: IRes = {
   num: 10,
@@ -128,6 +134,13 @@ function HookHarness() {
       </button>
       <button
         onClick={() => {
+          capturedItems.find((item) => item.id === "copy-res")?.onSelect?.();
+        }}
+      >
+        copy-res
+      </button>
+      <button
+        onClick={() => {
           capturedItems.find((item) => item.id === "quote-reply")?.onSelect?.();
         }}
       >
@@ -149,6 +162,7 @@ describe("useThreadResContextMenu", () => {
     cleanup();
     mocks.ngAdd.mockReset();
     mocks.openWritePanelWithText.mockReset();
+    mocks.copyText.mockReset();
     mocks.toastInfo.mockReset();
     mocks.dispatch.mockReset();
     mocks.isAutoRefreshEnabled = false;
@@ -203,6 +217,21 @@ describe("useThreadResContextMenu", () => {
     fireEvent.click(screen.getByRole("button", { name: "reply" }));
 
     expect(mocks.openWritePanelWithText).toHaveBeenCalledWith(">>10\n");
+  });
+
+  it("単体レスのコピーにもID:形式のIDを含める", async () => {
+    mocks.copyText.mockResolvedValue();
+    render(<HookHarness />);
+
+    fireEvent.click(screen.getByRole("button", { name: "open" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "copy-res" }));
+      await Promise.resolve();
+    });
+
+    expect(mocks.copyText).toHaveBeenCalledWith(
+      "thread title\nhttps://example.com/test/read.cgi/live/1/10\n10 name ID:abc123  date\nmessage",
+    );
   });
 
   // it("引用して返信は書き込み欄を開いて引用文を直接入力する", () => {

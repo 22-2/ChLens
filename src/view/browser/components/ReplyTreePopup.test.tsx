@@ -6,21 +6,22 @@ import { container } from "src/service-container/index";
 import { ReplyTreePopup } from "src/view/browser/components/ReplyTreePopup";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-function createRes(num: number, message: string): IRes {
+function createRes(num: number, message: string, id?: string): IRes {
   return {
     num,
     name: `name-${num}`,
     mail: "",
     date: "2026/04/19(日) 12:00:00.000",
+    id,
     message,
   };
 }
 
 const TEST_RES_MAP = new Map<number, IRes>([
-  [1, createRes(1, "source message")],
-  [2, createRes(2, "reply message")],
-  [3, createRes(3, "sibling reply message")],
-  [4, createRes(4, "nested reply message")],
+  [1, createRes(1, "source message", "source-id")],
+  [2, createRes(2, "reply message", "ID:reply-id")],
+  [3, createRes(3, "sibling reply message", "id:sibling-id")],
+  [4, createRes(4, "nested reply message", "nested-id")],
 ]);
 
 const TEST_REP_INDEX = new Map<number, Set<number>>([
@@ -150,13 +151,21 @@ describe("ReplyTreePopup", () => {
     // @ts-expect-error: 同上
     expect(writeText.mock.calls[0]?.[0]).toContain("1 name-1");
     // @ts-expect-error: 同上
+    expect(writeText.mock.calls[0]?.[0]).toContain("1 name-1 ID:source-id");
+    // @ts-expect-error: 同上
     expect(writeText.mock.calls[0]?.[0]).toContain("source message");
     // @ts-expect-error: 同上
     expect(writeText.mock.calls[0]?.[0]).toContain("[返信レス]");
     // @ts-expect-error: 同上
     expect(writeText.mock.calls[0]?.[0]).toContain("2 name-2");
     // @ts-expect-error: 同上
+    expect(writeText.mock.calls[0]?.[0]).toContain("2 name-2 ID:reply-id");
+    // @ts-expect-error: 同上
     expect(writeText.mock.calls[0]?.[0]).toContain("4 name-4");
+    // @ts-expect-error: 同上
+    expect(writeText.mock.calls[0]?.[0]).toContain("4 name-4 ID:nested-id");
+    // @ts-expect-error: 同上
+    expect(writeText.mock.calls[0]?.[0]).toContain("3 name-3 ID:sibling-id");
     // 末尾にスレタイとURLが付加されることを検証する。
     // @ts-expect-error: 同上
     expect(writeText.mock.calls[0]?.[0]).toContain("テストスレタイ");
@@ -174,6 +183,11 @@ describe("ReplyTreePopup", () => {
       expect(writeClipboard).toHaveBeenCalledOnce();
     });
     expect(clipboardItemCtor).toHaveBeenCalledOnce();
+    const drawnTexts = canvasContextStub.fillText.mock.calls.map(([text]) => text);
+    expect(drawnTexts).toContain("1 name-1 ID:source-id");
+    expect(drawnTexts).toContain("2 name-2 ID:reply-id");
+    expect(drawnTexts).toContain("3 name-3 ID:sibling-id");
+    expect(drawnTexts).toContain("4 name-4 ID:nested-id");
   });
 
   it("選択レスまでの一本筋をツリー先頭から下へコピーできる", () => {
@@ -232,9 +246,11 @@ describe("ReplyTreePopup", () => {
       expect.any(Number),
     );
     const drawnTexts = canvasContextStub.fillText.mock.calls.map(([text]) => text);
-    expect(drawnTexts.indexOf("1 name-1")).toBeLessThan(drawnTexts.indexOf("2 name-2"));
-    expect(drawnTexts.indexOf("2 name-2")).toBeLessThan(drawnTexts.indexOf("4 name-4"));
-    expect(drawnTexts).not.toContain("3 name-3");
+    const indexOfDrawnText = (prefix: string) =>
+      drawnTexts.findIndex((text) => text.startsWith(prefix));
+    expect(indexOfDrawnText("1 name-1")).toBeLessThan(indexOfDrawnText("2 name-2"));
+    expect(indexOfDrawnText("2 name-2")).toBeLessThan(indexOfDrawnText("4 name-4"));
+    expect(indexOfDrawnText("3 name-3")).toBe(-1);
   });
 
   it("返信ツリーメニューは outside click で閉じる", () => {

@@ -24,7 +24,12 @@ import {
 } from "src/view/browser/utils/auto-refresh-pages";
 import { getLegacyWriteHistoryService } from "src/view/browser/utils/legacy-app";
 import type { Props, ThreadFilter } from "src/view/browser/utils/types";
-import { buildKyodemoUrl, copyText, stripHtml } from "src/view/browser/utils/utils";
+import {
+  buildKyodemoUrl,
+  copyText,
+  formatResForCopy,
+  stripHtml,
+} from "src/view/browser/utils/utils";
 
 type AddPopupContextMenu = (
   x: number,
@@ -220,8 +225,6 @@ export function useThreadResContextMenu({
 
   const buildContextMenuItems = useCallback(
     (targetRes: IRes, fromPopup: boolean, clickedOnId: boolean): ContextMenuItem[] => {
-      const plainName = stripHtml(targetRes.name);
-      const plainMessage = stripHtml(targetRes.message);
       const rawId = targetRes.id ?? "";
       const kyodemoUrl = rawId ? buildKyodemoUrl(page.threadUrl, rawId) : null;
       const isMiniAa = miniAaResNums.has(targetRes.num);
@@ -297,11 +300,9 @@ export function useThreadResContextMenu({
           label: "レスをコピー",
           icon: <Copy size={14} />,
           onSelect: async () => {
-            const copyBody = `${page.title}\n${page.threadUrl}${
-              targetRes.num
-            }\n${targetRes.num} ${plainName}  ${
-              targetRes.date ?? targetRes.other ?? ""
-            }\n${plainMessage}`;
+            const copyBody = `${page.title}\n${page.threadUrl}${targetRes.num}\n${formatResForCopy(
+              targetRes,
+            )}`;
             await copyText(copyBody);
           },
         },

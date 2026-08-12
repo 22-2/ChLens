@@ -65,6 +65,20 @@ export function normalizeIdLinkText(text: string): string {
     .replace(/\(\d+\)$/, "")
     .replace(/\u25cf$/, "");
 }
+
+export function formatIdForCopy(id: string | undefined): string {
+  const normalizedId = id?.trim().replace(/^ID:/i, "").trim() ?? "";
+  return normalizedId ? `ID:${normalizedId}` : "";
+}
+
+export function formatResForCopy(res: IRes): string {
+  const plainName = stripHtml(res.name);
+  const plainMessage = stripHtml(res.message);
+  const formattedId = formatIdForCopy(res.id);
+  const idSuffix = formattedId ? ` ${formattedId}` : "";
+  return `${res.num} ${plainName}${idSuffix}  ${res.date ?? res.other ?? ""}\n${plainMessage}`;
+}
+
 export function buildKyodemoUrl(threadUrl: string, rawId: string): string | null {
   try {
     const urlObj = new window.URL(threadUrl);
