@@ -1,4 +1,5 @@
 import { normalize } from "src/core/jsutil";
+import { getRuleTargetDefinition } from "src/core/rules/catalog";
 import type { Rule, RuleMatcher, RuleTarget } from "src/core/rules/model";
 import { matchesRuleSites } from "src/core/rules/scope";
 
@@ -22,63 +23,31 @@ export interface RuleMatchResult {
   readonly params?: Record<string, string>;
 }
 
-const RESULT_TARGET_NAMES: Record<RuleTarget, string> = {
-  all: "Word",
-  title: "Title",
-  body: "Body",
-  name: "Name",
-  mail: "Mail",
-  id: "ID",
-  slip: "Slip",
-  url: "Url",
-  "res-count": "ResCount",
-  "reply-count": "ReplyCount",
-};
-
 const regexCache = new Map<string, RegExp | null>();
 
 function getTargetValue(target: RuleTarget, context: RuleMatchContext): string | number | null {
-  switch (target) {
-    case "all":
-      return context.all ?? "";
-    case "title":
-      return context.title ?? "";
-    case "body":
-      return context.body ?? "";
-    case "name":
-      return context.name ?? "";
-    case "mail":
-      return context.mail ?? "";
-    case "id":
-      return context.id ?? null;
-    case "slip":
-      return context.slip ?? null;
-    case "url":
-      return context.url;
-    case "res-count":
-      return context.resCount ?? null;
-    case "reply-count":
-      return context.replyCount ?? null;
-  }
+  const field = getRuleTargetDefinition(target).field;
+  if (field === "url") return context.url;
+  return context[field] ?? null;
 }
 
 function matchesMatcher(
   matcher: RuleMatcher,
-  target: RuleTarget,
+  comparison: ReturnType<typeof getRuleTargetDefinition>["comparison"],
   value: string | number | null,
   onRegexError?: (source: string, error: unknown) => void,
 ): boolean {
   if (value == null) return false;
-  if (target === "res-count" || target === "reply-count") {
+  if (comparison === "greater-than" || comparison === "greater-than-or-equal") {
     const threshold = Number(matcher.kind === "regex" ? matcher.source : matcher.value);
     return (
       Number.isFinite(threshold) &&
-      (target === "res-count" ? Number(value) > threshold : Number(value) >= threshold)
+      (comparison === "greater-than" ? Number(value) > threshold : Number(value) >= threshold)
     );
   }
   const text = String(value);
   if (matcher.kind === "contains") {
-    return target === "url"
+    return comparison === "url-contains"
       ? text.includes(matcher.value)
       : normalize(text).includes(normalize(matcher.value));
   }
@@ -99,9 +68,10 @@ function matchesMatcher(
 }
 
 function resultType(rule: Rule, matcher: RuleMatcher): string {
-  if (rule.target === "all" && matcher.kind === "regex") return "RegExp";
-  const base = `${rule.action === "highlight" ? "Highlight" : ""}${RESULT_TARGET_NAMES[rule.target]}`;
-  return matcher.kind === "regex" ? `RegExp${base}` : base;
+  const definition = getRuleTargetDefinition(rule.target);
+  const legacyTypes =
+    rule.action === "highlight" ? definition.legacyHighlightTypes : definition.legacyTypes;
+  return legacyTypes?.[matcher.kind === "regex" ? 1 : 0] ?? definition.legacyTypes[0];
 }
 
 export function matchRules(
@@ -118,8 +88,9 @@ export function matchRules(
     if (rule.expiresAt != null && now > rule.expiresAt) continue;
     if (!matchesRuleSites(rule.scope?.sites, context.url)) continue;
     const value = getTargetValue(rule.target, context);
+    const definition = getRuleTargetDefinition(rule.target);
     for (const matcher of rule.matchers) {
-      if (!matchesMatcher(matcher, rule.target, value, onRegexError)) continue;
+      if (!matchesMatcher(matcher, definition.comparison, value, onRegexError)) continue;
       return {
         rule,
         matcher,

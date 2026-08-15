@@ -7,6 +7,7 @@ import { checkResNum, checkScope, checkWord, NGResObj, NGThreadObj } from "src/c
 import { parseNgString, setupNgRegex } from "src/core/NGParser";
 import { InternalNGElement, TYPE } from "src/core/NGTypes";
 import { convertInternalToRules } from "src/core/rules/compiler";
+import { RULE_TARGET_CATALOG } from "src/core/rules/catalog";
 import { formatRuleDsl, parseRuleDsl } from "src/core/rules/dsl";
 import { clearRuleRegexCache, matchRules } from "src/core/rules/engine";
 import type { Rule, RuleTarget } from "src/core/rules/model";
@@ -208,19 +209,13 @@ const BOARD_ALLOWED_TYPES: ReadonlySet<string> = new Set([
   TYPE.URL,
   TYPE.RES_COUNT,
 ]);
-const BOARD_RULE_TARGETS: ReadonlySet<RuleTarget> = new Set(["all", "title", "url", "res-count"]);
+const BOARD_RULE_TARGETS: ReadonlySet<RuleTarget> = new Set(
+  RULE_TARGET_CATALOG.filter((target) => target.allowedOnBoard).map((target) => target.name),
+);
 const BOARD_RULE_ACTIONS: ReadonlySet<Rule["action"]> = new Set(["hide", "highlight"]);
-const THREAD_RULE_TARGETS: ReadonlySet<RuleTarget> = new Set([
-  "all",
-  "title",
-  "body",
-  "name",
-  "mail",
-  "id",
-  "slip",
-  "url",
-  "reply-count",
-]);
+const THREAD_RULE_TARGETS: ReadonlySet<RuleTarget> = new Set(
+  RULE_TARGET_CATALOG.filter((target) => target.allowedOnThread).map((target) => target.name),
+);
 const THREAD_RULE_ACTIONS: ReadonlySet<Rule["action"]> = new Set(["hide"]);
 
 function onRuleRegexError(source: string, error: unknown): void {

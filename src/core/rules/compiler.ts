@@ -1,30 +1,18 @@
 import { NG_HIGHLIGHT_COLOR_PRESETS } from "src/core/ngDsl";
 import type { InternalNGElement } from "src/core/NGTypes";
-import { TYPE } from "src/core/NGTypes";
+import { getRuleTargetDefinition, RULE_TARGET_DEFINITIONS } from "src/core/rules/catalog";
 import type { Rule, RuleMatcher, RuleTarget } from "src/core/rules/model";
 import { normalize } from "src/core/jsutil";
 
 function resolveType(rule: Rule, matcher: RuleMatcher): string | null {
   const regex = matcher.kind === "regex";
   if (rule.action === "highlight") {
-    if (rule.target !== "title") return null;
-    return regex ? TYPE.REG_EXP_HIGHLIGHT_TITLE : TYPE.HIGHLIGHT_TITLE;
+    const highlightTypes = getRuleTargetDefinition(rule.target).legacyHighlightTypes;
+    return highlightTypes?.[regex ? 1 : 0] ?? null;
   }
   // mute/warn は実行側の表示仕様ができるまで構文予約語に留め、誤ってhideとして適用しない。
   if (rule.action !== "hide") return null;
-  const types: Record<RuleTarget, readonly [string, string]> = {
-    all: [TYPE.WORD, TYPE.REG_EXP],
-    title: [TYPE.TITLE, TYPE.REG_EXP_TITLE],
-    body: [TYPE.BODY, TYPE.REG_EXP_BODY],
-    name: [TYPE.NAME, TYPE.REG_EXP_NAME],
-    mail: [TYPE.MAIL, TYPE.REG_EXP_MAIL],
-    id: [TYPE.ID, TYPE.REG_EXP_ID],
-    slip: [TYPE.SLIP, TYPE.REG_EXP_SLIP],
-    url: [TYPE.URL, TYPE.REG_EXP_URL],
-    "res-count": [TYPE.RES_COUNT, TYPE.RES_COUNT],
-    "reply-count": [TYPE.REPLY_COUNT, TYPE.REPLY_COUNT],
-  };
-  return types[rule.target][regex ? 1 : 0];
+  return getRuleTargetDefinition(rule.target).legacyTypes[regex ? 1 : 0];
 }
 
 /** 表面DSLのRuleを、既存判定エンジンが扱う形式へ隔離して変換する互換境界。 */
@@ -70,28 +58,24 @@ export function compileRulesToInternal(rules: readonly Rule[]): InternalNGElemen
 const INTERNAL_TARGETS = new Map<
   string,
   { target: RuleTarget; regex: boolean; action?: "highlight" }
->([
-  [TYPE.WORD, { target: "all", regex: false }],
-  [TYPE.REG_EXP, { target: "all", regex: true }],
-  [TYPE.TITLE, { target: "title", regex: false }],
-  [TYPE.REG_EXP_TITLE, { target: "title", regex: true }],
-  [TYPE.HIGHLIGHT_TITLE, { target: "title", regex: false, action: "highlight" }],
-  [TYPE.REG_EXP_HIGHLIGHT_TITLE, { target: "title", regex: true, action: "highlight" }],
-  [TYPE.BODY, { target: "body", regex: false }],
-  [TYPE.REG_EXP_BODY, { target: "body", regex: true }],
-  [TYPE.NAME, { target: "name", regex: false }],
-  [TYPE.REG_EXP_NAME, { target: "name", regex: true }],
-  [TYPE.MAIL, { target: "mail", regex: false }],
-  [TYPE.REG_EXP_MAIL, { target: "mail", regex: true }],
-  [TYPE.ID, { target: "id", regex: false }],
-  [TYPE.REG_EXP_ID, { target: "id", regex: true }],
-  [TYPE.SLIP, { target: "slip", regex: false }],
-  [TYPE.REG_EXP_SLIP, { target: "slip", regex: true }],
-  [TYPE.URL, { target: "url", regex: false }],
-  [TYPE.REG_EXP_URL, { target: "url", regex: true }],
-  [TYPE.RES_COUNT, { target: "res-count", regex: false }],
-  [TYPE.REPLY_COUNT, { target: "reply-count", regex: false }],
-]);
+>(
+  Object.values(RULE_TARGET_DEFINITIONS).flatMap((definition) => [
+    [definition.legacyTypes[0], { target: definition.name, regex: false }] as const,
+    [definition.legacyTypes[1], { target: definition.name, regex: true }] as const,
+    ...(definition.legacyHighlightTypes
+      ? [
+          [
+            definition.legacyHighlightTypes[0],
+            { target: definition.name, regex: false, action: "highlight" },
+          ] as const,
+          [
+            definition.legacyHighlightTypes[1],
+            { target: definition.name, regex: true, action: "highlight" },
+          ] as const,
+        ]
+      : []),
+  ]),
+);
 
 /** 既存のUI操作が追加した内部ルールを、新DSLへ安全に追記するための逆変換。 */
 export function convertInternalToRules(elements: readonly InternalNGElement[]): Rule[] {
