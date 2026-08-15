@@ -80,6 +80,11 @@ export function setupContainer(app: LegacyAppForSetup) {
     set: async (key: string, val: unknown) => {
       // 変更理由: 設定保存は非同期ストレージへ書き込むため、ここで Promise を落とすと
       // 「見た目は更新されたのにリロード直後に戻る」競合を呼び込みやすい。
+      if (key === "ngwords") {
+        // 構文エラーの入力を先に保存すると、修正途中のDSLが永続化されて
+        // 次回起動でも警告が残るため、検証成功後にだけストレージを書き換える。
+        NG.validate(typeof val === "string" ? val : "");
+      }
       await app.config.set(key, val);
       // NGワード設定が更新されたら、NGサービス側の内部状態とキャッシュも同期する。
       // これにより、設定画面での保存が即座にNG判定ロジックへ反映されるようになる。

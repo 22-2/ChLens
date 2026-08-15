@@ -75,6 +75,11 @@ export function apply(source: string): void {
   updateRulesCache(parseConfiguredRules(source));
 }
 
+/** 設定を書き換えずにDSLだけを検証する。保存前の入力チェックで使用する。 */
+export function validate(source: string): void {
+  parseConfiguredRules(source);
+}
+
 async function commitRules(rules: readonly Rule[]): Promise<void> {
   const nextSource = formatRuleDsl(rules);
   await container.config.set(CONFIG_STRING_NAME, nextSource);

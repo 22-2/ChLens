@@ -80,6 +80,8 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
   const [isNgAdvancedOpen, setIsNgAdvancedOpen] = useState(false);
   const [isCompactMenuOpen, setIsCompactMenuOpen] = useState(false);
   const autoSaveTimerRef = useRef<number | null>(null);
+  const saveAttemptRef = useRef(0);
+  const formStateRef = useRef<SettingsFormState | null>(null);
   const compactMenuCloseTimerRef = useRef<number | null>(null);
   const scrollViewportRef = useRef<HTMLDivElement | null>(null);
   const restoredScrollTopRef = useRef(0);
@@ -93,9 +95,16 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
   const maintenanceActions = useSettingsMaintenanceActions({
     formState,
     autoSaveTimerRef,
-    onResetFormState: (nextState) => setFormState(nextState),
+    onResetFormState: (nextState) => {
+      formStateRef.current = nextState;
+      setFormState(nextState);
+    },
     onResetError: (message) => setAutoSaveError(message),
   });
+
+  useEffect(() => {
+    formStateRef.current = formState;
+  }, [formState]);
 
   useEffect(() => {
     if (page.sectionId && isSettingsSectionId(page.sectionId)) {
@@ -163,7 +172,9 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
 
     container.config.ready(() => {
       try {
-        setFormState(readAllSettings());
+        const nextState = readAllSettings();
+        formStateRef.current = nextState;
+        setFormState(nextState);
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : "設定の読み込みに失敗しました");
       } finally {
@@ -200,6 +211,11 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
         window.clearTimeout(autoSaveTimerRef.current);
       }
 
+      // 新しい編集が始まった時点で、前回の保存結果を古いものとして扱う。
+      // 保存中に次の入力が入った場合、古い失敗結果が修正後の画面へ戻らないようにする。
+      const attemptId = ++saveAttemptRef.current;
+      setAutoSaveError(null);
+
       // 変更理由: キー入力ごとの同期書き込みを避け、設定保存の体感速度を維持する。
       autoSaveTimerRef.current = window.setTimeout(() => {
         autoSaveTimerRef.current = null;
@@ -209,13 +225,21 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
         void (async () => {
           try {
             await saveSectionFormData(section, sectionFormData);
+            if (attemptId === saveAttemptRef.current) {
+              setAutoSaveError(null);
+            }
           } catch (saveError) {
+            if (attemptId !== saveAttemptRef.current) {
+              return;
+            }
             const message =
               saveError instanceof Error ? saveError.message : "設定の自動保存に失敗しました";
             setAutoSaveError(message);
             container.toast.error(message);
           } finally {
-            setSavingSectionId((prev) => (prev === sectionId ? null : prev));
+            if (attemptId === saveAttemptRef.current) {
+              setSavingSectionId((prev) => (prev === sectionId ? null : prev));
+            }
           }
         })();
       }, AUTO_SAVE_DELAY_MS);
@@ -225,27 +249,24 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
 
   const updateFieldValue = useCallback(
     (sectionId: SettingsSectionId, fieldKey: string, value: SettingsFormValue) => {
-      let nextSectionData: SettingsSectionFormData | null = null;
-
-      setFormState((prev) => {
-        if (!prev) {
-          return prev;
-        }
-
-        nextSectionData = {
-          ...prev[sectionId],
-          [fieldKey]: value,
-        };
-
-        return {
-          ...prev,
-          [sectionId]: nextSectionData,
-        };
-      });
-
-      if (nextSectionData) {
-        scheduleAutoSave(sectionId, nextSectionData);
+      const currentState = formStateRef.current;
+      if (!currentState) {
+        return;
       }
+
+      const nextSectionData: SettingsSectionFormData = {
+        ...currentState[sectionId],
+        [fieldKey]: value,
+      };
+      const nextState: SettingsFormState = {
+        ...currentState,
+        [sectionId]: nextSectionData,
+      };
+      // Reactのstate updater内で次の保存値を組み立てると、バッチ更新時に
+      // 保存予約が抜けることがあるため、refへ先に反映してから保存を予約する。
+      formStateRef.current = nextState;
+      setFormState(nextState);
+      scheduleAutoSave(sectionId, nextSectionData);
     },
     [scheduleAutoSave],
   );
