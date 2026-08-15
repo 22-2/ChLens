@@ -91,8 +91,18 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
 
   for (let index = 0; index < lines.length; index += 1) {
     const rawLine = lines[index];
-    const trimmed = rawLine.trim();
-    if (!trimmed || trimmed.startsWith("//") || trimmed.startsWith("#")) continue;
+    // Monacoや貼り付け元によってBOM/ゼロ幅文字がコメント先頭へ混ざることがあるため、
+    // 判定前にコメント用の不可視文字だけを取り除く。
+    const trimmed = rawLine.replace(/^[\uFEFF\u200B\u200C\u200D]+/u, "").trim();
+    if (
+      !trimmed ||
+      trimmed.startsWith("//") ||
+      trimmed.startsWith("#") ||
+      trimmed.startsWith("/*") ||
+      trimmed.startsWith("*") ||
+      trimmed.startsWith("*/")
+    )
+      continue;
     const isIndented = /^\s/u.test(rawLine);
 
     if (!isIndented) {

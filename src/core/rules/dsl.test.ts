@@ -48,4 +48,32 @@ describe("rule block DSL", () => {
     expect(result.rules).toEqual([]);
     expect(result.diagnostics[0]).toMatchObject({ line: 1, message: "未対応の動作です: remove" });
   });
+
+  it("allows comments between multiple block rules", () => {
+    const result = parseRuleDsl(`highlight title color=blue label=注目 sites=[bbs.eddibb.cc]:
+  google
+
+// 既存の強いNG条件も残しつつ、現在のDSLを整理した版
+highlight title color=blue label=注目 sites=[bbs.eddibb.cc]:
+  microsoft`);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.rules).toHaveLength(2);
+  });
+
+  it("accepts the settings-editor example with a comment at line 12", () => {
+    const source = `highlight title color=blue label=注目 sites=[bbs.eddibb.cc]:
+  google
+  ぐーぐる
+
+hide body:
+  regex "(imgur\\\\.com\\\\/.+?){15}"
+
+hide id:
+  abc123
+
+// 既存の強いNG条件も残しつつ、現在のDSLを整理した版
+highlight title color=blue label=注目 sites=[bbs.eddibb.cc]:
+  microsoft`;
+    expect(parseRuleDsl(source).diagnostics).toEqual([]);
+  });
 });
