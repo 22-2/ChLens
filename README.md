@@ -46,6 +46,16 @@ pnpm run watch:chrome
 pnpm run pack:all
 ```
 
+ビルド成果物を別のディレクトリへ自動コピーする場合は、`.env` にコピー先を指定します。
+未設定の場合はコピーされません。
+
+```dotenv
+BUILD_COPY_DESTINATION=../read-crx-build
+```
+
+コピー対象は `debug/<platform>` のビルド成果物です。`platform` は Chrome / Firefox / Tauri の
+ビルド対象に応じて変わります。
+
 ## 商用利用についての注意
 
 このリポジトリ自体は MIT ライセンスですが、ChLens がアクセスする外部サービスやデータには別途利用規約・商用制限が存在する場合があります。商用利用時は各サービス規約を確認してください。
