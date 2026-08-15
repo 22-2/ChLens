@@ -46,5 +46,11 @@ describe("ThreadService", () => {
     expect(result.res[1]?.ng).toBeUndefined();
     expect(result.res[2]?.ng).toBeUndefined();
     expect(mocks.isNGThread).toHaveBeenCalledTimes(3);
+    expect(mocks.isNGThread).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ replyCount: 0, anchorCount: 1 }),
+      "title",
+      "https://example.com/test/read.cgi/board/1/",
+    );
   });
 });

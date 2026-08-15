@@ -1,4 +1,8 @@
-import { buildReplyIndexes, parseReplyAnchorTargets } from "src/core/reply-index";
+import {
+  buildReplyIndexes,
+  countReplyAnchorTargets,
+  parseReplyAnchorTargets,
+} from "src/core/reply-index";
 import { describe, expect, it } from "vite-plus/test";
 
 describe("reply indexes", () => {
@@ -17,5 +21,9 @@ describe("reply indexes", () => {
   it("uses the existing 25-target limit for range anchors", () => {
     expect(parseReplyAnchorTargets("&gt;&gt;1-25")).toHaveLength(25);
     expect(parseReplyAnchorTargets("&gt;&gt;1-26")).toEqual([]);
+  });
+
+  it("counts unique response targets for anchor-count", () => {
+    expect(countReplyAnchorTargets("&gt;&gt;1 &gt;&gt;1,2 &gt;&gt;3-4")).toBe(4);
   });
 });

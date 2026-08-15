@@ -43,8 +43,8 @@ class ThreadServiceImpl {
    * @returns {IThreadDetail}
    */
   _formatResult(thread) {
-    const parsedResponses = (thread.res || []).map((/** @type {any} */ r, /** @type {number} */ i) =>
-      this._parseRes(r, i + 1),
+    const parsedResponses = (thread.res || []).map(
+      (/** @type {any} */ r, /** @type {number} */ i) => this._parseRes(r, i + 1),
     );
     const replyIndexes = buildReplyIndexes(parsedResponses);
     const title = thread.title || "";
@@ -63,6 +63,7 @@ class ThreadServiceImpl {
             {
               ...res,
               replyCount: replyIndexes.repIndex.get(res.num)?.size ?? 0,
+              anchorCount: replyIndexes.ancIndex.get(res.num)?.size ?? 0,
             },
             title,
             url,

@@ -287,6 +287,7 @@ export default class ThreadModel {
     const resForNg = {
       ...res,
       replyCount: this.repIndex.get(res.num)?.size ?? 0,
+      anchorCount: this.ancIndex.get(res.num)?.size ?? 0,
     };
 
     // Word/Thread NG

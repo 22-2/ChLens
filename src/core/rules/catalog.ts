@@ -16,7 +16,8 @@ export type RuleTargetField =
   | "slip"
   | "url"
   | "resCount"
-  | "replyCount";
+  | "replyCount"
+  | "anchorCount";
 export type RuleTargetComparison =
   | "contains"
   | "url-contains"
@@ -129,6 +130,15 @@ export const RULE_TARGET_DEFINITIONS: Readonly<Record<RuleTarget, RuleTargetDefi
     field: "replyCount",
     comparison: "greater-than-or-equal",
     resultTypes: ["ReplyCount", "ReplyCount"],
+    allowedOnBoard: false,
+    allowedOnThread: true,
+  },
+  "anchor-count": {
+    name: "anchor-count",
+    description: "レスが参照するレス先の数",
+    field: "anchorCount",
+    comparison: "greater-than-or-equal",
+    resultTypes: ["AnchorCount", "AnchorCount"],
     allowedOnBoard: false,
     allowedOnThread: true,
   },

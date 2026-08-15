@@ -202,6 +202,7 @@ export function useThreadData(
               {
                 ...res,
                 replyCount: allIndexes.repIndex.get(res.num)?.size ?? 0,
+                anchorCount: allIndexes.ancIndex.get(res.num)?.size ?? 0,
               },
               page.title,
               page.threadUrl,

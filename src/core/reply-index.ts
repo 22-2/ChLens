@@ -42,6 +42,11 @@ export function parseReplyAnchorTargets(message: string): number[] {
   return targets;
 }
 
+/** レスが参照するレス先の数を返す。同じレス先への重複参照は1件として数える。 */
+export function countReplyAnchorTargets(message: string): number {
+  return new Set(parseReplyAnchorTargets(message)).size;
+}
+
 export function buildReplyIndexes(responses: readonly ReplyIndexedResponse[]): ReplyIndexes {
   const repIndex = new Map<number, Set<number>>();
   const ancIndex = new Map<number, Set<number>>();

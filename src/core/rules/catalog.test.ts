@@ -17,6 +17,14 @@ describe("rule target catalog", () => {
       allowedOnThread: false,
     });
     expect(normalizeRuleTarget("res-count")).toBe("res-count");
+    expect(getRuleTargetDefinition("anchor-count")).toMatchObject({
+      name: "anchor-count",
+      field: "anchorCount",
+      comparison: "greater-than-or-equal",
+      resultTypes: ["AnchorCount", "AnchorCount"],
+      allowedOnBoard: false,
+      allowedOnThread: true,
+    });
   });
 
   it("exposes every target through the completion catalog", () => {
@@ -31,6 +39,7 @@ describe("rule target catalog", () => {
       "url",
       "res-count",
       "reply-count",
+      "anchor-count",
     ]);
   });
 });

@@ -73,4 +73,23 @@ hide body:
       }),
     ]);
   });
+
+  it("matches anchor-count from the response body", async () => {
+    const { apply, invalidateCache, isNGThread } = await import("src/core/NG");
+    invalidateCache();
+    apply("hide anchor-count:\n  2");
+
+    expect(
+      isNGThread(
+        {
+          num: 2,
+          name: "name",
+          mail: "",
+          message: "&gt;&gt;1 &gt;&gt;1,3",
+        },
+        "title",
+        "https://bbs.eddibb.cc/test/1",
+      ),
+    ).toMatchObject({ type: "AnchorCount" });
+  });
 });

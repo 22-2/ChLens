@@ -1,4 +1,5 @@
 import { createLogger } from "src/core/logger";
+import { countReplyAnchorTargets } from "src/core/reply-index";
 import { container } from "src/service-container/index";
 import type { INGResult } from "src/service-container/index";
 import { RULE_TARGET_CATALOG } from "src/core/rules/catalog";
@@ -155,6 +156,10 @@ export function isNGThread(res: unknown, title: string, url: string): INGResult 
   const body = toText(raw.message);
   const resNum = typeof raw.num === "number" ? raw.num : undefined;
   const debugTargetResNum = getNgDebugTargetResNum();
+  const anchorCount =
+    typeof raw.anchorCount === "number" && Number.isFinite(raw.anchorCount)
+      ? raw.anchorCount
+      : countReplyAnchorTargets(body);
   const matched = matchRules(
     get(),
     {
@@ -167,6 +172,7 @@ export function isNGThread(res: unknown, title: string, url: string): INGResult 
       slip: typeof raw.slip === "string" ? raw.slip : null,
       url,
       replyCount: typeof raw.replyCount === "number" ? raw.replyCount : undefined,
+      anchorCount,
     },
     THREAD_RULE_ACTIONS,
     THREAD_RULE_TARGETS,

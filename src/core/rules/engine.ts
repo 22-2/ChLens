@@ -14,6 +14,7 @@ export interface RuleMatchContext {
   readonly url: string;
   readonly resCount?: number;
   readonly replyCount?: number;
+  readonly anchorCount?: number;
 }
 
 export interface RuleMatchResult {

@@ -87,7 +87,10 @@ hide url:
   regex 'https?://(?:x|twitter)\\.com/.+'
 
 hide reply-count:
-  5`;
+  5
+
+hide anchor-count:
+  3`;
 
 export const NG_DSL_MULTILINE_EXAMPLE = `// 同じブロックの条件はORで判定します
 highlight title color=red label=注目 sites=[eddibb.cc 5ch.io]:

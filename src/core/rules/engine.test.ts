@@ -7,6 +7,7 @@ vi.mock("src/core/jsutil", () => ({ normalize: (value: string) => value.toLowerC
 const HIDE = new Set<Rule["action"]>(["hide"]);
 const BODY = new Set<Rule["target"]>(["body"]);
 const RES_COUNT = new Set<Rule["target"]>(["res-count"]);
+const ANCHOR_COUNT = new Set<Rule["target"]>(["anchor-count"]);
 
 describe("rule engine", () => {
   it("evaluates typed contains and regex matchers directly", () => {
@@ -65,5 +66,23 @@ describe("rule engine", () => {
     expect(
       matchRules(rules, { resCount: 10, url: "https://example.com" }, HIDE, RES_COUNT)?.type,
     ).toBe("ResCount");
+  });
+
+  it("matches anchor-count at the configured threshold", () => {
+    const rules: Rule[] = [
+      {
+        action: "hide",
+        target: "anchor-count",
+        enabled: true,
+        matchers: [{ kind: "contains", value: "3" }],
+      },
+    ];
+
+    expect(
+      matchRules(rules, { anchorCount: 2, url: "https://example.com" }, HIDE, ANCHOR_COUNT),
+    ).toBeNull();
+    expect(
+      matchRules(rules, { anchorCount: 3, url: "https://example.com" }, HIDE, ANCHOR_COUNT)?.type,
+    ).toBe("AnchorCount");
   });
 });
