@@ -85,7 +85,7 @@ describe("NG persistence", () => {
     expect(mocks.configStore.get("ngobj")).toContain('"type":"ID"');
     expect(mocks.pendingWrites[0]).toMatchObject({
       key: "ngwords",
-      value: "ID(value=abc123)\n",
+      value: "ID(value=abc123)",
     });
     expect(settled).toBe(false);
     expect(mocks.messageSend).not.toHaveBeenCalled();
@@ -105,5 +105,15 @@ describe("NG persistence", () => {
       type: TYPE.ID,
       word: "abc123",
     });
+  });
+
+  it("新ブロックDSLへの追加は旧形式を混在させない", async () => {
+    mocks.configStore.set("ngwords", "hide body:\n  spam");
+    const { add, invalidateCache } = await import("src/core/NG");
+    invalidateCache();
+
+    await add("ID(value=abc123)");
+
+    expect(mocks.configStore.get("ngwords")).toBe("hide id:\n  abc123\n\nhide body:\n  spam");
   });
 });

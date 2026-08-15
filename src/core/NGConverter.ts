@@ -1,5 +1,5 @@
-import { TYPE, parse as parseDSL } from "src/core/NG";
-import { InternalNGElement } from "src/core/NGTypes";
+import { parseNgString } from "src/core/NGParser";
+import { InternalNGElement, TYPE } from "src/core/NGTypes";
 import { stringifyNgDslSitesValue, stringifyNgDslValue } from "src/core/ngDsl";
 
 export interface NGRule {
@@ -191,7 +191,7 @@ export function convertInternalToUser(internalObjs: InternalNGElement[]): NGRule
  * DSL文字列を NGRule[] 形式に変換する
  */
 export function convertDSLToUser(dslStr: string): NGRule[] {
-  const ngSet = parseDSL(dslStr);
+  const ngSet = parseNgString(dslStr);
   // parseDSLはJS実装由来で型が緩いため、配列化時にSetであることを明示して扱う。
   return convertInternalToUser(Array.from(ngSet as Set<InternalNGElement>));
 }

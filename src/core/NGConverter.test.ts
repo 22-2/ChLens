@@ -5,31 +5,8 @@ import {
 } from "src/core/NGConverter";
 import { describe, expect, it, vi } from "vite-plus/test";
 
-vi.mock("src/core/NG", () => ({
-  TYPE: {
-    REG_EXP: "RegExp",
-    REG_EXP_TITLE: "RegExpTitle",
-    REG_EXP_HIGHLIGHT_TITLE: "RegExpHighlightTitle",
-    REG_EXP_NAME: "RegExpName",
-    REG_EXP_MAIL: "RegExpMail",
-    REG_EXP_ID: "RegExpId",
-    REG_EXP_SLIP: "RegExpSlip",
-    REG_EXP_BODY: "RegExpBody",
-    REG_EXP_URL: "RegExpUrl",
-    TITLE: "Title",
-    HIGHLIGHT_TITLE: "HighlightTitle",
-    NAME: "Name",
-    MAIL: "Mail",
-    ID: "ID",
-    SLIP: "Slip",
-    BODY: "Body",
-    WORD: "Word",
-    URL: "Url",
-    RES_COUNT: "ResCount",
-    REPLY_COUNT: "ReplyCount",
-    AUTO: "Auto",
-  },
-  parse: vi.fn(() => new Set()),
+vi.mock("src/core/NGParser", () => ({
+  parseNgString: vi.fn(() => new Set()),
 }));
 
 describe("NGConverter", () => {

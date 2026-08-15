@@ -7,6 +7,8 @@ import { container, INGResult } from "src/service-container/index";
 import { checkResNum, checkScope, checkWord, NGResObj, NGThreadObj } from "src/core/NGMatcher";
 import { parseNgString, setupNgRegex } from "src/core/NGParser";
 import { InternalNGElement, TYPE } from "src/core/NGTypes";
+import { convertInternalToRules } from "src/core/rules/compiler";
+import { formatRuleDsl, parseRuleDsl } from "src/core/rules/dsl";
 
 export { TYPE };
 
@@ -105,18 +107,18 @@ export function get(): Set<InternalNGElement> {
   const ngObjectRules = _config.get();
   const ngString = _config.getString();
 
-  if (ngObjectRules.length > 0) {
-    _ng = new Set(ngObjectRules);
-    logger.debug("load.from_ngobj", { ruleCount: _ng.size });
-  } else if (ngString.trim() !== "") {
-    // ngobj が空/破損でも ngwords があれば復元可能にして、
-    // 「設定はあるのに NG/ハイライトが効かない」状態を避ける。
+  if (ngString.trim() !== "") {
+    // ユーザーが編集するDSLを正本とし、ngobjは旧版からの復元用キャッシュに限定する。
+    // 両者が食い違った場合に古いngobjを優先すると、保存済みの記述が反映されないため。
     _ng = parse(ngString);
     void _config.set(Array.from(_ng));
-    logger.debug("load.rebuild_from_ngwords", {
+    logger.debug("load.from_ngwords", {
       dslLength: ngString.length,
       ruleCount: _ng.size,
     });
+  } else if (ngObjectRules.length > 0) {
+    _ng = new Set(ngObjectRules);
+    logger.debug("load.from_legacy_ngobj", { ruleCount: _ng.size });
   } else {
     _ng = new Set();
     logger.debug("load.empty", { ruleCount: 0 });
@@ -132,6 +134,16 @@ export function parse(string: string): Set<InternalNGElement> {
 
 export function set(string: string): Promise<void> {
   logger.debug("set", { dslLength: string.length });
+  const parsedDsl = parseRuleDsl(string);
+  if (parsedDsl.recognized && parsedDsl.diagnostics.length > 0) {
+    const details = parsedDsl.diagnostics
+      .map(({ line, column, message }) => `${line}:${column} ${message}`)
+      .join("\n");
+    logger.error("DSLの構文エラーにより設定を適用できません", {
+      diagnostics: parsedDsl.diagnostics,
+    });
+    return Promise.reject(new Error(`NG設定に構文エラーがあります\n${details}`));
+  }
   return commitNg(parse(string));
 }
 
@@ -155,9 +167,16 @@ export async function add(string: string): Promise<void> {
   await _config.set(Array.from(current));
 
   // ngwords 文字列の先頭に追記
-  const dslString = convertUserToDSL(convertInternalToUser(Array.from(addNg)));
+  const currentString = _config.getString();
+  const currentBlockDsl = parseRuleDsl(currentString);
+  const blockRules = convertInternalToRules(Array.from(addNg));
+  const dslString =
+    currentBlockDsl.recognized && blockRules.length === addNg.size
+      ? formatRuleDsl(blockRules)
+      : convertUserToDSL(convertInternalToUser(Array.from(addNg)));
   if (dslString) {
-    await _config.setString(dslString + "\n" + _config.getString());
+    // 新ブロックDSLへ追加するときも同じ形式を維持し、旧行形式との混在を防ぐ。
+    await _config.setString(dslString + (currentString ? "\n\n" + currentString : ""));
   }
 
   container.message.send("ng_changed");

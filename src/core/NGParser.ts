@@ -6,6 +6,8 @@ import {
   parseNgDslArguments,
   splitNgDslEntries,
 } from "src/core/ngDsl";
+import { compileRulesToInternal } from "src/core/rules/compiler";
+import { parseRuleDsl } from "src/core/rules/dsl";
 
 const _ignoreResRegNumber = /^ignoreResNumber:(\d+)(?:-?(\d+))?,(.*)$/;
 const _ignoreNgType = /^ignoreNgType:(?:\$\((.*?)\):)?(.*)$/;
@@ -112,6 +114,14 @@ const _getNgElement = function (ngWord: string): InternalNGElement | null {
 export function parseNgString(string: string): Set<InternalNGElement> {
   const ng = new Set<InternalNGElement>();
   if (string === "") {
+    return ng;
+  }
+
+  const blockDsl = parseRuleDsl(string);
+  if (blockDsl.recognized) {
+    // 新DSLを旧行形式と混在させると、インデント行が単純Body NGへ化けるため、
+    // ブロックを認識した入力は全体を新DSLとして扱う。
+    for (const rule of compileRulesToInternal(blockDsl.rules)) ng.add(rule);
     return ng;
   }
 

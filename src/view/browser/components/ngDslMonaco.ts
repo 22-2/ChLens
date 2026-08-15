@@ -10,6 +10,12 @@ import {
   type NGDslParameterSpec,
   type NGDslRuleSpec,
 } from "src/core/ngDsl";
+import {
+  isRuleCombinationSupported,
+  RULE_ACTION_CATALOG,
+  RULE_OPTION_CATALOG,
+  RULE_TARGET_CATALOG,
+} from "src/core/rules/catalog";
 
 type MonacoNamespace = typeof Monaco;
 
@@ -380,6 +386,24 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
   const colorPattern = NG_HIGHLIGHT_COLOR_PRESET_ITEMS.map((preset) => preset.name)
     .map(escapeRegExp)
     .join("|");
+  const actionPattern = RULE_ACTION_CATALOG.flatMap((entry) => [
+    entry.name,
+    ...(entry.aliases ?? []),
+  ])
+    .map(escapeRegExp)
+    .join("|");
+  const targetPattern = RULE_TARGET_CATALOG.flatMap((entry) => [
+    entry.name,
+    ...(entry.aliases ?? []),
+  ])
+    .map(escapeRegExp)
+    .join("|");
+  const blockOptionPattern = RULE_OPTION_CATALOG.flatMap((entry) => [
+    entry.name,
+    ...(entry.aliases ?? []),
+  ])
+    .map(escapeRegExp)
+    .join("|");
 
   monaco.languages.setMonarchTokensProvider(NG_DSL_LANGUAGE_ID, {
     tokenizer: {
@@ -387,7 +411,11 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
         [/\/\*/, "comment", "@blockComment"],
         [/^\s*\/\/.*/, "comment"],
         [/^\s*(?:attachName|expireDate|ignoreResNumber|ignoreNgType):/, "keyword"],
+        [new RegExp(`^\\s*(?:${actionPattern})\\b`), "keyword"],
+        [new RegExp(`^\\s*(?:${actionPattern})\\s+(?:${targetPattern})\\b`), "type.identifier"],
+        [/^\s+regex\b/, "type.identifier"],
         [new RegExp(`\\b(?:${keywordPattern})\\b`), "type.identifier"],
+        [new RegExp(`\\b(?:${blockOptionPattern})\\b(?=\\s*=)`), "attribute.name"],
         [/\b(?:value|word|sites|scope|bgColor|label|disabled)\b(?=\s*=)/, "attribute.name"],
         [new RegExp(`\\b(?:${colorPattern})\\b`), "string"],
         [/#(?:[0-9a-fA-F]{6})\b/, "number.hex"],
@@ -431,6 +459,29 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
     triggerCharacters: ["(", ",", "=", "[", '"'],
     provideCompletionItems(model, position) {
       const entryTextUntilCursor = getCurrentEntryText(getTextUntilPosition(model, position));
+      const currentLine = model.getLineContent(position.lineNumber).slice(0, position.column - 1);
+      if (!/^\s/u.test(currentLine) && !currentLine.includes("(")) {
+        const word = model.getWordUntilPosition(position);
+        const range = {
+          startLineNumber: position.lineNumber,
+          endLineNumber: position.lineNumber,
+          startColumn: word.startColumn,
+          endColumn: word.endColumn,
+        };
+        const suggestions = RULE_ACTION_CATALOG.flatMap((action) =>
+          RULE_TARGET_CATALOG.filter((target) =>
+            isRuleCombinationSupported(action.name, target.name),
+          ).map((target) => ({
+            label: `${action.name} ${target.name}`,
+            kind: monaco.languages.CompletionItemKind.Snippet,
+            detail: `${action.description} 対象: ${target.description}`,
+            insertText: `${action.name} ${target.name}:\n  \${1:キーワード}`,
+            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            range,
+          })),
+        );
+        return { suggestions };
+      }
       const argumentContext = getArgumentContext(entryTextUntilCursor);
 
       if (argumentContext) {

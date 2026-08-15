@@ -9,6 +9,28 @@ vi.mock("src/core/jsutil", () => ({
 }));
 
 describe("NGParser", () => {
+  it("should compile block DSL into existing matcher rules", () => {
+    const rules = Array.from(
+      parseNgString(`highlight title color=blue label=注目 sites=[bbs.eddibb.cc]:
+  google
+  ぐーぐる
+
+hide body:
+  regex '(imgur\\.com\\/.+?){15}'`),
+    );
+    expect(rules).toHaveLength(3);
+    expect(rules[0]).toMatchObject({
+      type: TYPE.HIGHLIGHT_TITLE,
+      word: "google",
+      scope: { value: "bbs.eddibb.cc" },
+      params: { bgColor: "#e3f2fd", label: "注目" },
+    });
+    expect(rules[2]).toMatchObject({
+      type: TYPE.REG_EXP_BODY,
+      word: "(imgur\\.com\\/.+?){15}",
+    });
+  });
+
   it("should parse new DSL syntax correctly", () => {
     const rules = Array.from(parseNgString('ID(value="abc")'));
     expect(rules).toHaveLength(1);

@@ -57,6 +57,19 @@ describe("NG DSL parsing", () => {
     });
   });
 
+  it("treats ngwords as the source of truth when ngobj is stale", async () => {
+    configStore.clear();
+    configStore.set("ngwords", "hide body:\n  current");
+    configStore.set("ngobj", JSON.stringify([{ type: "Body", word: "stale", exception: false }]));
+
+    const { get, invalidateCache, TYPE } = await import("src/core/NG");
+    invalidateCache();
+
+    expect(Array.from(get())).toEqual([
+      expect.objectContaining({ type: TYPE.BODY, word: "current" }),
+    ]);
+  });
+
   it("falls back to ngwords when ngobj is malformed JSON", async () => {
     configStore.clear();
     configStore.set("ngwords", 'RegExpBody(word="(imgur\\\\.com\\\\/.+?){15}")');

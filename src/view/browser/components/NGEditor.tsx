@@ -71,43 +71,29 @@ export interface NGEditorProps {
   onChange: (value: string) => void;
 }
 
-export const NG_DSL_EXAMPLE = `// 基本の部分一致NG
-Body(value="荒らし")
+export const NG_DSL_EXAMPLE = `// 動作＋対象の見出しに、条件をインデントして記述します
+hide body:
+  荒らし
+  spam
 
-// value= は省略可能（Body(荒らし)も同じ意味）
-Body("荒らし")
+hide id:
+  abc123
 
-/* ブロックコメントも使用可能
-   複数行にまたがる説明や
-   コメントアウトしたルールを記述できます */
-Body(荒らし)
+hide url:
+  regex "https?://(?:x|twitter)\\\\.com/.+"
 
-// タイトルを部分一致でハイライト
-HighlightTitle(重要 bgColor=#ffcdd2 label=注目)
+hide reply-count:
+  5`;
 
-// 特定IDをNG
-ID(abc123)
+export const NG_DSL_MULTILINE_EXAMPLE = `// 同じブロックの条件はORで判定します
+highlight title color=red label=注目 sites=[eddibb.cc 5ch.io]:
+  google
+  ぐーぐる
+  microsoft
 
-// URLを正規表現でNG
-RegExpUrl("https?://(?:x|twitter)\\\\.com/.+")
-
-// 返信（安価）が5件以上のレスをNG
-ReplyCount(value=5)
-
-// 10回以上の画像連投を正規表現でNG
-RegExpBody("(imgur.com/.+?){10}")`;
-
-export const NG_DSL_MULTILINE_EXAMPLE = `/* 複数サイト向けの正規表現ハイライト
-   ブロックコメントも使用可能です */
-RegExpHighlightTitle(
-  "(imgur\\\\.com\\\\/.+?){15}"
-  sites=[
-    eddibb.cc
-    5ch.io
-  ]
-  bgColor=red
-  label=連投疑い
-)`;
+// ng は互換用の別名です。標準表記では hide を推奨します
+ng body:
+  regex "(imgur\\\\.com\\\\/.+?){15}"`;
 
 // // 複雑なand条件: 名前の正規表現 + 本文の正規表現 + 期限 + ラベル
 // ANDやら期限などあるが、これは複雑なので隠しておいて、基本的には上のシンプルな例だけ見せるのが良さそう

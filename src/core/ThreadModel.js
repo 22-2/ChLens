@@ -1,6 +1,11 @@
 import { AnchorParser, MetadataParser } from "packages/ch-lib/src/index";
 import { container } from "src/service-container/index";
 import { replace as replaceStrTxt } from "src/core/ReplaceStrTxt.js";
+import {
+  getIdentityJudgment,
+  getRepeatMessageThreshold,
+  isAutoNgEnabled,
+} from "src/core/AutoNgPolicy";
 
 /**
  * @typedef {import("../service-container/interfaces").IRes} IRes
@@ -177,7 +182,7 @@ export default class ThreadModel {
         this._handleNgDependencies(res, ngObj);
 
         // Chain NG (immediate for this res)
-        if (container.config.get("chain_ng")) {
+        if (isAutoNgEnabled("chain")) {
           this.chainNG(res.num);
         }
       }
@@ -290,15 +295,18 @@ export default class ThreadModel {
 
     // Word/Thread NG
     let ngObj = container.ng.isNGThread(resForNg, this.title, this.urlStr);
-    if (ngObj && !container.ng.isThreadIgnoreNgType(resForNg, this.title, this.urlStr, ngObj.type)) {
+    if (
+      ngObj &&
+      !container.ng.isThreadIgnoreNgType(resForNg, this.title, this.urlStr, ngObj.type)
+    ) {
       return ngObj;
     }
 
     if (bbsType === "2ch") {
-      const judgeType = container.config.get("how_to_judgment_id");
+      const judgeType = getIdentityJudgment();
       // Nothing ID
       if (
-        container.config.get("nothing_id_ng") &&
+        isAutoNgEnabled("missingId") &&
         !res.id &&
         ((judgeType === "first_res" && this._existIdAtFirstRes) ||
           (judgeType === "exists_once" && this.idIndex.size > 0))
@@ -312,7 +320,7 @@ export default class ThreadModel {
       }
       // Nothing Slip
       if (
-        container.config.get("nothing_slip_ng") &&
+        isAutoNgEnabled("missingSlip") &&
         !res.slip &&
         ((judgeType === "first_res" && this._existSlipAtFirstRes) ||
           (judgeType === "exists_once" && this.slipIndex.size > 0))
@@ -327,7 +335,7 @@ export default class ThreadModel {
     }
 
     // Chain ID/Slip
-    if (container.config.get("chain_ng_id") && res.id && this._ngIdForChain.has(res.id)) {
+    if (isAutoNgEnabled("chainId") && res.id && this._ngIdForChain.has(res.id)) {
       if (
         !container.ng.isIgnoreResNumForAuto(res.num, "ChainID") &&
         !container.ng.isThreadIgnoreNgType(resForNg, this.title, this.urlStr, "ChainID")
@@ -335,7 +343,7 @@ export default class ThreadModel {
         return { type: "ChainID" };
       }
     }
-    if (container.config.get("chain_ng_slip") && res.slip && this._ngSlipForChain.has(res.slip)) {
+    if (isAutoNgEnabled("chainSlip") && res.slip && this._ngSlipForChain.has(res.slip)) {
       if (
         !container.ng.isIgnoreResNumForAuto(res.num, "ChainSLIP") &&
         !container.ng.isThreadIgnoreNgType(resForNg, this.title, this.urlStr, "ChainSLIP")
@@ -345,7 +353,7 @@ export default class ThreadModel {
     }
 
     // Repeat Message
-    const repeatCount = parseInt(container.config.get("repeat_message_ng_count"));
+    const repeatCount = getRepeatMessageThreshold();
     if (repeatCount > 1) {
       const cleanMsg = res.message.replace(/<[^>]+>/g, "").trim();
       if (!this._resMessageMap.has(cleanMsg)) this._resMessageMap.set(cleanMsg, new Set());
@@ -373,14 +381,10 @@ export default class ThreadModel {
    */
   _handleNgDependencies(res, ngObj) {
     // Collect ID/Slip for chain
-    if (container.config.get("chain_ng_id") && res.id && !["ID", "ChainID"].includes(ngObj.type)) {
+    if (isAutoNgEnabled("chainId") && res.id && !["ID", "ChainID"].includes(ngObj.type)) {
       this._ngIdForChain.add(res.id);
     }
-    if (
-      container.config.get("chain_ng_slip") &&
-      res.slip &&
-      !["Slip", "ChainSLIP"].includes(ngObj.type)
-    ) {
+    if (isAutoNgEnabled("chainSlip") && res.slip && !["Slip", "ChainSLIP"].includes(ngObj.type)) {
       this._ngSlipForChain.add(res.slip);
     }
 
@@ -401,10 +405,10 @@ export default class ThreadModel {
    * @private
    */
   _runChainNG() {
-    if (container.config.get("chain_ng_id")) {
+    if (isAutoNgEnabled("chainId")) {
       for (const id of this._ngIdForChain) this.chainNgById(id);
     }
-    if (container.config.get("chain_ng_slip")) {
+    if (isAutoNgEnabled("chainSlip")) {
       for (const slip of this._ngSlipForChain) this.chainNgBySlip(slip);
     }
   }
@@ -446,7 +450,7 @@ export default class ThreadModel {
       res.ng = { type: "ChainID" };
       res.class?.push("ng");
       this._handleNgDependencies(res, res.ng);
-      if (container.config.get("chain_ng")) this.chainNG(r);
+      if (isAutoNgEnabled("chain")) this.chainNG(r);
     }
   }
 
@@ -465,7 +469,7 @@ export default class ThreadModel {
       res.ng = { type: "ChainSLIP" };
       res.class?.push("ng");
       this._handleNgDependencies(res, res.ng);
-      if (container.config.get("chain_ng")) this.chainNG(r);
+      if (isAutoNgEnabled("chain")) this.chainNG(r);
     }
   }
 
