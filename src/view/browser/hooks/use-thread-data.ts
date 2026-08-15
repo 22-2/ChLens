@@ -189,14 +189,25 @@ export function useThreadData(
     // NG設定が更新された通知を受け取ったら、現在表示中のレスに対して判定を再実行する。
     // これにより、設定画面での変更が即座にスレッド表示へ反映される。
     const handleNgChanged = () => {
-      setResponses((prev) =>
-        prev.map((res) => ({
+      setResponses((prev) => {
+        // 返信数NGは表示対象だけで数えると、他のNGルールとの適用順に依存してしまう。
+        // NG判定前の全レスから索引を作り、同じスレの実レス数を基準に再判定する。
+        const allIndexes = buildIndexes(prev);
+        return prev.map((res) => ({
           ...res,
           // res.ng が undefined の場合は ResItem 側で非NGとして扱われるため、
           // 判定結果をそのまま（null の場合は undefined へ変換して）上書きする。
-          ng: container.ng.isNGThread(res, page.title, page.threadUrl) ?? undefined,
-        })),
-      );
+          ng:
+            container.ng.isNGThread(
+              {
+                ...res,
+                replyCount: allIndexes.repIndex.get(res.num)?.size ?? 0,
+              },
+              page.title,
+              page.threadUrl,
+            ) ?? undefined,
+        }));
+      });
     };
 
     container.message.on("ng_changed", handleNgChanged);

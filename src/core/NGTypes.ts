@@ -22,6 +22,7 @@ export const TYPE = {
   WORD: "Word",
   URL: "Url",
   RES_COUNT: "ResCount",
+  REPLY_COUNT: "ReplyCount",
   AUTO: "Auto",
   AUTO_CHAIN: "Chain",
   AUTO_CHAIN_ID: "ChainID",

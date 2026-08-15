@@ -231,7 +231,7 @@ SIMILAR_IMAGE: "SimilarImage",
   aliases: [],
   description: "似た画像のサムネイルをモザイク処理します（知覚ハッシュdHash）",
   parameters: [
-    WORD_PARAMETER,
+    VALUE_PARAMETER,
     SITES_PARAMETER,
     {
       name: "threshold",
@@ -241,7 +241,7 @@ SIMILAR_IMAGE: "SimilarImage",
     },
     DISABLED_PARAMETER,
   ],
-  wordDescription: "16進数 dHash ハッシュ値（64文字）",
+  valueDescription: "16進数 dHash ハッシュ値（64文字）",
 }
 ```
 

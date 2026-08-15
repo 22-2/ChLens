@@ -1,5 +1,5 @@
+import { buildReplyIndexes } from "src/core/reply-index";
 import type { IRes } from "src/service-container";
-import { parseAnchors } from "src/view/browser/utils/utils";
 
 // --- インデックス構築 ---
 interface ThreadIndexes {
@@ -10,9 +10,9 @@ interface ThreadIndexes {
 }
 export function buildIndexes(responses: IRes[]): ThreadIndexes {
   const idIndex = new Map<string, Set<number>>();
-  const repIndex = new Map<number, Set<number>>();
-  const ancIndex = new Map<number, Set<number>>();
   const resMap = new Map<number, IRes>();
+
+  const replyIndexes = buildReplyIndexes(responses);
 
   for (const res of responses) {
     resMap.set(res.num, res);
@@ -21,15 +21,12 @@ export function buildIndexes(responses: IRes[]): ThreadIndexes {
       if (!idIndex.has(res.id)) idIndex.set(res.id, new Set());
       idIndex.get(res.id)!.add(res.num);
     }
-
-    const targets = parseAnchors(res.message);
-    for (const target of targets) {
-      if (!repIndex.has(target)) repIndex.set(target, new Set());
-      repIndex.get(target)!.add(res.num);
-      if (!ancIndex.has(res.num)) ancIndex.set(res.num, new Set());
-      ancIndex.get(res.num)!.add(target);
-    }
   }
 
-  return { idIndex, repIndex, ancIndex, resMap };
+  return {
+    idIndex,
+    repIndex: replyIndexes.repIndex,
+    ancIndex: replyIndexes.ancIndex,
+    resMap,
+  };
 }

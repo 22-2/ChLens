@@ -26,6 +26,7 @@ vi.mock("src/core/NG", () => ({
     WORD: "Word",
     URL: "Url",
     RES_COUNT: "ResCount",
+    REPLY_COUNT: "ReplyCount",
     AUTO: "Auto",
   },
   parse: vi.fn(() => new Set()),
@@ -63,8 +64,23 @@ describe("NGConverter", () => {
     ]);
 
     expect(dsl).toBe(
-      "HighlightTitle(word=VTuber sites=[eddibb.cc 5ch.net] bgColor=red label=注目)",
+      "HighlightTitle(value=VTuber sites=[eddibb.cc 5ch.net] bgColor=red label=注目)",
     );
+  });
+
+  it("converts the reply count target and uses value in the DSL", () => {
+    const internalRules = convertUserToInternal([
+      {
+        word: "5",
+        target: "reply_count",
+      },
+    ]);
+
+    expect(internalRules[0]).toMatchObject({
+      type: "ReplyCount",
+      word: "5",
+    });
+    expect(convertUserToDSL(convertInternalToUser(internalRules))).toBe("ReplyCount(value=5)");
   });
 
   it("drops legacy ID prefixes when converting internal rules to user-facing rules", () => {

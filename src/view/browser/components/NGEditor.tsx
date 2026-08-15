@@ -72,9 +72,9 @@ export interface NGEditorProps {
 }
 
 export const NG_DSL_EXAMPLE = `// 基本の部分一致NG
-Body(word="荒らし")
+Body(value="荒らし")
 
-// word= は省略可能（Body(荒らし)も同じ意味）
+// value= は省略可能（Body(荒らし)も同じ意味）
 Body("荒らし")
 
 /* ブロックコメントも使用可能
@@ -90,6 +90,9 @@ ID(abc123)
 
 // URLを正規表現でNG
 RegExpUrl("https?://(?:x|twitter)\\\\.com/.+")
+
+// 返信（安価）が5件以上のレスをNG
+ReplyCount(value=5)
 
 // 10回以上の画像連投を正規表現でNG
 RegExpBody("(imgur.com/.+?){10}")`;

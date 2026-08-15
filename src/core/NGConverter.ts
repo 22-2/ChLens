@@ -7,7 +7,17 @@ export interface NGRule {
   word: string;
   useRegex?: boolean;
   type?: "ng" | "highlight" | "auto";
-  target?: "all" | "title" | "name" | "mail" | "id" | "slip" | "body" | "url" | "res_count";
+  target?:
+    | "all"
+    | "title"
+    | "name"
+    | "mail"
+    | "id"
+    | "slip"
+    | "body"
+    | "url"
+    | "res_count"
+    | "reply_count";
   scope?: string[];
   highlightParams?: {
     bgColor?: string;
@@ -59,6 +69,9 @@ export function convertUserToInternal(rules: NGRule[]): InternalNGElement[] {
           break;
         case "res_count":
           targetType = TYPE.RES_COUNT;
+          break;
+        case "reply_count":
+          targetType = TYPE.REPLY_COUNT;
           break;
         default:
           targetType = isReg ? TYPE.REG_EXP : TYPE.WORD;
@@ -136,6 +149,7 @@ export function convertInternalToUser(internalObjs: InternalNGElement[]): NGRule
     else if (typeStr.includes("Body")) rule.target = "body";
     else if (typeStr.includes("Url")) rule.target = "url";
     else if (typeStr === TYPE.RES_COUNT) rule.target = "res_count";
+    else if (typeStr === TYPE.REPLY_COUNT) rule.target = "reply_count";
     else if (typeStr === TYPE.WORD || typeStr === TYPE.REG_EXP) rule.target = "all";
 
     if (rule.target === "id") {
@@ -230,6 +244,9 @@ export function convertUserToDSL(rules: NGRule[]): string {
           case "res_count":
             targetType = TYPE.RES_COUNT;
             break;
+          case "reply_count":
+            targetType = TYPE.REPLY_COUNT;
+            break;
           default:
             targetType = isReg ? TYPE.REG_EXP : TYPE.WORD;
         }
@@ -238,7 +255,7 @@ export function convertUserToDSL(rules: NGRule[]): string {
       const args: string[] = [];
 
       // 新DSLでは値を必ず named argument で持たせて、補完とシグネチャ表示を安定させる。
-      args.push(`word=${stringifyNgDslValue(rule.word)}`);
+      args.push(`value=${stringifyNgDslValue(rule.word)}`);
 
       if (rule.scope && rule.scope.length > 0) {
         args.push(`sites=${stringifyNgDslSitesValue(rule.scope)}`);

@@ -177,7 +177,7 @@ describe("useThreadResContextMenu", () => {
       fireEvent.click(screen.getByRole("button", { name: "add-ng-id" }));
     });
 
-    expect(mocks.ngAdd).toHaveBeenCalledWith("ID(word=abc123)");
+    expect(mocks.ngAdd).toHaveBeenCalledWith("ID(value=abc123)");
   });
 
   it("保存完了までは成功通知とローカル反映を進めない", async () => {
@@ -207,7 +207,7 @@ describe("useThreadResContextMenu", () => {
     });
 
     expect(screen.getByTestId("response-class")).toHaveTextContent("ng");
-    expect(mocks.toastInfo).toHaveBeenCalledWith("NGに追加しました: ID(word=abc123)");
+    expect(mocks.toastInfo).toHaveBeenCalledWith("NGに追加しました: ID(value=abc123)");
   });
 
   it("返信は書き込み欄を開いてアンカーを直接入力する", () => {

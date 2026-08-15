@@ -212,8 +212,8 @@ function createRuleSnippet(spec: NGDslRuleSpec): string {
   let placeholderIndex = 1;
 
   for (const parameter of spec.parameters) {
-    if (parameter.name === "word") {
-      args.push(`word="\${${placeholderIndex}:${spec.wordDescription}}"`);
+    if (parameter.name === "value") {
+      args.push(`value="\${${placeholderIndex}:${spec.valueDescription}}"`);
       placeholderIndex += 1;
     } else if (parameter.name === "sites") {
       continue;
@@ -233,7 +233,7 @@ function createRuleSnippet(spec: NGDslRuleSpec): string {
 }
 
 function createMultilineHighlightSnippet(spec: NGDslRuleSpec): string {
-  return `${spec.keyword}(\n  word="\${1:\${spec.wordDescription}}"\n  sites=[\n    \${2:eddibb.cc}\n    \${3:5ch.net}\n  ]\n  bgColor=\${4:red}\n  label="\${5:注目}"\n  disabled=\${6:false}\n)`;
+  return `${spec.keyword}(\n  value="\${1:\${spec.valueDescription}}"\n  sites=[\n    \${2:eddibb.cc}\n    \${3:5ch.net}\n  ]\n  bgColor=\${4:red}\n  label="\${5:注目}"\n  disabled=\${6:false}\n)`;
 }
 
 function createRuleCompletionItems(
@@ -247,7 +247,7 @@ function createRuleCompletionItems(
     kind: monaco.languages.CompletionItemKind.Function,
     detail: spec.description,
     documentation: createMarkdown(
-      `${spec.keyword}: ${spec.description}\n\n値: ${spec.wordDescription}`,
+      `${spec.keyword}: ${spec.description}\n\n値: ${spec.valueDescription}`,
     ),
     insertText: createRuleSnippet(spec),
     insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
@@ -273,8 +273,8 @@ function createRuleCompletionItems(
 
 function createParameterSnippet(parameter: NGDslParameterSpec): string {
   switch (parameter.name) {
-    case "word":
-      return 'word="${1:キーワード}"';
+    case "value":
+      return 'value="${1:キーワード}"';
     case "sites":
       return "sites=${1:eddibb.cc}";
     case "bgColor":
@@ -388,7 +388,7 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
         [/^\s*\/\/.*/, "comment"],
         [/^\s*(?:attachName|expireDate|ignoreResNumber|ignoreNgType):/, "keyword"],
         [new RegExp(`\\b(?:${keywordPattern})\\b`), "type.identifier"],
-        [/\b(?:word|sites|scope|bgColor|label|disabled)\b(?=\s*=)/, "attribute.name"],
+        [/\b(?:value|word|sites|scope|bgColor|label|disabled)\b(?=\s*=)/, "attribute.name"],
         [new RegExp(`\\b(?:${colorPattern})\\b`), "string"],
         [/#(?:[0-9a-fA-F]{6})\b/, "number.hex"],
         [/\b\d{4}\/\d{1,2}\/\d{1,2}\b/, "number"],
@@ -500,7 +500,7 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
             {
               label: buildSignatureLabel(argumentContext.spec),
               documentation: createMarkdown(
-                `${argumentContext.spec.description}\n\n値: ${argumentContext.spec.wordDescription}`,
+                `${argumentContext.spec.description}\n\n値: ${argumentContext.spec.valueDescription}`,
               ),
               parameters: argumentContext.spec.parameters.map((parameter) => ({
                 label: parameter.name,

@@ -1,5 +1,6 @@
 import { container } from "src/service-container/index";
 import Thread from "src/core/Thread.js";
+import { buildReplyIndexes } from "src/core/reply-index";
 
 /**
  * @typedef {import("../service-container/interfaces").IThreadService} IThreadService
@@ -42,12 +43,31 @@ class ThreadServiceImpl {
    * @returns {IThreadDetail}
    */
   _formatResult(thread) {
+    const parsedResponses = (thread.res || []).map((/** @type {any} */ r, /** @type {number} */ i) =>
+      this._parseRes(r, i + 1),
+    );
+    const replyIndexes = buildReplyIndexes(parsedResponses);
+    const title = thread.title || "";
+    const url = thread.url.url.href;
+
     return {
-      url: thread.url.url.href,
+      url,
       title: thread.title,
-      res: (thread.res || []).map((/** @type {any} */ r, /** @type {number} */ i) =>
-        this._parseRes(r, i + 1, thread.title, thread.url.url.href),
-      ),
+      // 返信数を全レスから先に索引化してからNG判定する。
+      // レス単位のパース中に判定すると、後続レスの安価を数えられず、
+      // 自動更新で閾値を超えたレスだけNGにならないため。
+      res: parsedResponses.map((/** @type {IRes} */ res) => ({
+        ...res,
+        ng:
+          container.ng.isNGThread(
+            {
+              ...res,
+              replyCount: replyIndexes.repIndex.get(res.num)?.size ?? 0,
+            },
+            title,
+            url,
+          ) || undefined,
+      })),
       expired: !!thread.expired,
       missingFromSubject: !!thread.missingFromSubject,
     };
@@ -58,11 +78,9 @@ class ThreadServiceImpl {
    * @private
    * @param {any} rawRes
    * @param {number} num
-   * @param {string} title
-   * @param {string} url
    * @returns {IRes}
    */
-  _parseRes(rawRes, num, title, url) {
+  _parseRes(rawRes, num) {
     /** @type {IRes} */
     const res = {
       ...rawRes,
@@ -121,9 +139,6 @@ class ThreadServiceImpl {
         res.be = beMatch[0];
       }
     }
-    // NG Check
-    res.ng = container.ng.isNGThread(res, title, url) || undefined;
-
     return res;
   }
 }

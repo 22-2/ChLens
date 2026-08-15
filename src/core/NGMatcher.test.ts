@@ -9,6 +9,38 @@ vi.mock("src/core/jsutil", () => ({
 
 describe("NGMatcher", () => {
   describe("checkWord", () => {
+    it("matches ReplyCount when the reply threshold is reached", () => {
+      expect(
+        checkWord(
+          { type: TYPE.REPLY_COUNT, word: "3" },
+          {
+            replyCount: 3,
+            all: "",
+            name: "",
+            mail: "",
+            mes: "",
+            title: "",
+            url: "",
+          },
+        ),
+      ).toBe(TYPE.REPLY_COUNT);
+
+      expect(
+        checkWord(
+          { type: TYPE.REPLY_COUNT, word: "3" },
+          {
+            replyCount: 2,
+            all: "",
+            name: "",
+            mail: "",
+            mes: "",
+            title: "",
+            url: "",
+          },
+        ),
+      ).toBeNull();
+    });
+
     it("should match ID NG", () => {
       const result = checkWord(
         { type: TYPE.ID, word: "TestImage" },

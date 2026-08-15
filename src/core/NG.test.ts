@@ -122,6 +122,36 @@ describe("NG DSL parsing", () => {
     });
   });
 
+  it("parses ReplyCount and matches the reply threshold", async () => {
+    configStore.clear();
+    const { isNGThread, parse, TYPE } = await import("src/core/NG");
+
+    const rules = Array.from(parse("ReplyCount(value=3)"));
+    expect(rules).toHaveLength(1);
+    expect(rules[0]).toMatchObject({
+      type: TYPE.REPLY_COUNT,
+      word: "3",
+    });
+
+    configStore.set("ngwords", "ReplyCount(value=3)");
+    const { invalidateCache } = await import("src/core/NG");
+    invalidateCache();
+
+    const baseRes = {
+      num: 10,
+      name: "name",
+      mail: "",
+      message: "本文",
+      other: "",
+    };
+    expect(
+      isNGThread({ ...baseRes, replyCount: 2 }, "title", "https://example.com/thread"),
+    ).toBeNull();
+    expect(
+      isNGThread({ ...baseRes, replyCount: 3 }, "title", "https://example.com/thread"),
+    ).toMatchObject({ type: TYPE.REPLY_COUNT });
+  });
+
   it("accepts the RegExpID keyword alias using new DSL", async () => {
     configStore.clear();
     const { parse, TYPE } = await import("src/core/NG");

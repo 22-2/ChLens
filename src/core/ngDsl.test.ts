@@ -19,7 +19,7 @@ describe("NG DSL helpers", () => {
     ]);
   });
 
-  it("parses named arguments including word and sites arrays", () => {
+  it("parses named arguments including value and sites arrays", () => {
     const extracted = extractNgDslFunctionCall(
       `RegExpHighlightTitle(\n  word="VTuber"\n  sites=[\n    eddibb.cc\n    5ch.net\n  ]\n  bgColor=red\n  label=注目\n)`,
     );
@@ -27,7 +27,7 @@ describe("NG DSL helpers", () => {
     expect(extracted).not.toBeNull();
     expect(extracted?.keyword).toBe("RegExpHighlightTitle");
     expect(parseNgDslArguments(extracted?.argsSource ?? "")).toEqual({
-      word: "VTuber",
+      value: "VTuber",
       scope: ["eddibb.cc", "5ch.net"],
       params: {
         bgColor: "red",
@@ -36,17 +36,17 @@ describe("NG DSL helpers", () => {
     });
   });
 
-  it("treats the first bare argument as word when using the new function-only DSL", () => {
+  it("treats the first bare argument as value when using the new function-only DSL", () => {
     const extracted = extractNgDslFunctionCall(
       `RegExpHighlightTitle("VTuber" sites=[eddibb.cc 5ch.net] bgColor=red)`,
     );
 
     expect(
       parseNgDslArguments(extracted?.argsSource ?? "", {
-        positionalWord: true,
+        positionalValue: true,
       }),
     ).toEqual({
-      word: "VTuber",
+      value: "VTuber",
       scope: ["eddibb.cc", "5ch.net"],
       params: {
         bgColor: "red",
@@ -77,7 +77,15 @@ describe("NG DSL helpers", () => {
     const extracted = extractNgDslFunctionCall('RegExpBody(word="(imgur\\\\.com\\\\/.+?){15}")');
 
     expect(parseNgDslArguments(extracted?.argsSource ?? "")).toEqual({
-      word: "(imgur\\.com\\/.+?){15}",
+      value: "(imgur\\.com\\/.+?){15}",
+    });
+  });
+
+  it("accepts word as a legacy alias for value", () => {
+    const extracted = extractNgDslFunctionCall('Body(word="荒らし")');
+
+    expect(parseNgDslArguments(extracted?.argsSource ?? "")).toEqual({
+      value: "荒らし",
     });
   });
 

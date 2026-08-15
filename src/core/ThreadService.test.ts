@@ -1,0 +1,50 @@
+import { describe, expect, it, vi } from "vite-plus/test";
+
+const mocks = vi.hoisted(() => ({
+  isNGThread: vi.fn(),
+}));
+
+vi.mock("src/service-container/index", () => ({
+  container: {
+    ng: {
+      isNGThread: mocks.isNGThread,
+    },
+  },
+}));
+
+vi.mock("src/core/Thread.js", () => ({
+  default: class Thread {},
+}));
+
+interface FormattedResponse {
+  ng?: unknown;
+}
+
+interface ThreadServiceLike {
+  _formatResult(thread: unknown): { res: FormattedResponse[] };
+}
+
+describe("ThreadService", () => {
+  it("builds the full reply index before applying response NG", async () => {
+    mocks.isNGThread.mockImplementation((res: { replyCount?: number }) =>
+      res.replyCount != null && res.replyCount >= 2 ? { type: "ReplyCount" } : null,
+    );
+
+    const { default: threadService } = await import("src/core/ThreadService.js");
+    const service = threadService as unknown as ThreadServiceLike;
+    const result = service._formatResult({
+      title: "title",
+      url: { url: { href: "https://example.com/test/read.cgi/board/1/" } },
+      res: [
+        { name: "", mail: "", message: "本文", other: "" },
+        { name: "", mail: "", message: "&gt;&gt;1", other: "" },
+        { name: "", mail: "", message: "&gt;&gt;1", other: "" },
+      ],
+    });
+
+    expect(result.res[0]?.ng).toEqual({ type: "ReplyCount" });
+    expect(result.res[1]?.ng).toBeUndefined();
+    expect(result.res[2]?.ng).toBeUndefined();
+    expect(mocks.isNGThread).toHaveBeenCalledTimes(3);
+  });
+});

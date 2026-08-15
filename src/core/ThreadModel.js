@@ -109,7 +109,7 @@ export default class ThreadModel {
     }
 
     // Process Anchors
-    this.processAnchors(res);
+    const replyTargets = this.processAnchors(res);
 
     // NG Check
     const ngObj = this.checkNG(res, bbsType);
@@ -120,6 +120,10 @@ export default class ThreadModel {
     }
 
     this.resData.set(resNum, res);
+
+    // 返信先が既存レスなら、今回の安価で返信数NGの閾値を超える可能性がある。
+    // addRes は逐次追加経路でも使われるため、全体refreshを待たず対象だけ再判定する。
+    this._refreshReplyCountNgTargets(replyTargets, bbsType);
 
     // Run Chain NG (incremental)
     this._runChainNG();
@@ -218,11 +222,13 @@ export default class ThreadModel {
   /**
    * Processes anchors in the message and updates reply indices.
    * @param {IRes} res
+   * @returns {Set<number>} The response numbers referenced by this response.
    */
   processAnchors(res) {
     const resNum = res.num;
     const anchors = res.message.match(AnchorParser.REG.ANCHOR);
-    if (!anchors) return;
+    const replyTargets = new Set();
+    if (!anchors) return replyTargets;
 
     for (const ancStr of anchors) {
       const anchor = AnchorParser.parse(ancStr);
@@ -238,10 +244,32 @@ export default class ThreadModel {
             if (!this.ancIndex.has(resNum)) this.ancIndex.set(resNum, new Set());
             const aset = this.ancIndex.get(resNum);
             if (aset) aset.add(target);
+            replyTargets.add(target);
             target++;
           }
         }
       }
+    }
+
+    return replyTargets;
+  }
+
+  /**
+   * @private
+   * @param {Set<number>} replyTargets
+   * @param {string} bbsType
+   */
+  _refreshReplyCountNgTargets(replyTargets, bbsType) {
+    for (const target of replyTargets) {
+      const targetRes = this.resData.get(target);
+      if (!targetRes || targetRes.class?.includes("ng")) continue;
+
+      const ngObj = this.checkNG(targetRes, bbsType);
+      if (!ngObj) continue;
+
+      targetRes.ng = ngObj;
+      targetRes.class?.push("ng");
+      this._handleNgDependencies(targetRes, ngObj);
     }
   }
 
@@ -253,9 +281,16 @@ export default class ThreadModel {
   checkNG(res, bbsType) {
     if (this.over1000ResNum != null && res.num >= this.over1000ResNum) return null;
 
+    // 返信数NGは後続レスのアンカーも含めて判定するため、
+    // ThreadModelの返信索引から一時的な判定用フィールドを組み立てる。
+    const resForNg = {
+      ...res,
+      replyCount: this.repIndex.get(res.num)?.size ?? 0,
+    };
+
     // Word/Thread NG
-    let ngObj = container.ng.isNGThread(res, this.title, this.urlStr);
-    if (ngObj && !container.ng.isThreadIgnoreNgType(res, this.title, this.urlStr, ngObj.type)) {
+    let ngObj = container.ng.isNGThread(resForNg, this.title, this.urlStr);
+    if (ngObj && !container.ng.isThreadIgnoreNgType(resForNg, this.title, this.urlStr, ngObj.type)) {
       return ngObj;
     }
 
@@ -270,7 +305,7 @@ export default class ThreadModel {
       ) {
         if (
           !container.ng.isIgnoreResNumForAuto(res.num, "NothingID") &&
-          !container.ng.isThreadIgnoreNgType(res, this.title, this.urlStr, "NothingID")
+          !container.ng.isThreadIgnoreNgType(resForNg, this.title, this.urlStr, "NothingID")
         ) {
           return { type: "NothingID" };
         }
@@ -284,7 +319,7 @@ export default class ThreadModel {
       ) {
         if (
           !container.ng.isIgnoreResNumForAuto(res.num, "NothingSLIP") &&
-          !container.ng.isThreadIgnoreNgType(res, this.title, this.urlStr, "NothingSLIP")
+          !container.ng.isThreadIgnoreNgType(resForNg, this.title, this.urlStr, "NothingSLIP")
         ) {
           return { type: "NothingSLIP" };
         }
@@ -295,7 +330,7 @@ export default class ThreadModel {
     if (container.config.get("chain_ng_id") && res.id && this._ngIdForChain.has(res.id)) {
       if (
         !container.ng.isIgnoreResNumForAuto(res.num, "ChainID") &&
-        !container.ng.isThreadIgnoreNgType(res, this.title, this.urlStr, "ChainID")
+        !container.ng.isThreadIgnoreNgType(resForNg, this.title, this.urlStr, "ChainID")
       ) {
         return { type: "ChainID" };
       }
@@ -303,7 +338,7 @@ export default class ThreadModel {
     if (container.config.get("chain_ng_slip") && res.slip && this._ngSlipForChain.has(res.slip)) {
       if (
         !container.ng.isIgnoreResNumForAuto(res.num, "ChainSLIP") &&
-        !container.ng.isThreadIgnoreNgType(res, this.title, this.urlStr, "ChainSLIP")
+        !container.ng.isThreadIgnoreNgType(resForNg, this.title, this.urlStr, "ChainSLIP")
       ) {
         return { type: "ChainSLIP" };
       }
@@ -320,7 +355,7 @@ export default class ThreadModel {
         if (rset.size >= repeatCount) {
           if (
             !container.ng.isIgnoreResNumForAuto(res.num, "RepeatMessage") &&
-            !container.ng.isThreadIgnoreNgType(res, this.title, this.urlStr, "RepeatMessage")
+            !container.ng.isThreadIgnoreNgType(resForNg, this.title, this.urlStr, "RepeatMessage")
           ) {
             return { type: "RepeatMessage" };
           }

@@ -67,13 +67,13 @@ const _getNgElement = function (ngWord: string): InternalNGElement | null {
 
   const functionCall = extractNgDslFunctionCall(ngWord);
   if (functionCall) {
-    const { word, scope, params } = parseNgDslArguments(functionCall.argsSource, {
-      positionalWord: functionCall.valueSource == null,
+    const { value, scope, params } = parseNgDslArguments(functionCall.argsSource, {
+      positionalValue: functionCall.valueSource == null,
     });
 
     const normalizedKeyword = normalizeNgDslKeyword(functionCall.keyword);
     ngElement.type = normalizedKeyword;
-    const rawWord = word ?? functionCall.valueSource ?? "";
+    const rawWord = value ?? functionCall.valueSource ?? "";
     // 変更理由: 正規表現型のwordをnormalizeすると、カタカナ→ひらがな・小文字化・空白除去・NFKCで
     // パターン自体が壊れてしまう(例: ラノベ→らのべ で生タイトルと不一致、\S→\s、スペース消失)。
     // 正規表現は文字通り扱い(照合側の生フィールドへtest)、.includes()系の非正規表現型のみ

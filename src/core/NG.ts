@@ -280,6 +280,10 @@ export function isNGThread(
     mes,
     title,
     url,
+    replyCount:
+      typeof resObj_raw.replyCount === "number" && Number.isFinite(resObj_raw.replyCount)
+        ? resObj_raw.replyCount
+        : undefined,
   };
 
   const ctx: CommonFilterContext = { url, exceptionFlg, subType };

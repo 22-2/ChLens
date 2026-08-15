@@ -1,4 +1,5 @@
 import MessageProcessor from "src/core/MessageProcessor";
+import { parseReplyAnchorTargets } from "src/core/reply-index";
 import type { IRes } from "src/service-container";
 import { isInlineVideoEmbedUrl } from "src/view/browser/utils/external-media";
 
@@ -25,31 +26,7 @@ function decodeCharReferences(text: string): string {
 
 // --- アンカーパーサ ---
 // MessageProcessor由来のHTML内のアンカー（>>N）から参照先レス番号を抽出する
-const ANCHOR_REG =
-  /(?:&gt;|＞){1,2}([\d\uff10-\uff19]+(?:[-\u30fc][\d\uff10-\uff19]+)?(?:\s*[,、]\s*[\d\uff10-\uff19]+(?:[-\u30fc][\d\uff10-\uff19]+)?)*)/g;
-const FW_NUM_REG = /[\uff10-\uff19]/g;
-export function parseAnchors(message: string): number[] {
-  const targets: number[] = [];
-  ANCHOR_REG.lastIndex = 0;
-  let match;
-  while ((match = ANCHOR_REG.exec(message)) !== null) {
-    const raw = match[1].replace(FW_NUM_REG, (c) =>
-      String.fromCharCode(c.charCodeAt(0) - 0xff10 + 0x30),
-    );
-    const parts = raw.split(/\s*[,、]\s*/);
-    for (const part of parts) {
-      const range = part.split(/[-\u30fc]/);
-      const start = parseInt(range[0], 10);
-      const end = range.length > 1 ? parseInt(range[1], 10) : start;
-      // 25件以上の範囲指定は無視（既存動作に合わせる）
-      if (isNaN(start) || isNaN(end) || end - start >= 25) continue;
-      for (let i = start; i <= end; i++) {
-        targets.push(i);
-      }
-    }
-  }
-  return targets;
-}
+export const parseAnchors = parseReplyAnchorTargets;
 // HTMLからテキストを抽出（検索フィルタ・コピー用）
 // <br> は改行に変換してからタグを除去することで、コピー時に改行が反映されるようにする
 export function stripHtml(html: string): string {
@@ -168,7 +145,7 @@ export function parseAnchorDisplayTargets(text: string): number[] {
   const parts = raw.split(/\s*[,、]\s*/);
   for (const part of parts) {
     const range = part
-      .replace(FW_NUM_REG, (c) => String.fromCharCode(c.charCodeAt(0) - 0xff10 + 0x30))
+      .replace(/[\uff10-\uff19]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xff10 + 0x30))
       .split(/[-\u30fc]/);
     const start = parseInt(range[0], 10);
     const end = range.length > 1 ? parseInt(range[1], 10) : start;

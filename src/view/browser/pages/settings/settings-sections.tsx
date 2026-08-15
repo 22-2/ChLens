@@ -261,7 +261,7 @@ export const SETTINGS_SECTIONS = [
         key: "ngwords",
         title: "NGワード一覧",
         description:
-          'NGワードを1行に1つずつ記述します。説明文は // で始めるとメモとして残せます。（例: 「Body(荒らし)」は「Body(word="荒らし")」と同じ意味です）。詳しくは下の例を参照してください。',
+          'NGルールを1行に1つずつ記述します。説明文は // で始めるとメモとして残せます。（例: 「Body(荒らし)」は「Body(value="荒らし")」と同じ意味です）。詳しくは下の例を参照してください。',
         widget: "ng_editor",
       },
       {

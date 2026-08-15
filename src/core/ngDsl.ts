@@ -41,7 +41,7 @@ export const NG_HIGHLIGHT_COLOR_PRESET_ITEMS = Object.entries(NG_HIGHLIGHT_COLOR
   }),
 );
 
-export type NGDslParameterName = "word" | "sites" | "bgColor" | "label" | "disabled";
+export type NGDslParameterName = "value" | "sites" | "bgColor" | "label" | "disabled";
 
 export interface NGDslParameterSpec {
   readonly name: NGDslParameterName;
@@ -53,14 +53,15 @@ export interface NGDslRuleSpec {
   readonly keyword: NGType;
   readonly aliases?: readonly string[];
   readonly description: string;
-  readonly wordDescription: string;
+  readonly valueDescription: string;
   readonly parameters: readonly NGDslParameterSpec[];
 }
 
-const WORD_PARAMETER: NGDslParameterSpec = {
-  name: "word",
-  detail: "マッチ文字列",
-  documentation: 'マッチさせる文字列または正規表現です。編集時は word="VTuber" のように書けます。',
+const VALUE_PARAMETER: NGDslParameterSpec = {
+  name: "value",
+  detail: "判定する値",
+  documentation:
+    'マッチさせる文字列・数値・正規表現です。編集時は value="VTuber" のように書けます。',
 };
 
 const SITES_PARAMETER: NGDslParameterSpec = {
@@ -90,28 +91,28 @@ const DISABLED_PARAMETER: NGDslParameterSpec = {
     "true にするとルールが無効になります。ngDSL入力欄で一時的にルールを無効化したいときなどに便利です。",
 };
 
-const DEFAULT_RULE_PARAMETERS = [WORD_PARAMETER, SITES_PARAMETER, DISABLED_PARAMETER] as const;
+const DEFAULT_RULE_PARAMETERS = [VALUE_PARAMETER, SITES_PARAMETER, DISABLED_PARAMETER] as const;
 
 export const NG_DSL_RULE_SPECS: readonly NGDslRuleSpec[] = [
   {
     // ルール識別子はNGTypesに集約し、DSLだけの独自文字列と乖離しないようにする。
     keyword: TYPE.REG_EXP,
     description: "全文を正規表現でNGにします。",
-    wordDescription: "正規表現",
+    valueDescription: "正規表現",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
   {
     keyword: TYPE.REG_EXP_TITLE,
     description: "タイトルを正規表現でNGにします。",
-    wordDescription: "正規表現",
+    valueDescription: "正規表現",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
   {
     keyword: TYPE.REG_EXP_HIGHLIGHT_TITLE,
     description: "タイトルを正規表現でハイライトします。",
-    wordDescription: "正規表現",
+    valueDescription: "正規表現",
     parameters: [
-      WORD_PARAMETER,
+      VALUE_PARAMETER,
       SITES_PARAMETER,
       BGCOLOR_PARAMETER,
       LABEL_PARAMETER,
@@ -121,52 +122,52 @@ export const NG_DSL_RULE_SPECS: readonly NGDslRuleSpec[] = [
   {
     keyword: TYPE.REG_EXP_NAME,
     description: "名前欄を正規表現でNGにします。",
-    wordDescription: "正規表現",
+    valueDescription: "正規表現",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
   {
     keyword: TYPE.REG_EXP_MAIL,
     description: "メール欄を正規表現でNGにします。",
-    wordDescription: "正規表現",
+    valueDescription: "正規表現",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
   {
     keyword: TYPE.REG_EXP_ID,
     aliases: ["RegExpID"],
     description: "ID を正規表現でNGにします。",
-    wordDescription: "正規表現",
+    valueDescription: "正規表現",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
   {
     keyword: TYPE.REG_EXP_SLIP,
     description: "SLIP を正規表現でNGにします。",
-    wordDescription: "正規表現",
+    valueDescription: "正規表現",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
   {
     keyword: TYPE.REG_EXP_BODY,
     description: "本文を正規表現でNGにします。",
-    wordDescription: "正規表現",
+    valueDescription: "正規表現",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
   {
     keyword: TYPE.REG_EXP_URL,
     description: "URL を正規表現でNGにします。",
-    wordDescription: "正規表現",
+    valueDescription: "正規表現",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
   {
     keyword: TYPE.TITLE,
     description: "タイトルを部分一致でNGにします。",
-    wordDescription: "キーワード",
+    valueDescription: "キーワード",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
   {
     keyword: TYPE.HIGHLIGHT_TITLE,
     description: "タイトルを部分一致でハイライトします。",
-    wordDescription: "キーワード",
+    valueDescription: "キーワード",
     parameters: [
-      WORD_PARAMETER,
+      VALUE_PARAMETER,
       SITES_PARAMETER,
       BGCOLOR_PARAMETER,
       LABEL_PARAMETER,
@@ -176,44 +177,50 @@ export const NG_DSL_RULE_SPECS: readonly NGDslRuleSpec[] = [
   {
     keyword: TYPE.NAME,
     description: "名前欄を部分一致でNGにします。",
-    wordDescription: "キーワード",
+    valueDescription: "キーワード",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
   {
     keyword: TYPE.MAIL,
     description: "メール欄を部分一致でNGにします。",
-    wordDescription: "キーワード",
+    valueDescription: "キーワード",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
   {
     keyword: TYPE.ID,
     aliases: ["Id", "id"],
     description: "ID を部分一致でNGにします。",
-    wordDescription: "ID",
+    valueDescription: "ID",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
   {
     keyword: TYPE.SLIP,
     description: "SLIP を部分一致でNGにします。",
-    wordDescription: "SLIP",
+    valueDescription: "SLIP",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
   {
     keyword: TYPE.BODY,
     description: "本文を部分一致でNGにします。",
-    wordDescription: "キーワード",
+    valueDescription: "キーワード",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
   {
     keyword: TYPE.URL,
     description: "URL を部分一致でNGにします。",
-    wordDescription: "URL",
+    valueDescription: "URL",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
   {
     keyword: TYPE.RES_COUNT,
     description: "レス数でスレッドをNGにします。",
-    wordDescription: "レス数",
+    valueDescription: "レス数のしきい値",
+    parameters: DEFAULT_RULE_PARAMETERS,
+  },
+  {
+    keyword: TYPE.REPLY_COUNT,
+    description: "そのレスへの返信数がしきい値以上のレスをNGにします。",
+    valueDescription: "返信数のしきい値",
     parameters: DEFAULT_RULE_PARAMETERS,
   },
 ] as const;
@@ -228,7 +235,9 @@ for (const spec of NG_DSL_RULE_SPECS) {
 }
 
 const NG_DSL_PARAMETER_ALIASES = new Map<string, NGDslParameterName>([
-  ["word", "word"],
+  ["value", "value"],
+  // `word` は既存設定との互換性のためだけに受け付け、新しいDSLでは `value` を使う。
+  ["word", "value"],
   ["sites", "sites"],
   ["scope", "sites"],
   ["bgcolor", "bgColor"],
@@ -418,13 +427,13 @@ export function parseNgDslScopeValue(value: string): string[] | undefined {
 }
 
 export interface ParsedNgDslArguments {
-  word?: string;
+  value?: string;
   scope?: string[];
   params?: Record<string, string>;
 }
 
 interface ParseNgDslArgumentsOptions {
-  positionalWord?: boolean;
+  positionalValue?: boolean;
 }
 
 export function parseNgDslArguments(
@@ -433,7 +442,7 @@ export function parseNgDslArguments(
 ): ParsedNgDslArguments {
   const args = splitNgDslTopLevel(argsSource, [",", "\n", "\r", " ", "\t"]);
   const params: Record<string, string> = {};
-  let word: string | undefined;
+  let parsedValue: string | undefined;
   let scope: string[] | undefined;
 
   for (const arg of args) {
@@ -443,10 +452,10 @@ export function parseNgDslArguments(
 
     const assignmentIndex = findTopLevelAssignmentIndex(arg);
     if (assignmentIndex < 0) {
-      // 新DSLでは先頭の裸引数を word と見なせるようにして、
-      // `word=` の明示と短い入力の両方を両立させる。
-      if (options.positionalWord && word == null) {
-        word = stripOptionalQuotes(arg);
+      // 新DSLでは先頭の裸引数を value と見なせるようにして、
+      // `value=` の明示と短い入力の両方を両立させる。
+      if (options.positionalValue && parsedValue == null) {
+        parsedValue = stripOptionalQuotes(arg);
         continue;
       }
 
@@ -463,8 +472,8 @@ export function parseNgDslArguments(
     }
 
     const key = normalizeNgDslParameterName(rawKey);
-    if (key === "word") {
-      word = value;
+    if (key === "value") {
+      parsedValue = value;
       continue;
     }
 
@@ -482,7 +491,7 @@ export function parseNgDslArguments(
   }
 
   return {
-    ...(word != null ? { word } : {}),
+    ...(parsedValue != null ? { value: parsedValue } : {}),
     ...(scope != null ? { scope } : {}),
     ...(Object.keys(params).length > 0 ? { params } : {}),
   };

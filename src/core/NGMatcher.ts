@@ -24,11 +24,23 @@ export interface NGResObj {
   title: string;
   url: string;
   resCount?: number;
+  replyCount?: number;
 }
 
 export function checkWord(
   { type, reg, word }: InternalNGElement,
-  { all, name, mail, id, slip, mes, title, url, resCount }: Partial<NGResObj & NGThreadObj>,
+  {
+    all,
+    name,
+    mail,
+    id,
+    slip,
+    mes,
+    title,
+    url,
+    resCount,
+    replyCount,
+  }: Partial<NGResObj & NGThreadObj>,
 ): string | null {
   // キャッシュ(ngobj)からロードしたwordは正規化されていない場合があるため、
   // 比較対象と同じnormalizeを両辺に適用する。これにより全角/半角・カタカナ/ひらがな・
@@ -56,7 +68,8 @@ export function checkWord(
     (type === TYPE.BODY && normalize(mes || "").includes(normalizedWord)) ||
     (type === TYPE.WORD && normalize(all || "").includes(normalizedWord)) ||
     (type === TYPE.URL && (url || "").includes(word)) ||
-    (type === TYPE.RES_COUNT && resCount != null && parseInt(word, 10) < resCount)
+    (type === TYPE.RES_COUNT && resCount != null && parseInt(word, 10) < resCount) ||
+    (type === TYPE.REPLY_COUNT && replyCount != null && parseInt(word, 10) <= replyCount)
   ) {
     return type;
   }

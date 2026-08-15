@@ -10,6 +10,15 @@ vi.mock("src/core/jsutil", () => ({
 
 describe("NGParser", () => {
   it("should parse new DSL syntax correctly", () => {
+    const rules = Array.from(parseNgString('ID(value="abc")'));
+    expect(rules).toHaveLength(1);
+    expect(rules[0]).toMatchObject({
+      type: TYPE.ID,
+      word: "abc",
+    });
+  });
+
+  it("should keep accepting word as a legacy parameter alias", () => {
     const rules = Array.from(parseNgString('ID(word="abc")'));
     expect(rules).toHaveLength(1);
     expect(rules[0]).toMatchObject({
