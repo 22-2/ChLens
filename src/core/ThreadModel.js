@@ -1,11 +1,7 @@
 import { AnchorParser, MetadataParser } from "packages/ch-lib/src/index";
 import { container } from "src/service-container/index";
 import { replace as replaceStrTxt } from "src/core/ReplaceStrTxt.js";
-import {
-  getIdentityJudgment,
-  getRepeatMessageThreshold,
-  isAutoNgEnabled,
-} from "src/core/AutoNgPolicy";
+import { evaluateAutoNg, isAutoNgEnabled } from "src/core/AutoNgPolicy";
 
 /**
  * @typedef {import("../service-container/interfaces").IRes} IRes
@@ -302,76 +298,21 @@ export default class ThreadModel {
       return ngObj;
     }
 
-    if (bbsType === "2ch") {
-      const judgeType = getIdentityJudgment();
-      // Nothing ID
-      if (
-        isAutoNgEnabled("missingId") &&
-        !res.id &&
-        ((judgeType === "first_res" && this._existIdAtFirstRes) ||
-          (judgeType === "exists_once" && this.idIndex.size > 0))
-      ) {
-        if (
-          !container.ng.isIgnoreResNumForAuto(res.num, "NothingID") &&
-          !container.ng.isThreadIgnoreNgType(resForNg, this.title, this.urlStr, "NothingID")
-        ) {
-          return { type: "NothingID" };
-        }
-      }
-      // Nothing Slip
-      if (
-        isAutoNgEnabled("missingSlip") &&
-        !res.slip &&
-        ((judgeType === "first_res" && this._existSlipAtFirstRes) ||
-          (judgeType === "exists_once" && this.slipIndex.size > 0))
-      ) {
-        if (
-          !container.ng.isIgnoreResNumForAuto(res.num, "NothingSLIP") &&
-          !container.ng.isThreadIgnoreNgType(resForNg, this.title, this.urlStr, "NothingSLIP")
-        ) {
-          return { type: "NothingSLIP" };
-        }
-      }
-    }
-
-    // Chain ID/Slip
-    if (isAutoNgEnabled("chainId") && res.id && this._ngIdForChain.has(res.id)) {
-      if (
-        !container.ng.isIgnoreResNumForAuto(res.num, "ChainID") &&
-        !container.ng.isThreadIgnoreNgType(resForNg, this.title, this.urlStr, "ChainID")
-      ) {
-        return { type: "ChainID" };
-      }
-    }
-    if (isAutoNgEnabled("chainSlip") && res.slip && this._ngSlipForChain.has(res.slip)) {
-      if (
-        !container.ng.isIgnoreResNumForAuto(res.num, "ChainSLIP") &&
-        !container.ng.isThreadIgnoreNgType(resForNg, this.title, this.urlStr, "ChainSLIP")
-      ) {
-        return { type: "ChainSLIP" };
-      }
-    }
-
-    // Repeat Message
-    const repeatCount = getRepeatMessageThreshold();
-    if (repeatCount > 1) {
-      const cleanMsg = res.message.replace(/<[^>]+>/g, "").trim();
-      if (!this._resMessageMap.has(cleanMsg)) this._resMessageMap.set(cleanMsg, new Set());
-      const rset = this._resMessageMap.get(cleanMsg);
-      if (rset) {
-        rset.add(res.num);
-        if (rset.size >= repeatCount) {
-          if (
-            !container.ng.isIgnoreResNumForAuto(res.num, "RepeatMessage") &&
-            !container.ng.isThreadIgnoreNgType(resForNg, this.title, this.urlStr, "RepeatMessage")
-          ) {
-            return { type: "RepeatMessage" };
-          }
-        }
-      }
-    }
-
-    return null;
+    const autoNgType = evaluateAutoNg({
+      response: res,
+      bbsType,
+      existsIdAtFirstResponse: this._existIdAtFirstRes,
+      existsSlipAtFirstResponse: this._existSlipAtFirstRes,
+      hasAnyId: this.idIndex.size > 0,
+      hasAnySlip: this.slipIndex.size > 0,
+      chainedIds: this._ngIdForChain,
+      chainedSlips: this._ngSlipForChain,
+      repeatedMessages: this._resMessageMap,
+      canApply: (type) =>
+        !container.ng.isIgnoreResNumForAuto(res.num, type) &&
+        !container.ng.isThreadIgnoreNgType(resForNg, this.title, this.urlStr, type),
+    });
+    return autoNgType ? { type: autoNgType } : null;
   }
 
   /**

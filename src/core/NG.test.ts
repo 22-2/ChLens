@@ -25,10 +25,6 @@ vi.mock("src/core/jsutil", () => ({
   stringToDate: (value: string) => new Date(value.replace(/\//g, "-")),
 }));
 
-vi.mock("src/core/NGConverter", () => ({
-  convertUserToInternal: vi.fn(),
-}));
-
 describe("NG DSL parsing", () => {
   it("falls back to ngwords when ngobj is empty", async () => {
     configStore.clear();

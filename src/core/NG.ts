@@ -1,6 +1,5 @@
 import { decodeCharReference, stringToDate } from "src/core/jsutil";
 import { createLogger } from "src/core/logger";
-import { convertInternalToUser, convertUserToDSL } from "src/core/NGConverter";
 import { splitNgDslEntries } from "src/core/ngDsl";
 import { container, INGResult } from "src/service-container/index";
 
@@ -9,6 +8,8 @@ import { parseNgString, setupNgRegex } from "src/core/NGParser";
 import { InternalNGElement, TYPE } from "src/core/NGTypes";
 import { convertInternalToRules } from "src/core/rules/compiler";
 import { formatRuleDsl, parseRuleDsl } from "src/core/rules/dsl";
+import { clearRuleRegexCache, matchRules } from "src/core/rules/engine";
+import type { Rule, RuleTarget } from "src/core/rules/model";
 
 export { TYPE };
 
@@ -18,6 +19,7 @@ const _expireDate = /^expireDate:(\d{4}\/\d{1,2}\/\d{1,2}),(.*)$/;
 const GENERAL_DEBUG_CONFIG_KEY = "debug_log";
 
 let _ng: Set<InternalNGElement> | null = null;
+let _rules: readonly Rule[] | null = null;
 const logger = createLogger("NG");
 
 // ─── ヘルパー ────────────────────────────────────────────────
@@ -110,6 +112,8 @@ export function get(): Set<InternalNGElement> {
   if (ngString.trim() !== "") {
     // ユーザーが編集するDSLを正本とし、ngobjは旧版からの復元用キャッシュに限定する。
     // 両者が食い違った場合に古いngobjを優先すると、保存済みの記述が反映されないため。
+    const blockDsl = parseRuleDsl(ngString);
+    _rules = blockDsl.recognized && blockDsl.diagnostics.length === 0 ? blockDsl.rules : null;
     _ng = parse(ngString);
     void _config.set(Array.from(_ng));
     logger.debug("load.from_ngwords", {
@@ -117,9 +121,11 @@ export function get(): Set<InternalNGElement> {
       ruleCount: _ng.size,
     });
   } else if (ngObjectRules.length > 0) {
+    _rules = null;
     _ng = new Set(ngObjectRules);
     logger.debug("load.from_legacy_ngobj", { ruleCount: _ng.size });
   } else {
+    _rules = [];
     _ng = new Set();
     logger.debug("load.empty", { ruleCount: 0 });
   }
@@ -144,11 +150,15 @@ export function set(string: string): Promise<void> {
     });
     return Promise.reject(new Error(`NG設定に構文エラーがあります\n${details}`));
   }
+  _rules = parsedDsl.recognized ? parsedDsl.rules : null;
+  clearRuleRegexCache();
   return commitNg(parse(string));
 }
 
 export function invalidateCache(): void {
   _ng = null;
+  _rules = null;
+  clearRuleRegexCache();
 }
 
 export async function add(string: string): Promise<void> {
@@ -170,13 +180,16 @@ export async function add(string: string): Promise<void> {
   const currentString = _config.getString();
   const currentBlockDsl = parseRuleDsl(currentString);
   const blockRules = convertInternalToRules(Array.from(addNg));
-  const dslString =
-    currentBlockDsl.recognized && blockRules.length === addNg.size
-      ? formatRuleDsl(blockRules)
-      : convertUserToDSL(convertInternalToUser(Array.from(addNg)));
+  const useBlockDsl =
+    (currentBlockDsl.recognized || currentString.trim() === "") && blockRules.length === addNg.size;
+  const dslString = useBlockDsl ? formatRuleDsl(blockRules) : string.trim();
   if (dslString) {
     // 新ブロックDSLへ追加するときも同じ形式を維持し、旧行形式との混在を防ぐ。
     await _config.setString(dslString + (currentString ? "\n\n" + currentString : ""));
+    if (useBlockDsl) {
+      _rules = [...blockRules, ...currentBlockDsl.rules];
+      clearRuleRegexCache();
+    }
   }
 
   container.message.send("ng_changed");
@@ -195,6 +208,28 @@ const BOARD_ALLOWED_TYPES: ReadonlySet<string> = new Set([
   TYPE.URL,
   TYPE.RES_COUNT,
 ]);
+const BOARD_RULE_TARGETS: ReadonlySet<RuleTarget> = new Set(["all", "title", "url", "res-count"]);
+const BOARD_RULE_ACTIONS: ReadonlySet<Rule["action"]> = new Set(["hide", "highlight"]);
+const THREAD_RULE_TARGETS: ReadonlySet<RuleTarget> = new Set([
+  "all",
+  "title",
+  "body",
+  "name",
+  "mail",
+  "id",
+  "slip",
+  "url",
+  "reply-count",
+]);
+const THREAD_RULE_ACTIONS: ReadonlySet<Rule["action"]> = new Set(["hide"]);
+
+function onRuleRegexError(source: string, error: unknown): void {
+  logger.error("NG機能の正規表現を読み込めません", { source, error });
+  container.toast.notify(
+    `NG機能の正規表現(${source})を読み込むのに失敗しました\nこの条件は無効化されます`,
+    { backgroundColor: "red" },
+  );
+}
 
 export function isNGBoard(
   threadTitle: string,
@@ -203,6 +238,19 @@ export function isNGBoard(
   exceptionFlg: boolean = false,
   subType: string | null = null,
 ): INGResult | null {
+  get();
+  if (_rules != null) {
+    const matched = matchRules(
+      _rules,
+      { all: threadTitle, title: threadTitle, url, resCount },
+      BOARD_RULE_ACTIONS,
+      BOARD_RULE_TARGETS,
+      onRuleRegexError,
+    );
+    return matched
+      ? { type: matched.type, name: matched.rule.name, params: matched.params, disabled: false }
+      : null;
+  }
   const threadObj: Partial<NGResObj & NGThreadObj> = {
     // 変更理由: RegExp型を文字通り照合するため all は生タイトルを渡す。
     // Word型は checkWord 内で normalize(all) し直すため、生のままでも判定は変わらない。
@@ -304,6 +352,30 @@ export function isNGThread(
         ? resObj_raw.replyCount
         : undefined,
   };
+
+  get();
+  if (_rules != null && !exceptionFlg) {
+    const matched = matchRules(
+      _rules,
+      {
+        all: resObj.all,
+        title,
+        body: mes,
+        name,
+        mail,
+        id: resObj.id,
+        slip: resObj.slip,
+        url,
+        replyCount: resObj.replyCount,
+      },
+      THREAD_RULE_ACTIONS,
+      THREAD_RULE_TARGETS,
+      onRuleRegexError,
+    );
+    return matched
+      ? { type: matched.type, name: matched.rule.name, params: matched.params, disabled: false }
+      : null;
+  }
 
   const ctx: CommonFilterContext = { url, exceptionFlg, subType };
   const now = Date.now();

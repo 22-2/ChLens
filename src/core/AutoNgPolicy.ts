@@ -12,6 +12,27 @@ export const AUTO_NG_CONFIG_KEYS = {
 
 export type AutoNgToggle = "chain" | "chainId" | "chainSlip" | "missingId" | "missingSlip";
 export type IdentityJudgment = "first_res" | "exists_once" | "disabled";
+export type AutoNgType = "NothingID" | "NothingSLIP" | "ChainID" | "ChainSLIP" | "RepeatMessage";
+
+export interface AutoNgResponse {
+  readonly num: number;
+  readonly id?: string | null;
+  readonly slip?: string | null;
+  readonly message: string;
+}
+
+export interface AutoNgEvaluationContext {
+  readonly response: AutoNgResponse;
+  readonly bbsType: string;
+  readonly existsIdAtFirstResponse: boolean;
+  readonly existsSlipAtFirstResponse: boolean;
+  readonly hasAnyId: boolean;
+  readonly hasAnySlip: boolean;
+  readonly chainedIds: ReadonlySet<string>;
+  readonly chainedSlips: ReadonlySet<string>;
+  readonly repeatedMessages: Map<string, Set<number>>;
+  readonly canApply: (type: AutoNgType) => boolean;
+}
 
 /** 自動NGの設定キーを判定処理から隠し、設定名の追加・変更を一箇所へ閉じ込める。 */
 export function isAutoNgEnabled(policy: AutoNgToggle): boolean {
@@ -29,4 +50,61 @@ export function getRepeatMessageThreshold(): number {
     10,
   );
   return Number.isFinite(value) && value > 1 ? value : 0;
+}
+
+/** ThreadModelが保持する索引を入力として受け取り、自動NGの種類だけを決定する。 */
+export function evaluateAutoNg(context: AutoNgEvaluationContext): AutoNgType | null {
+  const { response } = context;
+  if (context.bbsType === "2ch") {
+    const judgment = getIdentityJudgment();
+    const idExpected =
+      (judgment === "first_res" && context.existsIdAtFirstResponse) ||
+      (judgment === "exists_once" && context.hasAnyId);
+    if (
+      isAutoNgEnabled("missingId") &&
+      !response.id &&
+      idExpected &&
+      context.canApply("NothingID")
+    ) {
+      return "NothingID";
+    }
+    const slipExpected =
+      (judgment === "first_res" && context.existsSlipAtFirstResponse) ||
+      (judgment === "exists_once" && context.hasAnySlip);
+    if (
+      isAutoNgEnabled("missingSlip") &&
+      !response.slip &&
+      slipExpected &&
+      context.canApply("NothingSLIP")
+    ) {
+      return "NothingSLIP";
+    }
+  }
+
+  if (
+    isAutoNgEnabled("chainId") &&
+    response.id &&
+    context.chainedIds.has(response.id) &&
+    context.canApply("ChainID")
+  ) {
+    return "ChainID";
+  }
+  if (
+    isAutoNgEnabled("chainSlip") &&
+    response.slip &&
+    context.chainedSlips.has(response.slip) &&
+    context.canApply("ChainSLIP")
+  ) {
+    return "ChainSLIP";
+  }
+
+  const repeatThreshold = getRepeatMessageThreshold();
+  if (repeatThreshold <= 1) return null;
+  const cleanMessage = response.message.replace(/<[^>]+>/gu, "").trim();
+  const responseNumbers = context.repeatedMessages.get(cleanMessage) ?? new Set<number>();
+  context.repeatedMessages.set(cleanMessage, responseNumbers);
+  responseNumbers.add(response.num);
+  return responseNumbers.size >= repeatThreshold && context.canApply("RepeatMessage")
+    ? "RepeatMessage"
+    : null;
 }

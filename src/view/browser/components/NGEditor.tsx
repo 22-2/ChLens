@@ -1,7 +1,6 @@
 import Editor, { loader, useMonaco } from "@monaco-editor/react";
 import React, { useEffect, useMemo } from "react";
 import { platform } from "src/app/platform";
-import { convertDSLToUser } from "src/core/NGConverter";
 import { NG_DSL_LANGUAGE_ID } from "src/core/ngDsl";
 import { ensureNgDslLanguage } from "src/view/browser/components/ngDslMonaco";
 import { useTheme } from "src/view/browser/hooks/use-theme";
@@ -227,21 +226,6 @@ export const NGEditor: React.FC<NGEditorProps> = ({ value, onChange }) => {
   const theme = useTheme();
   const monacoTheme = resolveMonacoTheme(theme);
 
-  const initialValue = useMemo(() => {
-    const trimmed = value.trim();
-    if (trimmed === "") {
-      return value;
-    }
-
-    try {
-      convertDSLToUser(value);
-      return value;
-    } catch (e) {
-      console.error("Failed to normalize NG rules as DSL", e);
-      return value;
-    }
-  }, [value]);
-
   useEffect(() => {
     // editor.main.js 側でMonacoEnvironmentが上書きされるケースがあるため、mount後にも再適用する
     configureMonacoEnvironment();
@@ -269,7 +253,7 @@ export const NGEditor: React.FC<NGEditorProps> = ({ value, onChange }) => {
         <Editor
           height="100%"
           defaultLanguage={NG_DSL_LANGUAGE_ID}
-          value={initialValue}
+          value={value}
           onChange={handleEditorChange}
           beforeMount={(beforeMountMonaco) => {
             configureMonacoEnvironment();

@@ -85,7 +85,7 @@ describe("NG persistence", () => {
     expect(mocks.configStore.get("ngobj")).toContain('"type":"ID"');
     expect(mocks.pendingWrites[0]).toMatchObject({
       key: "ngwords",
-      value: "ID(value=abc123)",
+      value: "hide id:\n  abc123",
     });
     expect(settled).toBe(false);
     expect(mocks.messageSend).not.toHaveBeenCalled();
