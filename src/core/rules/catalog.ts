@@ -118,7 +118,7 @@ export const RULE_TARGET_DEFINITIONS: Readonly<Record<RuleTarget, RuleTargetDefi
     name: "res-count",
     description: "スレッドのレス数",
     field: "resCount",
-    comparison: "greater-than",
+    comparison: "greater-than-or-equal",
     resultTypes: ["ResCount", "ResCount"],
     allowedOnBoard: true,
     allowedOnThread: false,

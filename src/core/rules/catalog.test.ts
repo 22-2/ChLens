@@ -11,7 +11,7 @@ describe("rule target catalog", () => {
     expect(definition).toMatchObject({
       name: "res-count",
       field: "resCount",
-      comparison: "greater-than",
+      comparison: "greater-than-or-equal",
       resultTypes: ["ResCount", "ResCount"],
       allowedOnBoard: true,
       allowedOnThread: false,
