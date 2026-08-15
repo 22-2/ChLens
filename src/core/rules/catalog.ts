@@ -26,8 +26,8 @@ export type RuleTargetComparison =
 export interface RuleTargetDefinition extends RuleCatalogEntry<RuleTarget> {
   readonly field: RuleTargetField;
   readonly comparison: RuleTargetComparison;
-  readonly legacyTypes: readonly [contains: string, regex: string];
-  readonly legacyHighlightTypes?: readonly [contains: string, regex: string];
+  readonly resultTypes: readonly [contains: string, regex: string];
+  readonly highlightResultTypes?: readonly [contains: string, regex: string];
   readonly allowedOnBoard: boolean;
   readonly allowedOnThread: boolean;
 }
@@ -46,7 +46,7 @@ export const RULE_TARGET_DEFINITIONS: Readonly<Record<RuleTarget, RuleTargetDefi
     description: "対象の全文",
     field: "all",
     comparison: "contains",
-    legacyTypes: ["Word", "RegExp"],
+    resultTypes: ["Word", "RegExp"],
     allowedOnBoard: true,
     allowedOnThread: true,
   },
@@ -55,8 +55,8 @@ export const RULE_TARGET_DEFINITIONS: Readonly<Record<RuleTarget, RuleTargetDefi
     description: "スレッドタイトル",
     field: "title",
     comparison: "contains",
-    legacyTypes: ["Title", "RegExpTitle"],
-    legacyHighlightTypes: ["HighlightTitle", "RegExpHighlightTitle"],
+    resultTypes: ["Title", "RegExpTitle"],
+    highlightResultTypes: ["HighlightTitle", "RegExpHighlightTitle"],
     allowedOnBoard: true,
     allowedOnThread: true,
   },
@@ -65,7 +65,7 @@ export const RULE_TARGET_DEFINITIONS: Readonly<Record<RuleTarget, RuleTargetDefi
     description: "レス本文",
     field: "body",
     comparison: "contains",
-    legacyTypes: ["Body", "RegExpBody"],
+    resultTypes: ["Body", "RegExpBody"],
     allowedOnBoard: false,
     allowedOnThread: true,
   },
@@ -74,7 +74,7 @@ export const RULE_TARGET_DEFINITIONS: Readonly<Record<RuleTarget, RuleTargetDefi
     description: "名前欄",
     field: "name",
     comparison: "contains",
-    legacyTypes: ["Name", "RegExpName"],
+    resultTypes: ["Name", "RegExpName"],
     allowedOnBoard: false,
     allowedOnThread: true,
   },
@@ -83,7 +83,7 @@ export const RULE_TARGET_DEFINITIONS: Readonly<Record<RuleTarget, RuleTargetDefi
     description: "メール欄",
     field: "mail",
     comparison: "contains",
-    legacyTypes: ["Mail", "RegExpMail"],
+    resultTypes: ["Mail", "RegExpMail"],
     allowedOnBoard: false,
     allowedOnThread: true,
   },
@@ -92,7 +92,7 @@ export const RULE_TARGET_DEFINITIONS: Readonly<Record<RuleTarget, RuleTargetDefi
     description: "投稿者ID",
     field: "id",
     comparison: "contains",
-    legacyTypes: ["ID", "RegExpId"],
+    resultTypes: ["ID", "RegExpId"],
     allowedOnBoard: false,
     allowedOnThread: true,
   },
@@ -101,7 +101,7 @@ export const RULE_TARGET_DEFINITIONS: Readonly<Record<RuleTarget, RuleTargetDefi
     description: "SLIP",
     field: "slip",
     comparison: "contains",
-    legacyTypes: ["Slip", "RegExpSlip"],
+    resultTypes: ["Slip", "RegExpSlip"],
     allowedOnBoard: false,
     allowedOnThread: true,
   },
@@ -110,27 +110,25 @@ export const RULE_TARGET_DEFINITIONS: Readonly<Record<RuleTarget, RuleTargetDefi
     description: "URL",
     field: "url",
     comparison: "url-contains",
-    legacyTypes: ["Url", "RegExpUrl"],
+    resultTypes: ["Url", "RegExpUrl"],
     allowedOnBoard: true,
     allowedOnThread: true,
   },
   "res-count": {
     name: "res-count",
-    aliases: ["res_count"],
     description: "スレッドのレス数",
     field: "resCount",
     comparison: "greater-than",
-    legacyTypes: ["ResCount", "ResCount"],
+    resultTypes: ["ResCount", "ResCount"],
     allowedOnBoard: true,
     allowedOnThread: false,
   },
   "reply-count": {
     name: "reply-count",
-    aliases: ["reply_count"],
     description: "レスへの返信数",
     field: "replyCount",
     comparison: "greater-than-or-equal",
-    legacyTypes: ["ReplyCount", "ReplyCount"],
+    resultTypes: ["ReplyCount", "ReplyCount"],
     allowedOnBoard: false,
     allowedOnThread: true,
   },
@@ -141,7 +139,7 @@ export const RULE_TARGET_CATALOG: readonly RuleTargetDefinition[] =
 
 export const RULE_OPTION_CATALOG: readonly RuleCatalogEntry<string>[] = [
   { name: "sites", description: "適用するサイトまたは板" },
-  { name: "color", aliases: ["bgColor"], description: "強調表示の背景色" },
+  { name: "color", description: "強調表示の背景色" },
   { name: "label", description: "表示するラベル" },
   { name: "disabled", description: "ルールを一時的に無効化" },
 ];
@@ -168,6 +166,10 @@ export function normalizeRuleAction(value: string): RuleAction | null {
 
 export function normalizeRuleTarget(value: string): RuleTarget | null {
   return normalizeFromCatalog(value, RULE_TARGET_CATALOG);
+}
+
+export function normalizeRuleOption(value: string): string | null {
+  return normalizeFromCatalog(value, RULE_OPTION_CATALOG);
 }
 
 export function getRuleTargetDefinition(target: RuleTarget): RuleTargetDefinition {

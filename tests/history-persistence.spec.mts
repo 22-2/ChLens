@@ -34,7 +34,6 @@ async function seedExtensionState(page: Page) {
           config_format_2chnet: "dat",
           config_no_history: "off",
           config_ngwords: "",
-          config_ngobj: "[]",
         },
         () => resolve(),
       );

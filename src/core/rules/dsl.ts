@@ -1,5 +1,6 @@
 import {
   isRuleCombinationSupported,
+  normalizeRuleOption,
   normalizeRuleAction,
   normalizeRuleTarget,
 } from "src/core/rules/catalog";
@@ -77,9 +78,16 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
   const unknownTopLevelLines: number[] = [];
   let current: Omit<Rule, "matchers"> | null = null;
   let matchers: RuleMatcher[] = [];
+  let currentHasError = false;
 
   const flush = (line: number) => {
     if (!current) return;
+    if (currentHasError) {
+      current = null;
+      matchers = [];
+      currentHasError = false;
+      return;
+    }
     if (matchers.length === 0 && current.enabled) {
       diagnostics.push({ line, column: 1, message: "ルールには1つ以上の条件が必要です。" });
     } else if (matchers.length > 0) {
@@ -87,6 +95,7 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
     }
     current = null;
     matchers = [];
+    currentHasError = false;
   };
 
   for (let index = 0; index < lines.length; index += 1) {
@@ -124,6 +133,7 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
         continue;
       }
       if (!isRuleCombinationSupported(action, target)) {
+        currentHasError = true;
         diagnostics.push({
           line: index + 1,
           column: 1,
@@ -131,9 +141,11 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
         });
       }
       const options = new Map<string, string>();
+      let headerHasError: boolean = currentHasError;
       for (const token of tokenizeOptions(match[3] ?? "")) {
         const assignment = token.indexOf("=");
         if (assignment < 1) {
+          headerHasError = true;
           diagnostics.push({
             line: index + 1,
             column: 1,
@@ -141,10 +153,21 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
           });
           continue;
         }
-        options.set(token.slice(0, assignment), unquote(token.slice(assignment + 1)));
+        const option = normalizeRuleOption(token.slice(0, assignment));
+        if (!option) {
+          headerHasError = true;
+          diagnostics.push({
+            line: index + 1,
+            column: 1,
+            message: `未対応のオプションです: ${token.slice(0, assignment)}`,
+          });
+          continue;
+        }
+        options.set(option, unquote(token.slice(assignment + 1)));
       }
+      currentHasError = headerHasError;
       const sitesValue = options.get("sites");
-      const color = options.get("color") ?? options.get("bgColor");
+      const color = options.get("color");
       const label = options.get("label");
       current = {
         action,

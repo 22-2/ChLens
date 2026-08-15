@@ -34,7 +34,6 @@ async function seedExtensionState(page: Page) {
           config_bookmark_id: "1",
           config_format_2chnet: "dat",
           config_ngwords: "",
-          config_ngobj: "[]",
         },
         () => resolve(),
       );
@@ -57,7 +56,7 @@ async function readNgStorage(page: Page) {
     ).chrome;
 
     return await new Promise<Record<string, string>>((resolve) => {
-      chromeApi.storage.local.get(["config_ngwords", "config_ngobj"], (items) => {
+      chromeApi.storage.local.get(["config_ngwords"], (items) => {
         resolve(items as Record<string, string>);
       });
     });
@@ -99,8 +98,7 @@ test.describe("NG persistence", () => {
     await expect(firstRes).toBeHidden();
 
     const storedAfterAdd = await readNgStorage(page);
-    expect(storedAfterAdd.config_ngwords).toContain("ID(word=mbmnczwh4)");
-    expect(storedAfterAdd.config_ngobj).toContain('"type":"ID"');
+    expect(storedAfterAdd.config_ngwords).toContain("hide id:\n  mbmnczwh4");
 
     await page.locator('.nav-bar__btn[title="更新"]').click();
 

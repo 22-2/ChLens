@@ -6,6 +6,7 @@ import Cache from "src/core/Cache.js";
 import { setConsolaLevel } from "src/core/logger";
 import Notification from "src/core/Notification";
 import ThreadService from "src/core/ThreadService.js";
+import * as NG from "src/core/NG";
 import { container } from "src/service-container/Container";
 import {
   IBBSMenuResult,
@@ -18,7 +19,6 @@ import {
   ICacheService,
   IConfig,
   IMessage,
-  INGResult,
   INGService,
   INotificationService,
   IReadState,
@@ -42,22 +42,6 @@ interface LegacyAppForSetup {
     // global.d.ts の app.message と同様、コールバック側の型を推論させる。
     on<T = unknown>(type: string, cb: (data: T) => void): void;
     off<T = unknown>(type: string, cb: (data: T) => void): void;
-  };
-  NG?: {
-    // INGService の戻り値型と揃える。unknown のままだとアダプタ側で代入エラーになる。
-    isNGBoard(title: string, url: string, resCount: number): INGResult | null;
-    isNGThread(res: unknown, title: string, url: string): INGResult | null;
-    isThreadIgnoreNgType(
-      res: unknown,
-      threadTitle: string,
-      url: string,
-      ngType: string,
-    ): INGResult | null;
-    add(ngWord: string): Promise<void>;
-    invalidateCache(): void;
-    execExpire(): void;
-    isIgnoreResNumForAuto(num: number, type: string): boolean;
-    set(val: unknown): Promise<void>;
   };
   bookmark?: {
     // IBookmark アダプタの戻り値型と揃える (unknown だと代入エラーになるため)。
@@ -99,8 +83,8 @@ export function setupContainer(app: LegacyAppForSetup) {
       await app.config.set(key, val);
       // NGワード設定が更新されたら、NGサービス側の内部状態とキャッシュも同期する。
       // これにより、設定画面での保存が即座にNG判定ロジックへ反映されるようになる。
-      if (key === "ngwords" && app.NG?.set) {
-        await app.NG.set(val);
+      if (key === "ngwords") {
+        NG.apply(typeof val === "string" ? val : "");
       }
       if (key === "debug_log") {
         syncConsolaLevel();
@@ -215,16 +199,12 @@ export function setupContainer(app: LegacyAppForSetup) {
   };
 
   // NG Service Adapter
-  // レガシー app.NG が未初期化のときは「NG該当なし」として扱う (?? null / ?? false)。
   const ngServiceAdapter: INGService = {
-    isNGBoard: (title, url, resCount) => app.NG?.isNGBoard(title, url, resCount) ?? null,
-    isNGThread: (res, title, url) => app.NG?.isNGThread(res, title, url) ?? null,
-    isThreadIgnoreNgType: (res, threadTitle, url, ngType) =>
-      app.NG?.isThreadIgnoreNgType(res, threadTitle, url, ngType) ?? null,
-    add: (ngWord) => app.NG?.add(ngWord),
-    invalidateCache: () => app.NG?.invalidateCache(),
-    execExpire: () => app.NG?.execExpire(),
-    isIgnoreResNumForAuto: (num, type) => app.NG?.isIgnoreResNumForAuto(num, type) ?? false,
+    isNGBoard: (title, url, resCount) => NG.isNGBoard(title, url, resCount),
+    isNGThread: (res, title, url) => NG.isNGThread(res, title, url),
+    add: (ruleDsl) => NG.add(ruleDsl),
+    invalidateCache: () => NG.invalidateCache(),
+    execExpire: () => NG.execExpire(),
   };
 
   // Util Adapter

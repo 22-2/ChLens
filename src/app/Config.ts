@@ -57,11 +57,7 @@ export default class Config {
     ["popup_delay_time", "0"],
     [
       "ngwords",
-      'Title(value="5ちゃんねるへようこそ")\nTitle(value="【新着情報】5chブラウザがやってきた！")',
-    ],
-    [
-      "ngobj",
-      '[{"type":"Title","word":"5ちゃんねるへようこそ"},{"type":"Title","word":"【新着情報】5chぶらうざがやってきた！"}]',
+      "hide title:\n  5ちゃんねるへようこそ\n\nhide title:\n  【新着情報】5chブラウザがやってきた！",
     ],
     ["chain_ng", "off"],
     ["chain_ng_id", "off"],

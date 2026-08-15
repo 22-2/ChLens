@@ -12,6 +12,10 @@ const mocks = vi.hoisted(() => ({
   toastNotify: vi.fn(),
 }));
 
+vi.mock("src/core/jsutil", () => ({
+  normalize: (value: string) => value.toLowerCase(),
+}));
+
 vi.mock("src/service-container/index", () => ({
   container: {
     config: {
@@ -21,7 +25,6 @@ vi.mock("src/service-container/index", () => ({
           mocks.configStore.set(key, value);
           return Promise.resolve();
         }
-
         return new Promise<void>((resolve) => {
           mocks.pendingWrites.push({
             key,
@@ -34,23 +37,12 @@ vi.mock("src/service-container/index", () => ({
         });
       },
     },
-    toast: {
-      notify: mocks.toastNotify,
-    },
-    message: {
-      send: mocks.messageSend,
-    },
+    toast: { notify: mocks.toastNotify },
+    message: { send: mocks.messageSend },
   },
-  INGResult: {},
 }));
 
-vi.mock("src/core/jsutil", () => ({
-  decodeCharReference: (value: string) => value,
-  normalize: (value: string) => value,
-  stringToDate: (value: string) => new Date(value.replace(/\//g, "-")),
-}));
-
-describe("NG persistence", () => {
+describe("NG Rule persistence", () => {
   beforeEach(() => {
     mocks.configStore.clear();
     mocks.holdWrites = false;
@@ -59,61 +51,40 @@ describe("NG persistence", () => {
     mocks.toastNotify.mockReset();
   });
 
-  it("addはngobj保存完了まで待機し、再読込後もID NGを復元できる", async () => {
+  it("waits for the DSL write and restores the Rule after reload", async () => {
     mocks.holdWrites = true;
-
-    const { add, get, invalidateCache, TYPE } = await import("src/core/NG");
+    const { add, get, invalidateCache } = await import("src/core/NG");
     invalidateCache();
 
     let settled = false;
-    const addPromise = add("ID(word=abc123)").then(() => {
+    const addPromise = add("hide id:\n  abc123").then(() => {
       settled = true;
     });
 
     await Promise.resolve();
-
-    expect(mocks.pendingWrites[0]).toMatchObject({
-      key: "ngobj",
-    });
+    expect(mocks.pendingWrites[0]).toMatchObject({ key: "ngwords" });
     expect(settled).toBe(false);
     expect(mocks.messageSend).not.toHaveBeenCalled();
 
-    const firstWrite = mocks.pendingWrites.shift();
-    firstWrite?.resolve();
-    await Promise.resolve();
-
-    expect(mocks.configStore.get("ngobj")).toContain('"type":"ID"');
-    expect(mocks.pendingWrites[0]).toMatchObject({
-      key: "ngwords",
-      value: "hide id:\n  abc123",
-    });
-    expect(settled).toBe(false);
-    expect(mocks.messageSend).not.toHaveBeenCalled();
-
-    const secondWrite = mocks.pendingWrites.shift();
-    secondWrite?.resolve();
+    const write = mocks.pendingWrites.shift();
+    write?.resolve();
     await addPromise;
 
+    expect(mocks.configStore.get("ngwords")).toBe("hide id:\n  abc123");
     expect(mocks.messageSend).toHaveBeenCalledWith("ng_changed");
-    expect(mocks.messageSend).toHaveBeenCalledTimes(1);
 
     invalidateCache();
-    const parsed = Array.from(get() as Set<unknown>);
-
-    expect(parsed).toHaveLength(1);
-    expect(parsed[0]).toMatchObject({
-      type: TYPE.ID,
-      word: "abc123",
-    });
+    expect(get()).toEqual([
+      expect.objectContaining({
+        action: "hide",
+        target: "id",
+        matchers: [{ kind: "contains", value: "abc123" }],
+      }),
+    ]);
   });
 
-  it("新ブロックDSLへの追加は旧形式を混在させない", async () => {
-    mocks.configStore.set("ngwords", "hide body:\n  spam");
-    const { add, invalidateCache } = await import("src/core/NG");
-    invalidateCache();
-
-    await add("ID(value=abc123)");
-
-    expect(mocks.configStore.get("ngwords")).toBe("hide id:\n  abc123\n\nhide body:\n  spam");
+  it("rejects the removed legacy function syntax", async () => {
+    const { add } = await import("src/core/NG");
+    await expect(add("ID(value=abc123)")).rejects.toThrow("新しいブロックDSL");
   });
 });

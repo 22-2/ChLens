@@ -215,16 +215,9 @@ export interface INGResult {
 export interface INGService {
   isNGBoard(title: string, url: string, resCount: number): INGResult | null;
   isNGThread(res: unknown, title: string, url: string): INGResult | null;
-  isThreadIgnoreNgType(
-    res: unknown,
-    threadTitle: string,
-    url: string,
-    ngType: string,
-  ): INGResult | null;
-  add(ngWord: string): Promise<void> | void;
+  add(ruleDsl: string): Promise<void> | void;
   invalidateCache(): void;
   execExpire(): void;
-  isIgnoreResNumForAuto(resNum: number, subType: string): boolean;
 }
 
 export interface IServiceContainer {

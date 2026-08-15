@@ -1,224 +1,88 @@
-import { decodeCharReference, stringToDate } from "src/core/jsutil";
 import { createLogger } from "src/core/logger";
-import { splitNgDslEntries } from "src/core/ngDsl";
-import { container, INGResult } from "src/service-container/index";
-
-import { checkResNum, checkScope, checkWord, NGResObj, NGThreadObj } from "src/core/NGMatcher";
-import { parseNgString, setupNgRegex } from "src/core/NGParser";
-import { InternalNGElement, TYPE } from "src/core/NGTypes";
-import { convertInternalToRules } from "src/core/rules/compiler";
+import { container } from "src/service-container/index";
+import type { INGResult } from "src/service-container/index";
 import { RULE_TARGET_CATALOG } from "src/core/rules/catalog";
 import { formatRuleDsl, parseRuleDsl } from "src/core/rules/dsl";
 import { clearRuleRegexCache, matchRules } from "src/core/rules/engine";
-import type { Rule, RuleTarget } from "src/core/rules/model";
+import type { Rule } from "src/core/rules/model";
 
-export { TYPE };
-
-const _CONFIG_NAME = "ngobj";
-const _CONFIG_STRING_NAME = "ngwords";
-const _expireDate = /^expireDate:(\d{4}\/\d{1,2}\/\d{1,2}),(.*)$/;
+const CONFIG_STRING_NAME = "ngwords";
 const GENERAL_DEBUG_CONFIG_KEY = "debug_log";
-
-let _ng: Set<InternalNGElement> | null = null;
-let _rules: readonly Rule[] | null = null;
 const logger = createLogger("NG");
 
-// ─── ヘルパー ────────────────────────────────────────────────
+let rulesCache: readonly Rule[] | null = null;
 
-/** 正規表現のロード失敗をトーストで通知する共通コールバック */
-function onRegexError(type: string, word: string): void {
-  container.toast.notify(
-    `NG機能の正規表現(${type}: ${word})を読み込むのに失敗しました\nこの行は無効化されます`,
-    { backgroundColor: "red" },
+const BOARD_RULE_TARGETS = new Set(
+  RULE_TARGET_CATALOG.filter((target) => target.allowedOnBoard).map((target) => target.name),
+);
+const THREAD_RULE_TARGETS = new Set(
+  RULE_TARGET_CATALOG.filter((target) => target.allowedOnThread).map((target) => target.name),
+);
+const BOARD_RULE_ACTIONS = new Set<Rule["action"]>(["hide", "highlight"]);
+const THREAD_RULE_ACTIONS = new Set<Rule["action"]>(["hide"]);
+
+function isCommentOrWhitespace(line: string): boolean {
+  const trimmed = line.replace(/^[\uFEFF\u200B\u200C\u200D]+/u, "").trim();
+  return (
+    trimmed === "" ||
+    trimmed.startsWith("//") ||
+    trimmed.startsWith("#") ||
+    trimmed.startsWith("/*") ||
+    trimmed.startsWith("*") ||
+    trimmed.startsWith("*/")
   );
 }
 
-/** setupNgRegex を共通コールバックで呼ぶラッパー */
-function applyRegex(ng: Set<InternalNGElement>): void {
-  setupNgRegex(ng, onRegexError);
-}
-
-/** NG変更を保存・通知する共通処理 */
-async function commitNg(ng: Set<InternalNGElement>): Promise<void> {
-  _ng = ng;
-  applyRegex(ng);
-  await _config.set(Array.from(ng));
-  container.message.send("ng_changed");
-  return;
-}
-
-// ─── config アクセサ ─────────────────────────────────────────
-
-const _config = {
-  get(): InternalNGElement[] {
-    const data = container.config.get(_CONFIG_NAME);
-    if (!data) return [];
-
-    try {
-      const parsed = JSON.parse(data);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      // ngobj が壊れていると NG 全体が読み込めなくなるため、
-      // 空配列にフォールバックして ngwords からの再構築へ進める。
-      return [];
-    }
-  },
-  set(str: InternalNGElement[]): Promise<void> {
-    return Promise.resolve(container.config.set(_CONFIG_NAME, JSON.stringify(str)));
-  },
-  getString(): string {
-    return container.config.get(_CONFIG_STRING_NAME) || "";
-  },
-  setString(str: string): Promise<void> {
-    return Promise.resolve(container.config.set(_CONFIG_STRING_NAME, str));
-  },
-};
-
-// ─── NG ルール共通フィルタ ───────────────────────────────────
-
-type CommonFilterContext = {
-  url: string;
-  exceptionFlg: boolean;
-  subType: string | null;
-};
-
-/**
- * type・スコープ・期限・例外フラグ・subType など、
- * isNGBoard / isNGThread で共通するガード条件をまとめたフィルタ。
- * false を返したルールはスキップ対象。
- */
-function passesCommonFilters(n: InternalNGElement, ctx: CommonFilterContext, now: number): boolean {
-  if (n.type === TYPE.INVALID || n.type === "" || n.word === "") return false;
-  if (!checkScope(n, ctx.url)) return false;
-  if (n.expire != null && now > n.expire) return false;
-  if (n.exception !== ctx.exceptionFlg) return false;
-  if (n.subType != null && ctx.subType && !n.subType.includes(ctx.subType)) return false;
-  return true;
-}
-
-// ─── 公開 API ────────────────────────────────────────────────
-
-function getNgDebugTargetResNum(): number | null {
-  const raw = container.config.get(GENERAL_DEBUG_CONFIG_KEY);
-  const value = Number(raw ?? 0);
-  return Number.isInteger(value) && value > 0 ? value : null;
-}
-
-export function get(): Set<InternalNGElement> {
-  if (_ng != null) return _ng;
-
-  const ngObjectRules = _config.get();
-  const ngString = _config.getString();
-
-  if (ngString.trim() !== "") {
-    // ユーザーが編集するDSLを正本とし、ngobjは旧版からの復元用キャッシュに限定する。
-    // 両者が食い違った場合に古いngobjを優先すると、保存済みの記述が反映されないため。
-    const blockDsl = parseRuleDsl(ngString);
-    _rules = blockDsl.recognized && blockDsl.diagnostics.length === 0 ? blockDsl.rules : null;
-    _ng = parse(ngString);
-    void _config.set(Array.from(_ng));
-    logger.debug("load.from_ngwords", {
-      dslLength: ngString.length,
-      ruleCount: _ng.size,
-    });
-  } else if (ngObjectRules.length > 0) {
-    _rules = null;
-    _ng = new Set(ngObjectRules);
-    logger.debug("load.from_legacy_ngobj", { ruleCount: _ng.size });
-  } else {
-    _rules = [];
-    _ng = new Set();
-    logger.debug("load.empty", { ruleCount: 0 });
+function parseConfiguredRules(source: string): readonly Rule[] {
+  const parsed = parseRuleDsl(source);
+  const hasContent = source.split(/\r?\n/u).some((line) => !isCommentOrWhitespace(line));
+  if (!parsed.recognized && hasContent) {
+    const error = new Error("NG設定は新しいブロックDSLで記述してください。");
+    logger.error("NG設定の形式が旧式または不正です", { error });
+    throw error;
   }
-
-  applyRegex(_ng);
-  return _ng;
-}
-
-export function parse(string: string): Set<InternalNGElement> {
-  return parseNgString(string);
-}
-
-export function set(string: string): Promise<void> {
-  logger.debug("set", { dslLength: string.length });
-  const parsedDsl = parseRuleDsl(string);
-  if (parsedDsl.recognized && parsedDsl.diagnostics.length > 0) {
-    const details = parsedDsl.diagnostics
+  if (parsed.diagnostics.length > 0) {
+    const details = parsed.diagnostics
       .map(({ line, column, message }) => `${line}:${column} ${message}`)
       .join("\n");
     logger.error("DSLの構文エラーにより設定を適用できません", {
-      diagnostics: parsedDsl.diagnostics,
+      diagnostics: parsed.diagnostics,
     });
-    return Promise.reject(new Error(`NG設定に構文エラーがあります\n${details}`));
+    throw new Error(`NG設定に構文エラーがあります\n${details}`);
   }
-  _rules = parsedDsl.recognized ? parsedDsl.rules : null;
-  clearRuleRegexCache();
-  return commitNg(parse(string));
+  return parsed.rules;
 }
 
-export function invalidateCache(): void {
-  _ng = null;
-  _rules = null;
+function readSource(): string {
+  return container.config.get(CONFIG_STRING_NAME) ?? "";
+}
+
+function toText(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") {
+    return String(value);
+  }
+  return "";
+}
+
+function updateRulesCache(rules: readonly Rule[]): void {
+  rulesCache = [...rules];
   clearRuleRegexCache();
 }
 
-export async function add(string: string): Promise<void> {
-  const current = new Set(get());
-  const addNg = parse(string);
+/** 設定保存済みのDSLを判定へ反映する。保存処理は呼び出し側が担当する。 */
+export function apply(source: string): void {
+  updateRulesCache(parseConfiguredRules(source));
+}
 
-  for (const rule of addNg) {
-    current.add(rule);
-  }
-
-  _ng = current;
-  applyRegex(current);
-
-  // 変更理由: 先にUI更新通知を飛ばすと「見た目だけ消えた直後にF5」で永続化前の状態へ戻りうる。
-  // ngobj / ngwords の両方を書き終えてから通知することで、見えた状態と保存済み状態を一致させる。
-  await _config.set(Array.from(current));
-
-  // ngwords 文字列の先頭に追記
-  const currentString = _config.getString();
-  const currentBlockDsl = parseRuleDsl(currentString);
-  const blockRules = convertInternalToRules(Array.from(addNg));
-  const useBlockDsl =
-    (currentBlockDsl.recognized || currentString.trim() === "") && blockRules.length === addNg.size;
-  const dslString = useBlockDsl ? formatRuleDsl(blockRules) : string.trim();
-  if (dslString) {
-    // 新ブロックDSLへ追加するときも同じ形式を維持し、旧行形式との混在を防ぐ。
-    await _config.setString(dslString + (currentString ? "\n\n" + currentString : ""));
-    if (useBlockDsl) {
-      _rules = [...blockRules, ...currentBlockDsl.rules];
-      clearRuleRegexCache();
-    }
-  }
-
+async function commitRules(rules: readonly Rule[]): Promise<void> {
+  const nextSource = formatRuleDsl(rules);
+  await container.config.set(CONFIG_STRING_NAME, nextSource);
+  updateRulesCache(rules);
   container.message.send("ng_changed");
 }
 
-// ─── NG 判定 ─────────────────────────────────────────────────
-
-const BOARD_ALLOWED_TYPES: ReadonlySet<string> = new Set([
-  TYPE.REG_EXP,
-  TYPE.REG_EXP_TITLE,
-  TYPE.REG_EXP_HIGHLIGHT_TITLE,
-  TYPE.TITLE,
-  TYPE.HIGHLIGHT_TITLE,
-  TYPE.WORD,
-  TYPE.REG_EXP_URL,
-  TYPE.URL,
-  TYPE.RES_COUNT,
-]);
-const BOARD_RULE_TARGETS: ReadonlySet<RuleTarget> = new Set(
-  RULE_TARGET_CATALOG.filter((target) => target.allowedOnBoard).map((target) => target.name),
-);
-const BOARD_RULE_ACTIONS: ReadonlySet<Rule["action"]> = new Set(["hide", "highlight"]);
-const THREAD_RULE_TARGETS: ReadonlySet<RuleTarget> = new Set(
-  RULE_TARGET_CATALOG.filter((target) => target.allowedOnThread).map((target) => target.name),
-);
-const THREAD_RULE_ACTIONS: ReadonlySet<Rule["action"]> = new Set(["hide"]);
-
-function onRuleRegexError(source: string, error: unknown): void {
+function onRegexError(source: string, error: unknown): void {
   logger.error("NG機能の正規表現を読み込めません", { source, error });
   container.toast.notify(
     `NG機能の正規表現(${source})を読み込むのに失敗しました\nこの条件は無効化されます`,
@@ -226,251 +90,96 @@ function onRuleRegexError(source: string, error: unknown): void {
   );
 }
 
-export function isNGBoard(
-  threadTitle: string,
-  url: string,
-  resCount: number,
-  exceptionFlg: boolean = false,
-  subType: string | null = null,
-): INGResult | null {
-  get();
-  if (_rules != null) {
-    const matched = matchRules(
-      _rules,
-      { all: threadTitle, title: threadTitle, url, resCount },
-      BOARD_RULE_ACTIONS,
-      BOARD_RULE_TARGETS,
-      onRuleRegexError,
-    );
-    return matched
-      ? { type: matched.type, name: matched.rule.name, params: matched.params, disabled: false }
-      : null;
-  }
-  const threadObj: Partial<NGResObj & NGThreadObj> = {
-    // 変更理由: RegExp型を文字通り照合するため all は生タイトルを渡す。
-    // Word型は checkWord 内で normalize(all) し直すため、生のままでも判定は変わらない。
-    all: threadTitle,
-    title: threadTitle,
-    url,
-    resCount,
-  };
-
-  const ctx: CommonFilterContext = { url, exceptionFlg, subType };
-  const now = Date.now();
-  let checkedCount = 0;
-
-  for (const n of get()) {
-    if (!BOARD_ALLOWED_TYPES.has(n.type)) continue;
-    if (!passesCommonFilters(n, ctx, now)) {
-      logger.debug("board.scope_miss", {
-        ruleType: n.type,
-        word: n.word,
-        scope: n.scope?.value,
-        url,
-      });
-      continue;
-    }
-
-    checkedCount += 1;
-
-    if (n.subElements != null && !n.subElements.every((sub) => checkWord(sub, threadObj))) {
-      continue;
-    }
-
-    const ngType = checkWord(n, threadObj);
-    if (ngType) {
-      logger.debug("board.hit", {
-        matchedType: ngType,
-        ruleType: n.type,
-        word: n.word,
-        scope: n.scope?.value,
-        title: threadTitle,
-        url,
-        checkedCount,
-      });
-      return {
-        type: ngType,
-        name: n.name,
-        params: n.params,
-        // NG ルール側で disabled フラグが設定されている場合は、
-        // そのNG判定を一時無効化フラグとして区別できるようにする。
-        disabled: n.params?.disabled === "true",
-      };
-    }
-  }
-
-  logger.debug("board.no_hit", {
-    title: threadTitle,
-    url,
-    checkedCount,
-    totalRuleCount: get().size,
-  });
-
-  return null;
+function getNgDebugTargetResNum(): number | null {
+  const value = Number(container.config.get(GENERAL_DEBUG_CONFIG_KEY) ?? 0);
+  return Number.isInteger(value) && value > 0 ? value : null;
 }
 
-const THREAD_DENIED_TYPES: ReadonlySet<string> = new Set([
-  TYPE.HIGHLIGHT_TITLE,
-  TYPE.REG_EXP_HIGHLIGHT_TITLE,
-]);
-
-export function isNGThread(
-  res: unknown,
-  title: string,
-  url: string,
-  exceptionFlg: boolean = false,
-  subType: string | null = null,
-): INGResult | null {
-  const resObj_raw = res as Record<string, unknown>;
-  // String() による強制は外部データ (res) の安全な文字列化のため意図的
-  // eslint-disable-next-line @typescript-eslint/no-base-to-string
-  const name = decodeCharReference(String(resObj_raw.name ?? ""));
-  // eslint-disable-next-line @typescript-eslint/no-base-to-string
-  const mail = decodeCharReference(String(resObj_raw.mail ?? ""));
-  // eslint-disable-next-line @typescript-eslint/no-base-to-string
-  const other = decodeCharReference(String(resObj_raw.other ?? ""));
-  // eslint-disable-next-line @typescript-eslint/no-base-to-string
-  const mes = decodeCharReference(String(resObj_raw.message ?? ""));
-
-  const resObj: Partial<NGResObj & NGThreadObj> = {
-    all: `${name} ${mail} ${other} ${mes}`,
-    name,
-    mail,
-    // res は型情報のない外部データのため、実行時表現を変えずに期待する型へキャストする。
-    id: (resObj_raw.id as string | undefined) ?? null,
-    slip: (resObj_raw.slip as string | undefined) ?? null,
-    mes,
-    title,
-    url,
-    replyCount:
-      typeof resObj_raw.replyCount === "number" && Number.isFinite(resObj_raw.replyCount)
-        ? resObj_raw.replyCount
-        : undefined,
-  };
-
-  get();
-  if (_rules != null && !exceptionFlg) {
-    const matched = matchRules(
-      _rules,
-      {
-        all: resObj.all,
-        title,
-        body: mes,
-        name,
-        mail,
-        id: resObj.id,
-        slip: resObj.slip,
-        url,
-        replyCount: resObj.replyCount,
-      },
-      THREAD_RULE_ACTIONS,
-      THREAD_RULE_TARGETS,
-      onRuleRegexError,
-    );
-    return matched
-      ? { type: matched.type, name: matched.rule.name, params: matched.params, disabled: false }
-      : null;
+export function get(): readonly Rule[] {
+  if (rulesCache != null) return rulesCache;
+  const source = readSource();
+  try {
+    rulesCache = [...parseConfiguredRules(source)];
+  } catch (error) {
+    logger.error("NG設定の読込に失敗しました", { error });
+    rulesCache = [];
   }
+  return rulesCache;
+}
 
-  const ctx: CommonFilterContext = { url, exceptionFlg, subType };
-  const now = Date.now();
-  let checkedCount = 0;
+export function set(source: string): Promise<void> {
+  logger.debug("set", { dslLength: source.length });
+  try {
+    const rules = parseConfiguredRules(source);
+    return commitRules(rules);
+  } catch (error) {
+    return Promise.reject(error);
+  }
+}
+
+export function invalidateCache(): void {
+  rulesCache = null;
+  clearRuleRegexCache();
+}
+
+export async function add(source: string): Promise<void> {
+  const addedRules = parseConfiguredRules(source);
+  const currentRules = get();
+  await commitRules([...addedRules, ...currentRules]);
+}
+
+export function isNGBoard(threadTitle: string, url: string, resCount: number): INGResult | null {
+  const matched = matchRules(
+    get(),
+    { all: threadTitle, title: threadTitle, url, resCount },
+    BOARD_RULE_ACTIONS,
+    BOARD_RULE_TARGETS,
+    onRegexError,
+  );
+  return matched
+    ? { type: matched.type, name: matched.rule.name, params: matched.params, disabled: false }
+    : null;
+}
+
+export function isNGThread(res: unknown, title: string, url: string): INGResult | null {
+  const raw = res as Record<string, unknown>;
+  // 外部レスデータを表示用の文字列へ変換し、Rule Engineへ渡す境界をここに集約する。
+  const name = toText(raw.name);
+  const mail = toText(raw.mail);
+  const other = toText(raw.other);
+  const body = toText(raw.message);
+  const resNum = typeof raw.num === "number" ? raw.num : undefined;
   const debugTargetResNum = getNgDebugTargetResNum();
-
-  for (const n of get()) {
-    if (THREAD_DENIED_TYPES.has(n.type)) continue;
-    if (!passesCommonFilters(n, ctx, now)) continue;
-    if (checkResNum(n, resObj_raw.num as number)) continue;
-
-    checkedCount += 1;
-
-    if (n.subElements != null && !n.subElements.every((sub) => checkWord(sub, resObj))) {
-      continue;
-    }
-
-    const ngType = checkWord(n, resObj);
-    if (ngType) {
-      logger.debug("thread.hit", {
-        matchedType: ngType,
-        ruleType: n.type,
-        word: n.word,
-        scope: n.scope?.value,
-        title,
-        url,
-        resNum: resObj_raw.num,
-        checkedCount,
-      });
-      return {
-        type: ngType,
-        name: n.name,
-        // NG ルール側で disabled フラグが設定されている場合は、
-        // そのNG判定を一時無効化フラグとして区別できるようにする。
-        disabled: n.params?.disabled === "true",
-      };
-    }
-  }
-
-  // スレ本文はレス数が多く全件ログだと追えないため、
-  // デフォルトは先頭数件のみ no_hit を出し、必要時は target res 指定で絞れる。
-  const shouldLog =
-    debugTargetResNum != null
-      ? resObj_raw.num === debugTargetResNum
-      : typeof resObj_raw.num === "number" && resObj_raw.num <= 3;
-
-  if (shouldLog) {
-    logger.debug("thread.no_hit", {
+  const matched = matchRules(
+    get(),
+    {
+      all: `${name} ${mail} ${other} ${body}`,
       title,
+      body,
+      name,
+      mail,
+      id: typeof raw.id === "string" ? raw.id : null,
+      slip: typeof raw.slip === "string" ? raw.slip : null,
       url,
-      resNum: resObj_raw.num,
-      checkedCount,
-      totalRuleCount: get().size,
-      debugTargetResNum,
-    });
+      replyCount: typeof raw.replyCount === "number" ? raw.replyCount : undefined,
+    },
+    THREAD_RULE_ACTIONS,
+    THREAD_RULE_TARGETS,
+    onRegexError,
+  );
+  if (matched) {
+    logger.debug("thread.hit", { matchedType: matched.type, title, url, resNum });
+    return { type: matched.type, name: matched.rule.name, params: matched.params, disabled: false };
   }
-
+  if (debugTargetResNum != null ? resNum === debugTargetResNum : resNum != null && resNum <= 3) {
+    logger.debug("thread.no_hit", { title, url, resNum, totalRuleCount: get().length });
+  }
   return null;
-}
-
-export function isIgnoreResNumForAuto(resNum: number, subType: string = ""): boolean {
-  for (const n of get()) {
-    if (n.type !== TYPE.AUTO) continue;
-    if (n.subType != null && !n.subType.includes(subType)) continue;
-    if (checkResNum(n, resNum)) return true;
-  }
-  return false;
-}
-
-export function isThreadIgnoreNgType(
-  res: unknown,
-  threadTitle: string,
-  url: string,
-  ngType: string,
-): INGResult | null {
-  return isNGThread(res, threadTitle, url, true, ngType);
 }
 
 export function execExpire(): void {
-  const configStr = _config.getString();
+  const activeRules = get();
   const now = Date.now();
-  let updateFlag = false;
-
-  const newConfigStr = splitNgDslEntries(configStr)
-    .map((entry) => entry.trim())
-    .filter((entry) => {
-      const m = entry.match(_expireDate);
-      if (!m) return true;
-
-      const expire = stringToDate(m[1] + " 23:59:59");
-      if (expire && expire.valueOf() + 1000 < now) {
-        updateFlag = true;
-        return false; // 期限切れ → 除外
-      }
-      return true;
-    })
-    .join("\n");
-
-  if (updateFlag) {
-    void _config.setString(newConfigStr);
-    void commitNg(parse(newConfigStr));
-  }
+  const remaining = activeRules.filter((rule) => rule.expiresAt == null || now <= rule.expiresAt);
+  if (remaining.length !== activeRules.length) void commitRules(remaining);
 }

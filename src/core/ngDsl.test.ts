@@ -1,95 +1,21 @@
 import {
-  extractNgDslFunctionCall,
-  getNgDslRuleSpec,
-  normalizeNgDslKeyword,
-  parseNgDslArguments,
-  splitNgDslEntries,
+  NG_DSL_LANGUAGE_ID,
+  NG_HIGHLIGHT_COLOR_PRESET_ITEMS,
+  stringifyNgDslValue,
 } from "src/core/ngDsl";
 import { describe, expect, it } from "vite-plus/test";
 
-describe("NG DSL helpers", () => {
-  it("keeps multiline function syntax as a single logical entry", () => {
-    const entries = splitNgDslEntries(
-      `RegExpHighlightTitle(\n  word="VTuber"\n  sites=[\n    eddibb.cc\n    5ch.net\n  ]\n  bgColor=red\n)\nBody(word="荒らし")`,
-    );
-
-    expect(entries).toEqual([
-      `RegExpHighlightTitle(\n  word="VTuber"\n  sites=[\n    eddibb.cc\n    5ch.net\n  ]\n  bgColor=red\n)`,
-      `Body(word="荒らし")`,
-    ]);
+describe("NG DSL editor helpers", () => {
+  it("exposes the language id and centralized highlight colors", () => {
+    expect(NG_DSL_LANGUAGE_ID).toBe("chlens-ngdsl");
+    expect(NG_HIGHLIGHT_COLOR_PRESET_ITEMS.map(({ name }) => name)).toContain("blue");
   });
 
-  it("parses named arguments including value and sites arrays", () => {
-    const extracted = extractNgDslFunctionCall(
-      `RegExpHighlightTitle(\n  word="VTuber"\n  sites=[\n    eddibb.cc\n    5ch.net\n  ]\n  bgColor=red\n  label=注目\n)`,
-    );
-
-    expect(extracted).not.toBeNull();
-    expect(extracted?.keyword).toBe("RegExpHighlightTitle");
-    expect(parseNgDslArguments(extracted?.argsSource ?? "")).toEqual({
-      value: "VTuber",
-      scope: ["eddibb.cc", "5ch.net"],
-      params: {
-        bgColor: "red",
-        label: "注目",
-      },
-    });
-  });
-
-  it("treats the first bare argument as value when using the new function-only DSL", () => {
-    const extracted = extractNgDslFunctionCall(
-      `RegExpHighlightTitle("VTuber" sites=[eddibb.cc 5ch.net] bgColor=red)`,
-    );
-
-    expect(
-      parseNgDslArguments(extracted?.argsSource ?? "", {
-        positionalValue: true,
-      }),
-    ).toEqual({
-      value: "VTuber",
-      scope: ["eddibb.cc", "5ch.net"],
-      params: {
-        bgColor: "red",
-      },
-    });
-  });
-
-  it("still accepts the legacy colon suffix and scope name", () => {
-    const extracted = extractNgDslFunctionCall(
-      `RegExpHighlightTitle(scope=[eddibb.cc 5ch.net] bgColor=red): VTuber`,
-    );
-
-    expect(extracted?.valueSource).toBe("VTuber");
-    expect(parseNgDslArguments(extracted?.argsSource ?? "")).toEqual({
-      scope: ["eddibb.cc", "5ch.net"],
-      params: {
-        bgColor: "red",
-      },
-    });
-  });
-
-  it("normalizes legacy keyword aliases for editor-facing DSL", () => {
-    expect(normalizeNgDslKeyword("RegExpID")).toBe("RegExpId");
-    expect(normalizeNgDslKeyword("id")).toBe("ID");
-  });
-
-  it("treats double-backslash quoted regex input as a single-backslash pattern", () => {
-    const extracted = extractNgDslFunctionCall('RegExpBody(word="(imgur\\\\.com\\\\/.+?){15}")');
-
-    expect(parseNgDslArguments(extracted?.argsSource ?? "")).toEqual({
-      value: "(imgur\\.com\\/.+?){15}",
-    });
-  });
-
-  it("accepts word as a legacy alias for value", () => {
-    const extracted = extractNgDslFunctionCall('Body(word="荒らし")');
-
-    expect(parseNgDslArguments(extracted?.argsSource ?? "")).toEqual({
-      value: "荒らし",
-    });
-  });
-
-  it("does not register the deprecated Word keyword as a DSL rule", () => {
-    expect(getNgDslRuleSpec("Word")).toBeNull();
+  it("keeps simple values readable and quotes DSL-significant values", () => {
+    expect(stringifyNgDslValue("abc123")).toBe("abc123");
+    expect(stringifyNgDslValue("two words")).toBe('"two words"');
+    expect(stringifyNgDslValue("a:b")).toBe('"a:b"');
+    expect(stringifyNgDslValue("#tag")).toBe('"#tag"');
+    expect(stringifyNgDslValue("abc123", { alwaysQuote: true })).toBe('"abc123"');
   });
 });

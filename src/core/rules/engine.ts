@@ -69,9 +69,9 @@ function matchesMatcher(
 
 function resultType(rule: Rule, matcher: RuleMatcher): string {
   const definition = getRuleTargetDefinition(rule.target);
-  const legacyTypes =
-    rule.action === "highlight" ? definition.legacyHighlightTypes : definition.legacyTypes;
-  return legacyTypes?.[matcher.kind === "regex" ? 1 : 0] ?? definition.legacyTypes[0];
+  const resultTypes =
+    rule.action === "highlight" ? definition.highlightResultTypes : definition.resultTypes;
+  return resultTypes?.[matcher.kind === "regex" ? 1 : 0] ?? definition.resultTypes[0];
 }
 
 export function matchRules(

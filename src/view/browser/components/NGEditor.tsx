@@ -2,6 +2,11 @@ import Editor, { loader, useMonaco } from "@monaco-editor/react";
 import React, { useEffect, useMemo } from "react";
 import { platform } from "src/app/platform";
 import { NG_DSL_LANGUAGE_ID } from "src/core/ngDsl";
+import {
+  RULE_ACTION_CATALOG,
+  RULE_OPTION_CATALOG,
+  RULE_TARGET_CATALOG,
+} from "src/core/rules/catalog";
 import { ensureNgDslLanguage } from "src/view/browser/components/ngDslMonaco";
 import { useTheme } from "src/view/browser/hooks/use-theme";
 
@@ -79,7 +84,7 @@ hide id:
   abc123
 
 hide url:
-  regex "https?://(?:x|twitter)\\\\.com/.+"
+  regex 'https?://(?:x|twitter)\\.com/.+'
 
 hide reply-count:
   5`;
@@ -90,9 +95,9 @@ highlight title color=red label=注目 sites=[eddibb.cc 5ch.io]:
   ぐーぐる
   microsoft
 
-// ng は互換用の別名です。標準表記では hide を推奨します
+// ng body は hide body の短縮表記です。意味を明示するなら hide body を使います
 ng body:
-  regex "(imgur\\\\.com\\\\/.+?){15}"`;
+  regex '(imgur\\.com\\/.+?){15}'`;
 
 // // 複雑なand条件: 名前の正規表現 + 本文の正規表現 + 期限 + ラベル
 // ANDやら期限などあるが、これは複雑なので隠しておいて、基本的には上のシンプルな例だけ見せるのが良さそう
@@ -109,8 +114,24 @@ interface NgDslToken {
   text: string;
 }
 
-const NG_DSL_TOKEN_REGEX =
-  /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')|(\/\/.*$)|(\b[A-Za-z_][\w-]*(?=\())|(\b[A-Za-z_][\w-]*(?=\s*=))|(#[0-9a-fA-F]{3,8}\b)/g;
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+const actionPattern = RULE_ACTION_CATALOG.flatMap((entry) => [entry.name, ...(entry.aliases ?? [])])
+  .map(escapeRegExp)
+  .join("|");
+const targetPattern = RULE_TARGET_CATALOG.flatMap((entry) => [entry.name, ...(entry.aliases ?? [])])
+  .map(escapeRegExp)
+  .join("|");
+const optionPattern = RULE_OPTION_CATALOG.flatMap((entry) => [entry.name, ...(entry.aliases ?? [])])
+  .map(escapeRegExp)
+  .join("|");
+
+const NG_DSL_TOKEN_REGEX = new RegExp(
+  `("(?:\\\\.|[^"\\\\])*"|'(?:\\\\.|[^'\\\\])*')|(\\/\\/.*$|^\\s*#.*$)|(\\b(?:${actionPattern})\\b)|(\\b(?:${targetPattern})\\b)|(\\b(?:${optionPattern})\\b(?=\\s*=))|(#[0-9a-fA-F]{3,8}\\b)`,
+  "g",
+);
 
 function tokenizeNgDslLine(line: string): NgDslToken[] {
   const tokens: NgDslToken[] = [];
@@ -129,11 +150,11 @@ function tokenizeNgDslLine(line: string): NgDslToken[] {
       tokens.push({ type: "comment", text: tokenText });
       cursor = index + tokenText.length;
       break;
-    } else if (match[3]) {
+    } else if (match[3] || match[4]) {
       tokens.push({ type: "rule", text: tokenText });
-    } else if (match[4]) {
-      tokens.push({ type: "param", text: tokenText });
     } else if (match[5]) {
+      tokens.push({ type: "param", text: tokenText });
+    } else if (match[6]) {
       tokens.push({ type: "color", text: tokenText });
     } else {
       tokens.push({ type: "plain", text: tokenText });

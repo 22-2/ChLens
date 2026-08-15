@@ -101,7 +101,7 @@ export function useThreadResContextMenu({
       }
       // 変更理由: 旧式の `ID:xxx` を保存すると再読込後に「ただの本文NG」として扱われるため、
       // 永続化時点で DSL の ID ルール形式へ正規化して再起動後も同じ判定になるようにする。
-      const ngWord = `ID(value=${stringifyNgDslValue(normalizedId)})`;
+      const ngWord = `hide id:\n  ${stringifyNgDslValue(normalizedId)}`;
       // 変更理由: 保存完了前に「追加済み」扱いへ進むと、直後の F5 で永続化前の状態へ戻りうる。
       // ここでは保存完了を待ってから UI を成功状態へ進める。
       await container.ng.add(ngWord);
@@ -126,10 +126,11 @@ export function useThreadResContextMenu({
 
   const addSelectionToNg = useCallback(
     async (selectedText: string) => {
-      const ngWord = selectedText.trim();
-      if (!ngWord) {
+      const selectedValue = selectedText.trim();
+      if (!selectedValue) {
         return;
       }
+      const ngWord = `hide body:\n  ${stringifyNgDslValue(selectedValue)}`;
       // 選択テキストNGはID NGと違って局所更新だと取りこぼしやすいため、
       // 追加後に再取得して既存NG判定ロジックの結果でUIを揃える。
       await container.ng.add(ngWord);
@@ -401,7 +402,6 @@ export function useThreadResContextMenu({
           ];
     },
     [
-      addIdToNg,
       addSelectionToNg,
       addWriteHistory,
       buildIdItems,
@@ -414,8 +414,7 @@ export function useThreadResContextMenu({
       miniAaResNums,
       openWritePanelWithText,
       ownResNums,
-      page.threadUrl,
-      page.title,
+      page,
       removeWriteHistory,
       searchQuery,
       setFilter,

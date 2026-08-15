@@ -6,18 +6,17 @@ import {
 import { describe, expect, it } from "vite-plus/test";
 
 describe("rule target catalog", () => {
-  it("keeps the DSL spelling, legacy alias, field and comparison together", () => {
+  it("keeps the DSL spelling, field and comparison together", () => {
     const definition = getRuleTargetDefinition("res-count");
     expect(definition).toMatchObject({
       name: "res-count",
-      aliases: ["res_count"],
       field: "resCount",
       comparison: "greater-than",
-      legacyTypes: ["ResCount", "ResCount"],
+      resultTypes: ["ResCount", "ResCount"],
       allowedOnBoard: true,
       allowedOnThread: false,
     });
-    expect(normalizeRuleTarget("res_count")).toBe("res-count");
+    expect(normalizeRuleTarget("res-count")).toBe("res-count");
   });
 
   it("exposes every target through the completion catalog", () => {

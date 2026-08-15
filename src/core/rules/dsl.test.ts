@@ -49,6 +49,15 @@ describe("rule block DSL", () => {
     expect(result.diagnostics[0]).toMatchObject({ line: 1, message: "未対応の動作です: remove" });
   });
 
+  it("rejects removed function-style option names", () => {
+    const result = parseRuleDsl(`highlight title bgColor=red:\n  注目`);
+    expect(result.rules).toEqual([]);
+    expect(result.diagnostics[0]).toMatchObject({
+      line: 1,
+      message: "未対応のオプションです: bgColor",
+    });
+  });
+
   it("allows comments between multiple block rules", () => {
     const result = parseRuleDsl(`highlight title color=blue label=注目 sites=[bbs.eddibb.cc]:
   google

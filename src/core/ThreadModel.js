@@ -291,10 +291,7 @@ export default class ThreadModel {
 
     // Word/Thread NG
     let ngObj = container.ng.isNGThread(resForNg, this.title, this.urlStr);
-    if (
-      ngObj &&
-      !container.ng.isThreadIgnoreNgType(resForNg, this.title, this.urlStr, ngObj.type)
-    ) {
+    if (ngObj) {
       return ngObj;
     }
 
@@ -308,9 +305,7 @@ export default class ThreadModel {
       chainedIds: this._ngIdForChain,
       chainedSlips: this._ngSlipForChain,
       repeatedMessages: this._resMessageMap,
-      canApply: (type) =>
-        !container.ng.isIgnoreResNumForAuto(res.num, type) &&
-        !container.ng.isThreadIgnoreNgType(resForNg, this.title, this.urlStr, type),
+      canApply: () => true,
     });
     return autoNgType ? { type: autoNgType } : null;
   }
@@ -366,9 +361,6 @@ export default class ThreadModel {
       const targetRes = this.resData.get(r);
       if (!targetRes || targetRes.class?.includes("ng")) continue;
 
-      if (container.ng.isIgnoreResNumForAuto(r, "Chain")) continue;
-      if (container.ng.isThreadIgnoreNgType(targetRes, this.title, this.urlStr, "Chain")) continue;
-
       targetRes.ng = { type: "Chain" };
       targetRes.class?.push("ng");
       this._handleNgDependencies(targetRes, targetRes.ng);
@@ -385,9 +377,6 @@ export default class ThreadModel {
     for (const r of resNums) {
       const res = this.resData.get(r);
       if (!res || res.class?.includes("ng")) continue;
-      if (container.ng.isIgnoreResNumForAuto(r, "ChainID")) continue;
-      if (container.ng.isThreadIgnoreNgType(res, this.title, this.urlStr, "ChainID")) continue;
-
       res.ng = { type: "ChainID" };
       res.class?.push("ng");
       this._handleNgDependencies(res, res.ng);
@@ -404,9 +393,6 @@ export default class ThreadModel {
     for (const r of resNums) {
       const res = this.resData.get(r);
       if (!res || res.class?.includes("ng")) continue;
-      if (container.ng.isIgnoreResNumForAuto(r, "ChainSLIP")) continue;
-      if (container.ng.isThreadIgnoreNgType(res, this.title, this.urlStr, "ChainSLIP")) continue;
-
       res.ng = { type: "ChainSLIP" };
       res.class?.push("ng");
       this._handleNgDependencies(res, res.ng);
