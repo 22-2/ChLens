@@ -41,7 +41,7 @@ describe("useMediaViewerStore", () => {
   });
 
   it("ホイール操作の拡大倍率を10倍に制限する", () => {
-    useMediaViewerStore.setState({ viewerScale: 8 });
+    useMediaViewerStore.setState({ viewerScale: 9.75 });
 
     useMediaViewerStore.getState().zoomByWheel(-120);
 
