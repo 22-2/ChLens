@@ -1,0 +1,19 @@
+.scroll-indicator {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 16px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  border-radius: 20px;
+  font-size: 14px;
+  z-index: 1000;
+  opacity: 0;
+  transition: all 0.3s ease;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.scroll-indicator.visible { opacity: 1; visibility: visible; }
+.scroll-indicator.up { top: 70px; }
+.scroll-indicator.down { bottom: 20px; }

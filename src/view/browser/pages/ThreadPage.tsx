@@ -1,5 +1,5 @@
 import { Loader } from "@mantine/core";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { container } from "src/service-container/index";
 import type { IThread } from "src/service-container/interfaces";
 import { MediaViewerContainer } from "src/view/browser/components/MediaViewerContainer";
@@ -24,6 +24,8 @@ import { useThreadReadState } from "src/view/browser/pages/thread/use-thread-rea
 import { useThreadResContextMenu } from "src/view/browser/pages/thread/use-thread-res-context-menu";
 import { useThreadTopBar } from "src/view/browser/pages/thread/use-thread-top-bar";
 import { useThreadTopScrollOpenFilter } from "src/view/browser/pages/thread/use-thread-top-scroll-open-filter";
+import { WheelScrollIndicator } from "src/view/browser/components/WheelScrollIndicator";
+import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 import { useUrlHandlers } from "src/view/browser/pages/thread/use-url-handlers";
 import { getAutoRefreshPageKey } from "src/view/browser/utils/auto-refresh-pages";
 import {
@@ -38,6 +40,7 @@ interface ThreadPageProps {
   refreshKey: number;
   isActive: boolean;
   isAutoRefreshEnabled: boolean;
+  scrollContainerRef?: RefObject<HTMLDivElement | null>;
 }
 
 export const ThreadPage: React.FC<ThreadPageProps> = ({
@@ -46,8 +49,11 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   refreshKey,
   isActive,
   isAutoRefreshEnabled,
+  scrollContainerRef,
 }) => {
   const rootRef = useRef<HTMLDivElement>(null);
+  const fallbackScrollContainerRef = useRef<HTMLDivElement>(null);
+  const effectiveScrollContainerRef = scrollContainerRef ?? fallbackScrollContainerRef;
   const {
     responses,
     visibleResponses,
@@ -67,6 +73,12 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     messageProtocol,
   } = useThreadData(tabId, page, refreshKey, rootRef);
   const dispatch = useTabDispatch();
+  const wheelPagination = useWheelPagination({
+    isEnabled: isActive && !loading,
+    containerRef: effectiveScrollContainerRef,
+    edge: "bottom",
+    onRefresh: () => dispatch({ type: "RELOAD" }),
+  });
   const { setThreadStats } = useNgStatus();
   const openMediaFromUrl = useMediaViewerStore((state) => state.openMediaFromUrl);
   const { enabled: isAutoNextThreadEnabled, mode: autoNextThreadMode } = useAutoNextThreadSetting();
@@ -322,6 +334,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   // ジェスチャーuseEffectでrootRefが確実にマウント済みになるよう、loading中の早期returnを廃止し常にrootRef付きdivを描画する
   return (
     <div ref={rootRef} className="thread-page" onDoubleClick={handleDoubleClick}>
+      <WheelScrollIndicator {...wheelPagination} threshold={WHEEL_THRESHOLD} />
       {loading && responses.length === 0 ? (
         <div className="page-status">
           <Loader size="sm" aria-label="スレッドを読み込み中" />

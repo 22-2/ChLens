@@ -1,4 +1,4 @@
-import { type FC, memo, useEffect, useState } from "react";
+import { type FC, memo, useEffect, useRef, useState, type RefObject } from "react";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { BoardListPage } from "src/view/browser/pages/BoardListPage";
 import { BookmarkListPage } from "src/view/browser/pages/BookmarkListPage";
@@ -44,12 +44,14 @@ interface TabPageContentProps {
   tab: Tab;
   isActive: boolean;
   threadListActive?: boolean;
+  scrollContainerRef: RefObject<HTMLDivElement | null>;
 }
 
 const TabPageContent = memo(function TabPageContent({
   tab,
   isActive,
   threadListActive,
+  scrollContainerRef,
 }: TabPageContentProps) {
   const page = getCurrentPage(tab);
 
@@ -77,6 +79,7 @@ const TabPageContent = memo(function TabPageContent({
           refreshKey={tab.reloadKey}
           isActive={threadListActive ?? false}
           isAutoRefreshEnabled={isAutoRefreshEnabledForPage(tab, page)}
+          scrollContainerRef={scrollContainerRef}
         />
       );
     case "thread":
@@ -87,6 +90,7 @@ const TabPageContent = memo(function TabPageContent({
           refreshKey={tab.reloadKey}
           isActive={isActive}
           isAutoRefreshEnabled={isAutoRefreshEnabledForPage(tab, page)}
+          scrollContainerRef={scrollContainerRef}
         />
       );
   }
@@ -99,6 +103,7 @@ interface TabPanelProps {
 
 const TabPanel = memo(function TabPanel({ tab, isActive }: TabPanelProps) {
   const page = getCurrentPage(tab);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // パフォーマンス向上とメモリ節約のため、バックグラウンドで開かれたタブ（まだ一度も表示されていないタブ）は
   // 初回表示（アクティブ化）されるまでDOMのマウントおよびレンダリングを遅延させる。
@@ -117,6 +122,7 @@ const TabPanel = memo(function TabPanel({ tab, isActive }: TabPanelProps) {
   return (
     <div
       data-tab-panel-id={tab.id}
+      ref={scrollContainerRef}
       data-active={isActive ? "true" : "false"}
       className="content-area__tab-panel"
       style={{ display: isActive ? "block" : "none" }}
@@ -129,6 +135,7 @@ const TabPanel = memo(function TabPanel({ tab, isActive }: TabPanelProps) {
           tab={tab}
           isActive={isActive}
           threadListActive={page.type === "threadList" ? isActive : undefined}
+          scrollContainerRef={scrollContainerRef}
         />
       }
     </div>

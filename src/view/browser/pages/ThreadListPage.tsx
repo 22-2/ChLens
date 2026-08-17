@@ -1,5 +1,5 @@
 import { Bookmark, BookmarkX } from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { platform } from "src/app";
 import { getStore2String, setStore2String } from "src/app/Store2Storage";
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
@@ -20,6 +20,8 @@ import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
 import { useTheme, type ResolvedTheme } from "src/view/browser/hooks/use-theme";
 import type { ThreadListPage as ThreadListPageType } from "src/view/browser/types";
 import { copyText } from "src/view/browser/utils/utils";
+import { WheelScrollIndicator } from "src/view/browser/components/WheelScrollIndicator";
+import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 const OPENED_BOARDS_CONFIG_KEY = "opened_board_entries";
 const MAX_OPENED_BOARD_ENTRIES = 500;
 
@@ -55,6 +57,7 @@ interface Props {
   refreshKey: number;
   isActive: boolean;
   isAutoRefreshEnabled?: boolean;
+  scrollContainerRef?: RefObject<HTMLDivElement | null>;
 }
 
 type SortColumn = "num" | "title" | "resCount" | "unreadCount" | "heat";
@@ -422,7 +425,10 @@ export const ThreadListPage: React.FC<Props> = ({
   refreshKey,
   isActive,
   isAutoRefreshEnabled = false,
+  scrollContainerRef,
 }) => {
+  const fallbackScrollContainerRef = useRef<HTMLDivElement>(null);
+  const effectiveScrollContainerRef = scrollContainerRef ?? fallbackScrollContainerRef;
   const dispatch = useTabDispatch();
   const { isNgTemporarilyDisabled, setThreadListStats } = useNgStatus();
   const theme = useTheme();
@@ -439,6 +445,12 @@ export const ThreadListPage: React.FC<Props> = ({
     readThreadListSortPreference(page.boardUrl),
   );
   const [searchQuery, setSearchQuery] = useState("");
+  const wheelPagination = useWheelPagination({
+    isEnabled: isActive && !loading,
+    containerRef: effectiveScrollContainerRef,
+    edge: "top",
+    onRefresh: () => dispatch({ type: "RELOAD" }),
+  });
   const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
     pageType: "threadList",
     tabId,
@@ -904,6 +916,7 @@ export const ThreadListPage: React.FC<Props> = ({
 
   return (
     <div className="thread-list-page" onDoubleClick={handleDoubleClick}>
+      <WheelScrollIndicator {...wheelPagination} threshold={WHEEL_THRESHOLD} />
       {isFilterOpen ? (
         <SearchBar
           query={searchQuery}
