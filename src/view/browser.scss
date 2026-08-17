@@ -3474,6 +3474,11 @@ body {
   gap: 4px;
 }
 
+.write-panel__form--confirm {
+  padding: 0;
+  gap: 0;
+}
+
 .write-panel__header-row {
   display: flex;
   align-items: center;
@@ -3569,6 +3574,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  width: 128px;
+  min-width: 0;
   flex-shrink: 0;
   justify-content: flex-start;
   align-items: stretch;
@@ -3611,10 +3618,14 @@ body {
 }
 
 .write-panel__status {
+  display: block;
+  min-width: 0;
   font-size: 11px;
   padding: 2px 4px;
   border-radius: 3px;
-  word-break: break-all;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .write-panel__status--success {
