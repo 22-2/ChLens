@@ -26,7 +26,11 @@ import { create } from "zustand";
 
 const DEFAULT_POPUP_SCOPE_ID = "default";
 const EMPTY_POPUPS: PopupItem[] = [];
-const POPUP_KEEP_OPEN_TARGET_SELECTOR = "a, .res__link, .res__thumb, .res__media-embed";
+// コンテキストメニューの項目操作は親ポップアップの枝を畳む対象外にする。
+// mousedown は親surfaceのcaptureにも届くため、除外しないとレスツリー内の
+// 子レス用メニューをクリックしただけで親ツリーまで閉じてしまう。
+const POPUP_KEEP_OPEN_TARGET_SELECTOR =
+  "a, .res__link, .res__thumb, .res__media-embed, .context-menu";
 const POPUP_MOUSELEAVE_SUPPRESS_MS = 250;
 
 function isContextMenuPopupId(popupId: string | null): boolean {
