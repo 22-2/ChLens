@@ -493,7 +493,7 @@ http://bbs.eddibb.cc/test/read.cgi/liveedge/1779114452/
 - [x] コマンドパレット
 [-] NG Studio構想
   - [5ch互換専ブラを今更作ってるっす | Google Gemini](https://gemini.google.com/app/5d3fdd3bc7ec4cbf?hl=ja)
-- [ ] 閲覧履歴で、要素が多いとフィルタ開閉が重い
+- [x] 閲覧履歴で、要素が多いとフィルタ開閉が重い
 - [ ] 専スレでだけsageみたいな設定ができるように
 - [ ] feat: 画像サムネの読み込みの高速化 -> imgurとかフルサイズで取得してるかもしれない
 - [ ] メモリセーバー（自動タブunmount）
@@ -504,5 +504,5 @@ http://bbs.eddibb.cc/test/read.cgi/liveedge/1779114452/
   - コマンド管理基盤とか作ったほうが良いのかな🤔
 
 ## 2026-08
-- [ ] fix: スレ一覧でたまにツールチップが画面にずっと残るっす🥺
+- [x] fix: スレ一覧でたまにツールチップが画面にずっと残るっす🥺
 - [x] chore: 戻る、進むでも、フィルタや検索が残るようにする設定
