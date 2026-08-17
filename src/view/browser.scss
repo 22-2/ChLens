@@ -1358,6 +1358,36 @@ body {
   text-align: center;
 }
 
+.thread-ng-dialog__panel {
+  width: min(640px, 100%);
+}
+
+.thread-ng-dialog__field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #202124;
+}
+
+.thread-ng-dialog__field textarea {
+  min-height: 78px;
+  resize: vertical;
+  padding: 10px 12px;
+  border: 1px solid #dadce0;
+  border-radius: 10px;
+  background: #fff;
+  color: #202124;
+  font: inherit;
+  line-height: 1.5;
+}
+
+.thread-ng-dialog__field textarea:focus {
+  border-color: #1a73e8;
+  outline: 2px solid rgba(26, 115, 232, 0.2);
+}
+
 .bookmark-root-dialog__tree {
   overflow: auto;
   min-height: 240px;

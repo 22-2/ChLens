@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState, type RefObjec
 import { platform } from "src/app";
 import { getStore2String, setStore2String } from "src/app/Store2Storage";
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
+import { stringifyNgDslValue } from "src/core/ngDsl";
 import { URL as ChURL } from "src/core/URL";
 import { container } from "src/service-container/index";
 import type { IReadState, IThread } from "src/service-container/interfaces";
@@ -463,6 +464,10 @@ export const ThreadListPage: React.FC<Props> = ({
     y: number;
     thread: IThread;
   } | null>(null);
+  const [ngDialogThread, setNgDialogThread] = useState<IThread | null>(null);
+  const [ngTitleDraft, setNgTitleDraft] = useState("");
+  const [ngDialogSaving, setNgDialogSaving] = useState(false);
+  const [ngDialogError, setNgDialogError] = useState<string | null>(null);
   const { column: sortColumn, direction: sortDirection } = sortPreference;
 
   const fetchThreads = useCallback(async () => {
@@ -833,11 +838,52 @@ export const ThreadListPage: React.FC<Props> = ({
     [handleSort],
   );
 
+  const openNgDialog = useCallback((thread: IThread) => {
+    setNgDialogThread(thread);
+    setNgTitleDraft(thread.title);
+    setNgDialogError(null);
+  }, []);
+
+  const closeNgDialog = useCallback(() => {
+    if (!ngDialogSaving) {
+      setNgDialogThread(null);
+      setNgDialogError(null);
+    }
+  }, [ngDialogSaving]);
+
+  const registerThreadTitleNg = useCallback(async () => {
+    const title = ngTitleDraft.trim();
+    if (!title || ngDialogSaving) {
+      return;
+    }
+
+    setNgDialogSaving(true);
+    setNgDialogError(null);
+    const ngRule = `hide title:\n  ${stringifyNgDslValue(title)}`;
+    try {
+      await container.ng.add(ngRule);
+      container.toast.info(`スレタイをNGに追加しました: ${title}`);
+      setNgDialogThread(null);
+    } catch (error) {
+      console.error("[ThreadListPage] thread title NG registration failed:", error);
+      const message = error instanceof Error ? error.message : "NG登録に失敗しました";
+      setNgDialogError(message);
+      container.toast.error(message);
+    } finally {
+      setNgDialogSaving(false);
+    }
+  }, [ngDialogSaving, ngTitleDraft]);
+
   const contextMenuItems = useMemo(() => {
     if (!contextMenuState) return [];
     const { thread } = contextMenuState;
     const isBookmarked = container.bookmark?.get(thread.url);
     const items: ContextMenuItem[] = [
+      {
+        id: "ng-title",
+        label: "スレタイをNG登録",
+        onSelect: () => openNgDialog(thread),
+      },
       {
         id: "bookmark",
         label: isBookmarked ? "ブックマークを削除" : "ブックマークに追加",
@@ -875,7 +921,7 @@ export const ThreadListPage: React.FC<Props> = ({
       },
     ];
     return items;
-  }, [contextMenuState]);
+  }, [contextMenuState, openNgDialog]);
 
   const threadListNgCount = useMemo(
     () => threads.filter((thread) => thread.ng != null).length,
@@ -960,6 +1006,68 @@ export const ThreadListPage: React.FC<Props> = ({
           items={contextMenuItems}
           onClose={() => setContextMenuState(null)}
         />
+      )}
+      {ngDialogThread && (
+        <div className="bookmark-root-dialog thread-ng-dialog" role="presentation">
+          <button
+            type="button"
+            className="bookmark-root-dialog__backdrop"
+            aria-label="スレタイNG登録を閉じる"
+            onClick={closeNgDialog}
+          />
+          <div
+            className="bookmark-root-dialog__panel thread-ng-dialog__panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="thread-ng-dialog-title"
+          >
+            <div className="bookmark-root-dialog__header">
+              <div>
+                <p className="bookmark-root-dialog__eyebrow">Thread NG</p>
+                <h2 id="thread-ng-dialog-title">スレタイをNG登録</h2>
+              </div>
+              <button
+                type="button"
+                className="bookmark-root-dialog__close"
+                onClick={closeNgDialog}
+                disabled={ngDialogSaving}
+              >
+                閉じる
+              </button>
+            </div>
+            <p className="bookmark-root-dialog__description">
+              NGに登録するスレタイを編集してください。登録後はこのタイトルを含むスレッドが非表示になります。
+            </p>
+            {ngDialogError && <p className="bookmark-root-dialog__error">{ngDialogError}</p>}
+            <label className="thread-ng-dialog__field">
+              <span>スレタイ</span>
+              <textarea
+                value={ngTitleDraft}
+                onChange={(event) => setNgTitleDraft(event.target.value)}
+                rows={3}
+                autoFocus
+              />
+            </label>
+            <div className="bookmark-root-dialog__actions">
+              <button
+                type="button"
+                className="bookmark-root-dialog__button"
+                onClick={closeNgDialog}
+                disabled={ngDialogSaving}
+              >
+                キャンセル
+              </button>
+              <button
+                type="button"
+                className="bookmark-root-dialog__button bookmark-root-dialog__button--primary"
+                onClick={() => void registerThreadTitleNg()}
+                disabled={!ngTitleDraft.trim() || ngDialogSaving}
+              >
+                {ngDialogSaving ? "登録中..." : "登録"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
