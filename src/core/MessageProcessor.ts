@@ -9,6 +9,8 @@ interface DecodedMessage {
 }
 
 const TRAILING_PUNCTUATION = /[.,!?;:)]$/;
+const ALLOWED_NAME_TAG =
+  /^<\/?(?:b|small|font(?:\s+color="?[#a-zA-Z0-9]+"?)?|span(?:\s+style="color:\s*[#a-zA-Z0-9]+;?")?)\s*>$/i;
 
 const trimLinkTrailingPunctuation = (rawUrl: string): string => {
   let url = rawUrl;
@@ -49,8 +51,10 @@ export default class MessageProcessor {
     const parts = {} as DecodedMessage;
 
     let nameHtml = (res.name || "")
-      .replace(/<\/?a[^>]*>/g, "")
-      .replace(/<(?!\/?(?:b|small|font(?: color="?[#a-zA-Z0-9]+"?)?)>)/g, "&lt;");
+      .replace(/<\/?a[^>]*>/gi, "")
+      // 名前欄の装飾は既存の b/small/font に加えて、色だけを指定する span を許可する。
+      // 任意属性を通すと style/javascript の注入経路になるため、許可リストを狭く保つ。
+      .replace(/<[^>]*>/g, (tag) => (ALLOWED_NAME_TAG.test(tag) ? tag : tag.replace("<", "&lt;")));
 
     if (res.trip) {
       nameHtml = nameHtml.replace(res.trip, `<span class="trip">${res.trip}</span>`);

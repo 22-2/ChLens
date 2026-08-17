@@ -98,5 +98,32 @@ describe("MessageProcessor", () => {
       expect(result.otherHtml).toContain('<span class="slip">SLIP:L20 abcd-efgh</span>');
       expect(result.otherHtml).toContain('<span class="id">ID:test123</span>');
     });
+
+    it("should preserve color-only span markup in names", () => {
+      const result = MessageProcessor.decode(
+        {
+          name: '風吹けば名無し <span style="color:green;">警備員[Lv.10]</span>',
+          mail: "",
+          other: "",
+        },
+        "https:",
+      );
+
+      expect(result.nameHtml).toContain('<span style="color:green;">警備員[Lv.10]</span>');
+    });
+
+    it("should escape unsupported name attributes", () => {
+      const result = MessageProcessor.decode(
+        {
+          name: '<span onclick="alert(1)">危険</span>',
+          mail: "",
+          other: "",
+        },
+        "https:",
+      );
+
+      expect(result.nameHtml).toContain("&lt;span onclick=\"alert(1)\">");
+      expect(result.nameHtml).not.toContain('<span onclick="alert(1)">');
+    });
   });
 });
