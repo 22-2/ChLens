@@ -1,4 +1,4 @@
-import { Alert, Button, Card, Checkbox, Group, Skeleton, Stack, Text } from "@mantine/core";
+import { Alert, Button, Card, Checkbox, Group, Modal, Skeleton, Stack, Text } from "@mantine/core";
 import { AlertTriangle } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Cache from "src/core/Cache";
@@ -28,11 +28,13 @@ export function SettingsSupplementaryPanels({
   const [folderName, setFolderName] = useState<string | null>(null);
   const [bookmarkLoading, setBookmarkLoading] = useState(false);
   const [bookmarkError, setBookmarkError] = useState<string | null>(null);
-  const [includeHistoryInExport, setIncludeHistoryInExport] = useState(false);
-  const [includeWriteHistoryInExport, setIncludeWriteHistoryInExport] = useState(false);
-  const [includeBookmarksInExport, setIncludeBookmarksInExport] = useState(false);
-  const [includeLogsInExport, setIncludeLogsInExport] = useState(false);
-  const [includeSessionInExport, setIncludeSessionInExport] = useState(false);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  // 基本は完全バックアップにして、必要な場合だけダイアログで対象を外せるようにする。
+  const [includeHistoryInExport, setIncludeHistoryInExport] = useState(true);
+  const [includeWriteHistoryInExport, setIncludeWriteHistoryInExport] = useState(true);
+  const [includeBookmarksInExport, setIncludeBookmarksInExport] = useState(true);
+  const [includeLogsInExport, setIncludeLogsInExport] = useState(true);
+  const [includeSessionInExport, setIncludeSessionInExport] = useState(true);
   const [isExportingArchive, setIsExportingArchive] = useState(false);
   const [isImportingArchive, setIsImportingArchive] = useState(false);
   const [isDeletingLogs, setIsDeletingLogs] = useState(false);
@@ -99,6 +101,7 @@ export function SettingsSupplementaryPanels({
       return;
     }
 
+    setIsExportDialogOpen(false);
     setIsExportingArchive(true);
     try {
       const blob = await exportDataArchive({
@@ -271,37 +274,11 @@ export function SettingsSupplementaryPanels({
                   データ管理
                 </Text>
                 <Text size="xs" c="dimmed">
-                  設定・履歴・ブックマーク・過去ログ・セッションをzip（JSON複数ファイル）でバックアップ/復元します。
+                  設定・履歴・ブックマーク・過去ログ・セッションをzipでバックアップ/復元します。
                 </Text>
 
-                <Checkbox
-                  checked={includeHistoryInExport}
-                  label="閲覧履歴を含める"
-                  onChange={(event) => setIncludeHistoryInExport(event.currentTarget.checked)}
-                />
-                <Checkbox
-                  checked={includeWriteHistoryInExport}
-                  label="書き込み履歴を含める"
-                  onChange={(event) => setIncludeWriteHistoryInExport(event.currentTarget.checked)}
-                />
-                <Checkbox
-                  checked={includeBookmarksInExport}
-                  label="ブックマークを含める"
-                  onChange={(event) => setIncludeBookmarksInExport(event.currentTarget.checked)}
-                />
-                <Checkbox
-                  checked={includeLogsInExport}
-                  label="過去ログ（本文）を含める"
-                  onChange={(event) => setIncludeLogsInExport(event.currentTarget.checked)}
-                />
-                <Checkbox
-                  checked={includeSessionInExport}
-                  label="セッション・タブ状態を含める"
-                  onChange={(event) => setIncludeSessionInExport(event.currentTarget.checked)}
-                />
-
                 <Group wrap="wrap" gap="sm">
-                  <Button onClick={() => void handleExportArchive()} loading={isExportingArchive}>
+                  <Button onClick={() => setIsExportDialogOpen(true)} loading={isExportingArchive}>
                     zipをエクスポート
                   </Button>
                   <Button
@@ -312,6 +289,57 @@ export function SettingsSupplementaryPanels({
                     zipをインポート
                   </Button>
                 </Group>
+
+                <Modal
+                  opened={isExportDialogOpen}
+                  onClose={() => setIsExportDialogOpen(false)}
+                  title="バックアップ内容を選択"
+                  centered
+                >
+                  <Stack gap="sm">
+                    <Text size="sm" c="dimmed">
+                      基本はすべて含まれます。不要な項目だけ外してください。設定は常に含まれます。
+                    </Text>
+                    <Checkbox
+                      checked={includeHistoryInExport}
+                      label="閲覧履歴を含める"
+                      onChange={(event) => setIncludeHistoryInExport(event.currentTarget.checked)}
+                    />
+                    <Checkbox
+                      checked={includeWriteHistoryInExport}
+                      label="書き込み履歴を含める"
+                      onChange={(event) =>
+                        setIncludeWriteHistoryInExport(event.currentTarget.checked)
+                      }
+                    />
+                    <Checkbox
+                      checked={includeBookmarksInExport}
+                      label="ブックマークを含める"
+                      onChange={(event) => setIncludeBookmarksInExport(event.currentTarget.checked)}
+                    />
+                    <Checkbox
+                      checked={includeLogsInExport}
+                      label="過去ログ（本文）を含める"
+                      onChange={(event) => setIncludeLogsInExport(event.currentTarget.checked)}
+                    />
+                    <Checkbox
+                      checked={includeSessionInExport}
+                      label="セッション・タブ状態を含める"
+                      onChange={(event) => setIncludeSessionInExport(event.currentTarget.checked)}
+                    />
+                    <Group justify="flex-end" mt="sm">
+                      <Button variant="default" onClick={() => setIsExportDialogOpen(false)}>
+                        キャンセル
+                      </Button>
+                      <Button
+                        onClick={() => void handleExportArchive()}
+                        loading={isExportingArchive}
+                      >
+                        この内容で保存
+                      </Button>
+                    </Group>
+                  </Stack>
+                </Modal>
 
                 <input
                   ref={fileInputRef}
@@ -361,6 +389,7 @@ export function SettingsSupplementaryPanels({
     includeSessionInExport,
     includeWriteHistoryInExport,
     isDeletingLogs,
+    isExportDialogOpen,
     isExportingArchive,
     isImportingArchive,
     maintenanceActions,
