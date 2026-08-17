@@ -1,4 +1,3 @@
-import { Tooltip } from "@mantine/core";
 import {
   type ColumnDef as TanstackColumnDef,
   flexRender,
@@ -138,12 +137,14 @@ export function SimpleDataTable<TRow>({
           {table.getRowModel().rows.map((row) => {
             const original = row.original;
             const extraClass = getRowClassName?.(original);
+            const tooltipLabel = tableTooltipEnabled ? getRowTooltip?.(original) : undefined;
             const rowElement = (
               <tr
                 className={
                   extraClass ? `simple-data-table__row ${extraClass}` : "simple-data-table__row"
                 }
                 style={getRowStyle?.(original)}
+                title={tooltipLabel}
                 onClick={() => onRowClick?.(original)}
                 onMouseDown={(e) => {
                   if (e.button === 1) {
@@ -170,16 +171,10 @@ export function SimpleDataTable<TRow>({
               </tr>
             );
 
-            const tooltipLabel = tableTooltipEnabled ? getRowTooltip?.(original) : undefined;
-            if (!tooltipLabel) {
-              return <React.Fragment key={row.id}>{rowElement}</React.Fragment>;
-            }
-
-            return (
-              <Tooltip.Floating key={row.id} label={tooltipLabel}>
-                {rowElement}
-              </Tooltip.Floating>
-            );
+            // 変更理由: ポータルに描画する Tooltip.Floating は、行の更新や右クリックで
+            // mouseleave を受け取れず表示だけ残ることがある。title属性なら行のDOMと
+            // ツールチップの寿命が一致するため、一覧更新後も残留しない。
+            return <React.Fragment key={row.id}>{rowElement}</React.Fragment>;
           })}
         </tbody>
       </table>
