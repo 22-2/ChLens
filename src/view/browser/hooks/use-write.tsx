@@ -312,7 +312,10 @@ export function useWrite(threadUrl: string): UseWriteResult {
       return;
     }
 
-    // 空ページをロードしてから iframe の contentDocument にフォームを生成して送信する。
+    // about:blank をロードしてから iframe の contentDocument にフォームを生成して送信する。
+    // 拡張機能内の未配置ファイル（/view/empty.html）に依存すると、ビルド成果物で
+    // ERR_FILE_NOT_FOUND になり content script へ投稿結果が通知されないため、
+    // 作成元の拡張ページと同一オリジンを継承する about:blank を使う。
     // submit_res.js の _setupForm と同じアプローチ。
     const onLoad = () => {
       iframe.removeEventListener("load", onLoad);
@@ -343,7 +346,7 @@ export function useWrite(threadUrl: string): UseWriteResult {
     };
 
     iframe.addEventListener("load", onLoad);
-    iframe.src = "/view/empty.html";
+    iframe.src = "about:blank";
   }, [armSubmitWatchdog, canSubmit, clearSubmitWatchdog, threadUrl, name, mail, sage, message]);
 
   const handleSubmit = useCallback(
