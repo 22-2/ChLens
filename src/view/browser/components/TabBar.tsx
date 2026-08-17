@@ -1,6 +1,7 @@
 import { DragDropProvider } from "@dnd-kit/react";
 import { isSortableOperation, useSortable } from "@dnd-kit/react/sortable";
-import { Pin, Plus, X } from "lucide-react";
+import { Tooltip } from "@mantine/core";
+import { Pin, Plus, RotateCw, X } from "lucide-react";
 import normalizeWheel from "normalize-wheel";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
@@ -90,42 +91,47 @@ const SortableTab: React.FC<SortableTabProps> = ({
   }, [tab.id, wasDraggingRef, onSelect]);
 
   return (
-    <div
-      ref={ref}
-      className={`tab${isActive ? " tab--active" : ""}${
-        tab.pinned ? " tab--pinned" : ""
-      }${isHighlighted ? " tab--highlighted" : ""}${isDragSource ? " tab--dragging" : ""}`}
-      data-tab-id={tab.id}
-      title={page.title}
-      onClick={handleClick}
-      onMouseDown={handleMouseDown}
-      onContextMenu={(e) => onContextMenu(e, tab)}
-    >
-      {tab.pinned ? <Pin size={12} /> : <span className="tab__title">{page.title}</span>}
-      {/* 変更理由: タブが非アクティブでも自動更新設定は残るため、
-          実行中/待機中を区別できるインジケーターを常時表示する。 */}
-      {autoRefreshIndicatorState != null && !tab.pinned && (
-        <span
-          className={`tab__auto-refresh-indicator${
-            autoRefreshIndicatorState === "inactive" ? " tab__auto-refresh-indicator--inactive" : ""
-          }`}
-          title={autoRefreshIndicatorState === "active" ? "自動更新: 動作中" : "自動更新: 待機中"}
-          aria-label={autoRefreshIndicatorState === "active" ? "自動更新動作中" : "自動更新待機中"}
-        />
-      )}
-      {!tab.pinned && tabCount > 1 && (
-        <button
-          className="tab__close"
-          onClick={(e) => {
-            e.stopPropagation();
-            onClose(tab.id);
-          }}
-          title="タブを閉じる"
-        >
-          <X size={14} />
-        </button>
-      )}
-    </div>
+    <Tooltip.Floating label={page.title}>
+      <div
+        ref={ref}
+        className={`tab${isActive ? " tab--active" : ""}${
+          tab.pinned ? " tab--pinned" : ""
+        }${isHighlighted ? " tab--highlighted" : ""}${isDragSource ? " tab--dragging" : ""}`}
+        data-tab-id={tab.id}
+        onClick={handleClick}
+        onMouseDown={handleMouseDown}
+        onContextMenu={(e) => onContextMenu(e, tab)}
+      >
+        {tab.pinned ? <Pin size={11} /> : <span className="tab__title">{page.title}</span>}
+        {/* 変更理由: タブが非アクティブでも自動更新設定は残るため、
+            実行中/待機中を区別できるインジケーターを常時表示する。 */}
+        {autoRefreshIndicatorState != null && !tab.pinned && (
+          <span
+            className={`tab__auto-refresh-indicator${
+              autoRefreshIndicatorState === "inactive"
+                ? " tab__auto-refresh-indicator--inactive"
+                : ""
+            }`}
+            title={autoRefreshIndicatorState === "active" ? "自動更新: 動作中" : "自動更新: 待機中"}
+            aria-label={
+              autoRefreshIndicatorState === "active" ? "自動更新動作中" : "自動更新待機中"
+            }
+          />
+        )}
+        {!tab.pinned && tabCount > 1 && (
+          <button
+            className="tab__close"
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose(tab.id);
+            }}
+            title="タブを閉じる"
+          >
+            <X size={13} />
+          </button>
+        )}
+      </div>
+    </Tooltip.Floating>
   );
 };
 
@@ -141,6 +147,16 @@ export const TabBar: React.FC = () => {
   const lastWheelSwitchAtRef = useRef(0);
   // ドラッグ終了直後の click イベントによるタブ選択を抑止するためのフラグ。
   const wasDraggingRef = useRef(false);
+
+  const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId);
+  const currentPage = activeTab ? getCurrentPage(activeTab) : null;
+  // 更新は常用操作としてタブバー左端にも置くが、再取得できないページでは無効化する。
+  const canRefresh =
+    currentPage?.type === "thread" ||
+    currentPage?.type === "threadList" ||
+    currentPage?.type === "historyList" ||
+    currentPage?.type === "writeHistoryList" ||
+    currentPage?.type === "logList";
 
   const scrollTabIntoView = useCallback((tabId: string) => {
     const tabElement = [
@@ -337,6 +353,16 @@ export const TabBar: React.FC = () => {
 
   return (
     <div ref={barRef} className="tab-bar" onContextMenu={handleBarContextMenu}>
+      <button
+        type="button"
+        className="tab-bar__refresh"
+        disabled={!canRefresh}
+        onClick={() => dispatch({ type: "RELOAD" })}
+        title="更新"
+        aria-label="更新"
+      >
+        <RotateCw size={16} />
+      </button>
       <DragDropProvider onDragEnd={handleDragEnd}>
         <div ref={tabListRef} className="tab-list">
           {state.tabs.map((tab, index) => {
@@ -381,7 +407,7 @@ export const TabBar: React.FC = () => {
             onContextMenu={(e) => e.stopPropagation()}
             title="新しいタブ"
           >
-            <Plus size={18} />
+            <Plus size={16} />
           </button>
         </div>
       </DragDropProvider>

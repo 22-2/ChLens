@@ -48,6 +48,13 @@ vi.mock("src/view/browser/components/TabContextMenu", () => ({
   TabContextMenu: () => null,
 }));
 
+// タブバー単体テストでは MantineProvider を組み立てないため、Tooltip.Floating は子要素をそのまま返す。
+vi.mock("@mantine/core", () => ({
+  Tooltip: {
+    Floating: ({ children }: { children: React.ReactNode }) => children,
+  },
+}));
+
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => ({
     state: mocks.tabStore.state,
@@ -535,6 +542,33 @@ describe("TabBar tab interactions", () => {
       type: "SELECT_TAB",
       tabId: "tab-2",
     });
+  });
+
+  it("更新ボタンをタブバー左端から押すと RELOAD が dispatch される", () => {
+    mocks.tabStore.state = {
+      ...mocks.tabStore.state,
+      tabs: [
+        {
+          ...mocks.tabStore.state.tabs[0],
+          history: [
+            {
+              type: "thread",
+              title: "スレッド",
+              threadUrl: "https://example.com/test/read.cgi/software/1/",
+            },
+          ],
+        },
+      ],
+      activeTabId: "tab-1",
+    } as unknown as typeof mocks.tabStore.state;
+
+    const { container } = render(<TabBar />);
+    const refreshButton = container.querySelector(".tab-bar__refresh") as HTMLButtonElement;
+
+    expect(refreshButton).not.toBeDisabled();
+    fireEvent.click(refreshButton);
+
+    expect(dispatchMock).toHaveBeenCalledWith({ type: "RELOAD" });
   });
 
   it("× ボタンをクリックすると CLOSE_TAB が dispatch される", () => {
