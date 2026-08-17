@@ -4,7 +4,7 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { useColumnVisibility } from "src/view/browser/components/use-column-visibility";
 import { useTableTooltipEnabled } from "src/view/browser/hooks/use-table-tooltip-setting";
@@ -58,6 +58,11 @@ export function SimpleDataTable<TRow>({
   columnVisibilityLockedKeys,
 }: Props<TRow>): React.ReactElement {
   const tableTooltipEnabled = useTableTooltipEnabled();
+  const [tooltipState, setTooltipState] = useState<{
+    label: string;
+    x: number;
+    y: number;
+  } | null>(null);
   const {
     visibleColumns,
     columnVisibilityMenuItems,
@@ -99,6 +104,12 @@ export function SimpleDataTable<TRow>({
     if (sortColumn !== key) return "";
     return sortDirection === "asc" ? " ▲" : " ▼";
   };
+
+  useEffect(() => {
+    // 変更理由: 一覧更新でホバー中の行が差し替わるとmouseleaveが発火しないことがあるため、
+    // 表示データが変わった時点で古い行のツールチップを確実に閉じる。
+    setTooltipState(null);
+  }, [rows]);
 
   return (
     <>
@@ -144,12 +155,36 @@ export function SimpleDataTable<TRow>({
                   extraClass ? `simple-data-table__row ${extraClass}` : "simple-data-table__row"
                 }
                 style={getRowStyle?.(original)}
-                title={tooltipLabel}
-                onClick={() => onRowClick?.(original)}
+                onMouseEnter={
+                  tooltipLabel
+                    ? (event) =>
+                        setTooltipState({
+                          label: tooltipLabel,
+                          x: event.clientX,
+                          y: event.clientY,
+                        })
+                    : undefined
+                }
+                onMouseMove={
+                  tooltipLabel
+                    ? (event) =>
+                        setTooltipState((current) =>
+                          current
+                            ? { ...current, x: event.clientX, y: event.clientY }
+                            : { label: tooltipLabel, x: event.clientX, y: event.clientY },
+                        )
+                    : undefined
+                }
+                onMouseLeave={() => setTooltipState(null)}
+                onClick={() => {
+                  setTooltipState(null);
+                  onRowClick?.(original);
+                }}
                 onMouseDown={(e) => {
                   if (e.button === 1) {
                     e.preventDefault();
                     e.stopPropagation();
+                    setTooltipState(null);
                     // 中クリックは別ハンドラとして処理し、次回の左クリックは抑止しない。
                     // ここで抑止フラグを持つと「中クリック後の最初の左クリック無効化」が再発するため。
                     onRowMiddleClick?.(original);
@@ -157,6 +192,7 @@ export function SimpleDataTable<TRow>({
                 }}
                 onContextMenu={(e) => {
                   e.preventDefault();
+                  setTooltipState(null);
                   onRowContextMenu?.(original, e.clientX, e.clientY);
                 }}
               >
@@ -171,13 +207,19 @@ export function SimpleDataTable<TRow>({
               </tr>
             );
 
-            // 変更理由: ポータルに描画する Tooltip.Floating は、行の更新や右クリックで
-            // mouseleave を受け取れず表示だけ残ることがある。title属性なら行のDOMと
-            // ツールチップの寿命が一致するため、一覧更新後も残留しない。
             return <React.Fragment key={row.id}>{rowElement}</React.Fragment>;
           })}
         </tbody>
       </table>
+      {tooltipState ? (
+        <div
+          className="simple-data-table__tooltip"
+          style={{ left: tooltipState.x + 12, top: tooltipState.y + 12 }}
+          role="tooltip"
+        >
+          {tooltipState.label}
+        </div>
+      ) : null}
       {headerContextMenuState ? (
         <ContextMenu
           x={headerContextMenuState.x}
