@@ -249,7 +249,7 @@ export default defineConfig(({ mode }) => {
   const platform = process.env.PLATFORM || "chrome";
   const entry = process.env.ENTRY || "browser";
   const outputDir = `./debug/${platform}`;
-  const buildCopyDestination = resolveBuildCopyDestination(mode);
+  // const buildCopyDestination = resolveBuildCopyDestination(mode);
   const isWatchMode = process.argv.includes("--watch");
   const isWatchDev =
     isWatchMode && (mode === "development" || process.env.VITE_WATCH_DEV === "true");
@@ -404,7 +404,7 @@ export default defineConfig(({ mode }) => {
       scssPlugin(platform, outputDir, minifyOutput),
       manifestPlugin(platform, outputDir),
       staticCopyPlugin(platform, outputDir, minifyOutput),
-      buildOutputCopyPlugin(outputDir, buildCopyDestination),
+      // buildOutputCopyPlugin(outputDir, buildCopyDestination),
     ]),
     resolve: {
       alias: {
