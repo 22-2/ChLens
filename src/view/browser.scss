@@ -114,7 +114,18 @@ body {
 }
 
 .pane-column__chrome {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  align-content: flex-start;
+  min-width: 0;
+  min-height: 32px;
+  height: auto;
   flex-shrink: 0;
+  column-gap: 2px;
+  row-gap: 0;
+  background: var(--browser-color-tab-strip-bg);
+  border-bottom: 1px solid var(--browser-color-border);
 }
 
 // ペイン内のコンテンツは縦スクロール用に縮小可能にしておく。
@@ -190,25 +201,30 @@ body {
 }
 
 /* ==========================================================================
-   Tab Bar - Chrome風タブストリップ
+   Tab Bar - VS Code風タブストリップ
    ========================================================================== */
 .tab-bar {
   display: flex;
-  align-items: flex-end;
-  height: 38px;
+  // タブ本体を行高いっぱいにしつつ、追加ボタンは行の中央へ揃える。
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 32px;
   background: var(--browser-color-tab-strip-bg);
-  padding: 0 8px;
-  padding-top: 4px;
+  border-bottom: 1px solid var(--browser-color-border);
+  padding: 0 4px;
   /* ウィンドウ上端のドラッグ領域を兼ねるため余白確保 */
   user-select: none;
 }
 
 .tab-list {
   display: flex;
-  align-items: flex-end;
+  align-items: stretch;
+  align-self: stretch;
   flex: 1 1 auto;
   min-width: 0;
-  gap: 4px;
+  height: 100%;
+  gap: 0;
   overflow-x: auto;
   overflow-y: hidden;
   // 変更理由: ネイティブスクロールバーはタブ34pxとは別に高さを消費し、
@@ -226,10 +242,13 @@ body {
 .tab {
   display: flex;
   align-items: center;
-  flex: 1 1 0;
-  height: 34px;
-  padding: 0 8px 0 12px;
-  border-radius: 8px 8px 0 0;
+  flex: 0 1 180px;
+  height: 32px;
+  padding: 0 8px 0 10px;
+  border: 0;
+  border-right: 1px solid var(--browser-color-border);
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
   cursor: pointer;
   max-width: 180px;
   min-width: 72px;
@@ -247,7 +266,8 @@ body {
 .tab--active {
   background: var(--browser-color-bg);
   color: var(--browser-color-text-primary);
-  flex-grow: 1.35;
+  border-bottom-color: var(--browser-color-accent);
+  flex-grow: 0;
   max-width: 240px;
 }
 
@@ -272,7 +292,7 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  line-height: 34px;
+  line-height: 32px;
 }
 
 /* 自動更新有効時にタブタイトル右端へ状態インジケーターを表示する */
@@ -297,7 +317,7 @@ body {
   margin-left: 4px;
   width: 20px;
   height: 20px;
-  border-radius: 50%;
+  border-radius: 2px;
   border: none;
   background: transparent;
   cursor: pointer;
@@ -314,19 +334,46 @@ body {
 
 .tab-bar__add {
   flex-shrink: 0;
+  align-self: center;
   width: 28px;
   height: 28px;
-  border-radius: 50%;
+  border-radius: 2px;
   border: none;
   background: transparent;
   cursor: pointer;
-  margin-left: 4px;
-  margin-bottom: 3px;
+  margin: 0 0 0 2px;
+  line-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--browser-color-text-muted);
   transition: background 0.1s;
+}
+
+.tab-bar__refresh {
+  flex-shrink: 0;
+  align-self: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 2px;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--browser-color-text-muted);
+  transition: background 0.1s, color 0.1s;
+}
+
+.tab-bar__refresh:hover:not(:disabled) {
+  background: var(--browser-color-tab-strip-hover);
+  color: var(--browser-color-text-primary);
+}
+
+.tab-bar__refresh:disabled {
+  color: var(--browser-color-text-disabled);
+  cursor: default;
 }
 
 .tab-bar__add:hover {
@@ -368,6 +415,10 @@ body {
   border-radius: 4px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   font-size: 13px;
+}
+
+.context-menu__header {
+  border-bottom: 1px solid #dadce0;
 }
 
 .context-menu__item {
@@ -442,13 +493,8 @@ body {
    Navigation Bar - 戻る/進む/更新/URLバー/メニュー
    ========================================================================== */
 .nav-bar {
-  display: flex;
-  align-items: center;
-  height: 40px;
-  padding: 0 4px;
-  background: var(--browser-color-bg);
-  border-bottom: 1px solid var(--browser-color-border);
-  gap: 2px;
+  // 親の折り返しレイアウトへURLの二段目を参加させるため、視覚的な箱は作らない。
+  display: contents;
 }
 
 .nav-bar__btn {
@@ -463,6 +509,7 @@ body {
   justify-content: center;
   color: var(--browser-color-text-muted);
   flex-shrink: 0;
+  align-self: center;
   transition: background 0.1s;
 }
 
@@ -475,6 +522,26 @@ body {
   cursor: default;
 }
 
+.nav-bar__url-toggle {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--browser-color-text-muted);
+  cursor: pointer;
+  align-self: center;
+  transition: background 0.1s;
+}
+
+.nav-bar__url-toggle:hover {
+  background: var(--browser-color-tab-strip-hover);
+}
+
 /* トグルがオン（2ペイン表示中）の状態を示す */
 .nav-bar__btn--active {
   color: var(--browser-color-accent);
@@ -485,7 +552,9 @@ body {
 }
 
 .nav-bar__url {
-  flex: 1;
+  flex: 0 1 clamp(180px, 30vw, 360px);
+  width: clamp(180px, 30vw, 360px);
+  min-width: 0;
   height: 32px;
   margin: 0 4px;
   position: relative;
@@ -497,6 +566,24 @@ body {
   transition:
     background 0.15s,
     box-shadow 0.15s;
+}
+
+.nav-bar__url-row {
+  order: 1;
+  flex: 0 0 100%;
+  min-width: 0;
+  height: 40px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  background: var(--browser-color-bg);
+  border-top: 1px solid var(--browser-color-border);
+}
+
+.nav-bar__url-row .nav-bar__url {
+  flex: 1 1 auto;
+  width: auto;
+  margin: 0;
 }
 
 .nav-bar__url--has-action .nav-bar__url-input {
@@ -575,6 +662,43 @@ body {
 
 .nav-bar__url-input::selection {
   background: var(--browser-color-selection);
+}
+
+.nav-bar__menu-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--browser-color-border);
+}
+
+.nav-bar__menu-action {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--browser-color-text-muted);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+
+.nav-bar__menu-action:hover:not(:disabled) {
+  background: var(--browser-color-surface-muted);
+  color: var(--browser-color-text-primary);
+}
+
+.nav-bar__menu-action:disabled {
+  color: var(--browser-color-text-disabled);
+  cursor: default;
+}
+
+.nav-bar__menu-action--active {
+  color: var(--browser-color-accent);
 }
 
 .nav-bar__omnibar {
@@ -3730,6 +3854,10 @@ body {
     background: #292a2d;
     border-color: #3c4043;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  }
+
+  .context-menu__header {
+    border-bottom-color: #3c4043;
   }
 
   .context-menu__item {

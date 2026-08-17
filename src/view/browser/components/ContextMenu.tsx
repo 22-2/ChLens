@@ -20,6 +20,7 @@ interface Props {
   y: number;
   items: ContextMenuItem[];
   onClose: () => void;
+  header?: ReactNode;
   triggerRef?: RefObject<HTMLElement | null>;
   popupId?: string;
   isPopupDescendantOf?: (popupId: string, ancestorId: string) => boolean;
@@ -35,6 +36,7 @@ export const ContextMenu: React.FC<Props> = ({
   y,
   items,
   onClose,
+  header,
   triggerRef,
   popupId,
   isPopupDescendantOf,
@@ -95,6 +97,7 @@ export const ContextMenu: React.FC<Props> = ({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
+      {header ? <div className="context-menu__header">{header}</div> : null}
       {visibleItems.map((item) => {
         if (item.separator) {
           return <div key={item.id} className="context-menu__separator" />;

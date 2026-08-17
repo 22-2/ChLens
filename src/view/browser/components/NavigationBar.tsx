@@ -5,6 +5,8 @@ import {
   Bookmark,
   Columns2,
   Command,
+  ChevronDown,
+  ChevronUp,
   Filter,
   History,
   Menu,
@@ -333,6 +335,8 @@ export const NavigationBar: React.FC = () => {
   const [backMenuPosition, setBackMenuPosition] = useState<MenuPosition | null>(null);
   const [refreshMenuPosition, setRefreshMenuPosition] = useState<MenuPosition | null>(null);
   const [forwardMenuPosition, setForwardMenuPosition] = useState<MenuPosition | null>(null);
+  // URL入力は必要なときだけ展開し、タブと本文に使える高さを初期状態で確保する。
+  const [isUrlExpanded, setIsUrlExpanded] = useState(false);
   const backButtonRef = useRef<HTMLButtonElement>(null);
   const forwardButtonRef = useRef<HTMLButtonElement>(null);
   const refreshButtonRef = useRef<HTMLButtonElement>(null);
@@ -600,6 +604,21 @@ export const NavigationBar: React.FC = () => {
     setRefreshMenuPosition(null);
   }, []);
 
+  const handleMenuRefresh = useCallback(() => {
+    handleRefresh();
+    closeMenu();
+  }, [closeMenu, handleRefresh]);
+
+  const handleMenuBookmark = useCallback(() => {
+    handleToggleBookmark();
+    closeMenu();
+  }, [closeMenu, handleToggleBookmark]);
+
+  const handleMenuTogglePane = useCallback(() => {
+    dispatch({ type: isTwoPane ? "CLOSE_PANE" : "SPLIT_PANE" });
+    closeMenu();
+  }, [closeMenu, dispatch, isTwoPane]);
+
   const handleBackContextMenu = useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {
       e.preventDefault();
@@ -849,33 +868,43 @@ export const NavigationBar: React.FC = () => {
     [currentAutoRefreshPageKey, dispatch, isCurrentPageAutoRefreshEnabled],
   );
 
-  return (
-    <div className="nav-bar">
+  // Android版Chromeのように頻繁に使う操作をメニューの最上段へまとめ、本文の横幅を優先する。
+  const navigationMenuHeader = (
+    <div className="nav-bar__menu-actions" role="group" aria-label="ナビゲーション操作">
       <button
         ref={backButtonRef}
-        className="nav-bar__btn"
+        type="button"
+        className="nav-bar__menu-action"
         disabled={!back}
-        onClick={() => dispatch({ type: "GO_BACK" })}
+        onClick={() => {
+          dispatch({ type: "GO_BACK" });
+          closeMenu();
+        }}
         onContextMenu={handleBackContextMenu}
         title="戻る"
+        aria-label="戻る"
       >
-        <ArrowLeft size={18} />
+        <ArrowLeft size={17} />
       </button>
       <button
         ref={forwardButtonRef}
-        className="nav-bar__btn"
+        type="button"
+        className="nav-bar__menu-action"
         disabled={!forward}
-        onClick={() => dispatch({ type: "GO_FORWARD" })}
+        onClick={() => {
+          dispatch({ type: "GO_FORWARD" });
+          closeMenu();
+        }}
         onContextMenu={handleForwardContextMenu}
         title="進む"
+        aria-label="進む"
       >
-        <ArrowRight size={18} />
+        <ArrowRight size={17} />
       </button>
       <button
         ref={refreshButtonRef}
-        className="nav-bar__btn"
-        // 変更理由: 閲覧履歴・書き込み履歴は手動更新で再取得したい要望があるため、
-        // RELOADを扱えるページとしてボタンを有効化する。
+        type="button"
+        className="nav-bar__menu-action"
         disabled={
           currentPage.type !== "thread" &&
           currentPage.type !== "threadList" &&
@@ -883,64 +912,70 @@ export const NavigationBar: React.FC = () => {
           currentPage.type !== "writeHistoryList" &&
           currentPage.type !== "logList"
         }
-        onClick={handleRefresh}
+        onClick={handleMenuRefresh}
         onContextMenu={handleRefreshContextMenu}
         title="更新"
+        aria-label="更新"
       >
-        <RotateCw size={16} />
+        <RotateCw size={17} />
       </button>
-
-      <Omnibar
-        inputRef={urlInputRef}
-        inputValue={inputValue}
-        placeholder="URLを入力"
-        isOpen={isOmnibarOpen}
-        isLoading={isOmnibarLoading}
-        suggestions={omnibarSuggestions}
-        activeSuggestionIndex={activeSuggestionIndex}
-        shouldShowNoMatch={shouldShowNoMatch}
-        onInputChange={handleInputChange}
-        onKeyDown={handleKeyDown}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        onSuggestionHover={setActiveSuggestionIndex}
-        onSuggestionSelect={handleSelectSuggestion}
-        trailingAction={
-          bookmarkTarget ? (
-            <button
-              type="button"
-              className={`nav-bar__url-action-btn${
-                isBookmarked ? " nav-bar__url-action-btn--active" : ""
-              }`}
-              aria-label={
-                isBookmarked ? "このページをブックマークから削除" : "このページをブックマークに追加"
-              }
-              aria-pressed={isBookmarked}
-              title={
-                isBookmarked ? "このページをブックマークから削除" : "このページをブックマークに追加"
-              }
-              disabled={isBookmarkPending}
-              onMouseDown={(event) => {
-                event.preventDefault();
-              }}
-              onClick={handleToggleBookmark}
-            >
-              <Star size={16} fill={isBookmarked ? "currentColor" : "none"} />
-            </button>
-          ) : null
-        }
-      />
-
-      {/* 2ペイン表示のオン/オフトグル。
-          1ペイン時は右に2ペイン目を開き、2ペイン時はこのペインを閉じて1ペインへ戻す。 */}
       <button
-        className={`nav-bar__btn${isTwoPane ? " nav-bar__btn--active" : ""}`}
-        title={isTwoPane ? "2ペイン表示を解除" : "2ペインで表示"}
-        aria-pressed={isTwoPane}
-        onClick={() => dispatch({ type: isTwoPane ? "CLOSE_PANE" : "SPLIT_PANE" })}
+        type="button"
+        className={`nav-bar__menu-action${isBookmarked ? " nav-bar__menu-action--active" : ""}`}
+        disabled={!bookmarkTarget || isBookmarkPending}
+        onClick={handleMenuBookmark}
+        title={isBookmarked ? "お気に入りから削除" : "お気に入りに追加"}
+        aria-label={isBookmarked ? "お気に入りから削除" : "お気に入りに追加"}
+        aria-pressed={isBookmarked}
       >
-        <Columns2 size={18} />
+        <Star size={17} fill={isBookmarked ? "currentColor" : "none"} />
       </button>
+      <button
+        type="button"
+        className={`nav-bar__menu-action${isTwoPane ? " nav-bar__menu-action--active" : ""}`}
+        onClick={handleMenuTogglePane}
+        title={isTwoPane ? "2ペイン表示を解除" : "2ペインで表示"}
+        aria-label={isTwoPane ? "2ペイン表示を解除" : "2ペインで表示"}
+        aria-pressed={isTwoPane}
+      >
+        <Columns2 size={17} />
+      </button>
+    </div>
+  );
+
+  return (
+    <div className="nav-bar">
+      <button
+        type="button"
+        className="nav-bar__url-toggle"
+        onClick={() => setIsUrlExpanded((expanded) => !expanded)}
+        aria-expanded={isUrlExpanded}
+        title={isUrlExpanded ? "URLバーを折りたたむ" : "URLバーを表示"}
+        aria-label={isUrlExpanded ? "URLバーを折りたたむ" : "URLバーを表示"}
+      >
+        {isUrlExpanded ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
+      </button>
+
+      {isUrlExpanded && (
+        <div className="nav-bar__url-row">
+          <Omnibar
+            inputRef={urlInputRef}
+            inputValue={inputValue}
+            placeholder="URLを入力"
+            isOpen={isOmnibarOpen}
+            isLoading={isOmnibarLoading}
+            suggestions={omnibarSuggestions}
+            activeSuggestionIndex={activeSuggestionIndex}
+            shouldShowNoMatch={shouldShowNoMatch}
+            onInputChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            onSuggestionHover={setActiveSuggestionIndex}
+            onSuggestionSelect={handleSelectSuggestion}
+          />
+        </div>
+      )}
 
       <button
         ref={menuButtonRef}
@@ -960,6 +995,7 @@ export const NavigationBar: React.FC = () => {
           x={menuPosition.x}
           y={menuPosition.y}
           items={menuItems}
+          header={navigationMenuHeader}
           onClose={closeMenu}
           triggerRef={menuButtonRef}
         />

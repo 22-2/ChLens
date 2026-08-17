@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { container } from "src/service-container";
 import { NavigationBar } from "src/view/browser/components/NavigationBar";
 import type { Page } from "src/view/browser/types";
@@ -181,6 +181,7 @@ describe("NavigationBar", () => {
 
     render(<NavigationBar />);
 
+    fireEvent.click(screen.getByTitle("URLバーを表示"));
     const input = screen.getByPlaceholderText("URLを入力");
     fireEvent.focus(input);
     fireEvent.change(input, { target: { value: "openai" } });
@@ -194,6 +195,7 @@ describe("NavigationBar", () => {
   it("URL欄から別板のスレを開くと、その板を戻る先として履歴に積む", () => {
     render(<NavigationBar />);
 
+    fireEvent.click(screen.getByTitle("URLバーを表示"));
     const input = screen.getByPlaceholderText("URLを入力");
     fireEvent.change(input, {
       target: { value: "https://egg.5ch.io/test/read.cgi/board-b/123/" },
@@ -219,9 +221,42 @@ describe("NavigationBar", () => {
     });
   });
 
+  it("URLバーを折りたたみボタンで表示・非表示に切り替える", () => {
+    render(<NavigationBar />);
+
+    const expandButton = screen.getByTitle("URLバーを表示");
+    expect(expandButton).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByPlaceholderText("URLを入力")).not.toBeInTheDocument();
+
+    fireEvent.click(expandButton);
+
+    const collapseButton = screen.getByTitle("URLバーを折りたたむ");
+    expect(collapseButton).toHaveAttribute("aria-expanded", "true");
+    const input = screen.getByPlaceholderText("URLを入力");
+    expect(input).toBeInTheDocument();
+    expect(input.closest(".nav-bar__url-row")).toBeInTheDocument();
+
+    fireEvent.click(collapseButton);
+    expect(screen.queryByPlaceholderText("URLを入力")).not.toBeInTheDocument();
+  });
+
+  it("頻繁なナビゲーション操作をハンバーガーメニューの最上段に表示する", () => {
+    render(<NavigationBar />);
+
+    fireEvent.click(screen.getByTitle("メニュー"));
+
+    const actions = screen.getByRole("group", { name: "ナビゲーション操作" });
+    expect(actions).toBeInTheDocument();
+    expect(within(actions).getByTitle("戻る")).toBeInTheDocument();
+    expect(within(actions).getByTitle("進む")).toBeInTheDocument();
+    expect(within(actions).getByTitle("更新")).toBeInTheDocument();
+    expect(within(actions).getByTitle("お気に入りに追加")).toBeInTheDocument();
+  });
+
   it("戻る履歴メニューのタイトルを複数行表示にする", () => {
     render(<NavigationBar />);
 
+    fireEvent.click(screen.getByTitle("メニュー"));
     fireEvent.contextMenu(screen.getByTitle("戻る"));
 
     const item = screen.getByRole("button", { name: longTitle });
@@ -332,11 +367,12 @@ describe("NavigationBar", () => {
     dispatchEventSpy.mockRestore();
   });
 
-  it("オムニバー右端の星で現在スレッドのブックマークを切り替える", async () => {
+  it("メニュー上部のお気に入りで現在スレッドのブックマークを切り替える", async () => {
     render(<NavigationBar />);
 
+    fireEvent.click(screen.getByTitle("メニュー"));
     const starButton = screen.getByRole("button", {
-      name: "このページをブックマークに追加",
+      name: "お気に入りに追加",
     });
 
     expect(starButton).toHaveAttribute("aria-pressed", "false");
@@ -353,15 +389,16 @@ describe("NavigationBar", () => {
     await waitFor(() => {
       expect(toastInfoMock).toHaveBeenCalledWith("ブックマークに追加しました");
     });
+    fireEvent.click(screen.getByTitle("メニュー"));
     expect(
       screen.getByRole("button", {
-        name: "このページをブックマークから削除",
+        name: "お気に入りから削除",
       }),
     ).toHaveAttribute("aria-pressed", "true");
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "このページをブックマークから削除",
+        name: "お気に入りから削除",
       }),
     );
 
@@ -375,7 +412,7 @@ describe("NavigationBar", () => {
     });
   });
 
-  it("板一覧ページでもオムニバー右端の星から板をブックマークできる", async () => {
+  it("板一覧ページでもメニュー上部のお気に入りから板をブックマークできる", async () => {
     activeTab.history = [
       {
         type: "threadList",
@@ -388,9 +425,10 @@ describe("NavigationBar", () => {
 
     render(<NavigationBar />);
 
+    fireEvent.click(screen.getByTitle("メニュー"));
     fireEvent.click(
       screen.getByRole("button", {
-        name: "このページをブックマークに追加",
+        name: "お気に入りに追加",
       }),
     );
 
@@ -415,9 +453,10 @@ describe("NavigationBar", () => {
 
     render(<NavigationBar />);
 
+    fireEvent.click(screen.getByTitle("メニュー"));
     fireEvent.click(
       screen.getByRole("button", {
-        name: "このページをブックマークに追加",
+        name: "お気に入りに追加",
       }),
     );
 
@@ -426,10 +465,11 @@ describe("NavigationBar", () => {
     });
     expect(toastErrorMock).not.toHaveBeenCalledWith("ブックマーク状態の同期に失敗しました");
 
+    fireEvent.click(screen.getByTitle("メニュー"));
     await waitFor(() => {
       expect(
         screen.getByRole("button", {
-          name: "このページをブックマークから削除",
+          name: "お気に入りから削除",
         }),
       ).toHaveAttribute("aria-pressed", "true");
     });
