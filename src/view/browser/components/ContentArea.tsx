@@ -1,4 +1,4 @@
-import { type FC, memo, useEffect, useRef, useState, type RefObject } from "react";
+import { memo, useEffect, useRef, useState, type FC, type RefObject } from "react";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { BoardListPage } from "src/view/browser/pages/BoardListPage";
 import { BookmarkListPage } from "src/view/browser/pages/BookmarkListPage";

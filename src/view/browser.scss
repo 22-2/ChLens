@@ -363,7 +363,9 @@ body {
   align-items: center;
   justify-content: center;
   color: var(--browser-color-text-muted);
-  transition: background 0.1s, color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s;
 }
 
 .tab-bar__refresh:hover:not(:disabled) {
@@ -684,7 +686,9 @@ body {
   background: transparent;
   color: var(--browser-color-text-muted);
   cursor: pointer;
-  transition: background 0.1s, color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s;
 }
 
 .nav-bar__menu-action:hover:not(:disabled) {

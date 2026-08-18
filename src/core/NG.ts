@@ -1,11 +1,11 @@
 import { createLogger } from "src/core/logger";
 import { countReplyAnchorTargets } from "src/core/reply-index";
-import { container } from "src/service-container/index";
-import type { INGResult } from "src/service-container/index";
 import { RULE_TARGET_CATALOG } from "src/core/rules/catalog";
 import { formatRuleDsl, parseRuleDsl } from "src/core/rules/dsl";
 import { clearRuleRegexCache, matchRules } from "src/core/rules/engine";
 import type { Rule } from "src/core/rules/model";
+import type { INGResult } from "src/service-container/index";
+import { container } from "src/service-container/index";
 
 const CONFIG_STRING_NAME = "ngwords";
 const GENERAL_DEBUG_CONFIG_KEY = "debug_log";

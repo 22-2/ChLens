@@ -1,18 +1,18 @@
 import JSZip from "jszip";
-import Cache, { type LogArchiveRecord } from "src/core/Cache";
 import type { Entry as BookmarkEntry, ReadState } from "src/core/BookmarkEntryList";
+import Cache, { type LogArchiveRecord } from "src/core/Cache";
 import * as History from "src/core/History";
 import * as WriteHistory from "src/core/WriteHistory";
 import { container } from "src/service-container/index";
 import {
-  getLegacyBookmarkService,
-  getLegacyBookmarkEntryList,
-  waitForLegacyBookmarkReady,
-} from "src/view/browser/utils/legacy-app";
-import {
   getBrowserSessionJson,
   setBrowserSessionJson,
 } from "src/view/browser/utils/browser-session-storage";
+import {
+  getLegacyBookmarkEntryList,
+  getLegacyBookmarkService,
+  waitForLegacyBookmarkReady,
+} from "src/view/browser/utils/legacy-app";
 
 const ARCHIVE_SCHEMA_VERSION = 2;
 

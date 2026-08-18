@@ -1,10 +1,10 @@
 import "@testing-library/jest-dom/vitest";
 import {
+  formatIdForCopy,
+  formatResForCopy,
   hasImage,
   hasVideo,
-  formatIdForCopy,
   normalizeIdLinkText,
-  formatResForCopy,
   stripHtml,
   toViewerImageUrl,
 } from "src/view/browser/utils/utils";

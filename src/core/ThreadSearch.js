@@ -25,8 +25,8 @@ const _parse = (protocol) =>
     const boardUrl = new URL(url).toBoard();
     try {
       boardTitle = await askBoardTitleSolver(boardUrl);
-      } catch {
-        boardTitle = "";
+    } catch {
+      boardTitle = "";
     }
     return {
       url: setProtocol(url, protocol),

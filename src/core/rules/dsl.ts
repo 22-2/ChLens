@@ -1,7 +1,7 @@
 import {
   isRuleCombinationSupported,
-  normalizeRuleOption,
   normalizeRuleAction,
+  normalizeRuleOption,
   normalizeRuleTarget,
 } from "src/core/rules/catalog";
 import type { Rule, RuleMatcher } from "src/core/rules/model";

@@ -10,6 +10,7 @@ import type { IReadState, IThread } from "src/service-container/interfaces";
 import { ContextMenu, ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import { ColumnDef, SimpleDataTable } from "src/view/browser/components/SimpleDataTable";
+import { WheelScrollIndicator } from "src/view/browser/components/WheelScrollIndicator";
 import {
   BOARD_AUTO_REFRESH_CONFIG_KEY,
   MIN_BOARD_AUTO_REFRESH_MS,
@@ -19,10 +20,9 @@ import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
 import { useTheme, type ResolvedTheme } from "src/view/browser/hooks/use-theme";
+import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 import type { ThreadListPage as ThreadListPageType } from "src/view/browser/types";
 import { copyText } from "src/view/browser/utils/utils";
-import { WheelScrollIndicator } from "src/view/browser/components/WheelScrollIndicator";
-import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 const OPENED_BOARDS_CONFIG_KEY = "opened_board_entries";
 const MAX_OPENED_BOARD_ENTRIES = 500;
 

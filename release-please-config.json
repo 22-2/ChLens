@@ -8,9 +8,7 @@
       "package-name": "chlens",
       "release-type": "node",
       "include-component-in-tag": false,
-      "extra-files": [
-        "src-tauri/tauri.conf.json"
-      ]
+      "extra-files": ["src-tauri/tauri.conf.json"]
     }
   }
 }

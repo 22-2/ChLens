@@ -122,7 +122,7 @@ describe("MessageProcessor", () => {
         "https:",
       );
 
-      expect(result.nameHtml).toContain("&lt;span onclick=\"alert(1)\">");
+      expect(result.nameHtml).toContain('&lt;span onclick="alert(1)">');
       expect(result.nameHtml).not.toContain('<span onclick="alert(1)">');
     });
   });

@@ -4,9 +4,9 @@ import * as BBSMenu from "src/core/BBSMenu.js";
 import BoardService from "src/core/BoardService.js";
 import Cache from "src/core/Cache.js";
 import { setConsolaLevel } from "src/core/logger";
+import * as NG from "src/core/NG";
 import Notification from "src/core/Notification";
 import ThreadService from "src/core/ThreadService.js";
-import * as NG from "src/core/NG";
 import { container } from "src/service-container/Container";
 import {
   IBBSMenuResult,

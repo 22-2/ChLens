@@ -6,6 +6,7 @@ import { MediaViewerContainer } from "src/view/browser/components/MediaViewerCon
 import { PopupRenderer } from "src/view/browser/components/PopupRenderer";
 import { ResItem } from "src/view/browser/components/ResItem";
 import { ThreadMinimap } from "src/view/browser/components/ThreadMinimap";
+import { WheelScrollIndicator } from "src/view/browser/components/WheelScrollIndicator";
 import { useAutoNextThread } from "src/view/browser/hooks/use-auto-next-thread";
 import { useAutoNextThreadSetting } from "src/view/browser/hooks/use-auto-next-thread-setting";
 import { useMediaViewerStore } from "src/view/browser/hooks/use-media-viewer-store";
@@ -16,6 +17,7 @@ import { useThreadPopupLifecycle } from "src/view/browser/hooks/use-popup-manage
 import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
 import { useThreadAutoRefresh } from "src/view/browser/hooks/use-thread-auto-refresh";
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";
+import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 import { ThreadPageTopBar } from "src/view/browser/pages/thread/ThreadPageTopBar";
 import { useImageBlurConfig } from "src/view/browser/pages/thread/use-image-blur-config";
 import { useOwnResTracking } from "src/view/browser/pages/thread/use-own-res-tracking";
@@ -24,8 +26,6 @@ import { useThreadReadState } from "src/view/browser/pages/thread/use-thread-rea
 import { useThreadResContextMenu } from "src/view/browser/pages/thread/use-thread-res-context-menu";
 import { useThreadTopBar } from "src/view/browser/pages/thread/use-thread-top-bar";
 import { useThreadTopScrollOpenFilter } from "src/view/browser/pages/thread/use-thread-top-scroll-open-filter";
-import { WheelScrollIndicator } from "src/view/browser/components/WheelScrollIndicator";
-import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 import { useUrlHandlers } from "src/view/browser/pages/thread/use-url-handlers";
 import { getAutoRefreshPageKey } from "src/view/browser/utils/auto-refresh-pages";
 import {

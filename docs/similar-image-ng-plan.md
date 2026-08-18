@@ -40,21 +40,21 @@ ThreadPage.tsx
 
 ### 新規作成（3ファイル）
 
-| # | ファイル | 役割 |
-|---|----------|------|
-| 1 | `src/view/browser/utils/similar-image-ng.ts` | 純粋関数：画像URL抽出、dHash計算、NGルール照合 |
-| 2 | `src/view/browser/hooks/use-similar-image-ng.ts` | React hook：IntersectionObserver + 非同期ハッシュ計算 + 結果state管理 |
-| 3 | `docs/similar-image-ng-plan.md` | 本計画書（このファイル） |
+| #   | ファイル                                         | 役割                                                                  |
+| --- | ------------------------------------------------ | --------------------------------------------------------------------- |
+| 1   | `src/view/browser/utils/similar-image-ng.ts`     | 純粋関数：画像URL抽出、dHash計算、NGルール照合                        |
+| 2   | `src/view/browser/hooks/use-similar-image-ng.ts` | React hook：IntersectionObserver + 非同期ハッシュ計算 + 結果state管理 |
+| 3   | `docs/similar-image-ng-plan.md`                  | 本計画書（このファイル）                                              |
 
 ### 修正（5ファイル）
 
-| # | ファイル | 変更内容 |
-|---|----------|----------|
-| 4 | `src/core/NGTypes.ts` | `SIMILAR_IMAGE: "SimilarImage"` を追加 |
-| 5 | `src/core/ngDsl.ts` | `NG_DSL_RULE_SPECS` に `SimilarImage` 定義を追加 |
-| 6 | `src/core/NGMatcher.ts` | `BOARD_ALLOWED_TYPES` / `THREAD_DENIED_TYPES` に `SimilarImage` を追加（テキストマッチから除外） |
-| 7 | `src/core/NG.ts` | （必要な場合）`SimilarImage` ルール抽出用ユーティリティ |
-| 8 | `src/view/browser/pages/ThreadPage.tsx` | `useSimilarImageNg` hook を呼び出し、`blurredResNums` をマージ |
+| #   | ファイル                                | 変更内容                                                                                         |
+| --- | --------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| 4   | `src/core/NGTypes.ts`                   | `SIMILAR_IMAGE: "SimilarImage"` を追加                                                           |
+| 5   | `src/core/ngDsl.ts`                     | `NG_DSL_RULE_SPECS` に `SimilarImage` 定義を追加                                                 |
+| 6   | `src/core/NGMatcher.ts`                 | `BOARD_ALLOWED_TYPES` / `THREAD_DENIED_TYPES` に `SimilarImage` を追加（テキストマッチから除外） |
+| 7   | `src/core/NG.ts`                        | （必要な場合）`SimilarImage` ルール抽出用ユーティリティ                                          |
+| 8   | `src/view/browser/pages/ThreadPage.tsx` | `useSimilarImageNg` hook を呼び出し、`blurredResNums` をマージ                                   |
 
 ---
 
@@ -85,7 +85,9 @@ export function getSimilarImageNgRules(): SimilarImageRule[] {
         hash: new Hash(n.word),
         threshold: Number(n.params?.threshold ?? 10),
       });
-    } catch { /* 不正なハッシュ値はスキップ */ }
+    } catch {
+      /* 不正なハッシュ値はスキップ */
+    }
   }
   return rules;
 }
@@ -168,10 +170,7 @@ export function useSimilarImageNg(
           if (!resEl) continue;
 
           const resNum = Number(resEl.dataset.resNum);
-          if (
-            computedRef.current.has(resNum) ||
-            processingRef.current.has(resNum)
-          ) {
+          if (computedRef.current.has(resNum) || processingRef.current.has(resNum)) {
             continue;
           }
 
@@ -248,6 +247,7 @@ SIMILAR_IMAGE: "SimilarImage",
 これだけで Monaco エディタの補完・シグネチャヘルプ・シンタックスハイライトが自動で有効になる（`ngDslMonaco.ts` は `NG_DSL_RULE_SPECS` から動的に生成するため）。
 
 DSL 使用例：
+
 ```
 SimilarImage(hash="0111011001110000011110010101101100110011000100110101101000111000", threshold=10)
 SimilarImage(hash="a1b2c3d4e5f6a7b8", sites="5ch.net/livejupiter")

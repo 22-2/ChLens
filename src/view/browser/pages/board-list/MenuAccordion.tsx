@@ -1,9 +1,7 @@
 import { Accordion, Box, Text, UnstyledButton } from "@mantine/core";
 import { ChevronRight } from "lucide-react";
 import React, { useCallback } from "react";
-import {
-  buildCategoryId
-} from "src/view/browser/pages/board-list/board-list-utils";
+import { buildCategoryId } from "src/view/browser/pages/board-list/board-list-utils";
 
 interface Board {
   name: string;
