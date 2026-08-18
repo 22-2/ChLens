@@ -1,10 +1,10 @@
 import { DragDropProvider } from "@dnd-kit/react";
 import { isSortableOperation, useSortable } from "@dnd-kit/react/sortable";
-import { Tooltip } from "@mantine/core";
 import { Pin, Plus, RotateCw, X } from "lucide-react";
 import normalizeWheel from "normalize-wheel";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
+import { useCursorTooltip } from "src/view/browser/components/CursorTooltip";
 import { TabContextMenu } from "src/view/browser/components/TabContextMenu";
 import { useAutoScrollState } from "src/view/browser/hooks/use-auto-scroll-state";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
@@ -69,29 +69,33 @@ const SortableTab: React.FC<SortableTabProps> = ({
   });
 
   const page = getCurrentPage(tab);
+  const { show, move, hide, tooltip } = useCursorTooltip();
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
       // 中クリックはドラッグではなく閉じる操作として処理する。
       if (e.button === 1) {
         e.preventDefault();
+        hide();
         onClose(tab.id);
       }
     },
-    [tab.id, onClose],
+    [hide, tab.id, onClose],
   );
 
   const handleClick = useCallback(() => {
     // ドラッグ終了直後に合成される click でタブが切り替わるのを1回だけ抑止する。
     if (wasDraggingRef.current) {
       wasDraggingRef.current = false;
+      hide();
       return;
     }
+    hide();
     onSelect(tab.id);
-  }, [tab.id, wasDraggingRef, onSelect]);
+  }, [hide, tab.id, wasDraggingRef, onSelect]);
 
   return (
-    <Tooltip.Floating label={page.title}>
+    <>
       <div
         ref={ref}
         className={`tab${isActive ? " tab--active" : ""}${
@@ -100,7 +104,13 @@ const SortableTab: React.FC<SortableTabProps> = ({
         data-tab-id={tab.id}
         onClick={handleClick}
         onMouseDown={handleMouseDown}
-        onContextMenu={(e) => onContextMenu(e, tab)}
+        onMouseEnter={(event) => show(page.title, event)}
+        onMouseMove={(event) => move(page.title, event)}
+        onMouseLeave={hide}
+        onContextMenu={(e) => {
+          hide();
+          onContextMenu(e, tab);
+        }}
       >
         {tab.pinned ? <Pin size={11} /> : <span className="tab__title">{page.title}</span>}
         {/* 変更理由: タブが非アクティブでも自動更新設定は残るため、
@@ -131,7 +141,8 @@ const SortableTab: React.FC<SortableTabProps> = ({
           </button>
         )}
       </div>
-    </Tooltip.Floating>
+      {tooltip}
+    </>
   );
 };
 

@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { container } from "src/service-container/index";
 import { TabBar } from "src/view/browser/components/TabBar";
@@ -46,13 +46,6 @@ vi.mock("src/view/browser/components/ContextMenu", () => ({
 
 vi.mock("src/view/browser/components/TabContextMenu", () => ({
   TabContextMenu: () => null,
-}));
-
-// タブバー単体テストでは MantineProvider を組み立てないため、Tooltip.Floating は子要素をそのまま返す。
-vi.mock("@mantine/core", () => ({
-  Tooltip: {
-    Floating: ({ children }: { children: React.ReactNode }) => children,
-  },
 }));
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
@@ -164,6 +157,20 @@ describe("TabBar wheel switching", () => {
   afterEach(() => {
     cleanup();
     vi.useRealTimers();
+  });
+
+  it("タブのホバー位置から離れた位置に共通ツールチップを表示する", () => {
+    const { container } = render(<TabBar />);
+    const tab = container.querySelector('[data-tab-id="tab-1"]') as HTMLDivElement;
+
+    fireEvent.mouseEnter(tab, { clientX: 100, clientY: 80 });
+
+    const tooltip = screen.getByRole("tooltip");
+    expect(tooltip).toHaveTextContent("ホーム");
+    expect(tooltip).toHaveStyle({ left: "116px", top: "96px" });
+
+    fireEvent.mouseLeave(tab);
+    expect(screen.queryByRole("tooltip")).toBeNull();
   });
 
   it("deltaY が極小/0 のホイールではタブを切り替えない", () => {
