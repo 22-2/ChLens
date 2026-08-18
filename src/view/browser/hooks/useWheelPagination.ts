@@ -60,6 +60,16 @@ export function useWheelPagination({
     if (!isEnabled || !container) return;
 
     const handleWheel = (event: WheelEvent) => {
+      // ポップアップ自身のスクロールを、背後のスレッド更新ジェスチャーとして
+      // 吸収しない。ポータル経由でもイベントが親パネルへ届くため、ここで除外する。
+      const eventTarget = event.target;
+      if (
+        eventTarget instanceof Element &&
+        eventTarget.closest('[data-popup-surface="true"], .context-menu, .mini-window')
+      ) {
+        return;
+      }
+
       if (coolingDownRef.current) {
         event.preventDefault();
         return;
