@@ -14,54 +14,54 @@ const imgExt = (platform: string) => (platform === "chrome" ? "webp" : "png");
 
 const BUILD_COPY_DESTINATION_KEY = "BUILD_COPY_DESTINATION";
 
-function resolveBuildCopyDestination(mode: string): string | undefined {
-  const env = loadEnv(mode, process.cwd(), "");
-  const configured = process.env[BUILD_COPY_DESTINATION_KEY] ?? env[BUILD_COPY_DESTINATION_KEY];
-  const destination = configured?.trim();
-  return destination ? path.resolve(destination) : undefined;
-}
+// function resolveBuildCopyDestination(mode: string): string | undefined {
+//   const env = loadEnv(mode, process.cwd(), "");
+//   const configured = process.env[BUILD_COPY_DESTINATION_KEY] ?? env[BUILD_COPY_DESTINATION_KEY];
+//   const destination = configured?.trim();
+//   return destination ? path.resolve(destination) : undefined;
+// }
 
 // ─── plugin: optional build output copy ─────────────────────────────────────
 
-function buildOutputCopyPlugin(outputDir: string, destination: string | undefined): Plugin {
-  return {
-    name: "build-output-copy",
-    apply: "build",
-    async writeBundle() {
-      if (!destination) return;
+// function buildOutputCopyPlugin(outputDir: string, destination: string | undefined): Plugin {
+//   return {
+//     name: "build-output-copy",
+//     apply: "build",
+//     async writeBundle() {
+//       if (!destination) return;
 
-      const source = path.resolve(outputDir);
-      const relativeDestination = path.relative(source, destination);
-      if (relativeDestination === "") {
-        console.warn(
-          `[build-output-copy] コピー先がビルド出力と同じためスキップします: ${destination}`,
-        );
-        return;
-      }
-      if (
-        !path.isAbsolute(relativeDestination) &&
-        relativeDestination !== ".." &&
-        !relativeDestination.startsWith(`..${path.sep}`)
-      ) {
-        throw new Error(
-          `[build-output-copy] コピー先をビルド出力の配下には指定できません: ${destination}`,
-        );
-      }
+//       const source = path.resolve(outputDir);
+//       const relativeDestination = path.relative(source, destination);
+//       if (relativeDestination === "") {
+//         console.warn(
+//           `[build-output-copy] コピー先がビルド出力と同じためスキップします: ${destination}`,
+//         );
+//         return;
+//       }
+//       if (
+//         !path.isAbsolute(relativeDestination) &&
+//         relativeDestination !== ".." &&
+//         !relativeDestination.startsWith(`..${path.sep}`)
+//       ) {
+//         throw new Error(
+//           `[build-output-copy] コピー先をビルド出力の配下には指定できません: ${destination}`,
+//         );
+//       }
 
-      try {
-        await fs.ensureDir(destination);
-        await fs.copy(source, destination, { overwrite: true });
-        console.log(`[build-output-copy] ${source} -> ${destination}`);
-      } catch (error) {
-        console.error(
-          `[build-output-copy] ビルド成果物のコピーに失敗しました: ${destination}`,
-          error,
-        );
-        throw error;
-      }
-    },
-  };
-}
+//       try {
+//         await fs.ensureDir(destination);
+//         await fs.copy(source, destination, { overwrite: true });
+//         console.log(`[build-output-copy] ${source} -> ${destination}`);
+//       } catch (error) {
+//         console.error(
+//           `[build-output-copy] ビルド成果物のコピーに失敗しました: ${destination}`,
+//           error,
+//         );
+//         throw error;
+//       }
+//     },
+//   };
+// }
 
 // ─── plugin: SCSS ────────────────────────────────────────────────────────────
 
