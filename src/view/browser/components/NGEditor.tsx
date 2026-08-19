@@ -75,32 +75,29 @@ export interface NGEditorProps {
   onChange: (value: string) => void;
 }
 
-export const NG_DSL_EXAMPLE = `// 動作＋対象の見出しに、条件をインデントして記述します
-hide body:
+export const NG_DSL_EXAMPLE = `// 動作＋対象＋条件種別の見出しに、値をインデントして記述します
+hide body contains:
   荒らし
   spam
 
-hide id:
+hide id contains:
   abc123
 
-hide url:
-  regex 'https?://(?:x|twitter)\\.com/.+'
+hide url regex:
+  "https?://(?:x|twitter)\\.com/.+"
 
-hide reply-count:
-  5
+hide reply-count >= 5:
 
-hide anchor-count:
-  3`;
+hide anchor-count >= 3:`;
 
 export const NG_DSL_MULTILINE_EXAMPLE = `// 同じブロックの条件はORで判定します
-highlight title color=red label=注目 sites=[eddibb.cc 5ch.io]:
+highlight title contains color=red label=注目 sites=[eddibb.cc 5ch.io]:
   google
   ぐーぐる
   microsoft
 
-// ng body は hide body の短縮表記です。意味を明示するなら hide body を使います
-ng body:
-  regex '(imgur\\.com\\/.+?){15}'`;
+hide body regex:
+  "(imgur\\.com/.+?){15}"`;
 
 // // 複雑なand条件: 名前の正規表現 + 本文の正規表現 + 期限 + ラベル
 // ANDやら期限などあるが、これは複雑なので隠しておいて、基本的には上のシンプルな例だけ見せるのが良さそう
@@ -127,12 +124,13 @@ const actionPattern = RULE_ACTION_CATALOG.flatMap((entry) => [entry.name, ...(en
 const targetPattern = RULE_TARGET_CATALOG.flatMap((entry) => [entry.name, ...(entry.aliases ?? [])])
   .map(escapeRegExp)
   .join("|");
+const matcherPattern = "contains|regex";
 const optionPattern = RULE_OPTION_CATALOG.flatMap((entry) => [entry.name, ...(entry.aliases ?? [])])
   .map(escapeRegExp)
   .join("|");
 
 const NG_DSL_TOKEN_REGEX = new RegExp(
-  `("(?:\\\\.|[^"\\\\])*"|'(?:\\\\.|[^'\\\\])*')|(\\/\\/.*$|^\\s*#.*$)|(\\b(?:${actionPattern})\\b)|(\\b(?:${targetPattern})\\b)|(\\b(?:${optionPattern})\\b(?=\\s*=))|(#[0-9a-fA-F]{3,8}\\b)`,
+  `("(?:\\\\.|[^"\\\\])*"|'(?:\\\\.|[^'\\\\])*')|(\\/\\/.*$|^\\s*#.*$)|(\\b(?:${actionPattern})\\b)|(\\b(?:${targetPattern})\\b)|(\\b(?:${matcherPattern})\\b)|(\\b(?:${optionPattern})\\b(?=\\s*=))|(#[0-9a-fA-F]{3,8}\\b)`,
   "g",
 );
 
@@ -153,11 +151,11 @@ function tokenizeNgDslLine(line: string): NgDslToken[] {
       tokens.push({ type: "comment", text: tokenText });
       cursor = index + tokenText.length;
       break;
-    } else if (match[3] || match[4]) {
+    } else if (match[3] || match[4] || match[5]) {
       tokens.push({ type: "rule", text: tokenText });
-    } else if (match[5]) {
-      tokens.push({ type: "param", text: tokenText });
     } else if (match[6]) {
+      tokens.push({ type: "param", text: tokenText });
+    } else if (match[7]) {
       tokens.push({ type: "color", text: tokenText });
     } else {
       tokens.push({ type: "plain", text: tokenText });

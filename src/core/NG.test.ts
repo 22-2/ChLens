@@ -26,11 +26,11 @@ describe("NG Rule service", () => {
   it("loads only the block DSL and applies title/body rules", async () => {
     configStore.set(
       "ngwords",
-      `highlight title color=blue label=注目 sites=[bbs.eddibb.cc]:
+      `highlight title contains color=blue label=注目 sites=[bbs.eddibb.cc]:
   注目
 
-hide body:
-  regex '(imgur\\.com\\/.+?){15}'`,
+hide body regex:
+  "(imgur\\.com/.+?){15}"`,
     );
     const { get, invalidateCache, isNGBoard, isNGThread } = await import("src/core/NG");
     invalidateCache();
@@ -62,7 +62,7 @@ hide body:
   it("applies a stored DSL without writing it back", async () => {
     const { apply, get, invalidateCache } = await import("src/core/NG");
     invalidateCache();
-    apply("hide body:\n  保存済み");
+    apply("hide body contains:\n  保存済み");
 
     expect(configStore.has("ngwords")).toBe(false);
     expect(get()).toEqual([
@@ -77,7 +77,7 @@ hide body:
   it("matches anchor-count from the response body", async () => {
     const { apply, invalidateCache, isNGThread } = await import("src/core/NG");
     invalidateCache();
-    apply("hide anchor-count:\n  2");
+    apply("hide anchor-count >= 2:");
 
     expect(
       isNGThread(

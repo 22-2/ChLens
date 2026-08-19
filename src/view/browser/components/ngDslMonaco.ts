@@ -33,14 +33,27 @@ function createHeaderSuggestions(
   return RULE_ACTION_CATALOG.flatMap((action) =>
     RULE_TARGET_CATALOG.filter((target) =>
       isRuleCombinationSupported(action.name, target.name),
-    ).map((target) => ({
-      label: `${action.name} ${target.name}`,
-      kind: monaco.languages.CompletionItemKind.Snippet,
-      detail: `${action.description} 対象: ${target.description}`,
-      insertText: `${action.name} ${target.name}:\n  \${1:キーワード}`,
-      insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-      range,
-    })),
+    ).flatMap((target) => {
+      const isComparison =
+        target.comparison === "greater-than" || target.comparison === "greater-than-or-equal";
+      const matcherKinds = isComparison ? ["comparison"] : ["contains", "regex"];
+      return matcherKinds.map((matcherKind) => ({
+        label:
+          matcherKind === "comparison"
+            ? `${action.name} ${target.name} >=`
+            : `${action.name} ${target.name} ${matcherKind}`,
+        kind: monaco.languages.CompletionItemKind.Snippet,
+        detail: `${action.description} 対象: ${target.description}`,
+        insertText:
+          matcherKind === "comparison"
+            ? `${action.name} ${target.name} ${target.comparison === "greater-than" ? ">" : ">="} \${1:10}:`
+            : matcherKind === "regex"
+              ? `${action.name} ${target.name} regex:\n  "\${1:パターン}"`
+              : `${action.name} ${target.name} contains:\n  \${1:キーワード}`,
+        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+        range,
+      }));
+    }),
   );
 }
 
@@ -110,6 +123,7 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
   const colorPattern = NG_HIGHLIGHT_COLOR_PRESET_ITEMS.map((preset) => preset.name)
     .map(escapeRegExp)
     .join("|");
+  const matcherPattern = "contains|regex";
 
   monaco.languages.setMonarchTokensProvider(NG_DSL_LANGUAGE_ID, {
     tokenizer: {
@@ -119,10 +133,11 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
         [/^\s*#.*$/, "comment"],
         [new RegExp(`^\\s*(?:${actionPattern})\\b`), "keyword"],
         [new RegExp(`\\b(?:${targetPattern})\\b`), "type.identifier"],
-        [/^\s+regex\b/, "type.identifier"],
+        [new RegExp(`\\b(?:${matcherPattern})\\b`), "type.identifier"],
         [new RegExp(`\\b(?:${optionPattern})\\b(?=\\s*=)`), "attribute.name"],
         [new RegExp(`\\b(?:${colorPattern})\\b`), "string"],
         [/#(?:[0-9a-fA-F]{6})\b/, "number.hex"],
+        [/>=?/, "operator"],
         [/:|=/, "delimiter"],
         [/"(?:[^"\\]|\\.)*"/, "string"],
         [/'(?:[^'\\]|\\.)*'/, "string"],
@@ -150,7 +165,7 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
   });
 
   monaco.languages.registerCompletionItemProvider(NG_DSL_LANGUAGE_ID, {
-    triggerCharacters: [" ", "=", "[", '"', "'"],
+    triggerCharacters: [" ", "=", ">", "[", '"', "'"],
     provideCompletionItems(model, position) {
       const line = model.getLineContent(position.lineNumber).slice(0, position.column - 1);
       const range = createRange(model, position);
@@ -166,10 +181,10 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
       return {
         suggestions: [
           {
-            label: "regex",
+            label: "regex value",
             kind: monaco.languages.CompletionItemKind.Keyword,
-            detail: "正規表現条件",
-            insertText: 'regex "${1:パターン}"',
+            detail: "正規表現の引用値",
+            insertText: '"${1:パターン}"',
             insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
             range,
           },

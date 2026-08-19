@@ -34,7 +34,7 @@ export interface RuleTargetDefinition extends RuleCatalogEntry<RuleTarget> {
 }
 
 export const RULE_ACTION_CATALOG: readonly RuleCatalogEntry<RuleAction>[] = [
-  { name: "hide", aliases: ["ng"], description: "一致した対象を非表示にします。" },
+  { name: "hide", description: "一致した対象を非表示にします。" },
   { name: "highlight", description: "一致した対象を強調します。" },
   { name: "mute", description: "一致した対象を目立たなくします。" },
   { name: "warn", description: "一致した対象に警告を表示します。" },

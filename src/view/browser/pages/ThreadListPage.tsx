@@ -860,7 +860,7 @@ export const ThreadListPage: React.FC<Props> = ({
 
     setNgDialogSaving(true);
     setNgDialogError(null);
-    const ngRule = `hide title:\n  ${stringifyNgDslValue(title)}`;
+    const ngRule = `hide title contains:\n  ${stringifyNgDslValue(title)}`;
     try {
       await container.ng.add(ngRule);
       container.toast.info(`スレタイをNGに追加しました: ${title}`);

@@ -98,7 +98,7 @@ test.describe("NG persistence", () => {
     await expect(firstRes).toBeHidden();
 
     const storedAfterAdd = await readNgStorage(page);
-    expect(storedAfterAdd.config_ngwords).toContain("hide id:\n  mbmnczwh4");
+    expect(storedAfterAdd.config_ngwords).toContain("hide id contains:\n  mbmnczwh4");
 
     await page.locator('.nav-bar__btn[title="更新"]').click();
 

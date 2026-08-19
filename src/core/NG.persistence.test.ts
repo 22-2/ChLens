@@ -57,7 +57,7 @@ describe("NG Rule persistence", () => {
     invalidateCache();
 
     let settled = false;
-    const addPromise = add("hide id:\n  abc123").then(() => {
+    const addPromise = add("hide id contains:\n  abc123").then(() => {
       settled = true;
     });
 
@@ -70,7 +70,7 @@ describe("NG Rule persistence", () => {
     write?.resolve();
     await addPromise;
 
-    expect(mocks.configStore.get("ngwords")).toBe("hide id:\n  abc123");
+    expect(mocks.configStore.get("ngwords")).toBe("hide id contains:\n  abc123");
     expect(mocks.messageSend).toHaveBeenCalledWith("ng_changed");
 
     invalidateCache();
