@@ -506,3 +506,20 @@ http://bbs.eddibb.cc/test/read.cgi/liveedge/1779114452/
 ## 2026-08
 - [x] fix: スレ一覧でたまにツールチップが画面にずっと残るっす🥺
 - [x] chore: 戻る、進むでも、フィルタや検索が残るようにする設定
+
+- [ ] ブックマークは、過去の仕様のように（chrome風）urlバーの右端に設置
+- [ ] 通知の位置をちょっと上に（urlバー表示中は現在の仕様の位置に）
+
+imgurの埋め込みurl対応
+
+
+```
+s://pbs.twimg.com/media/TestTwitterImageA.jpg
+ps://pbs.twimg.com/media/TestTwitterImageB.jpg
+ps://pbs.twimg.com/media/TestTwitterImageC.jpg
+ps://pbs.twimg.com/media/TestTwitterImageD.jpg
+p://i.imgur.com/TestImageC.jpg
+```
+みたいな崩したurlも解釈するようにするにはどうしたらいいっすかね🤔
+
+崩れたurlの自動認識は、見た目場はもとの崩れたurlを残したまま閲覧可能にしたいっす
