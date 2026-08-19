@@ -391,6 +391,7 @@ export const TabBar: React.FC = () => {
       >
         <RotateCw size={16} />
       </button>
+      <span className="tab-bar__refresh-divider" aria-hidden="true" />
       <DragDropProvider onDragEnd={handleDragEnd}>
         <div ref={tabListRef} className="tab-list">
           {state.tabs.map((tab, index) => {
