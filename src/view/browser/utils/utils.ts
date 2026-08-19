@@ -1,5 +1,6 @@
 import MessageProcessor from "src/core/MessageProcessor";
 import { parseReplyAnchorTargets } from "src/core/reply-index";
+import { URL_LIKE_PATTERN, normalizeObfuscatedUrl } from "src/core/url-utils";
 import type { IRes } from "src/service-container";
 import { isInlineVideoEmbedUrl } from "src/view/browser/utils/external-media";
 
@@ -116,25 +117,30 @@ export async function copyImageBlob(blob: Blob): Promise<void> {
 }
 // --- フィルタ判定 ---
 export function hasImage(message: string): boolean {
+  const normalizedMessage = message.replace(URL_LIKE_PATTERN, normalizeObfuscatedUrl);
   return (
-    /\.(jpe?g|png|gif|webp|bmp|avif)(?:\?[^"<]*)?(?=["<\s]|$)/i.test(message) ||
+    /\.(jpe?g|png|gif|webp|bmp|avif)(?:\?[^"<]*)?(?=["<\s]|$)/i.test(normalizedMessage) ||
     /https?:\/\/pbs\.twimg\.com\/media\/[^\s"'<>?]+\?[^\s"'<>]*format=(?:jpe?g|png|gif|webp|bmp|avif)\b/i.test(
-      message,
+      normalizedMessage,
     )
   );
 }
 export function hasVideo(message: string): boolean {
+  const normalizedMessage = message.replace(URL_LIKE_PATTERN, normalizeObfuscatedUrl);
   return (
-    /\.(mp4|webm|avi|mov)(?:\?[^"<]*)?(?=["<\s]|$)/i.test(message) ||
-    /<video\b/i.test(message) ||
-    (message.match(/https?:\/\/[^\s"'<>]+/gi)?.some((url) => isInlineVideoEmbedUrl(url)) ?? false)
+    /\.(mp4|webm|avi|mov)(?:\?[^"<]*)?(?=["<\s]|$)/i.test(normalizedMessage) ||
+    /<video\b/i.test(normalizedMessage) ||
+    (normalizedMessage
+      .match(/https?:\/\/[^\s"'<>]+/gi)
+      ?.some((url) => isInlineVideoEmbedUrl(url)) ??
+      false)
   );
 }
 export function hasExternalLink(message: string): boolean {
   // res.message はレンダリング前の生HTMLで、通常URLはまだ <a> タグ化されていない
   // （linkify は MessageProcessor が描画時に行う）ため、<a href> だけを見ると常に不一致になる。
-  // 生テキスト中の http(s) URL も対象にする。
-  return /https?:\/\/[^\s"'<>]+/i.test(message);
+  // 生テキスト中の http(s) URL と、先頭を削った URL も対象にする。
+  return new RegExp(URL_LIKE_PATTERN.source, "i").test(message);
 }
 
 export function parseAnchorDisplayTargets(text: string): number[] {
@@ -209,7 +215,7 @@ export function extractUrlsFromMessage(message: string): string[] {
   const seen = new Set<string>();
 
   const pushUrl = (url: string) => {
-    const trimmed = url.trim().replace(/[),.;]+$/, "");
+    const trimmed = normalizeObfuscatedUrl(url.trim().replace(/[),.;]+$/, ""));
     if (!/^https?:\/\//i.test(trimmed)) return;
     if (seen.has(trimmed)) return;
     seen.add(trimmed);
@@ -226,7 +232,7 @@ export function extractUrlsFromMessage(message: string): string[] {
     // HTMLパースに失敗した場合でも正規表現抽出で継続
   }
 
-  const textMatch = message.match(/https?:\/\/[^\s"'<>]+/gi) ?? [];
+  const textMatch = message.match(URL_LIKE_PATTERN) ?? [];
   for (const url of textMatch) {
     pushUrl(url);
   }
@@ -262,7 +268,7 @@ export function toOriginalImageUrl(thumbnailUrl: string): string | null {
  */
 export function toViewerImageUrl(rawUrl: string): string | null {
   try {
-    const url = new window.URL(rawUrl);
+    const url = new window.URL(normalizeObfuscatedUrl(rawUrl));
     const host = url.hostname.toLowerCase();
     const pathname = url.pathname;
 

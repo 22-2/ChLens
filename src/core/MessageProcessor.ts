@@ -1,4 +1,5 @@
 import { AnchorParser } from "packages/ch-lib/src/index";
+import { URL_LIKE_PATTERN, normalizeObfuscatedUrl } from "src/core/url-utils";
 
 interface DecodedMessage {
   nameHtml: string;
@@ -138,13 +139,10 @@ export default class MessageProcessor {
         }
 
         if (!insideAnchor) {
-          return part.replace(
-            /(https?:\/\/[A-Za-z0-9\-._~:/?#[\]@!$&'()*+,;=%]+)/gi,
-            (matchedUrl: string) => {
-              const linkUrl = trimLinkTrailingPunctuation(matchedUrl);
-              return `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer">${linkUrl}</a>`;
-            },
-          );
+          return part.replace(URL_LIKE_PATTERN, (matchedUrl: string) => {
+            const linkUrl = normalizeObfuscatedUrl(trimLinkTrailingPunctuation(matchedUrl));
+            return `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer">${linkUrl}</a>`;
+          });
         }
         return part;
       })
