@@ -477,7 +477,7 @@ http://bbs.eddibb.cc/test/read.cgi/liveedge/1779114452/
 - [ ] ペインメニューに開くが多くなってきたので整理
 - [x] subjectにないスレで「このスレッドはdat落ちしています」って出ない
 - [x] スレの自動リロードが機能しなくなった
-- [ ] タブを固定していると別のタブがドラッグで移動できない
+- [x] タブを固定していると別のタブがドラッグで移動できない -> いつの間にか直ってた🥺
 - [ ] 初めて開いた板の名前が取得されない
 - [ ] 新しいタブで関連するタブを開いたあとスレにURLジャンプして戻ったとき正常な板に戻らない
 
@@ -499,7 +499,7 @@ http://bbs.eddibb.cc/test/read.cgi/liveedge/1779114452/
 - [ ] メモリセーバー（自動タブunmount）
 - [ ] スクロール位置の復元が出来たから、もうdisplay: hiddenでタブ切り替えはいらない？
 - [ ] 簡易aiチャット -> openai互換api
-- [ ] コマンドパレット -> [Spotlight | Mantine](https://mantine.dev/x/spotlight/)
+- [x] コマンドパレット -> [Spotlight | Mantine](https://mantine.dev/x/spotlight/)
   - 追加するつもりはなかったが、これ以上uiをシンプルにしたまま拡張するのはむりやな
   - コマンド管理基盤とか作ったほうが良いのかな🤔
 
@@ -507,7 +507,7 @@ http://bbs.eddibb.cc/test/read.cgi/liveedge/1779114452/
 - [x] fix: スレ一覧でたまにツールチップが画面にずっと残るっす🥺
 - [x] chore: 戻る、進むでも、フィルタや検索が残るようにする設定
 
-- [ ] ブックマークは、過去の仕様のように（chrome風）urlバーの右端に設置
+- [x] ブックマークは、過去の仕様のように（chrome風）urlバーの右端に設置
 - [ ] 通知の位置をちょっと上に（urlバー表示中は現在の仕様の位置に）
 
 imgurの埋め込みurl対応
@@ -520,6 +520,5 @@ ps://pbs.twimg.com/media/TestTwitterImageC.jpg
 ps://pbs.twimg.com/media/TestTwitterImageD.jpg
 p://i.imgur.com/TestImageC.jpg
 ```
-みたいな崩したurlも解釈するようにするにはどうしたらいいっすかね🤔
-
-崩れたurlの自動認識は、見た目場はもとの崩れたurlを残したまま閲覧可能にしたいっす
+- [x] みたいな崩したurlも解釈するように
+- [x] 崩れたurlの自動認識は、見た目場はもとの崩れたurlを残したまま閲覧可能に
