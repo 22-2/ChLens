@@ -39,22 +39,22 @@ describe("link-routing", () => {
 
   it("itest の prefix 付き test/read.cgi URL を thread として正規化する", () => {
     expect(
-      parseInternalBrowserPage("https://itest.5ch.io/krsw/test/read.cgi/AAAA/1000000007/"),
+      parseInternalBrowserPage("https://itest.5ch.io/krsw/test/read.cgi/AAAA/1000000008/"),
     ).toEqual({
       type: "thread",
-      title: "https://itest.5ch.io/test/read.cgi/AAAA/1000000007/",
-      threadUrl: "https://itest.5ch.io/test/read.cgi/AAAA/1000000007/",
+      title: "https://itest.5ch.io/test/read.cgi/AAAA/1000000008/",
+      threadUrl: "https://itest.5ch.io/test/read.cgi/AAAA/1000000008/",
     });
   });
 
   it("itest.bbspink.com のスレURLを対応表で実サーバーへ変換する", () => {
     setItestServerMapForTesting([["adultgoods", "mercury.bbspink.com"]]);
     expect(
-      parseInternalBrowserPage("https://itest.bbspink.com/test/read.cgi/adultgoods/1000000008/"),
+      parseInternalBrowserPage("https://itest.bbspink.com/test/read.cgi/adultgoods/1000000009/"),
     ).toEqual({
       type: "thread",
-      title: "https://mercury.bbspink.com/test/read.cgi/adultgoods/1000000008/",
-      threadUrl: "https://mercury.bbspink.com/test/read.cgi/adultgoods/1000000008/",
+      title: "https://mercury.bbspink.com/test/read.cgi/adultgoods/1000000009/",
+      threadUrl: "https://mercury.bbspink.com/test/read.cgi/adultgoods/1000000009/",
     });
   });
 
@@ -70,11 +70,11 @@ describe("link-routing", () => {
 
   it("対応表に無い itest URL はホスト名を変換せず残す", () => {
     expect(
-      parseInternalBrowserPage("https://itest.bbspink.com/test/read.cgi/adultgoods/1000000008/"),
+      parseInternalBrowserPage("https://itest.bbspink.com/test/read.cgi/adultgoods/1000000009/"),
     ).toEqual({
       type: "thread",
-      title: "https://itest.bbspink.com/test/read.cgi/adultgoods/1000000008/",
-      threadUrl: "https://itest.bbspink.com/test/read.cgi/adultgoods/1000000008/",
+      title: "https://itest.bbspink.com/test/read.cgi/adultgoods/1000000009/",
+      threadUrl: "https://itest.bbspink.com/test/read.cgi/adultgoods/1000000009/",
     });
   });
 
@@ -100,18 +100,18 @@ describe("link-routing", () => {
   });
 
   it("eddibb の簡略 thread URL も内部スレURLへ正規化する", () => {
-    expect(parseInternalBrowserPage("https://bbs.eddibb.cc/liveedge/1000000005/")).toEqual({
+    expect(parseInternalBrowserPage("https://bbs.eddibb.cc/liveedge/1000000006/")).toEqual({
       type: "thread",
-      title: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000005/",
-      threadUrl: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000005/",
+      title: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000006/",
+      threadUrl: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000006/",
     });
   });
 
   it("eddibb の省略 thread URL は末尾スラッシュなしでも内部スレURLへ正規化する", () => {
-    expect(parseInternalBrowserPage("https://bbs.eddibb.cc/liveedge/1000000006")).toEqual({
+    expect(parseInternalBrowserPage("https://bbs.eddibb.cc/liveedge/1000000010")).toEqual({
       type: "thread",
-      title: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000006/",
-      threadUrl: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000006/",
+      title: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000010/",
+      threadUrl: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000010/",
     });
   });
 
@@ -155,10 +155,10 @@ describe("link-routing strict", () => {
   });
 
   it("eddibb は strict でも正規化する", () => {
-    expect(parseInternalBrowserPageStrict("https://bbs.eddibb.cc/liveedge/1000000006")).toEqual({
+    expect(parseInternalBrowserPageStrict("https://bbs.eddibb.cc/liveedge/1000000010")).toEqual({
       type: "thread",
-      title: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000006/",
-      threadUrl: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000006/",
+      title: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000010/",
+      threadUrl: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000010/",
     });
   });
 });

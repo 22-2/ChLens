@@ -1,7 +1,9 @@
 import "@testing-library/jest-dom/vitest";
 import {
+  extractUrlsFromMessage,
   formatIdForCopy,
   formatResForCopy,
+  hasExternalLink,
   hasImage,
   hasVideo,
   normalizeIdLinkText,
@@ -20,6 +22,25 @@ describe("browser utils", () => {
 
     expect(toViewerImageUrl(url)).toBe(url);
     expect(hasImage(url)).toBe(true);
+  });
+
+  it("先頭を削った画像URLを復元してリンク・画像として扱う", () => {
+    const message = [
+      "s://pbs.twimg.com/media/TestTwitterImageA.jpg",
+      "ps://pbs.twimg.com/media/TestTwitterImageB.jpg",
+      "p://i.imgur.com/TestImageC.jpg",
+    ].join(" ");
+
+    expect(extractUrlsFromMessage(message)).toEqual([
+      "https://pbs.twimg.com/media/TestTwitterImageA.jpg",
+      "https://pbs.twimg.com/media/TestTwitterImageB.jpg",
+      "http://i.imgur.com/TestImageC.jpg",
+    ]);
+    expect(hasExternalLink(message)).toBe(true);
+    expect(hasImage(message)).toBe(true);
+    expect(toViewerImageUrl("p://i.imgur.com/TestImageC.jpg")).toBe(
+      "https://i.imgur.com/TestImageCm.jpg",
+    );
   });
 
   it("YouTube と直リンク mp4 を動画として判定する", () => {
@@ -72,8 +93,8 @@ describe("browser utils", () => {
     });
 
     it("m.imgur.com/[id] をサムネイル形式に変換する", () => {
-      expect(toViewerImageUrl("https://m.imgur.com/TestID")).toBe(
-        "https://i.imgur.com/TestIDm.jpg",
+      expect(toViewerImageUrl("https://m.imgur.com/TestImage")).toBe(
+        "https://i.imgur.com/TestImagem.jpg",
       );
     });
 

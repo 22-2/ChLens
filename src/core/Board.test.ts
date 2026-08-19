@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 const { fetchMock, cache } = vi.hoisted(() => ({
   fetchMock: vi.fn(),
   cache: {
-    data: "1000000002.dat<>古いスレ一覧 (1)\n",
+    data: "1000000001.dat<>古いスレ一覧 (1)\n",
     lastUpdated: 0,
     lastModified: null as number | null,
     etag: null as string | null,
@@ -44,7 +44,7 @@ import Board from "src/core/Board";
 
 describe("Board.getCachedResCount", () => {
   beforeEach(() => {
-    cache.data = "1000000002.dat<>古いスレ一覧 (1)\n";
+    cache.data = "1000000001.dat<>古いスレ一覧 (1)\n";
     cache.lastUpdated = 0;
     fetchMock.mockReset();
   });
@@ -53,12 +53,12 @@ describe("Board.getCachedResCount", () => {
     fetchMock.mockResolvedValue({
       status: 200,
       headers: {},
-      body: "1000000003.dat<>現在のスレ一覧 (2)\n",
+      body: "1000000002.dat<>現在のスレ一覧 (2)\n",
       url: "https://egg.5ch.io/software/subject.txt",
     });
 
     const result = await Board.getCachedResCount(
-      "https://egg.5ch.io/test/read.cgi/software/1000000003/",
+      "https://egg.5ch.io/test/read.cgi/software/1000000002/",
     );
 
     expect(result.resCount).toBe(2);
@@ -69,12 +69,12 @@ describe("Board.getCachedResCount", () => {
     fetchMock.mockResolvedValue({
       status: 200,
       headers: {},
-      body: "1000000004.dat<>別のスレッド (3)\n",
+      body: "1000000003.dat<>別のスレッド (3)\n",
       url: "https://egg.5ch.io/software/subject.txt",
     });
 
     await expect(
-      Board.getCachedResCount("https://egg.5ch.io/test/read.cgi/software/1000000003/"),
+      Board.getCachedResCount("https://egg.5ch.io/test/read.cgi/software/1000000002/"),
     ).rejects.toThrow("板のスレ一覧にそのスレが存在しません");
   });
 });

@@ -6,14 +6,14 @@ import { describe, expect, it } from "vite-plus/test";
 
 describe("content script url targets", () => {
   it("5ch の read.cgi スレッドURLを対象と判定する", () => {
-    expect(isTargetContentScriptUrl("https://egg.5ch.io/test/read.cgi/software/1000000010/")).toBe(
+    expect(isTargetContentScriptUrl("https://egg.5ch.io/test/read.cgi/software/1000000004/")).toBe(
       true,
     );
   });
 
   it("したらば storage 形式URLを対象と判定する", () => {
     expect(
-      isTargetContentScriptUrl("https://jbbs.shitaraba.net/computer/12345/storage/1000000001.html"),
+      isTargetContentScriptUrl("https://jbbs.shitaraba.net/computer/12345/storage/1000000005.html"),
     ).toBe(true);
   });
 
@@ -26,8 +26,8 @@ describe("content script url targets", () => {
   });
 
   it("eddibb の素URLを read.cgi 形式へ正規化する", () => {
-    expect(normalizeContentScriptTargetUrl("https://bbs.eddibb.cc/liveedge/1000000005/")).toBe(
-      "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000005/",
+    expect(normalizeContentScriptTargetUrl("https://bbs.eddibb.cc/liveedge/1000000006/")).toBe(
+      "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000006/",
     );
   });
 });

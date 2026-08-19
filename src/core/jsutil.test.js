@@ -88,7 +88,7 @@ describe("chServerMoveDetect", () => {
   it("uses board href when ChURL is passed", async () => {
     const { chServerMoveDetect } = await import("src/core/jsutil.js");
 
-    const threadUrl = new ChURL("https://headline.5ch.io/test/read.cgi/bbynamazu/1000000009/");
+    const threadUrl = new ChURL("https://headline.5ch.io/test/read.cgi/bbynamazu/1000000007/");
     const boardUrl = threadUrl.toBoard();
 
     await expect(chServerMoveDetect(boardUrl)).rejects.toThrow("stop-test-request");

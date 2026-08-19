@@ -9,7 +9,7 @@ describe("MessageProcessor", () => {
         mail: "",
         other: "2026/03/06(金) 13:25:49.264 ID:test123",
         message:
-          "ちな復旧自体は進んでるで<br>https://i.imgur.com/TestImageA.jpeg<br>https://i.imgur.com/TestImageB.jpeg<br>",
+          "画像テスト<br>https://i.imgur.com/TestImageA.jpeg<br>https://i.imgur.com/TestImageB.jpeg<br>",
         id: "ID:test123",
         date: "2026/03/06(金) 13:25:49.264",
       };
@@ -35,6 +35,25 @@ describe("MessageProcessor", () => {
       expect(result.messageHtml).toContain('<a href="http://example.com/test"');
     });
 
+    it("should restore URLs with shortened protocols", () => {
+      const res = {
+        name: "テスト",
+        mail: "",
+        other: "",
+        message:
+          "s://pbs.twimg.com/media/TestTwitterImageA.jpg ps://pbs.twimg.com/media/TestTwitterImageB.jpg p://i.imgur.com/TestImageC.jpg",
+      };
+
+      const result = MessageProcessor.decode(res, "https:");
+      expect(result.messageHtml).toContain(
+        '<a href="https://pbs.twimg.com/media/TestTwitterImageA.jpg"',
+      );
+      expect(result.messageHtml).toContain(
+        '<a href="https://pbs.twimg.com/media/TestTwitterImageB.jpg"',
+      );
+      expect(result.messageHtml).toContain('<a href="http://i.imgur.com/TestImageC.jpg"');
+    });
+
     it("should handle URLs with query parameters", () => {
       const res = {
         name: "テスト",
@@ -55,7 +74,7 @@ describe("MessageProcessor", () => {
         mail: "",
         other: "",
         message:
-          "superpowers（https://example.test/project-a）とかagent-skills（https://example.test/project-b）いれたら流れでやってくれるわ",
+          "project-a（https://example.test/project-a）とかproject-b（https://example.test/project-b）を確認する",
       };
 
       const result = MessageProcessor.decode(res, "https:");
@@ -66,7 +85,7 @@ describe("MessageProcessor", () => {
         '<a href="https://example.test/project-b" target="_blank" rel="noopener noreferrer">https://example.test/project-b</a>',
       );
       expect(result.messageHtml).not.toContain(
-        "https://example.test/project-a）とかagent-skills（https://example.test/project-b",
+        "https://example.test/project-a）とかproject-b（https://example.test/project-b",
       );
     });
 

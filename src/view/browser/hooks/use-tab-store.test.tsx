@@ -1270,7 +1270,7 @@ describe("TabProvider auto refresh state", () => {
                 page: {
                   type: "thread",
                   title: "スレA",
-                  threadUrl: "https://egg.5ch.net/test/read.cgi/software/1000000010/",
+                  threadUrl: "https://egg.5ch.net/test/read.cgi/software/1000000004/",
                 },
               })
             }
@@ -1333,7 +1333,7 @@ describe("TabProvider auto refresh state", () => {
                 page: {
                   type: "thread",
                   title: "スレ1",
-                  threadUrl: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000005/",
+                  threadUrl: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000006/",
                 },
               })
             }
