@@ -15,10 +15,16 @@
   },
   "plugins": {
     "@release-it/bumper": {
-      "out": {
-        "file": "src-tauri/tauri.conf.json",
-        "path": "version"
-      }
+      "out": [
+        {
+          "file": "src/manifest.json",
+          "path": "version"
+        },
+        {
+          "file": "src-tauri/tauri.conf.json",
+          "path": "version"
+        }
+      ]
     }
   }
 }
