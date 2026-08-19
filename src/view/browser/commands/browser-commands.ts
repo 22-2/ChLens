@@ -284,6 +284,28 @@ async function copyWithNotice(text: string, label: string): Promise<void> {
   container.toast.success(`${label}をコピーしました`);
 }
 
+async function retryBoardTitle(context: BrowserCommandContext): Promise<void> {
+  const page = context.currentPage;
+  if (page.type !== "threadList") return;
+
+  // 板名解決系は旧コアと拡張機能APIへ依存するため、コマンド実行時だけ読み込む。
+  const { askByUrl } = await import("src/core/BoardTitleSolver.js");
+  const title = await askByUrl(page.boardUrl);
+  if (!title) {
+    throw new Error(`板名を取得できませんでした: ${page.boardUrl}`);
+  }
+
+  // 変更理由: 通信完了までに別ページへ移動しても、板URLを手掛かりに
+  // 対象タブの履歴中にある板一覧へ取得結果を反映できるようにする。
+  context.dispatch({
+    type: "UPDATE_TITLE_FOR_TAB",
+    tabId: context.activeTab.id,
+    title,
+    boardUrl: page.boardUrl,
+  });
+  container.toast.success(`板名を「${title}」に更新しました`);
+}
+
 function getCommandLabel(
   label: BrowserCommandDefinition["label"],
   context: BrowserCommandContext,
@@ -374,6 +396,17 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     icon: RotateCw,
     when: ({ currentPage }) => RELOADABLE_PAGE_TYPES.has(currentPage.type),
     run: ({ dispatch }) => dispatch({ type: "RELOAD" }),
+  },
+  {
+    id: "page.retry-board-title",
+    label: "板名を再取得",
+    englishLabel: "Retry Board Title",
+    description: "板一覧やSETTING.TXTから現在の板名を再取得します",
+    keywords: ["板タイトル", "板名更新", "再試行", "retry", "board title"],
+    group: "page",
+    icon: RotateCw,
+    when: ({ currentPage }) => currentPage.type === "threadList",
+    run: retryBoardTitle,
   },
   {
     id: "page.jump-to-response",

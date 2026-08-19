@@ -173,3 +173,7 @@ export const ask = async (url: URL): Promise<string | null> => {
     throw new Error(`板名の取得に失敗しました: ${String(e)}`, { cause: e });
   }
 };
+
+// コマンドなどURL文字列しか持たない呼び出し元が、旧URLクラスの生成責務を
+// 重複して持たずに板名解決を再実行できる入口。
+export const askByUrl = async (boardUrl: string): Promise<string | null> => ask(new URL(boardUrl));

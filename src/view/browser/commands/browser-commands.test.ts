@@ -12,6 +12,7 @@ import { setItestServerMapForTesting } from "src/view/browser/utils/itest-server
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const {
+  askBoardTitleByUrlMock,
   copyTextMock,
   encodeThreadAsToonMock,
   estimateToonTokenCountMock,
@@ -20,6 +21,7 @@ const {
   toastInfoMock,
   toastSuccessMock,
 } = vi.hoisted(() => ({
+  askBoardTitleByUrlMock: vi.fn(),
   copyTextMock: vi.fn<() => Promise<void>>(),
   encodeThreadAsToonMock: vi.fn(),
   estimateToonTokenCountMock: vi.fn<() => number>(),
@@ -27,6 +29,10 @@ const {
   queryTabsMock: vi.fn(),
   toastInfoMock: vi.fn(),
   toastSuccessMock: vi.fn(),
+}));
+
+vi.mock("src/core/BoardTitleSolver.js", () => ({
+  askByUrl: askBoardTitleByUrlMock,
 }));
 
 vi.mock("src/view/browser/utils/utils", async (importOriginal) => {
@@ -79,6 +85,7 @@ describe("browser commands", () => {
       tabs: { query: queryTabsMock },
     });
     copyTextMock.mockResolvedValue();
+    askBoardTitleByUrlMock.mockResolvedValue("Software");
     encodeThreadAsToonMock.mockReturnValue("title: Thread");
     estimateToonTokenCountMock.mockReturnValue(1234);
     getThreadMock.mockResolvedValue({
@@ -106,6 +113,7 @@ describe("browser commands", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     copyTextMock.mockReset();
+    askBoardTitleByUrlMock.mockReset();
     encodeThreadAsToonMock.mockReset();
     estimateToonTokenCountMock.mockReset();
     getThreadMock.mockReset();
@@ -149,6 +157,49 @@ describe("browser commands", () => {
 
     await expect(executeBrowserCommand("page.jump-to-response", context)).resolves.toBe(true);
     expect(openResponseJumpDialog).toHaveBeenCalledOnce();
+  });
+
+  it("板一覧では板名を再取得して対象板の履歴タイトルを更新する", async () => {
+    const page = {
+      type: "threadList" as const,
+      title: "https://egg.5ch.io/software/",
+      boardUrl: "https://egg.5ch.io/software/",
+      boardTitle: "https://egg.5ch.io/software/",
+    };
+    const { context, dispatch } = createContext(page);
+
+    expect(resolveBrowserCommands(context)).toContainEqual(
+      expect.objectContaining({
+        id: "page.retry-board-title",
+        label: "板名を再取得",
+        enabled: true,
+      }),
+    );
+
+    await expect(executeBrowserCommand("page.retry-board-title", context)).resolves.toBe(true);
+
+    expect(askBoardTitleByUrlMock).toHaveBeenCalledWith(page.boardUrl);
+    expect(dispatch).toHaveBeenCalledWith({
+      type: "UPDATE_TITLE_FOR_TAB",
+      tabId: "tab-1",
+      title: "Software",
+      boardUrl: page.boardUrl,
+    });
+    expect(toastSuccessMock).toHaveBeenCalledWith("板名を「Software」に更新しました");
+  });
+
+  it("板名を取得できなかった場合は詳細付きのエラーにする", async () => {
+    askBoardTitleByUrlMock.mockResolvedValueOnce(null);
+    const { context } = createContext({
+      type: "threadList",
+      title: "https://example.com/board/",
+      boardUrl: "https://example.com/board/",
+      boardTitle: "https://example.com/board/",
+    });
+
+    await expect(executeBrowserCommand("page.retry-board-title", context)).rejects.toThrow(
+      "板名を取得できませんでした: https://example.com/board/",
+    );
   });
 
   it("拡張機能でだけ開いているスレタブの取り込みコマンドを表示する", () => {
