@@ -119,4 +119,31 @@ describe("SimpleDataTable", () => {
     fireEvent.contextMenu(screen.getByRole("columnheader", { name: "タイトル" }));
     expect(screen.getByRole("button", { name: "タイトルは非表示にできません" })).toBeDisabled();
   });
+
+  it("折りたたみdividerの行をクリックするまで表示しない", () => {
+    render(
+      <SimpleDataTable
+        columns={columns}
+        rows={rows}
+        getRowKey={(row) => row.id}
+        sections={[
+          {
+            key: "muted",
+            label: "NGしたスレ（1）",
+            rows,
+            collapsible: true,
+            defaultCollapsed: true,
+          },
+        ]}
+      />,
+    );
+
+    const divider = screen.getByRole("button", { name: /NGしたスレ（1）/ });
+    expect(divider).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("スレ1")).toBeNull();
+
+    fireEvent.click(divider);
+    expect(divider).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("スレ1")).toBeInTheDocument();
+  });
 });

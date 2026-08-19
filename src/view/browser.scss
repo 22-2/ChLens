@@ -2397,6 +2397,51 @@ body {
   opacity: 0.4;
 }
 
+.simple-data-table__divider-row > td {
+  padding: 0;
+  color: var(--browser-color-text-primary);
+}
+
+.simple-data-table__divider {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  box-sizing: border-box;
+  padding: 7px 10px;
+  border: 0;
+  min-height: 32px;
+  border-top: 1px solid var(--browser-color-border);
+  border-bottom: 1px solid var(--browser-color-border);
+  background: var(--browser-color-surface-muted);
+  color: var(--browser-color-text-primary);
+  font: inherit;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: left;
+  appearance: none;
+}
+
+.simple-data-table__divider > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.simple-data-table__divider > svg {
+  flex: 0 0 auto;
+}
+
+.simple-data-table__divider--collapsible {
+  cursor: pointer;
+}
+
+.simple-data-table__divider--collapsible:hover {
+  background: var(--browser-color-list-hover-bg);
+}
+
 .simple-data-table__row--highlight {
   font-weight: 600;
   background: var(--thread-list-highlight-bg, #ffffcc);

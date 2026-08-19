@@ -19,7 +19,7 @@ const BOARD_RULE_TARGETS = new Set(
 const THREAD_RULE_TARGETS = new Set(
   RULE_TARGET_CATALOG.filter((target) => target.allowedOnThread).map((target) => target.name),
 );
-const BOARD_RULE_ACTIONS = new Set<Rule["action"]>(["hide", "highlight"]);
+const BOARD_RULE_ACTIONS = new Set<Rule["action"]>(["hide", "highlight", "demote"]);
 const THREAD_RULE_ACTIONS = new Set<Rule["action"]>(["hide"]);
 
 function isCommentOrWhitespace(line: string): boolean {
@@ -145,7 +145,13 @@ export function isNGBoard(threadTitle: string, url: string, resCount: number): I
     onRegexError,
   );
   return matched
-    ? { type: matched.type, name: matched.rule.name, params: matched.params, disabled: false }
+    ? {
+        type: matched.type,
+        action: matched.rule.action,
+        name: matched.rule.name,
+        params: matched.params,
+        disabled: false,
+      }
     : null;
 }
 
@@ -182,7 +188,13 @@ export function isNGThread(res: unknown, title: string, url: string): INGResult 
   );
   if (matched) {
     logger.debug("thread.hit", { matchedType: matched.type, title, url, resNum });
-    return { type: matched.type, name: matched.rule.name, params: matched.params, disabled: false };
+    return {
+      type: matched.type,
+      action: matched.rule.action,
+      name: matched.rule.name,
+      params: matched.params,
+      disabled: false,
+    };
   }
   if (debugTargetResNum != null ? resNum === debugTargetResNum : resNum != null && resNum <= 3) {
     logger.debug("thread.no_hit", { title, url, resNum, totalRuleCount: get().length });

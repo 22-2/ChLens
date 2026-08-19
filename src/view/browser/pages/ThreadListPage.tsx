@@ -9,7 +9,11 @@ import { container } from "src/service-container/index";
 import type { IReadState, IThread } from "src/service-container/interfaces";
 import { ContextMenu, ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import { SearchBar } from "src/view/browser/components/SearchBar";
-import { ColumnDef, SimpleDataTable } from "src/view/browser/components/SimpleDataTable";
+import {
+  ColumnDef,
+  SimpleDataTable,
+  type DataTableSection,
+} from "src/view/browser/components/SimpleDataTable";
 import { WheelScrollIndicator } from "src/view/browser/components/WheelScrollIndicator";
 import {
   BOARD_AUTO_REFRESH_CONFIG_KEY,
@@ -511,13 +515,17 @@ export const ThreadListPage: React.FC<Props> = ({
       setThreads((prev) =>
         prev.map((thread) => {
           const ngResult = container.ng.isNGBoard(thread.title, page.boardUrl, thread.resCount);
+          // 変更理由: hideは一覧から除外し、demoteだけを折りたたみ領域へ送る。
           const highlight =
-            ngResult &&
-            (ngResult.type === "HighlightTitle" || ngResult.type === "RegExpHighlightTitle");
+            ngResult?.action === "highlight" ||
+            ngResult?.type === "HighlightTitle" ||
+            ngResult?.type === "RegExpHighlightTitle";
+          const demoted = ngResult?.action === "demote";
 
           return {
             ...thread,
-            ng: highlight ? null : ngResult,
+            ng: highlight || demoted ? null : ngResult,
+            demoted: demoted ? ngResult : null,
             highlight: highlight ? ngResult : null,
           };
         }),
@@ -779,10 +787,7 @@ export const ThreadListPage: React.FC<Props> = ({
       });
     }
 
-    // 既存動作に合わせ、ハイライトスレッドを常に先頭に表示
-    const highlighted = list.filter(({ thread }) => thread.highlight);
-    const normal = list.filter(({ thread }) => !thread.highlight);
-    return [...highlighted, ...normal];
+    return list;
   }, [threads, sortColumn, sortDirection, searchQuery]);
 
   const handleThreadClick = useCallback(
@@ -925,13 +930,47 @@ export const ThreadListPage: React.FC<Props> = ({
   }, [contextMenuState, openNgDialog]);
 
   const threadListNgCount = useMemo(
-    () => threads.filter((thread) => thread.ng != null).length,
+    () => threads.filter((thread) => thread.ng != null || thread.demoted != null).length,
     [threads],
   );
   const threadListHighlightCount = useMemo(
     () => threads.filter((thread) => thread.highlight != null).length,
     [threads],
   );
+  const visibleDisplayThreads = useMemo(
+    () => displayThreads.filter(({ thread }) => thread.ng == null || isNgTemporarilyDisabled),
+    [displayThreads, isNgTemporarilyDisabled],
+  );
+  const threadSections = useMemo<DataTableSection<DisplayThread>[]>(() => {
+    const highlighted = visibleDisplayThreads.filter(({ thread }) => thread.highlight != null);
+    const normal = visibleDisplayThreads.filter(
+      ({ thread }) =>
+        thread.highlight == null && (isNgTemporarilyDisabled || thread.demoted == null),
+    );
+    const demoted = isNgTemporarilyDisabled
+      ? []
+      : visibleDisplayThreads.filter(({ thread }) => thread.demoted != null);
+
+    return [
+      ...(highlighted.length > 0
+        ? [{ key: "highlight", label: `注目スレ（${highlighted.length}）`, rows: highlighted }]
+        : []),
+      ...(normal.length > 0
+        ? [{ key: "normal", label: `スレ一覧（${normal.length}）`, rows: normal }]
+        : []),
+      ...(demoted.length > 0
+        ? [
+            {
+              key: "demoted",
+              label: `NGしたスレ（${demoted.length}）`,
+              rows: demoted,
+              collapsible: true,
+              defaultCollapsed: true,
+            },
+          ]
+        : []),
+    ];
+  }, [isNgTemporarilyDisabled, visibleDisplayThreads]);
 
   useEffect(() => {
     // 件数表示は検索/ソートの表示結果ではなく、取得済み一覧全体を基準にする。
@@ -969,20 +1008,19 @@ export const ThreadListPage: React.FC<Props> = ({
           query={searchQuery}
           onQueryChange={setSearchQuery}
           onClose={closeFilterToolbar}
-          hitCount={displayThreads.length}
+          hitCount={visibleDisplayThreads.length}
         />
       ) : null}
       {error && <div className="thread-list-page__notice">{error}</div>}
       <SimpleDataTable
         columns={THREAD_LIST_COLUMNS}
-        rows={displayThreads}
+        rows={visibleDisplayThreads}
+        sections={threadSections}
         getRowKey={({ thread }) => thread.url}
         getRowTooltip={({ thread }) => thread.title}
         getRowClassName={({ thread }) => {
           const classes: string[] = [];
-          if (thread.ng && !isNgTemporarilyDisabled) {
-            classes.push("thread-list__row--ng");
-          }
+          if (thread.demoted && !isNgTemporarilyDisabled) classes.push("thread-list__row--ng");
           if (thread.highlight) classes.push("thread-list__row--highlight");
           return classes.join(" ") || undefined;
         }}

@@ -92,6 +92,7 @@ export interface IThread {
   resCount: number;
   createdAt: number;
   ng?: INGResult | null;
+  demoted?: INGResult | null;
   highlight?: INGResult | null;
   isNet?: boolean | null;
   readState?: IReadState;
@@ -206,6 +207,7 @@ export interface INotificationService {
 
 export interface INGResult {
   type: string;
+  action?: "hide" | "highlight" | "demote" | "warn";
   name?: string;
   params?: Record<string, string>;
   /** NG ルールが一時的に無効化されているかどうか */

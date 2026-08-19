@@ -1,4 +1,4 @@
-export const RULE_ACTIONS = ["hide", "highlight", "mute", "warn"] as const;
+export const RULE_ACTIONS = ["hide", "highlight", "demote", "warn"] as const;
 export type RuleAction = (typeof RULE_ACTIONS)[number];
 
 export const RULE_TARGETS = [

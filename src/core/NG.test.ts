@@ -59,6 +59,19 @@ hide body regex:
     await expect(set("Body(value=荒らし)")).rejects.toThrow("新しいブロックDSL");
   });
 
+  it("distinguishes demoted board threads from hidden board threads", async () => {
+    const { apply, invalidateCache, isNGBoard } = await import("src/core/NG");
+    invalidateCache();
+    apply(`demote title contains:\n  薄くする\n\nhide title contains:\n  隠す`);
+
+    expect(isNGBoard("薄くするスレ", "https://example.com/board/", 1)).toMatchObject({
+      action: "demote",
+    });
+    expect(isNGBoard("隠すスレ", "https://example.com/board/", 1)).toMatchObject({
+      action: "hide",
+    });
+  });
+
   it("applies a stored DSL without writing it back", async () => {
     const { apply, get, invalidateCache } = await import("src/core/NG");
     invalidateCache();

@@ -36,7 +36,10 @@ export interface RuleTargetDefinition extends RuleCatalogEntry<RuleTarget> {
 export const RULE_ACTION_CATALOG: readonly RuleCatalogEntry<RuleAction>[] = [
   { name: "hide", description: "一致した対象を非表示にします。" },
   { name: "highlight", description: "一致した対象を強調します。" },
-  { name: "mute", description: "一致した対象を目立たなくします。" },
+  {
+    name: "demote",
+    description: "一致した対象を一覧の末尾へ移動し、目立たなくします。",
+  },
   { name: "warn", description: "一致した対象に警告を表示します。" },
 ];
 
@@ -186,7 +189,7 @@ export function getRuleTargetDefinition(target: RuleTarget): RuleTargetDefinitio
   return RULE_TARGET_DEFINITIONS[target];
 }
 
-/** 現在UIまで実装済みの組み合わせ。mute/warnは将来拡張用の予約語として保持する。 */
+/** 現在UIまで実装済みの組み合わせ。warnは将来拡張用の予約語として保持する。 */
 export function isRuleCombinationSupported(action: RuleAction, target: RuleTarget): boolean {
-  return action === "hide" || (action === "highlight" && target === "title");
+  return action === "hide" || action === "demote" || (action === "highlight" && target === "title");
 }

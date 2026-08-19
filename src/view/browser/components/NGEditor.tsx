@@ -83,6 +83,10 @@ hide body contains:
 hide id contains:
   abc123
 
+// スレ一覧の末尾へ薄く表示し、divider内へ折りたたみます
+demote title contains:
+  勢いのない定期スレ
+
 hide url regex:
   "https?://(?:x|twitter)\\.com/.+"
 

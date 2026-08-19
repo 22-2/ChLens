@@ -4,6 +4,7 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import React, { useEffect, useMemo } from "react";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { useCursorTooltip } from "src/view/browser/components/CursorTooltip";
@@ -23,9 +24,18 @@ export interface ColumnDef<TRow> {
   hideable?: boolean;
 }
 
+export interface DataTableSection<TRow> {
+  key: string;
+  label?: React.ReactNode;
+  rows: TRow[];
+  collapsible?: boolean;
+  defaultCollapsed?: boolean;
+}
+
 interface Props<TRow> {
   columns: ColumnDef<TRow>[];
   rows: TRow[];
+  sections?: DataTableSection<TRow>[];
   getRowKey: (row: TRow) => string;
   getRowClassName?: (row: TRow) => string | undefined;
   getRowStyle?: (row: TRow) => React.CSSProperties;
@@ -45,6 +55,7 @@ interface Props<TRow> {
 export function SimpleDataTable<TRow>({
   columns,
   rows,
+  sections,
   getRowKey,
   getRowClassName,
   getRowStyle,
@@ -96,10 +107,22 @@ export function SimpleDataTable<TRow>({
 
   // key → ColumnDef のルックアップを O(1) にする
   const colDefMap = useMemo(() => new Map(visibleColumns.map((c) => [c.key, c])), [visibleColumns]);
+  const [expandedSections, setExpandedSections] = React.useState<Set<string>>(
+    () => new Set(sections?.filter((section) => !section.defaultCollapsed).map(({ key }) => key)),
+  );
 
   const sortIndicator = (key: string): string => {
     if (sortColumn !== key) return "";
     return sortDirection === "asc" ? " ▲" : " ▼";
+  };
+
+  const toggleSection = (key: string): void => {
+    setExpandedSections((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   };
 
   useEffect(() => {
@@ -142,51 +165,81 @@ export function SimpleDataTable<TRow>({
           ))}
         </thead>
         <tbody>
-          {table.getRowModel().rows.map((row) => {
-            const original = row.original;
-            const extraClass = getRowClassName?.(original);
-            const tooltipLabel = tableTooltipEnabled ? getRowTooltip?.(original) : undefined;
-            const rowElement = (
-              <tr
-                className={
-                  extraClass ? `simple-data-table__row ${extraClass}` : "simple-data-table__row"
-                }
-                style={getRowStyle?.(original)}
-                onMouseEnter={tooltipLabel ? (event) => show(tooltipLabel, event) : undefined}
-                onMouseMove={tooltipLabel ? (event) => move(tooltipLabel, event) : undefined}
-                onMouseLeave={hide}
-                onClick={() => {
-                  hide();
-                  onRowClick?.(original);
-                }}
-                onMouseDown={(e) => {
-                  if (e.button === 1) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    hide();
-                    // 中クリックは別ハンドラとして処理し、次回の左クリックは抑止しない。
-                    // ここで抑止フラグを持つと「中クリック後の最初の左クリック無効化」が再発するため。
-                    onRowMiddleClick?.(original);
-                  }
-                }}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  hide();
-                  onRowContextMenu?.(original, e.clientX, e.clientY);
-                }}
-              >
-                {row.getVisibleCells().map((cell) => {
-                  const colDef = colDefMap.get(cell.column.id);
-                  return (
-                    <td key={cell.id} className={colDef?.cellClassName ?? ""}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  );
-                })}
+          {(sections ?? [{ key: "default", rows }]).flatMap((section) => {
+            const isExpanded = !section.collapsible || expandedSections.has(section.key);
+            const sectionRowKeys = new Set(section.rows.map(getRowKey));
+            const sectionRows = isExpanded
+              ? table.getRowModel().rows.filter((row) => sectionRowKeys.has(row.id))
+              : [];
+            const divider = section.label ? (
+              <tr key={`divider-${section.key}`} className="simple-data-table__divider-row">
+                <td colSpan={visibleColumns.length}>
+                  {section.collapsible ? (
+                    <button
+                      type="button"
+                      className="simple-data-table__divider simple-data-table__divider--collapsible"
+                      aria-expanded={isExpanded}
+                      onClick={() => toggleSection(section.key)}
+                    >
+                      <span>{section.label}</span>
+                      {isExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                    </button>
+                  ) : (
+                    <div className="simple-data-table__divider">{section.label}</div>
+                  )}
+                </td>
               </tr>
-            );
+            ) : null;
 
-            return <React.Fragment key={row.id}>{rowElement}</React.Fragment>;
+            return [
+              divider,
+              ...sectionRows.map((row) => {
+                const original = row.original;
+                const extraClass = getRowClassName?.(original);
+                const tooltipLabel = tableTooltipEnabled ? getRowTooltip?.(original) : undefined;
+                const rowElement = (
+                  <tr
+                    className={
+                      extraClass ? `simple-data-table__row ${extraClass}` : "simple-data-table__row"
+                    }
+                    style={getRowStyle?.(original)}
+                    onMouseEnter={tooltipLabel ? (event) => show(tooltipLabel, event) : undefined}
+                    onMouseMove={tooltipLabel ? (event) => move(tooltipLabel, event) : undefined}
+                    onMouseLeave={hide}
+                    onClick={() => {
+                      hide();
+                      onRowClick?.(original);
+                    }}
+                    onMouseDown={(e) => {
+                      if (e.button === 1) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        hide();
+                        // 中クリックは別ハンドラとして処理し、次回の左クリックは抑止しない。
+                        // ここで抑止フラグを持つと「中クリック後の最初の左クリック無効化」が再発するため。
+                        onRowMiddleClick?.(original);
+                      }
+                    }}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      hide();
+                      onRowContextMenu?.(original, e.clientX, e.clientY);
+                    }}
+                  >
+                    {row.getVisibleCells().map((cell) => {
+                      const colDef = colDefMap.get(cell.column.id);
+                      return (
+                        <td key={cell.id} className={colDef?.cellClassName ?? ""}>
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+
+                return <React.Fragment key={row.id}>{rowElement}</React.Fragment>;
+              }),
+            ].filter((element) => element != null);
           })}
         </tbody>
       </table>

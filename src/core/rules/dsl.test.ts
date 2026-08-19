@@ -91,6 +91,15 @@ hide anchor-count >= 10:`;
     expect(result.diagnostics[0]).toMatchObject({ line: 1, message: "未対応の動作です: remove" });
   });
 
+  it("uses demote as the only action for moving board threads to the lower section", () => {
+    expect(parseRuleDsl("demote title contains:\n  quiet").rules[0]).toMatchObject({
+      action: "demote",
+    });
+    expect(parseRuleDsl("mute title contains:\n  quiet").diagnostics[0]).toMatchObject({
+      message: "未対応の動作です: mute",
+    });
+  });
+
   it("rejects removed function-style option names", () => {
     const result = parseRuleDsl(`highlight title contains bgColor=red:
   注目`);
