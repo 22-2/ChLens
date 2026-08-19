@@ -625,10 +625,9 @@ export const NavigationBar: React.FC = () => {
     closeMenu();
   }, [closeMenu, handleToggleBookmark]);
 
-  const handleMenuTogglePane = useCallback(() => {
+  const handleTogglePane = useCallback(() => {
     dispatch({ type: isTwoPane ? "CLOSE_PANE" : "SPLIT_PANE" });
-    closeMenu();
-  }, [closeMenu, dispatch, isTwoPane]);
+  }, [dispatch, isTwoPane]);
 
   const handleBackContextMenu = useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -733,15 +732,9 @@ export const NavigationBar: React.FC = () => {
     () => [
       {
         id: "open-command-palette",
-        label: "コマンドパレットを開く",
+        label: "コマンドパレット",
         icon: <Command size={14} />,
         onSelect: commandPalette.open,
-      },
-      {
-        id: "open-settings",
-        label: "設定を開く",
-        icon: <Settings size={14} />,
-        onSelect: openSettingsTab,
       },
       ...(currentPage.type === "thread" ||
       currentPage.type === "boardList" ||
@@ -753,7 +746,7 @@ export const NavigationBar: React.FC = () => {
         ? [
             {
               id: "open-filter-toolbar",
-              label: "フィルターを開く",
+              label: "フィルター",
               icon: <Filter size={14} />,
               onSelect: toggleFilterFromMenu,
             },
@@ -763,7 +756,7 @@ export const NavigationBar: React.FC = () => {
         ? [
             {
               id: "open-write-panel",
-              label: isPanelOpen ? "書き込みパネルを閉じる" : "書き込みパネルを開く",
+              label: isPanelOpen ? "書き込みパネルを閉じる" : "書き込みパネル",
               icon: <PenLine size={14} />,
               onSelect: () => togglePanel("write"),
             },
@@ -775,7 +768,7 @@ export const NavigationBar: React.FC = () => {
       },
       {
         id: "open-bookmark-list",
-        label: "ブックマークリストを開く",
+        label: "ブックマークリスト",
         icon: <Bookmark size={14} />,
         onSelect: () =>
           openQuickAccessPage({
@@ -792,7 +785,7 @@ export const NavigationBar: React.FC = () => {
       },
       {
         id: "open-history-list",
-        label: "閲覧履歴を開く",
+        label: "閲覧履歴",
         icon: <History size={14} />,
         onSelect: () =>
           openQuickAccessPage({
@@ -809,7 +802,7 @@ export const NavigationBar: React.FC = () => {
       },
       {
         id: "open-write-history-list",
-        label: "書き込み履歴を開く",
+        label: "書き込み履歴",
         icon: <PenLine size={14} />,
         onSelect: () =>
           openQuickAccessPage({
@@ -826,7 +819,7 @@ export const NavigationBar: React.FC = () => {
       },
       {
         id: "open-log-list",
-        label: "ログ検索を開く",
+        label: "ログ検索",
         icon: <Archive size={14} />,
         onSelect: () =>
           openQuickAccessPage({
@@ -847,7 +840,6 @@ export const NavigationBar: React.FC = () => {
       openQuickAccessPage,
       openQuickAccessPageInNewTab,
       toggleFilterFromMenu,
-      openSettingsTab,
       isPanelOpen,
       togglePanel,
     ],
@@ -943,13 +935,12 @@ export const NavigationBar: React.FC = () => {
       </button>
       <button
         type="button"
-        className={`nav-bar__menu-action${isTwoPane ? " nav-bar__menu-action--active" : ""}`}
-        onClick={handleMenuTogglePane}
-        title={isTwoPane ? "2ペイン表示を解除" : "2ペインで表示"}
-        aria-label={isTwoPane ? "2ペイン表示を解除" : "2ペインで表示"}
-        aria-pressed={isTwoPane}
+        className="nav-bar__menu-action"
+        onClick={openSettingsTab}
+        title="設定を開く"
+        aria-label="設定を開く"
       >
-        <Columns2 size={17} />
+        <Settings size={17} />
       </button>
     </div>
   );
@@ -1017,7 +1008,19 @@ export const NavigationBar: React.FC = () => {
       )}
 
       <button
+        type="button"
+        className={`nav-bar__btn${isTwoPane ? " nav-bar__btn--active" : ""}`}
+        title={isTwoPane ? "2ペイン表示を解除" : "2ペインで表示"}
+        aria-label={isTwoPane ? "2ペイン表示を解除" : "2ペインで表示"}
+        aria-pressed={isTwoPane}
+        onClick={handleTogglePane}
+      >
+        <Columns2 size={18} />
+      </button>
+
+      <button
         ref={menuButtonRef}
+        type="button"
         className="nav-bar__btn"
         title="メニュー"
         onClick={handleMenuClick}

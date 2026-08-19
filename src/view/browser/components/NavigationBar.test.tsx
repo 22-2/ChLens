@@ -272,6 +272,35 @@ describe("NavigationBar", () => {
     ).toBeInTheDocument();
   });
 
+  it("設定ボタンをメニューのアイコン操作列に表示する", () => {
+    render(<NavigationBar />);
+
+    expect(screen.queryByRole("button", { name: "設定を開く" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTitle("メニュー"));
+
+    const settingsButton = screen.getByRole("button", { name: "設定を開く" });
+    expect(settingsButton).toHaveClass("nav-bar__menu-action");
+
+    fireEvent.click(settingsButton);
+
+    expect(dispatchMock).toHaveBeenNthCalledWith(1, { type: "ADD_TAB" });
+    expect(dispatchMock).toHaveBeenNthCalledWith(2, {
+      type: "NAVIGATE",
+      page: { type: "settings", title: "設定" },
+    });
+  });
+
+  it("2ペインボタンをメニューボタンの直左に表示する", () => {
+    render(<NavigationBar />);
+
+    const buttons = [...document.querySelectorAll(".nav-bar > button")].map((button) =>
+      button.getAttribute("title"),
+    );
+
+    expect(buttons.slice(-2)).toEqual(["2ペインで表示", "メニュー"]);
+  });
+
   it("頻繁なナビゲーション操作をハンバーガーメニューの最上段に表示する", () => {
     render(<NavigationBar />);
 
@@ -304,6 +333,7 @@ describe("NavigationBar", () => {
     const menuButton = screen.getByTitle("メニュー");
 
     fireEvent.click(menuButton);
+    expect(screen.getByRole("button", { name: "コマンドパレット" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "設定を開く" })).toBeInTheDocument();
 
     // mousedown で先に close してしまうと click トグルで再オープンするため、
@@ -311,6 +341,7 @@ describe("NavigationBar", () => {
     fireEvent.mouseDown(menuButton);
     fireEvent.click(menuButton);
 
+    expect(screen.queryByRole("button", { name: "コマンドパレット" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "設定を開く" })).not.toBeInTheDocument();
   });
 
@@ -319,7 +350,7 @@ describe("NavigationBar", () => {
     render(<NavigationBar />);
 
     fireEvent.click(screen.getByTitle("メニュー"));
-    fireEvent.click(screen.getByRole("button", { name: "フィルターを開く" }));
+    fireEvent.click(screen.getByRole("button", { name: "フィルター" }));
 
     expect(dispatchEventSpy).toHaveBeenCalledWith(
       expect.objectContaining({ type: "thread-filter-toolbar-toggle" }),
@@ -340,7 +371,7 @@ describe("NavigationBar", () => {
     render(<NavigationBar />);
 
     fireEvent.click(screen.getByTitle("メニュー"));
-    fireEvent.click(screen.getByRole("button", { name: "フィルターを開く" }));
+    fireEvent.click(screen.getByRole("button", { name: "フィルター" }));
 
     expect(dispatchEventSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -364,7 +395,7 @@ describe("NavigationBar", () => {
     render(<NavigationBar />);
 
     fireEvent.click(screen.getByTitle("メニュー"));
-    fireEvent.click(screen.getByRole("button", { name: "フィルターを開く" }));
+    fireEvent.click(screen.getByRole("button", { name: "フィルター" }));
 
     expect(dispatchEventSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -388,7 +419,7 @@ describe("NavigationBar", () => {
     render(<NavigationBar />);
 
     fireEvent.click(screen.getByTitle("メニュー"));
-    fireEvent.click(screen.getByRole("button", { name: "フィルターを開く" }));
+    fireEvent.click(screen.getByRole("button", { name: "フィルター" }));
 
     expect(dispatchEventSpy).toHaveBeenCalledWith(
       expect.objectContaining({
