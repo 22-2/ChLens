@@ -1302,6 +1302,103 @@ describe("TabProvider auto refresh state", () => {
     expect(screen.getByTestId("current-page-board-title")).toHaveTextContent("Software");
   });
 
+  it("関連板から別板のスレをURL直開きした戻るで対象板へ戻る", async () => {
+    localStorage.setItem("config_new_tab_page_mode", "related_board");
+
+    vi.resetModules();
+    const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
+
+    function Harness() {
+      const { currentPage, activeTab, dispatch } = useTabStore();
+
+      return (
+        <>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "NAVIGATE",
+                page: {
+                  type: "threadList",
+                  title: "エッヂ",
+                  boardUrl: "http://bbs.eddibb.cc/liveedge/",
+                  boardTitle: "エッヂ",
+                },
+              })
+            }
+          >
+            板Aへ移動
+          </button>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "NAVIGATE",
+                page: {
+                  type: "thread",
+                  title: "スレA",
+                  threadUrl: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000006/",
+                },
+              })
+            }
+          >
+            板Aのスレへ移動
+          </button>
+          <button onClick={() => dispatch({ type: "ADD_TAB" })}>関連板の新規タブ</button>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "NAVIGATE",
+                page: {
+                  type: "thread",
+                  title: "スレB",
+                  threadUrl: "https://egg.5ch.io/test/read.cgi/software/123/",
+                },
+              })
+            }
+          >
+            板BのスレをURL直開き
+          </button>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "UPDATE_TITLE_FOR_TAB",
+                tabId: activeTab.id,
+                title: "Software",
+                boardUrl: "https://egg.5ch.io/software/",
+              })
+            }
+          >
+            板B名を解決
+          </button>
+          <button onClick={() => dispatch({ type: "GO_BACK" })}>戻る</button>
+          <output data-testid="current-page-type">{currentPage.type}</output>
+          <output data-testid="current-page-title">{currentPage.title}</output>
+          <output data-testid="current-page-board-url">
+            {currentPage.type === "threadList" ? currentPage.boardUrl : ""}
+          </output>
+        </>
+      );
+    }
+
+    render(
+      <TabProvider>
+        <Harness />
+      </TabProvider>,
+    );
+
+    fireEvent.click(screen.getByText("板Aへ移動"));
+    fireEvent.click(screen.getByText("板Aのスレへ移動"));
+    fireEvent.click(screen.getByText("関連板の新規タブ"));
+    fireEvent.click(screen.getByText("板BのスレをURL直開き"));
+    fireEvent.click(screen.getByText("板B名を解決"));
+    fireEvent.click(screen.getByText("戻る"));
+
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent("threadList");
+    expect(screen.getByTestId("current-page-title")).toHaveTextContent("Software");
+    expect(screen.getByTestId("current-page-board-url")).toHaveTextContent(
+      "https://egg.5ch.io/software/",
+    );
+  });
+
   it("板ページから新規タブで開いたスレは戻る時に板URLではなく板タイトルを維持する", async () => {
     vi.resetModules();
     const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");

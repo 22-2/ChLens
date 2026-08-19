@@ -614,6 +614,7 @@ export const ThreadListPage: React.FC<Props> = ({
           type: "UPDATE_TITLE_FOR_TAB",
           tabId,
           title: initialBoardTitle,
+          boardUrl: page.boardUrl,
         });
       }
       return;
@@ -622,7 +623,7 @@ export const ThreadListPage: React.FC<Props> = ({
     askBoardTitle(new ChURL(page.boardUrl))
       .then((title) => {
         if (!cancelled && title) {
-          dispatch({ type: "UPDATE_TITLE_FOR_TAB", tabId, title });
+          dispatch({ type: "UPDATE_TITLE_FOR_TAB", tabId, title, boardUrl: page.boardUrl });
         }
       })
       .catch((err) => {

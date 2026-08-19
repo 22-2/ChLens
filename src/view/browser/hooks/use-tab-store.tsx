@@ -60,7 +60,7 @@ export type TabAction =
   | { type: "GO_FORWARD" }
   | { type: "GO_TO_HISTORY_INDEX"; index: number }
   | { type: "UPDATE_TITLE"; title: string }
-  | { type: "UPDATE_TITLE_FOR_TAB"; tabId: string; title: string }
+  | { type: "UPDATE_TITLE_FOR_TAB"; tabId: string; title: string; boardUrl?: string }
   | { type: "RELOAD" }
   | {
       type: "FOLLOW_NEXT_THREAD";
@@ -542,6 +542,25 @@ function pushPageToTabHistory(tab: Tab, page: Page): Tab {
   // 現在位置以降の「進む」履歴を切り捨て、新ページを追加する。
   // 魔法なし: 祖先の自動補完はせず、ユーザーが実際に訪れたページだけを積む。
   const historyUntilCurrent = tab.history.slice(0, tab.currentIndex + 1);
+
+  if (page.type === "thread" && currentPage.type === "threadList") {
+    const targetBoardUrl = deriveBoardUrlFromThreadUrl(page.threadUrl);
+    const currentBoardUrl = normalizePageLocation(currentPage.boardUrl);
+
+    // 関連する板を初期ページにした新規タブで別板のスレをURL直開きした場合、
+    // 関連板をそのまま戻り先にすると対象スレとは別の板へ戻ってしまう。
+    // 対象板の一覧をスレ直前に積み、戻る操作で対象板を復元できるようにする。
+    if (targetBoardUrl && normalizePageLocation(targetBoardUrl) !== currentBoardUrl) {
+      const targetBoardPage = createThreadListPageFromBoardUrl(targetBoardUrl);
+      const newHistory = [...historyUntilCurrent, targetBoardPage, page];
+      return {
+        ...tab,
+        history: newHistory,
+        currentIndex: newHistory.length - 1,
+      };
+    }
+  }
+
   const newHistory = [...historyUntilCurrent, page];
   return {
     ...tab,
@@ -982,7 +1001,8 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
 
     case "UPDATE_TITLE_FOR_TAB": {
       // 背景ペイン/タブの非同期タイトル解決でも動くよう、全ペインを横断して該当タブを更新する。
-      // フォーカスは動かさない。
+      // boardUrl がある場合は、現在ページではなく対象板の履歴を更新する。
+      // URL直開き後に板名解決が完了しても、履歴中の板一覧へ結果を残すため。
       return {
         ...state,
         panes: state.panes.map((pane) => {
@@ -996,25 +1016,37 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
                 return tab;
               }
 
-              const currentPage = tab.history[tab.currentIndex];
-              if (!currentPage || currentPage.title === action.title) {
+              const targetBoardUrl = action.boardUrl
+                ? normalizePageLocation(action.boardUrl)
+                : null;
+              const updatedHistory = tab.history.map((page, index) => {
+                const isTargetPage = targetBoardUrl
+                  ? page.type === "threadList" &&
+                    normalizePageLocation(page.boardUrl) === targetBoardUrl
+                  : index === tab.currentIndex;
+                if (!isTargetPage || page.title === action.title) {
+                  return page;
+                }
+
+                if (page.type === "threadList") {
+                  return {
+                    ...page,
+                    // 変更理由: 板名解決がページ遷移後に完了しても、title と boardTitle を
+                    // 同時に更新して関連板導線と板名表示の不一致を防ぐ。
+                    title: action.title,
+                    boardTitle: action.title,
+                  };
+                }
+
+                return {
+                  ...page,
+                  title: action.title,
+                };
+              });
+
+              if (updatedHistory.every((page, index) => page === tab.history[index])) {
                 return tab;
               }
-
-              const updatedHistory = [...tab.history];
-              updatedHistory[tab.currentIndex] =
-                currentPage.type === "threadList"
-                  ? {
-                      ...currentPage,
-                      // 変更理由: 板名解決後に title だけ更新すると boardTitle が URL のまま残り、
-                      // 履歴候補や関連板導線で未解決ラベルが再利用されるため同時更新する。
-                      title: action.title,
-                      boardTitle: action.title,
-                    }
-                  : {
-                      ...currentPage,
-                      title: action.title,
-                    };
 
               return {
                 ...tab,
@@ -1361,6 +1393,9 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         }
 
         case "UPDATE_TITLE_FOR_TAB": {
+          if (action.boardUrl) {
+            return;
+          }
           const nextTab = findTabAcrossPanes(nextState, action.tabId);
           const nextPage = nextTab ? getCurrentPage(nextTab) : null;
           if (nextPage?.type === "thread") {

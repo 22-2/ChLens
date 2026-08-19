@@ -412,6 +412,7 @@ describe("ThreadListPage", () => {
         type: "UPDATE_TITLE_FOR_TAB",
         tabId: "tab-1",
         title: "Software",
+        boardUrl: "https://egg.5ch.net/software/",
       });
     });
 
@@ -434,6 +435,7 @@ describe("ThreadListPage", () => {
         type: "UPDATE_TITLE_FOR_TAB",
         tabId: "tab-1",
         title: "News",
+        boardUrl: "https://egg.5ch.net/news/",
       });
     });
 
@@ -478,6 +480,7 @@ describe("ThreadListPage", () => {
           type: "UPDATE_TITLE_FOR_TAB",
           tabId: "tab-1",
           title: resolvedTitle,
+          boardUrl,
         });
       });
 
