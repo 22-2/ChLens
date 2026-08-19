@@ -87,4 +87,20 @@ describe("NG Rule persistence", () => {
     const { add } = await import("src/core/NG");
     await expect(add("ID(value=abc123)")).rejects.toThrow("新しいブロックDSL");
   });
+
+  it("appends semi-automatically added rules after existing rules", async () => {
+    mocks.configStore.set("ngwords", "hide id contains:\n  existing");
+    const { add, get, invalidateCache } = await import("src/core/NG");
+    invalidateCache();
+
+    await add("hide id contains:\n  added");
+
+    expect(get().flatMap((rule) => rule.matchers)).toEqual([
+      { kind: "contains", value: "existing" },
+      { kind: "contains", value: "added" },
+    ]);
+    expect(mocks.configStore.get("ngwords")).toBe(
+      "hide id contains:\n  existing\n\nhide id contains:\n  added",
+    );
+  });
 });

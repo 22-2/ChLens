@@ -131,7 +131,9 @@ export function invalidateCache(): void {
 export async function add(source: string): Promise<void> {
   const addedRules = parseConfiguredRules(source);
   const currentRules = get();
-  await commitRules([...addedRules, ...currentRules]);
+  // メニューや選択範囲からの半自動登録は、既存の設定順を維持して末尾へ追加する。
+  // 先頭へ挿入すると、設定画面で手動管理しているルールの並びが毎回ずれてしまう。
+  await commitRules([...currentRules, ...addedRules]);
 }
 
 export function isNGBoard(threadTitle: string, url: string, resCount: number): INGResult | null {
