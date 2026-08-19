@@ -6,13 +6,13 @@ import { glob } from "fs/promises";
 import path from "path";
 import postcss from "postcss";
 import * as sass from "sass";
-import { defineConfig, lazyPlugins, loadEnv, Plugin } from "vite-plus";
+import { defineConfig, lazyPlugins, Plugin } from "vite-plus";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 const imgExt = (platform: string) => (platform === "chrome" ? "webp" : "png");
 
-const BUILD_COPY_DESTINATION_KEY = "BUILD_COPY_DESTINATION";
+// const BUILD_COPY_DESTINATION_KEY = "BUILD_COPY_DESTINATION";
 
 // function resolveBuildCopyDestination(mode: string): string | undefined {
 //   const env = loadEnv(mode, process.cwd(), "");
