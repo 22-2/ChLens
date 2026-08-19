@@ -25,7 +25,6 @@ interface BarContextMenuState {
 
 const TAB_SWITCH_WHEEL_DISTANCE_THRESHOLD = 1.5;
 const TAB_SWITCH_WHEEL_BASE_COOLDOWN_MS = 150;
-const TAB_LIST_EDGE_TOLERANCE_PX = 4;
 
 // Material Design の Fast-out, Slow-in カーブで Chrome 風の吸い付く感を再現する。
 const SORTABLE_TRANSITION = {
@@ -244,24 +243,6 @@ export const TabBar: React.FC = () => {
         return;
       }
 
-      const tabList = tabListRef.current;
-      if (tabList && tabList.scrollWidth > tabList.clientWidth) {
-        const maxScrollLeft = tabList.scrollWidth - tabList.clientWidth;
-        const isAtLeftEdge = tabList.scrollLeft <= TAB_LIST_EDGE_TOLERANCE_PX;
-        const isAtRightEdge = tabList.scrollLeft >= maxScrollLeft - TAB_LIST_EDGE_TOLERANCE_PX;
-
-        if (!isAtLeftEdge && !isAtRightEdge) {
-          // 変更理由: ビューポートが中間にある間だけ横スクロールを優先し、
-          // 左右どちらかの端ではホイール方向に応じたタブ切り替えへ渡す。
-          e.preventDefault();
-          tabList.scrollLeft = Math.max(
-            0,
-            Math.min(maxScrollLeft, tabList.scrollLeft + wheelDistance),
-          );
-          return;
-        }
-      }
-
       const now = Date.now();
       const cooldownMs = Math.max(
         0,
@@ -286,6 +267,9 @@ export const TabBar: React.FC = () => {
       const delta = wheelDistance > 0 ? 1 : -1;
       const nextIdx = (currentIdx + delta + tabs.length) % tabs.length;
 
+      // 変更理由: タブ列が横にはみ出していても、ホイールによる横スクロールを
+      // 優先するとアクティブタブが切り替わらず、タブバーの表示位置だけが変わるため。
+      // 切り替え後のアクティブタブは別の effect で必要な場合だけ表示位置へ追従させる。
       e.preventDefault();
       lastWheelSwitchAtRef.current = now;
       dispatch({ type: "SELECT_TAB", tabId: tabs[nextIdx].id });

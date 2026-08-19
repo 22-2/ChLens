@@ -184,7 +184,7 @@ describe("TabBar wheel switching", () => {
     expect(dispatchMock).not.toHaveBeenCalledWith(expect.objectContaining({ type: "SELECT_TAB" }));
   });
 
-  it("タブ列があふれている場合はホイールで横スクロールする", () => {
+  it("タブ列があふれていてもホイールでアクティブタブを切り替える", () => {
     const { container } = render(<TabBar />);
     const tabBar = container.querySelector(".tab-bar") as HTMLDivElement;
     const tabList = container.querySelector(".tab-list") as HTMLDivElement;
@@ -196,8 +196,11 @@ describe("TabBar wheel switching", () => {
 
     fireEvent.wheel(tabBar, { deltaY: 40 });
 
-    expect(tabList.scrollLeft).toBeGreaterThan(0);
-    expect(dispatchMock).not.toHaveBeenCalledWith(expect.objectContaining({ type: "SELECT_TAB" }));
+    expect(dispatchMock).toHaveBeenCalledWith({
+      type: "SELECT_TAB",
+      tabId: "tab-2",
+    });
+    expect(tabList.scrollLeft).toBe(100);
   });
 
   it("あふれたタブ列の右端では下方向ホイールで次のタブへ切り替える", () => {
