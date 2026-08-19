@@ -6,9 +6,16 @@
     "tagName": "v${version}",
     "push": true
   },
+  "hooks": {
+    "before:release": "pnpm run release:build"
+  },
   "github": {
     "release": true,
-    "releaseName": "v${version}"
+    "releaseName": "v${version}",
+    "assets": [
+      "release/chlens-chrome-v${version}.zip",
+      "release/chlens-firefox-v${version}.zip"
+    ]
   },
   "npm": false,
   "plugins": {
