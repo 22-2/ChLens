@@ -1,6 +1,6 @@
 {
   "name": "chlens",
-  "version": "3.2.1",
+  "version": "4.0.0",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -10,6 +10,7 @@
     "// --- Base Build Commands ---": "",
     "build": "pnpm build:chrome",
     "build:chrome": "cross-env PLATFORM=chrome ENTRY=browser vp build",
+    "build:firefox": "cross-env PLATFORM=firefox ENTRY=browser vp build",
     "build:tauri": "cross-env PLATFORM=tauri ENTRY=browser vp build",
     "build:all": "run-s build:chrome build:firefox",
     "// --- Development & Watch ---": "",
@@ -27,6 +28,7 @@
     "test": "vp test run",
     "test:url-commonization": "pnpm vitest run src/content-scripts/url-targets.test.ts src/view/browser/pages/BookmarkListPage.test.tsx && pnpm --filter @read-crx/ch-lib exec vitest run src/parser/BoardParser.test.ts src/parser/ThreadParser.test.ts",
     "release": "release-it",
+    "release:build": "pnpm build:all && node scripts/package-release.mjs",
     "prepare": "vp config"
   },
   "dependencies": {
