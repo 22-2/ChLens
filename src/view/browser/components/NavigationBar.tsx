@@ -973,6 +973,34 @@ export const NavigationBar: React.FC = () => {
             onBlur={handleBlur}
             onSuggestionHover={setActiveSuggestionIndex}
             onSuggestionSelect={handleSelectSuggestion}
+            trailingAction={
+              bookmarkTarget ? (
+                <button
+                  type="button"
+                  className={`nav-bar__url-action-btn${
+                    isBookmarked ? " nav-bar__url-action-btn--active" : ""
+                  }`}
+                  aria-label={
+                    isBookmarked
+                      ? "このページをブックマークから削除"
+                      : "このページをブックマークに追加"
+                  }
+                  aria-pressed={isBookmarked}
+                  title={
+                    isBookmarked
+                      ? "このページをブックマークから削除"
+                      : "このページをブックマークに追加"
+                  }
+                  disabled={isBookmarkPending}
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                  }}
+                  onClick={handleToggleBookmark}
+                >
+                  <Star size={16} fill={isBookmarked ? "currentColor" : "none"} />
+                </button>
+              ) : null
+            }
           />
         </div>
       )}

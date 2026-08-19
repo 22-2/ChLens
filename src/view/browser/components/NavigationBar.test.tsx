@@ -240,6 +240,38 @@ describe("NavigationBar", () => {
     expect(screen.queryByPlaceholderText("URLを入力")).not.toBeInTheDocument();
   });
 
+  it("URLバー右端にも現在ページのブックマーク操作を表示する", async () => {
+    render(<NavigationBar />);
+
+    expect(
+      screen.queryByRole("button", { name: "このページをブックマークに追加" }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTitle("URLバーを表示"));
+    const bookmarkButton = screen.getByRole("button", {
+      name: "このページをブックマークに追加",
+    });
+
+    expect(bookmarkButton).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(bookmarkButton);
+
+    await waitFor(() => {
+      expect(bookmarkAddMock).toHaveBeenCalledWith({
+        url: "https://egg.5ch.net/test/read.cgi/software/1/",
+        title: "Current Thread",
+        type: "thread",
+      });
+    });
+
+    // URLバー側に複製しても、既存のメニュー操作は引き続き表示する。
+    fireEvent.click(screen.getByTitle("メニュー"));
+    expect(
+      screen.getByRole("button", {
+        name: "お気に入りから削除",
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("頻繁なナビゲーション操作をハンバーガーメニューの最上段に表示する", () => {
     render(<NavigationBar />);
 
