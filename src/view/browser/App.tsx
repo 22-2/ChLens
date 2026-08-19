@@ -27,6 +27,10 @@ import {
   useTabStore,
 } from "src/view/browser/hooks/use-tab-store";
 import { useTheme } from "src/view/browser/hooks/use-theme";
+import {
+  UrlBarVisibilityProvider,
+  useUrlBarVisibility,
+} from "src/view/browser/hooks/use-url-bar-visibility";
 import { applyBBSMenuToItestServerMap } from "src/view/browser/utils/itest-server-map";
 
 const mantineTheme = createTheme({
@@ -135,9 +139,10 @@ const PaneRow: React.FC = () => {
   );
 };
 
-export const BrowserApp: React.FC = () => {
+const BrowserAppContent: React.FC = () => {
   const theme = useTheme();
   useNotificationListener();
+  const { isAnyExpanded: isUrlBarExpanded } = useUrlBarVisibility();
 
   // itest（携帯版）URLを実サーバーへ変換するための対応表を bbsmenu から構築する。
   // 前回セッションの localStorage キャッシュがあるため、ここでの取得は
@@ -166,7 +171,7 @@ export const BrowserApp: React.FC = () => {
             position="top-right"
             theme={theme === "dark" ? "dark" : "light"}
             offset={{
-              top: "88px",
+              top: isUrlBarExpanded ? "88px" : "64px",
               right: "78px",
             }}
             toastOptions={{
@@ -187,3 +192,9 @@ export const BrowserApp: React.FC = () => {
     </MantineProvider>
   );
 };
+
+export const BrowserApp: React.FC = () => (
+  <UrlBarVisibilityProvider>
+    <BrowserAppContent />
+  </UrlBarVisibilityProvider>
+);

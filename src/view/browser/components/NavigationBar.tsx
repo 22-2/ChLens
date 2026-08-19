@@ -24,6 +24,7 @@ import { Omnibar } from "src/view/browser/components/Omnibar";
 import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useOmnibar } from "src/view/browser/hooks/use-omnibar";
 import { useTabPanes, useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { useUrlBarVisibility } from "src/view/browser/hooks/use-url-bar-visibility";
 import {
   canGoBack,
   canGoForward,
@@ -316,11 +317,12 @@ function navigateByUrl(url: string, dispatch: ReturnType<typeof useTabStore>["di
 }
 
 export const NavigationBar: React.FC = () => {
-  const { state, activeTab, currentPage, dispatch } = useTabStore();
+  const { state, activeTab, currentPage, dispatch, paneId } = useTabStore();
   // 2ペイン表示中かどうか（トグルボタンの状態に使う）。
   const { panes } = useTabPanes();
   const isTwoPane = panes.length >= 2;
   const { isOpen: isPanelOpen, togglePanel } = useBottomPanel();
+  const { setExpanded: setUrlBarExpanded } = useUrlBarVisibility(paneId);
 
   const back = canGoBack(activeTab);
   const forward = canGoForward(activeTab);
@@ -346,6 +348,15 @@ export const NavigationBar: React.FC = () => {
     bookmarkTarget ? readBookmarkStatus(bookmarkTarget.url) : false,
   );
   const [isBookmarkPending, setIsBookmarkPending] = useState(false);
+
+  useEffect(() => {
+    // 変更理由: グローバルなトーストはペイン内のURLバーと別階層にあるため、
+    // 展開中のペインを共有してURLバーの有無に応じた位置へ表示する。
+    setUrlBarExpanded(isUrlExpanded);
+    return () => {
+      setUrlBarExpanded(false);
+    };
+  }, [isUrlExpanded, setUrlBarExpanded]);
 
   const currentAutoRefreshPageKey = getAutoRefreshPageKey(currentPage);
   const isCurrentPageAutoRefreshEnabled = isAutoRefreshEnabledForPage(activeTab, currentPage);
