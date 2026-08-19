@@ -25,6 +25,7 @@
     "lint:imports": "pnpm dlx organize-imports-cli tsconfig.json",
     "test": "vp test run",
     "test:url-commonization": "pnpm vitest run src/content-scripts/url-targets.test.ts src/view/browser/pages/BookmarkListPage.test.tsx && pnpm --filter @read-crx/ch-lib exec vitest run src/parser/BoardParser.test.ts src/parser/ThreadParser.test.ts",
+    "release": "release-it",
     "prepare": "vp config"
   },
   "dependencies": {
@@ -67,6 +68,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.62.0",
+    "@release-it/bumper": "^8.0.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.2",
@@ -91,6 +93,7 @@
     "postcss-preset-mantine": "^1.18.0",
     "postcss-simple-vars": "^7.0.1",
     "pug": "^3.0.4",
+    "release-it": "^21.0.2",
     "sass": "^1.102.0",
     "sharp": "^0.35.3",
     "tailwindcss": "^4.3.3",
