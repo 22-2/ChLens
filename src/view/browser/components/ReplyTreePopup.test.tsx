@@ -157,6 +157,14 @@ describe("ReplyTreePopup", () => {
     expect(
       screen.getByRole("button", { name: "ツリー先頭からこのレスまでコピー" }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "ツリー先頭からこのレスまでコピー" }).querySelector("svg"),
+    ).toHaveClass("lucide-corner-right-up");
+    expect(
+      screen
+        .getByRole("button", { name: "ツリー先頭からこのレスまで画像としてコピー" })
+        .querySelector("svg"),
+    ).toHaveClass("lucide-image-up");
   });
 
   it("返信ツリー専用メニューからレスを一括コピーできる", async () => {
@@ -217,6 +225,14 @@ describe("ReplyTreePopup", () => {
       name: "サブツリーメニュー",
     });
     fireEvent.click(subTreeMenuButtons[0]!);
+    expect(
+      screen.getByRole("button", { name: "このレス以降のツリーをコピー" }).querySelector("svg"),
+    ).toHaveClass("lucide-corner-down-right");
+    expect(
+      screen
+        .getByRole("button", { name: "このレス以降のツリーを画像としてコピー" })
+        .querySelector("svg"),
+    ).toHaveClass("lucide-image-down");
     fireEvent.click(
       screen.getByRole("button", {
         name: "ツリー先頭からこのレスまでコピー",

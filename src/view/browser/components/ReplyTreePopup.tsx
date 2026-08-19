@@ -1,4 +1,12 @@
-import { Copy, Image as ImageIcon, MoreVertical } from "lucide-react";
+import {
+  Copy,
+  CornerDownRight,
+  CornerRightUp,
+  Image as ImageIcon,
+  ImageDown,
+  ImageUp,
+  MoreVertical,
+} from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { IRes } from "src/service-container";
 import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
@@ -771,7 +779,7 @@ export const ReplyTreePopup: React.FC<{
           {
             id: "copy-subtree-responses",
             label: "このレス以降のツリーをコピー",
-            icon: <Copy size={14} />,
+            icon: <CornerDownRight size={14} />,
             onSelect: () => {
               void copyText(
                 buildReplyTreeCopyText(targetRes, subReplyResponses, threadTitle, threadUrl),
@@ -781,7 +789,7 @@ export const ReplyTreePopup: React.FC<{
           {
             id: "copy-subtree-image",
             label: "このレス以降のツリーを画像としてコピー",
-            icon: <ImageIcon size={14} />,
+            icon: <ImageDown size={14} />,
             disabled: !canCopyImageToClipboard(),
             onSelect: () => {
               void (async () => {
@@ -806,7 +814,7 @@ export const ReplyTreePopup: React.FC<{
       {
         id: "copy-ancestor-path-responses",
         label: "ツリー先頭からこのレスまでコピー",
-        icon: <Copy size={14} />,
+        icon: <CornerRightUp size={14} />,
         onSelect: () => {
           void copyText(
             buildReplyTreeAncestorCopyText(targetRes, ancestorResponses, threadTitle, threadUrl),
@@ -816,7 +824,7 @@ export const ReplyTreePopup: React.FC<{
       {
         id: "copy-ancestor-path-image",
         label: "ツリー先頭からこのレスまで画像としてコピー",
-        icon: <ImageIcon size={14} />,
+        icon: <ImageUp size={14} />,
         disabled: !canCopyImageToClipboard(),
         onSelect: () => {
           void (async () => {

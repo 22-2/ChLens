@@ -97,6 +97,7 @@ export const ReplyTree: React.FC<{
         // 循環参照防止のためvisitedに追加
         visited.add(replyNum);
         const res = resMap.get(replyNum)!;
+        const hasChildTree = hasRenderableChildTree(replyNum, repIndex, resMap, visited, depth);
         return (
           <React.Fragment key={replyNum}>
             <div className="reply-tree-node">
@@ -128,12 +129,7 @@ export const ReplyTree: React.FC<{
                   onClick={(e) => {
                     e.stopPropagation();
                     // 同じレスが複数レスへアンカーしていても、実際に表示された一本の枝を渡す。
-                    onSubTreeMenu(
-                      replyNum,
-                      ancestorResNums,
-                      hasRenderableChildTree(replyNum, repIndex, resMap, visited, depth),
-                      e,
-                    );
+                    onSubTreeMenu(replyNum, ancestorResNums, hasChildTree, e);
                   }}
                 >
                   <MoreVertical size={12} />
