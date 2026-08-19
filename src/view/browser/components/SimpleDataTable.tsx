@@ -30,6 +30,7 @@ export interface DataTableSection<TRow> {
   rows: TRow[];
   collapsible?: boolean;
   defaultCollapsed?: boolean;
+  dividerStyle?: React.CSSProperties;
 }
 
 interface Props<TRow> {
@@ -178,6 +179,7 @@ export function SimpleDataTable<TRow>({
                     <button
                       type="button"
                       className="simple-data-table__divider simple-data-table__divider--collapsible"
+                      style={section.dividerStyle}
                       aria-expanded={isExpanded}
                       onClick={() => toggleSection(section.key)}
                     >
@@ -185,7 +187,9 @@ export function SimpleDataTable<TRow>({
                       {isExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
                     </button>
                   ) : (
-                    <div className="simple-data-table__divider">{section.label}</div>
+                    <div className="simple-data-table__divider" style={section.dividerStyle}>
+                      {section.label}
+                    </div>
                   )}
                 </td>
               </tr>

@@ -704,8 +704,8 @@ body {
 }
 
 .nav-bar__menu-action:hover:not(:disabled) {
-  background: var(--browser-color-surface-muted);
-  color: var(--browser-color-text-primary);
+  background: var(--data-table-divider-bg, var(--browser-color-surface-muted));
+  color: var(--data-table-divider-color, var(--browser-color-text-primary));
 }
 
 .nav-bar__menu-action:disabled {
@@ -1636,6 +1636,7 @@ body {
   list-style: none;
   background: var(--browser-color-surface-muted);
   color: var(--browser-color-text-primary);
+  box-shadow: inset 0 -3px 0 var(--data-table-divider-accent, transparent);
   transition: background 0.15s;
   user-select: none;
 
@@ -2412,6 +2413,7 @@ body {
   padding: 7px 10px;
   border: 0;
   min-height: 32px;
+  border-left: 8px solid var(--data-table-divider-accent, transparent);
   border-top: 1px solid var(--browser-color-border);
   border-bottom: 1px solid var(--browser-color-border);
   background: var(--browser-color-surface-muted);

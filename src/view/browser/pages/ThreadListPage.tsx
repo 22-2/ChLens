@@ -104,6 +104,10 @@ type HighlightRowStyle = React.CSSProperties & {
   "--thread-list-highlight-hover-bg"?: string;
 };
 
+type DividerStyle = React.CSSProperties & {
+  "--data-table-divider-accent"?: string;
+};
+
 function parseColorToRgb(rawColor: string): Rgb | null {
   const color = rawColor.trim();
   const shortHex = color.match(/^#([0-9a-f]{3})$/i);
@@ -174,6 +178,12 @@ function createHighlightRowStyle(bgColor: string, theme: ResolvedTheme): Highlig
     "--thread-list-highlight-bg": resolvedBackground,
     "--thread-list-highlight-hover-bg": blendRgb(parsed, overlay.color, overlay.alpha),
   };
+}
+
+function createHighlightDividerStyle(bgColor: string): DividerStyle {
+  // 変更理由: セクション全体を任意色で塗るとテーマによって文字が読みにくくなるため、
+  // ルール色はdivider下端のアクセントとしてだけ使用する。
+  return { "--data-table-divider-accent": resolveHighlightColor(bgColor) };
 }
 
 function isSortColumn(value: string): value is SortColumn {
@@ -942,7 +952,30 @@ export const ThreadListPage: React.FC<Props> = ({
     [displayThreads, isNgTemporarilyDisabled],
   );
   const threadSections = useMemo<DataTableSection<DisplayThread>[]>(() => {
-    const highlighted = visibleDisplayThreads.filter(({ thread }) => thread.highlight != null);
+    const highlightGroups = new Map<
+      string,
+      { label: string; color?: string; order: number; rows: DisplayThread[] }
+    >();
+    for (const item of visibleDisplayThreads) {
+      const result = item.thread.highlight;
+      if (!result) continue;
+      // 変更理由: labelやcolorが同じでも、別のDSLルールなら独立したセクションとして扱う。
+      const key =
+        result.ruleIndex != null
+          ? `rule-${result.ruleIndex}`
+          : `legacy-${result.name ?? ""}-${result.params?.label ?? ""}-${result.params?.bgColor ?? ""}`;
+      const existing = highlightGroups.get(key);
+      if (existing) {
+        existing.rows.push(item);
+      } else {
+        highlightGroups.set(key, {
+          label: result.params?.label || result.name || "注目スレ",
+          color: result.params?.bgColor,
+          order: result.ruleIndex ?? Number.MAX_SAFE_INTEGER,
+          rows: [item],
+        });
+      }
+    }
     const normal = visibleDisplayThreads.filter(
       ({ thread }) =>
         thread.highlight == null && (isNgTemporarilyDisabled || thread.demoted == null),
@@ -952,9 +985,14 @@ export const ThreadListPage: React.FC<Props> = ({
       : visibleDisplayThreads.filter(({ thread }) => thread.demoted != null);
 
     return [
-      ...(highlighted.length > 0
-        ? [{ key: "highlight", label: `注目スレ（${highlighted.length}）`, rows: highlighted }]
-        : []),
+      ...Array.from(highlightGroups.entries())
+        .sort(([, left], [, right]) => left.order - right.order)
+        .map(([key, group]) => ({
+          key: `highlight-${key}`,
+          label: `${group.label}（${group.rows.length}）`,
+          rows: group.rows,
+          ...(group.color ? { dividerStyle: createHighlightDividerStyle(group.color) } : {}),
+        })),
       ...(normal.length > 0
         ? [{ key: "normal", label: `スレ一覧（${normal.length}）`, rows: normal }]
         : []),

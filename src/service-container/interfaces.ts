@@ -208,6 +208,8 @@ export interface INotificationService {
 export interface INGResult {
   type: string;
   action?: "hide" | "highlight" | "demote" | "warn";
+  /** 設定内のルール位置。表示側で同じルールの一致結果をまとめるために使用する。 */
+  ruleIndex?: number;
   name?: string;
   params?: Record<string, string>;
   /** NG ルールが一時的に無効化されているかどうか */

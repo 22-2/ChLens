@@ -137,8 +137,9 @@ export async function add(source: string): Promise<void> {
 }
 
 export function isNGBoard(threadTitle: string, url: string, resCount: number): INGResult | null {
+  const rules = get();
   const matched = matchRules(
-    get(),
+    rules,
     { all: threadTitle, title: threadTitle, url, resCount },
     BOARD_RULE_ACTIONS,
     BOARD_RULE_TARGETS,
@@ -148,6 +149,7 @@ export function isNGBoard(threadTitle: string, url: string, resCount: number): I
     ? {
         type: matched.type,
         action: matched.rule.action,
+        ruleIndex: rules.indexOf(matched.rule),
         name: matched.rule.name,
         params: matched.params,
         disabled: false,
