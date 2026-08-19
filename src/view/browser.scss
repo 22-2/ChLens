@@ -207,7 +207,9 @@ body {
   display: flex;
   // タブ本体を行高いっぱいにしつつ、追加ボタンは行の中央へ揃える。
   align-items: center;
-  flex: 1 1 auto;
+  // 親の chrome は URL 行を折り返すため、内容量基準だとタブバー全体が
+  // 先に独占行となり、右側の操作ボタンが次の行へ送られる。残り幅を基準にする。
+  flex: 1 1 0;
   min-width: 0;
   height: 32px;
   background: var(--browser-color-tab-strip-bg);
@@ -242,7 +244,8 @@ body {
 .tab {
   display: flex;
   align-items: center;
-  flex: 0 1 180px;
+  // タブは列内で縮めず、増えた分を tab-list の横スクロールへ逃がす。
+  flex: 0 0 180px;
   height: 32px;
   padding: 0 8px 0 10px;
   border: 0;

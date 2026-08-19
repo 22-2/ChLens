@@ -176,6 +176,23 @@ export const TabBar: React.FC = () => {
     tabElement?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
   }, []);
 
+  const scrollActiveTabIntoView = useCallback((tabId: string) => {
+    const tabList = tabListRef.current;
+    const tabElement = [...(tabList?.querySelectorAll<HTMLElement>("[data-tab-id]") ?? [])].find(
+      (tab) => tab.dataset.tabId === tabId,
+    );
+    if (!tabList || !tabElement) return;
+
+    const tabListRect = tabList.getBoundingClientRect();
+    const tabRect = tabElement.getBoundingClientRect();
+    const isOutsideViewport = tabRect.left < tabListRect.left || tabRect.right > tabListRect.right;
+    if (isOutsideViewport) {
+      // 変更理由: 常に scrollIntoView するとタブ切り替えのたびに既存の横位置へ干渉するため、
+      // アクティブタブが見切れている場合だけ、最小限のスクロールを発生させる。
+      tabElement.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+  }, []);
+
   useEffect(() => {
     const prev = prevTabIdsRef.current;
     const current = new Set(state.tabs.map((tab) => tab.id));
@@ -215,8 +232,8 @@ export const TabBar: React.FC = () => {
   }, [state.tabs]);
 
   useEffect(() => {
-    scrollTabIntoView(state.activeTabId);
-  }, [scrollTabIntoView, state.activeTabId]);
+    scrollActiveTabIntoView(state.activeTabId);
+  }, [scrollActiveTabIntoView, state.activeTabId]);
 
   // ホイールでアクティブタブを前後に切り替える
   const handleWheel = useCallback(
