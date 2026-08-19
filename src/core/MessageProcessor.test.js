@@ -46,12 +46,14 @@ describe("MessageProcessor", () => {
 
       const result = MessageProcessor.decode(res, "https:");
       expect(result.messageHtml).toContain(
-        '<a href="https://pbs.twimg.com/media/TestTwitterImageA.jpg"',
+        '<a href="https://pbs.twimg.com/media/TestTwitterImageA.jpg" target="_blank" rel="noopener noreferrer">s://pbs.twimg.com/media/TestTwitterImageA.jpg</a>',
       );
       expect(result.messageHtml).toContain(
-        '<a href="https://pbs.twimg.com/media/TestTwitterImageB.jpg"',
+        '<a href="https://pbs.twimg.com/media/TestTwitterImageB.jpg" target="_blank" rel="noopener noreferrer">ps://pbs.twimg.com/media/TestTwitterImageB.jpg</a>',
       );
-      expect(result.messageHtml).toContain('<a href="http://i.imgur.com/TestImageC.jpg"');
+      expect(result.messageHtml).toContain(
+        '<a href="http://i.imgur.com/TestImageC.jpg" target="_blank" rel="noopener noreferrer">p://i.imgur.com/TestImageC.jpg</a>',
+      );
     });
 
     it("should handle URLs with query parameters", () => {

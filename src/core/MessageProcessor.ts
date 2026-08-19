@@ -140,8 +140,10 @@ export default class MessageProcessor {
 
         if (!insideAnchor) {
           return part.replace(URL_LIKE_PATTERN, (matchedUrl: string) => {
-            const linkUrl = normalizeObfuscatedUrl(trimLinkTrailingPunctuation(matchedUrl));
-            return `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer">${linkUrl}</a>`;
+            const displayUrl = trimLinkTrailingPunctuation(matchedUrl);
+            const linkUrl = normalizeObfuscatedUrl(displayUrl);
+            // 意図: 掲示板側のURL難読化を利用者に見える本文では維持し、リンク先だけ復元する。
+            return `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer">${displayUrl}</a>`;
           });
         }
         return part;
