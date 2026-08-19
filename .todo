@@ -533,3 +533,21 @@ http://jump5.ch/?＜URL＞
 の置き換え
 RepleceTxtを使うか？
 エンジンは使いつつ、改良したものを作ってみるか？
+
+ai要約機能
+openai互換api
+ローカルモデルも試してみるか🤔
+下部パネルを使うか
+aiに渡すデータはtoon形式が軽量でいいはず
+
+https://github.com/kiyohken2000/5ch-browser-template
+を参考に
+
+ガラス効果かっけーからパクりたい
+
+bbsmenuが毎回読み込みになる
+bbsmenuの板を開こうとするとFailed to construct 'URL': Invalid URLってなる
+
+mantineに書き換え？
+それとも固有コンポーネントに置き換え？
+あああ
