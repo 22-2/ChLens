@@ -5,6 +5,23 @@ import { PopupResCard } from "src/view/browser/components/PopupResCard";
 import { MAX_TREE_DEPTH } from "src/view/browser/utils/constants";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
 
+function hasRenderableChildTree(
+  resNum: number,
+  repIndex: Map<number, Set<number>>,
+  resMap: Map<number, IRes>,
+  visited: Set<number>,
+  depth: number,
+): boolean {
+  // MAX_TREE_DEPTH 到達後は子レスを描画しないため、「このレス以降」の項目を表示しない。
+  if (depth + 1 >= MAX_TREE_DEPTH) {
+    return false;
+  }
+
+  return Array.from(repIndex.get(resNum) ?? []).some(
+    (replyNum) => !visited.has(replyNum) && resMap.has(replyNum),
+  );
+}
+
 // --- 再帰的返信ツリー ---
 export const ReplyTree: React.FC<{
   resNum: number;
@@ -30,6 +47,7 @@ export const ReplyTree: React.FC<{
   onSubTreeMenu?: (
     resNum: number,
     ancestorResNums: number[],
+    hasChildTree: boolean,
     e: React.MouseEvent<HTMLButtonElement>,
   ) => void;
   /** 画面に描画された枝を正確に逆引きするための、参照元から親レスまでの経路 */
@@ -110,7 +128,12 @@ export const ReplyTree: React.FC<{
                   onClick={(e) => {
                     e.stopPropagation();
                     // 同じレスが複数レスへアンカーしていても、実際に表示された一本の枝を渡す。
-                    onSubTreeMenu(replyNum, ancestorResNums, e);
+                    onSubTreeMenu(
+                      replyNum,
+                      ancestorResNums,
+                      hasRenderableChildTree(replyNum, repIndex, resMap, visited, depth),
+                      e,
+                    );
                   }}
                 >
                   <MoreVertical size={12} />

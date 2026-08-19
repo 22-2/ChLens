@@ -27,6 +27,7 @@ interface TreeMenuPosition {
 interface SubTreeMenuState {
   resNum: number;
   ancestorResNums: number[];
+  hasChildTree: boolean;
   x: number;
   y: number;
 }
@@ -719,6 +720,7 @@ export const ReplyTreePopup: React.FC<{
   const handleSubTreeMenuClick = (
     targetResNum: number,
     ancestorResNums: number[],
+    hasChildTree: boolean,
     e: React.MouseEvent<HTMLButtonElement>,
   ) => {
     e.stopPropagation();
@@ -734,6 +736,7 @@ export const ReplyTreePopup: React.FC<{
         : {
             resNum: targetResNum,
             ancestorResNums,
+            hasChildTree,
             x: buttonRect.right - popupRect.left - 8,
             y: buttonRect.bottom - popupRect.top + 4,
           },
@@ -743,6 +746,7 @@ export const ReplyTreePopup: React.FC<{
   const getSubTreeMenuItems = ({
     resNum: targetResNum,
     ancestorResNums,
+    hasChildTree,
   }: SubTreeMenuState): ContextMenuItem[] => {
     const targetRes = resMap.get(targetResNum);
     if (!targetRes) {
@@ -762,37 +766,43 @@ export const ReplyTreePopup: React.FC<{
       depth,
     }));
 
+    const subTreeMenuItems: ContextMenuItem[] = hasChildTree
+      ? [
+          {
+            id: "copy-subtree-responses",
+            label: "このレス以降のツリーをコピー",
+            icon: <Copy size={14} />,
+            onSelect: () => {
+              void copyText(
+                buildReplyTreeCopyText(targetRes, subReplyResponses, threadTitle, threadUrl),
+              );
+            },
+          },
+          {
+            id: "copy-subtree-image",
+            label: "このレス以降のツリーを画像としてコピー",
+            icon: <ImageIcon size={14} />,
+            disabled: !canCopyImageToClipboard(),
+            onSelect: () => {
+              void (async () => {
+                const canvas = renderReplyTreeImageCanvas(
+                  targetRes,
+                  subReplyImageEntries,
+                  threadTitle,
+                  threadUrl,
+                  undefined,
+                  theme,
+                );
+                const blob = await canvasToBlob(canvas);
+                await copyImageBlob(blob);
+              })();
+            },
+          },
+        ]
+      : [];
+
     return [
-      {
-        id: "copy-subtree-responses",
-        label: "このレス以降のツリーをコピー",
-        icon: <Copy size={14} />,
-        onSelect: () => {
-          void copyText(
-            buildReplyTreeCopyText(targetRes, subReplyResponses, threadTitle, threadUrl),
-          );
-        },
-      },
-      {
-        id: "copy-subtree-image",
-        label: "このレス以降のツリーを画像としてコピー",
-        icon: <ImageIcon size={14} />,
-        disabled: !canCopyImageToClipboard(),
-        onSelect: () => {
-          void (async () => {
-            const canvas = renderReplyTreeImageCanvas(
-              targetRes,
-              subReplyImageEntries,
-              threadTitle,
-              threadUrl,
-              undefined,
-              theme,
-            );
-            const blob = await canvasToBlob(canvas);
-            await copyImageBlob(blob);
-          })();
-        },
-      },
+      ...subTreeMenuItems,
       {
         id: "copy-ancestor-path-responses",
         label: "ツリー先頭からこのレスまでコピー",

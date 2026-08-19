@@ -139,6 +139,26 @@ describe("ReplyTreePopup", () => {
     expect(sourceCard).toHaveClass("res--highlighted-persistent");
   });
 
+  it("子ツリーのないレスにはこのレス以降のメニューを表示しない", () => {
+    render(<ReplyTreePopup {...BASE_PROPS} />);
+
+    const subTreeMenuButtons = screen.getAllByRole("button", {
+      name: "サブツリーメニュー",
+    });
+    expect(subTreeMenuButtons).toHaveLength(3);
+
+    fireEvent.click(subTreeMenuButtons.at(-1)!);
+    expect(
+      screen.queryByRole("button", { name: "このレス以降のツリーをコピー" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "このレス以降のツリーを画像としてコピー" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "ツリー先頭からこのレスまでコピー" }),
+    ).toBeInTheDocument();
+  });
+
   it("返信ツリー専用メニューからレスを一括コピーできる", async () => {
     render(<ReplyTreePopup {...BASE_PROPS} />);
 
@@ -196,7 +216,7 @@ describe("ReplyTreePopup", () => {
     const subTreeMenuButtons = screen.getAllByRole("button", {
       name: "サブツリーメニュー",
     });
-    fireEvent.click(subTreeMenuButtons.at(-1)!);
+    fireEvent.click(subTreeMenuButtons[0]!);
     fireEvent.click(
       screen.getByRole("button", {
         name: "ツリー先頭からこのレスまでコピー",
@@ -212,8 +232,8 @@ describe("ReplyTreePopup", () => {
     expect(copiedText).toContain("[参照元レス]");
     expect(copiedText).toContain("[返信レス]");
     expect(copiedText.indexOf("1 name-1")).toBeLessThan(copiedText.indexOf("2 name-2"));
-    expect(copiedText.indexOf("2 name-2")).toBeLessThan(copiedText.indexOf("4 name-4"));
     expect(copiedText).not.toContain("3 name-3");
+    expect(copiedText).not.toContain("4 name-4");
     expect(copiedText).toContain("テストスレタイ");
     expect(copiedText).toContain("https://example.com/test/read.cgi/board/123/");
   });
@@ -224,7 +244,7 @@ describe("ReplyTreePopup", () => {
     const subTreeMenuButtons = screen.getAllByRole("button", {
       name: "サブツリーメニュー",
     });
-    fireEvent.click(subTreeMenuButtons.at(-1)!);
+    fireEvent.click(subTreeMenuButtons[0]!);
     fireEvent.click(
       screen.getByRole("button", {
         name: "ツリー先頭からこのレスまで画像としてコピー",
@@ -236,7 +256,7 @@ describe("ReplyTreePopup", () => {
     });
     expect(clipboardItemCtor).toHaveBeenCalledOnce();
     expect(canvasContextStub.fillText).toHaveBeenCalledWith(
-      ">>4 までの返信経路",
+      ">>2 までの返信経路",
       expect.any(Number),
       expect.any(Number),
     );
@@ -249,8 +269,8 @@ describe("ReplyTreePopup", () => {
     const indexOfDrawnText = (prefix: string) =>
       drawnTexts.findIndex((text) => text.startsWith(prefix));
     expect(indexOfDrawnText("1 name-1")).toBeLessThan(indexOfDrawnText("2 name-2"));
-    expect(indexOfDrawnText("2 name-2")).toBeLessThan(indexOfDrawnText("4 name-4"));
     expect(indexOfDrawnText("3 name-3")).toBe(-1);
+    expect(indexOfDrawnText("4 name-4")).toBe(-1);
   });
 
   it("返信ツリーメニューは outside click で閉じる", () => {
