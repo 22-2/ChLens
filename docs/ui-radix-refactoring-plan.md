@@ -99,9 +99,11 @@
 | `8f037e5b refactor(settings): Surface構造を共通UIへ統一`                  | SettingsのsurfaceをHeader / Body / Actions / Stack契約へ統一                      |
 | `48998888 refactor(ui): Sonner通知をRadix Toastへ移行`                    | 外部store経由の共通Toast wrapperへ移行し、通知APIを維持したままSonnerを削除       |
 | `31f05e60 refactor(ui): 自前ContextMenuをRadix wrapperへ移行`             | 座標・z-index・nested popup契約を維持したRadix ContextMenu wrapperへ移行          |
+| `16e9c782 refactor(ui): popup surfaceの共通wrapperを導入`                 | AnchorPreview / ResPopupのlifecycle・座標・z-indexをFloatingSurfaceへ集約         |
 
 この状態でbrowser viewの自前スタイルは、foundation / layout / component / pageのplain CSSへ分割され、Mantine / Tailwind / PostCSSの依存は削除された。
-ToastとContextMenuをRadix wrapperへ移行済みで、次は残りのpopup overlayを共通契約へ揃える。
+ToastとContextMenuをRadix wrapperへ移行し、AnchorPreview / ResPopupの共通surface化まで完了した。
+次はReplyTreePopupとMiniWindowの挙動を分類して共通契約へ揃える。
 
 ### 現在の分割済み範囲
 
@@ -109,7 +111,7 @@ ToastとContextMenuをRadix wrapperへ移行済みで、次は残りのpopup ove
 - `styles/layout/`: BrowserShell、PaneLayout、ContentArea
 - `styles/components/`: ContextMenu、CommandPalette、DataTable、MediaViewer、MiniWindow、NavigationBar、SearchBar、StatusBar、TabBar、ThreadPopup、Toast、WheelScrollIndicator、BottomPanel、WritePanel
 - `styles/ui/`: Spinner、Tooltip、Button、Alert、Accordion、Dialog、FormControls、Surface
-- `ui/`: Spinner、Tooltip、Button、Alert、Accordion、Dialog、FormControls、Surface、Toast、ContextMenu（Radix / semantic wrapper）
+- `ui/`: Spinner、Tooltip、Button、Alert、Accordion、Dialog、FormControls、Surface、Toast、ContextMenu、FloatingSurface（Radix / semantic wrapper）
 - `styles/pages/`: Home、BoardList、PageStatus、ThreadList、ThreadPage、ThreadResponse、SettingsPage、SettingsForm、BookmarkDialog、NGEditor
 - `browser.scss` / `bundle.scss`: 削除済み。browser viewの自前CSS入口は `styles/index.css` のみ
 - `pnpm lint:tokens`、`pnpm tsc6`、対象コンポーネントテスト、Chrome/Firefox/Tauriビルドを各区切りで確認済み
@@ -412,7 +414,8 @@ SettingsはMantine利用密度が最も高かったため、保存ロジック�
 
 - 自前ContextMenuをRadixへ移す。✅
 - Bookmark root / Thread NG / response jump / import-export dialogを共通Dialogへ揃える。import-exportは✅。
-- mini window、res popup、anchor previewは挙動を分類してPopover / HoverCard / 独自positioningのどれを使うか決める。
+- AnchorPreview / ResPopupを共通 `ui/FloatingSurface` へ移行する。✅
+- mini window、ReplyTreePopupは挙動を分類してPopover / HoverCard / 独自positioningのどれを使うか決める。
 - Command PaletteをRadix Dialog + 自前Command Listへ移す。✅
 - Spotlight storeを小さな外部storeへ置換する。✅
 - SonnerをRadix Toast wrapperへ置換し、`container.toast` の呼び出し側は変更しない。✅
@@ -555,13 +558,14 @@ Mantine削除後の最終値で評価する。
 ## 次に着手する範囲
 
 foundation、token、CSS分割、SCSSビルド経路、Mantine / Tailwind依存の整理は完了した。
-Toastの共通化、Sonner削除、ContextMenuのRadix wrapper化まで完了した。
+Toastの共通化、Sonner削除、ContextMenuのRadix wrapper化、AnchorPreview / ResPopupのsurface共通化まで完了した。
 
 1. `ui/Spinner`、`Tooltip`、`Button`、`Alert`、`Accordion`、`Dialog`、`FormControls`、`Surface`で低リスク部品を置換済み。✅
 2. Settingsのレイアウト、入力、補助panelを共通UIへ移し、カード幅とボタン配色を統一済み。✅
 3. `ui/Toast` と外部storeを導入し、`container.toast`の呼び出し側を維持する。✅
 4. Sonnerを削除し、依存・lockfile・bundle差分を確認する。✅
 5. 自前ContextMenuをRadix ContextMenu wrapperへ移行し、nested popup・focus・z-indexを回帰確認する。✅
-6. 残りのpopup overlay（mini window、response popup、anchor preview）の共通契約を整理する。
+6. AnchorPreview / ResPopupを `ui/FloatingSurface` へ移行し、共通lifecycleを回帰確認する。✅
+7. ReplyTreePopupのsurface共通化と、MiniWindowのRadix Popover化を進める。
 
 各段階でChrome / Firefox / Tauri buildと対象interaction testを実行し、最後にvisual baselineを追加する。
