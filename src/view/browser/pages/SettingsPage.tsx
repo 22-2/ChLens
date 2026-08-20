@@ -17,7 +17,6 @@ import {
   Textarea,
   Title,
 } from "@mantine/core";
-import { useMediaQuery } from "@mantine/hooks";
 import { AlertTriangle, ChevronDown, RefreshCw } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getStore2String, setStore2String } from "src/app/Store2Storage";
@@ -29,6 +28,7 @@ import {
   NG_DSL_MULTILINE_EXAMPLE,
 } from "src/view/browser/components/NGEditor";
 import { SettingsSupplementaryPanels } from "src/view/browser/pages/settings/SettingsSupplementaryPanels";
+import { useMediaQuery } from "src/view/browser/hooks/use-media-query";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import {
   AUTO_SAVE_DELAY_MS,
