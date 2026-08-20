@@ -435,6 +435,7 @@ export function SettingsSupplementaryPanels({
   }, [
     bookmarkError,
     bookmarkLoading,
+    dialogPortalContainer,
     folderName,
     handleDeleteLogs,
     handleExportArchive,

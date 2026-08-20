@@ -26,6 +26,7 @@ import {
   SurfaceDescription,
   SurfaceHeader,
   SurfaceStack,
+  SurfaceTitle,
 } from "src/view/browser/ui/Surface";
 import {
   AUTO_SAVE_DELAY_MS,
@@ -627,6 +628,12 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
                   {activeSection.id === "other" && (
                     <>
                       <Surface as="section" tone="muted">
+                        <SurfaceHeader>
+                          <SurfaceTitle>BBSMenu</SurfaceTitle>
+                          <SurfaceDescription>
+                            掲示板一覧の取得・更新を行います。
+                          </SurfaceDescription>
+                        </SurfaceHeader>
                         <SurfaceBody>
                           {renderSectionItems("other", otherBbsmenuSectionItems)}
                           <SurfaceActions>
