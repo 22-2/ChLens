@@ -4,6 +4,10 @@
   --sys-color-surface-muted: var(--ref-color-neutral-100);
   --sys-color-dialog-surface: var(--ref-color-neutral-0);
   --sys-color-dialog-backdrop: var(--ref-color-alpha-black-40);
+  --sys-color-settings-page-bg: var(--ref-color-neutral-50);
+  --sys-color-settings-sidebar-bg: var(--ref-color-neutral-50);
+  --sys-color-settings-card-bg: var(--ref-color-neutral-0);
+  --sys-color-settings-active-bg: var(--ref-color-blue-50);
   --sys-color-tab-strip: var(--ref-color-neutral-200);
   --sys-color-tab-strip-hover: var(--ref-color-alpha-white-40);
   --sys-color-tab-strip-active-hover: var(--ref-color-neutral-400);
@@ -88,6 +92,10 @@
   --sys-color-surface-muted: var(--ref-color-dark-neutral-100);
   --sys-color-dialog-surface: var(--ref-color-dark-neutral-50);
   --sys-color-dialog-backdrop: var(--ref-color-alpha-black-60);
+  --sys-color-settings-page-bg: var(--ref-color-dark-neutral-0);
+  --sys-color-settings-sidebar-bg: var(--ref-color-dark-neutral-50);
+  --sys-color-settings-card-bg: var(--ref-color-dark-neutral-50);
+  --sys-color-settings-active-bg: var(--ref-color-alpha-dark-blue-40);
   --sys-color-tab-strip: var(--ref-color-dark-neutral-200);
   --sys-color-tab-strip-hover: var(--ref-color-alpha-white-08);
   --sys-color-tab-strip-active-hover: var(--ref-color-alpha-white-16);
