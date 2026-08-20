@@ -24,7 +24,7 @@
 
 | 項目             | 現状                                                         | 問題                                                                                    |
 | ---------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
-| メインスタイル   | `src/view/browser.scss` 1ファイル                            | 4,851行 / 約100KBあり、基盤・各画面・dark theme・外部ライブラリ上書きが同居             |
+| メインスタイル   | `src/view/browser.scss` 1ファイル                            | 2,094行 / 約40KBまで縮小したが、設定・書き込み・残りのpopupがまだ同居                   |
 | その他の自前CSS  | `WheelScrollIndicator.css` のみ                              | コンポーネント単位へ分ける方針が全体に適用されていない                                  |
 | Mantine          | 本番コード15ファイル、テストを含め21ファイルから参照         | Provider、Spotlight、フォーム、レイアウト、Tooltipなど用途が混在                        |
 | Tailwind CSS     | 依存・PostCSS・設定ファイルが存在                            | `content` が廃止済みの `src/view/thread` を指し、実質的な utility 利用は見当たらない    |
@@ -57,21 +57,34 @@
 
 ### 変更履歴から見た現在の進捗
 
-直近のコミットでは、計画のPhase 1〜2-3までが実装されている。
+直近のコミットでは、計画のPhase 1〜2-3とThread系の主要CSS分割までが実装されている。
 
-| コミット                                                            | 実施内容                                                                      |
-| ------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `86670bb9 refactor: phase 1`                                        | foundationのreset / theme / tokenを追加し、dark themeの大部分を分離           |
-| `52d7a41c refactor: phase 2-1`                                      | BrowserShell、PaneLayout、ContentAreaをCSSへ分割                              |
-| `d6e375c6 refactor: phase 2-2`                                      | ContextMenu、StatusBar、TabBarをCSSへ分割                                     |
-| `4162fb8b refactor: 2-3`                                            | NavigationBar、Home、BoardList、PageStatusをCSSへ分割                         |
-| `2e051dcb refactor: デザイントークンをより厳密に`                   | `--ref-*` / `--sys-*`契約、token lint、overlay順を整備                        |
-| `d0cfa18c refactor(ui): overlay z-indexを意味tokenへ統一`           | 固定z-indexを意味tokenへ統一し、popup / tooltip / dialog順を固定              |
-| `ee1412e6 refactor(ui): DataTableスタイルをコンポーネントCSSへ分割` | DataTable / thread-list / tooltipをコンポーネントCSSへ分割し、表用tokenを追加 |
+| コミット                                                               | 実施内容                                                                      |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `86670bb9 refactor: phase 1`                                           | foundationのreset / theme / tokenを追加し、dark themeの大部分を分離           |
+| `52d7a41c refactor: phase 2-1`                                         | BrowserShell、PaneLayout、ContentAreaをCSSへ分割                              |
+| `d6e375c6 refactor: phase 2-2`                                         | ContextMenu、StatusBar、TabBarをCSSへ分割                                     |
+| `4162fb8b refactor: 2-3`                                               | NavigationBar、Home、BoardList、PageStatusをCSSへ分割                         |
+| `2e051dcb refactor: デザイントークンをより厳密に`                      | `--ref-*` / `--sys-*`契約、token lint、overlay順を整備                        |
+| `d0cfa18c refactor(ui): overlay z-indexを意味tokenへ統一`              | 固定z-indexを意味tokenへ統一し、popup / tooltip / dialog順を固定              |
+| `ee1412e6 refactor(ui): DataTableスタイルをコンポーネントCSSへ分割`    | DataTable / thread-list / tooltipをコンポーネントCSSへ分割し、表用tokenを追加 |
+| `a29d5141 refactor(ui): ThreadPageスタイルをページCSSへ分割`           | ThreadPageのoverlay、minimap、auto-scroll、toolbarをページCSSへ分割           |
+| `53bd5a3b refactor(ui): SearchBarスタイルをコンポーネントCSSへ分割`    | Ctrl+F検索バーをsystem tokenで統一し、コンポーネントCSSへ分割                 |
+| `761ccb43 refactor(ui): ThreadResponseメタデータをページCSSへ分割`     | レスの本文、ID、返信、所有者バッジをThreadResponse CSSへ分割                  |
+| `711184b3 refactor(ui): Thread popupスタイルをコンポーネントCSSへ分割` | ResPopup、返信ツリー、アンカープレビューをpopup tokenへ移行                   |
+| `30244c72 refactor(ui): MediaViewerスタイルをコンポーネントCSSへ分割`  | 画像viewerのscrim、操作バー、stageを専用tokenへ移行                           |
+| `58ca97f3 refactor(ui): ThreadResponseのメディアスタイルをtoken化`     | リンクカード、サムネイル、動画埋め込み、highlightをThreadResponseへ集約       |
 
 この状態では「新token層を追加したが、抽出済みCSSに旧`--browser-*`とraw値が残る」状態だったため、
 未抽出の`browser.scss`には互換aliasと旧構造が残っている。
 表示変更と名前変更を同じコミットへ混ぜず、次は旧SCSSの機械分割を続ける。
+
+### 現在の分割済み範囲
+
+- `styles/components/`: ContextMenu、DataTable、MediaViewer、NavigationBar、SearchBar、StatusBar、TabBar、ThreadPopup、WheelScrollIndicator
+- `styles/pages/`: Home、BoardList、PageStatus、ThreadPage、ThreadResponse
+- `browser.scss`: 約2,094行。設定、書き込みパネル、Sonner上書き、残りのレスポップアップ周辺が未抽出
+- `pnpm lint:tokens`、`pnpm tsc6`、対象コンポーネントテスト、Chrome/Firefox/Tauriビルドを各区切りで確認済み
 
 ---
 
