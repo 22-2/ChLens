@@ -1,0 +1,34 @@
+/* Shared loading indicator. Size and motion follow the browser token contract. */
+.browser-spinner {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: var(--sys-space-8);
+  height: var(--sys-space-8);
+  border: var(--sys-space-1) solid var(--sys-color-border);
+  border-top-color: var(--sys-color-accent);
+  border-radius: var(--sys-radius-pill);
+  animation: browser-spinner-rotate var(--sys-duration-slow) linear infinite;
+}
+
+.browser-spinner[data-size="xs"] {
+  width: var(--sys-space-6);
+  height: var(--sys-space-6);
+}
+
+.browser-spinner[data-size="lg"] {
+  width: var(--sys-space-12);
+  height: var(--sys-space-12);
+  border-width: var(--sys-space-2);
+}
+
+@keyframes browser-spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .browser-spinner {
+    animation: none;
+  }
+}

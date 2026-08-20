@@ -1,4 +1,3 @@
-import { Loader } from "@mantine/core";
 import React, { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { container } from "src/service-container/index";
 import type { IThread } from "src/service-container/interfaces";
@@ -19,6 +18,7 @@ import { useThreadAutoRefresh } from "src/view/browser/hooks/use-thread-auto-ref
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";
 import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 import { ThreadPageTopBar } from "src/view/browser/pages/thread/ThreadPageTopBar";
+import { Spinner } from "src/view/browser/ui/Spinner";
 import { useImageBlurConfig } from "src/view/browser/pages/thread/use-image-blur-config";
 import { useOwnResTracking } from "src/view/browser/pages/thread/use-own-res-tracking";
 import { useResInteractionHandlers } from "src/view/browser/pages/thread/use-res-interaction-handlers";
@@ -337,7 +337,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       <WheelScrollIndicator {...wheelPagination} threshold={WHEEL_THRESHOLD} />
       {loading && responses.length === 0 ? (
         <div className="page-status">
-          <Loader size="sm" aria-label="スレッドを読み込み中" />
+          <Spinner size="sm" aria-label="スレッドを読み込み中" />
           <span>スレッドを読み込み中...</span>
         </div>
       ) : error && responses.length === 0 ? (

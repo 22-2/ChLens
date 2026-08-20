@@ -1,6 +1,6 @@
-import { Loader } from "@mantine/core";
 import { Maximize, Minimize } from "lucide-react";
 import type { MediaViewerProps } from "src/view/browser/hooks/use-media-viewer-controller";
+import { Spinner } from "src/view/browser/ui/Spinner";
 
 export function MediaViewer({
   viewer,
@@ -94,7 +94,7 @@ export function MediaViewer({
         <div ref={viewerStageRef} className="media-viewer__stage">
           {isLoading && (
             <div className="media-viewer__loader">
-              <Loader size="lg" />
+              <Spinner size="lg" />
             </div>
           )}
           <div ref={viewerCanvasRef} className="media-viewer__canvas">

@@ -7,7 +7,6 @@ import {
   Checkbox,
   Divider,
   Group,
-  Loader,
   NavLink,
   NumberInput,
   Paper,
@@ -30,6 +29,7 @@ import {
   NG_DSL_MULTILINE_EXAMPLE,
 } from "src/view/browser/components/NGEditor";
 import { SettingsSupplementaryPanels } from "src/view/browser/pages/settings/SettingsSupplementaryPanels";
+import { Spinner } from "src/view/browser/ui/Spinner";
 import {
   AUTO_SAVE_DELAY_MS,
   NG_PRIMARY_FIELD_KEYS,
@@ -501,7 +501,7 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
   if (loading) {
     return (
       <Group justify="center" py="xl">
-        <Loader size="sm" />
+        <Spinner size="sm" />
         <Text size="sm" c="dimmed">
           設定を読み込み中...
         </Text>

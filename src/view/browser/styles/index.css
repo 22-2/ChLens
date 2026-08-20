@@ -3,6 +3,7 @@
 @import "./foundation/tokens.css";
 @import "./foundation/themes.css";
 @import "./foundation/base.css";
+@import "./ui/Spinner.css";
 @import "./layout/BrowserShell.css";
 @import "./layout/PaneLayout.css";
 @import "./layout/ContentArea.css";

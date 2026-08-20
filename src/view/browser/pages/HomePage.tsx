@@ -1,7 +1,8 @@
-import { Alert, Box, Loader, Text, UnstyledButton } from "@mantine/core";
+import { Alert, Box, Text, UnstyledButton } from "@mantine/core";
 import React from "react";
 import { container } from "src/service-container/index";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { Spinner } from "src/view/browser/ui/Spinner";
 import {
   getLegacyBookmarkService,
   waitForLegacyBookmarkReady,
@@ -139,7 +140,7 @@ export const HomePage: React.FC = () => {
 
       {loading ? (
         <Box className="home-page__status">
-          <Loader size="xs" />
+          <Spinner size="xs" />
           <Text size="sm" c="dimmed">
             お気に入り板を読み込み中...
           </Text>

@@ -1,5 +1,5 @@
-import { Loader } from "@mantine/core";
 import React, { useEffect, useRef } from "react";
+import { Spinner } from "src/view/browser/ui/Spinner";
 
 interface Props {
   className?: string;
@@ -44,7 +44,7 @@ export const SearchBar: React.FC<Props> = ({
         }}
       />
       {loading ? (
-        <Loader size="xs" aria-label="検索中" />
+        <Spinner size="xs" aria-label="検索中" />
       ) : hitCount !== undefined ? (
         <span className="search-bar__count">{hitCount}件</span>
       ) : null}
