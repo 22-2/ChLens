@@ -2,7 +2,6 @@ import { ContextMenu as RadixContextMenu } from "radix-ui";
 import type { ReactNode, RefObject } from "react";
 import React, { useLayoutEffect, useMemo, useRef } from "react";
 import { usePopupSurfaceLifecycle } from "src/view/browser/hooks/use-popup-manager";
-import { useAdjustOverflow } from "src/view/browser/utils/use-adjust-overflow";
 
 export interface ContextMenuItem {
   id: string;
@@ -100,9 +99,6 @@ export const ContextMenu: React.FC<Props> = ({
     );
   }, [x, y]);
 
-  // スクロールコンテナ内での position:absolute に対応したオーバーフロー補正
-  useAdjustOverflow(menuRef, 4);
-
   return (
     <RadixContextMenu.Root
       modal={false}
@@ -146,7 +142,9 @@ export const ContextMenu: React.FC<Props> = ({
           data-popup-surface="true"
           data-popup-id={popupId}
           className="context-menu"
-          style={{ left: x, top: y, ...(zIndex != null && { zIndex }) }}
+          // Content の配置は Radix が contextmenu の clientX/clientY を基準に行う。
+          // ここで left/top を再設定するとクリック座標が二重に加算されるため、z-index だけ補正する。
+          style={zIndex != null ? { zIndex } : undefined}
           onMouseDownCapture={handleMouseDownCapture}
           onAuxClickCapture={handleAuxClickCapture}
           onMouseEnter={handleMouseEnter}

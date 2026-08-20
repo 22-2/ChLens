@@ -1,6 +1,7 @@
 /* Shared Context Menu */
 .context-menu {
-  position: absolute;
+  /* Radix ContextMenu.Content is positioned against the viewport. */
+  position: fixed;
   z-index: var(--sys-z-context-menu);
   min-width: 200px;
   max-width: min(420px, calc(100vw - 16px));
