@@ -10,13 +10,12 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { IRes } from "src/service-container";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
 import { ReplyTree } from "src/view/browser/components/ReplyTree";
-import { usePopupSurfaceLifecycle } from "src/view/browser/hooks/use-popup-manager";
 import type { ResolvedTheme } from "src/view/browser/hooks/use-theme";
 import { useTheme } from "src/view/browser/hooks/use-theme";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
+import { FloatingSurface } from "src/view/browser/ui/FloatingSurface";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
-import { useAdjustOverflow } from "src/view/browser/utils/use-adjust-overflow";
 import {
   canCopyImageToClipboard,
   copyImageBlob,
@@ -579,25 +578,7 @@ export const ReplyTreePopup: React.FC<{
   blurredResNums,
   ngResNums,
 }) => {
-  const ref = useRef<HTMLDivElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const {
-    armMouseLeaveCloseSuppression,
-    handleAuxClickCapture,
-    handleMouseDownCapture,
-    handleMouseEnter,
-    handleMouseLeave,
-  } = usePopupSurfaceLifecycle({
-    surfaceRef: ref,
-    popupId,
-    isPopupDescendantOf,
-    onEnterFromDescendant,
-    closeDisabled: disableOutsideClick,
-    onClose,
-    onSurfaceMouseDown,
-    onSurfaceMouseEnter: onMouseEnter,
-    onSurfaceMouseLeave: onMouseLeave,
-  });
   const [menuPosition, setMenuPosition] = useState<TreeMenuPosition | null>(null);
   const [subTreeMenu, setSubTreeMenu] = useState<SubTreeMenuState | null>(null);
   const theme = useTheme();
@@ -640,9 +621,6 @@ export const ReplyTreePopup: React.FC<{
         },
       ]
     : [];
-
-  // スクロールコンテナ内での position:absolute に対応したオーバーフロー補正
-  useAdjustOverflow(ref);
 
   useEffect(() => {
     if (!menuPosition) {
@@ -711,10 +689,6 @@ export const ReplyTreePopup: React.FC<{
 
   const handleMenuClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
-    if (!ref.current) {
-      return;
-    }
-
     const buttonRect = e.currentTarget.getBoundingClientRect();
     setMenuPosition((prev) =>
       prev
@@ -735,10 +709,6 @@ export const ReplyTreePopup: React.FC<{
     e: React.MouseEvent<HTMLButtonElement>,
   ) => {
     e.stopPropagation();
-    if (!ref.current) {
-      return;
-    }
-
     const buttonRect = e.currentTarget.getBoundingClientRect();
     setSubTreeMenu((prev) =>
       prev?.resNum === targetResNum
@@ -853,114 +823,121 @@ export const ReplyTreePopup: React.FC<{
   };
 
   return (
-    <div
-      ref={ref}
-      data-popup-surface="true"
-      data-popup-id={popupId}
+    <FloatingSurface
       className="res-popup"
-      style={{ left: x, top: y, ...(zIndex != null && { zIndex }) }}
-      onMouseDownCapture={handleMouseDownCapture}
-      onAuxClickCapture={handleAuxClickCapture}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      x={x}
+      y={y}
+      zIndex={zIndex}
+      popupId={popupId}
+      isPopupDescendantOf={isPopupDescendantOf}
+      onEnterFromDescendant={onEnterFromDescendant}
+      closeDisabled={disableOutsideClick}
+      onClose={onClose}
+      onSurfaceMouseDown={onSurfaceMouseDown}
+      onSurfaceMouseEnter={onMouseEnter}
+      onSurfaceMouseLeave={onMouseLeave}
       // ポップアップ内のレス間マウス移動で ResBody の handleMouseLeave が起動した
       // アンカープレビュー hide タイマーをキャンセルする。mouseover はバブルするため、
       // 子孫要素への移動時も発火し、mouseenter と異なりポップアップ外からの進入に限定されない。
       onMouseOver={onMouseEnter}
     >
-      <div className="res-popup__header">
-        <span>{`>>${resNum} への返信ツリー`}</span>
-        <div className="res-popup__header-actions">
-          <button
-            ref={menuButtonRef}
-            className="res-popup__icon-btn"
-            onClick={handleMenuClick}
-            aria-label="返信ツリーメニュー"
-            title="返信ツリーメニュー"
-          >
-            <MoreVertical size={14} />
-          </button>
-          <button className="res-popup__close" onClick={onClose}>
-            ✕
-          </button>
-        </div>
-      </div>
-      <div className="res-popup__body">
-        {sourceRes && (
-          <section className="res-popup__section">
-            <div className="res-popup__section-title">参照元レス</div>
-            <PopupResCard
-              res={sourceRes}
-              messageProtocol={messageProtocol}
-              anchorPreviewDepth={anchorPreviewDepth}
-              repIndex={repIndex}
-              idIndex={idIndex}
-              // 参照元レスの「返信」を押すと同じツリーを重ね続けるだけなので無効化する。
-              disableRepClick={true}
-              isHighlighted={true}
-              onUrlClick={onUrlClick}
-              onUrlContextMenu={onUrlContextMenu}
-              onLinkMiddleClickStart={armMouseLeaveCloseSuppression}
-              onIdLinkClick={onIdLinkClick}
-              onRepClick={onRepClick}
-              onAnchorClick={onAnchorClick}
-              onAnchorHover={onAnchorHover}
-              onAnchorLeave={onAnchorLeave}
-              onContextMenu={handleResContextMenu}
-              isImageBlurred={blurredResNums?.has(sourceRes.num)}
-              ngResNums={ngResNums}
+      {({ armMouseLeaveCloseSuppression }) => (
+        <>
+          <div className="res-popup__header">
+            <span>{`>>${resNum} への返信ツリー`}</span>
+            <div className="res-popup__header-actions">
+              <button
+                ref={menuButtonRef}
+                className="res-popup__icon-btn"
+                onClick={handleMenuClick}
+                aria-label="返信ツリーメニュー"
+                title="返信ツリーメニュー"
+              >
+                <MoreVertical size={14} />
+              </button>
+              <button className="res-popup__close" onClick={onClose}>
+                ✕
+              </button>
+            </div>
+          </div>
+          <div className="res-popup__body">
+            {sourceRes && (
+              <section className="res-popup__section">
+                <div className="res-popup__section-title">参照元レス</div>
+                <PopupResCard
+                  res={sourceRes}
+                  messageProtocol={messageProtocol}
+                  anchorPreviewDepth={anchorPreviewDepth}
+                  repIndex={repIndex}
+                  idIndex={idIndex}
+                  // 参照元レスの「返信」を押すと同じツリーを重ね続けるだけなので無効化する。
+                  disableRepClick={true}
+                  isHighlighted={true}
+                  onUrlClick={onUrlClick}
+                  onUrlContextMenu={onUrlContextMenu}
+                  onLinkMiddleClickStart={armMouseLeaveCloseSuppression}
+                  onIdLinkClick={onIdLinkClick}
+                  onRepClick={onRepClick}
+                  onAnchorClick={onAnchorClick}
+                  onAnchorHover={onAnchorHover}
+                  onAnchorLeave={onAnchorLeave}
+                  onContextMenu={handleResContextMenu}
+                  isImageBlurred={blurredResNums?.has(sourceRes.num)}
+                  ngResNums={ngResNums}
+                />
+              </section>
+            )}
+            <section className="res-popup__section">
+              <div className="res-popup__section-title">返信レス</div>
+              <ReplyTree
+                resNum={resNum}
+                repIndex={repIndex}
+                idIndex={idIndex}
+                resMap={resMap}
+                messageProtocol={messageProtocol}
+                anchorPreviewDepth={anchorPreviewDepth}
+                onUrlClick={onUrlClick}
+                onUrlContextMenu={onUrlContextMenu}
+                onLinkMiddleClickStart={armMouseLeaveCloseSuppression}
+                onIdLinkClick={onIdLinkClick}
+                onRepClick={onRepClick}
+                onAnchorClick={onAnchorClick}
+                onAnchorHover={onAnchorHover}
+                onAnchorLeave={onAnchorLeave}
+                onResContextMenu={handleResContextMenu}
+                visited={new Set()}
+                depth={0}
+                blurredResNums={blurredResNums}
+                ngResNums={ngResNums}
+                onSubTreeMenu={handleSubTreeMenuClick}
+              />
+            </section>
+          </div>
+          {menuPosition && treeMenuItems.length > 0 && (
+            <ContextMenu
+              x={menuPosition.x}
+              y={menuPosition.y}
+              items={treeMenuItems}
+              // このメニューはDOM上ではツリーポップアップ内にあるが、
+              // 親のIDポップアップから見ると別のsurfaceになる。親子関係を識別できるよう
+              // ツリーポップアップ自身のIDを引き継ぎ、コピー操作で親まで閉じないようにする。
+              popupId={popupId}
+              onClose={() => setMenuPosition(null)}
             />
-          </section>
-        )}
-        <section className="res-popup__section">
-          <div className="res-popup__section-title">返信レス</div>
-          <ReplyTree
-            resNum={resNum}
-            repIndex={repIndex}
-            idIndex={idIndex}
-            resMap={resMap}
-            messageProtocol={messageProtocol}
-            anchorPreviewDepth={anchorPreviewDepth}
-            onUrlClick={onUrlClick}
-            onUrlContextMenu={onUrlContextMenu}
-            onLinkMiddleClickStart={armMouseLeaveCloseSuppression}
-            onIdLinkClick={onIdLinkClick}
-            onRepClick={onRepClick}
-            onAnchorClick={onAnchorClick}
-            onAnchorHover={onAnchorHover}
-            onAnchorLeave={onAnchorLeave}
-            onResContextMenu={handleResContextMenu}
-            visited={new Set()}
-            depth={0}
-            blurredResNums={blurredResNums}
-            ngResNums={ngResNums}
-            onSubTreeMenu={handleSubTreeMenuClick}
-          />
-        </section>
-      </div>
-      {menuPosition && treeMenuItems.length > 0 && (
-        <ContextMenu
-          x={menuPosition.x}
-          y={menuPosition.y}
-          items={treeMenuItems}
-          // このメニューはDOM上ではツリーポップアップ内にあるが、
-          // 親のIDポップアップから見ると別のsurfaceになる。親子関係を識別できるよう
-          // ツリーポップアップ自身のIDを引き継ぎ、コピー操作で親まで閉じないようにする。
-          popupId={popupId}
-          onClose={() => setMenuPosition(null)}
-        />
+          )}
+          {subTreeMenu && (
+            <ContextMenu
+              x={subTreeMenu.x}
+              y={subTreeMenu.y}
+              items={getSubTreeMenuItems(subTreeMenu)}
+              // サブツリーメニューも同じ理由で、所属するツリーポップアップとして扱う。
+              popupId={popupId}
+              onClose={() => setSubTreeMenu(null)}
+            />
+          )}
+        </>
       )}
-      {subTreeMenu && (
-        <ContextMenu
-          x={subTreeMenu.x}
-          y={subTreeMenu.y}
-          items={getSubTreeMenuItems(subTreeMenu)}
-          // サブツリーメニューも同じ理由で、所属するツリーポップアップとして扱う。
-          popupId={popupId}
-          onClose={() => setSubTreeMenu(null)}
-        />
-      )}
-    </div>
+    </FloatingSurface>
   );
 };
 
