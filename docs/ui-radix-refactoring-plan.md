@@ -84,6 +84,9 @@
 | `7d294fe8 refactor(build): SCSSの互換ビルド経路を削除`                    | bundle / browser SCSS、ViteのscssPlugin、sass依存、legacy token aliasを削除       |
 | `48f4817d refactor(ui): Loaderを共通Spinnerへ置換`                        | Home / Thread / Search / MediaViewer / SettingsのLoaderを共通Spinnerへ置換        |
 | `2eca7bbc refactor(ui): Radix Tooltip wrapperへ移行`                      | ThreadMinimap、VirtualizedDataTableをRadix Tooltipへ移行しtooltip surfaceを共通化 |
+| `153bc68f refactor(ui): HomeとBoardListの表示部品を共通UIへ移行`          | Home / BoardListのAlert、Button、Loaderを共通UIへ移行                             |
+| `bd544165 refactor(ui): BoardListのAccordionをRadix wrapperへ移行`        | MenuAccordionをRadix Accordion wrapperとsemantic HTMLへ移行                       |
+| `ecd60893 refactor(ui): Command PaletteをRadix Dialogへ移行`              | Mantine Spotlightを廃止し、Command Paletteを共通Dialogと外部storeへ移行           |
 
 この状態でbrowser viewの自前スタイルは、foundation / layout / component / pageのplain CSSへ分割された。
 Mantine CSS、Tailwind/PostCSS設定、Sonner、各画面のMantine component利用は残っているため、次は共通UI wrapperを導入して低リスク部品から依存を外す。
@@ -93,8 +96,8 @@ Mantine CSS、Tailwind/PostCSS設定、Sonner、各画面のMantine component利
 - `styles/foundation/`: reset、base、reference / semantic token、light / dark theme
 - `styles/layout/`: BrowserShell、PaneLayout、ContentArea
 - `styles/components/`: ContextMenu、CommandPalette、DataTable、MediaViewer、MiniWindow、NavigationBar、SearchBar、StatusBar、TabBar、ThreadPopup、Toast、WheelScrollIndicator、BottomPanel、WritePanel
-- `styles/ui/`: Spinner、Tooltip
-- `ui/`: Spinner、Tooltip（Radix wrapper）
+- `styles/ui/`: Spinner、Tooltip、Button、Alert、Accordion、Dialog
+- `ui/`: Spinner、Tooltip、Button、Alert、Accordion、Dialog（Radix wrapper）
 - `styles/pages/`: Home、BoardList、PageStatus、ThreadList、ThreadPage、ThreadResponse、SettingsPage、SettingsForm、BookmarkDialog、NGEditor
 - `browser.scss` / `bundle.scss`: 削除済み。browser viewの自前CSS入口は `styles/index.css` のみ
 - `pnpm lint:tokens`、`pnpm tsc6`、対象コンポーネントテスト、Chrome/Firefox/Tauriビルドを各区切りで確認済み
@@ -355,9 +358,9 @@ Command PaletteはRadixに同等の完成部品がない。別のUIライブラ�
 ### Phase 3: 共通UI層とRadix基盤を導入する
 
 - `radix-ui` を追加する。✅
-- `ui/Spinner` と `ui/Tooltip` wrapperを追加する。✅
-- `ui/Button`、`Alert`、`Surface`、form controlsを次に作る。
-- `ui/Dialog`、`Accordion`、`ContextMenu`、`Toast`はRadixを直接散在させずwrapper化する。
+- `ui/Spinner`、`Tooltip`、`Button`、`Alert`、`Accordion`、`Dialog` wrapperを追加する。✅
+- `ui/Surface`、form controlsを次に作る。
+- `ui/ContextMenu`、`Toast`はRadixを直接散在させずwrapper化する。
 - wrapperはprops/refをDOMまでforwardし、Radixの `asChild` 合成を壊さないようにする。
 - Portal containerとz-indexの規約を定義する。
 - UI部品のinteraction testを追加する。
@@ -370,8 +373,8 @@ Command PaletteはRadixに同等の完成部品がない。別のUIライブラ�
 
 1. `Loader` → `Spinner`（SearchBar、ThreadPage、MediaViewer、Home、Settings）。✅
 2. `Tooltip.Floating` → `Tooltip`（ThreadMinimap、VirtualizedDataTable）。✅
-3. Home / BoardListのBox、Text、Alert、Button
-4. BoardListのAccordion
+3. Home / BoardListのAlert、Button。✅
+4. BoardListのAccordion。✅
 5. `useMediaQuery` → `window.matchMedia` を扱う小さなhook
 
 **終了条件:** 小さな表示部品と板一覧がMantineへ依存しない。
@@ -540,9 +543,9 @@ Mantine削除後の最終値で評価する。
 foundation、token、CSS分割、SCSSビルド経路の整理は完了した。次の実装単位は、見た目の変更を抑えた
 共通UI wrapperと低リスクなMantine置換に進める。
 
-1. `ui/Spinner` と `ui/Tooltip` wrapperで低リスク部品を置換済み。✅
-2. `ui/Button`、`ui/Alert`、`ui/Surface`を追加し、Home / BoardListの表示部品をMantineから外す。
-3. Radix Dialog / ContextMenu / Toast wrapperを導入し、Portal・focus・z-index契約を共通化する。
+1. `ui/Spinner`、`Tooltip`、`Button`、`Alert`、`Accordion`、`Dialog` wrapperで低リスク部品を置換済み。✅
+2. `ui/Surface`、form controlsを追加し、Settingsのレイアウトと入力部品を段階的にMantineから外す。
+3. Radix ContextMenu / Toast wrapperを導入し、Portal・focus・z-index契約を共通化する。
 4. Settingsのform / dialogをwrapperへ移し、保存・復元テストを維持する。
 5. Mantine CSS、Tailwind/PostCSS、Sonnerを削除し、依存・lockfile・bundle差分を確認する。
 
