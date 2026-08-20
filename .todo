@@ -560,3 +560,6 @@ mantineに書き換え？
 
 `src\view\browser\utils\utils.ts`の分割
 `src\view\browser\components\ReplyTreePopup.tsx`の分割
+
+- [ ] 次スレ移動「標準」が弱い
+- [ ] ログ検索、閲覧履歴のツールチップがほかと動作が違う、統一したい
