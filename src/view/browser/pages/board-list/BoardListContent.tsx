@@ -1,4 +1,3 @@
-import { Box, Text } from "@mantine/core";
 import React from "react";
 import { MenuAccordion } from "src/view/browser/pages/board-list/MenuAccordion";
 import { Alert } from "src/view/browser/ui/Alert";
@@ -74,41 +73,37 @@ export const BoardListContent: React.FC<BoardListContentProps> = ({
 }) => {
   if (loading) {
     return (
-      <Box className="board-list-page board-list-page__status">
-        <Box className="home-page__status">
-          <Text size="sm" c="dimmed">
-            読み込み中...
-          </Text>
-        </Box>
-      </Box>
+      <div className="board-list-page board-list-page__status">
+        <div className="home-page__status">読み込み中...</div>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Box className="board-list-page">
+      <div className="board-list-page">
         <Alert color="red" title="板一覧の取得に失敗しました">
-          <Text size="sm">{error}</Text>
+          <span>{error}</span>
           <Button className="board-list-page__retry" variant="subtle" onClick={onRetry}>
             再試行
           </Button>
         </Alert>
-      </Box>
+      </div>
     );
   }
 
   if (displayMenus.length === 0) {
     return (
-      <Box className="board-list-page">
+      <div className="board-list-page">
         <Alert color="gray" title="表示できる板がありません">
           削除条件に一致しない板が見つかりませんでした。
         </Alert>
-      </Box>
+      </div>
     );
   }
 
   return (
-    <Box className="board-list-page">
+    <div className="board-list-page">
       <MenuAccordion
         menus={displayMenus}
         openStates={openStates}
@@ -119,6 +114,6 @@ export const BoardListContent: React.FC<BoardListContentProps> = ({
         onBoardMiddleClick={onBoardMiddleClick}
         onContextMenu={onContextMenu}
       />
-    </Box>
+    </div>
   );
 };

@@ -1,9 +1,9 @@
-import { Box, Text, UnstyledButton } from "@mantine/core";
 import React from "react";
 import { container } from "src/service-container/index";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import { Alert } from "src/view/browser/ui/Alert";
+import { Button } from "src/view/browser/ui/Button";
 import {
   getLegacyBookmarkService,
   waitForLegacyBookmarkReady,
@@ -121,52 +121,57 @@ export const HomePage: React.FC = () => {
   // }, [dispatch]);
 
   return (
-    <Box className="home-page">
-      <UnstyledButton className="home-page__link home-page__link--action" onClick={openBoardList}>
-        <Text size="sm">板一覧を開く</Text>
-      </UnstyledButton>
-      {/* <UnstyledButton
+    <div className="home-page">
+      <Button
         className="home-page__link home-page__link--action"
+        variant="subtle"
+        onClick={openBoardList}
+      >
+        板一覧を開く
+      </Button>
+      {/* <Button
+        className="home-page__link home-page__link--action"
+        variant="subtle"
         onClick={openHistory}
       >
-        <Text size="sm">閲覧履歴を開く</Text>
-      </UnstyledButton>
-      <UnstyledButton
+        閲覧履歴を開く
+      </Button>
+      <Button
         className="home-page__link home-page__link--action"
+        variant="subtle"
         onClick={openBookmarks}
       >
-        <Text size="sm">ブックマークを開く</Text>
-      </UnstyledButton> */}
-      <Text className="home-page__heading">お気に入り板</Text>
+        ブックマークを開く
+      </Button> */}
+      <div className="home-page__heading">お気に入り板</div>
 
       {loading ? (
-        <Box className="home-page__status">
+        <div className="home-page__status">
           <Spinner size="xs" />
-          <Text size="sm" c="dimmed">
-            お気に入り板を読み込み中...
-          </Text>
-        </Box>
+          <span>お気に入り板を読み込み中...</span>
+        </div>
       ) : error ? (
         <Alert className="home-page__alert" color="red" title="読み込みエラー">
           {error}
         </Alert>
       ) : (
-        <Box className="home-page__list">
+        <div className="home-page__list">
           {favoriteBoards.length === 0 ? (
-            <Text className="home-page__empty">お気に入り板はまだありません。</Text>
+            <div className="home-page__empty">お気に入り板はまだありません。</div>
           ) : (
             favoriteBoards.map((board) => (
-              <UnstyledButton
+              <Button
                 key={board.url}
                 className="home-page__link"
+                variant="subtle"
                 onClick={() => openBoard(board)}
               >
-                <Text size="sm">{board.title}</Text>
-              </UnstyledButton>
+                {board.title}
+              </Button>
             ))
           )}
-        </Box>
+        </div>
       )}
-    </Box>
+    </div>
   );
 };

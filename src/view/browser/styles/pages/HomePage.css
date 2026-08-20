@@ -30,25 +30,25 @@
   border-bottom: 1px solid var(--sys-color-border);
   color: var(--sys-color-text-muted);
 }
-.home-page__link {
+.home-page__link.browser-button {
   display: flex;
   align-items: center;
   justify-content: flex-start;
   width: 100%;
+  min-height: 0;
   padding: 8px 12px;
+  border: 0;
+  border-radius: 0;
   border-bottom: 1px solid var(--sys-color-border);
   background: transparent;
   color: var(--sys-color-text);
   text-align: left;
   transition: none;
 }
-.home-page__link:hover {
+.home-page__link.browser-button:hover:not(:disabled) {
+  border-color: transparent transparent var(--sys-color-border);
   background: var(--sys-color-list-hover-bg);
 }
 .home-page__link--action {
   font-weight: 600;
-}
-.home-page__link .mantine-Text-root,
-.board-item .mantine-Text-root {
-  color: inherit;
 }

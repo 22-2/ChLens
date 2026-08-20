@@ -1,4 +1,3 @@
-import { Box } from "@mantine/core";
 import React from "react";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 
@@ -26,13 +25,13 @@ export const SearchBarSection: React.FC<SearchBarSectionProps> = ({
   }
 
   return (
-    <Box>
+    <div>
       <SearchBar
         query={query}
         onQueryChange={onQueryChange}
         onClose={onClose}
         hitCount={hitCount}
       />
-    </Box>
+    </div>
   );
 };

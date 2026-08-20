@@ -1,4 +1,3 @@
-import { Box } from "@mantine/core";
 import React, { useCallback, useState } from "react";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
@@ -143,7 +142,7 @@ export const BoardListPage: React.FC<BoardListPageProps> = ({ tabId, isActive })
   );
 
   return (
-    <Box>
+    <div>
       <SearchBarSection
         isOpen={isFilterOpen}
         query={searchQuery}
@@ -173,6 +172,6 @@ export const BoardListPage: React.FC<BoardListPageProps> = ({ tabId, isActive })
         onRemoveCategory={handleRemoveCategory}
         onClose={() => setContextMenuState(null)}
       />
-    </Box>
+    </div>
   );
 };
