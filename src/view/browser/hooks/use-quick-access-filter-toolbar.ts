@@ -25,7 +25,7 @@ export function useQuickAccessFilterToolbar({
   searchQuery,
   setSearchQuery,
 }: UseQuickAccessFilterToolbarParams): UseQuickAccessFilterToolbarResult {
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isFilterOpen, setIsFilterOpen] = useState(() => searchQuery.trim().length > 0);
   const openedByWheelRef = useRef(false);
 
   const closeFilterToolbar = useCallback(() => {

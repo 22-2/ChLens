@@ -2,7 +2,11 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { platform } from "src/app";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import { ColumnDef, SimpleDataTable } from "src/view/browser/components/SimpleDataTable";
-import { useTabDispatch, type TabAction } from "src/view/browser/hooks/use-tab-store";
+import {
+  useTabDispatch,
+  useTabViewState,
+  type TabAction,
+} from "src/view/browser/hooks/use-tab-store";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
 import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
 
@@ -215,11 +219,32 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
   // タブ切り替えなど他タブ操作のたびにフル状態を再購読して再レンダリングされないよう、
   // dispatch のみ取得する安定したフックを使う。isActive は親から props で受け取る。
   const dispatch = useTabDispatch();
+  const { state: persistedViewState, update: updateViewState } = useTabViewState(tabId, {
+    type: "writeHistoryList",
+    title: "書き込み履歴",
+  });
   const [entries, setEntries] = useState<WriteHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortState, setSortState] = useState<SortState>(DEFAULT_SORT_STATE);
+  const [searchQuery, setSearchQuery] = useState(() => persistedViewState.searchQuery ?? "");
+  const [sortState, setSortState] = useState<SortState>(() => {
+    const column = persistedViewState.sortColumn;
+    return {
+      column:
+        typeof column === "string" && COLUMNS.some((candidate) => candidate.key === column)
+          ? (column as SortColumn)
+          : null,
+      direction: persistedViewState.sortDirection === "desc" ? "desc" : "asc",
+    };
+  });
+
+  useEffect(() => {
+    updateViewState({
+      searchQuery,
+      sortColumn: sortState.column,
+      sortDirection: sortState.direction,
+    });
+  }, [searchQuery, sortState, updateViewState]);
 
   const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
     pageType: "writeHistoryList",

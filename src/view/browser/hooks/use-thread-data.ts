@@ -13,7 +13,7 @@ import { platform } from "src/app";
 import { container } from "src/service-container/index";
 import type { IRes, IThreadDetail } from "src/service-container/interfaces";
 import { useIsNgTemporarilyDisabled } from "src/view/browser/hooks/use-ng-status";
-import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
+import { useTabDispatch, useTabViewState } from "src/view/browser/hooks/use-tab-store";
 import type { ThreadPage as ThreadPageType } from "src/view/browser/types";
 import {
   captureRootSelection,
@@ -78,17 +78,22 @@ export function useThreadData(
   rootRef: RefObject<HTMLDivElement | null>,
 ): ThreadData {
   const dispatch = useTabDispatch();
+  const { state: persistedViewState, update: updateViewState } = useTabViewState(tabId, page);
   const [responses, setResponsesState] = useState<IRes[]>([]);
   const selectionSnapshotRef = useRef<RootSelectionSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expired, setExpired] = useState(false);
   const [missingFromSubject, setMissingFromSubject] = useState(false);
-  const [filter, setFilter] = useState<ThreadFilter>("all");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [filter, setFilter] = useState<ThreadFilter>(() => persistedViewState.filter ?? "all");
+  const [searchQuery, setSearchQuery] = useState(() => persistedViewState.searchQuery ?? "");
   const [showSearch, setShowSearch] = useState(false);
   const titleUpdatedRef = useRef(false);
   const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
+
+  useEffect(() => {
+    updateViewState({ filter, searchQuery });
+  }, [filter, searchQuery, updateViewState]);
 
   const setResponses = useCallback<Dispatch<SetStateAction<IRes[]>>>(
     (nextResponses) => {

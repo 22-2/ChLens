@@ -1,5 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { getPageViewStateKey } from "src/view/browser/types";
 import { getAutoRefreshPageKey } from "src/view/browser/utils/auto-refresh-pages";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -1470,5 +1471,80 @@ describe("TabProvider auto refresh state", () => {
 
     expect(screen.getByTestId("current-page-type")).toHaveTextContent("threadList");
     expect(screen.getByTestId("current-page-title")).toHaveTextContent("エッヂ");
+  });
+
+  it("タブごとの検索状態をスレ遷移とセッション保存で維持する", async () => {
+    vi.resetModules();
+    const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
+    const thread1 = {
+      type: "thread" as const,
+      title: "スレ1",
+      threadUrl: "https://example.com/test/read.cgi/foo/1/",
+    };
+    const thread2 = {
+      type: "thread" as const,
+      title: "スレ2",
+      threadUrl: "https://example.com/test/read.cgi/foo/2/",
+    };
+
+    function Harness() {
+      const { activeTab, currentPage, dispatch } = useTabStore();
+      const currentViewState = activeTab.viewStates?.[getPageViewStateKey(currentPage)];
+
+      return (
+        <>
+          <button onClick={() => dispatch({ type: "NAVIGATE", page: thread1 })}>スレ1へ移動</button>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "UPDATE_TAB_VIEW_STATE",
+                tabId: activeTab.id,
+                pageKey: getPageViewStateKey(thread1),
+                patch: { searchQuery: "保存する検索語", filter: "image" },
+              })
+            }
+          >
+            スレ1の検索状態を保存
+          </button>
+          <button onClick={() => dispatch({ type: "NAVIGATE", page: thread2 })}>スレ2へ移動</button>
+          <button onClick={() => dispatch({ type: "GO_BACK" })}>スレ1へ戻る</button>
+          <output data-testid="current-thread-url">
+            {currentPage.type === "thread" ? currentPage.threadUrl : ""}
+          </output>
+          <output data-testid="current-search-query">{currentViewState?.searchQuery ?? ""}</output>
+          <output data-testid="current-filter">{currentViewState?.filter ?? ""}</output>
+        </>
+      );
+    }
+
+    render(
+      <TabProvider>
+        <Harness />
+      </TabProvider>,
+    );
+
+    fireEvent.click(screen.getByText("スレ1へ移動"));
+    fireEvent.click(screen.getByText("スレ1の検索状態を保存"));
+    fireEvent.click(screen.getByText("スレ2へ移動"));
+
+    expect(screen.getByTestId("current-thread-url")).toHaveTextContent(thread2.threadUrl);
+    expect(screen.getByTestId("current-search-query")).toHaveTextContent("保存する検索語");
+    expect(screen.getByTestId("current-filter")).toHaveTextContent("image");
+
+    fireEvent.click(screen.getByText("スレ1へ戻る"));
+
+    expect(screen.getByTestId("current-thread-url")).toHaveTextContent(thread1.threadUrl);
+    expect(screen.getByTestId("current-search-query")).toHaveTextContent("保存する検索語");
+    expect(screen.getByTestId("current-filter")).toHaveTextContent("image");
+
+    await waitFor(() => {
+      const raw = localStorage.getItem("chlens_browser_session");
+      const parsed = JSON.parse(raw ?? "{}") as {
+        panes?: Array<{ tabs?: Array<{ viewStates?: Record<string, { searchQuery?: string }> }> }>;
+      };
+      expect(
+        parsed.panes?.[0]?.tabs?.[0]?.viewStates?.[getPageViewStateKey(thread1)]?.searchQuery,
+      ).toBe("保存する検索語");
+    });
   });
 });

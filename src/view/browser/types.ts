@@ -73,6 +73,16 @@ export type Page =
   | WriteHistoryListPage
   | LogListPage;
 
+export interface TabViewState {
+  searchQuery?: string;
+  filter?: "all" | "popular" | "image" | "video" | "link";
+  sortColumn?: string | null;
+  sortDirection?: "asc" | "desc";
+  searchMode?: "title" | "body";
+}
+
+export type TabViewStates = Record<string, TabViewState>;
+
 export interface Tab {
   id: string;
   history: Page[];
@@ -84,6 +94,9 @@ export interface Tab {
   // スレ/スレ一覧を同じロジックで扱うため、URLそのものではなくページ識別キーを保持する。
   autoRefreshEnabled: boolean;
   autoRefreshPageKey: string | null;
+  // ページごとの検索・絞り込み・並び順をタブに保持する。
+  // URLをキーに含めることで、同じタブ内で板やスレを移動しても状態が混ざらない。
+  viewStates?: TabViewStates;
 }
 
 // 横分割の1カラム。各ペインが独立したタブ群とアクティブタブを持つ。
@@ -155,6 +168,27 @@ export interface ThreadDetail {
 
 export function getCurrentPage(tab: Tab): Page {
   return tab.history[tab.currentIndex];
+}
+
+function normalizeViewStateLocation(rawLocation: string): string {
+  try {
+    const parsed = new URL(rawLocation);
+    parsed.hash = "";
+    return parsed.toString().replace(/\/+$/, "/");
+  } catch {
+    return rawLocation.trim().replace(/\/+$/, "");
+  }
+}
+
+export function getPageViewStateKey(page: Page): string {
+  switch (page.type) {
+    case "threadList":
+      return `threadList:${normalizeViewStateLocation(page.boardUrl)}`;
+    case "thread":
+      return `thread:${normalizeViewStateLocation(page.threadUrl)}`;
+    default:
+      return page.type;
+  }
 }
 
 export function canGoBack(tab: Tab): boolean {

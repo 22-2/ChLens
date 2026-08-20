@@ -3,7 +3,7 @@ import { container } from "src/service-container/index";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import { ColumnDef, SimpleDataTable } from "src/view/browser/components/SimpleDataTable";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
-import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
+import { useTabDispatch, useTabViewState } from "src/view/browser/hooks/use-tab-store";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import {
   getLegacyBookmarkService,
@@ -229,11 +229,32 @@ export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({ tabId, isAct
   // タブ切り替えなど他タブ操作のたびにフル状態を再購読して再レンダリングされないよう、
   // dispatch のみ取得する安定したフックを使う。isActive は親から props で受け取る。
   const dispatch = useTabDispatch();
+  const { state: persistedViewState, update: updateViewState } = useTabViewState(tabId, {
+    type: "bookmarkList",
+    title: "ブックマーク",
+  });
   const [entries, setEntries] = useState<BookmarkEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortState, setSortState] = useState<BookmarkSortState>(DEFAULT_SORT_STATE);
+  const [searchQuery, setSearchQuery] = useState(() => persistedViewState.searchQuery ?? "");
+  const [sortState, setSortState] = useState<BookmarkSortState>(() => {
+    const column = persistedViewState.sortColumn;
+    return {
+      column:
+        typeof column === "string" && COLUMNS.some((candidate) => candidate.key === column)
+          ? (column as SortColumn)
+          : null,
+      direction: persistedViewState.sortDirection === "desc" ? "desc" : "asc",
+    };
+  });
+
+  useEffect(() => {
+    updateViewState({
+      searchQuery,
+      sortColumn: sortState.column,
+      sortDirection: sortState.direction,
+    });
+  }, [searchQuery, sortState, updateViewState]);
 
   const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
     pageType: "bookmarkList",

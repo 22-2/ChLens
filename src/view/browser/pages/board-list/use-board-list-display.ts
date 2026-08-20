@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { BBSMenu } from "src/core/BBSMenuParser";
+import { useTabViewState } from "src/view/browser/hooks/use-tab-store";
 import {
   buildCategoryId,
   deriveOpenedBoardTitle,
@@ -29,6 +30,7 @@ interface DisplayMenu {
  * - openedMenuValues: 開いているメニューのリスト
  */
 export function useBoardListDisplay(params: {
+  tabId: string;
   categories: BBSMenu[];
   openStates: Record<string, boolean>;
   removedBoardUrls: Set<string>;
@@ -37,8 +39,16 @@ export function useBoardListDisplay(params: {
   openedBoardEntries: OpenedBoardEntry[];
   updateOpenStates: (updater: (prev: Record<string, boolean>) => Record<string, boolean>) => void;
 }) {
-  const [searchQuery, setSearchQuery] = useState("");
+  const { state: persistedViewState, update: updateViewState } = useTabViewState(params.tabId, {
+    type: "boardList",
+    title: "板一覧",
+  });
+  const [searchQuery, setSearchQuery] = useState(() => persistedViewState.searchQuery ?? "");
   const savedOpenStatesRef = useRef<Record<string, boolean> | null>(null);
+
+  useEffect(() => {
+    updateViewState({ searchQuery });
+  }, [searchQuery, updateViewState]);
 
   const displayMenus = useMemo(() => {
     const {

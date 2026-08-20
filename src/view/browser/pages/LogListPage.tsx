@@ -5,7 +5,7 @@ import { SearchBar } from "src/view/browser/components/SearchBar";
 import { ColumnDef } from "src/view/browser/components/SimpleDataTable";
 import { VirtualizedDataTable } from "src/view/browser/components/VirtualizedDataTable";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
-import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
+import { useTabDispatch, useTabViewState } from "src/view/browser/hooks/use-tab-store";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import { formatCompactDateTime } from "src/view/browser/utils/date-time";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
@@ -104,6 +104,10 @@ interface LogListPageProps {
 
 export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refreshKey }) => {
   const dispatch = useTabDispatch();
+  const { state: persistedViewState, update: updateViewState } = useTabViewState(tabId, {
+    type: "logList",
+    title: "ログ検索",
+  });
   const [entries, setEntries] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -111,10 +115,21 @@ export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refre
   const nextOffsetRef = useRef(0);
   const isLoadingPageRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortState, setSortState] = useState<SortState>(DEFAULT_SORT_STATE);
+  const [searchQuery, setSearchQuery] = useState(() => persistedViewState.searchQuery ?? "");
+  const [sortState, setSortState] = useState<SortState>(() => {
+    const column = persistedViewState.sortColumn;
+    return {
+      column:
+        typeof column === "string" && COLUMNS.some((candidate) => candidate.key === column)
+          ? (column as SortColumn)
+          : null,
+      direction: persistedViewState.sortDirection === "desc" ? "desc" : "asc",
+    };
+  });
   // 既定はタイトル検索。ボタンで本文（全文）検索に切り替える。
-  const [searchMode, setSearchMode] = useState<"title" | "body">("title");
+  const [searchMode, setSearchMode] = useState<"title" | "body">(
+    () => persistedViewState.searchMode ?? "title",
+  );
   // 本文検索の結果。null のときは本文検索未実行。
   const [bodyMatchedEntries, setBodyMatchedEntries] = useState<LogEntry[] | null>(null);
   const [bodySearchLoading, setBodySearchLoading] = useState(false);
@@ -126,6 +141,15 @@ export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refre
     searchQuery,
     setSearchQuery,
   });
+
+  useEffect(() => {
+    updateViewState({
+      searchQuery,
+      sortColumn: sortState.column,
+      sortDirection: sortState.direction,
+      searchMode,
+    });
+  }, [searchMode, searchQuery, sortState, updateViewState]);
 
   const wasActiveRef = React.useRef(isActive);
 

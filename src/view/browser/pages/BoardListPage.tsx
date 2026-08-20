@@ -32,6 +32,7 @@ export const BoardListPage: React.FC<BoardListPageProps> = ({ tabId, isActive })
   } = useBoardListLogic();
 
   const { displayMenus, searchQuery, setSearchQuery, openedMenuValues } = useBoardListDisplay({
+    tabId,
     categories,
     openStates,
     removedBoardUrls,

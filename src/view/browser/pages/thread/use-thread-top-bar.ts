@@ -10,6 +10,7 @@ export type TopBarMode = "none" | "filter";
 interface UseThreadTopBarParams {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
+  hasActiveFilter?: boolean;
 }
 
 interface UseThreadTopBarResult {
@@ -23,8 +24,11 @@ interface UseThreadTopBarResult {
 export function useThreadTopBar({
   searchQuery,
   setSearchQuery,
+  hasActiveFilter = false,
 }: UseThreadTopBarParams): UseThreadTopBarResult {
-  const [activeTopBar, setActiveTopBar] = useState<TopBarMode>("none");
+  const [activeTopBar, setActiveTopBar] = useState<TopBarMode>(() =>
+    searchQuery.trim() !== "" || hasActiveFilter ? "filter" : "none",
+  );
   const [searchFocusKey, setSearchFocusKey] = useState(0);
 
   const closeTopBar = useCallback(() => {

@@ -53,6 +53,7 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
     state: { activeTabId: activeTabIdRef.current },
   }),
   useTabDispatch: () => dispatchMock,
+  useTabViewState: () => ({ state: {}, update: vi.fn() }),
 }));
 
 const THREADS: IThread[] = [

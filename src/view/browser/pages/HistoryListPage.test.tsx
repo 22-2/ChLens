@@ -31,6 +31,7 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => mockUseTabStore(),
   // useTabDispatch は dispatch のみを返す安定した関数。ページのフル状態購読回避後もdispatchが使える。
   useTabDispatch: () => vi.fn(),
+  useTabViewState: () => ({ state: {}, update: vi.fn() }),
 }));
 
 vi.mock("src/view/browser/components/VirtualizedDataTable", () => ({

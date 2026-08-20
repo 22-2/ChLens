@@ -22,7 +22,7 @@ import {
 } from "src/view/browser/hooks/auto-refresh-config";
 import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
-import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
+import { useTabDispatch, useTabViewState } from "src/view/browser/hooks/use-tab-store";
 import { useTheme, type ResolvedTheme } from "src/view/browser/hooks/use-theme";
 import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 import type { ThreadListPage as ThreadListPageType } from "src/view/browser/types";
@@ -446,6 +446,10 @@ export const ThreadListPage: React.FC<Props> = ({
   const fallbackScrollContainerRef = useRef<HTMLDivElement>(null);
   const effectiveScrollContainerRef = scrollContainerRef ?? fallbackScrollContainerRef;
   const dispatch = useTabDispatch();
+  const { state: persistedViewState, update: updateViewState } = useTabViewState(tabId, page);
+  const persistedSearchQuery = persistedViewState.searchQuery;
+  const persistedSortColumn = persistedViewState.sortColumn;
+  const persistedSortDirection = persistedViewState.sortDirection;
   const { isNgTemporarilyDisabled, setThreadListStats } = useNgStatus();
   const theme = useTheme();
   const [threads, setThreads] = useState<IThread[]>([]);
@@ -457,10 +461,23 @@ export const ThreadListPage: React.FC<Props> = ({
   const [isDocumentVisible, setIsDocumentVisible] = useState(
     document.visibilityState === "visible",
   );
-  const [sortPreference, setSortPreference] = useState<ThreadListSortPreference>(() =>
-    readThreadListSortPreference(page.boardUrl),
-  );
-  const [searchQuery, setSearchQuery] = useState("");
+  const [sortPreference, setSortPreference] = useState<ThreadListSortPreference>(() => {
+    const column = persistedSortColumn;
+    if (column === null) {
+      return {
+        column: null,
+        direction: persistedSortDirection === "desc" ? "desc" : "asc",
+      };
+    }
+    if (typeof column === "string" && isSortColumn(column)) {
+      return {
+        column,
+        direction: persistedSortDirection === "desc" ? "desc" : "asc",
+      };
+    }
+    return readThreadListSortPreference(page.boardUrl);
+  });
+  const [searchQuery, setSearchQuery] = useState(() => persistedSearchQuery ?? "");
   const wheelPagination = useWheelPagination({
     isEnabled: isActive && !loading,
     containerRef: effectiveScrollContainerRef,
@@ -608,9 +625,36 @@ export const ThreadListPage: React.FC<Props> = ({
   }, [page.boardUrl]);
 
   useEffect(() => {
-    // 板ごとではなく site 単位で揃えると、同一サイト内を移動しても header sort が毎回初期化されない。
-    setSortPreference(readThreadListSortPreference(page.boardUrl));
-  }, [page.boardUrl]);
+    const column = persistedSortColumn;
+    const nextSortPreference: ThreadListSortPreference =
+      column === null
+        ? {
+            column: null,
+            direction: persistedSortDirection === "desc" ? "desc" : "asc",
+          }
+        : typeof column === "string" && isSortColumn(column)
+          ? {
+              column,
+              direction: persistedSortDirection === "desc" ? "desc" : "asc",
+            }
+          : readThreadListSortPreference(page.boardUrl);
+
+    setSortPreference((previous) =>
+      previous.column === nextSortPreference.column &&
+      previous.direction === nextSortPreference.direction
+        ? previous
+        : nextSortPreference,
+    );
+    setSearchQuery(persistedSearchQuery ?? "");
+  }, [page.boardUrl, persistedSearchQuery, persistedSortColumn, persistedSortDirection]);
+
+  useEffect(() => {
+    updateViewState({
+      searchQuery,
+      sortColumn: sortPreference.column,
+      sortDirection: sortPreference.direction,
+    });
+  }, [searchQuery, sortPreference, updateViewState]);
 
   useEffect(() => {
     writeThreadListSortPreference(page.boardUrl, sortPreference);

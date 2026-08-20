@@ -15,9 +15,11 @@ import { add as addHistoryRecord, remove as removeHistoryRecord } from "src/core
 import {
   buildHierarchy,
   getCurrentPage,
+  getPageViewStateKey,
   type Page,
   type Pane,
   type Tab,
+  type TabViewState,
 } from "src/view/browser/types";
 import {
   getAutoRefreshPageKey,
@@ -59,6 +61,12 @@ export type TabAction =
   | { type: "GO_BACK" }
   | { type: "GO_FORWARD" }
   | { type: "GO_TO_HISTORY_INDEX"; index: number }
+  | {
+      type: "UPDATE_TAB_VIEW_STATE";
+      tabId: string;
+      pageKey: string;
+      patch: Partial<TabViewState>;
+    }
   | { type: "UPDATE_TITLE"; title: string }
   | { type: "UPDATE_TITLE_FOR_TAB"; tabId: string; title: string; boardUrl?: string }
   | { type: "RELOAD" }
@@ -543,6 +551,26 @@ function pushPageToTabHistory(tab: Tab, page: Page): Tab {
   // 魔法なし: 祖先の自動補完はせず、ユーザーが実際に訪れたページだけを積む。
   const historyUntilCurrent = tab.history.slice(0, tab.currentIndex + 1);
 
+  const inheritViewStateForNextThread = (): Tab["viewStates"] => {
+    if (currentPage.type !== "thread" || page.type !== "thread") {
+      return tab.viewStates;
+    }
+
+    const currentPageKey = getPageViewStateKey(currentPage);
+    const nextPageKey = getPageViewStateKey(page);
+    const currentViewState = tab.viewStates?.[currentPageKey];
+    if (!currentViewState || tab.viewStates?.[nextPageKey]) {
+      return tab.viewStates;
+    }
+
+    // 変更理由: 次スレへの移動では、同じタブで適用していた検索・レス絞り込みを
+    // そのまま使える方が自然なため、対象スレに個別状態が無い場合だけ引き継ぐ。
+    return {
+      ...tab.viewStates,
+      [nextPageKey]: currentViewState,
+    };
+  };
+
   if (page.type === "thread" && currentPage.type === "threadList") {
     const targetBoardUrl = deriveBoardUrlFromThreadUrl(page.threadUrl);
     const currentBoardUrl = normalizePageLocation(currentPage.boardUrl);
@@ -557,6 +585,7 @@ function pushPageToTabHistory(tab: Tab, page: Page): Tab {
         ...tab,
         history: newHistory,
         currentIndex: newHistory.length - 1,
+        viewStates: inheritViewStateForNextThread(),
       };
     }
   }
@@ -566,6 +595,7 @@ function pushPageToTabHistory(tab: Tab, page: Page): Tab {
     ...tab,
     history: newHistory,
     currentIndex: newHistory.length - 1,
+    viewStates: inheritViewStateForNextThread(),
   };
 }
 
@@ -984,6 +1014,32 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
           currentIndex: action.index,
         }),
       );
+    }
+
+    case "UPDATE_TAB_VIEW_STATE": {
+      // view state はタブIDで一意に特定できるため、ペインを跨いだ更新にも耐える。
+      return {
+        ...state,
+        panes: state.panes.map((pane) => ({
+          ...pane,
+          tabs: pane.tabs.map((tab) => {
+            if (tab.id !== action.tabId) {
+              return tab;
+            }
+
+            return {
+              ...tab,
+              viewStates: {
+                ...tab.viewStates,
+                [action.pageKey]: {
+                  ...tab.viewStates?.[action.pageKey],
+                  ...action.patch,
+                },
+              },
+            };
+          }),
+        })),
+      };
     }
 
     case "UPDATE_TITLE": {
@@ -1564,6 +1620,38 @@ export function useTabDispatch(): Dispatch<ScopedTabAction> {
     },
     [globalDispatch, paneId],
   );
+}
+
+const EMPTY_TAB_VIEW_STATE: TabViewState = {};
+
+export function useTabViewState(
+  tabId: string,
+  page: Page,
+): {
+  state: TabViewState;
+  update: (patch: Partial<TabViewState>) => void;
+} {
+  const { state, dispatch } = useTabStore();
+  const tab = state.tabs.find((candidate) => candidate.id === tabId);
+  const pageKey = getPageViewStateKey(page);
+  const persistedState = tab?.viewStates?.[pageKey] ?? EMPTY_TAB_VIEW_STATE;
+
+  const update = useCallback(
+    (patch: Partial<TabViewState>) => {
+      dispatch({
+        type: "UPDATE_TAB_VIEW_STATE",
+        tabId,
+        pageKey,
+        patch,
+      });
+    },
+    [dispatch, pageKey, tabId],
+  );
+
+  return {
+    state: persistedState,
+    update,
+  };
 }
 
 // App レイアウト用: ペイン配列とアクティブペインを取得する。

@@ -97,6 +97,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   } = useThreadTopBar({
     searchQuery,
     setSearchQuery,
+    hasActiveFilter: filter !== "all",
   });
 
   useMouseGesture(rootRef);
