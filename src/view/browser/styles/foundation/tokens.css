@@ -83,7 +83,10 @@
   --ref-color-alpha-black-30: rgb(0 0 0 / 30%);
   --ref-color-alpha-black-45: rgb(0 0 0 / 45%);
   --ref-color-alpha-black-70: rgb(0 0 0 / 70%);
+  --ref-color-alpha-black-76: rgb(0 0 0 / 76%);
   --ref-color-alpha-white-02: rgb(255 255 255 / 2%);
+  --ref-color-alpha-white-15: rgb(255 255 255 / 15%);
+  --ref-color-alpha-white-30: rgb(255 255 255 / 30%);
   --ref-color-alpha-white-08: rgb(255 255 255 / 8%);
   --ref-color-alpha-white-12: rgb(255 255 255 / 12%);
   --ref-color-alpha-white-14: rgb(255 255 255 / 14%);
@@ -104,6 +107,7 @@
     var(--ref-color-dark-blue-600) 40%,
     transparent
   );
+  --ref-color-media-surface: #0f1115;
 
   --ref-space-0: 0;
   --ref-space-1: 2px;
