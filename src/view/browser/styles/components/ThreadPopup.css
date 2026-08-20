@@ -1,0 +1,136 @@
+/* ID, reply-tree, and anchor preview surfaces share the thread popup layer. */
+.res-popup {
+  /* Keep popup children in the fixed thread popup layer while preserving inline coordinates. */
+  position: absolute;
+  z-index: var(--sys-z-popup-layer);
+  width: min(520px, calc(100vw - 16px));
+  min-width: min(400px, calc(100vw - 16px));
+  max-width: min(600px, calc(100vw - 16px));
+  max-height: 85vh;
+  background: var(--sys-color-popup-surface);
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-xl);
+  box-shadow: var(--sys-shadow-popup);
+  display: flex;
+  flex-direction: column;
+}
+
+.res-popup__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sys-space-4) var(--sys-space-6);
+  border-bottom: 1px solid var(--sys-color-table-heading-border);
+  font-size: var(--sys-font-size-md);
+  font-weight: 600;
+  color: var(--sys-color-text);
+  flex-shrink: 0;
+}
+
+.res-popup__header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sys-space-2);
+}
+
+.res-popup__icon-btn,
+.res-popup__close {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sys-color-text-muted);
+}
+
+.res-popup__icon-btn:hover,
+.res-popup__close:hover {
+  background: var(--sys-color-popup-hover-bg);
+}
+
+.res-popup__close {
+  font-size: var(--sys-font-size-md);
+}
+
+.res-popup__body {
+  overflow-y: auto;
+  padding: var(--sys-space-2) 0;
+}
+
+.res-popup__section + .res-popup__section {
+  border-top: 1px solid var(--sys-color-table-heading-border);
+}
+
+.res-popup__section-title {
+  padding: var(--sys-space-4) var(--sys-space-6) var(--sys-space-2);
+  font-size: var(--sys-font-size-sm);
+  font-weight: 700;
+  color: var(--sys-color-text-muted);
+}
+
+.reply-tree {
+  margin-top: var(--sys-space-1);
+}
+
+.reply-tree-node {
+  position: relative;
+}
+
+.reply-tree-node__menu-btn {
+  position: absolute;
+  top: var(--sys-space-2);
+  right: var(--sys-space-2);
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sys-color-text-muted);
+  opacity: 0;
+  transition: opacity var(--sys-duration-normal);
+  z-index: var(--sys-z-local);
+}
+
+.reply-tree-node:hover > .reply-tree-node__menu-btn {
+  opacity: 1;
+}
+
+.reply-tree-node__menu-btn:hover {
+  background: var(--sys-color-popup-hover-bg);
+}
+
+.anchor-preview {
+  /* Keep the preview interactive while it is hosted by the fixed popup layer. */
+  position: absolute;
+  z-index: var(--sys-z-popup-layer);
+  width: min(560px, 92vw);
+  max-height: 52vh;
+  pointer-events: auto;
+  background: var(--sys-color-popup-surface);
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-xl);
+  box-shadow: var(--sys-shadow-floating);
+  overflow: hidden;
+}
+
+.anchor-preview__title {
+  padding: var(--sys-space-3) var(--sys-space-5);
+  background: var(--sys-color-popup-title-bg);
+  border-bottom: 1px solid var(--sys-color-table-heading-border);
+  font-size: var(--sys-font-size-sm);
+  color: var(--sys-color-text-muted);
+}
+
+.anchor-preview__body {
+  overflow-y: auto;
+  max-height: calc(52vh - 32px);
+  padding: var(--sys-space-2) 0;
+}

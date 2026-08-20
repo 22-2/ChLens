@@ -11,6 +11,7 @@
 @import "./components/ContextMenu.css";
 @import "./components/DataTable.css";
 @import "./components/SearchBar.css";
+@import "./components/ThreadPopup.css";
 @import "./components/NavigationBar.css";
 @import "./components/WheelScrollIndicator.css";
 @import "./pages/PageStatus.css";
