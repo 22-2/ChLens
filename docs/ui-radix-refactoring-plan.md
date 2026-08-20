@@ -48,7 +48,7 @@
 
 ### 先に解消すべき構造上の問題
 
-1. `index.tsx` は Mantine CSSと自前の `styles/index.css` を取り込んでいる。Mantine CSSは後続の依存削除で外す。
+1. `index.tsx` は自前の `styles/index.css` だけを取り込む。Mantine CSSは削除済み。
 2. browser view専用の `scssPlugin`、`bundle.scss`、`browser.scss` は削除済みで、HTMLから参照されるCSSは `browser.css` 1本になった。
 3. foundationのtoken層は分離済みだが、Mantineのtheme / style APIが残る画面ではライブラリ由来の値が混在している。
 4. `.mantine-*` と `--mantine-*` への上書きがあり、UIライブラリの変更がスタイルへ漏れている。
@@ -87,17 +87,27 @@
 | `153bc68f refactor(ui): HomeとBoardListの表示部品を共通UIへ移行`          | Home / BoardListのAlert、Button、Loaderを共通UIへ移行                             |
 | `bd544165 refactor(ui): BoardListのAccordionをRadix wrapperへ移行`        | MenuAccordionをRadix Accordion wrapperとsemantic HTMLへ移行                       |
 | `ecd60893 refactor(ui): Command PaletteをRadix Dialogへ移行`              | Mantine Spotlightを廃止し、Command Paletteを共通Dialogと外部storeへ移行           |
+| `e2cf6471 refactor(settings): Mantine useMediaQueryを共通hookへ置換`      | Settingsのレスポンシブ判定をwindow.matchMedia購読へ移行                           |
+| `44557749 refactor(ui): Settings補助パネルを共通UIへ移行`                 | supplementary panelのCard / Modal / Checkboxをsemantic HTMLとRadix Dialogへ移行   |
+| `512ece7e refactor(settings): 設定入力を共通Radix controlへ移行`          | Checkbox / RadioをRadixへ、number / textareaをsemantic form controlへ移行         |
+| `4724ad1f refactor(settings): SettingsPageのMantineレイアウトを削除`      | Settingsのshell、カテゴリ、カード、NGヘルプをsemantic HTMLへ移行                  |
+| `b30d1def refactor(ui): MantineProviderとグローバルCSSを削除`             | MantineProviderとcore stylesheetを削除し、data-themeとtoken CSSへ一本化           |
+| `54a8554a test(ui): Mantine Tooltipモックを削除`                          | Tooltip wrapper移行後のテストから旧Mantineモックを削除                            |
+| `61583c0c refactor(build): MantineとTailwindの未使用依存を削除`           | Mantine / Tailwind / PostCSS依存と関連設定ファイルを削除                          |
+| `8dafeef2 refactor(build): 未使用UIユーティリティ依存を削除`              | 直接参照のないclass-variance-authority / clsxを削除                               |
+| `96180b12 fix(settings): タブ間のカード幅とボタン配色を統一`              | supplementary panelをSettingsカード内へ配置し、幅とaccent buttonを統一            |
+| `8f037e5b refactor(settings): Surface構造を共通UIへ統一`                  | SettingsのsurfaceをHeader / Body / Actions / Stack契約へ統一                      |
 
-この状態でbrowser viewの自前スタイルは、foundation / layout / component / pageのplain CSSへ分割された。
-Mantine CSS、Tailwind/PostCSS設定、Sonner、各画面のMantine component利用は残っているため、次は共通UI wrapperを導入して低リスク部品から依存を外す。
+この状態でbrowser viewの自前スタイルは、foundation / layout / component / pageのplain CSSへ分割され、Mantine / Tailwind / PostCSSの依存は削除された。
+残っている外部UI依存はSonnerのみで、次はToast wrapperへの置換とSonner削除を進める。
 
 ### 現在の分割済み範囲
 
 - `styles/foundation/`: reset、base、reference / semantic token、light / dark theme
 - `styles/layout/`: BrowserShell、PaneLayout、ContentArea
 - `styles/components/`: ContextMenu、CommandPalette、DataTable、MediaViewer、MiniWindow、NavigationBar、SearchBar、StatusBar、TabBar、ThreadPopup、Toast、WheelScrollIndicator、BottomPanel、WritePanel
-- `styles/ui/`: Spinner、Tooltip、Button、Alert、Accordion、Dialog
-- `ui/`: Spinner、Tooltip、Button、Alert、Accordion、Dialog（Radix wrapper）
+- `styles/ui/`: Spinner、Tooltip、Button、Alert、Accordion、Dialog、FormControls、Surface
+- `ui/`: Spinner、Tooltip、Button、Alert、Accordion、Dialog、FormControls、Surface（Radix / semantic wrapper）
 - `styles/pages/`: Home、BoardList、PageStatus、ThreadList、ThreadPage、ThreadResponse、SettingsPage、SettingsForm、BookmarkDialog、NGEditor
 - `browser.scss` / `bundle.scss`: 削除済み。browser viewの自前CSS入口は `styles/index.css` のみ
 - `pnpm lint:tokens`、`pnpm tsc6`、対象コンポーネントテスト、Chrome/Firefox/Tauriビルドを各区切りで確認済み
@@ -359,7 +369,8 @@ Command PaletteはRadixに同等の完成部品がない。別のUIライブラ�
 
 - `radix-ui` を追加する。✅
 - `ui/Spinner`、`Tooltip`、`Button`、`Alert`、`Accordion`、`Dialog` wrapperを追加する。✅
-- `ui/Surface`、form controlsを次に作る。
+- `ui/FormControls`を追加し、Radix Checkbox / RadioGroupとsemantic inputを共通化する。✅
+- Settingsのsurfaceは共通 `ui/Surface` のsemantic cardで統一する。✅
 - `ui/ContextMenu`、`Toast`はRadixを直接散在させずwrapper化する。
 - wrapperはprops/refをDOMまでforwardし、Radixの `asChild` 合成を壊さないようにする。
 - Portal containerとz-indexの規約を定義する。
@@ -375,20 +386,20 @@ Command PaletteはRadixに同等の完成部品がない。別のUIライブラ�
 2. `Tooltip.Floating` → `Tooltip`（ThreadMinimap、VirtualizedDataTable）。✅
 3. Home / BoardListのAlert、Button。✅
 4. BoardListのAccordion。✅
-5. `useMediaQuery` → `window.matchMedia` を扱う小さなhook
+5. `useMediaQuery` → `window.matchMedia` を扱う小さなhook。✅
 
 **終了条件:** 小さな表示部品と板一覧がMantineへ依存しない。
 
 ### Phase 5: Settingsを移行する
 
-SettingsはMantine利用密度が最も高いため、ページを一括置換しない。
+SettingsはMantine利用密度が最も高かったため、保存ロジックを維持したまま段階的に置換した。
 
-1. layout (`Stack` / `Group` / `Box` / `Paper`) をsemantic HTML + page CSSへ移す。
-2. 表示部品 (`Text` / `Title` / `Badge` / `Alert` / `Card`) を共通UIへ移す。
-3. input (`NumberInput` / `Textarea`) を共通form controlsへ移す。
-4. `Checkbox` / `Radio` をRadixへ移す。
-5. supplementary panelのModalをDialog / AlertDialogへ移す。
-6. `ScrollArea`はnative scrollで要件を満たすか確認後、必要な箇所だけRadixへ移す。
+1. layout (`Stack` / `Group` / `Box` / `Paper`) をsemantic HTML + page CSSへ移す。✅
+2. 表示部品 (`Text` / `Title` / `Badge` / `Alert` / `Card`) を共通UIへ移す。✅
+3. input (`NumberInput` / `Textarea`) を共通form controlsへ移す。✅
+4. `Checkbox` / `Radio` をRadixへ移す。✅
+5. supplementary panelのModalをDialogへ移す。✅
+6. `ScrollArea`をnative scrollへ移す。✅
 
 設定値の読み書き、auto-save、data import/exportはUI変更と同じPRで書き換えず、既存ロジックを維持する。
 
@@ -397,34 +408,34 @@ SettingsはMantine利用密度が最も高いため、ページを一括置換�
 ### Phase 6: OverlayとCommand Paletteを移行する
 
 - 自前ContextMenuをRadixへ移す。
-- Bookmark root / Thread NG / response jump / import-export dialogを共通Dialogへ揃える。
+- Bookmark root / Thread NG / response jump / import-export dialogを共通Dialogへ揃える。import-exportは✅。
 - mini window、res popup、anchor previewは挙動を分類してPopover / HoverCard / 独自positioningのどれを使うか決める。
-- Command PaletteをRadix Dialog + 自前Command Listへ移す。
-- Spotlight storeをZustand等へ置換する。
+- Command PaletteをRadix Dialog + 自前Command Listへ移す。✅
+- Spotlight storeを小さな外部storeへ置換する。✅
 - SonnerをRadix Toast wrapperへ置換し、`container.toast` の呼び出し側は変更しない。
 
 **終了条件:** overlayのPortal、focus、Escape、z-index、nested interactionが統一され、MantineとSonnerを参照しない。
 
 ### Phase 7: 依存と設定を削除する
 
-- `@mantine/core`
-- `@mantine/dates`
-- `@mantine/form`
-- `@mantine/hooks`
-- `@mantine/spotlight`
-- `postcss-preset-mantine`
-- `tailwindcss`
-- `@tailwindcss/postcss`
-- `tailwind-merge`
-- `class-variance-authority`（利用がなければ）
-- `clsx`（利用がなければ）
-- `sass`（全entryで利用がなければ）
+- `@mantine/core` ✅
+- `@mantine/dates` ✅
+- `@mantine/form` ✅
+- `@mantine/hooks` ✅
+- `@mantine/spotlight` ✅
+- `postcss-preset-mantine` ✅
+- `tailwindcss` ✅
+- `@tailwindcss/postcss` ✅
+- `tailwind-merge` ✅
+- `class-variance-authority` ✅
+- `clsx` ✅
+- `sass` ✅
 - `sonner`（Radix Toast移行後）
 
-併せて `tailwind.config.js`、不要になった `postcss.config.js` のplugin、古いshadcn向け
-`components.json` を削除し、`pnpm-lock.yaml` を更新する。
+併せて `tailwind.config.js`、`postcss.config.js`、古いshadcn向け `components.json` を削除し、
+`pnpm-lock.yaml` を更新した。✅
 
-**終了条件:** `rg '@mantine|mantine-|tailwind|\.scss' src package.json` が意図した例外以外0件で、
+**終了条件:** `rg '@mantine|mantine-|tailwind|\.scss' src package.json` が0件で、
 全platform buildに不要なCSSが含まれない。
 
 ### Phase 8: class依存を整理し、運用ルールを固定する
@@ -528,7 +539,7 @@ Mantine削除後の最終値で評価する。
 
 - browser viewのinteractive primitiveがRadix wrapper経由へ統一されている。
 - 単純な表示・form部品が共通UIまたはsemantic HTMLへ統一されている。
-- Mantine、Tailwind CSS、SCSS、Sonnerへの依存が削除されている。
+- Mantine、Tailwind CSS、PostCSS、SCSSへの依存が削除されている。SonnerはToast移行まで残す。
 - `browser.scss` が存在せず、各コンポーネント / feature / page単位のplain CSSになっている。✅
 - dark themeは原則としてsemantic tokenの差し替えだけで成立する。
 - productionで参照される自前CSS成果物が `browser.css` 1本だけである。
@@ -540,13 +551,13 @@ Mantine削除後の最終値で評価する。
 
 ## 次に着手する範囲
 
-foundation、token、CSS分割、SCSSビルド経路の整理は完了した。次の実装単位は、見た目の変更を抑えた
-共通UI wrapperと低リスクなMantine置換に進める。
+foundation、token、CSS分割、SCSSビルド経路、Mantine / Tailwind依存の整理は完了した。
+次の実装単位はSonnerを共通Toastへ置換し、overlayの契約を完成させること。
 
-1. `ui/Spinner`、`Tooltip`、`Button`、`Alert`、`Accordion`、`Dialog` wrapperで低リスク部品を置換済み。✅
-2. `ui/Surface`、form controlsを追加し、Settingsのレイアウトと入力部品を段階的にMantineから外す。
+1. `ui/Spinner`、`Tooltip`、`Button`、`Alert`、`Accordion`、`Dialog`、`FormControls`、`Surface`で低リスク部品を置換済み。✅
+2. Settingsのレイアウト、入力、補助panelを共通UIへ移し、カード幅とボタン配色を統一済み。✅
 3. Radix ContextMenu / Toast wrapperを導入し、Portal・focus・z-index契約を共通化する。
-4. Settingsのform / dialogをwrapperへ移し、保存・復元テストを維持する。
-5. Mantine CSS、Tailwind/PostCSS、Sonnerを削除し、依存・lockfile・bundle差分を確認する。
+4. SonnerをRadix Toastへ置換し、`container.toast`の呼び出し側を維持する。
+5. Toast移行後にSonnerを削除し、依存・lockfile・bundle差分を確認する。
 
 各段階でChrome / Firefox / Tauri buildと対象interaction testを実行し、最後にvisual baselineを追加する。
