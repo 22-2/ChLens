@@ -23,6 +23,15 @@ export const MiniWindow: React.FC<MiniWindowProps> = ({
   triggerRef,
   children,
 }) => {
+  // テーマトークンは `.browser-shell[data-theme]` のスコープで定義されるため、
+  // body直下へPortalするとダークテーマの値を継承できない。実際のトリガーが
+  // 既にマウント済みならその祖先を優先し、テストや汎用利用ではシェルを検索する。
+  const portalContainer =
+    triggerRef?.current?.closest<HTMLElement>(".browser-shell") ??
+    (typeof document === "undefined"
+      ? null
+      : document.querySelector<HTMLElement>(".browser-shell"));
+
   // ステータスバーのanchorが移動するため、resize時は既存仕様どおり閉じる。
   useEffect(() => {
     window.addEventListener("resize", onClose);
@@ -53,7 +62,7 @@ export const MiniWindow: React.FC<MiniWindowProps> = ({
           }}
         />
       </Popover.Anchor>
-      <Popover.Portal>
+      <Popover.Portal container={portalContainer ?? undefined}>
         <Popover.Content
           asChild
           side="top"
