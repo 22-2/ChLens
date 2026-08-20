@@ -561,7 +561,7 @@ mantineに書き換え？
 `src\view\browser\utils\utils.ts`の分割
 `src\view\browser\components\ReplyTreePopup.tsx`の分割
 
-- [ ] chore: 次スレ移動「標準」が弱い
-- [ ] fix: ログ検索、閲覧履歴のツールチップがほかと動作が違う、統一したい
-- [ ] fix: メディアビューアよりもレスツリーポップアップが上に来てしまう
+- [x] chore: 次スレ移動「標準」が弱い
+- [x] fix: ログ検索、閲覧履歴のツールチップがほかと動作が違う、統一したい
+- [x] fix: メディアビューアよりもレスツリーポップアップが上に来てしまう
 - [ ] feat: レスツリーにレスバ判定機能
