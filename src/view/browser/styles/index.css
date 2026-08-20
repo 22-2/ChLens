@@ -1,0 +1,9 @@
+/* Browser view CSS entrypoint. Keep foundation before layout and feature styles. */
+@import "./foundation/reset.css";
+@import "./foundation/tokens.css";
+@import "./foundation/themes.css";
+@import "./foundation/base.css";
+@import "./layout/BrowserShell.css";
+@import "./layout/PaneLayout.css";
+@import "./layout/ContentArea.css";
+@import "./components/WheelScrollIndicator.css";

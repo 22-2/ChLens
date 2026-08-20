@@ -1,0 +1,37 @@
+/* Browser shell token compatibility layer. Existing selectors still use --browser-* during migration. */
+.browser-shell {
+  /* Keep the legacy names until feature CSS is migrated one area at a time. */
+  --browser-color-bg: var(--color-surface);
+  --browser-color-tab-strip-bg: var(--color-tab-strip);
+  --browser-color-tab-strip-hover: var(--color-tab-strip-hover);
+  --browser-color-tab-strip-active-hover: var(--color-tab-strip-active-hover);
+  --browser-color-surface-muted: var(--color-surface-muted);
+  --browser-color-border: var(--color-border);
+  --browser-color-text-primary: var(--color-text);
+  --browser-color-text-muted: var(--color-text-muted);
+  --browser-color-text-disabled: var(--color-text-disabled);
+  --browser-color-placeholder: var(--color-placeholder);
+  --browser-color-selection: var(--color-selection);
+  --browser-color-accent: var(--color-accent);
+  --browser-color-accent-hover: var(--color-accent-hover);
+  --browser-color-accent-fg: var(--color-accent-fg);
+  --browser-color-focus-ring: var(--color-focus-ring);
+  --browser-color-hover-overlay: var(--color-hover-overlay);
+  --browser-color-status-hover-overlay: var(--color-status-hover-overlay);
+  --browser-color-input-bg: var(--color-input-bg);
+  --browser-color-input-border: var(--color-input-border);
+  --browser-color-success: var(--color-success);
+  --browser-color-error: var(--color-error);
+  --browser-color-warning: var(--color-warning);
+  --browser-color-res-num: var(--color-res-num);
+  --browser-color-res-heat-warm: var(--color-res-heat-warm);
+  --browser-color-res-heat-hot: var(--color-res-heat-hot);
+  --browser-color-res-reply-link: var(--color-res-reply-link);
+  --browser-color-res-id-muted: var(--color-res-id-muted);
+  --browser-color-res-id-cool: var(--color-res-id-cool);
+  --browser-color-status-active-bg: var(--color-status-active-bg);
+  --browser-color-status-active-fg: var(--color-status-active-fg);
+  --browser-color-status-default-fg: var(--color-text-muted);
+  --browser-color-list-hover-bg: var(--color-list-hover-bg);
+  --browser-font-mono: var(--font-mono);
+}

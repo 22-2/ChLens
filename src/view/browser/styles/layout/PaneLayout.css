@@ -1,0 +1,48 @@
+/* Pane layout extracted from browser.scss. Keep legacy class names for DOM behavior compatibility. */
+.pane-row {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  min-height: 0;
+  overflow-x: auto;
+}
+
+.pane-column {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.pane-column + .pane-column {
+  border-left: 1px solid var(--browser-color-border);
+}
+
+.pane-column:not(:only-child)[data-active="true"] {
+  box-shadow: inset 0 2px 0 0 var(--browser-color-accent);
+}
+
+.pane-column:not(:only-child)[data-active="false"] .pane-column__chrome {
+  opacity: 0.82;
+}
+
+.pane-column__chrome {
+  display: flex;
+  flex-shrink: 0;
+  min-width: 0;
+  min-height: 32px;
+  height: auto;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  align-items: stretch;
+  column-gap: 2px;
+  row-gap: 0;
+  background: var(--browser-color-tab-strip-bg);
+  border-bottom: 1px solid var(--browser-color-border);
+}
+
+.pane-column > .content-area {
+  min-height: 0;
+}

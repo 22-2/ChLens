@@ -1,0 +1,22 @@
+/* Content-area layout extracted from browser.scss. */
+.content-area {
+  flex: 1;
+  overflow: hidden;
+  background: #fff;
+}
+
+.content-area__tab-panel {
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.content-area__tab-panel:has(.thread-page) {
+  scrollbar-width: none;
+  scrollbar-gutter: auto;
+}
+
+.content-area__tab-panel:has(.thread-page)::-webkit-scrollbar {
+  display: none;
+}
