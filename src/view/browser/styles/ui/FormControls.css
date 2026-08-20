@@ -1,0 +1,131 @@
+/* Shared form controls. Radix handles keyboard/state semantics; tokens own the visual contract. */
+.browser-field {
+  display: grid;
+  gap: var(--sys-space-3);
+  min-width: 0;
+}
+
+.browser-field__label,
+.browser-radio-field legend {
+  padding: 0;
+  color: var(--sys-color-text);
+  font-size: var(--sys-font-size-md);
+  font-weight: 600;
+}
+
+.browser-field__description {
+  margin: 0;
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-sm);
+  line-height: 1.5;
+}
+
+.browser-field > input,
+.browser-field > textarea {
+  width: 100%;
+  padding: var(--sys-space-4) var(--sys-space-6);
+  border: 1px solid var(--sys-color-input-border);
+  border-radius: var(--sys-radius-lg);
+  background: var(--sys-color-input-bg);
+  color: var(--sys-color-text);
+  font: inherit;
+}
+
+.browser-field > textarea {
+  min-height: var(--sys-space-16);
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.browser-field > input:focus,
+.browser-field > textarea:focus,
+.browser-checkbox-field__control:focus-visible,
+.browser-radio-field__control:focus-visible {
+  border-color: var(--sys-color-focus-ring);
+  outline: 2px solid var(--sys-color-selection);
+  outline-offset: 1px;
+}
+
+.browser-checkbox-field {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sys-space-4);
+}
+
+.browser-checkbox-field__control,
+.browser-radio-field__control {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: var(--sys-space-7);
+  height: var(--sys-space-7);
+  margin-top: var(--sys-space-1);
+  padding: 0;
+  border: 1px solid var(--sys-color-input-border);
+  background: var(--sys-color-input-bg);
+  color: var(--sys-color-accent-fg);
+  cursor: pointer;
+}
+
+.browser-checkbox-field__control {
+  border-radius: var(--sys-radius-sm);
+}
+
+.browser-checkbox-field__control[data-state="checked"] {
+  border-color: var(--sys-color-accent);
+  background: var(--sys-color-accent);
+}
+
+.browser-checkbox-field__indicator {
+  font-size: var(--sys-font-size-xs);
+  font-weight: 800;
+}
+
+.browser-checkbox-field__label {
+  color: var(--sys-color-text);
+  font-size: var(--sys-font-size-md);
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.browser-field--checkbox .browser-field__description {
+  margin-left: calc(var(--sys-space-7) + var(--sys-space-4));
+}
+
+.browser-radio-field {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.browser-radio-field__group {
+  display: grid;
+  gap: var(--sys-space-3);
+  margin-top: var(--sys-space-2);
+}
+
+.browser-radio-field__option {
+  display: flex;
+  align-items: center;
+  gap: var(--sys-space-4);
+  color: var(--sys-color-text);
+  font-size: var(--sys-font-size-md);
+  cursor: pointer;
+}
+
+.browser-radio-field__control {
+  border-radius: var(--sys-radius-pill);
+}
+
+.browser-radio-field__control[data-state="checked"] {
+  border-color: var(--sys-color-accent);
+}
+
+.browser-radio-field__indicator {
+  width: var(--sys-space-3);
+  height: var(--sys-space-3);
+  border-radius: var(--sys-radius-pill);
+  background: var(--sys-color-accent);
+}

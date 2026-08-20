@@ -4,17 +4,13 @@ import {
   Box,
   Button,
   Card,
-  Checkbox,
   Divider,
   Group,
   NavLink,
-  NumberInput,
   Paper,
-  Radio,
   ScrollArea,
   Stack,
   Text,
-  Textarea,
   Title,
 } from "@mantine/core";
 import { AlertTriangle, ChevronDown, RefreshCw } from "lucide-react";
@@ -29,6 +25,12 @@ import {
 } from "src/view/browser/components/NGEditor";
 import { SettingsSupplementaryPanels } from "src/view/browser/pages/settings/SettingsSupplementaryPanels";
 import { useMediaQuery } from "src/view/browser/hooks/use-media-query";
+import {
+  CheckboxField,
+  NumberField,
+  RadioField,
+  TextareaField,
+} from "src/view/browser/ui/FormControls";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import {
   AUTO_SAVE_DELAY_MS,
@@ -318,66 +320,56 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
 
       if (field.kind === "boolean") {
         return (
-          <Checkbox
+          <CheckboxField
             key={field.key}
+            id={`settings-${field.key}`}
             checked={toBooleanValue(value)}
             label={field.title}
             description={field.description}
-            onChange={(event) => {
-              updateFieldValue(sectionId, field.key, event.currentTarget.checked);
-            }}
+            onCheckedChange={(checked) => updateFieldValue(sectionId, field.key, checked)}
           />
         );
       }
 
       if (field.kind === "number") {
         return (
-          <NumberInput
+          <NumberField
             key={field.key}
+            id={`settings-${field.key}`}
             label={field.title}
             description={field.description}
             value={toNumberValue(value)}
             min={field.minimum}
             max={field.maximum}
             step={field.step}
-            onChange={(nextValue) => {
-              const normalized =
-                typeof nextValue === "number" && Number.isFinite(nextValue) ? nextValue : 0;
-              updateFieldValue(sectionId, field.key, normalized);
-            }}
+            onChange={(nextValue) => updateFieldValue(sectionId, field.key, nextValue)}
           />
         );
       }
 
       if (field.options && field.options.length > 0) {
         return (
-          <Radio.Group
+          <RadioField
             key={field.key}
+            id={`settings-${field.key}`}
             label={field.title}
             description={field.description}
             value={toStringValue(value)}
-            onChange={(nextValue) => {
-              updateFieldValue(sectionId, field.key, nextValue);
-            }}
-          >
-            <Stack gap="xs" mt="xs">
-              {field.options.map((option) => (
-                <Radio key={option.const} value={option.const} label={option.title} />
-              ))}
-            </Stack>
-          </Radio.Group>
+            options={field.options}
+            onValueChange={(nextValue) => updateFieldValue(sectionId, field.key, nextValue)}
+          />
         );
       }
 
       if (field.widget === "textarea") {
         return (
-          <Textarea
+          <TextareaField
             key={field.key}
+            id={`settings-${field.key}`}
             label={field.title}
             description={field.description}
             value={toStringValue(value)}
-            autosize
-            minRows={field.rows ?? 6}
+            rows={field.rows ?? 6}
             onChange={(event) => {
               updateFieldValue(sectionId, field.key, event.currentTarget.value);
             }}
@@ -407,13 +399,13 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
       }
 
       return (
-        <Textarea
+        <TextareaField
           key={field.key}
+          id={`settings-${field.key}`}
           label={field.title}
           description={field.description}
           value={toStringValue(value)}
-          autosize
-          minRows={2}
+          rows={2}
           onChange={(event) => {
             updateFieldValue(sectionId, field.key, event.currentTarget.value);
           }}
