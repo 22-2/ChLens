@@ -58,30 +58,32 @@
 
 直近のコミットでは、計画のPhase 1〜2-3、Thread / Settings系のCSS分割、browser viewのSCSS経路削除までが実装されている。
 
-| コミット                                                                  | 実施内容                                                                      |
-| ------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `86670bb9 refactor: phase 1`                                              | foundationのreset / theme / tokenを追加し、dark themeの大部分を分離           |
-| `52d7a41c refactor: phase 2-1`                                            | BrowserShell、PaneLayout、ContentAreaをCSSへ分割                              |
-| `d6e375c6 refactor: phase 2-2`                                            | ContextMenu、StatusBar、TabBarをCSSへ分割                                     |
-| `4162fb8b refactor: 2-3`                                                  | NavigationBar、Home、BoardList、PageStatusをCSSへ分割                         |
-| `2e051dcb refactor: デザイントークンをより厳密に`                         | `--ref-*` / `--sys-*`契約、token lint、overlay順を整備                        |
-| `d0cfa18c refactor(ui): overlay z-indexを意味tokenへ統一`                 | 固定z-indexを意味tokenへ統一し、popup / tooltip / dialog順を固定              |
-| `ee1412e6 refactor(ui): DataTableスタイルをコンポーネントCSSへ分割`       | DataTable / thread-list / tooltipをコンポーネントCSSへ分割し、表用tokenを追加 |
-| `a29d5141 refactor(ui): ThreadPageスタイルをページCSSへ分割`              | ThreadPageのoverlay、minimap、auto-scroll、toolbarをページCSSへ分割           |
-| `53bd5a3b refactor(ui): SearchBarスタイルをコンポーネントCSSへ分割`       | Ctrl+F検索バーをsystem tokenで統一し、コンポーネントCSSへ分割                 |
-| `761ccb43 refactor(ui): ThreadResponseメタデータをページCSSへ分割`        | レスの本文、ID、返信、所有者バッジをThreadResponse CSSへ分割                  |
-| `711184b3 refactor(ui): Thread popupスタイルをコンポーネントCSSへ分割`    | ResPopup、返信ツリー、アンカープレビューをpopup tokenへ移行                   |
-| `30244c72 refactor(ui): MediaViewerスタイルをコンポーネントCSSへ分割`     | 画像viewerのscrim、操作バー、stageを専用tokenへ移行                           |
-| `58ca97f3 refactor(ui): ThreadResponseのメディアスタイルをtoken化`        | リンクカード、サムネイル、動画埋め込み、highlightをThreadResponseへ集約       |
-| `4036e746 refactor(ui): StatusBarの操作スタイルをコンポーネントCSSへ統合` | StatusBarの操作系セレクタを専用CSSへ移動                                      |
-| `4a9d16a4 refactor(ui): MiniWindowスタイルをコンポーネントCSSへ分割`      | mini windowのヘッダー、フォーム、状態表示を専用CSSへ移動                      |
-| `8349b966 refactor(ui): BottomPanelとWritePanelをコンポーネントCSSへ分割` | 書き込み・下部パネルを専用CSSへ移動                                           |
-| `71e53125 refactor(ui): NG Editorスタイルを設定ページCSSへ分割`           | NG Editorのフォーム・detailsを設定CSSへ移動                                   |
-| `4f0bcf9e refactor(ui): ThreadListページスタイルをページCSSへ分割`        | スレ一覧のページ固有スタイルを専用CSSへ移動                                   |
-| `19d8d4a8 refactor(ui): 設定ダイアログをページCSSへ分割`                  | Bookmark / supplementary dialogのスタイルを設定CSSへ移動                      |
-| `b1b469a0 refactor(ui): SettingsPageのshellをページCSSへ分割`             | Settingsのshell、sidebar、cardをページCSSへ移動                               |
-| `1f8e662d refactor(ui): 残りの設定フォームとコマンドパレットをCSSへ分割`  | SettingsForm、CommandPalette、Toastをsemantic tokenで専用CSSへ移動            |
-| `7d294fe8 refactor(build): SCSSの互換ビルド経路を削除`                    | bundle / browser SCSS、ViteのscssPlugin、sass依存、legacy token aliasを削除   |
+| コミット                                                                  | 実施内容                                                                          |
+| ------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `86670bb9 refactor: phase 1`                                              | foundationのreset / theme / tokenを追加し、dark themeの大部分を分離               |
+| `52d7a41c refactor: phase 2-1`                                            | BrowserShell、PaneLayout、ContentAreaをCSSへ分割                                  |
+| `d6e375c6 refactor: phase 2-2`                                            | ContextMenu、StatusBar、TabBarをCSSへ分割                                         |
+| `4162fb8b refactor: 2-3`                                                  | NavigationBar、Home、BoardList、PageStatusをCSSへ分割                             |
+| `2e051dcb refactor: デザイントークンをより厳密に`                         | `--ref-*` / `--sys-*`契約、token lint、overlay順を整備                            |
+| `d0cfa18c refactor(ui): overlay z-indexを意味tokenへ統一`                 | 固定z-indexを意味tokenへ統一し、popup / tooltip / dialog順を固定                  |
+| `ee1412e6 refactor(ui): DataTableスタイルをコンポーネントCSSへ分割`       | DataTable / thread-list / tooltipをコンポーネントCSSへ分割し、表用tokenを追加     |
+| `a29d5141 refactor(ui): ThreadPageスタイルをページCSSへ分割`              | ThreadPageのoverlay、minimap、auto-scroll、toolbarをページCSSへ分割               |
+| `53bd5a3b refactor(ui): SearchBarスタイルをコンポーネントCSSへ分割`       | Ctrl+F検索バーをsystem tokenで統一し、コンポーネントCSSへ分割                     |
+| `761ccb43 refactor(ui): ThreadResponseメタデータをページCSSへ分割`        | レスの本文、ID、返信、所有者バッジをThreadResponse CSSへ分割                      |
+| `711184b3 refactor(ui): Thread popupスタイルをコンポーネントCSSへ分割`    | ResPopup、返信ツリー、アンカープレビューをpopup tokenへ移行                       |
+| `30244c72 refactor(ui): MediaViewerスタイルをコンポーネントCSSへ分割`     | 画像viewerのscrim、操作バー、stageを専用tokenへ移行                               |
+| `58ca97f3 refactor(ui): ThreadResponseのメディアスタイルをtoken化`        | リンクカード、サムネイル、動画埋め込み、highlightをThreadResponseへ集約           |
+| `4036e746 refactor(ui): StatusBarの操作スタイルをコンポーネントCSSへ統合` | StatusBarの操作系セレクタを専用CSSへ移動                                          |
+| `4a9d16a4 refactor(ui): MiniWindowスタイルをコンポーネントCSSへ分割`      | mini windowのヘッダー、フォーム、状態表示を専用CSSへ移動                          |
+| `8349b966 refactor(ui): BottomPanelとWritePanelをコンポーネントCSSへ分割` | 書き込み・下部パネルを専用CSSへ移動                                               |
+| `71e53125 refactor(ui): NG Editorスタイルを設定ページCSSへ分割`           | NG Editorのフォーム・detailsを設定CSSへ移動                                       |
+| `4f0bcf9e refactor(ui): ThreadListページスタイルをページCSSへ分割`        | スレ一覧のページ固有スタイルを専用CSSへ移動                                       |
+| `19d8d4a8 refactor(ui): 設定ダイアログをページCSSへ分割`                  | Bookmark / supplementary dialogのスタイルを設定CSSへ移動                          |
+| `b1b469a0 refactor(ui): SettingsPageのshellをページCSSへ分割`             | Settingsのshell、sidebar、cardをページCSSへ移動                                   |
+| `1f8e662d refactor(ui): 残りの設定フォームとコマンドパレットをCSSへ分割`  | SettingsForm、CommandPalette、Toastをsemantic tokenで専用CSSへ移動                |
+| `7d294fe8 refactor(build): SCSSの互換ビルド経路を削除`                    | bundle / browser SCSS、ViteのscssPlugin、sass依存、legacy token aliasを削除       |
+| `48f4817d refactor(ui): Loaderを共通Spinnerへ置換`                        | Home / Thread / Search / MediaViewer / SettingsのLoaderを共通Spinnerへ置換        |
+| `2eca7bbc refactor(ui): Radix Tooltip wrapperへ移行`                      | ThreadMinimap、VirtualizedDataTableをRadix Tooltipへ移行しtooltip surfaceを共通化 |
 
 この状態でbrowser viewの自前スタイルは、foundation / layout / component / pageのplain CSSへ分割された。
 Mantine CSS、Tailwind/PostCSS設定、Sonner、各画面のMantine component利用は残っているため、次は共通UI wrapperを導入して低リスク部品から依存を外す。
@@ -91,6 +93,8 @@ Mantine CSS、Tailwind/PostCSS設定、Sonner、各画面のMantine component利
 - `styles/foundation/`: reset、base、reference / semantic token、light / dark theme
 - `styles/layout/`: BrowserShell、PaneLayout、ContentArea
 - `styles/components/`: ContextMenu、CommandPalette、DataTable、MediaViewer、MiniWindow、NavigationBar、SearchBar、StatusBar、TabBar、ThreadPopup、Toast、WheelScrollIndicator、BottomPanel、WritePanel
+- `styles/ui/`: Spinner、Tooltip
+- `ui/`: Spinner、Tooltip（Radix wrapper）
 - `styles/pages/`: Home、BoardList、PageStatus、ThreadList、ThreadPage、ThreadResponse、SettingsPage、SettingsForm、BookmarkDialog、NGEditor
 - `browser.scss` / `bundle.scss`: 削除済み。browser viewの自前CSS入口は `styles/index.css` のみ
 - `pnpm lint:tokens`、`pnpm tsc6`、対象コンポーネントテスト、Chrome/Firefox/Tauriビルドを各区切りで確認済み
@@ -350,9 +354,10 @@ Command PaletteはRadixに同等の完成部品がない。別のUIライブラ�
 
 ### Phase 3: 共通UI層とRadix基盤を導入する
 
-- `radix-ui` を追加する。
-- `ui/Button`、`Spinner`、`Alert`、`Surface`、form controlsを先に作る。
-- `ui/Dialog`、`Tooltip`、`Accordion`、`ContextMenu`、`Toast`はRadixを直接散在させずwrapper化する。
+- `radix-ui` を追加する。✅
+- `ui/Spinner` と `ui/Tooltip` wrapperを追加する。✅
+- `ui/Button`、`Alert`、`Surface`、form controlsを次に作る。
+- `ui/Dialog`、`Accordion`、`ContextMenu`、`Toast`はRadixを直接散在させずwrapper化する。
 - wrapperはprops/refをDOMまでforwardし、Radixの `asChild` 合成を壊さないようにする。
 - Portal containerとz-indexの規約を定義する。
 - UI部品のinteraction testを追加する。
@@ -363,8 +368,8 @@ Command PaletteはRadixに同等の完成部品がない。別のUIライブラ�
 
 次の順序を推奨する。
 
-1. `Loader` → `Spinner`（SearchBar、ThreadPage、MediaViewer）
-2. `Tooltip.Floating` → `Tooltip`（ThreadMinimap、VirtualizedDataTable）
+1. `Loader` → `Spinner`（SearchBar、ThreadPage、MediaViewer、Home、Settings）。✅
+2. `Tooltip.Floating` → `Tooltip`（ThreadMinimap、VirtualizedDataTable）。✅
 3. Home / BoardListのBox、Text、Alert、Button
 4. BoardListのAccordion
 5. `useMediaQuery` → `window.matchMedia` を扱う小さなhook
@@ -535,7 +540,7 @@ Mantine削除後の最終値で評価する。
 foundation、token、CSS分割、SCSSビルド経路の整理は完了した。次の実装単位は、見た目の変更を抑えた
 共通UI wrapperと低リスクなMantine置換に進める。
 
-1. `ui/Spinner` と `ui/Tooltip` wrapperを作り、Loader / Floating Tooltipを置換する。
+1. `ui/Spinner` と `ui/Tooltip` wrapperで低リスク部品を置換済み。✅
 2. `ui/Button`、`ui/Alert`、`ui/Surface`を追加し、Home / BoardListの表示部品をMantineから外す。
 3. Radix Dialog / ContextMenu / Toast wrapperを導入し、Portal・focus・z-index契約を共通化する。
 4. Settingsのform / dialogをwrapperへ移し、保存・復元テストを維持する。
