@@ -1,6 +1,9 @@
 /* Reusable quick-settings style mini window. */
 .mini-window {
-  position: fixed;
+  /* Radix Popoverの外側wrapperが配置を担当するため、Content自身は通常フローに置く。 */
+  position: relative;
+  display: flex;
+  flex-direction: column;
   z-index: var(--sys-z-mini-window);
   background: var(--sys-color-surface);
   border: 1px solid var(--sys-color-border);
@@ -9,6 +12,7 @@
   font-size: var(--sys-font-size-md);
   color: var(--sys-color-text);
   overflow: hidden;
+  max-height: var(--radix-popover-content-available-height, calc(100dvh - var(--sys-space-8)));
 }
 
 .mini-window__header {
@@ -49,6 +53,8 @@
 
 .mini-window__body {
   padding: 0;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .mini-window__section {
