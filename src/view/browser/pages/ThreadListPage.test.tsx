@@ -1,6 +1,5 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
 import { container as serviceContainer } from "src/service-container/index";
 import type { IBoardService, IThread } from "src/service-container/interfaces";
@@ -55,17 +54,6 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   }),
   useTabDispatch: () => dispatchMock,
 }));
-
-vi.mock("@mantine/core", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@mantine/core")>();
-  const PassthroughTooltip = Object.assign(({ children }: { children: ReactNode }) => children, {
-    Floating: ({ children }: { children: ReactNode }) => children,
-  });
-  return {
-    ...actual,
-    Tooltip: PassthroughTooltip,
-  };
-});
 
 const THREADS: IThread[] = [
   {
