@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { getStore2String, setStore2String } from "src/app/Store2Storage";
-import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import type { ColumnDef } from "src/view/browser/components/SimpleDataTable";
+import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 
 type VisibleColumnDescriptor = {
   key: string;

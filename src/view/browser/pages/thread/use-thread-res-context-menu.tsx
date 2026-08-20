@@ -15,9 +15,9 @@ import React, { useCallback, useEffect, useRef } from "react";
 import { stringifyNgDslValue } from "src/core/ngDsl";
 import { container } from "src/service-container/index";
 import type { IRes } from "src/service-container/interfaces";
-import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useTabDispatch, useTabStore } from "src/view/browser/hooks/use-tab-store";
+import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import {
   getAutoRefreshPageKey,
   isAutoRefreshEnabledForPage,

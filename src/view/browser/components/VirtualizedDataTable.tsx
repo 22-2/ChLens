@@ -1,10 +1,10 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import React, { useEffect, useMemo, useRef } from "react";
-import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { useCursorTooltip } from "src/view/browser/components/CursorTooltip";
 import { type ColumnDef } from "src/view/browser/components/SimpleDataTable";
 import { useColumnVisibility } from "src/view/browser/components/use-column-visibility";
 import { useTableTooltipEnabled } from "src/view/browser/hooks/use-table-tooltip-setting";
+import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { Spinner } from "src/view/browser/ui/Spinner";
 
 interface Props<TRow> {

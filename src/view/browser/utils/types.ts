@@ -1,6 +1,6 @@
 import type { IRes } from "src/service-container";
-import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import type { ThreadPage as ThreadPageType } from "src/view/browser/types";
+import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 
 export type ThreadFilter = "all" | "popular" | "image" | "video" | "link";
 export interface Props {

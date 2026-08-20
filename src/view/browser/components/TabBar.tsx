@@ -3,13 +3,13 @@ import { isSortableOperation, useSortable } from "@dnd-kit/react/sortable";
 import { Pin, Plus, RotateCw, X } from "lucide-react";
 import normalizeWheel from "normalize-wheel";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { useCursorTooltip } from "src/view/browser/components/CursorTooltip";
 import { TabContextMenu } from "src/view/browser/components/TabContextMenu";
 import { useAutoScrollState } from "src/view/browser/hooks/use-auto-scroll-state";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import type { Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
+import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { isAutoRefreshEnabledForPage } from "src/view/browser/utils/auto-refresh-pages";
 
 interface ContextMenuState {

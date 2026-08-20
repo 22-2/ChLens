@@ -6,10 +6,10 @@ import {
 } from "@tanstack/react-table";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import React, { useEffect, useMemo } from "react";
-import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { useCursorTooltip } from "src/view/browser/components/CursorTooltip";
 import { useColumnVisibility } from "src/view/browser/components/use-column-visibility";
 import { useTableTooltipEnabled } from "src/view/browser/hooks/use-table-tooltip-setting";
+import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 
 // 変更理由: 汎用コンポーネント化のため `ThreadListTable` から名前を変更しました。
 //           既存の動作は保持しつつ、スレッドに限定しない名称に統一します。

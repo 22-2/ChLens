@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
-import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
-import { ContextMenu } from "src/view/browser/components/ContextMenu";
+import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
+import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 
 type BoardContextMenuState =
   | {

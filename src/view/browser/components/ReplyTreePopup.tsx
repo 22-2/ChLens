@@ -8,13 +8,13 @@ import {
 } from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { IRes } from "src/service-container";
-import type { ContextMenuItem } from "src/view/browser/components/ContextMenu";
-import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
 import { ReplyTree } from "src/view/browser/components/ReplyTree";
 import { usePopupSurfaceLifecycle } from "src/view/browser/hooks/use-popup-manager";
 import type { ResolvedTheme } from "src/view/browser/hooks/use-theme";
 import { useTheme } from "src/view/browser/hooks/use-theme";
+import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
+import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
 import { useAdjustOverflow } from "src/view/browser/utils/use-adjust-overflow";
 import {

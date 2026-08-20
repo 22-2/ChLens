@@ -7,7 +7,6 @@ import { stringifyNgDslValue } from "src/core/ngDsl";
 import { URL as ChURL } from "src/core/URL";
 import { container } from "src/service-container/index";
 import type { IReadState, IThread } from "src/service-container/interfaces";
-import { ContextMenu, ContextMenuItem } from "src/view/browser/components/ContextMenu";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import {
   ColumnDef,
@@ -26,6 +25,7 @@ import { useTabDispatch, useTabViewState } from "src/view/browser/hooks/use-tab-
 import { useTheme, type ResolvedTheme } from "src/view/browser/hooks/use-theme";
 import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 import type { ThreadListPage as ThreadListPageType } from "src/view/browser/types";
+import { ContextMenu, ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import { copyText } from "src/view/browser/utils/utils";
 const OPENED_BOARDS_CONFIG_KEY = "opened_board_entries";

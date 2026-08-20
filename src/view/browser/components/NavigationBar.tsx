@@ -19,7 +19,6 @@ import {
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { container } from "src/service-container/index";
 import { commandPalette } from "src/view/browser/commands/command-palette-store";
-import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { Omnibar } from "src/view/browser/components/Omnibar";
 import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useOmnibar } from "src/view/browser/hooks/use-omnibar";
@@ -32,6 +31,7 @@ import {
   getDisplayUrl,
   type Page,
 } from "src/view/browser/types";
+import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import {
   getAutoRefreshPageKey,
   isAutoRefreshEnabledForPage,

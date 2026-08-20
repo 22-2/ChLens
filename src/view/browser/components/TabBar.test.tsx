@@ -40,7 +40,7 @@ const mocks = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("src/view/browser/components/ContextMenu", () => ({
+vi.mock("src/view/browser/ui/ContextMenu", () => ({
   ContextMenu: () => null,
 }));
 

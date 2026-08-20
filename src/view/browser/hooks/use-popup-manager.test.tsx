@@ -4,10 +4,10 @@ import type { MouseEvent as ReactMouseEvent } from "react";
 import { container } from "src/service-container/index";
 import type { IRes } from "src/service-container/interfaces";
 import { AnchorPreview } from "src/view/browser/components/AnchorPreview";
-import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { ReplyTreePopup } from "src/view/browser/components/ReplyTreePopup";
 import { ResPopup } from "src/view/browser/components/ResPopup";
 import { usePopupManager } from "src/view/browser/hooks/use-popup-manager";
+import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import type {
   AnchorPopupItem,
   ContextMenuPopupItem,
