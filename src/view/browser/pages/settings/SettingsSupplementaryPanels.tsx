@@ -240,27 +240,30 @@ export function SettingsSupplementaryPanels({
               </SurfaceHeader>
 
               <SurfaceBody>
-                {bookmarkLoading ? (
-                  <div className="settings-page__bookmark-source-value" aria-busy="true">
-                    <Spinner size="xs" aria-label="保存先を読み込み中" />
-                  </div>
-                ) : (
-                  <div className="settings-page__bookmark-source-value">
-                    {folderName ?? "未設定"}
-                  </div>
-                )}
+                <div
+                  className="settings-page__bookmark-source-value"
+                  aria-busy={bookmarkLoading || undefined}
+                >
+                  <span className="settings-page__bookmark-source-label">
+                    {bookmarkLoading ? (
+                      <Spinner size="xs" aria-label="保存先を読み込み中" />
+                    ) : (
+                      (folderName ?? "未設定")
+                    )}
+                  </span>
+                  <Button
+                    className="settings-page__bookmark-source-button"
+                    onClick={() => container.message.send("bookmark_root_selector_open")}
+                  >
+                    {folderName ? "保存先を変更" : "保存先を選択"}
+                  </Button>
+                </div>
 
                 {bookmarkError && (
                   <Alert color="red" icon={<AlertTriangle size={16} />}>
                     {bookmarkError}
                   </Alert>
                 )}
-
-                <SurfaceActions>
-                  <Button onClick={() => container.message.send("bookmark_root_selector_open")}>
-                    {folderName ? "保存先を変更" : "保存先を選択"}
-                  </Button>
-                </SurfaceActions>
               </SurfaceBody>
             </Surface>
           );

@@ -327,6 +327,11 @@
 }
 
 .settings-page__bookmark-source-value {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sys-space-6);
+  flex-wrap: wrap;
   padding: var(--sys-space-6) var(--sys-space-7);
   border: 1px solid var(--sys-color-border);
   border-radius: var(--sys-radius-xl);
@@ -334,6 +339,18 @@
   font-size: var(--sys-font-size-md);
   font-weight: 600;
   color: var(--sys-color-text);
+}
+
+.settings-page__bookmark-source-label {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.settings-page__bookmark-source-button {
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .settings-export-dialog {
