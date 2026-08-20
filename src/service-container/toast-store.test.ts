@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it } from "vite-plus/test";
 import { toastStore } from "src/service-container/toast-store";
+import { afterEach, describe, expect, it } from "vite-plus/test";
 
 describe("toastStore", () => {
   const createdIds: number[] = [];

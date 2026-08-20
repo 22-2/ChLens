@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { FloatingSurface } from "src/view/browser/ui/FloatingSurface";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 afterEach(() => {
   cleanup();

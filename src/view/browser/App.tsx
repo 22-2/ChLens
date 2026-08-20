@@ -28,8 +28,8 @@ import {
   UrlBarVisibilityProvider,
   useUrlBarVisibility,
 } from "src/view/browser/hooks/use-url-bar-visibility";
-import { TooltipProvider } from "src/view/browser/ui/Tooltip";
 import { ToastProvider } from "src/view/browser/ui/Toast";
+import { TooltipProvider } from "src/view/browser/ui/Tooltip";
 import { applyBBSMenuToItestServerMap } from "src/view/browser/utils/itest-server-map";
 
 // ステータスバー左端に常設される書き込みパネル開閉ボタン

@@ -716,13 +716,14 @@ export const ReplyTreePopup: React.FC<{
     }
 
     const buttonRect = e.currentTarget.getBoundingClientRect();
-    const popupRect = ref.current.getBoundingClientRect();
     setMenuPosition((prev) =>
       prev
         ? null
         : {
-            x: buttonRect.right - popupRect.left - 8,
-            y: buttonRect.bottom - popupRect.top + 4,
+            // ContextMenu は Radix の portal 上で viewport 座標に配置されるため、
+            // 親ポップアップ基準の相対座標へ変換せず、そのまま渡す。
+            x: buttonRect.right - 8,
+            y: buttonRect.bottom + 4,
           },
     );
   };
@@ -739,7 +740,6 @@ export const ReplyTreePopup: React.FC<{
     }
 
     const buttonRect = e.currentTarget.getBoundingClientRect();
-    const popupRect = ref.current.getBoundingClientRect();
     setSubTreeMenu((prev) =>
       prev?.resNum === targetResNum
         ? null
@@ -747,8 +747,9 @@ export const ReplyTreePopup: React.FC<{
             resNum: targetResNum,
             ancestorResNums,
             hasChildTree,
-            x: buttonRect.right - popupRect.left - 8,
-            y: buttonRect.bottom - popupRect.top + 4,
+            // ContextMenu は viewport 座標を受け取るため、親 popup の座標を引かない。
+            x: buttonRect.right - 8,
+            y: buttonRect.bottom + 4,
           },
     );
   };

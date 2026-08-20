@@ -7,7 +7,6 @@ import * as NG from "src/core/NG";
 import Notification from "src/core/Notification";
 import ThreadService from "src/core/ThreadService.js";
 import { container } from "src/service-container/Container";
-import { toastStore } from "src/service-container/toast-store";
 import {
   IBBSMenuResult,
   IBBSMenuService,
@@ -27,6 +26,7 @@ import {
   IToastService,
   IUtil,
 } from "src/service-container/interfaces";
+import { toastStore } from "src/service-container/toast-store";
 
 // レガシー window.app の型。IServiceContainer への完全移行後に削除予定。
 interface LegacyAppForSetup {
