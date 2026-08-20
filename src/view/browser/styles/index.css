@@ -7,6 +7,7 @@
 @import "./ui/Tooltip.css";
 @import "./ui/Button.css";
 @import "./ui/Alert.css";
+@import "./ui/Accordion.css";
 @import "./layout/BrowserShell.css";
 @import "./layout/PaneLayout.css";
 @import "./layout/ContentArea.css";

@@ -1,0 +1,25 @@
+/* Radix Accordion state styles shared by nested board menus. */
+.board-menu__header,
+.board-category__header {
+  margin: 0;
+}
+
+.board-menu__title,
+.board-category__title {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.board-menu__title[data-state="open"] .board-list-page__chevron,
+.board-category__title[data-state="open"] .board-list-page__chevron {
+  transform: rotate(90deg);
+}
+
+.board-menu__content[data-state="closed"],
+.board-category__panel[data-state="closed"] {
+  display: none;
+}

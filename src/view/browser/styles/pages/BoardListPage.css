@@ -43,14 +43,8 @@
   align-items: center;
   justify-content: center;
   color: var(--sys-color-text);
-  transition: transform 0.2s ease;
-}
-.board-list-page .mantine-Accordion-chevron {
   transform: rotate(0deg);
-}
-.board-list-page .mantine-Accordion-chevron[data-rotate],
-.board-list-page .mantine-Accordion-control[data-active="true"] .mantine-Accordion-chevron {
-  transform: rotate(90deg);
+  transition: none;
 }
 .board-menu__content,
 .board-category__list {
