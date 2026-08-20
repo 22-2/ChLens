@@ -125,6 +125,9 @@ export const ContextMenu: React.FC<Props> = ({
       </RadixContextMenu.Trigger>
       <RadixContextMenu.Content
         asChild
+        // 右端・下端で開いた場合も viewport 内へ押し戻し、共通メニュー全体で同じ挙動にする。
+        avoidCollisions
+        collisionPadding={8}
         onCloseAutoFocus={(event) => event.preventDefault()}
         onPointerDownOutside={(event) => {
           if (closeDisabled || isPopupBranchTarget(event.target)) {
