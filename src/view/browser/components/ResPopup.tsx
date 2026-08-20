@@ -1,9 +1,8 @@
-import React, { useCallback, useRef } from "react";
+import React, { useCallback } from "react";
 import type { IRes } from "src/service-container";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
-import { usePopupSurfaceLifecycle } from "src/view/browser/hooks/use-popup-manager";
+import { FloatingSurface } from "src/view/browser/ui/FloatingSurface";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
-import { useAdjustOverflow } from "src/view/browser/utils/use-adjust-overflow";
 
 // --- IDポップアップ ---
 export const ResPopup: React.FC<{
@@ -68,7 +67,6 @@ export const ResPopup: React.FC<{
   zIndex,
   blurredResNums,
 }) => {
-  const ref = useRef<HTMLDivElement>(null);
   const handleResContextMenu = useCallback(
     (event: React.MouseEvent, targetRes: IRes) => {
       event.stopPropagation();
@@ -79,71 +77,57 @@ export const ResPopup: React.FC<{
     },
     [onResContextMenu, onSurfaceMouseDown],
   );
-  const {
-    armMouseLeaveCloseSuppression,
-    handleAuxClickCapture,
-    handleMouseDownCapture,
-    handleMouseEnter,
-    handleMouseLeave,
-  } = usePopupSurfaceLifecycle({
-    surfaceRef: ref,
-    popupId,
-    isPopupDescendantOf,
-    onEnterFromDescendant,
-    closeDisabled: disableOutsideClick,
-    onClose,
-    onSurfaceMouseDown,
-    onSurfaceMouseEnter: onMouseEnter,
-    onSurfaceMouseLeave: onMouseLeave,
-  });
-
-  // スクロールコンテナ内での position:absolute に対応したオーバーフロー補正
-  useAdjustOverflow(ref);
-
   return (
-    <div
-      ref={ref}
-      data-popup-surface="true"
-      data-popup-id={popupId}
+    <FloatingSurface
       className="res-popup"
-      style={{ left: x, top: y, ...(zIndex != null && { zIndex }) }}
-      onMouseDownCapture={handleMouseDownCapture}
-      onAuxClickCapture={handleAuxClickCapture}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      x={x}
+      y={y}
+      zIndex={zIndex}
+      popupId={popupId}
+      isPopupDescendantOf={isPopupDescendantOf}
+      onEnterFromDescendant={onEnterFromDescendant}
+      closeDisabled={disableOutsideClick}
+      onClose={onClose}
+      onSurfaceMouseDown={onSurfaceMouseDown}
+      onSurfaceMouseEnter={onMouseEnter}
+      onSurfaceMouseLeave={onMouseLeave}
       // ポップアップ内のレス間マウス移動で ResBody の handleMouseLeave が起動した
       // アンカープレビュー hide タイマーをキャンセルする。mouseover はバブルするため、
       // 子孫要素への移動時も発火し、mouseenter と異なりポップアップ外からの進入に限定されない。
       onMouseOver={onMouseEnter}
     >
-      <div className="res-popup__header">
-        <span>{title}</span>
-        <button className="res-popup__close" onClick={onClose}>
-          ✕
-        </button>
-      </div>
-      <div className="res-popup__body">
-        {items.map((res) => (
-          <PopupResCard
-            key={res.num}
-            res={res}
-            messageProtocol={messageProtocol}
-            anchorPreviewDepth={0}
-            repIndex={repIndex}
-            idIndex={idIndex}
-            onUrlClick={onUrlClick}
-            onUrlContextMenu={onUrlContextMenu}
-            onLinkMiddleClickStart={armMouseLeaveCloseSuppression}
-            onIdLinkClick={onIdLinkClick}
-            onRepClick={onRepClick}
-            onAnchorClick={onAnchorClick}
-            onAnchorHover={onAnchorHover}
-            onAnchorLeave={onAnchorLeave}
-            onContextMenu={handleResContextMenu}
-            isImageBlurred={blurredResNums?.has(res.num)}
-          />
-        ))}
-      </div>
-    </div>
+      {({ armMouseLeaveCloseSuppression }) => (
+        <>
+          <div className="res-popup__header">
+            <span>{title}</span>
+            <button className="res-popup__close" onClick={onClose}>
+              ✕
+            </button>
+          </div>
+          <div className="res-popup__body">
+            {items.map((res) => (
+              <PopupResCard
+                key={res.num}
+                res={res}
+                messageProtocol={messageProtocol}
+                anchorPreviewDepth={0}
+                repIndex={repIndex}
+                idIndex={idIndex}
+                onUrlClick={onUrlClick}
+                onUrlContextMenu={onUrlContextMenu}
+                onLinkMiddleClickStart={armMouseLeaveCloseSuppression}
+                onIdLinkClick={onIdLinkClick}
+                onRepClick={onRepClick}
+                onAnchorClick={onAnchorClick}
+                onAnchorHover={onAnchorHover}
+                onAnchorLeave={onAnchorLeave}
+                onContextMenu={handleResContextMenu}
+                isImageBlurred={blurredResNums?.has(res.num)}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </FloatingSurface>
   );
 };

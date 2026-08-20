@@ -1,9 +1,8 @@
-import React, { useCallback, useRef } from "react";
+import React, { useCallback } from "react";
 import type { IRes } from "src/service-container";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
-import { usePopupSurfaceLifecycle } from "src/view/browser/hooks/use-popup-manager";
+import { FloatingSurface } from "src/view/browser/ui/FloatingSurface";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
-import { useAdjustOverflow } from "src/view/browser/utils/use-adjust-overflow";
 
 export interface AnchorPreviewProps {
   depth: number;
@@ -66,7 +65,6 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
   zIndex,
   blurredResNums,
 }) => {
-  const ref = useRef<HTMLDivElement>(null);
   const handleResContextMenu = useCallback(
     (event: React.MouseEvent, targetRes: IRes) => {
       event.stopPropagation();
@@ -77,66 +75,49 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
     },
     [onResContextMenu, onSurfaceMouseDown],
   );
-  const {
-    armMouseLeaveCloseSuppression,
-    handleAuxClickCapture,
-    handleMouseDownCapture,
-    handleMouseEnter,
-    handleMouseLeave,
-  } = usePopupSurfaceLifecycle({
-    surfaceRef: ref,
-    popupId,
-    isPopupDescendantOf,
-    onEnterFromDescendant,
-    closeDisabled: hasChildPopup,
-    onClose: onMouseLeave,
-    onSurfaceMouseDown,
-    onSurfaceMouseEnter: onMouseEnter,
-  });
-
-  useAdjustOverflow(ref);
-
   return (
-    <div
-      ref={ref}
-      data-popup-surface="true"
-      data-popup-id={popupId}
+    <FloatingSurface
       className="anchor-preview"
-      style={{
-        left: x,
-        top: y,
-        zIndex,
-      }}
-      onMouseDownCapture={handleMouseDownCapture}
-      onAuxClickCapture={handleAuxClickCapture}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      x={x}
+      y={y}
+      zIndex={zIndex}
+      popupId={popupId}
+      isPopupDescendantOf={isPopupDescendantOf}
+      onEnterFromDescendant={onEnterFromDescendant}
+      closeDisabled={hasChildPopup}
+      onClose={onMouseLeave}
+      onSurfaceMouseDown={onSurfaceMouseDown}
+      onSurfaceMouseEnter={onMouseEnter}
     >
-      <div className="anchor-preview__title">参照: {label}</div>
-      <div className="anchor-preview__body">
-        {items.slice(0, 8).map((res) => (
-          <PopupResCard
-            key={res.num}
-            res={res}
-            messageProtocol={messageProtocol}
-            anchorPreviewDepth={depth + 1}
-            repIndex={repIndex}
-            idIndex={idIndex}
-            onUrlClick={onUrlClick}
-            onUrlContextMenu={onUrlContextMenu}
-            onLinkMiddleClickStart={armMouseLeaveCloseSuppression}
-            onIdLinkClick={onIdLinkClick}
-            onRepClick={onRepClick}
-            onOpenRootReplyTree={onOpenRootReplyTree}
-            onAnchorClick={onAnchorClick}
-            onAnchorHover={onAnchorHover}
-            onAnchorLeave={onAnchorLeave}
-            onContextMenu={handleResContextMenu}
-            isImageBlurred={blurredResNums?.has(res.num)}
-          />
-        ))}
-      </div>
-    </div>
+      {({ armMouseLeaveCloseSuppression }) => (
+        <>
+          <div className="anchor-preview__title">参照: {label}</div>
+          <div className="anchor-preview__body">
+            {items.slice(0, 8).map((res) => (
+              <PopupResCard
+                key={res.num}
+                res={res}
+                messageProtocol={messageProtocol}
+                anchorPreviewDepth={depth + 1}
+                repIndex={repIndex}
+                idIndex={idIndex}
+                onUrlClick={onUrlClick}
+                onUrlContextMenu={onUrlContextMenu}
+                onLinkMiddleClickStart={armMouseLeaveCloseSuppression}
+                onIdLinkClick={onIdLinkClick}
+                onRepClick={onRepClick}
+                onOpenRootReplyTree={onOpenRootReplyTree}
+                onAnchorClick={onAnchorClick}
+                onAnchorHover={onAnchorHover}
+                onAnchorLeave={onAnchorLeave}
+                onContextMenu={handleResContextMenu}
+                isImageBlurred={blurredResNums?.has(res.num)}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </FloatingSurface>
   );
 };
 AnchorPreview.displayName = "AnchorPreview";
