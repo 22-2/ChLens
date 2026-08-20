@@ -60,6 +60,8 @@
   margin-left: 8px;
   padding: 0 12px 0 44px;
   border-top: 1px solid var(--sys-color-border);
+  border-bottom: none;
+  border-left: none;
   background: transparent;
   color: var(--sys-color-text);
   cursor: pointer;
