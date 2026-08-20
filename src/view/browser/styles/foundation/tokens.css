@@ -127,6 +127,8 @@
 
   /* Reference stacking scale. Passive surfaces stay below interactive overlays. */
   --ref-z-local: 1;
+  --ref-z-local-raised: 2;
+  --ref-z-sticky: 3;
   --ref-z-dragging: 3;
   --ref-z-wheel-indicator: 1000;
   --ref-z-media-viewer: 11000;
@@ -137,7 +139,10 @@
   --ref-z-table-tooltip: 35000;
   --ref-z-popup-layer: 36000;
   --ref-z-context-menu: 37000;
+  --ref-z-tooltip: 39000;
   --ref-z-dialog: 40000;
+  --ref-z-gesture: 50000;
+  --ref-z-gesture-label: 50001;
 
   /* Theme-independent system scales. */
   --sys-space-0: var(--ref-space-0);
@@ -181,6 +186,8 @@
   --sys-ease-standard: var(--ref-ease-standard);
   --sys-ease-out: var(--ref-ease-out);
   --sys-z-local: var(--ref-z-local);
+  --sys-z-local-raised: var(--ref-z-local-raised);
+  --sys-z-sticky: var(--ref-z-sticky);
   --sys-z-dragging: var(--ref-z-dragging);
   --sys-z-wheel-indicator: var(--ref-z-wheel-indicator);
   --sys-z-media-viewer: var(--ref-z-media-viewer);
@@ -190,5 +197,8 @@
   --sys-z-table-tooltip: var(--ref-z-table-tooltip);
   --sys-z-popup-layer: var(--ref-z-popup-layer);
   --sys-z-context-menu: var(--ref-z-context-menu);
+  --sys-z-tooltip: var(--ref-z-tooltip);
   --sys-z-dialog: var(--ref-z-dialog);
+  --sys-z-gesture: var(--ref-z-gesture);
+  --sys-z-gesture-label: var(--ref-z-gesture-label);
 }

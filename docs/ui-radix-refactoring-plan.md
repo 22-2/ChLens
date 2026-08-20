@@ -59,16 +59,18 @@
 
 直近のコミットでは、計画のPhase 1〜2-3までが実装されている。
 
-| コミット                       | 実施内容                                                            |
-| ------------------------------ | ------------------------------------------------------------------- |
-| `86670bb9 refactor: phase 1`   | foundationのreset / theme / tokenを追加し、dark themeの大部分を分離 |
-| `52d7a41c refactor: phase 2-1` | BrowserShell、PaneLayout、ContentAreaをCSSへ分割                    |
-| `d6e375c6 refactor: phase 2-2` | ContextMenu、StatusBar、TabBarをCSSへ分割                           |
-| `4162fb8b refactor: 2-3`       | NavigationBar、Home、BoardList、PageStatusをCSSへ分割               |
+| コミット                                                  | 実施内容                                                            |
+| --------------------------------------------------------- | ------------------------------------------------------------------- |
+| `86670bb9 refactor: phase 1`                              | foundationのreset / theme / tokenを追加し、dark themeの大部分を分離 |
+| `52d7a41c refactor: phase 2-1`                            | BrowserShell、PaneLayout、ContentAreaをCSSへ分割                    |
+| `d6e375c6 refactor: phase 2-2`                            | ContextMenu、StatusBar、TabBarをCSSへ分割                           |
+| `4162fb8b refactor: 2-3`                                  | NavigationBar、Home、BoardList、PageStatusをCSSへ分割               |
+| `2e051dcb refactor: デザイントークンをより厳密に`         | `--ref-*` / `--sys-*`契約、token lint、overlay順を整備              |
+| `f5140233 refactor(ui): overlay z-indexを意味tokenへ統一` | 固定z-indexを意味tokenへ統一し、popup / tooltip / dialog順を固定    |
 
 この状態では「新token層を追加したが、抽出済みCSSに旧`--browser-*`とraw値が残る」状態だったため、
-次の小さな区切りとして`--ref-*` / `--sys-*`の契約と`pnpm lint:tokens`を追加する。
-未抽出の`browser.scss`は互換aliasを残し、表示変更と名前変更を同じコミットへ混ぜない。
+未抽出の`browser.scss`には互換aliasと旧構造が残っている。
+表示変更と名前変更を同じコミットへ混ぜず、次は旧SCSSの機械分割を続ける。
 
 ---
 
@@ -210,7 +212,7 @@ src/view/browser/
 - `--ref-*` は値の辞書、`--sys-*` は意味の辞書として扱い、consumerは`--sys-*`だけを使う。
 - `--cmp-*` はownerのCSS内で定義し、foundationへcomponent固有値を追加しない。
 - raw color、raw shadow、raw z-indexは `tokens.css` に限定する。画像・データ可視化は例外として理由を残す。
-- overlayは `minimap < table-tooltip < popup-layer < context-menu < dialog` の順に重ね、親のstacking contextも同じ規約に従わせる。
+- overlayは `minimap < table-tooltip < popup-layer < context-menu < tooltip < dialog < gesture` の順に重ね、親のstacking contextも同じ規約に従わせる。
 - dark themeは `[data-theme="dark"]` 内で`--ref-*`を直接上書きせず、`--sys-*`を別のreferenceへ束ねる。
 - hover、focus、selected、disabled、success、warning、dangerを共通語彙にする。
 - spacing、radius、shadow、font size、line height、motion、z-indexもtoken化する。

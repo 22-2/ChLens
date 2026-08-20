@@ -65,7 +65,7 @@ export function useMouseGesture(rootRef: RefObject<HTMLDivElement | null>): void
         canvas.style.left = "0";
         canvas.style.width = "100%";
         canvas.style.height = "100%";
-        canvas.style.zIndex = "99999";
+        canvas.style.zIndex = "var(--sys-z-gesture)";
         canvas.style.pointerEvents = "none";
         document.body.appendChild(canvas);
         context = canvas.getContext("2d");
@@ -82,7 +82,7 @@ export function useMouseGesture(rootRef: RefObject<HTMLDivElement | null>): void
         label.style.fontWeight = "bold";
         label.style.color = "rgba(0, 123, 255, 0.8)";
         label.style.pointerEvents = "none";
-        label.style.zIndex = "100000";
+        label.style.zIndex = "var(--sys-z-gesture-label)";
         label.style.textShadow =
           "2px 2px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff";
         label.style.fontFamily = "sans-serif";

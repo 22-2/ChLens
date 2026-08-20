@@ -351,7 +351,7 @@
 .bookmark-root-dialog {
   position: fixed;
   inset: 0;
-  z-index: 1200;
+  z-index: var(--sys-z-dialog);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -367,7 +367,7 @@
 
 .bookmark-root-dialog__panel {
   position: relative;
-  z-index: 1;
+  z-index: var(--sys-z-local);
   width: min(760px, 100%);
   max-height: min(80vh, 760px);
   display: flex;
@@ -1328,7 +1328,7 @@
   position: sticky;
   top: 0;
   background: #f8f9fa;
-  z-index: 1;
+  z-index: var(--sys-z-local);
 }
 
 .simple-data-table__th {
@@ -1527,7 +1527,7 @@
 .thread-page__top-bar {
   position: sticky;
   top: 0;
-  z-index: 3;
+  z-index: var(--sys-z-sticky);
 }
 
 .thread-page__toolbar {
@@ -1822,7 +1822,7 @@
   content: "ぼかし中";
   position: absolute;
   inset: auto 8px 8px auto;
-  z-index: 2;
+  z-index: var(--sys-z-local-raised);
   border-radius: 999px;
   padding: 2px 8px;
   background: rgba(15, 23, 42, 0.78);
@@ -1883,7 +1883,7 @@
 .res__thumb-badge {
   position: absolute;
   inset: 8px auto auto 8px;
-  z-index: 1;
+  z-index: var(--sys-z-local);
   border-radius: 999px;
   padding: 2px 8px;
   background: rgba(15, 23, 42, 0.78);
@@ -1981,7 +1981,7 @@
 .media-viewer {
   position: fixed;
   inset: 0;
-  z-index: 11000;
+  z-index: var(--sys-z-media-viewer);
   background: rgba(0, 0, 0, 0.76);
   display: flex;
   align-items: center;
@@ -2092,7 +2092,7 @@
   justify-content: center;
   background: rgba(255, 255, 255, 0.02);
   pointer-events: none;
-  z-index: 10;
+  z-index: var(--sys-z-local-raised);
 }
 
 .media-viewer__canvas {
@@ -2122,9 +2122,9 @@
    ========================================================================== */
 .res-popup {
   /* スレッド本文とは別のポップアップレイヤーにまとめて描画する。 */
-  /* z-indexはPOPUP_BASE_Z(10020)起点でThreadPageからinline styleで付与される */
+  /* inline styleのstack順を優先し、未指定時はpopup layerへ収める。 */
   position: absolute;
-  z-index: 10020;
+  z-index: var(--sys-z-popup-layer);
   /* width:auto の shrink-to-fit だと右端付近で極端に細くなるため、
      先に実用幅を確保してからオーバーフロー補正で左へ逃がす。 */
   width: min(520px, calc(100vw - 16px));
@@ -2234,7 +2234,7 @@
   color: #5f6368;
   opacity: 0;
   transition: opacity 0.15s;
-  z-index: 1;
+  z-index: var(--sys-z-local);
 }
 
 .reply-tree-node:hover > .reply-tree-node__menu-btn {
@@ -2248,7 +2248,7 @@
 .anchor-preview {
   /* スレッド本文とは別のポップアップレイヤーにまとめて描画する。 */
   position: absolute;
-  z-index: 10020;
+  z-index: var(--sys-z-popup-layer);
   width: min(560px, 92vw);
   max-height: 52vh;
   /* 非表示を遅延制御にしたので、プレビュー自体も操作対象としてマウスを受け取る。 */
@@ -2345,7 +2345,7 @@
    ========================================================================== */
 .mini-window {
   position: fixed;
-  z-index: 30000;
+  z-index: var(--sys-z-mini-window);
   background: var(--browser-color-bg);
   border: 1px solid var(--browser-color-border);
   border-radius: 6px;

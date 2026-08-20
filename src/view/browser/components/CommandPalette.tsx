@@ -199,7 +199,7 @@ export const CommandPalette: React.FC = () => {
         maxHeight="min(480px, 60vh)"
         size={800}
         yOffset={48}
-        zIndex={40000}
+        zIndex="var(--sys-z-dialog)"
         classNames={{
           content: "command-palette__content",
           search: "command-palette__search",
@@ -253,7 +253,7 @@ export const CommandPalette: React.FC = () => {
         onClose={closeResponseJumpDialog}
         title="レス番号へジャンプ"
         centered
-        zIndex={40001}
+        zIndex="calc(var(--sys-z-dialog) + 1)"
       >
         <form onSubmit={submitResponseJump}>
           <TextInput

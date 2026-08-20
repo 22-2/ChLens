@@ -247,7 +247,7 @@ describe("CommandPalette", () => {
     expect(spotlightRootProps.current?.scrollable).toBe(true);
     expect(spotlightRootProps.current?.maxHeight).toBe("min(480px, 60vh)");
     expect(spotlightRootProps.current?.size).toBe(800);
-    expect(spotlightRootProps.current?.zIndex).toBe(40000);
+    expect(spotlightRootProps.current?.zIndex).toBe("var(--sys-z-dialog)");
   });
 
   it("英語名で検索し、説明を表示しない", () => {

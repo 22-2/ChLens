@@ -640,7 +640,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
         disabled={hoveredResNum == null}
         position="left"
         offset={12}
-        zIndex={40000}
+        zIndex="var(--sys-z-tooltip)"
       >
         <canvas
           ref={canvasRef}
