@@ -113,7 +113,7 @@ export function useThreadResContextMenu({
             ? {
                 ...res,
                 // res.ng を設定することで ResItem の isNG 判定が即座に true になる
-                ng: { type: "id" },
+                ng: { type: "id", ruleDescription: ngWord },
                 class: [...(res.class ?? []).filter((className) => className !== "ng"), "ng"],
               }
             : res,

@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import type { IRes } from "src/service-container";
+import { NgBadge } from "src/view/browser/components/NgBadge";
 import { ResBody } from "src/view/browser/components/ResBody";
 import { ResMediaGallery } from "src/view/browser/components/ResMediaGallery";
 import { useIsNgTemporarilyDisabled } from "src/view/browser/hooks/use-ng-status";
@@ -86,7 +87,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
           <span className={nameClassName} dangerouslySetInnerHTML={{ __html: decoded.nameHtml }} />
           {isOwn ? <span className="res__badge res__badge--own">自分</span> : null}
           {isReplyToOwn ? <span className="res__badge res__badge--reply-to-own">返信</span> : null}
-          {isNgMatched ? <span className="res__badge res__badge--ng">NG</span> : null}
+          {isNgMatched ? <NgBadge result={res.ng} /> : null}
           {res.id && (
             <span
               className={`res__id${

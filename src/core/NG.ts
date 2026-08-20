@@ -2,7 +2,7 @@ import { createLogger } from "src/core/logger";
 import { countReplyAnchorTargets } from "src/core/reply-index";
 import { RULE_TARGET_CATALOG } from "src/core/rules/catalog";
 import { formatRuleDsl, parseRuleDsl } from "src/core/rules/dsl";
-import { clearRuleRegexCache, matchRules } from "src/core/rules/engine";
+import { clearRuleRegexCache, matchRules, type RuleMatchResult } from "src/core/rules/engine";
 import type { Rule } from "src/core/rules/model";
 import type { INGResult } from "src/service-container/index";
 import { container } from "src/service-container/index";
@@ -69,6 +69,11 @@ function toText(value: unknown): string {
 function updateRulesCache(rules: readonly Rule[]): void {
   rulesCache = [...rules];
   clearRuleRegexCache();
+}
+
+/** 複数条件を持つルールでも、実際に一致した条件だけをNG理由として表示する。 */
+function formatMatchedRule(matched: RuleMatchResult): string {
+  return formatRuleDsl([{ ...matched.rule, matchers: [matched.matcher] }]);
 }
 
 /** 設定保存済みのDSLを判定へ反映する。保存処理は呼び出し側が担当する。 */
@@ -149,6 +154,7 @@ export function isNGBoard(threadTitle: string, url: string, resCount: number): I
     ? {
         type: matched.type,
         action: matched.rule.action,
+        ruleDescription: formatMatchedRule(matched),
         ruleIndex: rules.indexOf(matched.rule),
         name: matched.rule.name,
         params: matched.params,
@@ -193,6 +199,7 @@ export function isNGThread(res: unknown, title: string, url: string): INGResult 
     return {
       type: matched.type,
       action: matched.rule.action,
+      ruleDescription: formatMatchedRule(matched),
       name: matched.rule.name,
       params: matched.params,
       disabled: false,

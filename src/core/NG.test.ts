@@ -51,7 +51,10 @@ hide body regex:
         "title",
         "https://bbs.eddibb.cc/test/1",
       ),
-    ).toMatchObject({ type: "RegExpBody" });
+    ).toMatchObject({
+      type: "RegExpBody",
+      ruleDescription: `hide body regex:\n  "(imgur\\.com/.+?){15}"`,
+    });
   });
 
   it("rejects the removed function-style syntax", async () => {

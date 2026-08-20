@@ -74,6 +74,10 @@
   color: var(--sys-color-warning-fg);
 }
 
+.res__ng-tooltip {
+  white-space: pre-wrap;
+}
+
 .res__id {
   /* A single-use ID stays quiet so metadata does not compete with the body. */
   color: var(--sys-color-res-id-muted);

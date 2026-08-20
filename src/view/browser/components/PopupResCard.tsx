@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import type { IRes } from "src/service-container";
+import { NgBadge } from "src/view/browser/components/NgBadge";
 import { ResBody } from "src/view/browser/components/ResBody";
 import { ResMediaGallery } from "src/view/browser/components/ResMediaGallery";
 import { useIsNgTemporarilyDisabled } from "src/view/browser/hooks/use-ng-status";
@@ -71,7 +72,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
         >
           <header className="res__header">
             <span className={resNumClassName}>{res.num}</span>
-            <span className="res__badge res__badge--ng">NG</span>
+            <NgBadge result={res.ng} />
           </header>
           <div className="res__ng-reveal">クリックして内容を表示</div>
         </article>
@@ -97,7 +98,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
         <header className="res__header">
           <span className={resNumClassName}>{res.num}</span>
           <span className="res__name" dangerouslySetInnerHTML={{ __html: decoded.nameHtml }} />
-          {isNgMatched ? <span className="res__badge res__badge--ng">NG</span> : null}
+          {isNgMatched ? <NgBadge result={res.ng} /> : null}
           {res.id && (
             <span
               className={`res__id${

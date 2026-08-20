@@ -208,6 +208,8 @@ export interface INotificationService {
 export interface INGResult {
   type: string;
   action?: "hide" | "highlight" | "demote" | "warn";
+  /** 実際に一致した条件だけを抜き出したDSL。NG理由の表示に使用する。 */
+  ruleDescription?: string;
   /** 設定内のルール位置。表示側で同じルールの一致結果をまとめるために使用する。 */
   ruleIndex?: number;
   name?: string;
