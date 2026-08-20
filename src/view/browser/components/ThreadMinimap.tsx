@@ -1,5 +1,5 @@
-import { Tooltip } from "@mantine/core";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Tooltip } from "src/view/browser/ui/Tooltip";
 
 interface ThreadMinimapProps {
   rootRef: React.RefObject<HTMLDivElement | null>;
@@ -635,9 +635,10 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
 
   return (
     <div className="thread-page__minimap" style={style} aria-hidden="true">
-      <Tooltip.Floating
+      <Tooltip
         label={hoveredResNum == null ? "" : `レス ${hoveredResNum}`}
         disabled={hoveredResNum == null}
+        open={hoveredResNum != null}
         position="left"
         offset={12}
         zIndex="var(--sys-z-tooltip)"
@@ -651,7 +652,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
         />
-      </Tooltip.Floating>
+      </Tooltip>
     </div>
   );
 };

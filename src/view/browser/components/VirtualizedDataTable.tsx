@@ -1,10 +1,10 @@
-import { Tooltip } from "@mantine/core";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import React, { useEffect, useMemo, useRef } from "react";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
 import { type ColumnDef } from "src/view/browser/components/SimpleDataTable";
 import { useColumnVisibility } from "src/view/browser/components/use-column-visibility";
 import { useTableTooltipEnabled } from "src/view/browser/hooks/use-table-tooltip-setting";
+import { Tooltip } from "src/view/browser/ui/Tooltip";
 
 interface Props<TRow> {
   columns: ColumnDef<TRow>[];
@@ -185,13 +185,9 @@ export function VirtualizedDataTable<TRow>({
             }
 
             return (
-              <Tooltip.Floating
-                key={rowKey}
-                label={tooltipLabel}
-                zIndex="var(--sys-z-table-tooltip)"
-              >
+              <Tooltip key={rowKey} label={tooltipLabel} zIndex="var(--sys-z-table-tooltip)">
                 {rowElement}
-              </Tooltip.Floating>
+              </Tooltip>
             );
           })}
 

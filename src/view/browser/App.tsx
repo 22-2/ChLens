@@ -32,6 +32,7 @@ import {
   useUrlBarVisibility,
 } from "src/view/browser/hooks/use-url-bar-visibility";
 import { applyBBSMenuToItestServerMap } from "src/view/browser/utils/itest-server-map";
+import { TooltipProvider } from "src/view/browser/ui/Tooltip";
 
 const mantineTheme = createTheme({
   fontFamily: '"Noto Sans JP", "Yu Gothic UI", sans-serif',
@@ -160,35 +161,37 @@ const BrowserAppContent: React.FC = () => {
 
   return (
     <MantineProvider theme={mantineTheme} forceColorScheme={theme === "dark" ? "dark" : "light"}>
-      <TabProvider>
-        {/*
-          ステータス／NG／書き込み／自動スクロールの各プロバイダは PaneColumn 内へ移設した。
-          シェル直下には全ペイン共通のグローバル UI（トースト・ダイアログ）だけを残す。
-        */}
-        {/* data-theme を使ってダークモード CSS 変数を切り替える */}
-        <div className="browser-shell" data-theme={theme}>
-          <Toaster
-            position="top-right"
-            theme={theme === "dark" ? "dark" : "light"}
-            offset={{
-              top: isUrlBarExpanded ? "88px" : "64px",
-              right: "78px",
-            }}
-            toastOptions={{
-              style: {
-                fontSize: "12px",
-                padding: "8px 12px",
-                minHeight: "auto",
-                width: "fit-content",
-              },
-            }}
-            duration={1500}
-            closeButton
-          />
-          <PaneRow />
-          <BookmarkRootSelectorDialog />
-        </div>
-      </TabProvider>
+      <TooltipProvider>
+        <TabProvider>
+          {/*
+            ステータス／NG／書き込み／自動スクロールの各プロバイダは PaneColumn 内へ移設した。
+            シェル直下には全ペイン共通のグローバル UI（トースト・ダイアログ）だけを残す。
+          */}
+          {/* data-theme を使ってダークモード CSS 変数を切り替える */}
+          <div className="browser-shell" data-theme={theme}>
+            <Toaster
+              position="top-right"
+              theme={theme === "dark" ? "dark" : "light"}
+              offset={{
+                top: isUrlBarExpanded ? "88px" : "64px",
+                right: "78px",
+              }}
+              toastOptions={{
+                style: {
+                  fontSize: "12px",
+                  padding: "8px 12px",
+                  minHeight: "auto",
+                  width: "fit-content",
+                },
+              }}
+              duration={1500}
+              closeButton
+            />
+            <PaneRow />
+            <BookmarkRootSelectorDialog />
+          </div>
+        </TabProvider>
+      </TooltipProvider>
     </MantineProvider>
   );
 };

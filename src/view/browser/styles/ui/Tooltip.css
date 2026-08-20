@@ -1,0 +1,24 @@
+/* Shared tooltip surface for Radix Tooltip and the pointer-following cursor tooltip. */
+.browser-tooltip,
+.cursor-tooltip {
+  max-width: min(360px, calc(100vw - 32px));
+  padding: var(--sys-space-2) var(--sys-space-3);
+  border: 1px solid var(--sys-color-tooltip-border);
+  border-radius: var(--sys-radius-md);
+  background: var(--sys-color-tooltip-surface);
+  color: var(--sys-color-tooltip-text);
+  box-shadow: var(--sys-shadow-tooltip);
+  font-size: var(--sys-font-size-sm);
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.browser-tooltip {
+  z-index: var(--sys-z-tooltip);
+}
+
+.cursor-tooltip {
+  position: fixed;
+  z-index: var(--sys-z-table-tooltip);
+  pointer-events: none;
+}
