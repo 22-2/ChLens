@@ -97,9 +97,10 @@
 | `8dafeef2 refactor(build): 未使用UIユーティリティ依存を削除`              | 直接参照のないclass-variance-authority / clsxを削除                               |
 | `96180b12 fix(settings): タブ間のカード幅とボタン配色を統一`              | supplementary panelをSettingsカード内へ配置し、幅とaccent buttonを統一            |
 | `8f037e5b refactor(settings): Surface構造を共通UIへ統一`                  | SettingsのsurfaceをHeader / Body / Actions / Stack契約へ統一                      |
+| `48998888 refactor(ui): Sonner通知をRadix Toastへ移行`                    | 外部store経由の共通Toast wrapperへ移行し、通知APIを維持したままSonnerを削除       |
 
 この状態でbrowser viewの自前スタイルは、foundation / layout / component / pageのplain CSSへ分割され、Mantine / Tailwind / PostCSSの依存は削除された。
-残っている外部UI依存はSonnerのみで、次はToast wrapperへの置換とSonner削除を進める。
+ToastもRadix wrapperへ移行済みで、次はContextMenuと残りのpopup overlayを共通契約へ揃える。
 
 ### 現在の分割済み範囲
 
@@ -107,7 +108,7 @@
 - `styles/layout/`: BrowserShell、PaneLayout、ContentArea
 - `styles/components/`: ContextMenu、CommandPalette、DataTable、MediaViewer、MiniWindow、NavigationBar、SearchBar、StatusBar、TabBar、ThreadPopup、Toast、WheelScrollIndicator、BottomPanel、WritePanel
 - `styles/ui/`: Spinner、Tooltip、Button、Alert、Accordion、Dialog、FormControls、Surface
-- `ui/`: Spinner、Tooltip、Button、Alert、Accordion、Dialog、FormControls、Surface（Radix / semantic wrapper）
+- `ui/`: Spinner、Tooltip、Button、Alert、Accordion、Dialog、FormControls、Surface、Toast（Radix / semantic wrapper）
 - `styles/pages/`: Home、BoardList、PageStatus、ThreadList、ThreadPage、ThreadResponse、SettingsPage、SettingsForm、BookmarkDialog、NGEditor
 - `browser.scss` / `bundle.scss`: 削除済み。browser viewの自前CSS入口は `styles/index.css` のみ
 - `pnpm lint:tokens`、`pnpm tsc6`、対象コンポーネントテスト、Chrome/Firefox/Tauriビルドを各区切りで確認済み
@@ -249,7 +250,7 @@ src/view/browser/
 - `--ref-*` は値の辞書、`--sys-*` は意味の辞書として扱い、consumerは`--sys-*`だけを使う。
 - `--cmp-*` はownerのCSS内で定義し、foundationへcomponent固有値を追加しない。
 - raw color、raw shadow、raw z-indexは `tokens.css` に限定する。画像・データ可視化は例外として理由を残す。
-- overlayは `minimap < table-tooltip < popup-layer < context-menu < tooltip < dialog < gesture` の順に重ね、親のstacking contextも同じ規約に従わせる。
+- overlayは `minimap < table-tooltip < popup-layer < context-menu < tooltip < toast < dialog < gesture` の順に重ね、親のstacking contextも同じ規約に従わせる。
 - dark themeは `[data-theme="dark"]` 内で`--ref-*`を直接上書きせず、`--sys-*`を別のreferenceへ束ねる。
 - hover、focus、selected、disabled、success、warning、dangerを共通語彙にする。
 - spacing、radius、shadow、font size、line height、motion、z-indexもtoken化する。
@@ -291,7 +292,7 @@ src/view/browser/
 | `.media-viewer*`                                  | `MediaViewer.css`                                                |
 | `.bottom-panel*`、`.write-panel*`                 | 各component CSS                                                  |
 | dark themeの個別上書き                            | semantic tokenへ移し、残った例外だけ所有元CSSへ移動              |
-| Sonner上書き                                      | Radix Toast移行までvendor CSSへ隔離                              |
+| Sonner上書き                                      | `styles/components/Toast.css` のRadix Toastへ移行済み            |
 
 既存class名はこの段階で変えない。切り出し後に、振る舞いがclass名へ依存する箇所を
 `data-ui="content-area"`、`data-popup-surface`、refなどへ徐々に変更し、見た目とDOM探索を分離する。
@@ -371,7 +372,8 @@ Command PaletteはRadixに同等の完成部品がない。別のUIライブラ�
 - `ui/Spinner`、`Tooltip`、`Button`、`Alert`、`Accordion`、`Dialog` wrapperを追加する。✅
 - `ui/FormControls`を追加し、Radix Checkbox / RadioGroupとsemantic inputを共通化する。✅
 - Settingsのsurfaceは共通 `ui/Surface` のsemantic cardで統一する。✅
-- `ui/ContextMenu`、`Toast`はRadixを直接散在させずwrapper化する。
+- `ui/Toast`をRadix wrapperと外部storeへ移行する。✅
+- `ui/ContextMenu`はRadixを直接散在させずwrapper化する。
 - wrapperはprops/refをDOMまでforwardし、Radixの `asChild` 合成を壊さないようにする。
 - Portal containerとz-indexの規約を定義する。
 - UI部品のinteraction testを追加する。
@@ -412,7 +414,7 @@ SettingsはMantine利用密度が最も高かったため、保存ロジック�
 - mini window、res popup、anchor previewは挙動を分類してPopover / HoverCard / 独自positioningのどれを使うか決める。
 - Command PaletteをRadix Dialog + 自前Command Listへ移す。✅
 - Spotlight storeを小さな外部storeへ置換する。✅
-- SonnerをRadix Toast wrapperへ置換し、`container.toast` の呼び出し側は変更しない。
+- SonnerをRadix Toast wrapperへ置換し、`container.toast` の呼び出し側は変更しない。✅
 
 **終了条件:** overlayのPortal、focus、Escape、z-index、nested interactionが統一され、MantineとSonnerを参照しない。
 
@@ -430,7 +432,7 @@ SettingsはMantine利用密度が最も高かったため、保存ロジック�
 - `class-variance-authority` ✅
 - `clsx` ✅
 - `sass` ✅
-- `sonner`（Radix Toast移行後）
+- `sonner` ✅
 
 併せて `tailwind.config.js`、`postcss.config.js`、古いshadcn向け `components.json` を削除し、
 `pnpm-lock.yaml` を更新した。✅
@@ -539,7 +541,7 @@ Mantine削除後の最終値で評価する。
 
 - browser viewのinteractive primitiveがRadix wrapper経由へ統一されている。
 - 単純な表示・form部品が共通UIまたはsemantic HTMLへ統一されている。
-- Mantine、Tailwind CSS、PostCSS、SCSSへの依存が削除されている。SonnerはToast移行まで残す。
+- Mantine、Tailwind CSS、PostCSS、SCSS、Sonnerへの依存が削除されている。
 - `browser.scss` が存在せず、各コンポーネント / feature / page単位のplain CSSになっている。✅
 - dark themeは原則としてsemantic tokenの差し替えだけで成立する。
 - productionで参照される自前CSS成果物が `browser.css` 1本だけである。
@@ -552,12 +554,12 @@ Mantine削除後の最終値で評価する。
 ## 次に着手する範囲
 
 foundation、token、CSS分割、SCSSビルド経路、Mantine / Tailwind依存の整理は完了した。
-次の実装単位はSonnerを共通Toastへ置換し、overlayの契約を完成させること。
+Toastの共通化とSonner削除まで完了し、次はContextMenuのRadix wrapper化へ進む。
 
 1. `ui/Spinner`、`Tooltip`、`Button`、`Alert`、`Accordion`、`Dialog`、`FormControls`、`Surface`で低リスク部品を置換済み。✅
 2. Settingsのレイアウト、入力、補助panelを共通UIへ移し、カード幅とボタン配色を統一済み。✅
-3. Radix ContextMenu / Toast wrapperを導入し、Portal・focus・z-index契約を共通化する。
-4. SonnerをRadix Toastへ置換し、`container.toast`の呼び出し側を維持する。
-5. Toast移行後にSonnerを削除し、依存・lockfile・bundle差分を確認する。
+3. `ui/Toast` と外部storeを導入し、`container.toast`の呼び出し側を維持する。✅
+4. Sonnerを削除し、依存・lockfile・bundle差分を確認する。✅
+5. 自前ContextMenuをRadix ContextMenu wrapperへ移行し、nested popup・focus・z-indexを回帰確認する。
 
 各段階でChrome / Firefox / Tauri buildと対象interaction testを実行し、最後にvisual baselineを追加する。
