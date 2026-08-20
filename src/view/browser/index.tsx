@@ -2,6 +2,10 @@ import "@mantine/core/styles.css";
 import "@mantine/spotlight/styles.css";
 import { createRoot } from "react-dom/client";
 import "src/app";
+import "src/view/browser/styles/foundation/base.css";
+import "src/view/browser/styles/foundation/reset.css";
+import "src/view/browser/styles/foundation/themes.css";
+import "src/view/browser/styles/foundation/tokens.css";
 import "src/bundle.scss";
 import { BrowserApp } from "src/view/browser/App";
 

@@ -1,0 +1,17 @@
+body {
+  color: var(--color-text);
+  background: var(--color-surface);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 14px;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+::selection {
+  background: var(--color-selection);
+}

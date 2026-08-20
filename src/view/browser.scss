@@ -2,59 +2,41 @@
    Browser View - Chrome風タブブラウザUI
    ========================================================================== */
 
-/* 全体設定: コンテンツ最大化のためマージン/パディングを排除 */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-html,
-body {
-  height: 100%;
-  overflow: hidden;
-}
-
 /* --- Shell --- */
 .browser-shell {
-  /* --- 基本サーフェス --- */
-  --browser-color-bg: #fff;
-  --browser-color-tab-strip-bg: #dee1e6;
-  --browser-color-tab-strip-hover: rgba(255, 255, 255, 0.4);
-  --browser-color-tab-strip-active-hover: #d4d7da;
-  --browser-color-surface-muted: #f1f3f4;
-  --browser-color-border: #dadce0;
-  /* --- テキスト --- */
-  --browser-color-text-primary: #202124;
-  --browser-color-text-muted: #5f6368;
-  --browser-color-text-disabled: #c4c7c9;
-  --browser-color-placeholder: #9aa0a6;
-  --browser-color-selection: #c8d7f5;
-  --browser-color-accent: #1a73e8;
-  --browser-color-accent-hover: #1765cc;
-  /* フォーカスリング・アクティブ下線は accent より明るい青にする */
-  --browser-color-focus-ring: #1a73e8;
-  --browser-color-hover-overlay: rgba(0, 0, 0, 0.12);
-  --browser-color-status-hover-overlay: rgba(0, 0, 0, 0.1);
-  /* --- フォーム入力 --- */
-  --browser-color-input-bg: #fff;
-  --browser-color-input-border: #dadce0;
-  /* --- セマンティック --- */
-  --browser-color-success: #0b8043;
-  --browser-color-error: #d93025;
-  --browser-color-warning: #c47800;
-  /* --- レス強調色（レス番号/返信/IDで共通利用） --- */
-  --browser-color-res-num: #0000cc;
-  --browser-color-res-heat-warm: #c47800;
-  --browser-color-res-heat-hot: #d93025;
-  --browser-color-res-reply-link: #1a73e8;
-  --browser-color-res-id-muted: #888;
-  --browser-color-res-id-cool: #1a73e8;
-  /* --- ステータスバー --- */
-  --browser-color-status-active-bg: #007acc;
-  --browser-color-status-active-fg: #fff;
-  --browser-color-status-default-fg: var(--browser-color-text-muted);
-  --browser-color-list-hover-bg: #f1f3f4;
+  /* 既存class用のtoken名を残し、画面単位の移行と表示差分を分離する。 */
+  --browser-color-bg: var(--color-surface);
+  --browser-color-tab-strip-bg: var(--color-tab-strip);
+  --browser-color-tab-strip-hover: var(--color-tab-strip-hover);
+  --browser-color-tab-strip-active-hover: var(--color-tab-strip-active-hover);
+  --browser-color-surface-muted: var(--color-surface-muted);
+  --browser-color-border: var(--color-border);
+  --browser-color-text-primary: var(--color-text);
+  --browser-color-text-muted: var(--color-text-muted);
+  --browser-color-text-disabled: var(--color-text-disabled);
+  --browser-color-placeholder: var(--color-placeholder);
+  --browser-color-selection: var(--color-selection);
+  --browser-color-accent: var(--color-accent);
+  --browser-color-accent-hover: var(--color-accent-hover);
+  --browser-color-accent-fg: var(--color-accent-fg);
+  --browser-color-focus-ring: var(--color-focus-ring);
+  --browser-color-hover-overlay: var(--color-hover-overlay);
+  --browser-color-status-hover-overlay: var(--color-status-hover-overlay);
+  --browser-color-input-bg: var(--color-input-bg);
+  --browser-color-input-border: var(--color-input-border);
+  --browser-color-success: var(--color-success);
+  --browser-color-error: var(--color-error);
+  --browser-color-warning: var(--color-warning);
+  --browser-color-res-num: var(--color-res-num);
+  --browser-color-res-heat-warm: var(--color-res-heat-warm);
+  --browser-color-res-heat-hot: var(--color-res-heat-hot);
+  --browser-color-res-reply-link: var(--color-res-reply-link);
+  --browser-color-res-id-muted: var(--color-res-id-muted);
+  --browser-color-res-id-cool: var(--color-res-id-cool);
+  --browser-color-status-active-bg: var(--color-status-active-bg);
+  --browser-color-status-active-fg: var(--color-status-active-fg);
+  --browser-color-status-default-fg: var(--color-text-muted);
+  --browser-color-list-hover-bg: var(--color-list-hover-bg);
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -63,7 +45,7 @@ body {
     -apple-system,
     "Segoe UI",
     sans-serif;
-  --browser-font-mono: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+  --browser-font-mono: var(--font-mono);
   font-size: 14px;
   color: var(--browser-color-text-primary);
   background: var(--browser-color-bg);
@@ -3915,46 +3897,6 @@ body {
    ========================================================================== */
 
 .browser-shell[data-theme="dark"] {
-  /* --- 基本サーフェス --- */
-  --browser-color-bg: #202124;
-  /* タブストリップ背景: Chrome dark の --color-toolbar に相当 */
-  --browser-color-tab-strip-bg: #292a2d;
-  --browser-color-tab-strip-hover: rgba(255, 255, 255, 0.08);
-  --browser-color-tab-strip-active-hover: rgba(255, 255, 255, 0.16);
-  --browser-color-surface-muted: #35363a;
-  --browser-color-border: #3c4043;
-  /* --- テキスト --- */
-  --browser-color-text-primary: #e8eaed;
-  --browser-color-text-muted: #9aa0a6;
-  --browser-color-text-disabled: #5f6368;
-  --browser-color-placeholder: #5f6368;
-  --browser-color-selection: rgba(26, 115, 232, 0.4);
-  /* --- インタラクティブ (アクセント) --- */
-  --browser-color-accent: #1a6fc4;
-  --browser-color-accent-hover: #1558a4;
-  --browser-color-accent-fg: #fff;
-  /* ダークモードのフォーカスリングは視認性を上げるため明るい青 */
-  --browser-color-focus-ring: #8ab4f8;
-  --browser-color-hover-overlay: rgba(255, 255, 255, 0.14);
-  --browser-color-status-hover-overlay: rgba(255, 255, 255, 0.12);
-  /* --- フォーム入力 --- */
-  --browser-color-input-bg: #35363a;
-  --browser-color-input-border: #5f6368;
-  /* --- セマンティック --- */
-  --browser-color-success: #81c995;
-  --browser-color-error: #f28b82;
-  --browser-color-warning: #fba94c;
-  --browser-color-res-num: #8ab4f8;
-  --browser-color-res-heat-warm: #fba94c;
-  --browser-color-res-heat-hot: #f28b82;
-  --browser-color-res-reply-link: #8ab4f8;
-  --browser-color-res-id-muted: #9aa0a6;
-  --browser-color-res-id-cool: #8ab4f8;
-  /* --- ステータスバー --- */
-  --browser-color-status-active-bg: #1a6fc4;
-  --browser-color-status-active-fg: #fff;
-  --browser-color-list-hover-bg: #3c4043;
-
   /* スクロールバーなどのブラウザ標準UIをダークに */
   color-scheme: dark;
 

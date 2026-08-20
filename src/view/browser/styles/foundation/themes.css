@@ -1,0 +1,66 @@
+/* Theme values live here so dark mode does not need to duplicate component selectors. */
+.browser-shell[data-theme="dark"] {
+  --color-neutral-0: #202124;
+  --color-neutral-50: #292a2d;
+  --color-neutral-100: #35363a;
+  --color-neutral-200: #292a2d;
+  --color-neutral-300: #3c4043;
+  --color-neutral-500: #5f6368;
+  --color-neutral-600: #9aa0a6;
+  --color-neutral-950: #e8eaed;
+  --color-blue-600: #1a6fc4;
+  --color-blue-700: #1558a4;
+  --color-green-700: #81c995;
+  --color-orange-700: #fba94c;
+  --color-red-600: #f28b82;
+
+  --color-surface: #202124;
+  --color-surface-muted: #35363a;
+  --color-tab-strip: #292a2d;
+  --color-tab-strip-hover: rgb(255 255 255 / 8%);
+  --color-tab-strip-active-hover: rgb(255 255 255 / 16%);
+  --color-border: #3c4043;
+  --color-text: #e8eaed;
+  --color-text-muted: #9aa0a6;
+  --color-text-disabled: #5f6368;
+  --color-placeholder: #5f6368;
+  --color-selection: rgb(26 115 232 / 40%);
+  --color-accent: #1a6fc4;
+  --color-accent-hover: #1558a4;
+  --color-focus-ring: #8ab4f8;
+  --color-hover-overlay: rgb(255 255 255 / 14%);
+  --color-status-hover-overlay: rgb(255 255 255 / 12%);
+  --color-input-bg: #35363a;
+  --color-input-border: #5f6368;
+  --color-success: #81c995;
+  --color-error: #f28b82;
+  --color-warning: #fba94c;
+  --color-res-num: #8ab4f8;
+  --color-res-heat-warm: #fba94c;
+  --color-res-heat-hot: #f28b82;
+  --color-res-reply-link: #8ab4f8;
+  --color-res-id-muted: #9aa0a6;
+  --color-res-id-cool: #8ab4f8;
+  --color-status-active-bg: #1a6fc4;
+  --color-list-hover-bg: #3c4043;
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+@media (forced-colors: active) {
+  *,
+  *::before,
+  *::after {
+    forced-color-adjust: auto;
+  }
+}
