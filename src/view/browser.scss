@@ -1022,57 +1022,6 @@
 }
 
 /* ==========================================================================
-   Search Bar - Ctrl+F 検索バー
-   ========================================================================== */
-.search-bar {
-  display: flex;
-  align-items: center;
-  padding: 4px 8px;
-  background: #f8f9fa;
-  border-bottom: 1px solid #dadce0;
-  gap: 8px;
-}
-
-.search-bar__input {
-  flex: 1;
-  height: 28px;
-  padding: 0 8px;
-  border: 1px solid #dadce0;
-  border-radius: 4px;
-  font-size: 13px;
-  outline: none;
-  font-family: inherit;
-}
-
-.search-bar__input:focus {
-  border-color: #1a73e8;
-}
-
-.search-bar__count {
-  font-size: 12px;
-  color: #70757a;
-  white-space: nowrap;
-}
-
-.search-bar__close {
-  width: 24px;
-  height: 24px;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #5f6368;
-  font-size: 14px;
-}
-
-.search-bar__close:hover {
-  background: #e8eaed;
-}
-
-/* ==========================================================================
    Res - ID/返信のクリック可能スタイル
    ========================================================================== */
 .res__id--link {
@@ -2820,34 +2769,6 @@
 
   .res--highlighted-persistent {
     background-color: rgba(138, 180, 248, 0.15);
-  }
-
-  /* --- 検索バー --- */
-  .search-bar {
-    background: #292a2d;
-    border-bottom-color: #3c4043;
-  }
-
-  .search-bar__input {
-    background: #35363a;
-    border-color: #5f6368;
-    color: #e8eaed;
-
-    &:focus {
-      border-color: #8ab4f8;
-    }
-  }
-
-  .search-bar__count {
-    color: #9aa0a6;
-  }
-
-  .search-bar__close {
-    color: #9aa0a6;
-
-    &:hover {
-      background: #3c4043;
-    }
   }
 
   /* --- レスポップアップ / アンカープレビュー --- */

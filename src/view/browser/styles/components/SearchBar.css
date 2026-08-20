@@ -1,0 +1,54 @@
+/* Ctrl+F search bar. Keep the legacy class names for existing DOM consumers. */
+.search-bar {
+  display: flex;
+  align-items: center;
+  padding: var(--sys-space-2) var(--sys-space-4);
+  background: var(--sys-color-table-heading-bg);
+  border-bottom: 1px solid var(--sys-color-border);
+  gap: var(--sys-space-4);
+}
+
+.search-bar__input {
+  flex: 1;
+  height: 28px;
+  padding: 0 var(--sys-space-4);
+  border: 1px solid var(--sys-color-input-border);
+  border-radius: var(--sys-radius-md);
+  font-size: var(--sys-font-size-md);
+  outline: none;
+  font-family: inherit;
+  background: var(--sys-color-input-bg);
+  color: var(--sys-color-text);
+}
+
+.search-bar__input::placeholder {
+  color: var(--sys-color-placeholder);
+}
+
+.search-bar__input:focus {
+  border-color: var(--sys-color-focus-ring);
+}
+
+.search-bar__count {
+  font-size: var(--sys-font-size-sm);
+  color: var(--sys-color-table-muted);
+  white-space: nowrap;
+}
+
+.search-bar__close {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-md);
+}
+
+.search-bar__close:hover {
+  background: var(--sys-color-surface-muted);
+}
