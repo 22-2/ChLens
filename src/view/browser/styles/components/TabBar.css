@@ -1,0 +1,187 @@
+/* Tab Bar - VS Code風タブストリップ */
+.tab-bar {
+  display: flex;
+  align-items: center;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 34px;
+  padding: 0 4px;
+  background: var(--browser-color-tab-strip-bg);
+  border-bottom: 1px solid var(--browser-color-border);
+  user-select: none;
+}
+
+.tab-list {
+  display: flex;
+  flex: 1 1 auto;
+  align-self: stretch;
+  align-items: stretch;
+  min-width: 0;
+  height: 100%;
+  gap: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  padding-right: 4px;
+}
+
+.tab-list::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.tab {
+  position: relative;
+  display: flex;
+  flex: 0 0 180px;
+  align-items: center;
+  min-width: 72px;
+  max-width: 180px;
+  height: 34px;
+  padding: 0 8px 0 10px;
+  border: 0;
+  border-right: 1px solid var(--browser-color-border);
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  color: var(--browser-color-text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.1s, color 0.1s, flex-grow 0.1s, max-width 0.1s;
+}
+
+.tab--active {
+  flex-grow: 0;
+  max-width: 240px;
+  background: var(--browser-color-bg);
+  border-bottom-color: var(--browser-color-accent);
+  color: var(--browser-color-text-primary);
+}
+
+.tab:not(.tab--active):hover {
+  background: var(--browser-color-tab-strip-hover);
+}
+
+.tab--highlighted {
+  animation: surface-highlight-flash 1.5s ease-out;
+}
+
+.tab--dragging {
+  z-index: 3;
+  opacity: 0.95;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  /* dnd-kitがtransformを管理するため、GPUレイヤーだけを予約する。 */
+  will-change: transform;
+}
+
+.tab__title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 34px;
+}
+
+.tab__auto-refresh-indicator {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  margin-right: 8px;
+  margin-left: 4px;
+  border-radius: 50%;
+  background: var(--browser-color-error);
+  opacity: 0.85;
+}
+
+.tab__auto-refresh-indicator--inactive {
+  border-radius: 2px;
+  background: var(--browser-color-accent);
+}
+
+.tab__close {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-left: 4px;
+  border: none;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--browser-color-text-muted);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.tab__close:hover {
+  background: var(--browser-color-tab-strip-active-hover);
+}
+
+.tab-bar__add,
+.tab-bar__refresh {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--browser-color-text-muted);
+  cursor: pointer;
+}
+
+.tab-bar__add {
+  align-self: center;
+  width: 28px;
+  height: 28px;
+  margin: 0 0 0 2px;
+  border-radius: 2px;
+  line-height: 0;
+}
+
+.tab-bar__refresh {
+  align-self: center;
+  width: 30px;
+  height: 30px;
+  margin: 0 6px;
+  border-radius: 2px;
+  transition: background 0.1s, color 0.1s;
+}
+
+.tab-bar__refresh-divider {
+  flex-shrink: 0;
+  width: 1px;
+  height: 18px;
+  margin-right: 6px;
+  background: rgba(32, 33, 36, 0.18);
+}
+
+.tab-bar__refresh:hover:not(:disabled) {
+  background: var(--browser-color-tab-strip-hover);
+  color: var(--browser-color-text-primary);
+}
+
+.tab-bar__refresh:disabled {
+  color: var(--browser-color-text-disabled);
+  cursor: default;
+}
+
+.tab-bar__add:hover {
+  background: var(--browser-color-tab-strip-hover);
+}
+
+.tab--pinned {
+  flex: 0 0 36px;
+  min-width: 36px;
+  max-width: 36px;
+  padding: 0;
+  justify-content: center;
+}
+
+.tab--pinned .tab__title {
+  font-size: 0;
+}
+
+.tab--pinned::before {
+  font-size: 12px;
+}

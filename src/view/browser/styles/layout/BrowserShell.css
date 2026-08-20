@@ -1,5 +1,13 @@
 /* Browser shell token compatibility layer. Existing selectors still use --browser-* during migration. */
 .browser-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 14px;
+  color: var(--browser-color-text-primary);
+  background: var(--browser-color-bg);
+
   /* Keep the legacy names until feature CSS is migrated one area at a time. */
   --browser-color-bg: var(--color-surface);
   --browser-color-tab-strip-bg: var(--color-tab-strip);
@@ -34,4 +42,12 @@
   --browser-color-status-default-fg: var(--color-text-muted);
   --browser-color-list-hover-bg: var(--color-list-hover-bg);
   --browser-font-mono: var(--font-mono);
+}
+
+.browser-shell__chrome {
+  flex-shrink: 0;
+}
+
+.browser-shell > .content-area {
+  min-height: 0;
 }
