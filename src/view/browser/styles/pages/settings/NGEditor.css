@@ -1,0 +1,97 @@
+/* Monaco wrapper and the expandable NG DSL help block. */
+.ng-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sys-space-6);
+  margin-top: var(--sys-space-6);
+  margin-right: var(--sys-space-12);
+  margin-left: var(--sys-space-12);
+}
+
+.ng-editor__help {
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-xl);
+  overflow: hidden;
+  margin-top: var(--sys-space-6);
+}
+
+.ng-editor__help-summary {
+  padding: var(--sys-space-4) var(--sys-space-6);
+  font-size: var(--sys-font-size-md);
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--sys-color-surface-muted);
+  color: var(--sys-color-text);
+  user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  transition: background var(--sys-duration-normal);
+}
+
+.ng-editor__help-summary::-webkit-details-marker {
+  display: none;
+}
+
+.ng-editor__help-summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: var(--sys-space-4);
+  font-size: var(--sys-font-size-xs);
+  transition: transform var(--sys-duration-normal);
+  color: var(--sys-color-text-muted);
+}
+
+.ng-editor__help-summary:hover {
+  background: var(--sys-color-border);
+}
+
+.ng-editor__help[open] > .ng-editor__help-summary {
+  border-bottom: 1px solid var(--sys-color-border);
+}
+
+.ng-editor__help[open] > .ng-editor__help-summary::before {
+  transform: rotate(90deg);
+}
+
+.ng-editor__help-body {
+  padding: var(--sys-space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sys-space-6);
+}
+
+.ng-editor__help-label {
+  font-size: var(--sys-font-size-xs);
+  font-weight: 700;
+  color: var(--sys-color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: -4px;
+}
+
+.ng-editor__help-code {
+  margin: 0;
+  padding: var(--sys-space-6);
+  background: var(--sys-color-surface-muted);
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-lg);
+  font-family: var(--sys-font-family-mono);
+  font-size: var(--sys-font-size-sm);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--sys-color-text);
+}
+
+.ng-editor__help-code-editor {
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-lg);
+  overflow: hidden;
+}
+
+.ng-editor__help-note {
+  margin: 0;
+  font-size: var(--sys-font-size-sm);
+  color: var(--sys-color-text-muted);
+}
