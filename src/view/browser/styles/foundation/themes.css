@@ -37,6 +37,18 @@
   --sys-color-status-active-item: var(--ref-color-alpha-white-18);
   --sys-color-status-active-divider: var(--ref-color-alpha-white-35);
   --sys-color-scrim: var(--ref-color-alpha-black-70);
+  --sys-color-table-heading-bg: var(--ref-color-neutral-50);
+  --sys-color-table-heading-border: var(--ref-color-neutral-1000);
+  --sys-color-table-row-border: var(--ref-color-neutral-75);
+  --sys-color-table-muted: var(--ref-color-neutral-550);
+  --sys-color-table-link: var(--ref-color-blue-link);
+  --sys-color-table-highlight-bg: var(--ref-color-yellow-100);
+  --sys-color-table-highlight-hover-bg: var(--ref-color-yellow-200);
+  --sys-color-table-highlight-fg: var(--ref-color-neutral-950);
+  --sys-color-table-label-bg: var(--ref-color-alpha-black-08);
+  --sys-color-tooltip-surface: var(--ref-color-dark-neutral-0);
+  --sys-color-tooltip-text: var(--ref-color-neutral-0);
+  --sys-color-tooltip-border: var(--ref-color-alpha-white-16);
   color-scheme: light;
 }
 
@@ -78,6 +90,18 @@
   --sys-color-status-active-item: var(--ref-color-alpha-white-18);
   --sys-color-status-active-divider: var(--ref-color-alpha-white-18);
   --sys-color-scrim: var(--ref-color-alpha-black-70);
+  --sys-color-table-heading-bg: var(--ref-color-dark-neutral-50);
+  --sys-color-table-heading-border: var(--ref-color-dark-neutral-300);
+  --sys-color-table-row-border: var(--ref-color-dark-neutral-300);
+  --sys-color-table-muted: var(--ref-color-dark-neutral-600);
+  --sys-color-table-link: var(--ref-color-dark-blue-300);
+  --sys-color-table-highlight-bg: var(--ref-color-dark-yellow-700);
+  --sys-color-table-highlight-hover-bg: var(--ref-color-dark-yellow-800);
+  --sys-color-table-highlight-fg: var(--ref-color-black);
+  --sys-color-table-label-bg: var(--ref-color-alpha-white-36);
+  --sys-color-tooltip-surface: var(--ref-color-dark-neutral-0);
+  --sys-color-tooltip-text: var(--ref-color-neutral-0);
+  --sys-color-tooltip-border: var(--ref-color-alpha-white-16);
   color-scheme: dark;
 }
 

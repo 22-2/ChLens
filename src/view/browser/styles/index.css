@@ -9,6 +9,7 @@
 @import "./components/StatusBar.css";
 @import "./components/TabBar.css";
 @import "./components/ContextMenu.css";
+@import "./components/DataTable.css";
 @import "./components/NavigationBar.css";
 @import "./components/WheelScrollIndicator.css";
 @import "./pages/PageStatus.css";

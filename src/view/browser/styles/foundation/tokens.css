@@ -15,12 +15,14 @@
   /* Reference palette: light theme. */
   --ref-color-neutral-0: #fff;
   --ref-color-neutral-50: #f8f9fa;
+  --ref-color-neutral-75: #f0f0f0;
   --ref-color-neutral-100: #f1f3f4;
   --ref-color-neutral-200: #dee1e6;
   --ref-color-neutral-300: #dadce0;
   --ref-color-neutral-400: #c4c7c9;
   --ref-color-neutral-450: #bdc1c6;
   --ref-color-neutral-500: #9aa0a6;
+  --ref-color-neutral-550: #70757a;
   --ref-color-neutral-600: #5f6368;
   --ref-color-neutral-700: #3c4043;
   --ref-color-neutral-800: #35363a;
@@ -34,6 +36,10 @@
   --ref-color-blue-700: #1765cc;
   --ref-color-blue-800: #007acc;
   --ref-color-blue-900: #0000cc;
+  --ref-color-blue-link: #1a0dab;
+  --ref-color-yellow-100: #ffffcc;
+  --ref-color-yellow-200: #fff5a8;
+  --ref-color-black: #000;
   --ref-color-green-700: #0b8043;
   --ref-color-orange-700: #c47800;
   --ref-color-red-600: #d93025;
@@ -50,12 +56,15 @@
   --ref-color-dark-blue-300: #8ab4f8;
   --ref-color-dark-blue-600: #1a6fc4;
   --ref-color-dark-blue-700: #1558a4;
+  --ref-color-dark-yellow-700: #a56f00;
+  --ref-color-dark-yellow-800: #b97f00;
   --ref-color-dark-green-700: #81c995;
   --ref-color-dark-orange-700: #fba94c;
   --ref-color-dark-red-600: #f28b82;
 
   /* Reference effects and typography. */
   --ref-color-alpha-black-05: rgb(0 0 0 / 5%);
+  --ref-color-alpha-black-08: rgb(0 0 0 / 8%);
   --ref-color-alpha-black-10: rgb(0 0 0 / 10%);
   --ref-color-alpha-black-12: rgb(0 0 0 / 12%);
   --ref-color-alpha-black-14: rgb(0 0 0 / 14%);
@@ -73,6 +82,7 @@
   --ref-color-alpha-white-18: rgb(255 255 255 / 18%);
   --ref-color-alpha-white-20: rgb(255 255 255 / 20%);
   --ref-color-alpha-white-35: rgb(255 255 255 / 35%);
+  --ref-color-alpha-white-36: rgb(255 255 255 / 36%);
   --ref-color-alpha-white-40: rgb(255 255 255 / 40%);
   --ref-color-alpha-blue-04: rgb(26 115 232 / 4%);
   --ref-color-alpha-blue-08: rgb(26 115 232 / 8%);
@@ -107,6 +117,7 @@
   --ref-radius-xl: 8px;
   --ref-radius-pill: 999px;
   --ref-shadow-popup: 0 2px 8px var(--ref-color-alpha-black-15);
+  --ref-shadow-tooltip: 0 2px 8px var(--ref-color-alpha-black-24);
   --ref-shadow-dialog: 0 18px 44px var(--ref-color-alpha-black-30);
   --ref-shadow-focus: 0 1px 6px var(--ref-color-alpha-black-24);
   --ref-shadow-floating: 0 8px 24px var(--ref-color-alpha-black-24);
@@ -168,6 +179,7 @@
   --sys-radius-xl: var(--ref-radius-xl);
   --sys-radius-pill: var(--ref-radius-pill);
   --sys-shadow-popup: var(--ref-shadow-popup);
+  --sys-shadow-tooltip: var(--ref-shadow-tooltip);
   --sys-shadow-dialog: var(--ref-shadow-dialog);
   --sys-shadow-focus: var(--ref-shadow-focus);
   --sys-shadow-floating: var(--ref-shadow-floating);

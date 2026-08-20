@@ -248,7 +248,7 @@ src/view/browser/
 | `.context-menu*`                                  | Radix移行までは `ContextMenu.css`、移行後は `ui/ContextMenu.css` |
 | `.home-page*`、`.board-*`                         | 各page / feature CSS                                             |
 | `.settings-*`、`.ng-editor*`                      | `pages/settings`配下の複数CSS                                    |
-| `.simple-data-table*`、`.cursor-tooltip*`         | table feature CSSとTooltip CSS                                   |
+| `.simple-data-table*`、`.cursor-tooltip*`         | `styles/components/DataTable.css`                                |
 | `.thread-page*`、`.res*`                          | ThreadPage CSSとThreadResponse feature CSS                       |
 | `.res-popup*`、`.anchor-preview*`、`.reply-tree*` | popup featureごとのCSS                                           |
 | `.media-viewer*`                                  | `MediaViewer.css`                                                |

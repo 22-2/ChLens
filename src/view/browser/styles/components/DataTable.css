@@ -1,0 +1,310 @@
+/* Shared table styles for SimpleDataTable and VirtualizedDataTable. */
+.simple-data-table,
+.thread-list {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  /* Keep the title column within the viewport while rows are virtualized. */
+  table-layout: fixed;
+}
+
+.simple-data-table__scroller {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+}
+
+.simple-data-table__row,
+.thread-list__row {
+  cursor: pointer;
+  border-bottom: 1px solid var(--sys-color-table-row-border);
+}
+
+.simple-data-table__row:hover,
+.thread-list__row:hover {
+  background: var(--sys-color-list-hover-bg);
+}
+
+.cursor-tooltip {
+  position: fixed;
+  z-index: var(--sys-z-table-tooltip);
+  max-width: min(360px, calc(100vw - 32px));
+  padding: 4px 7px;
+  border: 1px solid var(--sys-color-tooltip-border);
+  border-radius: var(--sys-radius-md);
+  background: var(--sys-color-tooltip-surface);
+  color: var(--sys-color-tooltip-text);
+  box-shadow: var(--sys-shadow-tooltip);
+  font-size: var(--sys-font-size-sm);
+  line-height: 1.3;
+  pointer-events: none;
+  overflow-wrap: anywhere;
+}
+
+.simple-data-table__num,
+.thread-list__num {
+  width: 40px;
+  padding: 6px 4px 6px 12px;
+  text-align: right;
+  color: var(--sys-color-table-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.simple-data-table__title,
+.thread-list__title {
+  padding: 6px 8px;
+  color: var(--sys-color-table-link);
+  /* Keep row height stable for virtualized scrolling; full text is in a tooltip. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.simple-data-table__count,
+.thread-list__count {
+  width: 60px;
+  padding: 6px 12px 6px 4px;
+  text-align: right;
+  color: var(--sys-color-table-muted);
+  white-space: nowrap;
+}
+
+.simple-data-table__th--heat,
+.thread-list__th--heat {
+  width: 80px;
+  padding-right: 12px;
+  text-align: right;
+}
+
+.simple-data-table__heat,
+.thread-list__heat {
+  width: 80px;
+  padding: 6px 12px 6px 4px;
+  text-align: right;
+  color: var(--sys-color-table-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.simple-data-table__history-board,
+.simple-data-table__writehistory-name,
+.simple-data-table__writehistory-mail {
+  padding: 6px 8px;
+  color: var(--sys-color-text-muted);
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.simple-data-table__history-board {
+  width: 120px;
+}
+
+.simple-data-table__history-date,
+.simple-data-table__writehistory-date,
+.simple-data-table__writehistory-res {
+  color: var(--sys-color-text-muted);
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.simple-data-table__history-date,
+.simple-data-table__writehistory-date {
+  width: 136px;
+  padding: 6px 12px 6px 4px;
+}
+
+.simple-data-table__writehistory-res {
+  width: 56px;
+  padding: 6px 12px 6px 4px;
+}
+
+.simple-data-table__writehistory-name,
+.simple-data-table__writehistory-mail {
+  width: 96px;
+}
+
+.simple-data-table__writehistory-message {
+  padding: 6px 8px;
+  color: var(--sys-color-text);
+  overflow-wrap: anywhere;
+}
+
+.simple-data-table__spacer > td {
+  padding: 0;
+  border: 0;
+}
+
+.simple-data-table thead,
+.thread-list thead {
+  position: sticky;
+  top: 0;
+  z-index: var(--sys-z-local);
+  background: var(--sys-color-table-heading-bg);
+}
+
+.simple-data-table__th,
+.thread-list__th {
+  padding: 8px 4px;
+  border-bottom: 2px solid var(--sys-color-table-heading-border);
+  color: var(--sys-color-text-muted);
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.simple-data-table__th:hover,
+.thread-list__th:hover {
+  background: var(--sys-color-table-heading-border);
+}
+
+.simple-data-table__th--num,
+.thread-list__th--num {
+  width: 40px;
+  padding-right: 8px;
+  padding-left: 12px;
+  text-align: right;
+}
+
+.simple-data-table__th--title,
+.thread-list__th--title {
+  padding-left: 8px;
+}
+
+.simple-data-table__th--count,
+.thread-list__th--count {
+  width: 60px;
+  padding-right: 12px;
+  text-align: right;
+}
+
+.simple-data-table__th--history-board,
+.simple-data-table__th--writehistory-name,
+.simple-data-table__th--writehistory-mail {
+  padding: 8px;
+  text-align: left;
+}
+
+.simple-data-table__th--history-board {
+  width: 120px;
+}
+
+.simple-data-table__th--history-date,
+.simple-data-table__th--writehistory-date,
+.simple-data-table__th--writehistory-res {
+  padding-right: 12px;
+  text-align: right;
+}
+
+.simple-data-table__th--history-date,
+.simple-data-table__th--writehistory-date {
+  width: 136px;
+}
+
+.simple-data-table__th--writehistory-res {
+  width: 56px;
+}
+
+.simple-data-table__th--writehistory-name,
+.simple-data-table__th--writehistory-mail {
+  width: 96px;
+}
+
+.simple-data-table__row--ng,
+.thread-list__row--ng {
+  opacity: 0.4;
+}
+
+.simple-data-table__divider-row > td {
+  padding: 0;
+  color: var(--sys-color-text);
+}
+
+.simple-data-table__divider {
+  display: flex;
+  width: 100%;
+  min-height: 32px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  box-sizing: border-box;
+  padding: 7px 10px;
+  border: 0;
+  border-left: 8px solid var(--data-table-divider-accent, transparent);
+  border-top: 1px solid var(--sys-color-border);
+  border-bottom: 1px solid var(--sys-color-border);
+  background: var(--sys-color-surface-muted);
+  color: var(--sys-color-text);
+  font: inherit;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: left;
+  appearance: none;
+}
+
+.simple-data-table__divider > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.simple-data-table__divider > svg {
+  flex: 0 0 auto;
+}
+
+.simple-data-table__divider--collapsible {
+  cursor: pointer;
+}
+
+.simple-data-table__divider--collapsible:hover {
+  background: var(--sys-color-list-hover-bg);
+}
+
+.simple-data-table__row--highlight,
+.thread-list__row--highlight {
+  background: var(--thread-list-highlight-bg, var(--sys-color-table-highlight-bg));
+  color: var(--sys-color-table-highlight-fg);
+  font-weight: 600;
+  transition: background 0.1s;
+}
+
+.simple-data-table__row--highlight:hover,
+.thread-list__row--highlight:hover {
+  background: var(--thread-list-highlight-hover-bg, var(--sys-color-table-highlight-hover-bg));
+}
+
+.simple-data-table__row--highlight .simple-data-table__num,
+.simple-data-table__row--highlight .simple-data-table__title,
+.simple-data-table__row--highlight .simple-data-table__count,
+.simple-data-table__row--highlight .simple-data-table__heat,
+.thread-list__row--highlight .thread-list__num,
+.thread-list__row--highlight .thread-list__title,
+.thread-list__row--highlight .thread-list__count,
+.thread-list__row--highlight .thread-list__heat {
+  color: inherit;
+}
+
+.simple-data-table__label,
+.thread-list__label {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: var(--sys-radius-sm);
+  background: var(--sys-color-table-label-bg);
+  color: inherit;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.simple-data-table__row--highlight .simple-data-table__label,
+.thread-list__row--highlight .thread-list__label {
+  color: inherit;
+}
