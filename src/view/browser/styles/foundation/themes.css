@@ -14,6 +14,7 @@
   --sys-color-accent: var(--ref-color-blue-600);
   --sys-color-accent-hover: var(--ref-color-blue-700);
   --sys-color-accent-fg: var(--ref-color-neutral-0);
+  --sys-color-link-visited: var(--ref-color-purple-700);
   --sys-color-focus-ring: var(--ref-color-blue-600);
   --sys-color-hover-overlay: var(--ref-color-alpha-black-12);
   --sys-color-status-hover-overlay: var(--ref-color-alpha-black-10);
@@ -73,6 +74,7 @@
   --sys-color-accent: var(--ref-color-dark-blue-600);
   --sys-color-accent-hover: var(--ref-color-dark-blue-700);
   --sys-color-accent-fg: var(--ref-color-neutral-0);
+  --sys-color-link-visited: var(--ref-color-dark-purple-300);
   --sys-color-focus-ring: var(--ref-color-dark-blue-300);
   --sys-color-hover-overlay: var(--ref-color-alpha-white-14);
   --sys-color-status-hover-overlay: var(--ref-color-alpha-white-12);

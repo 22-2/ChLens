@@ -1,0 +1,164 @@
+/* Thread response metadata and body layout. Media/link cards remain in browser.scss for now. */
+.res {
+  padding: var(--sys-space-1) var(--sys-space-8) var(--sys-space-3);
+  /* Defer offscreen response painting, except when the minimap needs exact geometry. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 140px;
+}
+
+.thread-page--with-minimap .res {
+  /* The minimap reads each response's layout box to place its marker. */
+  content-visibility: visible;
+  contain-intrinsic-size: none;
+}
+
+.res__header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sys-space-2);
+  font-size: var(--sys-font-size-xs);
+  flex-wrap: wrap;
+}
+
+.res__num {
+  font-weight: bold;
+  color: var(--sys-color-res-num);
+}
+
+.res__num--warm {
+  color: var(--sys-color-res-heat-warm);
+}
+
+.res__num--hot {
+  color: var(--sys-color-res-heat-hot);
+}
+
+.res__name {
+  font-weight: bold;
+  color: var(--sys-color-success);
+}
+
+.res__name--own,
+.res__badge--own {
+  color: var(--sys-color-warning);
+}
+
+.res__name--reply-to-own {
+  color: var(--sys-color-warning);
+}
+
+.res__badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--sys-radius-pill);
+  padding: var(--sys-space-1) var(--sys-space-4);
+  font-size: var(--sys-font-size-xs);
+  line-height: 1.5;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.res__badge--own {
+  /* A solid badge keeps the owner marker legible without a row background. */
+  border: 1px solid transparent;
+  background: var(--sys-color-warning);
+  color: var(--sys-color-accent-fg);
+}
+
+.res__badge--reply-to-own {
+  /* Use the accent hue so this marker is distinct from the owner warning. */
+  border: 1px solid transparent;
+  background: var(--sys-color-accent);
+  color: var(--sys-color-accent-fg);
+}
+
+.res__id {
+  /* A single-use ID stays quiet so metadata does not compete with the body. */
+  color: var(--sys-color-res-id-muted);
+  font-size: var(--sys-font-size-sm);
+}
+
+.res__date {
+  color: var(--sys-color-table-muted);
+  font-size: var(--sys-font-size-sm);
+}
+
+.res__body {
+  padding: var(--sys-space-1) 0 var(--sys-space-1) var(--sys-space-8);
+  color: var(--sys-color-text);
+  font-size: var(--sys-font-size-body);
+  line-height: 1.6;
+  word-break: break-all;
+}
+
+.res__body a {
+  color: var(--sys-color-table-link);
+}
+
+.res__body a:visited {
+  color: var(--sys-color-link-visited);
+}
+
+.res__id--link {
+  /* Repeated IDs use the warm heat color as an intermediate emphasis. */
+  color: var(--sys-color-res-heat-warm);
+  cursor: pointer;
+}
+
+.res__id--link:hover,
+.res__id--freq:hover,
+.res__rep--link:hover,
+.res__rep--warm:hover,
+.res__rep--hot:hover,
+.res__open-root-tree-btn:hover {
+  text-decoration: underline;
+}
+
+.res__id--freq {
+  /* Frequent IDs use the hot color to call out high-volume posters. */
+  cursor: pointer;
+  color: var(--sys-color-res-heat-hot);
+  font-weight: 600;
+}
+
+.res__rep {
+  font-size: var(--sys-font-size-sm);
+  margin-left: var(--sys-space-4);
+}
+
+.res__rep--link {
+  color: var(--sys-color-res-reply-link);
+  cursor: pointer;
+}
+
+.res__rep--warm,
+.res__rep--hot {
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.res__rep--warm {
+  color: var(--sys-color-res-heat-warm);
+}
+
+.res__rep--hot {
+  color: var(--sys-color-res-heat-hot);
+}
+
+.res__rep--disabled {
+  cursor: default;
+  opacity: 0.55;
+  text-decoration: none !important;
+}
+
+.res__open-root-tree-btn {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  color: var(--sys-color-res-reply-link);
+  font-size: var(--sys-font-size-xs);
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
