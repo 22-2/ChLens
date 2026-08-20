@@ -94,7 +94,7 @@ const ThreadAutoRefreshPanelContent: React.FC<ThreadAutoRefreshPanelContentProps
     <div className="mini-window__separator" />
 
     {/* 2. 自動スクロールスタイル */}
-    <div className="mini-window__section">
+    {/* <div className="mini-window__section">
       <div className="mini-window__section-header">自動スクロールスタイル</div>
       <div className="mini-window__select-row">
         <select
@@ -105,7 +105,7 @@ const ThreadAutoRefreshPanelContent: React.FC<ThreadAutoRefreshPanelContentProps
           <option value="default">デフォルト</option>
         </select>
       </div>
-    </div>
+    </div> */}
 
     <div className="mini-window__separator" />
 
