@@ -68,6 +68,12 @@
   color: var(--sys-color-accent-fg);
 }
 
+.res__badge--ng {
+  border: 1px solid var(--sys-color-warning-border);
+  background: var(--sys-color-warning-surface);
+  color: var(--sys-color-warning-fg);
+}
+
 .res__id {
   /* A single-use ID stays quiet so metadata does not compete with the body. */
   color: var(--sys-color-res-id-muted);
@@ -93,6 +99,13 @@
 
 .res__body a:visited {
   color: var(--sys-color-link-visited);
+}
+
+.res__body a.anchor--ng-target {
+  color: var(--sys-color-warning);
+  font-weight: 700;
+  text-decoration: underline wavy;
+  text-decoration-thickness: 1px;
 }
 
 .res__id--link {
@@ -185,6 +198,23 @@
 .res--ng .res__body {
   max-height: 20px;
   overflow: hidden;
+}
+
+.res--ng-placeholder {
+  cursor: pointer;
+  border-radius: var(--sys-radius-lg);
+}
+
+.res--ng-placeholder:hover,
+.res--ng-placeholder:focus-visible {
+  background: var(--sys-color-popup-hover-bg);
+  outline: none;
+}
+
+.res__ng-reveal {
+  padding: var(--sys-space-3) 0 var(--sys-space-2) var(--sys-space-8);
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-sm);
 }
 
 .res--aa .res__body {
