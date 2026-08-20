@@ -6,6 +6,7 @@ import { ColumnDef } from "src/view/browser/components/SimpleDataTable";
 import { VirtualizedDataTable } from "src/view/browser/components/VirtualizedDataTable";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
+import { Spinner } from "src/view/browser/ui/Spinner";
 import { formatCompactDateTime } from "src/view/browser/utils/date-time";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
 
@@ -344,7 +345,12 @@ export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refre
   }, [error, hasMore, loadNextPage, loading, loadingMore, shouldLoadCompleteDataset]);
 
   if (loading && entries.length === 0) {
-    return <div className="page-status">読み込み中...</div>;
+    return (
+      <div className="page-status">
+        <Spinner size="sm" aria-label="ログを読み込み中" />
+        <span>読み込み中...</span>
+      </div>
+    );
   }
 
   if (error && entries.length === 0) {
@@ -397,6 +403,7 @@ export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refre
           sortDirection={sortState.direction}
           onSort={handleSort}
           estimatedRowHeight={52}
+          loadingMore={loadingMore}
           endReachedThreshold={LOAD_MORE_THRESHOLD}
           onEndReached={handleEndReached}
           columnVisibilityStorageKey={COLUMN_VISIBILITY_STORAGE_KEY}

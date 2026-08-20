@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { container } from "src/service-container/index";
+import { Spinner } from "src/view/browser/ui/Spinner";
 import {
   type BookmarkFolderNode,
   isBookmarkRootSelectionRequired,
@@ -183,7 +184,10 @@ export const BookmarkRootSelectorDialog: React.FC = () => {
         {error && <p className="bookmark-root-dialog__error">{error}</p>}
 
         {loading ? (
-          <div className="bookmark-root-dialog__status">ブックマークフォルダを読み込み中...</div>
+          <div className="bookmark-root-dialog__status bookmark-root-dialog__status--loading">
+            <Spinner size="sm" aria-label="ブックマークフォルダを読み込み中" />
+            <span>ブックマークフォルダを読み込み中...</span>
+          </div>
         ) : folderTree.length === 0 ? (
           <div className="bookmark-root-dialog__status">
             利用可能なブックマークフォルダが見つかりませんでした。
@@ -211,11 +215,20 @@ export const BookmarkRootSelectorDialog: React.FC = () => {
           )}
           <button
             type="button"
-            className="bookmark-root-dialog__button bookmark-root-dialog__button--primary"
+            className={`bookmark-root-dialog__button bookmark-root-dialog__button--primary${
+              saving ? " bookmark-root-dialog__button--loading" : ""
+            }`}
             onClick={handleSave}
             disabled={!selectedId || loading || saving}
           >
-            {saving ? "保存中..." : "決定"}
+            {saving ? (
+              <>
+                <Spinner size="xs" aria-label="保存中" />
+                <span>保存中...</span>
+              </>
+            ) : (
+              "決定"
+            )}
           </button>
         </div>
       </div>

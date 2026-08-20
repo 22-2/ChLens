@@ -4,6 +4,7 @@ import { SearchBar } from "src/view/browser/components/SearchBar";
 import { ColumnDef, SimpleDataTable } from "src/view/browser/components/SimpleDataTable";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
+import { Spinner } from "src/view/browser/ui/Spinner";
 import {
   getLegacyBookmarkService,
   waitForLegacyBookmarkReady,
@@ -370,7 +371,12 @@ export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({ tabId, isAct
   );
 
   if (loading) {
-    return <div className="page-status">読み込み中...</div>;
+    return (
+      <div className="page-status">
+        <Spinner size="sm" aria-label="ブックマークを読み込み中" />
+        <span>読み込み中...</span>
+      </div>
+    );
   }
 
   if (error) {

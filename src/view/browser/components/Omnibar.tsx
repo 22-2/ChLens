@@ -1,5 +1,6 @@
 import type { ReactNode, RefObject } from "react";
 import React from "react";
+import { Spinner } from "src/view/browser/ui/Spinner";
 import type { OmnibarSuggestion } from "src/view/browser/utils/omnibar";
 
 interface OmnibarProps {
@@ -56,7 +57,12 @@ export const Omnibar: React.FC<OmnibarProps> = ({
 
       {isOpen ? (
         <div className="nav-bar__omnibar" role="listbox" aria-label="候補">
-          {isLoading ? <div className="nav-bar__omnibar-empty">候補を読み込み中...</div> : null}
+          {isLoading ? (
+            <div className="nav-bar__omnibar-empty nav-bar__omnibar-empty--loading">
+              <Spinner size="xs" aria-label="候補を読み込み中" />
+              <span>候補を読み込み中...</span>
+            </div>
+          ) : null}
 
           {!isLoading && suggestions.length > 0
             ? suggestions.map((suggestion, index) => (

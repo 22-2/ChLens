@@ -231,3 +231,8 @@
   padding: 8px 10px;
   color: var(--sys-color-text-muted);
 }
+.nav-bar__omnibar-empty--loading {
+  display: flex;
+  align-items: center;
+  gap: var(--sys-space-3);
+}

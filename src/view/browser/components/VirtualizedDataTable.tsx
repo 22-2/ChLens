@@ -5,6 +5,7 @@ import { useCursorTooltip } from "src/view/browser/components/CursorTooltip";
 import { type ColumnDef } from "src/view/browser/components/SimpleDataTable";
 import { useColumnVisibility } from "src/view/browser/components/use-column-visibility";
 import { useTableTooltipEnabled } from "src/view/browser/hooks/use-table-tooltip-setting";
+import { Spinner } from "src/view/browser/ui/Spinner";
 
 interface Props<TRow> {
   columns: ColumnDef<TRow>[];
@@ -25,6 +26,7 @@ interface Props<TRow> {
   overscan?: number;
   endReachedThreshold?: number;
   onEndReached?: () => void;
+  loadingMore?: boolean;
   columnVisibilityStorageKey?: string;
   columnVisibilityLockedKeys?: readonly string[];
 }
@@ -46,6 +48,7 @@ export function VirtualizedDataTable<TRow>({
   overscan = 8,
   endReachedThreshold = 10,
   onEndReached,
+  loadingMore = false,
   columnVisibilityStorageKey,
   columnVisibilityLockedKeys,
 }: Props<TRow>): React.ReactElement {
@@ -208,6 +211,12 @@ export function VirtualizedDataTable<TRow>({
           ) : null}
         </tbody>
       </table>
+      {loadingMore ? (
+        <div className="simple-data-table__loading" role="status">
+          <Spinner size="sm" aria-label="追加データを読み込み中" />
+          <span>追加データを読み込み中...</span>
+        </div>
+      ) : null}
       {tooltip}
       {headerContextMenuState ? (
         <ContextMenu

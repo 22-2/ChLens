@@ -147,6 +147,12 @@
   line-height: 1.5;
 }
 
+.mini-window__note--loading {
+  display: flex;
+  align-items: center;
+  gap: var(--sys-space-3);
+}
+
 .mini-window__slider-row {
   display: flex;
   align-items: center;

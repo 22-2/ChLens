@@ -6,6 +6,7 @@ import { MiniWindow } from "src/view/browser/components/MiniWindow";
 import { StatusBarItem } from "src/view/browser/components/StatusBar";
 import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { Spinner } from "src/view/browser/ui/Spinner";
 
 const MOMENTUM_BUCKET_COUNT = 30;
 
@@ -219,7 +220,12 @@ const MomentumLineChart: React.FC<MomentumLineChartProps> = ({ data, loading }) 
         role="img"
         aria-label="勢い推移グラフ"
       />
-      {loading && <p className="mini-window__note">勢いデータを読み込み中...</p>}
+      {loading && (
+        <p className="mini-window__note mini-window__note--loading">
+          <Spinner size="xs" aria-label="勢いデータを読み込み中" />
+          <span>勢いデータを読み込み中...</span>
+        </p>
+      )}
       {!loading && data && (
         <p className="mini-window__note">
           {/* {data.rangeLabel} / 最新: {data.latestValue.toLocaleString()} 勢い */}

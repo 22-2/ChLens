@@ -16,6 +16,16 @@
   scrollbar-gutter: stable;
 }
 
+.simple-data-table__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sys-space-4);
+  padding: var(--sys-space-6);
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-sm);
+}
+
 .simple-data-table__row,
 .thread-list__row {
   cursor: pointer;

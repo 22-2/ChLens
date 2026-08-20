@@ -2,6 +2,7 @@ import React from "react";
 import { MenuAccordion } from "src/view/browser/pages/board-list/MenuAccordion";
 import { Alert } from "src/view/browser/ui/Alert";
 import { Button } from "src/view/browser/ui/Button";
+import { Spinner } from "src/view/browser/ui/Spinner";
 
 interface Board {
   name: string;
@@ -73,8 +74,9 @@ export const BoardListContent: React.FC<BoardListContentProps> = ({
 }) => {
   if (loading) {
     return (
-      <div className="board-list-page board-list-page__status">
-        <div className="home-page__status">読み込み中...</div>
+      <div className="board-list-page board-list-page__status page-status">
+        <Spinner size="sm" aria-label="板一覧を読み込み中" />
+        <span>板一覧を読み込み中...</span>
       </div>
     );
   }

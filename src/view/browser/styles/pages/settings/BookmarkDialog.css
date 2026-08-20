@@ -127,6 +127,20 @@
   text-align: center;
 }
 
+.bookmark-root-dialog__status--loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sys-space-4);
+}
+
+.bookmark-root-dialog__button--loading {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sys-space-3);
+}
+
 .thread-ng-dialog__panel {
   width: min(640px, 100%);
 }

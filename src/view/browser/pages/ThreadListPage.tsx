@@ -26,6 +26,7 @@ import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
 import { useTheme, type ResolvedTheme } from "src/view/browser/hooks/use-theme";
 import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 import type { ThreadListPage as ThreadListPageType } from "src/view/browser/types";
+import { Spinner } from "src/view/browser/ui/Spinner";
 import { copyText } from "src/view/browser/utils/utils";
 const OPENED_BOARDS_CONFIG_KEY = "opened_board_entries";
 const MAX_OPENED_BOARD_ENTRIES = 500;
@@ -1024,7 +1025,12 @@ export const ThreadListPage: React.FC<Props> = ({
   // 条件付きで早期返却するとhooksの呼び出し数が変わってReactエラーになるため、
   // JSXレベルで条件分岐をして、すべてのhooksをレンダーパスの上部で呼び出す
   if (loading && threads.length === 0) {
-    return <div className="page-status">読み込み中...</div>;
+    return (
+      <div className="page-status">
+        <Spinner size="sm" aria-label="スレ一覧を読み込み中" />
+        <span>読み込み中...</span>
+      </div>
+    );
   }
 
   if (error && threads.length === 0) {

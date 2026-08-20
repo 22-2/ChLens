@@ -8,6 +8,7 @@ import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
 
 import { container } from "src/service-container/index";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
+import { Spinner } from "src/view/browser/ui/Spinner";
 import { formatCompactDateTime, normalizeLegacyTimestamp } from "src/view/browser/utils/date-time";
 import { getLegacyWriteHistoryService } from "src/view/browser/utils/legacy-app";
 
@@ -350,7 +351,12 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
   // 変更理由: 前回の結果がある場合は「読み込み中」ではなく古い結果を表示し続ける。
   // 新しいデータの取得が完了したら自動的に新しい結果に置き換わる。
   if (loading && entries.length === 0) {
-    return <div className="page-status">読み込み中...</div>;
+    return (
+      <div className="page-status">
+        <Spinner size="sm" aria-label="書き込み履歴を読み込み中" />
+        <span>読み込み中...</span>
+      </div>
+    );
   }
 
   if (error && entries.length === 0) {
