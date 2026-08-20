@@ -274,4 +274,46 @@ describe("next-thread-search", () => {
     expect(match?.reason).toBe("mainstream");
     expect(match?.thread.url).toBe("https://example.com/test/read.cgi/live/1700000102/");
   });
+
+  it("本流監視では板一覧のレス増加量と隣接数値を使う", () => {
+    const now = 1_700_100_000_000;
+    const currentUrl = "http://bbs.eddibb.cc/test/read.cgi/liveedge/23/";
+    const candidateUrl = "http://bbs.eddibb.cc/test/read.cgi/liveedge/25/";
+    const threads = [
+      createThread({
+        title: "【映像の世紀】第二次世界大戦（4）地獄 1944－49",
+        url: currentUrl,
+        resCount: 1000,
+        createdAt: now - 5 * 60 * 60 * 1000,
+      }),
+      createThread({
+        title: "【映像の世紀】第二次世界大戦（4）地獄 1944－48",
+        url: candidateUrl,
+        resCount: 40,
+        createdAt: now - 4 * 60 * 60 * 1000,
+      }),
+      createThread({
+        title: "【映像の世紀】第二次世界大戦（4）地獄 1944－47",
+        url: "http://bbs.eddibb.cc/test/read.cgi/liveedge/27/",
+        resCount: 30,
+        createdAt: now - 4 * 60 * 60 * 1000,
+      }),
+    ];
+    const previousThreads = [
+      { ...threads[0], resCount: 990 },
+      { ...threads[1], resCount: 10 },
+      { ...threads[2], resCount: 20 },
+    ];
+
+    const match = findMainstreamThreadMatch(threads, {
+      originalThreadUrl: "http://bbs.eddibb.cc/test/read.cgi/liveedge/22/",
+      originalThreadTitle: "【映像の世紀】第二次世界大戦（4）地獄 1944－49",
+      currentThreadUrl: currentUrl,
+      previousThreads,
+      previousObservedAt: now - 5_000,
+      now,
+    });
+
+    expect(match?.thread.url).toBe(candidateUrl);
+  });
 });

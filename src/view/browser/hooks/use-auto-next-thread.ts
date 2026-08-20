@@ -49,6 +49,11 @@ interface MainstreamWatchState {
   startedAt: number;
 }
 
+interface MainstreamSnapshot {
+  threads: readonly IThread[];
+  observedAt: number;
+}
+
 export function useAutoNextThread({
   autoRefreshEnabled,
   featureEnabled,
@@ -65,6 +70,8 @@ export function useAutoNextThread({
   const [watchState, setWatchState] = useState<MainstreamWatchState | null>(null);
   const lastSearchKeyRef = useRef<string | null>(null);
   const pendingCandidateRef = useRef<{ url: string; count: number } | null>(null);
+  const mainstreamPendingCandidateRef = useRef<{ url: string; count: number } | null>(null);
+  const mainstreamSnapshotRef = useRef<MainstreamSnapshot | null>(null);
   const responseMessagesRef = useRef(responseMessages);
   const followThreadRef = useRef(followThread);
   // ブラウザのタブ/ウィンドウを裏に回している間は、ユーザーが見ていないところで
@@ -95,6 +102,8 @@ export function useAutoNextThread({
   useEffect(() => {
     lastSearchKeyRef.current = null;
     pendingCandidateRef.current = null;
+    mainstreamPendingCandidateRef.current = null;
+    mainstreamSnapshotRef.current = null;
     setStatus((prev) => (prev === "searching" ? "idle" : prev));
   }, [mode, threadUrl]);
 
@@ -105,6 +114,8 @@ export function useAutoNextThread({
 
     lastSearchKeyRef.current = null;
     pendingCandidateRef.current = null;
+    mainstreamPendingCandidateRef.current = null;
+    mainstreamSnapshotRef.current = null;
     setWatchState(null);
     setStatus("idle");
   }, [autoRefreshEnabled, featureEnabled]);
@@ -117,6 +128,8 @@ export function useAutoNextThread({
       return;
     }
 
+    mainstreamPendingCandidateRef.current = null;
+    mainstreamSnapshotRef.current = null;
     setWatchState(null);
     setStatus("idle");
   }, [threadUrl, watchState]);
@@ -139,6 +152,8 @@ export function useAutoNextThread({
     let timerId: number | null = null;
 
     setWatchState(null);
+    mainstreamPendingCandidateRef.current = null;
+    mainstreamSnapshotRef.current = null;
     setStatus("searching");
 
     const delay = (ms: number) =>
@@ -200,9 +215,13 @@ export function useAutoNextThread({
               // 変更理由: 慎重モードでは、一度移動した後に勢いだけを根拠として
               // 別候補へ再移動すると「誤移動を避ける」という設定意図に反する。
               if (mode === "cautious") {
+                mainstreamPendingCandidateRef.current = null;
+                mainstreamSnapshotRef.current = null;
                 setWatchState(null);
                 setStatus("idle");
               } else {
+                mainstreamPendingCandidateRef.current = null;
+                mainstreamSnapshotRef.current = null;
                 setWatchState({
                   boardUrl,
                   originalThreadUrl: threadUrl,
@@ -295,20 +314,48 @@ export function useAutoNextThread({
 
         try {
           const result = await container.board.getThreads(watchState.boardUrl);
+          const previousSnapshot = mainstreamSnapshotRef.current;
+          mainstreamSnapshotRef.current = {
+            threads: result.threads,
+            observedAt: now,
+          };
+
+          // 初回取得は基準値として保存し、レス増加量を比較できる次回から判定する。
+          if (previousSnapshot == null) {
+            await delay(MAINSTREAM_WATCH_RETRY_MS);
+            continue;
+          }
+
           const match = findMainstreamThreadMatch(result.threads, {
             originalThreadUrl: watchState.originalThreadUrl,
             originalThreadTitle: watchState.originalThreadTitle,
             currentThreadUrl: threadUrl,
             mode,
+            previousThreads: previousSnapshot.threads,
+            previousObservedAt: previousSnapshot.observedAt,
             now,
           });
 
           if (match) {
-            followThreadRef.current(match.thread);
-            container.toast.info(`本流スレへ移動しました: ${match.thread.title}`);
-            setWatchState(null);
-            setStatus("idle");
-            return;
+            const previousPending = mainstreamPendingCandidateRef.current;
+            const confirmationCount =
+              previousPending?.url === match.thread.url ? previousPending.count + 1 : 1;
+            mainstreamPendingCandidateRef.current = {
+              url: match.thread.url,
+              count: confirmationCount,
+            };
+
+            if (confirmationCount >= REQUIRED_CANDIDATE_CONFIRMATIONS[mode]) {
+              followThreadRef.current(match.thread);
+              container.toast.info(`本流スレへ移動しました: ${match.thread.title}`);
+              mainstreamPendingCandidateRef.current = null;
+              mainstreamSnapshotRef.current = null;
+              setWatchState(null);
+              setStatus("idle");
+              return;
+            }
+          } else {
+            mainstreamPendingCandidateRef.current = null;
           }
         } catch (error) {
           // 本流監視は補助機能なので再試行しつつ、原因を追えるよう詳細を残す。
@@ -323,6 +370,8 @@ export function useAutoNextThread({
       }
 
       if (!cancelled) {
+        mainstreamPendingCandidateRef.current = null;
+        mainstreamSnapshotRef.current = null;
         setWatchState(null);
         setStatus("idle");
       }

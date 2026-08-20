@@ -27,6 +27,8 @@ function AutoNextThreadHarness({
   featureEnabled = true,
   expired = false,
   responseCount = 1000,
+  threadUrl = "https://example.com/test/read.cgi/live/1700000200/",
+  threadTitle = "実況スレ Part.20",
   canAutoScroll = true,
   mode = "balanced",
   responseMessages = [],
@@ -36,6 +38,8 @@ function AutoNextThreadHarness({
   featureEnabled?: boolean;
   expired?: boolean;
   responseCount?: number;
+  threadUrl?: string;
+  threadTitle?: string;
   canAutoScroll?: boolean;
   mode?: AutoNextThreadMode;
   responseMessages?: readonly string[];
@@ -44,8 +48,8 @@ function AutoNextThreadHarness({
   const { status } = useAutoNextThread({
     autoRefreshEnabled,
     featureEnabled,
-    threadUrl: "https://example.com/test/read.cgi/live/1700000200/",
-    threadTitle: "実況スレ Part.20",
+    threadUrl,
+    threadTitle,
     responseCount,
     expired,
     mode,
@@ -155,6 +159,94 @@ describe("useAutoNextThread", () => {
     });
     // oxlint-disable-next-line unbound-method
     expect(container.toast.info).toHaveBeenCalledWith("次スレへ移動しました: 実況スレ Part.21");
+  });
+
+  it("標準の本流監視ではレス増加を2回確認してから移動する", async () => {
+    const onFollowThread = vi.fn();
+    const originalUrl = "https://example.com/test/read.cgi/live/1700000200/";
+    const nextUrl = "https://example.com/test/read.cgi/live/1700000201/";
+    const mainstreamUrl = "https://example.com/test/read.cgi/live/1700000202/";
+    const originalThread = createThread({
+      title: "実況スレ Part.20",
+      url: originalUrl,
+      resCount: 1000,
+      createdAt: 1_700_000_200_000,
+    });
+    const nextThread = (resCount: number) =>
+      createThread({
+        title: "実況スレ Part.21",
+        url: nextUrl,
+        resCount,
+        createdAt: 1_700_000_201_000,
+      });
+    const mainstreamThread = (resCount: number) =>
+      createThread({
+        title: "実況スレ Part.22",
+        url: mainstreamUrl,
+        resCount,
+        createdAt: 1_700_000_202_000,
+      });
+    const boardGetThreads = vi
+      .fn()
+      .mockResolvedValueOnce({ threads: [originalThread], message: null })
+      .mockResolvedValueOnce({ threads: [originalThread, nextThread(24)], message: null })
+      .mockResolvedValueOnce({ threads: [originalThread, nextThread(24)], message: null })
+      .mockResolvedValueOnce({ threads: [nextThread(24), mainstreamThread(20)], message: null })
+      .mockResolvedValueOnce({ threads: [nextThread(25), mainstreamThread(35)], message: null })
+      .mockResolvedValueOnce({ threads: [nextThread(26), mainstreamThread(50)], message: null });
+
+    container.board = {
+      getThreads: boardGetThreads,
+      getCachedResCount: vi.fn(),
+    };
+
+    const view = render(<AutoNextThreadHarness onFollowThread={onFollowThread} />);
+
+    await flushPromises();
+    await act(async () => {
+      vi.advanceTimersByTime(3000);
+    });
+    await flushPromises();
+    await act(async () => {
+      vi.advanceTimersByTime(3000);
+    });
+    await flushPromises();
+
+    expect(onFollowThread).toHaveBeenCalledWith(expect.objectContaining({ url: nextUrl }));
+
+    view.rerender(
+      <AutoNextThreadHarness
+        threadUrl={nextUrl}
+        threadTitle="実況スレ Part.21"
+        responseCount={24}
+        onFollowThread={onFollowThread}
+      />,
+    );
+    await flushPromises();
+
+    await act(async () => {
+      vi.advanceTimersByTime(10_000);
+    });
+    await flushPromises();
+    expect(onFollowThread).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      vi.advanceTimersByTime(5_000);
+    });
+    await flushPromises();
+    expect(onFollowThread).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      vi.advanceTimersByTime(5_000);
+    });
+    await flushPromises();
+    expect(onFollowThread).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      vi.advanceTimersByTime(5_000);
+    });
+    await flushPromises();
+    expect(onFollowThread).toHaveBeenCalledWith(expect.objectContaining({ url: mainstreamUrl }));
   });
 
   it("慎重判定でも本文で案内された次スレは待たずに移動する", async () => {

@@ -72,6 +72,8 @@ export interface MainstreamSearchOptions {
   mode?: AutoNextThreadMode;
   minimumResCount?: number;
   momentumRatio?: number;
+  previousThreads?: readonly IThread[];
+  previousObservedAt?: number;
   now?: number;
 }
 
@@ -243,6 +245,26 @@ export function extractThreadSequenceNumber(title: string): ThreadNumberResult {
   };
 }
 
+function hasAdjacentNonExplicitNumber(
+  currentTitle: string,
+  candidateTitle: string,
+  similarity: number,
+): boolean {
+  if (similarity < NEAR_TITLE_SIMILARITY) {
+    return false;
+  }
+
+  const currentNumber = extractThreadSequenceNumber(currentTitle);
+  const candidateNumber = extractThreadSequenceNumber(candidateTitle);
+  return (
+    currentNumber.hasNumber &&
+    candidateNumber.hasNumber &&
+    !currentNumber.isExplicitSequence &&
+    !candidateNumber.isExplicitSequence &&
+    Math.abs(candidateNumber.value - currentNumber.value) === 1
+  );
+}
+
 function extractThreadTimestamp(url: string): number {
   try {
     const parsed = new window.URL(url);
@@ -263,7 +285,7 @@ function buildCandidateScores(
 ): CandidateScore[] {
   return threads
     .map((thread) => {
-      const similarity = calculateTitleSimilarity(currentThreadTitle, thread.title);
+      const similarity = calculateBaseTitleSimilarity(currentThreadTitle, thread.title);
       const number = extractThreadSequenceNumber(thread.title);
 
       return {
@@ -359,13 +381,11 @@ function rankNextThreadCandidates(
       const exactTitleMatch =
         normalizeThreadTitle(currentThread.title) === normalizeThreadTitle(thread.title);
       const nearTitleMatch = similarity >= NEAR_TITLE_SIMILARITY;
-      const adjacentNumberMatch =
-        nearTitleMatch &&
-        currentNumber.hasNumber &&
-        candidateNumber.hasNumber &&
-        !currentNumber.isExplicitSequence &&
-        !candidateNumber.isExplicitSequence &&
-        Math.abs(candidateNumber.value - currentNumber.value) === 1;
+      const adjacentNumberMatch = hasAdjacentNonExplicitNumber(
+        currentThread.title,
+        thread.title,
+        similarity,
+      );
 
       // 変更理由: 従来は「●付き」というだけで最新の別実況へ移動できた。
       // 明示案内がない場合は同じ●系統かつ十分似たタイトルだけに限定する。
@@ -560,10 +580,17 @@ function filterMainstreamCandidates(
   options: Required<
     Pick<MainstreamSearchOptions, "originalThreadTitle" | "originalThreadUrl" | "currentThreadUrl">
   > & {
+    currentThreadTitle: string;
     minimumResCount: number;
   },
 ): CandidateScore[] {
-  const { originalThreadTitle, originalThreadUrl, currentThreadUrl, minimumResCount } = options;
+  const {
+    originalThreadTitle,
+    originalThreadUrl,
+    currentThreadUrl,
+    currentThreadTitle,
+    minimumResCount,
+  } = options;
   const candidates = threads.filter((thread) => {
     if (thread.url === currentThreadUrl || thread.url === originalThreadUrl) {
       return false;
@@ -576,16 +603,36 @@ function filterMainstreamCandidates(
 
   if (isMarkedThread(originalThreadTitle)) {
     return buildCandidateScores(
-      candidates.filter((thread) => isMarkedThread(thread.title)),
+      candidates.filter(
+        (thread) =>
+          isMarkedThread(thread.title) &&
+          calculateBaseTitleSimilarity(currentThreadTitle, thread.title) >=
+            NEXT_THREAD_MIN_SIMILARITY,
+      ),
       originalThreadTitle,
     );
   }
 
-  const current = extractThreadSequenceNumber(originalThreadTitle);
-  const expectedNumbers = current.hasNumber ? [current.value + 1, current.value] : [2];
-
   return buildCandidateScores(candidates, originalThreadTitle).filter((candidate) => {
-    if (expectedNumbers.includes(candidate.number)) {
+    const currentSimilarity = calculateBaseTitleSimilarity(
+      currentThreadTitle,
+      candidate.thread.title,
+    );
+    if (currentSimilarity < NEXT_THREAD_MIN_SIMILARITY) {
+      return false;
+    }
+
+    const current = extractThreadSequenceNumber(currentThreadTitle);
+    const candidateNumber = extractThreadSequenceNumber(candidate.thread.title);
+    const isExactExplicitNext =
+      current.isExplicitSequence &&
+      candidateNumber.isExplicitSequence &&
+      candidateNumber.value - current.value === 1;
+    if (
+      currentSimilarity === 1 ||
+      isExactExplicitNext ||
+      hasAdjacentNonExplicitNumber(currentThreadTitle, candidate.thread.title, currentSimilarity)
+    ) {
       return true;
     }
     if (candidate.isStar && (candidate.number === 1 || candidate.number === 2)) {
@@ -608,6 +655,8 @@ export function findMainstreamThreadMatch(
     mode = "balanced",
     minimumResCount = 10,
     momentumRatio = 1.5,
+    previousThreads,
+    previousObservedAt,
     now = Date.now(),
   } = options;
   const currentThread = threads.find((thread) => thread.url === currentThreadUrl);
@@ -616,8 +665,11 @@ export function findMainstreamThreadMatch(
     return null;
   }
 
-  const currentMomentum = calculateThreadMomentum(currentThread, now);
-  if (currentMomentum <= 0) {
+  const hasPreviousSnapshot = previousThreads != null && previousObservedAt != null;
+  const currentActivity = hasPreviousSnapshot
+    ? calculateThreadGrowthRate(currentThread, previousThreads, previousObservedAt, now)
+    : calculateThreadMomentum(currentThread, now);
+  if (currentActivity <= 0 && !hasPreviousSnapshot) {
     return null;
   }
 
@@ -625,6 +677,7 @@ export function findMainstreamThreadMatch(
     originalThreadTitle,
     originalThreadUrl,
     currentThreadUrl,
+    currentThreadTitle: currentThread.title,
     minimumResCount,
   });
   const minimumSimilarity = mode === "cautious" ? 0.75 : mode === "balanced" ? 0.5 : 0.3;
@@ -632,16 +685,19 @@ export function findMainstreamThreadMatch(
   const viableCandidates = candidates
     .map((candidate) => ({
       ...candidate,
-      momentum: calculateThreadMomentum(candidate.thread, now),
+      activity: hasPreviousSnapshot
+        ? calculateThreadGrowthRate(candidate.thread, previousThreads, previousObservedAt, now)
+        : calculateThreadMomentum(candidate.thread, now),
     }))
     .filter(
       (candidate) =>
         candidate.similarity >= minimumSimilarity &&
-        candidate.momentum > currentMomentum * momentumRatio,
+        candidate.activity >
+          Math.max(currentActivity, hasPreviousSnapshot ? 0.2 : 0) * momentumRatio,
     )
     .sort((left, right) => {
-      if (right.momentum !== left.momentum) {
-        return right.momentum - left.momentum;
+      if (right.activity !== left.activity) {
+        return right.activity - left.activity;
       }
       if (right.similarity !== left.similarity) {
         return right.similarity - left.similarity;
@@ -658,4 +714,20 @@ export function findMainstreamThreadMatch(
     reason: "mainstream",
     similarity: viableCandidates[0].similarity,
   };
+}
+
+function calculateThreadGrowthRate(
+  thread: IThread,
+  previousThreads: readonly IThread[] | undefined,
+  previousObservedAt: number | undefined,
+  now: number,
+): number {
+  if (previousThreads == null || previousObservedAt == null || previousObservedAt >= now) {
+    return 0;
+  }
+
+  const previousThread = previousThreads.find((candidate) => candidate.url === thread.url);
+  const previousResCount = previousThread?.resCount ?? 0;
+  const elapsedSeconds = Math.max((now - previousObservedAt) / 1000, 1);
+  return Math.max(thread.resCount - previousResCount, 0) / elapsedSeconds;
 }
