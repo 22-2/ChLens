@@ -1,8 +1,10 @@
 import "@testing-library/jest-dom/vitest";
-import { render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { IRes } from "src/service-container/interfaces";
 import { ResItem } from "src/view/browser/components/ResItem";
-import { describe, expect, it, vi } from "vite-plus/test";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+
+afterEach(cleanup);
 
 vi.mock("src/view/browser/utils/utils", async () => {
   const actual = await vi.importActual<typeof import("src/view/browser/utils/utils")>(
@@ -33,6 +35,43 @@ const BASE_RES: IRes = {
 };
 
 describe("ResItem", () => {
+  it("NGレスをプレースホルダーで残し、クリック後に内容を表示する", () => {
+    const ngRes: IRes = {
+      ...BASE_RES,
+      ng: { type: "Body", ruleDescription: "hide body contains:\n  本文" },
+    };
+    const { container } = render(
+      <ResItem
+        res={ngRes}
+        idPos={0}
+        idCount={0}
+        repCount={0}
+        isOwn={false}
+        isReplyToOwn={false}
+        isImageBlurred={false}
+        imageBlurRadius={4}
+        miniAa={false}
+        messageProtocol="https:"
+        onIdClick={() => {}}
+        onRepClick={() => {}}
+        onUrlClick={() => true}
+        onUrlContextMenu={() => true}
+        onAnchorClick={() => {}}
+        onAnchorHover={() => {}}
+        onAnchorLeave={() => {}}
+        onContextMenu={() => {}}
+      />,
+    );
+
+    const placeholder = screen.getByRole("button", { name: "レス1の内容を表示" });
+    expect(placeholder).toHaveAttribute("data-res-num", "1");
+    expect(container.querySelector(".res__body")).not.toBeInTheDocument();
+
+    fireEvent.click(placeholder);
+
+    expect(container.querySelector(".res__body")).toBeInTheDocument();
+  });
+
   it("返信数に応じてレス番号と返信ラベルに同じ強調色クラスを付与する", () => {
     const { rerender } = render(
       <ResItem

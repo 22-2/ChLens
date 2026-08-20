@@ -195,15 +195,6 @@
   }
 }
 
-.res--ng {
-  display: none;
-}
-
-.res--ng .res__body {
-  max-height: 20px;
-  overflow: hidden;
-}
-
 .res--ng-placeholder {
   cursor: pointer;
   border-radius: var(--sys-radius-lg);

@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import type { IRes } from "src/service-container";
 import { NgBadge } from "src/view/browser/components/NgBadge";
 import { ResBody } from "src/view/browser/components/ResBody";
@@ -37,6 +37,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
     // 一時解除中はデータ自体を消さずに表示判定だけをオフにして、復帰時の再評価コストを避ける。
     const isNgMatched = res.ng != null || res.class?.includes("ng");
     const isNG = !isNgTemporarilyDisabled && isNgMatched;
+    const [isNgRevealed, setIsNgRevealed] = useState(false);
     const decoded = useMemo(() => decodeResponseHtml(res, messageProtocol), [messageProtocol, res]);
     const urls = useMemo(() => extractUrlsFromMessage(decoded.messageHtml), [decoded.messageHtml]);
     const replyHeat = getReplyHeatLevel(repCount);
@@ -52,7 +53,6 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
     }`;
     const articleClassName = [
       "res",
-      isNG ? "res--ng" : "",
       miniAa ? "res--aa" : "",
       isOwn ? "res--own" : "",
       isReplyToOwn ? "res--reply-to-own" : "",
@@ -66,6 +66,32 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
     ]
       .filter(Boolean)
       .join(" ");
+
+    if (isNG && !isNgRevealed) {
+      return (
+        <article
+          data-res-num={res.num}
+          className="res res--ng-placeholder"
+          role="button"
+          aria-label={`レス${res.num}の内容を表示`}
+          tabIndex={0}
+          onClick={() => setIsNgRevealed(true)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              setIsNgRevealed(true);
+            }
+          }}
+          onContextMenu={(event) => onContextMenu(event, res)}
+        >
+          <header className="res__header">
+            <span className={resNumClassName}>{res.num}</span>
+            <NgBadge result={res.ng} />
+          </header>
+          <div className="res__ng-reveal">クリックして内容を表示</div>
+        </article>
+      );
+    }
 
     return (
       <article

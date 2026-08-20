@@ -87,7 +87,7 @@ describe("ResBody anchor behavior", () => {
     expect(onAnchorClick).toHaveBeenCalledWith(5);
   });
 
-  it("NGレスへのアンカークリック時はジャンプせずプレビューを開く", () => {
+  it("NGレスへのアンカークリック時も対象レスへジャンプする", () => {
     const onAnchorClick = vi.fn();
     const onAnchorHover = vi.fn();
     const { container } = render(
@@ -108,8 +108,9 @@ describe("ResBody anchor behavior", () => {
     expect(anchor).toHaveClass("anchor--ng-target");
     fireEvent.click(anchor);
 
-    expect(onAnchorClick).not.toHaveBeenCalled();
-    expect(onAnchorHover).toHaveBeenCalledWith([5], expect.any(Object), ">>5", 0);
+    expect(onAnchorClick).toHaveBeenCalledOnce();
+    expect(onAnchorClick).toHaveBeenCalledWith(5);
+    expect(onAnchorHover).not.toHaveBeenCalled();
   });
 
   it("通常リンクのミドルクリックを一度だけ新規タブ扱いで開く", () => {

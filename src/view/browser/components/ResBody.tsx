@@ -134,8 +134,7 @@ function useResBodyInteractionHandlers({
   onAnchorClick,
   onAnchorHover,
   onAnchorLeave,
-  ngResNums,
-}: Omit<ResBodyProps, "messageHtml">): ResBodyInteractionHandlers {
+}: Omit<ResBodyProps, "messageHtml" | "ngResNums">): ResBodyInteractionHandlers {
   const hoveredAnchorKeyRef = useRef<string | null>(null);
   const middleClickStateRef = useRef<MiddleClickState>({
     href: null,
@@ -251,12 +250,7 @@ function useResBodyInteractionHandlers({
         const label = anchor.textContent?.trim() ?? "";
         const targets = parseAnchorDisplayTargets(label);
         if (targets.length > 0) {
-          if (targets.some((target) => ngResNums?.has(target) ?? false)) {
-            // NGレスは本文側で非表示なので、通常のスクロールでは何も見えない。
-            // クリック時は同じアンカープレビューを開き、伏せた内容へ到達できるようにする。
-            onAnchorHover(targets, anchor.getBoundingClientRect(), label, anchorPreviewDepth);
-            return;
-          }
+          // NGレスもスレ内にプレースホルダーとして存在するため、通常レスと同じくジャンプできる。
           onAnchorClick(targets[0]);
         }
         return;
@@ -271,7 +265,7 @@ function useResBodyInteractionHandlers({
         stopEvent(e);
       }
     },
-    [anchorPreviewDepth, ngResNums, onAnchorClick, onAnchorHover, onIdLinkClick, onUrlClick],
+    [onAnchorClick, onIdLinkClick, onUrlClick],
   );
 
   const handleAuxClick = useCallback(
@@ -356,7 +350,6 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
       onAnchorClick,
       onAnchorHover,
       onAnchorLeave,
-      ngResNums,
     });
     const bodyRef = useRef<HTMLDivElement>(null);
 
