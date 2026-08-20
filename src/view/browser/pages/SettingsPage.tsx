@@ -1,18 +1,3 @@
-import {
-  Alert,
-  Badge,
-  Box,
-  Button,
-  Card,
-  Divider,
-  Group,
-  NavLink,
-  Paper,
-  ScrollArea,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
 import { AlertTriangle, ChevronDown, RefreshCw } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getStore2String, setStore2String } from "src/app/Store2Storage";
@@ -23,14 +8,16 @@ import {
   NG_DSL_EXAMPLE,
   NG_DSL_MULTILINE_EXAMPLE,
 } from "src/view/browser/components/NGEditor";
-import { SettingsSupplementaryPanels } from "src/view/browser/pages/settings/SettingsSupplementaryPanels";
 import { useMediaQuery } from "src/view/browser/hooks/use-media-query";
+import { SettingsSupplementaryPanels } from "src/view/browser/pages/settings/SettingsSupplementaryPanels";
 import {
   CheckboxField,
   NumberField,
   RadioField,
   TextareaField,
 } from "src/view/browser/ui/FormControls";
+import { Alert } from "src/view/browser/ui/Alert";
+import { Button } from "src/view/browser/ui/Button";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import {
   AUTO_SAVE_DELAY_MS,
@@ -379,14 +366,10 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
 
       if (field.widget === "ng_editor") {
         return (
-          <Box key={field.key}>
-            <Text fw={600} size="sm" mb={6}>
-              {field.title}
-            </Text>
+          <div key={field.key} className="settings-page__ng-field">
+            <h3 className="settings-page__ng-field-title">{field.title}</h3>
             {field.description && (
-              <Text size="xs" c="dimmed" mb="sm">
-                {field.description}
-              </Text>
+              <p className="settings-page__ng-field-description">{field.description}</p>
             )}
             <NGEditor
               value={toStringValue(value)}
@@ -394,7 +377,7 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
                 updateFieldValue(sectionId, field.key, nextValue);
               }}
             />
-          </Box>
+          </div>
         );
       }
 
@@ -420,14 +403,14 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
       items.map((item, index) => {
         if (isSettingsDividerItem(item)) {
           return (
-            <Stack key={`divider-${item.id}-${index}`} gap={6}>
-              <Divider label={item.title} labelPosition="left" />
+            <div key={`divider-${item.id}-${index}`} className="settings-page__section-divider">
+              <div className="settings-page__section-divider-line">
+                <span>{item.title}</span>
+              </div>
               {item.description && (
-                <Text size="xs" c="dimmed">
-                  {item.description}
-                </Text>
+                <p className="settings-page__section-divider-description">{item.description}</p>
               )}
-            </Stack>
+            </div>
           );
         }
 
@@ -492,274 +475,237 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
 
   if (loading) {
     return (
-      <Group justify="center" py="xl">
+      <div className="settings-page__loading">
         <Spinner size="sm" />
-        <Text size="sm" c="dimmed">
-          設定を読み込み中...
-        </Text>
-      </Group>
+        <span>設定を読み込み中...</span>
+      </div>
     );
   }
 
   if (error || !formState) {
     return (
-      <Stack align="center" py="xl">
+      <div className="settings-page__error-state">
         <Alert color="red" icon={<AlertTriangle size={16} />}>
           {error ?? "設定の読み込みに失敗しました"}
         </Alert>
         <Button variant="light" onClick={loadSettings}>
           再試行
         </Button>
-      </Stack>
+      </div>
     );
   }
 
   return (
-    <Box
-      style={{
-        position: "relative",
-        display: "grid",
-        gridTemplateColumns: isCompact ? "1fr" : "300px minmax(0, 1fr)",
-        gap: 16,
-        padding: 16,
-        height: "100%",
-      }}
-    >
+    <div className={`settings-page__shell${isCompact ? " settings-page__shell--compact" : ""}`}>
       {!isCompact && (
-        <Paper withBorder radius="lg" p="md">
-          <Stack gap="xs">
-            <Text fw={700} size="sm" c="dimmed">
-              設定カテゴリ
-            </Text>
+        <aside className="settings-page__sidebar">
+          <div className="settings-page__sidebar-title">設定カテゴリ</div>
+          <nav className="settings-page__section-list" aria-label="設定カテゴリ">
             {SETTINGS_SECTIONS.map((section) => (
-              <NavLink
+              <button
                 key={section.id}
-                active={activeSectionId === section.id}
+                type="button"
+                className={`settings-page__section-btn${
+                  activeSectionId === section.id ? " settings-page__section-btn--active" : ""
+                }`}
+                aria-current={activeSectionId === section.id ? "page" : undefined}
                 onClick={() => setActiveSectionId(section.id)}
-                leftSection={section.icon}
-                label={section.title}
-                description={section.description}
-                variant="filled"
-              />
+              >
+                <span className="settings-page__section-icon" aria-hidden="true">
+                  {section.icon}
+                </span>
+                <span className="settings-page__section-content">
+                  <span className="settings-page__section-name">{section.title}</span>
+                  <span className="settings-page__section-desc">{section.description}</span>
+                </span>
+              </button>
             ))}
-          </Stack>
-        </Paper>
+          </nav>
+        </aside>
       )}
 
       {isCompact && (
         <>
-          <Box
+          <div
+            className="settings-page__compact-hotzone"
             role="button"
             tabIndex={0}
             aria-label="設定カテゴリメニューを開く"
-            style={{
-              position: "absolute",
-              top: 0,
-              bottom: 0,
-              left: 0,
-              width: 12,
-              zIndex: 10,
-            }}
             onMouseEnter={openCompactMenu}
             onFocus={openCompactMenu}
             onBlur={scheduleCompactMenuClose}
           />
 
           {isCompactMenuOpen && (
-            <Paper
-              withBorder
-              radius="lg"
-              p="md"
-              style={{
-                position: "absolute",
-                top: 16,
-                left: 16,
-                width: "min(300px, calc(100vw - 32px))",
-                maxHeight: "calc(100% - 32px)",
-                zIndex: 20,
-                overflow: "hidden",
-              }}
+            <aside
+              className="settings-page__compact-menu"
               onMouseEnter={openCompactMenu}
               onMouseLeave={scheduleCompactMenuClose}
             >
-              <ScrollArea style={{ height: "100%" }}>
-                <Stack gap="xs">
-                  <Text fw={700} size="sm" c="dimmed">
-                    設定カテゴリ
-                  </Text>
+              <div className="settings-page__compact-menu-scroll">
+                <div className="settings-page__sidebar-title">設定カテゴリ</div>
+                <nav className="settings-page__section-list" aria-label="設定カテゴリ">
                   {SETTINGS_SECTIONS.map((section) => (
-                    <NavLink
+                    <button
                       key={section.id}
-                      active={activeSectionId === section.id}
+                      type="button"
+                      className={`settings-page__section-btn${
+                        activeSectionId === section.id ? " settings-page__section-btn--active" : ""
+                      }`}
+                      aria-current={activeSectionId === section.id ? "page" : undefined}
                       onClick={() => {
                         setActiveSectionId(section.id);
                         setIsCompactMenuOpen(false);
                       }}
-                      leftSection={section.icon}
-                      label={section.title}
-                      description={section.description}
-                      variant="filled"
-                    />
+                    >
+                      <span className="settings-page__section-icon" aria-hidden="true">
+                        {section.icon}
+                      </span>
+                      <span className="settings-page__section-content">
+                        <span className="settings-page__section-name">{section.title}</span>
+                        <span className="settings-page__section-desc">{section.description}</span>
+                      </span>
+                    </button>
                   ))}
-                </Stack>
-              </ScrollArea>
-            </Paper>
+                </nav>
+              </div>
+            </aside>
           )}
         </>
       )}
 
-      <ScrollArea
-        viewportRef={scrollViewportRef}
-        onScrollPositionChange={(position) => {
-          persistPageUiState(position.y);
-        }}
+      <main
+        ref={scrollViewportRef}
+        className="settings-page__main"
+        onScroll={(event) => persistPageUiState(event.currentTarget.scrollTop)}
       >
-        <Stack gap="md" pb="md" pr={isCompact ? 0 : 6}>
-          <Card withBorder radius="lg" p="lg">
-            <Group justify="space-between" align="flex-start" wrap="wrap">
+        <div className="settings-page__content-stack">
+          <section className="settings-page__card">
+            <header className="settings-page__header">
               <div>
-                <Text size="xs" fw={700} c="dimmed">
-                  SETTINGS
-                </Text>
-                <Title order={2} mt={4}>
-                  {activeSection.title}
-                </Title>
-                <Text size="sm" c="dimmed" mt={6}>
-                  {activeSection.description}
-                </Text>
+                <div className="settings-page__eyebrow">SETTINGS</div>
+                <h2 className="settings-page__title">{activeSection.title}</h2>
+                <p className="settings-page__description">{activeSection.description}</p>
               </div>
-              <Stack gap={6} align="flex-end">
-                <Badge variant="light">自動保存</Badge>
+              <div className="settings-page__status-row">
+                <span className="settings-page__note">自動保存</span>
                 {savingSectionId === activeSection.id && (
-                  <Group gap={6}>
-                    <RefreshCw size={14} className="animate-spin" />
-                    <Text size="xs" c="dimmed">
-                      保存中...
-                    </Text>
-                  </Group>
+                  <span className="settings-page__saving">
+                    <RefreshCw size={14} className="animate-spin" aria-hidden="true" />
+                    保存中...
+                  </span>
                 )}
-              </Stack>
-            </Group>
+              </div>
+            </header>
 
             {autoSaveError && (
-              <Alert mt="md" color="red" icon={<AlertTriangle size={16} />}>
+              <Alert
+                className="settings-page__auto-save-error"
+                color="red"
+                icon={<AlertTriangle size={16} />}
+              >
                 {autoSaveError}
               </Alert>
             )}
 
-            <Divider my="md" />
+            <hr className="settings-page__divider" />
 
             {activeSection.id !== "ng" && (
-              <Stack gap="xl">
+              <div className="settings-page__section-stack">
                 {activeSection.id !== "other" &&
                   renderSectionItems(activeSection.id, regularSectionItems)}
 
                 {activeSection.id === "other" && (
                   <>
-                    <Paper withBorder radius="md" p="md">
-                      <Stack gap="sm">
-                        {/* 変更理由: BBSMENU項目と操作は「その他」内でまとまりを持たせ、
-                            他設定と混ざらない独立ブロックにして見通しを上げる。 */}
-                        {renderSectionItems("other", otherBbsmenuSectionItems)}
-                        <Group gap="sm" wrap="wrap">
-                          <Button
-                            variant="default"
-                            onClick={() => void maintenanceActions.handleBBSMenuCheck()}
-                            loading={maintenanceActions.isBbsMenuChecking}
-                            disabled={maintenanceActions.isBbsMenuRefreshing}
-                          >
-                            URLチェック
-                          </Button>
-                          <Button
-                            onClick={() => void maintenanceActions.handleBBSMenuRefresh()}
-                            loading={maintenanceActions.isBbsMenuRefreshing}
-                            disabled={maintenanceActions.isBbsMenuChecking}
-                          >
-                            BBSMenuリフレッシュ
-                          </Button>
-                        </Group>
-                      </Stack>
-                    </Paper>
+                    <section className="settings-page__subsurface">
+                      {renderSectionItems("other", otherBbsmenuSectionItems)}
+                      <div className="settings-page__actions">
+                        <Button
+                          onClick={() => void maintenanceActions.handleBBSMenuCheck()}
+                          loading={maintenanceActions.isBbsMenuChecking}
+                          disabled={maintenanceActions.isBbsMenuRefreshing}
+                        >
+                          URLチェック
+                        </Button>
+                        <Button
+                          onClick={() => void maintenanceActions.handleBBSMenuRefresh()}
+                          loading={maintenanceActions.isBbsMenuRefreshing}
+                          disabled={maintenanceActions.isBbsMenuChecking}
+                        >
+                          BBSMenuリフレッシュ
+                        </Button>
+                      </div>
+                    </section>
 
                     {renderSectionItems("other", otherNonBbsmenuSectionItems)}
                   </>
                 )}
-              </Stack>
+              </div>
             )}
 
             {activeSection.id === "ng" && (
-              <Stack gap="lg">
+              <div className="settings-page__section-stack settings-page__section-stack--ng">
                 {renderSectionItems("ng", ngPrimarySectionItems)}
 
                 <Button
+                  className="settings-page__toggle"
                   variant="subtle"
-                  justify="start"
-                  leftSection={
-                    <ChevronDown
-                      size={16}
-                      style={{
-                        transform: isNgExamplesOpen ? "rotate(180deg)" : "rotate(0deg)",
-                        transition: "transform 140ms ease",
-                      }}
-                    />
-                  }
-                  onClick={() => {
-                    setIsNgExamplesOpen((prev) => !prev);
-                  }}
+                  aria-expanded={isNgExamplesOpen}
+                  onClick={() => setIsNgExamplesOpen((prev) => !prev)}
                 >
+                  <ChevronDown
+                    size={16}
+                    className={`settings-page__toggle-icon${
+                      isNgExamplesOpen ? " settings-page__toggle-icon--open" : ""
+                    }`}
+                    aria-hidden="true"
+                  />
                   NG記法例
                 </Button>
 
                 {isNgExamplesOpen && (
-                  <Card withBorder radius="md" p="sm">
-                    <Stack gap="xs">
-                      <Text size="xs" c="dimmed">
-                        よく使う例をそのままコピーして調整できます。
-                      </Text>
-                      <Text size="xs" fw={600}>
-                        基本
-                      </Text>
-                      <NGDslHelpSnippet code={NG_DSL_EXAMPLE} minHeight={140} />
-                      <Text size="xs" fw={600}>
-                        複数行
-                      </Text>
-                      <NGDslHelpSnippet code={NG_DSL_MULTILINE_EXAMPLE} minHeight={180} />
-                    </Stack>
-                  </Card>
+                  <section className="settings-page__help-surface">
+                    <p className="settings-page__help-note">
+                      よく使う例をそのままコピーして調整できます。
+                    </p>
+                    <h3 className="settings-page__help-label">基本</h3>
+                    <NGDslHelpSnippet code={NG_DSL_EXAMPLE} minHeight={140} />
+                    <h3 className="settings-page__help-label">複数行</h3>
+                    <NGDslHelpSnippet code={NG_DSL_MULTILINE_EXAMPLE} minHeight={180} />
+                  </section>
                 )}
 
                 <Button
+                  className="settings-page__toggle"
                   variant="subtle"
-                  justify="start"
-                  leftSection={
-                    <ChevronDown
-                      size={16}
-                      style={{
-                        transform: isNgAdvancedOpen ? "rotate(180deg)" : "rotate(0deg)",
-                        transition: "transform 140ms ease",
-                      }}
-                    />
-                  }
-                  onClick={() => {
-                    setIsNgAdvancedOpen((prev) => !prev);
-                  }}
+                  aria-expanded={isNgAdvancedOpen}
+                  onClick={() => setIsNgAdvancedOpen((prev) => !prev)}
                 >
+                  <ChevronDown
+                    size={16}
+                    className={`settings-page__toggle-icon${
+                      isNgAdvancedOpen ? " settings-page__toggle-icon--open" : ""
+                    }`}
+                    aria-hidden="true"
+                  />
                   高度なNG設定
                 </Button>
 
                 {isNgAdvancedOpen && (
-                  <Stack gap="sm">{renderSectionItems("ng", ngAdvancedSectionItems)}</Stack>
+                  <div className="settings-page__section-stack--nested">
+                    {renderSectionItems("ng", ngAdvancedSectionItems)}
+                  </div>
                 )}
-              </Stack>
+              </div>
             )}
-          </Card>
+          </section>
 
           <SettingsSupplementaryPanels
             panelIds={activeSection.supplementaryPanelIds}
             maintenanceActions={maintenanceActions}
           />
-        </Stack>
-      </ScrollArea>
-    </Box>
+        </div>
+      </main>
+    </div>
   );
 };

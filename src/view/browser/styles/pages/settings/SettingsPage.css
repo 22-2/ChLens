@@ -1,4 +1,177 @@
 /* Settings page shell, section navigation, cards, and action buttons. */
+.settings-page__shell {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: var(--sys-space-8);
+  height: 100%;
+  padding: var(--sys-space-8);
+}
+
+.settings-page__shell--compact {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.settings-page__loading,
+.settings-page__error-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sys-space-4);
+  min-height: 100%;
+  padding: var(--sys-space-12);
+  color: var(--sys-color-text-muted);
+}
+
+.settings-page__error-state {
+  flex-direction: column;
+}
+
+.settings-page__compact-hotzone {
+  position: absolute;
+  z-index: var(--sys-z-local);
+  inset: 0 auto 0 0;
+  width: var(--sys-space-6);
+}
+
+.settings-page__compact-menu {
+  position: absolute;
+  z-index: var(--sys-z-popup-layer);
+  top: var(--sys-space-8);
+  left: var(--sys-space-8);
+  width: min(300px, calc(100vw - var(--sys-space-16)));
+  max-height: calc(100% - var(--sys-space-16));
+  overflow: hidden;
+  padding: var(--sys-space-8);
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-xl);
+  background: var(--sys-color-settings-card-bg);
+  box-shadow: var(--sys-shadow-floating);
+}
+
+.settings-page__compact-menu-scroll {
+  max-height: calc(100vh - var(--sys-space-16));
+  overflow-y: auto;
+}
+
+.settings-page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sys-space-8);
+  flex-wrap: wrap;
+}
+
+.settings-page__divider {
+  margin: var(--sys-space-10) 0;
+  border: 0;
+  border-top: 1px solid var(--sys-color-border);
+}
+
+.settings-page__section-stack,
+.settings-page__section-stack--nested {
+  display: grid;
+  gap: var(--sys-space-12);
+}
+
+.settings-page__section-stack--ng {
+  gap: var(--sys-space-8);
+}
+
+.settings-page__section-stack--nested {
+  gap: var(--sys-space-8);
+}
+
+.settings-page__subsurface {
+  display: grid;
+  gap: var(--sys-space-8);
+  padding: var(--sys-space-8);
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-lg);
+  background: var(--sys-color-surface-muted);
+}
+
+.settings-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sys-space-4);
+}
+
+.settings-page__toggle {
+  justify-content: flex-start;
+  width: 100%;
+  min-height: var(--sys-space-9);
+  padding: var(--sys-space-3) var(--sys-space-4);
+  border-color: transparent;
+  text-align: left;
+}
+
+.settings-page__toggle-icon {
+  transition: transform var(--sys-duration-normal) var(--sys-ease-standard);
+}
+
+.settings-page__toggle-icon--open {
+  transform: rotate(180deg);
+}
+
+.settings-page__help-surface {
+  display: grid;
+  gap: var(--sys-space-6);
+  padding: var(--sys-space-6);
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-lg);
+  background: var(--sys-color-surface-muted);
+}
+
+.settings-page__help-note,
+.settings-page__ng-field-description,
+.settings-page__section-divider-description {
+  margin: 0;
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-sm);
+  line-height: 1.5;
+}
+
+.settings-page__help-label {
+  margin: 0;
+  color: var(--sys-color-text);
+  font-size: var(--sys-font-size-sm);
+  font-weight: 600;
+}
+
+.settings-page__ng-field {
+  display: grid;
+  gap: var(--sys-space-4);
+}
+
+.settings-page__ng-field-title {
+  margin: 0;
+  color: var(--sys-color-text);
+  font-size: var(--sys-font-size-md);
+  font-weight: 600;
+}
+
+.settings-page__section-divider {
+  display: grid;
+  gap: var(--sys-space-3);
+}
+
+.settings-page__section-divider-line {
+  display: flex;
+  align-items: center;
+  gap: var(--sys-space-5);
+  color: var(--sys-color-text);
+  font-size: var(--sys-font-size-lg);
+  font-weight: 700;
+}
+
+.settings-page__section-divider-line::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, var(--sys-color-border), transparent);
+}
+
 .settings-page {
   display: flex;
   min-height: 100%;
