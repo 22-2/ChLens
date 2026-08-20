@@ -276,8 +276,8 @@
 }
 
 .settings-page__card {
-  max-width: 800px;
-  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
   border: 1px solid var(--sys-color-border);
   border-radius: var(--sys-radius-xl);
   background: var(--sys-color-settings-card-bg);
@@ -376,7 +376,9 @@
 
 .settings-page__content-stack {
   display: grid;
+  width: min(100%, 800px);
   gap: var(--sys-space-10);
+  margin: 0 auto;
 }
 
 .settings-page__form-shell {
@@ -390,14 +392,8 @@
 
 .settings-page__supplementary-stack {
   display: grid;
+  width: 100%;
   gap: var(--sys-space-9);
-}
-
-@media (min-width: 1180px) {
-  .settings-page__supplementary-stack {
-    position: sticky;
-    top: var(--sys-space-10);
-  }
 }
 
 .settings-surface-card {

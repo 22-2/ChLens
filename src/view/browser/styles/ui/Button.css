@@ -6,10 +6,10 @@
   min-height: var(--sys-space-8);
   gap: var(--sys-space-2);
   padding: var(--sys-space-2) var(--sys-space-4);
-  border: 1px solid var(--sys-color-border);
+  border: 1px solid var(--sys-color-accent);
   border-radius: var(--sys-radius-md);
-  background: var(--sys-color-surface-muted);
-  color: var(--sys-color-text);
+  background: var(--sys-color-accent);
+  color: var(--sys-color-accent-fg);
   font: inherit;
   cursor: pointer;
   transition:
@@ -19,8 +19,8 @@
 }
 
 .browser-button:hover:not(:disabled) {
-  border-color: var(--sys-color-accent);
-  background: var(--sys-color-list-hover-bg);
+  border-color: var(--sys-color-accent-hover);
+  background: var(--sys-color-accent-hover);
 }
 
 .browser-button:focus-visible {
@@ -46,8 +46,8 @@
 
 .browser-button[data-variant="light"] {
   border-color: var(--sys-color-accent);
-  background: var(--sys-color-selection);
-  color: var(--sys-color-accent);
+  background: var(--sys-color-accent);
+  color: var(--sys-color-accent-fg);
 }
 
 .browser-button[data-variant="danger"] {
@@ -59,4 +59,9 @@
 .browser-button[data-variant="danger"]:hover:not(:disabled) {
   border-color: var(--sys-color-error);
   background: var(--sys-color-error);
+}
+
+.browser-button[data-variant="light"]:hover:not(:disabled) {
+  border-color: var(--sys-color-accent-hover);
+  background: var(--sys-color-accent-hover);
 }

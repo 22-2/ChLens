@@ -698,12 +698,12 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
                 )}
               </div>
             )}
-          </section>
 
-          <SettingsSupplementaryPanels
-            panelIds={activeSection.supplementaryPanelIds}
-            maintenanceActions={maintenanceActions}
-          />
+            <SettingsSupplementaryPanels
+              panelIds={activeSection.supplementaryPanelIds}
+              maintenanceActions={maintenanceActions}
+            />
+          </section>
         </div>
       </main>
     </div>
