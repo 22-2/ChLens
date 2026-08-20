@@ -1,5 +1,4 @@
 import { LogLevels } from "consola";
-import { toast } from "sonner";
 import * as BBSMenu from "src/core/BBSMenu.js";
 import BoardService from "src/core/BoardService.js";
 import Cache from "src/core/Cache.js";
@@ -8,6 +7,7 @@ import * as NG from "src/core/NG";
 import Notification from "src/core/Notification";
 import ThreadService from "src/core/ThreadService.js";
 import { container } from "src/service-container/Container";
+import { toastStore } from "src/service-container/toast-store";
 import {
   IBBSMenuResult,
   IBBSMenuService,
@@ -168,22 +168,16 @@ export function setupContainer(app: LegacyAppForSetup) {
   // Toast Service Adapter
   const toastServiceAdapter: IToastService = {
     notify: (message, options) => {
-      if (options?.backgroundColor) {
-        toast(message, {
-          style: { backgroundColor: options.backgroundColor },
-        });
-      } else {
-        toast(message);
-      }
+      toastStore.notify(message, options);
     },
     success: (message) => {
-      toast.success(message);
+      toastStore.success(message);
     },
     error: (message) => {
-      toast.error(message);
+      toastStore.error(message);
     },
     info: (message) => {
-      toast.info(message);
+      toastStore.info(message);
     },
   };
 

@@ -177,6 +177,7 @@
   /* The full-screen viewer must cover thread popups while remaining below tooltips/dialogs. */
   --ref-z-media-viewer: 38000;
   --ref-z-tooltip: 39000;
+  --ref-z-toast: 39500;
   --ref-z-dialog: 40000;
   --ref-z-gesture: 50000;
   --ref-z-gesture-label: 50001;
@@ -236,6 +237,7 @@
   --sys-z-popup-layer: var(--ref-z-popup-layer);
   --sys-z-context-menu: var(--ref-z-context-menu);
   --sys-z-tooltip: var(--ref-z-tooltip);
+  --sys-z-toast: var(--ref-z-toast);
   --sys-z-dialog: var(--ref-z-dialog);
   --sys-z-gesture: var(--ref-z-gesture);
   --sys-z-gesture-label: var(--ref-z-gesture-label);

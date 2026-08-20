@@ -1,7 +1,5 @@
 import { PenLine } from "lucide-react";
 import React, { useEffect } from "react";
-import { Toaster } from "sonner";
-import "sonner/dist/styles.css";
 import { container } from "src/service-container/index";
 import { AutoRefreshStatusItem } from "src/view/browser/components/AutoRefreshStatusItem";
 import { BookmarkRootSelectorDialog } from "src/view/browser/components/BookmarkRootSelectorDialog";
@@ -31,6 +29,7 @@ import {
   useUrlBarVisibility,
 } from "src/view/browser/hooks/use-url-bar-visibility";
 import { TooltipProvider } from "src/view/browser/ui/Tooltip";
+import { ToastProvider } from "src/view/browser/ui/Toast";
 import { applyBBSMenuToItestServerMap } from "src/view/browser/utils/itest-server-map";
 
 // ステータスバー左端に常設される書き込みパネル開閉ボタン
@@ -161,24 +160,7 @@ const BrowserAppContent: React.FC = () => {
         */}
         {/* data-theme を使ってダークモード CSS 変数を切り替える */}
         <div className="browser-shell" data-theme={theme}>
-          <Toaster
-            position="top-right"
-            theme={theme === "dark" ? "dark" : "light"}
-            offset={{
-              top: isUrlBarExpanded ? "88px" : "64px",
-              right: "78px",
-            }}
-            toastOptions={{
-              style: {
-                fontSize: "12px",
-                padding: "8px 12px",
-                minHeight: "auto",
-                width: "fit-content",
-              },
-            }}
-            duration={1500}
-            closeButton
-          />
+          <ToastProvider topOffset={isUrlBarExpanded ? "88px" : "64px"} rightOffset="78px" />
           <PaneRow />
           <BookmarkRootSelectorDialog />
         </div>

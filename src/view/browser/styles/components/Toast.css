@@ -1,8 +1,93 @@
-/* Sonner compatibility values, expressed through browser semantic tokens. */
-.browser-shell[data-theme="dark"] [data-sonner-toast] {
-  --normal-bg: var(--sys-color-tab-strip);
-  --normal-bg-hover: var(--sys-color-surface-muted);
-  --normal-border: var(--sys-color-border);
-  --normal-border-hover: var(--sys-color-text-muted);
-  --normal-text: var(--sys-color-text);
+/* Shared Radix Toast surface. Position is supplied by the shell because the URL bar can expand. */
+.browser-toast-viewport {
+  position: fixed;
+  z-index: var(--sys-z-toast);
+  top: var(--cmp-toast-offset-top);
+  right: var(--cmp-toast-offset-right);
+  display: grid;
+  width: min(360px, calc(100vw - var(--sys-space-8)));
+  gap: var(--sys-space-4);
+  margin: 0;
+  padding: 0;
+  outline: none;
+  list-style: none;
+}
+
+.browser-toast {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--sys-space-6);
+  min-width: 0;
+  padding: var(--sys-space-5) var(--sys-space-6);
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-md);
+  background: var(--cmp-toast-background, var(--sys-color-surface));
+  color: var(--sys-color-text);
+  box-shadow: var(--sys-shadow-popup);
+  font-size: var(--sys-font-size-sm);
+}
+
+.browser-toast[data-kind="success"] {
+  border-color: var(--sys-color-success);
+}
+
+.browser-toast[data-kind="error"] {
+  border-color: var(--sys-color-error);
+  background: var(--sys-color-error-surface);
+}
+
+.browser-toast[data-kind="info"] {
+  border-color: var(--sys-color-accent);
+}
+
+.browser-toast__title {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+
+.browser-toast__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--sys-space-7);
+  height: var(--sys-space-7);
+  padding: 0;
+  border: 0;
+  border-radius: var(--sys-radius-sm);
+  background: transparent;
+  color: var(--sys-color-text-muted);
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.browser-toast__close:hover {
+  background: var(--sys-color-surface-muted);
+  color: var(--sys-color-text);
+}
+
+.browser-toast__close:focus-visible {
+  outline: 2px solid var(--sys-color-focus-ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .browser-toast[data-state="open"] {
+    animation: browser-toast-in var(--sys-duration-normal) var(--sys-ease-out);
+  }
+}
+
+@keyframes browser-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }

@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { toast } from "sonner";
 import { container } from "src/service-container/Container";
 
 export function useNotificationListener() {
@@ -9,22 +8,20 @@ export function useNotificationListener() {
       const message = (data.message || data.html) as string | undefined;
       if (!message) return;
 
-      const options: Record<string, unknown> = {};
-      if (data.background_color) {
-        // sonner doesn't directly support background_color in the same way,
-        // but we can map some common ones or use style.
-        if (data.background_color === "red") {
-          toast.error(message);
+      const backgroundColor =
+        typeof data.background_color === "string" ? data.background_color : undefined;
+      if (backgroundColor) {
+        if (backgroundColor === "red") {
+          container.toast.error(message);
           return;
         }
-        if (data.background_color === "green") {
-          toast.success(message);
+        if (backgroundColor === "green") {
+          container.toast.success(message);
           return;
         }
-        options.style = { backgroundColor: data.background_color };
       }
 
-      toast(message, options);
+      container.toast.notify(message, backgroundColor ? { backgroundColor } : undefined);
     };
 
     container.message.on("notify", handleNotify);
