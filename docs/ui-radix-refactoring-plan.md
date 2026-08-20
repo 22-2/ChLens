@@ -22,16 +22,16 @@
 
 2026-08-20 時点のソースを対象とした。
 
-| 項目             | 現状                                                         | 問題                                                                                    |
-| ---------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
-| メインスタイル   | `src/view/browser.scss` 1ファイル                            | 2,094行 / 約40KBまで縮小したが、設定・書き込み・残りのpopupがまだ同居                   |
-| その他の自前CSS  | `WheelScrollIndicator.css` のみ                              | コンポーネント単位へ分ける方針が全体に適用されていない                                  |
-| Mantine          | 本番コード15ファイル、テストを含め21ファイルから参照         | Provider、Spotlight、フォーム、レイアウト、Tooltipなど用途が混在                        |
-| Tailwind CSS     | 依存・PostCSS・設定ファイルが存在                            | `content` が廃止済みの `src/view/thread` を指し、実質的な utility 利用は見当たらない    |
-| SCSS             | `bundle.scss` から `browser.scss` を `@use`                  | ネスト以外の恩恵が小さく、Vite側にも独自SCSSビルド経路が残る                            |
-| デザイントークン | `--browser-*` を32種類宣言、参照は約206箇所                  | 色リテラルが約546箇所あり、dark theme が個別セレクタの上書き集になっている              |
-| 生成CSS          | `debug/chrome/browser.css` 約330KB                           | Mantine CSSと自前CSSを含む一方、別に `debug/chrome/view/browser.css` 約84KBも生成される |
-| DOM依存          | BEM classを `querySelector` / `closest` / テストから多数参照 | CSS Modulesへの一括変更は振る舞いまで壊すリスクが高い                                   |
+| 項目             | 現状                                                         | 問題                                                                                 |
+| ---------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| メインスタイル   | `styles/index.css` と責務別のplain CSS                       | `browser.scss` / `bundle.scss` を削除し、component / page / foundation単位へ分割済み |
+| その他の自前CSS  | `src/view/browser/styles/` 配下の32 CSS                      | 読み込み順は `styles/index.css` に集約。Radix wrapper導入前のBEM classは維持         |
+| Mantine          | 本番コード15ファイル、テストを含め21ファイルから参照         | Provider、Spotlight、フォーム、レイアウト、Tooltipなど用途が混在                     |
+| Tailwind CSS     | 依存・PostCSS・設定ファイルが存在                            | `content` が廃止済みの `src/view/thread` を指し、実質的な utility 利用は見当たらない |
+| SCSS             | browser viewのソース・Vite専用ビルド経路ともに削除           | 他画面を含むSCSS参照はなく、`sass`依存とSCSS用型宣言も削除済み                       |
+| デザイントークン | `--ref-*` / `--sys-*` 契約。`--browser-*` 参照は0件          | foundation以外のraw colorを減らし、dark themeをsemantic token中心へ移行中            |
+| 生成CSS          | `debug/chrome/browser.css` 約337KB                           | browser viewの自前CSSは1本に統合。旧 `view/browser.css` の二重生成は廃止             |
+| DOM依存          | BEM classを `querySelector` / `closest` / テストから多数参照 | CSS Modulesへの一括変更は振る舞いまで壊すリスクが高い                                |
 
 ### Mantine の主な利用箇所
 
@@ -48,42 +48,51 @@
 
 ### 先に解消すべき構造上の問題
 
-1. `index.tsx` が Mantine CSS と `bundle.scss` を取り込み、Viteが `browser.css` を出力している。
-2. 同時に `scssPlugin` が `src/view/*.scss` を別処理し、HTMLから参照されない
-   `view/browser.css` も生成している。
-3. `browser.scss` 内では light theme の値、dark theme の値、コンポーネント固有値が混在している。
+1. `index.tsx` は Mantine CSSと自前の `styles/index.css` を取り込んでいる。Mantine CSSは後続の依存削除で外す。
+2. browser view専用の `scssPlugin`、`bundle.scss`、`browser.scss` は削除済みで、HTMLから参照されるCSSは `browser.css` 1本になった。
+3. foundationのtoken層は分離済みだが、Mantineのtheme / style APIが残る画面ではライブラリ由来の値が混在している。
 4. `.mantine-*` と `--mantine-*` への上書きがあり、UIライブラリの変更がスタイルへ漏れている。
 5. 見た目用クラスが一部の振る舞いとテストのセレクタも兼ねており、命名変更の影響範囲が広い。
 
 ### 変更履歴から見た現在の進捗
 
-直近のコミットでは、計画のPhase 1〜2-3とThread系の主要CSS分割までが実装されている。
+直近のコミットでは、計画のPhase 1〜2-3、Thread / Settings系のCSS分割、browser viewのSCSS経路削除までが実装されている。
 
-| コミット                                                               | 実施内容                                                                      |
-| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `86670bb9 refactor: phase 1`                                           | foundationのreset / theme / tokenを追加し、dark themeの大部分を分離           |
-| `52d7a41c refactor: phase 2-1`                                         | BrowserShell、PaneLayout、ContentAreaをCSSへ分割                              |
-| `d6e375c6 refactor: phase 2-2`                                         | ContextMenu、StatusBar、TabBarをCSSへ分割                                     |
-| `4162fb8b refactor: 2-3`                                               | NavigationBar、Home、BoardList、PageStatusをCSSへ分割                         |
-| `2e051dcb refactor: デザイントークンをより厳密に`                      | `--ref-*` / `--sys-*`契約、token lint、overlay順を整備                        |
-| `d0cfa18c refactor(ui): overlay z-indexを意味tokenへ統一`              | 固定z-indexを意味tokenへ統一し、popup / tooltip / dialog順を固定              |
-| `ee1412e6 refactor(ui): DataTableスタイルをコンポーネントCSSへ分割`    | DataTable / thread-list / tooltipをコンポーネントCSSへ分割し、表用tokenを追加 |
-| `a29d5141 refactor(ui): ThreadPageスタイルをページCSSへ分割`           | ThreadPageのoverlay、minimap、auto-scroll、toolbarをページCSSへ分割           |
-| `53bd5a3b refactor(ui): SearchBarスタイルをコンポーネントCSSへ分割`    | Ctrl+F検索バーをsystem tokenで統一し、コンポーネントCSSへ分割                 |
-| `761ccb43 refactor(ui): ThreadResponseメタデータをページCSSへ分割`     | レスの本文、ID、返信、所有者バッジをThreadResponse CSSへ分割                  |
-| `711184b3 refactor(ui): Thread popupスタイルをコンポーネントCSSへ分割` | ResPopup、返信ツリー、アンカープレビューをpopup tokenへ移行                   |
-| `30244c72 refactor(ui): MediaViewerスタイルをコンポーネントCSSへ分割`  | 画像viewerのscrim、操作バー、stageを専用tokenへ移行                           |
-| `58ca97f3 refactor(ui): ThreadResponseのメディアスタイルをtoken化`     | リンクカード、サムネイル、動画埋め込み、highlightをThreadResponseへ集約       |
+| コミット                                                                  | 実施内容                                                                      |
+| ------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `86670bb9 refactor: phase 1`                                              | foundationのreset / theme / tokenを追加し、dark themeの大部分を分離           |
+| `52d7a41c refactor: phase 2-1`                                            | BrowserShell、PaneLayout、ContentAreaをCSSへ分割                              |
+| `d6e375c6 refactor: phase 2-2`                                            | ContextMenu、StatusBar、TabBarをCSSへ分割                                     |
+| `4162fb8b refactor: 2-3`                                                  | NavigationBar、Home、BoardList、PageStatusをCSSへ分割                         |
+| `2e051dcb refactor: デザイントークンをより厳密に`                         | `--ref-*` / `--sys-*`契約、token lint、overlay順を整備                        |
+| `d0cfa18c refactor(ui): overlay z-indexを意味tokenへ統一`                 | 固定z-indexを意味tokenへ統一し、popup / tooltip / dialog順を固定              |
+| `ee1412e6 refactor(ui): DataTableスタイルをコンポーネントCSSへ分割`       | DataTable / thread-list / tooltipをコンポーネントCSSへ分割し、表用tokenを追加 |
+| `a29d5141 refactor(ui): ThreadPageスタイルをページCSSへ分割`              | ThreadPageのoverlay、minimap、auto-scroll、toolbarをページCSSへ分割           |
+| `53bd5a3b refactor(ui): SearchBarスタイルをコンポーネントCSSへ分割`       | Ctrl+F検索バーをsystem tokenで統一し、コンポーネントCSSへ分割                 |
+| `761ccb43 refactor(ui): ThreadResponseメタデータをページCSSへ分割`        | レスの本文、ID、返信、所有者バッジをThreadResponse CSSへ分割                  |
+| `711184b3 refactor(ui): Thread popupスタイルをコンポーネントCSSへ分割`    | ResPopup、返信ツリー、アンカープレビューをpopup tokenへ移行                   |
+| `30244c72 refactor(ui): MediaViewerスタイルをコンポーネントCSSへ分割`     | 画像viewerのscrim、操作バー、stageを専用tokenへ移行                           |
+| `58ca97f3 refactor(ui): ThreadResponseのメディアスタイルをtoken化`        | リンクカード、サムネイル、動画埋め込み、highlightをThreadResponseへ集約       |
+| `4036e746 refactor(ui): StatusBarの操作スタイルをコンポーネントCSSへ統合` | StatusBarの操作系セレクタを専用CSSへ移動                                      |
+| `4a9d16a4 refactor(ui): MiniWindowスタイルをコンポーネントCSSへ分割`      | mini windowのヘッダー、フォーム、状態表示を専用CSSへ移動                      |
+| `8349b966 refactor(ui): BottomPanelとWritePanelをコンポーネントCSSへ分割` | 書き込み・下部パネルを専用CSSへ移動                                           |
+| `71e53125 refactor(ui): NG Editorスタイルを設定ページCSSへ分割`           | NG Editorのフォーム・detailsを設定CSSへ移動                                   |
+| `4f0bcf9e refactor(ui): ThreadListページスタイルをページCSSへ分割`        | スレ一覧のページ固有スタイルを専用CSSへ移動                                   |
+| `19d8d4a8 refactor(ui): 設定ダイアログをページCSSへ分割`                  | Bookmark / supplementary dialogのスタイルを設定CSSへ移動                      |
+| `b1b469a0 refactor(ui): SettingsPageのshellをページCSSへ分割`             | Settingsのshell、sidebar、cardをページCSSへ移動                               |
+| `1f8e662d refactor(ui): 残りの設定フォームとコマンドパレットをCSSへ分割`  | SettingsForm、CommandPalette、Toastをsemantic tokenで専用CSSへ移動            |
+| `7d294fe8 refactor(build): SCSSの互換ビルド経路を削除`                    | bundle / browser SCSS、ViteのscssPlugin、sass依存、legacy token aliasを削除   |
 
-この状態では「新token層を追加したが、抽出済みCSSに旧`--browser-*`とraw値が残る」状態だったため、
-未抽出の`browser.scss`には互換aliasと旧構造が残っている。
-表示変更と名前変更を同じコミットへ混ぜず、次は旧SCSSの機械分割を続ける。
+この状態でbrowser viewの自前スタイルは、foundation / layout / component / pageのplain CSSへ分割された。
+Mantine CSS、Tailwind/PostCSS設定、Sonner、各画面のMantine component利用は残っているため、次は共通UI wrapperを導入して低リスク部品から依存を外す。
 
 ### 現在の分割済み範囲
 
-- `styles/components/`: ContextMenu、DataTable、MediaViewer、NavigationBar、SearchBar、StatusBar、TabBar、ThreadPopup、WheelScrollIndicator
-- `styles/pages/`: Home、BoardList、PageStatus、ThreadPage、ThreadResponse
-- `browser.scss`: 約2,094行。設定、書き込みパネル、Sonner上書き、残りのレスポップアップ周辺が未抽出
+- `styles/foundation/`: reset、base、reference / semantic token、light / dark theme
+- `styles/layout/`: BrowserShell、PaneLayout、ContentArea
+- `styles/components/`: ContextMenu、CommandPalette、DataTable、MediaViewer、MiniWindow、NavigationBar、SearchBar、StatusBar、TabBar、ThreadPopup、Toast、WheelScrollIndicator、BottomPanel、WritePanel
+- `styles/pages/`: Home、BoardList、PageStatus、ThreadList、ThreadPage、ThreadResponse、SettingsPage、SettingsForm、BookmarkDialog、NGEditor
+- `browser.scss` / `bundle.scss`: 削除済み。browser viewの自前CSS入口は `styles/index.css` のみ
 - `pnpm lint:tokens`、`pnpm tsc6`、対象コンポーネントテスト、Chrome/Firefox/Tauriビルドを各区切りで確認済み
 
 ---
@@ -197,7 +206,7 @@ src/view/browser/
 
 ## デザイントークン設計
 
-### トークンを3層 + 移行用aliasに分ける
+### トークンを3層に分ける
 
 ```css
 /* reference: 値そのもの。tokens.css以外から直接使わない */
@@ -214,11 +223,8 @@ src/view/browser/
 --sys-color-accent: var(--ref-color-blue-600);
 --sys-color-error: var(--ref-color-red-600);
 
-/* component: semantic tokenだけでは意図を表せない場合に、ownerのCSS内で限定 */
+/* component: owner CSSの中だけで使う意味付きの補助token */
 --cmp-tab-height: var(--sys-space-13);
-
-/* migration only: browser.scssが移行完了するまでBrowserShell.cssで保持 */
---browser-color-bg: var(--sys-color-surface);
 ```
 
 ### ルール
@@ -230,7 +236,7 @@ src/view/browser/
 - dark themeは `[data-theme="dark"]` 内で`--ref-*`を直接上書きせず、`--sys-*`を別のreferenceへ束ねる。
 - hover、focus、selected、disabled、success、warning、dangerを共通語彙にする。
 - spacing、radius、shadow、font size、line height、motion、z-indexもtoken化する。
-- `--browser-*` は未抽出SCSSだけで利用し、新規に分割したCSSでは利用しない。
+- `--browser-*` のlegacy aliasは追加しない。consumerは`--sys-*`を直接参照する。
 - tokenを追加する前に、既存tokenで表現できない意味か確認する。同じ値だからという理由でsemantic tokenを増やさない。
 - 参照token名に画面・コンポーネント名を含めない。`--ref-color-*`と`--sys-color-*`の責務を保つ。
 - `prefers-reduced-motion` と `forced-colors` の扱いをfoundationで定義する。
@@ -239,17 +245,17 @@ src/view/browser/
 
 - `themes.css` にコンポーネントセレクタを置かない。
 - `ui/` と新規コンポーネントCSSにraw color、raw shadow、raw z-indexを追加しない。
-- 抽出済みCSSに`var(--browser-*)`を追加しない。
+- sourceに`var(--browser-*)`を追加しない。
 - `--ref-*`をconsumer CSSから直接参照しない（alphaやshadowも`--sys-*`へ意味付けしてから使う）。
 - `--mantine-*`、`.mantine-*` を参照しない。
 - z-indexは用途別tokenに限定し、場当たり的な数値追加を禁止する。
 
 この契約は `pnpm lint:tokens`（`scripts/check-browser-design-tokens.mjs`）で、抽出済みCSSに対して
-機械的に検査する。未移行の`browser.scss`とBrowserShellの互換bridgeは段階移行のため対象外とする。
+機械的に検査する。browser viewの自前CSSはすべて検査対象とし、legacy aliasの再導入を防ぐ。
 
 ---
 
-## `browser.scss` の分割マップ
+## `browser.scss` の分割マップ（実績）
 
 機械的な切り出しを先に行い、見た目の変更は後続PRへ分離する。
 
@@ -323,7 +329,7 @@ Command PaletteはRadixに同等の完成部品がない。別のUIライブラ�
 
 - `tokens.css`、`themes.css`、`reset.css`、`base.css`を追加する。
 - `.browser-shell` 内のtokenをfoundationへ移す。
-- 既存 `--browser-*` を新semantic tokenへaliasし、利用側を少しずつ移す。
+- 利用側を新semantic tokenへ移し、legacy `--browser-*` aliasを削除する。✅
 - dark themeの個別上書きを棚卸しし、色・shadow・borderをsemantic tokenへ集約する。
 - token命名と利用ルールを同docsまたはCSS冒頭に残す。
 
@@ -334,13 +340,13 @@ Command PaletteはRadixに同等の完成部品がない。別のUIライブラ�
 - 上記分割マップに従い、1領域ずつCSSへ移す。
 - SCSSネストは展開し、セレクタや詳細度をこの段階では変更しない。
 - `styles/index.css` でcascade layerと読み込み順を明示する。
-- `index.tsx` は `styles/index.css` だけを読み込む。
+- browser viewの自前スタイルは `index.tsx` から `styles/index.css` だけを読み込む。
 - `WheelScrollIndicator.css` も所有コンポーネントの隣へ揃える。
-- build結果が同等になったら `bundle.scss`、`browser.scss`、独自 `scssPlugin` を削除する。
-- 他用途がないことを確認して `sass` を削除する。
-- 未参照の `view/browser.css` が生成されないようにする。
+- build結果を確認したうえで `bundle.scss`、`browser.scss`、独自 `scssPlugin` を削除する。✅
+- 他用途がないことを確認して `sass` を削除する。✅
+- 未参照の `view/browser.css` が生成されないようにする。✅
 
-**終了条件:** browser viewの自前SCSSが0件、最終成果物は意図した `browser.css` 1本だけになる。
+**終了条件:** browser viewの自前SCSSが0件、最終成果物は意図した `browser.css` 1本だけになる。✅
 
 ### Phase 3: 共通UI層とRadix基盤を導入する
 
@@ -430,20 +436,20 @@ SettingsはMantine利用密度が最も高いため、ページを一括置換�
 
 ## PRの推奨分割
 
-| PR  | 内容                                      | 原則                            |
-| --- | ----------------------------------------- | ------------------------------- |
-| 1   | visual baselineとbundle計測               | production挙動を変更しない      |
-| 2   | foundation / token基盤                    | 見た目を変更しない              |
-| 3   | `browser.scss` のCSS分割                  | セレクタ・詳細度を変更しない    |
-| 4   | build経路整理とSCSS除去                   | output pathを維持する           |
-| 5   | 共通UI + Radix導入、Spinner / Tooltip移行 | 小さな部品で設計を検証する      |
-| 6   | Home / BoardList / Accordion移行          | 画面単位で完結させる            |
-| 7   | Settings前半（layout / display）          | formの値処理を変更しない        |
-| 8   | Settings後半（form / dialog）             | 保存・復元を重点テストする      |
-| 9   | ContextMenu / popup / dialog移行          | nested overlayを重点テストする  |
-| 10  | Command Palette / Toast移行               | shortcutとfocusを重点テストする |
-| 11  | Mantine / Tailwind / Sonner等の削除       | lockfileとbundle差分を確認する  |
-| 12  | class依存・lintルール整理                 | 見た目の変更を混ぜない          |
+| PR  | 内容                                      | 原則                             |
+| --- | ----------------------------------------- | -------------------------------- |
+| 1   | visual baselineとbundle計測               | production挙動を変更しない       |
+| 2   | foundation / token基盤                    | 見た目を変更しない               |
+| 3   | `browser.scss` のCSS分割                  | セレクタ・詳細度を変更しない。✅ |
+| 4   | build経路整理とSCSS除去                   | output pathを維持する。✅        |
+| 5   | 共通UI + Radix導入、Spinner / Tooltip移行 | 小さな部品で設計を検証する       |
+| 6   | Home / BoardList / Accordion移行          | 画面単位で完結させる             |
+| 7   | Settings前半（layout / display）          | formの値処理を変更しない         |
+| 8   | Settings後半（form / dialog）             | 保存・復元を重点テストする       |
+| 9   | ContextMenu / popup / dialog移行          | nested overlayを重点テストする   |
+| 10  | Command Palette / Toast移行               | shortcutとfocusを重点テストする  |
+| 11  | Mantine / Tailwind / Sonner等の削除       | lockfileとbundle差分を確認する   |
+| 12  | class依存・lintルール整理                 | 見た目の変更を混ぜない           |
 
 各PRは「機械的移動」「UIライブラリ置換」「デザイン変更」を混ぜない。デザイン自体を改善する場合は、
 Radix移行完了後に別PRで行う。
@@ -515,7 +521,7 @@ Mantine削除後の最終値で評価する。
 - browser viewのinteractive primitiveがRadix wrapper経由へ統一されている。
 - 単純な表示・form部品が共通UIまたはsemantic HTMLへ統一されている。
 - Mantine、Tailwind CSS、SCSS、Sonnerへの依存が削除されている。
-- `browser.scss` が存在せず、各コンポーネント / feature / page単位のplain CSSになっている。
+- `browser.scss` が存在せず、各コンポーネント / feature / page単位のplain CSSになっている。✅
 - dark themeは原則としてsemantic tokenの差し替えだけで成立する。
 - productionで参照される自前CSS成果物が `browser.css` 1本だけである。
 - Chrome / Firefox / Tauri build、unit test、主要visual / keyboard testが通る。
@@ -524,13 +530,15 @@ Mantine削除後の最終値で評価する。
 
 ---
 
-## 最初に着手する範囲
+## 次に着手する範囲
 
-最初の実装PRではRadix置換まで進めず、次の3点に限定するのが安全である。
+foundation、token、CSS分割、SCSSビルド経路の整理は完了した。次の実装単位は、見た目の変更を抑えた
+共通UI wrapperと低リスクなMantine置換に進める。
 
-1. 主要画面のvisual baselineを追加する。
-2. `tokens.css` / `themes.css` を作り、既存tokenを見た目を変えずに移す。
-3. `browser.scss` を責務別のplain CSSへ機械分割し、生成物の同等性を確認する。
+1. `ui/Spinner` と `ui/Tooltip` wrapperを作り、Loader / Floating Tooltipを置換する。
+2. `ui/Button`、`ui/Alert`、`ui/Surface`を追加し、Home / BoardListの表示部品をMantineから外す。
+3. Radix Dialog / ContextMenu / Toast wrapperを導入し、Portal・focus・z-index契約を共通化する。
+4. Settingsのform / dialogをwrapperへ移し、保存・復元テストを維持する。
+5. Mantine CSS、Tailwind/PostCSS、Sonnerを削除し、依存・lockfile・bundle差分を確認する。
 
-この土台ができてから `Spinner` と `Tooltip` を最初のRadix / 共通UI移行対象にし、設計とbundleへの影響を
-小さい範囲で検証する。
+各段階でChrome / Firefox / Tauri buildと対象interaction testを実行し、最後にvisual baselineを追加する。
