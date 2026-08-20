@@ -111,7 +111,7 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
               <ContentArea />
               <BottomPanel />
               {/* コマンドは操作元のペイン状態を使うためペイン内に置き、
-                  Spotlight本体は重複しないようアクティブペインだけでマウントする。 */}
+                  パレット本体は重複しないようアクティブペインだけでマウントする。 */}
               {isActive && <CommandPalette />}
               {/* 以下はこのペインの StatusBarProvider に項目を登録する。 */}
               <NgStatusItem />

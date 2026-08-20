@@ -232,9 +232,6 @@ importers:
       '@mantine/hooks':
         specifier: ^9.5.0
         version: 9.5.0(react@19.2.8)
-      '@mantine/spotlight':
-        specifier: ^9.5.0
-        version: 9.5.0(@mantine/core@9.5.0(@mantine/hooks@9.5.0(react@19.2.8))(@types/react@19.2.17)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(@mantine/hooks@9.5.0(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@monaco-editor/react':
         specifier: ^4.7.0
         version: 4.7.0(monaco-editor@0.56.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -1542,19 +1539,6 @@ packages:
 
   '@mantine/hooks@9.5.0':
     resolution: {integrity: sha512-d67+7dQW0ZJFiWXqZgwcPrZK0KxKMzAX+Sv663g40xhISseiUoK0f8k/Ss2amOA09IhFayeeaqprVRc4Fp5yEw==}
-    peerDependencies:
-      react: ^19.2.0
-
-  '@mantine/spotlight@9.5.0':
-    resolution: {integrity: sha512-AdytaqJUJzvfZH4vAqcJv0ynK6PHf2wyAVjrOyG4xFGxz+xD7GN4mkfXslyHM2pwQ4kCGuqF2N25LtzRVwENOQ==}
-    peerDependencies:
-      '@mantine/core': 9.5.0
-      '@mantine/hooks': 9.5.0
-      react: ^19.2.0
-      react-dom: ^19.2.0
-
-  '@mantine/store@9.5.0':
-    resolution: {integrity: sha512-MeJybawnPCCIcfrpSjtbRERJXZWAdOKSp3afsl82e5HZZtKJepgvktD5lcS9hRrrAdGWywi7gcMduLT0bUHDzw==}
     peerDependencies:
       react: ^19.2.0
 
@@ -6760,18 +6744,6 @@ snapshots:
       react: 19.2.8
 
   '@mantine/hooks@9.5.0(react@19.2.8)':
-    dependencies:
-      react: 19.2.8
-
-  '@mantine/spotlight@9.5.0(@mantine/core@9.5.0(@mantine/hooks@9.5.0(react@19.2.8))(@types/react@19.2.17)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(@mantine/hooks@9.5.0(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
-    dependencies:
-      '@mantine/core': 9.5.0(@mantine/hooks@9.5.0(react@19.2.8))(@types/react@19.2.17)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-      '@mantine/hooks': 9.5.0(react@19.2.8)
-      '@mantine/store': 9.5.0(react@19.2.8)
-      react: 19.2.8
-      react-dom: 19.2.8(react@19.2.8)
-
-  '@mantine/store@9.5.0(react@19.2.8)':
     dependencies:
       react: 19.2.8
 

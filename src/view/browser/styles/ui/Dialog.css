@@ -1,0 +1,42 @@
+/* Shared Radix Dialog surface and overlay. */
+.browser-dialog-overlay {
+  position: fixed;
+  z-index: var(--sys-z-dialog);
+  inset: 0;
+  background: var(--sys-color-dialog-backdrop);
+}
+
+.browser-dialog-content {
+  position: fixed;
+  z-index: var(--sys-z-dialog);
+  top: 50%;
+  left: 50%;
+  display: grid;
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(720px, calc(100vh - 32px));
+  overflow: auto;
+  transform: translate(-50%, -50%);
+  padding: var(--sys-space-8);
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-xl);
+  background: var(--sys-color-dialog-surface);
+  color: var(--sys-color-text);
+  box-shadow: var(--sys-shadow-dialog);
+}
+
+.browser-dialog-content:focus-visible {
+  outline: 2px solid var(--sys-color-focus-ring);
+  outline-offset: 2px;
+}
+
+.browser-dialog-title {
+  margin: 0;
+  color: var(--sys-color-text);
+  font-size: var(--sys-font-size-lg);
+}
+
+.browser-dialog-description {
+  margin: var(--sys-space-2) 0 0;
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-sm);
+}

@@ -1,5 +1,4 @@
 import "@mantine/core/styles.css";
-import "@mantine/spotlight/styles.css";
 import { createRoot } from "react-dom/client";
 import "src/app";
 import "src/view/browser/styles/index.css";
