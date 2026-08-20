@@ -59,14 +59,15 @@
 
 直近のコミットでは、計画のPhase 1〜2-3までが実装されている。
 
-| コミット                                                  | 実施内容                                                            |
-| --------------------------------------------------------- | ------------------------------------------------------------------- |
-| `86670bb9 refactor: phase 1`                              | foundationのreset / theme / tokenを追加し、dark themeの大部分を分離 |
-| `52d7a41c refactor: phase 2-1`                            | BrowserShell、PaneLayout、ContentAreaをCSSへ分割                    |
-| `d6e375c6 refactor: phase 2-2`                            | ContextMenu、StatusBar、TabBarをCSSへ分割                           |
-| `4162fb8b refactor: 2-3`                                  | NavigationBar、Home、BoardList、PageStatusをCSSへ分割               |
-| `2e051dcb refactor: デザイントークンをより厳密に`         | `--ref-*` / `--sys-*`契約、token lint、overlay順を整備              |
-| `f5140233 refactor(ui): overlay z-indexを意味tokenへ統一` | 固定z-indexを意味tokenへ統一し、popup / tooltip / dialog順を固定    |
+| コミット                                                            | 実施内容                                                                      |
+| ------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `86670bb9 refactor: phase 1`                                        | foundationのreset / theme / tokenを追加し、dark themeの大部分を分離           |
+| `52d7a41c refactor: phase 2-1`                                      | BrowserShell、PaneLayout、ContentAreaをCSSへ分割                              |
+| `d6e375c6 refactor: phase 2-2`                                      | ContextMenu、StatusBar、TabBarをCSSへ分割                                     |
+| `4162fb8b refactor: 2-3`                                            | NavigationBar、Home、BoardList、PageStatusをCSSへ分割                         |
+| `2e051dcb refactor: デザイントークンをより厳密に`                   | `--ref-*` / `--sys-*`契約、token lint、overlay順を整備                        |
+| `d0cfa18c refactor(ui): overlay z-indexを意味tokenへ統一`           | 固定z-indexを意味tokenへ統一し、popup / tooltip / dialog順を固定              |
+| `ee1412e6 refactor(ui): DataTableスタイルをコンポーネントCSSへ分割` | DataTable / thread-list / tooltipをコンポーネントCSSへ分割し、表用tokenを追加 |
 
 この状態では「新token層を追加したが、抽出済みCSSに旧`--browser-*`とraw値が残る」状態だったため、
 未抽出の`browser.scss`には互換aliasと旧構造が残っている。

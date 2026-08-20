@@ -31,6 +31,7 @@
   --ref-color-neutral-1000: #e8eaed;
   --ref-color-blue-50: #e8f0fe;
   --ref-color-blue-100: #c8d7f5;
+  --ref-color-blue-200: #c6dafc;
   --ref-color-blue-300: #8ab4f8;
   --ref-color-blue-600: #1a73e8;
   --ref-color-blue-700: #1765cc;
@@ -39,6 +40,9 @@
   --ref-color-blue-link: #1a0dab;
   --ref-color-yellow-100: #ffffcc;
   --ref-color-yellow-200: #fff5a8;
+  --ref-color-yellow-50: #fef7e0;
+  --ref-color-yellow-300: #fde293;
+  --ref-color-yellow-700: #5f6309;
   --ref-color-black: #000;
   --ref-color-green-700: #0b8043;
   --ref-color-orange-700: #c47800;
@@ -56,6 +60,9 @@
   --ref-color-dark-blue-300: #8ab4f8;
   --ref-color-dark-blue-600: #1a6fc4;
   --ref-color-dark-blue-700: #1558a4;
+  --ref-color-dark-yellow-100: #3c3a1e;
+  --ref-color-dark-yellow-300: #5f5720;
+  --ref-color-dark-yellow-600: #fdd663;
   --ref-color-dark-yellow-700: #a56f00;
   --ref-color-dark-yellow-800: #b97f00;
   --ref-color-dark-green-700: #81c995;
@@ -84,6 +91,8 @@
   --ref-color-alpha-white-35: rgb(255 255 255 / 35%);
   --ref-color-alpha-white-36: rgb(255 255 255 / 36%);
   --ref-color-alpha-white-40: rgb(255 255 255 / 40%);
+  --ref-color-alpha-white-92: rgb(255 255 255 / 92%);
+  --ref-color-alpha-dark-surface-95: rgb(32 33 36 / 95%);
   --ref-color-alpha-blue-04: rgb(26 115 232 / 4%);
   --ref-color-alpha-blue-08: rgb(26 115 232 / 8%);
   --ref-color-alpha-blue-20: rgb(26 115 232 / 20%);

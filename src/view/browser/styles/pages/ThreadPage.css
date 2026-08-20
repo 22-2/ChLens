@@ -1,0 +1,245 @@
+/* Thread page shell, overlays, minimap, and response filter toolbar. */
+.thread-page {
+  /* Keep absolute popup anchors relative to the thread without creating a new overlay stack. */
+  position: relative;
+  padding: var(--sys-space-2) 0;
+  --thread-minimap-width: 0px;
+}
+
+.thread-page__popup-layer {
+  /*
+   * Keep popup children position:absolute while making their containing layer fixed.
+   * This prevents content-area overflow clipping and keeps coordinates stable while the
+   * response list scrolls. The layer itself owns the popup stacking context so its
+   * children can stay below context-menu and tooltip surfaces.
+   */
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: var(--sys-z-popup-layer);
+}
+
+.thread-page__popup-layer > * {
+  pointer-events: auto;
+}
+
+.thread-page__notice {
+  padding: var(--sys-space-4) var(--sys-space-8);
+  background: var(--sys-color-warning-surface);
+  color: var(--sys-color-warning-fg);
+  font-size: var(--sys-font-size-md);
+  border-bottom: 1px solid var(--sys-color-warning-border);
+}
+
+.thread-page__responses {
+  padding: 0 0 var(--sys-space-10);
+}
+
+.thread-page--with-minimap .thread-page__top-bar,
+.thread-page--with-minimap .thread-page__toolbar,
+.thread-page--with-minimap .thread-page__notice,
+.thread-page--with-minimap .thread-page__responses,
+.thread-page--with-minimap .thread-page__auto-scroll-threshold {
+  padding-right: calc(var(--sys-space-8) + var(--thread-minimap-width, 0px));
+}
+
+.thread-page__minimap {
+  position: fixed;
+  pointer-events: none;
+  z-index: var(--sys-z-minimap);
+  border-left: 1px solid var(--sys-color-status-border);
+  background: var(--sys-color-minimap-bg);
+  backdrop-filter: saturate(0.9) blur(2px);
+}
+
+.thread-page__minimap-canvas {
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  opacity: 0.82;
+  pointer-events: auto;
+  transition: opacity var(--sys-duration-slow);
+}
+
+.thread-page__minimap-canvas:hover {
+  opacity: 1;
+}
+
+.thread-page__auto-scroll-threshold {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  min-height: 120px;
+  padding: 0 var(--sys-space-8) var(--sys-space-11);
+  color: var(--sys-color-text-muted);
+}
+
+.thread-page__auto-scroll-threshold::before {
+  content: "";
+  position: absolute;
+  right: var(--sys-space-8);
+  bottom: var(--sys-space-8);
+  left: var(--sys-space-8);
+  border-top: 2px dashed var(--sys-color-auto-scroll-border);
+}
+
+.thread-page__auto-scroll-threshold--armed::before {
+  border-top-color: var(--sys-color-accent);
+}
+
+.thread-page__auto-scroll-threshold--scrolling::before {
+  border-top-color: var(--sys-color-success);
+}
+
+.thread-page__auto-scroll-threshold-label {
+  position: relative;
+  padding: var(--sys-space-1) var(--sys-space-4);
+  border-radius: var(--sys-radius-pill);
+  background: var(--sys-color-auto-scroll-label-bg);
+  font-size: var(--sys-font-size-xs);
+  letter-spacing: 0.01em;
+}
+
+.thread-page__auto-scroll-threshold--armed .thread-page__auto-scroll-threshold-label {
+  color: var(--sys-color-accent);
+}
+
+.thread-page__auto-scroll-threshold--scrolling .thread-page__auto-scroll-threshold-label {
+  color: var(--sys-color-success);
+}
+
+.thread-page__top-bar {
+  position: sticky;
+  top: 0;
+  z-index: var(--sys-z-sticky);
+}
+
+.thread-page__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sys-space-4);
+  flex-wrap: wrap;
+  padding: var(--sys-space-2) var(--sys-space-4);
+  background: var(--sys-color-table-heading-bg);
+  border-bottom: 1px solid var(--sys-color-table-heading-border);
+}
+
+.thread-page__toolbar-main {
+  display: flex;
+  align-items: center;
+  gap: var(--sys-space-4);
+  flex: 1 1 360px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.thread-page__filters {
+  display: flex;
+  gap: var(--sys-space-1);
+  flex-wrap: wrap;
+}
+
+.thread-page__filter-btn {
+  padding: var(--sys-space-1) var(--sys-space-5);
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-pill);
+  background: var(--sys-color-surface);
+  font-size: var(--sys-font-size-sm);
+  cursor: pointer;
+  color: var(--sys-color-text-muted);
+  transition:
+    background var(--sys-duration-fast),
+    color var(--sys-duration-fast);
+  font-family: inherit;
+}
+
+.thread-page__filter-btn:hover {
+  background: var(--sys-color-list-hover-bg);
+}
+
+.thread-page__filter-btn--active {
+  background: var(--sys-color-accent);
+  color: var(--sys-color-accent-fg);
+  border-color: var(--sys-color-accent);
+}
+
+.thread-page__filter-btn--active:hover {
+  background: var(--sys-color-accent-hover);
+}
+
+.thread-page__count {
+  font-size: var(--sys-font-size-sm);
+  color: var(--sys-color-table-muted);
+}
+
+.thread-page__toolbar-search {
+  display: flex;
+  align-items: center;
+  gap: var(--sys-space-4);
+  flex: 1 1 220px;
+  min-width: 180px;
+}
+
+.thread-page__toolbar-search-input {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0 var(--sys-space-4);
+  border: 1px solid var(--sys-color-input-border);
+  border-radius: var(--sys-radius-md);
+  font-size: var(--sys-font-size-md);
+  outline: none;
+  font-family: inherit;
+  background: var(--sys-color-input-bg);
+  color: var(--sys-color-text);
+}
+
+.thread-page__toolbar-search-input::placeholder {
+  color: var(--sys-color-placeholder);
+}
+
+.thread-page__toolbar-search-input:focus {
+  border-color: var(--sys-color-focus-ring);
+}
+
+.thread-page__toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--sys-space-4);
+  margin-left: auto;
+}
+
+.thread-page__toolbar-close {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-md);
+}
+
+.thread-page__toolbar-close:hover {
+  background: var(--sys-color-surface-muted);
+}
+
+@media (max-width: 720px) {
+  .thread-page__toolbar-main {
+    flex-basis: 100%;
+  }
+
+  .thread-page__toolbar-search {
+    min-width: 100%;
+  }
+
+  .thread-page__toolbar-right {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

@@ -22,6 +22,12 @@
   --sys-color-success: var(--ref-color-green-700);
   --sys-color-error: var(--ref-color-red-600);
   --sys-color-warning: var(--ref-color-orange-700);
+  --sys-color-warning-surface: var(--ref-color-yellow-50);
+  --sys-color-warning-border: var(--ref-color-yellow-300);
+  --sys-color-warning-fg: var(--ref-color-yellow-700);
+  --sys-color-minimap-bg: var(--ref-color-alpha-white-02);
+  --sys-color-auto-scroll-border: var(--ref-color-blue-200);
+  --sys-color-auto-scroll-label-bg: var(--ref-color-alpha-white-92);
   --sys-color-res-num: var(--ref-color-blue-900);
   --sys-color-res-heat-warm: var(--ref-color-orange-700);
   --sys-color-res-heat-hot: var(--ref-color-red-600);
@@ -75,6 +81,12 @@
   --sys-color-success: var(--ref-color-dark-green-700);
   --sys-color-error: var(--ref-color-dark-red-600);
   --sys-color-warning: var(--ref-color-dark-orange-700);
+  --sys-color-warning-surface: var(--ref-color-dark-yellow-100);
+  --sys-color-warning-border: var(--ref-color-dark-yellow-300);
+  --sys-color-warning-fg: var(--ref-color-dark-yellow-600);
+  --sys-color-minimap-bg: var(--ref-color-alpha-white-02);
+  --sys-color-auto-scroll-border: var(--ref-color-dark-neutral-300);
+  --sys-color-auto-scroll-label-bg: var(--ref-color-alpha-dark-surface-95);
   --sys-color-res-num: var(--ref-color-dark-blue-300);
   --sys-color-res-heat-warm: var(--ref-color-dark-orange-700);
   --sys-color-res-heat-hot: var(--ref-color-dark-red-600);
