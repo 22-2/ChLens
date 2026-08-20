@@ -70,10 +70,19 @@ export const NgStatusItem: React.FC = () => {
       {isWindowOpen && anchorRect && (
         <MiniWindow title="NG設定" anchor={anchorRect} onClose={closeWindow} triggerRef={btnRef}>
           <div className="mini-window__section">
+            <button className="mini-window__action-btn" onClick={handleEditNg}>
+              <Settings2 size={14} />
+              <span>NGワード設定を編集</span>
+            </button>
+          </div>
+
+          <div className="mini-window__section">
             <div className="mini-window__section-header">現在の件数</div>
             <p className="mini-window__note">NG: {activeStats.ngCount}件</p>
             <p className="mini-window__note">ハイライト: {activeStats.highlightCount}件</p>
           </div>
+
+          <div className="mini-window__separator" />
 
           <div className="mini-window__separator" />
 
@@ -91,15 +100,6 @@ export const NgStatusItem: React.FC = () => {
               </button>
             </div>
             <p className="mini-window__note">ハイライト表示はこの切り替えの対象外です</p>
-          </div>
-
-          <div className="mini-window__separator" />
-
-          <div className="mini-window__section">
-            <button className="mini-window__action-btn" onClick={handleEditNg}>
-              <Settings2 size={14} />
-              <span>NGワード設定を編集</span>
-            </button>
           </div>
         </MiniWindow>
       )}
