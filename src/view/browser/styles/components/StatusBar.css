@@ -62,3 +62,98 @@
 .status-bar--active .status-bar__divider {
   background: var(--sys-color-status-active-divider);
 }
+
+.status-bar__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sys-space-2);
+  height: 100%;
+  padding: 0 var(--sys-space-3);
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: var(--sys-font-size-xs);
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  line-height: 1;
+  transition:
+    background var(--sys-duration-fast),
+    color var(--sys-duration-fast);
+}
+
+.status-bar__btn-label {
+  min-width: 3ch;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.status-bar__item--interactive .status-bar__btn {
+  width: 100%;
+  padding: 0 var(--sys-space-3);
+}
+
+.status-bar__item--interactive:hover .status-bar__btn,
+.status-bar__btn:hover {
+  background: var(--sys-color-status-hover-overlay);
+}
+
+.status-bar__ikioi {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sys-space-2);
+  height: 100%;
+  font-size: var(--sys-font-size-xs);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.status-bar__ikioi-value {
+  min-width: 2ch;
+}
+
+/* Keep status icons visually stable regardless of the component's requested size. */
+.status-bar__btn svg,
+.status-bar__ikioi svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  display: block;
+}
+
+.status-bar--active .status-bar__item--interactive:hover .status-bar__btn,
+.status-bar--active .status-bar__btn:hover {
+  background: var(--sys-color-status-active-item);
+}
+
+@keyframes icon-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.icon--spinning {
+  display: block;
+  animation: icon-spin 2s linear infinite;
+}
+
+.auto-refresh-indicator {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--sys-color-error);
+}
+
+.auto-refresh-indicator--inactive {
+  border-radius: var(--sys-radius-sm);
+  background: var(--sys-color-accent);
+}
+
+.status-bar__btn--muted {
+  opacity: 0.6;
+}

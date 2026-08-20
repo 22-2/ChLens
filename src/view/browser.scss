@@ -921,72 +921,6 @@
 }
 
 /* ==========================================================================
-   Status Bar - クリック可能ボタン (書き込みパネルトグルなど)
-   ========================================================================== */
-.status-bar__btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 100%;
-  padding: 0 6px;
-  border: none;
-  background: transparent;
-  color: inherit;
-  font-size: 11px;
-  font-family: inherit;
-  cursor: pointer;
-  white-space: nowrap;
-  line-height: 1;
-  transition:
-    background 0.1s,
-    color 0.1s;
-}
-
-.status-bar__btn-label {
-  min-width: 3ch;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-
-.status-bar__item--interactive .status-bar__btn {
-  width: 100%;
-  padding: 0 6px;
-}
-
-.status-bar__item--interactive:hover .status-bar__btn,
-.status-bar__btn:hover {
-  background: var(--browser-color-status-hover-overlay);
-}
-
-.status-bar__ikioi {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 100%;
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-
-.status-bar__ikioi-value {
-  min-width: 2ch;
-}
-
-/* ステータスバー内のLucideアイコンはコンポーネント側のsize指定に関係なく統一サイズで描画する。 */
-.status-bar__btn svg,
-.status-bar__ikioi svg {
-  width: 13px;
-  height: 13px;
-  flex-shrink: 0;
-  display: block;
-}
-
-.status-bar--active .status-bar__item--interactive:hover .status-bar__btn,
-.status-bar--active .status-bar__btn:hover {
-  background: rgba(255, 255, 255, 0.12);
-}
-
-/* ==========================================================================
    Mini Window - VS Code Quick Settings 風ミニポップアップ（汎用）
    ========================================================================== */
 .mini-window {
@@ -1206,41 +1140,6 @@
       transparent 100%
     ),
     var(--browser-color-input-bg);
-}
-
-/* ==========================================================================
-   Auto Refresh - ステータスバーアイコンのスピンアニメーション
-   ========================================================================== */
-@keyframes icon-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.icon--spinning {
-  display: block;
-  animation: icon-spin 2s linear infinite;
-}
-
-.auto-refresh-indicator {
-  display: inline-block;
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  background: var(--browser-color-error);
-}
-
-.auto-refresh-indicator--inactive {
-  border-radius: 2px;
-  background: var(--browser-color-accent);
-}
-
-/* ステータスバーボタンの非アクティブ（スレッド以外）表示 */
-.status-bar__btn--muted {
-  opacity: 0.6;
 }
 
 /* ==========================================================================
