@@ -528,7 +528,7 @@ p://i.imgur.com/TestImageC.jpg
 - [ ] レスバ判定ai内蔵
 
 https://img.5ch.io/ico/001.gif
-の除去
+の除去（先頭行にあるから、行ごと削除）
 http://jump5.ch/?＜URL＞
 の置き換え
 RepleceTxtを使うか？
