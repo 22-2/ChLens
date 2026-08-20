@@ -10,6 +10,7 @@
 @import "./ui/Accordion.css";
 @import "./ui/Dialog.css";
 @import "./ui/FormControls.css";
+@import "./ui/Surface.css";
 @import "./layout/BrowserShell.css";
 @import "./layout/PaneLayout.css";
 @import "./layout/ContentArea.css";

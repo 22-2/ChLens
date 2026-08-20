@@ -1,0 +1,60 @@
+/* Shared surface contract for Settings and other multi-section panels. */
+.browser-surface,
+.browser-surface-stack {
+  min-width: 0;
+}
+
+.browser-surface {
+  display: grid;
+  gap: var(--sys-space-8);
+  padding: var(--sys-space-10);
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-xl);
+  background: var(--sys-color-settings-card-bg);
+  color: var(--sys-color-text);
+}
+
+.browser-surface[data-tone="muted"] {
+  background: var(--sys-color-surface-muted);
+}
+
+.browser-surface[data-tone="danger"] {
+  border-color: var(--sys-color-error);
+  background: var(--sys-color-surface-muted);
+}
+
+.browser-surface__header {
+  display: grid;
+  gap: var(--sys-space-3);
+}
+
+.browser-surface__title {
+  margin: 0;
+  color: var(--sys-color-text);
+  font-size: var(--sys-font-size-body);
+  font-weight: 700;
+}
+
+.browser-surface__description {
+  margin: 0;
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-md);
+  line-height: 1.6;
+}
+
+.browser-surface__body {
+  display: grid;
+  gap: var(--sys-space-8);
+  min-width: 0;
+}
+
+.browser-surface__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sys-space-4);
+}
+
+.browser-surface-stack {
+  display: grid;
+  gap: var(--sys-space-8);
+}

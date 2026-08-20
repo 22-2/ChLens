@@ -14,6 +14,15 @@ import { Button } from "src/view/browser/ui/Button";
 import { Dialog } from "src/view/browser/ui/Dialog";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import {
+  Surface,
+  SurfaceActions,
+  SurfaceBody,
+  SurfaceDescription,
+  SurfaceHeader,
+  SurfaceStack,
+  SurfaceTitle,
+} from "src/view/browser/ui/Surface";
+import {
   readBookmarkFolderName,
   readConfiguredBookmarkFolderId,
   supportsBookmarkFolderSelection,
@@ -222,184 +231,204 @@ export function SettingsSupplementaryPanels({
           }
 
           return (
-            <section key={panelId} className="settings-surface-card">
-              <div className="settings-surface-card__header">
-                <h3 className="settings-surface-card__title">外部連携</h3>
-                <p className="settings-surface-card__description">
+            <Surface key={panelId}>
+              <SurfaceHeader>
+                <SurfaceTitle>外部連携</SurfaceTitle>
+                <SurfaceDescription>
                   ブックマーク連携の保存先を確認・変更します。
-                </p>
-              </div>
+                </SurfaceDescription>
+              </SurfaceHeader>
 
-              {bookmarkLoading ? (
-                <div className="settings-page__bookmark-source-value" aria-busy="true">
-                  <Spinner size="xs" aria-label="保存先を読み込み中" />
-                </div>
-              ) : (
-                <div className="settings-page__bookmark-source-value">{folderName ?? "未設定"}</div>
-              )}
+              <SurfaceBody>
+                {bookmarkLoading ? (
+                  <div className="settings-page__bookmark-source-value" aria-busy="true">
+                    <Spinner size="xs" aria-label="保存先を読み込み中" />
+                  </div>
+                ) : (
+                  <div className="settings-page__bookmark-source-value">
+                    {folderName ?? "未設定"}
+                  </div>
+                )}
 
-              {bookmarkError && (
-                <Alert color="red" icon={<AlertTriangle size={16} />}>
-                  {bookmarkError}
-                </Alert>
-              )}
+                {bookmarkError && (
+                  <Alert color="red" icon={<AlertTriangle size={16} />}>
+                    {bookmarkError}
+                  </Alert>
+                )}
 
-              <Button onClick={() => container.message.send("bookmark_root_selector_open")}>
-                {folderName ? "保存先を変更" : "保存先を選択"}
-              </Button>
-            </section>
+                <SurfaceActions>
+                  <Button onClick={() => container.message.send("bookmark_root_selector_open")}>
+                    {folderName ? "保存先を変更" : "保存先を選択"}
+                  </Button>
+                </SurfaceActions>
+              </SurfaceBody>
+            </Surface>
           );
         case "dangerZone":
           return (
-            <section key={panelId} className="settings-surface-card settings-surface-card--danger">
-              <div className="settings-surface-card__header">
-                <h3 className="settings-surface-card__title">設定の初期化</h3>
-              </div>
-              <Alert color="red" icon={<AlertTriangle size={16} />}>
-                すべての設定をデフォルト値へ戻します。
-              </Alert>
-              <Button
-                variant="light"
-                onClick={() => void maintenanceActions.handleResetAllSettings()}
-                loading={maintenanceActions.isResettingAllSettings}
-              >
-                すべての設定をデフォルトに戻す
-              </Button>
-            </section>
+            <Surface key={panelId} tone="danger">
+              <SurfaceHeader>
+                <SurfaceTitle>設定の初期化</SurfaceTitle>
+              </SurfaceHeader>
+              <SurfaceBody>
+                <Alert color="red" icon={<AlertTriangle size={16} />}>
+                  すべての設定をデフォルト値へ戻します。
+                </Alert>
+                <SurfaceActions>
+                  <Button
+                    variant="danger"
+                    onClick={() => void maintenanceActions.handleResetAllSettings()}
+                    loading={maintenanceActions.isResettingAllSettings}
+                  >
+                    すべての設定をデフォルトに戻す
+                  </Button>
+                </SurfaceActions>
+              </SurfaceBody>
+            </Surface>
           );
         case "dataManagement":
           return (
-            <section key={panelId} className="settings-surface-card">
-              <div className="settings-surface-card__header">
-                <h3 className="settings-surface-card__title">データ管理</h3>
-                <p className="settings-surface-card__description">
+            <Surface key={panelId}>
+              <SurfaceHeader>
+                <SurfaceTitle>データ管理</SurfaceTitle>
+                <SurfaceDescription>
                   設定・履歴・ブックマーク・過去ログ・セッションをzipでバックアップ/復元します。
-                </p>
-              </div>
+                </SurfaceDescription>
+              </SurfaceHeader>
 
-              <div className="settings-surface-card__actions">
-                <Button onClick={() => setIsExportDialogOpen(true)} loading={isExportingArchive}>
-                  zipをエクスポート
-                </Button>
-                <Button
-                  variant="danger"
-                  onClick={handleImportButtonClick}
-                  loading={isImportingArchive}
-                >
-                  zipをインポート
-                </Button>
-              </div>
-
-              <Dialog.Root open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
-                <Dialog.Portal container={dialogPortalContainer ?? undefined}>
-                  <Dialog.Overlay className="browser-dialog-overlay" />
-                  <Dialog.Content
-                    className="browser-dialog-content settings-export-dialog"
-                    aria-describedby="settings-export-dialog-description"
+              <SurfaceBody>
+                <SurfaceActions>
+                  <Button onClick={() => setIsExportDialogOpen(true)} loading={isExportingArchive}>
+                    zipをエクスポート
+                  </Button>
+                  <Button
+                    variant="danger"
+                    onClick={handleImportButtonClick}
+                    loading={isImportingArchive}
                   >
-                    <Dialog.Title className="browser-dialog-title">
-                      バックアップ内容を選択
-                    </Dialog.Title>
-                    <Dialog.Description
-                      id="settings-export-dialog-description"
-                      className="browser-dialog-description"
+                    zipをインポート
+                  </Button>
+                </SurfaceActions>
+
+                <Dialog.Root open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+                  <Dialog.Portal container={dialogPortalContainer ?? undefined}>
+                    <Dialog.Overlay className="browser-dialog-overlay" />
+                    <Dialog.Content
+                      className="browser-dialog-content settings-export-dialog"
+                      aria-describedby="settings-export-dialog-description"
                     >
-                      基本はすべて含まれます。不要な項目だけ外してください。設定は常に含まれます。
-                    </Dialog.Description>
-                    <div className="settings-export-dialog__options">
-                      <label className="settings-export-dialog__checkbox">
-                        <input
-                          type="checkbox"
-                          checked={includeHistoryInExport}
-                          onChange={(event) =>
-                            setIncludeHistoryInExport(event.currentTarget.checked)
-                          }
-                        />
-                        閲覧履歴を含める
-                      </label>
-                      <label className="settings-export-dialog__checkbox">
-                        <input
-                          type="checkbox"
-                          checked={includeWriteHistoryInExport}
-                          onChange={(event) =>
-                            setIncludeWriteHistoryInExport(event.currentTarget.checked)
-                          }
-                        />
-                        書き込み履歴を含める
-                      </label>
-                      <label className="settings-export-dialog__checkbox">
-                        <input
-                          type="checkbox"
-                          checked={includeBookmarksInExport}
-                          onChange={(event) =>
-                            setIncludeBookmarksInExport(event.currentTarget.checked)
-                          }
-                        />
-                        ブックマークを含める
-                      </label>
-                      <label className="settings-export-dialog__checkbox">
-                        <input
-                          type="checkbox"
-                          checked={includeLogsInExport}
-                          onChange={(event) => setIncludeLogsInExport(event.currentTarget.checked)}
-                        />
-                        過去ログ（本文）を含める
-                      </label>
-                      <label className="settings-export-dialog__checkbox">
-                        <input
-                          type="checkbox"
-                          checked={includeSessionInExport}
-                          onChange={(event) =>
-                            setIncludeSessionInExport(event.currentTarget.checked)
-                          }
-                        />
-                        セッション・タブ状態を含める
-                      </label>
-                    </div>
-                    <div className="settings-export-dialog__actions">
-                      <Dialog.Close asChild>
-                        <Button variant="default">キャンセル</Button>
-                      </Dialog.Close>
-                      <Button
-                        onClick={() => void handleExportArchive()}
-                        loading={isExportingArchive}
+                      <Dialog.Title className="browser-dialog-title">
+                        バックアップ内容を選択
+                      </Dialog.Title>
+                      <Dialog.Description
+                        id="settings-export-dialog-description"
+                        className="browser-dialog-description"
                       >
-                        この内容で保存
+                        基本はすべて含まれます。不要な項目だけ外してください。設定は常に含まれます。
+                      </Dialog.Description>
+                      <div className="settings-export-dialog__options">
+                        <label className="settings-export-dialog__checkbox">
+                          <input
+                            type="checkbox"
+                            checked={includeHistoryInExport}
+                            onChange={(event) =>
+                              setIncludeHistoryInExport(event.currentTarget.checked)
+                            }
+                          />
+                          閲覧履歴を含める
+                        </label>
+                        <label className="settings-export-dialog__checkbox">
+                          <input
+                            type="checkbox"
+                            checked={includeWriteHistoryInExport}
+                            onChange={(event) =>
+                              setIncludeWriteHistoryInExport(event.currentTarget.checked)
+                            }
+                          />
+                          書き込み履歴を含める
+                        </label>
+                        <label className="settings-export-dialog__checkbox">
+                          <input
+                            type="checkbox"
+                            checked={includeBookmarksInExport}
+                            onChange={(event) =>
+                              setIncludeBookmarksInExport(event.currentTarget.checked)
+                            }
+                          />
+                          ブックマークを含める
+                        </label>
+                        <label className="settings-export-dialog__checkbox">
+                          <input
+                            type="checkbox"
+                            checked={includeLogsInExport}
+                            onChange={(event) =>
+                              setIncludeLogsInExport(event.currentTarget.checked)
+                            }
+                          />
+                          過去ログ（本文）を含める
+                        </label>
+                        <label className="settings-export-dialog__checkbox">
+                          <input
+                            type="checkbox"
+                            checked={includeSessionInExport}
+                            onChange={(event) =>
+                              setIncludeSessionInExport(event.currentTarget.checked)
+                            }
+                          />
+                          セッション・タブ状態を含める
+                        </label>
+                      </div>
+                      <div className="settings-export-dialog__actions">
+                        <Dialog.Close asChild>
+                          <Button variant="default">キャンセル</Button>
+                        </Dialog.Close>
+                        <Button
+                          onClick={() => void handleExportArchive()}
+                          loading={isExportingArchive}
+                        >
+                          この内容で保存
+                        </Button>
+                      </div>
+                    </Dialog.Content>
+                  </Dialog.Portal>
+                </Dialog.Root>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".zip,application/zip"
+                  style={{ display: "none" }}
+                  onChange={(event) => {
+                    const file = event.currentTarget.files?.[0] ?? null;
+                    if (file) {
+                      void handleImportArchiveFile(file);
+                    }
+                    // 同じzipを連続選択できるようvalueを毎回クリアする。
+                    event.currentTarget.value = "";
+                  }}
+                />
+
+                <Surface as="section" tone="muted">
+                  <SurfaceHeader>
+                    <SurfaceTitle>ログ（過去ログ）</SurfaceTitle>
+                    <SurfaceDescription>
+                      閲覧したスレの本文を恒久保存したログをすべて削除します。
+                    </SurfaceDescription>
+                  </SurfaceHeader>
+                  <SurfaceBody>
+                    <SurfaceActions>
+                      <Button
+                        variant="danger"
+                        onClick={() => void handleDeleteLogs()}
+                        loading={isDeletingLogs}
+                      >
+                        ログをすべて削除
                       </Button>
-                    </div>
-                  </Dialog.Content>
-                </Dialog.Portal>
-              </Dialog.Root>
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".zip,application/zip"
-                style={{ display: "none" }}
-                onChange={(event) => {
-                  const file = event.currentTarget.files?.[0] ?? null;
-                  if (file) {
-                    void handleImportArchiveFile(file);
-                  }
-                  // 同じzipを連続選択できるようvalueを毎回クリアする。
-                  event.currentTarget.value = "";
-                }}
-              />
-
-              <h4 className="settings-surface-card__title settings-surface-card__title--minor">
-                ログ（過去ログ）
-              </h4>
-              <p className="settings-surface-card__description">
-                閲覧したスレの本文を恒久保存したログをすべて削除します。
-              </p>
-              <Button
-                variant="danger"
-                onClick={() => void handleDeleteLogs()}
-                loading={isDeletingLogs}
-              >
-                ログをすべて削除
-              </Button>
-            </section>
+                    </SurfaceActions>
+                  </SurfaceBody>
+                </Surface>
+              </SurfaceBody>
+            </Surface>
           );
       }
     });
@@ -429,5 +458,5 @@ export function SettingsSupplementaryPanels({
   }
 
   // 変更理由: 追加カードを section 定義側の id から描画し、ページ本体の条件分岐を増やさない。
-  return <div className="settings-page__supplementary-stack">{panels}</div>;
+  return <SurfaceStack>{panels}</SurfaceStack>;
 }

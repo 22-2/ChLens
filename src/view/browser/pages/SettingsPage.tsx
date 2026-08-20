@@ -20,6 +20,14 @@ import { Alert } from "src/view/browser/ui/Alert";
 import { Button } from "src/view/browser/ui/Button";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import {
+  Surface,
+  SurfaceActions,
+  SurfaceBody,
+  SurfaceDescription,
+  SurfaceHeader,
+  SurfaceStack,
+} from "src/view/browser/ui/Surface";
+import {
   AUTO_SAVE_DELAY_MS,
   NG_PRIMARY_FIELD_KEYS,
   SETTINGS_PAGE_STATE_KEY,
@@ -579,9 +587,9 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
         className="settings-page__main"
         onScroll={(event) => persistPageUiState(event.currentTarget.scrollTop)}
       >
-        <div className="settings-page__content-stack">
-          <section className="settings-page__card">
-            <header className="settings-page__header">
+        <SurfaceStack className="settings-page__content-stack">
+          <Surface>
+            <SurfaceHeader className="settings-page__header">
               <div>
                 <div className="settings-page__eyebrow">SETTINGS</div>
                 <h2 className="settings-page__title">{activeSection.title}</h2>
@@ -596,115 +604,123 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
                   </span>
                 )}
               </div>
-            </header>
+            </SurfaceHeader>
 
-            {autoSaveError && (
-              <Alert
-                className="settings-page__auto-save-error"
-                color="red"
-                icon={<AlertTriangle size={16} />}
-              >
-                {autoSaveError}
-              </Alert>
-            )}
-
-            <hr className="settings-page__divider" />
-
-            {activeSection.id !== "ng" && (
-              <div className="settings-page__section-stack">
-                {activeSection.id !== "other" &&
-                  renderSectionItems(activeSection.id, regularSectionItems)}
-
-                {activeSection.id === "other" && (
-                  <>
-                    <section className="settings-page__subsurface">
-                      {renderSectionItems("other", otherBbsmenuSectionItems)}
-                      <div className="settings-page__actions">
-                        <Button
-                          onClick={() => void maintenanceActions.handleBBSMenuCheck()}
-                          loading={maintenanceActions.isBbsMenuChecking}
-                          disabled={maintenanceActions.isBbsMenuRefreshing}
-                        >
-                          URLチェック
-                        </Button>
-                        <Button
-                          onClick={() => void maintenanceActions.handleBBSMenuRefresh()}
-                          loading={maintenanceActions.isBbsMenuRefreshing}
-                          disabled={maintenanceActions.isBbsMenuChecking}
-                        >
-                          BBSMenuリフレッシュ
-                        </Button>
-                      </div>
-                    </section>
-
-                    {renderSectionItems("other", otherNonBbsmenuSectionItems)}
-                  </>
-                )}
-              </div>
-            )}
-
-            {activeSection.id === "ng" && (
-              <div className="settings-page__section-stack settings-page__section-stack--ng">
-                {renderSectionItems("ng", ngPrimarySectionItems)}
-
-                <Button
-                  className="settings-page__toggle"
-                  variant="subtle"
-                  aria-expanded={isNgExamplesOpen}
-                  onClick={() => setIsNgExamplesOpen((prev) => !prev)}
+            <SurfaceBody>
+              {autoSaveError && (
+                <Alert
+                  className="settings-page__auto-save-error"
+                  color="red"
+                  icon={<AlertTriangle size={16} />}
                 >
-                  <ChevronDown
-                    size={16}
-                    className={`settings-page__toggle-icon${
-                      isNgExamplesOpen ? " settings-page__toggle-icon--open" : ""
-                    }`}
-                    aria-hidden="true"
-                  />
-                  NG記法例
-                </Button>
+                  {autoSaveError}
+                </Alert>
+              )}
 
-                {isNgExamplesOpen && (
-                  <section className="settings-page__help-surface">
-                    <p className="settings-page__help-note">
-                      よく使う例をそのままコピーして調整できます。
-                    </p>
-                    <h3 className="settings-page__help-label">基本</h3>
-                    <NGDslHelpSnippet code={NG_DSL_EXAMPLE} minHeight={140} />
-                    <h3 className="settings-page__help-label">複数行</h3>
-                    <NGDslHelpSnippet code={NG_DSL_MULTILINE_EXAMPLE} minHeight={180} />
-                  </section>
-                )}
+              <hr className="settings-page__divider" />
 
-                <Button
-                  className="settings-page__toggle"
-                  variant="subtle"
-                  aria-expanded={isNgAdvancedOpen}
-                  onClick={() => setIsNgAdvancedOpen((prev) => !prev)}
-                >
-                  <ChevronDown
-                    size={16}
-                    className={`settings-page__toggle-icon${
-                      isNgAdvancedOpen ? " settings-page__toggle-icon--open" : ""
-                    }`}
-                    aria-hidden="true"
-                  />
-                  高度なNG設定
-                </Button>
+              {activeSection.id !== "ng" && (
+                <div className="settings-page__section-stack">
+                  {activeSection.id !== "other" &&
+                    renderSectionItems(activeSection.id, regularSectionItems)}
 
-                {isNgAdvancedOpen && (
-                  <div className="settings-page__section-stack--nested">
-                    {renderSectionItems("ng", ngAdvancedSectionItems)}
-                  </div>
-                )}
-              </div>
-            )}
+                  {activeSection.id === "other" && (
+                    <>
+                      <Surface as="section" tone="muted">
+                        <SurfaceBody>
+                          {renderSectionItems("other", otherBbsmenuSectionItems)}
+                          <SurfaceActions>
+                            <Button
+                              onClick={() => void maintenanceActions.handleBBSMenuCheck()}
+                              loading={maintenanceActions.isBbsMenuChecking}
+                              disabled={maintenanceActions.isBbsMenuRefreshing}
+                            >
+                              URLチェック
+                            </Button>
+                            <Button
+                              onClick={() => void maintenanceActions.handleBBSMenuRefresh()}
+                              loading={maintenanceActions.isBbsMenuRefreshing}
+                              disabled={maintenanceActions.isBbsMenuChecking}
+                            >
+                              BBSMenuリフレッシュ
+                            </Button>
+                          </SurfaceActions>
+                        </SurfaceBody>
+                      </Surface>
 
-            <SettingsSupplementaryPanels
-              panelIds={activeSection.supplementaryPanelIds}
-              maintenanceActions={maintenanceActions}
-            />
-          </section>
-        </div>
+                      {renderSectionItems("other", otherNonBbsmenuSectionItems)}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {activeSection.id === "ng" && (
+                <div className="settings-page__section-stack settings-page__section-stack--ng">
+                  {renderSectionItems("ng", ngPrimarySectionItems)}
+
+                  <Button
+                    className="settings-page__toggle"
+                    variant="subtle"
+                    aria-expanded={isNgExamplesOpen}
+                    onClick={() => setIsNgExamplesOpen((prev) => !prev)}
+                  >
+                    <ChevronDown
+                      size={16}
+                      className={`settings-page__toggle-icon${
+                        isNgExamplesOpen ? " settings-page__toggle-icon--open" : ""
+                      }`}
+                      aria-hidden="true"
+                    />
+                    NG記法例
+                  </Button>
+
+                  {isNgExamplesOpen && (
+                    <Surface as="section" tone="muted">
+                      <SurfaceHeader>
+                        <SurfaceDescription>
+                          よく使う例をそのままコピーして調整できます。
+                        </SurfaceDescription>
+                      </SurfaceHeader>
+                      <SurfaceBody>
+                        <h3 className="settings-page__help-label">基本</h3>
+                        <NGDslHelpSnippet code={NG_DSL_EXAMPLE} minHeight={140} />
+                        <h3 className="settings-page__help-label">複数行</h3>
+                        <NGDslHelpSnippet code={NG_DSL_MULTILINE_EXAMPLE} minHeight={180} />
+                      </SurfaceBody>
+                    </Surface>
+                  )}
+
+                  <Button
+                    className="settings-page__toggle"
+                    variant="subtle"
+                    aria-expanded={isNgAdvancedOpen}
+                    onClick={() => setIsNgAdvancedOpen((prev) => !prev)}
+                  >
+                    <ChevronDown
+                      size={16}
+                      className={`settings-page__toggle-icon${
+                        isNgAdvancedOpen ? " settings-page__toggle-icon--open" : ""
+                      }`}
+                      aria-hidden="true"
+                    />
+                    高度なNG設定
+                  </Button>
+
+                  {isNgAdvancedOpen && (
+                    <div className="settings-page__section-stack--nested">
+                      {renderSectionItems("ng", ngAdvancedSectionItems)}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <SettingsSupplementaryPanels
+                panelIds={activeSection.supplementaryPanelIds}
+                maintenanceActions={maintenanceActions}
+              />
+            </SurfaceBody>
+          </Surface>
+        </SurfaceStack>
       </main>
     </div>
   );
