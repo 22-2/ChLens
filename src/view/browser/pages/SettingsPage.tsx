@@ -9,25 +9,6 @@ import {
   NG_DSL_MULTILINE_EXAMPLE,
 } from "src/view/browser/components/NGEditor";
 import { useMediaQuery } from "src/view/browser/hooks/use-media-query";
-import { SettingsSupplementaryPanels } from "src/view/browser/pages/settings/SettingsSupplementaryPanels";
-import {
-  CheckboxField,
-  NumberField,
-  RadioField,
-  TextareaField,
-} from "src/view/browser/ui/FormControls";
-import { Alert } from "src/view/browser/ui/Alert";
-import { Button } from "src/view/browser/ui/Button";
-import { Spinner } from "src/view/browser/ui/Spinner";
-import {
-  Surface,
-  SurfaceActions,
-  SurfaceBody,
-  SurfaceDescription,
-  SurfaceHeader,
-  SurfaceStack,
-  SurfaceTitle,
-} from "src/view/browser/ui/Surface";
 import {
   AUTO_SAVE_DELAY_MS,
   NG_PRIMARY_FIELD_KEYS,
@@ -51,8 +32,27 @@ import {
   isSettingsDividerItem,
   isSettingsFieldItem,
 } from "src/view/browser/pages/settings/settings-types";
+import { SettingsSupplementaryPanels } from "src/view/browser/pages/settings/SettingsSupplementaryPanels";
 import { useSettingsMaintenanceActions } from "src/view/browser/pages/settings/use-settings-maintenance";
 import type { SettingsPage as SettingsPageType } from "src/view/browser/types";
+import { Alert } from "src/view/browser/ui/Alert";
+import { Button } from "src/view/browser/ui/Button";
+import {
+  CheckboxField,
+  NumberField,
+  RadioField,
+  TextareaField,
+} from "src/view/browser/ui/FormControls";
+import { Spinner } from "src/view/browser/ui/Spinner";
+import {
+  Surface,
+  SurfaceActions,
+  SurfaceBody,
+  SurfaceDescription,
+  SurfaceHeader,
+  SurfaceStack,
+  SurfaceTitle,
+} from "src/view/browser/ui/Surface";
 
 function toStringValue(value: SettingsFormValue): string {
   return typeof value === "string" ? value : "";

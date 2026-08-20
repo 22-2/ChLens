@@ -18,7 +18,6 @@ import { useThreadAutoRefresh } from "src/view/browser/hooks/use-thread-auto-ref
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";
 import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 import { ThreadPageTopBar } from "src/view/browser/pages/thread/ThreadPageTopBar";
-import { Spinner } from "src/view/browser/ui/Spinner";
 import { useImageBlurConfig } from "src/view/browser/pages/thread/use-image-blur-config";
 import { useOwnResTracking } from "src/view/browser/pages/thread/use-own-res-tracking";
 import { useResInteractionHandlers } from "src/view/browser/pages/thread/use-res-interaction-handlers";
@@ -27,6 +26,7 @@ import { useThreadResContextMenu } from "src/view/browser/pages/thread/use-threa
 import { useThreadTopBar } from "src/view/browser/pages/thread/use-thread-top-bar";
 import { useThreadTopScrollOpenFilter } from "src/view/browser/pages/thread/use-thread-top-scroll-open-filter";
 import { useUrlHandlers } from "src/view/browser/pages/thread/use-url-handlers";
+import { Spinner } from "src/view/browser/ui/Spinner";
 import { getAutoRefreshPageKey } from "src/view/browser/utils/auto-refresh-pages";
 import {
   buildBlurredResSet,

@@ -1,7 +1,7 @@
 import { createRoot } from "react-dom/client";
 import "src/app";
-import "src/view/browser/styles/index.css";
 import { BrowserApp } from "src/view/browser/App";
+import "src/view/browser/styles/index.css";
 
 // app.boot() 経由で初期化し、core モジュールの準備完了を待つ
 declare const app: {

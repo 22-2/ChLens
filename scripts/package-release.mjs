@@ -27,6 +27,9 @@ for (const platform of ["chrome", "firefox"]) {
   const zip = new JSZip();
   await addDirectory(zip, sourceDirectory);
   const outputPath = path.join(releaseDir, `chlens-${platform}-v${packageJson.version}.zip`);
-  await fs.writeFile(outputPath, await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" }));
+  await fs.writeFile(
+    outputPath,
+    await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" }),
+  );
   console.log(`Created ${path.relative(root, outputPath)}`);
 }

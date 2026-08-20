@@ -1,9 +1,9 @@
 import React from "react";
 import { container } from "src/service-container/index";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
-import { Spinner } from "src/view/browser/ui/Spinner";
 import { Alert } from "src/view/browser/ui/Alert";
 import { Button } from "src/view/browser/ui/Button";
+import { Spinner } from "src/view/browser/ui/Spinner";
 import {
   getLegacyBookmarkService,
   waitForLegacyBookmarkReady,

@@ -2,8 +2,8 @@ import {
   Copy,
   CornerDownRight,
   CornerRightUp,
-  Image as ImageIcon,
   ImageDown,
+  Image as ImageIcon,
   ImageUp,
   MoreVertical,
 } from "lucide-react";

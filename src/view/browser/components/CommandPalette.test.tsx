@@ -1,10 +1,10 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { CommandPalette } from "src/view/browser/components/CommandPalette";
 import {
   commandPalette,
   commandPaletteStore,
 } from "src/view/browser/commands/command-palette-store";
+import { CommandPalette } from "src/view/browser/components/CommandPalette";
 import type { Page } from "src/view/browser/types";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
