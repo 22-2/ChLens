@@ -948,7 +948,7 @@
 
 .cursor-tooltip {
   position: fixed;
-  z-index: 20000;
+  z-index: var(--sys-z-table-tooltip);
   max-width: min(360px, calc(100vw - 32px));
   padding: 4px 7px;
   border: 1px solid rgba(255, 255, 255, 0.16);
@@ -1073,8 +1073,10 @@
   position: fixed;
   inset: 0;
   pointer-events: none;
-  // bottom-panel(z-index 既定値=0) より前面に出すための新しいスタッキングコンテキスト。
-  z-index: 10000;
+  // minimap と table tooltip より前面に出すためのスタッキングコンテキスト。
+  // 子要素の z-index だけでは親の stacking context を越えられないため、
+  // context menu を含む popup 群の面自体を token で引き上げる。
+  z-index: var(--sys-z-popup-layer);
 }
 
 .thread-page__popup-layer > * {
@@ -1104,7 +1106,7 @@
 .thread-page__minimap {
   position: fixed;
   pointer-events: none;
-  z-index: var(--z-index-minimap);
+  z-index: var(--sys-z-minimap);
   border-left: 1px solid rgba(0, 0, 0, 0.12);
   background: rgba(255, 255, 255, 0.02);
   backdrop-filter: saturate(0.9) blur(2px);

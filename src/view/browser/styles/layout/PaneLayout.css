@@ -17,11 +17,11 @@
 }
 
 .pane-column + .pane-column {
-  border-left: 1px solid var(--browser-color-border);
+  border-left: 1px solid var(--sys-color-border);
 }
 
 .pane-column:not(:only-child)[data-active="true"] {
-  box-shadow: inset 0 2px 0 0 var(--browser-color-accent);
+  box-shadow: inset 0 2px 0 0 var(--sys-color-accent);
 }
 
 .pane-column:not(:only-child)[data-active="false"] .pane-column__chrome {
@@ -39,8 +39,8 @@
   align-items: stretch;
   column-gap: 2px;
   row-gap: 0;
-  background: var(--browser-color-tab-strip-bg);
-  border-bottom: 1px solid var(--browser-color-border);
+  background: var(--sys-color-tab-strip);
+  border-bottom: 1px solid var(--sys-color-border);
 }
 
 .pane-column > .content-area {

@@ -1,8 +1,8 @@
 body {
-  color: var(--color-text);
-  background: var(--color-surface);
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-  font-size: 14px;
+  color: var(--sys-color-text);
+  background: var(--sys-color-surface);
+  font-family: var(--sys-font-family-sans);
+  font-size: var(--sys-font-size-body);
 }
 
 button,
@@ -13,5 +13,5 @@ textarea {
 }
 
 ::selection {
-  background: var(--color-selection);
+  background: var(--sys-color-selection);
 }

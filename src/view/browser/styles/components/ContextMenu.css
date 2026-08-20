@@ -1,30 +1,30 @@
 /* Shared Context Menu */
 .context-menu {
   position: absolute;
-  z-index: 20000;
+  z-index: var(--sys-z-context-menu);
   min-width: 200px;
   max-width: min(420px, calc(100vw - 16px));
-  padding: 4px 0;
-  background: #fff;
-  border: 1px solid #dadce0;
-  border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  font-size: 13px;
+  padding: var(--sys-space-2) 0;
+  background: var(--sys-color-surface);
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-md);
+  box-shadow: var(--sys-shadow-popup);
+  font-size: var(--sys-font-size-md);
 }
 
 .context-menu__header {
-  border-bottom: 1px solid #dadce0;
+  border-bottom: 1px solid var(--sys-color-border);
 }
 
 .context-menu__item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sys-space-4);
   width: 100%;
-  padding: 6px 16px;
+  padding: var(--sys-space-3) var(--sys-space-8);
   border: none;
   background: transparent;
-  color: #202124;
+  color: var(--sys-color-text);
   text-align: left;
   cursor: pointer;
   white-space: nowrap;
@@ -42,9 +42,9 @@
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
-  color: #5f6368;
+  width: var(--sys-space-8);
+  height: var(--sys-space-8);
+  color: var(--sys-color-text-muted);
 }
 
 .context-menu__label {
@@ -62,21 +62,21 @@
 }
 
 .context-menu__item:hover:not(:disabled) {
-  background: #f1f3f4;
+  background: var(--sys-color-surface-muted);
 }
 
 .context-menu__item:disabled {
-  color: #bdc1c6;
+  color: var(--sys-color-text-disabled);
   cursor: default;
 }
 
 .context-menu__item--danger,
 .context-menu__item--danger .context-menu__icon {
-  color: #d93025;
+  color: var(--sys-color-error);
 }
 
 .context-menu__separator {
   height: 1px;
-  margin: 4px 0;
-  background: #e8eaed;
+  margin: var(--sys-space-2) 0;
+  background: var(--sys-color-tab-strip);
 }

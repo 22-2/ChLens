@@ -2,7 +2,7 @@
 .content-area {
   flex: 1;
   overflow: hidden;
-  background: #fff;
+  background: var(--sys-color-surface);
 }
 
 .content-area__tab-panel {

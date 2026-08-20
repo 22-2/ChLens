@@ -55,6 +55,21 @@
 4. `.mantine-*` と `--mantine-*` への上書きがあり、UIライブラリの変更がスタイルへ漏れている。
 5. 見た目用クラスが一部の振る舞いとテストのセレクタも兼ねており、命名変更の影響範囲が広い。
 
+### 変更履歴から見た現在の進捗
+
+直近のコミットでは、計画のPhase 1〜2-3までが実装されている。
+
+| コミット                       | 実施内容                                                            |
+| ------------------------------ | ------------------------------------------------------------------- |
+| `86670bb9 refactor: phase 1`   | foundationのreset / theme / tokenを追加し、dark themeの大部分を分離 |
+| `52d7a41c refactor: phase 2-1` | BrowserShell、PaneLayout、ContentAreaをCSSへ分割                    |
+| `d6e375c6 refactor: phase 2-2` | ContextMenu、StatusBar、TabBarをCSSへ分割                           |
+| `4162fb8b refactor: 2-3`       | NavigationBar、Home、BoardList、PageStatusをCSSへ分割               |
+
+この状態では「新token層を追加したが、抽出済みCSSに旧`--browser-*`とraw値が残る」状態だったため、
+次の小さな区切りとして`--ref-*` / `--sys-*`の契約と`pnpm lint:tokens`を追加する。
+未抽出の`browser.scss`は互換aliasを残し、表示変更と名前変更を同じコミットへ混ぜない。
+
 ---
 
 ## 採用方針
@@ -120,7 +135,7 @@ src/view/browser/
 │   ├── index.css                 # 読み込み順とcascade layerの入口
 │   ├── foundation/
 │   │   ├── reset.css
-│   │   ├── tokens.css            # primitive token + semantic token
+│   │   ├── tokens.css            # --ref-* と theme非依存の --sys-* scale
 │   │   ├── themes.css            # light/darkはtoken値だけを上書き
 │   │   ├── base.css
 │   │   └── utilities.css         # visually-hidden等、ごく少数
@@ -166,45 +181,55 @@ src/view/browser/
 
 ## デザイントークン設計
 
-### トークンを3層に分ける
+### トークンを3層 + 移行用aliasに分ける
 
 ```css
-/* primitive: 値そのもの。コンポーネントから直接使わない */
---color-blue-600: #1a73e8;
---space-2: 0.5rem;
---radius-sm: 0.25rem;
+/* reference: 値そのもの。tokens.css以外から直接使わない */
+--ref-color-blue-600: #1a73e8;
+--ref-space-2: 4px;
+--ref-radius-sm: 2px;
 
-/* semantic: テーマに応じて意味を維持する */
---color-surface: var(--color-neutral-0);
---color-surface-muted: var(--color-neutral-100);
---color-text: var(--color-neutral-950);
---color-text-muted: var(--color-neutral-600);
---color-border: var(--color-neutral-300);
---color-accent: var(--color-blue-600);
---color-danger: var(--color-red-600);
+/* system: テーマに応じた意味。component/page CSSが利用する */
+--sys-color-surface: var(--ref-color-neutral-0);
+--sys-color-surface-muted: var(--ref-color-neutral-100);
+--sys-color-text: var(--ref-color-neutral-950);
+--sys-color-text-muted: var(--ref-color-neutral-600);
+--sys-color-border: var(--ref-color-neutral-300);
+--sys-color-accent: var(--ref-color-blue-600);
+--sys-color-error: var(--ref-color-red-600);
 
-/* component: semantic tokenだけでは意図を表せない場合に限定 */
---tab-height: 34px;
---status-bar-height: 24px;
---dialog-z-index: 40000;
+/* component: semantic tokenだけでは意図を表せない場合に、ownerのCSS内で限定 */
+--cmp-tab-height: var(--sys-space-13);
+
+/* migration only: browser.scssが移行完了するまでBrowserShell.cssで保持 */
+--browser-color-bg: var(--sys-color-surface);
 ```
 
 ### ルール
 
-- コンポーネントCSSはsemantic tokenを第一選択にする。
-- raw colorは `tokens.css` と画像・データ可視化など例外用途に限定する。
-- dark themeは `[data-theme="dark"]` 内でsemantic token値だけを差し替える。
+- `--ref-*` は値の辞書、`--sys-*` は意味の辞書として扱い、consumerは`--sys-*`だけを使う。
+- `--cmp-*` はownerのCSS内で定義し、foundationへcomponent固有値を追加しない。
+- raw color、raw shadow、raw z-indexは `tokens.css` に限定する。画像・データ可視化は例外として理由を残す。
+- overlayは `minimap < table-tooltip < popup-layer < context-menu < dialog` の順に重ね、親のstacking contextも同じ規約に従わせる。
+- dark themeは `[data-theme="dark"]` 内で`--ref-*`を直接上書きせず、`--sys-*`を別のreferenceへ束ねる。
 - hover、focus、selected、disabled、success、warning、dangerを共通語彙にする。
 - spacing、radius、shadow、font size、line height、motion、z-indexもtoken化する。
-- 既存の `--browser-*` は一度にrenameせず、新tokenへのalias期間を1〜2 PR設ける。
+- `--browser-*` は未抽出SCSSだけで利用し、新規に分割したCSSでは利用しない。
+- tokenを追加する前に、既存tokenで表現できない意味か確認する。同じ値だからという理由でsemantic tokenを増やさない。
+- 参照token名に画面・コンポーネント名を含めない。`--ref-color-*`と`--sys-color-*`の責務を保つ。
 - `prefers-reduced-motion` と `forced-colors` の扱いをfoundationで定義する。
 
 ### 完了時の制約
 
 - `themes.css` にコンポーネントセレクタを置かない。
-- `ui/` と新規コンポーネントCSSにraw colorを追加しない。
+- `ui/` と新規コンポーネントCSSにraw color、raw shadow、raw z-indexを追加しない。
+- 抽出済みCSSに`var(--browser-*)`を追加しない。
+- `--ref-*`をconsumer CSSから直接参照しない（alphaやshadowも`--sys-*`へ意味付けしてから使う）。
 - `--mantine-*`、`.mantine-*` を参照しない。
 - z-indexは用途別tokenに限定し、場当たり的な数値追加を禁止する。
+
+この契約は `pnpm lint:tokens`（`scripts/check-browser-design-tokens.mjs`）で、抽出済みCSSに対して
+機械的に検査する。未移行の`browser.scss`とBrowserShellの互換bridgeは段階移行のため対象外とする。
 
 ---
 

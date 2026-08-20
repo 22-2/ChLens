@@ -1,69 +1,194 @@
+/*
+ * Browser view design-token contract
+ *
+ * --ref-*  Raw reference values. These are the only tokens allowed to contain
+ *           literal colors, lengths, shadows, fonts, or z-index numbers.
+ * --sys-*  Semantic values consumed by component and page CSS. A consumer
+ *           should not depend on a palette step directly.
+ * --cmp-*  Component-local escape hatch. Define these next to the owning
+ *           component instead of adding one-off globals here.
+ * --browser-* is a temporary compatibility namespace for the un-migrated
+ * browser.scss sections. It must not be used by newly extracted CSS.
+ */
+
 :root {
-  /* Primitive palette. Component styles should use semantic tokens below. */
-  --color-neutral-0: #fff;
-  --color-neutral-50: #f8f9fa;
-  --color-neutral-100: #f1f3f4;
-  --color-neutral-200: #dee1e6;
-  --color-neutral-300: #dadce0;
-  --color-neutral-500: #9aa0a6;
-  --color-neutral-600: #5f6368;
-  --color-neutral-700: #3c4043;
-  --color-neutral-800: #35363a;
-  --color-neutral-900: #292a2d;
-  --color-neutral-950: #202124;
-  --color-blue-600: #1a73e8;
-  --color-blue-700: #1765cc;
-  --color-green-700: #0b8043;
-  --color-orange-700: #c47800;
-  --color-red-600: #d93025;
+  /* Reference palette: light theme. */
+  --ref-color-neutral-0: #fff;
+  --ref-color-neutral-50: #f8f9fa;
+  --ref-color-neutral-100: #f1f3f4;
+  --ref-color-neutral-200: #dee1e6;
+  --ref-color-neutral-300: #dadce0;
+  --ref-color-neutral-400: #c4c7c9;
+  --ref-color-neutral-450: #bdc1c6;
+  --ref-color-neutral-500: #9aa0a6;
+  --ref-color-neutral-600: #5f6368;
+  --ref-color-neutral-700: #3c4043;
+  --ref-color-neutral-800: #35363a;
+  --ref-color-neutral-900: #292a2d;
+  --ref-color-neutral-950: #202124;
+  --ref-color-neutral-1000: #e8eaed;
+  --ref-color-blue-50: #e8f0fe;
+  --ref-color-blue-100: #c8d7f5;
+  --ref-color-blue-300: #8ab4f8;
+  --ref-color-blue-600: #1a73e8;
+  --ref-color-blue-700: #1765cc;
+  --ref-color-blue-800: #007acc;
+  --ref-color-blue-900: #0000cc;
+  --ref-color-green-700: #0b8043;
+  --ref-color-orange-700: #c47800;
+  --ref-color-red-600: #d93025;
 
-  --space-1: 2px;
-  --space-2: 4px;
-  --space-3: 8px;
-  --space-4: 12px;
-  --space-5: 16px;
-  --radius-sm: 2px;
-  --radius-md: 4px;
-  --radius-lg: 6px;
-  --shadow-popup: 0 2px 8px rgb(0 0 0 / 15%);
-  --shadow-dialog: 0 18px 44px rgb(0 0 0 / 30%);
-  --font-mono: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+  /* Reference palette: dark theme. Semantic tokens select these in themes.css. */
+  --ref-color-dark-neutral-0: #202124;
+  --ref-color-dark-neutral-50: #292a2d;
+  --ref-color-dark-neutral-100: #35363a;
+  --ref-color-dark-neutral-200: #292a2d;
+  --ref-color-dark-neutral-300: #3c4043;
+  --ref-color-dark-neutral-400: #5f6368;
+  --ref-color-dark-neutral-600: #9aa0a6;
+  --ref-color-dark-neutral-950: #e8eaed;
+  --ref-color-dark-blue-300: #8ab4f8;
+  --ref-color-dark-blue-600: #1a6fc4;
+  --ref-color-dark-blue-700: #1558a4;
+  --ref-color-dark-green-700: #81c995;
+  --ref-color-dark-orange-700: #fba94c;
+  --ref-color-dark-red-600: #f28b82;
 
-  /* Semantic tokens. Themes override these values, not component selectors. */
-  --color-surface: var(--color-neutral-0);
-  --color-surface-muted: var(--color-neutral-100);
-  --color-tab-strip: var(--color-neutral-200);
-  --color-tab-strip-hover: rgb(255 255 255 / 40%);
-  --color-tab-strip-active-hover: #d4d7da;
-  --color-border: var(--color-neutral-300);
-  --color-text: var(--color-neutral-950);
-  --color-text-muted: var(--color-neutral-600);
-  --color-text-disabled: #c4c7c9;
-  --color-placeholder: var(--color-neutral-500);
-  --color-selection: #c8d7f5;
-  --color-accent: var(--color-blue-600);
-  --color-accent-hover: var(--color-blue-700);
-  --color-accent-fg: var(--color-neutral-0);
-  --color-focus-ring: var(--color-blue-600);
-  --color-hover-overlay: rgb(0 0 0 / 12%);
-  --color-status-hover-overlay: rgb(0 0 0 / 10%);
-  --color-input-bg: var(--color-neutral-0);
-  --color-input-border: var(--color-neutral-300);
-  --color-success: var(--color-green-700);
-  --color-error: var(--color-red-600);
-  --color-warning: var(--color-orange-700);
-  --color-res-num: #0000cc;
-  --color-res-heat-warm: var(--color-orange-700);
-  --color-res-heat-hot: var(--color-red-600);
-  --color-res-reply-link: var(--color-blue-600);
-  --color-res-id-muted: #888;
-  --color-res-id-cool: var(--color-blue-600);
-  --color-status-active-bg: #007acc;
-  --color-status-active-fg: var(--color-neutral-0);
-  --color-list-hover-bg: var(--color-neutral-100);
+  /* Reference effects and typography. */
+  --ref-color-alpha-black-05: rgb(0 0 0 / 5%);
+  --ref-color-alpha-black-10: rgb(0 0 0 / 10%);
+  --ref-color-alpha-black-12: rgb(0 0 0 / 12%);
+  --ref-color-alpha-black-14: rgb(0 0 0 / 14%);
+  --ref-color-alpha-black-15: rgb(0 0 0 / 15%);
+  --ref-color-alpha-black-18: rgb(0 0 0 / 18%);
+  --ref-color-alpha-black-24: rgb(0 0 0 / 24%);
+  --ref-color-alpha-black-30: rgb(0 0 0 / 30%);
+  --ref-color-alpha-black-45: rgb(0 0 0 / 45%);
+  --ref-color-alpha-black-70: rgb(0 0 0 / 70%);
+  --ref-color-alpha-white-02: rgb(255 255 255 / 2%);
+  --ref-color-alpha-white-08: rgb(255 255 255 / 8%);
+  --ref-color-alpha-white-12: rgb(255 255 255 / 12%);
+  --ref-color-alpha-white-14: rgb(255 255 255 / 14%);
+  --ref-color-alpha-white-16: rgb(255 255 255 / 16%);
+  --ref-color-alpha-white-18: rgb(255 255 255 / 18%);
+  --ref-color-alpha-white-20: rgb(255 255 255 / 20%);
+  --ref-color-alpha-white-35: rgb(255 255 255 / 35%);
+  --ref-color-alpha-white-40: rgb(255 255 255 / 40%);
+  --ref-color-alpha-blue-04: rgb(26 115 232 / 4%);
+  --ref-color-alpha-blue-08: rgb(26 115 232 / 8%);
+  --ref-color-alpha-blue-20: rgb(26 115 232 / 20%);
+  --ref-color-alpha-blue-30: rgb(26 115 232 / 30%);
+  --ref-color-alpha-dark-blue-40: color-mix(
+    in srgb,
+    var(--ref-color-dark-blue-600) 40%,
+    transparent
+  );
 
-  /* Component tokens are intentionally small and stable during the migration. */
-  --tab-height: 34px;
-  --status-bar-height: 24px;
-  --dialog-z-index: 40000;
+  --ref-space-0: 0;
+  --ref-space-1: 2px;
+  --ref-space-2: 4px;
+  --ref-space-3: 6px;
+  --ref-space-4: 8px;
+  --ref-space-5: 10px;
+  --ref-space-6: 12px;
+  --ref-space-7: 14px;
+  --ref-space-8: 16px;
+  --ref-space-9: 20px;
+  --ref-space-10: 24px;
+  --ref-space-11: 28px;
+  --ref-space-12: 32px;
+  --ref-space-13: 36px;
+  --ref-space-14: 40px;
+  --ref-space-15: 44px;
+  --ref-space-16: 48px;
+  --ref-radius-sm: 2px;
+  --ref-radius-md: 4px;
+  --ref-radius-lg: 6px;
+  --ref-radius-xl: 8px;
+  --ref-radius-pill: 999px;
+  --ref-shadow-popup: 0 2px 8px var(--ref-color-alpha-black-15);
+  --ref-shadow-dialog: 0 18px 44px var(--ref-color-alpha-black-30);
+  --ref-shadow-focus: 0 1px 6px var(--ref-color-alpha-black-24);
+  --ref-shadow-floating: 0 8px 24px var(--ref-color-alpha-black-24);
+  --ref-shadow-dragging: 0 4px 12px var(--ref-color-alpha-black-18);
+  --ref-font-family-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --ref-font-family-mono: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+  --ref-font-size-xs: 11px;
+  --ref-font-size-sm: 12px;
+  --ref-font-size-md: 13px;
+  --ref-font-size-body: 14px;
+  --ref-font-size-lg: 16px;
+  --ref-duration-instant: 0ms;
+  --ref-duration-fast: 100ms;
+  --ref-duration-normal: 150ms;
+  --ref-duration-slow: 200ms;
+  --ref-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ref-ease-out: ease-out;
+
+  /* Reference stacking scale. Passive surfaces stay below interactive overlays. */
+  --ref-z-local: 1;
+  --ref-z-dragging: 3;
+  --ref-z-wheel-indicator: 1000;
+  --ref-z-media-viewer: 11000;
+  --ref-z-omnibar: 25000;
+  --ref-z-mini-window: 30000;
+  --ref-z-minimap: 30000;
+  /* Shared by CursorTooltip and the virtualized table's floating tooltip. */
+  --ref-z-table-tooltip: 35000;
+  --ref-z-popup-layer: 36000;
+  --ref-z-context-menu: 37000;
+  --ref-z-dialog: 40000;
+
+  /* Theme-independent system scales. */
+  --sys-space-0: var(--ref-space-0);
+  --sys-space-1: var(--ref-space-1);
+  --sys-space-2: var(--ref-space-2);
+  --sys-space-3: var(--ref-space-3);
+  --sys-space-4: var(--ref-space-4);
+  --sys-space-5: var(--ref-space-5);
+  --sys-space-6: var(--ref-space-6);
+  --sys-space-7: var(--ref-space-7);
+  --sys-space-8: var(--ref-space-8);
+  --sys-space-9: var(--ref-space-9);
+  --sys-space-10: var(--ref-space-10);
+  --sys-space-11: var(--ref-space-11);
+  --sys-space-12: var(--ref-space-12);
+  --sys-space-13: var(--ref-space-13);
+  --sys-space-14: var(--ref-space-14);
+  --sys-space-15: var(--ref-space-15);
+  --sys-space-16: var(--ref-space-16);
+  --sys-radius-sm: var(--ref-radius-sm);
+  --sys-radius-md: var(--ref-radius-md);
+  --sys-radius-lg: var(--ref-radius-lg);
+  --sys-radius-xl: var(--ref-radius-xl);
+  --sys-radius-pill: var(--ref-radius-pill);
+  --sys-shadow-popup: var(--ref-shadow-popup);
+  --sys-shadow-dialog: var(--ref-shadow-dialog);
+  --sys-shadow-focus: var(--ref-shadow-focus);
+  --sys-shadow-floating: var(--ref-shadow-floating);
+  --sys-shadow-dragging: var(--ref-shadow-dragging);
+  --sys-font-family-sans: var(--ref-font-family-sans);
+  --sys-font-family-mono: var(--ref-font-family-mono);
+  --sys-font-size-xs: var(--ref-font-size-xs);
+  --sys-font-size-sm: var(--ref-font-size-sm);
+  --sys-font-size-md: var(--ref-font-size-md);
+  --sys-font-size-body: var(--ref-font-size-body);
+  --sys-font-size-lg: var(--ref-font-size-lg);
+  --sys-duration-instant: var(--ref-duration-instant);
+  --sys-duration-fast: var(--ref-duration-fast);
+  --sys-duration-normal: var(--ref-duration-normal);
+  --sys-duration-slow: var(--ref-duration-slow);
+  --sys-ease-standard: var(--ref-ease-standard);
+  --sys-ease-out: var(--ref-ease-out);
+  --sys-z-local: var(--ref-z-local);
+  --sys-z-dragging: var(--ref-z-dragging);
+  --sys-z-wheel-indicator: var(--ref-z-wheel-indicator);
+  --sys-z-media-viewer: var(--ref-z-media-viewer);
+  --sys-z-omnibar: var(--ref-z-omnibar);
+  --sys-z-mini-window: var(--ref-z-mini-window);
+  --sys-z-minimap: var(--ref-z-minimap);
+  --sys-z-table-tooltip: var(--ref-z-table-tooltip);
+  --sys-z-popup-layer: var(--ref-z-popup-layer);
+  --sys-z-context-menu: var(--ref-z-context-menu);
+  --sys-z-dialog: var(--ref-z-dialog);
 }

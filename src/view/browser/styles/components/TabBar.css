@@ -4,10 +4,10 @@
   align-items: center;
   flex: 1 1 0;
   min-width: 0;
-  height: 34px;
-  padding: 0 4px;
-  background: var(--browser-color-tab-strip-bg);
-  border-bottom: 1px solid var(--browser-color-border);
+  height: var(--sys-space-13);
+  padding: 0 var(--sys-space-2);
+  background: var(--sys-color-tab-strip);
+  border-bottom: 1px solid var(--sys-color-border);
   user-select: none;
 }
 
@@ -38,28 +38,32 @@
   align-items: center;
   min-width: 72px;
   max-width: 180px;
-  height: 34px;
-  padding: 0 8px 0 10px;
+  height: var(--sys-space-13);
+  padding: 0 var(--sys-space-4) 0 var(--sys-space-5);
   border: 0;
-  border-right: 1px solid var(--browser-color-border);
+  border-right: 1px solid var(--sys-color-border);
   border-bottom: 2px solid transparent;
   border-radius: 0;
-  color: var(--browser-color-text-muted);
+  color: var(--sys-color-text-muted);
   cursor: pointer;
-  font-size: 12px;
-  transition: background 0.1s, color 0.1s, flex-grow 0.1s, max-width 0.1s;
+  font-size: var(--sys-font-size-sm);
+  transition:
+    background var(--sys-duration-fast),
+    color var(--sys-duration-fast),
+    flex-grow var(--sys-duration-fast),
+    max-width var(--sys-duration-fast);
 }
 
 .tab--active {
   flex-grow: 0;
   max-width: 240px;
-  background: var(--browser-color-bg);
-  border-bottom-color: var(--browser-color-accent);
-  color: var(--browser-color-text-primary);
+  background: var(--sys-color-surface);
+  border-bottom-color: var(--sys-color-accent);
+  color: var(--sys-color-text);
 }
 
 .tab:not(.tab--active):hover {
-  background: var(--browser-color-tab-strip-hover);
+  background: var(--sys-color-tab-strip-hover);
 }
 
 .tab--highlighted {
@@ -67,9 +71,9 @@
 }
 
 .tab--dragging {
-  z-index: 3;
+  z-index: var(--sys-z-dragging);
   opacity: 0.95;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--sys-shadow-dragging);
   /* dnd-kitがtransformを管理するため、GPUレイヤーだけを予約する。 */
   will-change: transform;
 }
@@ -79,7 +83,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  line-height: 34px;
+  line-height: var(--sys-space-13);
 }
 
 .tab__auto-refresh-indicator {
@@ -89,13 +93,13 @@
   margin-right: 8px;
   margin-left: 4px;
   border-radius: 50%;
-  background: var(--browser-color-error);
+  background: var(--sys-color-error);
   opacity: 0.85;
 }
 
 .tab__auto-refresh-indicator--inactive {
   border-radius: 2px;
-  background: var(--browser-color-accent);
+  background: var(--sys-color-accent);
 }
 
 .tab__close {
@@ -109,13 +113,13 @@
   border: none;
   border-radius: 2px;
   background: transparent;
-  color: var(--browser-color-text-muted);
+  color: var(--sys-color-text-muted);
   cursor: pointer;
   transition: background 0.1s;
 }
 
 .tab__close:hover {
-  background: var(--browser-color-tab-strip-active-hover);
+  background: var(--sys-color-tab-strip-active-hover);
 }
 
 .tab-bar__add,
@@ -126,7 +130,7 @@
   justify-content: center;
   border: none;
   background: transparent;
-  color: var(--browser-color-text-muted);
+  color: var(--sys-color-text-muted);
   cursor: pointer;
 }
 
@@ -145,7 +149,9 @@
   height: 30px;
   margin: 0 6px;
   border-radius: 2px;
-  transition: background 0.1s, color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s;
 }
 
 .tab-bar__refresh-divider {
@@ -153,21 +159,21 @@
   width: 1px;
   height: 18px;
   margin-right: 6px;
-  background: rgba(32, 33, 36, 0.18);
+  background: var(--sys-color-divider-subtle);
 }
 
 .tab-bar__refresh:hover:not(:disabled) {
-  background: var(--browser-color-tab-strip-hover);
-  color: var(--browser-color-text-primary);
+  background: var(--sys-color-tab-strip-hover);
+  color: var(--sys-color-text);
 }
 
 .tab-bar__refresh:disabled {
-  color: var(--browser-color-text-disabled);
+  color: var(--sys-color-text-disabled);
   cursor: default;
 }
 
 .tab-bar__add:hover {
-  background: var(--browser-color-tab-strip-hover);
+  background: var(--sys-color-tab-strip-hover);
 }
 
 .tab--pinned {

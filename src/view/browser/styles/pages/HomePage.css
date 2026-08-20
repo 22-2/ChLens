@@ -1,11 +1,54 @@
 /* Home Page */
-.home-page { width: 100%; min-height: 100%; padding: 0; }
-.home-page__heading { padding: 8px 12px; border-bottom: 1px solid var(--browser-color-border); color: var(--browser-color-text-muted); font-size: 13px; font-weight: 600; }
-.home-page__status { display: flex; align-items: center; gap: 8px; padding: 8px 12px; color: var(--browser-color-text-muted); }
-.home-page__alert { margin: 8px 12px 0; }
-.home-page__list { width: 100%; }
-.home-page__empty { margin: 0; padding: 8px 12px; border-bottom: 1px solid var(--browser-color-border); color: var(--browser-color-text-muted); }
-.home-page__link { display: flex; align-items: center; justify-content: flex-start; width: 100%; padding: 8px 12px; border-bottom: 1px solid var(--browser-color-border); background: transparent; color: var(--browser-color-text-primary); text-align: left; transition: none; }
-.home-page__link:hover { background: var(--browser-color-list-hover-bg); }
-.home-page__link--action { font-weight: 600; }
-.home-page__link .mantine-Text-root, .board-item .mantine-Text-root { color: inherit; }
+.home-page {
+  width: 100%;
+  min-height: 100%;
+  padding: 0;
+}
+.home-page__heading {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--sys-color-border);
+  color: var(--sys-color-text-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+.home-page__status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  color: var(--sys-color-text-muted);
+}
+.home-page__alert {
+  margin: 8px 12px 0;
+}
+.home-page__list {
+  width: 100%;
+}
+.home-page__empty {
+  margin: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--sys-color-border);
+  color: var(--sys-color-text-muted);
+}
+.home-page__link {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--sys-color-border);
+  background: transparent;
+  color: var(--sys-color-text);
+  text-align: left;
+  transition: none;
+}
+.home-page__link:hover {
+  background: var(--sys-color-list-hover-bg);
+}
+.home-page__link--action {
+  font-weight: 600;
+}
+.home-page__link .mantine-Text-root,
+.board-item .mantine-Text-root {
+  color: inherit;
+}

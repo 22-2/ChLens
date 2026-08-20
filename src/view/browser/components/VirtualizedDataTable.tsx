@@ -185,7 +185,11 @@ export function VirtualizedDataTable<TRow>({
             }
 
             return (
-              <Tooltip.Floating key={rowKey} label={tooltipLabel}>
+              <Tooltip.Floating
+                key={rowKey}
+                label={tooltipLabel}
+                zIndex="var(--sys-z-table-tooltip)"
+              >
                 {rowElement}
               </Tooltip.Floating>
             );
