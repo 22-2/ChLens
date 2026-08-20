@@ -1,13 +1,16 @@
 /* Board List Page - 板一覧 */
 .board-list-page {
+  width: 100%;
   padding: 0;
 }
 .board-list-page__retry {
   margin-top: var(--sys-space-2);
 }
-.board-list-page__menu-accordion,
-.board-list-page__category-accordion {
+.board-list-page__menu-accordion {
   border-top: 1px solid var(--sys-color-border);
+}
+.board-list-page__category-accordion {
+  border-top: 0;
 }
 .board-menu,
 .board-category {
@@ -17,48 +20,63 @@
 .board-category__title {
   display: flex;
   align-items: center;
+  width: 100%;
   min-height: 32px;
+  gap: var(--sys-space-2);
+  padding-block: 0;
   font-size: 13px;
   color: var(--sys-color-text);
   cursor: pointer;
   user-select: none;
   list-style: none;
-  transition: none;
+  transition: background-color var(--sys-duration-fast) var(--sys-ease-standard);
 }
 .board-menu__title {
-  padding: 0 12px;
+  padding-inline: var(--sys-space-6);
   font-weight: 600;
 }
 .board-category__title {
-  padding: 0 12px 0 28px;
+  padding-inline: var(--sys-space-4) var(--sys-space-6);
   font-weight: 500;
 }
 .board-menu__title:hover,
 .board-category__title:hover {
   background-color: var(--sys-color-list-hover-bg);
 }
+.board-menu__title:focus-visible,
+.board-category__title:focus-visible,
+.board-item:focus-visible {
+  outline: var(--sys-space-1) solid var(--sys-color-focus-ring);
+  outline-offset: calc(var(--sys-space-1) * -1);
+}
 .board-list-page__chevron {
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
+  width: var(--sys-space-6);
+  height: var(--sys-space-6);
   color: var(--sys-color-text);
   transform: rotate(0deg);
-  transition: none;
+  transition: transform var(--sys-duration-normal) var(--sys-ease-standard);
 }
 .board-menu__content,
 .board-category__list {
   padding: 0;
-  margin-left: 8px;
   border-left: 1px solid var(--sys-color-border);
+}
+.board-menu__content {
+  margin-left: var(--sys-space-9);
+}
+.board-category__list {
+  margin-left: var(--sys-space-4);
 }
 .board-item {
   display: flex;
   align-items: center;
   width: 100%;
   min-height: 30px;
-  margin-left: 8px;
-  padding: 0 12px 0 44px;
+  padding: 0 var(--sys-space-6);
   border-top: 1px solid var(--sys-color-border);
   border-bottom: none;
   border-left: none;
@@ -69,8 +87,14 @@
   font-weight: 400;
   line-height: 1.4;
   text-align: left;
-  transition: none;
+  transition: background-color var(--sys-duration-fast) var(--sys-ease-standard);
 }
 .board-item:hover {
   background: var(--sys-color-list-hover-bg);
+}
+.board-item > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

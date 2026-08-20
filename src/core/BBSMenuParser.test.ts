@@ -105,6 +105,24 @@ describe("BBSMenuParser.parse", () => {
     expect(menu.name).toBe("menu.5ch.io");
   });
 
+  it("bbsmenuの相対hrefを取得元URL基準の絶対URLへ変換する", () => {
+    const html = buildHtml("板一覧", [
+      {
+        name: "カテゴリA",
+        boards: [
+          { name: "ルート相対板", url: "/board1/" },
+          { name: "ホスト相対板", url: "//foo.5ch.io/board2/" },
+        ],
+      },
+    ]);
+
+    const menu = BBSMenuParser.parse(html, "https://menu.5ch.io/bbsmenu.html", new Set());
+    const boards = menu.categories[0].boards;
+
+    expect(boards[0].url).toBe("https://menu.5ch.io/board1/");
+    expect(boards[1].url).toBe("https://foo.5ch.io/board2/");
+  });
+
   it("除外TLDに一致する板をフィルタリングする（bbspink.comは例外で除外されない）", () => {
     const html = buildHtml("板一覧", [
       {

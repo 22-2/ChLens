@@ -162,7 +162,7 @@ export const BoardListPage: React.FC<BoardListPageProps> = ({ tabId, isActive })
         onBoardClick={handleBoardClick}
         onBoardMiddleClick={handleBoardMiddleClick}
         onContextMenu={setContextMenuState}
-        onRetry={fetchMenu}
+        onRetry={() => fetchMenu(true)}
       />
 
       <ContextMenuHandler

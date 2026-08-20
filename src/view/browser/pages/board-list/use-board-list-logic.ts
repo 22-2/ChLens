@@ -104,13 +104,12 @@ export function useBoardListLogic() {
 
   // ─── BBSメニュー取得 ─────────────────────────────────────────────────────
 
-  const fetchMenu = useCallback(async () => {
+  const fetchMenu = useCallback(async (forceReload = false) => {
     setLoading(true);
     setError(null);
     try {
-      // 変更理由: 「一度開いた板」は config 依存で変化するため、
-      // 板一覧表示時は最新結果を必ず再計算してキャッシュ取りこぼしを防ぐ。
-      const result = await container.bbsMenu.get(true);
+      // 初回表示はモデルのメモリ/永続キャッシュを優先し、明示的な再試行だけ通信する。
+      const result = await container.bbsMenu.get(forceReload);
       if (result.status === "success" && result.menu) {
         setCategories(result.menu);
       } else {
@@ -152,16 +151,15 @@ export function useBoardListLogic() {
     const handleConfigUpdated = ({ key }: { key?: string }) => {
       if (key !== CONFIG_KEYS.OPENED_BOARDS) return;
       syncOpenedBoards();
-      // 「一度開いた板」が追加されたら、bbsMenu キャッシュを更新して
-      // 「その他」メニューに反映させる
-      void fetchMenu();
+      // 「一度開いた板」は openedBoardEntries を通じて表示側が「その他」に統合するため、
+      // ここでBBSMenuを再取得してローディング表示を挟まない。
     };
 
     container.message.on("config_updated", handleConfigUpdated);
     return () => {
       container.message.off("config_updated", handleConfigUpdated);
     };
-  }, [fetchMenu]);
+  }, []);
 
   // ─── 初期ロード ──────────────────────────────────────────────────────────
 
