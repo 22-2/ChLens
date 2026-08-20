@@ -1,5 +1,4 @@
 import {
-  Copy,
   CornerDownRight,
   CornerRightUp,
   ImageDown,
@@ -608,7 +607,8 @@ export const ReplyTreePopup: React.FC<{
         {
           id: "copy-tree-responses",
           label: "返信ツリーを一括コピー",
-          icon: <Copy size={14} />,
+          // 返信ツリー全体も「起点から下へ辿る」操作なので、子ツリーのコピーと同じ向きで示す。
+          icon: <CornerDownRight size={14} />,
           onSelect: () => {
             // 参照元レスも一緒に入れておくと、コピー先だけ見ても何への返信ツリーか判別できる。
             void copyText(

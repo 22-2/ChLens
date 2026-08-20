@@ -171,6 +171,9 @@ describe("ReplyTreePopup", () => {
     render(<ReplyTreePopup {...BASE_PROPS} />);
 
     fireEvent.click(screen.getByRole("button", { name: "返信ツリーメニュー" }));
+    expect(
+      screen.getByRole("button", { name: "返信ツリーを一括コピー" }).querySelector("svg"),
+    ).toHaveClass("lucide-corner-down-right");
     fireEvent.click(screen.getByRole("button", { name: "返信ツリーを一括コピー" }));
 
     expect(writeText).toHaveBeenCalledOnce();
