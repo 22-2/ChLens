@@ -186,14 +186,11 @@
   padding: var(--sys-space-6);
   text-align: left;
   cursor: pointer;
-  transition:
-    background var(--sys-duration-slow) var(--sys-ease-standard),
-    transform var(--sys-duration-slow) var(--sys-ease-standard);
+  transition: background var(--sys-duration-slow) var(--sys-ease-standard);
 }
 
 .settings-page__section-btn:hover {
   background: var(--sys-color-selection);
-  transform: translateX(4px);
 }
 
 .settings-page__section-btn--active {
