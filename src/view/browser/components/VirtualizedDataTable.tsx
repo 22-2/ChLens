@@ -1,10 +1,10 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import React, { useEffect, useMemo, useRef } from "react";
 import { ContextMenu } from "src/view/browser/components/ContextMenu";
+import { useCursorTooltip } from "src/view/browser/components/CursorTooltip";
 import { type ColumnDef } from "src/view/browser/components/SimpleDataTable";
 import { useColumnVisibility } from "src/view/browser/components/use-column-visibility";
 import { useTableTooltipEnabled } from "src/view/browser/hooks/use-table-tooltip-setting";
-import { Tooltip } from "src/view/browser/ui/Tooltip";
 
 interface Props<TRow> {
   columns: ColumnDef<TRow>[];
@@ -51,6 +51,7 @@ export function VirtualizedDataTable<TRow>({
 }: Props<TRow>): React.ReactElement {
   const scrollRef = useRef<HTMLDivElement>(null);
   const tableTooltipEnabled = useTableTooltipEnabled();
+  const { show, move, hide, tooltip } = useCursorTooltip();
   const {
     visibleColumns,
     columnVisibilityMenuItems,
@@ -74,6 +75,12 @@ export function VirtualizedDataTable<TRow>({
   });
 
   const virtualRows = rowVirtualizer.getVirtualItems();
+
+  useEffect(() => {
+    // 一覧更新でホバー中の行が差し替わるとmouseleaveが発火しないことがあるため、
+    // 表示データが変わった時点で古い行のツールチップを確実に閉じる。
+    hide();
+  }, [hide, rows]);
 
   useEffect(() => {
     if (!onEndReached || virtualRows.length === 0 || rows.length === 0) {
@@ -146,6 +153,7 @@ export function VirtualizedDataTable<TRow>({
           {virtualRows.map((virtualRow) => {
             const row = rows[virtualRow.index];
             const extraClass = getRowClassName?.(row);
+            const tooltipLabel = tableTooltipEnabled ? getRowTooltip?.(row) : undefined;
 
             const rowElement = (
               <tr
@@ -154,16 +162,24 @@ export function VirtualizedDataTable<TRow>({
                   extraClass ? `simple-data-table__row ${extraClass}` : "simple-data-table__row"
                 }
                 style={getRowStyle?.(row)}
-                onClick={() => onRowClick?.(row)}
+                onMouseEnter={tooltipLabel ? (event) => show(tooltipLabel, event) : undefined}
+                onMouseMove={tooltipLabel ? (event) => move(tooltipLabel, event) : undefined}
+                onMouseLeave={hide}
+                onClick={() => {
+                  hide();
+                  onRowClick?.(row);
+                }}
                 onMouseDown={(event) => {
                   if (event.button === 1) {
                     event.preventDefault();
                     event.stopPropagation();
+                    hide();
                     onRowMiddleClick?.(row);
                   }
                 }}
                 onContextMenu={(event) => {
                   event.preventDefault();
+                  hide();
                   onRowContextMenu?.(row, event.clientX, event.clientY);
                 }}
               >
@@ -178,17 +194,8 @@ export function VirtualizedDataTable<TRow>({
               </tr>
             );
 
-            const tooltipLabel = tableTooltipEnabled ? getRowTooltip?.(row) : undefined;
             const rowKey = getRowKey(row);
-            if (!tooltipLabel) {
-              return <React.Fragment key={rowKey}>{rowElement}</React.Fragment>;
-            }
-
-            return (
-              <Tooltip key={rowKey} label={tooltipLabel} zIndex="var(--sys-z-table-tooltip)">
-                {rowElement}
-              </Tooltip>
-            );
+            return <React.Fragment key={rowKey}>{rowElement}</React.Fragment>;
           })}
 
           {paddingBottom > 0 ? (
@@ -201,6 +208,7 @@ export function VirtualizedDataTable<TRow>({
           ) : null}
         </tbody>
       </table>
+      {tooltip}
       {headerContextMenuState ? (
         <ContextMenu
           x={headerContextMenuState.x}

@@ -124,4 +124,27 @@ describe("VirtualizedDataTable", () => {
     fireEvent.contextMenu(screen.getByRole("columnheader", { name: "タイトル" }));
     expect(screen.getByRole("button", { name: "タイトルは非表示にできません" })).toBeDisabled();
   });
+
+  it("通常の一覧と同じく行ホバーでポインター追従ツールチップを表示する", () => {
+    render(
+      <VirtualizedDataTable
+        columns={columns}
+        rows={rows}
+        getRowKey={(row) => row.id}
+        getRowTooltip={(row) => row.title}
+      />,
+    );
+
+    const row = screen.getByText("スレ1").closest("tr");
+    expect(row).not.toBeNull();
+
+    fireEvent.mouseEnter(row as HTMLTableRowElement, { clientX: 100, clientY: 80 });
+
+    const tooltip = screen.getByRole("tooltip");
+    expect(tooltip).toHaveTextContent("スレ1");
+    expect(tooltip).toHaveStyle({ left: "116px", top: "96px" });
+
+    fireEvent.mouseLeave(row as HTMLTableRowElement);
+    expect(screen.queryByRole("tooltip")).toBeNull();
+  });
 });
