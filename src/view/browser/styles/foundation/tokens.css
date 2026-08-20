@@ -167,7 +167,6 @@
   --ref-z-sticky: 3;
   --ref-z-dragging: 3;
   --ref-z-wheel-indicator: 1000;
-  --ref-z-media-viewer: 11000;
   --ref-z-omnibar: 25000;
   --ref-z-mini-window: 30000;
   --ref-z-minimap: 30000;
@@ -175,6 +174,8 @@
   --ref-z-table-tooltip: 35000;
   --ref-z-popup-layer: 36000;
   --ref-z-context-menu: 37000;
+  /* The full-screen viewer must cover thread popups while remaining below tooltips/dialogs. */
+  --ref-z-media-viewer: 38000;
   --ref-z-tooltip: 39000;
   --ref-z-dialog: 40000;
   --ref-z-gesture: 50000;
