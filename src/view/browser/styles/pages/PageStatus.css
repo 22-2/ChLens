@@ -1,0 +1,5 @@
+/* Shared page status */
+.page-status { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 48px 16px; color: #5f6368; font-size: 14px; }
+.page-status--error { color: #d93025; }
+.page-status__retry { padding: 6px 16px; border: 1px solid #dadce0; border-radius: 4px; background: #fff; color: #1a73e8; cursor: pointer; font-size: 13px; }
+.page-status__retry:hover { background: #f8f9fa; }
