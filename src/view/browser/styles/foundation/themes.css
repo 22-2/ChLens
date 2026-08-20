@@ -28,6 +28,7 @@
   --sys-color-input-border: var(--ref-color-neutral-300);
   --sys-color-success: var(--ref-color-green-700);
   --sys-color-error: var(--ref-color-red-600);
+  --sys-color-error-surface: var(--ref-color-alpha-red-12);
   --sys-color-warning: var(--ref-color-orange-700);
   --sys-color-warning-surface: var(--ref-color-yellow-50);
   --sys-color-warning-border: var(--ref-color-yellow-300);
@@ -116,6 +117,7 @@
   --sys-color-input-border: var(--ref-color-dark-neutral-400);
   --sys-color-success: var(--ref-color-dark-green-700);
   --sys-color-error: var(--ref-color-dark-red-600);
+  --sys-color-error-surface: var(--ref-color-alpha-dark-red-15);
   --sys-color-warning: var(--ref-color-dark-orange-700);
   --sys-color-warning-surface: var(--ref-color-dark-yellow-100);
   --sys-color-warning-border: var(--ref-color-dark-yellow-300);

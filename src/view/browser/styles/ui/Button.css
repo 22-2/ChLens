@@ -1,0 +1,51 @@
+/* Shared button variants for native and Radix-backed controls. */
+.browser-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--sys-space-8);
+  gap: var(--sys-space-2);
+  padding: var(--sys-space-2) var(--sys-space-4);
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-md);
+  background: var(--sys-color-surface-muted);
+  color: var(--sys-color-text);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    background var(--sys-duration-normal) var(--sys-ease-standard),
+    border-color var(--sys-duration-normal) var(--sys-ease-standard),
+    color var(--sys-duration-normal) var(--sys-ease-standard);
+}
+
+.browser-button:hover:not(:disabled) {
+  border-color: var(--sys-color-accent);
+  background: var(--sys-color-list-hover-bg);
+}
+
+.browser-button:focus-visible {
+  outline: 2px solid var(--sys-color-focus-ring);
+  outline-offset: 2px;
+}
+
+.browser-button:disabled {
+  color: var(--sys-color-text-disabled);
+  cursor: not-allowed;
+}
+
+.browser-button[data-variant="subtle"] {
+  border-color: transparent;
+  background: transparent;
+  color: var(--sys-color-accent);
+}
+
+.browser-button[data-variant="subtle"]:hover:not(:disabled) {
+  border-color: transparent;
+  background: var(--sys-color-list-hover-bg);
+}
+
+.browser-button[data-variant="light"] {
+  border-color: var(--sys-color-accent);
+  background: var(--sys-color-selection);
+  color: var(--sys-color-accent);
+}

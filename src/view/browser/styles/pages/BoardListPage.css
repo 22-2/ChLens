@@ -2,6 +2,9 @@
 .board-list-page {
   padding: 0;
 }
+.board-list-page__retry {
+  margin-top: var(--sys-space-2);
+}
 .board-list-page__menu-accordion,
 .board-list-page__category-accordion {
   border-top: 1px solid var(--sys-color-border);

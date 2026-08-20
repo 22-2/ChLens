@@ -1,6 +1,8 @@
-import { Alert, Box, Button, Text } from "@mantine/core";
+import { Box, Text } from "@mantine/core";
 import React from "react";
 import { MenuAccordion } from "src/view/browser/pages/board-list/MenuAccordion";
+import { Alert } from "src/view/browser/ui/Alert";
+import { Button } from "src/view/browser/ui/Button";
 
 interface Board {
   name: string;
@@ -87,7 +89,7 @@ export const BoardListContent: React.FC<BoardListContentProps> = ({
       <Box className="board-list-page">
         <Alert color="red" title="板一覧の取得に失敗しました">
           <Text size="sm">{error}</Text>
-          <Button mt="xs" variant="subtle" onClick={onRetry}>
+          <Button className="board-list-page__retry" variant="subtle" onClick={onRetry}>
             再試行
           </Button>
         </Alert>

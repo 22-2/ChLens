@@ -5,6 +5,8 @@
 @import "./foundation/base.css";
 @import "./ui/Spinner.css";
 @import "./ui/Tooltip.css";
+@import "./ui/Button.css";
+@import "./ui/Alert.css";
 @import "./layout/BrowserShell.css";
 @import "./layout/PaneLayout.css";
 @import "./layout/ContentArea.css";

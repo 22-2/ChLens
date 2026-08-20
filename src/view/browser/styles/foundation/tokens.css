@@ -105,7 +105,9 @@
   --ref-color-alpha-blue-12: rgb(26 115 232 / 12%);
   --ref-color-alpha-blue-20: rgb(26 115 232 / 20%);
   --ref-color-alpha-blue-30: rgb(26 115 232 / 30%);
+  --ref-color-alpha-red-12: rgb(217 48 37 / 12%);
   --ref-color-alpha-dark-blue-15: rgb(138 180 248 / 15%);
+  --ref-color-alpha-dark-red-15: rgb(242 139 130 / 15%);
   --ref-color-alpha-ink-62: rgb(15 23 42 / 62%);
   --ref-color-alpha-ink-78: rgb(15 23 42 / 78%);
   --ref-color-alpha-dark-blue-40: color-mix(

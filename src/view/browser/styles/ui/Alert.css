@@ -1,0 +1,56 @@
+/* Shared alert surface for page and settings feedback. */
+.browser-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sys-space-4);
+  padding: var(--sys-space-5) var(--sys-space-6);
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-xl);
+  background: var(--sys-color-surface-muted);
+  color: var(--sys-color-text);
+}
+
+.browser-alert__icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  color: var(--sys-color-text-muted);
+}
+
+.browser-alert__body {
+  min-width: 0;
+}
+
+.browser-alert__title {
+  margin-bottom: var(--sys-space-2);
+  font-weight: 700;
+}
+
+.browser-alert__content {
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-sm);
+}
+
+.browser-alert[data-variant="danger"] {
+  border-color: var(--sys-color-error);
+  background: var(--sys-color-error-surface);
+}
+
+.browser-alert[data-variant="danger"] .browser-alert__icon,
+.browser-alert[data-variant="danger"] .browser-alert__title {
+  color: var(--sys-color-error);
+}
+
+.browser-alert[data-variant="warning"] {
+  border-color: var(--sys-color-warning-border);
+  background: var(--sys-color-warning-surface);
+}
+
+.browser-alert[data-variant="warning"] .browser-alert__icon,
+.browser-alert[data-variant="warning"] .browser-alert__title {
+  color: var(--sys-color-warning-fg);
+}
+
+.browser-alert[data-variant="info"] {
+  border-color: var(--sys-color-accent);
+  background: var(--sys-color-selection);
+}
