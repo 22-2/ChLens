@@ -211,6 +211,36 @@ describe("next-thread-search", () => {
     expect(match?.reasons).toContain("explicit-link");
   });
 
+  it("映像の世紀スレの候補が重複する場合の標準判定結果を確認する", () => {
+    const titles = [
+      "【映像の世紀】第二次世界大戦（4）地獄 1944－49",
+      "【映像の世紀】第二次世界大戦（4）地獄 1944－49",
+      "【映像の世紀】第二次世界大戦（4）地獄 1944－48",
+      "【映像の世紀】第二次世界大戦（4）地獄 1944－48",
+      "【映像の世紀】第二次世界大戦（4）地獄 1944－47",
+      "【映像の世紀】第二次世界大戦（4）地獄 1944－46",
+      "【映像の世紀】第二次世界大戦（4）地獄 1944－45",
+    ];
+    const threads = titles.map((title, index) =>
+      createThread({
+        title,
+        url: `http://bbs.eddibb.cc/test/read.cgi/liveedge/${[22, 23, 25, 26, 27, 29, 31][index]}/`,
+        resCount: 20,
+        createdAt: 1_700_000_000_000 + index,
+      }),
+    );
+
+    const expectedNextUrls = [23, 25, 26, 27, 29, 31, null].map((number) =>
+      number == null ? null : `http://bbs.eddibb.cc/test/read.cgi/liveedge/${number}/`,
+    );
+
+    for (const [index, currentThread] of threads.entries()) {
+      const match = findNextThreadMatch(threads, currentThread, { mode: "balanced" });
+
+      expect(match?.thread.url ?? null).toBe(expectedNextUrls[index]);
+    }
+  });
+
   it("本流監視では勢い差が大きい候補だけを拾う", () => {
     const now = 1_700_100_000_000;
     const threads = [

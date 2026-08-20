@@ -15,13 +15,17 @@ const PART_NUMBER_PATTERN = /Part(\d+)$/i;
 const PART2_PATTERN = /(★2|Part\.2|Part2)(?:\s+.*)?$/i;
 
 const NEXT_THREAD_MIN_SIMILARITY = 0.3;
+const NEAR_TITLE_SIMILARITY = 0.85;
 
 export type AutoNextThreadMode = "cautious" | "balanced" | "aggressive";
 export type NextThreadEvidence =
   | "explicit-link"
+  | "exact-adjacent-number"
   | "exact-next-number"
   | "nearby-next-number"
   | "same-base-title"
+  | "near-title"
+  | "same-title"
   | "similar-title"
   | "newer-thread"
   | "active-thread";
@@ -58,6 +62,7 @@ interface RankedNextThreadCandidate extends CandidateScore {
   score: number;
   reasons: NextThreadEvidence[];
   isReflection: boolean;
+  sortDistance: number;
 }
 
 export interface MainstreamSearchOptions {
@@ -346,10 +351,21 @@ function rankNextThreadCandidates(
     .map((thread): RankedNextThreadCandidate | null => {
       const similarity = calculateBaseTitleSimilarity(currentThread.title, thread.title);
       const candidateNumber = extractThreadSequenceNumber(thread.title);
+      const candidateSortKey = extractThreadTimestamp(thread.url);
       const linkEvidence = countLinkEvidence(options.responseMessages, thread.url);
       const explicitlyLinked = linkEvidence.count > 0;
       const currentMarked = isMarkedThread(currentThread.title);
       const candidateMarked = isMarkedThread(thread.title);
+      const exactTitleMatch =
+        normalizeThreadTitle(currentThread.title) === normalizeThreadTitle(thread.title);
+      const nearTitleMatch = similarity >= NEAR_TITLE_SIMILARITY;
+      const adjacentNumberMatch =
+        nearTitleMatch &&
+        currentNumber.hasNumber &&
+        candidateNumber.hasNumber &&
+        !currentNumber.isExplicitSequence &&
+        !candidateNumber.isExplicitSequence &&
+        Math.abs(candidateNumber.value - currentNumber.value) === 1;
 
       // 変更理由: 従来は「●付き」というだけで最新の別実況へ移動できた。
       // 明示案内がない場合は同じ●系統かつ十分似たタイトルだけに限定する。
@@ -401,6 +417,22 @@ function rankNextThreadCandidates(
       if (numberReason) {
         reasons.push(numberReason);
       }
+      if (adjacentNumberMatch) {
+        // 変更理由: 年・話数・日付など、タイトル末尾の数値が系列を表す場合がある。
+        // 特定の表記形式に依存せず、隣接値と高いタイトル類似度を継続性として扱う。
+        score += 40;
+        reasons.push("exact-adjacent-number");
+      }
+      if (exactTitleMatch) {
+        // 完全一致の候補は、後から立った微妙に異なる候補より優先する。
+        score += 60;
+        reasons.push("same-title");
+      } else if (nearTitleMatch) {
+        // 変更理由: 番組名・対象期間・告知文などの一部だけが変わるシリーズでは、
+        // タイトル番号の規則に依存せず、高い類似度を次スレの継続性として評価する。
+        score += 25;
+        reasons.push("near-title");
+      }
       if (explicitlyLinked) {
         score += 70;
         reasons.push("explicit-link");
@@ -433,6 +465,10 @@ function rankNextThreadCandidates(
         score,
         reasons,
         isReflection,
+        sortDistance:
+          currentSortKey > 0 && candidateSortKey > currentSortKey
+            ? candidateSortKey - currentSortKey
+            : Number.POSITIVE_INFINITY,
       };
     })
     .filter((candidate): candidate is RankedNextThreadCandidate => candidate != null)
@@ -442,6 +478,9 @@ function rankNextThreadCandidates(
       }
       if (right.similarity !== left.similarity) {
         return right.similarity - left.similarity;
+      }
+      if (left.similarity < 1 && right.similarity < 1 && left.sortDistance !== right.sortDistance) {
+        return left.sortDistance - right.sortDistance;
       }
       return getThreadSortKey(right.thread) - getThreadSortKey(left.thread);
     });
@@ -477,7 +516,24 @@ export function findNextThreadMatch(
   }
 
   const second = candidates[1];
-  if (second && best.score - second.score < policy.minimumMargin) {
+  const equivalentNearTitleCandidates =
+    second != null &&
+    best.similarity >= NEAR_TITLE_SIMILARITY &&
+    best.similarity < 1 &&
+    second.similarity >= NEAR_TITLE_SIMILARITY &&
+    normalizeThreadTitle(best.thread.title) === normalizeThreadTitle(second.thread.title);
+  const clearNearTitleContinuation =
+    second != null &&
+    best.similarity >= NEAR_TITLE_SIMILARITY &&
+    best.similarity < 1 &&
+    best.similarity > second.similarity &&
+    best.sortDistance < second.sortDistance;
+  if (
+    second &&
+    best.score - second.score < policy.minimumMargin &&
+    !equivalentNearTitleCandidates &&
+    !clearNearTitleContinuation
+  ) {
     return null;
   }
 
