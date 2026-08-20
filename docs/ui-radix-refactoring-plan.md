@@ -99,6 +99,7 @@
 | `8f037e5b refactor(settings): Surface構造を共通UIへ統一`                  | SettingsのsurfaceをHeader / Body / Actions / Stack契約へ統一                      |
 | `48998888 refactor(ui): Sonner通知をRadix Toastへ移行`                    | 外部store経由の共通Toast wrapperへ移行し、通知APIを維持したままSonnerを削除       |
 | `31f05e60 refactor(ui): 自前ContextMenuをRadix wrapperへ移行`             | 座標・z-index・nested popup契約を維持したRadix ContextMenu wrapperへ移行          |
+| `f7c729b5 fix(ui): Radix ContextMenuの座標二重適用を修正`                 | Radixのviewport座標を尊重し、ContextMenuのleft/top再適用とoverflow補正を削除      |
 | `16e9c782 refactor(ui): popup surfaceの共通wrapperを導入`                 | AnchorPreview / ResPopupのlifecycle・座標・z-indexをFloatingSurfaceへ集約         |
 
 この状態でbrowser viewの自前スタイルは、foundation / layout / component / pageのplain CSSへ分割され、Mantine / Tailwind / PostCSSの依存は削除された。
