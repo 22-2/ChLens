@@ -1,0 +1,222 @@
+/* Bookmark root selector and thread NG dialog surfaces. */
+.bookmark-root-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: var(--sys-z-dialog);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sys-space-10);
+}
+
+.bookmark-root-dialog__backdrop {
+  position: absolute;
+  inset: 0;
+  border: none;
+  background: var(--sys-color-dialog-backdrop);
+}
+
+.bookmark-root-dialog__panel {
+  position: relative;
+  z-index: var(--sys-z-local);
+  width: min(760px, 100%);
+  max-height: min(80vh, 760px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sys-space-6);
+  padding: var(--sys-space-10);
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-xl);
+  background: var(--sys-color-dialog-surface);
+  box-shadow: var(--sys-shadow-dialog);
+}
+
+.bookmark-root-dialog__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sys-space-6);
+}
+
+.bookmark-root-dialog__eyebrow {
+  font-size: var(--sys-font-size-xs);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--sys-color-accent);
+}
+
+.bookmark-root-dialog__header h2 {
+  margin-top: var(--sys-space-3);
+  font-size: 24px;
+  line-height: 1.2;
+  color: var(--sys-color-text);
+}
+
+.bookmark-root-dialog__description {
+  font-size: var(--sys-font-size-md);
+  line-height: 1.7;
+  color: var(--sys-color-text-muted);
+}
+
+.bookmark-root-dialog__close,
+.bookmark-root-dialog__button {
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-pill);
+  background: var(--sys-color-surface);
+  color: var(--sys-color-text);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    background var(--sys-duration-normal) var(--sys-ease-out),
+    border-color var(--sys-duration-normal) var(--sys-ease-out),
+    color var(--sys-duration-normal) var(--sys-ease-out);
+}
+
+.bookmark-root-dialog__close {
+  padding: var(--sys-space-3) var(--sys-space-4);
+  font-size: var(--sys-font-size-sm);
+  font-weight: 600;
+}
+
+.bookmark-root-dialog__close:hover,
+.bookmark-root-dialog__button:hover:not(:disabled) {
+  background: var(--sys-color-surface-muted);
+}
+
+.bookmark-root-dialog__button {
+  min-width: 112px;
+  padding: var(--sys-space-5) var(--sys-space-8);
+  font-size: var(--sys-font-size-md);
+  font-weight: 700;
+}
+
+.bookmark-root-dialog__button--primary {
+  border-color: var(--sys-color-accent);
+  background: var(--sys-color-accent);
+  color: var(--sys-color-accent-fg);
+}
+
+.bookmark-root-dialog__button--primary:hover:not(:disabled) {
+  background: var(--sys-color-accent-hover);
+  border-color: var(--sys-color-accent-hover);
+}
+
+.bookmark-root-dialog__button:disabled,
+.bookmark-root-dialog__close:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.bookmark-root-dialog__error {
+  padding: var(--sys-space-6) var(--sys-space-7);
+  border: 1px solid var(--sys-color-error);
+  border-radius: var(--sys-radius-xl);
+  background: var(--sys-color-surface-muted);
+  font-size: var(--sys-font-size-md);
+  color: var(--sys-color-error);
+}
+
+.bookmark-root-dialog__status {
+  padding: var(--sys-space-9);
+  border: 1px dashed var(--sys-color-border);
+  border-radius: var(--sys-radius-lg);
+  background: var(--sys-color-surface-muted);
+  font-size: var(--sys-font-size-md);
+  color: var(--sys-color-text-muted);
+  text-align: center;
+}
+
+.thread-ng-dialog__panel {
+  width: min(640px, 100%);
+}
+
+.thread-ng-dialog__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sys-space-4);
+  font-size: var(--sys-font-size-md);
+  font-weight: 700;
+  color: var(--sys-color-text);
+}
+
+.thread-ng-dialog__field textarea {
+  min-height: 78px;
+  resize: vertical;
+  padding: var(--sys-space-5) var(--sys-space-6);
+  border: 1px solid var(--sys-color-input-border);
+  border-radius: var(--sys-radius-lg);
+  background: var(--sys-color-input-bg);
+  color: var(--sys-color-text);
+  font: inherit;
+  line-height: 1.5;
+}
+
+.thread-ng-dialog__field textarea:focus {
+  border-color: var(--sys-color-focus-ring);
+  outline: 2px solid var(--sys-color-selection);
+}
+
+.bookmark-root-dialog__tree {
+  overflow: auto;
+  min-height: 240px;
+  max-height: 48vh;
+  padding: var(--sys-space-6);
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-xl);
+  background: var(--sys-color-surface-muted);
+}
+
+.bookmark-root-dialog__tree-list {
+  list-style: none;
+  margin: 0;
+  padding-left: var(--sys-space-9);
+}
+
+.bookmark-root-dialog__tree > .bookmark-root-dialog__tree-list {
+  padding-left: 0;
+}
+
+.bookmark-root-dialog__tree-item + .bookmark-root-dialog__tree-item {
+  margin-top: var(--sys-space-3);
+}
+
+.bookmark-root-dialog__tree-node {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sys-space-2);
+  width: 100%;
+  padding: var(--sys-space-5) var(--sys-space-6);
+  border: 1px solid transparent;
+  border-radius: var(--sys-radius-xl);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.bookmark-root-dialog__tree-node:hover {
+  border-color: var(--sys-color-focus-ring);
+  background: var(--sys-color-selection);
+}
+
+.bookmark-root-dialog__tree-node--selected {
+  border-color: var(--sys-color-accent);
+  background: var(--sys-color-selection);
+}
+
+.bookmark-root-dialog__tree-title {
+  font-size: var(--sys-font-size-md);
+  font-weight: 700;
+  color: var(--sys-color-text);
+}
+
+.bookmark-root-dialog__tree-id {
+  font-size: var(--sys-font-size-xs);
+  color: var(--sys-color-text-muted);
+}
+
+.bookmark-root-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sys-space-6);
+}
