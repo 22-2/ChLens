@@ -231,7 +231,12 @@ export function useThreadData(
     return responses.filter((res) => res.ng == null && !res.class?.includes("ng"));
   }, [isNgTemporarilyDisabled, responses]);
 
-  const indexes = useMemo(() => buildIndexes(visibleResponses), [visibleResponses]);
+  const indexes = useMemo(() => {
+    // NGレスは本文一覧から隠しても、アンカープレビュー・返信ツリー・IDポップアップでは
+    // 参照できる必要がある。表示対象だけで索引を作ると、NG先のレス番号が resMap から消え、
+    // それらのポップアップが空になるため、索引は常に全レスから構築する。
+    return buildIndexes(responses);
+  }, [responses]);
 
   const filteredResponses = useMemo(() => {
     let list = visibleResponses;

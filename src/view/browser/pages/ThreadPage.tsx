@@ -258,6 +258,15 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     () => responses.filter((res) => res.ng != null || res.class?.includes("ng")).length,
     [responses],
   );
+  const ngResNums = useMemo(
+    () =>
+      new Set(
+        responses
+          .filter((res) => res.ng != null || res.class?.includes("ng"))
+          .map((res) => res.num),
+      ),
+    [responses],
+  );
 
   const ownHighlightCount = useMemo(() => {
     const highlightedResNums = new Set<number>(ownResNums);
@@ -393,6 +402,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
                   isReplyToOwn={replyToOwnResNums.has(res.num)}
                   isImageBlurred={blurredResNums.has(res.num)}
                   imageBlurRadius={imageBlurConfig.radius}
+                  ngResNums={ngResNums}
                 />
               );
             })}
@@ -445,6 +455,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             threadTitle={page.title}
             threadUrl={page.threadUrl}
             blurredResNums={blurredResNums}
+            ngResNums={ngResNums}
           />
           <ThreadMinimap
             rootRef={rootRef}

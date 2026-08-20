@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useLayoutEffect, useRef } from "react";
 import { ANCHOR_SELECTOR, ID_LINK_SELECTOR } from "src/view/browser/utils/constants";
 import {
   RESPECT_DEFAULT_EXTERNAL,
@@ -36,6 +36,7 @@ interface ResBodyProps {
   onAnchorClick: (resNum: number) => void;
   onAnchorHover: (targets: number[], anchorRect: DOMRect, label: string, depth: number) => void;
   onAnchorLeave: (fromDepth: number) => void;
+  ngResNums?: ReadonlySet<number>;
 }
 
 function getAnchorHoverKey(anchor: HTMLAnchorElement): string {
@@ -133,6 +134,7 @@ function useResBodyInteractionHandlers({
   onAnchorClick,
   onAnchorHover,
   onAnchorLeave,
+  ngResNums,
 }: Omit<ResBodyProps, "messageHtml">): ResBodyInteractionHandlers {
   const hoveredAnchorKeyRef = useRef<string | null>(null);
   const middleClickStateRef = useRef<MiddleClickState>({
@@ -249,6 +251,12 @@ function useResBodyInteractionHandlers({
         const label = anchor.textContent?.trim() ?? "";
         const targets = parseAnchorDisplayTargets(label);
         if (targets.length > 0) {
+          if (targets.some((target) => ngResNums?.has(target) ?? false)) {
+            // NGレスは本文側で非表示なので、通常のスクロールでは何も見えない。
+            // クリック時は同じアンカープレビューを開き、伏せた内容へ到達できるようにする。
+            onAnchorHover(targets, anchor.getBoundingClientRect(), label, anchorPreviewDepth);
+            return;
+          }
           onAnchorClick(targets[0]);
         }
         return;
@@ -263,7 +271,7 @@ function useResBodyInteractionHandlers({
         stopEvent(e);
       }
     },
-    [onAnchorClick, onIdLinkClick, onUrlClick],
+    [anchorPreviewDepth, ngResNums, onAnchorClick, onAnchorHover, onIdLinkClick, onUrlClick],
   );
 
   const handleAuxClick = useCallback(
@@ -337,6 +345,7 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
     onAnchorClick,
     onAnchorHover,
     onAnchorLeave,
+    ngResNums,
   }) => {
     const interactionHandlers = useResBodyInteractionHandlers({
       anchorPreviewDepth,
@@ -347,10 +356,25 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
       onAnchorClick,
       onAnchorHover,
       onAnchorLeave,
+      ngResNums,
     });
+    const bodyRef = useRef<HTMLDivElement>(null);
+
+    useLayoutEffect(() => {
+      const body = bodyRef.current;
+      if (!body) return;
+      for (const anchor of body.querySelectorAll<HTMLAnchorElement>(ANCHOR_SELECTOR)) {
+        const targets = parseAnchorDisplayTargets(anchor.textContent?.trim() ?? "");
+        anchor.classList.toggle(
+          "anchor--ng-target",
+          targets.some((target) => ngResNums?.has(target) ?? false),
+        );
+      }
+    }, [messageHtml, ngResNums]);
 
     return (
       <div
+        ref={bodyRef}
         className="res__body"
         dangerouslySetInnerHTML={{ __html: messageHtml }}
         {...interactionHandlers}

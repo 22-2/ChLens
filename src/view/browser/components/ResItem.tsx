@@ -28,12 +28,14 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
     isReplyToOwn,
     isImageBlurred,
     imageBlurRadius,
+    ngResNums,
   }) => {
     const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
     // res.ng はサービス層がNGワード照合した結果を格納するフィールド。
     // 古いビューは class[] の "ng" 要素で判定していたが、new viewでは res.ng を優先チェックする。
     // 一時解除中はデータ自体を消さずに表示判定だけをオフにして、復帰時の再評価コストを避ける。
-    const isNG = !isNgTemporarilyDisabled && (res.ng != null || res.class?.includes("ng"));
+    const isNgMatched = res.ng != null || res.class?.includes("ng");
+    const isNG = !isNgTemporarilyDisabled && isNgMatched;
     const decoded = useMemo(() => decodeResponseHtml(res, messageProtocol), [messageProtocol, res]);
     const urls = useMemo(() => extractUrlsFromMessage(decoded.messageHtml), [decoded.messageHtml]);
     const replyHeat = getReplyHeatLevel(repCount);
@@ -84,6 +86,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
           <span className={nameClassName} dangerouslySetInnerHTML={{ __html: decoded.nameHtml }} />
           {isOwn ? <span className="res__badge res__badge--own">自分</span> : null}
           {isReplyToOwn ? <span className="res__badge res__badge--reply-to-own">返信</span> : null}
+          {isNgMatched ? <span className="res__badge res__badge--ng">NG</span> : null}
           {res.id && (
             <span
               className={`res__id${
@@ -116,6 +119,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
         <ResBody
           messageHtml={decoded.messageHtml}
           anchorPreviewDepth={0}
+          ngResNums={ngResNums}
           onUrlClick={(url, button, mode) => onUrlClick(url, undefined, button, mode)}
           onUrlContextMenu={(url, e, mode) => onUrlContextMenu(url, e, mode)}
           onIdLinkClick={onIdClick}
@@ -155,4 +159,5 @@ export interface ResItemProps {
   isReplyToOwn: boolean;
   isImageBlurred: boolean;
   imageBlurRadius: number;
+  ngResNums?: ReadonlySet<number>;
 }

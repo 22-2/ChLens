@@ -43,6 +43,8 @@ export const ReplyTree: React.FC<{
   depth: number;
   /** ポップアップ内でも画像ぼかしを適用するためのセット */
   blurredResNums?: Set<number>;
+  /** ツリー内のアンカー先NG強調にも同じ判定集合を使う。 */
+  ngResNums?: ReadonlySet<number>;
   /** 個別ツリーの三点メニュークリック時コールバック（渡された場合のみボタン表示） */
   onSubTreeMenu?: (
     resNum: number,
@@ -71,6 +73,7 @@ export const ReplyTree: React.FC<{
   visited,
   depth,
   blurredResNums,
+  ngResNums,
   onSubTreeMenu,
   ancestorResNums = [resNum],
 }) => {
@@ -119,6 +122,7 @@ export const ReplyTree: React.FC<{
                 onAnchorLeave={onAnchorLeave}
                 onContextMenu={onResContextMenu}
                 isImageBlurred={blurredResNums?.has(res.num)}
+                ngResNums={ngResNums}
               />
               {onSubTreeMenu && (
                 <button
@@ -155,6 +159,7 @@ export const ReplyTree: React.FC<{
               visited={visited}
               depth={depth + 1}
               blurredResNums={blurredResNums}
+              ngResNums={ngResNums}
               onSubTreeMenu={onSubTreeMenu}
               ancestorResNums={[...ancestorResNums, replyNum]}
             />

@@ -547,6 +547,7 @@ export const ReplyTreePopup: React.FC<{
   threadUrl?: string;
   /** ポップアップ内でも画像ぼかしを適用するためのセット */
   blurredResNums?: Set<number>;
+  ngResNums?: ReadonlySet<number>;
 }> = ({
   x,
   y,
@@ -576,6 +577,7 @@ export const ReplyTreePopup: React.FC<{
   threadTitle,
   threadUrl,
   blurredResNums,
+  ngResNums,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -905,6 +907,7 @@ export const ReplyTreePopup: React.FC<{
               onAnchorLeave={onAnchorLeave}
               onContextMenu={handleResContextMenu}
               isImageBlurred={blurredResNums?.has(sourceRes.num)}
+              ngResNums={ngResNums}
             />
           </section>
         )}
@@ -929,6 +932,7 @@ export const ReplyTreePopup: React.FC<{
             visited={new Set()}
             depth={0}
             blurredResNums={blurredResNums}
+            ngResNums={ngResNums}
             onSubTreeMenu={handleSubTreeMenuClick}
           />
         </section>

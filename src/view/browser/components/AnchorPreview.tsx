@@ -35,6 +35,7 @@ export interface AnchorPreviewProps {
   zIndex: number;
   /** ポップアップ内でも画像ぼかしを適用するためのセット */
   blurredResNums?: Set<number>;
+  ngResNums?: ReadonlySet<number>;
 }
 
 export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
@@ -64,6 +65,7 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
   hasChildPopup,
   zIndex,
   blurredResNums,
+  ngResNums,
 }) => {
   const handleResContextMenu = useCallback(
     (event: React.MouseEvent, targetRes: IRes) => {
@@ -112,6 +114,7 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
                 onAnchorLeave={onAnchorLeave}
                 onContextMenu={handleResContextMenu}
                 isImageBlurred={blurredResNums?.has(res.num)}
+                ngResNums={ngResNums}
               />
             ))}
           </div>

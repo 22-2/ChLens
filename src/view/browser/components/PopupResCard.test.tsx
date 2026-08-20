@@ -2,6 +2,7 @@ import "@testing-library/jest-dom/vitest";
 import { fireEvent, render } from "@testing-library/react";
 import type { IRes } from "src/service-container/interfaces";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
+import { NgStatusProvider, useNgStatus } from "src/view/browser/hooks/use-ng-status";
 import { describe, expect, it, vi } from "vite-plus/test";
 
 vi.mock("src/view/browser/utils/utils", async () => {
@@ -29,6 +30,28 @@ const BASE_RES: IRes = {
   date: "2026/04/20",
   message: "https://example.com/image.jpg",
 };
+
+function TemporarilyDisabledNgCard({ res }: { res: IRes }) {
+  const { setNgTemporarilyDisabled } = useNgStatus();
+  return (
+    <>
+      <button type="button" onClick={() => setNgTemporarilyDisabled(true)}>
+        一時NG解除
+      </button>
+      <PopupResCard
+        res={res}
+        messageProtocol="https:"
+        anchorPreviewDepth={0}
+        onUrlClick={() => {}}
+        onUrlContextMenu={() => {}}
+        onIdLinkClick={() => {}}
+        onAnchorClick={() => {}}
+        onAnchorHover={() => {}}
+        onAnchorLeave={() => {}}
+      />
+    </>
+  );
+}
 
 describe("PopupResCard", () => {
   it("返信数に応じてレス番号と返信ラベルへ同じ強調色クラスを適用する", () => {
@@ -73,6 +96,41 @@ describe("PopupResCard", () => {
 
     expect(container.querySelector(".res__num")).toHaveClass("res__num--hot");
     expect(container.querySelector(".res__rep")).toHaveClass("res__rep--hot");
+  });
+
+  it("NGレスはポップアップで内容を伏せ、クリック後に表示する", () => {
+    const ngRes = { ...BASE_RES, ng: { type: "word" } } as IRes;
+    const { container, getByRole } = render(
+      <PopupResCard
+        res={ngRes}
+        messageProtocol="https:"
+        anchorPreviewDepth={0}
+        onUrlClick={() => {}}
+        onUrlContextMenu={() => {}}
+        onIdLinkClick={() => {}}
+        onAnchorClick={() => {}}
+        onAnchorHover={() => {}}
+        onAnchorLeave={() => {}}
+      />,
+    );
+
+    expect(container.querySelector(".res__body")).not.toBeInTheDocument();
+    fireEvent.click(getByRole("button", { name: "クリックして内容を表示" }));
+    expect(container.querySelector(".res__body")).toBeInTheDocument();
+  });
+
+  it("一時NG解除中もNGバッジを残す", () => {
+    const ngRes = { ...BASE_RES, ng: { type: "word" } } as IRes;
+    const { container, getByRole } = render(
+      <NgStatusProvider>
+        <TemporarilyDisabledNgCard res={ngRes} />
+      </NgStatusProvider>,
+    );
+
+    fireEvent.click(getByRole("button", { name: "一時NG解除" }));
+
+    expect(container.querySelector(".res__body")).toBeInTheDocument();
+    expect(container.querySelector(".res__badge--ng")).toHaveTextContent("NG");
   });
 
   it("サムネイルのミドルクリックで新規タブ扱いを1回だけ発火する", () => {

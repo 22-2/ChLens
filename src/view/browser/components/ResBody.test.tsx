@@ -87,6 +87,31 @@ describe("ResBody anchor behavior", () => {
     expect(onAnchorClick).toHaveBeenCalledWith(5);
   });
 
+  it("NGレスへのアンカークリック時はジャンプせずプレビューを開く", () => {
+    const onAnchorClick = vi.fn();
+    const onAnchorHover = vi.fn();
+    const { container } = render(
+      <ResBody
+        messageHtml={ANCHOR_HTML}
+        anchorPreviewDepth={0}
+        ngResNums={new Set([5])}
+        onUrlClick={() => {}}
+        onUrlContextMenu={() => {}}
+        onIdLinkClick={() => {}}
+        onAnchorClick={onAnchorClick}
+        onAnchorHover={onAnchorHover}
+        onAnchorLeave={() => {}}
+      />,
+    );
+
+    const anchor = container.querySelector("a.anchor") as HTMLAnchorElement;
+    expect(anchor).toHaveClass("anchor--ng-target");
+    fireEvent.click(anchor);
+
+    expect(onAnchorClick).not.toHaveBeenCalled();
+    expect(onAnchorHover).toHaveBeenCalledWith([5], expect.any(Object), ">>5", 0);
+  });
+
   it("通常リンクのミドルクリックを一度だけ新規タブ扱いで開く", () => {
     const onUrlClick = vi.fn(() => true);
     const { container } = render(

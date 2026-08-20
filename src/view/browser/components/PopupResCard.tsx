@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import type { IRes } from "src/service-container";
 import { ResBody } from "src/view/browser/components/ResBody";
 import { ResMediaGallery } from "src/view/browser/components/ResMediaGallery";
@@ -28,6 +28,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     onAnchorLeave,
     onContextMenu,
     isImageBlurred,
+    ngResNums,
   }) => {
     const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
     const decoded = useMemo(() => decodeResponseHtml(res, messageProtocol), [messageProtocol, res]);
@@ -50,8 +51,32 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     const idCount = res.id ? (idIndex?.get(res.id)?.size ?? 0) : 0;
 
     // NG 判定は ResItem と同じロジック
-    const isNG = !isNgTemporarilyDisabled && (res.ng != null || res.class?.includes("ng"));
-    if (isNG) return null;
+    const isNgMatched = res.ng != null || res.class?.includes("ng");
+    const isNG = !isNgTemporarilyDisabled && isNgMatched;
+    const [isNgRevealed, setIsNgRevealed] = useState(false);
+    if (isNG && !isNgRevealed) {
+      return (
+        <article
+          className="res res--ng-placeholder"
+          role="button"
+          aria-label="クリックして内容を表示"
+          tabIndex={0}
+          onClick={() => setIsNgRevealed(true)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              setIsNgRevealed(true);
+            }
+          }}
+        >
+          <header className="res__header">
+            <span className={resNumClassName}>{res.num}</span>
+            <span className="res__badge res__badge--ng">NG</span>
+          </header>
+          <div className="res__ng-reveal">クリックして内容を表示</div>
+        </article>
+      );
+    }
 
     return (
       <article
@@ -72,6 +97,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
         <header className="res__header">
           <span className={resNumClassName}>{res.num}</span>
           <span className="res__name" dangerouslySetInnerHTML={{ __html: decoded.nameHtml }} />
+          {isNgMatched ? <span className="res__badge res__badge--ng">NG</span> : null}
           {res.id && (
             <span
               className={`res__id${
@@ -128,6 +154,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
         <ResBody
           messageHtml={decoded.messageHtml}
           anchorPreviewDepth={anchorPreviewDepth}
+          ngResNums={ngResNums}
           onUrlClick={(url, button, mode) => onUrlClick(url, undefined, button, mode)}
           onUrlContextMenu={(url, e, mode) => onUrlContextMenu(url, e, mode)}
           onMiddleClickStart={onLinkMiddleClickStart}
@@ -171,4 +198,6 @@ export interface StaticResCardProps {
   onContextMenu?: (e: React.MouseEvent, res: IRes) => void;
   /** ポップアップ内でも画像ぼかしを適用するためのフラグ */
   isImageBlurred?: boolean;
+  /** 本文中のアンカー先NGレスを強調するためのレス番号集合 */
+  ngResNums?: ReadonlySet<number>;
 }
