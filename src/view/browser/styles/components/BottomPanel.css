@@ -1,0 +1,93 @@
+/* Bottom panel and its compact tab strip. */
+.bottom-panel {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--sys-color-border);
+  background: var(--sys-color-surface);
+  overflow: hidden;
+}
+
+.bottom-panel__resize-handle {
+  height: var(--sys-space-2);
+  cursor: ns-resize;
+  background: transparent;
+  flex-shrink: 0;
+  transition: background var(--sys-duration-fast);
+}
+
+.bottom-panel__resize-handle:hover {
+  background: var(--sys-color-border);
+}
+
+.bottom-panel__header {
+  display: flex;
+  align-items: stretch;
+  height: 30px;
+  border-bottom: 1px solid var(--sys-color-border);
+  background: var(--sys-color-surface-muted);
+  flex-shrink: 0;
+}
+
+.bottom-panel__tab-strip {
+  display: flex;
+  align-items: flex-end;
+  flex: 1;
+  min-width: 0;
+  padding: 0 var(--sys-space-2);
+}
+
+.bottom-panel__tab {
+  padding: 0 var(--sys-space-6);
+  height: 28px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  font-size: var(--sys-font-size-sm);
+  color: var(--sys-color-text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: inherit;
+  transition: color var(--sys-duration-fast);
+}
+
+.bottom-panel__tab:hover,
+.bottom-panel__tab--active {
+  color: var(--sys-color-text);
+}
+
+.bottom-panel__tab--active {
+  border-bottom-color: var(--sys-color-focus-ring);
+}
+
+.bottom-panel__header-actions {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--sys-space-2);
+  gap: var(--sys-space-1);
+}
+
+.bottom-panel__icon-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: var(--sys-radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sys-color-text-muted);
+  transition: background var(--sys-duration-fast);
+}
+
+.bottom-panel__icon-btn:hover {
+  background: var(--sys-color-border);
+  color: var(--sys-color-text);
+}
+
+.bottom-panel__body {
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}

@@ -14,6 +14,8 @@
 @import "./components/ThreadPopup.css";
 @import "./components/MediaViewer.css";
 @import "./components/MiniWindow.css";
+@import "./components/BottomPanel.css";
+@import "./components/WritePanel.css";
 @import "./components/NavigationBar.css";
 @import "./components/WheelScrollIndicator.css";
 @import "./pages/PageStatus.css";
