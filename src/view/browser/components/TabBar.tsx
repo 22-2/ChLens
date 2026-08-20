@@ -23,6 +23,11 @@ interface BarContextMenuState {
   y: number;
 }
 
+interface TabListScrollState {
+  canScrollLeft: boolean;
+  canScrollRight: boolean;
+}
+
 const TAB_SWITCH_WHEEL_DISTANCE_THRESHOLD = 1.5;
 const TAB_SWITCH_WHEEL_BASE_COOLDOWN_MS = 150;
 
@@ -157,9 +162,55 @@ export const TabBar: React.FC = () => {
   const lastWheelSwitchAtRef = useRef(0);
   // ドラッグ終了直後の click イベントによるタブ選択を抑止するためのフラグ。
   const wasDraggingRef = useRef(false);
+  const [tabListScrollState, setTabListScrollState] = useState<TabListScrollState>({
+    canScrollLeft: false,
+    canScrollRight: false,
+  });
+
+  const updateTabListScrollState = useCallback(() => {
+    const tabList = tabListRef.current;
+    if (!tabList) return;
+
+    const maxScrollLeft = Math.max(0, tabList.scrollWidth - tabList.clientWidth);
+    const nextState = {
+      canScrollLeft: tabList.scrollLeft > 1,
+      canScrollRight: tabList.scrollLeft < maxScrollLeft - 1,
+    };
+
+    setTabListScrollState((previous) =>
+      previous.canScrollLeft === nextState.canScrollLeft &&
+      previous.canScrollRight === nextState.canScrollRight
+        ? previous
+        : nextState,
+    );
+  }, []);
+
+  useEffect(() => {
+    const tabList = tabListRef.current;
+    if (!tabList) return;
+
+    // スクロール位置の変化だけでなく、ウィンドウ幅とタブ幅の変化も表示へ反映する。
+    tabList.addEventListener("scroll", updateTabListScrollState, { passive: true });
+    window.addEventListener("resize", updateTabListScrollState);
+
+    let resizeObserver: ResizeObserver | undefined;
+    if (typeof ResizeObserver !== "undefined") {
+      resizeObserver = new ResizeObserver(updateTabListScrollState);
+      resizeObserver.observe(tabList);
+    }
+
+    updateTabListScrollState();
+
+    return () => {
+      tabList.removeEventListener("scroll", updateTabListScrollState);
+      window.removeEventListener("resize", updateTabListScrollState);
+      resizeObserver?.disconnect();
+    };
+  }, [state.tabs, updateTabListScrollState]);
 
   const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId);
   const currentPage = activeTab ? getCurrentPage(activeTab) : null;
+  const isTabListScrollable = tabListScrollState.canScrollLeft || tabListScrollState.canScrollRight;
   // 更新は常用操作としてタブバー左端にも置くが、再取得できないページでは無効化する。
   const canRefresh =
     currentPage?.type === "thread" ||
@@ -363,6 +414,19 @@ export const TabBar: React.FC = () => {
     [dispatch, state.closedTabs.length],
   );
 
+  const addTabButton = (
+    <button
+      type="button"
+      className="tab-bar__add"
+      onClick={() => dispatch({ type: "ADD_TAB" })}
+      onContextMenu={(e) => e.stopPropagation()}
+      title="新しいタブ"
+      aria-label="新しいタブ"
+    >
+      <Plus size={16} />
+    </button>
+  );
+
   return (
     <div ref={barRef} className="tab-bar" onContextMenu={handleBarContextMenu}>
       <button
@@ -377,53 +441,53 @@ export const TabBar: React.FC = () => {
       </button>
       <span className="tab-bar__refresh-divider" aria-hidden="true" />
       <DragDropProvider onDragEnd={handleDragEnd}>
-        <div ref={tabListRef} className="tab-list">
-          {state.tabs.map((tab, index) => {
-            const page = getCurrentPage(tab);
-            const isActive = tab.id === state.activeTabId;
-            const isPageAutoRefreshEnabled = isAutoRefreshEnabledForPage(tab, page);
-            // 変更理由: スレ/スレ一覧どちらも同じページ単位の自動更新として扱い、
-            // タブ上の表示だけ別判定になってズレるのを防ぐ。
-            const autoRefreshIndicatorState: "active" | "inactive" | null =
-              page.type === "thread" || page.type === "threadList"
-                ? isPageAutoRefreshEnabled
-                  ? page.type === "thread"
-                    ? isActive && !isPaused && (canAutoScroll || isAutoScrolling)
-                      ? "active"
-                      : "inactive"
-                    : isActive
-                      ? "active"
-                      : "inactive"
-                  : null
-                : null;
+        <div
+          className={`tab-list-container${
+            tabListScrollState.canScrollLeft ? " tab-list-container--can-scroll-left" : ""
+          }${tabListScrollState.canScrollRight ? " tab-list-container--can-scroll-right" : ""}`}
+        >
+          <div ref={tabListRef} className="tab-list">
+            {state.tabs.map((tab, index) => {
+              const page = getCurrentPage(tab);
+              const isActive = tab.id === state.activeTabId;
+              const isPageAutoRefreshEnabled = isAutoRefreshEnabledForPage(tab, page);
+              // 変更理由: スレ/スレ一覧どちらも同じページ単位の自動更新として扱い、
+              // タブ上の表示だけ別判定になってズレるのを防ぐ。
+              const autoRefreshIndicatorState: "active" | "inactive" | null =
+                page.type === "thread" || page.type === "threadList"
+                  ? isPageAutoRefreshEnabled
+                    ? page.type === "thread"
+                      ? isActive && !isPaused && (canAutoScroll || isAutoScrolling)
+                        ? "active"
+                        : "inactive"
+                      : isActive
+                        ? "active"
+                        : "inactive"
+                    : null
+                  : null;
 
-            return (
-              <SortableTab
-                key={tab.id}
-                tab={tab}
-                index={index}
-                isActive={isActive}
-                isHighlighted={highlightedTabIds.has(tab.id)}
-                autoRefreshIndicatorState={autoRefreshIndicatorState}
-                tabCount={state.tabs.length}
-                wasDraggingRef={wasDraggingRef}
-                onSelect={handleTabSelect}
-                onClose={handleTabClose}
-                onContextMenu={handleContextMenu}
-              />
-            );
-          })}
-          {/* タブリスト内に配置して最後のタブのすぐ隣に表示 */}
-          <button
-            className="tab-bar__add"
-            onClick={() => dispatch({ type: "ADD_TAB" })}
-            onContextMenu={(e) => e.stopPropagation()}
-            title="新しいタブ"
-          >
-            <Plus size={16} />
-          </button>
+              return (
+                <SortableTab
+                  key={tab.id}
+                  tab={tab}
+                  index={index}
+                  isActive={isActive}
+                  isHighlighted={highlightedTabIds.has(tab.id)}
+                  autoRefreshIndicatorState={autoRefreshIndicatorState}
+                  tabCount={state.tabs.length}
+                  wasDraggingRef={wasDraggingRef}
+                  onSelect={handleTabSelect}
+                  onClose={handleTabClose}
+                  onContextMenu={handleContextMenu}
+                />
+              );
+            })}
+            {!isTabListScrollable ? addTabButton : null}
+          </div>
         </div>
       </DragDropProvider>
+      {/* タブが横幅を超えるときだけ、追加ボタンをスクロール領域の外へ固定する。 */}
+      {isTabListScrollable ? addTabButton : null}
 
       {contextMenu && (
         <TabContextMenu

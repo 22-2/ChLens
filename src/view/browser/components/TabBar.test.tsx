@@ -239,6 +239,48 @@ describe("TabBar wheel switching", () => {
     });
   });
 
+  it("タブ追加ボタンは通常は最後のタブの直後、タブが溢れたときは右端に固定される", () => {
+    const { container } = render(<TabBar />);
+    const tabList = container.querySelector(".tab-list") as HTMLDivElement;
+    const addButton = container.querySelector(".tab-bar__add") as HTMLButtonElement;
+
+    expect(tabList.querySelector(".tab-bar__add")).toBe(addButton);
+    expect(addButton).toHaveAttribute("aria-label", "新しいタブ");
+
+    Object.defineProperties(tabList, {
+      clientWidth: { configurable: true, value: 200 },
+      scrollWidth: { configurable: true, value: 500 },
+    });
+    fireEvent.scroll(tabList);
+
+    expect(tabList.querySelector(".tab-bar__add")).toBeNull();
+    expect(container.querySelector(".tab-bar > .tab-bar__add")).toBeInTheDocument();
+  });
+
+  it("タブ列のスクロール可能方向をフェード表示へ反映する", () => {
+    const { container } = render(<TabBar />);
+    const tabList = container.querySelector(".tab-list") as HTMLDivElement;
+    const tabListContainer = container.querySelector(".tab-list-container") as HTMLDivElement;
+    Object.defineProperties(tabList, {
+      clientWidth: { configurable: true, value: 200 },
+      scrollWidth: { configurable: true, value: 500 },
+    });
+
+    fireEvent.scroll(tabList);
+    expect(tabListContainer).toHaveClass("tab-list-container--can-scroll-right");
+    expect(tabListContainer).not.toHaveClass("tab-list-container--can-scroll-left");
+
+    tabList.scrollLeft = 100;
+    fireEvent.scroll(tabList);
+    expect(tabListContainer).toHaveClass("tab-list-container--can-scroll-left");
+    expect(tabListContainer).toHaveClass("tab-list-container--can-scroll-right");
+
+    tabList.scrollLeft = 300;
+    fireEvent.scroll(tabList);
+    expect(tabListContainer).toHaveClass("tab-list-container--can-scroll-left");
+    expect(tabListContainer).not.toHaveClass("tab-list-container--can-scroll-right");
+  });
+
   it("バックグラウンドで新規タブが追加されても追加位置までスクロールする", () => {
     const scrollIntoViewMock = vi.fn();
     const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
