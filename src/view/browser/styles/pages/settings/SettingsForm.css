@@ -1,0 +1,213 @@
+/* RJSF field layout and native form control styling. */
+.settings-form-subsection {
+  margin: var(--sys-space-14) 0 var(--sys-space-9);
+  font-size: var(--sys-font-size-lg);
+  font-weight: 700;
+  color: var(--sys-color-text);
+  display: flex;
+  align-items: center;
+  gap: var(--sys-space-6);
+}
+
+.settings-form-subsection::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, var(--sys-color-border), transparent);
+}
+
+.settings-form-subsection:first-child {
+  margin-top: 0;
+}
+
+.settings-form-field {
+  margin-bottom: 0;
+  display: grid;
+  gap: var(--sys-space-6);
+}
+
+.settings-form-object,
+.settings-form-properties {
+  display: grid;
+  gap: var(--sys-space-10);
+}
+
+.settings-form-property {
+  margin-bottom: 0;
+}
+
+.settings-form-field-content {
+  display: grid;
+  gap: var(--sys-space-5);
+}
+
+.settings-form-field-label,
+.control-label {
+  display: block;
+  margin-bottom: var(--sys-space-4);
+  font-size: var(--sys-font-size-body);
+  font-weight: 600;
+  color: var(--sys-color-text);
+}
+
+.settings-form-field-label .required,
+.control-label .required {
+  color: var(--sys-color-error);
+  margin-left: var(--sys-space-2);
+}
+
+.settings-form-field-description {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sys-space-4);
+  margin-bottom: var(--sys-space-6);
+  font-size: var(--sys-font-size-sm);
+  line-height: 1.6;
+  color: var(--sys-color-text-muted);
+  padding: var(--sys-space-5) var(--sys-space-7);
+  background: var(--sys-color-surface-muted);
+  border-radius: var(--sys-radius-xl);
+  border-left: 4px solid var(--sys-color-border);
+}
+
+.settings-form-field-description svg {
+  flex-shrink: 0;
+  margin-top: var(--sys-space-1);
+  color: var(--sys-color-accent);
+}
+
+.settings-page__form input[type="text"],
+.settings-page__form input[type="number"],
+.settings-page__form textarea,
+.settings-page__form select {
+  width: 100%;
+  border: 1.5px solid var(--sys-color-input-border);
+  border-radius: var(--sys-radius-xl);
+  padding: var(--sys-space-6) var(--sys-space-8);
+  background: var(--sys-color-input-bg);
+  font: inherit;
+  font-size: var(--sys-font-size-body);
+  color: var(--sys-color-text);
+  transition: all var(--sys-duration-slow) var(--sys-ease-standard);
+}
+
+.settings-page__form input[type="text"]:hover,
+.settings-page__form input[type="number"]:hover,
+.settings-page__form textarea:hover,
+.settings-page__form select:hover {
+  border-color: var(--sys-color-text-disabled);
+}
+
+.settings-page__form input[type="text"]:focus,
+.settings-page__form input[type="number"]:focus,
+.settings-page__form textarea:focus,
+.settings-page__form select:focus {
+  outline: none;
+  border-color: var(--sys-color-focus-ring);
+  box-shadow: 0 0 0 4px var(--sys-color-selection);
+}
+
+.settings-page__form textarea {
+  resize: vertical;
+  min-height: 120px;
+  line-height: 1.6;
+}
+
+.settings-page__form .radio,
+.settings-page__form .checkbox {
+  margin-bottom: var(--sys-space-5);
+}
+
+.settings-page__form .radio input[type="radio"],
+.settings-page__form .checkbox input[type="checkbox"] {
+  margin: 0 !important;
+  flex-shrink: 0;
+}
+
+.settings-page__form .radio label,
+.settings-page__form .checkbox label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sys-space-4);
+  padding: var(--sys-space-6) var(--sys-space-10);
+  border: 1.5px solid var(--sys-color-input-border);
+  border-radius: var(--sys-radius-xl);
+  cursor: pointer;
+  transition: all var(--sys-duration-slow) var(--sys-ease-standard);
+  font-size: var(--sys-font-size-body);
+  line-height: 1;
+}
+
+.settings-page__form .radio label > *,
+.settings-page__form .radio label span,
+.settings-page__form .checkbox label > *,
+.settings-page__form .checkbox label span {
+  display: inline-flex;
+  align-items: end;
+  gap: var(--sys-space-4);
+  margin: 0 !important;
+}
+
+.settings-page__form .radio label:hover,
+.settings-page__form .checkbox label:hover {
+  background: var(--sys-color-surface-muted);
+  border-color: var(--sys-color-text-disabled);
+}
+
+.settings-page__form .radio input:checked + span,
+.settings-page__form .checkbox input:checked + span {
+  font-weight: 600;
+  color: var(--sys-color-accent);
+}
+
+.settings-page__advanced-group {
+  margin-top: var(--sys-space-4);
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-xl);
+  overflow: hidden;
+}
+
+.settings-page__advanced-summary {
+  display: flex;
+  align-items: center;
+  padding: var(--sys-space-4) var(--sys-space-6);
+  font-weight: 600;
+  font-size: var(--sys-font-size-md);
+  cursor: pointer;
+  list-style: none;
+  background: var(--sys-color-surface-muted);
+  color: var(--sys-color-text);
+  box-shadow: inset 0 -3px 0 var(--data-table-divider-accent, transparent);
+  transition: background var(--sys-duration-normal);
+  user-select: none;
+}
+
+.settings-page__advanced-summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings-page__advanced-summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: var(--sys-space-4);
+  font-size: var(--sys-font-size-xs);
+  transition: transform var(--sys-duration-normal);
+  color: var(--sys-color-text-muted);
+}
+
+.settings-page__advanced-summary:hover {
+  background: var(--sys-color-border);
+}
+
+.settings-page__advanced-group[open] > .settings-page__advanced-summary {
+  border-bottom: 1px solid var(--sys-color-border);
+}
+
+.settings-page__advanced-group[open] > .settings-page__advanced-summary::before {
+  transform: rotate(90deg);
+}
+
+.settings-page__advanced-body {
+  padding: var(--sys-space-10);
+  background: var(--sys-color-surface);
+}

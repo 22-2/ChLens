@@ -9,9 +9,11 @@
 @import "./components/StatusBar.css";
 @import "./components/TabBar.css";
 @import "./components/ContextMenu.css";
+@import "./components/CommandPalette.css";
 @import "./components/DataTable.css";
 @import "./components/SearchBar.css";
 @import "./components/ThreadPopup.css";
+@import "./components/Toast.css";
 @import "./components/MediaViewer.css";
 @import "./components/MiniWindow.css";
 @import "./components/BottomPanel.css";
@@ -24,6 +26,7 @@
 @import "./pages/settings/NGEditor.css";
 @import "./pages/settings/BookmarkDialog.css";
 @import "./pages/settings/SettingsPage.css";
+@import "./pages/settings/SettingsForm.css";
 @import "./pages/ThreadListPage.css";
 @import "./pages/ThreadPage.css";
 @import "./pages/thread/ThreadResponse.css";

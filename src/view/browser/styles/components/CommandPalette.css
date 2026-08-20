@@ -1,0 +1,99 @@
+/* Command palette density and keyboard-selection styling. */
+.command-palette__content {
+  width: min(800px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+}
+
+.command-palette__search {
+  height: 42px;
+  min-height: 42px;
+  font-size: var(--sys-font-size-md);
+}
+
+.command-palette__actions-list {
+  padding: var(--sys-space-2);
+}
+
+.command-palette__action {
+  min-height: 26px;
+  padding: var(--sys-space-1) var(--sys-space-4);
+  border-radius: var(--sys-radius-md);
+  gap: var(--sys-space-3);
+  font-size: 12.5px;
+}
+
+.command-palette__action[data-selected] {
+  background-color: var(--sys-color-list-hover-bg);
+  color: var(--sys-color-text);
+}
+
+.command-palette__action-body {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.command-palette__action-label {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command-palette__action-section {
+  flex: 0 0 auto;
+}
+
+.command-palette__action-section[data-position="left"] {
+  margin-inline-end: var(--sys-space-1);
+  color: var(--sys-color-text-muted);
+}
+
+.command-palette__action-section[data-position="right"] {
+  min-width: 0;
+  margin-inline-start: var(--sys-space-1);
+}
+
+.command-palette__english-label {
+  display: block;
+  max-width: 340px;
+  overflow: hidden;
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command-palette__action[data-selected] .command-palette__english-label,
+.command-palette__action[data-selected] .command-palette__action-section[data-position="left"] {
+  color: var(--sys-color-text-muted);
+}
+
+.command-palette__empty {
+  padding: var(--sys-space-10) var(--sys-space-6);
+  font-size: var(--sys-font-size-sm);
+}
+
+.command-palette__footer {
+  display: flex;
+  align-items: center;
+  min-height: 27px;
+  padding: var(--sys-space-2) var(--sys-space-5);
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-xs);
+}
+
+.command-palette__result-count {
+  margin-inline-start: auto;
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .command-palette__content {
+    width: calc(100vw - 16px);
+    max-width: calc(100vw - 16px);
+  }
+
+  .command-palette__english-label {
+    max-width: 38vw;
+  }
+}

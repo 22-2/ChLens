@@ -1,0 +1,8 @@
+/* Sonner compatibility values, expressed through browser semantic tokens. */
+.browser-shell[data-theme="dark"] [data-sonner-toast] {
+  --normal-bg: var(--sys-color-tab-strip);
+  --normal-bg-hover: var(--sys-color-surface-muted);
+  --normal-border: var(--sys-color-border);
+  --normal-border-hover: var(--sys-color-text-muted);
+  --normal-text: var(--sys-color-text);
+}
