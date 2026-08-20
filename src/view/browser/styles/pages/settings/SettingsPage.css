@@ -253,6 +253,10 @@
   color: var(--sys-color-text);
 }
 
+.settings-surface-card__title--minor {
+  margin-top: var(--sys-space-4);
+}
+
 .settings-surface-card__description {
   margin: 0;
   font-size: var(--sys-font-size-md);
@@ -341,6 +345,37 @@
 .settings-page__button--danger:hover:not(:disabled) {
   background: var(--sys-color-error);
   border-color: var(--sys-color-error);
+}
+
+.settings-export-dialog {
+  gap: var(--sys-space-6);
+}
+
+.settings-export-dialog__options {
+  display: grid;
+  gap: var(--sys-space-4);
+  margin-top: var(--sys-space-4);
+}
+
+.settings-export-dialog__checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--sys-space-4);
+  min-height: var(--sys-space-8);
+  color: var(--sys-color-text);
+  font-size: var(--sys-font-size-sm);
+  cursor: pointer;
+}
+
+.settings-export-dialog__checkbox input {
+  accent-color: var(--sys-color-accent);
+}
+
+.settings-export-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sys-space-4);
+  margin-top: var(--sys-space-4);
 }
 
 @media (max-width: 900px) {

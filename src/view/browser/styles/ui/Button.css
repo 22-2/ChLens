@@ -49,3 +49,14 @@
   background: var(--sys-color-selection);
   color: var(--sys-color-accent);
 }
+
+.browser-button[data-variant="danger"] {
+  border-color: var(--sys-color-error);
+  background: var(--sys-color-error);
+  color: var(--sys-color-accent-fg);
+}
+
+.browser-button[data-variant="danger"]:hover:not(:disabled) {
+  border-color: var(--sys-color-error);
+  background: var(--sys-color-error);
+}
