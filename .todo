@@ -557,6 +557,8 @@ mantineに書き換え？
 
 [モデル動作スペック比較 - ChatGPT](https://chatgpt.com/c/6a857b69-4864-83ee-97bc-474f8b793bf1)
 このローカルaiくらいなら動かせる？
+でも自分は主にブラウザ上で使ってるからたぶんこの状態じゃ使えない
+どうしよう🥺
 
 `src\view\browser\utils\utils.ts`の分割
 `src\view\browser\components\ReplyTreePopup.tsx`の分割
