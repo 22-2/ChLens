@@ -1,4 +1,4 @@
-/* Browser shell token compatibility layer. Existing selectors still use --browser-* during migration. */
+/* Browser shell layout and theme scope. */
 .browser-shell {
   display: flex;
   flex-direction: column;
@@ -7,44 +7,6 @@
   font-size: var(--sys-font-size-body);
   color: var(--sys-color-text);
   background: var(--sys-color-surface);
-
-  /* Keep the legacy names until feature CSS is migrated one area at a time. */
-  --browser-color-bg: var(--sys-color-surface);
-  --browser-color-tab-strip-bg: var(--sys-color-tab-strip);
-  --browser-color-tab-strip-hover: var(--sys-color-tab-strip-hover);
-  --browser-color-tab-strip-active-hover: var(--sys-color-tab-strip-active-hover);
-  --browser-color-surface-muted: var(--sys-color-surface-muted);
-  --browser-color-border: var(--sys-color-border);
-  --browser-color-text-primary: var(--sys-color-text);
-  --browser-color-text-muted: var(--sys-color-text-muted);
-  --browser-color-text-disabled: var(--sys-color-text-disabled);
-  --browser-color-placeholder: var(--sys-color-placeholder);
-  --browser-color-selection: var(--sys-color-selection);
-  --browser-color-accent: var(--sys-color-accent);
-  --browser-color-accent-hover: var(--sys-color-accent-hover);
-  --browser-color-accent-fg: var(--sys-color-accent-fg);
-  --browser-color-focus-ring: var(--sys-color-focus-ring);
-  --browser-color-hover-overlay: var(--sys-color-hover-overlay);
-  --browser-color-status-hover-overlay: var(--sys-color-status-hover-overlay);
-  --browser-color-input-bg: var(--sys-color-input-bg);
-  --browser-color-input-border: var(--sys-color-input-border);
-  --browser-color-success: var(--sys-color-success);
-  --browser-color-error: var(--sys-color-error);
-  --browser-color-warning: var(--sys-color-warning);
-  --browser-color-res-num: var(--sys-color-res-num);
-  --browser-color-res-heat-warm: var(--sys-color-res-heat-warm);
-  --browser-color-res-heat-hot: var(--sys-color-res-heat-hot);
-  --browser-color-res-reply-link: var(--sys-color-res-reply-link);
-  --browser-color-res-id-muted: var(--sys-color-res-id-muted);
-  --browser-color-res-id-cool: var(--sys-color-res-id-cool);
-  --browser-color-status-active-bg: var(--sys-color-status-active-bg);
-  --browser-color-status-active-fg: var(--sys-color-status-active-fg);
-  --browser-color-status-default-fg: var(--sys-color-text-muted);
-  --browser-color-list-hover-bg: var(--sys-color-list-hover-bg);
-  --browser-font-mono: var(--sys-font-family-mono);
-
-  /* Temporary aliases for the remaining browser.scss sections. */
-  --z-index-minimap: var(--sys-z-minimap);
 }
 
 .browser-shell__chrome {

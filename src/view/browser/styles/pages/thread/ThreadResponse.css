@@ -1,4 +1,4 @@
-/* Thread response metadata and body layout. Media/link cards remain in browser.scss for now. */
+/* Thread response metadata, body, and media/link-card layout. */
 .res {
   padding: var(--sys-space-1) var(--sys-space-8) var(--sys-space-3);
   /* Defer offscreen response painting, except when the minimap needs exact geometry. */

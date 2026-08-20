@@ -7,8 +7,8 @@
  *           should not depend on a palette step directly.
  * --cmp-*  Component-local escape hatch. Define these next to the owning
  *           component instead of adding one-off globals here.
- * --browser-* is a temporary compatibility namespace for the un-migrated
- * browser.scss sections. It must not be used by newly extracted CSS.
+ * Component and page CSS consume only --sys-* semantics. Legacy aliases are
+ * intentionally absent so new code cannot bypass the design-token contract.
  */
 
 :root {

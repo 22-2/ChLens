@@ -145,9 +145,8 @@ declare global {
   }
 }
 
-// vite が処理する CSS/SCSS の side-effect import 用のモジュール宣言。
+// vite が処理する CSS の side-effect import 用のモジュール宣言。
 declare module "*.css";
-declare module "*.scss";
 
 declare module "normalize-wheel" {
   interface NormalizedWheelEvent {

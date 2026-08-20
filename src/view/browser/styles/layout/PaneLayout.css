@@ -1,4 +1,4 @@
-/* Pane layout extracted from browser.scss. Keep legacy class names for DOM behavior compatibility. */
+/* Pane layout. Keep legacy class names for DOM behavior compatibility. */
 .pane-row {
   display: flex;
   flex-direction: row;

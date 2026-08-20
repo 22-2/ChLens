@@ -3,7 +3,6 @@ import "@mantine/spotlight/styles.css";
 import { createRoot } from "react-dom/client";
 import "src/app";
 import "src/view/browser/styles/index.css";
-import "src/bundle.scss";
 import { BrowserApp } from "src/view/browser/App";
 
 // app.boot() 経由で初期化し、core モジュールの準備完了を待つ

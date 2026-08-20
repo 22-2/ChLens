@@ -1,16 +1,10 @@
 import react from "@vitejs/plugin-react";
-import autoprefixer from "autoprefixer";
 import { build as esbuildBuild } from "esbuild";
 import fs from "fs-extra";
-import { glob } from "fs/promises";
 import path from "path";
-import postcss from "postcss";
-import * as sass from "sass";
 import { defineConfig, lazyPlugins, Plugin } from "vite-plus";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
-
-const imgExt = (platform: string) => (platform === "chrome" ? "webp" : "png");
 
 // const BUILD_COPY_DESTINATION_KEY = "BUILD_COPY_DESTINATION";
 
@@ -62,54 +56,6 @@ const imgExt = (platform: string) => (platform === "chrome" ? "webp" : "png");
 //     },
 //   };
 // }
-
-// ─── plugin: SCSS ────────────────────────────────────────────────────────────
-
-function scssPlugin(platform: string, outputDir: string, minifyCss: boolean): Plugin {
-  const ext = imgExt(platform);
-  const isFirefox = platform === "firefox";
-
-  const sassFunctions = {
-    "img($name)": (args: sass.Value[]) => {
-      const name = (args[0] as sass.SassString).text;
-      return new sass.SassString(`url(/img/${name}.${ext})`, { quotes: false });
-    },
-    "vals($name)": (args: sass.Value[]) => {
-      const name = (args[0] as sass.SassString).text;
-      let str = "";
-      if (name === "scroll") {
-        str = isFirefox ? "scroll" : "auto";
-      }
-      return new sass.SassString(str, { quotes: false });
-    },
-  };
-
-  const pc = postcss([autoprefixer()]);
-
-  async function buildScss(srcFile: string, destFile: string) {
-    await fs.ensureDir(path.dirname(destFile));
-    const result = sass.compile(srcFile, {
-      style: minifyCss ? "compressed" : "expanded",
-      functions: sassFunctions,
-    });
-    const pcResult = await pc.process(result.css, { from: srcFile });
-    await fs.writeFile(destFile, pcResult.css);
-  }
-
-  return {
-    name: "scss-build",
-    async buildStart() {
-      const jobs: Array<[string, string]> = (await Array.fromAsync(glob("src/view/*.scss"))).map(
-        (f): [string, string] => [
-          path.resolve(f),
-          `${outputDir}/view/${path.basename(f, ".scss")}.css`,
-        ],
-      );
-
-      await Promise.all(jobs.map(([src, dest]) => buildScss(src, dest)));
-    },
-  };
-}
 
 // ─── plugin: browser HTML (without Pug) ─────────────────────────────────────
 
@@ -401,7 +347,6 @@ export default defineConfig(({ mode }) => {
     plugins: lazyPlugins(() => [
       react(),
       browserHtmlPlugin(outputDir),
-      scssPlugin(platform, outputDir, minifyOutput),
       manifestPlugin(platform, outputDir),
       staticCopyPlugin(platform, outputDir, minifyOutput),
       // buildOutputCopyPlugin(outputDir, buildCopyDestination),
@@ -416,30 +361,6 @@ export default defineConfig(({ mode }) => {
             : "webextension-polyfill",
       },
       extensions: [".tsx", ".ts", ".jsx", ".js"],
-    },
-    css: {
-      preprocessorOptions: {
-        scss: {
-          functions: {
-            "img($name)": (args: sass.Value[]) => {
-              const name = (args[0] as sass.SassString).text;
-              const ext = imgExt(platform);
-              return new sass.SassString(`url(/img/${name}.${ext})`, {
-                quotes: false,
-              });
-            },
-            "vals($name)": (args: sass.Value[]) => {
-              const name = (args[0] as sass.SassString).text;
-              const isFirefox = platform === "firefox";
-              let str = "";
-              if (name === "scroll") {
-                str = isFirefox ? "scroll" : "auto";
-              }
-              return new sass.SassString(str, { quotes: false });
-            },
-          },
-        },
-      },
     },
     build: {
       outDir: outputDir,

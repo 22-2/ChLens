@@ -237,7 +237,7 @@ function buildReplyTreeImageCardLayouts(
   };
 }
 
-// res-popup の配色 (browser.scss) に合わせ、画像コピーでもダークモードを再現する。
+// res-popup の配色 token に合わせ、画像コピーでもダークモードを再現する。
 const TREE_IMAGE_PALETTE: Record<
   ResolvedTheme,
   {

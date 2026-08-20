@@ -98,7 +98,6 @@
     "postcss-simple-vars": "^7.0.1",
     "pug": "^3.0.4",
     "release-it": "^21.0.2",
-    "sass": "^1.102.0",
     "sharp": "^0.35.3",
     "tailwindcss": "^4.3.3",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
