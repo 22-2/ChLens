@@ -1,22 +1,25 @@
 import type { HTMLAttributes, ReactNode } from "react";
 
 export type SurfaceTone = "default" | "muted" | "danger";
+export type SurfaceVariant = "card" | "flat";
 
 export interface SurfaceProps extends HTMLAttributes<HTMLElement> {
   as?: "div" | "section";
   tone?: SurfaceTone;
+  variant?: SurfaceVariant;
 }
 
-/** 設定や補助パネルで共有する、枠・背景・余白のDOM契約。 */
+/** 設定や補助パネルで共有する、カード／フラットのDOM契約。 */
 export function Surface({
   as: Component = "section",
   className,
   tone = "default",
+  variant = "card",
   ...props
 }: SurfaceProps) {
   const classes = ["browser-surface", className].filter(Boolean).join(" ");
 
-  return <Component {...props} className={classes} data-tone={tone} />;
+  return <Component {...props} className={classes} data-tone={tone} data-variant={variant} />;
 }
 
 export function SurfaceHeader({ className, ...props }: HTMLAttributes<HTMLDivElement>) {

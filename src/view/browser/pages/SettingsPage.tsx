@@ -627,7 +627,7 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
 
                   {activeSection.id === "other" && (
                     <>
-                      <Surface as="section" tone="muted">
+                      <Surface as="section" tone="muted" variant="flat">
                         <SurfaceHeader>
                           <SurfaceTitle>BBSMenu</SurfaceTitle>
                           <SurfaceDescription>
@@ -682,7 +682,7 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
                   </Button>
 
                   {isNgExamplesOpen && (
-                    <Surface as="section" tone="muted">
+                    <Surface as="section" tone="muted" variant="flat">
                       <SurfaceHeader>
                         <SurfaceDescription>
                           よく使う例をそのままコピーして調整できます。

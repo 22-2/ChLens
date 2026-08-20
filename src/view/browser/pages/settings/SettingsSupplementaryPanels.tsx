@@ -231,7 +231,7 @@ export function SettingsSupplementaryPanels({
           }
 
           return (
-            <Surface key={panelId}>
+            <Surface key={panelId} variant="flat">
               <SurfaceHeader>
                 <SurfaceTitle>外部連携</SurfaceTitle>
                 <SurfaceDescription>
@@ -266,7 +266,7 @@ export function SettingsSupplementaryPanels({
           );
         case "dangerZone":
           return (
-            <Surface key={panelId} tone="danger">
+            <Surface key={panelId} tone="danger" variant="flat">
               <SurfaceHeader>
                 <SurfaceTitle>設定の初期化</SurfaceTitle>
               </SurfaceHeader>
@@ -288,7 +288,7 @@ export function SettingsSupplementaryPanels({
           );
         case "dataManagement":
           return (
-            <Surface key={panelId}>
+            <Surface key={panelId} variant="flat">
               <SurfaceHeader>
                 <SurfaceTitle>データ管理</SurfaceTitle>
                 <SurfaceDescription>
@@ -408,7 +408,7 @@ export function SettingsSupplementaryPanels({
                   }}
                 />
 
-                <Surface as="section" tone="muted">
+                <Surface as="section" tone="muted" variant="flat">
                   <SurfaceHeader>
                     <SurfaceTitle>ログ（過去ログ）</SurfaceTitle>
                     <SurfaceDescription>
