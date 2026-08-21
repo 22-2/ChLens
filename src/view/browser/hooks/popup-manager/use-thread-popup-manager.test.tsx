@@ -413,7 +413,7 @@ function PopupIdChainHarness() {
   );
 }
 
-describe("usePopupCore popup behavior", () => {
+describe("thread popup manager integration", () => {
   beforeEach(() => {
     container.config = {
       get: vi.fn(() => "default"),

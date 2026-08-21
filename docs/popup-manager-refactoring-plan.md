@@ -202,7 +202,7 @@ popup-manager/
 各フェーズのコミットごとに、少なくとも次を実行する。
 
 ```bash
-pnpm exec vitest run src/view/browser/hooks/use-popup-manager.test.tsx src/view/browser/components/ResPopup.test.tsx
+pnpm exec vitest run src/view/browser/hooks/popup-manager/use-thread-popup-manager.test.tsx src/view/browser/hooks/popup-manager/use-popup-close-behavior.test.tsx
 pnpm lint
 pnpm tsc6
 ```
