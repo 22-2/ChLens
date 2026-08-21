@@ -8,6 +8,7 @@ import { CommandPalette } from "src/view/browser/components/CommandPalette";
 import { ContentArea } from "src/view/browser/components/ContentArea";
 import { IkioiStatusItem } from "src/view/browser/components/IkioiStatusItem";
 import { NavigationBar } from "src/view/browser/components/NavigationBar";
+import { NextThreadSearchDialog } from "src/view/browser/components/NextThreadSearchDialog";
 import { NgStatusItem } from "src/view/browser/components/NgStatusItem";
 import { StatusBar, StatusBarItem, StatusBarProvider } from "src/view/browser/components/StatusBar";
 import { TabBar } from "src/view/browser/components/TabBar";
@@ -16,6 +17,7 @@ import { AutoScrollStateProvider } from "src/view/browser/hooks/use-auto-scroll-
 import { BottomPanelProvider, useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { NgStatusProvider } from "src/view/browser/hooks/use-ng-status";
 import { useNotificationListener } from "src/view/browser/hooks/use-notification-listener";
+import { useNextThreadSearch } from "src/view/browser/hooks/use-next-thread-search";
 import {
   PaneProvider,
   TabProvider,
@@ -71,6 +73,18 @@ const PaneColumn: React.FC<{ paneId: string; isActive: boolean }> = ({ paneId, i
 // PaneProvider 配下でしか使えない（ペインスコープの dispatch を取るため）。
 const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
   const dispatch = useTabDispatch();
+  const { currentPage, activeTab } = useTabStore();
+  const {
+    state: nextThreadSearchState,
+    searchNextThread,
+    close: closeNextThreadSearch,
+    selectCandidate,
+  } = useNextThreadSearch({
+    currentPage,
+    isActive,
+    keepAutoRefresh: activeTab.autoRefreshEnabled,
+    dispatch,
+  });
 
   return (
     <section
@@ -104,7 +118,16 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
               <BottomPanel />
               {/* コマンドは操作元のペイン状態を使うためペイン内に置き、
                   パレット本体は重複しないようアクティブペインだけでマウントする。 */}
-              {isActive && <CommandPalette />}
+              {isActive ? (
+                <>
+                  <CommandPalette openNextThreadSearchDialog={searchNextThread} />
+                  <NextThreadSearchDialog
+                    state={nextThreadSearchState}
+                    onClose={closeNextThreadSearch}
+                    onSelect={selectCandidate}
+                  />
+                </>
+              ) : null}
               {/* 以下はこのペインの StatusBarProvider に項目を登録する。 */}
               <NgStatusItem />
               <IkioiStatusItem />

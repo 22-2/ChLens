@@ -11,6 +11,7 @@ import {
   List,
   PenLine,
   RotateCw,
+  Search,
   Settings,
   Star,
   type LucideIcon,
@@ -61,6 +62,7 @@ export interface BrowserCommandContext {
   dispatch: Dispatch<ScopedTabAction>;
   toggleWritePanel: () => void;
   openResponseJumpDialog: () => void;
+  openNextThreadSearchDialog: () => Promise<void>;
 }
 
 export interface BrowserCommandDefinition {
@@ -418,6 +420,17 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     icon: Hash,
     when: ({ currentPage }) => currentPage.type === "thread",
     run: ({ openResponseJumpDialog }) => openResponseJumpDialog(),
+  },
+  {
+    id: "page.search-next-thread",
+    label: "次スレ候補を検索",
+    englishLabel: "Find Next Thread Candidates",
+    description: "積極判定で現在のスレに続く候補を一覧表示します",
+    keywords: ["次スレ", "候補", "thread", "next", "search"],
+    group: "page",
+    icon: Search,
+    when: ({ currentPage }) => currentPage.type === "thread",
+    run: ({ openNextThreadSearchDialog }) => openNextThreadSearchDialog(),
   },
   {
     id: "page.toggle-filter",

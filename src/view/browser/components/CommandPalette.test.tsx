@@ -11,11 +11,13 @@ import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 const {
   dispatchMock,
   loadRecentCommandIdsMock,
+  openNextThreadSearchDialogMock,
   requestThreadResJumpMock,
   saveRecentCommandIdsMock,
 } = vi.hoisted(() => ({
   dispatchMock: vi.fn(),
   loadRecentCommandIdsMock: vi.fn(async () => [] as string[]),
+  openNextThreadSearchDialogMock: vi.fn(async () => undefined),
   requestThreadResJumpMock: vi.fn(),
   saveRecentCommandIdsMock: vi.fn(async () => undefined),
 }));
@@ -71,7 +73,7 @@ vi.mock("src/view/browser/hooks/use-bottom-panel", () => ({
 
 function renderPalette() {
   commandPalette.open();
-  return render(<CommandPalette />);
+  return render(<CommandPalette openNextThreadSearchDialog={openNextThreadSearchDialogMock} />);
 }
 
 describe("CommandPalette", () => {
@@ -80,6 +82,7 @@ describe("CommandPalette", () => {
     commandPalette.close();
     commandPaletteStore.updateState((current) => ({ ...current, selected: -1 }));
     dispatchMock.mockReset();
+    openNextThreadSearchDialogMock.mockReset();
     requestThreadResJumpMock.mockReset();
     loadRecentCommandIdsMock.mockClear();
     saveRecentCommandIdsMock.mockReset();

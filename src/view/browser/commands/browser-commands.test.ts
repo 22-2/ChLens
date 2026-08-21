@@ -17,6 +17,7 @@ const {
   encodeThreadAsToonMock,
   estimateToonTokenCountMock,
   getThreadMock,
+  openNextThreadSearchDialogMock,
   queryTabsMock,
   toastInfoMock,
   toastSuccessMock,
@@ -26,6 +27,7 @@ const {
   encodeThreadAsToonMock: vi.fn(),
   estimateToonTokenCountMock: vi.fn<() => number>(),
   getThreadMock: vi.fn(),
+  openNextThreadSearchDialogMock: vi.fn<() => Promise<void>>(),
   queryTabsMock: vi.fn(),
   toastInfoMock: vi.fn(),
   toastSuccessMock: vi.fn(),
@@ -73,6 +75,7 @@ function createContext(page: Page): {
       dispatch,
       toggleWritePanel: vi.fn(),
       openResponseJumpDialog: vi.fn(),
+      openNextThreadSearchDialog: openNextThreadSearchDialogMock,
     },
     dispatch,
   };
@@ -117,6 +120,7 @@ describe("browser commands", () => {
     encodeThreadAsToonMock.mockReset();
     estimateToonTokenCountMock.mockReset();
     getThreadMock.mockReset();
+    openNextThreadSearchDialogMock.mockReset();
     queryTabsMock.mockReset();
     toastInfoMock.mockReset();
     toastSuccessMock.mockReset();
@@ -135,6 +139,7 @@ describe("browser commands", () => {
     expect(ids).not.toContain("copy.dat-url");
     expect(ids).not.toContain("copy.thread-toon");
     expect(ids).not.toContain("page.jump-to-response");
+    expect(ids).not.toContain("page.search-next-thread");
   });
 
   it("スレッドではレス番号ジャンプ用の入力ダイアログを開ける", async () => {
@@ -157,6 +162,25 @@ describe("browser commands", () => {
 
     await expect(executeBrowserCommand("page.jump-to-response", context)).resolves.toBe(true);
     expect(openResponseJumpDialog).toHaveBeenCalledOnce();
+  });
+
+  it("スレッドでは次スレ候補検索コマンドを実行できる", async () => {
+    const { context } = createContext({
+      type: "thread",
+      title: "Thread",
+      threadUrl: "https://egg.5ch.net/test/read.cgi/software/123/",
+    });
+
+    expect(resolveBrowserCommands(context)).toContainEqual(
+      expect.objectContaining({
+        id: "page.search-next-thread",
+        label: "次スレ候補を検索",
+        enabled: true,
+      }),
+    );
+
+    await expect(executeBrowserCommand("page.search-next-thread", context)).resolves.toBe(true);
+    expect(openNextThreadSearchDialogMock).toHaveBeenCalledOnce();
   });
 
   it("板一覧では板名を再取得して対象板の履歴タイトルを更新する", async () => {

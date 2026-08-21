@@ -40,7 +40,11 @@ function parseResponseJumpResNum(value: string): number | null {
   return Number.isSafeInteger(resNum) && resNum > 0 ? resNum : null;
 }
 
-export const CommandPalette: React.FC = () => {
+interface CommandPaletteProps {
+  openNextThreadSearchDialog: () => Promise<void>;
+}
+
+export const CommandPalette: React.FC<CommandPaletteProps> = ({ openNextThreadSearchDialog }) => {
   const { state, activeTab, currentPage, dispatch } = useTabStore();
   const { panes } = useTabPanes();
   const { isOpen: isWritePanelOpen, togglePanel } = useBottomPanel();
@@ -133,12 +137,14 @@ export const CommandPalette: React.FC = () => {
       dispatch,
       toggleWritePanel: () => togglePanel("write"),
       openResponseJumpDialog,
+      openNextThreadSearchDialog,
     }),
     [
       activeTab,
       currentPage,
       dispatch,
       isWritePanelOpen,
+      openNextThreadSearchDialog,
       openResponseJumpDialog,
       panes.length,
       state.tabs,
