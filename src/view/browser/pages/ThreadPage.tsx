@@ -12,7 +12,7 @@ import { useMediaViewerStore } from "src/view/browser/hooks/use-media-viewer-sto
 import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
 import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
 import { usePopupAutoScrollPauseSetting } from "src/view/browser/hooks/use-popup-auto-scroll-pause-setting";
-import { useThreadPopupLifecycle } from "src/view/browser/hooks/use-popup-manager";
+import { useThreadPopupManager } from "src/view/browser/hooks/use-popup-manager";
 import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
 import { useThreadAutoRefresh } from "src/view/browser/hooks/use-thread-auto-refresh";
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";
@@ -121,7 +121,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     hideAnchorPreview,
     hideAnchorPreviewImmediately,
     showAnchorPreview,
-  } = useThreadPopupLifecycle({
+  } = useThreadPopupManager({
     scopeId: tabId,
     rootRef,
     resMap: indexes.resMap,

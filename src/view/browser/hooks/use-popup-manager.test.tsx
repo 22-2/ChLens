@@ -13,7 +13,7 @@ import type {
   PopupItem,
   TreePopupItem,
 } from "src/view/browser/hooks/popup-manager/types";
-import { usePopupManager } from "src/view/browser/hooks/use-popup-manager";
+import { usePopupCore } from "src/view/browser/hooks/use-popup-manager";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -58,7 +58,7 @@ const ID_CHAIN_INDEX = new Map<string, Set<number>>([["ID:AAA", new Set([10, 11]
 
 function PinnedTreeHarness() {
   const { popups, addPopup, closeNonContextPopups, toggleTreePopupPinned } =
-    usePopupManager("pinned-tree-test");
+    usePopupCore("pinned-tree-test");
   const treePopup = popups.find((item): item is TreePopupItem => item.type === "tree");
 
   return (
@@ -115,7 +115,7 @@ function PopupSequenceHarness({
     closePopupsByPredicate,
     closePopupChildren,
     isPopupDescendantOf,
-  } = usePopupManager();
+  } = usePopupCore();
 
   const anchorPreviews = popups.filter((item): item is AnchorPopupItem => item.type === "anchor");
   const treePopups = popups.filter((item): item is TreePopupItem => item.type === "tree");
@@ -284,7 +284,7 @@ function PopupSequenceHarness({
 
 function PopupIdChainHarness() {
   const { popups, addPopup, closePopupById, closePopupChildren, isPopupDescendantOf } =
-    usePopupManager();
+    usePopupCore();
 
   const treePopups = popups.filter((item): item is TreePopupItem => item.type === "tree");
   const idPopups = popups.filter((item): item is IdPopupItem => item.type === "id");
@@ -413,7 +413,7 @@ function PopupIdChainHarness() {
   );
 }
 
-describe("usePopupManager popup behavior", () => {
+describe("usePopupCore popup behavior", () => {
   beforeEach(() => {
     container.config = {
       get: vi.fn(() => "default"),
@@ -1078,7 +1078,7 @@ describe("ReplyTreePopup close behavior", () => {
 
   it("親ポップアップを閉じると子コンテキストメニューも一緒に閉じる", () => {
     function PopupTreeHarness() {
-      const { popups, addPopup, closePopupById } = usePopupManager();
+      const { popups, addPopup, closePopupById } = usePopupCore();
 
       return (
         <div>
@@ -1230,26 +1230,26 @@ describe("ResPopup mouseleave behavior", () => {
   });
 });
 
-describe("usePopupManager zustand scopes", () => {
+describe("usePopupCore zustand scopes", () => {
   afterEach(() => {
     cleanup();
   });
 
   it("closeNonContextPopups は contextMenu だけを残す", () => {
     function CloseNonContextHarness() {
-      const popupManager = usePopupManager("close-non-context");
+      const popupCore = usePopupCore("close-non-context");
 
       return (
         <div>
           <button
             onClick={() => {
-              popupManager.addPopup({
+              popupCore.addPopup({
                 type: "tree",
                 x: 8,
                 y: 8,
                 payload: { resNum: 1, anchorPreviewDepth: 0 },
               });
-              popupManager.addPopup({
+              popupCore.addPopup({
                 type: "contextMenu",
                 x: 16,
                 y: 16,
@@ -1259,9 +1259,9 @@ describe("usePopupManager zustand scopes", () => {
           >
             open
           </button>
-          <button onClick={popupManager.closeNonContextPopups}>close-non-context</button>
+          <button onClick={popupCore.closeNonContextPopups}>close-non-context</button>
           <output data-testid="close-non-context-types">
-            {popupManager.popups.map((item) => item.type).join("|")}
+            {popupCore.popups.map((item) => item.type).join("|")}
           </output>
         </div>
       );
@@ -1278,8 +1278,8 @@ describe("usePopupManager zustand scopes", () => {
 
   it("scope ごとに popup state を分離する", () => {
     function ScopedPopupHarness() {
-      const leftScope = usePopupManager("left-tab");
-      const rightScope = usePopupManager("right-tab");
+      const leftScope = usePopupCore("left-tab");
+      const rightScope = usePopupCore("right-tab");
 
       return (
         <div>

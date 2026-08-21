@@ -4,9 +4,9 @@ import type { RefObject } from "react";
 import { useRef } from "react";
 import type { IRes } from "src/service-container/interfaces";
 import {
-  usePopupManager,
+  usePopupCore,
   usePopupSurfaceLifecycle,
-  useThreadPopupLifecycle,
+  useThreadPopupManager,
 } from "src/view/browser/hooks/use-popup-manager";
 import { ANCHOR_PREVIEW_HIDE_DELAY_MS } from "src/view/browser/utils/constants";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
@@ -86,10 +86,10 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("usePopupManager Phase 0 contracts", () => {
+describe("usePopupCore Phase 0 contracts", () => {
   it("同一scopeを複数mountしている間はstateを共有し、最後のunmountで破棄する", () => {
-    const first = renderHook(() => usePopupManager("contract-shared-scope"));
-    const second = renderHook(() => usePopupManager("contract-shared-scope"));
+    const first = renderHook(() => usePopupCore("contract-shared-scope"));
+    const second = renderHook(() => usePopupCore("contract-shared-scope"));
 
     act(() => {
       first.result.current.addPopup(createTreePopup());
@@ -103,14 +103,14 @@ describe("usePopupManager Phase 0 contracts", () => {
 
     second.unmount();
     // 最後の参照が外れたscopeは、次回mount時に古いpopupを持ち越さない。
-    const fresh = renderHook(() => usePopupManager("contract-shared-scope"));
+    const fresh = renderHook(() => usePopupCore("contract-shared-scope"));
     expect(fresh.result.current.popups).toHaveLength(0);
     fresh.unmount();
   });
 
   it("scopeId変更時に旧scopeを解放して新scopeへ切り替える", () => {
     const { result, rerender, unmount } = renderHook(
-      ({ scopeId }: { scopeId: string }) => usePopupManager(scopeId),
+      ({ scopeId }: { scopeId: string }) => usePopupCore(scopeId),
       { initialProps: { scopeId: "contract-old-scope" } },
     );
 
@@ -134,7 +134,7 @@ describe("usePopupManager Phase 0 contracts", () => {
   });
 
   it("親popupの削除は子孫だけをcascade closeし、存在しないIDでは変化しない", () => {
-    const { result, unmount } = renderHook(() => usePopupManager("contract-graph-cascade"));
+    const { result, unmount } = renderHook(() => usePopupCore("contract-graph-cascade"));
     let rootId = "";
     let childId = "";
     let grandchildId = "";
@@ -184,7 +184,7 @@ describe("usePopupManager Phase 0 contracts", () => {
   });
 
   it("壊れたparentIdや循環があっても子孫判定とcascade closeが終了する", () => {
-    const { result, unmount } = renderHook(() => usePopupManager("contract-graph-cycle"));
+    const { result, unmount } = renderHook(() => usePopupCore("contract-graph-cycle"));
     let firstId = "";
     let secondId = "";
 
@@ -215,11 +215,11 @@ describe("usePopupManager Phase 0 contracts", () => {
   });
 });
 
-describe("useThreadPopupLifecycle Phase 0 contracts", () => {
+describe("useThreadPopupManager Phase 0 contracts", () => {
   const createThreadPopupHook = (scopeId: string) => {
     const rootRef = { current: null } as RefObject<HTMLDivElement | null>;
     return renderHook(() =>
-      useThreadPopupLifecycle({
+      useThreadPopupManager({
         scopeId,
         rootRef,
         resMap: TEST_RES_MAP,

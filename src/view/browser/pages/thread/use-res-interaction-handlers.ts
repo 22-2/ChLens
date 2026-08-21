@@ -1,7 +1,7 @@
 import type { MouseEvent } from "react";
 import { useCallback } from "react";
 import type { IRes } from "src/service-container/interfaces";
-import type { ThreadPopupLifecycleResult } from "src/view/browser/hooks/use-popup-manager";
+import type { ThreadPopupManagerResult } from "src/view/browser/hooks/use-popup-manager";
 import { resolveReplyTreeRootResNum } from "src/view/browser/utils/reply-tree-root";
 
 interface Indexes {
@@ -12,7 +12,7 @@ interface Indexes {
 }
 
 interface UseResInteractionHandlersParams extends Pick<
-  ThreadPopupLifecycleResult,
+  ThreadPopupManagerResult,
   | "addTreePopup"
   | "addIdPopup"
   | "showAnchorPreview"

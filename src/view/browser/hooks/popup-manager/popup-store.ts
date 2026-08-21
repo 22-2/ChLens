@@ -62,8 +62,6 @@ const createPopupScopeSlice: StateCreator<PopupStoreState, [], [], PopupScopeSli
           ...state.scopes,
           [scopeId]: {
             ...currentScope,
-            // display:none でタブを保持する構成では popup state を tab 単位で分離しないと、
-            // hidden page の popup が active page に混ざるので scope を参照カウントで生存管理する。
             refCount: currentScope.refCount + 1,
           },
         },
@@ -149,7 +147,7 @@ const createPopupCollectionSlice: StateCreator<PopupStoreState, [], [], PopupCol
         return state;
       }
 
-      // popupのparentId cascadeは純粋関数へ委譲し、scope state更新は結果の差し替えだけにする。
+      // popupのparentId cascadeは純粋関数へ委譲し、ここでは結果だけを反映する。
       return {
         scopes: {
           ...state.scopes,
