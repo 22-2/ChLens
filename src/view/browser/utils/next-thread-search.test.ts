@@ -1,5 +1,6 @@
 import type { IThread } from "src/service-container/interfaces";
 import {
+  calculateTitleSimilarity,
   findMainstreamThreadMatch,
   findNextThreadMatch,
 } from "src/view/browser/utils/next-thread-search";
@@ -46,6 +47,35 @@ describe("next-thread-search", () => {
 
     expect(match?.reason).toBe("number");
     expect(match?.thread.url).toBe("https://example.com/test/read.cgi/live/1700000011/");
+  });
+
+  it("積極判定ではsubject.txt由来の見た目が似た文字のスレタイも拾う", () => {
+    const standardTitle = "【NTV】金曜ロードショー「となりのトトロ」★8";
+    const lookalikeTitle = "【NTV】金曜口一ドショ一「となりの卜卜口」★8";
+    const currentThread = {
+      title: "【NTV】金曜口一ドショ一「となりの卜卜口」★7",
+      url: "https://example.com/test/read.cgi/live/1700000600/",
+    };
+    const expectedUrl = "https://example.com/test/read.cgi/live/1700000602/";
+    const threads = [
+      createThread({
+        title: standardTitle,
+        url: expectedUrl,
+        resCount: 593,
+        createdAt: 1_700_000_602_000,
+      }),
+      createThread({
+        title: lookalikeTitle.replace("★8", "★7"),
+        url: "https://example.com/test/read.cgi/live/1700000601/",
+        resCount: 1001,
+        createdAt: 1_700_000_601_000,
+      }),
+    ];
+
+    expect(calculateTitleSimilarity(standardTitle, lookalikeTitle)).toBeGreaterThanOrEqual(0.75);
+    expect(findNextThreadMatch(threads, currentThread, { mode: "aggressive" })?.thread.url).toBe(
+      expectedUrl,
+    );
   });
 
   it("積極判定では通常候補がない時に反省会スレを候補にする", () => {
