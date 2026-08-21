@@ -478,6 +478,8 @@ export const ThreadListPage: React.FC<Props> = ({
     return readThreadListSortPreference(page.boardUrl);
   });
   const [searchQuery, setSearchQuery] = useState(() => persistedSearchQuery ?? "");
+  const previousBoardUrlRef = useRef(page.boardUrl);
+  const skipViewStateUpdateRef = useRef(false);
   const wheelPagination = useWheelPagination({
     isEnabled: isActive && !loading,
     containerRef: effectiveScrollContainerRef,
@@ -625,6 +627,15 @@ export const ThreadListPage: React.FC<Props> = ({
   }, [page.boardUrl]);
 
   useEffect(() => {
+    if (previousBoardUrlRef.current === page.boardUrl) {
+      return;
+    }
+
+    // 保存値は板を切り替えたときだけ復元する。入力中にも view state が更新されるため、
+    // そのたびに同じ値をローカル状態へ戻すと、入力イベントと競合して文字が点滅する。
+    previousBoardUrlRef.current = page.boardUrl;
+    // 板切り替え直後は、復元前のローカル状態を新しい板へ保存しない。
+    skipViewStateUpdateRef.current = true;
     const column = persistedSortColumn;
     const nextSortPreference: ThreadListSortPreference =
       column === null
@@ -649,6 +660,11 @@ export const ThreadListPage: React.FC<Props> = ({
   }, [page.boardUrl, persistedSearchQuery, persistedSortColumn, persistedSortDirection]);
 
   useEffect(() => {
+    if (skipViewStateUpdateRef.current) {
+      skipViewStateUpdateRef.current = false;
+      return;
+    }
+
     updateViewState({
       searchQuery,
       sortColumn: sortPreference.column,
