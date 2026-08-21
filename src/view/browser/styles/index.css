@@ -18,6 +18,7 @@
 @import "./components/TabBar.css";
 @import "./components/ContextMenu.css";
 @import "./components/CommandPalette.css";
+@import "./components/NextThreadSearchDialog.css";
 @import "./components/DataTable.css";
 @import "./components/SearchBar.css";
 @import "./components/ThreadPopup.css";
