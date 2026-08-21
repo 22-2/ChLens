@@ -41,7 +41,20 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("src/view/browser/ui/ContextMenu", () => ({
-  ContextMenu: () => null,
+  ContextMenu: ({
+    items,
+  }: {
+    items: Array<{ id: string; label?: string; icon?: React.ReactNode }>;
+  }) => (
+    <div data-testid="bar-context-menu">
+      {items.map((item) => (
+        <span key={item.id} data-menu-item={item.id}>
+          {item.icon}
+          {item.label}
+        </span>
+      ))}
+    </div>
+  ),
 }));
 
 vi.mock("src/view/browser/components/TabContextMenu", () => ({
@@ -279,6 +292,30 @@ describe("TabBar wheel switching", () => {
     fireEvent.scroll(tabList);
     expect(tabListContainer).toHaveClass("tab-list-container--can-scroll-left");
     expect(tabListContainer).not.toHaveClass("tab-list-container--can-scroll-right");
+  });
+
+  it("タブバーの背景メニューにアイコンを表示し、仮想メニューイベントを誤認しない", () => {
+    const firstRender = render(<TabBar />);
+    const { container } = firstRender;
+    const tabBar = container.querySelector(".tab-bar") as HTMLDivElement;
+
+    fireEvent.contextMenu(tabBar, { clientX: 20, clientY: 20 });
+
+    const menu = screen.getByTestId("bar-context-menu");
+    expect(menu).toHaveTextContent("新しいタブを開く");
+    expect(menu).toHaveTextContent("閉じたタブを開く");
+    expect(menu.querySelectorAll("svg")).toHaveLength(2);
+
+    firstRender.unmount();
+    const rerenderedTabBar = render(<TabBar />).container.querySelector(
+      ".tab-bar",
+    ) as HTMLDivElement;
+    const virtualTrigger = document.createElement("span");
+    virtualTrigger.dataset.contextMenuTrigger = "true";
+    rerenderedTabBar.appendChild(virtualTrigger);
+    fireEvent.contextMenu(virtualTrigger, { clientX: 30, clientY: 30 });
+
+    expect(screen.queryByTestId("bar-context-menu")).toBeNull();
   });
 
   it("バックグラウンドで新規タブが追加されても追加位置までスクロールする", () => {
