@@ -3,6 +3,10 @@ import type { RefObject } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { IRes } from "src/service-container/interfaces";
 import {
+  isPopupDescendantOf as isPopupDescendantOfInPopups,
+  removePopupBranches,
+} from "src/view/browser/hooks/popup-manager/popup-graph";
+import {
   ANCHOR_PREVIEW_GUTTER,
   ANCHOR_PREVIEW_HIDE_DELAY_MS,
   ANCHOR_PREVIEW_MAX_WIDTH,
@@ -65,26 +69,6 @@ interface PopupGraphSlice {
 }
 
 type PopupStoreState = PopupScopeSlice & PopupCollectionSlice & PopupGraphSlice;
-
-function isPopupDescendantOf(popups: PopupItem[], popupId: string, ancestorId: string): boolean {
-  const popupsById = new Map(popups.map((item) => [item.id, item]));
-  const visitedIds = new Set<string>();
-  let currentId = popupsById.get(popupId)?.parentId;
-
-  // parentId が壊れて循環しても leave 判定で無限ループしないようにガードする。
-  while (currentId) {
-    if (currentId === ancestorId) {
-      return true;
-    }
-    if (visitedIds.has(currentId)) {
-      break;
-    }
-    visitedIds.add(currentId);
-    currentId = popupsById.get(currentId)?.parentId;
-  }
-
-  return false;
-}
 
 function getPopupSurfaceId(target: EventTarget | null): string | null {
   const targetElement = getEventTargetElement(target);
@@ -205,35 +189,13 @@ const createPopupCollectionSlice: StateCreator<PopupStoreState, [], [], PopupCol
         return state;
       }
 
-      const removedIds = new Set<string>();
-      for (const item of currentScope.popups) {
-        if (predicate(item)) {
-          removedIds.add(item.id);
-        }
-      }
-
-      // parentId ツリーをたどって閉じることで、今後スタックの並びが変わっても
-      // 親を閉じた時に子メニュー/子ポップアップが取り残されないようにする。
-      let changed = true;
-      while (changed) {
-        changed = false;
-        for (const item of currentScope.popups) {
-          if (!item.parentId || removedIds.has(item.id)) {
-            continue;
-          }
-          if (removedIds.has(item.parentId)) {
-            removedIds.add(item.id);
-            changed = true;
-          }
-        }
-      }
-
+      // popupのparentId cascadeは純粋関数へ委譲し、scope state更新は結果の差し替えだけにする。
       return {
         scopes: {
           ...state.scopes,
           [scopeId]: {
             ...currentScope,
-            popups: currentScope.popups.filter((item) => !removedIds.has(item.id)),
+            popups: removePopupBranches(currentScope.popups, predicate),
           },
         },
       };
@@ -287,7 +249,7 @@ const createPopupGraphSlice: StateCreator<PopupStoreState, [], [], PopupGraphSli
       return false;
     }
 
-    return isPopupDescendantOf(currentScope.popups, popupId, ancestorId);
+    return isPopupDescendantOfInPopups(currentScope.popups, popupId, ancestorId);
   },
 });
 
