@@ -192,7 +192,42 @@ export function calculateTitleSimilarity(leftTitle: string, rightTitle: string):
   }
 
   const matches = countSequenceMatches(left, right);
-  return (2 * matches) / (left.length + right.length);
+  const sequenceSimilarity = (2 * matches) / (left.length + right.length);
+  const editSimilarity = calculateEditSimilarity(left, right);
+
+  // 変更理由: LCSだけでは一文字の違いが一致区間を分断し、subject.txtの軽微な
+  // 表記揺れを過小評価する。文字の種類を列挙せず、編集距離との高い方を採用する。
+  return Math.max(sequenceSimilarity, editSimilarity);
+}
+
+function calculateEditSimilarity(left: string, right: string): number {
+  const leftCharacters = Array.from(left);
+  const rightCharacters = Array.from(right);
+  const previous = new Uint16Array(rightCharacters.length + 1);
+
+  for (let rightIndex = 0; rightIndex <= rightCharacters.length; rightIndex += 1) {
+    previous[rightIndex] = rightIndex;
+  }
+
+  for (let leftIndex = 1; leftIndex <= leftCharacters.length; leftIndex += 1) {
+    const current = new Uint16Array(rightCharacters.length + 1);
+    current[0] = leftIndex;
+
+    for (let rightIndex = 1; rightIndex <= rightCharacters.length; rightIndex += 1) {
+      const substitutionCost =
+        leftCharacters[leftIndex - 1] === rightCharacters[rightIndex - 1] ? 0 : 1;
+      current[rightIndex] = Math.min(
+        previous[rightIndex] + 1,
+        current[rightIndex - 1] + 1,
+        previous[rightIndex - 1] + substitutionCost,
+      );
+    }
+
+    previous.set(current);
+  }
+
+  const maxLength = Math.max(leftCharacters.length, rightCharacters.length);
+  return 1 - previous[rightCharacters.length] / maxLength;
 }
 
 export function extractThreadSequenceNumber(title: string): ThreadNumberResult {

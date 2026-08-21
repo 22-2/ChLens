@@ -7,9 +7,17 @@ import { ThreadListPage } from "src/view/browser/pages/ThreadListPage";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const THREAD_LIST_SORT_STORAGE_KEY = "chlens_browser_thread_list_sort_by_site";
-const { dispatchMock, activeTabIdRef } = vi.hoisted(() => ({
+const { dispatchMock, activeTabIdRef, viewStateRef, updateViewStateMock } = vi.hoisted(() => ({
   dispatchMock: vi.fn(),
   activeTabIdRef: { current: "tab-1" },
+  viewStateRef: {
+    current: {} as {
+      searchQuery?: string;
+      sortColumn?: string | null;
+      sortDirection?: "asc" | "desc";
+    },
+  },
+  updateViewStateMock: vi.fn(),
 }));
 const { cacheGetMock, cachePutMock } = vi.hoisted(() => ({
   cacheGetMock: vi.fn(),
@@ -53,7 +61,7 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
     state: { activeTabId: activeTabIdRef.current },
   }),
   useTabDispatch: () => dispatchMock,
-  useTabViewState: () => ({ state: {}, update: vi.fn() }),
+  useTabViewState: () => ({ state: viewStateRef.current, update: updateViewStateMock }),
 }));
 
 const THREADS: IThread[] = [
@@ -141,6 +149,8 @@ describe("ThreadListPage", () => {
     cachePutMock.mockReset();
     vi.useFakeTimers();
     dispatchMock.mockReset();
+    viewStateRef.current = {};
+    updateViewStateMock.mockReset();
     const askBoardTitleMock = vi.mocked(askBoardTitle);
     askBoardTitleMock.mockReset();
     askBoardTitleMock.mockResolvedValue(null);
@@ -244,6 +254,55 @@ describe("ThreadListPage", () => {
     );
     await vi.advanceTimersByTimeAsync(20000);
     expect(dispatchMock).toHaveBeenCalledWith({ type: "RELOAD" });
+  });
+
+  it("スレ一覧のフィルタを板ごとに復元し、保存更新で入力中の値を巻き戻さない", async () => {
+    vi.useRealTimers();
+    viewStateRef.current = { searchQuery: "A Thread" };
+
+    const softwarePage = {
+      type: "threadList" as const,
+      title: "Software",
+      boardUrl: "https://egg.5ch.net/software/",
+      boardTitle: "Software",
+    };
+    const { rerender } = render(
+      <ThreadListPage tabId="tab-1" page={softwarePage} refreshKey={0} isActive={true} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("textbox")).toHaveValue("A Thread");
+    });
+
+    const input = screen.getByRole("textbox");
+    fireEvent.change(input, { target: { value: "B Thread" } });
+    expect(updateViewStateMock).toHaveBeenCalledWith(
+      expect.objectContaining({ searchQuery: "B Thread" }),
+    );
+
+    // タブストアの再描画が入力イベントより先に届いても、同じ板の入力値は維持する。
+    viewStateRef.current = { searchQuery: "" };
+    rerender(<ThreadListPage tabId="tab-1" page={softwarePage} refreshKey={0} isActive={true} />);
+    expect(screen.getByRole("textbox")).toHaveValue("B Thread");
+
+    // 板を切り替えたときだけ、切り替え先の板に保存された値を復元する。
+    viewStateRef.current = { searchQuery: "C Thread" };
+    rerender(
+      <ThreadListPage
+        tabId="tab-1"
+        page={{
+          type: "threadList",
+          title: "News",
+          boardUrl: "https://egg.5ch.net/news/",
+          boardTitle: "News",
+        }}
+        refreshKey={0}
+        isActive={true}
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByRole("textbox")).toHaveValue("C Thread");
+    });
   });
 
   it("同じsiteでは保存したソート順を復元し、別siteには持ち込まない", async () => {

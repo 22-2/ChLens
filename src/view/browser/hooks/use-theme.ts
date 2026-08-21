@@ -22,11 +22,17 @@ export function useTheme(): ResolvedTheme {
 
   // config_updated メッセージを購読し、theme_id の変更をリアルタイムで反映する
   useEffect(() => {
+    const syncThemeId = () => {
+      // Config は localStorage の読み込み後に確定するため、初回レンダー時の既定値だけで
+      // テーマを決めると、再起動後に保存済みの dark 設定を取りこぼしてしまう。
+      setThemeId(parseThemeId(container.config.get("theme_id")));
+    };
     const handleConfigUpdated = ({ key, val }: { key: string; val: string }) => {
       if (key === "theme_id") {
         setThemeId(parseThemeId(val));
       }
     };
+    container.config.ready(syncThemeId);
     container.message.on("config_updated", handleConfigUpdated);
     return () => container.message.off("config_updated", handleConfigUpdated);
   }, []);
