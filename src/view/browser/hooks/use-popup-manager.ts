@@ -6,6 +6,14 @@ import {
   isPopupDescendantOf as isPopupDescendantOfInPopups,
   removePopupBranches,
 } from "src/view/browser/hooks/popup-manager/popup-graph";
+import type {
+  AnchorPopupItem,
+  ContextMenuPopupItem,
+  ContextMenuPopupPayload,
+  IdPopupItem,
+  PopupItem,
+  TreePopupItem,
+} from "src/view/browser/hooks/popup-manager/types";
 import {
   ANCHOR_PREVIEW_GUTTER,
   ANCHOR_PREVIEW_HIDE_DELAY_MS,
@@ -15,14 +23,6 @@ import {
   POPUP_SURFACE_ID_ATTRIBUTE,
   POPUP_SURFACE_SELECTOR,
 } from "src/view/browser/utils/constants";
-import type {
-  AnchorPopupItem,
-  ContextMenuPopupItem,
-  ContextMenuPopupPayload,
-  IdPopupItem,
-  PopupItem,
-  TreePopupItem,
-} from "src/view/browser/utils/types";
 import { getPopupViewportBounds } from "src/view/browser/utils/use-adjust-overflow";
 import { getEventTargetElement } from "src/view/browser/utils/utils";
 import type { StateCreator } from "zustand";

@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from "react";
-import type { ThreadFilter } from "src/view/browser/utils/types";
-
 import type { TopBarMode } from "src/view/browser/pages/thread/use-thread-top-bar";
+import type { ThreadFilter } from "src/view/browser/types";
 
 interface ThreadPageTopBarProps {
   activeTopBar: TopBarMode;

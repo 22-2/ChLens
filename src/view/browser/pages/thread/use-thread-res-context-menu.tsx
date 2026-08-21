@@ -17,13 +17,13 @@ import { container } from "src/service-container/index";
 import type { IRes } from "src/service-container/interfaces";
 import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useTabDispatch, useTabStore } from "src/view/browser/hooks/use-tab-store";
+import type { ThreadFilter, ThreadPage as ThreadPageType } from "src/view/browser/types";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import {
   getAutoRefreshPageKey,
   isAutoRefreshEnabledForPage,
 } from "src/view/browser/utils/auto-refresh-pages";
 import { getLegacyWriteHistoryService } from "src/view/browser/utils/legacy-app";
-import type { Props, ThreadFilter } from "src/view/browser/utils/types";
 import {
   buildKyodemoUrl,
   copyText,
@@ -48,7 +48,7 @@ interface UseThreadResContextMenuParams {
   hideAnchorPreviewImmediately: () => void;
   miniAaResNums: Set<number>;
   ownResNums: Set<number>;
-  page: Props["page"];
+  page: ThreadPageType;
   onWriteHistoryAdded?: (resNum: number) => void;
   onWriteHistoryRemoved?: (resNum: number) => void;
   searchQuery: string;

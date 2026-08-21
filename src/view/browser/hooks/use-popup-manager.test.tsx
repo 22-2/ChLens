@@ -6,15 +6,15 @@ import type { IRes } from "src/service-container/interfaces";
 import { AnchorPreview } from "src/view/browser/components/AnchorPreview";
 import { ReplyTreePopup } from "src/view/browser/components/ReplyTreePopup";
 import { ResPopup } from "src/view/browser/components/ResPopup";
-import { usePopupManager } from "src/view/browser/hooks/use-popup-manager";
-import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import type {
   AnchorPopupItem,
   ContextMenuPopupItem,
   IdPopupItem,
   PopupItem,
   TreePopupItem,
-} from "src/view/browser/utils/types";
+} from "src/view/browser/hooks/popup-manager/types";
+import { usePopupManager } from "src/view/browser/hooks/use-popup-manager";
+import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 function createRes(num: number, message: string, id?: string): IRes {

@@ -13,6 +13,10 @@ export type PageType =
   | "writeHistoryList"
   | "logList";
 
+// スレッドの絞り込みはタブのviewStatesへ保存されるため、
+// スレッド画面だけでなくタブ状態モデルからも参照できる共通型としてここに置く。
+export type ThreadFilter = "all" | "popular" | "image" | "video" | "link";
+
 export interface HomePage {
   type: "home";
   title: string;
@@ -75,7 +79,7 @@ export type Page =
 
 export interface TabViewState {
   searchQuery?: string;
-  filter?: "all" | "popular" | "image" | "video" | "link";
+  filter?: ThreadFilter;
   sortColumn?: string | null;
   sortDirection?: "asc" | "desc";
   searchMode?: "title" | "body";

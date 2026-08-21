@@ -1,14 +1,8 @@
 import type { IRes } from "src/service-container";
-import type { ThreadPage as ThreadPageType } from "src/view/browser/types";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 
-export type ThreadFilter = "all" | "popular" | "image" | "video" | "link";
-export interface Props {
-  tabId: string;
-  page: ThreadPageType;
-  refreshKey: number;
-}
-
+// popup managerのライフサイクルと描画側が共有する判別unionなので、
+// 汎用utilsではなくpopup managerの所有型としてここに置く。
 export type PopupItemType = "id" | "tree" | "anchor" | "contextMenu";
 
 export interface PopupItemBase {
@@ -61,42 +55,3 @@ export interface ContextMenuPopupPayload {
 }
 
 export type PopupItem = IdPopupItem | TreePopupItem | AnchorPopupItem | ContextMenuPopupItem;
-
-// --- ポップアップ状態 ---
-export interface PopupState {
-  x: number;
-  y: number;
-  items: IRes[];
-  title: string;
-  /** 開いた順に割り当てられるz-index。後から開いたものが常に前面になる。 */
-  z: number;
-}
-export interface TreePopupState {
-  x: number;
-  y: number;
-  resNum: number;
-  anchorPreviewDepth: number;
-  /** 開いた順に割り当てられるz-index。後から開いたものが常に前面になる。 */
-  z: number;
-}
-export interface ResContextMenuState {
-  x: number;
-  y: number;
-  res: IRes;
-}
-export interface ViewerState {
-  src: string;
-  label: string;
-  /** 同じレス内の画像URL一覧（前後移動に使用） */
-  images?: string[];
-  currentIndex?: number;
-}
-export interface AnchorPreviewState {
-  depth: number;
-  x: number;
-  y: number;
-  items: IRes[];
-  label: string;
-  /** 開いた順に割り当てられるz-index。後から開いたものが常に前面になる。 */
-  z: number;
-}

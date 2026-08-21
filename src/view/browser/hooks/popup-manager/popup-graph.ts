@@ -1,4 +1,4 @@
-import type { PopupItem } from "src/view/browser/utils/types";
+import type { PopupItem } from "src/view/browser/hooks/popup-manager/types";
 
 /**
  * 指定したpopupと、そのparentId配下にある全てのpopup IDを収集する。

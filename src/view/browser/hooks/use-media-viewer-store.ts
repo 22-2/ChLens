@@ -1,4 +1,4 @@
-import type { ViewerState } from "src/view/browser/utils/types";
+import type { ViewerState } from "src/view/browser/hooks/media-viewer-types";
 import { toOriginalImageUrl, toViewerImageUrl } from "src/view/browser/utils/utils";
 import { create } from "zustand";
 

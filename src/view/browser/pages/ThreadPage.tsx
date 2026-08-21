@@ -26,17 +26,16 @@ import { useThreadResContextMenu } from "src/view/browser/pages/thread/use-threa
 import { useThreadTopBar } from "src/view/browser/pages/thread/use-thread-top-bar";
 import { useThreadTopScrollOpenFilter } from "src/view/browser/pages/thread/use-thread-top-scroll-open-filter";
 import { useUrlHandlers } from "src/view/browser/pages/thread/use-url-handlers";
+import type { ThreadPage as ThreadPageType } from "src/view/browser/types";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import { getAutoRefreshPageKey } from "src/view/browser/utils/auto-refresh-pages";
 import {
   buildBlurredResSet,
   buildReplyToWrittenResSet,
 } from "src/view/browser/utils/thread-emphasis";
-import type { Props } from "src/view/browser/utils/types";
-
 interface ThreadPageProps {
   tabId: string;
-  page: Props["page"];
+  page: ThreadPageType;
   refreshKey: number;
   isActive: boolean;
   isAutoRefreshEnabled: boolean;
