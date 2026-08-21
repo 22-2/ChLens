@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import type { NextThreadSearchState } from "src/view/browser/hooks/use-next-thread-search";
 import { Dialog } from "src/view/browser/ui/Dialog";
 import { Spinner } from "src/view/browser/ui/Spinner";
@@ -41,10 +41,17 @@ export const NextThreadSearchDialog: React.FC<NextThreadSearchDialogProps> = ({
   onClose,
   onSelect,
 }) => {
+  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
   const isOpen = state.status !== "idle";
   const isSearching = state.status === "searching";
   const isReady = state.status === "ready";
   const isError = state.status === "error";
+
+  useEffect(() => {
+    // テーマトークンは `.browser-shell[data-theme]` にスコープされるため、
+    // body直下のPortalではダークテーマのsurface/textを継承できない。
+    setPortalContainer(document.querySelector<HTMLElement>(".browser-shell"));
+  }, []);
 
   return (
     <Dialog.Root
@@ -55,7 +62,7 @@ export const NextThreadSearchDialog: React.FC<NextThreadSearchDialogProps> = ({
         }
       }}
     >
-      <Dialog.Portal>
+      <Dialog.Portal container={portalContainer ?? undefined}>
         <Dialog.Overlay className="browser-dialog-overlay" />
         <Dialog.Content className="browser-dialog-content next-thread-search-dialog__content">
           <Dialog.Title className="browser-dialog-title">次スレ候補を検索</Dialog.Title>
