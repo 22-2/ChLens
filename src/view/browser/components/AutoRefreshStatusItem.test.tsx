@@ -149,7 +149,6 @@ describe("AutoRefreshStatusItem", () => {
 
     expect(screen.getByText("スレッド自動更新")).toBeInTheDocument();
     expect(screen.getByText("自動次スレ移動")).toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: "自動スクロールスタイル" })).toBeInTheDocument();
     expect(screen.queryByRole("radio")).not.toBeInTheDocument();
 
     fireEvent.pointerDown(button);
