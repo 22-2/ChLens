@@ -550,6 +550,46 @@ export function calculateThreadMomentum(thread: IThread, now = Date.now()): numb
   return thread.resCount / elapsedDays;
 }
 
+function toNextThreadMatch(
+  currentThread: Pick<IThread, "title">,
+  candidate: RankedNextThreadCandidate,
+): NextThreadMatch {
+  const currentMarked = isMarkedThread(currentThread.title);
+  const reason = candidate.reasons.includes("exact-next-number")
+    ? "number"
+    : candidate.isReflection
+      ? "reflection"
+      : currentMarked && isMarkedThread(candidate.thread.title)
+        ? "mark"
+        : "number";
+
+  return {
+    thread: candidate.thread,
+    reason,
+    similarity: candidate.similarity,
+    score: candidate.score,
+    reasons: candidate.reasons,
+  };
+}
+
+export function findNextThreadCandidates(
+  threads: readonly IThread[],
+  currentThread: Pick<IThread, "title" | "url">,
+  options: NextThreadSearchOptions = {},
+): NextThreadMatch[] {
+  const resolvedOptions: Required<NextThreadSearchOptions> = {
+    mode: options.mode ?? "balanced",
+    responseMessages: options.responseMessages ?? [],
+  };
+  const policy = NEXT_THREAD_MODE_POLICY[resolvedOptions.mode];
+
+  // 手動検索では自動移動のように1件へ決め打ちせず、選択可能な候補をすべて見せる。
+  // minimumMarginは自動移動の誤移動防止用なので、候補の列挙条件には使わない。
+  return rankNextThreadCandidates(threads, currentThread, resolvedOptions)
+    .filter((candidate) => candidate.score >= policy.minimumScore)
+    .map((candidate) => toNextThreadMatch(currentThread, candidate));
+}
+
 export function findNextThreadMatch(
   threads: readonly IThread[],
   currentThread: Pick<IThread, "title" | "url">,
@@ -592,22 +632,7 @@ export function findNextThreadMatch(
     return null;
   }
 
-  const currentMarked = isMarkedThread(currentThread.title);
-  const reason = best.reasons.includes("exact-next-number")
-    ? "number"
-    : best.isReflection
-      ? "reflection"
-      : currentMarked && isMarkedThread(best.thread.title)
-        ? "mark"
-        : "number";
-
-  return {
-    thread: best.thread,
-    reason,
-    similarity: best.similarity,
-    score: best.score,
-    reasons: best.reasons,
-  };
+  return toNextThreadMatch(currentThread, best);
 }
 
 function filterMainstreamCandidates(

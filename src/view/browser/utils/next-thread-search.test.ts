@@ -2,6 +2,7 @@ import type { IThread } from "src/service-container/interfaces";
 import {
   calculateTitleSimilarity,
   findMainstreamThreadMatch,
+  findNextThreadCandidates,
   findNextThreadMatch,
 } from "src/view/browser/utils/next-thread-search";
 import { describe, expect, it } from "vite-plus/test";
@@ -188,6 +189,38 @@ describe("next-thread-search", () => {
       }),
     ];
 
+    expect(findNextThreadMatch(threads, currentThread, { mode: "balanced" })).toBeNull();
+  });
+
+  it("積極判定の候補をスコア順にすべて返し、自動選択の同点制限を適用しない", () => {
+    const currentThread = {
+      title: "番組実況 2026",
+      url: "https://example.com/test/read.cgi/live/1700000220/",
+    };
+    const threads = [
+      createThread({
+        title: "番組実況 2026 後編A",
+        url: "https://example.com/test/read.cgi/live/1700000221/",
+        resCount: 20,
+        createdAt: 1_700_000_221_000,
+      }),
+      createThread({
+        title: "番組実況 2026 後編B",
+        url: "https://example.com/test/read.cgi/live/1700000222/",
+        resCount: 20,
+        createdAt: 1_700_000_222_000,
+      }),
+    ];
+
+    const candidates = findNextThreadCandidates(threads, currentThread, {
+      mode: "aggressive",
+    });
+
+    expect(candidates).toHaveLength(2);
+    expect(candidates.map((candidate) => candidate.thread.url)).toEqual([
+      "https://example.com/test/read.cgi/live/1700000221/",
+      "https://example.com/test/read.cgi/live/1700000222/",
+    ]);
     expect(findNextThreadMatch(threads, currentThread, { mode: "balanced" })).toBeNull();
   });
 
