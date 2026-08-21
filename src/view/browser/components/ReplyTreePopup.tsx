@@ -595,12 +595,6 @@ export const ReplyTreePopup: React.FC<{
   const treeMenuItems: ContextMenuItem[] = sourceRes
     ? [
         {
-          id: "toggle-pin",
-          label: pinned ? "ピン留めを解除" : "ピン留め",
-          icon: pinned ? <PinOff size={14} /> : <Pin size={14} />,
-          onSelect: onTogglePinned,
-        },
-        {
           id: "copy-tree-responses",
           label: "返信ツリーを一括コピー",
           // 返信ツリー全体も「起点から下へ辿る」操作なので、子ツリーのコピーと同じ向きで示す。
@@ -631,6 +625,12 @@ export const ReplyTreePopup: React.FC<{
               await copyImageBlob(blob);
             })();
           },
+        },
+        {
+          id: "toggle-pin",
+          label: pinned ? "ピン留めを解除" : "ピン留め",
+          icon: pinned ? <PinOff size={14} /> : <Pin size={14} />,
+          onSelect: onTogglePinned,
         },
       ]
     : [];
