@@ -109,7 +109,10 @@ export const ContextMenu: React.FC<Props> = ({
       <RadixContextMenu.Trigger asChild>
         <span
           ref={triggerElementRef}
+          data-context-menu-trigger="true"
           aria-hidden="true"
+          // 座標付きの仮想イベントを親コンポーネントの背景メニューへ流さない。
+          onContextMenu={(event) => event.stopPropagation()}
           style={{
             position: "fixed",
             left: x,

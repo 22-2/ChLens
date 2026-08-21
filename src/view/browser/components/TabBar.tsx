@@ -1,6 +1,6 @@
 import { DragDropProvider } from "@dnd-kit/react";
 import { isSortableOperation, useSortable } from "@dnd-kit/react/sortable";
-import { Pin, Plus, RotateCw, X } from "lucide-react";
+import { Pin, Plus, RotateCcw, RotateCw, X } from "lucide-react";
 import normalizeWheel from "normalize-wheel";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCursorTooltip } from "src/view/browser/components/CursorTooltip";
@@ -349,6 +349,18 @@ export const TabBar: React.FC = () => {
 
   // タブバーの空白部分を右クリックしたときのメニュー
   const handleBarContextMenu = useCallback((e: React.MouseEvent) => {
+    const target = e.target;
+    // 個別メニューは座標付きの仮想Triggerをタブバー内へ挿入するため、
+    // そのイベントを背景メニューとして二重に扱わない。
+    if (
+      target instanceof Element &&
+      target.closest(
+        ".tab, .tab-bar__add, .tab-bar__refresh, [data-context-menu-trigger], [data-popup='true']",
+      )
+    ) {
+      return;
+    }
+
     e.preventDefault();
     setBarContextMenu({ x: e.clientX, y: e.clientY });
   }, []);
@@ -402,12 +414,14 @@ export const TabBar: React.FC = () => {
       {
         id: "new-tab",
         label: "新しいタブを開く",
+        icon: <Plus size={16} />,
         onSelect: () => dispatch({ type: "ADD_TAB" }),
       },
       {
         id: "reopen",
         label: "閉じたタブを開く",
         disabled: state.closedTabs.length === 0,
+        icon: <RotateCcw size={16} />,
         onSelect: () => dispatch({ type: "REOPEN_CLOSED_TAB" }),
       },
     ],
