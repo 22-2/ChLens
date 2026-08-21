@@ -100,11 +100,11 @@
 | `48998888 refactor(ui): Sonner通知をRadix Toastへ移行`                    | 外部store経由の共通Toast wrapperへ移行し、通知APIを維持したままSonnerを削除       |
 | `31f05e60 refactor(ui): 自前ContextMenuをRadix wrapperへ移行`             | 座標・z-index・nested popup契約を維持したRadix ContextMenu wrapperへ移行          |
 | `f7c729b5 fix(ui): Radix ContextMenuの座標二重適用を修正`                 | Radixのviewport座標を尊重し、ContextMenuのleft/top再適用とoverflow補正を削除      |
-| `16e9c782 refactor(ui): popup surfaceの共通wrapperを導入`                 | AnchorPreview / ResPopupのlifecycle・座標・z-indexをFloatingSurfaceへ集約         |
-| `d40e6ecb refactor(ui): ReplyTreePopupとMiniWindowを共通overlayへ移行`    | ReplyTreePopupをFloatingSurfaceへ、MiniWindowをRadix Popoverへ移行                |
+| `16e9c782 refactor(ui): popup DOMの共通wrapperを導入`                     | AnchorPreview / ResPopupのlifecycle・座標・z-indexをFloatingPopupへ集約           |
+| `d40e6ecb refactor(ui): ReplyTreePopupとMiniWindowを共通overlayへ移行`    | ReplyTreePopupをFloatingPopupへ、MiniWindowをRadix Popoverへ移行                  |
 
 この状態でbrowser viewの自前スタイルは、foundation / layout / component / pageのplain CSSへ分割され、Mantine / Tailwind / PostCSSの依存は削除された。
-ToastとContextMenuをRadix wrapperへ移行し、popup surface共通化まで完了した。
+ToastとContextMenuをRadix wrapperへ移行し、popup共通wrapper化まで完了した。
 次はpopup managerの責務分離へ進む。
 
 ### 現在の分割済み範囲
@@ -113,7 +113,7 @@ ToastとContextMenuをRadix wrapperへ移行し、popup surface共通化まで�
 - `styles/layout/`: BrowserShell、PaneLayout、ContentArea
 - `styles/components/`: ContextMenu、CommandPalette、DataTable、MediaViewer、MiniWindow、NavigationBar、SearchBar、StatusBar、TabBar、ThreadPopup、Toast、WheelScrollIndicator、BottomPanel、WritePanel
 - `styles/ui/`: Spinner、Tooltip、Button、Alert、Accordion、Dialog、FormControls、Surface
-- `ui/`: Spinner、Tooltip、Button、Alert、Accordion、Dialog、FormControls、Surface、Toast、ContextMenu、FloatingSurface、Popover（Radix / semantic wrapper）
+- `ui/`: Spinner、Tooltip、Button、Alert、Accordion、Dialog、FormControls、Surface、Toast、ContextMenu、FloatingPopup、Popover（Radix / semantic wrapper）
 - `styles/pages/`: Home、BoardList、PageStatus、ThreadList、ThreadPage、ThreadResponse、SettingsPage、SettingsForm、BookmarkDialog、NGEditor
 - `browser.scss` / `bundle.scss`: 削除済み。browser viewの自前CSS入口は `styles/index.css` のみ
 - `pnpm lint:tokens`、`pnpm tsc6`、対象コンポーネントテスト、Chrome/Firefox/Tauriビルドを各区切りで確認済み
@@ -300,7 +300,7 @@ src/view/browser/
 | Sonner上書き                                      | `styles/components/Toast.css` のRadix Toastへ移行済み                               |
 
 既存class名はこの段階で変えない。切り出し後に、振る舞いがclass名へ依存する箇所を
-`data-ui="content-area"`、`data-popup-surface`、refなどへ徐々に変更し、見た目とDOM探索を分離する。
+`data-ui="content-area"`、`data-popup`、refなどへ徐々に変更し、見た目とDOM探索を分離する。
 
 ---
 
@@ -416,8 +416,8 @@ SettingsはMantine利用密度が最も高かったため、保存ロジック�
 
 - 自前ContextMenuをRadixへ移す。✅
 - Bookmark root / Thread NG / response jump / import-export dialogを共通Dialogへ揃える。import-exportは✅。
-- AnchorPreview / ResPopupを共通 `ui/FloatingSurface` へ移行する。✅
-- MiniWindowをRadix Popoverへ移行し、ReplyTreePopupをFloatingSurfaceへ統一する。✅
+- AnchorPreview / ResPopupを共通 `ui/FloatingPopup` へ移行する。✅
+- MiniWindowをRadix Popoverへ移行し、ReplyTreePopupをFloatingPopupへ統一する。✅
 - Command PaletteをRadix Dialog + 自前Command Listへ移す。✅
 - Spotlight storeを小さな外部storeへ置換する。✅
 - SonnerをRadix Toast wrapperへ置換し、`container.toast` の呼び出し側は変更しない。✅
@@ -560,15 +560,15 @@ Mantine削除後の最終値で評価する。
 ## 次に着手する範囲
 
 foundation、token、CSS分割、SCSSビルド経路、Mantine / Tailwind依存の整理は完了した。
-Toastの共通化、Sonner削除、ContextMenuのRadix wrapper化、popup surface共通化まで完了した。
+Toastの共通化、Sonner削除、ContextMenuのRadix wrapper化、popup共通wrapper化まで完了した。
 
 1. `ui/Spinner`、`Tooltip`、`Button`、`Alert`、`Accordion`、`Dialog`、`FormControls`、`Surface`で低リスク部品を置換済み。✅
 2. Settingsのレイアウト、入力、補助panelを共通UIへ移し、カード幅とボタン配色を統一済み。✅
 3. `ui/Toast` と外部storeを導入し、`container.toast`の呼び出し側を維持する。✅
 4. Sonnerを削除し、依存・lockfile・bundle差分を確認する。✅
 5. 自前ContextMenuをRadix ContextMenu wrapperへ移行し、nested popup・focus・z-indexを回帰確認する。✅
-6. AnchorPreview / ResPopupを `ui/FloatingSurface` へ移行し、共通lifecycleを回帰確認する。✅
-7. ReplyTreePopupのsurface共通化と、MiniWindowのRadix Popover化を進める。✅
+6. AnchorPreview / ResPopupを `ui/FloatingPopup` へ移行し、共通lifecycleを回帰確認する。✅
+7. ReplyTreePopupのpopup共通wrapper化と、MiniWindowのRadix Popover化を進める。✅
 8. popup managerをstore・graph・dismiss・hover・feature factoryへ分離する。
 
 各段階でChrome / Firefox / Tauri buildと対象interaction testを実行し、最後にvisual baselineを追加する。

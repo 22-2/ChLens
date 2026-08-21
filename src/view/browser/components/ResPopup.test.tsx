@@ -17,7 +17,7 @@ function PopupCloseGuardHarness({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      data-testid="surface"
+      data-testid="popup"
       onMouseDownCapture={handleMouseDownCapture}
       onMouseLeave={handleMouseLeave}
     >
@@ -31,16 +31,16 @@ function PopupCloseGuardHarness({ onClose }: { onClose: () => void }) {
   );
 }
 
-function PopupSurfaceMouseDownHarness({ onSurfaceMouseDown }: { onSurfaceMouseDown: () => void }) {
+function PopupMouseDownHarness({ onPopupMouseDown }: { onPopupMouseDown: () => void }) {
   const { handleMouseDownCapture } = usePopupCloseBehavior({
     closeOnMouseLeave: false,
     closeOnOutsideClick: false,
     onClose: () => undefined,
-    onSurfaceMouseDown,
+    onPopupMouseDown,
   });
 
   return (
-    <div data-testid="surface" onMouseDownCapture={handleMouseDownCapture}>
+    <div data-testid="popup" onMouseDownCapture={handleMouseDownCapture}>
       <div data-testid="plain-area">plain area</div>
       <a href="https://example.com" data-testid="popup-link">
         popup link
@@ -56,7 +56,7 @@ describe("usePopupCloseBehavior", () => {
     render(<PopupCloseGuardHarness onClose={onClose} />);
 
     fireEvent.click(screen.getByRole("button", { name: "arm guard" }));
-    fireEvent.mouseLeave(screen.getByTestId("surface"), {
+    fireEvent.mouseLeave(screen.getByTestId("popup"), {
       relatedTarget: null,
     });
 
@@ -71,7 +71,7 @@ describe("usePopupCloseBehavior", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "arm guard" }));
     vi.advanceTimersByTime(1000);
-    fireEvent.mouseLeave(screen.getByTestId("surface"), {
+    fireEvent.mouseLeave(screen.getByTestId("popup"), {
       relatedTarget: null,
     });
 
@@ -84,30 +84,30 @@ describe("usePopupCloseBehavior", () => {
     render(<PopupCloseGuardHarness onClose={onClose} />);
 
     fireEvent.mouseDown(screen.getByTestId("popup-link"), { button: 0 });
-    fireEvent.mouseLeave(screen.getByTestId("surface"), {
+    fireEvent.mouseLeave(screen.getByTestId("popup"), {
       relatedTarget: null,
     });
 
     expect(onClose).not.toHaveBeenCalled();
   });
 
-  it("popup内リンクの mousedown では枝閉じ用 onSurfaceMouseDown を呼ばない", () => {
-    const onSurfaceMouseDown = vi.fn();
+  it("popup内リンクの mousedown では枝閉じ用 onPopupMouseDown を呼ばない", () => {
+    const onPopupMouseDown = vi.fn();
 
-    render(<PopupSurfaceMouseDownHarness onSurfaceMouseDown={onSurfaceMouseDown} />);
+    render(<PopupMouseDownHarness onPopupMouseDown={onPopupMouseDown} />);
 
     fireEvent.mouseDown(screen.getByTestId("popup-link"), { button: 0 });
 
-    expect(onSurfaceMouseDown).not.toHaveBeenCalled();
+    expect(onPopupMouseDown).not.toHaveBeenCalled();
   });
 
-  it("popup本体の通常領域 mousedown では枝閉じ用 onSurfaceMouseDown を呼ぶ", () => {
-    const onSurfaceMouseDown = vi.fn();
+  it("popup本体の通常領域 mousedown では枝閉じ用 onPopupMouseDown を呼ぶ", () => {
+    const onPopupMouseDown = vi.fn();
 
-    render(<PopupSurfaceMouseDownHarness onSurfaceMouseDown={onSurfaceMouseDown} />);
+    render(<PopupMouseDownHarness onPopupMouseDown={onPopupMouseDown} />);
 
     fireEvent.mouseDown(screen.getByTestId("plain-area"), { button: 0 });
 
-    expect(onSurfaceMouseDown).toHaveBeenCalledOnce();
+    expect(onPopupMouseDown).toHaveBeenCalledOnce();
   });
 });

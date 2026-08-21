@@ -16,7 +16,7 @@ import type { ResolvedTheme } from "src/view/browser/hooks/use-theme";
 import { useTheme } from "src/view/browser/hooks/use-theme";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
-import { FloatingSurface } from "src/view/browser/ui/FloatingSurface";
+import { FloatingPopup } from "src/view/browser/ui/FloatingPopup";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
 import {
   canCopyImageToClipboard,
@@ -537,7 +537,7 @@ export const ReplyTreePopup: React.FC<{
   isPopupDescendantOf?: (popupId: string, ancestorId: string) => boolean;
   onEnterFromDescendant?: () => void;
   /** 親popupをクリックした時に、その配下の枝だけ畳めるようにする。 */
-  onSurfaceMouseDown?: () => void;
+  onPopupMouseDown?: () => void;
   /** 子ポップアップが開いている間は外側クリック閉じを無効にする */
   disableOutsideClick?: boolean;
   /** ピン留め中は明示的に閉じるまで自動クローズしない。 */
@@ -575,7 +575,7 @@ export const ReplyTreePopup: React.FC<{
   popupId,
   isPopupDescendantOf,
   onEnterFromDescendant,
-  onSurfaceMouseDown,
+  onPopupMouseDown,
   disableOutsideClick,
   pinned = false,
   onTogglePinned,
@@ -693,11 +693,11 @@ export const ReplyTreePopup: React.FC<{
       // 右クリックで文脈メニューを開く前に、このポップアップ配下の子孫
       // (アンカープレビュー/子ツリー)を畳む。テキスト選択を消さないため右クリックの
       // mousedown では閉じない設計（button=2 をスキップ）になっており、選択が確定した
-      // contextmenu のこの時点で onSurfaceMouseDown(=子孫クローズ) を呼んで畳む。
-      onSurfaceMouseDown?.();
+      // contextmenu のこの時点で onPopupMouseDown(=子孫クローズ) を呼んで畳む。
+      onPopupMouseDown?.();
       onResContextMenu(targetRes, event);
     },
-    [onResContextMenu, onSurfaceMouseDown],
+    [onResContextMenu, onPopupMouseDown],
   );
 
   const handleMenuClick = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -836,7 +836,7 @@ export const ReplyTreePopup: React.FC<{
   };
 
   return (
-    <FloatingSurface
+    <FloatingPopup
       className="res-popup"
       x={x}
       y={y}
@@ -847,9 +847,9 @@ export const ReplyTreePopup: React.FC<{
       closeDisabled={disableOutsideClick || pinned}
       closeOnOutsideClick={!pinned}
       onClose={onClose}
-      onSurfaceMouseDown={onSurfaceMouseDown}
-      onSurfaceMouseEnter={onMouseEnter}
-      onSurfaceMouseLeave={onMouseLeave}
+      onPopupMouseDown={onPopupMouseDown}
+      onPopupMouseEnter={onMouseEnter}
+      onPopupMouseLeave={onMouseLeave}
       // ポップアップ内のレス間マウス移動で ResBody の handleMouseLeave が起動した
       // アンカープレビュー hide タイマーをキャンセルする。mouseover はバブルするため、
       // 子孫要素への移動時も発火し、mouseenter と異なりポップアップ外からの進入に限定されない。
@@ -933,7 +933,7 @@ export const ReplyTreePopup: React.FC<{
               y={menuPosition.y}
               items={treeMenuItems}
               // このメニューはDOM上ではツリーポップアップ内にあるが、
-              // 親のIDポップアップから見ると別のsurfaceになる。親子関係を識別できるよう
+              // 親のIDポップアップから見ると別のpopupになる。親子関係を識別できるよう
               // ツリーポップアップ自身のIDを引き継ぎ、コピー操作で親まで閉じないようにする。
               popupId={popupId}
               onClose={() => setMenuPosition(null)}
@@ -951,7 +951,7 @@ export const ReplyTreePopup: React.FC<{
           )}
         </>
       )}
-    </FloatingSurface>
+    </FloatingPopup>
   );
 };
 

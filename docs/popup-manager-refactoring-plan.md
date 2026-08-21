@@ -8,7 +8,7 @@
 
 - scope付き Zustand store
 - `parentId` を使った popup グラフ操作と cascade close
-- popup surface の mouse / outside-click lifecycle
+- popup DOM要素の mouse / outside-click lifecycle
 - thread固有の popup生成、座標計算、anchor preview管理
 
 リファクタリングの主目的は行数削減ではなく、純粋ロジックとDOM lifecycleを分離し、それぞれを独立してテストできる境界を作ることである。
@@ -20,7 +20,7 @@
 | API | 主な利用箇所 | 役割 |
 | --- | --- | --- |
 | `usePopupCore` | `ThreadPage`、hookテスト | scope単位のpopup CRUD、close、子孫判定、pin |
-| `usePopupCloseBehavior` | `FloatingSurface`、`ContextMenu` | hover、outside click、子popup遷移、close制御と抑止 |
+| `usePopupCloseBehavior` | `FloatingPopup`、`ContextMenu` | hover、outside click、子popup遷移、close制御と抑止 |
 | `useThreadPopupManager` | `ThreadPage` | thread用popupの抽出・生成、anchor preview |
 
 ### 現在固定されている主な挙動
@@ -49,7 +49,7 @@ src/view/browser/hooks/
 └─ popup-manager/
    ├─ popup-graph.ts                     # 純粋なparentIdグラフ操作
    ├─ popup-store.ts                     # scope付きZustand store
-   ├─ popup-surface-dom.ts               # DOM属性・branch判定の補助関数
+   ├─ popup-dom.ts                       # DOM属性・branch判定の補助関数
    ├─ use-popup-close-behavior.ts       # hover / outside click / close抑止
    └─ use-thread-popup-manager.ts        # thread固有の生成とanchor preview
 ```
@@ -71,7 +71,7 @@ src/view/browser/hooks/
 - anchor previewの重複抑止、depth単位の削除、遅延timerの再設定とcleanup。
 - `sourcePopupId`の祖先anchorを、別anchor表示時に巻き込んで削除しない。
 - outside click ignore ref、兄弟popup、子孫popupへの移動。
-- 右クリックで`onSurfaceMouseDown`を呼ばない。
+- 右クリックで`onPopupMouseDown`を呼ばない。
 - リンク・中クリック後の最初のmouseleaveを抑止する。
 - `closeDisabled`のtrue→false遷移時、実DOMの`:hover`を用いてclose判定する。
 
@@ -114,9 +114,9 @@ Map化、循環ガード、parent cascadeの意味は現状から変更しない
 
 ### Phase 3: popup close behaviorの分離
 
-`popup-surface-dom.ts`へ、DOMとpopup属性に関する副作用のない処理を移す。
+`popup-dom.ts`へ、DOMとpopup属性に関する副作用のない処理を移す。
 
-- `getPopupSurfaceId`
+- `getPopupElementId`
 - `isContextMenuPopupId`
 - keep-open selector判定
 - targetがpopup branch内かどうかの判定
@@ -129,7 +129,7 @@ Map化、循環ガード、parent cascadeの意味は現状から変更しない
 - `closeDisabled`解除時の一回限り抑止
 - right / middle click、リンク操作後のclose抑止timer
 
-この段階では、イベント順序・capture/bubble・`:hover`判定・listenerの依存配列を整理しない。移動のみとし、既存の `FloatingSurface` / `ContextMenu` のprops契約を維持する。
+この段階では、イベント順序・capture/bubble・`:hover`判定・listenerの依存配列を整理しない。移動のみとし、既存の `FloatingPopup` / `ContextMenu` のprops契約を維持する。
 
 ### Phase 4: thread popup managerの分離
 
@@ -155,7 +155,7 @@ Map化、循環ガード、parent cascadeの意味は現状から変更しない
 - 既存公開型のre-export
 - 必要な場合のcompatibility wrapper
 
-`ThreadPage.tsx`、`FloatingSurface.tsx`、`ContextMenu.tsx`、`use-res-interaction-handlers.ts` のimport pathは、初回リファクタリングでは変更しない。
+`ThreadPage.tsx`、`FloatingPopup.tsx`、`ContextMenu.tsx`、`use-res-interaction-handlers.ts` のimport pathは、初回リファクタリングでは変更しない。
 
 ### Phase 6: テストの責務別整理
 

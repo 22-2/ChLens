@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
 import type { IRes } from "src/service-container";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
-import { FloatingSurface } from "src/view/browser/ui/FloatingSurface";
+import { FloatingPopup } from "src/view/browser/ui/FloatingPopup";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
 
 // --- IDポップアップ ---
@@ -33,7 +33,7 @@ export const ResPopup: React.FC<{
   isPopupDescendantOf?: (popupId: string, ancestorId: string) => boolean;
   onEnterFromDescendant?: () => void;
   /** 親popupをクリックした時に、その配下の枝だけ畳めるようにする。 */
-  onSurfaceMouseDown?: () => void;
+  onPopupMouseDown?: () => void;
   /** 子ポップアップが開いている間は外側クリック閉じを無効にする */
   disableOutsideClick?: boolean;
   /** z-indexを明示指定（省略時はCSSのデフォルト値を使用） */
@@ -63,7 +63,7 @@ export const ResPopup: React.FC<{
   popupId,
   isPopupDescendantOf,
   onEnterFromDescendant,
-  onSurfaceMouseDown,
+  onPopupMouseDown,
   disableOutsideClick,
   zIndex,
   blurredResNums,
@@ -74,13 +74,13 @@ export const ResPopup: React.FC<{
       event.stopPropagation();
       // 右クリックの mousedown では選択保護のため子孫を畳まない設計なので、
       // 選択が確定した contextmenu のこの時点で配下の子孫ポップアップを畳む。
-      onSurfaceMouseDown?.();
+      onPopupMouseDown?.();
       onResContextMenu(targetRes, event);
     },
-    [onResContextMenu, onSurfaceMouseDown],
+    [onResContextMenu, onPopupMouseDown],
   );
   return (
-    <FloatingSurface
+    <FloatingPopup
       className="res-popup"
       x={x}
       y={y}
@@ -90,9 +90,9 @@ export const ResPopup: React.FC<{
       onEnterFromDescendant={onEnterFromDescendant}
       closeDisabled={disableOutsideClick}
       onClose={onClose}
-      onSurfaceMouseDown={onSurfaceMouseDown}
-      onSurfaceMouseEnter={onMouseEnter}
-      onSurfaceMouseLeave={onMouseLeave}
+      onPopupMouseDown={onPopupMouseDown}
+      onPopupMouseEnter={onMouseEnter}
+      onPopupMouseLeave={onMouseLeave}
       // ポップアップ内のレス間マウス移動で ResBody の handleMouseLeave が起動した
       // アンカープレビュー hide タイマーをキャンセルする。mouseover はバブルするため、
       // 子孫要素への移動時も発火し、mouseenter と異なりポップアップ外からの進入に限定されない。
@@ -131,6 +131,6 @@ export const ResPopup: React.FC<{
           </div>
         </>
       )}
-    </FloatingSurface>
+    </FloatingPopup>
   );
 };

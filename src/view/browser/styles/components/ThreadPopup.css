@@ -1,4 +1,4 @@
-/* ID, reply-tree, and anchor preview surfaces share the thread popup layer. */
+/* ID, reply-tree, and anchor preview popups share the thread popup layer. */
 .res-popup {
   /* Keep popup children in the fixed thread popup layer while preserving inline coordinates. */
   position: absolute;
@@ -7,7 +7,7 @@
   min-width: min(400px, calc(100vw - 16px));
   max-width: min(600px, calc(100vw - 16px));
   max-height: 85vh;
-  background: var(--sys-color-popup-surface);
+  background: var(--sys-color-popup-background);
   border: 1px solid var(--sys-color-border);
   border-radius: var(--sys-radius-xl);
   box-shadow: var(--sys-shadow-popup);
@@ -114,7 +114,7 @@
   width: min(560px, 92vw);
   max-height: 52vh;
   pointer-events: auto;
-  background: var(--sys-color-popup-surface);
+  background: var(--sys-color-popup-background);
   border: 1px solid var(--sys-color-border);
   border-radius: var(--sys-radius-xl);
   box-shadow: var(--sys-shadow-floating);

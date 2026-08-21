@@ -1,13 +1,13 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { FloatingSurface } from "src/view/browser/ui/FloatingSurface";
+import { FloatingPopup } from "src/view/browser/ui/FloatingPopup";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 afterEach(() => {
   cleanup();
 });
 
-describe("FloatingSurface", () => {
+describe("FloatingPopup", () => {
   it("共通のpopup属性・座標・z-indexを描画する", () => {
     const getBoundingClientRect = vi
       .spyOn(HTMLElement.prototype, "getBoundingClientRect")
@@ -22,7 +22,7 @@ describe("FloatingSurface", () => {
 
     try {
       render(
-        <FloatingSurface
+        <FloatingPopup
           className="res-popup"
           x={24}
           y={36}
@@ -31,14 +31,14 @@ describe("FloatingSurface", () => {
           onClose={vi.fn()}
         >
           <span>content</span>
-        </FloatingSurface>,
+        </FloatingPopup>,
       );
 
-      const surface = screen.getByText("content").parentElement;
-      expect(surface).toHaveClass("res-popup");
-      expect(surface).toHaveAttribute("data-popup-surface", "true");
-      expect(surface).toHaveAttribute("data-popup-id", "popup-1");
-      expect(surface).toHaveStyle({ left: "24px", top: "36px", zIndex: "10042" });
+      const popup = screen.getByText("content").parentElement;
+      expect(popup).toHaveClass("res-popup");
+      expect(popup).toHaveAttribute("data-popup", "true");
+      expect(popup).toHaveAttribute("data-popup-id", "popup-1");
+      expect(popup).toHaveStyle({ left: "24px", top: "36px", zIndex: "10042" });
     } finally {
       getBoundingClientRect.mockRestore();
     }
@@ -46,34 +46,34 @@ describe("FloatingSurface", () => {
 
   it("close behaviorとrender propのmiddle click guardを共有する", () => {
     const onClose = vi.fn();
-    const onSurfaceMouseDown = vi.fn();
+    const onPopupMouseDown = vi.fn();
 
     render(
-      <FloatingSurface
+      <FloatingPopup
         className="anchor-preview"
         x={0}
         y={0}
         onClose={onClose}
-        onSurfaceMouseDown={onSurfaceMouseDown}
+        onPopupMouseDown={onPopupMouseDown}
       >
         {({ armMouseLeaveCloseSuppression }) => (
           <button type="button" onClick={armMouseLeaveCloseSuppression}>
             arm guard
           </button>
         )}
-      </FloatingSurface>,
+      </FloatingPopup>,
     );
 
-    const surface = screen.getByRole("button", { name: "arm guard" }).parentElement;
-    if (!surface) {
-      throw new Error("FloatingSurface surface was not rendered");
+    const popup = screen.getByRole("button", { name: "arm guard" }).parentElement;
+    if (!popup) {
+      throw new Error("FloatingPopup popup was not rendered");
     }
 
-    fireEvent.mouseDown(surface, { button: 0 });
-    expect(onSurfaceMouseDown).toHaveBeenCalledOnce();
+    fireEvent.mouseDown(popup, { button: 0 });
+    expect(onPopupMouseDown).toHaveBeenCalledOnce();
 
     fireEvent.click(screen.getByRole("button", { name: "arm guard" }));
-    fireEvent.mouseLeave(surface, { relatedTarget: null });
+    fireEvent.mouseLeave(popup, { relatedTarget: null });
     expect(onClose).not.toHaveBeenCalled();
   });
 });

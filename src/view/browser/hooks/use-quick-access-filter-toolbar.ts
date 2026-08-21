@@ -75,7 +75,7 @@ export function useQuickAccessFilterToolbar({
 
       // メニューやポップアップ上のホイール操作はフィルタ開閉に反映しない。
       if (
-        event.target.closest("[data-popup-surface='true']") ||
+        event.target.closest("[data-popup='true']") ||
         event.target.closest(".mini-window") ||
         event.target.closest(".media-viewer") ||
         event.target.closest(".bookmark-root-dialog")

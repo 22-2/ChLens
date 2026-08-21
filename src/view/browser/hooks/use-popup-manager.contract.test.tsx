@@ -39,43 +39,43 @@ function createAnchorRect(left = 100, bottom = 120): DOMRect {
   return { left, bottom } as DOMRect;
 }
 
-interface SurfaceContractHarnessProps {
+interface PopupContractHarnessProps {
   closeDisabled?: boolean;
   outsideClickIgnoreRefs?: Array<RefObject<HTMLElement | null>>;
   onClose: () => void;
-  onSurfaceMouseDown: () => void;
+  onPopupMouseDown: () => void;
 }
 
-function SurfaceContractHarness({
+function PopupContractHarness({
   closeDisabled,
   outsideClickIgnoreRefs,
   onClose,
-  onSurfaceMouseDown,
-}: SurfaceContractHarnessProps) {
-  const surfaceRef = useRef<HTMLDivElement>(null);
+  onPopupMouseDown,
+}: PopupContractHarnessProps) {
+  const popupRef = useRef<HTMLDivElement>(null);
   const { handleAuxClickCapture, handleMouseDownCapture, handleMouseEnter, handleMouseLeave } =
     usePopupCloseBehavior({
-      surfaceRef,
+      popupRef,
       outsideClickIgnoreRefs,
-      popupId: "surface-contract",
+      popupId: "popup-contract",
       closeDisabled,
       onClose,
-      onSurfaceMouseDown,
+      onPopupMouseDown,
     });
 
   return (
     <div>
       <div
-        ref={surfaceRef}
-        data-testid="surface"
-        data-popup-surface="true"
-        data-popup-id="surface-contract"
+        ref={popupRef}
+        data-testid="popup"
+        data-popup="true"
+        data-popup-id="popup-contract"
         onAuxClickCapture={handleAuxClickCapture}
         onMouseDownCapture={handleMouseDownCapture}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        surface
+        popup
       </div>
     </div>
   );
@@ -329,20 +329,20 @@ describe("useThreadPopupManager Phase 0 contracts", () => {
 });
 
 describe("usePopupCloseBehavior Phase 0 contracts", () => {
-  it("right clickでは枝閉じ用onSurfaceMouseDownを呼ばない", () => {
+  it("right clickでは枝閉じ用onPopupMouseDownを呼ばない", () => {
     const onClose = vi.fn();
-    const onSurfaceMouseDown = vi.fn();
-    render(<SurfaceContractHarness onClose={onClose} onSurfaceMouseDown={onSurfaceMouseDown} />);
+    const onPopupMouseDown = vi.fn();
+    render(<PopupContractHarness onClose={onClose} onPopupMouseDown={onPopupMouseDown} />);
 
-    fireEvent.mouseDown(screen.getByTestId("surface"), { button: 2 });
+    fireEvent.mouseDown(screen.getByTestId("popup"), { button: 2 });
 
-    expect(onSurfaceMouseDown).not.toHaveBeenCalled();
+    expect(onPopupMouseDown).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
   });
 
   it("outsideClickIgnoreRefs内のmousedownでは閉じず、外側では閉じる", () => {
     const onClose = vi.fn();
-    const onSurfaceMouseDown = vi.fn();
+    const onPopupMouseDown = vi.fn();
     function TriggerHarness() {
       const triggerRef = useRef<HTMLButtonElement>(null);
       return (
@@ -350,10 +350,10 @@ describe("usePopupCloseBehavior Phase 0 contracts", () => {
           <button ref={triggerRef} data-testid="ignored-trigger" type="button">
             trigger
           </button>
-          <SurfaceContractHarness
+          <PopupContractHarness
             outsideClickIgnoreRefs={[triggerRef]}
             onClose={onClose}
-            onSurfaceMouseDown={onSurfaceMouseDown}
+            onPopupMouseDown={onPopupMouseDown}
           />
         </>
       );
@@ -371,11 +371,11 @@ describe("usePopupCloseBehavior Phase 0 contracts", () => {
   it("closeDisabled解除時は実DOMの:hoverがtrueなら閉じない", () => {
     const onClose = vi.fn();
     const { rerender } = render(
-      <SurfaceContractHarness closeDisabled onClose={onClose} onSurfaceMouseDown={() => {}} />,
+      <PopupContractHarness closeDisabled onClose={onClose} onPopupMouseDown={() => {}} />,
     );
-    const surface = screen.getByTestId("surface");
-    const originalMatches = surface.matches.bind(surface);
-    Object.defineProperty(surface, "matches", {
+    const popup = screen.getByTestId("popup");
+    const originalMatches = popup.matches.bind(popup);
+    Object.defineProperty(popup, "matches", {
       configurable: true,
       value: (selector: string) => {
         if (selector === ":hover") {
@@ -386,11 +386,7 @@ describe("usePopupCloseBehavior Phase 0 contracts", () => {
     });
 
     rerender(
-      <SurfaceContractHarness
-        closeDisabled={false}
-        onClose={onClose}
-        onSurfaceMouseDown={() => {}}
-      />,
+      <PopupContractHarness closeDisabled={false} onClose={onClose} onPopupMouseDown={() => {}} />,
     );
 
     expect(onClose).not.toHaveBeenCalled();

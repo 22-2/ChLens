@@ -3,12 +3,12 @@ import React, { useRef } from "react";
 import { usePopupCloseBehavior } from "src/view/browser/hooks/use-popup-manager";
 import { useAdjustOverflow } from "src/view/browser/utils/use-adjust-overflow";
 
-export interface FloatingSurfaceRenderProps {
+export interface FloatingPopupRenderProps {
   /** 子要素のリンク操作で mouseleave close を一時的に抑止する。 */
   armMouseLeaveCloseSuppression: () => void;
 }
 
-export interface FloatingSurfaceProps {
+export interface FloatingPopupProps {
   className: string;
   x: number;
   y: number;
@@ -20,20 +20,20 @@ export interface FloatingSurfaceProps {
   closeOnMouseLeave?: boolean;
   closeOnOutsideClick?: boolean;
   onClose: () => void;
-  onSurfaceMouseDown?: () => void;
-  onSurfaceMouseEnter?: () => void;
-  onSurfaceMouseLeave?: () => void;
+  onPopupMouseDown?: () => void;
+  onPopupMouseEnter?: () => void;
+  onPopupMouseLeave?: () => void;
   onMouseOver?: MouseEventHandler<HTMLDivElement>;
-  children: ReactNode | ((props: FloatingSurfaceRenderProps) => ReactNode);
+  children: ReactNode | ((props: FloatingPopupRenderProps) => ReactNode);
 }
 
 /**
- * Thread popupで共有する座標付きsurface。
+ * Thread popupで共有する座標付きの表示要素。
  *
  * popupの親子関係や閉じ方はfeature側へ漏らさず、DOM属性・座標補正・
  * mouse lifecycleをここへ集約する。内容の描画だけはrender propで各featureが担当する。
  */
-export const FloatingSurface: React.FC<FloatingSurfaceProps> = ({
+export const FloatingPopup: React.FC<FloatingPopupProps> = ({
   className,
   x,
   y,
@@ -45,13 +45,13 @@ export const FloatingSurface: React.FC<FloatingSurfaceProps> = ({
   closeOnMouseLeave = true,
   closeOnOutsideClick = true,
   onClose,
-  onSurfaceMouseDown,
-  onSurfaceMouseEnter,
-  onSurfaceMouseLeave,
+  onPopupMouseDown,
+  onPopupMouseEnter,
+  onPopupMouseLeave,
   onMouseOver,
   children,
 }) => {
-  const surfaceRef = useRef<HTMLDivElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
   const {
     armMouseLeaveCloseSuppression,
     handleAuxClickCapture,
@@ -59,7 +59,7 @@ export const FloatingSurface: React.FC<FloatingSurfaceProps> = ({
     handleMouseEnter,
     handleMouseLeave,
   } = usePopupCloseBehavior({
-    surfaceRef,
+    popupRef,
     popupId,
     isPopupDescendantOf,
     onEnterFromDescendant,
@@ -67,21 +67,21 @@ export const FloatingSurface: React.FC<FloatingSurfaceProps> = ({
     closeOnMouseLeave,
     closeOnOutsideClick,
     onClose,
-    onSurfaceMouseDown,
-    onSurfaceMouseEnter,
-    onSurfaceMouseLeave,
+    onPopupMouseDown,
+    onPopupMouseEnter,
+    onPopupMouseLeave,
   });
 
-  // position:absolute のpopupをviewport内へ収める補正は全surfaceで共通化する。
-  useAdjustOverflow(surfaceRef);
+  // position:absolute のpopupをviewport内へ収める補正は全popupで共通化する。
+  useAdjustOverflow(popupRef);
 
   const content =
     typeof children === "function" ? children({ armMouseLeaveCloseSuppression }) : children;
 
   return (
     <div
-      ref={surfaceRef}
-      data-popup-surface="true"
+      ref={popupRef}
+      data-popup="true"
       data-popup-id={popupId}
       className={className}
       style={{ left: x, top: y, ...(zIndex != null && { zIndex }) }}
@@ -96,4 +96,4 @@ export const FloatingSurface: React.FC<FloatingSurfaceProps> = ({
   );
 };
 
-FloatingSurface.displayName = "FloatingSurface";
+FloatingPopup.displayName = "FloatingPopup";

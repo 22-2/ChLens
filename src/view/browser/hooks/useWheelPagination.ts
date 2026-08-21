@@ -65,7 +65,7 @@ export function useWheelPagination({
       const eventTarget = event.target;
       if (
         eventTarget instanceof Element &&
-        eventTarget.closest('[data-popup-surface="true"], .context-menu, .mini-window')
+        eventTarget.closest('[data-popup="true"], .context-menu, .mini-window')
       ) {
         return;
       }

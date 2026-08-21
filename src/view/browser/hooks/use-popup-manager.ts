@@ -16,8 +16,8 @@ import {
   ANCHOR_PREVIEW_HIDE_DELAY_MS,
   ANCHOR_PREVIEW_MAX_WIDTH,
   ANCHOR_PREVIEW_OFFSET,
-  POPUP_SURFACE_ID_ATTRIBUTE,
-  POPUP_SURFACE_SELECTOR,
+  POPUP_ID_ATTRIBUTE,
+  POPUP_SELECTOR,
 } from "src/view/browser/utils/constants";
 import { getPopupViewportBounds } from "src/view/browser/utils/use-adjust-overflow";
 import { getEventTargetElement } from "src/view/browser/utils/utils";
@@ -93,7 +93,7 @@ import { getEventTargetElement } from "src/view/browser/utils/utils";
 const DEFAULT_POPUP_SCOPE_ID = "default";
 const EMPTY_POPUPS: PopupItem[] = [];
 // コンテキストメニューの項目操作は親ポップアップの枝を畳む対象外にする。
-// mousedown は親surfaceのcaptureにも届くため、除外しないとレスツリー内の
+// mousedown は親popupのcaptureにも届くため、除外しないとレスツリー内の
 // 子レス用メニューをクリックしただけで親ツリーまで閉じてしまう。
 const POPUP_KEEP_OPEN_TARGET_SELECTOR =
   "a, .res__link, .res__thumb, .res__media-embed, .context-menu";
@@ -103,10 +103,10 @@ function isContextMenuPopupId(popupId: string | null): boolean {
   return popupId?.startsWith("contextMenu-") ?? false;
 }
 
-function getPopupSurfaceId(target: EventTarget | null): string | null {
+function getPopupElementId(target: EventTarget | null): string | null {
   const targetElement = getEventTargetElement(target);
-  const popupSurface = targetElement?.closest(POPUP_SURFACE_SELECTOR);
-  return popupSurface?.getAttribute(POPUP_SURFACE_ID_ATTRIBUTE) ?? null;
+  const popupElement = targetElement?.closest(POPUP_SELECTOR);
+  return popupElement?.getAttribute(POPUP_ID_ATTRIBUTE) ?? null;
 }
 
 export interface PopupCoreResult {
@@ -122,7 +122,7 @@ export interface PopupCoreResult {
 }
 
 interface PopupCloseBehaviorParams {
-  surfaceRef?: RefObject<HTMLElement | null>;
+  popupRef?: RefObject<HTMLElement | null>;
   outsideClickIgnoreRefs?: Array<RefObject<HTMLElement | null>>;
   popupId?: string;
   isPopupDescendantOf?: (popupId: string, ancestorId: string) => boolean;
@@ -131,9 +131,9 @@ interface PopupCloseBehaviorParams {
   closeOnMouseLeave?: boolean;
   closeOnOutsideClick?: boolean;
   onClose: () => void;
-  onSurfaceMouseDown?: () => void;
-  onSurfaceMouseEnter?: () => void;
-  onSurfaceMouseLeave?: () => void;
+  onPopupMouseDown?: () => void;
+  onPopupMouseEnter?: () => void;
+  onPopupMouseLeave?: () => void;
 }
 
 interface PopupCloseBehaviorResult {
@@ -266,7 +266,7 @@ export function usePopupCore(scopeId = DEFAULT_POPUP_SCOPE_ID): PopupCoreResult 
 }
 
 export function usePopupCloseBehavior({
-  surfaceRef,
+  popupRef,
   outsideClickIgnoreRefs,
   popupId,
   isPopupDescendantOf,
@@ -275,16 +275,16 @@ export function usePopupCloseBehavior({
   closeOnMouseLeave = true,
   closeOnOutsideClick = true,
   onClose,
-  onSurfaceMouseDown,
-  onSurfaceMouseEnter,
-  onSurfaceMouseLeave,
+  onPopupMouseDown,
+  onPopupMouseEnter,
+  onPopupMouseLeave,
 }: PopupCloseBehaviorParams): PopupCloseBehaviorResult {
   const [isHovering, setIsHovering] = useState(false);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
   const suppressNextDisableReleaseCloseRef = useRef(false);
 
-  // close判定とmouseleave抑止は同じsurfaceイベントの順序に依存するため、
+  // close判定とmouseleave抑止は同じpopupイベントの順序に依存するため、
   // 別hookを経由せず、このhook内で一体として管理する。
   const suppressCloseUntilRef = useRef(0);
   const suppressNextMouseLeaveRef = useRef(false);
@@ -307,15 +307,15 @@ export function usePopupCloseBehavior({
       }
 
       // 右クリック（button=2）は contextmenu イベントで処理するため、
-      // onSurfaceMouseDown を呼ばない。呼ぶと Zustand 状態更新が
+      // onPopupMouseDown を呼ばない。呼ぶと Zustand 状態更新が
       // contextmenu より先に同期レンダリングされ、テキスト選択が消えてしまう。
       if (event.button === 2) {
         return;
       }
 
-      onSurfaceMouseDown?.();
+      onPopupMouseDown?.();
     },
-    [armMouseLeaveCloseSuppression, onSurfaceMouseDown],
+    [armMouseLeaveCloseSuppression, onPopupMouseDown],
   );
 
   const shouldSuppressMouseLeaveClose = useCallback(() => {
@@ -344,7 +344,7 @@ export function usePopupCloseBehavior({
 
   const isPopupBranchTarget = useCallback(
     (target: EventTarget | null) => {
-      const targetPopupId = getPopupSurfaceId(target);
+      const targetPopupId = getPopupElementId(target);
       if (!popupId || !targetPopupId) {
         return false;
       }
@@ -371,7 +371,7 @@ export function usePopupCloseBehavior({
   useEffect(() => {
     const wasDisabled = prevCloseDisabledRef.current;
     prevCloseDisabledRef.current = !!closeDisabled;
-    const isActuallyHovering = surfaceRef?.current?.matches(":hover") ?? isHovering;
+    const isActuallyHovering = popupRef?.current?.matches(":hover") ?? isHovering;
     if (!closeOnMouseLeave) {
       // コンテキストメニューは outside click でのみ閉じる仕様なので、
       // 子popup終了時の disable 復帰で親まで自動 close しない。
@@ -389,11 +389,11 @@ export function usePopupCloseBehavior({
     if (wasDisabled && !closeDisabled && !isActuallyHovering) {
       onCloseRef.current();
     }
-  }, [closeDisabled, closeOnMouseLeave, isHovering, surfaceRef]);
+  }, [closeDisabled, closeOnMouseLeave, isHovering, popupRef]);
 
   useEffect(() => {
     const handleOutsideMouseDown = (event: MouseEvent) => {
-      const targetPopupId = getPopupSurfaceId(event.target);
+      const targetPopupId = getPopupElementId(event.target);
       if (
         popupId &&
         targetPopupId &&
@@ -415,13 +415,13 @@ export function usePopupCloseBehavior({
         return;
       }
 
-      if (event.target instanceof Node && surfaceRef?.current?.contains(event.target)) {
+      if (event.target instanceof Node && popupRef?.current?.contains(event.target)) {
         return;
       }
 
       const target = getEventTargetElement(event.target);
-      const popupSurface = target?.closest(POPUP_SURFACE_SELECTOR);
-      if (!popupSurface) {
+      const popupElement = target?.closest(POPUP_SELECTOR);
+      if (!popupElement) {
         onCloseRef.current();
         return;
       }
@@ -438,33 +438,33 @@ export function usePopupCloseBehavior({
     };
     document.addEventListener("mousedown", handleOutsideMouseDown);
     return () => document.removeEventListener("mousedown", handleOutsideMouseDown);
-  }, [closeOnOutsideClick, isPopupBranchTarget, isWithinIgnoredOutsideTarget, popupId, surfaceRef]);
+  }, [closeOnOutsideClick, isPopupBranchTarget, isWithinIgnoredOutsideTarget, popupId, popupRef]);
 
   const handleMouseEnter = (event: React.MouseEvent<HTMLElement>) => {
     setIsHovering(true);
-    const relatedPopupId = getPopupSurfaceId(event.relatedTarget);
+    const relatedPopupId = getPopupElementId(event.relatedTarget);
     if (popupId && isPopupDescendantOf?.(relatedPopupId ?? "", popupId)) {
       if (isContextMenuPopupId(relatedPopupId)) {
         // コンテキストメニューは outside click まで維持したいので、
         // 子メニューから親へ戻っても branch を自動で閉じない。
-        onSurfaceMouseEnter?.();
+        onPopupMouseEnter?.();
         return;
       }
       // 親へ戻った瞬間にその親配下の枝を畳むと、子から親へ戻った後に古い子孫が残らない。
       suppressNextDisableReleaseCloseRef.current = true;
       onEnterFromDescendant?.();
     }
-    onSurfaceMouseEnter?.();
+    onPopupMouseEnter?.();
   };
 
   const handleMouseLeave = (event: React.MouseEvent<HTMLElement>) => {
     if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) {
       return;
     }
-    const relatedPopupId = getPopupSurfaceId(event.relatedTarget);
+    const relatedPopupId = getPopupElementId(event.relatedTarget);
     if (popupId && relatedPopupId) {
       if (isPopupBranchTarget(event.relatedTarget)) {
-        // 子孫popupへ移動した時も実際には親surfaceを離れているので hover だけは解除し、
+        // 子孫popupへ移動した時も実際には親popupを離れているので hover だけは解除し、
         // 子が閉じた瞬間に「まだ親を指しているか」を closeDisabled の復帰判定で見直せるようにする。
         setIsHovering(false);
         return;
@@ -473,7 +473,7 @@ export function usePopupCloseBehavior({
     if (
       !popupId &&
       event.relatedTarget instanceof Element &&
-      event.relatedTarget.closest(POPUP_SURFACE_SELECTOR)
+      event.relatedTarget.closest(POPUP_SELECTOR)
     ) {
       return;
     }
@@ -481,7 +481,7 @@ export function usePopupCloseBehavior({
       return;
     }
     // 子孫へ抜ける時だけ枝を維持し、それ以外の遷移は種類に関係なく現在のpopupを閉じる。
-    onSurfaceMouseLeave?.();
+    onPopupMouseLeave?.();
     setIsHovering(false);
     if (!closeOnMouseLeave) {
       return;

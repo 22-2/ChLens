@@ -215,7 +215,7 @@ function PopupSequenceHarness({
           popupId={anchorPreview.id}
           isPopupDescendantOf={isPopupDescendantOf}
           onEnterFromDescendant={() => closePopupChildren(anchorPreview.id)}
-          onSurfaceMouseDown={() => closePopupChildren(anchorPreview.id)}
+          onPopupMouseDown={() => closePopupChildren(anchorPreview.id)}
           onResContextMenu={(_targetRes, event) => {
             event.preventDefault();
             event.stopPropagation();
@@ -248,7 +248,7 @@ function PopupSequenceHarness({
           popupId={treePopup.id}
           isPopupDescendantOf={isPopupDescendantOf}
           onEnterFromDescendant={() => closePopupChildren(treePopup.id)}
-          onSurfaceMouseDown={() => closePopupChildren(treePopup.id)}
+          onPopupMouseDown={() => closePopupChildren(treePopup.id)}
           onResContextMenu={(_targetRes, event) => {
             event.preventDefault();
             event.stopPropagation();
@@ -275,7 +275,7 @@ function PopupSequenceHarness({
           popupId={menu.id}
           isPopupDescendantOf={isPopupDescendantOf}
           onEnterFromDescendant={() => closePopupChildren(menu.id)}
-          onSurfaceMouseDown={() => closePopupChildren(menu.id)}
+          onPopupMouseDown={() => closePopupChildren(menu.id)}
         />
       ))}
     </div>
@@ -371,7 +371,7 @@ function PopupIdChainHarness() {
           popupId={treePopup.id}
           isPopupDescendantOf={isPopupDescendantOf}
           onEnterFromDescendant={() => closePopupChildren(treePopup.id)}
-          onSurfaceMouseDown={() => closePopupChildren(treePopup.id)}
+          onPopupMouseDown={() => closePopupChildren(treePopup.id)}
           onResContextMenu={() => {}}
           disableOutsideClick={index < treePopups.length - 1 || hasPopupChild(treePopup.id)}
           zIndex={treePopup.z}
@@ -400,7 +400,7 @@ function PopupIdChainHarness() {
           popupId={item.id}
           isPopupDescendantOf={isPopupDescendantOf}
           onEnterFromDescendant={() => closePopupChildren(item.id)}
-          onSurfaceMouseDown={() => closePopupChildren(item.id)}
+          onPopupMouseDown={() => closePopupChildren(item.id)}
           onResContextMenu={() => {}}
           disableOutsideClick={hasPopupChild(item.id)}
           zIndex={item.z}
@@ -552,8 +552,8 @@ describe("usePopupCore popup behavior", () => {
     fireEvent.mouseEnter(anchorPreview);
     fireEvent.click(within(anchorPreview).getByText("返信(1)"));
 
-    const popupSurfaces = document.querySelectorAll(".res-popup");
-    const nestedPopup = popupSurfaces[1] as HTMLElement;
+    const popups = document.querySelectorAll(".res-popup");
+    const nestedPopup = popups[1] as HTMLElement;
     fireEvent.mouseEnter(nestedPopup);
     fireEvent.mouseLeave(anchorPreview, { relatedTarget: nestedPopup });
 
@@ -620,7 +620,7 @@ describe("usePopupCore popup behavior", () => {
     const onClose = vi.fn();
     render(
       <>
-        <div data-popup-surface="true" data-popup-id="tree-1">
+        <div data-popup="true" data-popup-id="tree-1">
           parent popup
         </div>
         <ContextMenu
@@ -634,8 +634,8 @@ describe("usePopupCore popup behavior", () => {
     );
 
     const menu = document.querySelector(".context-menu") as HTMLElement;
-    const parentSurface = screen.getByText("parent popup");
-    fireEvent.mouseLeave(menu, { relatedTarget: parentSurface });
+    const parentPopup = screen.getByText("parent popup");
+    fireEvent.mouseLeave(menu, { relatedTarget: parentPopup });
     expect(onClose).not.toHaveBeenCalled();
 
     fireEvent.mouseDown(document.body);
@@ -1033,26 +1033,26 @@ describe("ReplyTreePopup close behavior", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it("兄弟のpopup surfaceへマウス移動しても close しない", () => {
+  it("兄弟のpopupへマウス移動しても close しない", () => {
     const onClose = vi.fn();
     render(
       <>
         <ReplyTreePopup {...TREE_BASE_PROPS} disableOutsideClick={false} onClose={onClose} />
-        <div data-popup-surface="true">menu</div>
+        <div data-popup="true">menu</div>
       </>,
     );
 
     const popup = document.querySelector(".res-popup") as HTMLElement;
-    const siblingSurface = screen.getByText("menu");
+    const siblingPopup = screen.getByText("menu");
 
     act(() => {
-      fireEvent.mouseLeave(popup, { relatedTarget: siblingSurface });
+      fireEvent.mouseLeave(popup, { relatedTarget: siblingPopup });
     });
 
     expect(onClose).not.toHaveBeenCalled();
   });
 
-  it("兄弟のpopup surfaceへマウス移動しても onMouseLeave callback を流さない", () => {
+  it("兄弟のpopupへマウス移動しても onMouseLeave callback を流さない", () => {
     const onMouseLeave = vi.fn();
     render(
       <>
@@ -1062,15 +1062,15 @@ describe("ReplyTreePopup close behavior", () => {
           onClose={() => {}}
           onMouseLeave={onMouseLeave}
         />
-        <div data-popup-surface="true">menu</div>
+        <div data-popup="true">menu</div>
       </>,
     );
 
     const popup = document.querySelector(".res-popup") as HTMLElement;
-    const siblingSurface = screen.getByText("menu");
+    const siblingPopup = screen.getByText("menu");
 
     act(() => {
-      fireEvent.mouseLeave(popup, { relatedTarget: siblingSurface });
+      fireEvent.mouseLeave(popup, { relatedTarget: siblingPopup });
     });
 
     expect(onMouseLeave).not.toHaveBeenCalled();
@@ -1185,20 +1185,20 @@ describe("AnchorPreview child popup behavior", () => {
     expect(onMouseLeave).toHaveBeenCalledOnce();
   });
 
-  it("兄弟のpopup surfaceへマウス移動しても close しない", () => {
+  it("兄弟のpopupへマウス移動しても close しない", () => {
     const onMouseLeave = vi.fn();
     render(
       <>
         <AnchorPreview {...ANCHOR_BASE_PROPS} onMouseLeave={onMouseLeave} />
-        <div data-popup-surface="true">menu</div>
+        <div data-popup="true">menu</div>
       </>,
     );
 
     const preview = document.querySelector(".anchor-preview") as HTMLElement;
-    const siblingSurface = screen.getByText("menu");
+    const siblingPopup = screen.getByText("menu");
 
     act(() => {
-      fireEvent.mouseLeave(preview, { relatedTarget: siblingSurface });
+      fireEvent.mouseLeave(preview, { relatedTarget: siblingPopup });
     });
 
     expect(onMouseLeave).not.toHaveBeenCalled();
@@ -1210,20 +1210,20 @@ describe("ResPopup mouseleave behavior", () => {
     cleanup();
   });
 
-  it("兄弟のpopup surfaceへマウス移動しても onMouseLeave callback を流さない", () => {
+  it("兄弟のpopupへマウス移動しても onMouseLeave callback を流さない", () => {
     const onMouseLeave = vi.fn();
     render(
       <>
         <ResPopup {...RES_BASE_PROPS} onClose={() => {}} onMouseLeave={onMouseLeave} />
-        <div data-popup-surface="true">menu</div>
+        <div data-popup="true">menu</div>
       </>,
     );
 
     const popup = document.querySelector(".res-popup") as HTMLElement;
-    const siblingSurface = screen.getByText("menu");
+    const siblingPopup = screen.getByText("menu");
 
     act(() => {
-      fireEvent.mouseLeave(popup, { relatedTarget: siblingSurface });
+      fireEvent.mouseLeave(popup, { relatedTarget: siblingPopup });
     });
 
     expect(onMouseLeave).not.toHaveBeenCalled();

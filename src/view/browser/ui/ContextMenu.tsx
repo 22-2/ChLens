@@ -26,7 +26,7 @@ interface Props {
   isPopupDescendantOf?: (popupId: string, ancestorId: string) => boolean;
   onEnterFromDescendant?: () => void;
   onMouseEnter?: () => void;
-  onSurfaceMouseDown?: () => void;
+  onPopupMouseDown?: () => void;
   closeDisabled?: boolean;
   zIndex?: number;
 }
@@ -43,7 +43,7 @@ export const ContextMenu: React.FC<Props> = ({
   isPopupDescendantOf,
   onEnterFromDescendant,
   onMouseEnter,
-  onSurfaceMouseDown,
+  onPopupMouseDown,
   closeDisabled,
   zIndex,
 }) => {
@@ -51,7 +51,7 @@ export const ContextMenu: React.FC<Props> = ({
   const triggerElementRef = useRef<HTMLSpanElement>(null);
   const { handleAuxClickCapture, handleMouseDownCapture, handleMouseEnter, handleMouseLeave } =
     usePopupCloseBehavior({
-      surfaceRef: menuRef,
+      popupRef: menuRef,
       outsideClickIgnoreRefs: triggerRef ? [triggerRef] : undefined,
       popupId,
       isPopupDescendantOf,
@@ -60,8 +60,8 @@ export const ContextMenu: React.FC<Props> = ({
       // コンテキストメニューは hover/mouseleave で閉じず、Radixのdismissとoutside clickだけで閉じる。
       closeOnMouseLeave: false,
       onClose,
-      onSurfaceMouseDown,
-      onSurfaceMouseEnter: onMouseEnter,
+      onPopupMouseDown,
+      onPopupMouseEnter: onMouseEnter,
     });
 
   const visibleItems = useMemo(() => items.filter((item) => item.separator || item.label), [items]);
@@ -71,9 +71,7 @@ export const ContextMenu: React.FC<Props> = ({
       return false;
     }
 
-    const targetPopupId = target
-      .closest('[data-popup-surface="true"]')
-      ?.getAttribute("data-popup-id");
+    const targetPopupId = target.closest('[data-popup="true"]')?.getAttribute("data-popup-id");
     return (
       targetPopupId === popupId ||
       (targetPopupId != null && isPopupDescendantOf?.(targetPopupId, popupId) === true)
@@ -142,7 +140,7 @@ export const ContextMenu: React.FC<Props> = ({
       >
         <div
           ref={menuRef}
-          data-popup-surface="true"
+          data-popup="true"
           data-popup-id={popupId}
           className="context-menu"
           // Content の配置は Radix が contextmenu の clientX/clientY を基準に行う。

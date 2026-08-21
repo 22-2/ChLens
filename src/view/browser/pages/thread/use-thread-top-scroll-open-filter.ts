@@ -45,11 +45,11 @@ export function useThreadTopScrollOpenFilter({
       }
 
       // メニューやポップアップ上のホイール操作はフィルタ開閉に反映しない。
-      // ポップアップは data-popup-surface="true" 属性を持ち、
+      // ポップアップは data-popup="true" 属性を持ち、
       // その他オーバーレイ要素も独自のスクロール挙動を持つため除外する。
       if (
         event.target instanceof Element &&
-        (event.target.closest("[data-popup-surface='true']") ||
+        (event.target.closest("[data-popup='true']") ||
           event.target.closest(".mini-window") ||
           event.target.closest(".media-viewer") ||
           event.target.closest(".bookmark-root-dialog"))

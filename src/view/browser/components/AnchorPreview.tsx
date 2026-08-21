@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
 import type { IRes } from "src/service-container";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
-import { FloatingSurface } from "src/view/browser/ui/FloatingSurface";
+import { FloatingPopup } from "src/view/browser/ui/FloatingPopup";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
 
 export interface AnchorPreviewProps {
@@ -27,7 +27,7 @@ export interface AnchorPreviewProps {
   isPopupDescendantOf?: (popupId: string, ancestorId: string) => boolean;
   onEnterFromDescendant?: () => void;
   /** 親popup自体を触った時は、このpreview配下の枝だけ閉じ直せるようにする。 */
-  onSurfaceMouseDown?: () => void;
+  onPopupMouseDown?: () => void;
   /** 子メニューも親子スタックへ載せ、参照プレビューの早閉じを防ぐ。 */
   onResContextMenu: (targetRes: IRes, event: React.MouseEvent) => void;
   hasChildPopup?: boolean;
@@ -60,7 +60,7 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
   popupId,
   isPopupDescendantOf,
   onEnterFromDescendant,
-  onSurfaceMouseDown,
+  onPopupMouseDown,
   onResContextMenu,
   hasChildPopup,
   zIndex,
@@ -72,13 +72,13 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
       event.stopPropagation();
       // 右クリックの mousedown では選択保護のため子孫を畳まない設計なので、
       // 選択が確定した contextmenu のこの時点で配下の子孫ポップアップを畳む。
-      onSurfaceMouseDown?.();
+      onPopupMouseDown?.();
       onResContextMenu(targetRes, event);
     },
-    [onResContextMenu, onSurfaceMouseDown],
+    [onResContextMenu, onPopupMouseDown],
   );
   return (
-    <FloatingSurface
+    <FloatingPopup
       className="anchor-preview"
       x={x}
       y={y}
@@ -88,8 +88,8 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
       onEnterFromDescendant={onEnterFromDescendant}
       closeDisabled={hasChildPopup}
       onClose={onMouseLeave}
-      onSurfaceMouseDown={onSurfaceMouseDown}
-      onSurfaceMouseEnter={onMouseEnter}
+      onPopupMouseDown={onPopupMouseDown}
+      onPopupMouseEnter={onMouseEnter}
     >
       {({ armMouseLeaveCloseSuppression }) => (
         <>
@@ -120,7 +120,7 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
           </div>
         </>
       )}
-    </FloatingSurface>
+    </FloatingPopup>
   );
 };
 AnchorPreview.displayName = "AnchorPreview";

@@ -176,8 +176,8 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
             const depth = anchorPreviewDepthByIdRef.current.get(anchorPreview.id) ?? 0;
             onAnchorLeave(depth);
           })}
-          onSurfaceMouseDown={getStablePopupHandler(
-            `surface-mouse-down:${anchorPreview.id}`,
+          onPopupMouseDown={getStablePopupHandler(
+            `popup-mouse-down:${anchorPreview.id}`,
             () => () => onClosePopupChildren(anchorPreview.id),
           )}
           onResContextMenu={getStablePopupHandler(`res-context-menu:${anchorPreview.id}`, () =>
@@ -221,8 +221,8 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
             `enter-from-descendant:${idPopup.id}`,
             () => () => onClosePopupChildren(idPopup.id),
           )}
-          onSurfaceMouseDown={getStablePopupHandler(
-            `surface-mouse-down:${idPopup.id}`,
+          onPopupMouseDown={getStablePopupHandler(
+            `popup-mouse-down:${idPopup.id}`,
             () => () => onClosePopupChildren(idPopup.id),
           )}
           onResContextMenu={getStablePopupHandler(`res-context-menu:${idPopup.id}`, () =>
@@ -277,8 +277,8 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
             `enter-from-descendant:${treePopup.id}`,
             () => () => onClosePopupChildren(treePopup.id),
           )}
-          onSurfaceMouseDown={getStablePopupHandler(
-            `surface-mouse-down:${treePopup.id}`,
+          onPopupMouseDown={getStablePopupHandler(
+            `popup-mouse-down:${treePopup.id}`,
             () => () => onClosePopupChildren(treePopup.id),
           )}
           onResContextMenu={getStablePopupHandler(`res-context-menu:${treePopup.id}`, () =>
@@ -322,8 +322,8 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
             `enter-from-descendant:${menu.id}`,
             () => () => onClosePopupChildren(menu.id),
           )}
-          onSurfaceMouseDown={getStablePopupHandler(
-            `surface-mouse-down:${menu.id}`,
+          onPopupMouseDown={getStablePopupHandler(
+            `popup-mouse-down:${menu.id}`,
             () => () => onClosePopupChildren(menu.id),
           )}
           closeDisabled={hasPopupChild(menu.id)}

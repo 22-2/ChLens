@@ -72,7 +72,7 @@
   --sys-color-scrim: var(--ref-color-alpha-black-70);
   --sys-color-table-heading-bg: var(--ref-color-neutral-50);
   --sys-color-table-heading-border: var(--ref-color-neutral-1000);
-  --sys-color-popup-surface: var(--ref-color-neutral-0);
+  --sys-color-popup-background: var(--ref-color-neutral-0);
   --sys-color-popup-title-bg: var(--ref-color-neutral-50);
   --sys-color-popup-hover-bg: var(--ref-color-neutral-1000);
   --sys-color-table-row-border: var(--ref-color-neutral-75);
@@ -161,7 +161,7 @@
   --sys-color-scrim: var(--ref-color-alpha-black-70);
   --sys-color-table-heading-bg: var(--ref-color-dark-neutral-50);
   --sys-color-table-heading-border: var(--ref-color-dark-neutral-300);
-  --sys-color-popup-surface: var(--ref-color-dark-neutral-50);
+  --sys-color-popup-background: var(--ref-color-dark-neutral-50);
   --sys-color-popup-title-bg: var(--ref-color-dark-neutral-100);
   --sys-color-popup-hover-bg: var(--ref-color-dark-neutral-100);
   --sys-color-table-row-border: var(--ref-color-dark-neutral-300);
