@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vite-plus/test";
 import { NgBadge } from "src/view/browser/components/NgBadge";
+import { describe, expect, it } from "vite-plus/test";
 
 describe("NgBadge", () => {
   it("ホバー時に一致したNGルールを共通ツールチップで表示する", async () => {

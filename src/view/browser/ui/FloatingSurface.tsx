@@ -18,6 +18,7 @@ export interface FloatingSurfaceProps {
   onEnterFromDescendant?: () => void;
   closeDisabled?: boolean;
   closeOnMouseLeave?: boolean;
+  closeOnOutsideClick?: boolean;
   onClose: () => void;
   onSurfaceMouseDown?: () => void;
   onSurfaceMouseEnter?: () => void;
@@ -42,6 +43,7 @@ export const FloatingSurface: React.FC<FloatingSurfaceProps> = ({
   onEnterFromDescendant,
   closeDisabled,
   closeOnMouseLeave = true,
+  closeOnOutsideClick = true,
   onClose,
   onSurfaceMouseDown,
   onSurfaceMouseEnter,
@@ -63,6 +65,7 @@ export const FloatingSurface: React.FC<FloatingSurfaceProps> = ({
     onEnterFromDescendant,
     closeDisabled,
     closeOnMouseLeave,
+    closeOnOutsideClick,
     onClose,
     onSurfaceMouseDown,
     onSurfaceMouseEnter,

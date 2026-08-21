@@ -204,6 +204,38 @@ describe("ReplyTreePopup", () => {
     expect(writeText.mock.calls[0]?.[0]).toContain("https://example.com/test/read.cgi/board/123/");
   });
 
+  it("返信ツリーメニューからピン留めを切り替えられる", () => {
+    const onTogglePinned = vi.fn();
+    const { rerender } = render(
+      <ReplyTreePopup {...BASE_PROPS} pinned={false} onTogglePinned={onTogglePinned} />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "返信ツリーメニュー" }));
+    const pinButton = screen.getByRole("button", { name: "ピン留め" });
+    expect(pinButton.querySelector("svg")).toHaveClass("lucide-pin");
+    fireEvent.click(pinButton);
+    expect(onTogglePinned).toHaveBeenCalledOnce();
+
+    rerender(<ReplyTreePopup {...BASE_PROPS} pinned onTogglePinned={onTogglePinned} />);
+    fireEvent.click(screen.getByRole("button", { name: "返信ツリーメニュー" }));
+    expect(screen.getByRole("button", { name: "ピン留めを解除" }).querySelector("svg")).toHaveClass(
+      "lucide-pin-off",
+    );
+  });
+
+  it("ピン留め中はマウス離脱や外側クリックで閉じない", () => {
+    const onClose = vi.fn();
+    const { container: rendered } = render(
+      <ReplyTreePopup {...BASE_PROPS} pinned onClose={onClose} />,
+    );
+    const popup = rendered.querySelector(".res-popup") as HTMLElement;
+
+    fireEvent.mouseLeave(popup, { relatedTarget: document.body });
+    fireEvent.mouseDown(document.body);
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it("返信ツリー専用メニューから画像としてコピーできる", async () => {
     render(<ReplyTreePopup {...BASE_PROPS} />);
 

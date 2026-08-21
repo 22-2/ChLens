@@ -55,6 +55,7 @@ interface PopupCollectionSlice {
   closePopupByIdInScope: (scopeId: string, id: string) => void;
   closeAllPopupsInScope: (scopeId: string) => void;
   closePopupsByPredicateInScope: (scopeId: string, predicate: (item: PopupItem) => boolean) => void;
+  toggleTreePopupPinnedInScope: (scopeId: string, popupId: string) => void;
 }
 
 interface PopupGraphSlice {
@@ -238,6 +239,31 @@ const createPopupCollectionSlice: StateCreator<PopupStoreState, [], [], PopupCol
       };
     });
   },
+  toggleTreePopupPinnedInScope: (scopeId, popupId) => {
+    set((state) => {
+      const currentScope = state.scopes[scopeId];
+      if (!currentScope) return state;
+
+      return {
+        scopes: {
+          ...state.scopes,
+          [scopeId]: {
+            ...currentScope,
+            popups: currentScope.popups.map((item) => {
+              if (item.id !== popupId || item.type !== "tree") return item;
+              const pinned = !item.payload.pinned;
+              return {
+                ...item,
+                // 親popupが閉じても固定したツリーを巻き込まないよう、固定時はrootへ昇格する。
+                parentId: pinned ? undefined : item.parentId,
+                payload: { ...item.payload, pinned },
+              };
+            }),
+          },
+        },
+      };
+    });
+  },
 });
 
 const createPopupGraphSlice: StateCreator<PopupStoreState, [], [], PopupGraphSlice> = (
@@ -245,8 +271,11 @@ const createPopupGraphSlice: StateCreator<PopupStoreState, [], [], PopupGraphSli
   get,
 ) => ({
   closeNonContextPopupsInScope: (scopeId) => {
-    // スレ本文へ戻る時はメニューだけ残し、popup本体の枝をまとめて落とせるようにする。
-    get().closePopupsByPredicateInScope(scopeId, (item) => item.type !== "contextMenu");
+    // 固定した返信ツリーは本文操作後も残し、それ以外のpopup本体だけを閉じる。
+    get().closePopupsByPredicateInScope(
+      scopeId,
+      (item) => item.type !== "contextMenu" && !(item.type === "tree" && item.payload.pinned),
+    );
   },
   closePopupChildrenInScope: (scopeId, popupId) => {
     // root を残したまま branch をリセットしたいので、popup 自身ではなく direct child を起点に閉じる。
@@ -277,6 +306,7 @@ export interface PopupManagerResult {
   closeNonContextPopups: () => void;
   closePopupChildren: (popupId: string) => void;
   isPopupDescendantOf: (popupId: string, ancestorId: string) => boolean;
+  toggleTreePopupPinned: (popupId: string) => void;
 }
 
 interface PopupSurfaceLifecycleParams {
@@ -287,6 +317,7 @@ interface PopupSurfaceLifecycleParams {
   onEnterFromDescendant?: () => void;
   closeDisabled?: boolean;
   closeOnMouseLeave?: boolean;
+  closeOnOutsideClick?: boolean;
   onClose: () => void;
   onSurfaceMouseDown?: () => void;
   onSurfaceMouseEnter?: () => void;
@@ -340,6 +371,7 @@ export interface ThreadPopupLifecycleResult {
   closePopupById: (id: string) => void;
   closePopupChildren: (popupId: string) => void;
   isPopupDescendantOf: (popupId: string, ancestorId: string) => boolean;
+  toggleTreePopupPinned: (popupId: string) => void;
   hasPopupChild: (popupId: string) => boolean;
   hideAnchorPreview: (fromDepth?: number) => void;
   hideAnchorPreviewImmediately: (fromDepth?: number) => void;
@@ -367,6 +399,7 @@ export function usePopupManager(scopeId = DEFAULT_POPUP_SCOPE_ID): PopupManagerR
   const closeNonContextPopupsInScope = usePopupStore((state) => state.closeNonContextPopupsInScope);
   const closePopupChildrenInScope = usePopupStore((state) => state.closePopupChildrenInScope);
   const isPopupDescendantOfInScope = usePopupStore((state) => state.isPopupDescendantOfInScope);
+  const toggleTreePopupPinnedInScope = usePopupStore((state) => state.toggleTreePopupPinnedInScope);
 
   useEffect(() => {
     mountScope(scopeId);
@@ -402,6 +435,10 @@ export function usePopupManager(scopeId = DEFAULT_POPUP_SCOPE_ID): PopupManagerR
       isPopupDescendantOfInScope(scopeId, popupId, ancestorId),
     [isPopupDescendantOfInScope, scopeId],
   );
+  const toggleTreePopupPinned = useCallback(
+    (popupId: string) => toggleTreePopupPinnedInScope(scopeId, popupId),
+    [scopeId, toggleTreePopupPinnedInScope],
+  );
 
   return {
     popups,
@@ -412,6 +449,7 @@ export function usePopupManager(scopeId = DEFAULT_POPUP_SCOPE_ID): PopupManagerR
     closeNonContextPopups,
     closePopupChildren,
     isPopupDescendantOf,
+    toggleTreePopupPinned,
   };
 }
 
@@ -488,6 +526,7 @@ export function usePopupSurfaceLifecycle({
   onEnterFromDescendant,
   closeDisabled,
   closeOnMouseLeave = true,
+  closeOnOutsideClick = true,
   onClose,
   onSurfaceMouseDown,
   onSurfaceMouseEnter,
@@ -574,6 +613,10 @@ export function usePopupSurfaceLifecycle({
         return;
       }
 
+      if (!closeOnOutsideClick) {
+        return;
+      }
+
       if (event.target instanceof Node && surfaceRef?.current?.contains(event.target)) {
         return;
       }
@@ -597,7 +640,7 @@ export function usePopupSurfaceLifecycle({
     };
     document.addEventListener("mousedown", handleOutsideMouseDown);
     return () => document.removeEventListener("mousedown", handleOutsideMouseDown);
-  }, [isPopupBranchTarget, isWithinIgnoredOutsideTarget, popupId, surfaceRef]);
+  }, [closeOnOutsideClick, isPopupBranchTarget, isWithinIgnoredOutsideTarget, popupId, surfaceRef]);
 
   const handleMouseEnter = (event: React.MouseEvent<HTMLElement>) => {
     setIsHovering(true);
@@ -673,6 +716,7 @@ export function useThreadPopupLifecycle({
     closeNonContextPopups,
     closePopupChildren,
     isPopupDescendantOf,
+    toggleTreePopupPinned,
   } = usePopupManager(scopeId);
   const anchorPreviewHideTimerRef = useRef<number | null>(null);
 
@@ -831,7 +875,7 @@ export function useThreadPopupLifecycle({
         type: "tree",
         x,
         y,
-        payload: { resNum, anchorPreviewDepth },
+        payload: { resNum, anchorPreviewDepth, pinned: false },
         parentId,
       });
     },
@@ -901,6 +945,7 @@ export function useThreadPopupLifecycle({
     closePopupById,
     closePopupChildren,
     isPopupDescendantOf,
+    toggleTreePopupPinned,
     hasPopupChild,
     hideAnchorPreview,
     hideAnchorPreviewImmediately,

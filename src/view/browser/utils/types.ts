@@ -32,6 +32,8 @@ export interface TreePopupItem extends PopupItemBase {
   type: "tree";
   payload: {
     resNum: number;
+    /** ピン留め中は本文操作やマウス離脱で自動的に閉じない。 */
+    pinned?: boolean;
     // 返信ツリー内で開いたアンカーも親アンカープレビュー配下として扱い続けないと、
     // 次のアンカーホバーで既存プレビュー一式を root 扱いで閉じてしまう。
     anchorPreviewDepth: number;

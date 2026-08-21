@@ -56,6 +56,34 @@ const ID_CHAIN_REP_INDEX = new Map<number, Set<number>>([[10, new Set([11])]]);
 
 const ID_CHAIN_INDEX = new Map<string, Set<number>>([["ID:AAA", new Set([10, 11])]]);
 
+function PinnedTreeHarness() {
+  const { popups, addPopup, closeNonContextPopups, toggleTreePopupPinned } =
+    usePopupManager("pinned-tree-test");
+  const treePopup = popups.find((item): item is TreePopupItem => item.type === "tree");
+
+  return (
+    <div>
+      <button
+        onClick={() =>
+          addPopup({
+            type: "tree",
+            x: 0,
+            y: 0,
+            payload: { resNum: 1, anchorPreviewDepth: 0, pinned: false },
+          })
+        }
+      >
+        ツリー追加
+      </button>
+      <button onClick={() => treePopup && toggleTreePopupPinned(treePopup.id)}>ピン切替</button>
+      <button onClick={closeNonContextPopups}>通常popupを閉じる</button>
+      <output data-testid="pinned-tree-state">
+        {treePopup ? `${treePopup.id}:${treePopup.payload.pinned ? "pinned" : "normal"}` : "none"}
+      </output>
+    </div>
+  );
+}
+
 function summarizePopup(item: PopupItem): string {
   if (item.type === "tree") {
     return `tree:${item.payload.resNum}:depth=${item.payload.anchorPreviewDepth}`;
@@ -408,6 +436,23 @@ describe("usePopupManager popup behavior", () => {
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
+  });
+
+  it("ピン留めした返信ツリーは通常popupの一括クローズ後も残る", () => {
+    render(<PinnedTreeHarness />);
+
+    fireEvent.click(screen.getByRole("button", { name: "ツリー追加" }));
+    expect(screen.getByTestId("pinned-tree-state")).toHaveTextContent("normal");
+
+    fireEvent.click(screen.getByRole("button", { name: "ピン切替" }));
+    expect(screen.getByTestId("pinned-tree-state")).toHaveTextContent("pinned");
+
+    fireEvent.click(screen.getByRole("button", { name: "通常popupを閉じる" }));
+    expect(screen.getByTestId("pinned-tree-state")).toHaveTextContent("pinned");
+
+    fireEvent.click(screen.getByRole("button", { name: "ピン切替" }));
+    fireEvent.click(screen.getByRole("button", { name: "通常popupを閉じる" }));
+    expect(screen.getByTestId("pinned-tree-state")).toHaveTextContent("none");
   });
 
   it("propagates inherited anchor depth into nested reply trees", () => {

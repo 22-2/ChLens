@@ -116,6 +116,7 @@ describe("PopupRenderer", () => {
       onClearAnchorPreviewHideTimer: () => {},
       onClosePopupById: () => {},
       onClosePopupChildren: () => {},
+      onToggleTreePopupPinned: () => {},
       onIdLinkClick: () => {},
       onPopupIdLinkClick,
       onRepClickInPopup,

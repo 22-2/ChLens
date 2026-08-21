@@ -5,6 +5,8 @@ import {
   Image as ImageIcon,
   ImageUp,
   MoreVertical,
+  Pin,
+  PinOff,
 } from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { IRes } from "src/service-container";
@@ -538,6 +540,9 @@ export const ReplyTreePopup: React.FC<{
   onSurfaceMouseDown?: () => void;
   /** 子ポップアップが開いている間は外側クリック閉じを無効にする */
   disableOutsideClick?: boolean;
+  /** ピン留め中は明示的に閉じるまで自動クローズしない。 */
+  pinned?: boolean;
+  onTogglePinned?: () => void;
   /** z-indexを明示指定（省略時はCSSのデフォルト値を使用） */
   zIndex?: number;
   /** 一括コピー末尾に付加するスレタイ */
@@ -572,6 +577,8 @@ export const ReplyTreePopup: React.FC<{
   onEnterFromDescendant,
   onSurfaceMouseDown,
   disableOutsideClick,
+  pinned = false,
+  onTogglePinned,
   zIndex,
   threadTitle,
   threadUrl,
@@ -587,6 +594,12 @@ export const ReplyTreePopup: React.FC<{
   const replyImageEntries = sourceRes ? collectReplyTreeImageEntries(resNum, repIndex, resMap) : [];
   const treeMenuItems: ContextMenuItem[] = sourceRes
     ? [
+        {
+          id: "toggle-pin",
+          label: pinned ? "ピン留めを解除" : "ピン留め",
+          icon: pinned ? <PinOff size={14} /> : <Pin size={14} />,
+          onSelect: onTogglePinned,
+        },
         {
           id: "copy-tree-responses",
           label: "返信ツリーを一括コピー",
@@ -831,7 +844,8 @@ export const ReplyTreePopup: React.FC<{
       popupId={popupId}
       isPopupDescendantOf={isPopupDescendantOf}
       onEnterFromDescendant={onEnterFromDescendant}
-      closeDisabled={disableOutsideClick}
+      closeDisabled={disableOutsideClick || pinned}
+      closeOnOutsideClick={!pinned}
       onClose={onClose}
       onSurfaceMouseDown={onSurfaceMouseDown}
       onSurfaceMouseEnter={onMouseEnter}

@@ -35,6 +35,7 @@ interface PopupRendererProps {
   onClearAnchorPreviewHideTimer: () => void;
   onClosePopupById: (popupId: string) => void;
   onClosePopupChildren: (popupId: string) => void;
+  onToggleTreePopupPinned: (popupId: string) => void;
   onIdLinkClick: (id: string, e: React.MouseEvent) => void;
   onPopupIdLinkClick: (parentId: string) => (id: string, e: React.MouseEvent) => void;
   onRepClickInPopup: (
@@ -102,6 +103,7 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
   onClearAnchorPreviewHideTimer,
   onClosePopupById,
   onClosePopupChildren,
+  onToggleTreePopupPinned,
   onIdLinkClick: _onIdLinkClick,
   onPopupIdLinkClick,
   onRepClickInPopup,
@@ -128,6 +130,7 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
     onPopupIdLinkClick,
     onRepClickInPopup,
     onResContextMenuOpen,
+    onToggleTreePopupPinned,
     onUrlContextMenuOpen,
   ]);
 
@@ -284,6 +287,11 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
           disableOutsideClick={
             index < treePopupItems.length - 1 || hasAnchorPreviews || hasPopupChild(treePopup.id)
           }
+          pinned={treePopup.payload.pinned === true}
+          onTogglePinned={getStablePopupHandler(
+            `toggle-pin:${treePopup.id}`,
+            () => () => onToggleTreePopupPinned(treePopup.id),
+          )}
           zIndex={treePopup.z}
           onClose={getStablePopupHandler(
             `close:${treePopup.id}`,
