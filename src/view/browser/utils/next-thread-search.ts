@@ -411,6 +411,7 @@ function rankNextThreadCandidates(
       const candidateSortKey = extractThreadTimestamp(thread.url);
       const linkEvidence = countLinkEvidence(options.responseMessages, thread.url);
       const explicitlyLinked = linkEvidence.count > 0;
+      const isReflection = thread.title.includes("反省会");
       const currentMarked = isMarkedThread(currentThread.title);
       const candidateMarked = isMarkedThread(thread.title);
       const exactTitleMatch =
@@ -432,7 +433,9 @@ function rankNextThreadCandidates(
       let numberReason: NextThreadEvidence | null = null;
       if (currentNumber.isExplicitSequence) {
         if (!candidateNumber.isExplicitSequence) {
-          if (!explicitlyLinked) {
+          // 変更理由: 「★反省会」のような番号を持たない反省会スレは、
+          // 連番条件を満たさなくても積極モードでは次スレ候補として評価する。
+          if (!explicitlyLinked && !(options.mode === "aggressive" && isReflection)) {
             return null;
           }
         } else {
@@ -455,7 +458,6 @@ function rankNextThreadCandidates(
         return null;
       }
 
-      const isReflection = thread.title.includes("反省会");
       if (isReflection && options.mode !== "aggressive" && !explicitlyLinked) {
         return null;
       }

@@ -107,6 +107,30 @@ describe("next-thread-search", () => {
     expect(match?.thread.title).toContain("反省会");
   });
 
+  it("積極判定では連番スレから番号なしの反省会スレを候補にする", () => {
+    const currentThread = {
+      title: "【NTV】金曜ロードショー「となりのトトロ」★12",
+      url: "https://example.com/test/read.cgi/live/1700000120/",
+    };
+    const reflectionUrl = "https://example.com/test/read.cgi/live/1700000121/";
+    const threads = [
+      createThread({
+        title: "【NTV】金曜ロードショー「となりのトトロ」★反省会",
+        url: reflectionUrl,
+        resCount: 42,
+        createdAt: 1_700_000_121_000,
+      }),
+    ];
+
+    const match = findNextThreadMatch(threads, currentThread, {
+      mode: "aggressive",
+    });
+
+    expect(match?.reason).toBe("reflection");
+    expect(match?.thread.url).toBe(reflectionUrl);
+    expect(findNextThreadMatch(threads, currentThread, { mode: "balanced" })).toBeNull();
+  });
+
   it("積極判定では同名の●付きスレから最新候補を選ぶ", () => {
     const currentThread = {
       title: "●実況スレ",
