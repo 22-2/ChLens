@@ -20,8 +20,7 @@
 | API | 主な利用箇所 | 役割 |
 | --- | --- | --- |
 | `usePopupCore` | `ThreadPage`、hookテスト | scope単位のpopup CRUD、close、子孫判定、pin |
-| `usePopupSurfaceCloseGuard` | `ResPopup.test.tsx` など | 中クリック・リンク操作後のmouseleave close抑止 |
-| `usePopupSurfaceLifecycle` | `FloatingSurface`、`ContextMenu` | hover、outside click、子popup遷移、close制御 |
+| `usePopupCloseBehavior` | `FloatingSurface`、`ContextMenu` | hover、outside click、子popup遷移、close制御と抑止 |
 | `useThreadPopupManager` | `ThreadPage` | thread用popupの抽出・生成、anchor preview |
 
 ### 現在固定されている主な挙動
@@ -51,7 +50,7 @@ src/view/browser/hooks/
    ├─ popup-graph.ts                     # 純粋なparentIdグラフ操作
    ├─ popup-store.ts                     # scope付きZustand store
    ├─ popup-surface-dom.ts               # DOM属性・branch判定の補助関数
-   ├─ use-popup-surface-lifecycle.ts     # hover / outside click / close抑止
+   ├─ use-popup-close-behavior.ts       # hover / outside click / close抑止
    └─ use-thread-popup-manager.ts        # thread固有の生成とanchor preview
 ```
 
@@ -113,7 +112,7 @@ Map化、循環ガード、parent cascadeの意味は現状から変更しない
 
 `usePopupStore`はstoreモジュール内に閉じ込め、`usePopupCore`にはscopeへbindする薄いadapterだけを残す。可能なら`createPopupStore()`もexportし、store単体テストでscope間分離とcascade closeを検証する。
 
-### Phase 3: popup surface lifecycleの分離
+### Phase 3: popup close behaviorの分離
 
 `popup-surface-dom.ts`へ、DOMとpopup属性に関する副作用のない処理を移す。
 
@@ -122,10 +121,9 @@ Map化、循環ガード、parent cascadeの意味は現状から変更しない
 - keep-open selector判定
 - targetがpopup branch内かどうかの判定
 
-`use-popup-surface-lifecycle.ts`へ次を移す。
+`use-popup-close-behavior.ts`へ次を移す。
 
-- `usePopupSurfaceCloseGuard`
-- `usePopupSurfaceLifecycle`
+- `usePopupCloseBehavior`
 - `mousedown` document listener
 - hover state
 - `closeDisabled`解除時の一回限り抑止
@@ -167,7 +165,7 @@ Map化、循環ガード、parent cascadeの意味は現状から変更しない
 popup-manager/
 ├─ popup-graph.test.ts
 ├─ popup-store.test.ts
-├─ use-popup-surface-lifecycle.test.tsx
+├─ use-popup-close-behavior.test.tsx
 └─ use-thread-popup-manager.test.tsx
 ```
 
@@ -234,7 +232,7 @@ pnpm run build:tauri
 test(popup): popup managerの境界ケースを固定
 refactor(popup): popupグラフ操作を純粋関数へ分離
 refactor(popup): scope付きpopup storeを分離
-refactor(popup): popup surface lifecycleを分離
+refactor(popup): popup close behaviorを分離
 refactor(thread): thread popup managerを分離
 test(popup): popup managerテストを責務別に整理
 ```
@@ -242,7 +240,7 @@ test(popup): popup managerテストを責務別に整理
 ## 完了条件
 
 - 既存の公開import pathと呼び出し側の挙動が維持されている。
-- popup graph、store、surface lifecycle、thread lifecycleが別モジュールになっている。
+- popup graph、store、close behavior、thread popup managerが別モジュールになっている。
 - 親子cascade、context menu、pin、anchor preview、scope分離の既存挙動が回帰していない。
 - 対象unit test、lint、型チェック、Chrome / Firefox / Tauri buildが通る。
 - `use-popup-manager.ts`が複数責務の実装本体ではなく、import pathの互換性を保つfacadeになっている。

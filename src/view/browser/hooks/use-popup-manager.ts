@@ -35,7 +35,7 @@ import { getEventTargetElement } from "src/view/browser/utils/utils";
  *   │    └─ usePopupCore ── popup一覧を保存・基本操作を担当する
  *   │         └─ popup-store.ts / popup-graph.ts
  *   └─ PopupRenderer ── popupを画面に描画する
- *        └─ usePopupSurfaceLifecycle ── hoverやoutside clickで閉じる
+ *        └─ usePopupCloseBehavior ── hoverやoutside clickで閉じる
  *
  * つまり、ThreadPage側が「開くpopup」を決め、storeがその一覧を持ち、
  * PopupRenderer側が一覧を画面に出す、という分担になっている。
@@ -77,7 +77,7 @@ import { getEventTargetElement } from "src/view/browser/utils/utils";
  * - `useThreadPopupManager` はスレッド固有の処理を担当する。
  *   レスからpopupを作り、画面内に収まる座標を計算し、
  *   アンカープレビューの深さ・元になったpopup・遅延タイマーを管理する。
- * - `usePopupSurfaceCloseGuard` / `usePopupSurfaceLifecycle` は画面上の操作を担当する。
+ * - `usePopupCloseBehavior` は画面上の操作を担当する。
  *   popup内のhover、outside click、子popupへの移動を見て閉じるか判断する。
  *
  * 【閉じ方の主なルール】
@@ -121,7 +121,7 @@ export interface PopupCoreResult {
   toggleTreePopupPinned: (popupId: string) => void;
 }
 
-interface PopupSurfaceLifecycleParams {
+interface PopupCloseBehaviorParams {
   surfaceRef?: RefObject<HTMLElement | null>;
   outsideClickIgnoreRefs?: Array<RefObject<HTMLElement | null>>;
   popupId?: string;
@@ -136,7 +136,7 @@ interface PopupSurfaceLifecycleParams {
   onSurfaceMouseLeave?: () => void;
 }
 
-interface PopupSurfaceLifecycleResult {
+interface PopupCloseBehaviorResult {
   armMouseLeaveCloseSuppression: () => void;
   handleAuxClickCapture: (event: React.MouseEvent<HTMLElement>) => void;
   handleMouseDownCapture: (event: React.MouseEvent<HTMLElement>) => void;
@@ -265,7 +265,27 @@ export function usePopupCore(scopeId = DEFAULT_POPUP_SCOPE_ID): PopupCoreResult 
   };
 }
 
-export function usePopupSurfaceCloseGuard(onSurfaceMouseDown?: () => void) {
+export function usePopupCloseBehavior({
+  surfaceRef,
+  outsideClickIgnoreRefs,
+  popupId,
+  isPopupDescendantOf,
+  onEnterFromDescendant,
+  closeDisabled,
+  closeOnMouseLeave = true,
+  closeOnOutsideClick = true,
+  onClose,
+  onSurfaceMouseDown,
+  onSurfaceMouseEnter,
+  onSurfaceMouseLeave,
+}: PopupCloseBehaviorParams): PopupCloseBehaviorResult {
+  const [isHovering, setIsHovering] = useState(false);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const suppressNextDisableReleaseCloseRef = useRef(false);
+
+  // close判定とmouseleave抑止は同じsurfaceイベントの順序に依存するため、
+  // 別hookを経由せず、このhook内で一体として管理する。
   const suppressCloseUntilRef = useRef(0);
   const suppressNextMouseLeaveRef = useRef(false);
 
@@ -321,40 +341,6 @@ export function usePopupSurfaceCloseGuard(onSurfaceMouseDown?: () => void) {
     },
     [armMouseLeaveCloseSuppression],
   );
-
-  return {
-    armMouseLeaveCloseSuppression,
-    handleAuxClickCapture,
-    handleMouseDownCapture,
-    shouldSuppressMouseLeaveClose,
-  };
-}
-
-export function usePopupSurfaceLifecycle({
-  surfaceRef,
-  outsideClickIgnoreRefs,
-  popupId,
-  isPopupDescendantOf,
-  onEnterFromDescendant,
-  closeDisabled,
-  closeOnMouseLeave = true,
-  closeOnOutsideClick = true,
-  onClose,
-  onSurfaceMouseDown,
-  onSurfaceMouseEnter,
-  onSurfaceMouseLeave,
-}: PopupSurfaceLifecycleParams): PopupSurfaceLifecycleResult {
-  const [isHovering, setIsHovering] = useState(false);
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
-  const suppressNextDisableReleaseCloseRef = useRef(false);
-
-  const {
-    armMouseLeaveCloseSuppression,
-    handleAuxClickCapture,
-    handleMouseDownCapture,
-    shouldSuppressMouseLeaveClose,
-  } = usePopupSurfaceCloseGuard(onSurfaceMouseDown);
 
   const isPopupBranchTarget = useCallback(
     (target: EventTarget | null) => {

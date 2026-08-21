@@ -44,7 +44,7 @@ describe("FloatingSurface", () => {
     }
   });
 
-  it("surface lifecycleとrender propのmiddle click guardを共有する", () => {
+  it("close behaviorとrender propのmiddle click guardを共有する", () => {
     const onClose = vi.fn();
     const onSurfaceMouseDown = vi.fn();
 

@@ -1,7 +1,7 @@
 import { ContextMenu as RadixContextMenu } from "radix-ui";
 import type { ReactNode, RefObject } from "react";
 import React, { useLayoutEffect, useMemo, useRef } from "react";
-import { usePopupSurfaceLifecycle } from "src/view/browser/hooks/use-popup-manager";
+import { usePopupCloseBehavior } from "src/view/browser/hooks/use-popup-manager";
 
 export interface ContextMenuItem {
   id: string;
@@ -50,7 +50,7 @@ export const ContextMenu: React.FC<Props> = ({
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerElementRef = useRef<HTMLSpanElement>(null);
   const { handleAuxClickCapture, handleMouseDownCapture, handleMouseEnter, handleMouseLeave } =
-    usePopupSurfaceLifecycle({
+    usePopupCloseBehavior({
       surfaceRef: menuRef,
       outsideClickIgnoreRefs: triggerRef ? [triggerRef] : undefined,
       popupId,

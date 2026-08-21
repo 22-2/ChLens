@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { usePopupSurfaceCloseGuard } from "src/view/browser/hooks/use-popup-manager";
+import { usePopupCloseBehavior } from "src/view/browser/hooks/use-popup-manager";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 afterEach(() => {
@@ -9,19 +9,17 @@ afterEach(() => {
 });
 
 function PopupCloseGuardHarness({ onClose }: { onClose: () => void }) {
-  const { armMouseLeaveCloseSuppression, handleMouseDownCapture, shouldSuppressMouseLeaveClose } =
-    usePopupSurfaceCloseGuard();
+  const { armMouseLeaveCloseSuppression, handleMouseDownCapture, handleMouseLeave } =
+    usePopupCloseBehavior({
+      closeOnOutsideClick: false,
+      onClose,
+    });
 
   return (
     <div
       data-testid="surface"
       onMouseDownCapture={handleMouseDownCapture}
-      onMouseLeave={() => {
-        if (shouldSuppressMouseLeaveClose()) {
-          return;
-        }
-        onClose();
-      }}
+      onMouseLeave={handleMouseLeave}
     >
       <button type="button" onClick={armMouseLeaveCloseSuppression}>
         arm guard
@@ -34,7 +32,12 @@ function PopupCloseGuardHarness({ onClose }: { onClose: () => void }) {
 }
 
 function PopupSurfaceMouseDownHarness({ onSurfaceMouseDown }: { onSurfaceMouseDown: () => void }) {
-  const { handleMouseDownCapture } = usePopupSurfaceCloseGuard(onSurfaceMouseDown);
+  const { handleMouseDownCapture } = usePopupCloseBehavior({
+    closeOnMouseLeave: false,
+    closeOnOutsideClick: false,
+    onClose: () => undefined,
+    onSurfaceMouseDown,
+  });
 
   return (
     <div data-testid="surface" onMouseDownCapture={handleMouseDownCapture}>
@@ -46,7 +49,7 @@ function PopupSurfaceMouseDownHarness({ onSurfaceMouseDown }: { onSurfaceMouseDo
   );
 }
 
-describe("usePopupSurfaceCloseGuard", () => {
+describe("usePopupCloseBehavior", () => {
   it("middle click 直後の mouseleave close を抑止する", () => {
     const onClose = vi.fn();
 

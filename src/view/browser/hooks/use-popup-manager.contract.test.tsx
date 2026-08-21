@@ -5,7 +5,7 @@ import { useRef } from "react";
 import type { IRes } from "src/service-container/interfaces";
 import {
   usePopupCore,
-  usePopupSurfaceLifecycle,
+  usePopupCloseBehavior,
   useThreadPopupManager,
 } from "src/view/browser/hooks/use-popup-manager";
 import { ANCHOR_PREVIEW_HIDE_DELAY_MS } from "src/view/browser/utils/constants";
@@ -54,7 +54,7 @@ function SurfaceContractHarness({
 }: SurfaceContractHarnessProps) {
   const surfaceRef = useRef<HTMLDivElement>(null);
   const { handleAuxClickCapture, handleMouseDownCapture, handleMouseEnter, handleMouseLeave } =
-    usePopupSurfaceLifecycle({
+    usePopupCloseBehavior({
       surfaceRef,
       outsideClickIgnoreRefs,
       popupId: "surface-contract",
@@ -328,7 +328,7 @@ describe("useThreadPopupManager Phase 0 contracts", () => {
   });
 });
 
-describe("usePopupSurfaceLifecycle Phase 0 contracts", () => {
+describe("usePopupCloseBehavior Phase 0 contracts", () => {
   it("right clickでは枝閉じ用onSurfaceMouseDownを呼ばない", () => {
     const onClose = vi.fn();
     const onSurfaceMouseDown = vi.fn();

@@ -1,6 +1,6 @@
 import type { CSSProperties, MouseEventHandler, ReactNode } from "react";
 import React, { useRef } from "react";
-import { usePopupSurfaceLifecycle } from "src/view/browser/hooks/use-popup-manager";
+import { usePopupCloseBehavior } from "src/view/browser/hooks/use-popup-manager";
 import { useAdjustOverflow } from "src/view/browser/utils/use-adjust-overflow";
 
 export interface FloatingSurfaceRenderProps {
@@ -58,7 +58,7 @@ export const FloatingSurface: React.FC<FloatingSurfaceProps> = ({
     handleMouseDownCapture,
     handleMouseEnter,
     handleMouseLeave,
-  } = usePopupSurfaceLifecycle({
+  } = usePopupCloseBehavior({
     surfaceRef,
     popupId,
     isPopupDescendantOf,
