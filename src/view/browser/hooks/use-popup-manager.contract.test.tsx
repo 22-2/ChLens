@@ -4,8 +4,8 @@ import type { RefObject } from "react";
 import { useRef } from "react";
 import type { IRes } from "src/service-container/interfaces";
 import {
-  usePopupCore,
   usePopupCloseBehavior,
+  usePopupCore,
   useThreadPopupManager,
 } from "src/view/browser/hooks/use-popup-manager";
 import { ANCHOR_PREVIEW_HIDE_DELAY_MS } from "src/view/browser/utils/constants";

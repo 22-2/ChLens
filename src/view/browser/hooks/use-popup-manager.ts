@@ -1,6 +1,5 @@
-import type React from "react";
 import type { RefObject } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { IRes } from "src/service-container/interfaces";
 import { usePopupStore } from "src/view/browser/hooks/popup-manager/popup-store";
 import type {
@@ -16,11 +15,13 @@ import {
   ANCHOR_PREVIEW_HIDE_DELAY_MS,
   ANCHOR_PREVIEW_MAX_WIDTH,
   ANCHOR_PREVIEW_OFFSET,
-  POPUP_ID_ATTRIBUTE,
-  POPUP_SELECTOR,
 } from "src/view/browser/utils/constants";
 import { getPopupViewportBounds } from "src/view/browser/utils/use-adjust-overflow";
-import { getEventTargetElement } from "src/view/browser/utils/utils";
+export { usePopupCloseBehavior } from "src/view/browser/hooks/popup-manager/use-popup-close-behavior";
+export type {
+  PopupCloseBehaviorParams,
+  PopupCloseBehaviorResult,
+} from "src/view/browser/hooks/popup-manager/use-popup-close-behavior";
 
 /**
  * Popup managerは、スレッド上に開くpopupをまとめて管理する場所。
@@ -92,22 +93,6 @@ import { getEventTargetElement } from "src/view/browser/utils/utils";
  */
 const DEFAULT_POPUP_SCOPE_ID = "default";
 const EMPTY_POPUPS: PopupItem[] = [];
-// コンテキストメニューの項目操作は親ポップアップの枝を畳む対象外にする。
-// mousedown は親popupのcaptureにも届くため、除外しないとレスツリー内の
-// 子レス用メニューをクリックしただけで親ツリーまで閉じてしまう。
-const POPUP_KEEP_OPEN_TARGET_SELECTOR =
-  "a, .res__link, .res__thumb, .res__media-embed, .context-menu";
-const POPUP_MOUSELEAVE_SUPPRESS_MS = 250;
-
-function isContextMenuPopupId(popupId: string | null): boolean {
-  return popupId?.startsWith("contextMenu-") ?? false;
-}
-
-function getPopupElementId(target: EventTarget | null): string | null {
-  const targetElement = getEventTargetElement(target);
-  const popupElement = targetElement?.closest(POPUP_SELECTOR);
-  return popupElement?.getAttribute(POPUP_ID_ATTRIBUTE) ?? null;
-}
 
 export interface PopupCoreResult {
   popups: PopupItem[];
@@ -119,29 +104,6 @@ export interface PopupCoreResult {
   closePopupChildren: (popupId: string) => void;
   isPopupDescendantOf: (popupId: string, ancestorId: string) => boolean;
   toggleTreePopupPinned: (popupId: string) => void;
-}
-
-interface PopupCloseBehaviorParams {
-  popupRef?: RefObject<HTMLElement | null>;
-  outsideClickIgnoreRefs?: Array<RefObject<HTMLElement | null>>;
-  popupId?: string;
-  isPopupDescendantOf?: (popupId: string, ancestorId: string) => boolean;
-  onEnterFromDescendant?: () => void;
-  closeDisabled?: boolean;
-  closeOnMouseLeave?: boolean;
-  closeOnOutsideClick?: boolean;
-  onClose: () => void;
-  onPopupMouseDown?: () => void;
-  onPopupMouseEnter?: () => void;
-  onPopupMouseLeave?: () => void;
-}
-
-interface PopupCloseBehaviorResult {
-  armMouseLeaveCloseSuppression: () => void;
-  handleAuxClickCapture: (event: React.MouseEvent<HTMLElement>) => void;
-  handleMouseDownCapture: (event: React.MouseEvent<HTMLElement>) => void;
-  handleMouseEnter: (event: React.MouseEvent<HTMLElement>) => void;
-  handleMouseLeave: (event: React.MouseEvent<HTMLElement>) => void;
 }
 
 export interface ThreadPopupManagerParams {
@@ -262,242 +224,6 @@ export function usePopupCore(scopeId = DEFAULT_POPUP_SCOPE_ID): PopupCoreResult 
     closePopupChildren,
     isPopupDescendantOf,
     toggleTreePopupPinned,
-  };
-}
-
-export function usePopupCloseBehavior({
-  popupRef,
-  outsideClickIgnoreRefs,
-  popupId,
-  isPopupDescendantOf,
-  onEnterFromDescendant,
-  closeDisabled,
-  closeOnMouseLeave = true,
-  closeOnOutsideClick = true,
-  onClose,
-  onPopupMouseDown,
-  onPopupMouseEnter,
-  onPopupMouseLeave,
-}: PopupCloseBehaviorParams): PopupCloseBehaviorResult {
-  const [isHovering, setIsHovering] = useState(false);
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
-  const suppressNextDisableReleaseCloseRef = useRef(false);
-
-  // close判定とmouseleave抑止は同じpopupイベントの順序に依存するため、
-  // 別hookを経由せず、このhook内で一体として管理する。
-  const suppressCloseUntilRef = useRef(0);
-  const suppressNextMouseLeaveRef = useRef(false);
-
-  const armMouseLeaveCloseSuppression = useCallback(() => {
-    // middle click 後の close はブラウザやデバイス差で発火タイミングが揺れるため、
-    // 時間窓だけでなく「次の mouseleave を1回だけ必ず無視」するガードを併用する。
-    suppressNextMouseLeaveRef.current = true;
-    suppressCloseUntilRef.current = Date.now() + POPUP_MOUSELEAVE_SUPPRESS_MS;
-  }, []);
-
-  const handleMouseDownCapture = useCallback(
-    (event: React.MouseEvent<HTMLElement>) => {
-      const target = event.target instanceof Element ? event.target : null;
-      if (target?.closest(POPUP_KEEP_OPEN_TARGET_SELECTOR)) {
-        // popup本体クリック時は枝を畳みたいが、リンク操作まで同じ扱いにすると
-        // 「ポップアップ内のa要素を押した瞬間に子popupが消える」ので先に除外する。
-        armMouseLeaveCloseSuppression();
-        return;
-      }
-
-      // 右クリック（button=2）は contextmenu イベントで処理するため、
-      // onPopupMouseDown を呼ばない。呼ぶと Zustand 状態更新が
-      // contextmenu より先に同期レンダリングされ、テキスト選択が消えてしまう。
-      if (event.button === 2) {
-        return;
-      }
-
-      onPopupMouseDown?.();
-    },
-    [armMouseLeaveCloseSuppression, onPopupMouseDown],
-  );
-
-  const shouldSuppressMouseLeaveClose = useCallback(() => {
-    if (suppressNextMouseLeaveRef.current) {
-      suppressNextMouseLeaveRef.current = false;
-      return true;
-    }
-    return suppressCloseUntilRef.current > Date.now();
-  }, []);
-
-  const handleAuxClickCapture = useCallback(
-    (event: React.MouseEvent<HTMLElement>) => {
-      if (event.button !== 1) {
-        return;
-      }
-
-      const target = event.target instanceof Element ? event.target : null;
-      if (!target?.closest(POPUP_KEEP_OPEN_TARGET_SELECTOR)) {
-        return;
-      }
-
-      armMouseLeaveCloseSuppression();
-    },
-    [armMouseLeaveCloseSuppression],
-  );
-
-  const isPopupBranchTarget = useCallback(
-    (target: EventTarget | null) => {
-      const targetPopupId = getPopupElementId(target);
-      if (!popupId || !targetPopupId) {
-        return false;
-      }
-
-      return targetPopupId === popupId || isPopupDescendantOf?.(targetPopupId, popupId) === true;
-    },
-    [isPopupDescendantOf, popupId],
-  );
-
-  const isWithinIgnoredOutsideTarget = useCallback(
-    (target: EventTarget | null) => {
-      if (!(target instanceof Node)) {
-        return false;
-      }
-
-      return (
-        outsideClickIgnoreRefs?.some((ignoreRef) => ignoreRef.current?.contains(target)) ?? false
-      );
-    },
-    [outsideClickIgnoreRefs],
-  );
-
-  const prevCloseDisabledRef = useRef(!!closeDisabled);
-  useEffect(() => {
-    const wasDisabled = prevCloseDisabledRef.current;
-    prevCloseDisabledRef.current = !!closeDisabled;
-    const isActuallyHovering = popupRef?.current?.matches(":hover") ?? isHovering;
-    if (!closeOnMouseLeave) {
-      // コンテキストメニューは outside click でのみ閉じる仕様なので、
-      // 子popup終了時の disable 復帰で親まで自動 close しない。
-      return;
-    }
-    if (wasDisabled && !closeDisabled && suppressNextDisableReleaseCloseRef.current) {
-      // 子から親へ戻る途中は child branch を先に落とすので、
-      // disable 復帰の瞬間だけ親の自動 close を1回抑止して hover 遷移を待つ。
-      suppressNextDisableReleaseCloseRef.current = false;
-      return;
-    }
-    // 子popupが閉じた直後に mouseleave を取り逃したケースは、
-    // React state だけだと子popup経由の移動で stale になることがあるため、
-    // 復帰判定だけは実 DOM の :hover を優先して閉じ忘れを防ぐ。
-    if (wasDisabled && !closeDisabled && !isActuallyHovering) {
-      onCloseRef.current();
-    }
-  }, [closeDisabled, closeOnMouseLeave, isHovering, popupRef]);
-
-  useEffect(() => {
-    const handleOutsideMouseDown = (event: MouseEvent) => {
-      const targetPopupId = getPopupElementId(event.target);
-      if (
-        popupId &&
-        targetPopupId &&
-        targetPopupId !== popupId &&
-        isPopupBranchTarget(event.target)
-      ) {
-        // 子メニュー内 click で child branch が閉じた直後は、
-        // 親 popup まで disable 復帰 auto-close で巻き込まないように1回だけ抑止する。
-        suppressNextDisableReleaseCloseRef.current = true;
-      }
-
-      // トリガー上の pointer/mouse down では先に close せず、
-      // 後段の click トグルに開閉の責務を寄せて「閉じるつもりが再オープン」を防ぐ。
-      if (isWithinIgnoredOutsideTarget(event.target)) {
-        return;
-      }
-
-      if (!closeOnOutsideClick) {
-        return;
-      }
-
-      if (event.target instanceof Node && popupRef?.current?.contains(event.target)) {
-        return;
-      }
-
-      const target = getEventTargetElement(event.target);
-      const popupElement = target?.closest(POPUP_SELECTOR);
-      if (!popupElement) {
-        onCloseRef.current();
-        return;
-      }
-
-      if (!popupId) {
-        return;
-      }
-
-      if (isPopupBranchTarget(event.target)) {
-        return;
-      }
-
-      onCloseRef.current();
-    };
-    document.addEventListener("mousedown", handleOutsideMouseDown);
-    return () => document.removeEventListener("mousedown", handleOutsideMouseDown);
-  }, [closeOnOutsideClick, isPopupBranchTarget, isWithinIgnoredOutsideTarget, popupId, popupRef]);
-
-  const handleMouseEnter = (event: React.MouseEvent<HTMLElement>) => {
-    setIsHovering(true);
-    const relatedPopupId = getPopupElementId(event.relatedTarget);
-    if (popupId && isPopupDescendantOf?.(relatedPopupId ?? "", popupId)) {
-      if (isContextMenuPopupId(relatedPopupId)) {
-        // コンテキストメニューは outside click まで維持したいので、
-        // 子メニューから親へ戻っても branch を自動で閉じない。
-        onPopupMouseEnter?.();
-        return;
-      }
-      // 親へ戻った瞬間にその親配下の枝を畳むと、子から親へ戻った後に古い子孫が残らない。
-      suppressNextDisableReleaseCloseRef.current = true;
-      onEnterFromDescendant?.();
-    }
-    onPopupMouseEnter?.();
-  };
-
-  const handleMouseLeave = (event: React.MouseEvent<HTMLElement>) => {
-    if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) {
-      return;
-    }
-    const relatedPopupId = getPopupElementId(event.relatedTarget);
-    if (popupId && relatedPopupId) {
-      if (isPopupBranchTarget(event.relatedTarget)) {
-        // 子孫popupへ移動した時も実際には親popupを離れているので hover だけは解除し、
-        // 子が閉じた瞬間に「まだ親を指しているか」を closeDisabled の復帰判定で見直せるようにする。
-        setIsHovering(false);
-        return;
-      }
-    }
-    if (
-      !popupId &&
-      event.relatedTarget instanceof Element &&
-      event.relatedTarget.closest(POPUP_SELECTOR)
-    ) {
-      return;
-    }
-    if (shouldSuppressMouseLeaveClose()) {
-      return;
-    }
-    // 子孫へ抜ける時だけ枝を維持し、それ以外の遷移は種類に関係なく現在のpopupを閉じる。
-    onPopupMouseLeave?.();
-    setIsHovering(false);
-    if (!closeOnMouseLeave) {
-      return;
-    }
-    if (closeDisabled) {
-      return;
-    }
-    onCloseRef.current();
-  };
-
-  return {
-    armMouseLeaveCloseSuppression,
-    handleAuxClickCapture,
-    handleMouseDownCapture,
-    handleMouseEnter,
-    handleMouseLeave,
   };
 }
 
