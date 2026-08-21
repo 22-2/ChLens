@@ -31,16 +31,11 @@ import { getEventTargetElement } from "src/view/browser/utils/utils";
  * 【まず全体像】
  *
  * ThreadPage
- *   ├─ useThreadPopupManager
- *   │    └─ popupを作る・座標を決める
- *   │         └─ usePopupCore
- *   │              └─ popup-store.ts ── popup-graph.ts
- *   │                   └─ stateを保存・親子関係を計算する
- *   └─ PopupRenderer
- *        └─ 保存されているpopupを画面に描画する
- *             └─ FloatingSurface / ContextMenu
- *                  └─ usePopupSurfaceLifecycle
- *                       └─ hoverやoutside clickで閉じる
+ *   ├─ useThreadPopupManager ── popupを作る・座標を決める
+ *   │    └─ usePopupCore ── popup一覧を保存・基本操作を担当する
+ *   │         └─ popup-store.ts / popup-graph.ts
+ *   └─ PopupRenderer ── popupを画面に描画する
+ *        └─ usePopupSurfaceLifecycle ── hoverやoutside clickで閉じる
  *
  * つまり、ThreadPage側が「開くpopup」を決め、storeがその一覧を持ち、
  * PopupRenderer側が一覧を画面に出す、という分担になっている。
