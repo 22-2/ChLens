@@ -12,7 +12,6 @@ import {
 import { platform } from "src/app";
 import { container } from "src/service-container/index";
 import type { IRes, IThreadDetail } from "src/service-container/interfaces";
-import { useIsNgTemporarilyDisabled } from "src/view/browser/hooks/use-ng-status";
 import { useTabDispatch, useTabViewState } from "src/view/browser/hooks/use-tab-store";
 import type { ThreadFilter, ThreadPage as ThreadPageType } from "src/view/browser/types";
 import {
@@ -88,7 +87,6 @@ export function useThreadData(
   const [searchQuery, setSearchQuery] = useState(() => persistedViewState.searchQuery ?? "");
   const [showSearch, setShowSearch] = useState(false);
   const titleUpdatedRef = useRef(false);
-  const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
 
   useEffect(() => {
     updateViewState({ filter, searchQuery });
@@ -222,18 +220,15 @@ export function useThreadData(
   }, [page.title, page.threadUrl, setResponses]);
 
   const visibleResponses = useMemo(() => {
-    // 変更理由: NGレスを本文だけCSSで隠すと、ミニマップや返信ツリーの索引には残り続ける。
-    // 表示用のレス集合をここで一元化し、関連UIが同じ投稿だけを参照できるようにする。
-    if (isNgTemporarilyDisabled) {
-      return responses;
-    }
-    return responses.filter((res) => res.ng == null && !res.class?.includes("ng"));
-  }, [isNgTemporarilyDisabled, responses]);
+    // 変更理由: NGレスはResItemがプレースホルダーとして描画するため、一覧DOMから除外すると
+    // `anchor--ng-target` のジャンプ先が消えてスクロールできなくなる。内容の伏せ方はResItemへ
+    // 集約し、ここでは全レスを残して通常レスと同じジャンプ先を確保する。
+    return responses;
+  }, [responses]);
 
   const indexes = useMemo(() => {
-    // NGレスは本文一覧から隠しても、アンカープレビュー・返信ツリー・IDポップアップでは
-    // 参照できる必要がある。表示対象だけで索引を作ると、NG先のレス番号が resMap から消え、
-    // それらのポップアップが空になるため、索引は常に全レスから構築する。
+    // 本文のNG内容はプレースホルダーで伏せる一方、アンカープレビュー・返信ツリー・
+    // IDポップアップでは参照できる必要があるため、索引は常に全レスから構築する。
     return buildIndexes(responses);
   }, [responses]);
 
