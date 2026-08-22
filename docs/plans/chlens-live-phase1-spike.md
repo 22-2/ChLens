@@ -39,9 +39,9 @@ Viteの開発watcherは `src-tauri/**` を除外している。WindowsではRust
 
 MainからOverlayの表示、非表示、focus、geometry適用を操作できる。
 現在のgeometryは `localStorage` の `chlens-live:overlay-geometry` に保存し、Tauriではdisplay scalingを考慮したlogical pixelとして復元する。
-Overlayは枠内のドラッグと8方向のリサイズハンドルに対応する。Mainの「クリック透過を有効化」で
-Tauriのcursor eventを無視し、透けて見える背面ウィンドウへ入力を渡せる。操作へ戻す場合はMainから透過を解除する。
-クリック透過はTauriのnative window単位の設定なので、透過中はOverlayの上部バーも入力を受け取らない。
+Overlayは枠内の8方向リサイズハンドルに対応する。上部操作バーはOverlay本体とは別のnative windowに分け、
+クリック透過中もバーのドラッグと操作を受け付ける。Mainの「クリック透過を有効化」でOverlay本体の
+Tauri cursor eventを無視し、透けて見える背面ウィンドウへ入力を渡せる。操作へ戻す場合はMainから透過を解除する。
 
 ## Phase 1で意図的に含めないもの
 

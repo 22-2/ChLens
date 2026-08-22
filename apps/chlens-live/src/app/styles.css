@@ -25,7 +25,10 @@ body {
 /* A transparent Tauri window still paints document backgrounds unless every root layer is clear. */
 .overlay-document,
 .overlay-document body,
-.overlay-document #root {
+.overlay-document #root,
+.overlay-controls-document,
+.overlay-controls-document body,
+.overlay-controls-document #root {
   background: transparent;
 }
 
@@ -158,29 +161,6 @@ button:hover {
   text-shadow: 0 1px 3px #000;
 }
 
-.overlay-stage__drag-bar {
-  position: absolute;
-  top: 0;
-  right: 0;
-  left: 0;
-  display: flex;
-  align-items: center;
-  min-height: 28px;
-  padding: 0 1rem;
-  cursor: move;
-  pointer-events: auto;
-}
-
-.overlay-stage__drag-bar:hover {
-  background: rgb(117 184 239 / 12%);
-}
-
-.overlay-stage__label {
-  pointer-events: none;
-  opacity: 0.75;
-  font-size: 0.8rem;
-}
-
 .overlay-stage__resize-handle {
   position: absolute;
   z-index: 1;
@@ -252,6 +232,30 @@ button:hover {
   left: 0;
   cursor: ew-resize;
   transform: translate(-50%, -50%);
+}
+
+.overlay-control-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 36px;
+  padding: 0 0.35rem 0 0.8rem;
+  color: rgb(255 255 255 / 90%);
+  background: rgb(16 28 47 / 76%);
+  text-shadow: 0 1px 3px #000;
+  cursor: move;
+  user-select: none;
+}
+
+.overlay-control-bar:hover {
+  background: rgb(42 69 103 / 84%);
+}
+
+.overlay-control-bar__title {
+  pointer-events: none;
+  opacity: 0.82;
+  font-size: 0.8rem;
 }
 
 @media (max-width: 620px) {

@@ -16,15 +16,6 @@ const RESIZE_HANDLES: ReadonlyArray<{
   { direction: "West", className: "overlay-stage__resize-handle--west" },
 ];
 
-function startDragging(event: PointerEvent<HTMLElement>): void {
-  if (event.button !== 0) return;
-
-  event.preventDefault();
-  void liveWindowPlatform.startDraggingOverlay().catch((error: unknown) => {
-    console.error("[Chlens Live] overlay dragging failed:", error);
-  });
-}
-
 function startResizing(
   event: PointerEvent<HTMLSpanElement>,
   direction: OverlayResizeDirection,
@@ -41,9 +32,6 @@ function startResizing(
 export function OverlayApp() {
   return (
     <main className="overlay-stage" data-testid="overlay-stage">
-      <span className="overlay-stage__drag-bar" onPointerDown={startDragging}>
-        <span className="overlay-stage__label">Chlens Live Overlay</span>
-      </span>
       {RESIZE_HANDLES.map(({ direction, className }) => (
         <span
           key={direction}

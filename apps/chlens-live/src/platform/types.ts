@@ -12,6 +12,10 @@ export const DEFAULT_OVERLAY_GEOMETRY: OverlayGeometry = {
   height: 160,
 };
 
+// The control bar lives in a separate native window so it can remain interactive while the
+// transparent comment window ignores cursor events. Keep its native height in one shared place.
+export const OVERLAY_CONTROL_BAR_HEIGHT = 36;
+
 export type OverlayResizeDirection =
   | "East"
   | "North"
