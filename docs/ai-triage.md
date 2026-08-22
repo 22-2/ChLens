@@ -38,6 +38,32 @@ pnpm triage:todo -- --apply --force
 異常終了後に残ったロックは、記録されたPIDが動作していなければ次回実行時に回収します。
 入力状態は`debug/triage/state.json`に保存されます。これらはローカル実行用の生成物です。
 
+## Windows Task Scheduler
+
+初期運用では30分間隔でローカルタスクを登録できます。タスクは現在のWindowsユーザーで、
+ログイン中に実行されます。`GITHUB_TOKEN`または`GH_TOKEN`はタスクの引数へコピーせず、
+ユーザー環境変数から実行時に読み取ります。
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\register-triage-task.ps1 -RunImmediately
+```
+
+登録内容だけを確認する場合は、`-WhatIf`を追加します。
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\register-triage-task.ps1 -WhatIf
+```
+
+間隔を変更する場合は`-IntervalMinutes 60`のように指定します。登録を解除する場合は次を
+実行します。
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\unregister-triage-task.ps1
+```
+
+タスクの標準出力・エラーは`debug/triage/scheduler.log`へ追記されます。タスク登録前に、
+GitHub CLIが使う`GITHUB_TOKEN`または`GH_TOKEN`をWindowsのユーザー環境変数として設定してください。
+
 Items whose intent is unclear are collected into one open `[triage] Unclear todo items` Issue with
 the `needs-info` label. A successful run is the only time the command adds an
 `<!-- issue: #123 -->` marker to `.todo`.
