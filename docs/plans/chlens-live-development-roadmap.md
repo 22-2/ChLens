@@ -589,22 +589,25 @@ pnpm --filter chlens-live tauri build
 1つのIssueでリファクタリングとLive機能を同時に扱わず、次の単位を基本とする。
 
 ```text
-[architecture] Add Chlens Live workspace shell
-[core] Extract Eddibb URL and thread fetch contracts
-[ng] Separate DSL evaluator from rule persistence
-[thread-list] Extract reusable ThreadListView
-[thread] Extract reusable ThreadView contract
-[live] Add single-owner LiveThreadSession
-[live] Add read-only Main window workflow
-[overlay] Add transparent response renderer
-[overlay] Add comment lane scheduler and settings
-[write] Add Live write workflow and own response tracking
-[history] Add Live repositories and tool views
-[bridge] Add versioned Chlens/Live open target
+[architecture] Chlens Liveのworkspace骨格を追加
+[core] エッヂURLとスレ取得契約を分離
+[ng] DSL評価とルール永続化を分離
+[thread-list] 再利用可能なThreadListViewを抽出
+[thread] 再利用可能なThreadView契約を抽出
+[live] LiveThreadSessionを単一所有者として追加
+[live] 読み取り専用のLive Main画面を追加
+[overlay] 透明オーバーレイへのレス表示を追加
+[overlay] コメントのレーン制御と設定を追加
+[write] Liveの書き込みと自分のレス追跡を追加
+[history] Live用の履歴repositoryと画面を追加
+[bridge] ChlensとLiveのバージョン付き起動先を追加
 ```
 
 各Issueは1つの既存挙動境界または1つのLive縦切りに限定し、完了時に自動テスト、build、
 必要な手動確認を記録する。
+
+Issueのタイトル・本文・コメントは日本語で記述する。ただし、上記の`[<module_name>]`のような
+分類用プレフィックスや、既存の固定識別子は機械的な運用上の文字列として維持する。
 
 ## 推奨コミット単位
 
@@ -620,6 +623,8 @@ feat(live): LiveThreadSessionで実況取得を一元化
 feat(overlay): 透明オーバーレイへ新着レスを表示
 feat(bridge): ChlensとLiveの相互起動を追加
 ```
+
+Conventional Commitsのtype/scopeは形式上の識別子として英語のままにし、件名と本文は日本語で統一する。
 
 ## 全体完了条件
 
