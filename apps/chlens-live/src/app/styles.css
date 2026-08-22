@@ -147,19 +147,111 @@ button:hover {
 }
 
 .overlay-stage {
+  /* Keep hit testing enabled for the operation mode; desktop click-through is a native window toggle. */
+  position: relative;
   display: flex;
   align-items: flex-start;
   min-height: 100vh;
   padding: 0.75rem 1rem;
   color: rgb(255 255 255 / 90%);
   background: transparent;
-  pointer-events: none;
   text-shadow: 0 1px 3px #000;
 }
 
+.overlay-stage__drag-bar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 1rem;
+  cursor: move;
+  pointer-events: auto;
+}
+
+.overlay-stage__drag-bar:hover {
+  background: rgb(117 184 239 / 12%);
+}
+
 .overlay-stage__label {
+  pointer-events: none;
   opacity: 0.75;
   font-size: 0.8rem;
+}
+
+.overlay-stage__resize-handle {
+  position: absolute;
+  z-index: 1;
+  width: 14px;
+  height: 14px;
+  border: 1px solid rgb(117 184 239 / 0%);
+  border-radius: 3px;
+  background: rgb(117 184 239 / 8%);
+  opacity: 0.35;
+}
+
+.overlay-stage:hover .overlay-stage__resize-handle {
+  border-color: rgb(117 184 239 / 75%);
+  background: rgb(117 184 239 / 20%);
+  opacity: 1;
+}
+
+.overlay-stage__resize-handle--north-west {
+  top: 0;
+  left: 0;
+  cursor: nwse-resize;
+  transform: translate(-50%, -50%);
+}
+
+.overlay-stage__resize-handle--north {
+  top: 0;
+  left: 50%;
+  cursor: ns-resize;
+  transform: translate(-50%, -50%);
+}
+
+.overlay-stage__resize-handle--north-east {
+  top: 0;
+  right: 0;
+  cursor: nesw-resize;
+  transform: translate(50%, -50%);
+}
+
+.overlay-stage__resize-handle--east {
+  top: 50%;
+  right: 0;
+  cursor: ew-resize;
+  transform: translate(50%, -50%);
+}
+
+.overlay-stage__resize-handle--south-east {
+  right: 0;
+  bottom: 0;
+  cursor: nwse-resize;
+  transform: translate(50%, 50%);
+}
+
+.overlay-stage__resize-handle--south {
+  bottom: 0;
+  left: 50%;
+  cursor: ns-resize;
+  transform: translate(-50%, 50%);
+}
+
+.overlay-stage__resize-handle--south-west {
+  bottom: 0;
+  left: 0;
+  cursor: nesw-resize;
+  transform: translate(-50%, 50%);
+}
+
+.overlay-stage__resize-handle--west {
+  top: 50%;
+  left: 0;
+  cursor: ew-resize;
+  transform: translate(-50%, -50%);
 }
 
 @media (max-width: 620px) {

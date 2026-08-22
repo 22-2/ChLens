@@ -13,4 +13,4 @@ export function createLiveWindowPlatform(): LiveWindowPlatform {
 export const liveWindowPlatform = createLiveWindowPlatform();
 
 export { DEFAULT_OVERLAY_GEOMETRY } from "./types";
-export type { LiveWindowPlatform, OverlayGeometry } from "./types";
+export type { LiveWindowPlatform, OverlayGeometry, OverlayResizeDirection } from "./types";

@@ -4,7 +4,7 @@ import {
   loadStoredOverlayGeometry,
   saveStoredOverlayGeometry,
 } from "./geometry";
-import type { LiveWindowPlatform, OverlayGeometry } from "./types";
+import type { LiveWindowPlatform, OverlayGeometry, OverlayResizeDirection } from "./types";
 
 /**
  * Browser fallback used by the frontend spike and unit tests.
@@ -19,6 +19,9 @@ export function createBrowserLiveWindowPlatform(): LiveWindowPlatform {
     async showOverlay() {},
     async hideOverlay() {},
     async focusOverlay() {},
+    async startDraggingOverlay() {},
+    async startResizingOverlay(_direction: OverlayResizeDirection) {},
+    async setOverlayClickThrough(_enabled: boolean) {},
     async getOverlayGeometry() {
       return cloneOverlayGeometry(geometry);
     },

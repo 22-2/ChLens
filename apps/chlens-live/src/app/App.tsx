@@ -6,7 +6,7 @@ import {
 } from "../platform/index";
 import "./styles.css";
 
-type Operation = "show" | "hide" | "focus" | "apply" | "save" | "restore";
+type Operation = "show" | "hide" | "focus" | "apply" | "save" | "restore" | "click-through";
 
 function describeOperation(operation: Operation): string {
   switch (operation) {
@@ -22,11 +22,14 @@ function describeOperation(operation: Operation): string {
       return "Overlay geometryを保存しました";
     case "restore":
       return "保存済みgeometryを復元しました";
+    case "click-through":
+      return "クリック透過を切り替えました";
   }
 }
 
 export function App() {
   const [geometry, setGeometry] = useState<OverlayGeometry>(DEFAULT_OVERLAY_GEOMETRY);
+  const [clickThrough, setClickThrough] = useState(false);
   const [status, setStatus] = useState("Live Session未接続（Phase 1 spike）");
 
   useEffect(() => {
@@ -83,6 +86,13 @@ export function App() {
       await liveWindowPlatform.saveOverlayGeometry(current);
     });
 
+  const toggleClickThrough = () =>
+    runOperation("click-through", async () => {
+      const nextClickThrough = !clickThrough;
+      await liveWindowPlatform.setOverlayClickThrough(nextClickThrough);
+      setClickThrough(nextClickThrough);
+    });
+
   return (
     <main className="live-shell">
       <header className="live-header">
@@ -120,6 +130,9 @@ export function App() {
           >
             focus
           </button>
+          <button type="button" aria-pressed={clickThrough} onClick={toggleClickThrough}>
+            {clickThrough ? "クリック透過を解除" : "クリック透過を有効化"}
+          </button>
         </div>
 
         <div className="live-geometry" aria-label="Overlay geometry">
@@ -154,7 +167,8 @@ export function App() {
       </section>
 
       <p className="live-note">
-        ここでは取得・解析は行わず、MainからOverlayを制御するplatform境界だけを検証します。
+        Overlayは枠内をドラッグ／リサイズできます。クリック透過を有効にすると、透けて見える下の
+        ウィンドウへクリックを渡せます。解除はこのMainから行います。
       </p>
     </main>
   );

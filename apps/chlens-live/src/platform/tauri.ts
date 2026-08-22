@@ -1,17 +1,17 @@
-import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { LogicalPosition, LogicalSize } from "@tauri-apps/api/window";
+import { LogicalPosition, LogicalSize, Window } from "@tauri-apps/api/window";
 import {
   cloneOverlayGeometry,
   fallbackOverlayGeometry,
   loadStoredOverlayGeometry,
   saveStoredOverlayGeometry,
 } from "./geometry";
-import type { LiveWindowPlatform, OverlayGeometry } from "./types";
+import type { LiveWindowPlatform, OverlayGeometry, OverlayResizeDirection } from "./types";
 
 const OVERLAY_WINDOW_LABEL = "overlay";
 
-async function getOverlayWindow(): Promise<WebviewWindow> {
-  const overlay = await WebviewWindow.getByLabel(OVERLAY_WINDOW_LABEL);
+async function getOverlayWindow(): Promise<Window> {
+  // Native window operations belong to Window; the overlay's webview content is not needed here.
+  const overlay = await Window.getByLabel(OVERLAY_WINDOW_LABEL);
   if (!overlay) {
     throw new Error(`Tauri window '${OVERLAY_WINDOW_LABEL}' is not available`);
   }
@@ -30,6 +30,18 @@ export function createTauriLiveWindowPlatform(): LiveWindowPlatform {
       const overlay = await getOverlayWindow();
       await overlay.show();
       await overlay.setFocus();
+    },
+    async startDraggingOverlay() {
+      // Decorations are disabled for the overlay, so dragging must be initiated explicitly.
+      await (await getOverlayWindow()).startDragging();
+    },
+    async startResizingOverlay(direction: OverlayResizeDirection) {
+      // Native resize hit-testing is unavailable without decorations; use Tauri's directional API.
+      await (await getOverlayWindow()).startResizeDragging(direction);
+    },
+    async setOverlayClickThrough(enabled: boolean) {
+      // Click-through is a native window setting; CSS pointer-events alone would still block other apps.
+      await (await getOverlayWindow()).setIgnoreCursorEvents(enabled);
     },
     async getOverlayGeometry() {
       const overlay = await getOverlayWindow();

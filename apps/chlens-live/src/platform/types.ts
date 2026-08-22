@@ -12,10 +12,23 @@ export const DEFAULT_OVERLAY_GEOMETRY: OverlayGeometry = {
   height: 160,
 };
 
+export type OverlayResizeDirection =
+  | "East"
+  | "North"
+  | "NorthEast"
+  | "NorthWest"
+  | "South"
+  | "SouthEast"
+  | "SouthWest"
+  | "West";
+
 export interface LiveWindowPlatform {
   showOverlay(): Promise<void>;
   hideOverlay(): Promise<void>;
   focusOverlay(): Promise<void>;
+  startDraggingOverlay(): Promise<void>;
+  startResizingOverlay(direction: OverlayResizeDirection): Promise<void>;
+  setOverlayClickThrough(enabled: boolean): Promise<void>;
   getOverlayGeometry(): Promise<OverlayGeometry | null>;
   setOverlayGeometry(geometry: OverlayGeometry): Promise<void>;
   loadOverlayGeometry(): Promise<OverlayGeometry | null>;
