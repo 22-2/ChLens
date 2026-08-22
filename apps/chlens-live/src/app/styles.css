@@ -1,0 +1,173 @@
+:root {
+  color: #e8eef7;
+  background: #0d1524;
+  font-family: "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-width: 100%;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #0d1524;
+}
+
+/* A transparent Tauri window still paints document backgrounds unless every root layer is clear. */
+.overlay-document,
+.overlay-document body,
+.overlay-document #root {
+  background: transparent;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  border: 1px solid #426189;
+  border-radius: 7px;
+  padding: 0.55rem 0.85rem;
+  color: #eff6ff;
+  background: #1a2b45;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #274467;
+}
+
+.live-shell {
+  min-height: 100vh;
+  padding: 2.25rem;
+  background: radial-gradient(circle at 15% 0%, rgb(47 101 154 / 30%), transparent 34rem), #0d1524;
+}
+
+.live-header,
+.live-card__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.live-header {
+  max-width: 58rem;
+  margin: 0 auto 1.5rem;
+}
+
+.live-header h1,
+.live-card h2 {
+  margin: 0;
+}
+
+.live-header h1 {
+  font-size: 2rem;
+  letter-spacing: 0.02em;
+}
+
+.live-card {
+  max-width: 58rem;
+  margin: 0 auto;
+  padding: 1.25rem;
+  border: 1px solid #29435f;
+  border-radius: 14px;
+  background: rgb(21 35 56 / 92%);
+  box-shadow: 0 1rem 3rem rgb(0 0 0 / 22%);
+}
+
+.live-eyebrow {
+  margin: 0 0 0.35rem;
+  color: #75b8ef;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.live-phase,
+.live-status {
+  color: #a9c1db;
+  font-size: 0.8rem;
+}
+
+.live-status {
+  max-width: 18rem;
+  text-align: right;
+}
+
+.live-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1.25rem;
+}
+
+.live-actions--secondary {
+  margin-top: 1rem;
+}
+
+.live-geometry {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.live-geometry label {
+  display: grid;
+  gap: 0.35rem;
+  color: #a9c1db;
+  font-size: 0.8rem;
+}
+
+.live-geometry input {
+  width: 100%;
+  border: 1px solid #385574;
+  border-radius: 6px;
+  padding: 0.45rem 0.5rem;
+  color: #eff6ff;
+  background: #0e1c30;
+}
+
+.live-note {
+  max-width: 58rem;
+  margin: 1rem auto;
+  color: #829ab5;
+  font-size: 0.82rem;
+}
+
+.overlay-stage {
+  display: flex;
+  align-items: flex-start;
+  min-height: 100vh;
+  padding: 0.75rem 1rem;
+  color: rgb(255 255 255 / 90%);
+  background: transparent;
+  pointer-events: none;
+  text-shadow: 0 1px 3px #000;
+}
+
+.overlay-stage__label {
+  opacity: 0.75;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 620px) {
+  .live-shell {
+    padding: 1rem;
+  }
+
+  .live-geometry {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

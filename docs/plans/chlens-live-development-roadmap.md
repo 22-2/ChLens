@@ -202,6 +202,8 @@ Phase 0で固定した仕様・既存挙動の根拠は、[Phase 0 仕様・既�
 
 ### Phase 1: workspace と境界の準備
 
+Phase 1の実装記録と検証結果は、[Phase 1 workspace／window spike](./chlens-live-phase1-spike.md)にまとめる。
+
 #### 目的
 
 既存 Chlens と独立して build／run できる Live の最小アプリを置き、共有コードの移動先を確保する。
