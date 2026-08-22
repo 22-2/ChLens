@@ -32,6 +32,9 @@ export interface LiveWindowPlatform {
   focusOverlay(): Promise<void>;
   startDraggingOverlay(): Promise<void>;
   startResizingOverlay(direction: OverlayResizeDirection): Promise<void>;
+  minimizeOverlay(): Promise<void>;
+  toggleMaximizeOverlay(): Promise<void>;
+  closeOverlay(): Promise<void>;
   setOverlayClickThrough(enabled: boolean): Promise<void>;
   getOverlayGeometry(): Promise<OverlayGeometry | null>;
   setOverlayGeometry(geometry: OverlayGeometry): Promise<void>;

@@ -28,6 +28,7 @@
 | --- | --- | --- |
 | `main` | 操作用の実況Main | 表示、1200 x 800 |
 | `overlay` | 将来のコメント表示面 | 非表示、透明、decorationsなし、always-on-top、900 x 160 |
+| `overlay-controls` | Overlay上部の常時操作バー | 非表示、透明、decorationsなし、always-on-top、overlay所有 |
 
 Main UIは `LiveWindowPlatform` だけを呼び出し、Tauri APIをReact componentへ直接importしない。
 
@@ -40,7 +41,7 @@ Viteの開発watcherは `src-tauri/**` を除外している。WindowsではRust
 MainからOverlayの表示、非表示、focus、geometry適用を操作できる。
 現在のgeometryは `localStorage` の `chlens-live:overlay-geometry` に保存し、Tauriではdisplay scalingを考慮したlogical pixelとして復元する。
 Overlayは枠内の8方向リサイズハンドルに対応する。上部操作バーはOverlay本体とは別のnative windowに分け、
-クリック透過中もバーのドラッグと操作を受け付ける。Mainの「クリック透過を有効化」でOverlay本体の
+クリック透過中もバーのドラッグ、ダブルクリック最大化、最小化・最大化・閉じる操作を受け付ける。Mainの「クリック透過を有効化」でOverlay本体の
 Tauri cursor eventを無視し、透けて見える背面ウィンドウへ入力を渡せる。操作へ戻す場合はMainから透過を解除する。
 
 ## Phase 1で意図的に含めないもの
@@ -56,7 +57,7 @@ Tauri cursor eventを無視し、透けて見える背面ウィンドウへ入�
 
 - `pnpm --filter chlens-live check`: format、lint、type check成功
 - `pnpm --filter chlens-live test`: 1 file／2 tests成功
-- `pnpm --filter chlens-live build`: Main／Overlayの2 HTML entryを出力
+- `pnpm --filter chlens-live build`: Main／Overlay／Overlay controlsの3 HTML entryを出力
 - `pnpm --filter chlens-live tauri:build`: Windows向けMSI／NSIS bundle生成成功
 - `pnpm exec vp test run`: 97 test files／501 tests成功
 - `pnpm tsc6`: 成功

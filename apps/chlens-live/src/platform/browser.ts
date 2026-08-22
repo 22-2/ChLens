@@ -21,6 +21,9 @@ export function createBrowserLiveWindowPlatform(): LiveWindowPlatform {
     async focusOverlay() {},
     async startDraggingOverlay() {},
     async startResizingOverlay(_direction: OverlayResizeDirection) {},
+    async minimizeOverlay() {},
+    async toggleMaximizeOverlay() {},
+    async closeOverlay() {},
     async setOverlayClickThrough(_enabled: boolean) {},
     async getOverlayGeometry() {
       return cloneOverlayGeometry(geometry);

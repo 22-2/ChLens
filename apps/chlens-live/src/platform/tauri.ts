@@ -147,6 +147,21 @@ export function createTauriLiveWindowPlatform(): LiveWindowPlatform {
       await ensureControlsSync();
       await (await getOverlayWindow()).startResizeDragging(direction);
     },
+    async minimizeOverlay() {
+      const overlay = await getOverlayWindow();
+      const controls = await getOverlayControlsWindow();
+      await overlay.minimize();
+      await controls.minimize();
+    },
+    async toggleMaximizeOverlay() {
+      await ensureControlsSync();
+      // The bar is a separate window, so the transparent Overlay is the window whose state changes.
+      await (await getOverlayWindow()).toggleMaximize();
+    },
+    async closeOverlay() {
+      // Hide instead of destroying the configured windows so Main can show the Overlay again later.
+      await platform.hideOverlay();
+    },
     async setOverlayClickThrough(enabled: boolean) {
       // Click-through is a native window setting; CSS pointer-events alone would still block other apps.
       await (await getOverlayWindow()).setIgnoreCursorEvents(enabled);
