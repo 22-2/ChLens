@@ -31,6 +31,8 @@
 
 Main UIは `LiveWindowPlatform` だけを呼び出し、Tauri APIをReact componentへ直接importしない。
 
+Viteの開発watcherは `src-tauri/**` を除外している。WindowsではRust build中のDLLがロックされるため、生成物をViteが監視すると `EBUSY` でdev起動に失敗する。
+
 - Tauri adapter: `src/platform/tauri.ts`
 - browser／test fallback: `src/platform/browser.ts`
 - 共通契約: `src/platform/types.ts`

@@ -12,6 +12,12 @@ export default defineConfig({
       "@chlens-live": path.resolve(appRoot, "src"),
     },
   },
+  server: {
+    watch: {
+      // Tauri compiles locked DLLs under this directory during `tauri dev`; Vite must not watch them.
+      ignored: ["**/src-tauri/**"],
+    },
+  },
   build: {
     outDir: path.resolve(appRoot, "dist"),
     emptyOutDir: true,
