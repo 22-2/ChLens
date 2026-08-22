@@ -27,7 +27,7 @@
     "lint:format": "vp fmt",
     "lint:tokens": "node scripts/check-browser-design-tokens.mjs",
     "test": "vp test run",
-    "triage:todo": "node scripts/triage-todo.mjs",
+    "triage:todo": "node --no-warnings --experimental-strip-types scripts/triage-todo.ts",
     "test:url-commonization": "pnpm vitest run src/content-scripts/url-targets.test.ts src/view/browser/pages/BookmarkListPage.test.tsx && pnpm --filter @read-crx/ch-lib exec vitest run src/parser/BoardParser.test.ts src/parser/ThreadParser.test.ts",
     "release": "release-it",
     "release:build": "pnpm build:all && node scripts/package-release.mjs",

@@ -1,8 +1,43 @@
 import { execFileSync, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
-import { parse as parseJsonc, printParseErrorCode } from "jsonc-parser";
+import { parse as parseJsonc, printParseErrorCode, type ParseError } from "jsonc-parser";
+
+type TriageAction = "create" | "append-unclear" | "review-existing" | "skip";
+type CloseReason = "completed" | "not planned" | "duplicate" | "none";
+type RunMode = "dry-run" | "apply";
+
+interface TriageItem {
+  source_text: string;
+  action: TriageAction;
+  confidence: "high" | "medium" | "low";
+  title: string;
+  body: string;
+  labels: string[];
+  duplicate_issue_numbers: number[];
+  existing_issue_numbers: number[];
+  close_reason: CloseReason;
+  unclear_questions: string[];
+  reason: string;
+}
+
+interface TriageReport {
+  items: TriageItem[];
+}
+
+interface TriageState {
+  mode: RunMode;
+  todo_hash: string;
+  issues_hash: string;
+  last_run_at: string;
+}
+
+interface UnclearIssue {
+  number: number;
+  title: string;
+}
 
 const root = process.cwd();
 const todoPath = path.join(root, ".todo");
@@ -10,7 +45,11 @@ const schemaPath = path.join(root, "scripts", "triage-todo.schema.json");
 const outputDir = path.join(root, "debug", "triage");
 const outputPath = path.join(outputDir, "todo-triage.json");
 const codexLogPath = path.join(outputDir, "codex.log");
+const statePath = path.join(outputDir, "state.json");
+const lockPath = path.join(outputDir, "triage.lock");
 const apply = process.argv.includes("--apply");
+const force = process.argv.includes("--force");
+const mode: RunMode = apply ? "apply" : "dry-run";
 const AI_DISCLOSURE =
   "> 🤖 このIssueは、`.todo`のメモをもとにAIがコード調査・整理して作成しました。\n> 内容、優先度、仕様、完了判定は人が確認します。";
 
@@ -21,23 +60,26 @@ const ghConfigDir = path.join(outputDir, "gh-config");
 fs.mkdirSync(ghConfigDir, { recursive: true });
 process.env.GH_CONFIG_DIR = ghConfigDir;
 
-function run(command, args, options = {}) {
+function run(command: string, args: string[]): string {
   return execFileSync(command, args, {
     cwd: root,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
-    ...options,
   }).trim();
 }
 
-function fail(message) {
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function fail(message: string): void {
   console.error(`[triage-todo] ${message}`);
   process.exitCode = 1;
 }
 
-function readJsonc(text, sourceName) {
-  const errors = [];
-  const value = parseJsonc(text, errors, { allowTrailingComma: true });
+function readJsonc<T>(text: string, sourceName: string): T {
+  const errors: ParseError[] = [];
+  const value = parseJsonc(text, errors, { allowTrailingComma: true }) as T;
   if (errors.length > 0) {
     const details = errors
       .map((error) => `${printParseErrorCode(error.error)} at ${error.offset}`)
@@ -47,10 +89,101 @@ function readJsonc(text, sourceName) {
   return value;
 }
 
+function hash(text: string): string {
+  return createHash("sha256").update(text, "utf8").digest("hex");
+}
+
+function isProcessRunning(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function releaseLock(): void {
+  try {
+    const lock = readJsonc<{ pid?: number }>(fs.readFileSync(lockPath, "utf8"), lockPath);
+    if (lock.pid === process.pid) fs.unlinkSync(lockPath);
+  } catch {
+    // A missing or already-cleaned lock is safe during process shutdown.
+  }
+}
+
+function acquireLock(): void {
+  const content = `${JSON.stringify({ pid: process.pid, started_at: new Date().toISOString() })}\n`;
+  try {
+    const descriptor = fs.openSync(lockPath, "wx");
+    fs.writeFileSync(descriptor, content, "utf8");
+    fs.closeSync(descriptor);
+    process.on("exit", releaseLock);
+    return;
+  } catch (error) {
+    if (!(error && typeof error === "object" && "code" in error && error.code === "EEXIST")) {
+      throw error;
+    }
+  }
+
+  try {
+    const lock = readJsonc<{ pid?: number }>(fs.readFileSync(lockPath, "utf8"), lockPath);
+    if (lock.pid && isProcessRunning(lock.pid)) {
+      console.log(`[triage-todo] another run is active (pid ${lock.pid}); skipping`);
+      process.exit(0);
+    }
+  } catch {
+    // A partially written or stale lock can be replaced below.
+  }
+
+  fs.unlinkSync(lockPath);
+  acquireLock();
+}
+
+function getIssueSnapshot(): string {
+  return run("gh", [
+    "issue",
+    "list",
+    "--state",
+    "all",
+    "--limit",
+    "1000",
+    "--json",
+    "number,state,labels,updatedAt",
+  ]);
+}
+
+function readState(): TriageState | undefined {
+  if (!fs.existsSync(statePath)) return undefined;
+  try {
+    return readJsonc<TriageState>(fs.readFileSync(statePath, "utf8"), statePath);
+  } catch (error) {
+    console.warn(`[triage-todo] ignoring invalid state file: ${errorMessage(error)}`);
+    return undefined;
+  }
+}
+
+function writeState(todoContent: string, issueSnapshot: string): void {
+  fs.writeFileSync(
+    statePath,
+    `${JSON.stringify(
+      {
+        mode,
+        todo_hash: hash(todoContent),
+        issues_hash: hash(issueSnapshot),
+        last_run_at: new Date().toISOString(),
+      } satisfies TriageState,
+      null,
+      2,
+    )}\n`,
+    "utf8",
+  );
+}
+
 if (process.argv.includes("--help")) {
-  console.log("Usage: pnpm triage:todo [--apply]");
+  console.log("Usage: pnpm triage:todo [--apply] [--force]");
   console.log("  default       Analyze .todo and write a dry-run report");
   console.log("  --apply       Create up to three issues and mark successful items");
+  console.log("  --force       Ignore the unchanged-input state and run again");
   process.exit(0);
 }
 
@@ -61,6 +194,23 @@ if (!fs.existsSync(todoPath)) {
 
 const todo = fs.readFileSync(todoPath, "utf8");
 fs.mkdirSync(outputDir, { recursive: true });
+acquireLock();
+
+// Issueのstate・label・updatedAtも入力として扱うことで、既存Issueの進捗変化を検知し、
+// linked Issueに対するreview-existingの再確認を定期実行できるようにする。
+const issueSnapshot = getIssueSnapshot();
+const previousState = readState();
+// dry-runの確認後にapplyへ移る場合は、入力が同じでも実行目的が異なるため再評価する。
+// 同じモードで入力とIssueの状態が変わらない場合だけ、定期実行の重複処理を省略する。
+if (
+  !force &&
+  previousState?.mode === mode &&
+  previousState.todo_hash === hash(todo) &&
+  previousState.issues_hash === hash(issueSnapshot)
+) {
+  console.log("[triage-todo] .todo and GitHub Issues are unchanged; skipping Codex");
+  process.exit(0);
+}
 
 const prompt = `
 You are the read.crx-2 todo triage agent.
@@ -135,11 +285,11 @@ if (codex.status !== 0) {
   process.exit();
 }
 
-let report;
+let report: TriageReport;
 try {
-  report = readJsonc(fs.readFileSync(outputPath, "utf8"), outputPath);
+  report = readJsonc<TriageReport>(fs.readFileSync(outputPath, "utf8"), outputPath);
 } catch (error) {
-  fail(`could not parse ${path.relative(root, outputPath)}: ${error.message}`);
+  fail(`could not parse ${path.relative(root, outputPath)}: ${errorMessage(error)}`);
   process.exit();
 }
 
@@ -168,6 +318,7 @@ for (const item of reviewItems) {
 }
 
 if (!apply) {
+  writeState(todo, getIssueSnapshot());
   console.log("[triage-todo] dry-run only; no Issue or .todo changes were made");
   process.exit(0);
 }
@@ -184,7 +335,7 @@ for (const item of reviewItems) {
   }
 }
 
-function findUnclearIssue() {
+function findUnclearIssue(): UnclearIssue | undefined {
   const result = run("gh", [
     "issue",
     "list",
@@ -197,16 +348,15 @@ function findUnclearIssue() {
     "--limit",
     "10",
   ]);
-  const issues = result ? readJsonc(result, "gh issue list output") : [];
+  const issues = result ? readJsonc<UnclearIssue[]>(result, "gh issue list output") : [];
   return issues.find((issue) => issue.title === "[triage] Unclear todo items");
 }
 
-function appendTodoMarker(sourceText, issueNumber) {
+function appendTodoMarker(sourceText: string, issueNumber: number): void {
   const lines = fs.readFileSync(todoPath, "utf8").split(/\r?\n/);
   const index = lines.findIndex(
     (line, lineIndex) =>
-      line === sourceText &&
-      lines[lineIndex + 1]?.includes("<!-- issue:") !== true,
+      line === sourceText && lines[lineIndex + 1]?.includes("<!-- issue:") !== true,
   );
   if (index === -1) {
     throw new Error(`could not find an unmarked .todo source line: ${sourceText}`);
@@ -282,3 +432,5 @@ if (unclearItems.length > 0) {
     appendTodoMarker(item.source_text, issueNumber);
   }
 }
+
+writeState(fs.readFileSync(todoPath, "utf8"), getIssueSnapshot());

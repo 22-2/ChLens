@@ -25,6 +25,19 @@ numbers to `.todo`:
 pnpm triage:todo -- --apply
 ```
 
+定期実行では、この `--apply` 形式をタスクスケジューラから呼び出します。前回と同じ
+`.todo`およびGitHub Issuesの状態なら、Codexを起動せずに終了します。`.todo`を書き換えた、
+Issueの状態・ラベルが変わった、または前回の解析をもう一度実行したい場合は、手動で
+`--force`を追加してください。
+
+```powershell
+pnpm triage:todo -- --apply --force
+```
+
+同じリポジトリで処理が重ならないよう、実行中は`debug/triage/triage.lock`を作成します。
+異常終了後に残ったロックは、記録されたPIDが動作していなければ次回実行時に回収します。
+入力状態は`debug/triage/state.json`に保存されます。これらはローカル実行用の生成物です。
+
 Items whose intent is unclear are collected into one open `[triage] Unclear todo items` Issue with
 the `needs-info` label. A successful run is the only time the command adds an
 `<!-- issue: #123 -->` marker to `.todo`.
