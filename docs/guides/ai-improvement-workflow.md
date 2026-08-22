@@ -144,5 +144,5 @@ GitHub APIへ接続するため、`GITHUB_TOKEN`または`GH_TOKEN`をWindowsの
 | `scripts/triage-todo.schema.json`    | Codexの出力形式を検証するスキーマ      |
 | `scripts/register-triage-task.ps1`   | Windows Task Schedulerへの登録         |
 | `scripts/unregister-triage-task.ps1` | Windows Task Schedulerからの削除       |
-| `docs/ai-triage.md`                  | コマンドと運用の詳細手順               |
+| `docs/guides/ai-triage.md`            | コマンドと運用の詳細手順               |
 | `AGENTS.md`                          | AIが守る改善ループのルール             |
