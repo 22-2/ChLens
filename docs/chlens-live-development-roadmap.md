@@ -58,6 +58,50 @@ Chlens Live は単なる透明オーバーレイではなく、次を一体化�
 6. **永続データは製品ごとに分ける。** コードと DSL 構文は共有しても、設定値・ルール・履歴は共有しない。
 7. **Chlens 本体の Chrome／Firefox／Tauri ビルドを各段階のゲートにする。**
 
+## Overlay の速度・レーン方針
+
+Chlens Live の速度感は EdgeLiveViewer より速めにする。速度設定は「1コメントの表示秒数」
+ではなく、Danmaku と同じく「ステージ上を進む基準 px/sec」として扱う。
+
+Danmaku の速度モデルを採用する。
+
+```text
+duration = stageWidth / baseSpeed
+actualPxPerSecond = (stageWidth + commentWidth) / duration
+```
+
+このモデルでは、短文と長文がステージ上に滞在する時間を揃えられる。初期値は Danmaku の
+`144px/sec` を基準にし、実際の Overlay サイズと見た目を確認して調整する。600px 幅なら
+ステージ幅の通過時間は約 4.2 秒となり、EdgeLiveViewer の現在の既定値 `comment_speed=6.0`
+より速い。設定値の意味を変更するため、EdgeLiveViewer の設定値を自動移行しない。
+
+- [Danmaku README の speed 仕様](https://github.com/weizhenye/Danmaku#speed)
+- [Danmaku の DOM／Canvas renderer と live mode](https://github.com/weizhenye/Danmaku#live-mode)
+- [EdgeLiveViewer の現在の既定速度](V:/repos/fork/EdgeLiveViewer/comment_animation_improved.py:132)
+- [EdgeLiveViewer の移動距離と速度計算](V:/repos/fork/EdgeLiveViewer/comment_animation_improved.py:1253)
+
+レーン管理は CommentCoreLibrary の allocator 構造を参考にする。ただし初期実装では通常スクロールを
+中心にし、上固定・下固定を追加可能な境界だけ先に用意する。
+
+- [CommentCoreLibrary の mode 別 allocator](https://raw.githubusercontent.com/jabbany/CommentCoreLibrary/master/src/CommentManager.js)
+- [EdgeLiveViewer の現在のレーン判定](V:/repos/fork/EdgeLiveViewer/comment_animation_improved.py:952)
+- [EdgeLiveViewer の現在の追いつき処理](V:/repos/fork/EdgeLiveViewer/comment_animation_improved.py:453)
+
+混雑時に既存コメントの速度を急に変えない。`CommentScheduler` は次の責務を持つ。
+
+```text
+CommentScheduler
+  ├─ pending comments
+  ├─ active comments
+  ├─ scroll lane allocators
+  ├─ realtime / playback clock
+  └─ backlog policy
+```
+
+queue が詰まった場合は、速度を不規則に上げるのではなく、投入数の上限、古いコメントのスキップ、
+遅延表示を組み合わせる。Overlay はライブ感を優先し、全レスの確認は Main のスレビューで保証する。
+過去ログ再生に備え、clock は `realtime` と `playback` を差し替えられるようにする。
+
 ## 目標構成
 
 最終的には次の workspace 構成を目標とする。ただし、package は利用箇所が 2 つになった段階で作る。
@@ -315,10 +359,18 @@ Live Sessionの新着レスを、別取得なしで透明Overlayへ流す。
 #### 作業
 
 - MainからOverlayへresponse batchを送るversion付きevent contractを作る。
-- DOM／CSS animationを基本としてcomment lane schedulerを実装する。
+- `CommentScheduler`をTypeScriptで実装する。既存ライブラリをそのまま組み込まず、
+  Danmakuの速度モデルとCommentCoreLibraryのallocator／runlineの考え方だけを取り入れる。
+- 速度設定は`baseSpeedPxPerSecond`とし、初期値は`144`を基準にする。
+- `duration = stageWidth / baseSpeed`、実際の移動速度は`(stageWidth + commentWidth) / duration`とする。
+- レーンごとにactive commentの占有状態を管理し、コメントが画面外へ出た時点でレーンを解放する。
+- 初期対応モードは通常スクロールとし、上固定／下固定は同じallocator契約へ追加できるようにする。
+- `realtime`／`playback`を切り替えられる`CommentClock`を用意する。
+- DOM rendererを基本とし、レス番号を`data-res-num`で保持してMainへのジャンプやChlens連携に利用する。
+- queueが詰まった場合のbacklog policyを実装する。既存コメントの速度をその場で変更しない。
 - 次を設定可能にする。
   - font、size、weight、color、shadow
-  - speed、spacing、position、max comments
+  - base speed、spacing、position、max comments
   - opacity、always on top、click through
   - window geometry、16:9 lock、maximize
 - 操作モードとクリック透過モードを明示的に切り替える。
@@ -332,6 +384,8 @@ Live Sessionの新着レスを、別取得なしで透明Overlayへ流す。
 - MainとOverlayの表示レス番号が同じsession snapshotに由来する。
 - Overlayを閉じて再表示してもLive Sessionは切断されない。
 - 1000レス相当のfixtureでlane衝突、queue肥大、memory leakがない。
+- 初期速度設定がEdgeLiveViewerより速く、短文・長文の滞在時間が極端に崩れない。
+- queue増加時も既存コメントが突然加速せず、backlog policyの結果がMainで確認できる。
 - Windowsの透明、常に手前、クリック透過、OBS captureを手動確認している。
 
 ### Phase 8: 書き込み・自動次スレ・過去ログ
