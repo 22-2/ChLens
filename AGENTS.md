@@ -87,7 +87,7 @@
 - 人が実装してよいと判断したものだけが`ready`。
 - `ready`以外のIssueを実装対象にしない。
 - 実装開始時に`in-progress`、実装と自動確認の完了後に`needs-human-test`へ変更する。
-- 人が実際に操作して満足した場合だけ`done`にする。
+- 人が実際に操作して満足した場合だけ、Issueへ確認結果を記録して`completed`でクローズする。
 - 既存Issueを完了扱いにする場合は、実際の確認結果をコメントしてから`gh issue close <number> --reason completed`を使う。実施しない場合は理由をコメントしてから`gh issue close <number> --reason "not planned"`を使う。
 - 仕様不明、テスト環境不良、データ損失の恐れ、Issue範囲超過では停止して`blocked`または`needs-info`にする。
 

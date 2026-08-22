@@ -92,7 +92,7 @@ Rules:
 - Use action=append-unclear for an item that needs a human answer. Its title must be
   "[triage] Unclear todo items" and unclear_questions must contain concise questions.
 - For action=create, use the needs-priority label only. Do not use ready, in-progress,
-  needs-human-test, blocked, or done.
+  needs-human-test, blocked, or review-existing.
 - source_text must exactly match one complete line from .todo.
 - For action=create, body must contain: symptom, expected behavior, reproduction/observation,
   code investigation with file paths and evidence, confirmed facts vs hypotheses, proposal,
