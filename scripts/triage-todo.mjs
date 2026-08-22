@@ -209,7 +209,7 @@ if (unclearItems.length > 0) {
     )
     .join("\n\n---\n\n");
   const existing = findUnclearIssue();
-  const issueNumber = existing?.number;
+  let issueNumber = existing?.number;
   if (issueNumber) {
     run("gh", ["issue", "comment", String(issueNumber), "--body", body]);
     console.log(`[triage-todo] appended unclear items to #${issueNumber}`);
@@ -224,6 +224,17 @@ if (unclearItems.length > 0) {
       "--label",
       "needs-info",
     ]);
+    const match = issueUrl.match(/\/issues\/(\d+)(?:$|\s)/);
+    if (!match) {
+      fail(`gh issue create returned an unexpected URL: ${issueUrl}`);
+      process.exit();
+    }
+    issueNumber = Number(match[1]);
     console.log(`[triage-todo] created unclear-items issue ${issueUrl}`);
+  }
+
+  // 集約Issueも元メモへ紐づけないと、次回の実行で同じ質問を再投稿する。
+  for (const item of unclearItems) {
+    appendTodoMarker(item.source_text, issueNumber);
   }
 }
