@@ -65,10 +65,12 @@
 #### Triage rules
 
 - `.todo`を読み、未処理の不満を利用者の問題単位へ整理する。
-- 既存のGitHub Issueをタイトル、本文、関連語で検索し、重複Issueを作らない。
+- 最初に既存のGitHub Issueをopen/closedの両方で確認する。タイトル、本文、関連語で検索し、重複Issueを作らない。
+- `needs-priority`は実装候補としては無視するが、重複確認の対象からは外さない。これは調査済みで、人の優先度判断を待つ状態である。
 - 関連コード、既存テスト、画面構成を読み、Issueには根拠となるファイルと処理を記録する。
 - 症状、期待する挙動、再現条件、原因候補、修正案、完了条件、リスクをIssue本文へ整理する。
 - コードから判断できない仕様や、原文から意図を読み取れない項目を推測しない。
+- 既存Issueがすでに修正済み、または今後実施しない内容に見える場合は`review-existing`として報告する。AIはIssueを閉じず、人が確認してから`completed`または`not planned`で閉じる。
 - 意図不明の項目は個別Issueを乱立させず、`[triage] Unclear todo items`という集約Issueを検索して追記する。集約Issueがなければ1件だけ作成し、`needs-info`を付ける。
 - 新規Issueを作成する前に、同じ集約Issueまたは関連Issueがないか必ず確認する。
 - 1回のトリアージで作成する新規Issueは最大3件とし、残りは次回へ回す。
@@ -83,6 +85,7 @@
 - `ready`以外のIssueを実装対象にしない。
 - 実装開始時に`in-progress`、実装と自動確認の完了後に`needs-human-test`へ変更する。
 - 人が実際に操作して満足した場合だけ`done`にする。
+- 既存Issueを完了扱いにする場合は、実際の確認結果をコメントしてから`gh issue close <number> --reason completed`を使う。実施しない場合は理由をコメントしてから`gh issue close <number> --reason "not planned"`を使う。
 - 仕様不明、テスト環境不良、データ損失の恐れ、Issue範囲超過では停止して`blocked`または`needs-info`にする。
 
 #### Implementation rules

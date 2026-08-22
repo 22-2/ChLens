@@ -10,7 +10,7 @@
         "additionalProperties": false,
         "properties": {
           "source_text": { "type": "string" },
-          "action": { "enum": ["create", "append-unclear", "skip"] },
+          "action": { "enum": ["create", "append-unclear", "review-existing", "skip"] },
           "confidence": { "enum": ["high", "medium", "low"] },
           "title": { "type": "string" },
           "body": { "type": "string" },
@@ -21,6 +21,13 @@
           "duplicate_issue_numbers": {
             "type": "array",
             "items": { "type": "integer", "minimum": 1 }
+          },
+          "existing_issue_numbers": {
+            "type": "array",
+            "items": { "type": "integer", "minimum": 1 }
+          },
+          "close_reason": {
+            "enum": ["completed", "not planned", "duplicate", "none"]
           },
           "unclear_questions": {
             "type": "array",
@@ -36,6 +43,8 @@
           "body",
           "labels",
           "duplicate_issue_numbers",
+          "existing_issue_numbers",
+          "close_reason",
           "unclear_questions",
           "reason"
         ]

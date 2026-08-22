@@ -72,11 +72,18 @@ Return JSON matching scripts/triage-todo.schema.json.
 Rules:
 - Process only actionable items from .todo that do not already contain an HTML comment matching
   "issue: #number".
-- Search existing GitHub Issues before proposing a new one. Use gh read-only commands when needed.
+- At the very beginning, list and inspect existing open and closed GitHub Issues. Search by title,
+  body, and related terms before proposing a new one. Use gh read-only commands when needed.
+- \`needs-priority\` means "already investigated; waiting for human priority". Do not implement or
+  change those Issues, but do include them in duplicate checks so a second Issue is not created.
 - Never modify files, create issues, edit issues, change labels, commit, or push.
 - Return at most three items with action=create. Include append-unclear items separately when the
   intent cannot be determined from the text and repository evidence.
 - Use action=skip for an item that is already represented by an existing issue or is not actionable.
+- Use action=review-existing when an open Issue appears already fixed or no longer appropriate.
+  Include existing_issue_numbers and set close_reason to completed or not planned. Do not close it.
+- For a closed matching Issue, use action=skip unless there is clear evidence that it should be
+  reopened; do not create a duplicate Issue.
 - Use action=append-unclear for an item that needs a human answer. Its title must be
   "[triage] Unclear todo items" and unclear_questions must contain concise questions.
 - For action=create, use the needs-priority label only. Do not use ready, in-progress,
@@ -143,9 +150,17 @@ fs.writeFileSync(outputPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
 
 const createItems = validItems.filter((item) => item.action === "create");
 const unclearItems = validItems.filter((item) => item.action === "append-unclear");
+const reviewItems = validItems.filter((item) => item.action === "review-existing");
 
 console.log(`[triage-todo] report: ${path.relative(root, outputPath)}`);
-console.log(`[triage-todo] create=${createItems.length} unclear=${unclearItems.length}`);
+console.log(
+  `[triage-todo] create=${createItems.length} unclear=${unclearItems.length} review-existing=${reviewItems.length}`,
+);
+for (const item of reviewItems) {
+  console.log(
+    `[triage-todo] human review required for #${item.existing_issue_numbers.join(", #")}: ${item.close_reason} (${item.source_text})`,
+  );
+}
 
 if (!apply) {
   console.log("[triage-todo] dry-run only; no Issue or .todo changes were made");
