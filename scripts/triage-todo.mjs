@@ -115,15 +115,17 @@ try {
 }
 
 const todoLines = todo.split(/\r?\n/);
-const createItems = report.items.filter((item) => item.action === "create");
-const unclearItems = report.items.filter((item) => item.action === "append-unclear");
+const validItems = report.items.filter((item) => {
+  if (todoLines.includes(item.source_text)) return true;
+  console.warn(`[triage-todo] skipping source not found verbatim in .todo: ${item.source_text}`);
+  return false;
+});
+// AIがアーカイブや過去の会話から項目を混ぜても、現在の.todoに存在する候補だけを扱う。
+report.items = validItems;
+fs.writeFileSync(outputPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
 
-for (const item of report.items) {
-  if (!todoLines.includes(item.source_text)) {
-    fail(`source_text was not found verbatim in .todo: ${item.source_text}`);
-    process.exit();
-  }
-}
+const createItems = validItems.filter((item) => item.action === "create");
+const unclearItems = validItems.filter((item) => item.action === "append-unclear");
 
 console.log(`[triage-todo] report: ${path.relative(root, outputPath)}`);
 console.log(`[triage-todo] create=${createItems.length} unclear=${unclearItems.length}`);
