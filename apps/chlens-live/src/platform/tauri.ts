@@ -60,8 +60,22 @@ export function createTauriLiveWindowPlatform(): LiveWindowPlatform {
     syncingWindowPair = true;
     try {
       const geometry = await readOverlayGeometry(overlay);
-      await controls.setPosition(new LogicalPosition(geometry.x, geometry.y));
-      await controls.setSize(new LogicalSize(geometry.width, OVERLAY_CONTROL_BAR_HEIGHT));
+      const [controlPosition, controlSize, controlScaleFactor] = await Promise.all([
+        controls.outerPosition(),
+        controls.outerSize(),
+        controls.scaleFactor(),
+      ]);
+      const logicalControlPosition = controlPosition.toLogical(controlScaleFactor);
+      const logicalControlSize = controlSize.toLogical(controlScaleFactor);
+      if (logicalControlPosition.x !== geometry.x || logicalControlPosition.y !== geometry.y) {
+        await controls.setPosition(new LogicalPosition(geometry.x, geometry.y));
+      }
+      if (
+        logicalControlSize.width !== geometry.width ||
+        logicalControlSize.height !== OVERLAY_CONTROL_BAR_HEIGHT
+      ) {
+        await controls.setSize(new LogicalSize(geometry.width, OVERLAY_CONTROL_BAR_HEIGHT));
+      }
     } finally {
       syncingWindowPair = false;
     }
@@ -138,13 +152,11 @@ export function createTauriLiveWindowPlatform(): LiveWindowPlatform {
       await overlay.setFocus();
     },
     async startDraggingOverlay() {
-      await ensureControlsSync();
       // The controls window stays interactive during click-through, so drag it and mirror its position.
       await (await getOverlayControlsWindow()).startDragging();
     },
     async startResizingOverlay(direction: OverlayResizeDirection) {
       // Native resize hit-testing is unavailable without decorations; use Tauri's directional API.
-      await ensureControlsSync();
       await (await getOverlayWindow()).startResizeDragging(direction);
     },
     async minimizeOverlay() {
@@ -154,7 +166,6 @@ export function createTauriLiveWindowPlatform(): LiveWindowPlatform {
       await controls.minimize();
     },
     async toggleMaximizeOverlay() {
-      await ensureControlsSync();
       // The bar is a separate window, so the transparent Overlay is the window whose state changes.
       await (await getOverlayWindow()).toggleMaximize();
     },
