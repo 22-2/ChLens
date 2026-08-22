@@ -40,3 +40,7 @@ gh issue close 124 --reason "not planned"
 
 The command never selects `ready`, changes implementation state, edits source code, commits, or
 pushes. Human approval is still required before implementation.
+
+Automatically created Issues include an explicit disclosure that the investigation and organization
+were performed by AI and that a human must confirm the content, priority, specification, and
+completion decision.

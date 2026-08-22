@@ -11,6 +11,8 @@ const outputDir = path.join(root, "debug", "triage");
 const outputPath = path.join(outputDir, "todo-triage.json");
 const codexLogPath = path.join(outputDir, "codex.log");
 const apply = process.argv.includes("--apply");
+const AI_DISCLOSURE =
+  "> 🤖 このIssueは、`.todo`のメモをもとにAIがコード調査・整理して作成しました。\n> 内容、優先度、仕様、完了判定は人が確認します。";
 
 // Codexのサンドボックスからユーザー領域のgh設定を直接読ませないため、
 // GitHub CLIの設定ディレクトリだけをワークスペース内に分離する。
@@ -220,7 +222,7 @@ for (const item of createItems) {
     "--title",
     item.title,
     "--body",
-    item.body,
+    `${item.body}\n\n${AI_DISCLOSURE}`,
     "--label",
     "needs-priority",
   ]);
@@ -252,7 +254,7 @@ if (unclearItems.length > 0) {
       "--title",
       "[triage] Unclear todo items",
       "--body",
-      body,
+      `${body}\n\n${AI_DISCLOSURE}`,
       "--label",
       "needs-info",
     ]);
