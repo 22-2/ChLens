@@ -29,6 +29,10 @@ Items whose intent is unclear are collected into one open `[triage] Unclear todo
 the `needs-info` label. A successful run is the only time the command adds an
 `<!-- issue: #123 -->` marker to `.todo`.
 
+Items that already contain an `<!-- issue: #123 -->` marker are not converted into new Issues.
+Their linked Issues are still checked for stale, completed, or no-longer-planned status. In that
+case the command adds `review-existing`; it never closes the Issue automatically.
+
 If an existing open Issue appears already fixed or no longer relevant, the report uses
 `review-existing`. The command never closes it automatically. After human confirmation, close it
 manually:

@@ -72,8 +72,11 @@ repository or the text supports.
 Return JSON matching scripts/triage-todo.schema.json.
 
 Rules:
-- Process only actionable items from .todo that do not already contain an HTML comment matching
-  "issue: #number".
+- For items without an HTML comment matching "issue: #number", perform normal triage and consider
+  create, append-unclear, or skip.
+- For items with an issue marker, inspect the linked Issue only. Never create a new Issue or append
+  another unclear question for that item; use review-existing when the linked open Issue appears
+  already fixed or no longer appropriate, otherwise use skip.
 - At the very beginning, list and inspect existing open and closed GitHub Issues. Search by title,
   body, and related terms before proposing a new one. Use gh read-only commands when needed.
 - \`needs-priority\` means "already investigated; waiting for human priority". Do not implement or
@@ -172,6 +175,13 @@ if (!apply) {
 if (createItems.length > 3) {
   fail(`refusing to create ${createItems.length} issues; the limit is three`);
   process.exit();
+}
+
+for (const item of reviewItems) {
+  for (const issueNumber of item.existing_issue_numbers) {
+    run("gh", ["issue", "edit", String(issueNumber), "--add-label", "review-existing"]);
+    console.log(`[triage-todo] labeled #${issueNumber} as review-existing`);
+  }
 }
 
 function findUnclearIssue() {
