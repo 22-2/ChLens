@@ -2,6 +2,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import { parse as parseJsonc, printParseErrorCode } from "jsonc-parser";
 
 const root = process.cwd();
 const todoPath = path.join(root, ".todo");
@@ -30,6 +31,18 @@ function run(command, args, options = {}) {
 function fail(message) {
   console.error(`[triage-todo] ${message}`);
   process.exitCode = 1;
+}
+
+function readJsonc(text, sourceName) {
+  const errors = [];
+  const value = parseJsonc(text, errors, { allowTrailingComma: true });
+  if (errors.length > 0) {
+    const details = errors
+      .map((error) => `${printParseErrorCode(error.error)} at ${error.offset}`)
+      .join(", ");
+    throw new Error(`${sourceName}: ${details}`);
+  }
+  return value;
 }
 
 if (process.argv.includes("--help")) {
@@ -112,7 +125,7 @@ if (codex.status !== 0) {
 
 let report;
 try {
-  report = JSON.parse(fs.readFileSync(outputPath, "utf8"));
+  report = readJsonc(fs.readFileSync(outputPath, "utf8"), outputPath);
 } catch (error) {
   fail(`could not parse ${path.relative(root, outputPath)}: ${error.message}`);
   process.exit();
@@ -157,7 +170,7 @@ function findUnclearIssue() {
     "--limit",
     "10",
   ]);
-  const issues = result ? JSON.parse(result) : [];
+  const issues = result ? readJsonc(result, "gh issue list output") : [];
   return issues.find((issue) => issue.title === "[triage] Unclear todo items");
 }
 
