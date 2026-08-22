@@ -178,6 +178,8 @@ LiveThreadSession ──────── Live専用cache／history
 
 共通化で壊してはいけない Chlens の契約と、Chlens Live の初期スコープをテスト可能な形で固定する。
 
+Phase 0で固定した仕様・既存挙動の根拠は、[Phase 0 仕様・既存挙動固定](./chlens-live-phase0-spec.md)にまとめる。
+
 #### 作業
 
 - 本文書を基準に MVP／後続機能を Issue へ分割する。
