@@ -56,7 +56,8 @@
 
 - **Title format:** `[<module_name>] <Descriptive Title>` (例: `[thread] Add filter functionality`)
 - **Pre-commit check:** `pnpm lint` および `pnpm tsc6` を実行し、型エラーやリンターエラーがないことを確認してください。
-- **コミットメッセージ:** Conventional Commits 形式（例: `fix(thread): 自動更新の停止条件を修正`）で、変更の意図が明確になる詳細な説明を含めてください。
+- **Issueの言語:** 新規Issueのタイトル、本文、コメントは日本語で統一してください。ラベル名、`[<module_name>]`、Issue検索用の固定識別子など、運用上の機械的な文字列は既存形式を維持します。
+- **コミットメッセージ:** Conventional Commits形式で、type/scopeなどの形式上の識別子は英語のまま、件名と本文は日本語で統一してください。変更の意図が明確になる詳細な説明を含めてください（例: `fix(thread): 自動更新の停止条件を修正`）。
 
 ### AI improvement workflow
 
