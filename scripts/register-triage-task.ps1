@@ -1,17 +1,21 @@
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "Medium")]
 param(
+    # タスクスケジューラに登録するタスク名。削除スクリプトでも同じ名前を指定する。
     [Parameter()]
     [ValidateNotNullOrEmpty()]
     [string]$TaskName = "ChLens AI Todo Triage",
 
+    # .todoとpackage.jsonが存在するリポジトリのパス。省略時はこのスクリプトの親ディレクトリ。
     [Parameter()]
     [ValidateNotNullOrEmpty()]
     [string]$RepositoryPath = (Join-Path -Path $PSScriptRoot -ChildPath ".."),
 
+    # トリアージを繰り返す間隔（分）。5〜1440分の範囲で、既定値は30分。
     [Parameter()]
     [ValidateRange(5, 1440)]
     [int]$IntervalMinutes = 30,
 
+    # 登録直後にタスクを1回だけ起動する。省略時は次のスケジュール時刻まで待つ。
     [Parameter()]
     [switch]$RunImmediately
 )

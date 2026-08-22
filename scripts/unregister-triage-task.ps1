@@ -1,5 +1,6 @@
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "Medium")]
 param(
+    # 削除するタスク名。登録スクリプトと同じ名前を指定する。
     [Parameter()]
     [ValidateNotNullOrEmpty()]
     [string]$TaskName = "ChLens AI Todo Triage"
