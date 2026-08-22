@@ -88,7 +88,17 @@ openai互換api
 下部パネルを使うか
 aiに渡すデータはtoon形式が軽量でいいはず
 
-https://github.com/kiyohken2000/5ch-browser-template を参考に
+ローカルai関連は https://github.com/kiyohken2000/5ch-browser-template を参考に
+
+chmateやsikiみたいにこういうページへのidと画像へのidが違うurlでも表示できるようにしたい
+ https://imgur.com/a/1m6jk1F
+このurlからほしいurlは以下の通り
+https://i.imgur.com/cicrbsg.jpeg
+あるのはこのurl
+http://bbs.eddibb.cc/liveedge/dat/1787362373.dat
+
+agents.mdに書いてるアーキテクチャも実際のコードより古くなってきたっす🥺
+更新したいっす
 
 ## AI運用メモ
 
