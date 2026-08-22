@@ -8,6 +8,7 @@ const todoPath = path.join(root, ".todo");
 const schemaPath = path.join(root, "scripts", "triage-todo.schema.json");
 const outputDir = path.join(root, "debug", "triage");
 const outputPath = path.join(outputDir, "todo-triage.json");
+const codexLogPath = path.join(outputDir, "codex.log");
 const apply = process.argv.includes("--apply");
 
 // Codexのサンドボックスからユーザー領域のgh設定を直接読ませないため、
@@ -96,12 +97,15 @@ const codexArgs = [
 console.log(`[triage-todo] running ${apply ? "apply" : "dry-run"} analysis`);
 const codex = spawnSync("codex", codexArgs, {
   cwd: root,
-  // 最終JSONは-oで保存するためstdoutへ流さず、進捗とエラーだけstderrへ出す。
-  stdio: ["ignore", "ignore", "inherit"],
+  // 最終JSONは-oで保存するためstdoutへ流さず、stderrはログファイルへ保存する。
+  stdio: ["ignore", "ignore", "pipe"],
   shell: false,
 });
+fs.writeFileSync(codexLogPath, codex.stderr ?? "", "utf8");
 
 if (codex.status !== 0) {
+  const log = fs.readFileSync(codexLogPath, "utf8");
+  console.error(log.slice(-4000));
   fail(`codex exec failed with exit code ${codex.status ?? "unknown"}`);
   process.exit();
 }
