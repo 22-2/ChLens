@@ -1,5 +1,7 @@
 # Local AI todo triage
 
+全体の流れは[AI改善ループの全体像](ai-improvement-workflow.md)を参照してください。
+
 `.todo` is intentionally free-form. The local triage command asks Codex to read the notes, inspect
 the repository, search existing GitHub Issues, and return a validated triage report.
 
