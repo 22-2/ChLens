@@ -95,6 +95,10 @@ openai互換api
 下部パネルを使うか
 aiに渡すデータはtoon形式が軽量でいいはず
 
+次スレの検索、半自動
+ダイヤログにスコアランキングをだして、選ばせる
+最新を取得する機能も
+
 ローカルai関連は https://github.com/kiyohken2000/5ch-browser-template を参考に
 
 chmateやsikiみたいにこういうページへのidと画像へのidが違うurlでも表示できるようにしたい
