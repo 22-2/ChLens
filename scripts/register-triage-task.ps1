@@ -15,6 +15,11 @@ param(
     [ValidateRange(5, 1440)]
     [int]$IntervalMinutes = 30,
 
+    # 定期トリアージを許可するAI worktreeの待機ブランチ。Issueブランチでの実装中は処理をスキップする。
+    [Parameter()]
+    [ValidateNotNullOrEmpty()]
+    [string]$IdleBranch = "automation/ai-workspace",
+
     # 登録直後にタスクを1回だけ起動する。省略時は次のスケジュール時刻まで待つ。
     [Parameter()]
     [switch]$RunImmediately
@@ -71,6 +76,7 @@ $repositoryLiteral = ConvertTo-PowerShellLiteral $resolvedRepositoryPath
 $pnpmLiteral = ConvertTo-PowerShellLiteral $pnpmCommand.Path
 $gitLiteral = ConvertTo-PowerShellLiteral $gitCommand.Path
 $logPathLiteral = ConvertTo-PowerShellLiteral $logPath
+$idleBranchLiteral = ConvertTo-PowerShellLiteral $IdleBranch
 
 # タスク引数にトークンを含めず、実行時のユーザー環境から読むことで、Task Schedulerの登録情報に秘密情報を残さない。
 $runnerCommand = @"
@@ -85,6 +91,14 @@ Set-Location -LiteralPath $repositoryLiteral
 New-Item -ItemType Directory -Path (Split-Path -Parent $logPathLiteral) -Force | Out-Null
 Add-Content -LiteralPath $logPathLiteral -Value ("[" + (Get-Date -Format o) + "] starting triage")
 try {
+    `$currentBranch = (& $gitLiteral branch --show-current).Trim()
+    if (`$LASTEXITCODE -ne 0) {
+        throw "git branch detection failed with exit code `$LASTEXITCODE"
+    }
+    if (`$currentBranch -ne $idleBranchLiteral) {
+        Add-Content -LiteralPath $logPathLiteral -Value ("[" + (Get-Date -Format o) + "] skipped: worktree is on branch '" + `$currentBranch + "'; expected '$IdleBranch'")
+        exit 0
+    }
     if ([string]::IsNullOrWhiteSpace(`$env:GITHUB_TOKEN) -and [string]::IsNullOrWhiteSpace(`$env:GH_TOKEN)) {
         throw 'GITHUB_TOKEN or GH_TOKEN must be available in the scheduled task user environment.'
     }
@@ -152,6 +166,7 @@ if ($PSCmdlet.ShouldProcess($TaskName, "Register or replace scheduled task")) {
     Write-Host "Registered scheduled task '$TaskName'."
     Write-Host "Repository: $resolvedRepositoryPath"
     Write-Host "Interval: every $IntervalMinutes minutes"
+    Write-Host "Idle branch: $IdleBranch"
     Write-Host "Log: $logPath"
 
     if ($RunImmediately) {

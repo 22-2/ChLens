@@ -55,6 +55,10 @@ worktreeから登録します。このworktreeはIssueごとの作業ブラン�
 `.todo`だけをローカルコミットします。この自動処理はコミットをpushせず、ソースコードやその他の
 ファイルをstageしません。
 
+定期トリアージは待機ブランチ`automation/ai-workspace`上でのみ動作します。AI worktreeを
+Issue専用ブランチへ切り替えている間は、編集中の変更と運用コミットを混ぜないため正常終了で
+スキップします。Issue作業が一区切りついたら待機ブランチへ戻すと、次回から調査を再開します。
+
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\register-triage-task.ps1 -RunImmediately
 ```
