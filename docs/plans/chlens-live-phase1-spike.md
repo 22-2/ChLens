@@ -27,8 +27,7 @@
 | window | 役割 | 初期状態 |
 | --- | --- | --- |
 | `main` | 操作用の実況Main | 表示、1200 x 800 |
-| `overlay` | 将来のコメント表示面 | 非表示、透明、decorationsなし、always-on-top、900 x 160 |
-| `overlay-controls` | Overlay上部の常時操作バー | 非表示、透明、decorationsなし、always-on-top、overlay所有、64px高 |
+| `overlay` | コメント表示面と上部操作バー | 非表示、透明、decorationsなし、always-on-top、900 x 160 |
 
 Main UIは `LiveWindowPlatform` だけを呼び出し、Tauri APIをReact componentへ直接importしない。
 
@@ -40,9 +39,10 @@ Viteの開発watcherは `src-tauri/**` を除外している。WindowsではRust
 
 MainからOverlayの表示、非表示、focus、geometry適用を操作できる。
 現在のgeometryは `localStorage` の `chlens-live:overlay-geometry` に保存し、Tauriではdisplay scalingを考慮したlogical pixelとして復元する。
-Overlayは枠内の8方向リサイズハンドルに対応する。上部操作バーはOverlay本体とは別のnative windowに分け、
+Overlayは枠内の8方向リサイズハンドルに対応する。上部操作バーはOverlay本体と同じnative windowに置き、
 クリック透過中もバー中央のドラッグ、バー端の8方向リサイズ、ダブルクリック最大化、最小化・最大化・閉じる操作を受け付ける。
-Overlayと操作バーの移動／サイズ変更はnative eventをキュー化して追従させ、DPIの異なるmonitor間でも各windowのscale factorで座標を変換する。
+クリック透過中はRust commandで取得した画面座標を一定間隔で判定し、バーまたはリサイズ境界のときだけnative cursor eventを一時的に受け付ける。
+別windowの移動／サイズ同期を持たないため、Overlayと操作バーのgeometryがずれる経路を作らない。
 Mainの「クリック透過を有効化」でOverlay本体のTauri cursor eventを無視し、透けて見える背面ウィンドウへ入力を渡せる。操作へ戻す場合はMainから透過を解除する。
 
 操作バーの見た目は、透明なnative windowの内側へ角丸の半透明サーフェスを配置する構成とした。ステータスドット、操作ラベル、
@@ -50,6 +50,11 @@ Windows風の最小化／最大化／閉じるボタンを同じバーへまと�
 デスクトップ全体をぼかすnative vibrancyはOSごとの依存が増えるため、別途必要性を確認してから導入する。
 操作バーは通常時に透明化し、バーへホバーまたはフォーカスしたときだけサーフェスを表示する。透明Overlayのdocumentはoverflowを抑制し、
 リサイズハンドルの外側への描画でスクロールバーが発生しないようにする。
+
+今回の単一window構成は、次の実例を設計参考にした。
+
+- [WindowPet](https://github.com/SeakMengs/WindowPet): 透明windowをcursor event無視にし、OSの画面座標で対象領域へ入ったときだけイベントを戻す方式。
+- [pet-overlay](https://github.com/gtvincent2000/pet-overlay): Tauri 2の透明Overlayで、同じwindowから`startDragging`を呼び出す構成。
 
 ## Phase 1で意図的に含めないもの
 
