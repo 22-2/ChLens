@@ -2,14 +2,18 @@ import { BBSCategory, BBSMenuParser } from "../parser/BBSMenuParser";
 import { BoardParser, BoardThread } from "../parser/BoardParser";
 import { ThreadData, ThreadParser } from "../parser/ThreadParser";
 import { ChURL } from "../url/ChURL";
+import { FetchHttpClient, HttpClient, HttpStatusError } from "./HttpClient";
 
 export class ChFetcher {
+  constructor(private readonly httpClient: HttpClient = new FetchHttpClient()) {}
+
   private async fetchText(url: string, charset: string): Promise<string> {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-    const buffer = await res.arrayBuffer();
+    const response = await this.httpClient.get(url);
+    if (response.status < 200 || response.status >= 300) {
+      throw new HttpStatusError(url, response.status);
+    }
     const decoder = new TextDecoder(charset);
-    return decoder.decode(buffer);
+    return decoder.decode(response.body);
   }
 
   async fetchBoard(urlStr: string): Promise<BoardThread[]> {

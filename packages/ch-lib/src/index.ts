@@ -1,4 +1,5 @@
 export * from "./fetcher/ChFetcher";
+export * from "./fetcher/HttpClient";
 export * from "./parser/AnchorParser";
 export * from "./parser/BBSMenuParser";
 export * from "./parser/BoardParser";
