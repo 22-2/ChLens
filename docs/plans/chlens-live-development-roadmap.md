@@ -243,6 +243,9 @@ Phase 1のworkspace／window spikeは実装済みで、Windows上でOverlayの�
 
 ### Phase 2: 掲示板domain／取得資産の共通化
 
+Phase 2の最初の境界検証は、[Phase 2 domain／取得 spike](./chlens-live-phase2-spike.md)にまとめる。
+既存の`packages/ch-lib`をLiveから利用し、URL正規化・transport・decode・parserの契約を固定してから本実装へ進む。
+
 #### 目的
 
 ChlensとLiveが同じURL・subject・dat・responseモデルを利用できるようにする。
