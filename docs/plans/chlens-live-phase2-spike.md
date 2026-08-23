@@ -39,8 +39,11 @@ ChLens Live source
 - `packages/ch-lib/src/fetcher/HttpClient.ts`に`HttpClient`、`HttpResponse`、`FetchHttpClient`、HTTP status errorを追加した。
 - `ChFetcher`へtransport injectionを追加した。
 - `apps/chlens-live/src/live-session/source.ts`から`@chlen/ch-lib`を利用するadapterを追加した。
+- `apps/chlens-live/src/live-session/tauri-http-client.ts`にTauri HTTP pluginからraw bytesを返すadapterを追加した。
+- Live Tauri shellへ`tauri-plugin-http`を登録し、HTTP capabilityを追加した。
 - Eddibb board URLのsubject取得、Shift_JIS decode、thread URLのdat取得先、HTTP 404をfixtureで確認した。
 - Live sourceがparser／transportをUIへ漏らさず委譲する契約テストを追加した。
+- Tauri adapterのstatus／headers／raw bytes変換とtransport error再送出をテストした。
 
 ## 意図的に含めないもの
 
@@ -60,7 +63,7 @@ ChLens Live source
 
 ## 次のPhase 2本実装
 
-spike完了後に、Tauri HTTP adapter、incremental response metadata、LiveThreadSession、
+spike完了後に、incremental response metadata、LiveThreadSession、
 subject／dat cacheの順で追加する。取得結果をMainとOverlayへ共有するevent contractは、
 Live Sessionの所有者を決めてから設計する。
 

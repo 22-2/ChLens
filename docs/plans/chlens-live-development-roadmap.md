@@ -265,7 +265,7 @@ ChlensとLiveが同じURL・subject・dat・responseモデルを利用できる�
 
 ##### 未着手（Phase 2本実装）
 
-- [ ] Tauri HTTP pluginを`HttpClient`へ接続するadapterを実装する。
+- [x] Tauri HTTP pluginを`HttpClient`へ接続するadapterを実装する。
 - [ ] ETag、Last-Modified、dat size、res lengthをresponse metadataとして型にする。
 - [ ] `LiveThreadSession`のpolling、差分取得、再接続、停止条件を実装する。
 - [ ] subject／datのcache policyと過去ログ・dat落ちの契約を実装する。
@@ -277,7 +277,7 @@ ChlensとLiveが同じURL・subject・dat・responseモデルを利用できる�
 ##### 既知の確認課題
 
 - [ ] `@chlen/ch-lib`全体テストをgreenにする。現状は既存の`BBSMenuParser.test.ts`で、fixtureがboard 2件想定に対して1件になる失敗が1件残っている。
-- [x] 新規fixture test 2件とLive adapter test 3件、Live check／buildは成功している。
+- [x] 新規fixture test 2件とLive adapter test 6件、Live check／build、Rust `cargo check`は成功している。
 
 #### 作業
 
