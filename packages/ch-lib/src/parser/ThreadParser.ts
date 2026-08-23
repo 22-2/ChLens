@@ -2,7 +2,8 @@ import { MetadataParser } from "../parser/MetadataParser";
 import { ChURL } from "../url/ChURL";
 import { decodeCharReference } from "../utils/entities";
 
-export interface Post {
+/** Canonical response shape shared by Live and future Chlens service adapters. */
+export interface IRes {
   number: number;
   name: string;
   mail: string;
@@ -14,10 +15,14 @@ export interface Post {
   be?: string;
 }
 
-export interface ThreadData {
+/** Canonical thread detail shape; `posts` is kept for compatibility with existing callers. */
+export interface IThread {
   title?: string;
-  posts: Post[];
+  posts: IRes[];
 }
+
+export type Post = IRes;
+export type ThreadData = IThread;
 
 export class ThreadParser {
   static parse(chUrl: ChURL, text: string): ThreadData {
