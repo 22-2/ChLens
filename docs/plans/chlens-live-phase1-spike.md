@@ -28,7 +28,7 @@
 | --- | --- | --- |
 | `main` | 操作用の実況Main | 表示、1200 x 800 |
 | `overlay` | 将来のコメント表示面 | 非表示、透明、decorationsなし、always-on-top、900 x 160 |
-| `overlay-controls` | Overlay上部の常時操作バー | 非表示、透明、decorationsなし、always-on-top、overlay所有 |
+| `overlay-controls` | Overlay上部の常時操作バー | 非表示、透明、decorationsなし、always-on-top、overlay所有、64px高 |
 
 Main UIは `LiveWindowPlatform` だけを呼び出し、Tauri APIをReact componentへ直接importしない。
 
@@ -43,6 +43,10 @@ MainからOverlayの表示、非表示、focus、geometry適用を操作でき�
 Overlayは枠内の8方向リサイズハンドルに対応する。上部操作バーはOverlay本体とは別のnative windowに分け、
 クリック透過中もバーのドラッグ、ダブルクリック最大化、最小化・最大化・閉じる操作を受け付ける。Mainの「クリック透過を有効化」でOverlay本体の
 Tauri cursor eventを無視し、透けて見える背面ウィンドウへ入力を渡せる。操作へ戻す場合はMainから透過を解除する。
+
+操作バーの見た目は、透明なnative windowの内側へ角丸の半透明サーフェスを配置する構成とした。ステータスドット、操作ラベル、
+Windows風の最小化／最大化／閉じるボタンを同じバーへまとめ、`backdrop-filter` はWebView内の質感表現として利用する。
+デスクトップ全体をぼかすnative vibrancyはOSごとの依存が増えるため、別途必要性を確認してから導入する。
 
 ## Phase 1で意図的に含めないもの
 
