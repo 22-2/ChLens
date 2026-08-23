@@ -35,6 +35,7 @@ function ConvertTo-PowerShellLiteral([string]$Value) {
 $resolvedRepositoryPath = (Resolve-Path -LiteralPath $RepositoryPath).Path
 $todoPath = Join-Path -Path $resolvedRepositoryPath -ChildPath ".todo"
 $triageScriptPath = Join-Path -Path $resolvedRepositoryPath -ChildPath "scripts\triage-todo.ts"
+$readyRunnerPath = Join-Path -Path $resolvedRepositoryPath -ChildPath "scripts\run-ready-issue.ps1"
 
 if (-not (Test-Path -LiteralPath $todoPath -PathType Leaf)) {
     throw "The repository does not contain .todo: $resolvedRepositoryPath"
@@ -61,6 +62,10 @@ if ($null -eq $pnpmCommand) {
     throw "pnpm.cmd or pnpm.exe was not found in PATH."
 }
 
+if (-not (Test-Path -LiteralPath $readyRunnerPath -PathType Leaf)) {
+    throw "The repository does not contain scripts\run-ready-issue.ps1: $resolvedRepositoryPath"
+}
+
 $gitCommand = Get-Command git.exe -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
 if ($null -eq $gitCommand) {
     $gitCommand = Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -73,6 +78,7 @@ $logDirectory = Join-Path -Path $resolvedRepositoryPath -ChildPath "debug\triage
 $logPath = Join-Path -Path $logDirectory -ChildPath "scheduler.log"
 
 $repositoryLiteral = ConvertTo-PowerShellLiteral $resolvedRepositoryPath
+$pwshLiteral = ConvertTo-PowerShellLiteral $pwshCommand.Path
 $pnpmLiteral = ConvertTo-PowerShellLiteral $pnpmCommand.Path
 $gitLiteral = ConvertTo-PowerShellLiteral $gitCommand.Path
 $logPathLiteral = ConvertTo-PowerShellLiteral $logPath
@@ -89,22 +95,22 @@ Set-StrictMode -Version Latest
 `$OutputEncoding = `$utf8
 Set-Location -LiteralPath $repositoryLiteral
 New-Item -ItemType Directory -Path (Split-Path -Parent $logPathLiteral) -Force | Out-Null
-Add-Content -LiteralPath $logPathLiteral -Value ("[" + (Get-Date -Format o) + "] starting triage")
+Add-Content -LiteralPath $logPathLiteral -Value ("[" + (Get-Date -Format o) + "] starting AI improvement loop")
 try {
     `$currentBranch = (& $gitLiteral branch --show-current).Trim()
     if (`$LASTEXITCODE -ne 0) {
         throw "git branch detection failed with exit code `$LASTEXITCODE"
     }
-    if (`$currentBranch -ne $idleBranchLiteral) {
-        Add-Content -LiteralPath $logPathLiteral -Value ("[" + (Get-Date -Format o) + "] skipped: worktree is on branch '" + `$currentBranch + "'; expected '$IdleBranch'")
-        exit 0
-    }
     if ([string]::IsNullOrWhiteSpace(`$env:GITHUB_TOKEN) -and [string]::IsNullOrWhiteSpace(`$env:GH_TOKEN)) {
         throw 'GITHUB_TOKEN or GH_TOKEN must be available in the scheduled task user environment.'
     }
-    & $pnpmLiteral triage:todo -- --apply *>> $logPathLiteral
-    `$exitCode = `$LASTEXITCODE
-    if (`$exitCode -eq 0) {
+    `$exitCode = 0
+    if (`$currentBranch -eq $idleBranchLiteral) {
+        & $pnpmLiteral triage:todo -- --apply *>> $logPathLiteral
+        `$exitCode = `$LASTEXITCODE
+        if (`$exitCode -ne 0) {
+            throw "todo triage failed with exit code `$exitCode"
+        }
         & $gitLiteral diff --quiet -- .todo
         `$todoDiffExitCode = `$LASTEXITCODE
         if (`$todoDiffExitCode -eq 1) {
@@ -118,11 +124,17 @@ try {
             throw "git diff for .todo failed with exit code `$todoDiffExitCode"
         }
     }
+    # Issueブランチ上ではトリアージを行わず、前回失敗した実装だけを再開する。
+    & $pwshLiteral -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File scripts\run-ready-issue.ps1 -IdleBranch $idleBranchLiteral *>> $logPathLiteral
+    `$exitCode = `$LASTEXITCODE
+    if (`$exitCode -ne 0) {
+        throw "ready Issue runner failed with exit code `$exitCode"
+    }
 } catch {
     Add-Content -LiteralPath $logPathLiteral -Value ("[" + (Get-Date -Format o) + "] failed: " + `$_.Exception.Message)
     throw
 }
-Add-Content -LiteralPath $logPathLiteral -Value ("[" + (Get-Date -Format o) + "] finished with exit code " + `$exitCode)
+Add-Content -LiteralPath $logPathLiteral -Value ("[" + (Get-Date -Format o) + "] finished AI improvement loop with exit code " + `$exitCode)
 exit `$exitCode
 "@
 
@@ -159,7 +171,7 @@ $task = New-ScheduledTask `
     -Trigger $trigger `
     -Settings $settings `
     -Principal $principal `
-    -Description "Run local AI triage for the ChLens .todo file and GitHub Issues."
+    -Description "Run local AI triage and implement ready ChLens Issues in the dedicated AI worktree."
 
 if ($PSCmdlet.ShouldProcess($TaskName, "Register or replace scheduled task")) {
     Register-ScheduledTask -TaskName $TaskName -InputObject $task -Force | Out-Null

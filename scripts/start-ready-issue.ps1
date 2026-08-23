@@ -6,7 +6,7 @@ param(
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$BaseBranch = "origin/develop",
+    [string]$BaseBranch = "automation/ai-workspace",
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]

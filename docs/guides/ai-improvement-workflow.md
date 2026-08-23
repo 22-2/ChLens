@@ -74,7 +74,7 @@ pnpm triage:todo -- --apply
 
 複数のIssueが`ready`の場合は、更新日時に左右されないようIssue番号が最小の1件だけを開始します。
 AI専用worktreeの待機ブランチから次のコマンドを実行すると、対象Issueを`in-progress`へ移し、
-`origin/develop`ベースの`ai/issue-<番号>`ブランチへ切り替えます。
+`develop`ベースでLive変更を含まない待機ブランチから`ai/issue-<番号>`ブランチへ切り替えます。
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-ready-issue.ps1
@@ -82,6 +82,11 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-ready-issue.ps1
 
 worktreeがdirtyな場合や同名ブランチが既にある場合は、既存作業を保護するため何も上書きせず停止します。
 `pnpm-lock.yaml`が前回準備時と同じなら`vp install`も省略します。
+
+Task Schedulerの定期実行も同じ処理を呼び出します。`ready`があれば最小番号のIssueを自動的に
+claimしてCodexを起動し、実装・検査・コミット・Issueコメントまで行います。成功時は
+`needs-human-test`へ移して待機ブランチへ戻ります。途中失敗時はIssueブランチを保持し、次回の
+定期実行で同じIssueを再開します。
 
 既存Issueへ再現情報や仕様の回答を追記した場合は、`needs-retriage`を付けます。次回の定期実行が本文・コメント・最新コードを再調査し、結果をIssueコメントへ追加します。調査後は、判断可能なら`needs-priority`、まだ情報不足なら`needs-info`へ自動的に戻ります。
 
