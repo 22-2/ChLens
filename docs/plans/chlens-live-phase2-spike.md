@@ -49,7 +49,7 @@ ChLens Live source
 - `ChURL`のarchive判定としたらばarchive HTML parserを追加し、過去ログを`IThread`へ変換できるfixtureを追加した。
 - `LiveThreadPlaybackSession`、指定レス範囲cursor、live／playback排他ownerを追加した。再生clock／UI／履歴一覧は後続phaseへ残す。
 - legacy `ParsedThread`／`ThreadRes`をcache内部では維持しつつ、Thread service入口でcanonical `IThread`／`IRes`へ変換するadapterを追加した。
-- Board／Thread serviceのcanonical parser／model境界を接続し、既存Chlens全体テスト503件を成功させた。
+- Board／Thread serviceのcanonical parser／model境界を接続し、既存Chlens全体テスト504件を成功させた。
 
 ## 意図的に含めないもの
 

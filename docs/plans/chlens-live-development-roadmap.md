@@ -281,7 +281,7 @@ ChlensとLiveが同じURL・subject・dat・responseモデルを利用できる�
 
 - [x] `@chlen/ch-lib`全体テストをgreenにする。`BBSMenuParser`のカテゴリ終端判定を修正し、22/22件が成功している。
 - [x] ch-lib fixture／parser test 22件とLive test 25件、Live check／build、Rust `cargo check`は成功している。
-- [x] 既存Chlens全体テスト503件、Tauri release build、MSI／NSIS bundle生成が成功している。
+- [x] 既存Chlens全体テスト504件、Tauri release build、MSI／NSIS bundle生成が成功している。
 
 #### 作業
 
