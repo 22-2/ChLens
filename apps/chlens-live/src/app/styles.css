@@ -363,9 +363,10 @@ button:hover {
 }
 
 .overlay-control-bar__button:hover {
-  /* Drag-region transitions can leave a client-area hover state behind; keep the compact
-   * minimize/maximize controls visually neutral and reserve the accent for the close action. */
-  background: transparent;
+  /* Keep the compact controls discoverable when the bar is revealed, while leaving the
+   * close action's stronger warning color to its more specific rule below. */
+  color: rgb(255 255 255 / 100%);
+  background: rgb(255 255 255 / 14%);
 }
 
 .overlay-control-bar__button:focus-visible {
