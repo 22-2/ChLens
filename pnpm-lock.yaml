@@ -392,6 +392,9 @@ importers:
 
   apps/chlens-live:
     dependencies:
+      '@chlen/ch-lib':
+        specifier: workspace:*
+        version: link:../../packages/ch-lib
       '@tauri-apps/api':
         specifier: 2.11.1
         version: 2.11.1

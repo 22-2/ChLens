@@ -34,7 +34,7 @@
     "test": "vp test run",
     "test:live": "pnpm --filter chlens-live test",
     "triage:todo": "node --no-warnings --experimental-strip-types scripts/triage-todo.ts",
-    "test:url-commonization": "pnpm vitest run src/content-scripts/url-targets.test.ts src/view/browser/pages/BookmarkListPage.test.tsx && pnpm --filter @read-crx/ch-lib exec vitest run src/parser/BoardParser.test.ts src/parser/ThreadParser.test.ts",
+    "test:url-commonization": "pnpm vitest run src/content-scripts/url-targets.test.ts src/view/browser/pages/BookmarkListPage.test.tsx && pnpm --filter @chlen/ch-lib exec vitest run src/parser/BoardParser.test.ts src/parser/ThreadParser.test.ts",
     "release": "release-it",
     "release:build": "pnpm build:all && node scripts/package-release.mjs",
     "prepare": "vp config"
