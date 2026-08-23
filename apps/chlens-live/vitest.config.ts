@@ -16,5 +16,7 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    // Reactコンポーネントテストでjest-domマッチャー（toBeVisible等）を使うためのsetup。
+    setupFiles: ["src/app/test-setup.ts"],
   },
 });
