@@ -39,17 +39,18 @@ if (-not (Test-Path -LiteralPath $triageScriptPath -PathType Leaf)) {
     throw "The repository does not contain scripts\triage-todo.ts: $resolvedRepositoryPath"
 }
 
-$pwshCommand = Get-Command pwsh.exe -CommandType Application -ErrorAction SilentlyContinue
+$pwshCommand = Get-Command pwsh.exe -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
 if ($null -eq $pwshCommand) {
-    $pwshCommand = Get-Command pwsh -CommandType Application -ErrorAction SilentlyContinue
+    $pwshCommand = Get-Command pwsh -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
 }
 if ($null -eq $pwshCommand) {
     throw "PowerShell 7 (pwsh.exe) was not found in PATH."
 }
 
-$pnpmCommand = Get-Command pnpm.cmd -CommandType Application -ErrorAction SilentlyContinue
+# Get-Command can return every PATH match; select one so PowerShell does not stringify multiple paths as one executable name.
+$pnpmCommand = Get-Command pnpm.cmd -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
 if ($null -eq $pnpmCommand) {
-    $pnpmCommand = Get-Command pnpm.exe -CommandType Application -ErrorAction SilentlyContinue
+    $pnpmCommand = Get-Command pnpm.exe -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
 }
 if ($null -eq $pnpmCommand) {
     throw "pnpm.cmd or pnpm.exe was not found in PATH."
