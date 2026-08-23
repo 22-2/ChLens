@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vite-plus/test";
-import { createChLensLiveSource, type ChLensLiveFetcher } from "./source";
+import {
+  createChLensLiveSource,
+  createTauriChLensLiveSource,
+  type ChLensLiveFetcher,
+} from "./source";
 
 describe("ChLens Live source boundary", () => {
   it("delegates board and thread loading to ch-lib without importing it into the UI", async () => {
@@ -20,6 +24,15 @@ describe("ChLens Live source boundary", () => {
     await expect(source.loadThread("https://bbs.eddibb.cc/liveedge/1000000001/")).resolves.toEqual({
       title: "テスト",
       posts: [],
+    });
+  });
+
+  it("exposes a Tauri composition factory without changing the source boundary", () => {
+    const source = createTauriChLensLiveSource();
+
+    expect(source).toEqual({
+      loadBoard: expect.any(Function),
+      loadThread: expect.any(Function),
     });
   });
 });

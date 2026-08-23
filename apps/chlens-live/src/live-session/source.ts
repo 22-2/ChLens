@@ -1,4 +1,5 @@
 import { ChFetcher, type BoardThread, type ThreadData } from "@chlen/ch-lib";
+import { TauriHttpClient } from "./tauri-http-client";
 
 export interface ChLensLiveFetcher {
   fetchBoard(url: string): Promise<BoardThread[]>;
@@ -23,4 +24,14 @@ export function createChLensLiveSource(
     loadBoard: (url) => fetcher.fetchBoard(url),
     loadThread: (url) => fetcher.fetchThread(url),
   };
+}
+
+/**
+ * Compose the same source boundary with Tauri's Rust-side HTTP transport.
+ *
+ * Keeping this factory next to the browser-default factory lets the future session choose its
+ * runtime transport once, instead of spreading Tauri checks through board and thread code.
+ */
+export function createTauriChLensLiveSource(): ChLensLiveSource {
+  return createChLensLiveSource(new ChFetcher(new TauriHttpClient()));
 }

@@ -15,6 +15,7 @@
   "dependencies": {
     "@chlen/ch-lib": "workspace:*",
     "@tauri-apps/api": "2.11.1",
+    "@tauri-apps/plugin-http": "2.5.9",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
