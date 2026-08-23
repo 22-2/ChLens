@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import { ChFetcher } from "./ChFetcher";
-import type { HttpClient, HttpResponse } from "./HttpClient";
+import { createHttpResponseMetadata, type HttpClient, type HttpResponse } from "./HttpClient";
 
 function ascii(value: string): Uint8Array {
   return new TextEncoder().encode(value);
@@ -14,6 +14,14 @@ function concatBytes(...parts: Uint8Array[]): ArrayBuffer {
     offset += part.length;
   }
   return result.buffer;
+}
+
+function fixtureResponse(
+  status: number,
+  headers: Readonly<Record<string, string>>,
+  body: ArrayBuffer,
+): HttpResponse {
+  return { status, headers, body, metadata: createHttpResponseMetadata(headers, body) };
 }
 
 class FixtureHttpClient implements HttpClient {
@@ -39,7 +47,7 @@ describe("ChFetcher transport boundary", () => {
       ascii(" (2)\n"),
     );
     const client = new FixtureHttpClient(
-      new Map([[subjectUrl, { status: 200, headers: {}, body: subject }]]),
+      new Map([[subjectUrl, fixtureResponse(200, {}, subject)]]),
     );
 
     const result = await new ChFetcher(client).fetchBoard("https://bbs.eddibb.cc/liveedge/");
@@ -58,12 +66,39 @@ describe("ChFetcher transport boundary", () => {
   it("normalizes a thread URL and reports non-success HTTP status", async () => {
     const datUrl = "http://bbs.eddibb.cc/liveedge/dat/1000000001.dat";
     const client = new FixtureHttpClient(
-      new Map([[datUrl, { status: 404, headers: {}, body: new ArrayBuffer(0) }]]),
+      new Map([[datUrl, fixtureResponse(404, {}, new ArrayBuffer(0))]]),
     );
 
     await expect(
       new ChFetcher(client).fetchThread("https://bbs.eddibb.cc/liveedge/1000000001/"),
     ).rejects.toMatchObject({ name: "HttpStatusError", status: 404, url: datUrl });
     expect(client.requests).toEqual([datUrl]);
+  });
+
+  it("returns HTTP metadata and parsed response count for incremental thread fetches", async () => {
+    const datUrl = "http://bbs.eddibb.cc/liveedge/dat/1000000001.dat";
+    const dat = concatBytes(ascii("name<>mail<>2026/08/23<>message<>Thread title\n"));
+    const headers = {
+      ETag: '"thread-v1"',
+      "Last-Modified": "Sun, 23 Aug 2026 00:00:00 GMT",
+      "Content-Length": String(dat.byteLength),
+      "Content-Range": `bytes 0-${dat.byteLength - 1}/128`,
+    };
+    const client = new FixtureHttpClient(new Map([[datUrl, fixtureResponse(206, headers, dat)]]));
+
+    const result = await new ChFetcher(client).fetchThreadWithMetadata(
+      "https://bbs.eddibb.cc/liveedge/1000000001/",
+      { headers: { Range: "bytes=0-" } },
+    );
+
+    expect(result.data.posts).toHaveLength(1);
+    expect(result.metadata).toEqual({
+      etag: '"thread-v1"',
+      lastModified: "Sun, 23 Aug 2026 00:00:00 GMT",
+      contentLength: dat.byteLength,
+      contentRange: { start: 0, end: dat.byteLength - 1, total: 128 },
+      bodyBytes: dat.byteLength,
+      parsedResCount: 1,
+    });
   });
 });
