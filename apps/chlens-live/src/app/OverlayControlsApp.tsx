@@ -1,6 +1,20 @@
 import type { MouseEvent, PointerEvent } from "react";
-import { liveWindowPlatform } from "../platform/index";
+import { liveWindowPlatform, type OverlayResizeDirection } from "../platform/index";
 import "./styles.css";
+
+const BAR_RESIZE_HANDLES: ReadonlyArray<{
+  direction: OverlayResizeDirection;
+  className: string;
+}> = [
+  { direction: "NorthWest", className: "overlay-control-bar__resize-handle--north-west" },
+  { direction: "North", className: "overlay-control-bar__resize-handle--north" },
+  { direction: "NorthEast", className: "overlay-control-bar__resize-handle--north-east" },
+  { direction: "East", className: "overlay-control-bar__resize-handle--east" },
+  { direction: "SouthEast", className: "overlay-control-bar__resize-handle--south-east" },
+  { direction: "South", className: "overlay-control-bar__resize-handle--south" },
+  { direction: "SouthWest", className: "overlay-control-bar__resize-handle--south-west" },
+  { direction: "West", className: "overlay-control-bar__resize-handle--west" },
+];
 
 function startDragging(event: PointerEvent<HTMLElement>): void {
   if (event.button !== 0) return;
@@ -15,6 +29,19 @@ function stopBarControlEvent(
   event: PointerEvent<HTMLButtonElement> | MouseEvent<HTMLButtonElement>,
 ): void {
   event.stopPropagation();
+}
+
+function startResizing(
+  event: PointerEvent<HTMLSpanElement>,
+  direction: OverlayResizeDirection,
+): void {
+  if (event.button !== 0) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+  void liveWindowPlatform.startResizingOverlay(direction).catch((error: unknown) => {
+    console.error(`[Chlens Live] overlay resizing from control bar failed: ${direction}`, error);
+  });
 }
 
 function toggleMaximize(event: MouseEvent<HTMLElement>): void {
@@ -88,6 +115,14 @@ export function OverlayControlsApp() {
           <span aria-hidden="true">×</span>
         </button>
       </div>
+      {BAR_RESIZE_HANDLES.map(({ direction, className }) => (
+        <span
+          key={direction}
+          aria-hidden="true"
+          className={`overlay-control-bar__resize-handle ${className}`}
+          onPointerDown={(event) => startResizing(event, direction)}
+        />
+      ))}
     </main>
   );
 }

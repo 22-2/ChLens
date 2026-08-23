@@ -32,6 +32,15 @@ body {
   background: transparent;
 }
 
+/* Resize handles extend a few pixels beyond the transparent stage. Clip that overflow at the
+ * document boundary so the native overlay cannot expose scrollbars for its hit-test affordances. */
+html.overlay-document,
+.overlay-document body,
+.overlay-document #root {
+  height: 100%;
+  overflow: hidden;
+}
+
 /* The controls window is only a transparent host for the inset bar; clipping its document
  * prevents the glass surface's margins from creating an unexpected native scrollbar. */
 html.overlay-controls-document,
@@ -247,6 +256,7 @@ button:hover {
   /* Keep the native controls window transparent so the separate click-through overlay remains
    * visually untouched; the inset element is the only surface that receives the glass styling. */
   display: flex;
+  position: relative;
   align-items: center;
   justify-content: space-between;
   width: calc(100% - 1.5rem);
@@ -268,18 +278,24 @@ button:hover {
   text-shadow: 0 1px 3px #000;
   cursor: move;
   user-select: none;
+  opacity: 0;
   transition:
     border-color 120ms ease,
-    background 120ms ease;
+    background 120ms ease,
+    opacity 120ms ease;
 }
 
-.overlay-control-bar:hover {
+.overlay-control-bar:hover,
+.overlay-control-bar:focus-within {
   border-color: rgb(255 255 255 / 28%);
   background: linear-gradient(135deg, rgb(43 68 101 / 86%), rgb(18 30 49 / 82%));
+  opacity: 1;
 }
 
 .overlay-control-bar__status {
   display: flex;
+  position: relative;
+  z-index: 1;
   align-items: center;
   min-width: 0;
   gap: 0.65rem;
@@ -321,6 +337,8 @@ button:hover {
 
 .overlay-control-bar__actions {
   display: flex;
+  position: relative;
+  z-index: 1;
   align-items: stretch;
   height: 100%;
   margin-left: 1rem;
@@ -356,6 +374,70 @@ button:hover {
 
 .overlay-control-bar__button--close:hover {
   background: rgb(196 62 82 / 88%);
+}
+
+.overlay-control-bar__resize-handle {
+  position: absolute;
+  z-index: 2;
+  width: 10px;
+  height: 10px;
+  opacity: 0;
+}
+
+.overlay-control-bar__resize-handle--north-west {
+  top: 0;
+  left: 0;
+  cursor: nwse-resize;
+}
+
+.overlay-control-bar__resize-handle--north {
+  top: 0;
+  right: 10px;
+  left: 10px;
+  width: auto;
+  cursor: ns-resize;
+}
+
+.overlay-control-bar__resize-handle--north-east {
+  top: 0;
+  right: 0;
+  cursor: nesw-resize;
+}
+
+.overlay-control-bar__resize-handle--east {
+  top: 10px;
+  right: 0;
+  bottom: 10px;
+  height: auto;
+  cursor: ew-resize;
+}
+
+.overlay-control-bar__resize-handle--south-east {
+  right: 0;
+  bottom: 0;
+  cursor: nwse-resize;
+}
+
+.overlay-control-bar__resize-handle--south {
+  right: 10px;
+  bottom: 0;
+  left: 10px;
+  width: auto;
+  cursor: ns-resize;
+}
+
+.overlay-control-bar__resize-handle--south-west {
+  bottom: 0;
+  left: 0;
+  cursor: nesw-resize;
+}
+
+.overlay-control-bar__resize-handle--west {
+  top: 10px;
+  bottom: 10px;
+  left: 0;
+  height: auto;
+  cursor: ew-resize;
 }
 
 @media (max-width: 620px) {
