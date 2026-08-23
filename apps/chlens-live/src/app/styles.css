@@ -268,6 +268,10 @@ button:hover {
   text-shadow: 0 1px 3px #000;
   cursor: move;
   user-select: none;
+  /* Windows/WebView2 handles native dragging and title-bar double-clicks for this region. The
+   * prefixed form keeps the intent explicit for WebKit-based preview runtimes. */
+  app-region: drag;
+  -webkit-app-region: drag;
   /* Keep the invisible hit target alive; native cursor polling decides when this window can
    * receive events while click-through mode is active. */
   pointer-events: auto;
@@ -278,13 +282,7 @@ button:hover {
     opacity 120ms ease;
 }
 
-.overlay-control-bar--startup {
-  /* A transparent window has no other locator on first launch; leave the title strip visible until
-   * the pointer has left it once, then return to hover-only visibility. */
-  opacity: 1;
-}
-
-.overlay-control-bar:hover,
+.overlay-control-bar--visible,
 .overlay-control-bar:focus-within {
   border-color: rgb(255 255 255 / 28%);
   background: rgb(34 46 64 / 96%);
@@ -332,6 +330,10 @@ button:hover {
   align-items: stretch;
   height: 100%;
   margin-left: auto;
+  /* A drag region suppresses DOM mouse events; explicitly opt the controls out so their click,
+   * focus, and hover behavior remains available. */
+  app-region: no-drag;
+  -webkit-app-region: no-drag;
 }
 
 .overlay-control-bar__button {
@@ -344,6 +346,8 @@ button:hover {
   background: transparent;
   cursor: pointer;
   line-height: 1;
+  app-region: no-drag;
+  -webkit-app-region: no-drag;
   transition:
     background 120ms ease,
     color 120ms ease;
@@ -412,6 +416,9 @@ button:hover {
   width: 10px;
   height: 10px;
   opacity: 0;
+  /* Resize handles are interactive native commands, not part of the title-bar drag surface. */
+  app-region: no-drag;
+  -webkit-app-region: no-drag;
 }
 
 .overlay-control-bar__resize-handle--north-west {

@@ -1,4 +1,4 @@
-import { useState, type MouseEvent, type PointerEvent } from "react";
+import { useEffect, useState, type MouseEvent, type PointerEvent } from "react";
 import { liveWindowPlatform, type OverlayResizeDirection } from "../platform/index";
 import "./styles.css";
 
@@ -15,15 +15,6 @@ const BAR_RESIZE_HANDLES: ReadonlyArray<{
   { direction: "SouthWest", className: "overlay-control-bar__resize-handle--south-west" },
   { direction: "West", className: "overlay-control-bar__resize-handle--west" },
 ];
-
-function startDragging(event: PointerEvent<HTMLElement>): void {
-  if (event.button !== 0) return;
-
-  event.preventDefault();
-  void liveWindowPlatform.startDraggingOverlay().catch((error: unknown) => {
-    console.error("[Chlens Live] overlay control bar dragging failed:", error);
-  });
-}
 
 function stopBarControlEvent(
   event: PointerEvent<HTMLButtonElement> | MouseEvent<HTMLButtonElement>,
@@ -67,14 +58,25 @@ function close(event: MouseEvent<HTMLButtonElement>): void {
 }
 
 export function OverlayControlBar() {
-  const [showStartupHint, setShowStartupHint] = useState(true);
+  const [barVisibility, setBarVisibility] = useState({ hovered: true, hasHovered: false });
+
+  useEffect(
+    () =>
+      liveWindowPlatform.trackOverlayBarHover((hovered) => {
+        setBarVisibility((current) => {
+          if (hovered) return { hovered: true, hasHovered: true };
+          // Keep the startup locator visible until the pointer has actually visited the bar once.
+          // A transparent overlay otherwise disappears before users can discover its position.
+          return current.hasHovered ? { hovered: false, hasHovered: true } : current;
+        });
+      }),
+    [],
+  );
 
   return (
     <header
-      className={`overlay-control-bar${showStartupHint ? " overlay-control-bar--startup" : ""}`}
+      className={`overlay-control-bar${barVisibility.hovered ? " overlay-control-bar--visible" : ""}`}
       data-overlay-interactive="true"
-      onPointerDown={startDragging}
-      onPointerLeave={() => setShowStartupHint(false)}
     >
       <div className="overlay-control-bar__status" role="status" aria-live="polite">
         <span className="overlay-control-bar__status-dot" aria-hidden="true" />
@@ -89,7 +91,6 @@ export function OverlayControlBar() {
           aria-label="最小化"
           title="最小化"
           onPointerDown={stopBarControlEvent}
-          onDoubleClick={stopBarControlEvent}
           onClick={minimize}
         >
           <span
@@ -103,7 +104,6 @@ export function OverlayControlBar() {
           aria-label="最大化／元に戻す"
           title="最大化／元に戻す"
           onPointerDown={stopBarControlEvent}
-          onDoubleClick={stopBarControlEvent}
           onClick={toggleMaximize}
         >
           <span
@@ -117,7 +117,6 @@ export function OverlayControlBar() {
           aria-label="閉じる"
           title="閉じる"
           onPointerDown={stopBarControlEvent}
-          onDoubleClick={stopBarControlEvent}
           onClick={close}
         >
           <span

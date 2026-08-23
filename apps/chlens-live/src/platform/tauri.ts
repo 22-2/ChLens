@@ -25,6 +25,8 @@ interface CursorPosition {
   y: number;
 }
 
+type CursorHitRegion = "outside" | "bar" | "resize";
+
 interface PhysicalWindowBounds {
   x: number;
   y: number;
@@ -69,13 +71,13 @@ async function readOverlayGeometry(overlay: Window): Promise<OverlayGeometry> {
   };
 }
 
-function isCursorInInteractiveArea(cursor: CursorPosition, bounds: PhysicalWindowBounds): boolean {
+function getCursorHitRegion(cursor: CursorPosition, bounds: PhysicalWindowBounds): CursorHitRegion {
   const insideWindow =
     cursor.x >= bounds.x &&
     cursor.x <= bounds.x + bounds.width &&
     cursor.y >= bounds.y &&
     cursor.y <= bounds.y + bounds.height;
-  if (!insideWindow) return false;
+  if (!insideWindow) return "outside";
 
   // The top bar and the resize border are the only areas that should temporarily receive input.
   // Keeping this hit test native lets the rest of the transparent window stay click-through.
@@ -84,12 +86,13 @@ function isCursorInInteractiveArea(cursor: CursorPosition, bounds: PhysicalWindo
   const barLeft = bounds.x + CONTROL_BAR_HORIZONTAL_INSET * bounds.scaleFactor;
   const barRight = bounds.x + bounds.width - CONTROL_BAR_HORIZONTAL_INSET * bounds.scaleFactor;
   const insideBar = cursor.x >= barLeft && cursor.x <= barRight && cursor.y <= bounds.y + barHeight;
-  return (
-    insideBar ||
-    cursor.x <= bounds.x + edgeSize ||
+  if (insideBar) return "bar";
+
+  return cursor.x <= bounds.x + edgeSize ||
     cursor.x >= bounds.x + bounds.width - edgeSize ||
     cursor.y >= bounds.y + bounds.height - edgeSize
-  );
+    ? "resize"
+    : "outside";
 }
 
 export function createTauriLiveWindowPlatform(): LiveWindowPlatform {
@@ -100,6 +103,20 @@ export function createTauriLiveWindowPlatform(): LiveWindowPlatform {
   let nativeCursorEventsIgnored: boolean | null = null;
   let nativeCursorMutation: Promise<void> = Promise.resolve();
   let cursorPollingStartPromise: Promise<void> | null = null;
+  const overlayBarHoverListeners = new Set<(hovered: boolean) => void>();
+  let lastOverlayBarHovered: boolean | null = null;
+
+  const notifyOverlayBarHover = (hovered: boolean): void => {
+    if (lastOverlayBarHovered === hovered) return;
+    lastOverlayBarHovered = hovered;
+    for (const listener of overlayBarHoverListeners) {
+      try {
+        listener(hovered);
+      } catch (error: unknown) {
+        console.error("[Chlens Live] overlay bar hover listener failed:", error);
+      }
+    }
+  };
 
   const setNativeCursorEventsIgnored = async (overlay: Window, ignored: boolean): Promise<void> => {
     nativeCursorMutation = nativeCursorMutation
@@ -116,7 +133,9 @@ export function createTauriLiveWindowPlatform(): LiveWindowPlatform {
   };
 
   const updateCursorHitTest = async (overlay: Window): Promise<void> => {
-    if (!clickThroughRequested || cursorPollInFlight) return;
+    if ((!clickThroughRequested && overlayBarHoverListeners.size === 0) || cursorPollInFlight) {
+      return;
+    }
 
     cursorPollInFlight = true;
     try {
@@ -124,7 +143,12 @@ export function createTauriLiveWindowPlatform(): LiveWindowPlatform {
         invoke<CursorPosition>("get_cursor_position"),
         readPhysicalWindowBounds(overlay),
       ]);
-      if (isCursorInInteractiveArea(cursor, bounds)) {
+      const hitRegion = getCursorHitRegion(cursor, bounds);
+      notifyOverlayBarHover(hitRegion === "bar");
+
+      if (!clickThroughRequested) return;
+
+      if (hitRegion !== "outside") {
         if (cursorReenableTimer) {
           clearTimeout(cursorReenableTimer);
           cursorReenableTimer = null;
@@ -156,7 +180,6 @@ export function createTauriLiveWindowPlatform(): LiveWindowPlatform {
     if (cursorPollTimer) return;
     if (!cursorPollingStartPromise) {
       cursorPollingStartPromise = (async () => {
-        await setNativeCursorEventsIgnored(overlay, true);
         cursorPollTimer = setInterval(() => {
           void updateCursorHitTest(overlay);
         }, CURSOR_POLL_INTERVAL_MS);
@@ -169,9 +192,10 @@ export function createTauriLiveWindowPlatform(): LiveWindowPlatform {
   };
 
   const stopCursorPolling = async (overlay: Window, keepRequest: boolean): Promise<void> => {
-    if (cursorPollTimer) {
+    if (!clickThroughRequested && overlayBarHoverListeners.size === 0 && cursorPollTimer) {
       clearInterval(cursorPollTimer);
       cursorPollTimer = null;
+      lastOverlayBarHovered = null;
     }
     if (cursorReenableTimer) {
       clearTimeout(cursorReenableTimer);
@@ -202,11 +226,6 @@ export function createTauriLiveWindowPlatform(): LiveWindowPlatform {
       if (clickThroughRequested) await startCursorPolling(overlay);
       await overlay.setFocus();
     },
-    async startDraggingOverlay() {
-      // The single overlay window owns both the comments and the bar, so native dragging cannot
-      // drift away from a second controls window.
-      await (await getOverlayWindow()).startDragging();
-    },
     async startResizingOverlay(direction: OverlayResizeDirection) {
       // Native resize hit-testing is unavailable without decorations; use Tauri's directional API.
       await (await getOverlayWindow()).startResizeDragging(direction);
@@ -227,10 +246,35 @@ export function createTauriLiveWindowPlatform(): LiveWindowPlatform {
       const overlay = await getOverlayWindow();
       clickThroughRequested = enabled;
       if (enabled) {
+        await setNativeCursorEventsIgnored(overlay, true);
         await startCursorPolling(overlay);
       } else {
         await stopCursorPolling(overlay, false);
       }
+    },
+    trackOverlayBarHover(listener: (hovered: boolean) => void) {
+      overlayBarHoverListeners.add(listener);
+      if (lastOverlayBarHovered !== null) listener(lastOverlayBarHovered);
+
+      void getOverlayWindow()
+        .then(async (overlay) => {
+          if (!clickThroughRequested && !overlayBarHoverListeners.has(listener)) return;
+          await startCursorPolling(overlay);
+        })
+        .catch((error: unknown) => {
+          console.error("[Chlens Live] overlay bar hover tracking failed to start:", error);
+        });
+
+      return () => {
+        overlayBarHoverListeners.delete(listener);
+        if (overlayBarHoverListeners.size > 0 || clickThroughRequested) return;
+
+        void getOverlayWindow()
+          .then((overlay) => stopCursorPolling(overlay, false))
+          .catch((error: unknown) => {
+            console.error("[Chlens Live] overlay bar hover tracking failed to stop:", error);
+          });
+      };
     },
     async getOverlayGeometry() {
       return readOverlayGeometry(await getOverlayWindow());

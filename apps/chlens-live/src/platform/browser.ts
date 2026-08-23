@@ -19,12 +19,16 @@ export function createBrowserLiveWindowPlatform(): LiveWindowPlatform {
     async showOverlay() {},
     async hideOverlay() {},
     async focusOverlay() {},
-    async startDraggingOverlay() {},
     async startResizingOverlay(_direction: OverlayResizeDirection) {},
     async minimizeOverlay() {},
     async toggleMaximizeOverlay() {},
     async closeOverlay() {},
     async setOverlayClickThrough(_enabled: boolean) {},
+    trackOverlayBarHover(_listener: (hovered: boolean) => void) {
+      // Browser previews do not have a native transparent window, so CSS hover remains the
+      // appropriate fallback instead of starting a second cursor polling loop.
+      return () => {};
+    },
     async getOverlayGeometry() {
       return cloneOverlayGeometry(geometry);
     },
