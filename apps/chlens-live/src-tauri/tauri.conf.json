@@ -27,13 +27,13 @@
         "width": 900,
         "height": 160,
         "resizable": true,
-        "visible": false,
+        "visible": true,
         "focus": false,
         "transparent": true,
         "decorations": false,
         "shadow": false,
         "alwaysOnTop": true,
-        "skipTaskbar": true
+        "skipTaskbar": false
       }
     ],
     "security": {
