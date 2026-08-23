@@ -1,10 +1,30 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { BoardThread } from "@chlen/ch-lib";
 import {
   DEFAULT_OVERLAY_GEOMETRY,
   liveWindowPlatform,
   type OverlayGeometry,
 } from "../platform/index";
+import {
+  createChLensLiveSource,
+  createTauriChLensLiveSource,
+  type ChLensLiveSource,
+} from "../live-session/source";
+import { useLiveBoard, useLiveThread } from "./use-live-sessions";
+import { ThreadList } from "./ThreadList";
+import { ThreadView } from "./ThreadView";
 import "./styles.css";
+
+// Phase 2では実況板を固定URLで開く。板一覧UI（BBSMenu）は後続phaseで追加する。
+// エッヂは5ch.netのliveedgeが404になるため、Eddibbの正規URLを使う。
+const DEFAULT_BOARD_URL = "http://bbs.eddibb.cc/liveedge/";
+
+function createDefaultSource(): ChLensLiveSource {
+  // Tauri実行時はCORS回避のためRust側HTTPへ委譲し、ブラウザ実行時は通常fetchを使う。
+  return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window
+    ? createTauriChLensLiveSource()
+    : createChLensLiveSource();
+}
 
 type Operation = "show" | "hide" | "focus" | "apply" | "save" | "restore" | "click-through";
 
@@ -31,6 +51,15 @@ export function App() {
   const [geometry, setGeometry] = useState<OverlayGeometry>(DEFAULT_OVERLAY_GEOMETRY);
   const [clickThrough, setClickThrough] = useState(true);
   const [status, setStatus] = useState("Live Session未接続（Phase 1 spike）");
+  const source = useMemo(() => createDefaultSource(), []);
+  const [selectedThread, setSelectedThread] = useState<BoardThread | null>(null);
+  const board = useLiveBoard(DEFAULT_BOARD_URL, { source });
+  const thread = useLiveThread(selectedThread?.url ?? null, { source });
+
+  const selectThread = (next: BoardThread) => {
+    setSelectedThread(next);
+    setStatus(`「${next.title}」を開きました`);
+  };
 
   useEffect(() => {
     // Start in passthrough mode so a newly opened transparent overlay never steals clicks from
@@ -108,6 +137,48 @@ export function App() {
         </div>
         <span className="live-phase">Phase 1 spike</span>
       </header>
+
+      <section className="live-card" aria-labelledby="thread-ui-title">
+        <div className="live-card__heading">
+          <div>
+            <p className="live-eyebrow">LIVE READER</p>
+            <h2 id="thread-ui-title">ThreadList / Thread</h2>
+          </div>
+          <output className="live-status">
+            {board.loading
+              ? "板を取得中…"
+              : board.error
+                ? "板の取得に失敗しました"
+                : `${board.snapshot?.data.length ?? 0}件のスレ`}
+          </output>
+        </div>
+        <div className="live-reader">
+          <div className="live-reader__list">
+            <ThreadList
+              threads={board.snapshot?.data ?? []}
+              loading={board.loading}
+              error={board.error}
+              selectedUrl={selectedThread?.url ?? null}
+              onSelect={selectThread}
+            />
+          </div>
+          <div className="live-reader__thread">
+            {selectedThread ? (
+              <ThreadView
+                title={thread.snapshot?.data.title ?? selectedThread.title}
+                posts={thread.snapshot?.data.posts ?? []}
+                loading={thread.loading}
+                error={thread.error}
+                datFall={false}
+                onRefresh={thread.refresh}
+                onStop={thread.stop}
+              />
+            ) : (
+              <div className="live-reader__placeholder">スレを選択してください</div>
+            )}
+          </div>
+        </div>
+      </section>
 
       <section className="live-card" aria-labelledby="overlay-window-title">
         <div className="live-card__heading">
