@@ -56,7 +56,8 @@
 
 - **Title format:** `[<module_name>] <Descriptive Title>` (例: `[thread] Add filter functionality`)
 - **Pre-commit check:** `pnpm lint` および `pnpm tsc6` を実行し、型エラーやリンターエラーがないことを確認してください。
-- **コミットメッセージ:** Conventional Commits 形式（例: `fix(thread): 自動更新の停止条件を修正`）で、変更の意図が明確になる詳細な説明を含めてください。
+- **Issueの言語:** 新規Issueのタイトル、本文、コメントは日本語で統一してください。ラベル名、`[<module_name>]`、Issue検索用の固定識別子など、運用上の機械的な文字列は既存形式を維持します。
+- **コミットメッセージ:** Conventional Commits形式で、type/scopeなどの形式上の識別子は英語のまま、件名と本文は日本語で統一してください。変更の意図が明確になる詳細な説明を含めてください（例: `fix(thread): 自動更新の停止条件を修正`）。
 
 ### AI improvement workflow
 
@@ -65,30 +66,40 @@
 #### Triage rules
 
 - `.todo`を読み、未処理の不満を利用者の問題単位へ整理する。
-- 既存のGitHub Issueをタイトル、本文、関連語で検索し、重複Issueを作らない。
+- 最初に既存のGitHub Issueをopen/closedの両方で確認する。タイトル、本文、関連語で検索し、重複Issueを作らない。
+- `needs-priority`は実装候補としては無視するが、重複確認の対象からは外さない。これは調査済みで、人の優先度判断を待つ状態である。
 - 関連コード、既存テスト、画面構成を読み、Issueには根拠となるファイルと処理を記録する。
 - 症状、期待する挙動、再現条件、原因候補、修正案、完了条件、リスクをIssue本文へ整理する。
 - コードから判断できない仕様や、原文から意図を読み取れない項目を推測しない。
+- 既存Issueがすでに修正済み、または今後実施しない内容に見える場合は`review-existing`として報告する。AIはIssueを閉じず、人が確認してから`completed`または`not planned`で閉じる。
+- `review-existing`ラベルは、既存Issueの完了・廃止・重複を人が確認する待機状態として使う。AIはこのラベルを付ける提案までに留め、Issueのクローズは行わない。
+- 既存Issueへ情報を追加して再調査させる場合は`needs-retriage`を付ける。定期トリアージは本文・コメント・最新コードを再確認し、結果をIssueコメントへ残してから、情報が足りれば`needs-priority`、不足が残れば`needs-info`へ戻す。
 - 意図不明の項目は個別Issueを乱立させず、`[triage] Unclear todo items`という集約Issueを検索して追記する。集約Issueがなければ1件だけ作成し、`needs-info`を付ける。
 - 新規Issueを作成する前に、同じ集約Issueまたは関連Issueがないか必ず確認する。
 - 1回のトリアージで作成する新規Issueは最大3件とし、残りは次回へ回す。
 - トリアージ工程ではコードを変更しない。優先度、採用案、最終的な使い心地を決めない。
 - Issue化したら、元の`.todo`項目の近くに`<!-- issue: #123 -->`だけを追記する。原文の不満を書き換えない。
+- `<!-- issue: #123 -->`が付いた項目は新規Issue化の対象から外すが、リンク先Issueの状態確認は継続する。解決済み・不要・重複の可能性があれば`review-existing`として報告する。
+- AIが作成するIssue本文の末尾には、AIによる整理であることと、人が内容・優先度・仕様・完了判定を確認することを明記する。
 
 #### Issue state rules
 
 - 調査済みで人の優先度判断待ちは`needs-priority`。
 - 仕様や再現情報が不足するものは`needs-info`。
+- 追加情報をもとにAIの再調査を待つものは`needs-retriage`。再調査後は自動的に`needs-priority`または`needs-info`へ遷移する。
 - 人が実装してよいと判断したものだけが`ready`。
 - `ready`以外のIssueを実装対象にしない。
 - 実装開始時に`in-progress`、実装と自動確認の完了後に`needs-human-test`へ変更する。
-- 人が実際に操作して満足した場合だけ`done`にする。
+- 人が実際に操作して満足した場合だけ、Issueへ確認結果を記録して`completed`でクローズする。
+- 既存Issueを完了扱いにする場合は、実際の確認結果をコメントしてから`gh issue close <number> --reason completed`を使う。実施しない場合は理由をコメントしてから`gh issue close <number> --reason "not planned"`を使う。
 - 仕様不明、テスト環境不良、データ損失の恐れ、Issue範囲超過では停止して`blocked`または`needs-info`にする。
 
 #### Implementation rules
 
 - 実装AIは`ready`のIssueを1件だけ選び、Issue、AGENTS.md、関連コード、既存テストを確認する。
-- 専用ブランチまたはworktreeで作業し、Issue範囲外のついで修正をしない。
+- 調査と実装は、人が編集するworktreeではなく、`develop`ベースの永続的なAI専用worktreeで行う。このworktreeは削除せず、Issueごとに専用ブランチへ切り替えて再利用する。
+- AI専用worktreeがdirtyな場合はresetやstashを自動実行せず、既存作業を保護して停止する。
+- Issue範囲外のついで修正をしない。
 - 自動テスト、静的解析、必要な画面確認を実行し、結果・残存リスク・人が試す操作をIssueへ記録する。
 - バグ修正や意図的なコード変更では、コード内に「なぜその実装にしたか」をコメントとして残す。
 - 実装後の不満が元のIssueの完了条件に関するものなら、そのIssueへコメントする。別問題なら`.todo`へ新しい散文として追加する。
@@ -98,6 +109,8 @@
 
 - この改善ループは初期段階では常時運用対象とする。
 - 利用者が`.todo`へ追加した後、または実装作業が一区切りついた後にトリアージを実行する。
+- 手動確認は`pnpm triage:todo`、GitHub Issue作成を含む定期実行は`pnpm triage:todo -- --apply`で行う。
+- トリアージは`debug/triage/triage.lock`で同時実行を防ぎ、`.todo`とGitHub Issuesの状態が前回と同じならCodexを起動せず終了する。意図的な再実行には`--force`を付ける。
 - ただし、1回の実行で扱う新規Issueは最大3件とし、Issue作成後は人の判断を待つ。
 - 最初の1〜2週間は、Issueの重複、意図不明項目の集約、実装後の体感確認を毎回人が確認する。
 
