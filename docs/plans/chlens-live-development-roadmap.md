@@ -224,6 +224,23 @@ Phase 1の実装記録と検証結果は、[Phase 1 workspace／window spike](./
 - 透明Overlayを表示し、Mainから制御できる。
 - Liveを追加しても既存Chlens bundleの出力が変わらない。
 
+#### 現在の状況
+
+Phase 1のworkspace／window spikeは実装済みで、Windows上でOverlayの起動・ドラッグ・リサイズ・
+最大化／復元・最小化・閉じる・クリック透過を確認している。現在の構成は次のとおり。
+
+- MainとOverlayをLive専用のTauriアプリ内で分離し、Overlayは同一native window内に表示面と操作バーを持つ。
+- バー中央はWebView2の`app-region: drag`、ボタンとリサイズ領域は`no-drag`で分離する。
+- バーのダブルクリックによる最大化／復元はOSへ委譲し、最大化ボタンは単一クリック操作とする。
+- クリック透過は起動時から有効にし、画面座標監視でバーとリサイズ境界だけ一時的に操作可能にする。
+- バーの表示状態と連続ラインのリサイズ枠を同期し、透明documentのoverflowとgeometryずれを抑制する。
+- Overlayのgeometryはlogical pixelとして保存・復元し、Mainから表示／非表示／focus／geometry操作を行う。
+
+#### Phase 1の既知の残課題
+
+- バー全体へポインターを移動したとき、最小化／最大化ボタンのhover演出が出ることがある。`app-region`のnative領域とWebView2のclient領域のhover境界を、ボタン直上だけへ限定するUI調整を後続タスクとして残す。
+- クリック透過、複数monitor、DPI変更、sleep復帰を含む長時間のWindows手動確認は、Phase 7のOverlay MVP受け入れ時に再確認する。
+
 ### Phase 2: 掲示板domain／取得資産の共通化
 
 #### 目的

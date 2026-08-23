@@ -63,6 +63,14 @@ Windowsのバー中央はWebView2の`app-region: drag`（互換指定として`-
 - [WindowPet](https://github.com/SeakMengs/WindowPet): 透明windowをcursor event無視にし、OSの画面座標で対象領域へ入ったときだけイベントを戻す方式。
 - [pet-overlay](https://github.com/gtvincent2000/pet-overlay): Tauri 2の透明Overlayで、同じwindowから`startDragging`を呼び出す構成。
 
+## 現状と既知の残課題
+
+Phase 1のwindow／workspace境界は実装済みで、Windows上でOverlayの基本操作を確認している。
+クリック透過は起動時から有効で、バーのダブルクリック最大化／復元、ボタン操作、リサイズ、
+バーと連動する連続ライン枠まで動作する。残っているUI課題は、バー全体へポインターを移動したときに
+最小化／最大化ボタンのhover演出が出ることがあり、ボタン直上だけへ限定できていない点である。
+これは`app-region`のnative領域とWebView2のclient領域のhover境界に関する後続のUI調整として扱う。
+
 ## Phase 1で意図的に含めないもの
 
 - Edge URL入力、subject／dat取得、レス解析
