@@ -51,6 +51,11 @@ Mainの「クリック透過を有効化」でOverlay本体のTauri cursor event
 Overlayは起動直後から表示してタスクバーにも載せる。操作バーは最初の位置確認用に表示し、ポインターが一度バーから離れた後はバーへホバーまたはフォーカスしたときだけサーフェスを表示する。透明Overlayのdocumentはoverflowを抑制し、
 リサイズハンドルの外側への描画でスクロールバーが発生しないようにする。
 
+Windowsのバー中央はWebView2の`app-region: drag`（互換指定として`-webkit-app-region: drag`も併記）を利用する。
+これにより、手動の`startDragging`イベント処理と競合せず、バーのダブルクリックによる最大化／復元をOSへ委譲できる。
+ボタンとリサイズハンドルは`app-region: no-drag`で明示的に除外する。drag領域は通常のDOM hoverイベントを安定して発火しないため、バーの表示状態は既存の画面座標監視から通知し、
+起動直後は一度バーへポインターが入るまで位置確認用の表示を維持する。
+
 今回の単一window構成は、次の実例を設計参考にした。
 
 - [WindowPet](https://github.com/SeakMengs/WindowPet): 透明windowをcursor event無視にし、OSの画面座標で対象領域へ入ったときだけイベントを戻す方式。
