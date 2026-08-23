@@ -46,7 +46,13 @@ export function OverlayControlsApp() {
       onPointerDown={startDragging}
       onDoubleClick={toggleMaximize}
     >
-      <span className="overlay-control-bar__title">Chlens Live Overlay</span>
+      <div className="overlay-control-bar__status" role="status" aria-live="polite">
+        <span className="overlay-control-bar__status-dot" aria-hidden="true" />
+        <span className="overlay-control-bar__status-copy">
+          <strong className="overlay-control-bar__title">Chlens Live</strong>
+          <span className="overlay-control-bar__subtitle">Overlay ready</span>
+        </span>
+      </div>
       <div className="overlay-control-bar__actions" aria-label="Overlay window controls">
         <button
           type="button"
@@ -57,7 +63,7 @@ export function OverlayControlsApp() {
           onDoubleClick={stopBarControlEvent}
           onClick={minimize}
         >
-          −
+          <span aria-hidden="true">−</span>
         </button>
         <button
           type="button"
@@ -68,7 +74,7 @@ export function OverlayControlsApp() {
           onDoubleClick={stopBarControlEvent}
           onClick={toggleMaximize}
         >
-          □
+          <span aria-hidden="true">□</span>
         </button>
         <button
           type="button"
@@ -79,7 +85,7 @@ export function OverlayControlsApp() {
           onDoubleClick={stopBarControlEvent}
           onClick={close}
         >
-          ×
+          <span aria-hidden="true">×</span>
         </button>
       </div>
     </main>

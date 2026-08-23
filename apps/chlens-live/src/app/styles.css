@@ -32,6 +32,15 @@ body {
   background: transparent;
 }
 
+/* The controls window is only a transparent host for the inset bar; clipping its document
+ * prevents the glass surface's margins from creating an unexpected native scrollbar. */
+html.overlay-controls-document,
+.overlay-controls-document body,
+.overlay-controls-document #root {
+  height: 100%;
+  overflow: hidden;
+}
+
 button,
 input {
   font: inherit;
@@ -235,33 +244,87 @@ button:hover {
 }
 
 .overlay-control-bar {
+  /* Keep the native controls window transparent so the separate click-through overlay remains
+   * visually untouched; the inset element is the only surface that receives the glass styling. */
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: 100%;
-  height: 36px;
-  padding: 0 0.35rem 0 0.8rem;
+  width: calc(100% - 1.5rem);
+  height: calc(100% - 1rem);
+  margin: 0.5rem 0.75rem;
+  padding: 0 0.35rem 0 1rem;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 18px;
   color: rgb(255 255 255 / 90%);
-  background: rgb(16 28 47 / 76%);
+  background: linear-gradient(135deg, rgb(31 47 71 / 82%), rgb(13 22 37 / 76%));
+  box-shadow:
+    0 12px 40px rgb(0 0 0 / 32%),
+    inset 0 1px rgb(255 255 255 / 10%);
+  /* This blur is intentionally limited to the WebView; native desktop-wide blur would require
+   * a platform-specific vibrancy plugin and should not be implied by this shared CSS. */
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  overflow: hidden;
   text-shadow: 0 1px 3px #000;
   cursor: move;
   user-select: none;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
 }
 
 .overlay-control-bar:hover {
-  background: rgb(42 69 103 / 84%);
+  border-color: rgb(255 255 255 / 28%);
+  background: linear-gradient(135deg, rgb(43 68 101 / 86%), rgb(18 30 49 / 82%));
+}
+
+.overlay-control-bar__status {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 0.65rem;
+  pointer-events: none;
+}
+
+.overlay-control-bar__status-dot {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #65f6a8;
+  box-shadow: 0 0 14px rgb(101 246 168 / 90%);
+}
+
+.overlay-control-bar__status-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.1rem;
 }
 
 .overlay-control-bar__title {
-  pointer-events: none;
-  opacity: 0.82;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.overlay-control-bar__subtitle {
+  overflow: hidden;
+  color: rgb(224 236 250 / 62%);
+  text-overflow: ellipsis;
+  font-size: 0.68rem;
+  white-space: nowrap;
 }
 
 .overlay-control-bar__actions {
   display: flex;
   align-items: stretch;
   height: 100%;
+  margin-left: 1rem;
+  border-left: 1px solid rgb(255 255 255 / 12%);
 }
 
 .overlay-control-bar__button {
@@ -275,14 +338,24 @@ button:hover {
   cursor: pointer;
   font-size: 1rem;
   line-height: 1;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
 }
 
 .overlay-control-bar__button:hover {
   background: rgb(117 184 239 / 24%);
 }
 
+.overlay-control-bar__button:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 2px solid #65f6a8;
+  outline-offset: -4px;
+}
+
 .overlay-control-bar__button--close:hover {
-  background: #c43e52;
+  background: rgb(196 62 82 / 88%);
 }
 
 @media (max-width: 620px) {
