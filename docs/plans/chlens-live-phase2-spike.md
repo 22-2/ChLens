@@ -44,6 +44,7 @@ ChLens Live source
 - Eddibb board URLのsubject取得、Shift_JIS decode、thread URLのdat取得先、HTTP 404をfixtureで確認した。
 - Live sourceがparser／transportをUIへ漏らさず委譲する契約テストを追加した。
 - Tauri adapterのstatus／headers／raw bytes変換とtransport error再送出をテストした。
+- `BBSMenuParser`が`<br>`を次カテゴリの開始と誤認していた問題を修正し、ch-lib全体テスト19/19件を成功させた。
 
 ## 意図的に含めないもの
 

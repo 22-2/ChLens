@@ -276,7 +276,7 @@ ChlensとLiveが同じURL・subject・dat・responseモデルを利用できる�
 
 ##### 既知の確認課題
 
-- [ ] `@chlen/ch-lib`全体テストをgreenにする。現状は既存の`BBSMenuParser.test.ts`で、fixtureがboard 2件想定に対して1件になる失敗が1件残っている。
+- [x] `@chlen/ch-lib`全体テストをgreenにする。`BBSMenuParser`のカテゴリ終端判定を修正し、19/19件が成功している。
 - [x] 新規fixture test 2件とLive adapter test 6件、Live check／build、Rust `cargo check`は成功している。
 
 #### 作業
