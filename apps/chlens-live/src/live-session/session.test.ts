@@ -140,4 +140,28 @@ describe("LiveThreadSession", () => {
       changed: true,
     });
   });
+
+  it("polls while started and stops scheduling after stop", async () => {
+    vi.useFakeTimers();
+    try {
+      let callCount = 0;
+      const source = sourceFor(async () => {
+        callCount += 1;
+        return result(thread("title", `refresh-${callCount}`), `"v${callCount}"`);
+      });
+      const session = new LiveThreadSession(threadUrl, { source, intervalMs: 1_000 });
+
+      await session.start();
+      expect(callCount).toBe(1);
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(callCount).toBe(2);
+
+      session.stop();
+      await vi.advanceTimersByTimeAsync(2_000);
+      expect(callCount).toBe(2);
+      expect(session.isRunning).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
