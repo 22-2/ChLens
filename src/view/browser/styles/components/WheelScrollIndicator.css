@@ -14,6 +14,12 @@
   visibility: hidden;
 }
 
+.scroll-indicator.loading {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .scroll-indicator.visible {
   opacity: 1;
   visibility: visible;

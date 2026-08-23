@@ -72,8 +72,11 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     messageProtocol,
   } = useThreadData(tabId, page, refreshKey, rootRef);
   const dispatch = useTabDispatch();
+  // 変更理由: 更新開始後のloading中もwheel更新の共有cooldownとindicatorを維持し、
+  // 画面切替で別の一覧/スレッドから連続更新できる隙間を作らない。
   const wheelPagination = useWheelPagination({
-    isEnabled: isActive && !loading,
+    isEnabled: isActive,
+    isLoading: loading,
     containerRef: effectiveScrollContainerRef,
     edge: "bottom",
     onRefresh: () => dispatch({ type: "RELOAD" }),

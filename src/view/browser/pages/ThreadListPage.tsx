@@ -480,8 +480,11 @@ export const ThreadListPage: React.FC<Props> = ({
   const [searchQuery, setSearchQuery] = useState(() => persistedSearchQuery ?? "");
   const previousBoardUrlRef = useRef(page.boardUrl);
   const skipViewStateUpdateRef = useRef(false);
+  // 変更理由: 更新開始後のloading中もwheel更新の共有cooldownとindicatorを維持し、
+  // 画面切替で別の一覧/スレッドから連続更新できる隙間を作らない。
   const wheelPagination = useWheelPagination({
-    isEnabled: isActive && !loading,
+    isEnabled: isActive,
+    isLoading: loading,
     containerRef: effectiveScrollContainerRef,
     edge: "top",
     onRefresh: () => dispatch({ type: "RELOAD" }),
