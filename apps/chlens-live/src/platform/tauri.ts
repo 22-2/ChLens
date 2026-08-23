@@ -14,7 +14,9 @@ import {
 } from "./types";
 
 const OVERLAY_WINDOW_LABEL = "overlay";
-const CURSOR_POLL_INTERVAL_MS = 50;
+// 50msはIPC呼び出しがDevTools上で高頻度に見えて過剰だったため、
+// ホバー検出の体感を保ちつつ100msへ緩和した。
+const CURSOR_POLL_INTERVAL_MS = 100;
 const CURSOR_REENABLE_DELAY_MS = 80;
 const INTERACTIVE_EDGE_SIZE = 14;
 const CONTROL_BAR_TOP_INSET = 4;
