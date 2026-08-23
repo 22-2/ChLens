@@ -96,7 +96,8 @@
 
 #### Implementation rules
 
-- 実装AIは`ready`のIssueを1件だけ選び、Issue、AGENTS.md、関連コード、既存テストを確認する。
+- 実装AIはopenかつ`ready`のIssueを番号の昇順で確認し、番号が最小の1件だけを選ぶ。Issue、AGENTS.md、関連コード、既存テストを確認する。
+- Issue選択とブランチ準備には`pwsh -File scripts/start-ready-issue.ps1`を使い、作業開始時に`ready`を外して`in-progress`を付ける。
 - 調査と実装は、人が編集するworktreeではなく、`develop`ベースの永続的なAI専用worktreeで行う。このworktreeは削除せず、Issueごとに専用ブランチへ切り替えて再利用する。
 - AI専用worktreeがdirtyな場合はresetやstashを自動実行せず、既存作業を保護して停止する。
 - Issue範囲外のついで修正をしない。
