@@ -1,5 +1,10 @@
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
-import type { HttpClient, HttpRequest, HttpResponse } from "@chlen/ch-lib";
+import {
+  createHttpResponseMetadata,
+  type HttpClient,
+  type HttpRequest,
+  type HttpResponse,
+} from "@chlen/ch-lib";
 
 /**
  * HTTP transport for the Tauri runtime.
@@ -20,10 +25,12 @@ export class TauriHttpClient implements HttpClient {
         headers[key] = value;
       });
 
+      const body = await response.arrayBuffer();
       return {
         status: response.status,
         headers,
-        body: await response.arrayBuffer(),
+        body,
+        metadata: createHttpResponseMetadata(headers, body),
       };
     } catch (error) {
       console.error(`[TauriHttpClient] GET failed: ${url}`, error);

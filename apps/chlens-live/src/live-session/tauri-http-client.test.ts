@@ -13,7 +13,7 @@ describe("TauriHttpClient", () => {
       status: 206,
       headers: {
         forEach(callback: (value: string, key: string) => void) {
-          callback("bytes=4-7", "content-range");
+          callback("bytes 4-7/*", "content-range");
         },
       },
       arrayBuffer: async () => body,
@@ -30,8 +30,12 @@ describe("TauriHttpClient", () => {
     });
     expect(result).toEqual({
       status: 206,
-      headers: { "content-range": "bytes=4-7" },
+      headers: { "content-range": "bytes 4-7/*" },
       body,
+      metadata: {
+        contentRange: { start: 4, end: 7, total: undefined },
+        bodyBytes: body.byteLength,
+      },
     });
   });
 
