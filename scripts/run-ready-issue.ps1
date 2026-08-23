@@ -108,6 +108,12 @@ if ($labels -contains "needs-human-test") {
     throw "Issue #$issueNumber did not reach needs-human-test, blocked, or needs-info; preserving its branch for retry."
 }
 
+# 人手確認可能な実装成果をremoteへ残してからworktreeを戻す。push失敗時はbranch上に留め、次回再試行する。
+& git push --set-upstream origin $currentBranch *>> $logPath
+if ($LASTEXITCODE -ne 0) {
+    throw "git push for Issue #$issueNumber failed; preserving branch '$currentBranch' for retry."
+}
+
 # 完了または明示的な停止状態だけ待機ブランチへ戻し、次のready Issueを次回まで開始しない。
 & git switch $IdleBranch *>> $logPath
 if ($LASTEXITCODE -ne 0) {

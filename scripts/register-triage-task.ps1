@@ -120,6 +120,11 @@ try {
             if (`$LASTEXITCODE -ne 0) {
                 throw "git commit for .todo failed with exit code `$LASTEXITCODE"
             }
+            # .todoのIssue紐付けを人間用環境からも確認できるよう、AI運用ブランチへだけpushする。
+            & $gitLiteral push origin "HEAD:$IdleBranch" *>> $logPathLiteral
+            if (`$LASTEXITCODE -ne 0) {
+                throw "git push for .todo failed with exit code `$LASTEXITCODE"
+            }
         } elseif (`$todoDiffExitCode -ne 0) {
             throw "git diff for .todo failed with exit code `$todoDiffExitCode"
         }

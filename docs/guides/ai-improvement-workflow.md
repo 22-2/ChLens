@@ -85,8 +85,12 @@ worktreeがdirtyな場合や同名ブランチが既にある場合は、既存�
 
 Task Schedulerの定期実行も同じ処理を呼び出します。`ready`があれば最小番号のIssueを自動的に
 claimしてCodexを起動し、実装・検査・コミット・Issueコメントまで行います。成功時は
-`needs-human-test`へ移して待機ブランチへ戻ります。途中失敗時はIssueブランチを保持し、次回の
-定期実行で同じIssueを再開します。
+`needs-human-test`へ移してIssueブランチをpushしてから待機ブランチへ戻ります。トリアージが
+`.todo`へ追加したIssueマーカーも`automation/ai-workspace`へコミット・pushします。途中失敗時や
+push失敗時はIssueブランチを保持し、次回の定期実行で同じIssueを再開します。
+
+`.todo`はAI運用ブランチを正本とし、実装Issueブランチでは編集しません。人が内容を追加する場合も
+AI worktreeの`.todo`へ書き、定期トリアージがマーカー追加後にpushします。
 
 既存Issueへ再現情報や仕様の回答を追記した場合は、`needs-retriage`を付けます。次回の定期実行が本文・コメント・最新コードを再調査し、結果をIssueコメントへ追加します。調査後は、判断可能なら`needs-priority`、まだ情報不足なら`needs-info`へ自動的に戻ります。
 
