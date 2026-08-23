@@ -1,6 +1,7 @@
 import { HttpStatusError, type ThreadData } from "@chlen/ch-lib";
 import type { ChLensLiveSource } from "./source";
 import { MemoryLiveThreadCache, type LiveThreadCache, type LiveThreadSnapshot } from "./cache";
+import { toLiveThreadEvent, type LiveEventBus } from "./events";
 
 export type LiveThreadSessionEvent =
   | { type: "snapshot"; changed: boolean; snapshot: LiveThreadSnapshot }
@@ -10,6 +11,7 @@ export type LiveThreadSessionEvent =
 export interface LiveThreadSessionOptions {
   source: ChLensLiveSource;
   cache?: LiveThreadCache;
+  eventBus?: LiveEventBus;
   intervalMs?: number;
 }
 
@@ -134,6 +136,13 @@ export class LiveThreadSession {
       } catch (error: unknown) {
         console.error("[Chlens Live] thread session listener failed:", error);
       }
+    }
+    if (this.options.eventBus) {
+      void this.options.eventBus
+        .publish(toLiveThreadEvent(this.threadUrl, event))
+        .catch((error: unknown) => {
+          console.error("[Chlens Live] thread event publish failed:", error);
+        });
     }
   }
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 import { HttpStatusError, type ChFetchResult, type ThreadData } from "@chlen/ch-lib";
 import { MemoryLiveThreadCache } from "./cache";
+import { MemoryLiveEventBus } from "./events";
 import { LiveThreadSession, type LiveThreadSessionEvent } from "./session";
 import type { ChLensLiveSource } from "./source";
 
@@ -123,5 +124,20 @@ describe("LiveThreadSession", () => {
 
     expect(retained?.data).toEqual(thread("title", "same"));
     expect(events[1]).toMatchObject({ type: "error", snapshot: retained });
+  });
+
+  it("publishes serializable updates through the shared event bus", async () => {
+    const eventBus = new MemoryLiveEventBus();
+    const source = sourceFor(async () => result(thread("title", "same"), '"v1"'));
+    const session = new LiveThreadSession(threadUrl, { source, eventBus });
+
+    await session.refresh();
+
+    expect(eventBus.events).toHaveLength(1);
+    expect(eventBus.events[0]).toMatchObject({
+      type: "snapshot",
+      threadUrl,
+      changed: true,
+    });
   });
 });
