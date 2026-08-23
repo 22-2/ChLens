@@ -76,6 +76,11 @@ $logPathLiteral = ConvertTo-PowerShellLiteral $logPath
 $runnerCommand = @"
 Set-StrictMode -Version Latest
 `$ErrorActionPreference = 'Stop'
+# Task Schedulerには対話コンソールのencodingがないため、Node.jsの日本語出力をUTF-8として受け取る。
+`$utf8 = [Text.UTF8Encoding]::new(`$false)
+[Console]::InputEncoding = `$utf8
+[Console]::OutputEncoding = `$utf8
+`$OutputEncoding = `$utf8
 Set-Location -LiteralPath $repositoryLiteral
 New-Item -ItemType Directory -Path (Split-Path -Parent $logPathLiteral) -Force | Out-Null
 Add-Content -LiteralPath $logPathLiteral -Value ("[" + (Get-Date -Format o) + "] starting triage")
