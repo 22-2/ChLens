@@ -7,6 +7,7 @@ import { useIsNgTemporarilyDisabled } from "src/view/browser/hooks/use-ng-status
 import { getIdHeatColor } from "src/view/browser/utils/id-heat";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
 import { getReplyHeatLevel } from "src/view/browser/utils/reply-heat";
+import { useImgurAlbumMedia } from "src/view/browser/utils/imgur-album";
 import { decodeResponseHtml, extractUrlsFromMessage } from "src/view/browser/utils/utils";
 
 export const ResItem: React.FC<ResItemProps> = React.memo(
@@ -30,6 +31,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
     isImageBlurred,
     imageBlurRadius,
     ngResNums,
+    threadUrl,
   }) => {
     const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
     // res.ng はサービス層がNGワード照合した結果を格納するフィールド。
@@ -40,6 +42,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
     const [isNgRevealed, setIsNgRevealed] = useState(false);
     const decoded = useMemo(() => decodeResponseHtml(res, messageProtocol), [messageProtocol, res]);
     const urls = useMemo(() => extractUrlsFromMessage(decoded.messageHtml), [decoded.messageHtml]);
+    const resolvedMedia = useImgurAlbumMedia(decoded.messageHtml, urls, threadUrl);
     const replyHeat = getReplyHeatLevel(repCount);
     const resNumClassName = `res__num${
       replyHeat === "hot" ? " res__num--hot" : replyHeat === "warm" ? " res__num--warm" : ""
@@ -144,7 +147,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
           )}
         </header>
         <ResBody
-          messageHtml={decoded.messageHtml}
+          messageHtml={resolvedMedia.messageHtml}
           anchorPreviewDepth={0}
           ngResNums={ngResNums}
           onUrlClick={(url, button, mode) => onUrlClick(url, undefined, button, mode)}
@@ -155,7 +158,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
           onAnchorLeave={onAnchorLeave}
         />
         <ResMediaGallery
-          urls={urls}
+          urls={resolvedMedia.urls}
           onUrlClick={onUrlClick}
           isBlurred={isImageBlurred}
           imageBlurRadius={imageBlurRadius}
@@ -187,4 +190,6 @@ export interface ResItemProps {
   isImageBlurred: boolean;
   imageBlurRadius: number;
   ngResNums?: ReadonlySet<number>;
+  /** アルバムAPIの失敗抑止をスレッド単位で分離するためのキー */
+  threadUrl?: string;
 }

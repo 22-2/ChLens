@@ -403,6 +403,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
                   isImageBlurred={blurredResNums.has(res.num)}
                   imageBlurRadius={imageBlurConfig.radius}
                   ngResNums={ngResNums}
+                  threadUrl={page.threadUrl}
                 />
               );
             })}

@@ -54,6 +54,7 @@ export const ReplyTree: React.FC<{
   ) => void;
   /** 画面に描画された枝を正確に逆引きするための、参照元から親レスまでの経路 */
   ancestorResNums?: number[];
+  threadKey?: string;
 }> = ({
   resNum,
   repIndex,
@@ -76,6 +77,7 @@ export const ReplyTree: React.FC<{
   ngResNums,
   onSubTreeMenu,
   ancestorResNums = [resNum],
+  threadKey,
 }) => {
   if (depth >= MAX_TREE_DEPTH) return null;
   const replies = repIndex.get(resNum);
@@ -123,6 +125,7 @@ export const ReplyTree: React.FC<{
                 onContextMenu={onResContextMenu}
                 isImageBlurred={blurredResNums?.has(res.num)}
                 ngResNums={ngResNums}
+                threadKey={threadKey}
               />
               {onSubTreeMenu && (
                 <button
@@ -160,6 +163,7 @@ export const ReplyTree: React.FC<{
               depth={depth + 1}
               blurredResNums={blurredResNums}
               ngResNums={ngResNums}
+              threadKey={threadKey}
               onSubTreeMenu={onSubTreeMenu}
               ancestorResNums={[...ancestorResNums, replyNum]}
             />
