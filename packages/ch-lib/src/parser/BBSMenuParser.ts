@@ -18,7 +18,9 @@ export interface BBSMenuParserOptions {
 export class BBSMenuParser {
   static parse(html: string, options: BBSMenuParserOptions = {}): BBSCategory[] {
     const categories: BBSCategory[] = [];
-    const regCategory = /<b[^>]*>(.+?)<\/b>\s*(?:<br>)?\s*(<a\s[\s\S]+?)(?=<b|$)/gi;
+    // `<br>` starts with the same letter as `<b>`; require a tag boundary so line breaks do not
+    // prematurely end a category and drop every board after the first one.
+    const regCategory = /<b[^>]*>(.+?)<\/b>\s*(?:<br>)?\s*(<a\s[\s\S]+?)(?=<b(?:\s|>)|$)/gi;
     const regBoard = /<a\shref="?((?:https?:)?\/\/[\w.-]+\/(\w+)\/)"?>(.+?)<\/a>/gi;
 
     let catMatch: RegExpExecArray | null;
