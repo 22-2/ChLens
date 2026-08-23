@@ -56,11 +56,20 @@ if ($null -eq $pnpmCommand) {
     throw "pnpm.cmd or pnpm.exe was not found in PATH."
 }
 
+$gitCommand = Get-Command git.exe -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($null -eq $gitCommand) {
+    $gitCommand = Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+}
+if ($null -eq $gitCommand) {
+    throw "git.exe or git was not found in PATH."
+}
+
 $logDirectory = Join-Path -Path $resolvedRepositoryPath -ChildPath "debug\triage"
 $logPath = Join-Path -Path $logDirectory -ChildPath "scheduler.log"
 
 $repositoryLiteral = ConvertTo-PowerShellLiteral $resolvedRepositoryPath
 $pnpmLiteral = ConvertTo-PowerShellLiteral $pnpmCommand.Path
+$gitLiteral = ConvertTo-PowerShellLiteral $gitCommand.Path
 $logPathLiteral = ConvertTo-PowerShellLiteral $logPath
 
 # タスク引数にトークンを含めず、実行時のユーザー環境から読むことで、Task Schedulerの登録情報に秘密情報を残さない。
@@ -76,6 +85,20 @@ try {
     }
     & $pnpmLiteral triage:todo -- --apply *>> $logPathLiteral
     `$exitCode = `$LASTEXITCODE
+    if (`$exitCode -eq 0) {
+        & $gitLiteral diff --quiet -- .todo
+        `$todoDiffExitCode = `$LASTEXITCODE
+        if (`$todoDiffExitCode -eq 1) {
+            # AI専用worktreeを次のIssueブランチへ安全に切り替えられるよう、生成したIssueマーカーだけをローカル履歴へ残す。
+            & $gitLiteral add -- .todo
+            & $gitLiteral commit -m 'chore(workflow): todoのIssue紐付けを更新' -m '- 定期トリアージで作成または関連付けたIssue番号を記録' *>> $logPathLiteral
+            if (`$LASTEXITCODE -ne 0) {
+                throw "git commit for .todo failed with exit code `$LASTEXITCODE"
+            }
+        } elseif (`$todoDiffExitCode -ne 0) {
+            throw "git diff for .todo failed with exit code `$todoDiffExitCode"
+        }
+    }
 } catch {
     Add-Content -LiteralPath $logPathLiteral -Value ("[" + (Get-Date -Format o) + "] failed: " + `$_.Exception.Message)
     throw

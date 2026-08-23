@@ -51,6 +51,10 @@ worktreeから登録します。このworktreeはIssueごとの作業ブラン�
 削除しません。`node_modules`も同じworktree内で維持し、lockfileが変わった場合に`vp install`で
 整合させます。別worktreeの`node_modules`を直接共有してはいけません。
 
+定期トリアージが`.todo`へIssueマーカーを追加した場合は、AI専用worktreeをcleanに保つため、
+`.todo`だけをローカルコミットします。この自動処理はコミットをpushせず、ソースコードやその他の
+ファイルをstageしません。
+
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\register-triage-task.ps1 -RunImmediately
 ```
