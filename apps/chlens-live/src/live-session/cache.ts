@@ -1,4 +1,4 @@
-import type { ChFetchMetadata, ThreadData } from "@chlen/ch-lib";
+import type { BoardThread, ChFetchMetadata, ThreadData } from "@chlen/ch-lib";
 
 export interface LiveThreadSnapshot {
   url: string;
@@ -10,6 +10,19 @@ export interface LiveThreadSnapshot {
 export interface LiveThreadCache {
   get(url: string): Promise<LiveThreadSnapshot | null>;
   set(url: string, snapshot: LiveThreadSnapshot): Promise<void>;
+  delete(url: string): Promise<void>;
+}
+
+export interface LiveBoardSnapshot {
+  url: string;
+  data: BoardThread[];
+  metadata: ChFetchMetadata;
+  updatedAt: number;
+}
+
+export interface LiveBoardCache {
+  get(url: string): Promise<LiveBoardSnapshot | null>;
+  set(url: string, snapshot: LiveBoardSnapshot): Promise<void>;
   delete(url: string): Promise<void>;
 }
 
@@ -27,6 +40,22 @@ export class MemoryLiveThreadCache implements LiveThreadCache {
   }
 
   async set(url: string, snapshot: LiveThreadSnapshot): Promise<void> {
+    this.entries.set(url, snapshot);
+  }
+
+  async delete(url: string): Promise<void> {
+    this.entries.delete(url);
+  }
+}
+
+export class MemoryLiveBoardCache implements LiveBoardCache {
+  private readonly entries = new Map<string, LiveBoardSnapshot>();
+
+  async get(url: string): Promise<LiveBoardSnapshot | null> {
+    return this.entries.get(url) ?? null;
+  }
+
+  async set(url: string, snapshot: LiveBoardSnapshot): Promise<void> {
     this.entries.set(url, snapshot);
   }
 
@@ -76,6 +105,59 @@ export class LocalStorageLiveThreadCache implements LiveThreadCache {
       storage.setItem(this.key(url), JSON.stringify(snapshot));
     } catch (error: unknown) {
       console.error(`[Chlens Live] thread cache write failed: ${url}`, error);
+    }
+  }
+
+  async delete(url: string): Promise<void> {
+    const storage = this.getStorage();
+    if (!storage) return;
+    storage.removeItem(this.key(url));
+  }
+
+  private key(url: string): string {
+    return `${this.keyPrefix}${encodeURIComponent(url)}`;
+  }
+
+  private getStorage(): Storage | null {
+    return typeof localStorage === "undefined" ? null : localStorage;
+  }
+}
+
+/** Persistent subject cache; the validator fields are shared with thread cache for 304 reuse. */
+export class LocalStorageLiveBoardCache implements LiveBoardCache {
+  constructor(private readonly keyPrefix = "chlens-live.board-cache:") {}
+
+  async get(url: string): Promise<LiveBoardSnapshot | null> {
+    const storage = this.getStorage();
+    if (!storage) return null;
+
+    try {
+      const value = storage.getItem(this.key(url));
+      if (!value) return null;
+      const snapshot = JSON.parse(value) as LiveBoardSnapshot;
+      if (
+        snapshot.url !== url ||
+        typeof snapshot.updatedAt !== "number" ||
+        !Array.isArray(snapshot.data) ||
+        !snapshot.metadata
+      ) {
+        return null;
+      }
+      return snapshot;
+    } catch (error: unknown) {
+      console.error(`[Chlens Live] board cache read failed: ${url}`, error);
+      return null;
+    }
+  }
+
+  async set(url: string, snapshot: LiveBoardSnapshot): Promise<void> {
+    const storage = this.getStorage();
+    if (!storage) return;
+
+    try {
+      storage.setItem(this.key(url), JSON.stringify(snapshot));
+    } catch (error: unknown) {
+      console.error(`[Chlens Live] board cache write failed: ${url}`, error);
     }
   }
 

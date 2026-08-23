@@ -164,4 +164,21 @@ describe("LiveThreadSession", () => {
       vi.useRealTimers();
     }
   });
+
+  it("exposes dat-removed status through the error event contract", async () => {
+    const source = sourceFor(async () => {
+      throw new HttpStatusError(threadUrl, 410);
+    });
+    const events: LiveThreadSessionEvent[] = [];
+    const session = new LiveThreadSession(threadUrl, { source });
+    session.subscribe((event) => events.push(event));
+
+    const result = await session.refresh();
+
+    expect(result).toBeNull();
+    expect(events[0]).toMatchObject({
+      type: "error",
+      error: { status: 410, name: "HttpStatusError" },
+    });
+  });
 });
