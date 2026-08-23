@@ -270,7 +270,7 @@ ChlensとLiveが同じURL・subject・dat・responseモデルを利用できる�
 - [x] `LiveThreadSession`のpolling、条件付き差分取得、エラー後の再試行、停止条件を実装する。
 - [x] thread dat snapshotとsubject snapshotのcache policyをmemory／localStorage adapterとして実装する。
 - [x] dat落ちHTTP status（404／410）をsession error contractへ伝播する。
-- [ ] 過去ログの取得・再生契約を実装する。
+- [x] 過去ログの取得・再生契約を実装する。`ChURL`のarchive判定、したらばarchive HTML parser、指定レス範囲を投影する`LiveThreadPlaybackSession`、live／playback排他ownerを追加した。
 - [x] `@chlen/ch-lib`にcanonicalな`IThread`／`IRes`型名を公開し、既存`ThreadData`／`Post`と後方互換にする。
 - [ ] Chlens legacy `ParsedThread`／`ThreadRes`をcanonical modelへ移行する。
 - [x] MainとOverlayへ取得結果を共有するserializable event contractとsession ownerを決める。
@@ -279,8 +279,8 @@ ChlensとLiveが同じURL・subject・dat・responseモデルを利用できる�
 
 ##### 既知の確認課題
 
-- [x] `@chlen/ch-lib`全体テストをgreenにする。`BBSMenuParser`のカテゴリ終端判定を修正し、20/20件が成功している。
-- [x] ch-lib fixture／parser test 20件とLive test 19件、Live check／build、Rust `cargo check`は成功している。
+- [x] `@chlen/ch-lib`全体テストをgreenにする。`BBSMenuParser`のカテゴリ終端判定を修正し、22/22件が成功している。
+- [x] ch-lib fixture／parser test 22件とLive test 25件、Live check／build、Rust `cargo check`は成功している。
 
 #### 作業
 

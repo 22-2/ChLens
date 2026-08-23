@@ -44,13 +44,15 @@ ChLens Live source
 - Eddibb board URLのsubject取得、Shift_JIS decode、thread URLのdat取得先、HTTP 404をfixtureで確認した。
 - Live sourceがparser／transportをUIへ漏らさず委譲する契約テストを追加した。
 - Tauri adapterのstatus／headers／raw bytes変換とtransport error再送出をテストした。
-- `BBSMenuParser`が`<br>`を次カテゴリの開始と誤認していた問題を修正し、ch-lib全体テスト20/20件を成功させた。
+- `BBSMenuParser`が`<br>`を次カテゴリの開始と誤認していた問題を修正し、ch-lib全体テスト22/22件を成功させた。
 - `HttpResponseMetadata`、`LiveThreadSession`、thread cache、Main／Overlay event busを追加し、取得結果を継続更新できる境界を固定した。
+- `ChURL`のarchive判定としたらばarchive HTML parserを追加し、過去ログを`IThread`へ変換できるfixtureを追加した。
+- `LiveThreadPlaybackSession`、指定レス範囲cursor、live／playback排他ownerを追加した。再生clock／UI／履歴一覧は後続phaseへ残す。
 
 ## 意図的に含めないもの
 
 - ThreadList／ThreadのReact UI
-- 過去ログ取得・再生の製品仕様
+- 過去ログの再生clock、速度・遅延・一時停止などの製品仕様
 - Chlens既存Thread serviceの完全移行（HTML形式、NG、履歴、既存cache互換）
 - NG／filter／history
 
@@ -67,7 +69,8 @@ ChLens Live source
 ## 次のPhase 2本実装
 
 spike後の残作業は、共通`IThread`／`IRes`モデル、Chlens既存serviceとの互換adapter、
-過去ログの取得契約、ThreadList／Thread UI、Tauri実機確認である。
+ThreadList／Thread UI、legacy model/service adapter、Tauri実機確認である。過去ログは取得と
+指定レス範囲の非polling playback boundaryまで実装済みで、再生clockと製品仕様はPhase 8へ残す。
 
 ## 検証コマンド
 
