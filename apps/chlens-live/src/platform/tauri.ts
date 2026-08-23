@@ -177,6 +177,10 @@ export function createTauriLiveWindowPlatform(): LiveWindowPlatform {
   };
 
   const startCursorPolling = async (overlay: Window): Promise<void> => {
+    // Showing an already-click-through overlay can follow a hide call from the overlay webview,
+    // which may have restored native events in its own adapter instance. Re-assert passthrough
+    // before reusing the existing polling timer so Main remains the source of truth.
+    if (clickThroughRequested) await setNativeCursorEventsIgnored(overlay, true);
     if (cursorPollTimer) return;
     if (!cursorPollingStartPromise) {
       cursorPollingStartPromise = (async () => {

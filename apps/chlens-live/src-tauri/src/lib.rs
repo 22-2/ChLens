@@ -2,6 +2,14 @@
 pub fn run() {
   // Session parsing stays in the TypeScript app so browser and Tauri builds share one domain layer.
   tauri::Builder::default()
+    .setup(|app| {
+      // Apply passthrough before the overlay frontend mounts so a transparent window cannot steal
+      // a click during startup; the Main frontend keeps the setting synchronized afterward.
+      if let Some(overlay) = tauri::Manager::get_webview_window(app, "overlay") {
+        overlay.set_ignore_cursor_events(true)?;
+      }
+      Ok(())
+    })
     .invoke_handler(tauri::generate_handler![get_cursor_position])
     .run(tauri::generate_context!())
     .expect("error while running Chlens Live Tauri application");

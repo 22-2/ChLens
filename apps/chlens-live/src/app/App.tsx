@@ -29,10 +29,16 @@ function describeOperation(operation: Operation): string {
 
 export function App() {
   const [geometry, setGeometry] = useState<OverlayGeometry>(DEFAULT_OVERLAY_GEOMETRY);
-  const [clickThrough, setClickThrough] = useState(false);
+  const [clickThrough, setClickThrough] = useState(true);
   const [status, setStatus] = useState("Live Session未接続（Phase 1 spike）");
 
   useEffect(() => {
+    // Start in passthrough mode so a newly opened transparent overlay never steals clicks from
+    // the application underneath before the user intentionally opens its controls.
+    void liveWindowPlatform.setOverlayClickThrough(true).catch((error: unknown) => {
+      console.error("[Chlens Live] initial overlay click-through setup failed:", error);
+    });
+
     void liveWindowPlatform
       .loadOverlayGeometry()
       .then((stored) => {
@@ -167,7 +173,7 @@ export function App() {
       </section>
 
       <p className="live-note">
-        Overlay本体はクリック透過できます。上部の操作バーは同じ透明window内にあり、透過中もドラッグと
+        Overlay本体は起動時からクリック透過です。上部の操作バーは同じ透明window内にあり、透過中もドラッグと
         最小化・最大化・閉じる操作が可能です。起動直後は位置確認のためバーを表示し、バーから
         ポインターが離れた後はホバー時だけ表示します。透過中はバーとリサイズ境界だけ一時的に
         操作可能になります。解除はこのMainから行います。
