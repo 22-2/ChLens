@@ -9,6 +9,8 @@ export interface IRes {
   mail: string;
   date: string;
   message: string;
+  /** Raw legacy metadata is retained at the adapter boundary for NG/copy compatibility. */
+  other?: string;
   id?: string;
   slip?: string;
   trip?: string;
