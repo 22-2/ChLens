@@ -41,12 +41,15 @@ Viteの開発watcherは `src-tauri/**` を除外している。WindowsではRust
 MainからOverlayの表示、非表示、focus、geometry適用を操作できる。
 現在のgeometryは `localStorage` の `chlens-live:overlay-geometry` に保存し、Tauriではdisplay scalingを考慮したlogical pixelとして復元する。
 Overlayは枠内の8方向リサイズハンドルに対応する。上部操作バーはOverlay本体とは別のnative windowに分け、
-クリック透過中もバーのドラッグ、ダブルクリック最大化、最小化・最大化・閉じる操作を受け付ける。Mainの「クリック透過を有効化」でOverlay本体の
-Tauri cursor eventを無視し、透けて見える背面ウィンドウへ入力を渡せる。操作へ戻す場合はMainから透過を解除する。
+クリック透過中もバー中央のドラッグ、バー端の8方向リサイズ、ダブルクリック最大化、最小化・最大化・閉じる操作を受け付ける。
+Overlayと操作バーの移動／サイズ変更はnative eventをキュー化して追従させ、DPIの異なるmonitor間でも各windowのscale factorで座標を変換する。
+Mainの「クリック透過を有効化」でOverlay本体のTauri cursor eventを無視し、透けて見える背面ウィンドウへ入力を渡せる。操作へ戻す場合はMainから透過を解除する。
 
 操作バーの見た目は、透明なnative windowの内側へ角丸の半透明サーフェスを配置する構成とした。ステータスドット、操作ラベル、
 Windows風の最小化／最大化／閉じるボタンを同じバーへまとめ、`backdrop-filter` はWebView内の質感表現として利用する。
 デスクトップ全体をぼかすnative vibrancyはOSごとの依存が増えるため、別途必要性を確認してから導入する。
+操作バーは通常時に透明化し、バーへホバーまたはフォーカスしたときだけサーフェスを表示する。透明Overlayのdocumentはoverflowを抑制し、
+リサイズハンドルの外側への描画でスクロールバーが発生しないようにする。
 
 ## Phase 1で意図的に含めないもの
 
