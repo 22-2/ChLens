@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vite-plus/test";
 import { HttpStatusError, type ChFetchResult, type ThreadData } from "@chlen/ch-lib";
 import { MemoryLiveThreadCache } from "./cache";
 import { MemoryLiveEventBus } from "./events";
+import { MemoryLiveSessionOwner } from "./owner";
 import { LiveThreadSession, type LiveThreadSessionEvent } from "./session";
 import type { ChLensLiveSource } from "./source";
 
@@ -180,5 +181,23 @@ describe("LiveThreadSession", () => {
       type: "error",
       error: { status: 410, name: "HttpStatusError" },
     });
+  });
+
+  it("holds the live session owner while polling is active", async () => {
+    const owner = new MemoryLiveSessionOwner();
+    const liveLease = owner.tryAcquire("playback");
+    const session = new LiveThreadSession(threadUrl, {
+      source: sourceFor(async () => result(thread("title", "same"), '"v1"')),
+      owner,
+    });
+
+    await expect(session.start()).rejects.toMatchObject({
+      name: "LiveSessionBusyError",
+      requestedMode: "live",
+      activeMode: "playback",
+    });
+    liveLease?.release();
+    await expect(session.start()).resolves.toBeUndefined();
+    session.stop();
   });
 });

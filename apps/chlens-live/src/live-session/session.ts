@@ -2,6 +2,7 @@ import { HttpStatusError, type ThreadData } from "@chlen/ch-lib";
 import type { ChLensLiveSource } from "./source";
 import { MemoryLiveThreadCache, type LiveThreadCache, type LiveThreadSnapshot } from "./cache";
 import { toLiveThreadEvent, type LiveEventBus } from "./events";
+import { LiveSessionBusyError, type LiveSessionLease, type LiveSessionOwner } from "./owner";
 
 export type LiveThreadSessionEvent =
   | { type: "snapshot"; changed: boolean; snapshot: LiveThreadSnapshot }
@@ -12,6 +13,7 @@ export interface LiveThreadSessionOptions {
   source: ChLensLiveSource;
   cache?: LiveThreadCache;
   eventBus?: LiveEventBus;
+  owner?: LiveSessionOwner;
   intervalMs?: number;
 }
 
@@ -41,6 +43,7 @@ export class LiveThreadSession {
   private timer: ReturnType<typeof setInterval> | null = null;
   private requestController: AbortController | null = null;
   private refreshPromise: Promise<LiveThreadSnapshot | null> | null = null;
+  private lease: LiveSessionLease | null = null;
   private running = false;
 
   constructor(
@@ -62,8 +65,22 @@ export class LiveThreadSession {
 
   async start(): Promise<void> {
     if (this.running) return;
+    const lease = this.options.owner?.tryAcquire("live");
+    if (this.options.owner && !lease) {
+      throw new LiveSessionBusyError("live", this.options.owner.currentMode ?? "playback");
+    }
+    this.lease = lease ?? null;
     this.running = true;
-    await this.refresh();
+    try {
+      await this.refresh();
+    } catch (error: unknown) {
+      this.running = false;
+      this.releaseLease();
+      throw error;
+    }
+    // stop() may be called while the initial request is in flight; do not resurrect a timer
+    // after the caller has explicitly released the live session.
+    if (!this.running) return;
     this.timer = setInterval(() => {
       void this.refresh();
     }, this.intervalMs);
@@ -77,6 +94,7 @@ export class LiveThreadSession {
     }
     this.requestController?.abort();
     this.requestController = null;
+    this.releaseLease();
   }
 
   async refresh(): Promise<LiveThreadSnapshot | null> {
@@ -144,5 +162,10 @@ export class LiveThreadSession {
           console.error("[Chlens Live] thread event publish failed:", error);
         });
     }
+  }
+
+  private releaseLease(): void {
+    this.lease?.release();
+    this.lease = null;
   }
 }
