@@ -1,6 +1,7 @@
 import { container } from "src/service-container/index";
 import Thread from "src/core/Thread.js";
 import { buildReplyIndexes } from "src/core/reply-index";
+import { toCanonicalThread } from "src/core/thread-model-adapter.js";
 
 /**
  * @typedef {import("../service-container/interfaces").IThreadService} IThreadService
@@ -43,9 +44,13 @@ class ThreadServiceImpl {
    * @returns {IThreadDetail}
    */
   _formatResult(thread) {
-    const parsedResponses = (thread.res || []).map(
-      (/** @type {any} */ r, /** @type {number} */ i) => this._parseRes(r, i + 1),
-    );
+    // Thread keeps the legacy `res` cache shape because its HTML delta merge relies on it;
+    // normalize once here so NG and every service consumer receive the shared ch-lib model.
+    const canonicalThread = toCanonicalThread({
+      title: thread.title || undefined,
+      res: thread.res || [],
+    });
+    const parsedResponses = canonicalThread.posts.map((r) => this._parseRes(r));
     const replyIndexes = buildReplyIndexes(parsedResponses);
     const title = thread.title || "";
     const url = thread.url.url.href;
@@ -78,35 +83,27 @@ class ThreadServiceImpl {
    * Parses raw response data into structured IRes.
    * @private
    * @param {any} rawRes
-   * @param {number} num
    * @returns {IRes}
    */
-  _parseRes(rawRes, num) {
+  _parseRes(rawRes) {
     /** @type {IRes} */
     const res = {
-      ...rawRes,
-      num,
+      num: rawRes.number,
       name: rawRes.name,
       mail: rawRes.mail,
       message: rawRes.message,
+      other: rawRes.other ?? rawRes.date,
       date: "",
     };
 
-    // Extract Slip and Trip from name (similar logic to ThreadContent.js)
-    const name = rawRes.name;
-    if (name) {
-      const slipMatch = /<\/b>\(([^<>]+? [^<>]+?)\)<b>$/.exec(name);
-      if (slipMatch) {
-        res.slip = slipMatch[1];
-      }
-      const tripMatch = /<\/b> ?(◆[^<>]+?) ?<b>/.exec(name);
-      if (tripMatch) {
-        res.trip = tripMatch[1];
-      }
-    }
+    // MetadataParser has already extracted these fields at the canonical adapter boundary.
+    res.id = rawRes.id;
+    res.slip = rawRes.slip;
+    res.trip = rawRes.trip;
+    res.be = rawRes.be;
 
     // Extract Date and ID from other
-    const other = rawRes.other;
+    const other = res.other;
     if (other) {
       // Date extraction
       const dateMatch = /\d{4}\/\d{1,2}\/\d{1,2}\(.\)\s\d{1,2}:\d\d(?::\d\d(?:\.\d+)?)?/.exec(
