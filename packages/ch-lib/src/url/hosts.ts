@@ -5,6 +5,7 @@
 
 export const HOSTNAME = {
   OLD_2CH: "2ch.net",
+  OLD_5CH_NET: "5ch.net",
   NEW_5CH: "5ch.io",
   OLD_JBBS: "jbbs.livedoor.jp",
   NEW_JBBS: "jbbs.shitaraba.net",
@@ -27,12 +28,20 @@ export function hasHostnameSuffix(hostname: string, suffix: string): boolean {
 
 /**
  * 掲示板の移転を反映した正規ホスト名を返す。
- * (2ch.net → 5ch.io、jbbs.livedoor.jp → jbbs.shitaraba.net)
+ * (2ch.net / 5ch.net → 5ch.io、jbbs.livedoor.jp → jbbs.shitaraba.net)
  */
 export function normalizeBbsHostname(hostname: string): string {
   if (hasHostnameSuffix(hostname, HOSTNAME.OLD_2CH)) {
     return hostname.replace(
       new RegExp(`${HOSTNAME.OLD_2CH.replace(".", "\\.")}$`),
+      HOSTNAME.NEW_5CH,
+    );
+  }
+  if (hasHostnameSuffix(hostname, HOSTNAME.OLD_5CH_NET)) {
+    // 変更理由: 5ch.net の旧板URLを新ドメインへ移す際、サブドメインだけを
+    // 保持して置換することで、パスやクエリに同じ文字列を含むURLを誤変換しない。
+    return hostname.replace(
+      new RegExp(`${HOSTNAME.OLD_5CH_NET.replace(".", "\\.")}$`),
       HOSTNAME.NEW_5CH,
     );
   }
@@ -46,6 +55,7 @@ export function normalizeBbsHostname(hostname: string): string {
 // suffix はサブドメイン込みで一致、exact は完全一致で判定する。
 const COMPATIBLE_HOST_SUFFIXES = [
   "5ch.io",
+  HOSTNAME.OLD_5CH_NET,
   "2ch.sc",
   "2ch.net",
   "open2ch.net",

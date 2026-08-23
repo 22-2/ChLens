@@ -1,3 +1,4 @@
+import { ChURL, normalizeBbsHostname } from "packages/ch-lib/src/index";
 import { setItestServerMapForTesting } from "src/view/browser/utils/itest-server-map";
 import {
   parseInternalBrowserPage,
@@ -20,6 +21,29 @@ describe("link-routing", () => {
       boardUrl: "https://egg.5ch.io/software/",
       boardTitle: "https://egg.5ch.io/software/",
     });
+  });
+
+  it("5ch.netの板URLを5ch.ioへ移し、クエリとフラグメントを保持する", () => {
+    expect(normalizeBbsHostname("egg.5ch.net")).toBe("egg.5ch.io");
+    expect(parseInternalBrowserPageStrict("https://egg.5ch.net/software/?q=5ch.net#top")).toEqual({
+      type: "threadList",
+      title: "https://egg.5ch.io/software/?q=5ch.net#top",
+      boardUrl: "https://egg.5ch.io/software/?q=5ch.net#top",
+      boardTitle: "https://egg.5ch.io/software/?q=5ch.net#top",
+    });
+  });
+
+  it("ChURLでも5ch.netのスレッドURLを5ch.ioへ移す", () => {
+    const url = new ChURL("https://egg.5ch.net/test/read.cgi/software/123/?res=45#r45");
+
+    expect(url.url.href).toBe("https://egg.5ch.io/test/read.cgi/software/123/?res=45#r45");
+    expect(url.type).toBe("thread");
+  });
+
+  it("ホスト名以外に5ch.netを含むURLは書き換えない", () => {
+    const url = new ChURL("https://example.com/path/5ch.net?target=5ch.net#5ch.net");
+
+    expect(url.url.href).toBe("https://example.com/path/5ch.net?target=5ch.net#5ch.net");
   });
 
   it("外部ホストでも test/read.cgi スレッドURLは内部URL扱いする", () => {

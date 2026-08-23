@@ -325,8 +325,8 @@ describe("browser commands", () => {
       threadUrl: "https://kanto.machi.to/bbs/read.cgi/kana/123/",
     };
 
-    expect(getSubjectUrlForCommand(fiveChThread)).toBe("https://egg.5ch.net/software/subject.txt");
-    expect(getDatUrlForCommand(fiveChThread)).toBe("https://egg.5ch.net/software/dat/123.dat");
+    expect(getSubjectUrlForCommand(fiveChThread)).toBe("https://egg.5ch.io/software/subject.txt");
+    expect(getDatUrlForCommand(fiveChThread)).toBe("https://egg.5ch.io/software/dat/123.dat");
     expect(getSubjectUrlForCommand(shitarabaThread)).toBe(
       "https://jbbs.shitaraba.net/computer/1234/subject.txt",
     );
@@ -376,7 +376,7 @@ describe("browser commands", () => {
     });
 
     await expect(executeBrowserCommand("copy.dat-url", context)).resolves.toBe(true);
-    expect(copyTextMock).toHaveBeenCalledWith("https://egg.5ch.net/software/dat/123.dat");
+    expect(copyTextMock).toHaveBeenCalledWith("https://egg.5ch.io/software/dat/123.dat");
     expect(toastSuccessMock).toHaveBeenCalledWith("datのURLをコピーしました");
   });
 

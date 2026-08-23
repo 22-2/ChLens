@@ -33,6 +33,7 @@ import {
 import {
   getBoardUrlFromThreadUrl,
   parseInternalBrowserPage,
+  parseInternalBrowserPageStrict,
 } from "src/view/browser/utils/link-routing";
 import { encodeThreadAsToon, estimateToonTokenCount } from "src/view/browser/utils/thread-toon";
 import { copyText } from "src/view/browser/utils/utils";
@@ -226,7 +227,12 @@ async function importOpenThreadTabs(context: BrowserCommandContext): Promise<voi
     context.tabs
       .map((tab) => getCurrentPage(tab))
       .filter((page): page is Extract<Page, { type: "thread" }> => page.type === "thread")
-      .map((page) => page.threadUrl),
+      // 変更理由: 既存のアプリ内タブが旧5ch.net URLを保持していても、
+      // ブラウザ側で正規化した5ch.io URLと同じスレッドとして重複排除するため。
+      .map((page) => {
+        const normalizedPage = parseInternalBrowserPageStrict(page.threadUrl);
+        return normalizedPage?.type === "thread" ? normalizedPage.threadUrl : page.threadUrl;
+      }),
   );
   const pagesToImport = openThreadPages.filter((page) => !existingThreadUrls.has(page.threadUrl));
 

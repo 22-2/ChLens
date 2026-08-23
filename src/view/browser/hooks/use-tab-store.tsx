@@ -1,3 +1,4 @@
+import { normalizeBbsHostname } from "packages/ch-lib/src/index";
 import React, {
   createContext,
   useCallback,
@@ -135,6 +136,9 @@ function shouldFocusNewTabOnOpen(): boolean {
 function normalizePageLocation(rawLocation: string): string {
   try {
     const parsed = new window.URL(rawLocation);
+    // 変更理由: 5ch.netから5ch.ioへ正規化したURLと、旧ドメインの履歴URLを
+    // 同じ板として照合し、関連板タブで保存済みの板名を引き継ぐため。
+    parsed.hostname = normalizeBbsHostname(parsed.hostname);
     parsed.hash = "";
     return parsed.toString().replace(/\/+$/, "/");
   } catch {
