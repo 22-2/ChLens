@@ -266,18 +266,21 @@ ChlensとLiveが同じURL・subject・dat・responseモデルを利用できる�
 ##### 未着手（Phase 2本実装）
 
 - [x] Tauri HTTP pluginを`HttpClient`へ接続するadapterを実装する。
-- [ ] ETag、Last-Modified、dat size、res lengthをresponse metadataとして型にする。
-- [ ] `LiveThreadSession`のpolling、差分取得、再接続、停止条件を実装する。
-- [ ] subject／datのcache policyと過去ログ・dat落ちの契約を実装する。
-- [ ] `IThread`、`IRes`、thread detailの重複型を共通モデルへ整理する。
-- [ ] MainとOverlayへ取得結果を共有するevent contractと所有者を決める。
+- [x] ETag、Last-Modified、dat size、res lengthをresponse metadataとして型にする。
+- [x] `LiveThreadSession`のpolling、条件付き差分取得、エラー後の再試行、停止条件を実装する。
+- [x] thread dat snapshotとsubject snapshotのcache policyをmemory／localStorage adapterとして実装する。
+- [x] dat落ちHTTP status（404／410）をsession error contractへ伝播する。
+- [ ] 過去ログの取得・再生契約を実装する。
+- [x] `@chlen/ch-lib`にcanonicalな`IThread`／`IRes`型名を公開し、既存`ThreadData`／`Post`と後方互換にする。
+- [ ] Chlens legacy `ParsedThread`／`ThreadRes`をcanonical modelへ移行する。
+- [x] MainとOverlayへ取得結果を共有するserializable event contractとsession ownerを決める。
 - [ ] Chlens既存のBoard／Thread serviceを共通API経由へ移行し、回帰を確認する。
 - [ ] Tauri実機でboard／thread取得、複数形式、ネットワーク失敗を手動確認する。
 
 ##### 既知の確認課題
 
-- [x] `@chlen/ch-lib`全体テストをgreenにする。`BBSMenuParser`のカテゴリ終端判定を修正し、19/19件が成功している。
-- [x] 新規fixture test 2件とLive adapter test 6件、Live check／build、Rust `cargo check`は成功している。
+- [x] `@chlen/ch-lib`全体テストをgreenにする。`BBSMenuParser`のカテゴリ終端判定を修正し、20/20件が成功している。
+- [x] ch-lib fixture／parser test 20件とLive test 19件、Live check／build、Rust `cargo check`は成功している。
 
 #### 作業
 

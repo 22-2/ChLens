@@ -3,8 +3,8 @@
 ## 目的
 
 Phase 2の本実装へ進む前に、既存の`@chlen/ch-lib`をChlens Liveから1本通し、
-URL正規化・HTTP transport・文字コードdecode・subject／dat parserの責務境界を固定する。
-このspikeではLive UIやLive Sessionのpollingを実装せず、後続の取得実装がplatform APIへ直接依存しないことを確認する。
+URL正規化・HTTP transport・文字コードdecode・subject／dat parser・session/cacheの責務境界を固定する。
+ThreadList／ThreadのLive UIはまだ実装せず、取得実装がplatform APIへ直接依存しないことを確認する。
 
 ## 既存資産
 
@@ -31,7 +31,7 @@ ChLens Live source
 
 - `HttpClient`はURL・request metadata・raw bytesを扱うtransport portとする。
 - `ChFetcher`は`HttpClient`をconstructor injectionで受け、HTTP実装を直接importしない。
-- `ChLensLiveSource`はLive Sessionのcomposition boundaryとして`loadBoard`／`loadThread`だけを公開する。
+- `ChLensLiveSource`はLive Sessionのcomposition boundaryとして通常取得とmetadata付き取得を公開する。
 - LiveのVite／TypeScript設定はworkspace packageをsourceへ解決し、package build成果物に依存せずspikeを検証できるようにする。
 
 ## 実装済みの最小slice
@@ -44,14 +44,14 @@ ChLens Live source
 - Eddibb board URLのsubject取得、Shift_JIS decode、thread URLのdat取得先、HTTP 404をfixtureで確認した。
 - Live sourceがparser／transportをUIへ漏らさず委譲する契約テストを追加した。
 - Tauri adapterのstatus／headers／raw bytes変換とtransport error再送出をテストした。
-- `BBSMenuParser`が`<br>`を次カテゴリの開始と誤認していた問題を修正し、ch-lib全体テスト19/19件を成功させた。
+- `BBSMenuParser`が`<br>`を次カテゴリの開始と誤認していた問題を修正し、ch-lib全体テスト20/20件を成功させた。
+- `HttpResponseMetadata`、`LiveThreadSession`、thread cache、Main／Overlay event busを追加し、取得結果を継続更新できる境界を固定した。
 
 ## 意図的に含めないもの
 
 - ThreadList／ThreadのReact UI
-- Live Sessionのpolling、差分取得、再接続
-- ETag／Last-Modifiedを使ったcache policy
-- Tauri HTTP pluginの本実装
+- 過去ログ取得・再生の製品仕様
+- Chlens既存Thread serviceの完全移行（HTML形式、NG、履歴、既存cache互換）
 - NG／filter／history
 
 ## 完了条件
@@ -60,13 +60,14 @@ ChLens Live source
 - browser fetch、fixture、将来のTauri HTTPを同じ`HttpClient`契約へ差し替えられる。
 - Shift_JIS／EUC-JPのdecodeとHTTP status errorがparser入力前に確定する。
 - Live UIが`ChURL`、`fetch`、`TextDecoder`、parserを直接importしない。
+- LiveThreadSessionが条件付きrefresh、cache、polling、dat落ちstatusを扱える。
+- Main／Overlayが同じserializable event contractを購読できる。
 - ch-lib単体とLive adapterの自動テストが成功する。
 
 ## 次のPhase 2本実装
 
-spike完了後に、incremental response metadata、LiveThreadSession、
-subject／dat cacheの順で追加する。取得結果をMainとOverlayへ共有するevent contractは、
-Live Sessionの所有者を決めてから設計する。
+spike後の残作業は、共通`IThread`／`IRes`モデル、Chlens既存serviceとの互換adapter、
+過去ログの取得契約、ThreadList／Thread UI、Tauri実機確認である。
 
 ## 検証コマンド
 
