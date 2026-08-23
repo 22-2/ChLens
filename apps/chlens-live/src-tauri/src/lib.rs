@@ -2,6 +2,7 @@
 pub fn run() {
   // Session parsing stays in the TypeScript app so browser and Tauri builds share one domain layer.
   tauri::Builder::default()
+    .plugin(tauri_plugin_http::init())
     .setup(|app| {
       // Apply passthrough before the overlay frontend mounts so a transparent window cannot steal
       // a click during startup; the Main frontend keeps the setting synchronized afterward.

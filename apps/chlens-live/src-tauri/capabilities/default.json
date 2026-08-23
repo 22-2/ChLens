@@ -16,6 +16,10 @@
     "core:window:allow-unminimize",
     "core:window:allow-set-size",
     "core:window:allow-outer-position",
-    "core:window:allow-outer-size"
+    "core:window:allow-outer-size",
+    {
+      "identifier": "http:default",
+      "allow": [{ "url": "http://**" }, { "url": "https://**" }]
+    }
   ]
 }
