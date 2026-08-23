@@ -7,6 +7,7 @@ import { useIsNgTemporarilyDisabled } from "src/view/browser/hooks/use-ng-status
 import { getIdHeatColor } from "src/view/browser/utils/id-heat";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
 import { getReplyHeatLevel } from "src/view/browser/utils/reply-heat";
+import { useImgurAlbumMedia } from "src/view/browser/utils/imgur-album";
 import { decodeResponseHtml, extractUrlsFromMessage } from "src/view/browser/utils/utils";
 
 export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
@@ -30,10 +31,12 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     onContextMenu,
     isImageBlurred,
     ngResNums,
+    threadKey,
   }) => {
     const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
     const decoded = useMemo(() => decodeResponseHtml(res, messageProtocol), [messageProtocol, res]);
     const urls = useMemo(() => extractUrlsFromMessage(decoded.messageHtml), [decoded.messageHtml]);
+    const resolvedMedia = useImgurAlbumMedia(decoded.messageHtml, urls, threadKey);
 
     // repIndex が渡された場合のみ返信数を表示する
     const repCount = repIndex?.get(res.num)?.size ?? 0;
@@ -153,7 +156,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
           )}
         </header>
         <ResBody
-          messageHtml={decoded.messageHtml}
+          messageHtml={resolvedMedia.messageHtml}
           anchorPreviewDepth={anchorPreviewDepth}
           ngResNums={ngResNums}
           onUrlClick={(url, button, mode) => onUrlClick(url, undefined, button, mode)}
@@ -165,7 +168,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
           onAnchorLeave={onAnchorLeave}
         />
         <ResMediaGallery
-          urls={urls}
+          urls={resolvedMedia.urls}
           onUrlClick={onUrlClick}
           onMiddleClickStart={onLinkMiddleClickStart}
           openOnMiddleMouseDown
@@ -201,4 +204,6 @@ export interface StaticResCardProps {
   isImageBlurred?: boolean;
   /** 本文中のアンカー先NGレスを強調するためのレス番号集合 */
   ngResNums?: ReadonlySet<number>;
+  /** 親スレッドのURL。ポップアップでも同じ失敗抑止単位を使う。 */
+  threadKey?: string;
 }

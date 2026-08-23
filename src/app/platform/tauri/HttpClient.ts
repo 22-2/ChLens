@@ -9,7 +9,19 @@ function extractCharset(mimeType: string): string | null {
 // webviewのXHRはCORSに制限されるため、Rust側でHTTPリクエストを行うプラグインを使用する
 export const TauriHttpClient: HttpClient = {
   async fetch(url: string, options: HttpRequestOptions = {}): Promise<HttpResponse> {
-    console.log(`[TauriHttpClient] Fetching: ${url}`, options);
+    const safeOptions = options.headers
+      ? {
+          ...options,
+          headers: Object.fromEntries(
+            Object.entries(options.headers).map(([key, value]) => [
+              key,
+              key.toLowerCase() === "authorization" ? "[redacted]" : value,
+            ]),
+          ),
+        }
+      : options;
+    // ImgurのBearer tokenなどの秘密情報をTauriのデバッグログへ出さない。
+    console.log(`[TauriHttpClient] Fetching: ${url}`, safeOptions);
 
     const response = await tauriFetch(url, {
       method: options.method || "GET",
