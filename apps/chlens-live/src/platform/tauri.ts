@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import { LogicalPosition, LogicalSize, Window } from "@tauri-apps/api/window";
 import {
   cloneOverlayGeometry,
@@ -13,15 +14,23 @@ import {
 } from "./types";
 
 const OVERLAY_WINDOW_LABEL = "overlay";
-const OVERLAY_CONTROLS_WINDOW_LABEL = "overlay-controls";
-const GEOMETRY_EPSILON = 0.5;
+const CURSOR_POLL_INTERVAL_MS = 50;
+const CURSOR_REENABLE_DELAY_MS = 80;
+const INTERACTIVE_EDGE_SIZE = 14;
+const CONTROL_BAR_TOP_INSET = 8;
+const CONTROL_BAR_HORIZONTAL_INSET = 12;
 
-type LogicalWindowPosition = { x: number; y: number };
+interface CursorPosition {
+  x: number;
+  y: number;
+}
 
-function geometryDiffers(left: number, right: number): boolean {
-  // Native window APIs can round physical pixels differently per monitor, so exact float
-  // comparisons would keep scheduling no-op synchronization passes at fractional DPI values.
-  return Math.abs(left - right) > GEOMETRY_EPSILON;
+interface PhysicalWindowBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  scaleFactor: number;
 }
 
 async function getOverlayWindow(): Promise<Window> {
@@ -33,212 +42,170 @@ async function getOverlayWindow(): Promise<Window> {
   return overlay;
 }
 
-async function getOverlayControlsWindow(): Promise<Window> {
-  const controls = await Window.getByLabel(OVERLAY_CONTROLS_WINDOW_LABEL);
-  if (!controls) {
-    throw new Error(`Tauri window '${OVERLAY_CONTROLS_WINDOW_LABEL}' is not available`);
-  }
-  return controls;
+async function readPhysicalWindowBounds(window: Window): Promise<PhysicalWindowBounds> {
+  const [position, size, scaleFactor] = await Promise.all([
+    window.outerPosition(),
+    window.outerSize(),
+    window.scaleFactor(),
+  ]);
+  return {
+    x: position.x,
+    y: position.y,
+    width: size.width,
+    height: size.height,
+    scaleFactor,
+  };
 }
 
 async function readOverlayGeometry(overlay: Window): Promise<OverlayGeometry> {
-  const [position, size, scaleFactor] = await Promise.all([
-    overlay.outerPosition(),
-    overlay.outerSize(),
-    overlay.scaleFactor(),
-  ]);
+  const bounds = await readPhysicalWindowBounds(overlay);
   // Tauri reports outer bounds in physical pixels; persist logical pixels so saved layouts
   // remain stable when Windows display scaling changes between sessions.
-  const logicalPosition = position.toLogical(scaleFactor);
-  const logicalSize = size.toLogical(scaleFactor);
   return {
-    x: logicalPosition.x,
-    y: logicalPosition.y,
-    width: logicalSize.width,
-    height: logicalSize.height,
+    x: bounds.x / bounds.scaleFactor,
+    y: bounds.y / bounds.scaleFactor,
+    width: bounds.width / bounds.scaleFactor,
+    height: bounds.height / bounds.scaleFactor,
   };
 }
 
-async function readLogicalWindowPosition(window: Window): Promise<LogicalWindowPosition> {
-  const [position, scaleFactor] = await Promise.all([window.outerPosition(), window.scaleFactor()]);
-  const logicalPosition = position.toLogical(scaleFactor);
-  return { x: logicalPosition.x, y: logicalPosition.y };
+function isCursorInInteractiveArea(cursor: CursorPosition, bounds: PhysicalWindowBounds): boolean {
+  const insideWindow =
+    cursor.x >= bounds.x &&
+    cursor.x <= bounds.x + bounds.width &&
+    cursor.y >= bounds.y &&
+    cursor.y <= bounds.y + bounds.height;
+  if (!insideWindow) return false;
+
+  // The top bar and the resize border are the only areas that should temporarily receive input.
+  // Keeping this hit test native lets the rest of the transparent window stay click-through.
+  const edgeSize = INTERACTIVE_EDGE_SIZE * bounds.scaleFactor;
+  const barHeight = (CONTROL_BAR_TOP_INSET + OVERLAY_CONTROL_BAR_HEIGHT) * bounds.scaleFactor;
+  const barLeft = bounds.x + CONTROL_BAR_HORIZONTAL_INSET * bounds.scaleFactor;
+  const barRight = bounds.x + bounds.width - CONTROL_BAR_HORIZONTAL_INSET * bounds.scaleFactor;
+  const insideBar = cursor.x >= barLeft && cursor.x <= barRight && cursor.y <= bounds.y + barHeight;
+  return (
+    insideBar ||
+    cursor.x <= bounds.x + edgeSize ||
+    cursor.x >= bounds.x + bounds.width - edgeSize ||
+    cursor.y >= bounds.y + bounds.height - edgeSize
+  );
 }
 
 export function createTauriLiveWindowPlatform(): LiveWindowPlatform {
-  let controlsSyncRegistration: Promise<void> | null = null;
-  let syncingWindowPair = false;
-  let controlsSyncRequested = false;
-  let controlsSyncPromise: Promise<void> | null = null;
-  let overlayPositionSyncRequested = false;
-  let overlayPositionSyncPromise: Promise<void> | null = null;
+  let clickThroughRequested = false;
+  let cursorPollTimer: ReturnType<typeof setInterval> | null = null;
+  let cursorReenableTimer: ReturnType<typeof setTimeout> | null = null;
+  let cursorPollInFlight = false;
+  let nativeCursorEventsIgnored: boolean | null = null;
+  let nativeCursorMutation: Promise<void> = Promise.resolve();
+  let cursorPollingStartPromise: Promise<void> | null = null;
 
-  const syncControlsToOverlay = async (overlay: Window, controls: Window): Promise<void> => {
-    syncingWindowPair = true;
+  const setNativeCursorEventsIgnored = async (overlay: Window, ignored: boolean): Promise<void> => {
+    nativeCursorMutation = nativeCursorMutation
+      .catch(() => undefined)
+      .then(async () => {
+        if (nativeCursorEventsIgnored === ignored) return;
+
+        // Serialize native hit-test changes because Windows can fail when setIgnoreCursorEvents is
+        // called again while the previous WebView style transition is still being applied.
+        await overlay.setIgnoreCursorEvents(ignored);
+        nativeCursorEventsIgnored = ignored;
+      });
+    await nativeCursorMutation;
+  };
+
+  const updateCursorHitTest = async (overlay: Window): Promise<void> => {
+    if (!clickThroughRequested || cursorPollInFlight) return;
+
+    cursorPollInFlight = true;
     try {
-      const geometry = await readOverlayGeometry(overlay);
-      const [controlPosition, controlSize, controlScaleFactor] = await Promise.all([
-        controls.outerPosition(),
-        controls.outerSize(),
-        controls.scaleFactor(),
+      const [cursor, bounds] = await Promise.all([
+        invoke<CursorPosition>("get_cursor_position"),
+        readPhysicalWindowBounds(overlay),
       ]);
-      const logicalControlPosition = controlPosition.toLogical(controlScaleFactor);
-      const logicalControlSize = controlSize.toLogical(controlScaleFactor);
-      if (
-        geometryDiffers(logicalControlPosition.x, geometry.x) ||
-        geometryDiffers(logicalControlPosition.y, geometry.y)
-      ) {
-        await controls.setPosition(new LogicalPosition(geometry.x, geometry.y));
-      }
-      if (
-        geometryDiffers(logicalControlSize.width, geometry.width) ||
-        geometryDiffers(logicalControlSize.height, OVERLAY_CONTROL_BAR_HEIGHT)
-      ) {
-        await controls.setSize(new LogicalSize(geometry.width, OVERLAY_CONTROL_BAR_HEIGHT));
-      }
-    } finally {
-      syncingWindowPair = false;
-    }
-  };
-
-  const requestControlsSync = (overlay: Window, controls: Window): Promise<void> => {
-    controlsSyncRequested = true;
-    if (!controlsSyncPromise) {
-      controlsSyncPromise = (async () => {
-        while (controlsSyncRequested) {
-          controlsSyncRequested = false;
-          if (syncingWindowPair) {
-            // Serialize the two directions so an overlay move cannot race a controls correction
-            // and leave the pair at an intermediate position.
-            await new Promise<void>((resolve) => setTimeout(resolve, 0));
-            controlsSyncRequested = true;
-            continue;
-          }
-          await syncControlsToOverlay(overlay, controls);
+      if (isCursorInInteractiveArea(cursor, bounds)) {
+        if (cursorReenableTimer) {
+          clearTimeout(cursorReenableTimer);
+          cursorReenableTimer = null;
         }
-      })().finally(() => {
-        controlsSyncPromise = null;
-      });
-    }
-    return controlsSyncPromise;
-  };
-
-  const syncOverlayPositionToControls = async (
-    overlay: Window,
-    controls: Window,
-  ): Promise<void> => {
-    const [overlayPosition, controlsPosition] = await Promise.all([
-      readLogicalWindowPosition(overlay),
-      readLogicalWindowPosition(controls),
-    ]);
-    if (
-      !geometryDiffers(overlayPosition.x, controlsPosition.x) &&
-      !geometryDiffers(overlayPosition.y, controlsPosition.y)
-    ) {
-      return;
-    }
-
-    syncingWindowPair = true;
-    try {
-      // Read the controls window in its own scale space before mirroring it to Overlay. This
-      // avoids a position jump when the two windows cross monitors with different DPI settings.
-      await overlay.setPosition(new LogicalPosition(controlsPosition.x, controlsPosition.y));
+        await setNativeCursorEventsIgnored(overlay, false);
+      } else if (
+        clickThroughRequested &&
+        nativeCursorEventsIgnored === false &&
+        !cursorReenableTimer
+      ) {
+        // A short delay prevents rapid native hit-test toggles while the pointer leaves a button.
+        // WindowPet uses the same guard because toggling this Windows setting too quickly can crash.
+        cursorReenableTimer = setTimeout(() => {
+          cursorReenableTimer = null;
+          if (!clickThroughRequested) return;
+          void setNativeCursorEventsIgnored(overlay, true).catch((error: unknown) => {
+            console.error("[Chlens Live] cursor passthrough re-enable failed:", error);
+          });
+        }, CURSOR_REENABLE_DELAY_MS);
+      }
+    } catch (error: unknown) {
+      console.error("[Chlens Live] native cursor hit-test failed:", error);
     } finally {
-      syncingWindowPair = false;
+      cursorPollInFlight = false;
     }
   };
 
-  const requestOverlayPositionSync = (overlay: Window, controls: Window): Promise<void> => {
-    overlayPositionSyncRequested = true;
-    if (!overlayPositionSyncPromise) {
-      overlayPositionSyncPromise = (async () => {
-        while (overlayPositionSyncRequested) {
-          overlayPositionSyncRequested = false;
-          if (syncingWindowPair) {
-            // A native move can arrive while the resize sync is in flight. Keep the request alive
-            // for the next turn instead of dropping the final pointer position.
-            await new Promise<void>((resolve) => setTimeout(resolve, 0));
-            overlayPositionSyncRequested = true;
-            continue;
-          }
-          await syncOverlayPositionToControls(overlay, controls);
-        }
+  const startCursorPolling = async (overlay: Window): Promise<void> => {
+    if (cursorPollTimer) return;
+    if (!cursorPollingStartPromise) {
+      cursorPollingStartPromise = (async () => {
+        await setNativeCursorEventsIgnored(overlay, true);
+        cursorPollTimer = setInterval(() => {
+          void updateCursorHitTest(overlay);
+        }, CURSOR_POLL_INTERVAL_MS);
+        await updateCursorHitTest(overlay);
       })().finally(() => {
-        overlayPositionSyncPromise = null;
+        cursorPollingStartPromise = null;
       });
     }
-    return overlayPositionSyncPromise;
+    await cursorPollingStartPromise;
   };
 
-  const ensureControlsSync = async (): Promise<void> => {
-    if (!controlsSyncRegistration) {
-      controlsSyncRegistration = (async () => {
-        const overlay = await getOverlayWindow();
-        const controls = await getOverlayControlsWindow();
-
-        await overlay.onMoved(() => {
-          void requestControlsSync(overlay, controls).catch((error: unknown) => {
-            console.error("[Chlens Live] overlay control position sync failed:", error);
-          });
-        });
-        await overlay.onResized(() => {
-          void requestControlsSync(overlay, controls).catch((error: unknown) => {
-            console.error("[Chlens Live] overlay control size sync failed:", error);
-          });
-        });
-        await controls.onMoved(() => {
-          void requestOverlayPositionSync(overlay, controls).catch((error: unknown) => {
-            console.error("[Chlens Live] overlay drag synchronization failed:", error);
-          });
-        });
-
-        await requestControlsSync(overlay, controls);
-      })().catch((error: unknown) => {
-        controlsSyncRegistration = null;
-        throw error;
-      });
+  const stopCursorPolling = async (overlay: Window, keepRequest: boolean): Promise<void> => {
+    if (cursorPollTimer) {
+      clearInterval(cursorPollTimer);
+      cursorPollTimer = null;
+    }
+    if (cursorReenableTimer) {
+      clearTimeout(cursorReenableTimer);
+      cursorReenableTimer = null;
     }
 
-    await controlsSyncRegistration;
+    if (!keepRequest) clickThroughRequested = false;
+    await setNativeCursorEventsIgnored(overlay, keepRequest);
   };
 
   const platform: LiveWindowPlatform = {
     async showOverlay() {
       const overlay = await getOverlayWindow();
-      const controls = await getOverlayControlsWindow();
-      await ensureControlsSync();
       await overlay.unminimize();
-      await controls.unminimize();
       await overlay.show();
-      await controls.show();
-      await requestControlsSync(overlay, controls);
+      if (clickThroughRequested) await startCursorPolling(overlay);
     },
     async hideOverlay() {
       const overlay = await getOverlayWindow();
-      const controls = await getOverlayControlsWindow();
-      await controls.hide();
+      // Keep the user's requested mode so showing the overlay again restores the same behavior.
+      await stopCursorPolling(overlay, clickThroughRequested);
       await overlay.hide();
     },
     async focusOverlay() {
       const overlay = await getOverlayWindow();
-      const controls = await getOverlayControlsWindow();
-      await ensureControlsSync();
       await overlay.unminimize();
-      await controls.unminimize();
       await overlay.show();
-      await controls.show();
-      await requestControlsSync(overlay, controls);
+      if (clickThroughRequested) await startCursorPolling(overlay);
       await overlay.setFocus();
     },
     async startDraggingOverlay() {
-      // The controls window stays interactive during click-through, so drag it and mirror its position.
-      const overlay = await getOverlayWindow();
-      const controls = await getOverlayControlsWindow();
-      await ensureControlsSync();
-      // A click on the bar is also a chance to repair a stale width/position before the drag makes
-      // the controls window the new source of truth.
-      await requestControlsSync(overlay, controls);
-      await controls.startDragging();
+      // The single overlay window owns both the comments and the bar, so native dragging cannot
+      // drift away from a second controls window.
+      await (await getOverlayWindow()).startDragging();
     },
     async startResizingOverlay(direction: OverlayResizeDirection) {
       // Native resize hit-testing is unavailable without decorations; use Tauri's directional API.
@@ -246,42 +213,33 @@ export function createTauriLiveWindowPlatform(): LiveWindowPlatform {
     },
     async minimizeOverlay() {
       const overlay = await getOverlayWindow();
-      const controls = await getOverlayControlsWindow();
+      await stopCursorPolling(overlay, clickThroughRequested);
       await overlay.minimize();
-      await controls.minimize();
     },
     async toggleMaximizeOverlay() {
-      // The bar is a separate window, so the transparent Overlay is the window whose state changes.
-      const overlay = await getOverlayWindow();
-      const controls = await getOverlayControlsWindow();
-      await overlay.toggleMaximize();
-      await requestControlsSync(overlay, controls);
+      await (await getOverlayWindow()).toggleMaximize();
     },
     async closeOverlay() {
-      // Hide instead of destroying the configured windows so Main can show the Overlay again later.
+      // Hide instead of destroying the configured window so Main can show the Overlay again later.
       await platform.hideOverlay();
     },
     async setOverlayClickThrough(enabled: boolean) {
-      // Click-through is a native window setting; CSS pointer-events alone would still block other apps.
-      await (await getOverlayWindow()).setIgnoreCursorEvents(enabled);
+      const overlay = await getOverlayWindow();
+      clickThroughRequested = enabled;
+      if (enabled) {
+        await startCursorPolling(overlay);
+      } else {
+        await stopCursorPolling(overlay, false);
+      }
     },
     async getOverlayGeometry() {
-      const overlay = await getOverlayWindow();
-      return readOverlayGeometry(overlay);
+      return readOverlayGeometry(await getOverlayWindow());
     },
     async setOverlayGeometry(geometry: OverlayGeometry) {
-      const overlay = await getOverlayWindow();
-      const controls = await getOverlayControlsWindow();
       const normalized = fallbackOverlayGeometry(geometry);
-      await ensureControlsSync();
-      syncingWindowPair = true;
-      try {
-        await overlay.setPosition(new LogicalPosition(normalized.x, normalized.y));
-        await overlay.setSize(new LogicalSize(normalized.width, normalized.height));
-      } finally {
-        syncingWindowPair = false;
-      }
-      await requestControlsSync(overlay, controls);
+      const overlay = await getOverlayWindow();
+      await overlay.setPosition(new LogicalPosition(normalized.x, normalized.y));
+      await overlay.setSize(new LogicalSize(normalized.width, normalized.height));
     },
     async loadOverlayGeometry() {
       const stored = loadStoredOverlayGeometry();

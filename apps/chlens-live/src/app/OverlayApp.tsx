@@ -1,5 +1,6 @@
 import type { PointerEvent } from "react";
 import { liveWindowPlatform, type OverlayResizeDirection } from "../platform/index";
+import { OverlayControlBar } from "./OverlayControlBar";
 import "./styles.css";
 
 const RESIZE_HANDLES: ReadonlyArray<{
@@ -32,6 +33,7 @@ function startResizing(
 export function OverlayApp() {
   return (
     <main className="overlay-stage" data-testid="overlay-stage">
+      <OverlayControlBar />
       {RESIZE_HANDLES.map(({ direction, className }) => (
         <span
           key={direction}

@@ -34,22 +34,6 @@
         "shadow": false,
         "alwaysOnTop": true,
         "skipTaskbar": true
-      },
-      {
-        "label": "overlay-controls",
-        "title": "Chlens Live Overlay Controls",
-        "url": "overlay-controls.html",
-        "width": 900,
-        "height": 64,
-        "resizable": false,
-        "visible": false,
-        "focus": false,
-        "transparent": true,
-        "decorations": false,
-        "shadow": false,
-        "alwaysOnTop": true,
-        "skipTaskbar": true,
-        "parent": "overlay"
       }
     ],
     "security": {

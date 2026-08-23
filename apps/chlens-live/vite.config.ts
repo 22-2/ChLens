@@ -25,7 +25,6 @@ export default defineConfig({
       input: {
         main: path.resolve(appRoot, "index.html"),
         overlay: path.resolve(appRoot, "overlay.html"),
-        "overlay-controls": path.resolve(appRoot, "overlay-controls.html"),
       },
     },
   },

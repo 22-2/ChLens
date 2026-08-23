@@ -103,11 +103,11 @@ export function App() {
         <span className="live-phase">Phase 1 spike</span>
       </header>
 
-      <section className="live-card" aria-labelledby="overlay-controls-title">
+      <section className="live-card" aria-labelledby="overlay-window-title">
         <div className="live-card__heading">
           <div>
             <p className="live-eyebrow">WINDOW CONTROL</p>
-            <h2 id="overlay-controls-title">Overlay window</h2>
+            <h2 id="overlay-window-title">Overlay window</h2>
           </div>
           <output className="live-status" data-testid="live-status">
             {status}
@@ -167,9 +167,9 @@ export function App() {
       </section>
 
       <p className="live-note">
-        Overlay本体はクリック透過できます。上部の操作バーは別ウィンドウなので、透過中もドラッグと
+        Overlay本体はクリック透過できます。上部の操作バーは同じ透明window内にあり、透過中もドラッグと
         最小化・最大化・閉じる操作が可能です。バーのダブルクリックでも最大化を切り替えられます。
-        解除はこのMainから行います。
+        透過中はバーとリサイズ境界だけ一時的に操作可能になります。解除はこのMainから行います。
       </p>
     </main>
   );

@@ -66,10 +66,11 @@ function close(event: MouseEvent<HTMLButtonElement>): void {
   });
 }
 
-export function OverlayControlsApp() {
+export function OverlayControlBar() {
   return (
-    <main
+    <header
       className="overlay-control-bar"
+      data-overlay-interactive="true"
       onPointerDown={startDragging}
       onDoubleClick={toggleMaximize}
     >
@@ -123,6 +124,6 @@ export function OverlayControlsApp() {
           onPointerDown={(event) => startResizing(event, direction)}
         />
       ))}
-    </main>
+    </header>
   );
 }
