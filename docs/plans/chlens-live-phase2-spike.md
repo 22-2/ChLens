@@ -94,3 +94,12 @@ Windows上の実操作は次の項目を手動で確認する。
 - Eddibbのboard／thread取得と、404／410・通信失敗時の表示
 - 5ch互換、まちBBS、したらば通常／archiveの取得形式
 - 透明Overlayのクリック透過、バー操作、複数monitor／DPI変更後のgeometry
+
+### 実機確認の手順
+
+1. `pnpm --filter chlens-live tauri:build` で生成したEXE／MSIを起動する（dev実行なら `pnpm --filter chlens-live tauri:dev`）。
+2. Main画面の「ThreadList / Thread」カードで、既定板（`http://bbs.eddibb.cc/liveedge/`）のスレ一覧が表示されることを確認する。
+3. スレを選択し、レス表示・更新・停止が動くことを確認する。
+4. 存在しないスレURLや通信断（LAN切断）時に、ThreadViewへエラー表示が出て握り潰されないことを確認する。
+5. Overlayを表示し、クリック透過・バー操作・リサイズ・複数monitor／DPI変更後のgeometry維持を確認する。
+6. 5ch互換・まちBBS・したらばのURLは、Phase 2では`ChURL`のfixtureテストで検証済み。実機での追加確認はPhase 4以降の板一覧UIで行う。
