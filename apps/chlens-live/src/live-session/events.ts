@@ -1,5 +1,6 @@
 import type { LiveThreadSessionEvent } from "./session";
-import type { LiveThreadSnapshot } from "./cache";
+import type { LiveBoardSessionEvent } from "./board-session";
+import type { LiveBoardSnapshot, LiveThreadSnapshot } from "./cache";
 
 export const LIVE_THREAD_UPDATE_EVENT = "chlens-live://thread-update";
 
@@ -28,9 +29,30 @@ export type LiveThreadEvent =
       snapshot?: LiveThreadSnapshot;
     };
 
+export type LiveBoardEvent =
+  | {
+      type: "board-snapshot";
+      boardUrl: string;
+      changed: boolean;
+      snapshot: LiveBoardSnapshot;
+    }
+  | {
+      type: "board-not-modified";
+      boardUrl: string;
+      updatedAt: number;
+    }
+  | {
+      type: "board-error";
+      boardUrl: string;
+      error: LiveThreadErrorPayload;
+      snapshot?: LiveBoardSnapshot;
+    };
+
+export type LiveEvent = LiveThreadEvent | LiveBoardEvent;
+
 export interface LiveEventBus {
-  publish(event: LiveThreadEvent): Promise<void>;
-  subscribe(listener: (event: LiveThreadEvent) => void): Promise<() => void>;
+  publish(event: LiveEvent): Promise<void>;
+  subscribe(listener: (event: LiveEvent) => void): Promise<() => void>;
 }
 
 function serializeError(error: unknown): LiveThreadErrorPayload {
@@ -65,6 +87,22 @@ export function toLiveThreadEvent(
   }
 }
 
+export function toLiveBoardEvent(boardUrl: string, event: LiveBoardSessionEvent): LiveBoardEvent {
+  switch (event.type) {
+    case "snapshot":
+      return { type: "board-snapshot", boardUrl, changed: event.changed, snapshot: event.snapshot };
+    case "not-modified":
+      return { type: "board-not-modified", boardUrl, updatedAt: event.snapshot.updatedAt };
+    case "error":
+      return {
+        type: "board-error",
+        boardUrl,
+        error: serializeError(event.error),
+        snapshot: event.snapshot,
+      };
+  }
+}
+
 /**
  * Process-local bus used by browser previews and tests.
  *
@@ -72,15 +110,15 @@ export function toLiveThreadEvent(
  * requiring a Tauri runtime, while the production bus can use app-wide native events.
  */
 export class MemoryLiveEventBus implements LiveEventBus {
-  readonly events: LiveThreadEvent[] = [];
-  private readonly listeners = new Set<(event: LiveThreadEvent) => void>();
+  readonly events: LiveEvent[] = [];
+  private readonly listeners = new Set<(event: LiveEvent) => void>();
 
-  async publish(event: LiveThreadEvent): Promise<void> {
+  async publish(event: LiveEvent): Promise<void> {
     this.events.push(event);
     for (const listener of this.listeners) listener(event);
   }
 
-  async subscribe(listener: (event: LiveThreadEvent) => void): Promise<() => void> {
+  async subscribe(listener: (event: LiveEvent) => void): Promise<() => void> {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   }

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 import { emit, listen } from "@tauri-apps/api/event";
-import { LIVE_THREAD_UPDATE_EVENT, MemoryLiveEventBus, type LiveThreadEvent } from "./events";
+import { LIVE_THREAD_UPDATE_EVENT, MemoryLiveEventBus, type LiveEvent } from "./events";
 import { TauriLiveEventBus } from "./tauri-events";
 
 vi.mock("@tauri-apps/api/event", () => ({
@@ -8,7 +8,7 @@ vi.mock("@tauri-apps/api/event", () => ({
   listen: vi.fn(),
 }));
 
-const event: LiveThreadEvent = {
+const event: LiveEvent = {
   type: "not-modified",
   threadUrl: "https://bbs.eddibb.cc/liveedge/1000000001/",
   updatedAt: 1,
@@ -17,7 +17,7 @@ const event: LiveThreadEvent = {
 describe("Live thread event contract", () => {
   it("delivers the same event to process-local subscribers", async () => {
     const bus = new MemoryLiveEventBus();
-    const received: LiveThreadEvent[] = [];
+    const received: LiveEvent[] = [];
     const unsubscribe = await bus.subscribe((next) => received.push(next));
 
     await bus.publish(event);

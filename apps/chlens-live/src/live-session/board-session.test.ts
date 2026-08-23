@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import type { ChFetchResult, ThreadData } from "@chlen/ch-lib";
 import { MemoryLiveBoardCache } from "./cache";
+import { MemoryLiveEventBus } from "./events";
 import { LiveBoardSession, type LiveBoardSessionEvent } from "./board-session";
 import type { ChLensLiveSource } from "./source";
 
@@ -62,5 +63,22 @@ describe("LiveBoardSession", () => {
     });
     expect(events).toHaveLength(2);
     expect(events[1]).toMatchObject({ type: "snapshot", changed: true });
+  });
+
+  it("publishes subject snapshots through the shared event bus", async () => {
+    const eventBus = new MemoryLiveEventBus();
+    const source = sourceFor(async () => ({
+      data: [],
+      metadata: { bodyBytes: 0 },
+    }));
+    const session = new LiveBoardSession(boardUrl, { source, eventBus });
+
+    await session.refresh();
+
+    expect(eventBus.events[0]).toMatchObject({
+      type: "board-snapshot",
+      boardUrl,
+      changed: true,
+    });
   });
 });

@@ -1,6 +1,7 @@
 import { HttpStatusError } from "@chlen/ch-lib";
 import type { ChLensLiveSource } from "./source";
 import { MemoryLiveBoardCache, type LiveBoardCache, type LiveBoardSnapshot } from "./cache";
+import { toLiveBoardEvent, type LiveEventBus } from "./events";
 
 export type LiveBoardSessionEvent =
   | { type: "snapshot"; changed: boolean; snapshot: LiveBoardSnapshot }
@@ -10,6 +11,7 @@ export type LiveBoardSessionEvent =
 export interface LiveBoardSessionOptions {
   source: ChLensLiveSource;
   cache?: LiveBoardCache;
+  eventBus?: LiveEventBus;
   intervalMs?: number;
 }
 
@@ -134,6 +136,13 @@ export class LiveBoardSession {
       } catch (error: unknown) {
         console.error("[Chlens Live] board session listener failed:", error);
       }
+    }
+    if (this.options.eventBus) {
+      void this.options.eventBus
+        .publish(toLiveBoardEvent(this.boardUrl, event))
+        .catch((error: unknown) => {
+          console.error("[Chlens Live] board event publish failed:", error);
+        });
     }
   }
 }
