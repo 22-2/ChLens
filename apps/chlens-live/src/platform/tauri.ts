@@ -14,6 +14,15 @@ import {
 
 const OVERLAY_WINDOW_LABEL = "overlay";
 const OVERLAY_CONTROLS_WINDOW_LABEL = "overlay-controls";
+const GEOMETRY_EPSILON = 0.5;
+
+type LogicalWindowPosition = { x: number; y: number };
+
+function geometryDiffers(left: number, right: number): boolean {
+  // Native window APIs can round physical pixels differently per monitor, so exact float
+  // comparisons would keep scheduling no-op synchronization passes at fractional DPI values.
+  return Math.abs(left - right) > GEOMETRY_EPSILON;
+}
 
 async function getOverlayWindow(): Promise<Window> {
   // Native window operations belong to Window; the overlay's webview content is not needed here.
@@ -50,13 +59,21 @@ async function readOverlayGeometry(overlay: Window): Promise<OverlayGeometry> {
   };
 }
 
+async function readLogicalWindowPosition(window: Window): Promise<LogicalWindowPosition> {
+  const [position, scaleFactor] = await Promise.all([window.outerPosition(), window.scaleFactor()]);
+  const logicalPosition = position.toLogical(scaleFactor);
+  return { x: logicalPosition.x, y: logicalPosition.y };
+}
+
 export function createTauriLiveWindowPlatform(): LiveWindowPlatform {
   let controlsSyncRegistration: Promise<void> | null = null;
   let syncingWindowPair = false;
+  let controlsSyncRequested = false;
+  let controlsSyncPromise: Promise<void> | null = null;
+  let overlayPositionSyncRequested = false;
+  let overlayPositionSyncPromise: Promise<void> | null = null;
 
   const syncControlsToOverlay = async (overlay: Window, controls: Window): Promise<void> => {
-    if (syncingWindowPair) return;
-
     syncingWindowPair = true;
     try {
       const geometry = await readOverlayGeometry(overlay);
@@ -67,18 +84,90 @@ export function createTauriLiveWindowPlatform(): LiveWindowPlatform {
       ]);
       const logicalControlPosition = controlPosition.toLogical(controlScaleFactor);
       const logicalControlSize = controlSize.toLogical(controlScaleFactor);
-      if (logicalControlPosition.x !== geometry.x || logicalControlPosition.y !== geometry.y) {
+      if (
+        geometryDiffers(logicalControlPosition.x, geometry.x) ||
+        geometryDiffers(logicalControlPosition.y, geometry.y)
+      ) {
         await controls.setPosition(new LogicalPosition(geometry.x, geometry.y));
       }
       if (
-        logicalControlSize.width !== geometry.width ||
-        logicalControlSize.height !== OVERLAY_CONTROL_BAR_HEIGHT
+        geometryDiffers(logicalControlSize.width, geometry.width) ||
+        geometryDiffers(logicalControlSize.height, OVERLAY_CONTROL_BAR_HEIGHT)
       ) {
         await controls.setSize(new LogicalSize(geometry.width, OVERLAY_CONTROL_BAR_HEIGHT));
       }
     } finally {
       syncingWindowPair = false;
     }
+  };
+
+  const requestControlsSync = (overlay: Window, controls: Window): Promise<void> => {
+    controlsSyncRequested = true;
+    if (!controlsSyncPromise) {
+      controlsSyncPromise = (async () => {
+        while (controlsSyncRequested) {
+          controlsSyncRequested = false;
+          if (syncingWindowPair) {
+            // Serialize the two directions so an overlay move cannot race a controls correction
+            // and leave the pair at an intermediate position.
+            await new Promise<void>((resolve) => setTimeout(resolve, 0));
+            controlsSyncRequested = true;
+            continue;
+          }
+          await syncControlsToOverlay(overlay, controls);
+        }
+      })().finally(() => {
+        controlsSyncPromise = null;
+      });
+    }
+    return controlsSyncPromise;
+  };
+
+  const syncOverlayPositionToControls = async (
+    overlay: Window,
+    controls: Window,
+  ): Promise<void> => {
+    const [overlayPosition, controlsPosition] = await Promise.all([
+      readLogicalWindowPosition(overlay),
+      readLogicalWindowPosition(controls),
+    ]);
+    if (
+      !geometryDiffers(overlayPosition.x, controlsPosition.x) &&
+      !geometryDiffers(overlayPosition.y, controlsPosition.y)
+    ) {
+      return;
+    }
+
+    syncingWindowPair = true;
+    try {
+      // Read the controls window in its own scale space before mirroring it to Overlay. This
+      // avoids a position jump when the two windows cross monitors with different DPI settings.
+      await overlay.setPosition(new LogicalPosition(controlsPosition.x, controlsPosition.y));
+    } finally {
+      syncingWindowPair = false;
+    }
+  };
+
+  const requestOverlayPositionSync = (overlay: Window, controls: Window): Promise<void> => {
+    overlayPositionSyncRequested = true;
+    if (!overlayPositionSyncPromise) {
+      overlayPositionSyncPromise = (async () => {
+        while (overlayPositionSyncRequested) {
+          overlayPositionSyncRequested = false;
+          if (syncingWindowPair) {
+            // A native move can arrive while the resize sync is in flight. Keep the request alive
+            // for the next turn instead of dropping the final pointer position.
+            await new Promise<void>((resolve) => setTimeout(resolve, 0));
+            overlayPositionSyncRequested = true;
+            continue;
+          }
+          await syncOverlayPositionToControls(overlay, controls);
+        }
+      })().finally(() => {
+        overlayPositionSyncPromise = null;
+      });
+    }
+    return overlayPositionSyncPromise;
   };
 
   const ensureControlsSync = async (): Promise<void> => {
@@ -88,33 +177,22 @@ export function createTauriLiveWindowPlatform(): LiveWindowPlatform {
         const controls = await getOverlayControlsWindow();
 
         await overlay.onMoved(() => {
-          void syncControlsToOverlay(overlay, controls).catch((error: unknown) => {
+          void requestControlsSync(overlay, controls).catch((error: unknown) => {
             console.error("[Chlens Live] overlay control position sync failed:", error);
           });
         });
         await overlay.onResized(() => {
-          void syncControlsToOverlay(overlay, controls).catch((error: unknown) => {
+          void requestControlsSync(overlay, controls).catch((error: unknown) => {
             console.error("[Chlens Live] overlay control size sync failed:", error);
           });
         });
-        await controls.onMoved(({ payload }) => {
-          if (syncingWindowPair) return;
-
-          void (async () => {
-            syncingWindowPair = true;
-            try {
-              const scaleFactor = await overlay.scaleFactor();
-              // Dragging the independent controls window moves the transparent overlay with it.
-              await overlay.setPosition(payload.toLogical(scaleFactor));
-            } finally {
-              syncingWindowPair = false;
-            }
-          })().catch((error: unknown) => {
+        await controls.onMoved(() => {
+          void requestOverlayPositionSync(overlay, controls).catch((error: unknown) => {
             console.error("[Chlens Live] overlay drag synchronization failed:", error);
           });
         });
 
-        await syncControlsToOverlay(overlay, controls);
+        await requestControlsSync(overlay, controls);
       })().catch((error: unknown) => {
         controlsSyncRegistration = null;
         throw error;
@@ -133,7 +211,7 @@ export function createTauriLiveWindowPlatform(): LiveWindowPlatform {
       await controls.unminimize();
       await overlay.show();
       await controls.show();
-      await syncControlsToOverlay(overlay, controls);
+      await requestControlsSync(overlay, controls);
     },
     async hideOverlay() {
       const overlay = await getOverlayWindow();
@@ -149,11 +227,18 @@ export function createTauriLiveWindowPlatform(): LiveWindowPlatform {
       await controls.unminimize();
       await overlay.show();
       await controls.show();
+      await requestControlsSync(overlay, controls);
       await overlay.setFocus();
     },
     async startDraggingOverlay() {
       // The controls window stays interactive during click-through, so drag it and mirror its position.
-      await (await getOverlayControlsWindow()).startDragging();
+      const overlay = await getOverlayWindow();
+      const controls = await getOverlayControlsWindow();
+      await ensureControlsSync();
+      // A click on the bar is also a chance to repair a stale width/position before the drag makes
+      // the controls window the new source of truth.
+      await requestControlsSync(overlay, controls);
+      await controls.startDragging();
     },
     async startResizingOverlay(direction: OverlayResizeDirection) {
       // Native resize hit-testing is unavailable without decorations; use Tauri's directional API.
@@ -167,7 +252,10 @@ export function createTauriLiveWindowPlatform(): LiveWindowPlatform {
     },
     async toggleMaximizeOverlay() {
       // The bar is a separate window, so the transparent Overlay is the window whose state changes.
-      await (await getOverlayWindow()).toggleMaximize();
+      const overlay = await getOverlayWindow();
+      const controls = await getOverlayControlsWindow();
+      await overlay.toggleMaximize();
+      await requestControlsSync(overlay, controls);
     },
     async closeOverlay() {
       // Hide instead of destroying the configured windows so Main can show the Overlay again later.
@@ -190,11 +278,10 @@ export function createTauriLiveWindowPlatform(): LiveWindowPlatform {
       try {
         await overlay.setPosition(new LogicalPosition(normalized.x, normalized.y));
         await overlay.setSize(new LogicalSize(normalized.width, normalized.height));
-        await controls.setPosition(new LogicalPosition(normalized.x, normalized.y));
-        await controls.setSize(new LogicalSize(normalized.width, OVERLAY_CONTROL_BAR_HEIGHT));
       } finally {
         syncingWindowPair = false;
       }
+      await requestControlsSync(overlay, controls);
     },
     async loadOverlayGeometry() {
       const stored = loadStoredOverlayGeometry();
