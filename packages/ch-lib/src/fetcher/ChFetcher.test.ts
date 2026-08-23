@@ -101,4 +101,26 @@ describe("ChFetcher transport boundary", () => {
       parsedResCount: 1,
     });
   });
+
+  it("fetches Shitaraba archive HTML through the same thread source contract", async () => {
+    const archiveUrl = "https://jbbs.shitaraba.net/bbs/read_archive.cgi/computer/12345/100/";
+    const archive = ascii(
+      "<h1>Archive title</h1><dl>" +
+        "<dt>1 :<b>Anonymous</b> :2026/08/23 12:00:00 ID:first</dt>" +
+        "<dd>Archive message<br></dd><br><br>",
+    );
+    const archiveBody = concatBytes(archive);
+    const client = new FixtureHttpClient(
+      new Map([[archiveUrl, fixtureResponse(200, { ETag: '"archive-v1"' }, archiveBody)]]),
+    );
+
+    const result = await new ChFetcher(client).fetchThreadWithMetadata(archiveUrl);
+
+    expect(client.requests).toEqual([archiveUrl]);
+    expect(result.data).toMatchObject({
+      title: "Archive title",
+      posts: [{ number: 1, message: "Archive message" }],
+    });
+    expect(result.metadata).toMatchObject({ etag: '"archive-v1"', parsedResCount: 1 });
+  });
 });

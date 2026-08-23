@@ -30,7 +30,10 @@ export class ThreadParser {
     if (tsld === "machi.to") {
       return this.parseMachi(text);
     } else if (tsld === "shitaraba.net") {
-      return this.parseJbbs(text);
+      // したらばの read_archive.cgi は dat ではなく HTML を返すため、通常の
+      // read.cgi と同じ <> 区切り parser に渡すと本文が空になる。取得URLの
+      // archive 判定を parser まで引き継ぎ、形式ごとの入力境界をここで分ける。
+      return chUrl.isArchive ? this.parseJbbsArchive(text) : this.parseJbbs(text);
     } else {
       return this.parseCh(text);
     }
@@ -90,6 +93,40 @@ export class ThreadParser {
         });
       }
     });
+
+    return { title, posts };
+  }
+
+  static parseJbbsArchive(text: string): ThreadData {
+    // したらば過去ログは dat ではなく、レスごとの <dt>/<dd> を持つ HTML として
+    // 配信される。区切りを先に正規化することで、改行の有無が異なる archive fixture
+    // でも同じ canonical IRes を返せるようにする。
+    const normalized = text.replace(/\r?\n/g, "").replace(/<\/h1>\s*<dl>/i, "</h1></dd><br><br>");
+    const titleMatch = /<h1[^>]*>([\s\S]*?)<\/h1>/i.exec(normalized);
+    const title = titleMatch ? decodeCharReference(titleMatch[1]) : undefined;
+    const posts: Post[] = [];
+    const separator = /<\/dd>\s*<br\s*\/?>\s*<br\s*\/?>/i;
+
+    for (const segment of normalized.split(separator)) {
+      const postMatch =
+        /<dt[^>]*>\s*(\d+)\s*[:：]\s*(?:<a\s+href=["']mailto:([^"']*)["'][^>]*>)?\s*(?:<font[^>]*>)?\s*<b>([\s\S]*?)<\/b>(?:<\/a>)?([\s\S]*?)<\/dt>\s*<dd[^>]*>\s*([\s\S]*?)(?:<br\s*\/?>|$)/i.exec(
+          segment,
+        );
+      if (!postMatch) continue;
+
+      const [, numberText, mail = "", name, dateText, message] = postMatch;
+      const metadata = MetadataParser.parse(name, dateText.trim().replace(/^[:：]\s*/, ""));
+      posts.push({
+        number: Number(numberText),
+        name,
+        mail,
+        date: metadata.date,
+        message,
+        id: metadata.id,
+        slip: metadata.slip,
+        trip: metadata.trip,
+      });
+    }
 
     return { title, posts };
   }

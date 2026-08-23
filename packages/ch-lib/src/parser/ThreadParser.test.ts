@@ -21,4 +21,28 @@ describe("ThreadParser", () => {
     expect(result.posts[1].id).toBe("def67890");
     expect(result.posts[1].trip).toBe("◆Trip2");
   });
+
+  it("should parse Shitaraba archive HTML into the canonical thread shape", () => {
+    const url = new ChURL("https://jbbs.shitaraba.net/bbs/read_archive.cgi/computer/12345/100/");
+    const html = `
+      <h1>過去ログのタイトル</h1><dl>
+      <dt>1 ：<a href="mailto:"><b>名無しさん</b></a> ：2026/08/23(日) 12:00:00.00 ID:first</dt>
+      <dd>最初の本文<br></dd><br><br>
+      <dt>2 ：<b>二人目</b> ：2026/08/23(日) 12:05:00.00 ID:second</dt>
+      <dd>二つ目の本文<br></dd><br><br>
+    `;
+
+    const result = ThreadParser.parse(url, html);
+
+    expect(result.title).toBe("過去ログのタイトル");
+    expect(result.posts).toEqual([
+      expect.objectContaining({
+        number: 1,
+        name: "名無しさん",
+        date: "2026/08/23(日) 12:00:00.00 ID:first",
+        message: "最初の本文",
+      }),
+      expect.objectContaining({ number: 2, name: "二人目", id: "second", message: "二つ目の本文" }),
+    ]);
+  });
 });
