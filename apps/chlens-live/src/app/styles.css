@@ -167,21 +167,30 @@ button:hover {
   overflow: hidden;
 }
 
-.overlay-stage__resize-handle {
+.overlay-stage__resize-frame {
   position: absolute;
   z-index: 1;
-  width: 14px;
-  height: 14px;
-  border: 1px solid rgb(117 184 239 / 0%);
-  border-radius: 3px;
-  background: rgb(117 184 239 / 8%);
-  opacity: 0.35;
+  inset: 1px;
+  border: 1px solid rgb(117 184 239 / 68%);
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgb(117 184 239 / 12%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
 }
 
-.overlay-stage:hover .overlay-stage__resize-handle {
-  border-color: rgb(117 184 239 / 75%);
-  background: rgb(117 184 239 / 20%);
+.overlay-stage--controls-visible .overlay-stage__resize-frame {
   opacity: 1;
+}
+
+.overlay-stage__resize-handle {
+  position: absolute;
+  z-index: 2;
+  width: 14px;
+  height: 14px;
+  border: 0;
+  background: transparent;
+  opacity: 0;
 }
 
 .overlay-stage__resize-handle--north-west {
@@ -354,7 +363,9 @@ button:hover {
 }
 
 .overlay-control-bar__button:hover {
-  background: rgb(117 184 239 / 24%);
+  /* Drag-region transitions can leave a client-area hover state behind; keep the compact
+   * minimize/maximize controls visually neutral and reserve the accent for the close action. */
+  background: transparent;
 }
 
 .overlay-control-bar__button:focus-visible {

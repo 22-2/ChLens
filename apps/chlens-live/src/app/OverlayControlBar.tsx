@@ -1,4 +1,4 @@
-import { useEffect, useState, type MouseEvent, type PointerEvent } from "react";
+import type { MouseEvent, PointerEvent } from "react";
 import { liveWindowPlatform, type OverlayResizeDirection } from "../platform/index";
 import "./styles.css";
 
@@ -57,25 +57,10 @@ function close(event: MouseEvent<HTMLButtonElement>): void {
   });
 }
 
-export function OverlayControlBar() {
-  const [barVisibility, setBarVisibility] = useState({ hovered: true, hasHovered: false });
-
-  useEffect(
-    () =>
-      liveWindowPlatform.trackOverlayBarHover((hovered) => {
-        setBarVisibility((current) => {
-          if (hovered) return { hovered: true, hasHovered: true };
-          // Keep the startup locator visible until the pointer has actually visited the bar once.
-          // A transparent overlay otherwise disappears before users can discover its position.
-          return current.hasHovered ? { hovered: false, hasHovered: true } : current;
-        });
-      }),
-    [],
-  );
-
+export function OverlayControlBar({ visible }: { visible: boolean }) {
   return (
     <header
-      className={`overlay-control-bar${barVisibility.hovered ? " overlay-control-bar--visible" : ""}`}
+      className={`overlay-control-bar${visible ? " overlay-control-bar--visible" : ""}`}
       data-overlay-interactive="true"
     >
       <div className="overlay-control-bar__status" role="status" aria-live="polite">
