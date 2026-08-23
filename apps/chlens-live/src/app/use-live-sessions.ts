@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { LiveBoardSession, type LiveBoardSessionEvent } from "../live-session/board-session";
 import { LiveThreadSession, type LiveThreadSessionEvent } from "../live-session/session";
 import type { ChLensLiveSource } from "../live-session/source";
-import type { LiveBoardSnapshot, LiveThreadSnapshot } from "../live-session/cache";
+import type { LiveBoardSnapshot, LiveThreadCache, LiveThreadSnapshot } from "../live-session/cache";
 import type { LiveSessionOwner } from "../live-session/owner";
-import type { LiveThreadCache } from "../live-session/cache";
 
 export interface UseLiveBoardResult {
   snapshot: LiveBoardSnapshot | null;
@@ -23,6 +22,12 @@ export interface UseLiveThreadResult {
  *
  * UIはsessionのsubscribe契約だけに依存し、pollingやcacheの詳細を知らない。
  * sessionインスタンスはurl単位でメモ化し、unmount時に必ずstopしてtimer漏れを防ぐ。
+ *
+ * 無限リクエスト防止のための不変条件:
+ * - subscribe関数はuseCallbackで安定させ、effectが再レンダーで再実行されないようにする
+ *   （inline関数を依存に入れると「レンダー→effect→setState→レンダー」のループになる）
+ * - effect内でstateをリセットしない（リセット自体が再レンダーを誘発するため）
+ * - start()はsessionインスタンスごとに1回だけ呼ぶ
  */
 
 function useSessionEvent<T>(subscribe: (listener: (event: T) => void) => () => void): {
@@ -30,28 +35,23 @@ function useSessionEvent<T>(subscribe: (listener: (event: T) => void) => () => v
   loading: boolean;
 } {
   const [event, setEvent] = useState<T | null>(null);
+  const [received, setReceived] = useState(false);
   useEffect(() => {
-    // 初回refresh完了までloading扱いにするため、最初のイベント到着前はloadingのまま。
-    let first = true;
-    setEvent(null);
+    // 初回イベント到着までloading扱い。到着後は受信済みフラグでloadingを確定させる。
+    // ここでeventをnullへ戻すと再レンダーループの火種になるため、リセットはしない。
     const unsubscribe = subscribe((next) => {
-      first = false;
+      setReceived(true);
       setEvent(next);
     });
-    return () => {
-      unsubscribe();
-      void first;
-    };
+    return unsubscribe;
   }, [subscribe]);
-  return { event, loading: event === null };
+  return { event, loading: !received };
 }
 
 export function useLiveBoard(
   boardUrl: string | null,
   options: { source: ChLensLiveSource; intervalMs?: number },
 ): UseLiveBoardResult {
-  // subscribeコールバックの再生成がuseEffect再実行→無限polling再起動になるのを防ぐため
-  // sessionごと安定させた関数を渡す（user memory: useCallback安定化パターン）。
   const session = useMemo(() => {
     if (!boardUrl) return null;
     return new LiveBoardSession(boardUrl, {
@@ -60,8 +60,13 @@ export function useLiveBoard(
     });
   }, [boardUrl, options.source, options.intervalMs]);
 
-  const subscribe = (listener: (event: LiveBoardSessionEvent) => void) =>
-    session ? session.subscribe(listener) : () => undefined;
+  // 安定したsubscribe参照。これが変わるとuseSessionEventのeffectが再実行され、
+  // 最悪の場合polling再起動の連鎖（無限リクエスト）に繋がる。
+  const subscribe = useCallback(
+    (listener: (event: LiveBoardSessionEvent) => void) =>
+      session ? session.subscribe(listener) : () => undefined,
+    [session],
+  );
 
   const { event, loading } = useSessionEvent(subscribe);
 
@@ -100,8 +105,11 @@ export function useLiveThread(
     });
   }, [threadUrl, options.source, options.owner, options.cache, options.intervalMs]);
 
-  const subscribe = (listener: (event: LiveThreadSessionEvent) => void) =>
-    session ? session.subscribe(listener) : () => undefined;
+  const subscribe = useCallback(
+    (listener: (event: LiveThreadSessionEvent) => void) =>
+      session ? session.subscribe(listener) : () => undefined,
+    [session],
+  );
 
   const { event, loading } = useSessionEvent(subscribe);
 
@@ -113,11 +121,12 @@ export function useLiveThread(
     return () => session.stop();
   }, [session, threadUrl]);
 
-  const refresh = () =>
+  const refresh = useCallback(() => {
     void session?.refresh().catch((error: unknown) => {
       console.error(`[Chlens Live] thread refresh failed: ${threadUrl}`, error);
     });
-  const stop = () => session?.stop();
+  }, [session, threadUrl]);
+  const stop = useCallback(() => session?.stop(), [session]);
 
   if (!session || !event) {
     return { snapshot: null, error: null, loading, refresh, stop };
