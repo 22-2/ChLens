@@ -250,6 +250,35 @@ Phase 2の最初の境界検証は、[Phase 2 domain／取得 spike](./chlens-li
 
 ChlensとLiveが同じURL・subject・dat・responseモデルを利用できるようにする。
 
+#### Phase 2の現状チェックリスト（domain／取得 spike完了時点）
+
+##### 完了
+
+- [x] `packages/ch-lib`のworkspace package名を`@chlen/ch-lib`へ統一する。
+- [x] `ChURL`による5ch互換、Eddibb、まちBBS、したらばのURL正規化とsubject／dat URL生成をLiveから再利用する。
+- [x] `HttpClient`／`HttpResponse`／`FetchHttpClient`のtransport契約を追加する。
+- [x] `ChFetcher`へtransport injectionとHTTP status errorを追加する。
+- [x] subject／datの文字コードdecodeと既存parserを、UI非依存の取得経路で接続する。
+- [x] Eddibbのboard URL、Shift_JIS subject、thread dat URL、HTTP 404をfixtureで検証する。
+- [x] Live側に`loadBoard`／`loadThread`のsource composition boundaryと契約テストを追加する。
+- [x] LiveのVite／Vitest／TypeScript設定からworkspace sourceを解決する。
+
+##### 未着手（Phase 2本実装）
+
+- [ ] Tauri HTTP pluginを`HttpClient`へ接続するadapterを実装する。
+- [ ] ETag、Last-Modified、dat size、res lengthをresponse metadataとして型にする。
+- [ ] `LiveThreadSession`のpolling、差分取得、再接続、停止条件を実装する。
+- [ ] subject／datのcache policyと過去ログ・dat落ちの契約を実装する。
+- [ ] `IThread`、`IRes`、thread detailの重複型を共通モデルへ整理する。
+- [ ] MainとOverlayへ取得結果を共有するevent contractと所有者を決める。
+- [ ] Chlens既存のBoard／Thread serviceを共通API経由へ移行し、回帰を確認する。
+- [ ] Tauri実機でboard／thread取得、複数形式、ネットワーク失敗を手動確認する。
+
+##### 既知の確認課題
+
+- [ ] `@chlen/ch-lib`全体テストをgreenにする。現状は既存の`BBSMenuParser.test.ts`で、fixtureがboard 2件想定に対して1件になる失敗が1件残っている。
+- [x] 新規fixture test 2件とLive adapter test 3件、Live check／buildは成功している。
+
 #### 作業
 
 - `packages/ch-lib` の公開APIと依存方向を固定する。
