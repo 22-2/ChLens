@@ -272,15 +272,16 @@ ChlensとLiveが同じURL・subject・dat・responseモデルを利用できる�
 - [x] dat落ちHTTP status（404／410）をsession error contractへ伝播する。
 - [x] 過去ログの取得・再生契約を実装する。`ChURL`のarchive判定、したらばarchive HTML parser、指定レス範囲を投影する`LiveThreadPlaybackSession`、live／playback排他ownerを追加した。
 - [x] `@chlen/ch-lib`にcanonicalな`IThread`／`IRes`型名を公開し、既存`ThreadData`／`Post`と後方互換にする。
-- [ ] Chlens legacy `ParsedThread`／`ThreadRes`をcanonical modelへ移行する。
+- [x] Chlens legacy `ParsedThread`／`ThreadRes`をcanonical modelへ移行する。旧cache形を壊さず、Thread service入口で`@chlen/ch-lib`の`IThread`／`IRes`へ変換するadapterを追加した。
 - [x] MainとOverlayへ取得結果を共有するserializable event contractとsession ownerを決める。
-- [ ] Chlens既存のBoard／Thread serviceを共通API経由へ移行し、回帰を確認する。
-- [ ] Tauri実機でboard／thread取得、複数形式、ネットワーク失敗を手動確認する。
+- [x] Chlens既存のBoard／Thread serviceを共通API経由へ移行し、回帰を確認する。subject parserのcanonical型とThread serviceのcanonical adapterを接続し、既存UI投影を維持した。
+- [ ] Tauri実機でboard／thread取得、複数形式、ネットワーク失敗を手動確認する。release buildとMSI／NSIS生成は完了、実操作だけ要確認。
 
 ##### 既知の確認課題
 
 - [x] `@chlen/ch-lib`全体テストをgreenにする。`BBSMenuParser`のカテゴリ終端判定を修正し、22/22件が成功している。
 - [x] ch-lib fixture／parser test 22件とLive test 25件、Live check／build、Rust `cargo check`は成功している。
+- [x] 既存Chlens全体テスト503件、Tauri release build、MSI／NSIS bundle生成が成功している。
 
 #### 作業
 

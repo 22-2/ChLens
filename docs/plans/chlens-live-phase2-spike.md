@@ -48,12 +48,14 @@ ChLens Live source
 - `HttpResponseMetadata`、`LiveThreadSession`、thread cache、Main／Overlay event busを追加し、取得結果を継続更新できる境界を固定した。
 - `ChURL`のarchive判定としたらばarchive HTML parserを追加し、過去ログを`IThread`へ変換できるfixtureを追加した。
 - `LiveThreadPlaybackSession`、指定レス範囲cursor、live／playback排他ownerを追加した。再生clock／UI／履歴一覧は後続phaseへ残す。
+- legacy `ParsedThread`／`ThreadRes`をcache内部では維持しつつ、Thread service入口でcanonical `IThread`／`IRes`へ変換するadapterを追加した。
+- Board／Thread serviceのcanonical parser／model境界を接続し、既存Chlens全体テスト503件を成功させた。
 
 ## 意図的に含めないもの
 
 - ThreadList／ThreadのReact UI
 - 過去ログの再生clock、速度・遅延・一時停止などの製品仕様
-- Chlens既存Thread serviceの完全移行（HTML形式、NG、履歴、既存cache互換）
+- Chlens既存Thread service内部の完全置換（HTML形式、NG、履歴、既存cache互換）は行わず、adapterで段階移行する
 - NG／filter／history
 
 ## 完了条件
@@ -68,8 +70,8 @@ ChLens Live source
 
 ## 次のPhase 2本実装
 
-spike後の残作業は、共通`IThread`／`IRes`モデル、Chlens既存serviceとの互換adapter、
-ThreadList／Thread UI、legacy model/service adapter、Tauri実機確認である。過去ログは取得と
+spike後の残作業は、ThreadList／Thread UI、
+Tauri実機での実操作確認である。過去ログは取得と
 指定レス範囲の非polling playback boundaryまで実装済みで、再生clockと製品仕様はPhase 8へ残す。
 
 ## 検証コマンド
@@ -81,3 +83,13 @@ pnpm --filter chlens-live check
 pnpm --filter chlens-live test
 pnpm --filter chlens-live build
 ```
+
+## Tauri実機確認の残項目
+
+`cargo check --manifest-path apps/chlens-live/src-tauri/Cargo.toml --all-targets`、
+`pnpm --filter chlens-live tauri:build`、MSI／NSIS bundle生成までは自動確認済み。
+Windows上の実操作は次の項目を手動で確認する。
+
+- Eddibbのboard／thread取得と、404／410・通信失敗時の表示
+- 5ch互換、まちBBS、したらば通常／archiveの取得形式
+- 透明Overlayのクリック透過、バー操作、複数monitor／DPI変更後のgeometry
