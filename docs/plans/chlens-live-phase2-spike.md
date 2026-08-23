@@ -70,9 +70,10 @@ ChLens Live source
 
 ## 次のPhase 2本実装
 
-spike後の残作業は、ThreadList／Thread UI、
-Tauri実機での実操作確認である。過去ログは取得と
-指定レス範囲の非polling playback boundaryまで実装済みで、再生clockと製品仕様はPhase 8へ残す。
+ThreadList／Thread UIは最小実装を追加済み（`use-live-sessions` hook、`ThreadList`、`ThreadView`、
+Main画面への統合、コンポーネントテスト）。残作業はTauri実機での実操作確認である。
+過去ログは取得と指定レス範囲の非polling playback boundaryまで実装済みで、再生clockと
+製品仕様はPhase 8へ残す。
 
 ## 検証コマンド
 
