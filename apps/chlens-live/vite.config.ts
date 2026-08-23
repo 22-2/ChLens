@@ -4,12 +4,16 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite-plus";
 
 const appRoot = fileURLToPath(new URL(".", import.meta.url));
+const repositoryRoot = path.resolve(appRoot, "../..");
 
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
       "@chlens-live": path.resolve(appRoot, "src"),
+      // Resolve the workspace package to source during the spike so Live and ch-lib can be
+      // tested together before publishing a built package artifact.
+      "@chlen/ch-lib": path.resolve(repositoryRoot, "packages/ch-lib/src/index.ts"),
     },
   },
   server: {

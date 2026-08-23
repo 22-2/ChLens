@@ -1,5 +1,8 @@
 {
   "compilerOptions": {
+    "paths": {
+      "@chlen/ch-lib": ["../../packages/ch-lib/src/index.ts"]
+    },
     "target": "ES2022",
     "lib": ["DOM", "DOM.Iterable", "ES2022"],
     "module": "ESNext",
