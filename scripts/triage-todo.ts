@@ -5,7 +5,7 @@ import path from "node:path";
 import process from "node:process";
 import { parse as parseJsonc, printParseErrorCode, type ParseError } from "jsonc-parser";
 
-type TriageAction = "create" | "append-unclear" | "review-existing" | "skip";
+type TriageAction = "create" | "append-unclear" | "retriage" | "review-existing" | "skip";
 type CloseReason = "completed" | "not planned" | "duplicate" | "none";
 type RunMode = "dry-run" | "apply";
 
@@ -39,6 +39,17 @@ interface UnclearIssue {
   title: string;
 }
 
+interface IssueLabel {
+  name: string;
+}
+
+interface IssueSnapshotItem {
+  number: number;
+  state: "OPEN" | "CLOSED";
+  labels: IssueLabel[];
+  updatedAt: string;
+}
+
 const root = process.cwd();
 const todoPath = path.join(root, ".todo");
 const schemaPath = path.join(root, "scripts", "triage-todo.schema.json");
@@ -52,6 +63,15 @@ const force = process.argv.includes("--force");
 const mode: RunMode = apply ? "apply" : "dry-run";
 const AI_DISCLOSURE =
   "> 🤖 このIssueは、`.todo`のメモをもとにAIがコード調査・整理して作成しました。\n> 内容、優先度、仕様、完了判定は人が確認します。";
+
+function withAiDisclosure(body: string): string {
+  let normalizedBody = body.trimEnd();
+  // Codex may include the repository-mandated disclosure itself, so remove trailing copies before adding the canonical one.
+  while (normalizedBody.endsWith(AI_DISCLOSURE)) {
+    normalizedBody = normalizedBody.slice(0, -AI_DISCLOSURE.length).trimEnd();
+  }
+  return `${normalizedBody}\n\n${AI_DISCLOSURE}`;
+}
 
 // Codexのサンドボックスからユーザー領域のgh設定を直接読ませないため、
 // GitHub CLIの設定ディレクトリだけをワークスペース内に分離する。
@@ -152,6 +172,19 @@ function getIssueSnapshot(): string {
   ]);
 }
 
+function getRetriageIssueNumbers(issueSnapshot: string): number[] {
+  const issues = readJsonc<IssueSnapshotItem[]>(issueSnapshot, "gh issue list output");
+  const protectedWorkflowLabels = new Set(["ready", "in-progress", "needs-human-test", "blocked"]);
+  return issues
+    .filter(
+      (issue) =>
+        issue.state === "OPEN" &&
+        issue.labels.some((label) => label.name === "needs-retriage") &&
+        !issue.labels.some((label) => protectedWorkflowLabels.has(label.name)),
+    )
+    .map((issue) => issue.number);
+}
+
 function readState(): TriageState | undefined {
   if (!fs.existsSync(statePath)) return undefined;
   try {
@@ -199,6 +232,7 @@ acquireLock();
 // Issueのstate・label・updatedAtも入力として扱うことで、既存Issueの進捗変化を検知し、
 // linked Issueに対するreview-existingの再確認を定期実行できるようにする。
 const issueSnapshot = getIssueSnapshot();
+const retriageIssueNumbers = getRetriageIssueNumbers(issueSnapshot);
 const previousState = readState();
 // dry-runの確認後にapplyへ移る場合は、入力が同じでも実行目的が異なるため再評価する。
 // 同じモードで入力とIssueの状態が変わらない場合だけ、定期実行の重複処理を省略する。
@@ -227,6 +261,14 @@ Rules:
 - For items with an issue marker, inspect the linked Issue only. Never create a new Issue or append
   another unclear question for that item; use review-existing when the linked open Issue appears
   already fixed or no longer appropriate, otherwise use skip.
+- Independently inspect every open Issue listed in <needs-retriage>. Read its body and comments,
+  then compare the added information with the latest source and tests. Return action=retriage with
+  that Issue number as the only existing_issue_numbers entry. source_text may be empty when no exact
+  .todo line links to the Issue. Put the updated investigation in body as a comment-ready report.
+- For action=retriage, labels must contain exactly one next-state label: needs-priority when the new
+  information is sufficient for human prioritization, or needs-info when a concrete question still
+  blocks a reliable specification. Do not retriage ready, in-progress, needs-human-test, or blocked
+  Issues automatically; return skip for those workflow states.
 - At the very beginning, list and inspect existing open and closed GitHub Issues. Search by title,
   body, and related terms before proposing a new one. Use gh read-only commands when needed.
 - \`needs-priority\` means "already investigated; waiting for human priority". Do not implement or
@@ -243,10 +285,12 @@ Rules:
   "[triage] Unclear todo items" and unclear_questions must contain concise questions.
 - For action=create, use the needs-priority label only. Do not use ready, in-progress,
   needs-human-test, blocked, or review-existing.
-- source_text must exactly match one complete line from .todo.
+- source_text must exactly match one complete line from .todo, except that action=retriage may use
+  an empty string when the labeled Issue has no linked .todo item.
 - For action=create, body must contain: symptom, expected behavior, reproduction/observation,
   code investigation with file paths and evidence, confirmed facts vs hypotheses, proposal,
   completion criteria, risks, and the exact source text.
+- Do not include the AI-authorship disclosure in body. The calling script appends it exactly once.
 - For action=append-unclear, body should contain the source text and the questions to answer.
 - If evidence is insufficient, do not invent a specification.
 
@@ -255,6 +299,10 @@ The current .todo content follows:
 <todo>
 ${todo}
 </todo>
+
+<needs-retriage>
+${retriageIssueNumbers.map((issueNumber) => `#${issueNumber}`).join("\n")}
+</needs-retriage>
 `;
 
 const codexArgs = [
@@ -294,7 +342,15 @@ try {
 }
 
 const todoLines = todo.split(/\r?\n/);
+const retriageIssueNumberSet = new Set(retriageIssueNumbers);
 const validItems = report.items.filter((item) => {
+  if (
+    item.action === "retriage" &&
+    item.existing_issue_numbers.length === 1 &&
+    retriageIssueNumberSet.has(item.existing_issue_numbers[0])
+  ) {
+    return true;
+  }
   if (todoLines.includes(item.source_text)) return true;
   console.warn(`[triage-todo] skipping source not found verbatim in .todo: ${item.source_text}`);
   return false;
@@ -305,11 +361,12 @@ fs.writeFileSync(outputPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
 
 const createItems = validItems.filter((item) => item.action === "create");
 const unclearItems = validItems.filter((item) => item.action === "append-unclear");
+const retriageItems = validItems.filter((item) => item.action === "retriage");
 const reviewItems = validItems.filter((item) => item.action === "review-existing");
 
 console.log(`[triage-todo] report: ${path.relative(root, outputPath)}`);
 console.log(
-  `[triage-todo] create=${createItems.length} unclear=${unclearItems.length} review-existing=${reviewItems.length}`,
+  `[triage-todo] create=${createItems.length} unclear=${unclearItems.length} retriage=${retriageItems.length} review-existing=${reviewItems.length}`,
 );
 for (const item of reviewItems) {
   console.log(
@@ -326,6 +383,30 @@ if (!apply) {
 if (createItems.length > 3) {
   fail(`refusing to create ${createItems.length} issues; the limit is three`);
   process.exit();
+}
+
+for (const item of retriageItems) {
+  const issueNumber = item.existing_issue_numbers[0];
+  if (item.labels.length !== 1 || !["needs-priority", "needs-info"].includes(item.labels[0])) {
+    fail(`unsafe next-state label in retriage candidate: #${issueNumber}`);
+    process.exit();
+  }
+}
+
+for (const item of retriageItems) {
+  const issueNumber = item.existing_issue_numbers[0];
+  run("gh", ["issue", "comment", String(issueNumber), "--body", item.body]);
+  // 再調査結果を残してから待機状態へ戻し、同じIssueが定期実行ごとに再処理されるのを防ぐ。
+  run("gh", [
+    "issue",
+    "edit",
+    String(issueNumber),
+    "--remove-label",
+    "needs-retriage,needs-priority,needs-info,review-existing",
+    "--add-label",
+    item.labels[0],
+  ]);
+  console.log(`[triage-todo] retriaged #${issueNumber}; next state=${item.labels[0]}`);
 }
 
 for (const item of reviewItems) {
@@ -382,7 +463,7 @@ for (const item of createItems) {
     "--title",
     item.title,
     "--body",
-    `${item.body}\n\n${AI_DISCLOSURE}`,
+    withAiDisclosure(item.body),
     "--label",
     "needs-priority",
   ]);
@@ -414,7 +495,7 @@ if (unclearItems.length > 0) {
       "--title",
       "[triage] Unclear todo items",
       "--body",
-      `${body}\n\n${AI_DISCLOSURE}`,
+      withAiDisclosure(body),
       "--label",
       "needs-info",
     ]);

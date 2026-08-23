@@ -72,6 +72,8 @@ pnpm triage:todo -- --apply
 `needs-priority`は「調査済みだが、まだ人が優先度を決めていない」状態です。
 実装してよいと判断したIssueだけを`ready`にします。
 
+既存Issueへ再現情報や仕様の回答を追記した場合は、`needs-retriage`を付けます。次回の定期実行が本文・コメント・最新コードを再調査し、結果をIssueコメントへ追加します。調査後は、判断可能なら`needs-priority`、まだ情報不足なら`needs-info`へ自動的に戻ります。
+
 意図不明のメモは、個別Issueを増やさず`[triage] Unclear todo items`へ集約されます。
 質問に答えられる場合は、そのIssueへコメントしてください。
 
@@ -87,6 +89,16 @@ in-progress
 needs-human-test
     ↓ 人が実際に操作
 completedでclose / not plannedでclose / Issueへ追加コメント
+```
+
+追加情報から再調査する場合は、次の経路も利用できます。
+
+```text
+needs-info / needs-priority
+    ↓ 人がIssueへ情報を追記してneeds-retriageを付与
+needs-retriage
+    ↓ 定期実行が再調査結果をコメント
+needs-priority / needs-info
 ```
 
 ### 既存Issueに紐づいている場合
@@ -144,5 +156,5 @@ GitHub APIへ接続するため、`GITHUB_TOKEN`または`GH_TOKEN`をWindowsの
 | `scripts/triage-todo.schema.json`    | Codexの出力形式を検証するスキーマ      |
 | `scripts/register-triage-task.ps1`   | Windows Task Schedulerへの登録         |
 | `scripts/unregister-triage-task.ps1` | Windows Task Schedulerからの削除       |
-| `docs/guides/ai-triage.md`            | コマンドと運用の詳細手順               |
+| `docs/guides/ai-triage.md`           | コマンドと運用の詳細手順               |
 | `AGENTS.md`                          | AIが守る改善ループのルール             |

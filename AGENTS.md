@@ -73,6 +73,7 @@
 - コードから判断できない仕様や、原文から意図を読み取れない項目を推測しない。
 - 既存Issueがすでに修正済み、または今後実施しない内容に見える場合は`review-existing`として報告する。AIはIssueを閉じず、人が確認してから`completed`または`not planned`で閉じる。
 - `review-existing`ラベルは、既存Issueの完了・廃止・重複を人が確認する待機状態として使う。AIはこのラベルを付ける提案までに留め、Issueのクローズは行わない。
+- 既存Issueへ情報を追加して再調査させる場合は`needs-retriage`を付ける。定期トリアージは本文・コメント・最新コードを再確認し、結果をIssueコメントへ残してから、情報が足りれば`needs-priority`、不足が残れば`needs-info`へ戻す。
 - 意図不明の項目は個別Issueを乱立させず、`[triage] Unclear todo items`という集約Issueを検索して追記する。集約Issueがなければ1件だけ作成し、`needs-info`を付ける。
 - 新規Issueを作成する前に、同じ集約Issueまたは関連Issueがないか必ず確認する。
 - 1回のトリアージで作成する新規Issueは最大3件とし、残りは次回へ回す。
@@ -85,6 +86,7 @@
 
 - 調査済みで人の優先度判断待ちは`needs-priority`。
 - 仕様や再現情報が不足するものは`needs-info`。
+- 追加情報をもとにAIの再調査を待つものは`needs-retriage`。再調査後は自動的に`needs-priority`または`needs-info`へ遷移する。
 - 人が実装してよいと判断したものだけが`ready`。
 - `ready`以外のIssueを実装対象にしない。
 - 実装開始時に`in-progress`、実装と自動確認の完了後に`needs-human-test`へ変更する。
