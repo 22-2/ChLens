@@ -246,26 +246,24 @@ button:hover {
   display: flex;
   position: absolute;
   z-index: 3;
-  top: 0.5rem;
-  right: 0.75rem;
-  left: 0.75rem;
+  top: 0.25rem;
+  right: 0.25rem;
+  left: 0.25rem;
   align-items: center;
   justify-content: space-between;
   width: auto;
-  height: 64px;
+  height: 36px;
   margin: 0;
-  padding: 0 0.35rem 0 1rem;
-  border: 1px solid rgb(255 255 255 / 18%);
-  border-radius: 18px;
+  padding: 0 0 0 0.65rem;
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: 4px;
   color: rgb(255 255 255 / 90%);
-  background: linear-gradient(135deg, rgb(31 47 71 / 82%), rgb(13 22 37 / 76%));
-  box-shadow:
-    0 12px 40px rgb(0 0 0 / 32%),
-    inset 0 1px rgb(255 255 255 / 10%);
+  background: rgb(20 27 39 / 90%);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 28%);
   /* This blur is intentionally limited to the WebView; native desktop-wide blur would require
    * a platform-specific vibrancy plugin and should not be implied by this shared CSS. */
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   overflow: hidden;
   text-shadow: 0 1px 3px #000;
   cursor: move;
@@ -280,10 +278,16 @@ button:hover {
     opacity 120ms ease;
 }
 
+.overlay-control-bar--startup {
+  /* A transparent window has no other locator on first launch; leave the title strip visible until
+   * the pointer has left it once, then return to hover-only visibility. */
+  opacity: 1;
+}
+
 .overlay-control-bar:hover,
 .overlay-control-bar:focus-within {
   border-color: rgb(255 255 255 / 28%);
-  background: linear-gradient(135deg, rgb(43 68 101 / 86%), rgb(18 30 49 / 82%));
+  background: rgb(34 46 64 / 96%);
   opacity: 1;
 }
 
@@ -293,13 +297,13 @@ button:hover {
   z-index: 1;
   align-items: center;
   min-width: 0;
-  gap: 0.65rem;
+  gap: 0.5rem;
   pointer-events: none;
 }
 
 .overlay-control-bar__status-dot {
-  width: 9px;
-  height: 9px;
+  width: 7px;
+  height: 7px;
   flex: 0 0 auto;
   border-radius: 50%;
   background: #65f6a8;
@@ -310,23 +314,14 @@ button:hover {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 0.1rem;
 }
 
 .overlay-control-bar__title {
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.03em;
-  white-space: nowrap;
-}
-
-.overlay-control-bar__subtitle {
-  overflow: hidden;
-  color: rgb(224 236 250 / 62%);
-  text-overflow: ellipsis;
-  font-size: 0.68rem;
   white-space: nowrap;
 }
 
@@ -336,12 +331,11 @@ button:hover {
   z-index: 1;
   align-items: stretch;
   height: 100%;
-  margin-left: 1rem;
-  border-left: 1px solid rgb(255 255 255 / 12%);
+  margin-left: auto;
 }
 
 .overlay-control-bar__button {
-  width: 42px;
+  width: 46px;
   height: 100%;
   border: 0;
   border-radius: 0;
@@ -349,7 +343,6 @@ button:hover {
   color: rgb(255 255 255 / 86%);
   background: transparent;
   cursor: pointer;
-  font-size: 1rem;
   line-height: 1;
   transition:
     background 120ms ease,
@@ -369,6 +362,48 @@ button:hover {
 
 .overlay-control-bar__button--close:hover {
   background: rgb(196 62 82 / 88%);
+}
+
+.overlay-control-bar__glyph {
+  display: block;
+  position: relative;
+  width: 10px;
+  height: 10px;
+  margin: auto;
+  color: currentColor;
+}
+
+.overlay-control-bar__glyph--minimize::after {
+  position: absolute;
+  right: 0;
+  bottom: 1px;
+  left: 0;
+  height: 1px;
+  background: currentColor;
+  content: "";
+}
+
+.overlay-control-bar__glyph--maximize {
+  border: 1px solid currentColor;
+}
+
+.overlay-control-bar__glyph--close::before,
+.overlay-control-bar__glyph--close::after {
+  position: absolute;
+  top: 4px;
+  right: -1px;
+  left: -1px;
+  height: 1px;
+  background: currentColor;
+  content: "";
+}
+
+.overlay-control-bar__glyph--close::before {
+  transform: rotate(45deg);
+}
+
+.overlay-control-bar__glyph--close::after {
+  transform: rotate(-45deg);
 }
 
 .overlay-control-bar__resize-handle {

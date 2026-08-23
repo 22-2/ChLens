@@ -1,4 +1,4 @@
-import type { MouseEvent, PointerEvent } from "react";
+import { useState, type MouseEvent, type PointerEvent } from "react";
 import { liveWindowPlatform, type OverlayResizeDirection } from "../platform/index";
 import "./styles.css";
 
@@ -67,18 +67,19 @@ function close(event: MouseEvent<HTMLButtonElement>): void {
 }
 
 export function OverlayControlBar() {
+  const [showStartupHint, setShowStartupHint] = useState(true);
+
   return (
     <header
-      className="overlay-control-bar"
+      className={`overlay-control-bar${showStartupHint ? " overlay-control-bar--startup" : ""}`}
       data-overlay-interactive="true"
       onPointerDown={startDragging}
-      onDoubleClick={toggleMaximize}
+      onPointerLeave={() => setShowStartupHint(false)}
     >
       <div className="overlay-control-bar__status" role="status" aria-live="polite">
         <span className="overlay-control-bar__status-dot" aria-hidden="true" />
         <span className="overlay-control-bar__status-copy">
           <strong className="overlay-control-bar__title">Chlens Live</strong>
-          <span className="overlay-control-bar__subtitle">Overlay ready</span>
         </span>
       </div>
       <div className="overlay-control-bar__actions" aria-label="Overlay window controls">
@@ -91,7 +92,10 @@ export function OverlayControlBar() {
           onDoubleClick={stopBarControlEvent}
           onClick={minimize}
         >
-          <span aria-hidden="true">−</span>
+          <span
+            className="overlay-control-bar__glyph overlay-control-bar__glyph--minimize"
+            aria-hidden="true"
+          />
         </button>
         <button
           type="button"
@@ -102,7 +106,10 @@ export function OverlayControlBar() {
           onDoubleClick={stopBarControlEvent}
           onClick={toggleMaximize}
         >
-          <span aria-hidden="true">□</span>
+          <span
+            className="overlay-control-bar__glyph overlay-control-bar__glyph--maximize"
+            aria-hidden="true"
+          />
         </button>
         <button
           type="button"
@@ -113,7 +120,10 @@ export function OverlayControlBar() {
           onDoubleClick={stopBarControlEvent}
           onClick={close}
         >
-          <span aria-hidden="true">×</span>
+          <span
+            className="overlay-control-bar__glyph overlay-control-bar__glyph--close"
+            aria-hidden="true"
+          />
         </button>
       </div>
       {BAR_RESIZE_HANDLES.map(({ direction, className }) => (

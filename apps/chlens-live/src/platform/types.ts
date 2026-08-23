@@ -12,9 +12,9 @@ export const DEFAULT_OVERLAY_GEOMETRY: OverlayGeometry = {
   height: 160,
 };
 
-// The control bar occupies the top of the transparent overlay. Keep its native hit-test height in
-// one shared place so cursor passthrough can be toggled before the bar receives a pointer event.
-export const OVERLAY_CONTROL_BAR_HEIGHT = 64;
+// The control bar is intentionally a compact Windows-style title strip. Keep its native hit-test
+// height in one shared place so cursor passthrough matches the rendered bar before it receives an event.
+export const OVERLAY_CONTROL_BAR_HEIGHT = 36;
 
 export type OverlayResizeDirection =
   | "East"
