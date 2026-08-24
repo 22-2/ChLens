@@ -12,6 +12,7 @@ export default defineConfig({
     alias: {
       "@chlens-live": path.resolve(appRoot, "src"),
       src: path.resolve(repositoryRoot, "src"),
+      packages: path.resolve(repositoryRoot, "packages"),
       // Resolve the workspace package to source during the spike so Live and ch-lib can be
       // tested together before publishing a built package artifact.
       "@chlen/ch-lib": path.resolve(repositoryRoot, "packages/ch-lib/src/index.ts"),

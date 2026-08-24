@@ -2,7 +2,8 @@
   "compilerOptions": {
     "paths": {
       "@chlen/ch-lib": ["../../packages/ch-lib/src/index.ts"],
-      "src/*": ["../../src/*"]
+      "src/*": ["../../src/*"],
+      "packages/*": ["../../packages/*"]
     },
     "target": "ES2022",
     "lib": ["DOM", "DOM.Iterable", "ES2022"],
