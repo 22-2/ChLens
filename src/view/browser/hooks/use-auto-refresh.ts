@@ -72,6 +72,8 @@ export function useAutoRefresh({
   const canAutoScrollRef = useRef(false);
   const userInterruptedRef = useRef(false);
   const scrollObserverFrameRef = useRef<number | null>(null);
+  const contentResizeObserverFrameRef = useRef<number | null>(null);
+  const lastObservedScrollHeightRef = useRef<number | null>(null);
   const scrollingIndicatorTimerRef = useRef<number | null>(null);
   const [canAutoScroll, setCanAutoScroll] = useState(false);
   const [isAutoScrolling, setIsAutoScrolling] = useState(false);
@@ -161,7 +163,9 @@ export function useAutoRefresh({
     const scrollContainer = getScrollContainer();
     const boundary = autoScrollBoundaryRef.current;
 
-    if (!scrollContainer || !boundary) {
+    // 非アクティブなパネルの寸法変化を同期すると、表示中の追従状態を
+    // hidden なタブのレイアウトで上書きしてしまうため、現在のパネルだけを判定する。
+    if (!enabled || !scrollContainer || scrollContainer.dataset.active === "false" || !boundary) {
       canAutoScrollRef.current = false;
       setCanAutoScroll(false);
       return;
@@ -175,7 +179,7 @@ export function useAutoRefresh({
 
     canAutoScrollRef.current = nextValue;
     setCanAutoScroll((prev) => (prev === nextValue ? prev : nextValue));
-  }, [getScrollContainer]);
+  }, [enabled, getScrollContainer]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -300,9 +304,11 @@ export function useAutoRefresh({
     };
 
     const handleWheel = () => {
-      if (pendingRefreshRef.current || isAutoScrolling) {
+      if (pendingRefreshRef.current || isAutoScrolling || canAutoScrollRef.current) {
         // smooth scroll を使わない代わりに、ユーザー操作が入ったフレームでは
         // 予定していた自動追従を明示的に取り消して手動スクロールを優先する。
+        // 高さ変更の監視中も同じ意図を維持し、ユーザーのホイール操作直後に
+        // 境界へ引き戻さないようにする。
         userInterruptedRef.current = true;
       }
     };
@@ -323,6 +329,84 @@ export function useAutoRefresh({
       window.removeEventListener("resize", scheduleSync);
     };
   }, [getScrollContainer, isAutoScrolling, syncCanAutoScroll]);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    const scrollContainer = getScrollContainer();
+
+    if (!enabled || !root || !scrollContainer || scrollContainer.dataset.active === "false") {
+      lastObservedScrollHeightRef.current = null;
+      return;
+    }
+
+    // ResizeObserver は初回 observe 時にも通知するため、現在値を先に保存して
+    // 初回通知を「高さ変更」と誤認しないようにする。
+    lastObservedScrollHeightRef.current = scrollContainer.scrollHeight;
+
+    if (typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    const scheduleContentResize = () => {
+      if (contentResizeObserverFrameRef.current != null) {
+        return;
+      }
+
+      contentResizeObserverFrameRef.current = window.requestAnimationFrame(() => {
+        contentResizeObserverFrameRef.current = null;
+
+        const currentRoot = rootRef.current;
+        const currentScrollContainer = getScrollContainer();
+        if (
+          !currentRoot ||
+          !currentScrollContainer ||
+          currentScrollContainer.dataset.active === "false"
+        ) {
+          return;
+        }
+
+        const currentScrollHeight = currentScrollContainer.scrollHeight;
+        const previousScrollHeight = lastObservedScrollHeightRef.current;
+        lastObservedScrollHeightRef.current = currentScrollHeight;
+
+        if (previousScrollHeight == null || currentScrollHeight === previousScrollHeight) {
+          syncCanAutoScroll();
+          return;
+        }
+
+        // ユーザーが境界から離れていない間だけ高さ差分を相殺する。
+        // これにより NG 解除や画像読み込みでも、明示的な上スクロールを奪わない。
+        if (canAutoScrollRef.current && !userInterruptedRef.current && !pauseAutoScroll) {
+          currentScrollContainer.scrollBy({
+            top: currentScrollHeight - previousScrollHeight,
+            behavior: "auto",
+          });
+          showScrollingIndicator();
+        }
+
+        syncCanAutoScroll();
+      });
+    };
+
+    const resizeObserver = new ResizeObserver(scheduleContentResize);
+    resizeObserver.observe(root);
+
+    return () => {
+      resizeObserver.disconnect();
+      if (contentResizeObserverFrameRef.current != null) {
+        window.cancelAnimationFrame(contentResizeObserverFrameRef.current);
+        contentResizeObserverFrameRef.current = null;
+      }
+      lastObservedScrollHeightRef.current = null;
+    };
+  }, [
+    enabled,
+    getScrollContainer,
+    pauseAutoScroll,
+    rootRef,
+    showScrollingIndicator,
+    syncCanAutoScroll,
+  ]);
 
   useEffect(() => {
     return () => {
