@@ -11,8 +11,9 @@ import {
   type ChLensLiveSource,
 } from "../live-session/source";
 import { useLiveBoard, useLiveThread } from "./use-live-sessions";
-import { ThreadList } from "./ThreadList";
 import { ThreadView } from "./ThreadView";
+import { useThreadListController } from "./use-thread-list-controller";
+import { ThreadListView } from "../../../../src/view/shared/ThreadListView";
 import "./styles.css";
 
 // Phase 2では実況板を固定URLで開く。板一覧UI（BBSMenu）は後続phaseで追加する。
@@ -55,6 +56,7 @@ export function App() {
   const [selectedThread, setSelectedThread] = useState<BoardThread | null>(null);
   const board = useLiveBoard(DEFAULT_BOARD_URL, { source });
   const thread = useLiveThread(selectedThread?.url ?? null, { source });
+  const threadList = useThreadListController({ threads: board.snapshot?.data ?? [] });
 
   const selectThread = (next: BoardThread) => {
     setSelectedThread(next);
@@ -135,7 +137,7 @@ export function App() {
           <p className="live-eyebrow">CHLENS LIVE</p>
           <h1>実況 Main</h1>
         </div>
-        <span className="live-phase">Phase 1 spike</span>
+        <span className="live-phase">Phase 4</span>
       </header>
 
       <section className="live-card" aria-labelledby="thread-ui-title">
@@ -154,12 +156,20 @@ export function App() {
         </div>
         <div className="live-reader">
           <div className="live-reader__list">
-            <ThreadList
-              threads={board.snapshot?.data ?? []}
+            <ThreadListView
+              rows={threadList.rows}
               loading={board.loading}
-              error={board.error}
-              selectedUrl={selectedThread?.url ?? null}
-              onSelect={selectThread}
+              error={board.error ? "スレ一覧の取得に失敗しました" : null}
+              query={threadList.query}
+              onQueryChange={threadList.setQuery}
+              sortColumn={threadList.sortColumn}
+              sortDirection={threadList.sortDirection}
+              onSort={threadList.sort}
+              selectedId={selectedThread?.url ?? null}
+              onSelect={(row) => {
+                const thread = threadList.threadsById.get(row.id);
+                if (thread) selectThread(thread);
+              }}
             />
           </div>
           <div className="live-reader__thread">
