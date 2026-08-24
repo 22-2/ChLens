@@ -301,6 +301,8 @@ ChlensとLiveが同じURL・subject・dat・responseモデルを利用できる�
 
 ### Phase 3: NG／ハイライト DSL の共通化
 
+実装記録と検証結果は[Phase 3実装記録](./chlens-live-phase3-spike.md)にまとめた。
+
 #### 目的
 
 DSL構文と評価器を共有し、ルールの保存先だけを製品ごとに分ける。
