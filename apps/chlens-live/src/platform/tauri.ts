@@ -285,6 +285,29 @@ export function createTauriLiveWindowPlatform(): LiveWindowPlatform {
     async getOverlayGeometry() {
       return readOverlayGeometry(await getOverlayWindow());
     },
+    async watchOverlayGeometry(listener: (nextGeometry: OverlayGeometry) => void) {
+      const overlay = await getOverlayWindow();
+      const [unlistenMoved, unlistenResized] = await Promise.all([
+        overlay.onMoved(() => {
+          void readOverlayGeometry(overlay)
+            .then(listener)
+            .catch((error: unknown) => {
+              console.error("[Chlens Live] overlay move geometry read failed:", error);
+            });
+        }),
+        overlay.onResized(() => {
+          void readOverlayGeometry(overlay)
+            .then(listener)
+            .catch((error: unknown) => {
+              console.error("[Chlens Live] overlay resize geometry read failed:", error);
+            });
+        }),
+      ]);
+      return () => {
+        unlistenMoved();
+        unlistenResized();
+      };
+    },
     async setOverlayGeometry(geometry: OverlayGeometry) {
       const normalized = fallbackOverlayGeometry(geometry);
       const overlay = await getOverlayWindow();

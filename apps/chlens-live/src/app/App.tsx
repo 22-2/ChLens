@@ -71,8 +71,8 @@ const THREAD_COLUMNS: ColumnDef<ThreadListViewRow>[] = [
 
 export function App(): ReactElement {
   const [source] = useState(createDefaultSource);
-  const [geometry, setGeometry] = useState<OverlayGeometry>(DEFAULT_OVERLAY_GEOMETRY);
-  const [clickThrough, setClickThrough] = useState(true);
+  const [, setGeometry] = useState<OverlayGeometry>(DEFAULT_OVERLAY_GEOMETRY);
+  const [overlayVisible, setOverlayVisible] = useState(true);
   const [address, setAddress] = useState(DEFAULT_BOARD_URL);
   const [tabs, setTabs] = useState<LiveTab[]>([
     { id: BOARD_TAB_ID, title: "実況板", page: "threadList", url: DEFAULT_BOARD_URL },
@@ -80,8 +80,8 @@ export function App(): ReactElement {
   const [activeTabId, setActiveTabId] = useState(BOARD_TAB_ID);
   const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? tabs[0];
   const selectedThreadUrl = activeTab.page === "thread" ? activeTab.url : null;
-  const board = useLiveBoard(DEFAULT_BOARD_URL, { source });
-  const thread = useLiveThread(selectedThreadUrl, { source });
+  const board = useLiveBoard(DEFAULT_BOARD_URL, { source, intervalMs: null });
+  const thread = useLiveThread(selectedThreadUrl, { source, intervalMs: 10_000 });
   const threadList = useThreadListController({ threads: board.snapshot?.data ?? [] });
 
   useEffect(() => {
@@ -96,6 +96,33 @@ export function App(): ReactElement {
       .catch((error: unknown) => {
         console.error("[Chlens Live] initial overlay geometry load failed:", error);
       });
+
+    let saveTimer: ReturnType<typeof setTimeout> | null = null;
+    let unwatchGeometry: (() => void) | null = null;
+    void liveWindowPlatform
+      .watchOverlayGeometry((nextGeometry) => {
+        setGeometry(nextGeometry);
+        if (saveTimer) clearTimeout(saveTimer);
+        // Native move/resize events can arrive in bursts; debounce persistence to avoid
+        // writing the same layout repeatedly while the user is dragging the overlay.
+        saveTimer = setTimeout(() => {
+          saveTimer = null;
+          void liveWindowPlatform.saveOverlayGeometry(nextGeometry).catch((error: unknown) => {
+            console.error("[Chlens Live] overlay geometry auto-save failed:", error);
+          });
+        }, 250);
+      })
+      .then((cleanup) => {
+        unwatchGeometry = cleanup;
+      })
+      .catch((error: unknown) => {
+        console.error("[Chlens Live] overlay geometry watcher setup failed:", error);
+      });
+
+    return () => {
+      if (saveTimer) clearTimeout(saveTimer);
+      unwatchGeometry?.();
+    };
   }, []);
 
   const selectThread = (row: ThreadListViewRow): void => {
@@ -151,39 +178,34 @@ export function App(): ReactElement {
 
   const toolbar = (
     <>
+      {activeTab.page === "threadList" && (
+        <button
+          type="button"
+          className="live-icon-button"
+          aria-label="スレ一覧を更新"
+          title="スレ一覧を更新"
+          onClick={board.refresh}
+        >
+          ↻
+        </button>
+      )}
       <button
         type="button"
-        onClick={() => runWindowAction("show-overlay", () => liveWindowPlatform.showOverlay())}
-      >
-        Overlay表示
-      </button>
-      <button
-        type="button"
-        onClick={() => runWindowAction("hide-overlay", () => liveWindowPlatform.hideOverlay())}
-      >
-        Overlay非表示
-      </button>
-      <button
-        type="button"
-        aria-pressed={clickThrough}
+        className="live-icon-button"
+        aria-label={overlayVisible ? "Overlayを非表示" : "Overlayを表示"}
+        title={overlayVisible ? "Overlayを非表示" : "Overlayを表示"}
         onClick={() => {
-          const next = !clickThrough;
-          setClickThrough(next);
-          runWindowAction("click-through", () => liveWindowPlatform.setOverlayClickThrough(next));
+          const nextVisible = !overlayVisible;
+          runWindowAction(
+            nextVisible ? "show-overlay" : "hide-overlay",
+            nextVisible
+              ? () => liveWindowPlatform.showOverlay()
+              : () => liveWindowPlatform.hideOverlay(),
+          );
+          setOverlayVisible(nextVisible);
         }}
       >
-        {clickThrough ? "透過中" : "操作中"}
-      </button>
-      <button
-        type="button"
-        onClick={() => {
-          runWindowAction("save-geometry", async () => {
-            const current = await liveWindowPlatform.getOverlayGeometry();
-            await liveWindowPlatform.saveOverlayGeometry(current ?? geometry);
-          });
-        }}
-      >
-        位置保存
+        {overlayVisible ? "◉" : "○"}
       </button>
     </>
   );

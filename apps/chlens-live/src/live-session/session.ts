@@ -51,7 +51,8 @@ export class LiveThreadSession {
     private readonly options: LiveThreadSessionOptions,
   ) {
     this.cache = options.cache ?? new MemoryLiveThreadCache();
-    this.intervalMs = Math.max(1_000, options.intervalMs ?? 15_000);
+    // Thread本文は一覧より更新頻度を上げ、実況表示の遅延を10秒以内に抑える。
+    this.intervalMs = Math.max(1_000, options.intervalMs ?? 10_000);
   }
 
   get isRunning(): boolean {

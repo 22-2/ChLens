@@ -41,6 +41,7 @@ export interface LiveWindowPlatform {
    */
   trackOverlayBarHover(listener: (hovered: boolean) => void): () => void;
   getOverlayGeometry(): Promise<OverlayGeometry | null>;
+  watchOverlayGeometry(listener: (geometry: OverlayGeometry) => void): Promise<() => void>;
   setOverlayGeometry(geometry: OverlayGeometry): Promise<void>;
   loadOverlayGeometry(): Promise<OverlayGeometry | null>;
   saveOverlayGeometry(geometry: OverlayGeometry): Promise<void>;

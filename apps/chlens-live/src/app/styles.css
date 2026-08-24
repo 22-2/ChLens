@@ -419,7 +419,7 @@ button:hover {
   border: 1px solid rgb(117 184 239 / 68%);
   border-radius: 2px;
   box-shadow: 0 0 0 1px rgb(117 184 239 / 12%);
-  opacity: 0;
+  opacity: 1;
   pointer-events: none;
   transition: opacity 120ms ease;
 }
@@ -529,7 +529,7 @@ button:hover {
   /* Keep the invisible hit target alive; native cursor polling decides when this window can
    * receive events while click-through mode is active. */
   pointer-events: auto;
-  opacity: 0;
+  opacity: 1;
   transition:
     border-color 120ms ease,
     background 120ms ease,
@@ -746,6 +746,8 @@ button:hover {
 
 /* MainはChlensと同じく、shellの中に常に一つのpage viewだけを置く。 */
 .live-browser-shell {
+  height: 100vh;
+  overflow: hidden;
   display: grid;
   min-height: 100vh;
   grid-template-rows: 2.35rem 3rem minmax(0, 1fr);
@@ -832,6 +834,14 @@ button:hover {
 
 .live-url-bar button:hover {
   background: #4a4a4a;
+}
+
+.live-icon-button {
+  width: 2rem;
+  min-width: 2rem;
+  padding: 0.35rem;
+  font-size: 1rem;
+  line-height: 1;
 }
 
 .live-url-bar__actions {

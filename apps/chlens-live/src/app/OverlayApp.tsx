@@ -1,4 +1,4 @@
-import { useEffect, useState, type PointerEvent } from "react";
+import { type PointerEvent } from "react";
 import { liveWindowPlatform, type OverlayResizeDirection } from "../platform/index";
 import { OverlayControlBar } from "./OverlayControlBar";
 import "./styles.css";
@@ -31,28 +31,10 @@ function startResizing(
 }
 
 export function OverlayApp() {
-  const [barVisibility, setBarVisibility] = useState({ hovered: true, hasHovered: false });
-
-  useEffect(
-    () =>
-      liveWindowPlatform.trackOverlayBarHover((hovered) => {
-        setBarVisibility((current) => {
-          if (hovered) return { hovered: true, hasHovered: true };
-          // Keep the startup locator visible until the pointer has actually visited the bar once.
-          // A transparent overlay otherwise disappears before users can discover its position.
-          return current.hasHovered ? { hovered: false, hasHovered: true } : current;
-        });
-      }),
-    [],
-  );
-
   return (
-    <main
-      className={`overlay-stage${barVisibility.hovered ? " overlay-stage--controls-visible" : ""}`}
-      data-testid="overlay-stage"
-    >
+    <main className="overlay-stage overlay-stage--controls-visible" data-testid="overlay-stage">
       <div className="overlay-stage__resize-frame" aria-hidden="true" />
-      <OverlayControlBar visible={barVisibility.hovered} />
+      <OverlayControlBar visible />
       {RESIZE_HANDLES.map(({ direction, className }) => (
         <span
           key={direction}

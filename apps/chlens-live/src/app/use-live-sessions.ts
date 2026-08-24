@@ -9,6 +9,8 @@ export interface UseLiveBoardResult {
   snapshot: LiveBoardSnapshot | null;
   error: unknown;
   loading: boolean;
+  refresh: () => void;
+  stop: () => void;
 }
 
 export interface UseLiveThreadResult {
@@ -50,7 +52,7 @@ function useSessionEvent<T>(subscribe: (listener: (event: T) => void) => () => v
 
 export function useLiveBoard(
   boardUrl: string | null,
-  options: { source: ChLensLiveSource; intervalMs?: number },
+  options: { source: ChLensLiveSource; intervalMs?: number | null },
 ): UseLiveBoardResult {
   const session = useMemo(() => {
     if (!boardUrl) return null;
@@ -70,6 +72,13 @@ export function useLiveBoard(
 
   const { event, loading } = useSessionEvent(subscribe);
 
+  const refresh = useCallback(() => {
+    void session?.refresh().catch((error: unknown) => {
+      console.error(`[Chlens Live] board refresh failed: ${boardUrl}`, error);
+    });
+  }, [boardUrl, session]);
+  const stop = useCallback(() => session?.stop(), [session]);
+
   useEffect(() => {
     if (!session) return;
     void session.start().catch((error: unknown) => {
@@ -78,12 +87,12 @@ export function useLiveBoard(
     return () => session.stop();
   }, [session, boardUrl]);
 
-  if (!session || !event) return { snapshot: null, error: null, loading };
+  if (!session || !event) return { snapshot: null, error: null, loading, refresh, stop };
 
   if (event.type === "error") {
-    return { snapshot: event.snapshot ?? null, error: event.error, loading: false };
+    return { snapshot: event.snapshot ?? null, error: event.error, loading: false, refresh, stop };
   }
-  return { snapshot: event.snapshot, error: null, loading };
+  return { snapshot: event.snapshot, error: null, loading, refresh, stop };
 }
 
 export function useLiveThread(

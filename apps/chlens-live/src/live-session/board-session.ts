@@ -12,7 +12,8 @@ export interface LiveBoardSessionOptions {
   source: ChLensLiveSource;
   cache?: LiveBoardCache;
   eventBus?: LiveEventBus;
-  intervalMs?: number;
+  /** null disables polling; the Main UI refreshes the list explicitly. */
+  intervalMs?: number | null;
 }
 
 export type LiveBoardSessionListener = (event: LiveBoardSessionEvent) => void;
@@ -36,7 +37,7 @@ function boardChanged(previous: LiveBoardSnapshot, current: LiveBoardSnapshot): 
 
 export class LiveBoardSession {
   private readonly cache: LiveBoardCache;
-  private readonly intervalMs: number;
+  private readonly intervalMs: number | null;
   private readonly listeners = new Set<LiveBoardSessionListener>();
   private timer: ReturnType<typeof setInterval> | null = null;
   private requestController: AbortController | null = null;
@@ -48,7 +49,8 @@ export class LiveBoardSession {
     private readonly options: LiveBoardSessionOptions,
   ) {
     this.cache = options.cache ?? new MemoryLiveBoardCache();
-    this.intervalMs = Math.max(1_000, options.intervalMs ?? 30_000);
+    this.intervalMs =
+      options.intervalMs === null ? null : Math.max(1_000, options.intervalMs ?? 30_000);
   }
 
   get isRunning(): boolean {
@@ -64,9 +66,11 @@ export class LiveBoardSession {
     if (this.running) return;
     this.running = true;
     await this.refresh();
-    this.timer = setInterval(() => {
-      void this.refresh();
-    }, this.intervalMs);
+    if (this.intervalMs !== null) {
+      this.timer = setInterval(() => {
+        void this.refresh();
+      }, this.intervalMs);
+    }
   }
 
   stop(): void {

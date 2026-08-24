@@ -32,6 +32,9 @@ export function createBrowserLiveWindowPlatform(): LiveWindowPlatform {
     async getOverlayGeometry() {
       return cloneOverlayGeometry(geometry);
     },
+    async watchOverlayGeometry(_listener: (nextGeometry: OverlayGeometry) => void) {
+      return () => {};
+    },
     async setOverlayGeometry(nextGeometry: OverlayGeometry) {
       geometry = fallbackOverlayGeometry(nextGeometry);
     },
