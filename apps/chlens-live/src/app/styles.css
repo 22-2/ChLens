@@ -421,7 +421,6 @@ button:hover {
   box-shadow: 0 0 0 1px rgb(117 184 239 / 12%);
   opacity: 1;
   pointer-events: none;
-  transition: opacity 120ms ease;
 }
 
 .overlay-stage--controls-visible .overlay-stage__resize-frame {
@@ -514,10 +513,6 @@ button:hover {
   color: rgb(255 255 255 / 90%);
   background: rgb(20 27 39 / 90%);
   box-shadow: 0 2px 8px rgb(0 0 0 / 28%);
-  /* This blur is intentionally limited to the WebView; native desktop-wide blur would require
-   * a platform-specific vibrancy plugin and should not be implied by this shared CSS. */
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   overflow: hidden;
   text-shadow: 0 1px 3px #000;
   cursor: move;
@@ -530,10 +525,6 @@ button:hover {
    * receive events while click-through mode is active. */
   pointer-events: auto;
   opacity: 1;
-  transition:
-    border-color 120ms ease,
-    background 120ms ease,
-    opacity 120ms ease;
 }
 
 .overlay-control-bar--visible,
@@ -602,9 +593,6 @@ button:hover {
   line-height: 1;
   app-region: no-drag;
   -webkit-app-region: no-drag;
-  transition:
-    background 120ms ease,
-    color 120ms ease;
 }
 
 .overlay-control-bar__button:hover {

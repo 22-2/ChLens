@@ -17,7 +17,10 @@ const OVERLAY_WINDOW_LABEL = "overlay";
 // 50msはIPC呼び出しがDevTools上で高頻度に見えて過剰だったため、
 // ホバー検出の体感を保ちつつ100msへ緩和した。
 const CURSOR_POLL_INTERVAL_MS = 100;
-const CURSOR_REENABLE_DELAY_MS = 80;
+// Crossing the transparent window edge can produce a few alternating cursor samples while
+// Windows changes the hit-test owner. Waiting for a stable outside position prevents the native
+// window from toggling click-through repeatedly, which otherwise flashes both windows.
+const CURSOR_REENABLE_DELAY_MS = 220;
 const INTERACTIVE_EDGE_SIZE = 14;
 const CONTROL_BAR_TOP_INSET = 4;
 const CONTROL_BAR_HORIZONTAL_INSET = 4;
