@@ -3,7 +3,12 @@ param(
     # タスクスケジューラに登録するタスク名。削除スクリプトでも同じ名前を指定する。
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$TaskName = "ChLens AI Todo Triage",
+    [string]$TaskName = "chlens-ai-todo-triage",
+
+    # アプリ関連タスクを同じフォルダーに集約し、手動管理時にも見つけやすくする。
+    [Parameter()]
+    [ValidateNotNullOrEmpty()]
+    [string]$TaskPath = "\my-app\",
 
     # .todoとpackage.jsonが存在するリポジトリのパス。省略時はこのスクリプトの親ディレクトリ。
     [Parameter()]
@@ -86,9 +91,12 @@ exit `$exitCode
 
 # EncodedCommand avoids fragile nested quoting when a repository path contains spaces or apostrophes.
 $encodedRunnerCommand = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($runnerCommand))
+$conhostCommand = Join-Path -Path $env:WINDIR -ChildPath "System32\conhost.exe"
+# PowerShellはコンソールアプリなので、-WindowStyle Hiddenだけでは起動時に一瞬表示されることがある。
+# conhostのheadlessモードを前段に置き、タスク実行時のコンソール生成自体を抑止する。
 $action = New-ScheduledTaskAction `
-    -Execute $pwshCommand.Path `
-    -Argument "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand $encodedRunnerCommand" `
+    -Execute $conhostCommand `
+    -Argument "--headless `"$($pwshCommand.Path)`" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand $encodedRunnerCommand" `
     -WorkingDirectory $resolvedRepositoryPath
 
 # Durationを指定しないrepetition triggerは、Task Scheduler側で無期限に繰り返される。
@@ -120,8 +128,8 @@ $task = New-ScheduledTask `
     -Description "Run local AI triage for the ChLens .todo file and GitHub Issues."
 
 if ($PSCmdlet.ShouldProcess($TaskName, "Register or replace scheduled task")) {
-    Register-ScheduledTask -TaskName $TaskName -InputObject $task -Force | Out-Null
-    Write-Host "Registered scheduled task '$TaskName'."
+    Register-ScheduledTask -TaskName $TaskName -TaskPath $TaskPath -InputObject $task -Force | Out-Null
+    Write-Host "Registered scheduled task '$TaskPath$TaskName'."
     Write-Host "Repository: $resolvedRepositoryPath"
     Write-Host "Interval: every $IntervalMinutes minutes"
     Write-Host "Log: $logPath"

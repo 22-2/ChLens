@@ -3,13 +3,18 @@ param(
     # 削除するタスク名。登録スクリプトと同じ名前を指定する。
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$TaskName = "ChLens AI Todo Triage"
+    [string]$TaskName = "chlens-ai-todo-triage",
+
+    # 登録スクリプトと同じフォルダーを対象にし、別フォルダーの同名タスクを誤削除しない。
+    [Parameter()]
+    [ValidateNotNullOrEmpty()]
+    [string]$TaskPath = "\my-app\"
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$task = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+$task = Get-ScheduledTask -TaskPath $TaskPath -TaskName $TaskName -ErrorAction SilentlyContinue
 if ($null -eq $task) {
     Write-Host "Scheduled task '$TaskName' was not found; nothing to remove."
     exit 0
@@ -17,6 +22,6 @@ if ($null -eq $task) {
 
 if ($PSCmdlet.ShouldProcess($TaskName, "Unregister scheduled task")) {
     # -Confirm:$false keeps removal scriptable while ShouldProcess still supports -WhatIf for inspection.
-    Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
-    Write-Host "Removed scheduled task '$TaskName'."
+    Unregister-ScheduledTask -TaskPath $TaskPath -TaskName $TaskName -Confirm:$false
+    Write-Host "Removed scheduled task '$TaskPath$TaskName'."
 }
