@@ -215,7 +215,10 @@ export default defineConfig(({ mode }) => {
     staged: {
       "src/**/*.{ts,tsx}": "vp check --fix",
     },
-    fmt: {},
+    fmt: {
+      // ドキュメントは文章構成を優先し、コード用フォーマッターで意図せず書き換えない。
+      ignorePatterns: ["docs/**", "**/*.md"],
+    },
     lint: {
       plugins: ["oxc", "typescript", "unicorn", "react"],
       categories: {
