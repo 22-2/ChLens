@@ -3,6 +3,8 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
+    "has_more_unreviewed_items": { "type": "boolean" },
+    "remaining_count": { "type": "integer", "minimum": 0 },
     "items": {
       "type": "array",
       "items": {
@@ -53,5 +55,5 @@
       }
     }
   },
-  "required": ["items"]
+  "required": ["items", "has_more_unreviewed_items", "remaining_count"]
 }

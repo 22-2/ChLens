@@ -72,6 +72,11 @@ $logPathLiteral = ConvertTo-PowerShellLiteral $logPath
 $runnerCommand = @"
 Set-StrictMode -Version Latest
 `$ErrorActionPreference = 'Stop'
+# headlessタスクは従来のWindowsコードページを継承することがあるため、Codexとの日本語引数・ログをUTF-8へ固定する。
+`$utf8Encoding = [Text.UTF8Encoding]::new(`$false)
+`$OutputEncoding = `$utf8Encoding
+[Console]::InputEncoding = `$utf8Encoding
+[Console]::OutputEncoding = `$utf8Encoding
 Set-Location -LiteralPath $repositoryLiteral
 New-Item -ItemType Directory -Path (Split-Path -Parent $logPathLiteral) -Force | Out-Null
 Add-Content -LiteralPath $logPathLiteral -Value ("[" + (Get-Date -Format o) + "] starting triage")

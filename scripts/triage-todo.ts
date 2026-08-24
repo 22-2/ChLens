@@ -5,9 +5,19 @@ import path from "node:path";
 import process from "node:process";
 import { parse as parseJsonc, printParseErrorCode, type ParseError } from "jsonc-parser";
 
+import {
+  getWaitingIssueNumbers,
+  hashTriageSource,
+  mergeReviewedSourceHashes,
+  readQueueProgress,
+  type TriageQueueProgress,
+  type TriageQueueStateLike,
+  type TriageRunMode,
+} from "./triage-todo-queue.ts";
+
 type TriageAction = "create" | "append-unclear" | "retriage" | "review-existing" | "skip";
 type CloseReason = "completed" | "not planned" | "duplicate" | "none";
-type RunMode = "dry-run" | "apply";
+type RunMode = TriageRunMode;
 
 interface TriageItem {
   source_text: string;
@@ -25,13 +35,20 @@ interface TriageItem {
 
 interface TriageReport {
   items: TriageItem[];
+  has_more_unreviewed_items: boolean;
+  remaining_count: number;
 }
 
-interface TriageState {
+interface TriageState extends TriageQueueStateLike {
+  version?: number;
   mode: RunMode;
   todo_hash: string;
   issues_hash: string;
   last_run_at: string;
+  reviewed_source_hashes?: string[];
+  has_more_unreviewed_items?: boolean;
+  remaining_count?: number;
+  waiting_issue_numbers?: number[];
 }
 
 interface UnclearIssue {
@@ -195,15 +212,24 @@ function readState(): TriageState | undefined {
   }
 }
 
-function writeState(todoContent: string, issueSnapshot: string): void {
+function writeState(
+  todoContent: string,
+  issueSnapshot: string,
+  queueProgress: TriageQueueProgress,
+): void {
   fs.writeFileSync(
     statePath,
     `${JSON.stringify(
       {
+        version: 2,
         mode,
         todo_hash: hash(todoContent),
         issues_hash: hash(issueSnapshot),
         last_run_at: new Date().toISOString(),
+        reviewed_source_hashes: queueProgress.reviewedSourceHashes,
+        has_more_unreviewed_items: queueProgress.hasMoreUnreviewedItems,
+        remaining_count: queueProgress.remainingCount,
+        waiting_issue_numbers: queueProgress.waitingIssueNumbers,
       } satisfies TriageState,
       null,
       2,
@@ -234,10 +260,32 @@ acquireLock();
 const issueSnapshot = getIssueSnapshot();
 const retriageIssueNumbers = getRetriageIssueNumbers(issueSnapshot);
 const previousState = readState();
+const issueSnapshotItems = readJsonc<IssueSnapshotItem[]>(issueSnapshot, "gh issue list output");
+const queueProgress = readQueueProgress(previousState, mode, force);
+const waitingIssueNumbers = getWaitingIssueNumbers(
+  issueSnapshotItems,
+  queueProgress.waitingIssueNumbers,
+);
+const normalTriageEnabled = force || waitingIssueNumbers.length === 0;
+
+// 前バッチで作成したIssueの判断が終わるまで新しいIssueを増やさず、待機理由と残件をログへ明示する。
+if (!normalTriageEnabled && retriageIssueNumbers.length === 0) {
+  writeState(todo, issueSnapshot, {
+    ...queueProgress,
+    waitingIssueNumbers,
+  });
+  console.log(
+    `[triage-todo] triage paused: #${waitingIssueNumbers.join(", #")} await human priority or information`,
+  );
+  console.log(`[triage-todo] .todo backlog: ${queueProgress.remainingCount} unreviewed items`);
+  process.exit(0);
+}
+
 // dry-runの確認後にapplyへ移る場合は、入力が同じでも実行目的が異なるため再評価する。
-// 同じモードで入力とIssueの状態が変わらない場合だけ、定期実行の重複処理を省略する。
+// 未処理キューが空で、同じモードの入力とIssue状態も変わらない場合だけCodexを省略する。
 if (
   !force &&
+  !queueProgress.hasMoreUnreviewedItems &&
   previousState?.mode === mode &&
   previousState.todo_hash === hash(todo) &&
   previousState.issues_hash === hash(issueSnapshot)
@@ -245,6 +293,12 @@ if (
   console.log("[triage-todo] .todo and GitHub Issues are unchanged; skipping Codex");
   process.exit(0);
 }
+
+const todoLines = todo.split(/\r?\n/);
+const reviewedSourceHashSet = new Set(queueProgress.reviewedSourceHashes);
+const alreadyReviewedSourceTexts = [
+  ...new Set(todoLines.filter((line) => reviewedSourceHashSet.has(hashTriageSource(line)))),
+];
 
 const prompt = `
 You are the read.crx-2 todo triage agent.
@@ -256,6 +310,13 @@ repository or the text supports.
 Return JSON matching scripts/triage-todo.schema.json.
 
 Rules:
+- Normal .todo triage is ${normalTriageEnabled ? "enabled" : "paused while the previous batch awaits human review"}.
+- When normal triage is paused, do not return create, append-unclear, or normal skip items. Only
+  return retriage or review-existing items that require work because their linked Issue changed.
+- When normal triage is enabled, ignore lines listed in <already-reviewed> unless their linked Issue
+  now requires review-existing. Select the next coherent user-problem units from the remaining text.
+- Treat lines beginning with "- [-]" as explicitly deferred or rejected by the user. Do not return
+  them as normal triage items and do not include them in remaining_count.
 - For items without an HTML comment matching "issue: #number", perform normal triage and consider
   create, append-unclear, or skip.
 - For items with an issue marker, inspect the linked Issue only. Never create a new Issue or append
@@ -276,6 +337,10 @@ Rules:
 - Never modify files, create issues, edit issues, change labels, commit, or push.
 - Return at most three items with action=create. Include append-unclear items separately when the
   intent cannot be determined from the text and repository evidence.
+- Include every source line actually reviewed in items, including duplicate or non-actionable lines
+  with action=skip, so unchanged lines are not repeatedly analyzed in later batches.
+- Set has_more_unreviewed_items when normal .todo items remain outside this batch. Set
+  remaining_count to the number of those remaining items, or zero when the backlog is exhausted.
 - Use action=skip for an item that is already represented by an existing issue or is not actionable.
 - Use action=review-existing when an open Issue appears already fixed or no longer appropriate.
   Include existing_issue_numbers and set close_reason to completed or not planned. Do not close it.
@@ -303,6 +368,10 @@ ${todo}
 <needs-retriage>
 ${retriageIssueNumbers.map((issueNumber) => `#${issueNumber}`).join("\n")}
 </needs-retriage>
+
+<already-reviewed>
+${alreadyReviewedSourceTexts.join("\n")}
+</already-reviewed>
 `;
 
 const codexArgs = [
@@ -341,7 +410,12 @@ try {
   process.exit();
 }
 
-const todoLines = todo.split(/\r?\n/);
+const reportHasRemainingItems = report.remaining_count > 0;
+if (report.has_more_unreviewed_items !== reportHasRemainingItems) {
+  fail("triage report backlog fields are inconsistent");
+  process.exit();
+}
+
 const retriageIssueNumberSet = new Set(retriageIssueNumbers);
 const validItems = report.items.filter((item) => {
   if (
@@ -363,10 +437,40 @@ const createItems = validItems.filter((item) => item.action === "create");
 const unclearItems = validItems.filter((item) => item.action === "append-unclear");
 const retriageItems = validItems.filter((item) => item.action === "retriage");
 const reviewItems = validItems.filter((item) => item.action === "review-existing");
+const issueMarkedSourceTexts = new Set(
+  todoLines.filter(
+    (_line, lineIndex) => todoLines[lineIndex + 1]?.includes("<!-- issue:") === true,
+  ),
+);
+const reviewedNormalSourceTexts = normalTriageEnabled
+  ? validItems
+      .filter(
+        (item) =>
+          item.source_text.length > 0 &&
+          item.action !== "retriage" &&
+          item.action !== "review-existing" &&
+          !issueMarkedSourceTexts.has(item.source_text),
+      )
+      .map((item) => item.source_text)
+  : [];
+let nextQueueProgress: TriageQueueProgress = {
+  reviewedSourceHashes: mergeReviewedSourceHashes(
+    queueProgress.reviewedSourceHashes,
+    reviewedNormalSourceTexts,
+  ),
+  hasMoreUnreviewedItems: normalTriageEnabled
+    ? report.has_more_unreviewed_items
+    : queueProgress.hasMoreUnreviewedItems,
+  remainingCount: normalTriageEnabled ? report.remaining_count : queueProgress.remainingCount,
+  waitingIssueNumbers,
+};
 
 console.log(`[triage-todo] report: ${path.relative(root, outputPath)}`);
 console.log(
   `[triage-todo] create=${createItems.length} unclear=${unclearItems.length} retriage=${retriageItems.length} review-existing=${reviewItems.length}`,
+);
+console.log(
+  `[triage-todo] .todo backlog: ${nextQueueProgress.remainingCount} unreviewed items (has-more=${nextQueueProgress.hasMoreUnreviewedItems})`,
 );
 for (const item of reviewItems) {
   console.log(
@@ -375,9 +479,14 @@ for (const item of reviewItems) {
 }
 
 if (!apply) {
-  writeState(todo, getIssueSnapshot());
+  writeState(todo, getIssueSnapshot(), nextQueueProgress);
   console.log("[triage-todo] dry-run only; no Issue or .todo changes were made");
   process.exit(0);
+}
+
+if (!normalTriageEnabled && (createItems.length > 0 || unclearItems.length > 0)) {
+  fail("normal triage items were returned while the previous batch awaits human review");
+  process.exit();
 }
 
 if (createItems.length > 3) {
@@ -446,6 +555,7 @@ function appendTodoMarker(sourceText: string, issueNumber: number): void {
   fs.writeFileSync(todoPath, lines.join("\n"), "utf8");
 }
 
+const createdIssueNumbers: number[] = [];
 for (const item of createItems) {
   if (item.duplicate_issue_numbers.length > 0) {
     console.log(
@@ -472,7 +582,9 @@ for (const item of createItems) {
     fail(`gh issue create returned an unexpected URL: ${issueUrl}`);
     process.exit();
   }
-  appendTodoMarker(item.source_text, Number(match[1]));
+  const issueNumber = Number(match[1]);
+  appendTodoMarker(item.source_text, issueNumber);
+  createdIssueNumbers.push(issueNumber);
   console.log(`[triage-todo] created ${issueUrl}`);
 }
 
@@ -514,4 +626,15 @@ if (unclearItems.length > 0) {
   }
 }
 
-writeState(fs.readFileSync(todoPath, "utf8"), getIssueSnapshot());
+nextQueueProgress = {
+  ...nextQueueProgress,
+  waitingIssueNumbers: createdIssueNumbers.length > 0 ? createdIssueNumbers : waitingIssueNumbers,
+};
+writeState(fs.readFileSync(todoPath, "utf8"), getIssueSnapshot(), nextQueueProgress);
+if (createdIssueNumbers.length > 0) {
+  console.log(
+    `[triage-todo] triage paused until human decisions for #${createdIssueNumbers.join(", #")}`,
+  );
+} else if (nextQueueProgress.hasMoreUnreviewedItems) {
+  console.log("[triage-todo] next .todo batch will run on the next scheduled invocation");
+}
