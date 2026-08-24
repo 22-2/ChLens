@@ -325,6 +325,8 @@ DSL構文と評価器を共有し、ルールの保存先だけを製品ごと�
 
 ### Phase 4: ThreadList 表示資産の分離
 
+実装記録と検証結果は[Phase 4実装記録](./chlens-live-phase4-spike.md)にまとめた。
+
 #### 目的
 
 Chlensのスレ一覧表示・検索・sort・NG・highlightをLiveから再利用できるようにする。
