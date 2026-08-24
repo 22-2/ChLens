@@ -104,6 +104,8 @@ queue が詰まった場合は、速度を不規則に上げるのではなく�
 
 ## 目標構成
 
+画面構成の詳細は[Chlens Live Main UI仕様](./chlens-live-ui-spec.md)で固定する。Mainはタブバー、常時表示URLバー、単一ビューのContentAreaから成り、ThreadListとThreadを同時に表示する2ペインにはしない。
+
 最終的には次の workspace 構成を目標とする。ただし、package は利用箇所が 2 つになった段階で作る。
 
 ```text

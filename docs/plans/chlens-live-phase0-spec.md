@@ -19,6 +19,13 @@ Phase 0では、Chlens Liveの実装を始める前に、既存Chlensで維持�
 - 透明、常に手前、クリック透過、font／speed／opacityのOverlay設定
 - 接続エラー表示、再接続、window geometry保存
 
+### Main画面の構成
+
+- Chlensと同じく、タブバー、常時表示URLバー、ContentAreaを上から配置する。
+- ContentAreaはviewportに収まる1ページ1ビューとし、ThreadList pageではスレ一覧だけ、Thread pageではスレだけを表示する。
+- ThreadListとThreadを同時に表示する2ペイン構成は採用しない。
+- 一覧表はChlensと同じ`SimpleDataTable`を利用する。
+
 ### MVPに含めないもの
 
 - 書き込み、書き込み履歴
@@ -26,7 +33,7 @@ Phase 0では、Chlens Liveの実装を始める前に、既存Chlensで維持�
 - 過去ログのplayback
 - 閲覧履歴、取得済みログ検索
 - ChlensからLiveを開く相互起動
-- お気に入り、板一覧、2ペイン
+- お気に入り、Live独自の板一覧、2ペイン表示
 
 ただし、後続機能を追加できるように、session、history repository、bridge、playback sourceの境界はMVPの設計時点で閉じない。
 
