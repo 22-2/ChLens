@@ -98,6 +98,8 @@ AIがこのファイルを読んで、重複確認・コード調査・GitHub Is
 `src\view\browser\utils\utils.ts`の分割
 `src\view\browser\components\ReplyTreePopup.tsx`の分割
 
+- [ ] high prior 次スレ検索にレス数に応じた並び替え（多いのを上へ、レス数もされてないので表示する）
+
 ai要約機能
 openai互換api
 ローカルモデルも試してみるか🤔
