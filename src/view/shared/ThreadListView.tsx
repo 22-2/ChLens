@@ -2,6 +2,7 @@ import React, { type ReactNode } from "react";
 
 export interface ThreadListViewRow {
   id: string;
+  num?: number;
   title: string;
   resCount: number;
   unreadCount?: number;

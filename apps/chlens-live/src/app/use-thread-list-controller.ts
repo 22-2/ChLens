@@ -65,6 +65,7 @@ export function createThreadListRows(
           : "normal";
     const row: ThreadListViewRow = {
       id: thread.url,
+      num: threads.indexOf(thread) + 1,
       title: thread.title,
       resCount: thread.resCount,
       heat: calcHeat(thread.createdAt, thread.resCount, now),

@@ -743,3 +743,169 @@ button:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* MainはChlensと同じく、shellの中に常に一つのpage viewだけを置く。 */
+.live-browser-shell {
+  display: grid;
+  min-height: 100vh;
+  grid-template-rows: 2.35rem 3rem minmax(0, 1fr);
+  color: #e6e6e6;
+  background: #1c1c1c;
+}
+
+.live-tab-bar {
+  display: flex;
+  min-width: 0;
+  align-items: stretch;
+  gap: 0.15rem;
+  padding: 0.2rem 0.45rem 0;
+  background: #151515;
+  overflow-x: auto;
+}
+
+.live-tab {
+  display: flex;
+  min-width: 9rem;
+  max-width: 18rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border: 0;
+  border-radius: 0.35rem 0.35rem 0 0;
+  padding: 0 0.7rem;
+  color: #9e9e9e;
+  background: #242424;
+  text-align: left;
+}
+
+.live-tab:hover,
+.live-tab--active {
+  color: #f0f0f0;
+  background: #303030;
+}
+
+.live-tab__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-tab__close {
+  flex: 0 0 auto;
+  color: #8e8e8e;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.live-url-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.7rem;
+  border-bottom: 1px solid #3b3b3b;
+  background: #262626;
+}
+
+.live-url-bar__label {
+  color: #a9a9a9;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.live-url-bar input {
+  min-width: 0;
+  flex: 1 1 auto;
+  border: 1px solid #4a4a4a;
+  border-radius: 0.35rem;
+  padding: 0.42rem 0.6rem;
+  color: #eeeeee;
+  background: #171717;
+}
+
+.live-url-bar button {
+  border: 1px solid #555555;
+  border-radius: 0.35rem;
+  padding: 0.4rem 0.65rem;
+  color: #eeeeee;
+  background: #3a3a3a;
+}
+
+.live-url-bar button:hover {
+  background: #4a4a4a;
+}
+
+.live-url-bar__actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.25rem;
+}
+
+.live-url-bar__actions button {
+  font-size: 0.72rem;
+}
+
+.live-content-area {
+  min-height: 0;
+  overflow: auto;
+}
+
+.live-content-area > .thread-list-view,
+.live-content-area > .thread-view {
+  min-height: 100%;
+  border: 0;
+  border-radius: 0;
+  background: #1c1c1c;
+}
+
+.live-content-area .thread-list-view__search {
+  margin: 0.75rem;
+  border-color: #4a4a4a;
+  color: #eeeeee;
+  background: #242424;
+}
+
+.live-content-area .simple-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: #dedede;
+  background: #1c1c1c;
+}
+
+.live-content-area .simple-data-table__th,
+.live-content-area .simple-data-table td {
+  border-bottom: 1px solid #353535;
+  padding: 0.55rem 0.7rem;
+  text-align: left;
+}
+
+.live-content-area .simple-data-table__th {
+  color: #bdbdbd;
+  background: #262626;
+}
+
+.live-content-area .simple-data-table__row:hover {
+  background: #2d2d2d;
+}
+
+.live-content-area .thread-list__title {
+  color: #eeeeee;
+}
+
+.live-content-area .thread-list__label {
+  margin-left: 0.4rem;
+  color: #b7b7b7;
+  font-size: 0.75rem;
+}
+
+.live-content-area .thread-view {
+  max-height: none;
+}
+
+@media (max-width: 900px) {
+  .live-url-bar__actions button {
+    overflow: hidden;
+    max-width: 5rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

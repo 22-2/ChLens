@@ -1,5 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
-import type { BoardThread } from "@chlen/ch-lib";
+import { useEffect, useState, type ReactElement } from "react";
+import {
+  SimpleDataTable,
+  type ColumnDef,
+} from "../../../../src/view/browser/components/SimpleDataTable";
+import { ThreadListView, type ThreadListViewRow } from "../../../../src/view/shared/ThreadListView";
 import {
   DEFAULT_OVERLAY_GEOMETRY,
   liveWindowPlatform,
@@ -10,66 +14,80 @@ import {
   createTauriChLensLiveSource,
   type ChLensLiveSource,
 } from "../live-session/source";
-import { useLiveBoard, useLiveThread } from "./use-live-sessions";
+import { LiveBrowserShell, type LiveTab } from "./LiveBrowserShell";
 import { ThreadView } from "./ThreadView";
+import { useLiveBoard, useLiveThread } from "./use-live-sessions";
 import { useThreadListController } from "./use-thread-list-controller";
-import { ThreadListView } from "../../../../src/view/shared/ThreadListView";
 import "./styles.css";
 
-// Phase 2では実況板を固定URLで開く。板一覧UI（BBSMenu）は後続phaseで追加する。
-// エッヂは5ch.netのliveedgeが404になるため、Eddibbの正規URLを使う。
 const DEFAULT_BOARD_URL = "http://bbs.eddibb.cc/liveedge/";
+const BOARD_TAB_ID = "liveedge-board";
 
 function createDefaultSource(): ChLensLiveSource {
-  // Tauri実行時はCORS回避のためRust側HTTPへ委譲し、ブラウザ実行時は通常fetchを使う。
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window
     ? createTauriChLensLiveSource()
     : createChLensLiveSource();
 }
 
-type Operation = "show" | "hide" | "focus" | "apply" | "save" | "restore" | "click-through";
-
-function describeOperation(operation: Operation): string {
-  switch (operation) {
-    case "show":
-      return "Overlayを表示しました";
-    case "hide":
-      return "Overlayを非表示にしました";
-    case "focus":
-      return "Overlayへfocusしました";
-    case "apply":
-      return "Overlay geometryを適用しました";
-    case "save":
-      return "Overlay geometryを保存しました";
-    case "restore":
-      return "保存済みgeometryを復元しました";
-    case "click-through":
-      return "クリック透過を切り替えました";
-  }
+function errorMessage(error: unknown): string | null {
+  return error == null ? null : error instanceof Error ? error.message : "取得に失敗しました";
 }
 
-export function App() {
+const THREAD_COLUMNS: ColumnDef<ThreadListViewRow>[] = [
+  {
+    key: "num",
+    header: "No.",
+    cellClassName: "thread-list__num",
+    sortable: true,
+    cell: ({ num }) => num ?? "",
+  },
+  {
+    key: "title",
+    header: "タイトル",
+    cellClassName: "thread-list__title",
+    sortable: true,
+    cell: ({ title, label }) => (
+      <>
+        {title}
+        {label && <span className="thread-list__label">{label}</span>}
+      </>
+    ),
+  },
+  {
+    key: "resCount",
+    header: "レス",
+    cellClassName: "thread-list__count",
+    sortable: true,
+    cell: ({ resCount }) => resCount,
+  },
+  {
+    key: "heat",
+    header: "勢い",
+    cellClassName: "thread-list__heat",
+    sortable: true,
+    cell: ({ heat }) => heat?.toFixed(1) ?? "0.0",
+  },
+];
+
+export function App(): ReactElement {
+  const [source] = useState(createDefaultSource);
   const [geometry, setGeometry] = useState<OverlayGeometry>(DEFAULT_OVERLAY_GEOMETRY);
   const [clickThrough, setClickThrough] = useState(true);
-  const [status, setStatus] = useState("Live Session未接続（Phase 1 spike）");
-  const source = useMemo(() => createDefaultSource(), []);
-  const [selectedThread, setSelectedThread] = useState<BoardThread | null>(null);
+  const [address, setAddress] = useState(DEFAULT_BOARD_URL);
+  const [tabs, setTabs] = useState<LiveTab[]>([
+    { id: BOARD_TAB_ID, title: "実況板", page: "threadList", url: DEFAULT_BOARD_URL },
+  ]);
+  const [activeTabId, setActiveTabId] = useState(BOARD_TAB_ID);
+  const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? tabs[0];
+  const selectedThreadUrl = activeTab.page === "thread" ? activeTab.url : null;
   const board = useLiveBoard(DEFAULT_BOARD_URL, { source });
-  const thread = useLiveThread(selectedThread?.url ?? null, { source });
+  const thread = useLiveThread(selectedThreadUrl, { source });
   const threadList = useThreadListController({ threads: board.snapshot?.data ?? [] });
 
-  const selectThread = (next: BoardThread) => {
-    setSelectedThread(next);
-    setStatus(`「${next.title}」を開きました`);
-  };
-
   useEffect(() => {
-    // Start in passthrough mode so a newly opened transparent overlay never steals clicks from
-    // the application underneath before the user intentionally opens its controls.
     void liveWindowPlatform.setOverlayClickThrough(true).catch((error: unknown) => {
       console.error("[Chlens Live] initial overlay click-through setup failed:", error);
     });
-
     void liveWindowPlatform
       .loadOverlayGeometry()
       .then((stored) => {
@@ -80,185 +98,149 @@ export function App() {
       });
   }, []);
 
-  const runOperation = async (
-    operation: Operation,
-    action: () => Promise<void> | Promise<string | undefined>,
-  ) => {
-    try {
-      // Some operations have a valid non-error outcome that is not the usual success message.
-      const result = await action();
-      setStatus(typeof result === "string" ? result : describeOperation(operation));
-    } catch (error) {
-      console.error(`[Chlens Live] overlay operation failed: ${operation}`, error);
-      setStatus(`Overlay操作に失敗しました: ${operation}`);
+  const selectThread = (row: ThreadListViewRow): void => {
+    const threadData = threadList.threadsById.get(row.id);
+    if (!threadData) return;
+    const nextTab: LiveTab = {
+      id: `thread:${threadData.url}`,
+      title: threadData.title,
+      page: "thread",
+      url: threadData.url,
+    };
+    setTabs((current) =>
+      current.some((tab) => tab.id === nextTab.id) ? current : [...current, nextTab],
+    );
+    setActiveTabId(nextTab.id);
+    setAddress(threadData.url);
+  };
+
+  const openAddress = (): void => {
+    const normalized = address.trim();
+    if (!normalized || normalized === DEFAULT_BOARD_URL) {
+      setActiveTabId(BOARD_TAB_ID);
+      setAddress(DEFAULT_BOARD_URL);
+      return;
     }
+    const existing = tabs.find((tab) => tab.url === normalized);
+    if (existing) {
+      setActiveTabId(existing.id);
+      return;
+    }
+    const nextTab: LiveTab = {
+      id: `thread:${normalized}`,
+      title: "実況スレ",
+      page: "thread",
+      url: normalized,
+    };
+    setTabs((current) => [...current, nextTab]);
+    setActiveTabId(nextTab.id);
   };
 
-  const updateGeometry = (key: keyof OverlayGeometry, value: string) => {
-    const parsed = Number(value);
-    if (!Number.isFinite(parsed)) return;
-    setGeometry((current) => ({ ...current, [key]: parsed }));
+  const closeTab = (tabId: string): void => {
+    if (tabId === BOARD_TAB_ID) return;
+    setTabs((current) => current.filter((tab) => tab.id !== tabId));
+    if (activeTabId === tabId) setActiveTabId(BOARD_TAB_ID);
   };
 
-  const showOverlay = () =>
-    runOperation("show", async () => {
-      await liveWindowPlatform.setOverlayGeometry(geometry);
-      await liveWindowPlatform.showOverlay();
+  const runWindowAction = (operation: string, action: () => Promise<void>): void => {
+    // Mainの補助操作はページ遷移を止めないため、失敗を画面へ投げずログへ明示する。
+    void action().catch((error: unknown) => {
+      console.error(`[Chlens Live] window operation failed: ${operation}`, error);
     });
+  };
 
-  const restoreGeometry = () =>
-    runOperation("restore", async () => {
-      const stored = await liveWindowPlatform.loadOverlayGeometry();
-      if (!stored) {
-        return "保存済みgeometryはありません";
-      }
-      setGeometry(stored);
-      await liveWindowPlatform.setOverlayGeometry(stored);
-    });
+  const toolbar = (
+    <>
+      <button
+        type="button"
+        onClick={() => runWindowAction("show-overlay", () => liveWindowPlatform.showOverlay())}
+      >
+        Overlay表示
+      </button>
+      <button
+        type="button"
+        onClick={() => runWindowAction("hide-overlay", () => liveWindowPlatform.hideOverlay())}
+      >
+        Overlay非表示
+      </button>
+      <button
+        type="button"
+        aria-pressed={clickThrough}
+        onClick={() => {
+          const next = !clickThrough;
+          setClickThrough(next);
+          runWindowAction("click-through", () => liveWindowPlatform.setOverlayClickThrough(next));
+        }}
+      >
+        {clickThrough ? "透過中" : "操作中"}
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          runWindowAction("save-geometry", async () => {
+            const current = await liveWindowPlatform.getOverlayGeometry();
+            await liveWindowPlatform.saveOverlayGeometry(current ?? geometry);
+          });
+        }}
+      >
+        位置保存
+      </button>
+    </>
+  );
 
-  const saveCurrentGeometry = () =>
-    runOperation("save", async () => {
-      const current = (await liveWindowPlatform.getOverlayGeometry()) ?? geometry;
-      setGeometry(current);
-      await liveWindowPlatform.saveOverlayGeometry(current);
-    });
-
-  const toggleClickThrough = () =>
-    runOperation("click-through", async () => {
-      const nextClickThrough = !clickThrough;
-      await liveWindowPlatform.setOverlayClickThrough(nextClickThrough);
-      setClickThrough(nextClickThrough);
-    });
+  const listContent = (
+    <SimpleDataTable
+      columns={THREAD_COLUMNS}
+      rows={threadList.rows}
+      getRowKey={({ id }) => id}
+      onRowClick={selectThread}
+      onRowMiddleClick={selectThread}
+      sortColumn={threadList.sortColumn ?? undefined}
+      sortDirection={threadList.sortDirection}
+      onSort={(key) => threadList.sort(key as Parameters<typeof threadList.sort>[0])}
+    />
+  );
 
   return (
-    <main className="live-shell">
-      <header className="live-header">
-        <div>
-          <p className="live-eyebrow">CHLENS LIVE</p>
-          <h1>実況 Main</h1>
-        </div>
-        <span className="live-phase">Phase 4</span>
-      </header>
-
-      <section className="live-card" aria-labelledby="thread-ui-title">
-        <div className="live-card__heading">
-          <div>
-            <p className="live-eyebrow">LIVE READER</p>
-            <h2 id="thread-ui-title">ThreadList / Thread</h2>
-          </div>
-          <output className="live-status">
-            {board.loading
-              ? "板を取得中…"
-              : board.error
-                ? "板の取得に失敗しました"
-                : `${board.snapshot?.data.length ?? 0}件のスレ`}
-          </output>
-        </div>
-        <div className="live-reader">
-          <div className="live-reader__list">
-            <ThreadListView
-              rows={threadList.rows}
-              loading={board.loading}
-              error={board.error ? "スレ一覧の取得に失敗しました" : null}
-              query={threadList.query}
-              onQueryChange={threadList.setQuery}
-              sortColumn={threadList.sortColumn}
-              sortDirection={threadList.sortDirection}
-              onSort={threadList.sort}
-              selectedId={selectedThread?.url ?? null}
-              onSelect={(row) => {
-                const thread = threadList.threadsById.get(row.id);
-                if (thread) selectThread(thread);
-              }}
-            />
-          </div>
-          <div className="live-reader__thread">
-            {selectedThread ? (
-              <ThreadView
-                title={thread.snapshot?.data.title ?? selectedThread.title}
-                posts={thread.snapshot?.data.posts ?? []}
-                loading={thread.loading}
-                error={thread.error}
-                datFall={false}
-                onRefresh={thread.refresh}
-                onStop={thread.stop}
-              />
-            ) : (
-              <div className="live-reader__placeholder">スレを選択してください</div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      <section className="live-card" aria-labelledby="overlay-window-title">
-        <div className="live-card__heading">
-          <div>
-            <p className="live-eyebrow">WINDOW CONTROL</p>
-            <h2 id="overlay-window-title">Overlay window</h2>
-          </div>
-          <output className="live-status" data-testid="live-status">
-            {status}
-          </output>
-        </div>
-
-        <div className="live-actions">
-          <button type="button" onClick={showOverlay}>
-            Overlayを表示
-          </button>
-          <button
-            type="button"
-            onClick={() => runOperation("hide", () => liveWindowPlatform.hideOverlay())}
-          >
-            非表示
-          </button>
-          <button
-            type="button"
-            onClick={() => runOperation("focus", () => liveWindowPlatform.focusOverlay())}
-          >
-            focus
-          </button>
-          <button type="button" aria-pressed={clickThrough} onClick={toggleClickThrough}>
-            {clickThrough ? "クリック透過を解除" : "クリック透過を有効化"}
-          </button>
-        </div>
-
-        <div className="live-geometry" aria-label="Overlay geometry">
-          {(["x", "y", "width", "height"] as const).map((key) => (
-            <label key={key}>
-              <span>{key}</span>
-              <input
-                type="number"
-                value={geometry[key]}
-                onChange={(event) => updateGeometry(key, event.target.value)}
-              />
-            </label>
-          ))}
-        </div>
-
-        <div className="live-actions live-actions--secondary">
-          <button
-            type="button"
-            onClick={() =>
-              runOperation("apply", () => liveWindowPlatform.setOverlayGeometry(geometry))
-            }
-          >
-            geometryを適用
-          </button>
-          <button type="button" onClick={saveCurrentGeometry}>
-            現在位置を保存
-          </button>
-          <button type="button" onClick={restoreGeometry}>
-            保存位置を復元
-          </button>
-        </div>
-      </section>
-
-      <p className="live-note">
-        Overlay本体は起動時からクリック透過です。上部の操作バーは同じ透明window内にあり、透過中もドラッグと
-        最小化・最大化・閉じる操作が可能です。起動直後は位置確認のためバーを表示し、バーから
-        ポインターが離れた後はホバー時だけ表示します。透過中はバーとリサイズ境界だけ一時的に
-        操作可能になります。解除はこのMainから行います。
-      </p>
-    </main>
+    <LiveBrowserShell
+      tabs={tabs}
+      activeTabId={activeTabId}
+      address={address}
+      onAddressChange={setAddress}
+      onAddressSubmit={openAddress}
+      onSelectTab={(tabId) => {
+        const tab = tabs.find((candidate) => candidate.id === tabId);
+        if (!tab) return;
+        setActiveTabId(tabId);
+        setAddress(tab.url);
+      }}
+      onCloseTab={closeTab}
+      toolbar={toolbar}
+    >
+      {activeTab.page === "threadList" ? (
+        <ThreadListView
+          rows={threadList.rows}
+          loading={board.loading}
+          error={errorMessage(board.error)}
+          query={threadList.query}
+          onQueryChange={threadList.setQuery}
+          sortColumn={threadList.sortColumn}
+          sortDirection={threadList.sortDirection}
+          onSort={threadList.sort}
+        >
+          {listContent}
+        </ThreadListView>
+      ) : (
+        <ThreadView
+          title={thread.snapshot?.data.title ?? activeTab.title}
+          posts={thread.snapshot?.data.posts ?? []}
+          loading={thread.loading}
+          error={errorMessage(thread.error)}
+          datFall={false}
+          onRefresh={thread.refresh}
+          onStop={thread.stop}
+        />
+      )}
+    </LiveBrowserShell>
   );
 }
