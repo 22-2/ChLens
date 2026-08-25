@@ -217,7 +217,7 @@ try {
         }
     }
     # Issueブランチ上ではトリアージを行わず、前回失敗した実装だけを再開する。
-    & $pwshLiteral -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File scripts\run-ready-issue.ps1 -IdleBranch $idleBranchLiteral -LogDirectory $implementationLogDirectoryLiteral *>> $logPathLiteral
+    & $pwshLiteral -WindowStyle Hidden -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File scripts\run-ready-issue.ps1 -IdleBranch $idleBranchLiteral -LogDirectory $implementationLogDirectoryLiteral *>> $logPathLiteral
     `$exitCode = `$LASTEXITCODE
     if (`$exitCode -ne 0) {
         throw "ready Issue runner failed with exit code `$exitCode"
@@ -232,9 +232,10 @@ exit `$exitCode
 
 # EncodedCommand avoids fragile nested quoting when a repository path contains spaces or apostrophes.
 $encodedRunnerCommand = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($runnerCommand))
+# WindowStyle Hidden prevents the interactive task from flashing a console window on each interval.
 $action = New-ScheduledTaskAction `
     -Execute $pwshCommand.Path `
-    -Argument "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand $encodedRunnerCommand" `
+    -Argument "-WindowStyle Hidden -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand $encodedRunnerCommand" `
     -WorkingDirectory $resolvedRepositoryPath
 
 # Durationを指定しないrepetition triggerは、Task Scheduler側で無期限に繰り返される。

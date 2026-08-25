@@ -47,7 +47,8 @@ pnpm triage:todo -- --apply --force --todo-path 'V:\repos\fork\read.crx-2\.todo'
 
 ## Windows Task Scheduler
 
-初期運用では30分間隔でローカルタスクを登録できます。タスクは現在のWindowsユーザーで、
+初期運用では30分間隔でローカルタスクを登録できます。タスク本体とready実装runnerは
+`-WindowStyle Hidden`で起動するため、実行時にコンソールウィンドウを表示しません。タスクは現在のWindowsユーザーで、
 ログイン中に実行されます。ローカルでは先に`gh auth login --web`を実行し、GitHub CLIのOS
 keyringを使います。`GITHUB_TOKEN`または`GH_TOKEN`はCIやkeyringを使えない環境向けの代替手段です。
 
