@@ -6,7 +6,11 @@ param(
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$BranchPrefix = "ai/issue-"
+    [string]$BranchPrefix = "ai/issue-",
+
+    # 実装runnerのログ保存先。空欄ならAI worktreeのdebug\implementationを使う。
+    [Parameter()]
+    [string]$LogDirectory = ""
 )
 
 Set-StrictMode -Version Latest
@@ -14,7 +18,11 @@ $ErrorActionPreference = "Stop"
 
 $repositoryRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")).Path
 $startScriptPath = Join-Path $PSScriptRoot "start-ready-issue.ps1"
-$logDirectory = Join-Path $repositoryRoot "debug\implementation"
+$logDirectory = if ([string]::IsNullOrWhiteSpace($LogDirectory)) {
+    Join-Path $repositoryRoot "debug\implementation"
+} else {
+    $LogDirectory
+}
 $logPath = Join-Path $logDirectory "runner.log"
 New-Item -ItemType Directory -Path $logDirectory -Force | Out-Null
 Set-Location -LiteralPath $repositoryRoot

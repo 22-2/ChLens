@@ -70,8 +70,11 @@ function getOptionValue(name: string): string | undefined {
 // これにより、人がLive側で書いた未コミットのコードをAI調査へ混ぜずに.todoを共有できる。
 const todoPathArgument = getOptionValue("--todo-path");
 const todoPath = todoPathArgument ? path.resolve(root, todoPathArgument) : path.join(root, ".todo");
+const outputDirectoryArgument = getOptionValue("--output-dir");
+const outputDir = outputDirectoryArgument
+  ? path.resolve(root, outputDirectoryArgument)
+  : path.join(root, "debug", "triage");
 const schemaPath = path.join(root, "scripts", "triage-todo.schema.json");
-const outputDir = path.join(root, "debug", "triage");
 const outputPath = path.join(outputDir, "todo-triage.json");
 const codexLogPath = path.join(outputDir, "codex.log");
 const statePath = path.join(outputDir, "state.json");
@@ -231,11 +234,12 @@ function writeState(todoContent: string, issueSnapshot: string): void {
 }
 
 if (process.argv.includes("--help")) {
-  console.log("Usage: pnpm triage:todo [--apply] [--force] [--todo-path <path>]");
+  console.log("Usage: pnpm triage:todo [--apply] [--force] [--todo-path <path>] [--output-dir <path>]");
   console.log("  default       Analyze .todo and write a dry-run report");
   console.log("  --apply       Create up to three issues and mark successful items");
   console.log("  --force       Ignore the unchanged-input state and run again");
   console.log("  --todo-path   Read and update .todo at this path instead of the current worktree");
+  console.log("  --output-dir  Write triage reports, state, lock, and logs at this path");
   process.exit(0);
 }
 

@@ -23,6 +23,10 @@ param(
     [Parameter()]
     [string]$TodoBranch = "",
 
+    # scheduler・triage・実装runnerのログを置くリポジトリ。空欄なら正本.todoのリポジトリを使う。
+    [Parameter()]
+    [string]$LogRepositoryPath = "",
+
     # トリアージを繰り返す間隔（分）。5〜1440分の範囲で、既定値は30分。
     [Parameter()]
     [ValidateRange(5, 1440)]
@@ -102,14 +106,26 @@ if ([string]::IsNullOrWhiteSpace($todoBranchInput)) {
     throw "The canonical .todo repository is not on a named branch: $resolvedTodoRepositoryPath"
 }
 
-$logDirectory = Join-Path -Path $resolvedRepositoryPath -ChildPath "debug\triage"
-$logPath = Join-Path -Path $logDirectory -ChildPath "scheduler.log"
+$logRepositoryPathInput = if ([string]::IsNullOrWhiteSpace($LogRepositoryPath)) {
+    $resolvedTodoRepositoryPath
+} else {
+    $LogRepositoryPath
+}
+if (-not [IO.Path]::IsPathRooted($logRepositoryPathInput)) {
+    $logRepositoryPathInput = Join-Path -Path $resolvedRepositoryPath -ChildPath $logRepositoryPathInput
+}
+$resolvedLogRepositoryPath = (Resolve-Path -LiteralPath $logRepositoryPathInput).Path
+$triageLogDirectory = Join-Path -Path $resolvedLogRepositoryPath -ChildPath "debug\triage"
+$implementationLogDirectory = Join-Path -Path $resolvedLogRepositoryPath -ChildPath "debug\implementation"
+$logPath = Join-Path -Path $triageLogDirectory -ChildPath "scheduler.log"
 
 $repositoryLiteral = ConvertTo-PowerShellLiteral $resolvedRepositoryPath
 $pwshLiteral = ConvertTo-PowerShellLiteral $pwshCommand.Path
 $pnpmLiteral = ConvertTo-PowerShellLiteral $pnpmCommand.Path
 $gitLiteral = ConvertTo-PowerShellLiteral $gitCommand.Path
 $logPathLiteral = ConvertTo-PowerShellLiteral $logPath
+$triageLogDirectoryLiteral = ConvertTo-PowerShellLiteral $triageLogDirectory
+$implementationLogDirectoryLiteral = ConvertTo-PowerShellLiteral $implementationLogDirectory
 $idleBranchLiteral = ConvertTo-PowerShellLiteral $IdleBranch
 $todoPathLiteral = ConvertTo-PowerShellLiteral $resolvedTodoPath
 $todoRepositoryLiteral = ConvertTo-PowerShellLiteral $resolvedTodoRepositoryPath
@@ -175,7 +191,7 @@ try {
         throw "canonical .todo worktree has unrelated staged files: `$(`$unexpectedStagedFiles -join ', ')"
     }
         `$exitCode = 0
-        & $pnpmLiteral triage:todo -- --apply --todo-path $todoPathLiteral *>> $logPathLiteral
+        & $pnpmLiteral triage:todo -- --apply --todo-path $todoPathLiteral --output-dir $triageLogDirectoryLiteral *>> $logPathLiteral
         `$exitCode = `$LASTEXITCODE
         if (`$exitCode -ne 0) {
             throw "todo triage failed with exit code `$exitCode"
@@ -204,7 +220,7 @@ try {
         }
     }
     # Issueブランチ上ではトリアージを行わず、前回失敗した実装だけを再開する。
-    & $pwshLiteral -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File scripts\run-ready-issue.ps1 -IdleBranch $idleBranchLiteral *>> $logPathLiteral
+    & $pwshLiteral -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File scripts\run-ready-issue.ps1 -IdleBranch $idleBranchLiteral -LogDirectory $implementationLogDirectoryLiteral *>> $logPathLiteral
     `$exitCode = `$LASTEXITCODE
     if (`$exitCode -ne 0) {
         throw "ready Issue runner failed with exit code `$exitCode"
@@ -258,6 +274,7 @@ if ($PSCmdlet.ShouldProcess($TaskName, "Register or replace scheduled task")) {
     Write-Host "Repository: $resolvedRepositoryPath"
     Write-Host "Canonical todo: $resolvedTodoPath"
     Write-Host "Canonical todo branch: $todoBranchInput"
+    Write-Host "Log repository: $resolvedLogRepositoryPath"
     Write-Host "Interval: every $IntervalMinutes minutes"
     Write-Host "Idle branch: $IdleBranch"
     Write-Host "Log: $logPath"

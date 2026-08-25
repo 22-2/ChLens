@@ -112,8 +112,8 @@
 
 - この改善ループは初期段階では常時運用対象とする。
 - 利用者が正本`.todo`へ追加した後、または実装作業が一区切りついた後にトリアージを実行する。
-- 手動確認はAI worktreeから`pnpm triage:todo -- --todo-path V:\repos\fork\read.crx-2\.todo`、GitHub Issue作成を含む定期実行は`pnpm triage:todo -- --apply --todo-path V:\repos\fork\read.crx-2\.todo`で行う。
-- トリアージは`debug/triage/triage.lock`で同時実行を防ぎ、`.todo`とGitHub Issuesの状態が前回と同じならCodexを起動せず終了する。意図的な再実行には`--force`を付ける。
+- 手動確認はAI worktreeから`pnpm triage:todo -- --todo-path V:\repos\fork\read.crx-2\.todo --output-dir V:\repos\fork\read.crx-2\debug\triage`、GitHub Issue作成を含む定期実行は`pnpm triage:todo -- --apply --todo-path V:\repos\fork\read.crx-2\.todo --output-dir V:\repos\fork\read.crx-2\debug\triage`で行う。
+- トリアージは正本Live worktreeの`V:\repos\fork\read.crx-2\debug\triage\triage.lock`で同時実行を防ぎ、`.todo`とGitHub Issuesの状態が前回と同じならCodexを起動せず終了する。意図的な再実行には`--force`を付ける。
 - ただし、1回の実行で扱う新規Issueは最大3件とし、Issue作成後は人の判断を待つ。
 - 最初の1〜2週間は、Issueの重複、意図不明項目の集約、実装後の体感確認を毎回人が確認する。
 

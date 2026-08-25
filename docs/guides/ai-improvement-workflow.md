@@ -54,18 +54,21 @@ flowchart LR
 
 ```powershell
 # Issueを作らず、調査レポートだけ作る（AI worktreeから正本を読む）
-pnpm triage:todo -- --todo-path 'V:\repos\fork\read.crx-2\.todo'
+pnpm triage:todo -- --todo-path 'V:\repos\fork\read.crx-2\.todo' `
+  --output-dir 'V:\repos\fork\read.crx-2\debug\triage'
 
 # 調査結果をIssue作成まで反映する
-pnpm triage:todo -- --apply --todo-path 'V:\repos\fork\read.crx-2\.todo'
+pnpm triage:todo -- --apply --todo-path 'V:\repos\fork\read.crx-2\.todo' `
+  --output-dir 'V:\repos\fork\read.crx-2\debug\triage'
 ```
 
 新規の`needs-priority` Issueは1回につき最大3件です。意図不明の項目がある場合は、別に集約Issueが1件作成または更新されます。
 結果は次の場所に保存されます。
 
-- `debug/triage/todo-triage.json`: Codexの調査結果
-- `debug/triage/codex.log`: Codexの実行ログ
-- `debug/triage/scheduler.log`: Task Scheduler経由の実行ログ
+- `V:\repos\fork\read.crx-2\debug\triage\todo-triage.json`: Codexの調査結果
+- `V:\repos\fork\read.crx-2\debug\triage\codex.log`: Codexの実行ログ
+- `V:\repos\fork\read.crx-2\debug\triage\scheduler.log`: Task Scheduler経由の実行ログ
+- `V:\repos\fork\read.crx-2\debug\implementation\runner.log`: ready Issue実装runnerの実行ログ
 
 ### 3. Issueを人が判断する
 
@@ -144,7 +147,7 @@ AIは既存Issueを自動closeしません。
 - `needs-priority`も重複確認の対象にする
 - 意図不明の項目は1つのIssueへ集約する
 - `.todo`の原文は変更せず、Issue番号のコメントだけを追記する
-- 同時実行時は`debug/triage/triage.lock`で片方をスキップする
+- 同時実行時は正本Live worktreeの`V:\repos\fork\read.crx-2\debug\triage\triage.lock`で片方をスキップする
 - `.todo`とIssuesが前回から変わらなければCodexを起動しない
 - 強制的に再実行するときだけ`--force`を使う
 - AIが作成したIssueにはAIによる整理であることを明記する
@@ -157,11 +160,13 @@ AIは既存Issueを自動closeしません。
 ```powershell
 # 登録直後にも1回実行する
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\register-triage-task.ps1 `
-  -TodoPath 'V:\repos\fork\read.crx-2\.todo' -TodoBranch 'feature/chlens-live' -RunImmediately
+  -TodoPath 'V:\repos\fork\read.crx-2\.todo' -TodoBranch 'feature/chlens-live' `
+  -LogRepositoryPath 'V:\repos\fork\read.crx-2' -RunImmediately
 
 # 登録内容だけ確認する
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\register-triage-task.ps1 `
-  -TodoPath 'V:\repos\fork\read.crx-2\.todo' -TodoBranch 'feature/chlens-live' -WhatIf
+  -TodoPath 'V:\repos\fork\read.crx-2\.todo' -TodoBranch 'feature/chlens-live' `
+  -LogRepositoryPath 'V:\repos\fork\read.crx-2' -WhatIf
 
 # 削除する
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\unregister-triage-task.ps1

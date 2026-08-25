@@ -15,10 +15,11 @@ candidates, but they are still duplicate candidates and must be searched.
 Run this first. It does not create or edit GitHub Issues and does not modify `.todo`.
 
 ```powershell
-pnpm triage:todo -- --todo-path 'V:\repos\fork\read.crx-2\.todo'
+pnpm triage:todo -- --todo-path 'V:\repos\fork\read.crx-2\.todo' `
+  --output-dir 'V:\repos\fork\read.crx-2\debug\triage'
 ```
 
-The report is written to `debug/triage/todo-triage.json`.
+The report is written to `V:\repos\fork\read.crx-2\debug\triage\todo-triage.json`.
 
 ## Apply
 
@@ -26,7 +27,8 @@ After reviewing the dry-run report, create at most three `needs-priority` Issues
 numbers to `.todo`:
 
 ```powershell
-pnpm triage:todo -- --apply --todo-path 'V:\repos\fork\read.crx-2\.todo'
+pnpm triage:todo -- --apply --todo-path 'V:\repos\fork\read.crx-2\.todo' `
+  --output-dir 'V:\repos\fork\read.crx-2\debug\triage'
 ```
 
 定期実行では、この `--apply` 形式をタスクスケジューラから呼び出します。前回と同じ
@@ -35,12 +37,13 @@ Issueの状態・ラベルが変わった、または前回の解析をもう一
 `--force`を追加してください。
 
 ```powershell
-pnpm triage:todo -- --apply --force --todo-path 'V:\repos\fork\read.crx-2\.todo'
+pnpm triage:todo -- --apply --force --todo-path 'V:\repos\fork\read.crx-2\.todo' `
+  --output-dir 'V:\repos\fork\read.crx-2\debug\triage'
 ```
 
-同じリポジトリで処理が重ならないよう、実行中は`debug/triage/triage.lock`を作成します。
+同じリポジトリで処理が重ならないよう、実行中は正本Live worktreeの`V:\repos\fork\read.crx-2\debug\triage\triage.lock`を作成します。
 異常終了後に残ったロックは、記録されたPIDが動作していなければ次回実行時に回収します。
-入力状態は`debug/triage/state.json`に保存されます。これらはローカル実行用の生成物です。
+入力状態は正本Live worktreeの`V:\repos\fork\read.crx-2\debug\triage\state.json`に保存されます。これらはローカル実行用の生成物です。
 
 ## Windows Task Scheduler
 
@@ -68,14 +71,16 @@ Issue専用ブランチへ切り替えている間は、編集中の変更と運
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\register-triage-task.ps1 `
-  -TodoPath 'V:\repos\fork\read.crx-2\.todo' -TodoBranch 'feature/chlens-live' -RunImmediately
+  -TodoPath 'V:\repos\fork\read.crx-2\.todo' -TodoBranch 'feature/chlens-live' `
+  -LogRepositoryPath 'V:\repos\fork\read.crx-2' -RunImmediately
 ```
 
 登録内容だけを確認する場合は、`-WhatIf`を追加します。
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\register-triage-task.ps1 `
-  -TodoPath 'V:\repos\fork\read.crx-2\.todo' -TodoBranch 'feature/chlens-live' -WhatIf
+  -TodoPath 'V:\repos\fork\read.crx-2\.todo' -TodoBranch 'feature/chlens-live' `
+  -LogRepositoryPath 'V:\repos\fork\read.crx-2' -WhatIf
 ```
 
 間隔を変更する場合は`-IntervalMinutes 60`のように指定します。登録を解除する場合は次を
@@ -85,7 +90,10 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\register-triage-task.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\unregister-triage-task.ps1
 ```
 
-タスクの標準出力・エラーは`debug/triage/scheduler.log`へ追記されます。タスク登録前に、
+タスクの標準出力・エラーは正本Live worktreeの`V:\repos\fork\read.crx-2\debug\triage\scheduler.log`へ追記され、triageの
+レポート・state・lockも同じ`V:\repos\fork\read.crx-2\debug\triage`へ保存されます。実装runnerのログは
+`V:\repos\fork\read.crx-2\debug\implementation\runner.log`へ追記されます。これらはすべてローカル生成物としてignoreされます。
+タスク登録前に、
 GitHub CLIが使う`GITHUB_TOKEN`または`GH_TOKEN`をWindowsのユーザー環境変数として設定してください。
 
 Items whose intent is unclear are collected into one open `[triage] Unclear todo items` Issue with
