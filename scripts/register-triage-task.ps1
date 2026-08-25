@@ -3,7 +3,12 @@ param(
     # タスクスケジューラに登録するタスク名。削除スクリプトでも同じ名前を指定する。
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$TaskName = "ChLens AI Todo Triage",
+    [string]$TaskName = "chlens-ai-todo-triage",
+
+    # 人間用タスクと同じフォルダーに固定し、古いmain worktree向けタスクとの二重実行を防ぐ。
+    [Parameter()]
+    [ValidateNotNullOrEmpty()]
+    [string]$TaskPath = "\my-app\",
 
     # .todoとpackage.jsonが存在するリポジトリのパス。省略時はこのスクリプトの親ディレクトリ。
     [Parameter()]
@@ -179,15 +184,15 @@ $task = New-ScheduledTask `
     -Description "Run local AI triage and implement ready ChLens Issues in the dedicated AI worktree."
 
 if ($PSCmdlet.ShouldProcess($TaskName, "Register or replace scheduled task")) {
-    Register-ScheduledTask -TaskName $TaskName -InputObject $task -Force | Out-Null
-    Write-Host "Registered scheduled task '$TaskName'."
+    Register-ScheduledTask -TaskName $TaskName -TaskPath $TaskPath -InputObject $task -Force | Out-Null
+    Write-Host "Registered scheduled task '$TaskPath$TaskName'."
     Write-Host "Repository: $resolvedRepositoryPath"
     Write-Host "Interval: every $IntervalMinutes minutes"
     Write-Host "Idle branch: $IdleBranch"
     Write-Host "Log: $logPath"
 
     if ($RunImmediately) {
-        Start-ScheduledTask -TaskName $TaskName
-        Write-Host "Started '$TaskName' immediately."
+        Start-ScheduledTask -TaskName $TaskName -TaskPath $TaskPath
+        Write-Host "Started '$TaskPath$TaskName' immediately."
     }
 }

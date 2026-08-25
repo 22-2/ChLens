@@ -147,7 +147,7 @@ AIは既存Issueを自動closeしません。
 - `.todo`とIssuesが前回から変わらなければCodexを起動しない
 - 強制的に再実行するときだけ`--force`を使う
 - AIが作成したIssueにはAIによる整理であることを明記する
-- コード変更、commit、push、Issueの自動closeは行わない
+- triageコマンド自体はコード変更、commit、push、Issueの自動closeを行わない（定期runnerの運用commit・実装pushは別途行う）
 
 ## Windowsでの自動実行
 

@@ -51,9 +51,12 @@ worktreeから登録します。このworktreeはIssueごとの作業ブラン�
 削除しません。`node_modules`も同じworktree内で維持し、lockfileが変わった場合に`vp install`で
 整合させます。別worktreeの`node_modules`を直接共有してはいけません。
 
+登録コマンドはAI専用worktree（通常は`V:\repos\fork\read.crx-2-ai`）で実行してください。
+人が編集するLive用worktreeから登録すると、ready Issueの実装・push処理が動きません。
+
 定期トリアージが`.todo`へIssueマーカーを追加した場合は、AI専用worktreeをcleanに保つため、
-`.todo`だけをローカルコミットします。この自動処理はコミットをpushせず、ソースコードやその他の
-ファイルをstageしません。
+`.todo`だけをコミットし、`automation/ai-workspace`へpushします。ソースコードやその他の
+ファイルはstageしません。
 
 定期トリアージは待機ブランチ`automation/ai-workspace`上でのみ動作します。AI worktreeを
 Issue専用ブランチへ切り替えている間は、編集中の変更と運用コミットを混ぜないため正常終了で
@@ -96,8 +99,9 @@ gh issue close 123 --reason completed
 gh issue close 124 --reason "not planned"
 ```
 
-The command never selects `ready`, changes implementation state, edits source code, commits, or
-pushes. Human approval is still required before implementation.
+手動のtriageコマンド自体は`ready`を選択せず、実装状態やソースコードを変更しません。Issue作成後の
+`.todo`マーカーのcommit・pushはTask Schedulerのラッパーが行い、実装ブランチのcommit・pushは
+ready Issue runnerが行います。実装前の人による承認は引き続き必要です。
 
 Automatically created Issues include an explicit disclosure that the investigation and organization
 were performed by AI and that a human must confirm the content, priority, specification, and
