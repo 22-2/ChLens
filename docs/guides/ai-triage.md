@@ -48,8 +48,8 @@ pnpm triage:todo -- --apply --force --todo-path 'V:\repos\fork\read.crx-2\.todo'
 ## Windows Task Scheduler
 
 初期運用では30分間隔でローカルタスクを登録できます。タスクは現在のWindowsユーザーで、
-ログイン中に実行されます。`GITHUB_TOKEN`または`GH_TOKEN`はタスクの引数へコピーせず、
-ユーザー環境変数から実行時に読み取ります。
+ログイン中に実行されます。ローカルでは先に`gh auth login --web`を実行し、GitHub CLIのOS
+keyringを使います。`GITHUB_TOKEN`または`GH_TOKEN`はCIやkeyringを使えない環境向けの代替手段です。
 
 人が編集中のworktreeと競合させないため、定期トリアージは`develop`ベースの永続的なAI専用
 worktreeから登録します。このworktreeはIssueごとの作業ブランチへ切り替えて再利用し、作業後も
@@ -93,8 +93,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\unregister-triage-task.p
 タスクの標準出力・エラーは正本Live worktreeの`V:\repos\fork\read.crx-2\debug\triage\scheduler.log`へ追記され、triageの
 レポート・state・lockも同じ`V:\repos\fork\read.crx-2\debug\triage`へ保存されます。実装runnerのログは
 `V:\repos\fork\read.crx-2\debug\implementation\runner.log`へ追記されます。これらはすべてローカル生成物としてignoreされます。
-タスク登録前に、
-GitHub CLIが使う`GITHUB_TOKEN`または`GH_TOKEN`をWindowsのユーザー環境変数として設定してください。
+タスク登録前に`gh auth status --hostname github.com`で認証状態を確認してください。keyringが使えない場合だけ、
+タスクを実行する同じWindowsユーザーの環境変数へ`GH_TOKEN`を設定します。
 
 Items whose intent is unclear are collected into one open `[triage] Unclear todo items` Issue with
 the `needs-info` label. A successful run is the only time the command adds an

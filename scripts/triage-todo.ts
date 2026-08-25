@@ -94,12 +94,20 @@ function withAiDisclosure(body: string): string {
   return `${normalizedBody}\n\n${AI_DISCLOSURE}`;
 }
 
-// Codexのサンドボックスからユーザー領域のgh設定を直接読ませないため、
-// GitHub CLIの設定ディレクトリだけをワークスペース内に分離する。
-// 認証トークンはGITHUB_TOKEN環境変数から受け取り、資格情報ファイルはコピーしない。
 const ghConfigDir = path.join(outputDir, "gh-config");
-fs.mkdirSync(ghConfigDir, { recursive: true });
-process.env.GH_CONFIG_DIR = ghConfigDir;
+const hasEnvironmentToken = [
+  process.env.GH_TOKEN,
+  process.env.GITHUB_TOKEN,
+  process.env.GH_ENTERPRISE_TOKEN,
+  process.env.GITHUB_ENTERPRISE_TOKEN,
+].some((value) => Boolean(value?.trim()));
+
+// ローカルではgh auth loginのOS keyringをそのまま使い、資格情報をリポジトリへコピーしない。
+// CIやTask Schedulerで環境変数トークンを使う場合だけ、設定ファイルをworktree内へ分離する。
+if (hasEnvironmentToken) {
+  fs.mkdirSync(ghConfigDir, { recursive: true });
+  process.env.GH_CONFIG_DIR = ghConfigDir;
+}
 
 function run(command: string, args: string[]): string {
   return execFileSync(command, args, {
@@ -340,9 +348,18 @@ const codexArgs = [
   prompt,
 ];
 
+// CodexにもGitHubの調査権限は必要だが、環境変数トークンを使う場合は専用設定ディレクトリへ
+// 分離して、通常のユーザー設定を混ぜない。ローカルkeyring利用時は既定設定を残すことで、
+// gh auth loginの資格情報をCodexからも利用できるようにする。
+const codexEnvironment = { ...process.env };
+if (hasEnvironmentToken) {
+  codexEnvironment.GH_CONFIG_DIR = ghConfigDir;
+}
+
 console.log(`[triage-todo] running ${apply ? "apply" : "dry-run"} analysis`);
 const codex = spawnSync("codex", codexArgs, {
   cwd: root,
+  env: codexEnvironment,
   // 最終JSONは-oで保存するためstdoutへ流さず、stderrはログファイルへ保存する。
   stdio: ["ignore", "ignore", "pipe"],
   shell: false,

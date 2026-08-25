@@ -172,8 +172,10 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\register-triage-task.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\unregister-triage-task.ps1
 ```
 
-GitHub APIへ接続するため、`GITHUB_TOKEN`または`GH_TOKEN`をWindowsのユーザー環境変数に設定します。
-トークンはTask Schedulerの引数やリポジトリへ保存しません。タスクはログイン中の現在ユーザーとして実行されます。
+GitHub APIへ接続するため、ローカルでは`gh auth login --web`でOS keyringへログインし、
+`gh auth status --hostname github.com`で確認します。keyringが使えない場合だけ、タスクを実行する
+同じWindowsユーザーの`GH_TOKEN`または`GITHUB_TOKEN`を利用してください。トークンはTask Schedulerの
+引数やリポジトリへ保存しません。タスクはログイン中の現在ユーザーとして実行されます。
 
 ## 関連ファイル
 

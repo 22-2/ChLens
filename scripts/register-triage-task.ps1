@@ -148,9 +148,6 @@ try {
     if (`$LASTEXITCODE -ne 0) {
         throw "git branch detection failed with exit code `$LASTEXITCODE"
     }
-    if ([string]::IsNullOrWhiteSpace(`$env:GITHUB_TOKEN) -and [string]::IsNullOrWhiteSpace(`$env:GH_TOKEN)) {
-        throw 'GITHUB_TOKEN or GH_TOKEN must be available in the scheduled task user environment.'
-    }
     if (`$currentBranch -eq $idleBranchLiteral) {
         `$todoBranch = (& $gitLiteral -C $todoRepositoryLiteral branch --show-current).Trim()
         if (`$LASTEXITCODE -ne 0 -or `$todoBranch -ne $todoBranchLiteral) {
@@ -254,7 +251,7 @@ $settings = New-ScheduledTaskSettingsSet `
     -MultipleInstances IgnoreNew `
     -ExecutionTimeLimit (New-TimeSpan -Hours 2)
 
-# Interactiveで登録ユーザーの環境変数を利用し、トークンをTask Schedulerの資格情報へ保存しない。
+# Interactiveで登録ユーザーの環境変数またはghのOS keyringを利用し、トークンをTask Schedulerの資格情報へ保存しない。
 $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent().Name
 $principal = New-ScheduledTaskPrincipal `
     -UserId $currentUser `
