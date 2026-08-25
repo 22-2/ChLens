@@ -152,7 +152,19 @@ try {
         throw "could not inspect unpushed commits for canonical .todo branch '`$todoBranch'"
     }
     if (`$todoAheadCount -gt 0) {
-        throw "canonical .todo branch '`$todoBranch' has `$todoAheadCount unpushed commit(s); refusing to push unrelated changes"
+        `$todoUnpushedFiles = @(& $gitLiteral -C $todoRepositoryLiteral diff --name-only "`$todoUpstream..`$todoBranch")
+        if (`$LASTEXITCODE -ne 0) {
+            throw "could not inspect files in unpushed canonical .todo commits"
+        }
+        `$unexpectedUnpushedFiles = @(`$todoUnpushedFiles | Where-Object { `$_ -ne '.todo' })
+        if (`$unexpectedUnpushedFiles.Count -gt 0) {
+            throw "canonical .todo branch has unpushed non-todo changes: `$(`$unexpectedUnpushedFiles -join ', ')"
+        }
+        # 前回のpush失敗で残った.todo専用コミットは、次回のtriage前に再送して処理を継続する。
+        & $gitLiteral -C $todoRepositoryLiteral push origin "HEAD:`$todoBranch" *>> $logPathLiteral
+        if (`$LASTEXITCODE -ne 0) {
+            throw "retry push for canonical .todo failed"
+        }
     }
     `$stagedFiles = @(& $gitLiteral -C $todoRepositoryLiteral diff --cached --name-only)
     if (`$LASTEXITCODE -ne 0) {
