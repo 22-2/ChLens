@@ -61,7 +61,7 @@
 
 ### AI improvement workflow
 
-このリポジトリでは、日常利用中の不満を`.todo`へ散文のまま記録し、AIがGitHub Issueへ整理する。`.todo`への入力者に、原因・優先度・再現手順・Issue形式の記入を要求してはいけない。
+このリポジトリでは、日常利用中の不満を`.todo`へ散文のまま記録し、AIがGitHub Issueへ整理する。正本は人が編集するLive worktree（`V:\repos\fork\read.crx-2\.todo`）に置き、AI worktreeは`--todo-path`で正本を参照する。`.todo`への入力者に、原因・優先度・再現手順・Issue形式の記入を要求してはいけない。
 
 #### Triage rules
 
@@ -99,7 +99,7 @@
 - 実装AIはopenかつ`ready`のIssueを番号の昇順で確認し、番号が最小の1件だけを選ぶ。Issue、AGENTS.md、関連コード、既存テストを確認する。
 - Issue選択とブランチ準備には`pwsh -File scripts/start-ready-issue.ps1`を使い、作業開始時に`ready`を外して`in-progress`を付ける。
 - 定期実行は`pwsh -File scripts/run-ready-issue.ps1`と同じ処理で実装Codexを起動し、成功時だけ`needs-human-test`へ移す。失敗時は同じIssueブランチを保持して次回に再開する。
-- 実装コミットは`needs-human-test`への遷移後にremoteの同名Issueブランチへpushする。`.todo`の運用コミットは`automation/ai-workspace`へpushする。push失敗時はworktreeを戻さず停止する。
+- 実装コミットは`needs-human-test`への遷移後にremoteの同名Issueブランチへpushする。正本`.todo`の運用コミットは正本worktreeの現在ブランチへpushする。push失敗時はworktreeを戻さず停止する。
 - 調査と実装は、人が編集するworktreeではなく、`develop`ベースの永続的なAI専用worktreeで行う。このworktreeは削除せず、Issueごとに専用ブランチへ切り替えて再利用する。
 - AI専用worktreeがdirtyな場合はresetやstashを自動実行せず、既存作業を保護して停止する。
 - Issue範囲外のついで修正をしない。
@@ -111,8 +111,8 @@
 #### Initial operating cadence
 
 - この改善ループは初期段階では常時運用対象とする。
-- 利用者が`.todo`へ追加した後、または実装作業が一区切りついた後にトリアージを実行する。
-- 手動確認は`pnpm triage:todo`、GitHub Issue作成を含む定期実行は`pnpm triage:todo -- --apply`で行う。
+- 利用者が正本`.todo`へ追加した後、または実装作業が一区切りついた後にトリアージを実行する。
+- 手動確認はAI worktreeから`pnpm triage:todo -- --todo-path V:\repos\fork\read.crx-2\.todo`、GitHub Issue作成を含む定期実行は`pnpm triage:todo -- --apply --todo-path V:\repos\fork\read.crx-2\.todo`で行う。
 - トリアージは`debug/triage/triage.lock`で同時実行を防ぎ、`.todo`とGitHub Issuesの状態が前回と同じならCodexを起動せず終了する。意図的な再実行には`--force`を付ける。
 - ただし、1回の実行で扱う新規Issueは最大3件とし、Issue作成後は人の判断を待つ。
 - 最初の1〜2週間は、Issueの重複、意図不明項目の集約、実装後の体感確認を毎回人が確認する。

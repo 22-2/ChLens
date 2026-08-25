@@ -51,7 +51,25 @@ interface IssueSnapshotItem {
 }
 
 const root = process.cwd();
-const todoPath = path.join(root, ".todo");
+
+function getOptionValue(name: string): string | undefined {
+  const index = process.argv.indexOf(name);
+  if (index === -1) return undefined;
+
+  const value = process.argv[index + 1];
+  if (!value || value.startsWith("--")) {
+    throw new Error(`${name} requires a path value`);
+  }
+  if (process.argv.indexOf(name, index + 1) !== -1) {
+    throw new Error(`${name} must be specified at most once`);
+  }
+  return value;
+}
+
+// コード調査はAI worktreeで行い、入力メモだけ別worktreeを正本にできるようにする。
+// これにより、人がLive側で書いた未コミットのコードをAI調査へ混ぜずに.todoを共有できる。
+const todoPathArgument = getOptionValue("--todo-path");
+const todoPath = todoPathArgument ? path.resolve(root, todoPathArgument) : path.join(root, ".todo");
 const schemaPath = path.join(root, "scripts", "triage-todo.schema.json");
 const outputDir = path.join(root, "debug", "triage");
 const outputPath = path.join(outputDir, "todo-triage.json");
@@ -213,15 +231,16 @@ function writeState(todoContent: string, issueSnapshot: string): void {
 }
 
 if (process.argv.includes("--help")) {
-  console.log("Usage: pnpm triage:todo [--apply] [--force]");
+  console.log("Usage: pnpm triage:todo [--apply] [--force] [--todo-path <path>]");
   console.log("  default       Analyze .todo and write a dry-run report");
   console.log("  --apply       Create up to three issues and mark successful items");
   console.log("  --force       Ignore the unchanged-input state and run again");
+  console.log("  --todo-path   Read and update .todo at this path instead of the current worktree");
   process.exit(0);
 }
 
 if (!fs.existsSync(todoPath)) {
-  fail(".todo was not found");
+  fail(`.todo was not found: ${todoPath}`);
   process.exit();
 }
 
@@ -249,7 +268,7 @@ if (
 const prompt = `
 You are the read.crx-2 todo triage agent.
 
-Read the repository instructions, .todo, related source files, tests, and existing GitHub Issues.
+Read the repository instructions, .todo at ${path.relative(root, todoPath) || ".todo"}, related source files, tests, and existing GitHub Issues.
 The user's .todo input is intentionally free-form. Preserve its wording and infer only what the
 repository or the text supports.
 

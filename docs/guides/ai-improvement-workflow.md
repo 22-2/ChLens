@@ -32,7 +32,7 @@ flowchart LR
 
 | 担当     | やること                                                          | やらないこと                             |
 | -------- | ----------------------------------------------------------------- | ---------------------------------------- |
-| 利用者   | `.todo`へ不満を普段の言葉で書く。実装後に実際に試す               | 原因やIssue形式を最初から考え込む        |
+| 利用者   | Live worktreeの正本`.todo`へ不満を普段の言葉で書く。実装後に実際に試す | 原因やIssue形式を最初から考え込む        |
 | 自動処理 | 既存Issueを検索し、コードやテストを調査してIssue案を作る          | コード変更、優先度決定、Issueの自動close |
 | 人       | Issueの重複・内容・優先度・仕様を確認し、実装担当と最終確認を行う | AIの調査結果を無確認で採用する           |
 
@@ -53,11 +53,11 @@ flowchart LR
 定期実行を登録していれば、通常は何もしなくて構いません。手動で確認する場合は次を使います。
 
 ```powershell
-# Issueを作らず、調査レポートだけ作る
-pnpm triage:todo
+# Issueを作らず、調査レポートだけ作る（AI worktreeから正本を読む）
+pnpm triage:todo -- --todo-path 'V:\repos\fork\read.crx-2\.todo'
 
 # 調査結果をIssue作成まで反映する
-pnpm triage:todo -- --apply
+pnpm triage:todo -- --apply --todo-path 'V:\repos\fork\read.crx-2\.todo'
 ```
 
 新規の`needs-priority` Issueは1回につき最大3件です。意図不明の項目がある場合は、別に集約Issueが1件作成または更新されます。
@@ -86,11 +86,12 @@ worktreeがdirtyな場合や同名ブランチが既にある場合は、既存�
 Task Schedulerの定期実行も同じ処理を呼び出します。`ready`があれば最小番号のIssueを自動的に
 claimしてCodexを起動し、実装・検査・コミット・Issueコメントまで行います。成功時は
 `needs-human-test`へ移してIssueブランチをpushしてから待機ブランチへ戻ります。トリアージが
-`.todo`へ追加したIssueマーカーも`automation/ai-workspace`へコミット・pushします。途中失敗時や
+正本`.todo`へ追加したIssueマーカーも正本ブランチへコミット・pushします。途中失敗時や
 push失敗時はIssueブランチを保持し、次回の定期実行で同じIssueを再開します。
 
-`.todo`はAI運用ブランチを正本とし、実装Issueブランチでは編集しません。人が内容を追加する場合も
-AI worktreeの`.todo`へ書き、定期トリアージがマーカー追加後にpushします。
+`.todo`はLive worktreeの正本ファイルとし、AI worktreeや実装Issueブランチのコピーは使用しません。
+人が内容を追加する場合は`V:\repos\fork\read.crx-2\.todo`へ書き、定期トリアージがマーカー追加後に
+正本ブランチへcommit・pushします。
 
 既存Issueへ再現情報や仕様の回答を追記した場合は、`needs-retriage`を付けます。次回の定期実行が本文・コメント・最新コードを再調査し、結果をIssueコメントへ追加します。調査後は、判断可能なら`needs-priority`、まだ情報不足なら`needs-info`へ自動的に戻ります。
 
@@ -155,10 +156,12 @@ AIは既存Issueを自動closeしません。
 
 ```powershell
 # 登録直後にも1回実行する
-pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\register-triage-task.ps1 -RunImmediately
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\register-triage-task.ps1 `
+  -TodoPath 'V:\repos\fork\read.crx-2\.todo' -TodoBranch 'feature/chlens-live' -RunImmediately
 
 # 登録内容だけ確認する
-pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\register-triage-task.ps1 -WhatIf
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\register-triage-task.ps1 `
+  -TodoPath 'V:\repos\fork\read.crx-2\.todo' -TodoBranch 'feature/chlens-live' -WhatIf
 
 # 削除する
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\unregister-triage-task.ps1

@@ -3,7 +3,9 @@
 全体の流れは[AI改善ループの全体像](ai-improvement-workflow.md)を参照してください。
 
 `.todo` is intentionally free-form. The local triage command asks Codex to read the notes, inspect
-the repository, search existing GitHub Issues, and return a validated triage report.
+the repository, search existing GitHub Issues, and return a validated triage report. The canonical
+file is the Live worktree's `V:\repos\fork\read.crx-2\.todo`; run the command from the AI worktree
+and pass that file with `--todo-path`.
 
 The first step is always an open-and-closed Issue check. `needs-priority` Issues are not implementation
 candidates, but they are still duplicate candidates and must be searched.
@@ -13,7 +15,7 @@ candidates, but they are still duplicate candidates and must be searched.
 Run this first. It does not create or edit GitHub Issues and does not modify `.todo`.
 
 ```powershell
-pnpm triage:todo
+pnpm triage:todo -- --todo-path 'V:\repos\fork\read.crx-2\.todo'
 ```
 
 The report is written to `debug/triage/todo-triage.json`.
@@ -24,7 +26,7 @@ After reviewing the dry-run report, create at most three `needs-priority` Issues
 numbers to `.todo`:
 
 ```powershell
-pnpm triage:todo -- --apply
+pnpm triage:todo -- --apply --todo-path 'V:\repos\fork\read.crx-2\.todo'
 ```
 
 定期実行では、この `--apply` 形式をタスクスケジューラから呼び出します。前回と同じ
@@ -33,7 +35,7 @@ Issueの状態・ラベルが変わった、または前回の解析をもう一
 `--force`を追加してください。
 
 ```powershell
-pnpm triage:todo -- --apply --force
+pnpm triage:todo -- --apply --force --todo-path 'V:\repos\fork\read.crx-2\.todo'
 ```
 
 同じリポジトリで処理が重ならないよう、実行中は`debug/triage/triage.lock`を作成します。
@@ -53,23 +55,27 @@ worktreeから登録します。このworktreeはIssueごとの作業ブラン�
 
 登録コマンドはAI専用worktree（通常は`V:\repos\fork\read.crx-2-ai`）で実行してください。
 人が編集するLive用worktreeから登録すると、ready Issueの実装・push処理が動きません。
+登録時に`-TodoPath`を指定し、正本`.todo`を明示します。
 
-定期トリアージが`.todo`へIssueマーカーを追加した場合は、AI専用worktreeをcleanに保つため、
-`.todo`だけをコミットし、`automation/ai-workspace`へpushします。ソースコードやその他の
-ファイルはstageしません。
+定期トリアージが正本`.todo`へIssueマーカーを追加した場合は、正本worktreeで`.todo`だけを
+コミットし、正本worktreeの現在ブランチへpushします。ソースコードやその他のファイルはstage
+しません。正本ブランチに未pushのコードコミットや`.todo`以外のstaged変更がある場合は、誤pushを
+避けるため停止します。
 
 定期トリアージは待機ブランチ`automation/ai-workspace`上でのみ動作します。AI worktreeを
 Issue専用ブランチへ切り替えている間は、編集中の変更と運用コミットを混ぜないため正常終了で
 スキップします。Issue作業が一区切りついたら待機ブランチへ戻すと、次回から調査を再開します。
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\register-triage-task.ps1 -RunImmediately
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\register-triage-task.ps1 `
+  -TodoPath 'V:\repos\fork\read.crx-2\.todo' -TodoBranch 'feature/chlens-live' -RunImmediately
 ```
 
 登録内容だけを確認する場合は、`-WhatIf`を追加します。
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\register-triage-task.ps1 -WhatIf
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\register-triage-task.ps1 `
+  -TodoPath 'V:\repos\fork\read.crx-2\.todo' -TodoBranch 'feature/chlens-live' -WhatIf
 ```
 
 間隔を変更する場合は`-IntervalMinutes 60`のように指定します。登録を解除する場合は次を
