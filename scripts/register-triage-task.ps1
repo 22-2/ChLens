@@ -49,6 +49,10 @@ function ConvertTo-PowerShellLiteral([string]$Value) {
     return "'" + $Value.Replace("'", "''") + "'"
 }
 
+function ConvertTo-WindowsArgument([string]$Value) {
+    return '"' + $Value.Replace('"', '\"') + '"'
+}
+
 $resolvedRepositoryPath = (Resolve-Path -LiteralPath $RepositoryPath).Path
 $defaultTodoPath = Join-Path -Path (Split-Path -Parent $resolvedRepositoryPath) -ChildPath "read.crx-2\.todo"
 $todoPathInput = if ([string]::IsNullOrWhiteSpace($TodoPath)) { $defaultTodoPath } else { $TodoPath }
@@ -74,6 +78,11 @@ if ($null -eq $pwshCommand) {
 }
 if ($null -eq $pwshCommand) {
     throw "PowerShell 7 (pwsh.exe) was not found in PATH."
+}
+
+$conhostCommand = Get-Command conhost.exe -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($null -eq $conhostCommand) {
+    throw "conhost.exe was not found in PATH."
 }
 
 # Get-Command can return every PATH match; select one so PowerShell does not stringify multiple paths as one executable name.
@@ -232,10 +241,10 @@ exit `$exitCode
 
 # EncodedCommand avoids fragile nested quoting when a repository path contains spaces or apostrophes.
 $encodedRunnerCommand = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($runnerCommand))
-# WindowStyle Hidden prevents the interactive task from flashing a console window on each interval.
+# conhost --headless prevents a transient console from being created before PowerShell applies its window style.
 $action = New-ScheduledTaskAction `
-    -Execute $pwshCommand.Path `
-    -Argument "-WindowStyle Hidden -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand $encodedRunnerCommand" `
+    -Execute $conhostCommand.Path `
+    -Argument ("--headless " + (ConvertTo-WindowsArgument $pwshCommand.Path) + " -WindowStyle Hidden -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand $encodedRunnerCommand") `
     -WorkingDirectory $resolvedRepositoryPath
 
 # Durationを指定しないrepetition triggerは、Task Scheduler側で無期限に繰り返される。

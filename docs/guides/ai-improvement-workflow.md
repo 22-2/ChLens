@@ -172,7 +172,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\register-triage-task.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\unregister-triage-task.ps1
 ```
 
-タスク本体とready実装runnerは非表示のPowerShellとして起動するため、定期実行時にコンソールを表示しません。
+タスク本体は`conhost --headless`、ready実装runnerは非表示のPowerShellとして起動するため、定期実行時にコンソールを表示しません。
 GitHub APIへ接続するため、ローカルでは`gh auth login --web`でOS keyringへログインし、
 `gh auth status --hostname github.com`で確認します。keyringが使えない場合だけ、タスクを実行する
 同じWindowsユーザーの`GH_TOKEN`または`GITHUB_TOKEN`を利用してください。トークンはTask Schedulerの
