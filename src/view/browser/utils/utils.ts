@@ -51,7 +51,8 @@ export function formatIdForCopy(id: string | undefined): string {
 
 export function formatResForCopy(res: IRes): string {
   const plainName = stripHtml(res.name);
-  const plainMessage = stripHtml(res.message);
+  // 投稿データ由来の先頭スペースだけを除去し、本文内の意図的なインデントは保持する。
+  const plainMessage = stripHtml(res.message).replace(/^ /, "");
   const formattedId = formatIdForCopy(res.id);
   const idSuffix = formattedId ? ` ${formattedId}` : "";
   return `${res.num} ${plainName}${idSuffix}  ${res.date ?? res.other ?? ""}\n${plainMessage}`;

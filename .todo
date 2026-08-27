@@ -149,6 +149,7 @@ agents.mdに書いてるアーキテクチャも実際のコードより古く�
 
 レスをコピーした時、内容の先頭に変な空白文字が入る
   <!-- issue: #4 -->
+  <!-- ai-status: fixed-awaiting-human-test -->
 
 ## AI運用メモ
 

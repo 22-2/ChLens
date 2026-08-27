@@ -75,6 +75,27 @@ describe("browser utils", () => {
     ).toBe("10 name ID:abc123  date\nmessage");
   });
 
+  it("レス本文の先頭に混入した通常スペースを1文字だけ除去する", () => {
+    expect(
+      formatResForCopy({
+        num: 10,
+        name: "name",
+        mail: "",
+        date: "date",
+        message: " message",
+      }),
+    ).toBe("10 name  date\nmessage");
+    expect(
+      formatResForCopy({
+        num: 11,
+        name: "name",
+        mail: "",
+        date: "date",
+        message: "  indented message",
+      }),
+    ).toBe("11 name  date\n indented message");
+  });
+
   describe("imgur URL変換（リサイズパラメータ付き）", () => {
     it("imgur.com/[id] をサムネイル形式に変換する", () => {
       expect(toViewerImageUrl("https://imgur.com/TestImage")).toBe(
