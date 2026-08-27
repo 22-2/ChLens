@@ -20,12 +20,11 @@
 
 - [ReplaceStrTxt 置換DSL仕様案](specs/replace-str-txt-dsl-spec.md)
 
-### Guides
+### Workflow
 
-開発者や自動化が参照する手順書。
+開発者や自動化が参照する改善ループの計画。実行定義はリポジトリの`.github/workflows/`に置く。
 
-- [AI改善ループの全体像](guides/ai-improvement-workflow.md)
-- [AI todo triageの手順](guides/ai-triage.md)
+- [Agentic Workflows移行ロードマップ](plans/agentic-improvement-loop-migration.md)
 
 ### Archive
 

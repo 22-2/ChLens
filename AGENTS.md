@@ -84,7 +84,7 @@
 - TypeScriptはpnpm/pnpx、Pythonはuv、Vite+の確認は`vp check`と`vp test`を使い、結果・残存リスク・人が試す操作をIssueへ記録する。
 - バグ修正や意図的なコード変更では、コード内に「なぜその実装にしたか」をコメントとして残す。
 - 仕様不明、テスト環境不良、データ損失の恐れ、Issue範囲超過では実装を止め、`question`または`blocked`として人へ戻す。
-- 旧ローカルtriageスクリプト、Task Scheduler、state JSON、ready-issue runner、`pnpm triage:todo`は使用しない。切替完了後に削除する。
+- 旧ローカルtriageスクリプト、Task Scheduler、state JSON、ready-issue runner、`pnpm triage:todo`は使用しない。旧ファイルは移行コミットで撤去し、Task Schedulerは切替完了まで無効状態で保持する。
 
 #### Initial operating cadence
 
@@ -108,4 +108,3 @@ Docs are local at `node_modules/vite-plus/docs` or online at https://viteplus.de
 - [ ] If setup, runtime, or package-manager behavior looks wrong, run `vp env doctor` and include its output when asking for help.
 
 <!--VITE PLUS END-->
-
