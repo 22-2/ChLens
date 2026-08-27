@@ -1,6 +1,6 @@
 import MessageProcessor from "src/core/MessageProcessor";
+import { URL_LIKE_PATTERN, normalizeObfuscatedUrl } from "@chlen/ch-lib";
 import { parseReplyAnchorTargets } from "src/core/reply-index";
-import { URL_LIKE_PATTERN, normalizeObfuscatedUrl } from "src/core/url-utils";
 import type { IRes } from "src/service-container";
 import { isInlineVideoEmbedUrl } from "src/view/browser/utils/external-media";
 
