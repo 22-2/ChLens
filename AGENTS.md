@@ -61,6 +61,23 @@
 - **Pre-commit check:** `pnpm lint` および `pnpm tsc6` を実行し、型エラーやリンターエラーがないことを確認してください。
 - **Issueの言語:** 新規Issueのタイトル、本文、コメントは日本語で統一してください。ラベル名、`[<module_name>]`、Issue検索用の固定識別子など、運用上の機械的な文字列は既存形式を維持します。
 - **コミットメッセージ:** Conventional Commits形式で、type/scopeなどの形式上の識別子は英語のまま、件名と本文は日本語で統一してください。変更の意図が明確になる詳細な説明を含めてください（例: `fix(thread): 自動更新の停止条件を修正`）。
+- **コミットスコープ:** scopeは変更の主な責務を表す英語の固定語彙を使用してください。`AGENTS.md`の構成分類を候補の基準としますが、実際のコード責務に合わせて次の一覧から選んでください。
+  - `browser`: `src/view/browser/` 全般
+  - `thread`: スレッド表示、検索、次スレ機能
+  - `url`: URL解析、正規化、リンク遷移
+  - `media`: 画像、動画、Imgurなどのメディア処理
+  - `copy`: コピー処理
+  - `bookmark`: お気に入り機能
+  - `settings`: 設定画面、設定保存
+  - `write`: 書き込み機能
+  - `popup`: ポップアップ、ペイン
+  - `platform`: Browser/Tauriのプラットフォーム抽象化
+  - `ch-lib`: `packages/ch-lib/` の共有ライブラリ
+  - `workflow`: Issue、todo、自動化などの開発ワークフロー
+  - `architecture`: 設計文書、構成説明
+  - 既存の一覧で表せない全体変更だけは、scopeを省略して構いません。
+  - 複数領域にまたがる変更は、利用者向けの主目的または変更の中心となる責務を1つ選んでください。
+  - Issueのラベル名とscopeは一致させなくても構いません。scope名は小文字で統一してください。
 
 ### AI improvement workflow
 
