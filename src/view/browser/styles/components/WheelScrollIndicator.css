@@ -1,6 +1,13 @@
 .scroll-indicator {
-  position: fixed;
+  /*
+   * ContentAreaへportalされたoverlayなので、viewport基準のfixedではなく
+   * 各ペインのContentAreaを基準にする。これでステータスバーとの重なりを防ぎ、
+   * リサイズや分割ペインでも表示範囲が自動的に追従する。
+   */
+  position: absolute;
   left: 50%;
+  box-sizing: border-box;
+  max-width: calc(100% - var(--sys-space-12));
   transform: translateX(-50%);
   width: min(180px, calc(100vw - 32px));
   padding: var(--sys-space-2);
@@ -41,8 +48,8 @@
   visibility: visible;
 }
 .scroll-indicator.up {
-  top: 70px;
+  top: var(--sys-space-9);
 }
 .scroll-indicator.down {
-  bottom: 20px;
+  bottom: var(--sys-space-9);
 }

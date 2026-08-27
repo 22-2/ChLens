@@ -1,4 +1,5 @@
-import React, { memo } from "react";
+import React, { memo, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import "src/view/browser/styles/components/WheelScrollIndicator.css";
 import { Spinner } from "src/view/browser/ui/Spinner";
 
@@ -8,6 +9,7 @@ interface WheelScrollIndicatorProps {
   threshold: number;
   isCoolingDown?: boolean;
   isLoading?: boolean;
+  portalContainerRef?: RefObject<HTMLElement | null>;
 }
 
 export const WheelScrollIndicator = memo(function WheelScrollIndicator({
@@ -16,13 +18,29 @@ export const WheelScrollIndicator = memo(function WheelScrollIndicator({
   threshold,
   isCoolingDown = false,
   isLoading = false,
+  portalContainerRef,
 }: WheelScrollIndicatorProps): React.ReactElement | null {
   const isBusy = isLoading || isCoolingDown;
-  if (!direction || (!isBusy && count === 0)) return null;
-  const progress = threshold > 0 ? Math.min(1, Math.max(0, count / threshold)) : 0;
+  const shouldRender = Boolean(direction && (isBusy || count !== 0));
+  const indicatorRef = useRef<HTMLDivElement | null>(null);
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
 
-  return (
+  useLayoutEffect(() => {
+    if (!portalContainerRef || !shouldRender) return;
+
+    // ContentAreaはスクロールパネルの外側にあるため、そこをoverlayのhostにする。
+    // 先にrefから探し、テストや将来のDOM変更ではindicator自身からも解決できるようにする。
+    const target = (portalContainerRef.current?.closest(".content-area") ??
+      indicatorRef.current?.closest(".content-area")) as HTMLElement | null;
+    setPortalTarget((previousTarget) => (previousTarget === target ? previousTarget : target));
+  }, [portalContainerRef, shouldRender]);
+
+  if (!shouldRender) return null;
+
+  const progress = threshold > 0 ? Math.min(1, Math.max(0, count / threshold)) : 0;
+  const indicator = (
     <div
+      ref={indicatorRef}
       className={`scroll-indicator ${direction} visible${isBusy ? " loading" : ""}`}
       role="status"
       aria-live="polite"
@@ -43,4 +61,6 @@ export const WheelScrollIndicator = memo(function WheelScrollIndicator({
       )}
     </div>
   );
+
+  return portalContainerRef && portalTarget ? createPortal(indicator, portalTarget) : indicator;
 });

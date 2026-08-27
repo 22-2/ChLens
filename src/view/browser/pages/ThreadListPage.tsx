@@ -1134,7 +1134,11 @@ export const ThreadListPage: React.FC<Props> = ({
       }
       onDoubleClick={handleDoubleClick}
     >
-      <WheelScrollIndicator {...wheelPagination} threshold={WHEEL_THRESHOLD} />
+      <WheelScrollIndicator
+        {...wheelPagination}
+        threshold={WHEEL_THRESHOLD}
+        portalContainerRef={effectiveScrollContainerRef}
+      />
       {error && <div className="thread-list-page__notice">{error}</div>}
       <SimpleDataTable
         columns={THREAD_LIST_COLUMNS}
