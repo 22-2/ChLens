@@ -1,10 +1,10 @@
 import { useEffect, type RefObject } from "react";
-import type { GestureDirection, GesturePoint } from "src/view/browser/utils/utils";
+import type { GestureDirection, GesturePoint } from "src/view/browser/utils/gesture";
 import {
   GESTURE_CONTEXTMENU_SUPPRESS_MS,
   GESTURE_START_THRESHOLD,
   summarizeVerticalGesture,
-} from "src/view/browser/utils/utils";
+} from "src/view/browser/utils/gesture";
 
 export function useMouseGesture(rootRef: RefObject<HTMLDivElement | null>): void {
   useEffect(() => {

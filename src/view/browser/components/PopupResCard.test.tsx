@@ -5,9 +5,9 @@ import { PopupResCard } from "src/view/browser/components/PopupResCard";
 import { NgStatusProvider, useNgStatus } from "src/view/browser/hooks/use-ng-status";
 import { describe, expect, it, vi } from "vite-plus/test";
 
-vi.mock("src/view/browser/utils/utils", async () => {
-  const actual = await vi.importActual<typeof import("src/view/browser/utils/utils")>(
-    "src/view/browser/utils/utils",
+vi.mock("src/view/browser/utils/response-format", async () => {
+  const actual = await vi.importActual<typeof import("src/view/browser/utils/response-format")>(
+    "src/view/browser/utils/response-format",
   );
   return {
     ...actual,
@@ -18,6 +18,15 @@ vi.mock("src/view/browser/utils/utils", async () => {
       messageHtml: "本文",
       isNameAnchor: false,
     }),
+  };
+});
+
+vi.mock("src/view/browser/utils/url-media", async () => {
+  const actual = await vi.importActual<typeof import("src/view/browser/utils/url-media")>(
+    "src/view/browser/utils/url-media",
+  );
+  return {
+    ...actual,
     extractUrlsFromMessage: () => ["https://example.com/image.jpg"],
     toViewerImageUrl: (rawUrl: string) => rawUrl,
   };

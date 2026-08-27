@@ -1,5 +1,5 @@
 import type { ViewerState } from "src/view/browser/hooks/media-viewer-types";
-import { toOriginalImageUrl, toViewerImageUrl } from "src/view/browser/utils/utils";
+import { toOriginalImageUrl, toViewerImageUrl } from "src/view/browser/utils/url-media";
 import { create } from "zustand";
 
 const MIN_VIEWER_SCALE = 0.25;

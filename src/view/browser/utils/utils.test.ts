@@ -12,7 +12,14 @@ import {
 } from "src/view/browser/utils/utils";
 import { describe, expect, it } from "vite-plus/test";
 
-describe("browser utils", () => {
+describe("browser utils compatibility entrypoint", () => {
+  it("責務別モジュールの公開APIを従来のimport先から利用できる", () => {
+    expect(formatIdForCopy("abc123")).toBe("ID:abc123");
+    expect(toViewerImageUrl("https://imgur.com/TestImage")).toBe(
+      "https://i.imgur.com/TestImagem.jpg",
+    );
+  });
+
   it("stripHtml は数値文字参照の絵文字を復元する", () => {
     expect(stripHtml("<span>&#128514;</span><br>&amp;test")).toBe("😂\n&test");
   });

@@ -8,7 +8,7 @@ import {
   POPUP_KEEP_OPEN_TARGET_SELECTOR,
 } from "src/view/browser/hooks/popup-manager/popup-dom";
 import { POPUP_SELECTOR } from "src/view/browser/utils/constants";
-import { getEventTargetElement } from "src/view/browser/utils/utils";
+import { getEventTargetElement } from "src/view/browser/utils/dom";
 
 const POPUP_MOUSELEAVE_SUPPRESS_MS = 250;
 

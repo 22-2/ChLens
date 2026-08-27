@@ -5,11 +5,9 @@ import {
   type ResBodyUrlClickHandler,
   type UrlContextMenuHandler,
 } from "src/view/browser/utils/link-routing";
-import {
-  getEventTargetElement,
-  normalizeIdLinkText,
-  parseAnchorDisplayTargets,
-} from "src/view/browser/utils/utils";
+import { parseAnchorDisplayTargets } from "src/view/browser/utils/anchor";
+import { getEventTargetElement } from "src/view/browser/utils/dom";
+import { normalizeIdLinkText } from "src/view/browser/utils/response-format";
 
 const PRIMARY_MOUSE_BUTTON = 0 as const;
 const MIDDLE_MOUSE_BUTTON = 1 as const;

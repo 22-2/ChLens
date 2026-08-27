@@ -1,5 +1,5 @@
 import { POPUP_ID_ATTRIBUTE, POPUP_SELECTOR } from "src/view/browser/utils/constants";
-import { getEventTargetElement } from "src/view/browser/utils/utils";
+import { getEventTargetElement } from "src/view/browser/utils/dom";
 
 /**
  * popup DOMを見分けるための補助関数。
