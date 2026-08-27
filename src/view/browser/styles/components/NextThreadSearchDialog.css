@@ -102,7 +102,9 @@
 }
 
 .next-thread-search-dialog__candidate-evidence {
-  color: var(--sys-color-accent);
+  /* ダークテーマのaccentは背景上で暗く見えるため、証拠ラベル専用の高コントラスト色を使う。 */
+  color: var(--sys-color-evidence);
+  font-weight: 600;
 }
 
 .next-thread-search-dialog__actions {
