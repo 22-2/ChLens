@@ -62,7 +62,8 @@ BUILD_COPY_DESTINATION=../read-crx-build
 
 ## 貢献ガイド
 
-- PR のタイトル形式: `[<module_name>] <説明>`（例: `[thread] Add filter functionality`）
+- PR のタイトル形式: `[<module_name>] <日本語の説明>`（例: `[thread] フィルター機能を追加`）
+- Issue と PR のタイトル、本文、コメントは日本語で統一する（ラベル名やモジュール名などの固定文字列は除く）
 - `pnpm lint` と `pnpm tsc` を実行して型エラーやリンターエラーがないことを確認してください
 - バグ修正や意図的な実装変更を行う際は、ソース内に「なぜそのようにしたか」の短いコメントを残してください
 
