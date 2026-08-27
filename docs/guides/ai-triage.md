@@ -5,8 +5,8 @@
 `.todo` is intentionally free-form. The local triage command asks Codex to read the notes, inspect
 the repository, search existing GitHub Issues, and return a validated triage report.
 
-The first step is always an open-and-closed Issue check. `needs-priority` Issues are not implementation
-candidates, but they are still duplicate candidates and must be searched.
+The first step is always an open-and-closed Issue check. `needs-priority` and `needs-info` Issues are
+not implementation candidates, but they are still duplicate candidates and must be searched.
 
 ## Dry-run
 
@@ -20,8 +20,9 @@ The report is written to `debug/triage/todo-triage.json`.
 
 ## Apply
 
-After reviewing the dry-run report, create at most three `needs-priority` Issues and append their
-numbers to `.todo`:
+After reviewing the dry-run report, create at most three individual Issues and append their numbers
+to `.todo`. Each new Issue receives `needs-priority` when it is ready for human prioritization, or
+`needs-info` when its intent, specification, or reproduction details still need clarification:
 
 ```powershell
 pnpm triage:todo -- --apply
@@ -66,9 +67,11 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\unregister-triage-task.p
 タスクの標準出力・エラーは`debug/triage/scheduler.log`へ追記されます。タスク登録前に、
 GitHub CLIが使う`GITHUB_TOKEN`または`GH_TOKEN`をWindowsのユーザー環境変数として設定してください。
 
-Items whose intent is unclear are collected into one open `[triage] Unclear todo items` Issue with
-the `needs-info` label. A successful run is the only time the command adds an
-`<!-- issue: #123 -->` marker to `.todo`.
+Every independently understandable `.todo` item gets at most one individual Issue, even when its
+intent is unclear. Such an Issue receives `needs-info` and keeps the original wording plus the
+questions that need a human answer. This keeps unrelated context out of one large aggregate Issue
+and makes each item independently searchable. A successful run is the only time the command adds
+an `<!-- issue: #123 -->` marker to `.todo`.
 
 Items that already contain an `<!-- issue: #123 -->` marker are not converted into new Issues.
 Their linked Issues are still checked for stale, completed, or no-longer-planned status. In that
@@ -84,7 +87,11 @@ gh issue close 124 --reason "not planned"
 ```
 
 The command never selects `ready`, changes implementation state, edits source code, commits, or
-pushes. Human approval is still required before implementation.
+pushes. Human approval is still required before implementation. Implementation status labels are
+managed on the Issue; a PR does not mirror those labels and may use only PR-specific review labels.
+
+Issue and PR titles, bodies, and comments are written in Japanese. Fixed labels, module prefixes,
+and other mechanical identifiers remain unchanged.
 
 Automatically created Issues include an explicit disclosure that the investigation and organization
 were performed by AI and that a human must confirm the content, priority, specification, and

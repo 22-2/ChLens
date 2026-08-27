@@ -10,11 +10,13 @@ flowchart LR
     A[利用者が .todo に散文でメモ] --> B[Task Scheduler が定期実行]
     B --> C[TypeScript が .todo と既存Issueを確認]
     C --> D[Codex が調査結果を作成]
-    D --> E{意図を判断できるか}
-    E -->|明確| F[needs-priority Issueを作成]
-    E -->|不明| G[needs-info集約Issueへ追記]
+    D --> E{情報は十分か}
+    E -->|十分| F[needs-priority 個別Issueを作成]
+    E -->|不足| G[needs-info 個別Issueを作成]
     F --> H[人が優先度・仕様を確認]
-    G --> H
+    G --> G2[人が情報を補足]
+    G2 --> G3[needs-retriageを付ける]
+    G3 --> D
     H --> I{実装するか}
     I -->|保留| J[needs-priorityのまま待つ]
     I -->|実装する| K[readyにして実装]
@@ -60,7 +62,7 @@ pnpm triage:todo
 pnpm triage:todo -- --apply
 ```
 
-新規の`needs-priority` Issueは1回につき最大3件です。意図不明の項目がある場合は、別に集約Issueが1件作成または更新されます。
+新規Issueは1回につき最大3件です。`.todo`の各項目は、情報不足でも集約せず個別Issueとして作成され、必要に応じて`needs-info`が付きます。
 結果は次の場所に保存されます。
 
 - `debug/triage/todo-triage.json`: Codexの調査結果
@@ -69,13 +71,13 @@ pnpm triage:todo -- --apply
 
 ### 3. Issueを人が判断する
 
-`needs-priority`は「調査済みだが、まだ人が優先度を決めていない」状態です。
+`needs-priority`は「調査済みだが、まだ人が優先度を決めていない」状態です。`needs-info`のIssueは、
+意図・仕様・再現情報が足りないため、追加情報が揃うまで実装候補にしません。
 実装してよいと判断したIssueだけを`ready`にします。
 
 既存Issueへ再現情報や仕様の回答を追記した場合は、`needs-retriage`を付けます。次回の定期実行が本文・コメント・最新コードを再調査し、結果をIssueコメントへ追加します。調査後は、判断可能なら`needs-priority`、まだ情報不足なら`needs-info`へ自動的に戻ります。
 
-意図不明のメモは、個別Issueを増やさず`[triage] Unclear todo items`へ集約されます。
-質問に答えられる場合は、そのIssueへコメントしてください。
+意図・仕様・再現情報が不足するメモも、元の項目ごとに個別Issueへ記録されます。`needs-info`のIssueへ質問の回答や追加情報をコメントしてください。
 
 ## Issueの進み方
 
@@ -120,8 +122,9 @@ AIは既存Issueを自動closeしません。
 ## 自動処理の安全策
 
 - 最初にopen/closed両方の既存Issueを確認し、重複作成を避ける
-- `needs-priority`も重複確認の対象にする
-- 意図不明の項目は1つのIssueへ集約する
+- `needs-priority`と`needs-info`を重複確認の対象にする
+- 情報不足の項目も元のtodo項目ごとに個別Issueへ記録し、`needs-info`で保留する
+- 1つのtodo項目から複数の解釈やIssueを作らない
 - `.todo`の原文は変更せず、Issue番号のコメントだけを追記する
 - 同時実行時は`debug/triage/triage.lock`で片方をスキップする
 - `.todo`とIssuesが前回から変わらなければCodexを起動しない
