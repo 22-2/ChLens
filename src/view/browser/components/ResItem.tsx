@@ -55,11 +55,18 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
           ? " res__rep--warm"
           : " res__rep--link"
     }`;
+    // 状態フラグが重なるレスでも表示色が揺れないよう、優先順位をここで一度だけ解決する。
+    // NGは一時解除中でも最も強い注意状態として残し、次に自分、最後に自分宛て返信を採用する。
+    // 既存の個別フラグ用クラスは互換性のため残し、色と行インジケーターは解決済みクラスで統一する。
+    const responseState = isNgMatched ? "ng" : isOwn ? "own" : isReplyToOwn ? "reply-to-own" : null;
+    const responseStateClassName = responseState ? `res--state-${responseState}` : "";
+    const nameStateClassName = responseState ? `res__name--state-${responseState}` : "";
     const articleClassName = [
       "res",
       miniAa ? "res--aa" : "",
       isOwn ? "res--own" : "",
       isReplyToOwn ? "res--reply-to-own" : "",
+      responseStateClassName,
     ]
       .filter(Boolean)
       .join(" ");
@@ -67,6 +74,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
       "res__name",
       isOwn ? "res__name--own" : "",
       isReplyToOwn ? "res__name--reply-to-own" : "",
+      nameStateClassName,
     ]
       .filter(Boolean)
       .join(" ");
@@ -75,7 +83,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
       return (
         <article
           data-res-num={res.num}
-          className="res res--ng-placeholder"
+          className={`res res--ng-placeholder${responseStateClassName ? ` ${responseStateClassName}` : ""}`}
           role="button"
           aria-label={`レス${res.num}の内容を表示`}
           tabIndex={0}
