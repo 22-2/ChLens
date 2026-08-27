@@ -60,46 +60,37 @@
 
 ### AI improvement workflow
 
-このリポジトリでは、日常利用中の不満を`.todo`へ散文のまま記録し、AIがGitHub Issueへ整理する。`.todo`への入力者に、原因・優先度・再現手順・Issue形式の記入を要求してはいけない。
+日常利用中の不満は、原因・優先度・再現手順を整理せず`.todo`へ散文で追記する。入力者にIssue形式を要求してはいけない。
 
-#### Triage rules
+運用の正本は、GitHub Agentic Workflowsの次の2本とする。
 
-- `.todo`を読み、未処理の不満を利用者の問題単位へ整理する。
-- 既存のGitHub Issueをタイトル、本文、関連語で検索し、重複Issueを作らない。
-- 関連コード、既存テスト、画面構成を読み、Issueには根拠となるファイルと処理を記録する。
-- 症状、期待する挙動、再現条件、原因候補、修正案、完了条件、リスクをIssue本文へ整理する。
-- コードから判断できない仕様や、原文から意図を読み取れない項目を推測しない。
-- 意図不明の項目は個別Issueを乱立させず、`[triage] Unclear todo items`という集約Issueを検索して追記する。集約Issueがなければ1件だけ作成し、`needs-info`を付ける。
-- 新規Issueを作成する前に、同じ集約Issueまたは関連Issueがないか必ず確認する。
-- 1回のトリアージで作成する新規Issueは最大3件とし、残りは次回へ回す。
-- トリアージ工程ではコードを変更しない。優先度、採用案、最終的な使い心地を決めない。
-- Issue化したら、元の`.todo`項目の近くに`<!-- issue: #123 -->`だけを追記する。原文の不満を書き換えない。
+- `.github/workflows/todo-triage.md`: OpenAI Codexで`.todo`を調査し、重複確認後に最大3件のIssue案をstaged/safe outputs経由で作成する。通常は日次・`.todo`更新時・手動実行、`needs-retriage`ラベルで既存Issueを再調査する。
+- `.github/workflows/ready-issue.md`: 人が`ready`を付けたIssueを1件だけ実装し、検証済みのDraft PRを作成する。マージ、クローズ、リリース、デプロイは行わない。
 
-#### Issue state rules
+どちらもエージェント本体は読み取り専用で、GitHubへの変更は宣言済みsafe outputsだけを使う。`.todo`は追記用の入力Inboxとして残し、Issue番号や状態を書き戻さない。既存Issue、コメント、クローズ履歴、既存の`<!-- issue: #123 -->`は移行履歴として保持する。新規Issueは原文のSource節とgh-aw自動マーカーで`.todo`との対応を残し、継続状態はRepo Memoryの`memory/todo-triage`ブランチへ小さく記録する。
 
-- 調査済みで人の優先度判断待ちは`needs-priority`。
-- 仕様や再現情報が不足するものは`needs-info`。
-- 人が実装してよいと判断したものだけが`ready`。
-- `ready`以外のIssueを実装対象にしない。
-- 実装開始時に`in-progress`、実装と自動確認の完了後に`needs-human-test`へ変更する。
-- 人が実際に操作して満足した場合だけ`done`にする。
-- 仕様不明、テスト環境不良、データ損失の恐れ、Issue範囲超過では停止して`blocked`または`needs-info`にする。
+#### Issue and label rules
+
+- Issue作成前にopen/closedの両方をタイトル、本文、URL、関連語、コード根拠で確認し、重複を作らない。
+- 症状、期待動作、観察条件、コード根拠、原因候補、修正案、完了条件、リスクをIssue本文へ整理する。判断できない仕様や再現情報は推測しない。
+- Issueの種類にはGitHub標準の`bug`、`enhancement`、`documentation`、`question`を優先する。`needs-info`は新規Issueに使わず、情報不足は`question`とする。
+- `needs-priority`、`ready`、`needs-retriage`、`needs-human-test`、`blocked`は、Projectsへの状態移行が完了するまでの運用制御用として残す。既存の`review-existing`は人が`duplicate`、`invalid`、`wontfix`などへ判断するまで閉じない。
+- 調査済みで優先度判断待ちは`needs-priority`、人が実装を承認したものだけが`ready`、自動確認済みで操作確認待ちは`needs-human-test`とする。IssueのクローズとProjectsのDone移動は人の確認後に行う。
 
 #### Implementation rules
 
-- 実装AIは`ready`のIssueを1件だけ選び、Issue、AGENTS.md、関連コード、既存テストを確認する。
-- 専用ブランチまたはworktreeで作業し、Issue範囲外のついで修正をしない。
-- 自動テスト、静的解析、必要な画面確認を実行し、結果・残存リスク・人が試す操作をIssueへ記録する。
+- 実装対象は`ready`のIssueを1件だけとし、Issue、AGENTS.md、関連コード、既存テストを確認してから専用ブランチまたはworktreeで作業する。
+- Issue範囲外のついで修正、依存更新、workflow変更、lockfile変更をしない。
+- TypeScriptはpnpm/pnpx、Pythonはuv、Vite+の確認は`vp check`と`vp test`を使い、結果・残存リスク・人が試す操作をIssueへ記録する。
 - バグ修正や意図的なコード変更では、コード内に「なぜその実装にしたか」をコメントとして残す。
-- 実装後の不満が元のIssueの完了条件に関するものなら、そのIssueへコメントする。別問題なら`.todo`へ新しい散文として追加する。
-- 本番デプロイ、削除、課金、権限変更を自動実行しない。
+- 仕様不明、テスト環境不良、データ損失の恐れ、Issue範囲超過では実装を止め、`question`または`blocked`として人へ戻す。
+- 旧ローカルtriageスクリプト、Task Scheduler、state JSON、ready-issue runner、`pnpm triage:todo`は使用しない。切替完了後に削除する。
 
 #### Initial operating cadence
 
-- この改善ループは初期段階では常時運用対象とする。
-- 利用者が`.todo`へ追加した後、または実装作業が一区切りついた後にトリアージを実行する。
-- ただし、1回の実行で扱う新規Issueは最大3件とし、Issue作成後は人の判断を待つ。
-- 最初の1〜2週間は、Issueの重複、意図不明項目の集約、実装後の体感確認を毎回人が確認する。
+- 移行中はsafe outputsをstagedにして、生成されるIssue、コメント、ラベル、Draft PRの内容を人が確認する。
+- 切替後は`.todo`更新時または日次でトリアージし、1回の新規Issueは最大3件とする。同workflowが作成した`needs-priority` Issueが人の判断待ちの間は追加作成しない。
+- 最初の1〜2週間は、重複、意図不明項目の集約、Draft PRの自動確認、人による操作確認を毎回確認する。
 
 <!--VITE PLUS START-->
 
