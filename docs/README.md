@@ -22,9 +22,11 @@
 
 ### Workflow
 
-開発者や自動化が参照する改善ループの計画。実行定義はリポジトリの`.github/workflows/`に置く。
+開発者やCodex Scheduled Taskが参照する改善ループの計画と実行手順。
 
-- [Agentic Workflows移行ロードマップ](plans/agentic-improvement-loop-migration.md)
+- [Agentic改善ループ移行ロードマップ](plans/agentic-improvement-loop-migration.md)
+- [`.todo`トリアージ](workflows/codex-todo-triage.md)
+- [`ready` Issue実装](workflows/codex-ready-issue.md)
 
 ### Archive
 

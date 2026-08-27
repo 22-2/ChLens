@@ -68,7 +68,7 @@ BUILD_COPY_DESTINATION=../read-crx-build
 
 詳しい開発ルールやコントリビュート手順はプロジェクトの CONTRIBUTING.md（存在する場合）を参照してください。
 
-AIによる`.todo`整理からGitHub Issue、実装、確認までの流れは、[Agentic Workflows移行ロードマップ](docs/plans/agentic-improvement-loop-migration.md)と`AGENTS.md`を参照してください。
+AIによる`.todo`整理からGitHub Issue、実装、確認までの流れは、[ChatGPT Codex改善ループ移行ロードマップ](docs/plans/agentic-improvement-loop-migration.md)、[トリアージ手順](docs/workflows/codex-todo-triage.md)、[Issue実装手順](docs/workflows/codex-ready-issue.md)、`AGENTS.md`を参照してください。
 
 ## 謝辞
 

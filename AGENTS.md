@@ -62,12 +62,14 @@
 
 日常利用中の不満は、原因・優先度・再現手順を整理せず`.todo`へ散文で追記する。入力者にIssue形式を要求してはいけない。
 
-運用の正本は、GitHub Agentic Workflowsの次の2本とする。
+運用の正本は、ChatGPTにログインしたOpenAI CodexのScheduled Taskへ登録する次の2つのプロンプトとする。
 
-- `.github/workflows/todo-triage.md`: OpenAI Codexで`.todo`を調査し、重複確認後に最大3件のIssue案をstaged/safe outputs経由で作成する。通常は日次・`.todo`更新時・手動実行、`needs-retriage`ラベルで既存Issueを再調査する。
-- `.github/workflows/ready-issue.md`: 人が`ready`を付けたIssueを1件だけ実装し、検証済みのDraft PRを作成する。マージ、クローズ、リリース、デプロイは行わない。
+- `docs/workflows/codex-todo-triage.md`: `.todo`と既存Issueを調査し、重複確認後に最大3件のIssueを作成する。通常は日次または手動で実行し、`needs-retriage`は対象Issueだけを再調査する。
+- `docs/workflows/codex-ready-issue.md`: 人が`ready`を付けたIssueを1件だけ実装し、検証済みのDraft PRを作成する。マージ、クローズ、リリース、デプロイは行わない。
 
-どちらもエージェント本体は読み取り専用で、GitHubへの変更は宣言済みsafe outputsだけを使う。`.todo`は追記用の入力Inboxとして残し、Issue番号や状態を書き戻さない。既存Issue、コメント、クローズ履歴、既存の`<!-- issue: #123 -->`は移行履歴として保持する。新規Issueは原文のSource節とgh-aw自動マーカーで`.todo`との対応を残し、継続状態はRepo Memoryの`memory/todo-triage`ブランチへ小さく記録する。
+このループはChatGPT PlusのCodex利用枠と接続済みGitHubを使い、OpenAI API PlatformのAPIキーや従量課金を使わない。ローカルの`.todo`を扱うScheduled TaskはCodexデスクトップでこのリポジトリの専用worktreeを選び、実行中はアプリとPCを起動したままにする。Web上のTaskはローカルフォルダを保持しないため、GitHub接続から取得できる情報だけで動かす。
+
+`.todo`は自由記述の入力Inboxとして残し、原文を書き換えない。既存Issue、コメント、クローズ履歴、既存の`<!-- issue: #123 -->`は移行履歴として保持する。新規Issueには原文のSource節と関連情報を残し、次回実行時はSource節、タイトル、関連語で重複確認する。Scheduled TaskがGitHub接続を利用できない場合は、推測やローカルの代替認証をせず、人へ報告して終了する。
 
 #### Issue and label rules
 
@@ -84,12 +86,12 @@
 - TypeScriptはpnpm/pnpx、Pythonはuv、Vite+の確認は`vp check`と`vp test`を使い、結果・残存リスク・人が試す操作をIssueへ記録する。
 - バグ修正や意図的なコード変更では、コード内に「なぜその実装にしたか」をコメントとして残す。
 - 仕様不明、テスト環境不良、データ損失の恐れ、Issue範囲超過では実装を止め、`question`または`blocked`として人へ戻す。
-- 旧ローカルtriageスクリプト、Task Scheduler、state JSON、ready-issue runner、`pnpm triage:todo`は使用しない。旧ファイルは移行コミットで撤去し、Task Schedulerは切替完了まで無効状態で保持する。
+- 旧ローカルtriageスクリプト、Task Scheduler、state JSON、ready-issue runner、`pnpm triage:todo`、GitHub Agentic Workflows、`CODEX_API_KEY`、`OPENAI_API_KEY`は使用しない。旧ファイルは移行コミットで撤去し、旧Task Schedulerは新Scheduled Taskの安定稼働を確認するまで無効状態で保持する。
 
 #### Initial operating cadence
 
-- 移行中はsafe outputsをstagedにして、生成されるIssue、コメント、ラベル、Draft PRの内容を人が確認する。
-- 切替後は`.todo`更新時または日次でトリアージし、1回の新規Issueは最大3件とする。同workflowが作成した`needs-priority` Issueが人の判断待ちの間は追加作成しない。
+- 移行中はScheduled Taskを最初の1〜2回は手動起動または短い間隔で確認し、生成されるIssue、コメント、ラベル、Draft PRの内容を人が確認する。
+- 切替後は日次のトリアージScheduled Taskを基本とし、1回の新規Issueは最大3件とする。直前の実行で作成された`needs-priority` Issueが人の判断待ちの間は追加作成しない。
 - 最初の1〜2週間は、重複、意図不明項目の集約、Draft PRの自動確認、人による操作確認を毎回確認する。
 
 <!--VITE PLUS START-->
