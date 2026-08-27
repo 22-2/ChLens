@@ -1,6 +1,6 @@
 import type { IRes } from "src/service-container/interfaces";
 import type { ThreadSearchTarget } from "src/view/browser/types";
-import { stripHtml } from "src/view/browser/utils/utils";
+import { stripHtml } from "src/view/browser/utils/response-format";
 
 // 変更理由: 検索対象ごとの判定をUIやデータ取得処理から分離し、対象の追加・変更時に
 // 「すべて」が本文・名前・IDを含む契約を一つのテスト可能な処理で維持する。

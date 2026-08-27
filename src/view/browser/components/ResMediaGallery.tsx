@@ -9,7 +9,7 @@ import {
   type ExternalVideoEmbed,
 } from "src/view/browser/utils/external-media";
 import type { UrlClickHandler } from "src/view/browser/utils/link-routing";
-import { toViewerImageUrl } from "src/view/browser/utils/utils";
+import { toViewerImageUrl } from "src/view/browser/utils/url-media";
 
 interface ResMediaGalleryProps {
   urls: string[];

@@ -61,8 +61,8 @@ vi.mock("src/view/browser/utils/legacy-app", () => ({
   getLegacyWriteHistoryService: () => null,
 }));
 
-vi.mock("src/view/browser/utils/utils", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("src/view/browser/utils/utils")>();
+vi.mock("src/view/browser/utils/clipboard", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("src/view/browser/utils/clipboard")>();
   return { ...actual, copyText: mocks.copyText };
 });
 

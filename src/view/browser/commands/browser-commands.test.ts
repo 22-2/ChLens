@@ -37,8 +37,8 @@ vi.mock("src/core/BoardTitleSolver.js", () => ({
   askByUrl: askBoardTitleByUrlMock,
 }));
 
-vi.mock("src/view/browser/utils/utils", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("src/view/browser/utils/utils")>();
+vi.mock("src/view/browser/utils/clipboard", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("src/view/browser/utils/clipboard")>();
   return { ...actual, copyText: copyTextMock };
 });
 

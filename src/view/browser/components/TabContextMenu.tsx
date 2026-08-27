@@ -16,7 +16,7 @@ import type { Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
 import { ContextMenu, ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
-import { copyText } from "src/view/browser/utils/utils";
+import { copyText } from "src/view/browser/utils/clipboard";
 // `app.bookmark` はグローバルで提供されるサービス
 
 interface MenuPosition {

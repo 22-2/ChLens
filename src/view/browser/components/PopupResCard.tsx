@@ -8,7 +8,8 @@ import { getIdHeatColor } from "src/view/browser/utils/id-heat";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
 import { getReplyHeatLevel } from "src/view/browser/utils/reply-heat";
 import { useImgurAlbumMedia } from "src/view/browser/utils/imgur-album";
-import { decodeResponseHtml, extractUrlsFromMessage } from "src/view/browser/utils/utils";
+import { decodeResponseHtml } from "src/view/browser/utils/response-format";
+import { extractUrlsFromMessage } from "src/view/browser/utils/url-media";
 
 export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
   ({

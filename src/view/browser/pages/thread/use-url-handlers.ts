@@ -10,7 +10,8 @@ import {
   RESPECT_DEFAULT_EXTERNAL,
 } from "src/view/browser/utils/link-routing";
 import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
-import { copyText, toViewerImageUrl } from "src/view/browser/utils/utils";
+import { copyText } from "src/view/browser/utils/clipboard";
+import { toViewerImageUrl } from "src/view/browser/utils/url-media";
 
 interface UseUrlHandlersParams {
   threadUrl: string;
