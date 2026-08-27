@@ -18,7 +18,9 @@ export function toCanonicalRes(res: ThreadRes, number: number): IRes {
     date: metadata.date,
     message: res.message,
     other: res.other,
-    id: metadata.id,
+    // HTML形式では属性から直接抽出したIDを優先し、旧dat形式では従来どおり
+    // other内のメタデータから復元する。形式ごとの解析差を表示側へ漏らさない。
+    id: res.id ?? metadata.id,
     slip: metadata.slip,
     trip: metadata.trip,
     be,
@@ -45,6 +47,7 @@ export function fromCanonicalThread(thread: IThread, expired = false): ParsedThr
       mail: post.mail,
       message: post.message,
       other: post.other ?? post.date,
+      ...(post.id ? { id: post.id } : {}),
     })),
     ...(expired ? { expired: true } : {}),
   };
