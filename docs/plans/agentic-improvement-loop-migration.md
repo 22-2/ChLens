@@ -41,9 +41,11 @@ OpenAI Codexは`CODEX_API_KEY`または`OPENAI_API_KEY`をGitHub Actions Secret�
 - [ ] `develop`へ最新の`.todo`を同期し、gh-awとOpenAI Codexの認証を設定する
 - [ ] staged modeでトリアージと既存Issue引き継ぎを検証する
 - [ ] `ready`からDraft PRまでの実装ワークフローを検証する
-- [ ] 標準ラベルとProjectsへ状態を移し、2本のワークフローを有効化する
+- [x] GitHub標準9種のラベルを復元し、#4の`needs-info`を`question`へ移行する
+- [ ] Projectsへ状態を移し、2本のワークフローを有効化する
 - [x] 旧スクリプト、旧テスト、旧文書を移行ブランチから撤去する
-- [ ] 切替完了後にTask Schedulerと旧AI用worktreeを削除する
+- [x] 旧AI用worktreeを削除する
+- [ ] 切替完了後にTask Schedulerを削除する
 
 ## 切り替え条件
 

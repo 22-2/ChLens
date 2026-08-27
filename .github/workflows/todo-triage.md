@@ -47,7 +47,7 @@ safe-outputs:
     max: 10
     target: "*"
   remove-labels:
-    allowed: [needs-info, needs-retriage]
+    allowed: [needs-retriage]
     max: 10
     target: "*"
   noop:
