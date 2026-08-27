@@ -15,7 +15,7 @@ import {
   type TriageRunMode,
 } from "./triage-todo-queue.ts";
 
-type TriageAction = "create" | "append-unclear" | "retriage" | "review-existing" | "skip";
+type TriageAction = "create" | "retriage" | "review-existing" | "skip";
 type CloseReason = "completed" | "not planned" | "duplicate" | "none";
 type RunMode = TriageRunMode;
 
@@ -51,11 +51,6 @@ interface TriageState extends TriageQueueStateLike {
   waiting_issue_numbers?: number[];
 }
 
-interface UnclearIssue {
-  number: number;
-  title: string;
-}
-
 interface IssueLabel {
   name: string;
 }
@@ -78,6 +73,9 @@ const lockPath = path.join(outputDir, "triage.lock");
 const apply = process.argv.includes("--apply");
 const force = process.argv.includes("--force");
 const mode: RunMode = apply ? "apply" : "dry-run";
+// 情報不足のメモも独立したIssueとして後から補足できるよう、作成時の待機ラベルとして許可する。
+// 集約Issueにまとめると別の不満と文脈が混ざり、検索・参照とトークン消費の両方が増えるため。
+const CREATE_LABELS = new Set(["needs-priority", "needs-info"]);
 const AI_DISCLOSURE =
   "> 🤖 このIssueは、`.todo`のメモをもとにAIがコード調査・整理して作成しました。\n> 内容、優先度、仕様、完了判定は人が確認します。";
 
@@ -311,14 +309,15 @@ Return JSON matching scripts/triage-todo.schema.json.
 
 Rules:
 - Normal .todo triage is ${normalTriageEnabled ? "enabled" : "paused while the previous batch awaits human review"}.
-- When normal triage is paused, do not return create, append-unclear, or normal skip items. Only
+- When normal triage is paused, do not return create or normal skip items. Only
   return retriage or review-existing items that require work because their linked Issue changed.
 - When normal triage is enabled, ignore lines listed in <already-reviewed> unless their linked Issue
   now requires review-existing. Select the next coherent user-problem units from the remaining text.
 - Treat lines beginning with "- [-]" as explicitly deferred or rejected by the user. Do not return
   them as normal triage items and do not include them in remaining_count.
 - For items without an HTML comment matching "issue: #number", perform normal triage and consider
-  create, append-unclear, or skip.
+  create or skip. Every independently understandable .todo item may become one individual Issue,
+  even when its intent, specification, or reproduction details are still unclear.
 - For items with an issue marker, inspect the linked Issue only. Never create a new Issue or append
   another unclear question for that item; use review-existing when the linked open Issue appears
   already fixed or no longer appropriate, otherwise use skip.
@@ -335,8 +334,10 @@ Rules:
 - \`needs-priority\` means "already investigated; waiting for human priority". Do not implement or
   change those Issues, but do include them in duplicate checks so a second Issue is not created.
 - Never modify files, create issues, edit issues, change labels, commit, or push.
-- Return at most three items with action=create. Include append-unclear items separately when the
-  intent cannot be determined from the text and repository evidence.
+- Return at most three items with action=create. Do not use a separate aggregate or unclear-item
+  action. For an independently understandable item whose intent, specification, or reproduction
+  details are insufficient, use action=create with the needs-info label and record the unanswered
+  questions in the Issue body.
 - Include every source line actually reviewed in items, including duplicate or non-actionable lines
   with action=skip, so unchanged lines are not repeatedly analyzed in later batches.
 - Set has_more_unreviewed_items when normal .todo items remain outside this batch. Set
@@ -346,9 +347,9 @@ Rules:
   Include existing_issue_numbers and set close_reason to completed or not planned. Do not close it.
 - For a closed matching Issue, use action=skip unless there is clear evidence that it should be
   reopened; do not create a duplicate Issue.
-- Use action=append-unclear for an item that needs a human answer. Its title must be
-  "[triage] Unclear todo items" and unclear_questions must contain concise questions.
-- For action=create, use the needs-priority label only. Do not use ready, in-progress,
+- For action=create, use exactly one of the needs-priority or needs-info labels. Use needs-info when
+  the item needs a human answer before its intent, specification, or reproduction can be confirmed.
+  Do not use ready, in-progress,
   needs-human-test, blocked, or review-existing.
 - source_text must exactly match one complete line from .todo, except that action=retriage may use
   an empty string when the labeled Issue has no linked .todo item.
@@ -356,7 +357,8 @@ Rules:
   code investigation with file paths and evidence, confirmed facts vs hypotheses, proposal,
   completion criteria, risks, and the exact source text.
 - Do not include the AI-authorship disclosure in body. The calling script appends it exactly once.
-- For action=append-unclear, body should contain the source text and the questions to answer.
+- Issue titles and bodies must be written in Japanese. Fixed workflow labels and other mechanical
+  identifiers remain unchanged.
 - If evidence is insufficient, do not invent a specification.
 
 The current .todo content follows:
@@ -434,7 +436,6 @@ report.items = validItems;
 fs.writeFileSync(outputPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
 
 const createItems = validItems.filter((item) => item.action === "create");
-const unclearItems = validItems.filter((item) => item.action === "append-unclear");
 const retriageItems = validItems.filter((item) => item.action === "retriage");
 const reviewItems = validItems.filter((item) => item.action === "review-existing");
 const issueMarkedSourceTexts = new Set(
@@ -467,7 +468,7 @@ let nextQueueProgress: TriageQueueProgress = {
 
 console.log(`[triage-todo] report: ${path.relative(root, outputPath)}`);
 console.log(
-  `[triage-todo] create=${createItems.length} unclear=${unclearItems.length} retriage=${retriageItems.length} review-existing=${reviewItems.length}`,
+  `[triage-todo] create=${createItems.length} retriage=${retriageItems.length} review-existing=${reviewItems.length}`,
 );
 console.log(
   `[triage-todo] .todo backlog: ${nextQueueProgress.remainingCount} unreviewed items (has-more=${nextQueueProgress.hasMoreUnreviewedItems})`,
@@ -484,7 +485,7 @@ if (!apply) {
   process.exit(0);
 }
 
-if (!normalTriageEnabled && (createItems.length > 0 || unclearItems.length > 0)) {
+if (!normalTriageEnabled && createItems.length > 0) {
   fail("normal triage items were returned while the previous batch awaits human review");
   process.exit();
 }
@@ -525,23 +526,6 @@ for (const item of reviewItems) {
   }
 }
 
-function findUnclearIssue(): UnclearIssue | undefined {
-  const result = run("gh", [
-    "issue",
-    "list",
-    "--state",
-    "open",
-    "--search",
-    '"[triage] Unclear todo items" in:title',
-    "--json",
-    "number,title",
-    "--limit",
-    "10",
-  ]);
-  const issues = result ? readJsonc<UnclearIssue[]>(result, "gh issue list output") : [];
-  return issues.find((issue) => issue.title === "[triage] Unclear todo items");
-}
-
 function appendTodoMarker(sourceText: string, issueNumber: number): void {
   const lines = fs.readFileSync(todoPath, "utf8").split(/\r?\n/);
   const index = lines.findIndex(
@@ -563,7 +547,8 @@ for (const item of createItems) {
     );
     continue;
   }
-  if (item.labels.some((label) => label !== "needs-priority")) {
+  const createLabel = item.labels[0] ?? "";
+  if (item.labels.length !== 1 || !CREATE_LABELS.has(createLabel)) {
     fail(`unsafe label in create candidate: ${item.title}`);
     process.exit();
   }
@@ -575,7 +560,7 @@ for (const item of createItems) {
     "--body",
     withAiDisclosure(item.body),
     "--label",
-    "needs-priority",
+    createLabel,
   ]);
   const match = issueUrl.match(/\/issues\/(\d+)(?:$|\s)/);
   if (!match) {
@@ -586,44 +571,6 @@ for (const item of createItems) {
   appendTodoMarker(item.source_text, issueNumber);
   createdIssueNumbers.push(issueNumber);
   console.log(`[triage-todo] created ${issueUrl}`);
-}
-
-if (unclearItems.length > 0) {
-  const body = unclearItems
-    .map(
-      (item) =>
-        `## ${item.source_text}\n\n${item.body}\n\nQuestions:\n${item.unclear_questions.map((question) => `- ${question}`).join("\n")}`,
-    )
-    .join("\n\n---\n\n");
-  const existing = findUnclearIssue();
-  let issueNumber = existing?.number;
-  if (issueNumber) {
-    run("gh", ["issue", "comment", String(issueNumber), "--body", body]);
-    console.log(`[triage-todo] appended unclear items to #${issueNumber}`);
-  } else {
-    const issueUrl = run("gh", [
-      "issue",
-      "create",
-      "--title",
-      "[triage] Unclear todo items",
-      "--body",
-      withAiDisclosure(body),
-      "--label",
-      "needs-info",
-    ]);
-    const match = issueUrl.match(/\/issues\/(\d+)(?:$|\s)/);
-    if (!match) {
-      fail(`gh issue create returned an unexpected URL: ${issueUrl}`);
-      process.exit();
-    }
-    issueNumber = Number(match[1]);
-    console.log(`[triage-todo] created unclear-items issue ${issueUrl}`);
-  }
-
-  // 集約Issueも元メモへ紐づけないと、次回の実行で同じ質問を再投稿する。
-  for (const item of unclearItems) {
-    appendTodoMarker(item.source_text, issueNumber);
-  }
 }
 
 nextQueueProgress = {

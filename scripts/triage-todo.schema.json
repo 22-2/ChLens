@@ -13,7 +13,7 @@
         "properties": {
           "source_text": { "type": "string" },
           "action": {
-            "enum": ["create", "append-unclear", "retriage", "review-existing", "skip"]
+            "enum": ["create", "retriage", "review-existing", "skip"]
           },
           "confidence": { "enum": ["high", "medium", "low"] },
           "title": { "type": "string" },
