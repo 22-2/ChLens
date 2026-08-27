@@ -8,8 +8,10 @@ export interface AnchorData {
 
 export class AnchorParser {
   static readonly REG = {
+    // 一部の互換掲示板はdat本文のアンカーをHTMLエンティティへ変換せず、生の「>>」で返す。
+    // 表示変換と返信先解析が同じ正規表現を使うため、ここで3種類の表記を受け入れる。
     ANCHOR:
-      /(?:&gt;|＞){1,2}[\d\uff10-\uff19]+(?:[-\u30fc][\d\uff10-\uff19]+)?(?:\s*[,、]\s*[\d\uff10-\uff19]+(?:[-\u30fc][\d\uff10-\uff19]+)?)*/g,
+      /(?:(?:&gt;|＞){1,2}|>>)[\d\uff10-\uff19]+(?:[-\u30fc][\d\uff10-\uff19]+)?(?:\s*[,、]\s*[\d\uff10-\uff19]+(?:[-\u30fc][\d\uff10-\uff19]+)?)*/g,
     _FW_NUMBER: /[\uff10-\uff19]/g,
   };
 
@@ -33,7 +35,7 @@ export class AnchorParser {
 
     const normalized = this.normalize(str);
 
-    if (!/^(?:&gt;|＞){0,2}(\d+(?:-\d+)?(?:\s*[,、]\s*\d+(?:-\d+)?)*)$/.test(normalized)) {
+    if (!/^(?:(?:&gt;|＞){1,2}|>>)?(\d+(?:-\d+)?(?:\s*[,、]\s*\d+(?:-\d+)?)*)$/.test(normalized)) {
       return data;
     }
 

@@ -8,6 +8,15 @@ describe("AnchorParser", () => {
     expect(result.segments).toEqual([[1, 1]]);
   });
 
+  it("should parse literal anchors from dat", () => {
+    const result = AnchorParser.parse(">>3,5-6");
+    expect(result.targetCount).toBe(3);
+    expect(result.segments).toEqual([
+      [3, 3],
+      [5, 6],
+    ]);
+  });
+
   it("should parse range anchor", () => {
     const result = AnchorParser.parse("&gt;&gt;1-5");
     expect(result.targetCount).toBe(5);

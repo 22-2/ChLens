@@ -35,6 +35,23 @@ describe("MessageProcessor", () => {
       expect(result.messageHtml).toContain('<a href="http://example.com/test"');
     });
 
+    it("should render literal dat anchors as anchor links", () => {
+      const result = MessageProcessor.decode(
+        {
+          name: "名無し",
+          mail: "",
+          other: "",
+          message: ">>3",
+        },
+        "https:",
+      );
+
+      const anchorText = result.messageHtml.match(
+        /<a\b[^>]*class="anchor[^"]*"[^>]*>([\s\S]*?)<\/a>/,
+      )?.[1];
+      expect(anchorText).toBe(">>3");
+    });
+
     it("should restore URLs with shortened protocols", () => {
       const res = {
         name: "テスト",
