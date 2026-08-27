@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import type { TopBarMode } from "src/view/browser/pages/thread/use-thread-top-bar";
-import type { ThreadFilter } from "src/view/browser/types";
+import type { ThreadFilter, ThreadSearchTarget } from "src/view/browser/types";
 
 interface ThreadPageTopBarProps {
   activeTopBar: TopBarMode;
@@ -8,10 +8,12 @@ interface ThreadPageTopBarProps {
   filteredResponseCount: number;
   onClose: () => void;
   onFilterChange: (filter: ThreadFilter) => void;
+  onSearchTargetChange: (searchTarget: ThreadSearchTarget) => void;
   onSearchQueryChange: (query: string) => void;
   responseCount: number;
   searchFocusKey: number;
   searchQuery: string;
+  searchTarget: ThreadSearchTarget;
 }
 
 const FILTER_BUTTONS: { key: ThreadFilter; label: string }[] = [
@@ -22,16 +24,25 @@ const FILTER_BUTTONS: { key: ThreadFilter; label: string }[] = [
   { key: "link", label: "リンク" },
 ];
 
+const SEARCH_TARGETS: { key: ThreadSearchTarget; label: string }[] = [
+  { key: "all", label: "すべて" },
+  { key: "body", label: "本文" },
+  { key: "name", label: "名前" },
+  { key: "id", label: "ID" },
+];
+
 export const ThreadPageTopBar: React.FC<ThreadPageTopBarProps> = ({
   activeTopBar,
   filter,
   filteredResponseCount,
   onClose,
   onFilterChange,
+  onSearchTargetChange,
   onSearchQueryChange,
   responseCount,
   searchFocusKey,
   searchQuery,
+  searchTarget,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const topBarCountLabel = `${filteredResponseCount}/${responseCount}件`;
@@ -72,6 +83,18 @@ export const ThreadPageTopBar: React.FC<ThreadPageTopBarProps> = ({
           ))}
         </div>
         <div className="thread-page__toolbar-search">
+          <select
+            className="thread-page__toolbar-search-target"
+            aria-label="検索対象"
+            value={searchTarget}
+            onChange={(event) => onSearchTargetChange(event.target.value as ThreadSearchTarget)}
+          >
+            {SEARCH_TARGETS.map(({ key, label }) => (
+              <option key={key} value={key}>
+                {label}
+              </option>
+            ))}
+          </select>
           <input
             ref={inputRef}
             type="text"
