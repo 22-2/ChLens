@@ -93,7 +93,11 @@ function appendToken(tokens: MessageToken[], token: MessageToken): void {
   tokens.push(token);
 }
 
-function parseTextTokens(text: string, linkifyUrls: boolean): MessageToken[] {
+function parseTextTokens(
+  text: string,
+  linkifyUrls: boolean,
+  fallbackProtocol: string,
+): MessageToken[] {
   const tokens: MessageToken[] = [];
   let offset = 0;
 
@@ -102,14 +106,18 @@ function parseTextTokens(text: string, linkifyUrls: boolean): MessageToken[] {
     // そうしないとURL内の "id:" までURLトークンに取り込まれ、表示結果が変わる。
     const match = findNextInlineMatch(text, offset);
     if (!match) {
-      for (const token of parseUrlTokens(text.slice(offset), linkifyUrls)) {
+      for (const token of parseUrlTokens(text.slice(offset), linkifyUrls, fallbackProtocol)) {
         appendToken(tokens, token);
       }
       break;
     }
 
     if (match.index > offset) {
-      for (const token of parseUrlTokens(text.slice(offset, match.index), linkifyUrls)) {
+      for (const token of parseUrlTokens(
+        text.slice(offset, match.index),
+        linkifyUrls,
+        fallbackProtocol,
+      )) {
         appendToken(tokens, token);
       }
     }
@@ -130,7 +138,11 @@ function parseTextTokens(text: string, linkifyUrls: boolean): MessageToken[] {
   return tokens;
 }
 
-function parseUrlTokens(text: string, linkifyUrls: boolean): MessageToken[] {
+function parseUrlTokens(
+  text: string,
+  linkifyUrls: boolean,
+  fallbackProtocol: string,
+): MessageToken[] {
   if (!linkifyUrls) return [{ type: "text", value: text }];
 
   const tokens: MessageToken[] = [];
@@ -147,7 +159,7 @@ function parseUrlTokens(text: string, linkifyUrls: boolean): MessageToken[] {
     appendToken(tokens, {
       type: "url",
       value: displayUrl,
-      href: normalizeObfuscatedUrl(displayUrl),
+      href: normalizeObfuscatedUrl(displayUrl, fallbackProtocol),
     });
 
     // 解析で取り除いた句読点を捨てずに本文へ戻す。
@@ -192,7 +204,7 @@ export function parseMessage(message: string, options: MessageParserOptions): Me
       continue;
     }
 
-    for (const token of parseTextTokens(part, !insideAnchor)) {
+    for (const token of parseTextTokens(part, !insideAnchor, options.protocol)) {
       appendToken(tokens, token);
     }
   }

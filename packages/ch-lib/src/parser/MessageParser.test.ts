@@ -54,4 +54,16 @@ describe("MessageParser", () => {
       },
     ]);
   });
+
+  it("uses the message protocol for URLs without a scheme", () => {
+    const tokens = parseMessage("://example.com/path", { protocol: "http:" });
+
+    expect(tokens).toEqual([
+      {
+        type: "url",
+        value: "://example.com/path",
+        href: "http://example.com/path",
+      },
+    ]);
+  });
 });

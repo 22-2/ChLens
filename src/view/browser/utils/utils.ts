@@ -118,7 +118,7 @@ export async function copyImageBlob(blob: Blob): Promise<void> {
 }
 // --- フィルタ判定 ---
 export function hasImage(message: string): boolean {
-  const normalizedMessage = message.replace(URL_LIKE_PATTERN, normalizeObfuscatedUrl);
+  const normalizedMessage = message.replace(URL_LIKE_PATTERN, (url) => normalizeObfuscatedUrl(url));
   return (
     /\.(jpe?g|png|gif|webp|bmp|avif)(?:\?[^"<]*)?(?=["<\s]|$)/i.test(normalizedMessage) ||
     /https?:\/\/pbs\.twimg\.com\/media\/[^\s"'<>?]+\?[^\s"'<>]*format=(?:jpe?g|png|gif|webp|bmp|avif)\b/i.test(
@@ -127,7 +127,7 @@ export function hasImage(message: string): boolean {
   );
 }
 export function hasVideo(message: string): boolean {
-  const normalizedMessage = message.replace(URL_LIKE_PATTERN, normalizeObfuscatedUrl);
+  const normalizedMessage = message.replace(URL_LIKE_PATTERN, (url) => normalizeObfuscatedUrl(url));
   return (
     /\.(mp4|webm|avi|mov)(?:\?[^"<]*)?(?=["<\s]|$)/i.test(normalizedMessage) ||
     /<video\b/i.test(normalizedMessage) ||

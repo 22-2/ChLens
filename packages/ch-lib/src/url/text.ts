@@ -13,11 +13,20 @@ const OBFUSCATED_PROTOCOLS: Readonly<Record<string, string>> = {
 };
 
 // 掲示板では自動リンク化を避けるため、URLの先頭を削った表記が使われることがある。
-// 通常のURLと区別できるよう、ここではスキーム部分だけを復元し、ホスト名などは変更しない。
+// 復元対象は p:// / tp:// / ttp:// を http:// に、
+// ps:// / s:// / tps:// / ttps:// を https:// に置き換えた形式で、
+// スキームを完全に省略した :// は指定された既定プロトコル（省略時は https://）で補完する。
+// 通常の http:// と https:// はそのまま扱い、いずれもホスト名・パス・クエリは変更しない。
 export const URL_LIKE_PATTERN =
-  /(?:https?:\/\/|(?:p|ps|s|tp|tps|ttp|ttps):\/\/)[A-Za-z0-9\-._~:/?#[\]@!$&'()*+,;=%]+/gi;
+  /(?:https?:\/\/|(?:p|ps|s|tp|tps|ttp|ttps):\/\/|(?<![A-Za-z0-9+.-]):\/\/)[A-Za-z0-9\-._~:/?#[\]@!$&'()*+,;=%]+/gi;
 
-export function normalizeObfuscatedUrl(rawUrl: string): string {
+export function normalizeObfuscatedUrl(rawUrl: string, fallbackProtocol?: string): string {
+  if (rawUrl.startsWith("://")) {
+    // :// だけでは元のスキームを復元できないため、安全側の https を既定にする。
+    const protocol = fallbackProtocol?.toLowerCase() === "http:" ? "http:" : "https:";
+    return `${protocol}//${rawUrl.slice(3)}`;
+  }
+
   const match = rawUrl.match(/^(https?):\/\/|^(p|ps|s|tp|tps|ttp|ttps):\/\//i);
   const obfuscatedProtocol = match?.[2]?.toLowerCase();
   const restoredProtocol = obfuscatedProtocol ? OBFUSCATED_PROTOCOLS[obfuscatedProtocol] : null;
