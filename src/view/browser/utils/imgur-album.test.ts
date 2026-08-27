@@ -1,9 +1,5 @@
 import { describe, expect, it, vi } from "vite-plus/test";
-import {
-  ImgurAlbumResolver,
-  normalizeImgurImageUrl,
-  replaceImgurAlbumLinks,
-} from "src/view/browser/utils/imgur-album";
+import { ImgurAlbumResolver, normalizeImgurImageUrl } from "src/view/browser/utils/imgur-album";
 
 const ALBUM_URL = "https://imgur.com/a/1m6jk1F";
 const THREAD_URL = "https://bbs.example.test/test/read.cgi/live/123/";
@@ -70,30 +66,5 @@ describe("Imgur album resolver", () => {
     expect(fetch).toHaveBeenCalledTimes(2);
     expect(fetch.mock.calls[1]?.[1]).toEqual({ Authorization: "Bearer user-token" });
     expect(logError).toHaveBeenCalledTimes(1);
-  });
-
-  it("取得したアルバム画像を本文のリンク列へ置換する", () => {
-    const html = `<p>画像 <a href="${ALBUM_URL}" target="_blank">${ALBUM_URL}</a></p>`;
-    const replaced = replaceImgurAlbumLinks(
-      html,
-      new Map([[ALBUM_URL, ["https://i.imgur.com/cicrbsg.jpeg", "https://i.imgur.com/next.png"]]]),
-    );
-
-    expect(replaced).toContain('href="https://i.imgur.com/cicrbsg.jpeg"');
-    expect(replaced).toContain('href="https://i.imgur.com/next.png"');
-    expect(replaced.match(/→ リンク/g)).toHaveLength(2);
-    expect(replaced).toContain("<br>");
-    expect(replaced).not.toContain(ALBUM_URL);
-  });
-
-  it("本文がリンク化されていない場合もアルバムURLを置換する", () => {
-    const replaced = replaceImgurAlbumLinks(
-      `<p>画像 ${ALBUM_URL}</p>`,
-      new Map([[ALBUM_URL, ["https://i.imgur.com/cicrbsg.jpeg"]]]),
-    );
-
-    expect(replaced).toContain('href="https://i.imgur.com/cicrbsg.jpeg"');
-    expect(replaced).toContain("→ リンク");
-    expect(replaced).not.toContain(ALBUM_URL);
   });
 });

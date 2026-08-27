@@ -216,65 +216,6 @@ export class ImgurAlbumResolver {
 
 export const imgurAlbumResolver = new ImgurAlbumResolver();
 
-function createResolvedLink(doc: Document, url: string): HTMLAnchorElement {
-  const link = doc.createElement("a");
-  link.href = url;
-  link.target = "_blank";
-  link.rel = "noopener noreferrer";
-  link.textContent = "→ リンク";
-  return link;
-}
-
-function replaceAlbumNode(doc: Document, imageUrls: readonly string[]): DocumentFragment | null {
-  if (imageUrls.length === 0) return null;
-  const fragment = doc.createDocumentFragment();
-  imageUrls.forEach((imageUrl, index) => {
-    if (index > 0) fragment.append(doc.createElement("br"));
-    fragment.append(createResolvedLink(doc, imageUrl));
-  });
-  return fragment;
-}
-
-export function replaceImgurAlbumLinks(messageHtml: string, images: ImgurAlbumImageMap): string {
-  if (images.size === 0 || typeof DOMParser === "undefined") return messageHtml;
-
-  const doc = new DOMParser().parseFromString(messageHtml, "text/html");
-  for (const anchor of Array.from(doc.querySelectorAll<HTMLAnchorElement>("a[href]"))) {
-    const albumKey = normalizeImgurAlbumUrl(anchor.href);
-    const imageUrls = albumKey ? images.get(albumKey) : undefined;
-    const replacement = albumKey && imageUrls ? replaceAlbumNode(doc, imageUrls) : null;
-    if (replacement) anchor.replaceWith(replacement);
-  }
-
-  // MessageProcessorがリンク化しなかった本文でも同じフォールバックを使えるよう、
-  // アンカー外のテキストノードも置換対象にする。
-  const textNodes: Text[] = [];
-  const walker = doc.createTreeWalker(doc.body, 4 /* SHOW_TEXT */);
-  let node = walker.nextNode();
-  while (node) {
-    if (node instanceof Text && !node.parentElement?.closest("a")) {
-      textNodes.push(node);
-    }
-    node = walker.nextNode();
-  }
-  for (const textNode of textNodes) {
-    for (const [albumUrl, imageUrls] of images) {
-      const index = textNode.data.indexOf(albumUrl);
-      if (index < 0) continue;
-      const replacement = replaceAlbumNode(doc, imageUrls);
-      if (!replacement) continue;
-      const before = doc.createTextNode(textNode.data.slice(0, index));
-      const after = doc.createTextNode(textNode.data.slice(index + albumUrl.length));
-      const wrapper = doc.createDocumentFragment();
-      wrapper.append(before, replacement, after);
-      textNode.replaceWith(wrapper);
-      break;
-    }
-  }
-
-  return doc.body.innerHTML;
-}
-
 export interface ImgurAlbumMediaState {
   messageHtml: string;
   urls: string[];
@@ -330,7 +271,8 @@ export function useImgurAlbumMedia(
     [images, urls],
   );
   return {
-    messageHtml: replaceImgurAlbumLinks(messageHtml, images),
+    // 解決した画像URLはギャラリーだけに反映し、本文では利用者が見た元リンクを維持する。
+    messageHtml,
     urls: resolvedUrls,
     loading,
   };
