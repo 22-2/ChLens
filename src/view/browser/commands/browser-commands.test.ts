@@ -302,8 +302,10 @@ describe("browser commands", () => {
 
     expect(threadIds).toContain("copy.subject-url");
     expect(threadIds).toContain("copy.dat-url");
+    expect(threadIds).toContain("copy.page-title-url-markdown");
     expect(threadIds).toContain("copy.thread-toon");
     expect(boardIds).toContain("copy.subject-url");
+    expect(boardIds).not.toContain("copy.page-title-url-markdown");
     expect(boardIds).not.toContain("copy.dat-url");
     expect(boardIds).not.toContain("copy.thread-toon");
   });
@@ -378,6 +380,23 @@ describe("browser commands", () => {
     await expect(executeBrowserCommand("copy.dat-url", context)).resolves.toBe(true);
     expect(copyTextMock).toHaveBeenCalledWith("https://egg.5ch.io/software/dat/123.dat");
     expect(toastSuccessMock).toHaveBeenCalledWith("datのURLをコピーしました");
+  });
+
+  it("Markdown形式のスレタイとURLを専用コマンドでコピーする", async () => {
+    const { context } = createContext({
+      type: "thread",
+      title: "Title ] \\ note",
+      threadUrl: "https://example.test/thread/(1)?next=2)",
+    });
+
+    await expect(executeBrowserCommand("copy.page-title-url-markdown", context)).resolves.toBe(
+      true,
+    );
+
+    expect(copyTextMock).toHaveBeenCalledWith(
+      "[Title \\] \\\\ note](https://example.test/thread/\\(1\\)?next=2\\))",
+    );
+    expect(toastSuccessMock).toHaveBeenCalledWith("Markdownリンクをコピーしました");
   });
 
   it("スレ全体をTOON形式でコピーし、推定トークン数を通知する", async () => {

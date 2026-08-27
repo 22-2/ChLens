@@ -1,5 +1,6 @@
 import {
   formatIdForCopy,
+  formatMarkdownLink,
   parseAnchorDisplayTargets,
   toViewerImageUrl,
 } from "src/view/browser/utils/utils";
@@ -11,6 +12,12 @@ describe("utils compatibility entrypoint", () => {
     expect(parseAnchorDisplayTargets(">>10")).toEqual([10]);
     expect(toViewerImageUrl("https://imgur.com/TestImage")).toBe(
       "https://i.imgur.com/TestImagem.jpg",
+    );
+  });
+
+  it("MarkdownリンクのタイトルとURLに含まれる構文文字をエスケープする", () => {
+    expect(formatMarkdownLink("Title ] \\ note", "https://example.test/thread/(1)?next=2)")).toBe(
+      "[Title \\] \\\\ note](https://example.test/thread/\\(1\\)?next=2\\))",
     );
   });
 });

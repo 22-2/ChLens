@@ -36,7 +36,7 @@ import {
   parseInternalBrowserPageStrict,
 } from "src/view/browser/utils/link-routing";
 import { encodeThreadAsToon, estimateToonTokenCount } from "src/view/browser/utils/thread-toon";
-import { copyText } from "src/view/browser/utils/clipboard";
+import { copyText, formatMarkdownLink } from "src/view/browser/utils/clipboard";
 
 export const BROWSER_COMMAND_GROUP_LABELS = {
   navigation: "移動",
@@ -547,6 +547,23 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
       const target = getCommandPageTarget(currentPage);
       if (!target) return;
       await copyWithNotice(`${target.title}\n${target.url}`, "タイトルとURL");
+    },
+  },
+  {
+    id: "copy.page-title-url-markdown",
+    label: "スレタイとURLをMarkdownでコピー",
+    englishLabel: "Copy Thread Title and URL as Markdown",
+    description: "スレタイとURLをMarkdownリンク形式でコピーします",
+    keywords: ["スレタイ&URL", "Markdown", "マークダウン", "title link"],
+    group: "copy",
+    icon: Clipboard,
+    // 変更理由: 板一覧にはスレタイがないため、スレッドのタイトルと正規URLを組み合わせる操作に限定する。
+    when: ({ currentPage }) => currentPage.type === "thread",
+    run: async ({ currentPage }) => {
+      const target = getCommandPageTarget(currentPage);
+      if (!target) return;
+      // 変更理由: 改行形式の既存コマンドを残し、Markdownを必要とする貼り付け先だけ選べるようにする。
+      await copyWithNotice(formatMarkdownLink(target.title, target.url), "Markdownリンク");
     },
   },
   {
