@@ -64,6 +64,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     filteredResponses,
     filter,
     setFilter,
+    searchTarget,
+    setSearchTarget,
     searchQuery,
     setSearchQuery,
     fetchThread,
@@ -368,10 +370,12 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             filteredResponseCount={filteredResponses.length}
             onClose={closeTopBar}
             onFilterChange={setFilter}
+            onSearchTargetChange={setSearchTarget}
             onSearchQueryChange={setSearchQuery}
             responseCount={visibleResponses.length}
             searchFocusKey={searchFocusKey}
             searchQuery={searchQuery}
+            searchTarget={searchTarget}
           />
 
           {(expired || missingFromSubject) && (

@@ -17,6 +17,10 @@ export type PageType =
 // スレッド画面だけでなくタブ状態モデルからも参照できる共通型としてここに置く。
 export type ThreadFilter = "all" | "popular" | "image" | "video" | "link";
 
+// 変更理由: 検索対象も検索語と同じスレッド単位で復元し、タブを切り替えても
+// ユーザーが選んだ本文・名前・IDの検索条件を失わないようにする。
+export type ThreadSearchTarget = "all" | "body" | "name" | "id";
+
 export interface HomePage {
   type: "home";
   title: string;
@@ -80,6 +84,7 @@ export type Page =
 export interface TabViewState {
   searchQuery?: string;
   filter?: ThreadFilter;
+  searchTarget?: ThreadSearchTarget;
   sortColumn?: string | null;
   sortDirection?: "asc" | "desc";
   searchMode?: "title" | "body";
