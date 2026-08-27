@@ -26,6 +26,7 @@ import {
 import { buildIndexes } from "src/view/browser/utils/thread-index";
 import { filterThreadResponses } from "src/view/browser/utils/thread-search";
 import { hasExternalLink, hasImage, hasVideo } from "src/view/browser/utils/utils";
+import type { ThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
 
 // 変更理由: タブ再マウント時やブラウザ再起動後に「読み込み中」しか表示されないのを防ぐため、
 // 前回の取得結果をIDBに永続化し、新しいデータの取得中は古い結果を表示し続ける。
@@ -79,10 +80,11 @@ interface ThreadData {
 export function useThreadData(
   tabId: string,
   page: ThreadPageType,
-  refreshKey: number,
   rootRef: RefObject<HTMLDivElement | null>,
+  refreshController: ThreadRefreshController,
 ): ThreadData {
   const dispatch = useTabDispatch();
+  const { beginRequest, isLatestRequest, refreshKey } = refreshController;
   const { state: persistedViewState, update: updateViewState } = useTabViewState(tabId, page);
   const [responses, setResponsesState] = useState<IRes[]>([]);
   const selectionSnapshotRef = useRef<RootSelectionSnapshot | null>(null);
@@ -138,6 +140,9 @@ export function useThreadData(
   }, [page.threadUrl]);
 
   const fetchThread = useCallback(async () => {
+    const requestId = beginRequest();
+    const isCurrentRequest = () => isLatestRequest(requestId);
+
     setLoading(true);
     setError(null);
     // 変更理由: ThreadPage は別スレへの移動時にも再利用される。取得に失敗した場合でも
@@ -150,6 +155,12 @@ export function useThreadData(
       const result = await container.thread.getThread(page.threadUrl, {
         forceUpdate: refreshKey > 0,
         onCache: (cached: IThreadDetail) => {
+          // 変更理由: 更新を短時間に連続実行すると、先に開始した取得が後から完了する
+          // ことがある。古い取得結果でレス・タイトル・loading状態を巻き戻さないため、
+          // 最新リクエストのキャッシュ通知だけを画面へ反映する。
+          if (!isCurrentRequest()) {
+            return;
+          }
           if (cached.res) {
             setResponses(cached.res);
           }
@@ -167,6 +178,11 @@ export function useThreadData(
         },
       });
 
+      // 変更理由: 投稿直後の再取得と手動更新が重なった場合も、最新の取得結果を
+      // 優先して表示し、古いレス数で自動スクロール判定を確定させないようにする。
+      if (!isCurrentRequest()) {
+        return;
+      }
       setResponses(result.res);
       void setThreadCache(page.threadUrl, result.res);
       setExpired(result.expired ?? false);
@@ -182,11 +198,18 @@ export function useThreadData(
         setError(result.message);
       }
     } catch (e) {
+      if (!isCurrentRequest()) {
+        return;
+      }
       setError(e instanceof Error ? e.message : "スレッドの取得に失敗しました");
     } finally {
-      setLoading(false);
+      // 変更理由: 古いリクエストの finally で loading を下ろすと、最新リクエストが
+      // 通信中でも自動スクロール側が「更新完了」と誤認して保留状態を消費してしまう。
+      if (isCurrentRequest()) {
+        setLoading(false);
+      }
     }
-  }, [page.threadUrl, refreshKey, dispatch, setResponses, tabId]);
+  }, [dispatch, beginRequest, isLatestRequest, page.threadUrl, refreshKey, setResponses, tabId]);
 
   // 変更理由: IDBキャッシュから前回のレスを復元し、新しいデータの取得中は古い結果を表示し続ける。
   useEffect(() => {

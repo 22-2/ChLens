@@ -5,6 +5,7 @@ import { container } from "src/service-container/index";
 import type { IConfig, IMessage } from "src/service-container/interfaces";
 import { THREAD_AUTO_REFRESH_IDLE_STOP_COUNT } from "src/view/browser/hooks/auto-refresh-config";
 import { useAutoRefresh } from "src/view/browser/hooks/use-auto-refresh";
+import { useThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 interface TestRectOptions {
@@ -52,6 +53,7 @@ class ResizeObserverStub implements TestResizeObserver {
 function AutoRefreshHarness({
   enabled = true,
   active = true,
+  refreshKey = 0,
   pauseAutoScroll = false,
   onRequestRefresh,
   onAutoStop,
@@ -59,6 +61,7 @@ function AutoRefreshHarness({
 }: {
   enabled?: boolean;
   active?: boolean;
+  refreshKey?: number;
   pauseAutoScroll?: boolean;
   onRequestRefresh: () => void;
   onAutoStop?: () => void;
@@ -67,6 +70,7 @@ function AutoRefreshHarness({
   const [responses, setResponses] = useState([1, 2]);
   const [loading, setLoading] = useState(false);
   const rootRef = React.useRef<HTMLDivElement>(null);
+  const refreshController = useThreadRefreshController(refreshKey);
   const scrollContainerRef = React.useCallback(
     (element: HTMLDivElement | null) => {
       if (element) {
@@ -79,6 +83,7 @@ function AutoRefreshHarness({
     enabled,
     expired: false,
     loading,
+    refreshController,
     pauseAutoScroll,
     responseCount: responses.length,
     lastResponseNum: responses.length > 0 ? responses[responses.length - 1] : null,
@@ -336,6 +341,71 @@ describe("useAutoRefresh", () => {
 
     expect(scrollBy).toHaveBeenCalledWith({ top: 60, behavior: "auto" });
     expect(screen.getByTestId("can-auto-scroll")).toHaveTextContent("enabled");
+  });
+
+  it("refreshKey変更時に更新前の追従位置を保存し、同じ高さ変更を二重補正しない", () => {
+    const onRequestRefresh = vi.fn();
+    let scrollTopValue = 200;
+    let scrollHeightValue = 300;
+    const { rerender } = render(
+      <AutoRefreshHarness refreshKey={0} onRequestRefresh={onRequestRefresh} />,
+    );
+
+    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
+    const boundary = screen.getByTestId("boundary") as HTMLDivElement;
+    Object.defineProperty(scrollContainer, "clientHeight", {
+      configurable: true,
+      get: () => 100,
+    });
+    Object.defineProperty(scrollContainer, "scrollTop", {
+      configurable: true,
+      get: () => scrollTopValue,
+      set: (value: number) => {
+        scrollTopValue = value;
+      },
+    });
+    Object.defineProperty(scrollContainer, "scrollHeight", {
+      configurable: true,
+      get: () => scrollHeightValue,
+    });
+    scrollContainer.getBoundingClientRect = () => createRect({ top: 0, bottom: 100 });
+    // 境界はレス一覧の末尾にあるため、スクロール前は高さの増加分だけ下へ移動する。
+    boundary.getBoundingClientRect = () =>
+      createRect({ top: 80, bottom: scrollHeightValue - scrollTopValue });
+    const scrollBy = vi.fn(({ top }: ScrollToOptions) => {
+      scrollTopValue += top ?? 0;
+    });
+    // @ts-expect-error: jsdom の HTMLElement#scrollBy は ScrollToOptions 単一引数オーバーロードを持たない
+    scrollContainer.scrollBy = scrollBy;
+
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
+    expect(screen.getByTestId("can-auto-scroll")).toHaveTextContent("enabled");
+
+    // ThreadPage ではこの変更と同じ render の後に useThreadData が取得を開始する。
+    // その前に layout effect が更新前の scrollHeight と追従意図を保存できることを確認する。
+    act(() => {
+      rerender(<AutoRefreshHarness refreshKey={1} onRequestRefresh={onRequestRefresh} />);
+    });
+    scrollHeightValue = 360;
+    fireEvent.click(screen.getByText("新着ありで完了"));
+
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
+
+    expect(scrollBy).toHaveBeenCalledWith({ top: 60, behavior: "auto" });
+    expect(scrollBy).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("can-auto-scroll")).toHaveTextContent("enabled");
+
+    // 更新完了後に ResizeObserver が通知されても、同じレス描画を再度補正しない。
+    act(() => {
+      resizeObservers[0].trigger();
+      vi.runOnlyPendingTimers();
+    });
+
+    expect(scrollBy).toHaveBeenCalledTimes(1);
   });
 
   it("コンテンツ高さが縮小しても境界への追従位置を補正する", () => {

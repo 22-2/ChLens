@@ -3,6 +3,7 @@ import type { RefObject } from "react";
 import { container } from "src/service-container/index";
 import type { IRes, IThreadService, IMessage, INGService } from "src/service-container/interfaces";
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";
+import { useThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const { dispatchMock, updateViewStateMock, cacheGetMock, cachePutMock } = vi.hoisted(() => ({
@@ -83,6 +84,14 @@ function createPage() {
   };
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
+
 describe("useThreadData Phase 0 contracts", () => {
   beforeEach(() => {
     cacheGetMock.mockReset();
@@ -118,11 +127,15 @@ describe("useThreadData Phase 0 contracts", () => {
   });
 
   it("全て／多レス／画像／動画／リンクの5種filterが同じ取得結果から切り替わる", async () => {
-    const { result } = renderHook(() =>
-      useThreadData("tab-1", createPage(), 0, {
-        current: null,
-      } as RefObject<HTMLDivElement | null>),
-    );
+    const { result } = renderHook(() => {
+      const refreshController = useThreadRefreshController(0);
+      return useThreadData(
+        "tab-1",
+        createPage(),
+        { current: null } as RefObject<HTMLDivElement | null>,
+        refreshController,
+      );
+    });
 
     await waitFor(() => expect(result.current.responses).toHaveLength(RESPONSES.length));
 
@@ -142,11 +155,15 @@ describe("useThreadData Phase 0 contracts", () => {
   });
 
   it("本文・名前・ID検索をfilterと組み合わせても対象レスを失わない", async () => {
-    const { result } = renderHook(() =>
-      useThreadData("tab-1", createPage(), 0, {
-        current: null,
-      } as RefObject<HTMLDivElement | null>),
-    );
+    const { result } = renderHook(() => {
+      const refreshController = useThreadRefreshController(0);
+      return useThreadData(
+        "tab-1",
+        createPage(),
+        { current: null } as RefObject<HTMLDivElement | null>,
+        refreshController,
+      );
+    });
 
     await waitFor(() => expect(result.current.responses).toHaveLength(RESPONSES.length));
 
@@ -162,5 +179,70 @@ describe("useThreadData Phase 0 contracts", () => {
 
     act(() => result.current.setSearchQuery("search-id"));
     expect(result.current.filteredResponses.map((res) => res.num)).toEqual([5]);
+  });
+
+  it("重なった取得では古い結果の完了で最新レスとloading状態を巻き戻さない", async () => {
+    const firstRequest = createDeferred<{
+      url: string;
+      title: string;
+      res: IRes[];
+    }>();
+    const secondRequest = createDeferred<{
+      url: string;
+      title: string;
+      res: IRes[];
+    }>();
+    const thirdRequest = createDeferred<{
+      url: string;
+      title: string;
+      res: IRes[];
+    }>();
+    const getThreadMock = vi
+      .fn()
+      .mockReturnValueOnce(firstRequest.promise)
+      .mockReturnValueOnce(secondRequest.promise)
+      .mockReturnValueOnce(thirdRequest.promise);
+    container.thread = { getThread: getThreadMock } as IThreadService;
+    const page = createPage();
+    const rootRef = { current: null } as RefObject<HTMLDivElement | null>;
+
+    const { result, rerender } = renderHook(
+      ({ refreshKey }: { refreshKey: number }) => {
+        const refreshController = useThreadRefreshController(refreshKey);
+        return useThreadData("tab-1", page, rootRef, refreshController);
+      },
+      { initialProps: { refreshKey: 0 } },
+    );
+
+    await waitFor(() => expect(getThreadMock).toHaveBeenCalledOnce());
+    act(() => {
+      firstRequest.resolve({
+        url: THREAD_URL,
+        title: "Fixture thread",
+        res: RESPONSES.slice(0, 1),
+      });
+    });
+    await waitFor(() => expect(result.current.responses).toHaveLength(1));
+
+    rerender({ refreshKey: 1 });
+    await waitFor(() => expect(getThreadMock).toHaveBeenCalledTimes(2));
+    rerender({ refreshKey: 2 });
+    await waitFor(() => expect(getThreadMock).toHaveBeenCalledTimes(3));
+
+    act(() => {
+      secondRequest.resolve({ url: THREAD_URL, title: "Fixture thread", res: RESPONSES });
+    });
+    await waitFor(() => expect(result.current.loading).toBe(true));
+    expect(result.current.responses).toHaveLength(1);
+
+    act(() => {
+      thirdRequest.resolve({
+        url: THREAD_URL,
+        title: "Fixture thread",
+        res: [...RESPONSES, { ...RESPONSES[0], num: 6 }],
+      });
+    });
+    await waitFor(() => expect(result.current.responses.at(-1)?.num).toBe(6));
+    expect(result.current.loading).toBe(false);
   });
 });
