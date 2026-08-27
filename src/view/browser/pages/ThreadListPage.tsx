@@ -1106,7 +1106,11 @@ export const ThreadListPage: React.FC<Props> = ({
 
   return (
     <div className="thread-list-page" onDoubleClick={handleDoubleClick}>
-      <WheelScrollIndicator {...wheelPagination} threshold={WHEEL_THRESHOLD} />
+      <WheelScrollIndicator
+        {...wheelPagination}
+        threshold={WHEEL_THRESHOLD}
+        portalContainerRef={effectiveScrollContainerRef}
+      />
       {isFilterOpen ? (
         <SearchBar
           query={searchQuery}

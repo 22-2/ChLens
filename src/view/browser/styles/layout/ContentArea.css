@@ -1,5 +1,10 @@
 /* Content-area layout. */
 .content-area {
+  /*
+   * WheelIndicatorのportal先をContentArea内に閉じ込めるための位置基準。
+   * pane-column全体やviewportを基準にすると、chrome/status-barへ重なる。
+   */
+  position: relative;
   flex: 1;
   overflow: hidden;
   background: var(--sys-color-surface);

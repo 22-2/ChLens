@@ -344,7 +344,11 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   // ジェスチャーuseEffectでrootRefが確実にマウント済みになるよう、loading中の早期returnを廃止し常にrootRef付きdivを描画する
   return (
     <div ref={rootRef} className="thread-page" onDoubleClick={handleDoubleClick}>
-      <WheelScrollIndicator {...wheelPagination} threshold={WHEEL_THRESHOLD} />
+      <WheelScrollIndicator
+        {...wheelPagination}
+        threshold={WHEEL_THRESHOLD}
+        portalContainerRef={effectiveScrollContainerRef}
+      />
       {loading && responses.length === 0 ? (
         <div className="page-status">
           <Spinner size="sm" aria-label="スレッドを読み込み中" />
