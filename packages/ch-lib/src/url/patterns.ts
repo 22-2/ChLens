@@ -12,6 +12,9 @@ const SHITARABA_READ_PATH = String.raw`read(?:_archive)?\.cgi/\w+/\d+/\d+`;
 export const PATTERNS = {
   // 2ch系
   CH_THREAD: new RegExp(String.raw`^/(${CH_THREAD_PATH}).*$`),
+  // dat直リンクはホストごとの知識を持たず、板名とスレッド番号の骨格だけで判定する。
+  // これにより、5ch互換サーバーが独自ドメインを使っていても同じ取得経路へ渡せる。
+  CH_DAT: /^\/([\w-]+)\/dat\/(\d+)\.dat\/?$/,
   // ULAのTHREADは板・サーバー・スレキーを個別に捕捉する必要があるため断片を使わない
   CH_THREAD_ULA: /^\/2ch\/(\w+)\/([\w.]+)\/(\d+).*$/,
   CH_BOARD: /^\/((?:subback\/|test\/-\/)?\w+\/)$/,
@@ -50,6 +53,8 @@ export const PATTERNS = {
 // あることと、板キーにハイフンを許容する([\w-])ためで、意図的な差分である。
 export const ROUTE_PATTERNS = {
   CH_STYLE_THREAD: /^\/((?:[\w-]+\/)?test\/read\.cgi\/[\w-]+\/\d+)\/?/,
+  // dat直リンクも板・スレッドの構造が明確なため、特定ホストに依存せず内部スレッドへ解決する。
+  CH_DAT: /^\/([\w-]+)\/dat\/(\d+)\.dat\/?$/,
   CH_STYLE_BOARD_FROM_THREAD: /^\/(?:[\w-]+\/)?test\/read\.cgi\/([\w-]+)\/\d+\/?/,
   CH_STYLE_BOARD: /^\/(?:subback\/|test\/-\/)?([\w-]+)\/?(?:index\.html)?(?:#.*)?$/,
   MACHI_THREAD: /^\/bbs\/read\.cgi\/([\w-]+)\/(\d+)\/?/,
