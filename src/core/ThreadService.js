@@ -113,22 +113,26 @@ class ThreadServiceImpl {
         res.date = dateMatch[0];
       }
 
-      // ID extraction
-      const idMatch = /(?:^| |(\d))(ID:(?!\?\?\?)[^ <>"']+|発信元:\d+.\d+.\d+.\d+)/.exec(other);
-      if (idMatch) {
-        let fixedId = idMatch[2];
-        if (fixedId.endsWith("\u25cf")) {
-          fixedId = fixedId.slice(0, -1);
+      if (res.id == null) {
+        // ID extraction
+        const idMatch = /(?:^| |(\d))(ID:(?!\?\?\?)[^ <>"']+|発信元:\d+.\d+.\d+.\d+)/.exec(other);
+        if (idMatch) {
+          let fixedId = idMatch[2];
+          if (fixedId.endsWith("\u25cf")) {
+            fixedId = fixedId.slice(0, -1);
+          }
+          // Extract the ID value without the "ID:" or "発信元:" prefix
+          // Reason: The id field should store only the identifier value (e.g., "TestImage5"),
+          // not the prefix, so that UI/indexing can work without assuming prefix format
+          if (fixedId.startsWith("ID:")) {
+            fixedId = fixedId.slice(3);
+          } else if (fixedId.startsWith("発信元:")) {
+            fixedId = fixedId.slice(4);
+          }
+          // HTML形式ではdata-useridを優先して既にres.idへ渡しているため、
+          // 表示用メタデータのuidで上書きせず、dat形式だけをここで補完する。
+          res.id = fixedId;
         }
-        // Extract the ID value without the "ID:" or "発信元:" prefix
-        // Reason: The id field should store only the identifier value (e.g., "TestImage5"),
-        // not the prefix, so that UI/indexing can work without assuming prefix format
-        if (fixedId.startsWith("ID:")) {
-          fixedId = fixedId.slice(3);
-        } else if (fixedId.startsWith("発信元:")) {
-          fixedId = fixedId.slice(4);
-        }
-        res.id = fixedId;
       }
 
       // BE extraction

@@ -68,7 +68,7 @@ describe("useNextThreadSearch", () => {
       await result.current.searchNextThread();
     });
 
-    expect(getThreadsMock).toHaveBeenCalledWith(currentPage.threadUrl);
+    expect(getThreadsMock).toHaveBeenCalledWith("https://example.com/live/");
     expect(result.current.state).toMatchObject<Partial<NextThreadSearchState>>({
       status: "ready",
     });

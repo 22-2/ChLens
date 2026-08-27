@@ -26,6 +26,12 @@ export interface IThread {
 export type Post = IRes;
 export type ThreadData = IThread;
 
+const normalizeResName = (name: string | undefined): string => {
+  // 名前欄が空のレスは空文字のままUIへ渡すと投稿者名が表示されないため、
+  // canonical modelへ変換する時点でデフォルト名へ揃える。
+  return name?.trim() ? name : "名無し";
+};
+
 export class ThreadParser {
   static parse(chUrl: ChURL, text: string): ThreadData {
     const tsld = chUrl.getTsld();
@@ -56,7 +62,7 @@ export class ThreadParser {
         const meta = MetadataParser.parse(sp[0], sp[2]);
         posts.push({
           number: posts.length + 1,
-          name: sp[0],
+          name: normalizeResName(sp[0]),
           mail: sp[1],
           date: meta.date,
           message: sp[3],
@@ -85,7 +91,7 @@ export class ThreadParser {
         const meta = MetadataParser.parse(sp[1], sp[3]);
         posts.push({
           number: num,
-          name: sp[1],
+          name: normalizeResName(sp[1]),
           mail: sp[2],
           date: meta.date,
           message: sp[4],
@@ -120,7 +126,7 @@ export class ThreadParser {
       const metadata = MetadataParser.parse(name, dateText.trim().replace(/^[:：]\s*/, ""));
       posts.push({
         number: Number(numberText),
-        name,
+        name: normalizeResName(name),
         mail,
         date: metadata.date,
         message,
@@ -148,7 +154,7 @@ export class ThreadParser {
         }
         posts.push({
           number: num,
-          name: sp[1],
+          name: normalizeResName(sp[1]),
           mail: sp[2],
           date: sp[3],
           message: sp[4],

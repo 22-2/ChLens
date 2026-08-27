@@ -6,6 +6,7 @@ import {
   resolveAbsoluteUrl,
   RESPECT_DEFAULT_EXTERNAL,
   shouldHandleUrlWithApp,
+  getBoardUrlFromThreadUrl,
 } from "src/view/browser/utils/link-routing";
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 
@@ -59,6 +60,27 @@ describe("link-routing", () => {
       boardUrl: "https://example.com/software/",
       boardTitle: "https://example.com/software/",
     });
+  });
+
+  it("任意ドメインのread.cgiスレッドURLから板URLを導出する", () => {
+    expect(
+      getBoardUrlFromThreadUrl("http://bbs.example.test/test/read.cgi/flaming/1000000002/"),
+    ).toBe("http://bbs.example.test/flaming/");
+  });
+
+  it("任意ドメインのdat直リンクをスレッドURLへ正規化する", () => {
+    const expected = {
+      type: "thread",
+      title: "https://bbs.example.test/test/read.cgi/flaming/1000000001/",
+      threadUrl: "https://bbs.example.test/test/read.cgi/flaming/1000000001/",
+    };
+
+    expect(parseInternalBrowserPage("https://bbs.example.test/flaming/dat/1000000001.dat")).toEqual(
+      expected,
+    );
+    expect(
+      parseInternalBrowserPageStrict("https://bbs.example.test/flaming/dat/1000000001.dat"),
+    ).toEqual(expected);
   });
 
   it("itest の prefix 付き test/read.cgi URL を thread として正規化する", () => {

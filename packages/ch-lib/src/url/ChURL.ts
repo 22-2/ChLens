@@ -106,6 +106,17 @@ export class ChURL {
       return;
     }
 
+    if (
+      this.tryFixPattern(PATTERNS.CH_DAT, (m) => `/test/read.cgi/${m[1]}/${m[2]}/`, {
+        type: "thread",
+        bbsType: "2ch",
+      })
+    ) {
+      // dat直リンクを既存のスレッドURLへ正規化し、取得URL・板URL・キャッシュキーの
+      // 生成処理を新しいドメイン分岐なしで共通化する。
+      return;
+    }
+
     // 2ch / 5ch
     if (
       this.tryFixPattern(PATTERNS.CH_THREAD, (m) => `/${m[1]}/`, { type: "thread", bbsType: "2ch" })

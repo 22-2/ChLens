@@ -52,4 +52,20 @@ describe("thread model adapter", () => {
       res: [{ name: "名前", mail: "", message: "本文", other: "2026/08/23" }],
     });
   });
+
+  it("preserves an ID extracted directly from HTML metadata", () => {
+    const canonical = toCanonicalThread({
+      res: [
+        {
+          name: "名前",
+          mail: "",
+          message: "本文",
+          other: "2026/08/23(土) 12:00:00",
+          id: "html-id",
+        },
+      ],
+    });
+
+    expect(canonical.posts[0].id).toBe("html-id");
+  });
 });
