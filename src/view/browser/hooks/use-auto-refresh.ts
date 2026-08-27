@@ -34,6 +34,8 @@ interface UseAutoRefreshOptions {
   requestRefresh: () => void;
   /** 新着が一定回数(=間隔×N)来ず放置と判断したとき、自動更新を止めるために呼ぶ。 */
   onAutoStop?: () => void;
+  /** dat落ちを検知して自動更新を止めるとき、一度だけ呼ぶ。 */
+  onThreadExpired?: () => void;
 }
 
 interface ConfigUpdatedMessage {
@@ -59,6 +61,7 @@ export function useAutoRefresh({
   rootRef,
   requestRefresh,
   onAutoStop,
+  onThreadExpired,
 }: UseAutoRefreshOptions): UseAutoRefreshResult {
   const { markInternalRefreshRequest, consumeRefreshKeyChange, consumeRefreshCompletionGate } =
     refreshController;
@@ -66,6 +69,10 @@ export function useAutoRefresh({
   const pendingRefreshRef = useRef<PendingRefreshSnapshot | null>(null);
   const requestRefreshRef = useRef(requestRefresh);
   const onAutoStopRef = useRef(onAutoStop);
+  const onThreadExpiredRef = useRef(onThreadExpired);
+  // 同じスレの再取得では expired が一度 false に戻ることがあるため、
+  // 自動更新停止と通知は hook の生存中に一度だけ実行する。
+  const threadExpiredHandledRef = useRef(false);
   // 新着が来なかった更新が何回連続したか。新着が来たら 0 に戻す。
   const consecutiveIdleRefreshRef = useRef(0);
   // 最後に新着が来た時刻（epoch ms）。時間ベースの自動停止判定に使う。
@@ -124,6 +131,22 @@ export function useAutoRefresh({
   useEffect(() => {
     onAutoStopRef.current = onAutoStop;
   }, [onAutoStop]);
+
+  useEffect(() => {
+    onThreadExpiredRef.current = onThreadExpired;
+  }, [onThreadExpired]);
+
+  useEffect(() => {
+    if (!enabled || !expired || threadExpiredHandledRef.current) {
+      return;
+    }
+
+    // expired になった時点で保留中の追従を破棄し、停止通知後に古い更新を反映しない。
+    threadExpiredHandledRef.current = true;
+    pendingRefreshRef.current = null;
+    userInterruptedRef.current = false;
+    onThreadExpiredRef.current?.();
+  }, [enabled, expired]);
 
   useEffect(() => {
     loadingRef.current = loading;
@@ -508,8 +531,8 @@ export function useAutoRefresh({
       return;
     }
 
-    if (!enabled || loading) {
-      if (!enabled) {
+    if (!enabled || loading || expired) {
+      if (!enabled || expired) {
         pendingRefreshRef.current = null;
       }
       return;
@@ -598,6 +621,7 @@ export function useAutoRefresh({
     });
   }, [
     enabled,
+    expired,
     getScrollContainer,
     lastResponseNum,
     loading,

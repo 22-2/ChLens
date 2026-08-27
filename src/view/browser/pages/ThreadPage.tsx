@@ -145,23 +145,15 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   // 変更理由: 自動更新とステータスバー強調の条件を同一ソースに統一し、
   // タブ切替後に非アクティブタブの状態がステータスバーへ残留するのを防ぐ。
   const isActiveAutoRefreshEnabled = isActive && isAutoRefreshEnabled;
+  // 変更理由: 画面上はいずれも dat 落ち案内を表示する状態であり、
+  // 自動更新中にどちらかを取得したら、Issue #29 の完了条件に従って停止処理へ渡す。
+  const autoRefreshExpired = expired || missingFromSubject;
   const { enabled: pauseAutoScrollOnPopup } = usePopupAutoScrollPauseSetting();
 
-  const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling } = useThreadAutoRefresh({
-    enabled: isActiveAutoRefreshEnabled,
-    threadUrl: page.threadUrl,
-    refreshController,
-    expired,
-    loading,
-    // 変更理由: ポップアップを読みながら新着へ流されない従来動作を、
-    // ユーザーが用途に合わせて無効化できるようにする。
-    pauseAutoScroll: pauseAutoScrollOnPopup && popups.length > 0,
-    responseCount: responses.length,
-    lastResponseNum: responses.at(-1)?.num ?? null,
-    rootRef,
-    requestRefresh: () => dispatch({ type: "RELOAD" }),
-    // 新着が一定回数(=間隔×N)来なかったら、放置スレと判断して自動更新を止める。
-    onAutoStop: () => {
+  // 変更理由: 停止理由が増えても、タブ状態の解除と利用者への通知を同じ経路で行い、
+  // 一方だけ実行される不整合を防ぐ。
+  const handleAutoRefreshStop = useCallback(
+    (message: string) => {
       const pageKey = getAutoRefreshPageKey(page);
       if (pageKey == null) {
         return;
@@ -171,9 +163,28 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         enabled: false,
         pageKey,
       });
-      // 状態アイコンが消えるだけだと「いつ止まったか」が分かりにくいので明示する。
-      container.toast.info("新着が止まったため自動更新を停止しました");
+      container.toast.info(message);
     },
+    [dispatch, page],
+  );
+
+  const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling } = useThreadAutoRefresh({
+    enabled: isActiveAutoRefreshEnabled,
+    threadUrl: page.threadUrl,
+    refreshController,
+    expired: autoRefreshExpired,
+    loading,
+    // 変更理由: ポップアップを読みながら新着へ流されない従来動作を、
+    // ユーザーが用途に合わせて無効化できるようにする。
+    pauseAutoScroll: pauseAutoScrollOnPopup && popups.length > 0,
+    responseCount: responses.length,
+    lastResponseNum: responses.at(-1)?.num ?? null,
+    rootRef,
+    requestRefresh: () => dispatch({ type: "RELOAD" }),
+    // 新着が一定回数(=間隔×N)来なかったら、放置スレと判断して自動更新を止める。
+    onAutoStop: () => handleAutoRefreshStop("新着が止まったため自動更新を停止しました"),
+    // interval の停止だけではタブに自動更新状態が残るため、dat落ち時も明示的に解除する。
+    onThreadExpired: () => handleAutoRefreshStop("dat落ちを検知したため自動更新を停止しました"),
   });
 
   const handleFollowNextThread = useCallback(

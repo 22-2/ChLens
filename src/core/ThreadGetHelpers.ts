@@ -72,7 +72,8 @@ export interface ApplyCachedInfoInput {
 /**
  * subject.txt の取得には成功したが、対象スレッドが一覧に存在しなかったかを返す。
  *
- * expired とは分離し、一覧の欠落やURL表記揺れで自動更新を止めないための表示専用判定。
+ * expired とは分離し、一覧の欠落やURL表記揺れをコア層で dat 落ちと断定しないための判定。
+ * 自動更新を停止するかどうかは、画面側で expired と合わせて判断する。
  */
 export const isMissingFromSubject = (status?: string): boolean => status === "not_found";
 
@@ -358,7 +359,8 @@ export const shouldRejectThreadResult = ({
  * 板スレ一覧のレス数と突き合わせ、不足分をあぼーんで補填する。
  *
  * 変更理由: 板一覧キャッシュの not_found は不完全な subject.txt や URL の表記揺れでも
- * 発生するため dat 落ちの根拠にはしない。誤って expired にすると自動更新まで停止する。
+ * 発生するため、ここでは dat 落ちの根拠として expired に変換しない。自動更新の停止は
+ * 取得結果を受け取った画面側で、表示通知と同じタイミングに判断する。
  */
 export const applyCachedInfoToThread = ({
   thread,
