@@ -19,6 +19,7 @@ export const WheelScrollIndicator = memo(function WheelScrollIndicator({
 }: WheelScrollIndicatorProps): React.ReactElement | null {
   const isBusy = isLoading || isCoolingDown;
   if (!direction || (!isBusy && count === 0)) return null;
+  const progress = threshold > 0 ? Math.min(1, Math.max(0, count / threshold)) : 0;
 
   return (
     <div
@@ -29,9 +30,16 @@ export const WheelScrollIndicator = memo(function WheelScrollIndicator({
       {isBusy ? (
         <Spinner size="xs" aria-label="ホイール更新中" />
       ) : (
-        <>
-          {direction === "up" ? "↑" : "↓"} あと {Math.max(0, threshold - count)}
-        </>
+        <div
+          className="scroll-indicator-track"
+          role="progressbar"
+          aria-label={`${direction === "up" ? "上" : "下"}方向の更新進捗`}
+          aria-valuemin={0}
+          aria-valuemax={threshold}
+          aria-valuenow={count}
+        >
+          <span className="scroll-indicator-progress" style={{ width: `${progress * 100}%` }} />
+        </div>
       )}
     </div>
   );

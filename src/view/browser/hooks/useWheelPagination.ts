@@ -174,8 +174,12 @@ export function useWheelPagination({
     }
   }, [isLoading, refreshDirection, sharedCooldown.isCoolingDown]);
 
+  // 変更理由: cooldown開始前はrefreshDirectionが未設定なので、stateの進捗をそのまま表示する。
+  // cooldown中は共有方向と更新中表示だけを残し、リセット済みの古いカウントを表示しない。
+  const count = sharedCooldown.isCoolingDown ? 0 : state.count;
+
   return {
-    count: direction === refreshDirection ? state.count : 0,
+    count,
     direction,
     isCoolingDown,
     isLoading: isEnabled && isLoading,

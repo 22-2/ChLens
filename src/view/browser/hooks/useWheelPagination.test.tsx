@@ -82,6 +82,24 @@ describe("useWheelPagination", () => {
     expect(threadRefresh).toHaveBeenCalledTimes(1);
   });
 
+  it("閾値到達前もwheel更新の進捗バーを表示する", () => {
+    const refresh = vi.fn();
+    render(<WheelProbe id="list" edge="top" onRefresh={refresh} />);
+    const list = screen.getByTestId("list");
+    setScrollableMetrics(list);
+
+    fireEvent.wheel(list, { deltaY: -1 });
+
+    const progressBar = screen.getByRole("progressbar", { name: "上方向の更新進捗" });
+    expect(progressBar).toBeVisible();
+    expect(progressBar).toHaveAttribute("aria-valuenow", "1");
+    expect(progressBar).toHaveAttribute("aria-valuemax", String(WHEEL_THRESHOLD));
+    expect(progressBar.querySelector(".scroll-indicator-progress")).toHaveStyle({
+      width: `${(1 / WHEEL_THRESHOLD) * 100}%`,
+    });
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
   it("読み込み中もindicatorを残してスピナーを表示する", () => {
     render(
       <WheelScrollIndicator direction="down" count={0} threshold={WHEEL_THRESHOLD} isLoading />,

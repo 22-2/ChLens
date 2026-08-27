@@ -2,11 +2,10 @@
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
-  padding: var(--sys-space-4) var(--sys-space-8);
+  width: min(180px, calc(100vw - 32px));
+  padding: var(--sys-space-2);
   background-color: var(--sys-color-scrim);
-  color: var(--sys-color-accent-fg);
   border-radius: var(--sys-radius-pill);
-  font-size: var(--sys-font-size-body);
   z-index: var(--sys-z-wheel-indicator);
   opacity: 0;
   transition: all var(--sys-duration-slow) var(--sys-ease-out);
@@ -15,9 +14,26 @@
 }
 
 .scroll-indicator.loading {
+  width: auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.scroll-indicator-track {
+  width: 100%;
+  height: var(--sys-space-3);
+  overflow: hidden;
+  background-color: var(--sys-color-surface-muted);
+  border-radius: var(--sys-radius-pill);
+}
+
+.scroll-indicator-progress {
+  display: block;
+  height: 100%;
+  background-color: var(--sys-color-accent);
+  border-radius: inherit;
+  transition: width var(--sys-duration-fast) var(--sys-ease-out);
 }
 
 .scroll-indicator.visible {
