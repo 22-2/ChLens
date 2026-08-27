@@ -1,18 +1,21 @@
-import { BoardParser, ChURL } from "packages/ch-lib/src/index";
+import {
+  BoardParser,
+  ChURL,
+  type BoardThread as CanonicalBoardThread,
+} from "packages/ch-lib/src/index";
 import { platform } from "src/app";
 import { Response } from "src/core/HTTP";
 import { chServerMoveDetect } from "src/core/jsutil";
 import { container } from "src/service-container/index";
 
-// JSDocの型情報をTypeScriptに変換
-interface BoardThread {
-  url: string;
-  title: string;
-  resCount: number;
+// JSDocの型情報をTypeScriptに変換。subject parserの基本形はch-libを正とし、
+// NG／表示状態だけをChlens側のBoard projectionとして追加する。
+type BoardThread = CanonicalBoardThread & {
   ng?: unknown;
+  demoted?: unknown;
   highlight?: unknown;
   isNet?: boolean | null;
-}
+};
 
 interface XhrInfo {
   path: string;

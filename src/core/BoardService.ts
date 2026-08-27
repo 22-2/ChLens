@@ -1,3 +1,4 @@
+import type { BoardThread as CanonicalBoardThread } from "packages/ch-lib/src/index";
 import Board from "src/core/Board.js";
 import { container } from "src/service-container/index";
 import type { IBoardResult, IReadState, IThread } from "src/service-container/interfaces";
@@ -5,7 +6,7 @@ import type { IBoardResult, IReadState, IThread } from "src/service-container/in
 interface BoardGetResult {
   status: "success" | "error";
   message?: string | null;
-  data: IThread[] | null;
+  data: Array<CanonicalBoardThread & Partial<IThread>> | null;
 }
 
 interface BoardLikeUrl {
@@ -42,7 +43,16 @@ const BoardService = {
       }
 
       return {
-        ...thread,
+        // BoardParser's canonical subject fields are projected into the legacy service item
+        // explicitly; this keeps service-only state from leaking back into ch-lib.
+        url: thread.url,
+        title: thread.title,
+        resCount: thread.resCount,
+        createdAt: thread.createdAt,
+        ng: thread.ng,
+        demoted: thread.demoted,
+        highlight: thread.highlight,
+        isNet: thread.isNet,
         readState,
         threadNumber: index,
       } as IThread;

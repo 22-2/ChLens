@@ -16,6 +16,7 @@ import { useThreadPopupManager } from "src/view/browser/hooks/use-popup-manager"
 import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
 import { useThreadAutoRefresh } from "src/view/browser/hooks/use-thread-auto-refresh";
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";
+import { useThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
 import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 import { ThreadPageTopBar } from "src/view/browser/pages/thread/ThreadPageTopBar";
 import { useImageBlurConfig } from "src/view/browser/pages/thread/use-image-blur-config";
@@ -53,6 +54,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const rootRef = useRef<HTMLDivElement>(null);
   const fallbackScrollContainerRef = useRef<HTMLDivElement>(null);
   const effectiveScrollContainerRef = scrollContainerRef ?? fallbackScrollContainerRef;
+  const refreshController = useThreadRefreshController(refreshKey);
   const {
     responses,
     visibleResponses,
@@ -64,16 +66,21 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     filteredResponses,
     filter,
     setFilter,
+    searchTarget,
+    setSearchTarget,
     searchQuery,
     setSearchQuery,
     fetchThread,
     idPositions,
     setResponses,
     messageProtocol,
-  } = useThreadData(tabId, page, refreshKey, rootRef);
+  } = useThreadData(tabId, page, rootRef, refreshController);
   const dispatch = useTabDispatch();
+  // 変更理由: 更新開始後のloading中もwheel更新の共有cooldownとindicatorを維持し、
+  // 画面切替で別の一覧/スレッドから連続更新できる隙間を作らない。
   const wheelPagination = useWheelPagination({
-    isEnabled: isActive && !loading,
+    isEnabled: isActive,
+    isLoading: loading,
     containerRef: effectiveScrollContainerRef,
     edge: "bottom",
     onRefresh: () => dispatch({ type: "RELOAD" }),
@@ -143,6 +150,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling } = useThreadAutoRefresh({
     enabled: isActiveAutoRefreshEnabled,
     threadUrl: page.threadUrl,
+    refreshController,
     expired,
     loading,
     // 変更理由: ポップアップを読みながら新着へ流されない従来動作を、
@@ -365,10 +373,12 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             filteredResponseCount={filteredResponses.length}
             onClose={closeTopBar}
             onFilterChange={setFilter}
+            onSearchTargetChange={setSearchTarget}
             onSearchQueryChange={setSearchQuery}
             responseCount={visibleResponses.length}
             searchFocusKey={searchFocusKey}
             searchQuery={searchQuery}
+            searchTarget={searchTarget}
           />
 
           {(expired || missingFromSubject) && (
@@ -403,6 +413,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
                   isImageBlurred={blurredResNums.has(res.num)}
                   imageBlurRadius={imageBlurConfig.radius}
                   ngResNums={ngResNums}
+                  threadUrl={page.threadUrl}
                 />
               );
             })}
@@ -412,11 +423,17 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             /* 自動更新はフィルターが有効な場合は無効化 */
             !isFilterEnabled && (
               <div
-                ref={autoScrollBoundaryRef}
                 className={`thread-page__auto-scroll-threshold${
                   canAutoScroll ? " thread-page__auto-scroll-threshold--armed" : ""
                 }${isAutoScrolling ? " thread-page__auto-scroll-threshold--scrolling" : ""}`}
               >
+                {/* 変更理由: 親要素の末尾は破線より16px下にあるため、親へrefを置くと
+                    見た目では線を越えていても追従判定がfalseになる。判定点を実際の破線へ揃える。 */}
+                <div
+                  ref={autoScrollBoundaryRef}
+                  className="thread-page__auto-scroll-threshold-line"
+                  aria-hidden="true"
+                />
                 <span className="thread-page__auto-scroll-threshold-label">
                   {canAutoScroll
                     ? "この線より下なので新着に追従します"

@@ -8,6 +8,7 @@ import {
   THREAD_AUTO_REFRESH_CONFIG_KEY,
   THREAD_AUTO_REFRESH_IDLE_STOP_COUNT,
 } from "src/view/browser/hooks/auto-refresh-config";
+import type { ThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
 
 interface PendingRefreshSnapshot {
   responseCount: number;
@@ -25,6 +26,7 @@ interface UseAutoRefreshOptions {
   enabled: boolean;
   expired: boolean;
   loading: boolean;
+  refreshController: ThreadRefreshController;
   pauseAutoScroll: boolean;
   responseCount: number;
   lastResponseNum: number | null;
@@ -50,6 +52,7 @@ export function useAutoRefresh({
   enabled,
   expired,
   loading,
+  refreshController,
   pauseAutoScroll,
   responseCount,
   lastResponseNum,
@@ -57,6 +60,8 @@ export function useAutoRefresh({
   requestRefresh,
   onAutoStop,
 }: UseAutoRefreshOptions): UseAutoRefreshResult {
+  const { markInternalRefreshRequest, consumeRefreshKeyChange, consumeRefreshCompletionGate } =
+    refreshController;
   const autoScrollBoundaryRef = useRef<HTMLDivElement>(null);
   const pendingRefreshRef = useRef<PendingRefreshSnapshot | null>(null);
   const requestRefreshRef = useRef(requestRefresh);
@@ -72,6 +77,8 @@ export function useAutoRefresh({
   const canAutoScrollRef = useRef(false);
   const userInterruptedRef = useRef(false);
   const scrollObserverFrameRef = useRef<number | null>(null);
+  const contentResizeObserverFrameRef = useRef<number | null>(null);
+  const lastObservedScrollHeightRef = useRef<number | null>(null);
   const scrollingIndicatorTimerRef = useRef<number | null>(null);
   const [canAutoScroll, setCanAutoScroll] = useState(false);
   const [isAutoScrolling, setIsAutoScrolling] = useState(false);
@@ -79,6 +86,13 @@ export function useAutoRefresh({
     document.visibilityState === "visible",
   );
   const [intervalMs, setIntervalMs] = useState(readThreadAutoRefreshIntervalMs);
+
+  const requestRefreshFromHook = useCallback(() => {
+    // タイマー・ON直後の更新はここで先にスナップショットを保存しているため、
+    // 後続の refreshKey 変化では同じ更新を二重に記録しない。
+    markInternalRefreshRequest();
+    requestRefreshRef.current();
+  }, [markInternalRefreshRequest]);
 
   const clearScrollingIndicator = useCallback(() => {
     if (scrollingIndicatorTimerRef.current != null) {
@@ -161,7 +175,9 @@ export function useAutoRefresh({
     const scrollContainer = getScrollContainer();
     const boundary = autoScrollBoundaryRef.current;
 
-    if (!scrollContainer || !boundary) {
+    // 非アクティブなパネルの寸法変化を同期すると、表示中の追従状態を
+    // hidden なタブのレイアウトで上書きしてしまうため、現在のパネルだけを判定する。
+    if (!enabled || !scrollContainer || scrollContainer.dataset.active === "false" || !boundary) {
       canAutoScrollRef.current = false;
       setCanAutoScroll(false);
       return;
@@ -175,7 +191,40 @@ export function useAutoRefresh({
 
     canAutoScrollRef.current = nextValue;
     setCanAutoScroll((prev) => (prev === nextValue ? prev : nextValue));
-  }, [getScrollContainer]);
+  }, [enabled, getScrollContainer]);
+
+  const capturePendingRefresh = useCallback(
+    (isIdleStopCandidate: boolean, shouldScroll = canAutoScrollRef.current): boolean => {
+      const scrollContainer = getScrollContainer();
+      if (!scrollContainer) {
+        return false;
+      }
+
+      const pendingRefresh = pendingRefreshRef.current;
+      if (pendingRefresh) {
+        // 外部の手動更新が自動更新中に割り込んだ場合は、同じ通信完了を
+        // アイドル停止の一回として数えない。ただし、最初に保存した高さと
+        // 追従意図は複数の更新をまたいで維持する。
+        if (!isIdleStopCandidate) {
+          pendingRefresh.isIdleStopCandidate = false;
+        }
+        userInterruptedRef.current = false;
+        return true;
+      }
+
+      const currentSnapshot = latestSnapshotRef.current;
+      pendingRefreshRef.current = {
+        responseCount: currentSnapshot.responseCount,
+        lastResponseNum: currentSnapshot.lastResponseNum,
+        scrollHeight: scrollContainer.scrollHeight,
+        shouldScroll,
+        isIdleStopCandidate,
+      };
+      userInterruptedRef.current = false;
+      return true;
+    },
+    [getScrollContainer],
+  );
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -237,27 +286,40 @@ export function useAutoRefresh({
       return;
     }
 
-    const currentSnapshot = latestSnapshotRef.current;
     // ON 直後の初回更新。アイドル累積は ON のタイミングでリセットし、
     // この回は「新着ゼロ」でも放置とは数えない。
     consecutiveIdleRefreshRef.current = 0;
-    pendingRefreshRef.current = {
-      responseCount: currentSnapshot.responseCount,
-      lastResponseNum: currentSnapshot.lastResponseNum,
-      scrollHeight: scrollContainer.scrollHeight,
-      shouldScroll: true,
-      isIdleStopCandidate: false,
-    };
-    userInterruptedRef.current = false;
-    requestRefreshRef.current();
-  }, [enabled, expired, moveToThreadBottom, syncCanAutoScroll]);
+    capturePendingRefresh(false, true);
+    requestRefreshFromHook();
+  }, [
+    capturePendingRefresh,
+    enabled,
+    expired,
+    moveToThreadBottom,
+    requestRefreshFromHook,
+    syncCanAutoScroll,
+  ]);
+
+  useLayoutEffect(() => {
+    const refreshKeyChangeSource = consumeRefreshKeyChange();
+    if (refreshKeyChangeSource == null || !enabled) {
+      return;
+    }
+
+    if (refreshKeyChangeSource === "internal") {
+      return;
+    }
+
+    // RELOAD は loading が true になる前に DOM 更新を予約するため、
+    // loading の立ち上がりを待つとキャッシュ通知や別リクエストの完了で
+    // 更新前の高さを失うことがある。描画前の layout effect で確実に保存する。
+    syncCanAutoScroll();
+    capturePendingRefresh(false);
+  }, [capturePendingRefresh, consumeRefreshKeyChange, enabled, syncCanAutoScroll]);
 
   useEffect(() => {
-    // 書き込み成功後やダブルクリック更新など、この hook のインターバル外から
-    // dispatch(RELOAD) されたときは pendingRefresh が積まれず、新着分の追従
-    // スクロールが行われない。その結果ビューポートが最下部から外れて
-    // canAutoScroll が false になり自動追従が止まってしまうため、
-    // 読み込み開始の立ち上がりでスナップショットを補完して同じ追従経路に乗せる。
+    // fetchThread() の再試行など refreshKey を経由しない取得のためのフォールバック。
+    // 通常の RELOAD は直前の layout effect で先に保存されるので、同じ更新を二重に扱わない。
     const wasLoading = prevLoadingRef.current;
     prevLoadingRef.current = loading;
 
@@ -265,22 +327,9 @@ export function useAutoRefresh({
       return;
     }
 
-    const scrollContainer = getScrollContainer();
-    if (!scrollContainer) {
-      return;
-    }
-
-    const currentSnapshot = latestSnapshotRef.current;
-    pendingRefreshRef.current = {
-      responseCount: currentSnapshot.responseCount,
-      lastResponseNum: currentSnapshot.lastResponseNum,
-      scrollHeight: scrollContainer.scrollHeight,
-      shouldScroll: canAutoScrollRef.current,
-      // 手動・書き込み起因の更新は放置判定の対象にしない。
-      isIdleStopCandidate: false,
-    };
-    userInterruptedRef.current = false;
-  }, [enabled, getScrollContainer, loading]);
+    // 手動・書き込み起因の更新は放置判定の対象にしない。
+    capturePendingRefresh(false);
+  }, [capturePendingRefresh, enabled, loading]);
 
   useEffect(() => {
     const scrollContainer = getScrollContainer();
@@ -300,9 +349,11 @@ export function useAutoRefresh({
     };
 
     const handleWheel = () => {
-      if (pendingRefreshRef.current || isAutoScrolling) {
+      if (pendingRefreshRef.current || isAutoScrolling || canAutoScrollRef.current) {
         // smooth scroll を使わない代わりに、ユーザー操作が入ったフレームでは
         // 予定していた自動追従を明示的に取り消して手動スクロールを優先する。
+        // 高さ変更の監視中も同じ意図を維持し、ユーザーのホイール操作直後に
+        // 境界へ引き戻さないようにする。
         userInterruptedRef.current = true;
       }
     };
@@ -323,6 +374,89 @@ export function useAutoRefresh({
       window.removeEventListener("resize", scheduleSync);
     };
   }, [getScrollContainer, isAutoScrolling, syncCanAutoScroll]);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    const scrollContainer = getScrollContainer();
+
+    if (!enabled || !root || !scrollContainer || scrollContainer.dataset.active === "false") {
+      lastObservedScrollHeightRef.current = null;
+      return;
+    }
+
+    // ResizeObserver は初回 observe 時にも通知するため、現在値を先に保存して
+    // 初回通知を「高さ変更」と誤認しないようにする。
+    lastObservedScrollHeightRef.current = scrollContainer.scrollHeight;
+
+    if (typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    const scheduleContentResize = () => {
+      if (contentResizeObserverFrameRef.current != null) {
+        return;
+      }
+
+      contentResizeObserverFrameRef.current = window.requestAnimationFrame(() => {
+        contentResizeObserverFrameRef.current = null;
+
+        const currentRoot = rootRef.current;
+        const currentScrollContainer = getScrollContainer();
+        if (
+          !currentRoot ||
+          !currentScrollContainer ||
+          currentScrollContainer.dataset.active === "false"
+        ) {
+          return;
+        }
+
+        const currentScrollHeight = currentScrollContainer.scrollHeight;
+        const previousScrollHeight = lastObservedScrollHeightRef.current;
+        lastObservedScrollHeightRef.current = currentScrollHeight;
+
+        if (previousScrollHeight == null || currentScrollHeight === previousScrollHeight) {
+          syncCanAutoScroll();
+          return;
+        }
+
+        // ユーザーが境界から離れていない間だけ高さ差分を相殺する。
+        // これにより NG 解除や画像読み込みでも、明示的な上スクロールを奪わない。
+        if (canAutoScrollRef.current && !userInterruptedRef.current && !pauseAutoScroll) {
+          currentScrollContainer.scrollBy({
+            top: currentScrollHeight - previousScrollHeight,
+            behavior: "auto",
+          });
+          // 通信中にキャッシュや画像の高さが先に変わっても、完了時に同じ差分を
+          // もう一度 scrollBy しないよう、保留中スナップショットの基準も進める。
+          if (pendingRefreshRef.current) {
+            pendingRefreshRef.current.scrollHeight = currentScrollHeight;
+          }
+          showScrollingIndicator();
+        }
+
+        syncCanAutoScroll();
+      });
+    };
+
+    const resizeObserver = new ResizeObserver(scheduleContentResize);
+    resizeObserver.observe(root);
+
+    return () => {
+      resizeObserver.disconnect();
+      if (contentResizeObserverFrameRef.current != null) {
+        window.cancelAnimationFrame(contentResizeObserverFrameRef.current);
+        contentResizeObserverFrameRef.current = null;
+      }
+      lastObservedScrollHeightRef.current = null;
+    };
+  }, [
+    enabled,
+    getScrollContainer,
+    pauseAutoScroll,
+    rootRef,
+    showScrollingIndicator,
+    syncCanAutoScroll,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -347,28 +481,32 @@ export function useAutoRefresh({
         return;
       }
 
-      const currentSnapshot = latestSnapshotRef.current;
-      pendingRefreshRef.current = {
-        responseCount: currentSnapshot.responseCount,
-        lastResponseNum: currentSnapshot.lastResponseNum,
-        scrollHeight: scrollContainer.scrollHeight,
-        shouldScroll: canAutoScrollRef.current,
-        isIdleStopCandidate: true,
-      };
-      userInterruptedRef.current = false;
+      capturePendingRefresh(true);
 
       // 手動更新と同じ RELOAD 経路を使って forceUpdate を一箇所に寄せる。
       // 取得条件が分岐すると「右クリック更新だけ別挙動」が起きやすいため。
-      requestRefreshRef.current();
+      requestRefreshFromHook();
     }, intervalMs);
 
     return () => {
       window.clearInterval(timerId);
     };
-  }, [enabled, expired, getScrollContainer, intervalMs, isDocumentVisible]);
+  }, [
+    capturePendingRefresh,
+    enabled,
+    expired,
+    getScrollContainer,
+    intervalMs,
+    isDocumentVisible,
+    requestRefreshFromHook,
+  ]);
 
   useLayoutEffect(() => {
     syncCanAutoScroll();
+
+    if (consumeRefreshCompletionGate()) {
+      return;
+    }
 
     if (!enabled || loading) {
       if (!enabled) {
@@ -440,12 +578,19 @@ export function useAutoRefresh({
       return;
     }
 
-    const deltaHeight = scrollContainer.scrollHeight - pendingRefresh.scrollHeight;
+    const currentScrollHeight = scrollContainer.scrollHeight;
+    const deltaHeight = currentScrollHeight - pendingRefresh.scrollHeight;
     if (!pendingRefresh.shouldScroll || deltaHeight <= 0) {
+      if (hasNewResponses) {
+        // ResizeObserver が同じレス描画を再度「高さ変更」として処理して
+        // scrollBy を二重実行しないよう、ネットワーク更新後の基準値を進める。
+        lastObservedScrollHeightRef.current = currentScrollHeight;
+      }
       return;
     }
 
     scrollContainer.scrollBy({ top: deltaHeight, behavior: "auto" });
+    lastObservedScrollHeightRef.current = currentScrollHeight;
     showScrollingIndicator();
 
     window.requestAnimationFrame(() => {
@@ -458,6 +603,7 @@ export function useAutoRefresh({
     loading,
     pauseAutoScroll,
     responseCount,
+    consumeRefreshCompletionGate,
     showScrollingIndicator,
     syncCanAutoScroll,
   ]);

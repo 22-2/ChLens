@@ -1,0 +1,52 @@
+{
+  "$schema": "../../../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Chlens Live",
+  "version": "0.1.0",
+  "identifier": "com.chlens.live",
+  "build": {
+    "frontendDist": "../dist",
+    "beforeDevCommand": "pnpm --filter chlens-live dev",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "pnpm --filter chlens-live build"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Chlens Live",
+        "url": "index.html",
+        "width": 1200,
+        "height": 800,
+        "resizable": true,
+        "visible": true
+      },
+      {
+        "label": "overlay",
+        "title": "Chlens Live Overlay",
+        "url": "overlay.html",
+        "width": 900,
+        "height": 160,
+        "resizable": true,
+        "visible": true,
+        "focus": false,
+        "transparent": true,
+        "decorations": false,
+        "shadow": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": false
+      }
+    ],
+    "security": {
+      "csp": {
+        "default-src": "'self' customprotocol: asset:",
+        "connect-src": "ipc: http://ipc.localhost https://ipc.localhost",
+        "worker-src": "'self' blob:",
+        "script-src": "'self' 'wasm-unsafe-eval'"
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "icon": ["icons/icon.ico"]
+  }
+}

@@ -1500,7 +1500,7 @@ describe("TabProvider auto refresh state", () => {
                 type: "UPDATE_TAB_VIEW_STATE",
                 tabId: activeTab.id,
                 pageKey: getPageViewStateKey(thread1),
-                patch: { searchQuery: "保存する検索語", filter: "image" },
+                patch: { searchQuery: "保存する検索語", filter: "image", searchTarget: "name" },
               })
             }
           >
@@ -1513,6 +1513,9 @@ describe("TabProvider auto refresh state", () => {
           </output>
           <output data-testid="current-search-query">{currentViewState?.searchQuery ?? ""}</output>
           <output data-testid="current-filter">{currentViewState?.filter ?? ""}</output>
+          <output data-testid="current-search-target">
+            {currentViewState?.searchTarget ?? ""}
+          </output>
         </>
       );
     }
@@ -1530,21 +1533,30 @@ describe("TabProvider auto refresh state", () => {
     expect(screen.getByTestId("current-thread-url")).toHaveTextContent(thread2.threadUrl);
     expect(screen.getByTestId("current-search-query")).toHaveTextContent("保存する検索語");
     expect(screen.getByTestId("current-filter")).toHaveTextContent("image");
+    expect(screen.getByTestId("current-search-target")).toHaveTextContent("name");
 
     fireEvent.click(screen.getByText("スレ1へ戻る"));
 
     expect(screen.getByTestId("current-thread-url")).toHaveTextContent(thread1.threadUrl);
     expect(screen.getByTestId("current-search-query")).toHaveTextContent("保存する検索語");
     expect(screen.getByTestId("current-filter")).toHaveTextContent("image");
+    expect(screen.getByTestId("current-search-target")).toHaveTextContent("name");
 
     await waitFor(() => {
       const raw = localStorage.getItem("chlens_browser_session");
       const parsed = JSON.parse(raw ?? "{}") as {
-        panes?: Array<{ tabs?: Array<{ viewStates?: Record<string, { searchQuery?: string }> }> }>;
+        panes?: Array<{
+          tabs?: Array<{
+            viewStates?: Record<string, { searchQuery?: string; searchTarget?: string }>;
+          }>;
+        }>;
       };
       expect(
         parsed.panes?.[0]?.tabs?.[0]?.viewStates?.[getPageViewStateKey(thread1)]?.searchQuery,
       ).toBe("保存する検索語");
+      expect(
+        parsed.panes?.[0]?.tabs?.[0]?.viewStates?.[getPageViewStateKey(thread1)]?.searchTarget,
+      ).toBe("name");
     });
   });
 });

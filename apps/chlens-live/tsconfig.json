@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "paths": {
+      "@chlen/ch-lib": ["../../packages/ch-lib/src/index.ts"],
+      "src/*": ["../../src/*"],
+      "packages/*": ["../../packages/*"]
+    },
+    "target": "ES2022",
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "types": ["vite/client"]
+  },
+  "include": ["src", "vite.config.ts", "vitest.config.ts"]
+}

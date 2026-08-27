@@ -68,6 +68,8 @@ BUILD_COPY_DESTINATION=../read-crx-build
 
 詳しい開発ルールやコントリビュート手順はプロジェクトの CONTRIBUTING.md（存在する場合）を参照してください。
 
+AIによる`.todo`整理からGitHub Issue、実装、確認までの流れは、[AI改善ループの全体像](docs/guides/ai-improvement-workflow.md)を参照してください。
+
 ## 謝辞
 
 本プロジェクトは read.crx-2 の成果をベースにしています。オリジナルの作者並びにコミュニティに感謝します。

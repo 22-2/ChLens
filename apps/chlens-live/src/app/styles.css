@@ -1,0 +1,909 @@
+:root {
+  color: #e8eef7;
+  background: #0d1524;
+  font-family: "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-width: 100%;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #0d1524;
+}
+
+/* A transparent Tauri window still paints document backgrounds unless every root layer is clear. */
+.overlay-document,
+.overlay-document body,
+.overlay-document #root {
+  background: transparent;
+}
+
+/* The reference overlays keep a full-window transparent root with overflow clipped. This prevents
+ * transformed resize handles from turning the transparent WebView into a scrollable document. */
+html.overlay-document,
+.overlay-document body,
+.overlay-document #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  border: 1px solid #426189;
+  border-radius: 7px;
+  padding: 0.55rem 0.85rem;
+  color: #eff6ff;
+  background: #1a2b45;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #274467;
+}
+
+.live-shell {
+  min-height: 100vh;
+  padding: 2.25rem;
+  background: radial-gradient(circle at 15% 0%, rgb(47 101 154 / 30%), transparent 34rem), #0d1524;
+}
+
+.live-header,
+.live-card__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.live-header {
+  max-width: 58rem;
+  margin: 0 auto 1.5rem;
+}
+
+.live-header h1,
+.live-card h2 {
+  margin: 0;
+}
+
+.live-header h1 {
+  font-size: 2rem;
+  letter-spacing: 0.02em;
+}
+
+.live-card {
+  max-width: 58rem;
+  margin: 0 auto;
+  padding: 1.25rem;
+  border: 1px solid #29435f;
+  border-radius: 14px;
+  background: rgb(21 35 56 / 92%);
+  box-shadow: 0 1rem 3rem rgb(0 0 0 / 22%);
+}
+
+.live-eyebrow {
+  margin: 0 0 0.35rem;
+  color: #75b8ef;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.live-phase,
+.live-status {
+  color: #a9c1db;
+  font-size: 0.8rem;
+}
+
+.live-status {
+  max-width: 18rem;
+  text-align: right;
+}
+
+.live-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1.25rem;
+}
+
+.live-actions--secondary {
+  margin-top: 1rem;
+}
+
+.live-geometry {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.live-geometry label {
+  display: grid;
+  gap: 0.35rem;
+  color: #a9c1db;
+  font-size: 0.8rem;
+}
+
+.live-geometry input {
+  width: 100%;
+  border: 1px solid #385574;
+  border-radius: 6px;
+  padding: 0.45rem 0.5rem;
+  color: #eff6ff;
+  background: #0e1c30;
+}
+
+.live-note {
+  max-width: 58rem;
+  margin: 1rem auto;
+  color: #829ab5;
+  font-size: 0.82rem;
+}
+
+/* ThreadList / Thread UI (Phase 2) */
+.live-reader {
+  display: grid;
+  grid-template-columns: minmax(14rem, 22rem) minmax(0, 1fr);
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.live-reader__list,
+.live-reader__thread {
+  border: 1px solid #29435f;
+  border-radius: 10px;
+  background: #0e1c30;
+  overflow: hidden;
+}
+
+.live-reader__placeholder {
+  padding: 2rem 1rem;
+  color: #829ab5;
+  text-align: center;
+}
+
+.thread-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 32rem;
+}
+
+.thread-list__filter {
+  margin: 0.6rem;
+  border: 1px solid #385574;
+  border-radius: 6px;
+  padding: 0.45rem 0.5rem;
+  color: #eff6ff;
+  background: #12233c;
+}
+
+.thread-list__items {
+  margin: 0;
+  padding: 0 0.4rem 0.4rem;
+  list-style: none;
+  overflow-y: auto;
+}
+
+.thread-list__item {
+  display: flex;
+  width: 100%;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 2px;
+  border: 0;
+  border-radius: 6px;
+  padding: 0.45rem 0.55rem;
+  text-align: left;
+  background: transparent;
+}
+
+.thread-list__item:hover {
+  background: #1a2b45;
+}
+
+.thread-list__item--selected {
+  background: #274467;
+}
+
+.thread-list__title {
+  overflow: hidden;
+  color: #e8eef7;
+  font-size: 0.85rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thread-list__meta {
+  flex-shrink: 0;
+  color: #75b8ef;
+  font-size: 0.72rem;
+}
+
+.thread-list__loading,
+.thread-list__empty,
+.thread-list__error {
+  padding: 1.5rem 1rem;
+  color: #829ab5;
+  text-align: center;
+}
+
+.thread-list-view {
+  display: flex;
+  min-height: 12rem;
+  flex-direction: column;
+}
+
+.thread-list-view__search {
+  margin: 0.6rem;
+  border: 1px solid #385574;
+  border-radius: 6px;
+  padding: 0.45rem 0.5rem;
+  color: #eff6ff;
+  background: #12233c;
+}
+
+.thread-list-view__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.thread-list-view__table th,
+.thread-list-view__table td {
+  padding: 0.45rem 0.55rem;
+  text-align: left;
+}
+
+.thread-list-view__table th button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.thread-list-view__table tbody tr {
+  cursor: pointer;
+}
+
+.thread-list-view__table tbody tr:hover,
+.thread-list-view__table tbody tr[data-selected="true"] {
+  background: #274467;
+}
+
+.thread-list-view__row--highlight {
+  background: #31513c;
+}
+
+.thread-list-view__row--demoted {
+  opacity: 0.55;
+}
+
+.thread-list-view__label {
+  margin-left: 0.4rem;
+  color: #75b8ef;
+  font-size: 0.72rem;
+}
+
+.thread-list-view__status {
+  padding: 2rem 1rem;
+  color: #829ab5;
+  text-align: center;
+}
+
+.thread-list-view__status--error {
+  color: #ff9c9c;
+}
+
+.thread-list__error {
+  color: #ef9a9a;
+}
+
+.thread-view {
+  display: flex;
+  flex-direction: column;
+  max-height: 32rem;
+}
+
+.thread-view__header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid #29435f;
+  background: #12233c;
+}
+
+.thread-view__title {
+  margin: 0;
+  overflow: hidden;
+  font-size: 0.95rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thread-view__actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.thread-view__actions button {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.78rem;
+}
+
+.thread-view__dat-fall {
+  color: #ef9a9a;
+  font-size: 0.75rem;
+}
+
+.thread-view__posts {
+  margin: 0;
+  padding: 0.5rem;
+  list-style: none;
+  overflow-y: auto;
+}
+
+.thread-view__post {
+  margin-bottom: 0.75rem;
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+  background: rgb(26 43 69 / 45%);
+}
+
+.thread-view__post-header {
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 0.3rem;
+  color: #a9c1db;
+  font-size: 0.74rem;
+}
+
+.thread-view__post-number {
+  color: #75b8ef;
+  font-weight: 700;
+}
+
+.thread-view__post-message {
+  color: #e8eef7;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.thread-view__error {
+  display: grid;
+  justify-items: center;
+  gap: 0.75rem;
+  padding: 2rem 1rem;
+  color: #ef9a9a;
+}
+
+.overlay-stage {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  color: rgb(255 255 255 / 90%);
+  background: transparent;
+  text-shadow: 0 1px 3px #000;
+  user-select: none;
+  overflow: hidden;
+}
+
+.overlay-stage__resize-frame {
+  position: absolute;
+  z-index: 1;
+  inset: 1px;
+  border: 1px solid rgb(117 184 239 / 68%);
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgb(117 184 239 / 12%);
+  opacity: 1;
+  pointer-events: none;
+}
+
+.overlay-stage--controls-visible .overlay-stage__resize-frame {
+  opacity: 1;
+}
+
+.overlay-stage__resize-handle {
+  position: absolute;
+  z-index: 2;
+  width: 14px;
+  height: 14px;
+  border: 0;
+  background: transparent;
+  opacity: 0;
+}
+
+.overlay-stage__resize-handle--north-west {
+  top: 0;
+  left: 0;
+  cursor: nwse-resize;
+  transform: translate(-50%, -50%);
+}
+
+.overlay-stage__resize-handle--north {
+  top: 0;
+  left: 50%;
+  cursor: ns-resize;
+  transform: translate(-50%, -50%);
+}
+
+.overlay-stage__resize-handle--north-east {
+  top: 0;
+  right: 0;
+  cursor: nesw-resize;
+  transform: translate(50%, -50%);
+}
+
+.overlay-stage__resize-handle--east {
+  top: 50%;
+  right: 0;
+  cursor: ew-resize;
+  transform: translate(50%, -50%);
+}
+
+.overlay-stage__resize-handle--south-east {
+  right: 0;
+  bottom: 0;
+  cursor: nwse-resize;
+  transform: translate(50%, 50%);
+}
+
+.overlay-stage__resize-handle--south {
+  bottom: 0;
+  left: 50%;
+  cursor: ns-resize;
+  transform: translate(-50%, 50%);
+}
+
+.overlay-stage__resize-handle--south-west {
+  bottom: 0;
+  left: 0;
+  cursor: nesw-resize;
+  transform: translate(-50%, 50%);
+}
+
+.overlay-stage__resize-handle--west {
+  top: 50%;
+  left: 0;
+  cursor: ew-resize;
+  transform: translate(-50%, -50%);
+}
+
+.overlay-control-bar {
+  /* The bar now lives in the same transparent window as the overlay. Native cursor polling turns
+   * hit testing back on only around this region, avoiding a second window and size drift. */
+  display: flex;
+  position: absolute;
+  z-index: 3;
+  top: 0.25rem;
+  right: 0.25rem;
+  left: 0.25rem;
+  align-items: center;
+  justify-content: space-between;
+  width: auto;
+  height: 36px;
+  margin: 0;
+  padding: 0 0 0 0.65rem;
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: 4px;
+  color: rgb(255 255 255 / 90%);
+  background: rgb(20 27 39 / 90%);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 28%);
+  overflow: hidden;
+  text-shadow: 0 1px 3px #000;
+  cursor: move;
+  user-select: none;
+  /* Windows/WebView2 handles native dragging and title-bar double-clicks for this region. The
+   * prefixed form keeps the intent explicit for WebKit-based preview runtimes. */
+  app-region: drag;
+  -webkit-app-region: drag;
+  /* Keep the invisible hit target alive; native cursor polling decides when this window can
+   * receive events while click-through mode is active. */
+  pointer-events: auto;
+  opacity: 1;
+}
+
+.overlay-control-bar--visible,
+.overlay-control-bar:focus-within {
+  border-color: rgb(255 255 255 / 28%);
+  background: rgb(34 46 64 / 96%);
+  opacity: 1;
+}
+
+.overlay-control-bar__status {
+  display: flex;
+  position: relative;
+  z-index: 1;
+  align-items: center;
+  min-width: 0;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.overlay-control-bar__status-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #65f6a8;
+  box-shadow: 0 0 14px rgb(101 246 168 / 90%);
+}
+
+.overlay-control-bar__status-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.overlay-control-bar__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.overlay-control-bar__actions {
+  display: flex;
+  position: relative;
+  z-index: 1;
+  align-items: stretch;
+  height: 100%;
+  margin-left: auto;
+  /* A drag region suppresses DOM mouse events; explicitly opt the controls out so their click,
+   * focus, and hover behavior remains available. */
+  app-region: no-drag;
+  -webkit-app-region: no-drag;
+}
+
+.overlay-control-bar__button {
+  width: 46px;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  color: rgb(255 255 255 / 86%);
+  background: transparent;
+  cursor: pointer;
+  line-height: 1;
+  app-region: no-drag;
+  -webkit-app-region: no-drag;
+}
+
+.overlay-control-bar__button:hover {
+  /* Keep the compact controls discoverable when the bar is revealed, while leaving the
+   * close action's stronger warning color to its more specific rule below. */
+  color: rgb(255 255 255 / 100%);
+  background: rgb(255 255 255 / 14%);
+}
+
+.overlay-control-bar__button:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 2px solid #65f6a8;
+  outline-offset: -4px;
+}
+
+.overlay-control-bar__button--close:hover {
+  background: rgb(196 62 82 / 88%);
+}
+
+.overlay-control-bar__glyph {
+  display: block;
+  position: relative;
+  width: 10px;
+  height: 10px;
+  margin: auto;
+  color: currentColor;
+}
+
+.overlay-control-bar__glyph--minimize::after {
+  position: absolute;
+  right: 0;
+  bottom: 1px;
+  left: 0;
+  height: 1px;
+  background: currentColor;
+  content: "";
+}
+
+.overlay-control-bar__glyph--maximize {
+  border: 1px solid currentColor;
+}
+
+.overlay-control-bar__glyph--close::before,
+.overlay-control-bar__glyph--close::after {
+  position: absolute;
+  top: 4px;
+  right: -1px;
+  left: -1px;
+  height: 1px;
+  background: currentColor;
+  content: "";
+}
+
+.overlay-control-bar__glyph--close::before {
+  transform: rotate(45deg);
+}
+
+.overlay-control-bar__glyph--close::after {
+  transform: rotate(-45deg);
+}
+
+.overlay-control-bar__resize-handle {
+  position: absolute;
+  z-index: 2;
+  width: 10px;
+  height: 10px;
+  opacity: 0;
+  /* Resize handles are interactive native commands, not part of the title-bar drag surface. */
+  app-region: no-drag;
+  -webkit-app-region: no-drag;
+}
+
+.overlay-control-bar__resize-handle--north-west {
+  top: 0;
+  left: 0;
+  cursor: nwse-resize;
+}
+
+.overlay-control-bar__resize-handle--north {
+  top: 0;
+  right: 10px;
+  left: 10px;
+  width: auto;
+  cursor: ns-resize;
+}
+
+.overlay-control-bar__resize-handle--north-east {
+  top: 0;
+  right: 0;
+  cursor: nesw-resize;
+}
+
+.overlay-control-bar__resize-handle--east {
+  top: 10px;
+  right: 0;
+  bottom: 10px;
+  height: auto;
+  cursor: ew-resize;
+}
+
+.overlay-control-bar__resize-handle--south-east {
+  right: 0;
+  bottom: 0;
+  cursor: nwse-resize;
+}
+
+.overlay-control-bar__resize-handle--south {
+  right: 10px;
+  bottom: 0;
+  left: 10px;
+  width: auto;
+  cursor: ns-resize;
+}
+
+.overlay-control-bar__resize-handle--south-west {
+  bottom: 0;
+  left: 0;
+  cursor: nesw-resize;
+}
+
+.overlay-control-bar__resize-handle--west {
+  top: 10px;
+  bottom: 10px;
+  left: 0;
+  height: auto;
+  cursor: ew-resize;
+}
+
+@media (max-width: 620px) {
+  .live-shell {
+    padding: 1rem;
+  }
+
+  .live-geometry {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* MainはChlensと同じく、shellの中に常に一つのpage viewだけを置く。 */
+.live-browser-shell {
+  height: 100vh;
+  overflow: hidden;
+  display: grid;
+  min-height: 100vh;
+  grid-template-rows: 2.35rem 3rem minmax(0, 1fr);
+  color: #e6e6e6;
+  background: #1c1c1c;
+}
+
+.live-tab-bar {
+  display: flex;
+  min-width: 0;
+  align-items: stretch;
+  gap: 0.15rem;
+  padding: 0.2rem 0.45rem 0;
+  background: #151515;
+  overflow-x: auto;
+}
+
+.live-tab {
+  display: flex;
+  min-width: 9rem;
+  max-width: 18rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border: 0;
+  border-radius: 0.35rem 0.35rem 0 0;
+  padding: 0 0.7rem;
+  color: #9e9e9e;
+  background: #242424;
+  text-align: left;
+}
+
+.live-tab:hover,
+.live-tab--active {
+  color: #f0f0f0;
+  background: #303030;
+}
+
+.live-tab__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-tab__close {
+  flex: 0 0 auto;
+  color: #8e8e8e;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.live-url-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.7rem;
+  border-bottom: 1px solid #3b3b3b;
+  background: #262626;
+}
+
+.live-url-bar__label {
+  color: #a9a9a9;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.live-url-bar input {
+  min-width: 0;
+  flex: 1 1 auto;
+  border: 1px solid #4a4a4a;
+  border-radius: 0.35rem;
+  padding: 0.42rem 0.6rem;
+  color: #eeeeee;
+  background: #171717;
+}
+
+.live-url-bar button {
+  border: 1px solid #555555;
+  border-radius: 0.35rem;
+  padding: 0.4rem 0.65rem;
+  color: #eeeeee;
+  background: #3a3a3a;
+}
+
+.live-url-bar button:hover {
+  background: #4a4a4a;
+}
+
+.live-icon-button {
+  width: 2rem;
+  min-width: 2rem;
+  padding: 0.35rem;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.live-url-bar__actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.25rem;
+}
+
+.live-url-bar__actions button {
+  font-size: 0.72rem;
+}
+
+.live-content-area {
+  min-height: 0;
+  overflow: auto;
+}
+
+.live-content-area > .thread-list-view,
+.live-content-area > .thread-view {
+  min-height: 100%;
+  border: 0;
+  border-radius: 0;
+  background: #1c1c1c;
+}
+
+.live-content-area .thread-list-view__search {
+  margin: 0.75rem;
+  border-color: #4a4a4a;
+  color: #eeeeee;
+  background: #242424;
+}
+
+.live-content-area .simple-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: #dedede;
+  background: #1c1c1c;
+}
+
+.live-content-area .simple-data-table__th,
+.live-content-area .simple-data-table td {
+  border-bottom: 1px solid #353535;
+  padding: 0.55rem 0.7rem;
+  text-align: left;
+}
+
+.live-content-area .simple-data-table__th {
+  color: #bdbdbd;
+  background: #262626;
+}
+
+.live-content-area .simple-data-table__row:hover {
+  background: #2d2d2d;
+}
+
+.live-content-area .thread-list__title {
+  color: #eeeeee;
+}
+
+.live-content-area .thread-list__label {
+  margin-left: 0.4rem;
+  color: #b7b7b7;
+  font-size: 0.75rem;
+}
+
+.live-content-area .thread-view {
+  max-height: none;
+}
+
+@media (max-width: 900px) {
+  .live-url-bar__actions button {
+    overflow: hidden;
+    max-width: 5rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

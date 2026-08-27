@@ -18,6 +18,7 @@ vi.mock("src/core/Thread.js", () => ({
 
 interface FormattedResponse {
   ng?: unknown;
+  id?: string;
 }
 
 interface ThreadServiceLike {
@@ -52,5 +53,25 @@ describe("ThreadService", () => {
       "title",
       "https://example.com/test/read.cgi/board/1/",
     );
+  });
+
+  it("keeps an ID extracted directly from the HTML post when metadata differs", async () => {
+    const { default: threadService } = await import("src/core/ThreadService.js");
+    const service = threadService as unknown as ThreadServiceLike;
+    const result = service._formatResult({
+      title: "title",
+      url: { url: { href: "https://example.com/test/read.cgi/board/1/" } },
+      res: [
+        {
+          name: "",
+          mail: "",
+          message: "本文",
+          other: "2026/08/27(木) 12:00:00.00 ID:from-metadata",
+          id: "from-attribute",
+        },
+      ],
+    });
+
+    expect(result.res[0]?.id).toBe("from-attribute");
   });
 });

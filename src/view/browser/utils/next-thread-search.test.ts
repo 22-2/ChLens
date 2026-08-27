@@ -216,7 +216,7 @@ describe("next-thread-search", () => {
     expect(findNextThreadMatch(threads, currentThread, { mode: "balanced" })).toBeNull();
   });
 
-  it("積極判定の候補をスコア順にすべて返し、自動選択の同点制限を適用しない", () => {
+  it("積極判定の候補をすべて返し、自動選択の同点制限を適用しない", () => {
     const currentThread = {
       title: "番組実況 2026",
       url: "https://example.com/test/read.cgi/live/1700000220/",
@@ -246,6 +246,69 @@ describe("next-thread-search", () => {
       "https://example.com/test/read.cgi/live/1700000222/",
     ]);
     expect(findNextThreadMatch(threads, currentThread, { mode: "balanced" })).toBeNull();
+  });
+
+  it("手動検索ではレス数を優先し、自動追従ではスコア順を維持する", () => {
+    const currentThread = {
+      title: "実況スレ Part.10",
+      url: "https://example.com/test/read.cgi/live/1700000230/",
+    };
+    const threads = [
+      createThread({
+        title: "実況スレ Part.11",
+        url: "https://example.com/test/read.cgi/live/1700000231/",
+        resCount: 20,
+        createdAt: 1_700_000_231_000,
+      }),
+      createThread({
+        title: "実況スレ Part.12",
+        url: "https://example.com/test/read.cgi/live/1700000232/",
+        resCount: 200,
+        createdAt: 1_700_000_232_000,
+      }),
+    ];
+
+    const candidates = findNextThreadCandidates(threads, currentThread, {
+      mode: "aggressive",
+    });
+
+    expect(candidates.map((candidate) => candidate.thread.url)).toEqual([
+      "https://example.com/test/read.cgi/live/1700000232/",
+      "https://example.com/test/read.cgi/live/1700000231/",
+    ]);
+    expect(findNextThreadMatch(threads, currentThread, { mode: "aggressive" })?.thread.url).toBe(
+      "https://example.com/test/read.cgi/live/1700000231/",
+    );
+  });
+
+  it("手動検索でレス数が同じ場合は既存のスコア順を維持する", () => {
+    const currentThread = {
+      title: "実況スレ Part.10",
+      url: "https://example.com/test/read.cgi/live/1700000240/",
+    };
+    const threads = [
+      createThread({
+        title: "実況スレ Part.11",
+        url: "https://example.com/test/read.cgi/live/1700000241/",
+        resCount: 200,
+        createdAt: 1_700_000_241_000,
+      }),
+      createThread({
+        title: "実況スレ Part.12",
+        url: "https://example.com/test/read.cgi/live/1700000242/",
+        resCount: 200,
+        createdAt: 1_700_000_242_000,
+      }),
+    ];
+
+    const candidates = findNextThreadCandidates(threads, currentThread, {
+      mode: "aggressive",
+    });
+
+    expect(candidates.map((candidate) => candidate.thread.url)).toEqual([
+      "https://example.com/test/read.cgi/live/1700000241/",
+      "https://example.com/test/read.cgi/live/1700000242/",
+    ]);
   });
 
   it("積極判定だけがタイトルの大きく変わった連番候補を許容する", () => {

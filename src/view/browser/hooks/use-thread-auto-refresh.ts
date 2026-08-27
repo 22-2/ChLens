@@ -1,10 +1,12 @@
 import { useEffect, type RefObject } from "react";
 import { useAutoRefresh, type UseAutoRefreshResult } from "src/view/browser/hooks/use-auto-refresh";
 import { useSetAutoScrollState } from "src/view/browser/hooks/use-auto-scroll-state";
+import type { ThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
 
 interface UseThreadAutoRefreshOptions {
   enabled: boolean;
   threadUrl: string;
+  refreshController: ThreadRefreshController;
   expired: boolean;
   loading: boolean;
   responseCount: number;
@@ -29,6 +31,7 @@ export function useThreadAutoRefresh(options: UseThreadAutoRefreshOptions): UseA
   const {
     enabled,
     threadUrl: _threadUrl,
+    refreshController,
     expired,
     loading,
     responseCount,
@@ -45,6 +48,7 @@ export function useThreadAutoRefresh(options: UseThreadAutoRefreshOptions): UseA
     enabled,
     expired,
     loading,
+    refreshController,
     pauseAutoScroll,
     responseCount,
     lastResponseNum,

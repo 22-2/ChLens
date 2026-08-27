@@ -13,14 +13,20 @@ import { platform } from "src/app";
 import { container } from "src/service-container/index";
 import type { IRes, IThreadDetail } from "src/service-container/interfaces";
 import { useTabDispatch, useTabViewState } from "src/view/browser/hooks/use-tab-store";
-import type { ThreadFilter, ThreadPage as ThreadPageType } from "src/view/browser/types";
+import type {
+  ThreadFilter,
+  ThreadPage as ThreadPageType,
+  ThreadSearchTarget,
+} from "src/view/browser/types";
 import {
   captureRootSelection,
   restoreRootSelection,
   type RootSelectionSnapshot,
 } from "src/view/browser/utils/dom-selection";
 import { buildIndexes } from "src/view/browser/utils/thread-index";
-import { hasExternalLink, hasImage, hasVideo, stripHtml } from "src/view/browser/utils/utils";
+import { filterThreadResponses } from "src/view/browser/utils/thread-search";
+import { hasExternalLink, hasImage, hasVideo } from "src/view/browser/utils/utils";
+import type { ThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
 
 // 変更理由: タブ再マウント時やブラウザ再起動後に「読み込み中」しか表示されないのを防ぐため、
 // 前回の取得結果をIDBに永続化し、新しいデータの取得中は古い結果を表示し続ける。
@@ -59,6 +65,8 @@ interface ThreadData {
   filteredResponses: IRes[];
   filter: ThreadFilter;
   setFilter: Dispatch<SetStateAction<ThreadFilter>>;
+  searchTarget: ThreadSearchTarget;
+  setSearchTarget: Dispatch<SetStateAction<ThreadSearchTarget>>;
   searchQuery: string;
   setSearchQuery: Dispatch<SetStateAction<string>>;
   showSearch: boolean;
@@ -72,10 +80,11 @@ interface ThreadData {
 export function useThreadData(
   tabId: string,
   page: ThreadPageType,
-  refreshKey: number,
   rootRef: RefObject<HTMLDivElement | null>,
+  refreshController: ThreadRefreshController,
 ): ThreadData {
   const dispatch = useTabDispatch();
+  const { beginRequest, isLatestRequest, refreshKey } = refreshController;
   const { state: persistedViewState, update: updateViewState } = useTabViewState(tabId, page);
   const [responses, setResponsesState] = useState<IRes[]>([]);
   const selectionSnapshotRef = useRef<RootSelectionSnapshot | null>(null);
@@ -84,13 +93,21 @@ export function useThreadData(
   const [expired, setExpired] = useState(false);
   const [missingFromSubject, setMissingFromSubject] = useState(false);
   const [filter, setFilter] = useState<ThreadFilter>(() => persistedViewState.filter ?? "all");
+  const [searchTarget, setSearchTarget] = useState<ThreadSearchTarget>(() => {
+    const persistedSearchTarget = persistedViewState.searchTarget;
+    return persistedSearchTarget === "body" ||
+      persistedSearchTarget === "name" ||
+      persistedSearchTarget === "id"
+      ? persistedSearchTarget
+      : "all";
+  });
   const [searchQuery, setSearchQuery] = useState(() => persistedViewState.searchQuery ?? "");
   const [showSearch, setShowSearch] = useState(false);
   const titleUpdatedRef = useRef(false);
 
   useEffect(() => {
-    updateViewState({ filter, searchQuery });
-  }, [filter, searchQuery, updateViewState]);
+    updateViewState({ filter, searchQuery, searchTarget });
+  }, [filter, searchQuery, searchTarget, updateViewState]);
 
   const setResponses = useCallback<Dispatch<SetStateAction<IRes[]>>>(
     (nextResponses) => {
@@ -123,6 +140,9 @@ export function useThreadData(
   }, [page.threadUrl]);
 
   const fetchThread = useCallback(async () => {
+    const requestId = beginRequest();
+    const isCurrentRequest = () => isLatestRequest(requestId);
+
     setLoading(true);
     setError(null);
     // 変更理由: ThreadPage は別スレへの移動時にも再利用される。取得に失敗した場合でも
@@ -135,6 +155,12 @@ export function useThreadData(
       const result = await container.thread.getThread(page.threadUrl, {
         forceUpdate: refreshKey > 0,
         onCache: (cached: IThreadDetail) => {
+          // 変更理由: 更新を短時間に連続実行すると、先に開始した取得が後から完了する
+          // ことがある。古い取得結果でレス・タイトル・loading状態を巻き戻さないため、
+          // 最新リクエストのキャッシュ通知だけを画面へ反映する。
+          if (!isCurrentRequest()) {
+            return;
+          }
           if (cached.res) {
             setResponses(cached.res);
           }
@@ -152,6 +178,11 @@ export function useThreadData(
         },
       });
 
+      // 変更理由: 投稿直後の再取得と手動更新が重なった場合も、最新の取得結果を
+      // 優先して表示し、古いレス数で自動スクロール判定を確定させないようにする。
+      if (!isCurrentRequest()) {
+        return;
+      }
       setResponses(result.res);
       void setThreadCache(page.threadUrl, result.res);
       setExpired(result.expired ?? false);
@@ -167,11 +198,18 @@ export function useThreadData(
         setError(result.message);
       }
     } catch (e) {
+      if (!isCurrentRequest()) {
+        return;
+      }
       setError(e instanceof Error ? e.message : "スレッドの取得に失敗しました");
     } finally {
-      setLoading(false);
+      // 変更理由: 古いリクエストの finally で loading を下ろすと、最新リクエストが
+      // 通信中でも自動スクロール側が「更新完了」と誤認して保留状態を消費してしまう。
+      if (isCurrentRequest()) {
+        setLoading(false);
+      }
     }
-  }, [page.threadUrl, refreshKey, dispatch, setResponses, tabId]);
+  }, [dispatch, beginRequest, isLatestRequest, page.threadUrl, refreshKey, setResponses, tabId]);
 
   // 変更理由: IDBキャッシュから前回のレスを復元し、新しいデータの取得中は古い結果を表示し続ける。
   useEffect(() => {
@@ -251,16 +289,11 @@ export function useThreadData(
     }
 
     if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      list = list.filter((res) => {
-        const text = stripHtml(res.message).toLowerCase();
-        const name = stripHtml(res.name).toLowerCase();
-        return text.includes(q) || name.includes(q) || (res.id?.toLowerCase().includes(q) ?? false);
-      });
+      list = filterThreadResponses(list, searchQuery, searchTarget);
     }
 
     return list;
-  }, [visibleResponses, filter, searchQuery, indexes.repIndex]);
+  }, [visibleResponses, filter, searchQuery, searchTarget, indexes.repIndex]);
 
   const idPositions = useMemo(() => {
     const positions = new Map<number, number>();
@@ -287,6 +320,8 @@ export function useThreadData(
     filteredResponses,
     filter,
     setFilter,
+    searchTarget,
+    setSearchTarget,
     searchQuery,
     setSearchQuery,
     showSearch,

@@ -1,5 +1,5 @@
 {
-  "name": "@read-crx/ch-lib",
+  "name": "@chlen/ch-lib",
   "version": "1.0.0",
   "description": "5ch compatible board fetcher and parser library",
   "keywords": [],

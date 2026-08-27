@@ -215,7 +215,10 @@ export default defineConfig(({ mode }) => {
     staged: {
       "src/**/*.{ts,tsx}": "vp check --fix",
     },
-    fmt: {},
+    fmt: {
+      // ドキュメントは文章構成を優先し、コード用フォーマッターで意図せず書き換えない。
+      ignorePatterns: ["docs/**", "**/*.md"],
+    },
     lint: {
       plugins: ["oxc", "typescript", "unicorn", "react"],
       categories: {
@@ -355,6 +358,8 @@ export default defineConfig(({ mode }) => {
       alias: {
         src: path.resolve(__dirname, "./src"),
         packages: path.resolve(__dirname, "./packages"),
+        // Chlens側もLive側と同じ共有rules sourceを解決し、評価器の二重実装を防ぐ。
+        "@chlen/ch-lib": path.resolve(__dirname, "./packages/ch-lib/src/index.ts"),
         "webextension-polyfill":
           platform === "tauri"
             ? path.resolve(__dirname, "./src/browser-shim.js")

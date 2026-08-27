@@ -6,6 +6,7 @@ export interface ThreadRes {
   mail: string;
   message: string;
   other: string;
+  id?: string;
 }
 
 export interface ParsedThread {
@@ -52,6 +53,44 @@ const removeNeedlessFromTitle = (title: string): string => {
   const trimmed = title.replace(titleReg, "");
   const normalized = trimmed === "" ? title : trimmed;
   return normalized.replaceAll("<mark>", "").replaceAll("</mark>", "");
+};
+
+const normalizeHtmlPostId = (rawId: string | undefined): string | undefined => {
+  const match = /^(?:ID:)(?!\?\?\?)([^ <>"']+)/i.exec(rawId?.trim() ?? "");
+  if (!match) return undefined;
+
+  const id = match[1].replace(/●$/, "");
+  return id || undefined;
+};
+
+const extractHtmlPostId = (postHtml: string): string | undefined => {
+  const dataUserId = /\bdata-userid\s*=\s*["']([^"']*)["']/i.exec(postHtml)?.[1];
+  const uid = /<span\b[^>]*\bclass=["'][^"']*\buid\b[^"']*["'][^>]*>([\s\S]*?)<\/span>/i.exec(
+    postHtml,
+  )?.[1];
+
+  // 現行HTMLは属性と表示用spanの両方にIDを持つことがあるため、属性を優先しつつ、
+  // 片方だけのレスにも対応する。HTML全体からID文字列を拾うと本文中の言及を
+  // 誤認するため、レスのメタデータ位置に限定する。
+  return normalizeHtmlPostId(dataUserId) ?? normalizeHtmlPostId(uid);
+};
+
+const normalizeHtmlPostMetadata = (postHtml: string, fallback: string): string => {
+  const date = /<span\b[^>]*\bclass=["'][^"']*\bdate\b[^"']*["'][^>]*>([\s\S]*?)<\/span>/i.exec(
+    postHtml,
+  )?.[1];
+  if (date == null) return fallback;
+
+  const uid = /<span\b[^>]*\bclass=["'][^"']*\buid\b[^"']*["'][^>]*>([\s\S]*?)<\/span>/i.exec(
+    postHtml,
+  )?.[1];
+  return [date.trim(), uid?.trim()].filter(Boolean).join(" ");
+};
+
+const normalizeResName = (name: string | undefined): string => {
+  // 名前欄が空のレスは空文字のままUIへ渡すと投稿者名が表示されないため、
+  // 各データ形式の解析結果を共通のデフォルト名へ揃える。
+  return name?.trim() ? name : "名無し";
 };
 
 const createAbonedRes = (): ThreadRes => ({
@@ -207,11 +246,13 @@ export const parseNetThread = (text: string): ParsedThread | null => {
     }
 
     if (regRes) {
+      const id = extractHtmlPostId(line);
       thread.res.push({
-        name: regRes[2],
+        name: normalizeResName(regRes[2]),
         mail: regRes[1] || "",
         message: regRes[4],
-        other: regRes[3],
+        other: normalizeHtmlPostMetadata(line, regRes[3]),
+        ...(id ? { id } : {}),
       });
     }
   }
@@ -241,7 +282,7 @@ export const parseChThread = (text: string): ParsedThread | null => {
       }
 
       thread.res.push({
-        name: sp[0],
+        name: normalizeResName(sp[0]),
         mail: sp[1],
         message: sp[3],
         other: sp[2],
@@ -285,7 +326,7 @@ export const parseMachiThread = (text: string): ParsedThread | null => {
       }
 
       thread.res.push({
-        name: sp[1],
+        name: normalizeResName(sp[1]),
         mail: sp[2],
         message: sp[4],
         other: sp[3],
@@ -317,7 +358,7 @@ export const parseJbbsThread = (text: string): ParsedThread | null => {
       }
 
       thread.res.push({
-        name: sp[1],
+        name: normalizeResName(sp[1]),
         mail: sp[2],
         message: sp[4],
         other: sp[3] + (sp[6] ? ` ID:${sp[6]}` : ""),
@@ -352,7 +393,7 @@ export const parseJbbsArchiveThread = (text: string): ParsedThread | null => {
       gotTitle = true;
     } else if (regRes) {
       thread.res.push({
-        name: regRes[2],
+        name: normalizeResName(regRes[2]),
         mail: regRes[1] || "",
         message: regRes[4],
         other: regRes[3],
@@ -407,7 +448,7 @@ export const parsePinkThread = (text: string, resLength?: number): ParsedThread 
         thread.res.push(createAbonedRes());
       }
       thread.res.push({
-        name: regRes[3],
+        name: normalizeResName(regRes[3]),
         mail: regRes[2] || "",
         message: regRes[5],
         other: regRes[4],

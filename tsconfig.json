@@ -2,7 +2,8 @@
   "compilerOptions": {
     "paths": {
       "*": ["./*"],
-      "src/*": ["./src/*"]
+      "src/*": ["./src/*"],
+      "@chlen/ch-lib": ["./packages/ch-lib/src/index.ts"]
     },
     "target": "esnext",
     "lib": ["dom", "esnext"],
