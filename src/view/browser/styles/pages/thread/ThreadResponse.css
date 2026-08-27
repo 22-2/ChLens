@@ -1,9 +1,27 @@
 /* Thread response metadata, body, and media/link-card layout. */
 .res {
   padding: var(--sys-space-1) var(--sys-space-8) var(--sys-space-3);
+  border-inline-start: 3px solid transparent;
   /* Defer offscreen response painting, except when the minimap needs exact geometry. */
   content-visibility: auto;
   contain-intrinsic-size: auto 140px;
+}
+
+/*
+ * The resolved state indicator preserves the row's existing background for
+ * selection, highlights, and heatmap overlays while still making each state
+ * visible at a glance. ResItem resolves overlapping flags before applying it.
+ */
+.res--state-ng {
+  border-inline-start-color: var(--sys-color-error);
+}
+
+.res--state-own {
+  border-inline-start-color: var(--sys-color-warning);
+}
+
+.res--state-reply-to-own {
+  border-inline-start-color: var(--sys-color-accent);
 }
 
 .thread-page--with-minimap .res {
@@ -38,9 +56,24 @@
   color: var(--sys-color-success);
 }
 
-.res__name--own,
-.res__name--reply-to-own {
+.res__name--own {
   color: var(--sys-color-warning);
+}
+
+.res__name--reply-to-own {
+  color: var(--sys-color-accent);
+}
+
+.res__name--state-ng {
+  color: var(--sys-color-error);
+}
+
+.res__name--state-own {
+  color: var(--sys-color-warning);
+}
+
+.res__name--state-reply-to-own {
+  color: var(--sys-color-accent);
 }
 
 .res__badge {
@@ -69,9 +102,10 @@
 }
 
 .res__badge--ng {
-  border: 1px solid var(--sys-color-warning-border);
-  background: var(--sys-color-warning-surface);
-  color: var(--sys-color-warning-fg);
+  /* Red separates the exclusion state from the orange owner marker. */
+  border: 1px solid var(--sys-color-error);
+  background: var(--sys-color-error-surface);
+  color: var(--sys-color-error);
 }
 
 .res__ng-tooltip {

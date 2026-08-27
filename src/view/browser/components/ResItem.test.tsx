@@ -171,8 +171,35 @@ describe("ResItem", () => {
     expect(thumbEvent.defaultPrevented).toBe(false);
   });
 
-  it("自分のレスと自分宛て返信に強調クラスとバッジを付ける", () => {
-    const { container } = render(
+  it("状態クラスはNG、自分、自分宛て返信の優先順位で解決する", () => {
+    const { container, rerender } = render(
+      <ResItem
+        res={BASE_RES}
+        idPos={0}
+        idCount={0}
+        repCount={0}
+        isOwn={false}
+        isReplyToOwn
+        isImageBlurred={false}
+        imageBlurRadius={4}
+        miniAa={false}
+        messageProtocol="https:"
+        onIdClick={() => {}}
+        onRepClick={() => {}}
+        onUrlClick={() => true}
+        onUrlContextMenu={() => true}
+        onAnchorClick={() => {}}
+        onAnchorHover={() => {}}
+        onAnchorLeave={() => {}}
+        onContextMenu={() => {}}
+      />,
+    );
+
+    const article = container.querySelector("[data-res-num='1']");
+    expect(article).toHaveClass("res--state-reply-to-own");
+    expect(container.querySelector(".res__name")).toHaveClass("res__name--state-reply-to-own");
+
+    rerender(
       <ResItem
         res={BASE_RES}
         idPos={0}
@@ -195,11 +222,46 @@ describe("ResItem", () => {
       />,
     );
 
-    const article = container.querySelector("[data-res-num='1']");
     expect(article).toHaveClass("res--own");
     expect(article).toHaveClass("res--reply-to-own");
+    expect(article).toHaveClass("res--state-own");
+    expect(container.querySelector(".res__name")).toHaveClass("res__name--own");
+    expect(container.querySelector(".res__name")).toHaveClass("res__name--reply-to-own");
+    expect(container.querySelector(".res__name")).toHaveClass("res__name--state-own");
     expect(screen.getByText("自分")).toBeInTheDocument();
     expect(screen.getByText("返信")).toBeInTheDocument();
+
+    const ngRes: IRes = {
+      ...BASE_RES,
+      ng: { type: "Body", ruleDescription: "hide body contains" },
+    };
+    rerender(
+      <ResItem
+        res={ngRes}
+        idPos={0}
+        idCount={0}
+        repCount={0}
+        isOwn
+        isReplyToOwn
+        isImageBlurred={false}
+        imageBlurRadius={4}
+        miniAa={false}
+        messageProtocol="https:"
+        onIdClick={() => {}}
+        onRepClick={() => {}}
+        onUrlClick={() => true}
+        onUrlContextMenu={() => true}
+        onAnchorClick={() => {}}
+        onAnchorHover={() => {}}
+        onAnchorLeave={() => {}}
+        onContextMenu={() => {}}
+      />,
+    );
+
+    expect(article).toHaveClass("res--state-ng");
+    fireEvent.click(article!);
+    expect(container.querySelector(".res__name")).toHaveClass("res__name--state-ng");
+    expect(container.querySelector(".res__badge--ng")).toHaveTextContent("NG");
   });
 });
 
