@@ -62,10 +62,11 @@
 
 日常利用中の不満は、原因・優先度・再現手順を整理せず`.todo`へ散文で追記する。入力者にIssue形式を要求してはいけない。
 
-運用の正本は、ChatGPTにログインしたOpenAI CodexのScheduled Taskへ登録する次の2つのプロンプトとする。
+運用の正本は、Open Agent Skills形式でリポジトリへ保存する次の2つのSkillとする。Scheduled TaskはSkillを起動する短いプロンプトだけを保持する。
 
-- `docs/workflows/codex-todo-triage.md`: `.todo`と既存Issueを調査し、重複確認後に最大3件のIssueを作成する。通常は日次または手動で実行し、`needs-retriage`は対象Issueだけを再調査する。
-- `docs/workflows/codex-ready-issue.md`: 人が`ready`を付けたIssueを1件だけ実装し、検証済みのDraft PRを作成する。マージ、クローズ、リリース、デプロイは行わない。
+- `.agents/skills/triage-todo/SKILL.md`: `.todo`と既存Issueを調査し、重複確認後に最大3件のIssueを作成する。
+- `.agents/skills/implement-ready-issue/SKILL.md`: 人が`ready-for-agent`を付けたIssueを1件だけ実装し、検証済みのDraft PRを作成する。マージ、クローズ、リリース、デプロイは行わない。
+- `docs/workflows/`: ChatGPT/Codex Scheduled Taskへ登録するSkill呼び出し手順だけを置く。
 
 このループはChatGPT PlusのCodex利用枠と接続済みGitHubを使い、OpenAI API PlatformのAPIキーや従量課金を使わない。ローカルの`.todo`を扱うScheduled TaskはCodexデスクトップでこのリポジトリの専用worktreeを選び、実行中はアプリとPCを起動したままにする。Web上のTaskはローカルフォルダを保持しないため、GitHub接続から取得できる情報だけで動かす。
 
@@ -75,23 +76,24 @@
 
 - Issue作成前にopen/closedの両方をタイトル、本文、URL、関連語、コード根拠で確認し、重複を作らない。
 - 症状、期待動作、観察条件、コード根拠、原因候補、修正案、完了条件、リスクをIssue本文へ整理する。判断できない仕様や再現情報は推測しない。
-- Issueの種類にはGitHub標準の`bug`、`enhancement`、`documentation`、`question`を優先する。`needs-info`は新規Issueに使わず、情報不足は`question`とする。
-- `needs-priority`、`ready`、`needs-retriage`、`needs-human-test`、`blocked`は、Projectsへの状態移行が完了するまでの運用制御用として残す。既存の`review-existing`は人が`duplicate`、`invalid`、`wontfix`などへ判断するまで閉じない。
-- 調査済みで優先度判断待ちは`needs-priority`、人が実装を承認したものだけが`ready`、自動確認済みで操作確認待ちは`needs-human-test`とする。IssueのクローズとProjectsのDone移動は人の確認後に行う。
+- Issueの種類にはGitHub標準の`bug`、`enhancement`、`documentation`、`question`を使用する。強い重複には`duplicate`、必須情報の不足にはgh-awのTriage例と同じ`needs-info`を使用する。
+- AI運用専用ラベルは`ready-for-agent`、`in-progress`、`needs-human-review`、`blocked`だけとする。分類済みで`ready-for-agent`がないIssueは、人の判断待ちである。
+- 人が実装を承認したIssueだけに`ready-for-agent`を付ける。実装開始時は`in-progress`、自動確認とDraft PRの完了後は`needs-human-review`へ移す。
+- Issueの完了はラベルで表現せず、人が確認結果をコメントしてGitHubのclose reason `completed`または`not planned`を選ぶ。
 
 #### Implementation rules
 
-- 実装対象は`ready`のIssueを1件だけとし、Issue、AGENTS.md、関連コード、既存テストを確認してから専用ブランチまたはworktreeで作業する。
+- 実装対象は`ready-for-agent`のIssueを1件だけとし、Issue、AGENTS.md、関連コード、既存テストを確認してから専用ブランチまたはworktreeで作業する。
 - Issue範囲外のついで修正、依存更新、workflow変更、lockfile変更をしない。
 - TypeScriptはpnpm/pnpx、Pythonはuv、Vite+の確認は`vp check`と`vp test`を使い、結果・残存リスク・人が試す操作をIssueへ記録する。
 - バグ修正や意図的なコード変更では、コード内に「なぜその実装にしたか」をコメントとして残す。
-- 仕様不明、テスト環境不良、データ損失の恐れ、Issue範囲超過では実装を止め、`question`または`blocked`として人へ戻す。
+- 仕様不明では`needs-info`、テスト環境不良、データ損失の恐れ、Issue範囲超過では`blocked`として人へ戻す。
 - 旧ローカルtriageスクリプト、Task Scheduler、state JSON、ready-issue runner、`pnpm triage:todo`、GitHub Agentic Workflows、`CODEX_API_KEY`、`OPENAI_API_KEY`は使用しない。旧ファイルは移行コミットで撤去し、旧Task Schedulerは新Scheduled Taskの安定稼働を確認するまで無効状態で保持する。
 
 #### Initial operating cadence
 
 - 移行中はScheduled Taskを最初の1〜2回は手動起動または短い間隔で確認し、生成されるIssue、コメント、ラベル、Draft PRの内容を人が確認する。
-- 切替後は日次のトリアージScheduled Taskを基本とし、1回の新規Issueは最大3件とする。直前の実行で作成された`needs-priority` Issueが人の判断待ちの間は追加作成しない。
+- 切替後は日次のトリアージScheduled Taskを基本とし、1回の新規Issueは最大3件とする。AIは優先度を決めず、人が`ready-for-agent`を付けるまで実装しない。
 - 最初の1〜2週間は、重複、意図不明項目の集約、Draft PRの自動確認、人による操作確認を毎回確認する。
 
 <!--VITE PLUS START-->

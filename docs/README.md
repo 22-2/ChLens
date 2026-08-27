@@ -22,11 +22,11 @@
 
 ### Workflow
 
-開発者やCodex Scheduled Taskが参照する改善ループの計画と実行手順。
+開発者やCodex Scheduled Taskが参照する改善ループの計画とSkill起動手順。実行手順の正本は`.agents/skills/`に置く。
 
 - [Agentic改善ループ移行ロードマップ](plans/agentic-improvement-loop-migration.md)
 - [`.todo`トリアージ](workflows/codex-todo-triage.md)
-- [`ready` Issue実装](workflows/codex-ready-issue.md)
+- [`ready-for-agent` Issue実装](workflows/codex-ready-issue.md)
 
 ### Archive
 

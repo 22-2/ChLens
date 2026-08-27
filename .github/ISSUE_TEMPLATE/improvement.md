@@ -2,7 +2,7 @@
 name: Improvement / Bug
 about: .todoの不満や実装後の観察結果を、調査可能なIssueとして整理する
 title: ""
-labels: "needs-priority"
+labels: ""
 assignees: ""
 ---
 

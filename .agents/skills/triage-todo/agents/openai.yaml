@@ -1,0 +1,4 @@
+interface:
+  display_name: "Todo Triage"
+  short_description: "Safely triage .todo notes into GitHub Issues"
+  default_prompt: "Use $triage-todo to review .todo and safely triage it into GitHub Issues."

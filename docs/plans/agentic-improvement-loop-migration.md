@@ -10,27 +10,28 @@ OpenAI API PlatformのAPIキー、従量課金、GitHub Actions上のCodex実行
 
 ## 状態管理
 
-GitHub標準の分類とProjectsの状態を優先し、専用ラベルはAIへの明示的な命令に必要なものだけ残す。
+GitHub標準の分類を優先し、専用ラベルはAIへの明示的な命令と引き渡しに必要なものだけ残す。
 
 | 現在 | 移行後 |
 | --- | --- |
-| `needs-info` | 標準ラベル`question`へ移行済み |
-| `review-existing` | 標準ラベル`invalid`、`duplicate`、`wontfix`のいずれかを人が確認して適用 |
-| `needs-priority` | ProjectsのStatus `Todo`。Priorityは人が設定 |
-| `in-progress` | ProjectsのStatus `In Progress` |
-| Issueの完了 | Issue closeとProjectsのStatus `Done` |
-| `blocked` | Projectsに`Blocked`を追加する場合だけ使用 |
-| `ready` | AI実装を開始する人の承認ラベルとして残す |
-| `needs-retriage` | AI再調査を開始する人の指示ラベルとして残す |
-| `needs-human-test` | Draft PRとレビューで表現する補助ラベル |
+| `needs-info` | 必須情報が不足しているgh-aw互換のTriageラベルとして使用 |
+| `review-existing` | `needs-human-review`へ統合 |
+| `needs-priority` | 廃止。分類済みで`ready-for-agent`がなければ人の判断待ち |
+| `ready` | `ready-for-agent`へ改名 |
+| `in-progress` | 実装中を示すため維持 |
+| `needs-retriage` | 廃止。`needs-info` Issueの新情報を次回トリアージで再確認 |
+| `needs-human-test` | `needs-human-review`へ統合 |
+| `blocked` | 環境、依存関係、安全性、データ損失リスクによる停止に限定 |
+| Issueの完了 | 人がGitHubのclose reason `completed`または`not planned`を選択 |
 
-Issueの種類には標準ラベルの`bug`、`enhancement`、`documentation`、`question`を使用する。既存Issueのラベルは新運用の試運転が終わるまで一括変更しない。
+Issueの種類には標準ラベルの`bug`、`enhancement`、`documentation`、`question`を使用する。優先度ラベルは必要性が確認されるまで追加しない。
 
 ## 移行後の構成
 
 - `.todo`: ローカルプロジェクトに残す自由記述インボックス
-- [`codex-todo-triage.md`](../workflows/codex-todo-triage.md): 日次Scheduled Taskへ登録するトリアージ手順。最大3件のIssueを作成する
-- [`codex-ready-issue.md`](../workflows/codex-ready-issue.md): `ready` Issueを1件だけ実装し、Draft PRを作る手順
+- [`.agents/skills/triage-todo/SKILL.md`](../../.agents/skills/triage-todo/SKILL.md): `.todo`を調査して最大3件のIssueを作成する正本
+- [`.agents/skills/implement-ready-issue/SKILL.md`](../../.agents/skills/implement-ready-issue/SKILL.md): `ready-for-agent` Issueを1件だけ実装してDraft PRを作る正本
+- [`docs/workflows/`](../workflows/): Scheduled Taskへ登録する短いSkill呼び出し手順
 - ChatGPT/CodexのGitHub接続: Issue、コメント、ラベル、PRの読み書きに使用する
 - Codexデスクトップの専用worktree: ローカル`.todo`とソース変更を他の作業から分離する
 
@@ -39,19 +40,21 @@ Issueの種類には標準ラベルの`bug`、`enhancement`、`documentation`、
 ## チェックリスト
 
 - [x] 旧Windows定期タスクを無効化し、既存Issueと`.todo`を保持する
-- [x] GitHub標準9種のラベルを復元し、#4の`needs-info`を`question`へ移行する
+- [x] GitHub標準9種のラベルを復元する
 - [x] 旧スクリプト、旧テスト、旧文書、旧AI用worktreeを撤去する
 - [x] ChatGPT Plusのみで動かすScheduled Task方式へ切り替える
+- [x] 2つの手順をrepo-local Skillへ移し、Scheduled TaskのプロンプトをSkill呼び出しだけにする
+- [x] 既存IssueをGitHub標準分類と最小状態ラベルへ移行する
 - [ ] GitHub接続と2つのScheduled Taskを作成し、アクセス範囲を確認する
 - [ ] トリアージを手動で試運転し、Issue重複と最大3件制限を確認する
-- [ ] `ready`からDraft PRまでを1件で試運転し、人手確認を行う
+- [ ] `ready-for-agent`からDraft PRまでを1件で試運転し、人手確認を行う
 - [ ] 1〜2週間の安定稼働後に旧Task Schedulerを削除する
 
 ## 切り替え条件
 
 - ChatGPT PlusのScheduled TaskとGitHub接続が利用可能である
 - トリアージが既存Issueを重複作成せず、1回最大3件で停止する
-- `ready`のないIssueを実装しない
+- `ready-for-agent`のないIssueを実装しない
 - AIが優先度、マージ、Issueの完了を自動決定しない
 - 自動テスト結果と人が確認する操作がDraft PRへ記録される
 - API Platform Secretを作成せず、従量課金が発生しない構成である

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Implement Ready Issue"
+  short_description: "Implement one approved Issue and draft a PR"
+  default_prompt: "Use $implement-ready-issue to implement one approved GitHub Issue and prepare a verified draft PR."
