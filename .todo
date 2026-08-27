@@ -134,6 +134,8 @@ https://i.imgur.com/cicrbsg.jpeg
 あるのはこのurl
 http://bbs.eddibb.cc/liveedge/dat/1787362373.dat
 
+- [ ] レスツリーのピン留め中は、ピンアイコンを3点ドットの隣に表示（そこから解除できるように。解除したら非表示に）
+
 agents.mdに書いてるアーキテクチャも実際のコードより古くなってきたっす🥺
   <!-- issue: #26 -->
 更新したいっす
