@@ -1,11 +1,12 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { container } from "src/service-container";
 import { TabContextMenu } from "src/view/browser/components/TabContextMenu";
 import type { Tab } from "src/view/browser/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-const { dispatchMock, threadTab } = vi.hoisted(() => ({
+const { copyTextMock, dispatchMock, threadTab } = vi.hoisted(() => ({
+  copyTextMock: vi.fn<() => Promise<void>>(),
   dispatchMock: vi.fn(),
   threadTab: {
     id: "tab-1",
@@ -24,6 +25,11 @@ const { dispatchMock, threadTab } = vi.hoisted(() => ({
   } satisfies Tab,
 }));
 
+vi.mock("src/view/browser/utils/utils", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("src/view/browser/utils/utils")>();
+  return { ...actual, copyText: copyTextMock };
+});
+
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => ({
     state: {
@@ -36,6 +42,7 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
 
 describe("TabContextMenu", () => {
   beforeEach(() => {
+    copyTextMock.mockResolvedValue();
     container.bookmark = {
       get: vi.fn(),
       add: vi.fn(),
@@ -48,13 +55,28 @@ describe("TabContextMenu", () => {
 
   afterEach(() => {
     cleanup();
+    copyTextMock.mockReset();
     dispatchMock.mockReset();
   });
 
-  it("一般的なコピー操作は残し、dat URLはコマンドパレット専用にする", () => {
+  it("通常URLとMarkdownリンクのコピーをタブメニューから実行できる", () => {
     render(<TabContextMenu tab={threadTab} position={{ x: 10, y: 10 }} onClose={vi.fn()} />);
 
+    fireEvent.click(screen.getByRole("button", { name: "URLをコピー" }));
+    expect(copyTextMock).toHaveBeenLastCalledWith(
+      "https://egg.5ch.net/test/read.cgi/software/123/",
+    );
+
     expect(screen.getByRole("button", { name: "スレタイ&URLをコピー" })).toBeInTheDocument();
+    const markdownButton = screen.getByRole("button", {
+      name: "スレタイ&URLをMarkdownでコピー",
+    });
+    expect(markdownButton).toBeInTheDocument();
+
+    fireEvent.click(markdownButton);
+    expect(copyTextMock).toHaveBeenLastCalledWith(
+      "[Current Thread](https://egg.5ch.net/test/read.cgi/software/123/)",
+    );
     expect(screen.queryByRole("button", { name: "datのURLをコピー" })).not.toBeInTheDocument();
   });
 });

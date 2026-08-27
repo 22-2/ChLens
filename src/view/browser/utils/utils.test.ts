@@ -2,6 +2,7 @@ import "@testing-library/jest-dom/vitest";
 import {
   extractUrlsFromMessage,
   formatIdForCopy,
+  formatMarkdownLink,
   formatResForCopy,
   hasExternalLink,
   hasImage,
@@ -73,6 +74,12 @@ describe("browser utils", () => {
         message: "message",
       }),
     ).toBe("10 name ID:abc123  date\nmessage");
+  });
+
+  it("MarkdownリンクのタイトルとURLに含まれる構文文字をエスケープする", () => {
+    expect(formatMarkdownLink("Title ] \\ note", "https://example.test/thread/(1)?next=2)")).toBe(
+      "[Title \\] \\\\ note](https://example.test/thread/\\(1\\)?next=2\\))",
+    );
   });
 
   describe("imgur URL変換（リサイズパラメータ付き）", () => {

@@ -27,7 +27,7 @@ import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useW
 import type { ThreadListPage as ThreadListPageType } from "src/view/browser/types";
 import { ContextMenu, ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { Spinner } from "src/view/browser/ui/Spinner";
-import { copyText } from "src/view/browser/utils/utils";
+import { copyText, formatMarkdownLink } from "src/view/browser/utils/utils";
 const OPENED_BOARDS_CONFIG_KEY = "opened_board_entries";
 const MAX_OPENED_BOARD_ENTRIES = 500;
 
@@ -995,6 +995,12 @@ export const ThreadListPage: React.FC<Props> = ({
         id: "copy-title-url",
         label: "スレタイ&URLをコピー",
         onSelect: () => void copyText(`${thread.title}\n${thread.url}`),
+      },
+      {
+        id: "copy-title-url-markdown",
+        label: "スレタイ&URLをMarkdownでコピー",
+        // 変更理由: 既存の改行形式を残し、Markdownを使いたい貼り付け先だけ出力形式を選べるようにする。
+        onSelect: () => void copyText(formatMarkdownLink(thread.title, thread.url)),
       },
     ];
     return items;

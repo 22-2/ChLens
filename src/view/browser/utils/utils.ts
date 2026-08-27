@@ -94,6 +94,14 @@ export async function copyText(text: string): Promise<void> {
   }
 }
 
+export function formatMarkdownLink(title: string, url: string): string {
+  // 変更理由: タイトルやURLにMarkdownの構文文字が含まれても、コピー先でリンクとして
+  // 解釈できる形を保ちつつ、元のタイトルとURLを変更せずに渡す。
+  const escapedTitle = title.replaceAll("\\", "\\\\").replaceAll("]", "\\]");
+  const escapedUrl = url.replaceAll("\\", "\\\\").replaceAll("(", "\\(").replaceAll(")", "\\)");
+  return `[${escapedTitle}](${escapedUrl})`;
+}
+
 export function canCopyImageToClipboard(): boolean {
   return (
     typeof navigator !== "undefined" &&

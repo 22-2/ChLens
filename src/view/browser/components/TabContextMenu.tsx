@@ -16,7 +16,7 @@ import type { Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
 import { ContextMenu, ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
-import { copyText } from "src/view/browser/utils/utils";
+import { copyText, formatMarkdownLink } from "src/view/browser/utils/utils";
 // `app.bookmark` はグローバルで提供されるサービス
 
 interface MenuPosition {
@@ -124,11 +124,27 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
         },
       });
       result.push({
+        id: "copy-url",
+        label: "URLをコピー",
+        // 変更理由: タブ単位の操作でも、タイトルを付けずに通常のスレURLだけを取得できるようにする。
+        onSelect: () => {
+          void copyText(threadPage.threadUrl);
+        },
+      });
+      result.push({
         id: "copy-title-url",
         label: "スレタイ&URLをコピー",
         icon: <Clipboard />,
         onSelect: () => {
           void copyText(`${threadPage.title}\n${threadPage.threadUrl}`);
+        },
+      });
+      result.push({
+        id: "copy-title-url-markdown",
+        label: "スレタイ&URLをMarkdownでコピー",
+        // 変更理由: 改行形式を維持したまま、Markdownリンクを必要とする利用者にも同じメニューから提供する。
+        onSelect: () => {
+          void copyText(formatMarkdownLink(threadPage.title, threadPage.threadUrl));
         },
       });
       result.push({ id: "sep-copy", separator: true });
