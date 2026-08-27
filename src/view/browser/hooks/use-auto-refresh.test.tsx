@@ -28,21 +28,25 @@ function createRect({ top, bottom }: TestRectOptions): DOMRect {
 
 function AutoRefreshHarness({
   enabled = true,
+  expired = false,
   pauseAutoScroll = false,
   onRequestRefresh,
   onAutoStop,
+  onThreadExpired,
 }: {
   enabled?: boolean;
+  expired?: boolean;
   pauseAutoScroll?: boolean;
   onRequestRefresh: () => void;
   onAutoStop?: () => void;
+  onThreadExpired?: () => void;
 }) {
   const [responses, setResponses] = useState([1, 2]);
   const [loading, setLoading] = useState(false);
   const rootRef = React.useRef<HTMLDivElement>(null);
   const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling } = useAutoRefresh({
     enabled,
-    expired: false,
+    expired,
     loading,
     pauseAutoScroll,
     responseCount: responses.length,
@@ -53,6 +57,7 @@ function AutoRefreshHarness({
       onRequestRefresh();
     },
     onAutoStop,
+    onThreadExpired,
   });
 
   return (
@@ -286,6 +291,64 @@ describe("useAutoRefresh", () => {
 
     expect(scrollTopValue).toBe(300);
     expect(onRequestRefresh).toHaveBeenCalledOnce();
+  });
+
+  it("dat落ち検知で自動更新を止め、再描画やタブ切替では通知を重ねない", () => {
+    const onRequestRefresh = vi.fn();
+    const onThreadExpired = vi.fn();
+    const { rerender } = render(
+      <AutoRefreshHarness
+        expired={false}
+        onRequestRefresh={onRequestRefresh}
+        onThreadExpired={onThreadExpired}
+      />,
+    );
+
+    act(() => {
+      rerender(
+        <AutoRefreshHarness
+          expired={true}
+          onRequestRefresh={onRequestRefresh}
+          onThreadExpired={onThreadExpired}
+        />,
+      );
+    });
+
+    expect(onThreadExpired).toHaveBeenCalledOnce();
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+    expect(onRequestRefresh).not.toHaveBeenCalled();
+
+    act(() => {
+      // 非アクティブ化・再アクティブ化と再取得による状態の揺れを再現する。
+      rerender(
+        <AutoRefreshHarness
+          enabled={false}
+          expired={true}
+          onRequestRefresh={onRequestRefresh}
+          onThreadExpired={onThreadExpired}
+        />,
+      );
+      rerender(
+        <AutoRefreshHarness
+          enabled={true}
+          expired={false}
+          onRequestRefresh={onRequestRefresh}
+          onThreadExpired={onThreadExpired}
+        />,
+      );
+      rerender(
+        <AutoRefreshHarness
+          enabled={true}
+          expired={true}
+          onRequestRefresh={onRequestRefresh}
+          onThreadExpired={onThreadExpired}
+        />,
+      );
+    });
+
+    expect(onThreadExpired).toHaveBeenCalledOnce();
   });
 
   it("更新間隔が未設定でも既定の5秒で自動更新する", () => {

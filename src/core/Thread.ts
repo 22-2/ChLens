@@ -516,8 +516,8 @@ export default class Thread {
    * 板スレ一覧のレス数と突き合わせ、不足分をあぼーんで補填する。
    *
    * 変更理由: 板一覧キャッシュの未取得・不完全な subject.txt・URL の表記揺れでも
-   * not_found になり得る。ここで dat 落ち扱いにすると生きているスレの自動更新まで
-   * 停止するため、expired は HTTP 203 などサーバーの明示的な通知だけで判定する。
+   * not_found になり得るため、ここでは expired として扱わず独立した信号にする。
+   * ブラウザ画面での自動更新停止と通知は、取得結果を受け取った側でこの信号も含めて判断する。
    */
   private _padAbobunIfNeeded(thread: ParsedThread, result: CachedInfoResult): void {
     if (result.status === "success" || result.status === "sucess") {
@@ -530,8 +530,8 @@ export default class Thread {
         });
       }
     }
-    // 変更理由: subject.txt 不在を expired と同一視すると、生存中のスレでも
-    // 自動更新が止まるため、画面の案内だけに使う独立した状態として保持する。
+    // 変更理由: subject.txt 不在を expired と同一視すると、コアの dat 落ち判定が
+    // 不正確になるため、画面側が自動更新停止の要否を選べる独立した状態として保持する。
     this.missingFromSubject = isMissingFromSubject(result.status);
   }
 
