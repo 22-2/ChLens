@@ -272,6 +272,87 @@ describe("ResItem", () => {
     expect(container.querySelector(".res__name")).toHaveClass("res__name--state-ng");
     expect(container.querySelector(".res__badge--ng")).toHaveTextContent("NG");
   });
+
+  it("検索語を一致した本文・名前・IDへそれぞれ表示する", () => {
+    const searchableRes: IRes = { ...BASE_RES, id: "ABC123" };
+    const { container, rerender } = render(
+      <ResItem
+        res={searchableRes}
+        idPos={0}
+        idCount={0}
+        repCount={0}
+        isOwn={false}
+        isReplyToOwn={false}
+        isImageBlurred={false}
+        imageBlurRadius={4}
+        miniAa={false}
+        messageProtocol="https:"
+        searchQuery="リンク"
+        onIdClick={() => {}}
+        onRepClick={() => {}}
+        onUrlClick={() => true}
+        onUrlContextMenu={() => true}
+        onAnchorClick={() => {}}
+        onAnchorHover={() => {}}
+        onAnchorLeave={() => {}}
+        onContextMenu={() => {}}
+      />,
+    );
+
+    expect(container.querySelector(".res__body mark")?.textContent).toBe("リンク");
+
+    rerender(
+      <ResItem
+        res={searchableRes}
+        idPos={0}
+        idCount={0}
+        repCount={0}
+        isOwn={false}
+        isReplyToOwn={false}
+        isImageBlurred={false}
+        imageBlurRadius={4}
+        miniAa={false}
+        messageProtocol="https:"
+        searchQuery="名無しさん"
+        onIdClick={() => {}}
+        onRepClick={() => {}}
+        onUrlClick={() => true}
+        onUrlContextMenu={() => true}
+        onAnchorClick={() => {}}
+        onAnchorHover={() => {}}
+        onAnchorLeave={() => {}}
+        onContextMenu={() => {}}
+      />,
+    );
+
+    expect(container.querySelector(".res__name mark")?.textContent).toBe("名無しさん");
+
+    rerender(
+      <ResItem
+        res={searchableRes}
+        idPos={0}
+        idCount={0}
+        repCount={0}
+        isOwn={false}
+        isReplyToOwn={false}
+        isImageBlurred={false}
+        imageBlurRadius={4}
+        miniAa={false}
+        messageProtocol="https:"
+        searchQuery="ABC"
+        onIdClick={() => {}}
+        onRepClick={() => {}}
+        onUrlClick={() => true}
+        onUrlContextMenu={() => true}
+        onAnchorClick={() => {}}
+        onAnchorHover={() => {}}
+        onAnchorLeave={() => {}}
+        onContextMenu={() => {}}
+      />,
+    );
+
+    expect(container.querySelector(".res__id mark")?.textContent).toBe("ABC");
+  });
 });
 
 function containerQueryByClass(className: string): HTMLElement {
