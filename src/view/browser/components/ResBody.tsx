@@ -1,10 +1,11 @@
-import React, { useCallback, useLayoutEffect, useRef } from "react";
+import React, { useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import { ANCHOR_SELECTOR, ID_LINK_SELECTOR } from "src/view/browser/utils/constants";
 import {
   RESPECT_DEFAULT_EXTERNAL,
   type ResBodyUrlClickHandler,
   type UrlContextMenuHandler,
 } from "src/view/browser/utils/link-routing";
+import { highlightSearchMatches } from "src/view/browser/utils/search-highlight";
 import {
   getEventTargetElement,
   normalizeIdLinkText,
@@ -28,6 +29,7 @@ interface MiddleClickState {
 
 interface ResBodyProps {
   messageHtml: string;
+  searchQuery?: string;
   anchorPreviewDepth: number;
   onUrlClick: ResBodyUrlClickHandler;
   onUrlContextMenu: UrlContextMenuHandler;
@@ -331,6 +333,7 @@ function useResBodyInteractionHandlers({
 export const ResBody: React.FC<ResBodyProps> = React.memo(
   ({
     messageHtml,
+    searchQuery = "",
     anchorPreviewDepth,
     onUrlClick,
     onUrlContextMenu,
@@ -352,6 +355,10 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
       onAnchorLeave,
     });
     const bodyRef = useRef<HTMLDivElement>(null);
+    const highlightedMessageHtml = useMemo(
+      () => highlightSearchMatches(messageHtml, searchQuery),
+      [messageHtml, searchQuery],
+    );
 
     useLayoutEffect(() => {
       const body = bodyRef.current;
@@ -363,13 +370,13 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
           targets.some((target) => ngResNums?.has(target) ?? false),
         );
       }
-    }, [messageHtml, ngResNums]);
+    }, [highlightedMessageHtml, ngResNums]);
 
     return (
       <div
         ref={bodyRef}
         className="res__body"
-        dangerouslySetInnerHTML={{ __html: messageHtml }}
+        dangerouslySetInnerHTML={{ __html: highlightedMessageHtml }}
         {...interactionHandlers}
       />
     );

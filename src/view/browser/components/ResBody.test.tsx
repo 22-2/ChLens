@@ -346,4 +346,27 @@ describe("ResBody anchor behavior", () => {
     expect(onUrlContextMenu).not.toHaveBeenCalled();
     expect(contextMenuEvent.defaultPrevented).toBe(false);
   });
+
+  it("検索語を本文の一致箇所だけ強調し、アンカー操作を維持する", () => {
+    const onAnchorClick = vi.fn();
+    const { container } = render(
+      <ResBody
+        messageHtml='<a class="anchor">&gt;&gt;5 見つかる</a> 見つかる'
+        searchQuery="見つかる"
+        anchorPreviewDepth={0}
+        onUrlClick={() => {}}
+        onUrlContextMenu={() => {}}
+        onIdLinkClick={() => {}}
+        onAnchorClick={onAnchorClick}
+        onAnchorHover={() => {}}
+        onAnchorLeave={() => {}}
+      />,
+    );
+
+    expect(container.querySelectorAll("mark.res__search-match")).toHaveLength(2);
+    const anchor = container.querySelector("a.anchor") as HTMLAnchorElement;
+    fireEvent.click(anchor.querySelector("mark") as HTMLElement);
+
+    expect(onAnchorClick).toHaveBeenCalledWith(5);
+  });
 });

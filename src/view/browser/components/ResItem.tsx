@@ -7,7 +7,36 @@ import { useIsNgTemporarilyDisabled } from "src/view/browser/hooks/use-ng-status
 import { getIdHeatColor } from "src/view/browser/utils/id-heat";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
 import { getReplyHeatLevel } from "src/view/browser/utils/reply-heat";
+import {
+  findSearchMatchRanges,
+  highlightSearchMatches,
+} from "src/view/browser/utils/search-highlight";
 import { decodeResponseHtml, extractUrlsFromMessage } from "src/view/browser/utils/utils";
+
+function renderHighlightedText(text: string, searchQuery: string): React.ReactNode {
+  const ranges = findSearchMatchRanges(text, searchQuery);
+  if (ranges.length === 0) {
+    return text;
+  }
+
+  const parts: React.ReactNode[] = [];
+  let cursor = 0;
+  for (const range of ranges) {
+    if (range.start > cursor) {
+      parts.push(text.slice(cursor, range.start));
+    }
+    parts.push(
+      <mark key={`${range.start}-${range.end}`} className="res__search-match">
+        {text.slice(range.start, range.end)}
+      </mark>,
+    );
+    cursor = range.end;
+  }
+  if (cursor < text.length) {
+    parts.push(text.slice(cursor));
+  }
+  return parts;
+}
 
 export const ResItem: React.FC<ResItemProps> = React.memo(
   ({
@@ -30,6 +59,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
     isImageBlurred,
     imageBlurRadius,
     ngResNums,
+    searchQuery = "",
   }) => {
     const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
     // res.ng はサービス層がNGワード照合した結果を格納するフィールド。
@@ -39,6 +69,12 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
     const isNG = !isNgTemporarilyDisabled && isNgMatched;
     const [isNgRevealed, setIsNgRevealed] = useState(false);
     const decoded = useMemo(() => decodeResponseHtml(res, messageProtocol), [messageProtocol, res]);
+    // 検索判定と同じ語を表示層へ渡し、本文・名前・IDのどこでレスが一致したかを追えるようにする。
+    // 本文と名前のHTMLはテキストノードだけを変換し、リンクやアンカーの操作対象を保つ。
+    const highlightedNameHtml = useMemo(
+      () => highlightSearchMatches(decoded.nameHtml, searchQuery),
+      [decoded.nameHtml, searchQuery],
+    );
     const urls = useMemo(() => extractUrlsFromMessage(decoded.messageHtml), [decoded.messageHtml]);
     const replyHeat = getReplyHeatLevel(repCount);
     const resNumClassName = `res__num${
@@ -110,7 +146,10 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
       >
         <header className="res__header">
           <span className={resNumClassName}>{res.num}</span>
-          <span className={nameClassName} dangerouslySetInnerHTML={{ __html: decoded.nameHtml }} />
+          <span
+            className={nameClassName}
+            dangerouslySetInnerHTML={{ __html: highlightedNameHtml }}
+          />
           {isOwn ? <span className="res__badge res__badge--own">自分</span> : null}
           {isReplyToOwn ? <span className="res__badge res__badge--reply-to-own">返信</span> : null}
           {isNgMatched ? <NgBadge result={res.ng} /> : null}
@@ -126,7 +165,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
                 onIdClick(res.id!, e);
               }}
             >
-              {res.id}
+              {renderHighlightedText(res.id, searchQuery)}
               {idCount >= 2 && `(${idPos}/${idCount})`}
             </span>
           )}
@@ -145,6 +184,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
         </header>
         <ResBody
           messageHtml={decoded.messageHtml}
+          searchQuery={searchQuery}
           anchorPreviewDepth={0}
           ngResNums={ngResNums}
           onUrlClick={(url, button, mode) => onUrlClick(url, undefined, button, mode)}
@@ -187,4 +227,5 @@ export interface ResItemProps {
   isImageBlurred: boolean;
   imageBlurRadius: number;
   ngResNums?: ReadonlySet<number>;
+  searchQuery?: string;
 }

@@ -97,6 +97,13 @@
   word-break: break-all;
 }
 
+.res__search-match {
+  /* Use the table highlight tokens so matches remain legible in both themes. */
+  border-radius: var(--sys-radius-sm);
+  background: var(--sys-color-table-highlight-bg);
+  color: var(--sys-color-table-highlight-fg);
+}
+
 .res__body a {
   color: var(--sys-color-table-link);
 }
