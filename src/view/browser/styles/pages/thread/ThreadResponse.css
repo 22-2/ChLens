@@ -11,17 +11,19 @@
  * The resolved state indicator preserves the row's existing background for
  * selection, highlights, and heatmap overlays while still making each state
  * visible at a glance. ResItem resolves overlapping flags before applying it.
+ * 変更理由: 自分のレスは所有者を示す青、自分への返信は注意を促すオレンジに
+ * 割り当て、利用者が「自分」と「自分への反応」を直感的に区別できるようにする。
  */
 .res--state-ng {
   border-inline-start-color: var(--sys-color-error);
 }
 
 .res--state-own {
-  border-inline-start-color: var(--sys-color-warning);
+  border-inline-start-color: var(--sys-color-accent);
 }
 
 .res--state-reply-to-own {
-  border-inline-start-color: var(--sys-color-accent);
+  border-inline-start-color: var(--sys-color-warning);
 }
 
 .thread-page--with-minimap .res {
@@ -57,11 +59,11 @@
 }
 
 .res__name--own {
-  color: var(--sys-color-warning);
+  color: var(--sys-color-accent);
 }
 
 .res__name--reply-to-own {
-  color: var(--sys-color-accent);
+  color: var(--sys-color-warning);
 }
 
 .res__name--state-ng {
@@ -69,11 +71,11 @@
 }
 
 .res__name--state-own {
-  color: var(--sys-color-warning);
+  color: var(--sys-color-accent);
 }
 
 .res__name--state-reply-to-own {
-  color: var(--sys-color-accent);
+  color: var(--sys-color-warning);
 }
 
 .res__badge {
@@ -88,21 +90,21 @@
 }
 
 .res__badge--own {
-  /* A solid badge keeps the owner marker legible without a row background. */
-  border: 1px solid transparent;
-  background: var(--sys-color-warning);
-  color: var(--sys-color-accent-fg);
-}
-
-.res__badge--reply-to-own {
-  /* Use the accent hue so this marker is distinct from the owner warning. */
+  /* A solid blue badge keeps the owner marker legible without a row background. */
   border: 1px solid transparent;
   background: var(--sys-color-accent);
   color: var(--sys-color-accent-fg);
 }
 
+.res__badge--reply-to-own {
+  /* Use the warning hue so this marker is distinct from the owner's blue. */
+  border: 1px solid transparent;
+  background: var(--sys-color-warning);
+  color: var(--sys-color-accent-fg);
+}
+
 .res__badge--ng {
-  /* Red separates the exclusion state from the orange owner marker. */
+  /* Red separates the exclusion state from the orange reply marker. */
   border: 1px solid var(--sys-color-error);
   background: var(--sys-color-error-surface);
   color: var(--sys-color-error);
