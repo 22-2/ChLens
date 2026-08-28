@@ -1,5 +1,5 @@
 import type { IRes } from "src/service-container/interfaces";
-import { stripHtml } from "src/view/browser/utils/utils";
+import { stripHtml } from "src/view/browser/utils/response-format";
 
 const DEFAULT_WRITE_SUCCESS_DELAY_MS = 3000;
 

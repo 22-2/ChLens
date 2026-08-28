@@ -6,9 +6,9 @@ import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 afterEach(cleanup);
 
-vi.mock("src/view/browser/utils/utils", async () => {
-  const actual = await vi.importActual<typeof import("src/view/browser/utils/utils")>(
-    "src/view/browser/utils/utils",
+vi.mock("src/view/browser/utils/response-format", async () => {
+  const actual = await vi.importActual<typeof import("src/view/browser/utils/response-format")>(
+    "src/view/browser/utils/response-format",
   );
   return {
     ...actual,
@@ -21,6 +21,15 @@ vi.mock("src/view/browser/utils/utils", async () => {
       messageHtml: '<a href="https://example.com/page" class="res__link">リンク</a>',
       isNameAnchor: false,
     }),
+  };
+});
+
+vi.mock("src/view/browser/utils/url-media", async () => {
+  const actual = await vi.importActual<typeof import("src/view/browser/utils/url-media")>(
+    "src/view/browser/utils/url-media",
+  );
+  return {
+    ...actual,
     extractUrlsFromMessage: () => ["https://example.com/page", "https://example.com/image.jpg"],
     toViewerImageUrl: (rawUrl: string) => (rawUrl.endsWith(".jpg") ? rawUrl : null),
   };

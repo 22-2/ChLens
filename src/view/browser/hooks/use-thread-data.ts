@@ -20,7 +20,8 @@ import {
   type RootSelectionSnapshot,
 } from "src/view/browser/utils/dom-selection";
 import { buildIndexes } from "src/view/browser/utils/thread-index";
-import { hasExternalLink, hasImage, hasVideo, stripHtml } from "src/view/browser/utils/utils";
+import { hasExternalLink, hasImage, hasVideo } from "src/view/browser/utils/message-filter";
+import { stripHtml } from "src/view/browser/utils/response-format";
 
 // 変更理由: タブ再マウント時やブラウザ再起動後に「読み込み中」しか表示されないのを防ぐため、
 // 前回の取得結果をIDBに永続化し、新しいデータの取得中は古い結果を表示し続ける。

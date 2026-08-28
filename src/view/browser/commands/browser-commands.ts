@@ -35,7 +35,7 @@ import {
   parseInternalBrowserPage,
 } from "src/view/browser/utils/link-routing";
 import { encodeThreadAsToon, estimateToonTokenCount } from "src/view/browser/utils/thread-toon";
-import { copyText } from "src/view/browser/utils/utils";
+import { copyText } from "src/view/browser/utils/clipboard";
 
 export const BROWSER_COMMAND_GROUP_LABELS = {
   navigation: "移動",

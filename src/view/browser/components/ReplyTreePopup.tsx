@@ -18,14 +18,12 @@ import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { FloatingPopup } from "src/view/browser/ui/FloatingPopup";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
+import { canCopyImageToClipboard, copyImageBlob, copyText } from "src/view/browser/utils/clipboard";
 import {
-  canCopyImageToClipboard,
-  copyImageBlob,
-  copyText,
   formatIdForCopy,
   formatResForCopy,
   stripHtml,
-} from "src/view/browser/utils/utils";
+} from "src/view/browser/utils/response-format";
 
 interface TreeMenuPosition {
   x: number;

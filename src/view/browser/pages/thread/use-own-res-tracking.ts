@@ -14,7 +14,7 @@ import {
   subscribeThreadWriteStarted,
   type PendingWritePayload,
 } from "src/view/browser/utils/thread-write-sync";
-import { stripHtml } from "src/view/browser/utils/utils";
+import { stripHtml } from "src/view/browser/utils/response-format";
 
 interface PendingWriteMatchState extends PendingWritePayload {
   baselineResponseCount: number;
