@@ -123,8 +123,8 @@
 - 調査済みで人の優先度判断待ちは`needs-priority`。曖昧なメモから作成した個別Issueは、情報が揃うまで`needs-info`に留める。
 - 意図、仕様、再現情報のいずれかが不足するものは`needs-info`。Issue本文には原文と未確認事項を残し、後から情報を追記できる状態にする。
 - 追加情報をもとにAIの再調査を待つものは`needs-retriage`。再調査後は自動的に`needs-priority`または`needs-info`へ遷移する。
-- 人が実装してよいと判断したものだけが`ready`。
-- `ready`以外のIssueを実装対象にしない。
+- 人が実装してよいと判断したものだけが`ready-for-agent`。
+- `ready-for-agent`以外のIssueを実装対象にしない。
 - 実装開始時に`in-progress`、実装と自動確認の完了後に`needs-human-test`へ変更する。
 - 人が実際に操作して満足した場合だけ、Issueへ確認結果を記録して`completed`でクローズする。
 - 既存Issueを完了扱いにする場合は、実際の確認結果をコメントしてから`gh issue close <number> --reason completed`を使う。実施しない場合は理由をコメントしてから`gh issue close <number> --reason "not planned"`を使う。
@@ -132,7 +132,7 @@
 
 #### Implementation rules
 
-- 実装AIは`ready`のIssueを1件だけ選び、Issue、AGENTS.md、関連コード、既存テストを確認する。
+- 実装AIは`ready-for-agent`のIssueを1件だけ選び、Issue、AGENTS.md、関連コード、既存テストを確認する。
 - 専用ブランチまたはworktreeで作業し、Issue範囲外のついで修正をしない。
 - 自動テスト、静的解析、必要な画面確認を実行し、結果・残存リスク・人が試す操作をIssueへ記録する。
 - バグ修正や意図的なコード変更では、コード内に「なぜその実装にしたか」をコメントとして残す。

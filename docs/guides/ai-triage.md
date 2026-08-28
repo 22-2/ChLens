@@ -86,7 +86,7 @@ gh issue close 123 --reason completed
 gh issue close 124 --reason "not planned"
 ```
 
-The command never selects `ready`, changes implementation state, edits source code, commits, or
+The command never selects `ready-for-agent`, changes implementation state, edits source code, commits, or
 pushes. Human approval is still required before implementation. Implementation status labels are
 managed on the Issue; a PR does not mirror those labels and may use only PR-specific review labels.
 

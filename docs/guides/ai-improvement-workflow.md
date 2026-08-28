@@ -73,7 +73,7 @@ pnpm triage:todo -- --apply
 
 `needs-priority`は「調査済みだが、まだ人が優先度を決めていない」状態です。`needs-info`のIssueは、
 意図・仕様・再現情報が足りないため、追加情報が揃うまで実装候補にしません。
-実装してよいと判断したIssueだけを`ready`にします。
+実装してよいと判断したIssueだけを`ready-for-agent`にします。
 
 既存Issueへ再現情報や仕様の回答を追記した場合は、`needs-retriage`を付けます。次回の定期実行が本文・コメント・最新コードを再調査し、結果をIssueコメントへ追加します。調査後は、判断可能なら`needs-priority`、まだ情報不足なら`needs-info`へ自動的に戻ります。
 
@@ -84,7 +84,7 @@ pnpm triage:todo -- --apply
 ```text
 needs-priority
     ↓ 人が採用・仕様確認
-ready
+ready-for-agent
     ↓ 実装開始
 in-progress
     ↓ 実装と自動確認が完了

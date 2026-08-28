@@ -189,7 +189,13 @@ function getIssueSnapshot(): string {
 
 function getRetriageIssueNumbers(issueSnapshot: string): number[] {
   const issues = readJsonc<IssueSnapshotItem[]>(issueSnapshot, "gh issue list output");
-  const protectedWorkflowLabels = new Set(["ready", "in-progress", "needs-human-test", "blocked"]);
+  // 人が実装を承認してAIへ引き渡したIssueは、追加情報があってもトリアージで状態を戻さない。
+  const protectedWorkflowLabels = new Set([
+    "ready-for-agent",
+    "in-progress",
+    "needs-human-test",
+    "blocked",
+  ]);
   return issues
     .filter(
       (issue) =>
@@ -327,7 +333,7 @@ Rules:
   .todo line links to the Issue. Put the updated investigation in body as a comment-ready report.
 - For action=retriage, labels must contain exactly one next-state label: needs-priority when the new
   information is sufficient for human prioritization, or needs-info when a concrete question still
-  blocks a reliable specification. Do not retriage ready, in-progress, needs-human-test, or blocked
+  blocks a reliable specification. Do not retriage ready-for-agent, in-progress, needs-human-test, or blocked
   Issues automatically; return skip for those workflow states.
 - At the very beginning, list and inspect existing open and closed GitHub Issues. Search by title,
   body, and related terms before proposing a new one. Use gh read-only commands when needed.
@@ -349,7 +355,7 @@ Rules:
   reopened; do not create a duplicate Issue.
 - For action=create, use exactly one of the needs-priority or needs-info labels. Use needs-info when
   the item needs a human answer before its intent, specification, or reproduction can be confirmed.
-  Do not use ready, in-progress,
+  Do not use ready-for-agent, in-progress,
   needs-human-test, blocked, or review-existing.
 - source_text must exactly match one complete line from .todo, except that action=retriage may use
   an empty string when the labeled Issue has no linked .todo item.
