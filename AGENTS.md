@@ -80,6 +80,14 @@
   - 複数領域にまたがる変更は、利用者向けの主目的または変更の中心となる責務を1つ選んでください。
   - Issueのラベル名とscopeは一致させなくても構いません。scope名は小文字で統一してください。
 
+### ChLens Live branch policy
+
+- ChLens Liveが開発中の間は、`feature/chlens-live`を最新変更の統合ブランチとして扱う。
+- ChLens Live関連の作業ブランチは`feature/chlens-live`から分岐し、PRのbaseも同ブランチにする。
+- これは、Live側の開発を継続しながら最新PRを組み合わせて動作確認できるようにし、安定版としての`develop`へ未完成のLive変更を混在させないためである。
+- `feature/chlens-live`への統合済みPRを後から同ブランチ向けに付け替えず、重複するPRは集約済みの意図をコメントしてクローズする。
+- Liveのまとまった区切りで`develop`へ昇格するときは、対象範囲と確認結果を記載した別PRを作成する。開発中のfeatureブランチを安定版として扱わない。
+
 ### AI improvement workflow
 
 このリポジトリでは、日常利用中の不満を`.todo`へ散文のまま記録し、AIがGitHub Issueへ整理する。`.todo`への入力者に、原因・優先度・再現手順・Issue形式の記入を要求してはいけない。
