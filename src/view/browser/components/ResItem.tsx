@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import type { IRes } from "src/service-container";
 import { NgBadge } from "src/view/browser/components/NgBadge";
+import { NgResponsePlaceholder } from "src/view/browser/components/NgResponsePlaceholder";
 import { ResBody } from "src/view/browser/components/ResBody";
 import { ResMediaGallery } from "src/view/browser/components/ResMediaGallery";
 import { useIsNgTemporarilyDisabled } from "src/view/browser/hooks/use-ng-status";
@@ -117,27 +118,13 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
 
     if (isNG && !isNgRevealed) {
       return (
-        <article
-          data-res-num={res.num}
-          className={`res res--ng-placeholder${responseStateClassName ? ` ${responseStateClassName}` : ""}`}
-          role="button"
-          aria-label={`レス${res.num}の内容を表示`}
-          tabIndex={0}
-          onClick={() => setIsNgRevealed(true)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              setIsNgRevealed(true);
-            }
-          }}
+        <NgResponsePlaceholder
+          responseNumber={res.num}
+          result={res.ng}
+          responseStateClassName={responseStateClassName}
+          onReveal={() => setIsNgRevealed(true)}
           onContextMenu={(event) => onContextMenu(event, res)}
-        >
-          <header className="res__header">
-            <span className={resNumClassName}>{res.num}</span>
-            <NgBadge result={res.ng} />
-          </header>
-          <div className="res__ng-reveal">クリックして内容を表示</div>
-        </article>
+        />
       );
     }
 
