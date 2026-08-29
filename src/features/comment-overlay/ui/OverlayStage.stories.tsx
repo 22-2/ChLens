@@ -33,7 +33,7 @@ const meta = {
     fitToContainer: { table: { disable: true } },
     stageWidth: { control: { type: "number", min: 320, step: 40 } },
     stageHeight: { control: { type: "number", min: 80, step: 20 } },
-    laneCount: { control: { type: "number", min: 1, max: 20, step: 1 } },
+    maxLaneCount: { control: { type: "number", min: 1, max: 40, step: 1 } },
     laneHeight: { control: { type: "number", min: 16, step: 2 } },
     baseSpeedPxPerSecond: { control: { type: "number", min: 20, step: 10 } },
     maxQueueSize: { control: { type: "number", min: 1, step: 1 } },
@@ -51,23 +51,26 @@ function HardcodedStory(args: OverlayStageProps) {
   const [comments, setComments] = useState<readonly CommentCandidate[]>(INITIAL_COMMENTS);
   const [playing, setPlaying] = useState(args.playing ?? true);
   const [stageKey, setStageKey] = useState(0);
+  const [skippedCount, setSkippedCount] = useState(0);
 
-  const addComment = () => {
+  const addComments = (count: number) => {
     setComments((current) => {
-      const responseNumber = (current.at(-1)?.responseNumber ?? 0) + 1;
-      return [
-        ...current,
-        {
+      const firstResponseNumber = (current.at(-1)?.responseNumber ?? 0) + 1;
+      const additions = Array.from({ length: count }, (_, index) => {
+        const responseNumber = firstResponseNumber + index;
+        return {
           responseNumber,
           text: `追加レス ${responseNumber}：queueとlaneの動きを確認`,
           author: "名無し",
-        },
-      ];
+        };
+      });
+      return [...current, ...additions];
     });
   };
 
   const reset = () => {
     setComments(INITIAL_COMMENTS);
+    setSkippedCount(0);
     setStageKey((current) => current + 1);
   };
 
@@ -87,14 +90,17 @@ function HardcodedStory(args: OverlayStageProps) {
         <button type="button" onClick={() => setPlaying((current) => !current)}>
           {playing ? "停止" : "再生"}
         </button>
-        <button type="button" onClick={addComment}>
+        <button type="button" onClick={() => addComments(1)}>
           1レス追加
+        </button>
+        <button type="button" onClick={() => addComments(20)}>
+          20レス追加
         </button>
         <button type="button" onClick={reset}>
           リセット
         </button>
         <span style={{ color: "#a9c1db", fontSize: 13 }}>
-          固定レス {comments.length}件 / Tauriなし
+          固定レス {comments.length}件 / skip {skippedCount}件 / Tauriなし
         </span>
       </div>
       <div style={{ flex: "1 1 auto", minHeight: 0, width: "100%" }}>
@@ -104,6 +110,7 @@ function HardcodedStory(args: OverlayStageProps) {
           comments={comments}
           fitToContainer
           playing={playing}
+          onQueueOverflow={() => setSkippedCount((current) => current + 1)}
         />
       </div>
     </div>
@@ -116,8 +123,8 @@ export const Hardcoded: Story = {
     comments: INITIAL_COMMENTS,
     stageWidth: 800,
     stageHeight: 240,
-    laneCount: 6,
     laneHeight: 32,
+    maxLaneCount: 24,
     baseSpeedPxPerSecond: 144,
     maxQueueSize: 32,
     fontSize: 20,

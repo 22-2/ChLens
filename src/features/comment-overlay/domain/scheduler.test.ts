@@ -2,6 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 import type { CommentCandidate } from "./comment-types";
 import {
   calculateCommentDuration,
+  calculateLaneCapacity,
   calculateCommentPosition,
   calculateCommentSpeed,
   CommentScheduler,
@@ -23,6 +24,17 @@ function createInput(responseNumber: number, width: number) {
   };
 }
 
+function createScheduler(
+  options: Partial<ConstructorParameters<typeof CommentScheduler>[0]> = {},
+): CommentScheduler {
+  return new CommentScheduler({
+    stageWidth: 600,
+    stageHeight: 32,
+    laneHeight: 32,
+    ...options,
+  });
+}
+
 describe("コメントの速度モデル", () => {
   it("ステージ幅と基準速度から通過時間を求める", () => {
     const duration = calculateCommentDuration(600, DEFAULT_COMMENT_BASE_SPEED_PX_PER_SECOND);
@@ -37,25 +49,32 @@ describe("コメントの速度モデル", () => {
   });
 });
 
+describe("コメントのレーン容量", () => {
+  it("ステージ高さと行高から容量を求め、上限を適用する", () => {
+    expect(calculateLaneCapacity(240, 32)).toBe(7);
+    expect(calculateLaneCapacity(240, 32, 4)).toBe(4);
+    expect(calculateLaneCapacity(16, 32)).toBe(1);
+  });
+
+  it("不正なレーン設定を拒否する", () => {
+    expect(() => calculateLaneCapacity(240, 0)).toThrow("laneHeight");
+    expect(() => calculateLaneCapacity(240, 32, 0)).toThrow("maxLaneCount");
+  });
+});
+
 describe("CommentScheduler", () => {
   it("コメントをqueueしてからlaneへ投入し、終了時に解放する", () => {
-    const scheduler = new CommentScheduler({
-      stageWidth: 600,
-      laneCount: 1,
-    });
+    const scheduler = createScheduler();
     const input = createInput(1, 120);
     const duration = calculateCommentDuration(600, 144);
 
-    expect(scheduler.enqueue(input)).toBe(true);
+    expect(scheduler.enqueue(input).accepted).toBe(true);
     expect(scheduler.advance(0).active).toHaveLength(1);
     expect(scheduler.advance(duration).active).toHaveLength(0);
   });
 
   it("開始位置と終了位置がステージ幅とコメント幅に対応する", () => {
-    const scheduler = new CommentScheduler({
-      stageWidth: 600,
-      laneCount: 1,
-    });
+    const scheduler = createScheduler();
     scheduler.enqueue(createInput(1, 120));
     const active = scheduler.advance(0).active[0];
 
@@ -64,10 +83,7 @@ describe("CommentScheduler", () => {
   });
 
   it("同時投入されたコメントを別laneへ割り当てる", () => {
-    const scheduler = new CommentScheduler({
-      stageWidth: 600,
-      laneCount: 2,
-    });
+    const scheduler = createScheduler({ stageHeight: 64 });
     scheduler.enqueue(createInput(1, 120));
     scheduler.enqueue(createInput(2, 120));
 
@@ -77,11 +93,21 @@ describe("CommentScheduler", () => {
     expect(snapshot.pending).toHaveLength(0);
   });
 
+  it("必要なときだけlaneを増やし、ステージ高さの容量で止める", () => {
+    const scheduler = createScheduler({ stageHeight: 96 });
+    scheduler.enqueue(createInput(1, 120));
+    scheduler.enqueue(createInput(2, 120));
+    scheduler.enqueue(createInput(3, 120));
+    scheduler.enqueue(createInput(4, 120));
+
+    const snapshot = scheduler.advance(0);
+
+    expect(snapshot.active.map((comment) => comment.laneIndex)).toEqual([0, 1, 2]);
+    expect(snapshot.pending.map((input) => input.comment.responseNumber)).toEqual([4]);
+  });
+
   it("同じlaneでは入口が空くまで次のコメントを待たせる", () => {
-    const scheduler = new CommentScheduler({
-      stageWidth: 600,
-      laneCount: 1,
-    });
+    const scheduler = createScheduler();
     scheduler.enqueue(createInput(1, 120));
     scheduler.advance(0);
     scheduler.enqueue(createInput(2, 120));
@@ -96,10 +122,7 @@ describe("CommentScheduler", () => {
   });
 
   it("新しい長文が既存コメントへ追いつかない時刻まで待たせる", () => {
-    const scheduler = new CommentScheduler({
-      stageWidth: 600,
-      laneCount: 1,
-    });
+    const scheduler = createScheduler();
     const duration = calculateCommentDuration(600, 144);
     const longCommentSpeed = calculateCommentSpeed(600, 300, duration);
     const safeStartAt = duration - 600 / longCommentSpeed;
@@ -112,23 +135,30 @@ describe("CommentScheduler", () => {
     expect(scheduler.advance(safeStartAt).pending).toHaveLength(0);
   });
 
-  it("queue上限を超えたコメントを受け付けない", () => {
-    const scheduler = new CommentScheduler({
-      stageWidth: 600,
-      laneCount: 1,
-      maxQueueSize: 1,
-    });
+  it("queueが満杯でも新着を受け入れ、最古の待機コメントをskipする", () => {
+    const scheduler = createScheduler({ maxQueueSize: 2 });
+    scheduler.enqueue(createInput(1, 120));
+    scheduler.advance(0);
+    scheduler.enqueue(createInput(2, 120));
+    scheduler.enqueue(createInput(3, 120));
 
-    expect(scheduler.enqueue(createInput(1, 120))).toBe(true);
-    expect(scheduler.enqueue(createInput(2, 120))).toBe(false);
-    expect(scheduler.advance(0).pending).toHaveLength(0);
+    const result = scheduler.enqueue(createInput(4, 120));
+
+    expect(result.accepted).toBe(true);
+    expect(result.dropped?.comment.responseNumber).toBe(2);
+    expect(scheduler.advance(0).pending.map((input) => input.comment.responseNumber)).toEqual([
+      3, 4,
+    ]);
+  });
+
+  it("queue上限が0ならコメントを受け付けない", () => {
+    const scheduler = createScheduler({ maxQueueSize: 0 });
+
+    expect(scheduler.enqueue(createInput(1, 120))).toEqual({ accepted: false, dropped: null });
   });
 
   it("時刻を逆戻りさせず、resetでは新しい時系列を開始できる", () => {
-    const scheduler = new CommentScheduler({
-      stageWidth: 600,
-      laneCount: 1,
-    });
+    const scheduler = createScheduler();
     scheduler.advance(10);
 
     expect(() => scheduler.advance(9)).toThrow("scheduler time must not move backwards");

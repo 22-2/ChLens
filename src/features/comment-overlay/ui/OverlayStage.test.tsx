@@ -32,8 +32,8 @@ describe("OverlayStage", () => {
       <OverlayStage
         comments={[comment]}
         stageWidth={600}
-        stageHeight={120}
-        laneCount={1}
+        stageHeight={32}
+        laneHeight={32}
         playing
       />,
     );
@@ -50,7 +50,13 @@ describe("OverlayStage", () => {
 
   it("停止中は時刻を進めず最後の表示位置を保持する", () => {
     const { rerender } = render(
-      <OverlayStage comments={[comment]} stageWidth={600} laneCount={1} playing />,
+      <OverlayStage
+        comments={[comment]}
+        stageWidth={600}
+        stageHeight={32}
+        laneHeight={32}
+        playing
+      />,
     );
 
     act(() => {
@@ -60,7 +66,15 @@ describe("OverlayStage", () => {
     const activeComment = screen.getByText("テストコメント");
     const positionWhilePlaying = activeComment.getAttribute("style");
 
-    rerender(<OverlayStage comments={[comment]} stageWidth={600} laneCount={1} playing={false} />);
+    rerender(
+      <OverlayStage
+        comments={[comment]}
+        stageWidth={600}
+        stageHeight={32}
+        laneHeight={32}
+        playing={false}
+      />,
+    );
 
     expect(stage).toHaveAttribute("data-active-count", "1");
     expect(activeComment).toHaveAttribute("style", positionWhilePlaying);
@@ -77,7 +91,7 @@ describe("OverlayStage", () => {
         comments={[comment]}
         stageWidth={600}
         stageHeight={120}
-        laneCount={1}
+        laneHeight={32}
         fitToContainer
         playing
       />,
