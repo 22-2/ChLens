@@ -11,6 +11,15 @@
 
 既存のPhase spike文書も、実装済みの境界と検証結果を確認する記録として残す。
 
+## 現在の進捗（2026-08-30）
+
+- Phase 0：完了。独立したChlens Live開発を凍結し、本書を現行計画として扱う方針を旧ロードマップへ明記した。
+- Phase 1：完了。コメント入力型、HTMLからのprojection、baselineとの差分抽出、NG・空本文・重複排除、memory event busを実装済み。
+- Phase 2：実装済み。ChLens TauriへOverlay用entry、初期非表示のnative window、capability、geometry保存、クリック透過、カーソル位置command、Tauri event adapterを追加した。
+- Phase 3：着手。ThreadPageの確定済み`IRes[]`をcontrollerへ同期し、Tauri版スレッドのステータスバーから実況開始・停止とOverlay表示切り替えを行えるようにした。
+- 自動確認：`pnpm tsc6`、`pnpm build:chrome`、`pnpm build:firefox`、`pnpm build:tauri`、`pnpm tauri build --debug --no-bundle`、`cargo check --manifest-path src-tauri/Cargo.toml --all-targets`は成功。全体テストは既存の`ResItem`状態クラス期待値で1件失敗している。
+- 未確認：Windows実機での新着レス表示、複数モニター/DPI、Overlay操作バーとリサイズ領域の手動確認。
+
 ## 背景と判断
 
 Chlens Liveを独立アプリとして完成させる場合、ChLensに既にある次の機能を移植し、以後も両製品で
@@ -61,7 +70,7 @@ ChLens
 ```text
 src/features/comment-overlay/
 ├─ domain/       # 差分抽出、表示用projection、lane、queue、clock
-├─ controller/   # 実況対象、開始・停止、Overlayへのevent送信
+├─ application/  # 実況対象、開始・停止、Overlayへのevent送信
 ├─ platform/     # Tauri portとbrowser/no-op adapter
 └─ ui/           # ChLensメイン画面側の操作UI
 

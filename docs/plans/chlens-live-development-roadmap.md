@@ -1,5 +1,10 @@
 # Chlens Live 開発ロードマップ
 
+> **凍結中**：Chlens Liveを独立した掲示板クライアントとして完成させる計画は凍結した。
+> 今後のコメントオーバーレイ開発では、[ChLens Tauri コメントオーバーレイ統合計画](./chlens-tauri-comment-overlay-integration-plan.md)を正とする。
+> 本書は、Chlens Liveで検証した速度・レーン・queue・Storybookの設計と実装履歴を参照するために保持し、
+> 新しい通常閲覧機能や独立アプリ向けの作業はここへ追加しない。
+
 ## 目的
 
 EdgeLiveViewer の基本機能を継承しつつ、Chlens の取得・解析・検索・絞り込み・NG DSL・
