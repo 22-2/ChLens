@@ -1,10 +1,14 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import {
-  calculateCommentPosition,
   CommentScheduler,
+  DEFAULT_COMMENT_BACKLOG_POLICY,
+  DEFAULT_COMMENT_COLLISION_MODE,
   DEFAULT_MAX_LANE_COUNT,
   DEFAULT_MAX_QUEUE_SIZE,
+  DEFAULT_MAX_ACTIVE_COUNT,
+  type CommentBacklogPolicy,
+  type CommentCollisionMode,
   type CommentSchedulerSnapshot,
 } from "../domain";
 import type { CommentCandidate } from "../domain/comment-types";
@@ -24,13 +28,19 @@ export interface OverlayStageProps {
   maxLaneCount?: number;
   baseSpeedPxPerSecond?: number;
   maxQueueSize?: number;
+  collisionMode?: CommentCollisionMode;
+  backlogPolicy?: CommentBacklogPolicy;
+  maxActiveCount?: number;
   fontSize?: number;
   commentOpacity?: number;
   backgroundColor?: string;
   playing?: boolean;
   fitToContainer?: boolean;
+  interactive?: boolean;
+  showCommentInfo?: boolean;
   estimateWidth?: (comment: CommentCandidate, fontSize: number) => number;
   onQueueOverflow?: (comment: CommentCandidate) => void;
+  onCommentClick?: (comment: CommentCandidate) => void;
   className?: string;
 }
 
@@ -51,13 +61,19 @@ export function OverlayStage({
   maxLaneCount = DEFAULT_MAX_LANE_COUNT,
   baseSpeedPxPerSecond,
   maxQueueSize = DEFAULT_MAX_QUEUE_SIZE,
+  collisionMode = DEFAULT_COMMENT_COLLISION_MODE,
+  backlogPolicy = DEFAULT_COMMENT_BACKLOG_POLICY,
+  maxActiveCount = DEFAULT_MAX_ACTIVE_COUNT,
   fontSize = DEFAULT_FONT_SIZE,
   commentOpacity = DEFAULT_COMMENT_OPACITY,
   backgroundColor = "#172235",
   playing = true,
   fitToContainer = false,
+  interactive = true,
+  showCommentInfo = true,
   estimateWidth = estimateCommentWidth,
   onQueueOverflow,
+  onCommentClick,
   className,
 }: OverlayStageProps) {
   const stageRef = useRef<HTMLDivElement>(null);
@@ -109,17 +125,24 @@ export function OverlayStage({
         maxLaneCount,
         baseSpeedPxPerSecond,
         maxQueueSize,
+        collisionMode,
+        backlogPolicy,
+        maxActiveCount,
       }),
     [
+      backlogPolicy,
       baseSpeedPxPerSecond,
+      collisionMode,
       effectiveStageHeight,
       effectiveStageWidth,
       laneHeight,
+      maxActiveCount,
       maxLaneCount,
       maxQueueSize,
     ],
   );
   const [snapshot, setSnapshot] = useState<CommentSchedulerSnapshot>(() => scheduler.advance(0));
+  const snapshotRef = useRef(snapshot);
   const seenResponseNumbers = useRef(new Set<number>());
   const logicalTime = useRef(0);
   const previousFrameTime = useRef<number | null>(null);
@@ -130,7 +153,9 @@ export function OverlayStage({
     seenResponseNumbers.current.clear();
     logicalTime.current = 0;
     previousFrameTime.current = null;
-    setSnapshot(scheduler.advance(0));
+    const nextSnapshot = scheduler.advance(0);
+    snapshotRef.current = nextSnapshot;
+    setSnapshot(nextSnapshot);
   }, [scheduler]);
 
   useEffect(() => {
@@ -163,7 +188,14 @@ export function OverlayStage({
         logicalTime.current += Math.max(frameTime - previousTime, 0) / 1000;
       }
       previousFrameTime.current = frameTime;
-      setSnapshot(scheduler.advance(logicalTime.current));
+      const nextSnapshot = scheduler.advance(logicalTime.current);
+      // 変更理由: 移動はCSS animationが担当するため、active/pendingの構成が変わらない
+      // frameではReactを再描画しない。終了・投入時だけDOM一覧を更新して弾幕数に応じた
+      // React renderを避ける。
+      if (!isSameSnapshot(snapshotRef.current, nextSnapshot)) {
+        snapshotRef.current = nextSnapshot;
+        setSnapshot(nextSnapshot);
+      }
       frameId = requestAnimationFrame(renderFrame);
     };
 
@@ -179,7 +211,31 @@ export function OverlayStage({
     height: fitToContainer ? "100%" : `${stageHeight}px`,
     backgroundColor,
   };
-  const stageClassName = ["comment-overlay-stage", className].filter(Boolean).join(" ");
+  const stageClassName = [
+    "comment-overlay-stage",
+    interactive ? "comment-overlay-stage--interactive" : null,
+    className,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const pauseComment = (responseNumber: number): void => {
+    const now = logicalTime.current;
+    if (scheduler.pause(responseNumber, now)) {
+      const nextSnapshot = scheduler.advance(now);
+      snapshotRef.current = nextSnapshot;
+      setSnapshot(nextSnapshot);
+    }
+  };
+
+  const resumeComment = (responseNumber: number): void => {
+    const now = logicalTime.current;
+    if (scheduler.resume(responseNumber, now)) {
+      const nextSnapshot = scheduler.advance(now);
+      snapshotRef.current = nextSnapshot;
+      setSnapshot(nextSnapshot);
+    }
+  };
 
   return (
     <div
@@ -188,19 +244,24 @@ export function OverlayStage({
       data-testid="comment-overlay-stage"
       data-active-count={snapshot.active.length}
       data-pending-count={snapshot.pending.length}
+      data-collision-mode={collisionMode}
       role="log"
       aria-label="コメントオーバーレイ"
       style={stageStyle}
     >
       {snapshot.active.map((scheduledComment) => {
-        const position = calculateCommentPosition(scheduledComment, snapshot.now);
-        const commentStyle: CSSProperties = {
+        const commentStyle = {
           top: `${scheduledComment.laneIndex * laneHeight}px`,
+          left: `${scheduledComment.stageWidth}px`,
           fontSize: `${fontSize}px`,
           opacity: commentOpacity,
-          transform: `translate3d(${position}px, 0, 0)`,
-        };
+          animationDuration: `${scheduledComment.duration}s`,
+          animationPlayState:
+            playing && !scheduledComment.paused ? ("running" as const) : ("paused" as const),
+          "--comment-exit-translate": `-${scheduledComment.stageWidth + scheduledComment.width}px`,
+        } as CSSProperties;
         const { comment } = scheduledComment;
+        const commentInfoId = `comment-overlay-stage__info-${comment.responseNumber}`;
 
         return (
           <div
@@ -208,13 +269,49 @@ export function OverlayStage({
             className="comment-overlay-stage__comment"
             data-response-number={comment.responseNumber}
             data-lane-index={scheduledComment.laneIndex}
+            data-paused={scheduledComment.paused}
+            aria-describedby={
+              interactive && showCommentInfo && scheduledComment.paused ? commentInfoId : undefined
+            }
+            role={interactive ? "group" : undefined}
+            tabIndex={interactive ? 0 : -1}
             style={commentStyle}
             aria-label={`レス${comment.responseNumber}: ${comment.text}`}
+            onMouseEnter={interactive ? () => pauseComment(comment.responseNumber) : undefined}
+            onMouseLeave={interactive ? () => resumeComment(comment.responseNumber) : undefined}
+            onFocus={interactive ? () => pauseComment(comment.responseNumber) : undefined}
+            onBlur={interactive ? () => resumeComment(comment.responseNumber) : undefined}
+            onClick={onCommentClick ? () => onCommentClick(comment) : undefined}
           >
             {comment.text}
+            {interactive && showCommentInfo && scheduledComment.paused ? (
+              <span
+                id={commentInfoId}
+                className="comment-overlay-stage__comment-info"
+                role="tooltip"
+              >
+                <strong>レス{comment.responseNumber}</strong>
+                <span>{comment.author}</span>
+                {comment.id ? <span>ID: {comment.id}</span> : null}
+                {comment.date ? <time>{comment.date}</time> : null}
+                <span className="comment-overlay-stage__comment-info-text">{comment.text}</span>
+              </span>
+            ) : null}
           </div>
         );
       })}
     </div>
+  );
+}
+
+function isSameSnapshot(
+  current: CommentSchedulerSnapshot,
+  next: CommentSchedulerSnapshot,
+): boolean {
+  if (current.active.length !== next.active.length) return false;
+  if (current.pending.length !== next.pending.length) return false;
+  return (
+    current.active.every((comment, index) => comment === next.active[index]) &&
+    current.pending.every((input, index) => input === next.pending[index])
   );
 }

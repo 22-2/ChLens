@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { CommentCandidate } from "../domain/comment-types";
 import { OverlayStage } from "./OverlayStage";
@@ -77,7 +77,8 @@ describe("OverlayStage", () => {
     );
 
     expect(stage).toHaveAttribute("data-active-count", "1");
-    expect(activeComment).toHaveAttribute("style", positionWhilePlaying);
+    expect(activeComment).not.toHaveAttribute("style", positionWhilePlaying);
+    expect(activeComment.style.animationPlayState).toBe("paused");
   });
 
   it("親サイズの初回測定が0pxでもfallback幅でコメントを開始する", () => {
@@ -101,6 +102,34 @@ describe("OverlayStage", () => {
       scheduledFrame?.(0);
     });
 
-    expect(screen.getByText("テストコメント").style.transform).toContain("600px");
+    expect(screen.getByText("テストコメント").style.left).toBe("600px");
+  });
+
+  it("interactive時はhoverでコメント単位を停止し、情報を表示する", () => {
+    render(
+      <OverlayStage
+        comments={[{ ...comment, id: "abc", date: "2026/08/30" }]}
+        stageWidth={600}
+        stageHeight={32}
+        laneHeight={32}
+        playing
+      />,
+    );
+
+    act(() => {
+      scheduledFrame?.(0);
+    });
+    const activeComment = screen.getByText("テストコメント");
+
+    fireEvent.mouseEnter(activeComment);
+
+    expect(activeComment).toHaveAttribute("data-paused", "true");
+    expect(screen.getByRole("tooltip")).toHaveTextContent("レス1");
+    expect(screen.getByRole("tooltip")).toHaveTextContent("ID: abc");
+
+    fireEvent.mouseLeave(activeComment);
+
+    expect(activeComment).toHaveAttribute("data-paused", "false");
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
 });

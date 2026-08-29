@@ -25,5 +25,58 @@
     -1px 1px 0 #07101d,
     1px 1px 0 #07101d;
   pointer-events: none;
+  animation-name: comment-overlay-stage__scroll;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
   will-change: transform;
+}
+
+/* 変更理由: 毎frame Reactでtransformを書き換えると、弾幕の数に比例して再描画負荷が
+ * 増えるため、移動はブラウザの合成レイヤーへ任せ、Reactは生成と破棄だけを担当する。 */
+@keyframes comment-overlay-stage__scroll {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: translate3d(var(--comment-exit-translate), 0, 0);
+  }
+}
+
+.comment-overlay-stage--interactive .comment-overlay-stage__comment {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.comment-overlay-stage__comment:focus-visible {
+  outline: 2px solid #8bc5ff;
+  outline-offset: 2px;
+}
+
+.comment-overlay-stage__comment-info {
+  display: flex;
+  position: absolute;
+  z-index: 2;
+  bottom: calc(100% + 6px);
+  left: 0;
+  width: max-content;
+  max-width: min(360px, 70vw);
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 9px;
+  border: 1px solid rgb(255 255 255 / 25%);
+  border-radius: 4px;
+  color: #eaf2fb;
+  background: rgb(12 20 33 / 96%);
+  box-shadow: 0 3px 12px rgb(0 0 0 / 35%);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.35;
+  white-space: normal;
+  pointer-events: none;
+}
+
+.comment-overlay-stage__comment-info-text {
+  max-width: 340px;
+  overflow-wrap: anywhere;
 }
