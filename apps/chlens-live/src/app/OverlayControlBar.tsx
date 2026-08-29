@@ -1,4 +1,5 @@
 import type { MouseEvent, PointerEvent } from "react";
+import { Minus, Square, X } from "lucide-react";
 import { liveWindowPlatform, type OverlayResizeDirection } from "../platform/index";
 import "./styles.css";
 
@@ -78,10 +79,7 @@ export function OverlayControlBar({ visible }: { visible: boolean }) {
           onPointerDown={stopBarControlEvent}
           onClick={minimize}
         >
-          <span
-            className="overlay-control-bar__glyph overlay-control-bar__glyph--minimize"
-            aria-hidden="true"
-          />
+          <Minus size={14} aria-hidden="true" />
         </button>
         <button
           type="button"
@@ -91,10 +89,7 @@ export function OverlayControlBar({ visible }: { visible: boolean }) {
           onPointerDown={stopBarControlEvent}
           onClick={toggleMaximize}
         >
-          <span
-            className="overlay-control-bar__glyph overlay-control-bar__glyph--maximize"
-            aria-hidden="true"
-          />
+          <Square size={12} aria-hidden="true" />
         </button>
         <button
           type="button"
@@ -104,10 +99,7 @@ export function OverlayControlBar({ visible }: { visible: boolean }) {
           onPointerDown={stopBarControlEvent}
           onClick={close}
         >
-          <span
-            className="overlay-control-bar__glyph overlay-control-bar__glyph--close"
-            aria-hidden="true"
-          />
+          <X size={14} aria-hidden="true" />
         </button>
       </div>
       {BAR_RESIZE_HANDLES.map(({ direction, className }) => (

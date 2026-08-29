@@ -547,48 +547,6 @@ button:hover {
   background: rgb(196 62 82 / 88%);
 }
 
-.overlay-control-bar__glyph {
-  display: block;
-  position: relative;
-  width: 10px;
-  height: 10px;
-  margin: auto;
-  color: currentColor;
-}
-
-.overlay-control-bar__glyph--minimize::after {
-  position: absolute;
-  right: 0;
-  bottom: 1px;
-  left: 0;
-  height: 1px;
-  background: currentColor;
-  content: "";
-}
-
-.overlay-control-bar__glyph--maximize {
-  border: 1px solid currentColor;
-}
-
-.overlay-control-bar__glyph--close::before,
-.overlay-control-bar__glyph--close::after {
-  position: absolute;
-  top: 4px;
-  right: -1px;
-  left: -1px;
-  height: 1px;
-  background: currentColor;
-  content: "";
-}
-
-.overlay-control-bar__glyph--close::before {
-  transform: rotate(45deg);
-}
-
-.overlay-control-bar__glyph--close::after {
-  transform: rotate(-45deg);
-}
-
 .overlay-control-bar__resize-handle {
   position: absolute;
   z-index: 2;
@@ -703,7 +661,7 @@ button:hover {
 }
 
 .live-tab:hover,
-.live-tab--active {
+.live-tab.tab--active {
   color: #f0f0f0;
   background: #303030;
 }
@@ -807,44 +765,6 @@ button:hover {
   background: var(--sys-color-surface);
 }
 
-.live-thread-view__toolbar {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sys-space-4);
-  padding: var(--sys-space-2) var(--sys-space-4);
-  border-bottom: 1px solid var(--sys-color-table-heading-border);
-  background: var(--sys-color-table-heading-bg);
-}
-
-.live-thread-view__title {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--sys-color-text);
-  font-size: var(--sys-font-size-md);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.live-thread-view__actions {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: var(--sys-space-2);
-}
-
-.live-thread-view__actions button {
-  border: 1px solid var(--sys-color-border);
-  border-radius: var(--sys-radius-md);
-  padding: var(--sys-space-1) var(--sys-space-4);
-  color: var(--sys-color-text);
-  background: var(--sys-color-surface);
-  font-size: var(--sys-font-size-sm);
-}
-
 .live-response {
   /* ChLensのレス単位の余白と左境界線を使い、Live独自のカード感をなくす。 */
   background: transparent;
@@ -858,4 +778,221 @@ button:hover {
 .live-response .res__mail {
   color: var(--sys-color-text-muted);
   font-size: var(--sys-font-size-sm);
+}
+
+/* ShellもChLensのテーマトークンを使い、Live専用の固定色が画面ごとに増えないようにする。 */
+.live-browser-shell {
+  color: var(--sys-color-text);
+  background: var(--sys-color-surface);
+}
+
+.live-tab-bar {
+  background: var(--sys-color-tab-strip);
+}
+
+.live-tab {
+  border: 1px solid transparent;
+  color: var(--sys-color-text-muted);
+  background: var(--sys-color-surface-muted);
+}
+
+.live-tab:hover,
+.live-tab--active {
+  color: var(--sys-color-text);
+  background: var(--sys-color-surface);
+}
+
+.live-tab__close {
+  color: var(--sys-color-text-muted);
+}
+
+.live-url-bar {
+  border-bottom-color: var(--sys-color-border);
+  background: var(--sys-color-surface);
+}
+
+.live-url-bar__label {
+  color: var(--sys-color-text-muted);
+}
+
+.live-url-bar input {
+  border-color: var(--sys-color-input-border);
+  color: var(--sys-color-text);
+  background: var(--sys-color-input-bg);
+}
+
+.live-url-bar button {
+  border-color: var(--sys-color-border);
+  color: var(--sys-color-text);
+  background: var(--sys-color-surface-muted);
+}
+
+.live-url-bar button:hover {
+  background: var(--sys-color-list-hover-bg);
+}
+
+.live-content-area {
+  background: var(--sys-color-surface);
+}
+
+/* ChLensのPaneColumnと同じ階層にして、タブ・URLバー・本文の高さ配分を揃える。 */
+.live-browser-shell {
+  display: flex;
+  flex-direction: column;
+}
+
+.live-pane-row {
+  flex: 1;
+  min-height: 0;
+}
+
+.live-pane-column {
+  min-height: 0;
+}
+
+.live-pane-column__chrome {
+  align-content: flex-start;
+  align-items: stretch;
+  flex-wrap: wrap;
+  gap: 0;
+}
+
+.live-tab-bar {
+  flex: 1 1 0;
+  height: var(--sys-space-13);
+  min-height: var(--sys-space-13);
+  padding: 0 var(--sys-space-2);
+  border-bottom: 0;
+  overflow: visible;
+}
+
+.live-tab-bar .tab-list-container {
+  height: 100%;
+}
+
+.live-tab {
+  flex: 0 0 180px;
+  height: var(--sys-space-13);
+  min-width: 72px;
+  max-width: 240px;
+  border: 0;
+  border-right: 1px solid var(--sys-color-border);
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 0 var(--sys-space-4) 0 var(--sys-space-5);
+  background: transparent;
+}
+
+.live-tab--active {
+  border-bottom-color: var(--sys-color-accent);
+  background: var(--sys-color-surface);
+}
+
+.live-tab:not(.tab--active):hover {
+  background: var(--sys-color-tab-strip-hover);
+}
+
+.live-tab__title {
+  flex: 1;
+  line-height: var(--sys-space-13);
+}
+
+.live-tab__close {
+  width: 20px;
+  height: 20px;
+  margin-left: var(--sys-space-1);
+  border: 0;
+  border-radius: var(--sys-radius-sm);
+  padding: 0;
+  background: transparent;
+  color: var(--sys-color-text-muted);
+  cursor: pointer;
+}
+
+.live-tab__close:hover {
+  background: var(--sys-color-tab-strip-active-hover);
+}
+
+.live-url-bar {
+  order: 1;
+  flex: 0 0 100%;
+  height: 40px;
+  min-height: 40px;
+  padding: 0 var(--sys-space-2);
+  border-top: 1px solid var(--sys-color-border);
+  border-bottom: 0;
+  background: var(--sys-color-surface);
+}
+
+.live-url-bar__url {
+  flex: 1 1 auto;
+  width: auto;
+  height: 32px;
+  margin: 0 var(--sys-space-1);
+  background: var(--sys-color-surface-muted);
+}
+
+.live-url-bar__url:focus-within {
+  background: var(--sys-color-surface);
+  box-shadow: var(--sys-shadow-focus);
+}
+
+.live-url-bar .nav-bar__url-input {
+  height: 100%;
+}
+
+.live-content-area {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.live-content-area__panel {
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* ChLensと同じく、URLバーの補助操作は枠を持たない中央揃えのアイコンだけにする。 */
+.live-url-bar .live-icon-button {
+  display: flex;
+  flex: 0 0 28px;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  color: var(--sys-color-text-muted);
+  background: transparent;
+  line-height: 0;
+}
+
+.live-url-bar .live-icon-button:hover {
+  color: var(--sys-color-text);
+  background: var(--sys-color-surface-muted);
+}
+
+/* Live側の古いbutton指定にSVGの寸法を奪わせず、TabBar本体と同じ位置へ固定する。 */
+.live-tab-bar .tab-bar__refresh {
+  display: flex;
+  flex: 0 0 30px;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  padding: 0;
+  line-height: 0;
+}
+
+.live-tab-bar .tab-bar__refresh > svg,
+.live-url-bar .live-icon-button > svg {
+  display: block;
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  stroke: currentcolor;
 }
