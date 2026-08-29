@@ -40,12 +40,53 @@ export function App(): ReactElement {
   const [tabs, setTabs] = useState<LiveTab[]>([
     { id: BOARD_TAB_ID, title: "実況板", page: "threadList", url: DEFAULT_BOARD_URL },
   ]);
+  const [boardTitle, setBoardTitle] = useState("実況板");
   const [activeTabId, setActiveTabId] = useState(BOARD_TAB_ID);
   const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? tabs[0];
   const selectedThreadUrl = activeTab.page === "thread" ? activeTab.url : null;
   const board = useLiveBoard(DEFAULT_BOARD_URL, { source, intervalMs: null });
   const thread = useLiveThread(selectedThreadUrl, { source, intervalMs: 10_000 });
   const threadList = useThreadListController({ threads: board.snapshot?.data ?? [] });
+
+  useEffect(() => {
+    if (!source.loadBoardTitle) return;
+
+    let cancelled = false;
+    void source
+      .loadBoardTitle(DEFAULT_BOARD_URL)
+      .then((title) => {
+        if (cancelled || !title?.trim()) return;
+        setBoardTitle(title.trim());
+      })
+      .catch((error: unknown) => {
+        console.error(`[Chlens Live] board title load failed: ${DEFAULT_BOARD_URL}`, error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [source]);
+
+  useEffect(() => {
+    setTabs((current) =>
+      current.map((tab) =>
+        tab.id === BOARD_TAB_ID && tab.title !== boardTitle ? { ...tab, title: boardTitle } : tab,
+      ),
+    );
+  }, [boardTitle]);
+
+  useEffect(() => {
+    const title = thread.snapshot?.data.title?.trim();
+    if (!title || activeTab.page !== "thread" || thread.snapshot?.url !== activeTab.url) return;
+
+    // 変更理由: スレ一覧由来の仮タイトルを残すとタブだけが「実況スレ」のままになるため、
+    // ChLensと同じく取得したスレタイトルをタブ名へ反映して識別しやすくする。
+    setTabs((current) =>
+      current.map((tab) =>
+        tab.id === activeTab.id && tab.title !== title ? { ...tab, title } : tab,
+      ),
+    );
+  }, [activeTab, thread.snapshot]);
 
   useEffect(() => {
     void liveWindowPlatform.setOverlayClickThrough(true).catch((error: unknown) => {
@@ -189,6 +230,18 @@ export function App(): ReactElement {
         setAddress(tab.url);
       }}
       onCloseTab={closeTab}
+      wheelRefresh={activeTab.page === "threadList" ? board.refresh : thread.refresh}
+      wheelLoading={activeTab.page === "threadList" ? board.loading : thread.loading}
+      wheelEdge={activeTab.page === "threadList" ? "top" : "bottom"}
+      threadAutoRefreshState={
+        activeTab.page === "thread"
+          ? thread.running
+            ? thread.pollingEnabled
+              ? "active"
+              : "inactive"
+            : null
+          : null
+      }
       primaryAction={
         activeTab.page === "threadList"
           ? {
@@ -223,6 +276,10 @@ export function App(): ReactElement {
           posts={thread.snapshot?.data.posts ?? []}
           error={errorMessage(thread.error)}
           onRefresh={thread.refresh}
+          threadUrl={activeTab.url}
+          autoRefreshEnabled={thread.running}
+          pollingEnabled={thread.pollingEnabled}
+          onPollingEnabledChange={thread.setPollingEnabled}
         />
       )}
     </LiveBrowserShell>

@@ -10,6 +10,7 @@ import { TauriHttpClient } from "./tauri-http-client";
 export interface ChLensLiveFetcher {
   fetchBoard(url: string): Promise<BoardThread[]>;
   fetchBoardWithMetadata(url: string, request?: HttpRequest): Promise<ChFetchResult<BoardThread[]>>;
+  fetchBoardTitle?(url: string): Promise<string | null>;
   fetchThread(url: string): Promise<ThreadData>;
   fetchThreadWithMetadata(url: string, request?: HttpRequest): Promise<ChFetchResult<ThreadData>>;
 }
@@ -17,6 +18,7 @@ export interface ChLensLiveFetcher {
 export interface ChLensLiveSource {
   loadBoard(url: string): Promise<BoardThread[]>;
   loadBoardWithMetadata(url: string, request?: HttpRequest): Promise<ChFetchResult<BoardThread[]>>;
+  loadBoardTitle?(url: string): Promise<string | null>;
   loadThread(url: string): Promise<ThreadData>;
   loadThreadWithMetadata(url: string, request?: HttpRequest): Promise<ChFetchResult<ThreadData>>;
 }
@@ -33,6 +35,9 @@ export function createChLensLiveSource(
   return {
     loadBoard: (url) => fetcher.fetchBoard(url),
     loadBoardWithMetadata: (url, request) => fetcher.fetchBoardWithMetadata(url, request),
+    ...(fetcher.fetchBoardTitle
+      ? { loadBoardTitle: (url: string) => fetcher.fetchBoardTitle!(url) }
+      : {}),
     loadThread: (url) => fetcher.fetchThread(url),
     loadThreadWithMetadata: (url, request) => fetcher.fetchThreadWithMetadata(url, request),
   };

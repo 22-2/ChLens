@@ -44,6 +44,7 @@ describe("ChLens Live source boundary", () => {
     expect(source).toEqual({
       loadBoard: expect.any(Function),
       loadBoardWithMetadata: expect.any(Function),
+      loadBoardTitle: expect.any(Function),
       loadThread: expect.any(Function),
       loadThreadWithMetadata: expect.any(Function),
     });
