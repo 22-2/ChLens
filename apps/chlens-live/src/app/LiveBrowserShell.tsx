@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { RotateCw, X } from "lucide-react";
 
 export type LivePage = "threadList" | "thread";
 
@@ -17,6 +18,7 @@ interface LiveBrowserShellProps {
   onAddressSubmit: () => void;
   onSelectTab: (tabId: string) => void;
   onCloseTab: (tabId: string) => void;
+  primaryAction?: { label: string; icon?: ReactNode; disabled?: boolean; onClick: () => void };
   toolbar: ReactNode;
   children: ReactNode;
 }
@@ -30,69 +32,83 @@ export function LiveBrowserShell({
   onAddressSubmit,
   onSelectTab,
   onCloseTab,
+  primaryAction,
   toolbar,
   children,
 }: LiveBrowserShellProps): React.ReactElement {
   return (
     <main className="live-browser-shell browser-shell" data-theme="dark">
-      <nav className="live-tab-bar" aria-label="開いているタブ">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            className={tab.id === activeTabId ? "live-tab live-tab--active" : "live-tab"}
-            aria-current={tab.id === activeTabId ? "page" : undefined}
-            onClick={() => onSelectTab(tab.id)}
-          >
-            <span className="live-tab__title">{tab.title}</span>
-            {tabs.length > 1 && (
-              <span
-                className="live-tab__close"
-                role="button"
-                tabIndex={0}
-                aria-label={`${tab.title}を閉じる`}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onCloseTab(tab.id);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    onCloseTab(tab.id);
-                  }
-                }}
+      <div className="pane-row live-pane-row">
+        <section className="pane-column live-pane-column" data-active="true">
+          <div className="pane-column__chrome live-pane-column__chrome">
+            <nav className="tab-bar live-tab-bar" aria-label="開いているタブ">
+              <button
+                type="button"
+                className="tab-bar__refresh"
+                disabled={!primaryAction || primaryAction.disabled}
+                aria-label={primaryAction?.label ?? "操作不可"}
+                title={primaryAction?.label}
+                onClick={primaryAction?.onClick}
               >
-                ×
-              </span>
-            )}
-          </button>
-        ))}
-      </nav>
+                {primaryAction?.icon ?? <RotateCw size={16} />}
+              </button>
+              <span className="tab-bar__refresh-divider" aria-hidden="true" />
+              <div className="tab-list-container">
+                <div className="tab-list">
+                  {tabs.map((tab) => (
+                    <div
+                      key={tab.id}
+                      className={
+                        tab.id === activeTabId ? "tab live-tab tab--active" : "tab live-tab"
+                      }
+                      data-tab-id={tab.id}
+                      onClick={() => onSelectTab(tab.id)}
+                    >
+                      <span className="tab__title live-tab__title">{tab.title}</span>
+                      {tabs.length > 1 && (
+                        <button
+                          type="button"
+                          className="tab__close live-tab__close"
+                          aria-label={`${tab.title}を閉じる`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onCloseTab(tab.id);
+                          }}
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </nav>
 
-      <form
-        className="live-url-bar"
-        onSubmit={(event) => {
-          event.preventDefault();
-          onAddressSubmit();
-        }}
-      >
-        <label className="live-url-bar__label" htmlFor="live-address">
-          URL
-        </label>
-        <input
-          id="live-address"
-          value={address}
-          onChange={(event) => onAddressChange(event.target.value)}
-          aria-label="URL"
-        />
-        <button type="submit">開く</button>
-        <div className="live-url-bar__actions">{toolbar}</div>
-      </form>
+            <form
+              className="nav-bar live-url-bar"
+              onSubmit={(event) => {
+                event.preventDefault();
+                onAddressSubmit();
+              }}
+            >
+              <div className="nav-bar__url live-url-bar__url">
+                <input
+                  id="live-address"
+                  className="nav-bar__url-input"
+                  value={address}
+                  onChange={(event) => onAddressChange(event.target.value)}
+                  aria-label="URL"
+                />
+              </div>
+              <div className="live-url-bar__actions">{toolbar}</div>
+            </form>
+          </div>
 
-      <section className="live-content-area" aria-label="コンテンツエリア">
-        {children}
-      </section>
+          <section className="content-area live-content-area" aria-label="コンテンツエリア">
+            <div className="content-area__tab-panel live-content-area__panel">{children}</div>
+          </section>
+        </section>
+      </div>
     </main>
   );
 }

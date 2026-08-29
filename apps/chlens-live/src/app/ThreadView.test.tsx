@@ -12,54 +12,22 @@ const posts = [post(1, "1行目\n2行目"), post(2, ">>1 への返信")];
 
 describe("ThreadView", () => {
   it("レス一覧を表示する", () => {
-    render(
-      <ThreadView
-        title="実況スレ ★1"
-        posts={posts}
-        loading={false}
-        error={null}
-        datFall={false}
-        onRefresh={() => undefined}
-        onStop={() => undefined}
-      />,
-    );
-    expect(screen.getByText("実況スレ ★1")).toBeVisible();
+    render(<ThreadView posts={posts} error={null} onRefresh={() => undefined} />);
+    expect(document.querySelector(".live-thread-view__toolbar")).not.toBeInTheDocument();
     expect(screen.getByText(/1行目/)).toBeVisible();
     expect(screen.getByText(">>1 への返信")).toBeVisible();
   });
 
   it("エラー時は再試行ボタンを表示する", async () => {
     const onRefresh = vi.fn();
-    render(
-      <ThreadView
-        title="実況スレ"
-        posts={[]}
-        loading={false}
-        error={new Error("boom")}
-        datFall={false}
-        onRefresh={onRefresh}
-        onStop={() => undefined}
-      />,
-    );
-    await userEvent.click(screen.getByText("再試行"));
+    render(<ThreadView posts={[]} error={new Error("boom")} onRefresh={onRefresh} />);
+    await userEvent.click(screen.getByRole("button", { name: "再試行" }));
     expect(onRefresh).toHaveBeenCalledOnce();
   });
 
-  it("dat落ち表示と停止操作を扱える", async () => {
-    const onStop = vi.fn();
-    render(
-      <ThreadView
-        title="過去ログ"
-        posts={posts}
-        loading={false}
-        error={null}
-        datFall={true}
-        onRefresh={() => undefined}
-        onStop={onStop}
-      />,
-    );
-    expect(screen.getByText("dat落ち")).toBeVisible();
-    await userEvent.click(screen.getByText("停止"));
-    expect(onStop).toHaveBeenCalledOnce();
+  it("Live独自のヘッダーを表示しない", () => {
+    render(<ThreadView posts={posts} error={null} onRefresh={() => undefined} />);
+    expect(screen.queryByText("dat落ち")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading")).not.toBeInTheDocument();
   });
 });

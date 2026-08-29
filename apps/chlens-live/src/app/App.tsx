@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactElement } from "react";
-import { ThreadListView, type ThreadListViewRow } from "../../../../src/view/shared/ThreadListView";
+import { Eye, EyeOff, Pause, Play, RotateCw, Search } from "lucide-react";
+import type { ThreadListViewRow } from "../../../../src/view/shared/ThreadListView";
 import {
   DEFAULT_OVERLAY_GEOMETRY,
   liveWindowPlatform,
@@ -11,6 +12,7 @@ import {
   type ChLensLiveSource,
 } from "../live-session/source";
 import { LiveBrowserShell, type LiveTab } from "./LiveBrowserShell";
+import { LiveThreadList } from "./LiveThreadList";
 import { ThreadView } from "./ThreadView";
 import { useLiveBoard, useLiveThread } from "./use-live-sessions";
 import { useThreadListController } from "./use-thread-list-controller";
@@ -33,6 +35,7 @@ export function App(): ReactElement {
   const [source] = useState(createDefaultSource);
   const [, setGeometry] = useState<OverlayGeometry>(DEFAULT_OVERLAY_GEOMETRY);
   const [overlayVisible, setOverlayVisible] = useState(true);
+  const [threadFilterOpen, setThreadFilterOpen] = useState(false);
   const [address, setAddress] = useState(DEFAULT_BOARD_URL);
   const [tabs, setTabs] = useState<LiveTab[]>([
     { id: BOARD_TAB_ID, title: "実況板", page: "threadList", url: DEFAULT_BOARD_URL },
@@ -138,35 +141,37 @@ export function App(): ReactElement {
 
   const toolbar = (
     <>
-      {activeTab.page === "threadList" && (
+      {activeTab.page === "threadList" ? (
         <button
           type="button"
           className="live-icon-button"
-          aria-label="スレ一覧を更新"
-          title="スレ一覧を更新"
-          onClick={board.refresh}
+          aria-label="タイトルで絞り込み"
+          title="タイトルで絞り込み"
+          onClick={() => setThreadFilterOpen((open) => !open)}
         >
-          ↻
+          <Search size={16} />
         </button>
-      )}
-      <button
-        type="button"
-        className="live-icon-button"
-        aria-label={overlayVisible ? "Overlayを非表示" : "Overlayを表示"}
-        title={overlayVisible ? "Overlayを非表示" : "Overlayを表示"}
-        onClick={() => {
-          const nextVisible = !overlayVisible;
-          runWindowAction(
-            nextVisible ? "show-overlay" : "hide-overlay",
-            nextVisible
-              ? () => liveWindowPlatform.showOverlay()
-              : () => liveWindowPlatform.hideOverlay(),
-          );
-          setOverlayVisible(nextVisible);
-        }}
-      >
-        {overlayVisible ? "◉" : "○"}
-      </button>
+      ) : null}
+      {activeTab.page === "thread" ? (
+        <button
+          type="button"
+          className="live-icon-button"
+          aria-label={overlayVisible ? "Overlayを非表示" : "Overlayを表示"}
+          title={overlayVisible ? "Overlayを非表示" : "Overlayを表示"}
+          onClick={() => {
+            const nextVisible = !overlayVisible;
+            runWindowAction(
+              nextVisible ? "show-overlay" : "hide-overlay",
+              nextVisible
+                ? () => liveWindowPlatform.showOverlay()
+                : () => liveWindowPlatform.hideOverlay(),
+            );
+            setOverlayVisible(nextVisible);
+          }}
+        >
+          {overlayVisible ? <EyeOff size={16} /> : <Eye size={16} />}
+        </button>
+      ) : null}
     </>
   );
 
@@ -184,15 +189,29 @@ export function App(): ReactElement {
         setAddress(tab.url);
       }}
       onCloseTab={closeTab}
+      primaryAction={
+        activeTab.page === "threadList"
+          ? {
+              label: "更新",
+              icon: <RotateCw size={16} />,
+              disabled: board.loading,
+              onClick: board.refresh,
+            }
+          : thread.running
+            ? { label: "自動更新を停止", icon: <Pause size={16} />, onClick: thread.stop }
+            : { label: "自動更新を再開", icon: <Play size={16} />, onClick: thread.start }
+      }
       toolbar={toolbar}
     >
       {activeTab.page === "threadList" ? (
-        <ThreadListView
+        <LiveThreadList
           rows={threadList.rows}
           loading={board.loading}
           error={errorMessage(board.error)}
           query={threadList.query}
           onQueryChange={threadList.setQuery}
+          filterOpen={threadFilterOpen}
+          onFilterClose={() => setThreadFilterOpen(false)}
           sortColumn={threadList.sortColumn}
           sortDirection={threadList.sortDirection}
           onSort={threadList.sort}
@@ -201,13 +220,9 @@ export function App(): ReactElement {
         />
       ) : (
         <ThreadView
-          title={thread.snapshot?.data.title ?? activeTab.title}
           posts={thread.snapshot?.data.posts ?? []}
-          loading={thread.loading}
           error={errorMessage(thread.error)}
-          datFall={false}
           onRefresh={thread.refresh}
-          onStop={thread.stop}
         />
       )}
     </LiveBrowserShell>

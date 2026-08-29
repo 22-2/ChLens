@@ -413,6 +413,9 @@ importers:
       '@tauri-apps/plugin-http':
         specifier: 2.5.9
         version: 2.5.9
+      lucide-react:
+        specifier: ^1.27.0
+        version: 1.27.0(react@19.2.8)
       react:
         specifier: ^19.2.8
         version: 19.2.8

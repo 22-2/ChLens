@@ -17,6 +17,10 @@ export interface UseLiveThreadResult {
   snapshot: LiveThreadSnapshot | null;
   error: unknown;
   loading: boolean;
+  running: boolean;
+  start: () => void;
+  refresh: () => void;
+  stop: () => void;
 }
 
 /**
@@ -103,7 +107,7 @@ export function useLiveThread(
     cache?: LiveThreadCache;
     intervalMs?: number;
   },
-): UseLiveThreadResult & { refresh: () => void; stop: () => void } {
+): UseLiveThreadResult {
   const session = useMemo(() => {
     if (!threadUrl) return null;
     return new LiveThreadSession(threadUrl, {
@@ -121,27 +125,50 @@ export function useLiveThread(
   );
 
   const { event, loading } = useSessionEvent(subscribe);
+  const [running, setRunning] = useState(false);
+
+  const start = useCallback(() => {
+    if (!session) return;
+    // 変更理由: 停止後も同じセッションを再利用し、タブ切替なしで自動更新を再開できるようにする。
+    void session
+      .start()
+      .then(() => setRunning(session.isRunning))
+      .catch((error: unknown) => {
+        setRunning(false);
+        console.error(`[Chlens Live] thread session start failed: ${threadUrl}`, error);
+      });
+  }, [session, threadUrl]);
 
   useEffect(() => {
     if (!session) return;
-    void session.start().catch((error: unknown) => {
-      console.error(`[Chlens Live] thread session start failed: ${threadUrl}`, error);
-    });
+    setRunning(true);
+    start();
     return () => session.stop();
-  }, [session, threadUrl]);
+  }, [session, start]);
 
   const refresh = useCallback(() => {
     void session?.refresh().catch((error: unknown) => {
       console.error(`[Chlens Live] thread refresh failed: ${threadUrl}`, error);
     });
   }, [session, threadUrl]);
-  const stop = useCallback(() => session?.stop(), [session]);
+  const stop = useCallback(() => {
+    session?.stop();
+    setRunning(false);
+  }, [session]);
 
   if (!session || !event) {
-    return { snapshot: null, error: null, loading, refresh, stop };
+    return { snapshot: null, error: null, loading, running, start, refresh, stop };
   }
   if (event.type === "error") {
-    return { snapshot: event.snapshot ?? null, error: event.error, loading: false, refresh, stop };
+    return {
+      snapshot: event.snapshot ?? null,
+      error: event.error,
+      loading: false,
+      running,
+      start,
+      refresh,
+      stop,
+    };
   }
-  return { snapshot: event.snapshot, error: null, loading, refresh, stop };
+  return { snapshot: event.snapshot, error: null, loading, running, start, refresh, stop };
 }

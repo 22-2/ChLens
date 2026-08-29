@@ -24,29 +24,9 @@ const posts: IRes[] = [
 export default { title: "Live/ThreadView" };
 
 export function Default() {
-  return (
-    <ThreadView
-      title="ChLens Live 実況スレ"
-      posts={posts}
-      loading={false}
-      error={null}
-      datFall={false}
-      onRefresh={() => undefined}
-      onStop={() => undefined}
-    />
-  );
+  return <ThreadView posts={posts} error={null} onRefresh={() => undefined} />;
 }
 
 export function DatFallen() {
-  return (
-    <ThreadView
-      title="過去ログ"
-      posts={posts.slice(0, 1)}
-      loading={false}
-      error={null}
-      datFall
-      onRefresh={() => undefined}
-      onStop={() => undefined}
-    />
-  );
+  return <ThreadView posts={posts.slice(0, 1)} error={null} onRefresh={() => undefined} />;
 }
