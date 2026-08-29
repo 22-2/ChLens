@@ -31,6 +31,9 @@ function createScheduler(
     stageWidth: 600,
     stageHeight: 32,
     laneHeight: 32,
+    baseSpeedPxPerSecond: 144,
+    collisionMode: "strict",
+    backlogPolicy: "queue",
     ...options,
   });
 }
@@ -39,7 +42,7 @@ describe("コメントの速度モデル", () => {
   it("ステージ幅と基準速度から通過時間を求める", () => {
     const duration = calculateCommentDuration(600, DEFAULT_COMMENT_BASE_SPEED_PX_PER_SECOND);
 
-    expect(duration).toBeCloseTo(600 / 144);
+    expect(duration).toBeCloseTo(600 / 90);
   });
 
   it("コメント幅を含めた実速度を求める", () => {
@@ -133,6 +136,84 @@ describe("CommentScheduler", () => {
 
     expect(scheduler.advance(safeStartAt - 0.01).pending).toHaveLength(1);
     expect(scheduler.advance(safeStartAt).pending).toHaveLength(0);
+  });
+
+  it("adaptiveではlaneが衝突中でも新着を即時表示する", () => {
+    const scheduler = createScheduler({
+      collisionMode: "adaptive",
+      backlogPolicy: "drop",
+    });
+    scheduler.enqueue(createInput(1, 120));
+    scheduler.enqueue(createInput(2, 120));
+
+    const snapshot = scheduler.advance(0);
+
+    expect(snapshot.active).toHaveLength(2);
+    expect(snapshot.active.map((comment) => comment.laneIndex)).toEqual([0, 0]);
+    expect(snapshot.pending).toHaveLength(0);
+  });
+
+  it("既定値はadaptiveとdropで、入力が待機queueへ残らない", () => {
+    const scheduler = new CommentScheduler({
+      stageWidth: 600,
+      stageHeight: 32,
+      laneHeight: 32,
+    });
+
+    scheduler.enqueue(createInput(1, 120));
+    scheduler.enqueue(createInput(2, 120));
+
+    const snapshot = scheduler.advance(0);
+
+    expect(snapshot.active).toHaveLength(2);
+    expect(snapshot.pending).toHaveLength(0);
+  });
+
+  it("strictとdropの組み合わせでは衝突した新着をqueueへ残さない", () => {
+    const scheduler = createScheduler({
+      collisionMode: "strict",
+      backlogPolicy: "drop",
+    });
+    scheduler.enqueue(createInput(1, 120));
+
+    const result = scheduler.enqueue(createInput(2, 120));
+
+    expect(result.accepted).toBe(false);
+    expect(result.dropped?.comment.responseNumber).toBe(2);
+    expect(scheduler.advance(0).pending).toHaveLength(0);
+  });
+
+  it("adaptiveでもactive上限を超える新着はその場でskipする", () => {
+    const scheduler = createScheduler({
+      collisionMode: "adaptive",
+      backlogPolicy: "drop",
+      maxActiveCount: 1,
+    });
+    scheduler.enqueue(createInput(1, 120));
+
+    const result = scheduler.enqueue(createInput(2, 120));
+
+    expect(result.accepted).toBe(false);
+    expect(result.dropped?.comment.responseNumber).toBe(2);
+    expect(scheduler.advance(0).pending).toHaveLength(0);
+  });
+
+  it("コメント単位のpause中は位置とlaneを保持し、resume後に終了時刻を延長する", () => {
+    const scheduler = createScheduler({ collisionMode: "adaptive" });
+    scheduler.enqueue(createInput(1, 120));
+    const beforePause = scheduler.advance(1).active[0];
+    const originalEndAt = beforePause.endAt;
+
+    expect(scheduler.pause(1, 1)).toBe(true);
+    const positionWhilePaused = calculateCommentPosition(beforePause, 1);
+    expect(calculateCommentPosition(beforePause, 5)).toBe(positionWhilePaused);
+    expect(scheduler.advance(5).active).toHaveLength(1);
+
+    expect(scheduler.resume(1, 5)).toBe(true);
+    const resumedEndAt = beforePause.endAt;
+    expect(resumedEndAt).toBeGreaterThan(originalEndAt);
+    expect(scheduler.advance(resumedEndAt - 0.01).active).toHaveLength(1);
+    expect(scheduler.advance(resumedEndAt).active).toHaveLength(0);
   });
 
   it("queueが満杯でも新着を受け入れ、最古の待機コメントをskipする", () => {

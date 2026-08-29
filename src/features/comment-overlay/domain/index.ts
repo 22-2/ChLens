@@ -18,11 +18,16 @@ export {
   calculateCommentSpeed,
   CommentScheduler,
   LaneAllocator,
+  DEFAULT_COMMENT_BACKLOG_POLICY,
   DEFAULT_COMMENT_BASE_SPEED_PX_PER_SECOND,
+  DEFAULT_COMMENT_COLLISION_MODE,
+  DEFAULT_MAX_ACTIVE_COUNT,
   DEFAULT_MAX_LANE_COUNT,
   DEFAULT_MAX_QUEUE_SIZE,
 } from "./scheduler";
 export type {
+  CommentBacklogPolicy,
+  CommentCollisionMode,
   CommentEnqueueResult,
   CommentScheduleInput,
   CommentSchedulerOptions,

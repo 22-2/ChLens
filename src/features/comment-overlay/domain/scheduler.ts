@@ -1,13 +1,26 @@
 import type { CommentCandidate } from "./comment-types";
 
-/** Danmakuの初期値に合わせた、ステージ上を進むコメントの基準速度。単位はpx/sec。 */
-export const DEFAULT_COMMENT_BASE_SPEED_PX_PER_SECOND = 144;
+/** DPlayerデモのspeedRate:0.5を900px幅で再現する、ステージ上を進む基準速度。単位はpx/sec。 */
+export const DEFAULT_COMMENT_BASE_SPEED_PX_PER_SECOND = 90;
 
 /** 高さが大きいOverlayでもDOMノードが無制限に増えないようにするレーン容量の上限。 */
 export const DEFAULT_MAX_LANE_COUNT = 24;
 
 /** ライブ感を保ち、古い待機レスが長時間残らないようにする待機queueの初期上限。 */
 export const DEFAULT_MAX_QUEUE_SIZE = 64;
+
+/** DPlayerのデモのように、満杯でも新着を待たせず表示する既定衝突方針。 */
+export const DEFAULT_COMMENT_COLLISION_MODE: CommentCollisionMode = "adaptive";
+
+/** ライブ表示では衝突待ちを作らず、投入できないレスをその場で破棄する。 */
+export const DEFAULT_COMMENT_BACKLOG_POLICY: CommentBacklogPolicy = "drop";
+
+/** DPlayerデモのmaximum:3000に寄せつつ、DOMが無制限に増えないようにする上限。 */
+export const DEFAULT_MAX_ACTIVE_COUNT = 3000;
+
+export type CommentCollisionMode = "strict" | "adaptive" | "none";
+
+export type CommentBacklogPolicy = "queue" | "drop";
 
 export interface CommentScheduleInput {
   comment: CommentCandidate;
@@ -22,6 +35,9 @@ export interface CommentSchedulerOptions {
   maxLaneCount?: number;
   baseSpeedPxPerSecond?: number;
   maxQueueSize?: number;
+  collisionMode?: CommentCollisionMode;
+  backlogPolicy?: CommentBacklogPolicy;
+  maxActiveCount?: number;
 }
 
 export interface ScheduledComment {
@@ -33,6 +49,9 @@ export interface ScheduledComment {
   endAt: number;
   duration: number;
   speedPxPerSecond: number;
+  paused: boolean;
+  pausedAt: number | null;
+  pausedDuration: number;
 }
 
 export interface CommentSchedulerSnapshot {
@@ -68,7 +87,11 @@ export function calculateCommentSpeed(
 /** 開始時刻と経過時刻から、コメントの左端位置を求める。 */
 export function calculateCommentPosition(comment: ScheduledComment, now: number): number {
   assertFinite(now, "now");
-  const elapsed = Math.min(Math.max(now - comment.startAt, 0), comment.duration);
+  const movementNow = comment.pausedAt ?? now;
+  const elapsed = Math.min(
+    Math.max(movementNow - comment.startAt - comment.pausedDuration, 0),
+    comment.duration,
+  );
   return comment.stageWidth - comment.speedPxPerSecond * elapsed;
 }
 
@@ -123,6 +146,8 @@ export class LaneAllocator {
 
   private readonly duration: number;
 
+  private fallbackLaneIndex = 0;
+
   constructor(
     private readonly stageWidth: number,
     private readonly maxLaneCount: number,
@@ -140,7 +165,9 @@ export class LaneAllocator {
     assertFinite(now, "now");
     for (const lane of this.lanes) {
       for (let index = lane.length - 1; index >= 0; index -= 1) {
-        if (lane[index].endAt <= now) {
+        // 変更理由: hover中のコメントは画面上で停止しているため、元のendAtだけで
+        // 解放すると、停止したコメントが消える前にlaneへ後続レスが侵入してしまう。
+        if (!lane[index].paused && lane[index].endAt <= now) {
           lane.splice(index, 1);
         }
       }
@@ -148,19 +175,32 @@ export class LaneAllocator {
   }
 
   /** 現在時刻に開始できるlaneを選び、必要なときだけ新しいlaneを作る。 */
-  allocate(input: CommentScheduleInput, now: number): ScheduledComment | null {
+  allocate(
+    input: CommentScheduleInput,
+    now: number,
+    collisionMode: CommentCollisionMode = "strict",
+  ): ScheduledComment | null {
     validateScheduleInput(input);
     assertFinite(now, "now");
     this.release(now);
 
-    let laneIndex = this.lanes.findIndex((lane) => this.canStartAt(lane, input.width, now));
+    let laneIndex =
+      collisionMode === "none"
+        ? -1
+        : this.lanes.findIndex((lane) => this.canStartAt(lane, input.width, now));
     if (laneIndex < 0) {
-      if (this.lanes.length >= this.maxLaneCount) return null;
+      if (this.lanes.length < this.maxLaneCount) {
+        // 変更理由: 空のlaneは衝突判定の対象にならないため、容量内では先に
+        // 新しいlaneを作る。全laneが埋まったときだけstrictとadaptiveを分岐する。
+        laneIndex = this.lanes.length;
+        this.lanes.push([]);
+      } else {
+        if (collisionMode === "strict") return null;
 
-      // 変更理由: 参考元と同じく、空きlaneを先に大量生成せず、既存laneへ置けない
-      // コメントが来たときだけ次のlaneを作り、ステージの高さに応じた容量を保つ。
-      laneIndex = this.lanes.length;
-      this.lanes.push([]);
+        // 変更理由: ライブ実況では衝突回避のために新着を待たせると、表示が過去へ遅れる。
+        // まず容量内のlaneを使い切り、その後は循環して限定的な重なりを許可する。
+        laneIndex = this.getFallbackLaneIndex();
+      }
     }
 
     const scheduled = this.createScheduledComment(input, laneIndex, now);
@@ -174,10 +214,42 @@ export class LaneAllocator {
     return this.lanes.flatMap((lane) => lane);
   }
 
+  activeCount(now: number): number {
+    assertFinite(now, "now");
+    this.release(now);
+    return this.lanes.reduce((count, lane) => count + lane.length, 0);
+  }
+
   clear(): void {
     for (const lane of this.lanes) {
       lane.length = 0;
     }
+    this.fallbackLaneIndex = 0;
+  }
+
+  pause(responseNumber: number, now: number): boolean {
+    assertFinite(now, "now");
+    this.release(now);
+    const scheduled = this.find(responseNumber);
+    if (!scheduled || scheduled.paused) return false;
+
+    scheduled.paused = true;
+    scheduled.pausedAt = now;
+    return true;
+  }
+
+  resume(responseNumber: number, now: number): boolean {
+    assertFinite(now, "now");
+    this.release(now);
+    const scheduled = this.find(responseNumber);
+    if (!scheduled || !scheduled.paused || scheduled.pausedAt === null) return false;
+
+    const pausedDuration = Math.max(now - scheduled.pausedAt, 0);
+    scheduled.pausedDuration += pausedDuration;
+    scheduled.endAt += pausedDuration;
+    scheduled.paused = false;
+    scheduled.pausedAt = null;
+    return true;
   }
 
   private createScheduledComment(
@@ -194,6 +266,9 @@ export class LaneAllocator {
       endAt: startAt + this.duration,
       duration: this.duration,
       speedPxPerSecond: calculateCommentSpeed(this.stageWidth, input.width, this.duration),
+      paused: false,
+      pausedAt: null,
+      pausedDuration: 0,
     };
   }
 
@@ -208,6 +283,30 @@ export class LaneAllocator {
         calculateSafeStartAt(activeComment, candidateSpeed, this.stageWidth, this.duration) <= now,
     );
   }
+
+  private getFallbackLaneIndex(): number {
+    // 変更理由: adaptive/noneで全laneが衝突中でも、同じlaneへ集中させず画面全体へ
+    // 分散することで、短時間の弾幕が一列の巨大な塊になることを防ぐ。
+    if (this.lanes.length < this.maxLaneCount) {
+      const laneIndex = this.lanes.length;
+      this.lanes.push([]);
+      return laneIndex;
+    }
+
+    const laneIndex = this.fallbackLaneIndex % this.lanes.length;
+    this.fallbackLaneIndex += 1;
+    return laneIndex;
+  }
+
+  private find(responseNumber: number): ScheduledComment | null {
+    for (const lane of this.lanes) {
+      const scheduled = lane.find(
+        (candidate) => candidate.comment.responseNumber === responseNumber,
+      );
+      if (scheduled) return scheduled;
+    }
+    return null;
+  }
 }
 
 /**
@@ -220,11 +319,15 @@ function calculateSafeStartAt(
   stageWidth: number,
   duration: number,
 ): number {
+  if (activeComment.paused) return Number.POSITIVE_INFINITY;
+
+  // 一時停止時間を仮想的な開始時刻へ反映し、再開後も後続コメントが追いつかないようにする。
+  const movementStartAt = activeComment.startAt + activeComment.pausedDuration;
   if (candidateSpeed <= activeComment.speedPxPerSecond) {
-    return activeComment.startAt + activeComment.width / activeComment.speedPxPerSecond;
+    return movementStartAt + activeComment.width / activeComment.speedPxPerSecond;
   }
 
-  return activeComment.startAt + duration - stageWidth / candidateSpeed;
+  return movementStartAt + duration - stageWidth / candidateSpeed;
 }
 
 /**
@@ -237,6 +340,12 @@ export class CommentScheduler {
   private readonly pendingComments: CommentScheduleInput[] = [];
 
   private readonly maxQueueSize: number;
+
+  private readonly collisionMode: CommentCollisionMode;
+
+  private readonly backlogPolicy: CommentBacklogPolicy;
+
+  private readonly maxActiveCount: number;
 
   private lastNow: number | null = null;
 
@@ -252,6 +361,16 @@ export class CommentScheduler {
       options.baseSpeedPxPerSecond ?? DEFAULT_COMMENT_BASE_SPEED_PX_PER_SECOND,
     );
     this.maxQueueSize = options.maxQueueSize ?? DEFAULT_MAX_QUEUE_SIZE;
+    this.collisionMode = options.collisionMode ?? DEFAULT_COMMENT_COLLISION_MODE;
+    this.backlogPolicy = options.backlogPolicy ?? DEFAULT_COMMENT_BACKLOG_POLICY;
+    this.maxActiveCount = options.maxActiveCount ?? DEFAULT_MAX_ACTIVE_COUNT;
+    if (!isCommentCollisionMode(this.collisionMode)) {
+      throw new TypeError("collisionMode must be strict, adaptive, or none");
+    }
+    if (!isCommentBacklogPolicy(this.backlogPolicy)) {
+      throw new TypeError("backlogPolicy must be queue or drop");
+    }
+    assertPositiveInteger(this.maxActiveCount, "maxActiveCount");
     if (!Number.isInteger(this.maxQueueSize) || this.maxQueueSize < 0) {
       throw new RangeError("maxQueueSize must be a non-negative integer");
     }
@@ -259,6 +378,18 @@ export class CommentScheduler {
 
   enqueue(input: CommentScheduleInput): CommentEnqueueResult {
     validateScheduleInput(input);
+
+    if (this.collisionMode !== "strict" || this.backlogPolicy === "drop") {
+      const now = this.lastNow ?? 0;
+      if (this.allocator.activeCount(now) >= this.maxActiveCount) {
+        return { accepted: false, dropped: input };
+      }
+
+      // 変更理由: DPlayerのlive/unlimitedに合わせ、ライブの新着はenqueue時点で
+      // 表示へ移す。次のframeまでpendingに置くと、高速入力時に不要な遅延が発生する。
+      const scheduled = this.allocator.allocate(input, now, this.collisionMode);
+      return scheduled ? { accepted: true, dropped: null } : { accepted: false, dropped: input };
+    }
 
     if (this.maxQueueSize === 0) {
       return { accepted: false, dropped: null };
@@ -274,17 +405,24 @@ export class CommentScheduler {
     return { accepted: true, dropped };
   }
 
+  pause(responseNumber: number, now: number): boolean {
+    this.assertAndSetNow(now);
+    return this.allocator.pause(responseNumber, now);
+  }
+
+  resume(responseNumber: number, now: number): boolean {
+    this.assertAndSetNow(now);
+    return this.allocator.resume(responseNumber, now);
+  }
+
   /** monotonicな時刻でだけ進め、同じ時刻の呼び出しは安全に繰り返せるようにする。 */
   advance(now: number): CommentSchedulerSnapshot {
-    assertFinite(now, "now");
-    if (this.lastNow !== null && now < this.lastNow) {
-      throw new RangeError("scheduler time must not move backwards");
-    }
-    this.lastNow = now;
+    this.assertAndSetNow(now);
 
     while (this.pendingComments.length > 0) {
       const nextComment = this.pendingComments[0];
-      const scheduled = this.allocator.allocate(nextComment, now);
+      if (this.allocator.activeCount(now) >= this.maxActiveCount) break;
+      const scheduled = this.allocator.allocate(nextComment, now, this.collisionMode);
       if (!scheduled) break;
       this.pendingComments.shift();
     }
@@ -301,4 +439,20 @@ export class CommentScheduler {
     this.allocator.clear();
     this.lastNow = null;
   }
+
+  private assertAndSetNow(now: number): void {
+    assertFinite(now, "now");
+    if (this.lastNow !== null && now < this.lastNow) {
+      throw new RangeError("scheduler time must not move backwards");
+    }
+    this.lastNow = now;
+  }
+}
+
+function isCommentCollisionMode(value: string): value is CommentCollisionMode {
+  return value === "strict" || value === "adaptive" || value === "none";
+}
+
+function isCommentBacklogPolicy(value: string): value is CommentBacklogPolicy {
+  return value === "queue" || value === "drop";
 }
