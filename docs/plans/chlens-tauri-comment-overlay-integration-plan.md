@@ -106,6 +106,51 @@ Overlay CommentScheduler
 
 OverlayはHTTP取得、dat解析、NG判定を行わない。メインウィンドウが作った表示用イベントだけを受け取る。
 
+## StorybookによるOverlay検証
+
+コメント描画は透明なTauriウィンドウへ移植する前に、Storybookで不透明なステージとして確認する。
+StorybookはNative windowの挙動を検証する場所ではなく、コメントが意図した速度・位置・レーンで流れるかを
+繰り返し調整するための開発用の表示環境とする。
+
+### OverlayStageの分離
+
+Tauriの表示・非表示、クリック透過、移動、リサイズを担当する`OverlayApp`と、コメントの描画だけを担当する
+props駆動の`OverlayStage`を分ける。
+
+```text
+OverlayApp
+├─ OverlayWindowChrome   # Tauri専用のnative window操作
+└─ OverlayStage           # Storybookでも直接描画するコメント表示
+```
+
+`OverlayStage`はコメント配列、scheduler状態、表示設定を受け取り、Tauri APIを参照しない。
+Storybookでは透過を無効にし、背景色のある固定サイズのステージへ描画する。
+
+### 必須Story
+
+- `Hardcoded`: 固定レス、短文、長文、改行、URL、絵文字、大量投入を確認する。
+- `PastThreadReplay`: 保存した過去スレの`IRes[]`を再生し、速度変更、停止、再開、開始位置を確認する。
+- `CurrentThread`: 指定した1つのthread URLだけを一定間隔で取得し、新着レスだけを流す。自動次スレ移動は行わない。
+- `Stress`: 大量投入、長文連続、queue上限、skip、stage幅変更を確認する。
+
+### StorybookのControls
+
+次の値はControlsから変更できるようにする。
+
+- ステージ幅・高さ
+- 速度、レーン数、文字サイズ
+- コメント投入間隔とqueue上限
+- 背景色とコメントの透明度
+- 再生、停止、リセット、1レス追加
+
+過去スレStoryはネットワークに依存しないfixtureを使う。現行スレStoryは手動確認用とし、固定URLを
+pollingするだけで、Storybookのbuildや自動テストがネットワーク状態に左右されないようにする。
+
+### StorybookとTauriの確認範囲
+
+Storybookでは速度、衝突、レーン、queue、長文、resizeを確認する。透過、常に手前、クリック透過、
+複数モニター、DPI、OSウィンドウ操作はTauri実機確認の対象とする。
+
 ## 主要な設計判断
 
 ### Tauri限定境界
@@ -211,6 +256,8 @@ OverlayはHTTP取得、dat解析、NG判定を行わない。メインウィン�
 
 ### Phase 1：コメントdomainの先行実装
 
+> 進捗：実装中。コメント入力型、差分抽出、projection、memory event bus、契約テストまで完了。
+
 #### 作業
 
 - `CommentCandidate`、`CommentBatch`、`CommentOverlayState`の型を定義する。
@@ -218,12 +265,14 @@ OverlayはHTTP取得、dat解析、NG判定を行わない。メインウィン�
 - HTML本文を表示用プレーンテキストへ変換するprojectionを実装する。
 - NG、空本文、重複レスの扱いをテストで固定する。
 - runtimeに依存しないmemory event busを用意する。
+- `OverlayStage`へ渡すpropsと、Storybookの固定レスfixture形式を先に決める。
 
 #### 完了条件
 
 - ReactとTauriを起動せず、スナップショットから正しい新着batchを生成できる。
 - 開始時、再取得時、スレ変更時、停止・再開時の重複条件がテストされている。
 - ChLensの既存スレ取得処理は変更されていない。
+- Storybookで使うfixtureがdomainの型へ変換でき、ネットワークなしで再利用できる。
 
 ### Phase 2：OverlayウィンドウをChLens Tauriへ移植
 
@@ -272,6 +321,7 @@ OverlayはHTTP取得、dat解析、NG判定を行わない。メインウィン�
 - resize時のstage寸法更新と、新規コメントの割り当てを同期する。
 - queue上限と古いコメントのskip方針を実装する。
 - active commentの終了時にDOMとlaneを解放する。
+- `Hardcoded`、`PastThreadReplay`、`CurrentThread`、`Stress`のStoryを追加する。
 
 #### 完了条件
 
@@ -279,6 +329,7 @@ OverlayはHTTP取得、dat解析、NG判定を行わない。メインウィン�
 - 短文と長文で極端に滞在時間がずれない。
 - 混雑時もメモリとDOMノード数が上限内に収まる。
 - resize後も新しいコメントが画面外へ固定されない。
+- Storybook上で固定レスと過去スレ再生を再現でき、現行スレStoryは自動次スレへ移動しない。
 
 ### Phase 5：Tauri限定UIと設定
 
