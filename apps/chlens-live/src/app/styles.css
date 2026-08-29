@@ -854,3 +854,8 @@ button:hover {
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
+
+.live-response .res__mail {
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-sm);
+}
