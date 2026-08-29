@@ -907,3 +907,60 @@ button:hover {
     white-space: nowrap;
   }
 }
+
+/* ChLensのレス行レイアウトをLiveの表示領域へ適用する。取得処理はLive側に残す。 */
+.live-thread-view {
+  min-height: 100%;
+  max-height: none;
+  padding: var(--sys-space-2) 0;
+  color: var(--sys-color-text);
+  background: var(--sys-color-surface);
+}
+
+.live-thread-view__toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sys-space-4);
+  padding: var(--sys-space-2) var(--sys-space-4);
+  border-bottom: 1px solid var(--sys-color-table-heading-border);
+  background: var(--sys-color-table-heading-bg);
+}
+
+.live-thread-view__title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--sys-color-text);
+  font-size: var(--sys-font-size-md);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-thread-view__actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--sys-space-2);
+}
+
+.live-thread-view__actions button {
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-md);
+  padding: var(--sys-space-1) var(--sys-space-4);
+  color: var(--sys-color-text);
+  background: var(--sys-color-surface);
+  font-size: var(--sys-font-size-sm);
+}
+
+.live-response {
+  /* ChLensのレス単位の余白と左境界線を使い、Live独自のカード感をなくす。 */
+  background: transparent;
+}
+
+.live-response__body {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}

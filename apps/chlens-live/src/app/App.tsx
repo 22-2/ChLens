@@ -1,8 +1,4 @@
 import { useEffect, useState, type ReactElement } from "react";
-import {
-  SimpleDataTable,
-  type ColumnDef,
-} from "../../../../src/view/browser/components/SimpleDataTable";
 import { ThreadListView, type ThreadListViewRow } from "../../../../src/view/shared/ThreadListView";
 import {
   DEFAULT_OVERLAY_GEOMETRY,
@@ -32,42 +28,6 @@ function createDefaultSource(): ChLensLiveSource {
 function errorMessage(error: unknown): string | null {
   return error == null ? null : error instanceof Error ? error.message : "取得に失敗しました";
 }
-
-const THREAD_COLUMNS: ColumnDef<ThreadListViewRow>[] = [
-  {
-    key: "num",
-    header: "No.",
-    cellClassName: "thread-list__num",
-    sortable: true,
-    cell: ({ num }) => num ?? "",
-  },
-  {
-    key: "title",
-    header: "タイトル",
-    cellClassName: "thread-list__title",
-    sortable: true,
-    cell: ({ title, label }) => (
-      <>
-        {title}
-        {label && <span className="thread-list__label">{label}</span>}
-      </>
-    ),
-  },
-  {
-    key: "resCount",
-    header: "レス",
-    cellClassName: "thread-list__count",
-    sortable: true,
-    cell: ({ resCount }) => resCount,
-  },
-  {
-    key: "heat",
-    header: "勢い",
-    cellClassName: "thread-list__heat",
-    sortable: true,
-    cell: ({ heat }) => heat?.toFixed(1) ?? "0.0",
-  },
-];
 
 export function App(): ReactElement {
   const [source] = useState(createDefaultSource);
@@ -210,19 +170,6 @@ export function App(): ReactElement {
     </>
   );
 
-  const listContent = (
-    <SimpleDataTable
-      columns={THREAD_COLUMNS}
-      rows={threadList.rows}
-      getRowKey={({ id }) => id}
-      onRowClick={selectThread}
-      onRowMiddleClick={selectThread}
-      sortColumn={threadList.sortColumn ?? undefined}
-      sortDirection={threadList.sortDirection}
-      onSort={(key) => threadList.sort(key as Parameters<typeof threadList.sort>[0])}
-    />
-  );
-
   return (
     <LiveBrowserShell
       tabs={tabs}
@@ -249,9 +196,9 @@ export function App(): ReactElement {
           sortColumn={threadList.sortColumn}
           sortDirection={threadList.sortDirection}
           onSort={threadList.sort}
-        >
-          {listContent}
-        </ThreadListView>
+          onSelect={selectThread}
+          onMiddleClick={selectThread}
+        />
       ) : (
         <ThreadView
           title={thread.snapshot?.data.title ?? activeTab.title}

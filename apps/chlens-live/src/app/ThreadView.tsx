@@ -1,5 +1,6 @@
 import type { IRes, ThreadData } from "@chlen/ch-lib";
 import { useEffect, useRef } from "react";
+import { LiveResponse } from "./LiveResponse";
 
 export interface ThreadViewProps {
   title: string | undefined;
@@ -9,14 +10,6 @@ export interface ThreadViewProps {
   datFall: boolean;
   onRefresh: () => void;
   onStop: () => void;
-}
-
-function formatPostHeader(post: IRes): string {
-  const parts = [post.name];
-  if (post.mail) parts.push(post.mail);
-  if (post.date) parts.push(post.date);
-  if (post.id) parts.push(`ID:${post.id}`);
-  return parts.filter(Boolean).join(" ");
 }
 
 /**
@@ -58,10 +51,10 @@ export function ThreadView({
   }
 
   return (
-    <div className="thread-view">
-      <header className="thread-view__header">
-        <h3 className="thread-view__title">{title ?? "読み込み中…"}</h3>
-        <div className="thread-view__actions">
+    <div className="thread-page live-thread-view">
+      <header className="thread-page__toolbar live-thread-view__toolbar">
+        <h3 className="live-thread-view__title">{title ?? "読み込み中…"}</h3>
+        <div className="live-thread-view__actions">
           {datFall && <span className="thread-view__dat-fall">dat落ち</span>}
           <button type="button" onClick={onRefresh} disabled={loading}>
             更新
@@ -71,25 +64,11 @@ export function ThreadView({
           </button>
         </div>
       </header>
-      <ol className="thread-view__posts" aria-label="レス一覧">
+      <div className="thread-page__responses" aria-label="レス一覧">
         {posts.map((post) => (
-          <li key={post.number} className="thread-view__post">
-            <div className="thread-view__post-header">
-              <span className="thread-view__post-number">{post.number}</span>
-              <span className="thread-view__post-name">{formatPostHeader(post)}</span>
-            </div>
-            <div className="thread-view__post-message">
-              {post.message.split("\n").map((line, index) => (
-                // eslint-disable-next-line react/no-array-index-key
-                <span key={index} className="thread-view__post-line">
-                  {line}
-                  <br />
-                </span>
-              ))}
-            </div>
-          </li>
+          <LiveResponse key={post.number} post={post} />
         ))}
-      </ol>
+      </div>
       <div ref={bottomRef} />
     </div>
   );

@@ -34,7 +34,7 @@ export function LiveBrowserShell({
   children,
 }: LiveBrowserShellProps): React.ReactElement {
   return (
-    <main className="live-browser-shell">
+    <main className="live-browser-shell browser-shell" data-theme="dark">
       <nav className="live-tab-bar" aria-label="開いているタブ">
         {tabs.map((tab) => (
           <button
