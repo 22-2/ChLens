@@ -185,40 +185,6 @@ export const TabBar: React.FC = () => {
     );
   }, []);
 
-  useEffect(() => {
-    const tabList = tabListRef.current;
-    if (!tabList) return;
-
-    // スクロール位置の変化だけでなく、ウィンドウ幅とタブ幅の変化も表示へ反映する。
-    tabList.addEventListener("scroll", updateTabListScrollState, { passive: true });
-    window.addEventListener("resize", updateTabListScrollState);
-
-    let resizeObserver: ResizeObserver | undefined;
-    if (typeof ResizeObserver !== "undefined") {
-      resizeObserver = new ResizeObserver(updateTabListScrollState);
-      resizeObserver.observe(tabList);
-    }
-
-    updateTabListScrollState();
-
-    return () => {
-      tabList.removeEventListener("scroll", updateTabListScrollState);
-      window.removeEventListener("resize", updateTabListScrollState);
-      resizeObserver?.disconnect();
-    };
-  }, [state.tabs, updateTabListScrollState]);
-
-  const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId);
-  const currentPage = activeTab ? getCurrentPage(activeTab) : null;
-  const isTabListScrollable = tabListScrollState.canScrollLeft || tabListScrollState.canScrollRight;
-  // 更新は常用操作としてタブバー左端にも置くが、再取得できないページでは無効化する。
-  const canRefresh =
-    currentPage?.type === "thread" ||
-    currentPage?.type === "threadList" ||
-    currentPage?.type === "historyList" ||
-    currentPage?.type === "writeHistoryList" ||
-    currentPage?.type === "logList";
-
   const scrollTabIntoView = useCallback((tabId: string) => {
     const tabElement = [
       ...(tabListRef.current?.querySelectorAll<HTMLElement>("[data-tab-id]") ?? []),
@@ -242,6 +208,48 @@ export const TabBar: React.FC = () => {
       tabElement.scrollIntoView({ block: "nearest", inline: "nearest" });
     }
   }, []);
+
+  const handleTabListResize = useCallback(() => {
+    updateTabListScrollState();
+    // 変更理由: 表示領域やタブ幅の変化でアクティブタブの矩形が見切れるため、
+    // アクティブIDの変更時だけでなく、リサイズ時にも既存の境界判定を再利用する。
+    // 見切れている場合だけスクロールするので、手動で決めた横位置を不要に奪わない。
+    scrollActiveTabIntoView(state.activeTabId);
+  }, [scrollActiveTabIntoView, state.activeTabId, updateTabListScrollState]);
+
+  useEffect(() => {
+    const tabList = tabListRef.current;
+    if (!tabList) return;
+
+    // スクロール位置の変化だけでなく、ウィンドウ幅とタブ幅の変化も表示へ反映する。
+    tabList.addEventListener("scroll", updateTabListScrollState, { passive: true });
+    window.addEventListener("resize", handleTabListResize);
+
+    let resizeObserver: ResizeObserver | undefined;
+    if (typeof ResizeObserver !== "undefined") {
+      resizeObserver = new ResizeObserver(handleTabListResize);
+      resizeObserver.observe(tabList);
+    }
+
+    updateTabListScrollState();
+
+    return () => {
+      tabList.removeEventListener("scroll", updateTabListScrollState);
+      window.removeEventListener("resize", handleTabListResize);
+      resizeObserver?.disconnect();
+    };
+  }, [handleTabListResize, state.tabs, updateTabListScrollState]);
+
+  const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId);
+  const currentPage = activeTab ? getCurrentPage(activeTab) : null;
+  const isTabListScrollable = tabListScrollState.canScrollLeft || tabListScrollState.canScrollRight;
+  // 更新は常用操作としてタブバー左端にも置くが、再取得できないページでは無効化する。
+  const canRefresh =
+    currentPage?.type === "thread" ||
+    currentPage?.type === "threadList" ||
+    currentPage?.type === "historyList" ||
+    currentPage?.type === "writeHistoryList" ||
+    currentPage?.type === "logList";
 
   useEffect(() => {
     const prev = prevTabIdsRef.current;
