@@ -765,6 +765,11 @@ button:hover {
   background: var(--sys-color-surface);
 }
 
+.live-thread-view > .thread-page__responses {
+  /* 取得件数が少ない時も、レス一覧の背景と操作領域を表示領域いっぱいに保つ。 */
+  min-height: 100%;
+}
+
 .live-response {
   /* ChLensのレス単位の余白と左境界線を使い、Live独自のカード感をなくす。 */
   background: transparent;
@@ -995,4 +1000,10 @@ button:hover {
   width: 16px;
   height: 16px;
   stroke: currentcolor;
+}
+
+.live-tab-bar .tab-bar__refresh-divider {
+  /* 更新操作とタブの境界をタブバー全高に揃え、途中で途切れた印象をなくす。 */
+  align-self: stretch;
+  height: auto;
 }
