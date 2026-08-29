@@ -1,32 +1,85 @@
-import type { IRes } from "@chlen/ch-lib";
-import type { ReactElement } from "react";
+import type { IRes as LiveResponseData } from "@chlen/ch-lib";
+import type { MouseEvent, ReactElement } from "react";
+import type { IRes as BrowserResponse } from "src/service-container/interfaces";
+import { ResItem } from "src/view/browser/components/ResItem";
+import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
 
 interface LiveResponseProps {
-  post: IRes;
+  post: LiveResponseData;
+  threadUrl?: string;
+  onAnchorClick?: (resNum: number) => void;
+  onContextMenu?: (event: MouseEvent, response: BrowserResponse) => void;
 }
 
+function toBrowserResponse(post: LiveResponseData): BrowserResponse {
+  return {
+    num: post.number,
+    name: post.name,
+    mail: post.mail,
+    date: post.date,
+    message: post.message,
+    other: post.other,
+    id: post.id,
+    slip: post.slip,
+    trip: post.trip,
+    be: post.be,
+  };
+}
+
+function resolveMessageProtocol(threadUrl?: string): string {
+  try {
+    return new URL(threadUrl ?? "https://example.invalid/").protocol;
+  } catch {
+    return "https:";
+  }
+}
+
+const noopIdClick = (): void => undefined;
+const noopReplyClick = (): void => undefined;
+const noopAnchorHover = (): void => undefined;
+const noopAnchorLeave = (): void => undefined;
+const noopUrlContextMenu: UrlContextMenuHandler = () => false;
+
+const openExternalUrl: UrlClickHandler = (url) => {
+  // 変更理由: ChLensのレス本文/メディア部品はクリック処理を呼び出し側へ委譲するため、
+  // Liveでも同じ部品を使い、URLは既存ブラウザの新しいタブへ一貫して委譲する。
+  window.open(url, "_blank", "noopener,noreferrer");
+  return true;
+};
+
 /**
- * Liveの取得済みレスを、ChLensのレス行と同じ余白・情報配置で表示する。
- * 取得やNG判定はLive側の責務として残し、表示だけを移植するための境界にする。
+ * LiveのcanonicalレスをChLensのResItemへ変換して表示する。
+ * 本文のHTML化・>>アンカー・画像/動画抽出は表示側で共有し、Live固有の取得処理とは分離する。
  */
-export function LiveResponse({ post }: LiveResponseProps): ReactElement {
+export function LiveResponse({
+  post,
+  threadUrl,
+  onAnchorClick,
+  onContextMenu,
+}: LiveResponseProps): ReactElement {
+  const response = toBrowserResponse(post);
+
   return (
-    <article className="res live-response" data-res-num={post.number}>
-      <header className="res__header">
-        <span className="res__num">{post.number}</span>
-        <span className="res__name">{post.name}</span>
-        {post.mail && <span className="res__mail">{post.mail}</span>}
-        {post.id && <span className="res__id">ID:{post.id}</span>}
-        <span className="res__date">{post.date || post.other}</span>
-      </header>
-      <div className="res__body live-response__body">
-        {post.message.split("\n").map((line, index) => (
-          <span key={`${post.number}-${index}`}>
-            {line}
-            <br />
-          </span>
-        ))}
-      </div>
-    </article>
+    <ResItem
+      res={response}
+      idPos={response.id ? 1 : 0}
+      idCount={response.id ? 1 : 0}
+      repCount={0}
+      miniAa={false}
+      messageProtocol={resolveMessageProtocol(threadUrl)}
+      onIdClick={noopIdClick}
+      onRepClick={noopReplyClick}
+      onUrlClick={openExternalUrl}
+      onUrlContextMenu={noopUrlContextMenu}
+      onAnchorClick={onAnchorClick ?? (() => undefined)}
+      onAnchorHover={noopAnchorHover}
+      onAnchorLeave={noopAnchorLeave}
+      onContextMenu={(event) => onContextMenu?.(event, response)}
+      isOwn={false}
+      isReplyToOwn={false}
+      isImageBlurred={false}
+      imageBlurRadius={4}
+      threadUrl={threadUrl}
+    />
   );
 }

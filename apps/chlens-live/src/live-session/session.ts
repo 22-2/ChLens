@@ -45,6 +45,7 @@ export class LiveThreadSession {
   private refreshPromise: Promise<LiveThreadSnapshot | null> | null = null;
   private lease: LiveSessionLease | null = null;
   private running = false;
+  private pollingEnabled = true;
 
   constructor(
     private readonly threadUrl: string,
@@ -57,6 +58,21 @@ export class LiveThreadSession {
 
   get isRunning(): boolean {
     return this.running;
+  }
+
+  get isPollingEnabled(): boolean {
+    return this.pollingEnabled;
+  }
+
+  setPollingEnabled(enabled: boolean): void {
+    if (this.pollingEnabled === enabled) return;
+    this.pollingEnabled = enabled;
+    if (!this.running) return;
+
+    this.clearTimer();
+    if (enabled) {
+      this.scheduleTimer();
+    }
   }
 
   subscribe(listener: LiveThreadSessionListener): () => void {
@@ -82,17 +98,13 @@ export class LiveThreadSession {
 // 初回リクエスト中にstop()が呼ばれることがあるため、呼び出し側がLiveセッションを
 // 明示的に解放した後にタイマーを復活させない。
     if (!this.running) return;
-    this.timer = setInterval(() => {
-      void this.refresh();
-    }, this.intervalMs);
+    this.scheduleTimer();
   }
 
   stop(): void {
     this.running = false;
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = null;
-    }
+    this.pollingEnabled = false;
+    this.clearTimer();
     this.requestController?.abort();
     this.requestController = null;
     this.releaseLease();
@@ -168,5 +180,19 @@ export class LiveThreadSession {
   private releaseLease(): void {
     this.lease?.release();
     this.lease = null;
+  }
+
+  private scheduleTimer(): void {
+    if (!this.running || !this.pollingEnabled || this.timer) return;
+
+    this.timer = setInterval(() => {
+      void this.refresh();
+    }, this.intervalMs);
+  }
+
+  private clearTimer(): void {
+    if (!this.timer) return;
+    clearInterval(this.timer);
+    this.timer = null;
   }
 }

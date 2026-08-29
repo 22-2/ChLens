@@ -416,6 +416,12 @@ importers:
       lucide-react:
         specifier: ^1.27.0
         version: 1.27.0(react@19.2.8)
+      normalize-wheel:
+        specifier: ^1.0.1
+        version: 1.0.1
+      radix-ui:
+        specifier: ^1.6.7
+        version: 1.6.7(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       react:
         specifier: ^19.2.8
         version: 19.2.8

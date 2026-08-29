@@ -18,9 +18,11 @@ export interface UseLiveThreadResult {
   error: unknown;
   loading: boolean;
   running: boolean;
+  pollingEnabled: boolean;
   start: () => void;
   refresh: () => void;
   stop: () => void;
+  setPollingEnabled: (enabled: boolean) => void;
 }
 
 /**
@@ -126,10 +128,23 @@ export function useLiveThread(
 
   const { event, loading } = useSessionEvent(subscribe);
   const [running, setRunning] = useState(false);
+  const [pollingEnabled, setPollingEnabledState] = useState(false);
+
+  const setPollingEnabled = useCallback(
+    (enabled: boolean) => {
+      setPollingEnabledState(enabled);
+      session?.setPollingEnabled(enabled);
+    },
+    [session],
+  );
 
   const start = useCallback(() => {
     if (!session) return;
-    // 変更理由: 停止後も同じセッションを再利用し、タブ切替なしで自動更新を再開できるようにする。
+    // 変更理由: 再開直後に現在のスクロール位置を確認する前からタイマーを動かさず、
+    // ThreadViewが下端ライン内と判定した場合だけ自動更新を許可する。
+    setRunning(true);
+    setPollingEnabledState(false);
+    session.setPollingEnabled(false);
     void session
       .start()
       .then(() => setRunning(session.isRunning))
@@ -140,8 +155,11 @@ export function useLiveThread(
   }, [session, threadUrl]);
 
   useEffect(() => {
-    if (!session) return;
-    setRunning(true);
+    if (!session) {
+      setRunning(false);
+      setPollingEnabledState(false);
+      return;
+    }
     start();
     return () => session.stop();
   }, [session, start]);
@@ -154,10 +172,21 @@ export function useLiveThread(
   const stop = useCallback(() => {
     session?.stop();
     setRunning(false);
+    setPollingEnabledState(false);
   }, [session]);
 
   if (!session || !event) {
-    return { snapshot: null, error: null, loading, running, start, refresh, stop };
+    return {
+      snapshot: null,
+      error: null,
+      loading,
+      running,
+      pollingEnabled,
+      start,
+      refresh,
+      stop,
+      setPollingEnabled,
+    };
   }
   if (event.type === "error") {
     return {
@@ -165,10 +194,22 @@ export function useLiveThread(
       error: event.error,
       loading: false,
       running,
+      pollingEnabled,
       start,
       refresh,
       stop,
+      setPollingEnabled,
     };
   }
-  return { snapshot: event.snapshot, error: null, loading, running, start, refresh, stop };
+  return {
+    snapshot: event.snapshot,
+    error: null,
+    loading,
+    running,
+    pollingEnabled,
+    start,
+    refresh,
+    stop,
+    setPollingEnabled,
+  };
 }

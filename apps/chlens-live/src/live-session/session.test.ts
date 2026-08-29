@@ -166,6 +166,35 @@ describe("LiveThreadSession", () => {
     }
   });
 
+  it("停止中の自動更新をスクロール境界で再開・停止できる", async () => {
+    vi.useFakeTimers();
+    try {
+      let callCount = 0;
+      const source = sourceFor(async () => {
+        callCount += 1;
+        return result(thread("title", `refresh-${callCount}`), `"v${callCount}"`);
+      });
+      const session = new LiveThreadSession(threadUrl, { source, intervalMs: 1_000 });
+
+      await session.start();
+      expect(session.isPollingEnabled).toBe(true);
+
+      session.setPollingEnabled(false);
+      expect(session.isPollingEnabled).toBe(false);
+      await vi.advanceTimersByTimeAsync(2_000);
+      expect(callCount).toBe(1);
+
+      session.setPollingEnabled(true);
+      expect(session.isPollingEnabled).toBe(true);
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(callCount).toBe(2);
+
+      session.stop();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("exposes dat-removed status through the error event contract", async () => {
     const source = sourceFor(async () => {
       throw new HttpStatusError(threadUrl, 410);

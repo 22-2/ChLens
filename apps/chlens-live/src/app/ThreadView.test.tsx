@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vite-plus/test";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ThreadView } from "./ThreadView";
 import type { IRes } from "@chlen/ch-lib";
@@ -15,7 +15,7 @@ describe("ThreadView", () => {
     render(<ThreadView posts={posts} error={null} onRefresh={() => undefined} />);
     expect(document.querySelector(".live-thread-view__toolbar")).not.toBeInTheDocument();
     expect(screen.getByText(/1行目/)).toBeVisible();
-    expect(screen.getByText(">>1 への返信")).toBeVisible();
+    expect(screen.getByText(">>1")).toBeVisible();
   });
 
   it("エラー時は再試行ボタンを表示する", async () => {
@@ -29,5 +29,26 @@ describe("ThreadView", () => {
     render(<ThreadView posts={posts} error={null} onRefresh={() => undefined} />);
     expect(screen.queryByText("dat落ち")).not.toBeInTheDocument();
     expect(screen.queryByRole("heading")).not.toBeInTheDocument();
+  });
+
+  it("本文URLを画像として表示する", () => {
+    render(
+      <ThreadView
+        posts={[post(1, "https://example.com/image.jpg")]}
+        error={null}
+        onRefresh={() => undefined}
+      />,
+    );
+
+    expect(screen.getByRole("img", { name: "https://example.com/image.jpg" })).toBeVisible();
+  });
+
+  it("レスの右クリックメニューを表示する", async () => {
+    render(<ThreadView posts={posts} error={null} onRefresh={() => undefined} />);
+
+    fireEvent.contextMenu(document.querySelector('[data-res-num="1"]')!);
+
+    expect(await screen.findByText("レスをコピー")).toBeVisible();
+    expect(screen.getByText("スレを更新")).toBeVisible();
   });
 });
