@@ -357,6 +357,13 @@ button:hover {
   pointer-events: none;
 }
 
+.overlay-stage__comment-layer {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  pointer-events: none;
+}
+
 .overlay-stage--controls-visible .overlay-stage__resize-frame {
   opacity: 1;
 }

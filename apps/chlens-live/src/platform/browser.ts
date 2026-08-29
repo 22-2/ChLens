@@ -14,8 +14,8 @@ export function createBrowserLiveWindowPlatform(): LiveWindowPlatform {
   let geometry = fallbackOverlayGeometry(loadStoredOverlayGeometry());
 
   return {
-  // ブラウザ用フォールバックは2つ目のネイティブウィンドウを操作できないため、
-  // Tauri実装と同じ非同期契約を保ちながら何もしない。
+    // ブラウザ用フォールバックは2つ目のネイティブウィンドウを操作できないため、
+    // Tauri実装と同じ非同期契約を保ちながら何もしない。
     async showOverlay() {},
     async hideOverlay() {},
     async focusOverlay() {},
@@ -25,8 +25,8 @@ export function createBrowserLiveWindowPlatform(): LiveWindowPlatform {
     async closeOverlay() {},
     async setOverlayClickThrough(_enabled: boolean) {},
     trackOverlayBarHover(_listener: (hovered: boolean) => void) {
-  // ブラウザのプレビューには透明なネイティブウィンドウがないため、
-  // 2つ目のカーソル監視ループを開始せずCSSのhoverをフォールバックにする。
+      // ブラウザのプレビューには透明なネイティブウィンドウがないため、
+      // 2つ目のカーソル監視ループを開始せずCSSのhoverをフォールバックにする。
       return () => {};
     },
     async getOverlayGeometry() {

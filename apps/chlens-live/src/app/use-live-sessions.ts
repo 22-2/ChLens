@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { LiveBoardSession, type LiveBoardSessionEvent } from "../live-session/board-session";
 import { LiveThreadSession, type LiveThreadSessionEvent } from "../live-session/session";
+import type { LiveEventBus } from "../live-session/events";
 import type { ChLensLiveSource } from "../live-session/source";
 import type { LiveBoardSnapshot, LiveThreadCache, LiveThreadSnapshot } from "../live-session/cache";
 import type { LiveSessionOwner } from "../live-session/owner";
@@ -107,6 +108,7 @@ export function useLiveThread(
     source: ChLensLiveSource;
     owner?: LiveSessionOwner;
     cache?: LiveThreadCache;
+    eventBus?: LiveEventBus;
     intervalMs?: number;
   },
 ): UseLiveThreadResult {
@@ -116,9 +118,17 @@ export function useLiveThread(
       source: options.source,
       owner: options.owner,
       cache: options.cache,
+      eventBus: options.eventBus,
       intervalMs: options.intervalMs,
     });
-  }, [threadUrl, options.source, options.owner, options.cache, options.intervalMs]);
+  }, [
+    threadUrl,
+    options.source,
+    options.owner,
+    options.cache,
+    options.eventBus,
+    options.intervalMs,
+  ]);
 
   const subscribe = useCallback(
     (listener: (event: LiveThreadSessionEvent) => void) =>

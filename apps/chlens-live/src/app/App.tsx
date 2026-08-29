@@ -11,6 +11,7 @@ import {
   createTauriChLensLiveSource,
   type ChLensLiveSource,
 } from "../live-session/source";
+import { createLiveEventBus } from "../live-session/event-bus";
 import { LiveBrowserShell, type LiveTab } from "./LiveBrowserShell";
 import { LiveThreadList } from "./LiveThreadList";
 import { ThreadView } from "./ThreadView";
@@ -33,6 +34,7 @@ function errorMessage(error: unknown): string | null {
 
 export function App(): ReactElement {
   const [source] = useState(createDefaultSource);
+  const [eventBus] = useState(createLiveEventBus);
   const [, setGeometry] = useState<OverlayGeometry>(DEFAULT_OVERLAY_GEOMETRY);
   const [overlayVisible, setOverlayVisible] = useState(true);
   const [threadFilterOpen, setThreadFilterOpen] = useState(false);
@@ -45,7 +47,7 @@ export function App(): ReactElement {
   const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? tabs[0];
   const selectedThreadUrl = activeTab.page === "thread" ? activeTab.url : null;
   const board = useLiveBoard(DEFAULT_BOARD_URL, { source, intervalMs: null });
-  const thread = useLiveThread(selectedThreadUrl, { source, intervalMs: 10_000 });
+  const thread = useLiveThread(selectedThreadUrl, { source, eventBus, intervalMs: 10_000 });
   const threadList = useThreadListController({ threads: board.snapshot?.data ?? [] });
 
   useEffect(() => {

@@ -1,6 +1,10 @@
-import { type PointerEvent } from "react";
+import { useState, type PointerEvent } from "react";
+import { OverlayStage } from "src/features/comment-overlay/ui/OverlayStage";
+import type { LiveEventBus } from "../live-session/events";
+import { createLiveEventBus } from "../live-session/event-bus";
 import { liveWindowPlatform, type OverlayResizeDirection } from "../platform/index";
 import { OverlayControlBar } from "./OverlayControlBar";
+import { useLiveOverlay } from "./use-live-overlay";
 import "./styles.css";
 
 const RESIZE_HANDLES: ReadonlyArray<{
@@ -30,10 +34,31 @@ function startResizing(
   });
 }
 
-export function OverlayApp() {
+export interface OverlayAppProps {
+  eventBus?: LiveEventBus;
+}
+
+export function OverlayApp({ eventBus: providedEventBus }: OverlayAppProps = {}) {
+  const [defaultEventBus] = useState(createLiveEventBus);
+  const eventBus = providedEventBus ?? defaultEventBus;
+  const { comments, stageKey } = useLiveOverlay(eventBus);
+
   return (
     <main className="overlay-stage overlay-stage--controls-visible" data-testid="overlay-stage">
       <div className="overlay-stage__resize-frame" aria-hidden="true" />
+      <OverlayStage
+        key={stageKey}
+        className="overlay-stage__comment-layer"
+        comments={comments}
+        stageWidth={900}
+        stageHeight={160}
+        laneHeight={32}
+        fitToContainer
+        playing
+        interactive={false}
+        showCommentInfo={false}
+        backgroundColor="transparent"
+      />
       <OverlayControlBar visible />
       {RESIZE_HANDLES.map(({ direction, className }) => (
         <span
