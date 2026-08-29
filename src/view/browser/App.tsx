@@ -5,6 +5,7 @@ import { AutoRefreshStatusItem } from "src/view/browser/components/AutoRefreshSt
 import { BookmarkRootSelectorDialog } from "src/view/browser/components/BookmarkRootSelectorDialog";
 import { BottomPanel } from "src/view/browser/components/BottomPanel";
 import { CommandPalette } from "src/view/browser/components/CommandPalette";
+import { CommentOverlayStatusItem } from "src/view/browser/components/CommentOverlayStatusItem";
 import { ContentArea } from "src/view/browser/components/ContentArea";
 import { IkioiStatusItem } from "src/view/browser/components/IkioiStatusItem";
 import { NavigationBar } from "src/view/browser/components/NavigationBar";
@@ -132,6 +133,7 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
               <NgStatusItem />
               <IkioiStatusItem />
               <AutoRefreshStatusItem />
+              <CommentOverlayStatusItem isActive={isActive} />
               <WritePanelToggleItem />
               <StatusBar />
             </AutoScrollStateProvider>

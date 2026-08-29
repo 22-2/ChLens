@@ -157,3 +157,14 @@
 .status-bar__btn--muted {
   opacity: 0.6;
 }
+
+/* Overlayの実況・表示切り替えは、ステータスバー内の隣接したアイコン操作として並べる。 */
+.comment-overlay-status {
+  display: inline-flex;
+  align-items: stretch;
+  height: 100%;
+}
+
+.comment-overlay-status .status-bar__btn {
+  width: auto;
+}

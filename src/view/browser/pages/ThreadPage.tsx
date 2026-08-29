@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { container } from "src/service-container/index";
 import type { IThread } from "src/service-container/interfaces";
+import { useCommentOverlay } from "src/features/comment-overlay/application/use-comment-overlay";
 import { MediaViewerContainer } from "src/view/browser/components/MediaViewerContainer";
 import { PopupRenderer } from "src/view/browser/components/PopupRenderer";
 import { ResItem } from "src/view/browser/components/ResItem";
@@ -75,7 +76,13 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     setResponses,
     messageProtocol,
   } = useThreadData(tabId, page, rootRef, refreshController);
+  const { controller: commentOverlayController } = useCommentOverlay();
   const dispatch = useTabDispatch();
+
+  useEffect(() => {
+    // 取得結果の共有だけを行い、実況中でない場合の差分計算・送信はcontroller側で止める。
+    commentOverlayController.syncThread(page.threadUrl, responses);
+  }, [commentOverlayController, page.threadUrl, responses]);
   // 変更理由: 更新開始後のloading中もwheel更新の共有cooldownとindicatorを維持し、
   // 画面切替で別の一覧/スレッドから連続更新できる隙間を作らない。
   const wheelPagination = useWheelPagination({
