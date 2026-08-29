@@ -1,3 +1,4 @@
+export * from "./board/BoardTitleResolver";
 export * from "./fetcher/ChFetcher";
 export * from "./fetcher/HttpClient";
 export * from "./parser/AnchorParser";

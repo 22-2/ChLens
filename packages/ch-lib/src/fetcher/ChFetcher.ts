@@ -2,6 +2,7 @@ import { BBSCategory, BBSMenuParser } from "../parser/BBSMenuParser";
 import { BoardParser, BoardThread } from "../parser/BoardParser";
 import { ThreadData, ThreadParser } from "../parser/ThreadParser";
 import { ChURL } from "../url/ChURL";
+import { createBoardTitleRequest, resolveBoardTitle } from "../board/BoardTitleResolver";
 import {
   FetchHttpClient,
   HttpClient,
@@ -60,6 +61,16 @@ export class ChFetcher {
 
     const result = await this.fetchText(subjectUrl, charset, request);
     return { data: BoardParser.parse(chUrl, result.text), metadata: result.metadata };
+  }
+
+  async fetchBoardTitle(urlStr: string): Promise<string | null> {
+    const request = createBoardTitleRequest(urlStr);
+    if (!request) return null;
+
+    // 変更理由: 取得先と本文解析は純粋なResolverへ寄せ、ChFetcherは実行環境ごとの
+    // HttpClientを使って文字コード付き本文を取得する責務だけを持つ。
+    const result = await this.fetchText(request.url, request.charset);
+    return resolveBoardTitle(request, result.text);
   }
 
   async fetchThread(urlStr: string): Promise<ThreadData> {

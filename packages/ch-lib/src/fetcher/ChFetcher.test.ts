@@ -75,6 +75,19 @@ describe("ChFetcher transport boundary", () => {
     expect(client.requests).toEqual([datUrl]);
   });
 
+  it("SETTING.TXTからBBS_TITLE_ORIGを優先して板名を取得する", async () => {
+    const settingUrl = "https://bbs.eddibb.cc/liveedge/SETTING.TXT";
+    const setting = concatBytes(ascii("BBS_TITLE=Fallback\nBBS_TITLE_ORIG=Live Board\n"));
+    const client = new FixtureHttpClient(
+      new Map([[settingUrl, fixtureResponse(200, {}, setting)]]),
+    );
+
+    await expect(
+      new ChFetcher(client).fetchBoardTitle("https://bbs.eddibb.cc/liveedge/"),
+    ).resolves.toBe("Live Board");
+    expect(client.requests).toEqual([settingUrl]);
+  });
+
   it("returns HTTP metadata and parsed response count for incremental thread fetches", async () => {
     const datUrl = "http://bbs.eddibb.cc/liveedge/dat/1000000001.dat";
     const dat = concatBytes(ascii("name<>mail<>2026/08/23<>message<>Thread title\n"));
