@@ -1,0 +1,29 @@
+.comment-overlay-stage {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  color: #f4f7fb;
+  font-family: "Segoe UI", sans-serif;
+  font-synthesis: none;
+  line-height: 1.2;
+  text-rendering: optimizeLegibility;
+}
+
+.comment-overlay-stage__comment {
+  position: absolute;
+  left: 0;
+  z-index: 1;
+  max-width: none;
+  padding: 0 0.12em;
+  color: inherit;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: pre;
+  text-shadow:
+    -1px -1px 0 #07101d,
+    1px -1px 0 #07101d,
+    -1px 1px 0 #07101d,
+    1px 1px 0 #07101d;
+  pointer-events: none;
+  will-change: transform;
+}

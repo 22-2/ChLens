@@ -1,0 +1,129 @@
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import { useState } from "react";
+import type { CommentCandidate } from "../domain/comment-types";
+import { OverlayStage, type OverlayStageProps } from "./OverlayStage";
+
+const INITIAL_COMMENTS: readonly CommentCandidate[] = [
+  { responseNumber: 1, text: "実況開始", author: "名無し" },
+  { responseNumber: 2, text: "短いコメント", author: "名無し" },
+  {
+    responseNumber: 3,
+    text: "Danmakuの速度モデルで流れる長めのコメントを確認するレスです",
+    author: "名無し",
+  },
+  { responseNumber: 4, text: "改行を含む\nコメント", author: "名無し" },
+];
+
+const meta = {
+  title: "ChLens/コメントOverlay/OverlayStage",
+  component: OverlayStage,
+  parameters: {
+    docs: {
+      description: {
+        component:
+          "Danmakuの速度モデルを使い、Tauriを起動せずにコメントの速度・lane・queueを確認する表示部品です。",
+      },
+    },
+  },
+  argTypes: {
+    comments: { table: { disable: true } },
+    estimateWidth: { table: { disable: true } },
+    onQueueOverflow: { table: { disable: true } },
+    className: { table: { disable: true } },
+    fitToContainer: { table: { disable: true } },
+    stageWidth: { control: { type: "number", min: 320, step: 40 } },
+    stageHeight: { control: { type: "number", min: 80, step: 20 } },
+    laneCount: { control: { type: "number", min: 1, max: 20, step: 1 } },
+    laneHeight: { control: { type: "number", min: 16, step: 2 } },
+    baseSpeedPxPerSecond: { control: { type: "number", min: 20, step: 10 } },
+    maxQueueSize: { control: { type: "number", min: 1, step: 1 } },
+    fontSize: { control: { type: "number", min: 10, step: 1 } },
+    commentOpacity: { control: { type: "number", min: 0, max: 1, step: 0.05 } },
+    backgroundColor: { control: "color" },
+    playing: { control: "boolean" },
+  },
+} satisfies Meta<typeof OverlayStage>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+function HardcodedStory(args: OverlayStageProps) {
+  const [comments, setComments] = useState<readonly CommentCandidate[]>(INITIAL_COMMENTS);
+  const [playing, setPlaying] = useState(args.playing ?? true);
+  const [stageKey, setStageKey] = useState(0);
+
+  const addComment = () => {
+    setComments((current) => {
+      const responseNumber = (current.at(-1)?.responseNumber ?? 0) + 1;
+      return [
+        ...current,
+        {
+          responseNumber,
+          text: `追加レス ${responseNumber}：queueとlaneの動きを確認`,
+          author: "名無し",
+        },
+      ];
+    });
+  };
+
+  const reset = () => {
+    setComments(INITIAL_COMMENTS);
+    setStageKey((current) => current + 1);
+  };
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        height: "100vh",
+        minHeight: 320,
+        flexDirection: "column",
+        gap: 16,
+        padding: 24,
+        background: "#0d1524",
+      }}
+    >
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+        <button type="button" onClick={() => setPlaying((current) => !current)}>
+          {playing ? "停止" : "再生"}
+        </button>
+        <button type="button" onClick={addComment}>
+          1レス追加
+        </button>
+        <button type="button" onClick={reset}>
+          リセット
+        </button>
+        <span style={{ color: "#a9c1db", fontSize: 13 }}>
+          固定レス {comments.length}件 / Tauriなし
+        </span>
+      </div>
+      <div style={{ flex: "1 1 auto", minHeight: 0, width: "100%" }}>
+        <OverlayStage
+          key={stageKey}
+          {...args}
+          comments={comments}
+          fitToContainer
+          playing={playing}
+        />
+      </div>
+    </div>
+  );
+}
+
+export const Hardcoded: Story = {
+  render: (args) => <HardcodedStory {...args} />,
+  args: {
+    comments: INITIAL_COMMENTS,
+    stageWidth: 800,
+    stageHeight: 240,
+    laneCount: 6,
+    laneHeight: 32,
+    baseSpeedPxPerSecond: 144,
+    maxQueueSize: 32,
+    fontSize: 20,
+    commentOpacity: 0.95,
+    backgroundColor: "#172235",
+    fitToContainer: true,
+    playing: true,
+  },
+};
