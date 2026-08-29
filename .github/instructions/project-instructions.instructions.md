@@ -7,6 +7,6 @@ applyTo: "**" # when provided, instructions will automatically be added to the r
 
 型チェックは、レガシーコードのエラーが多すぎて機能していないので、あんまり意味がないっす
 
-<!-- Tip: Use /create-instructions in chat to generate content with agent assistance -->
+<!-- 補足: 必要に応じて /create-instructions でエージェント向け指示を生成できます。 -->
 
 Provide project context and coding guidelines that AI should follow when generating code, answering questions, or reviewing changes.

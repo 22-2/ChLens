@@ -13,14 +13,14 @@ export default defineConfig({
       "@chlens-live": path.resolve(appRoot, "src"),
       src: path.resolve(repositoryRoot, "src"),
       packages: path.resolve(repositoryRoot, "packages"),
-      // Resolve the workspace package to source during the spike so Live and ch-lib can be
-      // tested together before publishing a built package artifact.
+      // 試作段階ではワークスペース内のパッケージをソースへ解決し、Liveとch-libを
+      // ビルド済みパッケージの公開前に一緒にテストできるようにする。
       "@chlen/ch-lib": path.resolve(repositoryRoot, "packages/ch-lib/src/index.ts"),
     },
   },
   server: {
     watch: {
-      // Tauri compiles locked DLLs under this directory during `tauri dev`; Vite must not watch them.
+      // `tauri dev` はこのディレクトリにロック中のDLLを生成するため、Viteの監視対象から外す。
       ignored: ["**/src-tauri/**"],
     },
   },

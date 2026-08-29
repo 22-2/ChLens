@@ -3,7 +3,7 @@ import { ThreadParser } from "../parser/ThreadParser";
 import { ChURL } from "../url/ChURL";
 
 describe("ThreadParser", () => {
-  it("should parse 2ch style dat with metadata", () => {
+  it("メタデータ付きの2ch形式datを解析する", () => {
     const url = new ChURL("https://egg.5ch.io/test/read.cgi/software/1000000001/");
     const dat =
       "Name1</b>(Slip 1)<b><>Mail1<>2026/03/06(金) 12:00:00.00 ID:TestImage5<>Message1<>Thread Title\n" +
@@ -22,7 +22,7 @@ describe("ThreadParser", () => {
     expect(result.posts[1].trip).toBe("◆Trip2");
   });
 
-  it("should use 名無し when a 2ch dat name field is empty", () => {
+  it("2ch形式datの名前欄が空なら名無しを使用する", () => {
     const url = new ChURL("https://egg.5ch.io/test/read.cgi/software/1000000001/");
     const dat = "<><>2026/03/06(金) 12:00:00.00 ID:empty<>Message<>Thread Title\n";
 
@@ -31,7 +31,7 @@ describe("ThreadParser", () => {
     expect(result.posts[0].name).toBe("名無し");
   });
 
-  it("should parse Shitaraba archive HTML into the canonical thread shape", () => {
+  it("したらばの過去ログHTMLを正規スレッド形式へ解析する", () => {
     const url = new ChURL("https://jbbs.shitaraba.net/bbs/read_archive.cgi/computer/12345/100/");
     const html = `
       <h1>過去ログのタイトル</h1><dl>

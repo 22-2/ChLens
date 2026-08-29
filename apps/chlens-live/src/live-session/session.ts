@@ -20,8 +20,8 @@ export interface LiveThreadSessionOptions {
 export type LiveThreadSessionListener = (event: LiveThreadSessionEvent) => void;
 
 function threadDataChanged(previous: ThreadData, current: ThreadData): boolean {
-  // JSON is sufficient for parser output, whose property order is stable, and keeps this
-  // boundary independent from the eventual shared Thread model.
+// 解析結果はプロパティ順が安定したJSONで十分であり、将来の共有Threadモデルから
+// この境界を独立させられる。
   return JSON.stringify(previous) !== JSON.stringify(current);
 }
 
@@ -79,8 +79,8 @@ export class LiveThreadSession {
       this.releaseLease();
       throw error;
     }
-    // stop() may be called while the initial request is in flight; do not resurrect a timer
-    // after the caller has explicitly released the live session.
+// 初回リクエスト中にstop()が呼ばれることがあるため、呼び出し側がLiveセッションを
+// 明示的に解放した後にタイマーを復活させない。
     if (!this.running) return;
     this.timer = setInterval(() => {
       void this.refresh();

@@ -7,15 +7,15 @@ import {
 import type { LiveWindowPlatform, OverlayGeometry, OverlayResizeDirection } from "./types";
 
 /**
- * Browser fallback used by the frontend spike and unit tests.
- * The real window operations are intentionally no-ops until the Tauri adapter is active.
+ * フロントエンド試作と単体テストで使うブラウザ用フォールバック。
+ * Tauriアダプターが有効になるまでは、実ウィンドウ操作を意図的に何もしない。
  */
 export function createBrowserLiveWindowPlatform(): LiveWindowPlatform {
   let geometry = fallbackOverlayGeometry(loadStoredOverlayGeometry());
 
   return {
-    // The browser fallback cannot control a second native window, so these operations remain
-    // no-ops while keeping the same async contract as the Tauri implementation.
+  // ブラウザ用フォールバックは2つ目のネイティブウィンドウを操作できないため、
+  // Tauri実装と同じ非同期契約を保ちながら何もしない。
     async showOverlay() {},
     async hideOverlay() {},
     async focusOverlay() {},
@@ -25,8 +25,8 @@ export function createBrowserLiveWindowPlatform(): LiveWindowPlatform {
     async closeOverlay() {},
     async setOverlayClickThrough(_enabled: boolean) {},
     trackOverlayBarHover(_listener: (hovered: boolean) => void) {
-      // Browser previews do not have a native transparent window, so CSS hover remains the
-      // appropriate fallback instead of starting a second cursor polling loop.
+  // ブラウザのプレビューには透明なネイティブウィンドウがないため、
+  // 2つ目のカーソル監視ループを開始せずCSSのhoverをフォールバックにする。
       return () => {};
     },
     async getOverlayGeometry() {

@@ -11,7 +11,7 @@ export default defineConfig({
       "@chlens-live": path.resolve(appRoot, "src"),
       src: path.resolve(repositoryRoot, "src"),
       packages: path.resolve(repositoryRoot, "packages"),
-      // Vitest must use the same source alias as Vite so the workspace package is tested before publishing.
+      // ワークスペース内のパッケージを公開前のソースでテストするため、Viteと同じソースエイリアスを使う。
       "@chlen/ch-lib": path.resolve(repositoryRoot, "packages/ch-lib/src/index.ts"),
     },
   },

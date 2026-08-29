@@ -63,7 +63,7 @@ async function readNgStorage(page: Page) {
   });
 }
 
-test.describe("NG persistence", () => {
+test.describe("NG設定の永続化", () => {
   test("ID/IPをNG指定したレスはページ更新後も非表示のまま", async ({
     context,
     page,

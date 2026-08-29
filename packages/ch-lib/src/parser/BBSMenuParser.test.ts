@@ -2,7 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 import { BBSMenuParser } from "../parser/BBSMenuParser";
 
 describe("BBSMenuParser", () => {
-  it("should parse BBS menu HTML", () => {
+  it("BBSメニューのHTMLを解析する", () => {
     const html = `
       <BR><BR><B>Category 1</B><BR>
       <A HREF=http://board1.5ch.io/test/>Board 1</A><BR>

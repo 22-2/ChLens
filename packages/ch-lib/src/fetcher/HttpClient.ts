@@ -58,10 +58,10 @@ export function createHttpResponseMetadata(
 }
 
 /**
- * Transport boundary for board resources.
+ * 板リソースの通信境界。
  *
- * Keeping this contract below ChFetcher lets browser fetch, Tauri HTTP, and fixture transports
- * share the same URL, charset, and parser behavior without importing a platform API here.
+ * この契約をChFetcherの下位に置くことで、ブラウザfetch、Tauri HTTP、fixture用通信が
+ * プラットフォームAPIをここへ持ち込まず、URL・文字コード・解析処理を共有できる。
  */
 export interface HttpClient {
   get(url: string, request?: HttpRequest): Promise<HttpResponse>;

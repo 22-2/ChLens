@@ -8,8 +8,8 @@ const ENTITIES: Record<string, string> = {
 };
 
 /**
- * Decodes HTML entities including numeric character references.
- * Does not depend on DOM.
+ * 数値文字参照を含むHTMLエンティティをデコードする。
+ * DOMには依存しない。
  */
 export function decodeCharReference(str: string): string {
   return str.replace(/&(?:#(\d+)|#x([\dA-Fa-f]+)|([a-zA-Z]+));/g, (match, dec, hex, name) => {
