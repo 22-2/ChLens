@@ -9,7 +9,8 @@
 
 これから実装する機能やリファクタリングの計画。
 
-- [Chlens Live 開発ロードマップ](plans/chlens-live-development-roadmap.md)
+- [ChLens Tauri コメントオーバーレイ統合計画](plans/chlens-tauri-comment-overlay-integration-plan.md)
+- [Chlens Live 開発ロードマップ（独立アプリ構想・技術検討記録）](plans/chlens-live-development-roadmap.md)
 - [Popup manager リファクタリング計画](plans/popup-manager-refactoring-plan.md)
 - [類似画像NG 実装計画](plans/similar-image-ng-plan.md)
 - [Browser UI / CSS の Radix UI 統一・分割計画](plans/ui-radix-refactoring-plan.md)
