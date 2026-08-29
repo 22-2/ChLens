@@ -1,3 +1,4 @@
+import { extractPostDate } from "packages/ch-lib/src/index";
 import { container } from "src/service-container/index";
 import Thread from "src/core/Thread.js";
 import { buildReplyIndexes } from "src/core/reply-index";
@@ -105,15 +106,8 @@ class ThreadServiceImpl {
     // Extract Date and ID from other
     const other = res.other;
     if (other) {
-      // 互換datでは曜日が日本語1文字とは限らず、英字略称など複数文字になるため、
-      // 曜日を括弧内の可変長文字列として扱い、形式差で日時表示が消えないようにする。
-      const dateMatch =
-        /\d{4}\/\d{1,2}\/\d{1,2}(?:\([^()\r\n]*\))?\s+\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?/.exec(
-          other,
-        );
-      if (dateMatch) {
-        res.date = dateMatch[0];
-      }
+      // 日時の形式差はch-libへ集約し、ここでは表示用フィールドへ変換結果を渡す。
+      res.date = extractPostDate(other) ?? "";
 
       if (res.id == null) {
         // ID extraction

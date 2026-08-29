@@ -8,6 +8,23 @@ export interface PostMetadata {
   date: string;
 }
 
+// 互換datの日時は曜日の表記や秒・ミリ秒の有無に揺れがあるため、
+// サービス層ごとに正規表現を持つと形式対応が分散する。日時部分だけを
+// 共通 parser として切り出し、生メタデータの互換契約とは分離しておく。
+const POST_DATE_PATTERN =
+  /\d{4}\/\d{1,2}\/\d{1,2}(?:\([^()\r\n]*\))?[ \t]+\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?/;
+
+/**
+ * Extracts the displayable date/time from a legacy response metadata field.
+ *
+ * The original metadata is intentionally not changed because callers use it for
+ * ID and other compatibility parsing. Returning only the matched timestamp lets
+ * display adapters use one format-aware implementation without losing that data.
+ */
+export const extractPostDate = (metadata: string): string | undefined => {
+  return POST_DATE_PATTERN.exec(metadata)?.[0];
+};
+
 export class MetadataParser {
   /**
    * Extracts ID, Slip, and Trip from the raw name and date strings.
