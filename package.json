@@ -21,6 +21,8 @@
     "tauri": "tauri",
     "dev:tauri": "tauri dev",
     "dev:live": "pnpm --filter chlens-live dev",
+    "ladle": "ladle serve",
+    "ladle:build": "ladle build",
     "tauri:live": "pnpm --filter chlens-live tauri:dev",
     "build:tauri-live": "pnpm --filter chlens-live tauri:build",
     "// --- Utility & Lint ---": "",
@@ -70,6 +72,7 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@ladle/react": "^5.1.1",
     "@playwright/test": "^1.62.0",
     "@release-it/bumper": "^8.0.0",
     "@testing-library/jest-dom": "^7.0.0",
