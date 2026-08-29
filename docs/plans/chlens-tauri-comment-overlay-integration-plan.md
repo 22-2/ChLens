@@ -188,7 +188,7 @@ Storybookでは速度、衝突、レーン、queue、長文、resizeを確認す
 [Overlayの速度・レーン方針](./chlens-live-development-roadmap.md#overlay-の速度レーン方針)を引き継ぐ。
 
 - 速度はpx/secで管理する。
-- 初期値は旧計画の`144px/sec`を基準に実機調整する。
+- 初期値はDPlayerデモ風に900px幅を約10秒で通過する`90px/sec`を基準に実機調整する。
 - コメントごとに途中で速度を変更しない。
 - queue上限、古いコメントのskip、遅延表示を組み合わせる。
 - 初期MVPは右から左へ流れる通常コメントだけとする。
@@ -319,11 +319,13 @@ Storybookでは速度、衝突、レーン、queue、長文、resizeを確認す
 - 固定`laneCount`を通常動作の前提にせず、`stageHeight / laneHeight`からlane容量を動的に求める。
 - allocatorは必要なlaneだけを遅延生成し、`maxLaneCount`をDOMノード増加の安全弁として使う。
 - コメント幅、stage幅、速度からdurationを計算する。
-- CSS transformでコメントを右から左へ流す。
+- CSS animationでコメントを右から左へ流し、Reactの毎frame再描画を避ける。
 - resize時のstage寸法更新と、新規コメントの割り当てを同期する。
-- queue上限と、新着を優先して最古の待機コメントをskipする方針を実装する。
+- `strict`／`adaptive`／`none`の衝突方針を実装し、ライブ既定値は`adaptive`で待機を作らず即時表示する。
+- `strict`／`queue`は過去ログ再生用に残し、`maxActiveCount`でactiveとDOMの上限を設ける。
 - 過去ログのfixtureは全件を同時投入せず、playback clockに合わせて一定間隔で投入する。
 - active commentの終了時にDOMとlaneを解放する。
+- interactive時はhover中のコメントだけをpauseし、付加情報を表示する。
 - `Hardcoded`、`PastThreadReplay`、`CurrentThread`、`Stress`のStoryを追加する。
 
 #### 完了条件

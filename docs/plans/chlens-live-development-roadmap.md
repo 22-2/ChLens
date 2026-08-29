@@ -70,10 +70,9 @@ duration = stageWidth / baseSpeed
 actualPxPerSecond = (stageWidth + commentWidth) / duration
 ```
 
-このモデルでは、短文と長文がステージ上に滞在する時間を揃えられる。初期値は Danmaku の
-`144px/sec` を基準にし、実際の Overlay サイズと見た目を確認して調整する。600px 幅なら
-ステージ幅の通過時間は約 4.2 秒となり、EdgeLiveViewer の現在の既定値 `comment_speed=6.0`
-より速い。設定値の意味を変更するため、EdgeLiveViewer の設定値を自動移行しない。
+このモデルでは、短文と長文がステージ上に滞在する時間を揃えられる。DPlayerデモの
+`speedRate: 0.5`に合わせ、ChLens Liveの初期値は900px幅を約10秒で通過する
+`90px/sec`を基準にする。設定値の意味を変更するため、EdgeLiveViewerの設定値を自動移行しない。
 
 - [Danmaku README の speed 仕様](https://github.com/weizhenye/Danmaku#speed)
 - [Danmaku の DOM／Canvas renderer と live mode](https://github.com/weizhenye/Danmaku#live-mode)
@@ -129,6 +128,22 @@ allocatorは最大容量までlaneを遅延生成し、既存laneに安全に配
 - 待機queueの初期上限は`64`とし、実際の実況で遅延時間を確認して設定化する。
 - 既存コメントの速度・開始位置は混雑度に応じて変更しない。
 
+#### DPlayerデモ風のrealtimeプロファイル
+
+DPlayerの通常の`unlimited: false`は、空きlaneがなければコメントを表示せず、待機queueを
+作らない。一方、公式デモの`unlimited: true`はlane番号を循環させて重なりを許可し、
+新着を即時表示する。ChLensのライブ既定値は後者の体感に合わせ、過去ログ再生だけは
+strictなqueueを選べるようにする。
+
+- `collisionMode`は`strict`、`adaptive`、`none`から選べる。
+- 既定値は`adaptive`とし、安全なlaneを優先した後、空きがなければ循環laneへ即時投入する。
+- ライブの`backlogPolicy`は`drop`とし、待機による過去コメントの遅延を作らない。
+- `strict`と`queue`の組み合わせは、過去ログ再生や衝突確認用に残す。
+- DPlayerデモの`maximum: 3000`に合わせ、既定の`maxActiveCount`を`3000`とする。これは取得件数ではなくDOM安全弁である。
+- コメントの移動はCSS animationへ任せ、Reactはactiveの追加・終了と状態変更だけを反映する。
+- interactiveな表示ではhover中のコメントだけをpauseし、レス番号、名前、ID、日時、本文を表示する。
+- Tauriのクリック透過中はコメントhoverを受け取れないため、操作モードとクリック透過モードを分ける。
+
 ### Danmakuを参考にする範囲（ChLens Tauriへの回収を前提とする）
 
 Danmakuは、ステージへコメントを投入する入力境界、表示中コメントのライフサイクル、
@@ -145,7 +160,7 @@ Danmakuから採用する設計は次のとおりとする。
 | active comment | `CommentScheduler`が管理する表示中コメント |
 | mode別allocator | `LaneAllocator`。初期MVPは右から左へ流れる通常コメントだけ |
 | realtime mode | `ThreadPage`の新着レス差分を受け取るChLens側の入力 |
-| DOM / Canvas engine | 初期実装はReactのDOM描画。Canvasは負荷計測後に再評価 |
+| DOM / Canvas engine | 初期実装はReactのDOMノード＋CSS animation。Canvasは負荷計測後に再評価 |
 
 ChLens固有の責務はDanmakuへ渡さず、次の境界で処理する。
 
@@ -488,13 +503,14 @@ Live Sessionの新着レスを、別取得なしで透明Overlayへ流す。
 - MainからOverlayへresponse batchを送るversion付きevent contractを作る。
 - `CommentScheduler`をTypeScriptで実装する。既存ライブラリをそのまま組み込まず、
   Danmakuの速度モデルとCommentCoreLibraryのallocator／runlineの考え方だけを取り入れる。
-- 速度設定は`baseSpeedPxPerSecond`とし、初期値は`144`を基準にする。
+- 速度設定は`baseSpeedPxPerSecond`とし、DPlayerデモ風の初期値は900px幅を約10秒で通過する`90`を基準にする。
 - `duration = stageWidth / baseSpeed`、実際の移動速度は`(stageWidth + commentWidth) / duration`とする。
 - レーンごとにactive commentの占有状態を管理し、コメントが画面外へ出た時点でレーンを解放する。
 - 初期対応モードは通常スクロールとし、上固定／下固定は同じallocator契約へ追加できるようにする。
 - `realtime`／`playback`を切り替えられる`CommentClock`を用意する。
-- DOM rendererを基本とし、レス番号を`data-res-num`で保持してMainへのジャンプやChlens連携に利用する。
-- queueが詰まった場合のbacklog policyを実装する。既存コメントの速度をその場で変更しない。
+- DOM rendererを基本とし、CSS animationで移動させ、レス番号を`data-res-num`で保持してMainへのジャンプやChlens連携に利用する。
+- `strict`／`adaptive`／`none`のbacklog policyを実装する。ライブ既定は待機を作らず、過去ログ再生ではqueueを使う。
+- interactive時はコメント単位のpauseと付加情報表示を行い、click-through時は操作モードへ切り替える。
 - 次を設定可能にする。
   - font、size、weight、color、shadow
   - base speed、spacing、position、max comments
