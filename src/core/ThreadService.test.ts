@@ -19,6 +19,7 @@ vi.mock("src/core/Thread.js", () => ({
 interface FormattedResponse {
   ng?: unknown;
   id?: string;
+  date?: string;
 }
 
 interface ThreadServiceLike {
@@ -73,5 +74,24 @@ describe("ThreadService", () => {
     });
 
     expect(result.res[0]?.id).toBe("from-attribute");
+  });
+
+  it("extracts a timestamp when a dat uses a multi-character weekday", async () => {
+    const now = new Date();
+    const weekday = new Intl.DateTimeFormat("en-US", {
+      timeZone: "UTC",
+      weekday: "short",
+    }).format(now);
+    const timestamp = `${now.getUTCFullYear()}/${String(now.getUTCMonth() + 1).padStart(2, "0")}/${String(now.getUTCDate()).padStart(2, "0")}(${weekday}) ${String(now.getUTCHours()).padStart(2, "0")}:${String(now.getUTCMinutes()).padStart(2, "0")}:${String(now.getUTCSeconds()).padStart(2, "0")}.${String(now.getUTCMilliseconds()).padStart(3, "0")}`;
+
+    const { default: threadService } = await import("src/core/ThreadService.js");
+    const service = threadService as unknown as ThreadServiceLike;
+    const result = service._formatResult({
+      title: "title",
+      url: { url: { href: "https://example.com/test/read.cgi/board/1/" } },
+      res: [{ name: "", mail: "", message: "", other: timestamp }],
+    });
+
+    expect(result.res[0]?.date).toBe(timestamp);
   });
 });

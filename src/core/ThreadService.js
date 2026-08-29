@@ -105,10 +105,12 @@ class ThreadServiceImpl {
     // Extract Date and ID from other
     const other = res.other;
     if (other) {
-      // Date extraction
-      const dateMatch = /\d{4}\/\d{1,2}\/\d{1,2}\(.\)\s\d{1,2}:\d\d(?::\d\d(?:\.\d+)?)?/.exec(
-        other,
-      );
+      // 互換datでは曜日が日本語1文字とは限らず、英字略称など複数文字になるため、
+      // 曜日を括弧内の可変長文字列として扱い、形式差で日時表示が消えないようにする。
+      const dateMatch =
+        /\d{4}\/\d{1,2}\/\d{1,2}(?:\([^()\r\n]*\))?\s+\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?/.exec(
+          other,
+        );
       if (dateMatch) {
         res.date = dateMatch[0];
       }
