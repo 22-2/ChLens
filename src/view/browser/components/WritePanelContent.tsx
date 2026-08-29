@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { container } from "src/service-container/index";
 import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useWrite } from "src/view/browser/hooks/use-write";
+import { Dialog } from "src/view/browser/ui/Dialog";
 
 const WRITE_SUBMIT_CTRL_ENTER_KEY = "write_submit_ctrl_enter";
 
@@ -11,6 +12,9 @@ export const WritePanelContent: React.FC = () => {
   const { writePanelInsertRequest, clearWritePanelInsertRequest, closePanel } = useBottomPanel();
   const threadUrl = currentPage.type === "thread" ? currentPage.threadUrl : "";
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const errorDialogDescriptionId = useId();
+  const [dialogPortalContainer, setDialogPortalContainer] = useState<HTMLElement | null>(null);
+  const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const [submitWithCtrlEnter, setSubmitWithCtrlEnter] = useState(
     () => container.config.get(WRITE_SUBMIT_CTRL_ENTER_KEY) === "on",
   );
@@ -35,6 +39,19 @@ export const WritePanelContent: React.FC = () => {
 
   const isSubmitting = status === "submitting";
   const isConfirm = status === "confirm";
+  const writeErrorMessage = statusText || "書き込みに失敗しました";
+
+  useEffect(() => {
+    // テーマトークンは `.browser-shell[data-theme]` にスコープされるため、
+    // body直下のPortalではダークテーマのsurface/textを継承できない。
+    setDialogPortalContainer(document.querySelector<HTMLElement>(".browser-shell"));
+  }, []);
+
+  useEffect(() => {
+    // 変更理由: エラー状態とDialogの開閉を同じ値で管理すると、Dialogを閉じても
+    // statusがerrorのまま再表示されるため、閉じた後も既存の再入力操作を使えるよう分離する。
+    setIsErrorDialogOpen(status === "error");
+  }, [status, statusText]);
 
   useEffect(() => {
     const handleConfigUpdated = ({ key }: { key?: string }) => {
@@ -210,6 +227,47 @@ export const WritePanelContent: React.FC = () => {
           aria-hidden={!isConfirm}
         />
       </form>
+      <Dialog.Root
+        open={status === "error" && isErrorDialogOpen}
+        onOpenChange={setIsErrorDialogOpen}
+      >
+        <Dialog.Portal container={dialogPortalContainer ?? undefined}>
+          <Dialog.Overlay className="browser-dialog-overlay" />
+          <Dialog.Content
+            className="browser-dialog-content write-panel__error-dialog"
+            aria-describedby={errorDialogDescriptionId}
+          >
+            <Dialog.Title className="browser-dialog-title">書き込みに失敗しました</Dialog.Title>
+            <Dialog.Description
+              id={errorDialogDescriptionId}
+              className="browser-dialog-description"
+            >
+              サーバーから返されたエラー内容を確認してください。
+            </Dialog.Description>
+            {/* 変更理由: エラー本文は長さや改行を保持したまま確認できる必要があるため、
+                既存のstatusTextだけをReactのテキストとして表示し、URL等の追加情報は表示しない。 */}
+            <p className="write-panel__error-message" role="alert">
+              {writeErrorMessage}
+            </p>
+            <div className="write-panel__error-dialog-actions">
+              <Dialog.Close asChild>
+                <button type="button" className="write-panel__btn write-panel__btn--secondary">
+                  閉じる
+                </button>
+              </Dialog.Close>
+              <Dialog.Close asChild>
+                <button
+                  type="button"
+                  className="write-panel__btn write-panel__btn--primary"
+                  onClick={handleRetry}
+                >
+                  再入力
+                </button>
+              </Dialog.Close>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
   );
 };
