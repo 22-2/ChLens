@@ -36,4 +36,23 @@ describe("extractPostDate", () => {
   it("returns undefined when metadata does not contain a timestamp", () => {
     expect(extractPostDate("metadata only")).toBeUndefined();
   });
+
+  it("returns undefined for incomplete or malformed timestamps", () => {
+    const timestamp = makeTimestamp("weekday");
+    const secondsSeparator = timestamp.lastIndexOf(":");
+    const fractionSeparator = timestamp.lastIndexOf(".");
+    const dateOnly = timestamp.slice(0, timestamp.indexOf(" "));
+
+    const invalidMetadata = [
+      dateOnly,
+      timestamp.slice(0, secondsSeparator + 1),
+      timestamp.slice(0, fractionSeparator + 1),
+      timestamp.replaceAll("/", "-"),
+      timestamp.replace(/\([^)]*\)/, "("),
+    ];
+
+    for (const metadata of invalidMetadata) {
+      expect(extractPostDate(metadata)).toBeUndefined();
+    }
+  });
 });
