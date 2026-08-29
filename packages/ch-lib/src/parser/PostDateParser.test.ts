@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vite-plus/test";
-import { extractPostDate } from "./MetadataParser";
+import { extractPostDate } from "./PostDateParser";
 
-const makeTimestamp = (weekday?: string): string => {
+const makeTimestamp = (weekday?: string, includeSeconds = true): string => {
   const iso = new Date().toISOString();
   const date = iso.slice(0, 10).replaceAll("-", "/");
-  const time = iso.slice(11, 23);
+  const time = includeSeconds ? iso.slice(11, 23) : iso.slice(11, 16);
   return `${date}${weekday == null ? "" : `(${weekday})`} ${time}`;
 };
 
@@ -23,6 +23,12 @@ describe("extractPostDate", () => {
 
   it("extracts a timestamp without a weekday", () => {
     const timestamp = makeTimestamp();
+
+    expect(extractPostDate(timestamp)).toBe(timestamp);
+  });
+
+  it("extracts a timestamp without seconds", () => {
+    const timestamp = makeTimestamp(undefined, false);
 
     expect(extractPostDate(timestamp)).toBe(timestamp);
   });

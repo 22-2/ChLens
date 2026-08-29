@@ -5,6 +5,7 @@ export * from "./parser/BBSMenuParser";
 export * from "./parser/BoardParser";
 export * from "./parser/MetadataParser";
 export * from "./parser/MessageParser";
+export * from "./parser/PostDateParser";
 export * from "./parser/ReplaceStrParser";
 export * from "./parser/ThreadParser";
 export * from "./rules/catalog";
