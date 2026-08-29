@@ -1,7 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { projectCommentResponse } from "../domain";
 import type { CommentCandidate } from "../domain/comment-types";
 import { OverlayStage, type OverlayStageProps } from "./OverlayStage";
+import type { ChLensLiveSource } from "../../../../apps/chlens-live/src/live-session/source";
+import { createChLensStorybookSource } from "./storybook-source";
 
 const INITIAL_COMMENTS: readonly CommentCandidate[] = [
   { responseNumber: 1, text: "実況開始", author: "名無し" },
@@ -14,161 +17,88 @@ const INITIAL_COMMENTS: readonly CommentCandidate[] = [
   { responseNumber: 4, text: "改行を含む\nコメント", author: "名無し" },
 ];
 
-const PAST_THREAD_COMMENTS: readonly CommentCandidate[] = [
-  {
-    responseNumber: 1,
-    text: "過去ログの再生を開始します",
-    author: "名無し",
-    id: "past-a1",
-    date: "2026/08/30 20:00:01",
-  },
-  {
-    responseNumber: 2,
-    text: "この時間帯はまだ落ち着いてる",
-    author: "名無し",
-    id: "past-b2",
-    date: "2026/08/30 20:00:04",
-  },
-  {
-    responseNumber: 3,
-    text: "きたきたきた",
-    author: "実況民",
-    id: "past-c3",
-    date: "2026/08/30 20:00:07",
-  },
-  {
-    responseNumber: 4,
-    text: "長めの過去レスを流して、strict queueの挙動を確認する",
-    author: "名無し",
-    id: "past-d4",
-    date: "2026/08/30 20:00:09",
-  },
-  {
-    responseNumber: 5,
-    text: "これは保存済みスレッドのfixtureです",
-    author: "名無し",
-    id: "past-e5",
-    date: "2026/08/30 20:00:12",
-  },
-  {
-    responseNumber: 6,
-    text: "レスの間隔も再生対象にする",
-    author: "実況民",
-    id: "past-f6",
-    date: "2026/08/30 20:00:15",
-  },
-  {
-    responseNumber: 7,
-    text: "弾幕が混んできたので待機状態を見てみる",
-    author: "名無し",
-    id: "past-g7",
-    date: "2026/08/30 20:00:18",
-  },
-  {
-    responseNumber: 8,
-    text: "strict replayでは安全なlaneが空くまで待つ",
-    author: "名無し",
-    id: "past-h8",
-    date: "2026/08/30 20:00:21",
-  },
-  {
-    responseNumber: 9,
-    text: "再生を止めてコメントにhoverすると詳細が表示されます",
-    author: "実況民",
-    id: "past-i9",
-    date: "2026/08/30 20:00:24",
-  },
-  {
-    responseNumber: 10,
-    text: "過去ログでも本文とIDを確認できる",
-    author: "名無し",
-    id: "past-j10",
-    date: "2026/08/30 20:00:27",
-  },
-  {
-    responseNumber: 11,
-    text: "ここから少し流量を上げる",
-    author: "名無し",
-    id: "past-k11",
-    date: "2026/08/30 20:00:30",
-  },
-  {
-    responseNumber: 12,
-    text: "DPlayer風の表示密度を過去ログでも確認する",
-    author: "実況民",
-    id: "past-l12",
-    date: "2026/08/30 20:00:32",
-  },
-];
+interface LoadedThreadStoryData {
+  url: string;
+  title: string;
+  comments: readonly CommentCandidate[];
+}
 
-const CURRENT_THREAD_INITIAL_COMMENTS: readonly CommentCandidate[] = [
-  {
-    responseNumber: 120,
-    text: "現行スレを監視中",
-    author: "名無し",
-    id: "live-a0",
-    date: "2026/08/30 21:10:00",
-  },
-  {
-    responseNumber: 121,
-    text: "新着レスは同じスレへ追加されます",
-    author: "実況民",
-    id: "live-b1",
-    date: "2026/08/30 21:10:02",
-  },
-];
+async function loadThreadStoryData(
+  source: ChLensLiveSource,
+  rawUrl: string,
+): Promise<LoadedThreadStoryData> {
+  const url = rawUrl.trim();
+  if (!url) throw new Error("スレッドURLを入力してください");
 
-const CURRENT_THREAD_INCOMING_COMMENTS: readonly CommentCandidate[] = [
-  {
-    responseNumber: 122,
-    text: "現行スレの新着レスです",
-    author: "名無し",
-    id: "live-c2",
-    date: "2026/08/30 21:10:04",
-  },
-  {
-    responseNumber: 123,
-    text: "自動次スレ移動はこのStoryでは行いません",
-    author: "名無し",
-    id: "live-d3",
-    date: "2026/08/30 21:10:06",
-  },
-  {
-    responseNumber: 124,
-    text: "新着の到着順にadaptiveで即時投入する",
-    author: "実況民",
-    id: "live-e4",
-    date: "2026/08/30 21:10:08",
-  },
-  {
-    responseNumber: 125,
-    text: "hoverで停止してIDを確認できる",
-    author: "名無し",
-    id: "live-f5",
-    date: "2026/08/30 21:10:10",
-  },
-  {
-    responseNumber: 126,
-    text: "このfixtureは現在のスレッドだけを流し続けます",
-    author: "名無し",
-    id: "live-g6",
-    date: "2026/08/30 21:10:12",
-  },
-  {
-    responseNumber: 127,
-    text: "流量が増えたときの重なりもここで確認する",
-    author: "実況民",
-    id: "live-h7",
-    date: "2026/08/30 21:10:14",
-  },
-  {
-    responseNumber: 128,
-    text: "ChLens側のレス情報をOverlayへ渡す想定",
-    author: "名無し",
-    id: "live-i8",
-    date: "2026/08/30 21:10:16",
-  },
-];
+  const thread = await source.loadThread(url);
+  const comments = thread.posts
+    .map((post) =>
+      projectCommentResponse({
+        num: post.number,
+        name: post.name,
+        message: post.message,
+        date: post.date,
+        id: post.id,
+      }),
+    )
+    .filter((comment): comment is CommentCandidate => comment !== null);
+
+  return {
+    url,
+    title: thread.title?.trim() || url,
+    comments,
+  };
+}
+
+interface ThreadUrlFormProps {
+  url: string;
+  loading: boolean;
+  error: string | null;
+  title: string | null;
+  onUrlChange: (url: string) => void;
+  onSubmit: () => void;
+}
+
+function ThreadUrlForm({ url, loading, error, title, onUrlChange, onSubmit }: ThreadUrlFormProps) {
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit();
+      }}
+      style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}
+    >
+      <label style={{ display: "flex", flex: "1 1 480px", gap: 8, alignItems: "center" }}>
+        <span style={{ color: "#a9c1db", fontSize: 13, whiteSpace: "nowrap" }}>スレURL</span>
+        <input
+          aria-label="スレッドURL"
+          type="url"
+          value={url}
+          onChange={(event) => onUrlChange(event.target.value)}
+          placeholder="https://bbs.eddibb.cc/test/read.cgi/liveedge/スレ番号/"
+          style={{
+            minWidth: 240,
+            flex: "1 1 auto",
+            border: "1px solid #426189",
+            borderRadius: 4,
+            padding: "7px 9px",
+            color: "#eff6ff",
+            background: "#111d30",
+          }}
+        />
+      </label>
+      <button type="submit" disabled={loading || !url.trim()}>
+        {loading ? "取得中…" : "URLから読み込み"}
+      </button>
+      {title ? <span style={{ color: "#d8e7f7", fontSize: 13 }}>{title}</span> : null}
+      {error ? (
+        <span role="alert" style={{ width: "100%", color: "#ff9e9e", fontSize: 13 }}>
+          {error}
+        </span>
+      ) : null}
+    </form>
+  );
+}
 
 const meta = {
   title: "ChLens/コメントOverlay/OverlayStage",
@@ -285,30 +215,57 @@ function HardcodedStory(args: OverlayStageProps) {
 }
 
 function PastThreadReplayStory(args: OverlayStageProps) {
+  const source = useMemo(() => createChLensStorybookSource(), []);
+  const [url, setUrl] = useState("");
+  const [loadedThread, setLoadedThread] = useState<LoadedThreadStoryData | null>(null);
   const [comments, setComments] = useState<readonly CommentCandidate[]>([]);
   const [cursor, setCursor] = useState(0);
-  const [playing, setPlaying] = useState(true);
+  const [playing, setPlaying] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [stageKey, setStageKey] = useState(0);
   const stageHostRef = useRef<HTMLDivElement>(null);
   const [stats, setStats] = useState({ active: 0, pending: 0 });
 
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    setPlaying(false);
+    setLoadedThread(null);
+    setComments([]);
+    setCursor(0);
+    setStageKey((current) => current + 1);
+
+    try {
+      const nextThread = await loadThreadStoryData(source, url);
+      setLoadedThread(nextThread);
+      setPlaying(nextThread.comments.length > 0);
+      setStageKey((current) => current + 1);
+    } catch (loadError: unknown) {
+      console.error("[Storybook] past thread load failed:", loadError);
+      setError(loadError instanceof Error ? loadError.message : "スレッドの取得に失敗しました");
+    } finally {
+      setLoading(false);
+    }
+  }, [source, url]);
+
   useEffect(() => {
-    if (!playing || cursor >= PAST_THREAD_COMMENTS.length) return;
+    if (!playing || !loadedThread || cursor >= loadedThread.comments.length) return;
 
     // 変更理由: 過去ログは全件同時投入せず、取得済みレスの到着間隔を再現して
     // strict queueと再生停止を実際の操作に近い形で確認できるようにする。
     const timer = window.setTimeout(() => {
-      const nextComment = PAST_THREAD_COMMENTS[cursor];
+      const nextComment = loadedThread.comments[cursor];
       if (!nextComment) return;
       setComments((current) => [...current, nextComment]);
       setCursor((current) => current + 1);
     }, 160);
     return () => window.clearTimeout(timer);
-  }, [cursor, playing]);
+  }, [cursor, loadedThread, playing]);
 
   useEffect(() => {
-    if (cursor >= PAST_THREAD_COMMENTS.length) setPlaying(false);
-  }, [cursor]);
+    if (loadedThread && cursor >= loadedThread.comments.length) setPlaying(false);
+  }, [cursor, loadedThread]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -345,16 +302,24 @@ function PastThreadReplayStory(args: OverlayStageProps) {
         background: "#0d1524",
       }}
     >
+      <ThreadUrlForm
+        url={url}
+        loading={loading}
+        error={error}
+        title={loadedThread?.title ?? null}
+        onUrlChange={setUrl}
+        onSubmit={() => void load()}
+      />
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
         <button type="button" onClick={() => setPlaying((current) => !current)}>
           {playing ? "停止" : "再生"}
         </button>
-        <button type="button" onClick={restart}>
+        <button type="button" onClick={restart} disabled={!loadedThread}>
           最初から
         </button>
         <span style={{ color: "#a9c1db", fontSize: 13 }}>
-          過去ログ {cursor}/{PAST_THREAD_COMMENTS.length}件 / active {stats.active} / pending{" "}
-          {stats.pending} / strict + queue
+          {loadedThread ? `過去ログ ${cursor}/${loadedThread.comments.length}件` : "過去ログ未読込"}{" "}
+          / active {stats.active} / pending {stats.pending} / strict + queue
         </span>
       </div>
       <div ref={stageHostRef} style={{ flex: "1 1 auto", minHeight: 0, width: "100%" }}>
@@ -371,37 +336,81 @@ function PastThreadReplayStory(args: OverlayStageProps) {
 }
 
 function CurrentThreadStory(args: OverlayStageProps) {
-  const [comments, setComments] = useState<readonly CommentCandidate[]>(
-    CURRENT_THREAD_INITIAL_COMMENTS,
-  );
-  const [streaming, setStreaming] = useState(true);
+  const source = useMemo(() => createChLensStorybookSource(), []);
+  const [url, setUrl] = useState("");
+  const [loadedThread, setLoadedThread] = useState<LoadedThreadStoryData | null>(null);
+  const [comments, setComments] = useState<readonly CommentCandidate[]>([]);
+  const [streaming, setStreaming] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [stageKey, setStageKey] = useState(0);
   const stageHostRef = useRef<HTMLDivElement>(null);
-  const nextCommentIndex = useRef(0);
+  const lastResponseNumber = useRef(0);
+  const requestInFlight = useRef(false);
   const [stats, setStats] = useState({ active: 0, pending: 0 });
 
-  const appendNextComment = useCallback(() => {
-    const nextComment = CURRENT_THREAD_INCOMING_COMMENTS[nextCommentIndex.current];
-    if (!nextComment) {
-      setStreaming(false);
-      return;
-    }
+  const load = useCallback(async () => {
+    if (requestInFlight.current) return;
+    requestInFlight.current = true;
+    setLoading(true);
+    setError(null);
+    setStreaming(false);
+    setLoadedThread(null);
+    setComments([]);
+    lastResponseNumber.current = 0;
+    setStageKey((current) => current + 1);
 
-    nextCommentIndex.current += 1;
-    setComments((current) => [...current, nextComment]);
-    if (nextCommentIndex.current >= CURRENT_THREAD_INCOMING_COMMENTS.length) {
-      setStreaming(false);
+    try {
+      const nextThread = await loadThreadStoryData(source, url);
+      setLoadedThread(nextThread);
+      setComments(nextThread.comments);
+      lastResponseNumber.current = latestCommentNumber(nextThread.comments);
+      setStreaming(true);
+      setStageKey((current) => current + 1);
+    } catch (loadError: unknown) {
+      console.error("[Storybook] current thread load failed:", loadError);
+      setError(loadError instanceof Error ? loadError.message : "スレッドの取得に失敗しました");
+    } finally {
+      requestInFlight.current = false;
+      setLoading(false);
     }
-  }, []);
+  }, [source, url]);
+
+  const refresh = useCallback(async () => {
+    if (!loadedThread || requestInFlight.current) return;
+    requestInFlight.current = true;
+    setLoading(true);
+    setError(null);
+
+    try {
+      const nextThread = await loadThreadStoryData(source, loadedThread.url);
+      const newComments = nextThread.comments.filter(
+        (comment) => comment.responseNumber > lastResponseNumber.current,
+      );
+      if (newComments.length > 0) {
+        lastResponseNumber.current = latestCommentNumber(newComments);
+        setComments((current) => [...current, ...newComments]);
+      }
+      setLoadedThread(nextThread);
+    } catch (refreshError: unknown) {
+      console.error("[Storybook] current thread refresh failed:", refreshError);
+      setError(
+        refreshError instanceof Error ? refreshError.message : "新着レスの取得に失敗しました",
+      );
+    } finally {
+      requestInFlight.current = false;
+      setLoading(false);
+    }
+  }, [loadedThread, source]);
 
   useEffect(() => {
-    if (!streaming) return;
+    if (!streaming || !loadedThread) return;
 
-    // 変更理由: 現行スレfixtureは同じスレッドの新着だけを一定間隔で追加し、
-    // 自動次スレ移動や別スレへの切り替えを混ぜずにrealtime表示を確認する。
-    const timer = window.setInterval(appendNextComment, 900);
+    // 変更理由: 現行スレは入力されたURLを固定して再取得し、次スレ探索を行わずに
+    // 同じスレッドの新着レスだけをOverlayへ追加する。
+    const timer = window.setInterval(() => void refresh(), 10_000);
     return () => window.clearInterval(timer);
-  }, [appendNextComment, streaming]);
+  }, [loadedThread, refresh, streaming]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -418,9 +427,9 @@ function CurrentThreadStory(args: OverlayStageProps) {
   }, []);
 
   const reset = () => {
-    setComments(CURRENT_THREAD_INITIAL_COMMENTS);
-    nextCommentIndex.current = 0;
-    setStreaming(true);
+    if (!loadedThread) return;
+    setComments(loadedThread.comments);
+    lastResponseNumber.current = latestCommentNumber(loadedThread.comments);
     setStageKey((current) => current + 1);
   };
 
@@ -436,19 +445,27 @@ function CurrentThreadStory(args: OverlayStageProps) {
         background: "#0d1524",
       }}
     >
+      <ThreadUrlForm
+        url={url}
+        loading={loading}
+        error={error}
+        title={loadedThread?.title ?? null}
+        onUrlChange={setUrl}
+        onSubmit={() => void load()}
+      />
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
         <button type="button" onClick={() => setStreaming((current) => !current)}>
           {streaming ? "新着停止" : "新着再開"}
         </button>
-        <button type="button" onClick={appendNextComment}>
-          次のレス
+        <button type="button" onClick={() => void refresh()} disabled={!loadedThread || loading}>
+          今すぐ更新
         </button>
-        <button type="button" onClick={reset}>
+        <button type="button" onClick={reset} disabled={!loadedThread}>
           リセット
         </button>
         <span style={{ color: "#a9c1db", fontSize: 13 }}>
-          現行スレ {comments.length}件 / active {stats.active} / pending {stats.pending} /
-          自動次スレなし
+          {loadedThread ? `現行スレ ${comments.length}件` : "現行スレ未読込"} / active{" "}
+          {stats.active} / pending {stats.pending} / 同じURLのみ更新・自動次スレなし
         </span>
       </div>
       <div ref={stageHostRef} style={{ flex: "1 1 auto", minHeight: 0, width: "100%" }}>
@@ -456,6 +473,10 @@ function CurrentThreadStory(args: OverlayStageProps) {
       </div>
     </div>
   );
+}
+
+function latestCommentNumber(comments: readonly CommentCandidate[]): number {
+  return comments.reduce((latest, comment) => Math.max(latest, comment.responseNumber), 0);
 }
 
 function StressStory(args: OverlayStageProps) {
@@ -602,7 +623,7 @@ export const PastThreadReplay: Story = {
 export const CurrentThread: Story = {
   render: (args) => <CurrentThreadStory {...args} />,
   args: {
-    comments: CURRENT_THREAD_INITIAL_COMMENTS,
+    comments: [],
     stageWidth: 900,
     stageHeight: 320,
     laneHeight: 32,
