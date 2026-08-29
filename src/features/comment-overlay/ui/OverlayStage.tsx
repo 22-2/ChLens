@@ -3,6 +3,8 @@ import type { CSSProperties } from "react";
 import {
   calculateCommentPosition,
   CommentScheduler,
+  DEFAULT_MAX_LANE_COUNT,
+  DEFAULT_MAX_QUEUE_SIZE,
   type CommentSchedulerSnapshot,
 } from "../domain";
 import type { CommentCandidate } from "../domain/comment-types";
@@ -10,18 +12,16 @@ import "./OverlayStage.css";
 
 const DEFAULT_STAGE_WIDTH = 800;
 const DEFAULT_STAGE_HEIGHT = 240;
-const DEFAULT_LANE_COUNT = 6;
 const DEFAULT_LANE_HEIGHT = 32;
 const DEFAULT_FONT_SIZE = 20;
 const DEFAULT_COMMENT_OPACITY = 0.95;
-const DEFAULT_MAX_QUEUE_SIZE = 200;
 
 export interface OverlayStageProps {
   comments: readonly CommentCandidate[];
   stageWidth?: number;
   stageHeight?: number;
-  laneCount?: number;
   laneHeight?: number;
+  maxLaneCount?: number;
   baseSpeedPxPerSecond?: number;
   maxQueueSize?: number;
   fontSize?: number;
@@ -47,8 +47,8 @@ export function OverlayStage({
   comments,
   stageWidth = DEFAULT_STAGE_WIDTH,
   stageHeight = DEFAULT_STAGE_HEIGHT,
-  laneCount = DEFAULT_LANE_COUNT,
   laneHeight = DEFAULT_LANE_HEIGHT,
+  maxLaneCount = DEFAULT_MAX_LANE_COUNT,
   baseSpeedPxPerSecond,
   maxQueueSize = DEFAULT_MAX_QUEUE_SIZE,
   fontSize = DEFAULT_FONT_SIZE,
@@ -65,6 +65,9 @@ export function OverlayStage({
     null,
   );
   const effectiveStageWidth = fitToContainer ? (containerSize?.width ?? stageWidth) : stageWidth;
+  const effectiveStageHeight = fitToContainer
+    ? (containerSize?.height ?? stageHeight)
+    : stageHeight;
 
   useLayoutEffect(() => {
     if (!fitToContainer || typeof ResizeObserver === "undefined") return;
@@ -101,11 +104,20 @@ export function OverlayStage({
     () =>
       new CommentScheduler({
         stageWidth: effectiveStageWidth,
-        laneCount,
+        stageHeight: effectiveStageHeight,
+        laneHeight,
+        maxLaneCount,
         baseSpeedPxPerSecond,
         maxQueueSize,
       }),
-    [baseSpeedPxPerSecond, effectiveStageWidth, laneCount, maxQueueSize],
+    [
+      baseSpeedPxPerSecond,
+      effectiveStageHeight,
+      effectiveStageWidth,
+      laneHeight,
+      maxLaneCount,
+      maxQueueSize,
+    ],
   );
   const [snapshot, setSnapshot] = useState<CommentSchedulerSnapshot>(() => scheduler.advance(0));
   const seenResponseNumbers = useRef(new Set<number>());
@@ -126,9 +138,12 @@ export function OverlayStage({
       if (seenResponseNumbers.current.has(comment.responseNumber)) continue;
 
       const width = estimateWidth(comment, fontSize);
-      if (!scheduler.enqueue({ comment, width })) {
+      const result = scheduler.enqueue({ comment, width });
+      if (result.dropped) {
         // 変更理由: queueが満杯のときに同じレスを毎回再投入すると、入力更新のたびに
-        // 古いレスがqueueを奪うため、上限超過分は明示的にskipして一度だけ通知する。
+        // 古いレスがqueueを奪うため、最古の待機レスをskipして一度だけ通知する。
+        onQueueOverflow?.(result.dropped.comment);
+      } else if (!result.accepted) {
         onQueueOverflow?.(comment);
       }
       seenResponseNumbers.current.add(comment.responseNumber);

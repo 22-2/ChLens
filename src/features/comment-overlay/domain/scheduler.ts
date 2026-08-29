@@ -3,6 +3,12 @@ import type { CommentCandidate } from "./comment-types";
 /** Danmakuの初期値に合わせた、ステージ上を進むコメントの基準速度。単位はpx/sec。 */
 export const DEFAULT_COMMENT_BASE_SPEED_PX_PER_SECOND = 144;
 
+/** 高さが大きいOverlayでもDOMノードが無制限に増えないようにするレーン容量の上限。 */
+export const DEFAULT_MAX_LANE_COUNT = 24;
+
+/** ライブ感を保ち、古い待機レスが長時間残らないようにする待機queueの初期上限。 */
+export const DEFAULT_MAX_QUEUE_SIZE = 64;
+
 export interface CommentScheduleInput {
   comment: CommentCandidate;
   /** レンダラーが測定したコメントの幅。単位はpx。 */
@@ -11,7 +17,9 @@ export interface CommentScheduleInput {
 
 export interface CommentSchedulerOptions {
   stageWidth: number;
-  laneCount: number;
+  stageHeight: number;
+  laneHeight: number;
+  maxLaneCount?: number;
   baseSpeedPxPerSecond?: number;
   maxQueueSize?: number;
 }
@@ -31,6 +39,11 @@ export interface CommentSchedulerSnapshot {
   now: number;
   active: readonly ScheduledComment[];
   pending: readonly CommentScheduleInput[];
+}
+
+export interface CommentEnqueueResult {
+  accepted: boolean;
+  dropped: CommentScheduleInput | null;
 }
 
 /** ステージ幅と基準速度から、コメントがステージを通過する基準時間を求める。 */
@@ -79,6 +92,24 @@ function assertNonNegativeFinite(value: number, name: string): void {
   }
 }
 
+function assertPositiveInteger(value: number, name: string): void {
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new RangeError(`${name} must be a positive integer`);
+  }
+}
+
+/** ステージ高さから、allocatorが作成できるレーン容量を求める。 */
+export function calculateLaneCapacity(
+  stageHeight: number,
+  laneHeight: number,
+  maxLaneCount = DEFAULT_MAX_LANE_COUNT,
+): number {
+  assertPositiveFinite(stageHeight, "stageHeight");
+  assertPositiveFinite(laneHeight, "laneHeight");
+  assertPositiveInteger(maxLaneCount, "maxLaneCount");
+  return Math.min(Math.max(Math.floor(stageHeight / laneHeight), 1), maxLaneCount);
+}
+
 function validateScheduleInput(input: CommentScheduleInput): void {
   assertNonNegativeFinite(input.width, "comment width");
 }
@@ -94,16 +125,14 @@ export class LaneAllocator {
 
   constructor(
     private readonly stageWidth: number,
-    laneCount: number,
+    private readonly maxLaneCount: number,
     baseSpeedPxPerSecond: number,
   ) {
     assertPositiveFinite(stageWidth, "stageWidth");
     assertPositiveFinite(baseSpeedPxPerSecond, "baseSpeedPxPerSecond");
-    if (!Number.isInteger(laneCount) || laneCount <= 0) {
-      throw new RangeError("laneCount must be a positive integer");
-    }
+    assertPositiveInteger(maxLaneCount, "maxLaneCount");
     this.duration = calculateCommentDuration(stageWidth, baseSpeedPxPerSecond);
-    this.lanes = Array.from({ length: laneCount }, () => []);
+    this.lanes = [];
   }
 
   /** 終了したコメントを解放し、laneが古いコメントを保持し続けないようにする。 */
@@ -118,14 +147,21 @@ export class LaneAllocator {
     }
   }
 
-  /** 現在時刻に開始できるlaneを選び、開始できなければnullを返す。 */
+  /** 現在時刻に開始できるlaneを選び、必要なときだけ新しいlaneを作る。 */
   allocate(input: CommentScheduleInput, now: number): ScheduledComment | null {
     validateScheduleInput(input);
     assertFinite(now, "now");
     this.release(now);
 
-    const laneIndex = this.lanes.findIndex((lane) => this.canStartAt(lane, input.width, now));
-    if (laneIndex < 0) return null;
+    let laneIndex = this.lanes.findIndex((lane) => this.canStartAt(lane, input.width, now));
+    if (laneIndex < 0) {
+      if (this.lanes.length >= this.maxLaneCount) return null;
+
+      // 変更理由: 参考元と同じく、空きlaneを先に大量生成せず、既存laneへ置けない
+      // コメントが来たときだけ次のlaneを作り、ステージの高さに応じた容量を保つ。
+      laneIndex = this.lanes.length;
+      this.lanes.push([]);
+    }
 
     const scheduled = this.createScheduledComment(input, laneIndex, now);
     this.lanes[laneIndex].push(scheduled);
@@ -193,7 +229,7 @@ function calculateSafeStartAt(
 
 /**
  * 新着コメントをqueueし、laneへ投入できる時刻にだけactiveへ移す。
- * 混雑時に表示中コメントの速度を変えないため、上限超過分は明示的に受け付けない。
+ * 混雑時に表示中コメントの速度を変えず、古いpendingが実況に遅れて残らないようにする。
  */
 export class CommentScheduler {
   private readonly allocator: LaneAllocator;
@@ -205,22 +241,37 @@ export class CommentScheduler {
   private lastNow: number | null = null;
 
   constructor(options: CommentSchedulerOptions) {
+    const laneCapacity = calculateLaneCapacity(
+      options.stageHeight,
+      options.laneHeight,
+      options.maxLaneCount,
+    );
     this.allocator = new LaneAllocator(
       options.stageWidth,
-      options.laneCount,
+      laneCapacity,
       options.baseSpeedPxPerSecond ?? DEFAULT_COMMENT_BASE_SPEED_PX_PER_SECOND,
     );
-    this.maxQueueSize = options.maxQueueSize ?? 200;
+    this.maxQueueSize = options.maxQueueSize ?? DEFAULT_MAX_QUEUE_SIZE;
     if (!Number.isInteger(this.maxQueueSize) || this.maxQueueSize < 0) {
       throw new RangeError("maxQueueSize must be a non-negative integer");
     }
   }
 
-  enqueue(input: CommentScheduleInput): boolean {
+  enqueue(input: CommentScheduleInput): CommentEnqueueResult {
     validateScheduleInput(input);
-    if (this.pendingComments.length >= this.maxQueueSize) return false;
+
+    if (this.maxQueueSize === 0) {
+      return { accepted: false, dropped: null };
+    }
+
+    let dropped: CommentScheduleInput | null = null;
+    if (this.pendingComments.length >= this.maxQueueSize) {
+      // 変更理由: ライブ入力を古い待機レスの表示待ちにしないため、queue満杯時は
+      // 最古のpendingだけをskipして新着を受け入れる。activeの速度は変更しない。
+      dropped = this.pendingComments.shift() ?? null;
+    }
     this.pendingComments.push(input);
-    return true;
+    return { accepted: true, dropped };
   }
 
   /** monotonicな時刻でだけ進め、同じ時刻の呼び出しは安全に繰り返せるようにする。 */
