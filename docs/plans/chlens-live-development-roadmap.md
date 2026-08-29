@@ -102,6 +102,43 @@ queue が詰まった場合は、速度を不規則に上げるのではなく�
 遅延表示を組み合わせる。Overlay はライブ感を優先し、全レスの確認は Main のスレビューで保証する。
 過去ログ再生に備え、clock は `realtime` と `playback` を差し替えられるようにする。
 
+### Danmakuを参考にする範囲（ChLens Tauriへの回収を前提とする）
+
+Danmakuは、ステージへコメントを投入する入力境界、表示中コメントのライフサイクル、
+ステージ幅と基準速度から決める移動時間、通常スクロール用のレーン管理を考えるための
+リファレンスとして利用する。公式実装をChLensへそのまま組み込むことは、このロードマップの
+目的にはしない。
+
+Danmakuから採用する設計は次のとおりとする。
+
+| Danmakuの概念 | ChLens Tauriでの責務 |
+| --- | --- |
+| stage / container | `OverlayStage`。StorybookとTauriで共用する表示領域 |
+| `emit`によるlive入力 | `CommentOverlayController`が作る`CommentBatch` |
+| active comment | `CommentScheduler`が管理する表示中コメント |
+| mode別allocator | `LaneAllocator`。初期MVPは右から左へ流れる通常コメントだけ |
+| realtime mode | `ThreadPage`の新着レス差分を受け取るChLens側の入力 |
+| DOM / Canvas engine | 初期実装はReactのDOM描画。Canvasは負荷計測後に再評価 |
+
+ChLens固有の責務はDanmakuへ渡さず、次の境界で処理する。
+
+- `IRes`から`CommentCandidate`への変換、HTML本文のテキスト化、NG除外、レス番号による重複排除はdomainで行う。
+- 開始時のbaseline、実況対象URLの固定、停止・再開は`CommentOverlayController`で管理する。
+- HTTP取得、ChLensのNG設定、Tauriイベント、透明ウィンドウ、クリック透過はDanmaku互換層の外側に置く。
+- Storybookでは固定fixtureと差し替え可能なclockを使い、Tauriのウィンドウ状態に依存せず表示だけを検証する。
+
+実装は次の順番で進める。
+
+1. `CommentCandidate`を受け取る純粋なschedulerとlane allocatorを実装する。
+2. `stageWidth`、コメント幅、基準px/secからdurationと移動距離を計算する。
+3. 手動clock・固定fixtureでqueue、重複、衝突、終了時のlane解放をテストする。
+4. `OverlayStage`へschedulerのsnapshotを渡し、StorybookのHardcoded／PastThreadReplay／Stressで確認する。
+5. ChLens TauriのOverlay windowとcontrollerへ接続し、CurrentThreadは固定URLの新着だけを流す。
+
+queueが詰まった場合も、表示中コメントの速度や開始位置を後から変更しない。新規投入を制限し、
+古いコメントのskipまたは遅延表示で調整する。これにより、ライブ中の見た目を安定させつつ、
+全レスの確認はChLens本体のスレビューに残せる。
+
 ## 目標構成
 
 画面構成の詳細は[Chlens Live Main UI仕様](./chlens-live-ui-spec.md)で固定する。Mainはタブバー、常時表示URLバー、単一ビューのContentAreaから成り、ThreadListとThreadを同時に表示する2ペインにはしない。
