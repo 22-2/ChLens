@@ -244,72 +244,6 @@ button:hover {
   text-align: center;
 }
 
-.thread-list-view {
-  display: flex;
-  min-height: 12rem;
-  flex-direction: column;
-}
-
-.thread-list-view__search {
-  margin: 0.6rem;
-  border: 1px solid #385574;
-  border-radius: 6px;
-  padding: 0.45rem 0.5rem;
-  color: #eff6ff;
-  background: #12233c;
-}
-
-.thread-list-view__table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.82rem;
-}
-
-.thread-list-view__table th,
-.thread-list-view__table td {
-  padding: 0.45rem 0.55rem;
-  text-align: left;
-}
-
-.thread-list-view__table th button {
-  border: 0;
-  padding: 0;
-  background: transparent;
-}
-
-.thread-list-view__table tbody tr {
-  cursor: pointer;
-}
-
-.thread-list-view__table tbody tr:hover,
-.thread-list-view__table tbody tr[data-selected="true"] {
-  background: #274467;
-}
-
-.thread-list-view__row--highlight {
-  background: #31513c;
-}
-
-.thread-list-view__row--demoted {
-  opacity: 0.55;
-}
-
-.thread-list-view__label {
-  margin-left: 0.4rem;
-  color: #75b8ef;
-  font-size: 0.72rem;
-}
-
-.thread-list-view__status {
-  padding: 2rem 1rem;
-  color: #829ab5;
-  text-align: center;
-}
-
-.thread-list-view__status--error {
-  color: #ff9c9c;
-}
-
 .thread-list__error {
   color: #ef9a9a;
 }
@@ -848,55 +782,11 @@ button:hover {
 }
 
 .live-content-area > .thread-list-view,
-.live-content-area > .thread-view {
+.live-content-area > .thread-page {
   min-height: 100%;
   border: 0;
   border-radius: 0;
-  background: #1c1c1c;
-}
-
-.live-content-area .thread-list-view__search {
-  margin: 0.75rem;
-  border-color: #4a4a4a;
-  color: #eeeeee;
-  background: #242424;
-}
-
-.live-content-area .simple-data-table {
-  width: 100%;
-  border-collapse: collapse;
-  color: #dedede;
-  background: #1c1c1c;
-}
-
-.live-content-area .simple-data-table__th,
-.live-content-area .simple-data-table td {
-  border-bottom: 1px solid #353535;
-  padding: 0.55rem 0.7rem;
-  text-align: left;
-}
-
-.live-content-area .simple-data-table__th {
-  color: #bdbdbd;
-  background: #262626;
-}
-
-.live-content-area .simple-data-table__row:hover {
-  background: #2d2d2d;
-}
-
-.live-content-area .thread-list__title {
-  color: #eeeeee;
-}
-
-.live-content-area .thread-list__label {
-  margin-left: 0.4rem;
-  color: #b7b7b7;
-  font-size: 0.75rem;
-}
-
-.live-content-area .thread-view {
-  max-height: none;
+  background: var(--sys-color-surface);
 }
 
 @media (max-width: 900px) {
