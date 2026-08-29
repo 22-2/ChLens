@@ -102,6 +102,33 @@ queue が詰まった場合は、速度を不規則に上げるのではなく�
 遅延表示を組み合わせる。Overlay はライブ感を優先し、全レスの確認は Main のスレビューで保証する。
 過去ログ再生に備え、clock は `realtime` と `playback` を差し替えられるようにする。
 
+### 動的レーン容量とバックログ制御
+
+CommentCoreLibraryのallocatorは固定レーン数を持たず、ステージの高さ、コメントの占有高さ、
+既存コメントとの衝突状況から配置可能なpoolを必要な分だけ作る。この挙動をChLensへ取り入れ、
+`laneCount = 6`のような固定値を通常動作の前提にしない。
+
+初期実装では、コメントの1行分の占有高さを`laneHeight`として扱い、実際のステージ高さから
+次の最大レーン容量を求める。
+
+```text
+laneCapacity = clamp(floor(stageHeight / laneHeight), 1, maxLaneCount)
+```
+
+allocatorは最大容量までlaneを遅延生成し、既存laneに安全に配置できない場合だけ次のlaneを作る。
+`maxLaneCount`はステージが極端に高い場合のDOMノード増加を抑える安全弁であり、初期値は`24`とする。
+`fitToContainer`時はResizeObserverで得た実寸の高さを使い、寸法が変わった場合は新しい容量で再配置する。
+複数行コメントの実測高さをallocatorへ渡すことは、DOM測定を導入する段階で追加する。
+
+バックログは表示中コメントの速度を後から変更せず、入力側で制御する。
+
+- `pending`には上限を設け、上限到達後のライブ入力は新着を優先して最古の待機コメントをskipする。
+- skipしたレスはOverlayの表示対象から外すが、Mainのスレビューには残す。
+- 過去ログのStress／Replayではfixture全件を同時投入せず、再生clockに合わせて一定間隔で投入する。
+- `active`、`pending`、DOMノード数に上限を設け、長時間動作で遅延が無限に増えないことをテストする。
+- 待機queueの初期上限は`64`とし、実際の実況で遅延時間を確認して設定化する。
+- 既存コメントの速度・開始位置は混雑度に応じて変更しない。
+
 ### Danmakuを参考にする範囲（ChLens Tauriへの回収を前提とする）
 
 Danmakuは、ステージへコメントを投入する入力境界、表示中コメントのライフサイクル、
@@ -129,14 +156,14 @@ ChLens固有の責務はDanmakuへ渡さず、次の境界で処理する。
 
 実装は次の順番で進める。
 
-1. `CommentCandidate`を受け取る純粋なschedulerとlane allocatorを実装する。
+1. `CommentCandidate`を受け取る純粋なschedulerと、ステージ高さから容量を求めるlane allocatorを実装する。
 2. `stageWidth`、コメント幅、基準px/secからdurationと移動距離を計算する。
-3. 手動clock・固定fixtureでqueue、重複、衝突、終了時のlane解放をテストする。
+3. 手動clock・固定fixtureでqueue、重複、衝突、動的lane生成、終了時のlane解放をテストする。
 4. `OverlayStage`へschedulerのsnapshotを渡し、StorybookのHardcoded／PastThreadReplay／Stressで確認する。
 5. ChLens TauriのOverlay windowとcontrollerへ接続し、CurrentThreadは固定URLの新着だけを流す。
 
 queueが詰まった場合も、表示中コメントの速度や開始位置を後から変更しない。新規投入を制限し、
-古いコメントのskipまたは遅延表示で調整する。これにより、ライブ中の見た目を安定させつつ、
+ライブでは古い待機コメントのskip、過去ログでは再生間隔による遅延で調整する。これにより、ライブ中の見た目を安定させつつ、
 全レスの確認はChLens本体のスレビューに残せる。
 
 ## 目標構成

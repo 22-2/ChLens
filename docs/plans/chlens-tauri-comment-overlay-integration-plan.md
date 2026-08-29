@@ -138,7 +138,7 @@ Storybookでは透過を無効にし、背景色のある固定サイズのス�
 次の値はControlsから変更できるようにする。
 
 - ステージ幅・高さ
-- 速度、レーン数、文字サイズ
+- 速度、レーンの行高・最大容量、文字サイズ
 - コメント投入間隔とqueue上限
 - 背景色とコメントの透明度
 - 再生、停止、リセット、1レス追加
@@ -316,16 +316,20 @@ Storybookでは速度、衝突、レーン、queue、長文、resizeを確認す
 
 - realtime clockと差し替え可能なscheduler境界を実装する。
 - 通常コメント用のlane allocatorを実装する。
+- 固定`laneCount`を通常動作の前提にせず、`stageHeight / laneHeight`からlane容量を動的に求める。
+- allocatorは必要なlaneだけを遅延生成し、`maxLaneCount`をDOMノード増加の安全弁として使う。
 - コメント幅、stage幅、速度からdurationを計算する。
 - CSS transformでコメントを右から左へ流す。
 - resize時のstage寸法更新と、新規コメントの割り当てを同期する。
-- queue上限と古いコメントのskip方針を実装する。
+- queue上限と、新着を優先して最古の待機コメントをskipする方針を実装する。
+- 過去ログのfixtureは全件を同時投入せず、playback clockに合わせて一定間隔で投入する。
 - active commentの終了時にDOMとlaneを解放する。
 - `Hardcoded`、`PastThreadReplay`、`CurrentThread`、`Stress`のStoryを追加する。
 
 #### 完了条件
 
 - コメントが重なり続けず、複数laneへ割り当てられる。
+- ステージ高さに応じてlane容量が増減し、極端に高いステージでも`maxLaneCount`を超えない。
 - 短文と長文で極端に滞在時間がずれない。
 - 混雑時もメモリとDOMノード数が上限内に収まる。
 - resize後も新しいコメントが画面外へ固定されない。
