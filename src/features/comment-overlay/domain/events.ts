@@ -1,6 +1,7 @@
 import type { CommentBatch } from "./comment-types";
 
 export type CommentOverlayEvent = {
+  version: 1;
   type: "batch";
   batch: CommentBatch;
 };

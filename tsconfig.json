@@ -25,5 +25,6 @@
     "noEmit": true
   },
   "include": ["./**/*.ts", "./**/*.tsx"],
-  "exclude": ["node_modules", "tests"]
+  // RustのTauri buildが生成するバイナリ埋め込み用TS断片は、Web側の型検査対象ではない。
+  "exclude": ["node_modules", "tests", "src-tauri/**"]
 }

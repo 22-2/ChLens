@@ -153,6 +153,7 @@ describe("MemoryCommentOverlayEventBus", () => {
     const listener = vi.fn();
     const unsubscribe = await bus.subscribe(listener);
     const event = {
+      version: 1 as const,
       type: "batch" as const,
       batch: {
         threadUrl: "https://example.test/thread/1",
