@@ -19,6 +19,7 @@ const DEFAULT_STAGE_HEIGHT = 240;
 const DEFAULT_LANE_HEIGHT = 32;
 const DEFAULT_FONT_SIZE = 20;
 const DEFAULT_COMMENT_OPACITY = 0.95;
+export const DEFAULT_COMMENT_HISTORY_LIMIT = 3_000;
 
 export interface OverlayStageProps {
   comments: readonly CommentCandidate[];
@@ -159,6 +160,15 @@ export function OverlayStage({
   }, [scheduler]);
 
   useEffect(() => {
+    // 変更理由: 親が直近の履歴だけを保持している間、入力から外れたレス番号も
+    // dedupe Setに残すと長時間実況でSetだけが無制限に増えるため、現在の入力範囲に揃える。
+    const currentResponseNumbers = new Set(comments.map((comment) => comment.responseNumber));
+    for (const responseNumber of seenResponseNumbers.current) {
+      if (!currentResponseNumbers.has(responseNumber)) {
+        seenResponseNumbers.current.delete(responseNumber);
+      }
+    }
+
     for (const comment of comments) {
       if (seenResponseNumbers.current.has(comment.responseNumber)) continue;
 

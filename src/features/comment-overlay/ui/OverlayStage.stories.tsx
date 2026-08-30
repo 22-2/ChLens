@@ -2,7 +2,11 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { projectCommentResponse } from "../domain";
 import type { CommentCandidate } from "../domain/comment-types";
-import { OverlayStage, type OverlayStageProps } from "./OverlayStage";
+import {
+  DEFAULT_COMMENT_HISTORY_LIMIT,
+  OverlayStage,
+  type OverlayStageProps,
+} from "./OverlayStage";
 import type { ChLensLiveSource } from "../../../../apps/chlens-live/src/live-session/source";
 import { createChLensStorybookSource } from "./storybook-source";
 
@@ -161,7 +165,7 @@ function HardcodedStory(args: OverlayStageProps) {
           author: "名無し",
         };
       });
-      return [...current, ...additions];
+      return [...current, ...additions].slice(-DEFAULT_COMMENT_HISTORY_LIMIT);
     });
   };
 
@@ -257,7 +261,7 @@ function PastThreadReplayStory(args: OverlayStageProps) {
     const timer = window.setTimeout(() => {
       const nextComment = loadedThread.comments[cursor];
       if (!nextComment) return;
-      setComments((current) => [...current, nextComment]);
+      setComments((current) => [...current, nextComment].slice(-DEFAULT_COMMENT_HISTORY_LIMIT));
       setCursor((current) => current + 1);
     }, 160);
     return () => window.clearTimeout(timer);
@@ -363,7 +367,7 @@ function CurrentThreadStory(args: OverlayStageProps) {
     try {
       const nextThread = await loadThreadStoryData(source, url);
       setLoadedThread(nextThread);
-      setComments(nextThread.comments);
+      setComments(nextThread.comments.slice(-DEFAULT_COMMENT_HISTORY_LIMIT));
       lastResponseNumber.current = latestCommentNumber(nextThread.comments);
       setStreaming(true);
       setStageKey((current) => current + 1);
@@ -389,7 +393,9 @@ function CurrentThreadStory(args: OverlayStageProps) {
       );
       if (newComments.length > 0) {
         lastResponseNumber.current = latestCommentNumber(newComments);
-        setComments((current) => [...current, ...newComments]);
+        setComments((current) =>
+          [...current, ...newComments].slice(-DEFAULT_COMMENT_HISTORY_LIMIT),
+        );
       }
       setLoadedThread(nextThread);
     } catch (refreshError: unknown) {
@@ -428,7 +434,7 @@ function CurrentThreadStory(args: OverlayStageProps) {
 
   const reset = () => {
     if (!loadedThread) return;
-    setComments(loadedThread.comments);
+    setComments(loadedThread.comments.slice(-DEFAULT_COMMENT_HISTORY_LIMIT));
     lastResponseNumber.current = latestCommentNumber(loadedThread.comments);
     setStageKey((current) => current + 1);
   };

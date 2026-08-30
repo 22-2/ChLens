@@ -132,4 +132,50 @@ describe("OverlayStage", () => {
     expect(activeComment).toHaveAttribute("data-paused", "false");
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
+
+  it("入力履歴から外れたレス番号を再利用できる", () => {
+    const { rerender } = render(
+      <OverlayStage
+        comments={[{ ...comment, text: "最初のレス" }]}
+        stageWidth={600}
+        stageHeight={32}
+        laneHeight={32}
+        playing
+      />,
+    );
+
+    act(() => {
+      scheduledFrame?.(0);
+    });
+
+    rerender(
+      <OverlayStage
+        comments={[{ ...comment, responseNumber: 2, text: "置き換え後のレス" }]}
+        stageWidth={600}
+        stageHeight={32}
+        laneHeight={32}
+        playing
+      />,
+    );
+    act(() => {
+      scheduledFrame?.(16);
+    });
+
+    expect(screen.getByText("置き換え後のレス")).toBeVisible();
+
+    rerender(
+      <OverlayStage
+        comments={[{ ...comment, text: "再利用したレス" }]}
+        stageWidth={600}
+        stageHeight={32}
+        laneHeight={32}
+        playing
+      />,
+    );
+    act(() => {
+      scheduledFrame?.(32);
+    });
+
+    expect(screen.getByText("再利用したレス")).toBeVisible();
+  });
 });

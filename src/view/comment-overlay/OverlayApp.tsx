@@ -9,10 +9,13 @@ import {
   type CommentOverlayWindowPlatform,
 } from "src/features/comment-overlay/platform";
 import type { CommentCandidate } from "src/features/comment-overlay/domain";
-import { OverlayStage } from "src/features/comment-overlay/ui/OverlayStage";
+import {
+  DEFAULT_COMMENT_HISTORY_LIMIT,
+  OverlayStage,
+} from "src/features/comment-overlay/ui/OverlayStage";
 import { OverlayControlBar } from "./OverlayControlBar";
 
-const MAX_COMMENT_HISTORY = 3_000;
+const MAX_COMMENT_HISTORY = DEFAULT_COMMENT_HISTORY_LIMIT;
 
 const RESIZE_HANDLES: ReadonlyArray<{
   direction: CommentOverlayResizeDirection;
@@ -59,6 +62,7 @@ export function OverlayApp({
   const [controlsVisible, setControlsVisible] = useState(true);
   const activeThreadUrlRef = useRef<string | null>(null);
   const seenResponseNumbersRef = useRef(new Set<number>());
+  const seenResponseOrderRef = useRef<number[]>([]);
 
   useEffect(() => {
     let disposed = false;
@@ -72,6 +76,7 @@ export function OverlayApp({
         // スレッドの実況を再開した場合にもこの境界を明示的に通過させる。
         activeThreadUrlRef.current = batch.threadUrl;
         seenResponseNumbersRef.current.clear();
+        seenResponseOrderRef.current = [];
         setComments([]);
         setStageKey((current) => current + 1);
       }
@@ -79,9 +84,17 @@ export function OverlayApp({
       const additions = batch.comments.filter((comment) => {
         if (seenResponseNumbersRef.current.has(comment.responseNumber)) return false;
         seenResponseNumbersRef.current.add(comment.responseNumber);
+        seenResponseOrderRef.current.push(comment.responseNumber);
         return true;
       });
       if (additions.length === 0) return;
+
+      while (seenResponseOrderRef.current.length > MAX_COMMENT_HISTORY) {
+        const expiredResponseNumber = seenResponseOrderRef.current.shift();
+        if (expiredResponseNumber !== undefined) {
+          seenResponseNumbersRef.current.delete(expiredResponseNumber);
+        }
+      }
 
       setComments((current) => {
         const next = [...current, ...additions];
