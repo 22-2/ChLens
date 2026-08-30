@@ -25,6 +25,7 @@ export interface CommentOverlayControllerDependencies {
   eventBus: CommentOverlayEventBus;
   platform: CommentOverlayWindowPlatform;
   getSettings?: () => CommentOverlaySettings;
+  subscribeSettings?: (listener: () => void) => () => void;
 }
 
 function toCommentResponse(response: IRes): CommentResponse {
@@ -68,6 +69,8 @@ export class CommentOverlayController {
 
   private readonly getSettings: () => CommentOverlaySettings;
 
+  private readonly subscribeSettings: ((listener: () => void) => () => void) | null;
+
   private readonly listeners = new Set<() => void>();
 
   private readonly responseSnapshots = new Map<string, readonly IRes[]>();
@@ -86,9 +89,17 @@ export class CommentOverlayController {
 
   private publishQueue: Promise<void> = Promise.resolve();
 
-  constructor({ eventBus, platform, getSettings }: CommentOverlayControllerDependencies) {
+  private settingsUnsubscribe: (() => void) | null = null;
+
+  constructor({
+    eventBus,
+    platform,
+    getSettings,
+    subscribeSettings,
+  }: CommentOverlayControllerDependencies) {
     this.eventBus = eventBus;
     this.platform = platform;
+    this.subscribeSettings = subscribeSettings ?? null;
     const readSettings = getSettings ?? (() => ({ ...DEFAULT_COMMENT_OVERLAY_SETTINGS }));
     // 設定の保存元が将来増えても、Mainから出るeventは必ず正規化済みの値にする。
     this.getSettings = () => normalizeCommentOverlaySettings(readSettings());
@@ -136,7 +147,9 @@ export class CommentOverlayController {
       await this.setVisible(true);
       // Overlayが前スレの表示履歴を持っていても、開始したスレを境に表示を切り替える。
       await this.publish(createResetEvent(threadUrl, snapshot, this.getSettings()));
+      this.subscribeToSettings();
     } catch (error: unknown) {
+      this.unsubscribeFromSettings();
       this.state = stopCommentOverlay(this.state);
       if (this.visible) {
         try {
@@ -155,6 +168,7 @@ export class CommentOverlayController {
   }
 
   async stop(): Promise<void> {
+    this.unsubscribeFromSettings();
     this.error = null;
     this.state = stopCommentOverlay(this.state);
     this.notify();
@@ -188,6 +202,21 @@ export class CommentOverlayController {
     this.notify();
   }
 
+  async updateSettings(): Promise<void> {
+    if (this.state.status !== "running" || this.state.targetThreadUrl == null) return;
+
+    try {
+      await this.publish({
+        version: 1,
+        type: "settings",
+        settings: this.getSettings(),
+      });
+    } catch (error: unknown) {
+      this.reportError("[ChLens] コメントOverlay設定の送信に失敗しました:", error);
+      throw error;
+    }
+  }
+
   private notify(): void {
     this.snapshot = {
       state: this.state,
@@ -201,6 +230,30 @@ export class CommentOverlayController {
     console.error(message, error);
     this.error = message;
     this.notify();
+  }
+
+  private subscribeToSettings(): void {
+    if (this.subscribeSettings == null || this.settingsUnsubscribe != null) return;
+
+    try {
+      this.settingsUnsubscribe = this.subscribeSettings(() => {
+        void this.updateSettings().catch(() => undefined);
+      });
+    } catch (error: unknown) {
+      console.error("[ChLens] コメントOverlay設定の変更監視登録に失敗しました:", error);
+    }
+  }
+
+  private unsubscribeFromSettings(): void {
+    const unsubscribe = this.settingsUnsubscribe;
+    this.settingsUnsubscribe = null;
+    if (unsubscribe == null) return;
+
+    try {
+      unsubscribe();
+    } catch (error: unknown) {
+      console.error("[ChLens] コメントOverlay設定の変更監視解除に失敗しました:", error);
+    }
   }
 
   private publish(event: CommentOverlayEvent): Promise<void> {

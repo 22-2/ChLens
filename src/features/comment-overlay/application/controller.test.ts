@@ -141,4 +141,48 @@ describe("CommentOverlayController", () => {
     expect(controller.getSnapshot().state.status).toBe("running");
     expect(controller.getSnapshot().error).toBeNull();
   });
+
+  it("実況中の設定変更をsettings eventへ送り、停止時に購読を解除する", async () => {
+    const eventBus = new MemoryCommentOverlayEventBus();
+    const settingsListenerRef = { current: null as (() => void) | null };
+    const unsubscribe = vi.fn(() => {
+      settingsListenerRef.current = null;
+    });
+    let settings = {
+      baseSpeedPxPerSecond: 90,
+      fontSize: 18,
+      opacity: 0.95,
+      maxQueueSize: 64,
+    };
+    const controller = new CommentOverlayController({
+      eventBus,
+      platform: createBrowserCommentOverlayPlatform(),
+      getSettings: () => settings,
+      subscribeSettings: (listener) => {
+        settingsListenerRef.current = listener;
+        return unsubscribe;
+      },
+    });
+    const threadUrl = "https://example.test/thread/1";
+
+    await controller.start(threadUrl, [response(1, "既存レス")]);
+    settings = {
+      baseSpeedPxPerSecond: 180,
+      fontSize: 24,
+      opacity: 0.5,
+      maxQueueSize: 12,
+    };
+    settingsListenerRef.current?.();
+    await waitForPublishedEvents();
+
+    expect(eventBus.events[1]).toMatchObject({
+      type: "settings",
+      settings,
+    });
+
+    await controller.stop();
+
+    expect(unsubscribe).toHaveBeenCalledTimes(1);
+    expect(settingsListenerRef.current).toBeNull();
+  });
 });
