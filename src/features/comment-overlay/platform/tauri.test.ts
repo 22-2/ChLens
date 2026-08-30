@@ -59,7 +59,11 @@ vi.mock("@tauri-apps/api/window", () => ({
 }));
 
 import { COMMENT_OVERLAY_GEOMETRY_STORAGE_KEY } from "./geometry";
-import { COMMENT_OVERLAY_VISIBILITY_EVENT_NAME, createTauriCommentOverlayPlatform } from "./tauri";
+import {
+  COMMENT_OVERLAY_VISIBILITY_EVENT_NAME,
+  createTauriCommentOverlayPlatform,
+  getCommentOverlayCursorHitRegion,
+} from "./tauri";
 
 type VisibilityEventHandler = (event: { payload: unknown }) => void;
 
@@ -132,6 +136,25 @@ describe("TauriコメントOverlay window platform", () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
+  });
+
+  it("操作バーの上枠をbar扱いせず、実際のバーだけをbar扱いする", () => {
+    const bounds = { x: 100, y: 200, width: 900, height: 240, scaleFactor: 1 };
+
+    expect(getCommentOverlayCursorHitRegion({ x: 500, y: 200 }, bounds)).toBe("outside");
+    expect(getCommentOverlayCursorHitRegion({ x: 500, y: 203 }, bounds)).toBe("outside");
+    expect(getCommentOverlayCursorHitRegion({ x: 500, y: 204 }, bounds)).toBe("bar");
+    expect(getCommentOverlayCursorHitRegion({ x: 500, y: 240 }, bounds)).toBe("bar");
+    expect(getCommentOverlayCursorHitRegion({ x: 500, y: 241 }, bounds)).toBe("outside");
+  });
+
+  it("バー外の外周はbarではなくresize扱いにする", () => {
+    const bounds = { x: 100, y: 200, width: 900, height: 240, scaleFactor: 1 };
+
+    expect(getCommentOverlayCursorHitRegion({ x: 100, y: 180 }, bounds)).toBe("outside");
+    expect(getCommentOverlayCursorHitRegion({ x: 100, y: 220 }, bounds)).toBe("resize");
+    expect(getCommentOverlayCursorHitRegion({ x: 500, y: 425 }, bounds)).toBe("outside");
+    expect(getCommentOverlayCursorHitRegion({ x: 500, y: 440 }, bounds)).toBe("resize");
   });
 
   it("物理pixelのwindow境界を論理geometryへ変換する", async () => {

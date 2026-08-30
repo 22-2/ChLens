@@ -123,7 +123,10 @@ async function fitGeometryToAvailableMonitor(
   return fitCommentOverlayGeometryToWorkArea(normalized, workArea);
 }
 
-function getCursorHitRegion(cursor: CursorPosition, bounds: PhysicalWindowBounds): CursorHitRegion {
+export function getCommentOverlayCursorHitRegion(
+  cursor: CursorPosition,
+  bounds: PhysicalWindowBounds,
+): CursorHitRegion {
   const insideWindow =
     cursor.x >= bounds.x &&
     cursor.x <= bounds.x + bounds.width &&
@@ -135,9 +138,16 @@ function getCursorHitRegion(cursor: CursorPosition, bounds: PhysicalWindowBounds
   const edgeSize = INTERACTIVE_EDGE_SIZE * bounds.scaleFactor;
   const barHeight =
     (CONTROL_BAR_TOP_INSET + COMMENT_OVERLAY_CONTROL_BAR_HEIGHT) * bounds.scaleFactor;
+  // 変更理由: 操作バーはOverlay上端からinset分だけ下にあるため、上枠までbar扱いにすると
+  // バー外のhoverで操作ボタンが表示される。DOMのtop位置と同じ下限から判定する。
+  const barTop = bounds.y + CONTROL_BAR_TOP_INSET * bounds.scaleFactor;
   const barLeft = bounds.x + CONTROL_BAR_HORIZONTAL_INSET * bounds.scaleFactor;
   const barRight = bounds.x + bounds.width - CONTROL_BAR_HORIZONTAL_INSET * bounds.scaleFactor;
-  const insideBar = cursor.x >= barLeft && cursor.x <= barRight && cursor.y <= bounds.y + barHeight;
+  const insideBar =
+    cursor.x >= barLeft &&
+    cursor.x <= barRight &&
+    cursor.y >= barTop &&
+    cursor.y <= bounds.y + barHeight;
   if (insideBar) return "bar";
 
   return cursor.x <= bounds.x + edgeSize ||
@@ -194,7 +204,7 @@ export function createTauriCommentOverlayPlatform(): CommentOverlayWindowPlatfor
         invoke<CursorPosition>("get_cursor_position"),
         readPhysicalWindowBounds(overlay),
       ]);
-      const hitRegion = getCursorHitRegion(cursor, bounds);
+      const hitRegion = getCommentOverlayCursorHitRegion(cursor, bounds);
       notifyBarHover(hitRegion === "bar");
 
       if (!clickThroughRequested) return;
