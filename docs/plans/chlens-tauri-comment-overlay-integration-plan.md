@@ -15,11 +15,11 @@
 
 - Phase 0：完了。独立したChlens Live開発を凍結し、本書を現行計画として扱う方針を旧ロードマップへ明記した。
 - Phase 1：実装済み。コメント入力型、HTMLからのprojection、baselineとの差分抽出、NG・空本文・重複排除、memory event busを実装済み。
-- Phase 2：実装済み。ChLens TauriへOverlay用entry、初期非表示のnative window、capability、geometry保存、クリック透過、カーソル位置command、Tauri event adapterを追加した。
+- Phase 2：実装済み。ChLens TauriへOverlay用entry、初期非表示のnative window、capability、geometry保存、クリック透過、カーソル位置command、Tauri event adapterを追加した。native windowのgeometry変換、監視、表示・非表示に伴うcursor pollingのライフサイクルもテストで固定した。
 - Phase 3：実装済み。ThreadPageの確定済み`IRes[]`をcontrollerへ同期し、Tauri版スレッドのステータスバーから実況開始・停止とOverlay表示切り替えを行えるようにした。MVPではアクティブなスレッドだけを実況対象とする。
 - Phase 4：実装済み。動的lane、adaptive/dropを既定とする新着優先queue、CSS animation、hover情報、固定レス・過去ログ・現行スレ・StressのStoryを実装した。
 - Phase 5：実装済み。Tauri限定の開始・停止・表示切り替えUI、表示中スレッドを離れた際の停止、速度・文字サイズ・透明度・最大queue数の設定保存と実況開始時の反映、開始失敗時の非表示ロールバックとエラー表示まで追加した。
-- 自動確認：`pnpm tsc6`、`pnpm build:chrome`、`pnpm build:firefox`、`pnpm build:tauri`、`pnpm tauri build --debug --no-bundle`、`cargo check --manifest-path src-tauri/Cargo.toml --all-targets`、Overlay関連テスト、geometry保存・復元テスト、Tauri event adapter契約テスト、`pnpm storybook:build`、`pnpm tauri dev`のwatcherとTauriプロセス起動は成功。直近のコメントOverlay・Tauri限定UI・設定テストは60件全件成功している。全体テストは633件中632件成功し、変更箇所外の`ResItem`状態クラス期待値1件だけが失敗している。前回確認された`jsutil` timeoutは今回再現しなかった。
+- 自動確認：`pnpm tsc6`、`pnpm build:chrome`、`pnpm build:firefox`、`pnpm build:tauri`、`pnpm tauri build --debug --no-bundle`、`cargo check --manifest-path src-tauri/Cargo.toml --all-targets`、Overlay関連テスト、geometry保存・復元テスト、Tauri event adapter契約テスト、Tauri window adapter lifecycleテスト、`pnpm storybook:build`、`pnpm tauri dev`のwatcherとTauriプロセス起動は成功。直近のコメントOverlay・Tauri限定UI・設定テストは66件全件成功している。全体テストは633件中632件成功し、変更箇所外の`ResItem`状態クラス期待値1件だけが失敗している。前回確認された`jsutil` timeoutは今回再現しなかった。
 - 未確認：Windows実機での新着レス表示と設定反映、クリック透過、複数モニター/DPI、Overlay操作バーとリサイズ領域、長時間動作の手動確認。
 
 ## 背景と判断
@@ -375,7 +375,7 @@ Storybookでは速度、衝突、レーン、queue、長文、resizeを確認す
 
 ### Phase 6：安定化と独立アプリの整理判断
 
-> 進捗：自動テストでgeometryの保存・復元とTauri event adapterの送受信契約を固定した。残りはWindows実機でのOverlay操作、表示、負荷、DPI、sleep復帰の受け入れ確認と、独立アプリ整理のレビューである。
+> 進捗：自動テストでgeometryの保存・復元、Tauri event adapterの送受信契約、native windowの表示状態に応じたcursor pollingの停止・復帰を固定した。残りはWindows実機でのOverlay操作、表示、負荷、DPI、sleep復帰の受け入れ確認と、独立アプリ整理のレビューである。
 
 #### 作業
 
