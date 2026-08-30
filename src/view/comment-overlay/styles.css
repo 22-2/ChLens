@@ -176,6 +176,12 @@ button {
 }
 
 .comment-overlay-control-bar__button {
+  /* 変更理由: 透明WebViewではbuttonの既定line boxへLucideを置くと、hover時の
+   * 再描画で背景だけが見えてSVGが欠けることがある。独立したflex boxの中央へ
+   * 固定し、最小化・最大化・閉じるの各glyphを常に同じ位置で描画する。 */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 46px;
   height: 100%;
   border: 0;
@@ -187,6 +193,12 @@ button {
   line-height: 1;
   app-region: no-drag;
   -webkit-app-region: no-drag;
+}
+
+.comment-overlay-control-bar__button svg {
+  display: block;
+  flex: 0 0 auto;
+  stroke: currentcolor;
 }
 
 .comment-overlay-control-bar__button:hover {
