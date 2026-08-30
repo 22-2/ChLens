@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it, vi } from "vite-plus/test";
 import type { IRes } from "src/service-container/interfaces";
-import { MemoryCommentOverlayEventBus } from "../domain";
+import { MemoryCommentOverlayEventBus, type CommentOverlayEventBus } from "../domain";
 import { createBrowserCommentOverlayPlatform } from "../platform/browser";
 import { CommentOverlayController } from "./controller";
 
@@ -78,6 +78,7 @@ describe("CommentOverlayController", () => {
 
     expect(controller.getSnapshot().state.status).toBe("stopped");
     expect(controller.getSnapshot().visible).toBe(false);
+    expect(controller.getSnapshot().error).toBeNull();
     expect(eventBus.events).toHaveLength(1);
   });
 
@@ -105,5 +106,34 @@ describe("CommentOverlayController", () => {
         maxQueueSize: 13,
       },
     });
+  });
+
+  it("開始eventの送信に失敗したら停止状態へ戻し、再試行成功時にエラーを消す", async () => {
+    const publish = vi
+      .fn<CommentOverlayEventBus["publish"]>()
+      .mockRejectedValueOnce(new Error("送信失敗"))
+      .mockResolvedValue(undefined);
+    const eventBus: CommentOverlayEventBus = {
+      publish,
+      subscribe: vi.fn(async () => () => {}),
+    };
+    const controller = new CommentOverlayController({
+      eventBus,
+      platform: createBrowserCommentOverlayPlatform(),
+    });
+    const threadUrl = "https://example.test/thread/1";
+
+    await expect(controller.start(threadUrl, [response(1, "既存レス")])).rejects.toThrow(
+      "送信失敗",
+    );
+
+    expect(controller.getSnapshot().state.status).toBe("stopped");
+    expect(controller.getSnapshot().visible).toBe(false);
+    expect(controller.getSnapshot().error).toContain("開始に失敗しました");
+
+    await controller.start(threadUrl, [response(1, "既存レス")]);
+
+    expect(controller.getSnapshot().state.status).toBe("running");
+    expect(controller.getSnapshot().error).toBeNull();
   });
 });

@@ -18,6 +18,7 @@ import type { CommentOverlayWindowPlatform } from "../platform/types";
 export interface CommentOverlayControllerSnapshot {
   state: CommentOverlayState;
   visible: boolean;
+  error: string | null;
 }
 
 export interface CommentOverlayControllerDependencies {
@@ -75,9 +76,12 @@ export class CommentOverlayController {
 
   private visible = false;
 
+  private error: string | null = null;
+
   private snapshot: CommentOverlayControllerSnapshot = {
     state: this.state,
     visible: this.visible,
+    error: this.error,
   };
 
   private publishQueue: Promise<void> = Promise.resolve();
@@ -114,7 +118,7 @@ export class CommentOverlayController {
     if (result.batch) {
       void this.publish({ version: 1, type: "batch", batch: result.batch }).catch(
         (error: unknown) => {
-          console.error("[ChLens] コメントOverlay eventの送信に失敗しました:", error);
+          this.reportError("[ChLens] コメントOverlay eventの送信に失敗しました:", error);
         },
       );
     }
@@ -122,6 +126,8 @@ export class CommentOverlayController {
 
   async start(threadUrl: string, responses?: readonly IRes[]): Promise<void> {
     const snapshot = responses ?? this.getThreadResponses(threadUrl) ?? [];
+    // 変更理由: 前回の一時的な送信失敗を、再試行できた開始状態へ持ち越さない。
+    this.error = null;
     this.responseSnapshots.set(threadUrl, snapshot);
     this.state = startCommentOverlay(threadUrl, snapshot.map(toCommentResponse));
     this.notify();
@@ -131,18 +137,31 @@ export class CommentOverlayController {
       // Overlayが前スレの表示履歴を持っていても、開始したスレを境に表示を切り替える。
       await this.publish(createResetEvent(threadUrl, snapshot, this.getSettings()));
     } catch (error: unknown) {
-      console.error("[ChLens] コメント実況の開始に失敗しました:", error);
+      this.state = stopCommentOverlay(this.state);
+      if (this.visible) {
+        try {
+          // reset送信に失敗した場合も、表示だけが残って操作不能にならないよう戻す。
+          await this.setVisible(false);
+        } catch (rollbackError: unknown) {
+          console.error(
+            "[ChLens] コメント実況の開始失敗後のOverlay非表示に失敗しました:",
+            rollbackError,
+          );
+        }
+      }
+      this.reportError("[ChLens] コメント実況の開始に失敗しました:", error);
       throw error;
     }
   }
 
   async stop(): Promise<void> {
+    this.error = null;
     this.state = stopCommentOverlay(this.state);
     this.notify();
     try {
       await this.setVisible(false);
     } catch (error: unknown) {
-      console.error("[ChLens] コメント実況Overlayの停止に失敗しました:", error);
+      this.reportError("[ChLens] コメント実況Overlayの停止に失敗しました:", error);
       throw error;
     }
   }
@@ -150,12 +169,22 @@ export class CommentOverlayController {
   async setVisible(visible: boolean): Promise<void> {
     if (visible === this.visible) return;
 
-    if (visible) {
-      await this.platform.show();
-    } else {
-      await this.platform.hide();
+    try {
+      if (visible) {
+        await this.platform.show();
+      } else {
+        await this.platform.hide();
+      }
+    } catch (error: unknown) {
+      this.reportError(
+        `[ChLens] コメントOverlayの${visible ? "表示" : "非表示"}に失敗しました:`,
+        error,
+      );
+      throw error;
     }
+
     this.visible = visible;
+    this.error = null;
     this.notify();
   }
 
@@ -163,8 +192,15 @@ export class CommentOverlayController {
     this.snapshot = {
       state: this.state,
       visible: this.visible,
+      error: this.error,
     };
     for (const listener of this.listeners) listener();
+  }
+
+  private reportError(message: string, error: unknown): void {
+    console.error(message, error);
+    this.error = message;
+    this.notify();
   }
 
   private publish(event: CommentOverlayEvent): Promise<void> {
