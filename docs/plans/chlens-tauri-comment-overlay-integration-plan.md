@@ -15,11 +15,11 @@
 
 - Phase 0：完了。独立したChlens Live開発を凍結し、本書を現行計画として扱う方針を旧ロードマップへ明記した。
 - Phase 1：実装済み。コメント入力型、HTMLからのprojection、baselineとの差分抽出、NG・空本文・重複排除、memory event busを実装済み。
-- Phase 2：実装済み。ChLens TauriへOverlay用entry、初期非表示のnative window、capability、geometry保存、クリック透過、カーソル位置command、Tauri event adapterを追加した。native windowのgeometry変換、監視、表示・非表示に伴うcursor pollingのライフサイクルもテストで固定した。
+- Phase 2：実装済み。ChLens TauriへOverlay用entry、初期非表示のnative window、capability、geometry保存、クリック透過、カーソル位置command、Tauri event adapterを追加した。native windowのgeometry変換、監視、表示・非表示に伴うcursor pollingのライフサイクル、Main／Overlay別WebView間の表示状態broadcastと監視開始時の`isVisible()`再同期もテストで固定した。
 - Phase 3：実装済み。ThreadPageの確定済み`IRes[]`をcontrollerへ同期し、Tauri版スレッドのステータスバーから実況開始・停止とOverlay表示切り替えを行えるようにした。MVPではアクティブなスレッドだけを実況対象とする。
 - Phase 4：実装済み。動的lane、adaptive/dropを既定とする新着優先queue、CSS animation、hover情報、固定レス・過去ログ・現行スレ・StressのStoryを実装した。
 - Phase 5：実装済み。Tauri限定の開始・停止・表示切り替えUI、表示中スレッドを離れた際の停止、速度・文字サイズ・透明度・最大queue数の設定保存と実況開始時の反映、開始失敗時の非表示ロールバックとエラー表示、実行中Overlayへの設定変更即時反映まで追加した。
-- 自動確認：`pnpm tsc6`、`pnpm build:chrome`、`pnpm build:firefox`、`pnpm build:tauri`、`pnpm tauri build --debug --no-bundle`、`cargo check --manifest-path src-tauri/Cargo.toml --all-targets`、Overlay関連テスト、geometry保存・復元テスト、Tauri event adapter契約テスト、Tauri window adapter lifecycleテスト、Config購読テスト、Overlay操作バー契約テスト、dat落ち時の実況停止テスト、`pnpm storybook:build`、`pnpm tauri dev`のwatcherとTauriプロセス起動は成功。直近のコメントOverlay・Tauri限定UI・設定テストは84件全件成功している。全体テストは658件全件成功している。
+- 自動確認：`pnpm tsc6`、`pnpm build:chrome`、`pnpm build:firefox`、`pnpm build:tauri`、`pnpm tauri build --debug --no-bundle`、`cargo check --manifest-path src-tauri/Cargo.toml --all-targets`、Overlay関連テスト、geometry保存・復元テスト、Tauri event adapter契約テスト、Tauri window adapter lifecycleテスト、Config購読テスト、Overlay操作バー契約テスト、dat落ち時の実況停止テスト、`pnpm storybook:build`、`pnpm tauri dev`のwatcherとTauriプロセス起動は成功。直近のコメントOverlay・Tauri限定UI・設定テストは85件全件成功している。全体テストは659件全件成功している。
 - 未確認：Windows実機での新着レス表示と設定反映、クリック透過、複数モニター/DPI、Overlay操作バーとリサイズ領域、長時間動作の手動確認。
 
 ## 背景と判断
@@ -390,12 +390,13 @@ Storybookでは速度、衝突、レーン、queue、長文、resizeを確認す
 
 ### Phase 6：安定化と独立アプリの整理判断
 
-> 進捗：自動テストでgeometryの保存・復元、Tauri event adapterの送受信契約、native windowの表示状態に応じたcursor pollingの停止・復帰、実行中設定更新のevent経路、レスsnapshotの上限、Overlay側の閉じる操作とMain側の表示状態同期、操作バーと8方向リサイズのplatform契約、dat落ち時の実況停止条件を固定した。残りはWindows実機でのOverlay操作、表示、負荷、DPI、sleep復帰の受け入れ確認と、独立アプリ整理のレビューである。
+> 進捗：自動テストでgeometryの保存・復元、Tauri event adapterの送受信契約、native windowの表示状態に応じたcursor pollingの停止・復帰、Main／Overlay別WebView間の表示状態broadcastと監視開始時のnative visibility再同期、実行中設定更新のevent経路、レスsnapshotの上限、Overlay側の閉じる操作とMain側の表示状態同期、操作バーと8方向リサイズのplatform契約、dat落ち時の実況停止条件を固定した。残りはWindows実機でのOverlay操作、表示、負荷、DPI、sleep復帰の受け入れ確認と、独立アプリ整理のレビューである。
 
 #### 作業
 
 - Windowsで複数モニター、DPI変更、sleep復帰、長時間動作を確認する。
 - Overlay非表示、閉じる、再表示、メイン最小化時の動作を確認する。
+- Mainからの再表示、Overlayのreload後、別WebView間の表示状態同期でも操作バーとクリック透過が復帰することを確認する。
 - ネットワーク失敗、dat落ち、スレ移動時の停止条件を確認する。
 - rootのcheck、test、Chrome／Firefox／Tauri buildを実行する。
 - Chlens Liveとの機能比較を行い、回収漏れがないか確認する。
