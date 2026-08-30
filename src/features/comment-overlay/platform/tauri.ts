@@ -118,6 +118,8 @@ export function createTauriCommentOverlayPlatform(): CommentOverlayWindowPlatfor
   let nativeCursorEventsIgnored: boolean | null = null;
   let nativeCursorMutation: Promise<void> = Promise.resolve();
   let cursorPollingStartPromise: Promise<void> | null = null;
+  // tauri.conf.jsonでOverlayは初期非表示のため、frontend初期化中のpollingを開始しない。
+  let windowVisible = false;
   const barHoverListeners = new Set<(hovered: boolean) => void>();
   let lastBarHovered: boolean | null = null;
 
@@ -184,6 +186,7 @@ export function createTauriCommentOverlayPlatform(): CommentOverlayWindowPlatfor
   };
 
   const startCursorPolling = async (overlay: Window): Promise<void> => {
+    if (!windowVisible) return;
     if (clickThroughRequested) await setNativeCursorEventsIgnored(overlay, true);
     if (cursorPollTimer) return;
 
@@ -221,17 +224,20 @@ export function createTauriCommentOverlayPlatform(): CommentOverlayWindowPlatfor
       const overlay = await getCommentOverlayWindow();
       await overlay.unminimize();
       await overlay.show();
+      windowVisible = true;
       if (clickThroughRequested || barHoverListeners.size > 0) await startCursorPolling(overlay);
     },
     async hide() {
       const overlay = await getCommentOverlayWindow();
       await stopCursorPolling(overlay, clickThroughRequested);
       await overlay.hide();
+      windowVisible = false;
     },
     async focus() {
       const overlay = await getCommentOverlayWindow();
       await overlay.unminimize();
       await overlay.show();
+      windowVisible = true;
       if (clickThroughRequested || barHoverListeners.size > 0) await startCursorPolling(overlay);
       await overlay.setFocus();
     },
@@ -242,6 +248,7 @@ export function createTauriCommentOverlayPlatform(): CommentOverlayWindowPlatfor
       const overlay = await getCommentOverlayWindow();
       await stopCursorPolling(overlay, clickThroughRequested);
       await overlay.minimize();
+      windowVisible = false;
     },
     async toggleMaximize() {
       await (await getCommentOverlayWindow()).toggleMaximize();

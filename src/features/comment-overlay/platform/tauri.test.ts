@@ -203,6 +203,10 @@ describe("TauriコメントOverlay window platform", () => {
     const platform = createTauriCommentOverlayPlatform();
 
     await platform.setClickThrough(true);
+    // Overlayは起動直後に非表示なので、表示前のcursor pollingは開始しない。
+    expect(vi.getTimerCount()).toBe(0);
+
+    await platform.show();
     expect(tauriMocks.window.setIgnoreCursorEvents).toHaveBeenNthCalledWith(1, true);
     expect(vi.getTimerCount()).toBe(1);
 
@@ -215,6 +219,7 @@ describe("TauriコメントOverlay window platform", () => {
     vi.useFakeTimers();
     const platform = createTauriCommentOverlayPlatform();
 
+    await platform.show();
     await platform.setClickThrough(true);
     await platform.hide();
     expect(vi.getTimerCount()).toBe(0);
