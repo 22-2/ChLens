@@ -160,7 +160,8 @@
 }
 
 .tab-bar__add,
-.tab-bar__refresh {
+.tab-bar__refresh,
+.tab-bar__bookmark {
   display: flex;
   flex-shrink: 0;
   align-items: center;
@@ -211,6 +212,31 @@
 
 .tab-bar__add:hover {
   background: var(--sys-color-tab-strip-hover);
+}
+
+.tab-bar__bookmark {
+  align-self: center;
+  width: 28px;
+  height: 28px;
+  margin: 0 var(--sys-space-1);
+  border-radius: var(--sys-radius-sm);
+  transition:
+    background var(--sys-duration-fast),
+    color var(--sys-duration-fast);
+}
+
+.tab-bar__bookmark:hover:not(:disabled) {
+  background: var(--sys-color-tab-strip-hover);
+  color: var(--sys-color-text);
+}
+
+.tab-bar__bookmark--active {
+  color: var(--sys-color-warning);
+}
+
+.tab-bar__bookmark:disabled {
+  color: var(--sys-color-text-disabled);
+  cursor: default;
 }
 
 .tab--pinned {

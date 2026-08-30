@@ -12,12 +12,13 @@ import { NextThreadSearchDialog } from "src/view/browser/components/NextThreadSe
 import { NgStatusItem } from "src/view/browser/components/NgStatusItem";
 import { StatusBar, StatusBarItem, StatusBarProvider } from "src/view/browser/components/StatusBar";
 import { TabBar } from "src/view/browser/components/TabBar";
+import { TitleBar } from "src/view/browser/components/TitleBar";
 import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
 import { AutoScrollStateProvider } from "src/view/browser/hooks/use-auto-scroll-state";
 import { BottomPanelProvider, useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
+import { useNextThreadSearch } from "src/view/browser/hooks/use-next-thread-search";
 import { NgStatusProvider } from "src/view/browser/hooks/use-ng-status";
 import { useNotificationListener } from "src/view/browser/hooks/use-notification-listener";
-import { useNextThreadSearch } from "src/view/browser/hooks/use-next-thread-search";
 import {
   PaneProvider,
   TabProvider,
@@ -184,6 +185,11 @@ const BrowserAppContent: React.FC = () => {
         {/* data-theme を使ってダークモード CSS 変数を切り替える */}
         <div className="browser-shell" data-theme={theme}>
           <ToastProvider topOffset={isUrlBarExpanded ? "88px" : "64px"} rightOffset="78px" />
+          {/*
+            タイトルと必須のレイアウト操作はペインの外に置く。
+            これにより2ペイン時も操作が重複せず、アクティブペインのタイトルだけを表示できる。
+          */}
+          <TitleBar />
           <PaneRow />
           <BookmarkRootSelectorDialog />
         </div>

@@ -16,6 +16,7 @@
 @import "./layout/ContentArea.css";
 @import "./components/StatusBar.css";
 @import "./components/TabBar.css";
+@import "./components/TitleBar.css";
 @import "./components/ContextMenu.css";
 @import "./components/CommandPalette.css";
 @import "./components/NextThreadSearchDialog.css";
