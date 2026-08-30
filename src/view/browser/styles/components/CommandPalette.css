@@ -1,4 +1,4 @@
-/* Command palette density and keyboard-selection styling. */
+/* Shared styling for the integrated command input and its response-number dialog. */
 .command-palette__content {
   width: min(800px, calc(100vw - 32px));
   max-width: calc(100vw - 32px);

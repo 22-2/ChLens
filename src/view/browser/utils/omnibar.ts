@@ -17,11 +17,14 @@ export interface OmnibarHistorySource {
   viewedDate?: number;
 }
 
+export type OmnibarSource = "bookmark" | "history" | "board" | "direct";
+
 export interface OmnibarMergedEntry {
   url: string;
   title: string;
   boardTitle: string;
   isBookmark: boolean;
+  sources: OmnibarSource[];
   historyRank: number | null;
   viewedDate: number;
 }
@@ -32,6 +35,8 @@ export interface OmnibarSuggestion {
   boardTitle: string;
   score: number;
   isBookmark: boolean;
+  sources: OmnibarSource[];
+  actionLabel?: string;
 }
 
 const MAX_HISTORY_RECENCY_BOOST = 120;
@@ -114,6 +119,12 @@ function calcRecencyBoost(historyRank: number | null): number {
   return Math.max(0, MAX_HISTORY_RECENCY_BOOST - historyRank * HISTORY_RECENCY_STEP);
 }
 
+function addSource(entry: OmnibarMergedEntry, source: OmnibarSource): void {
+  if (!entry.sources.includes(source)) {
+    entry.sources.push(source);
+  }
+}
+
 export function mergeOmnibarSources(
   bookmarks: readonly OmnibarBookmarkSource[],
   historyEntries: readonly OmnibarHistorySource[],
@@ -138,11 +149,14 @@ export function mergeOmnibarSources(
         title,
         boardTitle,
         isBookmark: false,
+        sources: ["history"],
         historyRank: index,
         viewedDate,
       });
       continue;
     }
+
+    addSource(existing, "history");
 
     if (existing.historyRank === null || index < existing.historyRank) {
       existing.historyRank = index;
@@ -177,6 +191,7 @@ export function mergeOmnibarSources(
         title,
         boardTitle,
         isBookmark: true,
+        sources: ["bookmark"],
         historyRank: null,
         viewedDate: 0,
       });
@@ -184,6 +199,7 @@ export function mergeOmnibarSources(
     }
 
     existing.isBookmark = true;
+    addSource(existing, "bookmark");
 
     // 変更理由: お気に入りは利用者が明示的に残した意図が強いため、
     // 履歴由来タイトルよりブックマーク名を優先して候補ラベルを安定させる。
@@ -199,14 +215,27 @@ export function mergeOmnibarSources(
   // bbsmenuの板をエントリに追加（履歴・ブックマークに同URLがある場合は上書きしない）
   for (const board of boardSources) {
     const url = normalizeString(board.url);
-    if (!url || byUrl.has(url)) {
+    if (!url) {
       continue;
     }
+
+    const existing = byUrl.get(url);
+    if (existing) {
+      // 変更理由: 同じURLが複数ソースに現れても候補は1件にまとめ、
+      // 由来だけを複数アイコンで示して重複表示と情報欠落を同時に防ぐ。
+      addSource(existing, "board");
+      if (!existing.boardTitle && board.boardTitle) {
+        existing.boardTitle = normalizeString(board.boardTitle);
+      }
+      continue;
+    }
+
     byUrl.set(url, {
       url,
       title: normalizeString(board.name, url),
       boardTitle: normalizeString(board.boardTitle),
       isBookmark: false,
+      sources: ["board"],
       historyRank: null,
       viewedDate: 0,
     });
@@ -239,6 +268,7 @@ export function buildOmnibarSuggestions(
         title: entry.title,
         boardTitle: entry.boardTitle,
         isBookmark: entry.isBookmark,
+        sources: entry.sources,
         score: textScore + bookmarkBoost + recencyBoost,
         matchLength,
         viewedDate: entry.viewedDate,

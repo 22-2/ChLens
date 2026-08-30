@@ -4,7 +4,6 @@ import { container } from "src/service-container/index";
 import { AutoRefreshStatusItem } from "src/view/browser/components/AutoRefreshStatusItem";
 import { BookmarkRootSelectorDialog } from "src/view/browser/components/BookmarkRootSelectorDialog";
 import { BottomPanel } from "src/view/browser/components/BottomPanel";
-import { CommandPalette } from "src/view/browser/components/CommandPalette";
 import { CommentOverlayStatusItem } from "src/view/browser/components/CommentOverlayStatusItem";
 import { ContentArea } from "src/view/browser/components/ContentArea";
 import { IkioiStatusItem } from "src/view/browser/components/IkioiStatusItem";
@@ -114,15 +113,14 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
             <AutoScrollStateProvider>
               <div className="pane-column__chrome">
                 <TabBar />
-                <NavigationBar />
+                <NavigationBar openNextThreadSearchDialog={searchNextThread} />
               </div>
               <ContentArea />
               <BottomPanel />
-              {/* コマンドは操作元のペイン状態を使うためペイン内に置き、
-                  パレット本体は重複しないようアクティブペインだけでマウントする。 */}
+              {/* コマンドとナビゲーションを同じオムニバーへ集約し、
+                  操作元のペイン状態を使うためアクティブペインだけが起動を担当する。 */}
               {isActive ? (
                 <>
-                  <CommandPalette openNextThreadSearchDialog={searchNextThread} />
                   <NextThreadSearchDialog
                     state={nextThreadSearchState}
                     onClose={closeNextThreadSearch}

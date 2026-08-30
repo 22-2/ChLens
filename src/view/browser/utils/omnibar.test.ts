@@ -27,7 +27,34 @@ describe("omnibar utils", () => {
       isBookmark: true,
       historyRank: 0,
       viewedDate: 1000000001000,
+      sources: ["history", "bookmark"],
     });
+  });
+
+  it("履歴・お気に入り・板が同じURLでも出典を保持して1件にまとめる", () => {
+    const merged = mergeOmnibarSources(
+      [
+        {
+          url: "https://egg.5ch.io/software/",
+          title: "お気に入りの板",
+        },
+      ],
+      [
+        {
+          url: "https://egg.5ch.io/software/",
+          title: "履歴の板",
+        },
+      ],
+      [
+        {
+          url: "https://egg.5ch.io/software/",
+          name: "bbsmenuの板",
+        },
+      ],
+    );
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.sources).toEqual(["history", "bookmark", "board"]);
   });
 
   it("同一クエリならブックマークを履歴より上位に出す", () => {

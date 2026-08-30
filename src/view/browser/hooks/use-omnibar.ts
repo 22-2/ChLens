@@ -8,11 +8,15 @@ import {
   type KeyboardEvent,
   type SetStateAction,
 } from "react";
+import type { ResolvedBrowserCommand } from "src/view/browser/commands/browser-commands";
+import { filterAndSortBrowserCommands } from "src/view/browser/commands/command-search";
 import {
   buildOmnibarSuggestions,
   type OmnibarMergedEntry,
   type OmnibarSuggestion,
 } from "src/view/browser/utils/omnibar";
+
+export type OmnibarInputMode = "navigation" | "command";
 
 interface UseOmnibarOptions {
   displayUrl: string;
@@ -20,16 +24,23 @@ interface UseOmnibarOptions {
   loadEntries: () => Promise<OmnibarMergedEntry[]>;
   onSelectSuggestion: (suggestion: OmnibarSuggestion) => void;
   onSubmitInput: (inputValue: string) => void;
+  commands?: readonly ResolvedBrowserCommand[];
+  recentCommandIds?: readonly string[];
+  onSelectCommand?: (command: ResolvedBrowserCommand) => void;
+  getDirectInputSuggestion?: (inputValue: string, displayUrl: string) => OmnibarSuggestion | null;
 }
 
 interface UseOmnibarResult {
   inputValue: string;
+  mode: OmnibarInputMode;
   isOpen: boolean;
   isLoading: boolean;
   suggestions: OmnibarSuggestion[];
+  commandSuggestions: ResolvedBrowserCommand[];
   shouldShowNoMatch: boolean;
   activeSuggestionIndex: number;
   setActiveSuggestionIndex: Dispatch<SetStateAction<number>>;
+  activate: (mode: OmnibarInputMode) => void;
   handleInputChange: (value: string) => void;
   handleKeyDown: (e: KeyboardEvent<HTMLInputElement>) => void;
   handleFocus: (e: FocusEvent<HTMLInputElement>) => void;
@@ -43,6 +54,10 @@ export function useOmnibar({
   loadEntries,
   onSelectSuggestion,
   onSubmitInput,
+  commands = [],
+  recentCommandIds = [],
+  onSelectCommand = () => undefined,
+  getDirectInputSuggestion,
 }: UseOmnibarOptions): UseOmnibarResult {
   const [inputValue, setInputValue] = useState(displayUrl);
   const [isFocused, setIsFocused] = useState(false);
@@ -50,6 +65,7 @@ export function useOmnibar({
   const [isOmnibarLoaded, setIsOmnibarLoaded] = useState(false);
   const [isOmnibarLoading, setIsOmnibarLoading] = useState(false);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
+  const mode: OmnibarInputMode = inputValue.startsWith(">") ? "command" : "navigation";
 
   useEffect(() => {
     if (!isFocused) {
@@ -58,9 +74,9 @@ export function useOmnibar({
   }, [displayUrl, isFocused]);
 
   useEffect(() => {
-    // 変更理由: ロード状態を依存配列に入れると state 変更だけで effect が再走し、
-    // 進行中ロードをキャンセルするループを作るため、フォーカスとロード完了のみで制御する。
-    if (!isFocused || isOmnibarLoaded) {
+    // 変更理由: コマンドモードでは履歴ソースを待たずに候補を表示し、
+    // 「>」入力直後の操作感を保つ。ナビゲーションへ戻った時だけ遅延ロードする。
+    if (!isFocused || mode === "command" || isOmnibarLoaded) {
       return;
     }
 
@@ -75,10 +91,13 @@ export function useOmnibar({
         setOmnibarEntries(entries);
         setIsOmnibarLoaded(true);
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (cancelled) {
           return;
         }
+        // 変更理由: 候補取得に失敗してもURLの直接入力は継続できるようにしつつ、
+        // 履歴・お気に入りが消えた原因はログから追跡できるようにする。
+        console.error("Failed to load omnibar entries", { error });
         setOmnibarEntries([]);
         setIsOmnibarLoaded(true);
       })
@@ -91,24 +110,73 @@ export function useOmnibar({
     return () => {
       cancelled = true;
     };
-  }, [isFocused, isOmnibarLoaded, loadEntries]);
+  }, [isFocused, isOmnibarLoaded, loadEntries, mode]);
 
-  const suggestions = useMemo(
+  useEffect(() => {
+    if (mode === "command" && isOmnibarLoading) {
+      // 変更理由: 履歴取得中に「>」へ切り替えても、古いナビゲーション用spinnerで
+      // コマンド候補を隠さず、入力モードの切り替えを即時に反映する。
+      setIsOmnibarLoading(false);
+    }
+  }, [isOmnibarLoading, mode]);
+
+  const navigationSuggestions = useMemo(
     () => buildOmnibarSuggestions(omnibarEntries, inputValue, maxSuggestions),
     [inputValue, maxSuggestions, omnibarEntries],
   );
 
+  const directInputSuggestion = useMemo(
+    () =>
+      mode === "navigation" ? (getDirectInputSuggestion?.(inputValue, displayUrl) ?? null) : null,
+    [displayUrl, getDirectInputSuggestion, inputValue, mode],
+  );
+
+  const suggestions = useMemo(() => {
+    if (!directInputSuggestion) {
+      return navigationSuggestions;
+    }
+
+    if (
+      navigationSuggestions.some(
+        (suggestion) => suggestion.url.trim() === directInputSuggestion.url.trim(),
+      )
+    ) {
+      return navigationSuggestions;
+    }
+
+    // URLとして認識できた入力は、履歴候補と同じリスト内に「URLを開く」操作として置く。
+    return [directInputSuggestion, ...navigationSuggestions].slice(0, maxSuggestions);
+  }, [directInputSuggestion, maxSuggestions, navigationSuggestions]);
+
+  const commandSuggestions = useMemo(
+    () =>
+      mode === "command"
+        ? filterAndSortBrowserCommands(commands, inputValue.slice(1), recentCommandIds)
+        : [],
+    [commands, inputValue, mode, recentCommandIds],
+  );
+
+  const activeSuggestionCount = mode === "command" ? commandSuggestions.length : suggestions.length;
+
   useEffect(() => {
-    if (activeSuggestionIndex < suggestions.length) {
+    if (activeSuggestionIndex >= activeSuggestionCount) {
+      setActiveSuggestionIndex(0);
       return;
     }
-    setActiveSuggestionIndex(0);
-  }, [activeSuggestionIndex, suggestions.length]);
+
+    if (mode === "command" && !commandSuggestions[activeSuggestionIndex]?.enabled) {
+      const firstEnabled = commandSuggestions.findIndex((command) => command.enabled);
+      setActiveSuggestionIndex(firstEnabled >= 0 ? firstEnabled : 0);
+    }
+  }, [activeSuggestionCount, activeSuggestionIndex, commandSuggestions, mode]);
 
   const shouldShowNoMatch =
-    isFocused && !isOmnibarLoading && inputValue.trim().length > 0 && suggestions.length === 0;
+    isFocused &&
+    !isOmnibarLoading &&
+    (mode === "command" ? inputValue.slice(1).trim().length > 0 : inputValue.trim().length > 0) &&
+    activeSuggestionCount === 0;
 
-  const isOpen = isFocused && (isOmnibarLoading || suggestions.length > 0 || shouldShowNoMatch);
+  const isOpen = isFocused && (isOmnibarLoading || activeSuggestionCount > 0 || shouldShowNoMatch);
 
   const handleSelectSuggestion = useCallback(
     (suggestion: OmnibarSuggestion) => {
@@ -120,25 +188,64 @@ export function useOmnibar({
     [onSelectSuggestion],
   );
 
+  const handleSelectCommand = useCallback(
+    (command: ResolvedBrowserCommand) => {
+      if (!command.enabled) {
+        return;
+      }
+      onSelectCommand(command);
+      setInputValue(displayUrl);
+      setIsFocused(false);
+      setActiveSuggestionIndex(0);
+    },
+    [displayUrl, onSelectCommand],
+  );
+
+  const moveSelection = useCallback(
+    (direction: 1 | -1) => {
+      if (activeSuggestionCount === 0) {
+        return;
+      }
+
+      const isSelectable = (index: number) =>
+        mode !== "command" || commandSuggestions[index]?.enabled === true;
+      let nextIndex = activeSuggestionIndex;
+
+      for (let step = 0; step < activeSuggestionCount; step += 1) {
+        nextIndex = (nextIndex + direction + activeSuggestionCount) % activeSuggestionCount;
+        if (isSelectable(nextIndex)) {
+          setActiveSuggestionIndex(nextIndex);
+          return;
+        }
+      }
+    },
+    [activeSuggestionCount, activeSuggestionIndex, commandSuggestions, mode],
+  );
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLInputElement>) => {
       if (e.key === "ArrowDown") {
-        if (suggestions.length > 0) {
-          e.preventDefault();
-          setActiveSuggestionIndex((prev) => (prev + 1 >= suggestions.length ? 0 : prev + 1));
-        }
+        e.preventDefault();
+        moveSelection(1);
         return;
       }
 
       if (e.key === "ArrowUp") {
-        if (suggestions.length > 0) {
-          e.preventDefault();
-          setActiveSuggestionIndex((prev) => (prev - 1 < 0 ? suggestions.length - 1 : prev - 1));
-        }
+        e.preventDefault();
+        moveSelection(-1);
         return;
       }
 
       if (e.key === "Enter") {
+        if (mode === "command") {
+          const selected = commandSuggestions[activeSuggestionIndex] ?? commandSuggestions[0];
+          if (selected?.enabled) {
+            e.preventDefault();
+            handleSelectCommand(selected);
+          }
+          return;
+        }
+
         const selected = suggestions[activeSuggestionIndex] ?? suggestions[0];
         if (selected) {
           e.preventDefault();
@@ -160,19 +267,37 @@ export function useOmnibar({
     },
     [
       activeSuggestionIndex,
+      commandSuggestions,
       displayUrl,
+      handleSelectCommand,
       handleSelectSuggestion,
       inputValue,
+      mode,
+      moveSelection,
       onSubmitInput,
       suggestions,
     ],
   );
 
+  const activate = useCallback(
+    (nextMode: OmnibarInputMode) => {
+      setInputValue(nextMode === "command" ? ">" : displayUrl);
+      setIsFocused(true);
+      setActiveSuggestionIndex(0);
+    },
+    [displayUrl],
+  );
+
   const handleFocus = useCallback((e: FocusEvent<HTMLInputElement>) => {
     setIsFocused(true);
     setActiveSuggestionIndex(0);
-    // Chrome風: フォーカス時に全選択
-    e.target.select();
+    if (e.target.value.startsWith(">")) {
+      // コマンドprefixを選択範囲に含めると、入力開始時にprefixまで消えるため末尾へ置く。
+      e.target.setSelectionRange(e.target.value.length, e.target.value.length);
+    } else {
+      // Chrome風: フォーカス時に全選択
+      e.target.select();
+    }
   }, []);
 
   const handleBlur = useCallback(() => {
@@ -188,12 +313,15 @@ export function useOmnibar({
 
   return {
     inputValue,
+    mode,
     isOpen,
     isLoading: isOmnibarLoading,
     suggestions,
+    commandSuggestions,
     shouldShowNoMatch,
     activeSuggestionIndex,
     setActiveSuggestionIndex,
+    activate,
     handleInputChange,
     handleKeyDown,
     handleFocus,

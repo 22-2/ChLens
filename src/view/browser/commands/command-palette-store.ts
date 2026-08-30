@@ -1,5 +1,6 @@
 export interface CommandPaletteState {
   opened: boolean;
+  mode: "navigation" | "command";
   selected: number;
 }
 
@@ -7,6 +8,7 @@ type StateListener = () => void;
 
 let state: CommandPaletteState = {
   opened: false,
+  mode: "command",
   selected: -1,
 };
 const listeners = new Set<StateListener>();
@@ -31,8 +33,13 @@ export const commandPaletteStore = {
 
 // メニュー・ショートカット・コンポーネント内の閉じる処理で同一の状態を共有する。
 export const commandPalette = {
-  open: () => {
-    commandPaletteStore.updateState((current) => ({ ...current, opened: true }));
+  open: (mode: CommandPaletteState["mode"] = "command") => {
+    commandPaletteStore.updateState((current) => ({
+      ...current,
+      opened: true,
+      mode,
+      selected: -1,
+    }));
   },
   close: () => {
     commandPaletteStore.updateState((current) => ({ ...current, opened: false }));
