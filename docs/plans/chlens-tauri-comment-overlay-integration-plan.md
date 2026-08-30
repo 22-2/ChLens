@@ -20,8 +20,8 @@
 - Phase 4：実装済み。動的lane、adaptive/dropを既定とする新着優先queue、CSS animation、hover情報、固定レス・過去ログ・現行スレ・StressのStoryを実装した。
 - Phase 5：実装済み。Tauri限定の開始・停止・表示切り替えUI、表示中スレッドを離れた際の停止、速度・文字サイズ・透明度・最大queue数の設定保存と実況開始時の反映、開始失敗時の非表示ロールバックとエラー表示、実行中Overlayへの設定変更即時反映まで追加した。
 - 自動確認：`pnpm tsc6`、`pnpm build:chrome`、`pnpm build:firefox`、`pnpm build:tauri`、`pnpm tauri build --debug --no-bundle`、`cargo check --manifest-path src-tauri/Cargo.toml --all-targets`、Overlay関連テスト、geometry保存・復元テスト、Tauri event adapter契約テスト、Tauri window adapter lifecycleテスト、Config購読テスト、Overlay操作バー契約テスト、dat落ち時の実況停止テスト、`pnpm storybook:build`、`pnpm tauri dev`のwatcherとTauriプロセス起動は成功。直近のコメントOverlay・Tauri限定UI・設定テストは85件全件成功している。全体テストは659件全件成功している。
-- Windows実機で部分確認済み：実況開始によるOverlay表示、操作バーのhover、操作バーの物理クリックによる閉じる、Mainからの再表示、最小化からの再表示を確認した。
-- 未確認：Windows実機での新着レス表示と設定反映、Overlay外側のクリック透過、リサイズ領域、複数モニター/DPI、sleep復帰、長時間動作の手動確認。
+- Windows実機で部分確認済み：実況開始によるOverlay表示、合成eventによるコメント表示・設定反映・移動、操作バーのhover、操作バーの物理クリックによる閉じる、Mainからの再表示、最小化からの再表示を確認した。
+- 未確認：実際のThreadPage新着レスからの表示、Overlay外側のクリック透過、リサイズ領域、複数モニター/DPI、sleep復帰、長時間動作の手動確認。
 
 ## 背景と判断
 
@@ -410,8 +410,10 @@ Storybookでは速度、衝突、レーン、queue、長文、resizeを確認す
 操作バーの閉じるボタンを物理クリックするとOverlayが非表示になり、Main側の操作が表示へ戻った。
 その後Mainから再表示し、操作バーの最小化、Mainからの再表示まで確認した。
 
-新着レスが発生していないスレッドで確認したためコメント流しそのもの、設定変更、Overlay外側の
-クリック透過、リサイズ、複数モニター/DPI、sleep復帰、長時間動作は未確認として残す。
+新着レスが発生していないスレッドだったため、Tauriの合成eventでコメントを投入した。実機Overlayへ
+コメントが表示され、文字サイズ・不透明度の設定が反映され、時間経過でtransformが変化することを確認した。
+実際のThreadPage新着レスからの表示、Overlay外側のクリック透過、リサイズ、複数モニター/DPI、
+sleep復帰、長時間動作は未確認として残す。
 
 #### 完了条件
 
