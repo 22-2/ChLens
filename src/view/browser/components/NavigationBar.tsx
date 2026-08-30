@@ -5,7 +5,6 @@ import {
   Bookmark,
   ChevronDown,
   ChevronUp,
-  Columns2,
   Command,
   Filter,
   History,
@@ -22,15 +21,10 @@ import { commandPalette } from "src/view/browser/commands/command-palette-store"
 import { Omnibar } from "src/view/browser/components/Omnibar";
 import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useOmnibar } from "src/view/browser/hooks/use-omnibar";
-import { useTabPanes, useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { usePageBookmark } from "src/view/browser/hooks/use-page-bookmark";
+import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useUrlBarVisibility } from "src/view/browser/hooks/use-url-bar-visibility";
-import {
-  canGoBack,
-  canGoForward,
-  getCurrentPage,
-  getDisplayUrl,
-  type Page,
-} from "src/view/browser/types";
+import { canGoBack, canGoForward, getCurrentPage, getDisplayUrl } from "src/view/browser/types";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import {
   getAutoRefreshPageKey,
@@ -81,18 +75,6 @@ interface LegacyHistoryLike {
   date?: unknown;
 }
 
-interface BookmarkTarget {
-  url: string;
-  title: string;
-  type: "thread" | "board";
-}
-
-interface BookmarkUpdatePayload {
-  bookmark?: {
-    url?: unknown;
-  };
-}
-
 const OMNIBAR_HISTORY_FETCH_COUNT = 300;
 const OMNIBAR_MAX_SUGGESTIONS = 8;
 
@@ -114,58 +96,6 @@ function toFiniteNumber(value: unknown): number {
 function normalizeLegacyTimestamp(value: unknown): number {
   const normalized = Math.trunc(toFiniteNumber(value));
   return normalized > 0 ? normalized : 0;
-}
-
-function normalizeBookmarkTitle(value: string, fallback: string): string {
-  const trimmed = value.trim();
-  return trimmed || fallback;
-}
-
-function deriveBookmarkTarget(page: Page): BookmarkTarget | null {
-  switch (page.type) {
-    case "thread":
-      return {
-        url: page.threadUrl,
-        title: normalizeBookmarkTitle(page.title, page.threadUrl),
-        type: "thread",
-      };
-
-    case "threadList": {
-      const title = normalizeBookmarkTitle(
-        normalizeString(page.boardTitle, page.title),
-        page.boardUrl,
-      );
-      return {
-        url: page.boardUrl,
-        title,
-        type: "board",
-      };
-    }
-
-    default:
-      return null;
-  }
-}
-
-function normalizeBookmarkComparableUrl(url: string): string {
-  const parsed = parseInternalBrowserPage(url);
-  if (parsed) {
-    return parsed.type === "thread" ? parsed.threadUrl : parsed.boardUrl;
-  }
-
-  try {
-    return new window.URL(url).href;
-  } catch {
-    return url.trim();
-  }
-}
-
-function readBookmarkStatus(url: string): boolean {
-  try {
-    return Boolean(container.bookmark.get(url));
-  } catch {
-    return false;
-  }
 }
 
 function deriveBoardTitle(threadUrl: string): string {
@@ -318,20 +248,18 @@ function navigateByUrl(url: string, dispatch: ReturnType<typeof useTabStore>["di
 
 export const NavigationBar: React.FC = () => {
   const { state, activeTab, currentPage, dispatch, paneId } = useTabStore();
-  // 2ペイン表示中かどうか（トグルボタンの状態に使う）。
-  const { panes } = useTabPanes();
-  const isTwoPane = panes.length >= 2;
   const { isOpen: isPanelOpen, togglePanel } = useBottomPanel();
   const { setExpanded: setUrlBarExpanded } = useUrlBarVisibility(paneId);
 
   const back = canGoBack(activeTab);
   const forward = canGoForward(activeTab);
   const displayUrl = getDisplayUrl(currentPage);
-  const bookmarkTarget = useMemo(() => deriveBookmarkTarget(currentPage), [currentPage]);
-  const normalizedBookmarkTargetUrl = useMemo(
-    () => (bookmarkTarget ? normalizeBookmarkComparableUrl(bookmarkTarget.url) : null),
-    [bookmarkTarget],
-  );
+  const {
+    bookmarkTarget,
+    isBookmarked,
+    isBookmarkPending,
+    toggleBookmark: handleToggleBookmark,
+  } = usePageBookmark(currentPage);
 
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
   const [backMenuPosition, setBackMenuPosition] = useState<MenuPosition | null>(null);
@@ -344,10 +272,6 @@ export const NavigationBar: React.FC = () => {
   const refreshButtonRef = useRef<HTMLButtonElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const urlInputRef = useRef<HTMLInputElement>(null);
-  const [isBookmarked, setIsBookmarked] = useState<boolean>(() =>
-    bookmarkTarget ? readBookmarkStatus(bookmarkTarget.url) : false,
-  );
-  const [isBookmarkPending, setIsBookmarkPending] = useState(false);
 
   useEffect(() => {
     // 変更理由: グローバルなトーストはペイン内のURLバーと別階層にあるため、
@@ -360,60 +284,6 @@ export const NavigationBar: React.FC = () => {
 
   const currentAutoRefreshPageKey = getAutoRefreshPageKey(currentPage);
   const isCurrentPageAutoRefreshEnabled = isAutoRefreshEnabledForPage(activeTab, currentPage);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    setIsBookmarkPending(false);
-    setIsBookmarked(bookmarkTarget ? readBookmarkStatus(bookmarkTarget.url) : false);
-
-    if (!bookmarkTarget) {
-      return;
-    }
-
-    void waitForLegacyBookmarkReady().then(() => {
-      if (cancelled) {
-        return;
-      }
-
-      // 変更理由: 既存ブックマークの初回 scan より先に描画されると星が未登録のまま固まるため、
-      // ready 後に source of truth を再読込して見た目を揃える。
-      setIsBookmarked(readBookmarkStatus(bookmarkTarget.url));
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [bookmarkTarget]);
-
-  useEffect(() => {
-    if (!bookmarkTarget) {
-      return;
-    }
-
-    const handleBookmarkUpdated = ({ bookmark }: BookmarkUpdatePayload = {}) => {
-      if (
-        typeof bookmark?.url === "string" &&
-        normalizeBookmarkComparableUrl(bookmark.url) !== normalizedBookmarkTargetUrl
-      ) {
-        return;
-      }
-
-      // 変更理由: 現在ページの星は他UIからの追加・削除にも追従しないと、
-      // オムニバー上だけ古い状態に見えて Chrome 風の一貫性が崩れる。
-      setIsBookmarked(readBookmarkStatus(bookmarkTarget.url));
-      setIsBookmarkPending(false);
-    };
-
-    try {
-      container.message.on("bookmark_updated", handleBookmarkUpdated);
-      return () => {
-        container.message.off("bookmark_updated", handleBookmarkUpdated);
-      };
-    } catch {
-      return;
-    }
-  }, [bookmarkTarget, normalizedBookmarkTargetUrl]);
 
   const loadOmnibarEntries = useCallback(async () => {
     const [historyItems, bookmarkItems, boardItems] = await Promise.all([
@@ -477,60 +347,6 @@ export const NavigationBar: React.FC = () => {
     setRefreshMenuPosition(null);
     dispatch({ type: "RELOAD" });
   }, [dispatch]);
-
-  const handleToggleBookmark = useCallback(() => {
-    if (!bookmarkTarget || isBookmarkPending) {
-      return;
-    }
-
-    const currentBookmarkedState = readBookmarkStatus(bookmarkTarget.url);
-    const nextBookmarkedState = !currentBookmarkedState;
-
-    // 変更理由: 永続化イベントを待つだけだとクリック直後に無反応に見えるため、
-    // source of truth から次状態を決めておくことで、見た目が stale な瞬間に再クリックしても
-    // add/remove を取り違えず、常に実ストア基準で反転できるようにする。
-    setIsBookmarkPending(true);
-    setIsBookmarked(nextBookmarkedState);
-
-    void Promise.resolve()
-      .then(() => {
-        if (currentBookmarkedState) {
-          return container.bookmark.remove(bookmarkTarget.url);
-        }
-
-        return container.bookmark.add({
-          url: bookmarkTarget.url,
-          title: bookmarkTarget.title,
-          type: bookmarkTarget.type,
-        });
-      })
-      .then(() => {
-        const actualBookmarkedState = readBookmarkStatus(bookmarkTarget.url);
-
-        // 変更理由: 実環境では add/remove 完了と get()/message 反映が非同期に前後しうるため、
-        // この時点で未反映でも失敗扱いにせず optimistic state を維持し、後続の bookmark_updated で揃える。
-        if (actualBookmarkedState === nextBookmarkedState) {
-          setIsBookmarked(actualBookmarkedState);
-        }
-
-        container.toast.info(
-          nextBookmarkedState ? "ブックマークに追加しました" : "ブックマークを削除しました",
-        );
-      })
-      .catch((error: unknown) => {
-        setIsBookmarked(readBookmarkStatus(bookmarkTarget.url));
-        setIsBookmarkPending(false);
-        container.toast.error(
-          nextBookmarkedState
-            ? "ブックマークの追加に失敗しました"
-            : "ブックマークの削除に失敗しました",
-        );
-        console.error("Bookmark operation failed", error);
-      })
-      .finally(() => {
-        setIsBookmarkPending(false);
-      });
-  }, [bookmarkTarget, isBookmarkPending]);
 
   const openQuickAccessPage = useCallback(
     (page: {
@@ -624,10 +440,6 @@ export const NavigationBar: React.FC = () => {
     handleToggleBookmark();
     closeMenu();
   }, [closeMenu, handleToggleBookmark]);
-
-  const handleTogglePane = useCallback(() => {
-    dispatch({ type: isTwoPane ? "CLOSE_PANE" : "SPLIT_PANE" });
-  }, [dispatch, isTwoPane]);
 
   const handleBackContextMenu = useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -1006,17 +818,6 @@ export const NavigationBar: React.FC = () => {
           />
         </div>
       )}
-
-      <button
-        type="button"
-        className={`nav-bar__btn${isTwoPane ? " nav-bar__btn--active" : ""}`}
-        title={isTwoPane ? "2ペイン表示を解除" : "2ペインで表示"}
-        aria-label={isTwoPane ? "2ペイン表示を解除" : "2ペインで表示"}
-        aria-pressed={isTwoPane}
-        onClick={handleTogglePane}
-      >
-        <Columns2 size={18} />
-      </button>
 
       <button
         ref={menuButtonRef}

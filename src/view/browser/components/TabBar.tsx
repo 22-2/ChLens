@@ -4,6 +4,7 @@ import { Pin, Plus, RotateCcw, RotateCw, X } from "lucide-react";
 import normalizeWheel from "normalize-wheel";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCursorTooltip } from "src/view/browser/components/CursorTooltip";
+import { PageBookmarkButton } from "src/view/browser/components/PageBookmarkButton";
 import { TabContextMenu } from "src/view/browser/components/TabContextMenu";
 import { useAutoScrollState } from "src/view/browser/hooks/use-auto-scroll-state";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
@@ -355,7 +356,7 @@ export const TabBar: React.FC = () => {
     if (
       target instanceof Element &&
       target.closest(
-        ".tab, .tab-bar__add, .tab-bar__refresh, [data-context-menu-trigger], [data-popup='true']",
+        ".tab, .tab-bar__add, .tab-bar__refresh, .tab-bar__bookmark, [data-context-menu-trigger], [data-popup='true']",
       )
     ) {
       return;
@@ -502,6 +503,12 @@ export const TabBar: React.FC = () => {
       </DragDropProvider>
       {/* タブが横幅を超えるときだけ、追加ボタンをスクロール領域の外へ固定する。 */}
       {isTabListScrollable ? addTabButton : null}
+
+      {/*
+        お気に入り操作はタブ列の右側へ固定する。
+        タブを増減・横スクロールしても現在ページの操作位置が変わらないようにするため。
+      */}
+      {currentPage ? <PageBookmarkButton page={currentPage} /> : null}
 
       {contextMenu && (
         <TabContextMenu
