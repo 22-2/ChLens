@@ -46,6 +46,7 @@ function OverlayAppPreview() {
   const eventBus = useMemo(() => new MemoryCommentOverlayEventBus(), []);
   const platform = useMemo(() => createBrowserCommentOverlayPlatform(), []);
   const nextResponseNumberRef = useRef(3);
+  const compactSettingsRef = useRef(false);
 
   useEffect(() => {
     // 変更理由: 初回eventを空batchにして、実際の開始時と同じく既存レスを流さない境界を再現する。
@@ -68,6 +69,21 @@ function OverlayAppPreview() {
     [eventBus],
   );
 
+  const updateSettings = useCallback(() => {
+    compactSettingsRef.current = !compactSettingsRef.current;
+    const compact = compactSettingsRef.current;
+    void eventBus.publish({
+      version: 1,
+      type: "settings",
+      settings: {
+        baseSpeedPxPerSecond: compact ? 180 : 90,
+        fontSize: compact ? 24 : 18,
+        opacity: compact ? 0.65 : 0.95,
+        maxQueueSize: compact ? 16 : 64,
+      },
+    });
+  }, [eventBus]);
+
   return (
     <div style={{ minHeight: "100vh", background: "#0d1524" }}>
       <div
@@ -86,6 +102,9 @@ function OverlayAppPreview() {
         </button>
         <button type="button" onClick={() => addComments(20)}>
           20レス追加
+        </button>
+        <button type="button" onClick={updateSettings}>
+          表示設定を更新
         </button>
         <span>Memory event bus / Browser platform</span>
       </div>
