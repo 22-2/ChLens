@@ -267,8 +267,10 @@ describe("ResItem", () => {
       />,
     );
 
-    expect(article).toHaveClass("res--state-ng");
-    fireEvent.click(article!);
+    // NG化では通常レスがplaceholderへ置き換わるため、rerender後のDOMを再取得して検証する。
+    const ngArticle = container.querySelector("[data-res-num='1']");
+    expect(ngArticle).toHaveClass("res--state-ng");
+    fireEvent.click(ngArticle!);
     expect(container.querySelector(".res__name")).toHaveClass("res__name--state-ng");
     expect(container.querySelector(".res__badge--ng")).toHaveTextContent("NG");
   });
