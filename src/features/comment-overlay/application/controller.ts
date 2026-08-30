@@ -15,6 +15,8 @@ import type { CommentOverlaySettings } from "../domain";
 import type { CommentOverlayEventBus } from "../domain/events";
 import type { CommentOverlayWindowPlatform } from "../platform/types";
 
+const MAX_RESPONSE_SNAPSHOT_COUNT = 8;
+
 export interface CommentOverlayControllerSnapshot {
   state: CommentOverlayState;
   visible: boolean;
@@ -116,9 +118,22 @@ export class CommentOverlayController {
     return this.responseSnapshots.get(threadUrl) ?? null;
   }
 
+  private rememberThreadResponses(threadUrl: string, responses: readonly IRes[]): void {
+    this.responseSnapshots.delete(threadUrl);
+    this.responseSnapshots.set(threadUrl, responses);
+
+    // 変更理由: スレッドを移動するたびに全レス配列をMapへ残すと、長時間利用で
+    // Overlayを表示していなくてもcontroller側のsnapshotが増え続けるため、直近だけ保持する。
+    while (this.responseSnapshots.size > MAX_RESPONSE_SNAPSHOT_COUNT) {
+      const oldestThreadUrl = this.responseSnapshots.keys().next().value;
+      if (oldestThreadUrl === undefined) break;
+      this.responseSnapshots.delete(oldestThreadUrl);
+    }
+  }
+
   /** ThreadPageの確定済みsnapshotを受け取り、実況中だけ新着差分を送信する。 */
   syncThread(threadUrl: string, responses: readonly IRes[]): void {
-    this.responseSnapshots.set(threadUrl, responses);
+    this.rememberThreadResponses(threadUrl, responses);
     if (this.state.status !== "running" || this.state.targetThreadUrl !== threadUrl) return;
 
     const result = collectNewCommentBatch(this.state, threadUrl, responses.map(toCommentResponse));
@@ -139,7 +154,7 @@ export class CommentOverlayController {
     const snapshot = responses ?? this.getThreadResponses(threadUrl) ?? [];
     // 変更理由: 前回の一時的な送信失敗を、再試行できた開始状態へ持ち越さない。
     this.error = null;
-    this.responseSnapshots.set(threadUrl, snapshot);
+    this.rememberThreadResponses(threadUrl, snapshot);
     this.state = startCommentOverlay(threadUrl, snapshot.map(toCommentResponse));
     this.notify();
 

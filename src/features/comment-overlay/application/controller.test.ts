@@ -185,4 +185,19 @@ describe("CommentOverlayController", () => {
     expect(unsubscribe).toHaveBeenCalledTimes(1);
     expect(settingsListenerRef.current).toBeNull();
   });
+
+  it("スレッドsnapshotを直近8件までに制限する", () => {
+    const controller = new CommentOverlayController({
+      eventBus: new MemoryCommentOverlayEventBus(),
+      platform: createBrowserCommentOverlayPlatform(),
+    });
+
+    for (let index = 1; index <= 9; index += 1) {
+      controller.syncThread(`https://example.test/thread/${index}`, [response(index, "レス")]);
+    }
+
+    expect(controller.getThreadResponses("https://example.test/thread/1")).toBeNull();
+    expect(controller.getThreadResponses("https://example.test/thread/2")).not.toBeNull();
+    expect(controller.getThreadResponses("https://example.test/thread/9")).not.toBeNull();
+  });
 });
