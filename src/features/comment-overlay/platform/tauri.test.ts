@@ -18,6 +18,7 @@ const tauriMocks = vi.hoisted(() => ({
       readonly height: number,
     ) {}
   },
+  availableMonitors: vi.fn(),
   window: {
     getByLabel: vi.fn(),
     outerPosition: vi.fn(),
@@ -49,6 +50,7 @@ vi.mock("@tauri-apps/api/event", () => ({
 }));
 
 vi.mock("@tauri-apps/api/window", () => ({
+  availableMonitors: tauriMocks.availableMonitors,
   LogicalPosition: tauriMocks.logicalPosition,
   LogicalSize: tauriMocks.logicalSize,
   Window: {
@@ -103,6 +105,16 @@ describe("TauriコメントOverlay window platform", () => {
     tauriMocks.window.outerSize.mockResolvedValue({ width: 1_800, height: 320 });
     tauriMocks.window.scaleFactor.mockReset();
     tauriMocks.window.scaleFactor.mockResolvedValue(2);
+    tauriMocks.availableMonitors.mockReset();
+    tauriMocks.availableMonitors.mockResolvedValue([
+      {
+        workArea: {
+          position: { x: 0, y: 0 },
+          size: { width: 3_840, height: 2_080 },
+        },
+        scaleFactor: 2,
+      },
+    ]);
     tauriMocks.window.isVisible.mockReset();
     tauriMocks.window.isVisible.mockResolvedValue(false);
     tauriMocks.window.setIgnoreCursorEvents.mockReset();
@@ -164,6 +176,27 @@ describe("TauriコメントOverlay window platform", () => {
     );
     expect(tauriMocks.window.setSize).toHaveBeenCalledWith(
       expect.objectContaining({ width: 640, height: 128 }),
+    );
+  });
+
+  it("保存位置が画面外ならwork area内へ戻して復元する", async () => {
+    localStorage.setItem(
+      COMMENT_OVERLAY_GEOMETRY_STORAGE_KEY,
+      JSON.stringify({ x: 1_800, y: -100, width: 900, height: 240 }),
+    );
+    const platform = createTauriCommentOverlayPlatform();
+
+    await expect(platform.loadGeometry()).resolves.toEqual({
+      x: 1_020,
+      y: 0,
+      width: 900,
+      height: 240,
+    });
+    expect(tauriMocks.window.setPosition).toHaveBeenCalledWith(
+      expect.objectContaining({ x: 1_020, y: 0 }),
+    );
+    expect(localStorage.getItem(COMMENT_OVERLAY_GEOMETRY_STORAGE_KEY)).toBe(
+      JSON.stringify({ x: 1_020, y: 0, width: 900, height: 240 }),
     );
   });
 

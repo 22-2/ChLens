@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import {
   COMMENT_OVERLAY_GEOMETRY_STORAGE_KEY,
+  fitCommentOverlayGeometryToWorkArea,
   fallbackCommentOverlayGeometry,
   loadStoredCommentOverlayGeometry,
   normalizeCommentOverlayGeometry,
@@ -75,6 +76,34 @@ describe("コメントOverlayのgeometry", () => {
       y: 49,
       width: 320,
       height: 80,
+    });
+  });
+
+  it("保存位置をwork area内へ収める", () => {
+    expect(
+      fitCommentOverlayGeometryToWorkArea(
+        { x: 1_800, y: -100, width: 900, height: 240 },
+        { x: 0, y: 0, width: 1_920, height: 1_040 },
+      ),
+    ).toEqual({
+      x: 1_020,
+      y: 0,
+      width: 900,
+      height: 240,
+    });
+  });
+
+  it("work areaより大きいgeometryは表示可能なサイズへ縮める", () => {
+    expect(
+      fitCommentOverlayGeometryToWorkArea(
+        { x: -100, y: -100, width: 2_400, height: 1_200 },
+        { x: 0, y: 0, width: 1_920, height: 1_040 },
+      ),
+    ).toEqual({
+      x: 0,
+      y: 0,
+      width: 1_920,
+      height: 1_040,
     });
   });
 

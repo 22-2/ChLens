@@ -2,6 +2,13 @@ import { DEFAULT_COMMENT_OVERLAY_GEOMETRY, type CommentOverlayGeometry } from ".
 
 export const COMMENT_OVERLAY_GEOMETRY_STORAGE_KEY = "chlens:comment-overlay-geometry";
 
+export interface CommentOverlayWorkArea {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export function normalizeCommentOverlayGeometry(
   geometry: CommentOverlayGeometry,
 ): CommentOverlayGeometry {
@@ -11,6 +18,28 @@ export function normalizeCommentOverlayGeometry(
     width: Math.max(320, Math.round(geometry.width)),
     height: Math.max(80, Math.round(geometry.height)),
   };
+}
+
+export function fitCommentOverlayGeometryToWorkArea(
+  geometry: CommentOverlayGeometry,
+  workArea: CommentOverlayWorkArea,
+): CommentOverlayGeometry {
+  const normalized = normalizeCommentOverlayGeometry(geometry);
+  const width = Math.min(normalized.width, Math.max(1, Math.round(workArea.width)));
+  const height = Math.min(normalized.height, Math.max(1, Math.round(workArea.height)));
+  const maxX = workArea.x + workArea.width - width;
+  const maxY = workArea.y + workArea.height - height;
+
+  return {
+    x: clamp(normalized.x, Math.round(workArea.x), Math.round(maxX)),
+    y: clamp(normalized.y, Math.round(workArea.y), Math.round(maxY)),
+    width,
+    height,
+  };
+}
+
+function clamp(value: number, minimum: number, maximum: number): number {
+  return Math.min(Math.max(value, minimum), Math.max(minimum, maximum));
 }
 
 export function parseCommentOverlayGeometry(raw: string | null): CommentOverlayGeometry | null {

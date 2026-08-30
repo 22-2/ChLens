@@ -1,8 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
 import { emit, listen } from "@tauri-apps/api/event";
-import { LogicalPosition, LogicalSize, Window } from "@tauri-apps/api/window";
+import { availableMonitors, LogicalPosition, LogicalSize, Window } from "@tauri-apps/api/window";
 import {
   cloneCommentOverlayGeometry,
+  fitCommentOverlayGeometryToWorkArea,
   fallbackCommentOverlayGeometry,
   loadStoredCommentOverlayGeometry,
   saveStoredCommentOverlayGeometry,
@@ -35,6 +36,13 @@ interface PhysicalWindowBounds {
   width: number;
   height: number;
   scaleFactor: number;
+}
+
+interface LogicalWorkArea {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 interface CommentOverlayVisibilityPayload {
@@ -84,6 +92,35 @@ async function readCommentOverlayGeometry(window: Window): Promise<CommentOverla
     width: bounds.width / bounds.scaleFactor,
     height: bounds.height / bounds.scaleFactor,
   };
+}
+
+async function fitGeometryToAvailableMonitor(
+  geometry: CommentOverlayGeometry,
+): Promise<CommentOverlayGeometry> {
+  const monitors = await availableMonitors();
+  const workAreas: LogicalWorkArea[] = monitors
+    .map((monitor) => ({
+      x: monitor.workArea.position.x / monitor.scaleFactor,
+      y: monitor.workArea.position.y / monitor.scaleFactor,
+      width: monitor.workArea.size.width / monitor.scaleFactor,
+      height: monitor.workArea.size.height / monitor.scaleFactor,
+    }))
+    .filter((workArea) => workArea.width > 0 && workArea.height > 0);
+  if (workAreas.length === 0) return fallbackCommentOverlayGeometry(geometry);
+
+  const normalized = fallbackCommentOverlayGeometry(geometry);
+  const centerX = normalized.x + normalized.width / 2;
+  const centerY = normalized.y + normalized.height / 2;
+  const workArea =
+    workAreas.find(
+      (candidate) =>
+        centerX >= candidate.x &&
+        centerX <= candidate.x + candidate.width &&
+        centerY >= candidate.y &&
+        centerY <= candidate.y + candidate.height,
+    ) ?? workAreas[0];
+
+  return fitCommentOverlayGeometryToWorkArea(normalized, workArea);
 }
 
 function getCursorHitRegion(cursor: CursorPosition, bounds: PhysicalWindowBounds): CursorHitRegion {
@@ -373,8 +410,21 @@ export function createTauriCommentOverlayPlatform(): CommentOverlayWindowPlatfor
     },
     async loadGeometry() {
       const stored = loadStoredCommentOverlayGeometry();
-      if (stored) await platform.setGeometry(stored);
-      return stored ? cloneCommentOverlayGeometry(stored) : null;
+      if (!stored) return null;
+
+      let restored = stored;
+      try {
+        // 変更理由: モニター構成の変更やタスクバー位置の変更後も、保存済みOverlayが
+        // 完全に画面外へ残ると操作不能になるため、復元時だけ現在のwork areaへ収める。
+        restored = await fitGeometryToAvailableMonitor(stored);
+      } catch (error: unknown) {
+        console.error("[ChLens] コメントOverlayのwork area取得に失敗しました:", error);
+      }
+      await platform.setGeometry(restored);
+      if (JSON.stringify(restored) !== JSON.stringify(stored)) {
+        saveStoredCommentOverlayGeometry(restored);
+      }
+      return cloneCommentOverlayGeometry(restored);
     },
     async saveGeometry(geometry: CommentOverlayGeometry) {
       saveStoredCommentOverlayGeometry(geometry);
