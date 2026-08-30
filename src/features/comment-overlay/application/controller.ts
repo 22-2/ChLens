@@ -16,6 +16,7 @@ import type { CommentOverlayEventBus } from "../domain/events";
 import type { CommentOverlayWindowPlatform } from "../platform/types";
 
 const MAX_RESPONSE_SNAPSHOT_COUNT = 8;
+const MAX_RESPONSES_PER_SNAPSHOT = 2_000;
 
 export interface CommentOverlayControllerSnapshot {
   state: CommentOverlayState;
@@ -122,11 +123,17 @@ export class CommentOverlayController {
   }
 
   private rememberThreadResponses(threadUrl: string, responses: readonly IRes[]): void {
+    const boundedResponses =
+      responses.length > MAX_RESPONSES_PER_SNAPSHOT
+        ? responses.slice(-MAX_RESPONSES_PER_SNAPSHOT)
+        : responses;
     this.responseSnapshots.delete(threadUrl);
-    this.responseSnapshots.set(threadUrl, responses);
+    this.responseSnapshots.set(threadUrl, boundedResponses);
 
     // 変更理由: スレッドを移動するたびに全レス配列をMapへ残すと、長時間利用で
-    // Overlayを表示していなくてもcontroller側のsnapshotが増え続けるため、直近だけ保持する。
+    // Overlayを表示していなくてもcontroller側のsnapshotが増え続けるため、スレッド数と
+    // 1スレッドあたりのレス数を直近だけ保持する。syncThreadの差分計算には呼び出し元の
+    // 完全な配列を使うため、実況中の新着判定はこの再開用snapshot制限の影響を受けない。
     while (this.responseSnapshots.size > MAX_RESPONSE_SNAPSHOT_COUNT) {
       const oldestThreadUrl = this.responseSnapshots.keys().next().value;
       if (oldestThreadUrl === undefined) break;

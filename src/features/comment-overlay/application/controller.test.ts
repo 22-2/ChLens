@@ -201,6 +201,22 @@ describe("CommentOverlayController", () => {
     expect(controller.getThreadResponses("https://example.test/thread/9")).not.toBeNull();
   });
 
+  it("巨大なスレッドsnapshotは最新2000レスだけを保持する", () => {
+    const controller = new CommentOverlayController({
+      eventBus: new MemoryCommentOverlayEventBus(),
+      platform: createBrowserCommentOverlayPlatform(),
+    });
+    const threadUrl = "https://example.test/thread/large";
+    const responses = Array.from({ length: 2_001 }, (_, index) => response(index + 1, "レス"));
+
+    controller.syncThread(threadUrl, responses);
+
+    const snapshot = controller.getThreadResponses(threadUrl);
+    expect(snapshot).toHaveLength(2_000);
+    expect(snapshot?.[0]?.num).toBe(2);
+    expect(snapshot?.at(-1)?.num).toBe(2_001);
+  });
+
   it("Overlay側の非表示通知でMain側のvisible状態を同期する", async () => {
     const eventBus = new MemoryCommentOverlayEventBus();
     const platform = createBrowserCommentOverlayPlatform();
