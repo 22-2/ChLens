@@ -247,6 +247,21 @@ Storybookでは速度、衝突、レーン、queue、長文、resizeを確認す
 これらは、表示中タブから独立した実況継続や過去ログ再生が必要になった時点で、ChLensの取得処理との
 二重化を避ける形へ再設計してから回収する。
 
+### Phase 6の回収棚卸し（2026-08-30）
+
+| Live側の責務 | 現在の扱い | 根拠 |
+| --- | --- | --- |
+| `OverlayApp`、`OverlayControlBar` | 回収済み | `src/view/comment-overlay/OverlayApp.tsx`、`OverlayControlBar.tsx`へ移植済み。製品名とChLensの設定境界へ置き換えた。 |
+| geometry、クリック透過、window操作 | 回収済み | `src/features/comment-overlay/platform/`と`src-tauri/src/lib.rs`へ移植済み。Tauri専用処理はBrowser bundleから実行されない。 |
+| Main／Overlay間のserializable event | 回収済み | `src/features/comment-overlay/domain/events.ts`と`platform/events.ts`でbatch、reset、settings、表示状態通知の契約を固定した。 |
+| `LiveBrowserShell`、`LiveThreadList`、`ThreadView`、Live専用tab/URL bar | 回収しない | 既存ChLensの`ThreadPage`、板一覧、タブ、NavigationBarを利用するため、二重の閲覧UIは不要。 |
+| `use-live-sessions`、board/thread session、Live専用cache・history・rule repository | 回収しない | MVPは表示中ThreadPageの取得結果を共有するだけで、別取得・別DB・別NG設定を持たない。 |
+| playback session、独立実況、複数スレ実況 | 後で再評価 | 必要になった時点でChLensの取得sessionと共有する設計を先に行い、Live sessionをそのまま並行起動しない。 |
+| Liveの板名取得 | 新規回収不要 | 共通取得は`packages/ch-lib/src/board/BoardTitleResolver.ts`、ChLens固有の設定・cache連携は既存`src/core/BoardTitleSolver.ts`を使用する。 |
+
+この棚卸し時点では、`apps/chlens-live`の削除条件を満たしたとは判定しない。Windows実機での受け入れ確認と、
+独立アプリを削除しても参照用の旧ロードマップ・spike文書へ到達できることのレビューを完了してから、削除を別変更として判断する。
+
 ## 実施フェーズ
 
 ### Phase 0：方針と既存状態の固定
