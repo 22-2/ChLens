@@ -20,7 +20,8 @@
 - Phase 4：実装済み。動的lane、adaptive/dropを既定とする新着優先queue、CSS animation、hover情報、固定レス・過去ログ・現行スレ・StressのStoryを実装した。
 - Phase 5：実装済み。Tauri限定の開始・停止・表示切り替えUI、表示中スレッドを離れた際の停止、速度・文字サイズ・透明度・最大queue数の設定保存と実況開始時の反映、開始失敗時の非表示ロールバックとエラー表示、実行中Overlayへの設定変更即時反映まで追加した。
 - 自動確認：`pnpm tsc6`、`pnpm build:chrome`、`pnpm build:firefox`、`pnpm build:tauri`、`pnpm tauri build --debug --no-bundle`、`cargo check --manifest-path src-tauri/Cargo.toml --all-targets`、Overlay関連テスト、geometry保存・復元テスト、Tauri event adapter契約テスト、Tauri window adapter lifecycleテスト、Config購読テスト、Overlay操作バー契約テスト、dat落ち時の実況停止テスト、`pnpm storybook:build`、`pnpm tauri dev`のwatcherとTauriプロセス起動は成功。直近のコメントOverlay・Tauri限定UI・設定テストは85件全件成功している。全体テストは659件全件成功している。
-- 未確認：Windows実機での新着レス表示と設定反映、クリック透過、複数モニター/DPI、Overlay操作バーとリサイズ領域、長時間動作の手動確認。
+- Windows実機で部分確認済み：実況開始によるOverlay表示、操作バーのhover、操作バーの物理クリックによる閉じる、Mainからの再表示、最小化からの再表示を確認した。
+- 未確認：Windows実機での新着レス表示と設定反映、Overlay外側のクリック透過、リサイズ領域、複数モニター/DPI、sleep復帰、長時間動作の手動確認。
 
 ## 背景と判断
 
@@ -401,6 +402,16 @@ Storybookでは速度、衝突、レーン、queue、長文、resizeを確認す
 - rootのcheck、test、Chrome／Firefox／Tauri buildを実行する。
 - Chlens Liveとの機能比較を行い、回収漏れがないか確認する。
 - 回収完了後に限り、`apps/chlens-live`と専用scriptの削除を別変更として提案する。
+
+#### Windows実機の部分確認（2026-08-30）
+
+`pnpm tauri dev`を起動し、Mainの現在スレッドから実況開始を操作した。Overlayのnative windowが
+`104,104`付近に`900x160`で表示され、カーソルを操作バー領域へ移動すると操作バーが表示された。
+操作バーの閉じるボタンを物理クリックするとOverlayが非表示になり、Main側の操作が表示へ戻った。
+その後Mainから再表示し、操作バーの最小化、Mainからの再表示まで確認した。
+
+新着レスが発生していないスレッドで確認したためコメント流しそのもの、設定変更、Overlay外側の
+クリック透過、リサイズ、複数モニター/DPI、sleep復帰、長時間動作は未確認として残す。
 
 #### 完了条件
 
