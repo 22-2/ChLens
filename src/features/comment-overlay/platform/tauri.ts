@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { emitTo, listen } from "@tauri-apps/api/event";
+import { emit, listen } from "@tauri-apps/api/event";
 import { LogicalPosition, LogicalSize, Window } from "@tauri-apps/api/window";
 import {
   cloneCommentOverlayGeometry,
@@ -219,12 +219,34 @@ export function createTauriCommentOverlayPlatform(): CommentOverlayWindowPlatfor
     await setNativeCursorEventsIgnored(overlay, keepRequest);
   };
 
+  const syncWindowVisibility = async (visible: boolean): Promise<void> => {
+    if (windowVisible === visible) return;
+
+    const overlay = await getCommentOverlayWindow();
+    windowVisible = visible;
+    if (visible) {
+      if (clickThroughRequested || barHoverListeners.size > 0) {
+        await startCursorPolling(overlay);
+      }
+      return;
+    }
+
+    await stopCursorPolling(overlay, clickThroughRequested);
+  };
+
+  const publishWindowVisibility = async (visible: boolean): Promise<void> => {
+    // MainとOverlayは別WebViewでplatform instanceも分かれるため、
+    // emitToで片方だけへ送らず、両方が同じnative状態を受け取れるようbroadcastする。
+    await emit(COMMENT_OVERLAY_VISIBILITY_EVENT_NAME, { visible });
+  };
+
   const platform: CommentOverlayWindowPlatform = {
     async show() {
       const overlay = await getCommentOverlayWindow();
       await overlay.unminimize();
       await overlay.show();
       windowVisible = true;
+      await publishWindowVisibility(true);
       if (clickThroughRequested || barHoverListeners.size > 0) await startCursorPolling(overlay);
     },
     async hide() {
@@ -232,12 +254,14 @@ export function createTauriCommentOverlayPlatform(): CommentOverlayWindowPlatfor
       await stopCursorPolling(overlay, clickThroughRequested);
       await overlay.hide();
       windowVisible = false;
+      await publishWindowVisibility(false);
     },
     async focus() {
       const overlay = await getCommentOverlayWindow();
       await overlay.unminimize();
       await overlay.show();
       windowVisible = true;
+      await publishWindowVisibility(true);
       if (clickThroughRequested || barHoverListeners.size > 0) await startCursorPolling(overlay);
       await overlay.setFocus();
     },
@@ -249,6 +273,7 @@ export function createTauriCommentOverlayPlatform(): CommentOverlayWindowPlatfor
       await stopCursorPolling(overlay, clickThroughRequested);
       await overlay.minimize();
       windowVisible = false;
+      await publishWindowVisibility(false);
     },
     async toggleMaximize() {
       await (await getCommentOverlayWindow()).toggleMaximize();
@@ -256,9 +281,6 @@ export function createTauriCommentOverlayPlatform(): CommentOverlayWindowPlatfor
     async close() {
       // ウィンドウを破棄せず非表示にすることで、Mainから再表示できる状態を保つ。
       await platform.hide();
-      // MainとOverlayは別WebViewでcontrollerのvisibleを共有できないため、
-      // Overlay側の閉じる操作をMainへ通知してステータスバーの表示状態を同期する。
-      await emitTo("main", COMMENT_OVERLAY_VISIBILITY_EVENT_NAME, { visible: false });
     },
     async setClickThrough(enabled: boolean) {
       const overlay = await getCommentOverlayWindow();
@@ -272,16 +294,30 @@ export function createTauriCommentOverlayPlatform(): CommentOverlayWindowPlatfor
       }
     },
     async watchVisibility(listener: (visible: boolean) => void) {
-      return listen<CommentOverlayVisibilityPayload>(
+      const unlisten = await listen<CommentOverlayVisibilityPayload>(
         COMMENT_OVERLAY_VISIBILITY_EVENT_NAME,
         ({ payload }) => {
           if (!isCommentOverlayVisibilityPayload(payload)) {
             console.error("[ChLens] コメントOverlayの表示状態eventを検証できません:", payload);
             return;
           }
+          void syncWindowVisibility(payload.visible).catch((error: unknown) => {
+            console.error("[ChLens] コメントOverlayの表示状態同期に失敗しました:", error);
+          });
           listener(payload.visible);
         },
       );
+
+      try {
+        const visible = await (await getCommentOverlayWindow()).isVisible();
+        // Overlayのreloadや監視登録の遅れでbroadcastを取りこぼしても、
+        // 登録直後にnative windowへ問い合わせて現在状態へ追いつけるようにする。
+        await syncWindowVisibility(visible);
+      } catch (error: unknown) {
+        console.error("[ChLens] コメントOverlayの初期表示状態同期に失敗しました:", error);
+      }
+
+      return unlisten;
     },
     trackBarHover(listener: (hovered: boolean) => void) {
       barHoverListeners.add(listener);

@@ -146,6 +146,8 @@ export function OverlayApp({
 
     let saveTimer: ReturnType<typeof setTimeout> | null = null;
     let unwatchGeometry: (() => void) | null = null;
+    let unwatchVisibility: (() => void) | null = null;
+    let disposed = false;
     void platform.loadGeometry().catch((error: unknown) => {
       console.error("[ChLens] コメントOverlayのgeometry復元に失敗しました:", error);
     });
@@ -160,16 +162,35 @@ export function OverlayApp({
         }, 250);
       })
       .then((cleanup) => {
+        if (disposed) {
+          cleanup();
+          return;
+        }
         unwatchGeometry = cleanup;
       })
       .catch((error: unknown) => {
         console.error("[ChLens] コメントOverlayのgeometry監視開始に失敗しました:", error);
       });
 
+    void platform
+      .watchVisibility(() => {})
+      .then((cleanup) => {
+        if (disposed) {
+          cleanup();
+          return;
+        }
+        unwatchVisibility = cleanup;
+      })
+      .catch((error: unknown) => {
+        console.error("[ChLens] コメントOverlayの表示状態監視開始に失敗しました:", error);
+      });
+
     const untrackBarHover = platform.trackBarHover(setControlsVisible);
     return () => {
+      disposed = true;
       if (saveTimer) clearTimeout(saveTimer);
       unwatchGeometry?.();
+      unwatchVisibility?.();
       untrackBarHover();
     };
   }, [platform]);

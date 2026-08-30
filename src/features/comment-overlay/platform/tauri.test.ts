@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 const tauriMocks = vi.hoisted(() => ({
   invoke: vi.fn(),
   event: {
-    emitTo: vi.fn(),
+    emit: vi.fn(),
     listen: vi.fn(),
   },
   logicalPosition: class MockLogicalPosition {
@@ -23,6 +23,7 @@ const tauriMocks = vi.hoisted(() => ({
     outerPosition: vi.fn(),
     outerSize: vi.fn(),
     scaleFactor: vi.fn(),
+    isVisible: vi.fn(),
     setIgnoreCursorEvents: vi.fn(),
     show: vi.fn(),
     hide: vi.fn(),
@@ -43,7 +44,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 
 vi.mock("@tauri-apps/api/event", () => ({
-  emitTo: tauriMocks.event.emitTo,
+  emit: tauriMocks.event.emit,
   listen: tauriMocks.event.listen,
 }));
 
@@ -90,8 +91,8 @@ describe("TauriコメントOverlay window platform", () => {
     vi.stubGlobal("localStorage", createMemoryStorage());
     tauriMocks.invoke.mockReset();
     tauriMocks.invoke.mockResolvedValue({ x: 0, y: 0 });
-    tauriMocks.event.emitTo.mockReset();
-    tauriMocks.event.emitTo.mockResolvedValue(undefined);
+    tauriMocks.event.emit.mockReset();
+    tauriMocks.event.emit.mockResolvedValue(undefined);
     tauriMocks.event.listen.mockReset();
     tauriMocks.event.listen.mockResolvedValue(vi.fn());
     tauriMocks.window.getByLabel.mockReset();
@@ -102,6 +103,8 @@ describe("TauriコメントOverlay window platform", () => {
     tauriMocks.window.outerSize.mockResolvedValue({ width: 1_800, height: 320 });
     tauriMocks.window.scaleFactor.mockReset();
     tauriMocks.window.scaleFactor.mockResolvedValue(2);
+    tauriMocks.window.isVisible.mockReset();
+    tauriMocks.window.isVisible.mockResolvedValue(false);
     tauriMocks.window.setIgnoreCursorEvents.mockReset();
     tauriMocks.window.setIgnoreCursorEvents.mockResolvedValue(undefined);
     tauriMocks.window.setPosition.mockReset();
@@ -232,18 +235,30 @@ describe("TauriコメントOverlay window platform", () => {
     await platform.setClickThrough(false);
   });
 
-  it("Overlayを閉じるとnative windowを隠し、Mainへ非表示を通知する", async () => {
+  it("Overlayを閉じるとnative windowを隠し、全WebViewへ非表示を通知する", async () => {
     tauriMocks.window.hide.mockClear();
     const platform = createTauriCommentOverlayPlatform();
 
     await platform.close();
 
     expect(tauriMocks.window.hide).toHaveBeenCalledTimes(1);
-    expect(tauriMocks.event.emitTo).toHaveBeenCalledWith(
-      "main",
-      COMMENT_OVERLAY_VISIBILITY_EVENT_NAME,
-      { visible: false },
-    );
+    expect(tauriMocks.event.emit).toHaveBeenCalledWith(COMMENT_OVERLAY_VISIBILITY_EVENT_NAME, {
+      visible: false,
+    });
+  });
+
+  it("表示中のnative windowを監視開始時に同期してpollingを開始する", async () => {
+    vi.useFakeTimers();
+    tauriMocks.window.isVisible.mockResolvedValue(true);
+    const platform = createTauriCommentOverlayPlatform();
+
+    await platform.setClickThrough(true);
+    expect(vi.getTimerCount()).toBe(0);
+
+    await platform.watchVisibility(() => {});
+
+    expect(vi.getTimerCount()).toBe(1);
+    await platform.setClickThrough(false);
   });
 
   it("Main向けの表示状態eventを受け取り、解除関数を返す", async () => {
