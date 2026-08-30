@@ -100,6 +100,7 @@ describe("CommentOverlayStatusItem", () => {
   it("スレッドでは開始操作を表示し、対象URLをcontrollerへ渡す", () => {
     renderItem();
 
+    fireEvent.click(screen.getByRole("button", { name: /コメントOverlay制御/ }));
     fireEvent.click(screen.getByRole("button", { name: "コメント実況を開始" }));
 
     expect(mocks.controller.start).toHaveBeenCalledWith(THREAD_URL);
@@ -119,6 +120,7 @@ describe("CommentOverlayStatusItem", () => {
 
     renderItem();
 
+    fireEvent.click(screen.getByRole("button", { name: /コメントOverlay制御/ }));
     fireEvent.click(screen.getByRole("button", { name: "コメント実況を停止" }));
     fireEvent.click(screen.getByRole("button", { name: "コメントOverlayを表示" }));
 
@@ -156,6 +158,20 @@ describe("CommentOverlayStatusItem", () => {
 
     renderItem();
 
-    expect(screen.getByLabelText(/コメント実況エラー/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /コメント実況エラー/ }));
+
+    expect(screen.getByText(/コメント実況エラー/)).toBeInTheDocument();
+  });
+
+  it("Overlay制御は単一アイコンから開くミニウィンドウへ収納する", () => {
+    renderItem();
+
+    expect(screen.getAllByRole("button")).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole("button", { name: /コメントOverlay制御/ }));
+
+    expect(screen.getByText("コメントOverlay")).toBeInTheDocument();
+    expect(screen.getByText("コメント実況")).toBeInTheDocument();
+    expect(screen.getByText("Overlay表示")).toBeInTheDocument();
   });
 });
