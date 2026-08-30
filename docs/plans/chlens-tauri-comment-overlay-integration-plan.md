@@ -199,9 +199,12 @@ Storybookでは速度、衝突、レーン、queue、長文、resizeを確認す
 速度、レーン割り当て、混雑時の方針は旧ロードマップの
 [Overlayの速度・レーン方針](./chlens-live-development-roadmap.md#overlay-の速度レーン方針)を引き継ぐ。
 
-- 速度はpx/secで管理する。
-- 初期値はDPlayerデモ風に900px幅を約10秒で通過する`90px/sec`を基準に実機調整する。
+- 速度はステージ幅に依存しない通過時間（秒）で管理する。コメントごとの速度は、ステージ幅と
+  コメント幅を含む移動距離を通過時間で割って求める。
+- 初期値はEdgeLiveViewerの6秒を参考にし、900px幅でも最大化後でも同じ体感速度になるようにする。
+- 旧設定キー`comment_overlay_speed`に保存されたpx/sec値は、読み込み時だけ900px基準の秒数へ変換する。
 - コメントごとに途中で速度を変更しない。
+- レーン高は文字サイズとCSSのline-heightから算出し、上部のOverlay操作領域を除いた表示領域へ配置する。
 - queue上限、古いコメントのskip、遅延表示を組み合わせる。
 - 初期MVPは右から左へ流れる通常コメントだけとする。
 
@@ -391,7 +394,7 @@ Storybookでは速度、衝突、レーン、queue、長文、resizeを確認す
 
 ### Phase 6：安定化と独立アプリの整理判断
 
-> 進捗：自動テストでgeometryの保存・復元、Tauri event adapterの送受信契約、native windowの表示状態に応じたcursor pollingの停止・復帰、Main／Overlay別WebView間の表示状態broadcastと監視開始時のnative visibility再同期、実行中設定更新のevent経路、レスsnapshotの上限、Overlay側の閉じる操作とMain側の表示状態同期、操作バーと8方向リサイズのplatform契約、dat落ち時の実況停止条件を固定した。残りはWindows実機でのOverlay操作、表示、負荷、DPI、sleep復帰の受け入れ確認と、独立アプリ整理のレビューである。
+> 進捗：自動テストでgeometryの保存・復元、Tauri event adapterの送受信契約、native windowの表示状態に応じたcursor pollingの停止・復帰、Main／Overlay別WebView間の表示状態broadcastと監視開始時のnative visibility再同期、実行中設定更新のevent経路、レスsnapshotの上限、Overlay側の閉じる操作とMain側の表示状態同期、操作バーと8方向リサイズのplatform契約、dat落ち時の実況停止条件を固定した。速度を通過時間ベースへ変更し、文字サイズ追従のレーン高、操作領域を避ける上部padding、画面外geometryの復帰も追加した。残りはWindows実機での新しい既定表示の確認、Overlay操作、負荷、DPI、sleep復帰の受け入れ確認と、独立アプリ整理のレビューである。
 
 #### 作業
 
