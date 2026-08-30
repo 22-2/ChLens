@@ -33,7 +33,7 @@ const settingsEvent: CommentOverlayEvent = {
   version: 1,
   type: "settings",
   settings: {
-    baseSpeedPxPerSecond: 180,
+    durationSeconds: 6,
     fontSize: 24,
     opacity: 0.5,
     maxQueueSize: 32,

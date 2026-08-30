@@ -76,8 +76,8 @@ function OverlayAppPreview() {
       version: 1,
       type: "settings",
       settings: {
-        baseSpeedPxPerSecond: compact ? 180 : 90,
-        fontSize: compact ? 24 : 18,
+        durationSeconds: compact ? 4 : 6,
+        fontSize: compact ? 32 : 30,
         opacity: compact ? 0.65 : 0.95,
         maxQueueSize: compact ? 16 : 64,
       },

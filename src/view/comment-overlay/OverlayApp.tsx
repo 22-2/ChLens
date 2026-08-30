@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import {
   createCommentOverlayEventBus,
+  COMMENT_OVERLAY_CONTROL_BAR_HEIGHT,
   type CommentOverlayEvent,
   type CommentOverlayEventBus,
   commentOverlayWindowPlatform,
@@ -203,9 +204,9 @@ export function OverlayApp({
         className="comment-overlay-window__comment-layer"
         comments={comments}
         stageWidth={900}
-        stageHeight={160}
-        laneHeight={32}
-        baseSpeedPxPerSecond={settings.baseSpeedPxPerSecond}
+        stageHeight={240}
+        durationSeconds={settings.durationSeconds}
+        topPadding={COMMENT_OVERLAY_CONTROL_BAR_HEIGHT + 4}
         fontSize={settings.fontSize}
         commentOpacity={settings.opacity}
         maxQueueSize={settings.maxQueueSize}

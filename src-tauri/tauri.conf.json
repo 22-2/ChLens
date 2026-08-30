@@ -24,7 +24,7 @@
         "title": "ChLens コメントOverlay",
         "url": "view/comment-overlay.html",
         "width": 900,
-        "height": 160,
+        "height": 240,
         "resizable": true,
         "visible": false,
         "focus": false,

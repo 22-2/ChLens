@@ -1,6 +1,6 @@
 import type { CommentCandidate } from "./comment-types";
 
-/** DPlayerデモのspeedRate:0.5を900px幅で再現する、ステージ上を進む基準速度。単位はpx/sec。 */
+/** 旧いStorybook fixtureとの互換用。実運用ではdurationSecondsを優先する。 */
 export const DEFAULT_COMMENT_BASE_SPEED_PX_PER_SECOND = 90;
 
 /** 高さが大きいOverlayでもDOMノードが無制限に増えないようにするレーン容量の上限。 */
@@ -33,6 +33,8 @@ export interface CommentSchedulerOptions {
   stageHeight: number;
   laneHeight: number;
   maxLaneCount?: number;
+  /** コメントがステージを通過する基準時間。指定時は幅に依存しない。 */
+  durationSeconds?: number;
   baseSpeedPxPerSecond?: number;
   maxQueueSize?: number;
   collisionMode?: CommentCollisionMode;
@@ -152,11 +154,16 @@ export class LaneAllocator {
     private readonly stageWidth: number,
     private readonly maxLaneCount: number,
     baseSpeedPxPerSecond: number,
+    durationSeconds?: number,
   ) {
     assertPositiveFinite(stageWidth, "stageWidth");
-    assertPositiveFinite(baseSpeedPxPerSecond, "baseSpeedPxPerSecond");
+    if (durationSeconds === undefined) {
+      assertPositiveFinite(baseSpeedPxPerSecond, "baseSpeedPxPerSecond");
+    } else {
+      assertPositiveFinite(durationSeconds, "durationSeconds");
+    }
     assertPositiveInteger(maxLaneCount, "maxLaneCount");
-    this.duration = calculateCommentDuration(stageWidth, baseSpeedPxPerSecond);
+    this.duration = durationSeconds ?? calculateCommentDuration(stageWidth, baseSpeedPxPerSecond);
     this.lanes = [];
   }
 
@@ -359,6 +366,7 @@ export class CommentScheduler {
       options.stageWidth,
       laneCapacity,
       options.baseSpeedPxPerSecond ?? DEFAULT_COMMENT_BASE_SPEED_PX_PER_SECOND,
+      options.durationSeconds,
     );
     this.maxQueueSize = options.maxQueueSize ?? DEFAULT_MAX_QUEUE_SIZE;
     this.collisionMode = options.collisionMode ?? DEFAULT_COMMENT_COLLISION_MODE;

@@ -1,6 +1,6 @@
 export interface CommentOverlaySettings {
-  /** コメントがステージを通過する基準速度。単位はpx/sec。 */
-  baseSpeedPxPerSecond: number;
+  /** コメントがステージへ入ってから出るまでの基準時間。単位は秒。 */
+  durationSeconds: number;
   /** Overlay上のコメント文字サイズ。単位はpx。 */
   fontSize: number;
   /** コメントの不透明度。0から1の範囲。 */
@@ -9,9 +9,12 @@ export interface CommentOverlaySettings {
   maxQueueSize: number;
 }
 
+export const MIN_COMMENT_OVERLAY_DURATION_SECONDS = 2;
+export const MAX_COMMENT_OVERLAY_DURATION_SECONDS = 15;
+
 export const DEFAULT_COMMENT_OVERLAY_SETTINGS: Readonly<CommentOverlaySettings> = {
-  baseSpeedPxPerSecond: 90,
-  fontSize: 18,
+  durationSeconds: 6,
+  fontSize: 30,
   opacity: 0.95,
   maxQueueSize: 64,
 };
@@ -21,11 +24,11 @@ export function normalizeCommentOverlaySettings(
   input: Partial<CommentOverlaySettings> | null | undefined,
 ): CommentOverlaySettings {
   return {
-    baseSpeedPxPerSecond: clampFinite(
-      input?.baseSpeedPxPerSecond,
-      20,
-      600,
-      DEFAULT_COMMENT_OVERLAY_SETTINGS.baseSpeedPxPerSecond,
+    durationSeconds: clampFinite(
+      input?.durationSeconds,
+      MIN_COMMENT_OVERLAY_DURATION_SECONDS,
+      MAX_COMMENT_OVERLAY_DURATION_SECONDS,
+      DEFAULT_COMMENT_OVERLAY_SETTINGS.durationSeconds,
     ),
     fontSize: clampFinite(input?.fontSize, 10, 48, DEFAULT_COMMENT_OVERLAY_SETTINGS.fontSize),
     opacity: clampFinite(input?.opacity, 0.1, 1, DEFAULT_COMMENT_OVERLAY_SETTINGS.opacity),

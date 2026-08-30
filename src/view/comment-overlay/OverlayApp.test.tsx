@@ -107,8 +107,8 @@ describe("OverlayApp", () => {
         version: 1,
         type: "reset",
         settings: {
-          baseSpeedPxPerSecond: 180,
-          fontSize: 24,
+          durationSeconds: 4,
+          fontSize: 32,
           opacity: 0.5,
           maxQueueSize: 0,
         },
@@ -134,9 +134,9 @@ describe("OverlayApp", () => {
 
     const renderedComment = screen.getByText("前回の実況");
     expect(renderedComment).toHaveStyle({
-      fontSize: "24px",
+      fontSize: "32px",
       opacity: "0.5",
-      animationDuration: "5s",
+      animationDuration: "4s",
     });
 
     await act(async () => {
@@ -144,8 +144,8 @@ describe("OverlayApp", () => {
         version: 1,
         type: "settings",
         settings: {
-          baseSpeedPxPerSecond: 180,
-          fontSize: 30,
+          durationSeconds: 4,
+          fontSize: 40,
           opacity: 0.4,
           maxQueueSize: 0,
         },
@@ -153,7 +153,7 @@ describe("OverlayApp", () => {
     });
 
     expect(screen.getByText("前回の実況")).toHaveStyle({
-      fontSize: "30px",
+      fontSize: "40px",
       opacity: "0.4",
     });
   });

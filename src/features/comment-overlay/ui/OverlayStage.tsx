@@ -16,10 +16,14 @@ import "./OverlayStage.css";
 
 const DEFAULT_STAGE_WIDTH = 800;
 const DEFAULT_STAGE_HEIGHT = 240;
-const DEFAULT_LANE_HEIGHT = 32;
 const DEFAULT_FONT_SIZE = 20;
 const DEFAULT_COMMENT_OPACITY = 0.95;
 export const DEFAULT_COMMENT_HISTORY_LIMIT = 3_000;
+
+/** CSSのline-heightと行間を揃え、文字サイズ変更後もレスが上下から切れない高さにする。 */
+export function calculateCommentLaneHeight(fontSize: number): number {
+  return Math.max(1, Math.ceil(fontSize * 1.2 + 4));
+}
 
 export interface OverlayStageProps {
   comments: readonly CommentCandidate[];
@@ -27,7 +31,10 @@ export interface OverlayStageProps {
   stageHeight?: number;
   laneHeight?: number;
   maxLaneCount?: number;
+  durationSeconds?: number;
   baseSpeedPxPerSecond?: number;
+  topPadding?: number;
+  bottomPadding?: number;
   maxQueueSize?: number;
   collisionMode?: CommentCollisionMode;
   backlogPolicy?: CommentBacklogPolicy;
@@ -58,9 +65,12 @@ export function OverlayStage({
   comments,
   stageWidth = DEFAULT_STAGE_WIDTH,
   stageHeight = DEFAULT_STAGE_HEIGHT,
-  laneHeight = DEFAULT_LANE_HEIGHT,
+  laneHeight: laneHeightProp,
   maxLaneCount = DEFAULT_MAX_LANE_COUNT,
+  durationSeconds,
   baseSpeedPxPerSecond,
+  topPadding = 0,
+  bottomPadding = 0,
   maxQueueSize = DEFAULT_MAX_QUEUE_SIZE,
   collisionMode = DEFAULT_COMMENT_COLLISION_MODE,
   backlogPolicy = DEFAULT_COMMENT_BACKLOG_POLICY,
@@ -77,6 +87,9 @@ export function OverlayStage({
   onCommentClick,
   className,
 }: OverlayStageProps) {
+  const laneHeight = laneHeightProp ?? calculateCommentLaneHeight(fontSize);
+  const requestedTopPadding = Math.max(0, topPadding);
+  const requestedBottomPadding = Math.max(0, bottomPadding);
   const stageRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(
     null,
@@ -85,6 +98,18 @@ export function OverlayStage({
   const effectiveStageHeight = fitToContainer
     ? (containerSize?.height ?? stageHeight)
     : stageHeight;
+  const effectiveTopPadding = Math.min(
+    requestedTopPadding,
+    Math.max(0, effectiveStageHeight - laneHeight),
+  );
+  const effectiveBottomPadding = Math.min(
+    requestedBottomPadding,
+    Math.max(0, effectiveStageHeight - effectiveTopPadding - laneHeight),
+  );
+  const schedulableStageHeight = Math.max(
+    laneHeight,
+    effectiveStageHeight - effectiveTopPadding - effectiveBottomPadding,
+  );
 
   useLayoutEffect(() => {
     if (!fitToContainer || typeof ResizeObserver === "undefined") return;
@@ -121,9 +146,10 @@ export function OverlayStage({
     () =>
       new CommentScheduler({
         stageWidth: effectiveStageWidth,
-        stageHeight: effectiveStageHeight,
+        stageHeight: schedulableStageHeight,
         laneHeight,
         maxLaneCount,
+        durationSeconds,
         baseSpeedPxPerSecond,
         maxQueueSize,
         collisionMode,
@@ -134,16 +160,18 @@ export function OverlayStage({
       backlogPolicy,
       baseSpeedPxPerSecond,
       collisionMode,
-      effectiveStageHeight,
+      durationSeconds,
       effectiveStageWidth,
       laneHeight,
       maxActiveCount,
       maxLaneCount,
       maxQueueSize,
+      schedulableStageHeight,
     ],
   );
   const [snapshot, setSnapshot] = useState<CommentSchedulerSnapshot>(() => scheduler.advance(0));
   const snapshotRef = useRef(snapshot);
+  const schedulerRef = useRef(scheduler);
   const seenResponseNumbers = useRef(new Set<number>());
   const logicalTime = useRef(0);
   const previousFrameTime = useRef<number | null>(null);
@@ -182,6 +210,15 @@ export function OverlayStage({
         onQueueOverflow?.(comment);
       }
       seenResponseNumbers.current.add(comment.responseNumber);
+    }
+
+    if (schedulerRef.current !== scheduler) {
+      // 変更理由: 文字サイズ変更でlane高が変わるとschedulerも再生成されるため、
+      // 次のrequestAnimationFrameを待たずに再投入したコメントをDOMへ反映する。
+      const nextSnapshot = scheduler.advance(logicalTime.current);
+      snapshotRef.current = nextSnapshot;
+      setSnapshot(nextSnapshot);
+      schedulerRef.current = scheduler;
     }
   }, [comments, estimateWidth, fontSize, onQueueOverflow, scheduler]);
 
@@ -261,7 +298,7 @@ export function OverlayStage({
     >
       {snapshot.active.map((scheduledComment) => {
         const commentStyle = {
-          top: `${scheduledComment.laneIndex * laneHeight}px`,
+          top: `${effectiveTopPadding + scheduledComment.laneIndex * laneHeight}px`,
           left: `${scheduledComment.stageWidth}px`,
           fontSize: `${fontSize}px`,
           opacity: commentOpacity,

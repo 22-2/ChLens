@@ -224,11 +224,11 @@ const ALL_SETTINGS_SECTIONS = [
       {
         kind: "number",
         key: "comment_overlay_speed",
-        title: "コメント速度",
-        description: "コメントがステージを通過する基準速度です（px/秒）。",
-        minimum: 20,
-        maximum: 600,
-        step: 10,
+        title: "コメント通過時間",
+        description: "コメントがOverlayへ入ってから出るまでの基準時間です（秒）。",
+        minimum: 2,
+        maximum: 15,
+        step: 0.5,
       },
       {
         kind: "number",

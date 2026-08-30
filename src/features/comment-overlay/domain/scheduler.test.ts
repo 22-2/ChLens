@@ -96,6 +96,20 @@ describe("CommentScheduler", () => {
     expect(snapshot.pending).toHaveLength(0);
   });
 
+  it("durationSeconds指定時はステージ幅が変わっても通過時間を固定する", () => {
+    const scheduler = createScheduler({
+      stageWidth: 1_200,
+      stageHeight: 80,
+      laneHeight: 40,
+      durationSeconds: 6,
+    });
+
+    scheduler.enqueue(createInput(1, 240));
+
+    expect(scheduler.advance(0).active[0]?.duration).toBe(6);
+    expect(scheduler.advance(0).active[0]?.speedPxPerSecond).toBe(240);
+  });
+
   it("必要なときだけlaneを増やし、ステージ高さの容量で止める", () => {
     const scheduler = createScheduler({ stageHeight: 96 });
     scheduler.enqueue(createInput(1, 120));

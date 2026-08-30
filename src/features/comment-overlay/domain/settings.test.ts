@@ -9,13 +9,13 @@ describe("コメントOverlay設定", () => {
   it("設定値を許容範囲へ丸める", () => {
     expect(
       normalizeCommentOverlaySettings({
-        baseSpeedPxPerSecond: 1_000,
+        durationSeconds: 1,
         fontSize: 1,
         opacity: -1,
         maxQueueSize: 12.6,
       }),
     ).toEqual({
-      baseSpeedPxPerSecond: 600,
+      durationSeconds: 2,
       fontSize: 10,
       opacity: 0.1,
       maxQueueSize: 13,
@@ -25,7 +25,7 @@ describe("コメントOverlay設定", () => {
   it("NaNや無限大を既定値へ戻す", () => {
     expect(
       normalizeCommentOverlaySettings({
-        baseSpeedPxPerSecond: Number.NaN,
+        durationSeconds: Number.NaN,
         fontSize: Number.POSITIVE_INFINITY,
         opacity: Number.NEGATIVE_INFINITY,
         maxQueueSize: Number.NaN,

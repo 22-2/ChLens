@@ -93,7 +93,7 @@ describe("CommentOverlayController", () => {
       eventBus,
       platform: createBrowserCommentOverlayPlatform(),
       getSettings: () => ({
-        baseSpeedPxPerSecond: 1_000,
+        durationSeconds: 1,
         fontSize: 1,
         opacity: -1,
         maxQueueSize: 12.6,
@@ -105,7 +105,7 @@ describe("CommentOverlayController", () => {
     expect(eventBus.events[0]).toMatchObject({
       type: "reset",
       settings: {
-        baseSpeedPxPerSecond: 600,
+        durationSeconds: 2,
         fontSize: 10,
         opacity: 0.1,
         maxQueueSize: 13,
@@ -149,8 +149,8 @@ describe("CommentOverlayController", () => {
       settingsListenerRef.current = null;
     });
     let settings = {
-      baseSpeedPxPerSecond: 90,
-      fontSize: 18,
+      durationSeconds: 6,
+      fontSize: 30,
       opacity: 0.95,
       maxQueueSize: 64,
     };
@@ -167,8 +167,8 @@ describe("CommentOverlayController", () => {
 
     await controller.start(threadUrl, [response(1, "既存レス")]);
     settings = {
-      baseSpeedPxPerSecond: 180,
-      fontSize: 24,
+      durationSeconds: 4,
+      fontSize: 32,
       opacity: 0.5,
       maxQueueSize: 12,
     };

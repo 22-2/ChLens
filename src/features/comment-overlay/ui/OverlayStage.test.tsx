@@ -2,7 +2,7 @@ import "@testing-library/jest-dom/vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { CommentCandidate } from "../domain/comment-types";
-import { OverlayStage } from "./OverlayStage";
+import { calculateCommentLaneHeight, OverlayStage } from "./OverlayStage";
 
 const comment: CommentCandidate = {
   responseNumber: 1,
@@ -25,6 +25,30 @@ describe("OverlayStage", () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+  });
+
+  it("文字サイズに合わせてlane高を計算する", () => {
+    expect(calculateCommentLaneHeight(30)).toBe(40);
+    expect(calculateCommentLaneHeight(48)).toBe(62);
+  });
+
+  it("上部paddingをレーン位置へ反映する", () => {
+    render(
+      <OverlayStage
+        comments={[comment]}
+        stageWidth={600}
+        stageHeight={120}
+        topPadding={40}
+        durationSeconds={6}
+        playing
+      />,
+    );
+
+    act(() => {
+      scheduledFrame?.(0);
+    });
+
+    expect(screen.getByText("テストコメント")).toHaveStyle({ top: "40px" });
   });
 
   it("初回frameでqueueしたコメントを表示する", () => {

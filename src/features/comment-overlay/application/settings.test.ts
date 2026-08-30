@@ -36,7 +36,7 @@ describe("ConfigからのコメントOverlay設定読み出し", () => {
   it("文字列の保存値をOverlay設定へ変換する", () => {
     configMock.get.mockImplementation((key: string) => {
       const values: Record<string, string> = {
-        comment_overlay_speed: "180",
+        comment_overlay_speed: "6",
         comment_overlay_font_size: "24",
         comment_overlay_opacity: "0.6",
         comment_overlay_max_queue: "120",
@@ -45,7 +45,7 @@ describe("ConfigからのコメントOverlay設定読み出し", () => {
     });
 
     expect(readCommentOverlaySettings()).toEqual({
-      baseSpeedPxPerSecond: 180,
+      durationSeconds: 6,
       fontSize: 24,
       opacity: 0.6,
       maxQueueSize: 120,
@@ -55,7 +55,7 @@ describe("ConfigからのコメントOverlay設定読み出し", () => {
   it("範囲外や数値でない保存値をdomainの範囲へ揃える", () => {
     configMock.get.mockImplementation((key: string) => {
       const values: Record<string, string> = {
-        comment_overlay_speed: "999",
+        comment_overlay_speed: "15",
         comment_overlay_font_size: "文字サイズ",
         comment_overlay_opacity: "-1",
         comment_overlay_max_queue: "12.6",
@@ -64,11 +64,19 @@ describe("ConfigからのコメントOverlay設定読み出し", () => {
     });
 
     expect(readCommentOverlaySettings()).toEqual({
-      baseSpeedPxPerSecond: 600,
+      durationSeconds: 15,
       fontSize: DEFAULT_COMMENT_OVERLAY_SETTINGS.fontSize,
       opacity: 0.1,
       maxQueueSize: 13,
     });
+  });
+
+  it("旧px/秒設定を通過時間へ変換する", () => {
+    configMock.get.mockImplementation((key: string) => {
+      return key === "comment_overlay_speed" ? "180" : null;
+    });
+
+    expect(readCommentOverlaySettings().durationSeconds).toBe(5);
   });
 
   it("Config読み出し自体が失敗した場合は既定値を返す", () => {

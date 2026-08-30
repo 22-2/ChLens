@@ -43,5 +43,10 @@ export type {
   CommentProjectionOptions,
   CommentResponse,
 } from "./comment-types";
-export { DEFAULT_COMMENT_OVERLAY_SETTINGS, normalizeCommentOverlaySettings } from "./settings";
+export {
+  DEFAULT_COMMENT_OVERLAY_SETTINGS,
+  MAX_COMMENT_OVERLAY_DURATION_SECONDS,
+  MIN_COMMENT_OVERLAY_DURATION_SECONDS,
+  normalizeCommentOverlaySettings,
+} from "./settings";
 export type { CommentOverlaySettings } from "./settings";

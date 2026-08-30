@@ -9,7 +9,7 @@ export const DEFAULT_COMMENT_OVERLAY_GEOMETRY: CommentOverlayGeometry = {
   x: 80,
   y: 80,
   width: 900,
-  height: 160,
+  height: 240,
 };
 
 // 透明ウィンドウの当たり判定と表示中の操作バーで同じ高さを使うため、定数を一か所に置く。
