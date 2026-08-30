@@ -31,7 +31,11 @@ export class TauriCommentOverlayEventBus implements CommentOverlayEventBus {
 function isCommentOverlayEvent(payload: unknown): payload is CommentOverlayEvent {
   if (typeof payload !== "object" || payload === null) return false;
   const candidate = payload as Partial<CommentOverlayEvent>;
-  return candidate.version === 1 && candidate.type === "batch" && candidate.batch != null;
+  return (
+    candidate.version === 1 &&
+    (candidate.type === "batch" || candidate.type === "reset") &&
+    candidate.batch != null
+  );
 }
 
 export function createCommentOverlayEventBus(): CommentOverlayEventBus {

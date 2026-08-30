@@ -38,7 +38,7 @@ function createResetEvent(threadUrl: string, responses: readonly IRes[]): Commen
   const latest = latestResponseNumber(responses.map(toCommentResponse));
   return {
     version: 1,
-    type: "batch",
+    type: "reset",
     batch: {
       threadUrl,
       comments: [],

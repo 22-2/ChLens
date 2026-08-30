@@ -1,10 +1,16 @@
 import type { CommentBatch } from "./comment-types";
 
-export type CommentOverlayEvent = {
-  version: 1;
-  type: "batch";
-  batch: CommentBatch;
-};
+export type CommentOverlayEvent =
+  | {
+      version: 1;
+      type: "batch";
+      batch: CommentBatch;
+    }
+  | {
+      version: 1;
+      type: "reset";
+      batch: CommentBatch;
+    };
 
 export interface CommentOverlayEventBus {
   publish(event: CommentOverlayEvent): Promise<void>;

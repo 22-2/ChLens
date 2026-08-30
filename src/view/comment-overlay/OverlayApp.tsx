@@ -66,9 +66,10 @@ export function OverlayApp({
 
     const handleEvent = (event: CommentOverlayEvent): void => {
       const { batch } = event;
-      if (activeThreadUrlRef.current !== batch.threadUrl) {
+      if (event.type === "reset" || activeThreadUrlRef.current !== batch.threadUrl) {
         // 変更理由: スレが変わった時に前スレのlane・レス番号を再利用すると、別スレの
-        // コメントが混ざるため、表示履歴と重複判定を同時に初期化する。
+        // コメントが混ざるため、表示履歴と重複判定を同時に初期化する。resetは同じ
+        // スレッドの実況を再開した場合にもこの境界を明示的に通過させる。
         activeThreadUrlRef.current = batch.threadUrl;
         seenResponseNumbersRef.current.clear();
         setComments([]);
