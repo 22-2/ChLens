@@ -25,7 +25,7 @@ function readNumber(key: string, fallback: number): number {
   return Number.isFinite(value) ? value : fallback;
 }
 
-/** 既存Configの文字列設定をOverlay domainの値へ変換し、開始時に一度だけ読み込む。 */
+/** 既存Configの文字列設定をOverlay domainの値へ変換し、開始時と更新event時に読み込む。 */
 export function readCommentOverlaySettings(): CommentOverlaySettings {
   try {
     return normalizeCommentOverlaySettings({
