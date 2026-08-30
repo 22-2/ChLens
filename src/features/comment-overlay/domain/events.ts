@@ -1,4 +1,5 @@
 import type { CommentBatch } from "./comment-types";
+import type { CommentOverlaySettings } from "./settings";
 
 export type CommentOverlayEvent =
   | {
@@ -10,6 +11,7 @@ export type CommentOverlayEvent =
       version: 1;
       type: "reset";
       batch: CommentBatch;
+      settings?: CommentOverlaySettings;
     };
 
 export interface CommentOverlayEventBus {

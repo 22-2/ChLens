@@ -95,4 +95,48 @@ describe("OverlayApp", () => {
 
     expect(screen.getByText("再開後の実況")).toBeVisible();
   });
+
+  it("実況開始時の設定をOverlayStageへ反映する", async () => {
+    const eventBus = new MemoryCommentOverlayEventBus();
+    const platform = createBrowserCommentOverlayPlatform();
+
+    render(<OverlayApp eventBus={eventBus} platform={platform} />);
+    await act(async () => {
+      await Promise.resolve();
+      await eventBus.publish({
+        version: 1,
+        type: "reset",
+        settings: {
+          baseSpeedPxPerSecond: 180,
+          fontSize: 24,
+          opacity: 0.5,
+          maxQueueSize: 0,
+        },
+        batch: {
+          threadUrl: THREAD_URL,
+          comments: [],
+          latestResponseNumber: 0,
+        },
+      });
+      await eventBus.publish({
+        version: 1,
+        type: "batch",
+        batch: {
+          threadUrl: THREAD_URL,
+          comments: [oldComment],
+          latestResponseNumber: 1,
+        },
+      });
+    });
+    act(() => {
+      scheduledFrame?.(0);
+    });
+
+    const renderedComment = screen.getByText("前回の実況");
+    expect(renderedComment).toHaveStyle({
+      fontSize: "24px",
+      opacity: "0.5",
+      animationDuration: "5s",
+    });
+  });
 });

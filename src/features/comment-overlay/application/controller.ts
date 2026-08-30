@@ -1,14 +1,17 @@
 import type { IRes } from "src/service-container/interfaces";
 import {
+  DEFAULT_COMMENT_OVERLAY_SETTINGS,
   collectNewCommentBatch,
   createIdleCommentOverlayState,
   latestResponseNumber,
   startCommentOverlay,
   stopCommentOverlay,
+  normalizeCommentOverlaySettings,
   type CommentOverlayEvent,
   type CommentOverlayState,
   type CommentResponse,
 } from "../domain";
+import type { CommentOverlaySettings } from "../domain";
 import type { CommentOverlayEventBus } from "../domain/events";
 import type { CommentOverlayWindowPlatform } from "../platform/types";
 
@@ -20,6 +23,7 @@ export interface CommentOverlayControllerSnapshot {
 export interface CommentOverlayControllerDependencies {
   eventBus: CommentOverlayEventBus;
   platform: CommentOverlayWindowPlatform;
+  getSettings?: () => CommentOverlaySettings;
 }
 
 function toCommentResponse(response: IRes): CommentResponse {
@@ -34,11 +38,16 @@ function toCommentResponse(response: IRes): CommentResponse {
   };
 }
 
-function createResetEvent(threadUrl: string, responses: readonly IRes[]): CommentOverlayEvent {
+function createResetEvent(
+  threadUrl: string,
+  responses: readonly IRes[],
+  settings: CommentOverlaySettings,
+): CommentOverlayEvent {
   const latest = latestResponseNumber(responses.map(toCommentResponse));
   return {
     version: 1,
     type: "reset",
+    settings,
     batch: {
       threadUrl,
       comments: [],
@@ -56,6 +65,8 @@ export class CommentOverlayController {
 
   private readonly platform: CommentOverlayWindowPlatform;
 
+  private readonly getSettings: () => CommentOverlaySettings;
+
   private readonly listeners = new Set<() => void>();
 
   private readonly responseSnapshots = new Map<string, readonly IRes[]>();
@@ -71,9 +82,12 @@ export class CommentOverlayController {
 
   private publishQueue: Promise<void> = Promise.resolve();
 
-  constructor({ eventBus, platform }: CommentOverlayControllerDependencies) {
+  constructor({ eventBus, platform, getSettings }: CommentOverlayControllerDependencies) {
     this.eventBus = eventBus;
     this.platform = platform;
+    const readSettings = getSettings ?? (() => ({ ...DEFAULT_COMMENT_OVERLAY_SETTINGS }));
+    // 設定の保存元が将来増えても、Mainから出るeventは必ず正規化済みの値にする。
+    this.getSettings = () => normalizeCommentOverlaySettings(readSettings());
   }
 
   getSnapshot = (): CommentOverlayControllerSnapshot => this.snapshot;
@@ -115,7 +129,7 @@ export class CommentOverlayController {
     try {
       await this.setVisible(true);
       // Overlayが前スレの表示履歴を持っていても、開始したスレを境に表示を切り替える。
-      await this.publish(createResetEvent(threadUrl, snapshot));
+      await this.publish(createResetEvent(threadUrl, snapshot, this.getSettings()));
     } catch (error: unknown) {
       console.error("[ChLens] コメント実況の開始に失敗しました:", error);
       throw error;

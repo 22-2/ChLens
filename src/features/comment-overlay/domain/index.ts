@@ -43,3 +43,5 @@ export type {
   CommentProjectionOptions,
   CommentResponse,
 } from "./comment-types";
+export { DEFAULT_COMMENT_OVERLAY_SETTINGS, normalizeCommentOverlaySettings } from "./settings";
+export type { CommentOverlaySettings } from "./settings";

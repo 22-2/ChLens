@@ -8,7 +8,12 @@ import {
   type CommentOverlayResizeDirection,
   type CommentOverlayWindowPlatform,
 } from "src/features/comment-overlay/platform";
-import type { CommentCandidate } from "src/features/comment-overlay/domain";
+import {
+  DEFAULT_COMMENT_OVERLAY_SETTINGS,
+  normalizeCommentOverlaySettings,
+  type CommentCandidate,
+  type CommentOverlaySettings,
+} from "src/features/comment-overlay/domain";
 import {
   DEFAULT_COMMENT_HISTORY_LIMIT,
   OverlayStage,
@@ -60,6 +65,9 @@ export function OverlayApp({
   const [comments, setComments] = useState<readonly CommentCandidate[]>([]);
   const [stageKey, setStageKey] = useState(0);
   const [controlsVisible, setControlsVisible] = useState(true);
+  const [settings, setSettings] = useState<CommentOverlaySettings>(() => ({
+    ...DEFAULT_COMMENT_OVERLAY_SETTINGS,
+  }));
   const activeThreadUrlRef = useRef<string | null>(null);
   const seenResponseNumbersRef = useRef(new Set<number>());
   const seenResponseOrderRef = useRef<number[]>([]);
@@ -79,6 +87,10 @@ export function OverlayApp({
         seenResponseOrderRef.current = [];
         setComments([]);
         setStageKey((current) => current + 1);
+        if (event.type === "reset") {
+          // 設定は実況開始時にだけ反映し、表示中のコメントを毎batch再配置しない。
+          setSettings(normalizeCommentOverlaySettings(event.settings));
+        }
       }
 
       const additions = batch.comments.filter((comment) => {
@@ -166,6 +178,10 @@ export function OverlayApp({
         stageWidth={900}
         stageHeight={160}
         laneHeight={32}
+        baseSpeedPxPerSecond={settings.baseSpeedPxPerSecond}
+        fontSize={settings.fontSize}
+        commentOpacity={settings.opacity}
+        maxQueueSize={settings.maxQueueSize}
         fitToContainer
         playing
         interactive={false}

@@ -80,4 +80,30 @@ describe("CommentOverlayController", () => {
     expect(controller.getSnapshot().visible).toBe(false);
     expect(eventBus.events).toHaveLength(1);
   });
+
+  it("実況開始時の設定を正規化してreset eventへ含める", async () => {
+    const eventBus = new MemoryCommentOverlayEventBus();
+    const controller = new CommentOverlayController({
+      eventBus,
+      platform: createBrowserCommentOverlayPlatform(),
+      getSettings: () => ({
+        baseSpeedPxPerSecond: 1_000,
+        fontSize: 1,
+        opacity: -1,
+        maxQueueSize: 12.6,
+      }),
+    });
+
+    await controller.start("https://example.test/thread/1", [response(1, "既存レス")]);
+
+    expect(eventBus.events[0]).toMatchObject({
+      type: "reset",
+      settings: {
+        baseSpeedPxPerSecond: 600,
+        fontSize: 10,
+        opacity: 0.1,
+        maxQueueSize: 13,
+      },
+    });
+  });
 });
