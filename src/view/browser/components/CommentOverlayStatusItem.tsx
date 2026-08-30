@@ -1,5 +1,5 @@
 import { Eye, EyeOff, MessageCircle, Play, Square } from "lucide-react";
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect } from "react";
 import { isTauriRuntime } from "src/app/platform/runtime";
 import { useCommentOverlay } from "src/features/comment-overlay/application/use-comment-overlay";
 import { StatusBarItem } from "src/view/browser/components/StatusBar";
@@ -14,11 +14,22 @@ interface CommentOverlayStatusItemProps {
 export const CommentOverlayStatusItem: React.FC<CommentOverlayStatusItemProps> = ({ isActive }) => {
   const { currentPage } = useTabStore();
   const { controller, snapshot } = useCommentOverlay();
+  const isTauri = isTauriRuntime();
   const threadUrl = currentPage.type === "thread" ? currentPage.threadUrl : null;
 
   const isTargetThread = threadUrl != null && snapshot.state.targetThreadUrl === threadUrl;
   const isRunning = isTargetThread && snapshot.state.status === "running";
   const canShowOverlay = isTargetThread;
+
+  useEffect(() => {
+    // 変更理由: MVPでは表示中スレッドだけを実況対象にし、タブを離れた後も
+    // 非表示ThreadPageから新着を流し続ける独立実況を許可しない。背景実況は別フェーズで設計する。
+    if (!isTauri || !isActive || snapshot.state.status !== "running" || isTargetThread) return;
+
+    void controller.stop().catch((error: unknown) => {
+      console.error("[ChLens] 表示中スレッドを離れたための実況停止に失敗しました:", error);
+    });
+  }, [controller, isActive, isTargetThread, isTauri, snapshot.state.status]);
 
   const handleStartStop = useCallback(() => {
     if (!threadUrl) return;
@@ -42,7 +53,7 @@ export const CommentOverlayStatusItem: React.FC<CommentOverlayStatusItemProps> =
     });
   }, [canShowOverlay, controller, snapshot.visible]);
 
-  if (!isTauriRuntime() || !isActive || threadUrl == null) return null;
+  if (!isTauri || !isActive || threadUrl == null) return null;
 
   const startStopLabel = isRunning ? "コメント実況を停止" : "コメント実況を開始";
   const visibilityLabel = snapshot.visible ? "コメントOverlayを非表示" : "コメントOverlayを表示";

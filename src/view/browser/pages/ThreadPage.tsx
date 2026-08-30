@@ -80,9 +80,13 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const dispatch = useTabDispatch();
 
   useEffect(() => {
+    // 変更理由: MVPでは表示中スレッドだけを実況対象にし、非表示タブの取得結果を
+    // 背景実況へ使わない。独立した背景実況は対象sessionを別途設計してから追加する。
+    if (!isActive) return;
+
     // 取得結果の共有だけを行い、実況中でない場合の差分計算・送信はcontroller側で止める。
     commentOverlayController.syncThread(page.threadUrl, responses);
-  }, [commentOverlayController, page.threadUrl, responses]);
+  }, [commentOverlayController, isActive, page.threadUrl, responses]);
   // 変更理由: 更新開始後のloading中もwheel更新の共有cooldownとindicatorを維持し、
   // 画面切替で別の一覧/スレッドから連続更新できる隙間を作らない。
   const wheelPagination = useWheelPagination({
