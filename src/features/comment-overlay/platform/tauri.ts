@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { emitTo, listen } from "@tauri-apps/api/event";
 import { LogicalPosition, LogicalSize, Window } from "@tauri-apps/api/window";
 import {
   cloneCommentOverlayGeometry,
@@ -14,6 +15,7 @@ import {
 } from "./types";
 
 const COMMENT_OVERLAY_WINDOW_LABEL = "comment-overlay";
+export const COMMENT_OVERLAY_VISIBILITY_EVENT_NAME = "chlens://comment-overlay-visibility";
 const CURSOR_POLL_INTERVAL_MS = 100;
 const CURSOR_REENABLE_DELAY_MS = 220;
 const INTERACTIVE_EDGE_SIZE = 14;
@@ -33,6 +35,21 @@ interface PhysicalWindowBounds {
   width: number;
   height: number;
   scaleFactor: number;
+}
+
+interface CommentOverlayVisibilityPayload {
+  visible: boolean;
+}
+
+function isCommentOverlayVisibilityPayload(
+  payload: unknown,
+): payload is CommentOverlayVisibilityPayload {
+  return (
+    typeof payload === "object" &&
+    payload !== null &&
+    "visible" in payload &&
+    typeof payload.visible === "boolean"
+  );
 }
 
 async function getCommentOverlayWindow(): Promise<Window> {
@@ -232,6 +249,9 @@ export function createTauriCommentOverlayPlatform(): CommentOverlayWindowPlatfor
     async close() {
       // ウィンドウを破棄せず非表示にすることで、Mainから再表示できる状態を保つ。
       await platform.hide();
+      // MainとOverlayは別WebViewでcontrollerのvisibleを共有できないため、
+      // Overlay側の閉じる操作をMainへ通知してステータスバーの表示状態を同期する。
+      await emitTo("main", COMMENT_OVERLAY_VISIBILITY_EVENT_NAME, { visible: false });
     },
     async setClickThrough(enabled: boolean) {
       const overlay = await getCommentOverlayWindow();
@@ -243,6 +263,18 @@ export function createTauriCommentOverlayPlatform(): CommentOverlayWindowPlatfor
         await stopCursorPolling(overlay, false);
         if (barHoverListeners.size > 0) await startCursorPolling(overlay);
       }
+    },
+    async watchVisibility(listener: (visible: boolean) => void) {
+      return listen<CommentOverlayVisibilityPayload>(
+        COMMENT_OVERLAY_VISIBILITY_EVENT_NAME,
+        ({ payload }) => {
+          if (!isCommentOverlayVisibilityPayload(payload)) {
+            console.error("[ChLens] コメントOverlayの表示状態eventを検証できません:", payload);
+            return;
+          }
+          listener(payload.visible);
+        },
+      );
     },
     trackBarHover(listener: (hovered: boolean) => void) {
       barHoverListeners.add(listener);

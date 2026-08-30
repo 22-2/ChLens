@@ -93,6 +93,8 @@ export class CommentOverlayController {
 
   private settingsUnsubscribe: (() => void) | null = null;
 
+  private visibilityUnsubscribe: (() => void) | null = null;
+
   constructor({
     eventBus,
     platform,
@@ -105,6 +107,7 @@ export class CommentOverlayController {
     const readSettings = getSettings ?? (() => ({ ...DEFAULT_COMMENT_OVERLAY_SETTINGS }));
     // 設定の保存元が将来増えても、Mainから出るeventは必ず正規化済みの値にする。
     this.getSettings = () => normalizeCommentOverlaySettings(readSettings());
+    this.subscribeToVisibility();
   }
 
   getSnapshot = (): CommentOverlayControllerSnapshot => this.snapshot;
@@ -257,6 +260,26 @@ export class CommentOverlayController {
     } catch (error: unknown) {
       console.error("[ChLens] コメントOverlay設定の変更監視登録に失敗しました:", error);
     }
+  }
+
+  private subscribeToVisibility(): void {
+    if (this.visibilityUnsubscribe != null) return;
+
+    void this.platform
+      .watchVisibility((visible) => {
+        if (this.visible === visible) return;
+
+        // MainとOverlayは別WebViewなので、Overlayの閉じる操作後もMain側の
+        // ステータスバーから正しく再表示できるよう、native状態をcontrollerへ戻す。
+        this.visible = visible;
+        this.notify();
+      })
+      .then((unsubscribe) => {
+        this.visibilityUnsubscribe = unsubscribe;
+      })
+      .catch((error: unknown) => {
+        console.error("[ChLens] コメントOverlayの表示状態監視開始に失敗しました:", error);
+      });
   }
 
   private unsubscribeFromSettings(): void {

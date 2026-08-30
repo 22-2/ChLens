@@ -26,6 +26,9 @@ export function createBrowserCommentOverlayPlatform(): CommentOverlayWindowPlatf
     async toggleMaximize() {},
     async close() {},
     async setClickThrough(_enabled: boolean) {},
+    async watchVisibility(_listener: (visible: boolean) => void) {
+      return () => {};
+    },
     trackBarHover(_listener: (hovered: boolean) => void) {
       return () => {};
     },

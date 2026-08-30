@@ -2,6 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 const tauriMocks = vi.hoisted(() => ({
   invoke: vi.fn(),
+  event: {
+    emitTo: vi.fn(),
+    listen: vi.fn(),
+  },
   logicalPosition: class MockLogicalPosition {
     constructor(
       readonly x: number,
@@ -38,6 +42,11 @@ vi.mock("@tauri-apps/api/core", () => ({
   invoke: tauriMocks.invoke,
 }));
 
+vi.mock("@tauri-apps/api/event", () => ({
+  emitTo: tauriMocks.event.emitTo,
+  listen: tauriMocks.event.listen,
+}));
+
 vi.mock("@tauri-apps/api/window", () => ({
   LogicalPosition: tauriMocks.logicalPosition,
   LogicalSize: tauriMocks.logicalSize,
@@ -47,7 +56,9 @@ vi.mock("@tauri-apps/api/window", () => ({
 }));
 
 import { COMMENT_OVERLAY_GEOMETRY_STORAGE_KEY } from "./geometry";
-import { createTauriCommentOverlayPlatform } from "./tauri";
+import { COMMENT_OVERLAY_VISIBILITY_EVENT_NAME, createTauriCommentOverlayPlatform } from "./tauri";
+
+type VisibilityEventHandler = (event: { payload: unknown }) => void;
 
 function createMemoryStorage(): Storage {
   const values = new Map<string, string>();
@@ -79,6 +90,10 @@ describe("TauriコメントOverlay window platform", () => {
     vi.stubGlobal("localStorage", createMemoryStorage());
     tauriMocks.invoke.mockReset();
     tauriMocks.invoke.mockResolvedValue({ x: 0, y: 0 });
+    tauriMocks.event.emitTo.mockReset();
+    tauriMocks.event.emitTo.mockResolvedValue(undefined);
+    tauriMocks.event.listen.mockReset();
+    tauriMocks.event.listen.mockResolvedValue(vi.fn());
     tauriMocks.window.getByLabel.mockReset();
     tauriMocks.window.getByLabel.mockResolvedValue(tauriMocks.window);
     tauriMocks.window.outerPosition.mockReset();
@@ -210,5 +225,39 @@ describe("TauriコメントOverlay window platform", () => {
     expect(tauriMocks.window.setIgnoreCursorEvents).toHaveBeenLastCalledWith(true);
 
     await platform.setClickThrough(false);
+  });
+
+  it("Overlayを閉じるとnative windowを隠し、Mainへ非表示を通知する", async () => {
+    tauriMocks.window.hide.mockClear();
+    const platform = createTauriCommentOverlayPlatform();
+
+    await platform.close();
+
+    expect(tauriMocks.window.hide).toHaveBeenCalledTimes(1);
+    expect(tauriMocks.event.emitTo).toHaveBeenCalledWith(
+      "main",
+      COMMENT_OVERLAY_VISIBILITY_EVENT_NAME,
+      { visible: false },
+    );
+  });
+
+  it("Main向けの表示状態eventを受け取り、解除関数を返す", async () => {
+    let visibilityHandler: VisibilityEventHandler | undefined;
+    const unlisten = vi.fn();
+    tauriMocks.event.listen.mockImplementationOnce(
+      async (_eventName: string, handler: VisibilityEventHandler) => {
+        visibilityHandler = handler;
+        return unlisten;
+      },
+    );
+    const listener = vi.fn();
+    const platform = createTauriCommentOverlayPlatform();
+
+    const cleanup = await platform.watchVisibility(listener);
+    visibilityHandler?.({ payload: { visible: false } });
+
+    expect(listener).toHaveBeenCalledWith(false);
+    cleanup();
+    expect(unlisten).toHaveBeenCalledTimes(1);
   });
 });

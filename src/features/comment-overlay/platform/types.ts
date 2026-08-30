@@ -34,6 +34,7 @@ export interface CommentOverlayWindowPlatform {
   toggleMaximize(): Promise<void>;
   close(): Promise<void>;
   setClickThrough(enabled: boolean): Promise<void>;
+  watchVisibility(listener: (visible: boolean) => void): Promise<() => void>;
   trackBarHover(listener: (hovered: boolean) => void): () => void;
   getGeometry(): Promise<CommentOverlayGeometry | null>;
   watchGeometry(listener: (geometry: CommentOverlayGeometry) => void): Promise<() => void>;

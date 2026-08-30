@@ -200,4 +200,20 @@ describe("CommentOverlayController", () => {
     expect(controller.getThreadResponses("https://example.test/thread/2")).not.toBeNull();
     expect(controller.getThreadResponses("https://example.test/thread/9")).not.toBeNull();
   });
+
+  it("Overlay側の非表示通知でMain側のvisible状態を同期する", async () => {
+    const eventBus = new MemoryCommentOverlayEventBus();
+    const platform = createBrowserCommentOverlayPlatform();
+    let visibilityListener: ((visible: boolean) => void) | undefined;
+    vi.spyOn(platform, "watchVisibility").mockImplementation(async (listener) => {
+      visibilityListener = listener;
+      return () => {};
+    });
+    const controller = new CommentOverlayController({ eventBus, platform });
+
+    await controller.setVisible(true);
+    visibilityListener?.(false);
+
+    expect(controller.getSnapshot().visible).toBe(false);
+  });
 });
