@@ -87,6 +87,11 @@ export default class Config {
     ["default_mail", ""],
     ["focus_new_tab_on_open", "on"],
     ["write_submit_ctrl_enter", "off"],
+    // コメントOverlayの設定はTauri版の実況開始時に読み込み、Browser版の既存挙動には影響させない。
+    ["comment_overlay_speed", "90"],
+    ["comment_overlay_font_size", "18"],
+    ["comment_overlay_opacity", "0.95"],
+    ["comment_overlay_max_queue", "64"],
     ["no_history", "off"],
     ["no_writehistory", "off"],
     ["user_css", ""],

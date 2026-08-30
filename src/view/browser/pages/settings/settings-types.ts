@@ -1,7 +1,14 @@
 import type { RJSFSchema, UiSchema } from "@rjsf/utils";
 import type { ReactNode } from "react";
 
-export type SettingsSectionId = "general" | "reload" | "thumbnail" | "ng" | "other" | "data";
+export type SettingsSectionId =
+  | "general"
+  | "reload"
+  | "overlay"
+  | "thumbnail"
+  | "ng"
+  | "other"
+  | "data";
 
 export type SettingsSupplementaryPanelId = "externalIntegration" | "dangerZone" | "dataManagement";
 
