@@ -12,6 +12,11 @@ export type CommentOverlayEvent =
       type: "reset";
       batch: CommentBatch;
       settings?: CommentOverlaySettings;
+    }
+  | {
+      version: 1;
+      type: "settings";
+      settings: CommentOverlaySettings;
     };
 
 export interface CommentOverlayEventBus {

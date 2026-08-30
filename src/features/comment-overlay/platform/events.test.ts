@@ -29,6 +29,17 @@ const batchEvent: CommentOverlayEvent = {
   },
 };
 
+const settingsEvent: CommentOverlayEvent = {
+  version: 1,
+  type: "settings",
+  settings: {
+    baseSpeedPxPerSecond: 180,
+    fontSize: 24,
+    opacity: 0.5,
+    maxQueueSize: 32,
+  },
+};
+
 describe("TauriCommentOverlayEventBus", () => {
   beforeEach(() => {
     tauriEventMocks.emit.mockClear();
@@ -61,10 +72,12 @@ describe("TauriCommentOverlayEventBus", () => {
 
     const cleanup = await bus.subscribe(listener);
     registeredHandler?.({ payload: batchEvent });
+    registeredHandler?.({ payload: settingsEvent });
     registeredHandler?.({ payload: { version: 2, type: "batch", batch: {} } });
 
-    expect(listener).toHaveBeenCalledTimes(1);
+    expect(listener).toHaveBeenCalledTimes(2);
     expect(listener).toHaveBeenCalledWith(batchEvent);
+    expect(listener).toHaveBeenCalledWith(settingsEvent);
     expect(cleanup).toBe(unsubscribe);
   });
 

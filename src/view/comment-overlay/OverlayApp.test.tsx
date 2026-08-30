@@ -138,5 +138,23 @@ describe("OverlayApp", () => {
       opacity: "0.5",
       animationDuration: "5s",
     });
+
+    await act(async () => {
+      await eventBus.publish({
+        version: 1,
+        type: "settings",
+        settings: {
+          baseSpeedPxPerSecond: 180,
+          fontSize: 30,
+          opacity: 0.4,
+          maxQueueSize: 0,
+        },
+      });
+    });
+
+    expect(screen.getByText("前回の実況")).toHaveStyle({
+      fontSize: "30px",
+      opacity: "0.4",
+    });
   });
 });

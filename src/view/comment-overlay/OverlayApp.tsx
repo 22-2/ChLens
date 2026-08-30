@@ -77,6 +77,12 @@ export function OverlayApp({
     let unsubscribe: (() => void) | null = null;
 
     const handleEvent = (event: CommentOverlayEvent): void => {
+      if (event.type === "settings") {
+        // 設定更新では既存コメントを消さず、実行中の速度・文字サイズだけを次の描画へ反映する。
+        setSettings(normalizeCommentOverlaySettings(event.settings));
+        return;
+      }
+
       const { batch } = event;
       if (event.type === "reset" || activeThreadUrlRef.current !== batch.threadUrl) {
         // 変更理由: スレが変わった時に前スレのlane・レス番号を再利用すると、別スレの

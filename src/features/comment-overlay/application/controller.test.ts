@@ -31,15 +31,20 @@ describe("CommentOverlayController", () => {
 
     controller.syncThread(threadUrl, [response(1, "既存レス")]);
     await controller.start(threadUrl);
-    expect(eventBus.events[0]?.batch.comments).toEqual([]);
+    expect(eventBus.events[0]).toMatchObject({
+      type: "reset",
+      batch: { comments: [] },
+    });
 
     controller.syncThread(threadUrl, [response(1, "既存レス"), response(2, "新着レス")]);
     await waitForPublishedEvents();
 
     expect(eventBus.events).toHaveLength(2);
-    expect(eventBus.events[1]?.batch.comments.map((comment) => comment.responseNumber)).toEqual([
-      2,
-    ]);
+    const newCommentEvent = eventBus.events[1];
+    expect(newCommentEvent?.type).toBe("batch");
+    if (newCommentEvent?.type === "batch") {
+      expect(newCommentEvent.batch.comments.map((comment) => comment.responseNumber)).toEqual([2]);
+    }
 
     controller.syncThread(threadUrl, [response(1, "既存レス"), response(2, "新着レス")]);
     await waitForPublishedEvents();
