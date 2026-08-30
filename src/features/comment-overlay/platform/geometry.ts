@@ -64,5 +64,6 @@ export function cloneCommentOverlayGeometry(
 export function fallbackCommentOverlayGeometry(
   geometry: CommentOverlayGeometry | null,
 ): CommentOverlayGeometry {
-  return cloneCommentOverlayGeometry(geometry ?? DEFAULT_COMMENT_OVERLAY_GEOMETRY);
+  // 変更理由: native windowへ直接渡すgeometryも、保存値と同じ最小サイズ・整数座標へ揃える。
+  return normalizeCommentOverlayGeometry(geometry ?? DEFAULT_COMMENT_OVERLAY_GEOMETRY);
 }
