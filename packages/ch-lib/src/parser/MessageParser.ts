@@ -46,6 +46,11 @@ function normalizeImageTags(message: string, protocol: string): string {
       /<img src="([\w]+):\/\/(.*?)"[^>]*>/gi,
       (_tag: string, scheme: string, rest: string) => `${scheme}://${rest}`,
     )
+    // 本文URLと同じ誤記をimgタグ由来のURLでもリンク・メディア判定できるようにする。
+    .replace(
+      /<img src="(https?):\/(?!\/)(.*?)"[^>]*>/gi,
+      (_tag: string, scheme: string, rest: string) => `${scheme}://${rest}`,
+    )
     .replace(
       /<img src="\/\/(.*?)"[^>]*>/gi,
       (_tag: string, rest: string) => `${protocol}//${rest}`,

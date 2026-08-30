@@ -16,15 +16,22 @@ const OBFUSCATED_PROTOCOLS: Readonly<Record<string, string>> = {
 // 復元対象は p:// / tp:// / ttp:// を http:// に、
 // ps:// / s:// / tps:// / ttps:// を https:// に置き換えた形式で、
 // スキームを完全に省略した :// は指定された既定プロトコル（省略時は https://）で補完する。
+// 転載文などに混ざる http:/ / https:/ のスラッシュ1本抜けも、リンク先だけ補正する。
 // 通常の http:// と https:// はそのまま扱い、いずれもホスト名・パス・クエリは変更しない。
 export const URL_LIKE_PATTERN =
-  /(?:https?:\/\/|(?:p|ps|s|tp|tps|ttp|ttps):\/\/|(?<![A-Za-z0-9+.-]):\/\/)[A-Za-z0-9\-._~:/?#[\]@!$&'()*+,;=%]+/gi;
+  /(?:https?:\/\/|https?:\/(?!\/)|(?:p|ps|s|tp|tps|ttp|ttps):\/\/|(?<![A-Za-z0-9+.-]):\/\/)[A-Za-z0-9\-._~:/?#[\]@!$&'()*+,;=%]+/gi;
 
 export function normalizeObfuscatedUrl(rawUrl: string, fallbackProtocol?: string): string {
   if (rawUrl.startsWith("://")) {
     // :// だけでは元のスキームを復元できないため、安全側の https を既定にする。
     const protocol = fallbackProtocol?.toLowerCase() === "http:" ? "http:" : "https:";
     return `${protocol}//${rawUrl.slice(3)}`;
+  }
+
+  const singleSlashMatch = rawUrl.match(/^(https?):\/(?!\/)/i);
+  if (singleSlashMatch) {
+    // 転載時の誤記を救済しつつ、http/https以外のスキームは勝手に書き換えない。
+    return `${singleSlashMatch[1]}://${rawUrl.slice(singleSlashMatch[0].length)}`;
   }
 
   const match = rawUrl.match(/^(https?):\/\/|^(p|ps|s|tp|tps|ttp|ttps):\/\//i);

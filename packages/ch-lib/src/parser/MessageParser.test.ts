@@ -66,4 +66,32 @@ describe("MessageParser", () => {
       },
     ]);
   });
+
+  it("スラッシュが1本だけのURLをリンク化してhrefを補正する", () => {
+    const tokens = parseMessage("https:/example.com/image.jpeg", {
+      protocol: "https:",
+    });
+
+    expect(tokens).toEqual([
+      {
+        type: "url",
+        value: "https:/example.com/image.jpeg",
+        href: "https://example.com/image.jpeg",
+      },
+    ]);
+  });
+
+  it("スラッシュが1本だけのimg srcをURLトークンへ変換する", () => {
+    const tokens = parseMessage('<img src="https:/example.com/image.jpeg">', {
+      protocol: "https:",
+    });
+
+    expect(tokens).toEqual([
+      {
+        type: "url",
+        value: "https://example.com/image.jpeg",
+        href: "https://example.com/image.jpeg",
+      },
+    ]);
+  });
 });

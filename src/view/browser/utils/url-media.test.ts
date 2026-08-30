@@ -21,6 +21,12 @@ describe("url-media", () => {
     ]);
   });
 
+  it("スキーム後のスラッシュが1本だけのURLも正規化して抽出する", () => {
+    expect(extractUrlsFromMessage("https:/example.com/image.jpeg")).toEqual([
+      "https://example.com/image.jpeg",
+    ]);
+  });
+
   it("twitter画像URLをビューア向けURLとして扱う", () => {
     const url = "https://pbs.twimg.com/media/TestTwitterImage?format=jpg&name=large";
 
@@ -30,6 +36,12 @@ describe("url-media", () => {
   it("先頭を削ったimgur画像URLをサムネイル形式に変換する", () => {
     expect(toViewerImageUrl("p://i.imgur.com/TestImageC.jpg")).toBe(
       "https://i.imgur.com/TestImageCm.jpg",
+    );
+  });
+
+  it("スラッシュが1本だけの画像URLを正規化してビューアで扱う", () => {
+    expect(toViewerImageUrl("https:/example.com/image.jpeg")).toBe(
+      "https://example.com/image.jpeg",
     );
   });
 
