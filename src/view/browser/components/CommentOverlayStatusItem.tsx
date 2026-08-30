@@ -1,4 +1,4 @@
-import { Eye, EyeOff, MessageCircle, Play, Square } from "lucide-react";
+import { AlertTriangle, Eye, EyeOff, MessageCircle, Play, Square } from "lucide-react";
 import React, { useCallback, useEffect } from "react";
 import { isTauriRuntime } from "src/app/platform/runtime";
 import { useCommentOverlay } from "src/features/comment-overlay/application/use-comment-overlay";
@@ -20,6 +20,7 @@ export const CommentOverlayStatusItem: React.FC<CommentOverlayStatusItemProps> =
   const isTargetThread = threadUrl != null && snapshot.state.targetThreadUrl === threadUrl;
   const isRunning = isTargetThread && snapshot.state.status === "running";
   const canShowOverlay = isTargetThread;
+  const errorLabel = snapshot.error == null ? null : `コメント実況エラー: ${snapshot.error}`;
 
   useEffect(() => {
     // 変更理由: MVPでは表示中スレッドだけを実況対象にし、タブを離れた後も
@@ -57,16 +58,18 @@ export const CommentOverlayStatusItem: React.FC<CommentOverlayStatusItemProps> =
 
   const startStopLabel = isRunning ? "コメント実況を停止" : "コメント実況を開始";
   const visibilityLabel = snapshot.visible ? "コメントOverlayを非表示" : "コメントOverlayを表示";
+  const statusLabel = errorLabel ?? startStopLabel;
 
   return (
     <StatusBarItem
       id="comment-overlay-status"
       alignment="left"
       priority={STATUS_BAR_PRIORITY.left.commentOverlay}
-      title={startStopLabel}
+      title={statusLabel}
       interactive
     >
-      <span className="comment-overlay-status" aria-label="コメント実況">
+      <span className="comment-overlay-status" aria-label={statusLabel}>
+        {errorLabel && <AlertTriangle size={13} aria-hidden="true" />}
         <button
           type="button"
           className="status-bar__btn"

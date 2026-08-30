@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
       cursor: null as { threadUrl: string; lastResponseNumber: number } | null,
     },
     visible: false,
+    error: null as string | null,
   },
   controller: {
     start: vi.fn().mockResolvedValue(undefined),
@@ -69,6 +70,7 @@ describe("CommentOverlayStatusItem", () => {
         cursor: null,
       },
       visible: false,
+      error: null,
     };
     mocks.controller.start.mockClear();
     mocks.controller.stop.mockClear();
@@ -112,6 +114,7 @@ describe("CommentOverlayStatusItem", () => {
         cursor: { threadUrl: THREAD_URL, lastResponseNumber: 3 },
       },
       visible: false,
+      error: null,
     };
 
     renderItem();
@@ -132,10 +135,27 @@ describe("CommentOverlayStatusItem", () => {
         cursor: { threadUrl: THREAD_URL, lastResponseNumber: 3 },
       },
       visible: true,
+      error: null,
     };
 
     renderItem();
 
     expect(mocks.controller.stop).toHaveBeenCalledTimes(1);
+  });
+
+  it("送信エラーがあると実況エラーをステータスバーへ表示する", () => {
+    mocks.snapshot = {
+      state: {
+        status: "running",
+        targetThreadUrl: THREAD_URL,
+        cursor: { threadUrl: THREAD_URL, lastResponseNumber: 3 },
+      },
+      visible: true,
+      error: "[ChLens] コメントOverlay eventの送信に失敗しました:",
+    };
+
+    renderItem();
+
+    expect(screen.getByLabelText(/コメント実況エラー/)).toBeInTheDocument();
   });
 });
