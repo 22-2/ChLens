@@ -327,7 +327,7 @@ Storybookでは速度、衝突、レーン、queue、長文、resizeを確認す
 
 ### Phase 4：CommentSchedulerと表示MVP
 
-> 進捗：実装済み。ChLens側のOverlay frontendから既存のscheduler・lane・queueを利用し、Storybookで固定レス、URL指定の過去ログ・現行スレ、Stressを確認できる。設定の永続化とWindows実機の長時間確認は後続に残す。
+> 進捗：実装済み。ChLens側のOverlay frontendから既存のscheduler・lane・queueを利用し、Storybookで固定レス、URL指定の過去ログ・現行スレ、Stressを確認できる。設定の永続化まで実装済みで、Windows実機の長時間確認は後続に残す。
 
 #### 作業
 
