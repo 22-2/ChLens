@@ -189,8 +189,10 @@ describe("TauriコメントOverlay window platform", () => {
 
     await platform.setClickThrough(true);
     expect(tauriMocks.window.setIgnoreCursorEvents).toHaveBeenNthCalledWith(1, true);
+    expect(vi.getTimerCount()).toBe(1);
 
     await platform.setClickThrough(false);
     expect(tauriMocks.window.setIgnoreCursorEvents).toHaveBeenLastCalledWith(false);
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

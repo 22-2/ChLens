@@ -184,7 +184,9 @@ export function createTauriCommentOverlayPlatform(): CommentOverlayWindowPlatfor
   };
 
   const stopCursorPolling = async (overlay: Window, keepRequest: boolean): Promise<void> => {
-    if (!clickThroughRequested && barHoverListeners.size === 0 && cursorPollTimer) {
+    // 変更理由: 非表示中やクリック透過解除後もintervalを残すと、native windowが見えなくても
+    // cursor位置commandを呼び続ける。再表示時は保持した要求を見てstartCursorPollingで再開する。
+    if (cursorPollTimer) {
       clearInterval(cursorPollTimer);
       cursorPollTimer = null;
       lastBarHovered = null;
@@ -202,7 +204,7 @@ export function createTauriCommentOverlayPlatform(): CommentOverlayWindowPlatfor
       const overlay = await getCommentOverlayWindow();
       await overlay.unminimize();
       await overlay.show();
-      if (clickThroughRequested) await startCursorPolling(overlay);
+      if (clickThroughRequested || barHoverListeners.size > 0) await startCursorPolling(overlay);
     },
     async hide() {
       const overlay = await getCommentOverlayWindow();
@@ -213,7 +215,7 @@ export function createTauriCommentOverlayPlatform(): CommentOverlayWindowPlatfor
       const overlay = await getCommentOverlayWindow();
       await overlay.unminimize();
       await overlay.show();
-      if (clickThroughRequested) await startCursorPolling(overlay);
+      if (clickThroughRequested || barHoverListeners.size > 0) await startCursorPolling(overlay);
       await overlay.setFocus();
     },
     async startResizing(direction: CommentOverlayResizeDirection) {
@@ -239,6 +241,7 @@ export function createTauriCommentOverlayPlatform(): CommentOverlayWindowPlatfor
         await startCursorPolling(overlay);
       } else {
         await stopCursorPolling(overlay, false);
+        if (barHoverListeners.size > 0) await startCursorPolling(overlay);
       }
     },
     trackBarHover(listener: (hovered: boolean) => void) {
