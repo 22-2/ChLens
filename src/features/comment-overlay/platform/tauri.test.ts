@@ -195,4 +195,20 @@ describe("TauriコメントOverlay window platform", () => {
     expect(tauriMocks.window.setIgnoreCursorEvents).toHaveBeenLastCalledWith(false);
     expect(vi.getTimerCount()).toBe(0);
   });
+
+  it("非表示でpollingを止め、再表示時にクリック透過とpollingを復帰する", async () => {
+    vi.useFakeTimers();
+    const platform = createTauriCommentOverlayPlatform();
+
+    await platform.setClickThrough(true);
+    await platform.hide();
+    expect(vi.getTimerCount()).toBe(0);
+    expect(tauriMocks.window.hide).toHaveBeenCalledTimes(1);
+
+    await platform.show();
+    expect(vi.getTimerCount()).toBe(1);
+    expect(tauriMocks.window.setIgnoreCursorEvents).toHaveBeenLastCalledWith(true);
+
+    await platform.setClickThrough(false);
+  });
 });
