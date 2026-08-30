@@ -18,8 +18,8 @@
 - Phase 2：実装済み。ChLens TauriへOverlay用entry、初期非表示のnative window、capability、geometry保存、クリック透過、カーソル位置command、Tauri event adapterを追加した。
 - Phase 3：実装済み。ThreadPageの確定済み`IRes[]`をcontrollerへ同期し、Tauri版スレッドのステータスバーから実況開始・停止とOverlay表示切り替えを行えるようにした。MVPではアクティブなスレッドだけを実況対象とする。
 - Phase 4：実装済み。動的lane、adaptive/dropを既定とする新着優先queue、CSS animation、hover情報、固定レス・過去ログ・現行スレ・StressのStoryを実装した。
-- Phase 5：実装済み。Tauri限定の開始・停止・表示切り替えUI、表示中スレッドを離れた際の停止、速度・文字サイズ・透明度・最大queue数の設定保存と実況開始時の反映まで追加した。
-- 自動確認：`pnpm tsc6`、`pnpm build:chrome`、`pnpm build:firefox`、`pnpm build:tauri`、`pnpm tauri build --debug --no-bundle`、`cargo check --manifest-path src-tauri/Cargo.toml --all-targets`、Overlay関連テスト、geometry保存・復元テスト、Tauri event adapter契約テスト、`pnpm storybook:build`、`pnpm tauri dev`のwatcherとTauriプロセス起動は成功。直近のOverlay配下テストは48件全件成功している。全体テストは変更箇所外の`ResItem`状態クラス期待値と`jsutil`タイムアウトの2件が失敗している。
+- Phase 5：実装済み。Tauri限定の開始・停止・表示切り替えUI、表示中スレッドを離れた際の停止、速度・文字サイズ・透明度・最大queue数の設定保存と実況開始時の反映、開始失敗時の非表示ロールバックとエラー表示まで追加した。
+- 自動確認：`pnpm tsc6`、`pnpm build:chrome`、`pnpm build:firefox`、`pnpm build:tauri`、`pnpm tauri build --debug --no-bundle`、`cargo check --manifest-path src-tauri/Cargo.toml --all-targets`、Overlay関連テスト、geometry保存・復元テスト、Tauri event adapter契約テスト、`pnpm storybook:build`、`pnpm tauri dev`のwatcherとTauriプロセス起動は成功。直近のコメントOverlay・Tauri限定UI・設定テストは57件全件成功している。全体テストは633件中632件成功し、変更箇所外の`ResItem`状態クラス期待値1件だけが失敗している。前回確認された`jsutil` timeoutは今回再現しなかった。
 - 未確認：Windows実機での新着レス表示と設定反映、クリック透過、複数モニター/DPI、Overlay操作バーとリサイズ領域、長時間動作の手動確認。
 
 ## 背景と判断
@@ -356,7 +356,7 @@ Storybookでは速度、衝突、レーン、queue、長文、resizeを確認す
 
 ### Phase 5：Tauri限定UIと設定
 
-> 進捗：実装済み。実況開始・停止、Overlay表示切り替え、スレッド限定表示、Browser版非表示、表示中スレッドを離れた際の自動停止、表示設定の保存と実況開始時の反映まで実装済み。設定変更を実行中Overlayへ即時反映することと、実機操作の確認は後続に残す。
+> 進捗：実装済み。実況開始・停止、Overlay表示切り替え、スレッド限定表示、Browser版非表示、表示中スレッドを離れた際の自動停止、表示設定の保存と実況開始時の反映、開始・送信失敗時の状態復旧とエラー表示まで実装済み。設定変更を実行中Overlayへ即時反映することと、実機操作の確認は後続に残す。
 
 #### 作業
 
