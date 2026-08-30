@@ -14,10 +14,12 @@
 ## 現在の進捗（2026-08-30）
 
 - Phase 0：完了。独立したChlens Live開発を凍結し、本書を現行計画として扱う方針を旧ロードマップへ明記した。
-- Phase 1：完了。コメント入力型、HTMLからのprojection、baselineとの差分抽出、NG・空本文・重複排除、memory event busを実装済み。
+- Phase 1：実装済み。コメント入力型、HTMLからのprojection、baselineとの差分抽出、NG・空本文・重複排除、memory event busを実装済み。
 - Phase 2：実装済み。ChLens TauriへOverlay用entry、初期非表示のnative window、capability、geometry保存、クリック透過、カーソル位置command、Tauri event adapterを追加した。
-- Phase 3：着手。ThreadPageの確定済み`IRes[]`をcontrollerへ同期し、Tauri版スレッドのステータスバーから実況開始・停止とOverlay表示切り替えを行えるようにした。
-- 自動確認：`pnpm tsc6`、`pnpm build:chrome`、`pnpm build:firefox`、`pnpm build:tauri`、`pnpm tauri build --debug --no-bundle`、`cargo check --manifest-path src-tauri/Cargo.toml --all-targets`は成功。全体テストは既存の`ResItem`状態クラス期待値で1件失敗している。
+- Phase 3：実装済み。ThreadPageの確定済み`IRes[]`をcontrollerへ同期し、Tauri版スレッドのステータスバーから実況開始・停止とOverlay表示切り替えを行えるようにした。MVPではアクティブなスレッドだけを実況対象とする。
+- Phase 4：実装済み。動的lane、adaptive/dropを既定とする新着優先queue、CSS animation、hover情報、固定レス・過去ログ・現行スレ・StressのStoryを実装した。
+- Phase 5：一部実装。Tauri限定の開始・停止・表示切り替えUIは実装済みだが、速度・文字サイズ・透明度・最大queue数の設定は未着手である。
+- 自動確認：`pnpm tsc6`、`pnpm build:chrome`、`pnpm build:firefox`、`pnpm build:tauri`、`pnpm tauri build --debug --no-bundle`、`cargo check --manifest-path src-tauri/Cargo.toml --all-targets`、Overlay関連テスト37件、`pnpm storybook:build`は成功。全体テストは既存の`ResItem`状態クラス期待値で1件失敗している。
 - 未確認：Windows実機での新着レス表示、複数モニター/DPI、Overlay操作バーとリサイズ領域の手動確認。
 
 ## 背景と判断
@@ -265,7 +267,7 @@ Storybookでは速度、衝突、レーン、queue、長文、resizeを確認す
 
 ### Phase 1：コメントdomainの先行実装
 
-> 進捗：実装中。コメント入力型、差分抽出、projection、memory event bus、契約テストまで完了。
+> 進捗：実装済み。コメント入力型、差分抽出、projection、memory event bus、契約テストまで完了。
 
 #### 作業
 
@@ -285,6 +287,8 @@ Storybookでは速度、衝突、レーン、queue、長文、resizeを確認す
 
 ### Phase 2：OverlayウィンドウをChLens Tauriへ移植
 
+> 進捗：実装済み。TauriのOverlay entry、native window、platform adapter、geometry保存、クリック透過まで実装した。Windows実機の受け入れ確認はPhase 6で行う。
+
 #### 作業
 
 - ChLens本体のVite buildへOverlay entryを追加する。
@@ -303,6 +307,8 @@ Storybookでは速度、衝突、レーン、queue、長文、resizeを確認す
 
 ### Phase 3：既存ThreadPageとの接続
 
+> 進捗：実装済み。ThreadPageのアクティブな取得結果をcontrollerへ同期し、開始時baselineと新着差分をTauri eventへ送信する。Tauri限定UIの自動テストも追加した。
+
 #### 作業
 
 - ChLens全体で1つの`CommentOverlayController`をProviderまたはserviceとして保持する。
@@ -320,6 +326,8 @@ Storybookでは速度、衝突、レーン、queue、長文、resizeを確認す
 - ChLensのスレ表示、NG、検索、auto refreshに回帰がない。
 
 ### Phase 4：CommentSchedulerと表示MVP
+
+> 進捗：実装済み。ChLens側のOverlay frontendから既存のscheduler・lane・queueを利用し、Storybookで固定レス、URL指定の過去ログ・現行スレ、Stressを確認できる。設定の永続化とWindows実機の長時間確認は後続に残す。
 
 #### 作業
 
@@ -347,6 +355,8 @@ Storybookでは速度、衝突、レーン、queue、長文、resizeを確認す
 - Storybook上で固定レスと過去スレ再生を再現でき、現行スレStoryは自動次スレへ移動しない。
 
 ### Phase 5：Tauri限定UIと設定
+
+> 進捗：一部実装。実況開始・停止、Overlay表示切り替え、スレッド限定表示、Browser版非表示、表示中スレッドを離れた際の自動停止まで実装済み。表示設定の既存設定への追加は未着手。
 
 #### 作業
 
