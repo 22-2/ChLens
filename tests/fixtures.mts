@@ -22,7 +22,7 @@ export const test = base.extend<{
     await context.close();
   },
   extensionId: async ({ context }, use) => {
-    // for manifest v3:
+    // Manifest V3用:
     let [serviceWorker] = context.serviceWorkers();
     if (!serviceWorker) serviceWorker = await context.waitForEvent("serviceworker");
     const extensionId = serviceWorker.url().split("/")[2];

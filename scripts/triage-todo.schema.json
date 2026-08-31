@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "has_more_unreviewed_items": { "type": "boolean" },
+    "remaining_count": { "type": "integer", "minimum": 0 },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "source_text": { "type": "string" },
+          "action": {
+            "enum": ["create", "retriage", "review-existing", "skip"]
+          },
+          "confidence": { "enum": ["high", "medium", "low"] },
+          "title": { "type": "string" },
+          "body": { "type": "string" },
+          "labels": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "duplicate_issue_numbers": {
+            "type": "array",
+            "items": { "type": "integer", "minimum": 1 }
+          },
+          "existing_issue_numbers": {
+            "type": "array",
+            "items": { "type": "integer", "minimum": 1 }
+          },
+          "close_reason": {
+            "enum": ["completed", "not planned", "duplicate", "none"]
+          },
+          "unclear_questions": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "reason": { "type": "string" }
+        },
+        "required": [
+          "source_text",
+          "action",
+          "confidence",
+          "title",
+          "body",
+          "labels",
+          "duplicate_issue_numbers",
+          "existing_issue_numbers",
+          "close_reason",
+          "unclear_questions",
+          "reason"
+        ]
+      }
+    }
+  },
+  "required": ["items", "has_more_unreviewed_items", "remaining_count"]
+}

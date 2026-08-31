@@ -5,7 +5,7 @@ import { BoardParser } from "../parser/BoardParser";
 import { ChURL } from "../url/ChURL";
 
 describe("BoardParser", () => {
-  it("should parse 5ch style subject.txt", () => {
+  it("5ch形式のsubject.txtを解析する", () => {
     const url = new ChURL("https://egg.5ch.io/software/");
     const text =
       "1000000001.dat<>Thread Title (10)\n" +
@@ -22,7 +22,7 @@ describe("BoardParser", () => {
     expect(result[1].resCount).toBe(100);
   });
 
-  it("should parse Shitaraba style subject.txt", () => {
+  it("したらば形式のsubject.txtを解析する", () => {
     const url = new ChURL("https://jbbs.shitaraba.net/computer/12345/");
     const text =
       "1000000001.cgi,Thread Title(10)\n" +
@@ -39,8 +39,8 @@ describe("BoardParser", () => {
     );
   });
 
-  it("should parse bbyall_subject.txt (actual file)", () => {
-    // Load the actual test file
+  it("実ファイルのbbyall_subject.txtを解析する", () => {
+    // 実際のテストファイルを読み込む
     const testFilePath = path.join(
       import.meta.dirname,
       "../../../../src/core/__test__/bbyall_subject.txt",

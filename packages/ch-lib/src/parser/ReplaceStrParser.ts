@@ -62,8 +62,8 @@ export class ReplaceStrParser {
       // Prepare regex
       try {
         rule.beforeReg = this.prepareBeforeReg(rule);
-      } catch (e) {
-        // Silently fail here, or we could return error info
+      } catch {
+        // 不正な正規のルールは無視して残りを処理継続する。失敗情報は現仕様では握り潰す。
         continue;
       }
 

@@ -20,6 +20,14 @@ export async function copyText(text: string): Promise<void> {
   }
 }
 
+export function formatMarkdownLink(title: string, url: string): string {
+  // 変更理由: コピー先でMarkdownリンクとして解釈できるようにしつつ、
+  // タイトルとURLに含まれる構文文字の意味を保つ。
+  const escapedTitle = title.replaceAll("\\", "\\\\").replaceAll("]", "\\]");
+  const escapedUrl = url.replaceAll("\\", "\\\\").replaceAll("(", "\\(").replaceAll(")", "\\)");
+  return `[${escapedTitle}](${escapedUrl})`;
+}
+
 export function canCopyImageToClipboard(): boolean {
   return (
     typeof navigator !== "undefined" &&

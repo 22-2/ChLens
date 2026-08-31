@@ -11,12 +11,28 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "chlens",
         "url": "view/index.html",
         "width": 1200,
         "height": 800,
         "resizable": true,
         "fullscreen": false
+      },
+      {
+        "label": "comment-overlay",
+        "title": "ChLens コメントOverlay",
+        "url": "view/comment-overlay.html",
+        "width": 900,
+        "height": 240,
+        "resizable": true,
+        "visible": false,
+        "focus": false,
+        "transparent": true,
+        "decorations": false,
+        "shadow": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true
       }
     ],
     "security": {

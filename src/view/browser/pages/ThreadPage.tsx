@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { container } from "src/service-container/index";
 import type { IThread } from "src/service-container/interfaces";
+import { useCommentOverlay } from "src/features/comment-overlay/application/use-comment-overlay";
 import { MediaViewerContainer } from "src/view/browser/components/MediaViewerContainer";
 import { PopupRenderer } from "src/view/browser/components/PopupRenderer";
 import { ResItem } from "src/view/browser/components/ResItem";
@@ -16,6 +17,7 @@ import { useThreadPopupManager } from "src/view/browser/hooks/use-popup-manager"
 import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
 import { useThreadAutoRefresh } from "src/view/browser/hooks/use-thread-auto-refresh";
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";
+import { useThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
 import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 import { ThreadPageTopBar } from "src/view/browser/pages/thread/ThreadPageTopBar";
 import { useImageBlurConfig } from "src/view/browser/pages/thread/use-image-blur-config";
@@ -26,6 +28,7 @@ import { useThreadResContextMenu } from "src/view/browser/pages/thread/use-threa
 import { useThreadTopBar } from "src/view/browser/pages/thread/use-thread-top-bar";
 import { useThreadTopScrollOpenFilter } from "src/view/browser/pages/thread/use-thread-top-scroll-open-filter";
 import { useUrlHandlers } from "src/view/browser/pages/thread/use-url-handlers";
+import { useCommentOverlaySync } from "src/view/browser/pages/thread/use-comment-overlay-sync";
 import type { ThreadPage as ThreadPageType } from "src/view/browser/types";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import { getAutoRefreshPageKey } from "src/view/browser/utils/auto-refresh-pages";
@@ -53,6 +56,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const rootRef = useRef<HTMLDivElement>(null);
   const fallbackScrollContainerRef = useRef<HTMLDivElement>(null);
   const effectiveScrollContainerRef = scrollContainerRef ?? fallbackScrollContainerRef;
+  const refreshController = useThreadRefreshController(refreshKey);
   const {
     responses,
     visibleResponses,
@@ -64,16 +68,31 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     filteredResponses,
     filter,
     setFilter,
+    searchTarget,
+    setSearchTarget,
     searchQuery,
     setSearchQuery,
     fetchThread,
     idPositions,
     setResponses,
     messageProtocol,
-  } = useThreadData(tabId, page, refreshKey, rootRef);
+  } = useThreadData(tabId, page, rootRef, refreshController);
+  const { controller: commentOverlayController } = useCommentOverlay();
   const dispatch = useTabDispatch();
+
+  useCommentOverlaySync({
+    controller: commentOverlayController,
+    threadUrl: page.threadUrl,
+    responses,
+    isActive,
+    expired,
+    missingFromSubject,
+  });
+  // 変更理由: 更新開始後のloading中もwheel更新の共有cooldownとindicatorを維持し、
+  // 画面切替で別の一覧/スレッドから連続更新できる隙間を作らない。
   const wheelPagination = useWheelPagination({
-    isEnabled: isActive && !loading,
+    isEnabled: isActive,
+    isLoading: loading,
     containerRef: effectiveScrollContainerRef,
     edge: "bottom",
     onRefresh: () => dispatch({ type: "RELOAD" }),
@@ -138,22 +157,15 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   // 変更理由: 自動更新とステータスバー強調の条件を同一ソースに統一し、
   // タブ切替後に非アクティブタブの状態がステータスバーへ残留するのを防ぐ。
   const isActiveAutoRefreshEnabled = isActive && isAutoRefreshEnabled;
+  // 変更理由: 画面上はいずれも dat 落ち案内を表示する状態であり、
+  // 自動更新中にどちらかを取得したら、Issue #29 の完了条件に従って停止処理へ渡す。
+  const autoRefreshExpired = expired || missingFromSubject;
   const { enabled: pauseAutoScrollOnPopup } = usePopupAutoScrollPauseSetting();
 
-  const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling } = useThreadAutoRefresh({
-    enabled: isActiveAutoRefreshEnabled,
-    threadUrl: page.threadUrl,
-    expired,
-    loading,
-    // 変更理由: ポップアップを読みながら新着へ流されない従来動作を、
-    // ユーザーが用途に合わせて無効化できるようにする。
-    pauseAutoScroll: pauseAutoScrollOnPopup && popups.length > 0,
-    responseCount: responses.length,
-    lastResponseNum: responses.at(-1)?.num ?? null,
-    rootRef,
-    requestRefresh: () => dispatch({ type: "RELOAD" }),
-    // 新着が一定回数(=間隔×N)来なかったら、放置スレと判断して自動更新を止める。
-    onAutoStop: () => {
+  // 変更理由: 停止理由が増えても、タブ状態の解除と利用者への通知を同じ経路で行い、
+  // 一方だけ実行される不整合を防ぐ。
+  const handleAutoRefreshStop = useCallback(
+    (message: string) => {
       const pageKey = getAutoRefreshPageKey(page);
       if (pageKey == null) {
         return;
@@ -163,9 +175,28 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         enabled: false,
         pageKey,
       });
-      // 状態アイコンが消えるだけだと「いつ止まったか」が分かりにくいので明示する。
-      container.toast.info("新着が止まったため自動更新を停止しました");
+      container.toast.info(message);
     },
+    [dispatch, page],
+  );
+
+  const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling } = useThreadAutoRefresh({
+    enabled: isActiveAutoRefreshEnabled,
+    threadUrl: page.threadUrl,
+    refreshController,
+    expired: autoRefreshExpired,
+    loading,
+    // 変更理由: ポップアップを読みながら新着へ流されない従来動作を、
+    // ユーザーが用途に合わせて無効化できるようにする。
+    pauseAutoScroll: pauseAutoScrollOnPopup && popups.length > 0,
+    responseCount: responses.length,
+    lastResponseNum: responses.at(-1)?.num ?? null,
+    rootRef,
+    requestRefresh: () => dispatch({ type: "RELOAD" }),
+    // 新着が一定回数(=間隔×N)来なかったら、放置スレと判断して自動更新を止める。
+    onAutoStop: () => handleAutoRefreshStop("新着が止まったため自動更新を停止しました"),
+    // interval の停止だけではタブに自動更新状態が残るため、dat落ち時も明示的に解除する。
+    onThreadExpired: () => handleAutoRefreshStop("dat落ちを検知したため自動更新を停止しました"),
   });
 
   const handleFollowNextThread = useCallback(
@@ -344,7 +375,11 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   // ジェスチャーuseEffectでrootRefが確実にマウント済みになるよう、loading中の早期returnを廃止し常にrootRef付きdivを描画する
   return (
     <div ref={rootRef} className="thread-page" onDoubleClick={handleDoubleClick}>
-      <WheelScrollIndicator {...wheelPagination} threshold={WHEEL_THRESHOLD} />
+      <WheelScrollIndicator
+        {...wheelPagination}
+        threshold={WHEEL_THRESHOLD}
+        portalContainerRef={effectiveScrollContainerRef}
+      />
       {loading && responses.length === 0 ? (
         <div className="page-status">
           <Spinner size="sm" aria-label="スレッドを読み込み中" />
@@ -365,10 +400,12 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             filteredResponseCount={filteredResponses.length}
             onClose={closeTopBar}
             onFilterChange={setFilter}
+            onSearchTargetChange={setSearchTarget}
             onSearchQueryChange={setSearchQuery}
             responseCount={visibleResponses.length}
             searchFocusKey={searchFocusKey}
             searchQuery={searchQuery}
+            searchTarget={searchTarget}
           />
 
           {(expired || missingFromSubject) && (
@@ -390,6 +427,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
                   repCount={repCount}
                   miniAa={miniAaResNums.has(res.num)}
                   messageProtocol={messageProtocol}
+                  searchQuery={searchQuery}
                   onIdClick={handleIdClick}
                   onRepClick={handleRepClick}
                   onUrlClick={handleUrlClick}
@@ -403,6 +441,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
                   isImageBlurred={blurredResNums.has(res.num)}
                   imageBlurRadius={imageBlurConfig.radius}
                   ngResNums={ngResNums}
+                  threadUrl={page.threadUrl}
                 />
               );
             })}
@@ -412,11 +451,17 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             /* 自動更新はフィルターが有効な場合は無効化 */
             !isFilterEnabled && (
               <div
-                ref={autoScrollBoundaryRef}
                 className={`thread-page__auto-scroll-threshold${
                   canAutoScroll ? " thread-page__auto-scroll-threshold--armed" : ""
                 }${isAutoScrolling ? " thread-page__auto-scroll-threshold--scrolling" : ""}`}
               >
+                {/* 変更理由: 親要素の末尾は破線より16px下にあるため、親へrefを置くと
+                    見た目では線を越えていても追従判定がfalseになる。判定点を実際の破線へ揃える。 */}
+                <div
+                  ref={autoScrollBoundaryRef}
+                  className="thread-page__auto-scroll-threshold-line"
+                  aria-hidden="true"
+                />
                 <span className="thread-page__auto-scroll-threshold-label">
                   {canAutoScroll
                     ? "この線より下なので新着に追従します"

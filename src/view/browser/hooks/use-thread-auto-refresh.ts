@@ -1,10 +1,12 @@
 import { useEffect, type RefObject } from "react";
 import { useAutoRefresh, type UseAutoRefreshResult } from "src/view/browser/hooks/use-auto-refresh";
 import { useSetAutoScrollState } from "src/view/browser/hooks/use-auto-scroll-state";
+import type { ThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
 
 interface UseThreadAutoRefreshOptions {
   enabled: boolean;
   threadUrl: string;
+  refreshController: ThreadRefreshController;
   expired: boolean;
   loading: boolean;
   responseCount: number;
@@ -15,6 +17,8 @@ interface UseThreadAutoRefreshOptions {
   pauseAutoScroll?: boolean;
   /** 新着が一定回数(=間隔×N)来ず放置と判断したとき、自動更新を止めるために呼ぶ。 */
   onAutoStop?: () => void;
+  /** dat落ちを検知して自動更新を止めるとき、一度だけ呼ぶ。 */
+  onThreadExpired?: () => void;
 }
 
 /**
@@ -29,6 +33,7 @@ export function useThreadAutoRefresh(options: UseThreadAutoRefreshOptions): UseA
   const {
     enabled,
     threadUrl: _threadUrl,
+    refreshController,
     expired,
     loading,
     responseCount,
@@ -37,6 +42,7 @@ export function useThreadAutoRefresh(options: UseThreadAutoRefreshOptions): UseA
     requestRefresh,
     pauseAutoScroll = false,
     onAutoStop,
+    onThreadExpired,
   } = options;
 
   const setAutoScrollState = useSetAutoScrollState();
@@ -45,12 +51,14 @@ export function useThreadAutoRefresh(options: UseThreadAutoRefreshOptions): UseA
     enabled,
     expired,
     loading,
+    refreshController,
     pauseAutoScroll,
     responseCount,
     lastResponseNum,
     rootRef,
     requestRefresh,
     onAutoStop,
+    onThreadExpired,
   });
 
   // canAutoScroll / isAutoScrolling をコンテキストへ同期して

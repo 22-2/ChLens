@@ -140,7 +140,11 @@ dist
 
 ### MyProject
 /debug/
+# AI triage and implementation logs are local runtime artifacts.
+/debug/triage/
+/debug/implementation/
 /build/
+/storybook-static/
 .vscode
 
 # Playwright

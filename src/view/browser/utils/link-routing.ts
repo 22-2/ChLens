@@ -125,11 +125,24 @@ function toThreadListPage(url: URL): InternalThreadListPage {
   };
 }
 
+function parseChDatPage(url: URL): InternalThreadPage | null {
+  const datMatch = ROUTE_PATTERNS.CH_DAT.exec(url.pathname);
+  if (!datMatch) return null;
+
+  // dat直リンクは板名と数値のスレッド番号が揃うため、独自ドメインを列挙せずに
+  // 既存のスレッド画面へ正規化できる。ChURL側でも同じ正規化を行う。
+  url.pathname = `/test/read.cgi/${datMatch[1]}/${datMatch[2]}/`;
+  return toThreadPage(url);
+}
+
 // ---------------------------------------------------------------------------
 // Board-specific parsers
 // ---------------------------------------------------------------------------
 
 function parseChStylePage(url: URL): InternalBrowserPage | null {
+  const datPage = parseChDatPage(url);
+  if (datPage) return datPage;
+
   const threadMatch = ROUTE_PATTERNS.CH_STYLE_THREAD.exec(url.pathname);
   if (threadMatch) {
     url.pathname = `/${threadMatch[1]}/`;
@@ -218,6 +231,9 @@ function dispatchParser(url: URL, strict: boolean): InternalBrowserPage | null {
     return BOARD_PARSERS[boardType](url);
   }
 
+  const datPage = parseChDatPage(url);
+  if (datPage) return datPage;
+
   // 変更理由: /test/read.cgi/<board>/<thread> 形式は 5ch互換掲示板特有の
   // パスで誤爆の恐れがないため、ドメインに依存せず（クリック経路の
   // strict=true でも）内部スレッドとして扱う。
@@ -250,6 +266,17 @@ function dispatchParser(url: URL, strict: boolean): InternalBrowserPage | null {
 export function getBoardUrlFromThreadUrl(threadUrl: string): string {
   const url = normalizeUrl(threadUrl);
   if (!url) return threadUrl;
+
+  const datMatch = ROUTE_PATTERNS.CH_DAT.exec(url.pathname);
+  if (datMatch) return `${url.origin}/${datMatch[1]}/`;
+
+  const genericThreadMatch = ROUTE_PATTERNS.CH_STYLE_BOARD_FROM_THREAD.exec(url.pathname);
+  if (genericThreadMatch) {
+    // 変更理由: 板ホストを既知一覧に登録していない互換サーバーでも、オムニバーから
+    // スレを開いた際に「戻る先」として正しい板URLを生成し、スレURLそのものを
+    // threadListとして誤って積まないようにする。
+    return `${url.origin}/${genericThreadMatch[1]}/`;
+  }
 
   const boardType = classifyBoardHost(url.hostname);
   if (!boardType) return threadUrl;

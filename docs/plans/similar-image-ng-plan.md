@@ -44,7 +44,7 @@ ThreadPage.tsx
 | --- | ------------------------------------------------ | --------------------------------------------------------------------- |
 | 1   | `src/view/browser/utils/similar-image-ng.ts`     | 純粋関数：画像URL抽出、dHash計算、NGルール照合                        |
 | 2   | `src/view/browser/hooks/use-similar-image-ng.ts` | React hook：IntersectionObserver + 非同期ハッシュ計算 + 結果state管理 |
-| 3   | `docs/similar-image-ng-plan.md`                  | 本計画書（このファイル）                                              |
+| 3   | `docs/plans/similar-image-ng-plan.md`            | 本計画書（このファイル）                                              |
 
 ### 修正（5ファイル）
 

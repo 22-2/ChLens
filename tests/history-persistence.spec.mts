@@ -41,7 +41,7 @@ async function seedExtensionState(page: Page) {
   });
 }
 
-test.describe("History persistence", () => {
+test.describe("閲覧履歴の永続化", () => {
   test("hidden の閲覧履歴タブへ戻ると最新の履歴が表示される", async ({
     context,
     page,

@@ -1,11 +1,10 @@
 import type * as Monaco from "monaco-editor";
-import { NG_DSL_LANGUAGE_ID, NG_HIGHLIGHT_COLOR_PRESET_ITEMS } from "src/core/ngDsl";
 import {
-  isRuleCombinationSupported,
-  RULE_ACTION_CATALOG,
-  RULE_OPTION_CATALOG,
-  RULE_TARGET_CATALOG,
-} from "src/core/rules/catalog";
+  NG_DSL_LANGUAGE_ID,
+  RULE_DSL_COMPLETION_CANDIDATES,
+  RULE_DSL_LANGUAGE_DEFINITION,
+  type RuleDslCompletionCandidate,
+} from "@chlen/ch-lib";
 
 type MonacoNamespace = typeof Monaco;
 let ngDslRegistered = false;
@@ -30,30 +29,8 @@ function createHeaderSuggestions(
   position: Monaco.Position,
 ): Monaco.languages.CompletionItem[] {
   const range = createRange(model, position);
-  return RULE_ACTION_CATALOG.flatMap((action) =>
-    RULE_TARGET_CATALOG.filter((target) =>
-      isRuleCombinationSupported(action.name, target.name),
-    ).flatMap((target) => {
-      const isComparison =
-        target.comparison === "greater-than" || target.comparison === "greater-than-or-equal";
-      const matcherKinds = isComparison ? ["comparison"] : ["contains", "regex"];
-      return matcherKinds.map((matcherKind) => ({
-        label:
-          matcherKind === "comparison"
-            ? `${action.name} ${target.name} >=`
-            : `${action.name} ${target.name} ${matcherKind}`,
-        kind: monaco.languages.CompletionItemKind.Snippet,
-        detail: `${action.description} 対象: ${target.description}`,
-        insertText:
-          matcherKind === "comparison"
-            ? `${action.name} ${target.name} ${target.comparison === "greater-than" ? ">" : ">="} \${1:10}:`
-            : matcherKind === "regex"
-              ? `${action.name} ${target.name} regex:\n  "\${1:パターン}"`
-              : `${action.name} ${target.name} contains:\n  \${1:キーワード}`,
-        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-        range,
-      }));
-    }),
+  return RULE_DSL_COMPLETION_CANDIDATES.filter(({ category }) => category === "header").map(
+    (candidate) => toCompletionItem(monaco, candidate, range),
   );
 }
 
@@ -63,13 +40,9 @@ function createOptionSuggestions(
   position: Monaco.Position,
 ): Monaco.languages.CompletionItem[] {
   const range = createRange(model, position);
-  return RULE_OPTION_CATALOG.map((option) => ({
-    label: option.name,
-    kind: monaco.languages.CompletionItemKind.Property,
-    detail: option.description,
-    insertText: `${option.name}=`,
-    range,
-  }));
+  return RULE_DSL_COMPLETION_CANDIDATES.filter(({ category }) => category === "option").map(
+    (candidate) => toCompletionItem(monaco, candidate, range),
+  );
 }
 
 function createColorSuggestions(
@@ -78,23 +51,34 @@ function createColorSuggestions(
   position: Monaco.Position,
 ): Monaco.languages.CompletionItem[] {
   const range = createRange(model, position);
-  return [
-    ...NG_HIGHLIGHT_COLOR_PRESET_ITEMS.map((preset) => ({
-      label: preset.name,
-      kind: monaco.languages.CompletionItemKind.Color,
-      detail: `${preset.hex} / ${preset.description}`,
-      insertText: preset.name,
-      range,
-    })),
-    {
-      label: "#rrggbb",
-      kind: monaco.languages.CompletionItemKind.Snippet,
-      detail: "16進カラーコード",
-      insertText: "#${1:ffcdd2}",
-      insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-      range,
-    },
-  ];
+  return RULE_DSL_COMPLETION_CANDIDATES.filter(({ category }) => category === "color").map(
+    (candidate) => toCompletionItem(monaco, candidate, range),
+  );
+}
+
+function toCompletionItem(
+  monaco: MonacoNamespace,
+  candidate: RuleDslCompletionCandidate,
+  range: Monaco.IRange,
+): Monaco.languages.CompletionItem {
+  const kind =
+    candidate.category === "option"
+      ? monaco.languages.CompletionItemKind.Property
+      : candidate.category === "color"
+        ? monaco.languages.CompletionItemKind.Color
+        : candidate.category === "regex-value"
+          ? monaco.languages.CompletionItemKind.Keyword
+          : monaco.languages.CompletionItemKind.Snippet;
+  return {
+    label: candidate.label,
+    kind,
+    detail: candidate.detail,
+    insertText: candidate.insertText,
+    ...(candidate.isSnippet
+      ? { insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet }
+      : {}),
+    range,
+  };
 }
 
 export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
@@ -102,28 +86,23 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
   ngDslRegistered = true;
   monaco.languages.register({ id: NG_DSL_LANGUAGE_ID });
 
-  const actionPattern = RULE_ACTION_CATALOG.flatMap((entry) => [
-    entry.name,
-    ...(entry.aliases ?? []),
-  ])
+  const actionPattern = RULE_DSL_LANGUAGE_DEFINITION.actions
+    .flatMap((entry) => [entry.name, ...(entry.aliases ?? [])])
     .map(escapeRegExp)
     .join("|");
-  const targetPattern = RULE_TARGET_CATALOG.flatMap((entry) => [
-    entry.name,
-    ...(entry.aliases ?? []),
-  ])
+  const targetPattern = RULE_DSL_LANGUAGE_DEFINITION.targets
+    .flatMap((entry) => [entry.name, ...(entry.aliases ?? [])])
     .map(escapeRegExp)
     .join("|");
-  const optionPattern = RULE_OPTION_CATALOG.flatMap((entry) => [
-    entry.name,
-    ...(entry.aliases ?? []),
-  ])
+  const optionPattern = RULE_DSL_LANGUAGE_DEFINITION.options
+    .flatMap((entry) => [entry.name, ...(entry.aliases ?? [])])
     .map(escapeRegExp)
     .join("|");
-  const colorPattern = NG_HIGHLIGHT_COLOR_PRESET_ITEMS.map((preset) => preset.name)
+  const colorPattern = RULE_DSL_LANGUAGE_DEFINITION.colors
+    .map((preset) => preset.name)
     .map(escapeRegExp)
     .join("|");
-  const matcherPattern = "contains|regex";
+  const matcherPattern = RULE_DSL_LANGUAGE_DEFINITION.matchers.join("|");
 
   monaco.languages.setMonarchTokensProvider(NG_DSL_LANGUAGE_ID, {
     tokenizer: {
@@ -168,7 +147,6 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
     triggerCharacters: [" ", "=", ">", "[", '"', "'"],
     provideCompletionItems(model, position) {
       const line = model.getLineContent(position.lineNumber).slice(0, position.column - 1);
-      const range = createRange(model, position);
       if (/\bcolor\s*=\s*[#\w-]*$/iu.test(line)) {
         return { suggestions: createColorSuggestions(monaco, model, position) };
       }
@@ -179,16 +157,9 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
         return { suggestions: createHeaderSuggestions(monaco, model, position) };
       }
       return {
-        suggestions: [
-          {
-            label: "regex value",
-            kind: monaco.languages.CompletionItemKind.Keyword,
-            detail: "正規表現の引用値",
-            insertText: '"${1:パターン}"',
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            range,
-          },
-        ],
+        suggestions: RULE_DSL_COMPLETION_CANDIDATES.filter(
+          ({ category }) => category === "regex-value",
+        ).map((candidate) => toCompletionItem(monaco, candidate, createRange(model, position))),
       };
     },
   });

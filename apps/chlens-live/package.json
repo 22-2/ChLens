@@ -1,0 +1,35 @@
+{
+  "name": "chlens-live",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vp build",
+    "dev": "vp dev",
+    "check": "vp check",
+    "test": "vp test run",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
+  },
+  "dependencies": {
+    "@chlen/ch-lib": "workspace:*",
+    "@tauri-apps/api": "2.11.1",
+    "@tauri-apps/plugin-http": "2.5.9",
+    "lucide-react": "^1.27.0",
+    "normalize-wheel": "^1.0.1",
+    "radix-ui": "^1.6.7",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.11.4",
+    "@testing-library/jest-dom": "^7.0.0",
+    "@testing-library/user-event": "^14.6.6",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.4",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "vite-plus": "catalog:"
+  }
+}

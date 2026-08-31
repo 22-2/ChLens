@@ -21,3 +21,6 @@
   font-size: var(--sys-font-size-md);
   border-bottom: 1px solid var(--sys-color-warning-border);
 }
+.thread-list-view {
+  min-height: 100%;
+}

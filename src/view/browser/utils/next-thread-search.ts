@@ -65,6 +65,8 @@ interface RankedNextThreadCandidate extends CandidateScore {
   sortDistance: number;
 }
 
+type NextThreadCandidateSort = "score" | "res-count";
+
 export interface MainstreamSearchOptions {
   originalThreadUrl: string;
   originalThreadTitle: string;
@@ -389,6 +391,7 @@ function rankNextThreadCandidates(
   threads: readonly IThread[],
   currentThread: Pick<IThread, "title" | "url">,
   options: Required<NextThreadSearchOptions>,
+  sortBy: NextThreadCandidateSort,
 ): RankedNextThreadCandidate[] {
   const currentNumber = extractThreadSequenceNumber(currentThread.title);
   const currentSortKey = extractThreadTimestamp(currentThread.url);
@@ -530,6 +533,12 @@ function rankNextThreadCandidates(
     })
     .filter((candidate): candidate is RankedNextThreadCandidate => candidate != null)
     .sort((left, right) => {
+      // 変更理由: 手動検索は候補を人が比較して選ぶため、板一覧で確認できる
+      // レス数の多いスレを先に示す。一方、自動追従は既存のスコア順を保ち、
+      // レス数の違いだけで自動選択先が変わらないようにする。
+      if (sortBy === "res-count" && right.thread.resCount !== left.thread.resCount) {
+        return right.thread.resCount - left.thread.resCount;
+      }
       if (right.score !== left.score) {
         return right.score - left.score;
       }
@@ -587,7 +596,7 @@ export function findNextThreadCandidates(
 
   // 手動検索では自動移動のように1件へ決め打ちせず、選択可能な候補をすべて見せる。
   // minimumMarginは自動移動の誤移動防止用なので、候補の列挙条件には使わない。
-  return rankNextThreadCandidates(threads, currentThread, resolvedOptions)
+  return rankNextThreadCandidates(threads, currentThread, resolvedOptions, "res-count")
     .filter((candidate) => candidate.score >= policy.minimumScore)
     .map((candidate) => toNextThreadMatch(currentThread, candidate));
 }
@@ -601,7 +610,7 @@ export function findNextThreadMatch(
     mode: options.mode ?? "balanced",
     responseMessages: options.responseMessages ?? [],
   };
-  const candidates = rankNextThreadCandidates(threads, currentThread, resolvedOptions);
+  const candidates = rankNextThreadCandidates(threads, currentThread, resolvedOptions, "score");
   const best = candidates[0];
   if (!best) {
     return null;

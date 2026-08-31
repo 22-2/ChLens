@@ -4,6 +4,7 @@ export const STATUS_BAR_PRIORITY = {
     autoRefresh: 0,
     ng: 5,
     ikioi: 10,
+    commentOverlay: 15,
   },
   right: {
     writePanelToggle: 0,

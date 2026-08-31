@@ -2,7 +2,7 @@
 
 ## 目的
 
-[`src/view/browser/hooks/use-popup-manager.ts`](../src/view/browser/hooks/use-popup-manager.ts) に集約されている popup 関連処理を、既存の表示・操作・close 規則を変えずに責務ごとへ分割する。
+[`src/view/browser/hooks/use-popup-manager.ts`](../../src/view/browser/hooks/use-popup-manager.ts) に集約されている popup 関連処理を、既存の表示・操作・close 規則を変えずに責務ごとへ分割する。
 
 このファイルは約875行あり、現在は次の4種類の責務が同居している。
 

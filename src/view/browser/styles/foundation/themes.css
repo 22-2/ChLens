@@ -19,6 +19,7 @@
   --sys-color-selection: var(--ref-color-blue-100);
   --sys-color-accent: var(--ref-color-blue-600);
   --sys-color-accent-hover: var(--ref-color-blue-700);
+  --sys-color-evidence: var(--ref-color-blue-700);
   --sys-color-accent-fg: var(--ref-color-neutral-0);
   --sys-color-link-visited: var(--ref-color-purple-700);
   --sys-color-focus-ring: var(--ref-color-blue-600);
@@ -108,6 +109,7 @@
   --sys-color-selection: var(--ref-color-alpha-dark-blue-40);
   --sys-color-accent: var(--ref-color-dark-blue-600);
   --sys-color-accent-hover: var(--ref-color-dark-blue-700);
+  --sys-color-evidence: var(--ref-color-dark-blue-300);
   --sys-color-accent-fg: var(--ref-color-neutral-0);
   --sys-color-link-visited: var(--ref-color-dark-purple-300);
   --sys-color-focus-ring: var(--ref-color-dark-blue-300);

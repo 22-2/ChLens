@@ -27,7 +27,8 @@ import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useW
 import type { ThreadListPage as ThreadListPageType } from "src/view/browser/types";
 import { ContextMenu, ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { Spinner } from "src/view/browser/ui/Spinner";
-import { copyText } from "src/view/browser/utils/clipboard";
+import { copyText, formatMarkdownLink } from "src/view/browser/utils/clipboard";
+import { ThreadListView } from "src/view/shared/ThreadListView";
 const OPENED_BOARDS_CONFIG_KEY = "opened_board_entries";
 const MAX_OPENED_BOARD_ENTRIES = 500;
 
@@ -480,8 +481,11 @@ export const ThreadListPage: React.FC<Props> = ({
   const [searchQuery, setSearchQuery] = useState(() => persistedSearchQuery ?? "");
   const previousBoardUrlRef = useRef(page.boardUrl);
   const skipViewStateUpdateRef = useRef(false);
+  // 変更理由: 更新開始後のloading中もwheel更新の共有cooldownとindicatorを維持し、
+  // 画面切替で別の一覧/スレッドから連続更新できる隙間を作らない。
   const wheelPagination = useWheelPagination({
-    isEnabled: isActive && !loading,
+    isEnabled: isActive,
+    isLoading: loading,
     containerRef: effectiveScrollContainerRef,
     edge: "top",
     onRefresh: () => dispatch({ type: "RELOAD" }),
@@ -996,6 +1000,12 @@ export const ThreadListPage: React.FC<Props> = ({
         label: "スレタイ&URLをコピー",
         onSelect: () => void copyText(`${thread.title}\n${thread.url}`),
       },
+      {
+        id: "copy-title-url-markdown",
+        label: "スレタイ&URLをMarkdownでコピー",
+        // 変更理由: 既存の改行形式を残し、Markdownを使いたい貼り付け先だけ出力形式を選べるようにする。
+        onSelect: () => void copyText(formatMarkdownLink(thread.title, thread.url)),
+      },
     ];
     return items;
   }, [contextMenuState, openNgDialog]);
@@ -1105,16 +1115,30 @@ export const ThreadListPage: React.FC<Props> = ({
   }
 
   return (
-    <div className="thread-list-page" onDoubleClick={handleDoubleClick}>
-      <WheelScrollIndicator {...wheelPagination} threshold={WHEEL_THRESHOLD} />
-      {isFilterOpen ? (
-        <SearchBar
-          query={searchQuery}
-          onQueryChange={setSearchQuery}
-          onClose={closeFilterToolbar}
-          hitCount={visibleDisplayThreads.length}
-        />
-      ) : null}
+    <ThreadListView
+      rows={[]}
+      loading={false}
+      error={null}
+      query={searchQuery}
+      onQueryChange={setSearchQuery}
+      searchMode="custom"
+      searchContent={
+        isFilterOpen ? (
+          <SearchBar
+            query={searchQuery}
+            onQueryChange={setSearchQuery}
+            onClose={closeFilterToolbar}
+            hitCount={visibleDisplayThreads.length}
+          />
+        ) : null
+      }
+      onDoubleClick={handleDoubleClick}
+    >
+      <WheelScrollIndicator
+        {...wheelPagination}
+        threshold={WHEEL_THRESHOLD}
+        portalContainerRef={effectiveScrollContainerRef}
+      />
       {error && <div className="thread-list-page__notice">{error}</div>}
       <SimpleDataTable
         columns={THREAD_LIST_COLUMNS}
@@ -1212,6 +1236,6 @@ export const ThreadListPage: React.FC<Props> = ({
           </div>
         </div>
       )}
-    </div>
+    </ThreadListView>
   );
 };

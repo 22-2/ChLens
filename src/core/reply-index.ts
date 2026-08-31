@@ -10,8 +10,9 @@ export interface ReplyIndexes {
 
 // レスポンスの本文から既存のアンカー表示と同じ形式で参照先を抽出する。
 // 25件を超えて一括指定するアンカーはポップアップ対象外のため、返信数にも含めない。
+// 互換掲示板のdatにはHTMLエンティティ化されていない生の「>>」が含まれる場合もある。
 const ANCHOR_REG =
-  /(?:&gt;|＞){1,2}([\d\uff10-\uff19]+(?:[-\u30fc][\d\uff10-\uff19]+)?(?:\s*[,、]\s*[\d\uff10-\uff19]+(?:[-\u30fc][\d\uff10-\uff19]+)?)*)/g;
+  /(?:(?:&gt;|＞){1,2}|>>)([\d\uff10-\uff19]+(?:[-\u30fc][\d\uff10-\uff19]+)?(?:\s*[,、]\s*[\d\uff10-\uff19]+(?:[-\u30fc][\d\uff10-\uff19]+)?)*)/g;
 const FW_NUM_REG = /[\uff10-\uff19]/g;
 
 export function parseReplyAnchorTargets(message: string): number[] {

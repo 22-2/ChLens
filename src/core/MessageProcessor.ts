@@ -1,5 +1,4 @@
-import { AnchorParser } from "packages/ch-lib/src/index";
-import { URL_LIKE_PATTERN, normalizeObfuscatedUrl } from "src/core/url-utils";
+import { parseMessage, type MessageToken } from "@chlen/ch-lib";
 
 interface DecodedMessage {
   nameHtml: string;
@@ -9,32 +8,8 @@ interface DecodedMessage {
   messageHtml: string;
 }
 
-const TRAILING_PUNCTUATION = /[.,!?;:)]$/;
 const ALLOWED_NAME_TAG =
   /^<\/?(?:b|small|font(?:\s+color="?[#a-zA-Z0-9]+"?)?|span(?:\s+style="color:\s*[#a-zA-Z0-9]+;?")?)\s*>$/i;
-
-const trimLinkTrailingPunctuation = (rawUrl: string): string => {
-  let url = rawUrl;
-
-  // 意図: 本文末尾の句読点や括弧閉じがURLに誤って含まれるとリンク切れになるため、末尾だけを最小限トリムする。
-  while (TRAILING_PUNCTUATION.test(url)) {
-    const tail = url.at(-1);
-    if (tail !== ")") {
-      url = url.slice(0, -1);
-      continue;
-    }
-
-    const openingParenCount = (url.match(/\(/g) || []).length;
-    const closingParenCount = (url.match(/\)/g) || []).length;
-    if (closingParenCount > openingParenCount) {
-      url = url.slice(0, -1);
-      continue;
-    }
-    break;
-  }
-
-  return url;
-};
 
 interface DecodableRes {
   name: string;
@@ -45,6 +20,34 @@ interface DecodableRes {
   id?: string;
   slip?: string;
   date?: string;
+}
+
+function renderMessageTokens(tokens: readonly MessageToken[]): string {
+  return tokens
+    .map((token) => {
+      switch (token.type) {
+        case "text":
+        case "tag":
+          return token.value;
+        case "anchor": {
+          const disabled = token.data.targetCount >= 25 || token.data.targetCount === 0;
+          const disabledReason =
+            token.data.targetCount >= 25
+              ? "指定されたレスの量が極端に多いため、ポップアップを表示しません"
+              : "指定されたレスが存在しません";
+
+          return `<a href="javascript:undefined;" class="anchor ${disabled ? "disabled" : ""}" ${
+            disabled ? `data-disabled-reason="${disabledReason}"` : ""
+          }>${token.value}</a>`;
+        }
+        case "id":
+          return `<a href="javascript:undefined;" class="anchor_id">${token.value}</a>`;
+        case "url":
+          // 意図: URLの意味解析はch-libに任せ、リンク属性やCSSクラスはアプリ表示層で決める。
+          return `<a href="${token.href}" target="_blank" rel="noopener noreferrer">${token.value}</a>`;
+      }
+    })
+    .join("");
 }
 
 export default class MessageProcessor {
@@ -108,49 +111,12 @@ export default class MessageProcessor {
     }
     parts.otherHtml = otherHtml;
 
-    let messageHtml = (res.message || "")
-      .replace(/<img src="([\w]+):\/\/(.*?)"[^>]*>/gi, "$1://$2")
-      .replace(/<img src="\/\/(.*?)"[^>]*>/gi, `${protocol}//$1`)
-      .replace(AnchorParser.REG.ANCHOR, ($0: string) => {
-        const anchor = AnchorParser.parse($0);
-        const disabled = anchor.targetCount >= 25 || anchor.targetCount === 0;
-        const disabledReason =
-          anchor.targetCount >= 25
-            ? "指定されたレスの量が極端に多いため、ポップアップを表示しません"
-            : "指定されたレスが存在しません";
-
-        return `<a href="javascript:undefined;" class="anchor ${disabled ? "disabled" : ""}" ${
-          disabled ? `data-disabled-reason="${disabledReason}"` : ""
-        }>${$0}</a>`;
-      })
-      .replace(
-        /id:(?:[a-hj-z\d_+/.!]|i(?!d:))+/gi,
-        '<a href="javascript:undefined;" class="anchor_id">$&</a>',
-      );
-
-    const htmlParts = messageHtml.split(/(<[^>]+>)/);
-    let insideAnchor = false;
-    messageHtml = htmlParts
-      .map((part, index) => {
-        if (index % 2 === 1) {
-          if (part.startsWith("<a")) insideAnchor = true;
-          if (part.startsWith("</a>")) insideAnchor = false;
-          return part;
-        }
-
-        if (!insideAnchor) {
-          return part.replace(URL_LIKE_PATTERN, (matchedUrl: string) => {
-            const displayUrl = trimLinkTrailingPunctuation(matchedUrl);
-            const linkUrl = normalizeObfuscatedUrl(displayUrl);
-            // 意図: 掲示板側のURL難読化を利用者に見える本文では維持し、リンク先だけ復元する。
-            return `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer">${displayUrl}</a>`;
-          });
-        }
-        return part;
-      })
-      .join("");
-
-    parts.messageHtml = messageHtml;
+    // 本文の意味解析は共有ライブラリに集約し、ここではアプリ固有のHTML表示だけを担当する。
+    parts.messageHtml = renderMessageTokens(
+      parseMessage(res.message || "", {
+        protocol,
+      }),
+    );
 
     return parts;
   }

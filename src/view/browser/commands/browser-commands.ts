@@ -33,9 +33,10 @@ import {
 import {
   getBoardUrlFromThreadUrl,
   parseInternalBrowserPage,
+  parseInternalBrowserPageStrict,
 } from "src/view/browser/utils/link-routing";
 import { encodeThreadAsToon, estimateToonTokenCount } from "src/view/browser/utils/thread-toon";
-import { copyText } from "src/view/browser/utils/clipboard";
+import { copyText, formatMarkdownLink } from "src/view/browser/utils/clipboard";
 
 export const BROWSER_COMMAND_GROUP_LABELS = {
   navigation: "移動",
@@ -226,7 +227,12 @@ async function importOpenThreadTabs(context: BrowserCommandContext): Promise<voi
     context.tabs
       .map((tab) => getCurrentPage(tab))
       .filter((page): page is Extract<Page, { type: "thread" }> => page.type === "thread")
-      .map((page) => page.threadUrl),
+      // 変更理由: 既存のアプリ内タブが旧5ch.net URLを保持していても、
+      // ブラウザ側で正規化した5ch.io URLと同じスレッドとして重複排除するため。
+      .map((page) => {
+        const normalizedPage = parseInternalBrowserPageStrict(page.threadUrl);
+        return normalizedPage?.type === "thread" ? normalizedPage.threadUrl : page.threadUrl;
+      }),
   );
   const pagesToImport = openThreadPages.filter((page) => !existingThreadUrls.has(page.threadUrl));
 
@@ -541,6 +547,23 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
       const target = getCommandPageTarget(currentPage);
       if (!target) return;
       await copyWithNotice(`${target.title}\n${target.url}`, "タイトルとURL");
+    },
+  },
+  {
+    id: "copy.page-title-url-markdown",
+    label: "スレタイとURLをMarkdownでコピー",
+    englishLabel: "Copy Thread Title and URL as Markdown",
+    description: "スレタイとURLをMarkdownリンク形式でコピーします",
+    keywords: ["スレタイ&URL", "Markdown", "マークダウン", "title link"],
+    group: "copy",
+    icon: Clipboard,
+    // 変更理由: 板一覧にはスレタイがないため、スレッドのタイトルと正規URLを組み合わせる操作に限定する。
+    when: ({ currentPage }) => currentPage.type === "thread",
+    run: async ({ currentPage }) => {
+      const target = getCommandPageTarget(currentPage);
+      if (!target) return;
+      // 変更理由: 改行形式の既存コマンドを残し、Markdownを必要とする貼り付け先だけ選べるようにする。
+      await copyWithNotice(formatMarkdownLink(target.title, target.url), "Markdownリンク");
     },
   },
   {

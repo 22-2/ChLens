@@ -1,11 +1,13 @@
 import {
   Archive,
   Image as ImageIcon,
+  MessageCircle,
   MoreHorizontal,
   RefreshCw,
   Settings,
   ShieldAlert,
 } from "lucide-react";
+import { isTauriRuntime } from "src/app/platform/runtime";
 import { container } from "src/service-container/index";
 import {
   buildFieldSchema,
@@ -83,7 +85,7 @@ function defineSection(
   };
 }
 
-export const SETTINGS_SECTIONS = [
+const ALL_SETTINGS_SECTIONS = [
   defineSection(
     "general",
     "一般",
@@ -205,6 +207,55 @@ export const SETTINGS_SECTIONS = [
           "慎重ほど有力候補の連続確認と候補間の大きな差を求めます。積極でも別板や古いスレには移動しません。",
         options: AUTO_NEXT_THREAD_MODE_OPTIONS,
         widget: "radio",
+      },
+    ],
+  ),
+  defineSection(
+    "overlay",
+    "コメントOverlay",
+    "Tauri版のコメント流し表示を調整します。設定は次回の実況開始時から反映します。",
+    <MessageCircle size={20} />,
+    [
+      {
+        kind: "divider",
+        id: "display",
+        title: "表示",
+      },
+      {
+        kind: "number",
+        key: "comment_overlay_speed",
+        title: "コメント通過時間",
+        description: "コメントがOverlayへ入ってから出るまでの基準時間です（秒）。",
+        minimum: 2,
+        maximum: 15,
+        step: 0.5,
+      },
+      {
+        kind: "number",
+        key: "comment_overlay_font_size",
+        title: "文字サイズ",
+        description: "Overlayへ表示するコメントの文字サイズです（px）。",
+        minimum: 10,
+        maximum: 48,
+        step: 1,
+      },
+      {
+        kind: "number",
+        key: "comment_overlay_opacity",
+        title: "不透明度",
+        description: "コメントの不透明度です。0.1から1.0まで指定できます。",
+        minimum: 0.1,
+        maximum: 1,
+        step: 0.05,
+      },
+      {
+        kind: "number",
+        key: "comment_overlay_max_queue",
+        title: "待機queue上限",
+        description: "strict/queue動作で待機させるコメント数です。0で待機しません。",
+        minimum: 0,
+        maximum: 3_000,
+        step: 1,
       },
     ],
   ),
@@ -348,6 +399,13 @@ export const SETTINGS_SECTIONS = [
     },
   ),
 ] as const satisfies readonly SettingsSectionDefinition[];
+
+/** Browser版へTauri専用の設定項目を露出させないため、環境判定を一覧生成へ閉じ込める。 */
+export function getSettingsSections(isTauri: boolean): readonly SettingsSectionDefinition[] {
+  return ALL_SETTINGS_SECTIONS.filter((section) => section.id !== "overlay" || isTauri);
+}
+
+export const SETTINGS_SECTIONS = getSettingsSections(isTauriRuntime());
 
 export const SETTINGS_SECTION_MAP = new Map<SettingsSectionId, SettingsSectionDefinition>(
   SETTINGS_SECTIONS.map((section) => [section.id, section]),

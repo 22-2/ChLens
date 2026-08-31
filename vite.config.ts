@@ -59,12 +59,14 @@ import { defineConfig, lazyPlugins, Plugin } from "vite-plus";
 
 // ─── plugin: browser HTML (without Pug) ─────────────────────────────────────
 
-function browserHtmlPlugin(outputDir: string): Plugin {
+function browserHtmlPlugin(outputDir: string, entry: string): Plugin {
   const manifestJson = fs.readJsonSync("src/manifest.json");
 
   return {
     name: "browser-html-build",
     async buildStart() {
+      if (entry !== "browser") return;
+
       const version = String(manifestJson.version ?? "");
 
       // browserビューは新UI(React)のエントリを直接起動したいため、
@@ -77,6 +79,22 @@ function browserHtmlPlugin(outputDir: string): Plugin {
       await fs.ensureDir(path.dirname(outputFile));
       await fs.writeFile(outputFile, html);
       await fs.remove(path.join(outputDir, "view", "browser.html"));
+    },
+  };
+}
+
+// TauriのコメントOverlayはlegacy app.bootを必要としないため、Browser用HTMLとは分けて
+// 生成する。entryを分けることでChrome／Firefox bundleへOverlayの起動処理を混ぜない。
+function overlayHtmlPlugin(outputDir: string, entry: string): Plugin {
+  return {
+    name: "comment-overlay-html-build",
+    async buildStart() {
+      if (entry !== "overlay") return;
+
+      const html = `<!DOCTYPE html><html class="view view_comment_overlay"><head><meta charset="utf-8"><title>ChLens コメントOverlay</title><script src="../overlay.js" defer></script><link rel="stylesheet" href="../overlay.css"></head><body><div id="root"></div></body></html>`;
+      const outputFile = path.join(outputDir, "view", "comment-overlay.html");
+      await fs.ensureDir(path.dirname(outputFile));
+      await fs.writeFile(outputFile, html);
     },
   };
 }
@@ -120,10 +138,19 @@ function manifestPlugin(platform: string, outputDir: string): Plugin {
 
 // ─── plugin: static file copies ──────────────────────────────────────────────
 
-function staticCopyPlugin(platform: string, outputDir: string, minifyJs: boolean): Plugin {
+function staticCopyPlugin(
+  platform: string,
+  outputDir: string,
+  minifyJs: boolean,
+  entry: string,
+): Plugin {
   return {
     name: "static-copy",
     async buildStart() {
+      // mainとOverlayを並列watchしても共有出力先を競合させないよう、
+      // background・画像・Monacoなどの静的資産はmain entryだけが更新する。
+      if (entry !== "browser") return;
+
       // 変更理由: content_scripts は manifest で単一JSを参照するため、
       // TS実装をここで bundle して常に最新の cs_addlink.js を出力する。
       await esbuildBuild({
@@ -207,6 +234,7 @@ export default defineConfig(({ mode }) => {
     // submit_res:    { file: "src/write/submit_res.js",         name: "submit_res" },
     // submit_thread: { file: "src/write/submit_thread.js",      name: "submit_thread" },
     browser: { file: "src/view/browser/index.tsx", name: "BrowserView" },
+    overlay: { file: "src/view/comment-overlay/index.tsx", name: "CommentOverlay" },
   };
 
   const { file, name } = entryMap[entry];
@@ -215,7 +243,10 @@ export default defineConfig(({ mode }) => {
     staged: {
       "src/**/*.{ts,tsx}": "vp check --fix",
     },
-    fmt: {},
+    fmt: {
+      // ドキュメントは文章構成を優先し、コード用フォーマッターで意図せず書き換えない。
+      ignorePatterns: ["docs/**", "**/*.md"],
+    },
     lint: {
       plugins: ["oxc", "typescript", "unicorn", "react"],
       categories: {
@@ -346,15 +377,18 @@ export default defineConfig(({ mode }) => {
     },
     plugins: lazyPlugins(() => [
       react(),
-      browserHtmlPlugin(outputDir),
+      browserHtmlPlugin(outputDir, entry),
+      overlayHtmlPlugin(outputDir, entry),
       manifestPlugin(platform, outputDir),
-      staticCopyPlugin(platform, outputDir, minifyOutput),
+      staticCopyPlugin(platform, outputDir, minifyOutput, entry),
       // buildOutputCopyPlugin(outputDir, buildCopyDestination),
     ]),
     resolve: {
       alias: {
         src: path.resolve(__dirname, "./src"),
         packages: path.resolve(__dirname, "./packages"),
+        // Chlens側もLive側と同じ共有rules sourceを解決し、評価器の二重実装を防ぐ。
+        "@chlen/ch-lib": path.resolve(__dirname, "./packages/ch-lib/src/index.ts"),
         "webextension-polyfill":
           platform === "tauri"
             ? path.resolve(__dirname, "./src/browser-shim.js")

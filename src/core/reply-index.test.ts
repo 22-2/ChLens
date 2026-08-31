@@ -23,6 +23,10 @@ describe("reply indexes", () => {
     expect(parseReplyAnchorTargets("&gt;&gt;1-26")).toEqual([]);
   });
 
+  it("parses literal anchors from dat", () => {
+    expect(parseReplyAnchorTargets(">>3,5-6")).toEqual([3, 5, 6]);
+  });
+
   it("counts unique response targets for anchor-count", () => {
     expect(countReplyAnchorTargets("&gt;&gt;1 &gt;&gt;1,2 &gt;&gt;3-4")).toBe(4);
   });

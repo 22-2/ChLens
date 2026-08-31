@@ -85,6 +85,8 @@ describe("chServerMoveDetect", () => {
     };
   });
 
+  // 全体並列実行時はlegacy jsutilの動的importが他テストのtransformと重なり、
+  // URL判定そのものが5秒を超えることがあるため、既定timeoutだけを延長する。
   it("uses board href when ChURL is passed", async () => {
     const { chServerMoveDetect } = await import("src/core/jsutil.js");
 
@@ -97,5 +99,5 @@ describe("chServerMoveDetect", () => {
     // /view/undefined への誤リクエスト回帰を防ぐ。
     expect(requestState.urls[0]).toBe("http://headline.5ch.io/bbynamazu/");
     expect(requestState.urls[0]).not.toBeUndefined();
-  });
+  }, 15_000);
 });

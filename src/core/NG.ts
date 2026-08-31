@@ -1,9 +1,15 @@
 import { createLogger } from "src/core/logger";
 import { countReplyAnchorTargets } from "src/core/reply-index";
-import { RULE_TARGET_CATALOG } from "src/core/rules/catalog";
-import { formatRuleDsl, parseRuleDsl } from "src/core/rules/dsl";
-import { clearRuleRegexCache, matchRules, type RuleMatchResult } from "src/core/rules/engine";
-import type { Rule } from "src/core/rules/model";
+import {
+  clearRuleRegexCache,
+  evaluateBoardRules,
+  evaluateResponseRules,
+  formatRuleDsl,
+  type Rule,
+  type RuleMatchResult,
+  type RuleRepository,
+  validateRuleDsl,
+} from "@chlen/ch-lib";
 import type { INGResult } from "src/service-container/index";
 import { container } from "src/service-container/index";
 
@@ -13,14 +19,12 @@ const logger = createLogger("NG");
 
 let rulesCache: readonly Rule[] | null = null;
 
-const BOARD_RULE_TARGETS = new Set(
-  RULE_TARGET_CATALOG.filter((target) => target.allowedOnBoard).map((target) => target.name),
-);
-const THREAD_RULE_TARGETS = new Set(
-  RULE_TARGET_CATALOG.filter((target) => target.allowedOnThread).map((target) => target.name),
-);
-const BOARD_RULE_ACTIONS = new Set<Rule["action"]>(["hide", "highlight", "demote"]);
-const THREAD_RULE_ACTIONS = new Set<Rule["action"]>(["hide"]);
+// Chlensの既存設定を壊さないため、保存キーだけはconfigの`ngwords`を維持し、
+// DSLの読み書き処理からconfig singletonへの依存をadapter内へ閉じ込める。
+const chlensRuleRepository: RuleRepository = {
+  load: () => container.config.get(CONFIG_STRING_NAME),
+  save: (source) => container.config.set(CONFIG_STRING_NAME, source),
+};
 
 function isCommentOrWhitespace(line: string): boolean {
   const trimmed = line.replace(/^[\uFEFF\u200B\u200C\u200D]+/u, "").trim();
@@ -35,7 +39,7 @@ function isCommentOrWhitespace(line: string): boolean {
 }
 
 function parseConfiguredRules(source: string): readonly Rule[] {
-  const parsed = parseRuleDsl(source);
+  const parsed = validateRuleDsl(source);
   const hasContent = source.split(/\r?\n/u).some((line) => !isCommentOrWhitespace(line));
   if (!parsed.recognized && hasContent) {
     const error = new Error("NG設定は新しいブロックDSLで記述してください。");
@@ -55,7 +59,7 @@ function parseConfiguredRules(source: string): readonly Rule[] {
 }
 
 function readSource(): string {
-  return container.config.get(CONFIG_STRING_NAME) ?? "";
+  return chlensRuleRepository.load() ?? "";
 }
 
 function toText(value: unknown): string {
@@ -88,7 +92,7 @@ export function validate(source: string): void {
 
 async function commitRules(rules: readonly Rule[]): Promise<void> {
   const nextSource = formatRuleDsl(rules);
-  await container.config.set(CONFIG_STRING_NAME, nextSource);
+  await chlensRuleRepository.save(nextSource);
   updateRulesCache(rules);
   container.message.send("ng_changed");
 }
@@ -143,13 +147,7 @@ export async function add(source: string): Promise<void> {
 
 export function isNGBoard(threadTitle: string, url: string, resCount: number): INGResult | null {
   const rules = get();
-  const matched = matchRules(
-    rules,
-    { all: threadTitle, title: threadTitle, url, resCount },
-    BOARD_RULE_ACTIONS,
-    BOARD_RULE_TARGETS,
-    onRegexError,
-  );
+  const matched = evaluateBoardRules(rules, { title: threadTitle, url, resCount }, onRegexError);
   return matched
     ? {
         type: matched.type,
@@ -176,8 +174,9 @@ export function isNGThread(res: unknown, title: string, url: string): INGResult 
     typeof raw.anchorCount === "number" && Number.isFinite(raw.anchorCount)
       ? raw.anchorCount
       : countReplyAnchorTargets(body);
-  const matched = matchRules(
-    get(),
+  const rules = get();
+  const matched = evaluateResponseRules(
+    rules,
     {
       all: `${name} ${mail} ${other} ${body}`,
       title,
@@ -190,8 +189,6 @@ export function isNGThread(res: unknown, title: string, url: string): INGResult 
       replyCount: typeof raw.replyCount === "number" ? raw.replyCount : undefined,
       anchorCount,
     },
-    THREAD_RULE_ACTIONS,
-    THREAD_RULE_TARGETS,
     onRegexError,
   );
   if (matched) {
@@ -206,7 +203,7 @@ export function isNGThread(res: unknown, title: string, url: string): INGResult 
     };
   }
   if (debugTargetResNum != null ? resNum === debugTargetResNum : resNum != null && resNum <= 3) {
-    logger.debug("thread.no_hit", { title, url, resNum, totalRuleCount: get().length });
+    logger.debug("thread.no_hit", { title, url, resNum, totalRuleCount: rules.length });
   }
   return null;
 }
@@ -215,5 +212,10 @@ export function execExpire(): void {
   const activeRules = get();
   const now = Date.now();
   const remaining = activeRules.filter((rule) => rule.expiresAt == null || now <= rule.expiresAt);
-  if (remaining.length !== activeRules.length) void commitRules(remaining);
+  if (remaining.length !== activeRules.length) {
+    // 期限切れの自動掃除は呼び出し元の判定を止めないが、保存失敗はログに残す。
+    void commitRules(remaining).catch((error: unknown) => {
+      logger.error("期限切れNGルールの保存に失敗しました", { error });
+    });
+  }
 }

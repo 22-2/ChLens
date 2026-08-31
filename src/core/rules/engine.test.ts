@@ -5,6 +5,26 @@ import { describe, expect, it, vi } from "vite-plus/test";
 vi.mock("src/core/jsutil", () => ({ normalize: (value: string) => value.toLowerCase() }));
 
 const HIDE = new Set<Rule["action"]>(["hide"]);
+const HIGHLIGHT = new Set<Rule["action"]>(["highlight"]);
+const BOARD_TARGETS = new Set<Rule["target"]>(["all", "title", "url", "res-count"]);
+const THREAD_TARGETS = new Set<Rule["target"]>([
+  "all",
+  "title",
+  "url",
+  "reply-count",
+  "anchor-count",
+]);
+const RESPONSE_TARGETS = new Set<Rule["target"]>([
+  "all",
+  "body",
+  "name",
+  "mail",
+  "id",
+  "slip",
+  "url",
+  "reply-count",
+  "anchor-count",
+]);
 const BODY = new Set<Rule["target"]>(["body"]);
 const RES_COUNT = new Set<Rule["target"]>(["res-count"]);
 const ANCHOR_COUNT = new Set<Rule["target"]>(["anchor-count"]);
@@ -84,5 +104,78 @@ describe("rule engine", () => {
     expect(
       matchRules(rules, { anchorCount: 3, url: "https://example.com" }, HIDE, ANCHOR_COUNT)?.type,
     ).toBe("AnchorCount");
+  });
+
+  it("board・thread・responseで同じscopeを適用し、対象外fieldは判定しない", () => {
+    // 変更理由: DSL evaluatorをLiveと共有する前に、製品ごとのadapterが許可対象だけを渡せば
+    // 同じrule sourceでもboard／thread／responseの境界を維持できることを固定する。
+    const rules: Rule[] = [
+      {
+        action: "hide",
+        target: "title",
+        enabled: true,
+        scope: { sites: ["bbs.eddibb.cc"] },
+        matchers: [{ kind: "contains", value: "注目" }],
+      },
+      {
+        action: "hide",
+        target: "body",
+        enabled: true,
+        scope: { sites: ["bbs.eddibb.cc"] },
+        matchers: [{ kind: "contains", value: "荒らし" }],
+      },
+      {
+        action: "highlight",
+        target: "title",
+        enabled: true,
+        scope: { sites: ["bbs.eddibb.cc"] },
+        matchers: [{ kind: "contains", value: "注目" }],
+      },
+    ];
+
+    expect(
+      matchRules(
+        rules,
+        { title: "注目スレ", url: "https://bbs.eddibb.cc/liveedge/" },
+        HIDE,
+        BOARD_TARGETS,
+      )?.type,
+    ).toBe("Title");
+    expect(
+      matchRules(
+        rules,
+        {
+          title: "注目スレ",
+          body: "荒らし本文",
+          url: "https://bbs.eddibb.cc/test/read.cgi/liveedge/1/",
+        },
+        HIDE,
+        THREAD_TARGETS,
+      )?.type,
+    ).toBe("Title");
+    expect(
+      matchRules(
+        rules,
+        { body: "荒らし本文", url: "https://bbs.eddibb.cc/test/read.cgi/liveedge/1/" },
+        HIDE,
+        RESPONSE_TARGETS,
+      )?.type,
+    ).toBe("Body");
+    expect(
+      matchRules(
+        rules,
+        { body: "荒らし本文", url: "https://example.com/test/read.cgi/liveedge/1/" },
+        HIDE,
+        RESPONSE_TARGETS,
+      ),
+    ).toBeNull();
+    expect(
+      matchRules(
+        rules,
+        { title: "注目スレ", url: "https://bbs.eddibb.cc/liveedge/" },
+        HIGHLIGHT,
+        BOARD_TARGETS,
+      )?.type,
+    ).toBe("HighlightTitle");
   });
 });

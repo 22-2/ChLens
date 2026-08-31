@@ -1,10 +1,11 @@
 import "@testing-library/jest-dom/vitest";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
-import React, { useState } from "react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import React, { useEffect, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 import type { IRes } from "src/service-container/interfaces";
 import { useThreadResContextMenu } from "src/view/browser/pages/thread/use-thread-res-context-menu";
+import type { ThreadFilter } from "src/view/browser/types";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 
 const mocks = vi.hoisted(() => ({
@@ -13,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   openWritePanelWithText: vi.fn(),
   toastInfo: vi.fn(),
   dispatch: vi.fn(),
+  handleAnchorClick: vi.fn(),
   isAutoRefreshEnabled: false,
 }));
 
@@ -157,6 +159,67 @@ function HookHarness() {
   );
 }
 
+function FilterJumpHarness() {
+  const [filter, setFilter] = useState<ThreadFilter>("image");
+  const [searchQuery, setSearchQuery] = useState("keyword");
+  const [filteredResponses, setFilteredResponses] = useState<IRes[]>([]);
+  const [capturedItems, setCapturedItems] = useState<ContextMenuItem[]>([]);
+
+  useEffect(() => {
+    // 変更理由: 実際のThreadPageと同じく、filter解除後にfilteredResponsesが更新される
+    // 1 render分の遅延を再現し、保留ジャンプが更新後にだけ実行される契約を確認する。
+    setFilteredResponses(filter === "all" && searchQuery === "" ? [TARGET_RES] : []);
+  }, [filter, searchQuery]);
+
+  const { openThreadResContextMenu } = useThreadResContextMenu({
+    addPopupContextMenu: (_x, _y, items) => {
+      setCapturedItems(items);
+    },
+    closePopup: () => {},
+    fetchThread: async () => {},
+    filter,
+    filteredResponses,
+    handleAnchorClick: mocks.handleAnchorClick,
+    hideAnchorPreviewImmediately: () => {},
+    miniAaResNums: new Set<number>(),
+    ownResNums: new Set<number>(),
+    page: {
+      type: "thread",
+      title: "thread title",
+      threadUrl: "https://example.com/test/read.cgi/live/1/",
+    },
+    searchQuery,
+    setFilter,
+    setSearchQuery,
+    setMiniAaResNums: () => {},
+    setResponses: () => {},
+  });
+
+  return (
+    <div>
+      <button
+        onClick={() => {
+          const event = {
+            preventDefault: () => {},
+            clientX: 10,
+            clientY: 20,
+          } as unknown as React.MouseEvent;
+          openThreadResContextMenu(event, TARGET_RES);
+        }}
+      >
+        open-filtered-menu
+      </button>
+      <button
+        onClick={() => {
+          capturedItems.find((item) => item.id === "clear-filter-jump")?.onSelect?.();
+        }}
+      >
+        clear-filter-jump
+      </button>
+    </div>
+  );
+}
+
 describe("useThreadResContextMenu", () => {
   afterEach(() => {
     cleanup();
@@ -165,6 +228,7 @@ describe("useThreadResContextMenu", () => {
     mocks.copyText.mockReset();
     mocks.toastInfo.mockReset();
     mocks.dispatch.mockReset();
+    mocks.handleAnchorClick.mockReset();
     mocks.isAutoRefreshEnabled = false;
   });
 
@@ -258,5 +322,16 @@ describe("useThreadResContextMenu", () => {
       pageKey: "thread:test",
     });
     expect(mocks.toastInfo).toHaveBeenCalledWith("スレッドの自動更新を停止しました");
+  });
+
+  it("フィルタ解除後のDOM更新を待って指定レスへジャンプする", async () => {
+    render(<FilterJumpHarness />);
+
+    fireEvent.click(screen.getByRole("button", { name: "open-filtered-menu" }));
+    fireEvent.click(screen.getByRole("button", { name: "clear-filter-jump" }));
+
+    await waitFor(() => {
+      expect(mocks.handleAnchorClick).toHaveBeenCalledWith(TARGET_RES.num);
+    });
   });
 });
