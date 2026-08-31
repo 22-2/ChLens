@@ -211,6 +211,29 @@
 .nav-bar__omnibar-item--active {
   background: var(--sys-color-list-hover-bg);
 }
+.nav-bar__omnibar-item:disabled {
+  color: var(--sys-color-text-disabled);
+  cursor: default;
+}
+.nav-bar__omnibar-item:disabled .nav-bar__omnibar-url {
+  color: var(--sys-color-text-disabled);
+}
+.nav-bar__omnibar-sources {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2px;
+  color: var(--sys-color-text-muted);
+}
+.nav-bar__omnibar-item--command {
+  align-items: center;
+}
+.nav-bar__omnibar-command-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  color: var(--sys-color-text-muted);
+}
 .nav-bar__omnibar-title {
   flex: 1;
   min-width: 0;

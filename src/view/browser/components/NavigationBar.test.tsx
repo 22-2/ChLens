@@ -1,10 +1,31 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import "fake-indexeddb/auto";
 import { container } from "src/service-container";
+import {
+  commandPalette,
+  commandPaletteStore,
+} from "src/view/browser/commands/command-palette-store";
 import { NavigationBar } from "src/view/browser/components/NavigationBar";
 import type { Page } from "src/view/browser/types";
 import { QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE } from "src/view/browser/utils/filter-toolbar-events";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+
+// browser-commands は拡張機能向け依存を含むため、DOM単体テストではAPIモジュールを差し替える。
+const requestThreadResJumpMock = vi.hoisted(() => vi.fn());
+vi.mock("webextension-polyfill", () => ({ default: {} }));
+vi.mock("src/view/browser/utils/thread-read-state", () => ({
+  requestThreadResJump: requestThreadResJumpMock,
+}));
+
+const { loadRecentCommandIdsMock, saveRecentCommandIdsMock } = vi.hoisted(() => ({
+  loadRecentCommandIdsMock: vi.fn(async () => [] as string[]),
+  saveRecentCommandIdsMock: vi.fn(async () => undefined),
+}));
+vi.mock("src/view/browser/commands/command-palette-history", () => ({
+  loadRecentCommandIds: loadRecentCommandIdsMock,
+  saveRecentCommandIds: saveRecentCommandIdsMock,
+}));
 
 const { activeTab, defaultHistory, dispatchMock, longTitle } = vi.hoisted(() => {
   const longTitle = "かなり長い履歴タイトル".repeat(12);
@@ -131,6 +152,8 @@ describe("NavigationBar", () => {
 
   afterEach(() => {
     cleanup();
+    commandPalette.close();
+    commandPaletteStore.updateState((current) => ({ ...current, selected: -1 }));
     dispatchMock.mockReset();
     bookmarkGetAllThreadsMock.mockReset();
     historyGetMock.mockReset();
@@ -139,6 +162,9 @@ describe("NavigationBar", () => {
     bookmarkRemoveMock.mockReset();
     toastInfoMock.mockReset();
     toastErrorMock.mockReset();
+    requestThreadResJumpMock.mockReset();
+    loadRecentCommandIdsMock.mockClear();
+    saveRecentCommandIdsMock.mockReset();
     bookmarkUpdatedHandler = null;
     bookmarkedUrls = new Set<string>();
     // テストでは必要なレガシーAPIだけを差し替えるため、実アプリのwindow.app型から切り離す。
@@ -190,6 +216,121 @@ describe("NavigationBar", () => {
     expect(options).toHaveLength(2);
     expect(options[0]).toHaveTextContent("openai bookmark");
     expect(options[0]).toHaveTextContent("https://egg.5ch.io/test/read.cgi/software/111/");
+  });
+
+  it("URLバー候補は同じ項目の複数の出典をアイコンで示す", async () => {
+    const url = "https://egg.5ch.io/test/read.cgi/software/111/";
+    bookmarkGetAllThreadsMock.mockReturnValue([{ url, title: "openai bookmark" }]);
+    historyGetMock.mockResolvedValue([{ url, title: "openai history" }]);
+
+    const mutableWindow = window as unknown as {
+      app?: unknown;
+    };
+    mutableWindow.app = {
+      bookmark: {
+        getAllThreads: bookmarkGetAllThreadsMock,
+      },
+      History: {
+        get: historyGetMock,
+      },
+    };
+
+    render(<NavigationBar />);
+
+    fireEvent.click(screen.getByTitle("URLバーを表示"));
+    const input = screen.getByPlaceholderText("URLを入力");
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "openai" } });
+
+    const option = await screen.findByRole("option");
+    expect(within(option).getByRole("img", { name: "閲覧履歴・ブックマーク" })).toBeInTheDocument();
+  });
+
+  it("> prefixでコマンドを検索し、Ctrl+Shift+Pでコマンドモードを開く", async () => {
+    render(<NavigationBar />);
+
+    fireEvent.keyDown(window, { key: "P", ctrlKey: true, shiftKey: true });
+
+    const input = await screen.findByPlaceholderText("コマンドを検索...");
+    expect(input).toHaveValue(">");
+    expect(screen.getByRole("listbox", { name: "コマンド候補" })).toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: ">設定" } });
+    expect(screen.getByRole("option", { name: /設定を開く/ })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("option", { name: /設定を開く/ }));
+    await waitFor(() => {
+      expect(dispatchMock).toHaveBeenNthCalledWith(1, { type: "ADD_TAB" });
+    });
+  });
+
+  it("コマンド候補からレス番号ジャンプの入力へ移行する", async () => {
+    render(<NavigationBar />);
+
+    fireEvent.keyDown(window, { key: "p", ctrlKey: true, shiftKey: true });
+    const input = await screen.findByPlaceholderText("コマンドを検索...");
+    fireEvent.change(input, { target: { value: ">レス番号" } });
+    fireEvent.click(screen.getByRole("option", { name: /レス番号を指定してジャンプ/ }));
+
+    const responseNumber = await screen.findByLabelText("レス番号");
+    fireEvent.change(responseNumber, { target: { value: "42" } });
+    fireEvent.click(screen.getByRole("button", { name: "ジャンプ" }));
+
+    expect(requestThreadResJumpMock).toHaveBeenCalledWith(
+      "https://egg.5ch.net/test/read.cgi/software/1/",
+      42,
+    );
+  });
+
+  it("Ctrl+Lでナビゲーションモードを開く", async () => {
+    render(<NavigationBar />);
+
+    fireEvent.keyDown(window, { key: "l", ctrlKey: true });
+
+    const input = await screen.findByPlaceholderText("URLを入力");
+    expect(input).toHaveFocus();
+  });
+
+  it("認識したURLを『URLを開く』操作として候補に表示する", async () => {
+    historyGetMock.mockResolvedValue([]);
+    const mutableWindow = window as unknown as {
+      app?: unknown;
+    };
+    mutableWindow.app = {
+      History: {
+        get: historyGetMock,
+      },
+    };
+
+    render(<NavigationBar />);
+
+    fireEvent.click(screen.getByTitle("URLバーを表示"));
+    const input = screen.getByPlaceholderText("URLを入力");
+    fireEvent.focus(input);
+    fireEvent.change(input, {
+      target: { value: "https://egg.5ch.io/test/read.cgi/board-b/123/" },
+    });
+
+    const openUrlButton = await screen.findByRole("option", { name: /URLを開く/ });
+    fireEvent.click(openUrlButton);
+
+    expect(dispatchMock).toHaveBeenNthCalledWith(1, {
+      type: "NAVIGATE",
+      page: {
+        type: "threadList",
+        title: "https://egg.5ch.io/board-b/",
+        boardUrl: "https://egg.5ch.io/board-b/",
+        boardTitle: "https://egg.5ch.io/board-b/",
+      },
+    });
+    expect(dispatchMock).toHaveBeenNthCalledWith(2, {
+      type: "NAVIGATE",
+      page: {
+        type: "thread",
+        title: "https://egg.5ch.io/test/read.cgi/board-b/123/",
+        threadUrl: "https://egg.5ch.io/test/read.cgi/board-b/123/",
+      },
+    });
   });
 
   it("URL欄から別板のスレを開くと、その板を戻る先として履歴に積む", () => {

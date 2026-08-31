@@ -15,17 +15,44 @@ import {
   Settings,
   Star,
 } from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { container } from "src/service-container/index";
-import { commandPalette } from "src/view/browser/commands/command-palette-store";
+import {
+  executeBrowserCommand,
+  getBrowserCommandLabel,
+  resolveBrowserCommands,
+  type BrowserCommandContext,
+  type ResolvedBrowserCommand,
+} from "src/view/browser/commands/browser-commands";
+import {
+  addRecentCommandId,
+  normalizeRecentCommandIds,
+} from "src/view/browser/commands/command-history";
+import {
+  loadRecentCommandIds,
+  saveRecentCommandIds,
+} from "src/view/browser/commands/command-palette-history";
+import {
+  commandPalette,
+  commandPaletteStore,
+} from "src/view/browser/commands/command-palette-store";
 import { Omnibar } from "src/view/browser/components/Omnibar";
 import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useOmnibar } from "src/view/browser/hooks/use-omnibar";
 import { usePageBookmark } from "src/view/browser/hooks/use-page-bookmark";
-import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { useTabPanes, useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useUrlBarVisibility } from "src/view/browser/hooks/use-url-bar-visibility";
 import { canGoBack, canGoForward, getCurrentPage, getDisplayUrl } from "src/view/browser/types";
+import { Button } from "src/view/browser/ui/Button";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
+import { Dialog } from "src/view/browser/ui/Dialog";
 import {
   getAutoRefreshPageKey,
   isAutoRefreshEnabledForPage,
@@ -50,6 +77,7 @@ import {
   type OmnibarHistorySource,
   type OmnibarSuggestion,
 } from "src/view/browser/utils/omnibar";
+import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
 
 interface MenuPosition {
   x: number;
@@ -77,6 +105,8 @@ interface LegacyHistoryLike {
 
 const OMNIBAR_HISTORY_FETCH_COUNT = 300;
 const OMNIBAR_MAX_SUGGESTIONS = 8;
+
+const NOOP_OPEN_NEXT_THREAD_SEARCH_DIALOG = async (): Promise<void> => undefined;
 
 function normalizeString(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
@@ -246,8 +276,18 @@ function navigateByUrl(url: string, dispatch: ReturnType<typeof useTabStore>["di
   });
 }
 
-export const NavigationBar: React.FC = () => {
+interface NavigationBarProps {
+  openNextThreadSearchDialog?: () => Promise<void>;
+}
+
+export const NavigationBar: React.FC<NavigationBarProps> = ({
+  openNextThreadSearchDialog = NOOP_OPEN_NEXT_THREAD_SEARCH_DIALOG,
+}) => {
   const { state, activeTab, currentPage, dispatch, paneId } = useTabStore();
+  // 2ペイン表示中かどうか（トグルボタンの状態に使う）。
+  const { panes, activePaneId } = useTabPanes();
+  const isTwoPane = panes.length >= 2;
+  const isActivePane = activePaneId === paneId;
   const { isOpen: isPanelOpen, togglePanel } = useBottomPanel();
   const { setExpanded: setUrlBarExpanded } = useUrlBarVisibility(paneId);
 
@@ -272,6 +312,38 @@ export const NavigationBar: React.FC = () => {
   const refreshButtonRef = useRef<HTMLButtonElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const urlInputRef = useRef<HTMLInputElement>(null);
+  const paletteState = useSyncExternalStore(
+    commandPaletteStore.subscribe,
+    commandPaletteStore.getState,
+    commandPaletteStore.getState,
+  );
+  const [runningCommandIds, setRunningCommandIds] = useState<Set<string>>(() => new Set());
+  const [recentCommandIds, setRecentCommandIds] = useState<string[]>([]);
+  const recentCommandIdsRef = useRef(recentCommandIds);
+  recentCommandIdsRef.current = recentCommandIds;
+  const [isResponseJumpDialogOpen, setIsResponseJumpDialogOpen] = useState(false);
+  const [responseJumpValue, setResponseJumpValue] = useState("");
+  const [responseJumpError, setResponseJumpError] = useState<string | null>(null);
+  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setPortalContainer(document.querySelector<HTMLElement>(".browser-shell"));
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadRecentCommandIds().then((loaded) => {
+      if (cancelled) return;
+      // 保存済み履歴の読み込み前にコマンドを実行しても、その実行を古い履歴で
+      // 上書きしないよう、現在のメモリ上の履歴を優先して結合する。
+      const merged = normalizeRecentCommandIds([...recentCommandIdsRef.current, ...loaded]);
+      recentCommandIdsRef.current = merged;
+      setRecentCommandIds(merged);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     // 変更理由: グローバルなトーストはペイン内のURLバーと別階層にあるため、
@@ -285,6 +357,42 @@ export const NavigationBar: React.FC = () => {
   const currentAutoRefreshPageKey = getAutoRefreshPageKey(currentPage);
   const isCurrentPageAutoRefreshEnabled = isAutoRefreshEnabledForPage(activeTab, currentPage);
 
+  const openResponseJumpDialog = useCallback(() => {
+    if (currentPage.type !== "thread") return;
+
+    // コマンド実行後にオムニバーを確実に閉じ、数値入力へ操作を引き継ぐ。
+    commandPalette.close();
+    setResponseJumpValue("");
+    setResponseJumpError(null);
+    setIsResponseJumpDialogOpen(true);
+  }, [currentPage.type]);
+
+  const closeResponseJumpDialog = useCallback(() => {
+    setIsResponseJumpDialogOpen(false);
+    setResponseJumpError(null);
+  }, []);
+
+  const submitResponseJump = useCallback(
+    (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      if (currentPage.type !== "thread") return;
+
+      if (!/^\d+$/.test(responseJumpValue.trim())) {
+        setResponseJumpError("1以上のレス番号を入力してください");
+        return;
+      }
+
+      const resNum = Number.parseInt(responseJumpValue.trim(), 10);
+      if (!Number.isSafeInteger(resNum) || resNum <= 0) {
+        setResponseJumpError("1以上のレス番号を入力してください");
+        return;
+      }
+
+      requestThreadResJump(currentPage.threadUrl, resNum);
+      closeResponseJumpDialog();
+    },
+    [closeResponseJumpDialog, currentPage, responseJumpValue],
+  );
   const loadOmnibarEntries = useCallback(async () => {
     const [historyItems, bookmarkItems, boardItems] = await Promise.all([
       readHistorySources(),
@@ -299,6 +407,12 @@ export const NavigationBar: React.FC = () => {
 
   const openSuggestion = useCallback(
     (suggestion: OmnibarSuggestion) => {
+      if (suggestion.sources.includes("direct")) {
+        navigateByUrl(suggestion.url, dispatch);
+        urlInputRef.current?.blur();
+        return;
+      }
+
       const parsed = parseInternalBrowserPage(suggestion.url);
       if (!parsed) {
         return;
@@ -320,14 +434,115 @@ export const NavigationBar: React.FC = () => {
     [dispatch],
   );
 
+  const getDirectInputSuggestion = useCallback(
+    (inputValue: string, currentDisplayUrl: string): OmnibarSuggestion | null => {
+      const trimmed = inputValue.trim();
+      if (!trimmed || trimmed === currentDisplayUrl.trim()) {
+        return null;
+      }
+
+      const parsed = parseInternalBrowserPage(trimmed);
+      if (!parsed) {
+        return null;
+      }
+
+      return {
+        url: trimmed,
+        title: trimmed,
+        boardTitle: parsed.type === "threadList" ? parsed.boardTitle : "",
+        score: Number.POSITIVE_INFINITY,
+        isBookmark: false,
+        sources: ["direct"],
+        actionLabel: "URLを開く",
+      };
+    },
+    [],
+  );
+
+  const context = useMemo<BrowserCommandContext>(
+    () => ({
+      currentPage,
+      activeTab,
+      tabs: state.tabs,
+      isTwoPane,
+      isWritePanelOpen: isPanelOpen,
+      dispatch,
+      toggleWritePanel: () => togglePanel("write"),
+      openResponseJumpDialog,
+      openNextThreadSearchDialog,
+    }),
+    [
+      activeTab,
+      currentPage,
+      dispatch,
+      isPanelOpen,
+      isTwoPane,
+      openNextThreadSearchDialog,
+      openResponseJumpDialog,
+      state.tabs,
+      togglePanel,
+    ],
+  );
+  const contextRef = useRef(context);
+  contextRef.current = context;
+
+  const commands = useMemo(
+    () => resolveBrowserCommands(context, runningCommandIds),
+    [context, runningCommandIds],
+  );
+
+  const recordCommand = useCallback((commandId: string) => {
+    const next = addRecentCommandId(recentCommandIdsRef.current, commandId);
+    recentCommandIdsRef.current = next;
+    setRecentCommandIds(next);
+    void saveRecentCommandIds(next);
+  }, []);
+
+  const executeCommand = useCallback(
+    async (command: ResolvedBrowserCommand) => {
+      commandPalette.close();
+      urlInputRef.current?.blur();
+      recordCommand(command.id);
+      setRunningCommandIds((current) => {
+        if (current.has(command.id)) return current;
+        return new Set(current).add(command.id);
+      });
+
+      const currentContext = contextRef.current;
+      try {
+        await executeBrowserCommand(command.id, currentContext);
+      } catch (error: unknown) {
+        const label = getBrowserCommandLabel(command.id, currentContext);
+        // コマンドIDとページ種別を残し、単一入力へ集約した操作の失敗元を追跡できるようにする。
+        console.error("Browser command execution failed", {
+          commandId: command.id,
+          pageType: currentContext.currentPage.type,
+          error,
+        });
+        container.toast.error(`${label}に失敗しました`);
+      } finally {
+        setRunningCommandIds((current) => {
+          if (!current.has(command.id)) return current;
+          const next = new Set(current);
+          next.delete(command.id);
+          return next;
+        });
+      }
+    },
+    [recordCommand],
+  );
+
   const {
     inputValue,
     isOpen: isOmnibarOpen,
     isLoading: isOmnibarLoading,
     suggestions: omnibarSuggestions,
+    commandSuggestions: omnibarCommandSuggestions,
     shouldShowNoMatch,
     activeSuggestionIndex,
     setActiveSuggestionIndex,
+    activate,
+    mode: omnibarMode,
     handleInputChange,
     handleKeyDown,
     handleFocus,
@@ -341,7 +556,65 @@ export const NavigationBar: React.FC = () => {
     onSubmitInput: (url) => {
       navigateByUrl(url, dispatch);
     },
+    commands,
+    recentCommandIds,
+    onSelectCommand: (command) => {
+      void executeCommand(command);
+    },
+    getDirectInputSuggestion,
   });
+
+  useEffect(() => {
+    if (!isActivePane) {
+      return;
+    }
+
+    const handleShortcut = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+      if (event.shiftKey && key === "p") {
+        event.preventDefault();
+        if (paletteState.opened && paletteState.mode === "command") {
+          commandPalette.close();
+        } else {
+          commandPalette.open("command");
+        }
+      } else if (!event.shiftKey && key === "l") {
+        event.preventDefault();
+        commandPalette.open("navigation");
+      }
+    };
+
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, [isActivePane, paletteState.mode, paletteState.opened]);
+
+  useEffect(() => {
+    if (!paletteState.opened || !isActivePane) {
+      return;
+    }
+
+    setIsUrlExpanded(true);
+    activate(paletteState.mode);
+  }, [activate, isActivePane, paletteState.mode, paletteState.opened]);
+
+  useEffect(() => {
+    if (!paletteState.opened || !isActivePane || !isUrlExpanded) {
+      return;
+    }
+
+    urlInputRef.current?.focus();
+  }, [isActivePane, isUrlExpanded, paletteState.opened]);
+
+  const handleOmnibarBlur = useCallback(() => {
+    handleBlur();
+    if (paletteState.opened) {
+      commandPalette.close();
+    }
+  }, [handleBlur, paletteState.opened]);
 
   const handleRefresh = useCallback(() => {
     setRefreshMenuPosition(null);
@@ -546,7 +819,7 @@ export const NavigationBar: React.FC = () => {
         id: "open-command-palette",
         label: "コマンドパレット",
         icon: <Command size={14} />,
-        onSelect: commandPalette.open,
+        onSelect: () => commandPalette.open("command"),
       },
       ...(currentPage.type === "thread" ||
       currentPage.type === "boardList" ||
@@ -758,121 +1031,173 @@ export const NavigationBar: React.FC = () => {
   );
 
   return (
-    <div className="nav-bar">
-      <button
-        type="button"
-        className="nav-bar__url-toggle"
-        onClick={() => setIsUrlExpanded((expanded) => !expanded)}
-        aria-expanded={isUrlExpanded}
-        title={isUrlExpanded ? "URLバーを折りたたむ" : "URLバーを表示"}
-        aria-label={isUrlExpanded ? "URLバーを折りたたむ" : "URLバーを表示"}
-      >
-        {isUrlExpanded ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
-      </button>
+    <>
+      <div className="nav-bar">
+        <button
+          type="button"
+          className="nav-bar__url-toggle"
+          onClick={() => {
+            commandPalette.close();
+            setIsUrlExpanded((expanded) => !expanded);
+          }}
+          aria-expanded={isUrlExpanded}
+          title={isUrlExpanded ? "URLバーを折りたたむ" : "URLバーを表示"}
+          aria-label={isUrlExpanded ? "URLバーを折りたたむ" : "URLバーを表示"}
+        >
+          {isUrlExpanded ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
+        </button>
 
-      {isUrlExpanded && (
-        <div className="nav-bar__url-row">
-          <Omnibar
-            inputRef={urlInputRef}
-            inputValue={inputValue}
-            placeholder="URLを入力"
-            isOpen={isOmnibarOpen}
-            isLoading={isOmnibarLoading}
-            suggestions={omnibarSuggestions}
-            activeSuggestionIndex={activeSuggestionIndex}
-            shouldShowNoMatch={shouldShowNoMatch}
-            onInputChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            onFocus={handleFocus}
-            onBlur={handleBlur}
-            onSuggestionHover={setActiveSuggestionIndex}
-            onSuggestionSelect={handleSelectSuggestion}
-            trailingAction={
-              bookmarkTarget ? (
-                <button
-                  type="button"
-                  className={`nav-bar__url-action-btn${
-                    isBookmarked ? " nav-bar__url-action-btn--active" : ""
-                  }`}
-                  aria-label={
-                    isBookmarked
-                      ? "このページをブックマークから削除"
-                      : "このページをブックマークに追加"
-                  }
-                  aria-pressed={isBookmarked}
-                  title={
-                    isBookmarked
-                      ? "このページをブックマークから削除"
-                      : "このページをブックマークに追加"
-                  }
-                  disabled={isBookmarkPending}
-                  onMouseDown={(event) => {
-                    event.preventDefault();
-                  }}
-                  onClick={handleToggleBookmark}
-                >
-                  <Star size={16} fill={isBookmarked ? "currentColor" : "none"} />
-                </button>
-              ) : null
-            }
+        {isUrlExpanded && (
+          <div className="nav-bar__url-row">
+            <Omnibar
+              inputRef={urlInputRef}
+              inputValue={inputValue}
+              placeholder={omnibarMode === "command" ? "コマンドを検索..." : "URLを入力"}
+              isOpen={isOmnibarOpen}
+              isLoading={isOmnibarLoading}
+              suggestions={omnibarSuggestions}
+              commandSuggestions={omnibarCommandSuggestions}
+              mode={omnibarMode}
+              activeSuggestionIndex={activeSuggestionIndex}
+              shouldShowNoMatch={shouldShowNoMatch}
+              onInputChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              onFocus={handleFocus}
+              onBlur={handleOmnibarBlur}
+              onSuggestionHover={setActiveSuggestionIndex}
+              onSuggestionSelect={handleSelectSuggestion}
+              onCommandSelect={(command) => void executeCommand(command)}
+              trailingAction={
+                bookmarkTarget ? (
+                  <button
+                    type="button"
+                    className={`nav-bar__url-action-btn${
+                      isBookmarked ? " nav-bar__url-action-btn--active" : ""
+                    }`}
+                    aria-label={
+                      isBookmarked
+                        ? "このページをブックマークから削除"
+                        : "このページをブックマークに追加"
+                    }
+                    aria-pressed={isBookmarked}
+                    title={
+                      isBookmarked
+                        ? "このページをブックマークから削除"
+                        : "このページをブックマークに追加"
+                    }
+                    disabled={isBookmarkPending}
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                    }}
+                    onClick={handleToggleBookmark}
+                  >
+                    <Star size={16} fill={isBookmarked ? "currentColor" : "none"} />
+                  </button>
+                ) : null
+              }
+            />
+          </div>
+        )}
+
+        <button
+          ref={menuButtonRef}
+          type="button"
+          className="nav-bar__btn"
+          title="メニュー"
+          onClick={handleMenuClick}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            handleMenuClick(e);
+          }}
+        >
+          <Menu size={18} />
+        </button>
+
+        {menuPosition && (
+          <ContextMenu
+            x={menuPosition.x}
+            y={menuPosition.y}
+            items={menuItems}
+            header={navigationMenuHeader}
+            onClose={closeMenu}
+            triggerRef={menuButtonRef}
           />
-        </div>
-      )}
+        )}
 
-      <button
-        ref={menuButtonRef}
-        type="button"
-        className="nav-bar__btn"
-        title="メニュー"
-        onClick={handleMenuClick}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          handleMenuClick(e);
+        {backMenuPosition && backHistoryItems.length > 0 && (
+          <ContextMenu
+            x={backMenuPosition.x}
+            y={backMenuPosition.y}
+            items={backHistoryItems}
+            onClose={closeBackMenu}
+            triggerRef={backButtonRef}
+          />
+        )}
+
+        {forwardMenuPosition && forwardHistoryItems.length > 0 && (
+          <ContextMenu
+            x={forwardMenuPosition.x}
+            y={forwardMenuPosition.y}
+            items={forwardHistoryItems}
+            onClose={closeForwardMenu}
+            triggerRef={forwardButtonRef}
+          />
+        )}
+
+        {refreshMenuPosition && refreshMenuItems.length > 0 && (
+          <ContextMenu
+            x={refreshMenuPosition.x}
+            y={refreshMenuPosition.y}
+            items={refreshMenuItems}
+            onClose={closeRefreshMenu}
+            triggerRef={refreshButtonRef}
+          />
+        )}
+      </div>
+
+      <Dialog.Root
+        open={isResponseJumpDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) closeResponseJumpDialog();
         }}
       >
-        <Menu size={18} />
-      </button>
-
-      {menuPosition && (
-        <ContextMenu
-          x={menuPosition.x}
-          y={menuPosition.y}
-          items={menuItems}
-          header={navigationMenuHeader}
-          onClose={closeMenu}
-          triggerRef={menuButtonRef}
-        />
-      )}
-
-      {backMenuPosition && backHistoryItems.length > 0 && (
-        <ContextMenu
-          x={backMenuPosition.x}
-          y={backMenuPosition.y}
-          items={backHistoryItems}
-          onClose={closeBackMenu}
-          triggerRef={backButtonRef}
-        />
-      )}
-
-      {forwardMenuPosition && forwardHistoryItems.length > 0 && (
-        <ContextMenu
-          x={forwardMenuPosition.x}
-          y={forwardMenuPosition.y}
-          items={forwardHistoryItems}
-          onClose={closeForwardMenu}
-          triggerRef={forwardButtonRef}
-        />
-      )}
-
-      {refreshMenuPosition && refreshMenuItems.length > 0 && (
-        <ContextMenu
-          x={refreshMenuPosition.x}
-          y={refreshMenuPosition.y}
-          items={refreshMenuItems}
-          onClose={closeRefreshMenu}
-          triggerRef={refreshButtonRef}
-        />
-      )}
-    </div>
+        <Dialog.Portal container={portalContainer ?? undefined}>
+          <Dialog.Overlay
+            className="browser-dialog-overlay"
+            style={{ zIndex: "calc(var(--sys-z-dialog) + 1)" }}
+          />
+          <Dialog.Content
+            className="browser-dialog-content command-palette__dialog-content"
+            style={{ zIndex: "calc(var(--sys-z-dialog) + 1)" }}
+          >
+            <Dialog.Title className="browser-dialog-title">レス番号へジャンプ</Dialog.Title>
+            <form onSubmit={submitResponseJump}>
+              <label className="command-palette__input-label" htmlFor="response-jump-number">
+                レス番号
+              </label>
+              <input
+                id="response-jump-number"
+                autoFocus
+                className="command-palette__input"
+                placeholder="例: 42"
+                inputMode="numeric"
+                value={responseJumpValue}
+                onChange={(event) => setResponseJumpValue(event.currentTarget.value)}
+                aria-invalid={responseJumpError ? "true" : undefined}
+                aria-describedby={responseJumpError ? "response-jump-error" : undefined}
+              />
+              {responseJumpError ? (
+                <p id="response-jump-error" className="command-palette__input-error">
+                  {responseJumpError}
+                </p>
+              ) : null}
+              <Button type="submit" className="command-palette__submit">
+                ジャンプ
+              </Button>
+            </form>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+    </>
   );
 };
