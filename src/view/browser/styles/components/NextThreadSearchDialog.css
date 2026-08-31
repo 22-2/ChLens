@@ -101,6 +101,11 @@
   font-size: var(--sys-font-size-xs);
 }
 
+.next-thread-search-dialog__candidate-score {
+  /* スコアの差を補助的に見分けられるよう数値だけを青くし、閾値による階層は設けない。 */
+  color: var(--sys-color-evidence);
+}
+
 .next-thread-search-dialog__candidate-evidence {
   /* ダークテーマのaccentは背景上で暗く見えるため、証拠ラベル専用の高コントラスト色を使う。 */
   color: var(--sys-color-evidence);
