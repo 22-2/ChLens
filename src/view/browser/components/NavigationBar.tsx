@@ -609,12 +609,37 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     urlInputRef.current?.focus();
   }, [isActivePane, isUrlExpanded, paletteState.opened]);
 
-  const handleOmnibarBlur = useCallback(() => {
-    handleBlur();
-    if (paletteState.opened) {
-      commandPalette.close();
+  const handleOmnibarBlur = useCallback(
+    (event: React.FocusEvent<HTMLDivElement>) => {
+      const nextFocusedElement = event.relatedTarget;
+      if (nextFocusedElement instanceof Node && event.currentTarget.contains(nextFocusedElement)) {
+        return;
+      }
+
+      handleBlur();
+      if (paletteState.opened || omnibarMode === "command") {
+        commandPalette.close();
+      }
+    },
+    [handleBlur, omnibarMode, paletteState.opened],
+  );
+
+  useEffect(() => {
+    const isCommandPaletteActive =
+      paletteState.opened || (omnibarMode === "command" && isOmnibarOpen);
+    if (!isActivePane || !isCommandPaletteActive) {
+      return;
     }
-  }, [handleBlur, paletteState.opened]);
+
+    // 変更理由: OSや別ウィンドウへフォーカスが移ると入力欄のblurが発火しない環境があるため、
+    // コマンドパレットが開いている間はウィンドウのフォーカスアウトでも状態を閉じる。
+    const handleWindowBlur = () => {
+      handleBlur();
+      commandPalette.close();
+    };
+    window.addEventListener("blur", handleWindowBlur);
+    return () => window.removeEventListener("blur", handleWindowBlur);
+  }, [handleBlur, isActivePane, isOmnibarOpen, omnibarMode, paletteState.opened]);
 
   const handleRefresh = useCallback(() => {
     setRefreshMenuPosition(null);

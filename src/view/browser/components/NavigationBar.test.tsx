@@ -264,6 +264,39 @@ describe("NavigationBar", () => {
     });
   });
 
+  it("コマンドパレットはフォーカスアウトで閉じる", async () => {
+    render(<NavigationBar />);
+
+    fireEvent.keyDown(window, { key: "p", ctrlKey: true, shiftKey: true });
+    const input = await screen.findByPlaceholderText("コマンドを検索...");
+    expect(screen.getByRole("listbox", { name: "コマンド候補" })).toBeInTheDocument();
+
+    const outside = document.createElement("button");
+    document.body.append(outside);
+    fireEvent.blur(input, { relatedTarget: outside });
+
+    await waitFor(() => {
+      expect(commandPaletteStore.getState().opened).toBe(false);
+    });
+    expect(screen.queryByRole("listbox", { name: "コマンド候補" })).not.toBeInTheDocument();
+    outside.remove();
+  });
+
+  it("コマンドパレットはウィンドウのフォーカスアウトでも閉じる", async () => {
+    render(<NavigationBar />);
+
+    fireEvent.keyDown(window, { key: "p", ctrlKey: true, shiftKey: true });
+    await screen.findByPlaceholderText("コマンドを検索...");
+    expect(commandPaletteStore.getState().opened).toBe(true);
+
+    window.dispatchEvent(new Event("blur"));
+
+    await waitFor(() => {
+      expect(commandPaletteStore.getState().opened).toBe(false);
+    });
+    expect(screen.queryByRole("listbox", { name: "コマンド候補" })).not.toBeInTheDocument();
+  });
+
   it("コマンド候補からレス番号ジャンプの入力へ移行する", async () => {
     render(<NavigationBar />);
 

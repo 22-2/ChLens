@@ -20,7 +20,7 @@ interface OmnibarProps {
   onInputChange: (value: string) => void;
   onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   onFocus: (e: React.FocusEvent<HTMLInputElement>) => void;
-  onBlur: () => void;
+  onBlur: (e: React.FocusEvent<HTMLDivElement>) => void;
   onSuggestionHover: (index: number) => void;
   onSuggestionSelect: (suggestion: OmnibarSuggestion) => void;
   onCommandSelect: (command: ResolvedBrowserCommand) => void;
@@ -70,7 +70,10 @@ export const Omnibar: React.FC<OmnibarProps> = ({
   trailingAction,
 }) => {
   return (
-    <div className={`nav-bar__url${trailingAction ? " nav-bar__url--has-action" : ""}`}>
+    <div
+      className={`nav-bar__url${trailingAction ? " nav-bar__url--has-action" : ""}`}
+      onBlur={onBlur}
+    >
       <input
         ref={inputRef}
         className="nav-bar__url-input"
@@ -79,7 +82,6 @@ export const Omnibar: React.FC<OmnibarProps> = ({
         onChange={(e) => onInputChange(e.target.value)}
         onKeyDown={onKeyDown}
         onFocus={onFocus}
-        onBlur={onBlur}
         placeholder={placeholder}
         spellCheck={false}
       />
