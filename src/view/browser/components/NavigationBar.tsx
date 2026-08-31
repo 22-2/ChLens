@@ -609,6 +609,16 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     urlInputRef.current?.focus();
   }, [isActivePane, isUrlExpanded, paletteState.opened]);
 
+  useEffect(() => {
+    if (!isUrlExpanded || paletteState.opened || !isActivePane) {
+      return;
+    }
+
+    // 変更理由: URLバーを展開した直後に入力欄へ操作を引き継ぎ、候補取得を開始して
+    // 下矢印のクリックだけで検索操作へ移れるようにする。
+    urlInputRef.current?.focus();
+  }, [isActivePane, isUrlExpanded, paletteState.opened]);
+
   const handleOmnibarBlur = useCallback(
     (event: React.FocusEvent<HTMLDivElement>) => {
       const nextFocusedElement = event.relatedTarget;
@@ -645,6 +655,18 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     setRefreshMenuPosition(null);
     dispatch({ type: "RELOAD" });
   }, [dispatch]);
+
+  const handleUrlBarToggle = useCallback(() => {
+    commandPalette.close();
+    if (isUrlExpanded) {
+      handleBlur();
+      setIsUrlExpanded(false);
+      return;
+    }
+
+    activate("navigation");
+    setIsUrlExpanded(true);
+  }, [activate, handleBlur, isUrlExpanded]);
 
   const openQuickAccessPage = useCallback(
     (page: {
@@ -1061,10 +1083,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         <button
           type="button"
           className="nav-bar__url-toggle"
-          onClick={() => {
-            commandPalette.close();
-            setIsUrlExpanded((expanded) => !expanded);
-          }}
+          onClick={handleUrlBarToggle}
           aria-expanded={isUrlExpanded}
           title={isUrlExpanded ? "URLバーを折りたたむ" : "URLバーを表示"}
           aria-label={isUrlExpanded ? "URLバーを折りたたむ" : "URLバーを表示"}

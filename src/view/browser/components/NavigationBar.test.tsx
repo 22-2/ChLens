@@ -414,6 +414,31 @@ describe("NavigationBar", () => {
     expect(screen.queryByPlaceholderText("URLを入力")).not.toBeInTheDocument();
   });
 
+  it("下矢印でURLバーを開くと入力にフォーカスして候補を展開する", async () => {
+    historyGetMock.mockResolvedValue([
+      {
+        url: "https://egg.5ch.net/test/read.cgi/software/1/",
+        title: "Current Thread",
+        viewedDate: 1000,
+      },
+    ]);
+    const mutableWindow = window as unknown as {
+      app?: unknown;
+    };
+    mutableWindow.app = {
+      History: {
+        get: historyGetMock,
+      },
+    };
+
+    render(<NavigationBar />);
+
+    fireEvent.click(screen.getByTitle("URLバーを表示"));
+    const input = screen.getByPlaceholderText("URLを入力");
+    expect(input).toHaveFocus();
+    expect(await screen.findByRole("option", { name: /Current Thread/ })).toBeInTheDocument();
+  });
+
   it("URLバー右端にも現在ページのブックマーク操作を表示する", async () => {
     render(<NavigationBar />);
 
