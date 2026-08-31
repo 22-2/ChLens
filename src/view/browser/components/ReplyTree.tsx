@@ -125,6 +125,7 @@ export const ReplyTree: React.FC<{
                 onContextMenu={onResContextMenu}
                 isImageBlurred={blurredResNums?.has(res.num)}
                 ngResNums={ngResNums}
+                resMap={resMap}
                 threadKey={threadKey}
               />
               {onSubTreeMenu && (

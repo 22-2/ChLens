@@ -1,4 +1,8 @@
-import { parseAnchorDisplayTargets, parseAnchors } from "src/view/browser/utils/anchor";
+import {
+  hasMissingAnchorTarget,
+  parseAnchorDisplayTargets,
+  parseAnchors,
+} from "src/view/browser/utils/anchor";
 import { describe, expect, it } from "vite-plus/test";
 
 describe("anchor", () => {
@@ -12,5 +16,18 @@ describe("anchor", () => {
 
   it("25件以上の範囲はポップアップ対象から除外する", () => {
     expect(parseAnchorDisplayTargets(">>1-26, 30")).toEqual([30]);
+  });
+
+  it("単番号・範囲・複数番号は一部でも参照先が欠ければ欠損扱いにする", () => {
+    const resMap = new Map<number, unknown>([
+      [1, {}],
+      [2, {}],
+    ]);
+
+    expect(hasMissingAnchorTarget([1], resMap)).toBe(false);
+    expect(hasMissingAnchorTarget([1, 2], resMap)).toBe(false);
+    expect(hasMissingAnchorTarget([1, 3], resMap)).toBe(true);
+    expect(hasMissingAnchorTarget([3], resMap)).toBe(true);
+    expect(hasMissingAnchorTarget([], resMap)).toBe(false);
   });
 });
