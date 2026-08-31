@@ -868,7 +868,8 @@ export const ReplyTreePopup: React.FC<{
                   title="ピン留めを解除"
                 >
                   {/* 固定中だけ解除操作をヘッダーへ常設し、メニューを開かずに解除できるようにする。 */}
-                  <Pin size={14} />
+                  {/* 変更理由: ヘッダーの操作は現在のピン状態ではなく、押下後の解除操作を示すためPinOffを使う。 */}
+                  <PinOff size={14} />
                 </button>
               )}
               <button

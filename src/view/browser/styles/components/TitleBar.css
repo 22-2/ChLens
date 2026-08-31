@@ -1,10 +1,11 @@
 /* Title bar - shared by all panes so the active page has one stable heading. */
+/* 変更理由: タイトルバーは補助的な情報表示なので、タブバーより目立たない高さと文字サイズに抑える。 */
 .title-bar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  flex: 0 0 var(--sys-space-11);
+  flex: 0 0 var(--sys-space-10);
   align-items: center;
-  min-height: var(--sys-space-11);
+  min-height: var(--sys-space-10);
   padding: 0 var(--sys-space-3);
   border-bottom: 1px solid var(--sys-color-border);
   background: var(--sys-color-surface-muted);
@@ -18,9 +19,9 @@
   max-width: min(70vw, 720px);
   overflow: hidden;
   color: var(--sys-color-text);
-  font-size: var(--sys-font-size-sm);
+  font-size: var(--sys-font-size-xs);
   font-weight: 600;
-  line-height: var(--sys-space-11);
+  line-height: var(--sys-space-10);
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -38,8 +39,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--sys-space-11);
-  height: var(--sys-space-11);
+  width: var(--sys-space-9);
+  height: var(--sys-space-9);
   border: none;
   border-radius: var(--sys-radius-sm);
   background: transparent;

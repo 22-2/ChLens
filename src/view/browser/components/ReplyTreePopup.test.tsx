@@ -235,7 +235,7 @@ describe("ReplyTreePopup", () => {
     rerender(<ReplyTreePopup {...BASE_PROPS} pinned onTogglePinned={onTogglePinned} />);
     const unpinButton = screen.getByRole("button", { name: "ピン留めを解除" });
     expect(unpinButton).toHaveAttribute("title", "ピン留めを解除");
-    expect(unpinButton.querySelector("svg")).toHaveClass("lucide-pin");
+    expect(unpinButton.querySelector("svg")).toHaveClass("lucide-pin-off");
 
     fireEvent.click(unpinButton);
     expect(onTogglePinned).toHaveBeenCalledOnce();
