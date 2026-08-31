@@ -218,9 +218,30 @@ describe("ReplyTreePopup", () => {
 
     rerender(<ReplyTreePopup {...BASE_PROPS} pinned onTogglePinned={onTogglePinned} />);
     fireEvent.click(screen.getByRole("button", { name: "返信ツリーメニュー" }));
-    expect(screen.getByRole("button", { name: "ピン留めを解除" }).querySelector("svg")).toHaveClass(
-      "lucide-pin-off",
+    const contextMenu = document.querySelector(".context-menu") as HTMLElement;
+    expect(
+      within(contextMenu).getByRole("button", { name: "ピン留めを解除" }).querySelector("svg"),
+    ).toHaveClass("lucide-pin-off");
+  });
+
+  it("ピン留め中はヘッダーから解除でき、解除後はピンアイコンを隠す", () => {
+    const onTogglePinned = vi.fn();
+    const { rerender } = render(
+      <ReplyTreePopup {...BASE_PROPS} pinned={false} onTogglePinned={onTogglePinned} />,
     );
+
+    expect(screen.queryByRole("button", { name: "ピン留めを解除" })).not.toBeInTheDocument();
+
+    rerender(<ReplyTreePopup {...BASE_PROPS} pinned onTogglePinned={onTogglePinned} />);
+    const unpinButton = screen.getByRole("button", { name: "ピン留めを解除" });
+    expect(unpinButton).toHaveAttribute("title", "ピン留めを解除");
+    expect(unpinButton.querySelector("svg")).toHaveClass("lucide-pin");
+
+    fireEvent.click(unpinButton);
+    expect(onTogglePinned).toHaveBeenCalledOnce();
+
+    rerender(<ReplyTreePopup {...BASE_PROPS} pinned={false} onTogglePinned={onTogglePinned} />);
+    expect(screen.queryByRole("button", { name: "ピン留めを解除" })).not.toBeInTheDocument();
   });
 
   it("ピン留め中はマウス離脱や外側クリックで閉じない", () => {
