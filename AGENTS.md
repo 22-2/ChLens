@@ -58,6 +58,13 @@
 - **Pre-commit check:** `pnpm lint` および `pnpm tsc6` を実行し、型エラーやリンターエラーがないことを確認してください。
 - **コミットメッセージ:** Conventional Commits 形式（例: `fix(thread): 自動更新の停止条件を修正`）で、変更の意図が明確になる詳細な説明を含めてください。
 
+### GitHub CLI usage for AI
+
+- AIがGitHubのIssue、Pull Request、コメント、ラベル、検索などを操作するときは、必ずGitHub CLIの`gh`を使用してください。Codex内蔵のGitHubコネクタ、直接GitHub API、ブラウザ操作は使用しないでください。
+- 実行前に`gh auth status`で認証状態を確認し、リポジトリ操作では常に`--repo 22-2/ChLens`を明示してください。
+- Issueの読み取りには`gh issue list`/`gh issue view`、作成には`gh issue create`、既存Issueのラベル変更には`gh issue edit`を使用してください。
+- `gh`が未認証または権限不足の場合は、別のGitHub経路へ切り替えず、実行できなかった操作とエラーをブロッカーとして報告してください。認証トークンをファイルやIssue本文へ出力しないでください。
+
 ### AI improvement workflow
 
 このリポジトリでは、日常利用中の不満を`.todo`へ散文のまま記録し、AIがGitHub Issueへ整理する。`.todo`への入力者に、原因・優先度・再現手順・Issue形式の記入を要求してはいけない。
