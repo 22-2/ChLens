@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { container } from "src/service-container/index";
 import { TabBar } from "src/view/browser/components/TabBar";
@@ -802,24 +802,12 @@ describe("TabBar bookmark", () => {
     cleanup();
   });
 
-  it("現在ページのスターからスレッドをお気に入りへ追加・削除する", async () => {
+  it("現在ページのお気に入り操作をタブバーに表示しない", () => {
     const threadPage = {
       type: "thread" as const,
       title: "Current Thread",
       threadUrl: "https://egg.5ch.net/test/read.cgi/software/1/",
     };
-    let bookmarked = false;
-    const bookmarkGetMock = vi.fn(() =>
-      bookmarked
-        ? { url: threadPage.threadUrl, title: threadPage.title, type: "thread" as const }
-        : undefined,
-    );
-    const bookmarkAddMock = vi.fn(() => {
-      bookmarked = true;
-    });
-    const bookmarkRemoveMock = vi.fn(() => {
-      bookmarked = false;
-    });
 
     mocks.tabStore.state = {
       tabs: [
@@ -836,39 +824,9 @@ describe("TabBar bookmark", () => {
       activeTabId: "tab-1",
       closedTabs: [],
     };
-    container.bookmark = {
-      get: bookmarkGetMock,
-      add: bookmarkAddMock,
-      remove: bookmarkRemoveMock,
-      updateResCount: vi.fn(),
-      updateExpired: vi.fn(),
-      getByBoard: vi.fn(),
-    };
-    container.toast = {
-      notify: vi.fn(),
-      success: vi.fn(),
-      error: vi.fn(),
-      info: vi.fn(),
-    };
 
     render(<TabBar />);
 
-    const bookmarkButton = screen.getByRole("button", { name: "お気に入りに追加" });
-    expect(bookmarkButton).toHaveAttribute("aria-pressed", "false");
-    fireEvent.click(bookmarkButton);
-
-    await waitFor(() => {
-      expect(bookmarkAddMock).toHaveBeenCalledWith({
-        url: threadPage.threadUrl,
-        title: threadPage.title,
-        type: "thread",
-      });
-    });
-    expect(bookmarkGetMock).toHaveBeenCalledWith(threadPage.threadUrl);
-
-    fireEvent.click(await screen.findByRole("button", { name: "お気に入りから削除" }));
-    await waitFor(() => {
-      expect(bookmarkRemoveMock).toHaveBeenCalledWith(threadPage.threadUrl);
-    });
+    expect(document.querySelector(".tab-bar__bookmark")).toBeNull();
   });
 });

@@ -4,7 +4,6 @@ import { Pin, Plus, RotateCcw, RotateCw, X } from "lucide-react";
 import normalizeWheel from "normalize-wheel";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCursorTooltip } from "src/view/browser/components/CursorTooltip";
-import { PageBookmarkButton } from "src/view/browser/components/PageBookmarkButton";
 import { TabContextMenu } from "src/view/browser/components/TabContextMenu";
 import { useAutoScrollState } from "src/view/browser/hooks/use-auto-scroll-state";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
@@ -504,12 +503,8 @@ export const TabBar: React.FC = () => {
       {/* タブが横幅を超えるときだけ、追加ボタンをスクロール領域の外へ固定する。 */}
       {isTabListScrollable ? addTabButton : null}
 
-      {/*
-        お気に入り操作はタブ列の右側へ固定する。
-        タブを増減・横スクロールしても現在ページの操作位置が変わらないようにするため。
-      */}
-      {currentPage ? <PageBookmarkButton page={currentPage} /> : null}
-
+      {/* 変更理由: お気に入り操作はURLバー展開後とナビゲーションメニューに残すため、
+          タブバー右端には表示せず、バー開閉ボタン付近の重複を避ける。 */}
       {contextMenu && (
         <TabContextMenu
           tab={contextMenu.tab}
