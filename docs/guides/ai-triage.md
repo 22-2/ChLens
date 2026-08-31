@@ -1,28 +1,28 @@
-# Local AI todo triage
+# AI todoトリアージの手順
 
 全体の流れは[AI改善ループの全体像](ai-improvement-workflow.md)を参照してください。
 
-`.todo` is intentionally free-form. The local triage command asks Codex to read the notes, inspect
-the repository, search existing GitHub Issues, and return a validated triage report.
+`.todo`は意図的に自由記述のままにします。ローカルのトリアージコマンドがメモを読み、
+リポジトリを調査し、既存のGitHub Issueを検索したうえで、確認済みのトリアージレポートを返します。
 
-The first step is always an open-and-closed Issue check. `needs-priority` and `needs-info` Issues are
-not implementation candidates, but they are still duplicate candidates and must be searched.
+最初に必ずopenとclosedの両方のIssueを確認します。`needs-priority`と`needs-info`のIssueは
+実装候補ではありませんが、重複確認の対象なので検索から外してはいけません。
 
-## Dry-run
+## 事前確認
 
-Run this first. It does not create or edit GitHub Issues and does not modify `.todo`.
+最初に実行してください。GitHub Issueの作成・編集や`.todo`の変更は行いません。
 
 ```powershell
 pnpm triage:todo
 ```
 
-The report is written to `debug/triage/todo-triage.json`.
+レポートは`debug/triage/todo-triage.json`へ保存されます。
 
-## Apply
+## 反映
 
-After reviewing the dry-run report, create at most three individual Issues and append their numbers
-to `.todo`. Each new Issue receives `needs-priority` when it is ready for human prioritization, or
-`needs-info` when its intent, specification, or reproduction details still need clarification:
+事前確認のレポートを確認した後、個別Issueを最大3件作成し、番号を`.todo`へ追記します。
+新しいIssueには、人が優先度を判断できる状態なら`needs-priority`を、意図・仕様・再現情報の
+確認が必要なら`needs-info`を付けます。
 
 ```powershell
 pnpm triage:todo -- --apply
@@ -67,32 +67,29 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\unregister-triage-task.p
 タスクの標準出力・エラーは`debug/triage/scheduler.log`へ追記されます。タスク登録前に、
 GitHub CLIが使う`GITHUB_TOKEN`または`GH_TOKEN`をWindowsのユーザー環境変数として設定してください。
 
-Every independently understandable `.todo` item gets at most one individual Issue, even when its
-intent is unclear. Such an Issue receives `needs-info` and keeps the original wording plus the
-questions that need a human answer. This keeps unrelated context out of one large aggregate Issue
-and makes each item independently searchable. A successful run is the only time the command adds
-an `<!-- issue: #123 -->` marker to `.todo`.
+それぞれ独立して理解できる`.todo`項目は、意図が不明でも最大1件の個別Issueにします。その場合は
+`needs-info`を付け、原文と人が回答すべき質問を残します。無関係な文脈を大きな集約Issueへ混ぜず、
+各項目を個別に検索できるようにするためです。コマンドが成功した場合だけ、`.todo`へ
+`<!-- issue: #123 -->`のマーカーを追記します。
 
-Items that already contain an `<!-- issue: #123 -->` marker are not converted into new Issues.
-Their linked Issues are still checked for stale, completed, or no-longer-planned status. In that
-case the command adds `review-existing`; it never closes the Issue automatically.
+すでに`<!-- issue: #123 -->`マーカーがある項目は、新しいIssueへ変換しません。リンク先のIssueが
+古くなっていないか、完了していないか、今後実施しない内容になっていないかは引き続き確認します。
+その場合は`review-existing`を付け、Issueを自動でcloseすることはありません。
 
-If an existing open Issue appears already fixed or no longer relevant, the report uses
-`review-existing`. The command never closes it automatically. After human confirmation, close it
-manually:
+既存のopen Issueがすでに修正済み、または無関係になったように見える場合、レポートでは
+`review-existing`を使います。コマンドは自動でcloseしません。人が確認した後、手動でcloseします。
 
 ```powershell
 gh issue close 123 --reason completed
 gh issue close 124 --reason "not planned"
 ```
 
-The command never selects `ready-for-agent`, changes implementation state, edits source code, commits, or
-pushes. Human approval is still required before implementation. Implementation status labels are
-managed on the Issue; a PR does not mirror those labels and may use only PR-specific review labels.
+コマンドは`ready-for-agent`を付けず、実装状態の変更、ソースコードの編集、commit、pushも行いません。
+実装前には人の承認が必要です。実装状態のラベルはIssueで管理し、PRには同じラベルを付けず、
+PR固有のレビュー用ラベルだけを使用します。
 
-Issue and PR titles, bodies, and comments are written in Japanese. Fixed labels, module prefixes,
-and other mechanical identifiers remain unchanged.
+IssueとPRのタイトル、本文、コメントは日本語で記述します。固定ラベル、モジュール接頭辞、
+その他の機械的な識別子は変更しません。
 
-Automatically created Issues include an explicit disclosure that the investigation and organization
-were performed by AI and that a human must confirm the content, priority, specification, and
-completion decision.
+自動作成するIssueには、調査と整理をAIが行ったこと、内容・優先度・仕様・完了判定を人が確認する
+必要があることを明記します。

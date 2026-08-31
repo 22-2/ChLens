@@ -1,6 +1,6 @@
 ---
-description: Describe when these instructions should be loaded by the agent based on task context
-applyTo: "**" # when provided, instructions will automatically be added to the request context when the pattern matches an attached file
+description: タスクの文脈に応じてエージェントが読み込むプロジェクト指示
+applyTo: "**" # 指定したパターンに一致するファイルが添付されたリクエストへ自動的に適用する
 ---
 
 基本的に、new-ui（src/view/browser）を編集してくださいっす
@@ -9,4 +9,13 @@ applyTo: "**" # when provided, instructions will automatically be added to the r
 
 <!-- 補足: 必要に応じて /create-instructions でエージェント向け指示を生成できます。 -->
 
-Provide project context and coding guidelines that AI should follow when generating code, answering questions, or reviewing changes.
+## 文章と言語のルール
+
+- Issue と PR のタイトル、本文、コメントは、AIが作成・更新する場合も含めて日本語で記述してください。
+- PRタイトルは `[<module_name>] <日本語の説明>` の形式にしてください。`[<module_name>]` やコマンド名、API名、ファイル名などの固定された識別子は原文のままで構いません。
+- PR本文の見出しは `概要`、`関連Issue`、`変更内容`、`確認内容`、`補足・残存リスク`、`人による確認` など日本語にしてください。
+- `Summary`、`Validation`、`Human verification` などの英語見出しや定型文を、そのままPRへ出力しないでください。技術用語やテストコマンドに含まれる英語は除きます。
+- PRを作成・更新する直前に、タイトル、本文、コメントに英語の説明文が残っていないか確認してください。英語で下書きした場合も、送信前に日本語へ直してください。
+- Conventional Commits の `type` と `scope` は英語の固定識別子のままにし、コミットの件名と本文は日本語で記述してください。
+
+このファイルの指示は、コード生成、回答、レビュー、Issue作成、PR作成・更新のすべてに適用します。
