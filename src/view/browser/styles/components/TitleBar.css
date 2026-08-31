@@ -1,0 +1,65 @@
+/* Title bar - shared by all panes so the active page has one stable heading. */
+.title-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  flex: 0 0 var(--sys-space-11);
+  align-items: center;
+  min-height: var(--sys-space-11);
+  padding: 0 var(--sys-space-3);
+  border-bottom: 1px solid var(--sys-color-border);
+  background: var(--sys-color-surface-muted);
+  color: var(--sys-color-text);
+  user-select: none;
+}
+
+.title-bar__title {
+  grid-column: 2;
+  min-width: 0;
+  max-width: min(70vw, 720px);
+  overflow: hidden;
+  color: var(--sys-color-text);
+  font-size: var(--sys-font-size-sm);
+  font-weight: 600;
+  line-height: var(--sys-space-11);
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.title-bar__actions {
+  grid-column: 3;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.title-bar__layout-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--sys-space-11);
+  height: var(--sys-space-11);
+  border: none;
+  border-radius: var(--sys-radius-sm);
+  background: transparent;
+  color: var(--sys-color-text-muted);
+  cursor: pointer;
+  transition:
+    background var(--sys-duration-fast),
+    color var(--sys-duration-fast);
+}
+
+.title-bar__layout-toggle:hover {
+  background: var(--sys-color-tab-strip-hover);
+  color: var(--sys-color-text);
+}
+
+.title-bar__layout-toggle--active {
+  color: var(--sys-color-accent);
+}
+
+.title-bar__layout-toggle:focus-visible {
+  outline: 2px solid var(--sys-color-focus-ring);
+  outline-offset: -2px;
+}

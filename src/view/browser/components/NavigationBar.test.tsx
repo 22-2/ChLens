@@ -291,14 +291,15 @@ describe("NavigationBar", () => {
     });
   });
 
-  it("2ペインボタンをメニューボタンの直左に表示する", () => {
+  it("2ペイン切替をタイトルバーへ移し、ナビゲーションバーには表示しない", () => {
     render(<NavigationBar />);
 
     const buttons = [...document.querySelectorAll(".nav-bar > button")].map((button) =>
       button.getAttribute("title"),
     );
 
-    expect(buttons.slice(-2)).toEqual(["2ペインで表示", "メニュー"]);
+    expect(buttons).toEqual(["URLバーを表示", "メニュー"]);
+    expect(screen.queryByTitle("2ペインで表示")).not.toBeInTheDocument();
   });
 
   it("頻繁なナビゲーション操作をハンバーガーメニューの最上段に表示する", () => {
