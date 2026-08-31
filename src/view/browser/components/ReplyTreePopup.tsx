@@ -17,8 +17,8 @@ import { useTheme } from "src/view/browser/hooks/use-theme";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { FloatingPopup } from "src/view/browser/ui/FloatingPopup";
-import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
 import { canCopyImageToClipboard, copyImageBlob, copyText } from "src/view/browser/utils/clipboard";
+import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
 import {
   formatIdForCopy,
   formatResForCopy,
@@ -858,6 +858,17 @@ export const ReplyTreePopup: React.FC<{
           <div className="res-popup__header">
             <span>{`>>${resNum} への返信ツリー`}</span>
             <div className="res-popup__header-actions">
+              {pinned && (
+                <button
+                  className="res-popup__icon-btn"
+                  onClick={onTogglePinned}
+                  aria-label="ピン留めを解除"
+                  title="ピン留めを解除"
+                >
+                  {/* 固定中だけ解除操作をヘッダーへ常設し、メニューを開かずに解除できるようにする。 */}
+                  <Pin size={14} />
+                </button>
+              )}
               <button
                 ref={menuButtonRef}
                 className="res-popup__icon-btn"
