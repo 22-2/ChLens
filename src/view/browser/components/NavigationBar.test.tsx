@@ -253,7 +253,9 @@ describe("NavigationBar", () => {
 
     const input = await screen.findByPlaceholderText("コマンドを検索...");
     expect(input).toHaveValue(">");
-    expect(screen.getByRole("listbox", { name: "コマンド候補" })).toBeInTheDocument();
+    const commandList = screen.getByRole("listbox", { name: "コマンド候補" });
+    expect(commandList).toBeInTheDocument();
+    expect(commandList).toHaveClass("nav-bar__omnibar--command");
 
     fireEvent.change(input, { target: { value: ">設定" } });
     expect(screen.getByRole("option", { name: /設定を開く/ })).toBeInTheDocument();

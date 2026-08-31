@@ -90,7 +90,7 @@ export const Omnibar: React.FC<OmnibarProps> = ({
 
       {isOpen ? (
         <div
-          className="nav-bar__omnibar"
+          className={`nav-bar__omnibar${mode === "command" ? " nav-bar__omnibar--command" : ""}`}
           role="listbox"
           aria-label={mode === "command" ? "コマンド候補" : "候補"}
         >
