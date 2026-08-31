@@ -194,10 +194,6 @@
   background: var(--sys-color-surface);
   box-shadow: var(--sys-shadow-floating);
 }
-/* 変更理由: ミニマップと重なる候補も操作できるよう、コマンドパレットだけ前面に表示する。 */
-.nav-bar__omnibar--command {
-  z-index: var(--sys-z-command-palette);
-}
 .nav-bar__omnibar-item {
   display: flex;
   align-items: baseline;

@@ -167,11 +167,10 @@
   --ref-z-sticky: 3;
   --ref-z-dragging: 3;
   --ref-z-wheel-indicator: 1000;
-  --ref-z-omnibar: 25000;
   --ref-z-mini-window: 30000;
   --ref-z-minimap: 30000;
-  /* 変更理由: ミニマップと重なる候補も操作できるよう、コマンドパレットを前面に置く。 */
-  --ref-z-command-palette: 30001;
+  /* 変更理由: URL・コマンド候補をミニマップに隠さず操作できるよう、オムニバーを前面に置く。 */
+  --ref-z-omnibar: 30001;
   /* Shared by CursorTooltip and the virtualized table's floating tooltip. */
   --ref-z-table-tooltip: 35000;
   --ref-z-popup-layer: 36000;
@@ -235,7 +234,6 @@
   --sys-z-omnibar: var(--ref-z-omnibar);
   --sys-z-mini-window: var(--ref-z-mini-window);
   --sys-z-minimap: var(--ref-z-minimap);
-  --sys-z-command-palette: var(--ref-z-command-palette);
   --sys-z-table-tooltip: var(--ref-z-table-tooltip);
   --sys-z-popup-layer: var(--ref-z-popup-layer);
   --sys-z-context-menu: var(--ref-z-context-menu);

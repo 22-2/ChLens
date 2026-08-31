@@ -44,10 +44,10 @@
 }
 
 /* 変更理由: 候補リストのz-indexだけでは親の重なりコンテキストを越えられないため、
-   コマンドパレット表示中はペインの上部レイヤーごとミニマップより前面に置く。 */
-.pane-column__chrome:has(.nav-bar__omnibar--command) {
+   URL・コマンド候補の表示中はペインの上部レイヤーごとミニマップより前面に置く。 */
+.pane-column__chrome:has(.nav-bar__omnibar) {
   position: relative;
-  z-index: var(--sys-z-command-palette);
+  z-index: var(--sys-z-omnibar);
 }
 
 .pane-column > .content-area {
