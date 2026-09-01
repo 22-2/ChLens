@@ -488,6 +488,20 @@ describe("NavigationBar", () => {
       type: "NAVIGATE",
       page: { type: "settings", title: "設定" },
     });
+    expect(screen.queryByRole("button", { name: "設定を開く" })).not.toBeInTheDocument();
+  });
+
+  it("既存の設定タブを選択するときもメニューを閉じる", () => {
+    activeTab.history = [{ type: "settings", title: "設定" }];
+    activeTab.currentIndex = 0;
+
+    render(<NavigationBar />);
+
+    fireEvent.click(screen.getByTitle("メニュー"));
+    fireEvent.click(screen.getByRole("button", { name: "設定を開く" }));
+
+    expect(dispatchMock).toHaveBeenCalledWith({ type: "SELECT_TAB", tabId: "tab-1" });
+    expect(screen.queryByRole("button", { name: "設定を開く" })).not.toBeInTheDocument();
   });
 
   it("2ペイン切替をタイトルバーへ移し、ナビゲーションバーには表示しない", () => {
