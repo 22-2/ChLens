@@ -25,6 +25,7 @@ import { getCurrentPage } from "src/view/browser/types";
 import {
   canQueryExtensionTabs,
   getOpenCompatibleThreadPages,
+  removeExtensionTabs,
 } from "src/view/browser/utils/extension-tabs";
 import {
   QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE,
@@ -234,18 +235,39 @@ async function importOpenThreadTabs(context: BrowserCommandContext): Promise<voi
         return normalizedPage?.type === "thread" ? normalizedPage.threadUrl : page.threadUrl;
       }),
   );
-  const pagesToImport = openThreadPages.filter((page) => !existingThreadUrls.has(page.threadUrl));
+  const pagesToImport = openThreadPages.filter(
+    ({ page }) => !existingThreadUrls.has(page.threadUrl),
+  );
 
   if (pagesToImport.length === 0) {
     container.toast.info("取り込める新しいスレタブはありません");
     return;
   }
 
-  // 変更理由: 一括取り込みで表示中のページを奪わず、確認したいタブを利用者が選べるよう
-  // すべてバックグラウンド追加に統一する。
-  for (const page of pagesToImport) {
+  let failedTabCount = 0;
+  for (const { page, tabIds } of pagesToImport) {
+    // 変更理由: 一括取り込みで表示中のページを奪わず、確認したいタブを利用者が選べるよう
+    // すべてバックグラウンド追加に統一し、追加できたページに対応する元タブだけを閉じる。
     context.dispatch({ type: "OPEN_IN_NEW_TAB", page, background: true });
+
+    const failedTabIds = await removeExtensionTabs(tabIds);
+    if (failedTabIds.length > 0) {
+      failedTabCount += failedTabIds.length;
+      console.error("[ChLens] スレッド取り込み元タブの一部を閉じられませんでした", {
+        threadUrl: page.threadUrl,
+        failedTabIds,
+      });
+    }
   }
+
+  if (failedTabCount > 0) {
+    container.toast.error(
+      `${pagesToImport.length.toLocaleString("ja-JP")}件のスレタブを取り込みましたが、` +
+        `元ブラウザタブ${failedTabCount.toLocaleString("ja-JP")}件を閉じられませんでした`,
+    );
+    return;
+  }
+
   container.toast.success(
     `${pagesToImport.length.toLocaleString("ja-JP")}件のスレタブを取り込みました`,
   );
