@@ -705,9 +705,17 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     [currentPage.type],
   );
 
+  const closeMenu = useCallback(() => {
+    setMenuPosition(null);
+  }, []);
+
   const openSettingsTab = useCallback(() => {
     // 設定タブを毎回増やすより既存タブを再利用した方が往復しやすいため、まず開いている設定を探す。
     const existingSettingsTab = state.tabs.find((tab) => getCurrentPage(tab).type === "settings");
+
+    // 設定ボタンはContextMenuの通常項目経路を通らないため、タブ遷移による再描画より先に
+    // menuPositionを解除し、設定タブの追加・再選択後にメニューが再表示されないようにする。
+    closeMenu();
 
     if (existingSettingsTab) {
       dispatch({ type: "SELECT_TAB", tabId: existingSettingsTab.id });
@@ -719,7 +727,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       type: "NAVIGATE",
       page: { type: "settings", title: "設定" },
     });
-  }, [dispatch, state.tabs]);
+  }, [closeMenu, dispatch, state.tabs]);
 
   const handleMenuClick = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -735,10 +743,6 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         y: rect.bottom + 4,
       };
     });
-  }, []);
-
-  const closeMenu = useCallback(() => {
-    setMenuPosition(null);
   }, []);
 
   const closeBackMenu = useCallback(() => {
