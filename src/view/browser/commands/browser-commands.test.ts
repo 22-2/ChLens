@@ -59,7 +59,10 @@ function createTab(page: Page): Tab {
   };
 }
 
-function createContext(page: Page): {
+function createContext(
+  page: Page,
+  closedTabs: readonly Tab[] = [],
+): {
   context: BrowserCommandContext;
   dispatch: ReturnType<typeof vi.fn<(action: ScopedTabAction) => void>>;
 } {
@@ -70,6 +73,7 @@ function createContext(page: Page): {
       currentPage: page,
       activeTab,
       tabs: [activeTab],
+      closedTabs,
       isTwoPane: false,
       isWritePanelOpen: false,
       dispatch,
@@ -140,6 +144,26 @@ describe("browser commands", () => {
     expect(ids).not.toContain("copy.thread-toon");
     expect(ids).not.toContain("page.jump-to-response");
     expect(ids).not.toContain("page.search-next-thread");
+  });
+
+  it("閉じたタブがないと再オープンを無効化し、履歴があれば既存actionを送る", async () => {
+    const { context, dispatch } = createContext({ type: "home", title: "ホーム" });
+    const findReopenCommand = () =>
+      resolveBrowserCommands(context).find(({ id }) => id === "navigation.reopen-closed-tab");
+
+    expect(findReopenCommand()).toMatchObject({
+      label: "閉じたタブを開く",
+      englishLabel: "Reopen Closed Tab",
+      enabled: false,
+    });
+
+    context.closedTabs = [createTab({ type: "home", title: "復元するタブ" })];
+    expect(findReopenCommand()).toMatchObject({ enabled: true });
+
+    await expect(executeBrowserCommand("navigation.reopen-closed-tab", context)).resolves.toBe(
+      true,
+    );
+    expect(dispatch).toHaveBeenCalledWith({ type: "REOPEN_CLOSED_TAB" });
   });
 
   it("スレッドではレス番号ジャンプ用の入力ダイアログを開ける", async () => {

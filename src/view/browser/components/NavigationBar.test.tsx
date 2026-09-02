@@ -79,7 +79,7 @@ let bookmarkedUrls = new Set<string>();
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => ({
-    state: { tabs: [activeTab] },
+    state: { tabs: [activeTab], closedTabs: [] },
     activeTab,
     currentPage: activeTab.history[activeTab.currentIndex],
     dispatch: dispatchMock,

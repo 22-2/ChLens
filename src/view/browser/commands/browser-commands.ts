@@ -10,6 +10,7 @@ import {
   Import,
   List,
   PenLine,
+  RotateCcw,
   RotateCw,
   Search,
   Settings,
@@ -58,6 +59,7 @@ export interface BrowserCommandContext {
   currentPage: Page;
   activeTab: Tab;
   tabs: readonly Tab[];
+  closedTabs: readonly Tab[];
   isTwoPane: boolean;
   isWritePanelOpen: boolean;
   dispatch: Dispatch<ScopedTabAction>;
@@ -331,6 +333,19 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     group: "navigation",
     icon: Settings,
     run: openSettings,
+  },
+  {
+    id: "navigation.reopen-closed-tab",
+    label: "閉じたタブを開く",
+    englishLabel: "Reopen Closed Tab",
+    description: "最後に閉じたタブを現在のペインで開きます",
+    keywords: ["reopen", "closed tab", "閉じたタブ"],
+    group: "navigation",
+    icon: RotateCcw,
+    isEnabled: ({ closedTabs }) => closedTabs.length > 0,
+    // 変更理由: タブメニューと同じ reducer action を使い、復元時の新しいID付与と
+    // 自動更新状態のリセットを共通化して、入口ごとの挙動差を防ぐ。
+    run: ({ dispatch }) => dispatch({ type: "REOPEN_CLOSED_TAB" }),
   },
   {
     id: "navigation.open-bookmarks",
