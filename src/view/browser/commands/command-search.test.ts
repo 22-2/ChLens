@@ -29,6 +29,16 @@ const commands = [
   ]),
 ];
 
+const threadCommands = [
+  ...commands,
+  command("page.jump-to-response", "レス番号を指定してジャンプ", "Jump to Response Number", [
+    "レス移動",
+    "番号",
+    "jump",
+    "response",
+  ]),
+];
+
 describe("filterAndSortBrowserCommands", () => {
   it("日本語名と英語名のどちらでも検索できる", () => {
     expect(filterAndSortBrowserCommands(commands, "設定", []).map(({ id }) => id)).toEqual([
@@ -63,5 +73,37 @@ describe("filterAndSortBrowserCommands", () => {
         ({ id }) => id,
       ),
     ).toEqual(["copy.page-url", "page.reload", "navigation.open-settings"]);
+  });
+
+  it("スレッドで正の数字を入力するとレス番号ジャンプを最上位へ合成する", () => {
+    const result = filterAndSortBrowserCommands(threadCommands, "42", []);
+
+    expect(result[0]).toMatchObject({
+      id: "page.jump-to-response:42",
+      label: "レス42へジャンプ",
+      englishLabel: "Jump to Response 42",
+    });
+  });
+
+  it("全角数字と先頭ゼロを正規化し、安全でない番号は候補にしない", () => {
+    expect(filterAndSortBrowserCommands(threadCommands, " ０４２ ", [])[0]).toMatchObject({
+      id: "page.jump-to-response:42",
+      label: "レス42へジャンプ",
+    });
+    expect(
+      filterAndSortBrowserCommands(threadCommands, "9007199254740992", []).some(({ id }) =>
+        id.startsWith("page.jump-to-response:"),
+      ),
+    ).toBe(false);
+  });
+
+  it("数字以外や0は動的なレス番号ジャンプ候補にしない", () => {
+    for (const query of ["0", "-1", "1.5", "+42", "42abc"]) {
+      expect(
+        filterAndSortBrowserCommands(threadCommands, query, []).some(({ id }) =>
+          id.startsWith("page.jump-to-response:"),
+        ),
+      ).toBe(false);
+    }
   });
 });
