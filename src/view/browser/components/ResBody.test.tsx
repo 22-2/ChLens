@@ -113,6 +113,56 @@ describe("ResBody anchor behavior", () => {
     expect(onAnchorHover).not.toHaveBeenCalled();
   });
 
+  it("存在しない参照先を強調し、部分欠損とNGのクラスを併用する", () => {
+    const onAnchorClick = vi.fn();
+    const onAnchorHover = vi.fn();
+    const resMap = new Map<number, unknown>([[5, {}]]);
+    const { container, rerender } = render(
+      <ResBody
+        messageHtml={'<a class="anchor">&gt;&gt;5, 9999</a>'}
+        anchorPreviewDepth={0}
+        ngResNums={new Set([5])}
+        resMap={resMap}
+        onUrlClick={() => {}}
+        onUrlContextMenu={() => {}}
+        onIdLinkClick={() => {}}
+        onAnchorClick={onAnchorClick}
+        onAnchorHover={onAnchorHover}
+        onAnchorLeave={() => {}}
+      />,
+    );
+
+    const anchor = container.querySelector("a.anchor") as HTMLAnchorElement;
+    expect(anchor).toHaveClass("anchor--missing-target", "anchor--ng-target");
+
+    fireEvent.click(anchor);
+    fireEvent.mouseOver(anchor);
+
+    expect(onAnchorClick).toHaveBeenCalledWith(5);
+    expect(onAnchorHover).toHaveBeenCalledWith([5, 9999], expect.any(Object), ">>5, 9999", 0);
+
+    rerender(
+      <ResBody
+        messageHtml={'<a class="anchor">&gt;&gt;5, 9999</a>'}
+        anchorPreviewDepth={0}
+        resMap={
+          new Map<number, unknown>([
+            [5, {}],
+            [9999, {}],
+          ])
+        }
+        onUrlClick={() => {}}
+        onUrlContextMenu={() => {}}
+        onIdLinkClick={() => {}}
+        onAnchorClick={onAnchorClick}
+        onAnchorHover={onAnchorHover}
+        onAnchorLeave={() => {}}
+      />,
+    );
+
+    expect(container.querySelector("a.anchor")).not.toHaveClass("anchor--missing-target");
+  });
+
   it("通常リンクのミドルクリックを一度だけ新規タブ扱いで開く", () => {
     const onUrlClick = vi.fn(() => true);
     const { container } = render(

@@ -910,6 +910,7 @@ export const ReplyTreePopup: React.FC<{
                   onContextMenu={handleResContextMenu}
                   isImageBlurred={blurredResNums?.has(sourceRes.num)}
                   ngResNums={ngResNums}
+                  resMap={resMap}
                   threadKey={threadKey}
                 />
               </section>

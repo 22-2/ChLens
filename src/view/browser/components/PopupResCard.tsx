@@ -32,6 +32,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     onContextMenu,
     isImageBlurred,
     ngResNums,
+    resMap,
     threadKey,
   }) => {
     const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
@@ -160,6 +161,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
           messageHtml={resolvedMedia.messageHtml}
           anchorPreviewDepth={anchorPreviewDepth}
           ngResNums={ngResNums}
+          resMap={resMap}
           onUrlClick={(url, button, mode) => onUrlClick(url, undefined, button, mode)}
           onUrlContextMenu={(url, e, mode) => onUrlContextMenu(url, e, mode)}
           onMiddleClickStart={onLinkMiddleClickStart}
@@ -205,6 +207,8 @@ export interface StaticResCardProps {
   isImageBlurred?: boolean;
   /** 本文中のアンカー先NGレスを強調するためのレス番号集合 */
   ngResNums?: ReadonlySet<number>;
+  /** 本文アンカーの欠損判定をメインスレッドと揃えるためのレス索引 */
+  resMap?: ReadonlyMap<number, unknown>;
   /** 親スレッドのURL。ポップアップでも同じ失敗抑止単位を使う。 */
   threadKey?: string;
 }

@@ -187,6 +187,7 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
           zIndex={anchorPreview.z}
           blurredResNums={blurredResNums}
           ngResNums={ngResNums}
+          resMap={resMap}
           threadKey={threadUrl}
         />
       ))}
@@ -242,6 +243,7 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
           )}
           blurredResNums={blurredResNums}
           ngResNums={ngResNums}
+          resMap={resMap}
           threadKey={threadUrl}
         />
       ))}
