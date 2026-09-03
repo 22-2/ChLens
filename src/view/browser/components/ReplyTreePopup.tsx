@@ -4,16 +4,17 @@ import {
   ImageDown,
   Image as ImageIcon,
   ImageUp,
-  MoreVertical,
   Pin,
   PinOff,
 } from "lucide-react";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import type { IRes } from "src/service-container";
+import { PopupHeader } from "src/view/browser/components/PopupHeader";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
 import { ReplyTree } from "src/view/browser/components/ReplyTree";
 import type { ResolvedTheme } from "src/view/browser/hooks/use-theme";
 import { useTheme } from "src/view/browser/hooks/use-theme";
+import { usePopupHeaderMenu } from "src/view/browser/hooks/use-popup-header-menu";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { FloatingPopup } from "src/view/browser/ui/FloatingPopup";
@@ -24,11 +25,6 @@ import {
   formatResForCopy,
   stripHtml,
 } from "src/view/browser/utils/response-format";
-
-interface TreeMenuPosition {
-  x: number;
-  y: number;
-}
 
 interface SubTreeMenuState {
   resNum: number;
@@ -585,8 +581,7 @@ export const ReplyTreePopup: React.FC<{
   ngResNums,
   threadKey,
 }) => {
-  const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const [menuPosition, setMenuPosition] = useState<TreeMenuPosition | null>(null);
+  const { menuButtonRef, menuPosition, handleMenuClick, closeMenu } = usePopupHeaderMenu();
   const [subTreeMenu, setSubTreeMenu] = useState<SubTreeMenuState | null>(null);
   const theme = useTheme();
   const sourceRes = resMap.get(resNum) ?? null;
@@ -636,32 +631,6 @@ export const ReplyTreePopup: React.FC<{
     : [];
 
   useEffect(() => {
-    if (!menuPosition) {
-      return;
-    }
-
-    const handleOutsideMenuClick = (e: MouseEvent) => {
-      if (!(e.target instanceof Element)) {
-        setMenuPosition(null);
-        return;
-      }
-
-      if (e.target.closest(".context-menu")) {
-        return;
-      }
-
-      if (menuButtonRef.current?.contains(e.target)) {
-        return;
-      }
-
-      setMenuPosition(null);
-    };
-
-    document.addEventListener("mousedown", handleOutsideMenuClick);
-    return () => document.removeEventListener("mousedown", handleOutsideMenuClick);
-  }, [menuPosition]);
-
-  useEffect(() => {
     if (!subTreeMenu) {
       return;
     }
@@ -699,21 +668,6 @@ export const ReplyTreePopup: React.FC<{
     },
     [onResContextMenu, onPopupMouseDown],
   );
-
-  const handleMenuClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    const buttonRect = e.currentTarget.getBoundingClientRect();
-    setMenuPosition((prev) =>
-      prev
-        ? null
-        : {
-            // ContextMenu は Radix の portal 上で viewport 座標に配置されるため、
-            // 親ポップアップ基準の相対座標へ変換せず、そのまま渡す。
-            x: buttonRect.right - 8,
-            y: buttonRect.bottom + 4,
-          },
-    );
-  };
 
   const handleSubTreeMenuClick = (
     targetResNum: number,
@@ -857,35 +811,15 @@ export const ReplyTreePopup: React.FC<{
     >
       {({ armMouseLeaveCloseSuppression }) => (
         <>
-          <div className="res-popup__header">
-            <span>{`>>${resNum} への返信ツリー`}</span>
-            <div className="res-popup__header-actions">
-              {pinned && (
-                <button
-                  className="res-popup__icon-btn"
-                  onClick={onTogglePinned}
-                  aria-label="ピン留めを解除"
-                  title="ピン留めを解除"
-                >
-                  {/* 固定中だけ解除操作をヘッダーへ常設し、メニューを開かずに解除できるようにする。 */}
-                  {/* 変更理由: ヘッダーの操作は現在のピン状態ではなく、押下後の解除操作を示すためPinOffを使う。 */}
-                  <PinOff size={14} />
-                </button>
-              )}
-              <button
-                ref={menuButtonRef}
-                className="res-popup__icon-btn"
-                onClick={handleMenuClick}
-                aria-label="返信ツリーメニュー"
-                title="返信ツリーメニュー"
-              >
-                <MoreVertical size={14} />
-              </button>
-              <button className="res-popup__close" onClick={onClose}>
-                ✕
-              </button>
-            </div>
-          </div>
+          <PopupHeader
+            title={`>>${resNum} への返信ツリー`}
+            menuButtonRef={menuButtonRef}
+            menuLabel="返信ツリーメニュー"
+            onMenuClick={handleMenuClick}
+            pinned={pinned}
+            onTogglePinned={onTogglePinned}
+            onClose={onClose}
+          />
           <div className="res-popup__body">
             {sourceRes && (
               <section className="res-popup__section">
@@ -951,7 +885,7 @@ export const ReplyTreePopup: React.FC<{
               // 親のIDポップアップから見ると別のpopupになる。親子関係を識別できるよう
               // ツリーポップアップ自身のIDを引き継ぎ、コピー操作で親まで閉じないようにする。
               popupId={popupId}
-              onClose={() => setMenuPosition(null)}
+              onClose={closeMenu}
             />
           )}
           {subTreeMenu && (

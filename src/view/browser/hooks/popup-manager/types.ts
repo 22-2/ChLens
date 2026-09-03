@@ -19,6 +19,8 @@ export interface IdPopupItem extends PopupItemBase {
   payload: {
     items: IRes[];
     title: string;
+    /** ピン留め中は本文操作やマウス離脱で自動的に閉じない。 */
+    pinned?: boolean;
   };
 }
 
