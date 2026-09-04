@@ -15,6 +15,7 @@ export interface PopupCoreResult {
   closePopupChildren: (popupId: string) => void;
   isPopupDescendantOf: (popupId: string, ancestorId: string) => boolean;
   toggleTreePopupPinned: (popupId: string) => void;
+  toggleIdPopupPinned: (popupId: string) => void;
 }
 
 export function usePopupCore(scopeId = DEFAULT_POPUP_SCOPE_ID): PopupCoreResult {
@@ -33,6 +34,7 @@ export function usePopupCore(scopeId = DEFAULT_POPUP_SCOPE_ID): PopupCoreResult 
   const closePopupChildrenInScope = usePopupStore((state) => state.closePopupChildrenInScope);
   const isPopupDescendantOfInScope = usePopupStore((state) => state.isPopupDescendantOfInScope);
   const toggleTreePopupPinnedInScope = usePopupStore((state) => state.toggleTreePopupPinnedInScope);
+  const toggleIdPopupPinnedInScope = usePopupStore((state) => state.toggleIdPopupPinnedInScope);
 
   useEffect(() => {
     mountScope(scopeId);
@@ -72,6 +74,10 @@ export function usePopupCore(scopeId = DEFAULT_POPUP_SCOPE_ID): PopupCoreResult 
     (popupId: string) => toggleTreePopupPinnedInScope(scopeId, popupId),
     [scopeId, toggleTreePopupPinnedInScope],
   );
+  const toggleIdPopupPinned = useCallback(
+    (popupId: string) => toggleIdPopupPinnedInScope(scopeId, popupId),
+    [scopeId, toggleIdPopupPinnedInScope],
+  );
 
   return {
     popups,
@@ -83,5 +89,6 @@ export function usePopupCore(scopeId = DEFAULT_POPUP_SCOPE_ID): PopupCoreResult 
     closePopupChildren,
     isPopupDescendantOf,
     toggleTreePopupPinned,
+    toggleIdPopupPinned,
   };
 }

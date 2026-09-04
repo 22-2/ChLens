@@ -26,6 +26,7 @@ interface PopupCollectionSlice {
   closeAllPopupsInScope: (scopeId: string) => void;
   closePopupsByPredicateInScope: (scopeId: string, predicate: (item: PopupItem) => boolean) => void;
   toggleTreePopupPinnedInScope: (scopeId: string, popupId: string) => void;
+  toggleIdPopupPinnedInScope: (scopeId: string, popupId: string) => void;
 }
 
 interface PopupGraphSlice {
@@ -184,6 +185,31 @@ const createPopupCollectionSlice: StateCreator<PopupStoreState, [], [], PopupCol
       };
     });
   },
+  toggleIdPopupPinnedInScope: (scopeId, popupId) => {
+    set((state) => {
+      const currentScope = state.scopes[scopeId];
+      if (!currentScope) return state;
+
+      return {
+        scopes: {
+          ...state.scopes,
+          [scopeId]: {
+            ...currentScope,
+            popups: currentScope.popups.map((item) => {
+              if (item.id !== popupId || item.type !== "id") return item;
+              const pinned = !item.payload.pinned;
+              return {
+                ...item,
+                // 親popupが閉じても固定したIDポップアップを巻き込まないよう、固定時はrootへ昇格する。
+                parentId: pinned ? undefined : item.parentId,
+                payload: { ...item.payload, pinned },
+              };
+            }),
+          },
+        },
+      };
+    });
+  },
 });
 
 const createPopupGraphSlice: StateCreator<PopupStoreState, [], [], PopupGraphSlice> = (
@@ -191,10 +217,12 @@ const createPopupGraphSlice: StateCreator<PopupStoreState, [], [], PopupGraphSli
   get,
 ) => ({
   closeNonContextPopupsInScope: (scopeId) => {
-    // 固定した返信ツリーは本文操作後も残し、それ以外のpopup本体だけを閉じる。
+    // 固定した返信ツリーとIDポップアップは本文操作後も残し、それ以外のpopup本体だけを閉じる。
     get().closePopupsByPredicateInScope(
       scopeId,
-      (item) => item.type !== "contextMenu" && !(item.type === "tree" && item.payload.pinned),
+      (item) =>
+        item.type !== "contextMenu" &&
+        !((item.type === "tree" || item.type === "id") && item.payload.pinned),
     );
   },
   closePopupChildrenInScope: (scopeId, popupId) => {
