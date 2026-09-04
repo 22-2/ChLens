@@ -1,9 +1,12 @@
+import { Clipboard, ExternalLink, Trash2 } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { container } from "src/service-container/index";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import { ColumnDef, SimpleDataTable } from "src/view/browser/components/SimpleDataTable";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 import { useTabDispatch, useTabViewState } from "src/view/browser/hooks/use-tab-store";
+import type { Page } from "src/view/browser/types";
+import { ContextMenu, type ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import {
   getLegacyBookmarkService,
@@ -13,6 +16,7 @@ import {
   getBoardUrlFromThreadUrl,
   parseInternalBrowserPage,
 } from "src/view/browser/utils/link-routing";
+import { copyText, formatMarkdownLink } from "src/view/browser/utils/clipboard";
 
 type SortDirection = "asc" | "desc";
 type SortColumn = "title" | "boardTitle" | "resCount" | "unreadCount" | "heat" | "createdAt";
@@ -37,6 +41,12 @@ interface BookmarkEntry {
   heat: number;
   createdAt: number;
   originalIndex: number;
+}
+
+interface BookmarkContextMenuState {
+  entry: BookmarkEntry;
+  x: number;
+  y: number;
 }
 
 interface LegacyReadStateLike {
@@ -163,6 +173,20 @@ async function readBookmarks(): Promise<BookmarkEntry[]> {
     .filter((item): item is BookmarkEntry => item !== null);
 }
 
+function buildBookmarkPage(entry: BookmarkEntry): Page | null {
+  const parsed = parseInternalBrowserPage(entry.url);
+  if (!parsed) {
+    return null;
+  }
+
+  // 変更理由: 行クリックとコンテキストメニューでページ構築を分けると、板名の補正がずれるため変換を共有する。
+  return {
+    ...parsed,
+    title: entry.title,
+    ...(parsed.type === "threadList" ? { boardTitle: entry.boardTitle || entry.title } : {}),
+  };
+}
+
 const COLUMNS: ColumnDef<BookmarkEntry>[] = [
   {
     key: "title",
@@ -247,6 +271,7 @@ export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({ tabId, isAct
       direction: persistedViewState.sortDirection === "desc" ? "desc" : "asc",
     };
   });
+  const [contextMenuState, setContextMenuState] = useState<BookmarkContextMenuState | null>(null);
 
   useEffect(() => {
     updateViewState({
@@ -357,39 +382,104 @@ export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({ tabId, isAct
 
   const openEntry = useCallback(
     (entry: BookmarkEntry) => {
-      const parsed = parseInternalBrowserPage(entry.url);
-      if (!parsed) return;
+      const page = buildBookmarkPage(entry);
+      if (!page) return;
 
-      dispatch({
-        type: "NAVIGATE",
-        page: {
-          ...parsed,
-          title: entry.title,
-          ...(parsed.type === "threadList" ? { boardTitle: entry.boardTitle || entry.title } : {}),
-        },
-      });
+      dispatch({ type: "NAVIGATE", page });
     },
     [dispatch],
   );
 
   const openEntryInNewTab = useCallback(
-    (entry: BookmarkEntry) => {
-      const parsed = parseInternalBrowserPage(entry.url);
-      if (!parsed) return;
+    (entry: BookmarkEntry, background = true) => {
+      const page = buildBookmarkPage(entry);
+      if (!page) return;
 
-      // ミドルクリックはバックグラウンドで開く（設定に関わらず常にバックグラウンドタブ）
+      // ミドルクリックはバックグラウンドで開き、コンテキストメニューは通常の新規タブ設定に従う。
       dispatch({
         type: "OPEN_IN_NEW_TAB",
-        page: {
-          ...parsed,
-          title: entry.title,
-          ...(parsed.type === "threadList" ? { boardTitle: entry.boardTitle || entry.title } : {}),
-        },
-        background: true,
+        page,
+        ...(background ? { background: true } : {}),
       });
     },
     [dispatch],
   );
+
+  const removeBookmark = useCallback(async (entry: BookmarkEntry) => {
+    try {
+      // 変更理由: Adapter の型は同期実装も許容する一方、レガシー実装は Promise を返すため、どちらの失敗も捕捉できる形にする。
+      await Promise.resolve(container.bookmark.remove(entry.url));
+      // 変更理由: bookmark_updated の配送を待たず、操作した行を即時に一覧から除去して stale 表示を防ぐ。
+      setEntries((current) => current.filter((candidate) => candidate.url !== entry.url));
+    } catch (error) {
+      console.error("[BookmarkListPage] ブックマークの削除に失敗しました", {
+        url: entry.url,
+        error,
+      });
+    }
+  }, []);
+
+  const copyBookmarkText = useCallback(async (text: string, label: string) => {
+    try {
+      await copyText(text);
+    } catch (error) {
+      console.error(`[BookmarkListPage] ${label}のコピーに失敗しました`, error);
+    }
+  }, []);
+
+  const contextMenuItems = useMemo<ContextMenuItem[]>(() => {
+    if (!contextMenuState) {
+      return [];
+    }
+
+    const { entry } = contextMenuState;
+    return [
+      {
+        id: "open-current",
+        label: "現在のタブで開く",
+        icon: <ExternalLink />,
+        onSelect: () => openEntry(entry),
+      },
+      {
+        id: "open-new-tab",
+        label: "新しいタブで開く",
+        icon: <ExternalLink />,
+        onSelect: () => openEntryInNewTab(entry, false),
+      },
+      { id: "separator-bookmark", separator: true },
+      {
+        id: "remove-bookmark",
+        label: "ブックマークを削除",
+        icon: <Trash2 />,
+        danger: true,
+        onSelect: () => void removeBookmark(entry),
+      },
+      { id: "separator-copy", separator: true },
+      {
+        id: "copy-title",
+        label: "タイトルをコピー",
+        icon: <Clipboard />,
+        onSelect: () => void copyBookmarkText(entry.title, "タイトル"),
+      },
+      {
+        id: "copy-url",
+        label: "URLをコピー",
+        onSelect: () => void copyBookmarkText(entry.url, "URL"),
+      },
+      {
+        id: "copy-title-url",
+        label: "タイトル&URLをコピー",
+        icon: <Clipboard />,
+        onSelect: () => void copyBookmarkText(`${entry.title}\n${entry.url}`, "タイトルとURL"),
+      },
+      {
+        id: "copy-title-url-markdown",
+        label: "タイトル&URLをMarkdownでコピー",
+        onSelect: () =>
+          void copyBookmarkText(formatMarkdownLink(entry.title, entry.url), "タイトルとURL"),
+      },
+    ];
+  }, [contextMenuState, copyBookmarkText, openEntry, openEntryInNewTab, removeBookmark]);
 
   if (loading) {
     return (
@@ -428,12 +518,21 @@ export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({ tabId, isAct
         getRowTooltip={(row) => row.title}
         onRowClick={openEntry}
         onRowMiddleClick={openEntryInNewTab}
+        onRowContextMenu={(entry, x, y) => setContextMenuState({ entry, x, y })}
         sortColumn={sortState.column ?? undefined}
         sortDirection={sortState.direction}
         onSort={handleSort}
         columnVisibilityStorageKey={COLUMN_VISIBILITY_STORAGE_KEY}
         columnVisibilityLockedKeys={COLUMN_VISIBILITY_LOCKED_KEYS}
       />
+      {contextMenuState ? (
+        <ContextMenu
+          x={contextMenuState.x}
+          y={contextMenuState.y}
+          items={contextMenuItems}
+          onClose={() => setContextMenuState(null)}
+        />
+      ) : null}
     </div>
   );
 };
