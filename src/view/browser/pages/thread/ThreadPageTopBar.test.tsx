@@ -1,8 +1,12 @@
 import "@testing-library/jest-dom/vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { ThreadPageTopBar } from "src/view/browser/pages/thread/ThreadPageTopBar";
+
+const threadPageCss = readFileSync(resolve("src/view/browser/styles/pages/ThreadPage.css"), "utf8");
 
 describe("ThreadPageTopBar", () => {
   afterEach(() => {
@@ -59,5 +63,16 @@ describe("ThreadPageTopBar", () => {
     });
 
     expect(onSearchTargetChange).toHaveBeenCalledWith("name");
+  });
+
+  it("ミニマップの予約幅で検索フィルタを狭めない", () => {
+    const minimapReservationSelectors =
+      threadPageCss.match(/\.thread-page--with-minimap[^{}]*(?=\{)/)?.[0] ?? "";
+
+    expect(minimapReservationSelectors).toContain(".thread-page__notice");
+    expect(minimapReservationSelectors).toContain(".thread-page__responses");
+    expect(minimapReservationSelectors).toContain(".thread-page__auto-scroll-threshold");
+    expect(minimapReservationSelectors).not.toContain(".thread-page__top-bar");
+    expect(minimapReservationSelectors).not.toContain(".thread-page__toolbar");
   });
 });
