@@ -108,4 +108,37 @@ hide body regex:
       ),
     ).toMatchObject({ type: "AnchorCount" });
   });
+
+  it("画像ぼかし用のルールを本文NG判定から分離して公開する", async () => {
+    const { apply, getSimilarImageRules, invalidateCache, isNGThread } =
+      await import("src/core/NG");
+    invalidateCache();
+    apply(`blur similar-image contains threshold=12:
+  0123456789abcdef
+
+hide body contains:
+  通常のNG`);
+
+    expect(getSimilarImageRules()).toEqual([
+      {
+        action: "blur",
+        target: "similar-image",
+        enabled: true,
+        parameters: { threshold: "12" },
+        matchers: [{ kind: "contains", value: "0123456789abcdef" }],
+      },
+    ]);
+    expect(
+      isNGThread(
+        {
+          num: 1,
+          name: "name",
+          mail: "",
+          message: "0123456789abcdef",
+        },
+        "title",
+        "https://example.com/thread/1",
+      ),
+    ).toBeNull();
+  });
 });

@@ -72,6 +72,36 @@ hide anchor-count >= 10:`;
     });
   });
 
+  it("類似画像ぼかしルールを解析して整形する", () => {
+    const source = `blur similar-image contains threshold=12 sites=[bbs.eddibb.cc]:
+  0123456789abcdef`;
+    const result = parseRuleDsl(source);
+
+    expect(result.diagnostics).toEqual([]);
+    expect(result.rules).toEqual([
+      {
+        action: "blur",
+        target: "similar-image",
+        enabled: true,
+        scope: { sites: ["bbs.eddibb.cc"] },
+        parameters: { threshold: "12" },
+        matchers: [{ kind: "contains", value: "0123456789abcdef" }],
+      },
+    ]);
+    expect(formatRuleDsl(result.rules)).toBe(source);
+  });
+
+  it("類似画像ルールで非対応の非表示動作やregex構文を拒否する", () => {
+    expect(parseRuleDsl("hide similar-image contains:\n  0123456789abcdef").rules).toEqual([]);
+    expect(
+      parseRuleDsl('blur similar-image regex:\n  "0123456789abcdef"').diagnostics,
+    ).toContainEqual({
+      line: 1,
+      column: 1,
+      message: "similar-image の条件は contains で指定してください。",
+    });
+  });
+
   it("rejects the former implicit matcher syntax", () => {
     const result = parseRuleDsl(`hide body:
   spam`);

@@ -1,4 +1,4 @@
-export const RULE_ACTIONS = ["hide", "highlight", "demote", "warn"] as const;
+export const RULE_ACTIONS = ["hide", "blur", "highlight", "demote", "warn"] as const;
 export type RuleAction = (typeof RULE_ACTIONS)[number];
 
 export const RULE_TARGETS = [
@@ -13,6 +13,7 @@ export const RULE_TARGETS = [
   "res-count",
   "reply-count",
   "anchor-count",
+  "similar-image",
 ] as const;
 export type RuleTarget = (typeof RULE_TARGETS)[number];
 
@@ -36,6 +37,8 @@ export interface Rule {
   readonly matchers: readonly RuleMatcher[];
   readonly scope?: RuleScope;
   readonly presentation?: RulePresentation;
+  /** 汎用 matcher では表現できない対象固有の設定。 */
+  readonly parameters?: Readonly<Record<string, string>>;
   readonly enabled: boolean;
   readonly expiresAt?: number;
   readonly name?: string;

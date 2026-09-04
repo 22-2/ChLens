@@ -150,7 +150,8 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
       if (/\bcolor\s*=\s*[#\w-]*$/iu.test(line)) {
         return { suggestions: createColorSuggestions(monaco, model, position) };
       }
-      if (/\b(?:sites|label|disabled)\s*=\s*[^\s]*$/iu.test(line)) {
+      // 類似画像NGのthresholdも既存の設定項目と同じ補完入口へ揃える。
+      if (/\b(?:sites|label|disabled|threshold)\s*=\s*[^\s]*$/iu.test(line)) {
         return { suggestions: createOptionSuggestions(monaco, model, position) };
       }
       if (!/^\s/u.test(line)) {

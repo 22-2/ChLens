@@ -1,3 +1,4 @@
+import type { Rule } from "@chlen/ch-lib";
 import { BBSMenu } from "src/core/BBSMenuParser";
 export interface IConfig {
   // 設定ストアは文字列ベース (app.config.get は string | null を返す)。
@@ -207,7 +208,7 @@ export interface INotificationService {
 
 export interface INGResult {
   type: string;
-  action?: "hide" | "highlight" | "demote" | "warn";
+  action?: "hide" | "blur" | "highlight" | "demote" | "warn";
   /** 実際に一致した条件だけを抜き出したDSL。NG理由の表示に使用する。 */
   ruleDescription?: string;
   /** 設定内のルール位置。表示側で同じルールの一致結果をまとめるために使用する。 */
@@ -221,6 +222,8 @@ export interface INGResult {
 export interface INGService {
   isNGBoard(title: string, url: string, resCount: number): INGResult | null;
   isNGThread(res: unknown, title: string, url: string): INGResult | null;
+  /** 汎用のレス判定から分離した、画像ぼかし専用ルールを取得する。 */
+  getSimilarImageRules?: () => readonly Rule[];
   add(ruleDsl: string): Promise<void> | void;
   invalidateCache(): void;
   execExpire(): void;

@@ -14,6 +14,7 @@ import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
 import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
 import { usePopupAutoScrollPauseSetting } from "src/view/browser/hooks/use-popup-auto-scroll-pause-setting";
 import { useThreadPopupManager } from "src/view/browser/hooks/use-popup-manager";
+import { useSimilarImageNg } from "src/view/browser/hooks/use-similar-image-ng";
 import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
 import { useThreadAutoRefresh } from "src/view/browser/hooks/use-thread-auto-refresh";
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";
@@ -97,7 +98,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     edge: "bottom",
     onRefresh: () => dispatch({ type: "RELOAD" }),
   });
-  const { setThreadStats } = useNgStatus();
+  const { isNgTemporarilyDisabled, setThreadStats } = useNgStatus();
   const openMediaFromUrl = useMediaViewerStore((state) => state.openMediaFromUrl);
   const { enabled: isAutoNextThreadEnabled, mode: autoNextThreadMode } = useAutoNextThreadSetting();
   const autoNextThreadResponseMessages = useMemo(
@@ -312,6 +313,17 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     if (!imageBlurConfig.enabled) return new Set<number>();
     return buildBlurredResSet(responses, indexes.repIndex, imageBlurConfig.harmfulWordPattern);
   }, [imageBlurConfig, indexes.repIndex, responses]);
+  const similarImageBlurredResNums = useSimilarImageNg(responses, rootRef, {
+    enabled: imageBlurConfig.enabled && !isNgTemporarilyDisabled,
+    threadUrl: page.threadUrl,
+  });
+  const allBlurredResNums = useMemo(() => {
+    // 類似画像判定も既存の画像ぼかし表示経路へ合流させ、レス本文のNG状態とは分離する。
+    if (similarImageBlurredResNums.size === 0) return blurredResNums;
+    const merged = new Set(blurredResNums);
+    for (const resNum of similarImageBlurredResNums) merged.add(resNum);
+    return merged;
+  }, [blurredResNums, similarImageBlurredResNums]);
 
   useEffect(() => {
     // ステータスバーの件数はページ外コンポーネントから参照するため、
@@ -439,7 +451,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
                   onContextMenu={openThreadResContextMenu}
                   isOwn={ownResNums.has(res.num)}
                   isReplyToOwn={replyToOwnResNums.has(res.num)}
-                  isImageBlurred={blurredResNums.has(res.num)}
+                  isImageBlurred={allBlurredResNums.has(res.num)}
                   imageBlurRadius={imageBlurConfig.radius}
                   ngResNums={ngResNums}
                   resMap={indexes.resMap}
@@ -503,7 +515,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             onUrlContextMenuOpen={openPopupUrlContextMenu}
             threadTitle={page.title}
             threadUrl={page.threadUrl}
-            blurredResNums={blurredResNums}
+            blurredResNums={allBlurredResNums}
             ngResNums={ngResNums}
           />
           <ThreadMinimap

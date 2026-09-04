@@ -201,6 +201,7 @@ export function setupContainer(app: LegacyAppForSetup) {
   const ngServiceAdapter: INGService = {
     isNGBoard: (title, url, resCount) => NG.isNGBoard(title, url, resCount),
     isNGThread: (res, title, url) => NG.isNGThread(res, title, url),
+    getSimilarImageRules: () => NG.getSimilarImageRules(),
     add: (ruleDsl) => NG.add(ruleDsl),
     invalidateCache: () => NG.invalidateCache(),
     execExpire: () => NG.execExpire(),

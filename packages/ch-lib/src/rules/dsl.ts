@@ -383,6 +383,25 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
       const sitesValue = options.get("sites");
       const color = options.get("color");
       const label = options.get("label");
+      const threshold = options.get("threshold");
+      // thresholdは汎用matcherではなく画像ハッシュの距離にだけ意味があるため、対象を限定する。
+      if (threshold != null && target !== "similar-image") {
+        headerHasError = true;
+        diagnostics.push({
+          line: index + 1,
+          column: 1,
+          message: "threshold は similar-image にだけ指定できます。",
+        });
+      }
+      // ハッシュ値は正規表現で検索する値ではないため、containsだけを受け付ける。
+      if (target === "similar-image" && parsedMatcherKind === "regex") {
+        headerHasError = true;
+        diagnostics.push({
+          line: index + 1,
+          column: 1,
+          message: "similar-image の条件は contains で指定してください。",
+        });
+      }
       current = {
         action,
         target,
@@ -391,6 +410,7 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
         ...(color || label
           ? { presentation: { ...(color ? { color } : {}), ...(label ? { label } : {}) } }
           : {}),
+        ...(threshold != null ? { parameters: { threshold } } : {}),
       };
       matcherKind = parsedMatcherKind;
       regexFlags = parsedRegexFlags;
@@ -465,6 +485,12 @@ function formatOptions(rule: Rule): string {
   const options: string[] = [];
   if (rule.presentation?.color) options.push(`color=${quoteDslValue(rule.presentation.color)}`);
   if (rule.presentation?.label) options.push(`label=${quoteDslValue(rule.presentation.label)}`);
+  // 対象固有オプションもDSLへ戻せるよう、保存時に安定した順序で出力する。
+  for (const [name, value] of Object.entries(rule.parameters ?? {}).sort(([left], [right]) =>
+    left.localeCompare(right),
+  )) {
+    options.push(`${name}=${quoteDslValue(value)}`);
+  }
   if (rule.scope?.sites?.length) {
     options.push(`sites=[${rule.scope.sites.map(quoteDslValue).join(" ")}]`);
   }

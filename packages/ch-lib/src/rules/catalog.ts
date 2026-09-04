@@ -17,7 +17,9 @@ export type RuleTargetField =
   | "url"
   | "resCount"
   | "replyCount"
-  | "anchorCount";
+  | "anchorCount"
+  // 類似画像は同期テキスト判定へ渡さず、表示付近の非同期画像判定でだけ利用する。
+  | "similarImage";
 export type RuleTargetComparison =
   | "contains"
   | "url-contains"
@@ -35,6 +37,8 @@ export interface RuleTargetDefinition extends RuleCatalogEntry<RuleTarget> {
 
 export const RULE_ACTION_CATALOG: readonly RuleCatalogEntry<RuleAction>[] = [
   { name: "hide", description: "一致した対象を非表示にします。" },
+  // 画像ハッシュ判定は既存サムネイルの表示経路へ合流させるため、動作はblurに限定する。
+  { name: "blur", description: "一致した画像のサムネイルをぼかします。" },
   { name: "highlight", description: "一致した対象を強調します。" },
   {
     name: "demote",
@@ -145,6 +149,17 @@ export const RULE_TARGET_DEFINITIONS: Readonly<Record<RuleTarget, RuleTargetDefi
     allowedOnBoard: false,
     allowedOnThread: true,
   },
+  "similar-image": {
+    // ハッシュ比較はレス本文の同期マッチャーと異なるため、スレッド専用の対象として定義する。
+    name: "similar-image",
+    aliases: ["SimilarImage"],
+    description: "dHashが似ている画像",
+    field: "similarImage",
+    comparison: "contains",
+    resultTypes: ["SimilarImage", "SimilarImage"],
+    allowedOnBoard: false,
+    allowedOnThread: true,
+  },
 };
 
 export const RULE_TARGET_CATALOG: readonly RuleTargetDefinition[] =
@@ -154,6 +169,7 @@ export const RULE_OPTION_CATALOG: readonly RuleCatalogEntry<string>[] = [
   { name: "sites", description: "適用するサイトまたは板" },
   { name: "color", description: "強調表示の背景色" },
   { name: "label", description: "表示するラベル" },
+  { name: "threshold", description: "類似画像判定で許容するハミング距離" },
   { name: "disabled", description: "ルールを一時的に無効化" },
 ];
 
@@ -191,5 +207,10 @@ export function getRuleTargetDefinition(target: RuleTarget): RuleTargetDefinitio
 
 /** 現在UIまで実装済みの組み合わせ。warnは将来拡張用の予約語として保持する。 */
 export function isRuleCombinationSupported(action: RuleAction, target: RuleTarget): boolean {
-  return action === "hide" || action === "demote" || (action === "highlight" && target === "title");
+  return (
+    (action === "blur" && target === "similar-image") ||
+    (action === "hide" && target !== "similar-image") ||
+    (action === "demote" && target !== "similar-image") ||
+    (action === "highlight" && target === "title")
+  );
 }

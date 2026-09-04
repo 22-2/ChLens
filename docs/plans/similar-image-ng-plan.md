@@ -1,343 +1,81 @@
-# 類似画像NG（モザイク）実装計画
+# 類似画像NG（実装仕様）
 
-## 概要
+## 目的
 
-レスの画像サムネイルに対して知覚ハッシュ（dHash）を計算し、NG登録された画像と類似する場合に既存のぼかし（モザイク）エフェクトを適用する機能。
-レス自体を非表示にするのではなく、既存の `image_blur` と同様にサムネイルのぼかしのみを行う。
-NGエディタ（Monaco DSL）から編集可能。
+NG登録した画像と視覚的に似た画像を含むレスを、レス本文全体ではなく既存のサムネイルぼかし表示で隠す。画像判定はスレッド表示時に必要な範囲だけ非同期で行い、既存のテキストNGや一時的なNG解除と干渉させない。
 
-## 使用ライブラリ
+## ルール形式
 
-- `browser-image-hash` — ブラウザ向け知覚ハッシュ（dHash/aHash/pHash/wHash）
-  - `DifferenceHashBuilder` で64bit dHash を計算
-  - `Hash.getHammingDistance()` で類似度判定
-  - fetch→Canvas→hash までよしなにやってくれる
-  - 拡張機能の host permission 下では CORS 制約を気にせず使える
+現行のブロックDSLで、画像のdHashをcontains条件として登録する。
 
-## アーキテクチャ
-
-```
-ThreadPage.tsx
-  │
-  ├── textBlurredResNums  = buildBlurredResSet(...)          ← 既存（テキストマッチ）
-  ├── similarImageBlurred = useSimilarImageNg(responses, rootRef) ← 新規（async, IntersectionObserver）
-  │
-  ├── blurredResNums = textBlurred ∪ similarImageBlurred     ← マージ
-  │
-  └── ResItem isImageBlurred={blurredResNums.has(res.num)}   ← 既存のまま
+```text
+blur similar-image contains threshold=10 sites=[bbs.eddibb.cc]:
+  0123456789abcdef
 ```
 
-### パフォーマンス戦略
+- 動作は `blur`、対象は `similar-image` に固定する。
+- `SimilarImage` は対象名の別名として受け付けるが、保存時は `similar-image` に正規化する。
+- 条件値は64bitの二進表記、または16文字の16進表記を受け付ける。
+- `threshold` はdHashのハミング距離で、未指定時は10、指定可能範囲は0〜64の整数とする。小さいほど厳密に一致する。
+- `sites` は既存のNGルールと同じドメイン・板スコープを使う。
+- `disabled=true`、期限切れ、対象外サイトのルールは判定しない。
 
-- `IntersectionObserver` でビューポート進入時にのみハッシュ計算
-- `rootMargin: "200px"` で少し手前から先読み
-- 計算済みのレスはキャッシュして再計算しない
-- 処理中のレスは二重実行を防止
+画像を右クリックして登録するUIは今回の範囲外とし、NGエディタへdHash値を貼り付けて登録する。登録UIは、実際の利用手順とハッシュ値の取得元を人が確認した後の別タスクとする。
 
----
+## 実装構成
 
-## 変更ファイル一覧
-
-### 新規作成（3ファイル）
-
-| #   | ファイル                                         | 役割                                                                  |
-| --- | ------------------------------------------------ | --------------------------------------------------------------------- |
-| 1   | `src/view/browser/utils/similar-image-ng.ts`     | 純粋関数：画像URL抽出、dHash計算、NGルール照合                        |
-| 2   | `src/view/browser/hooks/use-similar-image-ng.ts` | React hook：IntersectionObserver + 非同期ハッシュ計算 + 結果state管理 |
-| 3   | `docs/plans/similar-image-ng-plan.md`            | 本計画書（このファイル）                                              |
-
-### 修正（5ファイル）
-
-| #   | ファイル                                | 変更内容                                                                                         |
-| --- | --------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| 4   | `src/core/NGTypes.ts`                   | `SIMILAR_IMAGE: "SimilarImage"` を追加                                                           |
-| 5   | `src/core/ngDsl.ts`                     | `NG_DSL_RULE_SPECS` に `SimilarImage` 定義を追加                                                 |
-| 6   | `src/core/NGMatcher.ts`                 | `BOARD_ALLOWED_TYPES` / `THREAD_DENIED_TYPES` に `SimilarImage` を追加（テキストマッチから除外） |
-| 7   | `src/core/NG.ts`                        | （必要な場合）`SimilarImage` ルール抽出用ユーティリティ                                          |
-| 8   | `src/view/browser/pages/ThreadPage.tsx` | `useSimilarImageNg` hook を呼び出し、`blurredResNums` をマージ                                   |
-
----
-
-## 各ファイルの詳細
-
-### 1. `src/view/browser/utils/similar-image-ng.ts`
-
-```ts
-import { DifferenceHashBuilder, Hash } from "browser-image-hash";
-import { container } from "src/service-container/index";
-import { TYPE, type InternalNGElement } from "src/core/NGTypes";
-import { extractUrlsFromMessage, hasImage } from "src/view/browser/utils/utils";
-import type { IRes } from "src/service-container/interfaces";
-
-interface SimilarImageRule {
-  hash: Hash;
-  threshold: number;
-}
-
-/** NGルールから SimilarImage タイプのものだけを抽出 */
-export function getSimilarImageNgRules(): SimilarImageRule[] {
-  const ng = container.ng.get?.() ?? new Set<InternalNGElement>();
-  const rules: SimilarImageRule[] = [];
-  for (const n of ng) {
-    if (n.type !== TYPE.SIMILAR_IMAGE || !n.word) continue;
-    try {
-      rules.push({
-        hash: new Hash(n.word),
-        threshold: Number(n.params?.threshold ?? 10),
-      });
-    } catch {
-      /* 不正なハッシュ値はスキップ */
-    }
-  }
-  return rules;
-}
-
-/** レスから画像URLの配列を抽出 */
-export function extractImageUrlsFromRes(res: IRes): string[] {
-  const allUrls = extractUrlsFromMessage(res.message);
-  return allUrls.filter((url) => hasImage(url));
-}
-
-/** 画像URLの配列をNGルールと照合。1つでもマッチすれば true */
-export async function checkSimilarImages(
-  imageUrls: string[],
-  rules: SimilarImageRule[],
-): Promise<boolean> {
-  const builder = new DifferenceHashBuilder();
-  for (const url of imageUrls) {
-    try {
-      const dHash = await builder.build(new URL(url));
-      for (const rule of rules) {
-        if (rule.hash.getHammingDistance(dHash) <= rule.threshold) {
-          return true;
-        }
-      }
-    } catch {
-      // fetch失敗（404, CORSエラー等）は無視して次へ
-      continue;
-    }
-  }
-  return false;
-}
+```text
+NG DSL / config
+  ↓
+packages/ch-lib/src/rules/{model,catalog,dsl}.ts
+  ↓
+src/core/NG.ts → src/service-container/setup.ts
+  ↓
+similar-image-ng.ts（ルール検証、URL抽出、dHash照合）
+  ↓
+use-similar-image-ng.ts（IntersectionObserver、キャッシュ、非同期状態）
+  ↓
+ThreadPage.tsx → ResItem / PopupRenderer の既存ぼかし経路
 ```
 
-### 2. `src/view/browser/hooks/use-similar-image-ng.ts`
+### dHash照合
 
-```ts
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { RefObject } from "react";
-import type { IRes } from "src/service-container/interfaces";
-import {
-  checkSimilarImages,
-  extractImageUrlsFromRes,
-  getSimilarImageNgRules,
-} from "src/view/browser/utils/similar-image-ng";
+`browser-image-hash` の `DifferenceHashBuilder` を使って画像URLごとに64bit dHashを計算する。画像URLはレス表示と同じ `extractUrlsFromMessage` / `toViewerImageUrl` の変換を通し、Imgurなど既存の画像表示形式にも揃える。
 
-/**
- * 類似画像NGによるぼかし対象のレス番号セットを返す。
- * IntersectionObserver でビューポート進入時にのみハッシュ計算を行う。
- */
-export function useSimilarImageNg(
-  responses: IRes[],
-  rootRef: RefObject<HTMLDivElement | null>,
-): Set<number> {
-  const [blurredResNums, setBlurredResNums] = useState<Set<number>>(new Set());
-  const computedRef = useRef<Set<number>>(new Set());
-  const processingRef = useRef<Set<number>>(new Set());
-  const blurAccumRef = useRef<Set<number>>(new Set());
+ルール読込時にハッシュ形式、threshold、動作・対象、サイト範囲を検証する。不正なルールや画像URL、画像取得・Canvas・CORS・タイムアウトの失敗は詳細をログへ出し、その画像またはルールだけをスキップして表示を継続する。ハッシュ計算には10秒の上限を設ける。
 
-  // レス番号 → 画像URL配列 の索引
-  const imageUrlMap = useMemo(() => {
-    const map = new Map<number, string[]>();
-    for (const res of responses) {
-      const urls = extractImageUrlsFromRes(res);
-      if (urls.length > 0) map.set(res.num, urls);
-    }
-    return map;
-  }, [responses]);
+### 表示範囲と重複抑制
 
-  // IntersectionObserver でビューポート進入を検知
-  useEffect(() => {
-    const rules = getSimilarImageNgRules();
-    if (rules.length === 0) return;
+- `IntersectionObserver` の `rootMargin: "200px"` で表示直前のレスだけを評価する。
+- `MutationObserver` で遅延描画されたレスも対象にする。
+- レス番号と画像URL集合をキーにして、計算済み・処理中の重複を抑える。
+- ルール、スレッド、画像URL集合が変わったときは世代番号を更新し、古いPromiseの結果を新しい表示へ混ぜない。
+- 本文NGで置き換えた `.res--ng-placeholder` は観測せず、非表示レスの画像を取得しない。
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          const target = entry.target as HTMLElement;
-          const resEl = target.closest("[data-res-num]") as HTMLElement | null;
-          if (!resEl) continue;
+## 既存機能との関係
 
-          const resNum = Number(resEl.dataset.resNum);
-          if (computedRef.current.has(resNum) || processingRef.current.has(resNum)) {
-            continue;
-          }
+- `image_blur` 設定が無効な場合は類似画像の計算も停止する。
+- 一時的なNG解除中は類似画像によるぼかしを解除する。
+- テキストNGは従来どおりレス単位で判定し、類似画像NGは画像ぼかし集合へだけ追加する。
+- `PopupRenderer` にも同じ集合を渡すため、レス本文上の画像とポップアップ内の画像で表示状態を揃える。
+- `similar-image` は板一覧や同期テキストマッチャーの対象に含めない。
 
-          const urls = imageUrlMap.get(resNum);
-          if (!urls || urls.length === 0) {
-            computedRef.current.add(resNum);
-            continue;
-          }
+## 自動確認
 
-          processingRef.current.add(resNum);
-          checkSimilarImages(urls, rules).then((matched) => {
-            processingRef.current.delete(resNum);
-            computedRef.current.add(resNum);
-            if (matched) {
-              blurAccumRef.current.add(resNum);
-              setBlurredResNums(new Set(blurAccumRef.current));
-            }
-          });
-        }
-      },
-      { rootMargin: "200px" },
-    );
+- ルールカタログ、別名、DSLの解析・整形・不正な組み合わせを確認する。
+- NGサービスが類似画像ルールだけを分離して返し、本文NG判定へ混入しないことを確認する。
+- 二進・16進ハッシュ、サイト範囲、threshold、無効ルールを確認する。
+- 画像取得失敗後に次の画像を評価できること、距離超過を一致扱いしないことを確認する。
+- hookが表示付近だけを一度評価し、設定無効時にObserverを登録しないことを確認する。
 
-    const thumbs = rootRef.current?.querySelectorAll(".res__thumbs");
-    thumbs?.forEach((el) => observer.observe(el));
+## 人による確認事項
 
-    return () => observer.disconnect();
-  }, [imageUrlMap, rootRef]);
+1. NGエディタで上記DSLに実在画像のdHashを設定して保存できることを確認する。
+2. `image_blur` を有効にして対象画像を含むスレッドを開き、レスを表示付近へスクロールしたときにサムネイルがぼけることを確認する。
+3. 類似していない画像、動画URL、本文NGで置き換えたレスが誤って判定対象にならないことを確認する。
+4. 一時的なNG解除、ルールの `disabled=true`、サイト範囲外のスレッドでぼかしが解除・停止することを確認する。
+5. DevToolsのログとネットワークを確認し、取得失敗時もスレッド表示が継続し、表示範囲外の画像を一括取得していないことを確認する。
 
-  return blurredResNums;
-}
-```
+## 残存リスク
 
-### 3. 本計画書（このファイル）
-
----
-
-### 4. `src/core/NGTypes.ts` 変更
-
-`TYPE` オブジェクトに以下を追加：
-
-```ts
-SIMILAR_IMAGE: "SimilarImage",
-```
-
-挿入位置：`TYPE` オブジェクト内の適切な位置（`REG_EXP_URL` の後など）
-
----
-
-### 5. `src/core/ngDsl.ts` 変更
-
-`NG_DSL_RULE_SPECS` 配列に以下を追加：
-
-```ts
-{
-  keyword: "SimilarImage",
-  aliases: [],
-  description: "似た画像のサムネイルをモザイク処理します（知覚ハッシュdHash）",
-  parameters: [
-    VALUE_PARAMETER,
-    SITES_PARAMETER,
-    {
-      name: "threshold",
-      detail: "許容ハミング距離",
-      documentation:
-        "小さいほど厳密に判定します。64bit dHash の場合、デフォルトの10が一般的な閾値です。",
-    },
-    DISABLED_PARAMETER,
-  ],
-  valueDescription: "16進数 dHash ハッシュ値（64文字）",
-}
-```
-
-これだけで Monaco エディタの補完・シグネチャヘルプ・シンタックスハイライトが自動で有効になる（`ngDslMonaco.ts` は `NG_DSL_RULE_SPECS` から動的に生成するため）。
-
-DSL 使用例：
-
-```
-SimilarImage(hash="0111011001110000011110010101101100110011000100110101101000111000", threshold=10)
-SimilarImage(hash="a1b2c3d4e5f6a7b8", sites="5ch.net/livejupiter")
-```
-
----
-
-### 6. `src/core/NGMatcher.ts` 変更
-
-`SimilarImage` はテキストマッチではなく画像ハッシュマッチのため、sync マッチングからは除外する：
-
-```ts
-// BOARD_ALLOWED_TYPES に SimilarImage は含めない（板一覧では画像ハッシュ比較は不要）
-// THREAD_DENIED_TYPES に SimilarImage を追加（スレッド内でのテキストマッチから除外）
-
-const BOARD_ALLOWED_TYPES: ReadonlySet<string> = new Set([
-  // ... 既存
-  // SimilarImage は含めない（板一覧では非対応）
-]);
-
-const THREAD_DENIED_TYPES: ReadonlySet<string> = new Set([
-  TYPE.HIGHLIGHT_TITLE,
-  TYPE.REG_EXP_HIGHLIGHT_TITLE,
-  TYPE.SIMILAR_IMAGE, // 追加：スレッド内でもテキストマッチからは除外
-]);
-```
-
----
-
-### 7. `src/core/NG.ts` 変更
-
-必要に応じて `SimilarImage` ルールを取得するユーティリティを追加：
-
-```ts
-export function getSimilarImageRules(): InternalNGElement[] {
-  return Array.from(get()).filter((n) => n.type === TYPE.SIMILAR_IMAGE);
-}
-```
-
-ただし、`similar-image-ng.ts` から直接 `container.ng.get()` を呼べるため、必須ではない。
-拡張機能コンテキストでのみ使うので `container.ng` 経由でアクセスする。
-
----
-
-### 8. `src/view/browser/pages/ThreadPage.tsx` 変更
-
-```tsx
-// 追加 import
-import { useSimilarImageNg } from "src/view/browser/hooks/use-similar-image-ng";
-
-// L250-253 付近を変更
-const textBlurredResNums = useMemo(() => {
-  if (!imageBlurConfig.enabled) return new Set<number>();
-  return buildBlurredResSet(responses, indexes.repIndex, imageBlurConfig.harmfulWordPattern);
-}, [imageBlurConfig, indexes.repIndex, responses]);
-
-const similarImageBlurredResNums = useSimilarImageNg(responses, rootRef);
-
-const blurredResNums = useMemo(
-  () => new Set([...textBlurredResNums, ...similarImageBlurredResNums]),
-  [textBlurredResNums, similarImageBlurredResNums],
-);
-```
-
----
-
-## NG登録UI（将来タスク）
-
-画像を右クリック →「類似画像NGに登録」で dHash を計算し DSL に追記するUI。
-これは別タスクとして実装する。
-
-```ts
-// 右クリックメニュー拡張（イメージ）
-async function registerSimilarImageNg(imageUrl: string) {
-  const builder = new DifferenceHashBuilder();
-  const dHash = await builder.build(new URL(imageUrl));
-  const dslLine = `SimilarImage(hash="${dHash.toString()}")`;
-  await container.ng.add(dslLine);
-}
-```
-
-## 動作確認
-
-1. NGエディタで `SimilarImage(hash="...", threshold=10)` を追加
-2. スレッドを開き、該当画像がビューポートに入ると自動でぼかしが適用される
-3. 既存の `image_blur` 設定（ぼかし有効/無効、ぼかし強度）が反映される
-4. NG一時解除トグルでぼかしが解除される
-
-## 制限事項
-
-- 板一覧（スレッド一覧）では類似画像判定は行わない（負荷が高いため）
-- 画像ホストがダウンしている場合、その画像の判定はスキップされる
-- サムネイルではなく元画像URLに対してハッシュを計算する（精度のため）
+外部画像のCORS、拡張機能のhost permission、画像サイズによる通信量・CPU負荷は実行環境に依存する。dHashのthresholdは画像内容やリサイズ方法によって誤判定率が変わるため、初期値10を基準に実画像で調整する必要がある。画像の自動登録UIと最終的な利用手順は、人による確認後に別途仕様化する。

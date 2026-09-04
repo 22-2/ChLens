@@ -59,6 +59,7 @@
     "@tauri-apps/plugin-sql": "~2",
     "@toon-format/toon": "4.1.0",
     "@types/webextension-polyfill": "^0.12.5",
+    "browser-image-hash": "0.0.7",
     "consola": "^3.4.2",
     "drizzle-kit": "^0.31.10",
     "drizzle-orm": "^0.45.2",

@@ -25,6 +25,16 @@ describe("rule target catalog", () => {
       allowedOnBoard: false,
       allowedOnThread: true,
     });
+    expect(getRuleTargetDefinition("similar-image")).toMatchObject({
+      name: "similar-image",
+      aliases: ["SimilarImage"],
+      field: "similarImage",
+      comparison: "contains",
+      resultTypes: ["SimilarImage", "SimilarImage"],
+      allowedOnBoard: false,
+      allowedOnThread: true,
+    });
+    expect(normalizeRuleTarget("SimilarImage")).toBe("similar-image");
   });
 
   it("exposes every target through the completion catalog", () => {
@@ -40,6 +50,7 @@ describe("rule target catalog", () => {
       "res-count",
       "reply-count",
       "anchor-count",
+      "similar-image",
     ]);
   });
 });

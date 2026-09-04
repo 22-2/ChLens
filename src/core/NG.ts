@@ -122,6 +122,11 @@ export function get(): readonly Rule[] {
   return rulesCache;
 }
 
+/** 画像ハッシュ判定は本文NGと異なる非同期処理のため、専用hookへルールだけ渡す。 */
+export function getSimilarImageRules(): readonly Rule[] {
+  return get().filter((rule) => rule.action === "blur" && rule.target === "similar-image");
+}
+
 export function set(source: string): Promise<void> {
   logger.debug("set", { dslLength: source.length });
   try {

@@ -15,6 +15,8 @@ export interface RuleMatchContext {
   readonly resCount?: number;
   readonly replyCount?: number;
   readonly anchorCount?: number;
+  // 類似画像は非同期hookで評価するため、同期エンジンの許可対象には含めない。
+  readonly similarImage?: string;
 }
 
 export interface RuleMatchResult {
