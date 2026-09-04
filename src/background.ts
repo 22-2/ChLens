@@ -145,13 +145,44 @@ const openInNewViewerTab = async (currentUrl: string): Promise<void> => {
   }
 };
 
+const closeSourceTab = async (sourceTabId: number | undefined): Promise<void> => {
+  if (typeof sourceTabId !== "number") return;
+
+  try {
+    // 変更理由: コンテンツスクリプトには tabs.remove 権限がないため、
+    // sender.tab を受け取れる背景側で、ChLensへの遷移完了後にだけ元タブを閉じる。
+    await browser.tabs.remove(sourceTabId);
+  } catch (error: unknown) {
+    // 元タブが先に閉じられた場合でも、ChLensで開く操作自体は成功扱いにする。
+    console.error("[ChLens] ChLensで開いた元ブラウザタブを閉じられませんでした", {
+      tabId: sourceTabId,
+      error,
+    });
+  }
+};
+
+const openInNewViewerTabFromSource = async (
+  currentUrl: string,
+  sourceTabId: number | undefined,
+): Promise<void> => {
+  try {
+    await openInNewViewerTab(currentUrl);
+  } catch (error: unknown) {
+    // 開く処理に失敗したときは、元タブを復旧経路として残す。
+    console.error("[ChLens] ChLensで開く処理に失敗しました", { currentUrl, error });
+    return;
+  }
+
+  await closeSourceTab(sourceTabId);
+};
+
 // メッセージ経由の起動
-browser.runtime.onMessage.addListener((message: unknown) => {
+browser.runtime.onMessage.addListener((message: unknown, sender: browser.Runtime.MessageSender) => {
   const msg = message as OpenNewUiMessage | OpenInNewViewerTabMessage;
   if (msg.type === "open-new-ui") {
     void openOrFocusNewUiTab(msg.url);
   } else if (msg.type === "open-in-new-viewer-tab") {
-    void openInNewViewerTab(msg.url);
+    void openInNewViewerTabFromSource(msg.url, sender.tab?.id);
   }
 });
 

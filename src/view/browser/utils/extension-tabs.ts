@@ -1,6 +1,6 @@
 import type { Page } from "src/view/browser/types";
 import { parseInternalBrowserPageStrict } from "src/view/browser/utils/link-routing";
-import type browser from "webextension-polyfill";
+import browser from "webextension-polyfill";
 
 type ExtensionBrowserApi = Pick<typeof browser, "runtime" | "tabs">;
 
@@ -10,19 +10,16 @@ export interface OpenCompatibleThreadPage {
 }
 
 function getExtensionBrowserApi(): ExtensionBrowserApi | null {
-  const candidate = (
-    globalThis as typeof globalThis & {
-      browser?: ExtensionBrowserApi;
-    }
-  ).browser;
+  const candidate = browser;
 
   // 変更理由: Tauri では互換シムが runtime.id を提供するものの tabs.query は使えないため、
-  // API の存在まで確認して拡張機能専用コマンドを確実に隠す。
+  // モジュールとして解決したAPIの存在まで確認して拡張機能専用コマンドを確実に隠す。
   if (
     !candidate ||
-    candidate.runtime.id === "tauri" ||
-    typeof candidate.tabs.query !== "function" ||
-    typeof candidate.tabs.remove !== "function"
+    candidate.runtime?.id === "tauri" ||
+    typeof candidate.runtime?.id !== "string" ||
+    typeof candidate.tabs?.query !== "function" ||
+    typeof candidate.tabs?.remove !== "function"
   ) {
     return null;
   }

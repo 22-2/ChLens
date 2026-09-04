@@ -11,6 +11,28 @@ import type { Page, Tab } from "src/view/browser/types";
 import { setItestServerMapForTesting } from "src/view/browser/utils/itest-server-map";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
+const browserCommandMocks = vi.hoisted(() => {
+  const removeTabsMock = vi.fn();
+  const queryTabsMock = vi.fn();
+  return {
+    askBoardTitleByUrlMock: vi.fn(),
+    copyTextMock: vi.fn<() => Promise<void>>(),
+    encodeThreadAsToonMock: vi.fn(),
+    estimateToonTokenCountMock: vi.fn<() => number>(),
+    getThreadMock: vi.fn(),
+    openNextThreadSearchDialogMock: vi.fn<() => Promise<void>>(),
+    removeTabsMock,
+    queryTabsMock,
+    toastErrorMock: vi.fn(),
+    toastInfoMock: vi.fn(),
+    toastSuccessMock: vi.fn(),
+    extensionBrowserApiMock: {
+      runtime: { id: "test-extension" },
+      tabs: { query: queryTabsMock, remove: removeTabsMock },
+    },
+  };
+});
+
 const {
   askBoardTitleByUrlMock,
   copyTextMock,
@@ -23,32 +45,25 @@ const {
   toastErrorMock,
   toastInfoMock,
   toastSuccessMock,
-} = vi.hoisted(() => ({
-  askBoardTitleByUrlMock: vi.fn(),
-  copyTextMock: vi.fn<() => Promise<void>>(),
-  encodeThreadAsToonMock: vi.fn(),
-  estimateToonTokenCountMock: vi.fn<() => number>(),
-  getThreadMock: vi.fn(),
-  openNextThreadSearchDialogMock: vi.fn<() => Promise<void>>(),
-  removeTabsMock: vi.fn(),
-  queryTabsMock: vi.fn(),
-  toastErrorMock: vi.fn(),
-  toastInfoMock: vi.fn(),
-  toastSuccessMock: vi.fn(),
+  extensionBrowserApiMock,
+} = browserCommandMocks;
+
+vi.mock("webextension-polyfill", () => ({
+  default: browserCommandMocks.extensionBrowserApiMock,
 }));
 
 vi.mock("src/core/BoardTitleSolver.js", () => ({
-  askByUrl: askBoardTitleByUrlMock,
+  askByUrl: browserCommandMocks.askBoardTitleByUrlMock,
 }));
 
 vi.mock("src/view/browser/utils/clipboard", async (importOriginal) => {
   const actual = await importOriginal<typeof import("src/view/browser/utils/clipboard")>();
-  return { ...actual, copyText: copyTextMock };
+  return { ...actual, copyText: browserCommandMocks.copyTextMock };
 });
 
 vi.mock("src/view/browser/utils/thread-toon", () => ({
-  encodeThreadAsToon: encodeThreadAsToonMock,
-  estimateToonTokenCount: estimateToonTokenCountMock,
+  encodeThreadAsToon: browserCommandMocks.encodeThreadAsToonMock,
+  estimateToonTokenCount: browserCommandMocks.estimateToonTokenCountMock,
 }));
 
 function createTab(page: Page): Tab {
@@ -91,10 +106,9 @@ function createContext(
 
 describe("browser commands", () => {
   beforeEach(() => {
-    vi.stubGlobal("browser", {
-      runtime: { id: "test-extension" },
-      tabs: { query: queryTabsMock, remove: removeTabsMock },
-    });
+    extensionBrowserApiMock.runtime.id = "test-extension";
+    extensionBrowserApiMock.tabs.query = queryTabsMock;
+    extensionBrowserApiMock.tabs.remove = removeTabsMock;
     removeTabsMock.mockResolvedValue(undefined);
     copyTextMock.mockResolvedValue();
     askBoardTitleByUrlMock.mockResolvedValue("Software");
@@ -264,10 +278,7 @@ describe("browser commands", () => {
       "navigation.import-open-thread-tabs",
     );
 
-    vi.stubGlobal("browser", {
-      runtime: { id: "tauri" },
-      tabs: { query: queryTabsMock, remove: removeTabsMock },
-    });
+    extensionBrowserApiMock.runtime.id = "tauri";
     expect(resolveBrowserCommands(context).map(({ id }) => id)).not.toContain(
       "navigation.import-open-thread-tabs",
     );
