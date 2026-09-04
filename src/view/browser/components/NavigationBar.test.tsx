@@ -315,6 +315,26 @@ describe("NavigationBar", () => {
     );
   });
 
+  it("数字入力のレス番号ジャンプ候補を最上位から直接実行する", async () => {
+    render(<NavigationBar />);
+
+    fireEvent.keyDown(window, { key: "p", ctrlKey: true, shiftKey: true });
+    const input = await screen.findByPlaceholderText("コマンドを検索...");
+    fireEvent.change(input, { target: { value: ">42" } });
+
+    const jumpOption = await screen.findByRole("option", { name: /レス42へジャンプ/ });
+    expect(screen.getAllByRole("option")[0]).toBe(jumpOption);
+    fireEvent.click(jumpOption);
+
+    await waitFor(() => {
+      expect(requestThreadResJumpMock).toHaveBeenCalledWith(
+        "https://egg.5ch.net/test/read.cgi/software/1/",
+        42,
+      );
+    });
+    expect(screen.queryByLabelText("レス番号")).not.toBeInTheDocument();
+  });
+
   it("Ctrl+Lでナビゲーションモードを開く", async () => {
     render(<NavigationBar />);
 
