@@ -30,3 +30,12 @@ export function parseAnchorDisplayTargets(text: string): number[] {
   }
   return Array.from(result).sort((a, b) => a - b);
 }
+
+export function hasMissingAnchorTarget(
+  targets: readonly number[],
+  resMap: ReadonlyMap<number, unknown>,
+): boolean {
+  // 1つのDOMアンカーに範囲・複数参照がまとまるため、部分的な欠損も見落とさず
+  // アンカー全体を強調する。クリック可能な参照先まで無効化しないのは従来挙動を守るため。
+  return targets.some((target) => !resMap.has(target));
+}

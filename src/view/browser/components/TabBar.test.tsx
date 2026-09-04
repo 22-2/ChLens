@@ -93,6 +93,17 @@ vi.mock("src/view/browser/hooks/use-auto-scroll-state", () => ({
 
 // DragDropProvider はテスト環境ではシムで置き換え、onDragEnd を外部から呼べるようにする。
 let capturedOnDragEnd: ((event: Record<string, unknown>) => void) | undefined;
+let resizeObserverCallback: (() => void) | undefined;
+
+class ResizeObserverStub {
+  constructor(callback: () => void) {
+    resizeObserverCallback = callback;
+  }
+
+  observe() {}
+  disconnect() {}
+  unobserve() {}
+}
 
 vi.mock("@dnd-kit/react", () => ({
   DragDropProvider: ({
@@ -163,12 +174,15 @@ describe("TabBar wheel switching", () => {
       send: vi.fn(),
     };
     dispatchMock.mockReset();
+    resizeObserverCallback = undefined;
+    vi.stubGlobal("ResizeObserver", ResizeObserverStub);
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-04-20T00:00:00.000Z"));
   });
 
   afterEach(() => {
     cleanup();
+    vi.unstubAllGlobals();
     vi.useRealTimers();
   });
 
@@ -426,6 +440,108 @@ describe("TabBar wheel switching", () => {
 
       mocks.tabStore.state = { ...mocks.tabStore.state, activeTabId: "tab-2" };
       rerender(<TabBar />);
+
+      expect(scrollIntoViewMock).toHaveBeenCalledWith({
+        block: "nearest",
+        inline: "nearest",
+      });
+    } finally {
+      vi.restoreAllMocks();
+      Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+        configurable: true,
+        value: originalScrollIntoView,
+      });
+      Object.defineProperty(HTMLElement.prototype, "getBoundingClientRect", {
+        configurable: true,
+        value: originalGetBoundingClientRect,
+      });
+    }
+  });
+
+  it("ウィンドウのリサイズで見切れたアクティブタブを表示する", () => {
+    const scrollIntoViewMock = vi.fn();
+    const originalScrollIntoView = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "scrollIntoView",
+    )?.value;
+    const originalGetBoundingClientRect = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "getBoundingClientRect",
+    )?.value;
+    let activeTabIsOutside = false;
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scrollIntoViewMock,
+    });
+
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+      function (this: HTMLElement) {
+        if (this.classList.contains("tab-list")) {
+          return { left: 0, right: 200, top: 0, bottom: 32, width: 200, height: 32 } as DOMRect;
+        }
+        return activeTabIsOutside && this.dataset.tabId === "tab-1"
+          ? ({ left: -1, right: 159, top: 0, bottom: 32, width: 160, height: 32 } as DOMRect)
+          : ({ left: 20, right: 180, top: 0, bottom: 32, width: 160, height: 32 } as DOMRect);
+      },
+    );
+
+    try {
+      render(<TabBar />);
+      expect(scrollIntoViewMock).not.toHaveBeenCalled();
+
+      fireEvent.resize(window);
+      expect(scrollIntoViewMock).not.toHaveBeenCalled();
+
+      activeTabIsOutside = true;
+      fireEvent.resize(window);
+      expect(scrollIntoViewMock).toHaveBeenCalledWith({
+        block: "nearest",
+        inline: "nearest",
+      });
+    } finally {
+      vi.restoreAllMocks();
+      Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+        configurable: true,
+        value: originalScrollIntoView,
+      });
+      Object.defineProperty(HTMLElement.prototype, "getBoundingClientRect", {
+        configurable: true,
+        value: originalGetBoundingClientRect,
+      });
+    }
+  });
+
+  it("ResizeObserverでタブ幅が変わったときも見切れたアクティブタブを表示する", () => {
+    const scrollIntoViewMock = vi.fn();
+    const originalScrollIntoView = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "scrollIntoView",
+    )?.value;
+    const originalGetBoundingClientRect = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "getBoundingClientRect",
+    )?.value;
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scrollIntoViewMock,
+    });
+
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+      function (this: HTMLElement) {
+        if (this.classList.contains("tab-list")) {
+          return { left: 0, right: 200, top: 0, bottom: 32, width: 200, height: 32 } as DOMRect;
+        }
+        return this.dataset.tabId === "tab-1"
+          ? ({ left: 201, right: 361, top: 0, bottom: 32, width: 160, height: 32 } as DOMRect)
+          : ({ left: 20, right: 180, top: 0, bottom: 32, width: 160, height: 32 } as DOMRect);
+      },
+    );
+
+    try {
+      render(<TabBar />);
+      scrollIntoViewMock.mockClear();
+
+      resizeObserverCallback?.();
 
       expect(scrollIntoViewMock).toHaveBeenCalledWith({
         block: "nearest",

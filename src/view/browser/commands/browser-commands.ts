@@ -10,6 +10,7 @@ import {
   Import,
   List,
   PenLine,
+  RotateCcw,
   RotateCw,
   Search,
   Settings,
@@ -25,6 +26,7 @@ import { getCurrentPage } from "src/view/browser/types";
 import {
   canQueryExtensionTabs,
   getOpenCompatibleThreadPages,
+  removeExtensionTabs,
 } from "src/view/browser/utils/extension-tabs";
 import {
   QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE,
@@ -58,6 +60,7 @@ export interface BrowserCommandContext {
   currentPage: Page;
   activeTab: Tab;
   tabs: readonly Tab[];
+  closedTabs: readonly Tab[];
   isTwoPane: boolean;
   isWritePanelOpen: boolean;
   dispatch: Dispatch<ScopedTabAction>;
@@ -234,18 +237,39 @@ async function importOpenThreadTabs(context: BrowserCommandContext): Promise<voi
         return normalizedPage?.type === "thread" ? normalizedPage.threadUrl : page.threadUrl;
       }),
   );
-  const pagesToImport = openThreadPages.filter((page) => !existingThreadUrls.has(page.threadUrl));
+  const pagesToImport = openThreadPages.filter(
+    ({ page }) => !existingThreadUrls.has(page.threadUrl),
+  );
 
   if (pagesToImport.length === 0) {
     container.toast.info("取り込める新しいスレタブはありません");
     return;
   }
 
-  // 変更理由: 一括取り込みで表示中のページを奪わず、確認したいタブを利用者が選べるよう
-  // すべてバックグラウンド追加に統一する。
-  for (const page of pagesToImport) {
+  let failedTabCount = 0;
+  for (const { page, tabIds } of pagesToImport) {
+    // 変更理由: 一括取り込みで表示中のページを奪わず、確認したいタブを利用者が選べるよう
+    // すべてバックグラウンド追加に統一し、追加できたページに対応する元タブだけを閉じる。
     context.dispatch({ type: "OPEN_IN_NEW_TAB", page, background: true });
+
+    const failedTabIds = await removeExtensionTabs(tabIds);
+    if (failedTabIds.length > 0) {
+      failedTabCount += failedTabIds.length;
+      console.error("[ChLens] スレッド取り込み元タブの一部を閉じられませんでした", {
+        threadUrl: page.threadUrl,
+        failedTabIds,
+      });
+    }
   }
+
+  if (failedTabCount > 0) {
+    container.toast.error(
+      `${pagesToImport.length.toLocaleString("ja-JP")}件のスレタブを取り込みましたが、` +
+        `元ブラウザタブ${failedTabCount.toLocaleString("ja-JP")}件を閉じられませんでした`,
+    );
+    return;
+  }
+
   container.toast.success(
     `${pagesToImport.length.toLocaleString("ja-JP")}件のスレタブを取り込みました`,
   );
@@ -331,6 +355,19 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     group: "navigation",
     icon: Settings,
     run: openSettings,
+  },
+  {
+    id: "navigation.reopen-closed-tab",
+    label: "閉じたタブを開く",
+    englishLabel: "Reopen Closed Tab",
+    description: "最後に閉じたタブを現在のペインで開きます",
+    keywords: ["reopen", "closed tab", "閉じたタブ"],
+    group: "navigation",
+    icon: RotateCcw,
+    isEnabled: ({ closedTabs }) => closedTabs.length > 0,
+    // 変更理由: タブメニューと同じ reducer action を使い、復元時の新しいID付与と
+    // 自動更新状態のリセットを共通化して、入口ごとの挙動差を防ぐ。
+    run: ({ dispatch }) => dispatch({ type: "REOPEN_CLOSED_TAB" }),
   },
   {
     id: "navigation.open-bookmarks",

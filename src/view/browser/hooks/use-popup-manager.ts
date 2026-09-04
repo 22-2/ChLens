@@ -62,7 +62,7 @@ export type {
  * 【popupが動く流れ】
  *
  * - `usePopupCore` は、指定したscopeに対してpopupを追加・削除したり、
- *   枝単位で閉じたり、レスツリーをpinしたりする操作を提供する。
+ *   枝単位で閉じたり、レスツリーやIDポップアップをpinしたりする操作を提供する。
  * - `useThreadPopupManager` はスレッド固有の処理を担当する。
  *   レスからpopupを作り、画面内に収まる座標を計算し、
  *   アンカープレビューの深さ・元になったpopup・遅延タイマーを管理する。
@@ -74,7 +74,7 @@ export type {
  * - リンクや中クリックの直後は、mouseleaveだけでpopupを閉じない。
  * - 右クリックでは、メニューを開く前に今あるpopupの枝を閉じない。
  * - コンテキストメニューはmouseleaveでは閉じず、outside clickやRadixのdismissで閉じる。
- * - pinしたレスツリーは一番上のpopupとして扱い、通常popupの一括closeから外す。
+ * - pinしたレスツリーやIDポップアップは一番上のpopupとして扱い、通常popupの一括closeから外す。
  * - アンカープレビューは、深さ・元になったpopup・遅延タイマーを使って親子関係を保つ。
  *
  * 呼び出し側は、これまでどおりこのファイルのimport pathとhook/type名を使える。

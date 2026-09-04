@@ -36,6 +36,7 @@ interface PopupRendererProps {
   onClosePopupById: (popupId: string) => void;
   onClosePopupChildren: (popupId: string) => void;
   onToggleTreePopupPinned: (popupId: string) => void;
+  onToggleIdPopupPinned: (popupId: string) => void;
   onIdLinkClick: (id: string, e: React.MouseEvent) => void;
   onPopupIdLinkClick: (parentId: string) => (id: string, e: React.MouseEvent) => void;
   onRepClickInPopup: (
@@ -104,6 +105,7 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
   onClosePopupById,
   onClosePopupChildren,
   onToggleTreePopupPinned,
+  onToggleIdPopupPinned,
   onIdLinkClick: _onIdLinkClick,
   onPopupIdLinkClick,
   onRepClickInPopup,
@@ -130,6 +132,7 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
     onPopupIdLinkClick,
     onRepClickInPopup,
     onResContextMenuOpen,
+    onToggleIdPopupPinned,
     onToggleTreePopupPinned,
     onUrlContextMenuOpen,
   ]);
@@ -187,6 +190,7 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
           zIndex={anchorPreview.z}
           blurredResNums={blurredResNums}
           ngResNums={ngResNums}
+          resMap={resMap}
           threadKey={threadUrl}
         />
       ))}
@@ -230,6 +234,11 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
             onResContextMenuOpen(idPopup.id),
           )}
           disableOutsideClick={hasPopupChild(idPopup.id) || hasAnchorPreviews}
+          pinned={idPopup.payload.pinned === true}
+          onTogglePinned={getStablePopupHandler(
+            `toggle-id-pin:${idPopup.id}`,
+            () => () => onToggleIdPopupPinned(idPopup.id),
+          )}
           zIndex={idPopup.z}
           onClose={getStablePopupHandler(
             `close:${idPopup.id}`,
@@ -242,7 +251,10 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
           )}
           blurredResNums={blurredResNums}
           ngResNums={ngResNums}
+          resMap={resMap}
           threadKey={threadUrl}
+          threadTitle={threadTitle}
+          threadUrl={threadUrl}
         />
       ))}
 

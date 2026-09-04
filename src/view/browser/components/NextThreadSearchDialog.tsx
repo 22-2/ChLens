@@ -103,9 +103,14 @@ export const NextThreadSearchDialog: React.FC<NextThreadSearchDialogProps> = ({
                         <span className="next-thread-search-dialog__candidate-meta">
                           {candidate.thread.resCount.toLocaleString("ja-JP")}レス ・ 一致度{" "}
                           {formatSimilarity(candidate.similarity)}
-                          {candidate.score != null
-                            ? " ・ スコア " + Math.round(candidate.score)
-                            : ""}
+                          {candidate.score != null ? (
+                            <>
+                              {" ・ スコア "}
+                              <span className="next-thread-search-dialog__candidate-score">
+                                {Math.round(candidate.score)}
+                              </span>
+                            </>
+                          ) : null}
                         </span>
                         {evidenceLabels.length > 0 ? (
                           <span className="next-thread-search-dialog__candidate-evidence">

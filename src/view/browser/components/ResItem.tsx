@@ -62,6 +62,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
     isImageBlurred,
     imageBlurRadius,
     ngResNums,
+    resMap,
     threadUrl,
     searchQuery = "",
   }) => {
@@ -186,6 +187,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
           searchQuery={searchQuery}
           anchorPreviewDepth={0}
           ngResNums={ngResNums}
+          resMap={resMap}
           onUrlClick={(url, button, mode) => onUrlClick(url, undefined, button, mode)}
           onUrlContextMenu={(url, e, mode) => onUrlContextMenu(url, e, mode)}
           onIdLinkClick={onIdClick}
@@ -226,6 +228,8 @@ export interface ResItemProps {
   isImageBlurred: boolean;
   imageBlurRadius: number;
   ngResNums?: ReadonlySet<number>;
+  /** 本文アンカーの欠損判定をスレッド全体のレス索引と揃える。 */
+  resMap?: ReadonlyMap<number, unknown>;
   /** アルバムAPIの失敗抑止をスレッド単位で分離するためのキー */
   threadUrl?: string;
   searchQuery?: string;

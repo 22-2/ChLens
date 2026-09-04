@@ -1,8 +1,26 @@
+import { Copy, Image as ImageIcon, Pin, PinOff } from "lucide-react";
 import React, { useCallback } from "react";
 import type { IRes } from "src/service-container";
+import { PopupHeader } from "src/view/browser/components/PopupHeader";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
+import { useTheme } from "src/view/browser/hooks/use-theme";
+import { usePopupHeaderMenu } from "src/view/browser/hooks/use-popup-header-menu";
+import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
+import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { FloatingPopup } from "src/view/browser/ui/FloatingPopup";
+import { canCopyImageToClipboard, copyImageBlob, copyText } from "src/view/browser/utils/clipboard";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
+import { canvasToBlob, renderResponseListImageCanvas } from "src/view/browser/utils/response-image";
+import { formatResForCopy } from "src/view/browser/utils/response-format";
+
+function buildIdPopupCopyText(items: IRes[], threadTitle?: string, threadUrl?: string): string {
+  const sections = [items.map(formatResForCopy).join("\n\n")];
+  const threadInfo = [threadTitle, threadUrl].filter((value): value is string => value != null);
+  if (threadInfo.length > 0) {
+    sections.push(threadInfo.join("\n"));
+  }
+  return sections.join("\n\n");
+}
 
 // --- IDポップアップ ---
 export const ResPopup: React.FC<{
@@ -36,11 +54,19 @@ export const ResPopup: React.FC<{
   onPopupMouseDown?: () => void;
   /** 子ポップアップが開いている間は外側クリック閉じを無効にする */
   disableOutsideClick?: boolean;
+  /** ピン留め中は明示的に閉じるまで自動クローズしない。 */
+  pinned?: boolean;
+  onTogglePinned?: () => void;
   /** z-indexを明示指定（省略時はCSSのデフォルト値を使用） */
   zIndex?: number;
+  /** 画像コピー末尾に付加するスレタイ */
+  threadTitle?: string;
+  /** 画像コピー末尾に付加するスレッドURL */
+  threadUrl?: string;
   /** ポップアップ内でも画像ぼかしを適用するためのセット */
   blurredResNums?: Set<number>;
   ngResNums?: ReadonlySet<number>;
+  resMap?: ReadonlyMap<number, unknown>;
   threadKey?: string;
 }> = ({
   x,
@@ -66,11 +92,60 @@ export const ResPopup: React.FC<{
   onEnterFromDescendant,
   onPopupMouseDown,
   disableOutsideClick,
+  pinned = false,
+  onTogglePinned,
   zIndex,
+  threadTitle,
+  threadUrl,
   blurredResNums,
   ngResNums,
+  resMap,
   threadKey,
 }) => {
+  const theme = useTheme();
+  const { menuButtonRef, menuPosition, handleMenuClick, closeMenu } = usePopupHeaderMenu();
+
+  const idMenuItems: ContextMenuItem[] = [
+    {
+      id: "copy-id-responses",
+      label: "IDのレスを一括コピー",
+      icon: <Copy size={14} />,
+      onSelect: () => {
+        // ID索引の表示順を保ったままコピーし、別の場所へ移してもレス単位で読める形にする。
+        void copyText(buildIdPopupCopyText(items, threadTitle, threadUrl));
+      },
+    },
+    {
+      id: "copy-id-image",
+      label: "IDのレスを画像としてコピー",
+      icon: <ImageIcon size={14} />,
+      disabled: !canCopyImageToClipboard(),
+      onSelect: () => {
+        void (async () => {
+          try {
+            const canvas = renderResponseListImageCanvas(items, {
+              title,
+              threadTitle,
+              threadUrl,
+              theme,
+            });
+            const blob = await canvasToBlob(canvas);
+            await copyImageBlob(blob);
+          } catch (error) {
+            // 画像コピーには安全なフォールバックがないため、失敗理由をログへ残す。
+            console.error("IDのレスを画像としてコピーできませんでした", error);
+          }
+        })();
+      },
+    },
+    {
+      id: "toggle-id-pin",
+      label: pinned ? "ピン留めを解除" : "ピン留め",
+      icon: pinned ? <PinOff size={14} /> : <Pin size={14} />,
+      onSelect: onTogglePinned,
+    },
+  ];
+
   const handleResContextMenu = useCallback(
     (event: React.MouseEvent, targetRes: IRes) => {
       event.stopPropagation();
@@ -90,7 +165,8 @@ export const ResPopup: React.FC<{
       popupId={popupId}
       isPopupDescendantOf={isPopupDescendantOf}
       onEnterFromDescendant={onEnterFromDescendant}
-      closeDisabled={disableOutsideClick}
+      closeDisabled={disableOutsideClick || pinned}
+      closeOnOutsideClick={!pinned}
       onClose={onClose}
       onPopupMouseDown={onPopupMouseDown}
       onPopupMouseEnter={onMouseEnter}
@@ -102,12 +178,15 @@ export const ResPopup: React.FC<{
     >
       {({ armMouseLeaveCloseSuppression }) => (
         <>
-          <div className="res-popup__header">
-            <span>{title}</span>
-            <button className="res-popup__close" onClick={onClose}>
-              ✕
-            </button>
-          </div>
+          <PopupHeader
+            title={title}
+            menuButtonRef={menuButtonRef}
+            menuLabel="IDポップアップメニュー"
+            onMenuClick={handleMenuClick}
+            pinned={pinned}
+            onTogglePinned={onTogglePinned}
+            onClose={onClose}
+          />
           <div className="res-popup__body">
             {items.map((res) => (
               <PopupResCard
@@ -128,10 +207,21 @@ export const ResPopup: React.FC<{
                 onContextMenu={handleResContextMenu}
                 isImageBlurred={blurredResNums?.has(res.num)}
                 ngResNums={ngResNums}
+                resMap={resMap}
                 threadKey={threadKey}
               />
             ))}
           </div>
+          {menuPosition && items.length > 0 && (
+            <ContextMenu
+              x={menuPosition.x}
+              y={menuPosition.y}
+              items={idMenuItems}
+              // ヘッダーメニューを所属popupとして扱い、メニュー操作で親のIDポップアップを閉じない。
+              popupId={popupId}
+              onClose={closeMenu}
+            />
+          )}
         </>
       )}
     </FloatingPopup>

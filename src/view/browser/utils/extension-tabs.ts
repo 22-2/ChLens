@@ -4,6 +4,11 @@ import type browser from "webextension-polyfill";
 
 type ExtensionBrowserApi = Pick<typeof browser, "runtime" | "tabs">;
 
+export interface OpenCompatibleThreadPage {
+  page: Extract<Page, { type: "thread" }>;
+  tabIds: number[];
+}
+
 function getExtensionBrowserApi(): ExtensionBrowserApi | null {
   const candidate = (
     globalThis as typeof globalThis & {
@@ -16,7 +21,8 @@ function getExtensionBrowserApi(): ExtensionBrowserApi | null {
   if (
     !candidate ||
     candidate.runtime.id === "tauri" ||
-    typeof candidate.tabs.query !== "function"
+    typeof candidate.tabs.query !== "function" ||
+    typeof candidate.tabs.remove !== "function"
   ) {
     return null;
   }
@@ -28,26 +34,72 @@ export function canQueryExtensionTabs(): boolean {
   return getExtensionBrowserApi() != null;
 }
 
-export async function getOpenCompatibleThreadPages(): Promise<
-  Array<Extract<Page, { type: "thread" }>>
-> {
+export async function getOpenCompatibleThreadPages(): Promise<OpenCompatibleThreadPage[]> {
   const browserApi = getExtensionBrowserApi();
   if (!browserApi) return [];
 
   const openTabs = await browserApi.tabs.query({});
-  const pagesByUrl = new Map<string, Extract<Page, { type: "thread" }>>();
+  const pagesByUrl = new Map<string, OpenCompatibleThreadPage>();
 
   for (const tab of openTabs) {
     if (typeof tab.url !== "string") continue;
 
     const page = parseInternalBrowserPageStrict(tab.url);
-    if (page?.type !== "thread" || pagesByUrl.has(page.threadUrl)) continue;
+    if (page?.type !== "thread") continue;
+
+    // 変更理由: 取り込み後に元タブを閉じる契約を満たせないタブは、
+    // IDを追跡できる通常のブラウザタブだけを取り込み対象にする。
+    if (typeof tab.id !== "number" || tab.id < 0) {
+      console.warn("[ChLens] 元ブラウザタブのIDを取得できないため取り込みをスキップしました", {
+        tabId: tab.id,
+        url: tab.url,
+      });
+      continue;
+    }
+
+    const existing = pagesByUrl.get(page.threadUrl);
+    if (existing) {
+      // 変更理由: URLが同じ元タブを残すと一括取り込み後も重複タブが残るため、
+      // アプリ側は1件にまとめつつ、クローズ対象のIDはすべて保持する。
+      existing.tabIds.push(tab.id);
+      continue;
+    }
 
     pagesByUrl.set(page.threadUrl, {
-      ...page,
-      title: tab.title?.trim() || page.title,
+      page: {
+        ...page,
+        title: tab.title?.trim() || page.title,
+      },
+      tabIds: [tab.id],
     });
   }
 
   return [...pagesByUrl.values()];
+}
+
+export async function removeExtensionTabs(tabIds: readonly number[]): Promise<number[]> {
+  if (tabIds.length === 0) return [];
+
+  const browserApi = getExtensionBrowserApi();
+  if (!browserApi) {
+    console.error("[ChLens] 取り込み元ブラウザタブを閉じるAPIが利用できません", { tabIds });
+    return [...tabIds];
+  }
+
+  const failedTabIds: number[] = [];
+  // 変更理由: 一部の元タブが既に閉じられていても、残りの取り込み元を閉じ続けて
+  // 取り込み処理全体を部分的なブラウザ状態で止めないよう、IDごとに独立して削除する。
+  for (const tabId of tabIds) {
+    try {
+      await browserApi.tabs.remove(tabId);
+    } catch (error: unknown) {
+      failedTabIds.push(tabId);
+      console.error("[ChLens] 取り込み元ブラウザタブを閉じられませんでした", {
+        tabId,
+        error,
+      });
+    }
+  }
+
+  return failedTabIds;
 }

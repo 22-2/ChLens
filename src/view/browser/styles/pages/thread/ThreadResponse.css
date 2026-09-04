@@ -148,11 +148,25 @@
   color: var(--sys-color-link-visited);
 }
 
+.res__body a.anchor--missing-target {
+  /* 欠損参照はNG対象と別の問題なので、エラー色と破線で独立して示す。 */
+  color: var(--sys-color-error);
+  font-weight: 700;
+  text-decoration: underline dashed;
+  text-decoration-thickness: 1px;
+}
+
 .res__body a.anchor--ng-target {
   color: var(--sys-color-warning);
   font-weight: 700;
   text-decoration: underline wavy;
   text-decoration-thickness: 1px;
+}
+
+.res__body a.anchor--missing-target.anchor--ng-target {
+  /* 部分欠損かつNG対象のアンカーは、欠損を優先した色と二重線で両方を伝える。 */
+  color: var(--sys-color-error);
+  text-decoration-style: double;
 }
 
 .res__id--link {

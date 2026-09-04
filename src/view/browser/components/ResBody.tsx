@@ -5,8 +5,8 @@ import {
   type ResBodyUrlClickHandler,
   type UrlContextMenuHandler,
 } from "src/view/browser/utils/link-routing";
+import { hasMissingAnchorTarget, parseAnchorDisplayTargets } from "src/view/browser/utils/anchor";
 import { highlightSearchMatches } from "src/view/browser/utils/search-highlight";
-import { parseAnchorDisplayTargets } from "src/view/browser/utils/anchor";
 import { getEventTargetElement } from "src/view/browser/utils/dom";
 import { normalizeIdLinkText } from "src/view/browser/utils/response-format";
 
@@ -37,6 +37,8 @@ interface ResBodyProps {
   onAnchorHover: (targets: number[], anchorRect: DOMRect, label: string, depth: number) => void;
   onAnchorLeave: (fromDepth: number) => void;
   ngResNums?: ReadonlySet<number>;
+  /** 現在表示できるレスを共有し、本文とポップアップで欠損判定を揃える。 */
+  resMap?: ReadonlyMap<number, unknown>;
 }
 
 function getAnchorHoverKey(anchor: HTMLAnchorElement): string {
@@ -341,6 +343,7 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
     onAnchorHover,
     onAnchorLeave,
     ngResNums,
+    resMap,
   }) => {
     const interactionHandlers = useResBodyInteractionHandlers({
       anchorPreviewDepth,
@@ -363,12 +366,16 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
       if (!body) return;
       for (const anchor of body.querySelectorAll<HTMLAnchorElement>(ANCHOR_SELECTOR)) {
         const targets = parseAnchorDisplayTargets(anchor.textContent?.trim() ?? "");
+        // 範囲・複数参照も1つのアンカーとして操作されるため、1件でも欠損なら
+        // 表示だけを強調する。クリックとホバーは既存どおり解決可能な番号へ渡す。
+        const hasMissingTarget = resMap != null && hasMissingAnchorTarget(targets, resMap);
         anchor.classList.toggle(
           "anchor--ng-target",
           targets.some((target) => ngResNums?.has(target) ?? false),
         );
+        anchor.classList.toggle("anchor--missing-target", hasMissingTarget);
       }
-    }, [highlightedMessageHtml, ngResNums]);
+    }, [highlightedMessageHtml, ngResNums, resMap]);
 
     return (
       <div

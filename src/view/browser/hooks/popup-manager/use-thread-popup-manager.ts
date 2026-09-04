@@ -60,6 +60,7 @@ export interface ThreadPopupManagerResult {
   closePopupChildren: (popupId: string) => void;
   isPopupDescendantOf: (popupId: string, ancestorId: string) => boolean;
   toggleTreePopupPinned: (popupId: string) => void;
+  toggleIdPopupPinned: (popupId: string) => void;
   hasPopupChild: (popupId: string) => boolean;
   hideAnchorPreview: (fromDepth?: number) => void;
   hideAnchorPreviewImmediately: (fromDepth?: number) => void;
@@ -86,6 +87,7 @@ export function useThreadPopupManager({
     closePopupChildren,
     isPopupDescendantOf,
     toggleTreePopupPinned,
+    toggleIdPopupPinned,
   } = usePopupCore(scopeId);
   const anchorPreviewHideTimerRef = useRef<number | null>(null);
 
@@ -278,7 +280,8 @@ export function useThreadPopupManager({
         type: "id",
         x,
         y,
-        payload: { items, title },
+        // IDポップアップも返信ツリーと同じく、明示的に固定状態を持たせる。
+        payload: { items, title, pinned: false },
         parentId,
       });
     },
@@ -315,6 +318,7 @@ export function useThreadPopupManager({
     closePopupChildren,
     isPopupDescendantOf,
     toggleTreePopupPinned,
+    toggleIdPopupPinned,
     hasPopupChild,
     hideAnchorPreview,
     hideAnchorPreviewImmediately,
