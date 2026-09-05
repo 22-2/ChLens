@@ -242,6 +242,12 @@
   border-radius: var(--sys-radius-lg);
 }
 
+.res--ng-highlight {
+  /* 内容を残す方式でもNG判定を見落とさないよう、既存のエラー色で行全体を強調する。 */
+  border-radius: var(--sys-radius-lg);
+  background-color: var(--sys-color-error-surface);
+}
+
 @keyframes surface-highlight-flash {
   0% {
     background-color: var(--sys-color-response-highlight-flash);
@@ -267,6 +273,22 @@
   padding: var(--sys-space-3) 0 var(--sys-space-2) var(--sys-space-8);
   color: var(--sys-color-text-muted);
   font-size: var(--sys-font-size-sm);
+}
+
+.res__ng-hide {
+  margin-left: auto;
+  border: 1px solid var(--sys-color-warning-border);
+  border-radius: var(--sys-radius-pill);
+  background: transparent;
+  color: var(--sys-color-warning-fg);
+  padding: var(--sys-space-1) var(--sys-space-3);
+  font: inherit;
+  cursor: pointer;
+}
+
+.res__ng-hide:hover,
+.res__ng-hide:focus-visible {
+  background: var(--sys-color-warning-surface);
 }
 
 .res--aa .res__body {

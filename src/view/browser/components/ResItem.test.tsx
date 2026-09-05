@@ -1,10 +1,35 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { IRes } from "src/service-container/interfaces";
 import { ResItem } from "src/view/browser/components/ResItem";
+import { NgStatusProvider } from "src/view/browser/hooks/use-ng-status";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
-afterEach(cleanup);
+const ngMocks = vi.hoisted(() => ({
+  configValue: "soft-ng",
+  configUpdatedCallback: undefined as ((data: { key?: string }) => void) | undefined,
+}));
+
+vi.mock("src/service-container/index", () => ({
+  container: {
+    config: {
+      get: (key: string) => (key === "display_ng" ? ngMocks.configValue : null),
+      ready: (callback: () => void) => callback(),
+    },
+    message: {
+      on: (_type: string, callback: (data: { key?: string }) => void) => {
+        ngMocks.configUpdatedCallback = callback;
+      },
+      off: () => {},
+    },
+  },
+}));
+
+afterEach(() => {
+  cleanup();
+  ngMocks.configValue = "soft-ng";
+  ngMocks.configUpdatedCallback = undefined;
+});
 
 vi.mock("src/view/browser/utils/response-format", async () => {
   const actual = await vi.importActual<typeof import("src/view/browser/utils/response-format")>(
@@ -44,33 +69,12 @@ const BASE_RES: IRes = {
 };
 
 describe("ResItem", () => {
-  it("NGレスをプレースホルダーで残し、クリック後に内容を表示する", () => {
+  it("soft-ngではNGレスを表示・再非表示・再表示できる", () => {
     const ngRes: IRes = {
       ...BASE_RES,
       ng: { type: "Body", ruleDescription: "hide body contains:\n  本文" },
     };
-    const { container } = render(
-      <ResItem
-        res={ngRes}
-        idPos={0}
-        idCount={0}
-        repCount={0}
-        isOwn={false}
-        isReplyToOwn={false}
-        isImageBlurred={false}
-        imageBlurRadius={4}
-        miniAa={false}
-        messageProtocol="https:"
-        onIdClick={() => {}}
-        onRepClick={() => {}}
-        onUrlClick={() => true}
-        onUrlContextMenu={() => true}
-        onAnchorClick={() => {}}
-        onAnchorHover={() => {}}
-        onAnchorLeave={() => {}}
-        onContextMenu={() => {}}
-      />,
-    );
+    const { container } = renderNgRes(ngRes);
 
     const placeholder = screen.getByRole("button", { name: "レス1の内容を表示" });
     expect(placeholder).toHaveAttribute("data-res-num", "1");
@@ -79,6 +83,56 @@ describe("ResItem", () => {
     fireEvent.click(placeholder);
 
     expect(container.querySelector(".res__body")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "レス1をNG表示に戻す" }));
+
+    expect(screen.getByRole("button", { name: "レス1の内容を表示" })).toBeInTheDocument();
+    expect(container.querySelector(".res__body")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "レス1の内容を表示" }));
+    expect(container.querySelector(".res__body")).toBeInTheDocument();
+  });
+
+  it("hard-ngではNGレスをDOMへ描画しない", () => {
+    ngMocks.configValue = "hard-ng";
+    const ngRes: IRes = { ...BASE_RES, ng: { type: "Body" } };
+
+    const { container } = renderNgRes(ngRes);
+
+    expect(container.querySelector("[data-res-num='1']")).not.toBeInTheDocument();
+  });
+
+  it("highlight-ngではNGレスの本文を表示し、強調クラスを付ける", () => {
+    ngMocks.configValue = "highlight-ng";
+    const ngRes: IRes = { ...BASE_RES, ng: { type: "Body" } };
+
+    const { container } = renderNgRes(ngRes);
+
+    expect(container.querySelector("[data-res-num='1']")).toHaveClass("res--ng-highlight");
+    expect(container.querySelector(".res__body")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "レス1の内容を表示" })).not.toBeInTheDocument();
+  });
+
+  it("設定をhard-ngへ変更すると表示中のNGレスを隠す", () => {
+    const ngRes: IRes = { ...BASE_RES, ng: { type: "Body" } };
+    const { container } = renderNgRes(ngRes);
+
+    fireEvent.click(screen.getByRole("button", { name: "レス1の内容を表示" }));
+    expect(container.querySelector(".res__body")).toBeInTheDocument();
+
+    ngMocks.configValue = "hard-ng";
+    // モックした設定通知を使い、設定画面の保存結果が既存レスへ反映される経路を確認する。
+    act(() => {
+      ngMocks.configUpdatedCallback?.({ key: "display_ng" });
+    });
+    expect(container.querySelector("[data-res-num='1']")).not.toBeInTheDocument();
+  });
+
+  it("NGでないレスは表示方式に関係なく通常表示する", () => {
+    ngMocks.configValue = "hard-ng";
+    const { container } = renderNgRes(BASE_RES);
+
+    expect(container.querySelector("[data-res-num='1']")).toBeInTheDocument();
   });
 
   it("返信数に応じてレス番号と返信ラベルに同じ強調色クラスを付与する", () => {
@@ -363,4 +417,31 @@ function containerQueryByClass(className: string): HTMLElement {
     throw new Error(`Element not found: .${className}`);
   }
   return el;
+}
+
+function renderNgRes(res: IRes) {
+  return render(
+    <NgStatusProvider>
+      <ResItem
+        res={res}
+        idPos={0}
+        idCount={0}
+        repCount={0}
+        isOwn={false}
+        isReplyToOwn={false}
+        isImageBlurred={false}
+        imageBlurRadius={4}
+        miniAa={false}
+        messageProtocol="https:"
+        onIdClick={() => {}}
+        onRepClick={() => {}}
+        onUrlClick={() => true}
+        onUrlContextMenu={() => true}
+        onAnchorClick={() => {}}
+        onAnchorHover={() => {}}
+        onAnchorLeave={() => {}}
+        onContextMenu={() => {}}
+      />
+    </NgStatusProvider>,
+  );
 }
