@@ -75,6 +75,23 @@ hide body regex:
     });
   });
 
+  it("タイトルとレス数の条件を組み合わせて板のハイライトを適用する", async () => {
+    const { apply, invalidateCache, isNGBoard } = await import("src/core/NG");
+    invalidateCache();
+    apply(`highlight title contains color=red:
+  注目
+and res-count >= 100:`);
+
+    expect(isNGBoard("注目スレ", "https://example.com/board/", 99)).toBeNull();
+    expect(isNGBoard("通常スレ", "https://example.com/board/", 100)).toBeNull();
+    expect(isNGBoard("注目スレ", "https://example.com/board/", 100)).toMatchObject({
+      type: "HighlightTitle",
+      ruleDescription: `highlight title contains color=red:
+  注目
+and res-count >= 100:`,
+    });
+  });
+
   it("applies a stored DSL without writing it back", async () => {
     const { apply, get, invalidateCache } = await import("src/core/NG");
     invalidateCache();
