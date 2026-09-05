@@ -10,6 +10,11 @@ import {
 import { isTauriRuntime } from "src/app/platform/runtime";
 import { container } from "src/service-container/index";
 import {
+  NG_DISPLAY_CONFIG_KEY,
+  NG_DISPLAY_MODE_OPTIONS,
+  normalizeNgDisplayMode,
+} from "src/view/browser/utils/ng-display-mode";
+import {
   buildFieldSchema,
   buildUiSchema,
 } from "src/view/browser/pages/settings/settings-form-registry";
@@ -327,6 +332,20 @@ const ALL_SETTINGS_SECTIONS = [
       },
       {
         kind: "divider",
+        id: "display",
+        title: "表示",
+      },
+      {
+        kind: "string",
+        key: NG_DISPLAY_CONFIG_KEY,
+        title: "NGレスの表示方式",
+        description:
+          "完全非表示、クリックで一時表示、表示したまま強調する方式を選べます。一時的なNG解除はこの設定とは独立して動作します。",
+        options: NG_DISPLAY_MODE_OPTIONS,
+        widget: "radio",
+      },
+      {
+        kind: "divider",
         id: "judgement",
         title: "判定基準",
       },
@@ -430,6 +449,9 @@ function readFieldValue(field: SettingsFieldDefinition): SettingsFormValue {
       if (field.key === "new_tab_page_mode") {
         return typeof rawValue === "string" && rawValue !== "" ? rawValue : "related_board";
       }
+      if (field.key === NG_DISPLAY_CONFIG_KEY) {
+        return normalizeNgDisplayMode(rawValue);
+      }
       return typeof rawValue === "string" ? rawValue : "";
   }
 }
@@ -441,6 +463,9 @@ function writeFieldValue(field: SettingsFieldDefinition, value: SettingsFormValu
     case "number":
       return String(typeof value === "number" && Number.isFinite(value) ? value : 0);
     case "string":
+      if (field.key === NG_DISPLAY_CONFIG_KEY) {
+        return normalizeNgDisplayMode(typeof value === "string" ? value : undefined);
+      }
       return typeof value === "string" ? value : "";
   }
 }
