@@ -20,6 +20,12 @@ describe("message-filter", () => {
     expect(hasImage(message)).toBe(true);
   });
 
+  it("Imgur単体画像を画像として扱い、アルバムと動画を除外する", () => {
+    expect(hasImage("https://imgur.com/SingleImage")).toBe(true);
+    expect(hasImage("https://imgur.com/a/Album")).toBe(false);
+    expect(hasImage("https://example.com/video.mp4")).toBe(false);
+  });
+
   it("YouTube と直リンク mp4 を動画として判定する", () => {
     expect(hasVideo("https://youtu.be/TestVideo01")).toBe(true);
     expect(

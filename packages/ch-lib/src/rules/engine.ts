@@ -15,6 +15,7 @@ export interface RuleMatchContext {
   readonly resCount?: number;
   readonly replyCount?: number;
   readonly anchorCount?: number;
+  readonly imageCount?: number;
 }
 
 export interface RuleMatchResult {
@@ -55,6 +56,7 @@ export const RESPONSE_RULE_TARGETS = new Set<RuleTarget>([
   "url",
   "reply-count",
   "anchor-count",
+  "image-count",
 ]);
 
 // Boardという呼び方を知らないLive側でも、同じ制限を「thread list」として利用できる。

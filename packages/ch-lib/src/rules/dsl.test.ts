@@ -72,6 +72,19 @@ hide anchor-count >= 10:`;
     });
   });
 
+  it("画像数の比較条件を解析して整形する", () => {
+    const source = "hide image-count >= 3:";
+    const result = parseRuleDsl(source);
+
+    expect(result.diagnostics).toEqual([]);
+    expect(result.rules[0]).toMatchObject({
+      action: "hide",
+      target: "image-count",
+      matchers: [{ kind: "contains", value: "3" }],
+    });
+    expect(formatRuleDsl(result.rules)).toBe(source);
+  });
+
   it("rejects the former implicit matcher syntax", () => {
     const result = parseRuleDsl(`hide body:
   spam`);

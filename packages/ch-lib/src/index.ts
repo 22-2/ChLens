@@ -20,6 +20,7 @@ export * from "./rules/scope";
 export * from "./rules/validator";
 export * from "./url/ChURL";
 export * from "./url/hosts";
+export * from "./url/media";
 export * from "./url/patterns";
 export * from "./url/text";
 export * from "./utils/entities";

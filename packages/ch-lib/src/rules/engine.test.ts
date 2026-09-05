@@ -22,10 +22,12 @@ const RESPONSE_TARGETS = new Set<Rule["target"]>([
   "url",
   "reply-count",
   "anchor-count",
+  "image-count",
 ]);
 const BODY = new Set<Rule["target"]>(["body"]);
 const RES_COUNT = new Set<Rule["target"]>(["res-count"]);
 const ANCHOR_COUNT = new Set<Rule["target"]>(["anchor-count"]);
+const IMAGE_COUNT = new Set<Rule["target"]>(["image-count"]);
 
 describe("rule engine", () => {
   it("keeps board/thread-list and response evaluation as explicit APIs", () => {
@@ -147,6 +149,24 @@ describe("rule engine", () => {
     expect(
       matchRules(rules, { anchorCount: 3, url: "https://example.com" }, HIDE, ANCHOR_COUNT)?.type,
     ).toBe("AnchorCount");
+  });
+
+  it("画像数が設定した閾値以上の場合に一致する", () => {
+    const rules: Rule[] = [
+      {
+        action: "hide",
+        target: "image-count",
+        enabled: true,
+        matchers: [{ kind: "contains", value: "2" }],
+      },
+    ];
+
+    expect(
+      matchRules(rules, { imageCount: 1, url: "https://example.com" }, HIDE, IMAGE_COUNT),
+    ).toBeNull();
+    expect(
+      matchRules(rules, { imageCount: 2, url: "https://example.com" }, HIDE, IMAGE_COUNT)?.type,
+    ).toBe("ImageCount");
   });
 
   it("board・thread・responseで同じscopeを適用し、対象外fieldは判定しない", () => {

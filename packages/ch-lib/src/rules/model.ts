@@ -13,6 +13,7 @@ export const RULE_TARGETS = [
   "res-count",
   "reply-count",
   "anchor-count",
+  "image-count",
 ] as const;
 export type RuleTarget = (typeof RULE_TARGETS)[number];
 

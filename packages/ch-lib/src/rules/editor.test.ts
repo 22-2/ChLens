@@ -19,5 +19,10 @@ describe("shared rule editor definition", () => {
         ({ category, label }) => category === "color" && label === "blue",
       ),
     ).toBe(true);
+    expect(
+      RULE_DSL_COMPLETION_CANDIDATES.some(
+        ({ category, label }) => category === "header" && label === "hide image-count >=",
+      ),
+    ).toBe(true);
   });
 });

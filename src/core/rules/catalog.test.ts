@@ -25,6 +25,14 @@ describe("rule target catalog", () => {
       allowedOnBoard: false,
       allowedOnThread: true,
     });
+    expect(getRuleTargetDefinition("image-count")).toMatchObject({
+      name: "image-count",
+      field: "imageCount",
+      comparison: "greater-than-or-equal",
+      resultTypes: ["ImageCount", "ImageCount"],
+      allowedOnBoard: false,
+      allowedOnThread: true,
+    });
   });
 
   it("exposes every target through the completion catalog", () => {
@@ -40,6 +48,7 @@ describe("rule target catalog", () => {
       "res-count",
       "reply-count",
       "anchor-count",
+      "image-count",
     ]);
   });
 });
