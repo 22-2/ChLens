@@ -1,6 +1,7 @@
 import { createLogger } from "src/core/logger";
 import { countReplyAnchorTargets } from "src/core/reply-index";
 import {
+  countImageUrlsInMessage,
   clearRuleRegexCache,
   evaluateBoardRules,
   evaluateResponseRules,
@@ -110,6 +111,16 @@ function getNgDebugTargetResNum(): number | null {
   return Number.isInteger(value) && value > 0 ? value : null;
 }
 
+function getMessageFallbackProtocol(url: string): string {
+  try {
+    return new URL(url).protocol;
+  } catch (error: unknown) {
+    // 壊れたスレURLでも画像数NGを止めず、表示側と同じhttps既定値で判定を続ける。
+    logger.error("画像数NGのURLプロトコル解決に失敗しました", { url, error });
+    return "https:";
+  }
+}
+
 export function get(): readonly Rule[] {
   if (rulesCache != null) return rulesCache;
   const source = readSource();
@@ -170,11 +181,15 @@ export function isNGThread(res: unknown, title: string, url: string): INGResult 
   const body = toText(raw.message);
   const resNum = typeof raw.num === "number" ? raw.num : undefined;
   const debugTargetResNum = getNgDebugTargetResNum();
+  const rules = get();
   const anchorCount =
     typeof raw.anchorCount === "number" && Number.isFinite(raw.anchorCount)
       ? raw.anchorCount
       : countReplyAnchorTargets(body);
-  const rules = get();
+  // 画像数条件がないレスではURL解析を省き、通常のNG判定に余計な処理を追加しない。
+  const imageCount = rules.some((rule) => rule.enabled && rule.target === "image-count")
+    ? countImageUrlsInMessage(body, getMessageFallbackProtocol(url))
+    : undefined;
   const matched = evaluateResponseRules(
     rules,
     {
@@ -188,6 +203,7 @@ export function isNGThread(res: unknown, title: string, url: string): INGResult 
       url,
       replyCount: typeof raw.replyCount === "number" ? raw.replyCount : undefined,
       anchorCount,
+      imageCount,
     },
     onRegexError,
   );

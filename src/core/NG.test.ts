@@ -108,4 +108,48 @@ hide body regex:
       ),
     ).toMatchObject({ type: "AnchorCount" });
   });
+
+  it("表示可能な画像URLの重複を除いて画像数NGを適用する", async () => {
+    const { apply, invalidateCache, isNGThread } = await import("src/core/NG");
+    invalidateCache();
+    apply("hide image-count >= 2:");
+
+    expect(
+      isNGThread(
+        {
+          num: 2,
+          name: "name",
+          mail: "",
+          message: [
+            "https://example.com/first.jpg",
+            "https://example.com/first.jpg",
+            "https://example.com/second.png",
+            "https://example.com/movie.mp4",
+            "https://imgur.com/a/album-id",
+          ].join(" "),
+        },
+        "title",
+        "https://example.com/thread/1",
+      ),
+    ).toMatchObject({ type: "ImageCount", ruleDescription: "hide image-count >= 2:" });
+  });
+
+  it("画像数が閾値未満なら画像数NGを適用しない", async () => {
+    const { apply, invalidateCache, isNGThread } = await import("src/core/NG");
+    invalidateCache();
+    apply("hide image-count >= 2:");
+
+    expect(
+      isNGThread(
+        {
+          num: 3,
+          name: "name",
+          mail: "",
+          message: "https://example.com/only-image.jpg https://youtu.be/video",
+        },
+        "title",
+        "https://example.com/thread/1",
+      ),
+    ).toBeNull();
+  });
 });

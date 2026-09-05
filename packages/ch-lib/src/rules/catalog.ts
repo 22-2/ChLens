@@ -17,7 +17,8 @@ export type RuleTargetField =
   | "url"
   | "resCount"
   | "replyCount"
-  | "anchorCount";
+  | "anchorCount"
+  | "imageCount";
 export type RuleTargetComparison =
   | "contains"
   | "url-contains"
@@ -142,6 +143,16 @@ export const RULE_TARGET_DEFINITIONS: Readonly<Record<RuleTarget, RuleTargetDefi
     field: "anchorCount",
     comparison: "greater-than-or-equal",
     resultTypes: ["AnchorCount", "AnchorCount"],
+    allowedOnBoard: false,
+    allowedOnThread: true,
+  },
+  "image-count": {
+    // レスごとの表示可能画像数を既存の数値条件と同じ形式で比較する。
+    name: "image-count",
+    description: "レスに含まれる表示可能な画像数",
+    field: "imageCount",
+    comparison: "greater-than-or-equal",
+    resultTypes: ["ImageCount", "ImageCount"],
     allowedOnBoard: false,
     allowedOnThread: true,
   },

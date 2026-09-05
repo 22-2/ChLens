@@ -1,3 +1,4 @@
+import { extractImageUrlsFromMessage } from "@chlen/ch-lib";
 import { URL_LIKE_PATTERN, normalizeObfuscatedUrl } from "src/core/url-utils";
 import { isInlineVideoEmbedUrl } from "src/view/browser/utils/external-media";
 
@@ -8,13 +9,7 @@ import { isInlineVideoEmbedUrl } from "src/view/browser/utils/external-media";
  */
 
 export function hasImage(message: string): boolean {
-  const normalizedMessage = message.replace(URL_LIKE_PATTERN, normalizeObfuscatedUrl);
-  return (
-    /\.(jpe?g|png|gif|webp|bmp|avif)(?:\?[^"<]*)?(?=["<\s]|$)/i.test(normalizedMessage) ||
-    /https?:\/\/pbs\.twimg\.com\/media\/[^\s"'<>?]+\?[^\s"'<>]*format=(?:jpe?g|png|gif|webp|bmp|avif)\b/i.test(
-      normalizedMessage,
-    )
-  );
+  return extractImageUrlsFromMessage(message).length > 0;
 }
 
 export function hasVideo(message: string): boolean {
