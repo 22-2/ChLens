@@ -149,6 +149,51 @@ describe("rule engine", () => {
     ).toBe("AnchorCount");
   });
 
+  it("すべての条件を要求し、1条件内のmatcherはORのまま維持する", () => {
+    const rules: Rule[] = [
+      {
+        action: "highlight",
+        target: "title",
+        enabled: true,
+        matchers: [
+          { kind: "contains", value: "注目" },
+          { kind: "contains", value: "重要" },
+        ],
+        conditions: [
+          {
+            target: "res-count",
+            matchers: [{ kind: "contains", value: "100" }],
+          },
+        ],
+      },
+    ];
+
+    expect(
+      matchRules(
+        rules,
+        { title: "注目スレ", url: "https://example.com/board/", resCount: 99 },
+        HIGHLIGHT,
+        BOARD_TARGETS,
+      ),
+    ).toBeNull();
+    expect(
+      matchRules(
+        rules,
+        { title: "通常スレ", url: "https://example.com/board/", resCount: 100 },
+        HIGHLIGHT,
+        BOARD_TARGETS,
+      ),
+    ).toBeNull();
+    expect(
+      matchRules(
+        rules,
+        { title: "重要スレ", url: "https://example.com/board/", resCount: 100 },
+        HIGHLIGHT,
+        BOARD_TARGETS,
+      )?.type,
+    ).toBe("HighlightTitle");
+  });
+
   it("board・thread・responseで同じscopeを適用し、対象外fieldは判定しない", () => {
     // 変更理由: DSL evaluatorをLiveと共有する前に、製品ごとのadapterが許可対象だけを渡せば
     // 同じrule sourceでもboard／thread／responseの境界を維持できることを固定する。

@@ -9,9 +9,15 @@ describe("shared rule editor definition", () => {
   it("exposes catalog-backed language tokens and completions", () => {
     expect(NG_DSL_LANGUAGE_ID).toBe("chlens-ngdsl");
     expect(RULE_DSL_LANGUAGE_DEFINITION.targets.map(({ name }) => name)).toContain("body");
+    expect(RULE_DSL_LANGUAGE_DEFINITION.operators).toContain("and");
     expect(
       RULE_DSL_COMPLETION_CANDIDATES.some(
         ({ category, label }) => category === "header" && label === "hide body contains",
+      ),
+    ).toBe(true);
+    expect(
+      RULE_DSL_COMPLETION_CANDIDATES.some(
+        ({ category, label }) => category === "header" && label === "and res-count >=",
       ),
     ).toBe(true);
     expect(
