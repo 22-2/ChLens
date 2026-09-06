@@ -980,38 +980,11 @@ describe("TabBar vertical", () => {
     expect(tabList).toHaveAttribute("role", "tablist");
   });
 
-  it("垂直では更新ボタンを一番上に表示する", () => {
-    mocks.tabStore.state = {
-      tabs: [
-        {
-          id: "tab-1",
-          history: [
-            {
-              type: "thread",
-              title: "スレッド",
-              threadUrl: "https://example.com/test/read.cgi/software/1/",
-            },
-          ],
-          currentIndex: 0,
-          pinned: false,
-          reloadKey: 0,
-          autoRefreshEnabled: false,
-          autoRefreshPageKey: null as string | null,
-        },
-      ],
-      activeTabId: "tab-1",
-      closedTabs: [],
-    } as unknown as typeof mocks.tabStore.state;
-
+  it("垂直では更新ボタンをバーに置かずタイトルバー左端へ任せる", () => {
     const { container } = render(<TabBar orientation="vertical" />);
-    const tabBar = container.querySelector(".tab-bar") as HTMLDivElement;
-    const refreshButton = container.querySelector(".tab-bar__refresh") as HTMLButtonElement;
 
-    expect(tabBar.firstElementChild).toBe(refreshButton);
-
-    fireEvent.click(refreshButton);
-
-    expect(dispatchMock).toHaveBeenCalledWith({ type: "RELOAD" });
+    expect(container.querySelector(".tab-bar__refresh")).toBeNull();
+    expect(container.querySelector(".tab-bar__collapse")).not.toBeNull();
   });
 
   it("垂直では追加ボタンが最終タブの直後にある", () => {
@@ -1123,6 +1096,7 @@ describe("TabBar vertical", () => {
     const toggle = container.querySelector(".tab-bar__collapse") as HTMLButtonElement;
 
     expect(toggle).toHaveAttribute("aria-label", "簡易表示にする");
+    expect(toggle.querySelector("svg")).toHaveAttribute("width", "15");
 
     fireEvent.click(toggle);
 

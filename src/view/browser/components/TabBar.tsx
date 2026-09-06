@@ -29,6 +29,7 @@ import {
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import type { Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
+import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { isAutoRefreshEnabledForPage } from "src/view/browser/utils/auto-refresh-pages";
 
@@ -325,12 +326,7 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
   const currentPage = activeTab ? getCurrentPage(activeTab) : null;
   const isTabListScrollable = tabListScrollState.canScrollLeft || tabListScrollState.canScrollRight;
   // 更新は常用操作としてタブバー左端にも置くが、再取得できないページでは無効化する。
-  const canRefresh =
-    currentPage?.type === "thread" ||
-    currentPage?.type === "threadList" ||
-    currentPage?.type === "historyList" ||
-    currentPage?.type === "writeHistoryList" ||
-    currentPage?.type === "logList";
+  const canRefresh = currentPage ? isPageRefreshable(currentPage) : false;
 
   useEffect(() => {
     const prev = prevTabIdsRef.current;
@@ -660,10 +656,10 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
       }
       onContextMenu={handleBarContextMenu}
     >
+      {/* 変更理由: 垂直モードの更新ボタンはタイトルバー左端へ移したため、
+          バー上部には開閉ボタンのみ残す。 */}
       {isVertical ? (
         <>
-          {refreshButton}
-          <span className="tab-bar__refresh-divider" aria-hidden="true" />
           <div className="tab-bar__vertical-header">
             <button
               type="button"
@@ -673,7 +669,8 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
               aria-label={collapsed ? "展開表示に戻す" : "簡易表示にする"}
               aria-expanded={!collapsed}
             >
-              {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+              {/* 変更理由: 縮小時のタブアイコンと大きさを揃える。 */}
+              {collapsed ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
             </button>
           </div>
         </>

@@ -21,6 +21,34 @@
   display: none;
 }
 
+/* 変更理由: 垂直モードでは更新ボタンを左端に置く。
+   水平モードでは空のまま中央タイトルの配置を保つ。 */
+.title-bar__refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--sys-space-9);
+  height: var(--sys-space-9);
+  border: none;
+  border-radius: var(--sys-radius-sm);
+  background: transparent;
+  color: var(--sys-color-text-muted);
+  cursor: pointer;
+  transition:
+    background var(--sys-duration-fast),
+    color var(--sys-duration-fast);
+}
+
+.title-bar__refresh:hover:not(:disabled) {
+  background: var(--sys-color-tab-strip-hover);
+  color: var(--sys-color-text);
+}
+
+.title-bar__refresh:disabled {
+  color: var(--sys-color-text-disabled);
+  cursor: default;
+}
+
 /* 変更理由: 垂直モードでは自ペインの NavigationBar がここへポータルされる。
    水平モードでは空のまま中央タイトルの配置を保つ。 */
 .title-bar__leading {
