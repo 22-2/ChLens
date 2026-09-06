@@ -40,6 +40,23 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabPanes: () => ({ panes: [{ id: "pane-1" }], activePaneId: "pane-1" }),
 }));
 
+vi.mock("src/view/browser/components/TabContextMenu", () => ({
+  TabContextMenu: ({
+    tab,
+    position,
+  }: {
+    tab: { id: string };
+    position: { x: number; y: number };
+  }) => (
+    <div
+      data-testid="title-bar-tab-menu"
+      data-tab-id={tab.id}
+      data-x={position.x}
+      data-y={position.y}
+    />
+  ),
+}));
+
 const { orientationHolder } = vi.hoisted(() => ({
   orientationHolder: { value: "horizontal" },
 }));
@@ -119,5 +136,17 @@ describe("TitleBar", () => {
     const title = screen.getByTestId("title-bar-title");
     expect(title).toHaveAttribute("title", mocks.currentPage.title);
     expect(title).toHaveClass("title-bar__title");
+  });
+
+  it("タイトルを右クリックするとタブと同じメニューを表示する", () => {
+    render(<TitleBar />);
+
+    const title = screen.getByTestId("title-bar-title");
+    fireEvent.contextMenu(title, { clientX: 120, clientY: 10 });
+
+    const menu = screen.getByTestId("title-bar-tab-menu");
+    expect(menu).toHaveAttribute("data-tab-id", "tab-1");
+    expect(menu).toHaveAttribute("data-x", "120");
+    expect(menu).toHaveAttribute("data-y", "10");
   });
 });
