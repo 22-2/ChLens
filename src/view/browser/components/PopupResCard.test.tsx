@@ -1,9 +1,35 @@
 import "@testing-library/jest-dom/vitest";
-import { fireEvent, render } from "@testing-library/react";
+import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import type { IRes } from "src/service-container/interfaces";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
 import { NgStatusProvider, useNgStatus } from "src/view/browser/hooks/use-ng-status";
-import { describe, expect, it, vi } from "vite-plus/test";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+
+const ngMocks = vi.hoisted(() => ({
+  configValue: "soft-ng",
+  configUpdatedCallback: undefined as ((data: { key?: string }) => void) | undefined,
+}));
+
+vi.mock("src/service-container/index", () => ({
+  container: {
+    config: {
+      get: (key: string) => (key === "display_ng" ? ngMocks.configValue : null),
+      ready: (callback: () => void) => callback(),
+    },
+    message: {
+      on: (_type: string, callback: (data: { key?: string }) => void) => {
+        ngMocks.configUpdatedCallback = callback;
+      },
+      off: () => {},
+    },
+  },
+}));
+
+afterEach(() => {
+  cleanup();
+  ngMocks.configValue = "soft-ng";
+  ngMocks.configUpdatedCallback = undefined;
+});
 
 vi.mock("src/view/browser/utils/response-format", async () => {
   const actual = await vi.importActual<typeof import("src/view/browser/utils/response-format")>(
@@ -107,7 +133,7 @@ describe("PopupResCard", () => {
     expect(container.querySelector(".res__rep")).toHaveClass("res__rep--hot");
   });
 
-  it("NGレスはポップアップで内容を伏せ、クリック後に表示する", () => {
+  it("soft-ngではポップアップのNGレスを表示・再非表示・再表示できる", () => {
     const ngRes = { ...BASE_RES, ng: { type: "word" } } as IRes;
     const { container, getByRole } = render(
       <PopupResCard
@@ -126,6 +152,89 @@ describe("PopupResCard", () => {
     expect(container.querySelector(".res__body")).not.toBeInTheDocument();
     fireEvent.click(getByRole("button", { name: "クリックして内容を表示" }));
     expect(container.querySelector(".res__body")).toBeInTheDocument();
+
+    fireEvent.click(getByRole("button", { name: "レス10をNG表示に戻す" }));
+
+    expect(getByRole("button", { name: "クリックして内容を表示" })).toBeInTheDocument();
+    expect(container.querySelector(".res__body")).not.toBeInTheDocument();
+
+    fireEvent.click(getByRole("button", { name: "クリックして内容を表示" }));
+    expect(container.querySelector(".res__body")).toBeInTheDocument();
+  });
+
+  it("hard-ngではNGレスのポップアップを描画しない", () => {
+    ngMocks.configValue = "hard-ng";
+    const ngRes = { ...BASE_RES, ng: { type: "word" } } as IRes;
+
+    const { container } = render(
+      <NgStatusProvider>
+        <PopupResCard
+          res={ngRes}
+          messageProtocol="https:"
+          anchorPreviewDepth={0}
+          onUrlClick={() => {}}
+          onUrlContextMenu={() => {}}
+          onIdLinkClick={() => {}}
+          onAnchorClick={() => {}}
+          onAnchorHover={() => {}}
+          onAnchorLeave={() => {}}
+        />
+      </NgStatusProvider>,
+    );
+
+    expect(container.querySelector(".res")).not.toBeInTheDocument();
+  });
+
+  it("highlight-ngではNGレスの本文を表示し、強調クラスを付ける", () => {
+    ngMocks.configValue = "highlight-ng";
+    const ngRes = { ...BASE_RES, ng: { type: "word" } } as IRes;
+
+    const { container } = render(
+      <NgStatusProvider>
+        <PopupResCard
+          res={ngRes}
+          messageProtocol="https:"
+          anchorPreviewDepth={0}
+          onUrlClick={() => {}}
+          onUrlContextMenu={() => {}}
+          onIdLinkClick={() => {}}
+          onAnchorClick={() => {}}
+          onAnchorHover={() => {}}
+          onAnchorLeave={() => {}}
+        />
+      </NgStatusProvider>,
+    );
+
+    expect(container.querySelector(".res")).toHaveClass("res--ng-highlight");
+    expect(container.querySelector(".res__body")).toBeInTheDocument();
+  });
+
+  it("display_ng変更通知で既存ポップアップの表示方式を更新する", () => {
+    const ngRes = { ...BASE_RES, ng: { type: "word" } } as IRes;
+    const { container } = render(
+      <NgStatusProvider>
+        <PopupResCard
+          res={ngRes}
+          messageProtocol="https:"
+          anchorPreviewDepth={0}
+          onUrlClick={() => {}}
+          onUrlContextMenu={() => {}}
+          onIdLinkClick={() => {}}
+          onAnchorClick={() => {}}
+          onAnchorHover={() => {}}
+          onAnchorLeave={() => {}}
+        />
+      </NgStatusProvider>,
+    );
+
+    expect(container.querySelector(".res__body")).not.toBeInTheDocument();
+
+    ngMocks.configValue = "hard-ng";
+    act(() => {
+      ngMocks.configUpdatedCallback?.({ key: "display_ng" });
+    });
+
+    expect(container.querySelector(".res")).not.toBeInTheDocument();
   });
 
   it("一時NG解除中もNGバッジを残す", () => {

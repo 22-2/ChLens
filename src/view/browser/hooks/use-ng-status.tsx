@@ -2,10 +2,18 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
+import { container } from "src/service-container/index";
+import {
+  DEFAULT_NG_DISPLAY_MODE,
+  NG_DISPLAY_CONFIG_KEY,
+  normalizeNgDisplayMode,
+  type NgDisplayMode,
+} from "src/view/browser/utils/ng-display-mode";
 
 interface NgStats {
   ngCount: number;
@@ -16,6 +24,7 @@ interface NgStatusContextValue {
   isNgTemporarilyDisabled: boolean;
   setNgTemporarilyDisabled: (disabled: boolean) => void;
   toggleNgTemporarilyDisabled: () => void;
+  ngDisplayMode: NgDisplayMode;
   threadStats: NgStats;
   threadListStats: NgStats;
   setThreadStats: (stats: NgStats) => void;
@@ -28,6 +37,7 @@ interface NgToggleContextValue {
   isNgTemporarilyDisabled: boolean;
   setNgTemporarilyDisabled: (disabled: boolean) => void;
   toggleNgTemporarilyDisabled: () => void;
+  ngDisplayMode: NgDisplayMode;
 }
 
 interface NgStatsContextValue {
@@ -41,6 +51,8 @@ const defaultToggleContextValue: NgToggleContextValue = {
   isNgTemporarilyDisabled: false,
   setNgTemporarilyDisabled: () => {},
   toggleNgTemporarilyDisabled: () => {},
+  // Provider外の単体描画でも、従来の「クリックで表示」を維持する。
+  ngDisplayMode: "soft-ng",
 };
 
 const defaultStatsContextValue: NgStatsContextValue = {
@@ -54,6 +66,7 @@ const defaultContextValue: NgStatusContextValue = {
   isNgTemporarilyDisabled: false,
   setNgTemporarilyDisabled: () => {},
   toggleNgTemporarilyDisabled: () => {},
+  ngDisplayMode: "soft-ng",
   threadStats: DEFAULT_STATS,
   threadListStats: DEFAULT_STATS,
   setThreadStats: () => {},
@@ -68,8 +81,34 @@ const NgStatsContext = createContext<NgStatsContextValue>(defaultStatsContextVal
 
 export const NgStatusProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isNgTemporarilyDisabled, setNgTemporarilyDisabled] = useState(false);
+  const [ngDisplayMode, setNgDisplayMode] = useState<NgDisplayMode>(DEFAULT_NG_DISPLAY_MODE);
   const [threadStats, setThreadStats] = useState<NgStats>(DEFAULT_STATS);
   const [threadListStats, setThreadListStats] = useState<NgStats>(DEFAULT_STATS);
+
+  useEffect(() => {
+    // 設定変更を全ペインへ通知し、現在開いているレスにも表示方式を即時反映する。
+    let config: { get(key: string): string | null; ready(callback: () => void): void };
+    try {
+      config = container.config;
+    } catch {
+      // Provider外の単体描画やアプリ初期化前は、既定のhard-ngを維持する。
+      return;
+    }
+
+    const sync = () => setNgDisplayMode(normalizeNgDisplayMode(config.get(NG_DISPLAY_CONFIG_KEY)));
+    const handleConfigUpdated = ({ key }: { key?: string }) => {
+      if (key === NG_DISPLAY_CONFIG_KEY) {
+        sync();
+      }
+    };
+
+    config.ready(sync);
+    container.message.on("config_updated", handleConfigUpdated);
+
+    return () => {
+      container.message.off("config_updated", handleConfigUpdated);
+    };
+  }, []);
 
   const toggleNgTemporarilyDisabled = useCallback(() => {
     setNgTemporarilyDisabled((prev) => !prev);
@@ -80,8 +119,9 @@ export const NgStatusProvider: React.FC<{ children: ReactNode }> = ({ children }
       isNgTemporarilyDisabled,
       setNgTemporarilyDisabled,
       toggleNgTemporarilyDisabled,
+      ngDisplayMode,
     }),
-    [isNgTemporarilyDisabled, toggleNgTemporarilyDisabled],
+    [isNgTemporarilyDisabled, ngDisplayMode, toggleNgTemporarilyDisabled],
   );
 
   const statsValue = useMemo<NgStatsContextValue>(
@@ -99,12 +139,19 @@ export const NgStatusProvider: React.FC<{ children: ReactNode }> = ({ children }
       isNgTemporarilyDisabled,
       setNgTemporarilyDisabled,
       toggleNgTemporarilyDisabled,
+      ngDisplayMode,
       threadStats,
       threadListStats,
       setThreadStats,
       setThreadListStats,
     }),
-    [isNgTemporarilyDisabled, threadListStats, threadStats, toggleNgTemporarilyDisabled],
+    [
+      isNgTemporarilyDisabled,
+      ngDisplayMode,
+      threadListStats,
+      threadStats,
+      toggleNgTemporarilyDisabled,
+    ],
   );
 
   return (
@@ -122,4 +169,8 @@ export function useNgStatus(): NgStatusContextValue {
 
 export function useIsNgTemporarilyDisabled(): boolean {
   return useContext(NgToggleContext).isNgTemporarilyDisabled;
+}
+
+export function useNgDisplayMode(): NgDisplayMode {
+  return useContext(NgToggleContext).ngDisplayMode;
 }

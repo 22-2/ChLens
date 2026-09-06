@@ -64,6 +64,7 @@ export default class Config {
     ["chain_ng_id_by_chain", "off"],
     ["chain_ng_slip", "off"],
     ["chain_ng_slip_by_chain", "off"],
+    // 旧設定のoffは表示方式のhard-ngへ読み替えるため、保存キーと既定値を維持する。
     ["display_ng", "off"],
     ["nothing_id_ng", "off"],
     ["nothing_slip_ng", "off"],
