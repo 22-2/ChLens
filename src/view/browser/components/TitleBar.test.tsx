@@ -12,17 +12,32 @@ const { dispatchMock, mocks } = vi.hoisted(() => ({
       title: "Current Thread",
       threadUrl: "https://egg.5ch.net/test/read.cgi/software/1/",
     } as Page,
-    panes: [{ id: "pane-1" }],
+    activeTab: {
+      id: "tab-1",
+      history: [
+        {
+          type: "thread",
+          title: "Current Thread",
+          threadUrl: "https://egg.5ch.net/test/read.cgi/software/1/",
+        },
+      ],
+      currentIndex: 0,
+      pinned: false,
+      reloadKey: 0,
+      autoRefreshEnabled: false,
+      autoRefreshPageKey: null,
+    },
   },
 }));
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => ({
+    activeTab: mocks.activeTab,
     currentPage: mocks.currentPage,
     dispatch: dispatchMock,
     paneId: "pane-1",
   }),
-  useTabPanes: () => ({ panes: mocks.panes, activePaneId: "pane-1" }),
+  useTabPanes: () => ({ panes: [{ id: "pane-1" }], activePaneId: "pane-1" }),
 }));
 
 const { orientationHolder } = vi.hoisted(() => ({
@@ -45,12 +60,11 @@ describe("TitleBar", () => {
       title: "Current Thread",
       threadUrl: "https://egg.5ch.net/test/read.cgi/software/1/",
     };
-    mocks.panes = [{ id: "pane-1" }];
     orientationHolder.value = "horizontal";
     dispatchMock.mockReset();
   });
 
-  it("アクティブページのタイトルを中央表示し、レイアウト操作を常設する", () => {
+  it("アクティブページのタイトルを中央表示する", () => {
     render(<TitleBar />);
 
     const titleBar = screen.getByTestId("title-bar");
@@ -59,22 +73,13 @@ describe("TitleBar", () => {
     expect(screen.getByRole("toolbar", { name: "レイアウト操作" })).toHaveClass(
       "action-toolbar-container",
     );
-    expect(screen.getByRole("button", { name: "2ペインで表示" })).toBeInTheDocument();
   });
 
-  it("1ペインと2ペインの切替を専用ボタンからdispatchする", () => {
-    const { rerender } = render(<TitleBar />);
+  it("ペイン分割ボタンは表示せずコマンド操作に任せる", () => {
+    render(<TitleBar />);
 
-    fireEvent.click(screen.getByRole("button", { name: "2ペインで表示" }));
-    expect(dispatchMock).toHaveBeenCalledWith({ type: "SPLIT_PANE" });
-
-    mocks.panes = [{ id: "pane-1" }, { id: "pane-2" }];
-    rerender(<TitleBar />);
-
-    const closeButton = screen.getByRole("button", { name: "2ペイン表示を解除" });
-    expect(closeButton).toHaveAttribute("aria-pressed", "true");
-    fireEvent.click(closeButton);
-    expect(dispatchMock).toHaveBeenCalledWith({ type: "CLOSE_PANE" });
+    expect(screen.queryByRole("button", { name: "2ペインで表示" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "2ペイン表示を解除" })).toBeNull();
   });
 
   it("ナビゲーション受け口が自ペインのIDを持つ", () => {
