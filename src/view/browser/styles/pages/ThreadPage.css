@@ -35,8 +35,10 @@
   padding: 0 0 var(--sys-space-10);
 }
 
-.thread-page--with-minimap .thread-page__top-bar,
-.thread-page--with-minimap .thread-page__toolbar,
+/*
+ * ミニマップはツールバーの直下から始まるため、ツールバー自身に幅を予約すると
+ * 実際には重ならない検索フィルタまで折り返される。余白はミニマップと縦に重なる領域だけに予約する。
+ */
 .thread-page--with-minimap .thread-page__notice,
 .thread-page--with-minimap .thread-page__responses,
 .thread-page--with-minimap .thread-page__auto-scroll-threshold {
