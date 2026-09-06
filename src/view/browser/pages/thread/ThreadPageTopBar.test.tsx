@@ -75,4 +75,39 @@ describe("ThreadPageTopBar", () => {
     expect(minimapReservationSelectors).not.toContain(".thread-page__top-bar");
     expect(minimapReservationSelectors).not.toContain(".thread-page__toolbar");
   });
+
+  it("件数と閉じるボタンを検索欄と同じ行に配置する", () => {
+    render(
+      <ThreadPageTopBar
+        activeTopBar="filter"
+        filter="all"
+        filteredResponseCount={3}
+        onClose={vi.fn()}
+        onFilterChange={vi.fn()}
+        onSearchTargetChange={vi.fn()}
+        onSearchQueryChange={vi.fn()}
+        responseCount={3}
+        searchFocusKey={0}
+        searchQuery=""
+        searchTarget="all"
+      />,
+    );
+
+    // 件数・閉じるボタンがツールバーの直下にあると、幅不足時に検索欄とは別の行へ
+    // 折り返されて3段化するため、検索欄の中に同居していることを保証する。
+    const search = screen.getByPlaceholderText("検索...").closest(".thread-page__toolbar-search");
+    const right = screen.getByText("3/3件").closest(".thread-page__toolbar-right");
+    expect(search).not.toBeNull();
+    expect(right).not.toBeNull();
+    expect(search).toContainElement(right as HTMLElement);
+  });
+
+  it("狭い画面でも件数・閉じるボタンを行分離しない", () => {
+    const narrowScreenBlock =
+      threadPageCss.match(/@media \(max-width: 720px\) \{([\s\S]*)\}\s*$/)?.[1] ?? "";
+
+    expect(narrowScreenBlock).toContain(".thread-page__toolbar-search");
+    expect(narrowScreenBlock).toContain("min-width: 0");
+    expect(narrowScreenBlock).not.toContain(".thread-page__toolbar-right");
+  });
 });

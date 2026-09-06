@@ -247,12 +247,13 @@
     flex-basis: 100%;
   }
 
+  /*
+   * 狭い画面でも件数・閉じるボタンは検索欄と同じ行に残し、入力欄だけを縮める。
+   * right 側へ width: 100% を振ると件数行が分離してツールバーが3段化するため、
+   * 幅の吸収は min-width: 0 の入力欄に寄せる。
+   */
   .thread-page__toolbar-search {
-    min-width: 100%;
-  }
-
-  .thread-page__toolbar-right {
-    width: 100%;
-    justify-content: flex-end;
+    flex: 1 1 auto;
+    min-width: 0;
   }
 }
