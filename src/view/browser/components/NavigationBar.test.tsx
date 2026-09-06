@@ -798,7 +798,8 @@ describe("NavigationBar titlebar slot", () => {
     };
 
     slot = document.createElement("div");
-    slot.className = "title-bar__leading";
+    slot.className = "title-bar__nav-slot";
+    slot.dataset.paneId = "pane-1";
     document.body.appendChild(slot);
   });
 
@@ -825,7 +826,7 @@ describe("NavigationBar titlebar slot", () => {
     expect(slot.querySelector('[title="メニュー"]')).not.toBeNull();
   });
 
-  it("垂直でも非アクティブペインのときはポータルしない", () => {
+  it("垂直では非アクティブペインも自ペインの受け口へポータルする", () => {
     paneHolder.panes = [{ id: "pane-1" }, { id: "pane-2" }];
     paneHolder.activePaneId = "pane-2";
 
@@ -835,7 +836,27 @@ describe("NavigationBar titlebar slot", () => {
       </div>,
     );
 
-    expect(slot.querySelector(".nav-bar")).toBeNull();
+    expect(slot.querySelector(".nav-bar--titlebar")).not.toBeNull();
+  });
+
+  it("垂直では別ペインの受け口へポータルしない", () => {
+    const otherSlot = document.createElement("div");
+    otherSlot.className = "title-bar__nav-slot";
+    otherSlot.dataset.paneId = "pane-2";
+    document.body.appendChild(otherSlot);
+
+    try {
+      render(
+        <div className="pane-column__chrome">
+          <NavigationBar />
+        </div>,
+      );
+
+      expect(slot.querySelector(".nav-bar--titlebar")).not.toBeNull();
+      expect(otherSlot.querySelector(".nav-bar")).toBeNull();
+    } finally {
+      otherSlot.remove();
+    }
   });
 
   it("垂直でもスロットが無いときはインラインに描画する", () => {

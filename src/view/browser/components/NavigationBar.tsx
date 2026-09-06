@@ -328,9 +328,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   const [responseJumpError, setResponseJumpError] = useState<string | null>(null);
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
   const tabBarOrientation = useTabBarOrientation();
-  // 変更理由: 垂直モードではペイン上部のボタン行をなくし、TitleBar 左上の leading 領域へ
+  // 変更理由: 垂直モードではペイン上部のボタン行をなくし、自ペインの TitleBar 受け口へ
   // ポータルする。Reactツリー上の位置は変えないため、ペインスコープの各プロバイダ
   // （タブ状態・下部パネル等）はそのまま利用できる。
+  // 受け口はペインごとに分かれるため、アクティブ切り替え時の表示制御は不要である。
   const [titleBarSlot, setTitleBarSlot] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -338,24 +339,14 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   }, []);
 
   useEffect(() => {
-    setTitleBarSlot(document.querySelector<HTMLElement>(".title-bar__leading"));
-  }, [tabBarOrientation]);
-
-  useEffect(() => {
-    // 変更理由: 共有スロットに表示されるのはアクティブペインだけなので、非アクティブ化で
-    // 座標指定のメニューを閉じる。URL展開状態はペインごとに保持し、復帰時に復元する。
-    if (tabBarOrientation === "vertical" && !isActivePane) {
-      setMenuPosition(null);
-      setBackMenuPosition(null);
-      setForwardMenuPosition(null);
-      setRefreshMenuPosition(null);
-    }
-  }, [isActivePane, tabBarOrientation]);
-
-  // 変更理由: 垂直モードではアクティブペインの分だけ TitleBar へポータルし、ペイン上部の
-  // 高さを本文へ返す。スロットが無い環境（テスト等）では従来どおりインライン表示する。
+    setTitleBarSlot(
+      document.querySelector<HTMLElement>(`.title-bar__nav-slot[data-pane-id="${paneId}"]`),
+    );
+  }, [paneId, tabBarOrientation]);
+  // 変更理由: 垂直モードでは自ペインの受け口へポータルし、ペイン上部の高さを本文へ返す。
+  // スロットが無い環境（テスト等）では従来どおりインライン表示する。
   // blur処理からも参照するため、描画部より前で定義する。
-  const useTitleBarSlot = tabBarOrientation === "vertical" && isActivePane && titleBarSlot !== null;
+  const useTitleBarSlot = tabBarOrientation === "vertical" && titleBarSlot !== null;
 
   useEffect(() => {
     let cancelled = false;

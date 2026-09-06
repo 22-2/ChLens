@@ -16,7 +16,12 @@
   user-select: none;
 }
 
-/* 変更理由: 垂直モードではアクティブペインの NavigationBar がここへポータルされる。
+/* 変更理由: 垂直モードでは共通タイトルバーを表示せず、ペイン単位のタイトルバーを使う。 */
+.browser-shell[data-tab-orientation="vertical"] > .title-bar {
+  display: none;
+}
+
+/* 変更理由: 垂直モードでは自ペインの NavigationBar がここへポータルされる。
    水平モードでは空のまま中央タイトルの配置を保つ。 */
 .title-bar__leading {
   grid-column: 1;
@@ -47,6 +52,19 @@
   align-items: center;
   justify-content: flex-end;
   min-width: 0;
+}
+
+/* 変更理由: 垂直モードでは自ペインのメニューとURL切り替えがここへポータルされる。
+   空のときは幅を持たず、水平モードの見た目を変えない。 */
+.title-bar__nav-slot {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.title-bar__nav-slot:empty {
+  display: none;
 }
 
 .title-bar__layout-toggle {

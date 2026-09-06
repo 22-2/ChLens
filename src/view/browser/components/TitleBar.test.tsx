@@ -20,6 +20,7 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => ({
     currentPage: mocks.currentPage,
     dispatch: dispatchMock,
+    paneId: "pane-1",
   }),
   useTabPanes: () => ({ panes: mocks.panes, activePaneId: "pane-1" }),
 }));
@@ -64,6 +65,12 @@ describe("TitleBar", () => {
     expect(closeButton).toHaveAttribute("aria-pressed", "true");
     fireEvent.click(closeButton);
     expect(dispatchMock).toHaveBeenCalledWith({ type: "CLOSE_PANE" });
+  });
+
+  it("ナビゲーション受け口が自ペインのIDを持つ", () => {
+    render(<TitleBar />);
+
+    expect(screen.getByTestId("title-bar-nav-slot")).toHaveAttribute("data-pane-id", "pane-1");
   });
 
   it("長いタイトルは省略可能なタイトル属性を持つ", () => {

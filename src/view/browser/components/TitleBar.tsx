@@ -3,7 +3,7 @@ import React, { useCallback } from "react";
 import { useTabPanes, useTabStore } from "src/view/browser/hooks/use-tab-store";
 
 export const TitleBar: React.FC = () => {
-  const { currentPage, dispatch } = useTabStore();
+  const { currentPage, dispatch, paneId } = useTabStore();
   const { panes } = useTabPanes();
   const isTwoPane = panes.length >= 2;
   const title = currentPage.title || "read.crx 2";
@@ -33,6 +33,13 @@ export const TitleBar: React.FC = () => {
         role="toolbar"
         aria-label="レイアウト操作"
       >
+        {/* 変更理由: 垂直モードではアクティブペインではなく自ペインの NavigationBar が
+            ここへポータルする。ペイン単位の data-pane-id で描画先を区別する。 */}
+        <div
+          className="title-bar__nav-slot"
+          data-pane-id={paneId}
+          data-testid="title-bar-nav-slot"
+        />
         <button
           type="button"
           className={`title-bar__layout-toggle${isTwoPane ? " title-bar__layout-toggle--active" : ""}`}

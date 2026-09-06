@@ -143,11 +143,14 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
           <BottomPanelProvider>
             <AutoScrollStateProvider>
               {tabBarOrientation === "vertical" ? (
-                // 変更理由: 垂直モードではタブバーをペイン左端の縦カラムに置き、
-                // 右側に従来のナビゲーション以下を積む。タブ状態はペイン単位のまま変えない。
+                // 変更理由: 垂直モードではタブバーをペインの上端まで伸ばし、
+                // タイトルバー以下を右へ押しのける。タイトルバーもペイン単位にし、
+                // 自ペインの操作欄を持つ。1ペイン優先の簡易対応とし、
+                // 2ペイン時は操作欄が複製される。
                 <div className="pane-column__vertical-body">
                   <TabBar orientation="vertical" />
                   <div className="pane-column__vertical-main">
+                    <TitleBar />
                     <div className="pane-column__chrome">{navigationBar}</div>
                     {paneBody}
                   </div>
@@ -184,6 +187,8 @@ const PaneRow: React.FC = () => {
 
 const BrowserAppContent: React.FC = () => {
   const theme = useTheme();
+  // 変更理由: 垂直モードではタイトルバーをペイン単位にするため、シェル側の共通表示を切り替える。
+  const shellTabBarOrientation = useTabBarOrientation();
   useNotificationListener();
   const { isAnyExpanded: isUrlBarExpanded } = useUrlBarVisibility();
 
@@ -209,13 +214,18 @@ const BrowserAppContent: React.FC = () => {
           シェル直下には全ペイン共通のグローバル UI（トースト・ダイアログ）だけを残す。
         */}
         {/* data-theme を使ってダークモード CSS 変数を切り替える */}
-        <div className="browser-shell" data-theme={theme}>
+        <div
+          className="browser-shell"
+          data-theme={theme}
+          data-tab-orientation={shellTabBarOrientation}
+        >
           <ToastProvider topOffset={isUrlBarExpanded ? "88px" : "64px"} rightOffset="78px" />
           {/*
-            タイトルと必須のレイアウト操作はペインの外に置く。
+            水平モードではタイトルと必須のレイアウト操作はペインの外に置く。
             これにより2ペイン時も操作が重複せず、アクティブペインのタイトルだけを表示できる。
+            垂直モードではタイトルバーもペイン単位にするため、共通バーは表示しない。
           */}
-          <TitleBar />
+          {shellTabBarOrientation === "vertical" ? null : <TitleBar />}
           <PaneRow />
           <BookmarkRootSelectorDialog />
         </div>
