@@ -464,7 +464,8 @@
   background: var(--sys-color-divider-subtle);
 }
 
-.tab-bar__resize-handle:hover::after,
+/* 変更理由: 縮小時はホバーでハイライトせず、ドラッグ中の操作感だけ残す。 */
+.tab-bar--vertical:not(.tab-bar--collapsed) .tab-bar__resize-handle:hover::after,
 .tab-bar--resizing .tab-bar__resize-handle::after {
   background: var(--sys-color-accent);
 }
