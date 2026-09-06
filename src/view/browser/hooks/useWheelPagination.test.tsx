@@ -109,4 +109,42 @@ describe("useWheelPagination", () => {
     expect(screen.getByLabelText("ホイール更新中")).toBeVisible();
     expect(screen.queryByText(/あと/)).toBeNull();
   });
+
+  it("ホイール操作以外の読み込み中は残っていた進捗でインジケーターを出さない", () => {
+    // 変更理由: 自動更新などの外部要因で読み込みが始まっただけで、直前のホイールの
+    // 残り方向・進捗と組み合わさって一瞬表示されるのを防ぐ。
+    const refresh = vi.fn();
+    const { rerender } = render(<WheelProbe id="list" edge="bottom" onRefresh={refresh} />);
+    const list = screen.getByTestId("list");
+    setScrollableMetrics(list);
+
+    fireEvent.wheel(list, { deltaY: 1 });
+    expect(screen.getByRole("progressbar", { name: "下方向の更新進捗" })).toBeVisible();
+
+    rerender(<WheelProbe id="list" edge="bottom" isLoading onRefresh={refresh} />);
+    expect(screen.queryByRole("progressbar")).toBeNull();
+    expect(screen.queryByLabelText("ホイール更新中")).toBeNull();
+    expect(refresh).not.toHaveBeenCalled();
+
+    rerender(<WheelProbe id="list" edge="bottom" onRefresh={refresh} />);
+    expect(screen.getByRole("progressbar", { name: "下方向の更新進捗" })).toBeVisible();
+  });
+
+  it("ホイール更新による読み込み中はcooldown終了後もスピナーを維持する", async () => {
+    const refresh = vi.fn();
+    const { rerender } = render(<WheelProbe id="list" edge="bottom" onRefresh={refresh} />);
+    const list = screen.getByTestId("list");
+    setScrollableMetrics(list);
+
+    scrollToRefresh(list, 1);
+    expect(refresh).toHaveBeenCalledTimes(1);
+
+    // ホイール更新の読み込みがcooldownより長引いても、更新方向が残る間は表示する。
+    rerender(<WheelProbe id="list" edge="bottom" isLoading onRefresh={refresh} />);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(screen.getByLabelText("ホイール更新中")).toBeInTheDocument();
+
+    rerender(<WheelProbe id="list" edge="bottom" onRefresh={refresh} />);
+    expect(screen.queryByLabelText("ホイール更新中")).toBeNull();
+  });
 });

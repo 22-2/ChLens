@@ -164,9 +164,13 @@ export function useWheelPagination({
   }, [containerRef, edge, isEnabled, isLoading, reset]);
 
   const isCoolingDown = isEnabled && sharedCooldown.isCoolingDown;
+  // 変更理由: 自動更新などのホイール操作以外が起点の読み込み中は、残っていたホイール方向や
+  // 進捗でインジケーターを出さない。読み込みと重なっただけで一瞬表示されるのを防ぐ。
+  // ホイール更新自体の読み込み中は refreshDirection が残るため、スピナー表示は維持される。
+  const isWheelDriven = sharedCooldown.isCoolingDown || refreshDirection != null;
   const direction = sharedCooldown.isCoolingDown
     ? sharedCooldown.direction
-    : (refreshDirection ?? state.direction);
+    : (refreshDirection ?? (isLoading ? null : state.direction));
 
   useEffect(() => {
     if (!isLoading && !sharedCooldown.isCoolingDown && refreshDirection !== null) {
@@ -176,7 +180,8 @@ export function useWheelPagination({
 
   // 変更理由: cooldown開始前はrefreshDirectionが未設定なので、stateの進捗をそのまま表示する。
   // cooldown中は共有方向と更新中表示だけを残し、リセット済みの古いカウントを表示しない。
-  const count = sharedCooldown.isCoolingDown ? 0 : state.count;
+  // ホイール由来でない読み込み中も、残っていたカウントの進捗バーを出さない。
+  const count = isWheelDriven || isLoading ? 0 : state.count;
 
   return {
     count,
