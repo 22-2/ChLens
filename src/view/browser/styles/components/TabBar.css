@@ -254,3 +254,218 @@
 .tab--pinned::before {
   font-size: 12px;
 }
+
+/* Vertical Tab Bar - ペイン左端の縦タブ一覧 */
+.tab-bar--vertical {
+  position: relative;
+  /* 変更理由: 水平モードの flex: 1 1 0 を引き継ぐと行レイアウトで引き伸ばされ、
+     操作幅が無視されてリサイズ不能に見える。幅は常に指定値へ固定する。 */
+  flex: none;
+  flex-direction: column;
+  align-items: stretch;
+  width: 208px;
+  min-width: 160px;
+  max-width: 280px;
+  height: 100%;
+  padding: var(--sys-space-2);
+  border-bottom: none;
+  border-right: 1px solid var(--sys-color-border);
+}
+
+.tab-bar--vertical.tab-bar--resizing {
+  user-select: none;
+}
+
+.tab-bar--vertical .tab-list-container {
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tab-bar--vertical .tab-list-container::before {
+  top: 0;
+  bottom: auto;
+  left: 0;
+  right: 0;
+  width: auto;
+  height: var(--sys-space-4);
+  background: linear-gradient(180deg, var(--sys-color-tab-strip), transparent);
+}
+
+.tab-bar--vertical .tab-list-container::after {
+  top: auto;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: auto;
+  height: var(--sys-space-4);
+  background: linear-gradient(0deg, var(--sys-color-tab-strip), transparent);
+}
+
+.tab-bar--vertical .tab-list-container--can-scroll-top::before,
+.tab-bar--vertical .tab-list-container--can-scroll-bottom::after {
+  opacity: 1;
+}
+
+.tab-bar--vertical .tab-list {
+  flex-direction: column;
+  align-items: stretch;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 0;
+}
+
+.tab-bar--vertical .tab {
+  flex: 0 0 var(--sys-space-12);
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  height: var(--sys-space-12);
+  padding: 0 var(--sys-space-2) 0 var(--sys-space-4);
+  border-right: none;
+  border-bottom: 1px solid var(--sys-color-border);
+  border-left: 2px solid transparent;
+}
+
+.tab-bar--vertical .tab--active {
+  max-width: 100%;
+  border-bottom-color: var(--sys-color-border);
+  border-left-color: var(--sys-color-accent);
+}
+
+.tab-bar--vertical .tab--dragging {
+  /* 変更理由: ドラッグ中に要素がフローから外れても、バー幅以上に横へ広がらないようにする。
+     実幅は --tab-bar-width で共有し、簡易表示では固定幅で抑える。 */
+  max-width: var(--tab-bar-width, 100%);
+  overflow: hidden;
+}
+
+.tab-bar--collapsed .tab--dragging {
+  max-width: 48px;
+}
+
+.tab-bar--vertical .tab__title {
+  line-height: var(--sys-space-12);
+}
+
+.tab-bar--vertical .tab--pinned {
+  flex-basis: var(--sys-space-12);
+  min-width: 0;
+  max-width: none;
+  width: 100%;
+}
+
+.tab-bar__vertical-header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  padding-bottom: var(--sys-space-2);
+}
+
+.tab-bar__collapse {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 変更理由: 開閉ボタンの高さはタイトルバーのボタンに揃え、横幅はバーいっぱいに広げる。 */
+  width: 100%;
+  height: var(--sys-space-9);
+  border: none;
+  border-radius: var(--sys-radius-sm);
+  background: transparent;
+  color: var(--sys-color-text-muted);
+  cursor: pointer;
+}
+
+.tab-bar__collapse:hover {
+  background: var(--sys-color-tab-strip-hover);
+  color: var(--sys-color-text);
+}
+
+/* 変更理由: 垂直モードの追加ボタンは最終タブの直後に置き、一覧と一緒にスクロールさせる。 */
+.tab-bar--vertical .tab-list .tab-bar__add {
+  flex: 0 0 var(--sys-space-12);
+  width: 100%;
+  height: var(--sys-space-12);
+  margin: 0;
+}
+
+.tab__icon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  color: var(--sys-color-text-muted);
+}
+
+.tab--active .tab__icon {
+  color: var(--sys-color-text);
+}
+
+/* 変更理由: 簡易表示ではタイトルと閉じるボタンを隠し、アイコンだけの細幅にする。
+   閉じる操作はホバー時のみ重ねて出し、中クリックと右クリックは従来どおり使える。 */
+.tab-bar--vertical.tab-bar--collapsed {
+  width: 48px;
+  min-width: 48px;
+  max-width: 48px;
+  padding-right: var(--sys-space-1);
+  padding-left: var(--sys-space-1);
+}
+
+.tab-bar--collapsed .tab {
+  justify-content: center;
+  padding: 0;
+}
+
+.tab-bar--collapsed .tab__auto-refresh-indicator {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  margin: 0;
+}
+
+.tab-bar--collapsed .tab__close {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  display: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  background: var(--sys-color-surface);
+}
+
+.tab-bar--collapsed .tab:hover .tab__close,
+.tab-bar--collapsed .tab:focus-within .tab__close {
+  display: flex;
+}
+
+/* 変更理由: タブのドラッグ並べ替えと幅変更の当たり判定が干渉しないよう、
+   幅変更は右端の専用ハンドルだけで受ける。 */
+.tab-bar__resize-handle {
+  position: absolute;
+  z-index: var(--sys-z-local-raised);
+  top: 0;
+  right: -4px;
+  bottom: 0;
+  width: 7px;
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.tab-bar__resize-handle::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 1px;
+  content: "";
+  /* 変更理由: 掴みどころが分かるよう、通常時も細い線を見せておく。 */
+  background: var(--sys-color-divider-subtle);
+}
+
+/* 変更理由: 縮小時はホバーでハイライトせず、ドラッグ中の操作感だけ残す。 */
+.tab-bar--vertical:not(.tab-bar--collapsed) .tab-bar__resize-handle:hover::after,
+.tab-bar--resizing .tab-bar__resize-handle::after {
+  background: var(--sys-color-accent);
+}

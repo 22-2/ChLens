@@ -53,3 +53,32 @@
 .pane-column > .content-area {
   min-height: 0;
 }
+
+/* 変更理由: 垂直タブ時はペイン内を左右分割し、左にタブ縦カラム、右に従来の縦積みを置く。
+   タブ状態のペイン単位性は変えず、見た目の配置だけを切り替える。 */
+.pane-column__vertical-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: row;
+  min-width: 0;
+  min-height: 0;
+}
+
+.pane-column__vertical-main {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.pane-column__vertical-main > .content-area {
+  min-height: 0;
+}
+
+/* 変更理由: 垂直モードでは NavigationBar を TitleBar へポータルするため、
+   ペイン上部の chrome 行は空になる。:empty で空のときだけ畳み、スロットが無い環境の
+   インライン表示（フォールバック）は従来どおり残す。 */
+.pane-column[data-tab-orientation="vertical"] .pane-column__chrome:empty {
+  display: none;
+}
