@@ -88,8 +88,8 @@ export default class Config {
     ["focus_new_tab_on_open", "on"],
     // 変更理由: 垂直タブバー導入時の既定は水平とし、既存利用者の見た目を変えない。
     ["tab_bar_orientation", "horizontal"],
-    // 変更理由: 簡易表示の既定はOFF（展開表示）とし、既存のタイトル一覧を維持する。
-    ["tab_bar_collapsed", "off"],
+    // 変更理由: 垂直バーの既定は縮小モード（簡易表示）とし、本文の幅を優先する。
+    ["tab_bar_collapsed", "on"],
     // 変更理由: 展開幅の既定はタイトルが省略されにくい208pxとする。
     ["tab_bar_width", "208"],
     ["write_submit_ctrl_enter", "off"],

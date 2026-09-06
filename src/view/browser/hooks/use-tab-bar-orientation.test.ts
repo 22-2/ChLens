@@ -110,11 +110,18 @@ describe("useVerticalTabBarLayout", () => {
     } as unknown as typeof container.message;
   });
 
-  it("未設定時は展開表示と既定幅になる", () => {
+  it("未設定時は縮小表示と既定幅になる", () => {
+    const { result } = renderHook(() => useVerticalTabBarLayout());
+
+    expect(result.current.collapsed).toBe(true);
+    expect(result.current.width).toBe(TAB_BAR_WIDTH_DEFAULT);
+  });
+
+  it("明示的なoffでは展開表示になる", () => {
+    storedValues["config_tab_bar_collapsed"] = "off";
     const { result } = renderHook(() => useVerticalTabBarLayout());
 
     expect(result.current.collapsed).toBe(false);
-    expect(result.current.width).toBe(TAB_BAR_WIDTH_DEFAULT);
   });
 
   it("保存済みの簡易表示と幅を読み込む", () => {

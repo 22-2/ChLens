@@ -94,6 +94,14 @@ function parseTabBarWidth(raw: string | null | undefined): number {
   return clampTabBarWidth(Number.parseFloat(raw));
 }
 
+function parseTabBarCollapsed(raw: string | null | undefined): boolean {
+  // 変更理由: 垂直バーの既定は縮小モードとし、未設定の環境でも細幅で表示して本文の幅を優先する。
+  if (raw == null) {
+    return true;
+  }
+  return raw === "on";
+}
+
 /** 垂直タブバーの簡易表示と展開幅を監視・更新するフック */
 export function useVerticalTabBarLayout(): {
   collapsed: boolean;
@@ -101,8 +109,8 @@ export function useVerticalTabBarLayout(): {
   setCollapsed: (collapsed: boolean) => void;
   setWidth: (width: number) => void;
 } {
-  const [collapsed, setCollapsedState] = useState(
-    () => readConfigString(TAB_BAR_COLLAPSED_CONFIG_KEY) === "on",
+  const [collapsed, setCollapsedState] = useState(() =>
+    parseTabBarCollapsed(readConfigString(TAB_BAR_COLLAPSED_CONFIG_KEY)),
   );
   const [width, setWidthState] = useState(() =>
     parseTabBarWidth(readConfigString(TAB_BAR_WIDTH_CONFIG_KEY)),
@@ -110,7 +118,7 @@ export function useVerticalTabBarLayout(): {
 
   useEffect(() => {
     const sync = () => {
-      setCollapsedState(readConfigString(TAB_BAR_COLLAPSED_CONFIG_KEY) === "on");
+      setCollapsedState(parseTabBarCollapsed(readConfigString(TAB_BAR_COLLAPSED_CONFIG_KEY)));
       setWidthState(parseTabBarWidth(readConfigString(TAB_BAR_WIDTH_CONFIG_KEY)));
     };
     const unsubscribeCollapsed = subscribeConfigKey(TAB_BAR_COLLAPSED_CONFIG_KEY, sync);
