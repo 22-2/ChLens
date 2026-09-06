@@ -88,7 +88,10 @@ hide anchor-count >= 10:`;
   spam`);
     expect(result.recognized).toBe(true);
     expect(result.rules).toEqual([]);
-    expect(result.diagnostics[0]).toMatchObject({ line: 1, message: "未対応の動作です: remove" });
+    expect(result.diagnostics[0]).toMatchObject({
+      line: 1,
+      message: "未対応の動作です: remove（利用可能な動作: hide、highlight、demote、warn）",
+    });
   });
 
   it("uses demote as the only action for moving board threads to the lower section", () => {
@@ -96,7 +99,7 @@ hide anchor-count >= 10:`;
       action: "demote",
     });
     expect(parseRuleDsl("mute title contains:\n  quiet").diagnostics[0]).toMatchObject({
-      message: "未対応の動作です: mute",
+      message: "未対応の動作です: mute（利用可能な動作: hide、highlight、demote、warn）",
     });
   });
 
@@ -137,5 +140,20 @@ hide id contains:
 highlight title contains color=blue label=注目 sites=[bbs.eddibb.cc]:
   microsoft`;
     expect(parseRuleDsl(source).diagnostics).toEqual([]);
+  });
+
+  it("表示方式名を動作の別名として受け付ける", () => {
+    // NGレスの表示方式（hard-ng/soft-ng/highlight-ng）は設定画面で目にする名称のため、
+    // ルールの動作欄へ誤って書かれてもNG判定が止まらないよう別名として正規化する。
+    const result = parseRuleDsl(`hard-ng body contains:
+  荒らし
+
+soft-ng body contains:
+  spam
+
+highlight-ng title contains:
+  注目`);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.rules.map((rule) => rule.action)).toEqual(["hide", "hide", "highlight"]);
   });
 });

@@ -336,7 +336,7 @@ const ALL_SETTINGS_SECTIONS = [
         key: "ngwords",
         title: "NGワード一覧",
         description:
-          "「動作 対象 contains:」または「動作 対象 regex:」の次の行から、条件をインデントして記述します。数値条件は「動作 対象 >= 数値:」の形式です。同じブロックの条件はORです。説明文は // で始められます。詳しくは下の例を参照してください。",
+          "「動作 対象 contains:」または「動作 対象 regex:」の次の行から、条件をインデントして記述します。数値条件は「動作 対象 >= 数値:」の形式です。同じブロックの条件はORです。動作には hide・highlight・demote・warn が使えます（hard-ng・soft-ng は hide、highlight-ng は highlight として扱います）。説明文は // で始められます。詳しくは下の例を参照してください。",
         widget: "ng_editor",
       },
       {

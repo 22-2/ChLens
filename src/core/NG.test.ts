@@ -108,4 +108,15 @@ hide body regex:
       ),
     ).toMatchObject({ type: "AnchorCount" });
   });
+
+  it("表示方式名で書かれたルールを検証エラーにせずhideとして適用する", async () => {
+    // 設定画面で目にする表示方式名を表示方式の設定と混同して動作欄へ書いても、
+    // NG判定全体を止めないことを保証する。
+    const { apply, get, invalidateCache, validate } = await import("src/core/NG");
+    invalidateCache();
+    const source = "hard-ng body contains:\n  荒らし";
+    expect(() => validate(source)).not.toThrow();
+    apply(source);
+    expect(get()).toEqual([expect.objectContaining({ action: "hide", target: "body" })]);
+  });
 });
