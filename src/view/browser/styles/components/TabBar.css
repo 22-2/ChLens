@@ -362,8 +362,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  /* 変更理由: 開閉ボタンはタイトルバーのボタンと同じ大きさに揃える。 */
-  width: var(--sys-space-9);
+  /* 変更理由: 開閉ボタンの高さはタイトルバーのボタンに揃え、横幅はバーいっぱいに広げる。 */
+  width: 100%;
   height: var(--sys-space-9);
   border: none;
   border-radius: var(--sys-radius-sm);
