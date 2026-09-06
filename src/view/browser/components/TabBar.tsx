@@ -1,11 +1,16 @@
 import { DragDropProvider } from "@dnd-kit/react";
 import { isSortableOperation, useSortable } from "@dnd-kit/react/sortable";
-import { Pin, Plus, RotateCcw, RotateCw, X } from "lucide-react";
+import { PanelLeft, PanelTop, Pin, Plus, RotateCcw, RotateCw, X } from "lucide-react";
 import normalizeWheel from "normalize-wheel";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { container } from "src/service-container/index";
 import { useCursorTooltip } from "src/view/browser/components/CursorTooltip";
 import { TabContextMenu } from "src/view/browser/components/TabContextMenu";
 import { useAutoScrollState } from "src/view/browser/hooks/use-auto-scroll-state";
+import {
+  TAB_BAR_ORIENTATION_CONFIG_KEY,
+  type TabBarOrientation,
+} from "src/view/browser/hooks/use-tab-bar-orientation";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import type { Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
@@ -26,6 +31,8 @@ interface BarContextMenuState {
 interface TabListScrollState {
   canScrollLeft: boolean;
   canScrollRight: boolean;
+  canScrollTop: boolean;
+  canScrollBottom: boolean;
 }
 
 const TAB_SWITCH_WHEEL_DISTANCE_THRESHOLD = 1.5;
@@ -44,10 +51,12 @@ interface SortableTabProps {
   isHighlighted: boolean;
   autoRefreshIndicatorState: "active" | "inactive" | null;
   tabCount: number;
+  isVertical: boolean;
   wasDraggingRef: React.MutableRefObject<boolean>;
   onSelect: (tabId: string) => void;
   onClose: (tabId: string) => void;
   onContextMenu: (e: React.MouseEvent, tab: Tab) => void;
+  onArrowNavigate: (index: number, delta: number) => void;
 }
 
 // タブ1枚分の Sortable ラッパー。
@@ -59,10 +68,12 @@ const SortableTab: React.FC<SortableTabProps> = ({
   isHighlighted,
   autoRefreshIndicatorState,
   tabCount,
+  isVertical,
   wasDraggingRef,
   onSelect,
   onClose,
   onContextMenu,
+  onArrowNavigate,
 }) => {
   const { ref, isDragSource } = useSortable({
     id: tab.id,
@@ -98,6 +109,22 @@ const SortableTab: React.FC<SortableTabProps> = ({
     onSelect(tab.id);
   }, [hide, tab.id, wasDraggingRef, onSelect]);
 
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      // 変更理由: 垂直モードでは上下、水平モードでは左右でタブ間を移動できるようにし、
+      // マウスに頼らないタブ切り替え手段を方向ごとに保つ。
+      const nextKey = isVertical ? "ArrowDown" : "ArrowRight";
+      const prevKey = isVertical ? "ArrowUp" : "ArrowLeft";
+      const delta = e.key === nextKey ? 1 : e.key === prevKey ? -1 : 0;
+      if (delta === 0) {
+        return;
+      }
+      e.preventDefault();
+      onArrowNavigate(index, delta);
+    },
+    [index, isVertical, onArrowNavigate],
+  );
+
   return (
     <>
       <div
@@ -106,7 +133,11 @@ const SortableTab: React.FC<SortableTabProps> = ({
           tab.pinned ? " tab--pinned" : ""
         }${isHighlighted ? " tab--highlighted" : ""}${isDragSource ? " tab--dragging" : ""}`}
         data-tab-id={tab.id}
+        role="tab"
+        aria-selected={isActive}
+        tabIndex={isActive ? 0 : -1}
         onClick={handleClick}
+        onKeyDown={handleKeyDown}
         onMouseDown={handleMouseDown}
         onMouseEnter={(event) => show(page.title, event)}
         onMouseMove={(event) => move(page.title, event)}
@@ -150,7 +181,10 @@ const SortableTab: React.FC<SortableTabProps> = ({
   );
 };
 
-export const TabBar: React.FC = () => {
+export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
+  orientation = "horizontal",
+}) => {
+  const isVertical = orientation === "vertical";
   const { state, stateRef, dispatch, paneId } = useTabStore();
   const { canAutoScroll, isAutoScrolling, isPaused } = useAutoScrollState();
   const barRef = useRef<HTMLDivElement | null>(null);
@@ -165,6 +199,8 @@ export const TabBar: React.FC = () => {
   const [tabListScrollState, setTabListScrollState] = useState<TabListScrollState>({
     canScrollLeft: false,
     canScrollRight: false,
+    canScrollTop: false,
+    canScrollBottom: false,
   });
 
   const updateTabListScrollState = useCallback(() => {
@@ -172,14 +208,19 @@ export const TabBar: React.FC = () => {
     if (!tabList) return;
 
     const maxScrollLeft = Math.max(0, tabList.scrollWidth - tabList.clientWidth);
+    const maxScrollTop = Math.max(0, tabList.scrollHeight - tabList.clientHeight);
     const nextState = {
       canScrollLeft: tabList.scrollLeft > 1,
       canScrollRight: tabList.scrollLeft < maxScrollLeft - 1,
+      canScrollTop: tabList.scrollTop > 1,
+      canScrollBottom: tabList.scrollTop < maxScrollTop - 1,
     };
 
     setTabListScrollState((previous) =>
       previous.canScrollLeft === nextState.canScrollLeft &&
-      previous.canScrollRight === nextState.canScrollRight
+      previous.canScrollRight === nextState.canScrollRight &&
+      previous.canScrollTop === nextState.canScrollTop &&
+      previous.canScrollBottom === nextState.canScrollBottom
         ? previous
         : nextState,
     );
@@ -201,7 +242,13 @@ export const TabBar: React.FC = () => {
 
     const tabListRect = tabList.getBoundingClientRect();
     const tabRect = tabElement.getBoundingClientRect();
-    const isOutsideViewport = tabRect.left < tabListRect.left || tabRect.right > tabListRect.right;
+    // 変更理由: 垂直モードでは上下の見切れも判定する。水平モードでは縦方向に
+    // はみ出さないため、両軸の判定を共通化しても既存の挙動は変わらない。
+    const isOutsideViewport =
+      tabRect.left < tabListRect.left ||
+      tabRect.right > tabListRect.right ||
+      tabRect.top < tabListRect.top ||
+      tabRect.bottom > tabListRect.bottom;
     if (isOutsideViewport) {
       // 変更理由: 常に scrollIntoView するとタブ切り替えのたびに既存の横位置へ干渉するため、
       // アクティブタブが見切れている場合だけ、最小限のスクロールを発生させる。
@@ -296,6 +343,12 @@ export const TabBar: React.FC = () => {
   // ホイールでアクティブタブを前後に切り替える
   const handleWheel = useCallback(
     (e: WheelEvent) => {
+      // 変更理由: 垂直モードのホイールは一覧の縦スクロールに使い、タブ切り替えには使わない。
+      // 縦一覧の上で回してスクロールが起きないと予測とずれるため、ここでは何もせず
+      // ブラウザの既定スクロールへ任せる。
+      if (isVertical) {
+        return;
+      }
       const normalizedWheel = normalizeWheel(e);
       const wheelDistance = normalizedWheel.pixelX + normalizedWheel.pixelY;
       if (Math.abs(wheelDistance) < TAB_SWITCH_WHEEL_DISTANCE_THRESHOLD) {
@@ -333,7 +386,7 @@ export const TabBar: React.FC = () => {
       lastWheelSwitchAtRef.current = now;
       dispatch({ type: "SELECT_TAB", tabId: tabs[nextIdx].id });
     },
-    [dispatch, paneId, stateRef],
+    [dispatch, isVertical, paneId, stateRef],
   );
 
   useEffect(() => {
@@ -417,6 +470,20 @@ export const TabBar: React.FC = () => {
     [dispatch],
   );
 
+  const handleArrowNavigate = useCallback(
+    (index: number, delta: number) => {
+      const tabs = state.tabs;
+      if (tabs.length === 0) return;
+      const nextIndex = (index + delta + tabs.length) % tabs.length;
+      const nextTab = tabs[nextIndex];
+      if (!nextTab) return;
+      dispatch({ type: "SELECT_TAB", tabId: nextTab.id });
+      // フォーカスも追従させ、連続した矢印キー操作を可能にする。
+      tabListRef.current?.querySelectorAll<HTMLElement>("[data-tab-id]")[nextIndex]?.focus();
+    },
+    [dispatch, state.tabs],
+  );
+
   const barMenuItems = useMemo(
     () => [
       {
@@ -432,8 +499,25 @@ export const TabBar: React.FC = () => {
         icon: <RotateCcw size={16} />,
         onSelect: () => dispatch({ type: "REOPEN_CLOSED_TAB" }),
       },
+      {
+        id: "toggle-orientation",
+        label: isVertical ? "タブバーを水平にする" : "タブバーを垂直にする",
+        icon: isVertical ? <PanelTop size={16} /> : <PanelLeft size={16} />,
+        onSelect: () => {
+          // 変更理由: 設定画面を開かずに方向を試せるよう、タブバーの右クリックメニューから
+          // 切り替える。config_updated 経由で useTabBarOrientation が即時反映する。
+          void Promise.resolve(
+            container.config.set(
+              TAB_BAR_ORIENTATION_CONFIG_KEY,
+              isVertical ? "horizontal" : "vertical",
+            ),
+          ).catch((error) => {
+            console.error("[TabBar] タブバー方向の保存に失敗しました", error);
+          });
+        },
+      },
     ],
-    [dispatch, state.closedTabs.length],
+    [dispatch, isVertical, state.closedTabs.length],
   );
 
   const addTabButton = (
@@ -450,25 +534,42 @@ export const TabBar: React.FC = () => {
   );
 
   return (
-    <div ref={barRef} className="tab-bar" onContextMenu={handleBarContextMenu}>
-      <button
-        type="button"
-        className="tab-bar__refresh"
-        disabled={!canRefresh}
-        onClick={() => dispatch({ type: "RELOAD" })}
-        title="更新"
-        aria-label="更新"
-      >
-        <RotateCw size={16} />
-      </button>
-      <span className="tab-bar__refresh-divider" aria-hidden="true" />
+    <div
+      ref={barRef}
+      className={`tab-bar${isVertical ? " tab-bar--vertical" : ""}`}
+      onContextMenu={handleBarContextMenu}
+    >
+      {/* 変更理由: 更新操作はナビゲーションメニューのヘッダーにもあるため、
+          垂直モードではタブバー側へ複製せず、メニュー側へ一本化する。 */}
+      {!isVertical && (
+        <>
+          <button
+            type="button"
+            className="tab-bar__refresh"
+            disabled={!canRefresh}
+            onClick={() => dispatch({ type: "RELOAD" })}
+            title="更新"
+            aria-label="更新"
+          >
+            <RotateCw size={16} />
+          </button>
+          <span className="tab-bar__refresh-divider" aria-hidden="true" />
+        </>
+      )}
       <DragDropProvider onDragEnd={handleDragEnd}>
         <div
           className={`tab-list-container${
             tabListScrollState.canScrollLeft ? " tab-list-container--can-scroll-left" : ""
-          }${tabListScrollState.canScrollRight ? " tab-list-container--can-scroll-right" : ""}`}
+          }${tabListScrollState.canScrollRight ? " tab-list-container--can-scroll-right" : ""}${
+            tabListScrollState.canScrollTop ? " tab-list-container--can-scroll-top" : ""
+          }${tabListScrollState.canScrollBottom ? " tab-list-container--can-scroll-bottom" : ""}`}
         >
-          <div ref={tabListRef} className="tab-list">
+          <div
+            ref={tabListRef}
+            className="tab-list"
+            role="tablist"
+            aria-orientation={isVertical ? "vertical" : "horizontal"}
+          >
             {state.tabs.map((tab, index) => {
               const page = getCurrentPage(tab);
               const isActive = tab.id === state.activeTabId;
@@ -497,19 +598,23 @@ export const TabBar: React.FC = () => {
                   isHighlighted={highlightedTabIds.has(tab.id)}
                   autoRefreshIndicatorState={autoRefreshIndicatorState}
                   tabCount={state.tabs.length}
+                  isVertical={isVertical}
                   wasDraggingRef={wasDraggingRef}
                   onSelect={handleTabSelect}
                   onClose={handleTabClose}
                   onContextMenu={handleContextMenu}
+                  onArrowNavigate={handleArrowNavigate}
                 />
               );
             })}
-            {!isTabListScrollable ? addTabButton : null}
+            {/* 変更理由: 垂直モードでは追加ボタンを下部へ常に固定し、タブが多いときも
+                到達しやすくする。水平モードの出し分けは従来どおり保つ。 */}
+            {!isVertical && !isTabListScrollable ? addTabButton : null}
           </div>
         </div>
       </DragDropProvider>
       {/* タブが横幅を超えるときだけ、追加ボタンをスクロール領域の外へ固定する。 */}
-      {isTabListScrollable ? addTabButton : null}
+      {isVertical || isTabListScrollable ? addTabButton : null}
 
       {/* 変更理由: お気に入り操作はURLバー展開後とナビゲーションメニューに残すため、
           タブバー右端には表示せず、バー開閉ボタン付近の重複を避ける。 */}

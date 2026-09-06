@@ -86,6 +86,8 @@ export default class Config {
     ["default_name", ""],
     ["default_mail", ""],
     ["focus_new_tab_on_open", "on"],
+    // 変更理由: 垂直タブバー導入時の既定は水平とし、既存利用者の見た目を変えない。
+    ["tab_bar_orientation", "horizontal"],
     ["write_submit_ctrl_enter", "off"],
     // コメントOverlayの設定はTauri版の実況開始時に読み込み、Browser版の既存挙動には影響させない。
     // speedキーは既存設定との互換性のため残し、新規値はコメントの通過時間（秒）として保存する。

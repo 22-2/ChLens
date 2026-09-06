@@ -18,6 +18,7 @@ import { AutoScrollStateProvider } from "src/view/browser/hooks/use-auto-scroll-
 import { BottomPanelProvider, useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useNextThreadSearch } from "src/view/browser/hooks/use-next-thread-search";
 import { NgStatusProvider } from "src/view/browser/hooks/use-ng-status";
+import { useTabBarOrientation } from "src/view/browser/hooks/use-tab-bar-orientation";
 import { useNotificationListener } from "src/view/browser/hooks/use-notification-listener";
 import {
   PaneProvider,
@@ -75,6 +76,7 @@ const PaneColumn: React.FC<{ paneId: string; isActive: boolean }> = ({ paneId, i
 const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
   const dispatch = useTabDispatch();
   const { currentPage, activeTab } = useTabStore();
+  const tabBarOrientation = useTabBarOrientation();
   const {
     state: nextThreadSearchState,
     searchNextThread,
@@ -87,10 +89,39 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
     dispatch,
   });
 
+  // 変更理由: 水平・垂直どちらの配置でもペイン内容は同一にするため、TabBar 以外の
+  // 本体部分を共通化して二重管理を防ぐ。
+  const navigationBar = <NavigationBar openNextThreadSearchDialog={searchNextThread} />;
+  const paneBody = (
+    <>
+      <ContentArea />
+      <BottomPanel />
+      {/* コマンドとナビゲーションを同じオムニバーへ集約し、
+          操作元のペイン状態を使うためアクティブペインだけが起動を担当する。 */}
+      {isActive ? (
+        <>
+          <NextThreadSearchDialog
+            state={nextThreadSearchState}
+            onClose={closeNextThreadSearch}
+            onSelect={selectCandidate}
+          />
+        </>
+      ) : null}
+      {/* 以下はこのペインの StatusBarProvider に項目を登録する。 */}
+      <NgStatusItem />
+      <IkioiStatusItem />
+      <AutoRefreshStatusItem />
+      <CommentOverlayStatusItem isActive={isActive} />
+      <WritePanelToggleItem />
+      <StatusBar />
+    </>
+  );
+
   return (
     <section
       className="pane-column"
       data-active={isActive ? "true" : "false"}
+      data-tab-orientation={tabBarOrientation}
       // ペイン内のどこかを操作したらそのペインをフォーカスする。
       // capture フェーズで拾い、子要素の操作前にアクティブペインを確定させる。
       onPointerDownCapture={() => {
@@ -111,30 +142,25 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
         <NgStatusProvider>
           <BottomPanelProvider>
             <AutoScrollStateProvider>
-              <div className="pane-column__chrome">
-                <TabBar />
-                <NavigationBar openNextThreadSearchDialog={searchNextThread} />
-              </div>
-              <ContentArea />
-              <BottomPanel />
-              {/* コマンドとナビゲーションを同じオムニバーへ集約し、
-                  操作元のペイン状態を使うためアクティブペインだけが起動を担当する。 */}
-              {isActive ? (
+              {tabBarOrientation === "vertical" ? (
+                // 変更理由: 垂直モードではタブバーをペイン左端の縦カラムに置き、
+                // 右側に従来のナビゲーション以下を積む。タブ状態はペイン単位のまま変えない。
+                <div className="pane-column__vertical-body">
+                  <TabBar orientation="vertical" />
+                  <div className="pane-column__vertical-main">
+                    <div className="pane-column__chrome">{navigationBar}</div>
+                    {paneBody}
+                  </div>
+                </div>
+              ) : (
                 <>
-                  <NextThreadSearchDialog
-                    state={nextThreadSearchState}
-                    onClose={closeNextThreadSearch}
-                    onSelect={selectCandidate}
-                  />
+                  <div className="pane-column__chrome">
+                    <TabBar orientation="horizontal" />
+                    {navigationBar}
+                  </div>
+                  {paneBody}
                 </>
-              ) : null}
-              {/* 以下はこのペインの StatusBarProvider に項目を登録する。 */}
-              <NgStatusItem />
-              <IkioiStatusItem />
-              <AutoRefreshStatusItem />
-              <CommentOverlayStatusItem isActive={isActive} />
-              <WritePanelToggleItem />
-              <StatusBar />
+              )}
             </AutoScrollStateProvider>
           </BottomPanelProvider>
         </NgStatusProvider>

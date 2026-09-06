@@ -254,3 +254,89 @@
 .tab--pinned::before {
   font-size: 12px;
 }
+
+/* Vertical Tab Bar - ペイン左端の縦タブ一覧 */
+.tab-bar--vertical {
+  flex-direction: column;
+  align-items: stretch;
+  width: 208px;
+  min-width: 160px;
+  max-width: 280px;
+  height: 100%;
+  padding: var(--sys-space-2);
+  border-bottom: none;
+  border-right: 1px solid var(--sys-color-border);
+}
+
+.tab-bar--vertical .tab-list-container {
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tab-bar--vertical .tab-list-container::before {
+  top: 0;
+  bottom: auto;
+  left: 0;
+  right: 0;
+  width: auto;
+  height: var(--sys-space-4);
+  background: linear-gradient(180deg, var(--sys-color-tab-strip), transparent);
+}
+
+.tab-bar--vertical .tab-list-container::after {
+  top: auto;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: auto;
+  height: var(--sys-space-4);
+  background: linear-gradient(0deg, var(--sys-color-tab-strip), transparent);
+}
+
+.tab-bar--vertical .tab-list-container--can-scroll-top::before,
+.tab-bar--vertical .tab-list-container--can-scroll-bottom::after {
+  opacity: 1;
+}
+
+.tab-bar--vertical .tab-list {
+  flex-direction: column;
+  align-items: stretch;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 0;
+}
+
+.tab-bar--vertical .tab {
+  flex: 0 0 var(--sys-space-12);
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  height: var(--sys-space-12);
+  padding: 0 var(--sys-space-2) 0 var(--sys-space-4);
+  border-right: none;
+  border-bottom: 1px solid var(--sys-color-border);
+  border-left: 2px solid transparent;
+}
+
+.tab-bar--vertical .tab--active {
+  max-width: none;
+  border-bottom-color: var(--sys-color-border);
+  border-left-color: var(--sys-color-accent);
+}
+
+.tab-bar--vertical .tab__title {
+  line-height: var(--sys-space-12);
+}
+
+.tab-bar--vertical .tab--pinned {
+  flex-basis: var(--sys-space-12);
+  min-width: 0;
+  max-width: none;
+  width: 100%;
+}
+
+.tab-bar--vertical > .tab-bar__add {
+  width: 100%;
+  height: var(--sys-space-12);
+  margin: var(--sys-space-2) 0 0;
+}

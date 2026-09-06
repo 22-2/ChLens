@@ -2,6 +2,37 @@
 .nav-bar {
   display: contents;
 }
+
+/* 変更理由: 垂直モードではペイン上部のボタン行をなくし、TitleBar 左上へポータルする。
+   URL行は行追加ではなく TitleBar 直下のオーバーレイとして出し、本文の高さを奪わない。 */
+.nav-bar--titlebar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.nav-bar--titlebar .nav-bar__url-toggle,
+.nav-bar--titlebar .nav-bar__btn {
+  width: var(--sys-space-10);
+  height: var(--sys-space-10);
+}
+
+.nav-bar--titlebar .nav-bar__url-row {
+  position: absolute;
+  top: calc(100% + var(--sys-space-2));
+  left: var(--sys-space-2);
+  z-index: var(--sys-z-omnibar);
+  order: 0;
+  flex: none;
+  width: min(560px, calc(100vw - var(--sys-space-6)));
+  height: auto;
+  min-height: 40px;
+  padding: 0 8px;
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-xl);
+  background: var(--sys-color-surface);
+  box-shadow: var(--sys-shadow-floating);
+}
 .nav-bar__btn {
   width: 32px;
   height: 32px;

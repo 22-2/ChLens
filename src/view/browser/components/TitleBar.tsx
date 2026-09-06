@@ -16,6 +16,10 @@ export const TitleBar: React.FC = () => {
 
   return (
     <header className="title-bar" data-testid="title-bar">
+      {/* 変更理由: 垂直モードではペイン上部のボタン行をなくし、メニューとURL切り替えを
+          TitleBar 左上へ集約して上のバーを薄くする。アクティブペインの NavigationBar が
+          この領域へポータルする。水平モードでは空のまま中央配置を保つ。 */}
+      <div className="title-bar__leading" data-testid="title-bar-leading" />
       <div
         className="title-bar__title"
         data-testid="title-bar-title"

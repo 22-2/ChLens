@@ -1,6 +1,9 @@
 /* Title bar - shared by all panes so the active page has one stable heading. */
 /* 変更理由: タイトルバーは補助的な情報表示なので、タブバーより目立たない高さと文字サイズに抑える。 */
 .title-bar {
+  /* 変更理由: 垂直モードでポータルされたURL行オーバーレイの配置基準にする。
+     z-index を付けないため、既存の重なり順序は変えない。 */
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   flex: 0 0 var(--sys-space-10);
@@ -11,6 +14,17 @@
   background: var(--sys-color-surface-muted);
   color: var(--sys-color-text);
   user-select: none;
+}
+
+/* 変更理由: 垂直モードではアクティブペインの NavigationBar がここへポータルされる。
+   水平モードでは空のまま中央タイトルの配置を保つ。 */
+.title-bar__leading {
+  grid-column: 1;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: 100%;
 }
 
 .title-bar__title {

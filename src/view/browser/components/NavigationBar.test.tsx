@@ -77,6 +77,14 @@ const { bookmarkGetMock, bookmarkAddMock, bookmarkRemoveMock, toastInfoMock, toa
 let bookmarkUpdatedHandler: ((payload?: { bookmark?: { url?: string } }) => void) | null = null;
 let bookmarkedUrls = new Set<string>();
 
+const { paneHolder } = vi.hoisted(() => ({
+  paneHolder: { panes: [{ id: "pane-1" }], activePaneId: "pane-1" },
+}));
+
+const { orientationHolder } = vi.hoisted(() => ({
+  orientationHolder: { value: "horizontal" },
+}));
+
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => ({
     state: { tabs: [activeTab], closedTabs: [] },
@@ -86,7 +94,12 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
     paneId: "pane-1",
   }),
   // NavigationBar は複数ペイン時のみ「ペインを閉じる」を出すため、単一ペインを返す。
-  useTabPanes: () => ({ panes: [{ id: "pane-1" }], activePaneId: "pane-1" }),
+  useTabPanes: () => ({ panes: paneHolder.panes, activePaneId: paneHolder.activePaneId }),
+}));
+
+vi.mock("src/view/browser/hooks/use-tab-bar-orientation", () => ({
+  // 変更理由: タブバー方向は設定由来のため、テストでは方向指定で描画先を切り替える。
+  useTabBarOrientation: () => orientationHolder.value,
 }));
 
 vi.mock("src/view/browser/hooks/use-bottom-panel", () => ({
@@ -100,6 +113,9 @@ describe("NavigationBar", () => {
   beforeEach(() => {
     bookmarkedUrls = new Set<string>();
     bookmarkUpdatedHandler = null;
+    orientationHolder.value = "horizontal";
+    paneHolder.panes = [{ id: "pane-1" }];
+    paneHolder.activePaneId = "pane-1";
 
     bookmarkGetMock.mockImplementation((url: string) =>
       bookmarkedUrls.has(url)
@@ -750,5 +766,99 @@ describe("NavigationBar", () => {
         }),
       ).toHaveAttribute("aria-pressed", "true");
     });
+  });
+});
+
+describe("NavigationBar titlebar slot", () => {
+  let slot: HTMLDivElement;
+
+  beforeEach(() => {
+    orientationHolder.value = "vertical";
+    paneHolder.panes = [{ id: "pane-1" }];
+    paneHolder.activePaneId = "pane-1";
+
+    container.bookmark = {
+      get: vi.fn(),
+      add: vi.fn(),
+      remove: vi.fn(),
+      updateResCount: vi.fn(),
+      updateExpired: vi.fn(),
+      getByBoard: vi.fn(),
+    };
+    container.message = {
+      send: vi.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+    };
+    container.toast = {
+      notify: vi.fn(),
+      success: vi.fn(),
+      error: vi.fn(),
+      info: vi.fn(),
+    };
+
+    slot = document.createElement("div");
+    slot.className = "title-bar__leading";
+    document.body.appendChild(slot);
+  });
+
+  afterEach(() => {
+    slot.remove();
+    orientationHolder.value = "horizontal";
+    paneHolder.activePaneId = "pane-1";
+    cleanup();
+    commandPalette.close();
+    dispatchMock.mockReset();
+  });
+
+  it("垂直かつアクティブペインのとき操作ボタンをスロットへポータルする", () => {
+    const { container } = render(
+      <div className="pane-column__chrome">
+        <NavigationBar />
+      </div>,
+    );
+    const chrome = container.querySelector(".pane-column__chrome") as HTMLElement;
+
+    expect(chrome).toBeEmptyDOMElement();
+    expect(slot.querySelector(".nav-bar--titlebar")).not.toBeNull();
+    expect(slot.querySelector('[title="URLバーを表示"]')).not.toBeNull();
+    expect(slot.querySelector('[title="メニュー"]')).not.toBeNull();
+  });
+
+  it("垂直でも非アクティブペインのときはポータルしない", () => {
+    paneHolder.panes = [{ id: "pane-1" }, { id: "pane-2" }];
+    paneHolder.activePaneId = "pane-2";
+
+    render(
+      <div className="pane-column__chrome">
+        <NavigationBar />
+      </div>,
+    );
+
+    expect(slot.querySelector(".nav-bar")).toBeNull();
+  });
+
+  it("垂直でもスロットが無いときはインラインに描画する", () => {
+    slot.remove();
+
+    const { container } = render(
+      <div className="pane-column__chrome">
+        <NavigationBar />
+      </div>,
+    );
+
+    expect(container.querySelector(".pane-column__chrome .nav-bar")).not.toBeNull();
+  });
+
+  it("垂直でURLバーを開くとスロット内にURL行を表示する", () => {
+    render(
+      <div className="pane-column__chrome">
+        <NavigationBar />
+      </div>,
+    );
+
+    fireEvent.click(slot.querySelector('[title="URLバーを表示"]') as HTMLElement);
+
+    expect(slot.querySelector(".nav-bar__url-row")).not.toBeNull();
   });
 });
