@@ -258,6 +258,9 @@
 /* Vertical Tab Bar - ペイン左端の縦タブ一覧 */
 .tab-bar--vertical {
   position: relative;
+  /* 変更理由: 水平モードの flex: 1 1 0 を引き継ぐと行レイアウトで引き伸ばされ、
+     操作幅が無視されてリサイズ不能に見える。幅は常に指定値へ固定する。 */
+  flex: none;
   flex-direction: column;
   align-items: stretch;
   width: 208px;
