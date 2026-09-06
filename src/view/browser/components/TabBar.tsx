@@ -669,8 +669,8 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
               aria-label={collapsed ? "展開表示に戻す" : "簡易表示にする"}
               aria-expanded={!collapsed}
             >
-              {/* 変更理由: 縮小時のタブアイコンと大きさを揃える。 */}
-              {collapsed ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
+              {/* 変更理由: タイトルバーのボタンと大きさを揃える。 */}
+              {collapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
             </button>
           </div>
         </>

@@ -362,10 +362,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  /* 変更理由: 開閉ボタンは展開・縮小どちらの状態でも、縮小時のタブアイコンと同じ
-     48px幅に固定し、バー幅に追従させない。 */
-  width: 48px;
-  height: var(--sys-space-12);
+  /* 変更理由: 開閉ボタンはタイトルバーのボタンと同じ大きさに揃える。 */
+  width: var(--sys-space-9);
+  height: var(--sys-space-9);
   border: none;
   border-radius: var(--sys-radius-sm);
   background: transparent;

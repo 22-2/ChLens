@@ -1096,7 +1096,7 @@ describe("TabBar vertical", () => {
     const toggle = container.querySelector(".tab-bar__collapse") as HTMLButtonElement;
 
     expect(toggle).toHaveAttribute("aria-label", "簡易表示にする");
-    expect(toggle.querySelector("svg")).toHaveAttribute("width", "15");
+    expect(toggle.querySelector("svg")).toHaveAttribute("width", "14");
 
     fireEvent.click(toggle);
 
