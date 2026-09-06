@@ -589,4 +589,38 @@ describe("browser commands", () => {
     await executeBrowserCommand("layout.toggle-pane", context);
     expect(dispatch).toHaveBeenLastCalledWith({ type: "CLOSE_PANE" });
   });
+
+  it("タブバー方向切り替えコマンドは保存値に応じて反対方向へ切り替える", async () => {
+    const { context } = createContext({ type: "home", title: "ホーム" });
+    const configSetMock = vi.fn();
+    let originalConfig: unknown;
+    try {
+      originalConfig = container.config;
+    } catch {
+      originalConfig = undefined;
+    }
+    container.config = {
+      get: vi.fn(() => "horizontal"),
+      set: configSetMock,
+      getAll: () => ({}),
+      ready: (callback: () => void) => callback(),
+    };
+
+    try {
+      const ids = resolveBrowserCommands(context).map((command) => command.id);
+      expect(ids).toContain("layout.toggle-tab-orientation");
+
+      await expect(executeBrowserCommand("layout.toggle-tab-orientation", context)).resolves.toBe(
+        true,
+      );
+      expect(configSetMock).toHaveBeenCalledWith("tab_bar_orientation", "vertical");
+    } finally {
+      if (originalConfig === undefined) {
+        // 変更理由: もともと未登録だった場合は空に戻し、他のテストへ影響させない。
+        (container as unknown as { _config: unknown })._config = undefined;
+      } else {
+        container.config = originalConfig as typeof container.config;
+      }
+    }
+  });
 });

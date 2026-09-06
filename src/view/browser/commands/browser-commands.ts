@@ -9,6 +9,7 @@ import {
   History,
   Import,
   List,
+  PanelLeft,
   PenLine,
   RotateCcw,
   RotateCw,
@@ -548,6 +549,46 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     group: "layout",
     icon: Columns2,
     run: ({ dispatch, isTwoPane }) => dispatch({ type: isTwoPane ? "CLOSE_PANE" : "SPLIT_PANE" }),
+  },
+  {
+    id: "layout.toggle-tab-orientation",
+    label: () => {
+      // 変更理由: タブバーの右クリックメニューと同じ操作をコマンドパレットからも行えるようにする。
+      // 設定画面を開かずに方向を試せるよう、現在の保存値から次の表示名を導出する。
+      try {
+        return container.config.get("tab_bar_orientation") === "vertical"
+          ? "タブバーを水平にする"
+          : "タブバーを垂直にする";
+      } catch {
+        return "タブバーを垂直にする";
+      }
+    },
+    englishLabel: () => {
+      try {
+        return container.config.get("tab_bar_orientation") === "vertical"
+          ? "Show Tab Bar Horizontally"
+          : "Show Tab Bar Vertically";
+      } catch {
+        return "Show Tab Bar Vertically";
+      }
+    },
+    keywords: ["タブバー", "垂直", "水平", "tab", "vertical", "horizontal", "レイアウト"],
+    group: "layout",
+    icon: PanelLeft,
+    run: () => {
+      const current = (() => {
+        try {
+          return container.config.get("tab_bar_orientation");
+        } catch {
+          return "horizontal";
+        }
+      })();
+      const next = current === "vertical" ? "horizontal" : "vertical";
+      // 変更理由: タブバーの右クリックメニューと同じ保存経路にし、config_updated 経由で即時反映する。
+      void Promise.resolve(container.config.set("tab_bar_orientation", next)).catch((error) => {
+        console.error("[BrowserCommand] タブバー方向の保存に失敗しました", error);
+      });
+    },
   },
   {
     id: "copy.page-title",
