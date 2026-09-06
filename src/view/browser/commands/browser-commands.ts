@@ -10,12 +10,14 @@ import {
   Import,
   List,
   PanelLeft,
+  PanelRight,
   PenLine,
   RotateCcw,
   RotateCw,
   Search,
   Settings,
   Star,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { ChURL, HOSTNAME } from "packages/ch-lib/src/index";
@@ -48,6 +50,7 @@ import { copyText, formatMarkdownLink } from "src/view/browser/utils/clipboard";
 
 export const BROWSER_COMMAND_GROUP_LABELS = {
   navigation: "移動",
+  tab: "タブ",
   page: "現在のページ",
   layout: "表示",
   copy: "コピー",
@@ -57,6 +60,7 @@ export type BrowserCommandGroup = keyof typeof BROWSER_COMMAND_GROUP_LABELS;
 
 export const BROWSER_COMMAND_GROUP_ORDER: readonly BrowserCommandGroup[] = [
   "navigation",
+  "tab",
   "page",
   "layout",
   "copy",
@@ -437,6 +441,53 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     icon: Import,
     when: canQueryExtensionTabs,
     run: importOpenThreadTabs,
+  },
+  {
+    id: "tab.close-other-tabs",
+    label: "他のタブを閉じる",
+    englishLabel: "Close Other Tabs",
+    description: "アクティブなタブ以外のタブを現在のペインで閉じます",
+    keywords: ["他のタブ", "close others"],
+    group: "tab",
+    icon: X,
+    // 変更理由: タブの右クリックメニューと同じ操作をコマンドパレットからも行えるようにし、
+    // 対象は右クリック位置ではなくアクティブなタブにする。
+    isEnabled: ({ tabs, activeTab }) => tabs.some((tab) => tab.id !== activeTab.id && !tab.pinned),
+    run: ({ dispatch, activeTab }) => dispatch({ type: "CLOSE_OTHER_TABS", tabId: activeTab.id }),
+  },
+  {
+    id: "tab.close-right-tabs",
+    label: "右側のタブを閉じる",
+    englishLabel: "Close Tabs to the Right",
+    description: "アクティブなタブの右側にあるタブを現在のペインで閉じます",
+    keywords: ["右側", "close right"],
+    group: "tab",
+    icon: X,
+    isEnabled: ({ tabs, activeTab }) => {
+      const index = tabs.findIndex((tab) => tab.id === activeTab.id);
+      return index !== -1 && tabs.slice(index + 1).some((tab) => !tab.pinned);
+    },
+    run: ({ dispatch, activeTab }) => dispatch({ type: "CLOSE_RIGHT_TABS", tabId: activeTab.id }),
+  },
+  {
+    id: "tab.close-all-tabs",
+    label: "すべてのタブを閉じる",
+    englishLabel: "Close All Tabs",
+    description: "固定タブを残してすべてのタブを現在のペインで閉じます",
+    keywords: ["すべて", "close all"],
+    group: "tab",
+    icon: X,
+    run: ({ dispatch }) => dispatch({ type: "CLOSE_ALL_TABS" }),
+  },
+  {
+    id: "tab.open-in-right-pane",
+    label: "右のペインで開く",
+    englishLabel: "Open in Right Pane",
+    description: "アクティブなタブを右隣のペインへ移動します",
+    keywords: ["ペイン", "右", "right pane"],
+    group: "tab",
+    icon: PanelRight,
+    run: ({ dispatch, activeTab }) => dispatch({ type: "OPEN_IN_RIGHT_PANE", tabId: activeTab.id }),
   },
   {
     id: "page.reload",

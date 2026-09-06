@@ -590,6 +590,56 @@ describe("browser commands", () => {
     expect(dispatch).toHaveBeenLastCalledWith({ type: "CLOSE_PANE" });
   });
 
+  it("タブ操作コマンドはアクティブなタブを対象にactionを送る", async () => {
+    const { context, dispatch } = createContext({ type: "home", title: "ホーム" });
+
+    const ids = resolveBrowserCommands(context).map((command) => command.id);
+    expect(ids).toContain("tab.close-other-tabs");
+    expect(ids).toContain("tab.close-right-tabs");
+    expect(ids).toContain("tab.close-all-tabs");
+    expect(ids).toContain("tab.open-in-right-pane");
+
+    await expect(executeBrowserCommand("tab.close-all-tabs", context)).resolves.toBe(true);
+    expect(dispatch).toHaveBeenLastCalledWith({ type: "CLOSE_ALL_TABS" });
+
+    await expect(executeBrowserCommand("tab.open-in-right-pane", context)).resolves.toBe(true);
+    expect(dispatch).toHaveBeenLastCalledWith({ type: "OPEN_IN_RIGHT_PANE", tabId: "tab-1" });
+  });
+
+  it("他のタブ・右側のタブを閉じるは閉じられるタブがある時だけ有効になる", async () => {
+    const homePage: Page = { type: "home", title: "ホーム" };
+    const activeTab = createTab(homePage);
+    const otherTab: Tab = { ...createTab(homePage), id: "tab-2" };
+    const dispatch = vi.fn<(action: ScopedTabAction) => void>();
+    const context: BrowserCommandContext = {
+      currentPage: homePage,
+      activeTab,
+      tabs: [activeTab, otherTab],
+      closedTabs: [],
+      isTwoPane: false,
+      isWritePanelOpen: false,
+      dispatch,
+      toggleWritePanel: vi.fn(),
+      openResponseJumpDialog: vi.fn(),
+      openNextThreadSearchDialog: openNextThreadSearchDialogMock,
+    };
+
+    const findCommand = (id: string) =>
+      resolveBrowserCommands(context).find((command) => command.id === id);
+    expect(findCommand("tab.close-other-tabs")).toMatchObject({ enabled: true });
+    expect(findCommand("tab.close-right-tabs")).toMatchObject({ enabled: true });
+
+    await expect(executeBrowserCommand("tab.close-other-tabs", context)).resolves.toBe(true);
+    expect(dispatch).toHaveBeenLastCalledWith({ type: "CLOSE_OTHER_TABS", tabId: "tab-1" });
+
+    await expect(executeBrowserCommand("tab.close-right-tabs", context)).resolves.toBe(true);
+    expect(dispatch).toHaveBeenLastCalledWith({ type: "CLOSE_RIGHT_TABS", tabId: "tab-1" });
+
+    context.tabs = [activeTab];
+    expect(findCommand("tab.close-other-tabs")).toMatchObject({ enabled: false });
+    expect(findCommand("tab.close-right-tabs")).toMatchObject({ enabled: false });
+  });
+
   it("タブバー方向切り替えコマンドは保存値に応じて反対方向へ切り替える", async () => {
     const { context } = createContext({ type: "home", title: "ホーム" });
     const configSetMock = vi.fn();
