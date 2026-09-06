@@ -5,7 +5,9 @@
      z-index を付けないため、既存の重なり順序は変えない。 */
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  /* 変更理由: 長いタイトルで右端のアイコンが圧迫されないよう、中央列は内容以上に広がらず
+     0まで縮められる minmax(0, auto) にする。左右は残り幅を分け合い、タイトルは省略表示に任せる。 */
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr);
   flex: 0 0 var(--sys-space-10);
   align-items: center;
   min-height: var(--sys-space-10);
@@ -34,6 +36,7 @@
   background: transparent;
   color: var(--sys-color-text-muted);
   cursor: pointer;
+  flex-shrink: 0;
   transition:
     background var(--sys-duration-fast),
     color var(--sys-duration-fast);
@@ -63,7 +66,11 @@
 .title-bar__title {
   grid-column: 2;
   min-width: 0;
-  max-width: min(70vw, 720px);
+  /* 変更理由: 70vw基準では狭いペインで中央列が左右を押し出すため、列幅いっぱいまでに抑えて
+     省略表示へ任せる。justify-self で中央寄せを保つ。 */
+  max-width: 100%;
+  justify-self: center;
+  width: 100%;
   overflow: hidden;
   color: var(--sys-color-text);
   font-size: var(--sys-font-size-xs);
@@ -79,7 +86,8 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  min-width: 0;
+  /* 変更理由: タイトルが長くても右端の操作UIを縮めず、タイトル側だけを省略させる。 */
+  min-width: max-content;
 }
 
 /* 変更理由: 垂直モードでは自ペインのメニューとURL切り替えがここへポータルされる。
@@ -89,6 +97,7 @@
   align-items: center;
   gap: 2px;
   min-width: 0;
+  flex-shrink: 0;
 }
 
 .title-bar__nav-slot:empty {
