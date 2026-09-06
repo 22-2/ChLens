@@ -20,6 +20,10 @@ import {
 import { ChURL, HOSTNAME } from "packages/ch-lib/src/index";
 import type { Dispatch } from "react";
 import { container } from "src/service-container";
+import {
+  getResponseJumpResNumFromCommandId,
+  RESPONSE_JUMP_COMMAND_ID,
+} from "src/view/browser/commands/response-jump-command";
 import type { ScopedTabAction } from "src/view/browser/hooks/use-tab-store";
 import type { Page, Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
@@ -37,6 +41,7 @@ import {
   parseInternalBrowserPage,
   parseInternalBrowserPageStrict,
 } from "src/view/browser/utils/link-routing";
+import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
 import { encodeThreadAsToon, estimateToonTokenCount } from "src/view/browser/utils/thread-toon";
 import { copyText, formatMarkdownLink } from "src/view/browser/utils/clipboard";
 
@@ -454,7 +459,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     run: retryBoardTitle,
   },
   {
-    id: "page.jump-to-response",
+    id: RESPONSE_JUMP_COMMAND_ID,
     label: "レス番号を指定してジャンプ",
     englishLabel: "Jump to Response Number",
     description: "入力ダイアログでレス番号を指定します",
@@ -687,7 +692,9 @@ export async function executeBrowserCommand(
   commandId: string,
   context: BrowserCommandContext,
 ): Promise<boolean> {
-  const definition = BROWSER_COMMAND_DEFINITIONS.find((command) => command.id === commandId);
+  const responseJumpResNum = getResponseJumpResNumFromCommandId(commandId);
+  const definitionId = responseJumpResNum === null ? commandId : RESPONSE_JUMP_COMMAND_ID;
+  const definition = BROWSER_COMMAND_DEFINITIONS.find((command) => command.id === definitionId);
   if (!definition) return false;
 
   // 変更理由: パレットを開いたままページ状態が変わる可能性があるため、
@@ -695,11 +702,24 @@ export async function executeBrowserCommand(
   if (!(definition.when?.(context) ?? true)) return false;
   if (!(definition.isEnabled?.(context) ?? true)) return false;
 
+  if (responseJumpResNum !== null) {
+    if (context.currentPage.type !== "thread") return false;
+
+    // 変更理由: 数字入力候補は追加ダイアログを開かず、既存の保留ジャンプ経路へ
+    // 直接渡して、表示中・再表示後のどちらのスレッドでも同じ処理を利用する。
+    return requestThreadResJump(context.currentPage.threadUrl, responseJumpResNum) !== null;
+  }
+
   await definition.run(context);
   return true;
 }
 
 export function getBrowserCommandLabel(commandId: string, context: BrowserCommandContext): string {
+  const responseJumpResNum = getResponseJumpResNumFromCommandId(commandId);
+  if (responseJumpResNum !== null) {
+    return `レス${responseJumpResNum}へジャンプ`;
+  }
+
   const definition = BROWSER_COMMAND_DEFINITIONS.find((command) => command.id === commandId);
   return definition ? getCommandLabel(definition.label, context) : commandId;
 }
