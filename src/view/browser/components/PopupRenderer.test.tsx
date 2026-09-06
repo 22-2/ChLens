@@ -130,6 +130,7 @@ describe("PopupRenderer", () => {
       onClosePopupChildren: () => {},
       onToggleTreePopupPinned: () => {},
       onToggleIdPopupPinned: () => {},
+      onToggleAnchorPopupPinned: () => {},
       onIdLinkClick: () => {},
       onPopupIdLinkClick,
       onRepClickInPopup,

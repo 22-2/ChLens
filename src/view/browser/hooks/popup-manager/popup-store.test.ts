@@ -45,6 +45,20 @@ function addIdPopup(
   });
 }
 
+function addAnchorPopup(
+  store: ReturnType<typeof createPopupStore>,
+  scopeId: string,
+  parentId?: string,
+): string {
+  return store.getState().addPopupToScope(scopeId, {
+    type: "anchor",
+    x: 0,
+    y: 0,
+    payload: { items: [], label: ">>1", depth: 0, pinned: false },
+    ...(parentId == null ? {} : { parentId }),
+  });
+}
+
 function getScopePopups(store: ReturnType<typeof createPopupStore>, scopeId: string): PopupItem[] {
   return store.getState().scopes[scopeId]?.popups ?? [];
 }
@@ -136,5 +150,29 @@ describe("popup store", () => {
       idPopupId,
       contextMenuId,
     ]);
+  });
+
+  it("固定アンカーを親から切り離し、closeNonContextの対象外にする", () => {
+    const store = createPopupStore();
+    const state = store.getState();
+    state.mountScope("pin-anchor-contract");
+
+    const parentId = addTreePopup(store, "pin-anchor-contract", 1);
+    const anchorId = addAnchorPopup(store, "pin-anchor-contract", parentId);
+
+    state.toggleAnchorPopupPinnedInScope("pin-anchor-contract", anchorId);
+    const pinnedAnchor = getScopePopups(store, "pin-anchor-contract").find(
+      (item) => item.id === anchorId,
+    );
+    expect(pinnedAnchor?.type).toBe("anchor");
+    if (pinnedAnchor?.type !== "anchor") {
+      throw new Error("アンカーポップアップが見つかりません");
+    }
+    expect(pinnedAnchor.payload.pinned).toBe(true);
+    expect(pinnedAnchor.parentId).toBeUndefined();
+
+    state.closeNonContextPopupsInScope("pin-anchor-contract");
+
+    expect(getScopePopups(store, "pin-anchor-contract").map((item) => item.id)).toEqual([anchorId]);
   });
 });

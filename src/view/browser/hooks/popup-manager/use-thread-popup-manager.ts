@@ -61,6 +61,7 @@ export interface ThreadPopupManagerResult {
   isPopupDescendantOf: (popupId: string, ancestorId: string) => boolean;
   toggleTreePopupPinned: (popupId: string) => void;
   toggleIdPopupPinned: (popupId: string) => void;
+  toggleAnchorPopupPinned: (popupId: string) => void;
   hasPopupChild: (popupId: string) => boolean;
   hideAnchorPreview: (fromDepth?: number) => void;
   hideAnchorPreviewImmediately: (fromDepth?: number) => void;
@@ -88,6 +89,7 @@ export function useThreadPopupManager({
     isPopupDescendantOf,
     toggleTreePopupPinned,
     toggleIdPopupPinned,
+    toggleAnchorPopupPinned,
   } = usePopupCore(scopeId);
   const anchorPreviewHideTimerRef = useRef<number | null>(null);
 
@@ -130,7 +132,11 @@ export function useThreadPopupManager({
 
   const hideAnchorPreviewsFromDepth = useCallback(
     (depth: number) => {
-      closePopupsByPredicate((item) => item.type === "anchor" && item.payload.depth >= depth);
+      // 変更理由: ピン留めしたアンカーは利用者が明示的に閉じるまで残すため、
+      // 自動クローズの対象から外す。返信ツリーやIDポップアップの固定と同じ扱いにする。
+      closePopupsByPredicate(
+        (item) => item.type === "anchor" && item.payload.depth >= depth && !item.payload.pinned,
+      );
     },
     [closePopupsByPredicate],
   );
@@ -209,6 +215,7 @@ export function useThreadPopupManager({
           (item) =>
             item.type === "anchor" &&
             item.payload.depth >= depth &&
+            !item.payload.pinned &&
             !isPopupDescendantOf(sourcePopupId, item.id),
         );
       } else {
@@ -218,7 +225,7 @@ export function useThreadPopupManager({
         type: "anchor",
         x,
         y,
-        payload: { items, label, depth },
+        payload: { items, label, depth, pinned: false },
         parentId,
       });
     },
@@ -319,6 +326,7 @@ export function useThreadPopupManager({
     isPopupDescendantOf,
     toggleTreePopupPinned,
     toggleIdPopupPinned,
+    toggleAnchorPopupPinned,
     hasPopupChild,
     hideAnchorPreview,
     hideAnchorPreviewImmediately,

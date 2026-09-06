@@ -37,6 +37,7 @@ interface PopupRendererProps {
   onClosePopupChildren: (popupId: string) => void;
   onToggleTreePopupPinned: (popupId: string) => void;
   onToggleIdPopupPinned: (popupId: string) => void;
+  onToggleAnchorPopupPinned: (popupId: string) => void;
   onIdLinkClick: (id: string, e: React.MouseEvent) => void;
   onPopupIdLinkClick: (parentId: string) => (id: string, e: React.MouseEvent) => void;
   onRepClickInPopup: (
@@ -106,6 +107,7 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
   onClosePopupChildren,
   onToggleTreePopupPinned,
   onToggleIdPopupPinned,
+  onToggleAnchorPopupPinned,
   onIdLinkClick: _onIdLinkClick,
   onPopupIdLinkClick,
   onRepClickInPopup,
@@ -132,6 +134,7 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
     onPopupIdLinkClick,
     onRepClickInPopup,
     onResContextMenuOpen,
+    onToggleAnchorPopupPinned,
     onToggleIdPopupPinned,
     onToggleTreePopupPinned,
     onUrlContextMenuOpen,
@@ -192,6 +195,17 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
           ngResNums={ngResNums}
           resMap={resMap}
           threadKey={threadUrl}
+          pinned={anchorPreview.payload.pinned === true}
+          onTogglePinned={getStablePopupHandler(
+            `toggle-anchor-pin:${anchorPreview.id}`,
+            () => () => onToggleAnchorPopupPinned(anchorPreview.id),
+          )}
+          onClose={getStablePopupHandler(
+            `close:${anchorPreview.id}`,
+            () => () => onClosePopupById(anchorPreview.id),
+          )}
+          threadTitle={threadTitle}
+          threadUrl={threadUrl}
         />
       ))}
 

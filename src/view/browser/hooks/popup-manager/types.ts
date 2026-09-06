@@ -42,6 +42,8 @@ export interface AnchorPopupItem extends PopupItemBase {
     items: IRes[];
     label: string;
     depth: number;
+    /** ピン留め中は本文操作やマウス離脱で自動的に閉じない。 */
+    pinned?: boolean;
   };
 }
 

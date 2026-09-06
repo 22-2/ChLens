@@ -1,8 +1,26 @@
+import { Copy, Image as ImageIcon, Pin, PinOff } from "lucide-react";
 import React, { useCallback } from "react";
 import type { IRes } from "src/service-container";
+import { PopupHeader } from "src/view/browser/components/PopupHeader";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
+import { usePopupHeaderMenu } from "src/view/browser/hooks/use-popup-header-menu";
+import { useTheme } from "src/view/browser/hooks/use-theme";
+import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
+import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { FloatingPopup } from "src/view/browser/ui/FloatingPopup";
+import { canCopyImageToClipboard, copyImageBlob, copyText } from "src/view/browser/utils/clipboard";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
+import { canvasToBlob, renderResponseListImageCanvas } from "src/view/browser/utils/response-image";
+import { formatResForCopy } from "src/view/browser/utils/response-format";
+
+function buildAnchorPopupCopyText(items: IRes[], threadTitle?: string, threadUrl?: string): string {
+  const sections = [items.map(formatResForCopy).join("\n\n")];
+  const threadInfo = [threadTitle, threadUrl].filter((value): value is string => value != null);
+  if (threadInfo.length > 0) {
+    sections.push(threadInfo.join("\n"));
+  }
+  return sections.join("\n\n");
+}
 
 export interface AnchorPreviewProps {
   depth: number;
@@ -38,6 +56,15 @@ export interface AnchorPreviewProps {
   ngResNums?: ReadonlySet<number>;
   resMap?: ReadonlyMap<number, unknown>;
   threadKey?: string;
+  /** ピン留め中は明示的に閉じるまで自動クローズしない。 */
+  pinned?: boolean;
+  onTogglePinned?: () => void;
+  /** ヘッダーの閉じるボタンや外側クリックで閉じる時の処理 */
+  onClose?: () => void;
+  /** 一括コピー末尾に付加するスレタイ */
+  threadTitle?: string;
+  /** 一括コピー末尾に付加するスレッドURL */
+  threadUrl?: string;
 }
 
 export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
@@ -70,7 +97,57 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
   ngResNums,
   resMap,
   threadKey,
+  pinned = false,
+  onTogglePinned,
+  onClose,
+  threadTitle,
+  threadUrl,
 }) => {
+  const theme = useTheme();
+  const { menuButtonRef, menuPosition, handleMenuClick, closeMenu } = usePopupHeaderMenu();
+  const title = `参照: ${label}`;
+
+  const anchorMenuItems: ContextMenuItem[] = [
+    {
+      id: "copy-anchor-responses",
+      label: "参照を一括コピー",
+      icon: <Copy size={14} />,
+      onSelect: () => {
+        // 変更理由: IDポップアップと同じく表示順を保ったままコピーし、貼り付け先でも読める形にする。
+        void copyText(buildAnchorPopupCopyText(items, threadTitle, threadUrl));
+      },
+    },
+    {
+      id: "copy-anchor-image",
+      label: "参照を画像としてコピー",
+      icon: <ImageIcon size={14} />,
+      disabled: !canCopyImageToClipboard(),
+      onSelect: () => {
+        void (async () => {
+          try {
+            const canvas = renderResponseListImageCanvas(items, {
+              title,
+              threadTitle,
+              threadUrl,
+              theme,
+            });
+            const blob = await canvasToBlob(canvas);
+            await copyImageBlob(blob);
+          } catch (error) {
+            // 変更理由: 画像コピーには安全なフォールバックがないため、失敗理由をログへ残す。
+            console.error("参照を画像としてコピーできませんでした", error);
+          }
+        })();
+      },
+    },
+    {
+      id: "toggle-anchor-pin",
+      label: pinned ? "ピン留めを解除" : "ピン留め",
+      icon: pinned ? <PinOff size={14} /> : <Pin size={14} />,
+      onSelect: onTogglePinned,
+    },
+  ];
+
   const handleResContextMenu = useCallback(
     (event: React.MouseEvent, targetRes: IRes) => {
       event.stopPropagation();
@@ -81,6 +158,17 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
     },
     [onResContextMenu, onPopupMouseDown],
   );
+
+  const handleClose = useCallback(() => {
+    // 変更理由: ピン留め時もヘッダーの閉じるボタンでは明示的に閉じられるようにし、
+    // ホバー離脱による自動クローズだけを抑止する。非ピン時は従来どおり離脱時と同じ処理へ委譲する。
+    if (onClose) {
+      onClose();
+      return;
+    }
+    onMouseLeave();
+  }, [onClose, onMouseLeave]);
+
   return (
     <FloatingPopup
       className="anchor-preview"
@@ -90,14 +178,26 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
       popupId={popupId}
       isPopupDescendantOf={isPopupDescendantOf}
       onEnterFromDescendant={onEnterFromDescendant}
-      closeDisabled={hasChildPopup}
+      closeDisabled={hasChildPopup || pinned}
+      closeOnOutsideClick={!pinned}
       onClose={onMouseLeave}
       onPopupMouseDown={onPopupMouseDown}
       onPopupMouseEnter={onMouseEnter}
+      onMouseOver={onMouseEnter}
     >
       {({ armMouseLeaveCloseSuppression }) => (
         <>
-          <div className="anchor-preview__title">参照: {label}</div>
+          {/* 変更理由: IDポップアップや返信ツリーと共通のヘッダー操作にし、
+              ピン留め・コピー・画像化を三点ドットメニューから利用できるようにする。 */}
+          <PopupHeader
+            title={title}
+            menuButtonRef={menuButtonRef}
+            menuLabel="アンカーポップアップメニュー"
+            onMenuClick={handleMenuClick}
+            pinned={pinned}
+            onTogglePinned={onTogglePinned}
+            onClose={handleClose}
+          />
           <div className="anchor-preview__body">
             {items.slice(0, 8).map((res) => (
               <PopupResCard
@@ -124,6 +224,16 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
               />
             ))}
           </div>
+          {menuPosition && items.length > 0 && (
+            <ContextMenu
+              x={menuPosition.x}
+              y={menuPosition.y}
+              items={anchorMenuItems}
+              // 変更理由: ヘッダーメニューを所属popupとして扱い、メニュー操作で親子ごと閉じないようにする。
+              popupId={popupId}
+              onClose={closeMenu}
+            />
+          )}
         </>
       )}
     </FloatingPopup>
