@@ -603,6 +603,19 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
 
   const displayWidth = dragWidth ?? width;
 
+  const refreshButton = (
+    <button
+      type="button"
+      className="tab-bar__refresh"
+      disabled={!canRefresh}
+      onClick={() => dispatch({ type: "RELOAD" })}
+      title="更新"
+      aria-label="更新"
+    >
+      <RotateCw size={16} />
+    </button>
+  );
+
   return (
     <div
       ref={barRef}
@@ -610,37 +623,37 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
         isVertical && collapsed ? " tab-bar--collapsed" : ""
       }${isVertical && dragWidth != null ? " tab-bar--resizing" : ""}`}
       // 変更理由: 簡易表示では幅をCSSの固定値に任せ、展開表示とドラッグ中だけ操作幅を使う。
-      style={isVertical && !collapsed ? { width: displayWidth } : undefined}
+      // ドラッグ中のタブがバー幅以上に広がらないよう、実幅をCSS変数でも共有する。
+      style={
+        isVertical && !collapsed
+          ? ({
+              width: displayWidth,
+              "--tab-bar-width": `${displayWidth}px`,
+            } as React.CSSProperties)
+          : undefined
+      }
       onContextMenu={handleBarContextMenu}
     >
-      {isVertical && (
-        <div className="tab-bar__vertical-header">
-          <button
-            type="button"
-            className="tab-bar__collapse"
-            onClick={() => setCollapsed(!collapsed)}
-            title={collapsed ? "展開表示に戻す" : "簡易表示にする"}
-            aria-label={collapsed ? "展開表示に戻す" : "簡易表示にする"}
-            aria-expanded={!collapsed}
-          >
-            {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
-          </button>
-        </div>
-      )}
-      {/* 変更理由: 更新操作はナビゲーションメニューのヘッダーにもあるため、
-          垂直モードではタブバー側へ複製せず、メニュー側へ一本化する。 */}
-      {!isVertical && (
+      {isVertical ? (
         <>
-          <button
-            type="button"
-            className="tab-bar__refresh"
-            disabled={!canRefresh}
-            onClick={() => dispatch({ type: "RELOAD" })}
-            title="更新"
-            aria-label="更新"
-          >
-            <RotateCw size={16} />
-          </button>
+          {refreshButton}
+          <span className="tab-bar__refresh-divider" aria-hidden="true" />
+          <div className="tab-bar__vertical-header">
+            <button
+              type="button"
+              className="tab-bar__collapse"
+              onClick={() => setCollapsed(!collapsed)}
+              title={collapsed ? "展開表示に戻す" : "簡易表示にする"}
+              aria-label={collapsed ? "展開表示に戻す" : "簡易表示にする"}
+              aria-expanded={!collapsed}
+            >
+              {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          {refreshButton}
           <span className="tab-bar__refresh-divider" aria-hidden="true" />
         </>
       )}

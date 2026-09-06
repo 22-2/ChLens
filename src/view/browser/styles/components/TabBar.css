@@ -315,7 +315,7 @@
   flex: 0 0 var(--sys-space-12);
   width: 100%;
   min-width: 0;
-  max-width: none;
+  max-width: 100%;
   height: var(--sys-space-12);
   padding: 0 var(--sys-space-2) 0 var(--sys-space-4);
   border-right: none;
@@ -324,9 +324,20 @@
 }
 
 .tab-bar--vertical .tab--active {
-  max-width: none;
+  max-width: 100%;
   border-bottom-color: var(--sys-color-border);
   border-left-color: var(--sys-color-accent);
+}
+
+.tab-bar--vertical .tab--dragging {
+  /* 変更理由: ドラッグ中に要素がフローから外れても、バー幅以上に横へ広がらないようにする。
+     実幅は --tab-bar-width で共有し、簡易表示では固定幅で抑える。 */
+  max-width: var(--tab-bar-width, 100%);
+  overflow: hidden;
+}
+
+.tab-bar--collapsed .tab--dragging {
+  max-width: 48px;
 }
 
 .tab-bar--vertical .tab__title {
@@ -340,6 +351,19 @@
   width: 100%;
 }
 
+/* 変更理由: 垂直モードでは更新ボタンを一番上に置き、メニュー操作なしで再取得できるようにする。 */
+.tab-bar--vertical .tab-bar__refresh {
+  width: 100%;
+  height: var(--sys-space-9);
+  margin: 0;
+}
+
+.tab-bar--vertical .tab-bar__refresh-divider {
+  width: 100%;
+  height: 1px;
+  margin: var(--sys-space-2) 0;
+}
+
 .tab-bar__vertical-header {
   display: flex;
   flex-shrink: 0;
@@ -351,8 +375,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  height: var(--sys-space-9);
+  /* 変更理由: 開閉ボタンはタブバーの横幅いっぱいに広げず、アイコンボタンサイズに固定する。 */
+  width: var(--sys-space-11);
+  height: var(--sys-space-11);
   border: none;
   border-radius: var(--sys-radius-sm);
   background: transparent;

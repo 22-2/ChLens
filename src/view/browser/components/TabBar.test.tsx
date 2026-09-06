@@ -980,10 +980,38 @@ describe("TabBar vertical", () => {
     expect(tabList).toHaveAttribute("role", "tablist");
   });
 
-  it("垂直では更新ボタンを表示せずメニュー側へ一本化する", () => {
-    const { container } = render(<TabBar orientation="vertical" />);
+  it("垂直では更新ボタンを一番上に表示する", () => {
+    mocks.tabStore.state = {
+      tabs: [
+        {
+          id: "tab-1",
+          history: [
+            {
+              type: "thread",
+              title: "スレッド",
+              threadUrl: "https://example.com/test/read.cgi/software/1/",
+            },
+          ],
+          currentIndex: 0,
+          pinned: false,
+          reloadKey: 0,
+          autoRefreshEnabled: false,
+          autoRefreshPageKey: null as string | null,
+        },
+      ],
+      activeTabId: "tab-1",
+      closedTabs: [],
+    } as unknown as typeof mocks.tabStore.state;
 
-    expect(container.querySelector(".tab-bar__refresh")).toBeNull();
+    const { container } = render(<TabBar orientation="vertical" />);
+    const tabBar = container.querySelector(".tab-bar") as HTMLDivElement;
+    const refreshButton = container.querySelector(".tab-bar__refresh") as HTMLButtonElement;
+
+    expect(tabBar.firstElementChild).toBe(refreshButton);
+
+    fireEvent.click(refreshButton);
+
+    expect(dispatchMock).toHaveBeenCalledWith({ type: "RELOAD" });
   });
 
   it("垂直では追加ボタンが常にバーの下部へ固定される", () => {
