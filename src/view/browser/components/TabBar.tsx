@@ -373,16 +373,36 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
   // ホイールでアクティブタブを前後に切り替える
   const handleWheel = useCallback(
     (e: WheelEvent) => {
-      // 変更理由: 垂直モードのホイールは一覧の縦スクロールに使い、タブ切り替えには使わない。
-      // 縦一覧の上で回してスクロールが起きないと予測とずれるため、ここでは何もせず
-      // ブラウザの既定スクロールへ任せる。
-      if (isVertical) {
-        return;
-      }
       const normalizedWheel = normalizeWheel(e);
       const wheelDistance = normalizedWheel.pixelX + normalizedWheel.pixelY;
       if (Math.abs(wheelDistance) < TAB_SWITCH_WHEEL_DISTANCE_THRESHOLD) {
         return;
+      }
+
+      // 変更理由: 垂直モードでは縦スクロールを優先しつつ、ホイールでのタブ送りも可能にする。
+      // 縦方向のホイールは一覧がその方向へスクロールできる間は既定スクロールへ任せ、
+      // 端まで到達済みやスクロール不要な場合はタブ切り替えへ回す。
+      // 横方向のホイール（Shift+ホイール含む）は常にタブ切り替えに使う。
+      if (isVertical) {
+        const isHorizontalWheel =
+          Math.abs(normalizedWheel.pixelX) > Math.abs(normalizedWheel.pixelY);
+        if (!isHorizontalWheel) {
+          const tabList = tabListRef.current;
+          if (tabList) {
+            const maxScrollTop = Math.max(0, tabList.scrollHeight - tabList.clientHeight);
+            if (maxScrollTop > 1) {
+              const goingDown = normalizedWheel.pixelY > 0;
+              const canScrollInDirection = goingDown
+                ? tabList.scrollTop < maxScrollTop - 1
+                : tabList.scrollTop > 1;
+              if (canScrollInDirection) {
+                return;
+              }
+            }
+          } else {
+            return;
+          }
+        }
       }
 
       const now = Date.now();

@@ -1004,13 +1004,49 @@ describe("TabBar vertical", () => {
     expect(tabList.lastElementChild).toBe(addButton);
   });
 
-  it("垂直ではホイールでタブを切り替えず縦スクロールへ任せる", () => {
+  it("垂直ではスクロール可能な間は縦スクロールへ任せてタブを切り替えない", () => {
     const { container } = render(<TabBar orientation="vertical" />);
     const tabBar = container.querySelector(".tab-bar") as HTMLDivElement;
+    const tabList = container.querySelector(".tab-list") as HTMLDivElement;
+    Object.defineProperties(tabList, {
+      clientHeight: { configurable: true, value: 100 },
+      scrollHeight: { configurable: true, value: 500 },
+    });
+    tabList.scrollTop = 0;
 
     fireEvent.wheel(tabBar, { deltaY: 40 });
 
     expect(dispatchMock).not.toHaveBeenCalledWith(expect.objectContaining({ type: "SELECT_TAB" }));
+  });
+
+  it("垂直ではスクロール端やスクロール不要時はホイールでタブを切り替える", () => {
+    const { container } = render(<TabBar orientation="vertical" />);
+    const tabBar = container.querySelector(".tab-bar") as HTMLDivElement;
+    const tabList = container.querySelector(".tab-list") as HTMLDivElement;
+    Object.defineProperties(tabList, {
+      clientHeight: { configurable: true, value: 500 },
+      scrollHeight: { configurable: true, value: 500 },
+    });
+    tabList.scrollTop = 0;
+
+    fireEvent.wheel(tabBar, { deltaY: 40 });
+
+    expect(dispatchMock).toHaveBeenCalledWith({ type: "SELECT_TAB", tabId: "tab-2" });
+  });
+
+  it("垂直では下端到達後の下方向ホイールで次のタブへ切り替える", () => {
+    const { container } = render(<TabBar orientation="vertical" />);
+    const tabBar = container.querySelector(".tab-bar") as HTMLDivElement;
+    const tabList = container.querySelector(".tab-list") as HTMLDivElement;
+    Object.defineProperties(tabList, {
+      clientHeight: { configurable: true, value: 100 },
+      scrollHeight: { configurable: true, value: 500 },
+    });
+    tabList.scrollTop = 400;
+
+    fireEvent.wheel(tabBar, { deltaY: 40 });
+
+    expect(dispatchMock).toHaveBeenCalledWith({ type: "SELECT_TAB", tabId: "tab-2" });
   });
 
   it("垂直では上下のスクロール可能方向をフェード表示へ反映する", () => {
