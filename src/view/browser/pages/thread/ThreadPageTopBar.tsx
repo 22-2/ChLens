@@ -108,18 +108,23 @@ export const ThreadPageTopBar: React.FC<ThreadPageTopBarProps> = ({
               }
             }}
           />
+          {/*
+           * 件数・閉じるボタンをツールバーの直下に置くと、幅不足時に検索欄とは別の行へ
+           * 折り返されて3段化するため、検索欄の中に同居させて同じ行へ折り返す。
+           * 入力欄が flex + min-width: 0 のため、狭い幅の吸収は入力欄が担う。
+           */}
+          <div className="thread-page__toolbar-right">
+            <span className="thread-page__count">{topBarCountLabel}</span>
+            <button
+              type="button"
+              className="thread-page__toolbar-close"
+              onClick={onClose}
+              aria-label="フィルターを閉じる"
+            >
+              ✕
+            </button>
+          </div>
         </div>
-      </div>
-      <div className="thread-page__toolbar-right">
-        <span className="thread-page__count">{topBarCountLabel}</span>
-        <button
-          type="button"
-          className="thread-page__toolbar-close"
-          onClick={onClose}
-          aria-label="フィルターを閉じる"
-        >
-          ✕
-        </button>
       </div>
     </div>
   );

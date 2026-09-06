@@ -21,6 +21,7 @@ const browserCommandMocks = vi.hoisted(() => {
     estimateToonTokenCountMock: vi.fn<() => number>(),
     getThreadMock: vi.fn(),
     openNextThreadSearchDialogMock: vi.fn<() => Promise<void>>(),
+    requestThreadResJumpMock: vi.fn(),
     removeTabsMock,
     queryTabsMock,
     toastErrorMock: vi.fn(),
@@ -40,6 +41,7 @@ const {
   estimateToonTokenCountMock,
   getThreadMock,
   openNextThreadSearchDialogMock,
+  requestThreadResJumpMock,
   removeTabsMock,
   queryTabsMock,
   toastErrorMock,
@@ -64,6 +66,10 @@ vi.mock("src/view/browser/utils/clipboard", async (importOriginal) => {
 vi.mock("src/view/browser/utils/thread-toon", () => ({
   encodeThreadAsToon: browserCommandMocks.encodeThreadAsToonMock,
   estimateToonTokenCount: browserCommandMocks.estimateToonTokenCountMock,
+}));
+
+vi.mock("src/view/browser/utils/thread-read-state", () => ({
+  requestThreadResJump: browserCommandMocks.requestThreadResJumpMock,
 }));
 
 function createTab(page: Page): Tab {
@@ -144,6 +150,7 @@ describe("browser commands", () => {
     estimateToonTokenCountMock.mockReset();
     getThreadMock.mockReset();
     openNextThreadSearchDialogMock.mockReset();
+    requestThreadResJumpMock.mockReset();
     removeTabsMock.mockReset();
     queryTabsMock.mockReset();
     toastErrorMock.mockReset();
@@ -207,6 +214,27 @@ describe("browser commands", () => {
 
     await expect(executeBrowserCommand("page.jump-to-response", context)).resolves.toBe(true);
     expect(openResponseJumpDialog).toHaveBeenCalledOnce();
+  });
+
+  it("数字入力のレス番号ジャンプ候補は既存経路へ直接要求する", async () => {
+    requestThreadResJumpMock.mockReturnValue({
+      threadUrl: "https://egg.5ch.net/test/read.cgi/software/123/",
+      resNum: 42,
+      token: "token",
+    });
+    const { context } = createContext({
+      type: "thread",
+      title: "Thread",
+      threadUrl: "https://egg.5ch.net/test/read.cgi/software/123/",
+    });
+
+    await expect(executeBrowserCommand("page.jump-to-response:42", context)).resolves.toBe(true);
+
+    expect(requestThreadResJumpMock).toHaveBeenCalledWith(
+      "https://egg.5ch.net/test/read.cgi/software/123/",
+      42,
+    );
+    expect(context.openResponseJumpDialog).not.toHaveBeenCalled();
   });
 
   it("スレッドでは次スレ候補検索コマンドを実行できる", async () => {

@@ -1,9 +1,9 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import type { IRes } from "src/service-container";
 import { NgBadge } from "src/view/browser/components/NgBadge";
 import { ResBody } from "src/view/browser/components/ResBody";
 import { ResMediaGallery } from "src/view/browser/components/ResMediaGallery";
-import { useIsNgTemporarilyDisabled } from "src/view/browser/hooks/use-ng-status";
+import { useIsNgTemporarilyDisabled, useNgDisplayMode } from "src/view/browser/hooks/use-ng-status";
 import { getIdHeatColor } from "src/view/browser/utils/id-heat";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
 import { getReplyHeatLevel } from "src/view/browser/utils/reply-heat";
@@ -36,6 +36,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     threadKey,
   }) => {
     const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
+    const ngDisplayMode = useNgDisplayMode();
     const decoded = useMemo(() => decodeResponseHtml(res, messageProtocol), [messageProtocol, res]);
     const urls = useMemo(() => extractUrlsFromMessage(decoded.messageHtml), [decoded.messageHtml]);
     const resolvedMedia = useImgurAlbumMedia(decoded.messageHtml, urls, threadKey);
@@ -58,9 +59,20 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
 
     // NG 判定は ResItem と同じロジック
     const isNgMatched = res.ng != null || res.class?.includes("ng");
-    const isNG = !isNgTemporarilyDisabled && isNgMatched;
+    const isNgActive = !isNgTemporarilyDisabled && isNgMatched;
+    const isNgHighlighted = isNgMatched && ngDisplayMode === "highlight-ng";
     const [isNgRevealed, setIsNgRevealed] = useState(false);
-    if (isNG && !isNgRevealed) {
+    useEffect(() => {
+      if (ngDisplayMode !== "soft-ng" && isNgRevealed) {
+        // soft-ng以外へ切り替えた後にsoft-ngへ戻した際、本文を自動再表示しない。
+        setIsNgRevealed(false);
+      }
+    }, [isNgRevealed, ngDisplayMode]);
+    if (isNgActive && ngDisplayMode === "hard-ng") {
+      // 通常レスと同じhard-ngを適用し、ポップアップだけから本文を覗けないようにする。
+      return null;
+    }
+    if (isNgActive && ngDisplayMode === "soft-ng" && !isNgRevealed) {
       return (
         <article
           className="res res--ng-placeholder"
@@ -86,7 +98,13 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
 
     return (
       <article
-        className={`res${isHighlighted ? " res--highlighted-persistent" : ""}`}
+        className={[
+          "res",
+          isHighlighted ? "res--highlighted-persistent" : "",
+          isNgHighlighted ? "res--ng-highlight" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
         onContextMenu={(e) => {
           if (!onContextMenu) return;
           if (
@@ -104,6 +122,20 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
           <span className={resNumClassName}>{res.num}</span>
           <span className="res__name" dangerouslySetInnerHTML={{ __html: decoded.nameHtml }} />
           {isNgMatched ? <NgBadge result={res.ng} /> : null}
+          {isNgActive && ngDisplayMode === "soft-ng" && isNgRevealed ? (
+            <button
+              type="button"
+              className="res__ng-hide"
+              aria-label={`レス${res.num}をNG表示に戻す`}
+              onClick={(event) => {
+                event.stopPropagation();
+                // NG判定は変更せず、ポップアップ内の一時表示だけをプレースホルダーへ戻す。
+                setIsNgRevealed(false);
+              }}
+            >
+              NG非表示
+            </button>
+          ) : null}
           {res.id && (
             <span
               className={`res__id${

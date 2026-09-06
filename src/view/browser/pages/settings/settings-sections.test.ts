@@ -12,7 +12,7 @@ vi.mock("src/view/browser/components/NGEditor", () => ({
   NGEditor: () => null,
 }));
 
-import { getSettingsSections } from "./settings-sections";
+import { getSettingsSections, readAllSettings } from "./settings-sections";
 
 describe("設定セクションの実行環境フィルター", () => {
   it("Browser版ではTauri専用のOverlay設定を表示しない", () => {
@@ -33,5 +33,17 @@ describe("設定セクションの実行環境フィルター", () => {
       "comment_overlay_opacity",
       "comment_overlay_max_queue",
     ]);
+  });
+
+  it("NG表示方式に3つの選択肢を用意し、旧既定値をhard-ngへ読み替える", () => {
+    const ng = getSettingsSections(false).find((section) => section.id === "ng");
+    const displayField = ng?.fields.find((field) => "key" in field && field.key === "display_ng");
+
+    expect(displayField).toMatchObject({
+      kind: "string",
+      widget: "radio",
+      options: [{ const: "hard-ng" }, { const: "soft-ng" }, { const: "highlight-ng" }],
+    });
+    expect(readAllSettings().ng.display_ng).toBe("hard-ng");
   });
 });

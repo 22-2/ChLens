@@ -1,10 +1,10 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import type { IRes } from "src/service-container";
 import { NgBadge } from "src/view/browser/components/NgBadge";
 import { NgResponsePlaceholder } from "src/view/browser/components/NgResponsePlaceholder";
 import { ResBody } from "src/view/browser/components/ResBody";
 import { ResMediaGallery } from "src/view/browser/components/ResMediaGallery";
-import { useIsNgTemporarilyDisabled } from "src/view/browser/hooks/use-ng-status";
+import { useIsNgTemporarilyDisabled, useNgDisplayMode } from "src/view/browser/hooks/use-ng-status";
 import { getIdHeatColor } from "src/view/browser/utils/id-heat";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
 import { getReplyHeatLevel } from "src/view/browser/utils/reply-heat";
@@ -67,12 +67,20 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
     searchQuery = "",
   }) => {
     const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
+    const ngDisplayMode = useNgDisplayMode();
     // res.ng はサービス層がNGワード照合した結果を格納するフィールド。
     // 古いビューは class[] の "ng" 要素で判定していたが、new viewでは res.ng を優先チェックする。
     // 一時解除中はデータ自体を消さずに表示判定だけをオフにして、復帰時の再評価コストを避ける。
     const isNgMatched = res.ng != null || res.class?.includes("ng");
-    const isNG = !isNgTemporarilyDisabled && isNgMatched;
+    const isNgActive = !isNgTemporarilyDisabled && isNgMatched;
+    const isNgHighlighted = isNgMatched && ngDisplayMode === "highlight-ng";
     const [isNgRevealed, setIsNgRevealed] = useState(false);
+    useEffect(() => {
+      if (ngDisplayMode !== "soft-ng" && isNgRevealed) {
+        // soft-ng以外へ切り替えた後にsoft-ngへ戻した際、本文を自動再表示しない。
+        setIsNgRevealed(false);
+      }
+    }, [isNgRevealed, ngDisplayMode]);
     const decoded = useMemo(() => decodeResponseHtml(res, messageProtocol), [messageProtocol, res]);
     // 検索判定と同じ語を表示層へ渡し、本文・名前・IDのどこでレスが一致したかを追えるようにする。
     // 本文と名前のHTMLはテキストノードだけを変換し、リンクやアンカーの操作対象を保つ。
@@ -104,6 +112,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
       miniAa ? "res--aa" : "",
       isOwn ? "res--own" : "",
       isReplyToOwn ? "res--reply-to-own" : "",
+      isNgHighlighted ? "res--ng-highlight" : "",
       responseStateClassName,
     ]
       .filter(Boolean)
@@ -117,7 +126,12 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
       .filter(Boolean)
       .join(" ");
 
-    if (isNG && !isNgRevealed) {
+    if (isNgActive && ngDisplayMode === "hard-ng") {
+      // hard-ngではレス要素自体を描画せず、本文・ポップアップへの偶発的な露出を防ぐ。
+      return null;
+    }
+
+    if (isNgActive && ngDisplayMode === "soft-ng" && !isNgRevealed) {
       return (
         <NgResponsePlaceholder
           responseNumber={res.num}
@@ -153,6 +167,20 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
           {isOwn ? <span className="res__badge res__badge--own">自分</span> : null}
           {isReplyToOwn ? <span className="res__badge res__badge--reply-to-own">返信</span> : null}
           {isNgMatched ? <NgBadge result={res.ng} /> : null}
+          {isNgActive && ngDisplayMode === "soft-ng" && isNgRevealed ? (
+            <button
+              type="button"
+              className="res__ng-hide"
+              aria-label={`レス${res.num}をNG表示に戻す`}
+              onClick={(event) => {
+                event.stopPropagation();
+                // NG判定とレスデータは保持したまま表示状態だけ戻すことで、再表示時の情報を保つ。
+                setIsNgRevealed(false);
+              }}
+            >
+              NG非表示
+            </button>
+          ) : null}
           {res.id && (
             <span
               className={`res__id${

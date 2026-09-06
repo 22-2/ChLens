@@ -1,5 +1,10 @@
 import fuzzysort from "fuzzysort";
 import type { ResolvedBrowserCommand } from "src/view/browser/commands/browser-commands";
+import {
+  createResponseJumpCommand,
+  parseResponseJumpResNum,
+  RESPONSE_JUMP_COMMAND_ID,
+} from "src/view/browser/commands/response-jump-command";
 
 interface RankedCommand {
   command: ResolvedBrowserCommand;
@@ -69,9 +74,19 @@ export function filterAndSortBrowserCommands(
       .map(({ command }) => command);
   }
 
-  const originalOrder = new Map(commands.map((command, index) => [command.id, index]));
+  const baseResponseJumpCommand = commands.find(({ id }) => id === RESPONSE_JUMP_COMMAND_ID);
+  const responseJumpResNum = baseResponseJumpCommand ? parseResponseJumpResNum(query) : null;
+  const responseJumpCommand =
+    baseResponseJumpCommand && responseJumpResNum !== null
+      ? createResponseJumpCommand(baseResponseJumpCommand, responseJumpResNum)
+      : null;
+
+  // 変更理由: 固定コマンドを数字の検索結果だけに任せると入力値をラベルへ
+  // 反映できないため、スレッド上の正しい数字入力に限って動的候補を合成する。
+  const commandsToSearch = responseJumpCommand ? [responseJumpCommand, ...commands] : commands;
+  const originalOrder = new Map(commandsToSearch.map((command, index) => [command.id, index]));
   const ranked: RankedCommand[] = fuzzysort
-    .go(query, commands, { key: commandSearchText })
+    .go(query, commandsToSearch, { key: commandSearchText })
     .map((match) => ({
       command: match.obj,
       fuzzyScore: match.score,
@@ -79,7 +94,7 @@ export function filterAndSortBrowserCommands(
       originalIndex: originalOrder.get(match.obj.id) ?? Infinity,
     }));
 
-  return ranked
+  const sorted = ranked
     .sort(
       (a, b) =>
         a.rank - b.rank ||
@@ -93,4 +108,10 @@ export function filterAndSortBrowserCommands(
         a.originalIndex - b.originalIndex,
     )
     .map(({ command }) => command);
+
+  if (!responseJumpCommand) {
+    return sorted;
+  }
+
+  return [responseJumpCommand, ...sorted.filter(({ id }) => id !== responseJumpCommand.id)];
 }

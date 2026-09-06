@@ -34,8 +34,20 @@ export interface RuleTargetDefinition extends RuleCatalogEntry<RuleTarget> {
 }
 
 export const RULE_ACTION_CATALOG: readonly RuleCatalogEntry<RuleAction>[] = [
-  { name: "hide", description: "一致した対象を非表示にします。" },
-  { name: "highlight", description: "一致した対象を強調します。" },
+  {
+    name: "hide",
+    // NGレスの表示方式名（hard-ng/soft-ng）は設定画面で目にする名称のため、
+    // 動作欄へ書かれてもNG判定全体を止めないよう別名として受け付ける。
+    // 表示の出し分けは全体の表示方式設定に従うため、ここではhideへ正規化する。
+    aliases: ["hard-ng", "soft-ng"],
+    description: "一致した対象を非表示にします。",
+  },
+  {
+    name: "highlight",
+    // hideと同様に、表示方式名を動作欄へ書いても強調として扱う。
+    aliases: ["highlight-ng"],
+    description: "一致した対象を強調します。",
+  },
   {
     name: "demote",
     description: "一致した対象を一覧の末尾へ移動し、目立たなくします。",
