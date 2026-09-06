@@ -125,6 +125,12 @@ const ALL_SETTINGS_SECTIONS = [
         widget: "radio",
       },
       {
+        kind: "boolean",
+        key: "tab_bar_collapsed",
+        title: "垂直タブバーを簡易表示にする",
+        description: "タイトルを隠してアイコンのみの細幅で表示します。",
+      },
+      {
         kind: "string",
         key: "new_tab_page_board_url",
         title: "指定の板 URL",

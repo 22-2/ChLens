@@ -1,14 +1,27 @@
 import { DragDropProvider } from "@dnd-kit/react";
 import { isSortableOperation, useSortable } from "@dnd-kit/react/sortable";
-import { PanelLeft, PanelTop, Pin, Plus, RotateCcw, RotateCw, X } from "lucide-react";
+import {
+  PanelLeft,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PanelTop,
+  Pin,
+  Plus,
+  RotateCcw,
+  RotateCw,
+  X,
+} from "lucide-react";
 import normalizeWheel from "normalize-wheel";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { container } from "src/service-container/index";
 import { useCursorTooltip } from "src/view/browser/components/CursorTooltip";
+import { PageTypeIcon } from "src/view/browser/components/PageTypeIcon";
 import { TabContextMenu } from "src/view/browser/components/TabContextMenu";
 import { useAutoScrollState } from "src/view/browser/hooks/use-auto-scroll-state";
 import {
   TAB_BAR_ORIENTATION_CONFIG_KEY,
+  clampTabBarWidth,
+  useVerticalTabBarLayout,
   type TabBarOrientation,
 } from "src/view/browser/hooks/use-tab-bar-orientation";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
@@ -52,6 +65,7 @@ interface SortableTabProps {
   autoRefreshIndicatorState: "active" | "inactive" | null;
   tabCount: number;
   isVertical: boolean;
+  compact: boolean;
   wasDraggingRef: React.MutableRefObject<boolean>;
   onSelect: (tabId: string) => void;
   onClose: (tabId: string) => void;
@@ -69,6 +83,7 @@ const SortableTab: React.FC<SortableTabProps> = ({
   autoRefreshIndicatorState,
   tabCount,
   isVertical,
+  compact,
   wasDraggingRef,
   onSelect,
   onClose,
@@ -135,6 +150,8 @@ const SortableTab: React.FC<SortableTabProps> = ({
         data-tab-id={tab.id}
         role="tab"
         aria-selected={isActive}
+        // 変更理由: 簡易表示ではタイトルを隠すため、支援技術向けに名前を補う。
+        aria-label={compact && !tab.pinned ? page.title : undefined}
         tabIndex={isActive ? 0 : -1}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
@@ -147,7 +164,15 @@ const SortableTab: React.FC<SortableTabProps> = ({
           onContextMenu(e, tab);
         }}
       >
-        {tab.pinned ? <Pin size={11} /> : <span className="tab__title">{page.title}</span>}
+        {tab.pinned ? (
+          <Pin size={11} />
+        ) : compact ? (
+          <span className="tab__icon">
+            <PageTypeIcon type={page.type} size={15} />
+          </span>
+        ) : (
+          <span className="tab__title">{page.title}</span>
+        )}
         {/* 変更理由: タブが非アクティブでも自動更新設定は残るため、
             実行中/待機中を区別できるインジケーターを常時表示する。 */}
         {autoRefreshIndicatorState != null && !tab.pinned && (
@@ -187,6 +212,12 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
   const isVertical = orientation === "vertical";
   const { state, stateRef, dispatch, paneId } = useTabStore();
   const { canAutoScroll, isAutoScrolling, isPaused } = useAutoScrollState();
+  const { collapsed, width, setCollapsed, setWidth } = useVerticalTabBarLayout();
+  // 変更理由: ドラッグ中は保存済み幅ではなく操作中の幅で描画し、確定時だけ永続化する。
+  // 移動のたびに保存すると書き込みが連続して重くなるため。
+  const [dragWidth, setDragWidth] = useState<number | null>(null);
+  const dragWidthRef = useRef<number | null>(null);
+  const resizeStartRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const barRef = useRef<HTMLDivElement | null>(null);
   const tabListRef = useRef<HTMLDivElement | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
@@ -470,6 +501,43 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
     [dispatch],
   );
 
+  const handleResizePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      // 変更理由: タブのドラッグ並べ替えと幅変更の当たり判定が干渉しないよう、
+      // 幅変更は右端の専用ハンドルだけで開始する。
+      e.preventDefault();
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+      resizeStartRef.current = { startX: e.clientX, startWidth: dragWidth ?? width };
+    },
+    [dragWidth, width],
+  );
+
+  const handleResizePointerMove = useCallback((e: React.PointerEvent) => {
+    const start = resizeStartRef.current;
+    if (!start) return;
+    const next = clampTabBarWidth(start.startWidth + (e.clientX - start.startX));
+    dragWidthRef.current = next;
+    setDragWidth(next);
+  }, []);
+
+  const handleResizePointerUp = useCallback(() => {
+    resizeStartRef.current = null;
+    const finalWidth = dragWidthRef.current;
+    dragWidthRef.current = null;
+    setDragWidth(null);
+    // 変更理由: 確定した幅だけを保存し、ドラッグ中の連続書き込みを避ける。
+    if (finalWidth != null) {
+      setWidth(finalWidth);
+    }
+  }, [setWidth]);
+
+  const handleResizePointerCancel = useCallback(() => {
+    // 変更理由: 中断時は操作中の幅を破棄し、保存済みの幅へ戻す。
+    resizeStartRef.current = null;
+    dragWidthRef.current = null;
+    setDragWidth(null);
+  }, []);
+
   const handleArrowNavigate = useCallback(
     (index: number, delta: number) => {
       const tabs = state.tabs;
@@ -533,12 +601,32 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
     </button>
   );
 
+  const displayWidth = dragWidth ?? width;
+
   return (
     <div
       ref={barRef}
-      className={`tab-bar${isVertical ? " tab-bar--vertical" : ""}`}
+      className={`tab-bar${isVertical ? " tab-bar--vertical" : ""}${
+        isVertical && collapsed ? " tab-bar--collapsed" : ""
+      }${isVertical && dragWidth != null ? " tab-bar--resizing" : ""}`}
+      // 変更理由: 簡易表示では幅をCSSの固定値に任せ、展開表示とドラッグ中だけ操作幅を使う。
+      style={isVertical && !collapsed ? { width: displayWidth } : undefined}
       onContextMenu={handleBarContextMenu}
     >
+      {isVertical && (
+        <div className="tab-bar__vertical-header">
+          <button
+            type="button"
+            className="tab-bar__collapse"
+            onClick={() => setCollapsed(!collapsed)}
+            title={collapsed ? "展開表示に戻す" : "簡易表示にする"}
+            aria-label={collapsed ? "展開表示に戻す" : "簡易表示にする"}
+            aria-expanded={!collapsed}
+          >
+            {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+          </button>
+        </div>
+      )}
       {/* 変更理由: 更新操作はナビゲーションメニューのヘッダーにもあるため、
           垂直モードではタブバー側へ複製せず、メニュー側へ一本化する。 */}
       {!isVertical && (
@@ -599,6 +687,7 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
                   autoRefreshIndicatorState={autoRefreshIndicatorState}
                   tabCount={state.tabs.length}
                   isVertical={isVertical}
+                  compact={isVertical && collapsed}
                   wasDraggingRef={wasDraggingRef}
                   onSelect={handleTabSelect}
                   onClose={handleTabClose}
@@ -614,7 +703,26 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
         </div>
       </DragDropProvider>
       {/* タブが横幅を超えるときだけ、追加ボタンをスクロール領域の外へ固定する。 */}
-      {isVertical || isTabListScrollable ? addTabButton : null}
+      {isVertical ? (
+        <>
+          <div className="tab-bar__vertical-footer">{addTabButton}</div>
+          {/* 変更理由: 簡易表示では幅が固定のため、展開表示のときだけ幅変更ハンドルを出す。 */}
+          {!collapsed && (
+            <div
+              className="tab-bar__resize-handle"
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="タブバーの幅を変更"
+              onPointerDown={handleResizePointerDown}
+              onPointerMove={handleResizePointerMove}
+              onPointerUp={handleResizePointerUp}
+              onPointerCancel={handleResizePointerCancel}
+            />
+          )}
+        </>
+      ) : isTabListScrollable ? (
+        addTabButton
+      ) : null}
 
       {/* 変更理由: お気に入り操作はURLバー展開後とナビゲーションメニューに残すため、
           タブバー右端には表示せず、バー開閉ボタン付近の重複を避ける。 */}

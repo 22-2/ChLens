@@ -921,11 +921,13 @@ describe("TabBar tab interactions", () => {
 
 describe("TabBar vertical", () => {
   const configSetMock = vi.fn();
+  let configValues: Record<string, string>;
 
   beforeEach(() => {
     configSetMock.mockReset();
+    configValues = { tab_bar_width: "208" };
     container.config = {
-      get: vi.fn(() => "0"),
+      get: vi.fn((key: string) => configValues[key] ?? "0"),
       set: configSetMock,
       getAll: () => ({}),
       ready: (callback: () => void) => callback(),
@@ -987,10 +989,11 @@ describe("TabBar vertical", () => {
   it("垂直では追加ボタンが常にバーの下部へ固定される", () => {
     const { container } = render(<TabBar orientation="vertical" />);
     const tabList = container.querySelector(".tab-list") as HTMLDivElement;
+    const footer = container.querySelector(".tab-bar__vertical-footer") as HTMLElement;
     const addButton = container.querySelector(".tab-bar__add") as HTMLButtonElement;
 
     expect(tabList.querySelector(".tab-bar__add")).toBeNull();
-    expect(container.querySelector(".tab-bar > .tab-bar__add")).toBe(addButton);
+    expect(footer.querySelector(".tab-bar__add")).toBe(addButton);
 
     Object.defineProperties(tabList, {
       clientHeight: { configurable: true, value: 100 },
@@ -999,7 +1002,7 @@ describe("TabBar vertical", () => {
     fireEvent.scroll(tabList);
 
     expect(tabList.querySelector(".tab-bar__add")).toBeNull();
-    expect(container.querySelector(".tab-bar > .tab-bar__add")).toBe(addButton);
+    expect(footer.querySelector(".tab-bar__add")).toBe(addButton);
   });
 
   it("垂直ではホイールでタブを切り替えず縦スクロールへ任せる", () => {
@@ -1076,6 +1079,64 @@ describe("TabBar vertical", () => {
     fireEvent.click(screen.getByText("タブバーを水平にする"));
 
     expect(configSetMock).toHaveBeenCalledWith("tab_bar_orientation", "horizontal");
+  });
+
+  it("簡易表示ではタイトルを隠してアイコンを表示する", () => {
+    configValues["tab_bar_collapsed"] = "on";
+    const { container } = render(<TabBar orientation="vertical" />);
+    const tabBar = container.querySelector(".tab-bar") as HTMLDivElement;
+
+    expect(tabBar).toHaveClass("tab-bar--collapsed");
+    expect(container.querySelector(".tab__title")).toBeNull();
+    expect(container.querySelectorAll(".tab__icon svg")).toHaveLength(2);
+    expect(container.querySelector(".tab-bar__resize-handle")).toBeNull();
+  });
+
+  it("簡易表示の切り替えを保存する", () => {
+    const { container } = render(<TabBar orientation="vertical" />);
+    const toggle = container.querySelector(".tab-bar__collapse") as HTMLButtonElement;
+
+    expect(toggle).toHaveAttribute("aria-label", "簡易表示にする");
+
+    fireEvent.click(toggle);
+
+    expect(configSetMock).toHaveBeenCalledWith("tab_bar_collapsed", "on");
+  });
+
+  it("幅変更ハンドルのドラッグで幅を変えて確定時に保存する", () => {
+    const { container } = render(<TabBar orientation="vertical" />);
+    const tabBar = container.querySelector(".tab-bar") as HTMLDivElement;
+    const handle = container.querySelector(".tab-bar__resize-handle") as HTMLDivElement;
+
+    expect(tabBar).toHaveStyle({ width: "208px" });
+
+    fireEvent.pointerDown(handle, { clientX: 200, pointerId: 1 });
+    fireEvent.pointerMove(handle, { clientX: 240, pointerId: 1 });
+
+    expect(tabBar).toHaveStyle({ width: "248px" });
+    expect(configSetMock).not.toHaveBeenCalled();
+
+    fireEvent.pointerUp(handle, { pointerId: 1 });
+
+    expect(configSetMock).toHaveBeenCalledWith("tab_bar_width", "248");
+    expect(tabBar).toHaveStyle({ width: "248px" });
+  });
+
+  it("幅は160pxから280pxの範囲に収める", () => {
+    const { container } = render(<TabBar orientation="vertical" />);
+    const handle = container.querySelector(".tab-bar__resize-handle") as HTMLDivElement;
+
+    fireEvent.pointerDown(handle, { clientX: 200, pointerId: 1 });
+    fireEvent.pointerMove(handle, { clientX: 600, pointerId: 1 });
+    fireEvent.pointerUp(handle, { pointerId: 1 });
+
+    expect(configSetMock).toHaveBeenCalledWith("tab_bar_width", "280");
+
+    fireEvent.pointerDown(handle, { clientX: 600, pointerId: 1 });
+    fireEvent.pointerMove(handle, { clientX: 0, pointerId: 1 });
+    fireEvent.pointerUp(handle, { pointerId: 1 });
+
+    expect(configSetMock).toHaveBeenCalledWith("tab_bar_width", "160");
   });
 });
 

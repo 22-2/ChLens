@@ -257,6 +257,7 @@
 
 /* Vertical Tab Bar - ペイン左端の縦タブ一覧 */
 .tab-bar--vertical {
+  position: relative;
   flex-direction: column;
   align-items: stretch;
   width: 208px;
@@ -266,6 +267,10 @@
   padding: var(--sys-space-2);
   border-bottom: none;
   border-right: 1px solid var(--sys-color-border);
+}
+
+.tab-bar--vertical.tab-bar--resizing {
+  user-select: none;
 }
 
 .tab-bar--vertical .tab-list-container {
@@ -335,8 +340,120 @@
   width: 100%;
 }
 
-.tab-bar--vertical > .tab-bar__add {
+.tab-bar__vertical-header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  padding-bottom: var(--sys-space-2);
+}
+
+.tab-bar__collapse {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
-  height: var(--sys-space-12);
-  margin: var(--sys-space-2) 0 0;
+  height: var(--sys-space-9);
+  border: none;
+  border-radius: var(--sys-radius-sm);
+  background: transparent;
+  color: var(--sys-color-text-muted);
+  cursor: pointer;
+}
+
+.tab-bar__collapse:hover {
+  background: var(--sys-color-tab-strip-hover);
+  color: var(--sys-color-text);
+}
+
+.tab-bar__vertical-footer {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  padding-top: var(--sys-space-2);
+}
+
+.tab-bar__vertical-footer .tab-bar__add {
+  width: 100%;
+  height: var(--sys-space-9);
+  margin: 0;
+}
+
+.tab__icon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  color: var(--sys-color-text-muted);
+}
+
+.tab--active .tab__icon {
+  color: var(--sys-color-text);
+}
+
+/* 変更理由: 簡易表示ではタイトルと閉じるボタンを隠し、アイコンだけの細幅にする。
+   閉じる操作はホバー時のみ重ねて出し、中クリックと右クリックは従来どおり使える。 */
+.tab-bar--vertical.tab-bar--collapsed {
+  width: 48px;
+  min-width: 48px;
+  max-width: 48px;
+  padding-right: var(--sys-space-1);
+  padding-left: var(--sys-space-1);
+}
+
+.tab-bar--collapsed .tab {
+  justify-content: center;
+  padding: 0;
+}
+
+.tab-bar--collapsed .tab__auto-refresh-indicator {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  margin: 0;
+}
+
+.tab-bar--collapsed .tab__close {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  display: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  background: var(--sys-color-surface);
+}
+
+.tab-bar--collapsed .tab:hover .tab__close,
+.tab-bar--collapsed .tab:focus-within .tab__close {
+  display: flex;
+}
+
+/* 変更理由: タブのドラッグ並べ替えと幅変更の当たり判定が干渉しないよう、
+   幅変更は右端の専用ハンドルだけで受ける。 */
+.tab-bar__resize-handle {
+  position: absolute;
+  z-index: var(--sys-z-local-raised);
+  top: 0;
+  right: -4px;
+  bottom: 0;
+  width: 7px;
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.tab-bar__resize-handle::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 1px;
+  content: "";
+  background: transparent;
+}
+
+.tab-bar__resize-handle:hover::after,
+.tab-bar--resizing .tab-bar__resize-handle::after {
+  background: var(--sys-color-accent);
 }
