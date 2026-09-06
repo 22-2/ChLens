@@ -19,7 +19,9 @@ import { PageTypeIcon } from "src/view/browser/components/PageTypeIcon";
 import { TabContextMenu } from "src/view/browser/components/TabContextMenu";
 import { useAutoScrollState } from "src/view/browser/hooks/use-auto-scroll-state";
 import {
+  TAB_BAR_COLLAPSED_WIDTH,
   TAB_BAR_ORIENTATION_CONFIG_KEY,
+  TAB_BAR_WIDTH_MIN,
   clampTabBarWidth,
   useVerticalTabBarLayout,
   type TabBarOrientation,
@@ -217,6 +219,7 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
   // 移動のたびに保存すると書き込みが連続して重くなるため。
   const [dragWidth, setDragWidth] = useState<number | null>(null);
   const dragWidthRef = useRef<number | null>(null);
+  const dragRawWidthRef = useRef<number | null>(null);
   const resizeStartRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const barRef = useRef<HTMLDivElement | null>(null);
   const tabListRef = useRef<HTMLDivElement | null>(null);
@@ -505,31 +508,54 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
     (e: React.PointerEvent) => {
       // 変更理由: タブのドラッグ並べ替えと幅変更の当たり判定が干渉しないよう、
       // 幅変更は右端の専用ハンドルだけで開始する。
+      // 縮小時は48pxを起点にし、右へ引けば展開へ移れるようにする。
       e.preventDefault();
       e.currentTarget.setPointerCapture?.(e.pointerId);
-      resizeStartRef.current = { startX: e.clientX, startWidth: dragWidth ?? width };
+      resizeStartRef.current = {
+        startX: e.clientX,
+        startWidth: collapsed ? TAB_BAR_COLLAPSED_WIDTH : (dragWidth ?? width),
+      };
     },
-    [dragWidth, width],
+    [collapsed, dragWidth, width],
   );
 
-  const handleResizePointerMove = useCallback((e: React.PointerEvent) => {
-    const start = resizeStartRef.current;
-    if (!start) return;
-    const next = clampTabBarWidth(start.startWidth + (e.clientX - start.startX));
-    dragWidthRef.current = next;
-    setDragWidth(next);
-  }, []);
+  const handleResizePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      const start = resizeStartRef.current;
+      if (!start) return;
+      const raw = start.startWidth + (e.clientX - start.startX);
+      dragRawWidthRef.current = raw;
+      // 変更理由: 縮小中の表示は48pxを下限にし、敷居判定は丸め前の実値で行う。
+      const next = collapsed
+        ? Math.max(TAB_BAR_COLLAPSED_WIDTH, Math.round(raw))
+        : clampTabBarWidth(raw);
+      dragWidthRef.current = next;
+      setDragWidth(next);
+    },
+    [collapsed],
+  );
 
   const handleResizePointerUp = useCallback(() => {
     resizeStartRef.current = null;
     const finalWidth = dragWidthRef.current;
+    const rawWidth = dragRawWidthRef.current;
     dragWidthRef.current = null;
+    dragRawWidthRef.current = null;
     setDragWidth(null);
     // 変更理由: 確定した幅だけを保存し、ドラッグ中の連続書き込みを避ける。
-    if (finalWidth != null) {
-      setWidth(finalWidth);
+    // 縮小中に最小幅まで広げたら展開へ移し、敷居に届かなければ縮小のまま戻す。
+    if (finalWidth == null) {
+      return;
     }
-  }, [setWidth]);
+    if (collapsed) {
+      if ((rawWidth ?? finalWidth) >= TAB_BAR_WIDTH_MIN) {
+        setCollapsed(false);
+        setWidth(finalWidth);
+      }
+      return;
+    }
+    setWidth(finalWidth);
+  }, [collapsed, setCollapsed, setWidth]);
 
   const handleResizePointerCancel = useCallback(() => {
     // 変更理由: 中断時は操作中の幅を破棄し、保存済みの幅へ戻す。
@@ -625,7 +651,7 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
       // 変更理由: 簡易表示では幅をCSSの固定値に任せ、展開表示とドラッグ中だけ操作幅を使う。
       // ドラッグ中のタブがバー幅以上に広がらないよう、実幅をCSS変数でも共有する。
       style={
-        isVertical && !collapsed
+        isVertical && (!collapsed || dragWidth != null)
           ? ({
               width: displayWidth,
               "--tab-bar-width": `${displayWidth}px`,
@@ -709,30 +735,26 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
                 />
               );
             })}
-            {/* 変更理由: 垂直モードでは追加ボタンを下部へ常に固定し、タブが多いときも
-                到達しやすくする。水平モードの出し分けは従来どおり保つ。 */}
+            {/* 変更理由: 水平モードでは従来どおり溢れたときだけ外へ固定する。
+                垂直モードでは最終タブの直後に置き、一覧と一緒にスクロールさせる。 */}
             {!isVertical && !isTabListScrollable ? addTabButton : null}
+            {isVertical ? addTabButton : null}
           </div>
         </div>
       </DragDropProvider>
       {/* タブが横幅を超えるときだけ、追加ボタンをスクロール領域の外へ固定する。 */}
       {isVertical ? (
-        <>
-          <div className="tab-bar__vertical-footer">{addTabButton}</div>
-          {/* 変更理由: 簡易表示では幅が固定のため、展開表示のときだけ幅変更ハンドルを出す。 */}
-          {!collapsed && (
-            <div
-              className="tab-bar__resize-handle"
-              role="separator"
-              aria-orientation="vertical"
-              aria-label="タブバーの幅を変更"
-              onPointerDown={handleResizePointerDown}
-              onPointerMove={handleResizePointerMove}
-              onPointerUp={handleResizePointerUp}
-              onPointerCancel={handleResizePointerCancel}
-            />
-          )}
-        </>
+        // 変更理由: 縮小時もハンドルを出し、右へ引く操作で展開へ移れるようにする。
+        <div
+          className="tab-bar__resize-handle"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="タブバーの幅を変更"
+          onPointerDown={handleResizePointerDown}
+          onPointerMove={handleResizePointerMove}
+          onPointerUp={handleResizePointerUp}
+          onPointerCancel={handleResizePointerCancel}
+        />
       ) : isTabListScrollable ? (
         addTabButton
       ) : null}

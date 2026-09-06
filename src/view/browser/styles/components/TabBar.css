@@ -351,10 +351,11 @@
   width: 100%;
 }
 
-/* 変更理由: 垂直モードでは更新ボタンを一番上に置き、メニュー操作なしで再取得できるようにする。 */
+/* 変更理由: 垂直モードでは更新ボタンを一番上に置き、メニュー操作なしで再取得できるようにする。
+   ボタン行はタブ行と同じ高さに揃え、縮小時の48px幅にも収める。 */
 .tab-bar--vertical .tab-bar__refresh {
   width: 100%;
-  height: var(--sys-space-9);
+  height: var(--sys-space-12);
   margin: 0;
 }
 
@@ -375,9 +376,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  /* 変更理由: 開閉ボタンはタブバーの横幅いっぱいに広げず、アイコンボタンサイズに固定する。 */
-  width: var(--sys-space-11);
-  height: var(--sys-space-11);
+  width: 100%;
+  height: var(--sys-space-12);
   border: none;
   border-radius: var(--sys-radius-sm);
   background: transparent;
@@ -390,16 +390,11 @@
   color: var(--sys-color-text);
 }
 
-.tab-bar__vertical-footer {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  padding-top: var(--sys-space-2);
-}
-
-.tab-bar__vertical-footer .tab-bar__add {
+/* 変更理由: 垂直モードの追加ボタンは最終タブの直後に置き、一覧と一緒にスクロールさせる。 */
+.tab-bar--vertical .tab-list .tab-bar__add {
+  flex: 0 0 var(--sys-space-12);
   width: 100%;
-  height: var(--sys-space-9);
+  height: var(--sys-space-12);
   margin: 0;
 }
 
@@ -475,7 +470,8 @@
   left: 3px;
   width: 1px;
   content: "";
-  background: transparent;
+  /* 変更理由: 掴みどころが分かるよう、通常時も細い線を見せておく。 */
+  background: var(--sys-color-divider-subtle);
 }
 
 .tab-bar__resize-handle:hover::after,

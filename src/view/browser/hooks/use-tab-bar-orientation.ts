@@ -10,6 +10,8 @@ export const TAB_BAR_WIDTH_CONFIG_KEY = "tab_bar_width";
 export const TAB_BAR_WIDTH_DEFAULT = 208;
 export const TAB_BAR_WIDTH_MIN = 160;
 export const TAB_BAR_WIDTH_MAX = 280;
+// 変更理由: 簡易表示の固定幅。縮小中のリサイズ開始位置やドラッグ上限の基準にする。
+export const TAB_BAR_COLLAPSED_WIDTH = 48;
 
 function readConfigString(key: string): string | null {
   try {

@@ -1014,14 +1014,13 @@ describe("TabBar vertical", () => {
     expect(dispatchMock).toHaveBeenCalledWith({ type: "RELOAD" });
   });
 
-  it("垂直では追加ボタンが常にバーの下部へ固定される", () => {
+  it("垂直では追加ボタンが最終タブの直後にある", () => {
     const { container } = render(<TabBar orientation="vertical" />);
     const tabList = container.querySelector(".tab-list") as HTMLDivElement;
-    const footer = container.querySelector(".tab-bar__vertical-footer") as HTMLElement;
-    const addButton = container.querySelector(".tab-bar__add") as HTMLButtonElement;
+    const addButton = tabList.querySelector(".tab-bar__add") as HTMLButtonElement;
 
-    expect(tabList.querySelector(".tab-bar__add")).toBeNull();
-    expect(footer.querySelector(".tab-bar__add")).toBe(addButton);
+    expect(addButton).not.toBeNull();
+    expect(tabList.lastElementChild).toBe(addButton);
 
     Object.defineProperties(tabList, {
       clientHeight: { configurable: true, value: 100 },
@@ -1029,8 +1028,7 @@ describe("TabBar vertical", () => {
     });
     fireEvent.scroll(tabList);
 
-    expect(tabList.querySelector(".tab-bar__add")).toBeNull();
-    expect(footer.querySelector(".tab-bar__add")).toBe(addButton);
+    expect(tabList.lastElementChild).toBe(addButton);
   });
 
   it("垂直ではホイールでタブを切り替えず縦スクロールへ任せる", () => {
@@ -1117,7 +1115,7 @@ describe("TabBar vertical", () => {
     expect(tabBar).toHaveClass("tab-bar--collapsed");
     expect(container.querySelector(".tab__title")).toBeNull();
     expect(container.querySelectorAll(".tab__icon svg")).toHaveLength(2);
-    expect(container.querySelector(".tab-bar__resize-handle")).toBeNull();
+    expect(container.querySelector(".tab-bar__resize-handle")).not.toBeNull();
   });
 
   it("簡易表示の切り替えを保存する", () => {
@@ -1165,6 +1163,37 @@ describe("TabBar vertical", () => {
     fireEvent.pointerUp(handle, { pointerId: 1 });
 
     expect(configSetMock).toHaveBeenCalledWith("tab_bar_width", "160");
+  });
+
+  it("縮小中もハンドルがあり右へ引くと展開へ移る", () => {
+    configValues["tab_bar_collapsed"] = "on";
+    const { container } = render(<TabBar orientation="vertical" />);
+    const tabBar = container.querySelector(".tab-bar") as HTMLDivElement;
+    const handle = container.querySelector(".tab-bar__resize-handle") as HTMLDivElement;
+
+    expect(handle).not.toBeNull();
+
+    fireEvent.pointerDown(handle, { clientX: 48, pointerId: 1 });
+    fireEvent.pointerMove(handle, { clientX: 248, pointerId: 1 });
+
+    expect(tabBar).toHaveStyle({ width: "248px" });
+
+    fireEvent.pointerUp(handle, { pointerId: 1 });
+
+    expect(configSetMock).toHaveBeenCalledWith("tab_bar_collapsed", "off");
+    expect(configSetMock).toHaveBeenCalledWith("tab_bar_width", "248");
+  });
+
+  it("縮小中の小さなドラッグでは縮小のまま戻る", () => {
+    configValues["tab_bar_collapsed"] = "on";
+    const { container } = render(<TabBar orientation="vertical" />);
+    const handle = container.querySelector(".tab-bar__resize-handle") as HTMLDivElement;
+
+    fireEvent.pointerDown(handle, { clientX: 48, pointerId: 1 });
+    fireEvent.pointerMove(handle, { clientX: 58, pointerId: 1 });
+    fireEvent.pointerUp(handle, { pointerId: 1 });
+
+    expect(configSetMock).not.toHaveBeenCalled();
   });
 });
 
