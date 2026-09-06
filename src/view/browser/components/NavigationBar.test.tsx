@@ -861,4 +861,32 @@ describe("NavigationBar titlebar slot", () => {
 
     expect(slot.querySelector(".nav-bar__url-row")).not.toBeNull();
   });
+
+  it("垂直ではフォーカスアウトでURL行を閉じる", () => {
+    render(
+      <div className="pane-column__chrome">
+        <NavigationBar />
+      </div>,
+    );
+
+    fireEvent.click(slot.querySelector('[title="URLバーを表示"]') as HTMLElement);
+    expect(slot.querySelector(".nav-bar__url-row")).not.toBeNull();
+
+    fireEvent.blur(slot.querySelector(".nav-bar__url-input") as HTMLInputElement);
+
+    expect(slot.querySelector(".nav-bar__url-row")).toBeNull();
+  });
+
+  it("水平ではフォーカスアウトしてもURL行を開いたままにする", () => {
+    orientationHolder.value = "horizontal";
+
+    const { container } = render(<NavigationBar />);
+
+    fireEvent.click(screen.getByTitle("URLバーを表示"));
+    expect(container.querySelector(".nav-bar__url-row")).not.toBeNull();
+
+    fireEvent.blur(container.querySelector(".nav-bar__url-input") as HTMLInputElement);
+
+    expect(container.querySelector(".nav-bar__url-row")).not.toBeNull();
+  });
 });

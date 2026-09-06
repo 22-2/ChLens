@@ -11,10 +11,26 @@
   gap: 2px;
 }
 
+/* 変更理由: TitleBar の細バーに収めるため、ポータルされた2ボタンは小さくする。
+   並び順はメニュー→chevronへ入れ替える。 */
+.nav-bar--titlebar .nav-bar__url-toggle {
+  order: 2;
+}
+
+.nav-bar--titlebar .nav-bar__btn {
+  order: 1;
+}
+
 .nav-bar--titlebar .nav-bar__url-toggle,
 .nav-bar--titlebar .nav-bar__btn {
-  width: var(--sys-space-10);
-  height: var(--sys-space-10);
+  width: var(--sys-space-9);
+  height: var(--sys-space-9);
+}
+
+.nav-bar--titlebar .nav-bar__url-toggle svg,
+.nav-bar--titlebar .nav-bar__btn svg {
+  width: 14px;
+  height: 14px;
 }
 
 .nav-bar--titlebar .nav-bar__url-row {

@@ -352,6 +352,11 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     }
   }, [isActivePane, tabBarOrientation]);
 
+  // 変更理由: 垂直モードではアクティブペインの分だけ TitleBar へポータルし、ペイン上部の
+  // 高さを本文へ返す。スロットが無い環境（テスト等）では従来どおりインライン表示する。
+  // blur処理からも参照するため、描画部より前で定義する。
+  const useTitleBarSlot = tabBarOrientation === "vertical" && isActivePane && titleBarSlot !== null;
+
   useEffect(() => {
     let cancelled = false;
     void loadRecentCommandIds().then((loaded) => {
@@ -654,8 +659,13 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       if (paletteState.opened || omnibarMode === "command") {
         commandPalette.close();
       }
+      // 変更理由: 垂直モードのURL行は本文へ重なるオーバーレイのため、フォーカスが外れたら
+      // 行ごと閉じて本文へ返す。水平モードは従来どおりchevron操作でのみ開閉する。
+      if (useTitleBarSlot) {
+        setIsUrlExpanded(false);
+      }
     },
-    [handleBlur, omnibarMode, paletteState.opened],
+    [handleBlur, omnibarMode, paletteState.opened, useTitleBarSlot],
   );
 
   useEffect(() => {
@@ -1104,11 +1114,6 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       </button>
     </div>
   );
-
-  // 変更理由: 垂直モードではアクティブペインの分だけ TitleBar へポータルし、ペイン上部の
-  // 高さを本文へ返す。スロットが無い環境（テスト等）では従来どおりインライン表示する。
-  const useTitleBarSlot = tabBarOrientation === "vertical" && isActivePane && titleBarSlot !== null;
-
   const chrome = (
     <div className={`nav-bar${useTitleBarSlot ? " nav-bar--titlebar" : ""}`}>
       <button
