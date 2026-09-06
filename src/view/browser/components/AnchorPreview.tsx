@@ -231,6 +231,9 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
               items={anchorMenuItems}
               // 変更理由: ヘッダーメニューを所属popupとして扱い、メニュー操作で親子ごと閉じないようにする。
               popupId={popupId}
+              // 変更理由: 三点ボタンもトグル操作のため、押下時の Radix 側の先行closeで
+              // click トグルが開き直さないようトリガーとして登録する。
+              triggerRef={menuButtonRef}
               onClose={closeMenu}
             />
           )}

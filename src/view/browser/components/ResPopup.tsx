@@ -219,6 +219,9 @@ export const ResPopup: React.FC<{
               items={idMenuItems}
               // ヘッダーメニューを所属popupとして扱い、メニュー操作で親のIDポップアップを閉じない。
               popupId={popupId}
+              // 変更理由: 三点ボタンもトグル操作のため、押下時の Radix 側の先行closeで
+              // click トグルが開き直さないようトリガーとして登録する。
+              triggerRef={menuButtonRef}
               onClose={closeMenu}
             />
           )}

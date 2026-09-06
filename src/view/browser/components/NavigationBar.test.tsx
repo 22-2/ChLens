@@ -595,6 +595,28 @@ describe("NavigationBar", () => {
     expect(screen.queryByRole("button", { name: "設定を開く" })).not.toBeInTheDocument();
   });
 
+  it("実ブラウザの押下順序でも同じボタンの2回目でメニューが閉じる", async () => {
+    // 変更理由: 実ブラウザは mousedown の前に pointerdown を発し、Radix の
+    // DismissableLayer がトリガー上でも先に閉じてしまう。閉じた後の click トグルで
+    // 再オープンしないよう、トリガー上の pointerdown では閉じないことを保証する。
+    render(<NavigationBar />);
+
+    const menuButton = screen.getByTitle("メニュー");
+
+    fireEvent.click(menuButton);
+    const paletteButton = await screen.findByRole("button", { name: "コマンドパレット" });
+    expect(paletteButton).toBeInTheDocument();
+
+    menuButton.dispatchEvent(
+      new window.MouseEvent("pointerdown", { bubbles: true, cancelable: true, button: 0 }),
+    );
+    fireEvent.mouseDown(menuButton);
+    fireEvent.click(menuButton);
+
+    expect(screen.queryByRole("button", { name: "コマンドパレット" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "設定を開く" })).not.toBeInTheDocument();
+  });
+
   it("メニュー項目の『フィルターを開く』でフィルタトグルイベントを送る", () => {
     const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
     render(<NavigationBar />);
