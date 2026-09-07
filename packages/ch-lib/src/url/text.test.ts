@@ -15,6 +15,12 @@ describe("URL本文の補助関数", () => {
     }
   });
 
+  it("省略スキームの後ろに重複した完全URLがある形式を内側のURLへ正規化する", () => {
+    expect(normalizeObfuscatedUrl("ps://https://example.com/path")).toBe(
+      "https://example.com/path",
+    );
+  });
+
   it("別のスキームの末尾にあるスキームなし部分を一致扱いしない", () => {
     expect("foo://example.com".match(URL_LIKE_PATTERN)).toBeNull();
   });

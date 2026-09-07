@@ -94,4 +94,18 @@ describe("MessageParser", () => {
       },
     ]);
   });
+
+  it("省略スキームの後ろに完全なURLが続く画像URLを正しく解釈する", () => {
+    const tokens = parseMessage("ps://https://i.imgur.com/jZia7GC.png", {
+      protocol: "https:",
+    });
+
+    expect(tokens).toEqual([
+      {
+        type: "url",
+        value: "ps://https://i.imgur.com/jZia7GC.png",
+        href: "https://i.imgur.com/jZia7GC.png",
+      },
+    ]);
+  });
 });

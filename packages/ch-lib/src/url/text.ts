@@ -38,5 +38,13 @@ export function normalizeObfuscatedUrl(rawUrl: string, fallbackProtocol?: string
   const obfuscatedProtocol = match?.[2]?.toLowerCase();
   const restoredProtocol = obfuscatedProtocol ? OBFUSCATED_PROTOCOLS[obfuscatedProtocol] : null;
   if (!match || !restoredProtocol) return rawUrl;
-  return `${restoredProtocol}//${rawUrl.slice(match[0].length)}`;
+
+  const urlBody = rawUrl.slice(match[0].length);
+  if (/^https?:\/\//i.test(urlBody)) {
+    // 転記時に ps:// などの省略スキームが完全なURLの前へ重複することがある。
+    // 外側の省略スキームをさらに連結すると https://https://... になり、画像やリンクを開けないため、内側の完全なURLを採用する。
+    return urlBody;
+  }
+
+  return `${restoredProtocol}//${urlBody}`;
 }

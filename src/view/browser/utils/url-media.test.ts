@@ -64,6 +64,13 @@ describe("url-media", () => {
     );
   });
 
+  it("省略スキームと完全スキームが重複したimgur画像URLを正規化して扱う", () => {
+    const rawUrl = "ps://https://i.imgur.com/jZia7GC.png";
+
+    expect(extractUrlsFromMessage(rawUrl)).toEqual(["https://i.imgur.com/jZia7GC.png"]);
+    expect(toViewerImageUrl(rawUrl)).toBe("https://i.imgur.com/jZia7GCm.png");
+  });
+
   it("スラッシュが1本だけの画像URLを正規化してビューアで扱う", () => {
     expect(toViewerImageUrl("https:/example.com/image.jpeg")).toBe(
       "https://example.com/image.jpeg",
