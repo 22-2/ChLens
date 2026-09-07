@@ -86,6 +86,9 @@ export function useAutoRefresh({
   const scrollObserverFrameRef = useRef<number | null>(null);
   const contentResizeObserverFrameRef = useRef<number | null>(null);
   const lastObservedScrollHeightRef = useRef<number | null>(null);
+  // 変更理由: サイドタブバー開閉やウィンドウリサイズでは scrollHeight が変わらず
+  // clientHeight だけが変わることがある。底面維持の判定に両方を使うため、高さも保持する。
+  const lastObservedClientHeightRef = useRef<number | null>(null);
   const scrollingIndicatorTimerRef = useRef<number | null>(null);
   const [canAutoScroll, setCanAutoScroll] = useState(false);
   const [isAutoScrolling, setIsAutoScrolling] = useState(false);
@@ -384,7 +387,6 @@ export function useAutoRefresh({
     scheduleSync();
     scrollContainer.addEventListener("scroll", scheduleSync, { passive: true });
     scrollContainer.addEventListener("wheel", handleWheel, { passive: true });
-    window.addEventListener("resize", scheduleSync);
 
     return () => {
       if (scrollObserverFrameRef.current != null) {
@@ -394,7 +396,6 @@ export function useAutoRefresh({
 
       scrollContainer.removeEventListener("scroll", scheduleSync);
       scrollContainer.removeEventListener("wheel", handleWheel);
-      window.removeEventListener("resize", scheduleSync);
     };
   }, [getScrollContainer, isAutoScrolling, syncCanAutoScroll]);
 
@@ -404,16 +405,14 @@ export function useAutoRefresh({
 
     if (!enabled || !root || !scrollContainer || scrollContainer.dataset.active === "false") {
       lastObservedScrollHeightRef.current = null;
+      lastObservedClientHeightRef.current = null;
       return;
     }
 
     // ResizeObserver は初回 observe 時にも通知するため、現在値を先に保存して
     // 初回通知を「高さ変更」と誤認しないようにする。
     lastObservedScrollHeightRef.current = scrollContainer.scrollHeight;
-
-    if (typeof ResizeObserver === "undefined") {
-      return;
-    }
+    lastObservedClientHeightRef.current = scrollContainer.clientHeight;
 
     const scheduleContentResize = () => {
       if (contentResizeObserverFrameRef.current != null) {
@@ -434,43 +433,84 @@ export function useAutoRefresh({
         }
 
         const currentScrollHeight = currentScrollContainer.scrollHeight;
+        const currentClientHeight = currentScrollContainer.clientHeight;
         const previousScrollHeight = lastObservedScrollHeightRef.current;
+        const previousClientHeight = lastObservedClientHeightRef.current;
         lastObservedScrollHeightRef.current = currentScrollHeight;
+        lastObservedClientHeightRef.current = currentClientHeight;
 
-        if (previousScrollHeight == null || currentScrollHeight === previousScrollHeight) {
+        const sizeChanged =
+          previousScrollHeight == null ||
+          previousClientHeight == null ||
+          currentScrollHeight !== previousScrollHeight ||
+          currentClientHeight !== previousClientHeight;
+        if (!sizeChanged) {
           syncCanAutoScroll();
           return;
         }
 
-        // ユーザーが境界から離れていない間だけ高さ差分を相殺する。
+        // ユーザーが境界から離れていない間だけ底面位置を維持する。
         // これにより NG 解除や画像読み込みでも、明示的な上スクロールを奪わない。
+        // 変更理由: サイドタブバー開閉・ウィンドウリサイズ・下部パネル開閉など
+        // サイズ変更全般で追従判定が外れないよう、scrollHeight 差分ではなく
+        // 現在位置からの底面距離で補正する。コンテナ拡大時のブラウザ自動クランプを
+        // 読み直すため、二重補正にならず、既存の ResizeObserver 基盤を使い回せる。
         if (canAutoScrollRef.current && !userInterruptedRef.current && !pauseAutoScroll) {
-          currentScrollContainer.scrollBy({
-            top: currentScrollHeight - previousScrollHeight,
-            behavior: "auto",
-          });
-          // 通信中にキャッシュや画像の高さが先に変わっても、完了時に同じ差分を
-          // もう一度 scrollBy しないよう、保留中スナップショットの基準も進める。
-          if (pendingRefreshRef.current) {
+          const distanceToBottom =
+            currentScrollHeight - (currentScrollContainer.scrollTop + currentClientHeight);
+          if (distanceToBottom !== 0) {
+            currentScrollContainer.scrollBy({
+              top: distanceToBottom,
+              behavior: "auto",
+            });
+            // 通信中にキャッシュや画像の高さが先に変わっても、完了時に同じ差分を
+            // もう一度 scrollBy しないよう、保留中スナップショットの基準も進める。
+            if (pendingRefreshRef.current) {
+              pendingRefreshRef.current.scrollHeight = currentScrollHeight;
+            }
+            showScrollingIndicator();
+          } else if (pendingRefreshRef.current) {
             pendingRefreshRef.current.scrollHeight = currentScrollHeight;
           }
-          showScrollingIndicator();
         }
 
         syncCanAutoScroll();
       });
     };
 
+    // 変更理由: サイドタブバー開閉は window リサイズを発火させず、root の幅変化だけが
+    // 起きる。scroll 側の window resize だけでは追従維持と競合して判定が外れるため、
+    // 同じ補正経路へ一本化し、rAF で合流させて二重判定を防ぐ。
+    window.addEventListener("resize", scheduleContentResize);
+
+    if (typeof ResizeObserver === "undefined") {
+      return () => {
+        window.removeEventListener("resize", scheduleContentResize);
+        if (contentResizeObserverFrameRef.current != null) {
+          window.cancelAnimationFrame(contentResizeObserverFrameRef.current);
+          contentResizeObserverFrameRef.current = null;
+        }
+        lastObservedScrollHeightRef.current = null;
+        lastObservedClientHeightRef.current = null;
+      };
+    }
+
     const resizeObserver = new ResizeObserver(scheduleContentResize);
     resizeObserver.observe(root);
+    // 変更理由: root だけではコンテナ自体の高さ変化（下部パネル開閉やウィンドウ高さ変更で
+    // 中身の高さが変わらない場合）を検知できない。スクロールコンテナ自体も監視して
+    // サイズ変更全般を同じ底面維持処理へ流す。
+    resizeObserver.observe(scrollContainer);
 
     return () => {
+      window.removeEventListener("resize", scheduleContentResize);
       resizeObserver.disconnect();
       if (contentResizeObserverFrameRef.current != null) {
         window.cancelAnimationFrame(contentResizeObserverFrameRef.current);
         contentResizeObserverFrameRef.current = null;
       }
       lastObservedScrollHeightRef.current = null;
+      lastObservedClientHeightRef.current = null;
     };
   }, [
     enabled,
@@ -608,12 +648,14 @@ export function useAutoRefresh({
         // ResizeObserver が同じレス描画を再度「高さ変更」として処理して
         // scrollBy を二重実行しないよう、ネットワーク更新後の基準値を進める。
         lastObservedScrollHeightRef.current = currentScrollHeight;
+        lastObservedClientHeightRef.current = scrollContainer.clientHeight;
       }
       return;
     }
 
     scrollContainer.scrollBy({ top: deltaHeight, behavior: "auto" });
     lastObservedScrollHeightRef.current = currentScrollHeight;
+    lastObservedClientHeightRef.current = scrollContainer.clientHeight;
     showScrollingIndicator();
 
     window.requestAnimationFrame(() => {

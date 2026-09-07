@@ -464,6 +464,192 @@ describe("useAutoRefresh", () => {
     expect(screen.getByTestId("can-auto-scroll")).toHaveTextContent("enabled");
   });
 
+  it("サイドタブバー開閉など中身の高さが変わらず容器だけ縮んでも追従を維持する", () => {
+    const onRequestRefresh = vi.fn();
+    let scrollTopValue = 200;
+    let scrollHeightValue = 300;
+    let clientHeightValue = 100;
+    render(
+      <AutoRefreshHarness
+        onRequestRefresh={onRequestRefresh}
+        configureScrollContainer={(scrollContainer) => {
+          Object.defineProperty(scrollContainer, "clientHeight", {
+            configurable: true,
+            get: () => clientHeightValue,
+          });
+          Object.defineProperty(scrollContainer, "scrollTop", {
+            configurable: true,
+            get: () => scrollTopValue,
+            set: (value: number) => {
+              scrollTopValue = value;
+            },
+          });
+          Object.defineProperty(scrollContainer, "scrollHeight", {
+            configurable: true,
+            get: () => scrollHeightValue,
+          });
+        }}
+      />,
+    );
+
+    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
+    const boundary = screen.getByTestId("boundary") as HTMLDivElement;
+    scrollContainer.getBoundingClientRect = () => createRect({ top: 0, bottom: clientHeightValue });
+    boundary.getBoundingClientRect = () => createRect({ top: 80, bottom: clientHeightValue });
+    const scrollBy = vi.fn(({ top }: ScrollToOptions) => {
+      scrollTopValue += top ?? 0;
+    });
+    // @ts-expect-error: jsdom の HTMLElement#scrollBy は ScrollToOptions 単一引数オーバーロードを持たない
+    scrollContainer.scrollBy = scrollBy;
+
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
+    expect(screen.getByTestId("can-auto-scroll")).toHaveTextContent("enabled");
+
+    // 変更理由: 下部パネル表示などで容器だけが縮むと、中身の高さ差分だけでは底面へ戻せない。
+    // 底面距離で補正して追従判定を維持する。
+    clientHeightValue = 70;
+    scrollContainer.getBoundingClientRect = () => createRect({ top: 0, bottom: clientHeightValue });
+    boundary.getBoundingClientRect = () => createRect({ top: 50, bottom: clientHeightValue });
+    act(() => {
+      resizeObservers[0].trigger();
+      vi.runOnlyPendingTimers();
+    });
+
+    expect(scrollBy).toHaveBeenCalledWith({ top: 30, behavior: "auto" });
+    expect(screen.getByTestId("can-auto-scroll")).toHaveTextContent("enabled");
+  });
+
+  it("ウィンドウリサイズでも追従位置を維持して追従判定を外さない", () => {
+    const onRequestRefresh = vi.fn();
+    let scrollTopValue = 200;
+    let scrollHeightValue = 300;
+    let clientHeightValue = 100;
+    render(
+      <AutoRefreshHarness
+        onRequestRefresh={onRequestRefresh}
+        configureScrollContainer={(scrollContainer) => {
+          Object.defineProperty(scrollContainer, "clientHeight", {
+            configurable: true,
+            get: () => clientHeightValue,
+          });
+          Object.defineProperty(scrollContainer, "scrollTop", {
+            configurable: true,
+            get: () => scrollTopValue,
+            set: (value: number) => {
+              scrollTopValue = value;
+            },
+          });
+          Object.defineProperty(scrollContainer, "scrollHeight", {
+            configurable: true,
+            get: () => scrollHeightValue,
+          });
+        }}
+      />,
+    );
+
+    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
+    const boundary = screen.getByTestId("boundary") as HTMLDivElement;
+    scrollContainer.getBoundingClientRect = () => createRect({ top: 0, bottom: clientHeightValue });
+    boundary.getBoundingClientRect = () => createRect({ top: 80, bottom: clientHeightValue });
+    const scrollBy = vi.fn(({ top }: ScrollToOptions) => {
+      scrollTopValue += top ?? 0;
+    });
+    // @ts-expect-error: jsdom の HTMLElement#scrollBy は ScrollToOptions 単一引数オーバーロードを持たない
+    scrollContainer.scrollBy = scrollBy;
+
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
+    expect(screen.getByTestId("can-auto-scroll")).toHaveTextContent("enabled");
+
+    // 変更理由: 従来は window リサイズが単なる再判定で先に追従OFFへ倒れ、
+    // ResizeObserver の補正が効かず追従が終わっていた。同じ補正経路へ一本化したため、
+    // リサイズ経由でも底面へ維持される。
+    scrollHeightValue = 360;
+    clientHeightValue = 100;
+    act(() => {
+      window.dispatchEvent(new Event("resize"));
+      vi.runOnlyPendingTimers();
+    });
+
+    expect(scrollBy).toHaveBeenCalledWith({ top: 60, behavior: "auto" });
+    expect(screen.getByTestId("can-auto-scroll")).toHaveTextContent("enabled");
+  });
+
+  it("容器拡大でブラウザが既に底面へ寄せていれば二重補正しない", () => {
+    const onRequestRefresh = vi.fn();
+    let scrollTopValue = 200;
+    const scrollHeightValue = 300;
+    let clientHeightValue = 100;
+    render(
+      <AutoRefreshHarness
+        onRequestRefresh={onRequestRefresh}
+        configureScrollContainer={(scrollContainer) => {
+          Object.defineProperty(scrollContainer, "clientHeight", {
+            configurable: true,
+            get: () => clientHeightValue,
+          });
+          Object.defineProperty(scrollContainer, "scrollTop", {
+            configurable: true,
+            get: () => scrollTopValue,
+            set: (value: number) => {
+              scrollTopValue = value;
+            },
+          });
+          Object.defineProperty(scrollContainer, "scrollHeight", {
+            configurable: true,
+            get: () => scrollHeightValue,
+          });
+        }}
+      />,
+    );
+
+    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
+    const boundary = screen.getByTestId("boundary") as HTMLDivElement;
+    scrollContainer.getBoundingClientRect = () => createRect({ top: 0, bottom: clientHeightValue });
+    boundary.getBoundingClientRect = () => createRect({ top: 80, bottom: clientHeightValue });
+    const scrollBy = vi.fn(({ top }: ScrollToOptions) => {
+      scrollTopValue += top ?? 0;
+    });
+    // @ts-expect-error: jsdom の HTMLElement#scrollBy は ScrollToOptions 単一引数オーバーロードを持たない
+    scrollContainer.scrollBy = scrollBy;
+
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
+    expect(screen.getByTestId("can-auto-scroll")).toHaveTextContent("enabled");
+
+    // 変更理由: 容器拡大時はブラウザが scrollTop を自動でクランプして底面へ残す。
+    // 差分だけで動かすと逆方向へずれるため、底面距離が0なら動かさない。
+    clientHeightValue = 150;
+    scrollTopValue = 150;
+    scrollContainer.getBoundingClientRect = () => createRect({ top: 0, bottom: clientHeightValue });
+    boundary.getBoundingClientRect = () => createRect({ top: 130, bottom: clientHeightValue });
+    act(() => {
+      resizeObservers[0].trigger();
+      vi.runOnlyPendingTimers();
+    });
+
+    expect(scrollBy).not.toHaveBeenCalled();
+    expect(screen.getByTestId("can-auto-scroll")).toHaveTextContent("enabled");
+  });
+
+  it("内容と容器の両方を監視してサイズ変更全般へ追従できる", () => {
+    const onRequestRefresh = vi.fn();
+    render(<AutoRefreshHarness onRequestRefresh={onRequestRefresh} />);
+
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
+
+    // 変更理由: root だけでは容器自体の高さ変化を検知できない。
+    // スクロールコンテナ自体も監視してサイズ変更全般を同じ補正へ流す。
+    expect(resizeObservers).toHaveLength(1);
+    expect(resizeObservers[0].observe).toHaveBeenCalledTimes(2);
+  });
+
   it("高さ変更後もユーザーのホイール操作を優先して追従しない", () => {
     const onRequestRefresh = vi.fn();
     render(<AutoRefreshHarness onRequestRefresh={onRequestRefresh} />);
