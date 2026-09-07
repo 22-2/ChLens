@@ -237,6 +237,35 @@ describe("browser commands", () => {
     expect(context.openResponseJumpDialog).not.toHaveBeenCalled();
   });
 
+  it("URL付きの開く候補は対象スレの板を戻る先に残して遷移する", async () => {
+    const { context, dispatch } = createContext({ type: "home", title: "ホーム" });
+
+    await expect(
+      executeBrowserCommand(
+        "navigation.open-url:https://example.com/test/read.cgi/software/1788743729/",
+        context,
+      ),
+    ).resolves.toBe(true);
+
+    expect(dispatch).toHaveBeenNthCalledWith(1, {
+      type: "NAVIGATE",
+      page: {
+        type: "threadList",
+        title: "https://example.com/software/",
+        boardUrl: "https://example.com/software/",
+        boardTitle: "https://example.com/software/",
+      },
+    });
+    expect(dispatch).toHaveBeenNthCalledWith(2, {
+      type: "NAVIGATE",
+      page: {
+        type: "thread",
+        title: "https://example.com/test/read.cgi/software/1788743729/",
+        threadUrl: "https://example.com/test/read.cgi/software/1788743729/",
+      },
+    });
+  });
+
   it("スレッドでは次スレ候補検索コマンドを実行できる", async () => {
     const { context } = createContext({
       type: "thread",

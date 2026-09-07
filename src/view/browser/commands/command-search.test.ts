@@ -37,6 +37,7 @@ const threadCommands = [
     "jump",
     "response",
   ]),
+  command("navigation.open-url", "URLを開く", "Open URL", ["url", "アドレス", "リンク"]),
 ];
 
 describe("filterAndSortBrowserCommands", () => {
@@ -102,6 +103,29 @@ describe("filterAndSortBrowserCommands", () => {
       expect(
         filterAndSortBrowserCommands(threadCommands, query, []).some(({ id }) =>
           id.startsWith("page.jump-to-response:"),
+        ),
+      ).toBe(false);
+    }
+  });
+
+  it("認識できるURL入力はURLを開く候補を最上位へ合成する", () => {
+    const result = filterAndSortBrowserCommands(
+      threadCommands,
+      "https://example.com/test/read.cgi/software/1788743729/",
+      [],
+    );
+
+    expect(result[0]).toMatchObject({
+      id: "navigation.open-url:https://example.com/test/read.cgi/software/1788743729/",
+      label: "このURLを開く",
+    });
+  });
+
+  it("認識できない入力はURLを開く候補にしない", () => {
+    for (const query of ["ただのメモ", "https://example.com/", ">"]) {
+      expect(
+        filterAndSortBrowserCommands(threadCommands, query, []).some(({ id }) =>
+          id.startsWith("navigation.open-url:"),
         ),
       ).toBe(false);
     }
