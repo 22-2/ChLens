@@ -9,6 +9,15 @@ describe("message-filter", () => {
     expect(hasImage(url)).toBe(true);
   });
 
+  it("twitter画像のコロン付きサイズ指定URLを画像として判定する", () => {
+    // なぜ判定が必要か: pbs.twimg.com の「XXX.jpg:orig」形式はコロン以下を拡張子と誤認すると画像判定から漏れるため。
+    expect(hasImage("https://pbs.twimg.com/media/TestTwitterImageA.jpg:orig")).toBe(true);
+    expect(hasImage("https://pbs.twimg.com/media/TestTwitterImageB.jpg:large")).toBe(true);
+    expect(hasImage("https://pbs.twimg.com/media/TestTwitterImageC.png:orig")).toBe(true);
+    expect(hasImage("s://pbs.twimg.com/media/TestTwitterImageD.jpg:orig")).toBe(true);
+    expect(hasImage("https://example.com/notimage.txt:orig")).toBe(false);
+  });
+
   it("先頭を削った画像URLをリンク・画像として扱う", () => {
     const message = [
       "s://pbs.twimg.com/media/TestTwitterImageA.jpg",

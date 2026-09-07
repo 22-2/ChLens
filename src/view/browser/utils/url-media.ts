@@ -122,7 +122,11 @@ export function toViewerImageUrl(rawUrl: string): string | null {
       }
     }
 
-    if (/\.(jpe?g|png|gif|webp|bmp|avif)(\?.*)?$/i.test(pathname)) {
+    // pbs.twimg.com の画像は「XXX.jpg:orig」のように拡張子の直後へ
+    // コロン付きのサイズ指定サフィックス（:thumb/:small/:medium/:large/:orig など）が付く。
+    // なぜこの分岐が必要か: コロン以下を拡張子の一部とみなすと画像判定から漏れるため、
+    // サフィックス付きでも通常の画像として扱い、元のURLのまま表示する。
+    if (/\.(jpe?g|png|gif|webp|bmp|avif)(?::[a-z0-9]+)?(\?.*)?$/i.test(pathname)) {
       return url.href;
     }
 

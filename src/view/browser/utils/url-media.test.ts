@@ -33,6 +33,31 @@ describe("url-media", () => {
     expect(toViewerImageUrl(url)).toBe(url);
   });
 
+  it("twitter画像のコロン付きサイズ指定URLを通常画像として扱う", () => {
+    // pbs.twimg.com は「XXX.jpg:orig」のように拡張子の直後へコロン付きサイズ指定を付ける。
+    // なぜそのまま返すか: サフィックスは表示サイズの指定であり、画像本体は元のURLで取得できるため。
+    const urls = [
+      "https://pbs.twimg.com/media/TestTwitterImageA.jpg:orig",
+      "https://pbs.twimg.com/media/TestTwitterImageB.jpg:large",
+      "https://pbs.twimg.com/media/TestTwitterImageC.jpg:small",
+      "https://pbs.twimg.com/media/TestTwitterImageD.jpg:medium",
+      "https://pbs.twimg.com/media/TestTwitterImageE.png:orig",
+    ];
+    for (const url of urls) {
+      expect(toViewerImageUrl(url)).toBe(url);
+    }
+  });
+
+  it("コロン付きサイズ指定URLを抽出時に欠けさせない", () => {
+    expect(
+      extractUrlsFromMessage("see https://pbs.twimg.com/media/TestTwitterImageA.jpg:orig here"),
+    ).toEqual(["https://pbs.twimg.com/media/TestTwitterImageA.jpg:orig"]);
+  });
+
+  it("コロン付きでも画像拡張子でなければビューア対象にしない", () => {
+    expect(toViewerImageUrl("https://example.com/notimage.txt:orig")).toBeNull();
+  });
+
   it("先頭を削ったimgur画像URLをサムネイル形式に変換する", () => {
     expect(toViewerImageUrl("p://i.imgur.com/TestImageC.jpg")).toBe(
       "https://i.imgur.com/TestImageCm.jpg",

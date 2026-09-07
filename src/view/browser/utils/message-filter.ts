@@ -10,7 +10,12 @@ import { isInlineVideoEmbedUrl } from "src/view/browser/utils/external-media";
 export function hasImage(message: string): boolean {
   const normalizedMessage = message.replace(URL_LIKE_PATTERN, normalizeObfuscatedUrl);
   return (
-    /\.(jpe?g|png|gif|webp|bmp|avif)(?:\?[^"<]*)?(?=["<\s]|$)/i.test(normalizedMessage) ||
+    // なぜサフィックスを許容するか: pbs.twimg.com の画像は「XXX.jpg:orig」のように
+    // 拡張子の直後へコロン付きのサイズ指定（:thumb/:small/:medium/:large/:orig など）が付く。
+    // コロン以下を拡張子の一部とみなすと画像判定から漏れるため、通常の画像として扱う。
+    /\.(jpe?g|png|gif|webp|bmp|avif)(?::[a-z0-9]+)?(?:\?[^"<]*)?(?=["<\s]|$)/i.test(
+      normalizedMessage,
+    ) ||
     /https?:\/\/pbs\.twimg\.com\/media\/[^\s"'<>?]+\?[^\s"'<>]*format=(?:jpe?g|png|gif|webp|bmp|avif)\b/i.test(
       normalizedMessage,
     )
