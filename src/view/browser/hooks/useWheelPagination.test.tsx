@@ -110,7 +110,7 @@ describe("useWheelPagination", () => {
     expect(screen.queryByText(/あと/)).toBeNull();
   });
 
-  it("ホイール操作以外の読み込み中は残っていた進捗でインジケーターを出さない", () => {
+  it("ホイール操作以外の読み込み開始時に残っていた進捗を破棄する", () => {
     // 変更理由: 自動更新などの外部要因で読み込みが始まっただけで、直前のホイールの
     // 残り方向・進捗と組み合わさって一瞬表示されるのを防ぐ。
     const refresh = vi.fn();
@@ -127,7 +127,7 @@ describe("useWheelPagination", () => {
     expect(refresh).not.toHaveBeenCalled();
 
     rerender(<WheelProbe id="list" edge="bottom" onRefresh={refresh} />);
-    expect(screen.getByRole("progressbar", { name: "下方向の更新進捗" })).toBeVisible();
+    expect(screen.queryByRole("progressbar")).toBeNull();
   });
 
   it("ホイール更新による読み込み中はcooldown終了後もスピナーを維持する", async () => {

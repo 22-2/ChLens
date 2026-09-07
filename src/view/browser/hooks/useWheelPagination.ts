@@ -83,6 +83,7 @@ export function useWheelPagination({
   const [refreshDirection, setRefreshDirection] = useState<WheelDirection | null>(null);
   const stateRef = useRef<WheelPaginationState>({ count: 0, direction: null });
   const resetTimerRef = useRef<number | null>(null);
+  const previousLoadingRef = useRef(isLoading);
   const onRefreshRef = useRef(onRefresh);
   onRefreshRef.current = onRefresh;
   const sharedCooldown = useSyncExternalStore(
@@ -103,6 +104,24 @@ export function useWheelPagination({
     reset();
     setRefreshDirection(null);
   }, [isEnabled, reset]);
+
+  useEffect(() => {
+    const wasLoading = previousLoadingRef.current;
+    previousLoadingRef.current = isLoading;
+
+    if (wasLoading || !isLoading || refreshDirection !== null || sharedCooldown.isCoolingDown) {
+      return;
+    }
+
+    // 変更理由: 自動更新や手動更新の開始時に未完了のホイール進捗を残すと、
+    // 読み込み中だけ隠したIndicatorが通信完了後に古い状態で再表示される。
+    // ホイール更新自身はrefreshDirectionが設定済みなので、この分岐では進捗を維持する。
+    reset();
+    if (resetTimerRef.current !== null) {
+      window.clearTimeout(resetTimerRef.current);
+      resetTimerRef.current = null;
+    }
+  }, [isLoading, refreshDirection, reset, sharedCooldown.isCoolingDown]);
 
   useEffect(() => {
     const container = containerRef.current;
