@@ -142,6 +142,7 @@ async function flushAsyncRender(): Promise<void> {
 describe("ThreadListPage", () => {
   let getThreadsMock: ReturnType<typeof vi.fn>;
   const configUpdatedListeners = new Set<(payload: { key?: string }) => void>();
+  const messageListeners = new Map<string, Set<(payload: never) => void>>();
 
   beforeEach(() => {
     cacheGetMock.mockReset();
@@ -170,6 +171,10 @@ describe("ThreadListPage", () => {
       getThreads: getThreadsMock,
       getCachedResCount: vi.fn(),
     } as unknown as IBoardService;
+    serviceContainer.util = {
+      isNewerReadState: (a: unknown, b: unknown) =>
+        (b as { received?: number }).received !== (a as { received?: number }).received,
+    } as unknown as typeof serviceContainer.util;
     serviceContainer.config = {
       get: vi.fn((key: string) => (key === "auto_load_second_board" ? "20000" : "0")),
       set: vi.fn(),
@@ -183,11 +188,16 @@ describe("ThreadListPage", () => {
         if (type === "config_updated") {
           configUpdatedListeners.add(handler);
         }
+        if (!messageListeners.has(type)) {
+          messageListeners.set(type, new Set());
+        }
+        messageListeners.get(type)?.add(handler as (payload: never) => void);
       }),
       off: vi.fn((type: string, handler: (payload: { key?: string }) => void) => {
         if (type === "config_updated") {
           configUpdatedListeners.delete(handler);
         }
+        messageListeners.get(type)?.delete(handler as (payload: never) => void);
       }),
     } as unknown as typeof serviceContainer.message;
   });
@@ -197,6 +207,7 @@ describe("ThreadListPage", () => {
     window.localStorage.removeItem(THREAD_LIST_SORT_STORAGE_KEY);
     vi.unstubAllGlobals();
     configUpdatedListeners.clear();
+    messageListeners.clear();
     vi.useRealTimers();
   });
 
@@ -254,6 +265,49 @@ describe("ThreadListPage", () => {
     );
     await vi.advanceTimersByTimeAsync(20000);
     expect(dispatchMock).toHaveBeenCalledWith({ type: "RELOAD" });
+  });
+
+  it("非表示中の既読更新は保留し、表示復帰時に再取得なしで反映する", async () => {
+    vi.useRealTimers();
+    const page = {
+      type: "threadList" as const,
+      title: "Software",
+      boardUrl: "https://egg.5ch.net/software/",
+      boardTitle: "Software",
+    };
+    const { rerender } = render(
+      <ThreadListPage tabId="tab-1" page={page} refreshKey={0} isActive={false} />,
+    );
+
+    await waitFor(() => {
+      expect(getRenderedThreadTitles()).toContain("B Thread");
+    });
+    const emit = (payload: unknown) => {
+      for (const handler of messageListeners.get("read_state_updated") ?? []) {
+        handler(payload as never);
+      }
+    };
+    // 変更理由: 2ペイン時、スレ側の自動更新で既読位置が進むたび裏側の一覧まで
+    // 書き換わっていた。非表示の間は適用せず、復帰時にまとめて反映する。
+    emit({
+      board_url: "https://egg.5ch.net/software/",
+      read_state: {
+        url: "https://egg.5ch.net/test/read.cgi/software/1/",
+        read: 14,
+        received: 25,
+        last: 14,
+      },
+    });
+    await flushAsyncRender();
+    // 未読列は 20-14=6 のまま変わらない。
+    expect(document.body.textContent).not.toContain("11");
+
+    rerender(<ThreadListPage tabId="tab-1" page={page} refreshKey={0} isActive={true} />);
+    await waitFor(() => {
+      // 未読列が 25-14=11 に更新される。再取得は走らない。
+      expect(document.body.textContent).toContain("11");
+    });
+    expect(getThreadsMock).toHaveBeenCalledTimes(1);
   });
 
   it("スレ一覧のフィルタを板ごとに復元し、保存更新で入力中の値を巻き戻さない", async () => {

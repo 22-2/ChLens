@@ -481,6 +481,13 @@ export const ThreadListPage: React.FC<Props> = ({
   const [searchQuery, setSearchQuery] = useState(() => persistedSearchQuery ?? "");
   const previousBoardUrlRef = useRef(page.boardUrl);
   const skipViewStateUpdateRef = useRef(false);
+  // 変更理由: 非表示中の read_state 系 message を保留し、表示復帰時に適用するため。
+  const isActiveRef = useRef(isActive);
+  isActiveRef.current = isActive;
+  const pendingReadStateRef = useRef<{ updated: IReadState[]; removed: string[] }>({
+    updated: [],
+    removed: [],
+  });
   // 変更理由: 更新開始後のloading中もwheel更新の共有cooldownとindicatorを維持し、
   // 画面切替で別の一覧/スレッドから連続更新できる隙間を作らない。
   const wheelPagination = useWheelPagination({
@@ -573,17 +580,7 @@ export const ThreadListPage: React.FC<Props> = ({
   }, [page.boardUrl]);
 
   useEffect(() => {
-    const handleReadStateUpdated = ({
-      board_url: boardUrl,
-      read_state: readState,
-    }: {
-      board_url?: string;
-      read_state?: IReadState;
-    }) => {
-      if (!readState || boardUrl !== page.boardUrl) {
-        return;
-      }
-
+    const applyReadStateUpdated = (readState: IReadState) => {
       setThreads((prev) =>
         prev.map((thread) => {
           if (thread.url !== readState.url) {
@@ -602,11 +599,7 @@ export const ThreadListPage: React.FC<Props> = ({
       );
     };
 
-    const handleReadStateRemoved = ({ url }: { url?: string }) => {
-      if (!url) {
-        return;
-      }
-
+    const applyReadStateRemoved = (url: string) => {
       // 変更理由: スレ一覧タブは非アクティブ時も mounted のまま残るため、
       // 読了後に戻った時点で未読列が古いままにならないよう message で追従する。
       setThreads((prev) =>
@@ -621,6 +614,40 @@ export const ThreadListPage: React.FC<Props> = ({
       );
     };
 
+    // 変更理由: 2ペイン時、スレ側の自動更新で既読位置が進むたび global な
+    // read_state_updated が飛び、裏側の一覧まで毎回書き換わって「勝手に自動更新」
+    // に見えていた。非表示の間は保留し、表示時にまとめて適用することで
+    // 裏側のチラつきを抑えつつ未読列の鮮度も保つ。
+    const handleReadStateUpdated = ({
+      board_url: boardUrl,
+      read_state: readState,
+    }: {
+      board_url?: string;
+      read_state?: IReadState;
+    }) => {
+      if (!readState || boardUrl !== page.boardUrl) {
+        return;
+      }
+
+      if (!isActiveRef.current) {
+        pendingReadStateRef.current.updated.push(readState);
+        return;
+      }
+      applyReadStateUpdated(readState);
+    };
+
+    const handleReadStateRemoved = ({ url }: { url?: string }) => {
+      if (!url) {
+        return;
+      }
+
+      if (!isActiveRef.current) {
+        pendingReadStateRef.current.removed.push(url);
+        return;
+      }
+      applyReadStateRemoved(url);
+    };
+
     container.message.on("read_state_updated", handleReadStateUpdated);
     container.message.on("read_state_removed", handleReadStateRemoved);
 
@@ -629,6 +656,36 @@ export const ThreadListPage: React.FC<Props> = ({
       container.message.off("read_state_removed", handleReadStateRemoved);
     };
   }, [page.boardUrl]);
+
+  useEffect(() => {
+    if (!isActive) {
+      return;
+    }
+    // 表示に戻った時点で保留分をまとめて反映する。ネットワーク再取得はしない。
+    const pending = pendingReadStateRef.current;
+    if (pending.updated.length === 0 && pending.removed.length === 0) {
+      return;
+    }
+    pendingReadStateRef.current = { updated: [], removed: [] };
+    for (const readState of pending.updated) {
+      setThreads((prev) =>
+        prev.map((thread) => {
+          if (thread.url !== readState.url) {
+            return thread;
+          }
+          if (thread.readState && !container.util.isNewerReadState(thread.readState, readState)) {
+            return thread;
+          }
+          return { ...thread, readState };
+        }),
+      );
+    }
+    for (const url of pending.removed) {
+      setThreads((prev) =>
+        prev.map((thread) => (thread.url === url ? { ...thread, readState: undefined } : thread)),
+      );
+    }
+  }, [isActive]);
 
   useEffect(() => {
     if (previousBoardUrlRef.current === page.boardUrl) {
