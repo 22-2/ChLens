@@ -99,10 +99,9 @@ const TabPageContent = memo(function TabPageContent({
 interface TabPanelProps {
   tab: Tab;
   isActive: boolean;
-  isPaneFocused: boolean;
 }
 
-const TabPanel = memo(function TabPanel({ tab, isActive, isPaneFocused }: TabPanelProps) {
+const TabPanel = memo(function TabPanel({ tab, isActive }: TabPanelProps) {
   const page = getCurrentPage(tab);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -134,8 +133,8 @@ const TabPanel = memo(function TabPanel({ tab, isActive, isPaneFocused }: TabPan
         <TabPageContent
           key={buildPageRenderKey(tab.id, tab.currentIndex, page)}
           tab={tab}
-          isActive={isActive && isPaneFocused}
-          threadListActive={page.type === "threadList" ? isActive && isPaneFocused : undefined}
+          isActive={isActive}
+          threadListActive={page.type === "threadList" ? isActive : undefined}
           scrollContainerRef={scrollContainerRef}
         />
       }
@@ -144,20 +143,15 @@ const TabPanel = memo(function TabPanel({ tab, isActive, isPaneFocused }: TabPan
 });
 
 export const ContentArea: FC = () => {
-  const { state, isPaneFocused } = useTabStore();
+  const { state } = useTabStore();
 
   return (
     <div className="content-area">
       {state.tabs.map((tab) => (
-        // 変更理由: 表示自体はペイン単位の activeTab で維持しつつ、
-        // 自動更新などの実行判定だけフォーカスペインに限定するため両方を渡す。
-        // 既存 ResizeObserver 基盤は表示中の寸法変化を引き続き検知できる。
-        <TabPanel
-          key={tab.id}
-          tab={tab}
-          isActive={tab.id === state.activeTabId}
-          isPaneFocused={isPaneFocused}
-        />
+        // 変更理由: 2ペイン時はフォーカス外のペインも表示中のため、自動更新の
+        // 実行判定はペイン単位の activeTab で行いフォーカスでは絞らない。
+        // 非表示タブ・ドキュメント非表示時の停止は各ページ側の判定に任せる。
+        <TabPanel key={tab.id} tab={tab} isActive={tab.id === state.activeTabId} />
       ))}
     </div>
   );
