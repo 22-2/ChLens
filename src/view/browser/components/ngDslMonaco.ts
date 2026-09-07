@@ -94,6 +94,7 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
     .flatMap((entry) => [entry.name, ...(entry.aliases ?? [])])
     .map(escapeRegExp)
     .join("|");
+  const operatorPattern = RULE_DSL_LANGUAGE_DEFINITION.operators.map(escapeRegExp).join("|");
   const optionPattern = RULE_DSL_LANGUAGE_DEFINITION.options
     .flatMap((entry) => [entry.name, ...(entry.aliases ?? [])])
     .map(escapeRegExp)
@@ -110,7 +111,7 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
         [/\/\*/, "comment", "@blockComment"],
         [/^\s*\/\/.*$/, "comment"],
         [/^\s*#.*$/, "comment"],
-        [new RegExp(`^\\s*(?:${actionPattern})\\b`), "keyword"],
+        [new RegExp(`^\\s*(?:${actionPattern}|${operatorPattern})\\b`), "keyword"],
         [new RegExp(`\\b(?:${targetPattern})\\b`), "type.identifier"],
         [new RegExp(`\\b(?:${matcherPattern})\\b`), "type.identifier"],
         [new RegExp(`\\b(?:${optionPattern})\\b(?=\\s*=)`), "attribute.name"],

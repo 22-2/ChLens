@@ -75,7 +75,7 @@ function updateRulesCache(rules: readonly Rule[]): void {
   clearRuleRegexCache();
 }
 
-/** 複数条件を持つルールでも、実際に一致した条件だけをNG理由として表示する。 */
+/** 同一targetのOR候補は一致したmatcherに絞り、複数targetのAND条件は全体を理由として表示する。 */
 function formatMatchedRule(matched: RuleMatchResult): string {
   return formatRuleDsl([{ ...matched.rule, matchers: [matched.matcher] }]);
 }

@@ -50,6 +50,7 @@ export const RULE_DSL_LANGUAGE_DEFINITION = {
   actions: RULE_ACTION_CATALOG,
   targets: RULE_TARGET_CATALOG,
   options: RULE_OPTION_CATALOG,
+  operators: ["and"] as const,
   matchers: ["contains", "regex"] as const,
   colors: NG_HIGHLIGHT_COLOR_PRESET_ITEMS,
 } as const;
@@ -63,6 +64,39 @@ export interface RuleDslCompletionCandidate {
   readonly insertText: string;
   readonly isSnippet?: boolean;
 }
+
+const RULE_DSL_AND_COMPLETION_CANDIDATES: readonly RuleDslCompletionCandidate[] =
+  RULE_TARGET_CATALOG.flatMap((target) => {
+    const isComparison =
+      target.comparison === "greater-than" || target.comparison === "greater-than-or-equal";
+    if (isComparison) {
+      return [
+        {
+          category: "header" as const,
+          label: `and ${target.name} >=`,
+          detail: `同じルールへ${target.description}のAND条件を追加します。`,
+          insertText: `and ${target.name} ${target.comparison === "greater-than" ? ">" : ">="} \${1:10}:`,
+          isSnippet: true,
+        },
+      ];
+    }
+    return [
+      {
+        category: "header" as const,
+        label: `and ${target.name} contains`,
+        detail: `同じルールへ${target.description}のAND条件を追加します。`,
+        insertText: `and ${target.name} contains:\n  \${1:キーワード}`,
+        isSnippet: true,
+      },
+      {
+        category: "header" as const,
+        label: `and ${target.name} regex`,
+        detail: `同じルールへ${target.description}の正規表現AND条件を追加します。`,
+        insertText: `and ${target.name} regex:\n  "\${1:パターン}"`,
+        isSnippet: true,
+      },
+    ];
+  });
 
 /** Monacoの型を共有層へ持ち込まず、各editor adapterが変換できる補完候補を公開する。 */
 export const RULE_DSL_COMPLETION_CANDIDATES: readonly RuleDslCompletionCandidate[] = [
@@ -92,6 +126,7 @@ export const RULE_DSL_COMPLETION_CANDIDATES: readonly RuleDslCompletionCandidate
       );
     }),
   ),
+  ...RULE_DSL_AND_COMPLETION_CANDIDATES,
   ...RULE_OPTION_CATALOG.map(
     (option): RuleDslCompletionCandidate => ({
       category: "option",

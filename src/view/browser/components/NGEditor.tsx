@@ -1,7 +1,7 @@
 import Editor, { loader, useMonaco } from "@monaco-editor/react";
 import React, { useEffect, useMemo } from "react";
 import { platform } from "src/app/platform";
-import { NG_DSL_LANGUAGE_ID } from "src/core/ngDsl";
+import { NG_DSL_LANGUAGE_ID, RULE_DSL_LANGUAGE_DEFINITION } from "src/core/ngDsl";
 import {
   RULE_ACTION_CATALOG,
   RULE_OPTION_CATALOG,
@@ -100,11 +100,14 @@ highlight title contains color=red label=注目 sites=[eddibb.cc 5ch.io]:
   ぐーぐる
   microsoft
 
+// 「注目」を含み、かつレス数が100以上のスレッドだけをハイライトします
+highlight title contains color=red label=注目:
+  注目
+and res-count >= 100:
+
 hide body regex:
   "(imgur\\.com/.+?){15}"`;
 
-// // 複雑なand条件: 名前の正規表現 + 本文の正規表現 + 期限 + ラベル
-// ANDやら期限などあるが、これは複雑なので隠しておいて、基本的には上のシンプルな例だけ見せるのが良さそう
 interface NGDslHelpSnippetProps {
   code: string;
   minHeight?: number;
@@ -128,13 +131,14 @@ const actionPattern = RULE_ACTION_CATALOG.flatMap((entry) => [entry.name, ...(en
 const targetPattern = RULE_TARGET_CATALOG.flatMap((entry) => [entry.name, ...(entry.aliases ?? [])])
   .map(escapeRegExp)
   .join("|");
+const operatorPattern = RULE_DSL_LANGUAGE_DEFINITION.operators.map(escapeRegExp).join("|");
 const matcherPattern = "contains|regex";
 const optionPattern = RULE_OPTION_CATALOG.flatMap((entry) => [entry.name, ...(entry.aliases ?? [])])
   .map(escapeRegExp)
   .join("|");
 
 const NG_DSL_TOKEN_REGEX = new RegExp(
-  `("(?:\\\\.|[^"\\\\])*"|'(?:\\\\.|[^'\\\\])*')|(\\/\\/.*$|^\\s*#.*$)|(\\b(?:${actionPattern})\\b)|(\\b(?:${targetPattern})\\b)|(\\b(?:${matcherPattern})\\b)|(\\b(?:${optionPattern})\\b(?=\\s*=))|(#[0-9a-fA-F]{3,8}\\b)`,
+  `("(?:\\\\.|[^"\\\\])*"|'(?:\\\\.|[^'\\\\])*')|(\\/\\/.*$|^\\s*#.*$)|(\\b(?:${actionPattern}|${operatorPattern})\\b)|(\\b(?:${targetPattern})\\b)|(\\b(?:${matcherPattern})\\b)|(\\b(?:${optionPattern})\\b(?=\\s*=))|(#[0-9a-fA-F]{3,8}\\b)`,
   "g",
 );
 

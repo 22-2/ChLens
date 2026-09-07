@@ -1,5 +1,5 @@
 import { getRuleTargetDefinition } from "./catalog";
-import type { Rule, RuleMatcher, RuleTarget } from "./model";
+import { getRuleConditions, type Rule, type RuleMatcher, type RuleTarget } from "./model";
 import { normalizeRuleText } from "./normalize";
 import { matchesRuleSites } from "./scope";
 
@@ -105,8 +105,8 @@ function matchesMatcher(
   return regex.test(text);
 }
 
-function resultType(rule: Rule, matcher: RuleMatcher): string {
-  const definition = getRuleTargetDefinition(rule.target);
+function resultType(rule: Rule, target: RuleTarget, matcher: RuleMatcher): string {
+  const definition = getRuleTargetDefinition(target);
   const resultTypes =
     rule.action === "highlight" ? definition.highlightResultTypes : definition.resultTypes;
   return resultTypes?.[matcher.kind === "regex" ? 1 : 0] ?? definition.resultTypes[0];
@@ -125,24 +125,42 @@ export function matchRules(
       continue;
     if (rule.expiresAt != null && now > rule.expiresAt) continue;
     if (!matchesRuleSites(rule.scope?.sites, context.url)) continue;
-    const value = getTargetValue(rule.target, context);
-    const definition = getRuleTargetDefinition(rule.target);
-    for (const matcher of rule.matchers) {
-      if (!matchesMatcher(matcher, definition.comparison, value, onRegexError)) continue;
-      return {
-        rule,
-        matcher,
-        type: resultType(rule, matcher),
-        ...(rule.presentation
-          ? {
-              params: {
-                ...(rule.presentation.color ? { bgColor: rule.presentation.color } : {}),
-                ...(rule.presentation.label ? { label: rule.presentation.label } : {}),
-              },
-            }
-          : {}),
-      };
+    const conditions = getRuleConditions(rule);
+    if (conditions.some(({ target }) => !allowedTargets.has(target))) continue;
+
+    // 同じ条件内のmatcherはOR、条件同士はANDとすることで、既存の複数候補を維持しながら
+    // 「タイトルに一致し、かつレス数も閾値以上」のような複合ルールを評価できる。
+    let primaryMatcher: RuleMatcher | null = null;
+    let matchesAllConditions = true;
+    for (const condition of conditions) {
+      const value = getTargetValue(condition.target, context);
+      const definition = getRuleTargetDefinition(condition.target);
+      const matchedMatcher = condition.matchers.find((matcher) =>
+        matchesMatcher(matcher, definition.comparison, value, onRegexError),
+      );
+      if (!matchedMatcher) {
+        matchesAllConditions = false;
+        break;
+      }
+      // 結果種別は主条件（従来のtarget）から決め、数値などの補助条件が
+      // highlightの表示種別を上書きしないようにする。
+      primaryMatcher ??= matchedMatcher;
     }
+    if (!matchesAllConditions || !primaryMatcher) continue;
+
+    return {
+      rule,
+      matcher: primaryMatcher,
+      type: resultType(rule, rule.target, primaryMatcher),
+      ...(rule.presentation
+        ? {
+            params: {
+              ...(rule.presentation.color ? { bgColor: rule.presentation.color } : {}),
+              ...(rule.presentation.label ? { label: rule.presentation.label } : {}),
+            },
+          }
+        : {}),
+    };
   }
   return null;
 }

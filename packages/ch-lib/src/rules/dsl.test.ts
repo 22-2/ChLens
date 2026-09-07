@@ -47,6 +47,46 @@ describe("rule block DSL", () => {
     ]);
   });
 
+  it("主動作を変えずにAND条件を解析・整形する", () => {
+    const source = `highlight title contains color=red label=注目:
+  注目
+and res-count >= 100:`;
+    const result = parseRuleDsl(source);
+
+    expect(result.diagnostics).toEqual([]);
+    expect(result.rules).toEqual([
+      {
+        action: "highlight",
+        target: "title",
+        enabled: true,
+        presentation: { color: "red", label: "注目" },
+        matchers: [{ kind: "contains", value: "注目" }],
+        conditions: [
+          {
+            target: "res-count",
+            matchers: [{ kind: "contains", value: "100" }],
+          },
+        ],
+      },
+    ]);
+    expect(formatRuleDsl(result.rules)).toBe(source);
+    expect(parseRuleDsl(formatRuleDsl(result.rules)).rules).toEqual(result.rules);
+  });
+
+  it("不正なAND見出しを黙って破棄せず診断する", () => {
+    const result = parseRuleDsl(`highlight title contains:
+  注目
+and res-count contains:
+  100`);
+
+    expect(result.rules).toEqual([]);
+    expect(result.diagnostics).toContainEqual({
+      line: 3,
+      column: 1,
+      message: "res-count には比較演算子を指定してください。",
+    });
+  });
+
   it("formats canonical DSL that can be parsed again", () => {
     const source = String.raw`highlight title contains color=blue label=注目 sites=[bbs.eddibb.cc]:
   google
