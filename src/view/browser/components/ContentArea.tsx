@@ -99,9 +99,10 @@ const TabPageContent = memo(function TabPageContent({
 interface TabPanelProps {
   tab: Tab;
   isActive: boolean;
+  isPaneFocused: boolean;
 }
 
-const TabPanel = memo(function TabPanel({ tab, isActive }: TabPanelProps) {
+const TabPanel = memo(function TabPanel({ tab, isActive, isPaneFocused }: TabPanelProps) {
   const page = getCurrentPage(tab);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -133,8 +134,8 @@ const TabPanel = memo(function TabPanel({ tab, isActive }: TabPanelProps) {
         <TabPageContent
           key={buildPageRenderKey(tab.id, tab.currentIndex, page)}
           tab={tab}
-          isActive={isActive}
-          threadListActive={page.type === "threadList" ? isActive : undefined}
+          isActive={isActive && isPaneFocused}
+          threadListActive={page.type === "threadList" ? isActive && isPaneFocused : undefined}
           scrollContainerRef={scrollContainerRef}
         />
       }
@@ -143,12 +144,20 @@ const TabPanel = memo(function TabPanel({ tab, isActive }: TabPanelProps) {
 });
 
 export const ContentArea: FC = () => {
-  const { state } = useTabStore();
+  const { state, isPaneFocused } = useTabStore();
 
   return (
     <div className="content-area">
       {state.tabs.map((tab) => (
-        <TabPanel key={tab.id} tab={tab} isActive={tab.id === state.activeTabId} />
+        // 変更理由: 表示自体はペイン単位の activeTab で維持しつつ、
+        // 自動更新などの実行判定だけフォーカスペインに限定するため両方を渡す。
+        // 既存 ResizeObserver 基盤は表示中の寸法変化を引き続き検知できる。
+        <TabPanel
+          key={tab.id}
+          tab={tab}
+          isActive={tab.id === state.activeTabId}
+          isPaneFocused={isPaneFocused}
+        />
       ))}
     </div>
   );

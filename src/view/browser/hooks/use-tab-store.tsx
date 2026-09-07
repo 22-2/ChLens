@@ -1308,6 +1308,9 @@ export interface PaneScopedTabStore {
   activeTab: Tab;
   currentPage: Page;
   paneId: string;
+  // 変更理由: ペイン分割時は各ペインの activeTab が同時に isActive=true になるため、
+  // 自動更新の実行判定にはフォーカスペインかどうかも必要になる。
+  isPaneFocused: boolean;
 }
 
 const TabContext = createContext<TabContextValue | null>(null);
@@ -1603,6 +1606,7 @@ export function useTabStore(): PaneScopedTabStore {
     activeTab,
     currentPage,
     paneId,
+    isPaneFocused: ctx.state.activePaneId === paneId,
   };
 }
 
