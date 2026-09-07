@@ -10,10 +10,15 @@ function normalizePageLocation(rawLocation: string): string {
   }
 }
 
+// 変更理由: スレ一覧が既読通知の発生元を判定するときも、画面側と同じURL正規化を使う。
+export function getAutoRefreshThreadPageKey(threadUrl: string): string {
+  return `thread:${normalizePageLocation(threadUrl)}`;
+}
+
 export function getAutoRefreshPageKey(page: Page): string | null {
   switch (page.type) {
     case "thread":
-      return `thread:${normalizePageLocation(page.threadUrl)}`;
+      return getAutoRefreshThreadPageKey(page.threadUrl);
     case "threadList":
       return `threadList:${normalizePageLocation(page.boardUrl)}`;
     default:

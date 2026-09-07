@@ -25,14 +25,19 @@ import {
   useActivePaneId,
   usePaneId,
   useTabDispatch,
+  useTabPanes,
   useTabViewState,
 } from "src/view/browser/hooks/use-tab-store";
 import { useTheme, type ResolvedTheme } from "src/view/browser/hooks/use-theme";
 import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
-import type { ThreadListPage as ThreadListPageType } from "src/view/browser/types";
+import { getCurrentPage, type ThreadListPage as ThreadListPageType } from "src/view/browser/types";
 import { ContextMenu, ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import { copyText, formatMarkdownLink } from "src/view/browser/utils/clipboard";
+import {
+  getAutoRefreshThreadPageKey,
+  isAutoRefreshEnabledForPage,
+} from "src/view/browser/utils/auto-refresh-pages";
 import { ThreadListView } from "src/view/shared/ThreadListView";
 const OPENED_BOARDS_CONFIG_KEY = "opened_board_entries";
 const MAX_OPENED_BOARD_ENTRIES = 500;
@@ -492,9 +497,29 @@ export const ThreadListPage: React.FC<Props> = ({
   // タイマー実行自体は止めない（フォーカス外でも自動更新は継続する）。
   const ownPaneId = usePaneId();
   const focusedPaneId = useActivePaneId();
+  const { panes } = useTabPanes();
   const isForeground = isActive && ownPaneId === focusedPaneId;
   const isForegroundRef = useRef(isForeground);
   isForegroundRef.current = isForeground;
+  const autoRefreshingThreadPageKeys = useMemo(() => {
+    const pageKeys = new Set<string>();
+
+    for (const pane of panes) {
+      const activeTab = pane.tabs.find((tab) => tab.id === pane.activeTabId);
+      if (!activeTab) {
+        continue;
+      }
+
+      const activePage = getCurrentPage(activeTab);
+      if (activePage.type === "thread" && isAutoRefreshEnabledForPage(activeTab, activePage)) {
+        pageKeys.add(getAutoRefreshThreadPageKey(activePage.threadUrl));
+      }
+    }
+
+    return pageKeys;
+  }, [panes]);
+  const autoRefreshingThreadPageKeysRef = useRef(autoRefreshingThreadPageKeys);
+  autoRefreshingThreadPageKeysRef.current = autoRefreshingThreadPageKeys;
   const pendingReadStateRef = useRef<{ updated: IReadState[]; removed: string[] }>({
     updated: [],
     removed: [],
@@ -659,6 +684,15 @@ export const ThreadListPage: React.FC<Props> = ({
         enqueuePendingReadState(readState);
         return;
       }
+
+      // 変更理由: フォーカスが一覧側へ移っても、別ペインのスレ自動更新が
+      // 既読通知を送るたびに一覧の未読数を書き換えると、一覧自身が自動更新
+      // されたように見える。自動更新中のスレ由来の通知は、その処理が終わる
+      // まで保留し、一覧の表示をユーザー操作なしで動かさない。
+      if (autoRefreshingThreadPageKeysRef.current.has(getAutoRefreshThreadPageKey(readState.url))) {
+        enqueuePendingReadState(readState);
+        return;
+      }
       applyReadStateUpdated(readState);
     };
 
@@ -689,11 +723,19 @@ export const ThreadListPage: React.FC<Props> = ({
     }
     // フォアグラウンド復帰時に保留分をまとめて反映する。ネットワーク再取得はしない。
     const pending = pendingReadStateRef.current;
-    if (pending.updated.length === 0 && pending.removed.length === 0) {
+    const deferredUpdated = pending.updated.filter((readState) =>
+      autoRefreshingThreadPageKeys.has(getAutoRefreshThreadPageKey(readState.url)),
+    );
+    const applicableUpdated = pending.updated.filter(
+      (readState) => !autoRefreshingThreadPageKeys.has(getAutoRefreshThreadPageKey(readState.url)),
+    );
+    if (applicableUpdated.length === 0 && pending.removed.length === 0) {
       return;
     }
-    pendingReadStateRef.current = { updated: [], removed: [] };
-    for (const readState of pending.updated) {
+    // 自動更新中のスレ由来の通知は、フォーカスが一覧へ戻っても保留を続ける。
+    // タブ側の自動更新状態が解除されたレンダーで、deferredUpdated も反映される。
+    pendingReadStateRef.current = { updated: deferredUpdated, removed: [] };
+    for (const readState of applicableUpdated) {
       setThreads((prev) =>
         prev.map((thread) => {
           if (thread.url !== readState.url) {
@@ -711,7 +753,7 @@ export const ThreadListPage: React.FC<Props> = ({
         prev.map((thread) => (thread.url === url ? { ...thread, readState: undefined } : thread)),
       );
     }
-  }, [isForeground]);
+  }, [autoRefreshingThreadPageKeys, isForeground]);
 
   useEffect(() => {
     if (previousBoardUrlRef.current === page.boardUrl) {

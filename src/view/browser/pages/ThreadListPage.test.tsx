@@ -19,8 +19,9 @@ const { dispatchMock, activeTabIdRef, viewStateRef, updateViewStateMock } = vi.h
   },
   updateViewStateMock: vi.fn(),
 }));
-const { focusedPaneIdRef } = vi.hoisted(() => ({
+const { focusedPaneIdRef, panesRef } = vi.hoisted(() => ({
   focusedPaneIdRef: { current: "pane-1" },
+  panesRef: { current: [] as unknown[] },
 }));
 const { cacheGetMock, cachePutMock } = vi.hoisted(() => ({
   cacheGetMock: vi.fn(),
@@ -67,6 +68,7 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabViewState: () => ({ state: viewStateRef.current, update: updateViewStateMock }),
   usePaneId: () => "pane-1",
   useActivePaneId: () => focusedPaneIdRef.current,
+  useTabPanes: () => ({ panes: panesRef.current }),
 }));
 
 const THREADS: IThread[] = [
@@ -162,6 +164,7 @@ describe("ThreadListPage", () => {
     askBoardTitleMock.mockResolvedValue(null);
     activeTabIdRef.current = "tab-1";
     focusedPaneIdRef.current = "pane-1";
+    panesRef.current = [];
     const localStorageMock = createMemoryStorage();
     vi.stubGlobal("localStorage", localStorageMock);
     Object.defineProperty(window, "localStorage", {
@@ -352,6 +355,116 @@ describe("ThreadListPage", () => {
 
     focusedPaneIdRef.current = "pane-1";
     // フォーカス変化はストア経由のため再描画で取り込む。
+    rerender(<ThreadListPage tabId="tab-1" page={page} refreshKey={0} isActive={true} />);
+    await waitFor(() => {
+      expect(document.body.textContent).toContain("11");
+    });
+    expect(getThreadsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("別ペインのスレ自動更新による既読更新を一覧へ即時反映しない", async () => {
+    vi.useRealTimers();
+    focusedPaneIdRef.current = "pane-1";
+    const threadUrl = THREADS[0].url;
+    const boardUrl = new URL(threadUrl).origin + "/software/";
+    panesRef.current = [
+      {
+        id: "pane-1",
+        activeTabId: "list-tab",
+        tabs: [
+          {
+            id: "list-tab",
+            history: [
+              {
+                type: "threadList",
+                title: "Software",
+                boardUrl,
+                boardTitle: "Software",
+              },
+            ],
+            currentIndex: 0,
+            pinned: false,
+            reloadKey: 0,
+            autoRefreshEnabled: false,
+            autoRefreshPageKey: null,
+          },
+        ],
+      },
+      {
+        id: "pane-2",
+        activeTabId: "thread-tab",
+        tabs: [
+          {
+            id: "thread-tab",
+            history: [
+              {
+                type: "thread",
+                title: "スレッド",
+                threadUrl,
+              },
+            ],
+            currentIndex: 0,
+            pinned: false,
+            reloadKey: 0,
+            autoRefreshEnabled: true,
+            autoRefreshPageKey: `thread:${threadUrl}`,
+          },
+        ],
+      },
+    ];
+    const page = {
+      type: "threadList" as const,
+      title: "Software",
+      boardUrl,
+      boardTitle: "Software",
+    };
+    const { rerender } = render(
+      <ThreadListPage tabId="tab-1" page={page} refreshKey={0} isActive={true} />,
+    );
+
+    await waitFor(() => {
+      expect(getRenderedThreadTitles()).toContain("B Thread");
+    });
+    for (const handler of messageListeners.get("read_state_updated") ?? []) {
+      handler({
+        board_url: boardUrl,
+        read_state: {
+          url: threadUrl,
+          read: 14,
+          received: 25,
+          last: 14,
+        },
+      } as never);
+    }
+
+    await flushAsyncRender();
+    expect(document.body.textContent).not.toContain("11");
+
+    // スレ側の次回更新で一覧コンポーネントが再描画されても、
+    // 自動更新中の通知は引き続き保留する。
+    panesRef.current = [...panesRef.current];
+    rerender(<ThreadListPage tabId="tab-1" page={page} refreshKey={0} isActive={true} />);
+    await flushAsyncRender();
+    expect(document.body.textContent).not.toContain("11");
+
+    panesRef.current = [
+      {
+        id: "pane-1",
+        activeTabId: "list-tab",
+        tabs: [
+          {
+            id: "list-tab",
+            history: [page],
+            currentIndex: 0,
+            pinned: false,
+            reloadKey: 0,
+            autoRefreshEnabled: false,
+            autoRefreshPageKey: null,
+          },
+        ],
+      },
+    ];
+    // スレの自動更新が終わると、保留していた既読状態だけを一覧へ反映する。
     rerender(<ThreadListPage tabId="tab-1" page={page} refreshKey={0} isActive={true} />);
     await waitFor(() => {
       expect(document.body.textContent).toContain("11");
