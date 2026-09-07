@@ -4,6 +4,7 @@ import { container } from "src/service-container/index";
 import type { IRes, IThreadService, IMessage, INGService } from "src/service-container/interfaces";
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";
 import { useThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
+import { registerSikiLogThread } from "src/view/browser/utils/siki-log";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const { dispatchMock, updateViewStateMock, cacheGetMock, cachePutMock } = vi.hoisted(() => ({
@@ -124,6 +125,36 @@ describe("useThreadData Phase 0 contracts", () => {
 
   afterEach(() => {
     cleanup();
+  });
+
+  it("登録済みSikiログは通信せず通常のレス表示へ渡す", async () => {
+    const getThreadMock = vi.fn();
+    container.thread = { getThread: getThreadMock } as IThreadService;
+    const page = registerSikiLogThread({
+      title: "Siki過去ログ",
+      threadUrl: "https://example.com/test/read.cgi/board/123/",
+      responses: [
+        {
+          num: 1,
+          name: "名前",
+          mail: "",
+          date: "2026/08/23(日) 12:00:00.000",
+          message: "過去ログ本文",
+        },
+      ],
+    });
+    const rootRef = { current: null } as RefObject<HTMLDivElement | null>;
+
+    const { result } = renderHook(() => {
+      const refreshController = useThreadRefreshController(0);
+      return useThreadData("tab-1", page, rootRef, refreshController);
+    });
+
+    await waitFor(() => expect(result.current.responses).toHaveLength(1));
+
+    expect(result.current.responses[0]?.message).toBe("過去ログ本文");
+    expect(result.current.loading).toBe(false);
+    expect(getThreadMock).not.toHaveBeenCalled();
   });
 
   it("全て／多レス／画像／動画／リンクの5種filterが同じ取得結果から切り替わる", async () => {

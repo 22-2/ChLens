@@ -5,6 +5,7 @@ import {
   Columns2,
   ExternalLink,
   Filter,
+  FileJson,
   Hash,
   History,
   Import,
@@ -51,6 +52,11 @@ import {
 import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
 import { encodeThreadAsToon, estimateToonTokenCount } from "src/view/browser/utils/thread-toon";
 import { copyText, formatMarkdownLink } from "src/view/browser/utils/clipboard";
+import {
+  parseSikiLogFile,
+  registerSikiLogThread,
+  selectSikiLogFile,
+} from "src/view/browser/utils/siki-log";
 
 export const BROWSER_COMMAND_GROUP_LABELS = {
   navigation: "移動",
@@ -289,6 +295,29 @@ async function importOpenThreadTabs(context: BrowserCommandContext): Promise<voi
   );
 }
 
+async function openSikiLogFile(context: BrowserCommandContext): Promise<void> {
+  const file = await selectSikiLogFile();
+  if (!file) {
+    return;
+  }
+
+  try {
+    const parsed = await parseSikiLogFile(file);
+    const page = registerSikiLogThread(parsed);
+    // 変更理由: Sikiログは通信で再取得できないため、選択直後に本文を登録してから
+    // 通常のスレッドタブ経路へ渡し、既存の検索・アンカー・ポップアップ表示を共有する。
+    context.dispatch({ type: "OPEN_IN_NEW_TAB", page });
+    container.toast.success(`Sikiログ「${parsed.title}」を開きました`);
+  } catch (error: unknown) {
+    // ファイル選択後の解析失敗は画面上でも知らせつつ、元のエラーをログへ残す。
+    console.error("[BrowserCommand] Sikiログを開けませんでした", {
+      fileName: file.name,
+      error,
+    });
+    container.toast.error(error instanceof Error ? error.message : "Sikiログを開けませんでした");
+  }
+}
+
 function toggleFilter(context: BrowserCommandContext): void {
   if (context.currentPage.type === "thread") {
     window.dispatchEvent(new window.CustomEvent("thread-filter-toolbar-toggle"));
@@ -447,6 +476,16 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
         type: "logList",
         title: "ログ検索",
       }),
+  },
+  {
+    id: "navigation.open-siki-log",
+    label: "Sikiの掲示板ログファイルを開く",
+    englishLabel: "Open Siki Board Log File",
+    description: "SikiのJSONログを読み込み、スレッドを新しいタブで開きます",
+    keywords: ["Siki", "ログ", "JSON", "過去ログ", "ファイル"],
+    group: "navigation",
+    icon: FileJson,
+    run: openSikiLogFile,
   },
   {
     id: "navigation.import-open-thread-tabs",

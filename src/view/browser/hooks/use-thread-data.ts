@@ -28,6 +28,7 @@ import { filterThreadResponses } from "src/view/browser/utils/thread-search";
 import { hasExternalLink, hasImage, hasVideo } from "src/view/browser/utils/message-filter";
 import type { ThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
 import { useIsNgTemporarilyDisabled, useNgDisplayMode } from "src/view/browser/hooks/use-ng-status";
+import { getImportedSikiThread, isSikiLogThreadUrl } from "src/view/browser/utils/siki-log";
 
 // 変更理由: タブ再マウント時やブラウザ再起動後に「読み込み中」しか表示されないのを防ぐため、
 // 前回の取得結果をIDBに永続化し、新しいデータの取得中は古い結果を表示し続ける。
@@ -154,6 +155,50 @@ export function useThreadData(
     setMissingFromSubject(false);
     titleUpdatedRef.current = false;
 
+    const importedSikiThread = getImportedSikiThread(page.threadUrl);
+    if (importedSikiThread) {
+      // 変更理由: Sikiログには再取得先の通信がないため、登録済み本文を使い、
+      // 通常スレと同じ検索・NG・アンカー処理へそのまま流す。
+      const importedIndexes = buildIndexes(importedSikiThread.responses);
+      setResponses(
+        importedSikiThread.responses.map((response) => ({
+          ...response,
+          ng:
+            container.ng.isNGThread(
+              {
+                ...response,
+                replyCount: importedIndexes.repIndex.get(response.num)?.size ?? 0,
+                anchorCount: importedIndexes.ancIndex.get(response.num)?.size ?? 0,
+              },
+              importedSikiThread.title,
+              page.threadUrl,
+            ) ?? undefined,
+        })),
+      );
+      if (importedSikiThread.title && importedSikiThread.title !== page.title) {
+        dispatch({
+          type: "UPDATE_TITLE_FOR_TAB",
+          tabId,
+          title: importedSikiThread.title,
+        });
+      }
+      setLoading(false);
+      return;
+    }
+
+    if (isSikiLogThreadUrl(page.threadUrl)) {
+      // セッション復元後はメモリ上の本文登録が存在しないため、誤って同じURLへ
+      // 通信しない。利用者が元のJSONを再度選べば新しい登録として開き直せる。
+      const message = "Sikiログの本文が見つかりません。JSONファイルを再度開いてください";
+      setResponses([]);
+      setError(message);
+      setLoading(false);
+      console.error("[useThreadData] Sikiログの本文登録が見つかりません", {
+        threadUrl: page.threadUrl,
+      });
+      return;
+    }
+
     try {
       const result = await container.thread.getThread(page.threadUrl, {
         forceUpdate: refreshKey > 0,
@@ -212,10 +257,23 @@ export function useThreadData(
         setLoading(false);
       }
     }
-  }, [dispatch, beginRequest, isLatestRequest, page.threadUrl, refreshKey, setResponses, tabId]);
+  }, [
+    dispatch,
+    beginRequest,
+    isLatestRequest,
+    page.threadUrl,
+    page.title,
+    refreshKey,
+    setResponses,
+    tabId,
+  ]);
 
   // 変更理由: IDBキャッシュから前回のレスを復元し、新しいデータの取得中は古い結果を表示し続ける。
   useEffect(() => {
+    if (isSikiLogThreadUrl(page.threadUrl)) {
+      return;
+    }
+
     void (async () => {
       const cached = await getThreadCache(page.threadUrl);
       if (cached && cached.length > 0) {
