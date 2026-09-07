@@ -27,6 +27,10 @@ import {
   getResponseJumpResNumFromCommandId,
   RESPONSE_JUMP_COMMAND_ID,
 } from "src/view/browser/commands/response-jump-command";
+import {
+  getOpenUrlFromCommandId,
+  OPEN_URL_COMMAND_ID,
+} from "src/view/browser/commands/open-url-command";
 import type { ScopedTabAction } from "src/view/browser/hooks/use-tab-store";
 import type { Page, Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
@@ -365,6 +369,19 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     group: "navigation",
     icon: Settings,
     run: openSettings,
+  },
+  {
+    id: OPEN_URL_COMMAND_ID,
+    label: "URLを開く",
+    englishLabel: "Open URL",
+    description: "入力したURLのページを開きます",
+    keywords: ["url", "アドレス", "リンク"],
+    group: "navigation",
+    icon: ExternalLink,
+    run: () => {
+      // 変更理由: URLなしの素振り実行では遷移先が定まらないため、
+      // 動的ID付き候補からの実行だけを受け付ける。
+    },
   },
   {
     id: "navigation.reopen-closed-tab",
@@ -784,6 +801,28 @@ export async function executeBrowserCommand(
   commandId: string,
   context: BrowserCommandContext,
 ): Promise<boolean> {
+  const openUrl = getOpenUrlFromCommandId(commandId);
+  if (openUrl !== null) {
+    // 変更理由: URL欄からの遷移と同じく、別板スレを開いたときは対象スレの板を
+    // 戻る先として残し、戻る操作が別板へ飛ばないようにする。
+    const parsed = parseInternalBrowserPage(openUrl);
+    if (!parsed) return false;
+    if (parsed.type === "thread") {
+      const boardUrl = getBoardUrlFromThreadUrl(parsed.threadUrl);
+      context.dispatch({
+        type: "NAVIGATE",
+        page: {
+          type: "threadList",
+          title: boardUrl,
+          boardUrl,
+          boardTitle: boardUrl,
+        },
+      });
+    }
+    context.dispatch({ type: "NAVIGATE", page: parsed });
+    return true;
+  }
+
   const responseJumpResNum = getResponseJumpResNumFromCommandId(commandId);
   const definitionId = responseJumpResNum === null ? commandId : RESPONSE_JUMP_COMMAND_ID;
   const definition = BROWSER_COMMAND_DEFINITIONS.find((command) => command.id === definitionId);
@@ -807,6 +846,11 @@ export async function executeBrowserCommand(
 }
 
 export function getBrowserCommandLabel(commandId: string, context: BrowserCommandContext): string {
+  const openUrl = getOpenUrlFromCommandId(commandId);
+  if (openUrl !== null) {
+    return `このURLを開く`;
+  }
+
   const responseJumpResNum = getResponseJumpResNumFromCommandId(commandId);
   if (responseJumpResNum !== null) {
     return `レス${responseJumpResNum}へジャンプ`;

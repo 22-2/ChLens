@@ -5,6 +5,11 @@ import {
   parseResponseJumpResNum,
   RESPONSE_JUMP_COMMAND_ID,
 } from "src/view/browser/commands/response-jump-command";
+import {
+  createOpenUrlCommand,
+  OPEN_URL_COMMAND_ID,
+  parseOpenUrlInput,
+} from "src/view/browser/commands/open-url-command";
 
 interface RankedCommand {
   command: ResolvedBrowserCommand;
@@ -81,9 +86,23 @@ export function filterAndSortBrowserCommands(
       ? createResponseJumpCommand(baseResponseJumpCommand, responseJumpResNum)
       : null;
 
+  // 変更理由: 「>URL」入力でもURLへ飛ぶ提案を出すため、レス番号ジャンプと
+  // 同じく動的候補を合成する。URLは数字のみと重ならないため両立できる。
+  const baseOpenUrlCommand = commands.find(({ id }) => id === OPEN_URL_COMMAND_ID);
+  const openUrlInput = baseOpenUrlCommand ? parseOpenUrlInput(query) : null;
+  const openUrlCommand =
+    baseOpenUrlCommand && openUrlInput !== null
+      ? createOpenUrlCommand(baseOpenUrlCommand, openUrlInput)
+      : null;
+
   // 変更理由: 固定コマンドを数字の検索結果だけに任せると入力値をラベルへ
   // 反映できないため、スレッド上の正しい数字入力に限って動的候補を合成する。
-  const commandsToSearch = responseJumpCommand ? [responseJumpCommand, ...commands] : commands;
+  const dynamicCommands = [
+    ...(openUrlCommand ? [openUrlCommand] : []),
+    ...(responseJumpCommand ? [responseJumpCommand] : []),
+  ];
+  const commandsToSearch =
+    dynamicCommands.length > 0 ? [...dynamicCommands, ...commands] : commands;
   const originalOrder = new Map(commandsToSearch.map((command, index) => [command.id, index]));
   const ranked: RankedCommand[] = fuzzysort
     .go(query, commandsToSearch, { key: commandSearchText })
@@ -109,9 +128,10 @@ export function filterAndSortBrowserCommands(
     )
     .map(({ command }) => command);
 
-  if (!responseJumpCommand) {
+  if (dynamicCommands.length === 0) {
     return sorted;
   }
 
-  return [responseJumpCommand, ...sorted.filter(({ id }) => id !== responseJumpCommand.id)];
+  const dynamicIds = new Set(dynamicCommands.map(({ id }) => id));
+  return [...dynamicCommands, ...sorted.filter(({ id }) => !dynamicIds.has(id))];
 }

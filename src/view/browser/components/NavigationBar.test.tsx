@@ -351,6 +351,31 @@ describe("NavigationBar", () => {
     expect(screen.queryByLabelText("レス番号")).not.toBeInTheDocument();
   });
 
+  it("コマンドモードのURL入力を最上位の開く候補から直接実行する", async () => {
+    render(<NavigationBar />);
+
+    fireEvent.keyDown(window, { key: "p", ctrlKey: true, shiftKey: true });
+    const input = await screen.findByPlaceholderText("コマンドを検索...");
+    fireEvent.change(input, {
+      target: { value: ">https://example.com/test/read.cgi/software/1788743729/" },
+    });
+
+    const openOption = await screen.findByRole("option", { name: /このURLを開く/ });
+    expect(screen.getAllByRole("option")[0]).toBe(openOption);
+    fireEvent.click(openOption);
+
+    await waitFor(() => {
+      expect(dispatchMock).toHaveBeenCalledWith({
+        type: "NAVIGATE",
+        page: {
+          type: "thread",
+          title: "https://example.com/test/read.cgi/software/1788743729/",
+          threadUrl: "https://example.com/test/read.cgi/software/1788743729/",
+        },
+      });
+    });
+  });
+
   it("Ctrl+Lでナビゲーションモードを開く", async () => {
     render(<NavigationBar />);
 
