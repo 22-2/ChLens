@@ -21,7 +21,12 @@ import {
 } from "src/view/browser/hooks/auto-refresh-config";
 import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
-import { useTabDispatch, useTabViewState } from "src/view/browser/hooks/use-tab-store";
+import {
+  useActivePaneId,
+  usePaneId,
+  useTabDispatch,
+  useTabViewState,
+} from "src/view/browser/hooks/use-tab-store";
 import { useTheme, type ResolvedTheme } from "src/view/browser/hooks/use-theme";
 import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 import type { ThreadListPage as ThreadListPageType } from "src/view/browser/types";
@@ -482,12 +487,32 @@ export const ThreadListPage: React.FC<Props> = ({
   const previousBoardUrlRef = useRef(page.boardUrl);
   const skipViewStateUpdateRef = useRef(false);
   // 変更理由: 非表示中の read_state 系 message を保留し、表示復帰時に適用するため。
-  const isActiveRef = useRef(isActive);
-  isActiveRef.current = isActive;
+  // 2ペイン時は自ペインの表タブでもフォーカス外なら裏側扱いにし、スレ側の
+  // 自動更新による既読書き換えで一覧がチラつかないようにする。
+  // タイマー実行自体は止めない（フォーカス外でも自動更新は継続する）。
+  const ownPaneId = usePaneId();
+  const focusedPaneId = useActivePaneId();
+  const isForeground = isActive && ownPaneId === focusedPaneId;
+  const isForegroundRef = useRef(isForeground);
+  isForegroundRef.current = isForeground;
   const pendingReadStateRef = useRef<{ updated: IReadState[]; removed: string[] }>({
     updated: [],
     removed: [],
   });
+  // 変更理由: 長時間フォーカスが戻らない場合も想定し、同一スレの古い既読は
+  // 最新だけ残して保留列の肥大化を防ぐ。ref のみ触るため useCallback で固定する。
+  const enqueuePendingReadState = useCallback((readState: IReadState) => {
+    const pending = pendingReadStateRef.current.updated;
+    const existingIndex = pending.findIndex((entry) => entry.url === readState.url);
+    if (existingIndex >= 0) {
+      pending[existingIndex] = readState;
+      return;
+    }
+    pending.push(readState);
+    if (pending.length > 500) {
+      pending.splice(0, pending.length - 500);
+    }
+  }, []);
   // 変更理由: 更新開始後のloading中もwheel更新の共有cooldownとindicatorを維持し、
   // 画面切替で別の一覧/スレッドから連続更新できる隙間を作らない。
   const wheelPagination = useWheelPagination({
@@ -616,8 +641,9 @@ export const ThreadListPage: React.FC<Props> = ({
 
     // 変更理由: 2ペイン時、スレ側の自動更新で既読位置が進むたび global な
     // read_state_updated が飛び、裏側の一覧まで毎回書き換わって「勝手に自動更新」
-    // に見えていた。非表示の間は保留し、表示時にまとめて適用することで
-    // 裏側のチラつきを抑えつつ未読列の鮮度も保つ。
+    // に見えていた。フォアグラウンド（一覧タブ表示中かつ自ペインフォーカス中）
+    // 以外の間は保留し、復帰時にまとめて適用することで裏側のチラつきを抑えつつ
+    // 未読列の鮮度も保つ。タイマー実行自体は止めない。
     const handleReadStateUpdated = ({
       board_url: boardUrl,
       read_state: readState,
@@ -629,8 +655,8 @@ export const ThreadListPage: React.FC<Props> = ({
         return;
       }
 
-      if (!isActiveRef.current) {
-        pendingReadStateRef.current.updated.push(readState);
+      if (!isForegroundRef.current) {
+        enqueuePendingReadState(readState);
         return;
       }
       applyReadStateUpdated(readState);
@@ -641,7 +667,7 @@ export const ThreadListPage: React.FC<Props> = ({
         return;
       }
 
-      if (!isActiveRef.current) {
+      if (!isForegroundRef.current) {
         pendingReadStateRef.current.removed.push(url);
         return;
       }
@@ -655,13 +681,13 @@ export const ThreadListPage: React.FC<Props> = ({
       container.message.off("read_state_updated", handleReadStateUpdated);
       container.message.off("read_state_removed", handleReadStateRemoved);
     };
-  }, [page.boardUrl]);
+  }, [enqueuePendingReadState, page.boardUrl]);
 
   useEffect(() => {
-    if (!isActive) {
+    if (!isForeground) {
       return;
     }
-    // 表示に戻った時点で保留分をまとめて反映する。ネットワーク再取得はしない。
+    // フォアグラウンド復帰時に保留分をまとめて反映する。ネットワーク再取得はしない。
     const pending = pendingReadStateRef.current;
     if (pending.updated.length === 0 && pending.removed.length === 0) {
       return;
@@ -685,7 +711,7 @@ export const ThreadListPage: React.FC<Props> = ({
         prev.map((thread) => (thread.url === url ? { ...thread, readState: undefined } : thread)),
       );
     }
-  }, [isActive]);
+  }, [isForeground]);
 
   useEffect(() => {
     if (previousBoardUrlRef.current === page.boardUrl) {

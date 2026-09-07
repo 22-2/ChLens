@@ -19,6 +19,9 @@ const { dispatchMock, activeTabIdRef, viewStateRef, updateViewStateMock } = vi.h
   },
   updateViewStateMock: vi.fn(),
 }));
+const { focusedPaneIdRef } = vi.hoisted(() => ({
+  focusedPaneIdRef: { current: "pane-1" },
+}));
 const { cacheGetMock, cachePutMock } = vi.hoisted(() => ({
   cacheGetMock: vi.fn(),
   cachePutMock: vi.fn(),
@@ -62,6 +65,8 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   }),
   useTabDispatch: () => dispatchMock,
   useTabViewState: () => ({ state: viewStateRef.current, update: updateViewStateMock }),
+  usePaneId: () => "pane-1",
+  useActivePaneId: () => focusedPaneIdRef.current,
 }));
 
 const THREADS: IThread[] = [
@@ -156,6 +161,7 @@ describe("ThreadListPage", () => {
     askBoardTitleMock.mockReset();
     askBoardTitleMock.mockResolvedValue(null);
     activeTabIdRef.current = "tab-1";
+    focusedPaneIdRef.current = "pane-1";
     const localStorageMock = createMemoryStorage();
     vi.stubGlobal("localStorage", localStorageMock);
     Object.defineProperty(window, "localStorage", {
@@ -305,6 +311,49 @@ describe("ThreadListPage", () => {
     rerender(<ThreadListPage tabId="tab-1" page={page} refreshKey={0} isActive={true} />);
     await waitFor(() => {
       // 未読列が 25-14=11 に更新される。再取得は走らない。
+      expect(document.body.textContent).toContain("11");
+    });
+    expect(getThreadsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("自ペインの表タブでもフォーカス外なら既読更新を保留する", async () => {
+    vi.useRealTimers();
+    focusedPaneIdRef.current = "pane-2";
+    const page = {
+      type: "threadList" as const,
+      title: "Software",
+      boardUrl: "https://egg.5ch.net/software/",
+      boardTitle: "Software",
+    };
+    const { rerender } = render(
+      <ThreadListPage tabId="tab-1" page={page} refreshKey={0} isActive={true} />,
+    );
+
+    await waitFor(() => {
+      expect(getRenderedThreadTitles()).toContain("B Thread");
+    });
+    // 変更理由: 2ペインでスレ側を見ている間、裏ペインの一覧がスレの自動更新に
+    // 連動して書き換わらないこと。フォーカスを戻すとまとめて反映される。
+    for (const handler of messageListeners.get("read_state_updated") ?? []) {
+      handler({
+        board_url: "https://egg.5ch.net/software/",
+        read_state: {
+          url: "https://egg.5ch.net/test/read.cgi/software/1/",
+          read: 14,
+          received: 25,
+          last: 14,
+        },
+      } as never);
+    }
+    await waitFor(() => {
+      expect(getThreadsMock).toHaveBeenCalledTimes(1);
+    });
+    expect(document.body.textContent).not.toContain("11");
+
+    focusedPaneIdRef.current = "pane-1";
+    // フォーカス変化はストア経由のため再描画で取り込む。
+    rerender(<ThreadListPage tabId="tab-1" page={page} refreshKey={0} isActive={true} />);
+    await waitFor(() => {
       expect(document.body.textContent).toContain("11");
     });
     expect(getThreadsMock).toHaveBeenCalledTimes(1);
