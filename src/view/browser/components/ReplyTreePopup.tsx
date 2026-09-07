@@ -885,6 +885,9 @@ export const ReplyTreePopup: React.FC<{
               // 親のIDポップアップから見ると別のpopupになる。親子関係を識別できるよう
               // ツリーポップアップ自身のIDを引き継ぎ、コピー操作で親まで閉じないようにする。
               popupId={popupId}
+              // 変更理由: 三点ボタンもトグル操作のため、押下時の Radix 側の先行closeで
+              // click トグルが開き直さないようトリガーとして登録する。
+              triggerRef={menuButtonRef}
               onClose={closeMenu}
             />
           )}

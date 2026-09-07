@@ -10,6 +10,11 @@ import {
 import { isTauriRuntime } from "src/app/platform/runtime";
 import { container } from "src/service-container/index";
 import {
+  NG_DISPLAY_CONFIG_KEY,
+  NG_DISPLAY_MODE_OPTIONS,
+  normalizeNgDisplayMode,
+} from "src/view/browser/utils/ng-display-mode";
+import {
   buildFieldSchema,
   buildUiSchema,
 } from "src/view/browser/pages/settings/settings-form-registry";
@@ -36,6 +41,11 @@ const NEW_TAB_PAGE_MODE_OPTIONS = [
   { const: "home", title: "ホーム（整備中）" },
   { const: "related_board", title: "関連する板" },
   { const: "custom_board", title: "指定の板（入力）" },
+] as const satisfies readonly SettingsOption[];
+
+const TAB_BAR_ORIENTATION_OPTIONS = [
+  { const: "horizontal", title: "水平（上部）" },
+  { const: "vertical", title: "垂直（左端）" },
 ] as const satisfies readonly SettingsOption[];
 
 const HOW_TO_JUDGMENT_ID_OPTIONS = [
@@ -110,6 +120,20 @@ const ALL_SETTINGS_SECTIONS = [
         title: "外部ページから開いたときに新しいタブをフォーカスする",
         description:
           "外部ページの「chlens で開く」からスレを開いたとき、新しいタブをアクティブにします。",
+      },
+      {
+        kind: "string",
+        key: "tab_bar_orientation",
+        title: "タブバーの配置",
+        description: "タブ一覧を上部の横並びと左端の縦並びで切り替えます。",
+        options: TAB_BAR_ORIENTATION_OPTIONS,
+        widget: "radio",
+      },
+      {
+        kind: "boolean",
+        key: "tab_bar_collapsed",
+        title: "垂直タブバーを簡易表示にする",
+        description: "タイトルを隠してアイコンのみの細幅で表示します。",
       },
       {
         kind: "string",
@@ -312,7 +336,7 @@ const ALL_SETTINGS_SECTIONS = [
         key: "ngwords",
         title: "NGワード一覧",
         description:
-          "「動作 対象 contains:」または「動作 対象 regex:」の次の行から、条件をインデントして記述します。数値条件は「動作 対象 >= 数値:」の形式です。同じブロックの条件はORです。説明文は // で始められます。詳しくは下の例を参照してください。",
+          "「動作 対象 contains:」または「動作 対象 regex:」の次の行から、条件をインデントして記述します。数値条件は「動作 対象 >= 数値:」の形式です。同じブロックの条件はORです。動作には hide・highlight・demote・warn が使えます（hard-ng・soft-ng は hide、highlight-ng は highlight として扱います）。説明文は // で始められます。詳しくは下の例を参照してください。",
         widget: "ng_editor",
       },
       {
@@ -324,6 +348,20 @@ const ALL_SETTINGS_SECTIONS = [
         kind: "boolean",
         key: "chain_ng",
         title: "NGレスへの返信を連鎖NGにする",
+      },
+      {
+        kind: "divider",
+        id: "display",
+        title: "表示",
+      },
+      {
+        kind: "string",
+        key: NG_DISPLAY_CONFIG_KEY,
+        title: "NGレスの表示方式",
+        description:
+          "完全非表示、クリックで一時表示、表示したまま強調する方式を選べます。一時的なNG解除はこの設定とは独立して動作します。",
+        options: NG_DISPLAY_MODE_OPTIONS,
+        widget: "radio",
       },
       {
         kind: "divider",
@@ -430,6 +468,9 @@ function readFieldValue(field: SettingsFieldDefinition): SettingsFormValue {
       if (field.key === "new_tab_page_mode") {
         return typeof rawValue === "string" && rawValue !== "" ? rawValue : "related_board";
       }
+      if (field.key === NG_DISPLAY_CONFIG_KEY) {
+        return normalizeNgDisplayMode(rawValue);
+      }
       return typeof rawValue === "string" ? rawValue : "";
   }
 }
@@ -441,6 +482,9 @@ function writeFieldValue(field: SettingsFieldDefinition, value: SettingsFormValu
     case "number":
       return String(typeof value === "number" && Number.isFinite(value) ? value : 0);
     case "string":
+      if (field.key === NG_DISPLAY_CONFIG_KEY) {
+        return normalizeNgDisplayMode(typeof value === "string" ? value : undefined);
+      }
       return typeof value === "string" ? value : "";
   }
 }

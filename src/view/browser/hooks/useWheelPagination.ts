@@ -83,6 +83,7 @@ export function useWheelPagination({
   const [refreshDirection, setRefreshDirection] = useState<WheelDirection | null>(null);
   const stateRef = useRef<WheelPaginationState>({ count: 0, direction: null });
   const resetTimerRef = useRef<number | null>(null);
+  const previousLoadingRef = useRef(isLoading);
   const onRefreshRef = useRef(onRefresh);
   onRefreshRef.current = onRefresh;
   const sharedCooldown = useSyncExternalStore(
@@ -103,6 +104,24 @@ export function useWheelPagination({
     reset();
     setRefreshDirection(null);
   }, [isEnabled, reset]);
+
+  useEffect(() => {
+    const wasLoading = previousLoadingRef.current;
+    previousLoadingRef.current = isLoading;
+
+    if (wasLoading || !isLoading || refreshDirection !== null || sharedCooldown.isCoolingDown) {
+      return;
+    }
+
+    // 変更理由: 自動更新や手動更新の開始時に未完了のホイール進捗を残すと、
+    // 読み込み中だけ隠したIndicatorが通信完了後に古い状態で再表示される。
+    // ホイール更新自身はrefreshDirectionが設定済みなので、この分岐では進捗を維持する。
+    reset();
+    if (resetTimerRef.current !== null) {
+      window.clearTimeout(resetTimerRef.current);
+      resetTimerRef.current = null;
+    }
+  }, [isLoading, refreshDirection, reset, sharedCooldown.isCoolingDown]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -164,9 +183,13 @@ export function useWheelPagination({
   }, [containerRef, edge, isEnabled, isLoading, reset]);
 
   const isCoolingDown = isEnabled && sharedCooldown.isCoolingDown;
+  // 変更理由: 自動更新などのホイール操作以外が起点の読み込み中は、残っていたホイール方向や
+  // 進捗でインジケーターを出さない。読み込みと重なっただけで一瞬表示されるのを防ぐ。
+  // ホイール更新自体の読み込み中は refreshDirection が残るため、スピナー表示は維持される。
+  const isWheelDriven = sharedCooldown.isCoolingDown || refreshDirection != null;
   const direction = sharedCooldown.isCoolingDown
     ? sharedCooldown.direction
-    : (refreshDirection ?? state.direction);
+    : (refreshDirection ?? (isLoading ? null : state.direction));
 
   useEffect(() => {
     if (!isLoading && !sharedCooldown.isCoolingDown && refreshDirection !== null) {
@@ -176,7 +199,8 @@ export function useWheelPagination({
 
   // 変更理由: cooldown開始前はrefreshDirectionが未設定なので、stateの進捗をそのまま表示する。
   // cooldown中は共有方向と更新中表示だけを残し、リセット済みの古いカウントを表示しない。
-  const count = sharedCooldown.isCoolingDown ? 0 : state.count;
+  // ホイール由来でない読み込み中も、残っていたカウントの進捗バーを出さない。
+  const count = isWheelDriven || isLoading ? 0 : state.count;
 
   return {
     count,

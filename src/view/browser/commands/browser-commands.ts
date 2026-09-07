@@ -9,17 +9,24 @@ import {
   History,
   Import,
   List,
+  PanelLeft,
+  PanelRight,
   PenLine,
   RotateCcw,
   RotateCw,
   Search,
   Settings,
   Star,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { ChURL, HOSTNAME } from "packages/ch-lib/src/index";
 import type { Dispatch } from "react";
 import { container } from "src/service-container";
+import {
+  getResponseJumpResNumFromCommandId,
+  RESPONSE_JUMP_COMMAND_ID,
+} from "src/view/browser/commands/response-jump-command";
 import type { ScopedTabAction } from "src/view/browser/hooks/use-tab-store";
 import type { Page, Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
@@ -37,11 +44,13 @@ import {
   parseInternalBrowserPage,
   parseInternalBrowserPageStrict,
 } from "src/view/browser/utils/link-routing";
+import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
 import { encodeThreadAsToon, estimateToonTokenCount } from "src/view/browser/utils/thread-toon";
 import { copyText, formatMarkdownLink } from "src/view/browser/utils/clipboard";
 
 export const BROWSER_COMMAND_GROUP_LABELS = {
   navigation: "移動",
+  tab: "タブ",
   page: "現在のページ",
   layout: "表示",
   copy: "コピー",
@@ -51,6 +60,7 @@ export type BrowserCommandGroup = keyof typeof BROWSER_COMMAND_GROUP_LABELS;
 
 export const BROWSER_COMMAND_GROUP_ORDER: readonly BrowserCommandGroup[] = [
   "navigation",
+  "tab",
   "page",
   "layout",
   "copy",
@@ -433,6 +443,53 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     run: importOpenThreadTabs,
   },
   {
+    id: "tab.close-other-tabs",
+    label: "他のタブを閉じる",
+    englishLabel: "Close Other Tabs",
+    description: "アクティブなタブ以外のタブを現在のペインで閉じます",
+    keywords: ["他のタブ", "close others"],
+    group: "tab",
+    icon: X,
+    // 変更理由: タブの右クリックメニューと同じ操作をコマンドパレットからも行えるようにし、
+    // 対象は右クリック位置ではなくアクティブなタブにする。
+    isEnabled: ({ tabs, activeTab }) => tabs.some((tab) => tab.id !== activeTab.id && !tab.pinned),
+    run: ({ dispatch, activeTab }) => dispatch({ type: "CLOSE_OTHER_TABS", tabId: activeTab.id }),
+  },
+  {
+    id: "tab.close-right-tabs",
+    label: "右側のタブを閉じる",
+    englishLabel: "Close Tabs to the Right",
+    description: "アクティブなタブの右側にあるタブを現在のペインで閉じます",
+    keywords: ["右側", "close right"],
+    group: "tab",
+    icon: X,
+    isEnabled: ({ tabs, activeTab }) => {
+      const index = tabs.findIndex((tab) => tab.id === activeTab.id);
+      return index !== -1 && tabs.slice(index + 1).some((tab) => !tab.pinned);
+    },
+    run: ({ dispatch, activeTab }) => dispatch({ type: "CLOSE_RIGHT_TABS", tabId: activeTab.id }),
+  },
+  {
+    id: "tab.close-all-tabs",
+    label: "すべてのタブを閉じる",
+    englishLabel: "Close All Tabs",
+    description: "固定タブを残してすべてのタブを現在のペインで閉じます",
+    keywords: ["すべて", "close all"],
+    group: "tab",
+    icon: X,
+    run: ({ dispatch }) => dispatch({ type: "CLOSE_ALL_TABS" }),
+  },
+  {
+    id: "tab.open-in-right-pane",
+    label: "右のペインで開く",
+    englishLabel: "Open in Right Pane",
+    description: "アクティブなタブを右隣のペインへ移動します",
+    keywords: ["ペイン", "右", "right pane"],
+    group: "tab",
+    icon: PanelRight,
+    run: ({ dispatch, activeTab }) => dispatch({ type: "OPEN_IN_RIGHT_PANE", tabId: activeTab.id }),
+  },
+  {
     id: "page.reload",
     label: "現在のページを更新",
     englishLabel: "Reload Current Page",
@@ -454,7 +511,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     run: retryBoardTitle,
   },
   {
-    id: "page.jump-to-response",
+    id: RESPONSE_JUMP_COMMAND_ID,
     label: "レス番号を指定してジャンプ",
     englishLabel: "Jump to Response Number",
     description: "入力ダイアログでレス番号を指定します",
@@ -543,6 +600,46 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     group: "layout",
     icon: Columns2,
     run: ({ dispatch, isTwoPane }) => dispatch({ type: isTwoPane ? "CLOSE_PANE" : "SPLIT_PANE" }),
+  },
+  {
+    id: "layout.toggle-tab-orientation",
+    label: () => {
+      // 変更理由: タブバーの右クリックメニューと同じ操作をコマンドパレットからも行えるようにする。
+      // 設定画面を開かずに方向を試せるよう、現在の保存値から次の表示名を導出する。
+      try {
+        return container.config.get("tab_bar_orientation") === "vertical"
+          ? "タブバーを水平にする"
+          : "タブバーを垂直にする";
+      } catch {
+        return "タブバーを垂直にする";
+      }
+    },
+    englishLabel: () => {
+      try {
+        return container.config.get("tab_bar_orientation") === "vertical"
+          ? "Show Tab Bar Horizontally"
+          : "Show Tab Bar Vertically";
+      } catch {
+        return "Show Tab Bar Vertically";
+      }
+    },
+    keywords: ["タブバー", "垂直", "水平", "tab", "vertical", "horizontal", "レイアウト"],
+    group: "layout",
+    icon: PanelLeft,
+    run: () => {
+      const current = (() => {
+        try {
+          return container.config.get("tab_bar_orientation");
+        } catch {
+          return "horizontal";
+        }
+      })();
+      const next = current === "vertical" ? "horizontal" : "vertical";
+      // 変更理由: タブバーの右クリックメニューと同じ保存経路にし、config_updated 経由で即時反映する。
+      void Promise.resolve(container.config.set("tab_bar_orientation", next)).catch((error) => {
+        console.error("[BrowserCommand] タブバー方向の保存に失敗しました", error);
+      });
+    },
   },
   {
     id: "copy.page-title",
@@ -687,7 +784,9 @@ export async function executeBrowserCommand(
   commandId: string,
   context: BrowserCommandContext,
 ): Promise<boolean> {
-  const definition = BROWSER_COMMAND_DEFINITIONS.find((command) => command.id === commandId);
+  const responseJumpResNum = getResponseJumpResNumFromCommandId(commandId);
+  const definitionId = responseJumpResNum === null ? commandId : RESPONSE_JUMP_COMMAND_ID;
+  const definition = BROWSER_COMMAND_DEFINITIONS.find((command) => command.id === definitionId);
   if (!definition) return false;
 
   // 変更理由: パレットを開いたままページ状態が変わる可能性があるため、
@@ -695,11 +794,24 @@ export async function executeBrowserCommand(
   if (!(definition.when?.(context) ?? true)) return false;
   if (!(definition.isEnabled?.(context) ?? true)) return false;
 
+  if (responseJumpResNum !== null) {
+    if (context.currentPage.type !== "thread") return false;
+
+    // 変更理由: 数字入力候補は追加ダイアログを開かず、既存の保留ジャンプ経路へ
+    // 直接渡して、表示中・再表示後のどちらのスレッドでも同じ処理を利用する。
+    return requestThreadResJump(context.currentPage.threadUrl, responseJumpResNum) !== null;
+  }
+
   await definition.run(context);
   return true;
 }
 
 export function getBrowserCommandLabel(commandId: string, context: BrowserCommandContext): string {
+  const responseJumpResNum = getResponseJumpResNumFromCommandId(commandId);
+  if (responseJumpResNum !== null) {
+    return `レス${responseJumpResNum}へジャンプ`;
+  }
+
   const definition = BROWSER_COMMAND_DEFINITIONS.find((command) => command.id === commandId);
   return definition ? getCommandLabel(definition.label, context) : commandId;
 }

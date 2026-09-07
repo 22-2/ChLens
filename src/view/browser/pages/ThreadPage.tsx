@@ -137,6 +137,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     isPopupDescendantOf,
     toggleTreePopupPinned,
     toggleIdPopupPinned,
+    toggleAnchorPopupPinned,
     hasPopupChild,
     hideAnchorPreview,
     hideAnchorPreviewImmediately,
@@ -494,6 +495,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             onClosePopupChildren={closePopupChildren}
             onToggleTreePopupPinned={toggleTreePopupPinned}
             onToggleIdPopupPinned={toggleIdPopupPinned}
+            onToggleAnchorPopupPinned={toggleAnchorPopupPinned}
             onIdLinkClick={handleIdClick}
             onPopupIdLinkClick={handlePopupIdClick}
             onRepClickInPopup={handleRepClickInPopup}

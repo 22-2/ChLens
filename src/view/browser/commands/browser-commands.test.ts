@@ -21,6 +21,7 @@ const browserCommandMocks = vi.hoisted(() => {
     estimateToonTokenCountMock: vi.fn<() => number>(),
     getThreadMock: vi.fn(),
     openNextThreadSearchDialogMock: vi.fn<() => Promise<void>>(),
+    requestThreadResJumpMock: vi.fn(),
     removeTabsMock,
     queryTabsMock,
     toastErrorMock: vi.fn(),
@@ -40,6 +41,7 @@ const {
   estimateToonTokenCountMock,
   getThreadMock,
   openNextThreadSearchDialogMock,
+  requestThreadResJumpMock,
   removeTabsMock,
   queryTabsMock,
   toastErrorMock,
@@ -64,6 +66,10 @@ vi.mock("src/view/browser/utils/clipboard", async (importOriginal) => {
 vi.mock("src/view/browser/utils/thread-toon", () => ({
   encodeThreadAsToon: browserCommandMocks.encodeThreadAsToonMock,
   estimateToonTokenCount: browserCommandMocks.estimateToonTokenCountMock,
+}));
+
+vi.mock("src/view/browser/utils/thread-read-state", () => ({
+  requestThreadResJump: browserCommandMocks.requestThreadResJumpMock,
 }));
 
 function createTab(page: Page): Tab {
@@ -144,6 +150,7 @@ describe("browser commands", () => {
     estimateToonTokenCountMock.mockReset();
     getThreadMock.mockReset();
     openNextThreadSearchDialogMock.mockReset();
+    requestThreadResJumpMock.mockReset();
     removeTabsMock.mockReset();
     queryTabsMock.mockReset();
     toastErrorMock.mockReset();
@@ -207,6 +214,27 @@ describe("browser commands", () => {
 
     await expect(executeBrowserCommand("page.jump-to-response", context)).resolves.toBe(true);
     expect(openResponseJumpDialog).toHaveBeenCalledOnce();
+  });
+
+  it("数字入力のレス番号ジャンプ候補は既存経路へ直接要求する", async () => {
+    requestThreadResJumpMock.mockReturnValue({
+      threadUrl: "https://egg.5ch.net/test/read.cgi/software/123/",
+      resNum: 42,
+      token: "token",
+    });
+    const { context } = createContext({
+      type: "thread",
+      title: "Thread",
+      threadUrl: "https://egg.5ch.net/test/read.cgi/software/123/",
+    });
+
+    await expect(executeBrowserCommand("page.jump-to-response:42", context)).resolves.toBe(true);
+
+    expect(requestThreadResJumpMock).toHaveBeenCalledWith(
+      "https://egg.5ch.net/test/read.cgi/software/123/",
+      42,
+    );
+    expect(context.openResponseJumpDialog).not.toHaveBeenCalled();
   });
 
   it("スレッドでは次スレ候補検索コマンドを実行できる", async () => {
@@ -560,5 +588,89 @@ describe("browser commands", () => {
     context.isTwoPane = true;
     await executeBrowserCommand("layout.toggle-pane", context);
     expect(dispatch).toHaveBeenLastCalledWith({ type: "CLOSE_PANE" });
+  });
+
+  it("タブ操作コマンドはアクティブなタブを対象にactionを送る", async () => {
+    const { context, dispatch } = createContext({ type: "home", title: "ホーム" });
+
+    const ids = resolveBrowserCommands(context).map((command) => command.id);
+    expect(ids).toContain("tab.close-other-tabs");
+    expect(ids).toContain("tab.close-right-tabs");
+    expect(ids).toContain("tab.close-all-tabs");
+    expect(ids).toContain("tab.open-in-right-pane");
+
+    await expect(executeBrowserCommand("tab.close-all-tabs", context)).resolves.toBe(true);
+    expect(dispatch).toHaveBeenLastCalledWith({ type: "CLOSE_ALL_TABS" });
+
+    await expect(executeBrowserCommand("tab.open-in-right-pane", context)).resolves.toBe(true);
+    expect(dispatch).toHaveBeenLastCalledWith({ type: "OPEN_IN_RIGHT_PANE", tabId: "tab-1" });
+  });
+
+  it("他のタブ・右側のタブを閉じるは閉じられるタブがある時だけ有効になる", async () => {
+    const homePage: Page = { type: "home", title: "ホーム" };
+    const activeTab = createTab(homePage);
+    const otherTab: Tab = { ...createTab(homePage), id: "tab-2" };
+    const dispatch = vi.fn<(action: ScopedTabAction) => void>();
+    const context: BrowserCommandContext = {
+      currentPage: homePage,
+      activeTab,
+      tabs: [activeTab, otherTab],
+      closedTabs: [],
+      isTwoPane: false,
+      isWritePanelOpen: false,
+      dispatch,
+      toggleWritePanel: vi.fn(),
+      openResponseJumpDialog: vi.fn(),
+      openNextThreadSearchDialog: openNextThreadSearchDialogMock,
+    };
+
+    const findCommand = (id: string) =>
+      resolveBrowserCommands(context).find((command) => command.id === id);
+    expect(findCommand("tab.close-other-tabs")).toMatchObject({ enabled: true });
+    expect(findCommand("tab.close-right-tabs")).toMatchObject({ enabled: true });
+
+    await expect(executeBrowserCommand("tab.close-other-tabs", context)).resolves.toBe(true);
+    expect(dispatch).toHaveBeenLastCalledWith({ type: "CLOSE_OTHER_TABS", tabId: "tab-1" });
+
+    await expect(executeBrowserCommand("tab.close-right-tabs", context)).resolves.toBe(true);
+    expect(dispatch).toHaveBeenLastCalledWith({ type: "CLOSE_RIGHT_TABS", tabId: "tab-1" });
+
+    context.tabs = [activeTab];
+    expect(findCommand("tab.close-other-tabs")).toMatchObject({ enabled: false });
+    expect(findCommand("tab.close-right-tabs")).toMatchObject({ enabled: false });
+  });
+
+  it("タブバー方向切り替えコマンドは保存値に応じて反対方向へ切り替える", async () => {
+    const { context } = createContext({ type: "home", title: "ホーム" });
+    const configSetMock = vi.fn();
+    let originalConfig: unknown;
+    try {
+      originalConfig = container.config;
+    } catch {
+      originalConfig = undefined;
+    }
+    container.config = {
+      get: vi.fn(() => "horizontal"),
+      set: configSetMock,
+      getAll: () => ({}),
+      ready: (callback: () => void) => callback(),
+    };
+
+    try {
+      const ids = resolveBrowserCommands(context).map((command) => command.id);
+      expect(ids).toContain("layout.toggle-tab-orientation");
+
+      await expect(executeBrowserCommand("layout.toggle-tab-orientation", context)).resolves.toBe(
+        true,
+      );
+      expect(configSetMock).toHaveBeenCalledWith("tab_bar_orientation", "vertical");
+    } finally {
+      if (originalConfig === undefined) {
+        // 変更理由: もともと未登録だった場合は空に戻し、他のテストへ影響させない。
+        (container as unknown as { _config: unknown })._config = undefined;
+      } else {
+        container.config = originalConfig as typeof container.config;
+      }
+    }
   });
 });

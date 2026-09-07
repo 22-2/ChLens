@@ -23,6 +23,7 @@ import React, {
   useState,
   useSyncExternalStore,
 } from "react";
+import { createPortal } from "react-dom";
 import { container } from "src/service-container/index";
 import {
   executeBrowserCommand,
@@ -47,6 +48,7 @@ import { Omnibar } from "src/view/browser/components/Omnibar";
 import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useOmnibar } from "src/view/browser/hooks/use-omnibar";
 import { usePageBookmark } from "src/view/browser/hooks/use-page-bookmark";
+import { useTabBarOrientation } from "src/view/browser/hooks/use-tab-bar-orientation";
 import { useTabPanes, useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useUrlBarVisibility } from "src/view/browser/hooks/use-url-bar-visibility";
 import { canGoBack, canGoForward, getCurrentPage, getDisplayUrl } from "src/view/browser/types";
@@ -325,10 +327,26 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   const [responseJumpValue, setResponseJumpValue] = useState("");
   const [responseJumpError, setResponseJumpError] = useState<string | null>(null);
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
+  const tabBarOrientation = useTabBarOrientation();
+  // 変更理由: 垂直モードではペイン上部のボタン行をなくし、自ペインの TitleBar 受け口へ
+  // ポータルする。Reactツリー上の位置は変えないため、ペインスコープの各プロバイダ
+  // （タブ状態・下部パネル等）はそのまま利用できる。
+  // 受け口はペインごとに分かれるため、アクティブ切り替え時の表示制御は不要である。
+  const [titleBarSlot, setTitleBarSlot] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
     setPortalContainer(document.querySelector<HTMLElement>(".browser-shell"));
   }, []);
+
+  useEffect(() => {
+    setTitleBarSlot(
+      document.querySelector<HTMLElement>(`.title-bar__nav-slot[data-pane-id="${paneId}"]`),
+    );
+  }, [paneId, tabBarOrientation]);
+  // 変更理由: 垂直モードでは自ペインの受け口へポータルし、ペイン上部の高さを本文へ返す。
+  // スロットが無い環境（テスト等）では従来どおりインライン表示する。
+  // blur処理からも参照するため、描画部より前で定義する。
+  const useTitleBarSlot = tabBarOrientation === "vertical" && titleBarSlot !== null;
 
   useEffect(() => {
     let cancelled = false;
@@ -632,8 +650,13 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       if (paletteState.opened || omnibarMode === "command") {
         commandPalette.close();
       }
+      // 変更理由: 垂直モードのURL行は本文へ重なるオーバーレイのため、フォーカスが外れたら
+      // 行ごと閉じて本文へ返す。水平モードは従来どおりchevron操作でのみ開閉する。
+      if (useTitleBarSlot) {
+        setIsUrlExpanded(false);
+      }
     },
-    [handleBlur, omnibarMode, paletteState.opened],
+    [handleBlur, omnibarMode, paletteState.opened, useTitleBarSlot],
   );
 
   useEffect(() => {
@@ -1082,128 +1105,131 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       </button>
     </div>
   );
+  const chrome = (
+    <div className={`nav-bar${useTitleBarSlot ? " nav-bar--titlebar" : ""}`}>
+      <button
+        type="button"
+        className="nav-bar__url-toggle"
+        onClick={handleUrlBarToggle}
+        aria-expanded={isUrlExpanded}
+        title={isUrlExpanded ? "URLバーを折りたたむ" : "URLバーを表示"}
+        aria-label={isUrlExpanded ? "URLバーを折りたたむ" : "URLバーを表示"}
+      >
+        {isUrlExpanded ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
+      </button>
+
+      {isUrlExpanded && (
+        <div className="nav-bar__url-row">
+          <Omnibar
+            inputRef={urlInputRef}
+            inputValue={inputValue}
+            placeholder={omnibarMode === "command" ? "コマンドを検索..." : "URLを入力"}
+            isOpen={isOmnibarOpen}
+            isLoading={isOmnibarLoading}
+            suggestions={omnibarSuggestions}
+            commandSuggestions={omnibarCommandSuggestions}
+            mode={omnibarMode}
+            activeSuggestionIndex={activeSuggestionIndex}
+            shouldShowNoMatch={shouldShowNoMatch}
+            onInputChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            onFocus={handleFocus}
+            onBlur={handleOmnibarBlur}
+            onSuggestionHover={setActiveSuggestionIndex}
+            onSuggestionSelect={handleSelectSuggestion}
+            onCommandSelect={(command) => void executeCommand(command)}
+            trailingAction={
+              bookmarkTarget ? (
+                <button
+                  type="button"
+                  className={`nav-bar__url-action-btn${
+                    isBookmarked ? " nav-bar__url-action-btn--active" : ""
+                  }`}
+                  aria-label={
+                    isBookmarked
+                      ? "このページをブックマークから削除"
+                      : "このページをブックマークに追加"
+                  }
+                  aria-pressed={isBookmarked}
+                  title={
+                    isBookmarked
+                      ? "このページをブックマークから削除"
+                      : "このページをブックマークに追加"
+                  }
+                  disabled={isBookmarkPending}
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                  }}
+                  onClick={handleToggleBookmark}
+                >
+                  <Star size={16} fill={isBookmarked ? "currentColor" : "none"} />
+                </button>
+              ) : null
+            }
+          />
+        </div>
+      )}
+
+      <button
+        ref={menuButtonRef}
+        type="button"
+        className="nav-bar__btn"
+        title="メニュー"
+        onClick={handleMenuClick}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          handleMenuClick(e);
+        }}
+      >
+        <Menu size={18} />
+      </button>
+
+      {menuPosition && (
+        <ContextMenu
+          x={menuPosition.x}
+          y={menuPosition.y}
+          items={menuItems}
+          header={navigationMenuHeader}
+          onClose={closeMenu}
+          triggerRef={menuButtonRef}
+        />
+      )}
+
+      {backMenuPosition && backHistoryItems.length > 0 && (
+        <ContextMenu
+          x={backMenuPosition.x}
+          y={backMenuPosition.y}
+          items={backHistoryItems}
+          onClose={closeBackMenu}
+          triggerRef={backButtonRef}
+        />
+      )}
+
+      {forwardMenuPosition && forwardHistoryItems.length > 0 && (
+        <ContextMenu
+          x={forwardMenuPosition.x}
+          y={forwardMenuPosition.y}
+          items={forwardHistoryItems}
+          onClose={closeForwardMenu}
+          triggerRef={forwardButtonRef}
+        />
+      )}
+
+      {refreshMenuPosition && refreshMenuItems.length > 0 && (
+        <ContextMenu
+          x={refreshMenuPosition.x}
+          y={refreshMenuPosition.y}
+          items={refreshMenuItems}
+          onClose={closeRefreshMenu}
+          triggerRef={refreshButtonRef}
+        />
+      )}
+    </div>
+  );
 
   return (
     <>
-      <div className="nav-bar">
-        <button
-          type="button"
-          className="nav-bar__url-toggle"
-          onClick={handleUrlBarToggle}
-          aria-expanded={isUrlExpanded}
-          title={isUrlExpanded ? "URLバーを折りたたむ" : "URLバーを表示"}
-          aria-label={isUrlExpanded ? "URLバーを折りたたむ" : "URLバーを表示"}
-        >
-          {isUrlExpanded ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
-        </button>
-
-        {isUrlExpanded && (
-          <div className="nav-bar__url-row">
-            <Omnibar
-              inputRef={urlInputRef}
-              inputValue={inputValue}
-              placeholder={omnibarMode === "command" ? "コマンドを検索..." : "URLを入力"}
-              isOpen={isOmnibarOpen}
-              isLoading={isOmnibarLoading}
-              suggestions={omnibarSuggestions}
-              commandSuggestions={omnibarCommandSuggestions}
-              mode={omnibarMode}
-              activeSuggestionIndex={activeSuggestionIndex}
-              shouldShowNoMatch={shouldShowNoMatch}
-              onInputChange={handleInputChange}
-              onKeyDown={handleKeyDown}
-              onFocus={handleFocus}
-              onBlur={handleOmnibarBlur}
-              onSuggestionHover={setActiveSuggestionIndex}
-              onSuggestionSelect={handleSelectSuggestion}
-              onCommandSelect={(command) => void executeCommand(command)}
-              trailingAction={
-                bookmarkTarget ? (
-                  <button
-                    type="button"
-                    className={`nav-bar__url-action-btn${
-                      isBookmarked ? " nav-bar__url-action-btn--active" : ""
-                    }`}
-                    aria-label={
-                      isBookmarked
-                        ? "このページをブックマークから削除"
-                        : "このページをブックマークに追加"
-                    }
-                    aria-pressed={isBookmarked}
-                    title={
-                      isBookmarked
-                        ? "このページをブックマークから削除"
-                        : "このページをブックマークに追加"
-                    }
-                    disabled={isBookmarkPending}
-                    onMouseDown={(event) => {
-                      event.preventDefault();
-                    }}
-                    onClick={handleToggleBookmark}
-                  >
-                    <Star size={16} fill={isBookmarked ? "currentColor" : "none"} />
-                  </button>
-                ) : null
-              }
-            />
-          </div>
-        )}
-
-        <button
-          ref={menuButtonRef}
-          type="button"
-          className="nav-bar__btn"
-          title="メニュー"
-          onClick={handleMenuClick}
-          onContextMenu={(e) => {
-            e.preventDefault();
-            handleMenuClick(e);
-          }}
-        >
-          <Menu size={18} />
-        </button>
-
-        {menuPosition && (
-          <ContextMenu
-            x={menuPosition.x}
-            y={menuPosition.y}
-            items={menuItems}
-            header={navigationMenuHeader}
-            onClose={closeMenu}
-            triggerRef={menuButtonRef}
-          />
-        )}
-
-        {backMenuPosition && backHistoryItems.length > 0 && (
-          <ContextMenu
-            x={backMenuPosition.x}
-            y={backMenuPosition.y}
-            items={backHistoryItems}
-            onClose={closeBackMenu}
-            triggerRef={backButtonRef}
-          />
-        )}
-
-        {forwardMenuPosition && forwardHistoryItems.length > 0 && (
-          <ContextMenu
-            x={forwardMenuPosition.x}
-            y={forwardMenuPosition.y}
-            items={forwardHistoryItems}
-            onClose={closeForwardMenu}
-            triggerRef={forwardButtonRef}
-          />
-        )}
-
-        {refreshMenuPosition && refreshMenuItems.length > 0 && (
-          <ContextMenu
-            x={refreshMenuPosition.x}
-            y={refreshMenuPosition.y}
-            items={refreshMenuItems}
-            onClose={closeRefreshMenu}
-            triggerRef={refreshButtonRef}
-          />
-        )}
-      </div>
+      {useTitleBarSlot && titleBarSlot ? createPortal(chrome, titleBarSlot) : chrome}
 
       <Dialog.Root
         open={isResponseJumpDialogOpen}

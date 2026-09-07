@@ -74,7 +74,7 @@ export type {
  * - リンクや中クリックの直後は、mouseleaveだけでpopupを閉じない。
  * - 右クリックでは、メニューを開く前に今あるpopupの枝を閉じない。
  * - コンテキストメニューはmouseleaveでは閉じず、outside clickやRadixのdismissで閉じる。
- * - pinしたレスツリーやIDポップアップは一番上のpopupとして扱い、通常popupの一括closeから外す。
+ * - pinしたレスツリーやIDポップアップやアンカーは一番上のpopupとして扱い、通常popupの一括closeから外す。
  * - アンカープレビューは、深さ・元になったpopup・遅延タイマーを使って親子関係を保つ。
  *
  * 呼び出し側は、これまでどおりこのファイルのimport pathとhook/type名を使える。

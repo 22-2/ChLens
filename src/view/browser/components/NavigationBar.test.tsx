@@ -77,6 +77,14 @@ const { bookmarkGetMock, bookmarkAddMock, bookmarkRemoveMock, toastInfoMock, toa
 let bookmarkUpdatedHandler: ((payload?: { bookmark?: { url?: string } }) => void) | null = null;
 let bookmarkedUrls = new Set<string>();
 
+const { paneHolder } = vi.hoisted(() => ({
+  paneHolder: { panes: [{ id: "pane-1" }], activePaneId: "pane-1" },
+}));
+
+const { orientationHolder } = vi.hoisted(() => ({
+  orientationHolder: { value: "horizontal" },
+}));
+
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => ({
     state: { tabs: [activeTab], closedTabs: [] },
@@ -86,7 +94,12 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
     paneId: "pane-1",
   }),
   // NavigationBar は複数ペイン時のみ「ペインを閉じる」を出すため、単一ペインを返す。
-  useTabPanes: () => ({ panes: [{ id: "pane-1" }], activePaneId: "pane-1" }),
+  useTabPanes: () => ({ panes: paneHolder.panes, activePaneId: paneHolder.activePaneId }),
+}));
+
+vi.mock("src/view/browser/hooks/use-tab-bar-orientation", () => ({
+  // 変更理由: タブバー方向は設定由来のため、テストでは方向指定で描画先を切り替える。
+  useTabBarOrientation: () => orientationHolder.value,
 }));
 
 vi.mock("src/view/browser/hooks/use-bottom-panel", () => ({
@@ -100,6 +113,9 @@ describe("NavigationBar", () => {
   beforeEach(() => {
     bookmarkedUrls = new Set<string>();
     bookmarkUpdatedHandler = null;
+    orientationHolder.value = "horizontal";
+    paneHolder.panes = [{ id: "pane-1" }];
+    paneHolder.activePaneId = "pane-1";
 
     bookmarkGetMock.mockImplementation((url: string) =>
       bookmarkedUrls.has(url)
@@ -313,6 +329,26 @@ describe("NavigationBar", () => {
       "https://egg.5ch.net/test/read.cgi/software/1/",
       42,
     );
+  });
+
+  it("数字入力のレス番号ジャンプ候補を最上位から直接実行する", async () => {
+    render(<NavigationBar />);
+
+    fireEvent.keyDown(window, { key: "p", ctrlKey: true, shiftKey: true });
+    const input = await screen.findByPlaceholderText("コマンドを検索...");
+    fireEvent.change(input, { target: { value: ">42" } });
+
+    const jumpOption = await screen.findByRole("option", { name: /レス42へジャンプ/ });
+    expect(screen.getAllByRole("option")[0]).toBe(jumpOption);
+    fireEvent.click(jumpOption);
+
+    await waitFor(() => {
+      expect(requestThreadResJumpMock).toHaveBeenCalledWith(
+        "https://egg.5ch.net/test/read.cgi/software/1/",
+        42,
+      );
+    });
+    expect(screen.queryByLabelText("レス番号")).not.toBeInTheDocument();
   });
 
   it("Ctrl+Lでナビゲーションモードを開く", async () => {
@@ -559,6 +595,28 @@ describe("NavigationBar", () => {
     expect(screen.queryByRole("button", { name: "設定を開く" })).not.toBeInTheDocument();
   });
 
+  it("実ブラウザの押下順序でも同じボタンの2回目でメニューが閉じる", async () => {
+    // 変更理由: 実ブラウザは mousedown の前に pointerdown を発し、Radix の
+    // DismissableLayer がトリガー上でも先に閉じてしまう。閉じた後の click トグルで
+    // 再オープンしないよう、トリガー上の pointerdown では閉じないことを保証する。
+    render(<NavigationBar />);
+
+    const menuButton = screen.getByTitle("メニュー");
+
+    fireEvent.click(menuButton);
+    const paletteButton = await screen.findByRole("button", { name: "コマンドパレット" });
+    expect(paletteButton).toBeInTheDocument();
+
+    menuButton.dispatchEvent(
+      new window.MouseEvent("pointerdown", { bubbles: true, cancelable: true, button: 0 }),
+    );
+    fireEvent.mouseDown(menuButton);
+    fireEvent.click(menuButton);
+
+    expect(screen.queryByRole("button", { name: "コマンドパレット" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "設定を開く" })).not.toBeInTheDocument();
+  });
+
   it("メニュー項目の『フィルターを開く』でフィルタトグルイベントを送る", () => {
     const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
     render(<NavigationBar />);
@@ -750,5 +808,148 @@ describe("NavigationBar", () => {
         }),
       ).toHaveAttribute("aria-pressed", "true");
     });
+  });
+});
+
+describe("NavigationBar titlebar slot", () => {
+  let slot: HTMLDivElement;
+
+  beforeEach(() => {
+    orientationHolder.value = "vertical";
+    paneHolder.panes = [{ id: "pane-1" }];
+    paneHolder.activePaneId = "pane-1";
+
+    container.bookmark = {
+      get: vi.fn(),
+      add: vi.fn(),
+      remove: vi.fn(),
+      updateResCount: vi.fn(),
+      updateExpired: vi.fn(),
+      getByBoard: vi.fn(),
+    };
+    container.message = {
+      send: vi.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+    };
+    container.toast = {
+      notify: vi.fn(),
+      success: vi.fn(),
+      error: vi.fn(),
+      info: vi.fn(),
+    };
+
+    slot = document.createElement("div");
+    slot.className = "title-bar__nav-slot";
+    slot.dataset.paneId = "pane-1";
+    document.body.appendChild(slot);
+  });
+
+  afterEach(() => {
+    slot.remove();
+    orientationHolder.value = "horizontal";
+    paneHolder.activePaneId = "pane-1";
+    cleanup();
+    commandPalette.close();
+    dispatchMock.mockReset();
+  });
+
+  it("垂直かつアクティブペインのとき操作ボタンをスロットへポータルする", () => {
+    const { container } = render(
+      <div className="pane-column__chrome">
+        <NavigationBar />
+      </div>,
+    );
+    const chrome = container.querySelector(".pane-column__chrome") as HTMLElement;
+
+    expect(chrome).toBeEmptyDOMElement();
+    expect(slot.querySelector(".nav-bar--titlebar")).not.toBeNull();
+    expect(slot.querySelector('[title="URLバーを表示"]')).not.toBeNull();
+    expect(slot.querySelector('[title="メニュー"]')).not.toBeNull();
+  });
+
+  it("垂直では非アクティブペインも自ペインの受け口へポータルする", () => {
+    paneHolder.panes = [{ id: "pane-1" }, { id: "pane-2" }];
+    paneHolder.activePaneId = "pane-2";
+
+    render(
+      <div className="pane-column__chrome">
+        <NavigationBar />
+      </div>,
+    );
+
+    expect(slot.querySelector(".nav-bar--titlebar")).not.toBeNull();
+  });
+
+  it("垂直では別ペインの受け口へポータルしない", () => {
+    const otherSlot = document.createElement("div");
+    otherSlot.className = "title-bar__nav-slot";
+    otherSlot.dataset.paneId = "pane-2";
+    document.body.appendChild(otherSlot);
+
+    try {
+      render(
+        <div className="pane-column__chrome">
+          <NavigationBar />
+        </div>,
+      );
+
+      expect(slot.querySelector(".nav-bar--titlebar")).not.toBeNull();
+      expect(otherSlot.querySelector(".nav-bar")).toBeNull();
+    } finally {
+      otherSlot.remove();
+    }
+  });
+
+  it("垂直でもスロットが無いときはインラインに描画する", () => {
+    slot.remove();
+
+    const { container } = render(
+      <div className="pane-column__chrome">
+        <NavigationBar />
+      </div>,
+    );
+
+    expect(container.querySelector(".pane-column__chrome .nav-bar")).not.toBeNull();
+  });
+
+  it("垂直でURLバーを開くとスロット内にURL行を表示する", () => {
+    render(
+      <div className="pane-column__chrome">
+        <NavigationBar />
+      </div>,
+    );
+
+    fireEvent.click(slot.querySelector('[title="URLバーを表示"]') as HTMLElement);
+
+    expect(slot.querySelector(".nav-bar__url-row")).not.toBeNull();
+  });
+
+  it("垂直ではフォーカスアウトでURL行を閉じる", () => {
+    render(
+      <div className="pane-column__chrome">
+        <NavigationBar />
+      </div>,
+    );
+
+    fireEvent.click(slot.querySelector('[title="URLバーを表示"]') as HTMLElement);
+    expect(slot.querySelector(".nav-bar__url-row")).not.toBeNull();
+
+    fireEvent.blur(slot.querySelector(".nav-bar__url-input") as HTMLInputElement);
+
+    expect(slot.querySelector(".nav-bar__url-row")).toBeNull();
+  });
+
+  it("水平ではフォーカスアウトしてもURL行を開いたままにする", () => {
+    orientationHolder.value = "horizontal";
+
+    const { container } = render(<NavigationBar />);
+
+    fireEvent.click(screen.getByTitle("URLバーを表示"));
+    expect(container.querySelector(".nav-bar__url-row")).not.toBeNull();
+
+    fireEvent.blur(container.querySelector(".nav-bar__url-input") as HTMLInputElement);
+
+    expect(container.querySelector(".nav-bar__url-row")).not.toBeNull();
   });
 });

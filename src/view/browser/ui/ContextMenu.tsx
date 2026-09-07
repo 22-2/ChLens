@@ -78,6 +78,12 @@ export const ContextMenu: React.FC<Props> = ({
     );
   };
 
+  // 変更理由: トグルボタン上の押下で Radix が先に閉じると、後続の click トグルが
+  // 閉じた状態を見て開き直してしまう。開閉の責務はボタン側のトグルへ寄せ、
+  // mousedown 側の outsideClickIgnoreRefs と同じくトリガー上では閉じない。
+  const isTriggerTarget = (target: EventTarget | null) =>
+    triggerRef?.current != null && target instanceof Node && triggerRef.current.contains(target);
+
   // Radixのvirtual anchorへ座標を渡すため、既存の「stateが生成されたら開く」契約を
   // contextmenuイベントへ変換する。これによりRadix側のfocus/dismissable layerを利用できる。
   useLayoutEffect(() => {
@@ -131,12 +137,12 @@ export const ContextMenu: React.FC<Props> = ({
         collisionPadding={8}
         onCloseAutoFocus={(event) => event.preventDefault()}
         onPointerDownOutside={(event) => {
-          if (closeDisabled || isPopupBranchTarget(event.target)) {
+          if (closeDisabled || isPopupBranchTarget(event.target) || isTriggerTarget(event.target)) {
             event.preventDefault();
           }
         }}
         onInteractOutside={(event) => {
-          if (closeDisabled || isPopupBranchTarget(event.target)) {
+          if (closeDisabled || isPopupBranchTarget(event.target) || isTriggerTarget(event.target)) {
             event.preventDefault();
           }
         }}

@@ -27,6 +27,7 @@ import { buildIndexes } from "src/view/browser/utils/thread-index";
 import { filterThreadResponses } from "src/view/browser/utils/thread-search";
 import { hasExternalLink, hasImage, hasVideo } from "src/view/browser/utils/message-filter";
 import type { ThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
+import { useIsNgTemporarilyDisabled, useNgDisplayMode } from "src/view/browser/hooks/use-ng-status";
 
 // 変更理由: タブ再マウント時やブラウザ再起動後に「読み込み中」しか表示されないのを防ぐため、
 // 前回の取得結果をIDBに永続化し、新しいデータの取得中は古い結果を表示し続ける。
@@ -83,6 +84,8 @@ export function useThreadData(
   rootRef: RefObject<HTMLDivElement | null>,
   refreshController: ThreadRefreshController,
 ): ThreadData {
+  const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
+  const ngDisplayMode = useNgDisplayMode();
   const dispatch = useTabDispatch();
   const { beginRequest, isLatestRequest, refreshKey } = refreshController;
   const { state: persistedViewState, update: updateViewState } = useTabViewState(tabId, page);
@@ -265,10 +268,11 @@ export function useThreadData(
   }, [responses]);
 
   const indexes = useMemo(() => {
-    // 本文のNG内容はプレースホルダーで伏せる一方、アンカープレビュー・返信ツリー・
-    // IDポップアップでは参照できる必要があるため、索引は常に全レスから構築する。
-    return buildIndexes(responses);
-  }, [responses]);
+    // hard-ngでは非表示レスを返信数・返信ツリーへ流さず、存在を返信UIから完全に隠す。
+    return buildIndexes(responses, {
+      excludeHardNgResponses: ngDisplayMode === "hard-ng" && !isNgTemporarilyDisabled,
+    });
+  }, [isNgTemporarilyDisabled, ngDisplayMode, responses]);
 
   const filteredResponses = useMemo(() => {
     let list = visibleResponses;

@@ -88,7 +88,10 @@ hide anchor-count >= 10:`;
   spam`);
     expect(result.recognized).toBe(true);
     expect(result.rules).toEqual([]);
-    expect(result.diagnostics[0]).toMatchObject({ line: 1, message: "未対応の動作です: remove" });
+    expect(result.diagnostics[0]).toMatchObject({
+      line: 1,
+      message: "未対応の動作です: remove（利用可能な動作: hide、highlight、demote、warn）",
+    });
   });
 
   it("uses demote as the only action for moving board threads to the lower section", () => {
@@ -96,7 +99,7 @@ hide anchor-count >= 10:`;
       action: "demote",
     });
     expect(parseRuleDsl("mute title contains:\n  quiet").diagnostics[0]).toMatchObject({
-      message: "未対応の動作です: mute",
+      message: "未対応の動作です: mute（利用可能な動作: hide、highlight、demote、warn）",
     });
   });
 

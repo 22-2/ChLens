@@ -27,6 +27,7 @@ interface PopupCollectionSlice {
   closePopupsByPredicateInScope: (scopeId: string, predicate: (item: PopupItem) => boolean) => void;
   toggleTreePopupPinnedInScope: (scopeId: string, popupId: string) => void;
   toggleIdPopupPinnedInScope: (scopeId: string, popupId: string) => void;
+  toggleAnchorPopupPinnedInScope: (scopeId: string, popupId: string) => void;
 }
 
 interface PopupGraphSlice {
@@ -210,6 +211,32 @@ const createPopupCollectionSlice: StateCreator<PopupStoreState, [], [], PopupCol
       };
     });
   },
+  toggleAnchorPopupPinnedInScope: (scopeId, popupId) => {
+    set((state) => {
+      const currentScope = state.scopes[scopeId];
+      if (!currentScope) return state;
+
+      return {
+        scopes: {
+          ...state.scopes,
+          [scopeId]: {
+            ...currentScope,
+            popups: currentScope.popups.map((item) => {
+              if (item.id !== popupId || item.type !== "anchor") return item;
+              const pinned = !item.payload.pinned;
+              return {
+                ...item,
+                // 変更理由: 返信ツリーやIDポップアップと同様、固定したアンカーを親の開閉から切り離す。
+                // 固定時はrootへ昇格させ、親が閉じても巻き込まれないようにする。
+                parentId: pinned ? undefined : item.parentId,
+                payload: { ...item.payload, pinned },
+              };
+            }),
+          },
+        },
+      };
+    });
+  },
 });
 
 const createPopupGraphSlice: StateCreator<PopupStoreState, [], [], PopupGraphSlice> = (
@@ -217,12 +244,15 @@ const createPopupGraphSlice: StateCreator<PopupStoreState, [], [], PopupGraphSli
   get,
 ) => ({
   closeNonContextPopupsInScope: (scopeId) => {
-    // 固定した返信ツリーとIDポップアップは本文操作後も残し、それ以外のpopup本体だけを閉じる。
+    // 固定した返信ツリーとIDポップアップとアンカーは本文操作後も残し、それ以外のpopup本体だけを閉じる。
     get().closePopupsByPredicateInScope(
       scopeId,
       (item) =>
         item.type !== "contextMenu" &&
-        !((item.type === "tree" || item.type === "id") && item.payload.pinned),
+        !(
+          (item.type === "tree" || item.type === "id" || item.type === "anchor") &&
+          item.payload.pinned
+        ),
     );
   },
   closePopupChildrenInScope: (scopeId, popupId) => {

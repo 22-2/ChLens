@@ -119,6 +119,9 @@
   border-radius: var(--sys-radius-xl);
   box-shadow: var(--sys-shadow-floating);
   overflow: hidden;
+  /* 変更理由: IDポップアップと共通のヘッダー操作を持つため、ヘッダー固定＋本文スクロールの縦積みにする。 */
+  display: flex;
+  flex-direction: column;
 }
 
 .anchor-preview__title {

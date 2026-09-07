@@ -8,11 +8,22 @@ interface ThreadIndexes {
   ancIndex: Map<number, Set<number>>;
   resMap: Map<number, IRes>;
 }
-export function buildIndexes(responses: IRes[]): ThreadIndexes {
+interface BuildIndexesOptions {
+  excludeHardNgResponses?: boolean;
+}
+
+export function buildIndexes(
+  responses: IRes[],
+  { excludeHardNgResponses = false }: BuildIndexesOptions = {},
+): ThreadIndexes {
   const idIndex = new Map<string, Set<number>>();
   const resMap = new Map<number, IRes>();
 
-  const replyIndexes = buildReplyIndexes(responses);
+  const replyIndexedResponses = excludeHardNgResponses
+    ? responses.filter((res) => res.ng == null && !res.class?.includes("ng"))
+    : responses;
+  // hard-ngのレスは返信ツリーと返信数からも除外し、非表示レスがUIの返信情報へ残らないようにする。
+  const replyIndexes = buildReplyIndexes(replyIndexedResponses);
 
   for (const res of responses) {
     resMap.set(res.num, res);

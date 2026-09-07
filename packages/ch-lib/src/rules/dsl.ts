@@ -4,6 +4,7 @@ import {
   normalizeRuleAction,
   normalizeRuleOption,
   normalizeRuleTarget,
+  RULE_ACTION_CATALOG,
 } from "./catalog";
 import {
   getRuleConditions,
@@ -26,6 +27,8 @@ export interface RuleDslParseResult {
 }
 
 const HEADER_PATTERN = /^(\S+)\s+(\S+)(?:\s+([\s\S]*?))?:\s*$/u;
+// 未対応の動作を指摘する際は、入力可能な候補を添えて修正先を示す。
+const AVAILABLE_ACTIONS_HINT = RULE_ACTION_CATALOG.map((entry) => entry.name).join("、");
 type BlockMatcherKind = "contains" | "regex";
 type RuleHeaderMatcherKind = BlockMatcherKind | "comparison";
 
@@ -496,7 +499,8 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
         diagnostics.push({
           line: index + 1,
           column: 1,
-          message: `未対応の動作です: ${match[1]}`,
+          // develop側の改善（利用可能な動作ヒント）を維持する。対象の検証はparseConditionHeader側で行うため、ここでは動作のみ判定する。
+          message: `未対応の動作です: ${match[1]}（利用可能な動作: ${AVAILABLE_ACTIONS_HINT}）`,
         });
         continue;
       }

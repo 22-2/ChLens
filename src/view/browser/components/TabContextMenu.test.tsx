@@ -59,24 +59,31 @@ describe("TabContextMenu", () => {
     dispatchMock.mockReset();
   });
 
-  it("通常URLとMarkdownリンクのコピーをタブメニューから実行できる", () => {
+  it("コマンドへ移動した項目をタブメニューに表示しない", () => {
     render(<TabContextMenu tab={threadTab} position={{ x: 10, y: 10 }} onClose={vi.fn()} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "URLをコピー" }));
-    expect(copyTextMock).toHaveBeenLastCalledWith(
-      "https://egg.5ch.net/test/read.cgi/software/123/",
-    );
-
-    expect(screen.getByRole("button", { name: "スレタイ&URLをコピー" })).toBeInTheDocument();
-    const markdownButton = screen.getByRole("button", {
-      name: "スレタイ&URLをMarkdownでコピー",
-    });
-    expect(markdownButton).toBeInTheDocument();
-
-    fireEvent.click(markdownButton);
-    expect(copyTextMock).toHaveBeenLastCalledWith(
-      "[Current Thread](https://egg.5ch.net/test/read.cgi/software/123/)",
-    );
+    // 変更理由: 他・右側・すべてのタブを閉じる、右ペインで開く、URLとMarkdownのコピーは
+    // コマンドパレットへ移動したため、タブメニューには置かない。
+    expect(screen.queryByRole("button", { name: "他のタブを閉じる" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "右側のタブを閉じる" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "すべて閉じる" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "右のペインで開く" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "URLをコピー" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "スレタイ&URLをMarkdownでコピー" }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "datのURLをコピー" })).not.toBeInTheDocument();
+  });
+
+  it("残したスレタイ&URLのコピーをタブメニューから実行できる", () => {
+    render(<TabContextMenu tab={threadTab} position={{ x: 10, y: 10 }} onClose={vi.fn()} />);
+
+    expect(screen.getByRole("button", { name: "タブを閉じる" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "スレタイ&URLをコピー" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "スレタイ&URLをコピー" }));
+    expect(copyTextMock).toHaveBeenLastCalledWith(
+      "Current Thread\nhttps://egg.5ch.net/test/read.cgi/software/123/",
+    );
   });
 });
