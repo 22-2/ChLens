@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ResMediaGallery } from "src/view/browser/components/ResMediaGallery";
+import { twitterPostResolver } from "src/view/browser/utils/twitter-post";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 afterEach(() => {
@@ -33,6 +34,59 @@ describe("ResMediaGallery", () => {
 
     fireEvent.click(container.querySelector(".res__media-embed-close") as HTMLButtonElement);
     expect(container.querySelector(".res__media-embed-player")).toBeNull();
+  });
+
+  it("Twitter/X投稿URLをクリックするとFxTwitterの投稿とメディアをレス内へ表示する", async () => {
+    const rawUrl = "https://x.com/example/status/1234567890123456789";
+    const resolve = vi.spyOn(twitterPostResolver, "resolve").mockResolvedValue({
+      id: "1234567890123456789",
+      url: rawUrl,
+      text: "投稿本文",
+      author: {
+        name: "表示名",
+        screenName: "example",
+        avatarUrl: null,
+      },
+      media: [
+        {
+          type: "image",
+          url: "https://pbs.twimg.com/media/photo.jpg",
+          altText: "写真の説明",
+        },
+      ],
+    });
+
+    try {
+      const { container } = render(<ResMediaGallery urls={[rawUrl]} onUrlClick={() => {}} />);
+
+      fireEvent.click(screen.getByRole("button", { name: "FxTwitter を展開する" }));
+
+      await waitFor(() => expect(screen.getByText("投稿本文")).toBeInTheDocument());
+      expect(container.querySelector(".res__twitter-post")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Xで投稿を開く" })).toHaveAttribute("href", rawUrl);
+      expect(resolve).toHaveBeenCalledWith(rawUrl);
+    } finally {
+      resolve.mockRestore();
+    }
+  });
+
+  it("FxTwitter取得失敗時は元の投稿URLを開くリンクを表示する", async () => {
+    const rawUrl = "https://twitter.com/example/status/1234567890123456789";
+    const resolve = vi.spyOn(twitterPostResolver, "resolve").mockResolvedValue(null);
+
+    try {
+      render(<ResMediaGallery urls={[rawUrl]} onUrlClick={() => {}} />);
+
+      fireEvent.click(screen.getByRole("button", { name: "FxTwitter を展開する" }));
+
+      await waitFor(() =>
+        expect(screen.getByText("FxTwitterから投稿を取得できませんでした")).toBeInTheDocument(),
+      );
+      expect(screen.getByRole("link", { name: "元の投稿を開く" })).toHaveAttribute("href", rawUrl);
+      expect(resolve).toHaveBeenCalledWith(rawUrl);
+    } finally {
+      resolve.mockRestore();
+    }
   });
 
   it("popup 用 middle click では mousedown 時点で1回だけ新規タブ扱いにする", () => {

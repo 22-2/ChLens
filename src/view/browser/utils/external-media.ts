@@ -1,5 +1,16 @@
 export type ExternalVideoProvider = "youtube";
 
+export interface TwitterPostEmbed {
+  provider: "twitter";
+  rawUrl: string;
+  externalUrl: string;
+  thumbnailUrl: string;
+  fallbackThumbnailUrl: string;
+  providerLabel: string;
+  postId: string;
+  apiUrl: string;
+}
+
 export interface ExternalVideoEmbed {
   provider: ExternalVideoProvider;
   rawUrl: string;
@@ -10,6 +21,8 @@ export interface ExternalVideoEmbed {
   providerLabel: string;
   iframeTitle: string;
 }
+
+export type ExternalMediaEmbed = ExternalVideoEmbed | TwitterPostEmbed;
 
 const YOUTUBE_HOSTS = new Set([
   "youtube.com",
@@ -22,7 +35,21 @@ const YOUTUBE_HOSTS = new Set([
 ]);
 const youtubeFallbackThumbnailUrl = createThumbnailPlaceholder("YouTube", "#ef4444", "#111827");
 const nativeVideoFallbackThumbnailUrl = createThumbnailPlaceholder("VIDEO", "#f8fafc", "#0f172a");
+const twitterFallbackThumbnailUrl = createThumbnailPlaceholder("X POST", "#1d9bf0", "#0f172a");
 const DIRECT_VIDEO_REG = /\.(?:mp4|m4v|webm|ogv|mov|avi)(?:[?#:].*)?$/i;
+const TWITTER_POST_HOSTS = new Set([
+  "twitter.com",
+  "www.twitter.com",
+  "mobile.twitter.com",
+  "x.com",
+  "www.x.com",
+  "fxtwitter.com",
+  "www.fxtwitter.com",
+  "fixupx.com",
+  "www.fixupx.com",
+  "twittpr.com",
+  "www.twittpr.com",
+]);
 
 function createThumbnailPlaceholder(
   providerLabel: string,
@@ -68,6 +95,15 @@ function extractYouTubeVideoId(url: URL): string | null {
   }
 
   return null;
+}
+
+function extractTwitterPostId(url: URL): string | null {
+  if (!TWITTER_POST_HOSTS.has(url.hostname.toLowerCase())) {
+    return null;
+  }
+
+  // /i/web/status/<id> を含むため、ユーザー名の形式には依存せず status 部分を探す。
+  return url.pathname.match(/\/(?:status|statuses)\/(\d{2,20})(?:\/|$)/i)?.[1] ?? null;
 }
 
 function buildYouTubeEmbedUrl(youtubeVideoId: string): string {
@@ -152,6 +188,30 @@ export function toInlineVideoEmbed(rawUrl: string): ExternalVideoEmbed | null {
   }
 
   return null;
+}
+
+export function toTwitterPostEmbed(rawUrl: string): TwitterPostEmbed | null {
+  try {
+    const parsedUrl = new URL(rawUrl);
+    const postId = extractTwitterPostId(parsedUrl);
+    if (!postId) {
+      return null;
+    }
+
+    return {
+      provider: "twitter",
+      rawUrl,
+      // API取得に失敗しても元の投稿URLを開けるよう、入力URLをそのまま保持する。
+      externalUrl: rawUrl,
+      thumbnailUrl: twitterFallbackThumbnailUrl,
+      fallbackThumbnailUrl: twitterFallbackThumbnailUrl,
+      providerLabel: "FxTwitter",
+      postId,
+      apiUrl: `https://api.fxtwitter.com/2/status/${postId}`,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export function isDirectVideoUrl(rawUrl: string): boolean {

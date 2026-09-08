@@ -4,11 +4,13 @@ import {
   getDirectVideoLabel,
   isDirectVideoUrl,
   shouldOpenYouTubeExternally,
+  toTwitterPostEmbed,
   toInlineVideoEmbed,
   toRuntimeVideoEmbedUrl,
-  type ExternalVideoEmbed,
+  type ExternalMediaEmbed,
 } from "src/view/browser/utils/external-media";
 import type { UrlClickHandler } from "src/view/browser/utils/link-routing";
+import { twitterPostResolver, type TwitterPost } from "src/view/browser/utils/twitter-post";
 import { toViewerImageUrl } from "src/view/browser/utils/url-media";
 
 interface ResMediaGalleryProps {
@@ -30,9 +32,9 @@ interface ImageMediaItem {
   src: string;
 }
 
-interface VideoMediaItem {
-  type: "video";
-  embed: ExternalVideoEmbed;
+interface EmbedMediaItem {
+  type: "embed";
+  embed: ExternalMediaEmbed;
 }
 
 interface NativeVideoMediaItem {
@@ -41,7 +43,7 @@ interface NativeVideoMediaItem {
   providerLabel: string;
 }
 
-type ResMediaItem = ImageMediaItem | VideoMediaItem | NativeVideoMediaItem;
+type ResMediaItem = ImageMediaItem | EmbedMediaItem | NativeVideoMediaItem;
 
 function buildResMediaItem(rawUrl: string): ResMediaItem | null {
   const imageUrl = toViewerImageUrl(rawUrl);
@@ -64,15 +66,23 @@ function buildResMediaItem(rawUrl: string): ResMediaItem | null {
   const videoEmbed = toInlineVideoEmbed(rawUrl);
   if (videoEmbed) {
     return {
-      type: "video",
+      type: "embed",
       embed: videoEmbed,
+    };
+  }
+
+  const twitterEmbed = toTwitterPostEmbed(rawUrl);
+  if (twitterEmbed) {
+    return {
+      type: "embed",
+      embed: twitterEmbed,
     };
   }
 
   return null;
 }
 
-function VideoThumbImage({ embed }: { embed: ExternalVideoEmbed }): React.ReactElement {
+function VideoThumbImage({ embed }: { embed: ExternalMediaEmbed }): React.ReactElement {
   const [posterUrl, setPosterUrl] = useState(embed.thumbnailUrl);
 
   useEffect(() => {
@@ -90,6 +100,99 @@ function VideoThumbImage({ embed }: { embed: ExternalVideoEmbed }): React.ReactE
         }
       }}
     />
+  );
+}
+
+function TwitterPostCard({
+  embed,
+  post,
+}: {
+  embed: ExternalMediaEmbed;
+  post: TwitterPost;
+}): React.ReactElement {
+  return (
+    <div className="res__twitter-post">
+      <div className="res__twitter-post-author">
+        {post.author.avatarUrl && (
+          <img
+            className="res__twitter-post-avatar"
+            src={post.author.avatarUrl}
+            alt=""
+            loading="lazy"
+          />
+        )}
+        <div>
+          <a href={embed.externalUrl} target="_blank" rel="noopener noreferrer">
+            {post.author.name}
+          </a>
+          {post.author.screenName && (
+            <span className="res__twitter-post-screen-name">@{post.author.screenName}</span>
+          )}
+        </div>
+      </div>
+      {post.text && <p className="res__twitter-post-text">{post.text}</p>}
+      {post.media.length > 0 && (
+        <div className="res__twitter-post-media">
+          {post.media.map((media, index) => {
+            if (media.type === "image") {
+              return (
+                <a
+                  key={`${media.type}:${media.url}`}
+                  href={media.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <img src={media.url} alt={media.altText ?? "投稿画像"} loading="lazy" />
+                </a>
+              );
+            }
+
+            return (
+              <video
+                key={`${media.type}:${media.url}:${index}`}
+                src={media.url}
+                poster={media.posterUrl ?? undefined}
+                controls
+                autoPlay={media.isGif}
+                loop={media.isGif}
+                muted={media.isGif}
+                playsInline
+                preload="metadata"
+              />
+            );
+          })}
+        </div>
+      )}
+      <a
+        className="res__twitter-post-external"
+        href={embed.externalUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Xで投稿を開く
+      </a>
+    </div>
+  );
+}
+
+function TwitterPostFallback({
+  embed,
+  isLoading,
+}: {
+  embed: ExternalMediaEmbed;
+  isLoading: boolean;
+}): React.ReactElement {
+  return (
+    <div className="res__twitter-post-fallback">
+      <p>
+        {isLoading
+          ? "FxTwitterから投稿を取得しています…"
+          : "FxTwitterから投稿を取得できませんでした"}
+      </p>
+      <a href={embed.externalUrl} target="_blank" rel="noopener noreferrer">
+        元の投稿を開く
+      </a>
+    </div>
   );
 }
 
@@ -131,6 +234,12 @@ export function ResMediaGallery({
 }: ResMediaGalleryProps): React.ReactElement | null {
   const handledMiddleClickUrlRef = useRef<string | null>(null);
   const [expandedVideoUrl, setExpandedVideoUrl] = useState<string | null>(null);
+  const [twitterPostStates, setTwitterPostStates] = useState<
+    Map<
+      string,
+      { status: "loading" } | { status: "loaded"; post: TwitterPost } | { status: "error" }
+    >
+  >(new Map());
   const thumbStyle: ThumbStyle | undefined = isBlurred
     ? {
         "--res-thumb-blur-radius": `${imageBlurRadius}px`,
@@ -149,29 +258,29 @@ export function ResMediaGallery({
     [mediaItems],
   );
   const pageOrigin = typeof window === "undefined" ? undefined : window.location.origin;
-  const expandedVideo = useMemo(
+  const expandedMediaItem = useMemo(
     () =>
       mediaItems.find(
-        (item): item is VideoMediaItem | NativeVideoMediaItem =>
-          (item.type === "video" && item.embed.rawUrl === expandedVideoUrl) ||
+        (item): item is EmbedMediaItem | NativeVideoMediaItem =>
+          (item.type === "embed" && item.embed.rawUrl === expandedVideoUrl) ||
           (item.type === "nativeVideo" && item.rawUrl === expandedVideoUrl),
       ) ?? null,
     [expandedVideoUrl, mediaItems],
   );
   const expandedVideoIframeSrc = useMemo(() => {
-    if (expandedVideo?.type !== "video") {
+    if (expandedMediaItem?.type !== "embed" || expandedMediaItem.embed.provider !== "youtube") {
       return null;
     }
 
-    return toRuntimeVideoEmbedUrl(expandedVideo.embed, pageOrigin);
-  }, [expandedVideo, pageOrigin]);
+    return toRuntimeVideoEmbedUrl(expandedMediaItem.embed, pageOrigin);
+  }, [expandedMediaItem, pageOrigin]);
 
   useEffect(() => {
     if (
       expandedVideoUrl != null &&
       !mediaItems.some(
         (item) =>
-          (item.type === "video" && item.embed.rawUrl === expandedVideoUrl) ||
+          (item.type === "embed" && item.embed.rawUrl === expandedVideoUrl) ||
           (item.type === "nativeVideo" && item.rawUrl === expandedVideoUrl),
       )
     ) {
@@ -230,6 +339,34 @@ export function ResMediaGallery({
     openByMiddleClick(url, resImages);
   };
 
+  const requestTwitterPost = (embed: Extract<ExternalMediaEmbed, { provider: "twitter" }>) => {
+    const currentState = twitterPostStates.get(embed.rawUrl);
+    if (currentState?.status === "loading" || currentState?.status === "loaded") {
+      return;
+    }
+
+    setTwitterPostStates((current) =>
+      new Map(current).set(embed.rawUrl, {
+        status: "loading",
+      }),
+    );
+    void twitterPostResolver
+      .resolve(embed.rawUrl)
+      .then((post) => {
+        setTwitterPostStates((current) =>
+          new Map(current).set(
+            embed.rawUrl,
+            post ? { status: "loaded", post } : { status: "error" },
+          ),
+        );
+      })
+      .catch((error: unknown) => {
+        // Resolver内で通常の失敗は吸収するが、予期しない例外も握りつぶさず記録する。
+        console.error("[ResMediaGallery] Twitter投稿の表示に失敗しました", error);
+        setTwitterPostStates((current) => new Map(current).set(embed.rawUrl, { status: "error" }));
+      });
+  };
+
   return (
     <>
       <div className="res__thumbs">
@@ -286,8 +423,11 @@ export function ResMediaGallery({
           }
 
           const isExpanded =
-            expandedVideo?.type === "video" && expandedVideo?.embed.rawUrl === item.embed.rawUrl;
-          const shouldOpenExternally = shouldOpenYouTubeExternally(item.embed, pageOrigin);
+            expandedMediaItem?.type === "embed" &&
+            expandedMediaItem.embed.rawUrl === item.embed.rawUrl;
+          const shouldOpenExternally =
+            item.embed.provider === "youtube" &&
+            shouldOpenYouTubeExternally(item.embed, pageOrigin);
           return (
             <button
               key={`video:${item.embed.rawUrl}`}
@@ -307,10 +447,12 @@ export function ResMediaGallery({
                   return;
                 }
 
-                // 動画はモーダルへ送らずレス内で1件だけ開閉し、4chan風のその場再生に寄せる。
-                setExpandedVideoUrl((currentUrl) =>
-                  currentUrl === item.embed.rawUrl ? null : item.embed.rawUrl,
-                );
+                const willExpand = expandedVideoUrl !== item.embed.rawUrl;
+                // 外部APIは全レス表示時に一斉取得せず、利用者が展開した投稿だけ取得する。
+                setExpandedVideoUrl(willExpand ? item.embed.rawUrl : null);
+                if (willExpand && item.embed.provider === "twitter") {
+                  requestTwitterPost(item.embed);
+                }
               }}
               onMouseDown={(event) =>
                 handleMiddleMouseDown(
@@ -337,15 +479,15 @@ export function ResMediaGallery({
         })}
       </div>
 
-      {expandedVideo && (
+      {expandedMediaItem && (
         <div
-          className={`res__media-embed${expandedVideo.type === "video" ? ` res__media-embed--${expandedVideo.embed.provider}` : " res__media-embed--native"}`}
+          className={`res__media-embed${expandedMediaItem.type === "embed" ? ` res__media-embed--${expandedMediaItem.embed.provider}` : " res__media-embed--native"}`}
         >
           <div className="res__media-embed-toolbar">
             <span className="res__media-embed-label">
-              {expandedVideo.type === "video"
-                ? expandedVideo.embed.providerLabel
-                : expandedVideo.providerLabel}
+              {expandedMediaItem.type === "embed"
+                ? expandedMediaItem.embed.providerLabel
+                : expandedMediaItem.providerLabel}
             </span>
             <button
               type="button"
@@ -359,26 +501,39 @@ export function ResMediaGallery({
               閉じる
             </button>
           </div>
-          {expandedVideo.type === "video" ? (
+          {expandedMediaItem.type === "embed" && expandedMediaItem.embed.provider === "twitter" ? (
+            (() => {
+              const state = twitterPostStates.get(expandedMediaItem.embed.rawUrl);
+              return state?.status === "loaded" ? (
+                <TwitterPostCard embed={expandedMediaItem.embed} post={state.post} />
+              ) : (
+                <TwitterPostFallback
+                  embed={expandedMediaItem.embed}
+                  isLoading={state?.status !== "error"}
+                />
+              );
+            })()
+          ) : expandedMediaItem.type === "embed" &&
+            expandedMediaItem.embed.provider === "youtube" ? (
             <iframe
-              className={`res__media-embed-frame res__media-embed-frame--${expandedVideo.embed.provider}`}
-              src={expandedVideoIframeSrc ?? expandedVideo.embed.embedUrl}
-              title={expandedVideo.embed.iframeTitle}
+              className={`res__media-embed-frame res__media-embed-frame--${expandedMediaItem.embed.provider}`}
+              src={expandedVideoIframeSrc ?? expandedMediaItem.embed.embedUrl}
+              title={expandedMediaItem.embed.iframeTitle}
               loading="lazy"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
               // ここへ来るのは通常の Web/Tauri 側だけで、拡張ページはクリック時点で外部タブへ逃がす。
               referrerPolicy="strict-origin-when-cross-origin"
             />
-          ) : (
+          ) : expandedMediaItem.type === "nativeVideo" ? (
             <video
               className="res__media-embed-player"
-              src={expandedVideo.rawUrl}
+              src={expandedMediaItem.rawUrl}
               controls
               playsInline
               preload="metadata"
             />
-          )}
+          ) : null}
         </div>
       )}
     </>
