@@ -57,6 +57,7 @@
     {
       "matches": [
         "*://*.2ch.net/*",
+        "*://*.5ch.net/*",
         "*://*.5ch.io/*",
         "*://jbbs.shitaraba.net/*",
         "*://*.machi.to/*",
@@ -85,6 +86,7 @@
       "resources": ["/view/index.html", "/lib/monaco/vs/**/*"],
       "matches": [
         "*://*.2ch.net/*",
+        "*://*.5ch.net/*",
         "*://*.5ch.io/*",
         "*://jbbs.shitaraba.net/*",
         "*://*.machi.to/*",

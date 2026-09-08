@@ -10,4 +10,11 @@ describe("ChURL", () => {
     expect(url.getDatUrl()).toBe("https://bbs.example.test/flaming/dat/1000000001.dat");
     expect(url.getSubjectUrl()).toBe("https://bbs.example.test/flaming/subject.txt");
   });
+
+  it("レス番号付きのread.cgi URLをスレッド本体へ正規化する", () => {
+    const url = new ChURL("https://kako.5ch.io/test/read.cgi/exampleboard/1000000008/20");
+
+    expect(url.type).toBe("thread");
+    expect(url.url.href).toBe("https://kako.5ch.io/test/read.cgi/exampleboard/1000000008/");
+  });
 });

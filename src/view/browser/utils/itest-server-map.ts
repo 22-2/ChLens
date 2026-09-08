@@ -1,7 +1,7 @@
 import type { BBSMenu } from "src/core/BBSMenuParser";
 
-// itest（携帯版）URLは板キーしか持たずサーバー名が分からないため、
-// bbsmenu から板キー→実サーバーホスト名の対応表を作って解決する。
+// itest（携帯版）URLの多くは板キーしか持たずサーバー名が分からないため、
+// サーバー名を含まない形式を bbsmenu の板キー→実サーバーホスト名対応表で解決する。
 // フォーク元では URL.convertFromPhone() + pushServerInfo() が担っていた変換だが、
 // 本フォークのURL処理は link-routing.ts（同期）に集約されているので、
 // 同期で引ける対応表としてここに分離した。

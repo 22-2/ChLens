@@ -17,6 +17,14 @@ describe("content script url targets", () => {
     ).toBe(true);
   });
 
+  it("itestの過去ログURLをレス番号付きでも対象と判定する", () => {
+    expect(
+      isTargetContentScriptUrl(
+        "https://itest.5ch.net/kako/test/read.cgi/exampleboard/1000000008/20",
+      ),
+    ).toBe(true);
+  });
+
   it("machi 板 index URLを対象と判定する", () => {
     expect(isTargetContentScriptUrl("https://kanto.machi.to/kana/index.html")).toBe(true);
   });

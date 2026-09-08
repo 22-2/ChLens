@@ -72,8 +72,9 @@ function normalizeItestUrl(url: URL): void {
 
   const threadMatch = ROUTE_PATTERNS.ITEST_THREAD.exec(url.pathname);
   if (threadMatch) {
-    url.pathname = `/test/read.cgi/${threadMatch[1]}/${threadMatch[2]}/`;
-    convertItestHostname(url, threadMatch[1]);
+    const [, serverPrefix, boardKey, threadKey] = threadMatch;
+    url.pathname = `/test/read.cgi/${boardKey}/${threadKey}/`;
+    convertItestHostname(url, boardKey, serverPrefix);
     return;
   }
 
@@ -86,13 +87,28 @@ function normalizeItestUrl(url: URL): void {
   }
 }
 
-function convertItestHostname(url: URL, boardKey: string): void {
+function convertItestHostname(url: URL, boardKey: string, serverPrefix?: string): void {
   // 変更理由: itest ホストのままでは dat/subject.txt を取得できないため、
   // bbsmenu 由来の対応表で実サーバー（例: mercury.bbspink.com）へ変換する。
-  // 対応表に無い板は変換せず残す（従来どおり読み込み失敗となるが誤変換よりまし）。
+  // `kako` は板サーバーではなく過去ログ用ホストを表すため、板対応表より優先する。
+  // ここを板対応表に任せると、過去ログが現行板サーバーへ変換されて取得できない。
+  if (serverPrefix?.toLowerCase() === "kako") {
+    const domain = url.hostname === HOSTNAME.ITEST_BBSPINK ? "bbspink.com" : HOSTNAME.NEW_5CH;
+    url.hostname = `${serverPrefix}.${domain}`;
+    return;
+  }
+
   const hostname = resolveItestServerHostname(boardKey);
   if (hostname) {
     url.hostname = hostname;
+    return;
+  }
+
+  // 対応表の復元・取得前でも、携帯向けURLに含まれるサーバー名は実サーバーを示す。
+  // 対応表が無い場合だけこの情報を使い、itestホストのままでは取得できない状態を避ける。
+  if (serverPrefix) {
+    const domain = url.hostname === HOSTNAME.ITEST_BBSPINK ? "bbspink.com" : HOSTNAME.NEW_5CH;
+    url.hostname = `${serverPrefix}.${domain}`;
   }
 }
 

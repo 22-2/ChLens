@@ -64,6 +64,7 @@ export const ROUTE_PATTERNS = {
   SHITARABA_BOARD: /^\/([\w-]+)\/(\d+)\/?(?:#.*)?$/,
   EDDIBB_THREAD: /^\/(?:test\/read\.cgi\/)?([\w-]+)\/(\d+)\/?/,
   EDDIBB_BOARD: /^\/(?:test\/read\.cgi\/)?([\w-]+)\/?(?:#.*)?$/,
-  ITEST_THREAD: /^\/(?:[\w-]+\/)?test\/read\.cgi\/([\w-]+)\/(\d+)\/?$/,
+  // レス番号付きURLも板・スレッド本体へ正規化できるよう、末尾のレス番号を許容する。
+  ITEST_THREAD: /^\/(?:([\w-]+)\/)?test\/read\.cgi\/([\w-]+)\/(\d+)(?:\/(?:i|g\?g=)?\d+)?\/?$/,
   ITEST_BOARD: /^\/(?:[\w-]+\/)?(?:subback\/)?([\w-]+)\/?$/,
 } as const;

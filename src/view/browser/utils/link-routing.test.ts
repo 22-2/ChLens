@@ -83,13 +83,28 @@ describe("link-routing", () => {
     ).toEqual(expected);
   });
 
-  it("itest の prefix 付き test/read.cgi URL を thread として正規化する", () => {
+  it("itest のサーバー名付き test/read.cgi URL を実サーバーへ正規化する", () => {
     expect(
       parseInternalBrowserPage("https://itest.5ch.io/krsw/test/read.cgi/AAAA/1000000008/"),
     ).toEqual({
       type: "thread",
-      title: "https://itest.5ch.io/test/read.cgi/AAAA/1000000008/",
-      threadUrl: "https://itest.5ch.io/test/read.cgi/AAAA/1000000008/",
+      title: "https://krsw.5ch.io/test/read.cgi/AAAA/1000000008/",
+      threadUrl: "https://krsw.5ch.io/test/read.cgi/AAAA/1000000008/",
+    });
+  });
+
+  it("旧5ch.netのitest過去ログURLをレス番号付きでも過去ログサーバーへ正規化する", () => {
+    // 板対応表があっても、kako は現行板ではなく過去ログを指すため専用ホストを選ぶ。
+    setItestServerMapForTesting([["exampleboard", "mapped-server.5ch.io"]]);
+
+    expect(
+      parseInternalBrowserPage(
+        "https://itest.5ch.net/kako/test/read.cgi/exampleboard/1000000008/20",
+      ),
+    ).toEqual({
+      type: "thread",
+      title: "https://kako.5ch.io/test/read.cgi/exampleboard/1000000008/",
+      threadUrl: "https://kako.5ch.io/test/read.cgi/exampleboard/1000000008/",
     });
   });
 
