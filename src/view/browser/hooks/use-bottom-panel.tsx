@@ -35,8 +35,8 @@ const DEFAULT_THREAD_LIST_AUTO_REFRESH_INTERVAL_SEC: ThreadListAutoRefreshInterv
 
 // 追加するタブはここに加えるだけでパネルに反映される
 export const BOTTOM_PANEL_TABS: PanelTab[] = [
-  { id: BOTTOM_PANEL_THREAD_LIST_TAB_ID, label: "スレ一覧" },
   { id: BOTTOM_PANEL_WRITE_TAB_ID, label: "書き込み" },
+  { id: BOTTOM_PANEL_THREAD_LIST_TAB_ID, label: "スレ一覧" },
 ];
 
 interface SavedState {

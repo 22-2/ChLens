@@ -26,8 +26,8 @@ vi.mock("src/view/browser/hooks/use-bottom-panel", () => ({
     height: 200,
     activeTabId: "write",
     tabs: [
-      { id: "thread-list", label: "スレ一覧" },
       { id: "write", label: "書き込み" },
+      { id: "thread-list", label: "スレ一覧" },
     ],
     openPanel: vi.fn(),
     closePanel: mocks.closePanel,

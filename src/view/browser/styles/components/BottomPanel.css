@@ -93,6 +93,22 @@
 }
 
 .thread-list-panel {
+  --cmp-thread-list-row-hover-overlay: color-mix(
+    in srgb,
+    var(--sys-color-focus-ring) 6%,
+    transparent
+  );
+  --cmp-thread-list-current-overlay: color-mix(
+    in srgb,
+    var(--sys-color-focus-ring) 14%,
+    transparent
+  );
+  --cmp-thread-list-current-hover-overlay: color-mix(
+    in srgb,
+    var(--sys-color-focus-ring) 24%,
+    transparent
+  );
+
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -194,10 +210,38 @@
 }
 
 .simple-data-table__row.thread-list-panel__row--current {
-  box-shadow: inset 3px 0 var(--sys-color-focus-ring);
-  background: var(--sys-color-table-highlight-bg);
+  /* ハイライト行では背景を混色せず、左端と上下の印だけで現在スレを示してルール色を保つ。 */
+  box-shadow:
+    inset 5px 0 var(--sys-color-focus-ring),
+    inset 0 1px color-mix(in srgb, var(--sys-color-focus-ring) 75%, transparent),
+    inset 0 -1px color-mix(in srgb, var(--sys-color-focus-ring) 75%, transparent);
 }
 
-.simple-data-table__row.thread-list-panel__row--current:hover {
-  background: var(--sys-color-list-selected-hover-bg, var(--sys-color-list-hover-bg));
+/* 通常行だけへ薄い青を重ね、既存ホバー色を濃くしすぎずにカーソル位置を示す。 */
+.thread-list-panel
+  .simple-data-table__row:not(.thread-list__row--highlight):not(
+    .simple-data-table__row--highlight
+  ):hover {
+  background-image: linear-gradient(
+    var(--cmp-thread-list-row-hover-overlay),
+    var(--cmp-thread-list-row-hover-overlay)
+  );
+}
+
+.simple-data-table__row.thread-list-panel__row--current:not(.thread-list__row--highlight):not(
+  .simple-data-table__row--highlight
+) {
+  background-image: linear-gradient(
+    var(--cmp-thread-list-current-overlay),
+    var(--cmp-thread-list-current-overlay)
+  );
+}
+
+.simple-data-table__row.thread-list-panel__row--current:not(.thread-list__row--highlight):not(
+  .simple-data-table__row--highlight
+):hover {
+  background-image: linear-gradient(
+    var(--cmp-thread-list-current-hover-overlay),
+    var(--cmp-thread-list-current-hover-overlay)
+  );
 }
