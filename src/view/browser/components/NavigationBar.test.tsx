@@ -103,6 +103,8 @@ vi.mock("src/view/browser/hooks/use-tab-bar-orientation", () => ({
 }));
 
 vi.mock("src/view/browser/hooks/use-bottom-panel", () => ({
+  BOTTOM_PANEL_THREAD_LIST_TAB_ID: "thread-list",
+  BOTTOM_PANEL_WRITE_TAB_ID: "write",
   useBottomPanel: () => ({
     isOpen: false,
     togglePanel: vi.fn(),

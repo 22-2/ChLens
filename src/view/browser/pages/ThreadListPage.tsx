@@ -1,7 +1,5 @@
 import { Bookmark, BookmarkX } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
-import { platform } from "src/app";
-import { getStore2String, setStore2String } from "src/app/Store2Storage";
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
 import { stringifyNgDslValue } from "src/core/ngDsl";
 import { URL as ChURL } from "src/core/URL";
@@ -9,10 +7,26 @@ import { container } from "src/service-container/index";
 import type { IReadState, IThread } from "src/service-container/interfaces";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import {
-  ColumnDef,
   SimpleDataTable,
   type DataTableSection,
 } from "src/view/browser/components/SimpleDataTable";
+import {
+  calcHeat,
+  createHighlightDividerStyle,
+  createHighlightRowStyle,
+  getThreadListCache,
+  isSortColumn,
+  isSortDirection,
+  readThreadListSortPreference,
+  setThreadListCache,
+  THREAD_LIST_COLUMNS,
+  THREAD_LIST_COLUMN_VISIBILITY_LOCKED_KEYS,
+  THREAD_LIST_COLUMN_VISIBILITY_STORAGE_KEY,
+  type DisplayThread,
+  type ThreadListSortColumn,
+  type ThreadListSortPreference,
+  writeThreadListSortPreference,
+} from "src/view/browser/components/thread-list-shared";
 import { WheelScrollIndicator } from "src/view/browser/components/WheelScrollIndicator";
 import {
   BOARD_AUTO_REFRESH_CONFIG_KEY,
@@ -28,7 +42,7 @@ import {
   useTabPanes,
   useTabViewState,
 } from "src/view/browser/hooks/use-tab-store";
-import { useTheme, type ResolvedTheme } from "src/view/browser/hooks/use-theme";
+import { useTheme } from "src/view/browser/hooks/use-theme";
 import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 import { getCurrentPage, type ThreadListPage as ThreadListPageType } from "src/view/browser/types";
 import { ContextMenu, ContextMenuItem } from "src/view/browser/ui/ContextMenu";
@@ -39,34 +53,30 @@ import {
   isAutoRefreshEnabledForPage,
 } from "src/view/browser/utils/auto-refresh-pages";
 import { ThreadListView } from "src/view/shared/ThreadListView";
+
+// 既存のページ用ユーティリティの公開位置を維持しつつ、パネル側と同じ定義を共有する。
+export {
+  calcHeat,
+  createHighlightDividerStyle,
+  createHighlightRowStyle,
+  getThreadListCache,
+  isSortColumn,
+  isSortDirection,
+  readThreadListSortPreference,
+  setThreadListCache,
+  THREAD_LIST_COLUMNS,
+  THREAD_LIST_COLUMN_VISIBILITY_LOCKED_KEYS,
+  THREAD_LIST_COLUMN_VISIBILITY_STORAGE_KEY,
+  writeThreadListSortPreference,
+};
+export type {
+  DisplayThread,
+  ThreadListSortColumn,
+  ThreadListSortDirection,
+  ThreadListSortPreference,
+} from "src/view/browser/components/thread-list-shared";
 const OPENED_BOARDS_CONFIG_KEY = "opened_board_entries";
 const MAX_OPENED_BOARD_ENTRIES = 500;
-
-// 変更理由: タブ再マウント時やブラウザ再起動後に「読み込み中」しか表示されないのを防ぐため、
-// 前回の取得結果をIDBに永続化し、新しいデータの取得中は古い結果を表示し続ける。
-const UI_CACHE_STORE = "UICache";
-const threadListCacheKey = (boardUrl: string) => `threadList:${boardUrl}`;
-
-const getThreadListCache = async (boardUrl: string): Promise<IThread[] | null> => {
-  try {
-    const store = platform.storage.getStore(UI_CACHE_STORE);
-    const entry = (await store.get(threadListCacheKey(boardUrl))) as
-      | { url: string; data: IThread[] }
-      | undefined;
-    return entry?.data ?? null;
-  } catch {
-    return null;
-  }
-};
-
-const setThreadListCache = async (boardUrl: string, threads: IThread[]): Promise<void> => {
-  try {
-    const store = platform.storage.getStore(UI_CACHE_STORE);
-    await store.put({ url: threadListCacheKey(boardUrl), data: threads });
-  } catch (error) {
-    console.error("[ThreadListPage] cache save failed:", error);
-  }
-};
 
 interface Props {
   tabId: string;
@@ -75,204 +85,6 @@ interface Props {
   isActive: boolean;
   isAutoRefreshEnabled?: boolean;
   scrollContainerRef?: RefObject<HTMLDivElement | null>;
-}
-
-type SortColumn = "num" | "title" | "resCount" | "unreadCount" | "heat";
-type SortDirection = "asc" | "desc";
-type ThreadListSortPreference = {
-  column: SortColumn | null;
-  direction: SortDirection;
-};
-
-const THREAD_LIST_SORT_STORAGE_KEY = "chlens_browser_thread_list_sort_by_site";
-const THREAD_LIST_COLUMN_VISIBILITY_STORAGE_KEY = "chlens_browser_thread_list_columns_visibility";
-const THREAD_LIST_COLUMN_VISIBILITY_LOCKED_KEYS = ["title"] as const;
-const DEFAULT_THREAD_LIST_SORT: ThreadListSortPreference = {
-  column: null,
-  direction: "asc",
-};
-
-const BG_COLOR_PRESETS: Record<string, string> = {
-  yellow: "#ffeb3b",
-  blue: "#e3f2fd",
-  green: "#c8e6c9",
-  red: "#ffcdd2",
-  purple: "#e1bee7",
-  orange: "#ffe0b2",
-  pink: "#f8bbd0",
-  cyan: "#b2ebf2",
-  lime: "#f0f4c3",
-  amber: "#ffecb3",
-};
-
-type Rgb = {
-  r: number;
-  g: number;
-  b: number;
-};
-
-type HighlightRowStyle = React.CSSProperties & {
-  "--thread-list-highlight-bg"?: string;
-  "--thread-list-highlight-hover-bg"?: string;
-};
-
-type DividerStyle = React.CSSProperties & {
-  "--data-table-divider-accent"?: string;
-};
-
-function parseColorToRgb(rawColor: string): Rgb | null {
-  const color = rawColor.trim();
-  const shortHex = color.match(/^#([0-9a-f]{3})$/i);
-  if (shortHex) {
-    const [r, g, b] = shortHex[1].split("").map((char) => `${char}${char}`);
-    return {
-      r: Number.parseInt(r, 16),
-      g: Number.parseInt(g, 16),
-      b: Number.parseInt(b, 16),
-    };
-  }
-
-  const longHex = color.match(/^#([0-9a-f]{6})$/i);
-  if (longHex) {
-    return {
-      r: Number.parseInt(longHex[1].slice(0, 2), 16),
-      g: Number.parseInt(longHex[1].slice(2, 4), 16),
-      b: Number.parseInt(longHex[1].slice(4, 6), 16),
-    };
-  }
-
-  const rgb = color.match(
-    /^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})(?:\s*,\s*[\d.]+)?\s*\)$/i,
-  );
-  if (rgb) {
-    return {
-      r: Number.parseInt(rgb[1], 10),
-      g: Number.parseInt(rgb[2], 10),
-      b: Number.parseInt(rgb[3], 10),
-    };
-  }
-
-  return null;
-}
-
-function blendRgb(base: Rgb, overlay: Rgb, alpha: number): string {
-  const blendChannel = (baseChannel: number, overlayChannel: number) =>
-    Math.round(baseChannel * (1 - alpha) + overlayChannel * alpha);
-
-  return `rgb(${blendChannel(base.r, overlay.r)}, ${blendChannel(
-    base.g,
-    overlay.g,
-  )}, ${blendChannel(base.b, overlay.b)})`;
-}
-
-function resolveHighlightColor(bgColor: string): string {
-  return BG_COLOR_PRESETS[bgColor] ?? bgColor;
-}
-
-function createHighlightRowStyle(bgColor: string, theme: ResolvedTheme): HighlightRowStyle {
-  const resolvedBackground = resolveHighlightColor(bgColor);
-  const parsed = parseColorToRgb(resolvedBackground);
-
-  if (!parsed) {
-    return {
-      "--thread-list-highlight-bg": resolvedBackground,
-    };
-  }
-
-  const overlay =
-    theme === "dark"
-      ? // hover時の差をもう少し明確にして、強調行だと一目で分かるようにする。
-        { color: { r: 255, g: 255, b: 255 }, alpha: 0.3 }
-      : { color: { r: 0, g: 0, b: 0 }, alpha: 0.16 };
-
-  // inline background-color だと hover 時に上書きしづらいので、通常色と hover 色を CSS 変数で渡す。
-  return {
-    "--thread-list-highlight-bg": resolvedBackground,
-    "--thread-list-highlight-hover-bg": blendRgb(parsed, overlay.color, overlay.alpha),
-  };
-}
-
-function createHighlightDividerStyle(bgColor: string): DividerStyle {
-  // 変更理由: セクション全体を任意色で塗るとテーマによって文字が読みにくくなるため、
-  // ルール色はdivider下端のアクセントとしてだけ使用する。
-  return { "--data-table-divider-accent": resolveHighlightColor(bgColor) };
-}
-
-function isSortColumn(value: string): value is SortColumn {
-  return (
-    value === "num" ||
-    value === "title" ||
-    value === "resCount" ||
-    value === "unreadCount" ||
-    value === "heat"
-  );
-}
-
-function isSortDirection(value: string): value is SortDirection {
-  return value === "asc" || value === "desc";
-}
-
-function resolveThreadListSortSiteKey(boardUrl: string): string {
-  try {
-    const normalizedUrl = new ChURL(boardUrl);
-    const tsld = normalizedUrl.getTsld();
-    if (tsld) {
-      return tsld;
-    }
-  } catch {
-    // URL 正規化に失敗しても hostname fallback で復元可能なら sort 設定を維持する。
-  }
-
-  try {
-    return new window.URL(boardUrl).hostname.toLowerCase();
-  } catch {
-    return boardUrl;
-  }
-}
-
-function readThreadListSortPreference(boardUrl: string): ThreadListSortPreference {
-  try {
-    const raw = getStore2String(THREAD_LIST_SORT_STORAGE_KEY);
-    if (!raw) {
-      return DEFAULT_THREAD_LIST_SORT;
-    }
-
-    const stored = JSON.parse(raw) as Record<string, Partial<ThreadListSortPreference> | undefined>;
-    const currentSitePreference = stored[resolveThreadListSortSiteKey(boardUrl)];
-    const column = currentSitePreference?.column;
-    const direction = currentSitePreference?.direction;
-    if (column === null) {
-      return {
-        column: null,
-        direction: "asc",
-      };
-    }
-    if (column && direction && isSortColumn(column) && isSortDirection(direction)) {
-      return {
-        column,
-        direction,
-      };
-    }
-  } catch {
-    // 保存値が壊れていても一覧表示自体は継続できるよう default へ戻す。
-  }
-
-  return DEFAULT_THREAD_LIST_SORT;
-}
-
-function writeThreadListSortPreference(
-  boardUrl: string,
-  preference: ThreadListSortPreference,
-): void {
-  try {
-    const raw = getStore2String(THREAD_LIST_SORT_STORAGE_KEY);
-    const stored = raw ? (JSON.parse(raw) as Record<string, ThreadListSortPreference>) : {};
-
-    stored[resolveThreadListSortSiteKey(boardUrl)] = preference;
-    void setStore2String(THREAD_LIST_SORT_STORAGE_KEY, JSON.stringify(stored));
-  } catch {
-    // localStorage 書き込み不可でも一覧操作は止めない。
-  }
 }
 
 function deriveBoardTitlePlaceholder(boardUrl: string): string | null {
@@ -381,70 +193,6 @@ function resolveInitialBoardTitle(page: ThreadListPageType): string | null {
 
   return null;
 }
-
-function calcHeat(now: number, created: number, resCount: number): string {
-  if (!Number.isFinite(created) || created > now) return "0.0";
-  const elapsed = Math.max((now - created) / 1000, 1) / (24 * 60 * 60);
-  return (resCount / elapsed).toFixed(1);
-}
-
-type DisplayThread = {
-  thread: IThread;
-  originalIndex: number;
-  unreadCount: number;
-  heat: number;
-};
-
-const THREAD_LIST_COLUMNS: ColumnDef<DisplayThread>[] = [
-  {
-    key: "num",
-    header: "No.",
-    headerClassName: "thread-list__th--num",
-    cellClassName: "thread-list__num",
-    sortable: true,
-    cell: ({ originalIndex }) => originalIndex,
-  },
-  {
-    key: "title",
-    header: "タイトル",
-    headerClassName: "thread-list__th--title",
-    cellClassName: "thread-list__title",
-    sortable: true,
-    cell: ({ thread }) => {
-      const hlParams = thread.highlight?.params;
-      return (
-        <>
-          {thread.title}
-          {hlParams?.label && <span className="thread-list__label">{hlParams.label}</span>}
-        </>
-      );
-    },
-  },
-  {
-    key: "resCount",
-    header: "レス",
-    headerClassName: "thread-list__th--count",
-    cellClassName: "thread-list__count",
-    sortable: true,
-    cell: ({ thread }) => thread.resCount,
-  },
-  {
-    key: "unreadCount",
-    header: "未読",
-    headerClassName: "thread-list__th--count",
-    cellClassName: "thread-list__count",
-    sortable: true,
-    cell: ({ unreadCount }) => (unreadCount > 0 ? unreadCount : ""),
-  },
-  {
-    key: "heat",
-    header: "勢い",
-    headerClassName: "thread-list__th--heat",
-    cellClassName: "thread-list__heat",
-    sortable: true,
-    cell: ({ heat }) => heat.toFixed(1),
-  },
-];
 
 export const ThreadListPage: React.FC<Props> = ({
   tabId,
@@ -917,7 +665,7 @@ export const ThreadListPage: React.FC<Props> = ({
   //   return () => window.removeEventListener("keydown", handleKeyDown);
   // }, []);
 
-  const handleSort = useCallback((column: SortColumn) => {
+  const handleSort = useCallback((column: ThreadListSortColumn) => {
     setSortPreference((prev) => {
       if (prev.column !== column) {
         return {

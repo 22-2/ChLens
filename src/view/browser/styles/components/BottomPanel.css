@@ -91,3 +91,113 @@
   overflow: hidden;
   min-height: 0;
 }
+
+.thread-list-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--sys-color-surface);
+}
+
+.thread-list-panel__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 0 0 30px;
+  min-width: 0;
+  padding: 0 var(--sys-space-3) 0 var(--sys-space-6);
+  border-bottom: 1px solid var(--sys-color-border);
+  background: var(--sys-color-table-heading-bg);
+  color: var(--sys-color-text-muted);
+}
+
+.thread-list-panel__board-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--sys-font-size-xs);
+}
+
+.thread-list-panel__toolbar-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: var(--sys-space-1);
+}
+
+.thread-list-panel__toolbar-btn,
+.thread-list-panel__ng-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sys-space-1);
+  min-width: 25px;
+  height: 25px;
+  padding: 0 var(--sys-space-2);
+  border: none;
+  border-radius: var(--sys-radius-md);
+  background: transparent;
+  color: var(--sys-color-text-muted);
+  font-family: inherit;
+  font-size: var(--sys-font-size-xs);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.thread-list-panel__toolbar-btn:hover,
+.thread-list-panel__toolbar-btn--active {
+  background: var(--sys-color-status-hover-overlay);
+  color: var(--sys-color-text);
+}
+
+.thread-list-panel__ng-count {
+  cursor: default;
+}
+
+.thread-list-panel__search-bar {
+  flex: 0 0 auto;
+}
+
+.thread-list-panel__table-scroller {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+.thread-list-panel__status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sys-space-4);
+  min-height: 56px;
+  padding: var(--sys-space-6);
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-sm);
+}
+
+.thread-list-panel__status--error {
+  flex-direction: column;
+  color: var(--sys-color-error);
+}
+
+.thread-list-panel__status--error button {
+  padding: var(--sys-space-2) var(--sys-space-5);
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-md);
+  background: var(--sys-color-surface-muted);
+  color: inherit;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.simple-data-table__row.thread-list-panel__row--current {
+  box-shadow: inset 3px 0 var(--sys-color-focus-ring);
+  background: var(--sys-color-table-highlight-bg);
+}
+
+.simple-data-table__row.thread-list-panel__row--current:hover {
+  background: var(--sys-color-list-selected-hover-bg, var(--sys-color-list-hover-bg));
+}

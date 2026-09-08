@@ -8,6 +8,7 @@ import {
   Command,
   Filter,
   History,
+  List as ListIcon,
   Menu,
   Pause,
   PenLine,
@@ -45,7 +46,11 @@ import {
   commandPaletteStore,
 } from "src/view/browser/commands/command-palette-store";
 import { Omnibar } from "src/view/browser/components/Omnibar";
-import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
+import {
+  BOTTOM_PANEL_THREAD_LIST_TAB_ID,
+  BOTTOM_PANEL_WRITE_TAB_ID,
+  useBottomPanel,
+} from "src/view/browser/hooks/use-bottom-panel";
 import { useOmnibar } from "src/view/browser/hooks/use-omnibar";
 import { usePageBookmark } from "src/view/browser/hooks/use-page-bookmark";
 import { useTabBarOrientation } from "src/view/browser/hooks/use-tab-bar-orientation";
@@ -290,7 +295,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   const { panes, activePaneId } = useTabPanes();
   const isTwoPane = panes.length >= 2;
   const isActivePane = activePaneId === paneId;
-  const { isOpen: isPanelOpen, togglePanel } = useBottomPanel();
+  const { isOpen: isPanelOpen, activeTabId, togglePanel } = useBottomPanel();
   const { setExpanded: setUrlBarExpanded } = useUrlBarVisibility(paneId);
 
   const back = canGoBack(activeTab);
@@ -486,7 +491,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       isTwoPane,
       isWritePanelOpen: isPanelOpen,
       dispatch,
-      toggleWritePanel: () => togglePanel("write"),
+      toggleWritePanel: () => togglePanel(BOTTOM_PANEL_WRITE_TAB_ID),
       openResponseJumpDialog,
       openNextThreadSearchDialog,
     }),
@@ -916,10 +921,22 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       ...(currentPage.type === "thread"
         ? [
             {
+              id: "open-thread-list-panel",
+              label:
+                isPanelOpen && activeTabId === BOTTOM_PANEL_THREAD_LIST_TAB_ID
+                  ? "スレ一覧パネルを閉じる"
+                  : "スレ一覧パネル",
+              icon: <ListIcon size={14} />,
+              onSelect: () => togglePanel(BOTTOM_PANEL_THREAD_LIST_TAB_ID),
+            },
+            {
               id: "open-write-panel",
-              label: isPanelOpen ? "書き込みパネルを閉じる" : "書き込みパネル",
+              label:
+                isPanelOpen && activeTabId === BOTTOM_PANEL_WRITE_TAB_ID
+                  ? "書き込みパネルを閉じる"
+                  : "書き込みパネル",
               icon: <PenLine size={14} />,
-              onSelect: () => togglePanel("write"),
+              onSelect: () => togglePanel(BOTTOM_PANEL_WRITE_TAB_ID),
             },
           ]
         : []),
@@ -998,6 +1015,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     ],
     [
       currentPage.type,
+      activeTabId,
       openQuickAccessPage,
       openQuickAccessPageInNewTab,
       toggleFilterFromMenu,

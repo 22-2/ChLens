@@ -1,8 +1,13 @@
 import { X } from "lucide-react";
 import React, { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import { ThreadListPanel } from "src/view/browser/components/ThreadListPanel";
 import { WritePanelContent } from "src/view/browser/components/WritePanelContent";
 import { useAutoScrollState } from "src/view/browser/hooks/use-auto-scroll-state";
-import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
+import {
+  BOTTOM_PANEL_THREAD_LIST_TAB_ID,
+  BOTTOM_PANEL_WRITE_TAB_ID,
+  useBottomPanel,
+} from "src/view/browser/hooks/use-bottom-panel";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 
 export const BottomPanel: React.FC = () => {
@@ -18,7 +23,8 @@ export const BottomPanel: React.FC = () => {
   const canAutoScrollWhenClosedRef = useRef(canAutoScroll);
 
   useEffect(() => {
-    // 書き込みパネルはスレッド URL を前提にしているため、別ページへ移動したら閉じて状態を揃える。
+    // スレ一覧・書き込みのどちらも現在スレを操作対象にするため、別ページへ移動したら
+    // 下部パネルを閉じて、板・スレの文脈がない状態で誤操作できないようにする。
     if (isOpen && currentPage.type !== "thread") {
       closePanel();
     }
@@ -35,7 +41,7 @@ export const BottomPanel: React.FC = () => {
     wasOpenRef.current = isOpen;
 
     const justOpened = !wasOpen && isOpen;
-    if (!justOpened || currentPage.type !== "thread") {
+    if (!justOpened || currentPage.type !== "thread" || activeTabId !== BOTTOM_PANEL_WRITE_TAB_ID) {
       return;
     }
 
@@ -63,7 +69,7 @@ export const BottomPanel: React.FC = () => {
     return () => {
       window.cancelAnimationFrame(rafId);
     };
-  }, [canAutoScroll, currentPage.type, isOpen]);
+  }, [activeTabId, canAutoScroll, currentPage.type, isOpen]);
 
   const handleResizeMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -127,7 +133,10 @@ export const BottomPanel: React.FC = () => {
 
       {/* タブコンテンツ */}
       <div className="bottom-panel__body" role="tabpanel">
-        {activeTabId === "write" && <WritePanelContent />}
+        {activeTabId === BOTTOM_PANEL_THREAD_LIST_TAB_ID && (
+          <ThreadListPanel threadUrl={currentPage.threadUrl} />
+        )}
+        {activeTabId === BOTTOM_PANEL_WRITE_TAB_ID && <WritePanelContent />}
       </div>
     </div>
   );

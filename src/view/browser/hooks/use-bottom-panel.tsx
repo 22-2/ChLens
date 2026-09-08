@@ -13,6 +13,12 @@ export interface PanelTab {
   label: string;
 }
 
+export const BOTTOM_PANEL_THREAD_LIST_TAB_ID = "thread-list";
+export const BOTTOM_PANEL_WRITE_TAB_ID = "write";
+export const THREAD_LIST_AUTO_REFRESH_INTERVALS_SEC = [10, 15, 30, 60] as const;
+export type ThreadListAutoRefreshIntervalSec =
+  (typeof THREAD_LIST_AUTO_REFRESH_INTERVALS_SEC)[number];
+
 export interface WritePanelInsertRequest {
   id: number;
   text: string;
@@ -22,14 +28,23 @@ const STORAGE_KEY = "chlens_bottom_panel_v1";
 const DEFAULT_HEIGHT = 200;
 const MIN_HEIGHT = 80;
 const MAX_HEIGHT = 600;
+// 既存の保存状態にタブ情報がない場合は、従来の書き込みパネルを既定にして
+// アップデート後も起動時の表示を変えない。
+const DEFAULT_ACTIVE_TAB_ID = BOTTOM_PANEL_WRITE_TAB_ID;
+const DEFAULT_THREAD_LIST_AUTO_REFRESH_INTERVAL_SEC: ThreadListAutoRefreshIntervalSec = 30;
 
 // 追加するタブはここに加えるだけでパネルに反映される
-export const BOTTOM_PANEL_TABS: PanelTab[] = [{ id: "write", label: "書き込み" }];
+export const BOTTOM_PANEL_TABS: PanelTab[] = [
+  { id: BOTTOM_PANEL_THREAD_LIST_TAB_ID, label: "スレ一覧" },
+  { id: BOTTOM_PANEL_WRITE_TAB_ID, label: "書き込み" },
+];
 
 interface SavedState {
   isOpen?: boolean;
   height?: number;
   activeTabId?: string;
+  threadListAutoRefreshEnabled?: boolean;
+  threadListAutoRefreshIntervalSec?: number;
 }
 
 function loadSaved(): SavedState {
@@ -55,6 +70,8 @@ interface BottomPanelContextValue {
   isOpen: boolean;
   height: number;
   activeTabId: string;
+  threadListAutoRefreshEnabled: boolean;
+  threadListAutoRefreshIntervalSec: ThreadListAutoRefreshIntervalSec;
   tabs: PanelTab[];
   writePanelInsertRequest: WritePanelInsertRequest | null;
   openPanel: (tabId?: string) => void;
@@ -63,6 +80,8 @@ interface BottomPanelContextValue {
   togglePanel: (tabId?: string) => void;
   setHeight: (h: number) => void;
   setActiveTab: (id: string) => void;
+  setThreadListAutoRefreshEnabled: (enabled: boolean) => void;
+  setThreadListAutoRefreshIntervalSec: (seconds: number) => void;
   clearWritePanelInsertRequest: (requestId: number) => void;
 }
 
@@ -75,7 +94,22 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [height, setHeightState] = useState(() =>
     Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, saved.height ?? DEFAULT_HEIGHT)),
   );
-  const [activeTabId, setActiveTabIdState] = useState(saved.activeTabId ?? BOTTOM_PANEL_TABS[0].id);
+  const [activeTabId, setActiveTabIdState] = useState(() =>
+    BOTTOM_PANEL_TABS.some((tab) => tab.id === saved.activeTabId)
+      ? (saved.activeTabId ?? DEFAULT_ACTIVE_TAB_ID)
+      : DEFAULT_ACTIVE_TAB_ID,
+  );
+  const [threadListAutoRefreshEnabled, setThreadListAutoRefreshEnabledState] = useState(
+    saved.threadListAutoRefreshEnabled ?? false,
+  );
+  const [threadListAutoRefreshIntervalSec, setThreadListAutoRefreshIntervalSecState] = useState(
+    () =>
+      THREAD_LIST_AUTO_REFRESH_INTERVALS_SEC.includes(
+        saved.threadListAutoRefreshIntervalSec as ThreadListAutoRefreshIntervalSec,
+      )
+        ? (saved.threadListAutoRefreshIntervalSec as ThreadListAutoRefreshIntervalSec)
+        : DEFAULT_THREAD_LIST_AUTO_REFRESH_INTERVAL_SEC,
+  );
   const [writePanelInsertRequest, setWritePanelInsertRequest] =
     useState<WritePanelInsertRequest | null>(null);
 
@@ -86,6 +120,9 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ childre
   }, []);
 
   const setActiveTab = useCallback((id: string) => {
+    if (!BOTTOM_PANEL_TABS.some((tab) => tab.id === id)) {
+      return;
+    }
     setActiveTabIdState(id);
     persist({ activeTabId: id });
   }, []);
@@ -93,7 +130,7 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ childre
   const openPanel = useCallback((tabId?: string) => {
     setIsOpen(true);
     persist({ isOpen: true });
-    if (tabId) {
+    if (tabId && BOTTOM_PANEL_TABS.some((tab) => tab.id === tabId)) {
       setActiveTabIdState(tabId);
       persist({ activeTabId: tabId });
     }
@@ -103,7 +140,7 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ childre
     (text: string) => {
       // 変更理由: 右クリックの「返信」はクリップボード経由だと既存入力を壊しやすいため、
       // 書き込みパネルを開いたうえで本文へ直接追記できる要求として扱う。
-      openPanel("write");
+      openPanel(BOTTOM_PANEL_WRITE_TAB_ID);
       nextWritePanelInsertIdRef.current += 1;
       setWritePanelInsertRequest({
         id: nextWritePanelInsertIdRef.current,
@@ -118,16 +155,47 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ childre
     persist({ isOpen: false });
   }, []);
 
-  const togglePanel = useCallback((tabId?: string) => {
-    setIsOpen((prev) => {
-      const next = !prev;
-      persist({ isOpen: next });
-      return next;
-    });
-    if (tabId) {
-      setActiveTabIdState(tabId);
-      persist({ activeTabId: tabId });
+  const togglePanel = useCallback(
+    (tabId?: string) => {
+      if (tabId) {
+        if (!BOTTOM_PANEL_TABS.some((tab) => tab.id === tabId)) {
+          return;
+        }
+
+        // 別タブのボタンはパネルを閉じずに内容だけ切り替え、同じボタンだけを開閉に使う。
+        // 書き込みとスレ一覧をどちらも1クリックで開けるようにするための挙動。
+        if (activeTabId !== tabId) {
+          setActiveTabIdState(tabId);
+          persist({ activeTabId: tabId, isOpen: true });
+          setIsOpen(true);
+          return;
+        }
+      }
+
+      setIsOpen((prev) => {
+        const next = !prev;
+        persist({ isOpen: next });
+        return next;
+      });
+    },
+    [activeTabId],
+  );
+
+  const setThreadListAutoRefreshEnabled = useCallback((enabled: boolean) => {
+    setThreadListAutoRefreshEnabledState(enabled);
+    persist({ threadListAutoRefreshEnabled: enabled });
+  }, []);
+
+  const setThreadListAutoRefreshIntervalSec = useCallback((seconds: number) => {
+    if (
+      !THREAD_LIST_AUTO_REFRESH_INTERVALS_SEC.includes(seconds as ThreadListAutoRefreshIntervalSec)
+    ) {
+      return;
     }
+
+    const interval = seconds as ThreadListAutoRefreshIntervalSec;
+    setThreadListAutoRefreshIntervalSecState(interval);
+    persist({ threadListAutoRefreshIntervalSec: interval });
   }, []);
 
   const clearWritePanelInsertRequest = useCallback((requestId: number) => {
@@ -145,6 +213,8 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ childre
         isOpen,
         height,
         activeTabId,
+        threadListAutoRefreshEnabled,
+        threadListAutoRefreshIntervalSec,
         tabs: BOTTOM_PANEL_TABS,
         writePanelInsertRequest,
         openPanel,
@@ -153,6 +223,8 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ childre
         togglePanel,
         setHeight,
         setActiveTab,
+        setThreadListAutoRefreshEnabled,
+        setThreadListAutoRefreshIntervalSec,
         clearWritePanelInsertRequest,
       }}
     >

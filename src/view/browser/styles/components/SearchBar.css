@@ -1,4 +1,4 @@
-/* Ctrl+F search bar. Keep the legacy class names for existing DOM consumers. */
+/* 検索ボタンから開く検索バー。既存DOM利用者向けにクラス名は維持する。 */
 .search-bar {
   display: flex;
   align-items: center;

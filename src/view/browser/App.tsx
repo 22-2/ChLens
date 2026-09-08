@@ -1,4 +1,4 @@
-import { PenLine } from "lucide-react";
+import { List as ListIcon, PenLine } from "lucide-react";
 import React, { useEffect } from "react";
 import { container } from "src/service-container/index";
 import { AutoRefreshStatusItem } from "src/view/browser/components/AutoRefreshStatusItem";
@@ -15,7 +15,12 @@ import { TabBar } from "src/view/browser/components/TabBar";
 import { TitleBar } from "src/view/browser/components/TitleBar";
 import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
 import { AutoScrollStateProvider } from "src/view/browser/hooks/use-auto-scroll-state";
-import { BottomPanelProvider, useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
+import {
+  BOTTOM_PANEL_THREAD_LIST_TAB_ID,
+  BOTTOM_PANEL_WRITE_TAB_ID,
+  BottomPanelProvider,
+  useBottomPanel,
+} from "src/view/browser/hooks/use-bottom-panel";
 import { useNextThreadSearch } from "src/view/browser/hooks/use-next-thread-search";
 import { NgStatusProvider } from "src/view/browser/hooks/use-ng-status";
 import { useTabBarOrientation } from "src/view/browser/hooks/use-tab-bar-orientation";
@@ -36,7 +41,37 @@ import { ToastProvider } from "src/view/browser/ui/Toast";
 import { TooltipProvider } from "src/view/browser/ui/Tooltip";
 import { applyBBSMenuToItestServerMap } from "src/view/browser/utils/itest-server-map";
 
-// ステータスバー左端に常設される書き込みパネル開閉ボタン
+// ステータスバー右端に表示する下部パネルの直接操作ボタン。
+// 変更理由: パネル種別を先に選ばせると書き込みまでの操作が増えるため、
+// スレ一覧と書き込みをそれぞれ1クリックで開けるようにする。
+const ThreadListPanelToggleItem: React.FC = () => {
+  const { togglePanel } = useBottomPanel();
+  const { currentPage } = useTabStore();
+
+  if (currentPage.type !== "thread") {
+    return null;
+  }
+
+  return (
+    <StatusBarItem
+      id="thread-list-panel-toggle"
+      alignment="right"
+      priority={STATUS_BAR_PRIORITY.right.threadListPanelToggle}
+      interactive
+      title="スレ一覧パネルを開閉"
+    >
+      <button
+        className="status-bar__btn"
+        onClick={() => togglePanel(BOTTOM_PANEL_THREAD_LIST_TAB_ID)}
+        aria-label="スレ一覧パネルを開閉"
+      >
+        <ListIcon size={12} />
+        <span>スレ一覧</span>
+      </button>
+    </StatusBarItem>
+  );
+};
+
 const WritePanelToggleItem: React.FC = () => {
   const { togglePanel } = useBottomPanel();
   const { currentPage } = useTabStore();
@@ -52,9 +87,13 @@ const WritePanelToggleItem: React.FC = () => {
       alignment="right"
       priority={STATUS_BAR_PRIORITY.right.writePanelToggle}
       interactive
-      // title={isOpen ? "書き込みパネルを閉じる" : "書き込みパネルを開く"}
+      title="書き込みパネルを開閉"
     >
-      <button className={`status-bar__btn`} onClick={() => togglePanel("write")}>
+      <button
+        className="status-bar__btn"
+        onClick={() => togglePanel(BOTTOM_PANEL_WRITE_TAB_ID)}
+        aria-label="書き込みパネルを開閉"
+      >
         <PenLine size={12} />
         <span>書き込み</span>
       </button>
@@ -112,6 +151,7 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
       <IkioiStatusItem />
       <AutoRefreshStatusItem />
       <CommentOverlayStatusItem isActive={isActive} />
+      <ThreadListPanelToggleItem />
       <WritePanelToggleItem />
       <StatusBar />
     </>
