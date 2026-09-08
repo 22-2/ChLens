@@ -196,10 +196,46 @@ export const parseThread = (
   }
 };
 
+const parseCurrentNetThread = (text: string): ParsedThread | null => {
+  const titleMatch =
+    /<(?:div|h1)\b[^>]*\bid=["']threadtitle["'][^>]*>([\s\S]*?)<\/(?:div|h1)>/i.exec(text);
+  const postReg = new RegExp(
+    String.raw`(?:<article\b[^>]*>|<div\b(?=[^>]*\bclass=["'][^"']*\bpost\b[^"']*["'])[^>]*>)<details\b[^>]*>[\s\S]*?<summary>\s*<span\b[^>]*\bclass=["'][^"']*\bpostid\b[^"']*["'][^>]*>\d+<\/span><span\b[^>]*\bclass=["'][^"']*\bpostusername\b[^"']*["'][^>]*><b>(?:<a\b[^>]*\bhref=["']mailto:([^"']*)["'][^>]*>|<font\b[^>]*>)?([\s\S]*?)(?:<\/(?:a|font)>)?<\/b><\/span>[\s\S]*?<\/summary>[\s\S]*?<span\b[^>]*\bclass=["'][^"']*\bdate\b[^"']*["'][^>]*>([\s\S]*?)<\/span>[\s\S]*?<\/details>\s*<section\b[^>]*\bclass=["'][^"']*\bpost-content\b[^"']*["'][^>]*>\s?([\s\S]*?)<\/section>`,
+    "gi",
+  );
+
+  // 過去ログでは、フッターの read.cgi バージョンが 08 でも投稿要素が article ではなく
+  // div の場合があるため、バージョン番号に依存する既存分岐より先に現行構造を解析する。
+  const thread: ParsedThread = { res: [] };
+  if (titleMatch) {
+    thread.title = removeNeedlessFromTitle(decodeCharReference(titleMatch[1]));
+  }
+
+  for (const postMatch of text.matchAll(postReg)) {
+    const id = extractHtmlPostId(postMatch[0]);
+    thread.res.push({
+      name: normalizeResName(postMatch[2]),
+      mail: postMatch[1] || "",
+      message: postMatch[4],
+      other: normalizeHtmlPostMetadata(postMatch[0], postMatch[3]),
+      ...(id ? { id } : {}),
+    });
+  }
+
+  if (text.includes('<div class="stoplight stopred stopdone">')) {
+    thread.expired = true;
+  }
+
+  return thread.res.length > 0 ? thread : null;
+};
+
 export const parseNetThread = (text: string): ParsedThread | null => {
   let titleReg = /<h1 [^<>]*>(.*)\n?<\/h1>/;
   let reg: RegExp;
   let separator: string;
+
+  const currentThread = parseCurrentNetThread(text);
+  if (currentThread) return currentThread;
 
   if (
     text.includes('<div class="footer push">read.cgi ver 06') &&

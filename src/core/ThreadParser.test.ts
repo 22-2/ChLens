@@ -66,6 +66,34 @@ describe("ThreadParser", () => {
     expect(parsed?.res[0].name).toBe("名無し");
   });
 
+  it("read.cgi ver 08 の div 投稿形式を解析する", () => {
+    const html =
+      '<h1 id="threadtitle">タイトル [無断転載禁止]&#169;2ch.net</h1>' +
+      '<div id="1" data-userid="ID:abc123" class="clear post">' +
+      '<details open="" class="post-header"><summary><span class="postid">0001</span>' +
+      '<span class="postusername"><b>名無しさん</b></span></summary>' +
+      '<span style="width:100%;"><span class="date">2026/08/27(木) 12:00:00.00</span></span>' +
+      '</details><section class="post-content"> 本文 <br> </section></div>' +
+      '<div class="stoplight stopred stopdone">保管済み</div>' +
+      "<footer><br>read.cgi ver 08.2.0</footer>";
+
+    const parsed = parseNetThread(html);
+
+    expect(parsed).toEqual({
+      title: "タイトル",
+      expired: true,
+      res: [
+        {
+          name: "名無しさん",
+          mail: "",
+          message: "本文 <br> ",
+          other: "2026/08/27(木) 12:00:00.00",
+          id: "abc123",
+        },
+      ],
+    });
+  });
+
   it("任意ドメインのread.cgiスレッドURLはdat取得経路で解析する", () => {
     const url = new ChURL("http://bbs.example.test/test/read.cgi/flaming/1000000002/");
     const datText = "<> <>2026/08/27(木) 12:00:00.00 ID:abc<>本文<>スレタイ\n";
