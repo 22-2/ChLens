@@ -763,6 +763,81 @@ button:hover {
   }
 }
 
+.timed-replay {
+  display: grid;
+  min-height: 100vh;
+  grid-template-rows: auto minmax(420px, 1fr) auto;
+  color: #eaf0f8;
+  background: #101722;
+}
+.timed-replay__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  border-bottom: 1px solid #36445a;
+}
+.timed-replay__header > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+.timed-replay__header span,
+.timed-replay__header small {
+  color: #9cabc0;
+  font-size: 12px;
+}
+.timed-replay__clock {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.timed-replay__clock output {
+  color: #77b7ff;
+  font-size: 28px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+.timed-replay__stage {
+  min-height: 420px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #182435, #101722 65%);
+}
+.timed-replay__stage > [role="alert"] {
+  position: absolute;
+  z-index: 2;
+  margin: 20px;
+  color: #ff9c9c;
+}
+.timed-replay__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 24px;
+  border-top: 1px solid #36445a;
+  background: #192230;
+}
+.timed-replay__controls button,
+.timed-replay__controls select {
+  border: 1px solid #485a73;
+  border-radius: 5px;
+  padding: 7px 11px;
+  color: inherit;
+  background: #28364a;
+}
+.timed-replay__controls button:disabled {
+  opacity: 0.45;
+}
+.timed-replay__controls label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.timed-replay__controls > span {
+  margin-left: auto;
+  color: #b5c1d1;
+}
+
 /* EdgeLiveViewerの設定密度を保ちつつ、Storybook上でプレビューと同時比較できる配置にする。 */
 .edge-compat-story {
   display: grid;
