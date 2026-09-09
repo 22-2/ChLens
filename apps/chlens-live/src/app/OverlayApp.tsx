@@ -53,6 +53,7 @@ export function OverlayApp({ eventBus: providedEventBus }: OverlayAppProps = {})
   const eventBus = providedEventBus ?? defaultEventBus;
   const { comments, stageKey } = useLiveOverlay(eventBus);
   const latestGeometryRef = useRef<OverlayGeometry>(DEFAULT_OVERLAY_GEOMETRY);
+  const [overlayGeometry, setOverlayGeometry] = useState<OverlayGeometry>(DEFAULT_OVERLAY_GEOMETRY);
   const resizeSessionRef = useRef<{
     direction: OverlayResizeDirection;
     origin: OverlayGeometry;
@@ -70,14 +71,25 @@ export function OverlayApp({ eventBus: providedEventBus }: OverlayAppProps = {})
     void liveWindowPlatform
       .getOverlayGeometry()
       .then((geometry) => {
-        if (!disposed && geometry) latestGeometryRef.current = geometry;
+        if (!disposed && geometry) {
+          latestGeometryRef.current = geometry;
+          setOverlayGeometry(geometry);
+        }
       })
       .catch((error: unknown) => {
         console.error("[Chlens Live] overlay初期geometryの読み込みに失敗しました:", error);
       });
     void liveWindowPlatform
       .watchOverlayGeometry((geometry) => {
+        if (disposed) return;
         latestGeometryRef.current = geometry;
+        // 変更理由: 移動eventでは倍率が変わらないため、x/yだけの更新でStageを再描画せず、
+        // hoverやウィンドウ移動に伴う不要なWebView再合成を避ける。
+        setOverlayGeometry((current) =>
+          current.width === geometry.width && current.height === geometry.height
+            ? current
+            : geometry,
+        );
         const resizeSession = resizeSessionRef.current;
         if (!resizeSession) return;
         const sizeChanged =
@@ -152,6 +164,8 @@ export function OverlayApp({ eventBus: providedEventBus }: OverlayAppProps = {})
         comments={comments}
         stageWidth={DEFAULT_OVERLAY_GEOMETRY.width}
         stageHeight={DEFAULT_OVERLAY_GEOMETRY.height}
+        containerWidth={overlayGeometry.width}
+        containerHeight={overlayGeometry.height}
         laneHeight={calculateEdgeLiveViewerLaneHeight(settings.spacing)}
         maxActiveCount={settings.maxComments}
         maxQueueSize={settings.maxComments}
@@ -167,7 +181,6 @@ export function OverlayApp({ eventBus: providedEventBus }: OverlayAppProps = {})
         // 同時投入が同じ行へ集中するため、空きlaneまでqueueして重なりを防止する。
         collisionMode="strict"
         backlogPolicy="queue"
-        fitToContainer
         scaleToContainer
         scaleReferenceWidth={DEFAULT_OVERLAY_GEOMETRY.width}
         scaleReferenceHeight={DEFAULT_OVERLAY_GEOMETRY.height}

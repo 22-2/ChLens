@@ -160,7 +160,8 @@ pollingするだけで、Storybookのbuildや自動テストがネットワー�
 
 ### StorybookとTauriの確認範囲
 
-Storybookでは速度、衝突、レーン、queue、長文、resizeを確認する。透過、常に手前、クリック透過、
+Storybookでは速度、衝突、レーン、queue、長文、resizeを確認する。Tauri実機はnative geometryを表示倍率の
+入力に使い、透明WebViewのDOM再計測に依存しない。透過、常に手前、クリック透過、
 複数モニター、DPI、OSウィンドウ操作はTauri実機確認の対象とする。
 
 ## 主要な設計判断

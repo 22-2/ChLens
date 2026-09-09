@@ -337,8 +337,10 @@ button:hover {
 
 .overlay-stage {
   position: relative;
-  width: 100vw;
-  height: 100vh;
+  /* 変更理由: 100vw/100vhは透明WebViewのviewport再計測やhover再合成で一時的に
+   * native windowと異なる値になることがあるため、rootの実寸をそのまま使う。 */
+  width: 100%;
+  height: 100%;
   /* 変更理由: 透明WebViewではhover時の再合成がviewportの再計測を誘発することがあるため、
    * Overlay本体のサイズと描画境界を固定してコメント倍率が揺れないようにする。 */
   contain: layout paint;

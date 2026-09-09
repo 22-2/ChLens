@@ -91,7 +91,9 @@ function overlayHtmlPlugin(outputDir: string, entry: string): Plugin {
     async buildStart() {
       if (entry !== "overlay") return;
 
-      const html = `<!DOCTYPE html><html class="view view_comment_overlay"><head><meta charset="utf-8"><title>ChLens コメントOverlay</title><script src="../overlay.js" defer></script><link rel="stylesheet" href="../overlay.css"></head><body><div id="root"></div></body></html>`;
+      // 変更理由: Tauri WebViewの既定viewportをnative windowのCSS幅へ揃えないと、
+      // hover時の再合成でviewportが再計測され、表示倍率が一時的に変わることがある。
+      const html = `<!DOCTYPE html><html class="view view_comment_overlay"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>ChLens コメントOverlay</title><script src="../overlay.js" defer></script><link rel="stylesheet" href="../overlay.css"></head><body><div id="root"></div></body></html>`;
       const outputFile = path.join(outputDir, "view", "comment-overlay.html");
       await fs.ensureDir(path.dirname(outputFile));
       await fs.writeFile(outputFile, html);

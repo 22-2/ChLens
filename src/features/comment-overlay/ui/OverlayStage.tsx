@@ -46,6 +46,9 @@ export interface OverlayStageProps {
   comments: readonly CommentCandidate[];
   stageWidth?: number;
   stageHeight?: number;
+  /** native windowから得た実寸。schedulerの基準サイズとは分離して渡す。 */
+  containerWidth?: number;
+  containerHeight?: number;
   laneHeight?: number;
   maxLaneCount?: number;
   durationSeconds?: number;
@@ -95,6 +98,8 @@ export function OverlayStage({
   comments,
   stageWidth = DEFAULT_STAGE_WIDTH,
   stageHeight = DEFAULT_STAGE_HEIGHT,
+  containerWidth,
+  containerHeight,
   laneHeight: laneHeightProp,
   maxLaneCount = DEFAULT_MAX_LANE_COUNT,
   durationSeconds,
@@ -132,10 +137,10 @@ export function OverlayStage({
   const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(
     null,
   );
-  const effectiveStageWidth = fitToContainer ? (containerSize?.width ?? stageWidth) : stageWidth;
-  const effectiveStageHeight = fitToContainer
-    ? (containerSize?.height ?? stageHeight)
-    : stageHeight;
+  const effectiveStageWidth =
+    containerWidth ?? (fitToContainer ? (containerSize?.width ?? stageWidth) : stageWidth);
+  const effectiveStageHeight =
+    containerHeight ?? (fitToContainer ? (containerSize?.height ?? stageHeight) : stageHeight);
   const displayScale = scaleToContainer
     ? calculateOverlayDisplayScale(
         effectiveStageWidth,
@@ -163,7 +168,14 @@ export function OverlayStage({
   );
 
   useLayoutEffect(() => {
-    if (!fitToContainer || typeof ResizeObserver === "undefined") return;
+    if (
+      !fitToContainer ||
+      containerWidth !== undefined ||
+      containerHeight !== undefined ||
+      typeof ResizeObserver === "undefined"
+    ) {
+      return;
+    }
 
     const stageElement = stageRef.current;
     if (!stageElement) return;
@@ -191,7 +203,7 @@ export function OverlayStage({
     });
     observer.observe(stageElement);
     return () => observer.disconnect();
-  }, [fitToContainer]);
+  }, [containerHeight, containerWidth, fitToContainer]);
 
   const scheduler = useMemo(
     () =>
@@ -366,8 +378,18 @@ export function OverlayStage({
   }, [playing, scheduler]);
 
   const stageStyle: CSSProperties = {
-    width: fitToContainer ? "100%" : `${stageWidth}px`,
-    height: fitToContainer ? "100%" : `${stageHeight}px`,
+    width:
+      containerWidth !== undefined
+        ? `${containerWidth}px`
+        : fitToContainer
+          ? "100%"
+          : `${stageWidth}px`,
+    height:
+      containerHeight !== undefined
+        ? `${containerHeight}px`
+        : fitToContainer
+          ? "100%"
+          : `${stageHeight}px`,
     backgroundColor,
     color: fontColor,
     fontFamily,

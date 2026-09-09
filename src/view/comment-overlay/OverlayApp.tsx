@@ -70,6 +70,9 @@ export function OverlayApp({
   const [comments, setComments] = useState<readonly CommentCandidate[]>([]);
   const [stageKey, setStageKey] = useState(0);
   const [controlsVisible, setControlsVisible] = useState(true);
+  const [overlayGeometry, setOverlayGeometry] = useState<CommentOverlayGeometry>(
+    DEFAULT_COMMENT_OVERLAY_GEOMETRY,
+  );
   const [settings, setSettings] = useState<CommentOverlaySettings>(() => ({
     ...DEFAULT_COMMENT_OVERLAY_SETTINGS,
   }));
@@ -200,19 +203,31 @@ export function OverlayApp({
       .then(async (geometry) => {
         if (geometry) {
           latestGeometryRef.current = geometry;
+          setOverlayGeometry(geometry);
           return;
         }
         // 変更理由: loadGeometryとgetGeometryを並行実行すると、保存値の復元後に
         // 古いnativeサイズが到着してリサイズ起点を巻き戻すため、復元完了後だけ現在値を読む。
         const currentGeometry = await platform.getGeometry();
-        if (!disposed && currentGeometry) latestGeometryRef.current = currentGeometry;
+        if (!disposed && currentGeometry) {
+          latestGeometryRef.current = currentGeometry;
+          setOverlayGeometry(currentGeometry);
+        }
       })
       .catch((error: unknown) => {
         console.error("[ChLens] コメントOverlayのgeometry復元に失敗しました:", error);
       });
     void platform
       .watchGeometry((geometry: CommentOverlayGeometry) => {
+        if (disposed) return;
         latestGeometryRef.current = geometry;
+        // 変更理由: 移動eventでは倍率が変わらないため、x/yだけの更新でStageを再描画せず、
+        // hoverやウィンドウ移動に伴う不要なWebView再合成を避ける。
+        setOverlayGeometry((current) =>
+          current.width === geometry.width && current.height === geometry.height
+            ? current
+            : geometry,
+        );
         const resizeSession = resizeSessionRef.current;
         if (resizeSession) {
           const sizeChanged =
@@ -316,6 +331,8 @@ export function OverlayApp({
         comments={comments}
         stageWidth={DEFAULT_COMMENT_OVERLAY_GEOMETRY.width}
         stageHeight={DEFAULT_COMMENT_OVERLAY_GEOMETRY.height}
+        containerWidth={overlayGeometry.width}
+        containerHeight={overlayGeometry.height}
         durationSeconds={settings.durationSeconds}
         topPadding={COMMENT_OVERLAY_CONTROL_BAR_HEIGHT + 4}
         commentOpacity={settings.opacity}
@@ -325,7 +342,6 @@ export function OverlayApp({
         // 空きlaneができるまでqueueで待たせる。
         collisionMode="strict"
         backlogPolicy={settings.maxQueueSize > 0 ? "queue" : "drop"}
-        fitToContainer
         scaleToContainer
         scaleReferenceWidth={DEFAULT_COMMENT_OVERLAY_GEOMETRY.width}
         scaleReferenceHeight={DEFAULT_COMMENT_OVERLAY_GEOMETRY.height}

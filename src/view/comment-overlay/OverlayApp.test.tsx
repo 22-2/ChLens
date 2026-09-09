@@ -98,6 +98,16 @@ describe("OverlayApp", () => {
   });
 
   it("実況開始時の設定をOverlayStageへ反映し、文字サイズはコード定数を使う", async () => {
+    let resizeObserverConstructed = false;
+    class ResizeObserverStub {
+      constructor(_callback: ResizeObserverCallback) {
+        resizeObserverConstructed = true;
+      }
+      observe() {}
+      disconnect() {}
+    }
+    vi.stubGlobal("ResizeObserver", ResizeObserverStub);
+
     const eventBus = new MemoryCommentOverlayEventBus();
     const platform = createBrowserCommentOverlayPlatform();
 
@@ -138,6 +148,8 @@ describe("OverlayApp", () => {
       opacity: "0.5",
       animationDuration: "4s",
     });
+    // native geometryを明示する実機Overlayでは、hover再合成時のDOM測定を倍率へ使わない。
+    expect(resizeObserverConstructed).toBe(false);
 
     await act(async () => {
       await eventBus.publish({

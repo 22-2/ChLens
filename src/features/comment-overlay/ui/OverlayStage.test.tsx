@@ -187,6 +187,42 @@ describe("OverlayStage", () => {
     expect(activeComment.style.animationDelay).toBe("-3s");
   });
 
+  it("native実寸の変更ではschedulerを作り直さず進捗を保つ", () => {
+    const { rerender } = render(
+      <OverlayStage
+        comments={[comment]}
+        stageWidth={900}
+        stageHeight={506}
+        containerWidth={900}
+        containerHeight={506}
+        durationSeconds={6}
+        scaleToContainer
+        playing
+      />,
+    );
+    act(() => {
+      scheduledFrame?.(0);
+      scheduledFrame?.(3_000);
+    });
+
+    rerender(
+      <OverlayStage
+        comments={[comment]}
+        stageWidth={900}
+        stageHeight={506}
+        containerWidth={1_800}
+        containerHeight={1_012}
+        durationSeconds={6}
+        scaleToContainer
+        playing
+      />,
+    );
+
+    const activeComment = screen.getByText("テストコメント");
+    expect(activeComment.style.fontSize).toBe(`${COMMENT_OVERLAY_FONT_SIZE * 2}px`);
+    expect(activeComment.style.animationDelay).toBe("-3s");
+  });
+
   it("interactive時はhoverでコメント単位を停止し、情報を表示する", () => {
     render(
       <OverlayStage
