@@ -140,6 +140,7 @@ export default class Thread {
     let readcgiVer = 5;
     let noChangeFlg: boolean;
     let failed = false;
+    let cachedInfoResult: CachedInfoResult | undefined;
 
     try {
       // --- フェッチ ---
@@ -184,7 +185,7 @@ export default class Thread {
       }
 
       // --- あぼーん補填・インスタンスへの反映 ---
-      const cachedInfoResult = await getCachedInfoPromise;
+      cachedInfoResult = await getCachedInfoPromise;
       this._padAbobunIfNeeded(thread, cachedInfoResult);
       this._applyThreadToSelf(thread);
       this.message = "";
@@ -204,6 +205,12 @@ export default class Thread {
       const failure = typeof error === "object" && error != null ? (error as ThreadFailure) : {};
       response = failure.response;
       thread = failure.thread;
+
+      // 変更理由: dat落ち時の応答はサーバーによって203だけでなく404/500等にもなる。
+      // 本文取得が失敗した経路でも、並行取得したsubject.txtからスレ消失を確認できた場合は
+      // 画面へ通知し、自動更新を確実に停止できるよう独立した状態として引き継ぐ。
+      cachedInfoResult ??= await getCachedInfoPromise;
+      this.missingFromSubject = isMissingFromSubject(cachedInfoResult.status);
 
       if (thread) {
         this.title = thread.title ?? null;
