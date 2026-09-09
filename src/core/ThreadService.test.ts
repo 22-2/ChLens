@@ -1,7 +1,8 @@
-import { describe, expect, it, vi } from "vite-plus/test";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mocks = vi.hoisted(() => ({
   isNGThread: vi.fn(),
+  threadGet: vi.fn(),
 }));
 
 vi.mock("src/service-container/index", () => ({
@@ -13,7 +14,21 @@ vi.mock("src/service-container/index", () => ({
 }));
 
 vi.mock("src/core/Thread.js", () => ({
-  default: class Thread {},
+  default: class Thread {
+    title = "テストスレッド";
+    res = [];
+    expired = false;
+    missingFromSubject = false;
+    url: { url: { href: string } };
+
+    constructor(url: string) {
+      this.url = { url: { href: url } };
+    }
+
+    get(forceUpdate: boolean, progress: () => void): Promise<void> {
+      return mocks.threadGet(forceUpdate, progress);
+    }
+  },
 }));
 
 interface FormattedResponse {
@@ -24,9 +39,52 @@ interface FormattedResponse {
 
 interface ThreadServiceLike {
   _formatResult(thread: unknown): { res: FormattedResponse[] };
+  getThread(
+    url: string,
+    options?: { forceUpdate?: boolean; onCache?: (thread: unknown) => void },
+  ): Promise<unknown>;
 }
 
 describe("ThreadService", () => {
+  beforeEach(() => {
+    mocks.isNGThread.mockReset();
+    mocks.threadGet.mockReset();
+  });
+
+  it("同じタイミングの同一URL取得を強制更新1本へ集約する", async () => {
+    let resolveFetch: (() => void) | undefined;
+    let progress: (() => void) | undefined;
+    mocks.threadGet.mockImplementationOnce((forceUpdate: boolean, onProgress: () => void) => {
+      expect(forceUpdate).toBe(true);
+      progress = onProgress;
+      return new Promise<void>((resolve) => {
+        resolveFetch = resolve;
+      });
+    });
+    const firstCache = vi.fn();
+    const secondCache = vi.fn();
+    const { default: threadService } = await import("src/core/ThreadService.js");
+    const service = threadService as unknown as ThreadServiceLike;
+    const url = "https://example.com/test/read.cgi/board/1000000000/";
+
+    // 変更理由: 本文と勢いのeffect順が変わっても、同じmicrotask内のforceUpdateを
+    // 強い条件へ統合し、通常取得が先行しただけで二重通信にならないことを固定する。
+    const first = service.getThread(url, { forceUpdate: false, onCache: firstCache });
+    const second = service.getThread(url, { forceUpdate: true, onCache: secondCache });
+    await vi.waitFor(() => expect(mocks.threadGet).toHaveBeenCalledOnce());
+
+    progress?.();
+    expect(firstCache).toHaveBeenCalledOnce();
+    expect(secondCache).toHaveBeenCalledOnce();
+    resolveFetch?.();
+
+    await expect(Promise.all([first, second])).resolves.toHaveLength(2);
+
+    mocks.threadGet.mockResolvedValueOnce(undefined);
+    await service.getThread(url);
+    expect(mocks.threadGet).toHaveBeenCalledTimes(2);
+  });
+
   it("builds the full reply index before applying response NG", async () => {
     mocks.isNGThread.mockImplementation((res: { replyCount?: number }) =>
       res.replyCount != null && res.replyCount >= 2 ? { type: "ReplyCount" } : null,

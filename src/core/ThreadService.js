@@ -11,6 +11,17 @@ import { toCanonicalThread } from "src/core/thread-model-adapter.js";
  */
 
 class ThreadServiceImpl {
+  constructor() {
+    /** @type {Map<string, {
+     *   started: boolean,
+     *   forceUpdate: boolean,
+     *   callbacks: Set<(thread: IThreadDetail) => void>,
+     *   lastCacheResult?: IThreadDetail,
+     *   promise: Promise<IThreadDetail>
+     * }>} */
+    this.pendingRequests = new Map();
+  }
+
   /**
    * Fetches a thread and its responses.
    * @param {string} url
@@ -18,16 +29,87 @@ class ThreadServiceImpl {
    * @returns {Promise<IThreadDetail>}
    */
   async getThread(url, options = {}) {
+    const existingRequest = this.pendingRequests.get(url);
+    if (
+      existingRequest &&
+      (!options.forceUpdate || existingRequest.forceUpdate || !existingRequest.started)
+    ) {
+      // 変更理由: スレ本文と勢い表示は同じ更新世代で同一URLを要求するため、
+      // 通信開始前なら強いforceUpdateへまとめ、開始後も条件を弱めない要求だけを共有する。
+      existingRequest.forceUpdate ||= options.forceUpdate === true;
+      if (options.onCache) {
+        existingRequest.callbacks.add(options.onCache);
+        if (existingRequest.lastCacheResult) {
+          try {
+            options.onCache(existingRequest.lastCacheResult);
+          } catch (error) {
+            // 遅れて合流した表示先の例外でも、共有中の取得結果は他の利用者へ返し続ける。
+            console.error("[ThreadService] キャッシュ通知に失敗しました:", error);
+          }
+        }
+      }
+      return existingRequest.promise;
+    }
+
+    /** @type {{
+     *   started: boolean,
+     *   forceUpdate: boolean,
+     *   callbacks: Set<(thread: IThreadDetail) => void>,
+     *   lastCacheResult?: IThreadDetail,
+     *   promise: Promise<IThreadDetail>
+     * }} */
+    const request = {
+      started: false,
+      forceUpdate: options.forceUpdate === true,
+      callbacks: new Set(options.onCache ? [options.onCache] : []),
+      promise: /** @type {Promise<IThreadDetail>} */ (null),
+    };
+
+    // 同じReact effect処理内の要求をmicrotaskまで集め、後から来たforceUpdateも
+    // 最初の通信へ反映して、呼び出し順により二重取得へ戻らないようにする。
+    request.promise = Promise.resolve()
+      .then(async () => {
+        request.started = true;
+        return await this._fetchThread(url, request);
+      })
+      .finally(() => {
+        // 開始済みの通常取得と後発の強制取得が並行した場合、後発の管理情報を消さない。
+        if (this.pendingRequests.get(url) === request) {
+          this.pendingRequests.delete(url);
+        }
+      });
+    this.pendingRequests.set(url, request);
+    return request.promise;
+  }
+
+  /**
+   * @private
+   * @param {string} url
+   * @param {{
+   *   forceUpdate: boolean,
+   *   callbacks: Set<(thread: IThreadDetail) => void>,
+   *   lastCacheResult?: IThreadDetail
+   * }} request
+   * @returns {Promise<IThreadDetail>}
+   */
+  async _fetchThread(url, request) {
     const thread = new Thread(url);
 
     const progress = () => {
-      if (options.onCache) {
-        options.onCache(this._formatResult(thread));
+      const result = this._formatResult(thread);
+      request.lastCacheResult = result;
+      for (const callback of request.callbacks) {
+        try {
+          callback(result);
+        } catch (error) {
+          // 一つの表示先の例外で他の購読先やスレ取得自体を止めない。
+          console.error("[ThreadService] キャッシュ通知に失敗しました:", error);
+        }
       }
     };
 
     try {
-      await thread.get(options.forceUpdate, progress);
+      await thread.get(request.forceUpdate, progress);
       return this._formatResult(thread);
     } catch (error) {
       // 変更理由: 取得失敗時もキャッシュ結果を返す従来動作を保ちつつ、原因を追跡可能にする。
