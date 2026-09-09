@@ -339,6 +339,9 @@ button:hover {
   position: relative;
   width: 100vw;
   height: 100vh;
+  /* 変更理由: 透明WebViewではhover時の再合成がviewportの再計測を誘発することがあるため、
+   * Overlay本体のサイズと描画境界を固定してコメント倍率が揺れないようにする。 */
+  contain: layout paint;
   color: rgb(255 255 255 / 90%);
   background: transparent;
   text-shadow: 0 1px 3px #000;
@@ -466,6 +469,12 @@ button:hover {
    * receive events while click-through mode is active. */
   pointer-events: auto;
   opacity: 1;
+  /* 変更理由: 以前のhoverちらつき修正(a7fbe83f)と同じく、ホバーでnative WebViewの
+   * 再計測・再拡大につながる補間や背景フィルターを発生させない。 */
+  box-sizing: border-box;
+  transition: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .overlay-control-bar--visible,
@@ -534,6 +543,8 @@ button:hover {
   line-height: 1;
   app-region: no-drag;
   -webkit-app-region: no-drag;
+  box-sizing: border-box;
+  transition: none;
 }
 
 .overlay-control-bar__button:hover {

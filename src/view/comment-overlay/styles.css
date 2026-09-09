@@ -5,7 +5,16 @@ body,
   height: 100%;
   margin: 0;
   overflow: hidden;
+  box-sizing: border-box;
   background: transparent;
+}
+
+/* 変更理由: 透明WebViewのhover再描画で枠やバーの合成境界が再計測されると、
+ * Overlayが一瞬拡大して見えるため、全階層で寸法計算をborder-boxへ固定する。 */
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
 }
 
 body {
@@ -21,6 +30,7 @@ button {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
+  contain: layout paint;
   color: rgb(255 255 255 / 90%);
   user-select: none;
 }
@@ -129,6 +139,11 @@ button {
   app-region: drag;
   -webkit-app-region: drag;
   pointer-events: none;
+  /* 変更理由: ホバー時の補間・背景filterを止め、WebViewの再合成による再拡大を防ぐ。 */
+  box-sizing: border-box;
+  transition: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .comment-overlay-control-bar--visible,
@@ -193,6 +208,8 @@ button {
   line-height: 1;
   app-region: no-drag;
   -webkit-app-region: no-drag;
+  box-sizing: border-box;
+  transition: none;
 }
 
 .comment-overlay-control-bar__button svg {
