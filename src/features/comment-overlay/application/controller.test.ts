@@ -94,7 +94,6 @@ describe("CommentOverlayController", () => {
       platform: createBrowserCommentOverlayPlatform(),
       getSettings: () => ({
         durationSeconds: 1,
-        fontSize: 1,
         opacity: -1,
         maxQueueSize: 12.6,
       }),
@@ -106,7 +105,6 @@ describe("CommentOverlayController", () => {
       type: "reset",
       settings: {
         durationSeconds: 2,
-        fontSize: 10,
         opacity: 0.1,
         maxQueueSize: 13,
       },
@@ -150,7 +148,6 @@ describe("CommentOverlayController", () => {
     });
     let settings = {
       durationSeconds: 6,
-      fontSize: 30,
       opacity: 0.95,
       maxQueueSize: 64,
     };
@@ -168,7 +165,6 @@ describe("CommentOverlayController", () => {
     await controller.start(threadUrl, [response(1, "既存レス")]);
     settings = {
       durationSeconds: 4,
-      fontSize: 32,
       opacity: 0.5,
       maxQueueSize: 12,
     };

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import type { CommentCandidate } from "src/features/comment-overlay/domain";
 import { MemoryCommentOverlayEventBus } from "src/features/comment-overlay/domain";
 import { createBrowserCommentOverlayPlatform } from "src/features/comment-overlay/platform/browser";
+import { COMMENT_OVERLAY_FONT_SIZE } from "src/features/comment-overlay/ui/OverlayStage";
 import { OverlayApp } from "./OverlayApp";
 
 const THREAD_URL = "https://example.test/live/1";
@@ -96,7 +97,7 @@ describe("OverlayApp", () => {
     expect(screen.getByText("再開後の実況")).toBeVisible();
   });
 
-  it("実況開始時の設定をOverlayStageへ反映する", async () => {
+  it("実況開始時の設定をOverlayStageへ反映し、文字サイズはコード定数を使う", async () => {
     const eventBus = new MemoryCommentOverlayEventBus();
     const platform = createBrowserCommentOverlayPlatform();
 
@@ -108,7 +109,6 @@ describe("OverlayApp", () => {
         type: "reset",
         settings: {
           durationSeconds: 4,
-          fontSize: 32,
           opacity: 0.5,
           maxQueueSize: 0,
         },
@@ -134,7 +134,7 @@ describe("OverlayApp", () => {
 
     const renderedComment = screen.getByText("前回の実況");
     expect(renderedComment).toHaveStyle({
-      fontSize: "32px",
+      fontSize: `${COMMENT_OVERLAY_FONT_SIZE}px`,
       opacity: "0.5",
       animationDuration: "4s",
     });
@@ -145,7 +145,6 @@ describe("OverlayApp", () => {
         type: "settings",
         settings: {
           durationSeconds: 4,
-          fontSize: 40,
           opacity: 0.4,
           maxQueueSize: 0,
         },
@@ -153,7 +152,7 @@ describe("OverlayApp", () => {
     });
 
     expect(screen.getByText("前回の実況")).toHaveStyle({
-      fontSize: "40px",
+      fontSize: `${COMMENT_OVERLAY_FONT_SIZE}px`,
       opacity: "0.4",
     });
   });

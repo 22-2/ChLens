@@ -96,8 +96,8 @@ export default class Config {
     ["write_submit_ctrl_enter", "off"],
     // コメントOverlayの設定はTauri版の実況開始時に読み込み、Browser版の既存挙動には影響させない。
     // speedキーは既存設定との互換性のため残し、新規値はコメントの通過時間（秒）として保存する。
+    // 文字サイズは表示倍率を含む描画側の共通コード定数で管理し、保存値による実機差を作らない。
     ["comment_overlay_speed", "6"],
-    ["comment_overlay_font_size", "30"],
     ["comment_overlay_opacity", "0.95"],
     ["comment_overlay_max_queue", "64"],
     ["no_history", "off"],

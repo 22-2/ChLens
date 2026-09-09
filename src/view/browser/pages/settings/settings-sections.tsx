@@ -256,15 +256,6 @@ const ALL_SETTINGS_SECTIONS = [
       },
       {
         kind: "number",
-        key: "comment_overlay_font_size",
-        title: "文字サイズ",
-        description: "Overlayへ表示するコメントの文字サイズです（px）。",
-        minimum: 10,
-        maximum: 48,
-        step: 1,
-      },
-      {
-        kind: "number",
         key: "comment_overlay_opacity",
         title: "不透明度",
         description: "コメントの不透明度です。0.1から1.0まで指定できます。",

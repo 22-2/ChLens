@@ -18,7 +18,7 @@
 - Phase 2：実装済み。ChLens TauriへOverlay用entry、初期非表示のnative window、capability、geometry保存、クリック透過、カーソル位置command、Tauri event adapterを追加した。native windowのgeometry変換、監視、表示・非表示に伴うcursor pollingのライフサイクル、Main／Overlay別WebView間の表示状態broadcastと監視開始時の`isVisible()`再同期もテストで固定した。
 - Phase 3：実装済み。ThreadPageの確定済み`IRes[]`をcontrollerへ同期し、Tauri版スレッドのステータスバーから実況開始・停止とOverlay表示切り替えを行えるようにした。MVPではアクティブなスレッドだけを実況対象とする。
 - Phase 4：実装済み。動的lane、adaptive/dropを既定とする新着優先queue、CSS animation、hover情報、固定レス・過去ログ・現行スレ・StressのStoryを実装した。
-- Phase 5：実装済み。Tauri限定の開始・停止・表示切り替えUI、表示中スレッドを離れた際の停止、速度・文字サイズ・透明度・最大queue数の設定保存と実況開始時の反映、開始失敗時の非表示ロールバックとエラー表示、実行中Overlayへの設定変更即時反映まで追加した。
+- Phase 5：実装済み。Tauri限定の開始・停止・表示切り替えUI、表示中スレッドを離れた際の停止、速度・透明度・最大queue数の設定保存と実況開始時の反映、文字サイズの共通コード定数化、開始失敗時の非表示ロールバックとエラー表示、実行中Overlayへの設定変更即時反映まで追加した。
 - 自動確認：`pnpm tsc6`、`pnpm build:chrome`、`pnpm build:firefox`、`pnpm build:tauri`、`pnpm tauri build --debug --no-bundle`、`cargo check --manifest-path src-tauri/Cargo.toml --all-targets`、Overlay関連テスト、geometry保存・復元テスト、Tauri event adapter契約テスト、Tauri window adapter lifecycleテスト、Config購読テスト、Overlay操作バー契約テスト、dat落ち時の実況停止テスト、`pnpm storybook:build`、`pnpm tauri dev`のwatcherとTauriプロセス起動は成功。直近のコメントOverlay・Tauri限定UI・設定テストは85件全件成功している。全体テストは659件全件成功している。
 - Windows実機で部分確認済み：実況開始によるOverlay表示、合成eventによるコメント表示・設定反映・移動、操作バーのhover、操作バーの物理クリックによる閉じる、Mainからの再表示、最小化からの再表示を確認した。
 - 未確認：実際のThreadPage新着レスからの表示、Overlay外側のクリック透過、リサイズ領域、複数モニター/DPI、sleep復帰、長時間動作の手動確認。
@@ -150,7 +150,7 @@ Storybookでは透過を無効にし、背景色のある固定サイズのス�
 次の値はControlsから変更できるようにする。
 
 - ステージ幅・高さ
-- 速度、レーンの行高・最大容量、文字サイズ
+- 速度、レーンの行高・最大容量
 - コメント投入間隔とqueue上限
 - 背景色とコメントの透明度
 - 再生、停止、リセット、1レス追加
@@ -204,6 +204,7 @@ Storybookでは速度、衝突、レーン、queue、長文、resizeを確認す
 - 初期値はEdgeLiveViewerの6秒を参考にし、900px幅でも最大化後でも同じ体感速度になるようにする。
 - 旧設定キー`comment_overlay_speed`に保存されたpx/sec値は、読み込み時だけ900px基準の秒数へ変換する。
 - コメントごとに途中で速度を変更しない。
+- 文字サイズはStorybookとTauriで共有する`OverlayStage`のコード定数から表示倍率を算出する。
 - レーン高は文字サイズとCSSのline-heightから算出し、上部のOverlay操作領域を除いた表示領域へ配置する。
 - queue上限、古いコメントのskip、遅延表示を組み合わせる。
 - 初期MVPは右から左へ流れる通常コメントだけとする。
@@ -382,7 +383,7 @@ Storybookでは速度、衝突、レーン、queue、長文、resizeを確認す
 - 既存ステータスバーへ実況開始・停止、状態、Overlay表示切り替えを追加する。
 - スレ以外では開始操作を表示しない。
 - Browser版では実況関連UIを描画しない。
-- 速度、文字サイズ、透明度、最大queue数を既存設定へ追加する。
+- 速度、透明度、最大queue数を既存設定へ追加し、文字サイズは共通コード定数で管理する。
 - Overlay操作バーの製品名をChLensへ変更する。
 - エラー、停止、対象スレ変更を利用者へ分かる状態で表示する。
 
@@ -414,7 +415,7 @@ Storybookでは速度、衝突、レーン、queue、長文、resizeを確認す
 その後Mainから再表示し、操作バーの最小化、Mainからの再表示まで確認した。
 
 新着レスが発生していないスレッドだったため、Tauriの合成eventでコメントを投入した。実機Overlayへ
-コメントが表示され、文字サイズ・不透明度の設定が反映され、時間経過でtransformが変化することを確認した。
+コメントが表示され、共通コード定数の文字サイズ・不透明度が反映され、時間経過でtransformが変化することを確認した。
 実際のThreadPage新着レスからの表示、Overlay外側のクリック透過、リサイズ、複数モニター/DPI、
 sleep復帰、長時間動作は未確認として残す。
 

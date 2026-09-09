@@ -98,7 +98,6 @@ export function NintendoDirectを10秒ごとに再生(): ReactElement {
           stageWidth={1100}
           stageHeight={520}
           fontFamily="MS PGothic"
-          fontSize={31}
           fontWeight={750}
           fontColor="#ffffff"
           shadowSize={2}

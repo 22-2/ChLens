@@ -16,7 +16,13 @@ import "./OverlayStage.css";
 
 const DEFAULT_STAGE_WIDTH = 800;
 const DEFAULT_STAGE_HEIGHT = 240;
-const DEFAULT_FONT_SIZE = 20;
+/**
+ * コメント文字サイズは設定へ保存せず、StorybookとTauri実機が同じ基準値を使う。
+ * 変更理由: 実機だけ古い保存値や別アプリの既定値を読むと表示倍率の基準がずれ、
+ * 文字の重なりや「設定を変えても反映されない」状態を再発させるため。
+ * 調整するときはこの値だけを変更し、各設定やStoryへ個別のpx値を追加しない。
+ */
+export const COMMENT_OVERLAY_FONT_SIZE = 25;
 const DEFAULT_COMMENT_OPACITY = 0.95;
 export const DEFAULT_COMMENT_HISTORY_LIMIT = 3_000;
 
@@ -50,7 +56,6 @@ export interface OverlayStageProps {
   collisionMode?: CommentCollisionMode;
   backlogPolicy?: CommentBacklogPolicy;
   maxActiveCount?: number;
-  fontSize?: number;
   fontFamily?: string;
   fontWeight?: number;
   fontColor?: string;
@@ -100,7 +105,6 @@ export function OverlayStage({
   collisionMode = DEFAULT_COMMENT_COLLISION_MODE,
   backlogPolicy = DEFAULT_COMMENT_BACKLOG_POLICY,
   maxActiveCount = DEFAULT_MAX_ACTIVE_COUNT,
-  fontSize = DEFAULT_FONT_SIZE,
   fontFamily = '"Segoe UI", sans-serif',
   fontWeight = 600,
   fontColor = "#f4f7fb",
@@ -121,7 +125,7 @@ export function OverlayStage({
   onCommentClick,
   className,
 }: OverlayStageProps) {
-  const baseLaneHeight = laneHeightProp ?? calculateCommentLaneHeight(fontSize);
+  const baseLaneHeight = laneHeightProp ?? calculateCommentLaneHeight(COMMENT_OVERLAY_FONT_SIZE);
   const requestedTopPadding = Math.max(0, topPadding);
   const requestedBottomPadding = Math.max(0, bottomPadding);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -142,7 +146,7 @@ export function OverlayStage({
     : 1;
   // 変更理由: Tauriの実ウィンドウだけサイズが変わっても、文字とlaneを同じ倍率で
   // 追従させれば、Storybookとの差やコメント同士の重なりを防げる。
-  const effectiveFontSize = Math.max(1, Math.round(fontSize * displayScale));
+  const effectiveFontSize = Math.max(1, Math.round(COMMENT_OVERLAY_FONT_SIZE * displayScale));
   const laneHeight = Math.max(1, Math.round(baseLaneHeight * displayScale));
   const effectiveShadowSize = Math.max(0, Math.round(shadowSize * displayScale));
   const effectiveTopPadding = Math.min(

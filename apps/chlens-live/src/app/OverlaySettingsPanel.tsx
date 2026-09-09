@@ -155,14 +155,6 @@ export function EdgeLiveViewerSettingsPanel({
                 </select>
               </label>
               <RangeField
-                label="フォントサイズ"
-                value={value.fontSize}
-                min={12}
-                max={48}
-                suffix="px"
-                onChange={(next) => patch("fontSize", next)}
-              />
-              <RangeField
                 label="フォントの太さ"
                 value={value.fontWeight}
                 min={100}

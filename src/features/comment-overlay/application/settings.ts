@@ -9,8 +9,8 @@ import {
 
 export const COMMENT_OVERLAY_CONFIG_KEYS = {
   // 既存キーを維持し、旧いpx/秒の保存値はreadCommentOverlaySettingsで秒へ変換する。
+  // 文字サイズは保存設定から外し、過去に保存された値も読み込まない。
   durationSeconds: "comment_overlay_speed",
-  fontSize: "comment_overlay_font_size",
   opacity: "comment_overlay_opacity",
   maxQueueSize: "comment_overlay_max_queue",
 } as const;
@@ -51,10 +51,6 @@ export function readCommentOverlaySettings(): CommentOverlaySettings {
   try {
     return normalizeCommentOverlaySettings({
       durationSeconds: readDurationSeconds(),
-      fontSize: readNumber(
-        COMMENT_OVERLAY_CONFIG_KEYS.fontSize,
-        DEFAULT_COMMENT_OVERLAY_SETTINGS.fontSize,
-      ),
       opacity: readNumber(
         COMMENT_OVERLAY_CONFIG_KEYS.opacity,
         DEFAULT_COMMENT_OVERLAY_SETTINGS.opacity,

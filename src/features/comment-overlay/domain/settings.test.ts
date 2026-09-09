@@ -10,13 +10,11 @@ describe("コメントOverlay設定", () => {
     expect(
       normalizeCommentOverlaySettings({
         durationSeconds: 1,
-        fontSize: 1,
         opacity: -1,
         maxQueueSize: 12.6,
       }),
     ).toEqual({
       durationSeconds: 2,
-      fontSize: 10,
       opacity: 0.1,
       maxQueueSize: 13,
     });
@@ -26,7 +24,6 @@ describe("コメントOverlay設定", () => {
     expect(
       normalizeCommentOverlaySettings({
         durationSeconds: Number.NaN,
-        fontSize: Number.POSITIVE_INFINITY,
         opacity: Number.NEGATIVE_INFINITY,
         maxQueueSize: Number.NaN,
       }),

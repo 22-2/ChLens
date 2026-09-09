@@ -21,7 +21,7 @@ describe("設定セクションの実行環境フィルター", () => {
     expect(sections.some((section) => section.id === "overlay")).toBe(false);
   });
 
-  it("Tauri版ではOverlay設定と4項目を表示する", () => {
+  it("Tauri版ではOverlay設定と3項目を表示する", () => {
     const sections = getSettingsSections(true);
     const overlay = sections.find((section) => section.id === "overlay");
 
@@ -29,7 +29,6 @@ describe("設定セクションの実行環境フィルター", () => {
     expect(overlay?.fields.map((field) => ("key" in field ? field.key : field.id))).toEqual([
       "display",
       "comment_overlay_speed",
-      "comment_overlay_font_size",
       "comment_overlay_opacity",
       "comment_overlay_max_queue",
     ]);

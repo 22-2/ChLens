@@ -5,6 +5,7 @@ import type { CommentCandidate } from "../domain/comment-types";
 import {
   calculateCommentLaneHeight,
   calculateOverlayDisplayScale,
+  COMMENT_OVERLAY_FONT_SIZE,
   estimateCommentWidth,
   normalizeCommentOverlayText,
   OverlayStage,
@@ -164,7 +165,6 @@ describe("OverlayStage", () => {
         stageWidth={600}
         stageHeight={120}
         durationSeconds={6}
-        fontSize={20}
         fitToContainer
         scaleToContainer
         playing
@@ -183,7 +183,7 @@ describe("OverlayStage", () => {
     });
 
     const activeComment = screen.getByText("テストコメント");
-    expect(activeComment.style.fontSize).toBe("40px");
+    expect(activeComment.style.fontSize).toBe(`${COMMENT_OVERLAY_FONT_SIZE * 2}px`);
     expect(activeComment.style.animationDelay).toBe("-3s");
   });
 

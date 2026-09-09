@@ -100,20 +100,19 @@ export function 設定とオーバーレイ(): ReactElement {
         </header>
         <div className="edge-compat-story__screen" style={{ opacity: settings.opacity }}>
           <OverlayStage
-            key={`${settings.displayPosition}-${settings.fontSize}-${settings.spacing}`}
+            key={`${settings.displayPosition}-${settings.spacing}`}
             comments={visibleComments}
             fitToContainer
             stageWidth={960}
             stageHeight={420}
             fontFamily={settings.fontFamily}
-            fontSize={settings.fontSize}
             fontWeight={settings.fontWeight}
             fontColor={settings.fontColor}
             shadowSize={settings.shadowSize}
             shadowColor={settings.shadowColor}
             shadowDirections={settings.shadowDirections}
             durationSeconds={settings.durationSeconds}
-            laneHeight={calculateEdgeLiveViewerLaneHeight(settings.fontSize, settings.spacing)}
+            laneHeight={calculateEdgeLiveViewerLaneHeight(settings.spacing)}
             maxActiveCount={settings.maxComments}
             maxQueueSize={settings.maxComments}
             commentOpacity={1}

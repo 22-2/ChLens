@@ -37,7 +37,6 @@ describe("ConfigからのコメントOverlay設定読み出し", () => {
     configMock.get.mockImplementation((key: string) => {
       const values: Record<string, string> = {
         comment_overlay_speed: "6",
-        comment_overlay_font_size: "24",
         comment_overlay_opacity: "0.6",
         comment_overlay_max_queue: "120",
       };
@@ -46,7 +45,6 @@ describe("ConfigからのコメントOverlay設定読み出し", () => {
 
     expect(readCommentOverlaySettings()).toEqual({
       durationSeconds: 6,
-      fontSize: 24,
       opacity: 0.6,
       maxQueueSize: 120,
     });
@@ -56,7 +54,6 @@ describe("ConfigからのコメントOverlay設定読み出し", () => {
     configMock.get.mockImplementation((key: string) => {
       const values: Record<string, string> = {
         comment_overlay_speed: "15",
-        comment_overlay_font_size: "文字サイズ",
         comment_overlay_opacity: "-1",
         comment_overlay_max_queue: "12.6",
       };
@@ -65,7 +62,6 @@ describe("ConfigからのコメントOverlay設定読み出し", () => {
 
     expect(readCommentOverlaySettings()).toEqual({
       durationSeconds: 15,
-      fontSize: DEFAULT_COMMENT_OVERLAY_SETTINGS.fontSize,
       opacity: 0.1,
       maxQueueSize: 13,
     });
@@ -116,7 +112,7 @@ describe("ConfigからのコメントOverlay設定読み出し", () => {
     const listener = vi.fn();
 
     const cleanup = subscribeToCommentOverlaySettings(listener);
-    registeredHandler?.({ key: "comment_overlay_font_size" });
+    registeredHandler?.({ key: "comment_overlay_opacity" });
     registeredHandler?.({ key: "theme_id" });
 
     expect(listener).toHaveBeenCalledTimes(1);

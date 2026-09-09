@@ -1,10 +1,10 @@
 import type { CommentCandidate } from "src/features/comment-overlay/domain";
+import { COMMENT_OVERLAY_FONT_SIZE } from "src/features/comment-overlay/ui/OverlayStage";
 
 export type ShadowDirection = "top-left" | "top-right" | "bottom-left" | "bottom-right";
 
 export interface EdgeLiveViewerSettings {
   fontFamily: string;
-  fontSize: number;
   fontWeight: number;
   fontColor: string;
   shadowSize: number;
@@ -30,7 +30,6 @@ export interface EdgeLiveViewerSettings {
 
 export const DEFAULT_EDGE_LIVE_VIEWER_SETTINGS: Readonly<EdgeLiveViewerSettings> = {
   fontFamily: "MS PGothic",
-  fontSize: 31,
   fontWeight: 750,
   fontColor: "#ffffff",
   shadowSize: 2,
@@ -54,9 +53,11 @@ export const DEFAULT_EDGE_LIVE_VIEWER_SETTINGS: Readonly<EdgeLiveViewerSettings>
   ngTexts: [],
 };
 
-/** EdgeLiveViewerと同じく、文字の実高へ設定上の行間を足して各laneを分離する。 */
-export function calculateEdgeLiveViewerLaneHeight(fontSize: number, spacing: number): number {
-  return Math.max(1, Math.ceil(fontSize * 1.2 + spacing));
+/** EdgeLiveViewerと同じく、固定文字サイズの実高へ表示上の行間を足して各laneを分離する。 */
+export function calculateEdgeLiveViewerLaneHeight(spacing: number): number {
+  // 変更理由: 文字サイズを設定値から分離し、Live版だけ異なる基準値でlaneを
+  // 計算して実機のコメントが重なる再発を防ぐ。
+  return Math.max(1, Math.ceil(COMMENT_OVERLAY_FONT_SIZE * 1.2 + spacing));
 }
 
 /** EdgeLiveViewerと同じく、ID・名前は完全一致、本文は部分一致でNG判定する。 */

@@ -22,7 +22,6 @@ import {
 import {
   DEFAULT_COMMENT_HISTORY_LIMIT,
   OverlayStage,
-  calculateCommentLaneHeight,
 } from "src/features/comment-overlay/ui/OverlayStage";
 import { OverlayControlBar } from "./OverlayControlBar";
 
@@ -93,7 +92,7 @@ export function OverlayApp({
 
     const handleEvent = (event: CommentOverlayEvent): void => {
       if (event.type === "settings") {
-        // 設定更新では既存コメントを消さず、実行中の速度・文字サイズだけを次の描画へ反映する。
+        // 設定更新では既存コメントを消さず、実行中の速度と表示条件だけを次の描画へ反映する。
         setSettings(normalizeCommentOverlaySettings(event.settings));
         return;
       }
@@ -319,8 +318,6 @@ export function OverlayApp({
         stageHeight={DEFAULT_COMMENT_OVERLAY_GEOMETRY.height}
         durationSeconds={settings.durationSeconds}
         topPadding={COMMENT_OVERLAY_CONTROL_BAR_HEIGHT + 4}
-        laneHeight={calculateCommentLaneHeight(settings.fontSize)}
-        fontSize={settings.fontSize}
         commentOpacity={settings.opacity}
         maxQueueSize={settings.maxQueueSize}
         // 変更理由: Tauriの横長・低い初期Overlayではadaptiveの循環laneが同時に
