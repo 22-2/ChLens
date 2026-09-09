@@ -3,7 +3,7 @@ import {
   DEFAULT_EDGE_LIVE_VIEWER_SETTINGS,
   type EdgeLiveViewerSettings,
   type ShadowDirection,
-} from "./edge-live-viewer-settings";
+} from "./overlay-settings";
 
 export interface EdgeLiveViewerSettingsPanelProps {
   value: EdgeLiveViewerSettings;

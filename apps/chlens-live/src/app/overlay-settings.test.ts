@@ -4,7 +4,7 @@ import {
   calculateEdgeLiveViewerLaneHeight,
   DEFAULT_EDGE_LIVE_VIEWER_SETTINGS,
   filterEdgeLiveViewerComments,
-} from "./edge-live-viewer-settings";
+} from "./overlay-settings";
 
 const comments: readonly CommentCandidate[] = [
   { responseNumber: 1, author: "名無し", id: "id-a", text: "通常レス" },

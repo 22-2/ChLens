@@ -11,7 +11,7 @@ import { OverlayControlBar } from "./OverlayControlBar";
 import {
   calculateEdgeLiveViewerLaneHeight,
   DEFAULT_EDGE_LIVE_VIEWER_SETTINGS,
-} from "./edge-live-viewer-settings";
+} from "./overlay-settings";
 import { useLiveOverlay } from "./use-live-overlay";
 import "./styles.css";
 
