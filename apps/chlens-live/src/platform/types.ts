@@ -5,11 +5,14 @@ export interface OverlayGeometry {
   height: number;
 }
 
+/** EdgeLiveViewerのリサイズ既定値と同じ16:9を、native windowと表示倍率で共有する。 */
+export const OVERLAY_ASPECT_RATIO = 16 / 9;
+
 export const DEFAULT_OVERLAY_GEOMETRY: OverlayGeometry = {
   x: 80,
   y: 80,
   width: 900,
-  height: 160,
+  height: 506,
 };
 
 // The control bar is intentionally a compact Windows-style title strip. Keep its native hit-test

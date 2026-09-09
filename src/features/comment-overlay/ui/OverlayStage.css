@@ -1,7 +1,13 @@
 .comment-overlay-stage {
   position: relative;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   isolation: isolate;
+  /* 変更理由: 透明Tauri WebViewのhoverで子コメントの合成境界が親へ伝播すると、
+   * ResizeObserverの実寸と表示倍率が揺れて再拡大するため、stage自身で描画境界を閉じる。 */
+  box-sizing: border-box;
+  contain: layout paint;
   color: #f4f7fb;
   font-family: "Segoe UI", sans-serif;
   font-synthesis: none;
@@ -18,7 +24,9 @@
   color: inherit;
   font-weight: 600;
   line-height: 1.2;
-  white-space: pre;
+  /* 変更理由: dat本文の<br>は改行文字へ変換されるが、弾幕は常に一行で流す仕様のため、
+   * 高さを増やして隣のlaneへ重なることを防ぐ。表示文字列側でも幅計算を同じ形に揃える。 */
+  white-space: nowrap;
   text-shadow:
     -1px -1px 0 #07101d,
     1px -1px 0 #07101d,

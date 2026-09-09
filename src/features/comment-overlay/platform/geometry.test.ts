@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import {
   COMMENT_OVERLAY_GEOMETRY_STORAGE_KEY,
+  fitCommentOverlayGeometryToAspectRatio,
   fitCommentOverlayGeometryToWorkArea,
   fallbackCommentOverlayGeometry,
   loadStoredCommentOverlayGeometry,
@@ -77,6 +78,17 @@ describe("コメントOverlayのgeometry", () => {
       width: 320,
       height: 80,
     });
+  });
+
+  it("旧版の保存geometryを幅を維持した16:9へ移行する", () => {
+    expect(
+      fitCommentOverlayGeometryToAspectRatio({
+        x: 32,
+        y: 64,
+        width: 640,
+        height: 128,
+      }),
+    ).toEqual({ x: 32, y: 64, width: 640, height: 360 });
   });
 
   it("保存位置をwork area内へ収める", () => {

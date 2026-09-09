@@ -25,7 +25,7 @@
         "title": "Chlens Live Overlay",
         "url": "overlay.html",
         "width": 900,
-        "height": 160,
+        "height": 506,
         "resizable": true,
         "visible": true,
         "focus": false,

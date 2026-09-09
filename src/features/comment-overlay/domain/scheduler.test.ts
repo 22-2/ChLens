@@ -110,6 +110,31 @@ describe("CommentScheduler", () => {
     expect(scheduler.advance(0).active[0]?.speedPxPerSecond).toBe(240);
   });
 
+  it("リサイズ後も表示中コメントの進捗率を保つ", () => {
+    const scheduler = createScheduler({ durationSeconds: 6 });
+    scheduler.enqueue(createInput(1, 120));
+    scheduler.advance(0);
+    scheduler.advance(3);
+
+    const resized = scheduler.resizeLayout(
+      {
+        stageWidth: 1_200,
+        stageHeight: 64,
+        laneHeight: 32,
+        durationSeconds: 6,
+      },
+      3,
+      () => 240,
+    );
+    const active = resized.active[0];
+
+    expect(active.initialProgress).toBeCloseTo(0.5);
+    expect(active.layoutRevision).toBe(1);
+    expect(calculateCommentPosition(active, 3)).toBeCloseTo(480);
+    expect(scheduler.advance(5.99).active).toHaveLength(1);
+    expect(scheduler.advance(6).active).toHaveLength(0);
+  });
+
   it("必要なときだけlaneを増やし、ステージ高さの容量で止める", () => {
     const scheduler = createScheduler({ stageHeight: 96 });
     scheduler.enqueue(createInput(1, 120));

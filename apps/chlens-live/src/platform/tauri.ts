@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { LogicalPosition, LogicalSize, Window } from "@tauri-apps/api/window";
 import {
   cloneOverlayGeometry,
+  fitOverlayGeometryToAspectRatio,
   fallbackOverlayGeometry,
   loadStoredOverlayGeometry,
   saveStoredOverlayGeometry,
@@ -319,14 +320,17 @@ export function createTauriLiveWindowPlatform(): LiveWindowPlatform {
     },
     async loadOverlayGeometry() {
       const stored = loadStoredOverlayGeometry();
-      if (stored) {
-        // Restore the native window at startup so the first displayed overlay uses the saved layout.
-        await platform.setOverlayGeometry(stored);
+      if (!stored) return null;
+      const restored = fitOverlayGeometryToAspectRatio(stored);
+      // Restore the native window at startup so the first displayed overlay uses the saved layout.
+      await platform.setOverlayGeometry(restored);
+      if (JSON.stringify(restored) !== JSON.stringify(stored)) {
+        saveStoredOverlayGeometry(restored);
       }
-      return stored ? cloneOverlayGeometry(stored) : null;
+      return cloneOverlayGeometry(restored);
     },
     async saveOverlayGeometry(geometry: OverlayGeometry) {
-      saveStoredOverlayGeometry(geometry);
+      saveStoredOverlayGeometry(fitOverlayGeometryToAspectRatio(geometry));
     },
   };
 

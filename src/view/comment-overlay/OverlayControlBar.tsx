@@ -30,8 +30,18 @@ function startResizing(
   event: PointerEvent<HTMLSpanElement>,
   direction: CommentOverlayResizeDirection,
   platform: CommentOverlayWindowPlatform,
+  onResizeStart?: (
+    event: PointerEvent<HTMLSpanElement>,
+    direction: CommentOverlayResizeDirection,
+  ) => void,
 ): void {
   if (event.button !== 0) return;
+
+  if (onResizeStart) {
+    // 変更理由: バー内のリサイズハンドルもOverlay本体と同じ比率補正・進捗保持を通す。
+    onResizeStart(event, direction);
+    return;
+  }
 
   event.preventDefault();
   event.stopPropagation();
@@ -71,9 +81,14 @@ function close(event: MouseEvent<HTMLButtonElement>, platform: CommentOverlayWin
 export function OverlayControlBar({
   visible,
   platform = commentOverlayWindowPlatform,
+  onResizeStart,
 }: {
   visible: boolean;
   platform?: CommentOverlayWindowPlatform;
+  onResizeStart?: (
+    event: PointerEvent<HTMLSpanElement>,
+    direction: CommentOverlayResizeDirection,
+  ) => void;
 }): ReactElement {
   return (
     <header
@@ -121,7 +136,7 @@ export function OverlayControlBar({
           key={direction}
           aria-hidden="true"
           className={`comment-overlay-control-bar__resize ${className}`}
-          onPointerDown={(event) => startResizing(event, direction, platform)}
+          onPointerDown={(event) => startResizing(event, direction, platform, onResizeStart)}
         />
       ))}
     </header>

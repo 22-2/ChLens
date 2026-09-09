@@ -3,6 +3,10 @@ import type { IRes } from "@chlen/ch-lib";
 import { describe, expect, it } from "vite-plus/test";
 import { MemoryLiveEventBus, type LiveEvent } from "../live-session/events";
 import { useLiveOverlay } from "./use-live-overlay";
+import {
+  calculateNaturalCommentFlowCount,
+  calculateNaturalCommentFlowInterval,
+} from "src/features/comment-overlay/domain";
 
 const threadUrl = "https://bbs.eddibb.cc/liveedge/1000000001/";
 
@@ -56,5 +60,42 @@ describe("useLiveOverlay", () => {
     });
     expect(screen.getByTestId("thread-url")).toHaveTextContent(threadUrl);
     expect(screen.getByTestId("comments")).toHaveTextContent("新着レス");
+  });
+});
+
+describe("コメントの自然な投入間隔", () => {
+  it("通常時は取得間隔へ20%の揺らぎを加える", () => {
+    const base = {
+      queueSize: 10,
+      batchSize: 25,
+      updateIntervalMilliseconds: 10_000,
+    };
+
+    expect(calculateNaturalCommentFlowInterval({ ...base, randomValue: 0 })).toBe(320);
+    expect(calculateNaturalCommentFlowInterval({ ...base, randomValue: 1 })).toBe(480);
+  });
+
+  it("低速時は300から500msの範囲で揺らす", () => {
+    const base = {
+      queueSize: 2,
+      batchSize: 2,
+      updateIntervalMilliseconds: 10_000,
+    };
+
+    expect(calculateNaturalCommentFlowInterval({ ...base, randomValue: 0 })).toBe(300);
+    expect(calculateNaturalCommentFlowInterval({ ...base, randomValue: 1 })).toBe(500);
+  });
+
+  it("滞留が増えた時だけ投入間隔を縮め、同時投入数を増やす", () => {
+    expect(
+      calculateNaturalCommentFlowInterval({
+        queueSize: 51,
+        batchSize: 60,
+        updateIntervalMilliseconds: 10_000,
+      }),
+    ).toBe(20);
+    expect(calculateNaturalCommentFlowCount(10)).toBe(1);
+    expect(calculateNaturalCommentFlowCount(21)).toBe(3);
+    expect(calculateNaturalCommentFlowCount(51)).toBe(5);
   });
 });

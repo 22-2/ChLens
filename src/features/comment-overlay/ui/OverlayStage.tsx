@@ -74,11 +74,16 @@ export interface OverlayStageProps {
 
 /** DOMを測定する前のfixtureでも同じ速度モデルを確認できる幅の近似値を作る。 */
 export function estimateCommentWidth(comment: CommentCandidate, fontSize: number): number {
-  const longestLineLength = Math.max(
-    ...comment.text.split("\n").map((line) => Array.from(line).length),
-    1,
-  );
+  // 変更理由: 表示は一行へ正規化するため、改行ごとの最大幅ではなく連結後の幅を
+  // 使わないと、長いコメントが後続レスへ追いついて横方向に重なる。
+  const singleLineText = comment.text.replace(/[\r\n]+/g, " ");
+  const longestLineLength = Math.max(Array.from(singleLineText).length, 1);
   return longestLineLength * fontSize * 0.95 + fontSize;
+}
+
+/** 改行を空白へ変換し、コメントの幅計算と実際の一行表示を一致させる。 */
+export function normalizeCommentOverlayText(text: string): string {
+  return text.replace(/[\r\n]+/g, " ");
 }
 
 export function OverlayStage({
@@ -116,6 +121,7 @@ export function OverlayStage({
   onCommentClick,
   className,
 }: OverlayStageProps) {
+  const baseLaneHeight = laneHeightProp ?? calculateCommentLaneHeight(fontSize);
   const requestedTopPadding = Math.max(0, topPadding);
   const requestedBottomPadding = Math.max(0, bottomPadding);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -137,10 +143,7 @@ export function OverlayStage({
   // 変更理由: Tauriの実ウィンドウだけサイズが変わっても、文字とlaneを同じ倍率で
   // 追従させれば、Storybookとの差やコメント同士の重なりを防げる。
   const effectiveFontSize = Math.max(1, Math.round(fontSize * displayScale));
-  const laneHeight = Math.max(
-    1,
-    Math.round((laneHeightProp ?? calculateCommentLaneHeight(fontSize)) * displayScale),
-  );
+  const laneHeight = Math.max(1, Math.round(baseLaneHeight * displayScale));
   const effectiveShadowSize = Math.max(0, Math.round(shadowSize * displayScale));
   const effectiveTopPadding = Math.min(
     requestedTopPadding,
@@ -189,9 +192,12 @@ export function OverlayStage({
   const scheduler = useMemo(
     () =>
       new CommentScheduler({
-        stageWidth: effectiveStageWidth,
-        stageHeight: schedulableStageHeight,
-        laneHeight,
+        stageWidth,
+        stageHeight: Math.max(
+          baseLaneHeight,
+          stageHeight - requestedTopPadding - requestedBottomPadding,
+        ),
+        laneHeight: baseLaneHeight,
         maxLaneCount,
         durationSeconds,
         baseSpeedPxPerSecond,
@@ -205,12 +211,14 @@ export function OverlayStage({
       baseSpeedPxPerSecond,
       collisionMode,
       durationSeconds,
-      effectiveStageWidth,
-      laneHeight,
+      baseLaneHeight,
       maxActiveCount,
       maxLaneCount,
       maxQueueSize,
-      schedulableStageHeight,
+      requestedBottomPadding,
+      requestedTopPadding,
+      stageHeight,
+      stageWidth,
     ],
   );
   const [snapshot, setSnapshot] = useState<CommentSchedulerSnapshot>(() => scheduler.advance(0));
@@ -219,6 +227,58 @@ export function OverlayStage({
   const seenResponseNumbers = useRef(new Set<number>());
   const logicalTime = useRef(0);
   const previousFrameTime = useRef<number | null>(null);
+  const layoutRef = useRef<{
+    scheduler: CommentScheduler;
+    width: number;
+    height: number;
+    laneHeight: number;
+    fontSize: number;
+  } | null>(null);
+
+  useLayoutEffect(() => {
+    const currentLayout = layoutRef.current;
+    if (
+      currentLayout?.scheduler === scheduler &&
+      currentLayout.width === effectiveStageWidth &&
+      currentLayout.height === schedulableStageHeight &&
+      currentLayout.laneHeight === laneHeight &&
+      currentLayout.fontSize === effectiveFontSize
+    ) {
+      return;
+    }
+
+    layoutRef.current = {
+      scheduler,
+      width: effectiveStageWidth,
+      height: schedulableStageHeight,
+      laneHeight,
+      fontSize: effectiveFontSize,
+    };
+    const nextSnapshot = scheduler.resizeLayout(
+      {
+        stageWidth: effectiveStageWidth,
+        stageHeight: schedulableStageHeight,
+        laneHeight,
+        maxLaneCount,
+        durationSeconds,
+        baseSpeedPxPerSecond,
+      },
+      logicalTime.current,
+      (comment) => estimateWidth(comment, effectiveFontSize),
+    );
+    snapshotRef.current = nextSnapshot;
+    setSnapshot(nextSnapshot);
+  }, [
+    baseSpeedPxPerSecond,
+    durationSeconds,
+    effectiveFontSize,
+    effectiveStageWidth,
+    estimateWidth,
+    laneHeight,
+    maxLaneCount,
+    schedulableStageHeight,
+    scheduler,
+  ]);
 
   useEffect(() => {
     // 変更理由: Controlsでステージ設定を変えたとき、旧ステージのlaneと時刻を
@@ -244,8 +304,12 @@ export function OverlayStage({
     for (const comment of comments) {
       if (seenResponseNumbers.current.has(comment.responseNumber)) continue;
 
-      const width = estimateWidth(comment, effectiveFontSize);
-      const result = scheduler.enqueue({ comment, width });
+      const displayComment = {
+        ...comment,
+        text: normalizeCommentOverlayText(comment.text),
+      };
+      const width = estimateWidth(displayComment, effectiveFontSize);
+      const result = scheduler.enqueue({ comment: displayComment, width });
       if (result.dropped) {
         // 変更理由: queueが満杯のときに同じレスを毎回再投入すると、入力更新のたびに
         // 古いレスがqueueを奪うため、最古の待機レスをskipして一度だけ通知する。
@@ -362,6 +426,7 @@ export function OverlayStage({
           textShadow,
           opacity: commentOpacity,
           animationDuration: `${scheduledComment.duration}s`,
+          animationDelay: `${-scheduledComment.initialProgress * scheduledComment.duration}s`,
           animationPlayState:
             playing && !scheduledComment.paused ? ("running" as const) : ("paused" as const),
           "--comment-exit-translate": `-${scheduledComment.stageWidth + scheduledComment.width}px`,
@@ -371,7 +436,7 @@ export function OverlayStage({
 
         return (
           <div
-            key={`${comment.responseNumber}-${scheduledComment.startAt}`}
+            key={`${comment.responseNumber}-${scheduledComment.startAt}-${scheduledComment.layoutRevision}`}
             className="comment-overlay-stage__comment"
             data-response-number={comment.responseNumber}
             data-lane-index={scheduledComment.laneIndex}

@@ -26,8 +26,15 @@ function stopBarControlEvent(
 function startResizing(
   event: PointerEvent<HTMLSpanElement>,
   direction: OverlayResizeDirection,
+  onResizeStart?: (event: PointerEvent<HTMLSpanElement>, direction: OverlayResizeDirection) => void,
 ): void {
   if (event.button !== 0) return;
+
+  if (onResizeStart) {
+    // 変更理由: バー内のリサイズハンドルもOverlay本体と同じ比率補正・進捗保持を通す。
+    onResizeStart(event, direction);
+    return;
+  }
 
   event.preventDefault();
   event.stopPropagation();
@@ -58,7 +65,13 @@ function close(event: MouseEvent<HTMLButtonElement>): void {
   });
 }
 
-export function OverlayControlBar({ visible }: { visible: boolean }) {
+export function OverlayControlBar({
+  visible,
+  onResizeStart,
+}: {
+  visible: boolean;
+  onResizeStart?: (event: PointerEvent<HTMLSpanElement>, direction: OverlayResizeDirection) => void;
+}) {
   return (
     <header
       className={`overlay-control-bar${visible ? " overlay-control-bar--visible" : ""}`}
@@ -107,7 +120,7 @@ export function OverlayControlBar({ visible }: { visible: boolean }) {
           key={direction}
           aria-hidden="true"
           className={`overlay-control-bar__resize-handle ${className}`}
-          onPointerDown={(event) => startResizing(event, direction)}
+          onPointerDown={(event) => startResizing(event, direction, onResizeStart)}
         />
       ))}
     </header>

@@ -43,6 +43,8 @@ export type {
   CommentProjectionOptions,
   CommentResponse,
 } from "./comment-types";
+export { calculateNaturalCommentFlowCount, calculateNaturalCommentFlowInterval } from "./flow";
+export type { NaturalCommentFlowOptions } from "./flow";
 export {
   DEFAULT_COMMENT_OVERLAY_SETTINGS,
   MAX_COMMENT_OVERLAY_DURATION_SECONDS,

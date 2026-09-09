@@ -3,6 +3,7 @@ import { emit, listen } from "@tauri-apps/api/event";
 import { availableMonitors, LogicalPosition, LogicalSize, Window } from "@tauri-apps/api/window";
 import {
   cloneCommentOverlayGeometry,
+  fitCommentOverlayGeometryToAspectRatio,
   fitCommentOverlayGeometryToWorkArea,
   fallbackCommentOverlayGeometry,
   loadStoredCommentOverlayGeometry,
@@ -422,11 +423,11 @@ export function createTauriCommentOverlayPlatform(): CommentOverlayWindowPlatfor
       const stored = loadStoredCommentOverlayGeometry();
       if (!stored) return null;
 
-      let restored = stored;
+      let restored = fitCommentOverlayGeometryToAspectRatio(stored);
       try {
         // 変更理由: モニター構成の変更やタスクバー位置の変更後も、保存済みOverlayが
         // 完全に画面外へ残ると操作不能になるため、復元時だけ現在のwork areaへ収める。
-        restored = await fitGeometryToAvailableMonitor(stored);
+        restored = await fitGeometryToAvailableMonitor(restored);
       } catch (error: unknown) {
         console.error("[ChLens] コメントOverlayのwork area取得に失敗しました:", error);
       }
@@ -437,7 +438,7 @@ export function createTauriCommentOverlayPlatform(): CommentOverlayWindowPlatfor
       return cloneCommentOverlayGeometry(restored);
     },
     async saveGeometry(geometry: CommentOverlayGeometry) {
-      saveStoredCommentOverlayGeometry(geometry);
+      saveStoredCommentOverlayGeometry(fitCommentOverlayGeometryToAspectRatio(geometry));
     },
   };
 

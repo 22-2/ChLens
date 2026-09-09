@@ -1,5 +1,6 @@
 import {
   cloneOverlayGeometry,
+  fitOverlayGeometryToAspectRatio,
   fallbackOverlayGeometry,
   loadStoredOverlayGeometry,
   saveStoredOverlayGeometry,
@@ -40,11 +41,13 @@ export function createBrowserLiveWindowPlatform(): LiveWindowPlatform {
     },
     async loadOverlayGeometry() {
       const stored = loadStoredOverlayGeometry();
-      if (stored) geometry = stored;
-      return stored ? cloneOverlayGeometry(stored) : null;
+      if (!stored) return null;
+      geometry = fitOverlayGeometryToAspectRatio(stored);
+      saveStoredOverlayGeometry(geometry);
+      return cloneOverlayGeometry(geometry);
     },
     async saveOverlayGeometry(nextGeometry: OverlayGeometry) {
-      geometry = fallbackOverlayGeometry(nextGeometry);
+      geometry = fitOverlayGeometryToAspectRatio(nextGeometry);
       saveStoredOverlayGeometry(geometry);
     },
   };

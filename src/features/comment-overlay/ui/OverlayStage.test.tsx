@@ -5,6 +5,8 @@ import type { CommentCandidate } from "../domain/comment-types";
 import {
   calculateCommentLaneHeight,
   calculateOverlayDisplayScale,
+  estimateCommentWidth,
+  normalizeCommentOverlayText,
   OverlayStage,
 } from "./OverlayStage";
 
@@ -34,6 +36,14 @@ describe("OverlayStage", () => {
   it("文字サイズに合わせてlane高を計算する", () => {
     expect(calculateCommentLaneHeight(30)).toBe(40);
     expect(calculateCommentLaneHeight(48)).toBe(62);
+  });
+
+  it("改行を空白へ変換して一行表示にする", () => {
+    expect(normalizeCommentOverlayText("一行\n二行\r\n三行")).toBe("一行 二行 三行");
+  });
+
+  it("一行化後の全体幅でコメント速度を見積もる", () => {
+    expect(estimateCommentWidth({ ...comment, text: "123\n456" }, 10)).toBeCloseTo(76.5);
   });
 
   it("基準サイズに対する短い側の比率で表示倍率を計算する", () => {
@@ -136,6 +146,45 @@ describe("OverlayStage", () => {
     });
 
     expect(screen.getByText("テストコメント").style.left).toBe("600px");
+  });
+
+  it("リサイズ時はフォントを拡大し、表示中コメントを現在の進捗から流し続ける", () => {
+    let resizeCallback: ResizeObserverCallback | null = null;
+    class ResizeObserverStub {
+      constructor(callback: ResizeObserverCallback) {
+        resizeCallback = callback;
+      }
+      observe() {}
+      disconnect() {}
+    }
+    vi.stubGlobal("ResizeObserver", ResizeObserverStub);
+    render(
+      <OverlayStage
+        comments={[comment]}
+        stageWidth={600}
+        stageHeight={120}
+        durationSeconds={6}
+        fontSize={20}
+        fitToContainer
+        scaleToContainer
+        playing
+      />,
+    );
+    act(() => {
+      scheduledFrame?.(0);
+      scheduledFrame?.(3_000);
+    });
+
+    act(() => {
+      resizeCallback?.(
+        [{ contentRect: { width: 1_200, height: 240 } } as ResizeObserverEntry],
+        {} as ResizeObserver,
+      );
+    });
+
+    const activeComment = screen.getByText("テストコメント");
+    expect(activeComment.style.fontSize).toBe("40px");
+    expect(activeComment.style.animationDelay).toBe("-3s");
   });
 
   it("interactive時はhoverでコメント単位を停止し、情報を表示する", () => {

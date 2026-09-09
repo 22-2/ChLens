@@ -1,5 +1,6 @@
 import {
   cloneCommentOverlayGeometry,
+  fitCommentOverlayGeometryToAspectRatio,
   fallbackCommentOverlayGeometry,
   loadStoredCommentOverlayGeometry,
   saveStoredCommentOverlayGeometry,
@@ -43,11 +44,13 @@ export function createBrowserCommentOverlayPlatform(): CommentOverlayWindowPlatf
     },
     async loadGeometry() {
       const stored = loadStoredCommentOverlayGeometry();
-      if (stored) geometry = stored;
-      return stored ? cloneCommentOverlayGeometry(stored) : null;
+      if (!stored) return null;
+      geometry = fitCommentOverlayGeometryToAspectRatio(stored);
+      saveStoredCommentOverlayGeometry(geometry);
+      return cloneCommentOverlayGeometry(geometry);
     },
     async saveGeometry(nextGeometry: CommentOverlayGeometry) {
-      geometry = fallbackCommentOverlayGeometry(nextGeometry);
+      geometry = fitCommentOverlayGeometryToAspectRatio(nextGeometry);
       saveStoredCommentOverlayGeometry(geometry);
     },
   };

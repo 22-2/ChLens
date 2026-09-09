@@ -39,6 +39,10 @@ button {
   position: absolute;
   z-index: 0;
   inset: 0;
+  /* 変更理由: 透明な親のhoverや操作バーの再合成がコメント層の測定へ伝播しないよう、
+   * 表示領域とレイアウト境界をここで固定する。 */
+  box-sizing: border-box;
+  contain: layout paint;
   pointer-events: none;
 }
 

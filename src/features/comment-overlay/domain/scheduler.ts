@@ -54,6 +54,10 @@ export interface ScheduledComment {
   paused: boolean;
   pausedAt: number | null;
   pausedDuration: number;
+  /** リサイズ後にCSS animationを現在の進捗から再開するための割合。 */
+  initialProgress: number;
+  /** 同じレスのDOMをリサイズ時だけ作り直すための世代番号。 */
+  layoutRevision: number;
 }
 
 export interface CommentSchedulerSnapshot {
@@ -65,6 +69,15 @@ export interface CommentSchedulerSnapshot {
 export interface CommentEnqueueResult {
   accepted: boolean;
   dropped: CommentScheduleInput | null;
+}
+
+export interface CommentSchedulerLayout {
+  stageWidth: number;
+  stageHeight: number;
+  laneHeight: number;
+  maxLaneCount?: number;
+  durationSeconds?: number;
+  baseSpeedPxPerSecond?: number;
 }
 
 /** ステージ幅と基準速度から、コメントがステージを通過する基準時間を求める。 */
@@ -144,15 +157,15 @@ function validateScheduleInput(input: CommentScheduleInput): void {
  * ReactやTauriを参照しないため、Storybookの手動clockと自動テストで同じ判定を使える。
  */
 export class LaneAllocator {
-  private readonly lanes: ScheduledComment[][];
+  private lanes: ScheduledComment[][];
 
-  private readonly duration: number;
+  private duration: number;
 
   private fallbackLaneIndex = 0;
 
   constructor(
-    private readonly stageWidth: number,
-    private readonly maxLaneCount: number,
+    private stageWidth: number,
+    private maxLaneCount: number,
     baseSpeedPxPerSecond: number,
     durationSeconds?: number,
   ) {
@@ -234,6 +247,58 @@ export class LaneAllocator {
     this.fallbackLaneIndex = 0;
   }
 
+  /** 表示中コメントの進捗を保ったまま、新しい描画領域へ座標と速度を写し替える。 */
+  resize(
+    layout: CommentSchedulerLayout,
+    now: number,
+    measureWidth: (comment: CommentCandidate) => number,
+  ): void {
+    assertFinite(now, "now");
+    assertPositiveFinite(layout.stageWidth, "stageWidth");
+    const laneCapacity = calculateLaneCapacity(
+      layout.stageHeight,
+      layout.laneHeight,
+      layout.maxLaneCount,
+    );
+    const nextDuration =
+      layout.durationSeconds ??
+      calculateCommentDuration(
+        layout.stageWidth,
+        layout.baseSpeedPxPerSecond ?? DEFAULT_COMMENT_BASE_SPEED_PX_PER_SECOND,
+      );
+    const activeComments = this.active(now);
+    const nextLanes: ScheduledComment[][] = [];
+
+    for (const comment of activeComments) {
+      const oldTravelDistance = Math.max(1, comment.stageWidth + comment.width);
+      const oldPosition = calculateCommentPosition(comment, now);
+      const progress = Math.min(
+        1,
+        Math.max(0, (comment.stageWidth - oldPosition) / oldTravelDistance),
+      );
+      const movementNow = comment.pausedAt ?? now;
+      const nextWidth = Math.max(0, measureWidth(comment.comment));
+      const nextLaneIndex = comment.laneIndex % laneCapacity;
+
+      comment.width = nextWidth;
+      comment.laneIndex = nextLaneIndex;
+      comment.stageWidth = layout.stageWidth;
+      comment.duration = nextDuration;
+      comment.speedPxPerSecond = calculateCommentSpeed(layout.stageWidth, nextWidth, nextDuration);
+      comment.startAt = movementNow - comment.pausedDuration - progress * nextDuration;
+      comment.endAt = comment.startAt + nextDuration + comment.pausedDuration;
+      comment.initialProgress = progress;
+      comment.layoutRevision += 1;
+      (nextLanes[nextLaneIndex] ??= []).push(comment);
+    }
+
+    this.stageWidth = layout.stageWidth;
+    this.maxLaneCount = laneCapacity;
+    this.duration = nextDuration;
+    this.lanes = nextLanes;
+    this.fallbackLaneIndex %= laneCapacity;
+  }
+
   pause(responseNumber: number, now: number): boolean {
     assertFinite(now, "now");
     this.release(now);
@@ -276,6 +341,8 @@ export class LaneAllocator {
       paused: false,
       pausedAt: null,
       pausedDuration: 0,
+      initialProgress: 0,
+      layoutRevision: 0,
     };
   }
 
@@ -421,6 +488,22 @@ export class CommentScheduler {
   resume(responseNumber: number, now: number): boolean {
     this.assertAndSetNow(now);
     return this.allocator.resume(responseNumber, now);
+  }
+
+  /** リサイズ前の進捗を維持し、待機中コメントの幅も現在のフォントへ更新する。 */
+  resizeLayout(
+    layout: CommentSchedulerLayout,
+    now: number,
+    measureWidth: (comment: CommentCandidate) => number,
+  ): CommentSchedulerSnapshot {
+    this.assertAndSetNow(now);
+    // 変更理由: Schedulerを作り直すと表示中レスが入口へ戻るため、EdgeLiveViewerと同じく
+    // 現在位置を移動全体の進捗率へ変換し、新しい幅・速度へ写して流れを継続する。
+    this.allocator.resize(layout, now, measureWidth);
+    for (const pending of this.pendingComments) {
+      pending.width = Math.max(0, measureWidth(pending.comment));
+    }
+    return this.advance(now);
   }
 
   /** monotonicな時刻でだけ進め、同じ時刻の呼び出しは安全に繰り返せるようにする。 */
