@@ -1,6 +1,7 @@
 import type { CommentCandidate } from "src/features/comment-overlay/domain";
 import { describe, expect, it } from "vite-plus/test";
 import {
+  calculateEdgeLiveViewerLaneHeight,
   DEFAULT_EDGE_LIVE_VIEWER_SETTINGS,
   filterEdgeLiveViewerComments,
 } from "./edge-live-viewer-settings";
@@ -13,6 +14,10 @@ const comments: readonly CommentCandidate[] = [
 ];
 
 describe("EdgeLiveViewer互換設定", () => {
+  it("文字サイズと行間から重ならないlane高を算出する", () => {
+    expect(calculateEdgeLiveViewerLaneHeight(31, 30)).toBe(68);
+  });
+
   it("アンカー・URL・ID・名前・本文のNG条件を組み合わせる", () => {
     const result = filterEdgeLiveViewerComments(comments, {
       ...DEFAULT_EDGE_LIVE_VIEWER_SETTINGS,

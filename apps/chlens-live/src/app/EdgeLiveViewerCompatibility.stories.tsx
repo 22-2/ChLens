@@ -3,6 +3,7 @@ import type { CommentCandidate } from "src/features/comment-overlay/domain";
 import { OverlayStage } from "src/features/comment-overlay/ui/OverlayStage";
 import { EdgeLiveViewerSettingsPanel } from "./EdgeLiveViewerSettingsPanel";
 import {
+  calculateEdgeLiveViewerLaneHeight,
   DEFAULT_EDGE_LIVE_VIEWER_SETTINGS,
   filterEdgeLiveViewerComments,
   type EdgeLiveViewerSettings,
@@ -112,7 +113,7 @@ export function 設定とオーバーレイ(): ReactElement {
             shadowColor={settings.shadowColor}
             shadowDirections={settings.shadowDirections}
             durationSeconds={settings.durationSeconds}
-            laneHeight={Math.ceil(settings.fontSize * 1.2 + settings.spacing)}
+            laneHeight={calculateEdgeLiveViewerLaneHeight(settings.fontSize, settings.spacing)}
             maxActiveCount={settings.maxComments}
             maxQueueSize={settings.maxComments}
             commentOpacity={1}

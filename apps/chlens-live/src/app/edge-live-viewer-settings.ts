@@ -54,6 +54,11 @@ export const DEFAULT_EDGE_LIVE_VIEWER_SETTINGS: Readonly<EdgeLiveViewerSettings>
   ngTexts: [],
 };
 
+/** EdgeLiveViewerと同じく、文字の実高へ設定上の行間を足して各laneを分離する。 */
+export function calculateEdgeLiveViewerLaneHeight(fontSize: number, spacing: number): number {
+  return Math.max(1, Math.ceil(fontSize * 1.2 + spacing));
+}
+
 /** EdgeLiveViewerと同じく、ID・名前は完全一致、本文は部分一致でNG判定する。 */
 export function filterEdgeLiveViewerComments(
   comments: readonly CommentCandidate[],

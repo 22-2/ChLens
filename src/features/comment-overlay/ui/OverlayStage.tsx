@@ -25,6 +25,17 @@ export function calculateCommentLaneHeight(fontSize: number): number {
   return Math.max(1, Math.ceil(fontSize * 1.2 + 4));
 }
 
+/** 基準サイズに対する縦横の短い側を使い、縦横比が変わっても表示物を一様に拡縮する。 */
+export function calculateOverlayDisplayScale(
+  width: number,
+  height: number,
+  referenceWidth: number,
+  referenceHeight: number,
+): number {
+  if (referenceWidth <= 0 || referenceHeight <= 0) return 1;
+  return Math.max(0.01, Math.min(width / referenceWidth, height / referenceHeight));
+}
+
 export interface OverlayStageProps {
   comments: readonly CommentCandidate[];
   stageWidth?: number;
@@ -50,6 +61,9 @@ export interface OverlayStageProps {
   backgroundColor?: string;
   playing?: boolean;
   fitToContainer?: boolean;
+  scaleToContainer?: boolean;
+  scaleReferenceWidth?: number;
+  scaleReferenceHeight?: number;
   interactive?: boolean;
   showCommentInfo?: boolean;
   estimateWidth?: (comment: CommentCandidate, fontSize: number) => number;
@@ -92,6 +106,9 @@ export function OverlayStage({
   backgroundColor = "#172235",
   playing = true,
   fitToContainer = false,
+  scaleToContainer = false,
+  scaleReferenceWidth = stageWidth,
+  scaleReferenceHeight = stageHeight,
   interactive = true,
   showCommentInfo = true,
   estimateWidth = estimateCommentWidth,
@@ -99,7 +116,6 @@ export function OverlayStage({
   onCommentClick,
   className,
 }: OverlayStageProps) {
-  const laneHeight = laneHeightProp ?? calculateCommentLaneHeight(fontSize);
   const requestedTopPadding = Math.max(0, topPadding);
   const requestedBottomPadding = Math.max(0, bottomPadding);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -110,6 +126,22 @@ export function OverlayStage({
   const effectiveStageHeight = fitToContainer
     ? (containerSize?.height ?? stageHeight)
     : stageHeight;
+  const displayScale = scaleToContainer
+    ? calculateOverlayDisplayScale(
+        effectiveStageWidth,
+        effectiveStageHeight,
+        scaleReferenceWidth,
+        scaleReferenceHeight,
+      )
+    : 1;
+  // 変更理由: Tauriの実ウィンドウだけサイズが変わっても、文字とlaneを同じ倍率で
+  // 追従させれば、Storybookとの差やコメント同士の重なりを防げる。
+  const effectiveFontSize = Math.max(1, Math.round(fontSize * displayScale));
+  const laneHeight = Math.max(
+    1,
+    Math.round((laneHeightProp ?? calculateCommentLaneHeight(fontSize)) * displayScale),
+  );
+  const effectiveShadowSize = Math.max(0, Math.round(shadowSize * displayScale));
   const effectiveTopPadding = Math.min(
     requestedTopPadding,
     Math.max(0, effectiveStageHeight - laneHeight),
@@ -212,7 +244,7 @@ export function OverlayStage({
     for (const comment of comments) {
       if (seenResponseNumbers.current.has(comment.responseNumber)) continue;
 
-      const width = estimateWidth(comment, fontSize);
+      const width = estimateWidth(comment, effectiveFontSize);
       const result = scheduler.enqueue({ comment, width });
       if (result.dropped) {
         // 変更理由: queueが満杯のときに同じレスを毎回再投入すると、入力更新のたびに
@@ -232,7 +264,7 @@ export function OverlayStage({
       setSnapshot(nextSnapshot);
       schedulerRef.current = scheduler;
     }
-  }, [comments, estimateWidth, fontSize, onQueueOverflow, scheduler]);
+  }, [comments, effectiveFontSize, estimateWidth, onQueueOverflow, scheduler]);
 
   useEffect(() => {
     if (!playing) {
@@ -273,14 +305,14 @@ export function OverlayStage({
     fontFamily,
   };
   const shadowOffsets = {
-    "top-left": `-${shadowSize}px -${shadowSize}px 0 ${shadowColor}`,
-    "top-right": `${shadowSize}px -${shadowSize}px 0 ${shadowColor}`,
-    "bottom-left": `-${shadowSize}px ${shadowSize}px 0 ${shadowColor}`,
-    "bottom-right": `${shadowSize}px ${shadowSize}px 0 ${shadowColor}`,
+    "top-left": `-${effectiveShadowSize}px -${effectiveShadowSize}px 0 ${shadowColor}`,
+    "top-right": `${effectiveShadowSize}px -${effectiveShadowSize}px 0 ${shadowColor}`,
+    "bottom-left": `-${effectiveShadowSize}px ${effectiveShadowSize}px 0 ${shadowColor}`,
+    "bottom-right": `${effectiveShadowSize}px ${effectiveShadowSize}px 0 ${shadowColor}`,
   } as const;
   // 変更理由: EdgeLiveViewerでは影の向きを個別指定できるため、選ばれた方向だけをCSSへ渡す。
   const textShadow =
-    shadowSize > 0
+    effectiveShadowSize > 0
       ? shadowDirections.map((direction) => shadowOffsets[direction]).join(", ")
       : "none";
   const stageClassName = [
@@ -325,7 +357,7 @@ export function OverlayStage({
         const commentStyle = {
           top: `${effectiveTopPadding + scheduledComment.laneIndex * laneHeight}px`,
           left: `${scheduledComment.stageWidth}px`,
-          fontSize: `${fontSize}px`,
+          fontSize: `${effectiveFontSize}px`,
           fontWeight,
           textShadow,
           opacity: commentOpacity,
