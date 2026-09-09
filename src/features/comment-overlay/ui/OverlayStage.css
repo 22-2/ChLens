@@ -4,10 +4,6 @@
   height: 100%;
   overflow: hidden;
   isolation: isolate;
-  /* 変更理由: 透明Tauri WebViewのhoverで子コメントの合成境界が親へ伝播すると、
-   * ResizeObserverの実寸と表示倍率が揺れて再拡大するため、stage自身で描画境界を閉じる。 */
-  box-sizing: border-box;
-  contain: layout paint;
   color: #f4f7fb;
   font-family: "Segoe UI", sans-serif;
   font-synthesis: none;

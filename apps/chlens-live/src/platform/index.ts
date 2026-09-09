@@ -12,10 +12,6 @@ export function createLiveWindowPlatform(): LiveWindowPlatform {
 
 export const liveWindowPlatform = createLiveWindowPlatform();
 
-export { constrainOverlayGeometryToAspectRatio, fitOverlayGeometryToAspectRatio } from "./geometry";
-export {
-  DEFAULT_OVERLAY_GEOMETRY,
-  OVERLAY_ASPECT_RATIO,
-  OVERLAY_CONTROL_BAR_HEIGHT,
-} from "./types";
-export type { LiveWindowPlatform, OverlayGeometry, OverlayResizeDirection } from "./types";
+export { fitOverlayGeometryToAspectRatio } from "./geometry";
+export { DEFAULT_OVERLAY_GEOMETRY, OVERLAY_ASPECT_RATIO } from "./types";
+export type { LiveWindowPlatform, OverlayGeometry } from "./types";

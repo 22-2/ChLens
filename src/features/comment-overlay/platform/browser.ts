@@ -7,9 +7,21 @@ import {
 } from "./geometry";
 import type {
   CommentOverlayGeometry,
-  CommentOverlayResizeDirection,
+  CommentOverlayMonitor,
   CommentOverlayWindowPlatform,
 } from "./types";
+
+const STORYBOOK_MONITORS: readonly CommentOverlayMonitor[] = [
+  {
+    id: "storybook-monitor",
+    name: "Storybookモニター",
+    x: 0,
+    y: 0,
+    width: 1920,
+    height: 1080,
+    scaleFactor: 1,
+  },
+];
 
 /**
  * StorybookとBrowser版ではnative windowを操作しないため、同じ非同期契約だけを提供する。
@@ -22,16 +34,14 @@ export function createBrowserCommentOverlayPlatform(): CommentOverlayWindowPlatf
     async show() {},
     async hide() {},
     async focus() {},
-    async startResizing(_direction: CommentOverlayResizeDirection) {},
     async minimize() {},
     async toggleMaximize() {},
     async close() {},
-    async setClickThrough(_enabled: boolean) {},
     async watchVisibility(_listener: (visible: boolean) => void) {
       return () => {};
     },
-    trackBarHover(_listener: (hovered: boolean) => void) {
-      return () => {};
+    async getMonitors() {
+      return STORYBOOK_MONITORS;
     },
     async getGeometry() {
       return cloneCommentOverlayGeometry(geometry);

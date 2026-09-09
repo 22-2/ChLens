@@ -8,6 +8,8 @@ export interface MiniWindowProps {
   anchor: DOMRect;
   onClose: () => void;
   triggerRef?: React.RefObject<HTMLElement | null>;
+  /** パネルの内容に合わせてポップアップ幅を広げる。 */
+  width?: number | string;
   children: React.ReactNode;
 }
 
@@ -21,6 +23,7 @@ export const MiniWindow: React.FC<MiniWindowProps> = ({
   anchor,
   onClose,
   triggerRef,
+  width = 280,
   children,
 }) => {
   // テーマトークンは `.browser-shell[data-theme]` のスコープで定義されるため、
@@ -78,7 +81,7 @@ export const MiniWindow: React.FC<MiniWindowProps> = ({
             }
           }}
         >
-          <div className="mini-window" style={{ width: 280 }}>
+          <div className="mini-window" style={{ width }}>
             <div className="mini-window__header">
               <span className="mini-window__title">{title}</span>
               <button className="mini-window__close" onClick={onClose} title="閉じる">

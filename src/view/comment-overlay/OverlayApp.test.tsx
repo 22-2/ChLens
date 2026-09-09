@@ -148,7 +148,7 @@ describe("OverlayApp", () => {
       opacity: "0.5",
       animationDuration: "4s",
     });
-    // native geometryを明示する実機Overlayでは、hover再合成時のDOM測定を倍率へ使わない。
+    // native geometryを明示する実機Overlayでは、DOM測定を使わず保存geometryを倍率へ使う。
     expect(resizeObserverConstructed).toBe(false);
 
     await act(async () => {

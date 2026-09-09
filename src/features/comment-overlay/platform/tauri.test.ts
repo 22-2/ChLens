@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const tauriMocks = vi.hoisted(() => ({
-  invoke: vi.fn(),
   event: {
     emit: vi.fn(),
     listen: vi.fn(),
@@ -25,12 +24,10 @@ const tauriMocks = vi.hoisted(() => ({
     outerSize: vi.fn(),
     scaleFactor: vi.fn(),
     isVisible: vi.fn(),
-    setIgnoreCursorEvents: vi.fn(),
     show: vi.fn(),
     hide: vi.fn(),
     unminimize: vi.fn(),
     setFocus: vi.fn(),
-    startResizeDragging: vi.fn(),
     minimize: vi.fn(),
     toggleMaximize: vi.fn(),
     setPosition: vi.fn(),
@@ -38,10 +35,6 @@ const tauriMocks = vi.hoisted(() => ({
     onMoved: vi.fn(),
     onResized: vi.fn(),
   },
-}));
-
-vi.mock("@tauri-apps/api/core", () => ({
-  invoke: tauriMocks.invoke,
 }));
 
 vi.mock("@tauri-apps/api/event", () => ({
@@ -59,11 +52,7 @@ vi.mock("@tauri-apps/api/window", () => ({
 }));
 
 import { COMMENT_OVERLAY_GEOMETRY_STORAGE_KEY } from "./geometry";
-import {
-  COMMENT_OVERLAY_VISIBILITY_EVENT_NAME,
-  createTauriCommentOverlayPlatform,
-  getCommentOverlayCursorHitRegion,
-} from "./tauri";
+import { COMMENT_OVERLAY_VISIBILITY_EVENT_NAME, createTauriCommentOverlayPlatform } from "./tauri";
 
 type VisibilityEventHandler = (event: { payload: unknown }) => void;
 
@@ -95,8 +84,6 @@ function createMemoryStorage(): Storage {
 describe("TauriコメントOverlay window platform", () => {
   beforeEach(() => {
     vi.stubGlobal("localStorage", createMemoryStorage());
-    tauriMocks.invoke.mockReset();
-    tauriMocks.invoke.mockResolvedValue({ x: 0, y: 0 });
     tauriMocks.event.emit.mockReset();
     tauriMocks.event.emit.mockResolvedValue(undefined);
     tauriMocks.event.listen.mockReset();
@@ -112,6 +99,9 @@ describe("TauriコメントOverlay window platform", () => {
     tauriMocks.availableMonitors.mockReset();
     tauriMocks.availableMonitors.mockResolvedValue([
       {
+        name: "テストモニター",
+        position: { x: 0, y: 0 },
+        size: { width: 3_840, height: 2_160 },
         workArea: {
           position: { x: 0, y: 0 },
           size: { width: 3_840, height: 2_080 },
@@ -121,8 +111,6 @@ describe("TauriコメントOverlay window platform", () => {
     ]);
     tauriMocks.window.isVisible.mockReset();
     tauriMocks.window.isVisible.mockResolvedValue(false);
-    tauriMocks.window.setIgnoreCursorEvents.mockReset();
-    tauriMocks.window.setIgnoreCursorEvents.mockResolvedValue(undefined);
     tauriMocks.window.setPosition.mockReset();
     tauriMocks.window.setPosition.mockResolvedValue(undefined);
     tauriMocks.window.setSize.mockReset();
@@ -136,25 +124,6 @@ describe("TauriコメントOverlay window platform", () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
-  });
-
-  it("操作バーの上枠をbar扱いせず、実際のバーだけをbar扱いする", () => {
-    const bounds = { x: 100, y: 200, width: 900, height: 240, scaleFactor: 1 };
-
-    expect(getCommentOverlayCursorHitRegion({ x: 500, y: 200 }, bounds)).toBe("outside");
-    expect(getCommentOverlayCursorHitRegion({ x: 500, y: 203 }, bounds)).toBe("outside");
-    expect(getCommentOverlayCursorHitRegion({ x: 500, y: 204 }, bounds)).toBe("bar");
-    expect(getCommentOverlayCursorHitRegion({ x: 500, y: 240 }, bounds)).toBe("bar");
-    expect(getCommentOverlayCursorHitRegion({ x: 500, y: 241 }, bounds)).toBe("outside");
-  });
-
-  it("バー外の外周はbarではなくresize扱いにする", () => {
-    const bounds = { x: 100, y: 200, width: 900, height: 240, scaleFactor: 1 };
-
-    expect(getCommentOverlayCursorHitRegion({ x: 100, y: 180 }, bounds)).toBe("outside");
-    expect(getCommentOverlayCursorHitRegion({ x: 100, y: 220 }, bounds)).toBe("resize");
-    expect(getCommentOverlayCursorHitRegion({ x: 500, y: 425 }, bounds)).toBe("outside");
-    expect(getCommentOverlayCursorHitRegion({ x: 500, y: 440 }, bounds)).toBe("resize");
   });
 
   it("物理pixelのwindow境界を論理geometryへ変換する", async () => {
@@ -257,40 +226,6 @@ describe("TauriコメントOverlay window platform", () => {
     expect(unlistenResized).toHaveBeenCalledTimes(1);
   });
 
-  it("クリック透過を開始するとnative cursor eventを無視し、解除時に戻す", async () => {
-    vi.useFakeTimers();
-    const platform = createTauriCommentOverlayPlatform();
-
-    await platform.setClickThrough(true);
-    // Overlayは起動直後に非表示なので、表示前のcursor pollingは開始しない。
-    expect(vi.getTimerCount()).toBe(0);
-
-    await platform.show();
-    expect(tauriMocks.window.setIgnoreCursorEvents).toHaveBeenNthCalledWith(1, true);
-    expect(vi.getTimerCount()).toBe(1);
-
-    await platform.setClickThrough(false);
-    expect(tauriMocks.window.setIgnoreCursorEvents).toHaveBeenLastCalledWith(false);
-    expect(vi.getTimerCount()).toBe(0);
-  });
-
-  it("非表示でpollingを止め、再表示時にクリック透過とpollingを復帰する", async () => {
-    vi.useFakeTimers();
-    const platform = createTauriCommentOverlayPlatform();
-
-    await platform.show();
-    await platform.setClickThrough(true);
-    await platform.hide();
-    expect(vi.getTimerCount()).toBe(0);
-    expect(tauriMocks.window.hide).toHaveBeenCalledTimes(1);
-
-    await platform.show();
-    expect(vi.getTimerCount()).toBe(1);
-    expect(tauriMocks.window.setIgnoreCursorEvents).toHaveBeenLastCalledWith(true);
-
-    await platform.setClickThrough(false);
-  });
-
   it("Overlayを閉じるとnative windowを隠し、全WebViewへ非表示を通知する", async () => {
     tauriMocks.window.hide.mockClear();
     const platform = createTauriCommentOverlayPlatform();
@@ -303,18 +238,18 @@ describe("TauriコメントOverlay window platform", () => {
     });
   });
 
-  it("表示中のnative windowを監視開始時に同期してpollingを開始する", async () => {
-    vi.useFakeTimers();
-    tauriMocks.window.isVisible.mockResolvedValue(true);
+  it("native monitor情報を操作パネル用の論理座標へ変換する", async () => {
     const platform = createTauriCommentOverlayPlatform();
 
-    await platform.setClickThrough(true);
-    expect(vi.getTimerCount()).toBe(0);
-
-    await platform.watchVisibility(() => {});
-
-    expect(vi.getTimerCount()).toBe(1);
-    await platform.setClickThrough(false);
+    await expect(platform.getMonitors()).resolves.toEqual([
+      expect.objectContaining({
+        x: 0,
+        y: 0,
+        width: 1_920,
+        height: 1_080,
+        scaleFactor: 2,
+      }),
+    ]);
   });
 
   it("Main向けの表示状態eventを受け取り、解除関数を返す", async () => {
