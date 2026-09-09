@@ -763,6 +763,186 @@ button:hover {
   }
 }
 
+/* EdgeLiveViewerの設定密度を保ちつつ、Storybook上でプレビューと同時比較できる配置にする。 */
+.edge-compat-story {
+  display: grid;
+  min-height: 100vh;
+  grid-template-columns: minmax(520px, 1fr) 420px;
+  color: #e8edf4;
+  background: #111720;
+}
+.edge-compat-story__preview {
+  display: grid;
+  min-width: 0;
+  grid-template-rows: auto minmax(360px, 1fr) auto;
+  padding: 24px;
+  gap: 16px;
+}
+.edge-compat-story__preview > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.edge-compat-story__preview > header div {
+  display: grid;
+  gap: 4px;
+}
+.edge-compat-story__preview > header span,
+.edge-compat-story__preview > footer,
+.edge-settings small,
+.edge-settings__empty {
+  color: #9daabc;
+  font-size: 12px;
+}
+.edge-compat-story button {
+  border: 1px solid #445165;
+  border-radius: 5px;
+  padding: 6px 10px;
+  color: inherit;
+  background: #263143;
+  cursor: pointer;
+}
+.edge-compat-story button:hover {
+  background: #334158;
+}
+.edge-compat-story__screen {
+  min-height: 360px;
+  overflow: hidden;
+  border: 1px solid #415069;
+  border-radius: 8px;
+  background-image:
+    linear-gradient(rgb(20 28 40 / 35%), rgb(20 28 40 / 35%)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cpath d='M0 80L80 0M40 80L80 40M0 40L40 0' stroke='%23384554' stroke-width='1'/%3E%3C/svg%3E");
+}
+.edge-settings {
+  min-height: 100vh;
+  border-left: 1px solid #364154;
+  color: #e6ebf2;
+  background: #1a222f;
+}
+.edge-settings > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px;
+}
+.edge-settings > header div {
+  display: grid;
+  gap: 3px;
+}
+.edge-settings > nav {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-block: 1px solid #364154;
+}
+.edge-settings > nav button {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.edge-settings > nav button[aria-current="page"] {
+  border-bottom: 2px solid #63a9ff;
+  color: #fff;
+  background: #243044;
+}
+.edge-settings__body {
+  display: grid;
+  max-height: calc(100vh - 112px);
+  gap: 14px;
+  padding: 16px;
+  overflow: auto;
+}
+.edge-settings fieldset {
+  display: grid;
+  gap: 12px;
+  border: 1px solid #3b475a;
+  border-radius: 7px;
+  padding: 14px;
+}
+.edge-settings legend {
+  padding: 0 6px;
+  color: #cbd8e9;
+  font-weight: 700;
+}
+.edge-settings label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.edge-settings__field {
+  display: grid !important;
+  grid-template-columns: 110px 1fr 54px;
+}
+.edge-settings__field output {
+  text-align: right;
+  color: #b9c8dc;
+  font-variant-numeric: tabular-nums;
+}
+.edge-settings__select,
+.edge-settings__color {
+  display: grid !important;
+  grid-template-columns: 110px 1fr auto;
+}
+.edge-settings select,
+.edge-settings input[type="text"],
+.edge-settings__ng input {
+  min-width: 0;
+  border: 1px solid #46546a;
+  border-radius: 4px;
+  padding: 6px 8px;
+  color: inherit;
+  background: #111925;
+}
+.edge-settings__color input {
+  width: 48px;
+  height: 30px;
+  padding: 1px;
+  border: 0;
+  background: transparent;
+}
+.edge-settings__color code {
+  color: #aebcd0;
+}
+.edge-settings__checks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  font-size: 13px;
+}
+.edge-settings__checks > span {
+  width: 100px;
+}
+.edge-settings__chips {
+  display: flex;
+  min-height: 28px;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.edge-settings__chips button {
+  padding: 3px 7px;
+  font-size: 12px;
+}
+.edge-settings__ng form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+@media (max-width: 900px) {
+  .edge-compat-story {
+    grid-template-columns: 1fr;
+  }
+  .edge-settings {
+    min-height: auto;
+    border-top: 1px solid #364154;
+    border-left: 0;
+  }
+  .edge-settings__body {
+    max-height: none;
+  }
+}
+
 /* ChLensのレス行レイアウトをLiveの表示領域へ適用する。取得処理はLive側に残す。 */
 .live-thread-view {
   min-height: 100%;

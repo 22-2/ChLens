@@ -40,6 +40,12 @@ export interface OverlayStageProps {
   backlogPolicy?: CommentBacklogPolicy;
   maxActiveCount?: number;
   fontSize?: number;
+  fontFamily?: string;
+  fontWeight?: number;
+  fontColor?: string;
+  shadowSize?: number;
+  shadowColor?: string;
+  shadowDirections?: readonly ("top-left" | "top-right" | "bottom-left" | "bottom-right")[];
   commentOpacity?: number;
   backgroundColor?: string;
   playing?: boolean;
@@ -76,6 +82,12 @@ export function OverlayStage({
   backlogPolicy = DEFAULT_COMMENT_BACKLOG_POLICY,
   maxActiveCount = DEFAULT_MAX_ACTIVE_COUNT,
   fontSize = DEFAULT_FONT_SIZE,
+  fontFamily = '"Segoe UI", sans-serif',
+  fontWeight = 600,
+  fontColor = "#f4f7fb",
+  shadowSize = 1,
+  shadowColor = "#07101d",
+  shadowDirections = ["top-left", "top-right", "bottom-left", "bottom-right"],
   commentOpacity = DEFAULT_COMMENT_OPACITY,
   backgroundColor = "#172235",
   playing = true,
@@ -257,7 +269,20 @@ export function OverlayStage({
     width: fitToContainer ? "100%" : `${stageWidth}px`,
     height: fitToContainer ? "100%" : `${stageHeight}px`,
     backgroundColor,
+    color: fontColor,
+    fontFamily,
   };
+  const shadowOffsets = {
+    "top-left": `-${shadowSize}px -${shadowSize}px 0 ${shadowColor}`,
+    "top-right": `${shadowSize}px -${shadowSize}px 0 ${shadowColor}`,
+    "bottom-left": `-${shadowSize}px ${shadowSize}px 0 ${shadowColor}`,
+    "bottom-right": `${shadowSize}px ${shadowSize}px 0 ${shadowColor}`,
+  } as const;
+  // 変更理由: EdgeLiveViewerでは影の向きを個別指定できるため、選ばれた方向だけをCSSへ渡す。
+  const textShadow =
+    shadowSize > 0
+      ? shadowDirections.map((direction) => shadowOffsets[direction]).join(", ")
+      : "none";
   const stageClassName = [
     "comment-overlay-stage",
     interactive ? "comment-overlay-stage--interactive" : null,
@@ -301,6 +326,8 @@ export function OverlayStage({
           top: `${effectiveTopPadding + scheduledComment.laneIndex * laneHeight}px`,
           left: `${scheduledComment.stageWidth}px`,
           fontSize: `${fontSize}px`,
+          fontWeight,
+          textShadow,
           opacity: commentOpacity,
           animationDuration: `${scheduledComment.duration}s`,
           animationPlayState:
