@@ -1,16 +1,26 @@
 import "@testing-library/jest-dom/vitest";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { container } from "src/service-container";
 import { BookmarkListPage } from "src/view/browser/pages/BookmarkListPage";
 import { QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE } from "src/view/browser/utils/filter-toolbar-events";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mockUseTabStore = vi.fn();
+const { copyTextMock, dispatchMock, removeBookmarkMock } = vi.hoisted(() => ({
+  copyTextMock: vi.fn<() => Promise<void>>(),
+  dispatchMock: vi.fn(),
+  removeBookmarkMock: vi.fn<(url: string) => Promise<boolean>>(),
+}));
+
+vi.mock("src/view/browser/utils/clipboard", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("src/view/browser/utils/clipboard")>();
+  return { ...actual, copyText: copyTextMock };
+});
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => mockUseTabStore(),
   // useTabDispatch は dispatch のみを返す安定した関数。ページのフル状態購読回避後もdispatchが使える。
-  useTabDispatch: () => vi.fn(),
+  useTabDispatch: () => dispatchMock,
   useTabViewState: () => ({ state: {}, update: vi.fn() }),
 }));
 
@@ -27,6 +37,11 @@ describe("BookmarkListPage", () => {
   beforeEach(() => {
     mockUseTabStore.mockReset();
     getAllBookmarks.mockReset();
+    copyTextMock.mockReset();
+    copyTextMock.mockResolvedValue();
+    dispatchMock.mockReset();
+    removeBookmarkMock.mockReset();
+    removeBookmarkMock.mockResolvedValue(true);
     bookmarkUpdatedHandler = null;
 
     mockUseTabStore.mockReturnValue({
@@ -67,10 +82,89 @@ describe("BookmarkListPage", () => {
       getAll: () => ({}),
       ready: (callback: () => void) => callback(),
     };
+    container.bookmark = {
+      get: vi.fn(),
+      add: vi.fn(),
+      remove: removeBookmarkMock,
+      updateResCount: vi.fn(),
+      updateExpired: vi.fn(),
+      getByBoard: vi.fn(),
+    };
   });
 
   afterEach(() => {
     cleanup();
+  });
+
+  it("お気に入り行の右クリックメニューから現在タブと新しいタブで開ける", async () => {
+    const url = "https://egg.5ch.io/test/read.cgi/software/1/";
+    getAllBookmarks.mockReturnValue([{ url, title: "Current Thread" }]);
+
+    render(<BookmarkListPage tabId="tab-1" isActive={true} />);
+
+    const titleCell = await screen.findByText("Current Thread");
+    const row = titleCell.closest("tr");
+    expect(row).not.toBeNull();
+
+    fireEvent.contextMenu(row!);
+    fireEvent.click(screen.getByRole("button", { name: "現在のタブで開く" }));
+
+    expect(dispatchMock).toHaveBeenLastCalledWith({
+      type: "NAVIGATE",
+      page: {
+        type: "thread",
+        title: "Current Thread",
+        threadUrl: url,
+      },
+    });
+
+    fireEvent.contextMenu(row!);
+    fireEvent.click(screen.getByRole("button", { name: "新しいタブで開く" }));
+
+    expect(dispatchMock).toHaveBeenLastCalledWith({
+      type: "OPEN_IN_NEW_TAB",
+      page: {
+        type: "thread",
+        title: "Current Thread",
+        threadUrl: url,
+      },
+    });
+  });
+
+  it("お気に入り行の右クリックメニューから対象を削除できる", async () => {
+    const url = "https://egg.5ch.io/test/read.cgi/software/1/";
+    getAllBookmarks.mockReturnValue([{ url, title: "Current Thread" }]);
+
+    render(<BookmarkListPage tabId="tab-1" isActive={true} />);
+
+    const titleCell = await screen.findByText("Current Thread");
+    const row = titleCell.closest("tr");
+    expect(row).not.toBeNull();
+
+    fireEvent.contextMenu(row!);
+    fireEvent.click(screen.getByRole("button", { name: "ブックマークを削除" }));
+
+    await waitFor(() => expect(removeBookmarkMock).toHaveBeenCalledWith(url));
+    await waitFor(() => expect(screen.queryByText("Current Thread")).not.toBeInTheDocument());
+  });
+
+  it("お気に入り行の右クリックメニューからタイトルとURLをコピーできる", async () => {
+    const url = "https://egg.5ch.io/test/read.cgi/software/1/";
+    getAllBookmarks.mockReturnValue([{ url, title: "Current Thread" }]);
+
+    render(<BookmarkListPage tabId="tab-1" isActive={true} />);
+
+    const titleCell = await screen.findByText("Current Thread");
+    const row = titleCell.closest("tr");
+    expect(row).not.toBeNull();
+
+    fireEvent.contextMenu(row!);
+    fireEvent.click(screen.getByRole("button", { name: "タイトル&URLをコピー" }));
+    expect(copyTextMock).toHaveBeenLastCalledWith(`Current Thread\n${url}`);
+
+    fireEvent.contextMenu(row!);
+    fireEvent.click(screen.getByRole("button", { name: "タイトル&URLをMarkdownでコピー" }));
+    expect(copyTextMock).toHaveBeenLastCalledWith(`[Current Thread](${url})`);
   });
 
   it("スレと板の両方のブックマークを一覧表示する", async () => {
