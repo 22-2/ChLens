@@ -524,6 +524,7 @@ export function ResMediaGallery({
           const isExpanded =
             expandedMediaItem?.type === "embed" &&
             expandedMediaItem.embed.rawUrl === item.embed.rawUrl;
+          const isTwitterPost = item.embed.provider === "twitter";
           const shouldOpenExternally =
             item.embed.provider === "youtube" &&
             shouldOpenYouTubeExternally(item.embed, pageOrigin);
@@ -531,7 +532,7 @@ export function ResMediaGallery({
             <button
               key={`video:${item.embed.rawUrl}`}
               type="button"
-              className={`res__thumb res__thumb--video${isBlurred ? " res__thumb--blurred" : ""}`}
+              className={`res__thumb ${isTwitterPost ? "res__thumb--post" : "res__thumb--video"}${isBlurred ? " res__thumb--blurred" : ""}`}
               style={thumbStyle}
               aria-pressed={shouldOpenExternally ? undefined : isExpanded}
               aria-label={`${item.embed.providerLabel} を${shouldOpenExternally ? "新しいタブで開く" : isExpanded ? "閉じる" : "展開する"}`}
@@ -568,11 +569,24 @@ export function ResMediaGallery({
                 )
               }
             >
-              <VideoThumbImage embed={item.embed} />
-              <span className="res__thumb-badge">{item.embed.providerLabel}</span>
-              <span className="res__thumb-play" aria-hidden="true">
-                ▶
-              </span>
+              {isTwitterPost ? (
+                <>
+                  {/* 投稿URLを動画と誤認しないよう、再生記号を使わず文書型の見た目に分ける。 */}
+                  <span className="res__thumb-post-card" aria-hidden="true">
+                    <span className="res__thumb-post-logo">𝕏</span>
+                    <span className="res__thumb-post-action">投稿を表示</span>
+                  </span>
+                  <span className="res__thumb-badge res__thumb-badge--post">X POST</span>
+                </>
+              ) : (
+                <>
+                  <VideoThumbImage embed={item.embed} />
+                  <span className="res__thumb-badge">{item.embed.providerLabel}</span>
+                  <span className="res__thumb-play" aria-hidden="true">
+                    ▶
+                  </span>
+                </>
+              )}
             </button>
           );
         })}

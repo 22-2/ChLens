@@ -73,7 +73,12 @@ describe("ResMediaGallery", () => {
     try {
       const { container } = render(<ResMediaGallery urls={[rawUrl]} onUrlClick={() => {}} />);
 
-      fireEvent.click(screen.getByRole("button", { name: "FxTwitter を展開する" }));
+      const postButton = screen.getByRole("button", { name: "FxTwitter を展開する" });
+      expect(postButton).toHaveClass("res__thumb--post");
+      expect(postButton.querySelector(".res__thumb-play")).toBeNull();
+      expect(screen.getByText("投稿を表示")).toBeInTheDocument();
+
+      fireEvent.click(postButton);
 
       await waitFor(() => expect(screen.getByText("投稿本文")).toBeInTheDocument());
       expect(container.querySelector(".res__twitter-post")).toBeInTheDocument();
