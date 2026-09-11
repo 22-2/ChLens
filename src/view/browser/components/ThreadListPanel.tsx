@@ -1,4 +1,15 @@
-import { Ban, Bookmark, BookmarkX, Check, RefreshCw, Search } from "lucide-react";
+import {
+  Ban,
+  Bookmark,
+  BookmarkX,
+  Check,
+  Clipboard,
+  Copy,
+  ExternalLink,
+  RefreshCw,
+  Search,
+  Type,
+} from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { stringifyNgDslValue } from "src/core/ngDsl";
 import { container } from "src/service-container/index";
@@ -24,6 +35,10 @@ import {
   type ThreadListSortPreference,
   writeThreadListSortPreference,
 } from "src/view/browser/components/thread-list-shared";
+import {
+  readBookmarkStatus,
+  useBookmarkRevision,
+} from "src/view/browser/hooks/use-bookmark-revision";
 import {
   THREAD_LIST_AUTO_REFRESH_INTERVALS_SEC,
   useBottomPanel,
@@ -143,6 +158,7 @@ function refreshThreadNgState(thread: IThread, boardUrl: string): IThread {
 export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) => {
   const { activeTab, currentPage, dispatch } = useTabStore();
   const { isNgTemporarilyDisabled, setThreadListStats } = useNgStatus();
+  const bookmarkRevision = useBookmarkRevision();
   const theme = useTheme();
   const {
     threadListAutoRefreshEnabled,
@@ -357,10 +373,14 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
 
   const { column: sortColumn, direction: sortDirection } = sortPreference;
   const displayThreads = useMemo(() => {
+    // 変更理由: ブックマークは一覧取得とは別に更新されるため、revision を明示的に
+    // 参照して、このメモ化結果だけを再計算すれば星表示を同期できるようにする。
+    void bookmarkRevision;
     const now = Date.now();
     const list = threads.map((thread, index) => ({
       thread,
       originalIndex: index + 1,
+      isBookmarked: readBookmarkStatus(thread.url),
       unreadCount: Math.max(
         Math.max(thread.resCount, thread.readState?.received ?? 0) - (thread.readState?.read ?? 0),
         0,
@@ -401,7 +421,7 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
       });
     }
     return list;
-  }, [searchQuery, sortColumn, sortDirection, threads]);
+  }, [bookmarkRevision, searchQuery, sortColumn, sortDirection, threads]);
 
   const visibleDisplayThreads = useMemo(
     () => displayThreads.filter(({ thread }) => thread.ng == null || isNgTemporarilyDisabled),
@@ -533,13 +553,20 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
   const contextMenuItems = useMemo<ContextMenuItem[]>(() => {
     if (!contextMenuState) return [];
     const { thread } = contextMenuState;
-    const isBookmarked = container.bookmark?.get(thread.url);
+    const isBookmarked = readBookmarkStatus(thread.url);
+    // 変更理由: 項目ごとに操作種別のアイコンを固定し、長い日本語ラベルでも
+    // メニューを開いた直後にNG・ブックマーク・コピーを見分けられるようにする。
     return [
-      { id: "ng-title", label: "スレタイをNG登録", onSelect: () => openNgDialog(thread) },
+      {
+        id: "ng-title",
+        label: "スレタイをNG登録",
+        icon: <Ban size={14} />,
+        onSelect: () => openNgDialog(thread),
+      },
       {
         id: "bookmark",
         label: isBookmarked ? "ブックマークを削除" : "ブックマークに追加",
-        icon: isBookmarked ? <BookmarkX /> : <Bookmark />,
+        icon: isBookmarked ? <BookmarkX size={14} /> : <Bookmark size={14} />,
         onSelect: () => {
           try {
             if (isBookmarked) {
@@ -552,16 +579,28 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
           }
         },
       },
-      { id: "copy-title", label: "スレタイをコピー", onSelect: () => void copyText(thread.title) },
-      { id: "copy-url", label: "URLをコピー", onSelect: () => void copyText(thread.url) },
+      {
+        id: "copy-title",
+        label: "スレタイをコピー",
+        icon: <Type size={14} />,
+        onSelect: () => void copyText(thread.title),
+      },
+      {
+        id: "copy-url",
+        label: "URLをコピー",
+        icon: <ExternalLink size={14} />,
+        onSelect: () => void copyText(thread.url),
+      },
       {
         id: "copy-title-url",
         label: "スレタイ&URLをコピー",
+        icon: <Copy size={14} />,
         onSelect: () => void copyText(`${thread.title}\n${thread.url}`),
       },
       {
         id: "copy-title-url-markdown",
         label: "スレタイ&URLをMarkdownでコピー",
+        icon: <Clipboard size={14} />,
         onSelect: () => void copyText(formatMarkdownLink(thread.title, thread.url)),
       },
     ];

@@ -51,6 +51,7 @@
   --ref-color-x-badge-blue: #1d9bf0;
   --ref-color-x-badge-gold: #d9a900;
   --ref-color-x-badge-gray: #82909d;
+  --ref-color-bookmark-yellow: #f5c518;
 
   /* Reference palette: dark theme. Semantic tokens select these in themes.css. */
   --ref-color-dark-neutral-0: #202124;
@@ -73,6 +74,7 @@
   --ref-color-dark-green-700: #81c995;
   --ref-color-dark-orange-700: #fba94c;
   --ref-color-dark-red-600: #f28b82;
+  --ref-color-dark-bookmark-yellow: #fdd663;
 
   /* Reference effects and typography. */
   --ref-color-alpha-black-05: rgb(0 0 0 / 5%);

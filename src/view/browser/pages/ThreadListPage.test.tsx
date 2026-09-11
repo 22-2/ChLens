@@ -3,7 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
 import { container as serviceContainer } from "src/service-container/index";
-import type { IBoardService, IThread } from "src/service-container/interfaces";
+import type { IBoardService, IBookmark, IThread } from "src/service-container/interfaces";
 import { ThreadListPage } from "src/view/browser/pages/ThreadListPage";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -27,6 +27,9 @@ const { focusedPaneIdRef, panesRef } = vi.hoisted(() => ({
 const { cacheGetMock, cachePutMock } = vi.hoisted(() => ({
   cacheGetMock: vi.fn(),
   cachePutMock: vi.fn(),
+}));
+const { bookmarkGetMock } = vi.hoisted(() => ({
+  bookmarkGetMock: vi.fn(),
 }));
 
 vi.mock("src/view/browser/components/thread-list-shared", async (importOriginal) => {
@@ -180,6 +183,16 @@ describe("ThreadListPage", () => {
       getThreads: getThreadsMock,
       getCachedResCount: vi.fn(),
     } as unknown as IBoardService;
+    bookmarkGetMock.mockReset();
+    bookmarkGetMock.mockReturnValue(undefined);
+    serviceContainer.bookmark = {
+      get: bookmarkGetMock,
+      add: vi.fn(),
+      remove: vi.fn(),
+      updateResCount: vi.fn(),
+      updateExpired: vi.fn(),
+      getByBoard: vi.fn(() => []),
+    } as unknown as IBookmark;
     serviceContainer.util = {
       isNewerReadState: (a: unknown, b: unknown) =>
         (b as { received?: number }).received !== (a as { received?: number }).received,
@@ -675,6 +688,49 @@ describe("ThreadListPage", () => {
 
     await waitFor(() => {
       expect(getRenderedThreadTitles()).toEqual(["C Thread", "B Thread", "A Thread"]);
+    });
+  });
+
+  it("ブックマーク済みスレに星を表示し、右クリック項目にアイコンを付ける", async () => {
+    vi.useRealTimers();
+    bookmarkGetMock.mockImplementation((url: string) =>
+      url === THREADS[0].url ? { url, title: THREADS[0].title, type: "thread" } : undefined,
+    );
+
+    render(
+      <ThreadListPage
+        tabId="tab-1"
+        page={{
+          type: "threadList",
+          title: "Software",
+          boardUrl: "https://egg.5ch.net/software/",
+          boardTitle: "Software",
+        }}
+        refreshKey={0}
+        isActive={true}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(document.querySelectorAll(".thread-list__bookmark-star")).toHaveLength(1);
+    });
+
+    bookmarkGetMock.mockReturnValue(undefined);
+    for (const handler of messageListeners.get("bookmark_updated") ?? []) {
+      handler({} as never);
+    }
+    await waitFor(() => {
+      expect(document.querySelectorAll(".thread-list__bookmark-star")).toHaveLength(0);
+    });
+
+    const firstRow = document.querySelector(".simple-data-table__row");
+    expect(firstRow).not.toBeNull();
+    fireEvent.contextMenu(firstRow as HTMLElement, { clientX: 20, clientY: 20 });
+
+    await waitFor(() => {
+      const menu = document.querySelector(".context-menu");
+      expect(menu).not.toBeNull();
+      expect(menu?.querySelectorAll(".context-menu__item .context-menu__icon")).toHaveLength(6);
     });
   });
 

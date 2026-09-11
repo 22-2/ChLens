@@ -1,3 +1,4 @@
+import { Star } from "lucide-react";
 import { ChURL } from "packages/ch-lib/src/url/ChURL";
 import React from "react";
 import { getStore2String, setStore2String } from "src/app/Store2Storage";
@@ -205,6 +206,7 @@ export type DisplayThread = {
   originalIndex: number;
   unreadCount: number;
   heat: number;
+  isBookmarked: boolean;
 };
 
 export const THREAD_LIST_COLUMNS: ColumnDef<DisplayThread>[] = [
@@ -222,13 +224,21 @@ export const THREAD_LIST_COLUMNS: ColumnDef<DisplayThread>[] = [
     headerClassName: "thread-list__th--title",
     cellClassName: "thread-list__title",
     sortable: true,
-    cell: ({ thread }) => {
+    cell: ({ thread, isBookmarked }) => {
       const label = thread.highlight?.params?.label;
       return (
-        <>
-          {thread.title}
+        <span className="thread-list__title-content">
+          {isBookmarked ? (
+            <Star
+              className="thread-list__bookmark-star"
+              size={14}
+              fill="currentColor"
+              aria-label="ブックマーク済み"
+            />
+          ) : null}
+          <span className="thread-list__title-text">{thread.title}</span>
           {label && <span className="thread-list__label">{label}</span>}
-        </>
+        </span>
       );
     },
   },

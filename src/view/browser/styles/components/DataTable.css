@@ -56,6 +56,26 @@
   white-space: nowrap;
 }
 
+.thread-list__title-content {
+  /* 変更理由: ブックマーク星を追加してもタイトル列を常に一行に保ち、本文の省略位置を安定させる。 */
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--sys-space-2);
+}
+
+.thread-list__title-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thread-list__bookmark-star {
+  flex: 0 0 auto;
+  color: var(--sys-color-bookmark-star);
+}
+
 .simple-data-table__count,
 .thread-list__count {
   width: 60px;
@@ -296,6 +316,11 @@
   color: inherit;
   font-size: 11px;
   font-weight: 600;
+}
+
+.thread-list__title-content .thread-list__label {
+  flex: 0 0 auto;
+  margin-left: 0;
 }
 
 .simple-data-table__row--highlight .simple-data-table__label,

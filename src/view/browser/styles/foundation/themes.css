@@ -58,6 +58,8 @@
   --sys-color-x-badge-blue: var(--ref-color-x-badge-blue);
   --sys-color-x-badge-gold: var(--ref-color-x-badge-gold);
   --sys-color-x-badge-gray: var(--ref-color-x-badge-gray);
+  /* ブックマークの印は警告色と区別し、テーマが変わっても黄色で認識できるようにする。 */
+  --sys-color-bookmark-star: var(--ref-color-bookmark-yellow);
   --sys-shadow-media-embed: var(--ref-shadow-media-embed);
   --sys-color-res-num: var(--ref-color-blue-900);
   --sys-color-res-heat-warm: var(--ref-color-orange-700);
@@ -127,6 +129,7 @@
   --sys-color-warning-surface: var(--ref-color-dark-yellow-100);
   --sys-color-warning-border: var(--ref-color-dark-yellow-300);
   --sys-color-warning-fg: var(--ref-color-dark-yellow-600);
+  --sys-color-bookmark-star: var(--ref-color-dark-bookmark-yellow);
   --sys-color-media-viewer-scrim: var(--ref-color-alpha-black-76);
   --sys-color-media-surface: var(--ref-color-media-surface);
   --sys-color-media-border: var(--ref-color-alpha-white-20);
