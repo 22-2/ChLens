@@ -4,6 +4,7 @@ import {
   shouldOpenYouTubeExternally,
   toInlineVideoEmbed,
   toRuntimeVideoEmbedUrl,
+  toTwitterPostEmbed,
 } from "src/view/browser/utils/external-media";
 import { describe, expect, it } from "vite-plus/test";
 
@@ -54,5 +55,22 @@ describe("external media", () => {
 
     expect(isDirectVideoUrl(rawUrl)).toBe(true);
     expect(getDirectVideoLabel(rawUrl)).toBe("Twitter Video");
+  });
+
+  it("Twitter/X投稿URLをFxTwitter API向けのメディア項目へ変換する", () => {
+    const media = toTwitterPostEmbed("https://x.com/example/status/1234567890123456789?ref=share");
+
+    expect(media).toMatchObject({
+      provider: "twitter",
+      postId: "1234567890123456789",
+      apiUrl: "https://api.fxtwitter.com/2/status/1234567890123456789",
+      externalUrl: "https://x.com/example/status/1234567890123456789?ref=share",
+    });
+  });
+
+  it("Twitter/Xの投稿以外と不正な投稿IDは埋め込み対象にしない", () => {
+    expect(toTwitterPostEmbed("https://x.com/example")).toBeNull();
+    expect(toTwitterPostEmbed("https://example.com/user/status/123456789")).toBeNull();
+    expect(toTwitterPostEmbed("https://twitter.com/example/status/not-a-number")).toBeNull();
   });
 });

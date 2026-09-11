@@ -1,0 +1,257 @@
+import { createLogger } from "src/core/logger";
+import { toTwitterPostEmbed, type TwitterPostEmbed } from "src/view/browser/utils/external-media";
+
+export const FXTWITTER_API_REQUEST_TIMEOUT_MS = 8_000;
+
+interface UnknownRecord {
+  [key: string]: unknown;
+}
+
+export interface TwitterPostImage {
+  type: "image";
+  url: string;
+  altText: string | null;
+}
+
+export interface TwitterPostVideo {
+  type: "video";
+  url: string;
+  posterUrl: string | null;
+  isGif: boolean;
+}
+
+export type TwitterPostMedia = TwitterPostImage | TwitterPostVideo;
+
+export interface TwitterPost {
+  id: string;
+  url: string;
+  text: string;
+  author: {
+    name: string;
+    screenName: string;
+    avatarUrl: string | null;
+  };
+  media: readonly TwitterPostMedia[];
+}
+
+export interface TwitterPostHttpResponse {
+  status: number;
+  body: string;
+}
+
+export interface TwitterPostResolverOptions {
+  fetch?: (url: string, headers: Record<string, string>) => Promise<TwitterPostHttpResponse>;
+  timeoutMs?: number;
+  logError?: (message: string, error?: unknown) => void;
+}
+
+const logger = createLogger("TwitterPostResolver");
+
+function asRecord(value: unknown): UnknownRecord | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as UnknownRecord)
+    : null;
+}
+
+function getString(record: UnknownRecord, key: string): string | null {
+  const value = record[key];
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+function getArray(record: UnknownRecord, key: string): unknown[] {
+  const value = record[key];
+  return Array.isArray(value) ? value : [];
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`FxTwitter APIが${timeoutMs}ms以内に応答しませんでした`)),
+      timeoutMs,
+    );
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer !== undefined) clearTimeout(timer);
+  });
+}
+
+function chooseVideoUrl(media: UnknownRecord): string | null {
+  const directUrl = getString(media, "url") ?? getString(media, "transcode_url");
+  if (directUrl) return directUrl;
+
+  const formats = getArray(media, "formats")
+    .map(asRecord)
+    .filter((format): format is UnknownRecord => format != null)
+    .filter((format) => getString(format, "container") === "mp4")
+    .map((format) => ({
+      url: getString(format, "url"),
+      bitrate: typeof format.bitrate === "number" ? format.bitrate : 0,
+    }))
+    .filter((format): format is { url: string; bitrate: number } => format.url != null)
+    .sort((left, right) => right.bitrate - left.bitrate);
+
+  return formats[0]?.url ?? null;
+}
+
+function parseMediaItem(value: unknown): TwitterPostMedia | null {
+  const media = asRecord(value);
+  if (!media) return null;
+
+  const type = getString(media, "type");
+  if (type === "photo") {
+    const url = getString(media, "url");
+    return url
+      ? {
+          type: "image",
+          url,
+          altText: getString(media, "altText"),
+        }
+      : null;
+  }
+
+  if (type === "video" || type === "gif") {
+    const url = chooseVideoUrl(media);
+    return url
+      ? {
+          type: "video",
+          url,
+          posterUrl: getString(media, "thumbnail_url"),
+          isGif: type === "gif",
+        }
+      : null;
+  }
+
+  return null;
+}
+
+function parseMedia(status: UnknownRecord): readonly TwitterPostMedia[] {
+  const media = asRecord(status.media);
+  if (!media) return [];
+
+  const all = getArray(media, "all");
+  const values =
+    all.length > 0 ? all : [...getArray(media, "photos"), ...getArray(media, "videos")];
+  return values.flatMap((value) => {
+    const parsed = parseMediaItem(value);
+    return parsed ? [parsed] : [];
+  });
+}
+
+export function parseTwitterPostResponse(
+  body: string,
+  fallbackUrl: string,
+  expectedPostId: string,
+): TwitterPost {
+  let payload: UnknownRecord;
+  try {
+    const parsed: unknown = JSON.parse(body);
+    const record = asRecord(parsed);
+    if (!record) throw new Error("FxTwitter APIの応答がオブジェクトではありません");
+    payload = record;
+  } catch (error) {
+    throw new Error("FxTwitter APIが不正なJSONを返しました", { cause: error });
+  }
+
+  const code = typeof payload.code === "number" ? payload.code : null;
+  if (code != null && (code < 200 || code >= 300)) {
+    throw new Error(`FxTwitter APIが投稿を取得できませんでした（code: ${code}）`);
+  }
+
+  const status = asRecord(payload.status);
+  if (!status) {
+    throw new Error("FxTwitter APIの応答に投稿がありません");
+  }
+  if (getString(status, "type") !== "status") {
+    const message = getString(status, "message") ?? "投稿が削除または非公開です";
+    throw new Error(`FxTwitter APIの投稿を表示できません: ${message}`);
+  }
+
+  const id = getString(status, "id");
+  if (id !== expectedPostId) {
+    throw new Error("FxTwitter APIの投稿IDが要求と一致しません");
+  }
+
+  const author = asRecord(status.author);
+  return {
+    id,
+    url: getString(status, "url") ?? fallbackUrl,
+    text: getString(status, "text") ?? "",
+    author: {
+      name: author ? (getString(author, "name") ?? "Twitter/X") : "Twitter/X",
+      screenName: author ? (getString(author, "screen_name") ?? "") : "",
+      avatarUrl: author ? getString(author, "avatar_url") : null,
+    },
+    media: parseMedia(status),
+  };
+}
+
+function getDefaultFetch(): (
+  url: string,
+  headers: Record<string, string>,
+) => Promise<TwitterPostHttpResponse> {
+  return async (url, headers) => {
+    // ブラウザのCORS制約とTauriのWebView制約を同じAPIで越えるため、通信はplatformへ委譲する。
+    const { platform } = await import("src/app/platform");
+    const response = await platform.http.fetch(url, {
+      headers,
+      timeout: FXTWITTER_API_REQUEST_TIMEOUT_MS,
+    });
+    return { status: response.status, body: response.body };
+  };
+}
+
+export class TwitterPostResolver {
+  private readonly fetcher: NonNullable<TwitterPostResolverOptions["fetch"]>;
+  private readonly timeoutMs: number;
+  private readonly logError: NonNullable<TwitterPostResolverOptions["logError"]>;
+  private readonly cache = new Map<string, TwitterPost>();
+  private readonly inFlight = new Map<string, Promise<TwitterPost | null>>();
+
+  constructor(options: TwitterPostResolverOptions = {}) {
+    this.fetcher = options.fetch ?? getDefaultFetch();
+    this.timeoutMs = options.timeoutMs ?? FXTWITTER_API_REQUEST_TIMEOUT_MS;
+    this.logError = options.logError ?? ((message, error) => logger.error(message, { error }));
+  }
+
+  async resolve(rawUrl: string): Promise<TwitterPost | null> {
+    const embed = toTwitterPostEmbed(rawUrl);
+    if (!embed) return null;
+
+    const cached = this.cache.get(embed.apiUrl);
+    if (cached) return cached;
+
+    const current = this.inFlight.get(embed.apiUrl);
+    if (current) return current;
+
+    const request = this.fetchPost(embed);
+    this.inFlight.set(embed.apiUrl, request);
+    try {
+      return await request;
+    } finally {
+      this.inFlight.delete(embed.apiUrl);
+    }
+  }
+
+  private async fetchPost(embed: TwitterPostEmbed): Promise<TwitterPost | null> {
+    try {
+      const response = await withTimeout(
+        this.fetcher(embed.apiUrl, { Accept: "application/json" }),
+        this.timeoutMs,
+      );
+      if (response.status < 200 || response.status >= 300) {
+        throw new Error(`FxTwitter APIがHTTP ${response.status}を返しました`);
+      }
+
+      const post = parseTwitterPostResponse(response.body, embed.externalUrl, embed.postId);
+      this.cache.set(embed.apiUrl, post);
+      return post;
+    } catch (error) {
+      // 本文や認証情報はログへ出さず、投稿IDと原因だけを記録して元URLへのフォールバックを残す。
+      this.logError(`[TwitterPostResolver] 投稿取得に失敗しました: ${embed.postId}`, error);
+      return null;
+    }
+  }
+}
+
+export const twitterPostResolver = new TwitterPostResolver();
