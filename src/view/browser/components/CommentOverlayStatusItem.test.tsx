@@ -23,7 +23,6 @@ const mocks = vi.hoisted(() => ({
     error: null as string | null,
   },
   controller: {
-    getSnapshot: vi.fn(),
     start: vi.fn().mockResolvedValue(undefined),
     stop: vi.fn().mockResolvedValue(undefined),
     setVisible: vi.fn().mockResolvedValue(undefined),
@@ -74,8 +73,6 @@ describe("CommentOverlayStatusItem", () => {
       error: null,
     };
     mocks.controller.start.mockClear();
-    mocks.controller.getSnapshot.mockClear();
-    mocks.controller.getSnapshot.mockImplementation(() => mocks.snapshot);
     mocks.controller.stop.mockClear();
     mocks.controller.setVisible.mockClear();
   });
@@ -89,7 +86,7 @@ describe("CommentOverlayStatusItem", () => {
 
     renderItem();
 
-    expect(screen.queryByRole("button", { name: /コメント実況/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /コメントOverlay制御/ })).toBeNull();
   });
 
   it("スレッド以外では実況操作を表示しない", () => {
@@ -97,41 +94,38 @@ describe("CommentOverlayStatusItem", () => {
 
     renderItem();
 
-    expect(screen.queryByRole("button", { name: /コメント実況/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /コメントOverlay制御/ })).toBeNull();
   });
 
-  it("スレッドでは自動更新と連動する実況状態を表示する", () => {
+  it("スレッドでは単一ボタンからコメント表示を開始する", () => {
     renderItem();
 
     fireEvent.click(screen.getByRole("button", { name: /コメントOverlay制御/ }));
+    fireEvent.click(screen.getByRole("button", { name: "コメントを画面に流す: OFF" }));
 
-    expect(screen.getByLabelText("コメント実況: OFF")).toBeInTheDocument();
-    expect(screen.getByText("スレッド自動更新と連動して新着レスを流します")).toBeInTheDocument();
-    expect(mocks.controller.start).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "コメントOverlayを表示" })).toBeDisabled();
+    expect(mocks.controller.start).toHaveBeenCalledWith(THREAD_URL);
   });
 
-  it("実況中は停止とOverlay表示切り替えを同じステータスバーへ表示する", () => {
+  it("コメント表示中は同じボタンから実況とOverlayをまとめて停止する", () => {
     mocks.snapshot = {
       state: {
         status: "running",
         targetThreadUrl: THREAD_URL,
         cursor: { threadUrl: THREAD_URL, lastResponseNumber: 3 },
       },
-      visible: false,
+      visible: true,
       error: null,
     };
 
     renderItem();
 
     fireEvent.click(screen.getByRole("button", { name: /コメントOverlay制御/ }));
-    fireEvent.click(screen.getByRole("button", { name: "コメントOverlayを表示" }));
+    fireEvent.click(screen.getByRole("button", { name: "コメントを画面に流す: ON" }));
 
-    expect(screen.getByLabelText("コメント実況: ON")).toBeInTheDocument();
-    expect(mocks.controller.setVisible).toHaveBeenCalledWith(true);
+    expect(mocks.controller.stop).toHaveBeenCalledTimes(1);
   });
 
-  it("表示中スレッドを離れると実況を停止する", () => {
+  it("スレッドを離れても表示中の実況を停止しない", () => {
     mocks.currentPage = { type: "home", title: "ホーム" };
     mocks.snapshot = {
       state: {
@@ -145,7 +139,8 @@ describe("CommentOverlayStatusItem", () => {
 
     renderItem();
 
-    expect(mocks.controller.stop).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: /コメントOverlay制御/ })).toBeInTheDocument();
+    expect(mocks.controller.stop).not.toHaveBeenCalled();
   });
 
   it("送信エラーがあると実況エラーをステータスバーへ表示する", () => {
@@ -174,7 +169,7 @@ describe("CommentOverlayStatusItem", () => {
     fireEvent.click(screen.getByRole("button", { name: /コメントOverlay制御/ }));
 
     expect(screen.getByText("コメントOverlay")).toBeInTheDocument();
-    expect(screen.getByText("コメント実況")).toBeInTheDocument();
-    expect(screen.getByText("Overlay表示")).toBeInTheDocument();
+    expect(screen.getByText("コメントを画面に流す")).toBeInTheDocument();
+    expect(screen.queryByText("Overlay表示")).toBeNull();
   });
 });
