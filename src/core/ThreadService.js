@@ -62,22 +62,22 @@ class ThreadServiceImpl {
       started: false,
       forceUpdate: options.forceUpdate === true,
       callbacks: new Set(options.onCache ? [options.onCache] : []),
-      promise: /** @type {Promise<IThreadDetail>} */ (null),
+      // 同じReact effect処理内の要求をmicrotaskまで集め、後から来たforceUpdateも
+      // 最初の通信へ反映して、呼び出し順により二重取得へ戻らないようにする。
+      // 変更理由: nullを一時値としてPromise型へキャストすると、型契約と実値が矛盾する。
+      // Promiseのコールバックはmicrotaskで実行されるため、生成時から完全なPromiseを保持できる。
+      promise: Promise.resolve()
+        .then(async () => {
+          request.started = true;
+          return await this._fetchThread(url, request);
+        })
+        .finally(() => {
+          // 開始済みの通常取得と後発の強制取得が並行した場合、後発の管理情報を消さない。
+          if (this.pendingRequests.get(url) === request) {
+            this.pendingRequests.delete(url);
+          }
+        }),
     };
-
-    // 同じReact effect処理内の要求をmicrotaskまで集め、後から来たforceUpdateも
-    // 最初の通信へ反映して、呼び出し順により二重取得へ戻らないようにする。
-    request.promise = Promise.resolve()
-      .then(async () => {
-        request.started = true;
-        return await this._fetchThread(url, request);
-      })
-      .finally(() => {
-        // 開始済みの通常取得と後発の強制取得が並行した場合、後発の管理情報を消さない。
-        if (this.pendingRequests.get(url) === request) {
-          this.pendingRequests.delete(url);
-        }
-      });
     this.pendingRequests.set(url, request);
     return request.promise;
   }
