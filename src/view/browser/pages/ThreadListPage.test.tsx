@@ -28,17 +28,16 @@ const { cacheGetMock, cachePutMock } = vi.hoisted(() => ({
   cachePutMock: vi.fn(),
 }));
 
-vi.mock("src/app", () => ({
-  platform: {
-    storage: {
-      // UIキャッシュの検証はページ表示の責務と分け、拡張機能APIを読まずに単体テストできるようにする。
-      getStore: () => ({
-        get: cacheGetMock,
-        put: cachePutMock,
-      }),
-    },
-  },
-}));
+vi.mock("src/view/browser/components/thread-list-shared", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("src/view/browser/components/thread-list-shared")>();
+  return {
+    ...actual,
+    // UIキャッシュの検証をページ表示の責務へ限定し、拡張機能APIを読み込まずに試す。
+    getThreadListCache: cacheGetMock,
+    setThreadListCache: cachePutMock,
+  };
+});
 
 vi.mock("src/core/BoardTitleSolver.js", () => ({
   ask: vi.fn(async () => null),
@@ -613,6 +612,34 @@ describe("ThreadListPage", () => {
       expect(getRenderedThreadTitles()).toEqual(["B Thread", "A Thread", "C Thread"]);
     });
 
+    expect(screen.queryByText("板の読み込みに失敗しました")).toBeNull();
+  });
+
+  it("取得結果が空でもキャッシュを復元できれば警告を表示しない", async () => {
+    vi.useRealTimers();
+    cacheGetMock.mockResolvedValue(THREADS);
+    getThreadsMock.mockResolvedValueOnce({
+      threads: [],
+      message: "板の読み込みに失敗しました",
+    });
+
+    render(
+      <ThreadListPage
+        tabId="tab-1"
+        page={{
+          type: "threadList",
+          title: "Software",
+          boardUrl: "https://example.com/software/",
+          boardTitle: "Software",
+        }}
+        refreshKey={0}
+        isActive={true}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getRenderedThreadTitles()).toEqual(["B Thread", "A Thread", "C Thread"]);
+    });
     expect(screen.queryByText("板の読み込みに失敗しました")).toBeNull();
   });
 
