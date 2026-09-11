@@ -5,9 +5,9 @@
      z-index を付けないため、既存の重なり順序は変えない。 */
   position: relative;
   display: grid;
-  /* 変更理由: 長いタイトルで右端のアイコンが圧迫されないよう、中央列は内容以上に広がらず
-     0まで縮められる minmax(0, auto) にする。左右は残り幅を分け合い、タイトルは省略表示に任せる。 */
-  grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr);
+  /* 変更理由: 狭いウィンドウでは左右の操作欄を先に確保し、中央の長いタイトルだけを
+     省略させる。操作欄を1frのままにすると、タイトルの最小幅に押されてアイコンが枠外へ出る。 */
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
   flex: 0 0 var(--sys-space-10);
   align-items: center;
   min-height: var(--sys-space-10);
