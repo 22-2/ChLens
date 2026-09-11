@@ -1,6 +1,7 @@
-import { describe, expect, it, vi } from "vite-plus/test";
 import type { IRes } from "src/service-container/interfaces";
-import { MemoryCommentOverlayEventBus, type CommentOverlayEventBus } from "../domain";
+import { describe, expect, it, vi } from "vite-plus/test";
+
+import { type CommentOverlayEventBus, MemoryCommentOverlayEventBus } from "../domain";
 import { createBrowserCommentOverlayPlatform } from "../platform/browser";
 import { CommentOverlayController } from "./controller";
 

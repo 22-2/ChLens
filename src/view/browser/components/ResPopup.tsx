@@ -3,15 +3,15 @@ import React, { useCallback } from "react";
 import type { IRes } from "src/service-container";
 import { PopupHeader } from "src/view/browser/components/PopupHeader";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
-import { useTheme } from "src/view/browser/hooks/use-theme";
 import { usePopupHeaderMenu } from "src/view/browser/hooks/use-popup-header-menu";
+import { useTheme } from "src/view/browser/hooks/use-theme";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { FloatingPopup } from "src/view/browser/ui/FloatingPopup";
 import { canCopyImageToClipboard, copyImageBlob, copyText } from "src/view/browser/utils/clipboard";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
-import { canvasToBlob, renderResponseListImageCanvas } from "src/view/browser/utils/response-image";
 import { formatResForCopy } from "src/view/browser/utils/response-format";
+import { canvasToBlob, renderResponseListImageCanvas } from "src/view/browser/utils/response-image";
 
 function buildIdPopupCopyText(items: IRes[], threadTitle?: string, threadUrl?: string): string {
   const sections = [items.map(formatResForCopy).join("\n\n")];

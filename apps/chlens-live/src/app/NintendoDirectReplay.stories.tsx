@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState, type ReactElement } from "react";
+import { type ReactElement, useEffect, useMemo, useState } from "react";
 import { OverlayStage } from "src/features/comment-overlay/ui/OverlayStage";
+
 import datFixtureUrl from "../fixtures/nintendo-direct-2026-09-09.dat?url";
 import {
   commentsAvailableAt,

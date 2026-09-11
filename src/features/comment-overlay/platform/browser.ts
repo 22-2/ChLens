@@ -1,7 +1,7 @@
 import {
   cloneCommentOverlayGeometry,
-  fitCommentOverlayGeometryToAspectRatio,
   fallbackCommentOverlayGeometry,
+  fitCommentOverlayGeometryToAspectRatio,
   loadStoredCommentOverlayGeometry,
   saveStoredCommentOverlayGeometry,
 } from "./geometry";

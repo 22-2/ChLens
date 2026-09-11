@@ -3,11 +3,11 @@ import { BBSMenuFetcher } from "src/core/BBSMenuFetcher";
 import { BBSMenu, BBSMenuParser } from "src/core/BBSMenuParser";
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
 import * as History from "src/core/History";
+import { createLogger } from "src/core/logger";
 import { OtherBoardsCollector } from "src/core/OtherBoardsCollector";
 import * as ReadState from "src/core/ReadState.js";
 import { getTauriRepositories, isTauriRuntime } from "src/core/TauriDrizzleBridge";
 import { URL } from "src/core/URL";
-import { createLogger } from "src/core/logger";
 import { container } from "src/service-container/index";
 
 const logger = createLogger("BBSMenuModel");

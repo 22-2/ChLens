@@ -1,18 +1,18 @@
 import React, {
   createContext,
+  type ReactNode,
   useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
-  type ReactNode,
 } from "react";
 import { container } from "src/service-container/index";
 import {
   DEFAULT_NG_DISPLAY_MODE,
   NG_DISPLAY_CONFIG_KEY,
-  normalizeNgDisplayMode,
   type NgDisplayMode,
+  normalizeNgDisplayMode,
 } from "src/view/browser/utils/ng-display-mode";
 
 interface NgStats {

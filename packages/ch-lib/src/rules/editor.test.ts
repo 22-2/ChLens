@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
+
 import {
   NG_DSL_LANGUAGE_ID,
   RULE_DSL_COMPLETION_CANDIDATES,

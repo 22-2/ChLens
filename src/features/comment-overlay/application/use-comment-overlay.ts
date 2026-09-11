@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+
 import { commentOverlayController } from "./index";
 
 /** Main側の複数ThreadPageとステータスバーで同じ実況状態を参照する。 */

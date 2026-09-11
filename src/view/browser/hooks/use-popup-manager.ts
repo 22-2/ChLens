@@ -1,15 +1,15 @@
-export { usePopupCloseBehavior } from "src/view/browser/hooks/popup-manager/use-popup-close-behavior";
 export type {
   PopupCloseBehaviorParams,
   PopupCloseBehaviorResult,
 } from "src/view/browser/hooks/popup-manager/use-popup-close-behavior";
-export { usePopupCore } from "src/view/browser/hooks/popup-manager/use-popup-core";
+export { usePopupCloseBehavior } from "src/view/browser/hooks/popup-manager/use-popup-close-behavior";
 export type { PopupCoreResult } from "src/view/browser/hooks/popup-manager/use-popup-core";
-export { useThreadPopupManager } from "src/view/browser/hooks/popup-manager/use-thread-popup-manager";
+export { usePopupCore } from "src/view/browser/hooks/popup-manager/use-popup-core";
 export type {
   ThreadPopupManagerParams,
   ThreadPopupManagerResult,
 } from "src/view/browser/hooks/popup-manager/use-thread-popup-manager";
+export { useThreadPopupManager } from "src/view/browser/hooks/popup-manager/use-thread-popup-manager";
 
 /**
  * Popup managerは、スレッド上に開くpopupをまとめて管理する場所。

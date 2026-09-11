@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { IRes } from "src/service-container/interfaces";
 import { ResItem } from "src/view/browser/components/ResItem";

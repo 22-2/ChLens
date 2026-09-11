@@ -1,5 +1,6 @@
 import type { PopupItem } from "src/view/browser/hooks/popup-manager/types";
 import { describe, expect, it } from "vite-plus/test";
+
 import { collectPopupBranchIds, isPopupDescendantOf, removePopupBranches } from "./popup-graph";
 
 function createPopup(id: string, parentId?: string): PopupItem {

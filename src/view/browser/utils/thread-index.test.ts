@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vite-plus/test";
-import { buildIndexes } from "src/view/browser/utils/thread-index";
 import type { IRes } from "src/service-container";
+import { buildIndexes } from "src/view/browser/utils/thread-index";
+import { describe, expect, it } from "vite-plus/test";
 
 const createResponse = (num: number, message: string, ng?: IRes["ng"]): IRes => ({
   num,

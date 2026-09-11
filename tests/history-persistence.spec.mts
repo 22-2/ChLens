@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
-import { test, expect } from "./fixtures.mjs";
+
+import { expect, test } from "./fixtures.mjs";
 
 const THREAD_URL = "https://example.com/test/read.cgi/live/1/";
 const DAT_URL = "https://example.com/live/dat/1.dat";

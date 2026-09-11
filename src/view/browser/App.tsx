@@ -11,10 +11,10 @@ import { NavigationBar } from "src/view/browser/components/NavigationBar";
 import { NextThreadSearchDialog } from "src/view/browser/components/NextThreadSearchDialog";
 import { NgStatusItem } from "src/view/browser/components/NgStatusItem";
 import { PopularFilterStatusItem } from "src/view/browser/components/PopularFilterStatusItem";
+import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
 import { StatusBar, StatusBarItem, StatusBarProvider } from "src/view/browser/components/StatusBar";
 import { TabBar } from "src/view/browser/components/TabBar";
 import { TitleBar } from "src/view/browser/components/TitleBar";
-import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
 import { AutoScrollStateProvider } from "src/view/browser/hooks/use-auto-scroll-state";
 import {
   BOTTOM_PANEL_THREAD_LIST_TAB_ID,
@@ -24,8 +24,8 @@ import {
 } from "src/view/browser/hooks/use-bottom-panel";
 import { useNextThreadSearch } from "src/view/browser/hooks/use-next-thread-search";
 import { NgStatusProvider } from "src/view/browser/hooks/use-ng-status";
-import { useTabBarOrientation } from "src/view/browser/hooks/use-tab-bar-orientation";
 import { useNotificationListener } from "src/view/browser/hooks/use-notification-listener";
+import { useTabBarOrientation } from "src/view/browser/hooks/use-tab-bar-orientation";
 import {
   PaneProvider,
   TabProvider,

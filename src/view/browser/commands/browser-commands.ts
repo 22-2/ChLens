@@ -9,6 +9,7 @@ import {
   History,
   Import,
   List,
+  type LucideIcon,
   PanelLeft,
   PanelRight,
   PenLine,
@@ -18,22 +19,22 @@ import {
   Settings,
   Star,
   X,
-  type LucideIcon,
 } from "lucide-react";
 import { ChURL, HOSTNAME } from "packages/ch-lib/src/index";
 import type { Dispatch } from "react";
 import { container } from "src/service-container";
 import {
-  getResponseJumpResNumFromCommandId,
-  RESPONSE_JUMP_COMMAND_ID,
-} from "src/view/browser/commands/response-jump-command";
-import {
   getOpenUrlFromCommandId,
   OPEN_URL_COMMAND_ID,
 } from "src/view/browser/commands/open-url-command";
+import {
+  getResponseJumpResNumFromCommandId,
+  RESPONSE_JUMP_COMMAND_ID,
+} from "src/view/browser/commands/response-jump-command";
 import type { ScopedTabAction } from "src/view/browser/hooks/use-tab-store";
 import type { Page, Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
+import { copyText, formatMarkdownLink } from "src/view/browser/utils/clipboard";
 import {
   canQueryExtensionTabs,
   getOpenCompatibleThreadPages,
@@ -50,7 +51,6 @@ import {
 } from "src/view/browser/utils/link-routing";
 import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
 import { encodeThreadAsToon, estimateToonTokenCount } from "src/view/browser/utils/thread-toon";
-import { copyText, formatMarkdownLink } from "src/view/browser/utils/clipboard";
 
 export const BROWSER_COMMAND_GROUP_LABELS = {
   navigation: "移動",

@@ -1,5 +1,6 @@
-import { getRuleTargetDefinition, normalizeRuleTarget, RULE_TARGET_CATALOG } from "./catalog";
 import { describe, expect, it } from "vite-plus/test";
+
+import { getRuleTargetDefinition, normalizeRuleTarget, RULE_TARGET_CATALOG } from "./catalog";
 
 describe("rule target catalog", () => {
   it("keeps the DSL spelling, field and comparison together", () => {

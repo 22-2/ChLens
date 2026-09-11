@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import React, { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCommentOverlay } from "src/features/comment-overlay/application/use-comment-overlay";
 import { container } from "src/service-container/index";
 import type { IThread } from "src/service-container/interfaces";
-import { useCommentOverlay } from "src/features/comment-overlay/application/use-comment-overlay";
 import { MediaViewerContainer } from "src/view/browser/components/MediaViewerContainer";
 import { PopupRenderer } from "src/view/browser/components/PopupRenderer";
 import { ResItem } from "src/view/browser/components/ResItem";
@@ -20,6 +20,7 @@ import { useThreadData } from "src/view/browser/hooks/use-thread-data";
 import { useThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
 import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 import { ThreadPageTopBar } from "src/view/browser/pages/thread/ThreadPageTopBar";
+import { useCommentOverlaySync } from "src/view/browser/pages/thread/use-comment-overlay-sync";
 import { useImageBlurConfig } from "src/view/browser/pages/thread/use-image-blur-config";
 import { useOwnResTracking } from "src/view/browser/pages/thread/use-own-res-tracking";
 import { useResInteractionHandlers } from "src/view/browser/pages/thread/use-res-interaction-handlers";
@@ -28,7 +29,6 @@ import { useThreadResContextMenu } from "src/view/browser/pages/thread/use-threa
 import { useThreadTopBar } from "src/view/browser/pages/thread/use-thread-top-bar";
 import { useThreadTopScrollOpenFilter } from "src/view/browser/pages/thread/use-thread-top-scroll-open-filter";
 import { useUrlHandlers } from "src/view/browser/pages/thread/use-url-handlers";
-import { useCommentOverlaySync } from "src/view/browser/pages/thread/use-comment-overlay-sync";
 import type { ThreadPage as ThreadPageType } from "src/view/browser/types";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import { getAutoRefreshPageKey } from "src/view/browser/utils/auto-refresh-pages";

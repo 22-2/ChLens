@@ -6,10 +6,10 @@ import * as BoardTitleSolver from "src/core/BoardTitleSolver.js";
 import Bookmark from "src/core/Bookmark.ts";
 import * as BookmarkEntryList from "src/core/BookmarkEntryList.ts";
 import BrowserBookmarkEntryList from "src/core/BrowserBookmarkEntryList.ts";
-import IDBBookmarkEntryList from "src/core/IDBBookmarkEntryList.ts";
 import Cache from "src/core/Cache.js";
 import * as History from "src/core/History.ts";
 import * as HTTP from "src/core/HTTP.ts";
+import IDBBookmarkEntryList from "src/core/IDBBookmarkEntryList.ts";
 import * as ImageReplaceDat from "src/core/ImageReplaceDat.js";
 import * as util from "src/core/jsutil.js";
 import * as NG from "src/core/NG";
@@ -32,10 +32,10 @@ export {
   Bookmark,
   BookmarkEntryList,
   BrowserBookmarkEntryList,
-  IDBBookmarkEntryList,
   Cache,
   History,
   HTTP,
+  IDBBookmarkEntryList,
   ImageReplaceDat,
   NG,
   Notification,
@@ -48,7 +48,7 @@ export {
   ThreadSearch,
   ThreadService,
   URL,
-  util,
   Util,
+  util,
   WriteHistory,
 };

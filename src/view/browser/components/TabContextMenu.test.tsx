@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { container } from "src/service-container";
 import { TabContextMenu } from "src/view/browser/components/TabContextMenu";

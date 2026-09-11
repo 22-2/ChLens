@@ -1,8 +1,8 @@
+import { createBoardTitleRequest, resolveBoardTitle } from "../board/BoardTitleResolver";
 import { BBSCategory, BBSMenuParser } from "../parser/BBSMenuParser";
 import { BoardParser, BoardThread } from "../parser/BoardParser";
 import { ThreadData, ThreadParser } from "../parser/ThreadParser";
 import { ChURL } from "../url/ChURL";
-import { createBoardTitleRequest, resolveBoardTitle } from "../board/BoardTitleResolver";
 import {
   FetchHttpClient,
   HttpClient,

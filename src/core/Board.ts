@@ -1,7 +1,7 @@
 import {
   BoardParser,
-  ChURL,
   type BoardThread as CanonicalBoardThread,
+  ChURL,
 } from "packages/ch-lib/src/index";
 import { platform } from "src/app";
 import { Response } from "src/core/HTTP";

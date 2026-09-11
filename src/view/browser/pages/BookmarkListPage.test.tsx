@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { container } from "src/service-container";
 import { BookmarkListPage } from "src/view/browser/pages/BookmarkListPage";

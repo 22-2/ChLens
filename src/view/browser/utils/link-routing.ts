@@ -1,12 +1,11 @@
-import type { MouseEvent } from "react";
-
 import {
+  type BoardHostType,
   classifyBoardHost,
   HOSTNAME,
   normalizeBbsHostname,
   ROUTE_PATTERNS,
-  type BoardHostType,
 } from "packages/ch-lib/src/index";
+import type { MouseEvent } from "react";
 import { resolveItestServerHostname } from "src/view/browser/utils/itest-server-map";
 
 // ---------------------------------------------------------------------------

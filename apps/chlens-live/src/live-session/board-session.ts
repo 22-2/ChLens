@@ -1,7 +1,8 @@
 import { HttpStatusError } from "@chlen/ch-lib";
+
+import { type LiveBoardCache, type LiveBoardSnapshot, MemoryLiveBoardCache } from "./cache";
+import { type LiveEventBus, toLiveBoardEvent } from "./events";
 import type { ChLensLiveSource } from "./source";
-import { MemoryLiveBoardCache, type LiveBoardCache, type LiveBoardSnapshot } from "./cache";
-import { toLiveBoardEvent, type LiveEventBus } from "./events";
 
 export type LiveBoardSessionEvent =
   | { type: "snapshot"; changed: boolean; snapshot: LiveBoardSnapshot }

@@ -5,11 +5,12 @@ import {
   type HttpRequest,
   type HttpResponse,
 } from "@chlen/ch-lib";
-import {
-  createChLensLiveSource,
-  type ChLensLiveSource,
-} from "../../../../apps/chlens-live/src/live-session/source";
+
 import { CHLENS_STORYBOOK_THREAD_PROXY_PATH } from "../../../../.storybook/thread-proxy-path.ts";
+import {
+  type ChLensLiveSource,
+  createChLensLiveSource,
+} from "../../../../apps/chlens-live/src/live-session/source";
 
 class StorybookProxyHttpClient implements HttpClient {
   async get(url: string, request: HttpRequest = {}): Promise<HttpResponse> {

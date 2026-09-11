@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+
 import type { CommentOverlayEvent } from "../domain";
 
 const tauriEventMocks = vi.hoisted(() => ({

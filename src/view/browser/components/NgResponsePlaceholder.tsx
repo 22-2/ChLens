@@ -1,5 +1,6 @@
 import type { MouseEvent } from "react";
 import type { INGResult } from "src/service-container/interfaces";
+
 import { NgBadge } from "./NgBadge";
 
 interface NgResponsePlaceholderProps {

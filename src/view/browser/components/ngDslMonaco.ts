@@ -1,10 +1,10 @@
-import type * as Monaco from "monaco-editor";
 import {
   NG_DSL_LANGUAGE_ID,
   RULE_DSL_COMPLETION_CANDIDATES,
   RULE_DSL_LANGUAGE_DEFINITION,
   type RuleDslCompletionCandidate,
 } from "@chlen/ch-lib";
+import type * as Monaco from "monaco-editor";
 
 type MonacoNamespace = typeof Monaco;
 let ngDslRegistered = false;

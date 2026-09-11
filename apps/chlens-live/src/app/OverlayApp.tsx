@@ -1,7 +1,10 @@
+import "./styles.css";
+
 import { useEffect, useState } from "react";
 import { OverlayStage } from "src/features/comment-overlay/ui/OverlayStage";
-import type { LiveEventBus } from "../live-session/events";
+
 import { createLiveEventBus } from "../live-session/event-bus";
+import type { LiveEventBus } from "../live-session/events";
 import {
   DEFAULT_OVERLAY_GEOMETRY,
   liveWindowPlatform,
@@ -12,7 +15,6 @@ import {
   DEFAULT_EDGE_LIVE_VIEWER_SETTINGS,
 } from "./overlay-settings";
 import { useLiveOverlay } from "./use-live-overlay";
-import "./styles.css";
 
 export interface OverlayAppProps {
   eventBus?: LiveEventBus;

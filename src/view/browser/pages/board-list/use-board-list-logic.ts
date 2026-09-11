@@ -4,8 +4,8 @@ import { createLogger } from "src/core/logger";
 import { container } from "src/service-container/index";
 import {
   normalizeBoardUrlForRemove,
-  parseOpenedBoardEntries,
   type OpenedBoardEntry,
+  parseOpenedBoardEntries,
 } from "src/view/browser/pages/board-list/board-list-utils";
 
 // ─── 定数 ────────────────────────────────────────────────────────────────────

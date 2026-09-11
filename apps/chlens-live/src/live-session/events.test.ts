@@ -1,6 +1,7 @@
-import { describe, expect, it, vi } from "vite-plus/test";
 import { emit, listen } from "@tauri-apps/api/event";
-import { LIVE_THREAD_UPDATE_EVENT, MemoryLiveEventBus, type LiveEvent } from "./events";
+import { describe, expect, it, vi } from "vite-plus/test";
+
+import { LIVE_THREAD_UPDATE_EVENT, type LiveEvent, MemoryLiveEventBus } from "./events";
 import { TauriLiveEventBus } from "./tauri-events";
 
 vi.mock("@tauri-apps/api/event", () => ({

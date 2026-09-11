@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+
 import { hasExternalLink, hasImage, hasVideo } from "src/view/browser/utils/message-filter";
 import { describe, expect, it } from "vite-plus/test";
 

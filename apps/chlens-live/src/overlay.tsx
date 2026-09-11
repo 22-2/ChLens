@@ -1,4 +1,5 @@
 import { createRoot } from "react-dom/client";
+
 import { OverlayApp } from "./app/OverlayApp";
 
 const root = document.getElementById("root");

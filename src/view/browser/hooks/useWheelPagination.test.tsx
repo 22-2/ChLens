@@ -1,9 +1,10 @@
 import "@testing-library/jest-dom/vitest";
+
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useRef } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { WheelScrollIndicator } from "src/view/browser/components/WheelScrollIndicator";
 import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 interface WheelProbeProps {
   edge: "top" | "bottom";

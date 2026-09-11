@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { getPageViewStateKey } from "src/view/browser/types";
 import { getAutoRefreshPageKey } from "src/view/browser/utils/auto-refresh-pages";

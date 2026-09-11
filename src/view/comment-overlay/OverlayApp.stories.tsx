@@ -1,13 +1,15 @@
+import "src/features/comment-overlay/ui/OverlayStage.css";
+import "./styles.css";
+
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
-  MemoryCommentOverlayEventBus,
   type CommentCandidate,
+  MemoryCommentOverlayEventBus,
 } from "src/features/comment-overlay/domain";
 import { createBrowserCommentOverlayPlatform } from "src/features/comment-overlay/platform/browser";
+
 import { OverlayApp } from "./OverlayApp";
-import "src/features/comment-overlay/ui/OverlayStage.css";
-import "./styles.css";
 
 const THREAD_URL = "https://example.test/live/1";
 

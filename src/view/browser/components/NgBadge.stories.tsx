@@ -1,6 +1,8 @@
-import type { INGResult } from "src/service-container/interfaces";
-import { NgBadge } from "./NgBadge";
 import "src/view/browser/styles/pages/thread/ThreadResponse.css";
+
+import type { INGResult } from "src/service-container/interfaces";
+
+import { NgBadge } from "./NgBadge";
 
 export default { title: "ChLens/NgBadge" };
 

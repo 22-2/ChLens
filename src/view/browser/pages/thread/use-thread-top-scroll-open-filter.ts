@@ -1,8 +1,6 @@
 import { useEffect, useRef } from "react";
-
-import { findThreadScrollContainer } from "src/view/browser/utils/thread-read-state";
-
 import type { TopBarMode } from "src/view/browser/pages/thread/use-thread-top-bar";
+import { findThreadScrollContainer } from "src/view/browser/utils/thread-read-state";
 
 interface UseThreadTopScrollOpenFilterParams {
   activeTopBar: TopBarMode;

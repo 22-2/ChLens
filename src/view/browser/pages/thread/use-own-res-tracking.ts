@@ -6,15 +6,15 @@ import {
 } from "src/core/WriteHistory";
 import { container } from "src/service-container/index";
 import type { IRes } from "src/service-container/interfaces";
+import { stripHtml } from "src/view/browser/utils/response-format";
 import { buildWrittenResSet } from "src/view/browser/utils/thread-emphasis";
 import {
   findLatestWrittenRes,
+  type PendingWritePayload,
   resolveWrittenResTimestamp,
   subscribeThreadWriteCompleted,
   subscribeThreadWriteStarted,
-  type PendingWritePayload,
 } from "src/view/browser/utils/thread-write-sync";
-import { stripHtml } from "src/view/browser/utils/response-format";
 
 interface PendingWriteMatchState extends PendingWritePayload {
   baselineResponseCount: number;

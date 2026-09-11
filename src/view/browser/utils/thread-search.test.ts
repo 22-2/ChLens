@@ -1,8 +1,7 @@
 import type { IRes } from "src/service-container/interfaces";
 import type { ThreadSearchTarget } from "src/view/browser/types";
-import { describe, expect, it } from "vite-plus/test";
-
 import { filterThreadResponses } from "src/view/browser/utils/thread-search";
+import { describe, expect, it } from "vite-plus/test";
 
 function createRes(num: number, message: string, name: string, id: string): IRes {
   return {

@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from "vite-plus/test";
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
+import { describe, expect, it, vi } from "vite-plus/test";
+
 import { TauriHttpClient } from "./tauri-http-client";
 
 vi.mock("@tauri-apps/plugin-http", () => ({

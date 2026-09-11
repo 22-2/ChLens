@@ -3,7 +3,8 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
-import { parse as parseJsonc, printParseErrorCode, type ParseError } from "jsonc-parser";
+
+import { parse as parseJsonc, type ParseError, printParseErrorCode } from "jsonc-parser";
 
 import {
   getWaitingIssueNumbers,

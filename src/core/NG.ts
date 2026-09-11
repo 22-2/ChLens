@@ -1,5 +1,3 @@
-import { createLogger } from "src/core/logger";
-import { countReplyAnchorTargets } from "src/core/reply-index";
 import {
   clearRuleRegexCache,
   evaluateBoardRules,
@@ -10,6 +8,8 @@ import {
   type RuleRepository,
   validateRuleDsl,
 } from "@chlen/ch-lib";
+import { createLogger } from "src/core/logger";
+import { countReplyAnchorTargets } from "src/core/reply-index";
 import type { INGResult } from "src/service-container/index";
 import { container } from "src/service-container/index";
 

@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { ChURL } from "packages/ch-lib/src/url/ChURL";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const requestState = vi.hoisted(() => ({
   urls: [],

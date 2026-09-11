@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
-import { describe, expect, it } from "vite-plus/test";
 import { useThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
+import { describe, expect, it } from "vite-plus/test";
 
 describe("useThreadRefreshController", () => {
   it("内部RELOADと外部RELOADを識別し、完了処理を一回だけ保留する", () => {

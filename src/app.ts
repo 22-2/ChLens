@@ -1,11 +1,10 @@
 import "ShortQuery.js";
 import "webextension-polyfill";
+
 ///<reference path="global.d" />
 import Config from "src/app/Config";
-
-import { setupContainer } from "src/service-container/setup";
-
 import * as platformInternal from "src/app/platform";
+import { setupContainer } from "src/service-container/setup";
 
 export * from "./app/BrowserDetect";
 export { default as Callbacks } from "./app/Callbacks";
@@ -241,8 +240,8 @@ export {
   ThreadSearch,
   ThreadService,
   URL,
-  util,
   Util,
+  util,
   WriteHistory,
 };
 

@@ -1,11 +1,11 @@
 import { act, renderHook } from "@testing-library/react";
 import { container } from "src/service-container/index";
 import {
+  clampTabBarWidth,
   TAB_BAR_COLLAPSED_CONFIG_KEY,
   TAB_BAR_ORIENTATION_CONFIG_KEY,
   TAB_BAR_WIDTH_CONFIG_KEY,
   TAB_BAR_WIDTH_DEFAULT,
-  clampTabBarWidth,
   useTabBarOrientation,
   useVerticalTabBarLayout,
 } from "src/view/browser/hooks/use-tab-bar-orientation";

@@ -1,12 +1,12 @@
 import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
   type Dispatch,
   type FocusEvent,
   type KeyboardEvent,
   type SetStateAction,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
 } from "react";
 import type { ResolvedBrowserCommand } from "src/view/browser/commands/browser-commands";
 import { filterAndSortBrowserCommands } from "src/view/browser/commands/command-search";

@@ -7,9 +7,9 @@ import {
   findThreadScrollContainer,
   measureThreadReadState,
   peekPendingThreadResJump,
+  type PendingThreadJump,
   scrollThreadToResponse,
   subscribeThreadResJump,
-  type PendingThreadJump,
 } from "src/view/browser/utils/thread-read-state";
 
 interface UseThreadReadStateParams {

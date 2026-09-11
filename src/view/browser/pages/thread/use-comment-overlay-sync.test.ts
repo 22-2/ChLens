@@ -1,6 +1,7 @@
 import { cleanup, renderHook } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import type { IRes } from "src/service-container/interfaces";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+
 import { useCommentOverlaySync } from "./use-comment-overlay-sync";
 
 const THREAD_URL = "https://example.test/test/read.cgi/live/1/";

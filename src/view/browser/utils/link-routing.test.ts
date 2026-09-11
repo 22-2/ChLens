@@ -1,12 +1,12 @@
 import { ChURL, normalizeBbsHostname } from "packages/ch-lib/src/index";
 import { setItestServerMapForTesting } from "src/view/browser/utils/itest-server-map";
 import {
+  getBoardUrlFromThreadUrl,
   parseInternalBrowserPage,
   parseInternalBrowserPageStrict,
   resolveAbsoluteUrl,
   RESPECT_DEFAULT_EXTERNAL,
   shouldHandleUrlWithApp,
-  getBoardUrlFromThreadUrl,
 } from "src/view/browser/utils/link-routing";
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 

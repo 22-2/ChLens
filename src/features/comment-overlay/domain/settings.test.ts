@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
+
 import { DEFAULT_COMMENT_OVERLAY_SETTINGS, normalizeCommentOverlaySettings } from "./settings";
 
 describe("コメントOverlay設定", () => {

@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom/vitest";
+
 import { fireEvent, render, screen } from "@testing-library/react";
-import { createRef, type ComponentProps } from "react";
+import { type ComponentProps, createRef } from "react";
 import { MediaViewer } from "src/view/browser/components/MediaViewer";
 import { describe, expect, it, vi } from "vite-plus/test";
 

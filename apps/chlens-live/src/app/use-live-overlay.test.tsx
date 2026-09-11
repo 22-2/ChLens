@@ -1,12 +1,13 @@
-import { act, render, screen } from "@testing-library/react";
 import type { IRes } from "@chlen/ch-lib";
-import { describe, expect, it } from "vite-plus/test";
-import { MemoryLiveEventBus, type LiveEvent } from "../live-session/events";
-import { useLiveOverlay } from "./use-live-overlay";
+import { act, render, screen } from "@testing-library/react";
 import {
   calculateNaturalCommentFlowCount,
   calculateNaturalCommentFlowInterval,
 } from "src/features/comment-overlay/domain";
+import { describe, expect, it } from "vite-plus/test";
+
+import { type LiveEvent, MemoryLiveEventBus } from "../live-session/events";
+import { useLiveOverlay } from "./use-live-overlay";
 
 const threadUrl = "https://bbs.eddibb.cc/liveedge/1000000001/";
 

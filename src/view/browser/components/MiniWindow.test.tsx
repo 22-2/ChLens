@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MiniWindow } from "src/view/browser/components/MiniWindow";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";

@@ -1,10 +1,12 @@
 import "@testing-library/jest-dom/vitest";
+
 import { act, cleanup, render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { CommentCandidate } from "src/features/comment-overlay/domain";
 import { MemoryCommentOverlayEventBus } from "src/features/comment-overlay/domain";
 import { createBrowserCommentOverlayPlatform } from "src/features/comment-overlay/platform/browser";
 import { COMMENT_OVERLAY_FONT_SIZE } from "src/features/comment-overlay/ui/OverlayStage";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+
 import { OverlayApp } from "./OverlayApp";
 
 const THREAD_URL = "https://example.test/live/1";

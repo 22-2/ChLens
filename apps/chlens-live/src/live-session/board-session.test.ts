@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vite-plus/test";
 import type { ChFetchResult, ThreadData } from "@chlen/ch-lib";
+import { describe, expect, it } from "vite-plus/test";
+
+import { LiveBoardSession, type LiveBoardSessionEvent } from "./board-session";
 import { MemoryLiveBoardCache } from "./cache";
 import { MemoryLiveEventBus } from "./events";
-import { LiveBoardSession, type LiveBoardSessionEvent } from "./board-session";
 import type { ChLensLiveSource } from "./source";
 
 const boardUrl = "https://bbs.eddibb.cc/liveedge/";

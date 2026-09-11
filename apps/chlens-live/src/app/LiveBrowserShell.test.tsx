@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vite-plus/test";
+
 import { LiveBrowserShell, type LiveTab } from "./LiveBrowserShell";
 
 const tabs: LiveTab[] = [

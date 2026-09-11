@@ -1,4 +1,4 @@
-import { ThreadParser, type IRes } from "@chlen/ch-lib";
+import { type IRes, ThreadParser } from "@chlen/ch-lib";
 import type { CommentCandidate } from "src/features/comment-overlay/domain";
 
 const POST_TIME_PATTERN =

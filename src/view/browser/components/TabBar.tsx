@@ -19,19 +19,19 @@ import { PageTypeIcon } from "src/view/browser/components/PageTypeIcon";
 import { TabContextMenu } from "src/view/browser/components/TabContextMenu";
 import { useAutoScrollState } from "src/view/browser/hooks/use-auto-scroll-state";
 import {
+  clampTabBarWidth,
   TAB_BAR_COLLAPSED_WIDTH,
   TAB_BAR_ORIENTATION_CONFIG_KEY,
   TAB_BAR_WIDTH_MIN,
-  clampTabBarWidth,
-  useVerticalTabBarLayout,
   type TabBarOrientation,
+  useVerticalTabBarLayout,
 } from "src/view/browser/hooks/use-tab-bar-orientation";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import type { Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
-import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { isAutoRefreshEnabledForPage } from "src/view/browser/utils/auto-refresh-pages";
+import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 
 interface ContextMenuState {
   tab: Tab;

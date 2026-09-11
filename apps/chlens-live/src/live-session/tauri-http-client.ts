@@ -1,10 +1,10 @@
-import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import {
   createHttpResponseMetadata,
   type HttpClient,
   type HttpRequest,
   type HttpResponse,
 } from "@chlen/ch-lib";
+import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 
 /**
  * HTTP transport for the Tauri runtime.

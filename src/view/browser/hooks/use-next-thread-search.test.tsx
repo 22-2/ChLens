@@ -1,12 +1,12 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { container } from "src/service-container/index";
 import type { IThread } from "src/service-container/interfaces";
-import type { Page } from "src/view/browser/types";
 import {
-  useNextThreadSearch,
   type NextThreadSearchState,
+  useNextThreadSearch,
 } from "src/view/browser/hooks/use-next-thread-search";
 import type { ScopedTabAction } from "src/view/browser/hooks/use-tab-store";
+import type { Page } from "src/view/browser/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 function createThread(

@@ -1,10 +1,10 @@
 import React, { useCallback, useState } from "react";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { buildCategoryId } from "src/view/browser/pages/board-list/board-list-utils";
 import { BoardListContent } from "src/view/browser/pages/board-list/BoardListContent";
 import { ContextMenuHandler } from "src/view/browser/pages/board-list/ContextMenuHandler";
 import { SearchBarSection } from "src/view/browser/pages/board-list/SearchBarSection";
-import { buildCategoryId } from "src/view/browser/pages/board-list/board-list-utils";
 import { useBoardListDisplay } from "src/view/browser/pages/board-list/use-board-list-display";
 import { useBoardListLogic } from "src/view/browser/pages/board-list/use-board-list-logic";
 

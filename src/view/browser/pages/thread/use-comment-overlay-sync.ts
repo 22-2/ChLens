@@ -1,6 +1,6 @@
 import { useEffect } from "react";
-import type { IRes } from "src/service-container/interfaces";
 import type { CommentOverlayController } from "src/features/comment-overlay/application/controller";
+import type { IRes } from "src/service-container/interfaces";
 
 type CommentOverlaySyncController = Pick<CommentOverlayController, "syncThread">;
 

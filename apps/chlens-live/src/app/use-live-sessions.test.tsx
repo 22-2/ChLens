@@ -1,9 +1,10 @@
-import { describe, expect, it, vi } from "vite-plus/test";
-import { render, act } from "@testing-library/react";
-import { useEffect, useState } from "react";
-import { useLiveBoard } from "./use-live-sessions";
-import type { ChLensLiveSource } from "../live-session/source";
 import type { BoardThread, ChFetchResult } from "@chlen/ch-lib";
+import { act, render } from "@testing-library/react";
+import { useEffect, useState } from "react";
+import { describe, expect, it, vi } from "vite-plus/test";
+
+import type { ChLensLiveSource } from "../live-session/source";
+import { useLiveBoard } from "./use-live-sessions";
 
 function createMockSource() {
   const boardData: BoardThread[] = [

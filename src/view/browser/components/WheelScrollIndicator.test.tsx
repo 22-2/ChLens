@@ -1,8 +1,9 @@
 import "@testing-library/jest-dom/vitest";
+import "src/view/browser/styles/layout/ContentArea.css";
+
 import { cleanup, render, screen } from "@testing-library/react";
 import { useRef } from "react";
 import { WheelScrollIndicator } from "src/view/browser/components/WheelScrollIndicator";
-import "src/view/browser/styles/layout/ContentArea.css";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 
 function IndicatorHarness({ direction }: { direction: "up" | "down" }) {

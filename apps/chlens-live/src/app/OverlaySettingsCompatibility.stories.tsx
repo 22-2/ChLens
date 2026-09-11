@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useState, type ReactElement } from "react";
+import { type ReactElement, useEffect, useMemo, useState } from "react";
 import type { CommentCandidate } from "src/features/comment-overlay/domain";
 import { OverlayStage } from "src/features/comment-overlay/ui/OverlayStage";
-import { EdgeLiveViewerSettingsPanel } from "./OverlaySettingsPanel";
+
 import {
   calculateEdgeLiveViewerLaneHeight,
   DEFAULT_EDGE_LIVE_VIEWER_SETTINGS,
-  filterEdgeLiveViewerComments,
   type EdgeLiveViewerSettings,
+  filterEdgeLiveViewerComments,
 } from "./overlay-settings";
+import { EdgeLiveViewerSettingsPanel } from "./OverlaySettingsPanel";
 
 const FIXTURE_COMMENTS: readonly CommentCandidate[] = [
   { responseNumber: 101, author: "名無し", id: "live-1", text: "試合始まった！", date: "21:04:12" },

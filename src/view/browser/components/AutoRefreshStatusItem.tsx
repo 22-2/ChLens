@@ -1,8 +1,8 @@
 import { Clock3, Pause, RefreshCw } from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { MiniWindow } from "src/view/browser/components/MiniWindow";
-import { StatusBarItem, StatusBarMode } from "src/view/browser/components/StatusBar";
 import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
+import { StatusBarItem, StatusBarMode } from "src/view/browser/components/StatusBar";
 import type { IdleStopTimeoutOption } from "src/view/browser/hooks/auto-refresh-config";
 import { IDLE_STOP_TIMEOUT_OPTIONS } from "src/view/browser/hooks/auto-refresh-config";
 import { useAutoNextThreadSetting } from "src/view/browser/hooks/use-auto-next-thread-setting";

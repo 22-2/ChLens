@@ -4,6 +4,7 @@ import {
   calculateNaturalCommentFlowInterval,
   type CommentCandidate,
 } from "src/features/comment-overlay/domain";
+
 import type { LiveEvent, LiveEventBus } from "../live-session/events";
 import { LiveCommentOverlayController } from "../live-session/overlay-controller";
 

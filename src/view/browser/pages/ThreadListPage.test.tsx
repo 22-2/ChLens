@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
 import { container as serviceContainer } from "src/service-container/index";

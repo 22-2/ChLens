@@ -1,4 +1,5 @@
-import { useState, type ReactElement } from "react";
+import { type ReactElement, useState } from "react";
+
 import {
   DEFAULT_EDGE_LIVE_VIEWER_SETTINGS,
   type EdgeLiveViewerSettings,

@@ -1,17 +1,18 @@
 import type { IRes } from "src/service-container/interfaces";
+
+import type { CommentOverlaySettings } from "../domain";
 import {
-  DEFAULT_COMMENT_OVERLAY_SETTINGS,
   collectNewCommentBatch,
-  createIdleCommentOverlayState,
-  latestResponseNumber,
-  startCommentOverlay,
-  stopCommentOverlay,
-  normalizeCommentOverlaySettings,
   type CommentOverlayEvent,
   type CommentOverlayState,
   type CommentResponse,
+  createIdleCommentOverlayState,
+  DEFAULT_COMMENT_OVERLAY_SETTINGS,
+  latestResponseNumber,
+  normalizeCommentOverlaySettings,
+  startCommentOverlay,
+  stopCommentOverlay,
 } from "../domain";
-import type { CommentOverlaySettings } from "../domain";
 import type { CommentOverlayEventBus } from "../domain/events";
 import type { CommentOverlayWindowPlatform } from "../platform/types";
 

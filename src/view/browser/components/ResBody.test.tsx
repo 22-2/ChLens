@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+
 import { fireEvent, render } from "@testing-library/react";
 import { useState } from "react";
 import { ResBody } from "src/view/browser/components/ResBody";

@@ -4,11 +4,11 @@ import {
   House,
   LayoutList,
   Library,
+  type LucideProps,
   MessageSquareText,
   PenLine,
   ScrollText,
   Settings,
-  type LucideProps,
 } from "lucide-react";
 import React from "react";
 import type { PageType } from "src/view/browser/types";

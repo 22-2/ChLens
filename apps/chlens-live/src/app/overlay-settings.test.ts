@@ -1,6 +1,7 @@
 import type { CommentCandidate } from "src/features/comment-overlay/domain";
 import { COMMENT_OVERLAY_FONT_SIZE } from "src/features/comment-overlay/ui/OverlayStage";
 import { describe, expect, it } from "vite-plus/test";
+
 import {
   calculateEdgeLiveViewerLaneHeight,
   DEFAULT_EDGE_LIVE_VIEWER_SETTINGS,

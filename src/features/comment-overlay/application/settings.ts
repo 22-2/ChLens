@@ -1,10 +1,11 @@
-import { container } from "src/service-container/index";
 import { isTauriRuntime } from "src/app/platform/runtime";
+import { container } from "src/service-container/index";
+
 import {
+  type CommentOverlaySettings,
   DEFAULT_COMMENT_OVERLAY_SETTINGS,
   MAX_COMMENT_OVERLAY_DURATION_SECONDS,
   normalizeCommentOverlaySettings,
-  type CommentOverlaySettings,
 } from "../domain";
 
 export const COMMENT_OVERLAY_CONFIG_KEYS = {

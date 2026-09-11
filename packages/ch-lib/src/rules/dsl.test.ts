@@ -1,5 +1,6 @@
-import { formatRuleDsl, parseRuleDsl } from "./dsl";
 import { describe, expect, it } from "vite-plus/test";
+
+import { formatRuleDsl, parseRuleDsl } from "./dsl";
 
 describe("rule block DSL", () => {
   it("parses an explicit matcher, target and options", () => {

@@ -1,9 +1,9 @@
 import "@testing-library/jest-dom/vitest";
+
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
-import { afterEach, describe, expect, it } from "vite-plus/test";
-
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
+import { afterEach, describe, expect, it } from "vite-plus/test";
 
 function QuickAccessFilterHarness({
   isActive = true,

@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { PopularFilterStatusItem } from "src/view/browser/components/PopularFilterStatusItem";
 import { StatusBar, StatusBarProvider } from "src/view/browser/components/StatusBar";

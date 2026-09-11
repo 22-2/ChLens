@@ -1,5 +1,5 @@
-import { AnchorParser, type AnchorData } from "./AnchorParser";
-import { URL_LIKE_PATTERN, normalizeObfuscatedUrl } from "../url/text";
+import { normalizeObfuscatedUrl, URL_LIKE_PATTERN } from "../url/text";
+import { type AnchorData, AnchorParser } from "./AnchorParser";
 
 export interface MessageParserOptions {
   /** Protocol used when an image tag contains a protocol-relative source. */

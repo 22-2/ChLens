@@ -1,4 +1,4 @@
-import { test, expect } from "./fixtures.mjs";
+import { expect, test } from "./fixtures.mjs";
 
 test.describe("ポップアップUIテスト", () => {
   test("メインUI要素が表示されること", async ({ page, extensionId }) => {

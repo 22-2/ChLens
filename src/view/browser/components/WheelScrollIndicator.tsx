@@ -1,6 +1,7 @@
-import React, { memo, useLayoutEffect, useRef, useState, type RefObject } from "react";
-import { createPortal } from "react-dom";
 import "src/view/browser/styles/components/WheelScrollIndicator.css";
+
+import React, { memo, type RefObject, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Spinner } from "src/view/browser/ui/Spinner";
 
 interface WheelScrollIndicatorProps {

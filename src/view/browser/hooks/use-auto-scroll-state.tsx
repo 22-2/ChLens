@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import React, { createContext, type ReactNode, useContext, useMemo, useState } from "react";
 
 export interface AutoScrollState {
   /** スレッド最下部付近にいて自動追従が有効な状態 */

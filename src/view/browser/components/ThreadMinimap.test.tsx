@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import React from "react";
 import { ThreadMinimap } from "src/view/browser/components/ThreadMinimap";

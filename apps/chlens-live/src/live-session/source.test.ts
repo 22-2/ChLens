@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vite-plus/test";
+
 import {
+  type ChLensLiveFetcher,
   createChLensLiveSource,
   createTauriChLensLiveSource,
-  type ChLensLiveFetcher,
 } from "./source";
 
 describe("ChLens Live source boundary", () => {

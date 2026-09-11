@@ -10,11 +10,6 @@ import {
 import { isTauriRuntime } from "src/app/platform/runtime";
 import { container } from "src/service-container/index";
 import {
-  NG_DISPLAY_CONFIG_KEY,
-  NG_DISPLAY_MODE_OPTIONS,
-  normalizeNgDisplayMode,
-} from "src/view/browser/utils/ng-display-mode";
-import {
   buildFieldSchema,
   buildUiSchema,
 } from "src/view/browser/pages/settings/settings-form-registry";
@@ -30,6 +25,11 @@ import type {
   SettingsSupplementaryPanelId,
 } from "src/view/browser/pages/settings/settings-types";
 import { isSettingsFieldItem } from "src/view/browser/pages/settings/settings-types";
+import {
+  NG_DISPLAY_CONFIG_KEY,
+  NG_DISPLAY_MODE_OPTIONS,
+  normalizeNgDisplayMode,
+} from "src/view/browser/utils/ng-display-mode";
 
 const THEME_ID_OPTIONS = [
   { const: "system", title: "システム（OSに合わせる）" },

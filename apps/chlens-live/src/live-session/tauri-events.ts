@@ -1,4 +1,5 @@
 import { emit, listen } from "@tauri-apps/api/event";
+
 import { LIVE_THREAD_UPDATE_EVENT, type LiveEvent, type LiveEventBus } from "./events";
 
 /**

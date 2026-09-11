@@ -1,6 +1,8 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
 import type { StorybookConfig } from "@storybook/react-vite";
+
 import { createChLensStorybookThreadProxy } from "./thread-proxy.ts";
 
 const repositoryRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url)));

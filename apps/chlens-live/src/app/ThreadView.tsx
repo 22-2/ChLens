@@ -1,19 +1,20 @@
 import type { IRes, ThreadData } from "@chlen/ch-lib";
 import { Copy, RotateCw } from "lucide-react";
 import {
+  type MouseEvent,
+  type ReactElement,
   useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
-  type MouseEvent,
-  type ReactElement,
 } from "react";
 import type { IRes as BrowserResponse } from "src/service-container/interfaces";
 import { ContextMenu, type ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { copyText } from "src/view/browser/utils/clipboard";
 import { formatResForCopy } from "src/view/browser/utils/response-format";
+
 import { LiveResponse } from "./LiveResponse";
 
 const AUTO_REFRESH_BOUNDARY_PX = 120;

@@ -1,11 +1,12 @@
+import type { CommentOverlayMonitor } from "src/features/comment-overlay/platform";
+
 import {
   cloneOverlayGeometry,
-  fitOverlayGeometryToAspectRatio,
   fallbackOverlayGeometry,
+  fitOverlayGeometryToAspectRatio,
   loadStoredOverlayGeometry,
   saveStoredOverlayGeometry,
 } from "./geometry";
-import type { CommentOverlayMonitor } from "src/features/comment-overlay/platform";
 import type { LiveWindowPlatform, OverlayGeometry } from "./types";
 
 const STORYBOOK_MONITORS: readonly CommentOverlayMonitor[] = [

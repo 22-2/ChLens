@@ -5,21 +5,21 @@ import { container } from "src/service-container/index";
 import type { IReadState, IThread } from "src/service-container/interfaces";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import {
-  SimpleDataTable,
   type DataTableSection,
+  SimpleDataTable,
 } from "src/view/browser/components/SimpleDataTable";
 import {
   calcHeat,
   createHighlightDividerStyle,
   createHighlightRowStyle,
+  type DisplayThread,
   getThreadListCache,
   isSortColumn,
   readThreadListSortPreference,
   setThreadListCache,
-  THREAD_LIST_COLUMNS,
   THREAD_LIST_COLUMN_VISIBILITY_LOCKED_KEYS,
   THREAD_LIST_COLUMN_VISIBILITY_STORAGE_KEY,
-  type DisplayThread,
+  THREAD_LIST_COLUMNS,
   type ThreadListSortColumn,
   type ThreadListSortPreference,
   writeThreadListSortPreference,

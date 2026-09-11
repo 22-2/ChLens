@@ -1,5 +1,6 @@
+import { type ChFetchResult, HttpStatusError, type ThreadData } from "@chlen/ch-lib";
 import { describe, expect, it, vi } from "vite-plus/test";
-import { HttpStatusError, type ChFetchResult, type ThreadData } from "@chlen/ch-lib";
+
 import { MemoryLiveThreadCache } from "./cache";
 import { MemoryLiveEventBus } from "./events";
 import { MemoryLiveSessionOwner } from "./owner";

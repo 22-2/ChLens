@@ -1,20 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { platform } from "src/app";
+import { container } from "src/service-container/index";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import { ColumnDef, SimpleDataTable } from "src/view/browser/components/SimpleDataTable";
+import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 import {
+  type TabAction,
   useTabDispatch,
   useTabViewState,
-  type TabAction,
 } from "src/view/browser/hooks/use-tab-store";
-import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
-import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
-
-import { container } from "src/service-container/index";
-import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import { formatCompactDateTime, normalizeLegacyTimestamp } from "src/view/browser/utils/date-time";
 import { getLegacyWriteHistoryService } from "src/view/browser/utils/legacy-app";
+import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
+import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
 
 type SortDirection = "asc" | "desc";
 type SortColumn = "title" | "writtenRes" | "name" | "mail" | "message" | "writtenDate";

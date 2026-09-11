@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+
 import { cleanup, render, screen } from "@testing-library/react";
 import { PopupPortalLayer } from "src/view/browser/components/PopupPortalLayer";
 import { afterEach, describe, expect, it } from "vite-plus/test";

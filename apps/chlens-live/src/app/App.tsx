@@ -1,25 +1,27 @@
-import { useEffect, useRef, useState, type ReactElement } from "react";
+import "./styles.css";
+
 import { Eye, EyeOff, Pause, Play, RotateCw, Search, SlidersHorizontal } from "lucide-react";
+import { type ReactElement, useEffect, useRef, useState } from "react";
+import type { CommentOverlayMonitor } from "src/features/comment-overlay/platform";
+import { OverlayControlPanel } from "src/features/comment-overlay/ui/OverlayControlPanel";
+
 import type { ThreadListViewRow } from "../../../../src/view/shared/ThreadListView";
+import { createLiveEventBus } from "../live-session/event-bus";
+import {
+  type ChLensLiveSource,
+  createChLensLiveSource,
+  createTauriChLensLiveSource,
+} from "../live-session/source";
 import {
   DEFAULT_OVERLAY_GEOMETRY,
   liveWindowPlatform,
   type OverlayGeometry,
 } from "../platform/index";
-import type { CommentOverlayMonitor } from "src/features/comment-overlay/platform";
-import { OverlayControlPanel } from "src/features/comment-overlay/ui/OverlayControlPanel";
-import {
-  createChLensLiveSource,
-  createTauriChLensLiveSource,
-  type ChLensLiveSource,
-} from "../live-session/source";
-import { createLiveEventBus } from "../live-session/event-bus";
 import { LiveBrowserShell, type LiveTab } from "./LiveBrowserShell";
 import { LiveThreadList } from "./LiveThreadList";
 import { ThreadView } from "./ThreadView";
 import { useLiveBoard, useLiveThread } from "./use-live-sessions";
 import { useThreadListController } from "./use-thread-list-controller";
-import "./styles.css";
 
 const DEFAULT_BOARD_URL = "http://bbs.eddibb.cc/liveedge/";
 const BOARD_TAB_ID = "liveedge-board";

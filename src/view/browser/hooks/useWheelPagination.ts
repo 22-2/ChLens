@@ -1,10 +1,10 @@
 import {
+  type RefObject,
   useCallback,
   useEffect,
   useRef,
   useState,
   useSyncExternalStore,
-  type RefObject,
 } from "react";
 
 export const WHEEL_THRESHOLD = 7;

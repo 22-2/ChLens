@@ -1,5 +1,6 @@
-import type { INGResult } from "src/service-container/interfaces";
 import { useState } from "react";
+import type { INGResult } from "src/service-container/interfaces";
+
 import { NgResponsePlaceholder } from "./NgResponsePlaceholder";
 
 export default { title: "ChLens/NgResponsePlaceholder" };

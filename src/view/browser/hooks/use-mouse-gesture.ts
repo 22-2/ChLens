@@ -1,4 +1,4 @@
-import { useEffect, type RefObject } from "react";
+import { type RefObject, useEffect } from "react";
 import type { GestureDirection, GesturePoint } from "src/view/browser/utils/gesture";
 import {
   GESTURE_CONTEXTMENU_SUPPRESS_MS,

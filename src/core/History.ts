@@ -1,4 +1,4 @@
-import { openDB, type DBSchema, type IDBPDatabase } from "idb";
+import { type DBSchema, type IDBPDatabase, openDB } from "idb";
 import { message } from "src/app";
 import { assertArg, log } from "src/app/Log";
 import { getTauriRepositories, isTauriRuntime } from "src/core/TauriDrizzleBridge";

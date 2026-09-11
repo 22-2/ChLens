@@ -1,9 +1,9 @@
 import "@testing-library/jest-dom/vitest";
+
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useRef, useState } from "react";
-import { afterEach, describe, expect, it } from "vite-plus/test";
-
 import { useThreadTopScrollOpenFilter } from "src/view/browser/pages/thread/use-thread-top-scroll-open-filter";
+import { afterEach, describe, expect, it } from "vite-plus/test";
 
 function WheelFilterHarness({ isActive = true }: { isActive?: boolean }) {
   const rootRef = useRef<HTMLDivElement>(null);

@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+
 import { fireEvent, render, screen } from "@testing-library/react";
 import { NgBadge } from "src/view/browser/components/NgBadge";
 import { describe, expect, it } from "vite-plus/test";

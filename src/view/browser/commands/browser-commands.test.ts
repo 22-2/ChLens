@@ -1,10 +1,10 @@
 import { container } from "src/service-container";
 import {
+  type BrowserCommandContext,
   executeBrowserCommand,
   getDatUrlForCommand,
   getSubjectUrlForCommand,
   resolveBrowserCommands,
-  type BrowserCommandContext,
 } from "src/view/browser/commands/browser-commands";
 import type { ScopedTabAction } from "src/view/browser/hooks/use-tab-store";
 import type { Page, Tab } from "src/view/browser/types";

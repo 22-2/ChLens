@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vite-plus/test";
 import MessageProcessor from "src/core/MessageProcessor.js";
+import { describe, expect, it } from "vite-plus/test";
 
 describe("MessageProcessor", () => {
   describe("decode", () => {

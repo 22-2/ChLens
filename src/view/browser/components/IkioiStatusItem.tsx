@@ -3,8 +3,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { container } from "src/service-container/index";
 import type { IRes, IThreadDetail } from "src/service-container/interfaces";
 import { MiniWindow } from "src/view/browser/components/MiniWindow";
-import { StatusBarItem } from "src/view/browser/components/StatusBar";
 import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
+import { StatusBarItem } from "src/view/browser/components/StatusBar";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { Spinner } from "src/view/browser/ui/Spinner";
 

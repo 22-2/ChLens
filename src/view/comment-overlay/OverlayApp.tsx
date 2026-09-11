@@ -1,21 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  createCommentOverlayEventBus,
-  DEFAULT_COMMENT_OVERLAY_GEOMETRY,
-  type CommentOverlayEvent,
-  type CommentOverlayEventBus,
-  commentOverlayWindowPlatform,
-  type CommentOverlayGeometry,
-  type CommentOverlayWindowPlatform,
-} from "src/features/comment-overlay/platform";
-import {
-  DEFAULT_COMMENT_OVERLAY_SETTINGS,
-  normalizeCommentOverlaySettings,
-  type CommentCandidate,
-  type CommentOverlaySettings,
   calculateNaturalCommentFlowCount,
   calculateNaturalCommentFlowInterval,
+  type CommentCandidate,
+  type CommentOverlaySettings,
+  DEFAULT_COMMENT_OVERLAY_SETTINGS,
+  normalizeCommentOverlaySettings,
 } from "src/features/comment-overlay/domain";
+import {
+  type CommentOverlayEvent,
+  type CommentOverlayEventBus,
+  type CommentOverlayGeometry,
+  type CommentOverlayWindowPlatform,
+  commentOverlayWindowPlatform,
+  createCommentOverlayEventBus,
+  DEFAULT_COMMENT_OVERLAY_GEOMETRY,
+} from "src/features/comment-overlay/platform";
 import {
   DEFAULT_COMMENT_HISTORY_LIMIT,
   OverlayStage,

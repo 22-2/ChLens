@@ -1,4 +1,4 @@
-import { useEffect, type RefObject } from "react";
+import { type RefObject, useEffect } from "react";
 import { useAutoRefresh, type UseAutoRefreshResult } from "src/view/browser/hooks/use-auto-refresh";
 import { useSetAutoScrollState } from "src/view/browser/hooks/use-auto-scroll-state";
 import type { ThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";

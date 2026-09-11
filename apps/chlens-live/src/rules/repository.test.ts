@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vite-plus/test";
+
 import { LIVE_RULES_STORAGE_KEY, LocalStorageLiveRuleRepository } from "./repository";
 
 describe("Live rule repository", () => {

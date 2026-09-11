@@ -1,7 +1,8 @@
-import { cleanup, render, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import type { NextThreadSearchState } from "src/view/browser/hooks/use-next-thread-search";
+
+import { cleanup, render, waitFor } from "@testing-library/react";
 import { NextThreadSearchDialog } from "src/view/browser/components/NextThreadSearchDialog";
+import type { NextThreadSearchState } from "src/view/browser/hooks/use-next-thread-search";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 
 const READY_STATE: NextThreadSearchState = {

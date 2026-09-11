@@ -1,7 +1,9 @@
 import "@testing-library/jest-dom/vitest";
+
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
-import { DEFAULT_COMMENT_OVERLAY_GEOMETRY, type CommentOverlayMonitor } from "../platform/types";
+
+import { type CommentOverlayMonitor, DEFAULT_COMMENT_OVERLAY_GEOMETRY } from "../platform/types";
 import { OverlayControlPanel } from "./OverlayControlPanel";
 
 const monitor: CommentOverlayMonitor = {

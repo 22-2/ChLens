@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import type { IRes } from "src/service-container/interfaces";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";

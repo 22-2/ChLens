@@ -1,4 +1,4 @@
-import { test, expect } from "./fixtures.mjs";
+import { expect, test } from "./fixtures.mjs";
 
 test("拡張機能が読み込まれること", async ({ page, extensionId }) => {
   // 拡張機能のポップアップページをテスト

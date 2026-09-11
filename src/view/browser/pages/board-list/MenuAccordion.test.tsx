@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MenuAccordion } from "src/view/browser/pages/board-list/MenuAccordion";
 import { describe, expect, it, vi } from "vite-plus/test";

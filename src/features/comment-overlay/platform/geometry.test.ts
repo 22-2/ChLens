@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+
 import {
   COMMENT_OVERLAY_GEOMETRY_STORAGE_KEY,
+  fallbackCommentOverlayGeometry,
   fitCommentOverlayGeometryToAspectRatio,
   fitCommentOverlayGeometryToWorkArea,
-  fallbackCommentOverlayGeometry,
   loadStoredCommentOverlayGeometry,
   normalizeCommentOverlayGeometry,
   parseCommentOverlayGeometry,

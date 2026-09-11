@@ -1,9 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
+
 import {
-  DEFAULT_COMMENT_OVERLAY_GEOMETRY,
   type CommentOverlayGeometry,
   type CommentOverlayMonitor,
+  DEFAULT_COMMENT_OVERLAY_GEOMETRY,
 } from "../platform/types";
 import { OverlayControlPanel } from "./OverlayControlPanel";
 

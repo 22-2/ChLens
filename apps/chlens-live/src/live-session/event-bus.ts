@@ -1,4 +1,4 @@
-import { MemoryLiveEventBus, type LiveEventBus } from "./events";
+import { type LiveEventBus, MemoryLiveEventBus } from "./events";
 import { TauriLiveEventBus } from "./tauri-events";
 
 function isTauriRuntime(): boolean {

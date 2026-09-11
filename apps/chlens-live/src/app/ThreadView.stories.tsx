@@ -1,4 +1,5 @@
 import type { IRes } from "@chlen/ch-lib";
+
 import { ThreadView } from "./ThreadView";
 
 const posts: IRes[] = [

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent, type RefObject } from "react";
+import { type FormEvent, type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import { platform } from "src/app";
 import { wait } from "src/app/Defer";
 import { getStore2String, setStore2String } from "src/app/Store2Storage";
@@ -8,8 +8,8 @@ import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import {
   notifyThreadWriteCompleted,
   notifyThreadWriteStarted,
-  resolveWriteSuccessDelayMs,
   type PendingWritePayload,
+  resolveWriteSuccessDelayMs,
 } from "src/view/browser/utils/thread-write-sync";
 
 // -----------------------------------------------------------------------

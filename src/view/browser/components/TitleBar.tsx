@@ -1,9 +1,9 @@
 import { RotateCw } from "lucide-react";
 import React, { useCallback, useState } from "react";
+import { TabContextMenu } from "src/view/browser/components/TabContextMenu";
 import { useTabBarOrientation } from "src/view/browser/hooks/use-tab-bar-orientation";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
-import { TabContextMenu } from "src/view/browser/components/TabContextMenu";
 
 interface TitleBarMenuPosition {
   x: number;

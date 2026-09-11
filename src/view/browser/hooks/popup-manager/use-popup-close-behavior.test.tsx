@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { usePopupCloseBehavior } from "src/view/browser/hooks/use-popup-manager";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";

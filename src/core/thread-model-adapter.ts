@@ -1,4 +1,4 @@
-import { MetadataParser, type IRes, type IThread } from "packages/ch-lib/src/index";
+import { type IRes, type IThread, MetadataParser } from "packages/ch-lib/src/index";
 import type { ParsedThread, ThreadRes } from "src/core/ThreadParser.js";
 
 /**

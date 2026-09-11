@@ -1,15 +1,15 @@
-import normalizeWheel from "normalize-wheel";
 import { RotateCw, X } from "lucide-react";
+import normalizeWheel from "normalize-wheel";
 import {
-  useCallback,
-  useRef,
   type MouseEvent as ReactMouseEvent,
   type ReactElement,
   type ReactNode,
+  useCallback,
+  useRef,
   type WheelEvent as ReactWheelEvent,
 } from "react";
-import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 import { WheelScrollIndicator } from "src/view/browser/components/WheelScrollIndicator";
+import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 
 export type LivePage = "threadList" | "thread";
 

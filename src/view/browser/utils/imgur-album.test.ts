@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vite-plus/test";
 import { ImgurAlbumResolver, normalizeImgurImageUrl } from "src/view/browser/utils/imgur-album";
+import { describe, expect, it, vi } from "vite-plus/test";
 
 const ALBUM_URL = "https://imgur.com/a/1m6jk1F";
 const THREAD_URL = "https://bbs.example.test/test/read.cgi/live/123/";

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+
 import { LiveBoardSession, type LiveBoardSessionEvent } from "../live-session/board-session";
-import { LiveThreadSession, type LiveThreadSessionEvent } from "../live-session/session";
-import type { LiveEventBus } from "../live-session/events";
-import type { ChLensLiveSource } from "../live-session/source";
 import type { LiveBoardSnapshot, LiveThreadCache, LiveThreadSnapshot } from "../live-session/cache";
+import type { LiveEventBus } from "../live-session/events";
 import type { LiveSessionOwner } from "../live-session/owner";
+import { LiveThreadSession, type LiveThreadSessionEvent } from "../live-session/session";
+import type { ChLensLiveSource } from "../live-session/source";
 
 export interface UseLiveBoardResult {
   snapshot: LiveBoardSnapshot | null;

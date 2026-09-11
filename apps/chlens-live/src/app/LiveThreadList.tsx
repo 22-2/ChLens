@@ -1,8 +1,9 @@
 import type { ReactElement } from "react";
+
 import { SearchBar } from "../../../../src/view/browser/components/SearchBar";
 import {
-  SimpleDataTable,
   type ColumnDef,
+  SimpleDataTable,
 } from "../../../../src/view/browser/components/SimpleDataTable";
 import { Spinner } from "../../../../src/view/browser/ui/Spinner";
 import {

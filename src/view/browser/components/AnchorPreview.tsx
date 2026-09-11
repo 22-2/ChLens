@@ -10,8 +10,8 @@ import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { FloatingPopup } from "src/view/browser/ui/FloatingPopup";
 import { canCopyImageToClipboard, copyImageBlob, copyText } from "src/view/browser/utils/clipboard";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
-import { canvasToBlob, renderResponseListImageCanvas } from "src/view/browser/utils/response-image";
 import { formatResForCopy } from "src/view/browser/utils/response-format";
+import { canvasToBlob, renderResponseListImageCanvas } from "src/view/browser/utils/response-image";
 
 function buildAnchorPopupCopyText(items: IRes[], threadTitle?: string, threadUrl?: string): string {
   const sections = [items.map(formatResForCopy).join("\n\n")];

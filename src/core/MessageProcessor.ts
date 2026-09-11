@@ -1,4 +1,4 @@
-import { parseMessage, type MessageToken } from "@chlen/ch-lib";
+import { type MessageToken, parseMessage } from "@chlen/ch-lib";
 
 interface DecodedMessage {
   nameHtml: string;

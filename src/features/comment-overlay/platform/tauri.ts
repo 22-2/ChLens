@@ -1,10 +1,11 @@
 import { emit, listen } from "@tauri-apps/api/event";
 import { availableMonitors, LogicalPosition, LogicalSize, Window } from "@tauri-apps/api/window";
+
 import {
   cloneCommentOverlayGeometry,
+  fallbackCommentOverlayGeometry,
   fitCommentOverlayGeometryToAspectRatio,
   fitCommentOverlayGeometryToWorkArea,
-  fallbackCommentOverlayGeometry,
   loadStoredCommentOverlayGeometry,
   saveStoredCommentOverlayGeometry,
 } from "./geometry";

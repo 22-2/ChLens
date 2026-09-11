@@ -1,7 +1,7 @@
 import { AnchorParser, MetadataParser } from "packages/ch-lib/src/index";
-import { container } from "src/service-container/index";
-import { replace as replaceStrTxt } from "src/core/ReplaceStrTxt.js";
 import { evaluateAutoNg, isAutoNgEnabled } from "src/core/AutoNgPolicy";
+import { replace as replaceStrTxt } from "src/core/ReplaceStrTxt.js";
+import { container } from "src/service-container/index";
 
 /**
  * @typedef {import("../service-container/interfaces").IRes} IRes

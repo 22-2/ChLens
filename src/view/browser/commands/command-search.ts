@@ -1,15 +1,15 @@
 import fuzzysort from "fuzzysort";
 import type { ResolvedBrowserCommand } from "src/view/browser/commands/browser-commands";
 import {
-  createResponseJumpCommand,
-  parseResponseJumpResNum,
-  RESPONSE_JUMP_COMMAND_ID,
-} from "src/view/browser/commands/response-jump-command";
-import {
   createOpenUrlCommand,
   OPEN_URL_COMMAND_ID,
   parseOpenUrlInput,
 } from "src/view/browser/commands/open-url-command";
+import {
+  createResponseJumpCommand,
+  parseResponseJumpResNum,
+  RESPONSE_JUMP_COMMAND_ID,
+} from "src/view/browser/commands/response-jump-command";
 
 interface RankedCommand {
   command: ResolvedBrowserCommand;

@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vite-plus/test";
+
 import type { CommentCandidate } from "./comment-types";
 import {
   calculateCommentDuration,
-  calculateLaneCapacity,
   calculateCommentPosition,
   calculateCommentSpeed,
+  calculateLaneCapacity,
   CommentScheduler,
   DEFAULT_COMMENT_BASE_SPEED_PX_PER_SECOND,
 } from "./scheduler";

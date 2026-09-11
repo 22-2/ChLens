@@ -6,15 +6,15 @@ import { ResBody } from "src/view/browser/components/ResBody";
 import { ResMediaGallery } from "src/view/browser/components/ResMediaGallery";
 import { useIsNgTemporarilyDisabled, useNgDisplayMode } from "src/view/browser/hooks/use-ng-status";
 import { getIdHeatColor } from "src/view/browser/utils/id-heat";
+import { useImgurAlbumMedia } from "src/view/browser/utils/imgur-album";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
 import { getReplyHeatLevel } from "src/view/browser/utils/reply-heat";
 import { decodeResponseHtml } from "src/view/browser/utils/response-format";
-import { extractUrlsFromMessage } from "src/view/browser/utils/url-media";
-import { useImgurAlbumMedia } from "src/view/browser/utils/imgur-album";
 import {
   findSearchMatchRanges,
   highlightSearchMatches,
 } from "src/view/browser/utils/search-highlight";
+import { extractUrlsFromMessage } from "src/view/browser/utils/url-media";
 
 function renderHighlightedText(text: string, searchQuery: string): React.ReactNode {
   const ranges = findSearchMatchRanges(text, searchQuery);

@@ -1,14 +1,14 @@
 import React, { useCallback, useLayoutEffect, useMemo, useRef } from "react";
+import { hasMissingAnchorTarget, parseAnchorDisplayTargets } from "src/view/browser/utils/anchor";
 import { ANCHOR_SELECTOR, ID_LINK_SELECTOR } from "src/view/browser/utils/constants";
+import { getEventTargetElement } from "src/view/browser/utils/dom";
 import {
-  RESPECT_DEFAULT_EXTERNAL,
   type ResBodyUrlClickHandler,
+  RESPECT_DEFAULT_EXTERNAL,
   type UrlContextMenuHandler,
 } from "src/view/browser/utils/link-routing";
-import { hasMissingAnchorTarget, parseAnchorDisplayTargets } from "src/view/browser/utils/anchor";
-import { highlightSearchMatches } from "src/view/browser/utils/search-highlight";
-import { getEventTargetElement } from "src/view/browser/utils/dom";
 import { normalizeIdLinkText } from "src/view/browser/utils/response-format";
+import { highlightSearchMatches } from "src/view/browser/utils/search-highlight";
 
 const PRIMARY_MOUSE_BUTTON = 0 as const;
 const MIDDLE_MOUSE_BUTTON = 1 as const;

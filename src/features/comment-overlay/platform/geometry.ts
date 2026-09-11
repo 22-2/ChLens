@@ -1,7 +1,7 @@
 import {
   COMMENT_OVERLAY_ASPECT_RATIO,
-  DEFAULT_COMMENT_OVERLAY_GEOMETRY,
   type CommentOverlayGeometry,
+  DEFAULT_COMMENT_OVERLAY_GEOMETRY,
 } from "./types";
 
 export const COMMENT_OVERLAY_GEOMETRY_STORAGE_KEY = "chlens:comment-overlay-geometry";

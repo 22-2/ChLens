@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { TitleBar } from "src/view/browser/components/TitleBar";
 import type { Page } from "src/view/browser/types";

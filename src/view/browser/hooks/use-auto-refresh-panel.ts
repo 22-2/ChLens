@@ -3,6 +3,7 @@ import { container } from "src/service-container/index";
 import {
   BOARD_AUTO_REFRESH_CONFIG_KEY,
   findIdleStopTimeoutOption,
+  type IdleStopTimeoutOption,
   MAX_BOARD_AUTO_REFRESH_SEC,
   MAX_THREAD_AUTO_REFRESH_SEC,
   MIN_BOARD_AUTO_REFRESH_SEC,
@@ -12,7 +13,6 @@ import {
   readThreadAutoRefreshIntervalSec,
   THREAD_AUTO_REFRESH_CONFIG_KEY,
   THREAD_IDLE_STOP_TIMEOUT_CONFIG_KEY,
-  type IdleStopTimeoutOption,
 } from "src/view/browser/hooks/auto-refresh-config";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import {

@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { StatusBar, StatusBarProvider } from "src/view/browser/components/StatusBar";
 import type { Page } from "src/view/browser/types";

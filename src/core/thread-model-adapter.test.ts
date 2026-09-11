@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vite-plus/test";
 import { fromCanonicalThread, toCanonicalThread } from "src/core/thread-model-adapter";
+import { describe, expect, it } from "vite-plus/test";
 
 describe("thread model adapter", () => {
   it("converts legacy res fields into the canonical IThread/IRes shape", () => {

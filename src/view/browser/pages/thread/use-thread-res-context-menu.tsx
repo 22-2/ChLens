@@ -23,8 +23,8 @@ import {
   getAutoRefreshPageKey,
   isAutoRefreshEnabledForPage,
 } from "src/view/browser/utils/auto-refresh-pages";
-import { getLegacyWriteHistoryService } from "src/view/browser/utils/legacy-app";
 import { copyText } from "src/view/browser/utils/clipboard";
+import { getLegacyWriteHistoryService } from "src/view/browser/utils/legacy-app";
 import { formatResForCopy, stripHtml } from "src/view/browser/utils/response-format";
 import { buildKyodemoUrl } from "src/view/browser/utils/url-media";
 

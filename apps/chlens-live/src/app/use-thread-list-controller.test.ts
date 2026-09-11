@@ -1,5 +1,6 @@
 import type { BoardThread, Rule } from "@chlen/ch-lib";
 import { describe, expect, it } from "vite-plus/test";
+
 import { createThreadListRows } from "./use-thread-list-controller";
 
 const threads: BoardThread[] = [

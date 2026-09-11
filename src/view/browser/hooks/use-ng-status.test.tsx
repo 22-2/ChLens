@@ -1,8 +1,9 @@
 import "@testing-library/jest-dom/vitest";
+
 import { act, cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { NgStatusProvider, useNgDisplayMode } from "src/view/browser/hooks/use-ng-status";
 import { NG_DISPLAY_CONFIG_KEY } from "src/view/browser/utils/ng-display-mode";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mocks = vi.hoisted(() => ({
   configValue: "soft-ng",

@@ -27,10 +27,10 @@ import React, {
 import { createPortal } from "react-dom";
 import { container } from "src/service-container/index";
 import {
+  type BrowserCommandContext,
   executeBrowserCommand,
   getBrowserCommandLabel,
   resolveBrowserCommands,
-  type BrowserCommandContext,
   type ResolvedBrowserCommand,
 } from "src/view/browser/commands/browser-commands";
 import {

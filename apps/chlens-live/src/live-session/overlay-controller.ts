@@ -1,12 +1,13 @@
 import type { IRes } from "@chlen/ch-lib";
 import {
   collectNewCommentBatch,
-  createIdleCommentOverlayState,
-  startCommentOverlay,
   type CommentBatch,
   type CommentOverlayState,
   type CommentResponse,
+  createIdleCommentOverlayState,
+  startCommentOverlay,
 } from "src/features/comment-overlay/domain";
+
 import type { LiveEvent } from "./events";
 
 export interface LiveCommentOverlayUpdate {

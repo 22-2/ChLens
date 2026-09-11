@@ -1,5 +1,6 @@
-import { evaluateBoardRules, parseRuleDsl, type BoardThread, type Rule } from "@chlen/ch-lib";
+import { type BoardThread, evaluateBoardRules, parseRuleDsl, type Rule } from "@chlen/ch-lib";
 import { useMemo, useState } from "react";
+
 import type {
   ThreadListViewRow,
   ThreadListViewSortColumn,

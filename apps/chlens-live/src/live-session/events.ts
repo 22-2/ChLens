@@ -1,6 +1,6 @@
-import type { LiveThreadSessionEvent } from "./session";
 import type { LiveBoardSessionEvent } from "./board-session";
 import type { LiveBoardSnapshot, LiveThreadSnapshot } from "./cache";
+import type { LiveThreadSessionEvent } from "./session";
 
 export const LIVE_THREAD_UPDATE_EVENT = "chlens-live://thread-update";
 

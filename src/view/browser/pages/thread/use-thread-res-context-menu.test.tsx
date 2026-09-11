@@ -1,12 +1,12 @@
 import "@testing-library/jest-dom/vitest";
+
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React, { useEffect, useState } from "react";
-import { afterEach, describe, expect, it, vi } from "vite-plus/test";
-
 import type { IRes } from "src/service-container/interfaces";
 import { useThreadResContextMenu } from "src/view/browser/pages/thread/use-thread-res-context-menu";
 import type { ThreadFilter } from "src/view/browser/types";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mocks = vi.hoisted(() => ({
   copyText: vi.fn<() => Promise<void>>(),

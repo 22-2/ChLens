@@ -1,10 +1,10 @@
 import { Tooltip as RadixTooltip } from "radix-ui";
 import {
   createContext,
-  useContext,
   type CSSProperties,
   type ReactElement,
   type ReactNode,
+  useContext,
 } from "react";
 
 type TooltipSide = "top" | "right" | "bottom" | "left";

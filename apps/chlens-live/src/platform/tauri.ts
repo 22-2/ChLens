@@ -1,9 +1,10 @@
 import { availableMonitors, LogicalPosition, LogicalSize, Window } from "@tauri-apps/api/window";
 import type { CommentOverlayMonitor } from "src/features/comment-overlay/platform";
+
 import {
   cloneOverlayGeometry,
-  fitOverlayGeometryToAspectRatio,
   fallbackOverlayGeometry,
+  fitOverlayGeometryToAspectRatio,
   loadStoredOverlayGeometry,
   saveStoredOverlayGeometry,
 } from "./geometry";

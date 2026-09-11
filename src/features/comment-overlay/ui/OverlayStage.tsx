@@ -1,18 +1,20 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import "./OverlayStage.css";
+
 import type { CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+
 import {
-  CommentScheduler,
-  DEFAULT_COMMENT_BACKLOG_POLICY,
-  DEFAULT_COMMENT_COLLISION_MODE,
-  DEFAULT_MAX_LANE_COUNT,
-  DEFAULT_MAX_QUEUE_SIZE,
-  DEFAULT_MAX_ACTIVE_COUNT,
   type CommentBacklogPolicy,
   type CommentCollisionMode,
+  CommentScheduler,
   type CommentSchedulerSnapshot,
+  DEFAULT_COMMENT_BACKLOG_POLICY,
+  DEFAULT_COMMENT_COLLISION_MODE,
+  DEFAULT_MAX_ACTIVE_COUNT,
+  DEFAULT_MAX_LANE_COUNT,
+  DEFAULT_MAX_QUEUE_SIZE,
 } from "../domain";
 import type { CommentCandidate } from "../domain/comment-types";
-import "./OverlayStage.css";
 
 const DEFAULT_STAGE_WIDTH = 800;
 const DEFAULT_STAGE_HEIGHT = 240;

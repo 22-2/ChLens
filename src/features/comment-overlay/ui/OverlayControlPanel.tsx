@@ -1,18 +1,20 @@
+import "./OverlayControlPanel.css";
+
 import {
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
   useMemo,
   useRef,
   useState,
-  type MouseEvent as ReactMouseEvent,
-  type PointerEvent as ReactPointerEvent,
 } from "react";
+
+import { normalizeCommentOverlayGeometry } from "../platform/geometry";
 import {
   COMMENT_OVERLAY_ASPECT_RATIO,
-  DEFAULT_COMMENT_OVERLAY_GEOMETRY,
   type CommentOverlayGeometry,
   type CommentOverlayMonitor,
+  DEFAULT_COMMENT_OVERLAY_GEOMETRY,
 } from "../platform/types";
-import { normalizeCommentOverlayGeometry } from "../platform/geometry";
-import "./OverlayControlPanel.css";
 
 const MIN_WIDTH = 320;
 const MIN_HEIGHT = 80;

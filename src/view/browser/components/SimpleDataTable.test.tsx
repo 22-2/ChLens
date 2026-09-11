@@ -1,7 +1,8 @@
 import "@testing-library/jest-dom/vitest";
+
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { container } from "src/service-container/index";
-import { SimpleDataTable, type ColumnDef } from "src/view/browser/components/SimpleDataTable";
+import { type ColumnDef, SimpleDataTable } from "src/view/browser/components/SimpleDataTable";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 interface TestRow {

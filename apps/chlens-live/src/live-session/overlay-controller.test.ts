@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vite-plus/test";
 import type { IRes } from "@chlen/ch-lib";
-import { LiveCommentOverlayController } from "./overlay-controller";
+import { describe, expect, it } from "vite-plus/test";
+
 import type { LiveEvent } from "./events";
+import { LiveCommentOverlayController } from "./overlay-controller";
 
 const threadUrl = "https://bbs.eddibb.cc/liveedge/1000000001/";
 

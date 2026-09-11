@@ -1,4 +1,4 @@
-import { useCallback, useState, type MutableRefObject } from "react";
+import { type MutableRefObject, useCallback, useState } from "react";
 import { container } from "src/service-container/index";
 import {
   readAllSettings,

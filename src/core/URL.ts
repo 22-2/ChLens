@@ -1,12 +1,12 @@
 import {
+  type BBSType,
   ChURL,
+  type ContentType,
+  type GuessResult,
   HOSTNAME,
   normalizeBbsHostname,
   PATTERNS,
   TSLD,
-  type BBSType,
-  type ContentType,
-  type GuessResult,
 } from "packages/ch-lib/src/index";
 import { fetch as fetchBBSMenu } from "src/core/BBSMenu.js";
 import Cache from "src/core/Cache.js";

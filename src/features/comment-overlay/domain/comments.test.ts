@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from "vite-plus/test";
+
+import type { CommentResponse } from "./comment-types";
 import {
   collectNewCommentBatch,
   createIdleCommentOverlayState,
@@ -8,7 +10,6 @@ import {
   stopCommentOverlay,
   toCommentText,
 } from "./index";
-import type { CommentResponse } from "./comment-types";
 
 function response(
   num: number,

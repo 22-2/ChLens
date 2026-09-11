@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+
 import { render, screen } from "@testing-library/react";
 import { BoardListContent } from "src/view/browser/pages/board-list/BoardListContent";
 import { describe, expect, it, vi } from "vite-plus/test";

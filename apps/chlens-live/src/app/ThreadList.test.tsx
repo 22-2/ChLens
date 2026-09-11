@@ -1,8 +1,9 @@
-import { describe, expect, it, vi } from "vite-plus/test";
+import type { BoardThread } from "@chlen/ch-lib";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vite-plus/test";
+
 import { ThreadList } from "./ThreadList";
-import type { BoardThread } from "@chlen/ch-lib";
 
 const threads: BoardThread[] = [
   { url: "https://example.com/test/1", title: "実況スレ ★1", resCount: 120, createdAt: 1 },

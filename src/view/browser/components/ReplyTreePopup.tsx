@@ -1,8 +1,8 @@
 import {
   CornerDownRight,
   CornerRightUp,
-  ImageDown,
   Image as ImageIcon,
+  ImageDown,
   ImageUp,
   Pin,
   PinOff,
@@ -12,9 +12,9 @@ import type { IRes } from "src/service-container";
 import { PopupHeader } from "src/view/browser/components/PopupHeader";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
 import { ReplyTree } from "src/view/browser/components/ReplyTree";
+import { usePopupHeaderMenu } from "src/view/browser/hooks/use-popup-header-menu";
 import type { ResolvedTheme } from "src/view/browser/hooks/use-theme";
 import { useTheme } from "src/view/browser/hooks/use-theme";
-import { usePopupHeaderMenu } from "src/view/browser/hooks/use-popup-header-menu";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { FloatingPopup } from "src/view/browser/ui/FloatingPopup";

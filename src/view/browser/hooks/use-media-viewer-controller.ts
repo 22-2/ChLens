@@ -1,11 +1,11 @@
 import {
+  type MouseEvent as ReactMouseEvent,
+  type RefObject,
   useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
   useState,
-  type MouseEvent as ReactMouseEvent,
-  type RefObject,
 } from "react";
 import type { ViewerState } from "src/view/browser/hooks/media-viewer-types";
 import { useMediaViewerStore } from "src/view/browser/hooks/use-media-viewer-store";

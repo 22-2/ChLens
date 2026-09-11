@@ -1,10 +1,11 @@
 import "@testing-library/jest-dom/vitest";
+
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { ThreadPageTopBar } from "src/view/browser/pages/thread/ThreadPageTopBar";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 const threadPageCss = readFileSync(resolve("src/view/browser/styles/pages/ThreadPage.css"), "utf8");
 

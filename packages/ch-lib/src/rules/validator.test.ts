@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
+
 import { parseAndValidateRuleDsl, RuleDslValidationError, validateRuleDsl } from "./validator";
 
 describe("rule DSL validator", () => {

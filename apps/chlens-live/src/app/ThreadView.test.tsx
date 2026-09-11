@@ -1,8 +1,9 @@
-import { describe, expect, it, vi } from "vite-plus/test";
+import type { IRes } from "@chlen/ch-lib";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vite-plus/test";
+
 import { ThreadView } from "./ThreadView";
-import type { IRes } from "@chlen/ch-lib";
 
 function post(number: number, message: string): IRes {
   return { number, name: `名無し${number}`, mail: "", date: "2026/08/24", message };

@@ -3,21 +3,21 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { getStore2String, setStore2String } from "src/app/Store2Storage";
 import { container } from "src/service-container/index";
 import {
-  NGDslHelpSnippet,
-  NGEditor,
   NG_DSL_EXAMPLE,
   NG_DSL_MULTILINE_EXAMPLE,
+  NGDslHelpSnippet,
+  NGEditor,
 } from "src/view/browser/components/NGEditor";
 import { useMediaQuery } from "src/view/browser/hooks/use-media-query";
 import {
   AUTO_SAVE_DELAY_MS,
-  NG_PRIMARY_FIELD_KEYS,
-  SETTINGS_PAGE_STATE_KEY,
-  SETTINGS_SECTIONS,
-  SETTINGS_SECTION_MAP,
   isSettingsSectionId,
+  NG_PRIMARY_FIELD_KEYS,
   readAllSettings,
   saveSectionFormData,
+  SETTINGS_PAGE_STATE_KEY,
+  SETTINGS_SECTION_MAP,
+  SETTINGS_SECTIONS,
 } from "src/view/browser/pages/settings/settings-sections";
 import type {
   SettingsFieldDefinition,

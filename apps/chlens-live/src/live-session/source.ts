@@ -1,10 +1,11 @@
 import {
-  ChFetcher,
   type BoardThread,
+  ChFetcher,
   type ChFetchResult,
   type HttpRequest,
   type ThreadData,
 } from "@chlen/ch-lib";
+
 import { TauriHttpClient } from "./tauri-http-client";
 
 export interface ChLensLiveFetcher {

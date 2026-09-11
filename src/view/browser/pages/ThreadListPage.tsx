@@ -1,5 +1,5 @@
 import { Bookmark, BookmarkX } from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import React, { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
 import { stringifyNgDslValue } from "src/core/ngDsl";
 import { URL as ChURL } from "src/core/URL";
@@ -7,22 +7,22 @@ import { container } from "src/service-container/index";
 import type { IReadState, IThread } from "src/service-container/interfaces";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import {
-  SimpleDataTable,
   type DataTableSection,
+  SimpleDataTable,
 } from "src/view/browser/components/SimpleDataTable";
 import {
   calcHeat,
   createHighlightDividerStyle,
   createHighlightRowStyle,
+  type DisplayThread,
   getThreadListCache,
   isSortColumn,
   isSortDirection,
   readThreadListSortPreference,
   setThreadListCache,
-  THREAD_LIST_COLUMNS,
   THREAD_LIST_COLUMN_VISIBILITY_LOCKED_KEYS,
   THREAD_LIST_COLUMN_VISIBILITY_STORAGE_KEY,
-  type DisplayThread,
+  THREAD_LIST_COLUMNS,
   type ThreadListSortColumn,
   type ThreadListSortPreference,
   writeThreadListSortPreference,
@@ -47,11 +47,11 @@ import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useW
 import { getCurrentPage, type ThreadListPage as ThreadListPageType } from "src/view/browser/types";
 import { ContextMenu, ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { Spinner } from "src/view/browser/ui/Spinner";
-import { copyText, formatMarkdownLink } from "src/view/browser/utils/clipboard";
 import {
   getAutoRefreshThreadPageKey,
   isAutoRefreshEnabledForPage,
 } from "src/view/browser/utils/auto-refresh-pages";
+import { copyText, formatMarkdownLink } from "src/view/browser/utils/clipboard";
 import { ThreadListView } from "src/view/shared/ThreadListView";
 
 // 既存のページ用ユーティリティの公開位置を維持しつつ、パネル側と同じ定義を共有する。
@@ -64,9 +64,9 @@ export {
   isSortDirection,
   readThreadListSortPreference,
   setThreadListCache,
-  THREAD_LIST_COLUMNS,
   THREAD_LIST_COLUMN_VISIBILITY_LOCKED_KEYS,
   THREAD_LIST_COLUMN_VISIBILITY_STORAGE_KEY,
+  THREAD_LIST_COLUMNS,
   writeThreadListSortPreference,
 };
 export type {

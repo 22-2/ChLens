@@ -1,19 +1,19 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  type ExternalMediaEmbed,
   getDirectVideoFallbackThumbnailUrl,
   getDirectVideoLabel,
   isDirectVideoUrl,
   shouldOpenYouTubeExternally,
-  toTwitterPostEmbed,
   toInlineVideoEmbed,
   toRuntimeVideoEmbedUrl,
-  type ExternalMediaEmbed,
+  toTwitterPostEmbed,
 } from "src/view/browser/utils/external-media";
 import type { UrlClickHandler } from "src/view/browser/utils/link-routing";
 import {
-  twitterPostResolver,
   type TwitterPost,
   type TwitterPostMetrics,
+  twitterPostResolver,
   type TwitterVerificationBadgeColor,
 } from "src/view/browser/utils/twitter-post";
 import { toViewerImageUrl } from "src/view/browser/utils/url-media";

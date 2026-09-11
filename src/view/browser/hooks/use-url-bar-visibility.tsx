@@ -1,11 +1,11 @@
 import {
   createContext,
+  type FC,
+  type ReactNode,
   useCallback,
   useContext,
   useMemo,
   useState,
-  type FC,
-  type ReactNode,
 } from "react";
 
 interface UrlBarVisibilityContextValue {

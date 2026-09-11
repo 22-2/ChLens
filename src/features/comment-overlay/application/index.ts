@@ -1,13 +1,13 @@
-import { createCommentOverlayEventBus, commentOverlayWindowPlatform } from "../platform";
+import { commentOverlayWindowPlatform, createCommentOverlayEventBus } from "../platform";
 import { CommentOverlayController } from "./controller";
 import { readCommentOverlaySettings, subscribeToCommentOverlaySettings } from "./settings";
 
-export { CommentOverlayController } from "./controller";
-export { readCommentOverlaySettings } from "./settings";
 export type {
   CommentOverlayControllerDependencies,
   CommentOverlayControllerSnapshot,
 } from "./controller";
+export { CommentOverlayController } from "./controller";
+export { readCommentOverlaySettings } from "./settings";
 
 export const commentOverlayController = new CommentOverlayController({
   eventBus: createCommentOverlayEventBus(),

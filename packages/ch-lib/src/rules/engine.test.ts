@@ -1,6 +1,7 @@
+import { describe, expect, it, vi } from "vite-plus/test";
+
 import { evaluateBoardRules, evaluateResponseRules, matchRules } from "./engine";
 import type { Rule } from "./model";
-import { describe, expect, it, vi } from "vite-plus/test";
 
 const HIDE = new Set<Rule["action"]>(["hide"]);
 const HIGHLIGHT = new Set<Rule["action"]>(["highlight"]);

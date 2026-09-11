@@ -1,10 +1,11 @@
 import { emit, listen } from "@tauri-apps/api/event";
+import { isTauriRuntime } from "src/app/platform/runtime";
+
 import {
-  MemoryCommentOverlayEventBus,
   type CommentOverlayEvent,
   type CommentOverlayEventBus,
+  MemoryCommentOverlayEventBus,
 } from "../domain";
-import { isTauriRuntime } from "src/app/platform/runtime";
 
 export const COMMENT_OVERLAY_EVENT_NAME = "chlens://comment-overlay-update";
 

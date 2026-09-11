@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { container } from "src/service-container/index";

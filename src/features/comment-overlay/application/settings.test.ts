@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
+
 import { DEFAULT_COMMENT_OVERLAY_SETTINGS } from "../domain";
 
 const configMock = vi.hoisted(() => ({

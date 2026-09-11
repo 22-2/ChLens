@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type Dispatch } from "react";
+import { type Dispatch, useCallback, useEffect, useRef, useState } from "react";
 import { log } from "src/app/Log";
 import { container } from "src/service-container/index";
 import type { ScopedTabAction } from "src/view/browser/hooks/use-tab-store";

@@ -1,7 +1,7 @@
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import type { RefObject } from "react";
 import { container } from "src/service-container/index";
-import type { IRes, IThreadService, IMessage, INGService } from "src/service-container/interfaces";
+import type { IMessage, INGService, IRes, IThreadService } from "src/service-container/interfaces";
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";
 import { useThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
