@@ -12,10 +12,23 @@ function createPostResponse(): string {
       id: POST_ID,
       url: POST_URL,
       text: "投稿本文",
+      created_at: "Fri Sep 04 10:00:00 +0000 2026",
+      created_timestamp: 1788516000,
+      source: "Twitter Web App",
+      replies: 412,
+      reposts: 3300,
+      quotes: 17,
+      likes: 38600,
+      views: 11800000,
+      bookmarks: 205,
       author: {
         name: "表示名",
         screen_name: "example",
         avatar_url: "https://pbs.twimg.com/profile.jpg",
+        verification: {
+          verified: true,
+          type: "organization",
+        },
       },
       media: {
         all: [
@@ -36,15 +49,29 @@ function createPostResponse(): string {
 }
 
 describe("TwitterPostResolver", () => {
-  it("FxTwitter APIの投稿本文・作者・画像・動画を安全に取り出す", () => {
+  it("FxTwitter APIの投稿本文・作者・反応数・認証色・メディアを安全に取り出す", () => {
     expect(parseTwitterPostResponse(createPostResponse(), POST_URL, POST_ID)).toEqual({
       id: POST_ID,
       url: POST_URL,
       text: "投稿本文",
+      createdTimestamp: 1788516000,
+      source: "Twitter Web App",
       author: {
         name: "表示名",
         screenName: "example",
         avatarUrl: "https://pbs.twimg.com/profile.jpg",
+        verificationBadge: {
+          color: "gold",
+          type: "organization",
+        },
+      },
+      metrics: {
+        replies: 412,
+        reposts: 3300,
+        quotes: 17,
+        likes: 38600,
+        views: 11800000,
+        bookmarks: 205,
       },
       media: [
         {
@@ -59,6 +86,35 @@ describe("TwitterPostResolver", () => {
           isGif: false,
         },
       ],
+    });
+  });
+
+  it.each([
+    ["individual", "blue"],
+    ["organization", "gold"],
+    ["government", "gray"],
+  ] as const)("認証種別%sを%s色のバッジへ変換する", (type, color) => {
+    const response = JSON.parse(createPostResponse()) as {
+      status: { author: { verification: { type: string } } };
+    };
+    response.status.author.verification.type = type;
+
+    expect(parseTwitterPostResponse(JSON.stringify(response), POST_URL, POST_ID)).toMatchObject({
+      author: {
+        verificationBadge: { type, color },
+      },
+    });
+  });
+
+  it("旧形式の日時とリポスト数も現行表示用データへ補完する", () => {
+    const response = JSON.parse(createPostResponse()) as { status: Record<string, unknown> };
+    delete response.status.created_timestamp;
+    delete response.status.reposts;
+    response.status.retweets = 98;
+
+    expect(parseTwitterPostResponse(JSON.stringify(response), POST_URL, POST_ID)).toMatchObject({
+      createdTimestamp: 1788516000,
+      metrics: { reposts: 98 },
     });
   });
 
