@@ -361,10 +361,15 @@
   pointer-events: none;
 }
 
-.res__thumb--video {
+.res__thumb--video,
+.res__thumb--post {
   appearance: none;
   color: inherit;
   cursor: pointer;
+}
+
+.res__thumb--post {
+  background: var(--sys-color-link-card-bg);
 }
 
 .res__thumb img {
@@ -421,6 +426,41 @@
   line-height: 1.4;
 }
 
+.res__thumb-badge--post {
+  background: var(--sys-color-x-badge-blue);
+}
+
+.res__thumb-post-card {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--sys-space-3);
+  background: var(--sys-color-link-card-bg);
+}
+
+.res__thumb-post-logo {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-lg);
+  background: var(--sys-color-surface);
+  color: var(--sys-color-text);
+  font-size: var(--sys-font-size-lg);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.res__thumb-post-action {
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
 .res__thumb-play {
   position: absolute;
   inset: 50% auto auto 50%;
@@ -466,6 +506,16 @@
   gap: var(--sys-space-4);
 }
 
+.res__twitter-post-author-text {
+  min-width: 0;
+}
+
+.res__twitter-post-author-name {
+  display: flex;
+  align-items: center;
+  gap: var(--sys-space-2);
+}
+
 .res__twitter-post-avatar {
   width: 36px;
   height: 36px;
@@ -486,10 +536,66 @@
   font-size: var(--sys-font-size-sm);
 }
 
+.res__twitter-post-verification {
+  /* Xの認証種別を色でも文言でも判別できるよう、3種を同じ形のバッジへ統一する。 */
+  display: inline-grid;
+  place-items: center;
+  width: 1.15em;
+  height: 1.15em;
+  border-radius: var(--sys-radius-pill);
+  color: var(--sys-color-accent-fg);
+  font-size: var(--sys-font-size-xs);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.res__twitter-post-verification--blue {
+  background: var(--sys-color-x-badge-blue);
+}
+
+.res__twitter-post-verification--gold {
+  background: var(--sys-color-x-badge-gold);
+}
+
+.res__twitter-post-verification--gray {
+  background: var(--sys-color-x-badge-gray);
+}
+
 .res__twitter-post-text {
   margin: 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.res__twitter-post-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sys-space-5);
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-sm);
+  font-weight: 700;
+}
+
+.res__twitter-post-metric {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sys-space-2);
+  white-space: nowrap;
+}
+
+.res__twitter-post-metric-icon {
+  color: var(--sys-color-x-badge-blue);
+  font-size: var(--sys-font-size-body);
+  line-height: 1;
+}
+
+.res__twitter-post-metric[data-metric="likes"] .res__twitter-post-metric-icon {
+  color: var(--sys-color-error);
+}
+
+.res__twitter-post-metric[data-metric="reposts"] .res__twitter-post-metric-icon {
+  color: var(--sys-color-success);
 }
 
 .res__twitter-post-media {
@@ -514,9 +620,23 @@
   aspect-ratio: 1 / 1;
 }
 
-.res__twitter-post-external {
-  justify-self: start;
+.res__twitter-post-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sys-space-2);
+  color: var(--sys-color-text-muted);
   font-size: var(--sys-font-size-sm);
+}
+
+.res__twitter-post-footer > :not(:first-child)::before {
+  content: "·";
+  margin-inline-end: var(--sys-space-2);
+  color: var(--sys-color-text-muted);
+}
+
+.res__twitter-post-external {
+  margin-inline-start: auto;
 }
 
 .res__twitter-post-fallback {

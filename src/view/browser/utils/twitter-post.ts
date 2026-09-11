@@ -22,15 +22,35 @@ export interface TwitterPostVideo {
 
 export type TwitterPostMedia = TwitterPostImage | TwitterPostVideo;
 
+export type TwitterVerificationBadgeColor = "blue" | "gold" | "gray";
+
+export interface TwitterVerificationBadge {
+  color: TwitterVerificationBadgeColor;
+  type: "individual" | "organization" | "government" | null;
+}
+
+export interface TwitterPostMetrics {
+  replies: number | null;
+  reposts: number | null;
+  quotes: number | null;
+  likes: number | null;
+  views: number | null;
+  bookmarks: number | null;
+}
+
 export interface TwitterPost {
   id: string;
   url: string;
   text: string;
+  createdTimestamp: number | null;
+  source: string | null;
   author: {
     name: string;
     screenName: string;
     avatarUrl: string | null;
+    verificationBadge: TwitterVerificationBadge | null;
   };
+  metrics: TwitterPostMetrics;
   media: readonly TwitterPostMedia[];
 }
 
@@ -61,6 +81,44 @@ function getString(record: UnknownRecord, key: string): string | null {
 function getArray(record: UnknownRecord, key: string): unknown[] {
   const value = record[key];
   return Array.isArray(value) ? value : [];
+}
+
+function getNumber(record: UnknownRecord, key: string): number | null {
+  const value = record[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function parseCreatedTimestamp(status: UnknownRecord): number | null {
+  const timestamp = getNumber(status, "created_timestamp");
+  if (timestamp != null) return timestamp;
+
+  const createdAt = getString(status, "created_at");
+  if (!createdAt) return null;
+
+  // v2の数値時刻が欠けた旧応答でも、画面上の投稿日時だけは復元できるようにする。
+  const parsedTimestamp = Date.parse(createdAt);
+  return Number.isFinite(parsedTimestamp) ? parsedTimestamp / 1_000 : null;
+}
+
+function parseVerificationBadge(author: UnknownRecord | null): TwitterVerificationBadge | null {
+  if (!author) return null;
+
+  const verification = asRecord(author.verification);
+  if (!verification || verification.verified !== true) return null;
+
+  const type = getString(verification, "type");
+  if (type === "organization") {
+    return { color: "gold", type };
+  }
+  if (type === "government") {
+    return { color: "gray", type };
+  }
+  if (type === "individual") {
+    return { color: "blue", type };
+  }
+
+  // APIが旧形式のverifiedだけを返す場合も、Xの通常認証色として表示を欠落させない。
+  return { color: "blue", type: null };
 }
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
@@ -177,10 +235,22 @@ export function parseTwitterPostResponse(
     id,
     url: getString(status, "url") ?? fallbackUrl,
     text: getString(status, "text") ?? "",
+    createdTimestamp: parseCreatedTimestamp(status),
+    source: getString(status, "source"),
     author: {
       name: author ? (getString(author, "name") ?? "Twitter/X") : "Twitter/X",
       screenName: author ? (getString(author, "screen_name") ?? "") : "",
       avatarUrl: author ? getString(author, "avatar_url") : null,
+      verificationBadge: parseVerificationBadge(author),
+    },
+    metrics: {
+      replies: getNumber(status, "replies"),
+      // 現行v2のrepostsを優先しつつ、旧APIのretweetsも同じ指標として扱う。
+      reposts: getNumber(status, "reposts") ?? getNumber(status, "retweets"),
+      quotes: getNumber(status, "quotes"),
+      likes: getNumber(status, "likes"),
+      views: getNumber(status, "views"),
+      bookmarks: getNumber(status, "bookmarks"),
     },
     media: parseMedia(status),
   };

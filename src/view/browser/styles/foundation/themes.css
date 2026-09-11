@@ -55,6 +55,9 @@
   --sys-color-thumbnail-surface: var(--ref-color-neutral-0);
   --sys-color-media-badge-bg: var(--ref-color-alpha-ink-78);
   --sys-color-media-play-bg: var(--ref-color-alpha-ink-62);
+  --sys-color-x-badge-blue: var(--ref-color-x-badge-blue);
+  --sys-color-x-badge-gold: var(--ref-color-x-badge-gold);
+  --sys-color-x-badge-gray: var(--ref-color-x-badge-gray);
   --sys-shadow-media-embed: var(--ref-shadow-media-embed);
   --sys-color-res-num: var(--ref-color-blue-900);
   --sys-color-res-heat-warm: var(--ref-color-orange-700);

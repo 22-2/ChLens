@@ -48,6 +48,9 @@
   --ref-color-green-700: #0b8043;
   --ref-color-orange-700: #c47800;
   --ref-color-red-600: #d93025;
+  --ref-color-x-badge-blue: #1d9bf0;
+  --ref-color-x-badge-gold: #d9a900;
+  --ref-color-x-badge-gray: #82909d;
 
   /* Reference palette: dark theme. Semantic tokens select these in themes.css. */
   --ref-color-dark-neutral-0: #202124;
