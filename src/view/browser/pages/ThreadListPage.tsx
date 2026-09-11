@@ -320,14 +320,36 @@ export const ThreadListPage: React.FC<Props> = ({
       // container経由でBoardサービスにアクセス
       const result = await container.board.getThreads(page.boardUrl);
       setThreads(result.threads);
-      void setThreadListCache(page.boardUrl, result.threads);
+      if (result.threads.length > 0 || !result.message) {
+        // 変更理由: 注意メッセージ付きの空結果で直前の正常キャッシュを上書きすると、
+        // 戻る操作時に復元できず誤警告だけが残るため、失敗相当の空結果は保存しない。
+        void setThreadListCache(page.boardUrl, result.threads);
+      }
       // 戻る操作直後は「取得成功 + 注意メッセージ」が返る場合があるため、
       // 一覧を描画できる件数がある間はエラー文言を出さずUIの連続性を優先する。
       if (result.message && result.threads.length === 0) {
-        setError(result.message);
+        const cached = await getThreadListCache(page.boardUrl);
+        if (cached && cached.length > 0) {
+          // 変更理由: 初回起動後に履歴からスレ一覧へ戻る際、サービスの注意メッセージと
+          // IDBキャッシュ復元が競合しても、表示可能な一覧があるなら誤警告を出さない。
+          setThreads(cached);
+        } else {
+          setError(result.message);
+        }
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "スレッド一覧の取得に失敗しました");
+      console.error("[ChLens] スレッド一覧の取得に失敗しました:", {
+        boardUrl: page.boardUrl,
+        error: e,
+      });
+      const cached = await getThreadListCache(page.boardUrl);
+      if (cached && cached.length > 0) {
+        // 変更理由: 一時的な通信失敗でもキャッシュから一覧を復元できる場合は、画面上部を
+        // エラーで塞がず、利用可能な直前データを優先する。詳細な失敗はログに残す。
+        setThreads(cached);
+      } else {
+        setError(e instanceof Error ? e.message : "スレッド一覧の取得に失敗しました");
+      }
     } finally {
       setLoading(false);
     }

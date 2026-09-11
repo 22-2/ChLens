@@ -26,6 +26,7 @@ import {
 import { buildIndexes } from "src/view/browser/utils/thread-index";
 import { filterThreadResponses } from "src/view/browser/utils/thread-search";
 import { hasExternalLink, hasImage, hasVideo } from "src/view/browser/utils/message-filter";
+import { normalizePopularReplyThreshold } from "src/view/browser/utils/popular-filter";
 import type { ThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
 import { useIsNgTemporarilyDisabled, useNgDisplayMode } from "src/view/browser/hooks/use-ng-status";
 
@@ -96,6 +97,10 @@ export function useThreadData(
   const [expired, setExpired] = useState(false);
   const [missingFromSubject, setMissingFromSubject] = useState(false);
   const [filter, setFilter] = useState<ThreadFilter>(() => persistedViewState.filter ?? "all");
+  // ステータスバーからも変更する値なので、本文側のローカルstateではなくviewStateを正本にする。
+  const popularReplyThreshold = normalizePopularReplyThreshold(
+    persistedViewState.popularReplyThreshold,
+  );
   const [searchTarget, setSearchTarget] = useState<ThreadSearchTarget>(() => {
     const persistedSearchTarget = persistedViewState.searchTarget;
     return persistedSearchTarget === "body" ||
@@ -281,7 +286,7 @@ export function useThreadData(
       list = list.filter((res) => {
         switch (filter) {
           case "popular":
-            return (indexes.repIndex.get(res.num)?.size ?? 0) >= 3;
+            return (indexes.repIndex.get(res.num)?.size ?? 0) >= popularReplyThreshold;
           case "image":
             return hasImage(res.message);
           case "video":
@@ -297,7 +302,14 @@ export function useThreadData(
     }
 
     return list;
-  }, [visibleResponses, filter, searchQuery, searchTarget, indexes.repIndex]);
+  }, [
+    visibleResponses,
+    filter,
+    popularReplyThreshold,
+    searchQuery,
+    searchTarget,
+    indexes.repIndex,
+  ]);
 
   const idPositions = useMemo(() => {
     const positions = new Map<number, number>();

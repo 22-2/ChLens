@@ -1,11 +1,13 @@
-import { useEffect, useState, type ReactElement } from "react";
-import { Eye, EyeOff, Pause, Play, RotateCw, Search } from "lucide-react";
+import { useEffect, useRef, useState, type ReactElement } from "react";
+import { Eye, EyeOff, Pause, Play, RotateCw, Search, SlidersHorizontal } from "lucide-react";
 import type { ThreadListViewRow } from "../../../../src/view/shared/ThreadListView";
 import {
   DEFAULT_OVERLAY_GEOMETRY,
   liveWindowPlatform,
   type OverlayGeometry,
 } from "../platform/index";
+import type { CommentOverlayMonitor } from "src/features/comment-overlay/platform";
+import { OverlayControlPanel } from "src/features/comment-overlay/ui/OverlayControlPanel";
 import {
   createChLensLiveSource,
   createTauriChLensLiveSource,
@@ -36,6 +38,12 @@ export function App(): ReactElement {
   const [source] = useState(createDefaultSource);
   const [eventBus] = useState(createLiveEventBus);
   const [, setGeometry] = useState<OverlayGeometry>(DEFAULT_OVERLAY_GEOMETRY);
+  const [isControlPanelOpen, setIsControlPanelOpen] = useState(false);
+  const [controlPanelMonitors, setControlPanelMonitors] = useState<
+    readonly CommentOverlayMonitor[]
+  >([]);
+  const [controlPanelGeometry, setControlPanelGeometry] = useState<OverlayGeometry | null>(null);
+  const controlPanelWriteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [overlayVisible, setOverlayVisible] = useState(true);
   const [threadFilterOpen, setThreadFilterOpen] = useState(false);
   const [address, setAddress] = useState(DEFAULT_BOARD_URL);
@@ -91,9 +99,6 @@ export function App(): ReactElement {
   }, [activeTab, thread.snapshot]);
 
   useEffect(() => {
-    void liveWindowPlatform.setOverlayClickThrough(true).catch((error: unknown) => {
-      console.error("[Chlens Live] initial overlay click-through setup failed:", error);
-    });
     void liveWindowPlatform
       .loadOverlayGeometry()
       .then((stored) => {
@@ -109,8 +114,8 @@ export function App(): ReactElement {
       .watchOverlayGeometry((nextGeometry) => {
         setGeometry(nextGeometry);
         if (saveTimer) clearTimeout(saveTimer);
-        // Native move/resize events can arrive in bursts; debounce persistence to avoid
-        // writing the same layout repeatedly while the user is dragging the overlay.
+        // nativeの移動・リサイズeventは連続して届くため、ドラッグ中の同じlayout保存を
+        // debounceしてlocalStorageへの書き込みを抑える。
         saveTimer = setTimeout(() => {
           saveTimer = null;
           void liveWindowPlatform.saveOverlayGeometry(nextGeometry).catch((error: unknown) => {
@@ -128,6 +133,34 @@ export function App(): ReactElement {
     return () => {
       if (saveTimer) clearTimeout(saveTimer);
       unwatchGeometry?.();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isControlPanelOpen) return;
+    // 変更理由: Overlayは表示専用に固定したため、実モニターと現在geometryを
+    // Mainの操作パネルを開いた時だけ取得し、Overlay側の再計測を発生させない。
+    let disposed = false;
+    void Promise.all([
+      liveWindowPlatform.getOverlayMonitors(),
+      liveWindowPlatform.getOverlayGeometry(),
+    ])
+      .then(([nextMonitors, nextGeometry]) => {
+        if (disposed) return;
+        setControlPanelMonitors(nextMonitors);
+        setControlPanelGeometry(nextGeometry);
+      })
+      .catch((error: unknown) => {
+        console.error("[Chlens Live] overlay control panel initialization failed:", error);
+      });
+    return () => {
+      disposed = true;
+    };
+  }, [isControlPanelOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (controlPanelWriteTimerRef.current) clearTimeout(controlPanelWriteTimerRef.current);
     };
   }, []);
 
@@ -182,6 +215,21 @@ export function App(): ReactElement {
     });
   };
 
+  const handleControlPanelGeometryChange = (nextGeometry: OverlayGeometry): void => {
+    // 変更理由: ドラッグ中の連続座標を40ms単位へまとめ、表示の追従性とnative IPC量を両立する。
+    setControlPanelGeometry(nextGeometry);
+    if (controlPanelWriteTimerRef.current) clearTimeout(controlPanelWriteTimerRef.current);
+    controlPanelWriteTimerRef.current = setTimeout(() => {
+      controlPanelWriteTimerRef.current = null;
+      void liveWindowPlatform
+        .setOverlayGeometry(nextGeometry)
+        .then(() => liveWindowPlatform.saveOverlayGeometry(nextGeometry))
+        .catch((error: unknown) => {
+          console.error("[Chlens Live] overlay control panel geometry update failed:", error);
+        });
+    }, 40);
+  };
+
   const toolbar = (
     <>
       {activeTab.page === "threadList" ? (
@@ -215,6 +263,15 @@ export function App(): ReactElement {
           {overlayVisible ? <EyeOff size={16} /> : <Eye size={16} />}
         </button>
       ) : null}
+      <button
+        type="button"
+        className="live-icon-button"
+        aria-label={isControlPanelOpen ? "Overlay操作パネルを閉じる" : "Overlay操作パネルを開く"}
+        title={isControlPanelOpen ? "Overlay操作パネルを閉じる" : "Overlay操作パネルを開く"}
+        onClick={() => setIsControlPanelOpen((open) => !open)}
+      >
+        <SlidersHorizontal size={16} />
+      </button>
     </>
   );
 
@@ -258,6 +315,15 @@ export function App(): ReactElement {
       }
       toolbar={toolbar}
     >
+      {isControlPanelOpen ? (
+        <aside className="live-overlay-control-panel">
+          <OverlayControlPanel
+            monitors={controlPanelMonitors}
+            geometry={controlPanelGeometry}
+            onGeometryChange={handleControlPanelGeometryChange}
+          />
+        </aside>
+      ) : null}
       {activeTab.page === "threadList" ? (
         <LiveThreadList
           rows={threadList.rows}

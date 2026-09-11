@@ -14,7 +14,7 @@ import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
 import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
 import { usePopupAutoScrollPauseSetting } from "src/view/browser/hooks/use-popup-auto-scroll-pause-setting";
 import { useThreadPopupManager } from "src/view/browser/hooks/use-popup-manager";
-import { useTabDispatch } from "src/view/browser/hooks/use-tab-store";
+import { useTabDispatch, useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useThreadAutoRefresh } from "src/view/browser/hooks/use-thread-auto-refresh";
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";
 import { useThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
@@ -41,6 +41,7 @@ interface ThreadPageProps {
   page: ThreadPageType;
   refreshKey: number;
   isActive: boolean;
+  isOverlayTarget?: boolean;
   isAutoRefreshEnabled: boolean;
   scrollContainerRef?: RefObject<HTMLDivElement | null>;
 }
@@ -50,6 +51,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   page,
   refreshKey,
   isActive,
+  isOverlayTarget = isActive,
   isAutoRefreshEnabled,
   scrollContainerRef,
 }) => {
@@ -77,17 +79,62 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     setResponses,
     messageProtocol,
   } = useThreadData(tabId, page, rootRef, refreshController);
-  const { controller: commentOverlayController } = useCommentOverlay();
+  const { controller: commentOverlayController, snapshot: commentOverlaySnapshot } =
+    useCommentOverlay();
   const dispatch = useTabDispatch();
+  const { activeTab } = useTabStore();
+  const isCommentOverlayTarget =
+    commentOverlaySnapshot.state.status === "running" &&
+    commentOverlaySnapshot.state.targetThreadUrl === page.threadUrl;
+  const isCommentOverlayVisible =
+    commentOverlaySnapshot.state.status === "running" && commentOverlaySnapshot.visible;
+  const isCommentOverlayFlowing = isCommentOverlayTarget && commentOverlaySnapshot.visible;
 
   useCommentOverlaySync({
     controller: commentOverlayController,
     threadUrl: page.threadUrl,
     responses,
-    isActive,
-    expired,
-    missingFromSubject,
+    // 変更理由: Overlay対象のタブを画面上で隠しても、新着snapshotの共有を続けて
+    // コメント表示を止めない。未開始スレッドのsnapshot保持はフォーカス中だけでよい。
+    isActive: isOverlayTarget || isCommentOverlayTarget,
   });
+
+  useEffect(() => {
+    if (
+      !isOverlayTarget ||
+      !isAutoRefreshEnabled ||
+      !isCommentOverlayVisible ||
+      loading ||
+      responses.length === 0
+    ) {
+      return;
+    }
+    const previousPage = activeTab.history[activeTab.currentIndex - 1];
+    if (
+      previousPage?.type !== "thread" ||
+      previousPage.threadUrl !== commentOverlaySnapshot.state.targetThreadUrl ||
+      page.threadUrl === commentOverlaySnapshot.state.targetThreadUrl
+    ) {
+      return;
+    }
+
+    // 変更理由: 次スレ移動では同じタブの直前スレッドをOverlay対象としているため、
+    // 新スレッドの初回取得完了後にbaselineごと切り替え、旧レスを流さず表示を継続する。
+    void commentOverlayController.start(page.threadUrl, responses).catch((error: unknown) => {
+      console.error("[ChLens] 次スレ移動後のコメント実況引き継ぎに失敗しました:", error);
+    });
+  }, [
+    activeTab.currentIndex,
+    activeTab.history,
+    commentOverlayController,
+    commentOverlaySnapshot.state.targetThreadUrl,
+    isAutoRefreshEnabled,
+    isCommentOverlayVisible,
+    isOverlayTarget,
+    loading,
+    page.threadUrl,
+    responses,
+  ]);
   // 変更理由: 更新開始後のloading中もwheel更新の共有cooldownとindicatorを維持し、
   // 画面切替で別の一覧/スレッドから連続更新できる隙間を作らない。
   const wheelPagination = useWheelPagination({
@@ -158,7 +205,9 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
 
   // 変更理由: 自動更新とステータスバー強調の条件を同一ソースに統一し、
   // タブ切替後に非アクティブタブの状態がステータスバーへ残留するのを防ぐ。
-  const isActiveAutoRefreshEnabled = isActive && isAutoRefreshEnabled;
+  // 変更理由: Overlayへ流しているスレッドはタブを切り替えても取得を止めず、
+  // 表示中の実況と自動次スレ探索をバックグラウンドで継続する。
+  const isActiveAutoRefreshEnabled = (isActive || isCommentOverlayFlowing) && isAutoRefreshEnabled;
   // 変更理由: 画面上はいずれも dat 落ち案内を表示する状態であり、
   // 自動更新中にどちらかを取得したら、Issue #29 の完了条件に従って停止処理へ渡す。
   const autoRefreshExpired = expired || missingFromSubject;
@@ -190,15 +239,21 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     loading,
     // 変更理由: ポップアップを読みながら新着へ流されない従来動作を、
     // ユーザーが用途に合わせて無効化できるようにする。
-    pauseAutoScroll: pauseAutoScrollOnPopup && popups.length > 0,
+    // 変更理由: コメント実況中はポップアップを開いても新着追従を止めず、
+    // Overlayへ送る取得周期と自動次スレ判定を維持する。
+    pauseAutoScroll: !isCommentOverlayFlowing && pauseAutoScrollOnPopup && popups.length > 0,
     responseCount: responses.length,
     lastResponseNum: responses.at(-1)?.num ?? null,
     rootRef,
     requestRefresh: () => dispatch({ type: "RELOAD" }),
     // 新着が一定回数(=間隔×N)来なかったら、放置スレと判断して自動更新を止める。
-    onAutoStop: () => handleAutoRefreshStop("新着が止まったため自動更新を停止しました"),
+    onAutoStop: isCommentOverlayFlowing
+      ? undefined
+      : () => handleAutoRefreshStop("新着が止まったため自動更新を停止しました"),
     // interval の停止だけではタブに自動更新状態が残るため、dat落ち時も明示的に解除する。
-    onThreadExpired: () => handleAutoRefreshStop("dat落ちを検知したため自動更新を停止しました"),
+    onThreadExpired: isCommentOverlayFlowing
+      ? undefined
+      : () => handleAutoRefreshStop("dat落ちを検知したため自動更新を停止しました"),
   });
 
   const handleFollowNextThread = useCallback(
@@ -225,7 +280,9 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     expired,
     mode: autoNextThreadMode,
     responseMessages: autoNextThreadResponseMessages,
-    canAutoScroll,
+    // 変更理由: Overlay実況中は本文タブが非表示でも次スレ探索を継続し、
+    // 次スレへ移った後に実況対象を途切れず引き継げるようにする。
+    canAutoScroll: isCommentOverlayFlowing || canAutoScroll,
     followThread: handleFollowNextThread,
   });
 

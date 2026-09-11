@@ -5,7 +5,20 @@ import {
   loadStoredOverlayGeometry,
   saveStoredOverlayGeometry,
 } from "./geometry";
-import type { LiveWindowPlatform, OverlayGeometry, OverlayResizeDirection } from "./types";
+import type { CommentOverlayMonitor } from "src/features/comment-overlay/platform";
+import type { LiveWindowPlatform, OverlayGeometry } from "./types";
+
+const STORYBOOK_MONITORS: readonly CommentOverlayMonitor[] = [
+  {
+    id: "storybook-monitor",
+    name: "Storybookモニター",
+    x: 0,
+    y: 0,
+    width: 1920,
+    height: 1080,
+    scaleFactor: 1,
+  },
+];
 
 /**
  * フロントエンド試作と単体テストで使うブラウザ用フォールバック。
@@ -20,15 +33,11 @@ export function createBrowserLiveWindowPlatform(): LiveWindowPlatform {
     async showOverlay() {},
     async hideOverlay() {},
     async focusOverlay() {},
-    async startResizingOverlay(_direction: OverlayResizeDirection) {},
     async minimizeOverlay() {},
     async toggleMaximizeOverlay() {},
     async closeOverlay() {},
-    async setOverlayClickThrough(_enabled: boolean) {},
-    trackOverlayBarHover(_listener: (hovered: boolean) => void) {
-      // ブラウザのプレビューには透明なネイティブウィンドウがないため、
-      // 2つ目のカーソル監視ループを開始せずCSSのhoverをフォールバックにする。
-      return () => {};
+    async getOverlayMonitors() {
+      return STORYBOOK_MONITORS;
     },
     async getOverlayGeometry() {
       return cloneOverlayGeometry(geometry);

@@ -1,0 +1,191 @@
+.overlay-control-panel {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0.75rem;
+  color: var(--sys-color-text, #e8eef7);
+  background: var(--sys-color-surface, #152338);
+}
+
+.overlay-control-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.overlay-control-panel__header h2 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.overlay-control-panel__header p {
+  margin: 0.25rem 0 0;
+  color: var(--sys-color-text-muted, #9eafc5);
+  font-size: 0.75rem;
+}
+
+.overlay-control-panel__header button {
+  border: 1px solid var(--sys-color-border, #3b5575);
+  border-radius: 0.35rem;
+  padding: 0.35rem 0.55rem;
+  color: inherit;
+  background: var(--sys-color-surface-muted, #213650);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.72rem;
+}
+
+.overlay-control-panel__header button:hover {
+  background: var(--sys-color-list-hover-bg, #2b486c);
+}
+
+.overlay-control-panel__monitor-navigation {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.overlay-control-panel__monitor-navigation button {
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--sys-color-border, #3b5575);
+  border-radius: 0.35rem;
+  color: inherit;
+  background: var(--sys-color-surface-muted, #213650);
+  cursor: pointer;
+  font: inherit;
+}
+
+.overlay-control-panel__monitor-navigation button:hover:not(:disabled) {
+  background: var(--sys-color-list-hover-bg, #2b486c);
+}
+
+.overlay-control-panel__monitor-navigation button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.overlay-control-panel__monitor-navigation div {
+  display: grid;
+  min-width: 0;
+  text-align: center;
+}
+
+.overlay-control-panel__monitor-navigation strong {
+  overflow: hidden;
+  font-size: 0.8rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.overlay-control-panel__monitor-navigation span {
+  color: var(--sys-color-text-muted, #9eafc5);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.overlay-control-panel__desktop {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--sys-color-border, #3b5575);
+  border-radius: 0.4rem;
+  background: var(--sys-color-input-bg, #0e1c30);
+  touch-action: none;
+  user-select: none;
+}
+
+.overlay-control-panel__desktop-background {
+  fill: transparent;
+  pointer-events: all;
+}
+
+.overlay-control-panel__monitor-screen {
+  fill: var(--sys-color-surface-muted, #263d5a);
+  stroke: var(--sys-color-border, #58749a);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.overlay-control-panel__monitor--selected .overlay-control-panel__monitor-screen {
+  fill: color-mix(in srgb, var(--sys-color-accent, #65a9ff) 18%, #263d5a);
+  stroke: var(--sys-color-accent, #65a9ff);
+}
+
+.overlay-control-panel__monitor-label {
+  fill: var(--sys-color-text-muted, #a8bad0);
+  /* 仮想デスクトップ座標で描くため、複数モニターを縮小しても読める大きさにする。 */
+  font-size: 64px;
+  pointer-events: none;
+  user-select: none;
+}
+
+.overlay-control-panel__selection {
+  fill: color-mix(in srgb, var(--sys-color-accent, #65a9ff) 20%, transparent);
+  stroke: var(--sys-color-accent, #65a9ff);
+  stroke-width: 3;
+  stroke-dasharray: 8 5;
+  vector-effect: non-scaling-stroke;
+  cursor: move;
+}
+
+.overlay-control-panel__handle {
+  fill: var(--sys-color-accent, #65a9ff);
+  stroke: var(--sys-color-surface, #152338);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.overlay-control-panel__help {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.4rem 0.75rem;
+  color: var(--sys-color-text-muted, #9eafc5);
+  font-size: 0.7rem;
+}
+
+.overlay-control-panel__geometry {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem;
+  margin: 0;
+}
+
+.overlay-control-panel__geometry div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-radius: 0.3rem;
+  padding: 0.35rem 0.5rem;
+  background: var(--sys-color-surface-muted, #213650);
+  font-size: 0.72rem;
+}
+
+.overlay-control-panel__geometry dt {
+  color: var(--sys-color-text-muted, #9eafc5);
+}
+
+.overlay-control-panel__geometry dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.overlay-control-panel__empty {
+  margin: 0;
+  padding: 2rem 1rem;
+  color: var(--sys-color-text-muted, #9eafc5);
+  text-align: center;
+}
+
+.overlay-control-panel__unselected {
+  margin: 0;
+  border-radius: 0.3rem;
+  padding: 0.5rem;
+  color: var(--sys-color-text-muted, #9eafc5);
+  background: var(--sys-color-surface-muted, #213650);
+  font-size: 0.7rem;
+  text-align: center;
+}

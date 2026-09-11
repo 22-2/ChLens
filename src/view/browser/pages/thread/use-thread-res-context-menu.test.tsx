@@ -171,7 +171,7 @@ function FilterJumpHarness() {
     setFilteredResponses(filter === "all" && searchQuery === "" ? [TARGET_RES] : []);
   }, [filter, searchQuery]);
 
-  const { openThreadResContextMenu } = useThreadResContextMenu({
+  const { openPopupResContextMenu, openThreadResContextMenu } = useThreadResContextMenu({
     addPopupContextMenu: (_x, _y, items) => {
       setCapturedItems(items);
     },
@@ -208,6 +208,18 @@ function FilterJumpHarness() {
         }}
       >
         open-filtered-menu
+      </button>
+      <button
+        onClick={() => {
+          const event = {
+            preventDefault: () => {},
+            clientX: 10,
+            clientY: 20,
+          } as unknown as React.MouseEvent;
+          openPopupResContextMenu("popup-1")(TARGET_RES, event);
+        }}
+      >
+        open-filtered-popup-menu
       </button>
       <button
         onClick={() => {
@@ -328,6 +340,17 @@ describe("useThreadResContextMenu", () => {
     render(<FilterJumpHarness />);
 
     fireEvent.click(screen.getByRole("button", { name: "open-filtered-menu" }));
+    fireEvent.click(screen.getByRole("button", { name: "clear-filter-jump" }));
+
+    await waitFor(() => {
+      expect(mocks.handleAnchorClick).toHaveBeenCalledWith(TARGET_RES.num);
+    });
+  });
+
+  it("ポップアップ上でもフィルタ解除後に指定レスへジャンプする", async () => {
+    render(<FilterJumpHarness />);
+
+    fireEvent.click(screen.getByRole("button", { name: "open-filtered-popup-menu" }));
     fireEvent.click(screen.getByRole("button", { name: "clear-filter-jump" }));
 
     await waitFor(() => {

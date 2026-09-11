@@ -1,14 +1,11 @@
-import { useEffect, useRef, useState, type PointerEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  constrainCommentOverlayGeometryToAspectRatio,
   createCommentOverlayEventBus,
-  COMMENT_OVERLAY_CONTROL_BAR_HEIGHT,
   DEFAULT_COMMENT_OVERLAY_GEOMETRY,
   type CommentOverlayEvent,
   type CommentOverlayEventBus,
   commentOverlayWindowPlatform,
   type CommentOverlayGeometry,
-  type CommentOverlayResizeDirection,
   type CommentOverlayWindowPlatform,
 } from "src/features/comment-overlay/platform";
 import {
@@ -23,41 +20,12 @@ import {
   DEFAULT_COMMENT_HISTORY_LIMIT,
   OverlayStage,
 } from "src/features/comment-overlay/ui/OverlayStage";
-import { OverlayControlBar } from "./OverlayControlBar";
 
 const MAX_COMMENT_HISTORY = DEFAULT_COMMENT_HISTORY_LIMIT;
-
-const RESIZE_HANDLES: ReadonlyArray<{
-  direction: CommentOverlayResizeDirection;
-  className: string;
-}> = [
-  { direction: "NorthWest", className: "comment-overlay-window__resize--north-west" },
-  { direction: "North", className: "comment-overlay-window__resize--north" },
-  { direction: "NorthEast", className: "comment-overlay-window__resize--north-east" },
-  { direction: "East", className: "comment-overlay-window__resize--east" },
-  { direction: "SouthEast", className: "comment-overlay-window__resize--south-east" },
-  { direction: "South", className: "comment-overlay-window__resize--south" },
-  { direction: "SouthWest", className: "comment-overlay-window__resize--south-west" },
-  { direction: "West", className: "comment-overlay-window__resize--west" },
-];
 
 export interface OverlayAppProps {
   eventBus?: CommentOverlayEventBus;
   platform?: CommentOverlayWindowPlatform;
-}
-
-function startResizing(
-  event: PointerEvent<HTMLSpanElement>,
-  direction: CommentOverlayResizeDirection,
-  platform: CommentOverlayWindowPlatform,
-): void {
-  if (event.button !== 0) return;
-
-  event.preventDefault();
-  event.stopPropagation();
-  void platform.startResizing(direction).catch((error: unknown) => {
-    console.error(`[ChLens] コメントOverlayのリサイズに失敗しました: ${direction}`, error);
-  });
 }
 
 /** Tauriのnative windowと、Storybookでも検証できるOverlayStageを接続する。 */
@@ -69,7 +37,6 @@ export function OverlayApp({
   const eventBus = providedEventBus ?? defaultEventBus;
   const [comments, setComments] = useState<readonly CommentCandidate[]>([]);
   const [stageKey, setStageKey] = useState(0);
-  const [controlsVisible, setControlsVisible] = useState(true);
   const [overlayGeometry, setOverlayGeometry] = useState<CommentOverlayGeometry>(
     DEFAULT_COMMENT_OVERLAY_GEOMETRY,
   );
@@ -79,13 +46,6 @@ export function OverlayApp({
   const activeThreadUrlRef = useRef<string | null>(null);
   const seenResponseNumbersRef = useRef(new Set<number>());
   const seenResponseOrderRef = useRef<number[]>([]);
-  const latestGeometryRef = useRef<CommentOverlayGeometry>(DEFAULT_COMMENT_OVERLAY_GEOMETRY);
-  const resizeSessionRef = useRef<{
-    direction: CommentOverlayResizeDirection;
-    origin: CommentOverlayGeometry;
-  } | null>(null);
-  const resizeSessionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   useEffect(() => {
     let disposed = false;
     let unsubscribe: (() => void) | null = null;
@@ -189,12 +149,7 @@ export function OverlayApp({
   }, [eventBus]);
 
   useEffect(() => {
-    void platform.setClickThrough(true).catch((error: unknown) => {
-      console.error("[ChLens] コメントOverlayの初期クリック透過設定に失敗しました:", error);
-    });
-
     let saveTimer: ReturnType<typeof setTimeout> | null = null;
-    let aspectTimer: ReturnType<typeof setTimeout> | null = null;
     let unwatchGeometry: (() => void) | null = null;
     let unwatchVisibility: (() => void) | null = null;
     let disposed = false;
@@ -202,15 +157,12 @@ export function OverlayApp({
       .loadGeometry()
       .then(async (geometry) => {
         if (geometry) {
-          latestGeometryRef.current = geometry;
           setOverlayGeometry(geometry);
           return;
         }
-        // 変更理由: loadGeometryとgetGeometryを並行実行すると、保存値の復元後に
-        // 古いnativeサイズが到着してリサイズ起点を巻き戻すため、復元完了後だけ現在値を読む。
+        // 保存値がない初回だけnativeの現在値を読む。
         const currentGeometry = await platform.getGeometry();
         if (!disposed && currentGeometry) {
-          latestGeometryRef.current = currentGeometry;
           setOverlayGeometry(currentGeometry);
         }
       })
@@ -220,45 +172,12 @@ export function OverlayApp({
     void platform
       .watchGeometry((geometry: CommentOverlayGeometry) => {
         if (disposed) return;
-        latestGeometryRef.current = geometry;
-        // 変更理由: 移動eventでは倍率が変わらないため、x/yだけの更新でStageを再描画せず、
-        // hoverやウィンドウ移動に伴う不要なWebView再合成を避ける。
+        // 位置変更だけではStageを再描画せず、コメントのCSSアニメーションを維持する。
         setOverlayGeometry((current) =>
           current.width === geometry.width && current.height === geometry.height
             ? current
             : geometry,
         );
-        const resizeSession = resizeSessionRef.current;
-        if (resizeSession) {
-          const sizeChanged =
-            Math.abs(geometry.width - resizeSession.origin.width) > 1 ||
-            Math.abs(geometry.height - resizeSession.origin.height) > 1;
-          if (sizeChanged) {
-            if (resizeSessionTimeoutRef.current) {
-              clearTimeout(resizeSessionTimeoutRef.current);
-              resizeSessionTimeoutRef.current = null;
-            }
-            if (aspectTimer) clearTimeout(aspectTimer);
-            aspectTimer = setTimeout(() => {
-              aspectTimer = null;
-              if (resizeSessionRef.current !== resizeSession) return;
-              resizeSessionRef.current = null;
-              if (resizeSessionTimeoutRef.current) {
-                clearTimeout(resizeSessionTimeoutRef.current);
-                resizeSessionTimeoutRef.current = null;
-              }
-              const constrained = constrainCommentOverlayGeometryToAspectRatio(
-                resizeSession.origin,
-                latestGeometryRef.current,
-                resizeSession.direction,
-              );
-              latestGeometryRef.current = constrained;
-              void platform.setGeometry(constrained).catch((error: unknown) => {
-                console.error("[ChLens] コメントOverlayの縦横比補正に失敗しました:", error);
-              });
-            }, 120);
-          }
-        }
         if (saveTimer) clearTimeout(saveTimer);
         saveTimer = setTimeout(() => {
           saveTimer = null;
@@ -291,40 +210,16 @@ export function OverlayApp({
         console.error("[ChLens] コメントOverlayの表示状態監視開始に失敗しました:", error);
       });
 
-    const untrackBarHover = platform.trackBarHover(setControlsVisible);
     return () => {
       disposed = true;
       if (saveTimer) clearTimeout(saveTimer);
-      if (aspectTimer) clearTimeout(aspectTimer);
-      if (resizeSessionTimeoutRef.current) clearTimeout(resizeSessionTimeoutRef.current);
-      resizeSessionTimeoutRef.current = null;
-      resizeSessionRef.current = null;
       unwatchGeometry?.();
       unwatchVisibility?.();
-      untrackBarHover();
     };
   }, [platform]);
 
-  const beginResize = (
-    event: PointerEvent<HTMLSpanElement>,
-    direction: CommentOverlayResizeDirection,
-  ): void => {
-    // 変更理由: Tauriのネイティブリサイズ終了後に開始時の縦横比へ戻し、
-    // フォント・行間・移動距離をEdgeLiveViewerと同じ倍率で揃える。
-    resizeSessionRef.current = { direction, origin: { ...latestGeometryRef.current } };
-    if (resizeSessionTimeoutRef.current) clearTimeout(resizeSessionTimeoutRef.current);
-    // 変更理由: OS側のリサイズeventを取りこぼしても、次のhoverや移動eventを
-    // 直前のリサイズとして誤解釈して再拡大しないよう、未完了セッションを短時間で破棄する。
-    resizeSessionTimeoutRef.current = setTimeout(() => {
-      resizeSessionTimeoutRef.current = null;
-      resizeSessionRef.current = null;
-    }, 2_000);
-    startResizing(event, direction, platform);
-  };
-
   return (
     <main className="comment-overlay-window" data-testid="comment-overlay-window">
-      <div className="comment-overlay-window__frame" aria-hidden="true" />
       <OverlayStage
         key={stageKey}
         className="comment-overlay-window__comment-layer"
@@ -334,7 +229,6 @@ export function OverlayApp({
         containerWidth={overlayGeometry.width}
         containerHeight={overlayGeometry.height}
         durationSeconds={settings.durationSeconds}
-        topPadding={COMMENT_OVERLAY_CONTROL_BAR_HEIGHT + 4}
         commentOpacity={settings.opacity}
         maxQueueSize={settings.maxQueueSize}
         // 変更理由: Tauriの横長・低い初期Overlayではadaptiveの循環laneが同時に
@@ -350,19 +244,6 @@ export function OverlayApp({
         showCommentInfo={false}
         backgroundColor="transparent"
       />
-      <OverlayControlBar
-        visible={controlsVisible}
-        platform={platform}
-        onResizeStart={beginResize}
-      />
-      {RESIZE_HANDLES.map(({ direction, className }) => (
-        <span
-          key={direction}
-          aria-hidden="true"
-          className={`comment-overlay-window__resize ${className}`}
-          onPointerDown={(event) => beginResize(event, direction)}
-        />
-      ))}
     </main>
   );
 }

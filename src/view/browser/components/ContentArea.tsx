@@ -43,6 +43,7 @@ function buildPageRenderKey(
 interface TabPageContentProps {
   tab: Tab;
   isActive: boolean;
+  isOverlayTarget: boolean;
   threadListActive?: boolean;
   scrollContainerRef: RefObject<HTMLDivElement | null>;
 }
@@ -50,6 +51,7 @@ interface TabPageContentProps {
 const TabPageContent = memo(function TabPageContent({
   tab,
   isActive,
+  isOverlayTarget,
   threadListActive,
   scrollContainerRef,
 }: TabPageContentProps) {
@@ -89,6 +91,7 @@ const TabPageContent = memo(function TabPageContent({
           page={page}
           refreshKey={tab.reloadKey}
           isActive={isActive}
+          isOverlayTarget={isOverlayTarget}
           isAutoRefreshEnabled={isAutoRefreshEnabledForPage(tab, page)}
           scrollContainerRef={scrollContainerRef}
         />
@@ -99,9 +102,10 @@ const TabPageContent = memo(function TabPageContent({
 interface TabPanelProps {
   tab: Tab;
   isActive: boolean;
+  isOverlayTarget: boolean;
 }
 
-const TabPanel = memo(function TabPanel({ tab, isActive }: TabPanelProps) {
+const TabPanel = memo(function TabPanel({ tab, isActive, isOverlayTarget }: TabPanelProps) {
   const page = getCurrentPage(tab);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -134,6 +138,7 @@ const TabPanel = memo(function TabPanel({ tab, isActive }: TabPanelProps) {
           key={buildPageRenderKey(tab.id, tab.currentIndex, page)}
           tab={tab}
           isActive={isActive}
+          isOverlayTarget={isOverlayTarget && isActive}
           threadListActive={page.type === "threadList" ? isActive : undefined}
           scrollContainerRef={scrollContainerRef}
         />
@@ -142,7 +147,11 @@ const TabPanel = memo(function TabPanel({ tab, isActive }: TabPanelProps) {
   );
 });
 
-export const ContentArea: FC = () => {
+interface ContentAreaProps {
+  isOverlayTarget?: boolean;
+}
+
+export const ContentArea: FC<ContentAreaProps> = ({ isOverlayTarget = true }) => {
   const { state } = useTabStore();
 
   return (
@@ -151,7 +160,12 @@ export const ContentArea: FC = () => {
         // 変更理由: 2ペイン時はフォーカス外のペインも表示中のため、自動更新の
         // 実行判定はペイン単位の activeTab で行いフォーカスでは絞らない。
         // 非表示タブ・ドキュメント非表示時の停止は各ページ側の判定に任せる。
-        <TabPanel key={tab.id} tab={tab} isActive={tab.id === state.activeTabId} />
+        <TabPanel
+          key={tab.id}
+          tab={tab}
+          isActive={tab.id === state.activeTabId}
+          isOverlayTarget={isOverlayTarget}
+        />
       ))}
     </div>
   );

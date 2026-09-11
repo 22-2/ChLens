@@ -53,7 +53,13 @@ vi.mock("src/view/browser/pages/WriteHistoryListPage", () => ({
 }));
 
 vi.mock("src/view/browser/pages/ThreadPage", () => ({
-  ThreadPage: ({ refreshKey }: { refreshKey: number }) => {
+  ThreadPage: ({
+    refreshKey,
+    isOverlayTarget,
+  }: {
+    refreshKey: number;
+    isOverlayTarget: boolean;
+  }) => {
     threadPageLifecycle.renderCount += 1;
     // reloadKey はデータ再取得トリガにだけ使い、コンポーネント実体は再マウントさせない。
     const mountIdRef = React.useRef<number | null>(null);
@@ -73,6 +79,7 @@ vi.mock("src/view/browser/pages/ThreadPage", () => ({
         data-testid="page-thread"
         data-mount-id={String(mountIdRef.current)}
         data-refresh-key={String(refreshKey)}
+        data-overlay-target={String(isOverlayTarget)}
       >
         thread
       </div>
@@ -210,6 +217,29 @@ describe("ContentArea tab switching", () => {
     expect(second.dataset.mountId).toBe("1");
     expect(second.dataset.refreshKey).toBe("1");
     expect(threadPageLifecycle.unmountCount).toBe(0);
+  });
+
+  it("コメント実況の対象をフォーカス中ペインだけに限定する", () => {
+    const tab = createTabWithPage("tab-1", {
+      type: "thread",
+      title: "スレッド",
+      threadUrl: "https://example.com/test/read.cgi/board/123/",
+    });
+    mockState([tab], "tab-1");
+
+    const { container, rerender } = render(<ContentArea isOverlayTarget={false} />);
+
+    expect(container.querySelector('[data-testid="page-thread"]')).toHaveAttribute(
+      "data-overlay-target",
+      "false",
+    );
+
+    rerender(<ContentArea isOverlayTarget />);
+
+    expect(container.querySelector('[data-testid="page-thread"]')).toHaveAttribute(
+      "data-overlay-target",
+      "true",
+    );
   });
 
   it("別タブの追加だけでは既存スレッドページを再描画しない", () => {

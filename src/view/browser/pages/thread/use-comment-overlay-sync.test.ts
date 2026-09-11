@@ -15,29 +15,13 @@ function response(num: number): IRes {
   };
 }
 
-function createController(status: "idle" | "running" | "stopped", targetThreadUrl: string | null) {
-  return {
-    getSnapshot: vi.fn(() => ({
-      state: {
-        status,
-        targetThreadUrl,
-        cursor: null,
-      },
-      visible: true,
-      error: null,
-    })),
-    stop: vi.fn().mockResolvedValue(undefined),
-    syncThread: vi.fn(),
-  };
-}
-
 describe("useCommentOverlaySync", () => {
   afterEach(() => {
     cleanup();
   });
 
-  it("表示中ThreadPageのsnapshotをcontrollerへ共有する", () => {
-    const controller = createController("idle", null);
+  it("有効なThreadPageのsnapshotをcontrollerへ共有する", () => {
+    const controller = { syncThread: vi.fn() };
 
     renderHook(() =>
       useCommentOverlaySync({
@@ -45,16 +29,14 @@ describe("useCommentOverlaySync", () => {
         threadUrl: THREAD_URL,
         responses: [response(1)],
         isActive: true,
-        expired: false,
-        missingFromSubject: false,
       }),
     );
 
     expect(controller.syncThread).toHaveBeenCalledWith(THREAD_URL, [response(1)]);
   });
 
-  it("非アクティブThreadPageからはsnapshotを共有しない", () => {
-    const controller = createController("running", THREAD_URL);
+  it("無効なThreadPageからはsnapshotを共有しない", () => {
+    const controller = { syncThread: vi.fn() };
 
     renderHook(() =>
       useCommentOverlaySync({
@@ -62,63 +44,27 @@ describe("useCommentOverlaySync", () => {
         threadUrl: THREAD_URL,
         responses: [response(1)],
         isActive: false,
-        expired: true,
-        missingFromSubject: false,
       }),
     );
 
     expect(controller.syncThread).not.toHaveBeenCalled();
-    expect(controller.stop).not.toHaveBeenCalled();
   });
 
-  it("対象スレッドのdat落ちを検知したら実況を停止する", () => {
-    const controller = createController("running", THREAD_URL);
-
-    renderHook(() =>
-      useCommentOverlaySync({
-        controller,
-        threadUrl: THREAD_URL,
-        responses: [response(1)],
-        isActive: true,
-        expired: true,
-        missingFromSubject: false,
-      }),
+  it("snapshot更新だけでは実況の開始や停止を要求しない", () => {
+    const controller = { syncThread: vi.fn() };
+    const { rerender } = renderHook(
+      ({ responses }) =>
+        useCommentOverlaySync({
+          controller,
+          threadUrl: THREAD_URL,
+          responses,
+          isActive: true,
+        }),
+      { initialProps: { responses: [response(1)] } },
     );
 
-    expect(controller.stop).toHaveBeenCalledTimes(1);
-  });
+    rerender({ responses: [response(1), response(2)] });
 
-  it("一時的な取得エラーに相当する終了フラグなしでは実況を停止しない", () => {
-    const controller = createController("running", THREAD_URL);
-
-    renderHook(() =>
-      useCommentOverlaySync({
-        controller,
-        threadUrl: THREAD_URL,
-        responses: [response(1)],
-        isActive: true,
-        expired: false,
-        missingFromSubject: false,
-      }),
-    );
-
-    expect(controller.stop).not.toHaveBeenCalled();
-  });
-
-  it("別スレッドの終了通知では実況対象を停止しない", () => {
-    const controller = createController("running", "https://example.test/other/2/");
-
-    renderHook(() =>
-      useCommentOverlaySync({
-        controller,
-        threadUrl: THREAD_URL,
-        responses: [response(1)],
-        isActive: true,
-        expired: false,
-        missingFromSubject: true,
-      }),
-    );
-
-    expect(controller.stop).not.toHaveBeenCalled();
+    expect(controller.syncThread).toHaveBeenLastCalledWith(THREAD_URL, [response(1), response(2)]);
   });
 });

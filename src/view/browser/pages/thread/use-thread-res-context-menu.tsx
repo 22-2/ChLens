@@ -235,7 +235,24 @@ export function useThreadResContextMenu({
 
       // 先頭の条件付き項目（フィルタ解除ジャンプ、ポップアップ用ジャンプ）
       const conditionalTopItems: ContextMenuItem[] = [
-        ...(fromPopup
+        ...(filter !== "all" || hasKeywordFilter
+          ? [
+              {
+                id: "clear-filter-jump",
+                label: "フィルタリングを解除してこのレスにジャンプ",
+                icon: <FilterX size={14} />,
+                onSelect: () => {
+                  // 変更理由: ポップアップ内のレスも元本文と同じフィルター状態を共有するため、
+                  // 先に解除してDOMへ対象レスが戻った後でジャンプする。
+                  pendingJumpNumRef.current = targetRes.num;
+                  setFilter("all");
+                  setSearchQuery("");
+                },
+              },
+              { id: "sep-filter", separator: true },
+            ]
+          : []),
+        ...(fromPopup && filter === "all" && !hasKeywordFilter
           ? [
               {
                 id: "jump-to-res",
@@ -247,21 +264,6 @@ export function useThreadResContextMenu({
                 },
               },
               { id: "sep-jump", separator: true },
-            ]
-          : []),
-        ...((filter !== "all" || hasKeywordFilter) && !fromPopup
-          ? [
-              {
-                id: "clear-filter-jump",
-                label: "フィルタリングを解除してこのレスにジャンプ",
-                icon: <FilterX size={14} />,
-                onSelect: () => {
-                  pendingJumpNumRef.current = targetRes.num;
-                  setFilter("all");
-                  setSearchQuery("");
-                },
-              },
-              { id: "sep-filter", separator: true },
             ]
           : []),
       ];

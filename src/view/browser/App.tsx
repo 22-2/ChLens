@@ -10,6 +10,7 @@ import { IkioiStatusItem } from "src/view/browser/components/IkioiStatusItem";
 import { NavigationBar } from "src/view/browser/components/NavigationBar";
 import { NextThreadSearchDialog } from "src/view/browser/components/NextThreadSearchDialog";
 import { NgStatusItem } from "src/view/browser/components/NgStatusItem";
+import { PopularFilterStatusItem } from "src/view/browser/components/PopularFilterStatusItem";
 import { StatusBar, StatusBarItem, StatusBarProvider } from "src/view/browser/components/StatusBar";
 import { TabBar } from "src/view/browser/components/TabBar";
 import { TitleBar } from "src/view/browser/components/TitleBar";
@@ -133,7 +134,7 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
   const navigationBar = <NavigationBar openNextThreadSearchDialog={searchNextThread} />;
   const paneBody = (
     <>
-      <ContentArea />
+      <ContentArea isOverlayTarget={isActive} />
       <BottomPanel />
       {/* コマンドとナビゲーションを同じオムニバーへ集約し、
           操作元のペイン状態を使うためアクティブペインだけが起動を担当する。 */}
@@ -149,6 +150,7 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
       {/* 以下はこのペインの StatusBarProvider に項目を登録する。 */}
       <NgStatusItem />
       <IkioiStatusItem />
+      <PopularFilterStatusItem />
       <AutoRefreshStatusItem />
       <CommentOverlayStatusItem isActive={isActive} />
       <ThreadListPanelToggleItem />
