@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vite-plus/test";
 import type { CommentResponse } from "./comment-types";
 import {
   collectNewCommentBatch,
+  commentIdentity,
   createIdleCommentOverlayState,
   latestResponseNumber,
   projectCommentResponse,
@@ -133,6 +134,15 @@ describe("コメントオーバーレイdomain", () => {
       id: "ABC",
       date: "2026/08/29",
     });
+  });
+
+  it("取得元が異なる同じレス番号を別コメントとして識別する", () => {
+    expect(
+      commentIdentity({ responseNumber: 1, sourceThreadUrl: "https://example.test/thread/1" }),
+    ).not.toBe(
+      commentIdentity({ responseNumber: 1, sourceThreadUrl: "https://example.test/thread/2" }),
+    );
+    expect(commentIdentity({ responseNumber: 1 })).toBe(commentIdentity({ responseNumber: 1 }));
   });
 
   it("不正なレス番号をbaselineや新着へ混ぜない", () => {

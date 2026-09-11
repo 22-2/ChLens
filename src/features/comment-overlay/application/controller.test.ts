@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vite-plus/test";
 import { type CommentOverlayEventBus, MemoryCommentOverlayEventBus } from "../domain";
 import { createBrowserCommentOverlayPlatform } from "../platform/browser";
 import { CommentOverlayController } from "./controller";
+import type { CommentOverlayMultiThreadSource } from "./multi-thread-session";
 
 function response(num: number, message: string): IRes {
   return {
@@ -228,5 +229,62 @@ describe("CommentOverlayController", () => {
     visibilityListener?.(false);
 
     expect(controller.getSnapshot().visible).toBe(false);
+  });
+
+  it("分裂スレ取得モードでは候補の新着を取得元付きで送信する", async () => {
+    const eventBus = new MemoryCommentOverlayEventBus();
+    const candidateUrl = "https://example.test/thread/2";
+    const source: CommentOverlayMultiThreadSource = {
+      getThreads: vi.fn(async () => ({
+        threads: [
+          {
+            url: "https://example.test/thread/1",
+            title: "番組実況 ★5",
+            resCount: 4,
+            createdAt: 1,
+          },
+          {
+            url: candidateUrl,
+            title: "番組実況 ★5",
+            resCount: 2,
+            createdAt: 2,
+          },
+        ],
+        message: null,
+      })),
+      getThread: vi.fn(async () => ({
+        url: candidateUrl,
+        title: "番組実況 ★5",
+        res: [response(1, "候補の既存レス"), response(2, "候補の新着")],
+      })),
+    };
+    const controller = new CommentOverlayController({
+      eventBus,
+      platform: createBrowserCommentOverlayPlatform(),
+      multiThreadSource: source,
+      getSettings: () => ({
+        durationSeconds: 6,
+        opacity: 0.95,
+        maxQueueSize: 64,
+        fetchAllCandidateThreads: true,
+      }),
+    });
+
+    await controller.start("https://example.test/thread/1", [response(1, "本流既存レス")]);
+    await waitForPublishedEvents();
+
+    const candidateEvent = eventBus.events.find(
+      (event) =>
+        event.type === "batch" && event.batch.comments[0]?.sourceThreadUrl === candidateUrl,
+    );
+    expect(candidateEvent?.type).toBe("batch");
+    if (candidateEvent?.type === "batch") {
+      expect(candidateEvent.batch.threadUrl).toBe("https://example.test/thread/1");
+      expect(candidateEvent.batch.comments[0]).toMatchObject({
+        sourceThreadUrl: candidateUrl,
+        responseNumber: 1,
+      });
+    }
+    await controller.stop();
   });
 });

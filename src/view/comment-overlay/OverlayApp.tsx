@@ -3,6 +3,7 @@ import {
   calculateNaturalCommentFlowCount,
   calculateNaturalCommentFlowInterval,
   type CommentCandidate,
+  commentIdentity,
   type CommentOverlaySettings,
   DEFAULT_COMMENT_OVERLAY_SETTINGS,
   normalizeCommentOverlaySettings,
@@ -44,8 +45,8 @@ export function OverlayApp({
     ...DEFAULT_COMMENT_OVERLAY_SETTINGS,
   }));
   const activeThreadUrlRef = useRef<string | null>(null);
-  const seenResponseNumbersRef = useRef(new Set<number>());
-  const seenResponseOrderRef = useRef<number[]>([]);
+  const seenResponseNumbersRef = useRef(new Set<string>());
+  const seenResponseOrderRef = useRef<string[]>([]);
   useEffect(() => {
     let disposed = false;
     let unsubscribe: (() => void) | null = null;
@@ -57,6 +58,33 @@ export function OverlayApp({
       if (event.type === "settings") {
         // 設定更新では既存コメントを消さず、実行中の速度と表示条件だけを次の描画へ反映する。
         setSettings(normalizeCommentOverlaySettings(event.settings));
+        return;
+      }
+
+      if (event.type === "source-filter") {
+        if (activeThreadUrlRef.current !== event.threadUrl) return;
+
+        // 本流確定時は、すでに画面へ出たコメントは自然に流し切り、
+        // まだ待機中の非本流コメントだけを捨てる。EdgeLiveViewerの
+        // 「表示中は継続・queueだけ整理」という切り替えを維持するための境界。
+        for (let index = commentQueue.length - 1; index >= 0; index -= 1) {
+          const comment = commentQueue[index];
+          if (comment?.sourceThreadUrl && comment.sourceThreadUrl !== event.keepSourceThreadUrl) {
+            commentQueue.splice(index, 1);
+          }
+        }
+        if (commentQueue.length === 0 && flowTimer) {
+          // 非本流だけを捨てた後に古いtimerを残すと、空queueを待つだけの
+          // callbackが発生するため、次の本流コメント到着時にすぐ再利用できるよう解除する。
+          clearTimeout(flowTimer);
+          flowTimer = null;
+        }
+        setComments((current) =>
+          current.filter(
+            (comment) =>
+              !comment.sourceThreadUrl || comment.sourceThreadUrl === event.keepSourceThreadUrl,
+          ),
+        );
         return;
       }
 
@@ -80,17 +108,18 @@ export function OverlayApp({
       }
 
       const additions = batch.comments.filter((comment) => {
-        if (seenResponseNumbersRef.current.has(comment.responseNumber)) return false;
-        seenResponseNumbersRef.current.add(comment.responseNumber);
-        seenResponseOrderRef.current.push(comment.responseNumber);
+        const identity = commentIdentity(comment);
+        if (seenResponseNumbersRef.current.has(identity)) return false;
+        seenResponseNumbersRef.current.add(identity);
+        seenResponseOrderRef.current.push(identity);
         return true;
       });
       if (additions.length === 0) return;
 
       while (seenResponseOrderRef.current.length > MAX_COMMENT_HISTORY) {
-        const expiredResponseNumber = seenResponseOrderRef.current.shift();
-        if (expiredResponseNumber !== undefined) {
-          seenResponseNumbersRef.current.delete(expiredResponseNumber);
+        const expiredIdentity = seenResponseOrderRef.current.shift();
+        if (expiredIdentity !== undefined) {
+          seenResponseNumbersRef.current.delete(expiredIdentity);
         }
       }
 

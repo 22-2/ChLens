@@ -58,6 +58,16 @@ export function projectCommentResponse(
   };
 }
 
+/**
+ * レス番号はスレッドごとに振り直されるため、複数スレ実況では取得元も含めて一意化する。
+ * 単一スレ時の既存キーを変えないよう、sourceThreadUrlがない場合は番号だけを使う。
+ */
+export function commentIdentity(
+  comment: Pick<CommentCandidate, "responseNumber" | "sourceThreadUrl">,
+): string {
+  return `${comment.sourceThreadUrl ?? ""}:${comment.responseNumber}`;
+}
+
 export function createCommentCursor(
   threadUrl: string,
   responses: readonly CommentResponse[],

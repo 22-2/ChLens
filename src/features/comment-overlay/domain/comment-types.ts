@@ -12,6 +12,8 @@ export interface CommentCandidate {
   author: string;
   id?: string;
   date?: string;
+  /** 複数スレ実況で同じレス番号を区別する取得元。単一スレ時は未設定のままにする。 */
+  sourceThreadUrl?: string;
 }
 
 export interface CommentBatch {

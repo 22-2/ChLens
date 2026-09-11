@@ -23,6 +23,20 @@ const restartedComment: CommentCandidate = {
   author: "名無し",
 };
 
+const candidateComment: CommentCandidate = {
+  responseNumber: 1,
+  text: "候補スレの実況",
+  author: "名無し",
+  sourceThreadUrl: "https://example.test/live/2",
+};
+
+const targetComment: CommentCandidate = {
+  responseNumber: 1,
+  text: "本流スレの実況",
+  author: "名無し",
+  sourceThreadUrl: THREAD_URL,
+};
+
 describe("OverlayApp", () => {
   let scheduledFrame: FrameRequestCallback | null;
 
@@ -37,6 +51,7 @@ describe("OverlayApp", () => {
 
   afterEach(() => {
     cleanup();
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -169,5 +184,49 @@ describe("OverlayApp", () => {
       fontSize: `${COMMENT_OVERLAY_FONT_SIZE}px`,
       opacity: "0.4",
     });
+  });
+
+  it("本流確定時は未表示の候補コメントだけをqueueから除外する", async () => {
+    vi.useFakeTimers();
+    const eventBus = new MemoryCommentOverlayEventBus();
+    const platform = createBrowserCommentOverlayPlatform();
+
+    render(<OverlayApp eventBus={eventBus} platform={platform} />);
+    await act(async () => {
+      await Promise.resolve();
+      await eventBus.publish({
+        version: 1,
+        type: "reset",
+        batch: {
+          threadUrl: THREAD_URL,
+          comments: [],
+          latestResponseNumber: 0,
+        },
+      });
+      await eventBus.publish({
+        version: 1,
+        type: "batch",
+        batch: {
+          threadUrl: THREAD_URL,
+          comments: [targetComment, candidateComment],
+          latestResponseNumber: 1,
+        },
+      });
+      await eventBus.publish({
+        version: 1,
+        type: "source-filter",
+        threadUrl: THREAD_URL,
+        keepSourceThreadUrl: THREAD_URL,
+      });
+    });
+
+    act(() => {
+      scheduledFrame?.(0);
+    });
+    expect(screen.getByText("本流スレの実況")).toBeVisible();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    expect(screen.queryByText("候補スレの実況")).not.toBeInTheDocument();
   });
 });

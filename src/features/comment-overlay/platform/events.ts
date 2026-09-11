@@ -36,9 +36,16 @@ function isCommentOverlayEvent(payload: unknown): payload is CommentOverlayEvent
     type?: unknown;
     batch?: unknown;
     settings?: unknown;
+    threadUrl?: unknown;
+    keepSourceThreadUrl?: unknown;
   };
   if (candidate.version !== 1) return false;
   if (candidate.type === "settings") return candidate.settings != null;
+  if (candidate.type === "source-filter") {
+    return (
+      typeof candidate.threadUrl === "string" && typeof candidate.keepSourceThreadUrl === "string"
+    );
+  }
   return (candidate.type === "batch" || candidate.type === "reset") && candidate.batch != null;
 }
 

@@ -14,6 +14,7 @@ export const COMMENT_OVERLAY_CONFIG_KEYS = {
   durationSeconds: "comment_overlay_speed",
   opacity: "comment_overlay_opacity",
   maxQueueSize: "comment_overlay_max_queue",
+  fetchAllCandidateThreads: "comment_overlay_fetch_all_threads",
 } as const;
 
 const COMMENT_OVERLAY_CONFIG_KEY_SET = new Set<string>(Object.values(COMMENT_OVERLAY_CONFIG_KEYS));
@@ -60,6 +61,8 @@ export function readCommentOverlaySettings(): CommentOverlaySettings {
         COMMENT_OVERLAY_CONFIG_KEYS.maxQueueSize,
         DEFAULT_COMMENT_OVERLAY_SETTINGS.maxQueueSize,
       ),
+      fetchAllCandidateThreads:
+        container.config.get(COMMENT_OVERLAY_CONFIG_KEYS.fetchAllCandidateThreads) === "on",
     });
   } catch (error: unknown) {
     console.error("[ChLens] コメントOverlay設定の読み込みに失敗しました:", error);

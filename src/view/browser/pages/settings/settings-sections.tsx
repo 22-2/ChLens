@@ -237,7 +237,7 @@ const ALL_SETTINGS_SECTIONS = [
   defineSection(
     "overlay",
     "コメントOverlay",
-    "Tauri版のコメント流し表示を調整します。設定は次回の実況開始時から反映します。",
+    "Tauri版のコメント流し表示を調整します。表示設定は次回の実況開始時、分裂スレ取得は実況中にも反映します。",
     <MessageCircle size={20} />,
     [
       {
@@ -271,6 +271,13 @@ const ALL_SETTINGS_SECTIONS = [
         minimum: 0,
         maximum: 3_000,
         step: 1,
+      },
+      {
+        kind: "boolean",
+        key: "comment_overlay_fetch_all_threads",
+        title: "分裂スレを本流判定中はすべて取得する",
+        description:
+          "コメントOverlay限定で同じ番組の候補スレを並行取得し、本流が決まった後に非本流の待機コメントを除外します。",
       },
     ],
   ),

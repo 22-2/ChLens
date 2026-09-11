@@ -5,6 +5,8 @@ export interface CommentOverlaySettings {
   opacity: number;
   /** strict/queue時に待機させるコメント数の上限。 */
   maxQueueSize: number;
+  /** コメント実況だけで候補スレを並行取得し、本流確定後に非本流を除外する。 */
+  fetchAllCandidateThreads?: boolean;
 }
 
 export const MIN_COMMENT_OVERLAY_DURATION_SECONDS = 2;
@@ -14,6 +16,7 @@ export const DEFAULT_COMMENT_OVERLAY_SETTINGS: Readonly<CommentOverlaySettings> 
   durationSeconds: 6,
   opacity: 0.95,
   maxQueueSize: 64,
+  fetchAllCandidateThreads: false,
 };
 
 /** 設定画面や古いeventから来た値を、schedulerが安全に扱える範囲へ揃える。 */
@@ -34,6 +37,7 @@ export function normalizeCommentOverlaySettings(
       3_000,
       DEFAULT_COMMENT_OVERLAY_SETTINGS.maxQueueSize,
     ),
+    fetchAllCandidateThreads: input?.fetchAllCandidateThreads === true,
   };
 }
 

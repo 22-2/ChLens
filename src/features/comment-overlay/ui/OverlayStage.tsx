@@ -6,6 +6,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   type CommentBacklogPolicy,
   type CommentCollisionMode,
+  commentIdentity,
   CommentScheduler,
   type CommentSchedulerSnapshot,
   DEFAULT_COMMENT_BACKLOG_POLICY,
@@ -242,7 +243,7 @@ export function OverlayStage({
   const [snapshot, setSnapshot] = useState<CommentSchedulerSnapshot>(() => scheduler.advance(0));
   const snapshotRef = useRef(snapshot);
   const schedulerRef = useRef(scheduler);
-  const seenResponseNumbers = useRef(new Set<number>());
+  const seenResponseNumbers = useRef(new Set<string>());
   const logicalTime = useRef(0);
   const previousFrameTime = useRef<number | null>(null);
   const layoutRef = useRef<{
@@ -312,15 +313,21 @@ export function OverlayStage({
   useEffect(() => {
     // 変更理由: 親が直近の履歴だけを保持している間、入力から外れたレス番号も
     // dedupe Setに残すと長時間実況でSetだけが無制限に増えるため、現在の入力範囲に揃える。
-    const currentResponseNumbers = new Set(comments.map((comment) => comment.responseNumber));
-    for (const responseNumber of seenResponseNumbers.current) {
-      if (!currentResponseNumbers.has(responseNumber)) {
-        seenResponseNumbers.current.delete(responseNumber);
+    const currentCommentIdentities = new Set(comments.map((comment) => commentIdentity(comment)));
+    // 本流確定で親の入力から除かれた候補がschedulerのpendingへ残ると、
+    // queue整理後にも遅れて表示されるため、待機中だけを同じ境界で取り除く。
+    scheduler.removePending(
+      (input) => !currentCommentIdentities.has(commentIdentity(input.comment)),
+    );
+    for (const identity of seenResponseNumbers.current) {
+      if (!currentCommentIdentities.has(identity)) {
+        seenResponseNumbers.current.delete(identity);
       }
     }
 
     for (const comment of comments) {
-      if (seenResponseNumbers.current.has(comment.responseNumber)) continue;
+      const identity = commentIdentity(comment);
+      if (seenResponseNumbers.current.has(identity)) continue;
 
       const displayComment = {
         ...comment,
@@ -335,7 +342,7 @@ export function OverlayStage({
       } else if (!result.accepted) {
         onQueueOverflow?.(comment);
       }
-      seenResponseNumbers.current.add(comment.responseNumber);
+      seenResponseNumbers.current.add(identity);
     }
 
     if (schedulerRef.current !== scheduler) {
@@ -460,11 +467,15 @@ export function OverlayStage({
           "--comment-exit-translate": `-${scheduledComment.stageWidth + scheduledComment.width}px`,
         } as CSSProperties;
         const { comment } = scheduledComment;
-        const commentInfoId = `comment-overlay-stage__info-${comment.responseNumber}`;
+        // 変更理由: 分裂スレを同時取得すると別スレで同じレス番号が存在するため、
+        // レス番号だけをReact keyや説明要素のIDへ使うとDOMが再利用される。
+        // 取得元を含むidentityで一意化し、同番号のコメントも独立して流す。
+        const commentKey = commentIdentity(comment);
+        const commentInfoId = `comment-overlay-stage__info-${encodeURIComponent(commentKey)}`;
 
         return (
           <div
-            key={`${comment.responseNumber}-${scheduledComment.startAt}-${scheduledComment.layoutRevision}`}
+            key={`${commentKey}-${scheduledComment.startAt}-${scheduledComment.layoutRevision}`}
             className="comment-overlay-stage__comment"
             data-response-number={comment.responseNumber}
             data-lane-index={scheduledComment.laneIndex}

@@ -18,7 +18,17 @@ describe("コメントOverlay設定", () => {
       durationSeconds: 2,
       opacity: 0.1,
       maxQueueSize: 13,
+      fetchAllCandidateThreads: false,
     });
+  });
+
+  it("分裂スレ取得モードを真偽値として正規化する", () => {
+    expect(
+      normalizeCommentOverlaySettings({ fetchAllCandidateThreads: true }).fetchAllCandidateThreads,
+    ).toBe(true);
+    expect(
+      normalizeCommentOverlaySettings({ fetchAllCandidateThreads: false }).fetchAllCandidateThreads,
+    ).toBe(false);
   });
 
   it("NaNや無限大を既定値へ戻す", () => {

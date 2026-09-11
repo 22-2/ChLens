@@ -164,6 +164,27 @@ describe("CommentScheduler", () => {
     expect(afterEntryIsFree.pending).toHaveLength(0);
   });
 
+  it("本流切替ではpendingだけを取得元で除外し、activeは残す", () => {
+    const scheduler = createScheduler();
+    scheduler.enqueue({
+      comment: { ...createComment(1), sourceThreadUrl: "https://example.test/thread/1" },
+      width: 120,
+    });
+    scheduler.advance(0);
+    scheduler.enqueue({
+      comment: { ...createComment(2), sourceThreadUrl: "https://example.test/thread/2" },
+      width: 120,
+    });
+
+    scheduler.removePending(
+      (input) => input.comment.sourceThreadUrl !== "https://example.test/thread/1",
+    );
+
+    const snapshot = scheduler.advance(0);
+    expect(snapshot.active.map((scheduled) => scheduled.comment.responseNumber)).toEqual([1]);
+    expect(snapshot.pending).toHaveLength(0);
+  });
+
   it("新しい長文が既存コメントへ追いつかない時刻まで待たせる", () => {
     const scheduler = createScheduler();
     const duration = calculateCommentDuration(600, 144);

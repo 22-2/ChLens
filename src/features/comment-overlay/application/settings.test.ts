@@ -48,6 +48,7 @@ describe("ConfigからのコメントOverlay設定読み出し", () => {
       durationSeconds: 6,
       opacity: 0.6,
       maxQueueSize: 120,
+      fetchAllCandidateThreads: false,
     });
   });
 
@@ -65,6 +66,7 @@ describe("ConfigからのコメントOverlay設定読み出し", () => {
       durationSeconds: 15,
       opacity: 0.1,
       maxQueueSize: 13,
+      fetchAllCandidateThreads: false,
     });
   });
 
@@ -74,6 +76,14 @@ describe("ConfigからのコメントOverlay設定読み出し", () => {
     });
 
     expect(readCommentOverlaySettings().durationSeconds).toBe(5);
+  });
+
+  it("分裂スレ取得設定を読み込む", () => {
+    configMock.get.mockImplementation((key: string) =>
+      key === "comment_overlay_fetch_all_threads" ? "on" : null,
+    );
+
+    expect(readCommentOverlaySettings().fetchAllCandidateThreads).toBe(true);
   });
 
   it("Config読み出し自体が失敗した場合は既定値を返す", () => {

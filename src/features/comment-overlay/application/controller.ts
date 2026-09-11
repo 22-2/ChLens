@@ -10,11 +10,16 @@ import {
   DEFAULT_COMMENT_OVERLAY_SETTINGS,
   latestResponseNumber,
   normalizeCommentOverlaySettings,
+  projectCommentResponse,
   startCommentOverlay,
   stopCommentOverlay,
 } from "../domain";
 import type { CommentOverlayEventBus } from "../domain/events";
 import type { CommentOverlayWindowPlatform } from "../platform/types";
+import {
+  CommentOverlayMultiThreadSession,
+  type CommentOverlayMultiThreadSource,
+} from "./multi-thread-session";
 
 const MAX_RESPONSE_SNAPSHOT_COUNT = 8;
 const MAX_RESPONSES_PER_SNAPSHOT = 2_000;
@@ -30,6 +35,8 @@ export interface CommentOverlayControllerDependencies {
   platform: CommentOverlayWindowPlatform;
   getSettings?: () => CommentOverlaySettings;
   subscribeSettings?: (listener: () => void) => () => void;
+  /** 複数スレ実況時だけ使う、板一覧・候補datの取得境界。 */
+  multiThreadSource?: CommentOverlayMultiThreadSource;
 }
 
 function toCommentResponse(response: IRes): CommentResponse {
@@ -75,6 +82,8 @@ export class CommentOverlayController {
 
   private readonly subscribeSettings: ((listener: () => void) => () => void) | null;
 
+  private readonly multiThreadSource: CommentOverlayMultiThreadSource | null;
+
   private readonly listeners = new Set<() => void>();
 
   private readonly responseSnapshots = new Map<string, readonly IRes[]>();
@@ -97,15 +106,21 @@ export class CommentOverlayController {
 
   private visibilityUnsubscribe: (() => void) | null = null;
 
+  private multiThreadSession: CommentOverlayMultiThreadSession | null = null;
+
+  private activeSourceThreadUrl: string | null = null;
+
   constructor({
     eventBus,
     platform,
     getSettings,
     subscribeSettings,
+    multiThreadSource,
   }: CommentOverlayControllerDependencies) {
     this.eventBus = eventBus;
     this.platform = platform;
     this.subscribeSettings = subscribeSettings ?? null;
+    this.multiThreadSource = multiThreadSource ?? null;
     const readSettings = getSettings ?? (() => ({ ...DEFAULT_COMMENT_OVERLAY_SETTINGS }));
     // 設定の保存元が将来増えても、Mainから出るeventは必ず正規化済みの値にする。
     this.getSettings = () => normalizeCommentOverlaySettings(readSettings());
@@ -145,7 +160,29 @@ export class CommentOverlayController {
   /** ThreadPageの確定済みsnapshotを受け取り、実況中だけ新着差分を送信する。 */
   syncThread(threadUrl: string, responses: readonly IRes[]): void {
     this.rememberThreadResponses(threadUrl, responses);
-    if (this.state.status !== "running" || this.state.targetThreadUrl !== threadUrl) return;
+    if (this.state.status !== "running" || this.state.targetThreadUrl !== threadUrl) {
+      return;
+    }
+
+    if (this.activeSourceThreadUrl !== threadUrl) {
+      // 本流候補へ切り替えている間も表示対象外になった元スレのcursorだけは進める。
+      // 設定をOFFへ戻した際、切替中の全レスを一度に再送してqueueを埋めないための
+      // baseline更新であり、元スレのコメントをOverlayへ出す処理は再開まで行わない。
+      const nextLastResponseNumber = Math.max(
+        this.state.cursor?.lastResponseNumber ?? 0,
+        latestResponseNumber(responses.map(toCommentResponse)),
+      );
+      if (nextLastResponseNumber !== this.state.cursor?.lastResponseNumber) {
+        this.state = {
+          ...this.state,
+          cursor: this.state.cursor
+            ? { ...this.state.cursor, lastResponseNumber: nextLastResponseNumber }
+            : null,
+        };
+        this.notify();
+      }
+      return;
+    }
 
     const result = collectNewCommentBatch(this.state, threadUrl, responses.map(toCommentResponse));
     this.state = result.state;
@@ -153,11 +190,16 @@ export class CommentOverlayController {
       this.notify();
     }
     if (result.batch) {
-      void this.publish({ version: 1, type: "batch", batch: result.batch }).catch(
-        (error: unknown) => {
-          this.reportError("[ChLens] コメントOverlay eventの送信に失敗しました:", error);
-        },
-      );
+      const batch = {
+        ...result.batch,
+        comments: result.batch.comments.map((comment) => ({
+          ...comment,
+          sourceThreadUrl: threadUrl,
+        })),
+      };
+      void this.publish({ version: 1, type: "batch", batch }).catch((error: unknown) => {
+        this.reportError("[ChLens] コメントOverlay eventの送信に失敗しました:", error);
+      });
     }
   }
 
@@ -165,6 +207,8 @@ export class CommentOverlayController {
     const snapshot = responses ?? this.getThreadResponses(threadUrl) ?? [];
     // 変更理由: 前回の一時的な送信失敗を、再試行できた開始状態へ持ち越さない。
     this.error = null;
+    this.stopMultiThreadSession();
+    this.activeSourceThreadUrl = threadUrl;
     this.rememberThreadResponses(threadUrl, snapshot);
     this.state = startCommentOverlay(threadUrl, snapshot.map(toCommentResponse));
     this.notify();
@@ -174,6 +218,7 @@ export class CommentOverlayController {
       // Overlayが前スレの表示履歴を持っていても、開始したスレを境に表示を切り替える。
       await this.publish(createResetEvent(threadUrl, snapshot, this.getSettings()));
       this.subscribeToSettings();
+      this.startMultiThreadSession(threadUrl);
     } catch (error: unknown) {
       this.unsubscribeFromSettings();
       this.state = stopCommentOverlay(this.state);
@@ -194,6 +239,8 @@ export class CommentOverlayController {
   }
 
   async stop(): Promise<void> {
+    this.stopMultiThreadSession();
+    this.activeSourceThreadUrl = null;
     this.unsubscribeFromSettings();
     this.error = null;
     this.state = stopCommentOverlay(this.state);
@@ -263,10 +310,139 @@ export class CommentOverlayController {
 
     try {
       this.settingsUnsubscribe = this.subscribeSettings(() => {
-        void this.updateSettings().catch(() => undefined);
+        void this.handleSettingsUpdated();
       });
     } catch (error: unknown) {
       console.error("[ChLens] コメントOverlay設定の変更監視登録に失敗しました:", error);
+    }
+  }
+
+  private async handleSettingsUpdated(): Promise<void> {
+    try {
+      await this.updateSettings();
+      if (this.state.status !== "running" || this.state.targetThreadUrl == null) return;
+
+      if (this.getSettings().fetchAllCandidateThreads === true) {
+        if (this.multiThreadSession == null) {
+          this.startMultiThreadSession(this.state.targetThreadUrl);
+        }
+      } else if (this.multiThreadSession != null) {
+        this.stopMultiThreadSession(true);
+      }
+    } catch (error: unknown) {
+      // 設定反映の失敗は実況を停止せず、送信失敗の詳細だけを既存経路へ渡す。
+      console.error("[ChLens] コメントOverlay設定の反映に失敗しました:", error);
+    }
+  }
+
+  private startMultiThreadSession(threadUrl: string): void {
+    if (
+      this.multiThreadSource == null ||
+      this.state.status !== "running" ||
+      this.state.targetThreadUrl !== threadUrl ||
+      this.getSettings().fetchAllCandidateThreads !== true
+    ) {
+      return;
+    }
+
+    this.stopMultiThreadSession();
+    const session = new CommentOverlayMultiThreadSession({
+      threadUrl,
+      source: this.multiThreadSource,
+      onBatch: (sourceThreadUrl, responses) => {
+        if (this.multiThreadSession !== session) return;
+        this.consumeMultiThreadBatch(threadUrl, sourceThreadUrl, responses);
+      },
+      onMainstream: (thread) => {
+        if (this.multiThreadSession !== session) return;
+        this.activeSourceThreadUrl = thread.url;
+        void this.publish({
+          version: 1,
+          type: "source-filter",
+          threadUrl,
+          keepSourceThreadUrl: thread.url,
+        }).catch((error: unknown) => {
+          this.reportError("[ChLens] 本流スレ切り替えのOverlay通知に失敗しました:", error);
+        });
+      },
+      onFinished: (keepSourceThreadUrl) => {
+        if (this.multiThreadSession !== session) return;
+        this.multiThreadSession = null;
+        if (this.state.status !== "running") return;
+        void this.publish({
+          version: 1,
+          type: "source-filter",
+          threadUrl,
+          keepSourceThreadUrl,
+        }).catch((error: unknown) => {
+          this.reportError("[ChLens] 候補スレ整理のOverlay通知に失敗しました:", error);
+        });
+      },
+    });
+    this.multiThreadSession = session;
+    session.start();
+  }
+
+  private consumeMultiThreadBatch(
+    threadUrl: string,
+    sourceThreadUrl: string,
+    responses: readonly IRes[],
+  ): void {
+    if (
+      this.state.status !== "running" ||
+      this.state.targetThreadUrl !== threadUrl ||
+      this.multiThreadSession == null
+    ) {
+      return;
+    }
+
+    const comments = responses
+      .map(toCommentResponse)
+      .map((response) => projectCommentResponse(response))
+      .filter((comment): comment is NonNullable<ReturnType<typeof projectCommentResponse>> => {
+        return comment !== null;
+      })
+      .map((comment) => ({ ...comment, sourceThreadUrl }));
+    if (comments.length === 0) return;
+
+    const latestResponseNumber = responses.reduce(
+      (latest, response) => Math.max(latest, Number.isFinite(response.num) ? response.num : latest),
+      0,
+    );
+    void this.publish({
+      version: 1,
+      type: "batch",
+      batch: {
+        threadUrl,
+        comments,
+        latestResponseNumber,
+      },
+    }).catch((error: unknown) => {
+      this.reportError("[ChLens] 候補スレのコメント送信に失敗しました:", error);
+    });
+  }
+
+  private stopMultiThreadSession(restoreTargetSource = false): void {
+    const session = this.multiThreadSession;
+    this.multiThreadSession = null;
+    session?.stop();
+
+    const targetThreadUrl = this.state.targetThreadUrl;
+    if (
+      restoreTargetSource &&
+      this.state.status === "running" &&
+      targetThreadUrl != null &&
+      this.activeSourceThreadUrl !== targetThreadUrl
+    ) {
+      this.activeSourceThreadUrl = targetThreadUrl;
+      void this.publish({
+        version: 1,
+        type: "source-filter",
+        threadUrl: targetThreadUrl,
+        keepSourceThreadUrl: targetThreadUrl,
+      }).catch((error: unknown) => {
+        this.reportError("[ChLens] 分裂スレ取得停止のOverlay通知に失敗しました:", error);
+      });
     }
   }
 

@@ -10,6 +10,7 @@ export type {
 export type { CommentBatchResult } from "./comments";
 export {
   collectNewCommentBatch,
+  commentIdentity,
   createCommentCursor,
   createIdleCommentOverlayState,
   latestResponseNumber,

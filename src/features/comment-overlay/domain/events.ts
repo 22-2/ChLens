@@ -17,6 +17,14 @@ export type CommentOverlayEvent =
       version: 1;
       type: "settings";
       settings: CommentOverlaySettings;
+    }
+  | {
+      version: 1;
+      type: "source-filter";
+      /** Overlayのストリームを識別する開始元スレッド。 */
+      threadUrl: string;
+      /** 本流として残す取得元スレッド。 */
+      keepSourceThreadUrl: string;
     };
 
 export interface CommentOverlayEventBus {

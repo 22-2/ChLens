@@ -480,6 +480,16 @@ export class CommentScheduler {
     return { accepted: true, dropped };
   }
 
+  /** 条件に合わなくなったpendingだけを捨て、activeのコメントは最後まで流す。 */
+  removePending(shouldRemove: (input: CommentScheduleInput) => boolean): void {
+    for (let index = this.pendingComments.length - 1; index >= 0; index -= 1) {
+      const pending = this.pendingComments[index];
+      if (pending && shouldRemove(pending)) {
+        this.pendingComments.splice(index, 1);
+      }
+    }
+  }
+
   pause(responseNumber: number, now: number): boolean {
     this.assertAndSetNow(now);
     return this.allocator.pause(responseNumber, now);
