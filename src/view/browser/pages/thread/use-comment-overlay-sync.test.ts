@@ -26,6 +26,7 @@ function createController(status: "idle" | "running" | "stopped", targetThreadUr
       visible: true,
       error: null,
     })),
+    start: vi.fn().mockResolvedValue(undefined),
     stop: vi.fn().mockResolvedValue(undefined),
     syncThread: vi.fn(),
   };
@@ -45,6 +46,7 @@ describe("useCommentOverlaySync", () => {
         threadUrl: THREAD_URL,
         responses: [response(1)],
         isActive: true,
+        autoRefreshEnabled: false,
         expired: false,
         missingFromSubject: false,
       }),
@@ -53,7 +55,7 @@ describe("useCommentOverlaySync", () => {
     expect(controller.syncThread).toHaveBeenCalledWith(THREAD_URL, [response(1)]);
   });
 
-  it("非アクティブThreadPageからはsnapshotを共有しない", () => {
+  it("非アクティブThreadPageからはsnapshotも停止要求も送らない", () => {
     const controller = createController("running", THREAD_URL);
 
     renderHook(() =>
@@ -62,6 +64,7 @@ describe("useCommentOverlaySync", () => {
         threadUrl: THREAD_URL,
         responses: [response(1)],
         isActive: false,
+        autoRefreshEnabled: true,
         expired: true,
         missingFromSubject: false,
       }),
@@ -80,6 +83,7 @@ describe("useCommentOverlaySync", () => {
         threadUrl: THREAD_URL,
         responses: [response(1)],
         isActive: true,
+        autoRefreshEnabled: true,
         expired: true,
         missingFromSubject: false,
       }),
@@ -97,6 +101,7 @@ describe("useCommentOverlaySync", () => {
         threadUrl: THREAD_URL,
         responses: [response(1)],
         isActive: true,
+        autoRefreshEnabled: true,
         expired: false,
         missingFromSubject: false,
       }),
@@ -114,11 +119,94 @@ describe("useCommentOverlaySync", () => {
         threadUrl: THREAD_URL,
         responses: [response(1)],
         isActive: true,
+        autoRefreshEnabled: true,
         expired: false,
         missingFromSubject: true,
       }),
     );
 
     expect(controller.stop).not.toHaveBeenCalled();
+  });
+
+  it("自動更新を有効にすると現在のsnapshotから実況を開始する", () => {
+    const controller = createController("idle", null);
+    const responses = [response(1)];
+
+    renderHook(() =>
+      useCommentOverlaySync({
+        controller,
+        threadUrl: THREAD_URL,
+        responses,
+        isActive: true,
+        autoRefreshEnabled: true,
+        expired: false,
+        missingFromSubject: false,
+      }),
+    );
+
+    expect(controller.start).toHaveBeenCalledWith(THREAD_URL, responses);
+  });
+
+  it("自動更新中にresponsesが更新されても実況開始を多重実行しない", () => {
+    const controller = createController("idle", null);
+    const { rerender } = renderHook(
+      ({ responses }) =>
+        useCommentOverlaySync({
+          controller,
+          threadUrl: THREAD_URL,
+          responses,
+          isActive: true,
+          autoRefreshEnabled: true,
+          expired: false,
+          missingFromSubject: false,
+        }),
+      { initialProps: { responses: [response(1)] } },
+    );
+
+    rerender({ responses: [response(1), response(2)] });
+    rerender({ responses: [response(1), response(2), response(3)] });
+
+    expect(controller.start).toHaveBeenCalledTimes(1);
+  });
+
+  it("フォーカス外から戻ったときだけ実況開始を要求する", () => {
+    const controller = createController("idle", null);
+    const { rerender } = renderHook(
+      ({ isActive }) =>
+        useCommentOverlaySync({
+          controller,
+          threadUrl: THREAD_URL,
+          responses: [response(1)],
+          isActive,
+          autoRefreshEnabled: true,
+          expired: false,
+          missingFromSubject: false,
+        }),
+      { initialProps: { isActive: false } },
+    );
+
+    expect(controller.start).not.toHaveBeenCalled();
+
+    rerender({ isActive: true });
+
+    expect(controller.start).toHaveBeenCalledTimes(1);
+  });
+
+  it("自動更新を無効にすると対象スレッドの実況も停止する", () => {
+    const controller = createController("running", THREAD_URL);
+
+    renderHook(() =>
+      useCommentOverlaySync({
+        controller,
+        threadUrl: THREAD_URL,
+        responses: [response(1)],
+        isActive: true,
+        autoRefreshEnabled: false,
+        expired: false,
+        missingFromSubject: false,
+      }),
+    );
+
+    expect(controller.stop).toHaveBeenCalledTimes(1);
   });
 });

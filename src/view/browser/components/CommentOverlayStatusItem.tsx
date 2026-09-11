@@ -78,25 +78,15 @@ export const CommentOverlayStatusItem: React.FC<CommentOverlayStatusItemProps> =
     // 非表示ThreadPageから新着を流し続ける独立実況を許可しない。背景実況は別フェーズで設計する。
     if (!isTauri || !isActive || snapshot.state.status !== "running" || isTargetThread) return;
 
+    // 変更理由: タブ切り替え時は直前のThreadPage側も停止を要求するため、effect実行時の
+    // 最新状態を再確認し、同じnative hideを二重に呼んで操作を重くしない。
+    const latestState = controller.getSnapshot().state;
+    if (latestState.status !== "running" || latestState.targetThreadUrl === threadUrl) return;
+
     void controller.stop().catch((error: unknown) => {
       console.error("[ChLens] 表示中スレッドを離れたための実況停止に失敗しました:", error);
     });
-  }, [controller, isActive, isTargetThread, isTauri, snapshot.state.status]);
-
-  const handleStartStop = useCallback(() => {
-    if (!threadUrl) return;
-
-    if (isRunning) {
-      void controller.stop().catch((error: unknown) => {
-        console.error("[ChLens] コメント実況の停止に失敗しました:", error);
-      });
-      return;
-    }
-
-    void controller.start(threadUrl).catch((error: unknown) => {
-      console.error("[ChLens] コメント実況の開始に失敗しました:", error);
-    });
-  }, [controller, isRunning, threadUrl]);
+  }, [controller, isActive, isTargetThread, isTauri, snapshot.state.status, threadUrl]);
 
   const handleVisibility = useCallback(() => {
     if (!canShowOverlay) return;
@@ -134,7 +124,6 @@ export const CommentOverlayStatusItem: React.FC<CommentOverlayStatusItemProps> =
 
   if (!isTauri || !isActive || threadUrl == null) return null;
 
-  const startStopLabel = isRunning ? "コメント実況を停止" : "コメント実況を開始";
   const visibilityLabel = isOverlayVisible ? "コメントOverlayを非表示" : "コメントOverlayを表示";
   const statusLabel =
     errorLabel ??
@@ -179,19 +168,16 @@ export const CommentOverlayStatusItem: React.FC<CommentOverlayStatusItemProps> =
           <div className="mini-window__section">
             <div className="mini-window__toggle-row">
               <span className="mini-window__toggle-label">コメント実況</span>
-              <button
-                type="button"
+              <span
                 className={`mini-window__toggle-btn${
                   isRunning ? " mini-window__toggle-btn--on" : ""
                 }`}
-                onClick={handleStartStop}
-                title={startStopLabel}
-                aria-label={startStopLabel}
+                aria-label={`コメント実況: ${isRunning ? "ON" : "OFF"}`}
               >
                 {isRunning ? "ON" : "OFF"}
-              </button>
+              </span>
             </div>
-            <p className="mini-window__note">表示中のスレッドの新着レスを流します</p>
+            <p className="mini-window__note">スレッド自動更新と連動して新着レスを流します</p>
           </div>
 
           <div className="mini-window__separator" />

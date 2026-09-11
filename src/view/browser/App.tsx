@@ -134,7 +134,7 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
   const navigationBar = <NavigationBar openNextThreadSearchDialog={searchNextThread} />;
   const paneBody = (
     <>
-      <ContentArea />
+      <ContentArea isOverlayTarget={isActive} />
       <BottomPanel />
       {/* コマンドとナビゲーションを同じオムニバーへ集約し、
           操作元のペイン状態を使うためアクティブペインだけが起動を担当する。 */}

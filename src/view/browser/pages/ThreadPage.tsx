@@ -41,6 +41,7 @@ interface ThreadPageProps {
   page: ThreadPageType;
   refreshKey: number;
   isActive: boolean;
+  isOverlayTarget?: boolean;
   isAutoRefreshEnabled: boolean;
   scrollContainerRef?: RefObject<HTMLDivElement | null>;
 }
@@ -50,6 +51,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   page,
   refreshKey,
   isActive,
+  isOverlayTarget = isActive,
   isAutoRefreshEnabled,
   scrollContainerRef,
 }) => {
@@ -84,7 +86,10 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     controller: commentOverlayController,
     threadUrl: page.threadUrl,
     responses,
-    isActive,
+    // 変更理由: 2ペインでは両方のThreadPageが表示中になるが、単一のOverlayを
+    // 奪い合わないよう、実況の制御だけはフォーカス中ペインへ限定する。
+    isActive: isOverlayTarget,
+    autoRefreshEnabled: isOverlayTarget && isAutoRefreshEnabled,
     expired,
     missingFromSubject,
   });
