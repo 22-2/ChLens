@@ -73,6 +73,13 @@ export function useQuickAccessFilterToolbar({
         return;
       }
 
+      // 変更理由: 一覧の端で更新ジェスチャーが先にイベントを消費した場合、
+      // 同じwheelイベントでフィルタまで開くと更新と表示切替が同時に発生するため、
+      // 先行するハンドラーのpreventDefaultを更新操作の優先通知として扱う。
+      if (event.defaultPrevented) {
+        return;
+      }
+
       // メニューやポップアップ上のホイール操作はフィルタ開閉に反映しない。
       if (
         event.target.closest("[data-popup='true']") ||

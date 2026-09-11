@@ -1,8 +1,9 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { useState } from "react";
-import { afterEach, describe, expect, it } from "vite-plus/test";
+import { useRef, useState } from "react";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
+import { useWheelPagination } from "src/view/browser/hooks/useWheelPagination";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 
 function QuickAccessFilterHarness({
@@ -53,6 +54,52 @@ function QuickAccessFilterHarness({
   );
 }
 
+function WheelConflictHarness({ onRefresh }: { onRefresh: () => void }) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { isFilterOpen } = useQuickAccessFilterToolbar({
+    pageType: "threadList",
+    tabId: "tab-1",
+    isActive: true,
+    searchQuery,
+    setSearchQuery,
+  });
+  const { count } = useWheelPagination({
+    isEnabled: true,
+    isLoading: false,
+    containerRef: scrollContainerRef,
+    edge: "top",
+    onRefresh,
+  });
+
+  return (
+    <div
+      className="content-area__tab-panel"
+      data-tab-panel-id="tab-1"
+      data-testid="panel"
+      ref={scrollContainerRef}
+    >
+      <output data-testid="filter-state">{isFilterOpen ? "open" : "closed"}</output>
+      <output data-testid="pagination-count">{count}</output>
+      <table className="simple-data-table">
+        <tbody>
+          <tr>
+            <td>row</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function setScrollableMetrics(element: HTMLElement): void {
+  Object.defineProperties(element, {
+    clientHeight: { configurable: true, value: 100 },
+    scrollHeight: { configurable: true, value: 100 },
+    scrollTop: { configurable: true, value: 0 },
+  });
+}
+
 describe("useQuickAccessFilterToolbar wheel handling", () => {
   afterEach(() => {
     cleanup();
@@ -91,6 +138,24 @@ describe("useQuickAccessFilterToolbar wheel handling", () => {
     fireEvent.wheel(screen.getByText("row"), { deltaY: -48 });
 
     expect(screen.getByTestId("filter-state")).toHaveTextContent("closed");
+  });
+
+  it("更新ジェスチャーが先に処理したwheelではフィルタを開かない", () => {
+    const refresh = vi.fn();
+    render(<WheelConflictHarness onRefresh={refresh} />);
+    setScrollableMetrics(screen.getByTestId("panel"));
+
+    const wheelEvent = new WheelEvent("wheel", {
+      bubbles: true,
+      cancelable: true,
+      deltaY: -48,
+    });
+    fireEvent(screen.getByText("row"), wheelEvent);
+
+    expect(wheelEvent.defaultPrevented).toBe(true);
+    expect(screen.getByTestId("pagination-count")).toHaveTextContent("1");
+    expect(screen.getByTestId("filter-state")).toHaveTextContent("closed");
+    expect(refresh).not.toHaveBeenCalled();
   });
 
   it("ホイールで開いた直後の下方向ホイールはスクロールせずフィルタだけ閉じる", () => {
