@@ -14,6 +14,16 @@ const monitor: CommentOverlayMonitor = {
   scaleFactor: 1,
 };
 
+const secondMonitor: CommentOverlayMonitor = {
+  id: "sub",
+  name: "サブモニター",
+  x: 1_920,
+  y: 0,
+  width: 2_560,
+  height: 1_440,
+  scaleFactor: 1.25,
+};
+
 describe("OverlayControlPanel", () => {
   afterEach(() => {
     cleanup();
@@ -30,15 +40,45 @@ describe("OverlayControlPanel", () => {
       />,
     );
 
-    fireEvent.doubleClick(
-      document.querySelector('[data-monitor-id="main"] .overlay-control-panel__monitor-screen')!,
-    );
+    fireEvent.doubleClick(screen.getByTestId("overlay-control-panel-desktop"));
 
     expect(onGeometryChange).toHaveBeenCalledWith({
       x: 0,
       y: 0,
       width: 1_920,
       height: 1_080,
+    });
+  });
+
+  it("左右ボタンで1画面ずつ縦横比を保ったプレビューへ切り替える", () => {
+    const onGeometryChange = vi.fn();
+    render(
+      <OverlayControlPanel
+        monitors={[monitor, secondMonitor]}
+        geometry={DEFAULT_COMMENT_OVERLAY_GEOMETRY}
+        onGeometryChange={onGeometryChange}
+      />,
+    );
+
+    const desktop = screen.getByTestId("overlay-control-panel-desktop");
+    expect(document.querySelector('[data-monitor-id="main"]')).toBeInTheDocument();
+    expect(document.querySelector('[data-monitor-id="sub"]')).not.toBeInTheDocument();
+    expect(desktop).toHaveAttribute("viewBox", "0 0 1920 1080");
+
+    fireEvent.click(screen.getByRole("button", { name: "次のディスプレイをプレビュー" }));
+
+    expect(document.querySelector('[data-monitor-id="main"]')).not.toBeInTheDocument();
+    expect(document.querySelector('[data-monitor-id="sub"]')).toBeInTheDocument();
+    expect(desktop).toHaveAttribute("viewBox", "1920 0 2560 1440");
+    expect(screen.getByText(/このディスプレイには表示領域がありません/)).toBeInTheDocument();
+
+    fireEvent.doubleClick(desktop);
+
+    expect(onGeometryChange).toHaveBeenLastCalledWith({
+      x: 1_920,
+      y: 0,
+      width: 2_560,
+      height: 1_440,
     });
   });
 

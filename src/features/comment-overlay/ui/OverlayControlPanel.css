@@ -40,11 +40,56 @@
   background: var(--sys-color-list-hover-bg, #2b486c);
 }
 
+.overlay-control-panel__monitor-navigation {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.overlay-control-panel__monitor-navigation button {
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--sys-color-border, #3b5575);
+  border-radius: 0.35rem;
+  color: inherit;
+  background: var(--sys-color-surface-muted, #213650);
+  cursor: pointer;
+  font: inherit;
+}
+
+.overlay-control-panel__monitor-navigation button:hover:not(:disabled) {
+  background: var(--sys-color-list-hover-bg, #2b486c);
+}
+
+.overlay-control-panel__monitor-navigation button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.overlay-control-panel__monitor-navigation div {
+  display: grid;
+  min-width: 0;
+  text-align: center;
+}
+
+.overlay-control-panel__monitor-navigation strong {
+  overflow: hidden;
+  font-size: 0.8rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.overlay-control-panel__monitor-navigation span {
+  color: var(--sys-color-text-muted, #9eafc5);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .overlay-control-panel__desktop {
   display: block;
   width: 100%;
-  height: min(42vh, 280px);
-  min-height: 180px;
+  height: auto;
   border: 1px solid var(--sys-color-border, #3b5575);
   border-radius: 0.4rem;
   background: var(--sys-color-input-bg, #0e1c30);
@@ -132,5 +177,15 @@
   margin: 0;
   padding: 2rem 1rem;
   color: var(--sys-color-text-muted, #9eafc5);
+  text-align: center;
+}
+
+.overlay-control-panel__unselected {
+  margin: 0;
+  border-radius: 0.3rem;
+  padding: 0.5rem;
+  color: var(--sys-color-text-muted, #9eafc5);
+  background: var(--sys-color-surface-muted, #213650);
+  font-size: 0.7rem;
   text-align: center;
 }
