@@ -26,7 +26,6 @@
     "dev:tauri": "tauri dev",
     "storybook": "storybook dev -p 6006",
     "storybook:build": "storybook build",
-
     "// --- Utility & Lint ---": "",
     "clean": "node -e \"const fs=require('fs-extra'); ['debug/chrome','debug/firefox','debug/tauri'].forEach(d=>fs.removeSync(d))\"",
     "lint": "run-s -c -l lint:oxlint lint:format lint:tokens",
@@ -106,7 +105,7 @@
   "devEngines": {
     "packageManager": {
       "name": "pnpm",
-      "version": "11.22.0",
+      "version": "12.4.0",
       "onFail": "download"
     }
   },
