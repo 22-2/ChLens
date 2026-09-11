@@ -84,6 +84,8 @@ export type Page =
 export interface TabViewState {
   searchQuery?: string;
   filter?: ThreadFilter;
+  // 人気フィルタの判定条件もフィルタ状態と同じスレッド単位で復元する。
+  popularReplyThreshold?: number;
   searchTarget?: ThreadSearchTarget;
   sortColumn?: string | null;
   sortDirection?: "asc" | "desc";

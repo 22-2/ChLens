@@ -6,12 +6,15 @@ import { useThreadData } from "src/view/browser/hooks/use-thread-data";
 import { useThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-const { dispatchMock, updateViewStateMock, cacheGetMock, cachePutMock } = vi.hoisted(() => ({
-  dispatchMock: vi.fn(),
-  updateViewStateMock: vi.fn(),
-  cacheGetMock: vi.fn(),
-  cachePutMock: vi.fn(),
-}));
+const { dispatchMock, updateViewStateMock, viewStateMock, cacheGetMock, cachePutMock } = vi.hoisted(
+  () => ({
+    dispatchMock: vi.fn(),
+    updateViewStateMock: vi.fn(),
+    viewStateMock: {} as { filter?: "popular"; popularReplyThreshold?: number },
+    cacheGetMock: vi.fn(),
+    cachePutMock: vi.fn(),
+  }),
+);
 
 vi.mock("src/app", () => ({
   platform: {
@@ -26,7 +29,7 @@ vi.mock("src/app", () => ({
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabDispatch: () => dispatchMock,
-  useTabViewState: () => ({ state: {}, update: updateViewStateMock }),
+  useTabViewState: () => ({ state: viewStateMock, update: updateViewStateMock }),
 }));
 
 const THREAD_URL = "http://bbs.eddibb.cc/test/read.cgi/liveedge/1742132339/";
@@ -99,6 +102,8 @@ describe("useThreadData Phase 0 contracts", () => {
     cachePutMock.mockReset();
     dispatchMock.mockReset();
     updateViewStateMock.mockReset();
+    delete viewStateMock.filter;
+    delete viewStateMock.popularReplyThreshold;
 
     container.thread = {
       getThread: vi.fn(async () => ({
@@ -152,6 +157,25 @@ describe("useThreadData Phase 0 contracts", () => {
 
     act(() => result.current.setFilter("link"));
     expect(result.current.filteredResponses.map((res) => res.num)).toEqual([2, 3, 4]);
+  });
+
+  it("人気レス閾値をviewStateから読み込み、指定件数以上だけを残す", async () => {
+    viewStateMock.filter = "popular";
+    viewStateMock.popularReplyThreshold = 5;
+
+    const { result } = renderHook(() => {
+      const refreshController = useThreadRefreshController(0);
+      return useThreadData(
+        "tab-1",
+        createPage(),
+        { current: null } as RefObject<HTMLDivElement | null>,
+        refreshController,
+      );
+    });
+
+    await waitFor(() => expect(result.current.responses).toHaveLength(RESPONSES.length));
+
+    expect(result.current.filteredResponses).toHaveLength(0);
   });
 
   it("本文・名前・ID検索をfilterと組み合わせても対象レスを失わない", async () => {
