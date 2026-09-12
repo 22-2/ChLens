@@ -2,7 +2,9 @@
 .thread-page {
   /* Keep absolute popup anchors relative to the thread without creating a new overlay stack. */
   position: relative;
-  padding: var(--sys-space-2) 0;
+  /* 変更理由: stickyヘッダーがスクロール領域の先頭で上側余白に浮いて見えないよう、
+     上側だけ余白をなくし、本文末尾の読みやすさに使う下側余白は残す。 */
+  padding: 0 0 var(--sys-space-2);
   --thread-minimap-width: 0px;
 }
 
