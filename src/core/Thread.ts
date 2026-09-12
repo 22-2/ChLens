@@ -575,7 +575,11 @@ export default class Thread {
    */
   private _padAbobunIfNeeded(thread: ParsedThread, result: CachedInfoResult): ParsedThread {
     let displayThread = thread;
-    if (result.status === "success" || result.status === "sucess") {
+    // 変更理由: 末尾レスの削除をsubject.txtの件数で補う対策は、レス番号を本文から
+    // 復元するしたらば・まちBBS向けのものだった。2ch系ではsubject.txtが本文より先に
+    // 更新されることがあり、自動更新の途中で未取得の実レスを「あぼーん」と誤表示する。
+    const supportsSubjectPadding = this.url.bbsType === "jbbs" || this.url.bbsType === "machi";
+    if (supportsSubjectPadding && (result.status === "success" || result.status === "sucess")) {
       const missingCount = (result.cachedInfo?.resCount ?? 0) - thread.res.length;
       if (missingCount > 0) {
         // 変更理由: subject.txtの件数は表示補助情報であり、補填レスを本体キャッシュへ混ぜると

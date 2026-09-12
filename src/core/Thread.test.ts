@@ -85,6 +85,8 @@ describe("Thread", () => {
 
   it("subjectの件数補填を表示用コピーへ限定し、実データを変更しない", () => {
     const thread = new Thread("https://example.com/test/read.cgi/board/1000000000/");
+    // 実在の板URLをテストへ固定しないため、予約済みドメイン上でBBS種別だけを差し替える。
+    Object.defineProperty(thread.url, "bbsType", { configurable: true, value: "jbbs" });
     const testableThread = thread as unknown as ThreadInternals;
     const parsedThread: ParsedThread = {
       title: "テストスレッド",
@@ -119,5 +121,29 @@ describe("Thread", () => {
         other: "あぼーん",
       },
     ]);
+  });
+
+  it("2ch系ではsubjectの先行更新を「あぼーん」補填に使わない", () => {
+    const thread = new Thread("https://example.com/test/read.cgi/board/1000000000/");
+    const testableThread = thread as unknown as ThreadInternals;
+    const parsedThread: ParsedThread = {
+      title: "テストスレッド",
+      res: [
+        {
+          name: "名無し",
+          mail: "",
+          message: "本文",
+          other: "日時",
+        },
+      ],
+    };
+
+    const displayThread = testableThread._padAbobunIfNeeded(parsedThread, {
+      status: "success",
+      cachedInfo: { resCount: 3 },
+    });
+
+    expect(displayThread).toBe(parsedThread);
+    expect(displayThread.res).toHaveLength(1);
   });
 });
