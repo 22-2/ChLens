@@ -14,6 +14,17 @@ import { platform } from "src/app/platform";
 import { getStore2String } from "src/app/Store2Storage";
 import { add as addHistoryRecord, remove as removeHistoryRecord } from "src/core/History";
 import {
+  loadTabStoreSession,
+  sanitizeTabStoreState,
+  saveTabStoreSession,
+} from "src/view/browser/hooks/tab-store-session";
+import type {
+  PaneScopedState,
+  PaneScopedTabStore,
+  ScopedTabAction,
+  TabStoreState,
+} from "src/view/browser/hooks/tab-store-types";
+import {
   buildHierarchy,
   getCurrentPage,
   getPageViewStateKey,
@@ -27,78 +38,18 @@ import {
   resetAutoRefreshState,
 } from "src/view/browser/utils/auto-refresh-pages";
 import {
-  getBrowserSessionJson,
-  setBrowserSessionJson,
-} from "src/view/browser/utils/browser-session-storage";
-import {
   getBoardUrlFromThreadUrl,
   parseInternalBrowserPage,
 } from "src/view/browser/utils/link-routing";
 import browser from "webextension-polyfill";
 
-export interface TabStoreState {
-  // 横並びのペイン群。配列順がそのまま画面上の左→右の並び。
-  panes: Pane[];
-  // フォーカス中のペイン。タブ追加/キーボード操作などの暗黙の対象になる。
-  activePaneId: string;
-  // 閉じたタブの undo は全ペイン共有。
-  closedTabs: Tab[];
-}
-
-export type TabAction =
-  | { type: "ADD_TAB" }
-  | { type: "OPEN_IN_NEW_TAB"; page: Page; background?: boolean }
-  | { type: "OPEN_IN_NEW_TAB_FORCE"; page: Page }
-  | { type: "CLOSE_TAB"; tabId: string }
-  | { type: "CLOSE_OTHER_TABS"; tabId: string }
-  | { type: "CLOSE_RIGHT_TABS"; tabId: string }
-  | { type: "CLOSE_ALL_TABS" }
-  | { type: "REOPEN_CLOSED_TAB" }
-  | { type: "TOGGLE_PIN"; tabId: string }
-  | { type: "MOVE_TAB"; dragTabId: string; toIndex: number }
-  | { type: "SELECT_TAB"; tabId: string }
-  | { type: "NAVIGATE"; page: Page }
-  | { type: "NAVIGATE_TAB"; tabId: string; page: Page }
-  | { type: "GO_BACK" }
-  | { type: "GO_FORWARD" }
-  | { type: "GO_TO_HISTORY_INDEX"; index: number }
-  | {
-      type: "UPDATE_TAB_VIEW_STATE";
-      tabId: string;
-      pageKey: string;
-      patch: Partial<TabViewState>;
-    }
-  | { type: "UPDATE_TITLE"; title: string }
-  | { type: "UPDATE_TITLE_FOR_TAB"; tabId: string; title: string; boardUrl?: string }
-  | { type: "RELOAD" }
-  | {
-      type: "FOLLOW_NEXT_THREAD";
-      page: Extract<Page, { type: "thread" }>;
-      keepAutoRefresh?: boolean;
-    }
-  | {
-      type: "SET_AUTO_REFRESH_ENABLED";
-      enabled: boolean;
-      pageKey?: string;
-    }
-  // --- ペイン操作（横分割） ---
-  // いずれも対象ペインは注入された paneId（操作元ペイン）を基準にする。
-  | { type: "SPLIT_PANE" }
-  | { type: "OPEN_IN_RIGHT_PANE"; tabId: string }
-  | { type: "CLOSE_PANE" }
-  | { type: "SET_ACTIVE_PANE" }
-  | {
-      type: "MOVE_TAB_TO_PANE";
-      tabId: string;
-      fromPaneId: string;
-      toPaneId: string;
-      toIndex: number;
-    }
-  | { type: "RESTORE"; state: TabStoreState };
-
-// ペインスコープ: 全アクションに「対象ペイン」を付与できる。
-// 省略時はアクティブペインに作用する（グローバルハンドラ用）。
-export type ScopedTabAction = TabAction & { paneId?: string };
+export type {
+  PaneScopedState,
+  PaneScopedTabStore,
+  ScopedTabAction,
+  TabAction,
+  TabStoreState,
+} from "src/view/browser/hooks/tab-store-types";
 
 // 閉じたタブの最大保持数
 const MAX_CLOSED_TABS = 20;
@@ -383,98 +334,8 @@ function readInitialPageFromLocation(): Page | null {
   }
 }
 
-function sanitizeSessionState(state: TabStoreState): TabStoreState {
-  return {
-    ...state,
-    // 変更理由: 自動更新は実行時状態として扱い、タブ復元/複製で意図せず再開しないよう永続化しない。
-    panes: state.panes.map((pane) => ({
-      ...pane,
-      tabs: pane.tabs.map((tab) => resetAutoRefreshState(tab)),
-    })),
-    closedTabs: state.closedTabs.map((tab) => resetAutoRefreshState(tab)),
-  };
-}
-
-function normalizeLoadedTab(tab: Tab): Tab {
-  const normalized = {
-    ...tab,
-    pinned: tab.pinned ?? false,
-    reloadKey: tab.reloadKey ?? 0,
-  };
-  // 変更理由: 旧セッションに自動更新状態が残っていても復元時は常にOFFへ正規化する。
-  return resetAutoRefreshState(normalized);
-}
-
-// 旧形状（単一タブリスト）のセッションも読めるようにするための型。
-type LegacyTabStoreState = {
-  tabs?: Tab[];
-  activeTabId?: string;
-  closedTabs?: Tab[];
-};
-
-// セッション復元: localStorageから前回の状態を読み込む。
-// 旧形状（{ tabs, activeTabId }）は単一ペインに包んで移行する。
-function loadSession(): TabStoreState | null {
-  try {
-    const raw = getBrowserSessionJson();
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as TabStoreState & LegacyTabStoreState;
-
-    // 新形状: panes を持つ
-    if (parsed.panes?.length && parsed.activePaneId) {
-      const panes = parsed.panes
-        .filter((pane) => pane.tabs?.length > 0)
-        .map((pane) => ({
-          ...pane,
-          tabs: pane.tabs.map((tab) => normalizeLoadedTab(tab)),
-          activeTabId: pane.tabs.some((tab) => tab.id === pane.activeTabId)
-            ? pane.activeTabId
-            : pane.tabs[0].id,
-        }));
-      if (panes.length === 0) return null;
-      const activePaneId = panes.some((p) => p.id === parsed.activePaneId)
-        ? parsed.activePaneId
-        : panes[0].id;
-      return {
-        panes,
-        activePaneId,
-        closedTabs: (parsed.closedTabs ?? []).map((tab) => normalizeLoadedTab(tab)),
-      };
-    }
-
-    // 旧形状: 単一タブリスト → 単一ペインへ移行
-    if (parsed.tabs && parsed.tabs.length > 0 && parsed.activeTabId) {
-      const tabs = parsed.tabs.map((tab) => normalizeLoadedTab(tab));
-      const activeTabId = tabs.some((tab) => tab.id === parsed.activeTabId)
-        ? parsed.activeTabId
-        : tabs[0].id;
-      const pane: Pane = {
-        id: crypto.randomUUID(),
-        tabs,
-        activeTabId,
-      };
-      return {
-        panes: [pane],
-        activePaneId: pane.id,
-        closedTabs: (parsed.closedTabs ?? []).map((tab) => normalizeLoadedTab(tab)),
-      };
-    }
-  } catch {
-    // パース失敗時は無視
-  }
-  return null;
-}
-
-function saveSession(state: TabStoreState): void {
-  try {
-    void setBrowserSessionJson(JSON.stringify(sanitizeSessionState(state)));
-  } catch {
-    // 容量超過等は無視
-  }
-}
-
 const initialPageFromLocation = readInitialPageFromLocation();
-const restoredSession = initialPageFromLocation ? null : loadSession();
+const restoredSession = initialPageFromLocation ? null : loadTabStoreSession();
 const initialState: TabStoreState =
   restoredSession ??
   (() => {
@@ -1275,7 +1136,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
     }
 
     case "RESTORE":
-      return sanitizeSessionState(action.state);
+      return sanitizeTabStoreState(action.state);
 
     default:
       return state;
@@ -1290,24 +1151,6 @@ interface TabContextValue {
   // startTransition 配下の dispatch でも常に最新 state を参照できるよう同期 ref を公開する。
   stateRef: React.RefObject<TabStoreState>;
   dispatch: Dispatch<ScopedTabAction>;
-}
-
-// ペインスコープ: useTabStore が返す「自ペインのスライス」。
-// 旧 TabStoreState と同じ形のため、消費側はほぼ無改修で自ペインを操作できる。
-export interface PaneScopedState {
-  tabs: Tab[];
-  activeTabId: string;
-  closedTabs: Tab[];
-}
-
-export interface PaneScopedTabStore {
-  state: PaneScopedState;
-  // stateRef はグローバル状態を指す。ペイン解決には paneId を併用する。
-  stateRef: React.RefObject<TabStoreState>;
-  dispatch: Dispatch<ScopedTabAction>;
-  activeTab: Tab;
-  currentPage: Page;
-  paneId: string;
 }
 
 const TabContext = createContext<TabContextValue | null>(null);
@@ -1490,7 +1333,7 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // セッション永続化: state変更時にlocalStorageへ保存
   useEffect(() => {
-    saveSession(state);
+    saveTabStoreSession(state);
   }, [state]);
 
   // アクティブタブのページタイトルが変わったらウィンドウタイトルを更新する
