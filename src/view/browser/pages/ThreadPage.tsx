@@ -454,24 +454,26 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         </div>
       ) : (
         <>
-          <ThreadPageTopBar
-            activeTopBar={activeTopBar}
-            filter={filter}
-            filteredResponseCount={filteredResponses.length}
-            onClose={closeTopBar}
-            onFilterChange={setFilter}
-            onSearchTargetChange={setSearchTarget}
-            onSearchQueryChange={setSearchQuery}
-            responseCount={visibleResponses.length}
-            searchFocusKey={searchFocusKey}
-            searchQuery={searchQuery}
-            searchTarget={searchTarget}
-          />
+          <div className="thread-page__sticky-header">
+            <ThreadPageTopBar
+              activeTopBar={activeTopBar}
+              filter={filter}
+              filteredResponseCount={filteredResponses.length}
+              onClose={closeTopBar}
+              onFilterChange={setFilter}
+              onSearchTargetChange={setSearchTarget}
+              onSearchQueryChange={setSearchQuery}
+              responseCount={visibleResponses.length}
+              searchFocusKey={searchFocusKey}
+              searchQuery={searchQuery}
+              searchTarget={searchTarget}
+            />
 
-          {(expired || missingFromSubject) && (
-            <div className="thread-page__notice">このスレッドはdat落ちしています</div>
-          )}
-          {error && <div className="thread-page__notice">{error}</div>}
+            {(expired || missingFromSubject) && (
+              <div className="thread-page__notice">このスレッドはdat落ちしています</div>
+            )}
+            {error && <div className="thread-page__notice">{error}</div>}
+          </div>
 
           <div className="thread-page__responses">
             {filteredResponses.map((res) => {

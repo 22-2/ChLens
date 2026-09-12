@@ -31,6 +31,16 @@
   border-bottom: 1px solid var(--sys-color-warning-border);
 }
 
+/*
+ * 変更理由: dat落ち通知を本文のスクロール中も表示し続ける。ただしfixedにすると
+ * 2ペイン時にペイン境界を越えるため、検索バーと一緒にスクロール領域内で固定する。
+ */
+.thread-page__sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--sys-z-sticky);
+}
+
 .thread-page__responses {
   padding: 0 0 var(--sys-space-10);
 }
@@ -112,9 +122,7 @@
 }
 
 .thread-page__top-bar {
-  position: sticky;
-  top: 0;
-  z-index: var(--sys-z-sticky);
+  position: relative;
 }
 
 .thread-page__toolbar {
