@@ -5,6 +5,8 @@ const ENTITIES: Record<string, string> = {
   quot: '"',
   apos: "'",
   nbsp: " ",
+  // read.cgiの著作権表記にも使われ、DOMなしのサービスワーカーでも復元が必要になる。
+  copy: "©",
 };
 
 /**

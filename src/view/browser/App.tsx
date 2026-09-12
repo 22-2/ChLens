@@ -41,6 +41,7 @@ import {
 import { ToastProvider } from "src/view/browser/ui/Toast";
 import { TooltipProvider } from "src/view/browser/ui/Tooltip";
 import { applyBBSMenuToItestServerMap } from "src/view/browser/utils/itest-server-map";
+import browser from "webextension-polyfill";
 
 // ステータスバー右端に表示する下部パネルの直接操作ボタン。
 // 変更理由: パネル種別を先に選ばせると書き込みまでの操作が増えるため、
@@ -71,6 +72,34 @@ const ThreadListPanelToggleItem: React.FC = () => {
       </button>
     </StatusBarItem>
   );
+};
+
+// MCPのURL省略要求とサービスワーカー用設定を保存する。
+// TabStoreはReact Context内の状態なので、UI外のサービスワーカーへはこの最小限の値だけ渡す。
+const ActiveThreadBridgeState: React.FC<{ isActive: boolean }> = ({ isActive }) => {
+  const { currentPage } = useTabStore();
+  const activeThreadUrl =
+    isActive && currentPage.type === "thread" ? currentPage.threadUrl : undefined;
+  const format2chnet = container.config.get("format_2chnet");
+
+  useEffect(() => {
+    if (!/^(?:chrome|moz)-extension:$/.test(location.protocol) || !isActive) return;
+
+    // 変更理由: サービスワーカーはwindowのReact状態を参照できないため、
+    // URL省略要求に必要な現在スレッドだけを拡張ストレージへ同期する。
+    const state = activeThreadUrl ?? null;
+    void browser.runtime
+      .sendMessage({
+        type: "mcp-state",
+        activeThreadUrl: state,
+        format2chnet,
+      })
+      .catch((error: unknown) => {
+        console.error("[ChLens MCP] 現在スレッド情報の同期に失敗しました:", error);
+      });
+  }, [activeThreadUrl, format2chnet, isActive]);
+
+  return null;
 };
 
 const WritePanelToggleItem: React.FC = () => {
@@ -134,6 +163,7 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
   const navigationBar = <NavigationBar openNextThreadSearchDialog={searchNextThread} />;
   const paneBody = (
     <>
+      <ActiveThreadBridgeState isActive={isActive} />
       <ContentArea isOverlayTarget={isActive} />
       <BottomPanel />
       {/* コマンドとナビゲーションを同じオムニバーへ集約し、

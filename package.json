@@ -26,6 +26,7 @@
     "dev:tauri": "tauri dev",
     "storybook": "storybook dev -p 6006",
     "storybook:build": "storybook build",
+    "mcp:server": "node --experimental-strip-types scripts/chlens-mcp.ts",
     "// --- Utility & Lint ---": "",
     "clean": "node -e \"const fs=require('fs-extra'); ['debug/chrome','debug/firefox','debug/tauri'].forEach(d=>fs.removeSync(d))\"",
     "lint": "run-s -c -l lint:oxlint lint:format lint:tokens",
