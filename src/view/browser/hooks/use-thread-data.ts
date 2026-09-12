@@ -171,7 +171,15 @@ export function useThreadData(
               return;
             }
             if (cached.res) {
-              setResponses(cached.res);
+              setResponses((currentResponses) => {
+                // 変更理由: 手動更新では表示中のレスより古いキャッシュが先に届くため、
+                // 取得中にキャッシュへ戻すとレス一覧の高さとスクロール位置が一瞬巻き戻る。
+                // 初回表示など現在のレスがない場合だけキャッシュを中間表示に使う。
+                if (forceUpdate && currentResponses.length > 0) {
+                  return currentResponses;
+                }
+                return cached.res;
+              });
             }
             if (cached.title && !titleUpdatedRef.current) {
               dispatch({
