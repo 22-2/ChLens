@@ -1,4 +1,4 @@
-import { container } from "src/service-container/index";
+import { readConfigValue } from "src/view/browser/utils/config-setting";
 
 export const THREAD_AUTO_REFRESH_CONFIG_KEY = "auto_load_second";
 export const DEFAULT_THREAD_AUTO_REFRESH_MS = 5000;
@@ -44,7 +44,7 @@ export const IDLE_STOP_TIMEOUT_OPTIONS: readonly IdleStopTimeoutOption[] = [
 export const IDLE_STOP_TIMEOUT_DEFAULT = "auto";
 
 export function readIdleStopTimeoutValue(): string {
-  const raw = container.config.get(THREAD_IDLE_STOP_TIMEOUT_CONFIG_KEY);
+  const raw = readConfigValue(THREAD_IDLE_STOP_TIMEOUT_CONFIG_KEY);
   if (raw == null || raw === "") {
     return IDLE_STOP_TIMEOUT_DEFAULT;
   }
@@ -68,7 +68,7 @@ export function findIdleStopTimeoutOption(value: string): IdleStopTimeoutOption 
 }
 
 export function readThreadAutoRefreshIntervalMs(): number {
-  const rawValue = container.config.get(THREAD_AUTO_REFRESH_CONFIG_KEY);
+  const rawValue = readConfigValue(THREAD_AUTO_REFRESH_CONFIG_KEY);
   const parsedValue = Number.parseInt(rawValue ?? "0", 10);
 
   if (Number.isNaN(parsedValue) || parsedValue <= 0) {
@@ -88,7 +88,7 @@ export function readThreadAutoRefreshIntervalSec(): number {
 }
 
 export function readBoardAutoRefreshIntervalMs(): number {
-  const rawValue = container.config.get(BOARD_AUTO_REFRESH_CONFIG_KEY);
+  const rawValue = readConfigValue(BOARD_AUTO_REFRESH_CONFIG_KEY);
   const parsedValue = Number.parseInt(rawValue ?? "0", 10);
 
   if (Number.isNaN(parsedValue) || parsedValue <= 0) {

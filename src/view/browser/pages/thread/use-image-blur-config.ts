@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { container } from "src/service-container/index";
+import { readConfigValue, subscribeConfigKeys } from "src/view/browser/utils/config-setting";
 import {
   compileImageBlurPattern,
   resolveImageBlurRadius,
@@ -11,12 +11,12 @@ export interface ImageBlurConfigState {
   harmfulWordPattern: RegExp | null;
 }
 
-const IMAGE_BLUR_CONFIG_KEYS = new Set(["image_blur", "image_blur_length", "image_blur_word"]);
+const IMAGE_BLUR_CONFIG_KEYS = ["image_blur", "image_blur_length", "image_blur_word"] as const;
 
 function readImageBlurConfig(): ImageBlurConfigState {
-  const enabled = container.config.get("image_blur") === "on";
-  const radius = resolveImageBlurRadius(container.config.get("image_blur_length"));
-  const rawPattern = container.config.get("image_blur_word");
+  const enabled = readConfigValue("image_blur") === "on";
+  const radius = resolveImageBlurRadius(readConfigValue("image_blur_length"));
+  const rawPattern = readConfigValue("image_blur_word");
   const harmfulWordPattern =
     typeof rawPattern === "string" ? compileImageBlurPattern(rawPattern) : null;
   return { enabled, radius, harmfulWordPattern };
@@ -27,16 +27,10 @@ export function useImageBlurConfig(): ImageBlurConfigState {
 
   useEffect(() => {
     const applyImageBlurConfig = () => setImageBlurConfig(readImageBlurConfig());
-    const handleConfigUpdated = ({ key }: { key?: string }) => {
-      if (!key || IMAGE_BLUR_CONFIG_KEYS.has(key)) {
-        applyImageBlurConfig();
-      }
-    };
-    container.config.ready(applyImageBlurConfig);
-    container.message.on("config_updated", handleConfigUpdated);
-    return () => {
-      container.message.off("config_updated", handleConfigUpdated);
-    };
+    return subscribeConfigKeys(IMAGE_BLUR_CONFIG_KEYS, applyImageBlurConfig, {
+      label: "ImageBlurConfig",
+      syncOnUnknownKey: true,
+    });
   }, []);
 
   return imageBlurConfig;

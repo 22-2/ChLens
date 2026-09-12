@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { container } from "src/service-container/index";
+import {
+  persistConfigValue,
+  readConfigValue,
+  subscribeConfigKeys,
+} from "src/view/browser/utils/config-setting";
 
 export type TabBarOrientation = "horizontal" | "vertical";
 
@@ -13,47 +17,6 @@ export const TAB_BAR_WIDTH_MAX = 280;
 // 変更理由: 簡易表示の固定幅。縮小中のリサイズ開始位置やドラッグ上限の基準にする。
 export const TAB_BAR_COLLAPSED_WIDTH = 48;
 
-function readConfigString(key: string): string | null {
-  try {
-    return container.config.get(key);
-  } catch (error) {
-    // LiveのようにChlensのservice containerを使わないhostでも、既定値で表示できる。
-    console.error(
-      `[TabBarSettings] config service is unavailable; using the default for ${key}`,
-      error,
-    );
-    return null;
-  }
-}
-
-function persistConfigValue(key: string, value: string): void {
-  void Promise.resolve(container.config.set(key, value)).catch((error) => {
-    console.error(`[TabBarSettings] config の保存に失敗しました: ${key}`, error);
-  });
-}
-
-/** 指定キーの変更通知を購読し、変更時に sync を呼び出す。 */
-function subscribeConfigKey(key: string, sync: () => void): () => void {
-  try {
-    // 変更理由: Config は localStorage の読み込み後に確定するため、初回レンダー時の
-    // 既定値だけで決めると、再起動後に保存済みの設定を取りこぼす。
-    container.config.ready(sync);
-    const handleConfigUpdated = ({ key: updatedKey }: { key?: string }) => {
-      if (updatedKey === key) {
-        sync();
-      }
-    };
-    container.message.on("config_updated", handleConfigUpdated);
-    return () => {
-      container.message.off("config_updated", handleConfigUpdated);
-    };
-  } catch (error) {
-    // 設定serviceが後から登録されるhostでは購読を省略し、初期値のまま表示を継続する。
-    console.error("[TabBarSettings] config service subscription is unavailable", error);
-    return () => undefined;
-  }
-}
-
 function parseOrientation(raw: string | null | undefined): TabBarOrientation {
   // 変更理由: 垂直タブバー導入前の既存環境や未知値では水平として扱い、
   // 設定を持たない利用者の見た目を変えない。
@@ -66,14 +29,18 @@ function parseOrientation(raw: string | null | undefined): TabBarOrientation {
 /** tab_bar_orientation 設定値を監視し、タブバーの配置方向を返すフック */
 export function useTabBarOrientation(): TabBarOrientation {
   const [orientation, setOrientation] = useState<TabBarOrientation>(() =>
-    parseOrientation(readConfigString(TAB_BAR_ORIENTATION_CONFIG_KEY)),
+    parseOrientation(readConfigValue(TAB_BAR_ORIENTATION_CONFIG_KEY)),
   );
 
   useEffect(
     () =>
-      subscribeConfigKey(TAB_BAR_ORIENTATION_CONFIG_KEY, () => {
-        setOrientation(parseOrientation(readConfigString(TAB_BAR_ORIENTATION_CONFIG_KEY)));
-      }),
+      subscribeConfigKeys(
+        [TAB_BAR_ORIENTATION_CONFIG_KEY],
+        () => {
+          setOrientation(parseOrientation(readConfigValue(TAB_BAR_ORIENTATION_CONFIG_KEY)));
+        },
+        { label: "TabBarSettings" },
+      ),
     [],
   );
 
@@ -112,19 +79,23 @@ export function useVerticalTabBarLayout(): {
   setWidth: (width: number) => void;
 } {
   const [collapsed, setCollapsedState] = useState(() =>
-    parseTabBarCollapsed(readConfigString(TAB_BAR_COLLAPSED_CONFIG_KEY)),
+    parseTabBarCollapsed(readConfigValue(TAB_BAR_COLLAPSED_CONFIG_KEY)),
   );
   const [width, setWidthState] = useState(() =>
-    parseTabBarWidth(readConfigString(TAB_BAR_WIDTH_CONFIG_KEY)),
+    parseTabBarWidth(readConfigValue(TAB_BAR_WIDTH_CONFIG_KEY)),
   );
 
   useEffect(() => {
     const sync = () => {
-      setCollapsedState(parseTabBarCollapsed(readConfigString(TAB_BAR_COLLAPSED_CONFIG_KEY)));
-      setWidthState(parseTabBarWidth(readConfigString(TAB_BAR_WIDTH_CONFIG_KEY)));
+      setCollapsedState(parseTabBarCollapsed(readConfigValue(TAB_BAR_COLLAPSED_CONFIG_KEY)));
+      setWidthState(parseTabBarWidth(readConfigValue(TAB_BAR_WIDTH_CONFIG_KEY)));
     };
-    const unsubscribeCollapsed = subscribeConfigKey(TAB_BAR_COLLAPSED_CONFIG_KEY, sync);
-    const unsubscribeWidth = subscribeConfigKey(TAB_BAR_WIDTH_CONFIG_KEY, sync);
+    const unsubscribeCollapsed = subscribeConfigKeys([TAB_BAR_COLLAPSED_CONFIG_KEY], sync, {
+      label: "TabBarSettings",
+    });
+    const unsubscribeWidth = subscribeConfigKeys([TAB_BAR_WIDTH_CONFIG_KEY], sync, {
+      label: "TabBarSettings",
+    });
     return () => {
       unsubscribeCollapsed();
       unsubscribeWidth();

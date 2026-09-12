@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from "react";
-import { container } from "src/service-container/index";
 import {
   BOARD_AUTO_REFRESH_CONFIG_KEY,
   findIdleStopTimeoutOption,
@@ -19,6 +18,7 @@ import {
   getAutoRefreshPageKey,
   isAutoRefreshEnabledForPage,
 } from "src/view/browser/utils/auto-refresh-pages";
+import { persistConfigValue, subscribeConfigKeys } from "src/view/browser/utils/config-setting";
 
 export const MIN_INTERVAL_SEC = MIN_THREAD_AUTO_REFRESH_SEC;
 export const MAX_INTERVAL_SEC = MAX_THREAD_AUTO_REFRESH_SEC;
@@ -41,24 +41,14 @@ function useConfigIntervalSec(options: {
 
   useEffect(() => {
     const sync = () => setIntervalSecState(readIntervalSec());
-    const handleConfigUpdated = ({ key }: { key?: string }) => {
-      if (key === configKey) {
-        sync();
-      }
-    };
-
-    container.config.ready(sync);
-    container.message.on("config_updated", handleConfigUpdated);
-    return () => {
-      container.message.off("config_updated", handleConfigUpdated);
-    };
+    return subscribeConfigKeys([configKey], sync, { label: "AutoRefreshPanel" });
   }, [configKey, readIntervalSec]);
 
   const setIntervalSec = useCallback(
     (sec: number) => {
       const clamped = Math.max(minSec, Math.min(maxSec, sec));
       setIntervalSecState(clamped);
-      void container.config.set(configKey, String(clamped * 1000));
+      persistConfigValue(configKey, String(clamped * 1000), "AutoRefreshPanel");
     },
     [configKey, maxSec, minSec],
   );
@@ -106,22 +96,14 @@ export function useAutoRefreshPanel(): UseAutoRefreshPanelResult {
 
   useEffect(() => {
     const sync = () => setIdleStopTimeoutValueState(readIdleStopTimeoutValue());
-    const handleConfigUpdated = ({ key }: { key?: string }) => {
-      if (key === THREAD_IDLE_STOP_TIMEOUT_CONFIG_KEY) {
-        sync();
-      }
-    };
-
-    container.config.ready(sync);
-    container.message.on("config_updated", handleConfigUpdated);
-    return () => {
-      container.message.off("config_updated", handleConfigUpdated);
-    };
+    return subscribeConfigKeys([THREAD_IDLE_STOP_TIMEOUT_CONFIG_KEY], sync, {
+      label: "AutoRefreshPanel",
+    });
   }, []);
 
   const setIdleStopTimeout = useCallback((value: string) => {
     setIdleStopTimeoutValueState(value);
-    void container.config.set(THREAD_IDLE_STOP_TIMEOUT_CONFIG_KEY, value);
+    persistConfigValue(THREAD_IDLE_STOP_TIMEOUT_CONFIG_KEY, value, "AutoRefreshPanel");
   }, []);
 
   const idleStopTimeoutOption = findIdleStopTimeoutOption(idleStopTimeoutValue);

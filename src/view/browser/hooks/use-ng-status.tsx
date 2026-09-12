@@ -7,7 +7,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { container } from "src/service-container/index";
+import { readConfigValue, subscribeConfigKeys } from "src/view/browser/utils/config-setting";
 import {
   DEFAULT_NG_DISPLAY_MODE,
   NG_DISPLAY_CONFIG_KEY,
@@ -87,27 +87,11 @@ export const NgStatusProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   useEffect(() => {
     // 設定変更を全ペインへ通知し、現在開いているレスにも表示方式を即時反映する。
-    let config: { get(key: string): string | null; ready(callback: () => void): void };
-    try {
-      config = container.config;
-    } catch {
-      // Provider外の単体描画やアプリ初期化前は、既定のhard-ngを維持する。
-      return;
-    }
-
-    const sync = () => setNgDisplayMode(normalizeNgDisplayMode(config.get(NG_DISPLAY_CONFIG_KEY)));
-    const handleConfigUpdated = ({ key }: { key?: string }) => {
-      if (key === NG_DISPLAY_CONFIG_KEY) {
-        sync();
-      }
-    };
-
-    config.ready(sync);
-    container.message.on("config_updated", handleConfigUpdated);
-
-    return () => {
-      container.message.off("config_updated", handleConfigUpdated);
-    };
+    return subscribeConfigKeys(
+      [NG_DISPLAY_CONFIG_KEY],
+      () => setNgDisplayMode(normalizeNgDisplayMode(readConfigValue(NG_DISPLAY_CONFIG_KEY))),
+      { label: "NgStatus" },
+    );
   }, []);
 
   const toggleNgTemporarilyDisabled = useCallback(() => {

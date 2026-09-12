@@ -1,5 +1,4 @@
 import { type RefObject, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { container } from "src/service-container/index";
 import {
   MIN_THREAD_AUTO_REFRESH_MS,
   readIdleStopTimeoutValue,
@@ -9,6 +8,7 @@ import {
   THREAD_AUTO_REFRESH_IDLE_STOP_COUNT,
 } from "src/view/browser/hooks/auto-refresh-config";
 import type { ThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
+import { subscribeConfigKeys } from "src/view/browser/utils/config-setting";
 
 interface PendingRefreshSnapshot {
   responseCount: number;
@@ -36,10 +36,6 @@ interface UseAutoRefreshOptions {
   onAutoStop?: () => void;
   /** dat落ちを検知して自動更新を止めるとき、一度だけ呼ぶ。 */
   onThreadExpired?: () => void;
-}
-
-interface ConfigUpdatedMessage {
-  key?: string;
 }
 
 export interface UseAutoRefreshResult {
@@ -267,19 +263,9 @@ export function useAutoRefresh({
     const applyInterval = () => {
       setIntervalMs(readThreadAutoRefreshIntervalMs());
     };
-
-    const handleConfigUpdated = ({ key }: ConfigUpdatedMessage) => {
-      if (key === THREAD_AUTO_REFRESH_CONFIG_KEY) {
-        applyInterval();
-      }
-    };
-
-    container.config.ready(applyInterval);
-    container.message.on("config_updated", handleConfigUpdated);
-
-    return () => {
-      container.message.off("config_updated", handleConfigUpdated);
-    };
+    return subscribeConfigKeys([THREAD_AUTO_REFRESH_CONFIG_KEY], applyInterval, {
+      label: "AutoRefresh",
+    });
   }, []);
 
   useEffect(() => {
