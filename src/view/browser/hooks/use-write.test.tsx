@@ -28,6 +28,7 @@ vi.mock("src/service-container/index", () => ({
   container: {
     config: {
       get: vi.fn(() => ""),
+      ready: vi.fn((callback: () => void) => callback()),
     },
     message: {
       on: vi.fn(),

@@ -1,14 +1,13 @@
 import { Settings } from "lucide-react";
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
-import { container } from "src/service-container/index";
 import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
+import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useWrite } from "src/view/browser/hooks/use-write";
 import { Dialog } from "src/view/browser/ui/Dialog";
 import { CheckboxField } from "src/view/browser/ui/FormControls";
 
 const WRITE_SUBMIT_CTRL_ENTER_KEY = "write_submit_ctrl_enter";
-const WRITE_SAGE_KEY = "sage_flag";
 const WRITE_CLOSE_PANEL_AFTER_SUBMIT_KEY = "write_close_panel_after_submit";
 
 export const WritePanelContent: React.FC = () => {
@@ -23,12 +22,11 @@ export const WritePanelContent: React.FC = () => {
   // 変更理由: 書き込み中の入力欄を増やさず、書き込みに関する設定を
   // パネル内の歯車モーダルへまとめて、必要な時だけ変更できるようにする。
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
-  const [submitWithCtrlEnter, setSubmitWithCtrlEnter] = useState(
-    () => container.config.get(WRITE_SUBMIT_CTRL_ENTER_KEY) === "on",
+  const { value: submitWithCtrlEnter, setValue: setSubmitWithCtrlEnter } = useConfigBooleanSetting(
+    WRITE_SUBMIT_CTRL_ENTER_KEY,
   );
-  const [closePanelAfterSubmit, setClosePanelAfterSubmit] = useState(
-    () => container.config.get(WRITE_CLOSE_PANEL_AFTER_SUBMIT_KEY) === "on",
-  );
+  const { value: closePanelAfterSubmit, setValue: setClosePanelAfterSubmit } =
+    useConfigBooleanSetting(WRITE_CLOSE_PANEL_AFTER_SUBMIT_KEY);
 
   const {
     name,
@@ -63,21 +61,6 @@ export const WritePanelContent: React.FC = () => {
     // statusがerrorのまま再表示されるため、閉じた後も既存の再入力操作を使えるよう分離する。
     setIsErrorDialogOpen(status === "error");
   }, [status, statusText]);
-
-  useEffect(() => {
-    const handleConfigUpdated = ({ key }: { key?: string }) => {
-      if (key === WRITE_SUBMIT_CTRL_ENTER_KEY) {
-        setSubmitWithCtrlEnter(container.config.get(WRITE_SUBMIT_CTRL_ENTER_KEY) === "on");
-      } else if (key === WRITE_CLOSE_PANEL_AFTER_SUBMIT_KEY) {
-        setClosePanelAfterSubmit(container.config.get(WRITE_CLOSE_PANEL_AFTER_SUBMIT_KEY) === "on");
-      }
-    };
-
-    container.message.on("config_updated", handleConfigUpdated);
-    return () => {
-      container.message.off("config_updated", handleConfigUpdated);
-    };
-  }, []);
 
   useEffect(() => {
     if (status !== "success" || !closePanelAfterSubmit) {
@@ -136,36 +119,25 @@ export const WritePanelContent: React.FC = () => {
     [canSubmit, closePanel, isSubmitting, submit, submitWithCtrlEnter],
   );
 
-  const saveWriteSetting = useCallback((key: string, checked: boolean) => {
-    void Promise.resolve(container.config.set(key, checked ? "on" : "off")).catch(
-      (error: unknown) => {
-        console.error("書き込み設定の保存に失敗しました: " + key, error);
-      },
-    );
-  }, []);
-
   const handleSubmitWithCtrlEnterChange = useCallback(
     (checked: boolean) => {
       setSubmitWithCtrlEnter(checked);
-      saveWriteSetting(WRITE_SUBMIT_CTRL_ENTER_KEY, checked);
     },
-    [saveWriteSetting],
+    [setSubmitWithCtrlEnter],
   );
 
   const handleSageChange = useCallback(
     (checked: boolean) => {
       setSage(checked);
-      saveWriteSetting(WRITE_SAGE_KEY, checked);
     },
-    [saveWriteSetting, setSage],
+    [setSage],
   );
 
   const handleClosePanelAfterSubmitChange = useCallback(
     (checked: boolean) => {
       setClosePanelAfterSubmit(checked);
-      saveWriteSetting(WRITE_CLOSE_PANEL_AFTER_SUBMIT_KEY, checked);
     },
-    [saveWriteSetting],
+    [setClosePanelAfterSubmit],
   );
 
   return (

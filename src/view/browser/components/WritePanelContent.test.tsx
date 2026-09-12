@@ -148,7 +148,6 @@ describe("WritePanelContent", () => {
     );
 
     expect(configMock.set).toHaveBeenCalledWith("write_submit_ctrl_enter", "on");
-    expect(configMock.set).toHaveBeenCalledWith("sage_flag", "on");
     expect(configMock.set).toHaveBeenCalledWith("write_close_panel_after_submit", "on");
     expect(mocks.setSage).toHaveBeenCalledWith(true);
 

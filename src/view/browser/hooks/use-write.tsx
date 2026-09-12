@@ -6,6 +6,7 @@ import type { HttpResponse, WriteFormData } from "src/app/platform/types";
 import { getStore2String, setStore2String } from "src/app/Store2Storage";
 import { URL as ChURL } from "src/core/URL";
 import { container } from "src/service-container/index";
+import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import {
   notifyThreadWriteCompleted,
@@ -203,7 +204,7 @@ export function useWrite(threadUrl: string): UseWriteResult {
   const [mail, setMailState] = useState(
     () => getStore2String(MAIL_KEY) ?? container.config.get("default_mail") ?? "",
   );
-  const [sage, setSage] = useState(() => container.config.get(SAGE_CONFIG_KEY) === "on");
+  const { value: sage, setValue: setSage } = useConfigBooleanSetting(SAGE_CONFIG_KEY);
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState<WriteStatus>("idle");
   const [statusText, setStatusText] = useState("");
@@ -216,20 +217,6 @@ export function useWrite(threadUrl: string): UseWriteResult {
   useEffect(() => {
     statusRef.current = status;
   }, [status]);
-
-  useEffect(() => {
-    const handleConfigUpdated = ({ key }: { key?: string }) => {
-      if (key !== SAGE_CONFIG_KEY) {
-        return;
-      }
-      setSage(container.config.get(SAGE_CONFIG_KEY) === "on");
-    };
-
-    container.message.on("config_updated", handleConfigUpdated);
-    return () => {
-      container.message.off("config_updated", handleConfigUpdated);
-    };
-  }, []);
 
   const clearSubmitWatchdog = useCallback(() => {
     const timerId = submitWatchdogTimerRef.current;
