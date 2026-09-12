@@ -136,7 +136,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     responses,
   ]);
   // 変更理由: 更新開始後のloading中もwheel更新の共有cooldownとindicatorを維持し、
-  // 画面切替で別の一覧/スレッドから連続更新できる隙間を作らない。
+  // 画面切替で別の一覧/スレッドから連続更新できる隙間を作らない。RELOADへ集約することで、
+  // ホイール更新も自動更新・更新ボタンと同じsubject.txt再確認の対象にする。
   const wheelPagination = useWheelPagination({
     isEnabled: isActive,
     isLoading: loading,
