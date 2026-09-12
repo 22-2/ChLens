@@ -10,6 +10,8 @@ ChLensのChrome版に保存されているスレッドログを、MCP対応エ�
 - 未保存スレッドの新規取得と保存
 - 先頭・末尾・レス番号範囲・人気レスによる絞り込み
 - レスの返信先、被返信先、返信数、アンカー数を含むTOON出力
+- 指定レス・参加者IDを中心にした議論判定用の返信ツリー作成
+- 判定結果のテキスト・JSON・Markdown・SVG・PNG保存
 
 `read_thread` の `mode` は次の3種類です。
 
@@ -57,3 +59,19 @@ Chromeを終了している場合はサービスワーカーも動作しませ�
 MCPのTOONは画面側のDOM依存のNG表示判定を通さず、取得したレスを返します。AIから元ログを検索・分析する用途を優先した設計です。
 
 Chrome版の拡張機能IDやNative Messagingの登録は使わないため、開発ビルドと通常インストールを切り替えるたびに登録し直す必要はありません。
+
+## 議論判定
+
+`prepare_debate` は、`url` と `responseNumbers`（レス番号）または `participantIds`（ID）を受け取り、指定対象から返信元・返信先を辿ったTOONを返します。`contextDepth` で辿る深さ、`maxResponses` で返す上限を指定できます。対象レスは `role: target`、理解のために補ったレスは `role: context` として区別されます。
+
+返されたTOONの `instructions` と `resultSchema` に従って、呼び出し元のAIが判定JSONを作成します。判定結果は固定の二陣営ではなく、争点ごとの `issues` と参加者ごとの `participants` で表現します。罵倒や煽りを根拠として扱わず、判断材料が足りない場合は `insufficient-evidence` と不確実性を記録してください。
+
+`save_debate_result` に判定JSONを渡すと、既定で次の形式を同じベース名で保存します。
+
+- `json`: 再利用可能な正本データ
+- `markdown`: レス番号へのリンク付きレポート
+- `text`: プレーンテキスト
+- `svg`: Satoriで生成した判定カード
+- `png`: SVGを画像化した判定カード
+
+保存先は、`CHLENS_DEBATE_OUTPUT_DIR` を指定した場合はそのディレクトリ、未指定時はユーザーのホームディレクトリにある `ChLens/debate-results` です。`formats` で必要な形式だけに絞れます。画像生成時にSatoriが実行環境のフォント形式へ対応できない場合は、システムフォントを使う簡易SVGへ自動的に切り替えます。

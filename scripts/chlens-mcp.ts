@@ -3,6 +3,14 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { createInterface } from "node:readline";
 import type { Duplex } from "node:stream";
 
+import { decode } from "@toon-format/toon";
+
+import {
+  buildDebateContext,
+  DEBATE_RESULT_SCHEMA,
+  type DebatePrepareParams,
+  validateDebateResult,
+} from "../src/mcp/debate.ts";
 import {
   type BridgeOperation,
   type BridgeRequest,
@@ -13,6 +21,7 @@ import {
   MCP_BRIDGE_PORT,
   type ThreadReadParams,
 } from "../src/mcp/protocol.ts";
+import { normalizeDebateFormats, saveDebateResult } from "./debate-result.ts";
 
 const POLL_TIMEOUT_MS = 25_000;
 const REQUEST_TIMEOUT_MS = 45_000;
@@ -535,6 +544,69 @@ function rpcError(id: JsonRpcId, code: number, message: string): object {
   return { jsonrpc: "2.0", id, error: { code, message } };
 }
 
+function debatePrepareParams(value: Record<string, unknown>): DebatePrepareParams {
+  const mode = value.mode;
+  return {
+    ...(typeof value.url === "string" ? { url: value.url } : {}),
+    ...(mode === "auto" || mode === "cache" || mode === "refresh" ? { mode } : {}),
+    ...(Array.isArray(value.responseNumbers)
+      ? { responseNumbers: value.responseNumbers as number[] }
+      : {}),
+    ...(Array.isArray(value.participantIds)
+      ? { participantIds: value.participantIds as string[] }
+      : {}),
+    ...(typeof value.maxResponses === "number" ? { maxResponses: value.maxResponses } : {}),
+    ...(typeof value.contextDepth === "number" ? { contextDepth: value.contextDepth } : {}),
+  };
+}
+
+async function prepareDebate(
+  broker: ChromeBridgeBroker,
+  params: Record<string, unknown>,
+): Promise<string> {
+  const bridgeResponse = await broker.request("read-thread", {
+    url: typeof params.url === "string" ? params.url : undefined,
+    mode:
+      params.mode === "cache" || params.mode === "refresh" || params.mode === "auto"
+        ? params.mode
+        : "auto",
+  });
+  if (!bridgeResponse.ok)
+    throw new Error(`ChLensから取得できませんでした: ${bridgeResponse.error}`);
+  const payload = bridgeResponse.result as BridgeThreadResult;
+  if (!payload || typeof payload.toon !== "string") {
+    throw new Error("ChLensのスレッド応答にTOONがありません");
+  }
+  const context = buildDebateContext(decode(payload.toon), debatePrepareParams(params));
+  return context.toon;
+}
+
+function parseDebateResult(value: unknown): unknown {
+  if (typeof value !== "string") return value;
+  try {
+    return JSON.parse(value) as unknown;
+  } catch (error: unknown) {
+    logError("判定結果JSONの解析に失敗しました", error);
+    throw new Error("resultには判定結果JSON、またはJSONオブジェクトを指定してください");
+  }
+}
+
+async function saveDebate(params: Record<string, unknown>): Promise<string> {
+  const result = validateDebateResult(parseDebateResult(params.result));
+  const formats = normalizeDebateFormats(params.formats);
+  const name = typeof params.name === "string" ? params.name : undefined;
+  const saved = await saveDebateResult(result, formats, name);
+  return JSON.stringify(
+    {
+      kind: "debate-result",
+      directory: saved.directory,
+      files: saved.files,
+    },
+    null,
+    2,
+  );
+}
+
 function toolDefinitions(): object[] {
   return [
     {
@@ -569,6 +641,58 @@ function toolDefinitions(): object[] {
         properties: {
           query: { type: "string", description: "検索語。省略または空文字で最近のログ" },
           limit: { type: "integer", minimum: 1, maximum: 100, default: 20 },
+        },
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "prepare_debate",
+      description:
+        "指定したレス番号または参加者IDを中心に、返信元・返信先を集めて議論判定用のTOONを作ります。" +
+        "AIは返された指示とresultSchemaに従って判定JSONを作成してください。固定の二陣営ではなく争点単位で整理します。",
+      inputSchema: {
+        type: "object",
+        properties: {
+          url: { type: "string", description: "5ch互換のスレッドURL。省略時は現在のスレッド" },
+          mode: {
+            type: "string",
+            enum: ["auto", "cache", "refresh"],
+            default: "auto",
+          },
+          responseNumbers: {
+            type: "array",
+            items: { type: "integer", minimum: 1 },
+            description: "議論の中心にするレス番号。participantIdsと併用できます",
+          },
+          participantIds: {
+            type: "array",
+            items: { type: "string" },
+            description: "議論している参加者のID。該当IDのレスをすべて中心にします",
+          },
+          maxResponses: { type: "integer", minimum: 1, maximum: 240, default: 240 },
+          contextDepth: { type: "integer", minimum: 0, maximum: 8, default: 4 },
+        },
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "save_debate_result",
+      description:
+        "AIが作成した議論判定JSONを検証し、テキスト・JSON・Markdown・SVG・PNGの指定形式でローカル保存します。",
+      inputSchema: {
+        type: "object",
+        required: ["result"],
+        properties: {
+          result: DEBATE_RESULT_SCHEMA,
+          formats: {
+            type: "array",
+            items: { type: "string", enum: ["json", "markdown", "text", "svg", "png"] },
+            description: "保存する形式。省略時は全形式",
+          },
+          name: {
+            type: "string",
+            description: "ファイル名のベース。パス区切りは自動的に除去します",
+          },
         },
         additionalProperties: false,
       },
@@ -624,6 +748,21 @@ async function handleRpc(
   const name = typeof params.name === "string" ? params.name : "";
   const args = params.arguments && typeof params.arguments === "object" ? params.arguments : {};
   try {
+    if (name === "prepare_debate") {
+      return {
+        jsonrpc: "2.0",
+        id,
+        result: textResult(await prepareDebate(broker, args as Record<string, unknown>)),
+      };
+    }
+    if (name === "save_debate_result") {
+      return {
+        jsonrpc: "2.0",
+        id,
+        result: textResult(await saveDebate(args as Record<string, unknown>)),
+      };
+    }
+
     let operation: BridgeOperation;
     let bridgeParams: ThreadReadParams | LogSearchParams;
     if (name === "read_thread") {
