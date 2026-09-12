@@ -104,12 +104,15 @@ function katakanaToHiragana(character: string): string {
 }
 
 export function normalizeThreadTitle(title: string): string {
+  // 変更理由: 笑いや強調の反復を文字数ぶん加点すると、話題が無関係でも
+  // 長い末尾装飾だけで自動移動条件を超える。全角・大文字を揃えた後で除外する。
   return stripTitleDecoration(title)
     .normalize("NFKC")
     .replace(KATAKANA_PATTERN, katakanaToHiragana)
     .replaceAll(" ", "")
     .replaceAll("\u3000", "")
-    .toLowerCase();
+    .toLowerCase()
+    .replace(/w{2,}|[!?]{2,}/g, "");
 }
 
 interface LongestCommonSubstringResult {
@@ -190,7 +193,8 @@ export function calculateTitleSimilarity(leftTitle: string, rightTitle: string):
   const right = normalizeThreadTitle(rightTitle);
 
   if (left === "" || right === "") {
-    return left === right ? 1 : 0;
+    // 装飾を除いて空になったタイトル同士には、同じ話題だという根拠がない。
+    return 0;
   }
 
   const matches = countSequenceMatches(left, right);
@@ -418,6 +422,7 @@ function rankNextThreadCandidates(
       const currentMarked = isMarkedThread(currentThread.title);
       const candidateMarked = isMarkedThread(thread.title);
       const exactTitleMatch =
+        normalizeThreadTitle(currentThread.title) !== "" &&
         normalizeThreadTitle(currentThread.title) === normalizeThreadTitle(thread.title);
       const nearTitleMatch = similarity >= NEAR_TITLE_SIMILARITY;
       const adjacentNumberMatch = hasAdjacentNonExplicitNumber(

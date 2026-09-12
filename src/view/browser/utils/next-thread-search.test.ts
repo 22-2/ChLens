@@ -24,6 +24,93 @@ function createThread(
 }
 
 describe("next-thread-search", () => {
+  it.each([
+    ["半角の笑い", "w".repeat(80)],
+    ["全角の笑い", "ｗ".repeat(80)],
+    ["強調記号", "！？".repeat(40)],
+  ])(
+    "積極判定でも同じ反復装飾だけで数学の話題からゲームの話題へ移動しない（%s）",
+    (_label, decoration) => {
+      const currentThread = {
+        title: "フィールズ賞の数学者25人、AIにお気持ち表明" + decoration,
+        url: "https://example.com/test/read.cgi/live/1700000000/",
+      };
+      const unrelatedThread = createThread({
+        title: "【悲報】ポケポケ、引退者続出" + decoration,
+        url: "https://example.com/test/read.cgi/live/1700000001/",
+        resCount: 500,
+        createdAt: 1_700_000_001_000,
+      });
+
+      expect(
+        findNextThreadMatch([unrelatedThread], currentThread, { mode: "aggressive" }),
+      ).toBeNull();
+      expect(
+        findNextThreadCandidates([unrelatedThread], currentThread, { mode: "aggressive" }),
+      ).toEqual([]);
+    },
+  );
+
+  it("笑いの長さや全角半角が変わっても同じ話題の次スレを選ぶ", () => {
+    const currentThread = {
+      title: "フィールズ賞の数学者25人、AIにお気持ち表明" + "w".repeat(80),
+      url: "https://example.com/test/read.cgi/live/1700000000/",
+    };
+    const nextThread = createThread({
+      title: "フィールズ賞の数学者25人、AIにお気持ち表明ｗｗ ★2",
+      url: "https://example.com/test/read.cgi/live/1700000001/",
+      resCount: 20,
+      createdAt: 1_700_000_001_000,
+    });
+
+    expect(
+      findNextThreadMatch([nextThread], currentThread, { mode: "aggressive" })?.thread.url,
+    ).toBe(nextThread.url);
+  });
+
+  it("装飾だけのタイトル同士を同じ話題と判定しない", () => {
+    const currentThread = {
+      title: "wwwwww",
+      url: "https://example.com/test/read.cgi/live/1700000000/",
+    };
+    const candidate = createThread({
+      title: "wwwwww",
+      url: "https://example.com/test/read.cgi/live/1700000001/",
+      resCount: 20,
+      createdAt: 1_700_000_001_000,
+    });
+
+    expect(calculateTitleSimilarity(currentThread.title, candidate.title)).toBe(0);
+    expect(findNextThreadMatch([candidate], currentThread, { mode: "aggressive" })).toBeNull();
+  });
+
+  it("積極の本流監視でも反復装飾が同じ別話題へ勢いだけで移動しない", () => {
+    const title = "フィールズ賞の数学者25人、AIにお気持ち表明" + "w".repeat(80);
+    const now = 1_700_000_100_000;
+    const current = createThread({
+      title,
+      url: "https://example.com/test/read.cgi/live/1700000001/",
+      resCount: 20,
+      createdAt: now - 60_000,
+    });
+    const unrelated = createThread({
+      title: "【悲報】ポケポケ、引退者続出" + "w".repeat(80) + " ★2",
+      url: "https://example.com/test/read.cgi/live/1700000002/",
+      resCount: 500,
+      createdAt: now - 30_000,
+    });
+
+    expect(
+      findMainstreamThreadMatch([current, unrelated], {
+        originalThreadTitle: title,
+        originalThreadUrl: "https://example.com/test/read.cgi/live/1700000000/",
+        currentThreadUrl: current.url,
+        mode: "aggressive",
+        now,
+      }),
+    ).toBeNull();
+  });
+
   it("番号と類似度が近い候補を次スレとして選ぶ", () => {
     const currentThread = {
       title: "実況スレ Part.10",
