@@ -273,8 +273,8 @@ function issuePositionNode(
       node("div", id, { color: "#94a3b8", fontSize: 13, marginTop: 2 }),
       node("div", compactText(position?.claim ?? "この争点への主張は記載なし", 78), {
         color: "#f8fafc",
-        fontSize: 18,
-        lineHeight: 1.25,
+        fontSize: 17,
+        lineHeight: 1.4,
         marginTop: 8,
       }),
       node("div", refsLabel(refs), { color: tone.text, fontSize: 13, marginTop: 8 }),
@@ -347,8 +347,8 @@ function compactIssueNode(issue: DebateIssue, participantIds: readonly string[])
       ),
       node("div", `判定: ${compactText(issue.conclusion, 120)}`, {
         color: "#fef08a",
-        fontSize: 16,
-        lineHeight: 1.25,
+        fontSize: 15,
+        lineHeight: 1.4,
         marginTop: 10,
       }),
       evidenceRefs.length > 0
@@ -406,10 +406,10 @@ function compactParticipantNode(
         ],
         { display: "flex", alignItems: "center" },
       ),
-      node("div", compactText(participant.position, 92), {
+      node("div", compactText(participant.position, 88), {
         color: "#f8fafc",
-        fontSize: 16,
-        lineHeight: 1.25,
+        fontSize: 15,
+        lineHeight: 1.4,
         marginTop: 10,
       }),
       node("div", meters, { display: "flex", justifyContent: "space-between", marginTop: 12 }),
@@ -542,27 +542,28 @@ function buildCompactSatoriElement(result: DebateResult, height: number): ReactN
         ],
         { display: "flex", alignItems: "center", justifyContent: "space-between" },
       ),
-      node("div", compactText(result.thread.title, 112), {
+      node("div", compactText(result.thread.title, 104), {
         color: "#f8fafc",
-        fontSize: 31,
+        fontSize: 28,
         fontWeight: 700,
-        lineHeight: 1.2,
-        marginTop: 14,
+        lineHeight: 1.35,
+        marginTop: 12,
+        marginBottom: 4,
       }),
-      node("div", compactText(result.summary, 150), {
+      node("div", compactText(result.summary, 130), {
         color: "#cbd5e1",
-        fontSize: 18,
-        lineHeight: 1.3,
+        fontSize: 17,
+        lineHeight: 1.45,
         marginTop: 8,
       }),
       node(
         "div",
         [
           node("div", verdict.detail, { color: verdict.text, fontSize: 16, fontWeight: 700 }),
-          node("div", compactText(result.conclusion, 150), {
+          node("div", compactText(result.conclusion, 140), {
             color: "#fefce8",
-            fontSize: 20,
-            lineHeight: 1.25,
+            fontSize: 19,
+            lineHeight: 1.4,
             marginTop: 5,
           }),
         ],
@@ -636,8 +637,10 @@ function buildCompactSatoriElement(result: DebateResult, height: number): ReactN
 }
 
 const FONT_CANDIDATES = [
-  // SatoriのOpenTypeパーサーはWindowsのTTCを扱えないため、静的TTFを先に試す。
-  "C:\\Windows\\Fonts\\yumin.ttf",
+  // 変更理由: 明朝体は新聞のような印象になりやすいため、日本語の字形を持つ
+  // Noto Sans JPを先に使い、画面上で読みやすい柔らかなゴシック体にそろえる。
+  "C:\\Windows\\Fonts\\NotoSansJP-VF.ttf",
+  // SatoriのOpenTypeパーサーはWindowsのTTCを扱えない環境があるため、TTFを優先する。
   "C:\\Windows\\Fonts\\meiryo.ttc",
   "C:\\Windows\\Fonts\\YuGothM.ttc",
   "C:\\Windows\\Fonts\\msgothic.ttc",
@@ -645,6 +648,7 @@ const FONT_CANDIDATES = [
   "/usr/share/fonts/opentype/noto/NotoSansJP-Regular.otf",
   "/usr/share/fonts/truetype/noto/NotoSansJP-Regular.ttf",
   "/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc",
+  "C:\\Windows\\Fonts\\yumin.ttf",
   "C:\\Windows\\Fonts\\arial.ttf",
 ];
 
@@ -697,7 +701,21 @@ function renderCompactFallbackSvg(result: DebateResult): string {
     weight = 400,
     anchor = "start",
   ) =>
-    `<text x="${x}" y="${y}" fill="${color}" font-size="${size}" font-weight="${weight}" text-anchor="${anchor}">${escape(value)}</text>`;
+    '<text x="' +
+    x +
+    '" y="' +
+    y +
+    '" fill="' +
+    color +
+    '" font-size="' +
+    size +
+    '" font-weight="' +
+    weight +
+    '" text-anchor="' +
+    anchor +
+    '">' +
+    escape(value) +
+    "</text>";
   const rect = (
     x: number,
     y: number,
@@ -707,27 +725,62 @@ function renderCompactFallbackSvg(result: DebateResult): string {
     stroke: string,
     radius = 14,
   ) =>
-    `<rect x="${x}" y="${y}" width="${width}" height="${height}" rx="${radius}" fill="${fill}" stroke="${stroke}" stroke-width="1"/>`;
-  const compactLines = (value: string, width: number, maxLines: number) =>
+    '<rect x="' +
+    x +
+    '" y="' +
+    y +
+    '" width="' +
+    width +
+    '" height="' +
+    height +
+    '" rx="' +
+    radius +
+    '" fill="' +
+    fill +
+    '" stroke="' +
+    stroke +
+    '" stroke-width="1"/>';
+  const linesFor = (value: string, width: number, maxLines: number): string[] =>
     wrapFallbackLines(compactText(value, width * maxLines), width).slice(0, maxLines);
+  const drawLines = (
+    value: string,
+    x: number,
+    y: number,
+    size: number,
+    color: string,
+    width: number,
+    maxLines: number,
+    lineHeight: number,
+    weight = 400,
+  ) =>
+    linesFor(value, width, maxLines)
+      .map((line, index) => text(line, x, y + index * lineHeight, size, color, weight))
+      .join("");
   const participantIds = participantIdsForResult(result);
   const verdict = overallVerdict(result);
-  const nodes: string[] = [`<rect width="100%" height="100%" fill="#0f172a"/>`];
+  const nodes: string[] = ['<rect width="100%" height="100%" fill="#0f172a"/>'];
   let cursor = 34;
+
   nodes.push(text("ChLens 議論判定", 40, cursor + 4, 22, "#67e8f9", 700));
   nodes.push(rect(915, cursor - 22, 245, 42, verdict.fill, verdict.stroke, 20));
   nodes.push(text(verdict.label, 1037, cursor + 6, 19, verdict.text, 700, "middle"));
   cursor += 50;
-  for (const line of compactLines(result.thread.title, 42, 2)) {
-    nodes.push(text(line, 40, cursor + 25, 31, "#f8fafc", 700));
-    cursor += 37;
-  }
-  nodes.push(text(compactText(result.summary, 190), 40, cursor + 22, 18, "#cbd5e1"));
-  cursor += 48;
-  nodes.push(rect(40, cursor, CARD_WIDTH - 80, 88, verdict.fill, verdict.stroke));
-  nodes.push(text(verdict.detail, 62, cursor + 28, 16, verdict.text, 700));
-  nodes.push(text(compactText(result.conclusion, 180), 62, cursor + 58, 20, "#fefce8", 500));
-  cursor += 112;
+
+  const titleLines = linesFor(result.thread.title, 30, 3);
+  nodes.push(drawLines(result.thread.title, 40, cursor + 27, 28, "#f8fafc", 30, 3, 38, 700));
+  cursor += titleLines.length * 38 + 2;
+
+  const summaryLines = linesFor(result.summary, 58, 2);
+  nodes.push(drawLines(result.summary, 40, cursor + 20, 17, "#cbd5e1", 58, 2, 25));
+  cursor += summaryLines.length * 25 + 20;
+
+  const conclusionLines = linesFor(result.conclusion, 54, 2);
+  const conclusionHeight = 55 + conclusionLines.length * 27;
+  nodes.push(rect(40, cursor, CARD_WIDTH - 80, conclusionHeight, verdict.fill, verdict.stroke));
+  nodes.push(text(verdict.detail, 62, cursor + 27, 16, verdict.text, 700));
+  nodes.push(drawLines(result.conclusion, 62, cursor + 55, 19, "#fefce8", 54, 2, 27));
+  cursor += conclusionHeight + 24;
+
   nodes.push(text("判定の内訳", 40, cursor + 23, 23, "#f8fafc", 700));
   cursor += 38;
   let chipX = 40;
@@ -742,10 +795,10 @@ function renderCompactFallbackSvg(result: DebateResult): string {
     nodes.push(rect(chipX, chipY, chipWidth, 32, tone.fill, tone.stroke, 10));
     nodes.push(
       text(
-        `${index + 1}  ${compactText(issue.topic, 22)}`,
+        index + 1 + "  " + compactText(issue.topic, 18),
         chipX + 12,
         chipY + 21,
-        15,
+        14,
         "#f8fafc",
         500,
       ),
@@ -764,66 +817,84 @@ function renderCompactFallbackSvg(result: DebateResult): string {
     chipX += chipWidth + 10;
   }
   cursor = chipY + 56;
+
   nodes.push(text("主張の比較", 40, cursor + 23, 23, "#f8fafc", 700));
   cursor += 38;
   for (const issue of result.issues.slice(0, 6)) {
     const status = issueStatusTone(issue.status);
     const issueY = cursor;
-    nodes.push(rect(40, issueY, CARD_WIDTH - 80, 194, "#111827", status.stroke));
+    const issueHeight = 232;
+    nodes.push(rect(40, issueY, CARD_WIDTH - 80, issueHeight, "#111827", status.stroke));
     nodes.push(rect(58, issueY + 14, 120, 28, status.fill, status.stroke, 10));
     nodes.push(text(statusLabel(issue.status), 118, issueY + 33, 14, status.text, 700, "middle"));
-    nodes.push(text(compactText(issue.topic, 42), 194, issueY + 34, 21, "#f8fafc", 700));
+    nodes.push(text(compactText(issue.topic, 36), 194, issueY + 34, 20, "#f8fafc", 700));
+
     const compareIds = participantIds.slice(0, 2);
     compareIds.forEach((id, index) => {
       const position = positionForParticipant(issue, id);
       const tone = participantTone(id, participantIds);
       const cardX = index === 0 ? 58 : 622;
-      nodes.push(rect(cardX, issueY + 57, 500, 86, tone.fill, tone.stroke, 11));
+      nodes.push(rect(cardX, issueY + 57, 500, 104, tone.fill, tone.stroke, 11));
       nodes.push(
         text(participantLabel(id, participantIds), cardX + 16, issueY + 80, 16, tone.text, 700),
       );
       nodes.push(
-        text(
-          compactText(position?.claim ?? "この争点への主張は記載なし", 58),
+        drawLines(
+          position?.claim ?? "この争点への主張は記載なし",
           cardX + 16,
           issueY + 106,
           16,
           "#f8fafc",
+          30,
+          2,
+          21,
         ),
       );
       nodes.push(
         text(
           refsLabel(position?.evidence.flatMap((evidence) => evidence.responseNumbers) ?? []),
           cardX + 16,
-          issueY + 129,
+          issueY + 151,
           13,
           tone.text,
         ),
       );
     });
     if (compareIds.length > 1)
-      nodes.push(text("↔", 600, issueY + 104, 28, "#fef08a", 700, "middle"));
+      nodes.push(text("↔", 600, issueY + 107, 28, "#fef08a", 700, "middle"));
     nodes.push(
-      text(`判定: ${compactText(issue.conclusion, 102)}`, 58, issueY + 167, 15, "#fef08a"),
+      drawLines(
+        "判定: " + compactText(issue.conclusion, 92),
+        58,
+        issueY + 184,
+        15,
+        "#fef08a",
+        72,
+        2,
+        20,
+      ),
     );
-    cursor += 208;
+    cursor += issueHeight + 14;
   }
+
   const steps = timelineSteps(result);
   if (steps.length > 0) {
-    nodes.push(rect(40, cursor, CARD_WIDTH - 80, 118, "#111827", "#334155"));
+    const timelineHeight = 128;
+    nodes.push(rect(40, cursor, CARD_WIDTH - 80, timelineHeight, "#111827", "#334155"));
     nodes.push(text("議論の流れ", 58, cursor + 28, 22, "#f8fafc", 700));
     const stepWidth = (CARD_WIDTH - 140) / steps.length;
     steps.forEach((step, index) => {
       const x = 70 + index * stepWidth;
-      nodes.push(`<circle cx="${x}" cy="${cursor + 66}" r="15" fill="#67e8f9"/>`);
+      nodes.push('<circle cx="' + x + '" cy="' + (cursor + 66) + '" r="15" fill="#67e8f9"/>');
       nodes.push(text(String(index + 1), x, cursor + 72, 15, "#0f172a", 700, "middle"));
       nodes.push(text(step.label, x, cursor + 94, 15, "#f8fafc", 700, "middle"));
-      nodes.push(text(`レス${step.number}`, x, cursor + 111, 13, "#67e8f9", 400, "middle"));
+      nodes.push(text("レス" + step.number, x, cursor + 111, 13, "#67e8f9", 400, "middle"));
       if (index < steps.length - 1)
         nodes.push(text("→", x + stepWidth / 2, cursor + 72, 23, "#64748b", 400, "middle"));
     });
-    cursor += 138;
+    cursor += timelineHeight + 18;
   }
+
   if (result.participants.length > 0) {
     nodes.push(text("参加者", 40, cursor + 23, 23, "#f8fafc", 700));
     cursor += 38;
@@ -831,9 +902,9 @@ function renderCompactFallbackSvg(result: DebateResult): string {
       const row = Math.floor(index / 2);
       const column = index % 2;
       const cardX = 40 + column * 570;
-      const cardY = cursor + row * 112;
+      const cardY = cursor + row * 122;
       const tone = participantTone(participant.id, participantIds);
-      nodes.push(rect(cardX, cardY, 540, 96, tone.fill, tone.stroke, 11));
+      nodes.push(rect(cardX, cardY, 540, 106, tone.fill, tone.stroke, 11));
       nodes.push(
         text(
           participantLabel(participant.id, participantIds),
@@ -845,31 +916,52 @@ function renderCompactFallbackSvg(result: DebateResult): string {
         ),
       );
       nodes.push(text(participant.id, cardX + 120, cardY + 24, 13, "#94a3b8"));
-      nodes.push(
-        text(compactText(participant.position, 58), cardX + 18, cardY + 51, 15, "#f8fafc"),
-      );
+      nodes.push(drawLines(participant.position, cardX + 18, cardY + 51, 14, "#f8fafc", 34, 2, 19));
       if (participant.score)
         nodes.push(
           text(
-            `論理 ${participant.score.logic.toFixed(1)}　読解 ${participant.score.reading.toFixed(1)}　根拠 ${participant.score.evidence.toFixed(1)}`,
+            "論理 " +
+              participant.score.logic.toFixed(1) +
+              "　読解 " +
+              participant.score.reading.toFixed(1) +
+              "　根拠 " +
+              participant.score.evidence.toFixed(1),
             cardX + 18,
-            cardY + 78,
+            cardY + 94,
             13,
             "#cbd5e1",
           ),
         );
     });
-    cursor += Math.ceil(Math.min(result.participants.length, 8) / 2) * 112;
+    cursor += Math.ceil(Math.min(result.participants.length, 8) / 2) * 122;
   }
-  nodes.push(`<line x1="40" y1="${cursor + 8}" x2="1160" y2="${cursor + 8}" stroke="#334155"/>`);
+
+  nodes.push(
+    '<line x1="40" y1="' +
+      (cursor + 8) +
+      '" x2="1160" y2="' +
+      (cursor + 8) +
+      '" stroke="#334155"/>',
+  );
   nodes.push(
     text("詳細な根拠・引用はMarkdown版を参照してください。", 40, cursor + 34, 14, "#94a3b8"),
   );
   cursor += 62;
   const height = Math.min(3_600, Math.max(1_100, cursor));
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${CARD_WIDTH}" height="${height}" viewBox="0 0 ${CARD_WIDTH} ${height}"><g font-family="Meiryo, 'Noto Sans JP', sans-serif">${nodes.join("")}</g></svg>`;
+  return (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="' +
+    CARD_WIDTH +
+    '" height="' +
+    height +
+    '" viewBox="0 0 ' +
+    CARD_WIDTH +
+    " " +
+    height +
+    '"><g font-family="Meiryo, Noto Sans JP, sans-serif">' +
+    nodes.join("") +
+    "</g></svg>"
+  );
 }
-
 function renderFallbackSvg(result: DebateResult): string {
   return renderCompactFallbackSvg(result);
 }
@@ -901,7 +993,9 @@ export async function renderDebateSvg(result: DebateResult): Promise<string> {
     participants.length > 0 ? 50 + Math.ceil(participants.length / 2) * participantCardHeight : 0;
   const timelineHeight = uniqueResponseNumbers(result).length > 0 ? 155 : 0;
   const headerHeight =
-    370 + estimatedLines(result.thread.title, 42) * 37 + estimatedLines(result.summary, 190) * 24;
+    430 +
+    estimatedLines(compactText(result.thread.title, 104), 38) * 46 +
+    estimatedLines(compactText(result.summary, 130), 58) * 30;
   const height = Math.min(
     // 変更理由: 主要な図解を固定の短いブロックで積み上げ、従来の全文表示による
     // 縦長化を防ぎつつ、フォントごとの実測行高の差で末尾が切れないよう余白を持たせる。
