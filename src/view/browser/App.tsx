@@ -73,6 +73,25 @@ const ThreadListPanelToggleItem: React.FC = () => {
   );
 };
 
+// MCPのURL省略要求に、現在フォーカス中のペインのスレッドを渡すための共有状態。
+// TabStoreはReact Context内の状態なので、UI外のブリッジへはこの最小限の値だけ公開する。
+const ActiveThreadBridgeState: React.FC<{ isActive: boolean }> = ({ isActive }) => {
+  const { currentPage } = useTabStore();
+  const activeThreadUrl =
+    isActive && currentPage.type === "thread" ? currentPage.threadUrl : undefined;
+
+  useEffect(() => {
+    const state = window as Window & { __chLensMcpActiveThreadUrl?: string };
+    if (activeThreadUrl) {
+      state.__chLensMcpActiveThreadUrl = activeThreadUrl;
+    } else if (isActive) {
+      delete state.__chLensMcpActiveThreadUrl;
+    }
+  }, [activeThreadUrl, isActive]);
+
+  return null;
+};
+
 const WritePanelToggleItem: React.FC = () => {
   const { togglePanel } = useBottomPanel();
   const { currentPage } = useTabStore();
@@ -134,6 +153,7 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
   const navigationBar = <NavigationBar openNextThreadSearchDialog={searchNextThread} />;
   const paneBody = (
     <>
+      <ActiveThreadBridgeState isActive={isActive} />
       <ContentArea isOverlayTarget={isActive} />
       <BottomPanel />
       {/* コマンドとナビゲーションを同じオムニバーへ集約し、
