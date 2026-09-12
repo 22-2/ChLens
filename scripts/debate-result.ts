@@ -72,7 +72,7 @@ function scoreLabel(participant: DebateParticipant): string {
 }
 
 function issueNode(issue: DebateIssue): ReactNode {
-  const positionNodes = issue.positions.map((position) =>
+  const positionNodes = issue.positions.slice(0, 8).map((position) =>
     node(
       "div",
       [
@@ -91,7 +91,7 @@ function issueNode(issue: DebateIssue): ReactNode {
       { display: "flex", flexDirection: "column", marginBottom: 14 },
     ),
   );
-  const evidenceNodes = issue.evidence.flatMap((evidence) => [
+  const evidenceNodes = issue.evidence.slice(0, 8).flatMap((evidence) => [
     node("span", `${evidence.role}: ${asText(evidence.note, 190)} `, {
       color: "#cbd5e1",
       fontSize: 17,
@@ -187,8 +187,11 @@ function participantNode(participant: DebateParticipant): ReactNode {
     {
       display: "flex",
       flexDirection: "column",
-      flex: 1,
-      minWidth: 0,
+      // 変更理由: 参加者が増えたときも1枚の横幅へ押し込めず、2列のカードとして
+      // 折り返すことで、Satori画像内の文字が極端に細くならないようにする。
+      width: "48%",
+      flexGrow: 0,
+      flexShrink: 0,
       backgroundColor: "#3f172a",
       border: "1px solid #be123c",
       borderRadius: 14,
@@ -456,11 +459,59 @@ function renderFallbackSvg(result: DebateResult): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${CARD_WIDTH}" height="${height}" viewBox="0 0 ${CARD_WIDTH} ${height}"><rect width="100%" height="100%" fill="#0f172a"/><g font-family="Meiryo, 'Noto Sans JP', sans-serif">${header}${blockNodes}</g></svg>`;
 }
 
+function estimatedLines(value: string, charsPerLine: number): number {
+  return Math.max(1, Math.ceil(Array.from(asText(value)).length / charsPerLine));
+}
+
+function estimateIssueHeight(issue: DebateIssue): number {
+  const positionHeight = issue.positions
+    .slice(0, 8)
+    .reduce((height, position) => height + 38 + estimatedLines(position.claim, 42) * 30, 0);
+  const evidenceHeight = issue.evidence
+    .slice(0, 8)
+    .reduce((height, evidence) => height + 24 + estimatedLines(evidence.note, 56) * 22, 0);
+  return (
+    76 +
+    estimatedLines(issue.topic, 30) * 30 +
+    estimatedLines(issue.conclusion, 48) * 31 +
+    positionHeight +
+    evidenceHeight
+  );
+}
+
+function estimateParticipantHeight(participant: DebateParticipant): number {
+  const strengths = participant.strengths.join(" / ");
+  const weaknesses = participant.weaknesses.join(" / ");
+  return (
+    48 +
+    estimatedLines(participant.position, 32) * 26 +
+    28 +
+    (strengths ? 24 + estimatedLines(strengths, 38) * 22 : 0) +
+    (weaknesses ? 24 + estimatedLines(weaknesses, 38) * 22 : 0)
+  );
+}
+
 export async function renderDebateSvg(result: DebateResult): Promise<string> {
+  const issueHeight = result.issues
+    .slice(0, 12)
+    .reduce((height, issue) => height + estimateIssueHeight(issue) + 16, 0);
+  const participants = result.participants.slice(0, 16);
+  const participantCardHeight = participants.reduce(
+    (height, participant) => Math.max(height, estimateParticipantHeight(participant)),
+    0,
+  );
+  const participantHeight =
+    participants.length > 0 ? 64 + Math.ceil(participants.length / 2) * participantCardHeight : 0;
+  const headerHeight =
+    300 +
+    estimatedLines(result.thread.title, 36) * 38 +
+    estimatedLines(result.summary, 58) * 29 +
+    estimatedLines(result.conclusion, 52) * 33;
   const height = Math.min(
-    // 変更理由: 争点・参加者が多い判定でも、カードの下部が4,000pxで切れないようにする。
+    // 変更理由: 長い日本語や根拠の折り返しでカードが想定より高くなるため、
+    // 項目数と内容量から余裕を持って高さを確保し、画像下部の切り落としを防ぐ。
     6_000,
-    Math.max(720, 420 + result.issues.length * 260 + result.participants.length * 150),
+    Math.max(720, headerHeight + issueHeight + participantHeight + 40),
   );
   const fontData = await loadFontData();
   if (fontData.length === 0) return renderFallbackSvg(result);
