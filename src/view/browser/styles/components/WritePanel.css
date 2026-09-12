@@ -68,15 +68,34 @@
   cursor: default;
 }
 
-.write-panel__sage {
+.write-panel__settings-btn {
   display: inline-flex;
   align-items: center;
-  gap: var(--sys-space-2);
-  font-size: var(--sys-font-size-sm);
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--sys-radius-md);
+  background: transparent;
   color: var(--sys-color-text-muted);
   cursor: pointer;
-  white-space: nowrap;
-  user-select: none;
+}
+
+.write-panel__settings-btn:hover:not(:disabled) {
+  background: var(--sys-color-border);
+  color: var(--sys-color-text);
+}
+
+.write-panel__settings-btn:focus-visible {
+  outline: 2px solid var(--sys-color-focus-ring);
+  outline-offset: 1px;
+}
+
+.write-panel__settings-btn:disabled {
+  color: var(--sys-color-text-disabled);
+  cursor: default;
 }
 
 .write-panel__body-row {
@@ -176,6 +195,22 @@
 
 .write-panel__error-dialog {
   gap: var(--sys-space-5);
+}
+
+.write-panel__settings-dialog {
+  gap: var(--sys-space-5);
+}
+
+.write-panel__settings-list {
+  display: grid;
+  gap: var(--sys-space-6);
+  margin-top: var(--sys-space-2);
+}
+
+.write-panel__settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sys-space-2);
 }
 
 .write-panel__error-message {

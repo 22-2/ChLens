@@ -20,7 +20,7 @@ import { classifyWriteResult, type WriteResultMessage } from "src/view/browser/u
 // -----------------------------------------------------------------------
 const NAME_KEY = "chlens_write_name";
 const MAIL_KEY = "chlens_write_mail";
-// sageの切り替えは投稿ごとではなく設定画面で管理し、パネルを簡潔に保つ。
+// sageの切り替えは投稿ごとではなく書き込み設定モーダルで管理し、パネルを簡潔に保つ。
 const SAGE_CONFIG_KEY = "sage_flag";
 // cs_write.js が ping に対して期待する応答文字列
 const PONG_MSG = "write_iframe_pong";

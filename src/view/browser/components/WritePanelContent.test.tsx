@@ -127,6 +127,35 @@ describe("WritePanelContent", () => {
     expect(screen.queryByText("sage", { selector: "label" })).not.toBeInTheDocument();
   });
 
+  it("歯車ボタンから書き込み設定を開いて各項目を変更できる", () => {
+    render(<WritePanelContent />);
+
+    fireEvent.click(screen.getByRole("button", { name: "書き込み設定" }));
+
+    const dialog = screen.getByRole("dialog", { name: "書き込み設定" });
+    expect(
+      within(dialog).getByRole("checkbox", { name: "Ctrl+Enterで書き込む" }),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByRole("checkbox", { name: "sageで書き込む" })).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("checkbox", { name: "レス後に書き込みパネルを閉じる" }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole("checkbox", { name: "Ctrl+Enterで書き込む" }));
+    fireEvent.click(within(dialog).getByRole("checkbox", { name: "sageで書き込む" }));
+    fireEvent.click(
+      within(dialog).getByRole("checkbox", { name: "レス後に書き込みパネルを閉じる" }),
+    );
+
+    expect(configMock.set).toHaveBeenCalledWith("write_submit_ctrl_enter", "on");
+    expect(configMock.set).toHaveBeenCalledWith("sage_flag", "on");
+    expect(configMock.set).toHaveBeenCalledWith("write_close_panel_after_submit", "on");
+    expect(mocks.setSage).toHaveBeenCalledWith(true);
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "閉じる" }));
+    expect(screen.queryByRole("dialog", { name: "書き込み設定" })).not.toBeInTheDocument();
+  });
+
   it("右クリック返信の挿入要求が来たら既存本文へ追記する", async () => {
     mocks.writePanelInsertRequest = {
       id: 1,

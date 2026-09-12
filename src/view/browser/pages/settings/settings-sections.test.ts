@@ -47,12 +47,12 @@ describe("設定セクションの実行環境フィルター", () => {
     expect(readAllSettings().ng.display_ng).toBe("hard-ng");
   });
 
-  it("書き込み操作の設定を一般セクションへまとめる", () => {
+  it("書き込み操作の設定を一般セクションへ表示しない", () => {
     const general = getSettingsSections(false).find((section) => section.id === "general");
     const keys = general?.fields.map((field) => ("key" in field ? field.key : field.id));
 
-    expect(keys).toContain("write_submit_ctrl_enter");
-    expect(keys).toContain("sage_flag");
-    expect(keys).toContain("write_close_panel_after_submit");
+    expect(keys).not.toContain("write_submit_ctrl_enter");
+    expect(keys).not.toContain("sage_flag");
+    expect(keys).not.toContain("write_close_panel_after_submit");
   });
 });

@@ -1,11 +1,14 @@
+import { Settings } from "lucide-react";
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { container } from "src/service-container/index";
 import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useWrite } from "src/view/browser/hooks/use-write";
 import { Dialog } from "src/view/browser/ui/Dialog";
+import { CheckboxField } from "src/view/browser/ui/FormControls";
 
 const WRITE_SUBMIT_CTRL_ENTER_KEY = "write_submit_ctrl_enter";
+const WRITE_SAGE_KEY = "sage_flag";
 const WRITE_CLOSE_PANEL_AFTER_SUBMIT_KEY = "write_close_panel_after_submit";
 
 export const WritePanelContent: React.FC = () => {
@@ -14,8 +17,12 @@ export const WritePanelContent: React.FC = () => {
   const threadUrl = currentPage.type === "thread" ? currentPage.threadUrl : "";
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const errorDialogDescriptionId = useId();
+  const settingsDialogDescriptionId = useId();
   const [dialogPortalContainer, setDialogPortalContainer] = useState<HTMLElement | null>(null);
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
+  // 変更理由: 書き込み中の入力欄を増やさず、書き込みに関する設定を
+  // パネル内の歯車モーダルへまとめて、必要な時だけ変更できるようにする。
+  const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [submitWithCtrlEnter, setSubmitWithCtrlEnter] = useState(
     () => container.config.get(WRITE_SUBMIT_CTRL_ENTER_KEY) === "on",
   );
@@ -34,6 +41,7 @@ export const WritePanelContent: React.FC = () => {
     iframeRef,
     setName,
     setMail,
+    setSage,
     setMessage,
     submit,
     handleSubmit,
@@ -128,6 +136,38 @@ export const WritePanelContent: React.FC = () => {
     [canSubmit, closePanel, isSubmitting, submit, submitWithCtrlEnter],
   );
 
+  const saveWriteSetting = useCallback((key: string, checked: boolean) => {
+    void Promise.resolve(container.config.set(key, checked ? "on" : "off")).catch(
+      (error: unknown) => {
+        console.error("書き込み設定の保存に失敗しました: " + key, error);
+      },
+    );
+  }, []);
+
+  const handleSubmitWithCtrlEnterChange = useCallback(
+    (checked: boolean) => {
+      setSubmitWithCtrlEnter(checked);
+      saveWriteSetting(WRITE_SUBMIT_CTRL_ENTER_KEY, checked);
+    },
+    [saveWriteSetting],
+  );
+
+  const handleSageChange = useCallback(
+    (checked: boolean) => {
+      setSage(checked);
+      saveWriteSetting(WRITE_SAGE_KEY, checked);
+    },
+    [saveWriteSetting, setSage],
+  );
+
+  const handleClosePanelAfterSubmitChange = useCallback(
+    (checked: boolean) => {
+      setClosePanelAfterSubmit(checked);
+      saveWriteSetting(WRITE_CLOSE_PANEL_AFTER_SUBMIT_KEY, checked);
+    },
+    [saveWriteSetting],
+  );
+
   return (
     <div className="write-panel">
       <form
@@ -171,6 +211,16 @@ export const WritePanelContent: React.FC = () => {
                   placeholder=""
                 />
               </label>
+              <button
+                type="button"
+                className="write-panel__settings-btn"
+                onClick={() => setIsSettingsDialogOpen(true)}
+                disabled={isSubmitting}
+                title="書き込み設定"
+                aria-label="書き込み設定"
+              >
+                <Settings size={16} aria-hidden="true" />
+              </button>
             </div>
             <div className="write-panel__body-row">
               <textarea
@@ -218,6 +268,53 @@ export const WritePanelContent: React.FC = () => {
           aria-hidden={!isConfirm}
         />
       </form>
+      <Dialog.Root open={isSettingsDialogOpen} onOpenChange={setIsSettingsDialogOpen}>
+        <Dialog.Portal container={dialogPortalContainer ?? undefined}>
+          <Dialog.Overlay className="browser-dialog-overlay" />
+          <Dialog.Content
+            className="browser-dialog-content write-panel__settings-dialog"
+            aria-describedby={settingsDialogDescriptionId}
+          >
+            <Dialog.Title className="browser-dialog-title">書き込み設定</Dialog.Title>
+            <Dialog.Description
+              id={settingsDialogDescriptionId}
+              className="browser-dialog-description"
+            >
+              書き込みパネルの操作と投稿後の動作を設定します。
+            </Dialog.Description>
+            <div className="write-panel__settings-list">
+              <CheckboxField
+                id="write-setting-submit-ctrl-enter"
+                label="Ctrl+Enterで書き込む"
+                description="本文入力中にCtrl+Enter（Macは⌘+Enter）で投稿します。"
+                checked={submitWithCtrlEnter}
+                onCheckedChange={handleSubmitWithCtrlEnterChange}
+              />
+              <CheckboxField
+                id="write-setting-sage"
+                label="sageで書き込む"
+                description="ONにすると、メール欄へsageを自動設定して投稿します。"
+                checked={sage}
+                onCheckedChange={handleSageChange}
+              />
+              <CheckboxField
+                id="write-setting-close-panel"
+                label="レス後に書き込みパネルを閉じる"
+                description="投稿が成功したときだけ、下部の書き込みパネルを閉じます。"
+                checked={closePanelAfterSubmit}
+                onCheckedChange={handleClosePanelAfterSubmitChange}
+              />
+            </div>
+            <div className="write-panel__settings-actions">
+              <Dialog.Close asChild>
+                <button type="button" className="write-panel__btn write-panel__btn--secondary">
+                  閉じる
+                </button>
+              </Dialog.Close>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
       <Dialog.Root
         open={status === "error" && isErrorDialogOpen}
         onOpenChange={setIsErrorDialogOpen}
