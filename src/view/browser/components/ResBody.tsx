@@ -1,4 +1,4 @@
-import React, { useCallback, useLayoutEffect, useMemo, useRef } from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import { hasMissingAnchorTarget, parseAnchorDisplayTargets } from "src/view/browser/utils/anchor";
 import { ANCHOR_SELECTOR, ID_LINK_SELECTOR } from "src/view/browser/utils/constants";
 import { getEventTargetElement } from "src/view/browser/utils/dom";
@@ -355,16 +355,21 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
       onAnchorHover,
       onAnchorLeave,
     });
-    const bodyRef = useRef<HTMLDivElement>(null);
     const highlightedMessageHtml = useMemo(
       () => highlightSearchMatches(messageHtml, searchQuery),
       [messageHtml, searchQuery],
     );
+    const decoratedMessageHtml = useMemo(() => {
+      if ((ngResNums == null || ngResNums.size === 0) && resMap == null) {
+        return highlightedMessageHtml;
+      }
 
-    useLayoutEffect(() => {
-      const body = bodyRef.current;
-      if (!body) return;
-      for (const anchor of body.querySelectorAll<HTMLAnchorElement>(ANCHOR_SELECTOR)) {
+      // 変更理由: innerHTMLを描画した後にclassListを変更すると、レス更新時のDOM差し替えと
+      // 競合して一瞬だけ通常色へ戻る。描画するHTMLそのものへ状態クラスを含めることで、
+      // NG対象・欠損対象のアンカーを常に同じフレームで表示する。
+      const template = document.createElement("template");
+      template.innerHTML = highlightedMessageHtml;
+      for (const anchor of template.content.querySelectorAll<HTMLAnchorElement>(ANCHOR_SELECTOR)) {
         const targets = parseAnchorDisplayTargets(anchor.textContent?.trim() ?? "");
         // 範囲・複数参照も1つのアンカーとして操作されるため、1件でも欠損なら
         // 表示だけを強調する。クリックとホバーは既存どおり解決可能な番号へ渡す。
@@ -375,13 +380,13 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
         );
         anchor.classList.toggle("anchor--missing-target", hasMissingTarget);
       }
+      return template.innerHTML;
     }, [highlightedMessageHtml, ngResNums, resMap]);
 
     return (
       <div
-        ref={bodyRef}
         className="res__body"
-        dangerouslySetInnerHTML={{ __html: highlightedMessageHtml }}
+        dangerouslySetInnerHTML={{ __html: decoratedMessageHtml }}
         {...interactionHandlers}
       />
     );

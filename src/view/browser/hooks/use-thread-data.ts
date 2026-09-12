@@ -112,6 +112,7 @@ export function useThreadData(
   const [searchQuery, setSearchQuery] = useState(() => persistedViewState.searchQuery ?? "");
   const [showSearch, setShowSearch] = useState(false);
   const titleUpdatedRef = useRef(false);
+  const fetchedThreadUrlRef = useRef(page.threadUrl);
 
   useEffect(() => {
     updateViewState({ filter, searchQuery, searchTarget });
@@ -151,13 +152,18 @@ export function useThreadData(
     async (forceUpdate = false) => {
       const requestId = beginRequest();
       const isCurrentRequest = () => isLatestRequest(requestId);
+      const isDifferentThread = fetchedThreadUrlRef.current !== page.threadUrl;
+      fetchedThreadUrlRef.current = page.threadUrl;
 
       setLoading(true);
-      setError(null);
-      // 変更理由: ThreadPage は別スレへの移動時にも再利用される。取得に失敗した場合でも
-      // 前スレの dat落ち・subject不在表示を残さないよう、取得結果を待たずにリセットする。
-      setExpired(false);
-      setMissingFromSubject(false);
+      // 変更理由: 同じスレの更新中に通知を消すと、通信中だけ dat 落ちやエラー表示が
+      // 点滅する。別スレへ移動した場合だけ前スレの状態を破棄し、更新結果が確定するまで
+      // 同じスレの既存状態を表示し続ける。
+      if (isDifferentThread) {
+        setError(null);
+        setExpired(false);
+        setMissingFromSubject(false);
+      }
       titleUpdatedRef.current = false;
 
       try {
@@ -204,15 +210,13 @@ export function useThreadData(
         void setThreadCache(page.threadUrl, result.res);
         setExpired(result.expired ?? false);
         setMissingFromSubject(result.missingFromSubject ?? false);
+        setError(result.message || null);
         if (result.title && !titleUpdatedRef.current) {
           dispatch({
             type: "UPDATE_TITLE_FOR_TAB",
             tabId,
             title: result.title,
           });
-        }
-        if (result.message) {
-          setError(result.message);
         }
       } catch (e) {
         if (!isCurrentRequest()) {

@@ -1,7 +1,13 @@
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import type { RefObject } from "react";
 import { container } from "src/service-container/index";
-import type { IMessage, INGService, IRes, IThreadService } from "src/service-container/interfaces";
+import type {
+  IMessage,
+  INGService,
+  IRes,
+  IThreadDetail,
+  IThreadService,
+} from "src/service-container/interfaces";
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";
 import { useThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
@@ -325,5 +331,55 @@ describe("useThreadData Phase 0 contracts", () => {
     });
     await waitFor(() => expect(result.current.responses.at(-1)?.num).toBe(6));
     expect(result.current.responses).toHaveLength(RESPONSES.length + 1);
+  });
+
+  it("同じスレの更新中は通知状態を保持し、取得完了時に最新状態へ置き換える", async () => {
+    const refreshedResult = createDeferred<IThreadDetail>();
+    const getThreadMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        url: THREAD_URL,
+        title: "Fixture thread",
+        res: RESPONSES,
+        expired: true,
+        missingFromSubject: true,
+        message: "更新前の通知",
+      })
+      .mockReturnValueOnce(refreshedResult.promise);
+    container.thread = { getThread: getThreadMock } as IThreadService;
+    const page = createPage();
+    const rootRef = { current: null } as RefObject<HTMLDivElement | null>;
+
+    const { result, rerender } = renderHook(
+      ({ refreshKey }: { refreshKey: number }) => {
+        const refreshController = useThreadRefreshController(refreshKey);
+        return useThreadData("tab-1", page, rootRef, refreshController);
+      },
+      { initialProps: { refreshKey: 0 } },
+    );
+
+    await waitFor(() => expect(result.current.error).toBe("更新前の通知"));
+    expect(result.current.expired).toBe(true);
+    expect(result.current.missingFromSubject).toBe(true);
+
+    rerender({ refreshKey: 1 });
+    await waitFor(() => expect(getThreadMock).toHaveBeenCalledTimes(2));
+    expect(result.current.error).toBe("更新前の通知");
+    expect(result.current.expired).toBe(true);
+    expect(result.current.missingFromSubject).toBe(true);
+
+    act(() => {
+      refreshedResult.resolve({
+        url: THREAD_URL,
+        title: "Fixture thread",
+        res: RESPONSES,
+        expired: false,
+        missingFromSubject: false,
+      });
+    });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.error).toBeNull();
+    expect(result.current.expired).toBe(false);
+    expect(result.current.missingFromSubject).toBe(false);
   });
 });
