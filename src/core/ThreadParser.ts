@@ -1,5 +1,5 @@
-import type { ChURL } from "packages/ch-lib/src/index";
-import { replaceAll } from "src/app/Util";
+import type { ChURL } from "../../packages/ch-lib/src/index";
+import { decodeCharReference } from "../../packages/ch-lib/src/utils/entities";
 
 export interface ThreadRes {
   name: string;
@@ -25,26 +25,10 @@ export interface ParseThreadOptions {
   resLength?: number;
 }
 
-const decodeEntityElement = typeof document !== "undefined" ? document.createElement("span") : null;
-
-const decodeCharReference = (str: string): string => {
-  return str.replace(
-    /&(?:#(\d+)|#x([\dA-Fa-f]+)|([\da-zA-Z]+));/g,
-    (_all, decimal, hex, entity) => {
-      if (decimal != null) {
-        return String.fromCodePoint(Number(decimal));
-      }
-      if (hex != null) {
-        return String.fromCodePoint(parseInt(hex, 16));
-      }
-      if (entity != null && decodeEntityElement != null) {
-        decodeEntityElement.innerHTML = `&${entity};`;
-        return decodeEntityElement.textContent ?? `&${entity};`;
-      }
-      return _all;
-    },
-  );
-};
+// サービスワーカーでも同じ解析器を使えるよう、DOMを含むapp/Utilへ依存しない。
+// 変更理由: ここで必要なのは文字列置換だけであり、UI初期化を背景取得へ持ち込む理由がない。
+const replaceAll = (str: string, before: string, after: string): string =>
+  str.replaceAll(before, after);
 
 const titleReg =
   / ?(?:\[(?:無断)?転載禁止\]|(?:\(c\)|©|�|&copy;|&#169;)(?:2ch\.net|@?bbspink\.com)) ?/g;

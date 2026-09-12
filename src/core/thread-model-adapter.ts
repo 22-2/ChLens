@@ -1,5 +1,6 @@
-import { type IRes, type IThread, MetadataParser } from "packages/ch-lib/src/index";
-import type { ParsedThread, ThreadRes } from "src/core/ThreadParser.js";
+import { MetadataParser } from "../../packages/ch-lib/src/parser/MetadataParser";
+import type { IRes, IThread } from "../../packages/ch-lib/src/parser/ThreadParser";
+import type { ParsedThread, ThreadRes } from "./ThreadParser.js";
 
 /**
  * Converts the cache/parser shape used by the existing Chlens fetch pipeline into ch-lib's

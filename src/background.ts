@@ -1,5 +1,7 @@
 import browser from "webextension-polyfill";
 
+import { startMcpWorker } from "./mcp/worker-bridge";
+
 const NEW_UI_URL_PREFIX = browser.runtime.getURL("view/index.html");
 const NEW_UI_URL_QUERY = `${browser.runtime.getURL("view/index.html")}*`;
 let newUiPrimaryTabId: number | null = null;
@@ -195,3 +197,8 @@ browser.action.onClicked.addListener(async (currentTab) => {
   // 現在のページURLを検索語としてomnibarへ自動入力しない。
   await openOrFocusNewUiTab();
 });
+
+// MCPのデータ取得は表示画面の有無に依存させず、拡張のサービスワーカーで実行する。
+// 画面側のReact bundleへ中継処理を入れると、画面を閉じた後にログを読めなくなるため、
+// background.jsを唯一の接続・取得入口にする。
+startMcpWorker();

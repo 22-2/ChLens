@@ -1,4 +1,5 @@
 import MessageProcessor from "src/core/MessageProcessor";
+import { stripHtml } from "src/core/strip-html";
 import type { IRes } from "src/service-container";
 
 /**
@@ -7,33 +8,7 @@ import type { IRes } from "src/service-container";
  * 分離して、レスのデータ変換だけを追えるようにしている。
  */
 
-const decodeEntitySpan = typeof document !== "undefined" ? document.createElement("span") : null;
-
-function decodeCharReferences(text: string): string {
-  return text.replace(
-    /&(?:#(\d+)|#x([\dA-Fa-f]+)|([\da-zA-Z]+));/g,
-    (matched, decimal, hexadecimal, namedEntity) => {
-      if (decimal != null) {
-        return String.fromCodePoint(Number(decimal));
-      }
-      if (hexadecimal != null) {
-        return String.fromCodePoint(Number.parseInt(hexadecimal, 16));
-      }
-      if (namedEntity != null && decodeEntitySpan) {
-        decodeEntitySpan.innerHTML = matched;
-        return decodeEntitySpan.textContent ?? matched;
-      }
-      return matched;
-    },
-  );
-}
-
-/** HTMLからテキストを抽出する（検索フィルタ・コピー用）。 */
-export function stripHtml(html: string): string {
-  // <br> は改行に変換してからタグを除去することで、コピー時に改行が反映されるようにする。
-  // レス本文には数値文字参照の絵文字が混ざることがあるため、タグ除去後にデコードする。
-  return decodeCharReferences(html.replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]*>/g, ""));
-}
+export { stripHtml } from "src/core/strip-html";
 
 export function normalizeIdLinkText(text: string): string {
   return text

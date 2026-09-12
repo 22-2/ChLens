@@ -8,6 +8,8 @@
 export const MCP_BRIDGE_PORT = 17890;
 export const MCP_BRIDGE_HOST = "127.0.0.1";
 export const MCP_BRIDGE_BASE_URL = `http://${MCP_BRIDGE_HOST}:${MCP_BRIDGE_PORT}`;
+export const MCP_BRIDGE_WS_URL = `ws://${MCP_BRIDGE_HOST}:${MCP_BRIDGE_PORT}/v1/ws`;
+export const MCP_BRIDGE_ALARM_NAME = "chlens-mcp-bridge";
 
 export type ThreadReadMode = "auto" | "cache" | "refresh";
 

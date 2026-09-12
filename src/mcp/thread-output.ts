@@ -1,8 +1,9 @@
 import { encode } from "@toon-format/toon";
-import { buildReplyIndexes } from "src/core/reply-index";
-import type { ThreadReadParams } from "src/mcp/protocol";
-import type { IRes, IThreadDetail } from "src/service-container/interfaces";
-import { stripHtml } from "src/view/browser/utils/response-format";
+
+import { buildReplyIndexes } from "../core/reply-index";
+import { stripHtml } from "../core/strip-html";
+import type { IRes, IThreadDetail } from "../service-container/interfaces";
+import type { ThreadReadParams } from "./protocol";
 
 const MAX_SELECTED_RESPONSES = 500;
 const MAX_RELATION_NUMBERS = 50;
