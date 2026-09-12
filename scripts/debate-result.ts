@@ -31,14 +31,49 @@ const DEFAULT_FORMATS: DebateOutputFormat[] = ["json", "markdown", "text", "svg"
 const MAX_RENDER_TEXT_LENGTH = 420;
 const CARD_WIDTH = 1200;
 
+interface ParticipantTone {
+  fill: string;
+  stroke: string;
+  text: string;
+}
+
+// 変更理由: 画像上で参加者を同じ色で追跡できるようにし、争点の判定色と
+// 参加者の識別色を分離する。これで「誰の主張か」と「判定状態」を混同しない。
+const PARTICIPANT_TONES: ParticipantTone[] = [
+  { fill: "#172554", stroke: "#60a5fa", text: "#bfdbfe" },
+  { fill: "#4c1d2a", stroke: "#fb7185", text: "#fecdd3" },
+  { fill: "#064e3b", stroke: "#34d399", text: "#a7f3d0" },
+  { fill: "#3b0764", stroke: "#c084fc", text: "#e9d5ff" },
+];
+
+const ISSUE_STATUS_TONES: Record<
+  DebateIssue["status"],
+  { fill: string; stroke: string; text: string }
+> = {
+  resolved: { fill: "#052e16", stroke: "#4ade80", text: "#bbf7d0" },
+  mixed: { fill: "#422006", stroke: "#fbbf24", text: "#fef3c7" },
+  unresolved: { fill: "#450a0a", stroke: "#f87171", text: "#fecaca" },
+  "insufficient-evidence": { fill: "#1e1b4b", stroke: "#a78bfa", text: "#ddd6fe" },
+};
+
 interface SatoriStyle {
   [key: string]: string | number | boolean | SatoriStyle | string[];
 }
 
 function node(type: string, children: ReactNode, style: SatoriStyle = {}): ReactNode {
+  const resolvedStyle =
+    type === "div" && Array.isArray(children) && children.length > 1 && style.display == null
+      ? {
+          // 変更理由: Satoriは複数の子を持つdivの表示方式を暗黙に決めないため、
+          // 補助ノードでも常に縦積みとして描画できる既定値を与える。
+          display: "flex",
+          flexDirection: "column",
+          ...style,
+        }
+      : style;
   return {
     type,
-    props: { children, style },
+    props: { children, style: resolvedStyle },
   } as unknown as ReactNode;
 }
 
@@ -66,41 +101,219 @@ function statusLabel(status: DebateIssue["status"]): string {
   }
 }
 
-function scoreLabel(participant: DebateParticipant): string {
-  if (!participant.score) return "採点なし";
-  return `論理 ${participant.score.logic.toFixed(1)} / 読解 ${participant.score.reading.toFixed(1)} / 根拠 ${participant.score.evidence.toFixed(1)}`;
+function compactText(value: string, limit: number): string {
+  return asText(value, limit).replace(/\s+/gu, " ").trim();
 }
 
-function issueNode(issue: DebateIssue): ReactNode {
-  const positionNodes = issue.positions.slice(0, 8).map((position) =>
-    node(
-      "div",
-      [
-        node("div", position.participantIds.join(", ") || "参加者不明", {
-          color: "#93c5fd",
-          fontSize: 22,
-          fontWeight: 700,
-          marginBottom: 4,
-        }),
-        node("div", asText(position.claim, 260), {
-          color: "#e2e8f0",
-          fontSize: 22,
-          lineHeight: 1.35,
-        }),
-      ],
-      { display: "flex", flexDirection: "column", marginBottom: 14 },
+function participantIdsForResult(result: DebateResult): string[] {
+  const ids = [
+    ...result.participants.map((participant) => participant.id),
+    ...result.scope.participantIds,
+    ...result.issues.flatMap((issue) =>
+      issue.positions.flatMap((position) => position.participantIds),
     ),
+  ];
+  return [...new Set(ids.map((id) => id.trim()).filter(Boolean))];
+}
+
+function participantLabel(id: string, participantIds: readonly string[]): string {
+  const index = participantIds.indexOf(id);
+  return index >= 0 ? `参加者${String.fromCharCode(65 + index)}` : "参加者不明";
+}
+
+function participantTone(id: string, participantIds: readonly string[]): ParticipantTone {
+  const index = Math.max(0, participantIds.indexOf(id));
+  return PARTICIPANT_TONES[index % PARTICIPANT_TONES.length];
+}
+
+function issueStatusTone(status: DebateIssue["status"]) {
+  return ISSUE_STATUS_TONES[status];
+}
+
+function overallVerdict(result: DebateResult): {
+  label: string;
+  detail: string;
+  fill: string;
+  stroke: string;
+  text: string;
+} {
+  const statuses = result.issues.map((issue) => issue.status);
+  if (statuses.length === 0) {
+    return {
+      label: "判定材料なし",
+      detail: "争点が登録されていません",
+      fill: "#1e293b",
+      stroke: "#64748b",
+      text: "#e2e8f0",
+    };
+  }
+  if (statuses.every((status) => status === "resolved")) {
+    return {
+      label: "争点を整理",
+      detail: "提示された範囲では大筋が一致",
+      fill: "#052e16",
+      stroke: "#4ade80",
+      text: "#bbf7d0",
+    };
+  }
+  if (statuses.some((status) => status === "unresolved")) {
+    return {
+      label: "未決着",
+      detail: "重要な食い違いが残っています",
+      fill: "#450a0a",
+      stroke: "#f87171",
+      text: "#fecaca",
+    };
+  }
+  if (statuses.some((status) => status === "insufficient-evidence")) {
+    return {
+      label: "根拠不足",
+      detail: "外部事実の確認が必要です",
+      fill: "#1e1b4b",
+      stroke: "#a78bfa",
+      text: "#ddd6fe",
+    };
+  }
+  return {
+    label: "条件付き",
+    detail: "条件をそろえると評価が変わります",
+    fill: "#422006",
+    stroke: "#fbbf24",
+    text: "#fef3c7",
+  };
+}
+
+function uniqueResponseNumbers(result: DebateResult): number[] {
+  const values = [
+    ...result.scope.responseNumbers,
+    ...result.issues.flatMap((issue) => [
+      ...issue.evidence.flatMap((evidence) => evidence.responseNumbers),
+      ...issue.positions.flatMap((position) =>
+        position.evidence.flatMap((evidence) => evidence.responseNumbers),
+      ),
+    ]),
+  ].filter((value) => Number.isInteger(value) && value > 0);
+  return [...new Set(values)].sort((left, right) => left - right);
+}
+
+function timelineSteps(result: DebateResult): Array<{ number: number; label: string }> {
+  const numbers = uniqueResponseNumbers(result);
+  if (numbers.length === 0) return [];
+  const indexes = [
+    0,
+    Math.round((numbers.length - 1) / 3),
+    Math.round(((numbers.length - 1) * 2) / 3),
+    numbers.length - 1,
+  ];
+  const uniqueIndexes = [...new Set(indexes)].sort((left, right) => left - right);
+  const labels = ["起点", "反論", "整理", "着地点"];
+  return uniqueIndexes.map((index, step) => ({
+    number: numbers[index],
+    label: labels[step] ?? "転換点",
+  }));
+}
+
+function refsLabel(values: readonly number[], limit = 3): string {
+  const refs = [...new Set(values)].filter((value) => Number.isInteger(value) && value > 0);
+  if (refs.length === 0) return "レス番号なし";
+  const shown = refs
+    .slice(0, limit)
+    .map((number) => `#${number}`)
+    .join(" ");
+  return refs.length > limit ? `${shown} …` : shown;
+}
+
+function positionForParticipant(issue: DebateIssue, id: string) {
+  return issue.positions.find((position) => position.participantIds.includes(id));
+}
+
+function scoreMeter(label: string, value: number): ReactNode {
+  const percentage = Math.max(0, Math.min(100, Math.round((value / 5) * 100)));
+  return node(
+    "div",
+    [
+      node("div", `${label} ${value.toFixed(1)}`, { color: "#cbd5e1", fontSize: 14 }),
+      node(
+        "div",
+        node("div", null, {
+          width: `${percentage}%`,
+          height: 6,
+          backgroundColor: "#67e8f9",
+          borderRadius: 3,
+        }),
+        {
+          display: "flex",
+          height: 6,
+          backgroundColor: "#334155",
+          borderRadius: 3,
+          marginTop: 4,
+        },
+      ),
+    ],
+    { display: "flex", flexDirection: "column", width: "31%" },
   );
-  const evidenceNodes = issue.evidence.slice(0, 8).flatMap((evidence) => [
-    node("span", `${evidence.role}: ${asText(evidence.note, 190)} `, {
-      color: "#cbd5e1",
-      fontSize: 17,
-    }),
-    node("span", evidence.responseNumbers.map((num) => `#${num}`).join(", "), {
-      color: "#67e8f9",
-      fontSize: 17,
-    }),
-  ]);
+}
+
+function issuePositionNode(
+  issue: DebateIssue,
+  id: string,
+  participantIds: readonly string[],
+): ReactNode {
+  const tone = participantTone(id, participantIds);
+  const position = positionForParticipant(issue, id);
+  const refs = position?.evidence.flatMap((evidence) => evidence.responseNumbers) ?? [];
+  return node(
+    "div",
+    [
+      node("div", participantLabel(id, participantIds), {
+        color: tone.text,
+        fontSize: 17,
+        fontWeight: 700,
+      }),
+      node("div", id, { color: "#94a3b8", fontSize: 13, marginTop: 2 }),
+      node("div", compactText(position?.claim ?? "この争点への主張は記載なし", 78), {
+        color: "#f8fafc",
+        fontSize: 18,
+        lineHeight: 1.25,
+        marginTop: 8,
+      }),
+      node("div", refsLabel(refs), { color: tone.text, fontSize: 13, marginTop: 8 }),
+    ],
+    {
+      display: "flex",
+      flexDirection: "column",
+      width: "43%",
+      minHeight: 112,
+      backgroundColor: tone.fill,
+      border: `2px solid ${tone.stroke}`,
+      borderRadius: 12,
+      padding: 14,
+    },
+  );
+}
+
+function compactIssueNode(issue: DebateIssue, participantIds: readonly string[]): ReactNode {
+  const visibleIds = participantIds.slice(0, 2);
+  const status = issueStatusTone(issue.status);
+  const compareNodes = visibleIds.map((id) => issuePositionNode(issue, id, participantIds));
+  const connector =
+    compareNodes.length > 1
+      ? node(
+          "div",
+          [
+            node("div", "↔", { color: "#fef08a", fontSize: 30, fontWeight: 700 }),
+            node("div", "論点", { color: "#fef08a", fontSize: 13, fontWeight: 700 }),
+          ],
+          {
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "10%",
+          },
+        )
+      : null;
+  const evidenceRefs = issue.evidence.flatMap((evidence) => evidence.responseNumbers);
   return node(
     "div",
     [
@@ -108,179 +321,315 @@ function issueNode(issue: DebateIssue): ReactNode {
         "div",
         [
           node("span", statusLabel(issue.status), {
-            color: "#0f172a",
-            backgroundColor: "#67e8f9",
-            borderRadius: 14,
-            padding: "4px 12px",
-            fontSize: 17,
+            color: status.text,
+            backgroundColor: status.fill,
+            border: `1px solid ${status.stroke}`,
+            borderRadius: 12,
+            padding: "4px 10px",
+            fontSize: 14,
             fontWeight: 700,
           }),
-          node("span", asText(issue.topic, 120), {
+          node("span", compactText(issue.topic, 52), {
             color: "#f8fafc",
-            fontSize: 25,
+            fontSize: 22,
             fontWeight: 700,
-            marginLeft: 12,
+            marginLeft: 10,
           }),
         ],
-        { display: "flex", alignItems: "center", marginBottom: 10 },
+        { display: "flex", alignItems: "center" },
       ),
-      node("div", asText(issue.conclusion, 320), {
-        color: "#f8fafc",
-        fontSize: 23,
-        lineHeight: 1.35,
-        marginBottom: 14,
+      node(
+        "div",
+        compareNodes.length > 1 && connector
+          ? [compareNodes[0], connector, compareNodes[1]]
+          : compareNodes,
+        { display: "flex", alignItems: "stretch", justifyContent: "space-between", marginTop: 12 },
+      ),
+      node("div", `判定: ${compactText(issue.conclusion, 120)}`, {
+        color: "#fef08a",
+        fontSize: 16,
+        lineHeight: 1.25,
+        marginTop: 10,
       }),
-      ...positionNodes,
-      evidenceNodes.length > 0
-        ? node("div", evidenceNodes, {
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 4,
-            borderTop: "1px solid #334155",
-            paddingTop: 10,
+      evidenceRefs.length > 0
+        ? node("div", `根拠 ${refsLabel(evidenceRefs, 5)}`, {
+            color: "#67e8f9",
+            fontSize: 13,
+            marginTop: 5,
           })
         : null,
     ].filter((child): child is ReactNode => child != null),
     {
       display: "flex",
       flexDirection: "column",
-      backgroundColor: "#172554",
-      border: "1px solid #2563eb",
-      borderRadius: 16,
-      padding: 20,
-      marginBottom: 16,
+      backgroundColor: "#111827",
+      border: `1px solid ${status.stroke}`,
+      borderRadius: 14,
+      padding: 16,
+      marginBottom: 12,
     },
   );
 }
 
-function participantNode(participant: DebateParticipant): ReactNode {
+function compactParticipantNode(
+  participant: DebateParticipant,
+  participantIds: readonly string[],
+): ReactNode {
+  const tone = participantTone(participant.id, participantIds);
+  const score = participant.score;
+  const meters = score
+    ? [
+        scoreMeter("論理", score.logic),
+        scoreMeter("読解", score.reading),
+        scoreMeter("根拠", score.evidence),
+      ]
+    : [node("div", "採点なし", { color: "#94a3b8", fontSize: 14 })];
   return node(
     "div",
     [
-      node("div", participant.id, {
-        color: "#fda4af",
-        fontSize: 22,
-        fontWeight: 700,
-        marginBottom: 6,
-      }),
-      node("div", asText(participant.position, 220), {
+      node(
+        "div",
+        [
+          node("div", null, {
+            width: 12,
+            height: 12,
+            borderRadius: 6,
+            backgroundColor: tone.stroke,
+            marginRight: 8,
+          }),
+          node("span", participantLabel(participant.id, participantIds), {
+            color: tone.text,
+            fontSize: 18,
+            fontWeight: 700,
+          }),
+          node("span", participant.id, { color: "#94a3b8", fontSize: 13, marginLeft: 8 }),
+        ],
+        { display: "flex", alignItems: "center" },
+      ),
+      node("div", compactText(participant.position, 92), {
         color: "#f8fafc",
-        fontSize: 20,
-        lineHeight: 1.3,
+        fontSize: 16,
+        lineHeight: 1.25,
+        marginTop: 10,
       }),
-      node("div", scoreLabel(participant), { color: "#cbd5e1", fontSize: 17, marginTop: 8 }),
-      participant.strengths.length > 0
-        ? node("div", `有効点: ${asText(participant.strengths.join(" / "), 180)}`, {
-            color: "#86efac",
-            fontSize: 17,
-            marginTop: 8,
-          })
-        : null,
-      participant.weaknesses.length > 0
-        ? node("div", `弱点: ${asText(participant.weaknesses.join(" / "), 180)}`, {
-            color: "#fda4af",
-            fontSize: 17,
-            marginTop: 4,
-          })
-        : null,
-    ].filter((child): child is ReactNode => child != null),
+      node("div", meters, { display: "flex", justifyContent: "space-between", marginTop: 12 }),
+    ],
     {
       display: "flex",
       flexDirection: "column",
-      // 変更理由: 参加者が増えたときも1枚の横幅へ押し込めず、2列のカードとして
-      // 折り返すことで、Satori画像内の文字が極端に細くならないようにする。
       width: "48%",
-      flexGrow: 0,
-      flexShrink: 0,
-      backgroundColor: "#3f172a",
-      border: "1px solid #be123c",
-      borderRadius: 14,
-      padding: 16,
+      backgroundColor: tone.fill,
+      border: `1px solid ${tone.stroke}`,
+      borderRadius: 12,
+      padding: 14,
       marginRight: 12,
       marginBottom: 12,
     },
   );
 }
 
-function buildSatoriElement(result: DebateResult, height: number): ReactNode {
+function compactTimelineNode(result: DebateResult): ReactNode | null {
+  const steps = timelineSteps(result);
+  if (steps.length === 0) return null;
+  const stepNodes = steps.flatMap((step, index) => {
+    const stepNode = node(
+      "div",
+      [
+        node("div", String(index + 1), {
+          color: "#0f172a",
+          backgroundColor: "#67e8f9",
+          width: 30,
+          height: 30,
+          borderRadius: 15,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 16,
+          fontWeight: 700,
+        }),
+        node("div", step.label, { color: "#f8fafc", fontSize: 16, fontWeight: 700, marginTop: 8 }),
+        node("div", `レス${step.number}`, { color: "#67e8f9", fontSize: 14, marginTop: 3 }),
+      ],
+      { display: "flex", flexDirection: "column", alignItems: "center", width: "22%" },
+    );
+    return index < steps.length - 1
+      ? [stepNode, node("div", "→", { color: "#64748b", fontSize: 26, marginTop: 12, width: "4%" })]
+      : [stepNode];
+  });
   return node(
     "div",
     [
-      node("div", "ChLens 議論判定", {
-        color: "#67e8f9",
-        fontSize: 20,
-        fontWeight: 700,
-        marginBottom: 10,
-      }),
-      node("div", asText(result.thread.title, 170), {
+      node("div", "議論の流れ", {
         color: "#f8fafc",
-        fontSize: 34,
-        fontWeight: 800,
-        lineHeight: 1.2,
-      }),
-      node("div", asText(result.summary, 420), {
-        color: "#cbd5e1",
-        fontSize: 21,
-        lineHeight: 1.35,
-        marginTop: 16,
-      }),
-      node("div", asText(`結論: ${result.conclusion}`, 460), {
-        color: "#fef08a",
-        fontSize: 25,
-        fontWeight: 700,
-        lineHeight: 1.35,
-        backgroundColor: "#422006",
-        border: "1px solid #ca8a04",
-        borderRadius: 14,
-        padding: 16,
-        marginTop: 18,
-        marginBottom: 22,
-      }),
-      node("div", "争点別判定", {
-        color: "#f8fafc",
-        fontSize: 26,
+        fontSize: 23,
         fontWeight: 700,
         marginBottom: 12,
       }),
-      ...result.issues.slice(0, 12).map(issueNode),
-      result.participants.length > 0
+      node("div", stepNodes, {
+        display: "flex",
+        alignItems: "flex-start",
+        justifyContent: "center",
+      }),
+    ],
+    {
+      display: "flex",
+      flexDirection: "column",
+      backgroundColor: "#111827",
+      border: "1px solid #334155",
+      borderRadius: 14,
+      padding: 16,
+      marginTop: 4,
+      marginBottom: 14,
+    },
+  );
+}
+
+// 変更理由: 判定画像は文章を読み込む媒体ではなく、総合判定・争点・主張の関係を
+// 最初に把握する媒体とする。長文の根拠はMarkdownへ残し、画像では比較と流れを優先する。
+function buildCompactSatoriElement(result: DebateResult, height: number): ReactNode {
+  const participantIds = participantIdsForResult(result);
+  const verdict = overallVerdict(result);
+  const issues = result.issues.slice(0, 6);
+  const statusChips = issues.map((issue, index) => {
+    const tone = issueStatusTone(issue.status);
+    return node(
+      "div",
+      [
+        node("span", `${index + 1}`, {
+          color: "#0f172a",
+          backgroundColor: tone.stroke,
+          width: 22,
+          height: 22,
+          borderRadius: 11,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 13,
+          fontWeight: 700,
+          marginRight: 7,
+        }),
+        node("span", compactText(issue.topic, 28), { color: "#f8fafc", fontSize: 15 }),
+        node("span", statusLabel(issue.status), { color: tone.text, fontSize: 13, marginLeft: 7 }),
+      ],
+      {
+        display: "flex",
+        alignItems: "center",
+        backgroundColor: tone.fill,
+        border: `1px solid ${tone.stroke}`,
+        borderRadius: 12,
+        padding: "7px 10px",
+        marginRight: 8,
+        marginBottom: 8,
+      },
+    );
+  });
+  return node(
+    "div",
+    [
+      node(
+        "div",
+        [
+          node("span", "ChLens 議論判定", { color: "#67e8f9", fontSize: 18, fontWeight: 700 }),
+          node("span", verdict.label, {
+            color: verdict.text,
+            backgroundColor: verdict.fill,
+            border: `1px solid ${verdict.stroke}`,
+            borderRadius: 16,
+            padding: "7px 14px",
+            fontSize: 18,
+            fontWeight: 700,
+          }),
+        ],
+        { display: "flex", alignItems: "center", justifyContent: "space-between" },
+      ),
+      node("div", compactText(result.thread.title, 112), {
+        color: "#f8fafc",
+        fontSize: 31,
+        fontWeight: 700,
+        lineHeight: 1.2,
+        marginTop: 14,
+      }),
+      node("div", compactText(result.summary, 150), {
+        color: "#cbd5e1",
+        fontSize: 18,
+        lineHeight: 1.3,
+        marginTop: 8,
+      }),
+      node(
+        "div",
+        [
+          node("div", verdict.detail, { color: verdict.text, fontSize: 16, fontWeight: 700 }),
+          node("div", compactText(result.conclusion, 150), {
+            color: "#fefce8",
+            fontSize: 20,
+            lineHeight: 1.25,
+            marginTop: 5,
+          }),
+        ],
+        {
+          display: "flex",
+          flexDirection: "column",
+          backgroundColor: verdict.fill,
+          border: `1px solid ${verdict.stroke}`,
+          borderRadius: 14,
+          padding: 14,
+          marginTop: 14,
+          marginBottom: 16,
+        },
+      ),
+      node("div", "判定の内訳", {
+        color: "#f8fafc",
+        fontSize: 22,
+        fontWeight: 700,
+        marginBottom: 9,
+      }),
+      node("div", statusChips, { display: "flex", flexWrap: "wrap", marginBottom: 4 }),
+      node("div", "主張の比較", {
+        color: "#f8fafc",
+        fontSize: 22,
+        fontWeight: 700,
+        marginBottom: 9,
+      }),
+      ...issues.map((issue) => compactIssueNode(issue, participantIds)),
+      compactTimelineNode(result),
+      participantIds.length > 0
         ? node(
             "div",
             [
-              node("div", "参加者別評価", {
+              node("div", "参加者", {
                 color: "#f8fafc",
-                fontSize: 26,
+                fontSize: 22,
                 fontWeight: 700,
-                marginTop: 8,
-                marginBottom: 12,
+                marginBottom: 9,
               }),
-              node("div", result.participants.slice(0, 16).map(participantNode), {
-                display: "flex",
-                flexWrap: "wrap",
-              }),
+              node(
+                "div",
+                result.participants
+                  .slice(0, 8)
+                  .map((participant) => compactParticipantNode(participant, participantIds)),
+                { display: "flex", flexWrap: "wrap" },
+              ),
             ],
             { display: "flex", flexDirection: "column" },
           )
         : null,
-      result.caveats && result.caveats.length > 0
-        ? node("div", `留意点: ${asText(result.caveats.join(" / "), 380)}`, {
-            color: "#cbd5e1",
-            fontSize: 17,
-            lineHeight: 1.35,
-            borderTop: "1px solid #334155",
-            paddingTop: 12,
-            marginTop: 8,
-          })
-        : null,
+      node("div", "詳細な根拠・引用はMarkdown版を参照してください。", {
+        color: "#94a3b8",
+        fontSize: 14,
+        borderTop: "1px solid #334155",
+        paddingTop: 11,
+        marginTop: 3,
+      }),
     ].filter((child): child is ReactNode => child != null),
     {
       display: "flex",
       flexDirection: "column",
       width: CARD_WIDTH,
       height,
+      flexShrink: 0,
       backgroundColor: "#0f172a",
       color: "#f8fafc",
-      padding: 34,
+      padding: 32,
       fontFamily: "ChLensSans",
     },
   );
@@ -331,92 +680,7 @@ function wrapFallbackLines(value: string, width = 54): string[] {
   });
 }
 
-function renderFallbackSvg(result: DebateResult): string {
-  interface FallbackBlock {
-    title: string;
-    lines: string[];
-    fill: string;
-    stroke: string;
-  }
-
-  const block = (
-    title: string,
-    lines: string[],
-    fill = "#1e293b",
-    stroke = "#334155",
-  ): FallbackBlock => ({
-    title,
-    lines: lines.length > 0 ? lines.slice(0, 12) : ["（記載なし）"],
-    fill,
-    stroke,
-  });
-
-  const statusColors: Record<DebateIssue["status"], { fill: string; stroke: string }> = {
-    resolved: { fill: "#052e16", stroke: "#22c55e" },
-    mixed: { fill: "#422006", stroke: "#f59e0b" },
-    unresolved: { fill: "#450a0a", stroke: "#ef4444" },
-    "insufficient-evidence": { fill: "#1e1b4b", stroke: "#a78bfa" },
-  };
-
-  const blocks: FallbackBlock[] = [
-    block("概要", wrapFallbackLines(result.summary)),
-    block("結論", wrapFallbackLines(result.conclusion), "#422006", "#ca8a04"),
-    ...result.issues.slice(0, 12).map((issue) => {
-      const issueLines = [
-        ...wrapFallbackLines(issue.conclusion),
-        ...issue.positions
-          .slice(0, 5)
-          .flatMap((position) =>
-            wrapFallbackLines(
-              `・${position.participantIds.join(", ") || "参加者不明"}: ${position.claim}`,
-            ),
-          ),
-        ...issue.evidence
-          .slice(0, 4)
-          .flatMap((evidence) =>
-            wrapFallbackLines(
-              `根拠(${evidence.role}) #${evidence.responseNumbers.join(", #")}: ${evidence.note}`,
-            ),
-          ),
-      ];
-      const colors = statusColors[issue.status];
-      return block(
-        `${statusLabel(issue.status)}　${issue.topic}`,
-        issueLines,
-        colors.fill,
-        colors.stroke,
-      );
-    }),
-    ...(result.participants.length > 0
-      ? [
-          block(
-            "参加者別評価",
-            result.participants.slice(0, 16).flatMap((participant) => {
-              const lines = [
-                `・${participant.id}: ${participant.position}`,
-                scoreLabel(participant),
-              ];
-              if (participant.strengths.length > 0)
-                lines.push(`有効点: ${participant.strengths.join(" / ")}`);
-              if (participant.weaknesses.length > 0)
-                lines.push(`弱点: ${participant.weaknesses.join(" / ")}`);
-              return lines.flatMap((line) => wrapFallbackLines(line));
-            }),
-            "#3f172a",
-            "#be123c",
-          ),
-        ]
-      : []),
-    ...(result.caveats && result.caveats.length > 0
-      ? [
-          block(
-            "留意点",
-            result.caveats.flatMap((caveat) => wrapFallbackLines(`・${caveat}`)),
-          ),
-        ]
-      : []),
-  ];
-
+function renderCompactFallbackSvg(result: DebateResult): string {
   const escape = (value: string) =>
     value
       .replace(/&/g, "&amp;")
@@ -424,39 +688,190 @@ function renderFallbackSvg(result: DebateResult): string {
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&apos;");
-  const titleLines = wrapFallbackLines(result.thread.title, 54).slice(0, 2);
-  const blockWidth = CARD_WIDTH - 80;
-  const blockPadding = 22;
-  const titleLineHeight = 30;
-  const lineHeight = 28;
-  const headerHeight = 64 + titleLines.length * 34;
-  let cursor = headerHeight;
-  const blockNodes = blocks
-    .map((item) => {
-      const blockHeight = blockPadding * 2 + titleLineHeight + item.lines.length * lineHeight;
-      const y = cursor;
-      cursor += blockHeight + 18;
-      const title = `<text x="${40 + blockPadding}" y="${y + blockPadding + 22}" fill="#f8fafc" font-size="23" font-weight="700">${escape(item.title)}</text>`;
-      const lines = item.lines
-        .map(
-          (line, index) =>
-            `<text x="${40 + blockPadding}" y="${y + blockPadding + titleLineHeight + (index + 1) * lineHeight}" fill="#e2e8f0" font-size="19">${escape(line)}</text>`,
-        )
-        .join("");
-      return `<rect x="40" y="${y}" width="${blockWidth}" height="${blockHeight}" rx="16" fill="${item.fill}" stroke="${item.stroke}" stroke-width="2"/>${title}${lines}`;
-    })
-    .join("");
-  const height = Math.min(6_000, Math.max(720, cursor + 24));
-  const header = [
-    `<text x="40" y="42" fill="#67e8f9" font-size="22" font-weight="700">ChLens 議論判定</text>`,
-    ...titleLines.map(
-      (line, index) =>
-        `<text x="40" y="${76 + index * 34}" fill="#f8fafc" font-size="30" font-weight="700">${escape(line)}</text>`,
-    ),
-  ].join("");
-  // 変更理由: Satoriが実行環境のフォント形式に対応できない場合でも、
-  // ブラウザやresvgのシステムフォントで、判定の区切りと状態を視認できる画像を作る。
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${CARD_WIDTH}" height="${height}" viewBox="0 0 ${CARD_WIDTH} ${height}"><rect width="100%" height="100%" fill="#0f172a"/><g font-family="Meiryo, 'Noto Sans JP', sans-serif">${header}${blockNodes}</g></svg>`;
+  const text = (
+    value: string,
+    x: number,
+    y: number,
+    size: number,
+    color: string,
+    weight = 400,
+    anchor = "start",
+  ) =>
+    `<text x="${x}" y="${y}" fill="${color}" font-size="${size}" font-weight="${weight}" text-anchor="${anchor}">${escape(value)}</text>`;
+  const rect = (
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    fill: string,
+    stroke: string,
+    radius = 14,
+  ) =>
+    `<rect x="${x}" y="${y}" width="${width}" height="${height}" rx="${radius}" fill="${fill}" stroke="${stroke}" stroke-width="1"/>`;
+  const compactLines = (value: string, width: number, maxLines: number) =>
+    wrapFallbackLines(compactText(value, width * maxLines), width).slice(0, maxLines);
+  const participantIds = participantIdsForResult(result);
+  const verdict = overallVerdict(result);
+  const nodes: string[] = [`<rect width="100%" height="100%" fill="#0f172a"/>`];
+  let cursor = 34;
+  nodes.push(text("ChLens 議論判定", 40, cursor + 4, 22, "#67e8f9", 700));
+  nodes.push(rect(915, cursor - 22, 245, 42, verdict.fill, verdict.stroke, 20));
+  nodes.push(text(verdict.label, 1037, cursor + 6, 19, verdict.text, 700, "middle"));
+  cursor += 50;
+  for (const line of compactLines(result.thread.title, 42, 2)) {
+    nodes.push(text(line, 40, cursor + 25, 31, "#f8fafc", 700));
+    cursor += 37;
+  }
+  nodes.push(text(compactText(result.summary, 190), 40, cursor + 22, 18, "#cbd5e1"));
+  cursor += 48;
+  nodes.push(rect(40, cursor, CARD_WIDTH - 80, 88, verdict.fill, verdict.stroke));
+  nodes.push(text(verdict.detail, 62, cursor + 28, 16, verdict.text, 700));
+  nodes.push(text(compactText(result.conclusion, 180), 62, cursor + 58, 20, "#fefce8", 500));
+  cursor += 112;
+  nodes.push(text("判定の内訳", 40, cursor + 23, 23, "#f8fafc", 700));
+  cursor += 38;
+  let chipX = 40;
+  let chipY = cursor;
+  for (const [index, issue] of result.issues.slice(0, 6).entries()) {
+    const tone = issueStatusTone(issue.status);
+    const chipWidth = 330;
+    if (chipX + chipWidth > CARD_WIDTH - 40) {
+      chipX = 40;
+      chipY += 40;
+    }
+    nodes.push(rect(chipX, chipY, chipWidth, 32, tone.fill, tone.stroke, 10));
+    nodes.push(
+      text(
+        `${index + 1}  ${compactText(issue.topic, 22)}`,
+        chipX + 12,
+        chipY + 21,
+        15,
+        "#f8fafc",
+        500,
+      ),
+    );
+    nodes.push(
+      text(
+        statusLabel(issue.status),
+        chipX + chipWidth - 12,
+        chipY + 21,
+        13,
+        tone.text,
+        500,
+        "end",
+      ),
+    );
+    chipX += chipWidth + 10;
+  }
+  cursor = chipY + 56;
+  nodes.push(text("主張の比較", 40, cursor + 23, 23, "#f8fafc", 700));
+  cursor += 38;
+  for (const issue of result.issues.slice(0, 6)) {
+    const status = issueStatusTone(issue.status);
+    const issueY = cursor;
+    nodes.push(rect(40, issueY, CARD_WIDTH - 80, 194, "#111827", status.stroke));
+    nodes.push(rect(58, issueY + 14, 120, 28, status.fill, status.stroke, 10));
+    nodes.push(text(statusLabel(issue.status), 118, issueY + 33, 14, status.text, 700, "middle"));
+    nodes.push(text(compactText(issue.topic, 42), 194, issueY + 34, 21, "#f8fafc", 700));
+    const compareIds = participantIds.slice(0, 2);
+    compareIds.forEach((id, index) => {
+      const position = positionForParticipant(issue, id);
+      const tone = participantTone(id, participantIds);
+      const cardX = index === 0 ? 58 : 622;
+      nodes.push(rect(cardX, issueY + 57, 500, 86, tone.fill, tone.stroke, 11));
+      nodes.push(
+        text(participantLabel(id, participantIds), cardX + 16, issueY + 80, 16, tone.text, 700),
+      );
+      nodes.push(
+        text(
+          compactText(position?.claim ?? "この争点への主張は記載なし", 58),
+          cardX + 16,
+          issueY + 106,
+          16,
+          "#f8fafc",
+        ),
+      );
+      nodes.push(
+        text(
+          refsLabel(position?.evidence.flatMap((evidence) => evidence.responseNumbers) ?? []),
+          cardX + 16,
+          issueY + 129,
+          13,
+          tone.text,
+        ),
+      );
+    });
+    if (compareIds.length > 1)
+      nodes.push(text("↔", 600, issueY + 104, 28, "#fef08a", 700, "middle"));
+    nodes.push(
+      text(`判定: ${compactText(issue.conclusion, 102)}`, 58, issueY + 167, 15, "#fef08a"),
+    );
+    cursor += 208;
+  }
+  const steps = timelineSteps(result);
+  if (steps.length > 0) {
+    nodes.push(rect(40, cursor, CARD_WIDTH - 80, 118, "#111827", "#334155"));
+    nodes.push(text("議論の流れ", 58, cursor + 28, 22, "#f8fafc", 700));
+    const stepWidth = (CARD_WIDTH - 140) / steps.length;
+    steps.forEach((step, index) => {
+      const x = 70 + index * stepWidth;
+      nodes.push(`<circle cx="${x}" cy="${cursor + 66}" r="15" fill="#67e8f9"/>`);
+      nodes.push(text(String(index + 1), x, cursor + 72, 15, "#0f172a", 700, "middle"));
+      nodes.push(text(step.label, x, cursor + 94, 15, "#f8fafc", 700, "middle"));
+      nodes.push(text(`レス${step.number}`, x, cursor + 111, 13, "#67e8f9", 400, "middle"));
+      if (index < steps.length - 1)
+        nodes.push(text("→", x + stepWidth / 2, cursor + 72, 23, "#64748b", 400, "middle"));
+    });
+    cursor += 138;
+  }
+  if (result.participants.length > 0) {
+    nodes.push(text("参加者", 40, cursor + 23, 23, "#f8fafc", 700));
+    cursor += 38;
+    result.participants.slice(0, 8).forEach((participant, index) => {
+      const row = Math.floor(index / 2);
+      const column = index % 2;
+      const cardX = 40 + column * 570;
+      const cardY = cursor + row * 112;
+      const tone = participantTone(participant.id, participantIds);
+      nodes.push(rect(cardX, cardY, 540, 96, tone.fill, tone.stroke, 11));
+      nodes.push(
+        text(
+          participantLabel(participant.id, participantIds),
+          cardX + 18,
+          cardY + 24,
+          17,
+          tone.text,
+          700,
+        ),
+      );
+      nodes.push(text(participant.id, cardX + 120, cardY + 24, 13, "#94a3b8"));
+      nodes.push(
+        text(compactText(participant.position, 58), cardX + 18, cardY + 51, 15, "#f8fafc"),
+      );
+      if (participant.score)
+        nodes.push(
+          text(
+            `論理 ${participant.score.logic.toFixed(1)}　読解 ${participant.score.reading.toFixed(1)}　根拠 ${participant.score.evidence.toFixed(1)}`,
+            cardX + 18,
+            cardY + 78,
+            13,
+            "#cbd5e1",
+          ),
+        );
+    });
+    cursor += Math.ceil(Math.min(result.participants.length, 8) / 2) * 112;
+  }
+  nodes.push(`<line x1="40" y1="${cursor + 8}" x2="1160" y2="${cursor + 8}" stroke="#334155"/>`);
+  nodes.push(
+    text("詳細な根拠・引用はMarkdown版を参照してください。", 40, cursor + 34, 14, "#94a3b8"),
+  );
+  cursor += 62;
+  const height = Math.min(3_600, Math.max(1_100, cursor));
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${CARD_WIDTH}" height="${height}" viewBox="0 0 ${CARD_WIDTH} ${height}"><g font-family="Meiryo, 'Noto Sans JP', sans-serif">${nodes.join("")}</g></svg>`;
+}
+
+function renderFallbackSvg(result: DebateResult): string {
+  return renderCompactFallbackSvg(result);
 }
 
 function estimatedLines(value: string, charsPerLine: number): number {
@@ -464,59 +879,39 @@ function estimatedLines(value: string, charsPerLine: number): number {
 }
 
 function estimateIssueHeight(issue: DebateIssue): number {
-  const positionHeight = issue.positions
-    .slice(0, 8)
-    .reduce((height, position) => height + 38 + estimatedLines(position.claim, 42) * 30, 0);
-  const evidenceHeight = issue.evidence
-    .slice(0, 8)
-    .reduce((height, evidence) => height + 24 + estimatedLines(evidence.note, 56) * 22, 0);
-  return (
-    76 +
-    estimatedLines(issue.topic, 30) * 30 +
-    estimatedLines(issue.conclusion, 48) * 31 +
-    positionHeight +
-    evidenceHeight
-  );
+  // 変更理由: 画像は根拠全文を読む場所ではなく、争点の関係を把握する図なので、
+  // 主張・判定を短く切り詰めた固定高さで見積もり、情報量に引っ張られないようにする。
+  return 214 + (issue.positions.length > 2 ? 18 : 0);
 }
 
 function estimateParticipantHeight(participant: DebateParticipant): number {
-  const strengths = participant.strengths.join(" / ");
-  const weaknesses = participant.weaknesses.join(" / ");
-  return (
-    48 +
-    estimatedLines(participant.position, 32) * 26 +
-    28 +
-    (strengths ? 24 + estimatedLines(strengths, 38) * 22 : 0) +
-    (weaknesses ? 24 + estimatedLines(weaknesses, 38) * 22 : 0)
-  );
+  void participant;
+  return 132;
 }
 
 export async function renderDebateSvg(result: DebateResult): Promise<string> {
-  const issueHeight = result.issues
-    .slice(0, 12)
-    .reduce((height, issue) => height + estimateIssueHeight(issue) + 16, 0);
-  const participants = result.participants.slice(0, 16);
+  const issues = result.issues.slice(0, 6);
+  const issueHeight = issues.reduce((height, issue) => height + estimateIssueHeight(issue) + 12, 0);
+  const participants = result.participants.slice(0, 8);
   const participantCardHeight = participants.reduce(
     (height, participant) => Math.max(height, estimateParticipantHeight(participant)),
     0,
   );
   const participantHeight =
-    participants.length > 0 ? 64 + Math.ceil(participants.length / 2) * participantCardHeight : 0;
+    participants.length > 0 ? 50 + Math.ceil(participants.length / 2) * participantCardHeight : 0;
+  const timelineHeight = uniqueResponseNumbers(result).length > 0 ? 155 : 0;
   const headerHeight =
-    300 +
-    estimatedLines(result.thread.title, 36) * 38 +
-    estimatedLines(result.summary, 58) * 29 +
-    estimatedLines(result.conclusion, 52) * 33;
+    370 + estimatedLines(result.thread.title, 42) * 37 + estimatedLines(result.summary, 190) * 24;
   const height = Math.min(
-    // 変更理由: 長い日本語や根拠の折り返しでカードが想定より高くなるため、
-    // 項目数と内容量から余裕を持って高さを確保し、画像下部の切り落としを防ぐ。
+    // 変更理由: 主要な図解を固定の短いブロックで積み上げ、従来の全文表示による
+    // 縦長化を防ぎつつ、フォントごとの実測行高の差で末尾が切れないよう余白を持たせる。
     6_000,
-    Math.max(720, headerHeight + issueHeight + participantHeight + 40),
+    Math.max(1_500, headerHeight + issueHeight + timelineHeight + participantHeight + 300),
   );
   const fontData = await loadFontData();
   if (fontData.length === 0) return renderFallbackSvg(result);
   try {
-    return await satori(buildSatoriElement(result, height), {
+    return await satori(buildCompactSatoriElement(result, height), {
       width: CARD_WIDTH,
       height,
       fonts: [
