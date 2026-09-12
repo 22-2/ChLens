@@ -74,6 +74,28 @@ interface UpdateCacheParams {
   hasCache: boolean;
 }
 
+const isLegacySubjectPadding = (res: ThreadRes): boolean =>
+  res.id == null &&
+  res.name === "あぼーん" &&
+  res.mail === "あぼーん" &&
+  res.message === "あぼーん" &&
+  res.other === "あぼーん";
+
+const stripTrailingSubjectPadding = (thread: ParsedThread): ParsedThread => {
+  let end = thread.res.length;
+  while (end > 0 && isLegacySubjectPadding(thread.res[end - 1])) {
+    end -= 1;
+  }
+
+  if (end === thread.res.length) {
+    return thread;
+  }
+
+  // 変更理由: 以前はsubject.txtとの件数差を埋めた表示用レスまでparsedキャッシュへ保存していた。
+  // 古いキャッシュを読み込む際に末尾の補填だけ戻し、差分取得の基準を実データへ戻す。
+  return { ...thread, res: thread.res.slice(0, end) };
+};
+
 // ---------------------------------------------------------------------------
 // Thread class
 // ---------------------------------------------------------------------------
@@ -188,8 +210,8 @@ export default class Thread {
 
       // --- あぼーん補填・インスタンスへの反映 ---
       cachedInfoResult = await getCachedInfoPromise;
-      this._padAbobunIfNeeded(thread, cachedInfoResult);
-      this._applyThreadToSelf(thread);
+      const displayThread = this._padAbobunIfNeeded(thread, cachedInfoResult);
+      this._applyThreadToSelf(displayThread);
       this.message = "";
 
       // キャッシュ更新はメインフローをブロックしない（fire-and-forget）
@@ -294,7 +316,7 @@ export default class Thread {
       await container.util.defer();
       const tmp =
         cache.parsed != null
-          ? (cache.parsed as ParsedThread)
+          ? this._getCachedParsedThread(cache)
           : parseThread(this.url, cache.data ?? "", { format2chnet });
       if (tmp != null) {
         this.res = tmp.res;
@@ -408,7 +430,7 @@ export default class Thread {
 
     if (hasCache) {
       const thread = isHtml
-        ? (cache.parsed as ParsedThread)
+        ? this._getCachedParsedThread(cache)
         : (parseThread(this.url, cache.data ?? "", { format2chnet }) ?? undefined);
       return { thread, noChangeFlg: false };
     }
@@ -455,7 +477,10 @@ export default class Thread {
     }
 
     // 差分取得・HTML 形式
-    const threadCache = cache.parsed as ParsedThread;
+    const threadCache = this._getCachedParsedThread(cache);
+    if (!threadCache) {
+      return { thread: undefined, noChangeFlg: false };
+    }
 
     // readcgiVer >= 6 の "変化なし" レスポンス
     if (readcgiVer >= 6 && response.status === 500) {
@@ -512,7 +537,7 @@ export default class Thread {
       return parseThread(this.url, response.body, { format2chnet }) ?? undefined;
     }
     if (deltaFlg && isHtml) {
-      return cache.parsed as ParsedThread;
+      return this._getCachedParsedThread(cache);
     }
     return parseThread(this.url, cache.data ?? "", { format2chnet }) ?? undefined;
   }
@@ -521,6 +546,26 @@ export default class Thread {
   // Private: スレッドへの後処理
   // -------------------------------------------------------------------------
 
+  /** 古いparsedキャッシュから表示専用の末尾あぼーん補填を取り除く */
+  private _getCachedParsedThread(cache: Cache): ParsedThread | undefined {
+    if (cache.parsed == null || typeof cache.parsed !== "object") {
+      return undefined;
+    }
+
+    const parsed = cache.parsed as ParsedThread;
+    if (!Array.isArray(parsed.res)) {
+      return undefined;
+    }
+
+    const normalized = stripTrailingSubjectPadding(parsed);
+    if (normalized !== parsed) {
+      cache.parsed = normalized;
+      // 以前の補填件数をそのまま使うと、次のHTML差分取得の開始位置までずれる。
+      cache.resLength = normalized.res.length;
+    }
+    return normalized;
+  }
+
   /**
    * 板スレ一覧のレス数と突き合わせ、不足分をあぼーんで補填する。
    *
@@ -528,20 +573,31 @@ export default class Thread {
    * not_found になり得るため、ここでは expired として扱わず独立した信号にする。
    * ブラウザ画面での自動更新停止と通知は、取得結果を受け取った側でこの信号も含めて判断する。
    */
-  private _padAbobunIfNeeded(thread: ParsedThread, result: CachedInfoResult): void {
+  private _padAbobunIfNeeded(thread: ParsedThread, result: CachedInfoResult): ParsedThread {
+    let displayThread = thread;
     if (result.status === "success" || result.status === "sucess") {
-      while (thread.res.length < (result.cachedInfo?.resCount ?? 0)) {
-        thread.res.push({
-          name: "あぼーん",
-          mail: "あぼーん",
-          message: "あぼーん",
-          other: "あぼーん",
-        });
+      const missingCount = (result.cachedInfo?.resCount ?? 0) - thread.res.length;
+      if (missingCount > 0) {
+        // 変更理由: subject.txtの件数は表示補助情報であり、補填レスを本体キャッシュへ混ぜると
+        // 次回読み込みで一瞬だけ誤った「あぼーん」が表示されるため、表示用の配列だけ複製する。
+        displayThread = {
+          ...thread,
+          res: [
+            ...thread.res,
+            ...Array.from({ length: missingCount }, () => ({
+              name: "あぼーん",
+              mail: "あぼーん",
+              message: "あぼーん",
+              other: "あぼーん",
+            })),
+          ],
+        };
       }
     }
     // 変更理由: subject.txt 不在を expired と同一視すると、コアの dat 落ち判定が
     // 不正確になるため、画面側が自動更新停止の要否を選べる独立した状態として保持する。
     this.missingFromSubject = isMissingFromSubject(result.status);
+    return displayThread;
   }
 
   /** パース済みスレッドの内容をインスタンスフィールドに反映する */

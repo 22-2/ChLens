@@ -28,6 +28,7 @@ import {
 import { hasExternalLink, hasImage, hasVideo } from "src/view/browser/utils/message-filter";
 import { normalizePopularReplyThreshold } from "src/view/browser/utils/popular-filter";
 import { buildIndexes } from "src/view/browser/utils/thread-index";
+import { stripTrailingSyntheticAbobunResponses } from "src/view/browser/utils/thread-response-cache";
 import { filterThreadResponses } from "src/view/browser/utils/thread-search";
 
 // 変更理由: タブ再マウント時やブラウザ再起動後に「読み込み中」しか表示されないのを防ぐため、
@@ -41,7 +42,7 @@ const getThreadCache = async (threadUrl: string): Promise<IRes[] | null> => {
     const entry = (await store.get(threadCacheKey(threadUrl))) as
       | { url: string; data: IRes[] }
       | undefined;
-    return entry?.data ?? null;
+    return entry?.data ? stripTrailingSyntheticAbobunResponses(entry.data) : null;
   } catch {
     return null;
   }
@@ -50,7 +51,10 @@ const getThreadCache = async (threadUrl: string): Promise<IRes[] | null> => {
 const setThreadCache = async (threadUrl: string, responses: IRes[]): Promise<void> => {
   try {
     const store = platform.storage.getStore(UI_CACHE_STORE);
-    await store.put({ url: threadCacheKey(threadUrl), data: responses });
+    await store.put({
+      url: threadCacheKey(threadUrl),
+      data: stripTrailingSyntheticAbobunResponses(responses),
+    });
   } catch (error) {
     console.error("[useThreadData] cache save failed:", error);
   }
@@ -176,7 +180,10 @@ export function useThreadData(
             if (!isCurrentRequest()) {
               return;
             }
-            if (cached.res) {
+            const cachedResponses = cached.res
+              ? stripTrailingSyntheticAbobunResponses(cached.res)
+              : [];
+            if (cachedResponses.length > 0) {
               setResponses((currentResponses) => {
                 // 変更理由: 手動更新では表示中のレスより古いキャッシュが先に届くため、
                 // 取得中にキャッシュへ戻すとレス一覧の高さとスクロール位置が一瞬巻き戻る。
@@ -184,7 +191,7 @@ export function useThreadData(
                 if (forceUpdate && currentResponses.length > 0) {
                   return currentResponses;
                 }
-                return cached.res;
+                return cachedResponses;
               });
             }
             if (cached.title && !titleUpdatedRef.current) {

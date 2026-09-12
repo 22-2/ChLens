@@ -44,6 +44,10 @@ interface ThreadInternals {
     noChangeFlg: boolean;
   };
   _prepareCache: () => Promise<{ hasCache: boolean; needFetch: boolean }>;
+  _padAbobunIfNeeded: (
+    thread: ParsedThread,
+    result: { status: string; cachedInfo?: { resCount: number } },
+  ) => ParsedThread;
 }
 
 describe("Thread", () => {
@@ -77,5 +81,43 @@ describe("Thread", () => {
     await expect(thread.get(true)).rejects.toBeUndefined();
 
     expect(thread.missingFromSubject).toBe(true);
+  });
+
+  it("subjectの件数補填を表示用コピーへ限定し、実データを変更しない", () => {
+    const thread = new Thread("https://example.com/test/read.cgi/board/1000000000/");
+    const testableThread = thread as unknown as ThreadInternals;
+    const parsedThread: ParsedThread = {
+      title: "テストスレッド",
+      res: [
+        {
+          name: "名無し",
+          mail: "",
+          message: "本文",
+          other: "日時",
+        },
+      ],
+    };
+
+    const displayThread = testableThread._padAbobunIfNeeded(parsedThread, {
+      status: "success",
+      cachedInfo: { resCount: 3 },
+    });
+
+    expect(parsedThread.res).toHaveLength(1);
+    expect(displayThread.res).toHaveLength(3);
+    expect(displayThread.res.slice(1)).toEqual([
+      {
+        name: "あぼーん",
+        mail: "あぼーん",
+        message: "あぼーん",
+        other: "あぼーん",
+      },
+      {
+        name: "あぼーん",
+        mail: "あぼーん",
+        message: "あぼーん",
+        other: "あぼーん",
+      },
+    ]);
   });
 });
