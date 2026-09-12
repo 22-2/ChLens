@@ -38,6 +38,9 @@
     "security": {
       "csp": {
         "default-src": "'self' customprotocol: asset:",
+        "img-src": "'self' customprotocol: asset: http://* https://* data: blob:",
+        "media-src": "'self' customprotocol: asset: http://* https://* blob:",
+        "frame-src": "'self' customprotocol: asset: http://* https://* blob:",
         "connect-src": "ipc: http://ipc.localhost https://ipc.localhost",
         "worker-src": "'self' blob:",
         "script-src": "'self' 'wasm-unsafe-eval'"
