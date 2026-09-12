@@ -20,6 +20,8 @@ import { classifyWriteResult, type WriteResultMessage } from "src/view/browser/u
 // -----------------------------------------------------------------------
 const NAME_KEY = "chlens_write_name";
 const MAIL_KEY = "chlens_write_mail";
+// sageの切り替えは投稿ごとではなく設定画面で管理し、パネルを簡潔に保つ。
+const SAGE_CONFIG_KEY = "sage_flag";
 // cs_write.js が ping に対して期待する応答文字列
 const PONG_MSG = "write_iframe_pong";
 // postMessage を受け取れない環境でも「書き込み中...」で固着しないための上限待機時間
@@ -201,7 +203,7 @@ export function useWrite(threadUrl: string): UseWriteResult {
   const [mail, setMailState] = useState(
     () => getStore2String(MAIL_KEY) ?? container.config.get("default_mail") ?? "",
   );
-  const [sage, setSage] = useState(false);
+  const [sage, setSage] = useState(() => container.config.get(SAGE_CONFIG_KEY) === "on");
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState<WriteStatus>("idle");
   const [statusText, setStatusText] = useState("");
@@ -214,6 +216,20 @@ export function useWrite(threadUrl: string): UseWriteResult {
   useEffect(() => {
     statusRef.current = status;
   }, [status]);
+
+  useEffect(() => {
+    const handleConfigUpdated = ({ key }: { key?: string }) => {
+      if (key !== SAGE_CONFIG_KEY) {
+        return;
+      }
+      setSage(container.config.get(SAGE_CONFIG_KEY) === "on");
+    };
+
+    container.message.on("config_updated", handleConfigUpdated);
+    return () => {
+      container.message.off("config_updated", handleConfigUpdated);
+    };
+  }, []);
 
   const clearSubmitWatchdog = useCallback(() => {
     const timerId = submitWatchdogTimerRef.current;
@@ -232,9 +248,10 @@ export function useWrite(threadUrl: string): UseWriteResult {
       }
 
       pendingSubmittedWriteRef.current = null;
-      setStatus("idle");
-      // 変更理由: 一部環境で iframe 側の postMessage が欠落することがあり、
-      // その場合も入力UIを復帰させて再試行・継続操作できるようにする。
+      console.error("書き込み結果の通知を受信できませんでした");
+      // 変更理由: 通知欠落は投稿成否を確認できない失敗なので、通常のidleへ戻すと
+      // 警告がボタン下へ残り、共通の失敗ダイアログにも表示されなくなる。
+      setStatus("error");
       setStatusText("書き込み結果の通知を受信できなかったため待機を解除しました");
     }, SUBMIT_WATCHDOG_MS);
   }, [clearSubmitWatchdog]);
@@ -375,7 +392,16 @@ export function useWrite(threadUrl: string): UseWriteResult {
       armSubmitWatchdog();
     }
 
-    await setupHeaderModifier(formData.action);
+    try {
+      await setupHeaderModifier(formData.action);
+    } catch (error) {
+      console.error("書き込み用リクエストヘッダーの設定に失敗しました:", error);
+      handleWriteResult({
+        type: "error",
+        message: error instanceof Error ? error.message : String(error),
+      });
+      return;
+    }
 
     if (useTauriHttp) {
       try {
@@ -392,10 +418,8 @@ export function useWrite(threadUrl: string): UseWriteResult {
 
     const iframe = iframeRef.current;
     if (!iframe) {
-      clearSubmitWatchdog();
-      pendingSubmittedWriteRef.current = null;
-      setStatus("idle");
-      setStatusText("書き込みフォームを初期化できませんでした");
+      console.error("書き込みフォームのiframeを初期化できませんでした");
+      handleWriteResult({ type: "error", message: "書き込みフォームを初期化できませんでした" });
       return;
     }
 
@@ -407,7 +431,14 @@ export function useWrite(threadUrl: string): UseWriteResult {
     const onLoad = () => {
       iframe.removeEventListener("load", onLoad);
       const doc = iframe.contentDocument;
-      if (!doc) return;
+      if (!doc) {
+        console.error("書き込みフォームのiframe文書を取得できませんでした");
+        handleWriteResult({
+          type: "error",
+          message: "書き込みフォームを初期化できませんでした",
+        });
+        return;
+      }
 
       const form = doc.createElement("form");
       form.acceptCharset = formData.charset;

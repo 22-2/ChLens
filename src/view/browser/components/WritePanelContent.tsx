@@ -6,6 +6,7 @@ import { useWrite } from "src/view/browser/hooks/use-write";
 import { Dialog } from "src/view/browser/ui/Dialog";
 
 const WRITE_SUBMIT_CTRL_ENTER_KEY = "write_submit_ctrl_enter";
+const WRITE_CLOSE_PANEL_AFTER_SUBMIT_KEY = "write_close_panel_after_submit";
 
 export const WritePanelContent: React.FC = () => {
   const { currentPage } = useTabStore();
@@ -17,6 +18,9 @@ export const WritePanelContent: React.FC = () => {
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const [submitWithCtrlEnter, setSubmitWithCtrlEnter] = useState(
     () => container.config.get(WRITE_SUBMIT_CTRL_ENTER_KEY) === "on",
+  );
+  const [closePanelAfterSubmit, setClosePanelAfterSubmit] = useState(
+    () => container.config.get(WRITE_CLOSE_PANEL_AFTER_SUBMIT_KEY) === "on",
   );
 
   const {
@@ -30,7 +34,6 @@ export const WritePanelContent: React.FC = () => {
     iframeRef,
     setName,
     setMail,
-    setSage,
     setMessage,
     submit,
     handleSubmit,
@@ -55,10 +58,11 @@ export const WritePanelContent: React.FC = () => {
 
   useEffect(() => {
     const handleConfigUpdated = ({ key }: { key?: string }) => {
-      if (key !== WRITE_SUBMIT_CTRL_ENTER_KEY) {
-        return;
+      if (key === WRITE_SUBMIT_CTRL_ENTER_KEY) {
+        setSubmitWithCtrlEnter(container.config.get(WRITE_SUBMIT_CTRL_ENTER_KEY) === "on");
+      } else if (key === WRITE_CLOSE_PANEL_AFTER_SUBMIT_KEY) {
+        setClosePanelAfterSubmit(container.config.get(WRITE_CLOSE_PANEL_AFTER_SUBMIT_KEY) === "on");
       }
-      setSubmitWithCtrlEnter(container.config.get(WRITE_SUBMIT_CTRL_ENTER_KEY) === "on");
     };
 
     container.message.on("config_updated", handleConfigUpdated);
@@ -66,6 +70,16 @@ export const WritePanelContent: React.FC = () => {
       container.message.off("config_updated", handleConfigUpdated);
     };
   }, []);
+
+  useEffect(() => {
+    if (status !== "success" || !closePanelAfterSubmit) {
+      return;
+    }
+
+    // 変更理由: 投稿成功を受け取った後だけ閉じることで、通信失敗や確認画面の途中で
+    // 入力内容を隠さず、設定をONにした利用者の連続投稿だけを短くできる。
+    closePanel();
+  }, [closePanel, closePanelAfterSubmit, status]);
 
   useEffect(() => {
     if (!writePanelInsertRequest) {
@@ -88,11 +102,6 @@ export const WritePanelContent: React.FC = () => {
     const caretPosition = nextMessage.length;
     textarea.setSelectionRange(caretPosition, caretPosition);
   }, [clearWritePanelInsertRequest, message, setMessage, writePanelInsertRequest]);
-
-  const handleSubmitWithCtrlEnterChange = useCallback((checked: boolean) => {
-    setSubmitWithCtrlEnter(checked);
-    void container.config.set(WRITE_SUBMIT_CTRL_ENTER_KEY, checked ? "on" : "off");
-  }, []);
 
   const handleTextareaKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -156,29 +165,11 @@ export const WritePanelContent: React.FC = () => {
                 <input
                   className="write-panel__input"
                   type="text"
-                  value={mail}
+                  value={sage ? "sage" : mail}
                   onChange={(e) => setMail(e.target.value)}
                   disabled={isSubmitting || sage}
                   placeholder=""
                 />
-              </label>
-              <label className="write-panel__sage">
-                <input
-                  type="checkbox"
-                  checked={sage}
-                  onChange={(e) => setSage(e.target.checked)}
-                  disabled={isSubmitting}
-                />
-                sage
-              </label>
-              <label className="write-panel__sage">
-                <input
-                  type="checkbox"
-                  checked={submitWithCtrlEnter}
-                  onChange={(e) => handleSubmitWithCtrlEnterChange(e.target.checked)}
-                  disabled={isSubmitting}
-                />
-                Ctrl+Enterで書き込む
               </label>
             </div>
             <div className="write-panel__body-row">
@@ -208,7 +199,7 @@ export const WritePanelContent: React.FC = () => {
                     再入力
                   </button>
                 )}
-                {statusText && (
+                {statusText && status !== "error" && (
                   <span
                     className={`write-panel__status write-panel__status--${status}`}
                     title={statusText}

@@ -94,6 +94,8 @@ export default class Config {
     // 変更理由: 展開幅の既定はタイトルが省略されにくい208pxとする。
     ["tab_bar_width", "208"],
     ["write_submit_ctrl_enter", "off"],
+    // 変更理由: 書き込み後のパネルは利用者が明示的に選んだ場合だけ閉じ、既存の操作感を保つ。
+    ["write_close_panel_after_submit", "off"],
     // コメントOverlayの設定はTauri版の実況開始時に読み込み、Browser版の既存挙動には影響させない。
     // speedキーは既存設定との互換性のため残し、新規値はコメントの通過時間（秒）として保存する。
     // 文字サイズは表示倍率を含む描画側の共通コード定数で管理し、保存値による実機差を作らない。

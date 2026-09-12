@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 const mocks = vi.hoisted(() => ({
   clearWritePanelInsertRequest: vi.fn(),
+  closePanel: vi.fn(),
   message: "本文",
   writePanelInsertRequest: null as { id: number; text: string } | null,
   status: "idle" as "idle" | "submitting" | "confirm" | "success" | "error",
@@ -35,6 +36,7 @@ vi.mock("src/view/browser/hooks/use-bottom-panel", () => ({
   useBottomPanel: () => ({
     writePanelInsertRequest: mocks.writePanelInsertRequest,
     clearWritePanelInsertRequest: mocks.clearWritePanelInsertRequest,
+    closePanel: mocks.closePanel,
   }),
 }));
 
@@ -64,6 +66,7 @@ describe("WritePanelContent", () => {
 
   beforeEach(() => {
     mocks.clearWritePanelInsertRequest.mockClear();
+    mocks.closePanel.mockClear();
     mocks.message = "本文";
     mocks.writePanelInsertRequest = null;
     mocks.status = "idle";
@@ -117,6 +120,13 @@ describe("WritePanelContent", () => {
     expect(mocks.submit).not.toHaveBeenCalled();
   });
 
+  it("Ctrl+Enterとsageの操作欄をパネル内に表示しない", () => {
+    render(<WritePanelContent />);
+
+    expect(screen.queryByText("Ctrl+Enterで書き込む")).not.toBeInTheDocument();
+    expect(screen.queryByText("sage", { selector: "label" })).not.toBeInTheDocument();
+  });
+
   it("右クリック返信の挿入要求が来たら既存本文へ追記する", async () => {
     mocks.writePanelInsertRequest = {
       id: 1,
@@ -157,5 +167,26 @@ describe("WritePanelContent", () => {
 
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByRole("alert")).toHaveTextContent("書き込みに失敗しました");
+  });
+
+  it("書き込み成功時に設定がONならパネルを閉じる", () => {
+    configMock.get = vi.fn((key: string) =>
+      key === "write_close_panel_after_submit" ? "on" : "off",
+    );
+    mocks.status = "success";
+
+    render(<WritePanelContent />);
+
+    expect(mocks.closePanel).toHaveBeenCalledTimes(1);
+  });
+
+  it("書き込み失敗の本文をボタン下へ重ねて表示しない", () => {
+    mocks.status = "error";
+    mocks.statusText = "書き込み結果を確認できませんでした";
+
+    render(<WritePanelContent />);
+
+    expect(screen.queryByText(mocks.statusText, { selector: "span" })).not.toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(mocks.statusText);
   });
 });

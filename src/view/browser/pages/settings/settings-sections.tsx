@@ -169,6 +169,19 @@ const ALL_SETTINGS_SECTIONS = [
         kind: "boolean",
         key: "write_submit_ctrl_enter",
         title: "Ctrl+Enterで書き込む",
+        description: "本文入力中にCtrl+Enter（Macは⌘+Enter）で投稿します。",
+      },
+      {
+        kind: "boolean",
+        key: "sage_flag",
+        title: "メール欄をsageにする",
+        description: "ONにすると、メール欄へsageを自動設定して投稿します。",
+      },
+      {
+        kind: "boolean",
+        key: "write_close_panel_after_submit",
+        title: "書き込み後にパネルを閉じる",
+        description: "投稿が成功したときだけ、下部の書き込みパネルを閉じます。",
       },
       // {
       //   kind: "divider",

@@ -29,6 +29,10 @@ vi.mock("src/service-container/index", () => ({
     config: {
       get: vi.fn(() => ""),
     },
+    message: {
+      on: vi.fn(),
+      off: vi.fn(),
+    },
   },
 }));
 
