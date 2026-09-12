@@ -9,7 +9,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { platform } from "src/app";
 import { container } from "src/service-container/index";
 import type { IRes, IThreadDetail } from "src/service-container/interfaces";
 import { useIsNgTemporarilyDisabled, useNgDisplayMode } from "src/view/browser/hooks/use-ng-status";
@@ -25,40 +24,14 @@ import {
   restoreRootSelection,
   type RootSelectionSnapshot,
 } from "src/view/browser/utils/dom-selection";
-import { hasExternalLink, hasImage, hasVideo } from "src/view/browser/utils/message-filter";
 import { normalizePopularReplyThreshold } from "src/view/browser/utils/popular-filter";
+import {
+  getThreadResponseCache,
+  setThreadResponseCache,
+} from "src/view/browser/utils/thread-data-cache";
+import { deriveThreadData } from "src/view/browser/utils/thread-data-derived";
 import { buildIndexes } from "src/view/browser/utils/thread-index";
 import { stripTrailingSyntheticAbobunResponses } from "src/view/browser/utils/thread-response-cache";
-import { filterThreadResponses } from "src/view/browser/utils/thread-search";
-
-// 変更理由: タブ再マウント時やブラウザ再起動後に「読み込み中」しか表示されないのを防ぐため、
-// 前回の取得結果をIDBに永続化し、新しいデータの取得中は古い結果を表示し続ける。
-const UI_CACHE_STORE = "UICache";
-const threadCacheKey = (threadUrl: string) => `thread:${threadUrl}`;
-
-const getThreadCache = async (threadUrl: string): Promise<IRes[] | null> => {
-  try {
-    const store = platform.storage.getStore(UI_CACHE_STORE);
-    const entry = (await store.get(threadCacheKey(threadUrl))) as
-      | { url: string; data: IRes[] }
-      | undefined;
-    return entry?.data ? stripTrailingSyntheticAbobunResponses(entry.data) : null;
-  } catch {
-    return null;
-  }
-};
-
-const setThreadCache = async (threadUrl: string, responses: IRes[]): Promise<void> => {
-  try {
-    const store = platform.storage.getStore(UI_CACHE_STORE);
-    await store.put({
-      url: threadCacheKey(threadUrl),
-      data: stripTrailingSyntheticAbobunResponses(responses),
-    });
-  } catch (error) {
-    console.error("[useThreadData] cache save failed:", error);
-  }
-};
 
 interface ThreadData {
   responses: IRes[];
@@ -214,7 +187,7 @@ export function useThreadData(
           return;
         }
         setResponses(result.res);
-        void setThreadCache(page.threadUrl, result.res);
+        void setThreadResponseCache(page.threadUrl, result.res);
         setExpired(result.expired ?? false);
         setMissingFromSubject(result.missingFromSubject ?? false);
         setError(result.message || null);
@@ -244,7 +217,7 @@ export function useThreadData(
   // 変更理由: IDBキャッシュから前回のレスを復元し、新しいデータの取得中は古い結果を表示し続ける。
   useEffect(() => {
     void (async () => {
-      const cached = await getThreadCache(page.threadUrl);
+      const cached = await getThreadResponseCache(page.threadUrl);
       if (cached && cached.length > 0) {
         setResponses(cached);
       }
@@ -288,65 +261,27 @@ export function useThreadData(
     };
   }, [page.title, page.threadUrl, setResponses]);
 
-  const visibleResponses = useMemo(() => {
-    // 変更理由: NGレスはResItemがプレースホルダーとして描画するため、一覧DOMから除外すると
-    // `anchor--ng-target` のジャンプ先が消えてスクロールできなくなる。内容の伏せ方はResItemへ
-    // 集約し、ここでは全レスを残して通常レスと同じジャンプ先を確保する。
-    return responses;
-  }, [responses]);
-
-  const indexes = useMemo(() => {
-    // hard-ngでは非表示レスを返信数・返信ツリーへ流さず、存在を返信UIから完全に隠す。
-    return buildIndexes(responses, {
-      excludeHardNgResponses: ngDisplayMode === "hard-ng" && !isNgTemporarilyDisabled,
-    });
-  }, [isNgTemporarilyDisabled, ngDisplayMode, responses]);
-
-  const filteredResponses = useMemo(() => {
-    let list = visibleResponses;
-
-    if (filter !== "all") {
-      list = list.filter((res) => {
-        switch (filter) {
-          case "popular":
-            return (indexes.repIndex.get(res.num)?.size ?? 0) >= popularReplyThreshold;
-          case "image":
-            return hasImage(res.message);
-          case "video":
-            return hasVideo(res.message);
-          case "link":
-            return hasExternalLink(res.message);
-        }
-      });
-    }
-
-    if (searchQuery) {
-      list = filterThreadResponses(list, searchQuery, searchTarget);
-    }
-
-    return list;
-  }, [
-    visibleResponses,
-    filter,
-    popularReplyThreshold,
-    searchQuery,
-    searchTarget,
-    indexes.repIndex,
-  ]);
-
-  const idPositions = useMemo(() => {
-    const positions = new Map<number, number>();
-    const counters = new Map<string, number>();
-
-    for (const res of visibleResponses) {
-      if (!res.id) continue;
-      const count = (counters.get(res.id) ?? 0) + 1;
-      counters.set(res.id, count);
-      positions.set(res.num, count);
-    }
-
-    return positions;
-  }, [visibleResponses]);
+  const { visibleResponses, indexes, filteredResponses, idPositions } = useMemo(
+    () =>
+      deriveThreadData({
+        responses,
+        filter,
+        popularReplyThreshold,
+        searchQuery,
+        searchTarget,
+        isNgTemporarilyDisabled,
+        ngDisplayMode,
+      }),
+    [
+      filter,
+      isNgTemporarilyDisabled,
+      ngDisplayMode,
+      popularReplyThreshold,
+      responses,
+      searchQuery,
+      searchTarget,
+    ],
+  );
 
   return {
     responses,
