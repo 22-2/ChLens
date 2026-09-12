@@ -296,6 +296,9 @@ export default defineConfig(({ mode }) => {
       alias: {
         src: path.resolve(__dirname, "./src"),
         packages: path.resolve(__dirname, "./packages"),
+        // 変更理由: Tauri版のShift_JIS/EUC-JPフォームエンコードが使うiconv-liteは
+        // NodeのBufferを参照するため、WebViewでも同じ実装を解決できるようにする。
+        buffer: path.resolve(__dirname, "./node_modules/buffer/index.js"),
         // Chlens側もLive側と同じ共有rules sourceを解決し、評価器の二重実装を防ぐ。
         "@chlen/ch-lib": path.resolve(__dirname, "./packages/ch-lib/src/index.ts"),
         "webextension-polyfill":

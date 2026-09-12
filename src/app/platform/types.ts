@@ -39,12 +39,20 @@ export interface HttpResponse {
   url: string;
 }
 
+export interface WriteFormData {
+  action: string;
+  charset: string;
+  input: Record<string, string>;
+  textarea: Record<string, string>;
+}
+
 export interface HttpRequestOptions {
   method?: string;
   headers?: Record<string, string>;
   // 実装 (XHR.send / tauriFetch) がそのまま受け取れる型に限定する。
   // unknown だと各実装側でキャストが必要になり型エラーの原因になっていた。
-  body?: string;
+  // Tauri版の書き込みでは、Shift_JIS/EUC-JPのバイト列をそのまま送る必要がある。
+  body?: string | ArrayBuffer;
   timeout?: number;
   mimeType?: string;
 }

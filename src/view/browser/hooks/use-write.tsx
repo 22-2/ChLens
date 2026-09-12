@@ -1,6 +1,8 @@
 import { type FormEvent, type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import { platform } from "src/app";
 import { wait } from "src/app/Defer";
+import { isTauriRuntime } from "src/app/platform/runtime";
+import type { HttpResponse, WriteFormData } from "src/app/platform/types";
 import { getStore2String, setStore2String } from "src/app/Store2Storage";
 import { URL as ChURL } from "src/core/URL";
 import { container } from "src/service-container/index";
@@ -11,6 +13,7 @@ import {
   type PendingWritePayload,
   resolveWriteSuccessDelayMs,
 } from "src/view/browser/utils/thread-write-sync";
+import { classifyWriteResult, type WriteResultMessage } from "src/view/browser/utils/write-result";
 
 // -----------------------------------------------------------------------
 // 定数
@@ -26,13 +29,6 @@ const SUBMIT_WATCHDOG_MS = 20_000;
 // 型
 // -----------------------------------------------------------------------
 export type WriteStatus = "idle" | "submitting" | "confirm" | "success" | "error";
-
-interface WriteFormData {
-  action: string;
-  charset: string;
-  input: Record<string, string>;
-  textarea: Record<string, string>;
-}
 
 export interface UseWriteResult {
   name: string;
@@ -144,6 +140,55 @@ async function setupHeaderModifier(formAction: string): Promise<void> {
   await platform.http.setupWriteHeaders(formAction);
 }
 
+function parseTauriWriteResult(
+  response: HttpResponse,
+  fallbackUrl: string,
+): WriteResultMessage | null {
+  const resultDocument = new DOMParser().parseFromString(response.body, "text/html");
+  const refreshContent = Array.from(resultDocument.getElementsByTagName("meta"))
+    .find((element) => element.httpEquiv?.toLowerCase() === "refresh")
+    ?.getAttribute("content");
+  const fontText = Array.from(
+    resultDocument.getElementsByTagName("font"),
+    (font) => font.textContent ?? "",
+  ).join("\n");
+
+  return classifyWriteResult({
+    url: response.url || fallbackUrl,
+    title: resultDocument.title,
+    bodyText: resultDocument.body?.textContent ?? resultDocument.documentElement.textContent ?? "",
+    fontText,
+    refreshContent: refreshContent ?? undefined,
+  });
+}
+
+async function submitTauriWrite(formData: WriteFormData): Promise<WriteResultMessage> {
+  const { encodeWriteForm } = await import("src/app/platform/tauri/WriteForm");
+  const actionOrigin = new URL(formData.action).origin;
+  const response = await platform.http.fetch(formData.action, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      // 変更理由: Tauri HTTPはWebViewのOriginを自動付与するため、
+      // 拡張機能版のdeclarativeNetRequestと同じ投稿先Originへ明示的に揃える。
+      Origin: actionOrigin,
+      Referer: formData.action,
+    },
+    body: encodeWriteForm(formData),
+    mimeType: `text/html; charset=${formData.charset}`,
+  });
+
+  const result = parseTauriWriteResult(response, formData.action);
+  if (result != null) {
+    return result;
+  }
+
+  return {
+    type: "error",
+    message: `書き込み結果を判定できませんでした (HTTP ${response.status})`,
+  };
+}
+
 // -----------------------------------------------------------------------
 // フック本体
 // -----------------------------------------------------------------------
@@ -219,14 +264,9 @@ export function useWrite(threadUrl: string): UseWriteResult {
     return () => clearTimeout(id);
   }, [status]);
 
-  // iframe からの postMessage を処理する (cs_write.js との通信)
-  useEffect(() => {
-    const handleMessage = (e: MessageEvent) => {
-      const data = e.data as { type?: string; message?: unknown };
-      switch (data?.type) {
-        case "ping":
-          (e.source as Window | null)?.postMessage(PONG_MSG, "*");
-          break;
+  const handleWriteResult = useCallback(
+    (data: WriteResultMessage) => {
+      switch (data.type) {
         case "success":
           clearSubmitWatchdog();
           setStatus("success");
@@ -266,10 +306,41 @@ export function useWrite(threadUrl: string): UseWriteResult {
           );
           break;
       }
+    },
+    [clearSubmitWatchdog, dispatch],
+  );
+
+  // iframe からの postMessage を処理する (cs_write.js との通信)
+  useEffect(() => {
+    const handleMessage = (e: MessageEvent) => {
+      const data = e.data as { type?: string; message?: unknown };
+      switch (data?.type) {
+        case "ping":
+          (e.source as Window | null)?.postMessage(PONG_MSG, "*");
+          break;
+        case "success":
+          handleWriteResult({
+            type: "success",
+            message:
+              typeof data.message === "number" || typeof data.message === "string"
+                ? data.message
+                : undefined,
+          });
+          break;
+        case "confirm":
+          handleWriteResult({ type: "confirm" });
+          break;
+        case "error":
+          handleWriteResult({
+            type: "error",
+            message: typeof data.message === "string" ? data.message : undefined,
+          });
+          break;
+      }
     };
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [clearSubmitWatchdog, dispatch]);
+  }, [handleWriteResult]);
 
   const submit = useCallback(async () => {
     if (!canSubmit) return;
@@ -299,9 +370,25 @@ export function useWrite(threadUrl: string): UseWriteResult {
 
     setStatus("submitting");
     setStatusText("書き込み中...");
-    armSubmitWatchdog();
+    const useTauriHttp = isTauriRuntime();
+    if (!useTauriHttp) {
+      armSubmitWatchdog();
+    }
 
     await setupHeaderModifier(formData.action);
+
+    if (useTauriHttp) {
+      try {
+        handleWriteResult(await submitTauriWrite(formData));
+      } catch (error) {
+        console.error("Tauri版の書き込みに失敗しました:", error);
+        handleWriteResult({
+          type: "error",
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+      return;
+    }
 
     const iframe = iframeRef.current;
     if (!iframe) {
@@ -347,7 +434,17 @@ export function useWrite(threadUrl: string): UseWriteResult {
 
     iframe.addEventListener("load", onLoad);
     iframe.src = "about:blank";
-  }, [armSubmitWatchdog, canSubmit, clearSubmitWatchdog, threadUrl, name, mail, sage, message]);
+  }, [
+    armSubmitWatchdog,
+    canSubmit,
+    clearSubmitWatchdog,
+    handleWriteResult,
+    threadUrl,
+    name,
+    mail,
+    sage,
+    message,
+  ]);
 
   const handleSubmit = useCallback(
     async (e: FormEvent) => {

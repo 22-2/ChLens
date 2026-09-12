@@ -24,7 +24,9 @@ log = "0.4"
 # releaseビルドでもDevToolsを開けるようにするため有効化
 tauri = { version = "2.11.0", features = ["devtools"] }
 tauri-plugin-log = "2"
-tauri-plugin-http = "2"
+# 書き込み先が要求するOriginを直接POSTへ設定するため、HTTPプラグインの安全な既定値による
+# TauriアプリOriginの自動付与を上書きできるようにする。
+tauri-plugin-http = { version = "2", features = ["unsafe-headers"] }
 tauri-plugin-sql = { version = "2", features = ["sqlite"] }
 
 [[bin]]
