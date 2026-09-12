@@ -38,7 +38,7 @@ type AddPopupContextMenu = (
 interface UseThreadResContextMenuParams {
   addPopupContextMenu: AddPopupContextMenu;
   closePopup: () => void;
-  fetchThread: () => Promise<void> | void;
+  fetchThread: (forceUpdate?: boolean) => Promise<void> | void;
   filter: ThreadFilter;
   filteredResponses: IRes[];
   handleAnchorClick: (resNum: number) => void;
@@ -275,7 +275,9 @@ export function useThreadResContextMenu({
           label: "スレッドを更新",
           icon: <RotateCw size={14} />,
           onSelect: () => {
-            void fetchThread();
+            // 変更理由: コンテキストメニューの明示的な更新でも、本文が正常取得できる
+            // dat落ちを見逃さないようsubject.txtを必ず再確認する。
+            void fetchThread(true);
           },
         },
         {

@@ -64,8 +64,8 @@ const BoardService = {
     };
   },
 
-  async getCachedResCount(url: string): Promise<unknown> {
-    return Board.getCachedResCount(url);
+  async getCachedResCount(url: string, options?: { forceUpdate?: boolean }): Promise<unknown> {
+    return Board.getCachedResCount(url, options);
   },
 };
 

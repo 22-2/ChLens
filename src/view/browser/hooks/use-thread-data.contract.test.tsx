@@ -253,6 +253,12 @@ describe("useThreadData Phase 0 contracts", () => {
     rerender({ refreshKey: 2 });
     await waitFor(() => expect(getThreadMock).toHaveBeenCalledTimes(3));
 
+    // 変更理由: RELOADはThreadPageを再マウントせずrefreshKeyだけを進めるため、
+    // 更新世代のeffectがsubject.txt再確認を明示的に指定する契約を固定する。
+    expect(getThreadMock.mock.calls[0][1]).toMatchObject({ forceUpdate: false });
+    expect(getThreadMock.mock.calls[1][1]).toMatchObject({ forceUpdate: true });
+    expect(getThreadMock.mock.calls[2][1]).toMatchObject({ forceUpdate: true });
+
     act(() => {
       secondRequest.resolve({ url: THREAD_URL, title: "Fixture thread", res: RESPONSES });
     });

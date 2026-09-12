@@ -77,4 +77,40 @@ describe("Board.getCachedResCount", () => {
       Board.getCachedResCount("https://egg.5ch.io/test/read.cgi/software/1000000002/"),
     ).rejects.toThrow("板のスレ一覧にそのスレが存在しません");
   });
+
+  it("強制更新時はキャッシュ上で見つかるスレッドもsubject.txtで再確認する", async () => {
+    cache.data = "1000000002.dat<>古いスレ一覧 (1)\n";
+    cache.lastUpdated = Date.now();
+    fetchMock.mockResolvedValue({
+      status: 200,
+      headers: {},
+      body: "1000000003.dat<>現在のスレ一覧 (3)\n",
+      url: "https://egg.5ch.io/software/subject.txt",
+    });
+
+    const result = await Board.getCachedResCount(
+      "https://egg.5ch.io/test/read.cgi/software/1000000003/",
+      { forceUpdate: true },
+    );
+
+    expect(result.resCount).toBe(3);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("強制更新でsubject.txtから消えたスレッドを検知する", async () => {
+    cache.data = "1000000002.dat<>古いスレ一覧 (1)\n";
+    cache.lastUpdated = Date.now();
+    fetchMock.mockResolvedValue({
+      status: 200,
+      headers: {},
+      body: "1000000003.dat<>別のスレッド (3)\n",
+      url: "https://egg.5ch.io/software/subject.txt",
+    });
+
+    await expect(
+      Board.getCachedResCount("https://egg.5ch.io/test/read.cgi/software/1000000002/", {
+        forceUpdate: true,
+      }),
+    ).rejects.toThrow("板のスレ一覧にそのスレが存在しません");
+  });
 });

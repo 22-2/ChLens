@@ -447,7 +447,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       ) : error && responses.length === 0 ? (
         <div className="page-status page-status--error">
           <p>{error}</p>
-          <button className="page-status__retry" onClick={fetchThread}>
+          <button className="page-status__retry" onClick={() => void fetchThread(true)}>
             再試行
           </button>
         </div>

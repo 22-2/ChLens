@@ -73,7 +73,7 @@ interface ThreadData {
   setSearchQuery: Dispatch<SetStateAction<string>>;
   showSearch: boolean;
   setShowSearch: Dispatch<SetStateAction<boolean>>;
-  fetchThread: () => Promise<void>;
+  fetchThread: (forceUpdate?: boolean) => Promise<void>;
   idPositions: Map<number, number>;
   setResponses: Dispatch<SetStateAction<IRes[]>>;
   messageProtocol: string;
@@ -147,77 +147,80 @@ export function useThreadData(
     }
   }, [page.threadUrl]);
 
-  const fetchThread = useCallback(async () => {
-    const requestId = beginRequest();
-    const isCurrentRequest = () => isLatestRequest(requestId);
+  const fetchThread = useCallback(
+    async (forceUpdate = false) => {
+      const requestId = beginRequest();
+      const isCurrentRequest = () => isLatestRequest(requestId);
 
-    setLoading(true);
-    setError(null);
-    // 変更理由: ThreadPage は別スレへの移動時にも再利用される。取得に失敗した場合でも
-    // 前スレの dat落ち・subject不在表示を残さないよう、取得結果を待たずにリセットする。
-    setExpired(false);
-    setMissingFromSubject(false);
-    titleUpdatedRef.current = false;
+      setLoading(true);
+      setError(null);
+      // 変更理由: ThreadPage は別スレへの移動時にも再利用される。取得に失敗した場合でも
+      // 前スレの dat落ち・subject不在表示を残さないよう、取得結果を待たずにリセットする。
+      setExpired(false);
+      setMissingFromSubject(false);
+      titleUpdatedRef.current = false;
 
-    try {
-      const result = await container.thread.getThread(page.threadUrl, {
-        forceUpdate: refreshKey > 0,
-        onCache: (cached: IThreadDetail) => {
-          // 変更理由: 更新を短時間に連続実行すると、先に開始した取得が後から完了する
-          // ことがある。古い取得結果でレス・タイトル・loading状態を巻き戻さないため、
-          // 最新リクエストのキャッシュ通知だけを画面へ反映する。
-          if (!isCurrentRequest()) {
-            return;
-          }
-          if (cached.res) {
-            setResponses(cached.res);
-          }
-          if (cached.title && !titleUpdatedRef.current) {
-            dispatch({
-              type: "UPDATE_TITLE_FOR_TAB",
-              tabId,
-              title: cached.title,
-            });
-            titleUpdatedRef.current = true;
-          }
-          // 自動更新では cache 描画のあとに本体レスポンスが続くことがある。
-          // ここで loading を下ろすと「更新完了」と誤認して保留中スクロールを捨てるため、
-          // 完了判定は最終 result / finally に寄せる。
-        },
-      });
-
-      // 変更理由: 投稿直後の再取得と手動更新が重なった場合も、最新の取得結果を
-      // 優先して表示し、古いレス数で自動スクロール判定を確定させないようにする。
-      if (!isCurrentRequest()) {
-        return;
-      }
-      setResponses(result.res);
-      void setThreadCache(page.threadUrl, result.res);
-      setExpired(result.expired ?? false);
-      setMissingFromSubject(result.missingFromSubject ?? false);
-      if (result.title && !titleUpdatedRef.current) {
-        dispatch({
-          type: "UPDATE_TITLE_FOR_TAB",
-          tabId,
-          title: result.title,
+      try {
+        const result = await container.thread.getThread(page.threadUrl, {
+          forceUpdate,
+          onCache: (cached: IThreadDetail) => {
+            // 変更理由: 更新を短時間に連続実行すると、先に開始した取得が後から完了する
+            // ことがある。古い取得結果でレス・タイトル・loading状態を巻き戻さないため、
+            // 最新リクエストのキャッシュ通知だけを画面へ反映する。
+            if (!isCurrentRequest()) {
+              return;
+            }
+            if (cached.res) {
+              setResponses(cached.res);
+            }
+            if (cached.title && !titleUpdatedRef.current) {
+              dispatch({
+                type: "UPDATE_TITLE_FOR_TAB",
+                tabId,
+                title: cached.title,
+              });
+              titleUpdatedRef.current = true;
+            }
+            // 自動更新では cache 描画のあとに本体レスポンスが続くことがある。
+            // ここで loading を下ろすと「更新完了」と誤認して保留中スクロールを捨てるため、
+            // 完了判定は最終 result / finally に寄せる。
+          },
         });
+
+        // 変更理由: 投稿直後の再取得と手動更新が重なった場合も、最新の取得結果を
+        // 優先して表示し、古いレス数で自動スクロール判定を確定させないようにする。
+        if (!isCurrentRequest()) {
+          return;
+        }
+        setResponses(result.res);
+        void setThreadCache(page.threadUrl, result.res);
+        setExpired(result.expired ?? false);
+        setMissingFromSubject(result.missingFromSubject ?? false);
+        if (result.title && !titleUpdatedRef.current) {
+          dispatch({
+            type: "UPDATE_TITLE_FOR_TAB",
+            tabId,
+            title: result.title,
+          });
+        }
+        if (result.message) {
+          setError(result.message);
+        }
+      } catch (e) {
+        if (!isCurrentRequest()) {
+          return;
+        }
+        setError(e instanceof Error ? e.message : "スレッドの取得に失敗しました");
+      } finally {
+        // 変更理由: 古いリクエストの finally で loading を下ろすと、最新リクエストが
+        // 通信中でも自動スクロール側が「更新完了」と誤認して保留状態を消費してしまう。
+        if (isCurrentRequest()) {
+          setLoading(false);
+        }
       }
-      if (result.message) {
-        setError(result.message);
-      }
-    } catch (e) {
-      if (!isCurrentRequest()) {
-        return;
-      }
-      setError(e instanceof Error ? e.message : "スレッドの取得に失敗しました");
-    } finally {
-      // 変更理由: 古いリクエストの finally で loading を下ろすと、最新リクエストが
-      // 通信中でも自動スクロール側が「更新完了」と誤認して保留状態を消費してしまう。
-      if (isCurrentRequest()) {
-        setLoading(false);
-      }
-    }
-  }, [dispatch, beginRequest, isLatestRequest, page.threadUrl, refreshKey, setResponses, tabId]);
+    },
+    [dispatch, beginRequest, isLatestRequest, page.threadUrl, setResponses, tabId],
+  );
 
   // 変更理由: IDBキャッシュから前回のレスを復元し、新しいデータの取得中は古い結果を表示し続ける。
   useEffect(() => {
@@ -230,8 +233,9 @@ export function useThreadData(
   }, [page.threadUrl, setResponses]);
 
   useEffect(() => {
-    void fetchThread();
-  }, [fetchThread]);
+    // 初回表示は通常キャッシュを利用し、RELOAD経由の更新世代だけsubject.txtも再確認する。
+    void fetchThread(refreshKey > 0);
+  }, [fetchThread, refreshKey]);
 
   useEffect(() => {
     // NG設定が更新された通知を受け取ったら、現在表示中のレスに対して判定を再実行する。

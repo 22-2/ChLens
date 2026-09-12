@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   dispatch: vi.fn(),
   handleAnchorClick: vi.fn(),
   isAutoRefreshEnabled: false,
+  fetchThread: vi.fn<() => Promise<void>>(),
 }));
 
 vi.mock("src/service-container/index", () => ({
@@ -86,7 +87,7 @@ function HookHarness() {
       setCapturedItems(items);
     },
     closePopup: () => {},
-    fetchThread: async () => {},
+    fetchThread: mocks.fetchThread,
     filter: "all",
     filteredResponses: responses,
     handleAnchorClick: () => {},
@@ -154,6 +155,13 @@ function HookHarness() {
         }}
       >
         toggle-auto-refresh
+      </button>
+      <button
+        onClick={() => {
+          capturedItems.find((item) => item.id === "refresh-thread")?.onSelect?.();
+        }}
+      >
+        refresh-thread
       </button>
     </div>
   );
@@ -242,6 +250,7 @@ describe("useThreadResContextMenu", () => {
     mocks.dispatch.mockReset();
     mocks.handleAnchorClick.mockReset();
     mocks.isAutoRefreshEnabled = false;
+    mocks.fetchThread.mockReset();
   });
 
   it("ID/IPのNG追加は再起動後も有効なDSL形式で保存する", async () => {
@@ -334,6 +343,15 @@ describe("useThreadResContextMenu", () => {
       pageKey: "thread:test",
     });
     expect(mocks.toastInfo).toHaveBeenCalledWith("スレッドの自動更新を停止しました");
+  });
+
+  it("コンテキストメニューの明示的な更新はsubject.txtの再確認を指定する", () => {
+    render(<HookHarness />);
+
+    fireEvent.click(screen.getByRole("button", { name: "open" }));
+    fireEvent.click(screen.getByRole("button", { name: "refresh-thread" }));
+
+    expect(mocks.fetchThread).toHaveBeenCalledWith(true);
   });
 
   it("フィルタ解除後のDOM更新を待って指定レスへジャンプする", async () => {
