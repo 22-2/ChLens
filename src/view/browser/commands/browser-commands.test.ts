@@ -21,7 +21,10 @@ const browserCommandMocks = vi.hoisted(() => {
     estimateToonTokenCountMock: vi.fn<() => number>(),
     getThreadMock: vi.fn(),
     openNextThreadSearchDialogMock: vi.fn<() => Promise<void>>(),
+    parseSikiLogFileMock: vi.fn(),
+    registerSikiLogThreadMock: vi.fn(),
     requestThreadResJumpMock: vi.fn(),
+    selectSikiLogFileMock: vi.fn(),
     removeTabsMock,
     queryTabsMock,
     toastErrorMock: vi.fn(),
@@ -41,7 +44,10 @@ const {
   estimateToonTokenCountMock,
   getThreadMock,
   openNextThreadSearchDialogMock,
+  parseSikiLogFileMock,
+  registerSikiLogThreadMock,
   requestThreadResJumpMock,
+  selectSikiLogFileMock,
   removeTabsMock,
   queryTabsMock,
   toastErrorMock,
@@ -67,6 +73,16 @@ vi.mock("src/view/browser/utils/thread-toon", () => ({
   encodeThreadAsToon: browserCommandMocks.encodeThreadAsToonMock,
   estimateToonTokenCount: browserCommandMocks.estimateToonTokenCountMock,
 }));
+
+vi.mock("src/view/browser/utils/siki-log", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("src/view/browser/utils/siki-log")>();
+  return {
+    ...actual,
+    parseSikiLogFile: browserCommandMocks.parseSikiLogFileMock,
+    registerSikiLogThread: browserCommandMocks.registerSikiLogThreadMock,
+    selectSikiLogFile: browserCommandMocks.selectSikiLogFileMock,
+  };
+});
 
 vi.mock("src/view/browser/utils/thread-read-state", () => ({
   requestThreadResJump: browserCommandMocks.requestThreadResJumpMock,
@@ -120,6 +136,17 @@ describe("browser commands", () => {
     askBoardTitleByUrlMock.mockResolvedValue("Software");
     encodeThreadAsToonMock.mockReturnValue("title: Thread");
     estimateToonTokenCountMock.mockReturnValue(1234);
+    selectSikiLogFileMock.mockResolvedValue(null);
+    parseSikiLogFileMock.mockResolvedValue({
+      title: "Sikiスレッド",
+      threadUrl: "https://example.com/test/read.cgi/board/123/",
+      responses: [],
+    });
+    registerSikiLogThreadMock.mockReturnValue({
+      type: "thread",
+      title: "Sikiスレッド",
+      threadUrl: "https://example.com/test/read.cgi/board/123/?read_crx_siki=1",
+    });
     getThreadMock.mockResolvedValue({
       url: "https://egg.5ch.net/test/read.cgi/software/123/",
       title: "Thread",
@@ -150,7 +177,10 @@ describe("browser commands", () => {
     estimateToonTokenCountMock.mockReset();
     getThreadMock.mockReset();
     openNextThreadSearchDialogMock.mockReset();
+    parseSikiLogFileMock.mockReset();
+    registerSikiLogThreadMock.mockReset();
     requestThreadResJumpMock.mockReset();
+    selectSikiLogFileMock.mockReset();
     removeTabsMock.mockReset();
     queryTabsMock.mockReset();
     toastErrorMock.mockReset();
@@ -172,6 +202,31 @@ describe("browser commands", () => {
     expect(ids).not.toContain("copy.thread-toon");
     expect(ids).not.toContain("page.jump-to-response");
     expect(ids).not.toContain("page.search-next-thread");
+    expect(ids).toContain("navigation.open-siki-log");
+  });
+
+  it("Sikiログを選択すると本文を新しいタブで開く", async () => {
+    const { context, dispatch } = createContext({ type: "home", title: "ホーム" });
+    const file = {
+      name: "thread.json",
+      text: vi.fn<() => Promise<string>>(),
+    } as unknown as File;
+    const page = {
+      type: "thread" as const,
+      title: "Sikiスレッド",
+      threadUrl: "https://example.com/test/read.cgi/board/123/?read_crx_siki=1",
+    };
+    selectSikiLogFileMock.mockResolvedValue(file);
+    registerSikiLogThreadMock.mockReturnValue(page);
+
+    await expect(executeBrowserCommand("navigation.open-siki-log", context)).resolves.toBe(true);
+
+    expect(parseSikiLogFileMock).toHaveBeenCalledWith(file);
+    expect(registerSikiLogThreadMock).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Sikiスレッド" }),
+    );
+    expect(dispatch).toHaveBeenCalledWith({ type: "OPEN_IN_NEW_TAB", page });
+    expect(toastSuccessMock).toHaveBeenCalledWith("Sikiログ「Sikiスレッド」を開きました");
   });
 
   it("閉じたタブがないと再オープンを無効化し、履歴があれば既存actionを送る", async () => {
