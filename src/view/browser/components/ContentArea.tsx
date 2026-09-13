@@ -40,6 +40,17 @@ function buildPageRenderKey(
   }
 }
 
+function shouldStartThreadAutoRefreshAtBottom(tab: Tab): boolean {
+  const page = getCurrentPage(tab);
+  if (page.type !== "thread" || !isAutoRefreshEnabledForPage(tab, page) || tab.currentIndex === 0) {
+    return false;
+  }
+
+  // 変更理由: FOLLOW_NEXT_THREAD だけが自動更新の束縛を次のスレへ引き継ぐため、
+  // 直前もスレッドなら新スレ表示直後の最下部同期が必要な遷移と判定できる。
+  return tab.history[tab.currentIndex - 1]?.type === "thread";
+}
+
 interface TabPageContentProps {
   tab: Tab;
   isActive: boolean;
@@ -93,6 +104,7 @@ const TabPageContent = memo(function TabPageContent({
           isActive={isActive}
           isOverlayTarget={isOverlayTarget}
           isAutoRefreshEnabled={isAutoRefreshEnabledForPage(tab, page)}
+          startAutoRefreshAtBottom={shouldStartThreadAutoRefreshAtBottom(tab)}
           scrollContainerRef={scrollContainerRef}
         />
       );

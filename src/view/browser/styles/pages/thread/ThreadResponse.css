@@ -11,15 +11,19 @@
  * The resolved state indicator preserves the row's existing background for
  * selection, highlights, and heatmap overlays while still making each state
  * visible at a glance. ResItem resolves overlapping flags before applying it.
- * 変更理由: 自分のレスは所有者を示す青、自分への返信は注意を促すオレンジに
- * 割り当て、利用者が「自分」と「自分への反応」を直感的に区別できるようにする。
+ * 変更理由: 自分のレスはEdgeLiveViewerと同じ黄色で囲み、自分への返信は
+ * 注意を促すオレンジに割り当てて、利用者が両者を直感的に区別できるようにする。
  */
 .res--state-ng {
   border-inline-start-color: var(--sys-color-error);
 }
 
 .res--state-own {
-  border-inline-start-color: var(--sys-color-accent);
+  border-inline-start-color: var(--sys-color-warning-border);
+  /* 変更理由: 左端の色だけでは長文レスや横幅の広いレスを見落とすため、
+     行全体を黄色の内側枠で囲み、EdgeLiveViewerと同じ「自分」の視認性を保つ。 */
+  box-shadow: inset 0 0 0 1px var(--sys-color-warning-border);
+  border-radius: var(--sys-radius-sm);
 }
 
 .res--state-reply-to-own {

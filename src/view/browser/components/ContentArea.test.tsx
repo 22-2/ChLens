@@ -57,9 +57,11 @@ vi.mock("src/view/browser/pages/ThreadPage", () => ({
   ThreadPage: ({
     refreshKey,
     isOverlayTarget,
+    startAutoRefreshAtBottom,
   }: {
     refreshKey: number;
     isOverlayTarget: boolean;
+    startAutoRefreshAtBottom: boolean;
   }) => {
     threadPageLifecycle.renderCount += 1;
     // reloadKey はデータ再取得トリガにだけ使い、コンポーネント実体は再マウントさせない。
@@ -81,6 +83,7 @@ vi.mock("src/view/browser/pages/ThreadPage", () => ({
         data-mount-id={String(mountIdRef.current)}
         data-refresh-key={String(refreshKey)}
         data-overlay-target={String(isOverlayTarget)}
+        data-start-auto-refresh-at-bottom={String(startAutoRefreshAtBottom)}
       >
         thread
       </div>
@@ -239,6 +242,34 @@ describe("ContentArea tab switching", () => {
 
     expect(container.querySelector('[data-testid="page-thread"]')).toHaveAttribute(
       "data-overlay-target",
+      "true",
+    );
+  });
+
+  it("次スレへ自動移動したページに最下部開始フラグを渡す", () => {
+    const previousPage: Page = {
+      type: "thread",
+      title: "前スレ",
+      threadUrl: "https://example.com/test/read.cgi/board/123/",
+    };
+    const nextPage: Page = {
+      type: "thread",
+      title: "次スレ",
+      threadUrl: "https://example.com/test/read.cgi/board/456/",
+    };
+    const tab: Tab = {
+      ...createTab("tab-1"),
+      history: [previousPage, nextPage],
+      currentIndex: 1,
+      autoRefreshEnabled: true,
+      autoRefreshPageKey: "thread:https://example.com/test/read.cgi/board/456/",
+    };
+
+    mockState([tab], "tab-1");
+    const { container } = render(<ContentArea />);
+
+    expect(container.querySelector('[data-testid="page-thread"]')).toHaveAttribute(
+      "data-start-auto-refresh-at-bottom",
       "true",
     );
   });

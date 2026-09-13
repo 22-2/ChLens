@@ -24,6 +24,8 @@ type AutoRefreshPhase = "idle" | "scrolling";
 
 interface UseAutoRefreshOptions {
   enabled: boolean;
+  /** 自動更新が有効なまま新しいスレッドを表示するとき、最初に最下部へ同期する。 */
+  startAtBottom?: boolean;
   expired: boolean;
   loading: boolean;
   refreshController: ThreadRefreshController;
@@ -48,6 +50,7 @@ export interface UseAutoRefreshResult {
 
 export function useAutoRefresh({
   enabled,
+  startAtBottom = false,
   expired,
   loading,
   refreshController,
@@ -78,6 +81,7 @@ export function useAutoRefresh({
   const prevEnabledRef = useRef(enabled);
   const latestSnapshotRef = useRef({ responseCount, lastResponseNum });
   const canAutoScrollRef = useRef(false);
+  const startAtBottomAppliedRef = useRef(false);
   const userInterruptedRef = useRef(false);
   const scrollObserverFrameRef = useRef<number | null>(null);
   const contentResizeObserverFrameRef = useRef<number | null>(null);
@@ -214,6 +218,29 @@ export function useAutoRefresh({
     canAutoScrollRef.current = nextValue;
     setCanAutoScroll((prev) => (prev === nextValue ? prev : nextValue));
   }, [enabled, getScrollContainer]);
+
+  useLayoutEffect(() => {
+    if (!startAtBottom) {
+      startAtBottomAppliedRef.current = false;
+      return;
+    }
+    if (!enabled || loading || startAtBottomAppliedRef.current) {
+      return;
+    }
+
+    // 変更理由: 次スレ移動では hook 自体が enabled のまま再マウントされるため、
+    // 通常の「OFFからON」検知が働かず canAutoScroll が false のまま残る。
+    // 初回取得前に寄せると空のscrollHeightを記録してしまうため、取得完了後に一度だけ
+    // 最下部へ寄せ、次の自動更新・次スレ判定を継続させる。
+    const scrollContainer = moveToThreadBottom();
+    if (!scrollContainer) {
+      return;
+    }
+    startAtBottomAppliedRef.current = true;
+    window.requestAnimationFrame(() => {
+      syncCanAutoScroll();
+    });
+  }, [enabled, loading, moveToThreadBottom, startAtBottom, syncCanAutoScroll]);
 
   const capturePendingRefresh = useCallback(
     (isIdleStopCandidate: boolean, shouldScroll = canAutoScrollRef.current): boolean => {

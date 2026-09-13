@@ -68,4 +68,23 @@ describe("useCommentOverlaySync", () => {
 
     expect(controller.syncThread).toHaveBeenLastCalledWith(THREAD_URL, [response(1), response(2)]);
   });
+
+  it("自分のレス番号を同じsnapshotと一緒にcontrollerへ共有する", () => {
+    const controller = { syncThread: vi.fn() };
+    const ownResponseNumbers = new Set([2]);
+
+    renderHook(() =>
+      useCommentOverlaySync({
+        controller,
+        threadUrl: THREAD_URL,
+        responses: [response(1), response(2)],
+        isActive: true,
+        ownResponseNumbers,
+      }),
+    );
+
+    expect(controller.syncThread).toHaveBeenCalledWith(THREAD_URL, [response(1), response(2)], {
+      ownResponseNumbers,
+    });
+  });
 });

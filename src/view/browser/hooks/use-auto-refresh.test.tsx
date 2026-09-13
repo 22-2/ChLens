@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { container } from "src/service-container/index";
 import type { IConfig, IMessage } from "src/service-container/interfaces";
 import { THREAD_AUTO_REFRESH_IDLE_STOP_COUNT } from "src/view/browser/hooks/auto-refresh-config";
@@ -53,9 +53,11 @@ class ResizeObserverStub implements TestResizeObserver {
 
 function AutoRefreshHarness({
   enabled = true,
+  startAtBottom = false,
   active = true,
   refreshKey = 0,
   expired = false,
+  loading = false,
   pauseAutoScroll = false,
   onRequestRefresh,
   onAutoStop,
@@ -63,9 +65,11 @@ function AutoRefreshHarness({
   onThreadExpired,
 }: {
   enabled?: boolean;
+  startAtBottom?: boolean;
   active?: boolean;
   refreshKey?: number;
   expired?: boolean;
+  loading?: boolean;
   pauseAutoScroll?: boolean;
   onRequestRefresh: () => void;
   onAutoStop?: () => void;
@@ -73,7 +77,10 @@ function AutoRefreshHarness({
   onThreadExpired?: () => void;
 }) {
   const [responses, setResponses] = useState([1, 2]);
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setLoading] = useState(loading);
+  useEffect(() => {
+    setLoading(loading);
+  }, [loading]);
   const rootRef = React.useRef<HTMLDivElement>(null);
   const refreshController = useThreadRefreshController(refreshKey);
   const scrollContainerRef = React.useCallback(
@@ -86,8 +93,9 @@ function AutoRefreshHarness({
   );
   const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling } = useAutoRefresh({
     enabled,
+    startAtBottom,
     expired,
-    loading,
+    loading: isLoading,
     refreshController,
     pauseAutoScroll,
     responseCount: responses.length,
@@ -749,6 +757,109 @@ describe("useAutoRefresh", () => {
 
     expect(scrollTopValue).toBe(300);
     expect(onRequestRefresh).toHaveBeenCalledOnce();
+  });
+
+  it("有効なまま次スレを表示したときは再取得せず最下部から追従する", () => {
+    const onRequestRefresh = vi.fn();
+    let scrollTopValue = 12;
+    const scrollHeightValue = 300;
+
+    const { getByTestId } = render(
+      <AutoRefreshHarness
+        startAtBottom
+        onRequestRefresh={onRequestRefresh}
+        configureScrollContainer={(scrollContainer) => {
+          Object.defineProperty(scrollContainer, "clientHeight", {
+            configurable: true,
+            get: () => 100,
+          });
+          Object.defineProperty(scrollContainer, "scrollTop", {
+            configurable: true,
+            get: () => scrollTopValue,
+            set: (value: number) => {
+              scrollTopValue = value;
+            },
+          });
+          Object.defineProperty(scrollContainer, "scrollHeight", {
+            configurable: true,
+            get: () => scrollHeightValue,
+          });
+          scrollContainer.getBoundingClientRect = () => createRect({ top: 0, bottom: 100 });
+        }}
+      />,
+    );
+
+    const boundary = getByTestId("boundary") as HTMLDivElement;
+    boundary.getBoundingClientRect = () => createRect({ top: 80, bottom: 100 });
+
+    expect(scrollTopValue).toBe(300);
+    expect(getByTestId("can-auto-scroll")).toHaveTextContent("enabled");
+    expect(onRequestRefresh).not.toHaveBeenCalled();
+
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
+  });
+
+  it("次スレの初回取得完了後に一度だけ最下部へ同期する", () => {
+    const onRequestRefresh = vi.fn();
+    let scrollTopValue = 0;
+    let scrollHeightValue = 80;
+    const configureScrollContainer = (scrollContainer: HTMLDivElement) => {
+      Object.defineProperty(scrollContainer, "clientHeight", {
+        configurable: true,
+        get: () => 100,
+      });
+      Object.defineProperty(scrollContainer, "scrollTop", {
+        configurable: true,
+        get: () => scrollTopValue,
+        set: (value: number) => {
+          scrollTopValue = value;
+        },
+      });
+      Object.defineProperty(scrollContainer, "scrollHeight", {
+        configurable: true,
+        get: () => scrollHeightValue,
+      });
+      scrollContainer.getBoundingClientRect = () => createRect({ top: 0, bottom: 100 });
+    };
+
+    const { rerender, getByTestId } = render(
+      <AutoRefreshHarness
+        startAtBottom
+        loading
+        onRequestRefresh={onRequestRefresh}
+        configureScrollContainer={configureScrollContainer}
+      />,
+    );
+
+    expect(scrollTopValue).toBe(0);
+
+    scrollHeightValue = 300;
+    rerender(
+      <AutoRefreshHarness
+        startAtBottom
+        loading={false}
+        onRequestRefresh={onRequestRefresh}
+        configureScrollContainer={configureScrollContainer}
+      />,
+    );
+
+    expect(scrollTopValue).toBe(300);
+    expect(getByTestId("can-auto-scroll")).toHaveTextContent("enabled");
+
+    scrollTopValue = 12;
+    scrollHeightValue = 400;
+    rerender(
+      <AutoRefreshHarness
+        startAtBottom
+        loading={false}
+        onRequestRefresh={onRequestRefresh}
+        configureScrollContainer={configureScrollContainer}
+      />,
+    );
+
+    expect(scrollTopValue).toBe(12);
   });
 
   it("dat落ち検知で自動更新を止め、再描画やタブ切替では通知を重ねない", () => {

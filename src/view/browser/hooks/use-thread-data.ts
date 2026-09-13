@@ -56,6 +56,14 @@ interface ThreadData {
   messageProtocol: string;
 }
 
+/** 取得順が揺れても、画面に残すべきsnapshotの末尾を正しく比較する。 */
+function latestResponseNumber(responses: readonly IRes[]): number {
+  return responses.reduce(
+    (latest, response) => (Number.isFinite(response.num) ? Math.max(latest, response.num) : latest),
+    0,
+  );
+}
+
 export function useThreadData(
   tabId: string,
   page: ThreadPageType,
@@ -68,6 +76,7 @@ export function useThreadData(
   const { beginRequest, isLatestRequest, refreshKey } = refreshController;
   const { state: persistedViewState, update: updateViewState } = useTabViewState(tabId, page);
   const [responses, setResponsesState] = useState<IRes[]>([]);
+  const responsesRef = useRef<IRes[]>([]);
   const selectionSnapshotRef = useRef<RootSelectionSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -103,7 +112,12 @@ export function useThreadData(
       if (snapshot) {
         selectionSnapshotRef.current = snapshot;
       }
-      setResponsesState(nextResponses);
+      setResponsesState((currentResponses) => {
+        const resolvedResponses =
+          typeof nextResponses === "function" ? nextResponses(currentResponses) : nextResponses;
+        responsesRef.current = resolvedResponses;
+        return resolvedResponses;
+      });
     },
     [rootRef],
   );
@@ -186,8 +200,18 @@ export function useThreadData(
         if (!isCurrentRequest()) {
           return;
         }
-        setResponses(result.res);
-        void setThreadResponseCache(page.threadUrl, result.res);
+        const currentResponses = responsesRef.current;
+        const shouldKeepCurrentSnapshot =
+          forceUpdate &&
+          currentResponses.length > result.res.length &&
+          latestResponseNumber(currentResponses) >= latestResponseNumber(result.res);
+        const acceptedResponses = shouldKeepCurrentSnapshot ? currentResponses : result.res;
+        // 変更理由: forceUpdate中にサーバー・キャッシュの解析結果が一時的に
+        // 短くなると、レス一覧の巻き戻しと高さの変動が連続して自動追従が
+        // ガクつき、アイドル停止判定まで誤って進むため、同じスレの表示とcacheを
+        // すでに見えている新しいsnapshotへ揃える。
+        setResponses(acceptedResponses);
+        void setThreadResponseCache(page.threadUrl, acceptedResponses);
         setExpired(result.expired ?? false);
         setMissingFromSubject(result.missingFromSubject ?? false);
         setError(result.message || null);

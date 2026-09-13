@@ -5,6 +5,8 @@ import type { ThreadRefreshController } from "src/view/browser/hooks/use-thread-
 
 interface UseThreadAutoRefreshOptions {
   enabled: boolean;
+  /** 次スレ移動直後など、既に有効な状態で表示を切り替えたときの最下部同期。 */
+  startAtBottom?: boolean;
   threadUrl: string;
   refreshController: ThreadRefreshController;
   expired: boolean;
@@ -32,6 +34,7 @@ interface UseThreadAutoRefreshOptions {
 export function useThreadAutoRefresh(options: UseThreadAutoRefreshOptions): UseAutoRefreshResult {
   const {
     enabled,
+    startAtBottom = false,
     threadUrl: _threadUrl,
     refreshController,
     expired,
@@ -49,6 +52,7 @@ export function useThreadAutoRefresh(options: UseThreadAutoRefreshOptions): UseA
 
   const result = useAutoRefresh({
     enabled,
+    startAtBottom,
     expired,
     loading,
     refreshController,

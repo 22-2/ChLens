@@ -43,6 +43,7 @@ interface ThreadPageProps {
   isActive: boolean;
   isOverlayTarget?: boolean;
   isAutoRefreshEnabled: boolean;
+  startAutoRefreshAtBottom: boolean;
   scrollContainerRef?: RefObject<HTMLDivElement | null>;
 }
 
@@ -53,6 +54,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   isActive,
   isOverlayTarget = isActive,
   isAutoRefreshEnabled,
+  startAutoRefreshAtBottom,
   scrollContainerRef,
 }) => {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -81,6 +83,11 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   } = useThreadData(tabId, page, rootRef, refreshController);
   const { controller: commentOverlayController, snapshot: commentOverlaySnapshot } =
     useCommentOverlay();
+  const { ownResNums, handleWriteHistoryAdded, handleWriteHistoryRemoved } = useOwnResTracking({
+    threadUrl: page.threadUrl,
+    threadTitle: page.title,
+    responses,
+  });
   const dispatch = useTabDispatch();
   const { activeTab } = useTabStore();
   const isCommentOverlayTarget =
@@ -97,6 +104,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     // 変更理由: Overlay対象のタブを画面上で隠しても、新着snapshotの共有を続けて
     // コメント表示を止めない。未開始スレッドのsnapshot保持はフォーカス中だけでよい。
     isActive: isOverlayTarget || isCommentOverlayTarget,
+    ownResponseNumbers: ownResNums,
   });
 
   useEffect(() => {
@@ -120,9 +128,14 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
 
     // 変更理由: 次スレ移動では同じタブの直前スレッドをOverlay対象としているため、
     // 新スレッドの初回取得完了後にbaselineごと切り替え、旧レスを流さず表示を継続する。
-    void commentOverlayController.start(page.threadUrl, responses).catch((error: unknown) => {
-      console.error("[ChLens] 次スレ移動後のコメント実況引き継ぎに失敗しました:", error);
-    });
+    void commentOverlayController
+      .start(page.threadUrl, responses, {
+        preserveVisibleComments: true,
+        ownResponseNumbers: ownResNums,
+      })
+      .catch((error: unknown) => {
+        console.error("[ChLens] 次スレ移動後のコメント実況引き継ぎに失敗しました:", error);
+      });
   }, [
     activeTab.currentIndex,
     activeTab.history,
@@ -132,6 +145,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     isCommentOverlayVisible,
     isOverlayTarget,
     loading,
+    ownResNums,
     page.threadUrl,
     responses,
   ]);
@@ -234,6 +248,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
 
   const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling } = useThreadAutoRefresh({
     enabled: isActiveAutoRefreshEnabled,
+    startAtBottom: startAutoRefreshAtBottom,
     threadUrl: page.threadUrl,
     refreshController,
     expired: autoRefreshExpired,
@@ -259,6 +274,13 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
 
   const handleFollowNextThread = useCallback(
     (nextThread: Pick<IThread, "title" | "url">) => {
+      // 変更理由: 次スレへの切り替えは本文の再描画だけでは分かりにくく、
+      // Overlay上へ通知を流すことで画面を見続けている利用者にも接続先を伝える。
+      void commentOverlayController
+        .publishSystemMessage(page.threadUrl, `スレ「${nextThread.title}」へ移動します。`)
+        .catch((error: unknown) => {
+          console.error("[ChLens] 次スレ移動の通知コメント送信に失敗しました:", error);
+        });
       dispatch({
         type: "FOLLOW_NEXT_THREAD",
         page: {
@@ -269,7 +291,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         keepAutoRefresh: isAutoRefreshEnabled,
       });
     },
-    [dispatch, isAutoRefreshEnabled],
+    [commentOverlayController, dispatch, isAutoRefreshEnabled, page.threadUrl],
   );
 
   useAutoNextThread({
@@ -288,12 +310,6 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   });
 
   const imageBlurConfig = useImageBlurConfig();
-
-  const { ownResNums, handleWriteHistoryAdded, handleWriteHistoryRemoved } = useOwnResTracking({
-    threadUrl: page.threadUrl,
-    threadTitle: page.title,
-    responses,
-  });
 
   const { scrollToResponse } = useThreadReadState({
     threadUrl: page.threadUrl,
