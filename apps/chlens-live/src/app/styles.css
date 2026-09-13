@@ -43,6 +43,17 @@ input {
   font: inherit;
 }
 
+/* 変更理由: TauriのWebViewでshell側の操作スタイルが入力欄のフォーカスを奪わないよう、
+ * URLバー・スレ一覧検索・Overlay設定の入力要素へ標準の入力操作を明示する。 */
+input,
+select,
+textarea {
+  pointer-events: auto;
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-app-region: no-drag;
+}
+
 button {
   border: 1px solid #426189;
   border-radius: 7px;

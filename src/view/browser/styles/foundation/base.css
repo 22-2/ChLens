@@ -12,6 +12,18 @@ textarea {
   font: inherit;
 }
 
+/* 変更理由: TauriのWebViewでは親要素の操作用スタイルが入力欄へ継承されると、
+ * マウスでフォーカスしても文字入力を受け付けないことがある。入力要素だけは
+ * WebViewの標準フォーカスとテキスト選択を明示し、下部書き込み欄や検索欄を確実に操作できるようにする。 */
+input,
+textarea,
+select {
+  pointer-events: auto;
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-app-region: no-drag;
+}
+
 ::selection {
   background: var(--sys-color-selection);
 }

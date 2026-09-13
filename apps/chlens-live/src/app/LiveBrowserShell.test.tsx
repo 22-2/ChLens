@@ -45,6 +45,20 @@ describe("LiveBrowserShell", () => {
     expect(screen.getByRole("button", { name: "Overlay" })).toBeVisible();
   });
 
+  it("TauriのURL欄を標準の文字入力として更新できる", () => {
+    const onAddressChange = vi.fn();
+    renderShell({ onAddressChange });
+
+    const input = screen.getByRole("textbox", { name: "URL" });
+    expect(input).toHaveAttribute("type", "text");
+    expect(input).toHaveAttribute("autocomplete", "off");
+    expect(input).toHaveAttribute("spellcheck", "false");
+
+    fireEvent.change(input, { target: { value: "https://example.test/next" } });
+
+    expect(onAddressChange).toHaveBeenCalledWith("https://example.test/next");
+  });
+
   it("タブバーのホイールで隣のタブへ切り替える", () => {
     const onSelectTab = vi.fn();
     renderShell({ onSelectTab });

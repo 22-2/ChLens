@@ -187,9 +187,14 @@ export function LiveBrowserShell({
               }}
             >
               <div className="nav-bar__url live-url-bar__url">
+                {/* 変更理由: Tauri WebViewでURL欄をブラウザ標準の文字入力として扱い、
+                    自動補完やスペルチェックの挙動がフォーカスを奪わないようにする。 */}
                 <input
                   id="live-address"
                   className="nav-bar__url-input"
+                  type="text"
+                  autoComplete="off"
+                  spellCheck={false}
                   value={address}
                   onChange={(event) => onAddressChange(event.target.value)}
                   aria-label="URL"
