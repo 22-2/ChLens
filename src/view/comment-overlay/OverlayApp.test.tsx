@@ -114,6 +114,74 @@ describe("OverlayApp", () => {
     expect(screen.getByText("再開後の実況")).toBeVisible();
   });
 
+  it("次スレ移動のresetでは表示中の前スレコメントを残す", async () => {
+    const eventBus = new MemoryCommentOverlayEventBus();
+    const platform = createBrowserCommentOverlayPlatform();
+    const nextThreadUrl = "https://example.test/live/2";
+
+    render(<OverlayApp eventBus={eventBus} platform={platform} />);
+    await act(async () => {
+      await Promise.resolve();
+      await eventBus.publish({
+        version: 1,
+        type: "batch",
+        batch: {
+          threadUrl: THREAD_URL,
+          comments: [oldComment],
+          latestResponseNumber: 1,
+        },
+      });
+    });
+    act(() => {
+      scheduledFrame?.(0);
+    });
+
+    await act(async () => {
+      await eventBus.publish({
+        version: 1,
+        type: "reset",
+        preserveVisibleComments: true,
+        batch: {
+          threadUrl: nextThreadUrl,
+          comments: [],
+          latestResponseNumber: 1,
+        },
+      });
+    });
+
+    expect(screen.getByText("前回の実況")).toBeVisible();
+  });
+
+  it("通知コメントを即時に黄色枠で流す", async () => {
+    const eventBus = new MemoryCommentOverlayEventBus();
+    const platform = createBrowserCommentOverlayPlatform();
+
+    render(<OverlayApp eventBus={eventBus} platform={platform} />);
+    await act(async () => {
+      await Promise.resolve();
+      await eventBus.publish({
+        version: 1,
+        type: "system",
+        threadUrl: THREAD_URL,
+        comment: {
+          responseNumber: 0,
+          text: "次スレへ移動します",
+          author: "ChLens",
+          isSystem: true,
+          systemId: "system-1",
+          sourceThreadUrl: THREAD_URL,
+        },
+      });
+    });
+    act(() => {
+      scheduledFrame?.(0);
+    });
+
+    const notification = screen.getByText("次スレへ移動します");
+    expect(notification).toBeVisible();
+    expect(notification).toHaveClass("comment-overlay-stage__comment--system");
+  });
+
   it("実況開始時の設定をOverlayStageへ反映し、文字サイズはコード定数を使う", async () => {
     let resizeObserverConstructed = false;
     class ResizeObserverStub {

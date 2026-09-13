@@ -12,6 +12,9 @@
 }
 
 .comment-overlay-stage__comment {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
   position: absolute;
   left: 0;
   z-index: 1;
@@ -33,6 +36,34 @@
   animation-timing-function: linear;
   animation-fill-mode: both;
   will-change: transform;
+}
+
+.comment-overlay-stage__comment--system {
+  border: 2px solid rgb(255 226 92 / 92%);
+  border-radius: 4px;
+  padding: 0.12em 0.35em;
+  color: #fff7bf;
+  background: rgb(126 94 0 / 72%);
+}
+
+.comment-overlay-stage__comment--own {
+  /* 変更理由: 自分のレスは流れる速度や本文が変わっても見分けられるよう、
+     EdgeLiveViewerと同じ黄色の枠を常に残す。 */
+  border: 2px solid rgb(255 226 92 / 92%);
+  border-radius: 4px;
+  padding: 0.12em 0.35em;
+  color: #fff7bf;
+}
+
+.comment-overlay-stage__media {
+  display: block;
+  width: 180px;
+  height: 1.2em;
+  max-height: 120px;
+  flex: 0 0 auto;
+  border-radius: 3px;
+  object-fit: contain;
+  background: rgb(0 0 0 / 35%);
 }
 
 /* 変更理由: 毎frame Reactでtransformを書き換えると、弾幕の数に比例して再描画負荷が

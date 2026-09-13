@@ -7,22 +7,29 @@ import {
   createIdleCommentOverlayState,
   startCommentOverlay,
 } from "src/features/comment-overlay/domain";
+import { extractUrlsFromMessage, toViewerImageUrl } from "src/view/browser/utils/url-media";
 
 import type { LiveEvent } from "./events";
 
 export interface LiveCommentOverlayUpdate {
   threadUrl: string;
   reset: boolean;
+  /** スレ移動中も、すでに画面を流れている前スレのコメントを残す。 */
+  preserveVisibleComments?: boolean;
   batch: CommentBatch | null;
 }
 
 function toCommentResponse(post: IRes): CommentResponse {
+  const imageUrls = extractUrlsFromMessage(post.message).filter(
+    (url) => toViewerImageUrl(url) != null,
+  );
   return {
     num: post.number,
     name: post.name,
     message: post.message,
     ...(post.date ? { date: post.date } : {}),
     ...(post.id ? { id: post.id } : {}),
+    ...(imageUrls.length > 0 ? { imageUrls } : {}),
   };
 }
 
@@ -44,7 +51,12 @@ export class LiveCommentOverlayController {
       // Overlayが過去ログ再生のようになるため、最初のsnapshotを新しいbaselineにする。
       this.targetThreadUrl = event.threadUrl;
       this.state = startCommentOverlay(event.threadUrl, responses);
-      return { threadUrl: event.threadUrl, reset: true, batch: null };
+      return {
+        threadUrl: event.threadUrl,
+        reset: true,
+        preserveVisibleComments: true,
+        batch: null,
+      };
     }
 
     const result = collectNewCommentBatch(this.state, event.threadUrl, responses);

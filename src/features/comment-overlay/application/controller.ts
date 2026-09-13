@@ -1,4 +1,5 @@
 import type { IRes } from "src/service-container/interfaces";
+import { extractUrlsFromMessage, toViewerImageUrl } from "src/view/browser/utils/url-media";
 
 import type { CommentOverlaySettings } from "../domain";
 import {
@@ -24,6 +25,10 @@ import {
 const MAX_RESPONSE_SNAPSHOT_COUNT = 8;
 const MAX_RESPONSES_PER_SNAPSHOT = 2_000;
 
+function extractCommentImageUrls(message: string): readonly string[] {
+  return extractUrlsFromMessage(message).filter((url) => toViewerImageUrl(url) != null);
+}
+
 export interface CommentOverlayControllerSnapshot {
   state: CommentOverlayState;
   visible: boolean;
@@ -39,7 +44,11 @@ export interface CommentOverlayControllerDependencies {
   multiThreadSource?: CommentOverlayMultiThreadSource;
 }
 
-function toCommentResponse(response: IRes): CommentResponse {
+function toCommentResponse(
+  response: IRes,
+  ownResponseNumbers?: ReadonlySet<number>,
+): CommentResponse {
+  const imageUrls = extractCommentImageUrls(response.message);
   return {
     num: response.num,
     name: response.name,
@@ -48,6 +57,8 @@ function toCommentResponse(response: IRes): CommentResponse {
     ...(response.id ? { id: response.id } : {}),
     ...(response.ng != null ? { ng: response.ng } : {}),
     ...(response.class ? { class: response.class } : {}),
+    ...(imageUrls.length > 0 ? { imageUrls } : {}),
+    ...(ownResponseNumbers?.has(response.num) ? { isOwn: true } : {}),
   };
 }
 
@@ -55,8 +66,12 @@ function createResetEvent(
   threadUrl: string,
   responses: readonly IRes[],
   settings: CommentOverlaySettings,
+  preserveVisibleComments = false,
+  ownResponseNumbers?: ReadonlySet<number>,
 ): CommentOverlayEvent {
-  const latest = latestResponseNumber(responses.map(toCommentResponse));
+  const latest = latestResponseNumber(
+    responses.map((response) => toCommentResponse(response, ownResponseNumbers)),
+  );
   return {
     version: 1,
     type: "reset",
@@ -66,6 +81,7 @@ function createResetEvent(
       comments: [],
       latestResponseNumber: latest,
     },
+    ...(preserveVisibleComments ? { preserveVisibleComments: true } : {}),
   };
 }
 
@@ -109,6 +125,8 @@ export class CommentOverlayController {
   private multiThreadSession: CommentOverlayMultiThreadSession | null = null;
 
   private activeSourceThreadUrl: string | null = null;
+
+  private systemMessageSequence = 0;
 
   constructor({
     eventBus,
@@ -158,7 +176,11 @@ export class CommentOverlayController {
   }
 
   /** ThreadPageの確定済みsnapshotを受け取り、実況中だけ新着差分を送信する。 */
-  syncThread(threadUrl: string, responses: readonly IRes[]): void {
+  syncThread(
+    threadUrl: string,
+    responses: readonly IRes[],
+    options: { ownResponseNumbers?: ReadonlySet<number> } = {},
+  ): void {
     this.rememberThreadResponses(threadUrl, responses);
     if (this.state.status !== "running" || this.state.targetThreadUrl !== threadUrl) {
       return;
@@ -170,7 +192,9 @@ export class CommentOverlayController {
       // baseline更新であり、元スレのコメントをOverlayへ出す処理は再開まで行わない。
       const nextLastResponseNumber = Math.max(
         this.state.cursor?.lastResponseNumber ?? 0,
-        latestResponseNumber(responses.map(toCommentResponse)),
+        latestResponseNumber(
+          responses.map((response) => toCommentResponse(response, options.ownResponseNumbers)),
+        ),
       );
       if (nextLastResponseNumber !== this.state.cursor?.lastResponseNumber) {
         this.state = {
@@ -184,7 +208,11 @@ export class CommentOverlayController {
       return;
     }
 
-    const result = collectNewCommentBatch(this.state, threadUrl, responses.map(toCommentResponse));
+    const result = collectNewCommentBatch(
+      this.state,
+      threadUrl,
+      responses.map((response) => toCommentResponse(response, options.ownResponseNumbers)),
+    );
     this.state = result.state;
     if (this.state.cursor?.lastResponseNumber !== this.snapshot.state.cursor?.lastResponseNumber) {
       this.notify();
@@ -203,20 +231,39 @@ export class CommentOverlayController {
     }
   }
 
-  async start(threadUrl: string, responses?: readonly IRes[]): Promise<void> {
+  async start(
+    threadUrl: string,
+    responses?: readonly IRes[],
+    options: {
+      preserveVisibleComments?: boolean;
+      ownResponseNumbers?: ReadonlySet<number>;
+    } = {},
+  ): Promise<void> {
     const snapshot = responses ?? this.getThreadResponses(threadUrl) ?? [];
     // 変更理由: 前回の一時的な送信失敗を、再試行できた開始状態へ持ち越さない。
     this.error = null;
     this.stopMultiThreadSession();
     this.activeSourceThreadUrl = threadUrl;
     this.rememberThreadResponses(threadUrl, snapshot);
-    this.state = startCommentOverlay(threadUrl, snapshot.map(toCommentResponse));
+    this.state = startCommentOverlay(
+      threadUrl,
+      snapshot.map((response) => toCommentResponse(response, options.ownResponseNumbers)),
+    );
     this.notify();
 
     try {
       await this.setVisible(true);
-      // Overlayが前スレの表示履歴を持っていても、開始したスレを境に表示を切り替える。
-      await this.publish(createResetEvent(threadUrl, snapshot, this.getSettings()));
+      // 通常開始は表示履歴を切り替えるが、次スレ移動だけは画面上を流れている
+      // 前スレのコメントを最後まで見せるため、呼び出し側の意図をeventへ残す。
+      await this.publish(
+        createResetEvent(
+          threadUrl,
+          snapshot,
+          this.getSettings(),
+          options.preserveVisibleComments === true,
+          options.ownResponseNumbers,
+        ),
+      );
       this.subscribeToSettings();
       this.startMultiThreadSession(threadUrl);
     } catch (error: unknown) {
@@ -286,6 +333,39 @@ export class CommentOverlayController {
       });
     } catch (error: unknown) {
       this.reportError("[ChLens] コメントOverlay設定の送信に失敗しました:", error);
+      throw error;
+    }
+  }
+
+  async publishSystemMessage(threadUrl: string, message: string): Promise<void> {
+    const text = message.trim();
+    if (
+      !text ||
+      this.state.status !== "running" ||
+      this.state.targetThreadUrl == null ||
+      this.state.targetThreadUrl !== threadUrl ||
+      !this.visible
+    ) {
+      return;
+    }
+
+    this.systemMessageSequence += 1;
+    try {
+      await this.publish({
+        version: 1,
+        type: "system",
+        threadUrl: this.state.targetThreadUrl,
+        comment: {
+          responseNumber: 0,
+          text,
+          author: "ChLens",
+          isSystem: true,
+          systemId: `${threadUrl}:${this.systemMessageSequence}`,
+          sourceThreadUrl: threadUrl,
+        },
+      });
+    } catch (error: unknown) {
+      this.reportError("[ChLens] コメント実況の通知コメント送信に失敗しました:", error);
       throw error;
     }
   }
@@ -397,7 +477,7 @@ export class CommentOverlayController {
     }
 
     const comments = responses
-      .map(toCommentResponse)
+      .map((response) => toCommentResponse(response))
       .map((response) => projectCommentResponse(response))
       .filter((comment): comment is NonNullable<ReturnType<typeof projectCommentResponse>> => {
         return comment !== null;

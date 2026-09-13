@@ -38,6 +38,7 @@ describe("LiveCommentOverlayController", () => {
     expect(controller.consume(snapshot(threadUrl, [post(1, "既存")]))).toEqual({
       threadUrl,
       reset: true,
+      preserveVisibleComments: true,
       batch: null,
     });
     const update = controller.consume(snapshot(threadUrl, [post(1, "既存"), post(2, "新着")]))!;
@@ -61,7 +62,12 @@ describe("LiveCommentOverlayController", () => {
     const nextUrl = "https://bbs.eddibb.cc/liveedge/1000000002/";
     const reset = controller.consume(snapshot(nextUrl, [post(1, "新しいスレ")]))!;
 
-    expect(reset).toEqual({ threadUrl: nextUrl, reset: true, batch: null });
+    expect(reset).toEqual({
+      threadUrl: nextUrl,
+      reset: true,
+      preserveVisibleComments: true,
+      batch: null,
+    });
     expect(
       controller.consume(snapshot(nextUrl, [post(1, "新しいスレ"), post(2, "新着")]))?.batch,
     ).toMatchObject({ comments: [{ responseNumber: 2 }] });

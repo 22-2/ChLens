@@ -94,6 +94,33 @@ describe("OverlayStage", () => {
     expect(screen.getByTestId("comment-overlay-stage")).toHaveAttribute("data-active-count", "1");
   });
 
+  it("画像と自分のレス状態を流れるコメントへ描画する", () => {
+    const { container } = render(
+      <OverlayStage
+        comments={[
+          {
+            ...comment,
+            text: "画像付きレス",
+            imageUrls: ["https://example.com/image.jpg"],
+            isOwn: true,
+          },
+        ]}
+        stageWidth={600}
+        stageHeight={120}
+        laneHeight={32}
+        playing
+      />,
+    );
+
+    act(() => {
+      scheduledFrame?.(0);
+    });
+
+    const image = container.querySelector<HTMLImageElement>(".comment-overlay-stage__media");
+    expect(image).toHaveAttribute("src", "https://example.com/image.jpg");
+    expect(image?.parentElement).toHaveClass("comment-overlay-stage__comment--own");
+  });
+
   it("停止中は時刻を進めず最後の表示位置を保持する", () => {
     const { rerender } = render(
       <OverlayStage

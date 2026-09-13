@@ -46,8 +46,18 @@ export function projectCommentResponse(
 ): CommentCandidate | null {
   if (!options.includeNg && isNgResponse(response)) return null;
 
-  const text = toCommentText(response.message);
-  if (!text.trim()) return null;
+  const imageUrls = response.imageUrls ?? [];
+  let text = toCommentText(response.message);
+  // 変更理由: 画像URLを本文にも残すと、画像とURLが同時に流れて弾幕の幅を
+  // 不必要に占有するため、画像を表示できるURLは本文から除いて目印だけ残す。
+  for (const imageUrl of imageUrls) {
+    text = text.split(imageUrl).join("");
+  }
+  text = text.trim();
+  if (imageUrls.length > 0) {
+    text = text ? `[📷] ${text}` : "📷";
+  }
+  if (!text) return null;
 
   return {
     responseNumber: response.num,
@@ -55,6 +65,8 @@ export function projectCommentResponse(
     author: toCommentAuthor(response.name),
     ...(response.id ? { id: response.id } : {}),
     ...(response.date ? { date: response.date } : {}),
+    ...(imageUrls.length > 0 ? { imageUrls } : {}),
+    ...(response.isOwn ? { isOwn: true } : {}),
   };
 }
 
@@ -63,8 +75,11 @@ export function projectCommentResponse(
  * 単一スレ時の既存キーを変えないよう、sourceThreadUrlがない場合は番号だけを使う。
  */
 export function commentIdentity(
-  comment: Pick<CommentCandidate, "responseNumber" | "sourceThreadUrl">,
+  comment: Pick<CommentCandidate, "responseNumber" | "sourceThreadUrl" | "isSystem" | "systemId">,
 ): string {
+  if (comment.isSystem) {
+    return `${comment.sourceThreadUrl ?? ""}:system:${comment.systemId ?? comment.responseNumber}`;
+  }
   return `${comment.sourceThreadUrl ?? ""}:${comment.responseNumber}`;
 }
 

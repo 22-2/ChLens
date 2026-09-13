@@ -70,6 +70,35 @@ describe("CommentOverlayController", () => {
     expect(eventBus.events).toHaveLength(1);
   });
 
+  it("自分の新着レスと通知コメントをOverlayへ流す", async () => {
+    const eventBus = new MemoryCommentOverlayEventBus();
+    const controller = new CommentOverlayController({
+      eventBus,
+      platform: createBrowserCommentOverlayPlatform(),
+    });
+    const threadUrl = "https://example.test/thread/1";
+
+    await controller.start(threadUrl, [response(1, "既存レス")]);
+    controller.syncThread(threadUrl, [response(1, "既存レス"), response(2, "自分のレス")], {
+      ownResponseNumbers: new Set([2]),
+    });
+    await controller.publishSystemMessage(threadUrl, "次のスレッドへ移動します");
+    await waitForPublishedEvents();
+
+    expect(eventBus.events[1]).toMatchObject({
+      type: "batch",
+      batch: { comments: [{ responseNumber: 2, isOwn: true }] },
+    });
+    expect(eventBus.events[2]).toMatchObject({
+      type: "system",
+      threadUrl,
+      comment: {
+        text: "次のスレッドへ移動します",
+        isSystem: true,
+      },
+    });
+  });
+
   it("停止後は新着を送らず、Overlayを非表示にする", async () => {
     const eventBus = new MemoryCommentOverlayEventBus();
     const controller = new CommentOverlayController({

@@ -47,6 +47,19 @@ const sourceFilterEvent: CommentOverlayEvent = {
   keepSourceThreadUrl: "https://example.test/live/2",
 };
 
+const systemEvent: CommentOverlayEvent = {
+  version: 1,
+  type: "system",
+  threadUrl: "https://example.test/live/1",
+  comment: {
+    responseNumber: 0,
+    text: "次スレへ移動します",
+    author: "ChLens",
+    isSystem: true,
+    systemId: "system-1",
+  },
+};
+
 describe("TauriCommentOverlayEventBus", () => {
   beforeEach(() => {
     tauriEventMocks.emit.mockClear();
@@ -81,12 +94,14 @@ describe("TauriCommentOverlayEventBus", () => {
     registeredHandler?.({ payload: batchEvent });
     registeredHandler?.({ payload: settingsEvent });
     registeredHandler?.({ payload: sourceFilterEvent });
+    registeredHandler?.({ payload: systemEvent });
     registeredHandler?.({ payload: { version: 2, type: "batch", batch: {} } });
 
-    expect(listener).toHaveBeenCalledTimes(3);
+    expect(listener).toHaveBeenCalledTimes(4);
     expect(listener).toHaveBeenCalledWith(batchEvent);
     expect(listener).toHaveBeenCalledWith(settingsEvent);
     expect(listener).toHaveBeenCalledWith(sourceFilterEvent);
+    expect(listener).toHaveBeenCalledWith(systemEvent);
     expect(cleanup).toBe(unsubscribe);
   });
 

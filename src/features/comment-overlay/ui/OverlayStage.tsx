@@ -2,6 +2,7 @@ import "./OverlayStage.css";
 
 import type { CSSProperties } from "react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { toViewerImageUrl } from "src/view/browser/utils/url-media";
 
 import {
   type CommentBacklogPolicy,
@@ -28,6 +29,8 @@ const DEFAULT_STAGE_HEIGHT = 240;
 export const COMMENT_OVERLAY_FONT_SIZE = 25;
 const DEFAULT_COMMENT_OPACITY = 0.95;
 export const DEFAULT_COMMENT_HISTORY_LIMIT = 3_000;
+const COMMENT_IMAGE_WIDTH = 180;
+const COMMENT_IMAGE_HEIGHT = 120;
 
 /** CSSのline-heightと行間を揃え、文字サイズ変更後もレスが上下から切れない高さにする。 */
 export function calculateCommentLaneHeight(fontSize: number): number {
@@ -89,7 +92,10 @@ export function estimateCommentWidth(comment: CommentCandidate, fontSize: number
   // 使わないと、長いコメントが後続レスへ追いついて横方向に重なる。
   const singleLineText = comment.text.replace(/[\r\n]+/g, " ");
   const longestLineLength = Math.max(Array.from(singleLineText).length, 1);
-  return longestLineLength * fontSize * 0.95 + fontSize;
+  const textWidth = longestLineLength * fontSize * 0.95 + fontSize;
+  const imageCount = Math.min(comment.imageUrls?.length ?? 0, 3);
+  const imageWidth = imageCount * (COMMENT_IMAGE_WIDTH + fontSize * 0.35);
+  return textWidth + imageWidth;
 }
 
 /** 改行を空白へ変換し、コメントの幅計算と実際の一行表示を一致させる。 */
@@ -476,7 +482,9 @@ export function OverlayStage({
         return (
           <div
             key={`${commentKey}-${scheduledComment.startAt}-${scheduledComment.layoutRevision}`}
-            className="comment-overlay-stage__comment"
+            className={`comment-overlay-stage__comment${
+              comment.isSystem ? " comment-overlay-stage__comment--system" : ""
+            }${comment.isOwn ? " comment-overlay-stage__comment--own" : ""}`}
             data-response-number={comment.responseNumber}
             data-lane-index={scheduledComment.laneIndex}
             data-paused={scheduledComment.paused}
@@ -493,6 +501,18 @@ export function OverlayStage({
             onBlur={interactive ? () => resumeComment(comment.responseNumber) : undefined}
             onClick={onCommentClick ? () => onCommentClick(comment) : undefined}
           >
+            {comment.imageUrls?.slice(0, 3).map((imageUrl) => (
+              <img
+                key={imageUrl}
+                className="comment-overlay-stage__media"
+                src={toViewerImageUrl(imageUrl) ?? imageUrl}
+                alt=""
+                width={COMMENT_IMAGE_WIDTH}
+                height={COMMENT_IMAGE_HEIGHT}
+                loading="eager"
+                decoding="async"
+              />
+            ))}
             {comment.text}
             {interactive && showCommentInfo && scheduledComment.paused ? (
               <span

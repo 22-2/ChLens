@@ -21,18 +21,22 @@ function post(number: number, message: string): IRes {
   };
 }
 
-function snapshot(posts: IRes[]): LiveEvent {
+function snapshotFor(url: string, posts: IRes[]): LiveEvent {
   return {
     type: "snapshot",
-    threadUrl,
+    threadUrl: url,
     changed: true,
     snapshot: {
-      url: threadUrl,
+      url,
       data: { posts },
       metadata: { bodyBytes: 0, parsedResCount: posts.length },
       updatedAt: 1,
     },
   };
+}
+
+function snapshot(posts: IRes[]): LiveEvent {
+  return snapshotFor(threadUrl, posts);
 }
 
 function Harness({ eventBus }: { eventBus: MemoryLiveEventBus }) {
@@ -61,6 +65,24 @@ describe("useLiveOverlay", () => {
     });
     expect(screen.getByTestId("thread-url")).toHaveTextContent(threadUrl);
     expect(screen.getByTestId("comments")).toHaveTextContent("新着レス");
+  });
+
+  it("スレ移動時も表示中の前スレコメントを自然に流し続ける", async () => {
+    const eventBus = new MemoryLiveEventBus();
+    const nextThreadUrl = "https://bbs.eddibb.cc/liveedge/1000000002/";
+    render(<Harness eventBus={eventBus} />);
+
+    await act(async () => {
+      await eventBus.publish(snapshot([post(1, "前スレ既存")]));
+      await eventBus.publish(snapshot([post(1, "前スレ既存"), post(2, "前スレ新着")]));
+    });
+
+    await act(async () => {
+      await eventBus.publish(snapshotFor(nextThreadUrl, [post(1, "次スレ既存")]));
+    });
+
+    expect(screen.getByTestId("thread-url")).toHaveTextContent(nextThreadUrl);
+    expect(screen.getByTestId("comments")).toHaveTextContent("前スレ新着");
   });
 });
 

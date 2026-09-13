@@ -88,7 +88,30 @@ export function OverlayApp({
         return;
       }
 
+      if (event.type === "system") {
+        const identity = commentIdentity(event.comment);
+        if (seenResponseNumbersRef.current.has(identity)) return;
+        seenResponseNumbersRef.current.add(identity);
+        seenResponseOrderRef.current.push(identity);
+        while (seenResponseOrderRef.current.length > MAX_COMMENT_HISTORY) {
+          const expiredIdentity = seenResponseOrderRef.current.shift();
+          if (expiredIdentity !== undefined) {
+            seenResponseNumbersRef.current.delete(expiredIdentity);
+          }
+        }
+
+        // EdgeLiveViewerの通知コメントは取得レスとは別の即時表示として扱い、
+        // 次スレのresetが届いても「表示中のコメントを残す」境界を越えないようにする。
+        setComments((current) => {
+          const next = [...current, event.comment];
+          return next.length > MAX_COMMENT_HISTORY ? next.slice(-MAX_COMMENT_HISTORY) : next;
+        });
+        return;
+      }
+
       const { batch } = event;
+      const preserveVisibleComments =
+        event.type === "reset" && event.preserveVisibleComments === true;
       if (event.type === "reset" || activeThreadUrlRef.current !== batch.threadUrl) {
         // 変更理由: スレが変わった時に前スレのlane・レス番号を再利用すると、別スレの
         // コメントが混ざるため、表示履歴と重複判定を同時に初期化する。resetは同じ
@@ -99,8 +122,10 @@ export function OverlayApp({
         if (flowTimer) clearTimeout(flowTimer);
         flowTimer = null;
         commentQueue.length = 0;
-        setComments([]);
-        setStageKey((current) => current + 1);
+        if (!preserveVisibleComments) {
+          setComments([]);
+          setStageKey((current) => current + 1);
+        }
         if (event.type === "reset") {
           // 設定は実況開始時にだけ反映し、表示中のコメントを毎batch再配置しない。
           setSettings(normalizeCommentOverlaySettings(event.settings));

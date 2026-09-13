@@ -1,4 +1,4 @@
-import type { CommentBatch } from "./comment-types";
+import type { CommentBatch, CommentCandidate } from "./comment-types";
 import type { CommentOverlaySettings } from "./settings";
 
 export type CommentOverlayEvent =
@@ -12,6 +12,8 @@ export type CommentOverlayEvent =
       type: "reset";
       batch: CommentBatch;
       settings?: CommentOverlaySettings;
+      /** 次スレ移動時は、すでに画面を流れている前スレのコメントを残す。 */
+      preserveVisibleComments?: boolean;
     }
   | {
       version: 1;
@@ -25,6 +27,12 @@ export type CommentOverlayEvent =
       threadUrl: string;
       /** 本流として残す取得元スレッド。 */
       keepSourceThreadUrl: string;
+    }
+  | {
+      version: 1;
+      type: "system";
+      threadUrl: string;
+      comment: CommentCandidate;
     };
 
 export interface CommentOverlayEventBus {

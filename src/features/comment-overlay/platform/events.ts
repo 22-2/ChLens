@@ -38,6 +38,7 @@ function isCommentOverlayEvent(payload: unknown): payload is CommentOverlayEvent
     settings?: unknown;
     threadUrl?: unknown;
     keepSourceThreadUrl?: unknown;
+    comment?: unknown;
   };
   if (candidate.version !== 1) return false;
   if (candidate.type === "settings") return candidate.settings != null;
@@ -45,6 +46,11 @@ function isCommentOverlayEvent(payload: unknown): payload is CommentOverlayEvent
     return (
       typeof candidate.threadUrl === "string" && typeof candidate.keepSourceThreadUrl === "string"
     );
+  }
+  if (candidate.type === "system") {
+    // 変更理由: 通知コメントはbatchを持たないため、systemをbatch/resetと同じ検証に
+    // 流すとTauri Overlay側で静かに捨てられ、次スレ移動の案内が画面へ届かない。
+    return typeof candidate.threadUrl === "string" && candidate.comment != null;
   }
   return (candidate.type === "batch" || candidate.type === "reset") && candidate.batch != null;
 }

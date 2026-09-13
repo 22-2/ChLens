@@ -136,6 +136,25 @@ describe("コメントオーバーレイdomain", () => {
     });
   });
 
+  it("画像URLは本文から隠し、弾幕に画像表示用の情報を残す", () => {
+    const imageUrl = "https://example.com/image.jpg";
+    expect(
+      projectCommentResponse(response(2, `${imageUrl} キャプション`, { imageUrls: [imageUrl] })),
+    ).toEqual({
+      responseNumber: 2,
+      text: "[📷] キャプション",
+      author: "名無し",
+      imageUrls: [imageUrl],
+    });
+  });
+
+  it("自分のレス状態をOverlay候補へ引き継ぐ", () => {
+    expect(projectCommentResponse(response(3, "自分の本文", { isOwn: true }))).toMatchObject({
+      responseNumber: 3,
+      isOwn: true,
+    });
+  });
+
   it("取得元が異なる同じレス番号を別コメントとして識別する", () => {
     expect(
       commentIdentity({ responseNumber: 1, sourceThreadUrl: "https://example.test/thread/1" }),

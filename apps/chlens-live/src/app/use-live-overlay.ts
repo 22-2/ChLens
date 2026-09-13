@@ -76,8 +76,10 @@ export function useLiveOverlay(
         flowTimer = null;
         commentQueue.length = 0;
         setThreadUrl(update.threadUrl);
-        setComments([]);
-        setStageKey((current) => current + 1);
+        if (update.preserveVisibleComments !== true) {
+          setComments([]);
+          setStageKey((current) => current + 1);
+        }
       }
       const batch = update.batch;
       if (!batch) return;
