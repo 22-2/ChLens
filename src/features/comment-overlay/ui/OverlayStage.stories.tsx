@@ -11,6 +11,7 @@ import {
   getArchiveReplayCommentsThroughPosition,
   getArchiveReplaySeekPosition,
   parseArchiveReplayStartInput,
+  parseArchiveReplayTimestamp,
   projectCommentResponse,
 } from "../domain";
 import type { CommentCandidate } from "../domain/comment-types";
@@ -148,7 +149,7 @@ function ArchiveReplayForm({
         event.preventDefault();
         onSubmit();
       }}
-      style={{ display: "grid", gap: 8 }}
+      style={{ display: "grid", gap: 8, minWidth: 0 }}
     >
       <label style={{ display: "grid", gap: 4 }}>
         <span style={{ color: "#a9c1db", fontSize: 13 }}>実況スレッドURL（1行に1件）</span>
@@ -159,7 +160,9 @@ function ArchiveReplayForm({
           placeholder="https://example.com/thread-a/\nhttps://example.com/thread-b/"
           rows={3}
           style={{
-            minWidth: 280,
+            minWidth: 0,
+            width: "100%",
+            boxSizing: "border-box",
             resize: "vertical",
             border: "1px solid #426189",
             borderRadius: 4,
@@ -170,14 +173,18 @@ function ArchiveReplayForm({
         />
       </label>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "end" }}>
-        <label style={{ display: "grid", gap: 4 }}>
-          <span style={{ color: "#a9c1db", fontSize: 13 }}>放送開始（日本時間）</span>
+        {/* 数値入力の既定幅が親の幅を超えて隣のボタンへ重なるため、入力幅と折り返し幅を揃える。 */}
+        <label style={{ display: "grid", gap: 4, flex: "0 1 220px", minWidth: 0 }}>
+          <span style={{ color: "#a9c1db", fontSize: 13 }}>開始日時（日本時間・任意）</span>
           <input
             aria-label="放送開始日時"
             type="datetime-local"
             value={startInput}
             onChange={(event) => onStartInputChange(event.target.value)}
             style={{
+              width: "100%",
+              minWidth: 0,
+              boxSizing: "border-box",
               border: "1px solid #426189",
               borderRadius: 4,
               padding: "7px 9px",
@@ -186,7 +193,7 @@ function ArchiveReplayForm({
             }}
           />
         </label>
-        <label style={{ display: "grid", gap: 4, width: 120 }}>
+        <label style={{ display: "grid", gap: 4, flex: "0 1 120px", minWidth: 0 }}>
           <span style={{ color: "#a9c1db", fontSize: 13 }}>再生時間（分）</span>
           <input
             aria-label="再生時間（分）"
@@ -196,6 +203,9 @@ function ArchiveReplayForm({
             value={durationMinutes}
             onChange={(event) => onDurationMinutesChange(event.target.value)}
             style={{
+              width: "100%",
+              minWidth: 0,
+              boxSizing: "border-box",
               border: "1px solid #426189",
               borderRadius: 4,
               padding: "7px 9px",
@@ -204,10 +214,13 @@ function ArchiveReplayForm({
             }}
           />
         </label>
-        <button type="submit" disabled={loading || !urls.trim()}>
+        <button type="submit" disabled={loading || !urls.trim()} style={{ flexShrink: 0 }}>
           {loading ? "取得中…" : "複数スレを読み込む"}
         </button>
       </div>
+      <span style={{ color: "#a9c1db", fontSize: 12 }}>
+        開始日時は空欄でOK。ログの最初の投稿から開始します（放送開始の自動判定ではありません）。
+      </span>
     </form>
   );
 }
@@ -348,7 +361,7 @@ function PastThreadReplayStory(args: OverlayStageProps) {
   }, [position]);
 
   const load = useCallback(async () => {
-    const startAt = parseArchiveReplayStartInput(startInput);
+    const requestedStartAt = startInput ? parseArchiveReplayStartInput(startInput) : null;
     const parsedDurationMinutes = Number(durationMinutes);
     const inputUrls = [
       ...new Set(
@@ -358,8 +371,8 @@ function PastThreadReplayStory(args: OverlayStageProps) {
           .filter(Boolean),
       ),
     ];
-    if (startAt === null) {
-      setError("放送開始日時を入力してください（日本時間）");
+    if (startInput && requestedStartAt === null) {
+      setError("開始日時を確認してください（日本時間）");
       return;
     }
     if (!Number.isFinite(parsedDurationMinutes) || parsedDurationMinutes <= 0) {
@@ -416,6 +429,26 @@ function PastThreadReplayStory(args: OverlayStageProps) {
       );
       const loadedSources = settled.flatMap((result) => (result.source ? [result.source] : []));
       if (loadedSources.length === 0) throw new Error("取得できたスレッドがありません");
+      // 毎回の日付入力を省けるよう、未指定なら今回の取得結果から開始候補を求める。
+      // 入力欄へ書き戻さず空欄を保つことで、別番組の読み込みに前回の日付を流用しない。
+      const startAt =
+        requestedStartAt ??
+        loadedSources.reduce<number | null>(
+          (earliest, item) =>
+            item.comments.reduce<number | null>((candidate, comment) => {
+              const timestamp = parseArchiveReplayTimestamp(comment.date ?? "");
+              return timestamp === null
+                ? candidate
+                : candidate === null
+                  ? timestamp
+                  : Math.min(candidate, timestamp);
+            }, earliest),
+          null,
+        );
+      if (startAt === null)
+        throw new Error(
+          "投稿日時を読み取れるレスがありません。開始日時と取得したログを確認してください",
+        );
       const timeline = createArchiveReplayTimeline(loadedSources, {
         startAt,
         durationSeconds: parsedDurationMinutes * 60,
@@ -597,7 +630,7 @@ function PastThreadReplayStory(args: OverlayStageProps) {
           pending {stats.pending}
         </span>
       </div>
-      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
         <input
           aria-label="過去実況の再生位置"
           type="range"
