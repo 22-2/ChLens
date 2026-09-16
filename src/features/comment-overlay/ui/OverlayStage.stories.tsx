@@ -1,7 +1,18 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { projectCommentResponse } from "../domain";
+import type {
+  ArchiveReplaySource,
+  ArchiveReplayTimeline,
+  ArchiveReplayTimelineComment,
+} from "../domain";
+import {
+  createArchiveReplayTimeline,
+  getArchiveReplayCommentsThroughPosition,
+  getArchiveReplaySeekPosition,
+  parseArchiveReplayStartInput,
+  projectCommentResponse,
+} from "../domain";
 import type { CommentCandidate } from "../domain/comment-types";
 import {
   DEFAULT_COMMENT_HISTORY_LIMIT,
@@ -25,6 +36,12 @@ interface LoadedThreadStoryData {
   url: string;
   title: string;
   comments: readonly CommentCandidate[];
+}
+
+interface LoadedArchiveReplayData {
+  timeline: ArchiveReplayTimeline;
+  titles: readonly string[];
+  errors: readonly string[];
 }
 
 async function loadThreadStoryData(
@@ -100,6 +117,97 @@ function ThreadUrlForm({ url, loading, error, title, onUrlChange, onSubmit }: Th
           {error}
         </span>
       ) : null}
+    </form>
+  );
+}
+
+interface ArchiveReplayFormProps {
+  urls: string;
+  startInput: string;
+  durationMinutes: string;
+  loading: boolean;
+  onUrlsChange: (value: string) => void;
+  onStartInputChange: (value: string) => void;
+  onDurationMinutesChange: (value: string) => void;
+  onSubmit: () => void;
+}
+
+function ArchiveReplayForm({
+  urls,
+  startInput,
+  durationMinutes,
+  loading,
+  onUrlsChange,
+  onStartInputChange,
+  onDurationMinutesChange,
+  onSubmit,
+}: ArchiveReplayFormProps) {
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit();
+      }}
+      style={{ display: "grid", gap: 8 }}
+    >
+      <label style={{ display: "grid", gap: 4 }}>
+        <span style={{ color: "#a9c1db", fontSize: 13 }}>実況スレッドURL（1行に1件）</span>
+        <textarea
+          aria-label="実況スレッドURL"
+          value={urls}
+          onChange={(event) => onUrlsChange(event.target.value)}
+          placeholder="https://example.com/thread-a/\nhttps://example.com/thread-b/"
+          rows={3}
+          style={{
+            minWidth: 280,
+            resize: "vertical",
+            border: "1px solid #426189",
+            borderRadius: 4,
+            padding: "7px 9px",
+            color: "#eff6ff",
+            background: "#111d30",
+          }}
+        />
+      </label>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "end" }}>
+        <label style={{ display: "grid", gap: 4 }}>
+          <span style={{ color: "#a9c1db", fontSize: 13 }}>放送開始（日本時間）</span>
+          <input
+            aria-label="放送開始日時"
+            type="datetime-local"
+            value={startInput}
+            onChange={(event) => onStartInputChange(event.target.value)}
+            style={{
+              border: "1px solid #426189",
+              borderRadius: 4,
+              padding: "7px 9px",
+              color: "#eff6ff",
+              background: "#111d30",
+            }}
+          />
+        </label>
+        <label style={{ display: "grid", gap: 4, width: 120 }}>
+          <span style={{ color: "#a9c1db", fontSize: 13 }}>再生時間（分）</span>
+          <input
+            aria-label="再生時間（分）"
+            type="number"
+            min={1}
+            step={1}
+            value={durationMinutes}
+            onChange={(event) => onDurationMinutesChange(event.target.value)}
+            style={{
+              border: "1px solid #426189",
+              borderRadius: 4,
+              padding: "7px 9px",
+              color: "#eff6ff",
+              background: "#111d30",
+            }}
+          />
+        </label>
+        <button type="submit" disabled={loading || !urls.trim()}>
+          {loading ? "取得中…" : "複数スレを読み込む"}
+        </button>
+      </div>
     </form>
   );
 }
@@ -220,30 +328,103 @@ function HardcodedStory(args: OverlayStageProps) {
 
 function PastThreadReplayStory(args: OverlayStageProps) {
   const source = useMemo(() => createChLensStorybookSource(), []);
-  const [url, setUrl] = useState("");
-  const [loadedThread, setLoadedThread] = useState<LoadedThreadStoryData | null>(null);
-  const [comments, setComments] = useState<readonly CommentCandidate[]>([]);
-  const [cursor, setCursor] = useState(0);
+  const [urls, setUrls] = useState("");
+  const [startInput, setStartInput] = useState("");
+  const [durationMinutes, setDurationMinutes] = useState("30");
+  const [loadedReplay, setLoadedReplay] = useState<LoadedArchiveReplayData | null>(null);
+  const [position, setPosition] = useState(0);
+  const positionRef = useRef(0);
+  const [syncOffset, setSyncOffset] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stageKey, setStageKey] = useState(0);
   const stageHostRef = useRef<HTMLDivElement>(null);
   const [stats, setStats] = useState({ active: 0, pending: 0 });
+  const [replayRate, setReplayRate] = useState(60);
+
+  useEffect(() => {
+    positionRef.current = position;
+  }, [position]);
 
   const load = useCallback(async () => {
+    const startAt = parseArchiveReplayStartInput(startInput);
+    const parsedDurationMinutes = Number(durationMinutes);
+    const inputUrls = [
+      ...new Set(
+        urls
+          .split(/\r?\n/)
+          .map((url) => url.trim())
+          .filter(Boolean),
+      ),
+    ];
+    if (startAt === null) {
+      setError("放送開始日時を入力してください（日本時間）");
+      return;
+    }
+    if (!Number.isFinite(parsedDurationMinutes) || parsedDurationMinutes <= 0) {
+      setError("再生時間は1分以上で入力してください");
+      return;
+    }
+    if (inputUrls.length === 0) {
+      setError("実況スレッドURLを1件以上入力してください");
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setPlaying(false);
-    setLoadedThread(null);
-    setComments([]);
-    setCursor(0);
+    setLoadedReplay(null);
+    setPosition(0);
+    positionRef.current = 0;
+    setSyncOffset(0);
     setStageKey((current) => current + 1);
 
     try {
-      const nextThread = await loadThreadStoryData(source, url);
-      setLoadedThread(nextThread);
-      setPlaying(nextThread.comments.length > 0);
+      const settled = await Promise.all(
+        inputUrls.map(async (threadUrl) => {
+          try {
+            const thread = await source.loadThread(threadUrl);
+            const comments = thread.posts
+              .map((post) =>
+                projectCommentResponse({
+                  num: post.number,
+                  name: post.name,
+                  message: post.message,
+                  date: post.date,
+                  id: post.id,
+                }),
+              )
+              .filter((comment): comment is CommentCandidate => comment !== null);
+            return {
+              source: { threadUrl, comments } satisfies ArchiveReplaySource,
+              title: thread.title?.trim() || threadUrl,
+              error: null,
+            };
+          } catch (loadError: unknown) {
+            console.error("[Storybook] archive replay thread load failed:", threadUrl, loadError);
+            return {
+              source: null,
+              title: threadUrl,
+              error:
+                loadError instanceof Error
+                  ? `${threadUrl}: ${loadError.message}`
+                  : `${threadUrl}: 取得に失敗しました`,
+            };
+          }
+        }),
+      );
+      const loadedSources = settled.flatMap((result) => (result.source ? [result.source] : []));
+      if (loadedSources.length === 0) throw new Error("取得できたスレッドがありません");
+      const timeline = createArchiveReplayTimeline(loadedSources, {
+        startAt,
+        durationSeconds: parsedDurationMinutes * 60,
+      });
+      setLoadedReplay({
+        timeline,
+        titles: settled.map((result) => result.title),
+        errors: settled.flatMap((result) => (result.error ? [result.error] : [])),
+      });
       setStageKey((current) => current + 1);
     } catch (loadError: unknown) {
       console.error("[Storybook] past thread load failed:", loadError);
@@ -251,25 +432,32 @@ function PastThreadReplayStory(args: OverlayStageProps) {
     } finally {
       setLoading(false);
     }
-  }, [source, url]);
+  }, [durationMinutes, source, startInput, urls]);
 
   useEffect(() => {
-    if (!playing || !loadedThread || cursor >= loadedThread.comments.length) return;
+    if (!playing || !loadedReplay) return;
 
-    // 変更理由: 過去ログは全件同時投入せず、取得済みレスの到着間隔を再現して
-    // strict queueと再生停止を実際の操作に近い形で確認できるようにする。
-    const timer = window.setTimeout(() => {
-      const nextComment = loadedThread.comments[cursor];
-      if (!nextComment) return;
-      setComments((current) => [...current, nextComment].slice(-DEFAULT_COMMENT_HISTORY_LIMIT));
-      setCursor((current) => current + 1);
-    }, 160);
-    return () => window.clearTimeout(timer);
-  }, [cursor, loadedThread, playing]);
-
-  useEffect(() => {
-    if (loadedThread && cursor >= loadedThread.comments.length) setPlaying(false);
-  }, [cursor, loadedThread]);
+    // 変更理由: タイマーの呼び出し回数を加算せず、実時間との差から位置を求めることで
+    // Storybookの負荷やバックグラウンド化によるcallback遅延が累積しないようにする。
+    const startedAt = performance.now();
+    const startedPosition = positionRef.current;
+    let frameId = 0;
+    const tick = (now: number) => {
+      const nextPosition = Math.min(
+        loadedReplay.timeline.durationSeconds,
+        startedPosition + ((now - startedAt) / 1_000) * Math.max(0.1, replayRate),
+      );
+      positionRef.current = nextPosition;
+      setPosition(nextPosition);
+      if (nextPosition >= loadedReplay.timeline.durationSeconds) {
+        setPlaying(false);
+        return;
+      }
+      frameId = requestAnimationFrame(tick);
+    };
+    frameId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frameId);
+  }, [loadedReplay, playing, replayRate]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -285,14 +473,51 @@ function PastThreadReplayStory(args: OverlayStageProps) {
     return () => window.clearInterval(timer);
   }, []);
 
+  const seek = useCallback(
+    (nextPosition: number) => {
+      if (!loadedReplay) return;
+      const clamped = Math.min(Math.max(0, nextPosition), loadedReplay.timeline.durationSeconds);
+      // 変更理由: OverlayStageのschedulerは時計の逆行を拒否するため、シークでは
+      // 表示中コメントとlaneをまとめて新しい世代へ作り直し、前位置のレスを残さない。
+      positionRef.current = clamped;
+      setPosition(clamped);
+      setStageKey((current) => current + 1);
+    },
+    [loadedReplay],
+  );
+
+  const seekToComment = useCallback(
+    (comment: ArchiveReplayTimelineComment) => {
+      if (!loadedReplay) return;
+      const nextPosition = getArchiveReplaySeekPosition(
+        loadedReplay.timeline,
+        { threadUrl: comment.sourceThreadUrl, responseNumber: comment.responseNumber },
+        syncOffset,
+      );
+      if (nextPosition === null) {
+        setError("このレスは現在の同期補正では再生範囲外です");
+        return;
+      }
+      setError(null);
+      seek(nextPosition);
+    },
+    [loadedReplay, seek, syncOffset],
+  );
+
   const restart = () => {
-    // 変更理由: schedulerはStoryのkey変更時にlaneとclockを同時に初期化するため、
-    // 過去ログを先頭から再生しても前回のactiveコメントが混ざらない。
-    setComments([]);
-    setCursor(0);
+    if (!loadedReplay) return;
+    seek(0);
     setPlaying(true);
-    setStageKey((current) => current + 1);
   };
+
+  const visibleComments = loadedReplay
+    ? getArchiveReplayCommentsThroughPosition(loadedReplay.timeline, position, syncOffset).slice(
+        -DEFAULT_COMMENT_HISTORY_LIMIT,
+      )
+    : [];
+  const replayTime = loadedReplay
+    ? formatReplayClock(loadedReplay.timeline.startAt + position * 1_000)
+    : "--:--:--";
 
   return (
     <div
@@ -306,37 +531,155 @@ function PastThreadReplayStory(args: OverlayStageProps) {
         background: "#0d1524",
       }}
     >
-      <ThreadUrlForm
-        url={url}
+      <ArchiveReplayForm
+        urls={urls}
+        startInput={startInput}
+        durationMinutes={durationMinutes}
         loading={loading}
-        error={error}
-        title={loadedThread?.title ?? null}
-        onUrlChange={setUrl}
+        onUrlsChange={setUrls}
+        onStartInputChange={setStartInput}
+        onDurationMinutesChange={setDurationMinutes}
         onSubmit={() => void load()}
       />
+      {error ? (
+        <span role="alert" style={{ color: "#ff9e9e", fontSize: 13 }}>
+          {error}
+        </span>
+      ) : null}
+      {loadedReplay?.errors.map((loadError) => (
+        <span key={loadError} role="status" style={{ color: "#ffc777", fontSize: 13 }}>
+          一部取得失敗: {loadError}
+        </span>
+      ))}
+      {loadedReplay ? (
+        <div style={{ display: "grid", gap: 2, color: "#a9c1db", fontSize: 12 }}>
+          {loadedReplay.titles.map((title, index) => (
+            <span key={`${index}-${title}`}>
+              スレ{index + 1}: {title}
+            </span>
+          ))}
+        </div>
+      ) : null}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
         <button type="button" onClick={() => setPlaying((current) => !current)}>
           {playing ? "停止" : "再生"}
         </button>
-        <button type="button" onClick={restart} disabled={!loadedThread}>
+        <button type="button" onClick={restart} disabled={!loadedReplay}>
           最初から
         </button>
+        <button type="button" onClick={() => seek(position - 10)} disabled={!loadedReplay}>
+          10秒戻す
+        </button>
+        <button type="button" onClick={() => seek(position + 10)} disabled={!loadedReplay}>
+          10秒進める
+        </button>
+        <label
+          style={{ display: "flex", gap: 4, alignItems: "center", color: "#a9c1db", fontSize: 13 }}
+        >
+          試作倍率
+          <input
+            aria-label="試作再生倍率"
+            type="number"
+            min={1}
+            max={300}
+            step={1}
+            value={replayRate}
+            onChange={(event) => setReplayRate(Number(event.target.value) || 1)}
+            style={{ width: 58 }}
+          />
+          倍
+        </label>
         <span style={{ color: "#a9c1db", fontSize: 13 }}>
-          {loadedThread ? `過去ログ ${cursor}/${loadedThread.comments.length}件` : "過去ログ未読込"}{" "}
-          / active {stats.active} / pending {stats.pending} / strict + queue
+          {loadedReplay
+            ? `対象${loadedReplay.timeline.comments.length}件 / 除外${loadedReplay.timeline.skipped.length}件`
+            : "過去ログ未読込"}{" "}
+          / {formatReplayDuration(position)} / 実況時刻 {replayTime} / active {stats.active} /
+          pending {stats.pending}
         </span>
       </div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <input
+          aria-label="過去実況の再生位置"
+          type="range"
+          min={0}
+          max={loadedReplay?.timeline.durationSeconds ?? 1}
+          step={0.1}
+          value={position}
+          disabled={!loadedReplay}
+          onChange={(event) => seek(Number(event.target.value))}
+          style={{ flex: "1 1 auto" }}
+        />
+        <button
+          type="button"
+          onClick={() => {
+            setSyncOffset((current) => current - 1);
+            seek(position);
+          }}
+          disabled={!loadedReplay}
+        >
+          コメントを1秒早く
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setSyncOffset((current) => current + 1);
+            seek(position);
+          }}
+          disabled={!loadedReplay}
+        >
+          コメントを1秒遅く
+        </button>
+      </div>
+      {loadedReplay ? (
+        <details>
+          <summary style={{ cursor: "pointer", color: "#d8e7f7" }}>
+            レスを選んでその時刻へ移動
+          </summary>
+          <div
+            style={{ display: "grid", gap: 4, maxHeight: 180, overflow: "auto", padding: "8px 0" }}
+          >
+            {loadedReplay.timeline.comments.slice(0, 100).map((comment) => (
+              <button
+                key={`${comment.sourceThreadUrl}:${comment.responseNumber}`}
+                type="button"
+                onClick={() => seekToComment(comment)}
+                style={{ textAlign: "left" }}
+              >
+                {comment.sourceThreadUrl} レス{comment.responseNumber}（
+                {formatReplayDuration(comment.replayOffsetSeconds)}）: {comment.text}
+              </button>
+            ))}
+          </div>
+        </details>
+      ) : null}
       <div ref={stageHostRef} style={{ flex: "1 1 auto", minHeight: 0, width: "100%" }}>
         <OverlayStage
           key={stageKey}
           {...args}
-          comments={comments}
+          comments={visibleComments}
           fitToContainer
           playing={playing}
         />
       </div>
     </div>
   );
+}
+
+function formatReplayDuration(seconds: number): string {
+  const wholeSeconds = Math.max(0, Math.floor(seconds));
+  const minutes = Math.floor(wholeSeconds / 60);
+  const remainder = wholeSeconds % 60;
+  return `${minutes.toString().padStart(2, "0")}:${remainder.toString().padStart(2, "0")}`;
+}
+
+function formatReplayClock(timestamp: number): string {
+  return new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(new Date(timestamp));
 }
 
 function CurrentThreadStory(args: OverlayStageProps) {
