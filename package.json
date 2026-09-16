@@ -14,7 +14,6 @@
     "build:tauri": "run-s build:tauri:main build:tauri:overlay",
     "build:tauri:main": "cross-env PLATFORM=tauri ENTRY=browser vp build",
     "build:tauri:overlay": "cross-env PLATFORM=tauri ENTRY=overlay vp build",
-    "build:live": "pnpm --filter chlens-live build",
     "build:all": "run-s build:chrome build:firefox",
     "// --- Development & Watch ---": "",
     "dev:chrome": "cross-env PLATFORM=chrome ENTRY=browser VITE_WATCH_DEV=true vp build --watch --mode development",

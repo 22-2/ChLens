@@ -1,5 +1,4 @@
 import "../src/view/browser/styles/index.css";
-import "../apps/chlens-live/src/app/styles.css";
 
 import type { Preview } from "@storybook/react-vite";
 import type { ReactNode } from "react";

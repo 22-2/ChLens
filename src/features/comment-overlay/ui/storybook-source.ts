@@ -4,13 +4,14 @@ import {
   type HttpClient,
   type HttpRequest,
   type HttpResponse,
+  type ThreadData,
 } from "@chlen/ch-lib";
 
 import { CHLENS_STORYBOOK_THREAD_PROXY_PATH } from "../../../../.storybook/thread-proxy-path.ts";
-import {
-  type ChLensLiveSource,
-  createChLensLiveSource,
-} from "../../../../apps/chlens-live/src/live-session/source";
+
+export interface ChLensStorybookSource {
+  loadThread(url: string): Promise<ThreadData>;
+}
 
 class StorybookProxyHttpClient implements HttpClient {
   async get(url: string, request: HttpRequest = {}): Promise<HttpResponse> {
@@ -36,8 +37,12 @@ class StorybookProxyHttpClient implements HttpClient {
 
 /**
  * StorybookではブラウザのCORS制約を避けるため、ChFetcherだけを中継対応clientへ差し替える。
- * URL正規化・文字コード変換・スレッド解析・Liveのsource境界はTauri版と同じ実装を通る。
+ * 旧Liveアプリのsource境界を参照するとアプリ削除後も依存が残るため、Storybookが必要とする
+ * スレッド取得だけをこのファイルで定義し、URL正規化・文字コード変換・解析はChFetcherへ委譲する。
  */
-export function createChLensStorybookSource(): ChLensLiveSource {
-  return createChLensLiveSource(new ChFetcher(new StorybookProxyHttpClient()));
+export function createChLensStorybookSource(): ChLensStorybookSource {
+  const fetcher = new ChFetcher(new StorybookProxyHttpClient());
+  return {
+    loadThread: (url) => fetcher.fetchThread(url),
+  };
 }

@@ -11,7 +11,10 @@
 
 既存のPhase spike文書も、実装済みの境界と検証結果を確認する記録として残す。
 
-## 現在の進捗（2026-08-30）
+2026-09-17追記：Overlay機能のChLens Tauriへの回収完了を受け、`apps/chlens-live`と専用の
+`build:live` scriptを削除した。以下に残るLiveへの言及は、移植元の設計・検証履歴である。
+
+## 現在の進捗（2026-09-17）
 
 - Phase 0：完了。独立したChlens Live開発を凍結し、本書を現行計画として扱う方針を旧ロードマップへ明記した。
 - Phase 1：実装済み。コメント入力型、HTMLからのprojection、baselineとの差分抽出、NG・空本文・重複排除、memory event busを実装済み。
@@ -19,6 +22,7 @@
 - Phase 3：実装済み。ThreadPageの確定済み`IRes[]`をcontrollerへ同期し、Tauri版スレッドのステータスバーから実況開始・停止とOverlay表示切り替えを行えるようにした。MVPではアクティブなスレッドだけを実況対象とする。
 - Phase 4：実装済み。動的lane、adaptive/dropを既定とする新着優先queue、CSS animation、hover情報、固定レス・過去ログ・現行スレ・StressのStoryを実装した。
 - Phase 5：実装済み。Tauri限定の開始・停止・表示切り替えUI、表示中スレッドを離れた際の停止、速度・透明度・最大queue数の設定保存と実況開始時の反映、文字サイズの共通コード定数化、開始失敗時の非表示ロールバックとエラー表示、実行中Overlayへの設定変更即時反映まで追加した。
+- 独立Liveアプリの削除：完了。実行コード、workspace package、専用scriptを削除し、Storybookのスレッド取得境界は本体側へ移した。
 - 自動確認：`pnpm tsc6`、`pnpm build:chrome`、`pnpm build:firefox`、`pnpm build:tauri`、`pnpm tauri build --debug --no-bundle`、`cargo check --manifest-path src-tauri/Cargo.toml --all-targets`、Overlay関連テスト、geometry保存・復元テスト、Tauri event adapter契約テスト、Tauri window adapter lifecycleテスト、Config購読テスト、Overlay操作バー契約テスト、dat落ち時の実況停止テスト、`pnpm storybook:build`、`pnpm tauri dev`のwatcherとTauriプロセス起動は成功。直近のコメントOverlay・Tauri限定UI・設定テストは85件全件成功している。全体テストは659件全件成功している。
 - Windows実機で部分確認済み：実況開始によるOverlay表示、合成eventによるコメント表示・設定反映・移動、操作バーのhover、操作バーの物理クリックによる閉じる、Mainからの再表示、最小化からの再表示を確認した。
 - 未確認：実際のThreadPage新着レスからの表示、Overlay外側のクリック透過、リサイズ領域、複数モニター/DPI、sleep復帰、長時間動作の手動確認。
@@ -54,7 +58,6 @@ ChLens本体へ回収する。最終成果物は、ブラウザ版へ影響し�
 - ChLensのスレ一覧やスレ表示をOverlay用に作り直すこと。
 - 初期MVPで過去ログ再生、上固定、下固定、複数実況セッションを完成させること。
 - コメント流しのためにChLensと別の設定DB、履歴DB、NGルールを持つこと。
-- 移植完了前に`apps/chlens-live`を削除すること。
 
 ## 目標構成
 
@@ -265,8 +268,8 @@ Storybookでは速度、衝突、レーン、queue、長文、resizeを確認す
 | playback session、独立実況、複数スレ実況 | 後で再評価 | 必要になった時点でChLensの取得sessionと共有する設計を先に行い、Live sessionをそのまま並行起動しない。 |
 | Liveの板名取得 | 新規回収不要 | 共通取得は`packages/ch-lib/src/board/BoardTitleResolver.ts`、ChLens固有の設定・cache連携は既存`src/core/BoardTitleSolver.ts`を使用する。 |
 
-この棚卸し時点では、`apps/chlens-live`の削除条件を満たしたとは判定しない。Windows実機での受け入れ確認と、
-独立アプリを削除しても参照用の旧ロードマップ・spike文書へ到達できることのレビューを完了してから、削除を別変更として判断する。
+この棚卸しをもって、`apps/chlens-live`の削除を実施した。旧ロードマップ・spike文書は、設計判断と
+検証履歴として引き続き参照できる状態で保持する。
 
 ## 実施フェーズ
 
@@ -524,7 +527,7 @@ queue、active comments、DOMノード数に上限を持たせる。古いコメ
 7. Tauri限定のステータスバー操作を追加する
 8. コメント表示設定を既存設定へ追加する
 9. Windows長時間・複数モニター確認を行う
-10. Chlens Live独立アプリの整理可否を判断する
+10. Chlens Live独立アプリの整理可否を判断する（完了）
 
 ## 推奨コミット単位
 
@@ -542,16 +545,9 @@ queue、active comments、DOMノード数に上限を持たせる。古いコメ
 
 ## 削除判断
 
-`apps/chlens-live`は現時点では削除しない。次をすべて満たした後、独立した変更として削除を判断する。
-
-- Overlayウィンドウ制御がChLens Tauriへ移植済みである。
-- 新着コメントの表示MVPがChLens Tauriで動作する。
-- geometry、クリック透過、Tauri eventの回収漏れがない。
-- 旧ロードマップとPhase spike文書を残すことが確認されている。
-- Live専用build scriptとworkspace依存の削除範囲が確認されている。
-- 人がWindows実機でChLens Tauri版に満足している。
-
-削除後も、旧ロードマップとPhase spike文書は設計判断と検証履歴として保持する。
+2026-09-17、利用者判断により`apps/chlens-live`の削除を実施した。削除対象は独立アプリの
+実行コード、Tauri設定、workspace package、専用build script、およびStorybookからの直接参照である。
+設計判断と検証履歴を保持するため、旧ロードマップとPhase spike文書は削除していない。
 
 ## 最初に着手する範囲
 

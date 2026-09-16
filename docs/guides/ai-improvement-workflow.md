@@ -14,7 +14,6 @@
 | 実装タスク・優先度・進捗 | GitHub Issue |
 | 最新の開発コード | `develop` |
 | レビューと取り込み | PR |
-| Live固有の設計・作業メモ | `apps/chlens-live/todo.md`（トリアージ対象外） |
 
 実装AIは`ready-for-agent`のIssueを作業単位にし、最新の`develop`から作業ブランチを作成します。PRはその作業結果をレビューするための窓口で、Issueの進捗状態を置き換えません。
 

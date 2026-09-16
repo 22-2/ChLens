@@ -5,8 +5,7 @@
 `.todo`は意図的に自由記述のままにします。ローカルのトリアージコマンドがメモを読み、
 リポジトリを調査し、既存のGitHub Issueを検索したうえで、確認済みのトリアージレポートを返します。
 
-自動トリアージが読むtodoは、リポジトリ直下の`.todo`だけです。`apps/chlens-live/todo.md`は
-Live固有の設計・作業メモなので、そこへ新しい不満を書いてもIssue化の対象にはなりません。
+自動トリアージが読むtodoは、リポジトリ直下の`.todo`だけです。
 新しい不満はルートの`.todo`へ書き、実装の判断と進捗はGitHub Issueで管理します。
 
 最初に必ずopenとclosedの両方のIssueを確認します。`needs-priority`と`needs-info`のIssueは

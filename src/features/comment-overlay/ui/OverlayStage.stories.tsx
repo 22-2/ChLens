@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import type { ChLensLiveSource } from "../../../../apps/chlens-live/src/live-session/source";
 import { projectCommentResponse } from "../domain";
 import type { CommentCandidate } from "../domain/comment-types";
 import {
@@ -9,7 +8,7 @@ import {
   OverlayStage,
   type OverlayStageProps,
 } from "./OverlayStage";
-import { createChLensStorybookSource } from "./storybook-source";
+import { type ChLensStorybookSource, createChLensStorybookSource } from "./storybook-source";
 
 const INITIAL_COMMENTS: readonly CommentCandidate[] = [
   { responseNumber: 1, text: "実況開始", author: "名無し" },
@@ -29,7 +28,7 @@ interface LoadedThreadStoryData {
 }
 
 async function loadThreadStoryData(
-  source: ChLensLiveSource,
+  source: ChLensStorybookSource,
   rawUrl: string,
 ): Promise<LoadedThreadStoryData> {
   const url = rawUrl.trim();

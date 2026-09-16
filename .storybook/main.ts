@@ -13,11 +13,8 @@ const repositoryAliases = {
 };
 
 const config: StorybookConfig = {
-  // ChLens本体とLiveを同じカタログで確認し、共通UIの見た目を比較できるようにする。
-  stories: [
-    "../src/**/*.stories.@(js|jsx|mjs|ts|tsx)",
-    "../apps/chlens-live/src/**/*.stories.@(js|jsx|mjs|ts|tsx)",
-  ],
+  // ChLens本体のStoryだけを読み込み、削除済みの旧Liveアプリへ依存しないようにする。
+  stories: ["../src/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
   addons: ["@storybook/addon-docs", "@storybook/addon-a11y"],
   framework: {
     name: "@storybook/react-vite",
