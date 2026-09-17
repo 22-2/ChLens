@@ -348,6 +348,7 @@ export function PastThreadReplayStory(args: OverlayStageProps) {
   const [durationMinutes, setDurationMinutes] = useState("30");
   const [loadedReplay, setLoadedReplay] = useState<LoadedArchiveReplayData | null>(null);
   const [position, setPosition] = useState(0);
+  const [seekStartPosition, setSeekStartPosition] = useState(0);
   const positionRef = useRef(0);
   const [syncOffset, setSyncOffset] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -391,6 +392,7 @@ export function PastThreadReplayStory(args: OverlayStageProps) {
     setPlaying(false);
     setLoadedReplay(null);
     setPosition(0);
+    setSeekStartPosition(0);
     positionRef.current = 0;
     setSyncOffset(0);
     setStageKey((current) => current + 1);
@@ -518,6 +520,9 @@ export function PastThreadReplayStory(args: OverlayStageProps) {
       // 表示中コメントとlaneをまとめて新しい世代へ作り直し、前位置のレスを残さない。
       positionRef.current = clamped;
       setPosition(clamped);
+      // 描画世代を作り直した際に全履歴を新着として再投入しないよう、
+      // 移動先を投入範囲の下限にする。巻き戻した区間は投稿時刻に達してから再表示する。
+      setSeekStartPosition(clamped);
       setStageKey((current) => current + 1);
     },
     [loadedReplay],
@@ -548,9 +553,9 @@ export function PastThreadReplayStory(args: OverlayStageProps) {
   };
 
   const visibleComments = loadedReplay
-    ? getArchiveReplayCommentsThroughPosition(loadedReplay.timeline, position, syncOffset).slice(
-        -DEFAULT_COMMENT_HISTORY_LIMIT,
-      )
+    ? getArchiveReplayCommentsThroughPosition(loadedReplay.timeline, position, syncOffset)
+        .filter((comment) => comment.replayOffsetSeconds + syncOffset >= seekStartPosition)
+        .slice(-DEFAULT_COMMENT_HISTORY_LIMIT)
     : [];
   const replayTime = loadedReplay
     ? formatReplayClock(loadedReplay.timeline.startAt + position * 1_000)

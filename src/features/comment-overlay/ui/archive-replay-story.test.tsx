@@ -3,6 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
+import type { CommentCandidate } from "../domain/comment-types";
 import { PastThreadReplayStory } from "./OverlayStage.stories";
 
 vi.mock("./storybook-source", () => ({
@@ -20,7 +21,11 @@ vi.mock("./storybook-source", () => ({
 // 描画側の時計を切り離し、利用者が操作する再生時計の巻き戻しを検証する。
 vi.mock("./OverlayStage", () => ({
   DEFAULT_COMMENT_HISTORY_LIMIT: 3000,
-  OverlayStage: () => <div />,
+  OverlayStage: ({ comments }: { comments: readonly CommentCandidate[] }) => (
+    <output data-testid="投入レス">
+      {comments.map((comment) => comment.responseNumber).join(",")}
+    </output>
+  ),
 }));
 
 afterEach(() => {
@@ -59,11 +64,20 @@ describe("過去実況の再生位置操作", () => {
     frame(20_000);
     const slider = screen.getByRole("slider", { name: "過去実況の再生位置" });
     expect(slider).toHaveValue("20");
+    expect(screen.getByTestId("投入レス")).toHaveTextContent("1,2");
+    fireEvent.click(screen.getByRole("button", { name: "10秒進める" }));
+    expect(screen.getByTestId("投入レス").textContent).toBe("");
+    fireEvent.click(screen.getByRole("button", { name: "10秒戻す" }));
+    expect(screen.getByTestId("投入レス").textContent).toBe("");
     fireEvent.change(slider, { target: { value: "5" } });
     frame(1_000);
     expect(slider).toHaveValue("6");
+    expect(screen.getByTestId("投入レス").textContent).toBe("");
+    frame(4_000);
+    expect(screen.getByTestId("投入レス").textContent).toBe("2");
     fireEvent.click(screen.getByRole("button", { name: "最初から" }));
     frame(1_000);
     expect(slider).toHaveValue("1");
+    expect(screen.getByTestId("投入レス").textContent).toBe("1");
   });
 });
