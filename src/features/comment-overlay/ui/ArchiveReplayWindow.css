@@ -87,6 +87,36 @@
   flex: 0 0 auto;
 }
 
+/* disabledでも青い背景だけ残ると、利用不可の操作が押せるように見えて文字も沈む。 */
+.archive-replay-window__content .browser-button:disabled {
+  border-color: var(--sys-color-border);
+  background: var(--sys-color-surface-muted);
+  color: var(--sys-color-text-disabled);
+  opacity: 1;
+}
+
+.archive-replay-window__content .archive-replay-window__secondary-button {
+  border-color: var(--sys-color-border);
+  background: var(--sys-color-surface-muted);
+  color: var(--sys-color-text);
+}
+
+.archive-replay-window__content .archive-replay-window__secondary-button:hover:not(:disabled) {
+  border-color: var(--sys-color-input-border);
+  background: var(--sys-color-list-hover-bg);
+}
+
+.archive-replay-window__content .archive-replay-window__sync-button {
+  border: 1px solid var(--sys-color-border);
+  background: var(--sys-color-surface-muted);
+  color: var(--sys-color-text);
+}
+
+.archive-replay-window__content .archive-replay-window__sync-button:hover:not(:disabled) {
+  border-color: var(--sys-color-input-border);
+  background: var(--sys-color-list-hover-bg);
+}
+
 .archive-replay-window__note {
   color: var(--sys-color-text-muted);
   font-size: var(--sys-font-size-xs);

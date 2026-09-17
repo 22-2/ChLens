@@ -390,15 +390,27 @@ export function ArchiveReplayWindow({ open, onClose }: ArchiveReplayWindowProps)
               {playing ? <Pause size={15} /> : <Play size={15} />}
               {playing ? "停止" : "再生"}
             </Button>
-            <Button onClick={() => seek(0)} disabled={!loadedReplay}>
+            <Button
+              className="archive-replay-window__secondary-button"
+              onClick={() => seek(0)}
+              disabled={!loadedReplay}
+            >
               <RotateCcw size={15} />
               最初から
             </Button>
-            <Button onClick={() => seek(position - 10)} disabled={!loadedReplay}>
+            <Button
+              className="archive-replay-window__secondary-button"
+              onClick={() => seek(position - 10)}
+              disabled={!loadedReplay}
+            >
               <SkipBack size={15} />
               10秒戻す
             </Button>
-            <Button onClick={() => seek(position + 10)} disabled={!loadedReplay}>
+            <Button
+              className="archive-replay-window__secondary-button"
+              onClick={() => seek(position + 10)}
+              disabled={!loadedReplay}
+            >
               <SkipForward size={15} />
               10秒進める
             </Button>
@@ -420,6 +432,7 @@ export function ArchiveReplayWindow({ open, onClose }: ArchiveReplayWindowProps)
               onChange={(event) => seek(Number(event.currentTarget.value))}
             />
             <Button
+              className="archive-replay-window__sync-button"
               variant="subtle"
               onClick={() => {
                 setSyncOffset((current) => current - 1);
@@ -430,6 +443,7 @@ export function ArchiveReplayWindow({ open, onClose }: ArchiveReplayWindowProps)
               コメントを1秒早く
             </Button>
             <Button
+              className="archive-replay-window__sync-button"
               variant="subtle"
               onClick={() => {
                 setSyncOffset((current) => current + 1);
