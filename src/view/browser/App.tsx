@@ -1,5 +1,6 @@
 import { List as ListIcon, PenLine } from "lucide-react";
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import { ArchiveReplayWindow } from "src/features/comment-overlay/ui/ArchiveReplayWindow";
 import { container } from "src/service-container/index";
 import { AutoRefreshStatusItem } from "src/view/browser/components/AutoRefreshStatusItem";
 import { BookmarkRootSelectorDialog } from "src/view/browser/components/BookmarkRootSelectorDialog";
@@ -145,6 +146,7 @@ const PaneColumn: React.FC<{ paneId: string; isActive: boolean }> = ({ paneId, i
 const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
   const dispatch = useTabDispatch();
   const { currentPage, activeTab } = useTabStore();
+  const [isArchiveReplayOpen, setIsArchiveReplayOpen] = useState(false);
   const tabBarOrientation = useTabBarOrientation();
   const {
     state: nextThreadSearchState,
@@ -160,7 +162,17 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
 
   // 変更理由: 水平・垂直どちらの配置でもペイン内容は同一にするため、TabBar 以外の
   // 本体部分を共通化して二重管理を防ぐ。
-  const navigationBar = <NavigationBar openNextThreadSearchDialog={searchNextThread} />;
+  const openArchiveReplayWindow = useCallback(() => {
+    // 変更理由: コマンドパレットはナビゲーションの状態を閉じた後に実行されるため、
+    // このペインでは表示状態だけを持ち、読み込み状態は再生窓へ閉じ込める。
+    setIsArchiveReplayOpen(true);
+  }, []);
+  const navigationBar = (
+    <NavigationBar
+      openNextThreadSearchDialog={searchNextThread}
+      openArchiveReplayWindow={openArchiveReplayWindow}
+    />
+  );
   const paneBody = (
     <>
       <ActiveThreadBridgeState isActive={isActive} />
@@ -174,6 +186,10 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
             state={nextThreadSearchState}
             onClose={closeNextThreadSearch}
             onSelect={selectCandidate}
+          />
+          <ArchiveReplayWindow
+            open={isArchiveReplayOpen}
+            onClose={() => setIsArchiveReplayOpen(false)}
           />
         </>
       ) : null}

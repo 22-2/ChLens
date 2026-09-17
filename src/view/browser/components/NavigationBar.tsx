@@ -114,6 +114,7 @@ const OMNIBAR_HISTORY_FETCH_COUNT = 300;
 const OMNIBAR_MAX_SUGGESTIONS = 8;
 
 const NOOP_OPEN_NEXT_THREAD_SEARCH_DIALOG = async (): Promise<void> => undefined;
+const NOOP_OPEN_ARCHIVE_REPLAY_WINDOW = (): void => undefined;
 
 function normalizeString(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
@@ -285,10 +286,12 @@ function navigateByUrl(url: string, dispatch: ReturnType<typeof useTabStore>["di
 
 interface NavigationBarProps {
   openNextThreadSearchDialog?: () => Promise<void>;
+  openArchiveReplayWindow?: () => void;
 }
 
 export const NavigationBar: React.FC<NavigationBarProps> = ({
   openNextThreadSearchDialog = NOOP_OPEN_NEXT_THREAD_SEARCH_DIALOG,
+  openArchiveReplayWindow = NOOP_OPEN_ARCHIVE_REPLAY_WINDOW,
 }) => {
   const { state, activeTab, currentPage, dispatch, paneId } = useTabStore();
   // 2ペイン表示中かどうか（トグルボタンの状態に使う）。
@@ -494,6 +497,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       toggleWritePanel: () => togglePanel(BOTTOM_PANEL_WRITE_TAB_ID),
       openResponseJumpDialog,
       openNextThreadSearchDialog,
+      openArchiveReplayWindow,
     }),
     [
       activeTab,
@@ -502,6 +506,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       isPanelOpen,
       isTwoPane,
       openNextThreadSearchDialog,
+      openArchiveReplayWindow,
       openResponseJumpDialog,
       state.closedTabs,
       state.tabs,

@@ -121,6 +121,7 @@ function createContext(
       toggleWritePanel: vi.fn(),
       openResponseJumpDialog: vi.fn(),
       openNextThreadSearchDialog: openNextThreadSearchDialogMock,
+      openArchiveReplayWindow: vi.fn(),
     },
     dispatch,
   };
@@ -203,6 +204,25 @@ describe("browser commands", () => {
     expect(ids).not.toContain("page.jump-to-response");
     expect(ids).not.toContain("page.search-next-thread");
     expect(ids).toContain("navigation.open-siki-log");
+  });
+
+  it("過去実況再生をコマンドパレットから開ける", async () => {
+    const { context } = createContext({ type: "home", title: "ホーム" });
+    const openArchiveReplayWindow = vi.fn();
+    context.openArchiveReplayWindow = openArchiveReplayWindow;
+
+    expect(resolveBrowserCommands(context)).toContainEqual(
+      expect.objectContaining({
+        id: "navigation.open-archive-replay",
+        label: "過去実況再生を開く",
+        enabled: true,
+      }),
+    );
+
+    await expect(executeBrowserCommand("navigation.open-archive-replay", context)).resolves.toBe(
+      true,
+    );
+    expect(openArchiveReplayWindow).toHaveBeenCalledOnce();
   });
 
   it("Sikiログを選択すると本文を新しいタブで開く", async () => {
@@ -706,6 +726,7 @@ describe("browser commands", () => {
       toggleWritePanel: vi.fn(),
       openResponseJumpDialog: vi.fn(),
       openNextThreadSearchDialog: openNextThreadSearchDialogMock,
+      openArchiveReplayWindow: vi.fn(),
     };
 
     const findCommand = (id: string) =>

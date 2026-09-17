@@ -14,6 +14,7 @@ import {
   PanelLeft,
   PanelRight,
   PenLine,
+  PlayCircle,
   RotateCcw,
   RotateCw,
   Search,
@@ -87,6 +88,7 @@ export interface BrowserCommandContext {
   toggleWritePanel: () => void;
   openResponseJumpDialog: () => void;
   openNextThreadSearchDialog: () => Promise<void>;
+  openArchiveReplayWindow: () => void;
 }
 
 export interface BrowserCommandDefinition {
@@ -476,6 +478,18 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
         type: "logList",
         title: "ログ検索",
       }),
+  },
+  {
+    id: "navigation.open-archive-replay",
+    label: "過去実況再生を開く",
+    englishLabel: "Open Archive Replay",
+    description: "複数の実況スレッドを投稿時刻順につないで再生します",
+    keywords: ["過去実況", "実況再生", "コメント再生", "archive replay", "replay"],
+    group: "navigation",
+    icon: PlayCircle,
+    // 変更理由: 過去ログ検索とは別に、複数スレッドを時刻順で再生する入口を
+    // コマンドパレットへ常設し、現在のページ種別に左右されず呼び出せるようにする。
+    run: ({ openArchiveReplayWindow }) => openArchiveReplayWindow(),
   },
   {
     id: "navigation.open-siki-log",
