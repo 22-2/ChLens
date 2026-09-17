@@ -159,4 +159,44 @@ describe("useArchiveReplayMainThreadSync", () => {
     });
     expect(mocks.dispatch).toHaveBeenCalledTimes(2);
   });
+
+  it("購読を作り直しても現在URLのThreadViewを再利用する", async () => {
+    const first = renderHook(() => useArchiveReplayMainThreadSync());
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const request = {
+      version: 1 as const,
+      sessionId: "replay-1",
+      generation: 0,
+      threadUrl: "https://example.com/test/read.cgi/live/1/",
+      responseNumber: 1,
+      title: "架空の実況1",
+    };
+    await act(async () => {
+      mocks.listener?.(request);
+    });
+    first.unmount();
+
+    renderHook(() => useArchiveReplayMainThreadSync());
+    await act(async () => {
+      await Promise.resolve();
+    });
+    await act(async () => {
+      mocks.listener?.({ ...request, generation: 1 });
+    });
+
+    expect(mocks.dispatch).toHaveBeenNthCalledWith(2, {
+      type: "NAVIGATE_TAB",
+      paneId: "pane-1",
+      tabId: "tab-replay",
+      page: {
+        type: "thread",
+        title: "架空の実況1",
+        threadUrl: request.threadUrl,
+      },
+    });
+    expect(mocks.dispatch).toHaveBeenCalledTimes(2);
+  });
 });

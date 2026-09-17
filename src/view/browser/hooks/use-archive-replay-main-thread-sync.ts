@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { isTauriRuntime } from "src/app/platform/runtime";
+import { normalizeArchiveReplayThreadUrl } from "src/features/comment-overlay/domain";
 import {
   type ArchiveReplayMainThreadRequest,
   subscribeArchiveReplayMainThreadRequests,
@@ -45,6 +46,8 @@ export function useArchiveReplayMainThreadSync(): void {
         threadUrl: request.threadUrl,
       };
       let target = previousTarget ? findTabById(stateRef.current, previousTarget.tabId) : null;
+      // 購読の再作成やタブ移動で一時的に専用タブIDを失っても、同じスレを新規タブ化しない。
+      target ??= findThreadTabByUrl(stateRef.current, request.threadUrl);
 
       if (target) {
         dispatch({
@@ -107,4 +110,23 @@ function findTabById(
   // タブを別ペインへ移動しても、同じ実況専用タブを再利用できるよう全ペインから探す。
   const pane = state.panes.find((candidate) => candidate.tabs.some((tab) => tab.id === tabId));
   return pane ? { paneId: pane.id, tabId } : null;
+}
+
+function findThreadTabByUrl(
+  state: TabStoreState,
+  threadUrl: string,
+): { paneId: string; tabId: string } | null {
+  const normalizedUrl = normalizeArchiveReplayThreadUrl(threadUrl);
+  for (const pane of state.panes) {
+    for (const tab of pane.tabs) {
+      const page = tab.history[tab.currentIndex];
+      if (
+        page?.type === "thread" &&
+        normalizeArchiveReplayThreadUrl(page.threadUrl) === normalizedUrl
+      ) {
+        return { paneId: pane.id, tabId: tab.id };
+      }
+    }
+  }
+  return null;
 }
