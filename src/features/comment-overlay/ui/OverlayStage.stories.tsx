@@ -227,6 +227,8 @@ function ArchiveReplayForm({
 
 const meta = {
   title: "ChLens/コメントOverlay/OverlayStage",
+  // 回帰テスト用に公開した画面関数を、独立したStoryとして登録しない。
+  excludeStories: ["PastThreadReplayStory"],
   component: OverlayStage,
   parameters: {
     docs: {
@@ -339,7 +341,7 @@ function HardcodedStory(args: OverlayStageProps) {
   );
 }
 
-function PastThreadReplayStory(args: OverlayStageProps) {
+export function PastThreadReplayStory(args: OverlayStageProps) {
   const source = useMemo(() => createChLensStorybookSource(), []);
   const [urls, setUrls] = useState("");
   const [startInput, setStartInput] = useState("");
@@ -490,7 +492,9 @@ function PastThreadReplayStory(args: OverlayStageProps) {
     };
     frameId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frameId);
-  }, [loadedReplay, playing, replayRate]);
+    // シークで表示だけを初期化すると旧startedPositionが次のframeで位置を戻してしまう。
+    // 表示世代の変更時には時計も張り直し、移動先を新しい再生基準にする。
+  }, [loadedReplay, playing, replayRate, stageKey]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
