@@ -18,10 +18,20 @@ const OBFUSCATED_PROTOCOLS: Readonly<Record<string, string>> = {
 // スキームを完全に省略した :// は指定された既定プロトコル（省略時は https://）で補完する。
 // 転載文などに混ざる http:/ / https:/ のスラッシュ1本抜けも、リンク先だけ補正する。
 // 通常の http:// と https:// はそのまま扱い、いずれもホスト名・パス・クエリは変更しない。
+// スキームを省いたホスト名形式（例: images.example.com/path.jpg）も画像転載で頻出するため、
+// 文頭または空白の後にあるドメイン名をURLとして拾い、正規化時にhttps://を補う。
 export const URL_LIKE_PATTERN =
-  /(?:https?:\/\/|https?:\/(?!\/)|(?:p|ps|s|tp|tps|ttp|ttps):\/\/|(?<![A-Za-z0-9+.-]):\/\/)[A-Za-z0-9\-._~:/?#[\]@!$&'()*+,;=%]+/gi;
+  /(?:https?:\/\/|https?:\/(?!\/)|(?:p|ps|s|tp|tps|ttp|ttps):\/\/|(?<![A-Za-z0-9+./:@-]):\/\/)[A-Za-z0-9\-._~:/?#[\]@!$&'()*+,;=%]+|(?<![A-Za-z0-9+./:@-])(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}(?::\d+)?(?:[/?#][A-Za-z0-9\-._~:/?#[\]@!$&'()*+,;=%]+)?/gi;
+
+const HOST_ONLY_URL_PATTERN =
+  /^(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}(?::\d+)?(?:[/?#].*)?$/i;
 
 export function normalizeObfuscatedUrl(rawUrl: string, fallbackProtocol?: string): string {
+  if (HOST_ONLY_URL_PATTERN.test(rawUrl)) {
+    // ホスト名だけの画像URLは相対パスとして解釈されるため、画像取得前に絶対URLへ戻す。
+    return `https://${rawUrl}`;
+  }
+
   if (rawUrl.startsWith("://")) {
     // :// だけでは元のスキームを復元できないため、安全側の https を既定にする。
     const protocol = fallbackProtocol?.toLowerCase() === "http:" ? "http:" : "https:";

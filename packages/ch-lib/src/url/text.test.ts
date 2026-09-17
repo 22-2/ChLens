@@ -25,4 +25,15 @@ describe("URL本文の補助関数", () => {
   it("別のスキームの末尾にあるスキームなし部分を一致扱いしない", () => {
     expect("foo://example.com".match(URL_LIKE_PATTERN)).toBeNull();
   });
+
+  it("スキームを省略したホスト名URLを画像URLとして扱う", () => {
+    const url = "images.example.com/media/sample.jpg";
+
+    expect(url.match(URL_LIKE_PATTERN)).toEqual([url]);
+    expect(normalizeObfuscatedUrl(url)).toBe(`https://${url}`);
+  });
+
+  it("メールアドレスのドメイン部分だけをURLとして拾わない", () => {
+    expect("user@example.com/media/sample.jpg".match(URL_LIKE_PATTERN)).toBeNull();
+  });
 });

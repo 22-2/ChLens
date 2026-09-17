@@ -78,6 +78,13 @@ describe("url-media", () => {
     );
   });
 
+  it("スキームを省略したホスト名の画像URLを抽出してビューアで扱う", () => {
+    const url = "images.example.com/media/sample.jpg";
+
+    expect(extractUrlsFromMessage(url)).toEqual([`https://${url}`]);
+    expect(toViewerImageUrl(url)).toBe(`https://${url}`);
+  });
+
   describe("imgur URL変換（リサイズパラメータ付き）", () => {
     it("imgur.com/[id] をサムネイル形式に変換する", () => {
       expect(toViewerImageUrl("https://imgur.com/TestImage")).toBe(

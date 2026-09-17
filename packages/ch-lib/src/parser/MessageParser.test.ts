@@ -109,4 +109,14 @@ describe("MessageParser", () => {
       },
     ]);
   });
+
+  it("スキームを省略したホスト名URLを絶対リンクへ変換する", () => {
+    expect(parseMessage("images.example.com/media/sample.jpg", { protocol: "https:" })).toEqual([
+      {
+        type: "url",
+        value: "images.example.com/media/sample.jpg",
+        href: "https://images.example.com/media/sample.jpg",
+      },
+    ]);
+  });
 });
