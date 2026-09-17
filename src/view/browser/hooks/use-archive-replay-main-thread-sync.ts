@@ -6,6 +6,7 @@ import {
   subscribeArchiveReplayMainThreadRequests,
 } from "src/features/comment-overlay/platform";
 
+import { useArchiveReplayPositionStore } from "./use-archive-replay-position-store";
 import { type TabStoreState, useTabDispatch, useTabStore } from "./use-tab-store";
 
 interface MainThreadSyncTarget {
@@ -60,7 +61,8 @@ export function useArchiveReplayMainThreadSync(): void {
         const beforeTabIds = new Set(
           stateRef.current.panes.flatMap((pane) => pane.tabs.map((tab) => tab.id)),
         );
-        dispatch({ type: "OPEN_IN_NEW_TAB_FORCE", page, focus: true });
+        // Reducer内で生成したIDは同期refと実描画で異なるため、通知を受けた時点で固定する。
+        dispatch({ type: "OPEN_IN_NEW_TAB_FORCE", page, focus: true, tabId: crypto.randomUUID() });
 
         // TabStoreのdispatchはstateRefを同期更新するため、追加されたタブを直ちに特定できる。
         const inserted = stateRef.current.panes
@@ -82,6 +84,7 @@ export function useArchiveReplayMainThreadSync(): void {
         paneId: target.paneId,
         tabId: target.tabId,
       };
+      useArchiveReplayPositionStore.setState({ position: { ...request, tabId: target.tabId } });
     };
 
     void subscribeArchiveReplayMainThreadRequests(handleRequest)

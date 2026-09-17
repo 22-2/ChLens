@@ -615,6 +615,8 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       const newHistoryForForce = buildHierarchyForNewTab(sourcePageForForce, action.page);
       const newTab = {
         ...newTabForForce,
+        // 同期refとReactでReducerが別々に評価されても、外部から追従するタブのIDを一致させる。
+        id: action.tabId ?? newTabForForce.id,
         history: newHistoryForForce,
         currentIndex: newHistoryForForce.length - 1,
       };

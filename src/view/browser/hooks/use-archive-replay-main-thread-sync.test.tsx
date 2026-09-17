@@ -125,6 +125,7 @@ describe("useArchiveReplayMainThreadSync", () => {
     expect(mocks.dispatch).toHaveBeenNthCalledWith(1, {
       type: "OPEN_IN_NEW_TAB_FORCE",
       focus: true,
+      tabId: expect.any(String),
       page: {
         type: "thread",
         title: "架空の実況1",

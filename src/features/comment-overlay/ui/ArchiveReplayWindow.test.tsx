@@ -108,7 +108,13 @@ describe("過去実況再生ウィンドウ", () => {
     expect(mainThreadSyncPublisher).toHaveBeenCalledTimes(2);
 
     fireEvent.click(screen.getByRole("button", { name: "10秒進める" }));
-    expect(mainThreadSyncPublisher).toHaveBeenCalledTimes(2);
+    expect(mainThreadSyncPublisher).toHaveBeenCalledTimes(3);
+    expect(mainThreadSyncPublisher).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        responseNumber: 2,
+        playbackAt: Date.parse("2026-09-16T23:30:10+09:00"),
+      }),
+    );
     expect(
       archiveReplayEventBus.events.some(
         (event) => event.type === "comment" && event.comment.responseNumber === 2,

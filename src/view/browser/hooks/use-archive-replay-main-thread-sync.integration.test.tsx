@@ -79,9 +79,13 @@ describe("過去実況Main同期のTabProvider統合", () => {
 
     function Harness() {
       useArchiveReplayMainThreadSync();
-      const { currentPage } = useTabStore();
+      const { currentPage, activeTab, state } = useTabStore();
       return (
-        <output data-testid="current-url">
+        <output
+          data-testid="current-url"
+          data-tab-id={activeTab.id}
+          data-tab-count={state.tabs.length}
+        >
           {currentPage.type === "thread" ? currentPage.threadUrl : ""}
         </output>
       );
@@ -110,5 +114,22 @@ describe("過去実況Main同期のTabProvider統合", () => {
     expect(screen.getByTestId("current-url")).toHaveTextContent(
       "https://example.com/test/read.cgi/live/1/",
     );
+    const tabId = screen.getByTestId("current-url").getAttribute("data-tab-id");
+    const tabCount = screen.getByTestId("current-url").getAttribute("data-tab-count");
+    await act(async () => {
+      mocks.listener?.({
+        version: 1,
+        sessionId: "replay-1",
+        generation: 1,
+        threadUrl: "https://example.com/test/read.cgi/live/2/",
+        responseNumber: 1,
+        title: "架空の次スレ",
+      });
+    });
+    expect(screen.getByTestId("current-url")).toHaveTextContent(
+      "https://example.com/test/read.cgi/live/2/",
+    );
+    expect(screen.getByTestId("current-url")).toHaveAttribute("data-tab-id", tabId);
+    expect(screen.getByTestId("current-url")).toHaveAttribute("data-tab-count", tabCount);
   });
 });

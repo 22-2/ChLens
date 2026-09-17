@@ -353,7 +353,10 @@ export function ArchiveReplayWindow({
   const publishMainThreadSync = useCallback(
     (selection: ArchiveReplayThreadSelection | null, force = false) => {
       if (!loadedReplay || !selection) return;
-      if (!force && lastMainThreadUrlRef.current === selection.threadUrl) return;
+      // スレURLだけでは同一スレ内を追従できないため、レスとログ時刻も通知の識別子に含める。
+      const playbackAt = loadedReplay.timeline.startAt + (position - syncOffset) * 1_000;
+      const positionKey = `${selection.threadUrl}:${selection.responseNumber}:${Math.floor(playbackAt / 1_000)}`;
+      if (!force && lastMainThreadUrlRef.current === positionKey) return;
 
       const request: ArchiveReplayMainThreadRequest = {
         version: 1,
@@ -362,22 +365,22 @@ export function ArchiveReplayWindow({
         threadUrl: selection.threadUrl,
         responseNumber: selection.responseNumber,
         title: selection.title,
+        playbackAt,
       };
-      lastMainThreadUrlRef.current = selection.threadUrl;
+      lastMainThreadUrlRef.current = positionKey;
       void mainThreadSyncPublisher(request).catch((publishError: unknown) => {
-        if (lastMainThreadUrlRef.current === selection.threadUrl) {
+        if (lastMainThreadUrlRef.current === positionKey) {
           lastMainThreadUrlRef.current = null;
         }
         console.error("[ArchiveReplay] MainのThreadView同期に失敗しました", publishError);
       });
     },
-    [loadedReplay, mainThreadSyncPublisher],
+    [loadedReplay, mainThreadSyncPublisher, position, syncOffset],
   );
 
   useEffect(() => {
     if (!followMainThread) return;
-    // 再生位置ごとに選択元を再評価し、スレ境界をフレーム落ちなく拾う。
-    // 同じURLはpublishMainThreadSync側のガードで通知を抑制する。
+    // レス境界と秒単位の位置を共有し、同じ位置のフレームだけ通知を抑制する。
     publishMainThreadSync(currentReplayThread);
   }, [currentReplayThread, followMainThread, publishMainThreadSync]);
 

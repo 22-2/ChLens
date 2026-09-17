@@ -267,3 +267,19 @@
     min-width: 0;
   }
 }
+.thread-page__replay-position {
+  display: flex;
+  align-items: center;
+  gap: var(--sys-space-4);
+  margin-block: var(--sys-space-6);
+  color: var(--sys-color-accent);
+  font-weight: 700;
+  scroll-margin-block: 80px;
+}
+
+.thread-page__replay-position::before,
+.thread-page__replay-position::after {
+  content: "";
+  flex: 1;
+  border-top: 2px solid currentColor;
+}

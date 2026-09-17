@@ -1,5 +1,6 @@
 import React, { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCommentOverlay } from "src/features/comment-overlay/application/use-comment-overlay";
+import { normalizeArchiveReplayThreadUrl } from "src/features/comment-overlay/domain";
 import { container } from "src/service-container/index";
 import type { IThread } from "src/service-container/interfaces";
 import { MediaViewerContainer } from "src/view/browser/components/MediaViewerContainer";
@@ -7,6 +8,7 @@ import { PopupRenderer } from "src/view/browser/components/PopupRenderer";
 import { ResItem } from "src/view/browser/components/ResItem";
 import { ThreadMinimap } from "src/view/browser/components/ThreadMinimap";
 import { WheelScrollIndicator } from "src/view/browser/components/WheelScrollIndicator";
+import { useArchiveReplayPositionStore } from "src/view/browser/hooks/use-archive-replay-position-store";
 import { useAutoNextThread } from "src/view/browser/hooks/use-auto-next-thread";
 import { useAutoNextThreadSetting } from "src/view/browser/hooks/use-auto-next-thread-setting";
 import { useMediaViewerStore } from "src/view/browser/hooks/use-media-viewer-store";
@@ -36,6 +38,11 @@ import {
   buildBlurredResSet,
   buildReplyToWrittenResSet,
 } from "src/view/browser/utils/thread-emphasis";
+
+import {
+  ArchiveReplayPositionLine,
+  getReplayBoundaryIndex,
+} from "./thread/ArchiveReplayPositionLine";
 interface ThreadPageProps {
   tabId: string;
   page: ThreadPageType;
@@ -311,7 +318,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
 
   const imageBlurConfig = useImageBlurConfig();
 
-  const { scrollToResponse } = useThreadReadState({
+  const { scrollToResponse, isInitialReadStateResolved } = useThreadReadState({
     threadUrl: page.threadUrl,
     isActive,
     responses,
@@ -448,6 +455,27 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     [filter, searchQuery],
   );
 
+  const replayPosition = useArchiveReplayPositionStore((state) => state.position);
+  const replayBoundary =
+    replayPosition?.tabId === tabId &&
+    normalizeArchiveReplayThreadUrl(replayPosition.threadUrl) ===
+      normalizeArchiveReplayThreadUrl(page.threadUrl)
+      ? getReplayBoundaryIndex(
+          filteredResponses,
+          replayPosition.playbackAt,
+          replayPosition.responseNumber,
+        )
+      : -1;
+  const replayLine =
+    replayBoundary >= 0 ? (
+      <ArchiveReplayPositionLine
+        key="archive-replay-position"
+        playbackAt={replayPosition?.playbackAt}
+        boundary={replayBoundary}
+        active={isActive && !loading && isInitialReadStateResolved}
+      />
+    ) : null;
+
   // ジェスチャーuseEffectでrootRefが確実にマウント済みになるよう、loading中の早期returnを廃止し常にrootRef付きdivを描画する
   return (
     <div ref={rootRef} className="thread-page" onDoubleClick={handleDoubleClick}>
@@ -492,38 +520,42 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
           </div>
 
           <div className="thread-page__responses">
-            {filteredResponses.map((res) => {
+            {filteredResponses.map((res, index) => {
               const idCount = res.id ? (indexes.idIndex.get(res.id)?.size ?? 0) : 0;
               const idPos = res.id ? (idPositions.get(res.num) ?? 0) : 0;
               const repCount = indexes.repIndex.get(res.num)?.size ?? 0;
               return (
-                <ResItem
-                  key={res.num}
-                  res={res}
-                  idPos={idPos}
-                  idCount={idCount}
-                  repCount={repCount}
-                  miniAa={miniAaResNums.has(res.num)}
-                  messageProtocol={messageProtocol}
-                  searchQuery={searchQuery}
-                  onIdClick={handleIdClick}
-                  onRepClick={handleRepClick}
-                  onUrlClick={handleUrlClick}
-                  onUrlContextMenu={handleUrlContextMenu}
-                  onAnchorClick={handleAnchorClick}
-                  onAnchorHover={showAnchorPreview}
-                  onAnchorLeave={hideAnchorPreview}
-                  onContextMenu={openThreadResContextMenu}
-                  isOwn={ownResNums.has(res.num)}
-                  isReplyToOwn={replyToOwnResNums.has(res.num)}
-                  isImageBlurred={blurredResNums.has(res.num)}
-                  imageBlurRadius={imageBlurConfig.radius}
-                  ngResNums={ngResNums}
-                  resMap={indexes.resMap}
-                  threadUrl={page.threadUrl}
-                />
+                <React.Fragment key={res.num}>
+                  {index === replayBoundary ? replayLine : null}
+                  <ResItem
+                    key={res.num}
+                    res={res}
+                    idPos={idPos}
+                    idCount={idCount}
+                    repCount={repCount}
+                    miniAa={miniAaResNums.has(res.num)}
+                    messageProtocol={messageProtocol}
+                    searchQuery={searchQuery}
+                    onIdClick={handleIdClick}
+                    onRepClick={handleRepClick}
+                    onUrlClick={handleUrlClick}
+                    onUrlContextMenu={handleUrlContextMenu}
+                    onAnchorClick={handleAnchorClick}
+                    onAnchorHover={showAnchorPreview}
+                    onAnchorLeave={hideAnchorPreview}
+                    onContextMenu={openThreadResContextMenu}
+                    isOwn={ownResNums.has(res.num)}
+                    isReplyToOwn={replyToOwnResNums.has(res.num)}
+                    isImageBlurred={blurredResNums.has(res.num)}
+                    imageBlurRadius={imageBlurConfig.radius}
+                    ngResNums={ngResNums}
+                    resMap={indexes.resMap}
+                    threadUrl={page.threadUrl}
+                  />
+                </React.Fragment>
               );
             })}
+            {replayBoundary === filteredResponses.length ? replayLine : null}
           </div>
 
           {isActiveAutoRefreshEnabled &&

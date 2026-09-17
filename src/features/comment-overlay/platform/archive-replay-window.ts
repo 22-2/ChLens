@@ -19,6 +19,8 @@ export interface ArchiveReplayMainThreadRequest {
   threadUrl: string;
   responseNumber: number;
   title: string;
+  /** 同期補正を差し引いたログ上の時刻。古い通知との互換性のため省略可能。 */
+  playbackAt?: number;
 }
 
 async function getArchiveReplayWindow(): Promise<Window> {
@@ -137,6 +139,7 @@ export function isArchiveReplayMainThreadRequest(
     threadUrl?: unknown;
     responseNumber?: unknown;
     title?: unknown;
+    playbackAt?: unknown;
   };
   return (
     candidate.version === 1 &&
@@ -151,6 +154,8 @@ export function isArchiveReplayMainThreadRequest(
     Number.isInteger(candidate.responseNumber) &&
     candidate.responseNumber > 0 &&
     typeof candidate.title === "string" &&
-    candidate.title.trim().length > 0
+    candidate.title.trim().length > 0 &&
+    (candidate.playbackAt === undefined ||
+      (typeof candidate.playbackAt === "number" && Number.isFinite(candidate.playbackAt)))
   );
 }

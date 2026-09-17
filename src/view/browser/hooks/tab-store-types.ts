@@ -13,7 +13,7 @@ export interface TabStoreState {
 export type TabAction =
   | { type: "ADD_TAB" }
   | { type: "OPEN_IN_NEW_TAB"; page: Page; background?: boolean }
-  | { type: "OPEN_IN_NEW_TAB_FORCE"; page: Page; focus?: boolean }
+  | { type: "OPEN_IN_NEW_TAB_FORCE"; page: Page; focus?: boolean; tabId?: string }
   | { type: "CLOSE_TAB"; tabId: string }
   | { type: "CLOSE_OTHER_TABS"; tabId: string }
   | { type: "CLOSE_RIGHT_TABS"; tabId: string }
