@@ -155,6 +155,29 @@
   font-size: var(--sys-font-size-xs);
 }
 
+.archive-replay-window__main-thread-controls {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sys-space-3);
+}
+
+.archive-replay-window__follow-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sys-space-2);
+  color: var(--sys-color-text);
+  font-size: var(--sys-font-size-sm);
+  cursor: pointer;
+}
+
+.archive-replay-window__follow-toggle input {
+  width: var(--sys-space-4);
+  height: var(--sys-space-4);
+  accent-color: var(--sys-color-accent);
+}
+
 .archive-replay-window__controls,
 .archive-replay-window__seek-row {
   display: flex;

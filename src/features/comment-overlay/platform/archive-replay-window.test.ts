@@ -25,11 +25,16 @@ vi.mock("@tauri-apps/api/window", () => ({
 }));
 
 import {
+  ARCHIVE_REPLAY_MAIN_THREAD_EVENT_NAME,
+  ARCHIVE_REPLAY_MAIN_WINDOW_LABEL,
   ARCHIVE_REPLAY_SEEK_EVENT_NAME,
   ARCHIVE_REPLAY_WINDOW_LABEL,
+  isArchiveReplayMainThreadRequest,
   isArchiveReplaySeekRequest,
   openArchiveReplayWindow,
+  requestArchiveReplayMainThread,
   requestArchiveReplaySeek,
+  subscribeArchiveReplayMainThreadRequests,
   subscribeArchiveReplayWindowClose,
 } from "./archive-replay-window";
 
@@ -91,6 +96,55 @@ describe("過去実況操作窓のTauri platform", () => {
     expect(
       isArchiveReplaySeekRequest({ threadUrl: "https://example.com/thread", responseNumber: 1 }),
     ).toBe(true);
+  });
+
+  it("Mainの現在スレ同期要求を専用eventへ送る", async () => {
+    const request = {
+      version: 1 as const,
+      sessionId: "replay-1",
+      generation: 3,
+      threadUrl: "https://example.com/test/read.cgi/live/1/",
+      responseNumber: 42,
+      title: "架空の実況",
+    };
+
+    await requestArchiveReplayMainThread(request);
+
+    expect(mocks.emitTo).toHaveBeenCalledWith(
+      ARCHIVE_REPLAY_MAIN_WINDOW_LABEL,
+      ARCHIVE_REPLAY_MAIN_THREAD_EVENT_NAME,
+      request,
+    );
+    expect(isArchiveReplayMainThreadRequest(request)).toBe(true);
+    expect(isArchiveReplayMainThreadRequest({ ...request, generation: -1 })).toBe(false);
+  });
+
+  it("Main同期eventを検証して購読者へ渡す", async () => {
+    const listener = vi.fn();
+    mocks.listen.mockImplementationOnce(async (_eventName, handler) => {
+      handler({
+        payload: {
+          version: 1,
+          sessionId: "replay-1",
+          generation: 0,
+          threadUrl: "https://example.com/test/read.cgi/live/1/",
+          responseNumber: 1,
+          title: "架空の実況",
+        },
+      });
+      return vi.fn();
+    });
+
+    await subscribeArchiveReplayMainThreadRequests(listener);
+
+    expect(listener).toHaveBeenCalledWith({
+      version: 1,
+      sessionId: "replay-1",
+      generation: 0,
+      threadUrl: "https://example.com/test/read.cgi/live/1/",
+      responseNumber: 1,
+      title: "架空の実況",
+    });
   });
 
   it("OSの閉じる操作を非表示処理へ委譲する", async () => {

@@ -19,30 +19,40 @@ import {
 } from "../domain";
 import type { CommentCandidate } from "../domain/comment-types";
 import {
+  type ArchiveReplayMainThreadRequest,
   type ArchiveReplayOverlayEventBus,
   type ArchiveReplaySeekRequest,
   type CommentOverlayWindowPlatform,
   commentOverlayWindowPlatform,
   createArchiveReplayOverlayEventBus,
   hideArchiveReplayWindow,
+  requestArchiveReplayMainThread,
   subscribeArchiveReplaySeekRequests,
   subscribeArchiveReplayWindowClose,
 } from "../platform";
 
 interface ArchiveReplayWindowProps {
   archiveReplayEventBus?: ArchiveReplayOverlayEventBus;
+  mainThreadSyncPublisher?: (request: ArchiveReplayMainThreadRequest) => Promise<void>;
   overlayPlatform?: CommentOverlayWindowPlatform;
   seekRequestSubscriber?: typeof subscribeArchiveReplaySeekRequests;
 }
 
 interface LoadedArchiveReplayData {
   timeline: ArchiveReplayTimeline;
+  threadTitles: Readonly<Record<string, string>>;
   titles: readonly string[];
   errors: readonly string[];
 }
 
 interface LoadedThreadData {
   source: ArchiveReplaySource;
+  title: string;
+}
+
+interface ArchiveReplayThreadSelection {
+  threadUrl: string;
+  responseNumber: number;
   title: string;
 }
 
@@ -56,6 +66,7 @@ const DEFAULT_REPLAY_RATE = "1";
  */
 export function ArchiveReplayWindow({
   archiveReplayEventBus: providedArchiveReplayEventBus,
+  mainThreadSyncPublisher = requestArchiveReplayMainThread,
   overlayPlatform = commentOverlayWindowPlatform,
   seekRequestSubscriber = subscribeArchiveReplaySeekRequests,
 }: ArchiveReplayWindowProps = {}) {
@@ -74,6 +85,7 @@ export function ArchiveReplayWindow({
   const positionRef = useRef(0);
   const [syncOffset, setSyncOffset] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [followMainThread, setFollowMainThread] = useState(false);
   const playingRef = useRef(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -82,6 +94,8 @@ export function ArchiveReplayWindow({
   const overlaySessionActiveRef = useRef(false);
   const emittedCommentKeysRef = useRef(new Set<string>());
   const pendingSeekRequestRef = useRef<ArchiveReplaySeekRequest | null>(null);
+  const lastMainThreadUrlRef = useRef<string | null>(null);
+  const mainThreadSyncGenerationRef = useRef(0);
   const closeWindowRef = useRef<() => void>(() => {});
 
   useEffect(() => {
@@ -122,6 +136,8 @@ export function ArchiveReplayWindow({
     setSeekStartPosition(0);
     positionRef.current = 0;
     setSyncOffset(0);
+    lastMainThreadUrlRef.current = null;
+    mainThreadSyncGenerationRef.current = 0;
     setStageKey((current) => current + 1);
   }, [overlayPlatform, stopOverlay]);
 
@@ -247,6 +263,9 @@ export function ArchiveReplayWindow({
       );
       setLoadedReplay({
         timeline,
+        threadTitles: Object.fromEntries(
+          loadedThreads.map(({ source, title }) => [source.threadUrl, title]),
+        ),
         titles: loadedThreads.map(({ title }) => title),
         errors: settled.filter((result): result is string => typeof result === "string"),
       });
@@ -317,6 +336,51 @@ export function ArchiveReplayWindow({
     },
     [loadedReplay, seek, syncOffset],
   );
+
+  const currentReplayThread = useMemo(
+    () =>
+      loadedReplay
+        ? resolveArchiveReplayThreadSelection(
+            loadedReplay.timeline,
+            position,
+            syncOffset,
+            loadedReplay.threadTitles,
+          )
+        : null,
+    [loadedReplay, position, syncOffset],
+  );
+  const currentReplayThreadRef = useRef<ArchiveReplayThreadSelection | null>(null);
+  currentReplayThreadRef.current = currentReplayThread;
+
+  const publishMainThreadSync = useCallback(
+    (selection: ArchiveReplayThreadSelection | null, force = false) => {
+      if (!loadedReplay || !selection) return;
+      if (!force && lastMainThreadUrlRef.current === selection.threadUrl) return;
+
+      const request: ArchiveReplayMainThreadRequest = {
+        version: 1,
+        sessionId: replaySessionIdRef.current,
+        generation: mainThreadSyncGenerationRef.current++,
+        threadUrl: selection.threadUrl,
+        responseNumber: selection.responseNumber,
+        title: selection.title,
+      };
+      lastMainThreadUrlRef.current = selection.threadUrl;
+      void mainThreadSyncPublisher(request).catch((publishError: unknown) => {
+        if (lastMainThreadUrlRef.current === selection.threadUrl) {
+          lastMainThreadUrlRef.current = null;
+        }
+        console.error("[ArchiveReplay] MainのThreadView同期に失敗しました", publishError);
+      });
+    },
+    [loadedReplay, mainThreadSyncPublisher],
+  );
+
+  useEffect(() => {
+    if (!followMainThread) return;
+    publishMainThreadSync(currentReplayThreadRef.current);
+    // URLだけを依存にして、再生フレームごとに同じスレッドへ通知し直さない。
+  }, [currentReplayThread?.threadUrl, followMainThread, publishMainThreadSync]);
 
   useEffect(() => {
     let disposed = false;
@@ -558,6 +622,29 @@ export function ArchiveReplayWindow({
         </div>
       ) : null}
 
+      <div className="archive-replay-window__main-thread-controls">
+        <Button
+          className="archive-replay-window__secondary-button"
+          onClick={() => publishMainThreadSync(currentReplayThread, true)}
+          disabled={!currentReplayThread}
+        >
+          現在の実況スレをメインで開く
+        </Button>
+        <label className="archive-replay-window__follow-toggle">
+          <input
+            aria-label="メインを実況スレに追従"
+            type="checkbox"
+            checked={followMainThread}
+            disabled={!loadedReplay}
+            onChange={(event) => {
+              lastMainThreadUrlRef.current = null;
+              setFollowMainThread(event.currentTarget.checked);
+            }}
+          />
+          メインを実況スレに追従
+        </label>
+      </div>
+
       <div className="archive-replay-window__controls">
         <Button onClick={() => setPlaying((current) => !current)} disabled={!loadedReplay}>
           {playing ? <Pause size={15} /> : <Play size={15} />}
@@ -629,7 +716,8 @@ export function ArchiveReplayWindow({
       </div>
 
       <p className="archive-replay-window__overlay-note" role="status">
-        コメントはこの窓ではなく、コメントOverlayに表示されます。
+        コメントはこの窓ではなく、コメントOverlayに表示されます。追従を有効にすると、
+        Mainの専用タブが再生中の実況スレへ切り替わります。
       </p>
     </main>
   );
@@ -665,4 +753,34 @@ function formatReplayClock(timestamp: number): string {
     second: "2-digit",
     hour12: false,
   }).format(new Date(timestamp));
+}
+
+function resolveArchiveReplayThreadSelection(
+  timeline: ArchiveReplayTimeline,
+  position: number,
+  syncOffset: number,
+  threadTitles: Readonly<Record<string, string>>,
+): ArchiveReplayThreadSelection | null {
+  let firstInRange: ArchiveReplayTimeline["comments"][number] | null = null;
+  let current: ArchiveReplayTimeline["comments"][number] | null = null;
+
+  for (const comment of timeline.comments) {
+    const effectiveOffset = comment.replayOffsetSeconds + syncOffset;
+    if (effectiveOffset < 0 || effectiveOffset > timeline.durationSeconds) continue;
+    firstInRange ??= comment;
+    if (effectiveOffset <= position) {
+      current = comment;
+      continue;
+    }
+    break;
+  }
+
+  const selected = current ?? firstInRange;
+  if (!selected) return null;
+
+  return {
+    threadUrl: selected.sourceThreadUrl,
+    responseNumber: selected.responseNumber,
+    title: threadTitles[selected.sourceThreadUrl] ?? selected.sourceThreadUrl,
+  };
 }

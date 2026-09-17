@@ -17,6 +17,7 @@ import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-prio
 import { StatusBar, StatusBarItem, StatusBarProvider } from "src/view/browser/components/StatusBar";
 import { TabBar } from "src/view/browser/components/TabBar";
 import { TitleBar } from "src/view/browser/components/TitleBar";
+import { useArchiveReplayMainThreadSync } from "src/view/browser/hooks/use-archive-replay-main-thread-sync";
 import { AutoScrollStateProvider } from "src/view/browser/hooks/use-auto-scroll-state";
 import {
   BOTTOM_PANEL_THREAD_LIST_TAB_ID,
@@ -300,6 +301,7 @@ const BrowserAppContent: React.FC = () => {
   return (
     <TooltipProvider>
       <TabProvider>
+        <ArchiveReplayMainThreadSyncBridge />
         {/*
           ステータス／NG／書き込み／自動スクロールの各プロバイダは PaneColumn 内へ移設した。
           シェル直下には全ペイン共通のグローバル UI（トースト・ダイアログ）だけを残す。
@@ -323,6 +325,11 @@ const BrowserAppContent: React.FC = () => {
       </TabProvider>
     </TooltipProvider>
   );
+};
+
+const ArchiveReplayMainThreadSyncBridge: React.FC = () => {
+  useArchiveReplayMainThreadSync();
+  return null;
 };
 
 export const BrowserApp: React.FC = () => (

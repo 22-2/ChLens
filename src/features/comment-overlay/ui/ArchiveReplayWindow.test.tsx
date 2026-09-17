@@ -8,6 +8,7 @@ import type { CommentOverlayWindowPlatform } from "../platform/types";
 import { ArchiveReplayWindow } from "./ArchiveReplayWindow";
 
 const getThreadMock = vi.hoisted(() => vi.fn());
+const mainThreadSyncPublisher = vi.hoisted(() => vi.fn<() => Promise<void>>());
 
 vi.mock("src/service-container", () => ({
   container: {
@@ -38,6 +39,8 @@ describe("過去実況再生ウィンドウ", () => {
       value: {},
     });
     getThreadMock.mockReset();
+    mainThreadSyncPublisher.mockReset();
+    mainThreadSyncPublisher.mockResolvedValue(undefined);
     getThreadMock.mockResolvedValue({
       url: "https://example.com/thread-a/",
       title: "架空の実況",
@@ -70,6 +73,7 @@ describe("過去実況再生ウィンドウ", () => {
       <div className="browser-shell">
         <ArchiveReplayWindow
           archiveReplayEventBus={archiveReplayEventBus}
+          mainThreadSyncPublisher={mainThreadSyncPublisher}
           overlayPlatform={overlayPlatform}
           seekRequestSubscriber={async () => () => {}}
         />
@@ -91,6 +95,18 @@ describe("過去実況再生ウィンドウ", () => {
       ),
     ).toBe(true);
 
+    fireEvent.click(screen.getByRole("button", { name: "現在の実況スレをメインで開く" }));
+    expect(mainThreadSyncPublisher).toHaveBeenCalledWith(
+      expect.objectContaining({
+        threadUrl: "https://example.com/thread-a/",
+        responseNumber: 1,
+        title: "架空の実況",
+      }),
+    );
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "メインを実況スレに追従" }));
+    expect(mainThreadSyncPublisher).toHaveBeenCalledTimes(2);
+
     fireEvent.click(screen.getByRole("button", { name: "10秒進める" }));
     expect(
       archiveReplayEventBus.events.some(
@@ -106,5 +122,58 @@ describe("過去実況再生ウィンドウ", () => {
     fireEvent.click(screen.getByRole("button", { name: "過去実況再生を閉じる" }));
     expect(overlayPlatform.hide).toHaveBeenCalled();
     expect(archiveReplayEventBus.events.some((event) => event.type === "stop")).toBe(true);
+  });
+
+  it("Main追従を有効にするとスレ境界で同期先を切り替える", async () => {
+    getThreadMock.mockImplementation(async (threadUrl: string) => ({
+      url: threadUrl,
+      title: threadUrl.includes("thread-b") ? "架空の実況B" : "架空の実況A",
+      res: [
+        {
+          num: 1,
+          name: "名無し",
+          mail: "",
+          date: threadUrl.includes("thread-b")
+            ? "2026/09/16(水) 23:30:10"
+            : "2026/09/16(水) 23:30:00",
+          message: "投稿",
+        },
+      ],
+    }));
+
+    render(
+      <ArchiveReplayWindow
+        mainThreadSyncPublisher={mainThreadSyncPublisher}
+        overlayPlatform={
+          {
+            show: vi.fn(async () => {}),
+            hide: vi.fn(async () => {}),
+          } as unknown as CommentOverlayWindowPlatform
+        }
+        seekRequestSubscriber={async () => () => {}}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("実況スレッドURL"), {
+      target: {
+        value: "https://example.com/thread-a/\nhttps://example.com/thread-b/",
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "複数スレを読み込む" }));
+    expect(await screen.findByText("スレ2: 架空の実況B")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "メインを実況スレに追従" }));
+    expect(mainThreadSyncPublisher).toHaveBeenLastCalledWith(
+      expect.objectContaining({ threadUrl: "https://example.com/thread-a/" }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "10秒進める" }));
+    expect(mainThreadSyncPublisher).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        threadUrl: "https://example.com/thread-b/",
+        responseNumber: 1,
+        title: "架空の実況B",
+      }),
+    );
   });
 });
