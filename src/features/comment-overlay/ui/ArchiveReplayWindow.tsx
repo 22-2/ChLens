@@ -2,6 +2,7 @@ import "./ArchiveReplayWindow.css";
 
 import { Pause, Play, RotateCcw, SkipBack, SkipForward, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { isTauriRuntime } from "src/app/platform/runtime";
 import { container } from "src/service-container";
 import type { IThreadDetail } from "src/service-container/interfaces";
 import { Button } from "src/view/browser/ui/Button";
@@ -46,6 +47,8 @@ const DEFAULT_REPLAY_RATE = "1";
  * 実際のログを再生できないため、サービスコンテナを使う本番側にも同じ同期処理を持たせる。
  */
 export function ArchiveReplayWindow({ open, onClose }: ArchiveReplayWindowProps) {
+  const isTauri = isTauriRuntime();
+
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
   const [urls, setUrls] = useState("");
   const [startInput, setStartInput] = useState("");
@@ -260,6 +263,9 @@ export function ArchiveReplayWindow({ open, onClose }: ArchiveReplayWindowProps)
   const replayTime = loadedReplay
     ? formatReplayClock(loadedReplay.timeline.startAt + position * 1_000)
     : "--:--:--";
+
+  // コマンド以外の将来の呼び出し経路でも、Tauri専用機能をブラウザへ露出させない。
+  if (!isTauri) return null;
 
   return (
     <Dialog.Root

@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { ChURL, HOSTNAME } from "packages/ch-lib/src/index";
 import type { Dispatch } from "react";
+import { isTauriRuntime } from "src/app/platform/runtime";
 import { container } from "src/service-container";
 import {
   getOpenUrlFromCommandId,
@@ -487,9 +488,14 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     keywords: ["過去実況", "実況再生", "コメント再生", "archive replay", "replay"],
     group: "navigation",
     icon: PlayCircle,
+    when: () => isTauriRuntime(),
     // 変更理由: 過去ログ検索とは別に、複数スレッドを時刻順で再生する入口を
-    // コマンドパレットへ常設し、現在のページ種別に左右されず呼び出せるようにする。
-    run: ({ openArchiveReplayWindow }) => openArchiveReplayWindow(),
+    // Tauri版のコマンドパレットへ限定して公開し、ブラウザ版で未対応の再生窓を
+    // 誤って開かないようにする。
+    run: ({ openArchiveReplayWindow }) => {
+      if (!isTauriRuntime()) return;
+      openArchiveReplayWindow();
+    },
   },
   {
     id: "navigation.open-siki-log",

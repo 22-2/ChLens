@@ -172,6 +172,7 @@ describe("browser commands", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    delete (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__;
     copyTextMock.mockReset();
     askBoardTitleByUrlMock.mockReset();
     encodeThreadAsToonMock.mockReset();
@@ -203,10 +204,15 @@ describe("browser commands", () => {
     expect(ids).not.toContain("copy.thread-toon");
     expect(ids).not.toContain("page.jump-to-response");
     expect(ids).not.toContain("page.search-next-thread");
+    expect(ids).not.toContain("navigation.open-archive-replay");
     expect(ids).toContain("navigation.open-siki-log");
   });
 
   it("過去実況再生をコマンドパレットから開ける", async () => {
+    Object.defineProperty(window, "__TAURI_INTERNALS__", {
+      configurable: true,
+      value: {},
+    });
     const { context } = createContext({ type: "home", title: "ホーム" });
     const openArchiveReplayWindow = vi.fn();
     context.openArchiveReplayWindow = openArchiveReplayWindow;
@@ -223,6 +229,7 @@ describe("browser commands", () => {
       true,
     );
     expect(openArchiveReplayWindow).toHaveBeenCalledOnce();
+    delete (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__;
   });
 
   it("Sikiログを選択すると本文を新しいタブで開く", async () => {

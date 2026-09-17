@@ -28,11 +28,16 @@ vi.mock("./OverlayStage", () => ({
 
 afterEach(() => {
   cleanup();
+  delete (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__;
   vi.restoreAllMocks();
 });
 
 describe("過去実況再生ウィンドウ", () => {
   beforeEach(() => {
+    Object.defineProperty(window, "__TAURI_INTERNALS__", {
+      configurable: true,
+      value: {},
+    });
     getThreadMock.mockReset();
     getThreadMock.mockResolvedValue({
       url: "https://example.com/thread-a/",

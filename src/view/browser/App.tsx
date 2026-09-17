@@ -1,5 +1,6 @@
 import { List as ListIcon, PenLine } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
+import { isTauriRuntime } from "src/app/platform/runtime";
 import { ArchiveReplayWindow } from "src/features/comment-overlay/ui/ArchiveReplayWindow";
 import { container } from "src/service-container/index";
 import { AutoRefreshStatusItem } from "src/view/browser/components/AutoRefreshStatusItem";
@@ -163,6 +164,11 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
   // 変更理由: 水平・垂直どちらの配置でもペイン内容は同一にするため、TabBar 以外の
   // 本体部分を共通化して二重管理を防ぐ。
   const openArchiveReplayWindow = useCallback(() => {
+    if (!isTauriRuntime()) {
+      // コマンド一覧から除外される以外の経路でも、ブラウザ版でTauri専用窓を開かない。
+      console.error("[ArchiveReplay] Tauri版以外から再生窓を開こうとしました");
+      return;
+    }
     // 変更理由: コマンドパレットはナビゲーションの状態を閉じた後に実行されるため、
     // このペインでは表示状態だけを持ち、読み込み状態は再生窓へ閉じ込める。
     setIsArchiveReplayOpen(true);

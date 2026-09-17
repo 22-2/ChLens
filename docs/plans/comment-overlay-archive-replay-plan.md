@@ -2,7 +2,7 @@
 
 作成日: 2026-09-17
 
-状態: 設計計画。ドメイン処理、Storybook試作、ブラウザ版の再生ダイアログとコマンド入口を追加済み。保存・Tauri専用ウィンドウ・正式Issue運用は未着手。
+状態: 設計計画。ドメイン処理、Storybook試作、Tauri版の再生ダイアログとコマンド入口を追加済み。保存・Tauri専用の独立ウィンドウ・正式Issue運用は未着手。
 
 調査基準: ローカルの `develop`、`3b84d5ea`。リモートとの差分確認や取得は今回行っていない。
 計画ブランチ: `docs/comment-overlay-archive-replay-plan`
@@ -299,7 +299,7 @@ Tauriのウィンドウ・通信に変更がある場合はTauriビルドと必�
 
 ### 先行試作と今回の統合内容
 
-正式な画面へ接続する前の手触り確認として、`src/features/comment-overlay/ui/OverlayStage.stories.tsx` の `PastThreadReplay` Storyを複数URL対応へ置き換えた。その後、同じドメイン処理を `src/features/comment-overlay/ui/ArchiveReplayWindow.tsx` へ接続し、コマンドパレットの「過去実況再生を開く」から開けるようにした。
+正式な画面へ接続する前の手触り確認として、`src/features/comment-overlay/ui/OverlayStage.stories.tsx` の `PastThreadReplay` Storyを複数URL対応へ置き換えた。その後、同じドメイン処理を `src/features/comment-overlay/ui/ArchiveReplayWindow.tsx` へ接続し、Tauri版のコマンドパレットにある「過去実況再生を開く」から開けるようにした。
 
 - URLを改行区切りで入力し、重複URLを除いて並行取得する。
 - 日時解析後、指定した開始日時と再生時間へ絞り、全スレッドを投稿時刻順に混ぜる。
@@ -311,7 +311,7 @@ Tauriのウィンドウ・通信に変更がある場合はTauriビルドと必�
 - 読み込んだレス一覧のボタンから、取得元URLとレス番号を指定して、そのレスの投稿時刻へ移動できる。
 - シークはOverlayの表示世代を作り直すため、前の位置のactive・pendingコメントを残さない。
 
-Storybookのfixtureは速度モデルの確認用として残し、実際のログ取得と再生操作は本番ダイアログで行う。現時点ではレスメニューからの直接シーク、設定保存、Tauri専用の独立ウィンドウ、再接続は未接続である。
+Storybookのfixtureは速度モデルの確認用として残し、実際のログ取得と再生操作はTauri版の本番ダイアログで行う。ブラウザ版ではコマンドを一覧から除外し、再生窓も表示しない。現時点ではレスメニューからの直接シーク、設定保存、Tauri専用の独立ウィンドウ、再接続は未接続である。
 
 ### 人による確認
 
