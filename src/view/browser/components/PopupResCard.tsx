@@ -1,15 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useImgurAlbumMedia } from "src/features/media/application/imgur-album";
+import { extractUrlsFromMessage } from "src/features/media/domain/url-media";
+import { ResMediaGallery } from "src/features/media/ui/ResMediaGallery";
 import type { IRes } from "src/service-container";
 import { NgBadge } from "src/view/browser/components/NgBadge";
 import { ResBody } from "src/view/browser/components/ResBody";
-import { ResMediaGallery } from "src/view/browser/components/ResMediaGallery";
 import { useIsNgTemporarilyDisabled, useNgDisplayMode } from "src/view/browser/hooks/use-ng-status";
 import { getIdHeatColor } from "src/view/browser/utils/id-heat";
-import { useImgurAlbumMedia } from "src/view/browser/utils/imgur-album";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
 import { getReplyHeatLevel } from "src/view/browser/utils/reply-heat";
 import { decodeResponseHtml } from "src/view/browser/utils/response-format";
-import { extractUrlsFromMessage } from "src/view/browser/utils/url-media";
 
 export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
   ({

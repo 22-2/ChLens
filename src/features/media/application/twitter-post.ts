@@ -1,5 +1,6 @@
 import { createLogger } from "src/core/logger";
-import { toTwitterPostEmbed, type TwitterPostEmbed } from "src/view/browser/utils/external-media";
+
+import { toTwitterPostEmbed, type TwitterPostEmbed } from "../domain/external-media";
 
 export const FXTWITTER_API_REQUEST_TIMEOUT_MS = 8_000;
 

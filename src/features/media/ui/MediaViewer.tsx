@@ -1,6 +1,7 @@
 import { Maximize, Minimize } from "lucide-react";
-import type { MediaViewerProps } from "src/view/browser/hooks/use-media-viewer-controller";
 import { Spinner } from "src/view/browser/ui/Spinner";
+
+import type { MediaViewerProps } from "../browser/use-media-viewer-controller";
 
 export function MediaViewer({
   viewer,

@@ -7,8 +7,9 @@ import {
   useRef,
   useState,
 } from "react";
-import type { ViewerState } from "src/view/browser/hooks/media-viewer-types";
-import { useMediaViewerStore } from "src/view/browser/hooks/use-media-viewer-store";
+
+import type { ViewerState } from "./media-viewer-types";
+import { useMediaViewerStore } from "./use-media-viewer-store";
 
 interface ViewerSize {
   width: number;

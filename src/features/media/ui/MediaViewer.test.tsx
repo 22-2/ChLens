@@ -2,8 +2,9 @@ import "@testing-library/jest-dom/vitest";
 
 import { fireEvent, render, screen } from "@testing-library/react";
 import { type ComponentProps, createRef } from "react";
-import { MediaViewer } from "src/view/browser/components/MediaViewer";
 import { describe, expect, it, vi } from "vite-plus/test";
+
+import { MediaViewer } from "./MediaViewer";
 
 describe("MediaViewer", () => {
   const renderMediaViewer = (overrides: Partial<ComponentProps<typeof MediaViewer>> = {}) =>

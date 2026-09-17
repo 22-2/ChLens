@@ -1,5 +1,6 @@
-import { parseTwitterPostResponse, TwitterPostResolver } from "src/view/browser/utils/twitter-post";
 import { describe, expect, it, vi } from "vite-plus/test";
+
+import { parseTwitterPostResponse, TwitterPostResolver } from "./twitter-post";
 
 const POST_URL = "https://x.com/example/status/1234567890123456789";
 const POST_ID = "1234567890123456789";

@@ -1,6 +1,7 @@
-import type { ViewerState } from "src/view/browser/hooks/media-viewer-types";
-import { toOriginalImageUrl, toViewerImageUrl } from "src/view/browser/utils/url-media";
 import { create } from "zustand";
+
+import { toOriginalImageUrl, toViewerImageUrl } from "../domain/url-media";
+import type { ViewerState } from "./media-viewer-types";
 
 const MIN_VIEWER_SCALE = 0.25;
 const MAX_VIEWER_SCALE = 10;

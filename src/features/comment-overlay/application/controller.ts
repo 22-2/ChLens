@@ -1,5 +1,5 @@
+import { extractUrlsFromMessage, toViewerImageUrl } from "src/features/media/domain/url-media";
 import type { IRes } from "src/service-container/interfaces";
-import { extractUrlsFromMessage, toViewerImageUrl } from "src/view/browser/utils/url-media";
 
 import type { CommentOverlaySettings } from "../domain";
 import {

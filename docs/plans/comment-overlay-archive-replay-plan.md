@@ -215,6 +215,9 @@
 | `src/features/comment-overlay/application/multi-thread-session.ts` | ライブの候補スレ探索・本流切り替え用。手動URLの過去ログ集合にそのまま流用しない |
 | `src/features/comment-overlay/domain/events.ts` | ライブ用イベントがある。再生状態・世代・同期情報を明示する契約を追加検討する |
 | `src/features/comment-overlay/platform/` | コメントOverlay本体のウィンドウ操作・イベント通信の境界 |
+| `src/features/media/domain/` | 画像・動画URLの正規化と外部メディア埋め込み判定を共有する境界 |
+| `src/features/media/application/` | Imgurアルバム・外部投稿の取得とキャッシュを担当する境界 |
+| `src/features/media/ui/`、`src/features/media/browser/` | レス内ギャラリー・画像ビューアと、その状態・操作Controllerをまとめる |
 | `src/features/archive-replay/domain/` | 複数スレッドの日時解析・タイムライン構築・レス位置からのシーク計算 |
 | `src/features/archive-replay/platform/` | 過去実況の操作窓・Overlay・Main ThreadView間のTauri通信 |
 | `src/features/archive-replay/ui/` | 過去実況の操作窓とThreadView内の再生位置表示 |

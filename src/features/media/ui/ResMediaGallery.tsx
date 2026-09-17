@@ -1,4 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+
+import {
+  type TwitterPost,
+  type TwitterPostMetrics,
+  twitterPostResolver,
+  type TwitterVerificationBadgeColor,
+} from "../application/twitter-post";
 import {
   type ExternalMediaEmbed,
   getDirectVideoFallbackThumbnailUrl,
@@ -8,19 +15,19 @@ import {
   toInlineVideoEmbed,
   toRuntimeVideoEmbedUrl,
   toTwitterPostEmbed,
-} from "src/view/browser/utils/external-media";
-import type { UrlClickHandler } from "src/view/browser/utils/link-routing";
-import {
-  type TwitterPost,
-  type TwitterPostMetrics,
-  twitterPostResolver,
-  type TwitterVerificationBadgeColor,
-} from "src/view/browser/utils/twitter-post";
-import { toViewerImageUrl } from "src/view/browser/utils/url-media";
+} from "../domain/external-media";
+import { toViewerImageUrl } from "../domain/url-media";
+
+// ギャラリーはThreadViewやPopupのURLルーティング実装を知らず、クリック時の引数だけを契約にする。
+export type MediaUrlClickHandler = (
+  url: string,
+  resImages?: string[],
+  button?: 0 | 1,
+) => boolean | void;
 
 interface ResMediaGalleryProps {
   urls: string[];
-  onUrlClick: UrlClickHandler;
+  onUrlClick: MediaUrlClickHandler;
   onMiddleClickStart?: () => void;
   openOnMiddleMouseDown?: boolean;
   isBlurred?: boolean;

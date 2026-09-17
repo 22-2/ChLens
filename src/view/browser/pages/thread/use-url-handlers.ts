@@ -2,6 +2,7 @@ import type { Dispatch, MouseEvent } from "react";
 import { useCallback } from "react";
 import { platform } from "src/app/platform/index";
 import { getResNumber } from "src/core/URL";
+import { toViewerImageUrl } from "src/features/media/domain/url-media";
 import type { TabAction } from "src/view/browser/hooks/use-tab-store";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { copyText } from "src/view/browser/utils/clipboard";
@@ -11,7 +12,6 @@ import {
   RESPECT_DEFAULT_EXTERNAL,
 } from "src/view/browser/utils/link-routing";
 import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
-import { toViewerImageUrl } from "src/view/browser/utils/url-media";
 
 interface UseUrlHandlersParams {
   threadUrl: string;

@@ -1,9 +1,10 @@
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { ResMediaGallery } from "src/view/browser/components/ResMediaGallery";
-import { twitterPostResolver } from "src/view/browser/utils/twitter-post";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+
+import { twitterPostResolver } from "../application/twitter-post";
+import { ResMediaGallery } from "./ResMediaGallery";
 
 afterEach(() => {
   cleanup();

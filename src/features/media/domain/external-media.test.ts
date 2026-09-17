@@ -1,3 +1,5 @@
+import { describe, expect, it } from "vite-plus/test";
+
 import {
   getDirectVideoLabel,
   isDirectVideoUrl,
@@ -5,8 +7,7 @@ import {
   toInlineVideoEmbed,
   toRuntimeVideoEmbedUrl,
   toTwitterPostEmbed,
-} from "src/view/browser/utils/external-media";
-import { describe, expect, it } from "vite-plus/test";
+} from "./external-media";
 
 describe("external media", () => {
   it("YouTube URL をレス内埋め込み向けURLへ変換する", () => {

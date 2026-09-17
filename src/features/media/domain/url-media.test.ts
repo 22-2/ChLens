@@ -1,11 +1,8 @@
 import "@testing-library/jest-dom/vitest";
 
-import {
-  extractUrlsFromMessage,
-  toOriginalImageUrl,
-  toViewerImageUrl,
-} from "src/view/browser/utils/url-media";
 import { describe, expect, it } from "vite-plus/test";
+
+import { extractUrlsFromMessage, toOriginalImageUrl, toViewerImageUrl } from "./url-media";
 
 describe("url-media", () => {
   it("先頭を削ったURLを復元して重複なく抽出する", () => {

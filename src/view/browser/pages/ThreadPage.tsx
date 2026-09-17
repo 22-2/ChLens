@@ -6,16 +6,16 @@ import {
   getReplayBoundaryIndex,
 } from "src/features/archive-replay/ui/ArchiveReplayPositionLine";
 import { useCommentOverlay } from "src/features/comment-overlay/application/use-comment-overlay";
+import { useMediaViewerStore } from "src/features/media/browser/use-media-viewer-store";
+import { MediaViewerContainer } from "src/features/media/ui/MediaViewerContainer";
 import { container } from "src/service-container/index";
 import type { IThread } from "src/service-container/interfaces";
-import { MediaViewerContainer } from "src/view/browser/components/MediaViewerContainer";
 import { PopupRenderer } from "src/view/browser/components/PopupRenderer";
 import { ResItem } from "src/view/browser/components/ResItem";
 import { ThreadMinimap } from "src/view/browser/components/ThreadMinimap";
 import { WheelScrollIndicator } from "src/view/browser/components/WheelScrollIndicator";
 import { useAutoNextThread } from "src/view/browser/hooks/use-auto-next-thread";
 import { useAutoNextThreadSetting } from "src/view/browser/hooks/use-auto-next-thread-setting";
-import { useMediaViewerStore } from "src/view/browser/hooks/use-media-viewer-store";
 import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
 import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
 import { usePopupAutoScrollPauseSetting } from "src/view/browser/hooks/use-popup-auto-scroll-pause-setting";

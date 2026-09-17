@@ -50,9 +50,9 @@ vi.mock("src/view/browser/utils/response-format", async () => {
   };
 });
 
-vi.mock("src/view/browser/utils/url-media", async () => {
-  const actual = await vi.importActual<typeof import("src/view/browser/utils/url-media")>(
-    "src/view/browser/utils/url-media",
+vi.mock("src/features/media/domain/url-media", async () => {
+  const actual = await vi.importActual<typeof import("src/features/media/domain/url-media")>(
+    "src/features/media/domain/url-media",
   );
   return {
     ...actual,

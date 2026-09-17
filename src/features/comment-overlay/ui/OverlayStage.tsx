@@ -2,7 +2,7 @@ import "./OverlayStage.css";
 
 import type { CSSProperties } from "react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { toViewerImageUrl } from "src/view/browser/utils/url-media";
+import { toViewerImageUrl } from "src/features/media/domain/url-media";
 
 import {
   type CommentBacklogPolicy,

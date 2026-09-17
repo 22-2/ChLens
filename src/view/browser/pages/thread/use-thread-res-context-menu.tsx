@@ -27,9 +27,9 @@ import {
   isAutoRefreshEnabledForPage,
 } from "src/view/browser/utils/auto-refresh-pages";
 import { copyText } from "src/view/browser/utils/clipboard";
+import { buildKyodemoUrl } from "src/view/browser/utils/kyodemo-url";
 import { getLegacyWriteHistoryService } from "src/view/browser/utils/legacy-app";
 import { formatResForCopy, stripHtml } from "src/view/browser/utils/response-format";
-import { buildKyodemoUrl } from "src/view/browser/utils/url-media";
 
 type AddPopupContextMenu = (
   x: number,
