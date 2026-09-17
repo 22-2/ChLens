@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
-import { parseArchiveReplayTimestamp } from "src/features/comment-overlay/domain";
+
+import { parseArchiveReplayTimestamp } from "../domain";
 
 export function getReplayBoundaryIndex(
   responses: readonly { num: number; date?: string }[],

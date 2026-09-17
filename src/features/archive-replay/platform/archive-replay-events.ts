@@ -1,8 +1,7 @@
 import { emitTo, listen } from "@tauri-apps/api/event";
 import { isTauriRuntime } from "src/app/platform/runtime";
-
-import type { CommentCandidate } from "../domain";
-import { COMMENT_OVERLAY_WINDOW_LABEL } from "./tauri";
+import type { CommentCandidate } from "src/features/comment-overlay/domain/comment-types";
+import { COMMENT_OVERLAY_WINDOW_LABEL } from "src/features/comment-overlay/platform";
 
 export const ARCHIVE_REPLAY_OVERLAY_EVENT_NAME = "chlens://archive-replay-overlay";
 

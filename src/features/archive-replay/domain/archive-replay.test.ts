@@ -1,3 +1,4 @@
+import type { CommentCandidate } from "src/features/comment-overlay/domain/comment-types";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
@@ -7,7 +8,6 @@ import {
   parseArchiveReplayStartInput,
   parseArchiveReplayTimestamp,
 } from "./archive-replay";
-import type { CommentCandidate } from "./comment-types";
 
 function comment(
   responseNumber: number,

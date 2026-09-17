@@ -1,9 +1,9 @@
 import "@testing-library/jest-dom/vitest";
 
 import { act, cleanup, render, screen } from "@testing-library/react";
+import { MemoryArchiveReplayOverlayEventBus } from "src/features/archive-replay/platform";
 import type { CommentCandidate } from "src/features/comment-overlay/domain";
 import { MemoryCommentOverlayEventBus } from "src/features/comment-overlay/domain";
-import { MemoryArchiveReplayOverlayEventBus } from "src/features/comment-overlay/platform/archive-replay-events";
 import { createBrowserCommentOverlayPlatform } from "src/features/comment-overlay/platform/browser";
 import { COMMENT_OVERLAY_FONT_SIZE } from "src/features/comment-overlay/ui/OverlayStage";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";

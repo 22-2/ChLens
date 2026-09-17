@@ -1,14 +1,17 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-import type { ArchiveReplaySource, ArchiveReplayTimeline } from "../domain";
+import type {
+  ArchiveReplaySource,
+  ArchiveReplayTimeline,
+} from "src/features/archive-replay/domain";
 import {
   createArchiveReplayTimeline,
   getArchiveReplayCommentsThroughPosition,
   parseArchiveReplayStartInput,
   parseArchiveReplayTimestamp,
-  projectCommentResponse,
-} from "../domain";
+} from "src/features/archive-replay/domain";
+
+import { projectCommentResponse } from "../domain";
 import type { CommentCandidate } from "../domain/comment-types";
 import {
   DEFAULT_COMMENT_HISTORY_LIMIT,

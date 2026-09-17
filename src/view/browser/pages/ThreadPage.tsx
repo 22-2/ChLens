@@ -1,6 +1,11 @@
 import React, { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useArchiveReplayPositionStore } from "src/features/archive-replay/browser/position-store";
+import { normalizeArchiveReplayThreadUrl } from "src/features/archive-replay/domain";
+import {
+  ArchiveReplayPositionLine,
+  getReplayBoundaryIndex,
+} from "src/features/archive-replay/ui/ArchiveReplayPositionLine";
 import { useCommentOverlay } from "src/features/comment-overlay/application/use-comment-overlay";
-import { normalizeArchiveReplayThreadUrl } from "src/features/comment-overlay/domain";
 import { container } from "src/service-container/index";
 import type { IThread } from "src/service-container/interfaces";
 import { MediaViewerContainer } from "src/view/browser/components/MediaViewerContainer";
@@ -8,7 +13,6 @@ import { PopupRenderer } from "src/view/browser/components/PopupRenderer";
 import { ResItem } from "src/view/browser/components/ResItem";
 import { ThreadMinimap } from "src/view/browser/components/ThreadMinimap";
 import { WheelScrollIndicator } from "src/view/browser/components/WheelScrollIndicator";
-import { useArchiveReplayPositionStore } from "src/view/browser/hooks/use-archive-replay-position-store";
 import { useAutoNextThread } from "src/view/browser/hooks/use-auto-next-thread";
 import { useAutoNextThreadSetting } from "src/view/browser/hooks/use-auto-next-thread-setting";
 import { useMediaViewerStore } from "src/view/browser/hooks/use-media-viewer-store";
@@ -38,11 +42,6 @@ import {
   buildBlurredResSet,
   buildReplyToWrittenResSet,
 } from "src/view/browser/utils/thread-emphasis";
-
-import {
-  ArchiveReplayPositionLine,
-  getReplayBoundaryIndex,
-} from "./thread/ArchiveReplayPositionLine";
 interface ThreadPageProps {
   tabId: string;
   page: ThreadPageType;

@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  type ArchiveReplayOverlayEvent,
+  type ArchiveReplayOverlayEventBus,
+  createArchiveReplayOverlayEventBus,
+} from "src/features/archive-replay/platform";
+import {
   calculateNaturalCommentFlowCount,
   calculateNaturalCommentFlowInterval,
   type CommentCandidate,
@@ -9,14 +14,11 @@ import {
   normalizeCommentOverlaySettings,
 } from "src/features/comment-overlay/domain";
 import {
-  type ArchiveReplayOverlayEvent,
-  type ArchiveReplayOverlayEventBus,
   type CommentOverlayEvent,
   type CommentOverlayEventBus,
   type CommentOverlayGeometry,
   type CommentOverlayWindowPlatform,
   commentOverlayWindowPlatform,
-  createArchiveReplayOverlayEventBus,
   createCommentOverlayEventBus,
   DEFAULT_COMMENT_OVERLAY_GEOMETRY,
 } from "src/features/comment-overlay/platform";

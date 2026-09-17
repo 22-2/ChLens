@@ -12,42 +12,14 @@ export function createCommentOverlayWindowPlatform() {
 export const commentOverlayWindowPlatform = createCommentOverlayWindowPlatform();
 
 export type { CommentOverlayEvent, CommentOverlayEventBus } from "../domain";
-export type {
-  ArchiveReplayOverlayEvent,
-  ArchiveReplayOverlayEventBus,
-} from "./archive-replay-events";
-export {
-  ARCHIVE_REPLAY_OVERLAY_EVENT_NAME,
-  createArchiveReplayOverlayEventBus,
-  MemoryArchiveReplayOverlayEventBus,
-  TauriArchiveReplayOverlayEventBus,
-} from "./archive-replay-events";
-export type {
-  ArchiveReplayMainThreadRequest,
-  ArchiveReplaySeekRequest,
-} from "./archive-replay-window";
-export {
-  ARCHIVE_REPLAY_MAIN_THREAD_EVENT_NAME,
-  ARCHIVE_REPLAY_MAIN_WINDOW_LABEL,
-  ARCHIVE_REPLAY_SEEK_EVENT_NAME,
-  ARCHIVE_REPLAY_WINDOW_LABEL,
-  hideArchiveReplayWindow,
-  isArchiveReplayMainThreadRequest,
-  isArchiveReplaySeekRequest,
-  openArchiveReplayWindow,
-  requestArchiveReplayMainThread,
-  requestArchiveReplaySeek,
-  subscribeArchiveReplayMainThreadRequests,
-  subscribeArchiveReplaySeekRequests,
-  subscribeArchiveReplayWindowClose,
-} from "./archive-replay-window";
 export {
   COMMENT_OVERLAY_EVENT_NAME,
   createCommentOverlayEventBus,
   TauriCommentOverlayEventBus,
 } from "./events";
 export { fitCommentOverlayGeometryToAspectRatio } from "./geometry";
-export { COMMENT_OVERLAY_VISIBILITY_EVENT_NAME } from "./tauri";
+// 過去実況機能も同じ表示専用Overlay窓へ通知するため、窓ラベルだけをfeature間契約として公開する。
+export { COMMENT_OVERLAY_VISIBILITY_EVENT_NAME, COMMENT_OVERLAY_WINDOW_LABEL } from "./tauri";
 export type {
   CommentOverlayGeometry,
   CommentOverlayMonitor,

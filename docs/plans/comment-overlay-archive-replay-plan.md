@@ -214,7 +214,10 @@
 | `src/features/comment-overlay/application/controller.ts` | 現在はライブの新着差分が中心。過去再生は別セッションとして接続する |
 | `src/features/comment-overlay/application/multi-thread-session.ts` | ライブの候補スレ探索・本流切り替え用。手動URLの過去ログ集合にそのまま流用しない |
 | `src/features/comment-overlay/domain/events.ts` | ライブ用イベントがある。再生状態・世代・同期情報を明示する契約を追加検討する |
-| `src/features/comment-overlay/platform/` | コメントOverlayと過去実況操作窓のウィンドウ操作・イベント通信の境界 |
+| `src/features/comment-overlay/platform/` | コメントOverlay本体のウィンドウ操作・イベント通信の境界 |
+| `src/features/archive-replay/domain/` | 複数スレッドの日時解析・タイムライン構築・レス位置からのシーク計算 |
+| `src/features/archive-replay/platform/` | 過去実況の操作窓・Overlay・Main ThreadView間のTauri通信 |
+| `src/features/archive-replay/ui/` | 過去実況の操作窓とThreadView内の再生位置表示 |
 | `src/features/comment-overlay/ui/OverlayStage.tsx` | コメントOverlay専用の描画面。過去実況操作窓へ埋め込まず、通知されたレスだけを描画する |
 | `src/features/comment-overlay/ui/OverlayStage.stories.tsx` | 過去ログを160ミリ秒ごとに投入する確認用Storyがある。投稿時刻再生の実装済み機能とは扱わない |
 | `src/features/comment-overlay/ui/OverlayControlPanel.tsx` | 現在は配置操作が中心。再生操作を追加する場所は責務を分けて判断する |
@@ -306,7 +309,7 @@ Tauriのウィンドウ・通信に変更がある場合はTauriビルドと必�
 
 ### 先行試作と今回の統合内容
 
-正式な画面へ接続する前の手触り確認として、`src/features/comment-overlay/ui/OverlayStage.stories.tsx` の `PastThreadReplay` Storyを複数URL対応へ置き換えた。その後、同じドメイン処理を `src/features/comment-overlay/ui/ArchiveReplayWindow.tsx` へ接続し、Tauri版のコマンドパレットにある「過去実況再生を開く」から開けるようにした。
+正式な画面へ接続する前の手触り確認として、`src/features/comment-overlay/ui/OverlayStage.stories.tsx` の `PastThreadReplay` Storyを複数URL対応へ置き換えた。その後、同じドメイン処理を `src/features/archive-replay/` へ移し、Tauri版のコマンドパレットにある「過去実況再生を開く」から開けるようにした。コメントOverlay側には表示責務だけを残し、操作窓・Main同期・再生位置計算は過去実況機能へ集約している。
 
 - URLを改行区切りで入力し、重複URLを除いて並行取得する。
 - 日時解析後、指定した開始日時と再生時間へ絞り、全スレッドを投稿時刻順に混ぜる。

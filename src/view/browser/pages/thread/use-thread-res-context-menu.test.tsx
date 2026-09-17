@@ -32,8 +32,8 @@ vi.mock("src/service-container/index", () => ({
   },
 }));
 
-vi.mock("src/features/comment-overlay/platform", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("src/features/comment-overlay/platform")>();
+vi.mock("src/features/archive-replay/platform", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("src/features/archive-replay/platform")>();
   return { ...actual, requestArchiveReplaySeek: mocks.requestArchiveReplaySeek };
 });
 

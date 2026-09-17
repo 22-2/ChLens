@@ -3,6 +3,12 @@ import "./ArchiveReplayWindow.css";
 import { Pause, Play, RotateCcw, SkipBack, SkipForward, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isTauriRuntime } from "src/app/platform/runtime";
+import { projectCommentResponse } from "src/features/comment-overlay/domain";
+import type { CommentCandidate } from "src/features/comment-overlay/domain/comment-types";
+import {
+  type CommentOverlayWindowPlatform,
+  commentOverlayWindowPlatform,
+} from "src/features/comment-overlay/platform";
 import { container } from "src/service-container";
 import type { IThreadDetail } from "src/service-container/interfaces";
 import { useTheme } from "src/view/browser/hooks/use-theme";
@@ -15,15 +21,11 @@ import {
   getArchiveReplaySeekPosition,
   parseArchiveReplayStartInput,
   parseArchiveReplayTimestamp,
-  projectCommentResponse,
 } from "../domain";
-import type { CommentCandidate } from "../domain/comment-types";
 import {
   type ArchiveReplayMainThreadRequest,
   type ArchiveReplayOverlayEventBus,
   type ArchiveReplaySeekRequest,
-  type CommentOverlayWindowPlatform,
-  commentOverlayWindowPlatform,
   createArchiveReplayOverlayEventBus,
   hideArchiveReplayWindow,
   requestArchiveReplayMainThread,

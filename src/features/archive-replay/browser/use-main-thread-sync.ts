@@ -1,13 +1,17 @@
 import { useEffect, useRef } from "react";
 import { isTauriRuntime } from "src/app/platform/runtime";
-import { normalizeArchiveReplayThreadUrl } from "src/features/comment-overlay/domain";
+import {
+  type TabStoreState,
+  useTabDispatch,
+  useTabStore,
+} from "src/view/browser/hooks/use-tab-store";
+
+import { normalizeArchiveReplayThreadUrl } from "../domain";
 import {
   type ArchiveReplayMainThreadRequest,
   subscribeArchiveReplayMainThreadRequests,
-} from "src/features/comment-overlay/platform";
-
-import { useArchiveReplayPositionStore } from "./use-archive-replay-position-store";
-import { type TabStoreState, useTabDispatch, useTabStore } from "./use-tab-store";
+} from "../platform";
+import { useArchiveReplayPositionStore } from "./position-store";
 
 interface MainThreadSyncTarget {
   sessionId: string;

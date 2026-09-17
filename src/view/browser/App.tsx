@@ -1,7 +1,8 @@
 import { List as ListIcon, PenLine } from "lucide-react";
 import React, { useCallback, useEffect } from "react";
 import { isTauriRuntime } from "src/app/platform/runtime";
-import { openArchiveReplayWindow as openArchiveReplayNativeWindow } from "src/features/comment-overlay/platform";
+import { useArchiveReplayMainThreadSync } from "src/features/archive-replay/browser/use-main-thread-sync";
+import { openArchiveReplayWindow as openArchiveReplayNativeWindow } from "src/features/archive-replay/platform";
 import { container } from "src/service-container/index";
 import { AutoRefreshStatusItem } from "src/view/browser/components/AutoRefreshStatusItem";
 import { BookmarkRootSelectorDialog } from "src/view/browser/components/BookmarkRootSelectorDialog";
@@ -17,7 +18,6 @@ import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-prio
 import { StatusBar, StatusBarItem, StatusBarProvider } from "src/view/browser/components/StatusBar";
 import { TabBar } from "src/view/browser/components/TabBar";
 import { TitleBar } from "src/view/browser/components/TitleBar";
-import { useArchiveReplayMainThreadSync } from "src/view/browser/hooks/use-archive-replay-main-thread-sync";
 import { AutoScrollStateProvider } from "src/view/browser/hooks/use-auto-scroll-state";
 import {
   BOTTOM_PANEL_THREAD_LIST_TAB_ID,

@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
   subscribe: vi.fn(),
 }));
 
-vi.mock("src/features/comment-overlay/platform", () => ({
+vi.mock("../platform", () => ({
   subscribeArchiveReplayMainThreadRequests: mocks.subscribe,
 }));
 
@@ -74,8 +74,7 @@ describe("過去実況Main同期のTabProvider統合", () => {
   it("新規専用タブをMainへフォーカスしてもTabProviderの状態を壊さない", async () => {
     vi.resetModules();
     const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
-    const { useArchiveReplayMainThreadSync } =
-      await import("./use-archive-replay-main-thread-sync");
+    const { useArchiveReplayMainThreadSync } = await import("./use-main-thread-sync");
 
     function Harness() {
       useArchiveReplayMainThreadSync();

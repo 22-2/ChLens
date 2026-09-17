@@ -1,9 +1,9 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
-import type { ArchiveReplayMainThreadRequest } from "src/features/comment-overlay/platform";
 import type { ScopedTabAction, TabStoreState } from "src/view/browser/hooks/use-tab-store";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { useArchiveReplayMainThreadSync } from "./use-archive-replay-main-thread-sync";
+import type { ArchiveReplayMainThreadRequest } from "../platform";
+import { useArchiveReplayMainThreadSync } from "./use-main-thread-sync";
 
 const mocks = vi.hoisted(() => ({
   dispatch: vi.fn(),
@@ -12,11 +12,11 @@ const mocks = vi.hoisted(() => ({
   stateRef: null as { current: TabStoreState } | null,
 }));
 
-vi.mock("src/features/comment-overlay/platform", () => ({
+vi.mock("../platform", () => ({
   subscribeArchiveReplayMainThreadRequests: mocks.subscribe,
 }));
 
-vi.mock("./use-tab-store", () => ({
+vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabDispatch: () => mocks.dispatch,
   useTabStore: () => ({ stateRef: mocks.stateRef }),
 }));

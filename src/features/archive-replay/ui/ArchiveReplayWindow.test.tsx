@@ -1,10 +1,10 @@
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import type { CommentOverlayWindowPlatform } from "src/features/comment-overlay/platform/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { MemoryArchiveReplayOverlayEventBus } from "../platform/archive-replay-events";
-import type { CommentOverlayWindowPlatform } from "../platform/types";
+import { MemoryArchiveReplayOverlayEventBus } from "../platform";
 import { ArchiveReplayWindow } from "./ArchiveReplayWindow";
 
 const getThreadMock = vi.hoisted(() => vi.fn());
