@@ -349,8 +349,6 @@ export function ArchiveReplayWindow({
         : null,
     [loadedReplay, position, syncOffset],
   );
-  const currentReplayThreadRef = useRef<ArchiveReplayThreadSelection | null>(null);
-  currentReplayThreadRef.current = currentReplayThread;
 
   const publishMainThreadSync = useCallback(
     (selection: ArchiveReplayThreadSelection | null, force = false) => {
@@ -378,9 +376,10 @@ export function ArchiveReplayWindow({
 
   useEffect(() => {
     if (!followMainThread) return;
-    publishMainThreadSync(currentReplayThreadRef.current);
-    // URLだけを依存にして、再生フレームごとに同じスレッドへ通知し直さない。
-  }, [currentReplayThread?.threadUrl, followMainThread, publishMainThreadSync]);
+    // 再生位置ごとに選択元を再評価し、スレ境界をフレーム落ちなく拾う。
+    // 同じURLはpublishMainThreadSync側のガードで通知を抑制する。
+    publishMainThreadSync(currentReplayThread);
+  }, [currentReplayThread, followMainThread, publishMainThreadSync]);
 
   useEffect(() => {
     let disposed = false;
