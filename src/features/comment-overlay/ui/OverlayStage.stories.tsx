@@ -1,15 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import type {
-  ArchiveReplaySource,
-  ArchiveReplayTimeline,
-  ArchiveReplayTimelineComment,
-} from "../domain";
+import type { ArchiveReplaySource, ArchiveReplayTimeline } from "../domain";
 import {
   createArchiveReplayTimeline,
   getArchiveReplayCommentsThroughPosition,
-  getArchiveReplaySeekPosition,
   parseArchiveReplayStartInput,
   parseArchiveReplayTimestamp,
   projectCommentResponse,
@@ -97,7 +92,7 @@ function ThreadUrlForm({ url, loading, error, title, onUrlChange, onSubmit }: Th
           type="url"
           value={url}
           onChange={(event) => onUrlChange(event.target.value)}
-          placeholder="https://bbs.eddibb.cc/test/read.cgi/liveedge/スレ番号/"
+          placeholder="https://example.com/test/read.cgi/liveedge/スレ番号/"
           style={{
             minWidth: 240,
             flex: "1 1 auto",
@@ -528,24 +523,6 @@ export function PastThreadReplayStory(args: OverlayStageProps) {
     [loadedReplay],
   );
 
-  const seekToComment = useCallback(
-    (comment: ArchiveReplayTimelineComment) => {
-      if (!loadedReplay) return;
-      const nextPosition = getArchiveReplaySeekPosition(
-        loadedReplay.timeline,
-        { threadUrl: comment.sourceThreadUrl, responseNumber: comment.responseNumber },
-        syncOffset,
-      );
-      if (nextPosition === null) {
-        setError("このレスは現在の同期補正では再生範囲外です");
-        return;
-      }
-      setError(null);
-      seek(nextPosition);
-    },
-    [loadedReplay, seek, syncOffset],
-  );
-
   const restart = () => {
     if (!loadedReplay) return;
     seek(0);
@@ -672,28 +649,6 @@ export function PastThreadReplayStory(args: OverlayStageProps) {
           コメントを1秒遅く
         </button>
       </div>
-      {loadedReplay ? (
-        <details>
-          <summary style={{ cursor: "pointer", color: "#d8e7f7" }}>
-            レスを選んでその時刻へ移動
-          </summary>
-          <div
-            style={{ display: "grid", gap: 4, maxHeight: 180, overflow: "auto", padding: "8px 0" }}
-          >
-            {loadedReplay.timeline.comments.slice(0, 100).map((comment) => (
-              <button
-                key={`${comment.sourceThreadUrl}:${comment.responseNumber}`}
-                type="button"
-                onClick={() => seekToComment(comment)}
-                style={{ textAlign: "left" }}
-              >
-                {comment.sourceThreadUrl} レス{comment.responseNumber}（
-                {formatReplayDuration(comment.replayOffsetSeconds)}）: {comment.text}
-              </button>
-            ))}
-          </div>
-        </details>
-      ) : null}
       <div ref={stageHostRef} style={{ flex: "1 1 auto", minHeight: 0, width: "100%" }}>
         <OverlayStage
           key={stageKey}

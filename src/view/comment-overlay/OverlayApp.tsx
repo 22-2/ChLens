@@ -9,11 +9,14 @@ import {
   normalizeCommentOverlaySettings,
 } from "src/features/comment-overlay/domain";
 import {
+  type ArchiveReplayOverlayEvent,
+  type ArchiveReplayOverlayEventBus,
   type CommentOverlayEvent,
   type CommentOverlayEventBus,
   type CommentOverlayGeometry,
   type CommentOverlayWindowPlatform,
   commentOverlayWindowPlatform,
+  createArchiveReplayOverlayEventBus,
   createCommentOverlayEventBus,
   DEFAULT_COMMENT_OVERLAY_GEOMETRY,
 } from "src/features/comment-overlay/platform";
@@ -25,16 +28,20 @@ import {
 const MAX_COMMENT_HISTORY = DEFAULT_COMMENT_HISTORY_LIMIT;
 
 export interface OverlayAppProps {
+  archiveReplayEventBus?: ArchiveReplayOverlayEventBus;
   eventBus?: CommentOverlayEventBus;
   platform?: CommentOverlayWindowPlatform;
 }
 
 /** Tauriのnative windowと、Storybookでも検証できるOverlayStageを接続する。 */
 export function OverlayApp({
+  archiveReplayEventBus: providedArchiveReplayEventBus,
   eventBus: providedEventBus,
   platform = commentOverlayWindowPlatform,
 }: OverlayAppProps = {}) {
+  const [defaultArchiveReplayEventBus] = useState(createArchiveReplayOverlayEventBus);
   const [defaultEventBus] = useState(createCommentOverlayEventBus);
+  const archiveReplayEventBus = providedArchiveReplayEventBus ?? defaultArchiveReplayEventBus;
   const eventBus = providedEventBus ?? defaultEventBus;
   const [comments, setComments] = useState<readonly CommentCandidate[]>([]);
   const [stageKey, setStageKey] = useState(0);
@@ -47,6 +54,9 @@ export function OverlayApp({
   const activeThreadUrlRef = useRef<string | null>(null);
   const seenResponseNumbersRef = useRef(new Set<string>());
   const seenResponseOrderRef = useRef<string[]>([]);
+  const archiveReplaySessionRef = useRef<string | null>(null);
+  const liveQueueEpochRef = useRef(0);
+  const [archiveReplayPlaying, setArchiveReplayPlaying] = useState(true);
   useEffect(() => {
     let disposed = false;
     let unsubscribe: (() => void) | null = null;
@@ -62,6 +72,7 @@ export function OverlayApp({
       }
 
       if (event.type === "source-filter") {
+        if (archiveReplaySessionRef.current !== null) return;
         if (activeThreadUrlRef.current !== event.threadUrl) return;
 
         // 本流確定時は、すでに画面へ出たコメントは自然に流し切り、
@@ -89,6 +100,7 @@ export function OverlayApp({
       }
 
       if (event.type === "system") {
+        if (archiveReplaySessionRef.current !== null) return;
         const identity = commentIdentity(event.comment);
         if (seenResponseNumbersRef.current.has(identity)) return;
         seenResponseNumbersRef.current.add(identity);
@@ -108,6 +120,10 @@ export function OverlayApp({
         });
         return;
       }
+
+      // 再生窓が表示を占有している間は、Main側のlive batchを混ぜない。
+      // 別event名だけでは既に投入済みのlive queueを止められないため、timer側でもepochを検証する。
+      if (archiveReplaySessionRef.current !== null) return;
 
       const { batch } = event;
       const preserveVisibleComments =
@@ -160,6 +176,7 @@ export function OverlayApp({
         });
       }
 
+      const queueEpoch = liveQueueEpochRef.current;
       const scheduleNextComment = (): void => {
         if (commentQueue.length === 0 || flowTimer) return;
         const interval = calculateNaturalCommentFlowInterval({
@@ -169,6 +186,13 @@ export function OverlayApp({
         });
         flowTimer = setTimeout(() => {
           flowTimer = null;
+          if (
+            queueEpoch !== liveQueueEpochRef.current ||
+            archiveReplaySessionRef.current !== null
+          ) {
+            commentQueue.length = 0;
+            return;
+          }
           const count = calculateNaturalCommentFlowCount(commentQueue.length);
           setComments((current) => {
             const next = [...current, ...commentQueue.splice(0, count)];
@@ -201,6 +225,67 @@ export function OverlayApp({
       unsubscribe?.();
     };
   }, [eventBus]);
+
+  useEffect(() => {
+    let disposed = false;
+    let unsubscribe: (() => void) | null = null;
+    const archiveSeenRef = new Set<string>();
+
+    const handleArchiveReplayEvent = (event: ArchiveReplayOverlayEvent): void => {
+      if (event.type === "reset") {
+        archiveReplaySessionRef.current = event.sessionId;
+        setArchiveReplayPlaying(false);
+        liveQueueEpochRef.current += 1;
+        archiveSeenRef.clear();
+        setComments([]);
+        setStageKey((current) => current + 1);
+        return;
+      }
+
+      if (archiveReplaySessionRef.current !== event.sessionId) return;
+      if (event.type === "stop") {
+        archiveReplaySessionRef.current = null;
+        setArchiveReplayPlaying(true);
+        liveQueueEpochRef.current += 1;
+        archiveSeenRef.clear();
+        setComments([]);
+        setStageKey((current) => current + 1);
+        return;
+      }
+
+      if (event.type === "playback") {
+        setArchiveReplayPlaying(event.playing);
+        return;
+      }
+
+      const identity = commentIdentity(event.comment);
+      if (archiveSeenRef.has(identity)) return;
+      archiveSeenRef.add(identity);
+      setComments((current) => {
+        const next = [...current, event.comment];
+        return next.length > MAX_COMMENT_HISTORY ? next.slice(-MAX_COMMENT_HISTORY) : next;
+      });
+    };
+
+    void archiveReplayEventBus
+      .subscribe(handleArchiveReplayEvent)
+      .then((cleanup) => {
+        if (disposed) {
+          cleanup();
+          return;
+        }
+        unsubscribe = cleanup;
+      })
+      .catch((error: unknown) => {
+        console.error("[ChLens] 過去実況Overlay eventの購読に失敗しました:", error);
+      });
+
+    return () => {
+      disposed = true;
+      unsubscribe?.();
+      archiveSeenRef.clear();
+    };
+  }, [archiveReplayEventBus]);
 
   useEffect(() => {
     let saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -293,7 +378,7 @@ export function OverlayApp({
         scaleToContainer
         scaleReferenceWidth={DEFAULT_COMMENT_OVERLAY_GEOMETRY.width}
         scaleReferenceHeight={DEFAULT_COMMENT_OVERLAY_GEOMETRY.height}
-        playing
+        playing={archiveReplaySessionRef.current === null ? true : archiveReplayPlaying}
         interactive={false}
         showCommentInfo={false}
         backgroundColor="transparent"

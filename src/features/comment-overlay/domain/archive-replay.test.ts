@@ -111,7 +111,7 @@ describe("過去実況タイムライン", () => {
     expect(
       getArchiveReplaySeekPosition(
         timeline,
-        { threadUrl: "https://example.com/thread-a", responseNumber: 1 },
+        { threadUrl: "https://example.com/thread-a/", responseNumber: 1 },
         2,
       ),
     ).toBe(7);

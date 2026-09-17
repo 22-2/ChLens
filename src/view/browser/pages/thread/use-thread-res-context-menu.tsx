@@ -9,10 +9,13 @@ import {
   Reply,
   RotateCw,
   Search,
+  SkipForward,
   Type,
 } from "lucide-react";
 import React, { useCallback, useEffect, useRef } from "react";
+import { isTauriRuntime } from "src/app/platform/runtime";
 import { stringifyNgDslValue } from "src/core/ngDsl";
+import { requestArchiveReplaySeek } from "src/features/comment-overlay/platform";
 import { container } from "src/service-container/index";
 import type { IRes } from "src/service-container/interfaces";
 import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
@@ -233,8 +236,33 @@ export function useThreadResContextMenu({
 
       const idItems = buildIdItems(rawId, kyodemoUrl);
 
-      // 先頭の条件付き項目（フィルタ解除ジャンプ、ポップアップ用ジャンプ）
+      // 先頭の条件付き項目（過去実況シーク、フィルタ解除ジャンプ、ポップアップ用ジャンプ）
       const conditionalTopItems: ContextMenuItem[] = [
+        ...(isTauriRuntime() && !fromPopup
+          ? [
+              {
+                id: "archive-replay-seek",
+                label: "この位置まで過去実況を再生",
+                icon: <SkipForward size={14} />,
+                onSelect: () => {
+                  // 変更理由: 再生窓とThreadViewは別WebViewなので、レスのDOM位置ではなく
+                  // スレURLと絶対レス番号を渡して、読み込み済みタイムライン側で時刻へ変換する。
+                  void requestArchiveReplaySeek({
+                    threadUrl: page.threadUrl,
+                    responseNumber: targetRes.num,
+                  }).catch((error: unknown) => {
+                    console.error("[ArchiveReplay] ThreadViewからのシーク要求に失敗しました", {
+                      threadUrl: page.threadUrl,
+                      responseNumber: targetRes.num,
+                      error,
+                    });
+                    container.toast.error("過去実況再生窓へ移動できませんでした");
+                  });
+                },
+              },
+              { id: "sep-archive-replay", separator: true },
+            ]
+          : []),
         ...(filter !== "all" || hasKeywordFilter
           ? [
               {

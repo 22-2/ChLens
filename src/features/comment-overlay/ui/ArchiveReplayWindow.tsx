@@ -5,26 +5,34 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isTauriRuntime } from "src/app/platform/runtime";
 import { container } from "src/service-container";
 import type { IThreadDetail } from "src/service-container/interfaces";
+import { useTheme } from "src/view/browser/hooks/use-theme";
 import { Button } from "src/view/browser/ui/Button";
-import { Dialog } from "src/view/browser/ui/Dialog";
 
 import {
   type ArchiveReplaySource,
   type ArchiveReplayTimeline,
-  type ArchiveReplayTimelineComment,
   createArchiveReplayTimeline,
-  getArchiveReplayCommentsThroughPosition,
   getArchiveReplaySeekPosition,
   parseArchiveReplayStartInput,
   parseArchiveReplayTimestamp,
   projectCommentResponse,
 } from "../domain";
 import type { CommentCandidate } from "../domain/comment-types";
-import { DEFAULT_COMMENT_HISTORY_LIMIT, OverlayStage } from "./OverlayStage";
+import {
+  type ArchiveReplayOverlayEventBus,
+  type ArchiveReplaySeekRequest,
+  type CommentOverlayWindowPlatform,
+  commentOverlayWindowPlatform,
+  createArchiveReplayOverlayEventBus,
+  hideArchiveReplayWindow,
+  subscribeArchiveReplaySeekRequests,
+  subscribeArchiveReplayWindowClose,
+} from "../platform";
 
 interface ArchiveReplayWindowProps {
-  open: boolean;
-  onClose: () => void;
+  archiveReplayEventBus?: ArchiveReplayOverlayEventBus;
+  overlayPlatform?: CommentOverlayWindowPlatform;
+  seekRequestSubscriber?: typeof subscribeArchiveReplaySeekRequests;
 }
 
 interface LoadedArchiveReplayData {
@@ -42,14 +50,20 @@ const DEFAULT_DURATION_MINUTES = "30";
 const DEFAULT_REPLAY_RATE = "1";
 
 /**
- * 複数スレッドの過去ログを、実況の開始位置へ合わせて再生する操作窓。
- * 変更理由: Storybookだけに実装を置くと、コマンドパレットから開いた利用者が
- * 実際のログを再生できないため、サービスコンテナを使う本番側にも同じ同期処理を持たせる。
+ * Tauriの過去実況操作窓。コメント本体は表示せず、既存のコメントOverlayへ時刻付きで通知する。
+ * 変更理由: 再生UIと弾幕表示を同じWebViewに置くと、操作窓を見ている間だけコメントが
+ * 表示されるため、アニメ画面の上に重ねる既存Overlayを唯一の表示面として使う。
  */
-export function ArchiveReplayWindow({ open, onClose }: ArchiveReplayWindowProps) {
+export function ArchiveReplayWindow({
+  archiveReplayEventBus: providedArchiveReplayEventBus,
+  overlayPlatform = commentOverlayWindowPlatform,
+  seekRequestSubscriber = subscribeArchiveReplaySeekRequests,
+}: ArchiveReplayWindowProps = {}) {
   const isTauri = isTauriRuntime();
+  const theme = useTheme();
+  const [defaultArchiveReplayEventBus] = useState(createArchiveReplayOverlayEventBus);
+  const archiveReplayEventBus = providedArchiveReplayEventBus ?? defaultArchiveReplayEventBus;
 
-  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
   const [urls, setUrls] = useState("");
   const [startInput, setStartInput] = useState("");
   const [durationMinutes, setDurationMinutes] = useState(DEFAULT_DURATION_MINUTES);
@@ -60,32 +74,48 @@ export function ArchiveReplayWindow({ open, onClose }: ArchiveReplayWindowProps)
   const positionRef = useRef(0);
   const [syncOffset, setSyncOffset] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const playingRef = useRef(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stageKey, setStageKey] = useState(0);
-
-  useEffect(() => {
-    setPortalContainer(document.querySelector<HTMLElement>(".browser-shell"));
-  }, []);
+  const replaySessionIdRef = useRef(createReplaySessionId());
+  const overlaySessionActiveRef = useRef(false);
+  const emittedCommentKeysRef = useRef(new Set<string>());
+  const pendingSeekRequestRef = useRef<ArchiveReplaySeekRequest | null>(null);
+  const closeWindowRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     positionRef.current = position;
   }, [position]);
 
   useEffect(() => {
-    if (!open) {
-      // ダイアログを閉じている間はrequestAnimationFrameを止め、再度開いたときに
-      // 見えないところで再生位置だけが進む状態を避ける。
-      setPlaying(false);
-    }
-  }, [open]);
+    playingRef.current = playing;
+  }, [playing]);
 
   const replayRate = useMemo(() => {
     const parsed = Number(replayRateInput);
     return Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 10) : 1;
   }, [replayRateInput]);
 
+  const stopOverlay = useCallback(() => {
+    if (!overlaySessionActiveRef.current) return;
+    overlaySessionActiveRef.current = false;
+    emittedCommentKeysRef.current.clear();
+    void archiveReplayEventBus
+      .publish({ version: 1, type: "stop", sessionId: replaySessionIdRef.current })
+      .catch((publishError: unknown) => {
+        console.error("[ArchiveReplay] Overlay停止通知に失敗しました", publishError);
+      });
+  }, [archiveReplayEventBus]);
+
   const resetPlayback = useCallback(() => {
+    stopOverlay();
+    void overlayPlatform.hide().catch((hideError: unknown) => {
+      console.error("[ArchiveReplay] コメントOverlayの非表示に失敗しました", hideError);
+    });
+    replaySessionIdRef.current = createReplaySessionId();
+    emittedCommentKeysRef.current.clear();
+    pendingSeekRequestRef.current = null;
     setPlaying(false);
     setLoadedReplay(null);
     setPosition(0);
@@ -93,7 +123,38 @@ export function ArchiveReplayWindow({ open, onClose }: ArchiveReplayWindowProps)
     positionRef.current = 0;
     setSyncOffset(0);
     setStageKey((current) => current + 1);
-  }, []);
+  }, [overlayPlatform, stopOverlay]);
+
+  const resetOverlaySession = useCallback(() => {
+    if (!loadedReplay) return;
+
+    // 再生窓を閉じて再表示した場合も、停止済みのsessionを使い回さずOverlayを再接続する。
+    if (!overlaySessionActiveRef.current) {
+      replaySessionIdRef.current = createReplaySessionId();
+      overlaySessionActiveRef.current = true;
+    }
+    emittedCommentKeysRef.current.clear();
+    void overlayPlatform
+      .show()
+      .then(() =>
+        archiveReplayEventBus.publish({
+          version: 1,
+          type: "reset",
+          sessionId: replaySessionIdRef.current,
+        }),
+      )
+      .then(() =>
+        archiveReplayEventBus.publish({
+          version: 1,
+          type: "playback",
+          sessionId: replaySessionIdRef.current,
+          playing: playingRef.current,
+        }),
+      )
+      .catch((publishError: unknown) => {
+        console.error("[ArchiveReplay] コメントOverlayの再接続に失敗しました", publishError);
+      });
+  }, [archiveReplayEventBus, loadedReplay, overlayPlatform]);
 
   const load = useCallback(async () => {
     const requestedStartAt = startInput ? parseArchiveReplayStartInput(startInput) : null;
@@ -220,7 +281,6 @@ export function ArchiveReplayWindow({ open, onClose }: ArchiveReplayWindowProps)
     };
     frameId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frameId);
-    // シーク後に古いstartedPositionへ戻さないよう、表示世代の更新時に時計を張り直す。
   }, [loadedReplay, playing, replayRate, stageKey]);
 
   const seek = useCallback(
@@ -237,16 +297,19 @@ export function ArchiveReplayWindow({ open, onClose }: ArchiveReplayWindowProps)
     [loadedReplay],
   );
 
-  const seekToComment = useCallback(
-    (comment: ArchiveReplayTimelineComment) => {
-      if (!loadedReplay) return;
+  const seekToRequest = useCallback(
+    (request: ArchiveReplaySeekRequest) => {
+      if (!loadedReplay) {
+        pendingSeekRequestRef.current = request;
+        return;
+      }
       const nextPosition = getArchiveReplaySeekPosition(
         loadedReplay.timeline,
-        { threadUrl: comment.sourceThreadUrl, responseNumber: comment.responseNumber },
+        { threadUrl: request.threadUrl, responseNumber: request.responseNumber },
         syncOffset,
       );
       if (nextPosition === null) {
-        setError("このレスは現在の同期補正では再生範囲外です");
+        setError("このレスは読み込み済みの再生範囲にありません");
         return;
       }
       setError(null);
@@ -255,11 +318,125 @@ export function ArchiveReplayWindow({ open, onClose }: ArchiveReplayWindowProps)
     [loadedReplay, seek, syncOffset],
   );
 
-  const visibleComments = loadedReplay
-    ? getArchiveReplayCommentsThroughPosition(loadedReplay.timeline, position, syncOffset)
-        .filter((comment) => comment.replayOffsetSeconds + syncOffset >= seekStartPosition)
-        .slice(-DEFAULT_COMMENT_HISTORY_LIMIT)
-    : [];
+  useEffect(() => {
+    let disposed = false;
+    let unsubscribe: (() => void) | null = null;
+    void seekRequestSubscriber(seekToRequest)
+      .then((cleanup) => {
+        if (disposed) {
+          cleanup();
+          return;
+        }
+        unsubscribe = cleanup;
+      })
+      .catch((subscribeError: unknown) => {
+        console.error("[ArchiveReplay] シーク要求の購読に失敗しました", subscribeError);
+      });
+    return () => {
+      disposed = true;
+      unsubscribe?.();
+    };
+  }, [seekRequestSubscriber, seekToRequest]);
+
+  useEffect(() => {
+    if (!loadedReplay || pendingSeekRequestRef.current === null) return;
+    const request = pendingSeekRequestRef.current;
+    pendingSeekRequestRef.current = null;
+    seekToRequest(request);
+  }, [loadedReplay, seekToRequest]);
+
+  useEffect(() => {
+    if (!loadedReplay) return;
+    resetOverlaySession();
+  }, [loadedReplay, resetOverlaySession, stageKey]);
+
+  useEffect(() => {
+    if (!loadedReplay) return;
+    if (!overlaySessionActiveRef.current) {
+      if (!playing) return;
+      resetOverlaySession();
+      return;
+    }
+    void archiveReplayEventBus
+      .publish({
+        version: 1,
+        type: "playback",
+        sessionId: replaySessionIdRef.current,
+        playing,
+      })
+      .catch((publishError: unknown) => {
+        console.error("[ArchiveReplay] コメントOverlayの再生状態通知に失敗しました", publishError);
+      });
+  }, [archiveReplayEventBus, loadedReplay, playing, resetOverlaySession]);
+
+  useEffect(() => {
+    if (!loadedReplay) return;
+    const currentPosition = position;
+    const lowerBound = seekStartPosition - 0.000_001;
+    for (const comment of loadedReplay.timeline.comments) {
+      const effectiveOffset = comment.replayOffsetSeconds + syncOffset;
+      if (effectiveOffset < lowerBound || effectiveOffset > currentPosition + 0.000_001) continue;
+      const identity = `${comment.sourceThreadUrl}\u0000${comment.responseNumber}`;
+      if (emittedCommentKeysRef.current.has(identity)) continue;
+      emittedCommentKeysRef.current.add(identity);
+      void archiveReplayEventBus
+        .publish({
+          version: 1,
+          type: "comment",
+          sessionId: replaySessionIdRef.current,
+          comment,
+        })
+        .catch((publishError: unknown) => {
+          console.error("[ArchiveReplay] コメントOverlayへの投入に失敗しました", publishError);
+        });
+    }
+  }, [archiveReplayEventBus, loadedReplay, position, seekStartPosition, stageKey, syncOffset]);
+
+  useEffect(() => {
+    return () => {
+      stopOverlay();
+      void overlayPlatform.hide().catch((hideError: unknown) => {
+        console.error("[ArchiveReplay] コメントOverlayの非表示に失敗しました", hideError);
+      });
+    };
+  }, [overlayPlatform, stopOverlay]);
+
+  const closeWindow = useCallback(() => {
+    setPlaying(false);
+    stopOverlay();
+    void overlayPlatform.hide().catch((hideError: unknown) => {
+      console.error("[ArchiveReplay] コメントOverlayの非表示に失敗しました", hideError);
+    });
+    void hideArchiveReplayWindow().catch((hideError: unknown) => {
+      console.error("[ArchiveReplay] 再生窓の非表示に失敗しました", hideError);
+    });
+  }, [overlayPlatform, stopOverlay]);
+
+  useEffect(() => {
+    closeWindowRef.current = closeWindow;
+  }, [closeWindow]);
+
+  useEffect(() => {
+    if (!isTauri) return;
+    let disposed = false;
+    let unsubscribe: (() => void) | null = null;
+    void subscribeArchiveReplayWindowClose(() => closeWindowRef.current())
+      .then((cleanup) => {
+        if (disposed) {
+          cleanup();
+          return;
+        }
+        unsubscribe = cleanup;
+      })
+      .catch((subscribeError: unknown) => {
+        console.error("[ArchiveReplay] 再生窓の閉じる操作監視に失敗しました", subscribeError);
+      });
+    return () => {
+      disposed = true;
+      unsubscribe?.();
+    };
+  }, [isTauri]);
+
   const replayTime = loadedReplay
     ? formatReplayClock(loadedReplay.timeline.startAt + position * 1_000)
     : "--:--:--";
@@ -268,228 +445,193 @@ export function ArchiveReplayWindow({ open, onClose }: ArchiveReplayWindowProps)
   if (!isTauri) return null;
 
   return (
-    <Dialog.Root
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (!nextOpen) onClose();
-      }}
+    <main
+      className="browser-shell archive-replay-window"
+      data-theme={theme}
+      data-testid="archive-replay-window"
     >
-      <Dialog.Portal container={portalContainer ?? undefined}>
-        <Dialog.Overlay className="browser-dialog-overlay archive-replay-window__overlay" />
-        <Dialog.Content className="browser-dialog-content archive-replay-window__content">
-          <div className="archive-replay-window__header">
-            <div>
-              <Dialog.Title className="browser-dialog-title">過去実況再生</Dialog.Title>
-              <Dialog.Description className="browser-dialog-description">
-                複数スレッドのログを投稿時刻順につないで再生します。
-              </Dialog.Description>
-            </div>
-            <Button
-              className="archive-replay-window__close"
-              variant="subtle"
-              aria-label="過去実況再生を閉じる"
-              title="閉じる"
-              onClick={onClose}
-            >
-              <X size={17} />
-            </Button>
-          </div>
+      <header className="archive-replay-window__header">
+        <div>
+          <h1 className="archive-replay-window__title">過去実況再生</h1>
+          <p className="archive-replay-window__description">
+            複数スレッドのログを投稿時刻順につないで、コメントOverlayへ流します。
+          </p>
+        </div>
+        <Button
+          className="archive-replay-window__close"
+          variant="subtle"
+          aria-label="過去実況再生を閉じる"
+          title="閉じる"
+          onClick={closeWindow}
+        >
+          <X size={17} />
+        </Button>
+      </header>
 
-          <form
-            className="archive-replay-window__form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void load();
-            }}
-          >
-            <label className="archive-replay-window__field archive-replay-window__field--urls">
-              <span>実況スレッドURL（1行に1件）</span>
-              <textarea
-                aria-label="実況スレッドURL"
-                value={urls}
-                onChange={(event) => setUrls(event.currentTarget.value)}
-                placeholder="https://example.com/thread-a/\nhttps://example.com/thread-b/"
-                rows={3}
-              />
-            </label>
-            <div className="archive-replay-window__options">
-              <label className="archive-replay-window__field">
-                <span>放送開始日時（日本時間・任意）</span>
-                <input
-                  aria-label="放送開始日時"
-                  type="datetime-local"
-                  value={startInput}
-                  onChange={(event) => setStartInput(event.currentTarget.value)}
-                />
-              </label>
-              <label className="archive-replay-window__field archive-replay-window__field--small">
-                <span>再生時間（分）</span>
-                <input
-                  aria-label="再生時間（分）"
-                  type="number"
-                  min={1}
-                  step={1}
-                  value={durationMinutes}
-                  onChange={(event) => setDurationMinutes(event.currentTarget.value)}
-                />
-              </label>
-              <label className="archive-replay-window__field archive-replay-window__field--small">
-                <span>再生倍率</span>
-                <input
-                  aria-label="再生倍率"
-                  type="number"
-                  min={0.1}
-                  max={10}
-                  step={0.1}
-                  value={replayRateInput}
-                  onChange={(event) => setReplayRateInput(event.currentTarget.value)}
-                />
-              </label>
-              <Button type="submit" loading={loading} disabled={!urls.trim()}>
-                複数スレを読み込む
-              </Button>
-            </div>
-            <span className="archive-replay-window__note">
-              開始日時を空欄にすると、取得したログの最初の投稿から開始します。必要なら日時を指定して調整してください。
-            </span>
-          </form>
-
-          {error ? (
-            <p
-              className="archive-replay-window__message archive-replay-window__message--error"
-              role="alert"
-            >
-              {error}
-            </p>
-          ) : null}
-          {loadedReplay?.errors.map((loadError) => (
-            <p
-              key={loadError}
-              className="archive-replay-window__message archive-replay-window__message--warning"
-              role="status"
-            >
-              一部取得失敗: {loadError}
-            </p>
-          ))}
-          {loadedReplay ? (
-            <div className="archive-replay-window__summary">
-              {loadedReplay.titles.map((title, index) => (
-                <span key={`${index}-${title}`}>
-                  スレ{index + 1}: {title}
-                </span>
-              ))}
-              <span>
-                対象{loadedReplay.timeline.comments.length}件 / 除外
-                {loadedReplay.timeline.skipped.length}件
-              </span>
-            </div>
-          ) : null}
-
-          <div className="archive-replay-window__controls">
-            <Button onClick={() => setPlaying((current) => !current)} disabled={!loadedReplay}>
-              {playing ? <Pause size={15} /> : <Play size={15} />}
-              {playing ? "停止" : "再生"}
-            </Button>
-            <Button
-              className="archive-replay-window__secondary-button"
-              onClick={() => seek(0)}
-              disabled={!loadedReplay}
-            >
-              <RotateCcw size={15} />
-              最初から
-            </Button>
-            <Button
-              className="archive-replay-window__secondary-button"
-              onClick={() => seek(position - 10)}
-              disabled={!loadedReplay}
-            >
-              <SkipBack size={15} />
-              10秒戻す
-            </Button>
-            <Button
-              className="archive-replay-window__secondary-button"
-              onClick={() => seek(position + 10)}
-              disabled={!loadedReplay}
-            >
-              <SkipForward size={15} />
-              10秒進める
-            </Button>
-            <span className="archive-replay-window__position">
-              {loadedReplay ? `${formatReplayDuration(position)} / ` : ""}
-              実況時刻 {replayTime}
-            </span>
-          </div>
-
-          <div className="archive-replay-window__seek-row">
+      <form
+        className="archive-replay-window__form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void load();
+        }}
+      >
+        <label className="archive-replay-window__field archive-replay-window__field--urls">
+          <span>実況スレッドURL（1行に1件）</span>
+          <textarea
+            aria-label="実況スレッドURL"
+            value={urls}
+            onChange={(event) => setUrls(event.currentTarget.value)}
+            placeholder="https://example.com/thread-a/\nhttps://example.com/thread-b/"
+            rows={4}
+          />
+        </label>
+        <div className="archive-replay-window__options">
+          <label className="archive-replay-window__field">
+            <span>放送開始日時（日本時間・任意）</span>
             <input
-              aria-label="過去実況の再生位置"
-              type="range"
-              min={0}
-              max={loadedReplay?.timeline.durationSeconds ?? 1}
+              aria-label="放送開始日時"
+              type="datetime-local"
+              value={startInput}
+              onChange={(event) => setStartInput(event.currentTarget.value)}
+            />
+          </label>
+          <label className="archive-replay-window__field archive-replay-window__field--small">
+            <span>再生時間（分）</span>
+            <input
+              aria-label="再生時間（分）"
+              type="number"
+              min={1}
+              step={1}
+              value={durationMinutes}
+              onChange={(event) => setDurationMinutes(event.currentTarget.value)}
+            />
+          </label>
+          <label className="archive-replay-window__field archive-replay-window__field--small">
+            <span>再生倍率</span>
+            <input
+              aria-label="再生倍率"
+              type="number"
+              min={0.1}
+              max={10}
               step={0.1}
-              value={position}
-              disabled={!loadedReplay}
-              onChange={(event) => seek(Number(event.currentTarget.value))}
+              value={replayRateInput}
+              onChange={(event) => setReplayRateInput(event.currentTarget.value)}
             />
-            <Button
-              className="archive-replay-window__sync-button"
-              variant="subtle"
-              onClick={() => {
-                setSyncOffset((current) => current - 1);
-                seek(position);
-              }}
-              disabled={!loadedReplay}
-            >
-              コメントを1秒早く
-            </Button>
-            <Button
-              className="archive-replay-window__sync-button"
-              variant="subtle"
-              onClick={() => {
-                setSyncOffset((current) => current + 1);
-                seek(position);
-              }}
-              disabled={!loadedReplay}
-            >
-              コメントを1秒遅く
-            </Button>
-          </div>
+          </label>
+          <Button type="submit" loading={loading} disabled={!urls.trim()}>
+            複数スレを読み込む
+          </Button>
+        </div>
+        <span className="archive-replay-window__note">
+          開始日時を空欄にすると、取得したログの最初の投稿から開始します。ThreadViewのレスを右クリックして、この位置まで再生できます。
+        </span>
+      </form>
 
-          {loadedReplay ? (
-            <details className="archive-replay-window__jump-list">
-              <summary>レスを選んでその時刻へ移動</summary>
-              <div className="archive-replay-window__jump-items">
-                {loadedReplay.timeline.comments.slice(0, 200).map((comment) => (
-                  <button
-                    key={`${comment.sourceThreadUrl}:${comment.responseNumber}`}
-                    type="button"
-                    onClick={() => seekToComment(comment)}
-                  >
-                    <span>
-                      レス{comment.responseNumber}（
-                      {formatReplayDuration(comment.replayOffsetSeconds)}）
-                    </span>
-                    <span>{comment.text}</span>
-                  </button>
-                ))}
-              </div>
-            </details>
-          ) : null}
+      {error ? (
+        <p
+          className="archive-replay-window__message archive-replay-window__message--error"
+          role="alert"
+        >
+          {error}
+        </p>
+      ) : null}
+      {loadedReplay?.errors.map((loadError) => (
+        <p
+          key={loadError}
+          className="archive-replay-window__message archive-replay-window__message--warning"
+          role="status"
+        >
+          一部取得失敗: {loadError}
+        </p>
+      ))}
+      {loadedReplay ? (
+        <div className="archive-replay-window__summary">
+          {loadedReplay.titles.map((title, index) => (
+            <span key={`${index}-${title}`}>
+              スレ{index + 1}: {title}
+            </span>
+          ))}
+          <span>
+            対象{loadedReplay.timeline.comments.length}件 / 除外
+            {loadedReplay.timeline.skipped.length}件
+          </span>
+        </div>
+      ) : null}
 
-          <div className="archive-replay-window__stage-host">
-            <OverlayStage
-              key={stageKey}
-              comments={visibleComments}
-              fitToContainer
-              playing={playing}
-              // 取得元の異なる同じレス番号をhover操作で取り違えないよう、再生窓では操作を外側へ集約する。
-              interactive={false}
-              showCommentInfo={false}
-            />
-          </div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+      <div className="archive-replay-window__controls">
+        <Button onClick={() => setPlaying((current) => !current)} disabled={!loadedReplay}>
+          {playing ? <Pause size={15} /> : <Play size={15} />}
+          {playing ? "停止" : "再生"}
+        </Button>
+        <Button
+          className="archive-replay-window__secondary-button"
+          onClick={() => seek(0)}
+          disabled={!loadedReplay}
+        >
+          <RotateCcw size={15} />
+          最初から
+        </Button>
+        <Button
+          className="archive-replay-window__secondary-button"
+          onClick={() => seek(position - 10)}
+          disabled={!loadedReplay}
+        >
+          <SkipBack size={15} />
+          10秒戻す
+        </Button>
+        <Button
+          className="archive-replay-window__secondary-button"
+          onClick={() => seek(position + 10)}
+          disabled={!loadedReplay}
+        >
+          <SkipForward size={15} />
+          10秒進める
+        </Button>
+        <span className="archive-replay-window__position">
+          {loadedReplay ? `${formatReplayDuration(position)} / ` : ""}
+          実況時刻 {replayTime}
+        </span>
+      </div>
+
+      <div className="archive-replay-window__seek-row">
+        <input
+          aria-label="過去実況の再生位置"
+          type="range"
+          min={0}
+          max={loadedReplay?.timeline.durationSeconds ?? 1}
+          step={0.1}
+          value={position}
+          disabled={!loadedReplay}
+          onChange={(event) => seek(Number(event.currentTarget.value))}
+        />
+        <Button
+          className="archive-replay-window__sync-button"
+          variant="subtle"
+          onClick={() => {
+            setSyncOffset((current) => current - 1);
+            seek(position);
+          }}
+          disabled={!loadedReplay}
+        >
+          コメントを1秒早く
+        </Button>
+        <Button
+          className="archive-replay-window__sync-button"
+          variant="subtle"
+          onClick={() => {
+            setSyncOffset((current) => current + 1);
+            seek(position);
+          }}
+          disabled={!loadedReplay}
+        >
+          コメントを1秒遅く
+        </Button>
+      </div>
+
+      <p className="archive-replay-window__overlay-note" role="status">
+        コメントはこの窓ではなく、コメントOverlayに表示されます。
+      </p>
+    </main>
   );
 }
 
@@ -497,6 +639,10 @@ function projectThreadComments(thread: IThreadDetail): readonly CommentCandidate
   return thread.res
     .map((response) => projectCommentResponse(response))
     .filter((comment): comment is CommentCandidate => comment !== null);
+}
+
+function createReplaySessionId(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }
 
 function formatReplayDuration(seconds: number): string {

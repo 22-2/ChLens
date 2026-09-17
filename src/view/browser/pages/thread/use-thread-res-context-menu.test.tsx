@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   toastInfo: vi.fn(),
   dispatch: vi.fn(),
   handleAnchorClick: vi.fn(),
+  requestArchiveReplaySeek: vi.fn<() => Promise<void>>(),
   isAutoRefreshEnabled: false,
   fetchThread: vi.fn<() => Promise<void>>(),
 }));
@@ -30,6 +31,11 @@ vi.mock("src/service-container/index", () => ({
     },
   },
 }));
+
+vi.mock("src/features/comment-overlay/platform", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("src/features/comment-overlay/platform")>();
+  return { ...actual, requestArchiveReplaySeek: mocks.requestArchiveReplaySeek };
+});
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabDispatch: () => mocks.dispatch,
@@ -163,6 +169,13 @@ function HookHarness() {
       >
         refresh-thread
       </button>
+      <button
+        onClick={() => {
+          capturedItems.find((item) => item.id === "archive-replay-seek")?.onSelect?.();
+        }}
+      >
+        archive-replay-seek
+      </button>
     </div>
   );
 }
@@ -249,6 +262,7 @@ describe("useThreadResContextMenu", () => {
     mocks.toastInfo.mockReset();
     mocks.dispatch.mockReset();
     mocks.handleAnchorClick.mockReset();
+    mocks.requestArchiveReplaySeek.mockReset();
     mocks.isAutoRefreshEnabled = false;
     mocks.fetchThread.mockReset();
   });
@@ -302,6 +316,30 @@ describe("useThreadResContextMenu", () => {
     fireEvent.click(screen.getByRole("button", { name: "reply" }));
 
     expect(mocks.openWritePanelWithText).toHaveBeenCalledWith(">>10\n");
+  });
+
+  it("Tauri版のThreadViewから過去実況をこの位置まで進める", async () => {
+    Object.defineProperty(window, "__TAURI_INTERNALS__", {
+      configurable: true,
+      value: {},
+    });
+    mocks.requestArchiveReplaySeek.mockResolvedValue(undefined);
+    render(<HookHarness />);
+
+    fireEvent.click(screen.getByRole("button", { name: "open" }));
+    const event = screen.getByRole("button", { name: "archive-replay-seek" });
+    expect(event).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(event);
+      await Promise.resolve();
+    });
+
+    expect(mocks.requestArchiveReplaySeek).toHaveBeenCalledWith({
+      threadUrl: "https://example.com/test/read.cgi/live/1/",
+      responseNumber: TARGET_RES.num,
+    });
+    delete (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__;
   });
 
   it("単体レスのコピーにもID:形式のIDを含める", async () => {

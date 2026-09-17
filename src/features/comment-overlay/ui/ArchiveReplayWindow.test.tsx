@@ -3,27 +3,26 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-import type { CommentCandidate } from "../domain/comment-types";
+import { MemoryArchiveReplayOverlayEventBus } from "../platform/archive-replay-events";
+import type { CommentOverlayWindowPlatform } from "../platform/types";
 import { ArchiveReplayWindow } from "./ArchiveReplayWindow";
 
 const getThreadMock = vi.hoisted(() => vi.fn());
 
 vi.mock("src/service-container", () => ({
   container: {
+    config: {
+      get: vi.fn(() => "dark"),
+      ready: vi.fn((callback: () => void) => callback()),
+    },
+    message: {
+      on: vi.fn(),
+      off: vi.fn(),
+    },
     thread: {
       getThread: getThreadMock,
     },
   },
-}));
-
-// 再生時計と描画schedulerを切り離し、窓の入力・シーク境界が実ログ取得へ接続されることを検証する。
-vi.mock("./OverlayStage", () => ({
-  DEFAULT_COMMENT_HISTORY_LIMIT: 3_000,
-  OverlayStage: ({ comments }: { comments: readonly CommentCandidate[] }) => (
-    <output data-testid="投入レス">
-      {comments.map((comment) => comment.responseNumber).join(",")}
-    </output>
-  ),
 }));
 
 afterEach(() => {
@@ -62,12 +61,22 @@ describe("過去実況再生ウィンドウ", () => {
   });
 
   it("開始日時を省略して読み込み、レスの時刻へシークできる", async () => {
-    const onClose = vi.fn();
+    const archiveReplayEventBus = new MemoryArchiveReplayOverlayEventBus();
+    const overlayPlatform = {
+      show: vi.fn(async () => {}),
+      hide: vi.fn(async () => {}),
+    } as unknown as CommentOverlayWindowPlatform;
     render(
       <div className="browser-shell">
-        <ArchiveReplayWindow open onClose={onClose} />
+        <ArchiveReplayWindow
+          archiveReplayEventBus={archiveReplayEventBus}
+          overlayPlatform={overlayPlatform}
+          seekRequestSubscriber={async () => () => {}}
+        />
       </div>,
     );
+
+    expect(screen.getByTestId("archive-replay-window")).toHaveAttribute("data-theme", "dark");
 
     fireEvent.change(screen.getByLabelText("実況スレッドURL"), {
       target: { value: "https://example.com/thread-a/" },
@@ -76,15 +85,26 @@ describe("過去実況再生ウィンドウ", () => {
 
     expect(await screen.findByText("スレ1: 架空の実況")).toBeInTheDocument();
     expect(getThreadMock).toHaveBeenCalledWith("https://example.com/thread-a/");
-    expect(screen.getByTestId("投入レス")).toHaveTextContent("1");
+    expect(
+      archiveReplayEventBus.events.some(
+        (event) => event.type === "comment" && event.comment.responseNumber === 1,
+      ),
+    ).toBe(true);
 
     fireEvent.click(screen.getByRole("button", { name: "10秒進める" }));
-    expect(screen.getByTestId("投入レス")).toHaveTextContent("2");
+    expect(
+      archiveReplayEventBus.events.some(
+        (event) => event.type === "comment" && event.comment.responseNumber === 2,
+      ),
+    ).toBe(true);
 
     fireEvent.click(screen.getByRole("button", { name: "最初から" }));
-    expect(screen.getByTestId("投入レス")).toHaveTextContent("1");
+    expect(archiveReplayEventBus.events.filter((event) => event.type === "reset")).not.toHaveLength(
+      0,
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "過去実況再生を閉じる" }));
-    expect(onClose).toHaveBeenCalledOnce();
+    expect(overlayPlatform.hide).toHaveBeenCalled();
+    expect(archiveReplayEventBus.events.some((event) => event.type === "stop")).toBe(true);
   });
 });

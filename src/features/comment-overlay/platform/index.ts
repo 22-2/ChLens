@@ -12,6 +12,27 @@ export function createCommentOverlayWindowPlatform() {
 export const commentOverlayWindowPlatform = createCommentOverlayWindowPlatform();
 
 export type { CommentOverlayEvent, CommentOverlayEventBus } from "../domain";
+export type {
+  ArchiveReplayOverlayEvent,
+  ArchiveReplayOverlayEventBus,
+} from "./archive-replay-events";
+export {
+  ARCHIVE_REPLAY_OVERLAY_EVENT_NAME,
+  createArchiveReplayOverlayEventBus,
+  MemoryArchiveReplayOverlayEventBus,
+  TauriArchiveReplayOverlayEventBus,
+} from "./archive-replay-events";
+export type { ArchiveReplaySeekRequest } from "./archive-replay-window";
+export {
+  ARCHIVE_REPLAY_SEEK_EVENT_NAME,
+  ARCHIVE_REPLAY_WINDOW_LABEL,
+  hideArchiveReplayWindow,
+  isArchiveReplaySeekRequest,
+  openArchiveReplayWindow,
+  requestArchiveReplaySeek,
+  subscribeArchiveReplaySeekRequests,
+  subscribeArchiveReplayWindowClose,
+} from "./archive-replay-window";
 export {
   COMMENT_OVERLAY_EVENT_NAME,
   createCommentOverlayEventBus,

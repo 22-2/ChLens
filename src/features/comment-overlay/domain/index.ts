@@ -12,6 +12,7 @@ export {
   createArchiveReplayTimeline,
   getArchiveReplayCommentsThroughPosition,
   getArchiveReplaySeekPosition,
+  normalizeArchiveReplayThreadUrl,
   parseArchiveReplayStartInput,
   parseArchiveReplayTimestamp,
 } from "./archive-replay";

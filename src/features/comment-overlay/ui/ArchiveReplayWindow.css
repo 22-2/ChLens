@@ -1,13 +1,25 @@
-.archive-replay-window__overlay {
-  z-index: calc(var(--sys-z-dialog) + 1);
+.archive-replay-window {
+  display: grid;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 100vh;
+  align-content: start;
+  gap: var(--sys-space-4);
+  padding: var(--sys-space-5);
+  overflow: auto;
+  background: var(--sys-color-surface);
+  color: var(--sys-color-text);
 }
 
-.archive-replay-window__content {
-  z-index: calc(var(--sys-z-dialog) + 1);
-  width: min(960px, calc(100vw - 32px));
-  max-height: min(900px, calc(100vh - 32px));
-  box-sizing: border-box;
-  gap: var(--sys-space-4);
+.archive-replay-window__title {
+  margin: 0;
+  font-size: var(--sys-font-size-xl);
+}
+
+.archive-replay-window__description {
+  margin: var(--sys-space-1) 0 0;
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-sm);
 }
 
 .archive-replay-window__header {
@@ -88,31 +100,31 @@
 }
 
 /* disabledでも青い背景だけ残ると、利用不可の操作が押せるように見えて文字も沈む。 */
-.archive-replay-window__content .browser-button:disabled {
+.archive-replay-window .browser-button:disabled {
   border-color: var(--sys-color-border);
   background: var(--sys-color-surface-muted);
   color: var(--sys-color-text-disabled);
   opacity: 1;
 }
 
-.archive-replay-window__content .archive-replay-window__secondary-button {
+.archive-replay-window .archive-replay-window__secondary-button {
   border-color: var(--sys-color-border);
   background: var(--sys-color-surface-muted);
   color: var(--sys-color-text);
 }
 
-.archive-replay-window__content .archive-replay-window__secondary-button:hover:not(:disabled) {
+.archive-replay-window .archive-replay-window__secondary-button:hover:not(:disabled) {
   border-color: var(--sys-color-input-border);
   background: var(--sys-color-list-hover-bg);
 }
 
-.archive-replay-window__content .archive-replay-window__sync-button {
+.archive-replay-window .archive-replay-window__sync-button {
   border: 1px solid var(--sys-color-border);
   background: var(--sys-color-surface-muted);
   color: var(--sys-color-text);
 }
 
-.archive-replay-window__content .archive-replay-window__sync-button:hover:not(:disabled) {
+.archive-replay-window .archive-replay-window__sync-button:hover:not(:disabled) {
   border-color: var(--sys-color-input-border);
   background: var(--sys-color-list-hover-bg);
 }
@@ -158,68 +170,20 @@
   font-variant-numeric: tabular-nums;
 }
 
+.archive-replay-window__overlay-note {
+  margin: 0;
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-sm);
+}
+
 .archive-replay-window__seek-row > input[type="range"] {
   min-width: 180px;
   flex: 1 1 280px;
   accent-color: var(--sys-color-accent);
 }
 
-.archive-replay-window__jump-list {
-  min-width: 0;
-  color: var(--sys-color-text-muted);
-  font-size: var(--sys-font-size-sm);
-}
-
-.archive-replay-window__jump-list summary {
-  cursor: pointer;
-}
-
-.archive-replay-window__jump-items {
-  display: grid;
-  max-height: 180px;
-  overflow: auto;
-  gap: var(--sys-space-1);
-  padding-top: var(--sys-space-2);
-}
-
-.archive-replay-window__jump-items button {
-  display: grid;
-  min-width: 0;
-  gap: 2px;
-  padding: var(--sys-space-2) var(--sys-space-3);
-  border: 1px solid var(--sys-color-border);
-  border-radius: var(--sys-radius-md);
-  background: var(--sys-color-surface-muted);
-  color: var(--sys-color-text);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.archive-replay-window__jump-items button:hover {
-  background: var(--sys-color-list-hover-bg);
-}
-
-.archive-replay-window__jump-items button span:first-child {
-  color: var(--sys-color-text-muted);
-  font-size: var(--sys-font-size-xs);
-}
-
-.archive-replay-window__stage-host {
-  width: 100%;
-  min-height: 160px;
-  height: min(34vh, 280px);
-  overflow: hidden;
-}
-
 @media (max-width: 640px) {
-  .archive-replay-window__content {
-    width: calc(100vw - 16px);
-    max-height: calc(100vh - 16px);
+  .archive-replay-window {
     padding: var(--sys-space-4);
-  }
-
-  .archive-replay-window__stage-host {
-    height: 200px;
   }
 }

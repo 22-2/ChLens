@@ -15,7 +15,7 @@ import type {
   CommentOverlayWindowPlatform,
 } from "./types";
 
-const COMMENT_OVERLAY_WINDOW_LABEL = "comment-overlay";
+export const COMMENT_OVERLAY_WINDOW_LABEL = "comment-overlay";
 export const COMMENT_OVERLAY_VISIBILITY_EVENT_NAME = "chlens://comment-overlay-visibility";
 
 interface PhysicalWindowBounds {

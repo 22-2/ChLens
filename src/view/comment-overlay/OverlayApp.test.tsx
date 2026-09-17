@@ -3,6 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import { act, cleanup, render, screen } from "@testing-library/react";
 import type { CommentCandidate } from "src/features/comment-overlay/domain";
 import { MemoryCommentOverlayEventBus } from "src/features/comment-overlay/domain";
+import { MemoryArchiveReplayOverlayEventBus } from "src/features/comment-overlay/platform/archive-replay-events";
 import { createBrowserCommentOverlayPlatform } from "src/features/comment-overlay/platform/browser";
 import { COMMENT_OVERLAY_FONT_SIZE } from "src/features/comment-overlay/ui/OverlayStage";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
@@ -75,6 +76,9 @@ describe("OverlayApp", () => {
           latestResponseNumber: 1,
         },
       });
+    });
+    await act(async () => {
+      await Promise.resolve();
     });
     act(() => {
       scheduledFrame?.(0);
@@ -180,6 +184,80 @@ describe("OverlayApp", () => {
     const notification = screen.getByText("次スレへ移動します");
     expect(notification).toBeVisible();
     expect(notification).toHaveClass("comment-overlay-stage__comment--system");
+  });
+
+  it("過去実況eventはliveと分離し、再生停止時にOverlayの動きを止める", async () => {
+    const eventBus = new MemoryCommentOverlayEventBus();
+    const archiveReplayEventBus = new MemoryArchiveReplayOverlayEventBus();
+    const platform = createBrowserCommentOverlayPlatform();
+
+    render(
+      <OverlayApp
+        archiveReplayEventBus={archiveReplayEventBus}
+        eventBus={eventBus}
+        platform={platform}
+      />,
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+    await act(async () => {
+      await archiveReplayEventBus.publish({
+        version: 1,
+        type: "reset",
+        sessionId: "replay-1",
+      });
+    });
+    await act(async () => {
+      await archiveReplayEventBus.publish({
+        version: 1,
+        type: "comment",
+        sessionId: "replay-1",
+        comment: {
+          responseNumber: 1,
+          text: "過去実況",
+          author: "名無し",
+        },
+      });
+    });
+    await act(async () => {
+      await archiveReplayEventBus.publish({
+        version: 1,
+        type: "playback",
+        sessionId: "replay-1",
+        playing: true,
+      });
+    });
+    await act(async () => {
+      await eventBus.publish({
+        version: 1,
+        type: "batch",
+        batch: {
+          threadUrl: THREAD_URL,
+          comments: [oldComment],
+          latestResponseNumber: 1,
+        },
+      });
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    act(() => {
+      scheduledFrame?.(0);
+      scheduledFrame?.(0);
+    });
+    await act(async () => {
+      await archiveReplayEventBus.publish({
+        version: 1,
+        type: "playback",
+        sessionId: "replay-1",
+        playing: false,
+      });
+    });
+
+    const renderedComment = screen.getByText("過去実況");
+    expect(renderedComment).toHaveStyle({ animationPlayState: "paused" });
+    expect(screen.queryByText("前回の実況")).not.toBeInTheDocument();
   });
 
   it("実況開始時の設定をOverlayStageへ反映し、文字サイズはコード定数を使う", async () => {

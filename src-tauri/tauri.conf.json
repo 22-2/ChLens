@@ -33,6 +33,16 @@
         "shadow": false,
         "alwaysOnTop": true,
         "skipTaskbar": true
+      },
+      {
+        "label": "archive-replay",
+        "title": "ChLens 過去実況再生",
+        "url": "view/archive-replay.html",
+        "width": 1000,
+        "height": 720,
+        "resizable": true,
+        "visible": false,
+        "focus": false
       }
     ],
     "security": {

@@ -124,7 +124,7 @@ export function createArchiveReplayTimeline(
   sources.forEach((source, sourceOrder) => {
     const threadUrl = source.threadUrl.trim();
     source.comments.forEach((comment, sourceCommentOrder) => {
-      const identity = `${threadUrl}\u0000${comment.responseNumber}`;
+      const identity = `${normalizeArchiveReplayThreadUrl(threadUrl)}\u0000${comment.responseNumber}`;
       if (seen.has(identity)) {
         skipped.push({
           threadUrl,
@@ -191,10 +191,11 @@ export function getArchiveReplaySeekPosition(
   syncOffsetSeconds = 0,
 ): number | null {
   if (!Number.isFinite(syncOffsetSeconds)) return null;
-  const threadUrl = target.threadUrl.trim();
+  const threadUrl = normalizeArchiveReplayThreadUrl(target.threadUrl);
   const comment = timeline.comments.find(
     (candidate) =>
-      candidate.sourceThreadUrl === threadUrl && candidate.responseNumber === target.responseNumber,
+      normalizeArchiveReplayThreadUrl(candidate.sourceThreadUrl) === threadUrl &&
+      candidate.responseNumber === target.responseNumber,
   );
   if (!comment) return null;
 
@@ -221,4 +222,9 @@ export function getArchiveReplayCommentsThroughPosition(
 
 function assertFinite(value: number, name: string): void {
   if (!Number.isFinite(value)) throw new TypeError(`${name} must be finite`);
+}
+
+export function normalizeArchiveReplayThreadUrl(value: string): string {
+  // アドレスバーから貼ったURLは末尾slashの有無が揺れるため、レス指定時だけ同一スレとして照合する。
+  return value.trim().replace(/\/+$/, "");
 }

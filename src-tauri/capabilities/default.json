@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "enables the default permissions",
-  "windows": ["main", "comment-overlay"],
+  "windows": ["main", "comment-overlay", "archive-replay"],
   "permissions": [
     "core:default",
     "core:window:allow-hide",

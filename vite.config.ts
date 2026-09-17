@@ -101,6 +101,23 @@ function overlayHtmlPlugin(outputDir: string, entry: string): Plugin {
   };
 }
 
+// 過去実況の操作窓もMainとは別WebViewで起動し、Browser版へentryを混ぜない。
+function archiveReplayHtmlPlugin(outputDir: string, entry: string): Plugin {
+  const manifestJson = fs.readJsonSync("src/manifest.json");
+
+  return {
+    name: "archive-replay-html-build",
+    async buildStart() {
+      if (entry !== "replay") return;
+      const version = String(manifestJson.version ?? "");
+      const html = `<!DOCTYPE html><html class="view view_archive_replay" data-app-version="${version}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>ChLens 過去実況再生</title><script src="../replay.js" defer></script><link rel="stylesheet" href="../replay.css"></head><body><div id="root"></div></body></html>`;
+      const outputFile = path.join(outputDir, "view", "archive-replay.html");
+      await fs.ensureDir(path.dirname(outputFile));
+      await fs.writeFile(outputFile, html);
+    },
+  };
+}
+
 // ─── plugin: manifest.json ───────────────────────────────────────────────────
 
 function manifestPlugin(platform: string, outputDir: string): Plugin {
@@ -237,6 +254,7 @@ export default defineConfig(({ mode }) => {
     // submit_thread: { file: "src/write/submit_thread.js",      name: "submit_thread" },
     browser: { file: "src/view/browser/index.tsx", name: "BrowserView" },
     overlay: { file: "src/view/comment-overlay/index.tsx", name: "CommentOverlay" },
+    replay: { file: "src/view/archive-replay/index.tsx", name: "ArchiveReplay" },
   };
 
   const { file, name } = entryMap[entry];
@@ -288,6 +306,7 @@ export default defineConfig(({ mode }) => {
       react(),
       browserHtmlPlugin(outputDir, entry),
       overlayHtmlPlugin(outputDir, entry),
+      archiveReplayHtmlPlugin(outputDir, entry),
       manifestPlugin(platform, outputDir),
       staticCopyPlugin(platform, outputDir, minifyOutput, entry),
       // buildOutputCopyPlugin(outputDir, buildCopyDestination),
