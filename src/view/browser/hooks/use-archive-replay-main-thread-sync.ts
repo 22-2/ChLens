@@ -57,7 +57,7 @@ export function useArchiveReplayMainThreadSync(): void {
         const beforeTabIds = new Set(
           stateRef.current.panes.flatMap((pane) => pane.tabs.map((tab) => tab.id)),
         );
-        dispatch({ type: "OPEN_IN_NEW_TAB_FORCE", page });
+        dispatch({ type: "OPEN_IN_NEW_TAB_FORCE", page, focus: true });
 
         // TabStoreのdispatchはstateRefを同期更新するため、追加されたタブを直ちに特定できる。
         const inserted = stateRef.current.panes
@@ -71,11 +71,6 @@ export function useArchiveReplayMainThreadSync(): void {
         }
 
         target = { paneId: inserted.pane.id, tabId: inserted.tab.id };
-        dispatch({
-          type: "SELECT_TAB",
-          paneId: target.paneId,
-          tabId: target.tabId,
-        });
       }
 
       targetRef.current = {

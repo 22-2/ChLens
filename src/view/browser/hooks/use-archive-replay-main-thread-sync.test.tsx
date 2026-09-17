@@ -59,6 +59,10 @@ function applyDispatch(action: ScopedTabAction): void {
       autoRefreshEnabled: false,
       autoRefreshPageKey: null,
     });
+    if (action.focus && state.panes[0]) {
+      state.panes[0].activeTabId = "tab-replay";
+      state.activePaneId = state.panes[0].id;
+    }
     return;
   }
   if (action.type === "SELECT_TAB") {
@@ -120,16 +124,12 @@ describe("useArchiveReplayMainThreadSync", () => {
 
     expect(mocks.dispatch).toHaveBeenNthCalledWith(1, {
       type: "OPEN_IN_NEW_TAB_FORCE",
+      focus: true,
       page: {
         type: "thread",
         title: "架空の実況1",
         threadUrl: request.threadUrl,
       },
-    });
-    expect(mocks.dispatch).toHaveBeenNthCalledWith(2, {
-      type: "SELECT_TAB",
-      paneId: "pane-1",
-      tabId: "tab-replay",
     });
 
     await act(async () => {
@@ -139,7 +139,7 @@ describe("useArchiveReplayMainThreadSync", () => {
         threadUrl: "https://example.com/test/read.cgi/live/2/",
       });
     });
-    expect(mocks.dispatch).toHaveBeenNthCalledWith(3, {
+    expect(mocks.dispatch).toHaveBeenNthCalledWith(2, {
       type: "NAVIGATE_TAB",
       paneId: "pane-1",
       tabId: "tab-replay",
@@ -157,6 +157,6 @@ describe("useArchiveReplayMainThreadSync", () => {
         threadUrl: "https://example.com/test/read.cgi/live/3/",
       });
     });
-    expect(mocks.dispatch).toHaveBeenCalledTimes(3);
+    expect(mocks.dispatch).toHaveBeenCalledTimes(2);
   });
 });

@@ -613,18 +613,18 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       const newTabForForce = createTab();
       const sourcePageForForce = getCurrentPage(getPaneActiveTab(pane));
       const newHistoryForForce = buildHierarchyForNewTab(sourcePageForForce, action.page);
-      return updatePane(state, paneId, (p) => ({
+      const newTab = {
+        ...newTabForForce,
+        history: newHistoryForForce,
+        currentIndex: newHistoryForForce.length - 1,
+      };
+      const nextState = updatePane(state, paneId, (p) => ({
         ...p,
-        tabs: [
-          ...p.tabs,
-          {
-            ...newTabForForce,
-            history: newHistoryForForce,
-            currentIndex: newHistoryForForce.length - 1,
-          },
-        ],
-        // activeTabId は変更しない
+        tabs: [...p.tabs, newTab],
+        // focus指定時は追加と選択を同じReducer処理で確定し、別dispatch間の状態競合を防ぐ。
+        activeTabId: action.focus ? newTab.id : p.activeTabId,
       }));
+      return action.focus ? { ...nextState, activePaneId: paneId } : nextState;
     }
 
     case "CLOSE_TAB": {
