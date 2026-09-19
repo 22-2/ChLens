@@ -3,9 +3,16 @@ import "@testing-library/jest-dom/vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { useThreadTopBar } from "src/view/browser/pages/thread/use-thread-top-bar";
+import { THREAD_FILTER_TOOLBAR_OPEN_EVENT } from "src/view/browser/utils/filter-toolbar-events";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 
-function TopBarHarness() {
+function TopBarHarness({
+  isActive = true,
+  tabId = "tab-1",
+}: {
+  isActive?: boolean;
+  tabId?: string;
+}) {
   const [searchQuery, setSearchQuery] = useState("");
   const {
     activeTopBar,
@@ -14,6 +21,8 @@ function TopBarHarness() {
     openFilterToolbar,
     searchFocusKey,
   } = useThreadTopBar({
+    tabId,
+    isActive,
     searchQuery,
     setSearchQuery,
   });
@@ -70,6 +79,50 @@ describe("useThreadTopBar", () => {
     fireEvent.click(screen.getByRole("button", { name: "open filter" }));
 
     expect(screen.getByTestId("active-top-bar")).toHaveTextContent("filter");
+  });
+
+  it("対象タブへのフィルタバーopenイベントでフィルタバーを開く", () => {
+    render(<TopBarHarness />);
+
+    act(() => {
+      window.dispatchEvent(
+        new window.CustomEvent(THREAD_FILTER_TOOLBAR_OPEN_EVENT, {
+          detail: { tabId: "tab-1" },
+        }),
+      );
+    });
+
+    expect(screen.getByTestId("active-top-bar")).toHaveTextContent("filter");
+
+    act(() => {
+      window.dispatchEvent(
+        new window.CustomEvent(THREAD_FILTER_TOOLBAR_OPEN_EVENT, {
+          detail: { tabId: "tab-1" },
+        }),
+      );
+    });
+
+    expect(screen.getByTestId("active-top-bar")).toHaveTextContent("filter");
+  });
+
+  it("別タブや非アクティブなスレッドにはopenイベントを届けない", () => {
+    render(
+      <>
+        <TopBarHarness />
+        <TopBarHarness isActive={false} tabId="tab-2" />
+      </>,
+    );
+
+    act(() => {
+      window.dispatchEvent(
+        new window.CustomEvent(THREAD_FILTER_TOOLBAR_OPEN_EVENT, {
+          detail: { tabId: "tab-2" },
+        }),
+      );
+    });
+
+    expect(screen.getAllByTestId("active-top-bar")[0]).toHaveTextContent("none");
+    expect(screen.getAllByTestId("active-top-bar")[1]).toHaveTextContent("none");
   });
 
   it("ホイール相当のクローズでは検索語による絞り込みを維持する", () => {

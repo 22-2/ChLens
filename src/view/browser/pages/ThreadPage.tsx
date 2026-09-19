@@ -196,6 +196,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     openFilterToolbar,
     searchFocusKey,
   } = useThreadTopBar({
+    tabId,
+    isActive,
     searchQuery,
     setSearchQuery,
     hasActiveFilter: filter !== "all",

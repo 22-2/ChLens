@@ -1,4 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
+import {
+  THREAD_FILTER_TOOLBAR_OPEN_EVENT,
+  type ThreadFilterToolbarOpenDetail,
+} from "src/view/browser/utils/filter-toolbar-events";
 
 const TOP_BAR_EVENT_BY_MODE = {
   search: "thread-search-toggle",
@@ -8,6 +12,8 @@ const TOP_BAR_EVENT_BY_MODE = {
 export type TopBarMode = "none" | "filter";
 
 interface UseThreadTopBarParams {
+  tabId: string;
+  isActive: boolean;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   hasActiveFilter?: boolean;
@@ -22,6 +28,8 @@ interface UseThreadTopBarResult {
 }
 
 export function useThreadTopBar({
+  tabId,
+  isActive,
   searchQuery,
   setSearchQuery,
   hasActiveFilter = false,
@@ -73,15 +81,24 @@ export function useThreadTopBar({
     const handleFilterToggle = () => {
       toggleFilterToolbar();
     };
+    const handleFilterOpen = (event: Event) => {
+      const detail = (event as CustomEvent<ThreadFilterToolbarOpenDetail>).detail;
+      if (!isActive || detail?.tabId !== tabId) {
+        return;
+      }
+      openFilterToolbar();
+    };
 
     window.addEventListener(TOP_BAR_EVENT_BY_MODE.search, handleSearchToggle);
     window.addEventListener(TOP_BAR_EVENT_BY_MODE.filter, handleFilterToggle);
+    window.addEventListener(THREAD_FILTER_TOOLBAR_OPEN_EVENT, handleFilterOpen);
 
     return () => {
       window.removeEventListener(TOP_BAR_EVENT_BY_MODE.search, handleSearchToggle);
       window.removeEventListener(TOP_BAR_EVENT_BY_MODE.filter, handleFilterToggle);
+      window.removeEventListener(THREAD_FILTER_TOOLBAR_OPEN_EVENT, handleFilterOpen);
     };
-  }, [openFilterToolbarForSearch, toggleFilterToolbar]);
+  }, [isActive, openFilterToolbar, openFilterToolbarForSearch, tabId, toggleFilterToolbar]);
 
   return {
     activeTopBar,
