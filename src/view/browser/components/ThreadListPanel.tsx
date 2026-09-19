@@ -25,6 +25,7 @@ import {
   createHighlightRowStyle,
   type DisplayThread,
   getThreadListCache,
+  getThreadUnreadCount,
   isSortColumn,
   readThreadListSortPreference,
   setThreadListCache,
@@ -381,10 +382,7 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
       thread,
       originalIndex: index + 1,
       isBookmarked: readBookmarkStatus(thread.url),
-      unreadCount: Math.max(
-        Math.max(thread.resCount, thread.readState?.received ?? 0) - (thread.readState?.read ?? 0),
-        0,
-      ),
+      unreadCount: getThreadUnreadCount(thread),
       heat: Number.parseFloat(calcHeat(now, thread.createdAt, thread.resCount)),
     }));
 

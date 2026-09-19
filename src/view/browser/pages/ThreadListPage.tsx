@@ -16,6 +16,7 @@ import {
   createHighlightRowStyle,
   type DisplayThread,
   getThreadListCache,
+  getThreadUnreadCount,
   isSortColumn,
   isSortDirection,
   readThreadListSortPreference,
@@ -726,12 +727,7 @@ export const ThreadListPage: React.FC<Props> = ({
       thread: t,
       originalIndex: i + 1,
       isBookmarked: readBookmarkStatus(t.url),
-      unreadCount: Math.max(
-        // 変更理由: read_state_updated で received が先行しているケースもあるため、
-        // 既知レス数はスレ一覧の resCount と readState.received の大きい方を採用する。
-        Math.max(t.resCount, t.readState?.received ?? 0) - (t.readState?.read ?? 0),
-        0,
-      ),
+      unreadCount: getThreadUnreadCount(t),
       heat: parseFloat(calcHeat(now, t.createdAt, t.resCount)),
     }));
 

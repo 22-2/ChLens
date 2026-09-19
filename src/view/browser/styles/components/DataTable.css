@@ -85,6 +85,20 @@
   white-space: nowrap;
 }
 
+.thread-list__unread-badge {
+  /* 変更理由: 未読数を一覧本文から独立させ、青地と白文字で見落としにくくする。 */
+  display: inline-block;
+  min-width: 1.6em;
+  box-sizing: border-box;
+  padding: 1px 5px;
+  border-radius: var(--sys-radius-pill);
+  background: var(--sys-color-status-active-bg);
+  color: var(--sys-color-status-active-fg);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+  text-align: center;
+}
+
 .simple-data-table__th--heat,
 .thread-list__th--heat {
   width: 80px;

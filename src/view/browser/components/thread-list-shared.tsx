@@ -209,6 +209,16 @@ export type DisplayThread = {
   isBookmarked: boolean;
 };
 
+export function getThreadUnreadCount(thread: Pick<IThread, "resCount" | "readState">): number {
+  // 変更理由: 既読位置がないスレはまだ閲覧していないため、レス数全体を
+  // 未読として表示すると未閲覧スレまで未読バッジの対象になる。
+  if (!thread.readState) return 0;
+
+  // 変更理由: read_state_updated で受信レス数が先行する場合もあるため、
+  // 一覧のレス数と既読状態が把握している受信数の大きい方を基準にする。
+  return Math.max(Math.max(thread.resCount, thread.readState.received) - thread.readState.read, 0);
+}
+
 export const THREAD_LIST_COLUMNS: ColumnDef<DisplayThread>[] = [
   {
     key: "num",
@@ -256,7 +266,8 @@ export const THREAD_LIST_COLUMNS: ColumnDef<DisplayThread>[] = [
     headerClassName: "thread-list__th--count",
     cellClassName: "thread-list__count",
     sortable: true,
-    cell: ({ unreadCount }) => (unreadCount > 0 ? unreadCount : ""),
+    cell: ({ unreadCount }) =>
+      unreadCount > 0 ? <span className="thread-list__unread-badge">{unreadCount}</span> : null,
   },
   {
     key: "heat",
