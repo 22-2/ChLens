@@ -18,7 +18,7 @@ interface ScrollFloatingLayout {
   panelBottom: number;
   distanceToBottom: number;
   isAtBottom: boolean;
-  isNearBottom: boolean;
+  isSlightlyAboveBottom: boolean;
   minimapReservation: number;
 }
 
@@ -58,7 +58,7 @@ function isSameLayout(left: ScrollFloatingLayout | null, right: ScrollFloatingLa
     left.panelBottom === right.panelBottom &&
     left.distanceToBottom === right.distanceToBottom &&
     left.isAtBottom === right.isAtBottom &&
-    left.isNearBottom === right.isNearBottom &&
+    left.isSlightlyAboveBottom === right.isSlightlyAboveBottom &&
     left.minimapReservation === right.minimapReservation
   );
 }
@@ -129,7 +129,7 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
         isAtBottom,
         // 「ちょっとだけ上」は固定値とviewport高さの大きい方にして、
         // 小さいペインでも下端操作を見失いにくくする。
-        isNearBottom:
+        isSlightlyAboveBottom:
           !isAtBottom && distanceToBottom <= Math.max(NEAR_BOTTOM_DISTANCE, rect.height * 0.4),
         minimapReservation: readMinimapReservation(currentRoot),
       };
@@ -211,7 +211,8 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
         </button>
       )}
 
-      {layout.isNearBottom && (
+      {/* 少し上の範囲では本文の操作を邪魔しないよう出さず、さらに上へ離れた時だけ戻り道を示す。 */}
+      {!layout.isAtBottom && !layout.isSlightlyAboveBottom && (
         <button
           type="button"
           className="thread-page__floating-action thread-page__floating-action--jump"
