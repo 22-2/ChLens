@@ -10,7 +10,7 @@ import {
   usePageCountStatus,
 } from "src/view/browser/hooks/use-page-count-status";
 import type { Page } from "src/view/browser/types";
-import { THREAD_FILTER_TOOLBAR_OPEN_EVENT } from "src/view/browser/utils/filter-toolbar-events";
+import { THREAD_FILTER_TOOLBAR_TOGGLE_EVENT } from "src/view/browser/utils/filter-toolbar-events";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { PageCountStatusItem } from "./PageCountStatusItem";
@@ -99,7 +99,7 @@ describe("PageCountStatusItem", () => {
     renderStatusBar("thread", 128);
 
     const listener = vi.fn<(event: Event) => void>();
-    window.addEventListener(THREAD_FILTER_TOOLBAR_OPEN_EVENT, listener);
+    window.addEventListener(THREAD_FILTER_TOOLBAR_TOGGLE_EVENT, listener);
 
     try {
       const countButton = await screen.findByRole("button", { name: "現在のレス数: 128レス" });
@@ -112,7 +112,7 @@ describe("PageCountStatusItem", () => {
       expect(receivedEvent).toBeInstanceOf(CustomEvent);
       expect((receivedEvent as CustomEvent<{ tabId: string }>).detail).toEqual({ tabId: "tab-1" });
     } finally {
-      window.removeEventListener(THREAD_FILTER_TOOLBAR_OPEN_EVENT, listener);
+      window.removeEventListener(THREAD_FILTER_TOOLBAR_TOGGLE_EVENT, listener);
     }
   });
 });

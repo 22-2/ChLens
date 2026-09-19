@@ -3,7 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { useThreadTopBar } from "src/view/browser/pages/thread/use-thread-top-bar";
-import { THREAD_FILTER_TOOLBAR_OPEN_EVENT } from "src/view/browser/utils/filter-toolbar-events";
+import { THREAD_FILTER_TOOLBAR_TOGGLE_EVENT } from "src/view/browser/utils/filter-toolbar-events";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 
 function TopBarHarness({
@@ -81,12 +81,12 @@ describe("useThreadTopBar", () => {
     expect(screen.getByTestId("active-top-bar")).toHaveTextContent("filter");
   });
 
-  it("対象タブへのフィルタバーopenイベントでフィルタバーを開く", () => {
+  it("対象タブへのフィルタバートグルイベントでフィルタバーを開閉する", () => {
     render(<TopBarHarness />);
 
     act(() => {
       window.dispatchEvent(
-        new window.CustomEvent(THREAD_FILTER_TOOLBAR_OPEN_EVENT, {
+        new window.CustomEvent(THREAD_FILTER_TOOLBAR_TOGGLE_EVENT, {
           detail: { tabId: "tab-1" },
         }),
       );
@@ -96,16 +96,16 @@ describe("useThreadTopBar", () => {
 
     act(() => {
       window.dispatchEvent(
-        new window.CustomEvent(THREAD_FILTER_TOOLBAR_OPEN_EVENT, {
+        new window.CustomEvent(THREAD_FILTER_TOOLBAR_TOGGLE_EVENT, {
           detail: { tabId: "tab-1" },
         }),
       );
     });
 
-    expect(screen.getByTestId("active-top-bar")).toHaveTextContent("filter");
+    expect(screen.getByTestId("active-top-bar")).toHaveTextContent("none");
   });
 
-  it("別タブや非アクティブなスレッドにはopenイベントを届けない", () => {
+  it("別タブや非アクティブなスレッドにはトグルイベントを届けない", () => {
     render(
       <>
         <TopBarHarness />
@@ -115,7 +115,7 @@ describe("useThreadTopBar", () => {
 
     act(() => {
       window.dispatchEvent(
-        new window.CustomEvent(THREAD_FILTER_TOOLBAR_OPEN_EVENT, {
+        new window.CustomEvent(THREAD_FILTER_TOOLBAR_TOGGLE_EVENT, {
           detail: { tabId: "tab-2" },
         }),
       );

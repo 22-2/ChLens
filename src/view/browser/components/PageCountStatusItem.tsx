@@ -8,8 +8,8 @@ import {
 } from "src/view/browser/hooks/use-page-count-status";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import {
-  THREAD_FILTER_TOOLBAR_OPEN_EVENT,
-  type ThreadFilterToolbarOpenDetail,
+  THREAD_FILTER_TOOLBAR_TOGGLE_EVENT,
+  type ThreadFilterToolbarToggleDetail,
 } from "src/view/browser/utils/filter-toolbar-events";
 
 function formatCount(count: number | null | undefined): string {
@@ -49,9 +49,9 @@ export const PageCountStatusItem: React.FC = () => {
     }
 
     // 変更理由: ステータスバーはThreadPageの外にあるため、イベントで対象タブを
-    // 明示してフィルタバーを開き、非表示タブのツールバーまで反応しないようにする。
+    // 明示してトグルし、非表示タブのツールバーまで反応しないようにする。
     window.dispatchEvent(
-      new window.CustomEvent<ThreadFilterToolbarOpenDetail>(THREAD_FILTER_TOOLBAR_OPEN_EVENT, {
+      new window.CustomEvent<ThreadFilterToolbarToggleDetail>(THREAD_FILTER_TOOLBAR_TOGGLE_EVENT, {
         detail: { tabId: activeTab.id },
       }),
     );
@@ -62,7 +62,7 @@ export const PageCountStatusItem: React.FC = () => {
       id="page-count-status"
       alignment="left"
       priority={STATUS_BAR_PRIORITY.left.pageCount}
-      title={isThreadPage ? `${accessibleLabel}（クリックでフィルターを開く）` : accessibleLabel}
+      title={isThreadPage ? `${accessibleLabel}（クリックでフィルターを開閉）` : accessibleLabel}
       interactive={isThreadPage}
     >
       {isThreadPage ? (
@@ -71,7 +71,7 @@ export const PageCountStatusItem: React.FC = () => {
           className="status-bar__btn"
           onClick={handleThreadCountClick}
           aria-label={accessibleLabel}
-          title={`${accessibleLabel}（クリックでフィルターを開く）`}
+          title={`${accessibleLabel}（クリックでフィルターを開閉）`}
         >
           <span className="status-bar__count" aria-hidden="true">
             {label}

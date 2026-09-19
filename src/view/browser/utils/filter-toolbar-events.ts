@@ -7,12 +7,12 @@ export const QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE = {
   threadList: "thread-list-filter-toolbar-toggle",
 } as const;
 
-// ステータスバーからスレッドのフィルタバーを開くための専用イベント。
-// 変更理由: 既存のtoggleイベントを使うと、すでに表示中のバーをクリック時に閉じてしまうため、
-// 「開く」操作は表示状態を反転させず、対象タブだけへ届ける。
-export const THREAD_FILTER_TOOLBAR_OPEN_EVENT = "thread-filter-toolbar-open";
+// ステータスバーからスレッドのフィルタバーを開閉するイベント。
+// 変更理由: ステータスバーはThreadPageの外にあるため、対象タブを明示しつつ、
+// 既存のフィルタ操作と同じトグル動作を再利用する。
+export const THREAD_FILTER_TOOLBAR_TOGGLE_EVENT = "thread-filter-toolbar-toggle";
 
-export interface ThreadFilterToolbarOpenDetail {
+export interface ThreadFilterToolbarToggleDetail {
   tabId: string;
 }
 
