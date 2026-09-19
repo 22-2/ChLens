@@ -314,28 +314,6 @@
   color: inherit;
 }
 
-.simple-data-table__label,
-.thread-list__label {
-  display: inline-block;
-  margin-left: 6px;
-  padding: 1px 6px;
-  border-radius: var(--sys-radius-sm);
-  background: var(--sys-color-table-label-bg);
-  color: inherit;
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.thread-list__title-content .thread-list__label {
-  flex: 0 0 auto;
-  margin-left: 0;
-}
-
-.simple-data-table__row--highlight .simple-data-table__label,
-.thread-list__row--highlight .thread-list__label {
-  color: inherit;
-}
-
 /* 変更理由: 一度開いたスレは一覧で主張を弱め、未閲覧スレを見つけやすくする。 */
 .thread-list__row--visited .thread-list__num,
 .thread-list__row--visited .thread-list__title,

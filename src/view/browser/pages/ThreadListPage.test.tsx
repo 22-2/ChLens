@@ -4,6 +4,10 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
 import { container as serviceContainer } from "src/service-container/index";
 import type { IBoardService, IBookmark, IThread } from "src/service-container/interfaces";
+import {
+  type DisplayThread,
+  THREAD_LIST_COLUMNS,
+} from "src/view/browser/components/thread-list-shared";
 import { ThreadListPage } from "src/view/browser/pages/ThreadListPage";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -759,6 +763,31 @@ describe("ThreadListPage", () => {
 
     expect(findRowByTitle("B Thread")).toHaveClass("thread-list__row--visited");
     expect(findRowByTitle("A Thread")).not.toHaveClass("thread-list__row--visited");
+  });
+
+  it("ハイライトスレのタイトル横にバッヂを表示しない", () => {
+    const titleColumn = THREAD_LIST_COLUMNS.find((column) => column.key === "title");
+    if (!titleColumn) throw new Error("タイトル列が見つかりません");
+
+    const highlightedThread: DisplayThread = {
+      thread: {
+        ...THREADS[0],
+        highlight: {
+          type: "HighlightTitle",
+          action: "highlight",
+          params: { label: "注目", bgColor: "yellow" },
+        },
+      },
+      originalIndex: 0,
+      unreadCount: 3,
+      heat: 1,
+      isBookmarked: false,
+    };
+
+    render(<>{titleColumn.cell(highlightedThread)}</>);
+
+    expect(screen.queryByText("注目")).toBeNull();
+    expect(document.querySelector(".thread-list__label")).toBeNull();
   });
 
   it("ブックマーク済みスレに星を表示し、右クリック項目にアイコンを付ける", async () => {

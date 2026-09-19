@@ -179,7 +179,6 @@ export const THREAD_LIST_COLUMNS: ColumnDef<DisplayThread>[] = [
     cellClassName: "thread-list__title",
     sortable: true,
     cell: ({ thread, isBookmarked }) => {
-      const label = thread.highlight?.params?.label;
       return (
         <span className="thread-list__title-content">
           {isBookmarked ? (
@@ -191,7 +190,8 @@ export const THREAD_LIST_COLUMNS: ColumnDef<DisplayThread>[] = [
             />
           ) : null}
           <span className="thread-list__title-text">{thread.title}</span>
-          {label && <span className="thread-list__label">{label}</span>}
+          {/* 変更理由: ハイライトの識別はセクション先頭の縦線と見出しで十分なため、
+              各アイテムへ補助バッヂを重ねずタイトルの視認性を保つ。 */}
         </span>
       );
     },
