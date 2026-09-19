@@ -141,9 +141,15 @@ export function useBoardListLogic() {
 
   useEffect(() => {
     const syncOpenedBoards = () => {
-      setOpenedBoardEntries(
-        parseOpenedBoardEntries(container.config.get(CONFIG_KEYS.OPENED_BOARDS)),
-      );
+      const raw = container.config.get(CONFIG_KEYS.OPENED_BOARDS);
+      const parsed = parseOpenedBoardEntries(raw);
+      setOpenedBoardEntries(parsed);
+
+      // 変更理由: URLの正規化・外部サイトの除外を一度だけ永続化し、
+      // 次回起動時にも古い「一度開いた板」が一覧へ戻らないようにする。
+      if (raw !== null && raw !== JSON.stringify(parsed)) {
+        void container.config.set(CONFIG_KEYS.OPENED_BOARDS, JSON.stringify(parsed));
+      }
     };
 
     syncOpenedBoards();

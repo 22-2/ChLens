@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { BBSMenu } from "src/core/BBSMenuParser";
+import { normalizeBoardUrl } from "src/core/BoardUrlNormalizer";
 import { container } from "src/service-container/index";
 import {
   MAX_BOARD_AUTO_REFRESH_SEC,
@@ -107,10 +108,14 @@ function readOpenedBoards(): RawBoardOption[] {
       if (typeof value.url !== "string") {
         return [];
       }
+      const normalizedUrl = normalizeBoardUrl(value.url, { requireCompatibleHost: true });
+      if (normalizedUrl === null) {
+        return [];
+      }
       return [
         {
-          url: value.url,
-          title: typeof value.title === "string" && value.title ? value.title : value.url,
+          url: normalizedUrl,
+          title: typeof value.title === "string" && value.title ? value.title : normalizedUrl,
         },
       ];
     });

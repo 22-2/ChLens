@@ -1,6 +1,7 @@
 import { Ban, Bookmark, BookmarkX, Clipboard, Copy, ExternalLink, Type } from "lucide-react";
 import React, { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
+import { normalizeBoardUrl as normalizeKnownBoardUrl } from "src/core/BoardUrlNormalizer";
 import { stringifyNgDslValue } from "src/core/ngDsl";
 import { URL as ChURL } from "src/core/URL";
 import { container } from "src/service-container/index";
@@ -52,6 +53,7 @@ import {
   useTabViewState,
 } from "src/view/browser/hooks/use-tab-store";
 import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
+import { parseOpenedBoardEntries } from "src/view/browser/pages/board-list/board-list-utils";
 import { getCurrentPage, type ThreadListPage as ThreadListPageType } from "src/view/browser/types";
 import { ContextMenu, ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { Spinner } from "src/view/browser/ui/Spinner";
@@ -110,42 +112,16 @@ interface OpenedBoardEntry {
   title: string;
 }
 
-function normalizeBoardUrl(rawUrl: string): string {
-  try {
-    return new window.URL(rawUrl).href;
-  } catch {
-    return rawUrl;
-  }
-}
-
 function readOpenedBoardEntries(): OpenedBoardEntry[] {
   const raw = container.config.get(OPENED_BOARDS_CONFIG_KEY);
   if (!raw) {
     return [];
   }
 
-  try {
-    const parsed = JSON.parse(raw) as Array<{ url?: unknown; title?: unknown }>;
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-
-    return parsed
-      .map((entry) => {
-        if (!entry || typeof entry.url !== "string") {
-          return null;
-        }
-
-        return {
-          url: normalizeBoardUrl(entry.url),
-          title: (entry.title as string) || "",
-        } satisfies OpenedBoardEntry;
-      })
-      .filter((entry): entry is OpenedBoardEntry => entry !== null);
-  } catch {
-    // 破損データは空扱いで継続し、閲覧導線を止めない。
-    return [];
-  }
+  return parseOpenedBoardEntries(raw).map((entry) => ({
+    url: entry.url,
+    title: entry.title ?? "",
+  }));
 }
 
 function writeOpenedBoardEntries(entries: OpenedBoardEntry[]): void {
@@ -156,12 +132,15 @@ function writeOpenedBoardEntries(entries: OpenedBoardEntry[]): void {
 }
 
 function upsertOpenedBoardEntry(boardUrl: string, boardTitle: string | null): void {
-  const normalizedUrl = normalizeBoardUrl(boardUrl);
+  const normalizedUrl = normalizeKnownBoardUrl(boardUrl, { requireCompatibleHost: true });
+  if (normalizedUrl === null) {
+    // 変更理由: 外部サイトをスレ一覧の板として記録するとBBSMENUへ混入するため、
+    // 掲示板URLとして判定できないページは保存対象から除外する。
+    return;
+  }
   const nextTitle = boardTitle && boardTitle.trim() !== "" ? boardTitle : undefined;
   const existingEntries = readOpenedBoardEntries();
-  const existingIndex = existingEntries.findIndex(
-    (entry) => normalizeBoardUrl(entry.url) === normalizedUrl,
-  );
+  const existingIndex = existingEntries.findIndex((entry) => entry.url === normalizedUrl);
 
   if (existingIndex >= 0) {
     const existing = existingEntries[existingIndex];

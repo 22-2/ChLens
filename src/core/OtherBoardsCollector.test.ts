@@ -258,6 +258,21 @@ describe("OtherBoardsCollector.collect", () => {
     ).toBe(true);
   });
 
+  it("明示的に開いた外部サイトは「一度開いた板」に追加しない", async () => {
+    const deps = makeDeps({
+      getOpenedBoards: vi.fn().mockResolvedValue([
+        { url: "https://twitter.com/home/", title: "Twitter" },
+        { url: "https://discord.com/channels/@me", title: "Discord" },
+      ]),
+    });
+    const collector = new OtherBoardsCollector(deps);
+    const menus: BBSMenu[] = [];
+
+    await collector.collect(menus);
+
+    expect(menus).toHaveLength(0);
+  });
+
   it("履歴の取得が失敗してもエラーをスローせず処理を続ける", async () => {
     const deps = makeDeps({
       getAllReadStates: vi

@@ -1,4 +1,5 @@
 import { BBSMenu } from "src/core/BBSMenuParser";
+import { getBoardUrlKey, normalizeBoardUrl } from "src/core/BoardUrlNormalizer";
 import { URL } from "src/core/URL";
 
 export interface ReadStateEntry {
@@ -60,10 +61,9 @@ export class OtherBoardsCollector {
     for (const menu of menus) {
       for (const cat of menu.categories) {
         for (const board of cat.boards) {
-          try {
-            registered.add(new URL(board.url).href);
-          } catch {
-            registered.add(board.url);
+          const boardKey = getBoardUrlKey(board.url);
+          if (boardKey !== null) {
+            registered.add(boardKey);
           }
         }
       }
@@ -81,14 +81,15 @@ export class OtherBoardsCollector {
     const seenUrls = new Set<string>();
 
     const addIfNew = (url: string, name: string) => {
-      try {
-        const normalizedUrl = new URL(url).href;
-        if (!registeredUrls.has(normalizedUrl) && !seenUrls.has(normalizedUrl)) {
-          otherBoards.push({ name, url: normalizedUrl });
-          seenUrls.add(normalizedUrl);
-        }
-      } catch {
-        // 不正なURLは無視
+      const normalizedUrl = normalizeBoardUrl(url, { requireCompatibleHost: true });
+      const boardKey = normalizedUrl === null ? null : getBoardUrlKey(normalizedUrl);
+      if (normalizedUrl === null || boardKey === null) {
+        // 外部サイトや板として解釈できないURLは「一度開いた板」へ混ぜない。
+        return;
+      }
+      if (!registeredUrls.has(boardKey) && !seenUrls.has(boardKey)) {
+        otherBoards.push({ name, url: normalizedUrl });
+        seenUrls.add(boardKey);
       }
     };
 

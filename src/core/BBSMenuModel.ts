@@ -2,6 +2,7 @@ import Callbacks from "src/app/Callbacks";
 import { BBSMenuFetcher } from "src/core/BBSMenuFetcher";
 import { BBSMenu, BBSMenuParser } from "src/core/BBSMenuParser";
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
+import { getBoardUrlKey, normalizeBBSMenus, normalizeBoardUrl } from "src/core/BoardUrlNormalizer";
 import * as History from "src/core/History";
 import { createLogger } from "src/core/logger";
 import { OtherBoardsCollector } from "src/core/OtherBoardsCollector";
@@ -61,21 +62,40 @@ export class BBSMenuModel {
             return [];
           }
 
-          // Why: null混入配列を返すと OtherBoardsCollector の契約型(OpenedBoardEntry[])に
-          // 合わず型エラーになるため、reduce で有効要素のみを積み上げる。
-          return parsed.reduce<Array<{ url: string; title?: string }>>((acc, entry) => {
-            if (!entry || typeof entry.url !== "string") {
-              return acc;
-            }
+          // 変更理由: 外部サイトを板として保存していた過去データがあるため、
+          // BBSMENUを組み立てる時点で既知の掲示板URLだけに戻し、一覧への再混入を防ぐ。
+          const seenBoardKeys = new Set<string>();
+          const normalizedEntries = parsed.reduce<Array<{ url: string; title?: string }>>(
+            (acc, entry) => {
+              if (!entry || typeof entry.url !== "string") {
+                return acc;
+              }
 
-            if (typeof entry.title === "string") {
-              acc.push({ url: entry.url, title: entry.title });
-              return acc;
-            }
+              const normalizedUrl = normalizeBoardUrl(entry.url, {
+                requireCompatibleHost: true,
+              });
+              const boardKey = normalizedUrl === null ? null : getBoardUrlKey(normalizedUrl);
+              if (normalizedUrl === null || boardKey === null || seenBoardKeys.has(boardKey)) {
+                return acc;
+              }
 
-            acc.push({ url: entry.url });
-            return acc;
-          }, []);
+              seenBoardKeys.add(boardKey);
+              if (typeof entry.title === "string") {
+                acc.push({ url: normalizedUrl, title: entry.title });
+                return acc;
+              }
+
+              acc.push({ url: normalizedUrl });
+              return acc;
+            },
+            [],
+          );
+
+          const normalizedRaw = JSON.stringify(normalizedEntries);
+          if (raw !== normalizedRaw) {
+            void container.config.set(OPENED_BOARDS_CONFIG_KEY, normalizedRaw);
+          }
+          return normalizedEntries;
         } catch {
           // 破損データは空扱いにして板一覧表示を継続する。
           return [];
@@ -142,7 +162,7 @@ export class BBSMenuModel {
 
     await this._collector.collect(menus);
 
-    return menus;
+    return normalizeBBSMenus(menus);
   }
 
   /**
@@ -206,7 +226,8 @@ export class BBSMenuModel {
       // Why: bbsmenu_update_interval 設定を廃止したため、
       // SQLiteキャッシュは forceReload されるまで常に利用する。
 
-      return { status: "success", menu: JSON.parse(record.data) as BBSMenu[] };
+      const menu = JSON.parse(record.data) as BBSMenu[];
+      return { status: "success", menu: normalizeBBSMenus(menu) };
     } catch (e) {
       // Why: Tauri SQLiteの初期化に失敗してもアプリがクラッシュしないよう、
       // エラーを記録するのみでnullを返す。呼び出し元はHTTP fetchにフォールバックする

@@ -1,3 +1,4 @@
+import { normalizeBoardUrl } from "src/core/BoardUrlNormalizer";
 import { container } from "src/service-container/index";
 import { readConfigValue } from "src/view/browser/utils/config-setting";
 import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
@@ -154,8 +155,16 @@ export function normalizeSiteKey(raw: string): string | null {
   return normalizeHostname(raw);
 }
 
-/** 板URLをクエリ・フラグメント・末尾スラッシュの揺れがないキーへ変換する。 */
+/**
+ * 板URLをクエリ・フラグメント・末尾スラッシュの揺れがないキーへ変換する。
+ * 既知の掲示板は共通の板URL正規化も通し、サイト・板設定の参照先を統一する。
+ */
 export function normalizeBoardKey(raw: string): string | null {
+  const normalizedBoardUrl = normalizeBoardUrl(raw);
+  if (normalizedBoardUrl !== null) {
+    return normalizedBoardUrl;
+  }
+
   try {
     const parsed = new URL(raw);
     if (!parsed.hostname) {
