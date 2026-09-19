@@ -13,7 +13,6 @@ import {
 import {
   calcHeat,
   createHighlightDividerStyle,
-  createHighlightRowStyle,
   type DisplayThread,
   getThreadListCache,
   getThreadUnreadCount,
@@ -52,7 +51,6 @@ import {
   useTabPanes,
   useTabViewState,
 } from "src/view/browser/hooks/use-tab-store";
-import { useTheme } from "src/view/browser/hooks/use-theme";
 import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 import { getCurrentPage, type ThreadListPage as ThreadListPageType } from "src/view/browser/types";
 import { ContextMenu, ContextMenuItem } from "src/view/browser/ui/ContextMenu";
@@ -68,7 +66,6 @@ import { ThreadListView } from "src/view/shared/ThreadListView";
 export {
   calcHeat,
   createHighlightDividerStyle,
-  createHighlightRowStyle,
   getThreadListCache,
   isSortColumn,
   isSortDirection,
@@ -223,7 +220,6 @@ export const ThreadListPage: React.FC<Props> = ({
   const { setPageCount } = usePageCountStatus();
   const pageCountKey = getThreadListPageCountKey(tabId, page.boardUrl);
   const bookmarkRevision = useBookmarkRevision();
-  const theme = useTheme();
   const [threads, setThreads] = useState<IThread[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -1077,11 +1073,6 @@ export const ThreadListPage: React.FC<Props> = ({
           if (thread.demoted && !isNgTemporarilyDisabled) classes.push("thread-list__row--ng");
           if (thread.highlight) classes.push("thread-list__row--highlight");
           return classes.join(" ") || undefined;
-        }}
-        getRowStyle={({ thread }) => {
-          const bgColor = thread.highlight?.params?.bgColor;
-          if (!bgColor) return {};
-          return createHighlightRowStyle(bgColor, theme);
         }}
         onRowClick={handleThreadClick}
         onRowMiddleClick={openThreadInNewTab}

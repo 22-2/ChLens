@@ -296,27 +296,21 @@
   background: var(--sys-color-list-hover-bg);
 }
 
-.simple-data-table__row--highlight,
-.thread-list__row--highlight {
+.simple-data-table__row--highlight {
   background: var(--thread-list-highlight-bg, var(--sys-color-table-highlight-bg));
   color: var(--sys-color-table-highlight-fg);
   font-weight: 600;
   transition: background 0.1s;
 }
 
-.simple-data-table__row--highlight:hover,
-.thread-list__row--highlight:hover {
+.simple-data-table__row--highlight:hover {
   background: var(--thread-list-highlight-hover-bg, var(--sys-color-table-highlight-hover-bg));
 }
 
 .simple-data-table__row--highlight .simple-data-table__num,
 .simple-data-table__row--highlight .simple-data-table__title,
 .simple-data-table__row--highlight .simple-data-table__count,
-.simple-data-table__row--highlight .simple-data-table__heat,
-.thread-list__row--highlight .thread-list__num,
-.thread-list__row--highlight .thread-list__title,
-.thread-list__row--highlight .thread-list__count,
-.thread-list__row--highlight .thread-list__heat {
+.simple-data-table__row--highlight .simple-data-table__heat {
   color: inherit;
 }
 

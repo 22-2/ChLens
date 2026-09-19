@@ -22,7 +22,6 @@ import {
 import {
   calcHeat,
   createHighlightDividerStyle,
-  createHighlightRowStyle,
   type DisplayThread,
   getThreadListCache,
   getThreadUnreadCount,
@@ -47,7 +46,6 @@ import {
 } from "src/view/browser/hooks/use-bottom-panel";
 import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
 import { useTabStore, useTabViewState } from "src/view/browser/hooks/use-tab-store";
-import { useTheme } from "src/view/browser/hooks/use-theme";
 import { ContextMenu, type ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { copyText, formatMarkdownLink } from "src/view/browser/utils/clipboard";
 import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
@@ -161,7 +159,6 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
   const { activeTab, currentPage, dispatch } = useTabStore();
   const { isNgTemporarilyDisabled, setThreadListStats } = useNgStatus();
   const bookmarkRevision = useBookmarkRevision();
-  const theme = useTheme();
   const {
     threadListAutoRefreshEnabled,
     threadListAutoRefreshIntervalSec,
@@ -721,10 +718,6 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
                   classes.push("thread-list__row--ng");
                 if (thread.highlight) classes.push("thread-list__row--highlight");
                 return classes.join(" ") || undefined;
-              }}
-              getRowStyle={({ thread }) => {
-                const bgColor = thread.highlight?.params?.bgColor;
-                return bgColor ? createHighlightRowStyle(bgColor, theme) : {};
               }}
               onRowClick={({ thread }) =>
                 dispatch({

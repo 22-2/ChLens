@@ -4,7 +4,6 @@ import React from "react";
 import { getStore2String, setStore2String } from "src/app/Store2Storage";
 import type { IThread } from "src/service-container/interfaces";
 import type { ColumnDef } from "src/view/browser/components/SimpleDataTable";
-import type { ResolvedTheme } from "src/view/browser/hooks/use-theme";
 
 const UI_CACHE_STORE = "UICache";
 const threadListCacheKey = (boardUrl: string) => `threadList:${boardUrl}`;
@@ -63,73 +62,12 @@ const BG_COLOR_PRESETS: Record<string, string> = {
   amber: "#ffecb3",
 };
 
-type Rgb = { r: number; g: number; b: number };
-export type HighlightRowStyle = React.CSSProperties & {
-  "--thread-list-highlight-bg"?: string;
-  "--thread-list-highlight-hover-bg"?: string;
-};
 export type DividerStyle = React.CSSProperties & {
   "--data-table-divider-accent"?: string;
 };
 
-function parseColorToRgb(rawColor: string): Rgb | null {
-  const color = rawColor.trim();
-  const shortHex = color.match(/^#([0-9a-f]{3})$/i);
-  if (shortHex) {
-    const [r, g, b] = shortHex[1].split("").map((char) => `${char}${char}`);
-    return {
-      r: Number.parseInt(r, 16),
-      g: Number.parseInt(g, 16),
-      b: Number.parseInt(b, 16),
-    };
-  }
-
-  const longHex = color.match(/^#([0-9a-f]{6})$/i);
-  if (longHex) {
-    return {
-      r: Number.parseInt(longHex[1].slice(0, 2), 16),
-      g: Number.parseInt(longHex[1].slice(2, 4), 16),
-      b: Number.parseInt(longHex[1].slice(4, 6), 16),
-    };
-  }
-
-  const rgb = color.match(
-    /^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})(?:\s*,\s*[\d.]+)?\s*\)$/i,
-  );
-  if (rgb) {
-    return {
-      r: Number.parseInt(rgb[1], 10),
-      g: Number.parseInt(rgb[2], 10),
-      b: Number.parseInt(rgb[3], 10),
-    };
-  }
-
-  return null;
-}
-
-function blendRgb(base: Rgb, overlay: Rgb, alpha: number): string {
-  const blendChannel = (baseChannel: number, overlayChannel: number) =>
-    Math.round(baseChannel * (1 - alpha) + overlayChannel * alpha);
-  return `rgb(${blendChannel(base.r, overlay.r)}, ${blendChannel(base.g, overlay.g)}, ${blendChannel(base.b, overlay.b)})`;
-}
-
 function resolveHighlightColor(bgColor: string): string {
   return BG_COLOR_PRESETS[bgColor] ?? bgColor;
-}
-
-export function createHighlightRowStyle(bgColor: string, theme: ResolvedTheme): HighlightRowStyle {
-  const resolvedBackground = resolveHighlightColor(bgColor);
-  const parsed = parseColorToRgb(resolvedBackground);
-  if (!parsed) return { "--thread-list-highlight-bg": resolvedBackground };
-
-  const overlay =
-    theme === "dark"
-      ? { color: { r: 255, g: 255, b: 255 }, alpha: 0.3 }
-      : { color: { r: 0, g: 0, b: 0 }, alpha: 0.16 };
-  return {
-    "--thread-list-highlight-bg": resolvedBackground,
-    "--thread-list-highlight-hover-bg": blendRgb(parsed, overlay.color, overlay.alpha),
-  };
 }
 
 export function createHighlightDividerStyle(bgColor: string): DividerStyle {
