@@ -9,6 +9,7 @@ import {
 } from "src/view/browser/pages/settings/settings-data-transfer";
 import type { SettingsSupplementaryPanelId } from "src/view/browser/pages/settings/settings-types";
 import { SiteBoardSettingsPanel } from "src/view/browser/pages/settings/SiteBoardSettingsPanel";
+import { TitleBarButtonSettingsPanel } from "src/view/browser/pages/settings/TitleBarButtonSettingsPanel";
 import type { SettingsMaintenanceActions } from "src/view/browser/pages/settings/use-settings-maintenance";
 import { Alert } from "src/view/browser/ui/Alert";
 import { Button } from "src/view/browser/ui/Button";
@@ -226,6 +227,8 @@ export function SettingsSupplementaryPanels({
 
     return panelIds.map((panelId) => {
       switch (panelId) {
+        case "titleBarButtonSettings":
+          return <TitleBarButtonSettingsPanel key={panelId} />;
         case "siteBoardSettings":
           return <SiteBoardSettingsPanel key={panelId} />;
         case "externalIntegration":

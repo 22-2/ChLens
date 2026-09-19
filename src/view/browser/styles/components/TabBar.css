@@ -400,8 +400,8 @@
   color: var(--sys-color-text);
 }
 
-/* 変更理由: 簡易表示ではタイトルと閉じるボタンを隠し、アイコンだけの細幅にする。
-   閉じる操作はホバー時のみ重ねて出し、中クリックと右クリックは従来どおり使える。 */
+/* 変更理由: 簡易表示ではタイトルを隠してアイコンだけの細幅にする。
+   垂直タブの閉じるボタンは常設せず、中クリックと右クリックで閉じる操作を保つ。 */
 .tab-bar--vertical.tab-bar--collapsed {
   width: 48px;
   min-width: 48px;
@@ -422,22 +422,6 @@
   width: 8px;
   height: 8px;
   margin: 0;
-}
-
-.tab-bar--collapsed .tab__close {
-  position: absolute;
-  top: 1px;
-  right: 1px;
-  display: none;
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  background: var(--sys-color-surface);
-}
-
-.tab-bar--collapsed .tab:hover .tab__close,
-.tab-bar--collapsed .tab:focus-within .tab__close {
-  display: flex;
 }
 
 /* 変更理由: タブのドラッグ並べ替えと幅変更の当たり判定が干渉しないよう、

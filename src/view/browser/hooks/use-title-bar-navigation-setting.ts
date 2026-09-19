@@ -1,9 +1,43 @@
 import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
 
-export const TITLE_BAR_NAVIGATION_CONFIG_KEY = "title_bar_navigation";
+export const TITLE_BAR_BACK_CONFIG_KEY = "title_bar_back";
+export const TITLE_BAR_FORWARD_CONFIG_KEY = "title_bar_forward";
+export const TITLE_BAR_REFRESH_CONFIG_KEY = "title_bar_refresh";
 
-/** タイトルバー左端へ戻る・進むを表示する設定を監視する。 */
-export function useTitleBarNavigationEnabled(): boolean {
-  const { value: enabled } = useConfigBooleanSetting(TITLE_BAR_NAVIGATION_CONFIG_KEY, true);
-  return enabled;
+export interface TitleBarButtonSettings {
+  backEnabled: boolean;
+  forwardEnabled: boolean;
+  refreshEnabled: boolean;
+  setBackEnabled: (enabled: boolean) => void;
+  setForwardEnabled: (enabled: boolean) => void;
+  setRefreshEnabled: (enabled: boolean) => void;
+}
+
+/**
+ * タイトルバー左端の各ボタンを個別に監視・保存する。
+ * 変更理由: 戻る・進むだけでなく更新も利用者が選べるようにし、専用モーダルの表示と
+ * タイトルバーの描画が同じ設定値を直接共有できるようにする。
+ */
+export function useTitleBarButtonSettings(): TitleBarButtonSettings {
+  const { value: backEnabled, setValue: setBackEnabled } = useConfigBooleanSetting(
+    TITLE_BAR_BACK_CONFIG_KEY,
+    true,
+  );
+  const { value: forwardEnabled, setValue: setForwardEnabled } = useConfigBooleanSetting(
+    TITLE_BAR_FORWARD_CONFIG_KEY,
+    true,
+  );
+  const { value: refreshEnabled, setValue: setRefreshEnabled } = useConfigBooleanSetting(
+    TITLE_BAR_REFRESH_CONFIG_KEY,
+    true,
+  );
+
+  return {
+    backEnabled,
+    forwardEnabled,
+    refreshEnabled,
+    setBackEnabled,
+    setForwardEnabled,
+    setRefreshEnabled,
+  };
 }

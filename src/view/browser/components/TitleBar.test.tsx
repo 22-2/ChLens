@@ -62,8 +62,14 @@ const { orientationHolder } = vi.hoisted(() => ({
   orientationHolder: { value: "horizontal" },
 }));
 
-const { titleBarNavigationHolder } = vi.hoisted(() => ({
-  titleBarNavigationHolder: { value: true },
+const { titleBarButtonSettingsHolder } = vi.hoisted(() => ({
+  titleBarButtonSettingsHolder: {
+    value: {
+      backEnabled: true,
+      forwardEnabled: true,
+      refreshEnabled: true,
+    },
+  },
 }));
 
 vi.mock("src/view/browser/hooks/use-tab-bar-orientation", () => ({
@@ -72,7 +78,7 @@ vi.mock("src/view/browser/hooks/use-tab-bar-orientation", () => ({
 }));
 
 vi.mock("src/view/browser/hooks/use-title-bar-navigation-setting", () => ({
-  useTitleBarNavigationEnabled: () => titleBarNavigationHolder.value,
+  useTitleBarButtonSettings: () => titleBarButtonSettingsHolder.value,
 }));
 
 describe("TitleBar", () => {
@@ -87,7 +93,11 @@ describe("TitleBar", () => {
       threadUrl: "https://egg.5ch.net/test/read.cgi/software/1/",
     };
     orientationHolder.value = "horizontal";
-    titleBarNavigationHolder.value = true;
+    titleBarButtonSettingsHolder.value = {
+      backEnabled: true,
+      forwardEnabled: true,
+      refreshEnabled: true,
+    };
     mocks.activeTab.history = [
       {
         type: "thread",
@@ -170,15 +180,20 @@ describe("TitleBar", () => {
     expect(dispatchMock).toHaveBeenNthCalledWith(2, { type: "GO_FORWARD" });
   });
 
-  it("設定でタイトルバーの戻る・進むを非表示にできる", () => {
+  it("設定でタイトルバーの各ボタンを個別に非表示にできる", () => {
     orientationHolder.value = "vertical";
-    titleBarNavigationHolder.value = false;
+    titleBarButtonSettingsHolder.value = {
+      backEnabled: false,
+      forwardEnabled: false,
+      refreshEnabled: false,
+    };
     render(<TitleBar />);
 
     const leading = screen.getByTestId("title-bar-leading");
     expect(leading.querySelector('[aria-label="戻る"]')).toBeNull();
     expect(leading.querySelector('[aria-label="進む"]')).toBeNull();
-    expect(leading.querySelector('[aria-label="更新"]')).toBeInTheDocument();
+    expect(leading.querySelector('[aria-label="更新"]')).toBeNull();
+    expect(leading).toBeEmptyDOMElement();
   });
 
   it("水平モードでは左端を空のままにする", () => {

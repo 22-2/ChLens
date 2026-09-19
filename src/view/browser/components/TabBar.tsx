@@ -191,7 +191,9 @@ const SortableTab: React.FC<SortableTabProps> = ({
             }
           />
         )}
-        {!tab.pinned && tabCount > 1 && (
+        {/* 変更理由: 垂直タブでは横幅が限られ、各タブ上の閉じるボタンが本文の視認性と
+            アイコン操作を邪魔するため、閉じる操作は中クリックと右クリックへ集約する。 */}
+        {!isVertical && !tab.pinned && tabCount > 1 && (
           <button
             className="tab__close"
             onClick={(e) => {
