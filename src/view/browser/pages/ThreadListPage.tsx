@@ -39,6 +39,10 @@ import {
   useBookmarkRevision,
 } from "src/view/browser/hooks/use-bookmark-revision";
 import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
+import {
+  getThreadListPageCountKey,
+  usePageCountStatus,
+} from "src/view/browser/hooks/use-page-count-status";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 import {
   useActivePaneId,
@@ -215,6 +219,8 @@ export const ThreadListPage: React.FC<Props> = ({
   const persistedSortColumn = persistedViewState.sortColumn;
   const persistedSortDirection = persistedViewState.sortDirection;
   const { isNgTemporarilyDisabled, setThreadListStats } = useNgStatus();
+  const { setPageCount } = usePageCountStatus();
+  const pageCountKey = getThreadListPageCountKey(tabId, page.boardUrl);
   const bookmarkRevision = useBookmarkRevision();
   const theme = useTheme();
   const [threads, setThreads] = useState<IThread[]>([]);
@@ -929,6 +935,17 @@ export const ThreadListPage: React.FC<Props> = ({
     () => displayThreads.filter(({ thread }) => thread.ng == null || isNgTemporarilyDisabled),
     [displayThreads, isNgTemporarilyDisabled],
   );
+
+  useEffect(() => {
+    // 変更理由: 一覧の検索・NG適用後に実際に見えているスレ数を示し、
+    // ステータスバーの件数と画面上の一覧件数を一致させる。
+    setPageCount(pageCountKey, {
+      kind: "threadList",
+      count: loading && threads.length === 0 ? null : visibleDisplayThreads.length,
+    });
+    return () => setPageCount(pageCountKey, null);
+  }, [loading, pageCountKey, setPageCount, threads.length, visibleDisplayThreads.length]);
+
   const threadSections = useMemo<DataTableSection<DisplayThread>[]>(() => {
     const highlightGroups = new Map<
       string,

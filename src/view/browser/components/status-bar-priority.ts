@@ -6,6 +6,7 @@ export const STATUS_BAR_PRIORITY = {
     ikioi: 10,
     popularFilter: 12,
     commentOverlay: 15,
+    pageCount: 20,
   },
   right: {
     writePanelToggle: 0,

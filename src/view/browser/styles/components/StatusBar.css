@@ -53,6 +53,11 @@
   text-overflow: ellipsis;
 }
 
+.status-bar__count {
+  /* 変更理由: 件数の桁が変わっても数字の幅を揃え、ステータスバーのちらつきを抑える。 */
+  font-variant-numeric: tabular-nums;
+}
+
 .status-bar__divider {
   width: 1px;
   height: var(--sys-space-6);

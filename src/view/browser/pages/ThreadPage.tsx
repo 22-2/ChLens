@@ -18,6 +18,10 @@ import { useAutoNextThread } from "src/view/browser/hooks/use-auto-next-thread";
 import { useAutoNextThreadSetting } from "src/view/browser/hooks/use-auto-next-thread-setting";
 import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
 import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
+import {
+  getThreadPageCountKey,
+  usePageCountStatus,
+} from "src/view/browser/hooks/use-page-count-status";
 import { usePopupAutoScrollPauseSetting } from "src/view/browser/hooks/use-popup-auto-scroll-pause-setting";
 import { useThreadPopupManager } from "src/view/browser/hooks/use-popup-manager";
 import { useTabDispatch, useTabStore } from "src/view/browser/hooks/use-tab-store";
@@ -166,6 +170,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     onRefresh: () => dispatch({ type: "RELOAD" }),
   });
   const { setThreadStats } = useNgStatus();
+  const { setPageCount } = usePageCountStatus();
+  const pageCountKey = getThreadPageCountKey(tabId, page.threadUrl);
   const mediaViewerScopeId = `${tabId}\u0000${page.threadUrl}`;
   const openMedia = useMediaViewerStore((state) => state.openMediaFromUrl);
   const openMediaFromUrl = useCallback(
@@ -402,6 +408,16 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     if (!imageBlurConfig.enabled) return new Set<number>();
     return buildBlurredResSet(responses, indexes.repIndex, imageBlurConfig.harmfulWordPattern);
   }, [imageBlurConfig, indexes.repIndex, responses]);
+
+  useEffect(() => {
+    // 変更理由: ステータスバーはページ外で描画されるため、タブ単位でレス数を共有し、
+    // 別タブの取得結果が現在の表示へ混ざらないようにする。
+    setPageCount(pageCountKey, {
+      kind: "thread",
+      count: loading && responses.length === 0 ? null : responses.length,
+    });
+    return () => setPageCount(pageCountKey, null);
+  }, [loading, pageCountKey, responses.length, setPageCount]);
 
   useEffect(() => {
     // ステータスバーの件数はページ外コンポーネントから参照するため、

@@ -13,6 +13,7 @@ import { IkioiStatusItem } from "src/view/browser/components/IkioiStatusItem";
 import { NavigationBar } from "src/view/browser/components/NavigationBar";
 import { NextThreadSearchDialog } from "src/view/browser/components/NextThreadSearchDialog";
 import { NgStatusItem } from "src/view/browser/components/NgStatusItem";
+import { PageCountStatusItem } from "src/view/browser/components/PageCountStatusItem";
 import { PopularFilterStatusItem } from "src/view/browser/components/PopularFilterStatusItem";
 import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
 import { StatusBar, StatusBarItem, StatusBarProvider } from "src/view/browser/components/StatusBar";
@@ -28,6 +29,7 @@ import {
 import { useNextThreadSearch } from "src/view/browser/hooks/use-next-thread-search";
 import { NgStatusProvider } from "src/view/browser/hooks/use-ng-status";
 import { useNotificationListener } from "src/view/browser/hooks/use-notification-listener";
+import { PageCountStatusProvider } from "src/view/browser/hooks/use-page-count-status";
 import { useTabBarOrientation } from "src/view/browser/hooks/use-tab-bar-orientation";
 import {
   PaneProvider,
@@ -203,6 +205,7 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
       <PopularFilterStatusItem />
       <AutoRefreshStatusItem />
       <CommentOverlayStatusItem isActive={isActive} />
+      <PageCountStatusItem />
       <ThreadListPanelToggleItem />
       <WritePanelToggleItem />
       <StatusBar />
@@ -231,34 +234,36 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
         左右の項目衝突も自然に解消される。
       */}
       <StatusBarProvider>
-        <NgStatusProvider>
-          <BottomPanelProvider>
-            <AutoScrollStateProvider>
-              {tabBarOrientation === "vertical" ? (
-                // 変更理由: 垂直モードではタブバーをペインの上端まで伸ばし、
-                // タイトルバー以下を右へ押しのける。タイトルバーもペイン単位にし、
-                // 自ペインの操作欄を持つ。1ペイン優先の簡易対応とし、
-                // 2ペイン時は操作欄が複製される。
-                <div className="pane-column__vertical-body">
-                  <TabBar orientation="vertical" />
-                  <div className="pane-column__vertical-main">
-                    <TitleBar />
-                    <div className="pane-column__chrome">{navigationBar}</div>
+        <PageCountStatusProvider>
+          <NgStatusProvider>
+            <BottomPanelProvider>
+              <AutoScrollStateProvider>
+                {tabBarOrientation === "vertical" ? (
+                  // 変更理由: 垂直モードではタブバーをペインの上端まで伸ばし、
+                  // タイトルバー以下を右へ押しのける。タイトルバーもペイン単位にし、
+                  // 自ペインの操作欄を持つ。1ペイン優先の簡易対応とし、
+                  // 2ペイン時は操作欄が複製される。
+                  <div className="pane-column__vertical-body">
+                    <TabBar orientation="vertical" />
+                    <div className="pane-column__vertical-main">
+                      <TitleBar />
+                      <div className="pane-column__chrome">{navigationBar}</div>
+                      {paneBody}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="pane-column__chrome">
+                      <TabBar orientation="horizontal" />
+                      {navigationBar}
+                    </div>
                     {paneBody}
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className="pane-column__chrome">
-                    <TabBar orientation="horizontal" />
-                    {navigationBar}
-                  </div>
-                  {paneBody}
-                </>
-              )}
-            </AutoScrollStateProvider>
-          </BottomPanelProvider>
-        </NgStatusProvider>
+                  </>
+                )}
+              </AutoScrollStateProvider>
+            </BottomPanelProvider>
+          </NgStatusProvider>
+        </PageCountStatusProvider>
       </StatusBarProvider>
     </section>
   );
