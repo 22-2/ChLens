@@ -91,6 +91,11 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     setResponses,
     messageProtocol,
   } = useThreadData(tabId, page, rootRef, refreshController);
+  const clearFilter = useCallback(() => {
+    // 変更理由: フィルタバーを閉じた後に再表示したとき、前回の絞り込みだけが
+    // 残っている状態を避け、本文と操作欄の状態を一致させる。
+    setFilter("all");
+  }, [setFilter]);
   const { controller: commentOverlayController, snapshot: commentOverlaySnapshot } =
     useCommentOverlay();
   const { ownResNums, handleWriteHistoryAdded, handleWriteHistoryRemoved } = useOwnResTracking({
@@ -200,6 +205,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     isActive,
     searchQuery,
     setSearchQuery,
+    clearFilter,
     hasActiveFilter: filter !== "all",
   });
 

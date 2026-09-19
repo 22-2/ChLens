@@ -16,6 +16,7 @@ interface UseThreadTopBarParams {
   isActive: boolean;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
+  clearFilter: () => void;
   hasActiveFilter?: boolean;
 }
 
@@ -32,6 +33,7 @@ export function useThreadTopBar({
   isActive,
   searchQuery,
   setSearchQuery,
+  clearFilter,
   hasActiveFilter = false,
 }: UseThreadTopBarParams): UseThreadTopBarResult {
   const [activeTopBar, setActiveTopBar] = useState<TopBarMode>(() =>
@@ -43,8 +45,11 @@ export function useThreadTopBar({
     if (searchQuery) {
       setSearchQuery("");
     }
+    // 変更理由: 手動でフィルタバーを閉じた後に見えているレスと内部の絞り込み状態が
+    // 食い違わないよう、検索語とフィルタ条件を同じクローズ操作で解除する。
+    clearFilter();
     setActiveTopBar("none");
-  }, [searchQuery, setSearchQuery]);
+  }, [clearFilter, searchQuery, setSearchQuery]);
 
   const closeTopBarPreservingFilter = useCallback(() => {
     // 変更理由: ホイールで閉じる操作はツールバーの表示だけを戻し、
