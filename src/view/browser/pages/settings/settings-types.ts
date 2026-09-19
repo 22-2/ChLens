@@ -12,6 +12,7 @@ export type SettingsSectionId =
   | "data";
 
 export type SettingsSupplementaryPanelId =
+  | "titleBarButtonSettings"
   | "externalIntegration"
   | "dangerZone"
   | "dataManagement"

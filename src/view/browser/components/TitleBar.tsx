@@ -3,7 +3,7 @@ import React, { useCallback, useState } from "react";
 import { TabContextMenu } from "src/view/browser/components/TabContextMenu";
 import { useTabBarOrientation } from "src/view/browser/hooks/use-tab-bar-orientation";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
-import { useTitleBarNavigationEnabled } from "src/view/browser/hooks/use-title-bar-navigation-setting";
+import { useTitleBarButtonSettings } from "src/view/browser/hooks/use-title-bar-navigation-setting";
 import { canGoBack, canGoForward } from "src/view/browser/types";
 import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 
@@ -16,13 +16,10 @@ export const TitleBar: React.FC = () => {
   const { activeTab, currentPage, dispatch, paneId } = useTabStore();
   const title = currentPage.title || "read.crx 2";
   const tabBarOrientation = useTabBarOrientation();
-  const showTitleBarNavigation = useTitleBarNavigationEnabled();
+  const { backEnabled, forwardEnabled, refreshEnabled } = useTitleBarButtonSettings();
   // 変更理由: 垂直モードでは更新ボタンをタイトルバー左端に置き、タブバーの上部を空ける。
   // 水平モードではタブバー側に更新があるため左端は空のまま中央配置を保つ。
   const showLeadingRefresh = tabBarOrientation === "vertical";
-  // 変更理由: 履歴移動はタブごとの状態に依存するため、タイトルバーの共通表示でも
-  // アクティブタブの履歴だけを参照し、無効な操作を見た目と実動作で一致させる。
-  const showLeadingNavigation = showLeadingRefresh && showTitleBarNavigation;
   const canNavigateBack = canGoBack(activeTab);
   const canNavigateForward = canGoForward(activeTab);
   const canRefresh = isPageRefreshable(currentPage);
@@ -41,41 +38,45 @@ export const TitleBar: React.FC = () => {
   return (
     <header className="title-bar" data-testid="title-bar">
       <div className="title-bar__leading" data-testid="title-bar-leading">
-        {showLeadingNavigation && (
-          <>
-            <button
-              type="button"
-              className="title-bar__navigation"
-              disabled={!canNavigateBack}
-              onClick={() => dispatch({ type: "GO_BACK" })}
-              title="戻る"
-              aria-label="戻る"
-            >
-              <ArrowLeft size={14} />
-            </button>
-            <button
-              type="button"
-              className="title-bar__navigation"
-              disabled={!canNavigateForward}
-              onClick={() => dispatch({ type: "GO_FORWARD" })}
-              title="進む"
-              aria-label="進む"
-            >
-              <ArrowRight size={14} />
-            </button>
-          </>
-        )}
         {showLeadingRefresh && (
-          <button
-            type="button"
-            className="title-bar__refresh"
-            disabled={!canRefresh}
-            onClick={() => dispatch({ type: "RELOAD" })}
-            title="更新"
-            aria-label="更新"
-          >
-            <RotateCw size={14} />
-          </button>
+          <>
+            {backEnabled && (
+              <button
+                type="button"
+                className="title-bar__navigation"
+                disabled={!canNavigateBack}
+                onClick={() => dispatch({ type: "GO_BACK" })}
+                title="戻る"
+                aria-label="戻る"
+              >
+                <ArrowLeft size={14} />
+              </button>
+            )}
+            {forwardEnabled && (
+              <button
+                type="button"
+                className="title-bar__navigation"
+                disabled={!canNavigateForward}
+                onClick={() => dispatch({ type: "GO_FORWARD" })}
+                title="進む"
+                aria-label="進む"
+              >
+                <ArrowRight size={14} />
+              </button>
+            )}
+            {refreshEnabled && (
+              <button
+                type="button"
+                className="title-bar__refresh"
+                disabled={!canRefresh}
+                onClick={() => dispatch({ type: "RELOAD" })}
+                title="更新"
+                aria-label="更新"
+              >
+                <RotateCw size={14} />
+              </button>
+            )}
+          </>
         )}
       </div>
       <div

@@ -7,6 +7,7 @@ import {
   Pause,
   RefreshCw,
   Reply,
+  RotateCw,
   Search,
   SkipForward,
   Type,
@@ -295,10 +296,18 @@ export function useThreadResContextMenu({
           : []),
       ];
 
-      // 変更理由: 戻る・進む・更新は共通ヘッダーへ移し、レス固有メニュー内で更新項目を
-      // 重複表示しない。共通の更新操作からもスレッド再取得とsubject.txt再確認を実行する。
       // ID系メニューの前後に分割。ID系は通常「コピー」と「返信」の間に配置される。
       const itemsBeforeIdSlot: ContextMenuItem[] = [
+        {
+          id: "refresh-thread",
+          label: "スレッドを更新",
+          icon: <RotateCw size={14} />,
+          onSelect: () => {
+            // 変更理由: 共通ヘッダーの更新は一般的な再読み込みを担う一方、
+            // レス固有メニューの明示更新ではsubject.txtも再確認してdat落ちを判定する。
+            void fetchThread(true);
+          },
+        },
         {
           id: "auto-refresh",
           label: isAutoRefreshEnabled ? "スレッドの自動更新を停止" : "スレッドを自動更新",

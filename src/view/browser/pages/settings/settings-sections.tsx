@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 import { isTauriRuntime } from "src/app/platform/runtime";
 import { container } from "src/service-container/index";
-import { TITLE_BAR_NAVIGATION_CONFIG_KEY } from "src/view/browser/hooks/use-title-bar-navigation-setting";
 import {
   buildFieldSchema,
   buildUiSchema,
@@ -138,12 +137,6 @@ const ALL_SETTINGS_SECTIONS = [
         description: "タイトルを隠してアイコンのみの細幅で表示します。",
       },
       {
-        kind: "boolean",
-        key: TITLE_BAR_NAVIGATION_CONFIG_KEY,
-        title: "タイトルバーに戻る・進むボタンを表示する",
-        description: "垂直タブバー使用時、更新ボタンの左側に戻る・進むボタンを表示します。",
-      },
-      {
         kind: "string",
         key: "new_tab_page_board_url",
         title: "指定の板 URL",
@@ -183,6 +176,9 @@ const ALL_SETTINGS_SECTIONS = [
       //   widget: "radio",
       // },
     ],
+    {
+      supplementaryPanelIds: ["titleBarButtonSettings"],
+    },
   ),
   // 変更理由: サイト・板設定は通常の全体設定フォームとは継承UIが異なるため、
   // 専用パネルへ閉じ込めて項目追加時のフォーム分岐を増やさない。

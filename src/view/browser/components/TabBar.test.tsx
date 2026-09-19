@@ -988,6 +988,12 @@ describe("TabBar vertical", () => {
     expect(container.querySelector(".tab-bar__collapse")).not.toBeNull();
   });
 
+  it("垂直ではタブ上の閉じるボタンを表示しない", () => {
+    const { container } = render(<TabBar orientation="vertical" />);
+
+    expect(container.querySelector(".tab__close")).toBeNull();
+  });
+
   it("垂直では追加ボタンが最終タブの直後にある", () => {
     const { container } = render(<TabBar orientation="vertical" />);
     const tabList = container.querySelector(".tab-list") as HTMLDivElement;
