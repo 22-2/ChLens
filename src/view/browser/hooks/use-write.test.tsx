@@ -50,6 +50,7 @@ vi.mock("src/view/browser/utils/thread-write-sync", () => ({
 import { useWrite } from "src/view/browser/hooks/use-write";
 
 const THREAD_URL = "https://example.com/test/read.cgi/software/1/";
+const NEXT_THREAD_URL = "https://example.com/test/read.cgi/software/2/";
 
 describe("useWrite", () => {
   beforeEach(() => {
@@ -106,5 +107,25 @@ describe("useWrite", () => {
     });
 
     expect(result.current.statusText).toBe(`書き込み失敗: ${errorMessage}`);
+  });
+
+  it("次スレへ移動したら旧スレの書き込み状態を引き継がない", () => {
+    let threadUrl = THREAD_URL;
+    const { result, rerender } = renderHook(() => useWrite(threadUrl));
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          data: { type: "error", message: "旧スレの投稿エラー" },
+        }),
+      );
+    });
+    expect(result.current.status).toBe("error");
+
+    threadUrl = NEXT_THREAD_URL;
+    rerender();
+
+    expect(result.current.status).toBe("idle");
+    expect(result.current.statusText).toBe("");
   });
 });

@@ -207,6 +207,7 @@ export function useWrite(threadUrl: string): UseWriteResult {
   const pendingSubmittedWriteRef = useRef<PendingWritePayload | null>(null);
   const submitWatchdogTimerRef = useRef<number | null>(null);
   const statusRef = useRef<WriteStatus>("idle");
+  const previousThreadUrlRef = useRef(threadUrl);
 
   useEffect(() => {
     statusRef.current = status;
@@ -238,6 +239,27 @@ export function useWrite(threadUrl: string): UseWriteResult {
   }, [clearSubmitWatchdog]);
 
   useEffect(() => clearSubmitWatchdog, [clearSubmitWatchdog]);
+
+  useEffect(() => {
+    const previousThreadUrl = previousThreadUrlRef.current;
+    previousThreadUrlRef.current = threadUrl;
+    if (previousThreadUrl === threadUrl) {
+      return;
+    }
+
+    // 変更理由: 下部パネルは次スレへ移動しても同じコンポーネントを使い続けるため、
+    // 旧スレの確認・送信待ち状態を残すと新スレの投稿ボタンが無効になったり、
+    // 旧iframeの結果を新スレの結果として表示したりする。本文の下書きは残しつつ、
+    // スレッドに紐づく通信状態だけを新しい送信先へ切り替える。
+    clearSubmitWatchdog();
+    pendingSubmittedWriteRef.current = null;
+    setStatus("idle");
+    setStatusText("");
+
+    if (!isTauriRuntime() && iframeRef.current) {
+      iframeRef.current.src = "about:blank";
+    }
+  }, [clearSubmitWatchdog, threadUrl]);
 
   const canSubmit = status === "idle" && threadUrl !== "" && message.trim() !== "";
 
