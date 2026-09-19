@@ -22,6 +22,12 @@ describe("normalizeBoardUrl", () => {
       "https://foo.5ch.io/software/",
     );
   });
+
+  it("既読情報用のワイルドカードホストを板URLとして受け入れない", () => {
+    expect(normalizeBoardUrl("https://%2A.5ch.io/alone/", { requireCompatibleHost: true })).toBe(
+      null,
+    );
+  });
 });
 
 describe("normalizeBBSMenus", () => {

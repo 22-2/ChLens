@@ -47,6 +47,12 @@ export function normalizeBoardUrl(
     normalized.search = "";
     normalized.hash = "";
 
+    // 5chの既読情報はサーバー横断検索用に *.5ch.io へ保存されるが、
+    // ワイルドカードは実在する板ホストではないため一覧へ表示しない。
+    if (normalized.hostname.includes("*") || normalized.hostname.includes("%")) {
+      return null;
+    }
+
     if (options.requireCompatibleHost && !isCompatibleBoardHost(normalized.hostname)) {
       return null;
     }

@@ -273,6 +273,32 @@ describe("OtherBoardsCollector.collect", () => {
     expect(menus).toHaveLength(0);
   });
 
+  it("旧ReadState・履歴の収集を無効にすると明示記録だけを使う", async () => {
+    const getAllReadStates = vi
+      .fn()
+      .mockResolvedValue([{ url: "https://foo.5ch.io/test/read.cgi/old/1000000001/" }]);
+    const getUniqueHistory = vi
+      .fn()
+      .mockResolvedValue([{ url: "https://foo.5ch.io/test/read.cgi/history/1000000002/" }]);
+    const deps = makeDeps({
+      includeLegacySources: false,
+      getAllReadStates,
+      getUniqueHistory,
+      getOpenedBoards: vi
+        .fn()
+        .mockResolvedValue([{ url: "https://foo.5ch.io/current/", title: "現在の板" }]),
+    });
+    const collector = new OtherBoardsCollector(deps);
+    const menus: BBSMenu[] = [];
+
+    await collector.collect(menus);
+
+    const boards = menus[0].categories.flatMap((category) => category.boards);
+    expect(boards).toEqual([{ name: "現在の板", url: "https://foo.5ch.io/current/" }]);
+    expect(getAllReadStates).not.toHaveBeenCalled();
+    expect(getUniqueHistory).not.toHaveBeenCalled();
+  });
+
   it("履歴の取得が失敗してもエラーをスローせず処理を続ける", async () => {
     const deps = makeDeps({
       getAllReadStates: vi

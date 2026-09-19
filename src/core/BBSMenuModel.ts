@@ -47,6 +47,9 @@ export class BBSMenuModel {
     });
 
     this._collector = new OtherBoardsCollector({
+      // 変更理由: ReadStateの*.5ch.ioや古い閲覧履歴は板一覧の正本ではなく、
+      // 「一度開いた板」へ過去の板を再注入していたため、明示記録だけを採用する。
+      includeLegacySources: false,
       getOpenedBoards: () => {
         const raw = container.config.get(OPENED_BOARDS_CONFIG_KEY);
         if (!raw) {

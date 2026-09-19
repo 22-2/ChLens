@@ -167,6 +167,18 @@ export function useBoardListLogic() {
     };
   }, []);
 
+  useEffect(() => {
+    const handleBBSMenuUpdated = () => {
+      // 設定画面からのリフレッシュ結果を、すでに開いている板一覧にも反映する。
+      void fetchMenu(false);
+    };
+
+    container.message.on("bbs_menu_updated", handleBBSMenuUpdated);
+    return () => {
+      container.message.off("bbs_menu_updated", handleBBSMenuUpdated);
+    };
+  }, [fetchMenu]);
+
   // ─── 初期ロード ──────────────────────────────────────────────────────────
 
   useEffect(() => {

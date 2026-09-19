@@ -25,6 +25,8 @@ export interface IOtherBoardsDeps {
   getOpenedBoards(): Promise<OpenedBoardEntry[]> | OpenedBoardEntry[];
   getAllReadStates(): Promise<ReadStateEntry[]>;
   getUniqueHistory(): Promise<HistoryEntry[]>;
+  /** 旧データ互換のReadState・履歴収集を有効にする。既定値はtrue。 */
+  includeLegacySources?: boolean;
   getCachedBoardTitles(): Record<string, string>;
   saveBoardTitles(titles: Record<string, string>): void;
   resolveBoardTitle(boardUrl: URL): Promise<string | null>;
@@ -117,41 +119,45 @@ export class OtherBoardsCollector {
       console.error("Failed to fetch opened boards for Other category", e);
     }
 
-    // ReadStateから収集
-    try {
-      const readStates = await this.deps.getAllReadStates();
-      for (const rs of readStates) {
-        try {
-          let boardUrl = rs.board_url;
-          if (!boardUrl) {
-            const u = new URL(rs.url);
-            if (u.guessType().type !== "thread") continue;
-            boardUrl = u.toBoard().href;
+    // 既存版との互換用にReadState・履歴からも収集できるが、
+    // 通常の板一覧では明示的に開いた板の記録だけを正本として使う。
+    if (this.deps.includeLegacySources !== false) {
+      // ReadStateから収集
+      try {
+        const readStates = await this.deps.getAllReadStates();
+        for (const rs of readStates) {
+          try {
+            let boardUrl = rs.board_url;
+            if (!boardUrl) {
+              const u = new URL(rs.url);
+              if (u.guessType().type !== "thread") continue;
+              boardUrl = u.toBoard().href;
+            }
+            addIfNew(boardUrl, boardUrl);
+          } catch {
+            // 不正なURLは無視
           }
-          addIfNew(boardUrl, boardUrl);
-        } catch {
-          // 不正なURLは無視
         }
+      } catch (e) {
+        console.error("Failed to fetch read states for Other category", e);
       }
-    } catch (e) {
-      console.error("Failed to fetch read states for Other category", e);
-    }
 
-    // 履歴から収集
-    try {
-      const historyEntries = await this.deps.getUniqueHistory();
-      for (const entry of historyEntries) {
-        try {
-          const u = new URL(entry.url);
-          if (u.guessType().type !== "thread") continue;
-          const boardUrl = u.toBoard().href;
-          addIfNew(boardUrl, entry.boardTitle || boardUrl);
-        } catch {
-          // 不正なURLは無視
+      // 履歴から収集
+      try {
+        const historyEntries = await this.deps.getUniqueHistory();
+        for (const entry of historyEntries) {
+          try {
+            const u = new URL(entry.url);
+            if (u.guessType().type !== "thread") continue;
+            const boardUrl = u.toBoard().href;
+            addIfNew(boardUrl, entry.boardTitle || boardUrl);
+          } catch {
+            // 不正なURLは無視
+          }
         }
+      } catch (e) {
+        console.error("Failed to fetch history for Other category", e);
       }
-    } catch (e) {
-      console.error("Failed to fetch history for Other category", e);
     }
 
     return otherBoards;

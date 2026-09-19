@@ -92,10 +92,13 @@ export function useSettingsMaintenanceActions({
 
     setIsBbsMenuRefreshing(true);
     try {
-      // 通常メニューは forceReload で再取得して上書きしつつ、
-      // 「その他」は履歴/既読由来の収集で再構成されるため実質維持される。
+      // 通常メニューは forceReload で再取得して上書きし、
+      // 「その他」は明示的に開いた板の記録を正規化して再構成する。
       const result = await container.bbsMenu.get(true);
       if (result.status === "success") {
+        // 変更理由: 板一覧ページは設定画面と別コンポーネントで保持されるため、
+        // キャッシュ更新だけでは表示中の古い「その他」が残る。
+        container.message.send("bbs_menu_updated");
         container.toast.success("BBSMENUをリフレッシュしました");
       } else {
         container.toast.error(result.message ?? "BBSMENUの更新に失敗しました");

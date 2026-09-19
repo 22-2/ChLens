@@ -645,7 +645,7 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
                             >
                               URLチェック
                             </Button>
-                            <Tooltip label="設定したBBSMENUを強制取得してキャッシュを更新し、開いた板の外部サイトや重複した板も整理します。">
+                            <Tooltip label="設定したBBSMENUを強制取得してキャッシュを更新します。「一度開いた板」は明示的な記録だけから再構成し、外部サイトや重複を除外します。">
                               <span>
                                 <Button
                                   onClick={() => void maintenanceActions.handleBBSMenuRefresh()}
