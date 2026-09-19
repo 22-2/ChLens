@@ -1,7 +1,7 @@
 # ChLens アイコン試作
 
 白・オフホワイト・チャコールを中心に、単純な図形だけで作った試作です。
-本番の拡張機能・Tauriアイコンにはまだ適用していません。
+角張ったC字案を採用し、拡張機能とTauriのアイコンへ反映済みです。
 
 ## 色
 
@@ -17,3 +17,9 @@
 - `chlens-minimal-focus.svg`: フォーカス枠と焦点を表す円
 
 いずれも、色を増やす前に16pxで記号として成立するか確認できるよう、装飾や文字を入れていません。
+
+## 反映先
+
+- 拡張機能: `img/read.crx_16x16.png` から `img/read.crx_128x128.png`
+- Tauri: `src-tauri/icons/` のPNG・ICO・ICNS・Windows用ロゴ
+- 元データ: `chlens-minimal-c-square.svg`
