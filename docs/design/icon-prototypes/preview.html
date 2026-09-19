@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ChLens アイコン試作</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: system-ui, sans-serif;
+        background: #f5f5f0;
+        color: #181818;
+      }
+      body { margin: 0; padding: 32px; }
+      main { display: grid; gap: 24px; grid-template-columns: repeat(3, minmax(180px, 1fr)); max-width: 760px; }
+      article { display: grid; gap: 12px; justify-items: center; }
+      .icon { width: 192px; height: 192px; }
+      .sizes { display: flex; align-items: end; gap: 12px; height: 40px; }
+      .sizes img { image-rendering: auto; }
+      .s16 { width: 16px; height: 16px; }
+      .s32 { width: 32px; height: 32px; }
+      .s64 { width: 64px; height: 64px; }
+      h1 { font-size: 20px; margin: 0 0 24px; }
+      h2 { font-size: 15px; margin: 0; }
+      p { color: #666; font-size: 12px; margin: 0; }
+    </style>
+  </head>
+  <body>
+    <h1>ChLens アイコン試作</h1>
+    <main>
+      <article>
+        <img class="icon" src="./chlens-minimal-c.svg" alt="C字レンズ案" />
+        <h2>C字レンズ</h2>
+        <p>ChLensのCと焦点</p>
+        <div class="sizes">
+          <img class="s16" src="./chlens-minimal-c.svg" alt="16px" />
+          <img class="s32" src="./chlens-minimal-c.svg" alt="32px" />
+          <img class="s64" src="./chlens-minimal-c.svg" alt="64px" />
+        </div>
+      </article>
+      <article>
+        <img class="icon" src="./chlens-minimal-stack.svg" alt="板の積層案" />
+        <h2>板の積層</h2>
+        <p>板と焦点</p>
+        <div class="sizes">
+          <img class="s16" src="./chlens-minimal-stack.svg" alt="16px" />
+          <img class="s32" src="./chlens-minimal-stack.svg" alt="32px" />
+          <img class="s64" src="./chlens-minimal-stack.svg" alt="64px" />
+        </div>
+      </article>
+      <article>
+        <img class="icon" src="./chlens-minimal-focus.svg" alt="フォーカス枠案" />
+        <h2>フォーカス枠</h2>
+        <p>見る範囲と焦点</p>
+        <div class="sizes">
+          <img class="s16" src="./chlens-minimal-focus.svg" alt="16px" />
+          <img class="s32" src="./chlens-minimal-focus.svg" alt="32px" />
+          <img class="s64" src="./chlens-minimal-focus.svg" alt="64px" />
+        </div>
+      </article>
+    </main>
+  </body>
+</html>
