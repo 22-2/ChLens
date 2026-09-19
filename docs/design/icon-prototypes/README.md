@@ -12,6 +12,7 @@
 ## 案
 
 - `chlens-minimal-c.svg`: 開いたC字のフレームと焦点を表す円
+- `chlens-minimal-c-square.svg`: 水平・垂直の辺を増やした角張ったC字案
 - `chlens-minimal-stack.svg`: 重なった板と焦点を表す円
 - `chlens-minimal-focus.svg`: フォーカス枠と焦点を表す円
 

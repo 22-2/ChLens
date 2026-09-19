@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-labelledby="title">
+  <!-- 水平・垂直の辺を主にして、曲線案より小サイズで輪郭を読み取りやすくする。 -->
+  <title id="title">ChLens 最小構成 角張ったC字レンズ案</title>
+  <rect width="128" height="128" rx="28" fill="#181818"/>
+  <path d="M95 30H43c-8 0-14 6-14 14v40c0 8 6 14 14 14h52" fill="none" stroke="#F5F5F0" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="76" cy="64" r="9" fill="#A3A3A3"/>
+</svg>
