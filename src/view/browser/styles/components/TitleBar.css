@@ -23,8 +23,9 @@
   display: none;
 }
 
-/* 変更理由: 垂直モードでは更新ボタンを左端に置く。
-   水平モードでは空のまま中央タイトルの配置を保つ。 */
+/* 変更理由: 垂直モードでは履歴移動と更新をタイトルバー左端へまとめ、
+   水平モードでは従来どおりタブバー側の操作を使う。 */
+.title-bar__navigation,
 .title-bar__refresh {
   display: flex;
   align-items: center;
@@ -42,11 +43,13 @@
     color var(--sys-duration-fast);
 }
 
+.title-bar__navigation:hover:not(:disabled),
 .title-bar__refresh:hover:not(:disabled) {
   background: var(--sys-color-tab-strip-hover);
   color: var(--sys-color-text);
 }
 
+.title-bar__navigation:disabled,
 .title-bar__refresh:disabled {
   color: var(--sys-color-text-disabled);
   cursor: default;

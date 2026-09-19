@@ -21,7 +21,7 @@ const { dispatchMock, mocks } = vi.hoisted(() => ({
           title: "Current Thread",
           threadUrl: "https://egg.5ch.net/test/read.cgi/software/1/",
         },
-      ],
+      ] as Page[],
       currentIndex: 0,
       pinned: false,
       reloadKey: 0,
@@ -62,9 +62,17 @@ const { orientationHolder } = vi.hoisted(() => ({
   orientationHolder: { value: "horizontal" },
 }));
 
+const { titleBarNavigationHolder } = vi.hoisted(() => ({
+  titleBarNavigationHolder: { value: true },
+}));
+
 vi.mock("src/view/browser/hooks/use-tab-bar-orientation", () => ({
   // 変更理由: タイトルバー左端の更新ボタンは垂直モードだけで出すため、方向指定で切り替える。
   useTabBarOrientation: () => orientationHolder.value,
+}));
+
+vi.mock("src/view/browser/hooks/use-title-bar-navigation-setting", () => ({
+  useTitleBarNavigationEnabled: () => titleBarNavigationHolder.value,
 }));
 
 describe("TitleBar", () => {
@@ -79,6 +87,15 @@ describe("TitleBar", () => {
       threadUrl: "https://egg.5ch.net/test/read.cgi/software/1/",
     };
     orientationHolder.value = "horizontal";
+    titleBarNavigationHolder.value = true;
+    mocks.activeTab.history = [
+      {
+        type: "thread",
+        title: "Current Thread",
+        threadUrl: "https://egg.5ch.net/test/read.cgi/software/1/",
+      },
+    ];
+    mocks.activeTab.currentIndex = 0;
     dispatchMock.mockReset();
   });
 
@@ -116,6 +133,52 @@ describe("TitleBar", () => {
     fireEvent.click(refreshButton);
 
     expect(dispatchMock).toHaveBeenCalledWith({ type: "RELOAD" });
+  });
+
+  it("垂直モードでは更新ボタンの左側に戻る・進むを表示する", () => {
+    orientationHolder.value = "vertical";
+    mocks.activeTab.history = [
+      {
+        type: "home",
+        title: "ホーム",
+      },
+      {
+        type: "thread",
+        title: "Current Thread",
+        threadUrl: "https://egg.5ch.net/test/read.cgi/software/1/",
+      },
+      {
+        type: "settings",
+        title: "設定",
+      },
+    ];
+    mocks.activeTab.currentIndex = 1;
+
+    render(<TitleBar />);
+
+    const leading = screen.getByTestId("title-bar-leading");
+    expect([...leading.querySelectorAll("button")].map((button) => button.title)).toEqual([
+      "戻る",
+      "進む",
+      "更新",
+    ]);
+
+    fireEvent.click(screen.getByRole("button", { name: "戻る" }));
+    fireEvent.click(screen.getByRole("button", { name: "進む" }));
+
+    expect(dispatchMock).toHaveBeenNthCalledWith(1, { type: "GO_BACK" });
+    expect(dispatchMock).toHaveBeenNthCalledWith(2, { type: "GO_FORWARD" });
+  });
+
+  it("設定でタイトルバーの戻る・進むを非表示にできる", () => {
+    orientationHolder.value = "vertical";
+    titleBarNavigationHolder.value = false;
+    render(<TitleBar />);
+
+    const leading = screen.getByTestId("title-bar-leading");
+    expect(leading.querySelector('[aria-label="戻る"]')).toBeNull();
+    expect(leading.querySelector('[aria-label="進む"]')).toBeNull();
+    expect(leading.querySelector('[aria-label="更新"]')).toBeInTheDocument();
   });
 
   it("水平モードでは左端を空のままにする", () => {

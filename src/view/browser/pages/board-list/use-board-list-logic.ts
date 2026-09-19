@@ -86,7 +86,7 @@ function usePersistedSet(
  * - 開かれたアコーディオンの状態管理
  * - 一度開いた板のトラッキング
  */
-export function useBoardListLogic() {
+export function useBoardListLogic(refreshKey = 0) {
   const [categories, setCategories] = useState<BBSMenu[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -182,8 +182,10 @@ export function useBoardListLogic() {
   // ─── 初期ロード ──────────────────────────────────────────────────────────
 
   useEffect(() => {
-    void fetchMenu();
-  }, [fetchMenu]);
+    // 変更理由: コンテキストメニューやタイトルバーの更新操作はRELOADでreloadKeyを進めるため、
+    // 初回だけキャッシュを使い、明示的な更新時だけBBSメニューを強制取得する。
+    void fetchMenu(refreshKey > 0);
+  }, [fetchMenu, refreshKey]);
 
   // ─── ハンドラ ────────────────────────────────────────────────────────────
 

@@ -84,6 +84,7 @@ import {
   type OmnibarHistorySource,
   type OmnibarSuggestion,
 } from "src/view/browser/utils/omnibar";
+import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
 
 interface MenuPosition {
@@ -1092,13 +1093,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         ref={refreshButtonRef}
         type="button"
         className="nav-bar__menu-action"
-        disabled={
-          currentPage.type !== "thread" &&
-          currentPage.type !== "threadList" &&
-          currentPage.type !== "historyList" &&
-          currentPage.type !== "writeHistoryList" &&
-          currentPage.type !== "logList"
-        }
+        disabled={!isPageRefreshable(currentPage)}
         onClick={handleMenuRefresh}
         onContextMenu={handleRefreshContextMenu}
         title="更新"

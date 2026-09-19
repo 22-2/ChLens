@@ -30,6 +30,7 @@ interface ContextMenuHandlerProps {
   onRemoveBoard: (url: string) => void;
   onRemoveMenu: (menuName: string) => void;
   onRemoveCategory: (menuName: string, categoryName: string) => void;
+  header?: React.ReactNode;
   onClose: () => void;
 }
 
@@ -42,6 +43,7 @@ export const ContextMenuHandler: React.FC<ContextMenuHandlerProps> = ({
   onRemoveBoard,
   onRemoveMenu,
   onRemoveCategory,
+  header,
   onClose,
 }) => {
   const contextMenuItems = useMemo<ContextMenuItem[]>(() => {
@@ -85,5 +87,13 @@ export const ContextMenuHandler: React.FC<ContextMenuHandlerProps> = ({
     return null;
   }
 
-  return <ContextMenu x={state.x} y={state.y} items={contextMenuItems} onClose={onClose} />;
+  return (
+    <ContextMenu
+      x={state.x}
+      y={state.y}
+      items={contextMenuItems}
+      header={header}
+      onClose={onClose}
+    />
+  );
 };

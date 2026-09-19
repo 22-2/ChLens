@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { isTauriRuntime } from "src/app/platform/runtime";
 import { container } from "src/service-container/index";
+import { TITLE_BAR_NAVIGATION_CONFIG_KEY } from "src/view/browser/hooks/use-title-bar-navigation-setting";
 import {
   buildFieldSchema,
   buildUiSchema,
@@ -135,6 +136,12 @@ const ALL_SETTINGS_SECTIONS = [
         key: "tab_bar_collapsed",
         title: "垂直タブバーを簡易表示にする",
         description: "タイトルを隠してアイコンのみの細幅で表示します。",
+      },
+      {
+        kind: "boolean",
+        key: TITLE_BAR_NAVIGATION_CONFIG_KEY,
+        title: "タイトルバーに戻る・進むボタンを表示する",
+        description: "垂直タブバー使用時、更新ボタンの左側に戻る・進むボタンを表示します。",
       },
       {
         kind: "string",

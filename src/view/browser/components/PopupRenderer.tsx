@@ -19,6 +19,9 @@ interface PopupRendererProps {
   idPopupItems: IdPopupItem[];
   treePopupItems: TreePopupItem[];
   contextMenuItems: ContextMenuPopupItem[];
+  // 変更理由: レス本体・IDポップアップ・返信ツリーから開くメニューでも、
+  // 同じナビゲーション操作をメニュー上段へ表示できるよう、メニュー単位で見出しを生成する。
+  contextMenuHeader?: (menu: ContextMenuPopupItem) => React.ReactNode;
   messageProtocol: string;
   repIndex: Map<number, Set<number>>;
   idIndex: Map<string, Set<number>>;
@@ -91,6 +94,7 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
   idPopupItems,
   treePopupItems,
   contextMenuItems,
+  contextMenuHeader,
   messageProtocol,
   repIndex,
   idIndex,
@@ -344,6 +348,7 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
           x={menu.x}
           y={menu.y}
           items={menu.payload.items}
+          header={contextMenuHeader?.(menu)}
           onClose={getStablePopupHandler(`close:${menu.id}`, () => () => onClosePopupById(menu.id))}
           popupId={menu.id}
           isPopupDescendantOf={isPopupDescendantOf}

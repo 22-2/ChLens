@@ -14,6 +14,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { stringifyNgDslValue } from "src/core/ngDsl";
 import { container } from "src/service-container/index";
 import type { IReadState, IThread } from "src/service-container/interfaces";
+import { ContextMenuNavigationActions } from "src/view/browser/components/ContextMenuNavigationActions";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import {
   type DataTableSection,
@@ -602,6 +603,29 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
     ];
   }, [contextMenuState, openNgDialog]);
 
+  const closeContextMenu = useCallback(() => setContextMenuState(null), []);
+  const contextMenuNavigationActions = contextMenuState ? (
+    <ContextMenuNavigationActions
+      canGoBack={activeTab.currentIndex > 0}
+      canGoForward={activeTab.currentIndex < activeTab.history.length - 1}
+      canRefresh={!loading}
+      onBack={() => {
+        dispatch({ type: "GO_BACK" });
+        closeContextMenu();
+      }}
+      onForward={() => {
+        dispatch({ type: "GO_FORWARD" });
+        closeContextMenu();
+      }}
+      onRefresh={() => {
+        // 変更理由: 下部パネルは現在タブのページ再マウントではなく、パネル自身の板URLで
+        // 取得しているため、RELOADではなく一覧取得を直接実行する。
+        void fetchThreads();
+        closeContextMenu();
+      }}
+    />
+  ) : null;
+
   const refreshMenuItems = useMemo<ContextMenuItem[]>(
     () => [
       {
@@ -749,7 +773,8 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
           x={contextMenuState.x}
           y={contextMenuState.y}
           items={contextMenuItems}
-          onClose={() => setContextMenuState(null)}
+          header={contextMenuNavigationActions}
+          onClose={closeContextMenu}
         />
       )}
       {refreshMenuPosition && (

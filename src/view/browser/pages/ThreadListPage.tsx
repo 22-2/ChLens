@@ -6,6 +6,7 @@ import { stringifyNgDslValue } from "src/core/ngDsl";
 import { URL as ChURL } from "src/core/URL";
 import { container } from "src/service-container/index";
 import type { IReadState, IThread } from "src/service-container/interfaces";
+import { ContextMenuNavigationActions } from "src/view/browser/components/ContextMenuNavigationActions";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import {
   type DataTableSection,
@@ -50,11 +51,17 @@ import {
   usePaneId,
   useTabDispatch,
   useTabPanes,
+  useTabStore,
   useTabViewState,
 } from "src/view/browser/hooks/use-tab-store";
 import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 import { parseOpenedBoardEntries } from "src/view/browser/pages/board-list/board-list-utils";
-import { getCurrentPage, type ThreadListPage as ThreadListPageType } from "src/view/browser/types";
+import {
+  canGoBack,
+  canGoForward,
+  getCurrentPage,
+  type ThreadListPage as ThreadListPageType,
+} from "src/view/browser/types";
 import { ContextMenu, ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import {
@@ -62,6 +69,7 @@ import {
   isAutoRefreshEnabledForPage,
 } from "src/view/browser/utils/auto-refresh-pages";
 import { copyText, formatMarkdownLink } from "src/view/browser/utils/clipboard";
+import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 import { SCOPED_SETTINGS_CONFIG_KEY } from "src/view/browser/utils/scoped-settings";
 import { ThreadListView } from "src/view/shared/ThreadListView";
 
@@ -192,6 +200,7 @@ export const ThreadListPage: React.FC<Props> = ({
   const fallbackScrollContainerRef = useRef<HTMLDivElement>(null);
   const effectiveScrollContainerRef = scrollContainerRef ?? fallbackScrollContainerRef;
   const dispatch = useTabDispatch();
+  const { activeTab } = useTabStore();
   const { state: persistedViewState, update: updateViewState } = useTabViewState(tabId, page);
   const persistedSearchQuery = persistedViewState.searchQuery;
   const persistedSortColumn = persistedViewState.sortColumn;
@@ -902,6 +911,27 @@ export const ThreadListPage: React.FC<Props> = ({
     return items;
   }, [contextMenuState, openNgDialog]);
 
+  const closeContextMenu = useCallback(() => setContextMenuState(null), []);
+  const contextMenuNavigationActions = contextMenuState ? (
+    <ContextMenuNavigationActions
+      canGoBack={canGoBack(activeTab)}
+      canGoForward={canGoForward(activeTab)}
+      canRefresh={isPageRefreshable(page)}
+      onBack={() => {
+        dispatch({ type: "GO_BACK" });
+        closeContextMenu();
+      }}
+      onForward={() => {
+        dispatch({ type: "GO_FORWARD" });
+        closeContextMenu();
+      }}
+      onRefresh={() => {
+        dispatch({ type: "RELOAD" });
+        closeContextMenu();
+      }}
+    />
+  ) : null;
+
   const threadListNgCount = useMemo(
     () => threads.filter((thread) => thread.ng != null || thread.demoted != null).length,
     [threads],
@@ -1070,7 +1100,8 @@ export const ThreadListPage: React.FC<Props> = ({
           x={contextMenuState.x}
           y={contextMenuState.y}
           items={contextMenuItems}
-          onClose={() => setContextMenuState(null)}
+          header={contextMenuNavigationActions}
+          onClose={closeContextMenu}
         />
       )}
       {ngDialogThread && (
