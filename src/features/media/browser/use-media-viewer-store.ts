@@ -24,10 +24,11 @@ function clampViewerScale(scale: number): number {
 
 interface MediaViewerStoreState {
   viewer: ViewerState | null;
+  viewerScopeId: string | null;
   viewerScale: number;
   isLoading: boolean;
-  openMediaFromUrl: (url: string, resImages?: string[]) => void;
-  closeViewer: () => void;
+  openMediaFromUrl: (url: string, resImages: string[] | undefined, scopeId: string) => void;
+  closeViewer: (scopeId: string) => void;
   navigateViewer: (delta: number) => void;
   zoomIn: () => void;
   zoomOut: () => void;
@@ -38,10 +39,11 @@ interface MediaViewerStoreState {
 
 export const useMediaViewerStore = create<MediaViewerStoreState>((set, get) => ({
   viewer: null,
+  viewerScopeId: null,
   viewerScale: 1,
   isLoading: false,
 
-  openMediaFromUrl: (url, resImages) => {
+  openMediaFromUrl: (url, resImages, scopeId) => {
     const imageUrl = toViewerImageUrl(url);
     if (!imageUrl) {
       window.open(url, "_blank", "noopener,noreferrer");
@@ -62,6 +64,7 @@ export const useMediaViewerStore = create<MediaViewerStoreState>((set, get) => (
         images,
         currentIndex,
       },
+      viewerScopeId: scopeId,
       // 画像を切り替えた時に前回のズーム倍率を引き継ぐと初見画像の全体把握が難しいため、毎回等倍に戻す。
       viewerScale: 1,
       // 画像が切り替わるたびに読み込み中状態に戻す。
@@ -69,10 +72,16 @@ export const useMediaViewerStore = create<MediaViewerStoreState>((set, get) => (
     });
   },
 
-  closeViewer: () => {
+  closeViewer: (scopeId) => {
+    // 変更理由: ストアは複数のThreadPageで共有されるため、所有者を確認せずに閉じると
+    // 2ペインの別スレッドが表示中のビューアーまで破棄してしまう。
+    if (get().viewerScopeId !== scopeId) {
+      return;
+    }
+
     // ビューアを閉じた時に前回倍率が残ると次回表示で意図せず拡大状態になるため、
     // close 時点で必ず等倍へ戻して初期表示の一貫性を保つ。
-    set({ viewer: null, viewerScale: 1, isLoading: false });
+    set({ viewer: null, viewerScopeId: null, viewerScale: 1, isLoading: false });
   },
 
   navigateViewer: (delta) => {

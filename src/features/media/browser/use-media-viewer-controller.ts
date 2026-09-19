@@ -109,10 +109,16 @@ function getPointWithinStage(stage: HTMLDivElement, clientX: number, clientY: nu
   };
 }
 
-export function useMediaViewerController(): MediaViewerProps | null {
-  const viewer = useMediaViewerStore((state) => state.viewer);
-  const viewerScale = useMediaViewerStore((state) => state.viewerScale);
-  const isLoading = useMediaViewerStore((state) => state.isLoading);
+export function useMediaViewerController(scopeId: string): MediaViewerProps | null {
+  const viewer = useMediaViewerStore((state) =>
+    state.viewerScopeId === scopeId ? state.viewer : null,
+  );
+  const viewerScale = useMediaViewerStore((state) =>
+    state.viewerScopeId === scopeId ? state.viewerScale : 1,
+  );
+  const isLoading = useMediaViewerStore((state) =>
+    state.viewerScopeId === scopeId ? state.isLoading : false,
+  );
   const closeViewer = useMediaViewerStore((state) => state.closeViewer);
   const navigateViewer = useMediaViewerStore((state) => state.navigateViewer);
   const zoomIn = useMediaViewerStore((state) => state.zoomIn);
@@ -120,6 +126,16 @@ export function useMediaViewerController(): MediaViewerProps | null {
   const resetScale = useMediaViewerStore((state) => state.resetScale);
   const zoomByWheel = useMediaViewerStore((state) => state.zoomByWheel);
   const setImageLoading = useMediaViewerStore((state) => state.setImageLoading);
+  const closeViewerForScope = useCallback(() => closeViewer(scopeId), [closeViewer, scopeId]);
+
+  useEffect(() => {
+    return () => {
+      // 変更理由: スレッド画面を離れても共有ストアの画像だけが残ると、
+      // 同じスレッドを開き直した時に前回のビューアーが再表示されるため、
+      // 破棄されたスレッドの所有分だけを解放する。
+      closeViewerForScope();
+    };
+  }, [closeViewerForScope]);
 
   // ビューポートの最大化状態をローカルで管理する。
   // viewer が閉じて再開した時にリセットが必要なので useEffect で監視する。
@@ -381,7 +397,7 @@ export function useMediaViewerController(): MediaViewerProps | null {
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        closeViewer();
+        closeViewerForScope();
       } else if (event.key === "ArrowLeft") {
         navigateViewer(-1);
       } else if (event.key === "ArrowRight") {
@@ -391,7 +407,7 @@ export function useMediaViewerController(): MediaViewerProps | null {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [closeViewer, navigateViewer, viewer]);
+  }, [closeViewerForScope, navigateViewer, viewer]);
 
   useEffect(() => {
     if (!viewer) {
@@ -514,7 +530,7 @@ export function useMediaViewerController(): MediaViewerProps | null {
     canNavigateViewerPrev: !!viewer.images && (viewer.currentIndex ?? 0) > 0,
     canNavigateViewerNext: !!viewer.images && (viewer.currentIndex ?? 0) < viewer.images.length - 1,
     isLoading,
-    onOverlayClick: closeViewer,
+    onOverlayClick: closeViewerForScope,
     onChromeClick: (event) => event.stopPropagation(),
     onNavigatePrev: () => navigateViewer(-1),
     onNavigateNext: () => navigateViewer(1),
@@ -534,7 +550,7 @@ export function useMediaViewerController(): MediaViewerProps | null {
       void saveViewerImage();
     },
     isMaximized,
-    onClose: closeViewer,
+    onClose: closeViewerForScope,
     onToggleMaximize: () => setIsMaximized((prev) => !prev),
     onImageLoad: () => {
       setImageLoading(false);

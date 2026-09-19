@@ -6,7 +6,9 @@ describe("useMediaViewerStore", () => {
   beforeEach(() => {
     useMediaViewerStore.setState({
       viewer: null,
+      viewerScopeId: null,
       viewerScale: 1,
+      isLoading: false,
     });
   });
 
@@ -16,13 +18,28 @@ describe("useMediaViewerStore", () => {
         src: "https://example.com/image.jpg",
         label: "https://example.com/image.jpg",
       },
+      viewerScopeId: "thread-a",
       viewerScale: 2.5,
+      isLoading: true,
     });
 
-    useMediaViewerStore.getState().closeViewer();
+    useMediaViewerStore.getState().closeViewer("thread-a");
 
     expect(useMediaViewerStore.getState().viewer).toBeNull();
+    expect(useMediaViewerStore.getState().viewerScopeId).toBeNull();
     expect(useMediaViewerStore.getState().viewerScale).toBe(1);
+    expect(useMediaViewerStore.getState().isLoading).toBe(false);
+  });
+
+  it("別スレッドの終了処理では表示中のビューアーを閉じない", () => {
+    useMediaViewerStore
+      .getState()
+      .openMediaFromUrl("https://example.com/image.jpg", undefined, "thread-a");
+
+    useMediaViewerStore.getState().closeViewer("thread-b");
+
+    expect(useMediaViewerStore.getState().viewer).not.toBeNull();
+    expect(useMediaViewerStore.getState().viewerScopeId).toBe("thread-a");
   });
 
   it("ツールバーから従来の上限を超えて拡大できる", () => {

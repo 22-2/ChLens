@@ -1,8 +1,14 @@
 import { useMediaViewerController } from "../browser/use-media-viewer-controller";
 import { MediaViewer } from "./MediaViewer";
 
-export function MediaViewerContainer(): React.ReactElement | null {
-  const mediaViewerProps = useMediaViewerController();
+interface MediaViewerContainerProps {
+  scopeId: string;
+}
+
+export function MediaViewerContainer({
+  scopeId,
+}: MediaViewerContainerProps): React.ReactElement | null {
+  const mediaViewerProps = useMediaViewerController(scopeId);
   if (!mediaViewerProps) {
     return null;
   }

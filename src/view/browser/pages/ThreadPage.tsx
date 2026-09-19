@@ -166,7 +166,16 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     onRefresh: () => dispatch({ type: "RELOAD" }),
   });
   const { setThreadStats } = useNgStatus();
-  const openMediaFromUrl = useMediaViewerStore((state) => state.openMediaFromUrl);
+  const mediaViewerScopeId = `${tabId}\u0000${page.threadUrl}`;
+  const openMedia = useMediaViewerStore((state) => state.openMediaFromUrl);
+  const openMediaFromUrl = useCallback(
+    (url: string, resImages?: string[]) => {
+      // 変更理由: 画像ビューアーのストアは画面全体で共有されるため、
+      // 開いたスレッドを識別して、別スレッドの破棄処理が表示中の画像へ影響しないようにする。
+      openMedia(url, resImages, mediaViewerScopeId);
+    },
+    [mediaViewerScopeId, openMedia],
+  );
   const { enabled: isAutoNextThreadEnabled, mode: autoNextThreadMode } = useAutoNextThreadSetting();
   const autoNextThreadResponseMessages = useMemo(
     () => responses.map((response) => response.message),
@@ -622,7 +631,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             activeTopBar={activeTopBar}
             onMarkerClick={handleMinimapMarkerClick}
           />
-          <MediaViewerContainer />
+          <MediaViewerContainer scopeId={mediaViewerScopeId} />
         </>
       )}
     </div>
