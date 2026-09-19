@@ -73,7 +73,7 @@ function AutoRefreshHarness({
   loading?: boolean;
   pauseAutoScroll?: boolean;
   onRequestRefresh: () => void;
-  onNewResponses?: (count: number) => void;
+  onNewResponses?: (count: number, previousLastResponseNum: number | null) => void;
   onAutoStop?: () => void;
   configureScrollContainer?: (scrollContainer: HTMLDivElement) => void;
   onThreadExpired?: () => void;
@@ -258,7 +258,7 @@ describe("useAutoRefresh", () => {
 
     expect(scrollBy).toHaveBeenCalledWith({ top: 60, behavior: "auto" });
     expect(onNewResponses).toHaveBeenCalledOnce();
-    expect(onNewResponses).toHaveBeenCalledWith(1);
+    expect(onNewResponses).toHaveBeenCalledWith(1, 2);
   });
 
   it("手動更新では新着レス通知を呼ばない", () => {
