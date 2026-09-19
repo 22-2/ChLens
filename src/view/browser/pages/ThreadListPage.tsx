@@ -19,6 +19,7 @@ import {
   getThreadUnreadCount,
   isSortColumn,
   isSortDirection,
+  isThreadVisited,
   readThreadListSortPreference,
   setThreadListCache,
   THREAD_LIST_COLUMN_VISIBILITY_LOCKED_KEYS,
@@ -1072,6 +1073,7 @@ export const ThreadListPage: React.FC<Props> = ({
         getRowTooltip={({ thread }) => thread.title}
         getRowClassName={({ thread }) => {
           const classes: string[] = [];
+          if (isThreadVisited(thread)) classes.push("thread-list__row--visited");
           if (thread.demoted && !isNgTemporarilyDisabled) classes.push("thread-list__row--ng");
           if (thread.highlight) classes.push("thread-list__row--highlight");
           return classes.join(" ") || undefined;

@@ -201,6 +201,12 @@ export function calcHeat(now: number, created: number, resCount: number): string
   return (resCount / elapsed).toFixed(1);
 }
 
+export function isThreadVisited(thread: Pick<IThread, "readState">): boolean {
+  // 変更理由: readState が存在するスレは一度開かれたと判断し、未読表示と同じ基準で
+  // 一覧上の文字色を控えめにして未閲覧スレとの視認性を分ける。
+  return thread.readState != null;
+}
+
 export type DisplayThread = {
   thread: IThread;
   originalIndex: number;

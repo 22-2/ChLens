@@ -341,3 +341,11 @@
 .thread-list__row--highlight .thread-list__label {
   color: inherit;
 }
+
+/* 変更理由: 一度開いたスレは一覧で主張を弱め、未閲覧スレを見つけやすくする。 */
+.thread-list__row--visited .thread-list__num,
+.thread-list__row--visited .thread-list__title,
+.thread-list__row--visited .thread-list__count,
+.thread-list__row--visited .thread-list__heat {
+  color: var(--sys-color-text-muted);
+}

@@ -27,6 +27,7 @@ import {
   getThreadListCache,
   getThreadUnreadCount,
   isSortColumn,
+  isThreadVisited,
   readThreadListSortPreference,
   setThreadListCache,
   THREAD_LIST_COLUMN_VISIBILITY_LOCKED_KEYS,
@@ -713,6 +714,7 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
               getRowTooltip={({ thread }) => thread.title}
               getRowClassName={({ thread }) => {
                 const classes: string[] = [];
+                if (isThreadVisited(thread)) classes.push("thread-list__row--visited");
                 if (thread.url === currentThreadUrl)
                   classes.push("thread-list-panel__row--current");
                 if (thread.demoted && !isNgTemporarilyDisabled)

@@ -727,6 +727,40 @@ describe("ThreadListPage", () => {
     expect(unseenRow?.querySelector(".thread-list__unread-badge")).toBeNull();
   });
 
+  it("一度開いたスレの一覧文字色を控えめにする", async () => {
+    vi.useRealTimers();
+    getThreadsMock.mockResolvedValueOnce({
+      threads: [THREADS[0], { ...THREADS[1], readState: undefined }],
+      message: null,
+    });
+
+    render(
+      <ThreadListPage
+        tabId="tab-1"
+        page={{
+          type: "threadList",
+          title: "Software",
+          boardUrl: "https://egg.5ch.net/software/",
+          boardTitle: "Software",
+        }}
+        refreshKey={0}
+        isActive={true}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getRenderedThreadTitles()).toEqual(["B Thread", "A Thread"]);
+    });
+
+    const findRowByTitle = (title: string) =>
+      Array.from(document.querySelectorAll(".simple-data-table__row")).find((row) =>
+        row.textContent?.includes(title),
+      );
+
+    expect(findRowByTitle("B Thread")).toHaveClass("thread-list__row--visited");
+    expect(findRowByTitle("A Thread")).not.toHaveClass("thread-list__row--visited");
+  });
+
   it("ブックマーク済みスレに星を表示し、右クリック項目にアイコンを付ける", async () => {
     vi.useRealTimers();
     bookmarkGetMock.mockImplementation((url: string) =>
