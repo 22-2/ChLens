@@ -6,7 +6,7 @@ import type { HttpResponse, WriteFormData } from "src/app/platform/types";
 import { getStore2String, setStore2String } from "src/app/Store2Storage";
 import { URL as ChURL } from "src/core/URL";
 import { container } from "src/service-container/index";
-import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
+import { useScopedConfigBooleanSetting } from "src/view/browser/hooks/use-scoped-config-boolean-setting";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import {
   notifyThreadWriteCompleted,
@@ -198,7 +198,11 @@ export function useWrite(threadUrl: string): UseWriteResult {
   const [mail, setMailState] = useState(
     () => getStore2String(MAIL_KEY) ?? container.config.get("default_mail") ?? "",
   );
-  const { value: sage, setValue: setSage } = useConfigBooleanSetting(SAGE_CONFIG_KEY);
+  // 板ごとのsage上書きを投稿時にも適用し、設定画面で選んだ値と投稿欄の表示を一致させる。
+  const { value: sage, setValue: setSage } = useScopedConfigBooleanSetting(
+    SAGE_CONFIG_KEY,
+    threadUrl,
+  );
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState<WriteStatus>("idle");
   const [statusText, setStatusText] = useState("");

@@ -8,6 +8,7 @@ import {
   importDataArchive,
 } from "src/view/browser/pages/settings/settings-data-transfer";
 import type { SettingsSupplementaryPanelId } from "src/view/browser/pages/settings/settings-types";
+import { SiteBoardSettingsPanel } from "src/view/browser/pages/settings/SiteBoardSettingsPanel";
 import type { SettingsMaintenanceActions } from "src/view/browser/pages/settings/use-settings-maintenance";
 import { Alert } from "src/view/browser/ui/Alert";
 import { Button } from "src/view/browser/ui/Button";
@@ -225,6 +226,8 @@ export function SettingsSupplementaryPanels({
 
     return panelIds.map((panelId) => {
       switch (panelId) {
+        case "siteBoardSettings":
+          return <SiteBoardSettingsPanel key={panelId} />;
         case "externalIntegration":
           if (!supportsBookmarkFolderSelection()) {
             return null;

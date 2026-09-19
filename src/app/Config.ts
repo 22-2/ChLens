@@ -113,6 +113,8 @@ export default class Config {
     ["useragent", ""],
     ["format_2chnet", "html"],
     ["sage_flag", "on"],
+    // サイト・板設定は全体設定へ安全にフォールバックできる空のドキュメントを既定値にする。
+    ["site_board_settings", "{}"],
     ["mousewheel_change_tab", "on"],
     ["image_replace_dat_obj", ""],
     [

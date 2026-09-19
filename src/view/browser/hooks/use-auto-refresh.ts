@@ -9,6 +9,7 @@ import {
 } from "src/view/browser/hooks/auto-refresh-config";
 import type { ThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
 import { subscribeConfigKeys } from "src/view/browser/utils/config-setting";
+import { SCOPED_SETTINGS_CONFIG_KEY } from "src/view/browser/utils/scoped-settings";
 
 interface PendingRefreshSnapshot {
   responseCount: number;
@@ -24,6 +25,8 @@ type AutoRefreshPhase = "idle" | "scrolling";
 
 interface UseAutoRefreshOptions {
   enabled: boolean;
+  /** 自動更新間隔のサイト・板スコープを決めるURL。 */
+  scopeUrl?: string;
   /** 自動更新が有効なまま新しいスレッドを表示するとき、最初に最下部へ同期する。 */
   startAtBottom?: boolean;
   expired: boolean;
@@ -50,6 +53,7 @@ export interface UseAutoRefreshResult {
 
 export function useAutoRefresh({
   enabled,
+  scopeUrl,
   startAtBottom = false,
   expired,
   loading,
@@ -95,7 +99,7 @@ export function useAutoRefresh({
   const [isDocumentVisible, setIsDocumentVisible] = useState(
     document.visibilityState === "visible",
   );
-  const [intervalMs, setIntervalMs] = useState(readThreadAutoRefreshIntervalMs);
+  const [intervalMs, setIntervalMs] = useState(() => readThreadAutoRefreshIntervalMs(scopeUrl));
 
   const requestRefreshFromHook = useCallback(() => {
     // タイマー・ON直後の更新はここで先にスナップショットを保存しているため、
@@ -288,12 +292,18 @@ export function useAutoRefresh({
 
   useEffect(() => {
     const applyInterval = () => {
-      setIntervalMs(readThreadAutoRefreshIntervalMs());
+      setIntervalMs(readThreadAutoRefreshIntervalMs(scopeUrl));
     };
-    return subscribeConfigKeys([THREAD_AUTO_REFRESH_CONFIG_KEY], applyInterval, {
-      label: "AutoRefresh",
-    });
-  }, []);
+    // 変更理由: 設定画面や別タブでサイト・板設定が変わったときも、
+    // 実行中のタイマーを再作成して表示中のスレへ即時反映する。
+    return subscribeConfigKeys(
+      [THREAD_AUTO_REFRESH_CONFIG_KEY, SCOPED_SETTINGS_CONFIG_KEY],
+      applyInterval,
+      {
+        label: "AutoRefresh",
+      },
+    );
+  }, [scopeUrl]);
 
   useEffect(() => {
     if (enabled) {

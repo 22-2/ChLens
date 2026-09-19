@@ -60,6 +60,7 @@ import {
   isAutoRefreshEnabledForPage,
 } from "src/view/browser/utils/auto-refresh-pages";
 import { copyText, formatMarkdownLink } from "src/view/browser/utils/clipboard";
+import { SCOPED_SETTINGS_CONFIG_KEY } from "src/view/browser/utils/scoped-settings";
 import { ThreadListView } from "src/view/shared/ThreadListView";
 
 // 既存のページ用ユーティリティの公開位置を維持しつつ、パネル側と同じ定義を共有する。
@@ -223,8 +224,8 @@ export const ThreadListPage: React.FC<Props> = ({
   const [threads, setThreads] = useState<IThread[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [boardAutoRefreshIntervalMs, setBoardAutoRefreshIntervalMs] = useState(
-    readBoardAutoRefreshIntervalMs,
+  const [boardAutoRefreshIntervalMs, setBoardAutoRefreshIntervalMs] = useState(() =>
+    readBoardAutoRefreshIntervalMs(page.boardUrl),
   );
   const [isDocumentVisible, setIsDocumentVisible] = useState(
     document.visibilityState === "visible",
@@ -635,11 +636,13 @@ export const ThreadListPage: React.FC<Props> = ({
 
   useEffect(() => {
     const applyInterval = () => {
-      setBoardAutoRefreshIntervalMs(readBoardAutoRefreshIntervalMs());
+      setBoardAutoRefreshIntervalMs(readBoardAutoRefreshIntervalMs(page.boardUrl));
     };
 
+    // 変更理由: 板一覧のタイマーも対象板の上書きを読むため、
+    // 共通設定とスコープ設定のどちらが変わっても現在値を再評価する。
     const handleConfigUpdated = ({ key }: { key?: string }) => {
-      if (key === BOARD_AUTO_REFRESH_CONFIG_KEY) {
+      if (key === BOARD_AUTO_REFRESH_CONFIG_KEY || key === SCOPED_SETTINGS_CONFIG_KEY) {
         applyInterval();
       }
     };
@@ -650,7 +653,7 @@ export const ThreadListPage: React.FC<Props> = ({
     return () => {
       container.message.off("config_updated", handleConfigUpdated);
     };
-  }, []);
+  }, [page.boardUrl]);
 
   useEffect(() => {
     if (

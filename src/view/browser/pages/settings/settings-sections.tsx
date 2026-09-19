@@ -1,5 +1,6 @@
 import {
   Archive,
+  Globe2,
   Image as ImageIcon,
   MessageCircle,
   MoreHorizontal,
@@ -175,6 +176,18 @@ const ALL_SETTINGS_SECTIONS = [
       //   widget: "radio",
       // },
     ],
+  ),
+  // 変更理由: サイト・板設定は通常の全体設定フォームとは継承UIが異なるため、
+  // 専用パネルへ閉じ込めて項目追加時のフォーム分岐を増やさない。
+  defineSection(
+    "site-board",
+    "サイト・板",
+    "サイトや板ごとの設定を選び、全体設定からの引き継ぎを調整します。",
+    <Globe2 size={20} />,
+    [],
+    {
+      supplementaryPanelIds: ["siteBoardSettings"],
+    },
   ),
   defineSection(
     "reload",

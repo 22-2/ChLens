@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 export type SettingsSectionId =
   | "general"
+  | "site-board"
   | "reload"
   | "overlay"
   | "thumbnail"
@@ -10,7 +11,11 @@ export type SettingsSectionId =
   | "other"
   | "data";
 
-export type SettingsSupplementaryPanelId = "externalIntegration" | "dangerZone" | "dataManagement";
+export type SettingsSupplementaryPanelId =
+  | "externalIntegration"
+  | "dangerZone"
+  | "dataManagement"
+  | "siteBoardSettings";
 
 export type SettingsFormWidget = "radio" | "textarea" | "ng_editor";
 export type SettingsFormValue = boolean | number | string | undefined;

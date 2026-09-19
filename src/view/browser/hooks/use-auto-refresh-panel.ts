@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BOARD_AUTO_REFRESH_CONFIG_KEY,
   findIdleStopTimeoutOption,
@@ -19,6 +19,10 @@ import {
   isAutoRefreshEnabledForPage,
 } from "src/view/browser/utils/auto-refresh-pages";
 import { persistConfigValue, subscribeConfigKeys } from "src/view/browser/utils/config-setting";
+import {
+  persistScopedSettingForUrl,
+  SCOPED_SETTINGS_CONFIG_KEY,
+} from "src/view/browser/utils/scoped-settings";
 
 export const MIN_INTERVAL_SEC = MIN_THREAD_AUTO_REFRESH_SEC;
 export const MAX_INTERVAL_SEC = MAX_THREAD_AUTO_REFRESH_SEC;
@@ -32,25 +36,42 @@ function useConfigIntervalSec(options: {
   readIntervalSec: () => number;
   minSec: number;
   maxSec: number;
+  scopeUrl?: string;
 }): {
   intervalSec: number;
   setIntervalSec: (sec: number) => void;
 } {
-  const { configKey, readIntervalSec, minSec, maxSec } = options;
+  const { configKey, readIntervalSec, minSec, maxSec, scopeUrl } = options;
   const [intervalSec, setIntervalSecState] = useState(readIntervalSec);
 
   useEffect(() => {
     const sync = () => setIntervalSecState(readIntervalSec());
-    return subscribeConfigKeys([configKey], sync, { label: "AutoRefreshPanel" });
-  }, [configKey, readIntervalSec]);
+    return subscribeConfigKeys(
+      scopeUrl ? [configKey, SCOPED_SETTINGS_CONFIG_KEY] : [configKey],
+      sync,
+      { label: "AutoRefreshPanel" },
+    );
+  }, [configKey, readIntervalSec, scopeUrl]);
 
   const setIntervalSec = useCallback(
     (sec: number) => {
       const clamped = Math.max(minSec, Math.min(maxSec, sec));
       setIntervalSecState(clamped);
-      persistConfigValue(configKey, String(clamped * 1000), "AutoRefreshPanel");
+      if (scopeUrl) {
+        // 変更理由: 表示中の板で間隔を変えた操作は、その板の実況用途に合わせた
+        // 意図として保存し、ほかのサイト・板の更新間隔へ波及させない。
+        void persistScopedSettingForUrl(
+          configKey as "auto_load_second" | "auto_load_second_board",
+          scopeUrl,
+          String(clamped * 1000),
+        ).catch((error: unknown) => {
+          console.error("[AutoRefreshPanel] スコープ設定の保存に失敗しました", error);
+        });
+      } else {
+        persistConfigValue(configKey, String(clamped * 1000), "AutoRefreshPanel");
+      }
     },
-    [configKey, maxSec, minSec],
+    [configKey, maxSec, minSec, scopeUrl],
   );
 
   return { intervalSec, setIntervalSec };
@@ -79,17 +100,36 @@ export interface UseAutoRefreshPanelResult {
 
 export function useAutoRefreshPanel(): UseAutoRefreshPanelResult {
   const { currentPage, activeTab, dispatch } = useTabStore();
+  const scopeUrl = useMemo(() => {
+    if (currentPage.type === "thread") {
+      return currentPage.threadUrl;
+    }
+    if (currentPage.type === "threadList") {
+      return currentPage.boardUrl;
+    }
+    return undefined;
+  }, [currentPage]);
+  const readThreadIntervalSec = useCallback(
+    () => readThreadAutoRefreshIntervalSec(scopeUrl),
+    [scopeUrl],
+  );
+  const readBoardIntervalSec = useCallback(
+    () => readBoardAutoRefreshIntervalSec(scopeUrl),
+    [scopeUrl],
+  );
   const threadInterval = useConfigIntervalSec({
     configKey: THREAD_AUTO_REFRESH_CONFIG_KEY,
-    readIntervalSec: readThreadAutoRefreshIntervalSec,
+    readIntervalSec: readThreadIntervalSec,
     minSec: MIN_INTERVAL_SEC,
     maxSec: MAX_INTERVAL_SEC,
+    scopeUrl: currentPage.type === "thread" ? scopeUrl : undefined,
   });
   const boardInterval = useConfigIntervalSec({
     configKey: BOARD_AUTO_REFRESH_CONFIG_KEY,
-    readIntervalSec: readBoardAutoRefreshIntervalSec,
+    readIntervalSec: readBoardIntervalSec,
     minSec: MIN_BOARD_INTERVAL_SEC,
     maxSec: MAX_BOARD_INTERVAL_SEC,
+    scopeUrl: currentPage.type === "threadList" ? scopeUrl : undefined,
   });
 
   const [idleStopTimeoutValue, setIdleStopTimeoutValueState] = useState(readIdleStopTimeoutValue);

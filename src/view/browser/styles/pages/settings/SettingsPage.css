@@ -353,6 +353,142 @@
   margin-left: auto;
 }
 
+/* サイト→板の継承を一目で追えるよう、対象選択と上書き項目を同じカード内に置く。 */
+.settings-page__site-board-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--sys-space-4);
+  color: var(--sys-color-text-muted);
+}
+
+.settings-page__site-board-selectors {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sys-space-6);
+}
+
+.settings-page__site-board-field {
+  display: grid;
+  gap: var(--sys-space-3);
+  min-width: 0;
+  color: var(--sys-color-text);
+  font-size: var(--sys-font-size-sm);
+  font-weight: 600;
+}
+
+.settings-page__site-board-field input,
+.settings-page__site-board-field select,
+.settings-page__site-board-setting select,
+.settings-page__site-board-interval input {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-md);
+  background: var(--sys-color-input-bg);
+  color: var(--sys-color-text);
+  padding: var(--sys-space-3) var(--sys-space-4);
+  font: inherit;
+}
+
+.settings-page__site-board-field input:focus,
+.settings-page__site-board-field select:focus,
+.settings-page__site-board-setting select:focus,
+.settings-page__site-board-interval input:focus {
+  outline: 2px solid var(--sys-color-accent);
+  outline-offset: 1px;
+}
+
+.settings-page__site-board-add {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--sys-space-4);
+  margin-top: var(--sys-space-8);
+}
+
+.settings-page__site-board-add .settings-page__site-board-field {
+  flex: 1;
+}
+
+.settings-page__site-board-empty {
+  margin: var(--sys-space-8) 0 0;
+  color: var(--sys-color-text-muted);
+}
+
+.settings-page__site-board-settings {
+  display: grid;
+  gap: var(--sys-space-6);
+  margin-top: var(--sys-space-10);
+}
+
+.settings-page__site-board-setting {
+  display: grid;
+  gap: var(--sys-space-4);
+  padding: var(--sys-space-6);
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-lg);
+  background: var(--sys-color-input-bg);
+}
+
+.settings-page__site-board-setting-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sys-space-5);
+}
+
+.settings-page__site-board-setting-header h4 {
+  margin: 0;
+  color: var(--sys-color-text);
+  font-size: var(--sys-font-size-body);
+}
+
+.settings-page__site-board-setting-header p {
+  margin: var(--sys-space-2) 0 0;
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-sm);
+  line-height: 1.5;
+}
+
+.settings-page__site-board-source {
+  flex-shrink: 0;
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-xs);
+}
+
+.settings-page__site-board-checkbox,
+.settings-page__site-board-interval {
+  display: flex;
+  align-items: center;
+  gap: var(--sys-space-3);
+  color: var(--sys-color-text);
+  font-size: var(--sys-font-size-sm);
+}
+
+.settings-page__site-board-checkbox input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--sys-color-accent);
+}
+
+.settings-page__site-board-interval input {
+  width: 120px;
+}
+
+@media (max-width: 640px) {
+  .settings-page__site-board-selectors {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-page__site-board-add {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .settings-page__site-board-setting-header {
+    flex-direction: column;
+  }
+}
+
 .settings-export-dialog {
   gap: var(--sys-space-6);
 }

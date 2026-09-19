@@ -52,6 +52,7 @@ export function useThreadAutoRefresh(options: UseThreadAutoRefreshOptions): UseA
 
   const result = useAutoRefresh({
     enabled,
+    scopeUrl: _threadUrl,
     startAtBottom,
     expired,
     loading,
