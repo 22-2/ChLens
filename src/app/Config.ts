@@ -93,6 +93,9 @@ export default class Config {
     ["tab_bar_collapsed", "on"],
     // 変更理由: 展開幅の既定はタイトルが省略されにくい208pxとする。
     ["tab_bar_width", "208"],
+    // 変更理由: 垂直タブバーのタイトルバーから履歴移動できる導線を既定で提供し、
+    // 不要な場合だけ設定画面から隠せるようにする。
+    ["title_bar_navigation", "on"],
     ["write_submit_ctrl_enter", "off"],
     // 変更理由: 書き込み後のパネルは利用者が明示的に選んだ場合だけ閉じ、既存の操作感を保つ。
     ["write_close_panel_after_submit", "off"],

@@ -10,10 +10,12 @@ import { useMediaViewerStore } from "src/features/media/browser/use-media-viewer
 import { MediaViewerContainer } from "src/features/media/ui/MediaViewerContainer";
 import { container } from "src/service-container/index";
 import type { IThread } from "src/service-container/interfaces";
+import { ContextMenuNavigationActions } from "src/view/browser/components/ContextMenuNavigationActions";
 import { PopupRenderer } from "src/view/browser/components/PopupRenderer";
 import { ResItem } from "src/view/browser/components/ResItem";
 import { ThreadMinimap } from "src/view/browser/components/ThreadMinimap";
 import { WheelScrollIndicator } from "src/view/browser/components/WheelScrollIndicator";
+import type { ContextMenuPopupItem } from "src/view/browser/hooks/popup-manager/types";
 import { useAutoNextThread } from "src/view/browser/hooks/use-auto-next-thread";
 import { useAutoNextThreadSetting } from "src/view/browser/hooks/use-auto-next-thread-setting";
 import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
@@ -39,9 +41,10 @@ import { useThreadResContextMenu } from "src/view/browser/pages/thread/use-threa
 import { useThreadTopBar } from "src/view/browser/pages/thread/use-thread-top-bar";
 import { useThreadTopScrollOpenFilter } from "src/view/browser/pages/thread/use-thread-top-scroll-open-filter";
 import { useUrlHandlers } from "src/view/browser/pages/thread/use-url-handlers";
-import type { ThreadPage as ThreadPageType } from "src/view/browser/types";
+import { canGoBack, canGoForward, type ThreadPage as ThreadPageType } from "src/view/browser/types";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import { getAutoRefreshPageKey } from "src/view/browser/utils/auto-refresh-pages";
+import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 import {
   buildBlurredResSet,
   buildReplyToWrittenResSet,
@@ -459,6 +462,31 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     setResponses,
   });
 
+  const contextMenuHeader = useCallback(
+    (menu: ContextMenuPopupItem) => (
+      // 変更理由: ポップアップのレスメニューはそれぞれ独立したpopupとして管理されるため、
+      // 操作後に対象メニューだけを閉じて、他の固定ポップアップを維持する。
+      <ContextMenuNavigationActions
+        canGoBack={canGoBack(activeTab)}
+        canGoForward={canGoForward(activeTab)}
+        canRefresh={isPageRefreshable(page)}
+        onBack={() => {
+          dispatch({ type: "GO_BACK" });
+          closePopupById(menu.id);
+        }}
+        onForward={() => {
+          dispatch({ type: "GO_FORWARD" });
+          closePopupById(menu.id);
+        }}
+        onRefresh={() => {
+          dispatch({ type: "RELOAD" });
+          closePopupById(menu.id);
+        }}
+      />
+    ),
+    [activeTab, closePopupById, dispatch, page],
+  );
+
   // 空白部分のダブルクリックによる更新。
   // 設定が有効な場合に動作し、誤操作防止のためリンクや画像、テキスト選択中などは除外する。
   const handleDoubleClick = useCallback(
@@ -619,6 +647,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             idPopupItems={idPopupItems}
             treePopupItems={treePopupItems}
             contextMenuItems={contextMenuItems}
+            contextMenuHeader={contextMenuHeader}
             messageProtocol={messageProtocol}
             repIndex={indexes.repIndex}
             idIndex={indexes.idIndex}

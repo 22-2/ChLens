@@ -70,6 +70,24 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => ({
     dispatch: dispatchMock,
     state: { activeTabId: activeTabIdRef.current },
+    activeTab: {
+      id: activeTabIdRef.current,
+      history: [
+        { type: "home", title: "ホーム" },
+        {
+          type: "threadList",
+          title: "Software",
+          boardUrl: "https://egg.5ch.net/software/",
+          boardTitle: "Software",
+        },
+        { type: "settings", title: "設定" },
+      ],
+      currentIndex: 1,
+      pinned: false,
+      reloadKey: 0,
+      autoRefreshEnabled: false,
+      autoRefreshPageKey: null,
+    },
   }),
   useTabDispatch: () => dispatchMock,
   useTabViewState: () => ({ state: viewStateRef.current, update: updateViewStateMock }),
@@ -829,6 +847,10 @@ describe("ThreadListPage", () => {
     await waitFor(() => {
       const menu = document.querySelector(".context-menu");
       expect(menu).not.toBeNull();
+      expect(menu?.querySelector('[aria-label="戻る"]')).not.toBeNull();
+      expect(menu?.querySelector('[aria-label="進む"]')).not.toBeNull();
+      expect(menu?.querySelector('[aria-label="更新"]')).not.toBeNull();
+      expect(menu?.querySelector(".context-menu__header-actions")).not.toBeNull();
       expect(menu?.querySelectorAll(".context-menu__item .context-menu__icon")).toHaveLength(6);
     });
   });

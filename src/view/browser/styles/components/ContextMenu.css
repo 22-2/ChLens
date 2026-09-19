@@ -26,6 +26,44 @@
   border-bottom: 1px solid var(--sys-color-border);
 }
 
+/* 変更理由: Windows 11風のコンテキストメニューでは頻繁な操作をラベルから分離し、
+   上段へアイコンだけで左寄せにまとめることで、下の項目を圧迫しないようにする。 */
+.context-menu__header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sys-space-2);
+  padding: var(--sys-space-3) var(--sys-space-4);
+}
+
+.context-menu__header-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--sys-space-10);
+  height: var(--sys-space-10);
+  flex: 0 0 var(--sys-space-10);
+  border: none;
+  border-radius: var(--sys-radius-sm);
+  background: transparent;
+  color: var(--sys-color-text-muted);
+  cursor: pointer;
+}
+
+.context-menu__header-action:hover:not(:disabled) {
+  background: var(--sys-color-surface-muted);
+  color: var(--sys-color-text);
+}
+
+.context-menu__header-action:disabled {
+  color: var(--sys-color-text-disabled);
+  cursor: default;
+}
+
+.context-menu__header-action:focus-visible {
+  outline: 2px solid var(--sys-color-focus-ring);
+  outline-offset: -2px;
+}
+
 .context-menu__item {
   display: flex;
   align-items: center;

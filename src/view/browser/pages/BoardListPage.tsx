@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from "react";
+import { ContextMenuNavigationActions } from "src/view/browser/components/ContextMenuNavigationActions";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { buildCategoryId } from "src/view/browser/pages/board-list/board-list-utils";
@@ -7,14 +8,17 @@ import { ContextMenuHandler } from "src/view/browser/pages/board-list/ContextMen
 import { SearchBarSection } from "src/view/browser/pages/board-list/SearchBarSection";
 import { useBoardListDisplay } from "src/view/browser/pages/board-list/use-board-list-display";
 import { useBoardListLogic } from "src/view/browser/pages/board-list/use-board-list-logic";
+import { canGoBack, canGoForward } from "src/view/browser/types";
+import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 
 interface BoardListPageProps {
   tabId: string;
   isActive: boolean;
+  refreshKey: number;
 }
 
-export const BoardListPage: React.FC<BoardListPageProps> = ({ tabId, isActive }) => {
-  const { dispatch } = useTabStore();
+export const BoardListPage: React.FC<BoardListPageProps> = ({ tabId, isActive, refreshKey }) => {
+  const { activeTab, currentPage, dispatch } = useTabStore();
   const {
     categories,
     loading,
@@ -29,7 +33,7 @@ export const BoardListPage: React.FC<BoardListPageProps> = ({ tabId, isActive })
     handleRemoveMenu,
     handleRemoveCategory,
     updateOpenStates,
-  } = useBoardListLogic();
+  } = useBoardListLogic(refreshKey);
 
   const { displayMenus, searchQuery, setSearchQuery, openedMenuValues } = useBoardListDisplay({
     tabId,
@@ -142,6 +146,28 @@ export const BoardListPage: React.FC<BoardListPageProps> = ({ tabId, isActive })
     0,
   );
 
+  const contextMenuNavigationActions = contextMenuState ? (
+    <ContextMenuNavigationActions
+      canGoBack={canGoBack(activeTab)}
+      canGoForward={canGoForward(activeTab)}
+      canRefresh={isPageRefreshable(currentPage)}
+      onBack={() => {
+        dispatch({ type: "GO_BACK" });
+        setContextMenuState(null);
+      }}
+      onForward={() => {
+        dispatch({ type: "GO_FORWARD" });
+        setContextMenuState(null);
+      }}
+      onRefresh={() => {
+        // 変更理由: 板一覧の更新対象はタブ履歴ではなくBBSメニューなので、
+        // この画面では強制取得を直接呼び出して最新の板構成を反映する。
+        void fetchMenu(true);
+        setContextMenuState(null);
+      }}
+    />
+  ) : null;
+
   return (
     <div>
       <SearchBarSection
@@ -171,6 +197,7 @@ export const BoardListPage: React.FC<BoardListPageProps> = ({ tabId, isActive })
         onRemoveBoard={handleRemoveBoard}
         onRemoveMenu={handleRemoveMenu}
         onRemoveCategory={handleRemoveCategory}
+        header={contextMenuNavigationActions}
         onClose={() => setContextMenuState(null)}
       />
     </div>
