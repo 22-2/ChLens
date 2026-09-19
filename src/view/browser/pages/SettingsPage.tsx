@@ -53,6 +53,7 @@ import {
   SurfaceStack,
   SurfaceTitle,
 } from "src/view/browser/ui/Surface";
+import { Tooltip } from "src/view/browser/ui/Tooltip";
 
 function toStringValue(value: SettingsFormValue): string {
   return typeof value === "string" ? value : "";
@@ -644,13 +645,17 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
                             >
                               URLチェック
                             </Button>
-                            <Button
-                              onClick={() => void maintenanceActions.handleBBSMenuRefresh()}
-                              loading={maintenanceActions.isBbsMenuRefreshing}
-                              disabled={maintenanceActions.isBbsMenuChecking}
-                            >
-                              BBSMenuリフレッシュ
-                            </Button>
+                            <Tooltip label="設定したBBSMENUを強制取得してキャッシュを更新し、開いた板の外部サイトや重複した板も整理します。">
+                              <span>
+                                <Button
+                                  onClick={() => void maintenanceActions.handleBBSMenuRefresh()}
+                                  loading={maintenanceActions.isBbsMenuRefreshing}
+                                  disabled={maintenanceActions.isBbsMenuChecking}
+                                >
+                                  BBSMenuリフレッシュ
+                                </Button>
+                              </span>
+                            </Tooltip>
                           </SurfaceActions>
                         </SurfaceBody>
                       </Surface>
