@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { BBSMenu } from "src/core/BBSMenuParser";
-import { normalizeBoardUrl } from "src/core/BoardUrlNormalizer";
+import { getBoardUrlKey, normalizeBoardUrl } from "src/core/BoardUrlNormalizer";
 import { container } from "src/service-container/index";
 import {
   MAX_BOARD_AUTO_REFRESH_SEC,
@@ -139,15 +139,18 @@ function readScopeBoards(document: ScopedSettingsDocument): RawBoardOption[] {
   );
 }
 
-function mergeBoardOptions(sources: readonly RawBoardOption[]): BoardOption[] {
+export function mergeBoardOptions(sources: readonly RawBoardOption[]): BoardOption[] {
   const boards = new Map<string, BoardOption>();
   for (const source of sources) {
     const key = normalizeBoardKey(source.url);
+    const comparisonKey = getBoardUrlKey(source.url);
     const site = normalizeSiteKey(source.url);
-    if (!key || !site || boards.has(key)) {
+    if (!key || !comparisonKey || !site || boards.has(comparisonKey)) {
       continue;
     }
-    boards.set(key, {
+    // 変更理由: 設定データ・BBSMENU・開いた板でURL表記が異なっても、
+    // プロトコルを含まない板識別子で同じ選択肢へまとめる。
+    boards.set(comparisonKey, {
       key,
       site,
       title: source.title.trim() || deriveBoardTitle(key),

@@ -162,7 +162,11 @@ export function normalizeSiteKey(raw: string): string | null {
 export function normalizeBoardKey(raw: string): string | null {
   const normalizedBoardUrl = normalizeBoardUrl(raw);
   if (normalizedBoardUrl !== null) {
-    return normalizedBoardUrl;
+    const canonicalUrl = new URL(normalizedBoardUrl);
+    // 変更理由: 同じ板のHTTP/HTTPS表記を別設定として保存すると、
+    // サイト・板設定の選択肢と上書き先が二重化するため、論理キーだけHTTPSへ統一する。
+    canonicalUrl.protocol = "https:";
+    return canonicalUrl.href;
   }
 
   try {
@@ -173,6 +177,9 @@ export function normalizeBoardKey(raw: string): string | null {
     parsed.search = "";
     parsed.hash = "";
     parsed.pathname = `${parsed.pathname.replace(/\/+$/u, "")}/`;
+    // 変更理由: 既知ホスト以外の手入力板URLも、HTTP/HTTPSの揺れで
+    // 同じ設定が二重登録されないよう論理キーのプロトコルを統一する。
+    parsed.protocol = "https:";
     return parsed.href;
   } catch {
     return null;

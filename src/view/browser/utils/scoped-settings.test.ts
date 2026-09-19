@@ -22,6 +22,7 @@ vi.mock("src/view/browser/utils/link-routing", () => ({
 import {
   normalizeBoardKey,
   normalizeSiteKey,
+  parseScopedSettings,
   persistScopedSetting,
   resolveScopedSetting,
   SCOPED_SETTINGS_CONFIG_KEY,
@@ -61,6 +62,33 @@ describe("サイト・板設定", () => {
   it("URLの末尾スラッシュやホスト名の大文字を正規化する", () => {
     expect(normalizeSiteKey("HTTPS://Example.COM/path/")).toBe("example.com");
     expect(normalizeBoardKey("https://Example.COM/live?x=1#top")).toBe("https://example.com/live/");
+  });
+
+  it("板設定のHTTP/HTTPS表記と旧EddibB形式を同じキーへまとめる", () => {
+    expect(normalizeBoardKey("http://bbs.eddibb.cc/test/read.cgi/liveedge/")).toBe(
+      "https://bbs.eddibb.cc/liveedge/",
+    );
+
+    const document = parseScopedSettings(
+      JSON.stringify({
+        sites: {
+          "bbs.eddibb.cc": {
+            overrides: {},
+            boards: {
+              "http://bbs.eddibb.cc/test/read.cgi/liveedge/": { sage_flag: "off" },
+              "https://bbs.eddibb.cc/liveedge/": { auto_load_second: "20000" },
+            },
+          },
+        },
+      }),
+    );
+
+    expect(document.sites["bbs.eddibb.cc"].boards).toEqual({
+      "https://bbs.eddibb.cc/liveedge/": {
+        sage_flag: "off",
+        auto_load_second: "20000",
+      },
+    });
   });
 
   it("上書きを削除すると空のサイト情報も保存しない", async () => {
