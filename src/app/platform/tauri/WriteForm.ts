@@ -39,6 +39,32 @@ function normalizeFormLineBreaks(value: string): string {
   return value.replace(/\r\n|\r|\n/g, "\r\n");
 }
 
+function resolveWriteUserAgent(configuredUserAgent: string | null | undefined): string {
+  const trimmedConfiguredUserAgent = configuredUserAgent?.trim() ?? "";
+  if (trimmedConfiguredUserAgent !== "") {
+    return trimmedConfiguredUserAgent;
+  }
+
+  return typeof navigator !== "undefined" ? navigator.userAgent : "";
+}
+
+export function createWriteRequestHeaders(
+  formAction: string,
+  configuredUserAgent: string | null | undefined,
+): Record<string, string> {
+  const userAgent = resolveWriteUserAgent(configuredUserAgent);
+
+  // 変更理由: tauri-plugin-httpはUser-Agent未指定時に独自の識別子を送るため、
+  // 掲示板の投稿エンドポイントがブラウザ以外の送信として拒否することがある。
+  // 拡張機能版と同じWebViewのUAを明示し、既存の利用者設定があればそれを優先する。
+  return {
+    "Content-Type": "application/x-www-form-urlencoded",
+    Origin: new URL(formAction).origin,
+    Referer: formAction,
+    ...(userAgent !== "" ? { "User-Agent": userAgent } : {}),
+  };
+}
+
 export function encodeWriteForm(formData: WriteFormData): ArrayBuffer {
   const fields = [
     ...Object.entries(formData.input),

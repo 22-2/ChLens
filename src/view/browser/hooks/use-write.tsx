@@ -166,17 +166,11 @@ function parseTauriWriteResult(
 }
 
 async function submitTauriWrite(formData: WriteFormData): Promise<WriteResultMessage> {
-  const { encodeWriteForm } = await import("src/app/platform/tauri/WriteForm");
-  const actionOrigin = new URL(formData.action).origin;
+  const { createWriteRequestHeaders, encodeWriteForm } =
+    await import("src/app/platform/tauri/WriteForm");
   const response = await platform.http.fetch(formData.action, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      // 変更理由: Tauri HTTPはWebViewのOriginを自動付与するため、
-      // 拡張機能版のdeclarativeNetRequestと同じ投稿先Originへ明示的に揃える。
-      Origin: actionOrigin,
-      Referer: formData.action,
-    },
+    headers: createWriteRequestHeaders(formData.action, container.config.get("useragent")),
     body: encodeWriteForm(formData),
     mimeType: `text/html; charset=${formData.charset}`,
   });
