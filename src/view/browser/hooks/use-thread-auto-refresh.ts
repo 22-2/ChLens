@@ -15,6 +15,8 @@ interface UseThreadAutoRefreshOptions {
   lastResponseNum: number | null;
   rootRef: RefObject<HTMLDivElement | null>;
   requestRefresh: () => void;
+  /** 自動更新で新着レスを検知したときに呼ぶ。 */
+  onNewResponses?: (count: number) => void;
   /** ポップアップ表示中など、自動スクロールを一時停止すべきとき。省略時は false */
   pauseAutoScroll?: boolean;
   /** 新着が一定回数(=間隔×N)来ず放置と判断したとき、自動更新を止めるために呼ぶ。 */
@@ -43,6 +45,7 @@ export function useThreadAutoRefresh(options: UseThreadAutoRefreshOptions): UseA
     lastResponseNum,
     rootRef,
     requestRefresh,
+    onNewResponses,
     pauseAutoScroll = false,
     onAutoStop,
     onThreadExpired,
@@ -62,6 +65,7 @@ export function useThreadAutoRefresh(options: UseThreadAutoRefreshOptions): UseA
     lastResponseNum,
     rootRef,
     requestRefresh,
+    onNewResponses,
     onAutoStop,
     onThreadExpired,
   });

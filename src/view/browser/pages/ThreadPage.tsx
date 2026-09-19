@@ -14,6 +14,7 @@ import { ContextMenuNavigationActions } from "src/view/browser/components/Contex
 import { PopupRenderer } from "src/view/browser/components/PopupRenderer";
 import { ResItem } from "src/view/browser/components/ResItem";
 import { ThreadMinimap } from "src/view/browser/components/ThreadMinimap";
+import { ThreadScrollFloatingActions } from "src/view/browser/components/ThreadScrollFloatingActions";
 import { WheelScrollIndicator } from "src/view/browser/components/WheelScrollIndicator";
 import type { ContextMenuPopupItem } from "src/view/browser/hooks/popup-manager/types";
 import { useAutoNextThread } from "src/view/browser/hooks/use-auto-next-thread";
@@ -278,6 +279,40 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     [dispatch, page],
   );
 
+  const handleEnableAutoRefresh = useCallback(() => {
+    const pageKey = getAutoRefreshPageKey(page);
+    if (pageKey == null) {
+      return;
+    }
+
+    // 既存の自動更新トグルと同じ状態経路を使い、フローティングボタンだけが
+    // 別の更新条件を持たないようにする。ON直後の再取得と最下部同期はhookへ委譲する。
+    dispatch({
+      type: "SET_AUTO_REFRESH_ENABLED",
+      enabled: true,
+      pageKey,
+    });
+  }, [dispatch, page]);
+
+  const handleNewResponses = useCallback(
+    (count: number) => {
+      if (!container.notification.isSupported()) {
+        return;
+      }
+
+      void container.notification
+        .notify(`新着レス: ${page.title}`, {
+          message: `${count}件の新着レスがあります`,
+          url: page.threadUrl,
+          tag: `thread-new-response:${page.threadUrl}`,
+        })
+        .catch((error: unknown) => {
+          console.error("[ChLens] 新着レス通知の表示に失敗しました:", error);
+        });
+    },
+    [page.threadUrl, page.title],
+  );
+
   const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling } = useThreadAutoRefresh({
     enabled: isActiveAutoRefreshEnabled,
     startAtBottom: startAutoRefreshAtBottom,
@@ -294,6 +329,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     lastResponseNum: responses.at(-1)?.num ?? null,
     rootRef,
     requestRefresh: () => dispatch({ type: "RELOAD" }),
+    onNewResponses: handleNewResponses,
     // 新着が一定回数(=間隔×N)来なかったら、放置スレと判断して自動更新を止める。
     onAutoStop: isCommentOverlayFlowing
       ? undefined
@@ -683,6 +719,16 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             responseCount={filteredResponses.length}
             activeTopBar={activeTopBar}
             onMarkerClick={handleMinimapMarkerClick}
+          />
+          <ThreadScrollFloatingActions
+            rootRef={rootRef}
+            isActive={isActive}
+            isAutoRefreshEnabled={isAutoRefreshEnabled}
+            isFilterEnabled={isFilterEnabled}
+            loading={loading}
+            expired={autoRefreshExpired}
+            responseCount={responses.length}
+            onEnableAutoRefresh={handleEnableAutoRefresh}
           />
           <MediaViewerContainer scopeId={mediaViewerScopeId} />
         </>

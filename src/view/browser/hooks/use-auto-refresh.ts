@@ -16,6 +16,8 @@ interface PendingRefreshSnapshot {
   lastResponseNum: number | null;
   scrollHeight: number;
   shouldScroll: boolean;
+  // タイマー起点の更新だけ通知対象にし、初回取得や手動更新では通知しない。
+  shouldNotify: boolean;
   // 自動停止のアイドル判定に数えてよい更新かどうか。
   // ON直後の初回更新は「新着ゼロ」でも放置とは見なさないので false にする。
   isIdleStopCandidate: boolean;
@@ -37,6 +39,8 @@ interface UseAutoRefreshOptions {
   lastResponseNum: number | null;
   rootRef: RefObject<HTMLDivElement | null>;
   requestRefresh: () => void;
+  /** 自動更新で新着レスを検知したときに呼ぶ。 */
+  onNewResponses?: (count: number) => void;
   /** 新着が一定回数(=間隔×N)来ず放置と判断したとき、自動更新を止めるために呼ぶ。 */
   onAutoStop?: () => void;
   /** dat落ちを検知して自動更新を止めるとき、一度だけ呼ぶ。 */
@@ -63,6 +67,7 @@ export function useAutoRefresh({
   lastResponseNum,
   rootRef,
   requestRefresh,
+  onNewResponses,
   onAutoStop,
   onThreadExpired,
 }: UseAutoRefreshOptions): UseAutoRefreshResult {
@@ -71,6 +76,7 @@ export function useAutoRefresh({
   const autoScrollBoundaryRef = useRef<HTMLDivElement>(null);
   const pendingRefreshRef = useRef<PendingRefreshSnapshot | null>(null);
   const requestRefreshRef = useRef(requestRefresh);
+  const onNewResponsesRef = useRef(onNewResponses);
   const onAutoStopRef = useRef(onAutoStop);
   const onThreadExpiredRef = useRef(onThreadExpired);
   // 同じスレの再取得では expired が一度 false に戻ることがあるため、
@@ -134,6 +140,10 @@ export function useAutoRefresh({
   useEffect(() => {
     requestRefreshRef.current = requestRefresh;
   }, [requestRefresh]);
+
+  useEffect(() => {
+    onNewResponsesRef.current = onNewResponses;
+  }, [onNewResponses]);
 
   useEffect(() => {
     onAutoStopRef.current = onAutoStop;
@@ -247,7 +257,11 @@ export function useAutoRefresh({
   }, [enabled, loading, moveToThreadBottom, startAtBottom, syncCanAutoScroll]);
 
   const capturePendingRefresh = useCallback(
-    (isIdleStopCandidate: boolean, shouldScroll = canAutoScrollRef.current): boolean => {
+    (
+      isIdleStopCandidate: boolean,
+      shouldScroll = canAutoScrollRef.current,
+      shouldNotify = false,
+    ): boolean => {
       const scrollContainer = getScrollContainer();
       if (!scrollContainer) {
         return false;
@@ -261,6 +275,8 @@ export function useAutoRefresh({
         if (!isIdleStopCandidate) {
           pendingRefresh.isIdleStopCandidate = false;
         }
+        // 自動更新中に手動更新が重なっても、最初のタイマー起点の通知意図は失わない。
+        pendingRefresh.shouldNotify ||= shouldNotify;
         userInterruptedRef.current = false;
         return true;
       }
@@ -271,6 +287,7 @@ export function useAutoRefresh({
         lastResponseNum: currentSnapshot.lastResponseNum,
         scrollHeight: scrollContainer.scrollHeight,
         shouldScroll,
+        shouldNotify,
         isIdleStopCandidate,
       };
       userInterruptedRef.current = false;
@@ -567,7 +584,7 @@ export function useAutoRefresh({
         return;
       }
 
-      capturePendingRefresh(true);
+      capturePendingRefresh(true, undefined, true);
 
       // 手動更新と同じ RELOAD 経路を使って forceUpdate を一箇所に寄せる。
       // 取得条件が分岐すると「右クリック更新だけ別挙動」が起きやすいため。
@@ -615,6 +632,12 @@ export function useAutoRefresh({
     // 新着があった場合は最終新着時刻を更新（時間ベース停止の判定用）
     if (hasNewResponses) {
       lastNewResponseTimeRef.current = Date.now();
+
+      if (pendingRefresh.shouldNotify) {
+        // 通知は追従スクロールの可否に依存させず、ユーザーが途中位置でも知らせる。
+        const newResponseCount = Math.max(1, responseCount - pendingRefresh.responseCount);
+        onNewResponsesRef.current?.(newResponseCount);
+      }
     }
 
     // 自動停止（アイドル検知）。
