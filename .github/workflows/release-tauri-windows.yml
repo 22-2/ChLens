@@ -56,7 +56,7 @@ jobs:
           $content | ConvertTo-Json -Depth 10 | Set-Content 'src-tauri/tauri.conf.json'
 
       - name: Build Tauri Windows
-        run: pnpm tauri build
+        run: pnpm build:tauri
 
       - name: Create Release
         uses: softprops/action-gh-release@v1

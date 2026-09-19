@@ -6,7 +6,7 @@
   "build": {
     "frontendDist": "../debug/tauri",
     "beforeDevCommand": "pnpm watch:tauri",
-    "beforeBuildCommand": "pnpm build:tauri"
+    "beforeBuildCommand": "pnpm build:tauri:assets"
   },
   "app": {
     "windows": [

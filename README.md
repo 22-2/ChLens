@@ -36,14 +36,23 @@ pnpm run build:chrome
 # Firefox 拡張をビルド
 pnpm run build:firefox
 
-# Tauri デスクトップアプリをビルド（Windows など）
-pnpm run build:tauri
+# Chrome/Firefox拡張をまとめてビルド
+pnpm build:extensions
+
+# Tauri デスクトップアプリとインストーラーをビルド
+pnpm build:tauri
+
+# Tauri用WebView資産だけをビルド（通常は build:tauri から自動実行）
+pnpm build:tauri:assets
+
+# Tauri版を開発モードで起動
+pnpm dev:tauri
 
 # 開発ウォッチ（Chrome 用）
 pnpm run watch:chrome
 
-# すべてのビルドとパッケージ作成
-pnpm run pack:all
+# Chrome/Firefox拡張をビルドして配布用にパッケージ
+pnpm release:build
 ```
 
 ビルド成果物を別のディレクトリへ自動コピーする場合は、`.env` にコピー先を指定します。
