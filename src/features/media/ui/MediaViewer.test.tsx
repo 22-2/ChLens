@@ -32,6 +32,7 @@ describe("MediaViewer", () => {
         onClose={() => {}}
         onToggleMaximize={() => {}}
         onImageLoad={() => {}}
+        onImageError={() => {}}
         {...overrides}
       />,
     );

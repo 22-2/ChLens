@@ -41,6 +41,7 @@ export interface MediaViewerProps {
   onClose: () => void;
   onToggleMaximize: () => void;
   onImageLoad: () => void;
+  onImageError: () => void;
 }
 
 function sanitizeDownloadFilename(name: string): string {
@@ -538,6 +539,10 @@ export function useMediaViewerController(): MediaViewerProps | null {
     onImageLoad: () => {
       setImageLoading(false);
       measureViewerLayout();
+    },
+    onImageError: () => {
+      // Rust側の取得にも失敗した場合はローディング表示を解除し、操作不能な状態を残さない。
+      setImageLoading(false);
     },
   };
 }

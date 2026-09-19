@@ -39,6 +39,13 @@ export interface HttpResponse {
   url: string;
 }
 
+export interface BinaryHttpResponse {
+  status: number;
+  headers: Record<string, string>;
+  body: ArrayBuffer;
+  url: string;
+}
+
 export interface WriteFormData {
   action: string;
   charset: string;
@@ -59,6 +66,11 @@ export interface HttpRequestOptions {
 
 export interface HttpClient {
   fetch(url: string, options?: HttpRequestOptions): Promise<HttpResponse>;
+  /**
+   * 画像などのバイナリ本文を取得する。ブラウザ拡張では未使用だが、
+   * Tauri WebViewで外部リソースをblob URLへ変換するために実装する。
+   */
+  fetchBinary?: (url: string, options?: HttpRequestOptions) => Promise<BinaryHttpResponse>;
   /**
    * 書き込みリクエスト（POST）の前に、RefererやOriginヘッダーを制御するための
    * プラットフォーム固有の設定を行います（拡張機能の declarativeNetRequest 等）。

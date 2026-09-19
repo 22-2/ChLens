@@ -2,6 +2,7 @@ import { Maximize, Minimize } from "lucide-react";
 import { Spinner } from "src/view/browser/ui/Spinner";
 
 import type { MediaViewerProps } from "../browser/use-media-viewer-controller";
+import { ExternalImage } from "./ExternalImage";
 
 export function MediaViewer({
   viewer,
@@ -23,6 +24,7 @@ export function MediaViewer({
   onClose,
   onToggleMaximize,
   onImageLoad,
+  onImageError,
 }: MediaViewerProps) {
   return (
     <div
@@ -99,12 +101,13 @@ export function MediaViewer({
             </div>
           )}
           <div ref={viewerCanvasRef} className="media-viewer__canvas">
-            <img
+            <ExternalImage
               ref={viewerImageRef}
               className="media-viewer__image"
               src={viewer.src}
               alt={viewer.label}
               onLoad={onImageLoad}
+              onError={onImageError}
               draggable={false}
               style={{
                 // 画像切り替え時は即座に不可視化し、前画像がフェードアウトで見えるちらつきを防ぐ。

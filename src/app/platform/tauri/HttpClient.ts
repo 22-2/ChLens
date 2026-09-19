@@ -1,5 +1,10 @@
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
-import { HttpClient, HttpRequestOptions, HttpResponse } from "src/app/platform/types";
+import {
+  type BinaryHttpResponse,
+  type HttpClient,
+  type HttpRequestOptions,
+  type HttpResponse,
+} from "src/app/platform/types";
 
 function extractCharset(mimeType: string): string | null {
   const match = /charset=([^\s;]+)/i.exec(mimeType);
@@ -7,6 +12,36 @@ function extractCharset(mimeType: string): string | null {
 }
 
 // webviewのXHRはCORSに制限されるため、Rust側でHTTPリクエストを行うプラグインを使用する
+export async function fetchTauriBinary(
+  url: string,
+  options: HttpRequestOptions = {},
+): Promise<BinaryHttpResponse> {
+  const response = await tauriFetch(url, {
+    method: options.method || "GET",
+    headers: options.headers,
+    body: options.body,
+    ...(options.timeout ? { connectTimeout: options.timeout } : {}),
+  });
+
+  const headers: Record<string, string> = {};
+  response.headers.forEach((value: string, key: string) => {
+    headers[key] = value;
+  });
+
+  const body = await response.arrayBuffer();
+  console.log(`[TauriHttpClient] Binary response: ${response.status} ${url}`, {
+    byteLength: body.byteLength,
+    contentType: headers["content-type"],
+  });
+
+  return {
+    status: response.status,
+    headers,
+    body,
+    url: response.url,
+  };
+}
+
 export const TauriHttpClient: HttpClient = {
   async fetch(url: string, options: HttpRequestOptions = {}): Promise<HttpResponse> {
     const safeOptions = {
@@ -69,6 +104,8 @@ export const TauriHttpClient: HttpClient = {
       url: response.url,
     };
   },
+
+  fetchBinary: fetchTauriBinary,
 
   async setupWriteHeaders(_formAction: string): Promise<void> {
     // Tauri環境ではdeclarativeNetRequestが使えないため、

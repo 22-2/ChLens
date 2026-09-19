@@ -17,6 +17,7 @@ import {
   toTwitterPostEmbed,
 } from "../domain/external-media";
 import { toViewerImageUrl } from "../domain/url-media";
+import { ExternalImage } from "./ExternalImage";
 
 // ギャラリーはThreadViewやPopupのURLルーティング実装を知らず、クリック時の引数だけを契約にする。
 export type MediaUrlClickHandler = (
@@ -148,7 +149,7 @@ function VideoThumbImage({ embed }: { embed: ExternalMediaEmbed }): React.ReactE
   }, [embed.thumbnailUrl]);
 
   return (
-    <img
+    <ExternalImage
       src={posterUrl}
       alt={`${embed.providerLabel} のサムネイル`}
       loading="lazy"
@@ -179,7 +180,7 @@ function TwitterPostCard({
     <div className="res__twitter-post">
       <div className="res__twitter-post-author">
         {post.author.avatarUrl && (
-          <img
+          <ExternalImage
             className="res__twitter-post-avatar"
             src={post.author.avatarUrl}
             alt=""
@@ -243,7 +244,7 @@ function TwitterPostCard({
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <img src={media.url} alt={media.altText ?? "投稿画像"} loading="lazy" />
+                  <ExternalImage src={media.url} alt={media.altText ?? "投稿画像"} loading="lazy" />
                 </a>
               );
             }
@@ -493,7 +494,7 @@ export function ResMediaGallery({
                 onAuxClick={(event) => handleMiddleAuxClick(event, item.rawUrl, imageUrls)}
                 title={item.rawUrl}
               >
-                <img src={item.src} alt={item.rawUrl} loading="lazy" />
+                <ExternalImage src={item.src} alt={item.rawUrl} loading="lazy" />
               </a>
             );
           }

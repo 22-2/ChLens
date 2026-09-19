@@ -3,6 +3,7 @@ import "./OverlayStage.css";
 import type { CSSProperties } from "react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toViewerImageUrl } from "src/features/media/domain/url-media";
+import { ExternalImage } from "src/features/media/ui/ExternalImage";
 
 import {
   type CommentBacklogPolicy,
@@ -502,7 +503,7 @@ export function OverlayStage({
             onClick={onCommentClick ? () => onCommentClick(comment) : undefined}
           >
             {comment.imageUrls?.slice(0, 3).map((imageUrl) => (
-              <img
+              <ExternalImage
                 key={imageUrl}
                 className="comment-overlay-stage__media"
                 src={toViewerImageUrl(imageUrl) ?? imageUrl}
