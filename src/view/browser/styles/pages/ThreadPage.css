@@ -79,6 +79,62 @@
   opacity: 1;
 }
 
+/* 変更理由: 最下部操作を本文の流れから切り離し、レスの高さやミニマップの再描画で
+   ボタン位置がずれないようviewport固定のフローティング操作にする。 */
+.thread-page__floating-action {
+  position: fixed;
+  z-index: calc(var(--sys-z-minimap) + 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sys-space-2);
+  min-height: 36px;
+  padding: 0 var(--sys-space-5);
+  border: 1px solid var(--sys-color-accent);
+  border-radius: var(--sys-radius-pill);
+  background: var(--sys-color-surface);
+  color: var(--sys-color-accent);
+  box-shadow: var(--sys-shadow-floating);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--sys-font-size-sm);
+  white-space: nowrap;
+  transform: translateX(-50%);
+  transition:
+    background var(--sys-duration-fast),
+    color var(--sys-duration-fast),
+    box-shadow var(--sys-duration-fast);
+  pointer-events: auto;
+}
+
+.thread-page__floating-action:hover {
+  background: var(--sys-color-accent);
+  color: var(--sys-color-accent-fg);
+  box-shadow: var(--sys-shadow-focus);
+}
+
+.thread-page__floating-action:focus-visible {
+  outline: 2px solid var(--sys-color-focus-ring);
+  outline-offset: 2px;
+}
+
+.thread-page__floating-action--jump {
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0;
+  border-color: var(--sys-color-border);
+  background: var(--sys-color-surface);
+  color: var(--sys-color-text-muted);
+  transform: translateX(-100%);
+}
+
+.thread-page__floating-action--jump:hover {
+  border-color: var(--sys-color-accent);
+  background: var(--sys-color-surface-muted);
+  color: var(--sys-color-accent);
+}
+
 .thread-page__auto-scroll-threshold {
   position: relative;
   display: flex;

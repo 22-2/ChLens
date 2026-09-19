@@ -60,6 +60,7 @@ function AutoRefreshHarness({
   loading = false,
   pauseAutoScroll = false,
   onRequestRefresh,
+  onNewResponses,
   onAutoStop,
   configureScrollContainer,
   onThreadExpired,
@@ -72,6 +73,7 @@ function AutoRefreshHarness({
   loading?: boolean;
   pauseAutoScroll?: boolean;
   onRequestRefresh: () => void;
+  onNewResponses?: (count: number) => void;
   onAutoStop?: () => void;
   configureScrollContainer?: (scrollContainer: HTMLDivElement) => void;
   onThreadExpired?: () => void;
@@ -105,6 +107,7 @@ function AutoRefreshHarness({
       setLoading(true);
       onRequestRefresh();
     },
+    onNewResponses,
     onAutoStop,
     onThreadExpired,
   });
@@ -200,7 +203,10 @@ describe("useAutoRefresh", () => {
 
   it("新着レスが来た時だけ高さ差分を scrollBy する", () => {
     const onRequestRefresh = vi.fn();
-    render(<AutoRefreshHarness onRequestRefresh={onRequestRefresh} />);
+    const onNewResponses = vi.fn();
+    render(
+      <AutoRefreshHarness onRequestRefresh={onRequestRefresh} onNewResponses={onNewResponses} />,
+    );
 
     const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
     const boundary = screen.getByTestId("boundary") as HTMLDivElement;
@@ -251,6 +257,43 @@ describe("useAutoRefresh", () => {
     });
 
     expect(scrollBy).toHaveBeenCalledWith({ top: 60, behavior: "auto" });
+    expect(onNewResponses).toHaveBeenCalledOnce();
+    expect(onNewResponses).toHaveBeenCalledWith(1);
+  });
+
+  it("手動更新では新着レス通知を呼ばない", () => {
+    const onRequestRefresh = vi.fn();
+    const onNewResponses = vi.fn();
+    render(
+      <AutoRefreshHarness onRequestRefresh={onRequestRefresh} onNewResponses={onNewResponses} />,
+    );
+
+    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
+    Object.defineProperty(scrollContainer, "clientHeight", {
+      configurable: true,
+      get: () => 100,
+    });
+    Object.defineProperty(scrollContainer, "scrollTop", {
+      configurable: true,
+      get: () => 200,
+      set: () => {},
+    });
+    Object.defineProperty(scrollContainer, "scrollHeight", {
+      configurable: true,
+      get: () => 300,
+    });
+    scrollContainer.getBoundingClientRect = () => createRect({ top: 0, bottom: 100 });
+    const boundary = screen.getByTestId("boundary") as HTMLDivElement;
+    boundary.getBoundingClientRect = () => createRect({ top: 80, bottom: 100 });
+
+    fireEvent.click(screen.getByText("外部リロード開始"));
+    fireEvent.click(screen.getByText("新着ありで完了"));
+
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
+
+    expect(onNewResponses).not.toHaveBeenCalled();
   });
 
   it("書き込みなど外部起因のリロードでも最下部にいれば追従スクロールする", () => {
