@@ -39,8 +39,8 @@ interface UseAutoRefreshOptions {
   lastResponseNum: number | null;
   rootRef: RefObject<HTMLDivElement | null>;
   requestRefresh: () => void;
-  /** 自動更新で新着レスを検知したときに呼ぶ。 */
-  onNewResponses?: (count: number) => void;
+  /** 自動更新で新着レスを検知したときに、更新前の末尾レス番号とともに呼ぶ。 */
+  onNewResponses?: (count: number, previousLastResponseNum: number | null) => void;
   /** 新着が一定回数(=間隔×N)来ず放置と判断したとき、自動更新を止めるために呼ぶ。 */
   onAutoStop?: () => void;
   /** dat落ちを検知して自動更新を止めるとき、一度だけ呼ぶ。 */
@@ -141,7 +141,9 @@ export function useAutoRefresh({
     requestRefreshRef.current = requestRefresh;
   }, [requestRefresh]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    // 新着判定もlayout effectで行うため、同じrenderの最新レス一覧を参照する通知処理を
+    // 完了処理より先に差し替える。passive effectでは旧renderのレス一覧を捕まえてしまう。
     onNewResponsesRef.current = onNewResponses;
   }, [onNewResponses]);
 
@@ -636,7 +638,7 @@ export function useAutoRefresh({
       if (pendingRefresh.shouldNotify) {
         // 通知は追従スクロールの可否に依存させず、ユーザーが途中位置でも知らせる。
         const newResponseCount = Math.max(1, responseCount - pendingRefresh.responseCount);
-        onNewResponsesRef.current?.(newResponseCount);
+        onNewResponsesRef.current?.(newResponseCount, pendingRefresh.lastResponseNum);
       }
     }
 

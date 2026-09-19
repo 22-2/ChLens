@@ -58,6 +58,28 @@ export function buildReplyToWrittenResSet(
   return replyToWrittenResNums;
 }
 
+export function countNewRepliesToWrittenResponses(
+  responses: readonly Pick<IRes, "num">[],
+  writtenResNums: ReadonlySet<number>,
+  replyToWrittenResNums: ReadonlySet<number>,
+  previousLastResponseNum: number | null,
+  newResponseCount: number,
+): number {
+  if (newResponseCount <= 0) {
+    return 0;
+  }
+
+  const newResponses =
+    previousLastResponseNum == null
+      ? responses.slice(-newResponseCount)
+      : responses.filter((response) => response.num > previousLastResponseNum);
+
+  // 自分自身の投稿は返信先が自分のレスでも通知せず、他の利用者からの返信だけを数える。
+  return newResponses.filter(
+    (response) => !writtenResNums.has(response.num) && replyToWrittenResNums.has(response.num),
+  ).length;
+}
+
 export function compileImageBlurPattern(pattern: string): RegExp | null {
   try {
     return new RegExp(pattern);

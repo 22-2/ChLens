@@ -110,8 +110,8 @@ describe("ThreadScrollFloatingActions", () => {
     expect(screen.queryByRole("button", { name: "下へジャンプ" })).not.toBeInTheDocument();
   });
 
-  it("最下部から少し上ではミニマップの左側に下へジャンプを表示する", () => {
-    scrollTop = 250;
+  it("最下部から大きく上ではミニマップの左側に下へジャンプを表示する", () => {
+    scrollTop = 0;
     const { scrollTo } = renderActions();
 
     const button = screen.getByRole("button", { name: "下へジャンプ" });
@@ -120,6 +120,13 @@ describe("ThreadScrollFloatingActions", () => {
 
     fireEvent.click(button);
     expect(scrollTo).toHaveBeenCalledWith({ top: 500, behavior: "auto" });
+  });
+
+  it("最下部から少し上では下へジャンプを表示しない", () => {
+    scrollTop = 250;
+    renderActions();
+
+    expect(screen.queryByRole("button", { name: "下へジャンプ" })).not.toBeInTheDocument();
   });
 
   it("自動更新中は開始ボタンを重ねて表示しない", () => {

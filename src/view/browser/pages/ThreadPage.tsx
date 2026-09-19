@@ -49,6 +49,7 @@ import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 import {
   buildBlurredResSet,
   buildReplyToWrittenResSet,
+  countNewRepliesToWrittenResponses,
 } from "src/view/browser/utils/thread-emphasis";
 interface ThreadPageProps {
   tabId: string;
@@ -107,6 +108,10 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     threadTitle: page.title,
     responses,
   });
+  const replyToOwnResNums = useMemo(
+    () => buildReplyToWrittenResSet(ownResNums, indexes.repIndex),
+    [indexes.repIndex, ownResNums],
+  );
   const dispatch = useTabDispatch();
   const { activeTab } = useTabStore();
   const isCommentOverlayTarget =
@@ -295,22 +300,36 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   }, [dispatch, page]);
 
   const handleNewResponses = useCallback(
-    (count: number) => {
+    (count: number, previousLastResponseNum: number | null) => {
+      const replyCount = countNewRepliesToWrittenResponses(
+        responses,
+        ownResNums,
+        replyToOwnResNums,
+        previousLastResponseNum,
+        count,
+      );
+
+      // 自動更新の共通hookは新着数だけを扱い、通知対象である「自分への返信」は
+      // スレッド固有の履歴・返信インデックスを持つ画面側で絞り込む。
+      if (replyCount === 0) {
+        return;
+      }
+
       if (!container.notification.isSupported()) {
         return;
       }
 
       void container.notification
-        .notify(`新着レス: ${page.title}`, {
-          message: `${count}件の新着レスがあります`,
+        .notify(`自分のレスへの返信: ${page.title}`, {
+          message: `${replyCount}件の返信があります`,
           url: page.threadUrl,
-          tag: `thread-new-response:${page.threadUrl}`,
+          tag: `thread-reply-to-own:${page.threadUrl}`,
         })
         .catch((error: unknown) => {
           console.error("[ChLens] 新着レス通知の表示に失敗しました:", error);
         });
     },
-    [page.threadUrl, page.title],
+    [ownResNums, page.threadUrl, page.title, replyToOwnResNums, responses],
   );
 
   const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling } = useThreadAutoRefresh({
@@ -423,11 +442,6 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     closeNonContextPopups,
     scrollToResponse,
   });
-
-  const replyToOwnResNums = useMemo(
-    () => buildReplyToWrittenResSet(ownResNums, indexes.repIndex),
-    [indexes.repIndex, ownResNums],
-  );
 
   const threadNgCount = useMemo(
     () => responses.filter((res) => res.ng != null || res.class?.includes("ng")).length,
