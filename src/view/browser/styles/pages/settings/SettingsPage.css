@@ -376,6 +376,20 @@
   font-weight: 600;
 }
 
+.settings-page__site-board-field-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sys-space-3);
+}
+
+.settings-page__site-board-add-button {
+  min-height: auto;
+  padding: 0;
+  font-size: var(--sys-font-size-xs);
+  font-weight: 600;
+}
+
 .settings-page__site-board-field input,
 .settings-page__site-board-field select,
 .settings-page__site-board-setting select,
@@ -398,15 +412,15 @@
   outline-offset: 1px;
 }
 
-.settings-page__site-board-add {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--sys-space-4);
-  margin-top: var(--sys-space-8);
+.settings-page__site-board-add-dialog {
+  gap: var(--sys-space-6);
 }
 
-.settings-page__site-board-add .settings-page__site-board-field {
-  flex: 1;
+.settings-page__site-board-add-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sys-space-4);
+  margin-top: var(--sys-space-2);
 }
 
 .settings-page__site-board-empty {
@@ -477,11 +491,6 @@
 @media (max-width: 640px) {
   .settings-page__site-board-selectors {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .settings-page__site-board-add {
-    align-items: stretch;
-    flex-direction: column;
   }
 
   .settings-page__site-board-setting-header {

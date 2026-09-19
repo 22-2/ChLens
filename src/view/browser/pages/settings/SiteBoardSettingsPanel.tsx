@@ -9,6 +9,7 @@ import {
   MIN_THREAD_AUTO_REFRESH_SEC,
 } from "src/view/browser/hooks/auto-refresh-config";
 import { Button } from "src/view/browser/ui/Button";
+import { Dialog } from "src/view/browser/ui/Dialog";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import {
   Surface,
@@ -203,8 +204,14 @@ export function SiteBoardSettingsPanel() {
   const [selectedSite, setSelectedSite] = useState("");
   const [selectedBoard, setSelectedBoard] = useState(SITE_SHARED_SCOPE);
   const [manualBoardUrl, setManualBoardUrl] = useState("");
+  const [isAddBoardDialogOpen, setIsAddBoardDialogOpen] = useState(false);
+  const [dialogPortalContainer, setDialogPortalContainer] = useState<HTMLElement | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<ScopedSettingKey | null>(null);
+
+  useEffect(() => {
+    setDialogPortalContainer(globalThis.document.querySelector<HTMLElement>(".browser-shell"));
+  }, []);
 
   useEffect(() => {
     const sync = () => setDocument(readScopedSettings());
@@ -313,18 +320,35 @@ export function SiteBoardSettingsPanel() {
     [scope],
   );
 
-  const addManualBoard = useCallback(() => {
+  const addManualBoard = useCallback((): boolean => {
     const board = normalizeBoardKey(manualBoardUrl);
+    const comparisonKey = getBoardUrlKey(manualBoardUrl);
     const site = normalizeSiteKey(manualBoardUrl);
-    if (!board || !site) {
+    if (!board || !comparisonKey || !site) {
       container.toast.error("板URLを確認してください");
-      return;
+      return false;
     }
+
+    const existingBoard = boards.find(
+      (candidate) => getBoardUrlKey(candidate.key) === comparisonKey,
+    );
+    if (existingBoard) {
+      // 変更理由: BBSMENUや過去の設定に同じ板がある場合は候補を増やさず、
+      // 既存の正規化済み候補を選択して二重登録を防ぐ。
+      setSelectedSite(existingBoard.site);
+      setSelectedBoard(existingBoard.key);
+      setManualBoardUrl("");
+      setIsAddBoardDialogOpen(false);
+      return true;
+    }
+
     setManualBoards((current) => [...current, { url: board, title: deriveBoardTitle(board) }]);
     setSelectedSite(site);
     setSelectedBoard(board);
     setManualBoardUrl("");
-  }, [manualBoardUrl]);
+    setIsAddBoardDialogOpen(false);
+    return true;
+  }, [boards, manualBoardUrl]);
 
   if (!selectedSite && loading) {
     return (
@@ -364,8 +388,17 @@ export function SiteBoardSettingsPanel() {
               ))}
             </select>
           </label>
-          <label className="settings-page__site-board-field">
-            <span>板</span>
+          <div className="settings-page__site-board-field">
+            <div className="settings-page__site-board-field-heading">
+              <span>板</span>
+              <Button
+                className="settings-page__site-board-add-button"
+                variant="subtle"
+                onClick={() => setIsAddBoardDialogOpen(true)}
+              >
+                ＋ 板を追加
+              </Button>
+            </div>
             <select
               value={selectedBoard}
               disabled={!selectedSite}
@@ -378,29 +411,58 @@ export function SiteBoardSettingsPanel() {
                 </option>
               ))}
             </select>
-          </label>
+          </div>
         </div>
 
-        <div className="settings-page__site-board-add">
-          <label className="settings-page__site-board-field">
-            <span>板URLを追加</span>
-            <input
-              type="url"
-              value={manualBoardUrl}
-              placeholder="https://example.com/board/"
-              onChange={(event) => setManualBoardUrl(event.currentTarget.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  addManualBoard();
-                }
-              }}
-            />
-          </label>
-          <Button variant="light" onClick={addManualBoard} disabled={!manualBoardUrl.trim()}>
-            追加
-          </Button>
-        </div>
+        <Dialog.Root
+          open={isAddBoardDialogOpen}
+          onOpenChange={(open) => {
+            setIsAddBoardDialogOpen(open);
+            if (!open) {
+              setManualBoardUrl("");
+            }
+          }}
+        >
+          <Dialog.Portal container={dialogPortalContainer ?? undefined}>
+            <Dialog.Overlay className="browser-dialog-overlay" />
+            <Dialog.Content
+              className="browser-dialog-content settings-page__site-board-add-dialog"
+              aria-describedby="site-board-add-dialog-description"
+            >
+              <Dialog.Title className="browser-dialog-title">板を追加</Dialog.Title>
+              <Dialog.Description
+                id="site-board-add-dialog-description"
+                className="browser-dialog-description"
+              >
+                BBSMENUにない板を設定対象へ追加します。URLからサイトと板を判定します。
+              </Dialog.Description>
+              <label className="settings-page__site-board-field">
+                <span>板URL</span>
+                <input
+                  autoFocus
+                  type="url"
+                  value={manualBoardUrl}
+                  placeholder="https://example.com/board/"
+                  onChange={(event) => setManualBoardUrl(event.currentTarget.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      addManualBoard();
+                    }
+                  }}
+                />
+              </label>
+              <div className="settings-page__site-board-add-dialog-actions">
+                <Dialog.Close asChild>
+                  <Button variant="subtle">キャンセル</Button>
+                </Dialog.Close>
+                <Button variant="light" onClick={addManualBoard} disabled={!manualBoardUrl.trim()}>
+                  追加
+                </Button>
+              </div>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
 
         {!scope && (
           <p className="settings-page__site-board-empty">サイトを選ぶと設定を編集できます。</p>
