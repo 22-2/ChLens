@@ -42,6 +42,17 @@ describe("書き込み結果の判定", () => {
     ).toEqual({ type: "error", message: "書き込みエラー" });
   });
 
+  it("未認証レスポンスからeddibbの認証コードと認証URLを取り出す", () => {
+    expect(
+      classifyWriteResult({
+        url: "https://example.com/test/bbs.cgi",
+        title: "ＥＲＲＯＲ",
+        bodyText: "エラー！\n認証コード'332376'を用いてください\nhttps://example.com/auth-code",
+        errorCode: "E-Unauthenticated",
+      }),
+    ).toEqual({ type: "auth-code", code: "332376", url: "https://example.com/auth-code" });
+  });
+
   it("書き込み結果以外のURLを無視する", () => {
     expect(
       classifyWriteResult({

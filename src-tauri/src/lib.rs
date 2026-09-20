@@ -7,10 +7,7 @@ pub fn run() {
     .manage(write_transport::WriteTransportState::default())
     .plugin(tauri_plugin_http::init())
     .plugin(tauri_plugin_sql::Builder::default().build())
-    .invoke_handler(tauri::generate_handler![
-      write_transport::write_request,
-      write_transport::clear_write_session,
-    ])
+    .invoke_handler(tauri::generate_handler![write_transport::write_request])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(

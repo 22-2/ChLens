@@ -1,7 +1,6 @@
-use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE, COOKIE, ORIGIN, REFERER, USER_AGENT};
+use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE, ORIGIN, REFERER, USER_AGENT};
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::sync::Mutex;
 use std::time::Duration;
 use tauri::State;
@@ -11,18 +10,18 @@ const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 
 #[derive(Default)]
 pub struct WriteTransportState {
-  sessions: Mutex<HashMap<String, Client>>,
+  // 変更理由: 確認POSTの成功後も掲示板が発行した認証Cookieを次回投稿へ渡すため、
+  // 書き込み1回ごとにClientを破棄せず、アプリの実行中は同じCookie Jarを共有する。
+  client: Mutex<Option<Client>>,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WriteRequest {
-  pub session_id: String,
   pub action: String,
   pub bootstrap_url: Option<String>,
   pub referer: String,
   pub user_agent: Option<String>,
-  pub cookie: Option<String>,
   pub body: Vec<u8>,
 }
 
@@ -61,7 +60,6 @@ fn build_headers(
   action: &Url,
   referer: &str,
   user_agent: Option<&str>,
-  cookie: Option<&str>,
 ) -> HeaderMap {
   let mut headers = HeaderMap::new();
   headers.insert(
@@ -96,33 +94,22 @@ fn build_headers(
     log::warn!("書き込み用RefererにHTTPヘッダーとして使えない文字が含まれていました");
   }
 
-  if let Some(cookie) = cookie.filter(|value| !value.is_empty()) {
-    if let Ok(cookie_header) = HeaderValue::from_str(cookie) {
-      headers.insert(COOKIE, cookie_header);
-    } else {
-      log::warn!("書き込み用CookieにHTTPヘッダーとして使えない文字が含まれていました");
-    }
-  }
-
   headers
 }
 
-fn get_or_create_client(
-  state: &WriteTransportState,
-  session_id: &str,
-) -> Result<(Client, bool), String> {
-  let mut sessions = state
-    .sessions
+fn get_or_create_client(state: &WriteTransportState) -> Result<Client, String> {
+  let mut client = state
+    .client
     .lock()
-    .map_err(|_| "Tauri版の書き込みセッションをロックできませんでした".to_string())?;
+    .map_err(|_| "Tauri版の書き込みClientをロックできませんでした".to_string())?;
 
-  if let Some(client) = sessions.get(session_id) {
-    return Ok((client.clone(), false));
+  if let Some(client) = client.as_ref() {
+    return Ok(client.clone());
   }
 
-  let client = create_client()?;
-  sessions.insert(session_id.to_string(), client.clone());
-  Ok((client, true))
+  let new_client = create_client()?;
+  *client = Some(new_client.clone());
+  Ok(new_client)
 }
 
 #[tauri::command]
@@ -130,27 +117,21 @@ pub async fn write_request(
   state: State<'_, WriteTransportState>,
   request: WriteRequest,
 ) -> Result<WriteResponse, String> {
-  if request.session_id.trim().is_empty() {
-    return Err("書き込みセッションIDが空です".to_string());
-  }
-
   let action = parse_http_url(&request.action, "書き込み先URL")?;
-  let (client, is_new_session) = get_or_create_client(&state, &request.session_id)?;
+  let client = get_or_create_client(&state)?;
 
-  if is_new_session {
-    if let Some(bootstrap_url) = request.bootstrap_url.as_deref() {
-      match parse_http_url(bootstrap_url, "書き込み前のCookie取得URL") {
-        Ok(bootstrap) => {
-          let headers = build_headers(&bootstrap, "", request.user_agent.as_deref(), None);
-          // 変更理由: 5ch互換サーバーはスレッド閲覧時に確認用Cookieを発行するため、
-          // 初回POSTの前に同じRust ClientでGETしてCookie Jarへ保存する。
-          if let Err(error) = client.get(bootstrap).headers(headers).send().await {
-            // Cookie取得に失敗してもPOST本体は試し、サーバー側の詳細エラーを表示する。
-            log::warn!("書き込み前のCookie取得に失敗しました: {error}");
-          }
+  if let Some(bootstrap_url) = request.bootstrap_url.as_deref() {
+    match parse_http_url(bootstrap_url, "書き込み前のCookie取得URL") {
+      Ok(bootstrap) => {
+        let headers = build_headers(&bootstrap, "", request.user_agent.as_deref());
+        // 変更理由: 5ch互換サーバーはスレッド閲覧時に確認用Cookieを発行するため、
+        // 初回POSTの前に同じRust ClientでGETして共有Cookie Jarへ保存する。
+        if let Err(error) = client.get(bootstrap).headers(headers).send().await {
+          // Cookie取得に失敗してもPOST本体は試し、サーバー側の詳細エラーを表示する。
+          log::warn!("書き込み前のCookie取得に失敗しました: {error}");
         }
-        Err(error) => log::warn!("{error}"),
       }
+      Err(error) => log::warn!("{error}"),
     }
   }
 
@@ -158,7 +139,6 @@ pub async fn write_request(
     &action,
     &request.referer,
     request.user_agent.as_deref(),
-    request.cookie.as_deref(),
   );
   let response = client
     .post(action)
@@ -187,17 +167,4 @@ pub async fn write_request(
     content_type,
     body,
   })
-}
-
-#[tauri::command]
-pub fn clear_write_session(
-  state: State<'_, WriteTransportState>,
-  session_id: String,
-) -> Result<(), String> {
-  let mut sessions = state
-    .sessions
-    .lock()
-    .map_err(|_| "Tauri版の書き込みセッションをロックできませんでした".to_string())?;
-  sessions.remove(&session_id);
-  Ok(())
 }

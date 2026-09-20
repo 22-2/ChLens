@@ -1,12 +1,10 @@
 import type { HttpResponse } from "src/app/platform/types";
 
 interface TauriWriteTransportRequest {
-  sessionId: string;
   action: string;
   bootstrapUrl?: string;
   referer: string;
   userAgent: string | null | undefined;
-  cookie: string | undefined;
   body: ArrayBuffer;
   charset: string;
 }
@@ -20,15 +18,25 @@ interface TauriWriteTransportResponse {
 
 function extractResponseCharset(contentType: string | null): string | null {
   const match = contentType?.match(/charset\s*=\s*"?([^";\s]+)"?/i);
-  return match?.[1] ?? null;
+  const charset = match?.[1];
+  // x-sjisは掲示板が返す古い表記だが、TextDecoderではShift_JISとして扱える。
+  return charset?.toLowerCase() === "x-sjis" ? "Shift_JIS" : (charset ?? null);
 }
 
-function decodeResponseBody(bytes: number[], charset: string): string {
+function decodeResponseBody(bytes: number[], charset: string, fallbackCharset: string): string {
   try {
     return new TextDecoder(charset).decode(new Uint8Array(bytes));
   } catch (error) {
     console.error(`Tauri版の書き込み応答を${charset}としてデコードできませんでした:`, error);
-    return new TextDecoder().decode(new Uint8Array(bytes));
+    try {
+      return new TextDecoder(fallbackCharset).decode(new Uint8Array(bytes));
+    } catch (fallbackError) {
+      console.error(
+        `Tauri版の書き込み応答を${fallbackCharset}としてもデコードできませんでした:`,
+        fallbackError,
+      );
+      return new TextDecoder().decode(new Uint8Array(bytes));
+    }
   }
 }
 
@@ -38,12 +46,10 @@ export async function fetchTauriWrite(request: TauriWriteTransportRequest): Prom
   const { invoke } = await import("@tauri-apps/api/core");
   const response = await invoke<TauriWriteTransportResponse>("write_request", {
     request: {
-      sessionId: request.sessionId,
       action: request.action,
       bootstrapUrl: request.bootstrapUrl,
       referer: request.referer,
       userAgent: request.userAgent,
-      cookie: request.cookie,
       body: Array.from(new Uint8Array(request.body)),
     },
   });
@@ -56,11 +62,7 @@ export async function fetchTauriWrite(request: TauriWriteTransportRequest): Prom
     body: decodeResponseBody(
       response.body,
       extractResponseCharset(response.contentType) ?? request.charset,
+      request.charset,
     ),
   };
-}
-
-export async function clearTauriWriteSession(sessionId: string): Promise<void> {
-  const { invoke } = await import("@tauri-apps/api/core");
-  await invoke("clear_write_session", { sessionId });
 }

@@ -2,7 +2,6 @@ import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const {
-  clearTauriWriteSessionMock,
   dispatchMock,
   fetchMock,
   fetchTauriWriteMock,
@@ -10,7 +9,6 @@ const {
   setStore2StringMock,
   setupWriteHeadersMock,
 } = vi.hoisted(() => ({
-  clearTauriWriteSessionMock: vi.fn(() => Promise.resolve()),
   dispatchMock: vi.fn(),
   fetchMock: vi.fn(),
   fetchTauriWriteMock: vi.fn(),
@@ -33,7 +31,6 @@ vi.mock("src/app/platform/runtime", () => ({
 }));
 
 vi.mock("src/app/platform/tauri/WriteTransport", () => ({
-  clearTauriWriteSession: clearTauriWriteSessionMock,
   fetchTauriWrite: fetchTauriWriteMock,
 }));
 
@@ -100,7 +97,6 @@ describe("useWrite", () => {
     dispatchMock.mockClear();
     fetchMock.mockReset();
     fetchTauriWriteMock.mockReset();
-    clearTauriWriteSessionMock.mockClear();
     setupWriteHeadersMock.mockClear();
   });
 
@@ -224,9 +220,6 @@ describe("useWrite", () => {
       action,
       referer: action,
     });
-    expect(fetchTauriWriteMock.mock.calls[1]?.[0].sessionId).toBe(
-      fetchTauriWriteMock.mock.calls[0]?.[0].sessionId,
-    );
   });
 
   it("Tauri確認レスポンスには実行不能な安全表示用HTMLを保持する", () => {
@@ -244,5 +237,25 @@ describe("useWrite", () => {
 
     expect(result?.type).toBe("confirm");
     expect(result?.type === "confirm" ? result.page?.html : "").not.toContain("<script");
+  });
+
+  it("eddibbの未認証レスポンスを認証コード案内として判定する", () => {
+    const result = parseTauriWriteResult(
+      {
+        status: 200,
+        headers: { "content-type": "text/html; charset=x-sjis" },
+        url: "https://example.com/test/bbs.cgi",
+        body: '<html><head><meta name="error_code" content="E-Unauthenticated"><title>ＥＲＲＯＲ</title></head><body>認証コード\'332376\'を用いてください https://example.com/auth-code</body></html>',
+      },
+      "https://example.com/test/bbs.cgi",
+      "https://example.com/test/bbs.cgi",
+      "Shift_JIS",
+    );
+
+    expect(result).toEqual({
+      type: "auth-code",
+      code: "332376",
+      url: "https://example.com/auth-code",
+    });
   });
 });

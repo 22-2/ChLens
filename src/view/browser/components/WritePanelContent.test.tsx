@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   writePanelInsertRequest: null as { id: number; text: string } | null,
   status: "idle" as "idle" | "submitting" | "confirm" | "success" | "error",
   statusText: "",
+  authCodeUrl: null as string | null,
   confirmationPage: null,
   submit: vi.fn().mockResolvedValue(undefined),
   submitConfirmation: vi.fn().mockResolvedValue(undefined),
@@ -22,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   setMessage: vi.fn(),
   handleSubmit: vi.fn(),
   handleRetry: vi.fn(),
+  openAuthCodePage: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
@@ -50,6 +52,7 @@ vi.mock("src/view/browser/hooks/use-write", () => ({
     message: mocks.message,
     status: mocks.status,
     statusText: mocks.statusText,
+    authCodeUrl: mocks.authCodeUrl,
     confirmationPage: mocks.confirmationPage,
     canSubmit: true,
     iframeRef: { current: null },
@@ -61,6 +64,7 @@ vi.mock("src/view/browser/hooks/use-write", () => ({
     submitConfirmation: mocks.submitConfirmation,
     handleSubmit: mocks.handleSubmit,
     handleRetry: mocks.handleRetry,
+    openAuthCodePage: mocks.openAuthCodePage,
   }),
 }));
 
@@ -75,6 +79,7 @@ describe("WritePanelContent", () => {
     mocks.writePanelInsertRequest = null;
     mocks.status = "idle";
     mocks.statusText = "";
+    mocks.authCodeUrl = null;
     mocks.submit.mockClear();
     mocks.setName.mockClear();
     mocks.setMail.mockClear();
@@ -82,6 +87,7 @@ describe("WritePanelContent", () => {
     mocks.setMessage.mockClear();
     mocks.handleSubmit.mockClear();
     mocks.handleRetry.mockClear();
+    mocks.openAuthCodePage.mockClear();
 
     configMock = {
       get: vi.fn(() => "off"),
@@ -199,6 +205,19 @@ describe("WritePanelContent", () => {
 
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByRole("alert")).toHaveTextContent("書き込みに失敗しました");
+  });
+
+  it("eddibb認証コードのエラーでは認証ページを開ける", async () => {
+    mocks.status = "error";
+    mocks.statusText = "認証コードを入力してください";
+    mocks.authCodeUrl = "https://example.com/auth-code";
+
+    render(<WritePanelContent />);
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "認証ページを開く" }));
+
+    expect(mocks.openAuthCodePage).toHaveBeenCalledTimes(1);
   });
 
   it("書き込み成功時に設定がONならパネルを閉じる", () => {

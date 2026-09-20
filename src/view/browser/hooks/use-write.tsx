@@ -45,6 +45,7 @@ export interface UseWriteResult {
   message: string;
   status: WriteStatus;
   statusText: string;
+  authCodeUrl: string | null;
   confirmationPage: WriteConfirmationPage | null;
   canSubmit: boolean;
   iframeRef: RefObject<HTMLIFrameElement | null>;
@@ -56,12 +57,22 @@ export interface UseWriteResult {
   submitConfirmation: (submission: WriteConfirmationSubmission) => Promise<void>;
   handleSubmit: (e: FormEvent) => Promise<void>;
   handleRetry: () => void;
+  openAuthCodePage: () => Promise<void>;
 }
 
 // -----------------------------------------------------------------------
 // 純粋関数: BBS種別に応じたフォームデータを組み立てる
 // submit_res.js の _getFormData に相当
 // -----------------------------------------------------------------------
+function isEddibbAuthToken(threadUrl: string, mail: string): boolean {
+  try {
+    const url = new ChURL(threadUrl);
+    return url.hostname === "bbs.eddibb.cc" && /^#[A-Za-z0-9_-]{16,}$/.test(mail.trim());
+  } catch {
+    return false;
+  }
+}
+
 function buildFormData(
   threadUrl: string,
   name: string,
@@ -162,21 +173,6 @@ async function setupHeaderModifier(formAction: string): Promise<void> {
   await platform.http.setupWriteHeaders(formAction);
 }
 
-function createTauriWriteSessionId(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return `write-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
-
-function releaseTauriWriteSession(sessionId: string): void {
-  void import("src/app/platform/tauri/WriteTransport")
-    .then(({ clearTauriWriteSession }) => clearTauriWriteSession(sessionId))
-    .catch((error) => {
-      console.error("Tauri版の書き込みセッションを破棄できませんでした:", error);
-    });
-}
-
 export function parseTauriWriteResult(
   response: HttpResponse,
   fallbackUrl: string,
@@ -191,6 +187,10 @@ export function parseTauriWriteResult(
     resultDocument.getElementsByTagName("font"),
     (font) => font.textContent ?? "",
   ).join("\n");
+  const errorCode = Array.from(resultDocument.getElementsByTagName("meta"))
+    .find((element) => element.getAttribute("name")?.toLowerCase() === "error_code")
+    ?.getAttribute("content")
+    ?.trim();
 
   const result = classifyWriteResult({
     url: response.url || fallbackUrl,
@@ -198,6 +198,7 @@ export function parseTauriWriteResult(
     bodyText: resultDocument.body?.textContent ?? resultDocument.documentElement.textContent ?? "",
     fontText,
     refreshContent: refreshContent ?? undefined,
+    errorCode: errorCode || undefined,
   });
 
   if (result?.type === "confirm") {
@@ -216,7 +217,6 @@ export function parseTauriWriteResult(
 }
 
 interface TauriWriteRequest {
-  sessionId: string;
   action: string;
   charset: string;
   fields: readonly WriteFormField[];
@@ -231,12 +231,10 @@ async function submitTauriWrite(
   const { encodeWriteFields } = await import("src/app/platform/tauri/WriteForm");
   const { fetchTauriWrite } = await import("src/app/platform/tauri/WriteTransport");
   const response = await fetchTauriWrite({
-    sessionId: request.sessionId,
     action: request.action,
     bootstrapUrl: request.bootstrapUrl,
     referer: request.referer,
     userAgent: container.config.get("useragent"),
-    cookie: undefined,
     body: encodeWriteFields(request.fields, request.charset),
     charset: request.charset,
   });
@@ -272,10 +270,10 @@ export function useWrite(threadUrl: string): UseWriteResult {
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState<WriteStatus>("idle");
   const [statusText, setStatusText] = useState("");
+  const [authCodeUrl, setAuthCodeUrl] = useState<string | null>(null);
   const [confirmationPage, setConfirmationPage] = useState<WriteConfirmationPage | null>(null);
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const tauriWriteSessionIdRef = useRef<string | null>(null);
   const pendingSubmittedWriteRef = useRef<PendingWritePayload | null>(null);
   const submitWatchdogTimerRef = useRef<number | null>(null);
   const statusRef = useRef<WriteStatus>("idle");
@@ -311,17 +309,8 @@ export function useWrite(threadUrl: string): UseWriteResult {
   }, [clearSubmitWatchdog]);
 
   const clearTauriWriteAttempt = useCallback(() => {
-    const sessionId = tauriWriteSessionIdRef.current;
-    tauriWriteSessionIdRef.current = null;
     setConfirmationPage(null);
-    if (sessionId) releaseTauriWriteSession(sessionId);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      const sessionId = tauriWriteSessionIdRef.current;
-      if (sessionId) releaseTauriWriteSession(sessionId);
-    };
+    setAuthCodeUrl(null);
   }, []);
 
   useEffect(() => clearSubmitWatchdog, [clearSubmitWatchdog]);
@@ -410,6 +399,16 @@ export function useWrite(threadUrl: string): UseWriteResult {
           setStatus("confirm");
           setStatusText("確認ページが表示されています");
           break;
+        case "auth-code":
+          clearSubmitWatchdog();
+          clearTauriWriteAttempt();
+          pendingSubmittedWriteRef.current = null;
+          setAuthCodeUrl(data.url);
+          setStatus("error");
+          setStatusText(
+            `eddibbの認証が必要です。認証コード「${data.code}」を認証ページで入力し、発行された#から始まるトークンをメール欄へ貼り付けてください`,
+          );
+          break;
         case "error":
           clearSubmitWatchdog();
           clearTauriWriteAttempt();
@@ -423,6 +422,16 @@ export function useWrite(threadUrl: string): UseWriteResult {
     },
     [clearSubmitWatchdog, clearTauriWriteAttempt, dispatch],
   );
+
+  const openAuthCodePage = useCallback(async () => {
+    if (!authCodeUrl) return;
+    try {
+      await platform.window.openTab(authCodeUrl, true);
+    } catch (error) {
+      console.error("eddibbの認証ページを開けませんでした:", error);
+      setStatusText("eddibbの認証ページを開けませんでした。URLを確認してください");
+    }
+  }, [authCodeUrl]);
 
   // iframe からの postMessage を処理する (cs_write.js との通信)
   useEffect(() => {
@@ -459,7 +468,9 @@ export function useWrite(threadUrl: string): UseWriteResult {
   const submit = useCallback(async () => {
     if (!canSubmit) return;
 
-    const effectiveMail = sage ? "sage" : mail;
+    // 変更理由: eddibbは認証ページで発行した#トークンをメール欄で認証するため、
+    // sage設定がONでも認証トークンを「sage」で上書きしない。
+    const effectiveMail = sage && !isEddibbAuthToken(threadUrl, mail) ? "sage" : mail;
     const formData = buildFormData(threadUrl, name, effectiveMail, message);
     if (!formData) {
       pendingSubmittedWriteRef.current = null;
@@ -501,14 +512,11 @@ export function useWrite(threadUrl: string): UseWriteResult {
     }
 
     if (useTauriHttp) {
-      const sessionId = createTauriWriteSessionId();
-      tauriWriteSessionIdRef.current = sessionId;
       try {
         const { getWriteFormFields } = await import("src/app/platform/tauri/WriteForm");
         handleWriteResult(
           await submitTauriWrite(
             {
-              sessionId,
               action: formData.action,
               charset: formData.charset,
               fields: getWriteFormFields(formData),
@@ -582,9 +590,8 @@ export function useWrite(threadUrl: string): UseWriteResult {
   const submitConfirmation = useCallback(
     async (submission: WriteConfirmationSubmission) => {
       const page = confirmationPage;
-      const sessionId = tauriWriteSessionIdRef.current;
       const form = page?.forms.find((candidate) => candidate.id === submission.formId);
-      if (!page || !sessionId || !form) {
+      if (!page || !form) {
         handleWriteResult({
           type: "error",
           message: "確認ページの送信フォームを特定できませんでした",
@@ -603,7 +610,6 @@ export function useWrite(threadUrl: string): UseWriteResult {
         handleWriteResult(
           await submitTauriWrite(
             {
-              sessionId,
               action: form.action,
               charset: page.charset,
               fields: submission.fields,
@@ -646,6 +652,7 @@ export function useWrite(threadUrl: string): UseWriteResult {
     message,
     status,
     statusText,
+    authCodeUrl,
     confirmationPage,
     canSubmit,
     iframeRef,
@@ -657,5 +664,6 @@ export function useWrite(threadUrl: string): UseWriteResult {
     submitConfirmation,
     handleSubmit,
     handleRetry,
+    openAuthCodePage,
   };
 }

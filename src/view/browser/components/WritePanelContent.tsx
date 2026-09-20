@@ -37,6 +37,7 @@ export const WritePanelContent: React.FC = () => {
     message,
     status,
     statusText,
+    authCodeUrl,
     confirmationPage,
     canSubmit,
     iframeRef,
@@ -48,6 +49,7 @@ export const WritePanelContent: React.FC = () => {
     submitConfirmation,
     handleSubmit,
     handleRetry,
+    openAuthCodePage,
   } = useWrite(threadUrl);
 
   const isSubmitting = status === "submitting";
@@ -334,7 +336,9 @@ export const WritePanelContent: React.FC = () => {
               id={errorDialogDescriptionId}
               className="browser-dialog-description"
             >
-              サーバーから返されたエラー内容を確認してください。
+              {authCodeUrl
+                ? "認証ページで認証を完了し、発行されたトークンをメール欄へ貼り付けてください。"
+                : "サーバーから返されたエラー内容を確認してください。"}
             </Dialog.Description>
             {/* 変更理由: エラー本文は長さや改行を保持したまま確認できる必要があるため、
                 既存のstatusTextだけをReactのテキストとして表示し、URL等の追加情報は表示しない。 */}
@@ -342,6 +346,15 @@ export const WritePanelContent: React.FC = () => {
               {writeErrorMessage}
             </p>
             <div className="write-panel__error-dialog-actions">
+              {authCodeUrl && (
+                <button
+                  type="button"
+                  className="write-panel__btn write-panel__btn--primary"
+                  onClick={() => void openAuthCodePage()}
+                >
+                  認証ページを開く
+                </button>
+              )}
               <Dialog.Close asChild>
                 <button type="button" className="write-panel__btn write-panel__btn--secondary">
                   閉じる
