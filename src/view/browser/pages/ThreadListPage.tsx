@@ -54,12 +54,14 @@ import {
   useTabStore,
   useTabViewState,
 } from "src/view/browser/hooks/use-tab-store";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 import { parseOpenedBoardEntries } from "src/view/browser/pages/board-list/board-list-utils";
 import {
   canGoBack,
   canGoForward,
   getCurrentPage,
+  type Tab,
   type ThreadListPage as ThreadListPageType,
 } from "src/view/browser/types";
 import { ContextMenu, ContextMenuItem } from "src/view/browser/ui/ContextMenu";
@@ -98,6 +100,8 @@ const MAX_OPENED_BOARD_ENTRIES = 500;
 
 interface Props {
   tabId: string;
+  // ContentAreaから描画対象を明示して受け取り、別の表示ホストでもペインのactiveTabに依存しない。
+  tab?: Tab;
   page: ThreadListPageType;
   refreshKey: number;
   isActive: boolean;
@@ -107,7 +111,7 @@ interface Props {
 
 function deriveBoardTitlePlaceholder(boardUrl: string): string | null {
   try {
-    const parsed = new window.URL(boardUrl);
+    const parsed = new URL(boardUrl);
     const pathPart = parsed.pathname.replace(/^\/|\/$/g, "");
     return pathPart ? `${parsed.hostname}/${pathPart}` : parsed.hostname;
   } catch {
@@ -191,16 +195,20 @@ function resolveInitialBoardTitle(page: ThreadListPageType): string | null {
 
 export const ThreadListPage: React.FC<Props> = ({
   tabId,
+  tab,
   page,
   refreshKey,
   isActive,
   isAutoRefreshEnabled = false,
   scrollContainerRef,
 }) => {
+  const { window: viewWindow, document: viewDocument } = useViewSurface();
   const fallbackScrollContainerRef = useRef<HTMLDivElement>(null);
   const effectiveScrollContainerRef = scrollContainerRef ?? fallbackScrollContainerRef;
   const dispatch = useTabDispatch();
   const { activeTab } = useTabStore();
+  // 既存の直接利用者との互換性のためactiveTabを残し、通常の描画経路では渡されたtabを優先する。
+  const navigationTab = tab ?? activeTab;
   const { state: persistedViewState, update: updateViewState } = useTabViewState(tabId, page);
   const persistedSearchQuery = persistedViewState.searchQuery;
   const persistedSortColumn = persistedViewState.sortColumn;
@@ -216,7 +224,7 @@ export const ThreadListPage: React.FC<Props> = ({
     readBoardAutoRefreshIntervalMs(page.boardUrl),
   );
   const [isDocumentVisible, setIsDocumentVisible] = useState(
-    document.visibilityState === "visible",
+    viewDocument.visibilityState === "visible",
   );
   const [sortPreference, setSortPreference] = useState<ThreadListSortPreference>(() => {
     const column = persistedSortColumn;
@@ -613,14 +621,14 @@ export const ThreadListPage: React.FC<Props> = ({
 
   useEffect(() => {
     const handleVisibilityChange = () => {
-      setIsDocumentVisible(document.visibilityState === "visible");
+      setIsDocumentVisible(viewDocument.visibilityState === "visible");
     };
 
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+    viewDocument.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      viewDocument.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, []);
+  }, [viewDocument]);
 
   useEffect(() => {
     const applyInterval = () => {
@@ -653,7 +661,7 @@ export const ThreadListPage: React.FC<Props> = ({
       return;
     }
 
-    const timerId = window.setInterval(() => {
+    const timerId = viewWindow.setInterval(() => {
       if (loading) {
         return;
       }
@@ -664,7 +672,7 @@ export const ThreadListPage: React.FC<Props> = ({
     }, boardAutoRefreshIntervalMs);
 
     return () => {
-      window.clearInterval(timerId);
+      viewWindow.clearInterval(timerId);
     };
   }, [
     boardAutoRefreshIntervalMs,
@@ -673,6 +681,7 @@ export const ThreadListPage: React.FC<Props> = ({
     isAutoRefreshEnabled,
     isDocumentVisible,
     loading,
+    viewWindow,
   ]);
 
   // Ctrl+Fで検索バーを開く
@@ -785,13 +794,13 @@ export const ThreadListPage: React.FC<Props> = ({
       }
 
       // テキスト選択中はリロードしない
-      if (window.getSelection()?.toString()) {
+      if (viewWindow.getSelection()?.toString()) {
         return;
       }
 
       dispatch({ type: "RELOAD" });
     },
-    [dispatch],
+    [dispatch, viewWindow],
   );
 
   const openThreadInNewTab = useCallback(
@@ -914,8 +923,8 @@ export const ThreadListPage: React.FC<Props> = ({
   const closeContextMenu = useCallback(() => setContextMenuState(null), []);
   const contextMenuNavigationActions = contextMenuState ? (
     <ContextMenuNavigationActions
-      canGoBack={canGoBack(activeTab)}
-      canGoForward={canGoForward(activeTab)}
+      canGoBack={canGoBack(navigationTab)}
+      canGoForward={canGoForward(navigationTab)}
       canRefresh={isPageRefreshable(page)}
       onBack={() => {
         dispatch({ type: "GO_BACK" });

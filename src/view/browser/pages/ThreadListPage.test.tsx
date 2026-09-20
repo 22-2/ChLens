@@ -817,6 +817,22 @@ describe("ThreadListPage", () => {
     render(
       <ThreadListPage
         tabId="tab-1"
+        tab={{
+          id: "tab-1",
+          history: [
+            {
+              type: "threadList",
+              title: "Software",
+              boardUrl: "https://egg.5ch.net/software/",
+              boardTitle: "Software",
+            },
+          ],
+          currentIndex: 0,
+          pinned: false,
+          reloadKey: 0,
+          autoRefreshEnabled: false,
+          autoRefreshPageKey: null,
+        }}
         page={{
           type: "threadList",
           title: "Software",
@@ -847,7 +863,7 @@ describe("ThreadListPage", () => {
     await waitFor(() => {
       const menu = document.querySelector(".context-menu");
       expect(menu).not.toBeNull();
-      expect(menu?.querySelector('[aria-label="戻る"]')).not.toBeNull();
+      expect(menu?.querySelector('[aria-label="戻る"]')).toBeDisabled();
       expect(menu?.querySelector('[aria-label="進む"]')).not.toBeNull();
       expect(menu?.querySelector('[aria-label="更新"]')).not.toBeNull();
       expect(menu?.querySelector(".context-menu__header-actions")).not.toBeNull();

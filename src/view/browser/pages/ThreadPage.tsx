@@ -31,6 +31,7 @@ import { useTabDispatch, useTabStore } from "src/view/browser/hooks/use-tab-stor
 import { useThreadAutoRefresh } from "src/view/browser/hooks/use-thread-auto-refresh";
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";
 import { useThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 import { ThreadPageTopBar } from "src/view/browser/pages/thread/ThreadPageTopBar";
 import { useCommentOverlaySync } from "src/view/browser/pages/thread/use-comment-overlay-sync";
@@ -42,7 +43,12 @@ import { useThreadResContextMenu } from "src/view/browser/pages/thread/use-threa
 import { useThreadTopBar } from "src/view/browser/pages/thread/use-thread-top-bar";
 import { useThreadTopScrollOpenFilter } from "src/view/browser/pages/thread/use-thread-top-scroll-open-filter";
 import { useUrlHandlers } from "src/view/browser/pages/thread/use-url-handlers";
-import { canGoBack, canGoForward, type ThreadPage as ThreadPageType } from "src/view/browser/types";
+import {
+  canGoBack,
+  canGoForward,
+  type Tab,
+  type ThreadPage as ThreadPageType,
+} from "src/view/browser/types";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import { getAutoRefreshPageKey } from "src/view/browser/utils/auto-refresh-pages";
 import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
@@ -53,6 +59,8 @@ import {
 } from "src/view/browser/utils/thread-emphasis";
 interface ThreadPageProps {
   tabId: string;
+  // ContentAreaから描画対象を明示して受け取り、別の表示ホストでもペインのactiveTabに依存しない。
+  tab?: Tab;
   page: ThreadPageType;
   refreshKey: number;
   isActive: boolean;
@@ -64,6 +72,7 @@ interface ThreadPageProps {
 
 export const ThreadPage: React.FC<ThreadPageProps> = ({
   tabId,
+  tab,
   page,
   refreshKey,
   isActive,
@@ -72,6 +81,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   startAutoRefreshAtBottom,
   scrollContainerRef,
 }) => {
+  const { window: viewWindow } = useViewSurface();
   const rootRef = useRef<HTMLDivElement>(null);
   const fallbackScrollContainerRef = useRef<HTMLDivElement>(null);
   const effectiveScrollContainerRef = scrollContainerRef ?? fallbackScrollContainerRef;
@@ -114,6 +124,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   );
   const dispatch = useTabDispatch();
   const { activeTab } = useTabStore();
+  // 既存の直接利用者との互換性のためactiveTabを残し、通常の描画経路では渡されたtabを優先する。
+  const navigationTab = tab ?? activeTab;
   const isCommentOverlayTarget =
     commentOverlaySnapshot.state.status === "running" &&
     commentOverlaySnapshot.state.targetThreadUrl === page.threadUrl;
@@ -141,7 +153,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     ) {
       return;
     }
-    const previousPage = activeTab.history[activeTab.currentIndex - 1];
+    const previousPage = navigationTab.history[navigationTab.currentIndex - 1];
     if (
       previousPage?.type !== "thread" ||
       previousPage.threadUrl !== commentOverlaySnapshot.state.targetThreadUrl ||
@@ -161,8 +173,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         console.error("[ChLens] 次スレ移動後のコメント実況引き継ぎに失敗しました:", error);
       });
   }, [
-    activeTab.currentIndex,
-    activeTab.history,
+    navigationTab.currentIndex,
+    navigationTab.history,
     commentOverlayController,
     commentOverlaySnapshot.state.targetThreadUrl,
     isAutoRefreshEnabled,
@@ -517,8 +529,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       // 変更理由: ポップアップのレスメニューはそれぞれ独立したpopupとして管理されるため、
       // 操作後に対象メニューだけを閉じて、他の固定ポップアップを維持する。
       <ContextMenuNavigationActions
-        canGoBack={canGoBack(activeTab)}
-        canGoForward={canGoForward(activeTab)}
+        canGoBack={canGoBack(navigationTab)}
+        canGoForward={canGoForward(navigationTab)}
         canRefresh={isPageRefreshable(page)}
         onBack={() => {
           dispatch({ type: "GO_BACK" });
@@ -534,7 +546,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         }}
       />
     ),
-    [activeTab, closePopupById, dispatch, page],
+    [closePopupById, dispatch, navigationTab, page],
   );
 
   // 空白部分のダブルクリックによる更新。
@@ -553,11 +565,11 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       }
 
       // テキスト選択中はリロードしない
-      if (window.getSelection()?.toString()) return;
+      if (viewWindow.getSelection()?.toString()) return;
 
       dispatch({ type: "RELOAD" });
     },
-    [dispatch],
+    [dispatch, viewWindow],
   );
 
   const isFilterEnabled = useMemo(

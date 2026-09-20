@@ -1,4 +1,5 @@
 import { memo, type RefObject, useEffect, useRef, useState } from "react";
+import { type ViewSurface, ViewSurfaceProvider } from "src/view/browser/hooks/use-view-surface";
 import { BoardListPage } from "src/view/browser/pages/BoardListPage";
 import { BookmarkListPage } from "src/view/browser/pages/BookmarkListPage";
 import { HistoryListPage } from "src/view/browser/pages/HistoryListPage";
@@ -87,6 +88,7 @@ const TabPageContent = memo(function TabPageContent({
       return (
         <ThreadListPage
           tabId={tab.id}
+          tab={tab}
           page={page}
           refreshKey={tab.reloadKey}
           isActive={threadListActive ?? false}
@@ -98,6 +100,7 @@ const TabPageContent = memo(function TabPageContent({
       return (
         <ThreadPage
           tabId={tab.id}
+          tab={tab}
           page={page}
           refreshKey={tab.reloadKey}
           isActive={isActive}
@@ -114,6 +117,7 @@ export interface TabPanelProps {
   tab: Tab;
   isActive: boolean;
   isOverlayTarget: boolean;
+  viewSurface?: ViewSurface;
 }
 
 /**
@@ -122,7 +126,12 @@ export interface TabPanelProps {
  * 変更理由: ContentAreaがタブ一覧の選択だけを担当し、タブ本体を独立した表示単位に
  * することで、将来メイン領域以外へ同じタブを表示するときも状態保持の規則を共有できる。
  */
-export const TabPanel = memo(function TabPanel({ tab, isActive, isOverlayTarget }: TabPanelProps) {
+export const TabPanel = memo(function TabPanel({
+  tab,
+  isActive,
+  isOverlayTarget,
+  viewSurface,
+}: TabPanelProps) {
   const page = getCurrentPage(tab);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -140,7 +149,7 @@ export const TabPanel = memo(function TabPanel({ tab, isActive, isOverlayTarget 
     return null;
   }
 
-  return (
+  const panel = (
     <div
       data-tab-panel-id={tab.id}
       ref={scrollContainerRef}
@@ -161,5 +170,11 @@ export const TabPanel = memo(function TabPanel({ tab, isActive, isOverlayTarget 
         />
       }
     </div>
+  );
+
+  return viewSurface ? (
+    <ViewSurfaceProvider surface={viewSurface}>{panel}</ViewSurfaceProvider>
+  ) : (
+    panel
   );
 });
