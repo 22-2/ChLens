@@ -10,6 +10,8 @@ const mocks = vi.hoisted(() => ({
   clearWritePanelInsertRequest: vi.fn(),
   closePanel: vi.fn(),
   message: "本文",
+  selectedThreadUrl: null as string | null,
+  targets: [] as Array<{ threadUrl: string; title: string; tabId: string }>,
   writePanelInsertRequest: null as { id: number; text: string } | null,
   status: "idle" as "idle" | "submitting" | "confirm" | "success" | "error",
   statusText: "",
@@ -89,8 +91,8 @@ vi.mock("src/view/browser/hooks/use-write-session", () => ({
   useWriteSession: () => ({
     isWindowOpen: false,
     writeWindowRoot: null,
-    selectedThreadUrl: null,
-    targets: [],
+    selectedThreadUrl: mocks.selectedThreadUrl,
+    targets: mocks.targets,
     getDraft: () => "",
     selectThread: vi.fn(),
     setDraft: vi.fn(),
@@ -108,6 +110,8 @@ describe("WritePanelContent", () => {
     mocks.clearWritePanelInsertRequest.mockClear();
     mocks.closePanel.mockClear();
     mocks.message = "本文";
+    mocks.selectedThreadUrl = null;
+    mocks.targets = [];
     mocks.writePanelInsertRequest = null;
     mocks.status = "idle";
     mocks.statusText = "";
@@ -153,6 +157,25 @@ describe("WritePanelContent", () => {
     fireEvent.keyDown(textarea, { key: "Enter", ctrlKey: true });
 
     expect(mocks.submit).toHaveBeenCalledTimes(1);
+  });
+
+  it("投稿先バーは別窓の書き込み欄だけに表示する", () => {
+    const targetThreadUrl = "https://example.com/test/read.cgi/software/1/";
+    mocks.selectedThreadUrl = targetThreadUrl;
+    mocks.targets = [
+      {
+        threadUrl: targetThreadUrl,
+        title: "スレッド",
+        tabId: "tab-1",
+      },
+    ];
+
+    const { unmount } = render(<WritePanelContent />);
+    expect(screen.queryByLabelText("投稿先スレッド")).not.toBeInTheDocument();
+
+    unmount();
+    render(<WritePanelContent standalone />);
+    expect(screen.getByLabelText("投稿先スレッド")).toBeInTheDocument();
   });
 
   it("Ctrl+EnterオプションOFF時はCtrl+Enterしても投稿しない", () => {

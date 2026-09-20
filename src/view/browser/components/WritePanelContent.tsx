@@ -303,24 +303,27 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
         )}
         {!isConfirm && (
           <>
-            {targets.length > 0 && (
-              <label className="write-panel__target-group">
-                <span className="write-panel__field-label">投稿先</span>
-                <select
-                  className="write-panel__target-select"
-                  value={selectedThreadUrl ?? ""}
-                  onChange={(event) => selectThread(event.currentTarget.value)}
-                  disabled={isSubmitting}
-                  aria-label="投稿先スレッド"
-                >
-                  {targets.map((target) => (
-                    <option key={target.threadUrl} value={target.threadUrl}>
-                      {target.title}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
+            {standalone &&
+              targets.length > 0 && (
+                // 投稿先の切り替えは共有書き込み窓の役割に限定し、各ペインの下部パネルは
+                // 表示中スレッドへそのまま投稿する簡潔な入力欄として保つ。
+                <label className="write-panel__target-group">
+                  <span className="write-panel__field-label">投稿先</span>
+                  <select
+                    className="write-panel__target-select"
+                    value={selectedThreadUrl ?? ""}
+                    onChange={(event) => selectThread(event.currentTarget.value)}
+                    disabled={isSubmitting}
+                    aria-label="投稿先スレッド"
+                  >
+                    {targets.map((target) => (
+                      <option key={target.threadUrl} value={target.threadUrl}>
+                        {target.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
             <div className="write-panel__header-row">
               <label className="write-panel__field-group">
                 <span className="write-panel__field-label">名前</span>
