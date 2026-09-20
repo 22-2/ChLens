@@ -23,7 +23,11 @@ const mocks = vi.hoisted(() => ({
   setMessage: vi.fn(),
   handleSubmit: vi.fn(),
   handleRetry: vi.fn(),
-  openAuthCodePage: vi.fn().mockResolvedValue(undefined),
+  copyText: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("src/view/browser/utils/clipboard", () => ({
+  copyText: mocks.copyText,
 }));
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
@@ -64,7 +68,6 @@ vi.mock("src/view/browser/hooks/use-write", () => ({
     submitConfirmation: mocks.submitConfirmation,
     handleSubmit: mocks.handleSubmit,
     handleRetry: mocks.handleRetry,
-    openAuthCodePage: mocks.openAuthCodePage,
   }),
 }));
 
@@ -87,7 +90,7 @@ describe("WritePanelContent", () => {
     mocks.setMessage.mockClear();
     mocks.handleSubmit.mockClear();
     mocks.handleRetry.mockClear();
-    mocks.openAuthCodePage.mockClear();
+    mocks.copyText.mockClear();
 
     configMock = {
       get: vi.fn(() => "off"),
@@ -207,7 +210,7 @@ describe("WritePanelContent", () => {
     expect(within(dialog).getByRole("alert")).toHaveTextContent("書き込みに失敗しました");
   });
 
-  it("eddibb認証コードのエラーでは認証ページを開ける", async () => {
+  it("eddibb認証コードのエラーでは認証URLを表示してコピーできる", async () => {
     mocks.status = "error";
     mocks.statusText = "認証コードを入力してください";
     mocks.authCodeUrl = "https://example.com/auth-code";
@@ -215,9 +218,11 @@ describe("WritePanelContent", () => {
     render(<WritePanelContent />);
 
     const dialog = await screen.findByRole("dialog");
-    fireEvent.click(within(dialog).getByRole("button", { name: "認証ページを開く" }));
+    expect(within(dialog).getByLabelText("認証ページURL")).toHaveValue(mocks.authCodeUrl);
+    fireEvent.click(within(dialog).getByRole("button", { name: "URLをコピー" }));
 
-    expect(mocks.openAuthCodePage).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(mocks.copyText).toHaveBeenCalledWith(mocks.authCodeUrl));
+    expect(within(dialog).getByRole("button", { name: "コピーしました" })).toBeInTheDocument();
   });
 
   it("書き込み成功時に設定がONならパネルを閉じる", () => {

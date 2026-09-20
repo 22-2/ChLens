@@ -57,7 +57,6 @@ export interface UseWriteResult {
   submitConfirmation: (submission: WriteConfirmationSubmission) => Promise<void>;
   handleSubmit: (e: FormEvent) => Promise<void>;
   handleRetry: () => void;
-  openAuthCodePage: () => Promise<void>;
 }
 
 // -----------------------------------------------------------------------
@@ -406,7 +405,7 @@ export function useWrite(threadUrl: string): UseWriteResult {
           setAuthCodeUrl(data.url);
           setStatus("error");
           setStatusText(
-            `eddibbの認証が必要です。認証コード「${data.code}」を認証ページで入力し、発行された#から始まるトークンをメール欄へ貼り付けてください`,
+            `認証が必要です。認証コード「${data.code}」を認証ページで入力し、発行された#から始まるトークンをメール欄へ貼り付けてください`,
           );
           break;
         case "error":
@@ -422,16 +421,6 @@ export function useWrite(threadUrl: string): UseWriteResult {
     },
     [clearSubmitWatchdog, clearTauriWriteAttempt, dispatch],
   );
-
-  const openAuthCodePage = useCallback(async () => {
-    if (!authCodeUrl) return;
-    try {
-      await platform.window.openTab(authCodeUrl, true);
-    } catch (error) {
-      console.error("eddibbの認証ページを開けませんでした:", error);
-      setStatusText("eddibbの認証ページを開けませんでした。URLを確認してください");
-    }
-  }, [authCodeUrl]);
 
   // iframe からの postMessage を処理する (cs_write.js との通信)
   useEffect(() => {
@@ -664,6 +653,5 @@ export function useWrite(threadUrl: string): UseWriteResult {
     submitConfirmation,
     handleSubmit,
     handleRetry,
-    openAuthCodePage,
   };
 }

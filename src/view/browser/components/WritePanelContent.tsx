@@ -6,6 +6,7 @@ import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useWrite } from "src/view/browser/hooks/use-write";
 import { Dialog } from "src/view/browser/ui/Dialog";
 import { CheckboxField } from "src/view/browser/ui/FormControls";
+import { copyText } from "src/view/browser/utils/clipboard";
 import { bindWriteConfirmationFrame } from "src/view/browser/utils/write-confirmation";
 
 const WRITE_SUBMIT_CTRL_ENTER_KEY = "write_submit_ctrl_enter";
@@ -17,9 +18,11 @@ export const WritePanelContent: React.FC = () => {
   const threadUrl = currentPage.type === "thread" ? currentPage.threadUrl : "";
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const errorDialogDescriptionId = useId();
+  const authCodeUrlInputId = useId();
   const settingsDialogDescriptionId = useId();
   const [dialogPortalContainer, setDialogPortalContainer] = useState<HTMLElement | null>(null);
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
+  const [isAuthCodeUrlCopied, setIsAuthCodeUrlCopied] = useState(false);
   const confirmationFrameCleanupRef = useRef<(() => void) | null>(null);
   // 変更理由: 書き込み中の入力欄を増やさず、書き込みに関する設定を
   // パネル内の歯車モーダルへまとめて、必要な時だけ変更できるようにする。
@@ -49,13 +52,26 @@ export const WritePanelContent: React.FC = () => {
     submitConfirmation,
     handleSubmit,
     handleRetry,
-    openAuthCodePage,
   } = useWrite(threadUrl);
 
   const isSubmitting = status === "submitting";
   const isConfirm = status === "confirm" || confirmationPage != null;
   const isConfirmationSubmitting = confirmationPage != null && isSubmitting;
   const writeErrorMessage = statusText || "書き込みに失敗しました";
+
+  useEffect(() => {
+    setIsAuthCodeUrlCopied(false);
+  }, [authCodeUrl]);
+
+  const handleCopyAuthCodeUrl = useCallback(async () => {
+    if (!authCodeUrl) return;
+    try {
+      await copyText(authCodeUrl);
+      setIsAuthCodeUrlCopied(true);
+    } catch (error) {
+      console.error("eddibbの認証URLをコピーできませんでした", error);
+    }
+  }, [authCodeUrl]);
 
   const handleConfirmationFrameLoad = useCallback(() => {
     confirmationFrameCleanupRef.current?.();
@@ -341,20 +357,32 @@ export const WritePanelContent: React.FC = () => {
                 : "サーバーから返されたエラー内容を確認してください。"}
             </Dialog.Description>
             {/* 変更理由: エラー本文は長さや改行を保持したまま確認できる必要があるため、
-                既存のstatusTextだけをReactのテキストとして表示し、URL等の追加情報は表示しない。 */}
+                既存のstatusTextはReactのテキストとして表示し、認証URLだけを安全なコピー欄へ分離する。 */}
             <p className="write-panel__error-message" role="alert">
               {writeErrorMessage}
             </p>
-            <div className="write-panel__error-dialog-actions">
-              {authCodeUrl && (
+            {authCodeUrl && (
+              <div className="write-panel__auth-url">
+                <label htmlFor={authCodeUrlInputId}>認証ページURL</label>
+                <textarea
+                  id={authCodeUrlInputId}
+                  className="write-panel__auth-url-input"
+                  value={authCodeUrl}
+                  readOnly
+                  rows={2}
+                  onFocus={(event) => event.currentTarget.select()}
+                  aria-label="認証ページURL"
+                />
                 <button
                   type="button"
-                  className="write-panel__btn write-panel__btn--primary"
-                  onClick={() => void openAuthCodePage()}
+                  className="write-panel__btn write-panel__btn--secondary"
+                  onClick={() => void handleCopyAuthCodeUrl()}
                 >
-                  認証ページを開く
+                  {isAuthCodeUrlCopied ? "コピーしました" : "URLをコピー"}
                 </button>
-              )}
+              </div>
+            )}
+            <div className="write-panel__error-dialog-actions">
               <Dialog.Close asChild>
                 <button type="button" className="write-panel__btn write-panel__btn--secondary">
                   閉じる
