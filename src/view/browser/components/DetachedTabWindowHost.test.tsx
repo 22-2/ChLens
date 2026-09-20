@@ -10,12 +10,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 const mocks = vi.hoisted(() => ({
   panes: [] as Pane[],
   openDetachedWindow: vi.fn(),
+  tabDispatch: vi.fn(),
   fakeWindow: null as Window | null,
   root: null as HTMLElement | null,
 }));
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   PaneProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useTabDispatch: () => mocks.tabDispatch,
   useTabDispatchForTab: () => vi.fn(),
   useTabPanes: () => ({ panes: mocks.panes, activePaneId: "pane-1" }),
   // 別窓の共通タイトル・ステータスを描画するため、テスト用にも表示タブのスライスを渡す。
@@ -112,7 +114,7 @@ const Probe: React.FC = () => {
 describe("DetachedTabWindowProvider", () => {
   beforeEach(() => {
     const tab = createThreadTab("tab-1");
-    mocks.panes = [{ id: "pane-1", tabs: [tab], activeTabId: tab.id }];
+    mocks.panes = [{ id: "pane-1", tabs: [tab, createThreadTab("tab-2")], activeTabId: tab.id }];
     mocks.root = document.createElement("div");
     document.body.appendChild(mocks.root);
     mocks.fakeWindow = {
@@ -124,6 +126,7 @@ describe("DetachedTabWindowProvider", () => {
       removeEventListener: vi.fn(),
     } as unknown as Window;
     mocks.openDetachedWindow.mockReset();
+    mocks.tabDispatch.mockReset();
     mocks.openDetachedWindow.mockReturnValue({ window: mocks.fakeWindow, root: mocks.root });
   });
 
@@ -150,9 +153,13 @@ describe("DetachedTabWindowProvider", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "切り替え" }));
     expect(screen.getByTestId("detached-state")).toHaveTextContent("false");
+    expect(mocks.fakeWindow?.close).toHaveBeenCalledTimes(1);
+    expect(mocks.tabDispatch).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: "CLOSE_TAB", tabId: "tab-1" }),
+    );
   });
 
-  it("別窓がOS側で閉じられたら元画面へ状態を戻す", () => {
+  it("別窓の再読み込みではタブを終了しない", () => {
     render(
       <DetachedTabWindowProvider>
         <Probe />
@@ -167,7 +174,55 @@ describe("DetachedTabWindowProvider", () => {
       .calls[0]?.[1] as (() => void) | undefined;
     act(() => beforeUnload?.());
 
+    expect(screen.getByTestId("detached-state")).toHaveTextContent("true");
+    expect(mocks.tabDispatch).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: "CLOSE_TAB", tabId: "tab-1" }),
+    );
+  });
+
+  it("別窓がOS側で閉じられたらタブを終了する", () => {
+    render(
+      <DetachedTabWindowProvider>
+        <Probe />
+      </DetachedTabWindowProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "開く" }));
+    if (!mocks.fakeWindow) {
+      throw new Error("テスト用の別窓が作成されていません");
+    }
+    Object.defineProperty(mocks.fakeWindow, "closed", { configurable: true, value: true });
+    const beforeUnload = (mocks.fakeWindow.addEventListener as ReturnType<typeof vi.fn>).mock
+      .calls[0]?.[1] as (() => void) | undefined;
+    act(() => beforeUnload?.());
+
     expect(screen.getByTestId("detached-state")).toHaveTextContent("false");
+    expect(mocks.tabDispatch).toHaveBeenCalledWith({
+      type: "CLOSE_TAB",
+      paneId: "pane-1",
+      tabId: "tab-1",
+      preserveActivePane: true,
+      replaceLastTab: true,
+    });
+  });
+
+  it("最後の表示タブを切り離した時は本窓用の代替タブを作る", () => {
+    const tab = createThreadTab("tab-1");
+    mocks.panes = [{ id: "pane-1", tabs: [tab], activeTabId: tab.id }];
+
+    render(
+      <DetachedTabWindowProvider>
+        <Probe />
+      </DetachedTabWindowProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "開く" }));
+
+    expect(mocks.tabDispatch).toHaveBeenCalledWith({
+      type: "ADD_TAB",
+      paneId: "pane-1",
+      preserveActivePane: true,
+    });
   });
 
   it("窓を開けない場合は別窓状態にせず元画面を残す", () => {

@@ -16,6 +16,7 @@ import {
   DetachedTabWindowContext,
   type DetachedTabWindowContextValue,
 } from "src/view/browser/hooks/detached-tab-context";
+import { createDetachedWindowRoot } from "src/view/browser/hooks/detached-window-root";
 import { AutoScrollStateProvider } from "src/view/browser/hooks/use-auto-scroll-state";
 import {
   type DetachedWindowHandle,
@@ -27,6 +28,7 @@ import { PageCountStatusProvider } from "src/view/browser/hooks/use-page-count-s
 import { TabDisplayTargetProvider } from "src/view/browser/hooks/use-tab-display-target";
 import {
   PaneProvider,
+  useTabDispatch,
   useTabDispatchForTab,
   useTabPanes,
   useTabStore,
@@ -47,6 +49,7 @@ import { ToastProvider } from "src/view/browser/ui/Toast";
 interface DetachedTabWindowEntry extends DetachedWindowHandle {
   tabId: string;
   onBeforeUnload: () => void;
+  onLoad: () => void;
 }
 
 function findTab(panes: readonly Pane[], tabId: string): { tab: Tab; paneId: string } | null {
@@ -84,9 +87,12 @@ function createDetachedTabOptions(tab: Tab): DetachedWindowOptions {
  */
 export const DetachedTabWindowProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { panes } = useTabPanes();
+  const { stateRef } = useTabStore();
+  const dispatch = useTabDispatch();
   const theme = useTheme();
   const [windows, setWindows] = useState<Map<string, DetachedTabWindowEntry>>(() => new Map());
   const windowsRef = useRef(windows);
+  const closeDetachedTabRef = useRef<(tabId: string) => void>(() => {});
   windowsRef.current = windows;
 
   const removeWindow = useCallback((tabId: string, expectedWindow?: Window) => {
@@ -117,6 +123,7 @@ export const DetachedTabWindowProvider: React.FC<{ children: ReactNode }> = ({ c
 
       if (existing) {
         existing.window.removeEventListener("beforeunload", existing.onBeforeUnload);
+        existing.window.removeEventListener("load", existing.onLoad);
         removeWindow(tabId, existing.window);
       }
 
@@ -130,20 +137,84 @@ export const DetachedTabWindowProvider: React.FC<{ children: ReactNode }> = ({ c
       const entry: DetachedTabWindowEntry = {
         ...opened,
         tabId,
-        onBeforeUnload: () => removeWindow(tabId, opened.window),
+        // beforeunload直後はreloadでも発火するため、closedを確認できた時だけタブを終了する。
+        // OSの×では親窓の監視も併用し、再読み込みでタブを誤って消さないようにする。
+        onBeforeUnload: () => {
+          const current = windowsRef.current.get(tabId);
+          if (current?.window !== opened.window || !opened.window.closed) {
+            return;
+          }
+          closeDetachedTabRef.current(tabId);
+        },
+        onLoad: () => {
+          const current = windowsRef.current.get(tabId);
+          if (!current || current.window !== opened.window || opened.window.closed) {
+            return;
+          }
+          const currentLocation = findTab(stateRef.current.panes, tabId);
+          if (!currentLocation) {
+            return;
+          }
+          try {
+            // popupの再読み込みではPortal先のDOMも破棄されるため、同じWindowProxyへ
+            // rootとスタイルを再接続し、タブを元窓へ勝手に戻さない。
+            const root = createDetachedWindowRoot(
+              document,
+              opened.window,
+              createDetachedTabOptions(currentLocation.tab),
+            );
+            const next = new Map(windowsRef.current);
+            const latest = next.get(tabId);
+            if (!latest || latest.window !== opened.window) {
+              return;
+            }
+            next.set(tabId, { ...latest, root });
+            windowsRef.current = next;
+            setWindows(next);
+          } catch (error) {
+            console.error("[DetachedTab] 再読み込み後の別窓を再接続できませんでした", error);
+          }
+        },
       };
       opened.window.addEventListener("beforeunload", entry.onBeforeUnload, { once: true });
+      opened.window.addEventListener("load", entry.onLoad);
       const next = new Map(windowsRef.current);
       next.set(tabId, entry);
       windowsRef.current = next;
       setWindows(next);
+
+      const locatedPane = panes.find((pane) => pane.id === located.paneId);
+      if (locatedPane?.activeTabId === tabId) {
+        const fallbackTab = locatedPane.tabs.find((candidate) => {
+          const candidateWindow = windowsRef.current.get(candidate.id)?.window;
+          return candidate.id !== tabId && (!candidateWindow || candidateWindow.closed);
+        });
+        if (fallbackTab) {
+          // 切り離し中のタブを本窓のactiveTabに残すと、タブバーから消えた後に
+          // 本文と戻る/進む入力だけが別窓へ誤配送されるため、表示可能なタブへ移す。
+          dispatch({
+            type: "SELECT_TAB",
+            paneId: located.paneId,
+            tabId: fallbackTab.id,
+            preserveActivePane: true,
+          });
+        } else {
+          // ペイン内の最後の表示タブを切り離しても、本窓の操作対象を不可視タブへ
+          // 残さない。元ページを引き継ぐ新規タブを表示用に作り、別窓の所有権を保つ。
+          dispatch({
+            type: "ADD_TAB",
+            paneId: located.paneId,
+            preserveActivePane: true,
+          });
+        }
+      }
       opened.window.focus();
       return true;
     },
-    [panes, removeWindow],
+    [dispatch, panes, removeWindow, stateRef],
   );
 
-  const closeTab = useCallback(
+  const redockTab = useCallback(
     (tabId: string) => {
       const entry = windowsRef.current.get(tabId);
       if (!entry) {
@@ -151,13 +222,58 @@ export const DetachedTabWindowProvider: React.FC<{ children: ReactNode }> = ({ c
       }
 
       entry.window.removeEventListener("beforeunload", entry.onBeforeUnload);
+      entry.window.removeEventListener("load", entry.onLoad);
       if (!entry.window.closed) {
         entry.window.close();
       }
       removeWindow(tabId, entry.window);
+
+      const located = findTab(stateRef.current.panes, tabId);
+      if (located) {
+        // 明示的な「戻す」だけはタブを保持し、元ペインで選択された状態に戻す。
+        dispatch({ type: "SELECT_TAB", paneId: located.paneId, tabId });
+      }
     },
-    [removeWindow],
+    [dispatch, removeWindow, stateRef],
   );
+
+  const closeDetachedTab = useCallback(
+    (tabId: string) => {
+      const entry = windowsRef.current.get(tabId);
+      if (!entry) {
+        return;
+      }
+
+      const currentPanes = stateRef.current.panes;
+      const located = findTab(currentPanes, tabId);
+      const pane = located && currentPanes.find((candidate) => candidate.id === located.paneId);
+      if (!located || located.tab.pinned || !pane) {
+        // TabStoreの固定タブ保護を破らず、操作不能な不可視タブを残さないため、
+        // 構造上閉じられない場合は明示的な復帰へフォールバックする。
+        console.warn("[DetachedTab] このタブは別窓から終了できないため元画面へ戻します", tabId);
+        redockTab(tabId);
+        return;
+      }
+
+      // 先に監視を外してからCLOSE_TABを送ることで、プログラム終了をOS終了として
+      // 二重処理せず、閉じたタブ履歴にも一度だけ記録する。
+      entry.window.removeEventListener("beforeunload", entry.onBeforeUnload);
+      entry.window.removeEventListener("load", entry.onLoad);
+      if (!entry.window.closed) {
+        entry.window.close();
+      }
+      removeWindow(tabId, entry.window);
+      dispatch({
+        type: "CLOSE_TAB",
+        paneId: located.paneId,
+        tabId,
+        preserveActivePane: true,
+        replaceLastTab: true,
+      });
+    },
+    [dispatch, redockTab, removeWindow, stateRef],
+  );
+  closeDetachedTabRef.current = closeDetachedTab;
 
   const focusTab = useCallback((tabId: string) => {
     const entry = windowsRef.current.get(tabId);
@@ -168,8 +284,9 @@ export const DetachedTabWindowProvider: React.FC<{ children: ReactNode }> = ({ c
 
   const isDetached = useCallback(
     (tabId: string) => {
-      const entry = windows.get(tabId);
-      return entry != null && !entry.window.closed;
+      // closed=trueを検知してからCLOSE_TABを確定するまでの間も、レジストリ上は
+      // 切り離し中として扱う。監視周期の隙間で本窓へ一瞬だけ戻る表示を防ぐ。
+      return windows.has(tabId);
     },
     [windows],
   );
@@ -177,14 +294,67 @@ export const DetachedTabWindowProvider: React.FC<{ children: ReactNode }> = ({ c
   const toggleTab = useCallback(
     (tabId: string) => {
       if (isDetached(tabId)) {
-        closeTab(tabId);
+        redockTab(tabId);
         return true;
       } else {
         return openTab(tabId);
       }
     },
-    [closeTab, isDetached, openTab],
+    [isDetached, openTab, redockTab],
   );
+
+  const handleClosedWindow = useCallback(
+    (tabId: string, expectedWindow: Window) => {
+      const entry = windowsRef.current.get(tabId);
+      if (!entry || entry.window !== expectedWindow || !expectedWindow.closed) {
+        return;
+      }
+
+      // beforeunloadはreloadでも発火するので、closedを親窓から確認できた場合だけ
+      // タブを終了する。entry identityも照合し、同じtabIdの再オープンを誤って閉じない。
+      closeDetachedTab(tabId);
+    },
+    [closeDetachedTab],
+  );
+
+  useEffect(() => {
+    // WindowProxyのbeforeunload通知はブラウザ実装差があるため、親窓からclosedを
+    // 定期確認する。再読み込みではclosed=falseのままなのでタブを失わない。
+    const monitorId = window.setInterval(() => {
+      for (const [tabId, entry] of windowsRef.current) {
+        handleClosedWindow(tabId, entry.window);
+      }
+    }, 250);
+    return () => window.clearInterval(monitorId);
+  }, [handleClosedWindow]);
+
+  useEffect(() => {
+    for (const pane of panes) {
+      const activeTab = pane.tabs.find((tab) => tab.id === pane.activeTabId);
+      const activeWindow = activeTab && windowsRef.current.get(activeTab.id);
+      if (!activeTab || !activeWindow || activeWindow.window.closed) {
+        continue;
+      }
+
+      const fallbackTab = pane.tabs.find((tab) => {
+        const entry = windowsRef.current.get(tab.id);
+        return !entry || entry.window.closed;
+      });
+      if (fallbackTab) {
+        // 本窓側の閉じる操作でactiveTabが別窓タブへ移った場合も、不可視タブを
+        // ナビゲーションやステータスの暗黙の対象に残さない。
+        dispatch({
+          type: "SELECT_TAB",
+          paneId: pane.id,
+          tabId: fallbackTab.id,
+          preserveActivePane: true,
+        });
+      } else {
+        // 全タブが別窓へ移っているペインには、本窓で操作できるタブを一つ補う。
+        dispatch({ type: "ADD_TAB", paneId: pane.id, preserveActivePane: true });
+      }
+    }
+  }, [dispatch, panes, windows]);
 
   // タブを閉じる／復元する操作と別窓のライフサイクルを同期する。
   useEffect(() => {
@@ -194,6 +364,7 @@ export const DetachedTabWindowProvider: React.FC<{ children: ReactNode }> = ({ c
         continue;
       }
       entry.window.removeEventListener("beforeunload", entry.onBeforeUnload);
+      entry.window.removeEventListener("load", entry.onLoad);
       if (!entry.window.closed) {
         entry.window.close();
       }
@@ -218,6 +389,7 @@ export const DetachedTabWindowProvider: React.FC<{ children: ReactNode }> = ({ c
     return () => {
       for (const entry of windowsRef.current.values()) {
         entry.window.removeEventListener("beforeunload", entry.onBeforeUnload);
+        entry.window.removeEventListener("load", entry.onLoad);
         if (!entry.window.closed) {
           entry.window.close();
         }
@@ -226,8 +398,8 @@ export const DetachedTabWindowProvider: React.FC<{ children: ReactNode }> = ({ c
   }, []);
 
   const contextValue = useMemo<DetachedTabWindowContextValue>(
-    () => ({ isDetached, openTab, closeTab, focusTab, toggleTab }),
-    [closeTab, focusTab, isDetached, openTab, toggleTab],
+    () => ({ isDetached, openTab, redockTab, closeDetachedTab, focusTab, toggleTab }),
+    [closeDetachedTab, focusTab, isDetached, openTab, redockTab, toggleTab],
   );
 
   return (
@@ -261,7 +433,8 @@ export const DetachedTabWindowProvider: React.FC<{ children: ReactNode }> = ({ c
                         <TitleBar showNavigationButtons={false} />
                         <DetachedTabToolbar
                           tab={located.tab}
-                          onClose={() => closeTab(entry.tabId)}
+                          onRedock={() => redockTab(entry.tabId)}
+                          onClose={() => closeDetachedTab(entry.tabId)}
                         />
                         <div className="content-area">
                           <TabPanel
@@ -294,7 +467,11 @@ export const DetachedTabWindowProvider: React.FC<{ children: ReactNode }> = ({ c
   );
 };
 
-const DetachedTabToolbar: React.FC<{ tab: Tab; onClose: () => void }> = ({ tab, onClose }) => {
+const DetachedTabToolbar: React.FC<{
+  tab: Tab;
+  onRedock: () => void;
+  onClose: () => void;
+}> = ({ tab, onRedock, onClose }) => {
   const dispatch = useTabDispatchForTab(tab.id);
 
   return (
@@ -320,8 +497,11 @@ const DetachedTabToolbar: React.FC<{ tab: Tab; onClose: () => void }> = ({ tab, 
         <button type="button" onClick={() => dispatch({ type: "RELOAD" })} title="再読み込み">
           更新
         </button>
-        <button type="button" onClick={onClose} title="メイン画面へ戻す">
+        <button type="button" onClick={onRedock} title="メイン画面へ戻す">
           戻す
+        </button>
+        <button type="button" onClick={onClose} title="タブと別窓を閉じる">
+          閉じる
         </button>
       </div>
     </nav>

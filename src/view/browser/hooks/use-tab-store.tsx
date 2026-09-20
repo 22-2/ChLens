@@ -583,7 +583,8 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
           tabs: [...p.tabs, newTab],
           activeTabId: newTab.id,
         })),
-        activePaneId: paneId,
+        // 別窓化で本窓用の代替タブを作る時は、元のフォーカスペインを奪わない。
+        activePaneId: action.preserveActivePane ? state.activePaneId : paneId,
       };
     }
 
@@ -662,7 +663,20 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       // 固定タブは閉じられない
       if (!target || target.pinned) return state;
       // ペインは最低1タブを保つ（空にしたい場合はペインを閉じる）。
-      if (pane.tabs.length <= 1) return state;
+      if (pane.tabs.length <= 1) {
+        if (!action.replaceLastTab) return state;
+        const replacement = createTab(getCurrentPage(target), target);
+        return {
+          ...updatePane(state, paneId, (p) => ({
+            ...p,
+            tabs: [replacement],
+            activeTabId: replacement.id,
+          })),
+          // 別窓の終了で最後のタブを置き換える場合も、本窓のフォーカスは奪わない。
+          activePaneId: action.preserveActivePane ? state.activePaneId : paneId,
+          closedTabs: pushClosed(state.closedTabs, target),
+        };
+      }
       const closingIndex = pane.tabs.indexOf(target);
       const remaining = pane.tabs.filter((t) => t.id !== action.tabId);
       let newActiveId = pane.activeTabId;
@@ -676,7 +690,9 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
           tabs: remaining,
           activeTabId: newActiveId,
         })),
-        activePaneId: paneId,
+        // 別窓終了時は元窓のフォーカスペインを奪わない。通常のタブ閉じる操作では
+        // 従来どおり対象ペインへフォーカスを移すため、呼び出し側で明示的に指定する。
+        activePaneId: action.preserveActivePane ? state.activePaneId : paneId,
         closedTabs: pushClosed(state.closedTabs, target),
       };
     }
@@ -821,7 +837,9 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
           ...p,
           activeTabId: action.tabId,
         })),
-        activePaneId: paneId,
+        // 別窓化で同じペインの表示対象だけを差し替える時は、本窓のフォーカスを
+        // 動かさない。通常のタブ選択では従来どおり対象ペインへフォーカスを移す。
+        activePaneId: action.preserveActivePane ? state.activePaneId : paneId,
       };
     }
 

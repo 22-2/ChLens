@@ -17,6 +17,7 @@ import { container } from "src/service-container/index";
 import { useCursorTooltip } from "src/view/browser/components/CursorTooltip";
 import { PageTypeIcon } from "src/view/browser/components/PageTypeIcon";
 import { TabContextMenu } from "src/view/browser/components/TabContextMenu";
+import { useDetachedTabs } from "src/view/browser/hooks/detached-tab-context";
 import { useAutoScrollState } from "src/view/browser/hooks/use-auto-scroll-state";
 import {
   clampTabBarWidth,
@@ -59,6 +60,33 @@ const SORTABLE_TRANSITION = {
   duration: 200,
   easing: "cubic-bezier(0.4, 0, 0.2, 1)",
 };
+
+function getMoveTargetIndex(
+  pane: { tabs: Tab[] },
+  dragTabId: string,
+  visibleIndex: number,
+  isDetached: (tabId: string) => boolean,
+): number | null {
+  const dragTab = pane.tabs.find((tab) => tab.id === dragTabId);
+  if (!dragTab) {
+    return null;
+  }
+
+  const group = pane.tabs.filter((tab) => tab.pinned === dragTab.pinned);
+  const groupWithoutDrag = group.filter((tab) => tab.id !== dragTabId);
+  const visibleGroup = groupWithoutDrag.filter((tab) => !isDetached(tab.id));
+  const clampedVisibleIndex = Math.max(0, Math.min(visibleIndex, visibleGroup.length));
+  const referenceTab = visibleGroup[clampedVisibleIndex];
+  if (referenceTab) {
+    return groupWithoutDrag.findIndex((tab) => tab.id === referenceTab.id);
+  }
+
+  const lastVisibleTab = visibleGroup[visibleGroup.length - 1];
+  if (!lastVisibleTab) {
+    return groupWithoutDrag.length;
+  }
+  return groupWithoutDrag.findIndex((tab) => tab.id === lastVisibleTab.id) + 1;
+}
 
 interface SortableTabProps {
   tab: Tab;
@@ -216,6 +244,13 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
 }) => {
   const isVertical = orientation === "vertical";
   const { state, stateRef, dispatch, paneId } = useTabStore();
+  const { isDetached } = useDetachedTabs();
+  // 切り離し中のタブはTabStoreに保持したまま、元窓の操作対象からだけ除外する。
+  // 別窓を明示的に戻した時に同じタブを復元できるよう、ここで削除は行わない。
+  const visibleTabs = useMemo(
+    () => state.tabs.filter((tab) => !isDetached(tab.id)),
+    [isDetached, state.tabs],
+  );
   const { canAutoScroll, isAutoScrolling, isPaused } = useAutoScrollState();
   const { collapsed, width, setCollapsed, setWidth } = useVerticalTabBarLayout();
   // 変更理由: ドラッグ中は保存済み幅ではなく操作中の幅で描画し、確定時だけ永続化する。
@@ -229,7 +264,7 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [barContextMenu, setBarContextMenu] = useState<BarContextMenuState | null>(null);
   const [highlightedTabIds, setHighlightedTabIds] = useState<Set<string>>(new Set());
-  const prevTabIdsRef = useRef<Set<string>>(new Set(state.tabs.map((tab) => tab.id)));
+  const prevTabIdsRef = useRef<Set<string>>(new Set(visibleTabs.map((tab) => tab.id)));
   const lastWheelSwitchAtRef = useRef(0);
   // ドラッグ終了直後の click イベントによるタブ選択を抑止するためのフラグ。
   const wasDraggingRef = useRef(false);
@@ -322,9 +357,10 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
       window.removeEventListener("resize", handleTabListResize);
       resizeObserver?.disconnect();
     };
-  }, [handleTabListResize, state.tabs, updateTabListScrollState]);
+  }, [handleTabListResize, updateTabListScrollState, visibleTabs]);
 
-  const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId);
+  const activeTab =
+    visibleTabs.find((tab) => tab.id === state.activeTabId) ?? visibleTabs[0] ?? null;
   const currentPage = activeTab ? getCurrentPage(activeTab) : null;
   const isTabListScrollable = tabListScrollState.canScrollLeft || tabListScrollState.canScrollRight;
   // 更新は常用操作としてタブバー左端にも置くが、再取得できないページでは無効化する。
@@ -332,8 +368,8 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
 
   useEffect(() => {
     const prev = prevTabIdsRef.current;
-    const current = new Set(state.tabs.map((tab) => tab.id));
-    const newIds = state.tabs.map((tab) => tab.id).filter((tabId) => !prev.has(tabId));
+    const current = new Set(visibleTabs.map((tab) => tab.id));
+    const newIds = visibleTabs.map((tab) => tab.id).filter((tabId) => !prev.has(tabId));
 
     if (newIds.length > 0) {
       // 変更理由: バックグラウンド追加では activeTabId が変わらないため、
@@ -362,11 +398,11 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
 
     prevTabIdsRef.current = current;
     return;
-  }, [scrollTabIntoView, state.tabs]);
+  }, [scrollTabIntoView, visibleTabs]);
 
   useEffect(() => {
-    prevTabIdsRef.current = new Set(state.tabs.map((tab) => tab.id));
-  }, [state.tabs]);
+    prevTabIdsRef.current = new Set(visibleTabs.map((tab) => tab.id));
+  }, [visibleTabs]);
 
   useEffect(() => {
     scrollActiveTabIntoView(state.activeTabId);
@@ -422,7 +458,7 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
         stateRef.current.panes.find((p) => p.id === paneId) ??
         stateRef.current.panes.find((p) => p.id === stateRef.current.activePaneId);
       if (!pane) return;
-      const tabs = pane.tabs;
+      const tabs = pane.tabs.filter((tab) => !isDetached(tab.id));
       const currentIdx = tabs.findIndex((t) => t.id === pane.activeTabId);
       if (currentIdx === -1) return;
 
@@ -438,7 +474,7 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
       lastWheelSwitchAtRef.current = now;
       dispatch({ type: "SELECT_TAB", tabId: tabs[nextIdx].id });
     },
-    [dispatch, isVertical, paneId, stateRef],
+    [dispatch, isDetached, isVertical, paneId, stateRef],
   );
 
   useEffect(() => {
@@ -497,15 +533,19 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
       if (typeof toIndex !== "number") return;
       // 実際に位置が変わっていなければ、click 抑止も並べ替えも行わない。
       if (typeof initialIndex === "number" && toIndex === initialIndex) return;
+      const pane = stateRef.current.panes.find((candidate) => candidate.id === paneId);
+      if (!pane) return;
+      const fullTargetIndex = getMoveTargetIndex(pane, String(source.id), toIndex, isDetached);
+      if (fullTargetIndex == null) return;
       // ドラッグ完了直後の click イベントによるタブ選択を1回だけ抑止する。
       wasDraggingRef.current = true;
       dispatch({
         type: "MOVE_TAB",
         dragTabId: String(source.id),
-        toIndex,
+        toIndex: fullTargetIndex,
       });
     },
-    [dispatch],
+    [dispatch, isDetached, paneId, stateRef],
   );
 
   const handleTabSelect = useCallback(
@@ -584,7 +624,7 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
 
   const handleArrowNavigate = useCallback(
     (index: number, delta: number) => {
-      const tabs = state.tabs;
+      const tabs = visibleTabs;
       if (tabs.length === 0) return;
       const nextIndex = (index + delta + tabs.length) % tabs.length;
       const nextTab = tabs[nextIndex];
@@ -593,7 +633,7 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
       // フォーカスも追従させ、連続した矢印キー操作を可能にする。
       tabListRef.current?.querySelectorAll<HTMLElement>("[data-tab-id]")[nextIndex]?.focus();
     },
-    [dispatch, state.tabs],
+    [dispatch, visibleTabs],
   );
 
   const barMenuItems = useMemo(
@@ -716,7 +756,7 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
             role="tablist"
             aria-orientation={isVertical ? "vertical" : "horizontal"}
           >
-            {state.tabs.map((tab, index) => {
+            {visibleTabs.map((tab, index) => {
               const page = getCurrentPage(tab);
               const isActive = tab.id === state.activeTabId;
               const isPageAutoRefreshEnabled = isAutoRefreshEnabledForPage(tab, page);
@@ -743,7 +783,7 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
                   isActive={isActive}
                   isHighlighted={highlightedTabIds.has(tab.id)}
                   autoRefreshIndicatorState={autoRefreshIndicatorState}
-                  tabCount={state.tabs.length}
+                  tabCount={visibleTabs.length}
                   isVertical={isVertical}
                   compact={isVertical && collapsed}
                   wasDraggingRef={wasDraggingRef}

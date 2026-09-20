@@ -39,6 +39,7 @@ const mocks = vi.hoisted(() => ({
     isAutoScrolling: false,
     isPaused: false,
   },
+  detachedTabIds: new Set<string>(),
 }));
 
 vi.mock("src/view/browser/ui/ContextMenu", () => ({
@@ -97,9 +98,19 @@ vi.mock("src/view/browser/hooks/use-auto-scroll-state", () => ({
   useAutoScrollState: () => mocks.autoScrollState,
 }));
 
+vi.mock("src/view/browser/hooks/detached-tab-context", () => ({
+  useDetachedTabs: () => ({
+    isDetached: (tabId: string) => mocks.detachedTabIds.has(tabId),
+  }),
+}));
+
 // DragDropProvider はテスト環境ではシムで置き換え、onDragEnd を外部から呼べるようにする。
 let capturedOnDragEnd: ((event: Record<string, unknown>) => void) | undefined;
 let resizeObserverCallback: (() => void) | undefined;
+
+afterEach(() => {
+  mocks.detachedTabIds.clear();
+});
 
 class ResizeObserverStub {
   constructor(callback: () => void) {
@@ -774,6 +785,80 @@ describe("TabBar drag-to-reorder", () => {
     fireEvent.click(tabs[1]);
 
     expect(dispatchMock).not.toHaveBeenCalledWith(expect.objectContaining({ type: "SELECT_TAB" }));
+  });
+});
+
+describe("TabBar detached tabs", () => {
+  beforeEach(() => {
+    mocks.tabStore.state = {
+      tabs: [
+        {
+          id: "tab-1",
+          history: [{ type: "home", title: "ホーム" }],
+          currentIndex: 0,
+          pinned: false,
+          reloadKey: 0,
+          autoRefreshEnabled: false,
+          autoRefreshPageKey: null,
+        },
+        {
+          id: "tab-2",
+          history: [{ type: "boardList", title: "板一覧" }],
+          currentIndex: 0,
+          pinned: false,
+          reloadKey: 0,
+          autoRefreshEnabled: false,
+          autoRefreshPageKey: null,
+        },
+        {
+          id: "tab-3",
+          history: [{ type: "boardList", title: "板一覧2" }],
+          currentIndex: 0,
+          pinned: false,
+          reloadKey: 0,
+          autoRefreshEnabled: false,
+          autoRefreshPageKey: null,
+        },
+      ],
+      activeTabId: "tab-1",
+      closedTabs: [],
+    };
+    mocks.detachedTabIds.add("tab-2");
+    dispatchMock.mockReset();
+    capturedOnDragEnd = undefined;
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("切り離し中のタブをタブバーとホイール切り替えから除外する", () => {
+    const { container } = render(<TabBar />);
+    const tabBar = container.querySelector(".tab-bar") as HTMLDivElement;
+
+    expect(container.querySelector('[data-tab-id="tab-2"]')).not.toBeInTheDocument();
+
+    fireEvent.wheel(tabBar, { deltaY: 40 });
+
+    expect(dispatchMock).toHaveBeenCalledWith({ type: "SELECT_TAB", tabId: "tab-3" });
+  });
+
+  it("表示中の並び順を不可視タブ込みの保存位置へ変換する", () => {
+    render(<TabBar />);
+
+    capturedOnDragEnd?.({
+      canceled: false,
+      operation: {
+        source: { id: "tab-1", index: 1, sortable: { initialIndex: 0 } },
+        target: { id: "tab-3" },
+      },
+    });
+
+    expect(dispatchMock).toHaveBeenCalledWith({
+      type: "MOVE_TAB",
+      dragTabId: "tab-1",
+      toIndex: 2,
+    });
   });
 });
 

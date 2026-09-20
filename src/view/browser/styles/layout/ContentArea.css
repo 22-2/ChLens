@@ -26,30 +26,6 @@
   display: none;
 }
 
-/* 別窓へ移したアクティブタブでも、元ペインの空白に操作案内を残す。 */
-.content-area__detached-placeholder {
-  display: none;
-  height: 100%;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 12px;
-  color: var(--sys-color-text-muted);
-}
-
-.content-area__detached-placeholder[data-active="true"] {
-  display: flex;
-}
-
-.content-area__detached-placeholder p {
-  margin: 0;
-}
-
-.content-area__detached-placeholder-actions {
-  display: flex;
-  gap: 8px;
-}
-
 /* 別窓でも履歴操作とメイン画面への復帰を常に使えるよう、最小限の専用操作欄を置く。 */
 .detached-tab-toolbar {
   display: flex;

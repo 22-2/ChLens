@@ -11,17 +11,23 @@ export interface TabStoreState {
 }
 
 export type TabAction =
-  | { type: "ADD_TAB" }
+  | { type: "ADD_TAB"; preserveActivePane?: boolean }
   | { type: "OPEN_IN_NEW_TAB"; page: Page; background?: boolean }
   | { type: "OPEN_IN_NEW_TAB_FORCE"; page: Page; focus?: boolean; tabId?: string }
-  | { type: "CLOSE_TAB"; tabId: string }
+  | {
+      type: "CLOSE_TAB";
+      tabId: string;
+      preserveActivePane?: boolean;
+      // 別窓の最後のタブを閉じる時だけ、ペインを空にしない代替タブを作る。
+      replaceLastTab?: boolean;
+    }
   | { type: "CLOSE_OTHER_TABS"; tabId: string }
   | { type: "CLOSE_RIGHT_TABS"; tabId: string }
   | { type: "CLOSE_ALL_TABS" }
   | { type: "REOPEN_CLOSED_TAB" }
   | { type: "TOGGLE_PIN"; tabId: string }
   | { type: "MOVE_TAB"; dragTabId: string; toIndex: number }
-  | { type: "SELECT_TAB"; tabId: string }
+  | { type: "SELECT_TAB"; tabId: string; preserveActivePane?: boolean }
   | { type: "NAVIGATE"; page: Page }
   | { type: "NAVIGATE_TAB"; tabId: string; page: Page }
   | { type: "GO_BACK" }

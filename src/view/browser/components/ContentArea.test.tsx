@@ -12,9 +12,16 @@ const threadPageLifecycle = vi.hoisted(() => ({
   unmountCount: 0,
   renderCount: 0,
 }));
+const detachedTabIds = vi.hoisted(() => new Set<string>());
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => mockUseTabStore(),
+}));
+
+vi.mock("src/view/browser/hooks/detached-tab-context", () => ({
+  useDetachedTabs: () => ({
+    isDetached: (tabId: string) => detachedTabIds.has(tabId),
+  }),
 }));
 
 vi.mock("src/view/browser/pages/HomePage", () => ({
@@ -131,6 +138,7 @@ describe("ContentArea tab switching", () => {
     threadPageLifecycle.mountCount = 0;
     threadPageLifecycle.unmountCount = 0;
     threadPageLifecycle.renderCount = 0;
+    detachedTabIds.clear();
   });
 
   it("アクティブでないタブは display:none で隠す", () => {
@@ -298,5 +306,23 @@ describe("ContentArea tab switching", () => {
 
     expect(threadPageLifecycle.renderCount).toBe(1);
     expect(threadPageLifecycle.unmountCount).toBe(0);
+  });
+
+  it("別窓へ切り離したタブは元窓の本文から外す", () => {
+    const mainTab = createTabWithPage("tab-1", {
+      type: "home",
+      title: "ホーム",
+    });
+    const detachedTab = createTabWithPage("tab-2", {
+      type: "boardList",
+      title: "板一覧",
+    });
+    detachedTabIds.add(detachedTab.id);
+
+    mockState([mainTab, detachedTab], mainTab.id);
+    const { container } = render(<ContentArea />);
+
+    expect(container.querySelector('[data-tab-panel-id="tab-1"]')).toBeInTheDocument();
+    expect(container.querySelector('[data-tab-panel-id="tab-2"]')).not.toBeInTheDocument();
   });
 });

@@ -3,7 +3,10 @@ import { createContext, useContext } from "react";
 export interface DetachedTabWindowContextValue {
   isDetached: (tabId: string) => boolean;
   openTab: (tabId: string) => boolean;
-  closeTab: (tabId: string) => void;
+  /** 別窓だけを閉じ、タブを元ペインへ戻す。 */
+  redockTab: (tabId: string) => void;
+  /** 別窓とタブを一緒に閉じる。 */
+  closeDetachedTab: (tabId: string) => void;
   focusTab: (tabId: string) => void;
   toggleTab: (tabId: string) => boolean;
 }
@@ -11,7 +14,8 @@ export interface DetachedTabWindowContextValue {
 export const defaultDetachedTabWindowContext: DetachedTabWindowContextValue = {
   isDetached: () => false,
   openTab: () => false,
-  closeTab: () => {},
+  redockTab: () => {},
+  closeDetachedTab: () => {},
   focusTab: () => {},
   toggleTab: () => false,
 };

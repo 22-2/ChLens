@@ -77,7 +77,7 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
     if (canDetach) {
       result.push({
         id: "detach-tab",
-        label: isDetachedTab ? "別窓を閉じる" : "別窓で開く",
+        label: isDetachedTab ? "メイン画面へ戻す" : "別窓で開く",
         icon: <ExternalLink />,
         onSelect: () => {
           const opened = toggleTab(tab.id);
