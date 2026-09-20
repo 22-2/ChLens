@@ -1,3 +1,4 @@
+mod download;
 mod write_transport;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -7,7 +8,10 @@ pub fn run() {
     .manage(write_transport::WriteTransportState::default())
     .plugin(tauri_plugin_http::init())
     .plugin(tauri_plugin_sql::Builder::default().build())
-    .invoke_handler(tauri::generate_handler![write_transport::write_request])
+    .invoke_handler(tauri::generate_handler![
+      download::save_download_file,
+      write_transport::write_request
+    ])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(

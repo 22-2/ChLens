@@ -7,6 +7,8 @@ import {
   useRef,
   useState,
 } from "react";
+import { platformDownloadManager } from "src/app/platform/DownloadManager";
+import { isTauriRuntime } from "src/app/platform/runtime";
 
 import type { ViewerState } from "./media-viewer-types";
 import { useMediaViewerStore } from "./use-media-viewer-store";
@@ -498,27 +500,14 @@ export function useMediaViewerController(scopeId: string): MediaViewerProps | nu
 
   const saveViewerImage = async () => {
     try {
-      // download 属性だけだと cross-origin 画像で保存名が落ちやすいので、
-      // blob 化して拡張ページ側から保存トリガーを作る。
-      const response = await fetch(viewer.src);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch image: ${response.status}`);
-      }
-
-      const blob = await response.blob();
-      const objectUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = objectUrl;
-      link.download = getViewerDownloadFilename(viewer.src);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.setTimeout(() => {
-        window.URL.revokeObjectURL(objectUrl);
-      }, 0);
+      await platformDownloadManager.save(viewer.src, getViewerDownloadFilename(viewer.src));
     } catch (error) {
-      console.error(error);
-      window.open(viewer.src, "_blank", "noopener,noreferrer");
+      console.error("画像の保存に失敗しました", { url: viewer.src, error });
+      // Tauri版では外部ブラウザへのフォールバックもWebView制約で失敗するため、
+      // 取得失敗をログへ残して、意図しない別ウィンドウを開かない。
+      if (!isTauriRuntime()) {
+        window.open(viewer.src, "_blank", "noopener,noreferrer");
+      }
     }
   };
 

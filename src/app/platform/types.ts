@@ -86,6 +86,11 @@ export interface HttpClient {
   setupWriteHeaders(url: string): Promise<void>;
 }
 
+export interface DownloadManager {
+  /** 指定URLの本文を、利用者が通常使うダウンロード先へ保存する。 */
+  save(url: string, fileName: string): Promise<void>;
+}
+
 export interface KeyValueStore {
   get(key: string): Promise<string | null>;
   set(key: string, value: string): Promise<void>;
@@ -139,5 +144,6 @@ export interface StorageManager {
 export interface Platform {
   window: WindowManager;
   http: HttpClient;
+  download: DownloadManager;
   storage: StorageManager;
 }
