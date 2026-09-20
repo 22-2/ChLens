@@ -19,6 +19,7 @@ import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-prio
 import { StatusBar, StatusBarItem, StatusBarProvider } from "src/view/browser/components/StatusBar";
 import { TabBar } from "src/view/browser/components/TabBar";
 import { TitleBar } from "src/view/browser/components/TitleBar";
+import { WriteWindowHost } from "src/view/browser/components/WriteWindowHost";
 import { AutoScrollStateProvider } from "src/view/browser/hooks/use-auto-scroll-state";
 import {
   BOTTOM_PANEL_THREAD_LIST_TAB_ID,
@@ -43,6 +44,7 @@ import {
   UrlBarVisibilityProvider,
   useUrlBarVisibility,
 } from "src/view/browser/hooks/use-url-bar-visibility";
+import { useWriteSession, WriteSessionProvider } from "src/view/browser/hooks/use-write-session";
 import { ToastProvider } from "src/view/browser/ui/Toast";
 import { TooltipProvider } from "src/view/browser/ui/Tooltip";
 import { applyBBSMenuToItestServerMap } from "src/view/browser/utils/itest-server-map";
@@ -110,6 +112,7 @@ const ActiveThreadBridgeState: React.FC<{ isActive: boolean }> = ({ isActive }) 
 const WritePanelToggleItem: React.FC = () => {
   const { togglePanel } = useBottomPanel();
   const { currentPage } = useTabStore();
+  const { selectThread } = useWriteSession();
 
   // 書き込み UI はスレッド専用なので、他ページではステータスバーに出さない。
   if (currentPage.type !== "thread") {
@@ -126,7 +129,11 @@ const WritePanelToggleItem: React.FC = () => {
     >
       <button
         className="status-bar__btn"
-        onClick={() => togglePanel(BOTTOM_PANEL_WRITE_TAB_ID)}
+        onClick={() => {
+          // 表示中のスレから開いた場合は、そのスレを共通書き込み窓の初期選択にする。
+          selectThread(currentPage.threadUrl);
+          togglePanel(BOTTOM_PANEL_WRITE_TAB_ID);
+        }}
         aria-label="書き込みパネルを開閉"
       >
         <PenLine size={12} />
@@ -306,27 +313,30 @@ const BrowserAppContent: React.FC = () => {
   return (
     <TooltipProvider>
       <TabProvider>
-        <ArchiveReplayMainThreadSyncBridge />
-        {/*
-          ステータス／NG／書き込み／自動スクロールの各プロバイダは PaneColumn 内へ移設した。
-          シェル直下には全ペイン共通のグローバル UI（トースト・ダイアログ）だけを残す。
-        */}
-        {/* data-theme を使ってダークモード CSS 変数を切り替える */}
-        <div
-          className="browser-shell"
-          data-theme={theme}
-          data-tab-orientation={shellTabBarOrientation}
-        >
-          <ToastProvider topOffset={isUrlBarExpanded ? "88px" : "64px"} rightOffset="78px" />
+        <WriteSessionProvider>
+          <WriteWindowHost />
+          <ArchiveReplayMainThreadSyncBridge />
           {/*
-            水平モードではタイトルと必須のレイアウト操作はペインの外に置く。
-            これにより2ペイン時も操作が重複せず、アクティブペインのタイトルだけを表示できる。
-            垂直モードではタイトルバーもペイン単位にするため、共通バーは表示しない。
+            ステータス／NG／書き込み／自動スクロールの各プロバイダは PaneColumn 内へ移設した。
+            シェル直下には全ペイン共通のグローバル UI（トースト・ダイアログ）だけを残す。
           */}
-          {shellTabBarOrientation === "vertical" ? null : <TitleBar />}
-          <PaneRow />
-          <BookmarkRootSelectorDialog />
-        </div>
+          {/* data-theme を使ってダークモード CSS 変数を切り替える */}
+          <div
+            className="browser-shell"
+            data-theme={theme}
+            data-tab-orientation={shellTabBarOrientation}
+          >
+            <ToastProvider topOffset={isUrlBarExpanded ? "88px" : "64px"} rightOffset="78px" />
+            {/*
+              水平モードではタイトルと必須のレイアウト操作はペインの外に置く。
+              これにより2ペイン時も操作が重複せず、アクティブペインのタイトルだけを表示できる。
+              垂直モードではタイトルバーもペイン単位にするため、共通バーは表示しない。
+            */}
+            {shellTabBarOrientation === "vertical" ? null : <TitleBar />}
+            <PaneRow />
+            <BookmarkRootSelectorDialog />
+          </div>
+        </WriteSessionProvider>
       </TabProvider>
     </TooltipProvider>
   );

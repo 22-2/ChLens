@@ -22,6 +22,7 @@ export type ThreadListAutoRefreshIntervalSec =
 export interface WritePanelInsertRequest {
   id: number;
   text: string;
+  threadUrl?: string;
 }
 
 const STORAGE_KEY = "chlens_bottom_panel_v1";
@@ -75,7 +76,7 @@ interface BottomPanelContextValue {
   tabs: PanelTab[];
   writePanelInsertRequest: WritePanelInsertRequest | null;
   openPanel: (tabId?: string) => void;
-  openWritePanelWithText: (text: string) => void;
+  openWritePanelWithText: (text: string, threadUrl?: string) => void;
   closePanel: () => void;
   togglePanel: (tabId?: string) => void;
   setHeight: (h: number) => void;
@@ -137,7 +138,7 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ childre
   }, []);
 
   const openWritePanelWithText = useCallback(
-    (text: string) => {
+    (text: string, threadUrl?: string) => {
       // 変更理由: 右クリックの「返信」はクリップボード経由だと既存入力を壊しやすいため、
       // 書き込みパネルを開いたうえで本文へ直接追記できる要求として扱う。
       openPanel(BOTTOM_PANEL_WRITE_TAB_ID);
@@ -145,6 +146,7 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ childre
       setWritePanelInsertRequest({
         id: nextWritePanelInsertIdRef.current,
         text,
+        threadUrl,
       });
     },
     [openPanel],
@@ -239,4 +241,10 @@ export function useBottomPanel(): BottomPanelContextValue {
     throw new Error("useBottomPanel must be used within BottomPanelProvider");
   }
   return ctx;
+}
+
+// 別窓のポータルはペイン配下のBottomPanelProviderを持たないため、
+// 書き込みUIの表示場所を移しても同じコンポーネントを再利用できるようにする。
+export function useOptionalBottomPanel(): BottomPanelContextValue | null {
+  return useContext(BottomPanelContext);
 }

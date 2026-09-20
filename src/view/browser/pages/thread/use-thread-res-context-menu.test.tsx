@@ -315,7 +315,10 @@ describe("useThreadResContextMenu", () => {
     fireEvent.click(screen.getByRole("button", { name: "open" }));
     fireEvent.click(screen.getByRole("button", { name: "reply" }));
 
-    expect(mocks.openWritePanelWithText).toHaveBeenCalledWith(">>10\n");
+    expect(mocks.openWritePanelWithText).toHaveBeenCalledWith(
+      ">>10\n",
+      "https://example.com/test/read.cgi/live/1/",
+    );
   });
 
   it("Tauri版のThreadViewから過去実況をこの位置まで進める", async () => {

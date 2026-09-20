@@ -4,6 +4,66 @@
   overflow: hidden;
 }
 
+.write-window-shell {
+  min-height: 100vh;
+  background: var(--sys-color-surface);
+  color: var(--sys-color-text);
+}
+
+.write-window {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.write-window__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 0 var(--sys-space-4);
+  border-bottom: 1px solid var(--sys-color-border);
+  background: var(--sys-color-surface-muted);
+}
+
+.write-window__title {
+  margin: 0;
+  font-size: var(--sys-font-size-md);
+  font-weight: 600;
+}
+
+.write-window__close {
+  padding: var(--sys-space-1) var(--sys-space-3);
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-md);
+  background: transparent;
+  color: var(--sys-color-text-muted);
+  cursor: pointer;
+  font: inherit;
+}
+
+.write-window__close:hover {
+  background: var(--sys-color-border);
+  color: var(--sys-color-text);
+}
+
+.write-window__content {
+  flex: 1;
+  min-height: 0;
+}
+
+.write-panel__detached-message {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sys-space-3);
+  height: 100%;
+  padding: var(--sys-space-3) var(--sys-space-4);
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-sm);
+}
+
 .write-panel__form {
   display: flex;
   flex-direction: column;
@@ -22,6 +82,32 @@
   align-items: center;
   gap: var(--sys-space-4);
   flex-shrink: 0;
+}
+
+.write-panel__target-group {
+  display: flex;
+  align-items: center;
+  gap: var(--sys-space-2);
+  flex-shrink: 0;
+  font-size: var(--sys-font-size-sm);
+  color: var(--sys-color-text-muted);
+}
+
+.write-panel__target-select {
+  min-width: 0;
+  max-width: 100%;
+  height: 28px;
+  padding: 0 var(--sys-space-2);
+  border: 1px solid var(--sys-color-input-border);
+  border-radius: var(--sys-radius-md);
+  background: var(--sys-color-input-bg);
+  color: var(--sys-color-text);
+  font: inherit;
+}
+
+.write-panel__target-select:focus-visible {
+  outline: 2px solid var(--sys-color-focus-ring);
+  outline-offset: 1px;
 }
 
 .write-panel__field-group {

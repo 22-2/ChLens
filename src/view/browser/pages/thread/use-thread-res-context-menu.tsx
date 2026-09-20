@@ -344,7 +344,7 @@ export function useThreadResContextMenu({
           label: "返信",
           icon: <Reply size={14} />,
           onSelect: () => {
-            openWritePanelWithText(`>>${targetRes.num}\n`);
+            openWritePanelWithText(`>>${targetRes.num}\n`, page.threadUrl);
           },
         },
         {

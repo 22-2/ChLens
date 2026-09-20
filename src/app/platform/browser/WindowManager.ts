@@ -35,6 +35,10 @@ export const BrowserWindowManager: WindowManager = {
     }
   },
 
+  openPopup(name: string, features: string): Window | null {
+    return window.open("", name, features);
+  },
+
   async closeCurrent(): Promise<void> {
     const current = await browser.tabs.getCurrent();
     if (current?.id) {

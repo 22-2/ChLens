@@ -22,6 +22,14 @@ export interface WindowManager {
   openWindow(options: WindowOptions): Promise<void>;
 
   /**
+   * 同じアプリの表示元から名前付きポップアップを開く。
+   *
+   * 別窓へReactポータルを接続する機能は、ブラウザ拡張とTauriで窓の作り方が異なるため、
+   * ビューから直接window.openを呼ばずにこの境界を通す。
+   */
+  openPopup?(name: string, features: string): Window | null;
+
+  /**
    * 現在のウィンドウ/タブを閉じる
    */
   closeCurrent(): Promise<void>;

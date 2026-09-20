@@ -30,6 +30,14 @@ vi.mock("src/view/browser/utils/clipboard", () => ({
   copyText: mocks.copyText,
 }));
 
+vi.mock("src/app/platform", () => ({
+  platform: {
+    window: {
+      openPopup: vi.fn(() => null),
+    },
+  },
+}));
+
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => ({
     currentPage: {
@@ -42,6 +50,11 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
 
 vi.mock("src/view/browser/hooks/use-bottom-panel", () => ({
   useBottomPanel: () => ({
+    writePanelInsertRequest: mocks.writePanelInsertRequest,
+    clearWritePanelInsertRequest: mocks.clearWritePanelInsertRequest,
+    closePanel: mocks.closePanel,
+  }),
+  useOptionalBottomPanel: () => ({
     writePanelInsertRequest: mocks.writePanelInsertRequest,
     clearWritePanelInsertRequest: mocks.clearWritePanelInsertRequest,
     closePanel: mocks.closePanel,

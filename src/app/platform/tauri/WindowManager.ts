@@ -22,6 +22,10 @@ export const TauriWindowManager: WindowManager = {
     window.open(options.url, "_blank", features);
   },
 
+  openPopup(name: string, features: string): Window | null {
+    return window.open("", name, features);
+  },
+
   async closeCurrent(): Promise<void> {
     window.close();
   },

@@ -59,6 +59,13 @@ export interface UseWriteResult {
   handleRetry: () => void;
 }
 
+export interface UseWriteOptions {
+  /** 投稿先を切り替えたときに復元する、スレッド単位の下書き。 */
+  draft?: string;
+  /** 下書きの変更を表示場所の外に保存するための通知。 */
+  onDraftChange?: (message: string) => void;
+}
+
 // -----------------------------------------------------------------------
 // 純粋関数: BBS種別に応じたフォームデータを組み立てる
 // submit_res.js の _getFormData に相当
@@ -252,7 +259,8 @@ async function submitTauriWrite(
 // -----------------------------------------------------------------------
 // フック本体
 // -----------------------------------------------------------------------
-export function useWrite(threadUrl: string): UseWriteResult {
+export function useWrite(threadUrl: string, options: UseWriteOptions = {}): UseWriteResult {
+  const { draft, onDraftChange } = options;
   const { dispatch } = useTabStore();
 
   const [name, setNameState] = useState(
@@ -266,7 +274,7 @@ export function useWrite(threadUrl: string): UseWriteResult {
     SAGE_CONFIG_KEY,
     threadUrl,
   );
-  const [message, setMessage] = useState("");
+  const [message, setMessageState] = useState(() => draft ?? "");
   const [status, setStatus] = useState<WriteStatus>("idle");
   const [statusText, setStatusText] = useState("");
   const [authCodeUrl, setAuthCodeUrl] = useState<string | null>(null);
@@ -277,6 +285,14 @@ export function useWrite(threadUrl: string): UseWriteResult {
   const submitWatchdogTimerRef = useRef<number | null>(null);
   const statusRef = useRef<WriteStatus>("idle");
   const previousThreadUrlRef = useRef(threadUrl);
+
+  const setMessage = useCallback(
+    (value: string) => {
+      setMessageState(value);
+      onDraftChange?.(value);
+    },
+    [onDraftChange],
+  );
 
   useEffect(() => {
     statusRef.current = status;
@@ -331,10 +347,16 @@ export function useWrite(threadUrl: string): UseWriteResult {
     setStatus("idle");
     setStatusText("");
 
+    if (draft !== undefined) {
+      // 変更理由: 表示場所が変わってもスレッドごとの下書きを復元し、別スレの本文を
+      // 誤投稿しないよう、投稿先の切り替え時だけ外部セッションの値へ同期する。
+      setMessageState(draft);
+    }
+
     if (!isTauriRuntime() && iframeRef.current) {
       iframeRef.current.src = "about:blank";
     }
-  }, [clearSubmitWatchdog, clearTauriWriteAttempt, threadUrl]);
+  }, [clearSubmitWatchdog, clearTauriWriteAttempt, draft, threadUrl]);
 
   const canSubmit = status === "idle" && threadUrl !== "" && message.trim() !== "";
 
@@ -419,7 +441,7 @@ export function useWrite(threadUrl: string): UseWriteResult {
           break;
       }
     },
-    [clearSubmitWatchdog, clearTauriWriteAttempt, dispatch],
+    [clearSubmitWatchdog, clearTauriWriteAttempt, dispatch, setMessage],
   );
 
   // iframe からの postMessage を処理する (cs_write.js との通信)

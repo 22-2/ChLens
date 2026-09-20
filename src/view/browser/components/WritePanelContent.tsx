@@ -1,9 +1,10 @@
-import { Settings } from "lucide-react";
+import { ExternalLink, Settings } from "lucide-react";
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
-import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
+import { useOptionalBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useWrite } from "src/view/browser/hooks/use-write";
+import { useWriteSession } from "src/view/browser/hooks/use-write-session";
 import { Dialog } from "src/view/browser/ui/Dialog";
 import { CheckboxField } from "src/view/browser/ui/FormControls";
 import { copyText } from "src/view/browser/utils/clipboard";
@@ -11,16 +12,77 @@ import { bindWriteConfirmationFrame } from "src/view/browser/utils/write-confirm
 
 const WRITE_SUBMIT_CTRL_ENTER_KEY = "write_submit_ctrl_enter";
 const WRITE_CLOSE_PANEL_AFTER_SUBMIT_KEY = "write_close_panel_after_submit";
+const noop = () => {};
 
-export const WritePanelContent: React.FC = () => {
+export interface WritePanelContentProps {
+  standalone?: boolean;
+  onClose?: () => void;
+  portalContainer?: HTMLElement | null;
+}
+
+export const WritePanelContent: React.FC<WritePanelContentProps> = (props) => {
+  const bottomPanel = useOptionalBottomPanel();
+  const { isWindowOpen, openWriteWindow, selectedThreadUrl, selectThread, appendDraft } =
+    useWriteSession();
+
+  useEffect(() => {
+    const request = bottomPanel?.writePanelInsertRequest;
+    if (!isWindowOpen || !request) {
+      return;
+    }
+
+    const targetThreadUrl = request.threadUrl ?? selectedThreadUrl;
+    if (!targetThreadUrl) {
+      return;
+    }
+
+    // 変更理由: 別窓を表示中はペイン側の書き込みUIをマウントしないため、
+    // 返信要求を共有下書きへ移してから元のペイン側の要求を消費する。
+    selectThread(targetThreadUrl);
+    appendDraft(targetThreadUrl, request.text);
+    bottomPanel.clearWritePanelInsertRequest(request.id);
+  }, [appendDraft, bottomPanel, isWindowOpen, selectThread, selectedThreadUrl]);
+
+  if (isWindowOpen && !props.standalone) {
+    return (
+      <div className="write-panel__detached-message">
+        <span>書き込み欄は別窓で開いています。</span>
+        <button
+          type="button"
+          className="write-panel__btn write-panel__btn--secondary"
+          onClick={openWriteWindow}
+        >
+          別窓を表示
+        </button>
+      </div>
+    );
+  }
+
+  return <WritePanelEditor {...props} />;
+};
+
+const WritePanelEditor: React.FC<WritePanelContentProps> = ({
+  standalone = false,
+  onClose,
+  portalContainer,
+}) => {
   const { currentPage } = useTabStore();
-  const { writePanelInsertRequest, clearWritePanelInsertRequest, closePanel } = useBottomPanel();
-  const threadUrl = currentPage.type === "thread" ? currentPage.threadUrl : "";
+  const bottomPanel = useOptionalBottomPanel();
+  const writePanelInsertRequest = standalone ? null : bottomPanel?.writePanelInsertRequest;
+  const clearWritePanelInsertRequest = bottomPanel?.clearWritePanelInsertRequest ?? noop;
+  const closePanel = standalone ? (onClose ?? noop) : (bottomPanel?.closePanel ?? onClose ?? noop);
+  const { selectedThreadUrl, targets, selectThread, getDraft, setDraft, openWriteWindow } =
+    useWriteSession();
+  const fallbackThreadUrl = currentPage.type === "thread" ? currentPage.threadUrl : "";
+  const threadUrl = selectedThreadUrl ?? fallbackThreadUrl;
+  const draft = getDraft(threadUrl);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const errorDialogDescriptionId = useId();
   const authCodeUrlInputId = useId();
   const settingsDialogDescriptionId = useId();
-  const [dialogPortalContainer, setDialogPortalContainer] = useState<HTMLElement | null>(null);
+  const [dialogPortalContainer, setDialogPortalContainer] = useState<HTMLElement | null>(
+    portalContainer ?? null,
+  );
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const [isAuthCodeUrlCopied, setIsAuthCodeUrlCopied] = useState(false);
   const confirmationFrameCleanupRef = useRef<(() => void) | null>(null);
@@ -52,7 +114,10 @@ export const WritePanelContent: React.FC = () => {
     submitConfirmation,
     handleSubmit,
     handleRetry,
-  } = useWrite(threadUrl);
+  } = useWrite(threadUrl, {
+    draft,
+    onDraftChange: (nextMessage) => setDraft(threadUrl, nextMessage),
+  });
 
   const isSubmitting = status === "submitting";
   const isConfirm = status === "confirm" || confirmationPage != null;
@@ -94,8 +159,10 @@ export const WritePanelContent: React.FC = () => {
   useEffect(() => {
     // テーマトークンは `.browser-shell[data-theme]` にスコープされるため、
     // body直下のPortalではダークテーマのsurface/textを継承できない。
-    setDialogPortalContainer(document.querySelector<HTMLElement>(".browser-shell"));
-  }, []);
+    setDialogPortalContainer(
+      portalContainer ?? document.querySelector<HTMLElement>(".browser-shell"),
+    );
+  }, [portalContainer]);
 
   useEffect(() => {
     // 変更理由: エラー状態とDialogの開閉を同じ値で管理すると、Dialogを閉じても
@@ -118,6 +185,18 @@ export const WritePanelContent: React.FC = () => {
       return;
     }
 
+    const requestThreadUrl = writePanelInsertRequest.threadUrl;
+    if (
+      requestThreadUrl &&
+      requestThreadUrl !== threadUrl &&
+      targets.some((target) => target.threadUrl === requestThreadUrl)
+    ) {
+      // 返信操作が発生したペインと書き込み欄の表示場所が異なる場合でも、
+      // 先に対象スレを選び、次の描画でそのスレの下書きへ追記する。
+      selectThread(requestThreadUrl);
+      return;
+    }
+
     const separator = message === "" || message.endsWith("\n") ? "" : "\n";
     // 変更理由: 右クリックからの返信文は現在の下書きへ自然に追記し、
     // 毎回置き換えるより「開いて貼り付けた」感覚に近い挙動へ揃える。
@@ -133,7 +212,15 @@ export const WritePanelContent: React.FC = () => {
     textarea.focus();
     const caretPosition = nextMessage.length;
     textarea.setSelectionRange(caretPosition, caretPosition);
-  }, [clearWritePanelInsertRequest, message, setMessage, writePanelInsertRequest]);
+  }, [
+    clearWritePanelInsertRequest,
+    message,
+    selectThread,
+    setMessage,
+    targets,
+    threadUrl,
+    writePanelInsertRequest,
+  ]);
 
   const handleTextareaKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -202,6 +289,24 @@ export const WritePanelContent: React.FC = () => {
         )}
         {!isConfirm && (
           <>
+            {targets.length > 0 && (
+              <label className="write-panel__target-group">
+                <span className="write-panel__field-label">投稿先</span>
+                <select
+                  className="write-panel__target-select"
+                  value={selectedThreadUrl ?? ""}
+                  onChange={(event) => selectThread(event.currentTarget.value)}
+                  disabled={isSubmitting}
+                  aria-label="投稿先スレッド"
+                >
+                  {targets.map((target) => (
+                    <option key={target.threadUrl} value={target.threadUrl}>
+                      {target.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <div className="write-panel__header-row">
               <label className="write-panel__field-group">
                 <span className="write-panel__field-label">名前</span>
@@ -235,6 +340,18 @@ export const WritePanelContent: React.FC = () => {
               >
                 <Settings size={16} aria-hidden="true" />
               </button>
+              {!standalone && (
+                <button
+                  type="button"
+                  className="write-panel__settings-btn"
+                  onClick={openWriteWindow}
+                  disabled={isSubmitting}
+                  title="書き込みを別窓で開く"
+                  aria-label="書き込みを別窓で開く"
+                >
+                  <ExternalLink size={16} aria-hidden="true" />
+                </button>
+              )}
             </div>
             <div className="write-panel__body-row">
               <textarea
