@@ -88,6 +88,11 @@ import {
   type OmnibarSuggestion,
 } from "src/view/browser/utils/omnibar";
 import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
+import {
+  createQuickAccessPage,
+  createSettingsPage,
+  type QuickAccessPage,
+} from "src/view/browser/utils/tab-pages";
 import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
 
 interface MenuPosition {
@@ -709,20 +714,14 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   }, [activate, handleBlur, isUrlExpanded]);
 
   const openQuickAccessPage = useCallback(
-    (page: {
-      type: "bookmarkList" | "historyList" | "writeHistoryList" | "logList";
-      title: string;
-    }) => {
+    (page: QuickAccessPage) => {
       dispatch(tabActions.navigate(page));
     },
     [dispatch],
   );
 
   const openQuickAccessPageInNewTab = useCallback(
-    (page: {
-      type: "bookmarkList" | "historyList" | "writeHistoryList" | "logList";
-      title: string;
-    }) => {
+    (page: QuickAccessPage) => {
       dispatch(tabActions.openInNewTabForce(page));
     },
     [dispatch],
@@ -760,8 +759,8 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       return;
     }
 
-    dispatch(tabActions.addTab());
-    dispatch(tabActions.navigate({ type: "settings", title: "設定" }));
+    // 設定ボタンは従来どおり新しい設定タブへフォーカスを移す。
+    dispatch(tabActions.openInNewTabForce(createSettingsPage(), { focus: true }));
   }, [closeMenu, dispatch, state.tabs]);
 
   const handleMenuClick = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
@@ -955,68 +954,40 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         id: "open-bookmark-list",
         label: "ブックマークリスト",
         icon: <Bookmark size={14} />,
-        onSelect: () =>
-          openQuickAccessPage({
-            type: "bookmarkList",
-            title: "ブックマークリスト",
-          }),
+        onSelect: () => openQuickAccessPage(createQuickAccessPage("bookmarkList")),
         onAuxSelect: (button: number) => {
           if (button !== 1) return;
-          openQuickAccessPageInNewTab({
-            type: "bookmarkList",
-            title: "ブックマークリスト",
-          });
+          openQuickAccessPageInNewTab(createQuickAccessPage("bookmarkList"));
         },
       },
       {
         id: "open-history-list",
         label: "閲覧履歴",
         icon: <History size={14} />,
-        onSelect: () =>
-          openQuickAccessPage({
-            type: "historyList",
-            title: "閲覧履歴",
-          }),
+        onSelect: () => openQuickAccessPage(createQuickAccessPage("historyList")),
         onAuxSelect: (button: number) => {
           if (button !== 1) return;
-          openQuickAccessPageInNewTab({
-            type: "historyList",
-            title: "閲覧履歴",
-          });
+          openQuickAccessPageInNewTab(createQuickAccessPage("historyList"));
         },
       },
       {
         id: "open-write-history-list",
         label: "書き込み履歴",
         icon: <PenLine size={14} />,
-        onSelect: () =>
-          openQuickAccessPage({
-            type: "writeHistoryList",
-            title: "書き込み履歴",
-          }),
+        onSelect: () => openQuickAccessPage(createQuickAccessPage("writeHistoryList")),
         onAuxSelect: (button: number) => {
           if (button !== 1) return;
-          openQuickAccessPageInNewTab({
-            type: "writeHistoryList",
-            title: "書き込み履歴",
-          });
+          openQuickAccessPageInNewTab(createQuickAccessPage("writeHistoryList"));
         },
       },
       {
         id: "open-log-list",
         label: "ログ検索",
         icon: <Archive size={14} />,
-        onSelect: () =>
-          openQuickAccessPage({
-            type: "logList",
-            title: "ログ検索",
-          }),
+        onSelect: () => openQuickAccessPage(createQuickAccessPage("logList")),
         onAuxSelect: (button: number) => {
           if (button !== 1) return;
-          openQuickAccessPageInNewTab({
-            type: "logList",
-            title: "ログ検索",
-          });
+          openQuickAccessPageInNewTab(createQuickAccessPage("logList"));
         },
       },
     ],

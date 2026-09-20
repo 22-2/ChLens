@@ -148,14 +148,17 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
         icon: <List />,
         onSelect: () => {
           // 元スレの履歴を残したまま板を見比べられるように、新しいタブで開く。
-          dispatch(tabActions.addTab());
+          // 既存の同一板タブがあっても比較用の新規タブを作るため、重複排除を無効にする。
           dispatch(
-            tabActions.navigate({
-              type: "threadList",
-              title: boardUrl,
-              boardUrl,
-              boardTitle: boardUrl,
-            }),
+            tabActions.openInNewTabForce(
+              {
+                type: "threadList",
+                title: boardUrl,
+                boardUrl,
+                boardTitle: boardUrl,
+              },
+              { focus: true },
+            ),
           );
         },
       });

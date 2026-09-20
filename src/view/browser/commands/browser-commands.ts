@@ -60,6 +60,11 @@ import {
   registerSikiLogThread,
   selectSikiLogFile,
 } from "src/view/browser/utils/siki-log";
+import {
+  createQuickAccessPage,
+  createSettingsPage,
+  type QuickAccessPage,
+} from "src/view/browser/utils/tab-pages";
 import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
 import { encodeThreadAsToon, estimateToonTokenCount } from "src/view/browser/utils/thread-toon";
 
@@ -141,13 +146,6 @@ function getCommandSurface(context: BrowserCommandContext): ViewSurface {
 function getCommandToast(context: BrowserCommandContext): IToastService {
   return context.toast ?? container.toast;
 }
-
-type QuickAccessPage = Extract<
-  Page,
-  {
-    type: "bookmarkList" | "historyList" | "writeHistoryList" | "logList";
-  }
->;
 
 const RELOADABLE_PAGE_TYPES = new Set<Page["type"]>([
   "thread",
@@ -256,8 +254,8 @@ function openSettings(context: BrowserCommandContext): void {
     return;
   }
 
-  context.dispatch(tabActions.addTab());
-  context.dispatch(tabActions.navigate({ type: "settings", title: "設定" }));
+  // 設定を開くコマンドは従来どおり新しいタブへフォーカスを移す。
+  context.dispatch(tabActions.openInNewTabForce(createSettingsPage(), { focus: true }));
 }
 
 function openQuickAccessPage(context: BrowserCommandContext, page: QuickAccessPage): void {
@@ -457,11 +455,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     keywords: ["お気に入り", "favorite", "bookmark"],
     group: "navigation",
     icon: Bookmark,
-    run: (context) =>
-      openQuickAccessPage(context, {
-        type: "bookmarkList",
-        title: "ブックマークリスト",
-      }),
+    run: (context) => openQuickAccessPage(context, createQuickAccessPage("bookmarkList")),
   },
   {
     id: "navigation.open-history",
@@ -470,11 +464,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     keywords: ["history", "最近見た"],
     group: "navigation",
     icon: History,
-    run: (context) =>
-      openQuickAccessPage(context, {
-        type: "historyList",
-        title: "閲覧履歴",
-      }),
+    run: (context) => openQuickAccessPage(context, createQuickAccessPage("historyList")),
   },
   {
     id: "navigation.open-write-history",
@@ -483,11 +473,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     keywords: ["投稿履歴", "write history"],
     group: "navigation",
     icon: PenLine,
-    run: (context) =>
-      openQuickAccessPage(context, {
-        type: "writeHistoryList",
-        title: "書き込み履歴",
-      }),
+    run: (context) => openQuickAccessPage(context, createQuickAccessPage("writeHistoryList")),
   },
   {
     id: "navigation.open-log-search",
@@ -496,11 +482,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     keywords: ["過去ログ", "archive", "log"],
     group: "navigation",
     icon: Archive,
-    run: (context) =>
-      openQuickAccessPage(context, {
-        type: "logList",
-        title: "ログ検索",
-      }),
+    run: (context) => openQuickAccessPage(context, createQuickAccessPage("logList")),
   },
   {
     id: "navigation.open-archive-replay",

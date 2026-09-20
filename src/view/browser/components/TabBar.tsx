@@ -245,6 +245,7 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
 }) => {
   const isVertical = orientation === "vertical";
   const { state, stateRef, dispatch, paneId } = useTabStore();
+  const selectedTabId = state.selectedTabId ?? state.activeTabId;
   const { isDetachedTab } = useDetachedTabController();
   // 切り離し中のタブはTabStoreに保持したまま、元窓の操作対象からだけ除外する。
   // 別窓を明示的に戻した時に同じタブを復元できるよう、ここで削除は行わない。
@@ -306,7 +307,7 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
     tabElement?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
   }, []);
 
-  const scrollActiveTabIntoView = useCallback((tabId: string) => {
+  const scrollSelectedTabIntoView = useCallback((tabId: string) => {
     const tabList = tabListRef.current;
     const tabElement = [...(tabList?.querySelectorAll<HTMLElement>("[data-tab-id]") ?? [])].find(
       (tab) => tab.dataset.tabId === tabId,
@@ -324,18 +325,18 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
       tabRect.bottom > tabListRect.bottom;
     if (isOutsideViewport) {
       // 変更理由: 常に scrollIntoView するとタブ切り替えのたびに既存の横位置へ干渉するため、
-      // アクティブタブが見切れている場合だけ、最小限のスクロールを発生させる。
+      // 選択タブが見切れている場合だけ、最小限のスクロールを発生させる。
       tabElement.scrollIntoView({ block: "nearest", inline: "nearest" });
     }
   }, []);
 
   const handleTabListResize = useCallback(() => {
     updateTabListScrollState();
-    // 変更理由: 表示領域やタブ幅の変化でアクティブタブの矩形が見切れるため、
-    // アクティブIDの変更時だけでなく、リサイズ時にも既存の境界判定を再利用する。
+    // 変更理由: 表示領域やタブ幅の変化で選択タブの矩形が見切れるため、
+    // 選択IDの変更時だけでなく、リサイズ時にも既存の境界判定を再利用する。
     // 見切れている場合だけスクロールするので、手動で決めた横位置を不要に奪わない。
-    scrollActiveTabIntoView(state.activeTabId);
-  }, [scrollActiveTabIntoView, state.activeTabId, updateTabListScrollState]);
+    scrollSelectedTabIntoView(selectedTabId);
+  }, [scrollSelectedTabIntoView, selectedTabId, updateTabListScrollState]);
 
   useEffect(() => {
     const tabList = tabListRef.current;
@@ -360,12 +361,11 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
     };
   }, [handleTabListResize, updateTabListScrollState, visibleTabs]);
 
-  const activeTab =
-    visibleTabs.find((tab) => tab.id === state.activeTabId) ?? visibleTabs[0] ?? null;
-  const currentPage = activeTab ? getCurrentPage(activeTab) : null;
+  const selectedTab = visibleTabs.find((tab) => tab.id === selectedTabId) ?? visibleTabs[0] ?? null;
+  const selectedPage = selectedTab ? getCurrentPage(selectedTab) : null;
   const isTabListScrollable = tabListScrollState.canScrollLeft || tabListScrollState.canScrollRight;
   // 更新は常用操作としてタブバー左端にも置くが、再取得できないページでは無効化する。
-  const canRefresh = currentPage ? isPageRefreshable(currentPage) : false;
+  const canRefresh = selectedPage ? isPageRefreshable(selectedPage) : false;
 
   useEffect(() => {
     const prev = prevTabIdsRef.current;
@@ -373,7 +373,7 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
     const newIds = visibleTabs.map((tab) => tab.id).filter((tabId) => !prev.has(tabId));
 
     if (newIds.length > 0) {
-      // 変更理由: バックグラウンド追加では activeTabId が変わらないため、
+      // 変更理由: バックグラウンド追加では selectedTabId が変わらないため、
       // 新規タブ自体を基準にスクロールしないと追加位置を利用者が確認できない。
       scrollTabIntoView(newIds[newIds.length - 1]);
       setHighlightedTabIds((prevIds) => {
@@ -406,10 +406,10 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
   }, [visibleTabs]);
 
   useEffect(() => {
-    scrollActiveTabIntoView(state.activeTabId);
-  }, [scrollActiveTabIntoView, state.activeTabId]);
+    scrollSelectedTabIntoView(selectedTabId);
+  }, [scrollSelectedTabIntoView, selectedTabId]);
 
-  // ホイールでアクティブタブを前後に切り替える
+  // ホイールで選択タブを前後に切り替える
   const handleWheel = useCallback(
     (e: WheelEvent) => {
       const normalizedWheel = normalizeWheel(e);
@@ -755,7 +755,7 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
           >
             {visibleTabs.map((tab, index) => {
               const page = getCurrentPage(tab);
-              const isActive = tab.id === state.activeTabId;
+              const isActive = tab.id === selectedTabId;
               const isPageAutoRefreshEnabled = isAutoRefreshEnabledForPage(tab, page);
               // 変更理由: スレ/スレ一覧どちらも同じページ単位の自動更新として扱い、
               // タブ上の表示だけ別判定になってズレるのを防ぐ。

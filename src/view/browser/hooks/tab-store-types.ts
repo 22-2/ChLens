@@ -70,11 +70,14 @@ export type TabAction =
 // ペインスコープ: 全アクションに「対象ペイン」を付与できる。
 // 省略時はアクティブペインに作用する（グローバルハンドラ用）。
 // 表示場所がメインペインでも別窓でも、操作対象のタブを明示できるようにする。
-// tabIdを省略した既存アクションは、従来どおり対象ペインのactiveTabへ作用する。
+// tabIdを省略した既存アクションは、従来どおり対象ペインのselectedTabへ作用する。
 export type ScopedTabAction = TabAction & { paneId?: string; tabId?: string };
 
 export interface PaneScopedState {
   tabs: Tab[];
+  // ペイン自身が選択しているタブ。別窓の表示対象とは独立している。
+  selectedTabId: string;
+  /** @deprecated 新しいコードではselectedTabIdを使う。 */
   activeTabId: string;
   closedTabs: Tab[];
 }
@@ -84,7 +87,16 @@ export interface PaneScopedTabStore {
   // stateRef はグローバル状態を指す。ペイン解決には paneId を併用する。
   stateRef: RefObject<TabStoreState>;
   dispatch: Dispatch<ScopedTabAction>;
+  // ペインの選択状態。別窓を開いても変わらない対象。
+  selectedTab: Tab;
+  selectedTabId: string;
+  // 現在の表示領域が描画している対象。別窓ではscopeで固定される。
+  viewTab: Tab;
+  viewTabId: string;
+  viewPage: Page;
+  /** @deprecated 新しいコードではviewTabを使う。 */
   activeTab: Tab;
+  /** @deprecated 新しいコードではviewPageを使う。 */
   currentPage: Page;
   paneId: string;
 }

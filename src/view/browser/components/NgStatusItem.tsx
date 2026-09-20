@@ -6,6 +6,7 @@ import { StatusBarItem } from "src/view/browser/components/StatusBar";
 import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { createSettingsPage } from "src/view/browser/utils/tab-pages";
 
 export const NgStatusItem: React.FC = () => {
   const { currentPage, dispatch } = useTabStore();
@@ -36,7 +37,7 @@ export const NgStatusItem: React.FC = () => {
   const closeWindow = useCallback(() => setIsWindowOpen(false), []);
   const handleEditNg = useCallback(() => {
     setIsWindowOpen(false);
-    dispatch(tabActions.navigate({ type: "settings", title: "設定", sectionId: "ng" }));
+    dispatch(tabActions.navigate(createSettingsPage("ng")));
   }, [dispatch]);
 
   if (panelKind == null) {

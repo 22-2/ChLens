@@ -1479,40 +1479,53 @@ export function useTabStore(): PaneScopedTabStore {
   const paneId = usePaneIdFromContext(ctx.state);
   const pane = getPane(ctx.state, paneId);
   const viewScope = useTabViewScope();
-  const viewTab = viewScope ? findTabAcrossPanes(ctx.state, viewScope.tabId) : null;
-  const viewTabId = viewTab?.id ?? null;
+  const selectedTab = getPaneActiveTab(pane);
+  // スコープのタブが閉じた瞬間も読み取り側は描画できるよう選択タブへ戻す。
+  // 操作対象はscopeTabIdを別に保持し、消えた別窓から選択タブへ誤送信しない。
+  const scopedViewTab = viewScope ? findTabAcrossPanes(ctx.state, viewScope.tabId) : null;
+  const viewTab = scopedViewTab ?? selectedTab;
+  const scopeTabId = scopedViewTab?.id ?? null;
   const hasViewScope = viewScope !== null;
-  const activeTab = viewTab ?? getPaneActiveTab(pane);
-  const currentPage = getCurrentPage(activeTab);
+  const selectedTabId = selectedTab.id;
+  const viewTabId = viewTab.id;
+  const viewPage = getCurrentPage(viewTab);
 
-  // 旧 TabStoreState と同形のスライスを返す（消費側無改修のため）。
+  // 既存の一覧・閉じたタブ参照を壊さず、選択対象だけを明示的に返す。
   const state: PaneScopedState = useMemo(
     () => ({
       tabs: pane.tabs,
-      activeTabId: viewTabId ?? pane.activeTabId,
+      selectedTabId,
+      // 互換のため残すが、意味はペインの選択タブへ統一する。
+      activeTabId: selectedTabId,
       closedTabs: ctx.state.closedTabs,
     }),
-    [pane.tabs, pane.activeTabId, ctx.state.closedTabs, viewTabId],
+    [ctx.state.closedTabs, pane.tabs, selectedTabId],
   );
 
   const globalDispatch = ctx.dispatch;
   const dispatch = useMemo<Dispatch<ScopedTabAction>>(
     () => (action) => {
       // 表示対象が消えた直後は、別タブへ操作をフォールバックさせない。
-      if (hasViewScope && viewTabId == null) {
+      if (hasViewScope && scopeTabId == null) {
         return;
       }
-      globalDispatch(scopeActionToViewTab(action, paneId, viewTabId));
+      globalDispatch(scopeActionToViewTab(action, paneId, scopeTabId));
     },
-    [globalDispatch, hasViewScope, paneId, viewTabId],
+    [globalDispatch, hasViewScope, paneId, scopeTabId],
   );
 
   return {
     state,
     stateRef: ctx.stateRef,
     dispatch,
-    activeTab,
-    currentPage,
+    selectedTab,
+    selectedTabId,
+    viewTab,
+    viewTabId,
+    viewPage,
+    // 互換のため既存名は表示対象の別名として残す。
+    activeTab: viewTab,
+    currentPage: viewPage,
     paneId,
   };
 }
@@ -1529,17 +1542,18 @@ export function useTabDispatch(): Dispatch<ScopedTabAction> {
   const viewScope = useTabViewScope();
   const paneCtx = useContext(PaneContext);
   const paneId = paneCtx?.paneId ?? tabContext.state.activePaneId;
-  const viewTab = viewScope ? findTabAcrossPanes(tabContext.state, viewScope.tabId) : null;
-  const viewTabId = viewTab?.id ?? null;
+  const scopeTabId = viewScope
+    ? (findTabAcrossPanes(tabContext.state, viewScope.tabId)?.id ?? null)
+    : null;
   const hasViewScope = viewScope !== null;
   return useMemo<Dispatch<ScopedTabAction>>(
     () => (action) => {
-      if (hasViewScope && viewTabId == null) {
+      if (hasViewScope && scopeTabId == null) {
         return;
       }
-      globalDispatch(scopeActionToViewTab(action, paneId, viewTabId));
+      globalDispatch(scopeActionToViewTab(action, paneId, scopeTabId));
     },
-    [globalDispatch, hasViewScope, paneId, viewTabId],
+    [globalDispatch, hasViewScope, paneId, scopeTabId],
   );
 }
 
@@ -1547,7 +1561,7 @@ export function useTabDispatchForTab(tabId: string): Dispatch<ScopedTabAction> {
   const dispatch = useTabDispatch();
   return useMemo<Dispatch<ScopedTabAction>>(
     () => (action) => {
-      // 変更理由: 別窓のページは元ペインのactiveTabと一致しない場合があるため、
+      // 変更理由: 別窓のページは元ペインのselectedTabと一致しない場合があるため、
       // 既存タブを暗黙に操作するページアクションだけへ描画元タブを補う。
       dispatch(
         action.tabId === undefined && actionUsesImplicitExistingTab(action)

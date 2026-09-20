@@ -958,6 +958,98 @@ describe("TabProvider auto refresh state", () => {
     expect(screen.getByTestId("active-title")).toHaveTextContent("別タブ側");
   });
 
+  it("別窓の表示対象とペインの選択対象を分離する", async () => {
+    vi.resetModules();
+    const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
+    const { TabViewScopeProvider } = await import("src/view/browser/hooks/use-tab-view-scope");
+    const { tabActions } = await import("src/view/browser/hooks/tab-store-actions");
+
+    function ScopedView() {
+      const { selectedTabId, viewTabId, selectedTab, viewPage, dispatch } = useTabStore();
+
+      return (
+        <>
+          <output data-testid="scoped-selected-id">{selectedTabId}</output>
+          <output data-testid="scoped-view-id">{viewTabId}</output>
+          <output data-testid="scoped-selected-title">{getCurrentPage(selectedTab).title}</output>
+          <output data-testid="scoped-view-title">{viewPage.title}</output>
+          <button
+            onClick={() =>
+              dispatch(
+                tabActions.navigate({
+                  type: "thread",
+                  title: "別窓で移動したスレ",
+                  threadUrl: "https://example.com/test/read.cgi/board/detached/",
+                }),
+              )
+            }
+          >
+            別窓側へ移動
+          </button>
+        </>
+      );
+    }
+
+    function Harness() {
+      const { state, paneId, selectedTabId, viewTabId, dispatch } = useTabStore();
+      const detachedTabId = state.tabs[1]?.id;
+
+      return (
+        <>
+          <output data-testid="main-selected-id">{selectedTabId}</output>
+          <output data-testid="main-view-id">{viewTabId}</output>
+          <button
+            onClick={() =>
+              dispatch(
+                tabActions.openInNewTab(
+                  {
+                    type: "thread",
+                    title: "別窓候補のスレ",
+                    threadUrl: "https://example.com/test/read.cgi/board/candidate/",
+                  },
+                  { background: true },
+                ),
+              )
+            }
+          >
+            別窓候補を追加
+          </button>
+          {detachedTabId ? (
+            <TabViewScopeProvider scope={{ paneId, tabId: detachedTabId }}>
+              <ScopedView />
+            </TabViewScopeProvider>
+          ) : null}
+        </>
+      );
+    }
+
+    render(
+      <TabProvider>
+        <Harness />
+      </TabProvider>,
+    );
+
+    const mainSelectedId = screen.getByTestId("main-selected-id").textContent;
+    expect(mainSelectedId).toBeTruthy();
+    expect(screen.getByTestId("main-view-id")).toHaveTextContent(mainSelectedId ?? "");
+
+    fireEvent.click(screen.getByText("別窓候補を追加"));
+
+    const scopedSelectedId = screen.getByTestId("scoped-selected-id").textContent;
+    const scopedViewId = screen.getByTestId("scoped-view-id").textContent;
+    expect(scopedSelectedId).toBe(mainSelectedId);
+    expect(scopedViewId).not.toBe(scopedSelectedId);
+    expect(screen.getByTestId("scoped-selected-title")).toHaveTextContent("ホーム");
+    expect(screen.getByTestId("scoped-view-title")).toHaveTextContent("別窓候補のスレ");
+
+    fireEvent.click(screen.getByText("別窓側へ移動"));
+
+    expect(screen.getByTestId("scoped-selected-id")).toHaveTextContent(mainSelectedId ?? "");
+    expect(screen.getByTestId("scoped-view-id")).toHaveTextContent(scopedViewId ?? "");
+    expect(screen.getByTestId("scoped-view-title")).toHaveTextContent("別窓で移動したスレ");
+    expect(screen.getByTestId("main-selected-id")).toHaveTextContent(mainSelectedId ?? "");
+  });
+
   it("クイックアクセス間の遷移で既存ページ判定が誤爆せず切り替わる", async () => {
     vi.resetModules();
     const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");

@@ -279,7 +279,11 @@ describe("NavigationBar", () => {
 
     fireEvent.click(screen.getByRole("option", { name: /設定を開く/ }));
     await waitFor(() => {
-      expect(dispatchMock).toHaveBeenNthCalledWith(1, { type: "ADD_TAB" });
+      expect(dispatchMock).toHaveBeenNthCalledWith(1, {
+        type: "OPEN_IN_NEW_TAB_FORCE",
+        focus: true,
+        page: { type: "settings", title: "設定" },
+      });
     });
   });
 
@@ -547,9 +551,9 @@ describe("NavigationBar", () => {
 
     fireEvent.click(settingsButton);
 
-    expect(dispatchMock).toHaveBeenNthCalledWith(1, { type: "ADD_TAB" });
-    expect(dispatchMock).toHaveBeenNthCalledWith(2, {
-      type: "NAVIGATE",
+    expect(dispatchMock).toHaveBeenNthCalledWith(1, {
+      type: "OPEN_IN_NEW_TAB_FORCE",
+      focus: true,
       page: { type: "settings", title: "設定" },
     });
     expect(screen.queryByRole("button", { name: "設定を開く" })).not.toBeInTheDocument();

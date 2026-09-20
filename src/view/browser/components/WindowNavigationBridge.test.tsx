@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => ({
-    activeTab: { id: mocks.activeTabId },
+    selectedTab: { id: mocks.activeTabId },
     dispatch: mocks.mainDispatch,
   }),
   useTabDispatchForTab: () => mocks.detachedDispatch,

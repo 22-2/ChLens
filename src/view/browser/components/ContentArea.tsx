@@ -16,6 +16,7 @@ interface ContentAreaProps {
 export const ContentArea: FC<ContentAreaProps> = ({ isOverlayTarget = true }) => {
   const { state } = useTabStore();
   const { isDetachedTab } = useDetachedTabController();
+  const selectedTabId = state.selectedTabId ?? state.activeTabId;
   // 切り離し中のタブは別窓のPortalだけで描画し、元窓にプレースホルダーを残さない。
   const visibleTabs = state.tabs.filter((tab) => !isDetachedTab(tab.id));
 
@@ -23,12 +24,12 @@ export const ContentArea: FC<ContentAreaProps> = ({ isOverlayTarget = true }) =>
     <div className="content-area">
       {visibleTabs.map((tab) => (
         // 変更理由: 2ペイン時はフォーカス外のペインも表示中のため、自動更新の
-        // 実行判定はペイン単位の activeTab で行いフォーカスでは絞らない。
+        // 実行判定はペイン単位の selectedTab で行いフォーカスでは絞らない。
         // 非表示タブ・ドキュメント非表示時の停止は各ページ側の判定に任せる。
         <TabPanel
           key={tab.id}
           tab={tab}
-          isActive={tab.id === state.activeTabId}
+          isActive={tab.id === selectedTabId}
           isOverlayTarget={isOverlayTarget}
         />
       ))}

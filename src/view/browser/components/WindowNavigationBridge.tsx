@@ -6,7 +6,7 @@ import { useTabDispatchForTab, useTabStore } from "src/view/browser/hooks/use-ta
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 
 interface WindowNavigationBridgeProps {
-  /** 別窓では表示対象を固定する。本窓では省略してactiveTabから解決する。 */
+  /** 別窓では表示対象を固定する。本窓では省略してselectedTabから解決する。 */
   tabId?: string;
   /** 本窓のブラウザ履歴をアプリ内履歴へ変換するか。別窓では無効にする。 */
   manageBrowserHistory?: boolean;
@@ -35,10 +35,10 @@ export const WindowNavigationBridge: FC<WindowNavigationBridgeProps> = ({
 const MainWindowNavigationBridge: FC<{ manageBrowserHistory: boolean }> = ({
   manageBrowserHistory,
 }) => {
-  const { activeTab, dispatch } = useTabStore();
+  const { selectedTab, dispatch } = useTabStore();
   const { isDetachedTab } = useDetachedTabController();
   const { window: viewWindow } = useViewSurface();
-  const targetTabId = isDetachedTab(activeTab.id) ? null : activeTab.id;
+  const targetTabId = isDetachedTab(selectedTab.id) ? null : selectedTab.id;
   useWindowNavigationEvents({ dispatch, manageBrowserHistory, targetTabId, viewWindow });
   return null;
 };
