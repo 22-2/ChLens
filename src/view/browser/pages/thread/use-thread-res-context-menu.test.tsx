@@ -308,7 +308,9 @@ describe("useThreadResContextMenu", () => {
     });
 
     expect(screen.getByTestId("response-class")).toHaveTextContent("ng");
-    expect(mocks.toastInfo).toHaveBeenCalledWith("NGに追加しました: hide id contains:\n  abc123");
+    expect(mocks.toastInfo).toHaveBeenCalledWith("NGに追加しました: hide id contains:\n  abc123", {
+      targetWindow: window,
+    });
   });
 
   it("返信は書き込み欄を開いてアンカーを直接入力する", () => {
@@ -385,7 +387,9 @@ describe("useThreadResContextMenu", () => {
       enabled: false,
       pageKey: "thread:test",
     });
-    expect(mocks.toastInfo).toHaveBeenCalledWith("スレッドの自動更新を停止しました");
+    expect(mocks.toastInfo).toHaveBeenCalledWith("スレッドの自動更新を停止しました", {
+      targetWindow: window,
+    });
   });
 
   it("コンテキストメニューの明示的な更新はsubject.txtの再確認を指定する", () => {

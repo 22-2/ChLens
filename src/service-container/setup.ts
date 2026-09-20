@@ -171,14 +171,14 @@ export function setupContainer(app: LegacyAppForSetup) {
     notify: (message, options) => {
       toastStore.notify(message, options);
     },
-    success: (message) => {
-      toastStore.success(message);
+    success: (message, options) => {
+      toastStore.success(message, options);
     },
-    error: (message) => {
-      toastStore.error(message);
+    error: (message, options) => {
+      toastStore.error(message, options);
     },
-    info: (message) => {
-      toastStore.info(message);
+    info: (message, options) => {
+      toastStore.info(message, options);
     },
   };
 
@@ -192,10 +192,11 @@ export function setupContainer(app: LegacyAppForSetup) {
         options?.message ?? "",
         options?.url ?? "",
         options?.tag,
+        options?.targetWindow,
       );
       return instance.ready;
     },
-    isSupported: () => Notification.isSupported(),
+    isSupported: (targetWindow) => Notification.isSupported(targetWindow),
   };
 
   // NG Service Adapter

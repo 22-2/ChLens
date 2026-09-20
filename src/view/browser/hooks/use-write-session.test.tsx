@@ -57,7 +57,7 @@ const Probe: React.FC = () => {
       <output data-testid="targets">{targets.map((target) => target.title).join(",")}</output>
       <output data-testid="draft">{getDraft(secondUrl)}</output>
       <button onClick={() => selectThread(secondUrl)}>スレ2を選ぶ</button>
-      <button onClick={() => setDraft(secondUrl, "下書き")}>下書きを保存</button>
+      <button onClick={() => setDraft(secondUrl, "下書き")}>下書きを入力</button>
     </>
   );
 };
@@ -97,7 +97,7 @@ describe("WriteSessionProvider", () => {
     expect(screen.getByTestId("targets")).toHaveTextContent("スレ1,スレ2");
   });
 
-  it("選択したスレの下書きを共有セッションへ保存する", async () => {
+  it("選択したスレの下書きは実行中だけ保持し、ストレージへ保存しない", async () => {
     render(
       <WriteSessionProvider>
         <Probe />
@@ -105,7 +105,7 @@ describe("WriteSessionProvider", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "スレ2を選ぶ" }));
-    fireEvent.click(screen.getByRole("button", { name: "下書きを保存" }));
+    fireEvent.click(screen.getByRole("button", { name: "下書きを入力" }));
 
     await waitFor(() => {
       expect(screen.getByTestId("selected")).toHaveTextContent(
@@ -113,6 +113,30 @@ describe("WriteSessionProvider", () => {
       );
       expect(screen.getByTestId("draft")).toHaveTextContent("下書き");
     });
-    expect(storage.value).toContain("下書き");
+    expect(storage.value).not.toContain("下書き");
+    expect(storage.value).toContain("selectedThreadUrl");
+  });
+
+  it("旧形式に保存された下書きも復元しない", async () => {
+    storage.value = JSON.stringify({
+      selectedThreadUrl: "https://example.com/test/read.cgi/software/2/",
+      drafts: {
+        "https://example.com/test/read.cgi/software/2/": "古い下書き",
+      },
+    });
+
+    render(
+      <WriteSessionProvider>
+        <Probe />
+      </WriteSessionProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("selected")).toHaveTextContent(
+        "https://example.com/test/read.cgi/software/2/",
+      );
+    });
+    expect(screen.getByTestId("draft")).toHaveTextContent("");
+    expect(storage.value).not.toContain("古い下書き");
   });
 });

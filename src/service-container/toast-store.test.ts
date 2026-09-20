@@ -42,4 +42,32 @@ describe("toastStore", () => {
     expect(notifications).toBe(2);
     unsubscribe();
   });
+
+  it("通知先のWindowごとにToastを分離する", () => {
+    const detachedWindow = {} as Window;
+    toastStore.info("メイン通知");
+    toastStore.info("別窓通知", { targetWindow: detachedWindow });
+
+    expect(toastStore.getSnapshot()).toEqual(
+      expect.arrayContaining([expect.objectContaining({ message: "メイン通知" })]),
+    );
+    expect(toastStore.getSnapshot()).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ message: "別窓通知" })]),
+    );
+    expect(toastStore.getSnapshot(detachedWindow)).toEqual(
+      expect.arrayContaining([expect.objectContaining({ message: "別窓通知" })]),
+    );
+
+    const detachedRecord = toastStore
+      .getSnapshot(detachedWindow)
+      .find((record) => record.message === "別窓通知");
+    if (detachedRecord) {
+      toastStore.dismiss(detachedRecord.id, detachedWindow);
+      createdIds.push(detachedRecord.id);
+    }
+    const mainRecord = toastStore.getSnapshot().find((record) => record.message === "メイン通知");
+    if (mainRecord) {
+      createdIds.push(mainRecord.id);
+    }
+  });
 });

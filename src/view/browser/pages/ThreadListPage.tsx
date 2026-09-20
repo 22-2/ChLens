@@ -54,6 +54,7 @@ import {
   useTabStore,
   useTabViewState,
 } from "src/view/browser/hooks/use-tab-store";
+import { useToast } from "src/view/browser/hooks/use-toast";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 import { parseOpenedBoardEntries } from "src/view/browser/pages/board-list/board-list-utils";
@@ -203,6 +204,7 @@ export const ThreadListPage: React.FC<Props> = ({
   scrollContainerRef,
 }) => {
   const { window: viewWindow, document: viewDocument } = useViewSurface();
+  const toast = useToast();
   const fallbackScrollContainerRef = useRef<HTMLDivElement>(null);
   const effectiveScrollContainerRef = scrollContainerRef ?? fallbackScrollContainerRef;
   const dispatch = useTabDispatchForTab(tabId);
@@ -846,17 +848,17 @@ export const ThreadListPage: React.FC<Props> = ({
     const ngRule = `hide title contains:\n  ${stringifyNgDslValue(title)}`;
     try {
       await container.ng.add(ngRule);
-      container.toast.info(`スレタイをNGに追加しました: ${title}`);
+      toast.info(`スレタイをNGに追加しました: ${title}`);
       setNgDialogThread(null);
     } catch (error) {
       console.error("[ThreadListPage] thread title NG registration failed:", error);
       const message = error instanceof Error ? error.message : "NG登録に失敗しました";
       setNgDialogError(message);
-      container.toast.error(message);
+      toast.error(message);
     } finally {
       setNgDialogSaving(false);
     }
-  }, [ngDialogSaving, ngTitleDraft]);
+  }, [ngDialogSaving, ngTitleDraft, toast]);
 
   const contextMenuItems = useMemo(() => {
     if (!contextMenuState) return [];

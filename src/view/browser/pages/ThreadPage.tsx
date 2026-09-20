@@ -31,6 +31,7 @@ import { useTabDispatchForTab, useTabStore } from "src/view/browser/hooks/use-ta
 import { useThreadAutoRefresh } from "src/view/browser/hooks/use-thread-auto-refresh";
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";
 import { useThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
+import { useToast } from "src/view/browser/hooks/use-toast";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 import { ThreadPageTopBar } from "src/view/browser/pages/thread/ThreadPageTopBar";
@@ -83,6 +84,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
 }) => {
   const viewSurface = useViewSurface();
   const { window: viewWindow } = viewSurface;
+  const toast = useToast();
   const rootRef = useRef<HTMLDivElement>(null);
   const fallbackScrollContainerRef = useRef<HTMLDivElement>(null);
   const effectiveScrollContainerRef = scrollContainerRef ?? fallbackScrollContainerRef;
@@ -292,9 +294,9 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         enabled: false,
         pageKey,
       });
-      container.toast.info(message);
+      toast.info(message);
     },
-    [dispatch, page],
+    [dispatch, page, toast],
   );
 
   const handleEnableAutoRefresh = useCallback(() => {
@@ -328,7 +330,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         return;
       }
 
-      if (!container.notification.isSupported()) {
+      if (!container.notification.isSupported(viewWindow)) {
         return;
       }
 
@@ -337,12 +339,13 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
           message: `${replyCount}件の返信があります`,
           url: page.threadUrl,
           tag: `thread-reply-to-own:${page.threadUrl}`,
+          targetWindow: viewWindow,
         })
         .catch((error: unknown) => {
           console.error("[ChLens] 新着レス通知の表示に失敗しました:", error);
         });
     },
-    [ownResNums, page.threadUrl, page.title, replyToOwnResNums, responses],
+    [ownResNums, page.threadUrl, page.title, replyToOwnResNums, responses, viewWindow],
   );
 
   const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling } = useThreadAutoRefresh({
@@ -403,6 +406,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     expired,
     mode: autoNextThreadMode,
     responseMessages: autoNextThreadResponseMessages,
+    toast,
     // 変更理由: Overlay実況中は本文タブが非表示でも次スレ探索を継続し、
     // 次スレへ移った後に実況対象を途切れず引き継げるようにする。
     canAutoScroll: isCommentOverlayFlowing || canAutoScroll,

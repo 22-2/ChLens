@@ -1,7 +1,8 @@
 import { Toast as RadixToast } from "radix-ui";
 import type { CSSProperties } from "react";
-import { useSyncExternalStore } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import { toastStore } from "src/service-container/toast-store";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 
 interface ToastProviderProps {
   topOffset: string;
@@ -11,10 +12,11 @@ interface ToastProviderProps {
 
 /** Radix Toastと外部発火用ストアを接続する、browser view共通の通知UI。 */
 export function ToastProvider({ topOffset, rightOffset, duration = 1500 }: ToastProviderProps) {
+  const { window: targetWindow } = useViewSurface();
   const records = useSyncExternalStore(
-    toastStore.subscribe,
-    toastStore.getSnapshot,
-    toastStore.getSnapshot,
+    useCallback((listener) => toastStore.subscribe(listener, targetWindow), [targetWindow]),
+    useCallback(() => toastStore.getSnapshot(targetWindow), [targetWindow]),
+    useCallback(() => toastStore.getSnapshot(targetWindow), [targetWindow]),
   );
   const viewportStyle = {
     "--cmp-toast-offset-top": topOffset,
@@ -30,7 +32,7 @@ export function ToastProvider({ topOffset, rightOffset, duration = 1500 }: Toast
           data-kind={record.kind}
           onOpenChange={(open) => {
             if (!open) {
-              toastStore.dismiss(record.id);
+              toastStore.dismiss(record.id, targetWindow);
             }
           }}
           style={

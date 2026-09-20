@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { log } from "src/app/Log";
 import { container } from "src/service-container/index";
-import type { IThread } from "src/service-container/interfaces";
+import type { IThread, IToastService } from "src/service-container/interfaces";
 import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
 import {
   type AutoNextThreadMode,
@@ -39,6 +39,7 @@ interface UseAutoNextThreadOptions {
    */
   canAutoScroll: boolean;
   followThread: (thread: Pick<IThread, "title" | "url">) => void;
+  toast?: Pick<IToastService, "info">;
 }
 
 interface MainstreamWatchState {
@@ -65,6 +66,7 @@ export function useAutoNextThread({
   responseMessages,
   canAutoScroll,
   followThread,
+  toast = container.toast,
 }: UseAutoNextThreadOptions): { status: AutoNextThreadStatus } {
   const [status, setStatus] = useState<AutoNextThreadStatus>("idle");
   const [watchState, setWatchState] = useState<MainstreamWatchState | null>(null);
@@ -211,7 +213,7 @@ export function useAutoNextThread({
 
             if (confirmationCount >= requiredConfirmations) {
               followThreadRef.current(match.thread);
-              container.toast.info(`次スレへ移動しました: ${match.thread.title}`);
+              toast.info(`次スレへ移動しました: ${match.thread.title}`);
               // 変更理由: 慎重モードでは、一度移動した後に勢いだけを根拠として
               // 別候補へ再移動すると「誤移動を避ける」という設定意図に反する。
               if (mode === "cautious") {
@@ -276,6 +278,7 @@ export function useAutoNextThread({
     responseCount,
     threadTitle,
     threadUrl,
+    toast,
   ]);
 
   useEffect(() => {
@@ -347,7 +350,7 @@ export function useAutoNextThread({
 
             if (confirmationCount >= REQUIRED_CANDIDATE_CONFIRMATIONS[mode]) {
               followThreadRef.current(match.thread);
-              container.toast.info(`本流スレへ移動しました: ${match.thread.title}`);
+              toast.info(`本流スレへ移動しました: ${match.thread.title}`);
               mainstreamPendingCandidateRef.current = null;
               mainstreamSnapshotRef.current = null;
               setWatchState(null);
@@ -392,6 +395,7 @@ export function useAutoNextThread({
     isDocumentVisible,
     mode,
     threadUrl,
+    toast,
     watchState,
   ]);
 

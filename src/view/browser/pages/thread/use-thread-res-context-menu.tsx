@@ -20,6 +20,7 @@ import { container } from "src/service-container/index";
 import type { IRes } from "src/service-container/interfaces";
 import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useTabDispatchForTab, useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { useToast } from "src/view/browser/hooks/use-toast";
 import type { Tab, ThreadFilter, ThreadPage as ThreadPageType } from "src/view/browser/types";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import {
@@ -92,6 +93,7 @@ export function useThreadResContextMenu({
   const dispatch = useTabDispatchForTab(tabId);
   const { activeTab } = useTabStore();
   const { openWritePanelWithText } = useBottomPanel();
+  const toast = useToast();
   // 変更理由: 別窓のページではペインのactiveTabと描画中タブが異なるため、
   // 自動更新メニューの表示も描画対象タブの状態を優先する。
   const isAutoRefreshEnabled = isAutoRefreshEnabledForPage(tab ?? activeTab, page);
@@ -125,9 +127,9 @@ export function useThreadResContextMenu({
             : res,
         ),
       );
-      container.toast.info(`NGに追加しました: ${ngWord}`);
+      toast.info(`NGに追加しました: ${ngWord}`);
     },
-    [setResponses],
+    [setResponses, toast],
   );
 
   const addSelectionToNg = useCallback(
@@ -140,10 +142,10 @@ export function useThreadResContextMenu({
       // 選択テキストNGはID NGと違って局所更新だと取りこぼしやすいため、
       // 追加後に再取得して既存NG判定ロジックの結果でUIを揃える。
       await container.ng.add(ngWord);
-      container.toast.info(`NGに追加しました: ${ngWord}`);
+      toast.info(`NGに追加しました: ${ngWord}`);
       await fetchThread();
     },
-    [fetchThread],
+    [fetchThread, toast],
   );
 
   const addWriteHistory = useCallback(
@@ -151,7 +153,7 @@ export function useThreadResContextMenu({
       const writeHistoryService = getLegacyWriteHistoryService();
 
       if (!writeHistoryService?.add) {
-        container.toast.info("書込履歴サービスが利用できません");
+        toast.info("書込履歴サービスが利用できません");
         return;
       }
 
@@ -170,9 +172,9 @@ export function useThreadResContextMenu({
       // 変更理由: 右クリックから書込履歴へ追加した直後も強調表示を即時反映し、
       // 再読込しないと「自分のレス」扱いにならないズレを避ける。
       onWriteHistoryAdded?.(res.num);
-      container.toast.success("書込履歴に追加しました");
+      toast.success("書込履歴に追加しました");
     },
-    [onWriteHistoryAdded, page.threadUrl],
+    [onWriteHistoryAdded, page.threadUrl, toast],
   );
 
   const removeWriteHistory = useCallback(
@@ -180,7 +182,7 @@ export function useThreadResContextMenu({
       const writeHistoryService = getLegacyWriteHistoryService();
 
       if (!writeHistoryService?.remove) {
-        container.toast.info("書込履歴サービスが利用できません");
+        toast.info("書込履歴サービスが利用できません");
         return;
       }
 
@@ -188,9 +190,9 @@ export function useThreadResContextMenu({
       // 変更理由: 追加時と同様に削除直後も「自分のレス」強調を即時解除し、
       // 再読込しないと強調が残るズレを避ける。
       onWriteHistoryRemoved?.(res.num);
-      container.toast.success("書込履歴から削除しました");
+      toast.success("書込履歴から削除しました");
     },
-    [onWriteHistoryRemoved, page.threadUrl],
+    [onWriteHistoryRemoved, page.threadUrl, toast],
   );
 
   // レスIDの要素上で右クリックした場合、ID系操作をメニュー最上部へ移動するためのフラグ。
@@ -262,7 +264,7 @@ export function useThreadResContextMenu({
                       responseNumber: targetRes.num,
                       error,
                     });
-                    container.toast.error("過去実況再生窓へ移動できませんでした");
+                    toast.error("過去実況再生窓へ移動できませんでした");
                   });
                 },
               },
@@ -325,7 +327,7 @@ export function useThreadResContextMenu({
               enabled: nextEnabled,
               pageKey: getAutoRefreshPageKey(page) ?? undefined,
             });
-            container.toast.info(
+            toast.info(
               nextEnabled ? "スレッドの自動更新を開始しました" : "スレッドの自動更新を停止しました",
             );
           },
@@ -455,6 +457,7 @@ export function useThreadResContextMenu({
       setFilter,
       setSearchQuery,
       setMiniAaResNums,
+      toast,
     ],
   );
 

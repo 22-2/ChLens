@@ -191,18 +191,21 @@ export interface IBBSMenuService {
 }
 
 export interface IToastService {
-  notify(message: string, options?: { html?: boolean; backgroundColor?: string }): void;
-  success(message: string): void;
-  error(message: string): void;
-  info(message: string): void;
+  notify(
+    message: string,
+    options?: { html?: boolean; backgroundColor?: string; targetWindow?: Window },
+  ): void;
+  success(message: string, options?: { targetWindow?: Window }): void;
+  error(message: string, options?: { targetWindow?: Window }): void;
+  info(message: string, options?: { targetWindow?: Window }): void;
 }
 
 export interface INotificationService {
   notify(
     title: string,
-    options?: { message?: string; url?: string; tag?: string },
+    options?: { message?: string; url?: string; tag?: string; targetWindow?: Window },
   ): Promise<boolean>;
-  isSupported(): boolean;
+  isSupported(targetWindow?: Window): boolean;
 }
 
 export interface INGResult {

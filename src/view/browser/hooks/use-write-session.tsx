@@ -27,7 +27,6 @@ export interface WriteTarget {
 
 interface SavedWriteSession {
   selectedThreadUrl?: string | null;
-  drafts?: Record<string, string>;
 }
 
 interface WriteSessionState {
@@ -67,7 +66,9 @@ function loadSession(): WriteSessionState {
     return {
       selectedThreadUrl:
         typeof saved.selectedThreadUrl === "string" ? saved.selectedThreadUrl : null,
-      drafts: saved.drafts && typeof saved.drafts === "object" ? saved.drafts : {},
+      // 変更理由: 保存済みの下書きを復元すると、別窓や別スレを開いた直後に
+      // 意図しない本文を投稿する危険があるため、旧形式のdraftsも復元しない。
+      drafts: {},
     };
   } catch (error) {
     console.error("[WriteSession] 書き込みセッションの復元に失敗しました", error);
@@ -162,10 +163,15 @@ export const WriteSessionProvider: React.FC<{ children: ReactNode }> = ({ childr
   }, [currentPage, session.selectedThreadUrl, targets]);
 
   useEffect(() => {
-    void setStore2String(STORAGE_KEY, JSON.stringify(session)).catch((error: unknown) => {
+    // 変更理由: 投稿先の選択だけは再起動後も扱いやすく保つ一方、本文は保存しない。
+    // 下書きをストレージへ書かないことで、古い窓や別スレへの誤投稿を防ぐ。
+    void setStore2String(
+      STORAGE_KEY,
+      JSON.stringify({ selectedThreadUrl: session.selectedThreadUrl }),
+    ).catch((error: unknown) => {
       console.error("[WriteSession] 書き込みセッションの保存に失敗しました", error);
     });
-  }, [session]);
+  }, [session.selectedThreadUrl]);
 
   const selectThread = useCallback((threadUrl: string) => {
     setSession((previous) => ({ ...previous, selectedThreadUrl: threadUrl }));
