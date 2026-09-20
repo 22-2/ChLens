@@ -7,6 +7,7 @@ import {
   usePageCountStatus,
 } from "src/view/browser/hooks/use-page-count-status";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import {
   THREAD_FILTER_TOOLBAR_TOGGLE_EVENT,
   type ThreadFilterToolbarToggleDetail,
@@ -19,6 +20,7 @@ function formatCount(count: number | null | undefined): string {
 export const PageCountStatusItem: React.FC = () => {
   const { activeTab, currentPage } = useTabStore();
   const { getPageCount } = usePageCountStatus();
+  const { window: viewWindow, document: viewDocument } = useViewSurface();
 
   const pageInfo =
     currentPage.type === "thread"
@@ -50,11 +52,14 @@ export const PageCountStatusItem: React.FC = () => {
 
     // 変更理由: ステータスバーはThreadPageの外にあるため、イベントで対象タブを
     // 明示してトグルし、非表示タブのツールバーまで反応しないようにする。
-    window.dispatchEvent(
-      new window.CustomEvent<ThreadFilterToolbarToggleDetail>(THREAD_FILTER_TOOLBAR_TOGGLE_EVENT, {
-        detail: { tabId: activeTab.id },
-      }),
-    );
+    // CustomEventのコンストラクタを本窓から借りず、表示先Documentのイベントとして生成する。
+    const event = viewDocument.createEvent(
+      "CustomEvent",
+    ) as CustomEvent<ThreadFilterToolbarToggleDetail>;
+    event.initCustomEvent(THREAD_FILTER_TOOLBAR_TOGGLE_EVENT, false, false, {
+      tabId: activeTab.id,
+    });
+    viewWindow.dispatchEvent(event);
   };
 
   return (

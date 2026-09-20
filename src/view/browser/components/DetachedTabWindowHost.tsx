@@ -1,7 +1,17 @@
+import { PenLine } from "lucide-react";
 import React, { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { StatusBarProvider } from "src/view/browser/components/StatusBar";
+import { AutoRefreshStatusItem } from "src/view/browser/components/AutoRefreshStatusItem";
+import { CommentOverlayStatusItem } from "src/view/browser/components/CommentOverlayStatusItem";
+import { IkioiStatusItem } from "src/view/browser/components/IkioiStatusItem";
+import { NgStatusItem } from "src/view/browser/components/NgStatusItem";
+import { PageCountStatusItem } from "src/view/browser/components/PageCountStatusItem";
+import { PopularFilterStatusItem } from "src/view/browser/components/PopularFilterStatusItem";
+import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
+import { StatusBar, StatusBarItem, StatusBarProvider } from "src/view/browser/components/StatusBar";
 import { TabPanel } from "src/view/browser/components/TabView";
+import { TitleBar } from "src/view/browser/components/TitleBar";
+import { WindowNavigationBridge } from "src/view/browser/components/WindowNavigationBridge";
 import {
   DetachedTabWindowContext,
   type DetachedTabWindowContextValue,
@@ -14,13 +24,16 @@ import {
 } from "src/view/browser/hooks/use-detached-window";
 import { NgStatusProvider } from "src/view/browser/hooks/use-ng-status";
 import { PageCountStatusProvider } from "src/view/browser/hooks/use-page-count-status";
+import { TabDisplayTargetProvider } from "src/view/browser/hooks/use-tab-display-target";
 import {
   PaneProvider,
   useTabDispatchForTab,
   useTabPanes,
+  useTabStore,
 } from "src/view/browser/hooks/use-tab-store";
 import { useTheme } from "src/view/browser/hooks/use-theme";
 import { type ViewSurface, ViewSurfaceProvider } from "src/view/browser/hooks/use-view-surface";
+import { useWriteSession } from "src/view/browser/hooks/use-write-session";
 import {
   canGoBack,
   canGoForward,
@@ -231,29 +244,48 @@ export const DetachedTabWindowProvider: React.FC<{ children: ReactNode }> = ({ c
           document: entry.window.document,
         };
         return createPortal(
-          <PaneProvider paneId={located.paneId}>
-            <StatusBarProvider>
-              <PageCountStatusProvider>
-                <NgStatusProvider>
-                  <AutoScrollStateProvider>
-                    <DetachedTabSurface surface={viewSurface}>
-                      {/* 別窓内の返信・別窓生成失敗などの通知を、表示中の窓へ出す。 */}
-                      <ToastProvider topOffset="16px" rightOffset="16px" />
-                      <DetachedTabToolbar tab={located.tab} onClose={() => closeTab(entry.tabId)} />
-                      <div className="content-area">
-                        <TabPanel
-                          tab={located.tab}
-                          isActive
-                          isOverlayTarget={false}
-                          viewSurface={viewSurface}
+          <TabDisplayTargetProvider target={{ paneId: located.paneId, tabId: located.tab.id }}>
+            <PaneProvider paneId={located.paneId}>
+              <StatusBarProvider>
+                <PageCountStatusProvider>
+                  <NgStatusProvider>
+                    <AutoScrollStateProvider>
+                      <DetachedTabSurface surface={viewSurface}>
+                        <WindowNavigationBridge
+                          tabId={located.tab.id}
+                          manageBrowserHistory={false}
                         />
-                      </div>
-                    </DetachedTabSurface>
-                  </AutoScrollStateProvider>
-                </NgStatusProvider>
-              </PageCountStatusProvider>
-            </StatusBarProvider>
-          </PaneProvider>,
+                        {/* 別窓内の返信・別窓生成失敗などの通知を、表示中の窓へ出す。 */}
+                        <ToastProvider topOffset="16px" rightOffset="16px" />
+                        {/* 表示タブをContextで固定し、元ペインの選択変更に影響されない共通タイトルを出す。 */}
+                        <TitleBar showNavigationButtons={false} />
+                        <DetachedTabToolbar
+                          tab={located.tab}
+                          onClose={() => closeTab(entry.tabId)}
+                        />
+                        <div className="content-area">
+                          <TabPanel
+                            tab={located.tab}
+                            isActive
+                            isOverlayTarget={false}
+                            viewSurface={viewSurface}
+                          />
+                        </div>
+                        <NgStatusItem />
+                        <IkioiStatusItem />
+                        <PopularFilterStatusItem />
+                        <AutoRefreshStatusItem />
+                        <CommentOverlayStatusItem isActive />
+                        <PageCountStatusItem />
+                        <DetachedWriteStatusItem />
+                        <StatusBar />
+                      </DetachedTabSurface>
+                    </AutoScrollStateProvider>
+                  </NgStatusProvider>
+                </PageCountStatusProvider>
+              </StatusBarProvider>
+            </PaneProvider>
+          </TabDisplayTargetProvider>,
           entry.root,
           entry.tabId,
         );
@@ -264,11 +296,10 @@ export const DetachedTabWindowProvider: React.FC<{ children: ReactNode }> = ({ c
 
 const DetachedTabToolbar: React.FC<{ tab: Tab; onClose: () => void }> = ({ tab, onClose }) => {
   const dispatch = useTabDispatchForTab(tab.id);
-  const page = getCurrentPage(tab);
 
   return (
-    <header className="detached-tab-toolbar">
-      <strong className="detached-tab-toolbar__title">{page.title || "タブ"}</strong>
+    <nav className="detached-tab-toolbar" aria-label="別窓のタブ操作">
+      <span className="detached-tab-toolbar__title">別窓表示</span>
       <div className="detached-tab-toolbar__actions">
         <button
           type="button"
@@ -293,7 +324,40 @@ const DetachedTabToolbar: React.FC<{ tab: Tab; onClose: () => void }> = ({ tab, 
           戻す
         </button>
       </div>
-    </header>
+    </nav>
+  );
+};
+
+const DetachedWriteStatusItem: React.FC = () => {
+  const { currentPage } = useTabStore();
+  const { openWriteWindow, selectThread } = useWriteSession();
+
+  if (currentPage.type !== "thread") {
+    return null;
+  }
+
+  return (
+    <StatusBarItem
+      id="detached-write-window-toggle"
+      alignment="right"
+      priority={STATUS_BAR_PRIORITY.right.writePanelToggle}
+      interactive
+      title="書き込み窓を開く"
+    >
+      <button
+        type="button"
+        className="status-bar__btn"
+        onClick={() => {
+          // 別窓では下部パネルを開かず、常に共有の書き込み窓へ表示中スレを渡す。
+          selectThread(currentPage.threadUrl);
+          openWriteWindow();
+        }}
+        aria-label="書き込み窓を開く"
+      >
+        <PenLine size={12} />
+        <span>書き込み</span>
+      </button>
+    </StatusBarItem>
   );
 };
 

@@ -18,6 +18,21 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   PaneProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useTabDispatchForTab: () => vi.fn(),
   useTabPanes: () => ({ panes: mocks.panes, activePaneId: "pane-1" }),
+  // 別窓の共通タイトル・ステータスを描画するため、テスト用にも表示タブのスライスを渡す。
+  useTabStore: () => {
+    const tab = mocks.panes[0]?.tabs[0];
+    if (!tab) {
+      throw new Error("テスト用のタブがありません");
+    }
+    return {
+      state: { tabs: [tab], activeTabId: tab.id, closedTabs: [] },
+      stateRef: { current: { panes: mocks.panes, activePaneId: "pane-1", closedTabs: [] } },
+      dispatch: vi.fn(),
+      activeTab: tab,
+      currentPage: tab.history[tab.currentIndex],
+      paneId: "pane-1",
+    };
+  },
 }));
 
 vi.mock("src/view/browser/hooks/use-detached-window", () => ({
@@ -32,8 +47,33 @@ vi.mock("src/view/browser/components/TabView", () => ({
   TabPanel: ({ tab }: { tab: Tab }) => <div data-testid="detached-tab-panel">{tab.id}</div>,
 }));
 
+// 窓のライフサイクルテストでは、共通Chromeの個別サービス初期化を対象にしない。
+// それらは各コンポーネントのテストで検証し、ここではPortalの生成・再利用だけを確認する。
+vi.mock("src/view/browser/components/AutoRefreshStatusItem", () => ({
+  AutoRefreshStatusItem: () => null,
+}));
+vi.mock("src/view/browser/components/CommentOverlayStatusItem", () => ({
+  CommentOverlayStatusItem: () => null,
+}));
+vi.mock("src/view/browser/components/IkioiStatusItem", () => ({ IkioiStatusItem: () => null }));
+vi.mock("src/view/browser/components/NgStatusItem", () => ({ NgStatusItem: () => null }));
+vi.mock("src/view/browser/components/PageCountStatusItem", () => ({
+  PageCountStatusItem: () => null,
+}));
+vi.mock("src/view/browser/components/PopularFilterStatusItem", () => ({
+  PopularFilterStatusItem: () => null,
+}));
+vi.mock("src/view/browser/components/TitleBar", () => ({ TitleBar: () => null }));
+
 vi.mock("src/view/browser/hooks/use-ng-status", () => ({
   NgStatusProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+vi.mock("src/view/browser/hooks/use-write-session", () => ({
+  useWriteSession: () => ({
+    openWriteWindow: vi.fn(),
+    selectThread: vi.fn(),
+  }),
 }));
 
 function createThreadTab(id: string): Tab {

@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
 import React, { useEffect } from "react";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { Popover } from "src/view/browser/ui/Popover";
 
 export interface MiniWindowProps {
@@ -26,20 +27,19 @@ export const MiniWindow: React.FC<MiniWindowProps> = ({
   width = 280,
   children,
 }) => {
+  const { window: viewWindow, document: viewDocument } = useViewSurface();
   // テーマトークンは `.browser-shell[data-theme]` のスコープで定義されるため、
   // body直下へPortalするとダークテーマの値を継承できない。実際のトリガーが
   // 既にマウント済みならその祖先を優先し、テストや汎用利用ではシェルを検索する。
   const portalContainer =
     triggerRef?.current?.closest<HTMLElement>(".browser-shell") ??
-    (typeof document === "undefined"
-      ? null
-      : document.querySelector<HTMLElement>(".browser-shell"));
+    viewDocument.querySelector<HTMLElement>(".browser-shell");
 
   // ステータスバーのanchorが移動するため、resize時は既存仕様どおり閉じる。
   useEffect(() => {
-    window.addEventListener("resize", onClose);
-    return () => window.removeEventListener("resize", onClose);
-  }, [onClose]);
+    viewWindow.addEventListener("resize", onClose);
+    return () => viewWindow.removeEventListener("resize", onClose);
+  }, [onClose, viewWindow]);
 
   return (
     <Popover.Root
@@ -76,7 +76,8 @@ export const MiniWindow: React.FC<MiniWindowProps> = ({
           onCloseAutoFocus={(event) => event.preventDefault()}
           onPointerDownOutside={(event) => {
             // トリガーのpointerdownでは先に閉じず、後段のonClickトグルに委ねる。
-            if (event.target instanceof Node && triggerRef?.current?.contains(event.target)) {
+            // 別窓のDOMでは本窓のNodeコンストラクタを使わないよう、containsだけで判定する。
+            if (event.target != null && triggerRef?.current?.contains(event.target as Node)) {
               event.preventDefault();
             }
           }}

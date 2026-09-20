@@ -12,7 +12,12 @@ interface TitleBarMenuPosition {
   y: number;
 }
 
-export const TitleBar: React.FC = () => {
+export interface TitleBarProps {
+  /** 別窓では専用操作欄へ戻る・進む・更新を集約して重複表示を避ける。 */
+  showNavigationButtons?: boolean;
+}
+
+export const TitleBar: React.FC<TitleBarProps> = ({ showNavigationButtons = true }) => {
   const { activeTab, currentPage, dispatch, paneId } = useTabStore();
   const title = currentPage.title || "read.crx 2";
   const tabBarOrientation = useTabBarOrientation();
@@ -38,7 +43,7 @@ export const TitleBar: React.FC = () => {
   return (
     <header className="title-bar" data-testid="title-bar">
       <div className="title-bar__leading" data-testid="title-bar-leading">
-        {showLeadingRefresh && (
+        {showLeadingRefresh && showNavigationButtons && (
           <>
             {backEnabled && (
               <button

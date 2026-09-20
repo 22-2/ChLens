@@ -20,6 +20,7 @@ import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-prio
 import { StatusBar, StatusBarItem, StatusBarProvider } from "src/view/browser/components/StatusBar";
 import { TabBar } from "src/view/browser/components/TabBar";
 import { TitleBar } from "src/view/browser/components/TitleBar";
+import { WindowNavigationBridge } from "src/view/browser/components/WindowNavigationBridge";
 import { WriteWindowHost } from "src/view/browser/components/WriteWindowHost";
 import { AutoScrollStateProvider } from "src/view/browser/hooks/use-auto-scroll-state";
 import {
@@ -333,6 +334,7 @@ const BrowserAppContent: React.FC = () => {
               data-theme={theme}
               data-tab-orientation={shellTabBarOrientation}
             >
+              <WindowNavigationBridge />
               <ToastProvider topOffset={isUrlBarExpanded ? "88px" : "64px"} rightOffset="78px" />
               {/*
                 水平モードではタイトルと必須のレイアウト操作はペインの外に置く。

@@ -24,6 +24,7 @@ import type {
   ScopedTabAction,
   TabStoreState,
 } from "src/view/browser/hooks/tab-store-types";
+import { useTabDisplayTarget } from "src/view/browser/hooks/use-tab-display-target";
 import {
   buildHierarchy,
   getCurrentPage,
@@ -1390,53 +1391,6 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     platform.window.setTitle(title).catch(() => {});
   }, [currentPage.title]);
 
-  // ブラウザの戻る/進むをアプリ内ナビゲーションに接続
-  // history.pushState/popstateの状態同期に頼らず、キーボード/マウスイベントで直接制御する
-  // タブ切り替え時にブラウザ履歴が汚染されるバグを回避するため
-  useEffect(() => {
-    // 拡張機能ページからの離脱防止用ダミー履歴エントリ
-    history.replaceState({ app: true }, "");
-
-    const handlePopState = () => {
-      // ブラウザのBack/Forward操作によるページ離脱を防止し、アプリ内GO_BACKに変換
-      history.pushState({ app: true }, "");
-      dispatch({ type: "GO_BACK" });
-    };
-
-    // Alt+Left/Rightで戻る/進む
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.altKey && !e.ctrlKey && !e.shiftKey) {
-        if (e.key === "ArrowLeft") {
-          e.preventDefault();
-          dispatch({ type: "GO_BACK" });
-        } else if (e.key === "ArrowRight") {
-          e.preventDefault();
-          dispatch({ type: "GO_FORWARD" });
-        }
-      }
-    };
-
-    // マウスサイドボタン（戻る=3/進む=4）
-    const handleMouseUp = (e: MouseEvent) => {
-      if (e.button === 3) {
-        e.preventDefault();
-        dispatch({ type: "GO_BACK" });
-      } else if (e.button === 4) {
-        e.preventDefault();
-        dispatch({ type: "GO_FORWARD" });
-      }
-    };
-
-    window.addEventListener("popstate", handlePopState);
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("mouseup", handleMouseUp);
-    return () => {
-      window.removeEventListener("popstate", handlePopState);
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [dispatch]);
-
   const contextValue = useMemo<TabContextValue>(
     () => ({ state, stateRef, dispatch }),
     [state, dispatch],
@@ -1458,6 +1412,44 @@ function usePaneIdFromContext(state: TabStoreState): string {
   return state.activePaneId;
 }
 
+/**
+ * 表示中のタブを暗黙の対象にできる操作だけを列挙する。
+ *
+ * 変更理由: OPEN_IN_NEW_TAB_FORCE.tabIdなどは「新しく作るタブ」のIDであり、
+ * 表示タブのIDを機械的に補うと新規タブの識別子を上書きして衝突する。
+ */
+function actionUsesImplicitExistingTab(action: ScopedTabAction): boolean {
+  switch (action.type) {
+    case "NAVIGATE":
+    case "GO_BACK":
+    case "GO_FORWARD":
+    case "GO_TO_HISTORY_INDEX":
+    case "UPDATE_TITLE":
+    case "RELOAD":
+    case "FOLLOW_NEXT_THREAD":
+    case "SET_AUTO_REFRESH_ENABLED":
+      return true;
+    default:
+      return false;
+  }
+}
+
+function scopeActionToDisplayTarget(
+  action: ScopedTabAction,
+  paneId: string,
+  displayTabId: string | null,
+): ScopedTabAction {
+  const scopedAction = action.paneId === undefined ? { ...action, paneId } : action;
+  if (
+    scopedAction.tabId !== undefined ||
+    displayTabId == null ||
+    !actionUsesImplicitExistingTab(scopedAction)
+  ) {
+    return scopedAction;
+  }
+  return { ...scopedAction, tabId: displayTabId };
+}
+
 export function useTabStore(): PaneScopedTabStore {
   const ctx = useContext(TabContext);
   if (!ctx) {
@@ -1465,26 +1457,33 @@ export function useTabStore(): PaneScopedTabStore {
   }
   const paneId = usePaneIdFromContext(ctx.state);
   const pane = getPane(ctx.state, paneId);
-  const activeTab = getPaneActiveTab(pane);
+  const displayTarget = useTabDisplayTarget();
+  const displayTab = displayTarget ? findTabAcrossPanes(ctx.state, displayTarget.tabId) : null;
+  const displayTabId = displayTab?.id ?? null;
+  const hasDisplayTarget = displayTarget !== null;
+  const activeTab = displayTab ?? getPaneActiveTab(pane);
   const currentPage = getCurrentPage(activeTab);
 
   // 旧 TabStoreState と同形のスライスを返す（消費側無改修のため）。
   const state: PaneScopedState = useMemo(
     () => ({
       tabs: pane.tabs,
-      activeTabId: pane.activeTabId,
+      activeTabId: displayTabId ?? pane.activeTabId,
       closedTabs: ctx.state.closedTabs,
     }),
-    [pane.tabs, pane.activeTabId, ctx.state.closedTabs],
+    [pane.tabs, pane.activeTabId, ctx.state.closedTabs, displayTabId],
   );
 
   const globalDispatch = ctx.dispatch;
   const dispatch = useMemo<Dispatch<ScopedTabAction>>(
     () => (action) => {
-      // 既に paneId を持つアクション（ペイン管理系の明示指定）はそのまま流す。
-      globalDispatch(action.paneId !== undefined ? action : { ...action, paneId });
+      // 表示対象が消えた直後は、別タブへ操作をフォールバックさせない。
+      if (hasDisplayTarget && displayTabId == null) {
+        return;
+      }
+      globalDispatch(scopeActionToDisplayTarget(action, paneId, displayTabId));
     },
-    [globalDispatch, paneId],
+    [displayTabId, globalDispatch, hasDisplayTarget, paneId],
   );
 
   return {
@@ -1498,22 +1497,30 @@ export function useTabStore(): PaneScopedTabStore {
 }
 
 export function useTabDispatch(): Dispatch<ScopedTabAction> {
+  const tabContext = useContext(TabContext);
   const globalDispatch = useContext(TabDispatchContext);
   if (!globalDispatch) {
     throw new Error("useTabDispatch must be used within TabProvider");
   }
-  // state を購読せず paneId だけ取り出すことで、ディスパッチ専用の消費側の再レンダリングを避ける。
+  if (!tabContext) {
+    throw new Error("useTabDispatch must be used within TabProvider");
+  }
+  const displayTarget = useTabDisplayTarget();
   const paneCtx = useContext(PaneContext);
-  const paneId = paneCtx?.paneId;
+  const paneId = paneCtx?.paneId ?? tabContext.state.activePaneId;
+  const displayTab = displayTarget
+    ? findTabAcrossPanes(tabContext.state, displayTarget.tabId)
+    : null;
+  const displayTabId = displayTab?.id ?? null;
+  const hasDisplayTarget = displayTarget !== null;
   return useMemo<Dispatch<ScopedTabAction>>(
     () => (action) => {
-      if (action.paneId !== undefined || paneId === undefined) {
-        globalDispatch(action);
-      } else {
-        globalDispatch({ ...action, paneId });
+      if (hasDisplayTarget && displayTabId == null) {
+        return;
       }
+      globalDispatch(scopeActionToDisplayTarget(action, paneId, displayTabId));
     },
-    [globalDispatch, paneId],
+    [displayTabId, globalDispatch, hasDisplayTarget, paneId],
   );
 }
 
@@ -1522,8 +1529,12 @@ export function useTabDispatchForTab(tabId: string): Dispatch<ScopedTabAction> {
   return useMemo<Dispatch<ScopedTabAction>>(
     () => (action) => {
       // 変更理由: 別窓のページは元ペインのactiveTabと一致しない場合があるため、
-      // ページ配下の操作へ描画元タブを補い、戻る・更新などを別タブへ誤送信しない。
-      dispatch(action.tabId === undefined ? { ...action, tabId } : action);
+      // 既存タブを暗黙に操作するページアクションだけへ描画元タブを補う。
+      dispatch(
+        action.tabId === undefined && actionUsesImplicitExistingTab(action)
+          ? { ...action, tabId }
+          : action,
+      );
     },
     [dispatch, tabId],
   );
