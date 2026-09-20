@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => ({
   handleSubmit: vi.fn(),
   handleRetry: vi.fn(),
   copyText: vi.fn().mockResolvedValue(undefined),
+  openWriteWindow: vi.fn(),
 }));
 
 vi.mock("src/view/browser/utils/clipboard", () => ({
@@ -84,6 +85,21 @@ vi.mock("src/view/browser/hooks/use-write", () => ({
   }),
 }));
 
+vi.mock("src/view/browser/hooks/use-write-session", () => ({
+  useWriteSession: () => ({
+    isWindowOpen: false,
+    writeWindowRoot: null,
+    selectedThreadUrl: null,
+    targets: [],
+    getDraft: () => "",
+    selectThread: vi.fn(),
+    setDraft: vi.fn(),
+    appendDraft: vi.fn(),
+    openWriteWindow: mocks.openWriteWindow,
+    closeWriteWindow: vi.fn(),
+  }),
+}));
+
 describe("WritePanelContent", () => {
   let configMock: IConfig;
   let messageMock: IMessage;
@@ -104,6 +120,7 @@ describe("WritePanelContent", () => {
     mocks.handleSubmit.mockClear();
     mocks.handleRetry.mockClear();
     mocks.copyText.mockClear();
+    mocks.openWriteWindow.mockClear();
 
     configMock = {
       get: vi.fn(() => "off"),
@@ -246,6 +263,15 @@ describe("WritePanelContent", () => {
 
     render(<WritePanelContent />);
 
+    expect(mocks.closePanel).toHaveBeenCalledTimes(1);
+  });
+
+  it("別窓を開いたら下部パネルを閉じる", () => {
+    render(<WritePanelContent />);
+
+    fireEvent.click(screen.getByRole("button", { name: "書き込みを別窓で開く" }));
+
+    expect(mocks.openWriteWindow).toHaveBeenCalledTimes(1);
     expect(mocks.closePanel).toHaveBeenCalledTimes(1);
   });
 

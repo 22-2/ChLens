@@ -124,6 +124,12 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
   const isConfirmationSubmitting = confirmationPage != null && isSubmitting;
   const writeErrorMessage = statusText || "書き込みに失敗しました";
 
+  const handleOpenWriteWindow = useCallback(() => {
+    // 別窓のReactツリーを先に作成し、現在の下部パネルは表示場所の重複を避けて閉じる。
+    openWriteWindow();
+    closePanel();
+  }, [closePanel, openWriteWindow]);
+
   useEffect(() => {
     setIsAuthCodeUrlCopied(false);
   }, [authCodeUrl]);
@@ -344,7 +350,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
                 <button
                   type="button"
                   className="write-panel__settings-btn"
-                  onClick={openWriteWindow}
+                  onClick={handleOpenWriteWindow}
                   disabled={isSubmitting}
                   title="書き込みを別窓で開く"
                   aria-label="書き込みを別窓で開く"
