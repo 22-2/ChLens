@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { platformCookieManager } from "src/app/platform/CookieManager";
 import type { BBSMenu } from "src/core/BBSMenuParser";
 import { getBoardUrlKey, normalizeBoardUrl } from "src/core/BoardUrlNormalizer";
 import { container } from "src/service-container/index";
@@ -208,6 +209,7 @@ export function SiteBoardSettingsPanel() {
   const [dialogPortalContainer, setDialogPortalContainer] = useState<HTMLElement | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<ScopedSettingKey | null>(null);
+  const [isClearingCookies, setIsClearingCookies] = useState(false);
 
   useEffect(() => {
     setDialogPortalContainer(globalThis.document.querySelector<HTMLElement>(".browser-shell"));
@@ -320,6 +322,32 @@ export function SiteBoardSettingsPanel() {
     [scope],
   );
 
+  const clearSiteCookies = useCallback(async () => {
+    if (!selectedSite || isClearingCookies) {
+      return;
+    }
+    if (
+      !window.confirm(
+        `「${selectedSite}」のCookieを削除します。保存した名前・メール欄は削除されません。よろしいっすか？`,
+      )
+    ) {
+      return;
+    }
+
+    setIsClearingCookies(true);
+    try {
+      await platformCookieManager.clearSiteCookies(selectedSite);
+      container.toast.success(`${selectedSite}のCookieを削除しました`);
+    } catch (error) {
+      console.error("[SiteBoardSettings] サイトCookieの削除に失敗しました", error);
+      container.toast.error(
+        error instanceof Error ? error.message : "サイトCookieの削除に失敗しました",
+      );
+    } finally {
+      setIsClearingCookies(false);
+    }
+  }, [isClearingCookies, selectedSite]);
+
   const addManualBoard = useCallback((): boolean => {
     const board = normalizeBoardKey(manualBoardUrl);
     const comparisonKey = getBoardUrlKey(manualBoardUrl);
@@ -387,6 +415,18 @@ export function SiteBoardSettingsPanel() {
                 </option>
               ))}
             </select>
+            <Button
+              className="settings-page__site-board-cookie-button"
+              variant="danger"
+              loading={isClearingCookies}
+              disabled={!selectedSite}
+              onClick={() => void clearSiteCookies()}
+            >
+              このサイトのCookieをクリア
+            </Button>
+            <span className="settings-page__site-board-cookie-description">
+              書き込み確認に使う認証Cookieを削除します。保存した名前・メール欄は残ります。
+            </span>
           </label>
           <div className="settings-page__site-board-field">
             <div className="settings-page__site-board-field-heading">

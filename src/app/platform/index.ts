@@ -1,6 +1,7 @@
 import { BrowserHttpClient } from "src/app/platform/browser/HttpClient";
 import { BrowserStorageManager } from "src/app/platform/browser/StorageManager";
 import { BrowserWindowManager } from "src/app/platform/browser/WindowManager";
+import { platformCookieManager } from "src/app/platform/CookieManager";
 import { platformDownloadManager } from "src/app/platform/DownloadManager";
 import { inheritTauriInternalsFromTopWindow, isTauriRuntime } from "src/app/platform/runtime";
 import { TauriHttpClient } from "src/app/platform/tauri/HttpClient";
@@ -19,11 +20,13 @@ export const platform: Platform = isTauri
       window: TauriWindowManager,
       http: TauriHttpClient,
       download: platformDownloadManager,
+      cookies: platformCookieManager,
       storage: TauriStorageManager,
     }
   : {
       window: BrowserWindowManager,
       http: BrowserHttpClient,
       download: platformDownloadManager,
+      cookies: platformCookieManager,
       storage: BrowserStorageManager,
     };

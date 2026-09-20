@@ -91,6 +91,11 @@ export interface DownloadManager {
   save(url: string, fileName: string): Promise<void>;
 }
 
+export interface CookieManager {
+  /** 指定ホストの書き込みに使うCookieを削除する。 */
+  clearSiteCookies(site: string): Promise<void>;
+}
+
 export interface KeyValueStore {
   get(key: string): Promise<string | null>;
   set(key: string, value: string): Promise<void>;
@@ -145,5 +150,6 @@ export interface Platform {
   window: WindowManager;
   http: HttpClient;
   download: DownloadManager;
+  cookies: CookieManager;
   storage: StorageManager;
 }

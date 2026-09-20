@@ -1,6 +1,7 @@
 use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE, ORIGIN, REFERER, USER_AGENT};
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::sync::Mutex;
 use std::time::Duration;
 use tauri::State;
@@ -11,8 +12,8 @@ const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 #[derive(Default)]
 pub struct WriteTransportState {
   // 変更理由: 確認POSTの成功後も掲示板が発行した認証Cookieを次回投稿へ渡すため、
-  // 書き込み1回ごとにClientを破棄せず、アプリの実行中は同じCookie Jarを共有する。
-  client: Mutex<Option<Client>>,
+  // 書き込み1回ごとにClientを破棄せず、同じサイトの書き込みだけでCookie Jarを共有する。
+  clients: Mutex<HashMap<String, Client>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -40,6 +41,36 @@ fn parse_http_url(raw_url: &str, label: &str) -> Result<Url, String> {
     return Err(format!("{label}はHTTPまたはHTTPSである必要があります"));
   }
   Ok(url)
+}
+
+fn site_key(url: &Url, label: &str) -> Result<String, String> {
+  url.host_str()
+    .map(str::to_ascii_lowercase)
+    .ok_or_else(|| format!("{label}にホスト名がありません"))
+}
+
+fn parse_site_host(raw_site: &str) -> Result<String, String> {
+  let trimmed = raw_site.trim();
+  if trimmed.is_empty() {
+    return Err("Cookieを削除するサイトが指定されていません".to_string());
+  }
+
+  let raw_url = if trimmed.contains("://") {
+    trimmed.to_string()
+  } else {
+    format!("https://{trimmed}/")
+  };
+  let url = parse_http_url(&raw_url, "Cookieを削除するサイト")?;
+  if url.username() != ""
+    || url.password().is_some()
+    || url.port().is_some()
+    || (url.path() != "" && url.path() != "/")
+    || url.query().is_some()
+    || url.fragment().is_some()
+  {
+    return Err("Cookieを削除するサイトの指定が不正です".to_string());
+  }
+  site_key(&url, "Cookieを削除するサイト")
 }
 
 fn create_client() -> Result<Client, String> {
@@ -97,19 +128,38 @@ fn build_headers(
   headers
 }
 
-fn get_or_create_client(state: &WriteTransportState) -> Result<Client, String> {
-  let mut client = state
-    .client
+fn get_or_create_client(state: &WriteTransportState, site: &str) -> Result<Client, String> {
+  let mut clients = state
+    .clients
     .lock()
     .map_err(|_| "Tauri版の書き込みClientをロックできませんでした".to_string())?;
 
-  if let Some(client) = client.as_ref() {
+  if let Some(client) = clients.get(site) {
     return Ok(client.clone());
   }
 
   let new_client = create_client()?;
-  *client = Some(new_client.clone());
+  clients.insert(site.to_string(), new_client.clone());
   Ok(new_client)
+}
+
+#[tauri::command]
+pub fn clear_write_cookies(
+  state: State<'_, WriteTransportState>,
+  site: String,
+) -> Result<(), String> {
+  let site = parse_site_host(&site)?;
+  let mut clients = state
+    .clients
+    .lock()
+    .map_err(|_| "Tauri版の書き込みClientをロックできませんでした".to_string())?;
+
+  // 変更理由: reqwestのCookie JarにはCookie単位の公開削除APIがないため、
+  // サイトごとのClientを破棄して、次回書き込み時に空のJarを作り直す。
+  if clients.remove(&site).is_some() {
+    log::info!("サイトの書き込みCookieを削除しました: {site}");
+  }
+  Ok(())
 }
 
 #[tauri::command]
@@ -118,7 +168,8 @@ pub async fn write_request(
   request: WriteRequest,
 ) -> Result<WriteResponse, String> {
   let action = parse_http_url(&request.action, "書き込み先URL")?;
-  let client = get_or_create_client(&state)?;
+  let site = site_key(&action, "書き込み先URL")?;
+  let client = get_or_create_client(&state, &site)?;
 
   if let Some(bootstrap_url) = request.bootstrap_url.as_deref() {
     match parse_http_url(bootstrap_url, "書き込み前のCookie取得URL") {
@@ -167,4 +218,23 @@ pub async fn write_request(
     content_type,
     body,
   })
+}
+
+#[cfg(test)]
+mod tests {
+  use super::parse_site_host;
+
+  #[test]
+  fn cookie削除用のサイト識別子をホスト名へ正規化する() {
+    assert_eq!(
+      parse_site_host("HTTPS://Example.COM/").expect("サイトを正規化できるはずです"),
+      "example.com"
+    );
+  }
+
+  #[test]
+  fn cookie削除用のサイト識別子にパスや認証情報を許可しない() {
+    assert!(parse_site_host("https://example.com/board/").is_err());
+    assert!(parse_site_host("https://user:password@example.com/").is_err());
+  }
 }
