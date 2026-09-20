@@ -1,6 +1,8 @@
+import type { WriteConfirmationPage } from "src/view/browser/utils/write-confirmation";
+
 export type WriteResultMessage =
   | { type: "success"; message?: number | string }
-  | { type: "confirm" }
+  | { type: "confirm"; page?: WriteConfirmationPage }
   | { type: "error"; message?: string };
 
 export interface WriteResultPageData {

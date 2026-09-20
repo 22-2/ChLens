@@ -37,6 +37,8 @@ export interface HttpResponse {
   headers: Record<string, string>;
   body: string;
   url: string;
+  /** Tauriの直接POSTで確認ページからの再送信に使う一時Cookie。 */
+  setCookies?: readonly string[];
 }
 
 export interface BinaryHttpResponse {
@@ -51,6 +53,14 @@ export interface WriteFormData {
   charset: string;
   input: Record<string, string>;
   textarea: Record<string, string>;
+  /** ブラウザ版のフォーム送信と同じRefererをTauri版で再現する。 */
+  referer?: string;
+}
+
+export interface WriteFormField {
+  name: string;
+  value: string;
+  type: "input" | "textarea";
 }
 
 export interface HttpRequestOptions {

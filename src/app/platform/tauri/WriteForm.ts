@@ -1,5 +1,5 @@
 import iconv from "iconv-lite";
-import type { WriteFormData } from "src/app/platform/types";
+import type { WriteFormData, WriteFormField } from "src/app/platform/types";
 
 const FORM_CHARSET_ALIASES: Record<string, string> = {
   "UTF-8": "utf8",
@@ -51,6 +51,7 @@ function resolveWriteUserAgent(configuredUserAgent: string | null | undefined): 
 export function createWriteRequestHeaders(
   formAction: string,
   configuredUserAgent: string | null | undefined,
+  options: { referer?: string; cookie?: string } = {},
 ): Record<string, string> {
   const userAgent = resolveWriteUserAgent(configuredUserAgent);
 
@@ -60,27 +61,47 @@ export function createWriteRequestHeaders(
   return {
     "Content-Type": "application/x-www-form-urlencoded",
     Origin: new URL(formAction).origin,
-    Referer: formAction,
+    Referer: options.referer ?? formAction,
     ...(userAgent !== "" ? { "User-Agent": userAgent } : {}),
+    ...(options.cookie ? { Cookie: options.cookie } : {}),
   };
 }
 
-export function encodeWriteForm(formData: WriteFormData): ArrayBuffer {
-  const fields = [
-    ...Object.entries(formData.input),
-    ...Object.entries(formData.textarea).map(
-      ([key, value]) => [key, normalizeFormLineBreaks(value)] as const,
-    ),
+export function getWriteFormFields(formData: WriteFormData): WriteFormField[] {
+  return [
+    ...Object.entries(formData.input).map(([name, value]) => ({
+      name,
+      value,
+      type: "input" as const,
+    })),
+    ...Object.entries(formData.textarea).map(([name, value]) => ({
+      name,
+      value: normalizeFormLineBreaks(value),
+      type: "textarea" as const,
+    })),
   ];
+}
+
+export function encodeWriteFields(fields: readonly WriteFormField[], charset: string): ArrayBuffer {
+  // 変更理由: 確認ページは同名のhidden値やsubmit値を複数持つことがあるため、
+  // Recordへ戻さず、HTMLフォームの順序と重複を保ったまま再送信する。
+  const normalizedFields = fields.map((field) => ({
+    ...field,
+    value: field.type === "textarea" ? normalizeFormLineBreaks(field.value) : field.value,
+  }));
 
   // 変更理由: Tauriでは拡張機能のフォーム送信を使えないため、
   // 日本語掲示板が期待するフォームの文字コードで百分率エンコードしてPOSTする。
-  const encoded = fields
+  const encoded = normalizedFields
     .map(
-      ([key, value]) =>
-        `${encodeFormComponent(key, formData.charset)}=${encodeFormComponent(value, formData.charset)}`,
+      ({ name, value }) =>
+        `${encodeFormComponent(name, charset)}=${encodeFormComponent(value, charset)}`,
     )
     .join("&");
 
   return new TextEncoder().encode(encoded).buffer;
+}
+
+export function encodeWriteForm(formData: WriteFormData): ArrayBuffer {
+  return encodeWriteFields(getWriteFormFields(formData), formData.charset);
 }

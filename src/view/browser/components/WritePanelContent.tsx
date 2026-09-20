@@ -6,6 +6,7 @@ import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useWrite } from "src/view/browser/hooks/use-write";
 import { Dialog } from "src/view/browser/ui/Dialog";
 import { CheckboxField } from "src/view/browser/ui/FormControls";
+import { bindWriteConfirmationFrame } from "src/view/browser/utils/write-confirmation";
 
 const WRITE_SUBMIT_CTRL_ENTER_KEY = "write_submit_ctrl_enter";
 const WRITE_CLOSE_PANEL_AFTER_SUBMIT_KEY = "write_close_panel_after_submit";
@@ -19,6 +20,7 @@ export const WritePanelContent: React.FC = () => {
   const settingsDialogDescriptionId = useId();
   const [dialogPortalContainer, setDialogPortalContainer] = useState<HTMLElement | null>(null);
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
+  const confirmationFrameCleanupRef = useRef<(() => void) | null>(null);
   // 変更理由: 書き込み中の入力欄を増やさず、書き込みに関する設定を
   // パネル内の歯車モーダルへまとめて、必要な時だけ変更できるようにする。
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
@@ -35,6 +37,7 @@ export const WritePanelContent: React.FC = () => {
     message,
     status,
     statusText,
+    confirmationPage,
     canSubmit,
     iframeRef,
     setName,
@@ -42,13 +45,33 @@ export const WritePanelContent: React.FC = () => {
     setSage,
     setMessage,
     submit,
+    submitConfirmation,
     handleSubmit,
     handleRetry,
   } = useWrite(threadUrl);
 
   const isSubmitting = status === "submitting";
-  const isConfirm = status === "confirm";
+  const isConfirm = status === "confirm" || confirmationPage != null;
+  const isConfirmationSubmitting = confirmationPage != null && isSubmitting;
   const writeErrorMessage = statusText || "書き込みに失敗しました";
+
+  const handleConfirmationFrameLoad = useCallback(() => {
+    confirmationFrameCleanupRef.current?.();
+    confirmationFrameCleanupRef.current = null;
+    if (!confirmationPage || !iframeRef.current) return;
+
+    confirmationFrameCleanupRef.current = bindWriteConfirmationFrame(
+      iframeRef.current,
+      (submission) => void submitConfirmation(submission),
+    );
+  }, [confirmationPage, iframeRef, submitConfirmation]);
+
+  useEffect(() => {
+    return () => {
+      confirmationFrameCleanupRef.current?.();
+      confirmationFrameCleanupRef.current = null;
+    };
+  }, [confirmationPage]);
 
   useEffect(() => {
     // テーマトークンは `.browser-shell[data-theme]` にスコープされるため、
@@ -153,6 +176,7 @@ export const WritePanelContent: React.FC = () => {
               type="button"
               className="write-panel__btn write-panel__btn--secondary"
               onClick={handleRetry}
+              disabled={isConfirmationSubmitting}
             >
               戻る
             </button>
@@ -238,6 +262,14 @@ export const WritePanelContent: React.FC = () => {
           className={`write-panel__iframe${isConfirm ? " write-panel__iframe--visible" : ""}`}
           title={isConfirm ? "書き込み確認" : "write-iframe"}
           aria-hidden={!isConfirm}
+          {...(confirmationPage
+            ? {
+                srcDoc: confirmationPage.html,
+                sandbox: "allow-same-origin",
+                referrerPolicy: "no-referrer" as const,
+                onLoad: handleConfirmationFrameLoad,
+              }
+            : {})}
         />
       </form>
       <Dialog.Root open={isSettingsDialogOpen} onOpenChange={setIsSettingsDialogOpen}>

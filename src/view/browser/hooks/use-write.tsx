@@ -2,7 +2,8 @@ import { type FormEvent, type RefObject, useCallback, useEffect, useRef, useStat
 import { platform } from "src/app";
 import { wait } from "src/app/Defer";
 import { isTauriRuntime } from "src/app/platform/runtime";
-import type { HttpResponse, WriteFormData } from "src/app/platform/types";
+import { WriteCookieJar } from "src/app/platform/tauri/WriteCookies";
+import type { HttpResponse, WriteFormData, WriteFormField } from "src/app/platform/types";
 import { getStore2String, setStore2String } from "src/app/Store2Storage";
 import { URL as ChURL } from "src/core/URL";
 import { container } from "src/service-container/index";
@@ -14,6 +15,11 @@ import {
   type PendingWritePayload,
   resolveWriteSuccessDelayMs,
 } from "src/view/browser/utils/thread-write-sync";
+import {
+  createWriteConfirmationPage,
+  type WriteConfirmationPage,
+  type WriteConfirmationSubmission,
+} from "src/view/browser/utils/write-confirmation";
 import { classifyWriteResult, type WriteResultMessage } from "src/view/browser/utils/write-result";
 
 // -----------------------------------------------------------------------
@@ -40,6 +46,7 @@ export interface UseWriteResult {
   message: string;
   status: WriteStatus;
   statusText: string;
+  confirmationPage: WriteConfirmationPage | null;
   canSubmit: boolean;
   iframeRef: RefObject<HTMLIFrameElement | null>;
   setName: (v: string) => void;
@@ -47,6 +54,7 @@ export interface UseWriteResult {
   setSage: (v: boolean) => void;
   setMessage: (v: string) => void;
   submit: () => Promise<void>;
+  submitConfirmation: (submission: WriteConfirmationSubmission) => Promise<void>;
   handleSubmit: (e: FormEvent) => Promise<void>;
   handleRetry: () => void;
 }
@@ -72,12 +80,21 @@ function buildFormData(
   const tsld = url.getTsld();
   const { protocol, hostname } = url;
   const parts = url.pathname.split("/");
+  const referer = (() => {
+    try {
+      return url.toBoard().href;
+    } catch (error) {
+      console.error("書き込み用の板URLを作成できませんでした:", error);
+      return threadUrl;
+    }
+  })();
 
   if (bbsType === "2ch") {
     if (tsld === "open2ch.net") {
       return {
         action: `${protocol}//${hostname}/test/bbs.cgi`,
         charset: "UTF-8",
+        referer,
         input: { submit: "書", bbs: parts[3], key: parts[4], FROM: name, mail },
         textarea: { MESSAGE: message },
       };
@@ -87,6 +104,7 @@ function buildFormData(
     return {
       action: `${protocol}//${hostname}/test/bbs.cgi`,
       charset: "Shift_JIS",
+      referer,
       input: {
         submit: submitLabel,
         time: String(Math.floor(Date.now() / 1000) - 60),
@@ -104,6 +122,7 @@ function buildFormData(
     return {
       action: `${protocol}//jbbs.shitaraba.net/bbs/write.cgi/${parts[3]}/${parts[4]}/${parts[5]}/`,
       charset: "EUC-JP",
+      referer,
       input: {
         TIME: String(Math.floor(Date.now() / 1000) - 60),
         DIR: parts[3],
@@ -120,6 +139,7 @@ function buildFormData(
     return {
       action: `${protocol}//${hostname}/bbs/write.cgi`,
       charset: "Shift_JIS",
+      referer,
       input: {
         submit: "書きこむ",
         TIME: String(Math.floor(Date.now() / 1000) - 60),
@@ -143,9 +163,11 @@ async function setupHeaderModifier(formAction: string): Promise<void> {
   await platform.http.setupWriteHeaders(formAction);
 }
 
-function parseTauriWriteResult(
+export function parseTauriWriteResult(
   response: HttpResponse,
   fallbackUrl: string,
+  expectedAction: string,
+  charset: string,
 ): WriteResultMessage | null {
   const resultDocument = new DOMParser().parseFromString(response.body, "text/html");
   const refreshContent = Array.from(resultDocument.getElementsByTagName("meta"))
@@ -156,26 +178,56 @@ function parseTauriWriteResult(
     (font) => font.textContent ?? "",
   ).join("\n");
 
-  return classifyWriteResult({
+  const result = classifyWriteResult({
     url: response.url || fallbackUrl,
     title: resultDocument.title,
     bodyText: resultDocument.body?.textContent ?? resultDocument.documentElement.textContent ?? "",
     fontText,
     refreshContent: refreshContent ?? undefined,
   });
+
+  if (result?.type === "confirm") {
+    return {
+      ...result,
+      page: createWriteConfirmationPage(
+        response.body,
+        response.url || fallbackUrl,
+        expectedAction,
+        charset,
+      ),
+    };
+  }
+
+  return result;
 }
 
-async function submitTauriWrite(formData: WriteFormData): Promise<WriteResultMessage> {
-  const { createWriteRequestHeaders, encodeWriteForm } =
+interface TauriWriteRequest {
+  action: string;
+  charset: string;
+  fields: readonly WriteFormField[];
+  referer: string;
+}
+
+async function submitTauriWrite(
+  request: TauriWriteRequest,
+  expectedAction: string,
+  cookieJar: WriteCookieJar,
+): Promise<WriteResultMessage> {
+  const { createWriteRequestHeaders, encodeWriteFields } =
     await import("src/app/platform/tauri/WriteForm");
-  const response = await platform.http.fetch(formData.action, {
+  const response = await platform.http.fetch(request.action, {
     method: "POST",
-    headers: createWriteRequestHeaders(formData.action, container.config.get("useragent")),
-    body: encodeWriteForm(formData),
-    mimeType: `text/html; charset=${formData.charset}`,
+    headers: createWriteRequestHeaders(request.action, container.config.get("useragent"), {
+      referer: request.referer,
+      cookie: cookieJar.getHeader(request.action),
+    }),
+    body: encodeWriteFields(request.fields, request.charset),
+    mimeType: `text/html; charset=${request.charset}`,
   });
 
-  const result = parseTauriWriteResult(response, formData.action);
+  cookieJar.updateFromResponse(response.url || request.action, response.setCookies);
+
+  const result = parseTauriWriteResult(response, request.action, expectedAction, request.charset);
   if (result != null) {
     return result;
   }
@@ -206,8 +258,10 @@ export function useWrite(threadUrl: string): UseWriteResult {
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState<WriteStatus>("idle");
   const [statusText, setStatusText] = useState("");
+  const [confirmationPage, setConfirmationPage] = useState<WriteConfirmationPage | null>(null);
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const tauriCookieJarRef = useRef<WriteCookieJar | null>(null);
   const pendingSubmittedWriteRef = useRef<PendingWritePayload | null>(null);
   const submitWatchdogTimerRef = useRef<number | null>(null);
   const statusRef = useRef<WriteStatus>("idle");
@@ -242,6 +296,12 @@ export function useWrite(threadUrl: string): UseWriteResult {
     }, SUBMIT_WATCHDOG_MS);
   }, [clearSubmitWatchdog]);
 
+  const clearTauriWriteAttempt = useCallback(() => {
+    tauriCookieJarRef.current?.clear();
+    tauriCookieJarRef.current = null;
+    setConfirmationPage(null);
+  }, []);
+
   useEffect(() => clearSubmitWatchdog, [clearSubmitWatchdog]);
 
   useEffect(() => {
@@ -257,13 +317,14 @@ export function useWrite(threadUrl: string): UseWriteResult {
     // スレッドに紐づく通信状態だけを新しい送信先へ切り替える。
     clearSubmitWatchdog();
     pendingSubmittedWriteRef.current = null;
+    clearTauriWriteAttempt();
     setStatus("idle");
     setStatusText("");
 
     if (!isTauriRuntime() && iframeRef.current) {
       iframeRef.current.src = "about:blank";
     }
-  }, [clearSubmitWatchdog, threadUrl]);
+  }, [clearSubmitWatchdog, clearTauriWriteAttempt, threadUrl]);
 
   const canSubmit = status === "idle" && threadUrl !== "" && message.trim() !== "";
 
@@ -293,6 +354,7 @@ export function useWrite(threadUrl: string): UseWriteResult {
       switch (data.type) {
         case "success":
           clearSubmitWatchdog();
+          clearTauriWriteAttempt();
           setStatus("success");
           setStatusText("書き込みました");
           setMessage("");
@@ -317,12 +379,18 @@ export function useWrite(threadUrl: string): UseWriteResult {
           break;
         case "confirm":
           clearSubmitWatchdog();
-          // 確認ページが表示された: iframe を見せてユーザーに操作させる
+          if (data.page) {
+            setConfirmationPage(data.page);
+          } else {
+            clearTauriWriteAttempt();
+          }
+          // 確認ページはTauriでは安全化したHTMLを表示し、ブラウザ版では従来のiframeを見せる。
           setStatus("confirm");
           setStatusText("確認ページが表示されています");
           break;
         case "error":
           clearSubmitWatchdog();
+          clearTauriWriteAttempt();
           pendingSubmittedWriteRef.current = null;
           setStatus("error");
           setStatusText(
@@ -331,7 +399,7 @@ export function useWrite(threadUrl: string): UseWriteResult {
           break;
       }
     },
-    [clearSubmitWatchdog, dispatch],
+    [clearSubmitWatchdog, clearTauriWriteAttempt, dispatch],
   );
 
   // iframe からの postMessage を処理する (cs_write.js との通信)
@@ -411,8 +479,22 @@ export function useWrite(threadUrl: string): UseWriteResult {
     }
 
     if (useTauriHttp) {
+      const cookieJar = new WriteCookieJar();
+      tauriCookieJarRef.current = cookieJar;
       try {
-        handleWriteResult(await submitTauriWrite(formData));
+        const { getWriteFormFields } = await import("src/app/platform/tauri/WriteForm");
+        handleWriteResult(
+          await submitTauriWrite(
+            {
+              action: formData.action,
+              charset: formData.charset,
+              fields: getWriteFormFields(formData),
+              referer: formData.referer ?? formData.action,
+            },
+            formData.action,
+            cookieJar,
+          ),
+        );
       } catch (error) {
         console.error("Tauri版の書き込みに失敗しました:", error);
         handleWriteResult({
@@ -472,17 +554,51 @@ export function useWrite(threadUrl: string): UseWriteResult {
 
     iframe.addEventListener("load", onLoad);
     iframe.src = "about:blank";
-  }, [
-    armSubmitWatchdog,
-    canSubmit,
-    clearSubmitWatchdog,
-    handleWriteResult,
-    threadUrl,
-    name,
-    mail,
-    sage,
-    message,
-  ]);
+  }, [armSubmitWatchdog, canSubmit, handleWriteResult, threadUrl, name, mail, sage, message]);
+
+  const submitConfirmation = useCallback(
+    async (submission: WriteConfirmationSubmission) => {
+      const page = confirmationPage;
+      const cookieJar = tauriCookieJarRef.current;
+      const form = page?.forms.find((candidate) => candidate.id === submission.formId);
+      if (!page || !cookieJar || !form) {
+        handleWriteResult({
+          type: "error",
+          message: "確認ページの送信フォームを特定できませんでした",
+        });
+        return;
+      }
+
+      // iframe内のイベントリスナーは確認ページを表示したrenderの関数を保持するため、
+      // React stateではなく最新statusRefを参照して二重送信を止める。
+      if (statusRef.current === "submitting") return;
+      statusRef.current = "submitting";
+      setStatus("submitting");
+      setStatusText("確認ページを送信中...");
+
+      try {
+        handleWriteResult(
+          await submitTauriWrite(
+            {
+              action: form.action,
+              charset: page.charset,
+              fields: submission.fields,
+              referer: page.sourceUrl,
+            },
+            page.expectedAction,
+            cookieJar,
+          ),
+        );
+      } catch (error) {
+        console.error("Tauri版の確認ページ送信に失敗しました:", error);
+        handleWriteResult({
+          type: "error",
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+    },
+    [confirmationPage, handleWriteResult],
+  );
 
   const handleSubmit = useCallback(
     async (e: FormEvent) => {
@@ -495,9 +611,10 @@ export function useWrite(threadUrl: string): UseWriteResult {
   const handleRetry = useCallback(() => {
     clearSubmitWatchdog();
     pendingSubmittedWriteRef.current = null;
+    clearTauriWriteAttempt();
     setStatus("idle");
     setStatusText("");
-  }, [clearSubmitWatchdog]);
+  }, [clearSubmitWatchdog, clearTauriWriteAttempt]);
 
   return {
     name,
@@ -506,6 +623,7 @@ export function useWrite(threadUrl: string): UseWriteResult {
     message,
     status,
     statusText,
+    confirmationPage,
     canSubmit,
     iframeRef,
     setName,
@@ -513,6 +631,7 @@ export function useWrite(threadUrl: string): UseWriteResult {
     setSage,
     setMessage,
     submit,
+    submitConfirmation,
     handleSubmit,
     handleRetry,
   };
