@@ -493,10 +493,10 @@ const TabWindowToolbar: React.FC<{
 };
 
 const TabWindowWriteStatusItem: React.FC = () => {
-  const { currentPage } = useTabStore();
+  const { viewPage } = useTabStore();
   const { openWriteWindow, selectThread } = useWriteSession();
 
-  if (currentPage.type !== "thread") {
+  if (viewPage.type !== "thread") {
     return null;
   }
 
@@ -513,7 +513,7 @@ const TabWindowWriteStatusItem: React.FC = () => {
         className="status-bar__btn"
         onClick={() => {
           // 別窓では下部パネルを開かず、常に共有の書き込み窓へ表示中スレを渡す。
-          selectThread(currentPage.threadUrl);
+          selectThread(viewPage.threadUrl);
           openWriteWindow();
         }}
         aria-label="書き込み窓を開く"

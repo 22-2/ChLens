@@ -19,7 +19,7 @@ interface CommentOverlayStatusItemProps {
 
 /** Tauri版のスレッドだけに実況操作を表示し、Browser版のUI契約を変えない。 */
 export const CommentOverlayStatusItem: React.FC<CommentOverlayStatusItemProps> = ({ isActive }) => {
-  const { currentPage } = useTabStore();
+  const { viewPage } = useTabStore();
   const { controller, snapshot } = useCommentOverlay();
   const [isWindowOpen, setIsWindowOpen] = useState(false);
   const [isControlPanelOpen, setIsControlPanelOpen] = useState(false);
@@ -29,7 +29,7 @@ export const CommentOverlayStatusItem: React.FC<CommentOverlayStatusItemProps> =
   const btnRef = useRef<HTMLButtonElement>(null);
   const panelWriteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTauri = isTauriRuntime();
-  const threadUrl = currentPage.type === "thread" ? currentPage.threadUrl : null;
+  const threadUrl = viewPage.type === "thread" ? viewPage.threadUrl : null;
 
   const isRunning = snapshot.state.status === "running";
   const isFlowing = isRunning && snapshot.visible;

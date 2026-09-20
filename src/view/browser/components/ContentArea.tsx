@@ -16,7 +16,7 @@ interface ContentAreaProps {
 export const ContentArea: FC<ContentAreaProps> = ({ isOverlayTarget = true }) => {
   const { state } = useTabStore();
   const { isDetachedTab } = useDetachedTabController();
-  const selectedTabId = state.selectedTabId ?? state.activeTabId;
+  const selectedTabId = state.selectedTabId;
   // 切り離し中のタブは別窓のPortalだけで描画し、元窓にプレースホルダーを残さない。
   const visibleTabs = state.tabs.filter((tab) => !isDetachedTab(tab.id));
 

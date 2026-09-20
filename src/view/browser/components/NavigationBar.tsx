@@ -298,25 +298,25 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   openNextThreadSearchDialog = NOOP_OPEN_NEXT_THREAD_SEARCH_DIALOG,
   openArchiveReplayWindow = NOOP_OPEN_ARCHIVE_REPLAY_WINDOW,
 }) => {
-  const { state, activeTab, currentPage, dispatch, paneId } = useTabStore();
+  const { state, viewTab, viewPage, dispatch, paneId } = useTabStore();
   const viewSurface = useViewSurface();
   const toast = useToast();
   // 2ペイン表示中かどうか（トグルボタンの状態に使う）。
   const { panes, activePaneId } = useTabPanes();
   const isTwoPane = panes.length >= 2;
   const isActivePane = activePaneId === paneId;
-  const { isOpen: isPanelOpen, activeTabId, togglePanel } = useBottomPanel();
+  const { isOpen: isPanelOpen, activePanelTabId, togglePanel } = useBottomPanel();
   const { setExpanded: setUrlBarExpanded } = useUrlBarVisibility(paneId);
 
-  const back = canGoBack(activeTab);
-  const forward = canGoForward(activeTab);
-  const displayUrl = getDisplayUrl(currentPage);
+  const back = canGoBack(viewTab);
+  const forward = canGoForward(viewTab);
+  const displayUrl = getDisplayUrl(viewPage);
   const {
     bookmarkTarget,
     isBookmarked,
     isBookmarkPending,
     toggleBookmark: handleToggleBookmark,
-  } = usePageBookmark(currentPage);
+  } = usePageBookmark(viewPage);
 
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
   const [backMenuPosition, setBackMenuPosition] = useState<MenuPosition | null>(null);
@@ -387,18 +387,18 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     };
   }, [isUrlExpanded, setUrlBarExpanded]);
 
-  const currentAutoRefreshPageKey = getAutoRefreshPageKey(currentPage);
-  const isCurrentPageAutoRefreshEnabled = isAutoRefreshEnabledForPage(activeTab, currentPage);
+  const currentAutoRefreshPageKey = getAutoRefreshPageKey(viewPage);
+  const isCurrentPageAutoRefreshEnabled = isAutoRefreshEnabledForPage(viewTab, viewPage);
 
   const openResponseJumpDialog = useCallback(() => {
-    if (currentPage.type !== "thread") return;
+    if (viewPage.type !== "thread") return;
 
     // コマンド実行後にオムニバーを確実に閉じ、数値入力へ操作を引き継ぐ。
     commandPalette.close();
     setResponseJumpValue("");
     setResponseJumpError(null);
     setIsResponseJumpDialogOpen(true);
-  }, [currentPage.type]);
+  }, [viewPage.type]);
 
   const closeResponseJumpDialog = useCallback(() => {
     setIsResponseJumpDialogOpen(false);
@@ -408,7 +408,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   const submitResponseJump = useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
-      if (currentPage.type !== "thread") return;
+      if (viewPage.type !== "thread") return;
 
       if (!/^\d+$/.test(responseJumpValue.trim())) {
         setResponseJumpError("1以上のレス番号を入力してください");
@@ -421,10 +421,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         return;
       }
 
-      requestThreadResJump(currentPage.threadUrl, resNum);
+      requestThreadResJump(viewPage.threadUrl, resNum);
       closeResponseJumpDialog();
     },
-    [closeResponseJumpDialog, currentPage, responseJumpValue],
+    [closeResponseJumpDialog, responseJumpValue, viewPage],
   );
   const loadOmnibarEntries = useCallback(async () => {
     const [historyItems, bookmarkItems, boardItems] = await Promise.all([
@@ -493,8 +493,8 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
 
   const context = useMemo<BrowserCommandContext>(
     () => ({
-      currentPage,
-      activeTab,
+      viewPage,
+      viewTab,
       tabs: state.tabs,
       closedTabs: state.closedTabs,
       isTwoPane,
@@ -508,8 +508,6 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       viewSurface,
     }),
     [
-      activeTab,
-      currentPage,
       dispatch,
       isPanelOpen,
       isTwoPane,
@@ -520,7 +518,9 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       state.tabs,
       toast,
       togglePanel,
+      viewPage,
       viewSurface,
+      viewTab,
     ],
   );
   const contextRef = useRef(context);
@@ -556,7 +556,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         // コマンドIDとページ種別を残し、単一入力へ集約した操作の失敗元を追跡できるようにする。
         console.error("Browser command execution failed", {
           commandId: command.id,
-          pageType: currentContext.currentPage.type,
+          pageType: currentContext.viewPage.type,
           error,
         });
         container.toast.error(`${label}に失敗しました`);
@@ -729,7 +729,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
 
   const handleRefreshContextMenu = useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {
-      if (currentPage.type !== "thread" && currentPage.type !== "threadList") {
+      if (viewPage.type !== "thread" && viewPage.type !== "threadList") {
         return;
       }
 
@@ -739,7 +739,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       setForwardMenuPosition(null);
       setRefreshMenuPosition((prev) => (prev ? null : { x: e.clientX, y: e.clientY }));
     },
-    [currentPage.type],
+    [viewPage.type],
   );
 
   const closeMenu = useCallback(() => {
@@ -828,45 +828,43 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   const toggleFilterFromMenu = useCallback(() => {
     // フィルタUIはメニュー項目からのみ開くことで、
     // メニューボタン押下そのものをトリガーにしない。
-    if (currentPage.type === "thread") {
+    if (viewPage.type === "thread") {
       window.dispatchEvent(new window.CustomEvent("thread-filter-toolbar-toggle"));
       return;
     }
 
     if (
-      currentPage.type === "boardList" ||
-      currentPage.type === "threadList" ||
-      currentPage.type === "bookmarkList" ||
-      currentPage.type === "historyList" ||
-      currentPage.type === "writeHistoryList" ||
-      currentPage.type === "logList"
+      viewPage.type === "boardList" ||
+      viewPage.type === "threadList" ||
+      viewPage.type === "bookmarkList" ||
+      viewPage.type === "historyList" ||
+      viewPage.type === "writeHistoryList" ||
+      viewPage.type === "logList"
     ) {
       const eventName =
-        QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE[
-          currentPage.type as QuickAccessFilterPageType
-        ];
+        QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE[viewPage.type as QuickAccessFilterPageType];
       window.dispatchEvent(
         new window.CustomEvent(eventName, {
-          detail: { tabId: activeTab.id },
+          detail: { tabId: viewTab.id },
         }),
       );
     }
-  }, [activeTab.id, currentPage.type]);
+  }, [viewTab.id, viewPage.type]);
 
   useEffect(() => {
-    if (currentPage.type !== "thread") {
+    if (viewPage.type !== "thread") {
       setRefreshMenuPosition(null);
     }
-  }, [currentPage.type]);
+  }, [viewPage.type]);
 
   // 履歴タイトルは板名とスレ名が連結されて長くなりやすいため、
   // 戻る/進むメニューでは省略せず全文を折り返して見せる。
 
   const backHistoryItems = useMemo(
     () =>
-      activeTab.history
+      viewTab.history
         .map((page, index) => ({ page, index }))
-        .filter(({ index }) => index < activeTab.currentIndex)
+        .filter(({ index }) => index < viewTab.currentIndex)
         .sort((a, b) => b.index - a.index)
         .map(({ page, index }) => ({
           id: `back-${index}`,
@@ -878,14 +876,14 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
             dispatch(tabActions.openInNewTab(page, { background: true }));
           },
         })),
-    [activeTab.currentIndex, activeTab.history, dispatch],
+    [dispatch, viewTab.currentIndex, viewTab.history],
   );
 
   const forwardHistoryItems = useMemo(
     () =>
-      activeTab.history
+      viewTab.history
         .map((page, index) => ({ page, index }))
-        .filter(({ index }) => index > activeTab.currentIndex)
+        .filter(({ index }) => index > viewTab.currentIndex)
         .sort((a, b) => a.index - b.index)
         .map(({ page, index }) => ({
           id: `forward-${index}`,
@@ -897,7 +895,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
             dispatch(tabActions.openInNewTab(page, { background: true }));
           },
         })),
-    [activeTab.currentIndex, activeTab.history, dispatch],
+    [dispatch, viewTab.currentIndex, viewTab.history],
   );
 
   const menuItems = useMemo(
@@ -908,13 +906,13 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         icon: <Command size={14} />,
         onSelect: () => commandPalette.open("command"),
       },
-      ...(currentPage.type === "thread" ||
-      currentPage.type === "boardList" ||
-      currentPage.type === "threadList" ||
-      currentPage.type === "bookmarkList" ||
-      currentPage.type === "historyList" ||
-      currentPage.type === "writeHistoryList" ||
-      currentPage.type === "logList"
+      ...(viewPage.type === "thread" ||
+      viewPage.type === "boardList" ||
+      viewPage.type === "threadList" ||
+      viewPage.type === "bookmarkList" ||
+      viewPage.type === "historyList" ||
+      viewPage.type === "writeHistoryList" ||
+      viewPage.type === "logList"
         ? [
             {
               id: "open-filter-toolbar",
@@ -924,12 +922,12 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
             },
           ]
         : []),
-      ...(currentPage.type === "thread"
+      ...(viewPage.type === "thread"
         ? [
             {
               id: "open-thread-list-panel",
               label:
-                isPanelOpen && activeTabId === BOTTOM_PANEL_THREAD_LIST_TAB_ID
+                isPanelOpen && activePanelTabId === BOTTOM_PANEL_THREAD_LIST_TAB_ID
                   ? "スレ一覧パネルを閉じる"
                   : "スレ一覧パネル",
               icon: <ListIcon size={14} />,
@@ -938,7 +936,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
             {
               id: "open-write-panel",
               label:
-                isPanelOpen && activeTabId === BOTTOM_PANEL_WRITE_TAB_ID
+                isPanelOpen && activePanelTabId === BOTTOM_PANEL_WRITE_TAB_ID
                   ? "書き込みパネルを閉じる"
                   : "書き込みパネル",
               icon: <PenLine size={14} />,
@@ -992,8 +990,8 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       },
     ],
     [
-      currentPage.type,
-      activeTabId,
+      viewPage.type,
+      activePanelTabId,
       openQuickAccessPage,
       openQuickAccessPageInNewTab,
       toggleFilterFromMenu,
@@ -1066,7 +1064,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         ref={refreshButtonRef}
         type="button"
         className="nav-bar__menu-action"
-        disabled={!isPageRefreshable(currentPage)}
+        disabled={!isPageRefreshable(viewPage)}
         onClick={handleMenuRefresh}
         onContextMenu={handleRefreshContextMenu}
         title="更新"

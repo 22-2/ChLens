@@ -19,7 +19,7 @@ interface BoardListPageProps {
 }
 
 export const BoardListPage: React.FC<BoardListPageProps> = ({ tabId, isActive, refreshKey }) => {
-  const { activeTab, currentPage, dispatch } = useTabStore();
+  const { viewTab, viewPage, dispatch } = useTabStore();
   const {
     categories,
     loading,
@@ -149,9 +149,9 @@ export const BoardListPage: React.FC<BoardListPageProps> = ({ tabId, isActive, r
 
   const contextMenuNavigationActions = contextMenuState ? (
     <ContextMenuNavigationActions
-      canGoBack={canGoBack(activeTab)}
-      canGoForward={canGoForward(activeTab)}
-      canRefresh={isPageRefreshable(currentPage)}
+      canGoBack={canGoBack(viewTab)}
+      canGoForward={canGoForward(viewTab)}
+      canRefresh={isPageRefreshable(viewPage)}
       onBack={() => {
         dispatch(tabActions.goBack());
         setContextMenuState(null);

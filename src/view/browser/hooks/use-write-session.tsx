@@ -137,7 +137,7 @@ const WriteSessionContext = createContext<WriteSessionContextValue>(defaultConte
  */
 export const WriteSessionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { panes, activePaneId } = useTabPanes();
-  const { currentPage } = useTabStore();
+  const { viewPage } = useTabStore();
   const [session, setSession] = useState<WriteSessionState>(loadSession);
   const writeWindow = useAuxiliaryWindow(WRITE_WINDOW_OPTIONS);
 
@@ -152,15 +152,15 @@ export const WriteSessionProvider: React.FC<{ children: ReactNode }> = ({ childr
     }
 
     const fallbackTarget =
-      currentPage.type === "thread" &&
-      targets.some((target) => target.threadUrl === currentPage.threadUrl)
-        ? currentPage.threadUrl
+      viewPage.type === "thread" &&
+      targets.some((target) => target.threadUrl === viewPage.threadUrl)
+        ? viewPage.threadUrl
         : (targets[0]?.threadUrl ?? null);
 
     if (fallbackTarget !== session.selectedThreadUrl) {
       setSession((previous) => ({ ...previous, selectedThreadUrl: fallbackTarget }));
     }
-  }, [currentPage, session.selectedThreadUrl, targets]);
+  }, [session.selectedThreadUrl, targets, viewPage]);
 
   useEffect(() => {
     // 変更理由: 投稿先の選択だけは再起動後も扱いやすく保つ一方、本文は保存しない。

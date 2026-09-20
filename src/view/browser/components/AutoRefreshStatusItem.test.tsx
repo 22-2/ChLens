@@ -8,7 +8,7 @@ import type { Page } from "src/view/browser/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mocks = vi.hoisted(() => ({
-  currentPage: {
+  viewPage: {
     type: "thread",
     title: "スレッド",
     threadUrl: "https://example.com/test/read.cgi/software/1/",
@@ -36,7 +36,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
-  useTabStore: () => ({ currentPage: mocks.currentPage }),
+  useTabStore: () => ({ viewPage: mocks.viewPage }),
 }));
 
 vi.mock("src/view/browser/hooks/use-auto-refresh-panel", () => ({
@@ -88,7 +88,7 @@ function renderItem() {
 
 describe("AutoRefreshStatusItem", () => {
   beforeEach(() => {
-    mocks.currentPage = {
+    mocks.viewPage = {
       type: "thread",
       title: "スレッド",
       threadUrl: "https://example.com/test/read.cgi/software/1/",
@@ -159,7 +159,7 @@ describe("AutoRefreshStatusItem", () => {
   });
 
   it("スレ一覧では別内容のミニウィンドウを表示する", () => {
-    mocks.currentPage = {
+    mocks.viewPage = {
       type: "threadList",
       title: "板",
       boardUrl: "https://example.com/software/",
@@ -192,7 +192,7 @@ describe("AutoRefreshStatusItem", () => {
   });
 
   it("スレッドでもスレ一覧でもないページでは表示しない", () => {
-    mocks.currentPage = {
+    mocks.viewPage = {
       type: "home",
       title: "ホーム",
     };
@@ -238,7 +238,7 @@ describe("AutoRefreshStatusItem", () => {
   });
 
   it("スレ一覧では一覧用の更新間隔をアイコン横に表示する", () => {
-    mocks.currentPage = {
+    mocks.viewPage = {
       type: "threadList",
       title: "板",
       boardUrl: "https://example.com/software/",
@@ -321,7 +321,7 @@ describe("AutoRefreshStatusItem", () => {
   });
 
   it("スレ一覧で自動更新間隔が有効なときはアクティブ色になる", () => {
-    mocks.currentPage = {
+    mocks.viewPage = {
       type: "threadList",
       title: "板",
       boardUrl: "https://example.com/software/",
@@ -343,7 +343,7 @@ describe("AutoRefreshStatusItem", () => {
   });
 
   it("スレ一覧ミニウィンドウから自動更新を切り替えられる", () => {
-    mocks.currentPage = {
+    mocks.viewPage = {
       type: "threadList",
       title: "板",
       boardUrl: "https://example.com/software/",

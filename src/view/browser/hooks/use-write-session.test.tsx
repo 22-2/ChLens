@@ -10,7 +10,7 @@ const tabState = {
   panes: [] as Array<{ id: string; tabs: Tab[] }>,
   activePaneId: "pane-a",
 };
-let currentPage: Page = { type: "home", title: "ホーム" };
+let viewPage: Page = { type: "home", title: "ホーム" };
 
 vi.mock("src/app/Store2Storage", () => ({
   getStore2String: () => storage.value,
@@ -30,7 +30,7 @@ vi.mock("src/app/platform", () => ({
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabPanes: () => tabState,
-  useTabStore: () => ({ currentPage }),
+  useTabStore: () => ({ viewPage }),
 }));
 
 import { useWriteSession, WriteSessionProvider } from "src/view/browser/hooks/use-write-session";
@@ -65,7 +65,7 @@ const Probe: React.FC = () => {
 describe("WriteSessionProvider", () => {
   beforeEach(() => {
     storage.value = null;
-    currentPage = { type: "home", title: "ホーム" };
+    viewPage = { type: "home", title: "ホーム" };
     tabState.panes = [
       {
         id: "pane-a",

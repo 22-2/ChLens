@@ -10,62 +10,104 @@ export interface TabStoreState {
   closedTabs: Tab[];
 }
 
+// アクション種別を型定義・生成処理・reducerで共有し、文字列の表記ずれを防ぐ。
+export const TAB_ACTION_TYPES = {
+  ADD_TAB: "ADD_TAB",
+  OPEN_IN_NEW_TAB: "OPEN_IN_NEW_TAB",
+  OPEN_IN_NEW_TAB_FORCE: "OPEN_IN_NEW_TAB_FORCE",
+  CLOSE_TAB: "CLOSE_TAB",
+  CLOSE_OTHER_TABS: "CLOSE_OTHER_TABS",
+  CLOSE_RIGHT_TABS: "CLOSE_RIGHT_TABS",
+  CLOSE_ALL_TABS: "CLOSE_ALL_TABS",
+  REOPEN_CLOSED_TAB: "REOPEN_CLOSED_TAB",
+  TOGGLE_PIN: "TOGGLE_PIN",
+  MOVE_TAB: "MOVE_TAB",
+  SELECT_TAB: "SELECT_TAB",
+  NAVIGATE: "NAVIGATE",
+  NAVIGATE_TAB: "NAVIGATE_TAB",
+  GO_BACK: "GO_BACK",
+  GO_FORWARD: "GO_FORWARD",
+  GO_TO_HISTORY_INDEX: "GO_TO_HISTORY_INDEX",
+  UPDATE_TAB_VIEW_STATE: "UPDATE_TAB_VIEW_STATE",
+  UPDATE_TITLE: "UPDATE_TITLE",
+  UPDATE_TITLE_FOR_TAB: "UPDATE_TITLE_FOR_TAB",
+  RELOAD: "RELOAD",
+  FOLLOW_NEXT_THREAD: "FOLLOW_NEXT_THREAD",
+  SET_AUTO_REFRESH_ENABLED: "SET_AUTO_REFRESH_ENABLED",
+  SPLIT_PANE: "SPLIT_PANE",
+  OPEN_IN_RIGHT_PANE: "OPEN_IN_RIGHT_PANE",
+  CLOSE_PANE: "CLOSE_PANE",
+  SET_ACTIVE_PANE: "SET_ACTIVE_PANE",
+  MOVE_TAB_TO_PANE: "MOVE_TAB_TO_PANE",
+  RESTORE: "RESTORE",
+} as const;
+
 export type TabAction =
-  | { type: "ADD_TAB"; preserveActivePane?: boolean }
-  | { type: "OPEN_IN_NEW_TAB"; page: Page; background?: boolean }
-  | { type: "OPEN_IN_NEW_TAB_FORCE"; page: Page; focus?: boolean; tabId?: string }
+  | { type: typeof TAB_ACTION_TYPES.ADD_TAB; preserveActivePane?: boolean }
+  | { type: typeof TAB_ACTION_TYPES.OPEN_IN_NEW_TAB; page: Page; background?: boolean }
   | {
-      type: "CLOSE_TAB";
+      type: typeof TAB_ACTION_TYPES.OPEN_IN_NEW_TAB_FORCE;
+      page: Page;
+      focus?: boolean;
+      tabId?: string;
+    }
+  | {
+      type: typeof TAB_ACTION_TYPES.CLOSE_TAB;
       tabId: string;
       preserveActivePane?: boolean;
       // 別窓の最後のタブを閉じる時だけ、ペインを空にしない代替タブを作る。
       replaceLastTab?: boolean;
     }
-  | { type: "CLOSE_OTHER_TABS"; tabId: string }
-  | { type: "CLOSE_RIGHT_TABS"; tabId: string }
-  | { type: "CLOSE_ALL_TABS" }
-  | { type: "REOPEN_CLOSED_TAB" }
-  | { type: "TOGGLE_PIN"; tabId: string }
-  | { type: "MOVE_TAB"; dragTabId: string; toIndex: number }
-  | { type: "SELECT_TAB"; tabId: string; preserveActivePane?: boolean }
-  | { type: "NAVIGATE"; page: Page }
-  | { type: "NAVIGATE_TAB"; tabId: string; page: Page }
-  | { type: "GO_BACK" }
-  | { type: "GO_FORWARD" }
-  | { type: "GO_TO_HISTORY_INDEX"; index: number }
+  | { type: typeof TAB_ACTION_TYPES.CLOSE_OTHER_TABS; tabId: string }
+  | { type: typeof TAB_ACTION_TYPES.CLOSE_RIGHT_TABS; tabId: string }
+  | { type: typeof TAB_ACTION_TYPES.CLOSE_ALL_TABS }
+  | { type: typeof TAB_ACTION_TYPES.REOPEN_CLOSED_TAB }
+  | { type: typeof TAB_ACTION_TYPES.TOGGLE_PIN; tabId: string }
+  | { type: typeof TAB_ACTION_TYPES.MOVE_TAB; dragTabId: string; toIndex: number }
+  | { type: typeof TAB_ACTION_TYPES.SELECT_TAB; tabId: string; preserveActivePane?: boolean }
+  | { type: typeof TAB_ACTION_TYPES.NAVIGATE; page: Page }
+  | { type: typeof TAB_ACTION_TYPES.NAVIGATE_TAB; tabId: string; page: Page }
+  | { type: typeof TAB_ACTION_TYPES.GO_BACK }
+  | { type: typeof TAB_ACTION_TYPES.GO_FORWARD }
+  | { type: typeof TAB_ACTION_TYPES.GO_TO_HISTORY_INDEX; index: number }
   | {
-      type: "UPDATE_TAB_VIEW_STATE";
+      type: typeof TAB_ACTION_TYPES.UPDATE_TAB_VIEW_STATE;
       tabId: string;
       pageKey: string;
       patch: Partial<TabViewState>;
     }
-  | { type: "UPDATE_TITLE"; title: string }
-  | { type: "UPDATE_TITLE_FOR_TAB"; tabId: string; title: string; boardUrl?: string }
-  | { type: "RELOAD" }
+  | { type: typeof TAB_ACTION_TYPES.UPDATE_TITLE; title: string }
   | {
-      type: "FOLLOW_NEXT_THREAD";
+      type: typeof TAB_ACTION_TYPES.UPDATE_TITLE_FOR_TAB;
+      tabId: string;
+      title: string;
+      boardUrl?: string;
+    }
+  | { type: typeof TAB_ACTION_TYPES.RELOAD }
+  | {
+      type: typeof TAB_ACTION_TYPES.FOLLOW_NEXT_THREAD;
       page: Extract<Page, { type: "thread" }>;
       keepAutoRefresh?: boolean;
     }
   | {
-      type: "SET_AUTO_REFRESH_ENABLED";
+      type: typeof TAB_ACTION_TYPES.SET_AUTO_REFRESH_ENABLED;
       enabled: boolean;
       pageKey?: string;
     }
   // --- ペイン操作（横分割） ---
   // いずれも対象ペインは注入された paneId（操作元ペイン）を基準にする。
-  | { type: "SPLIT_PANE" }
-  | { type: "OPEN_IN_RIGHT_PANE"; tabId: string }
-  | { type: "CLOSE_PANE" }
-  | { type: "SET_ACTIVE_PANE" }
+  | { type: typeof TAB_ACTION_TYPES.SPLIT_PANE }
+  | { type: typeof TAB_ACTION_TYPES.OPEN_IN_RIGHT_PANE; tabId: string }
+  | { type: typeof TAB_ACTION_TYPES.CLOSE_PANE }
+  | { type: typeof TAB_ACTION_TYPES.SET_ACTIVE_PANE }
   | {
-      type: "MOVE_TAB_TO_PANE";
+      type: typeof TAB_ACTION_TYPES.MOVE_TAB_TO_PANE;
       tabId: string;
       fromPaneId: string;
       toPaneId: string;
       toIndex: number;
     }
-  | { type: "RESTORE"; state: TabStoreState };
+  | { type: typeof TAB_ACTION_TYPES.RESTORE; state: TabStoreState };
 
 // ペインスコープ: 全アクションに「対象ペイン」を付与できる。
 // 省略時はアクティブペインに作用する（グローバルハンドラ用）。
@@ -77,8 +119,6 @@ export interface PaneScopedState {
   tabs: Tab[];
   // ペイン自身が選択しているタブ。別窓の表示対象とは独立している。
   selectedTabId: string;
-  /** @deprecated 新しいコードではselectedTabIdを使う。 */
-  activeTabId: string;
   closedTabs: Tab[];
 }
 
@@ -94,9 +134,5 @@ export interface PaneScopedTabStore {
   viewTab: Tab;
   viewTabId: string;
   viewPage: Page;
-  /** @deprecated 新しいコードではviewTabを使う。 */
-  activeTab: Tab;
-  /** @deprecated 新しいコードではviewPageを使う。 */
-  currentPage: Page;
   paneId: string;
 }

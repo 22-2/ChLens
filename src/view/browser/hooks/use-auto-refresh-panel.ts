@@ -100,16 +100,16 @@ export interface UseAutoRefreshPanelResult {
 }
 
 export function useAutoRefreshPanel(): UseAutoRefreshPanelResult {
-  const { currentPage, activeTab, dispatch } = useTabStore();
+  const { viewPage, viewTab, dispatch } = useTabStore();
   const scopeUrl = useMemo(() => {
-    if (currentPage.type === "thread") {
-      return currentPage.threadUrl;
+    if (viewPage.type === "thread") {
+      return viewPage.threadUrl;
     }
-    if (currentPage.type === "threadList") {
-      return currentPage.boardUrl;
+    if (viewPage.type === "threadList") {
+      return viewPage.boardUrl;
     }
     return undefined;
-  }, [currentPage]);
+  }, [viewPage]);
   const readThreadIntervalSec = useCallback(
     () => readThreadAutoRefreshIntervalSec(scopeUrl),
     [scopeUrl],
@@ -123,14 +123,14 @@ export function useAutoRefreshPanel(): UseAutoRefreshPanelResult {
     readIntervalSec: readThreadIntervalSec,
     minSec: MIN_INTERVAL_SEC,
     maxSec: MAX_INTERVAL_SEC,
-    scopeUrl: currentPage.type === "thread" ? scopeUrl : undefined,
+    scopeUrl: viewPage.type === "thread" ? scopeUrl : undefined,
   });
   const boardInterval = useConfigIntervalSec({
     configKey: BOARD_AUTO_REFRESH_CONFIG_KEY,
     readIntervalSec: readBoardIntervalSec,
     minSec: MIN_BOARD_INTERVAL_SEC,
     maxSec: MAX_BOARD_INTERVAL_SEC,
-    scopeUrl: currentPage.type === "threadList" ? scopeUrl : undefined,
+    scopeUrl: viewPage.type === "threadList" ? scopeUrl : undefined,
   });
 
   const [idleStopTimeoutValue, setIdleStopTimeoutValueState] = useState(readIdleStopTimeoutValue);
@@ -150,14 +150,10 @@ export function useAutoRefreshPanel(): UseAutoRefreshPanelResult {
   const idleStopTimeoutOption = findIdleStopTimeoutOption(idleStopTimeoutValue);
 
   const panelKind: AutoRefreshPanelKind =
-    currentPage.type === "thread"
-      ? "thread"
-      : currentPage.type === "threadList"
-        ? "threadList"
-        : null;
-  const currentPageKey = getAutoRefreshPageKey(currentPage);
+    viewPage.type === "thread" ? "thread" : viewPage.type === "threadList" ? "threadList" : null;
+  const currentPageKey = getAutoRefreshPageKey(viewPage);
   const isOnThread = panelKind === "thread";
-  const isEnabled = currentPageKey != null && isAutoRefreshEnabledForPage(activeTab, currentPage);
+  const isEnabled = currentPageKey != null && isAutoRefreshEnabledForPage(viewTab, viewPage);
   const intervalSec =
     panelKind === "thread" ? threadInterval.intervalSec : boardInterval.intervalSec;
   const setIntervalSec =

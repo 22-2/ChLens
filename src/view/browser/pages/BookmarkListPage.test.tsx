@@ -34,10 +34,10 @@ describe("BookmarkListPage", () => {
       dispatch: vi.fn(),
       state: {
         tabs: [],
-        activeTabId: "tab-1",
+        selectedTabId: "tab-1",
         closedTabs: [],
       },
-      currentPage: {
+      viewPage: {
         type: "bookmarkList",
         title: "ブックマークリスト",
       },

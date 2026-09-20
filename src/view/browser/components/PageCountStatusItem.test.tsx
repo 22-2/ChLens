@@ -28,8 +28,8 @@ const { activePageRef } = vi.hoisted(() => ({
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => ({
-    activeTab: { id: "tab-1" },
-    currentPage: activePageRef.current,
+    viewTab: { id: "tab-1" },
+    viewPage: activePageRef.current,
   }),
 }));
 

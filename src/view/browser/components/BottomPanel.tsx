@@ -14,13 +14,13 @@ import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { isHTMLElementInWindow } from "src/view/browser/utils/dom";
 
 export const BottomPanel: React.FC = () => {
-  const { activeTab, currentPage } = useTabStore();
+  const { viewTab, viewPage } = useTabStore();
   const { isDetachedTab } = useDetachedTabController();
   // 変更理由: 下部パネルを別窓へ移しても、リサイズ操作と開閉直後の追従を
   // 元のWindowへ登録しないよう、表示先のイベント境界を揃える。
   const { window: viewWindow, document: viewDocument } = useViewSurface();
   const { canAutoScroll } = useAutoScrollState();
-  const { isOpen, height, activeTabId, tabs, closePanel, setHeight, setActiveTab } =
+  const { isOpen, height, activePanelTabId, tabs, closePanel, setHeight, setActivePanelTab } =
     useBottomPanel();
 
   const rootRef = useRef<HTMLDivElement>(null);
@@ -32,10 +32,10 @@ export const BottomPanel: React.FC = () => {
   useEffect(() => {
     // スレ一覧・書き込みのどちらも現在スレを操作対象にするため、別ページへ移動したら
     // 下部パネルを閉じて、板・スレの文脈がない状態で誤操作できないようにする。
-    if (isOpen && (currentPage.type !== "thread" || isDetachedTab(activeTab.id))) {
+    if (isOpen && (viewPage.type !== "thread" || isDetachedTab(viewTab.id))) {
       closePanel();
     }
-  }, [activeTab.id, closePanel, currentPage.type, isDetachedTab, isOpen]);
+  }, [closePanel, isDetachedTab, isOpen, viewPage.type, viewTab.id]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -48,7 +48,11 @@ export const BottomPanel: React.FC = () => {
     wasOpenRef.current = isOpen;
 
     const justOpened = !wasOpen && isOpen;
-    if (!justOpened || currentPage.type !== "thread" || activeTabId !== BOTTOM_PANEL_WRITE_TAB_ID) {
+    if (
+      !justOpened ||
+      viewPage.type !== "thread" ||
+      activePanelTabId !== BOTTOM_PANEL_WRITE_TAB_ID
+    ) {
       return;
     }
 
@@ -76,7 +80,7 @@ export const BottomPanel: React.FC = () => {
     return () => {
       viewWindow.cancelAnimationFrame(rafId);
     };
-  }, [activeTabId, canAutoScroll, currentPage.type, isOpen, viewDocument, viewWindow]);
+  }, [activePanelTabId, canAutoScroll, isOpen, viewDocument, viewPage.type, viewWindow]);
 
   const handleResizeMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -103,7 +107,7 @@ export const BottomPanel: React.FC = () => {
     [height, setHeight, viewWindow],
   );
 
-  if (!isOpen || currentPage.type !== "thread") return null;
+  if (!isOpen || viewPage.type !== "thread") return null;
 
   return (
     <div ref={rootRef} className="bottom-panel" style={{ height }}>
@@ -121,11 +125,11 @@ export const BottomPanel: React.FC = () => {
             <button
               key={tab.id}
               role="tab"
-              aria-selected={activeTabId === tab.id}
+              aria-selected={activePanelTabId === tab.id}
               className={`bottom-panel__tab${
-                activeTabId === tab.id ? " bottom-panel__tab--active" : ""
+                activePanelTabId === tab.id ? " bottom-panel__tab--active" : ""
               }`}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => setActivePanelTab(tab.id)}
             >
               {tab.label}
             </button>
@@ -140,10 +144,10 @@ export const BottomPanel: React.FC = () => {
 
       {/* タブコンテンツ */}
       <div className="bottom-panel__body" role="tabpanel">
-        {activeTabId === BOTTOM_PANEL_THREAD_LIST_TAB_ID && (
-          <ThreadListPanel threadUrl={currentPage.threadUrl} />
+        {activePanelTabId === BOTTOM_PANEL_THREAD_LIST_TAB_ID && (
+          <ThreadListPanel threadUrl={viewPage.threadUrl} />
         )}
-        {activeTabId === BOTTOM_PANEL_WRITE_TAB_ID && <WritePanelContent />}
+        {activePanelTabId === BOTTOM_PANEL_WRITE_TAB_ID && <WritePanelContent />}
       </div>
     </div>
   );

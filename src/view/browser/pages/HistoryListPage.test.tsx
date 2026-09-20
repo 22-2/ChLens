@@ -141,10 +141,10 @@ describe("HistoryListPage", () => {
       dispatch: vi.fn(),
       state: {
         tabs: [],
-        activeTabId: "tab-1",
+        selectedTabId: "tab-1",
         closedTabs: [],
       },
-      currentPage: {
+      viewPage: {
         type: "historyList",
         title: "閲覧履歴",
       },

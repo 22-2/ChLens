@@ -67,7 +67,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
   onClose,
   portalContainer,
 }) => {
-  const { currentPage } = useTabStore();
+  const { viewPage } = useTabStore();
   // 変更理由: 設定DialogのPortal先も書き込み窓と同じDocumentへ置き、別窓で
   // メイン窓のテーマ境界へ戻らないようにする。
   const { document: viewDocument } = useViewSurface();
@@ -77,7 +77,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
   const closePanel = standalone ? (onClose ?? noop) : (bottomPanel?.closePanel ?? onClose ?? noop);
   const { selectedThreadUrl, targets, selectThread, getDraft, setDraft, openWriteWindow } =
     useWriteSession();
-  const fallbackThreadUrl = currentPage.type === "thread" ? currentPage.threadUrl : "";
+  const fallbackThreadUrl = viewPage.type === "thread" ? viewPage.threadUrl : "";
   const threadUrl = selectedThreadUrl ?? fallbackThreadUrl;
   const draft = getDraft(threadUrl);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);

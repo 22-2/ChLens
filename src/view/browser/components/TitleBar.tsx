@@ -19,16 +19,16 @@ export interface TitleBarProps {
 }
 
 export const TitleBar: React.FC<TitleBarProps> = ({ showNavigationButtons = true }) => {
-  const { activeTab, currentPage, dispatch, paneId } = useTabStore();
-  const title = currentPage.title || "read.crx 2";
+  const { viewTab, viewPage, dispatch, paneId } = useTabStore();
+  const title = viewPage.title || "read.crx 2";
   const tabBarOrientation = useTabBarOrientation();
   const { backEnabled, forwardEnabled, refreshEnabled } = useTitleBarButtonSettings();
   // 変更理由: 垂直モードでは更新ボタンをタイトルバー左端に置き、タブバーの上部を空ける。
   // 水平モードではタブバー側に更新があるため左端は空のまま中央配置を保つ。
   const showLeadingRefresh = tabBarOrientation === "vertical";
-  const canNavigateBack = canGoBack(activeTab);
-  const canNavigateForward = canGoForward(activeTab);
-  const canRefresh = isPageRefreshable(currentPage);
+  const canNavigateBack = canGoBack(viewTab);
+  const canNavigateForward = canGoForward(viewTab);
+  const canRefresh = isPageRefreshable(viewPage);
   const [menuPosition, setMenuPosition] = useState<TitleBarMenuPosition | null>(null);
 
   const handleTitleContextMenu = useCallback((e: React.MouseEvent) => {
@@ -88,7 +88,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ showNavigationButtons = true
       <div
         className="title-bar__title"
         data-testid="title-bar-title"
-        data-page-type={currentPage.type}
+        data-page-type={viewPage.type}
         title={title}
         onContextMenu={handleTitleContextMenu}
       >
@@ -109,9 +109,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ showNavigationButtons = true
         {/* 変更理由: ペイン分割はコマンドパレットから操作するため、タイトルバーの
             専用ボタンは置かない。長いタイトルで右端が圧迫される問題も避ける。 */}
       </div>
-      {menuPosition && (
-        <TabContextMenu tab={activeTab} position={menuPosition} onClose={closeMenu} />
-      )}
+      {menuPosition && <TabContextMenu tab={viewTab} position={menuPosition} onClose={closeMenu} />}
     </header>
   );
 };

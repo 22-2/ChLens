@@ -31,7 +31,7 @@ const MIN_HEIGHT = 80;
 const MAX_HEIGHT = 600;
 // 既存の保存状態にタブ情報がない場合は、従来の書き込みパネルを既定にして
 // アップデート後も起動時の表示を変えない。
-const DEFAULT_ACTIVE_TAB_ID = BOTTOM_PANEL_WRITE_TAB_ID;
+const DEFAULT_ACTIVE_PANEL_TAB_ID = BOTTOM_PANEL_WRITE_TAB_ID;
 const DEFAULT_THREAD_LIST_AUTO_REFRESH_INTERVAL_SEC: ThreadListAutoRefreshIntervalSec = 30;
 
 // 追加するタブはここに加えるだけでパネルに反映される
@@ -43,6 +43,7 @@ export const BOTTOM_PANEL_TABS: PanelTab[] = [
 interface SavedState {
   isOpen?: boolean;
   height?: number;
+  // 保存済み設定のキーは既存データとの互換性のため変更しない。
   activeTabId?: string;
   threadListAutoRefreshEnabled?: boolean;
   threadListAutoRefreshIntervalSec?: number;
@@ -70,7 +71,7 @@ function persist(patch: SavedState): void {
 interface BottomPanelContextValue {
   isOpen: boolean;
   height: number;
-  activeTabId: string;
+  activePanelTabId: string;
   threadListAutoRefreshEnabled: boolean;
   threadListAutoRefreshIntervalSec: ThreadListAutoRefreshIntervalSec;
   tabs: PanelTab[];
@@ -80,7 +81,7 @@ interface BottomPanelContextValue {
   closePanel: () => void;
   togglePanel: (tabId?: string) => void;
   setHeight: (h: number) => void;
-  setActiveTab: (id: string) => void;
+  setActivePanelTab: (id: string) => void;
   setThreadListAutoRefreshEnabled: (enabled: boolean) => void;
   setThreadListAutoRefreshIntervalSec: (seconds: number) => void;
   clearWritePanelInsertRequest: (requestId: number) => void;
@@ -95,10 +96,10 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [height, setHeightState] = useState(() =>
     Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, saved.height ?? DEFAULT_HEIGHT)),
   );
-  const [activeTabId, setActiveTabIdState] = useState(() =>
+  const [activePanelTabId, setActivePanelTabIdState] = useState(() =>
     BOTTOM_PANEL_TABS.some((tab) => tab.id === saved.activeTabId)
-      ? (saved.activeTabId ?? DEFAULT_ACTIVE_TAB_ID)
-      : DEFAULT_ACTIVE_TAB_ID,
+      ? (saved.activeTabId ?? DEFAULT_ACTIVE_PANEL_TAB_ID)
+      : DEFAULT_ACTIVE_PANEL_TAB_ID,
   );
   const [threadListAutoRefreshEnabled, setThreadListAutoRefreshEnabledState] = useState(
     saved.threadListAutoRefreshEnabled ?? false,
@@ -120,11 +121,11 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ childre
     persist({ height: clamped });
   }, []);
 
-  const setActiveTab = useCallback((id: string) => {
+  const setActivePanelTab = useCallback((id: string) => {
     if (!BOTTOM_PANEL_TABS.some((tab) => tab.id === id)) {
       return;
     }
-    setActiveTabIdState(id);
+    setActivePanelTabIdState(id);
     persist({ activeTabId: id });
   }, []);
 
@@ -132,7 +133,7 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ childre
     setIsOpen(true);
     persist({ isOpen: true });
     if (tabId && BOTTOM_PANEL_TABS.some((tab) => tab.id === tabId)) {
-      setActiveTabIdState(tabId);
+      setActivePanelTabIdState(tabId);
       persist({ activeTabId: tabId });
     }
   }, []);
@@ -166,8 +167,8 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ childre
 
         // 別タブのボタンはパネルを閉じずに内容だけ切り替え、同じボタンだけを開閉に使う。
         // 書き込みとスレ一覧をどちらも1クリックで開けるようにするための挙動。
-        if (activeTabId !== tabId) {
-          setActiveTabIdState(tabId);
+        if (activePanelTabId !== tabId) {
+          setActivePanelTabIdState(tabId);
           persist({ activeTabId: tabId, isOpen: true });
           setIsOpen(true);
           return;
@@ -180,7 +181,7 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ childre
         return next;
       });
     },
-    [activeTabId],
+    [activePanelTabId],
   );
 
   const setThreadListAutoRefreshEnabled = useCallback((enabled: boolean) => {
@@ -214,7 +215,7 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ childre
       value={{
         isOpen,
         height,
-        activeTabId,
+        activePanelTabId,
         threadListAutoRefreshEnabled,
         threadListAutoRefreshIntervalSec,
         tabs: BOTTOM_PANEL_TABS,
@@ -224,7 +225,7 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ childre
         closePanel,
         togglePanel,
         setHeight,
-        setActiveTab,
+        setActivePanelTab,
         setThreadListAutoRefreshEnabled,
         setThreadListAutoRefreshIntervalSec,
         clearWritePanelInsertRequest,

@@ -28,7 +28,7 @@ vi.mock("src/view/browser/commands/command-palette-history", () => ({
   saveRecentCommandIds: saveRecentCommandIdsMock,
 }));
 
-const { activeTab, defaultHistory, dispatchMock, longTitle } = vi.hoisted(() => {
+const { viewTab, defaultHistory, dispatchMock, longTitle } = vi.hoisted(() => {
   const longTitle = "かなり長い履歴タイトル".repeat(12);
   const defaultHistory = [
     {
@@ -43,7 +43,7 @@ const { activeTab, defaultHistory, dispatchMock, longTitle } = vi.hoisted(() => 
       threadUrl: "https://egg.5ch.net/test/read.cgi/software/1/",
     },
   ];
-  const activeTab = {
+  const viewTab = {
     id: "tab-1",
     history: [...defaultHistory] as Page[],
     currentIndex: 1,
@@ -54,7 +54,7 @@ const { activeTab, defaultHistory, dispatchMock, longTitle } = vi.hoisted(() => 
   };
 
   return {
-    activeTab,
+    viewTab,
     defaultHistory,
     dispatchMock: vi.fn(),
     longTitle,
@@ -88,9 +88,9 @@ const { orientationHolder } = vi.hoisted(() => ({
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => ({
-    state: { tabs: [activeTab], closedTabs: [] },
-    activeTab,
-    currentPage: activeTab.history[activeTab.currentIndex],
+    state: { tabs: [viewTab], closedTabs: [] },
+    viewTab,
+    viewPage: viewTab.history[viewTab.currentIndex],
     dispatch: dispatchMock,
     paneId: "pane-1",
   }),
@@ -191,8 +191,8 @@ describe("NavigationBar", () => {
       app?: unknown;
     };
     delete mutableWindow.app;
-    activeTab.history = [...defaultHistory];
-    activeTab.currentIndex = 1;
+    viewTab.history = [...defaultHistory];
+    viewTab.currentIndex = 1;
   });
 
   it("URLバー候補は『タイトル URL』の並びで表示し、お気に入りを優先する", async () => {
@@ -560,8 +560,8 @@ describe("NavigationBar", () => {
   });
 
   it("既存の設定タブを選択するときもメニューを閉じる", () => {
-    activeTab.history = [{ type: "settings", title: "設定" }];
-    activeTab.currentIndex = 0;
+    viewTab.history = [{ type: "settings", title: "設定" }];
+    viewTab.currentIndex = 0;
 
     render(<NavigationBar />);
 
@@ -664,13 +664,13 @@ describe("NavigationBar", () => {
 
   it("閲覧履歴ではメニュー項目の『フィルターを開く』で履歴用トグルイベントを送る", () => {
     const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
-    activeTab.history = [
+    viewTab.history = [
       {
         type: "historyList" as const,
         title: "閲覧履歴",
       },
     ];
-    activeTab.currentIndex = 0;
+    viewTab.currentIndex = 0;
 
     render(<NavigationBar />);
 
@@ -688,13 +688,13 @@ describe("NavigationBar", () => {
 
   it("板一覧ではメニュー項目の『フィルターを開く』で板一覧用トグルイベントを送る", () => {
     const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
-    activeTab.history = [
+    viewTab.history = [
       {
         type: "boardList" as const,
         title: "板一覧",
       },
     ];
-    activeTab.currentIndex = 0;
+    viewTab.currentIndex = 0;
 
     render(<NavigationBar />);
 
@@ -712,13 +712,13 @@ describe("NavigationBar", () => {
 
   it("ブックマークリストではメニュー項目の『フィルターを開く』でブックマーク用トグルイベントを送る", () => {
     const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
-    activeTab.history = [
+    viewTab.history = [
       {
         type: "bookmarkList" as const,
         title: "ブックマークリスト",
       },
     ];
-    activeTab.currentIndex = 0;
+    viewTab.currentIndex = 0;
 
     render(<NavigationBar />);
 
@@ -780,7 +780,7 @@ describe("NavigationBar", () => {
   });
 
   it("板一覧ページでもメニュー上部のお気に入りから板をブックマークできる", async () => {
-    activeTab.history = [
+    viewTab.history = [
       {
         type: "threadList",
         title: "Software",
@@ -788,7 +788,7 @@ describe("NavigationBar", () => {
         boardTitle: "Software",
       },
     ];
-    activeTab.currentIndex = 0;
+    viewTab.currentIndex = 0;
 
     render(<NavigationBar />);
 

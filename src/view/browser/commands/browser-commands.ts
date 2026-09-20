@@ -87,8 +87,9 @@ export const BROWSER_COMMAND_GROUP_ORDER: readonly BrowserCommandGroup[] = [
 ];
 
 export interface BrowserCommandContext {
-  currentPage: Page;
-  activeTab: Tab;
+  // コマンドはフォーカス中のペインではなく、実際に表示している窓の対象を操作する。
+  viewPage: Page;
+  viewTab: Tab;
   tabs: readonly Tab[];
   closedTabs: readonly Tab[];
   isTwoPane: boolean;
@@ -341,26 +342,26 @@ async function openSikiLogFile(context: BrowserCommandContext): Promise<void> {
 function toggleFilter(context: BrowserCommandContext): void {
   const { window: viewWindow } = getCommandSurface(context);
   const viewWindowWithConstructors = viewWindow as Window & typeof globalThis;
-  if (context.currentPage.type === "thread") {
+  if (context.viewPage.type === "thread") {
     viewWindow.dispatchEvent(
       new viewWindowWithConstructors.CustomEvent("thread-filter-toolbar-toggle"),
     );
     return;
   }
 
-  const pageType = context.currentPage.type as QuickAccessFilterPageType;
+  const pageType = context.viewPage.type as QuickAccessFilterPageType;
   const eventName = QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE[pageType];
   if (!eventName) return;
 
   viewWindow.dispatchEvent(
     new viewWindowWithConstructors.CustomEvent(eventName, {
-      detail: { tabId: context.activeTab.id },
+      detail: { tabId: context.viewTab.id },
     }),
   );
 }
 
 function toggleBookmark(context: BrowserCommandContext): void {
-  const target = getCommandPageTarget(context.currentPage);
+  const target = getCommandPageTarget(context.viewPage);
   if (!target) return;
 
   const isBookmarked = Boolean(container.bookmark.get(target.url));
@@ -388,7 +389,7 @@ async function copyWithNotice(
 }
 
 async function retryBoardTitle(context: BrowserCommandContext): Promise<void> {
-  const page = context.currentPage;
+  const page = context.viewPage;
   if (page.type !== "threadList") return;
 
   // 板名解決系は旧コアと拡張機能APIへ依存するため、コマンド実行時だけ読み込む。
@@ -400,7 +401,7 @@ async function retryBoardTitle(context: BrowserCommandContext): Promise<void> {
 
   // 変更理由: 通信完了までに別ページへ移動しても、板URLを手掛かりに
   // 対象タブの履歴中にある板一覧へ取得結果を反映できるようにする。
-  context.dispatch(tabActions.updateTitleForTab(context.activeTab.id, title, page.boardUrl));
+  context.dispatch(tabActions.updateTitleForTab(context.viewTab.id, title, page.boardUrl));
   getCommandToast(context).success(`板名を「${title}」に更新しました`);
 }
 
@@ -532,8 +533,8 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     icon: X,
     // 変更理由: タブの右クリックメニューと同じ操作をコマンドパレットからも行えるようにし、
     // 対象は右クリック位置ではなくアクティブなタブにする。
-    isEnabled: ({ tabs, activeTab }) => tabs.some((tab) => tab.id !== activeTab.id && !tab.pinned),
-    run: ({ dispatch, activeTab }) => dispatch(tabActions.closeOtherTabs(activeTab.id)),
+    isEnabled: ({ tabs, viewTab }) => tabs.some((tab) => tab.id !== viewTab.id && !tab.pinned),
+    run: ({ dispatch, viewTab }) => dispatch(tabActions.closeOtherTabs(viewTab.id)),
   },
   {
     id: "tab.close-right-tabs",
@@ -543,11 +544,11 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     keywords: ["右側", "close right"],
     group: "tab",
     icon: X,
-    isEnabled: ({ tabs, activeTab }) => {
-      const index = tabs.findIndex((tab) => tab.id === activeTab.id);
+    isEnabled: ({ tabs, viewTab }) => {
+      const index = tabs.findIndex((tab) => tab.id === viewTab.id);
       return index !== -1 && tabs.slice(index + 1).some((tab) => !tab.pinned);
     },
-    run: ({ dispatch, activeTab }) => dispatch(tabActions.closeRightTabs(activeTab.id)),
+    run: ({ dispatch, viewTab }) => dispatch(tabActions.closeRightTabs(viewTab.id)),
   },
   {
     id: "tab.close-all-tabs",
@@ -567,7 +568,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     keywords: ["ペイン", "右", "right pane"],
     group: "tab",
     icon: PanelRight,
-    run: ({ dispatch, activeTab }) => dispatch(tabActions.openInRightPane(activeTab.id)),
+    run: ({ dispatch, viewTab }) => dispatch(tabActions.openInRightPane(viewTab.id)),
   },
   {
     id: "page.reload",
@@ -576,7 +577,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     keywords: ["再読み込み", "reload", "refresh"],
     group: "page",
     icon: RotateCw,
-    when: ({ currentPage }) => RELOADABLE_PAGE_TYPES.has(currentPage.type),
+    when: ({ viewPage }) => RELOADABLE_PAGE_TYPES.has(viewPage.type),
     run: ({ dispatch }) => dispatch(tabActions.reload()),
   },
   {
@@ -587,7 +588,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     keywords: ["板タイトル", "板名更新", "再試行", "retry", "board title"],
     group: "page",
     icon: RotateCw,
-    when: ({ currentPage }) => currentPage.type === "threadList",
+    when: ({ viewPage }) => viewPage.type === "threadList",
     run: retryBoardTitle,
   },
   {
@@ -598,7 +599,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     keywords: ["レス移動", "番号", "jump", "response"],
     group: "page",
     icon: Hash,
-    when: ({ currentPage }) => currentPage.type === "thread",
+    when: ({ viewPage }) => viewPage.type === "thread",
     run: ({ openResponseJumpDialog }) => openResponseJumpDialog(),
   },
   {
@@ -609,7 +610,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     keywords: ["次スレ", "候補", "thread", "next", "search"],
     group: "page",
     icon: Search,
-    when: ({ currentPage }) => currentPage.type === "thread",
+    when: ({ viewPage }) => viewPage.type === "thread",
     run: ({ openNextThreadSearchDialog }) => openNextThreadSearchDialog(),
   },
   {
@@ -619,7 +620,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     keywords: ["検索", "絞り込み", "filter"],
     group: "page",
     icon: Filter,
-    when: ({ currentPage }) => FILTERABLE_PAGE_TYPES.has(currentPage.type),
+    when: ({ viewPage }) => FILTERABLE_PAGE_TYPES.has(viewPage.type),
     run: toggleFilter,
   },
   {
@@ -631,7 +632,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     keywords: ["投稿", "write", "レス"],
     group: "page",
     icon: PenLine,
-    when: ({ currentPage }) => currentPage.type === "thread",
+    when: ({ viewPage }) => viewPage.type === "thread",
     run: ({ toggleWritePanel }) => toggleWritePanel(),
   },
   {
@@ -641,7 +642,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     keywords: ["お気に入り", "star", "bookmark"],
     group: "page",
     icon: Star,
-    when: ({ currentPage }) => getCommandPageTarget(currentPage) != null,
+    when: ({ viewPage }) => getCommandPageTarget(viewPage) != null,
     run: toggleBookmark,
   },
   {
@@ -651,9 +652,9 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     keywords: ["板に移動", "board", "掲示板"],
     group: "page",
     icon: List,
-    when: ({ currentPage }) => getBoardPageFromThread(currentPage) != null,
-    run: ({ currentPage, dispatch }) => {
-      const boardPage = getBoardPageFromThread(currentPage);
+    when: ({ viewPage }) => getBoardPageFromThread(viewPage) != null,
+    run: ({ viewPage, dispatch }) => {
+      const boardPage = getBoardPageFromThread(viewPage);
       if (!boardPage) return;
       dispatch(tabActions.openInNewTab(boardPage));
     },
@@ -665,9 +666,9 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     keywords: ["browser", "web", "外部"],
     group: "page",
     icon: ExternalLink,
-    when: ({ currentPage }) => getCommandPageTarget(currentPage) != null,
+    when: ({ viewPage }) => getCommandPageTarget(viewPage) != null,
     run: (context) => {
-      const target = getCommandPageTarget(context.currentPage);
+      const target = getCommandPageTarget(context.viewPage);
       if (!target) return;
       getCommandSurface(context).window.open(target.url, "_blank", "noopener,noreferrer");
     },
@@ -729,9 +730,9 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     keywords: ["スレタイ", "板名", "title"],
     group: "copy",
     icon: Clipboard,
-    when: ({ currentPage }) => getCommandPageTarget(currentPage) != null,
+    when: ({ viewPage }) => getCommandPageTarget(viewPage) != null,
     run: async (context) => {
-      const target = getCommandPageTarget(context.currentPage);
+      const target = getCommandPageTarget(context.viewPage);
       if (!target) return;
       await copyWithNotice(context, target.title, "ページタイトル");
     },
@@ -743,9 +744,9 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     keywords: ["アドレス", "link", "URL"],
     group: "copy",
     icon: Clipboard,
-    when: ({ currentPage }) => getCommandPageTarget(currentPage) != null,
+    when: ({ viewPage }) => getCommandPageTarget(viewPage) != null,
     run: async (context) => {
-      const target = getCommandPageTarget(context.currentPage);
+      const target = getCommandPageTarget(context.viewPage);
       if (!target) return;
       await copyWithNotice(context, target.url, "ページURL");
     },
@@ -757,9 +758,9 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     keywords: ["スレタイ&URL", "title link"],
     group: "copy",
     icon: Clipboard,
-    when: ({ currentPage }) => getCommandPageTarget(currentPage) != null,
+    when: ({ viewPage }) => getCommandPageTarget(viewPage) != null,
     run: async (context) => {
-      const target = getCommandPageTarget(context.currentPage);
+      const target = getCommandPageTarget(context.viewPage);
       if (!target) return;
       await copyWithNotice(context, `${target.title}\n${target.url}`, "タイトルとURL");
     },
@@ -773,9 +774,9 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     group: "copy",
     icon: Clipboard,
     // 変更理由: 板一覧にはスレタイがないため、スレッドのタイトルと正規URLを組み合わせる操作に限定する。
-    when: ({ currentPage }) => currentPage.type === "thread",
+    when: ({ viewPage }) => viewPage.type === "thread",
     run: async (context) => {
-      const target = getCommandPageTarget(context.currentPage);
+      const target = getCommandPageTarget(context.viewPage);
       if (!target) return;
       // 変更理由: 改行形式の既存コマンドを残し、Markdownを必要とする貼り付け先だけ選べるようにする。
       await copyWithNotice(context, formatMarkdownLink(target.title, target.url), "Markdownリンク");
@@ -789,9 +790,9 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     keywords: ["subject", "raw", "板一覧", "生URL"],
     group: "copy",
     icon: Clipboard,
-    when: ({ currentPage }) => getSubjectUrlForCommand(currentPage) != null,
+    when: ({ viewPage }) => getSubjectUrlForCommand(viewPage) != null,
     run: async (context) => {
-      const subjectUrl = getSubjectUrlForCommand(context.currentPage);
+      const subjectUrl = getSubjectUrlForCommand(context.viewPage);
       if (!subjectUrl) return;
       await copyWithNotice(context, subjectUrl, "subject.txtのURL");
     },
@@ -804,9 +805,9 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     keywords: ["dat", "raw", "過去ログ", "生URL"],
     group: "copy",
     icon: Clipboard,
-    when: ({ currentPage }) => getDatUrlForCommand(currentPage) != null,
+    when: ({ viewPage }) => getDatUrlForCommand(viewPage) != null,
     run: async (context) => {
-      const datUrl = getDatUrlForCommand(context.currentPage);
+      const datUrl = getDatUrlForCommand(context.viewPage);
       if (!datUrl) return;
       await copyWithNotice(context, datUrl, "datのURL");
     },
@@ -819,19 +820,19 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     keywords: ["TOON", "AI", "LLM", "全レス", "スレッド全体"],
     group: "copy",
     icon: Clipboard,
-    when: ({ currentPage }) => currentPage.type === "thread",
+    when: ({ viewPage }) => viewPage.type === "thread",
     run: async (context) => {
-      const { currentPage } = context;
-      if (currentPage.type !== "thread") return;
+      const { viewPage } = context;
+      if (viewPage.type !== "thread") return;
 
-      const thread = await container.thread.getThread(currentPage.threadUrl);
+      const thread = await container.thread.getThread(viewPage.threadUrl);
       if (thread.res.length === 0) {
         throw new Error(thread.message || "コピーできるレスがありません");
       }
 
       const toon = encodeThreadAsToon({
-        title: thread.title || currentPage.title,
-        url: thread.url || currentPage.threadUrl,
+        title: thread.title || viewPage.title,
+        url: thread.url || viewPage.threadUrl,
         res: thread.res,
       });
       const tokenCount = estimateToonTokenCount(toon);
@@ -898,11 +899,11 @@ export async function executeBrowserCommand(
   if (!(definition.isEnabled?.(context) ?? true)) return false;
 
   if (responseJumpResNum !== null) {
-    if (context.currentPage.type !== "thread") return false;
+    if (context.viewPage.type !== "thread") return false;
 
     // 変更理由: 数字入力候補は追加ダイアログを開かず、既存の保留ジャンプ経路へ
     // 直接渡して、表示中・再表示後のどちらのスレッドでも同じ処理を利用する。
-    return requestThreadResJump(context.currentPage.threadUrl, responseJumpResNum) !== null;
+    return requestThreadResJump(context.viewPage.threadUrl, responseJumpResNum) !== null;
   }
 
   await definition.run(context);

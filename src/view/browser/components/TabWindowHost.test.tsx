@@ -27,11 +27,11 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
       throw new Error("テスト用のタブがありません");
     }
     return {
-      state: { tabs: [tab], activeTabId: tab.id, closedTabs: [] },
+      state: { tabs: [tab], selectedTabId: tab.id, closedTabs: [] },
       stateRef: { current: { panes: mocks.panes, activePaneId: "pane-1", closedTabs: [] } },
       dispatch: vi.fn(),
-      activeTab: tab,
-      currentPage: tab.history[tab.currentIndex],
+      viewTab: tab,
+      viewPage: tab.history[tab.currentIndex],
       paneId: "pane-1",
     };
   },

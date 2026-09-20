@@ -107,13 +107,13 @@ function createContext(
   context: BrowserCommandContext;
   dispatch: ReturnType<typeof vi.fn<(action: ScopedTabAction) => void>>;
 } {
-  const activeTab = createTab(page);
+  const viewTab = createTab(page);
   const dispatch = vi.fn<(action: ScopedTabAction) => void>();
   return {
     context: {
-      currentPage: page,
-      activeTab,
-      tabs: [activeTab],
+      viewPage: page,
+      viewTab,
+      tabs: [viewTab],
       closedTabs,
       isTwoPane: false,
       isWritePanelOpen: false,
@@ -739,13 +739,13 @@ describe("browser commands", () => {
 
   it("他のタブ・右側のタブを閉じるは閉じられるタブがある時だけ有効になる", async () => {
     const homePage: Page = { type: "home", title: "ホーム" };
-    const activeTab = createTab(homePage);
+    const viewTab = createTab(homePage);
     const otherTab: Tab = { ...createTab(homePage), id: "tab-2" };
     const dispatch = vi.fn<(action: ScopedTabAction) => void>();
     const context: BrowserCommandContext = {
-      currentPage: homePage,
-      activeTab,
-      tabs: [activeTab, otherTab],
+      viewPage: homePage,
+      viewTab,
+      tabs: [viewTab, otherTab],
       closedTabs: [],
       isTwoPane: false,
       isWritePanelOpen: false,
@@ -767,7 +767,7 @@ describe("browser commands", () => {
     await expect(executeBrowserCommand("tab.close-right-tabs", context)).resolves.toBe(true);
     expect(dispatch).toHaveBeenLastCalledWith({ type: "CLOSE_RIGHT_TABS", tabId: "tab-1" });
 
-    context.tabs = [activeTab];
+    context.tabs = [viewTab];
     expect(findCommand("tab.close-other-tabs")).toMatchObject({ enabled: false });
     expect(findCommand("tab.close-right-tabs")).toMatchObject({ enabled: false });
   });

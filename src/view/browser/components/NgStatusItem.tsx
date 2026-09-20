@@ -9,7 +9,7 @@ import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { createSettingsPage } from "src/view/browser/utils/tab-pages";
 
 export const NgStatusItem: React.FC = () => {
-  const { currentPage, dispatch } = useTabStore();
+  const { viewPage, dispatch } = useTabStore();
   const { isNgTemporarilyDisabled, toggleNgTemporarilyDisabled, threadListStats, threadStats } =
     useNgStatus();
   const [isWindowOpen, setIsWindowOpen] = useState(false);
@@ -17,11 +17,7 @@ export const NgStatusItem: React.FC = () => {
   const btnRef = useRef<HTMLButtonElement>(null);
 
   const panelKind =
-    currentPage.type === "thread"
-      ? "thread"
-      : currentPage.type === "threadList"
-        ? "threadList"
-        : null;
+    viewPage.type === "thread" ? "thread" : viewPage.type === "threadList" ? "threadList" : null;
 
   useEffect(() => {
     setIsWindowOpen(false);

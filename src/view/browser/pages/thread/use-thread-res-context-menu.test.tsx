@@ -40,7 +40,7 @@ vi.mock("src/features/archive-replay/platform", async (importOriginal) => {
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabDispatchForTab: () => mocks.dispatch,
   useTabStore: () => ({
-    activeTab: {
+    viewTab: {
       id: "tab-1",
       title: "tab",
       history: [],

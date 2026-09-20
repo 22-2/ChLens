@@ -20,7 +20,7 @@ function createThread(
   };
 }
 
-const currentPage: Page = {
+const viewPage: Page = {
   type: "thread",
   title: "番組実況 2026",
   threadUrl: "https://example.com/test/read.cgi/live/1700000220/",
@@ -57,7 +57,7 @@ describe("useNextThreadSearch", () => {
     const dispatch = vi.fn<(action: ScopedTabAction) => void>();
     const { result } = renderHook(() =>
       useNextThreadSearch({
-        currentPage,
+        viewPage,
         isActive: true,
         keepAutoRefresh: true,
         dispatch,
@@ -79,7 +79,7 @@ describe("useNextThreadSearch", () => {
     const dispatch = vi.fn<(action: ScopedTabAction) => void>();
     const { result } = renderHook(() =>
       useNextThreadSearch({
-        currentPage,
+        viewPage,
         isActive: true,
         keepAutoRefresh: true,
         dispatch,

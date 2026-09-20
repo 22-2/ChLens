@@ -9,16 +9,19 @@ const mocks = vi.hoisted(() => ({
   canAutoScroll: false,
   isAutoScrolling: false,
   detached: false,
-  currentPage: {
+  viewPage: {
     type: "thread",
     title: "スレッド",
     threadUrl: "https://example.com/test/read.cgi/software/1/",
   },
-  activeTab: { id: "tab-1" },
+  viewTab: { id: "tab-1" },
 }));
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
-  useTabStore: () => ({ currentPage: mocks.currentPage, activeTab: mocks.activeTab }),
+  useTabStore: () => ({
+    viewPage: mocks.viewPage,
+    viewTab: mocks.viewTab,
+  }),
 }));
 
 vi.mock("src/view/browser/hooks/use-detached-tab-controller", () => ({
@@ -31,7 +34,7 @@ vi.mock("src/view/browser/hooks/use-bottom-panel", () => ({
   useBottomPanel: () => ({
     isOpen: true,
     height: 200,
-    activeTabId: "write",
+    activePanelTabId: "write",
     tabs: [
       { id: "write", label: "書き込み" },
       { id: "thread-list", label: "スレ一覧" },
@@ -40,7 +43,7 @@ vi.mock("src/view/browser/hooks/use-bottom-panel", () => ({
     closePanel: mocks.closePanel,
     togglePanel: vi.fn(),
     setHeight: vi.fn(),
-    setActiveTab: vi.fn(),
+    setActivePanelTab: vi.fn(),
   }),
 }));
 
@@ -62,7 +65,7 @@ describe("BottomPanel", () => {
     mocks.canAutoScroll = false;
     mocks.isAutoScrolling = false;
     mocks.detached = false;
-    mocks.currentPage = {
+    mocks.viewPage = {
       type: "thread",
       title: "スレッド",
       threadUrl: "https://example.com/test/read.cgi/software/1/",
@@ -81,7 +84,7 @@ describe("BottomPanel", () => {
   });
 
   it("スレッド以外へ移動したらパネルを閉じて非表示にする", async () => {
-    mocks.currentPage = {
+    mocks.viewPage = {
       type: "home" as const,
       title: "ホーム",
       threadUrl: "",

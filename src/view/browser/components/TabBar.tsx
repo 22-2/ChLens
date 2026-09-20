@@ -245,7 +245,7 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
 }) => {
   const isVertical = orientation === "vertical";
   const { state, stateRef, dispatch, paneId } = useTabStore();
-  const selectedTabId = state.selectedTabId ?? state.activeTabId;
+  const selectedTabId = state.selectedTabId;
   const { isDetachedTab } = useDetachedTabController();
   // 切り離し中のタブはTabStoreに保持したまま、元窓の操作対象からだけ除外する。
   // 別窓を明示的に戻した時に同じタブを復元できるよう、ここで削除は行わない。

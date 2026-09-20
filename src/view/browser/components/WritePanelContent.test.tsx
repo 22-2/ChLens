@@ -41,7 +41,7 @@ vi.mock("src/app/platform", () => ({
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => ({
-    currentPage: {
+    viewPage: {
       type: "thread",
       title: "スレッド",
       threadUrl: "https://example.com/test/read.cgi/software/1/",

@@ -12,13 +12,13 @@ import {
 } from "src/view/browser/utils/popular-filter";
 
 export const PopularFilterStatusItem: React.FC = () => {
-  const { activeTab, currentPage } = useTabStore();
-  const { state: viewState, update: updateViewState } = useTabViewState(activeTab.id, currentPage);
+  const { viewTab, viewPage } = useTabStore();
+  const { state: viewState, update: updateViewState } = useTabViewState(viewTab.id, viewPage);
   const [isWindowOpen, setIsWindowOpen] = useState(false);
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
 
-  const isPopularFilterEnabled = currentPage.type === "thread" && viewState.filter === "popular";
+  const isPopularFilterEnabled = viewPage.type === "thread" && viewState.filter === "popular";
   const threshold = normalizePopularReplyThreshold(
     viewState.popularReplyThreshold ?? DEFAULT_POPULAR_REPLY_THRESHOLD,
   );

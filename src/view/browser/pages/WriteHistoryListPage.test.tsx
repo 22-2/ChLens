@@ -79,10 +79,10 @@ describe("WriteHistoryListPage", () => {
       dispatch: vi.fn(),
       state: {
         tabs: [],
-        activeTabId: "tab-1",
+        selectedTabId: "tab-1",
         closedTabs: [],
       },
-      currentPage: {
+      viewPage: {
         type: "writeHistoryList",
         title: "書き込み履歴",
       },
@@ -199,10 +199,10 @@ describe("WriteHistoryListPage", () => {
       dispatch,
       state: {
         tabs: [],
-        activeTabId: "tab-1",
+        selectedTabId: "tab-1",
         closedTabs: [],
       },
-      currentPage: {
+      viewPage: {
         type: "writeHistoryList",
         title: "書き込み履歴",
       },

@@ -8,12 +8,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 const { dispatchMock, mocks } = vi.hoisted(() => ({
   dispatchMock: vi.fn(),
   mocks: {
-    currentPage: {
+    viewPage: {
       type: "thread" as const,
       title: "Current Thread",
       threadUrl: "https://egg.5ch.net/test/read.cgi/software/1/",
     } as Page,
-    activeTab: {
+    viewTab: {
       id: "tab-1",
       history: [
         {
@@ -33,8 +33,8 @@ const { dispatchMock, mocks } = vi.hoisted(() => ({
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => ({
-    activeTab: mocks.activeTab,
-    currentPage: mocks.currentPage,
+    viewTab: mocks.viewTab,
+    viewPage: mocks.viewPage,
     dispatch: dispatchMock,
     paneId: "pane-1",
   }),
@@ -87,7 +87,7 @@ describe("TitleBar", () => {
   });
 
   beforeEach(() => {
-    mocks.currentPage = {
+    mocks.viewPage = {
       type: "thread",
       title: "Current Thread",
       threadUrl: "https://egg.5ch.net/test/read.cgi/software/1/",
@@ -98,14 +98,14 @@ describe("TitleBar", () => {
       forwardEnabled: true,
       refreshEnabled: true,
     };
-    mocks.activeTab.history = [
+    mocks.viewTab.history = [
       {
         type: "thread",
         title: "Current Thread",
         threadUrl: "https://egg.5ch.net/test/read.cgi/software/1/",
       },
     ];
-    mocks.activeTab.currentIndex = 0;
+    mocks.viewTab.currentIndex = 0;
     dispatchMock.mockReset();
   });
 
@@ -147,7 +147,7 @@ describe("TitleBar", () => {
 
   it("垂直モードでは更新ボタンの左側に戻る・進むを表示する", () => {
     orientationHolder.value = "vertical";
-    mocks.activeTab.history = [
+    mocks.viewTab.history = [
       {
         type: "home",
         title: "ホーム",
@@ -162,7 +162,7 @@ describe("TitleBar", () => {
         title: "設定",
       },
     ];
-    mocks.activeTab.currentIndex = 1;
+    mocks.viewTab.currentIndex = 1;
 
     render(<TitleBar />);
 
@@ -204,7 +204,7 @@ describe("TitleBar", () => {
   });
 
   it("長いタイトルは省略可能なタイトル属性を持つ", () => {
-    mocks.currentPage = {
+    mocks.viewPage = {
       type: "thread",
       title: "長いスレッドタイトル".repeat(20),
       threadUrl: "https://egg.5ch.net/test/read.cgi/software/1/",
@@ -213,7 +213,7 @@ describe("TitleBar", () => {
     render(<TitleBar />);
 
     const title = screen.getByTestId("title-bar-title");
-    expect(title).toHaveAttribute("title", mocks.currentPage.title);
+    expect(title).toHaveAttribute("title", mocks.viewPage.title);
     expect(title).toHaveClass("title-bar__title");
   });
 

@@ -242,7 +242,7 @@ const MomentumLineChart: React.FC<MomentumLineChartProps> = ({ data, loading }) 
 };
 
 export const IkioiStatusItem: React.FC = () => {
-  const { activeTab, currentPage } = useTabStore();
+  const { viewTab, viewPage } = useTabStore();
   const [ikioi, setIkioi] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [momentumData, setMomentumData] = useState<MomentumGraphData | null>(null);
@@ -250,8 +250,8 @@ export const IkioiStatusItem: React.FC = () => {
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
 
-  const threadUrl = currentPage.type === "thread" ? currentPage.threadUrl : null;
-  const reloadKey = activeTab.reloadKey;
+  const threadUrl = viewPage.type === "thread" ? viewPage.threadUrl : null;
+  const reloadKey = viewTab.reloadKey;
 
   const closeWindow = useCallback(() => setIsWindowOpen(false), []);
 

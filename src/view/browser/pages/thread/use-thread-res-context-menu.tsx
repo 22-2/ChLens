@@ -92,11 +92,11 @@ export function useThreadResContextMenu({
   // 対象レスがまだ存在せずスクロールに失敗するため hook 内で保留する。
   const pendingJumpNumRef = useRef<number | null>(null);
   const { dispatch, surface: viewSurface, toast } = useTabViewRuntime(tabId);
-  const { activeTab } = useTabStore();
+  const { viewTab } = useTabStore();
   const openWritePanelWithText = useWriteRequest();
-  // 変更理由: 別窓のページではペインのactiveTabと描画中タブが異なるため、
+  // 変更理由: 別窓のページではペインのselectedTabと描画中タブが異なるため、
   // 自動更新メニューの表示も描画対象タブの状態を優先する。
-  const isAutoRefreshEnabled = isAutoRefreshEnabledForPage(tab ?? activeTab, page);
+  const isAutoRefreshEnabled = isAutoRefreshEnabledForPage(tab ?? viewTab, page);
 
   const addIdToNg = useCallback(
     async (id: string | undefined) => {

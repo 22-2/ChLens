@@ -9,7 +9,7 @@ const THREAD_URL = "https://example.com/test/read.cgi/software/1/";
 
 const mocks = vi.hoisted(() => ({
   isTauri: true,
-  currentPage: {
+  viewPage: {
     type: "thread",
     title: "スレッド",
     threadUrl: "https://example.com/test/read.cgi/software/1/",
@@ -35,7 +35,7 @@ vi.mock("src/app/platform/runtime", () => ({
 }));
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
-  useTabStore: () => ({ currentPage: mocks.currentPage }),
+  useTabStore: () => ({ viewPage: mocks.viewPage }),
 }));
 
 vi.mock("src/features/comment-overlay/application/use-comment-overlay", () => ({
@@ -59,7 +59,7 @@ function renderItem(): void {
 describe("CommentOverlayStatusItem", () => {
   beforeEach(() => {
     mocks.isTauri = true;
-    mocks.currentPage = {
+    mocks.viewPage = {
       type: "thread",
       title: "スレッド",
       threadUrl: THREAD_URL,
@@ -91,7 +91,7 @@ describe("CommentOverlayStatusItem", () => {
   });
 
   it("スレッド以外では実況操作を表示しない", () => {
-    mocks.currentPage = { type: "home", title: "ホーム" };
+    mocks.viewPage = { type: "home", title: "ホーム" };
 
     renderItem();
 
@@ -127,7 +127,7 @@ describe("CommentOverlayStatusItem", () => {
   });
 
   it("スレッドを離れても表示中の実況を停止しない", () => {
-    mocks.currentPage = { type: "home", title: "ホーム" };
+    mocks.viewPage = { type: "home", title: "ホーム" };
     mocks.snapshot = {
       state: {
         status: "running",

@@ -21,7 +21,7 @@ export interface NextThreadSearchState {
 }
 
 interface UseNextThreadSearchOptions {
-  currentPage: Page;
+  viewPage: Page;
   isActive: boolean;
   keepAutoRefresh: boolean;
   dispatch: Dispatch<ScopedTabAction>;
@@ -40,7 +40,7 @@ function getErrorMessage(error: unknown): string {
 }
 
 export function useNextThreadSearch({
-  currentPage,
+  viewPage,
   isActive,
   keepAutoRefresh,
   dispatch,
@@ -61,13 +61,13 @@ export function useNextThreadSearch({
   }, []);
 
   const searchNextThread = useCallback(async () => {
-    if (currentPage.type !== "thread") {
+    if (viewPage.type !== "thread") {
       return;
     }
 
     const sourceThread = {
-      title: currentPage.title,
-      url: currentPage.threadUrl,
+      title: viewPage.title,
+      url: viewPage.threadUrl,
     };
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
@@ -117,32 +117,28 @@ export function useNextThreadSearch({
       });
       throw error;
     }
-  }, [currentPage]);
+  }, [viewPage]);
 
   useEffect(() => {
     if (state.sourceThread == null) {
       return;
     }
-    if (
-      isActive &&
-      currentPage.type === "thread" &&
-      currentPage.threadUrl === state.sourceThread.url
-    ) {
+    if (isActive && viewPage.type === "thread" && viewPage.threadUrl === state.sourceThread.url) {
       return;
     }
 
     // ペイン切替やページ遷移後に古い候補を再表示・適用しないよう、表示も検索も破棄する。
     requestIdRef.current += 1;
     setState(IDLE_STATE);
-  }, [currentPage, isActive, state.sourceThread]);
+  }, [isActive, state.sourceThread, viewPage]);
 
   const selectCandidate = useCallback(
     (candidate: NextThreadMatch) => {
       const sourceThread = state.sourceThread;
       if (
         sourceThread == null ||
-        currentPage.type !== "thread" ||
-        currentPage.threadUrl !== sourceThread.url
+        viewPage.type !== "thread" ||
+        viewPage.threadUrl !== sourceThread.url
       ) {
         close();
         return;
@@ -160,7 +156,7 @@ export function useNextThreadSearch({
       );
       setState(IDLE_STATE);
     },
-    [close, currentPage, dispatch, keepAutoRefresh, state.sourceThread],
+    [close, dispatch, keepAutoRefresh, state.sourceThread, viewPage],
   );
 
   return { state, searchNextThread, close, selectCandidate };

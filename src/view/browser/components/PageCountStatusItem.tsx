@@ -18,20 +18,20 @@ function formatCount(count: number | null | undefined): string {
 }
 
 export const PageCountStatusItem: React.FC = () => {
-  const { activeTab, currentPage } = useTabStore();
+  const { viewTab, viewPage } = useTabStore();
   const { getPageCount } = usePageCountStatus();
   const { window: viewWindow, document: viewDocument } = useViewSurface();
 
   const pageInfo =
-    currentPage.type === "thread"
+    viewPage.type === "thread"
       ? {
-          key: getThreadPageCountKey(activeTab.id, currentPage.threadUrl),
+          key: getThreadPageCountKey(viewTab.id, viewPage.threadUrl),
           suffix: "レス",
           name: "レス数",
         }
-      : currentPage.type === "threadList"
+      : viewPage.type === "threadList"
         ? {
-            key: getThreadListPageCountKey(activeTab.id, currentPage.boardUrl),
+            key: getThreadListPageCountKey(viewTab.id, viewPage.boardUrl),
             suffix: "スレ",
             name: "スレ数",
           }
@@ -43,7 +43,7 @@ export const PageCountStatusItem: React.FC = () => {
 
   const label = `${formatCount(getPageCount(pageInfo.key)?.count)}${pageInfo.suffix}`;
   const accessibleLabel = `現在の${pageInfo.name}: ${label}`;
-  const isThreadPage = currentPage.type === "thread";
+  const isThreadPage = viewPage.type === "thread";
 
   const handleThreadCountClick = () => {
     if (!isThreadPage) {
@@ -57,7 +57,7 @@ export const PageCountStatusItem: React.FC = () => {
       "CustomEvent",
     ) as CustomEvent<ThreadFilterToolbarToggleDetail>;
     event.initCustomEvent(THREAD_FILTER_TOOLBAR_TOGGLE_EVENT, false, false, {
-      tabId: activeTab.id,
+      tabId: viewTab.id,
     });
     viewWindow.dispatchEvent(event);
   };

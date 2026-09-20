@@ -58,9 +58,9 @@ import browser from "webextension-polyfill";
 // スレ一覧と書き込みをそれぞれ1クリックで開けるようにする。
 const ThreadListPanelToggleItem: React.FC = () => {
   const { togglePanel } = useBottomPanel();
-  const { currentPage } = useTabStore();
+  const { viewPage } = useTabStore();
 
-  if (currentPage.type !== "thread") {
+  if (viewPage.type !== "thread") {
     return null;
   }
 
@@ -87,9 +87,8 @@ const ThreadListPanelToggleItem: React.FC = () => {
 // MCPのURL省略要求とサービスワーカー用設定を保存する。
 // TabStoreはReact Context内の状態なので、UI外のサービスワーカーへはこの最小限の値だけ渡す。
 const ActiveThreadBridgeState: React.FC<{ isActive: boolean }> = ({ isActive }) => {
-  const { currentPage } = useTabStore();
-  const activeThreadUrl =
-    isActive && currentPage.type === "thread" ? currentPage.threadUrl : undefined;
+  const { viewPage } = useTabStore();
+  const activeThreadUrl = isActive && viewPage.type === "thread" ? viewPage.threadUrl : undefined;
   const format2chnet = container.config.get("format_2chnet");
 
   useEffect(() => {
@@ -114,11 +113,11 @@ const ActiveThreadBridgeState: React.FC<{ isActive: boolean }> = ({ isActive }) 
 
 const WritePanelToggleItem: React.FC = () => {
   const { togglePanel } = useBottomPanel();
-  const { currentPage } = useTabStore();
+  const { viewPage } = useTabStore();
   const { isWindowOpen, openWriteWindow, selectThread } = useWriteSession();
 
   // 書き込み UI はスレッド専用なので、他ページではステータスバーに出さない。
-  if (currentPage.type !== "thread") {
+  if (viewPage.type !== "thread") {
     return null;
   }
 
@@ -134,7 +133,7 @@ const WritePanelToggleItem: React.FC = () => {
         className="status-bar__btn"
         onClick={() => {
           // 表示中のスレから開いた場合は、そのスレを共通書き込み窓の初期選択にする。
-          selectThread(currentPage.threadUrl);
+          selectThread(viewPage.threadUrl);
           if (isWindowOpen) {
             // 共有窓が既にある場合は下部パネルを再表示せず、同じエディタへ戻す。
             openWriteWindow();
@@ -164,7 +163,7 @@ const PaneColumn: React.FC<{ paneId: string; isActive: boolean }> = ({ paneId, i
 // PaneProvider 配下でしか使えない（ペインスコープの dispatch を取るため）。
 const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
   const dispatch = useTabDispatch();
-  const { currentPage, activeTab } = useTabStore();
+  const { viewPage, viewTab } = useTabStore();
   const tabBarOrientation = useTabBarOrientation();
   const {
     state: nextThreadSearchState,
@@ -172,9 +171,9 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
     close: closeNextThreadSearch,
     selectCandidate,
   } = useNextThreadSearch({
-    currentPage,
+    viewPage,
     isActive,
-    keepAutoRefresh: activeTab.autoRefreshEnabled,
+    keepAutoRefresh: viewTab.autoRefreshEnabled,
     dispatch,
   });
 

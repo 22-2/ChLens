@@ -22,7 +22,7 @@ vi.mock("src/app/Store2Storage", () => ({
 const PanelProbe: React.FC = () => {
   const {
     isOpen,
-    activeTabId,
+    activePanelTabId,
     togglePanel,
     threadListAutoRefreshEnabled,
     threadListAutoRefreshIntervalSec,
@@ -33,7 +33,7 @@ const PanelProbe: React.FC = () => {
   return (
     <>
       <output data-testid="open">{String(isOpen)}</output>
-      <output data-testid="active">{activeTabId}</output>
+      <output data-testid="active">{activePanelTabId}</output>
       <output data-testid="auto">{String(threadListAutoRefreshEnabled)}</output>
       <output data-testid="interval">{threadListAutoRefreshIntervalSec}</output>
       <button onClick={() => togglePanel(BOTTOM_PANEL_THREAD_LIST_TAB_ID)}>スレ一覧</button>

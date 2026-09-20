@@ -89,11 +89,11 @@ describe("TabProvider auto refresh state", () => {
     const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
-      const { activeTab, currentPage, dispatch } = useTabStore();
+      const { viewTab, viewPage, dispatch } = useTabStore();
       const isCurrentThreadAutoRefreshEnabled =
-        currentPage.type === "thread" &&
-        activeTab.autoRefreshEnabled &&
-        activeTab.autoRefreshPageKey === getAutoRefreshPageKey(currentPage);
+        viewPage.type === "thread" &&
+        viewTab.autoRefreshEnabled &&
+        viewTab.autoRefreshPageKey === getAutoRefreshPageKey(viewPage);
 
       return (
         <>
@@ -136,7 +136,7 @@ describe("TabProvider auto refresh state", () => {
           >
             thread-2 へ移動
           </button>
-          <output data-testid="stored-thread-url">{activeTab.autoRefreshPageKey ?? ""}</output>
+          <output data-testid="stored-thread-url">{viewTab.autoRefreshPageKey ?? ""}</output>
           <output data-testid="current-thread-enabled">
             {isCurrentThreadAutoRefreshEnabled ? "enabled" : "disabled"}
           </output>
@@ -169,11 +169,11 @@ describe("TabProvider auto refresh state", () => {
     const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
-      const { activeTab, currentPage, dispatch } = useTabStore();
+      const { viewTab, viewPage, dispatch } = useTabStore();
       const isCurrentThreadAutoRefreshEnabled =
-        currentPage.type === "thread" &&
-        activeTab.autoRefreshEnabled &&
-        activeTab.autoRefreshPageKey === getAutoRefreshPageKey(currentPage);
+        viewPage.type === "thread" &&
+        viewTab.autoRefreshEnabled &&
+        viewTab.autoRefreshPageKey === getAutoRefreshPageKey(viewPage);
 
       return (
         <>
@@ -217,7 +217,7 @@ describe("TabProvider auto refresh state", () => {
             thread-2 へ移動
           </button>
           <button onClick={() => dispatch({ type: "GO_BACK" })}>戻る</button>
-          <output data-testid="stored-thread-url">{activeTab.autoRefreshPageKey ?? ""}</output>
+          <output data-testid="stored-thread-url">{viewTab.autoRefreshPageKey ?? ""}</output>
           <output data-testid="current-thread-enabled">
             {isCurrentThreadAutoRefreshEnabled ? "enabled" : "disabled"}
           </output>
@@ -332,13 +332,13 @@ describe("TabProvider auto refresh state", () => {
     const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
-      const { activeTab } = useTabStore();
+      const { viewTab } = useTabStore();
       return (
         <>
           <output data-testid="saved-enabled">
-            {activeTab.autoRefreshEnabled ? "enabled" : "disabled"}
+            {viewTab.autoRefreshEnabled ? "enabled" : "disabled"}
           </output>
-          <output data-testid="saved-url">{activeTab.autoRefreshPageKey ?? ""}</output>
+          <output data-testid="saved-url">{viewTab.autoRefreshPageKey ?? ""}</output>
         </>
       );
     }
@@ -358,11 +358,11 @@ describe("TabProvider auto refresh state", () => {
     const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
-      const { activeTab, currentPage, dispatch } = useTabStore();
+      const { viewTab, viewPage, dispatch } = useTabStore();
       const isCurrentThreadAutoRefreshEnabled =
-        currentPage.type === "thread" &&
-        activeTab.autoRefreshEnabled &&
-        activeTab.autoRefreshPageKey === getAutoRefreshPageKey(currentPage);
+        viewPage.type === "thread" &&
+        viewTab.autoRefreshEnabled &&
+        viewTab.autoRefreshPageKey === getAutoRefreshPageKey(viewPage);
 
       return (
         <>
@@ -406,9 +406,9 @@ describe("TabProvider auto refresh state", () => {
           >
             次スレへ追従
           </button>
-          <output data-testid="stored-thread-url">{activeTab.autoRefreshPageKey ?? ""}</output>
-          <output data-testid="history-length">{activeTab.history.length}</output>
-          <output data-testid="current-thread-title">{currentPage.title}</output>
+          <output data-testid="stored-thread-url">{viewTab.autoRefreshPageKey ?? ""}</output>
+          <output data-testid="history-length">{viewTab.history.length}</output>
+          <output data-testid="current-thread-title">{viewPage.title}</output>
           <output data-testid="current-thread-enabled">
             {isCurrentThreadAutoRefreshEnabled ? "enabled" : "disabled"}
           </output>
@@ -445,7 +445,7 @@ describe("TabProvider auto refresh state", () => {
     const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
-      const { state, activeTab, currentPage, dispatch } = useTabStore();
+      const { state, viewTab, viewPage, dispatch } = useTabStore();
 
       return (
         <>
@@ -478,9 +478,9 @@ describe("TabProvider auto refresh state", () => {
           >
             新規タブで開く
           </button>
-          <output data-testid="active-tab-id">{activeTab.id}</output>
-          <output data-testid="current-page-title">{currentPage.title}</output>
-          <output data-testid="current-page-type">{currentPage.type}</output>
+          <output data-testid="active-tab-id">{viewTab.id}</output>
+          <output data-testid="current-page-title">{viewPage.title}</output>
+          <output data-testid="current-page-type">{viewPage.type}</output>
           <output data-testid="tabs-count">{state.tabs.length}</output>
         </>
       );
@@ -595,7 +595,7 @@ describe("TabProvider auto refresh state", () => {
             onClick={() =>
               dispatch({
                 type: "UPDATE_TITLE_FOR_TAB",
-                tabId: state.activeTabId,
+                tabId: state.selectedTabId,
                 title: "解決後タイトル",
               })
             }
@@ -646,7 +646,7 @@ describe("TabProvider auto refresh state", () => {
     const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
-      const { state, activeTab, currentPage, dispatch } = useTabStore();
+      const { state, viewTab, viewPage, dispatch } = useTabStore();
 
       return (
         <>
@@ -680,8 +680,8 @@ describe("TabProvider auto refresh state", () => {
             既存スレを新しいタブで開く
           </button>
           <output data-testid="tabs-count">{state.tabs.length}</output>
-          <output data-testid="active-tab-id">{activeTab.id}</output>
-          <output data-testid="current-page-title">{currentPage.title}</output>
+          <output data-testid="active-tab-id">{viewTab.id}</output>
+          <output data-testid="current-page-title">{viewPage.title}</output>
         </>
       );
     }
@@ -714,7 +714,7 @@ describe("TabProvider auto refresh state", () => {
     const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
-      const { state, activeTab, currentPage, dispatch } = useTabStore();
+      const { state, viewTab, viewPage, dispatch } = useTabStore();
 
       return (
         <>
@@ -748,8 +748,8 @@ describe("TabProvider auto refresh state", () => {
             既存スレを新しいタブで開く
           </button>
           <output data-testid="tabs-count">{state.tabs.length}</output>
-          <output data-testid="active-tab-id">{activeTab.id}</output>
-          <output data-testid="current-page-title">{currentPage.title}</output>
+          <output data-testid="active-tab-id">{viewTab.id}</output>
+          <output data-testid="current-page-title">{viewPage.title}</output>
         </>
       );
     }
@@ -777,7 +777,7 @@ describe("TabProvider auto refresh state", () => {
     const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
-      const { state, currentPage, dispatch } = useTabStore();
+      const { state, viewPage, dispatch } = useTabStore();
 
       return (
         <>
@@ -840,7 +840,7 @@ describe("TabProvider auto refresh state", () => {
             既存スレをクリック
           </button>
           <output data-testid="tabs-count">{state.tabs.length}</output>
-          <output data-testid="current-page-title">{currentPage.title}</output>
+          <output data-testid="current-page-title">{viewPage.title}</output>
           <output data-testid="tab-titles">
             {state.tabs.map((tab) => tab.history[tab.currentIndex]?.title ?? "").join("|")}
           </output>
@@ -874,7 +874,7 @@ describe("TabProvider auto refresh state", () => {
       await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
-      const { state, currentPage, dispatch } = useTabStore();
+      const { state, viewPage, dispatch } = useTabStore();
       const targetTabId = state.tabs[0]?.id ?? "";
       const targetDispatch = useTabDispatchForTab(targetTabId);
       const targetTab = state.tabs[0];
@@ -930,7 +930,7 @@ describe("TabProvider auto refresh state", () => {
             {targetTab ? getCurrentPage(targetTab).title : ""}
           </output>
           <output data-testid="target-reload-key">{targetTab?.reloadKey ?? -1}</output>
-          <output data-testid="active-title">{currentPage.title}</output>
+          <output data-testid="active-title">{viewPage.title}</output>
         </>
       );
     }
@@ -1055,7 +1055,7 @@ describe("TabProvider auto refresh state", () => {
     const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
-      const { currentPage, dispatch } = useTabStore();
+      const { viewPage, dispatch } = useTabStore();
 
       return (
         <>
@@ -1089,8 +1089,8 @@ describe("TabProvider auto refresh state", () => {
           >
             書き込み履歴を開く
           </button>
-          <output data-testid="current-page-type">{currentPage.type}</output>
-          <output data-testid="current-page-title">{currentPage.title}</output>
+          <output data-testid="current-page-type">{viewPage.type}</output>
+          <output data-testid="current-page-title">{viewPage.title}</output>
         </>
       );
     }
@@ -1118,7 +1118,7 @@ describe("TabProvider auto refresh state", () => {
     const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
-      const { currentPage, activeTab, dispatch } = useTabStore();
+      const { viewPage, viewTab, dispatch } = useTabStore();
 
       return (
         <>
@@ -1166,12 +1166,12 @@ describe("TabProvider auto refresh state", () => {
             thread-2 へ移動
           </button>
           <button onClick={() => dispatch({ type: "GO_BACK" })}>戻る</button>
-          <output data-testid="current-page-title">{currentPage.title}</output>
-          <output data-testid="current-page-type">{currentPage.type}</output>
+          <output data-testid="current-page-title">{viewPage.title}</output>
+          <output data-testid="current-page-type">{viewPage.type}</output>
           <output data-testid="history-titles">
-            {activeTab.history.map((page) => page.title).join("|")}
+            {viewTab.history.map((page) => page.title).join("|")}
           </output>
-          <output data-testid="history-index">{String(activeTab.currentIndex)}</output>
+          <output data-testid="history-index">{String(viewTab.currentIndex)}</output>
         </>
       );
     }
@@ -1203,7 +1203,7 @@ describe("TabProvider auto refresh state", () => {
     const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
-      const { currentPage, activeTab, dispatch } = useTabStore();
+      const { viewPage, viewTab, dispatch } = useTabStore();
 
       return (
         <>
@@ -1222,10 +1222,10 @@ describe("TabProvider auto refresh state", () => {
             スレをURL直開き
           </button>
           <button onClick={() => dispatch({ type: "GO_BACK" })}>戻る</button>
-          <output data-testid="current-page-type">{currentPage.type}</output>
-          <output data-testid="current-page-title">{currentPage.title}</output>
+          <output data-testid="current-page-type">{viewPage.type}</output>
+          <output data-testid="current-page-title">{viewPage.title}</output>
           <output data-testid="history-titles">
-            {activeTab.history.map((page) => page.title).join("|")}
+            {viewTab.history.map((page) => page.title).join("|")}
           </output>
         </>
       );
@@ -1255,7 +1255,7 @@ describe("TabProvider auto refresh state", () => {
     const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
-      const { state, activeTab, currentPage, dispatch } = useTabStore();
+      const { state, viewTab, viewPage, dispatch } = useTabStore();
 
       return (
         <>
@@ -1290,7 +1290,7 @@ describe("TabProvider auto refresh state", () => {
           </button>
           <button
             onClick={() => {
-              const target = state.tabs.find((tab) => tab.id !== state.activeTabId);
+              const target = state.tabs.find((tab) => tab.id !== state.selectedTabId);
               if (!target) return;
               dispatch({
                 type: "UPDATE_TITLE_FOR_TAB",
@@ -1302,10 +1302,10 @@ describe("TabProvider auto refresh state", () => {
             背景タブのタイトル更新
           </button>
           <output data-testid="tabs-count">{state.tabs.length}</output>
-          <output data-testid="active-tab-id">{activeTab.id}</output>
-          <output data-testid="active-page-title">{currentPage.title}</output>
+          <output data-testid="active-tab-id">{viewTab.id}</output>
+          <output data-testid="active-page-title">{viewPage.title}</output>
           <output data-testid="background-page-title">
-            {state.tabs.find((tab) => tab.id !== state.activeTabId)?.history.at(-1)?.title ?? ""}
+            {state.tabs.find((tab) => tab.id !== state.selectedTabId)?.history.at(-1)?.title ?? ""}
           </output>
         </>
       );
@@ -1335,7 +1335,7 @@ describe("TabProvider auto refresh state", () => {
     const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
-      const { currentPage, activeTab, dispatch } = useTabStore();
+      const { viewPage, viewTab, dispatch } = useTabStore();
 
       return (
         <>
@@ -1355,11 +1355,11 @@ describe("TabProvider auto refresh state", () => {
             板URL直開き
           </button>
           <button onClick={() => dispatch({ type: "GO_FORWARD" })}>進む</button>
-          <output data-testid="current-page-type">{currentPage.type}</output>
+          <output data-testid="current-page-type">{viewPage.type}</output>
           <output data-testid="history-titles">
-            {activeTab.history.map((page) => page.title).join("|")}
+            {viewTab.history.map((page) => page.title).join("|")}
           </output>
-          <output data-testid="history-index">{String(activeTab.currentIndex)}</output>
+          <output data-testid="history-index">{String(viewTab.currentIndex)}</output>
         </>
       );
     }
@@ -1386,19 +1386,19 @@ describe("TabProvider auto refresh state", () => {
     const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
-      const { state, currentPage, dispatch } = useTabStore();
+      const { state, viewPage, dispatch } = useTabStore();
 
       return (
         <>
           <button onClick={() => dispatch({ type: "ADD_TAB" })}>新規タブ</button>
           <button onClick={() => dispatch({ type: "GO_FORWARD" })}>進む</button>
           <output data-testid="tabs-count">{state.tabs.length}</output>
-          <output data-testid="current-page-type">{currentPage.type}</output>
+          <output data-testid="current-page-type">{viewPage.type}</output>
           <output data-testid="history-length">
-            {String(state.tabs.find((tab) => tab.id === state.activeTabId)?.history.length ?? 0)}
+            {String(state.tabs.find((tab) => tab.id === state.selectedTabId)?.history.length ?? 0)}
           </output>
           <output data-testid="history-index">
-            {String(state.tabs.find((tab) => tab.id === state.activeTabId)?.currentIndex ?? -1)}
+            {String(state.tabs.find((tab) => tab.id === state.selectedTabId)?.currentIndex ?? -1)}
           </output>
         </>
       );
@@ -1428,7 +1428,7 @@ describe("TabProvider auto refresh state", () => {
     const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
-      const { currentPage, dispatch } = useTabStore();
+      const { viewPage, dispatch } = useTabStore();
 
       return (
         <>
@@ -1462,10 +1462,10 @@ describe("TabProvider auto refresh state", () => {
             スレへ移動
           </button>
           <button onClick={() => dispatch({ type: "ADD_TAB" })}>新規タブ</button>
-          <output data-testid="current-page-type">{currentPage.type}</output>
-          <output data-testid="current-page-title">{currentPage.title}</output>
+          <output data-testid="current-page-type">{viewPage.type}</output>
+          <output data-testid="current-page-title">{viewPage.title}</output>
           <output data-testid="current-page-board-title">
-            {currentPage.type === "threadList" ? currentPage.boardTitle : ""}
+            {viewPage.type === "threadList" ? viewPage.boardTitle : ""}
           </output>
         </>
       );
@@ -1493,7 +1493,7 @@ describe("TabProvider auto refresh state", () => {
     const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
-      const { currentPage, activeTab, dispatch } = useTabStore();
+      const { viewPage, viewTab, dispatch } = useTabStore();
 
       return (
         <>
@@ -1545,7 +1545,7 @@ describe("TabProvider auto refresh state", () => {
             onClick={() =>
               dispatch({
                 type: "UPDATE_TITLE_FOR_TAB",
-                tabId: activeTab.id,
+                tabId: viewTab.id,
                 title: "Software",
                 boardUrl: "https://egg.5ch.io/software/",
               })
@@ -1554,10 +1554,10 @@ describe("TabProvider auto refresh state", () => {
             板B名を解決
           </button>
           <button onClick={() => dispatch({ type: "GO_BACK" })}>戻る</button>
-          <output data-testid="current-page-type">{currentPage.type}</output>
-          <output data-testid="current-page-title">{currentPage.title}</output>
+          <output data-testid="current-page-type">{viewPage.type}</output>
+          <output data-testid="current-page-title">{viewPage.title}</output>
           <output data-testid="current-page-board-url">
-            {currentPage.type === "threadList" ? currentPage.boardUrl : ""}
+            {viewPage.type === "threadList" ? viewPage.boardUrl : ""}
           </output>
         </>
       );
@@ -1588,7 +1588,7 @@ describe("TabProvider auto refresh state", () => {
     const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
 
     function Harness() {
-      const { state, currentPage, dispatch } = useTabStore();
+      const { state, viewPage, dispatch } = useTabStore();
 
       return (
         <>
@@ -1623,7 +1623,7 @@ describe("TabProvider auto refresh state", () => {
           </button>
           <button
             onClick={() => {
-              const background = state.tabs.find((tab) => tab.id !== state.activeTabId);
+              const background = state.tabs.find((tab) => tab.id !== state.selectedTabId);
               if (!background) return;
               dispatch({ type: "SELECT_TAB", tabId: background.id });
             }}
@@ -1631,8 +1631,8 @@ describe("TabProvider auto refresh state", () => {
             背景タブへ切替
           </button>
           <button onClick={() => dispatch({ type: "GO_BACK" })}>戻る</button>
-          <output data-testid="current-page-type">{currentPage.type}</output>
-          <output data-testid="current-page-title">{currentPage.title}</output>
+          <output data-testid="current-page-type">{viewPage.type}</output>
+          <output data-testid="current-page-title">{viewPage.title}</output>
         </>
       );
     }
@@ -1671,8 +1671,8 @@ describe("TabProvider auto refresh state", () => {
     };
 
     function Harness() {
-      const { activeTab, currentPage, dispatch } = useTabStore();
-      const currentViewState = activeTab.viewStates?.[getPageViewStateKey(currentPage)];
+      const { viewTab, viewPage, dispatch } = useTabStore();
+      const currentViewState = viewTab.viewStates?.[getPageViewStateKey(viewPage)];
 
       return (
         <>
@@ -1681,7 +1681,7 @@ describe("TabProvider auto refresh state", () => {
             onClick={() =>
               dispatch({
                 type: "UPDATE_TAB_VIEW_STATE",
-                tabId: activeTab.id,
+                tabId: viewTab.id,
                 pageKey: getPageViewStateKey(thread1),
                 patch: { searchQuery: "保存する検索語", filter: "image", searchTarget: "name" },
               })
@@ -1692,7 +1692,7 @@ describe("TabProvider auto refresh state", () => {
           <button onClick={() => dispatch({ type: "NAVIGATE", page: thread2 })}>スレ2へ移動</button>
           <button onClick={() => dispatch({ type: "GO_BACK" })}>スレ1へ戻る</button>
           <output data-testid="current-thread-url">
-            {currentPage.type === "thread" ? currentPage.threadUrl : ""}
+            {viewPage.type === "thread" ? viewPage.threadUrl : ""}
           </output>
           <output data-testid="current-search-query">{currentViewState?.searchQuery ?? ""}</output>
           <output data-testid="current-filter">{currentViewState?.filter ?? ""}</output>

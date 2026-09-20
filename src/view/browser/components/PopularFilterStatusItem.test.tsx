@@ -7,8 +7,8 @@ import { DEFAULT_POPULAR_REPLY_THRESHOLD } from "src/view/browser/utils/popular-
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mocks = vi.hoisted(() => ({
-  activeTab: { id: "tab-1" },
-  currentPage: {
+  viewTab: { id: "tab-1" },
+  viewPage: {
     type: "thread",
     title: "スレッド",
     threadUrl: "https://example.com/test/read.cgi/software/1/",
@@ -22,8 +22,8 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => ({
-    activeTab: mocks.activeTab,
-    currentPage: mocks.currentPage,
+    viewTab: mocks.viewTab,
+    viewPage: mocks.viewPage,
   }),
   useTabViewState: () => ({
     state: mocks.viewState,
@@ -42,7 +42,7 @@ function renderItem(): void {
 
 describe("PopularFilterStatusItem", () => {
   beforeEach(() => {
-    mocks.currentPage = {
+    mocks.viewPage = {
       type: "thread",
       title: "スレッド",
       threadUrl: "https://example.com/test/read.cgi/software/1/",
@@ -88,7 +88,7 @@ describe("PopularFilterStatusItem", () => {
   });
 
   it("スレッド以外では表示しない", () => {
-    mocks.currentPage = {
+    mocks.viewPage = {
       type: "home",
       title: "ホーム",
       threadUrl: "",

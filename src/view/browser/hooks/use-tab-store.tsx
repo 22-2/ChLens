@@ -19,14 +19,16 @@ import {
   sanitizeTabStoreState,
   saveTabStoreSession,
 } from "src/view/browser/hooks/tab-store-session";
-import type {
-  PaneScopedState,
-  PaneScopedTabStore,
-  ScopedTabAction,
-  TabStoreState,
+import {
+  type PaneScopedState,
+  type PaneScopedTabStore,
+  type ScopedTabAction,
+  TAB_ACTION_TYPES,
+  type TabStoreState,
 } from "src/view/browser/hooks/tab-store-types";
 export type { TabActionCreators } from "src/view/browser/hooks/tab-store-actions";
 export { tabActions } from "src/view/browser/hooks/tab-store-actions";
+export { TAB_ACTION_TYPES } from "src/view/browser/hooks/tab-store-types";
 import { useTabViewScope } from "src/view/browser/hooks/use-tab-view-scope";
 import {
   buildHierarchy,
@@ -573,7 +575,7 @@ function pushClosed(closedTabs: Tab[], tab: Tab): Tab[] {
 
 function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreState {
   switch (action.type) {
-    case "ADD_TAB": {
+    case TAB_ACTION_TYPES.ADD_TAB: {
       const paneId = resolvePaneId(state, action.paneId);
       const pane = getPane(state, paneId);
       const activeTab = getPaneActiveTab(pane);
@@ -591,7 +593,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       };
     }
 
-    case "OPEN_IN_NEW_TAB": {
+    case TAB_ACTION_TYPES.OPEN_IN_NEW_TAB: {
       // 同一 URL のタブが既に存在する場合はそちらをフォーカスして重複を防ぐ。
       // 重複判定はペイン内に閉じる（別ペインで同じスレを並べて見比べられるように）。
       // 強制的に新タブを開きたい場合は OPEN_IN_NEW_TAB_FORCE を使う。
@@ -637,7 +639,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       };
     }
 
-    case "OPEN_IN_NEW_TAB_FORCE": {
+    case TAB_ACTION_TYPES.OPEN_IN_NEW_TAB_FORCE: {
       const paneId = resolvePaneId(state, action.paneId);
       const pane = getPane(state, paneId);
       const newTabForForce = createTab();
@@ -659,7 +661,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       return action.focus ? { ...nextState, activePaneId: paneId } : nextState;
     }
 
-    case "CLOSE_TAB": {
+    case TAB_ACTION_TYPES.CLOSE_TAB: {
       const paneId = resolvePaneId(state, action.paneId);
       const pane = getPane(state, paneId);
       const target = pane.tabs.find((t) => t.id === action.tabId);
@@ -700,7 +702,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       };
     }
 
-    case "CLOSE_OTHER_TABS": {
+    case TAB_ACTION_TYPES.CLOSE_OTHER_TABS: {
       const paneId = resolvePaneId(state, action.paneId);
       const pane = getPane(state, paneId);
       // 指定タブと固定タブ以外を閉じる
@@ -722,7 +724,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       };
     }
 
-    case "CLOSE_RIGHT_TABS": {
+    case TAB_ACTION_TYPES.CLOSE_RIGHT_TABS: {
       const paneId = resolvePaneId(state, action.paneId);
       const pane = getPane(state, paneId);
       const idx = pane.tabs.findIndex((t) => t.id === action.tabId);
@@ -750,7 +752,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       };
     }
 
-    case "CLOSE_ALL_TABS": {
+    case TAB_ACTION_TYPES.CLOSE_ALL_TABS: {
       const paneId = resolvePaneId(state, action.paneId);
       const pane = getPane(state, paneId);
       // 固定タブ以外をすべて閉じ、新しいタブを開く
@@ -774,7 +776,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       };
     }
 
-    case "REOPEN_CLOSED_TAB": {
+    case TAB_ACTION_TYPES.REOPEN_CLOSED_TAB: {
       if (state.closedTabs.length === 0) return state;
       const paneId = resolvePaneId(state, action.paneId);
       const [reopened, ...rest] = state.closedTabs;
@@ -794,7 +796,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       };
     }
 
-    case "TOGGLE_PIN": {
+    case TAB_ACTION_TYPES.TOGGLE_PIN: {
       const paneId = resolvePaneId(state, action.paneId);
       return updatePane(state, paneId, (p) => {
         const tabs = p.tabs.map((t) => (t.id === action.tabId ? { ...t, pinned: !t.pinned } : t));
@@ -804,7 +806,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       });
     }
 
-    case "MOVE_TAB": {
+    case TAB_ACTION_TYPES.MOVE_TAB: {
       const paneId = resolvePaneId(state, action.paneId);
       const pane = getPane(state, paneId);
       const dragTab = pane.tabs.find((t) => t.id === action.dragTabId);
@@ -833,7 +835,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       }));
     }
 
-    case "SELECT_TAB": {
+    case TAB_ACTION_TYPES.SELECT_TAB: {
       const paneId = resolvePaneId(state, action.paneId);
       return {
         ...updatePane(state, paneId, (p) => ({
@@ -846,7 +848,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       };
     }
 
-    case "NAVIGATE": {
+    case TAB_ACTION_TYPES.NAVIGATE: {
       const paneId = resolvePaneId(state, action.paneId);
       const targetTab = action.tabId
         ? findTabAcrossPanes(state, action.tabId)
@@ -865,7 +867,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       return action.tabId ? nextState : { ...nextState, activePaneId: paneId };
     }
 
-    case "NAVIGATE_TAB": {
+    case TAB_ACTION_TYPES.NAVIGATE_TAB: {
       const paneId = resolvePaneId(state, action.paneId);
       const pane = getPane(state, paneId);
       const targetTab = pane.tabs.find((tab) => tab.id === action.tabId);
@@ -896,7 +898,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       };
     }
 
-    case "GO_BACK": {
+    case TAB_ACTION_TYPES.GO_BACK: {
       const paneId = resolvePaneId(state, action.paneId);
       const tab = action.tabId
         ? findTabAcrossPanes(state, action.tabId)
@@ -911,7 +913,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       );
     }
 
-    case "GO_FORWARD": {
+    case TAB_ACTION_TYPES.GO_FORWARD: {
       const paneId = resolvePaneId(state, action.paneId);
       const tab = action.tabId
         ? findTabAcrossPanes(state, action.tabId)
@@ -926,7 +928,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       );
     }
 
-    case "GO_TO_HISTORY_INDEX": {
+    case TAB_ACTION_TYPES.GO_TO_HISTORY_INDEX: {
       const paneId = resolvePaneId(state, action.paneId);
       const tab = action.tabId
         ? findTabAcrossPanes(state, action.tabId)
@@ -942,7 +944,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       );
     }
 
-    case "UPDATE_TAB_VIEW_STATE": {
+    case TAB_ACTION_TYPES.UPDATE_TAB_VIEW_STATE: {
       // view state はタブIDで一意に特定できるため、ペインを跨いだ更新にも耐える。
       return {
         ...state,
@@ -968,7 +970,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       };
     }
 
-    case "UPDATE_TITLE": {
+    case TAB_ACTION_TYPES.UPDATE_TITLE: {
       const paneId = resolvePaneId(state, action.paneId);
       const tab = action.tabId
         ? findTabAcrossPanes(state, action.tabId)
@@ -989,7 +991,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       });
     }
 
-    case "UPDATE_TITLE_FOR_TAB": {
+    case TAB_ACTION_TYPES.UPDATE_TITLE_FOR_TAB: {
       // 背景ペイン/タブの非同期タイトル解決でも動くよう、全ペインを横断して該当タブを更新する。
       // boardUrl がある場合は、現在ページではなく対象板の履歴を更新する。
       // URL直開き後に板名解決が完了しても、履歴中の板一覧へ結果を残すため。
@@ -1048,7 +1050,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       };
     }
 
-    case "RELOAD": {
+    case TAB_ACTION_TYPES.RELOAD: {
       // 履歴を変えずにreloadKeyをインクリメントする。
       // ContentAreaがこれをkeyに使うことでページコンポーネントが再マウントされ、データ再取得が走る。
       const paneId = resolvePaneId(state, action.paneId);
@@ -1058,7 +1060,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       }));
     }
 
-    case "FOLLOW_NEXT_THREAD": {
+    case TAB_ACTION_TYPES.FOLLOW_NEXT_THREAD: {
       const paneId = resolvePaneId(state, action.paneId);
       return updateTargetTab(state, paneId, action.tabId, (tab) => {
         const nextTab = pushPageToTabHistory(tab, action.page);
@@ -1074,7 +1076,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       });
     }
 
-    case "SET_AUTO_REFRESH_ENABLED": {
+    case TAB_ACTION_TYPES.SET_AUTO_REFRESH_ENABLED: {
       const paneId = resolvePaneId(state, action.paneId);
       return updateTargetTab(state, paneId, action.tabId, (tab) => ({
         ...tab,
@@ -1085,7 +1087,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
 
     // --- ペイン操作 ---
 
-    case "SPLIT_PANE": {
+    case TAB_ACTION_TYPES.SPLIT_PANE: {
       // 最大ペイン数に達していれば分割しない（2ペイン固定運用）。
       if (state.panes.length >= MAX_PANES) return state;
       // 操作元ペインの右隣に、現在ページを引き継いだ新規ペインを作成してフォーカスする。
@@ -1100,7 +1102,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       return { ...state, panes, activePaneId: newPane.id };
     }
 
-    case "CLOSE_PANE": {
+    case TAB_ACTION_TYPES.CLOSE_PANE: {
       // 最低1ペインは維持する。
       if (state.panes.length <= 1) return state;
       const paneId = resolvePaneId(state, action.paneId);
@@ -1120,13 +1122,13 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       return { ...state, panes, activePaneId, closedTabs: newClosed };
     }
 
-    case "SET_ACTIVE_PANE": {
+    case TAB_ACTION_TYPES.SET_ACTIVE_PANE: {
       const paneId = resolvePaneId(state, action.paneId);
       if (paneId === state.activePaneId) return state;
       return { ...state, activePaneId: paneId };
     }
 
-    case "OPEN_IN_RIGHT_PANE": {
+    case TAB_ACTION_TYPES.OPEN_IN_RIGHT_PANE: {
       // 操作元ペインのタブを右隣ペインへ移動する。右隣が無ければ新規作成する。
       const sourcePaneId = resolvePaneId(state, action.paneId);
       const sourceIndex = state.panes.findIndex((p) => p.id === sourcePaneId);
@@ -1172,7 +1174,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       return { ...state, panes, activePaneId: newPane.id };
     }
 
-    case "MOVE_TAB_TO_PANE": {
+    case TAB_ACTION_TYPES.MOVE_TAB_TO_PANE: {
       // ペイン間でタブを移動する（将来のドラッグ&ドロップ用の土台）。
       const fromPane = state.panes.find((p) => p.id === action.fromPaneId);
       const toPane = state.panes.find((p) => p.id === action.toPaneId);
@@ -1204,7 +1206,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       };
     }
 
-    case "RESTORE":
+    case TAB_ACTION_TYPES.RESTORE:
       return sanitizeTabStoreState(action.state);
 
     default:
@@ -1331,9 +1333,9 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       };
 
       switch (action.type) {
-        case "NAVIGATE":
-        case "FOLLOW_NEXT_THREAD":
-        case "NAVIGATE_TAB": {
+        case TAB_ACTION_TYPES.NAVIGATE:
+        case TAB_ACTION_TYPES.FOLLOW_NEXT_THREAD:
+        case TAB_ACTION_TYPES.NAVIGATE_TAB: {
           // 対象タブが明示されていれば別窓の描画タブを記録し、省略時は従来どおりペインのactiveTabを記録する。
           const paneId = resolvePaneId(prevState, action.paneId);
           const targetTabId = action.tabId ?? getPane(nextState, paneId).activeTabId;
@@ -1341,9 +1343,9 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           return;
         }
 
-        case "OPEN_IN_NEW_TAB":
-        case "OPEN_IN_NEW_TAB_FORCE":
-        case "REOPEN_CLOSED_TAB": {
+        case TAB_ACTION_TYPES.OPEN_IN_NEW_TAB:
+        case TAB_ACTION_TYPES.OPEN_IN_NEW_TAB_FORCE:
+        case TAB_ACTION_TYPES.REOPEN_CLOSED_TAB: {
           const prevTabIds = new Set(prevState.panes.flatMap((p) => p.tabs).map((tab) => tab.id));
           const insertedTab = nextState.panes
             .flatMap((p) => p.tabs)
@@ -1354,7 +1356,7 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           return;
         }
 
-        case "UPDATE_TITLE": {
+        case TAB_ACTION_TYPES.UPDATE_TITLE: {
           const paneId = resolvePaneId(nextState, action.paneId);
           const targetTabId = action.tabId ?? getPane(nextState, paneId).activeTabId;
           const nextTab = findTabAcrossPanes(nextState, targetTabId);
@@ -1365,7 +1367,7 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           return;
         }
 
-        case "UPDATE_TITLE_FOR_TAB": {
+        case TAB_ACTION_TYPES.UPDATE_TITLE_FOR_TAB: {
           if (action.boardUrl) {
             return;
           }
@@ -1441,14 +1443,14 @@ function usePaneIdFromContext(state: TabStoreState): string {
  */
 function actionUsesImplicitExistingTab(action: ScopedTabAction): boolean {
   switch (action.type) {
-    case "NAVIGATE":
-    case "GO_BACK":
-    case "GO_FORWARD":
-    case "GO_TO_HISTORY_INDEX":
-    case "UPDATE_TITLE":
-    case "RELOAD":
-    case "FOLLOW_NEXT_THREAD":
-    case "SET_AUTO_REFRESH_ENABLED":
+    case TAB_ACTION_TYPES.NAVIGATE:
+    case TAB_ACTION_TYPES.GO_BACK:
+    case TAB_ACTION_TYPES.GO_FORWARD:
+    case TAB_ACTION_TYPES.GO_TO_HISTORY_INDEX:
+    case TAB_ACTION_TYPES.UPDATE_TITLE:
+    case TAB_ACTION_TYPES.RELOAD:
+    case TAB_ACTION_TYPES.FOLLOW_NEXT_THREAD:
+    case TAB_ACTION_TYPES.SET_AUTO_REFRESH_ENABLED:
       return true;
     default:
       return false;
@@ -1495,8 +1497,6 @@ export function useTabStore(): PaneScopedTabStore {
     () => ({
       tabs: pane.tabs,
       selectedTabId,
-      // 互換のため残すが、意味はペインの選択タブへ統一する。
-      activeTabId: selectedTabId,
       closedTabs: ctx.state.closedTabs,
     }),
     [ctx.state.closedTabs, pane.tabs, selectedTabId],
@@ -1523,9 +1523,6 @@ export function useTabStore(): PaneScopedTabStore {
     viewTab,
     viewTabId,
     viewPage,
-    // 互換のため既存名は表示対象の別名として残す。
-    activeTab: viewTab,
-    currentPage: viewPage,
     paneId,
   };
 }

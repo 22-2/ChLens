@@ -103,7 +103,7 @@ describe("ペイン（横分割）", () => {
             onClick={() =>
               dispatch({
                 type: "OPEN_IN_RIGHT_PANE",
-                tabId: state.activeTabId,
+                tabId: state.selectedTabId,
               })
             }
           >

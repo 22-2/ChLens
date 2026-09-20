@@ -7,10 +7,10 @@ import { StatusBar, StatusBarProvider } from "src/view/browser/components/Status
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mocks = vi.hoisted(() => ({
-  activeTab: {
+  viewTab: {
     reloadKey: 0,
   },
-  currentPage: {
+  viewPage: {
     type: "thread",
     title: "スレッド",
     threadUrl: "https://example.com/test/read.cgi/software/1/",
@@ -19,8 +19,8 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => ({
-    activeTab: mocks.activeTab,
-    currentPage: mocks.currentPage,
+    viewTab: mocks.viewTab,
+    viewPage: mocks.viewPage,
   }),
 }));
 
@@ -49,10 +49,10 @@ function createRect(): DOMRect {
 
 describe("IkioiStatusItem", () => {
   beforeEach(() => {
-    mocks.activeTab = {
+    mocks.viewTab = {
       reloadKey: 0,
     };
-    mocks.currentPage = {
+    mocks.viewPage = {
       type: "thread",
       title: "スレッド",
       threadUrl: "https://example.com/test/read.cgi/software/1/",
@@ -60,7 +60,7 @@ describe("IkioiStatusItem", () => {
 
     container.thread = {
       getThread: vi.fn(async () => ({
-        url: mocks.currentPage.type === "thread" ? mocks.currentPage.threadUrl : "",
+        url: mocks.viewPage.type === "thread" ? mocks.viewPage.threadUrl : "",
         title: "スレッド",
         res: [
           {
@@ -116,7 +116,7 @@ describe("IkioiStatusItem", () => {
   });
 
   it("スレッド以外では表示しない", () => {
-    mocks.currentPage = {
+    mocks.viewPage = {
       type: "home",
       title: "ホーム",
       threadUrl: "",

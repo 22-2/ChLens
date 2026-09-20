@@ -206,9 +206,9 @@ export const ThreadListPage: React.FC<Props> = ({
   const { window: viewWindow, document: viewDocument } = viewSurface;
   const fallbackScrollContainerRef = useRef<HTMLDivElement>(null);
   const effectiveScrollContainerRef = scrollContainerRef ?? fallbackScrollContainerRef;
-  const { activeTab } = useTabStore();
-  // 既存の直接利用者との互換性のためactiveTabを残し、通常の描画経路では渡されたtabを優先する。
-  const navigationTab = tab ?? activeTab;
+  const { viewTab } = useTabStore();
+  // 既存の直接利用者との互換性のため渡されたtabを残し、通常の描画経路ではそれを優先する。
+  const navigationTab = tab ?? viewTab;
   const { state: persistedViewState, update: updateViewState } = useTabViewState(tabId, page);
   const persistedSearchQuery = persistedViewState.searchQuery;
   const persistedSortColumn = persistedViewState.sortColumn;

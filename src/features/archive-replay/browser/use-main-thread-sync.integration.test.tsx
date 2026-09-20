@@ -78,14 +78,14 @@ describe("過去実況Main同期のTabProvider統合", () => {
 
     function Harness() {
       useArchiveReplayMainThreadSync();
-      const { currentPage, activeTab, state } = useTabStore();
+      const { viewPage, viewTab, state } = useTabStore();
       return (
         <output
           data-testid="current-url"
-          data-tab-id={activeTab.id}
+          data-tab-id={viewTab.id}
           data-tab-count={state.tabs.length}
         >
-          {currentPage.type === "thread" ? currentPage.threadUrl : ""}
+          {viewPage.type === "thread" ? viewPage.threadUrl : ""}
         </output>
       );
     }

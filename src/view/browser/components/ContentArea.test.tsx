@@ -118,16 +118,13 @@ function createTabWithPage(id: string, page: Page): Tab {
   };
 }
 
-function mockState(tabs: Tab[], activeTabId: string) {
-  const activeTab = tabs.find((tab) => tab.id === activeTabId) as Tab;
+function mockState(tabs: Tab[], selectedTabId: string) {
   mockUseTabStore.mockReturnValue({
     state: {
       tabs,
-      activeTabId,
+      selectedTabId,
       closedTabs: [],
     },
-    activeTab,
-    currentPage: activeTab.history[activeTab.currentIndex],
     dispatch: vi.fn(),
   });
 }

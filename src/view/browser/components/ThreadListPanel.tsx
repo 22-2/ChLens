@@ -97,7 +97,7 @@ function normalizeLocation(rawLocation: string, targetWindow: Window): string {
 function resolveBoardTitle(
   boardUrl: string,
   threadTitle: string,
-  history: ReturnType<typeof useTabStore>["activeTab"]["history"],
+  history: ReturnType<typeof useTabStore>["viewTab"]["history"],
   targetWindow: Window,
 ): string {
   const normalizedBoardUrl = normalizeLocation(boardUrl, targetWindow);
@@ -136,7 +136,7 @@ function resolveBoardTitle(
 function createBoardDescriptor(
   threadUrl: string,
   threadTitle: string,
-  history: ReturnType<typeof useTabStore>["activeTab"]["history"],
+  history: ReturnType<typeof useTabStore>["viewTab"]["history"],
   targetWindow: Window,
 ): BoardDescriptor {
   const boardUrl = deriveFallbackBoardUrl(threadUrl, targetWindow);
@@ -165,7 +165,7 @@ function refreshThreadNgState(thread: IThread, boardUrl: string): IThread {
 }
 
 export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) => {
-  const { activeTab, currentPage, dispatch } = useTabStore();
+  const { viewTab, viewPage, dispatch } = useTabStore();
   // 変更理由: 下部パネルのスレ一覧も別窓へ移せるため、可視状態・更新タイマー・URL解析を
   // ページ本体と同じ表示先へ揃え、メイン窓の状態に引きずられないようにする。
   const { window: viewWindow, document: viewDocument } = useViewSurface();
@@ -178,8 +178,8 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
     setThreadListAutoRefreshIntervalSec,
   } = useBottomPanel();
   const descriptor = useMemo(
-    () => createBoardDescriptor(threadUrl, currentPage.title, activeTab.history, viewWindow),
-    [activeTab.history, currentPage.title, threadUrl, viewWindow],
+    () => createBoardDescriptor(threadUrl, viewPage.title, viewTab.history, viewWindow),
+    [threadUrl, viewPage.title, viewTab.history, viewWindow],
   );
   const boardPage = useMemo(
     () => ({
@@ -191,7 +191,7 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
     [descriptor.boardTitle, descriptor.boardUrl],
   );
   const { state: persistedViewState, update: updateViewState } = useTabViewState(
-    activeTab.id,
+    viewTab.id,
     boardPage,
   );
   const [threads, setThreads] = useState<IThread[]>([]);
@@ -618,8 +618,8 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
   const closeContextMenu = useCallback(() => setContextMenuState(null), []);
   const contextMenuNavigationActions = contextMenuState ? (
     <ContextMenuNavigationActions
-      canGoBack={activeTab.currentIndex > 0}
-      canGoForward={activeTab.currentIndex < activeTab.history.length - 1}
+      canGoBack={viewTab.currentIndex > 0}
+      canGoForward={viewTab.currentIndex < viewTab.history.length - 1}
       canRefresh={!loading}
       onBack={() => {
         dispatch(tabActions.goBack());
@@ -668,7 +668,7 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
     ],
   );
 
-  const currentThreadUrl = currentPage.type === "thread" ? currentPage.threadUrl : threadUrl;
+  const currentThreadUrl = viewPage.type === "thread" ? viewPage.threadUrl : threadUrl;
 
   return (
     <div className="thread-list-panel">

@@ -30,7 +30,7 @@ const mocks = vi.hoisted(() => ({
           autoRefreshPageKey: null as string | null,
         },
       ],
-      activeTabId: "tab-1",
+      selectedTabId: "tab-1",
       closedTabs: [],
     },
   },
@@ -81,7 +81,7 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
             {
               id: "pane-1",
               tabs: slice.tabs,
-              activeTabId: slice.activeTabId,
+              activeTabId: slice.selectedTabId,
             },
           ],
           activePaneId: "pane-1",
@@ -171,7 +171,7 @@ describe("TabBar wheel switching", () => {
           autoRefreshPageKey: null as string | null,
         },
       ],
-      activeTabId: "tab-1",
+      selectedTabId: "tab-1",
       closedTabs: [],
     };
     mocks.autoScrollState = {
@@ -415,7 +415,7 @@ describe("TabBar wheel switching", () => {
       const { rerender } = render(<TabBar />);
       expect(scrollIntoViewMock).not.toHaveBeenCalled();
 
-      mocks.tabStore.state = { ...mocks.tabStore.state, activeTabId: "tab-2" };
+      mocks.tabStore.state = { ...mocks.tabStore.state, selectedTabId: "tab-2" };
       rerender(<TabBar />);
 
       expect(scrollIntoViewMock).not.toHaveBeenCalled();
@@ -456,7 +456,7 @@ describe("TabBar wheel switching", () => {
       const { rerender } = render(<TabBar />);
       expect(scrollIntoViewMock).not.toHaveBeenCalled();
 
-      mocks.tabStore.state = { ...mocks.tabStore.state, activeTabId: "tab-2" };
+      mocks.tabStore.state = { ...mocks.tabStore.state, selectedTabId: "tab-2" };
       rerender(<TabBar />);
 
       expect(scrollIntoViewMock).toHaveBeenCalledWith({
@@ -615,7 +615,7 @@ describe("TabBar wheel switching", () => {
           autoRefreshPageKey: null as string | null,
         },
       ],
-      activeTabId: "tab-2",
+      selectedTabId: "tab-2",
     };
 
     const { container } = render(<TabBar />);
@@ -653,7 +653,7 @@ describe("TabBar wheel switching", () => {
           autoRefreshPageKey: null as string | null,
         },
       ],
-      activeTabId: "tab-2",
+      selectedTabId: "tab-2",
     };
 
     const { container } = render(<TabBar />);
@@ -705,7 +705,7 @@ describe("TabBar drag-to-reorder", () => {
           autoRefreshPageKey: null as string | null,
         },
       ],
-      activeTabId: "tab-1",
+      selectedTabId: "tab-1",
       closedTabs: [],
     };
     mocks.autoScrollState = {
@@ -820,7 +820,7 @@ describe("TabBar detached tabs", () => {
           autoRefreshPageKey: null,
         },
       ],
-      activeTabId: "tab-1",
+      selectedTabId: "tab-1",
       closedTabs: [],
     };
     mocks.detachedTabIds.add("tab-2");
@@ -885,7 +885,7 @@ describe("TabBar tab interactions", () => {
           autoRefreshPageKey: null as string | null,
         },
       ],
-      activeTabId: "tab-1",
+      selectedTabId: "tab-1",
       closedTabs: [],
     };
     mocks.autoScrollState = {
@@ -939,7 +939,7 @@ describe("TabBar tab interactions", () => {
           ],
         },
       ],
-      activeTabId: "tab-1",
+      selectedTabId: "tab-1",
     } as unknown as typeof mocks.tabStore.state;
 
     const { container } = render(<TabBar />);
@@ -992,7 +992,7 @@ describe("TabBar tab interactions", () => {
           autoRefreshPageKey: "threadList:https://example.com/software/",
         },
       ],
-      activeTabId: "tab-1",
+      selectedTabId: "tab-1",
       closedTabs: [],
     } as typeof mocks.tabStore.state;
 
@@ -1044,7 +1044,7 @@ describe("TabBar vertical", () => {
           autoRefreshPageKey: null as string | null,
         },
       ],
-      activeTabId: "tab-1",
+      selectedTabId: "tab-1",
       closedTabs: [],
     };
     dispatchMock.mockReset();
@@ -1323,7 +1323,7 @@ describe("TabBar bookmark", () => {
           autoRefreshPageKey: null,
         },
       ],
-      activeTabId: "tab-1",
+      selectedTabId: "tab-1",
       closedTabs: [],
     };
 

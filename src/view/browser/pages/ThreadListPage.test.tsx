@@ -12,9 +12,9 @@ import { ThreadListPage } from "src/view/browser/pages/ThreadListPage";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const THREAD_LIST_SORT_STORAGE_KEY = "chlens_browser_thread_list_sort_by_site";
-const { dispatchMock, activeTabIdRef, viewStateRef, updateViewStateMock } = vi.hoisted(() => ({
+const { dispatchMock, selectedTabIdRef, viewStateRef, updateViewStateMock } = vi.hoisted(() => ({
   dispatchMock: vi.fn(),
-  activeTabIdRef: { current: "tab-1" },
+  selectedTabIdRef: { current: "tab-1" },
   viewStateRef: {
     current: {} as {
       searchQuery?: string;
@@ -69,9 +69,9 @@ vi.mock("src/core/URL", () => ({
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => ({
     dispatch: dispatchMock,
-    state: { activeTabId: activeTabIdRef.current },
-    activeTab: {
-      id: activeTabIdRef.current,
+    state: { selectedTabId: selectedTabIdRef.current },
+    viewTab: {
+      id: selectedTabIdRef.current,
       history: [
         { type: "home", title: "ホーム" },
         {
@@ -188,7 +188,7 @@ describe("ThreadListPage", () => {
     const askBoardTitleMock = vi.mocked(askBoardTitle);
     askBoardTitleMock.mockReset();
     askBoardTitleMock.mockResolvedValue(null);
-    activeTabIdRef.current = "tab-1";
+    selectedTabIdRef.current = "tab-1";
     focusedPaneIdRef.current = "pane-1";
     panesRef.current = [];
     const localStorageMock = createMemoryStorage();
@@ -285,7 +285,7 @@ describe("ThreadListPage", () => {
 
     dispatchMock.mockClear();
 
-    activeTabIdRef.current = "tab-2";
+    selectedTabIdRef.current = "tab-2";
     rerender(
       <ThreadListPage
         tabId={props.tabId}
@@ -298,7 +298,7 @@ describe("ThreadListPage", () => {
     await vi.advanceTimersByTimeAsync(20000);
     expect(dispatchMock).not.toHaveBeenCalledWith({ type: "RELOAD" });
 
-    activeTabIdRef.current = "tab-1";
+    selectedTabIdRef.current = "tab-1";
     rerender(
       <ThreadListPage
         tabId={props.tabId}

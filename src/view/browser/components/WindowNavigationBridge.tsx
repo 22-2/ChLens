@@ -1,6 +1,10 @@
 import { type Dispatch, type FC, useEffect, useRef } from "react";
 import { tabActions } from "src/view/browser/hooks/tab-store-actions";
-import type { ScopedTabAction, TabAction } from "src/view/browser/hooks/tab-store-types";
+import {
+  type ScopedTabAction,
+  TAB_ACTION_TYPES,
+  type TabAction,
+} from "src/view/browser/hooks/tab-store-types";
 import { useDetachedTabController } from "src/view/browser/hooks/use-detached-tab-controller";
 import { useTabDispatchForTab, useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
@@ -12,7 +16,10 @@ interface WindowNavigationBridgeProps {
   manageBrowserHistory?: boolean;
 }
 
-type WindowNavigationAction = Extract<TabAction, { type: "GO_BACK" | "GO_FORWARD" }> &
+type WindowNavigationAction = Extract<
+  TabAction,
+  { type: typeof TAB_ACTION_TYPES.GO_BACK | typeof TAB_ACTION_TYPES.GO_FORWARD }
+> &
   Pick<ScopedTabAction, "paneId" | "tabId">;
 
 /**
@@ -77,7 +84,12 @@ function useWindowNavigationEvents({
   useEffect(() => {
     // 別窓はWindowProxy自身の履歴をアプリ履歴に置き換えない。
     // 本窓でも対象タブが別窓へ移った間は、誤操作を防ぐため何も送らない。
-    const navigate = (action: Extract<TabAction, { type: "GO_BACK" | "GO_FORWARD" }>) => {
+    const navigate = (
+      action: Extract<
+        TabAction,
+        { type: typeof TAB_ACTION_TYPES.GO_BACK | typeof TAB_ACTION_TYPES.GO_FORWARD }
+      >,
+    ) => {
       const currentTabId = targetTabIdRef.current;
       if (!currentTabId) {
         return;
