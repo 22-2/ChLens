@@ -37,6 +37,7 @@ import {
   type ThreadListSortPreference,
   writeThreadListSortPreference,
 } from "src/view/browser/components/thread-list-shared";
+import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import {
   readBookmarkStatus,
   useBookmarkRevision,
@@ -621,11 +622,11 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
       canGoForward={activeTab.currentIndex < activeTab.history.length - 1}
       canRefresh={!loading}
       onBack={() => {
-        dispatch({ type: "GO_BACK" });
+        dispatch(tabActions.goBack());
         closeContextMenu();
       }}
       onForward={() => {
-        dispatch({ type: "GO_FORWARD" });
+        dispatch(tabActions.goForward());
         closeContextMenu();
       }}
       onRefresh={() => {
@@ -755,17 +756,21 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
                 return classes.join(" ") || undefined;
               }}
               onRowClick={({ thread }) =>
-                dispatch({
-                  type: "NAVIGATE",
-                  page: { type: "thread", title: thread.title, threadUrl: thread.url },
-                })
+                dispatch(
+                  tabActions.navigate({
+                    type: "thread",
+                    title: thread.title,
+                    threadUrl: thread.url,
+                  }),
+                )
               }
               onRowMiddleClick={({ thread }) =>
-                dispatch({
-                  type: "OPEN_IN_NEW_TAB",
-                  page: { type: "thread", title: thread.title, threadUrl: thread.url },
-                  background: true,
-                })
+                dispatch(
+                  tabActions.openInNewTab(
+                    { type: "thread", title: thread.title, threadUrl: thread.url },
+                    { background: true },
+                  ),
+                )
               }
               onRowContextMenu={({ thread }, x, y) => setContextMenuState({ thread, x, y })}
               sortColumn={sortColumn ?? undefined}

@@ -4,6 +4,7 @@ import { container } from "src/service-container/index";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import { ColumnDef } from "src/view/browser/components/SimpleDataTable";
 import { VirtualizedDataTable } from "src/view/browser/components/VirtualizedDataTable";
+import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 import { useTabDispatch, useTabViewState } from "src/view/browser/hooks/use-tab-store";
 import { Spinner } from "src/view/browser/ui/Spinner";
@@ -339,10 +340,7 @@ export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refre
     (entry: LogEntry) => {
       const parsed = parseInternalBrowserPage(entry.threadUrl);
       if (!parsed) return;
-      dispatch({
-        type: "NAVIGATE",
-        page: { ...parsed, title: entry.title },
-      });
+      dispatch(tabActions.navigate({ ...parsed, title: entry.title }));
     },
     [dispatch],
   );
@@ -352,11 +350,7 @@ export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refre
       const parsed = parseInternalBrowserPage(entry.threadUrl);
       if (!parsed) return;
       // ミドルクリックは常にバックグラウンドタブで開く。
-      dispatch({
-        type: "OPEN_IN_NEW_TAB",
-        page: { ...parsed, title: entry.title },
-        background: true,
-      });
+      dispatch(tabActions.openInNewTab({ ...parsed, title: entry.title }, { background: true }));
     },
     [dispatch],
   );

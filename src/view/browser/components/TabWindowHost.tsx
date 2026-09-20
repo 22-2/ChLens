@@ -17,6 +17,7 @@ import {
   type DetachedTabController,
   DetachedTabControllerContext,
 } from "src/view/browser/hooks/detached-tab-controller";
+import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import { AutoScrollStateProvider } from "src/view/browser/hooks/use-auto-scroll-state";
 import {
   type AuxiliaryWindowHandle,
@@ -193,18 +194,15 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
           // 切り離し中のタブを本窓のactiveTabに残すと、タブバーから消えた後に
           // 本文と戻る/進む入力だけが別窓へ誤配送されるため、表示可能なタブへ移す。
           dispatch({
-            type: "SELECT_TAB",
+            ...tabActions.selectTab(fallbackTab.id, { preserveActivePane: true }),
             paneId: located.paneId,
-            tabId: fallbackTab.id,
-            preserveActivePane: true,
           });
         } else {
           // ペイン内の最後の表示タブを切り離しても、本窓の操作対象を不可視タブへ
           // 残さない。元ページを引き継ぐ新規タブを表示用に作り、別窓の所有権を保つ。
           dispatch({
-            type: "ADD_TAB",
+            ...tabActions.addTab({ preserveActivePane: true }),
             paneId: located.paneId,
-            preserveActivePane: true,
           });
         }
       }
@@ -231,7 +229,7 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
       const located = findTab(stateRef.current.panes, tabId);
       if (located) {
         // 明示的な「戻す」だけはタブを保持し、元ペインで選択された状態に戻す。
-        dispatch({ type: "SELECT_TAB", paneId: located.paneId, tabId });
+        dispatch({ ...tabActions.selectTab(tabId), paneId: located.paneId });
       }
     },
     [dispatch, removeWindow, stateRef],
@@ -264,11 +262,11 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
       }
       removeWindow(tabId, entry.window);
       dispatch({
-        type: "CLOSE_TAB",
+        ...tabActions.closeTab(tabId, {
+          preserveActivePane: true,
+          replaceLastTab: true,
+        }),
         paneId: located.paneId,
-        tabId,
-        preserveActivePane: true,
-        replaceLastTab: true,
       });
     },
     [dispatch, reattachTab, removeWindow, stateRef],
@@ -332,14 +330,12 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
         // 本窓側の閉じる操作でactiveTabが別窓タブへ移った場合も、不可視タブを
         // ナビゲーションやステータスの暗黙の対象に残さない。
         dispatch({
-          type: "SELECT_TAB",
+          ...tabActions.selectTab(fallbackTab.id, { preserveActivePane: true }),
           paneId: pane.id,
-          tabId: fallbackTab.id,
-          preserveActivePane: true,
         });
       } else {
         // 全タブが別窓へ移っているペインには、本窓で操作できるタブを一つ補う。
-        dispatch({ type: "ADD_TAB", paneId: pane.id, preserveActivePane: true });
+        dispatch({ ...tabActions.addTab({ preserveActivePane: true }), paneId: pane.id });
       }
     }
   }, [dispatch, panes, windows]);
@@ -469,7 +465,7 @@ const TabWindowToolbar: React.FC<{
         <button
           type="button"
           disabled={!canGoBack(tab)}
-          onClick={() => dispatch({ type: "GO_BACK" })}
+          onClick={() => dispatch(tabActions.goBack())}
           title="前のページ"
         >
           戻る
@@ -477,12 +473,12 @@ const TabWindowToolbar: React.FC<{
         <button
           type="button"
           disabled={!canGoForward(tab)}
-          onClick={() => dispatch({ type: "GO_FORWARD" })}
+          onClick={() => dispatch(tabActions.goForward())}
           title="次のページ"
         >
           進む
         </button>
-        <button type="button" onClick={() => dispatch({ type: "RELOAD" })} title="再読み込み">
+        <button type="button" onClick={() => dispatch(tabActions.reload())} title="再読み込み">
           更新
         </button>
         <button type="button" onClick={onReattach} title="メイン画面へ戻す">

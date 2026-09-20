@@ -1,6 +1,7 @@
 import { type Dispatch, useCallback, useEffect, useRef, useState } from "react";
 import { log } from "src/app/Log";
 import { container } from "src/service-container/index";
+import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import type { ScopedTabAction } from "src/view/browser/hooks/use-tab-store";
 import type { Page } from "src/view/browser/types";
 import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
@@ -147,15 +148,16 @@ export function useNextThreadSearch({
         return;
       }
 
-      dispatch({
-        type: "FOLLOW_NEXT_THREAD",
-        page: {
-          type: "thread",
-          title: candidate.thread.title,
-          threadUrl: candidate.thread.url,
-        },
-        keepAutoRefresh,
-      });
+      dispatch(
+        tabActions.followNextThread(
+          {
+            type: "thread",
+            title: candidate.thread.title,
+            threadUrl: candidate.thread.url,
+          },
+          { keepAutoRefresh },
+        ),
+      );
       setState(IDLE_STATE);
     },
     [close, currentPage, dispatch, keepAutoRefresh, state.sourceThread],

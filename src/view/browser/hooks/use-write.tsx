@@ -6,6 +6,7 @@ import type { HttpResponse, WriteFormData, WriteFormField } from "src/app/platfo
 import { getStore2String, setStore2String } from "src/app/Store2Storage";
 import { URL as ChURL } from "src/core/URL";
 import { container } from "src/service-container/index";
+import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import { useScopedConfigBooleanSetting } from "src/view/browser/hooks/use-scoped-config-boolean-setting";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
@@ -417,7 +418,7 @@ export function useWrite(threadUrl: string, options: UseWriteOptions = {}): UseW
 
             // 変更理由: 投稿後の強制再取得も通常の RELOAD 経路へ寄せ、
             // manual reload / auto refresh と同じ forceUpdate 振る舞いを保つ。
-            dispatch(tabId ? { type: "RELOAD", tabId } : { type: "RELOAD" });
+            dispatch(tabId ? { ...tabActions.reload(), tabId } : tabActions.reload());
           })();
           break;
         case "confirm":

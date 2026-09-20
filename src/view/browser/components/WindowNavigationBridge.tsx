@@ -1,4 +1,6 @@
 import { type Dispatch, type FC, useEffect, useRef } from "react";
+import { tabActions } from "src/view/browser/hooks/tab-store-actions";
+import type { ScopedTabAction, TabAction } from "src/view/browser/hooks/tab-store-types";
 import { useDetachedTabController } from "src/view/browser/hooks/use-detached-tab-controller";
 import { useTabDispatchForTab, useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
@@ -9,6 +11,9 @@ interface WindowNavigationBridgeProps {
   /** 本窓のブラウザ履歴をアプリ内履歴へ変換するか。別窓では無効にする。 */
   manageBrowserHistory?: boolean;
 }
+
+type WindowNavigationAction = Extract<TabAction, { type: "GO_BACK" | "GO_FORWARD" }> &
+  Pick<ScopedTabAction, "paneId" | "tabId">;
 
 /**
  * 一つのWindowProxyに一つだけ戻る・進む入力を接続する。
@@ -59,7 +64,7 @@ function useWindowNavigationEvents({
   targetTabId,
   viewWindow,
 }: {
-  dispatch: Dispatch<{ type: "GO_BACK" | "GO_FORWARD"; tabId?: string }>;
+  dispatch: Dispatch<WindowNavigationAction>;
   manageBrowserHistory: boolean;
   targetTabId: string | null;
   viewWindow: Window;
@@ -72,12 +77,12 @@ function useWindowNavigationEvents({
   useEffect(() => {
     // 別窓はWindowProxy自身の履歴をアプリ履歴に置き換えない。
     // 本窓でも対象タブが別窓へ移った間は、誤操作を防ぐため何も送らない。
-    const navigate = (type: "GO_BACK" | "GO_FORWARD") => {
+    const navigate = (action: Extract<TabAction, { type: "GO_BACK" | "GO_FORWARD" }>) => {
       const currentTabId = targetTabIdRef.current;
       if (!currentTabId) {
         return;
       }
-      dispatchRef.current({ type, tabId: currentTabId });
+      dispatchRef.current({ ...action, tabId: currentTabId });
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -86,20 +91,20 @@ function useWindowNavigationEvents({
       }
       if (event.key === "ArrowLeft") {
         event.preventDefault();
-        navigate("GO_BACK");
+        navigate(tabActions.goBack());
       } else if (event.key === "ArrowRight") {
         event.preventDefault();
-        navigate("GO_FORWARD");
+        navigate(tabActions.goForward());
       }
     };
 
     const handleMouseUp = (event: MouseEvent) => {
       if (event.button === 3) {
         event.preventDefault();
-        navigate("GO_BACK");
+        navigate(tabActions.goBack());
       } else if (event.button === 4) {
         event.preventDefault();
-        navigate("GO_FORWARD");
+        navigate(tabActions.goForward());
       }
     };
 
@@ -109,7 +114,7 @@ function useWindowNavigationEvents({
         return;
       }
       viewWindow.history.pushState({ app: true }, "");
-      navigate("GO_BACK");
+      navigate(tabActions.goBack());
     };
 
     viewWindow.addEventListener("keydown", handleKeyDown);

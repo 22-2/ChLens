@@ -36,6 +36,7 @@ import {
   MIN_BOARD_AUTO_REFRESH_MS,
   readBoardAutoRefreshIntervalMs,
 } from "src/view/browser/hooks/auto-refresh-config";
+import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import {
   readBookmarkStatus,
   useBookmarkRevision,
@@ -298,7 +299,7 @@ export const ThreadListPage: React.FC<Props> = ({
     isLoading: loading,
     containerRef: effectiveScrollContainerRef,
     edge: "top",
-    onRefresh: () => dispatch({ type: "RELOAD" }),
+    onRefresh: () => dispatch(tabActions.reload()),
   });
   const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
     pageType: "threadList",
@@ -593,12 +594,7 @@ export const ThreadListPage: React.FC<Props> = ({
     const initialBoardTitle = resolveInitialBoardTitle(page);
     if (initialBoardTitle) {
       if (initialBoardTitle !== page.title) {
-        dispatch({
-          type: "UPDATE_TITLE_FOR_TAB",
-          tabId,
-          title: initialBoardTitle,
-          boardUrl: page.boardUrl,
-        });
+        dispatch(tabActions.updateTitleForTab(tabId, initialBoardTitle, page.boardUrl));
       }
       return;
     }
@@ -606,7 +602,7 @@ export const ThreadListPage: React.FC<Props> = ({
     askBoardTitle(new ChURL(page.boardUrl))
       .then((title) => {
         if (!cancelled && title) {
-          dispatch({ type: "UPDATE_TITLE_FOR_TAB", tabId, title, boardUrl: page.boardUrl });
+          dispatch(tabActions.updateTitleForTab(tabId, title, page.boardUrl));
         }
       })
       .catch((err) => {
@@ -667,7 +663,7 @@ export const ThreadListPage: React.FC<Props> = ({
 
       // タブを切り替えた瞬間に旧タブの更新が走ると体感が悪いため、
       // 一覧の自動更新は表示中タブの RELOAD 経路だけを使って発火する。
-      dispatch({ type: "RELOAD" });
+      dispatch(tabActions.reload());
     }, boardAutoRefreshIntervalMs);
 
     return () => {
@@ -769,10 +765,7 @@ export const ThreadListPage: React.FC<Props> = ({
 
   const handleThreadClick = useCallback(
     ({ thread }: DisplayThread) => {
-      dispatch({
-        type: "NAVIGATE",
-        page: { type: "thread", title: thread.title, threadUrl: thread.url },
-      });
+      dispatch(tabActions.navigate({ type: "thread", title: thread.title, threadUrl: thread.url }));
     },
     [dispatch],
   );
@@ -797,7 +790,7 @@ export const ThreadListPage: React.FC<Props> = ({
         return;
       }
 
-      dispatch({ type: "RELOAD" });
+      dispatch(tabActions.reload());
     },
     [dispatch, viewWindow],
   );
@@ -805,11 +798,12 @@ export const ThreadListPage: React.FC<Props> = ({
   const openThreadInNewTab = useCallback(
     ({ thread }: DisplayThread) => {
       // ミドルクリックはバックグラウンドで開く（設定に関わらず常にバックグラウンドタブ）
-      dispatch({
-        type: "OPEN_IN_NEW_TAB",
-        page: { type: "thread", title: thread.title, threadUrl: thread.url },
-        background: true,
-      });
+      dispatch(
+        tabActions.openInNewTab(
+          { type: "thread", title: thread.title, threadUrl: thread.url },
+          { background: true },
+        ),
+      );
     },
     [dispatch],
   );
@@ -926,15 +920,15 @@ export const ThreadListPage: React.FC<Props> = ({
       canGoForward={canGoForward(navigationTab)}
       canRefresh={isPageRefreshable(page)}
       onBack={() => {
-        dispatch({ type: "GO_BACK" });
+        dispatch(tabActions.goBack());
         closeContextMenu();
       }}
       onForward={() => {
-        dispatch({ type: "GO_FORWARD" });
+        dispatch(tabActions.goForward());
         closeContextMenu();
       }}
       onRefresh={() => {
-        dispatch({ type: "RELOAD" });
+        dispatch(tabActions.reload());
         closeContextMenu();
       }}
     />

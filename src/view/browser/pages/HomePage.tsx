@@ -1,5 +1,6 @@
 import React from "react";
 import { container } from "src/service-container/index";
+import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { Alert } from "src/view/browser/ui/Alert";
 import { Button } from "src/view/browser/ui/Button";
@@ -85,39 +86,29 @@ export const HomePage: React.FC = () => {
   }, [loadFavoriteBoards]);
 
   const openBoardList = React.useCallback(() => {
-    dispatch({
-      type: "NAVIGATE",
-      page: { type: "boardList", title: "板一覧" },
-    });
+    dispatch(tabActions.navigate({ type: "boardList", title: "板一覧" }));
   }, [dispatch]);
 
   // const openHistory = React.useCallback(() => {
-  //   dispatch({
-  //     type: "NAVIGATE",
-  //     page: { type: "historyList", title: "閲覧履歴" },
-  //   });
+  //   dispatch(tabActions.navigate({ type: "historyList", title: "閲覧履歴" }));
   // }, [dispatch]);
 
   const openBoard = React.useCallback(
     (board: FavoriteBoard) => {
-      dispatch({
-        type: "NAVIGATE",
-        page: {
+      dispatch(
+        tabActions.navigate({
           type: "threadList",
           title: board.title,
           boardUrl: board.url,
           boardTitle: board.title,
-        },
-      });
+        }),
+      );
     },
     [dispatch],
   );
 
   // const openBookmarks = React.useCallback(() => {
-  //   dispatch({
-  //     type: "NAVIGATE",
-  //     page: { type: "bookmarkList", title: "ブックマーク" },
-  //   });
+  //   dispatch(tabActions.navigate({ type: "bookmarkList", title: "ブックマーク" }));
   // }, [dispatch]);
 
   return (

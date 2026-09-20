@@ -13,6 +13,7 @@ import {
   THREAD_AUTO_REFRESH_CONFIG_KEY,
   THREAD_IDLE_STOP_TIMEOUT_CONFIG_KEY,
 } from "src/view/browser/hooks/auto-refresh-config";
+import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import {
   getAutoRefreshPageKey,
@@ -167,11 +168,7 @@ export function useAutoRefreshPanel(): UseAutoRefreshPanelResult {
       return;
     }
 
-    dispatch({
-      type: "SET_AUTO_REFRESH_ENABLED",
-      enabled: !isEnabled,
-      pageKey: currentPageKey,
-    });
+    dispatch(tabActions.setAutoRefreshEnabled(!isEnabled, currentPageKey));
   }, [currentPageKey, dispatch, isEnabled]);
 
   return {

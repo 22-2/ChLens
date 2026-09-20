@@ -17,6 +17,7 @@ import { ThreadMinimap } from "src/view/browser/components/ThreadMinimap";
 import { ThreadScrollFloatingActions } from "src/view/browser/components/ThreadScrollFloatingActions";
 import { WheelScrollIndicator } from "src/view/browser/components/WheelScrollIndicator";
 import type { ContextMenuPopupItem } from "src/view/browser/hooks/popup-manager/types";
+import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import { useAutoNextThread } from "src/view/browser/hooks/use-auto-next-thread";
 import { useAutoNextThreadSetting } from "src/view/browser/hooks/use-auto-next-thread-setting";
 import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
@@ -193,7 +194,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     isLoading: loading,
     containerRef: effectiveScrollContainerRef,
     edge: "bottom",
-    onRefresh: () => dispatch({ type: "RELOAD" }),
+    onRefresh: () => dispatch(tabActions.reload()),
   });
   const { setThreadStats } = useNgStatus();
   const { setPageCount } = usePageCountStatus();
@@ -286,11 +287,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       if (pageKey == null) {
         return;
       }
-      dispatch({
-        type: "SET_AUTO_REFRESH_ENABLED",
-        enabled: false,
-        pageKey,
-      });
+      dispatch(tabActions.setAutoRefreshEnabled(false, pageKey));
       toast.info(message);
     },
     [dispatch, page, toast],
@@ -304,11 +301,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
 
     // 既存の自動更新トグルと同じ状態経路を使い、フローティングボタンだけが
     // 別の更新条件を持たないようにする。ON直後の再取得と最下部同期はhookへ委譲する。
-    dispatch({
-      type: "SET_AUTO_REFRESH_ENABLED",
-      enabled: true,
-      pageKey,
-    });
+    dispatch(tabActions.setAutoRefreshEnabled(true, pageKey));
   }, [dispatch, page]);
 
   const handleNewResponses = useCallback(
@@ -360,7 +353,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     responseCount: responses.length,
     lastResponseNum: responses.at(-1)?.num ?? null,
     rootRef,
-    requestRefresh: () => dispatch({ type: "RELOAD" }),
+    requestRefresh: () => dispatch(tabActions.reload()),
     onNewResponses: handleNewResponses,
     // 新着が一定回数(=間隔×N)来なかったら、放置スレと判断して自動更新を止める。
     onAutoStop: isCommentOverlayFlowing
@@ -381,15 +374,16 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         .catch((error: unknown) => {
           console.error("[ChLens] 次スレ移動の通知コメント送信に失敗しました:", error);
         });
-      dispatch({
-        type: "FOLLOW_NEXT_THREAD",
-        page: {
-          type: "thread",
-          title: nextThread.title,
-          threadUrl: nextThread.url,
-        },
-        keepAutoRefresh: isAutoRefreshEnabled,
-      });
+      dispatch(
+        tabActions.followNextThread(
+          {
+            type: "thread",
+            title: nextThread.title,
+            threadUrl: nextThread.url,
+          },
+          { keepAutoRefresh: isAutoRefreshEnabled },
+        ),
+      );
     },
     [commentOverlayController, dispatch, isAutoRefreshEnabled, page.threadUrl],
   );
@@ -537,15 +531,15 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         canGoForward={canGoForward(navigationTab)}
         canRefresh={isPageRefreshable(page)}
         onBack={() => {
-          dispatch({ type: "GO_BACK" });
+          dispatch(tabActions.goBack());
           closePopupById(menu.id);
         }}
         onForward={() => {
-          dispatch({ type: "GO_FORWARD" });
+          dispatch(tabActions.goForward());
           closePopupById(menu.id);
         }}
         onRefresh={() => {
-          dispatch({ type: "RELOAD" });
+          dispatch(tabActions.reload());
           closePopupById(menu.id);
         }}
       />
@@ -571,7 +565,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       // テキスト選択中はリロードしない
       if (viewWindow.getSelection()?.toString()) return;
 
-      dispatch({ type: "RELOAD" });
+      dispatch(tabActions.reload());
     },
     [dispatch, viewWindow],
   );

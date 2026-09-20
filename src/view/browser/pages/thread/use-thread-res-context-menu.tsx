@@ -18,6 +18,7 @@ import { stringifyNgDslValue } from "src/core/ngDsl";
 import { requestArchiveReplaySeek } from "src/features/archive-replay/platform";
 import { container } from "src/service-container/index";
 import type { IRes } from "src/service-container/interfaces";
+import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useTabViewRuntime } from "src/view/browser/hooks/use-tab-view-runtime";
 import { useWriteRequest } from "src/view/browser/hooks/use-write-request";
@@ -321,11 +322,12 @@ export function useThreadResContextMenu({
           icon: isAutoRefreshEnabled ? <Pause size={14} /> : <RefreshCw size={14} />,
           onSelect: () => {
             const nextEnabled = !isAutoRefreshEnabled;
-            dispatch({
-              type: "SET_AUTO_REFRESH_ENABLED",
-              enabled: nextEnabled,
-              pageKey: getAutoRefreshPageKey(page) ?? undefined,
-            });
+            dispatch(
+              tabActions.setAutoRefreshEnabled(
+                nextEnabled,
+                getAutoRefreshPageKey(page) ?? undefined,
+              ),
+            );
             toast.info(
               nextEnabled ? "スレッドの自動更新を開始しました" : "スレッドの自動更新を停止しました",
             );

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import React, { useMemo } from "react";
 import { container } from "src/service-container";
+import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import { useOptionalBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useDetachedTabController } from "src/view/browser/hooks/use-detached-tab-controller";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
@@ -57,7 +58,7 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
         label: "タブを閉じる",
         disabled: tab.pinned,
         icon: <X />,
-        onSelect: () => dispatch({ type: "CLOSE_TAB", tabId: tab.id }),
+        onSelect: () => dispatch(tabActions.closeTab(tab.id)),
       },
       {
         id: "reopen",
@@ -65,7 +66,7 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
         disabled: !hasClosedTabs,
         // 変更理由: 外部ブラウザで開く操作と混同しないよう、タブ復元らしい巻き戻しアイコンにする。
         icon: <RotateCcw />,
-        onSelect: () => dispatch({ type: "REOPEN_CLOSED_TAB" }),
+        onSelect: () => dispatch(tabActions.reopenClosedTab()),
       },
       { id: "sep-1", separator: true },
     ];
@@ -147,16 +148,15 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
         icon: <List />,
         onSelect: () => {
           // 元スレの履歴を残したまま板を見比べられるように、新しいタブで開く。
-          dispatch({ type: "ADD_TAB" });
-          dispatch({
-            type: "NAVIGATE",
-            page: {
+          dispatch(tabActions.addTab());
+          dispatch(
+            tabActions.navigate({
               type: "threadList",
               title: boardUrl,
               boardUrl,
               boardTitle: boardUrl,
-            },
-          });
+            }),
+          );
         },
       });
       result.push({
@@ -175,7 +175,7 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
       id: "pin",
       label: tab.pinned ? "タブの固定を解除" : "タブを固定",
       icon: tab.pinned ? <PinOff /> : <Pin />,
-      onSelect: () => dispatch({ type: "TOGGLE_PIN", tabId: tab.id }),
+      onSelect: () => dispatch(tabActions.togglePin(tab.id)),
     });
     return result;
   }, [

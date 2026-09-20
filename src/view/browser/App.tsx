@@ -22,6 +22,7 @@ import { TabWindowHost } from "src/view/browser/components/TabWindowHost";
 import { TitleBar } from "src/view/browser/components/TitleBar";
 import { WindowNavigationBridge } from "src/view/browser/components/WindowNavigationBridge";
 import { WriteWindowHost } from "src/view/browser/components/WriteWindowHost";
+import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import { AutoScrollStateProvider } from "src/view/browser/hooks/use-auto-scroll-state";
 import {
   BOTTOM_PANEL_THREAD_LIST_TAB_ID,
@@ -235,7 +236,7 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
       // capture フェーズで拾い、子要素の操作前にアクティブペインを確定させる。
       onPointerDownCapture={() => {
         if (!isActive) {
-          dispatch({ type: "SET_ACTIVE_PANE" });
+          dispatch(tabActions.setActivePane());
         }
       }}
     >

@@ -17,6 +17,7 @@ import { container } from "src/service-container/index";
 import { useCursorTooltip } from "src/view/browser/components/CursorTooltip";
 import { PageTypeIcon } from "src/view/browser/components/PageTypeIcon";
 import { TabContextMenu } from "src/view/browser/components/TabContextMenu";
+import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import { useAutoScrollState } from "src/view/browser/hooks/use-auto-scroll-state";
 import { useDetachedTabController } from "src/view/browser/hooks/use-detached-tab-controller";
 import {
@@ -472,7 +473,7 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
       // 切り替え後のアクティブタブは別の effect で必要な場合だけ表示位置へ追従させる。
       e.preventDefault();
       lastWheelSwitchAtRef.current = now;
-      dispatch({ type: "SELECT_TAB", tabId: tabs[nextIdx].id });
+      dispatch(tabActions.selectTab(tabs[nextIdx].id));
     },
     [dispatch, isDetachedTab, isVertical, paneId, stateRef],
   );
@@ -539,25 +540,21 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
       if (fullTargetIndex == null) return;
       // ドラッグ完了直後の click イベントによるタブ選択を1回だけ抑止する。
       wasDraggingRef.current = true;
-      dispatch({
-        type: "MOVE_TAB",
-        dragTabId: String(source.id),
-        toIndex: fullTargetIndex,
-      });
+      dispatch(tabActions.moveTab(String(source.id), fullTargetIndex));
     },
     [dispatch, isDetachedTab, paneId, stateRef],
   );
 
   const handleTabSelect = useCallback(
     (tabId: string) => {
-      dispatch({ type: "SELECT_TAB", tabId });
+      dispatch(tabActions.selectTab(tabId));
     },
     [dispatch],
   );
 
   const handleTabClose = useCallback(
     (tabId: string) => {
-      dispatch({ type: "CLOSE_TAB", tabId });
+      dispatch(tabActions.closeTab(tabId));
     },
     [dispatch],
   );
@@ -629,7 +626,7 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
       const nextIndex = (index + delta + tabs.length) % tabs.length;
       const nextTab = tabs[nextIndex];
       if (!nextTab) return;
-      dispatch({ type: "SELECT_TAB", tabId: nextTab.id });
+      dispatch(tabActions.selectTab(nextTab.id));
       // フォーカスも追従させ、連続した矢印キー操作を可能にする。
       tabListRef.current?.querySelectorAll<HTMLElement>("[data-tab-id]")[nextIndex]?.focus();
     },
@@ -642,14 +639,14 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
         id: "new-tab",
         label: "新しいタブを開く",
         icon: <Plus size={16} />,
-        onSelect: () => dispatch({ type: "ADD_TAB" }),
+        onSelect: () => dispatch(tabActions.addTab()),
       },
       {
         id: "reopen",
         label: "閉じたタブを開く",
         disabled: state.closedTabs.length === 0,
         icon: <RotateCcw size={16} />,
-        onSelect: () => dispatch({ type: "REOPEN_CLOSED_TAB" }),
+        onSelect: () => dispatch(tabActions.reopenClosedTab()),
       },
       {
         id: "toggle-orientation",
@@ -676,7 +673,7 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
     <button
       type="button"
       className="tab-bar__add"
-      onClick={() => dispatch({ type: "ADD_TAB" })}
+      onClick={() => dispatch(tabActions.addTab())}
       onContextMenu={(e) => e.stopPropagation()}
       title="新しいタブ"
       aria-label="新しいタブ"
@@ -692,7 +689,7 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
       type="button"
       className="tab-bar__refresh"
       disabled={!canRefresh}
-      onClick={() => dispatch({ type: "RELOAD" })}
+      onClick={() => dispatch(tabActions.reload())}
       title="更新"
       aria-label="更新"
     >

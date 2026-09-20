@@ -13,6 +13,7 @@ import React, {
 import { platform } from "src/app/platform";
 import { getStore2String } from "src/app/Store2Storage";
 import { add as addHistoryRecord, remove as removeHistoryRecord } from "src/core/History";
+import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import {
   loadTabStoreSession,
   sanitizeTabStoreState,
@@ -24,6 +25,8 @@ import type {
   ScopedTabAction,
   TabStoreState,
 } from "src/view/browser/hooks/tab-store-types";
+export type { TabActionCreators } from "src/view/browser/hooks/tab-store-actions";
+export { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import { useTabViewScope } from "src/view/browser/hooks/use-tab-view-scope";
 import {
   buildHierarchy,
@@ -1388,7 +1391,7 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (msg.type === "open-tab-in-viewer" && typeof msg.url === "string") {
         const page = parseInternalBrowserPage(msg.url);
         if (page) {
-          dispatch({ type: "OPEN_IN_NEW_TAB", page });
+          dispatch(tabActions.openInNewTab(page));
         }
       }
     };
@@ -1572,12 +1575,7 @@ export function useTabViewState(
 
   const update = useCallback(
     (patch: Partial<TabViewState>) => {
-      dispatch({
-        type: "UPDATE_TAB_VIEW_STATE",
-        tabId,
-        pageKey,
-        patch,
-      });
+      dispatch(tabActions.updateTabViewState(tabId, pageKey, patch));
     },
     [dispatch, pageKey, tabId],
   );

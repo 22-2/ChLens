@@ -11,6 +11,7 @@ import {
 } from "react";
 import { container } from "src/service-container/index";
 import type { IRes, IThreadDetail } from "src/service-container/interfaces";
+import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import { useIsNgTemporarilyDisabled, useNgDisplayMode } from "src/view/browser/hooks/use-ng-status";
 import { useTabDispatch, useTabViewState } from "src/view/browser/hooks/use-tab-store";
 import type { ThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
@@ -179,11 +180,7 @@ export function useThreadData(
           })),
         );
         if (importedSikiThread.title && importedSikiThread.title !== page.title) {
-          dispatch({
-            type: "UPDATE_TITLE_FOR_TAB",
-            tabId,
-            title: importedSikiThread.title,
-          });
+          dispatch(tabActions.updateTitleForTab(tabId, importedSikiThread.title));
         }
         setError(null);
         setLoading(false);
@@ -228,11 +225,7 @@ export function useThreadData(
               });
             }
             if (cached.title && !titleUpdatedRef.current) {
-              dispatch({
-                type: "UPDATE_TITLE_FOR_TAB",
-                tabId,
-                title: cached.title,
-              });
+              dispatch(tabActions.updateTitleForTab(tabId, cached.title));
               titleUpdatedRef.current = true;
             }
             // 自動更新では cache 描画のあとに本体レスポンスが続くことがある。
@@ -262,11 +255,7 @@ export function useThreadData(
         setMissingFromSubject(result.missingFromSubject ?? false);
         setError(result.message || null);
         if (result.title && !titleUpdatedRef.current) {
-          dispatch({
-            type: "UPDATE_TITLE_FOR_TAB",
-            tabId,
-            title: result.title,
-          });
+          dispatch(tabActions.updateTitleForTab(tabId, result.title));
         }
       } catch (e) {
         if (!isCurrentRequest()) {

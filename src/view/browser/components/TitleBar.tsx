@@ -1,6 +1,7 @@
 import { ArrowLeft, ArrowRight, RotateCw } from "lucide-react";
 import React, { useCallback, useState } from "react";
 import { TabContextMenu } from "src/view/browser/components/TabContextMenu";
+import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import { useTabBarOrientation } from "src/view/browser/hooks/use-tab-bar-orientation";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useTitleBarButtonSettings } from "src/view/browser/hooks/use-title-bar-navigation-setting";
@@ -50,7 +51,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ showNavigationButtons = true
                 type="button"
                 className="title-bar__navigation"
                 disabled={!canNavigateBack}
-                onClick={() => dispatch({ type: "GO_BACK" })}
+                onClick={() => dispatch(tabActions.goBack())}
                 title="戻る"
                 aria-label="戻る"
               >
@@ -62,7 +63,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ showNavigationButtons = true
                 type="button"
                 className="title-bar__navigation"
                 disabled={!canNavigateForward}
-                onClick={() => dispatch({ type: "GO_FORWARD" })}
+                onClick={() => dispatch(tabActions.goForward())}
                 title="進む"
                 aria-label="進む"
               >
@@ -74,7 +75,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ showNavigationButtons = true
                 type="button"
                 className="title-bar__refresh"
                 disabled={!canRefresh}
-                onClick={() => dispatch({ type: "RELOAD" })}
+                onClick={() => dispatch(tabActions.reload())}
                 title="更新"
                 aria-label="更新"
               >

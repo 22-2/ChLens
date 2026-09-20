@@ -35,6 +35,7 @@ import {
   getResponseJumpResNumFromCommandId,
   RESPONSE_JUMP_COMMAND_ID,
 } from "src/view/browser/commands/response-jump-command";
+import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import type { ScopedTabAction } from "src/view/browser/hooks/use-tab-store";
 import type { ViewSurface } from "src/view/browser/hooks/use-view-surface";
 import type { Page, Tab } from "src/view/browser/types";
@@ -251,19 +252,16 @@ function openSettings(context: BrowserCommandContext): void {
   const existingSettingsTab = context.tabs.find((tab) => getCurrentPage(tab).type === "settings");
 
   if (existingSettingsTab) {
-    context.dispatch({ type: "SELECT_TAB", tabId: existingSettingsTab.id });
+    context.dispatch(tabActions.selectTab(existingSettingsTab.id));
     return;
   }
 
-  context.dispatch({ type: "ADD_TAB" });
-  context.dispatch({
-    type: "NAVIGATE",
-    page: { type: "settings", title: "設定" },
-  });
+  context.dispatch(tabActions.addTab());
+  context.dispatch(tabActions.navigate({ type: "settings", title: "設定" }));
 }
 
 function openQuickAccessPage(context: BrowserCommandContext, page: QuickAccessPage): void {
-  context.dispatch({ type: "NAVIGATE", page });
+  context.dispatch(tabActions.navigate(page));
 }
 
 async function importOpenThreadTabs(context: BrowserCommandContext): Promise<void> {
@@ -292,7 +290,7 @@ async function importOpenThreadTabs(context: BrowserCommandContext): Promise<voi
   for (const { page, tabIds } of pagesToImport) {
     // 変更理由: 一括取り込みで表示中のページを奪わず、確認したいタブを利用者が選べるよう
     // すべてバックグラウンド追加に統一し、追加できたページに対応する元タブだけを閉じる。
-    context.dispatch({ type: "OPEN_IN_NEW_TAB", page, background: true });
+    context.dispatch(tabActions.openInNewTab(page, { background: true }));
 
     const failedTabIds = await removeExtensionTabs(tabIds);
     if (failedTabIds.length > 0) {
@@ -328,7 +326,7 @@ async function openSikiLogFile(context: BrowserCommandContext): Promise<void> {
     const page = registerSikiLogThread(parsed);
     // 変更理由: Sikiログは通信で再取得できないため、選択直後に本文を登録してから
     // 通常のスレッドタブ経路へ渡し、既存の検索・アンカー・ポップアップ表示を共有する。
-    context.dispatch({ type: "OPEN_IN_NEW_TAB", page });
+    context.dispatch(tabActions.openInNewTab(page));
     getCommandToast(context).success(`Sikiログ「${parsed.title}」を開きました`);
   } catch (error: unknown) {
     // ファイル選択後の解析失敗は画面上でも知らせつつ、元のエラーをログへ残す。
@@ -404,12 +402,7 @@ async function retryBoardTitle(context: BrowserCommandContext): Promise<void> {
 
   // 変更理由: 通信完了までに別ページへ移動しても、板URLを手掛かりに
   // 対象タブの履歴中にある板一覧へ取得結果を反映できるようにする。
-  context.dispatch({
-    type: "UPDATE_TITLE_FOR_TAB",
-    tabId: context.activeTab.id,
-    title,
-    boardUrl: page.boardUrl,
-  });
+  context.dispatch(tabActions.updateTitleForTab(context.activeTab.id, title, page.boardUrl));
   getCommandToast(context).success(`板名を「${title}」に更新しました`);
 }
 
@@ -455,7 +448,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     isEnabled: ({ closedTabs }) => closedTabs.length > 0,
     // 変更理由: タブメニューと同じ reducer action を使い、復元時の新しいID付与と
     // 自動更新状態のリセットを共通化して、入口ごとの挙動差を防ぐ。
-    run: ({ dispatch }) => dispatch({ type: "REOPEN_CLOSED_TAB" }),
+    run: ({ dispatch }) => dispatch(tabActions.reopenClosedTab()),
   },
   {
     id: "navigation.open-bookmarks",
@@ -558,7 +551,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     // 変更理由: タブの右クリックメニューと同じ操作をコマンドパレットからも行えるようにし、
     // 対象は右クリック位置ではなくアクティブなタブにする。
     isEnabled: ({ tabs, activeTab }) => tabs.some((tab) => tab.id !== activeTab.id && !tab.pinned),
-    run: ({ dispatch, activeTab }) => dispatch({ type: "CLOSE_OTHER_TABS", tabId: activeTab.id }),
+    run: ({ dispatch, activeTab }) => dispatch(tabActions.closeOtherTabs(activeTab.id)),
   },
   {
     id: "tab.close-right-tabs",
@@ -572,7 +565,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
       const index = tabs.findIndex((tab) => tab.id === activeTab.id);
       return index !== -1 && tabs.slice(index + 1).some((tab) => !tab.pinned);
     },
-    run: ({ dispatch, activeTab }) => dispatch({ type: "CLOSE_RIGHT_TABS", tabId: activeTab.id }),
+    run: ({ dispatch, activeTab }) => dispatch(tabActions.closeRightTabs(activeTab.id)),
   },
   {
     id: "tab.close-all-tabs",
@@ -582,7 +575,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     keywords: ["すべて", "close all"],
     group: "tab",
     icon: X,
-    run: ({ dispatch }) => dispatch({ type: "CLOSE_ALL_TABS" }),
+    run: ({ dispatch }) => dispatch(tabActions.closeAllTabs()),
   },
   {
     id: "tab.open-in-right-pane",
@@ -592,7 +585,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     keywords: ["ペイン", "右", "right pane"],
     group: "tab",
     icon: PanelRight,
-    run: ({ dispatch, activeTab }) => dispatch({ type: "OPEN_IN_RIGHT_PANE", tabId: activeTab.id }),
+    run: ({ dispatch, activeTab }) => dispatch(tabActions.openInRightPane(activeTab.id)),
   },
   {
     id: "page.reload",
@@ -602,7 +595,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     group: "page",
     icon: RotateCw,
     when: ({ currentPage }) => RELOADABLE_PAGE_TYPES.has(currentPage.type),
-    run: ({ dispatch }) => dispatch({ type: "RELOAD" }),
+    run: ({ dispatch }) => dispatch(tabActions.reload()),
   },
   {
     id: "page.retry-board-title",
@@ -680,7 +673,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     run: ({ currentPage, dispatch }) => {
       const boardPage = getBoardPageFromThread(currentPage);
       if (!boardPage) return;
-      dispatch({ type: "OPEN_IN_NEW_TAB", page: boardPage });
+      dispatch(tabActions.openInNewTab(boardPage));
     },
   },
   {
@@ -704,7 +697,8 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     keywords: ["分割", "split", "pane", "レイアウト"],
     group: "layout",
     icon: Columns2,
-    run: ({ dispatch, isTwoPane }) => dispatch({ type: isTwoPane ? "CLOSE_PANE" : "SPLIT_PANE" }),
+    run: ({ dispatch, isTwoPane }) =>
+      dispatch(isTwoPane ? tabActions.closePane() : tabActions.splitPane()),
   },
   {
     id: "layout.toggle-tab-orientation",
@@ -898,17 +892,16 @@ export async function executeBrowserCommand(
     if (!parsed) return false;
     if (parsed.type === "thread") {
       const boardUrl = getBoardUrlFromThreadUrl(parsed.threadUrl);
-      context.dispatch({
-        type: "NAVIGATE",
-        page: {
+      context.dispatch(
+        tabActions.navigate({
           type: "threadList",
           title: boardUrl,
           boardUrl,
           boardTitle: boardUrl,
-        },
-      });
+        }),
+      );
     }
-    context.dispatch({ type: "NAVIGATE", page: parsed });
+    context.dispatch(tabActions.navigate(parsed));
     return true;
   }
 

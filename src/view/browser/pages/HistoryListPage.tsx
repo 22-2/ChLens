@@ -4,6 +4,7 @@ import { container } from "src/service-container/index";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import { ColumnDef } from "src/view/browser/components/SimpleDataTable";
 import { VirtualizedDataTable } from "src/view/browser/components/VirtualizedDataTable";
+import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 import { useTabDispatch, useTabViewState } from "src/view/browser/hooks/use-tab-store";
 import { Spinner } from "src/view/browser/ui/Spinner";
@@ -545,14 +546,13 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
       const parsed = parseInternalBrowserPage(entry.url);
       if (!parsed) return;
 
-      dispatch({
-        type: "NAVIGATE",
-        page: {
+      dispatch(
+        tabActions.navigate({
           ...parsed,
           title: entry.title,
           ...(parsed.type === "threadList" ? { boardTitle: entry.boardTitle || entry.title } : {}),
-        },
-      });
+        }),
+      );
     },
     [dispatch],
   );
@@ -563,15 +563,18 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
       if (!parsed) return;
 
       // ミドルクリックはバックグラウンドで開く（設定に関わらず常にバックグラウンドタブ）
-      dispatch({
-        type: "OPEN_IN_NEW_TAB",
-        page: {
-          ...parsed,
-          title: entry.title,
-          ...(parsed.type === "threadList" ? { boardTitle: entry.boardTitle || entry.title } : {}),
-        },
-        background: true,
-      });
+      dispatch(
+        tabActions.openInNewTab(
+          {
+            ...parsed,
+            title: entry.title,
+            ...(parsed.type === "threadList"
+              ? { boardTitle: entry.boardTitle || entry.title }
+              : {}),
+          },
+          { background: true },
+        ),
+      );
     },
     [dispatch],
   );

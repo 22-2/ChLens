@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from "react";
 import { ContextMenuNavigationActions } from "src/view/browser/components/ContextMenuNavigationActions";
+import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { buildCategoryId } from "src/view/browser/pages/board-list/board-list-utils";
@@ -75,15 +76,14 @@ export const BoardListPage: React.FC<BoardListPageProps> = ({ tabId, isActive, r
 
   const handleBoardClick = useCallback(
     (boardUrl: string, boardTitle: string) => {
-      dispatch({
-        type: "NAVIGATE",
-        page: {
+      dispatch(
+        tabActions.navigate({
           type: "threadList",
           title: boardTitle,
           boardUrl,
           boardTitle,
-        },
-      });
+        }),
+      );
     },
     [dispatch],
   );
@@ -91,16 +91,17 @@ export const BoardListPage: React.FC<BoardListPageProps> = ({ tabId, isActive, r
   const handleBoardMiddleClick = useCallback(
     (boardUrl: string, boardTitle: string) => {
       // ミドルクリックはバックグラウンドで開く（設定に関わらず常にバックグラウンドタブ）
-      dispatch({
-        type: "OPEN_IN_NEW_TAB",
-        page: {
-          type: "threadList",
-          title: boardTitle,
-          boardUrl,
-          boardTitle,
-        },
-        background: true,
-      });
+      dispatch(
+        tabActions.openInNewTab(
+          {
+            type: "threadList",
+            title: boardTitle,
+            boardUrl,
+            boardTitle,
+          },
+          { background: true },
+        ),
+      );
     },
     [dispatch],
   );
@@ -152,11 +153,11 @@ export const BoardListPage: React.FC<BoardListPageProps> = ({ tabId, isActive, r
       canGoForward={canGoForward(activeTab)}
       canRefresh={isPageRefreshable(currentPage)}
       onBack={() => {
-        dispatch({ type: "GO_BACK" });
+        dispatch(tabActions.goBack());
         setContextMenuState(null);
       }}
       onForward={() => {
-        dispatch({ type: "GO_FORWARD" });
+        dispatch(tabActions.goForward());
         setContextMenuState(null);
       }}
       onRefresh={() => {

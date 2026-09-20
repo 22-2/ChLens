@@ -3,6 +3,7 @@ import { useCallback } from "react";
 import { platform } from "src/app/platform/index";
 import { getResNumber } from "src/core/URL";
 import { toViewerImageUrl } from "src/features/media/domain/url-media";
+import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import type { TabAction } from "src/view/browser/hooks/use-tab-store";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
@@ -79,13 +80,9 @@ export function useUrlHandlers({
         // 5ch互換URLは外部ブラウザではなく拡張内で開く。
         // ミドルクリック時はバックグラウンドタブで開く（設定に関わらず常にバックグラウンド）
         if (button === 1) {
-          dispatch({
-            type: "OPEN_IN_NEW_TAB",
-            page: internalPage,
-            background: true,
-          });
+          dispatch(tabActions.openInNewTab(internalPage, { background: true }));
         } else {
-          dispatch({ type: "NAVIGATE", page: internalPage });
+          dispatch(tabActions.navigate(internalPage));
         }
         return;
       }

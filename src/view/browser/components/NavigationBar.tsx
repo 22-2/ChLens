@@ -46,6 +46,7 @@ import {
   commandPaletteStore,
 } from "src/view/browser/commands/command-palette-store";
 import { Omnibar } from "src/view/browser/components/Omnibar";
+import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import {
   BOTTOM_PANEL_THREAD_LIST_TAB_ID,
   BOTTOM_PANEL_WRITE_TAB_ID,
@@ -270,21 +271,17 @@ function navigateByUrl(url: string, dispatch: ReturnType<typeof useTabStore>["di
     // 変更理由: URL欄から別板のスレッドを開いたとき、直前に開いていた板を
     // 戻る先として残すと別板へ戻ってしまう。対象スレッドの板を履歴に積んでから
     // 遷移することで、戻る操作が常に対象スレッドの板へ戻るようにする。
-    dispatch({
-      type: "NAVIGATE",
-      page: {
+    dispatch(
+      tabActions.navigate({
         type: "threadList",
         title: boardUrl,
         boardUrl,
         boardTitle: boardUrl,
-      },
-    });
+      }),
+    );
   }
 
-  dispatch({
-    type: "NAVIGATE",
-    page: parsed,
-  });
+  dispatch(tabActions.navigate(parsed));
 }
 
 interface NavigationBarProps {
@@ -449,16 +446,15 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         return;
       }
 
-      dispatch({
-        type: "NAVIGATE",
-        page: {
+      dispatch(
+        tabActions.navigate({
           ...parsed,
           title: suggestion.title,
           ...(parsed.type === "threadList"
             ? { boardTitle: suggestion.boardTitle || suggestion.title }
             : {}),
-        },
-      });
+        }),
+      );
 
       urlInputRef.current?.blur();
     },
@@ -697,7 +693,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
 
   const handleRefresh = useCallback(() => {
     setRefreshMenuPosition(null);
-    dispatch({ type: "RELOAD" });
+    dispatch(tabActions.reload());
   }, [dispatch]);
 
   const handleUrlBarToggle = useCallback(() => {
@@ -717,7 +713,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       type: "bookmarkList" | "historyList" | "writeHistoryList" | "logList";
       title: string;
     }) => {
-      dispatch({ type: "NAVIGATE", page });
+      dispatch(tabActions.navigate(page));
     },
     [dispatch],
   );
@@ -727,7 +723,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       type: "bookmarkList" | "historyList" | "writeHistoryList" | "logList";
       title: string;
     }) => {
-      dispatch({ type: "OPEN_IN_NEW_TAB_FORCE", page });
+      dispatch(tabActions.openInNewTabForce(page));
     },
     [dispatch],
   );
@@ -760,15 +756,12 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     closeMenu();
 
     if (existingSettingsTab) {
-      dispatch({ type: "SELECT_TAB", tabId: existingSettingsTab.id });
+      dispatch(tabActions.selectTab(existingSettingsTab.id));
       return;
     }
 
-    dispatch({ type: "ADD_TAB" });
-    dispatch({
-      type: "NAVIGATE",
-      page: { type: "settings", title: "設定" },
-    });
+    dispatch(tabActions.addTab());
+    dispatch(tabActions.navigate({ type: "settings", title: "設定" }));
   }, [closeMenu, dispatch, state.tabs]);
 
   const handleMenuClick = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
@@ -880,10 +873,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
           id: `back-${index}`,
           label: page.title,
           allowMultilineLabel: true,
-          onSelect: () => dispatch({ type: "GO_TO_HISTORY_INDEX", index }),
+          onSelect: () => dispatch(tabActions.goToHistoryIndex(index)),
           onAuxSelect: (button: number) => {
             if (button !== 1) return;
-            dispatch({ type: "OPEN_IN_NEW_TAB", page, background: true });
+            dispatch(tabActions.openInNewTab(page, { background: true }));
           },
         })),
     [activeTab.currentIndex, activeTab.history, dispatch],
@@ -899,10 +892,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
           id: `forward-${index}`,
           label: page.title,
           allowMultilineLabel: true,
-          onSelect: () => dispatch({ type: "GO_TO_HISTORY_INDEX", index }),
+          onSelect: () => dispatch(tabActions.goToHistoryIndex(index)),
           onAuxSelect: (button: number) => {
             if (button !== 1) return;
-            dispatch({ type: "OPEN_IN_NEW_TAB", page, background: true });
+            dispatch(tabActions.openInNewTab(page, { background: true }));
           },
         })),
     [activeTab.currentIndex, activeTab.history, dispatch],
@@ -1047,11 +1040,12 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               label: isCurrentPageAutoRefreshEnabled ? "自動更新を停止" : "自動更新を開始",
               icon: isCurrentPageAutoRefreshEnabled ? <Pause size={14} /> : <RotateCw size={14} />,
               onSelect: () => {
-                dispatch({
-                  type: "SET_AUTO_REFRESH_ENABLED",
-                  enabled: !isCurrentPageAutoRefreshEnabled,
-                  pageKey: currentAutoRefreshPageKey,
-                });
+                dispatch(
+                  tabActions.setAutoRefreshEnabled(
+                    !isCurrentPageAutoRefreshEnabled,
+                    currentAutoRefreshPageKey,
+                  ),
+                );
               },
             },
             {
@@ -1073,7 +1067,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         className="nav-bar__menu-action"
         disabled={!back}
         onClick={() => {
-          dispatch({ type: "GO_BACK" });
+          dispatch(tabActions.goBack());
           closeMenu();
         }}
         onContextMenu={handleBackContextMenu}
@@ -1088,7 +1082,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         className="nav-bar__menu-action"
         disabled={!forward}
         onClick={() => {
-          dispatch({ type: "GO_FORWARD" });
+          dispatch(tabActions.goForward());
           closeMenu();
         }}
         onContextMenu={handleForwardContextMenu}
