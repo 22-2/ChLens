@@ -92,6 +92,8 @@ export interface DownloadManager {
 }
 
 export interface CookieManager {
+  /** 指定ホストの書き込みに使うCookieが存在するか確認する。 */
+  hasSiteCookies(site: string): Promise<boolean>;
   /** 指定ホストの書き込みに使うCookieを削除する。 */
   clearSiteCookies(site: string): Promise<void>;
 }

@@ -1,7 +1,7 @@
 use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE, ORIGIN, REFERER, USER_AGENT};
-use reqwest::{Client, Url};
+use reqwest::{Client, Response, Url};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Mutex;
 use std::time::Duration;
 use tauri::State;
@@ -14,6 +14,9 @@ pub struct WriteTransportState {
   // 変更理由: 確認POSTの成功後も掲示板が発行した認証Cookieを次回投稿へ渡すため、
   // 書き込み1回ごとにClientを破棄せず、同じサイトの書き込みだけでCookie Jarを共有する。
   clients: Mutex<HashMap<String, Client>>,
+  // 変更理由: reqwestのCookie Jarは外部からCookieの有無を確認できないため、
+  // Set-Cookieを受け取ったサイトを別に記録して設定画面の表示へ利用する。
+  sites_with_cookies: Mutex<HashSet<String>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -143,6 +146,38 @@ fn get_or_create_client(state: &WriteTransportState, site: &str) -> Result<Clien
   Ok(new_client)
 }
 
+fn remember_response_cookies(state: &WriteTransportState, site: &str, response: &Response) {
+  if response
+    .headers()
+    .get_all(reqwest::header::SET_COOKIE)
+    .iter()
+    .next()
+    .is_none()
+  {
+    return;
+  }
+
+  match state.sites_with_cookies.lock() {
+    Ok(mut sites) => {
+      sites.insert(site.to_string());
+    }
+    Err(error) => log::error!("Tauri版のCookie状態を更新できませんでした: {error}"),
+  }
+}
+
+#[tauri::command]
+pub fn has_write_cookies(
+  state: State<'_, WriteTransportState>,
+  site: String,
+) -> Result<bool, String> {
+  let site = parse_site_host(&site)?;
+  let sites = state
+    .sites_with_cookies
+    .lock()
+    .map_err(|_| "Tauri版のCookie状態をロックできませんでした".to_string())?;
+  Ok(sites.contains(&site))
+}
+
 #[tauri::command]
 pub fn clear_write_cookies(
   state: State<'_, WriteTransportState>,
@@ -153,10 +188,16 @@ pub fn clear_write_cookies(
     .clients
     .lock()
     .map_err(|_| "Tauri版の書き込みClientをロックできませんでした".to_string())?;
+  let mut sites_with_cookies = state
+    .sites_with_cookies
+    .lock()
+    .map_err(|_| "Tauri版のCookie状態をロックできませんでした".to_string())?;
 
   // 変更理由: reqwestのCookie JarにはCookie単位の公開削除APIがないため、
   // サイトごとのClientを破棄して、次回書き込み時に空のJarを作り直す。
-  if clients.remove(&site).is_some() {
+  let removed_client = clients.remove(&site).is_some();
+  let removed_cookie_state = sites_with_cookies.remove(&site);
+  if removed_client || removed_cookie_state {
     log::info!("サイトの書き込みCookieを削除しました: {site}");
   }
   Ok(())
@@ -177,9 +218,12 @@ pub async fn write_request(
         let headers = build_headers(&bootstrap, "", request.user_agent.as_deref());
         // 変更理由: 5ch互換サーバーはスレッド閲覧時に確認用Cookieを発行するため、
         // 初回POSTの前に同じRust ClientでGETして共有Cookie Jarへ保存する。
-        if let Err(error) = client.get(bootstrap).headers(headers).send().await {
-          // Cookie取得に失敗してもPOST本体は試し、サーバー側の詳細エラーを表示する。
-          log::warn!("書き込み前のCookie取得に失敗しました: {error}");
+        match client.get(bootstrap).headers(headers).send().await {
+          Ok(response) => remember_response_cookies(&state, &site, &response),
+          Err(error) => {
+            // Cookie取得に失敗してもPOST本体は試し、サーバー側の詳細エラーを表示する。
+            log::warn!("書き込み前のCookie取得に失敗しました: {error}");
+          }
         }
       }
       Err(error) => log::warn!("{error}"),
@@ -198,6 +242,7 @@ pub async fn write_request(
     .send()
     .await
     .map_err(|error| format!("Tauri版の書き込み通信に失敗しました: {error}"))?;
+  remember_response_cookies(&state, &site, &response);
 
   let status = response.status().as_u16();
   let url = response.url().to_string();

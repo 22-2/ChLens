@@ -31,39 +31,50 @@ function cookieDomainMatchesSite(cookieDomain: string, site: string): boolean {
   return domain === site || site.endsWith(`.${domain}`);
 }
 
+async function getSiteCookies(site: string): Promise<browser.Cookies.Cookie[]> {
+  const siteHost = normalizeSiteHost(site);
+  const cookies = new Map<string, browser.Cookies.Cookie>();
+
+  // 変更理由: Secure属性の有無でCookie APIのURLフィルター結果が分かれるため、
+  // HTTP/HTTPSの両方を検索し、同名でもパスやストアが異なるCookieを取りこぼさない。
+  const lookupDetails = [
+    { domain: siteHost },
+    ...createCookieLookupUrls(siteHost).map((url) => ({ url })),
+  ];
+  for (const details of lookupDetails) {
+    const matches = await browser.cookies.getAll(details);
+    for (const cookie of matches) {
+      if (!cookieDomainMatchesSite(cookie.domain, siteHost)) {
+        continue;
+      }
+      const key = [
+        cookie.storeId,
+        cookie.domain,
+        cookie.path,
+        cookie.name,
+        cookie.firstPartyDomain,
+        cookie.partitionKey?.topLevelSite ?? "",
+        cookie.partitionKey?.hasCrossSiteAncestor === true ? "1" : "0",
+      ].join("\u0000");
+      cookies.set(key, cookie);
+    }
+  }
+
+  return Array.from(cookies.values());
+}
+
 /** ブラウザ拡張機能のサイトCookieを、Cookieのパス違いも含めて削除する。 */
 export const BrowserCookieManager: CookieManager = {
+  async hasSiteCookies(site: string): Promise<boolean> {
+    return (await getSiteCookies(site)).length > 0;
+  },
+
   async clearSiteCookies(site: string): Promise<void> {
     const siteHost = normalizeSiteHost(site);
-    const cookies = new Map<string, browser.Cookies.Cookie>();
-
-    // 変更理由: Secure属性の有無でCookie APIのURLフィルター結果が分かれるため、
-    // HTTP/HTTPSの両方を検索し、同名でもパスやストアが異なるCookieを取りこぼさない。
-    const lookupDetails = [
-      { domain: siteHost },
-      ...createCookieLookupUrls(siteHost).map((url) => ({ url })),
-    ];
-    for (const details of lookupDetails) {
-      const matches = await browser.cookies.getAll(details);
-      for (const cookie of matches) {
-        if (!cookieDomainMatchesSite(cookie.domain, siteHost)) {
-          continue;
-        }
-        const key = [
-          cookie.storeId,
-          cookie.domain,
-          cookie.path,
-          cookie.name,
-          cookie.firstPartyDomain,
-          cookie.partitionKey?.topLevelSite ?? "",
-          cookie.partitionKey?.hasCrossSiteAncestor === true ? "1" : "0",
-        ].join("\u0000");
-        cookies.set(key, cookie);
-      }
-    }
+    const cookies = await getSiteCookies(siteHost);
 
     await Promise.all(
-      Array.from(cookies.values()).map(async (cookie) => {
+      cookies.map(async (cookie) => {
         const details = {
           url: createCookieRemovalUrl(siteHost, cookie.secure, cookie.path),
           name: cookie.name,

@@ -13,6 +13,7 @@ pub fn run() {
     .invoke_handler(tauri::generate_handler![
       download::save_download_file,
       write_transport::clear_write_cookies,
+      write_transport::has_write_cookies,
       write_transport::write_request
     ])
     .on_window_event(|window, event| {

@@ -210,6 +210,8 @@ export function SiteBoardSettingsPanel() {
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<ScopedSettingKey | null>(null);
   const [isClearingCookies, setIsClearingCookies] = useState(false);
+  const [isCheckingCookies, setIsCheckingCookies] = useState(false);
+  const [hasSiteCookies, setHasSiteCookies] = useState(false);
 
   useEffect(() => {
     setDialogPortalContainer(globalThis.document.querySelector<HTMLElement>(".browser-shell"));
@@ -292,6 +294,42 @@ export function SiteBoardSettingsPanel() {
     setSelectedBoard(SITE_SHARED_SCOPE);
   }, [selectedBoard, siteBoards]);
 
+  useEffect(() => {
+    let cancelled = false;
+    if (!selectedSite) {
+      setHasSiteCookies(false);
+      setIsCheckingCookies(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setHasSiteCookies(false);
+    setIsCheckingCookies(true);
+    void platformCookieManager
+      .hasSiteCookies(selectedSite)
+      .then((hasCookies) => {
+        if (!cancelled) {
+          setHasSiteCookies(hasCookies);
+        }
+      })
+      .catch((error: unknown) => {
+        console.error("[SiteBoardSettings] サイトCookieの確認に失敗しました", error);
+        if (!cancelled) {
+          setHasSiteCookies(false);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsCheckingCookies(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedSite]);
+
   const scope = useMemo<ScopedSettingScope | null>(() => {
     if (!selectedSite) {
       return null;
@@ -337,6 +375,7 @@ export function SiteBoardSettingsPanel() {
     setIsClearingCookies(true);
     try {
       await platformCookieManager.clearSiteCookies(selectedSite);
+      setHasSiteCookies(false);
       container.toast.success(`${selectedSite}のCookieを削除しました`);
     } catch (error) {
       console.error("[SiteBoardSettings] サイトCookieの削除に失敗しました", error);
@@ -421,9 +460,9 @@ export function SiteBoardSettingsPanel() {
             <div className="settings-page__site-board-cookie-action">
               <Button
                 className="settings-page__site-board-cookie-button"
-                variant="danger"
-                loading={isClearingCookies}
-                disabled={!selectedSite}
+                variant={hasSiteCookies ? "danger" : "subtle"}
+                loading={isClearingCookies || isCheckingCookies}
+                disabled={!selectedSite || !hasSiteCookies}
                 onClick={() => void clearSiteCookies()}
               >
                 このサイトのCookieをクリア

@@ -65,6 +65,16 @@ describe("ブラウザ版サイトCookie管理", () => {
     );
   });
 
+  it("サイトCookieの存在を確認できる", async () => {
+    cookieApi.getAll.mockResolvedValue([createCookie()]);
+
+    await expect(BrowserCookieManager.hasSiteCookies("example.com")).resolves.toBe(true);
+  });
+
+  it("Cookieがないサイトは存在しないと判定する", async () => {
+    await expect(BrowserCookieManager.hasSiteCookies("example.com")).resolves.toBe(false);
+  });
+
   it("サイト名にパスやクエリを含めた削除を拒否する", async () => {
     await expect(BrowserCookieManager.clearSiteCookies("example.com/board")).rejects.toThrow(
       "Cookieを削除するサイトの指定が不正です",
