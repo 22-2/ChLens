@@ -2,7 +2,6 @@ import { type FormEvent, type RefObject, useCallback, useEffect, useRef, useStat
 import { platform } from "src/app";
 import { wait } from "src/app/Defer";
 import { isTauriRuntime } from "src/app/platform/runtime";
-import { WriteCookieJar } from "src/app/platform/tauri/WriteCookies";
 import type { HttpResponse, WriteFormData, WriteFormField } from "src/app/platform/types";
 import { getStore2String, setStore2String } from "src/app/Store2Storage";
 import { URL as ChURL } from "src/core/URL";
@@ -163,6 +162,21 @@ async function setupHeaderModifier(formAction: string): Promise<void> {
   await platform.http.setupWriteHeaders(formAction);
 }
 
+function createTauriWriteSessionId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `write-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function releaseTauriWriteSession(sessionId: string): void {
+  void import("src/app/platform/tauri/WriteTransport")
+    .then(({ clearTauriWriteSession }) => clearTauriWriteSession(sessionId))
+    .catch((error) => {
+      console.error("Tauri版の書き込みセッションを破棄できませんでした:", error);
+    });
+}
+
 export function parseTauriWriteResult(
   response: HttpResponse,
   fallbackUrl: string,
@@ -202,30 +216,30 @@ export function parseTauriWriteResult(
 }
 
 interface TauriWriteRequest {
+  sessionId: string;
   action: string;
   charset: string;
   fields: readonly WriteFormField[];
   referer: string;
+  bootstrapUrl?: string;
 }
 
 async function submitTauriWrite(
   request: TauriWriteRequest,
   expectedAction: string,
-  cookieJar: WriteCookieJar,
 ): Promise<WriteResultMessage> {
-  const { createWriteRequestHeaders, encodeWriteFields } =
-    await import("src/app/platform/tauri/WriteForm");
-  const response = await platform.http.fetch(request.action, {
-    method: "POST",
-    headers: createWriteRequestHeaders(request.action, container.config.get("useragent"), {
-      referer: request.referer,
-      cookie: cookieJar.getHeader(request.action),
-    }),
+  const { encodeWriteFields } = await import("src/app/platform/tauri/WriteForm");
+  const { fetchTauriWrite } = await import("src/app/platform/tauri/WriteTransport");
+  const response = await fetchTauriWrite({
+    sessionId: request.sessionId,
+    action: request.action,
+    bootstrapUrl: request.bootstrapUrl,
+    referer: request.referer,
+    userAgent: container.config.get("useragent"),
+    cookie: undefined,
     body: encodeWriteFields(request.fields, request.charset),
-    mimeType: `text/html; charset=${request.charset}`,
+    charset: request.charset,
   });
-
-  cookieJar.updateFromResponse(response.url || request.action, response.setCookies);
 
   const result = parseTauriWriteResult(response, request.action, expectedAction, request.charset);
   if (result != null) {
@@ -261,7 +275,7 @@ export function useWrite(threadUrl: string): UseWriteResult {
   const [confirmationPage, setConfirmationPage] = useState<WriteConfirmationPage | null>(null);
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const tauriCookieJarRef = useRef<WriteCookieJar | null>(null);
+  const tauriWriteSessionIdRef = useRef<string | null>(null);
   const pendingSubmittedWriteRef = useRef<PendingWritePayload | null>(null);
   const submitWatchdogTimerRef = useRef<number | null>(null);
   const statusRef = useRef<WriteStatus>("idle");
@@ -297,9 +311,17 @@ export function useWrite(threadUrl: string): UseWriteResult {
   }, [clearSubmitWatchdog]);
 
   const clearTauriWriteAttempt = useCallback(() => {
-    tauriCookieJarRef.current?.clear();
-    tauriCookieJarRef.current = null;
+    const sessionId = tauriWriteSessionIdRef.current;
+    tauriWriteSessionIdRef.current = null;
     setConfirmationPage(null);
+    if (sessionId) releaseTauriWriteSession(sessionId);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      const sessionId = tauriWriteSessionIdRef.current;
+      if (sessionId) releaseTauriWriteSession(sessionId);
+    };
   }, []);
 
   useEffect(() => clearSubmitWatchdog, [clearSubmitWatchdog]);
@@ -479,20 +501,21 @@ export function useWrite(threadUrl: string): UseWriteResult {
     }
 
     if (useTauriHttp) {
-      const cookieJar = new WriteCookieJar();
-      tauriCookieJarRef.current = cookieJar;
+      const sessionId = createTauriWriteSessionId();
+      tauriWriteSessionIdRef.current = sessionId;
       try {
         const { getWriteFormFields } = await import("src/app/platform/tauri/WriteForm");
         handleWriteResult(
           await submitTauriWrite(
             {
+              sessionId,
               action: formData.action,
               charset: formData.charset,
               fields: getWriteFormFields(formData),
               referer: formData.referer ?? formData.action,
+              bootstrapUrl: threadUrl,
             },
             formData.action,
-            cookieJar,
           ),
         );
       } catch (error) {
@@ -559,9 +582,9 @@ export function useWrite(threadUrl: string): UseWriteResult {
   const submitConfirmation = useCallback(
     async (submission: WriteConfirmationSubmission) => {
       const page = confirmationPage;
-      const cookieJar = tauriCookieJarRef.current;
+      const sessionId = tauriWriteSessionIdRef.current;
       const form = page?.forms.find((candidate) => candidate.id === submission.formId);
-      if (!page || !cookieJar || !form) {
+      if (!page || !sessionId || !form) {
         handleWriteResult({
           type: "error",
           message: "確認ページの送信フォームを特定できませんでした",
@@ -580,13 +603,13 @@ export function useWrite(threadUrl: string): UseWriteResult {
         handleWriteResult(
           await submitTauriWrite(
             {
+              sessionId,
               action: form.action,
               charset: page.charset,
               fields: submission.fields,
               referer: page.sourceUrl,
             },
             page.expectedAction,
-            cookieJar,
           ),
         );
       } catch (error) {

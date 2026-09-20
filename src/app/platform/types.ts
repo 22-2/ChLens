@@ -37,8 +37,6 @@ export interface HttpResponse {
   headers: Record<string, string>;
   body: string;
   url: string;
-  /** Tauriの直接POSTで確認ページからの再送信に使う一時Cookie。 */
-  setCookies?: readonly string[];
 }
 
 export interface BinaryHttpResponse {

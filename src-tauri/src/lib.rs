@@ -1,9 +1,16 @@
+mod write_transport;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   // Overlayは起動直後から背後のMain操作を受け取れるよう、native側で常時クリック透過にする。
   tauri::Builder::default()
+    .manage(write_transport::WriteTransportState::default())
     .plugin(tauri_plugin_http::init())
     .plugin(tauri_plugin_sql::Builder::default().build())
+    .invoke_handler(tauri::generate_handler![
+      write_transport::write_request,
+      write_transport::clear_write_session,
+    ])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(

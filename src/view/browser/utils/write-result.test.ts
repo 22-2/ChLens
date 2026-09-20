@@ -33,6 +33,15 @@ describe("書き込み結果の判定", () => {
     ).toEqual({ type: "error", message: "ERROR: 投稿できません" });
   });
 
+  it("日本語だけの書き込みエラー本文を判定する", () => {
+    expect(
+      classifyWriteResult({
+        url: "https://example.com/test/bbs.cgi",
+        title: "書き込みエラー",
+      }),
+    ).toEqual({ type: "error", message: "書き込みエラー" });
+  });
+
   it("書き込み結果以外のURLを無視する", () => {
     expect(
       classifyWriteResult({

@@ -1,8 +1,4 @@
-import {
-  createWriteRequestHeaders,
-  encodeWriteFields,
-  encodeWriteForm,
-} from "src/app/platform/tauri/WriteForm";
+import { encodeWriteFields, encodeWriteForm } from "src/app/platform/tauri/WriteForm";
 import { describe, expect, it } from "vite-plus/test";
 
 describe("Tauri版の書き込みフォームエンコード", () => {
@@ -22,24 +18,7 @@ describe("Tauri版の書き込みフォームエンコード", () => {
     expect(body).toContain("MESSAGE=hello+world%0D%0Anext");
   });
 
-  it("投稿先のOriginとRefererおよびブラウザUAをヘッダーへ設定する", () => {
-    const headers = createWriteRequestHeaders("https://example.com/test/bbs.cgi", "");
-
-    expect(headers["Content-Type"]).toBe("application/x-www-form-urlencoded");
-    expect(headers.Origin).toBe("https://example.com");
-    expect(headers.Referer).toBe("https://example.com/test/bbs.cgi");
-    expect(headers["User-Agent"]).toBe(navigator.userAgent);
-  });
-
-  it("確認フォーム用に同名フィールドとCookieおよびRefererを保持する", () => {
-    const headers = createWriteRequestHeaders("https://example.com/test/bbs.cgi", "", {
-      referer: "https://example.com/test/bbs.cgi?confirm=1",
-      cookie: "MonaTicket=token; other=value",
-    });
-
-    expect(headers.Referer).toBe("https://example.com/test/bbs.cgi?confirm=1");
-    expect(headers.Cookie).toBe("MonaTicket=token; other=value");
-
+  it("確認フォーム用に同名フィールドを順序付きで保持する", () => {
     const body = new TextDecoder().decode(
       new Uint8Array(
         encodeWriteFields(
@@ -52,14 +31,5 @@ describe("Tauri版の書き込みフォームエンコード", () => {
       ),
     );
     expect(body).toBe("token=one&token=two");
-  });
-
-  it("利用者が設定したUser-AgentをブラウザUAより優先する", () => {
-    const headers = createWriteRequestHeaders(
-      "https://example.com/test/bbs.cgi",
-      "CustomBrowser/1.0",
-    );
-
-    expect(headers["User-Agent"]).toBe("CustomBrowser/1.0");
   });
 });

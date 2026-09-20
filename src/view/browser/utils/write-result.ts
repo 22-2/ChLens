@@ -21,7 +21,8 @@ const WRITE_RESULT_URL_PATTERNS = [
 
 const WRITE_SUCCESS_TEXT_PATTERN = /書き(?:こ|込)みました/;
 const WRITE_CONFIRM_TEXT_PATTERN = /確認/;
-const WRITE_ERROR_TEXT_PATTERN = /(?:ＥＲＲＯＲ|ERROR|スレッド作成規制中)/;
+const WRITE_ERROR_TEXT_PATTERN =
+  /(?:ＥＲＲＯＲ|ERROR|書き込みエラー|書込みエラー|投稿エラー|スレッド作成規制中)/;
 
 // 変更理由: ブラウザ版はcontent script、Tauri版はHTTPレスポンスを読むため、
 // 結果ページの判定だけを共有してプラットフォームごとの通知経路を分ける。

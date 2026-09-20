@@ -11,23 +11,6 @@ function extractCharset(mimeType: string): string | null {
   return match ? match[1] : null;
 }
 
-function splitSetCookieHeader(header: string): string[] {
-  // getSetCookieがない環境ではSet-Cookieが結合されるため、Expires内の日時カンマを避けて分割する。
-  return header.split(/,\s*(?=[^;,=\s]+\s*=)/);
-}
-
-function extractSetCookies(headers: Headers): string[] {
-  const headersWithSetCookie = headers as Headers & {
-    getSetCookie?: () => string[];
-  };
-  if (typeof headersWithSetCookie.getSetCookie === "function") {
-    return headersWithSetCookie.getSetCookie();
-  }
-
-  const combined = headers.get("set-cookie");
-  return combined ? splitSetCookieHeader(combined) : [];
-}
-
 // webviewのXHRはCORSに制限されるため、Rust側でHTTPリクエストを行うプラグインを使用する
 export async function fetchTauriBinary(
   url: string,
@@ -94,8 +77,6 @@ export const TauriHttpClient: HttpClient = {
     response.headers.forEach((value: string, key: string) => {
       headers[key] = value;
     });
-    const setCookies = extractSetCookies(response.headers);
-
     // XHRのoverrideMimeTypeと同様に、mimeTypeのcharsetを優先してデコードする
     const charset = options.mimeType ? extractCharset(options.mimeType) : null;
     let body: string;
@@ -120,14 +101,13 @@ export const TauriHttpClient: HttpClient = {
       headers,
       body,
       url: response.url,
-      ...(setCookies.length > 0 ? { setCookies } : {}),
     };
   },
 
   fetchBinary: fetchTauriBinary,
 
   async setupWriteHeaders(_formAction: string): Promise<void> {
-    // Tauri環境ではdeclarativeNetRequestが使えないため、
-    // 将来的にRust側でリクエストヘッダを操作する実装に置き換える
+    // Tauri版の書き込みは専用のRust transportがヘッダーを生成するため、
+    // 通常のHTTPクライアントへ書き込み用の状態を持ち込まない。
   },
 };

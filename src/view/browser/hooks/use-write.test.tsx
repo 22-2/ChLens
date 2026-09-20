@@ -1,14 +1,23 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-const { dispatchMock, fetchMock, getStore2StringMock, setStore2StringMock, setupWriteHeadersMock } =
-  vi.hoisted(() => ({
-    dispatchMock: vi.fn(),
-    fetchMock: vi.fn(),
-    getStore2StringMock: vi.fn(() => null as string | null),
-    setStore2StringMock: vi.fn(() => Promise.resolve()),
-    setupWriteHeadersMock: vi.fn(() => Promise.resolve()),
-  }));
+const {
+  clearTauriWriteSessionMock,
+  dispatchMock,
+  fetchMock,
+  fetchTauriWriteMock,
+  getStore2StringMock,
+  setStore2StringMock,
+  setupWriteHeadersMock,
+} = vi.hoisted(() => ({
+  clearTauriWriteSessionMock: vi.fn(() => Promise.resolve()),
+  dispatchMock: vi.fn(),
+  fetchMock: vi.fn(),
+  fetchTauriWriteMock: vi.fn(),
+  getStore2StringMock: vi.fn(() => null as string | null),
+  setStore2StringMock: vi.fn(() => Promise.resolve()),
+  setupWriteHeadersMock: vi.fn(() => Promise.resolve()),
+}));
 
 vi.mock("src/app", () => ({
   platform: {
@@ -21,6 +30,11 @@ vi.mock("src/app", () => ({
 
 vi.mock("src/app/platform/runtime", () => ({
   isTauriRuntime: () => true,
+}));
+
+vi.mock("src/app/platform/tauri/WriteTransport", () => ({
+  clearTauriWriteSession: clearTauriWriteSessionMock,
+  fetchTauriWrite: fetchTauriWriteMock,
 }));
 
 vi.mock("src/app/Store2Storage", () => ({
@@ -85,6 +99,8 @@ describe("useWrite", () => {
     setStore2StringMock.mockClear();
     dispatchMock.mockClear();
     fetchMock.mockReset();
+    fetchTauriWriteMock.mockReset();
+    clearTauriWriteSessionMock.mockClear();
     setupWriteHeadersMock.mockClear();
   });
 
@@ -158,14 +174,13 @@ describe("useWrite", () => {
     expect(result.current.statusText).toBe("");
   });
 
-  it("Tauri版は確認HTMLを表示し、Cookieと確認フォームを使って再送信する", async () => {
+  it("Tauri版は確認HTMLを表示し、同じセッションで確認フォームを再送信する", async () => {
     const action = "https://example.com/test/bbs.cgi";
-    fetchMock
+    fetchTauriWriteMock
       .mockResolvedValueOnce({
         status: 200,
         headers: {},
         url: action,
-        setCookies: ["MonaTicket=token; Path=/; Secure"],
         body: `<html><head><title>書き込み確認</title></head><body><form method="post" action="${action}"><input type="hidden" name="token" value="確認値"><button type="submit" name="submit" value="承諾して書き込む">承諾して書き込む</button></form></body></html>`,
       })
       .mockResolvedValueOnce({
@@ -200,11 +215,18 @@ describe("useWrite", () => {
     });
 
     expect(result.current.status).toBe("success");
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(fetchMock.mock.calls[1]?.[1]?.headers).toMatchObject({
-      Cookie: "MonaTicket=token",
-      Referer: action,
+    expect(fetchTauriWriteMock).toHaveBeenCalledTimes(2);
+    expect(fetchTauriWriteMock.mock.calls[0]?.[0]).toMatchObject({
+      action,
+      bootstrapUrl: THREAD_URL,
     });
+    expect(fetchTauriWriteMock.mock.calls[1]?.[0]).toMatchObject({
+      action,
+      referer: action,
+    });
+    expect(fetchTauriWriteMock.mock.calls[1]?.[0].sessionId).toBe(
+      fetchTauriWriteMock.mock.calls[0]?.[0].sessionId,
+    );
   });
 
   it("Tauri確認レスポンスには実行不能な安全表示用HTMLを保持する", () => {
