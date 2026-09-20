@@ -390,6 +390,12 @@
   font-weight: 600;
 }
 
+.settings-page__site-board-cookie-action {
+  display: grid;
+  justify-items: start;
+  gap: var(--sys-space-2);
+}
+
 .settings-page__site-board-cookie-button {
   justify-self: start;
 }

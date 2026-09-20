@@ -399,9 +399,12 @@ export function SiteBoardSettingsPanel() {
       </SurfaceHeader>
       <SurfaceBody>
         <div className="settings-page__site-board-selectors">
-          <label className="settings-page__site-board-field">
-            <span>サイト</span>
+          <div className="settings-page__site-board-field">
+            <div className="settings-page__site-board-field-heading">
+              <label htmlFor="site-board-site-select">サイト</label>
+            </div>
             <select
+              id="site-board-site-select"
               value={selectedSite}
               onChange={(event) => {
                 setSelectedSite(event.currentTarget.value);
@@ -415,22 +418,24 @@ export function SiteBoardSettingsPanel() {
                 </option>
               ))}
             </select>
-            <Button
-              className="settings-page__site-board-cookie-button"
-              variant="danger"
-              loading={isClearingCookies}
-              disabled={!selectedSite}
-              onClick={() => void clearSiteCookies()}
-            >
-              このサイトのCookieをクリア
-            </Button>
-            <span className="settings-page__site-board-cookie-description">
-              書き込み確認に使う認証Cookieを削除します。保存した名前・メール欄は残ります。
-            </span>
-          </label>
+            <div className="settings-page__site-board-cookie-action">
+              <Button
+                className="settings-page__site-board-cookie-button"
+                variant="danger"
+                loading={isClearingCookies}
+                disabled={!selectedSite}
+                onClick={() => void clearSiteCookies()}
+              >
+                このサイトのCookieをクリア
+              </Button>
+              <span className="settings-page__site-board-cookie-description">
+                書き込み確認に使う認証Cookieを削除します。保存した名前・メール欄は残ります。
+              </span>
+            </div>
+          </div>
           <div className="settings-page__site-board-field">
             <div className="settings-page__site-board-field-heading">
-              <span>板</span>
+              <label htmlFor="site-board-board-select">板</label>
               <Button
                 className="settings-page__site-board-add-button"
                 variant="subtle"
@@ -440,6 +445,7 @@ export function SiteBoardSettingsPanel() {
               </Button>
             </div>
             <select
+              id="site-board-board-select"
               value={selectedBoard}
               disabled={!selectedSite}
               onChange={(event) => setSelectedBoard(event.currentTarget.value)}
