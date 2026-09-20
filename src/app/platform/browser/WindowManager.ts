@@ -11,7 +11,7 @@ export const BrowserWindowManager: WindowManager = {
     return browser.runtime.getURL(path);
   },
 
-  async openTab(url: string, active = true): Promise<void> {
+  async openUrlInTab(url: string, active = true): Promise<void> {
     await browser.tabs.create({ url, active });
   },
 

@@ -2,20 +2,20 @@ import { X } from "lucide-react";
 import React, { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { ThreadListPanel } from "src/view/browser/components/ThreadListPanel";
 import { WritePanelContent } from "src/view/browser/components/WritePanelContent";
-import { useDetachedTabs } from "src/view/browser/hooks/detached-tab-context";
 import { useAutoScrollState } from "src/view/browser/hooks/use-auto-scroll-state";
 import {
   BOTTOM_PANEL_THREAD_LIST_TAB_ID,
   BOTTOM_PANEL_WRITE_TAB_ID,
   useBottomPanel,
 } from "src/view/browser/hooks/use-bottom-panel";
+import { useDetachedTabController } from "src/view/browser/hooks/use-detached-tab-controller";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { isHTMLElementInWindow } from "src/view/browser/utils/dom";
 
 export const BottomPanel: React.FC = () => {
   const { activeTab, currentPage } = useTabStore();
-  const { isDetached } = useDetachedTabs();
+  const { isDetachedTab } = useDetachedTabController();
   // 変更理由: 下部パネルを別窓へ移しても、リサイズ操作と開閉直後の追従を
   // 元のWindowへ登録しないよう、表示先のイベント境界を揃える。
   const { window: viewWindow, document: viewDocument } = useViewSurface();
@@ -32,10 +32,10 @@ export const BottomPanel: React.FC = () => {
   useEffect(() => {
     // スレ一覧・書き込みのどちらも現在スレを操作対象にするため、別ページへ移動したら
     // 下部パネルを閉じて、板・スレの文脈がない状態で誤操作できないようにする。
-    if (isOpen && (currentPage.type !== "thread" || isDetached(activeTab.id))) {
+    if (isOpen && (currentPage.type !== "thread" || isDetachedTab(activeTab.id))) {
       closePanel();
     }
-  }, [activeTab.id, closePanel, currentPage.type, isDetached, isOpen]);
+  }, [activeTab.id, closePanel, currentPage.type, isDetachedTab, isOpen]);
 
   useEffect(() => {
     if (!isOpen) {

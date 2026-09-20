@@ -4,7 +4,7 @@ type NotificationApi = typeof globalThis.Notification;
 type NotificationPermissionState = "default" | "denied" | "granted";
 
 interface AppPlatformWindowManager {
-  openTab?: (url: string, active?: boolean) => Promise<void> | void;
+  openUrlInTab?: (url: string, active?: boolean) => Promise<void> | void;
 }
 
 interface AppGlobal {
@@ -38,8 +38,8 @@ function openUrl(url: string, targetWindow?: Window): void {
 
   // Notification clickでの遷移先は環境依存があるため、
   // まずplatform抽象化を使い、なければwindow.openへフォールバックする。
-  if (windowManager?.openTab) {
-    void windowManager.openTab(url, true);
+  if (windowManager?.openUrlInTab) {
+    void windowManager.openUrlInTab(url, true);
     return;
   }
 

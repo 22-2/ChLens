@@ -16,7 +16,10 @@ vi.mock("src/app/platform", () => ({
   },
 }));
 
-import { openDetachedWindow, useDetachedWindow } from "src/view/browser/hooks/use-detached-window";
+import {
+  openAuxiliaryWindow,
+  useAuxiliaryWindow,
+} from "src/view/browser/hooks/use-auxiliary-window";
 
 const OPTIONS = {
   name: "test-detached-window",
@@ -38,7 +41,7 @@ function createPopup(): Window {
 }
 
 const Probe: React.FC = () => {
-  const { root, isOpen, open, close } = useDetachedWindow(OPTIONS);
+  const { root, isOpen, open, close } = useAuxiliaryWindow(OPTIONS);
   return (
     <>
       <output data-testid="open">{String(isOpen)}</output>
@@ -49,7 +52,7 @@ const Probe: React.FC = () => {
   );
 };
 
-describe("useDetachedWindow", () => {
+describe("useAuxiliaryWindow", () => {
   beforeEach(() => {
     mocks.openPopup.mockReset();
     document.body.innerHTML = '<div class="browser-shell" data-theme="dark"></div>';
@@ -100,7 +103,7 @@ describe("useDetachedWindow", () => {
     const popup = createPopup();
     mocks.openPopup.mockReturnValue(popup);
 
-    const handle = openDetachedWindow(OPTIONS, sourceWindow);
+    const handle = openAuxiliaryWindow(OPTIONS, sourceWindow);
 
     expect(handle).not.toBeNull();
     expect(mocks.openPopup).toHaveBeenCalledWith("test-detached-window", "popup", sourceWindow);

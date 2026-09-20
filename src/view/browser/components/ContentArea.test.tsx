@@ -18,9 +18,9 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => mockUseTabStore(),
 }));
 
-vi.mock("src/view/browser/hooks/detached-tab-context", () => ({
-  useDetachedTabs: () => ({
-    isDetached: (tabId: string) => detachedTabIds.has(tabId),
+vi.mock("src/view/browser/hooks/use-detached-tab-controller", () => ({
+  useDetachedTabController: () => ({
+    isDetachedTab: (tabId: string) => detachedTabIds.has(tabId),
   }),
 }));
 

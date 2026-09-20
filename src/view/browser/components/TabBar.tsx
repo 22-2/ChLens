@@ -17,8 +17,8 @@ import { container } from "src/service-container/index";
 import { useCursorTooltip } from "src/view/browser/components/CursorTooltip";
 import { PageTypeIcon } from "src/view/browser/components/PageTypeIcon";
 import { TabContextMenu } from "src/view/browser/components/TabContextMenu";
-import { useDetachedTabs } from "src/view/browser/hooks/detached-tab-context";
 import { useAutoScrollState } from "src/view/browser/hooks/use-auto-scroll-state";
+import { useDetachedTabController } from "src/view/browser/hooks/use-detached-tab-controller";
 import {
   clampTabBarWidth,
   TAB_BAR_COLLAPSED_WIDTH,
@@ -65,7 +65,7 @@ function getMoveTargetIndex(
   pane: { tabs: Tab[] },
   dragTabId: string,
   visibleIndex: number,
-  isDetached: (tabId: string) => boolean,
+  isDetachedTab: (tabId: string) => boolean,
 ): number | null {
   const dragTab = pane.tabs.find((tab) => tab.id === dragTabId);
   if (!dragTab) {
@@ -74,7 +74,7 @@ function getMoveTargetIndex(
 
   const group = pane.tabs.filter((tab) => tab.pinned === dragTab.pinned);
   const groupWithoutDrag = group.filter((tab) => tab.id !== dragTabId);
-  const visibleGroup = groupWithoutDrag.filter((tab) => !isDetached(tab.id));
+  const visibleGroup = groupWithoutDrag.filter((tab) => !isDetachedTab(tab.id));
   const clampedVisibleIndex = Math.max(0, Math.min(visibleIndex, visibleGroup.length));
   const referenceTab = visibleGroup[clampedVisibleIndex];
   if (referenceTab) {
@@ -244,12 +244,12 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
 }) => {
   const isVertical = orientation === "vertical";
   const { state, stateRef, dispatch, paneId } = useTabStore();
-  const { isDetached } = useDetachedTabs();
+  const { isDetachedTab } = useDetachedTabController();
   // 切り離し中のタブはTabStoreに保持したまま、元窓の操作対象からだけ除外する。
   // 別窓を明示的に戻した時に同じタブを復元できるよう、ここで削除は行わない。
   const visibleTabs = useMemo(
-    () => state.tabs.filter((tab) => !isDetached(tab.id)),
-    [isDetached, state.tabs],
+    () => state.tabs.filter((tab) => !isDetachedTab(tab.id)),
+    [isDetachedTab, state.tabs],
   );
   const { canAutoScroll, isAutoScrolling, isPaused } = useAutoScrollState();
   const { collapsed, width, setCollapsed, setWidth } = useVerticalTabBarLayout();
@@ -458,7 +458,7 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
         stateRef.current.panes.find((p) => p.id === paneId) ??
         stateRef.current.panes.find((p) => p.id === stateRef.current.activePaneId);
       if (!pane) return;
-      const tabs = pane.tabs.filter((tab) => !isDetached(tab.id));
+      const tabs = pane.tabs.filter((tab) => !isDetachedTab(tab.id));
       const currentIdx = tabs.findIndex((t) => t.id === pane.activeTabId);
       if (currentIdx === -1) return;
 
@@ -474,7 +474,7 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
       lastWheelSwitchAtRef.current = now;
       dispatch({ type: "SELECT_TAB", tabId: tabs[nextIdx].id });
     },
-    [dispatch, isDetached, isVertical, paneId, stateRef],
+    [dispatch, isDetachedTab, isVertical, paneId, stateRef],
   );
 
   useEffect(() => {
@@ -535,7 +535,7 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
       if (typeof initialIndex === "number" && toIndex === initialIndex) return;
       const pane = stateRef.current.panes.find((candidate) => candidate.id === paneId);
       if (!pane) return;
-      const fullTargetIndex = getMoveTargetIndex(pane, String(source.id), toIndex, isDetached);
+      const fullTargetIndex = getMoveTargetIndex(pane, String(source.id), toIndex, isDetachedTab);
       if (fullTargetIndex == null) return;
       // ドラッグ完了直後の click イベントによるタブ選択を1回だけ抑止する。
       wasDraggingRef.current = true;
@@ -545,7 +545,7 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
         toIndex: fullTargetIndex,
       });
     },
-    [dispatch, isDetached, paneId, stateRef],
+    [dispatch, isDetachedTab, paneId, stateRef],
   );
 
   const handleTabSelect = useCallback(

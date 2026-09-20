@@ -12,9 +12,9 @@ export interface WindowManager {
   getAssetUrl(path: string): string;
 
   /**
-   * 新しいタブでURLを開く
+   * 外部ブラウザの新しいタブでURLを開く
    */
-  openTab(url: string, active?: boolean): Promise<void>;
+  openUrlInTab(url: string, active?: boolean): Promise<void>;
 
   /**
    * 新しいウィンドウでURLを開く

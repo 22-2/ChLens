@@ -9,9 +9,9 @@ import React, {
 } from "react";
 import { getStore2String, setStore2String } from "src/app/Store2Storage";
 import {
-  type DetachedWindowOptions,
-  useDetachedWindow,
-} from "src/view/browser/hooks/use-detached-window";
+  type AuxiliaryWindowOptions,
+  useAuxiliaryWindow,
+} from "src/view/browser/hooks/use-auxiliary-window";
 import { useTabPanes, useTabStore } from "src/view/browser/hooks/use-tab-store";
 import type { Page, Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
@@ -47,7 +47,7 @@ interface WriteSessionContextValue {
   closeWriteWindow: () => void;
 }
 
-const WRITE_WINDOW_OPTIONS: DetachedWindowOptions = {
+const WRITE_WINDOW_OPTIONS: AuxiliaryWindowOptions = {
   name: "chlens-write-window",
   features: "popup,width=720,height=520,resizable=yes",
   title: "書き込み - read.crx 2",
@@ -139,7 +139,7 @@ export const WriteSessionProvider: React.FC<{ children: ReactNode }> = ({ childr
   const { panes, activePaneId } = useTabPanes();
   const { currentPage } = useTabStore();
   const [session, setSession] = useState<WriteSessionState>(loadSession);
-  const detachedWindow = useDetachedWindow(WRITE_WINDOW_OPTIONS);
+  const writeWindow = useAuxiliaryWindow(WRITE_WINDOW_OPTIONS);
 
   const targets = useMemo(() => collectWriteTargets(panes, activePaneId), [activePaneId, panes]);
 
@@ -220,26 +220,26 @@ export const WriteSessionProvider: React.FC<{ children: ReactNode }> = ({ childr
     () => ({
       selectedThreadUrl: session.selectedThreadUrl,
       targets,
-      isWindowOpen: detachedWindow.isOpen,
-      writeWindowRoot: detachedWindow.root,
+      isWindowOpen: writeWindow.isOpen,
+      writeWindowRoot: writeWindow.root,
       getDraft,
       selectThread,
       setDraft,
       appendDraft,
-      openWriteWindow: detachedWindow.open,
-      closeWriteWindow: detachedWindow.close,
+      openWriteWindow: writeWindow.open,
+      closeWriteWindow: writeWindow.close,
     }),
     [
       appendDraft,
-      detachedWindow.close,
+      writeWindow.close,
       getDraft,
-      detachedWindow.open,
+      writeWindow.open,
       selectThread,
       session.selectedThreadUrl,
       setDraft,
       targets,
-      detachedWindow.isOpen,
-      detachedWindow.root,
+      writeWindow.isOpen,
+      writeWindow.root,
     ],
   );
 

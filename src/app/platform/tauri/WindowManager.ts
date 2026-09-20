@@ -8,7 +8,7 @@ export const TauriWindowManager: WindowManager = {
     return new URL(path, window.location.href).toString();
   },
 
-  async openTab(url: string, _active = true): Promise<void> {
+  async openUrlInTab(url: string, _active = true): Promise<void> {
     window.open(url, "_blank");
   },
 

@@ -1,6 +1,6 @@
 import { type FC } from "react";
 import { TabPanel } from "src/view/browser/components/TabView";
-import { useDetachedTabs } from "src/view/browser/hooks/detached-tab-context";
+import { useDetachedTabController } from "src/view/browser/hooks/use-detached-tab-controller";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 
 interface ContentAreaProps {
@@ -15,9 +15,9 @@ interface ContentAreaProps {
  */
 export const ContentArea: FC<ContentAreaProps> = ({ isOverlayTarget = true }) => {
   const { state } = useTabStore();
-  const { isDetached } = useDetachedTabs();
+  const { isDetachedTab } = useDetachedTabController();
   // 切り離し中のタブは別窓のPortalだけで描画し、元窓にプレースホルダーを残さない。
-  const visibleTabs = state.tabs.filter((tab) => !isDetached(tab.id));
+  const visibleTabs = state.tabs.filter((tab) => !isDetachedTab(tab.id));
 
   return (
     <div className="content-area">

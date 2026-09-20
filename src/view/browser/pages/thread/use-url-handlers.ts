@@ -92,7 +92,7 @@ export function useUrlHandlers({
 
       if (button === 1) {
         // ミドルクリック時はバックグラウンドタブで開く
-        void platform.window.openTab(absoluteUrl, false);
+        void platform.window.openUrlInTab(absoluteUrl, false);
         return;
       }
 

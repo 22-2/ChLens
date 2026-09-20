@@ -11,8 +11,8 @@ import {
 } from "lucide-react";
 import React, { useMemo } from "react";
 import { container } from "src/service-container";
-import { useDetachedTabs } from "src/view/browser/hooks/detached-tab-context";
 import { useOptionalBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
+import { useDetachedTabController } from "src/view/browser/hooks/use-detached-tab-controller";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useToast } from "src/view/browser/hooks/use-toast";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
@@ -36,7 +36,7 @@ interface Props {
 
 export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
   const { state, dispatch } = useTabStore();
-  const { isDetached, toggleTab } = useDetachedTabs();
+  const { isDetachedTab, detachTab, reattachTab } = useDetachedTabController();
   const bottomPanel = useOptionalBottomPanel();
   const toast = useToast();
   const { window: viewWindow } = useViewSurface();
@@ -44,8 +44,8 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
   const currentPage = getCurrentPage(tab);
   const isThread = currentPage.type === "thread";
   const isThreadList = currentPage.type === "threadList";
-  const isDetachedTab = isDetached(tab.id);
-  const canDetach = isThread || isThreadList || isDetachedTab;
+  const tabIsDetached = isDetachedTab(tab.id);
+  const canDetach = isThread || isThreadList || tabIsDetached;
 
   // 閉じたタブがあるか
   const hasClosedTabs = state.closedTabs.length > 0;
@@ -77,15 +77,20 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
     if (canDetach) {
       result.push({
         id: "detach-tab",
-        label: isDetachedTab ? "メイン画面へ戻す" : "別窓で開く",
+        label: tabIsDetached ? "メイン画面へ戻す" : "別窓で開く",
         icon: <ExternalLink />,
         onSelect: () => {
-          const opened = toggleTab(tab.id);
+          if (tabIsDetached) {
+            reattachTab(tab.id);
+            return;
+          }
+
+          const opened = detachTab(tab.id);
           // 窓の生成に成功した時だけ同じペインの下部パネルを閉じ、
           // ポップアップブロック時は入力中のパネルを残す。
-          if (!isDetachedTab && opened) {
+          if (!tabIsDetached && opened) {
             bottomPanel?.closePanel();
-          } else if (!isDetachedTab && !opened) {
+          } else if (!tabIsDetached && !opened) {
             // ログだけでは操作結果が分からないため、利用者へも失敗理由を伝える。
             toast.error("別窓を開けませんでした。ポップアップ設定を確認してください");
           }
@@ -178,14 +183,15 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
     currentPage,
     dispatch,
     hasClosedTabs,
-    isDetachedTab,
+    tabIsDetached,
     isThread,
     bottomPanel,
     toast,
     viewWindow,
     tab.id,
     tab.pinned,
-    toggleTab,
+    detachTab,
+    reattachTab,
   ]);
 
   return <ContextMenu x={position.x} y={position.y} items={items} onClose={onClose} />;

@@ -53,7 +53,7 @@ import {
   useTabStore,
   useTabViewState,
 } from "src/view/browser/hooks/use-tab-store";
-import { useViewTarget } from "src/view/browser/hooks/use-view-target";
+import { useTabViewRuntime } from "src/view/browser/hooks/use-tab-view-runtime";
 import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 import { parseOpenedBoardEntries } from "src/view/browser/pages/board-list/board-list-utils";
 import {
@@ -201,7 +201,7 @@ export const ThreadListPage: React.FC<Props> = ({
   isAutoRefreshEnabled = false,
   scrollContainerRef,
 }) => {
-  const { surface: viewSurface, dispatch, toast } = useViewTarget(tabId);
+  const { surface: viewSurface, dispatch, toast } = useTabViewRuntime(tabId);
   const { window: viewWindow, document: viewDocument } = viewSurface;
   const fallbackScrollContainerRef = useRef<HTMLDivElement>(null);
   const effectiveScrollContainerRef = scrollContainerRef ?? fallbackScrollContainerRef;

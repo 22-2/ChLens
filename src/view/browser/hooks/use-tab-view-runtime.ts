@@ -5,7 +5,7 @@ import { useTabDispatchForTab } from "src/view/browser/hooks/use-tab-store";
 import { useToast } from "src/view/browser/hooks/use-toast";
 import { useViewSurface, type ViewSurface } from "src/view/browser/hooks/use-view-surface";
 
-export interface ViewTarget {
+export interface TabViewRuntime {
   tabId: string;
   dispatch: Dispatch<ScopedTabAction>;
   surface: ViewSurface;
@@ -18,7 +18,7 @@ export interface ViewTarget {
  * 変更理由: 別窓対応でtabId・Window・通知先を各ページが個別に組み立てると、
  * 新しい表示ホストを追加した際に操作の一部だけ元のペインへ戻るため、同じ境界から注入する。
  */
-export function useViewTarget(tabId: string): ViewTarget {
+export function useTabViewRuntime(tabId: string): TabViewRuntime {
   const dispatch = useTabDispatchForTab(tabId);
   const surface = useViewSurface();
   const toast = useToast();

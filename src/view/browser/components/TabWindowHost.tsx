@@ -12,20 +12,19 @@ import { StatusBar, StatusBarItem, StatusBarProvider } from "src/view/browser/co
 import { TabPanel } from "src/view/browser/components/TabView";
 import { TitleBar } from "src/view/browser/components/TitleBar";
 import { WindowNavigationBridge } from "src/view/browser/components/WindowNavigationBridge";
+import { createAuxiliaryWindowRoot } from "src/view/browser/hooks/auxiliary-window-root";
 import {
-  DetachedTabWindowContext,
-  type DetachedTabWindowContextValue,
-} from "src/view/browser/hooks/detached-tab-context";
-import { createDetachedWindowRoot } from "src/view/browser/hooks/detached-window-root";
+  type DetachedTabController,
+  DetachedTabControllerContext,
+} from "src/view/browser/hooks/detached-tab-controller";
 import { AutoScrollStateProvider } from "src/view/browser/hooks/use-auto-scroll-state";
 import {
-  type DetachedWindowHandle,
-  type DetachedWindowOptions,
-  openDetachedWindow,
-} from "src/view/browser/hooks/use-detached-window";
+  type AuxiliaryWindowHandle,
+  type AuxiliaryWindowOptions,
+  openAuxiliaryWindow,
+} from "src/view/browser/hooks/use-auxiliary-window";
 import { NgStatusProvider } from "src/view/browser/hooks/use-ng-status";
 import { PageCountStatusProvider } from "src/view/browser/hooks/use-page-count-status";
-import { TabDisplayTargetProvider } from "src/view/browser/hooks/use-tab-display-target";
 import {
   PaneProvider,
   useTabDispatch,
@@ -33,6 +32,7 @@ import {
   useTabPanes,
   useTabStore,
 } from "src/view/browser/hooks/use-tab-store";
+import { TabViewScopeProvider } from "src/view/browser/hooks/use-tab-view-scope";
 import { useTheme } from "src/view/browser/hooks/use-theme";
 import { type ViewSurface, ViewSurfaceProvider } from "src/view/browser/hooks/use-view-surface";
 import { useWriteSession } from "src/view/browser/hooks/use-write-session";
@@ -46,7 +46,7 @@ import {
 } from "src/view/browser/types";
 import { ToastProvider } from "src/view/browser/ui/Toast";
 
-interface DetachedTabWindowEntry extends DetachedWindowHandle {
+interface TabWindowEntry extends AuxiliaryWindowHandle {
   tabId: string;
   onBeforeUnload: () => void;
   onLoad: () => void;
@@ -66,7 +66,7 @@ function isDetachablePage(page: Page): boolean {
   return page.type === "thread" || page.type === "threadList";
 }
 
-function createDetachedTabOptions(tab: Tab): DetachedWindowOptions {
+function createTabWindowOptions(tab: Tab): AuxiliaryWindowOptions {
   const page = getCurrentPage(tab);
   const safeTabId = encodeURIComponent(tab.id);
   return {
@@ -74,7 +74,7 @@ function createDetachedTabOptions(tab: Tab): DetachedWindowOptions {
     features: "popup,width=1180,height=820,resizable=yes",
     title: `${page.title || "タブ"} - read.crx 2`,
     shellClassName: "detached-tab-window",
-    logLabel: "DetachedTab",
+    logLabel: "TabWindow",
   };
 }
 
@@ -85,12 +85,12 @@ function createDetachedTabOptions(tab: Tab): DetachedWindowOptions {
  * 別経路から開いた時に窓が重複する。ここでtabId単位に一つのWindowProxyを管理し、
  * TabPanelだけをPortalすることで、タブ状態はTabStoreへ残したまま表示場所を移す。
  */
-export const DetachedTabWindowProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { panes } = useTabPanes();
   const { stateRef } = useTabStore();
   const dispatch = useTabDispatch();
   const theme = useTheme();
-  const [windows, setWindows] = useState<Map<string, DetachedTabWindowEntry>>(() => new Map());
+  const [windows, setWindows] = useState<Map<string, TabWindowEntry>>(() => new Map());
   const windowsRef = useRef(windows);
   const closeDetachedTabRef = useRef<(tabId: string) => void>(() => {});
   windowsRef.current = windows;
@@ -108,7 +108,7 @@ export const DetachedTabWindowProvider: React.FC<{ children: ReactNode }> = ({ c
     setWindows(next);
   }, []);
 
-  const openTab = useCallback(
+  const detachTab = useCallback(
     (tabId: string) => {
       const located = findTab(panes, tabId);
       if (!located || !isDetachablePage(getCurrentPage(located.tab))) {
@@ -129,12 +129,12 @@ export const DetachedTabWindowProvider: React.FC<{ children: ReactNode }> = ({ c
 
       // WindowProxyの生成はクリックイベントの同期処理で行い、ポップアップブロックを
       // 避ける。ReactのsetState updater内で開くとStrictMode等で副作用が二重実行される。
-      const opened = openDetachedWindow(createDetachedTabOptions(located.tab));
+      const opened = openAuxiliaryWindow(createTabWindowOptions(located.tab));
       if (!opened) {
         return false;
       }
 
-      const entry: DetachedTabWindowEntry = {
+      const entry: TabWindowEntry = {
         ...opened,
         tabId,
         // beforeunload直後はreloadでも発火するため、closedを確認できた時だけタブを終了する。
@@ -158,10 +158,10 @@ export const DetachedTabWindowProvider: React.FC<{ children: ReactNode }> = ({ c
           try {
             // popupの再読み込みではPortal先のDOMも破棄されるため、同じWindowProxyへ
             // rootとスタイルを再接続し、タブを元窓へ勝手に戻さない。
-            const root = createDetachedWindowRoot(
+            const root = createAuxiliaryWindowRoot(
               document,
               opened.window,
-              createDetachedTabOptions(currentLocation.tab),
+              createTabWindowOptions(currentLocation.tab),
             );
             const next = new Map(windowsRef.current);
             const latest = next.get(tabId);
@@ -214,7 +214,7 @@ export const DetachedTabWindowProvider: React.FC<{ children: ReactNode }> = ({ c
     [dispatch, panes, removeWindow, stateRef],
   );
 
-  const redockTab = useCallback(
+  const reattachTab = useCallback(
     (tabId: string) => {
       const entry = windowsRef.current.get(tabId);
       if (!entry) {
@@ -251,7 +251,7 @@ export const DetachedTabWindowProvider: React.FC<{ children: ReactNode }> = ({ c
         // TabStoreの固定タブ保護を破らず、操作不能な不可視タブを残さないため、
         // 構造上閉じられない場合は明示的な復帰へフォールバックする。
         console.warn("[DetachedTab] このタブは別窓から終了できないため元画面へ戻します", tabId);
-        redockTab(tabId);
+        reattachTab(tabId);
         return;
       }
 
@@ -271,36 +271,24 @@ export const DetachedTabWindowProvider: React.FC<{ children: ReactNode }> = ({ c
         replaceLastTab: true,
       });
     },
-    [dispatch, redockTab, removeWindow, stateRef],
+    [dispatch, reattachTab, removeWindow, stateRef],
   );
   closeDetachedTabRef.current = closeDetachedTab;
 
-  const focusTab = useCallback((tabId: string) => {
+  const focusTabWindow = useCallback((tabId: string) => {
     const entry = windowsRef.current.get(tabId);
     if (entry && !entry.window.closed) {
       entry.window.focus();
     }
   }, []);
 
-  const isDetached = useCallback(
+  const isDetachedTab = useCallback(
     (tabId: string) => {
       // closed=trueを検知してからCLOSE_TABを確定するまでの間も、レジストリ上は
       // 切り離し中として扱う。監視周期の隙間で本窓へ一瞬だけ戻る表示を防ぐ。
       return windows.has(tabId);
     },
     [windows],
-  );
-
-  const toggleTab = useCallback(
-    (tabId: string) => {
-      if (isDetached(tabId)) {
-        redockTab(tabId);
-        return true;
-      } else {
-        return openTab(tabId);
-      }
-    },
-    [isDetached, openTab, redockTab],
   );
 
   const handleClosedWindow = useCallback(
@@ -397,13 +385,13 @@ export const DetachedTabWindowProvider: React.FC<{ children: ReactNode }> = ({ c
     };
   }, []);
 
-  const contextValue = useMemo<DetachedTabWindowContextValue>(
-    () => ({ isDetached, openTab, redockTab, closeDetachedTab, focusTab, toggleTab }),
-    [closeDetachedTab, focusTab, isDetached, openTab, redockTab, toggleTab],
+  const contextValue = useMemo<DetachedTabController>(
+    () => ({ isDetachedTab, detachTab, reattachTab, closeDetachedTab, focusTabWindow }),
+    [closeDetachedTab, detachTab, focusTabWindow, isDetachedTab, reattachTab],
   );
 
   return (
-    <DetachedTabWindowContext.Provider value={contextValue}>
+    <DetachedTabControllerContext.Provider value={contextValue}>
       {children}
       {[...windows.values()].map((entry) => {
         const located = findTab(panes, entry.tabId);
@@ -416,13 +404,13 @@ export const DetachedTabWindowProvider: React.FC<{ children: ReactNode }> = ({ c
           document: entry.window.document,
         };
         return createPortal(
-          <TabDisplayTargetProvider target={{ paneId: located.paneId, tabId: located.tab.id }}>
+          <TabViewScopeProvider scope={{ paneId: located.paneId, tabId: located.tab.id }}>
             <PaneProvider paneId={located.paneId}>
               <StatusBarProvider>
                 <PageCountStatusProvider>
                   <NgStatusProvider>
                     <AutoScrollStateProvider>
-                      <DetachedTabSurface surface={viewSurface}>
+                      <TabWindowSurface surface={viewSurface}>
                         <WindowNavigationBridge
                           tabId={located.tab.id}
                           manageBrowserHistory={false}
@@ -431,9 +419,9 @@ export const DetachedTabWindowProvider: React.FC<{ children: ReactNode }> = ({ c
                         <ToastProvider topOffset="16px" rightOffset="16px" />
                         {/* 表示タブをContextで固定し、元ペインの選択変更に影響されない共通タイトルを出す。 */}
                         <TitleBar showNavigationButtons={false} />
-                        <DetachedTabToolbar
+                        <TabWindowToolbar
                           tab={located.tab}
-                          onRedock={() => redockTab(entry.tabId)}
+                          onReattach={() => reattachTab(entry.tabId)}
                           onClose={() => closeDetachedTab(entry.tabId)}
                         />
                         <div className="content-area">
@@ -450,28 +438,28 @@ export const DetachedTabWindowProvider: React.FC<{ children: ReactNode }> = ({ c
                         <AutoRefreshStatusItem />
                         <CommentOverlayStatusItem isActive />
                         <PageCountStatusItem />
-                        <DetachedWriteStatusItem />
+                        <TabWindowWriteStatusItem />
                         <StatusBar />
-                      </DetachedTabSurface>
+                      </TabWindowSurface>
                     </AutoScrollStateProvider>
                   </NgStatusProvider>
                 </PageCountStatusProvider>
               </StatusBarProvider>
             </PaneProvider>
-          </TabDisplayTargetProvider>,
+          </TabViewScopeProvider>,
           entry.root,
           entry.tabId,
         );
       })}
-    </DetachedTabWindowContext.Provider>
+    </DetachedTabControllerContext.Provider>
   );
 };
 
-const DetachedTabToolbar: React.FC<{
+const TabWindowToolbar: React.FC<{
   tab: Tab;
-  onRedock: () => void;
+  onReattach: () => void;
   onClose: () => void;
-}> = ({ tab, onRedock, onClose }) => {
+}> = ({ tab, onReattach, onClose }) => {
   const dispatch = useTabDispatchForTab(tab.id);
 
   return (
@@ -497,7 +485,7 @@ const DetachedTabToolbar: React.FC<{
         <button type="button" onClick={() => dispatch({ type: "RELOAD" })} title="再読み込み">
           更新
         </button>
-        <button type="button" onClick={onRedock} title="メイン画面へ戻す">
+        <button type="button" onClick={onReattach} title="メイン画面へ戻す">
           戻す
         </button>
         <button type="button" onClick={onClose} title="タブと別窓を閉じる">
@@ -508,7 +496,7 @@ const DetachedTabToolbar: React.FC<{
   );
 };
 
-const DetachedWriteStatusItem: React.FC = () => {
+const TabWindowWriteStatusItem: React.FC = () => {
   const { currentPage } = useTabStore();
   const { openWriteWindow, selectThread } = useWriteSession();
 
@@ -541,7 +529,7 @@ const DetachedWriteStatusItem: React.FC = () => {
   );
 };
 
-const DetachedTabSurface: React.FC<{
+const TabWindowSurface: React.FC<{
   surface: ViewSurface;
   children: ReactNode;
 }> = ({ surface, children }) => {

@@ -21,8 +21,8 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => ({ currentPage: mocks.currentPage, activeTab: mocks.activeTab }),
 }));
 
-vi.mock("src/view/browser/hooks/detached-tab-context", () => ({
-  useDetachedTabs: () => ({ isDetached: () => mocks.detached }),
+vi.mock("src/view/browser/hooks/use-detached-tab-controller", () => ({
+  useDetachedTabController: () => ({ isDetachedTab: () => mocks.detached }),
 }));
 
 vi.mock("src/view/browser/hooks/use-bottom-panel", () => ({

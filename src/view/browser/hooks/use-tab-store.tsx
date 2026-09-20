@@ -24,7 +24,7 @@ import type {
   ScopedTabAction,
   TabStoreState,
 } from "src/view/browser/hooks/tab-store-types";
-import { useTabDisplayTarget } from "src/view/browser/hooks/use-tab-display-target";
+import { useTabViewScope } from "src/view/browser/hooks/use-tab-view-scope";
 import {
   buildHierarchy,
   getCurrentPage,
@@ -1452,20 +1452,20 @@ function actionUsesImplicitExistingTab(action: ScopedTabAction): boolean {
   }
 }
 
-function scopeActionToDisplayTarget(
+function scopeActionToViewTab(
   action: ScopedTabAction,
   paneId: string,
-  displayTabId: string | null,
+  viewTabId: string | null,
 ): ScopedTabAction {
   const scopedAction = action.paneId === undefined ? { ...action, paneId } : action;
   if (
     scopedAction.tabId !== undefined ||
-    displayTabId == null ||
+    viewTabId == null ||
     !actionUsesImplicitExistingTab(scopedAction)
   ) {
     return scopedAction;
   }
-  return { ...scopedAction, tabId: displayTabId };
+  return { ...scopedAction, tabId: viewTabId };
 }
 
 export function useTabStore(): PaneScopedTabStore {
@@ -1475,33 +1475,33 @@ export function useTabStore(): PaneScopedTabStore {
   }
   const paneId = usePaneIdFromContext(ctx.state);
   const pane = getPane(ctx.state, paneId);
-  const displayTarget = useTabDisplayTarget();
-  const displayTab = displayTarget ? findTabAcrossPanes(ctx.state, displayTarget.tabId) : null;
-  const displayTabId = displayTab?.id ?? null;
-  const hasDisplayTarget = displayTarget !== null;
-  const activeTab = displayTab ?? getPaneActiveTab(pane);
+  const viewScope = useTabViewScope();
+  const viewTab = viewScope ? findTabAcrossPanes(ctx.state, viewScope.tabId) : null;
+  const viewTabId = viewTab?.id ?? null;
+  const hasViewScope = viewScope !== null;
+  const activeTab = viewTab ?? getPaneActiveTab(pane);
   const currentPage = getCurrentPage(activeTab);
 
   // 旧 TabStoreState と同形のスライスを返す（消費側無改修のため）。
   const state: PaneScopedState = useMemo(
     () => ({
       tabs: pane.tabs,
-      activeTabId: displayTabId ?? pane.activeTabId,
+      activeTabId: viewTabId ?? pane.activeTabId,
       closedTabs: ctx.state.closedTabs,
     }),
-    [pane.tabs, pane.activeTabId, ctx.state.closedTabs, displayTabId],
+    [pane.tabs, pane.activeTabId, ctx.state.closedTabs, viewTabId],
   );
 
   const globalDispatch = ctx.dispatch;
   const dispatch = useMemo<Dispatch<ScopedTabAction>>(
     () => (action) => {
       // 表示対象が消えた直後は、別タブへ操作をフォールバックさせない。
-      if (hasDisplayTarget && displayTabId == null) {
+      if (hasViewScope && viewTabId == null) {
         return;
       }
-      globalDispatch(scopeActionToDisplayTarget(action, paneId, displayTabId));
+      globalDispatch(scopeActionToViewTab(action, paneId, viewTabId));
     },
-    [displayTabId, globalDispatch, hasDisplayTarget, paneId],
+    [globalDispatch, hasViewScope, paneId, viewTabId],
   );
 
   return {
@@ -1523,22 +1523,20 @@ export function useTabDispatch(): Dispatch<ScopedTabAction> {
   if (!tabContext) {
     throw new Error("useTabDispatch must be used within TabProvider");
   }
-  const displayTarget = useTabDisplayTarget();
+  const viewScope = useTabViewScope();
   const paneCtx = useContext(PaneContext);
   const paneId = paneCtx?.paneId ?? tabContext.state.activePaneId;
-  const displayTab = displayTarget
-    ? findTabAcrossPanes(tabContext.state, displayTarget.tabId)
-    : null;
-  const displayTabId = displayTab?.id ?? null;
-  const hasDisplayTarget = displayTarget !== null;
+  const viewTab = viewScope ? findTabAcrossPanes(tabContext.state, viewScope.tabId) : null;
+  const viewTabId = viewTab?.id ?? null;
+  const hasViewScope = viewScope !== null;
   return useMemo<Dispatch<ScopedTabAction>>(
     () => (action) => {
-      if (hasDisplayTarget && displayTabId == null) {
+      if (hasViewScope && viewTabId == null) {
         return;
       }
-      globalDispatch(scopeActionToDisplayTarget(action, paneId, displayTabId));
+      globalDispatch(scopeActionToViewTab(action, paneId, viewTabId));
     },
-    [displayTabId, globalDispatch, hasDisplayTarget, paneId],
+    [globalDispatch, hasViewScope, paneId, viewTabId],
   );
 }
 

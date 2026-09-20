@@ -28,10 +28,10 @@ import {
 import { usePopupAutoScrollPauseSetting } from "src/view/browser/hooks/use-popup-auto-scroll-pause-setting";
 import { useThreadPopupManager } from "src/view/browser/hooks/use-popup-manager";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { useTabViewRuntime } from "src/view/browser/hooks/use-tab-view-runtime";
 import { useThreadAutoRefresh } from "src/view/browser/hooks/use-thread-auto-refresh";
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";
 import { useThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
-import { useViewTarget } from "src/view/browser/hooks/use-view-target";
 import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 import { ThreadPageTopBar } from "src/view/browser/pages/thread/ThreadPageTopBar";
 import { useCommentOverlaySync } from "src/view/browser/pages/thread/use-comment-overlay-sync";
@@ -81,7 +81,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   startAutoRefreshAtBottom,
   scrollContainerRef,
 }) => {
-  const { surface: viewSurface, dispatch, toast } = useViewTarget(tabId);
+  const { surface: viewSurface, dispatch, toast } = useTabViewRuntime(tabId);
   const { window: viewWindow } = viewSurface;
   const rootRef = useRef<HTMLDivElement>(null);
   const fallbackScrollContainerRef = useRef<HTMLDivElement>(null);

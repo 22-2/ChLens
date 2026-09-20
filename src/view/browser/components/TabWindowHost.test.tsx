@@ -2,14 +2,14 @@ import "@testing-library/jest-dom/vitest";
 
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
-import { DetachedTabWindowProvider } from "src/view/browser/components/DetachedTabWindowHost";
-import { useDetachedTabs } from "src/view/browser/hooks/detached-tab-context";
+import { TabWindowHost } from "src/view/browser/components/TabWindowHost";
+import { useDetachedTabController } from "src/view/browser/hooks/use-detached-tab-controller";
 import type { Pane, Tab } from "src/view/browser/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mocks = vi.hoisted(() => ({
   panes: [] as Pane[],
-  openDetachedWindow: vi.fn(),
+  openAuxiliaryWindow: vi.fn(),
   tabDispatch: vi.fn(),
   fakeWindow: null as Window | null,
   root: null as HTMLElement | null,
@@ -37,8 +37,8 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   },
 }));
 
-vi.mock("src/view/browser/hooks/use-detached-window", () => ({
-  openDetachedWindow: mocks.openDetachedWindow,
+vi.mock("src/view/browser/hooks/use-auxiliary-window", () => ({
+  openAuxiliaryWindow: mocks.openAuxiliaryWindow,
 }));
 
 vi.mock("src/view/browser/hooks/use-theme", () => ({
@@ -97,21 +97,21 @@ function createThreadTab(id: string): Tab {
 }
 
 const Probe: React.FC = () => {
-  const { isDetached, openTab, toggleTab } = useDetachedTabs();
+  const { isDetachedTab, detachTab, reattachTab } = useDetachedTabController();
   return (
     <>
-      <output data-testid="detached-state">{String(isDetached("tab-1"))}</output>
-      <button type="button" onClick={() => openTab("tab-1")}>
+      <output data-testid="detached-state">{String(isDetachedTab("tab-1"))}</output>
+      <button type="button" onClick={() => detachTab("tab-1")}>
         開く
       </button>
-      <button type="button" onClick={() => toggleTab("tab-1")}>
+      <button type="button" onClick={() => reattachTab("tab-1")}>
         切り替え
       </button>
     </>
   );
 };
 
-describe("DetachedTabWindowProvider", () => {
+describe("TabWindowHost", () => {
   beforeEach(() => {
     const tab = createThreadTab("tab-1");
     mocks.panes = [{ id: "pane-1", tabs: [tab, createThreadTab("tab-2")], activeTabId: tab.id }];
@@ -125,9 +125,9 @@ describe("DetachedTabWindowProvider", () => {
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
     } as unknown as Window;
-    mocks.openDetachedWindow.mockReset();
+    mocks.openAuxiliaryWindow.mockReset();
     mocks.tabDispatch.mockReset();
-    mocks.openDetachedWindow.mockReturnValue({ window: mocks.fakeWindow, root: mocks.root });
+    mocks.openAuxiliaryWindow.mockReturnValue({ window: mocks.fakeWindow, root: mocks.root });
   });
 
   afterEach(() => {
@@ -139,15 +139,15 @@ describe("DetachedTabWindowProvider", () => {
 
   it("同じタブを二度開いても窓を増やさず再利用する", () => {
     render(
-      <DetachedTabWindowProvider>
+      <TabWindowHost>
         <Probe />
-      </DetachedTabWindowProvider>,
+      </TabWindowHost>,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "開く" }));
     fireEvent.click(screen.getByRole("button", { name: "開く" }));
 
-    expect(mocks.openDetachedWindow).toHaveBeenCalledTimes(1);
+    expect(mocks.openAuxiliaryWindow).toHaveBeenCalledTimes(1);
     expect(mocks.fakeWindow?.focus).toHaveBeenCalledTimes(2);
     expect(screen.getByTestId("detached-state")).toHaveTextContent("true");
 
@@ -161,9 +161,9 @@ describe("DetachedTabWindowProvider", () => {
 
   it("別窓の再読み込みではタブを終了しない", () => {
     render(
-      <DetachedTabWindowProvider>
+      <TabWindowHost>
         <Probe />
-      </DetachedTabWindowProvider>,
+      </TabWindowHost>,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "開く" }));
@@ -182,9 +182,9 @@ describe("DetachedTabWindowProvider", () => {
 
   it("別窓がOS側で閉じられたらタブを終了する", () => {
     render(
-      <DetachedTabWindowProvider>
+      <TabWindowHost>
         <Probe />
-      </DetachedTabWindowProvider>,
+      </TabWindowHost>,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "開く" }));
@@ -211,9 +211,9 @@ describe("DetachedTabWindowProvider", () => {
     mocks.panes = [{ id: "pane-1", tabs: [tab], activeTabId: tab.id }];
 
     render(
-      <DetachedTabWindowProvider>
+      <TabWindowHost>
         <Probe />
-      </DetachedTabWindowProvider>,
+      </TabWindowHost>,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "開く" }));
@@ -226,11 +226,11 @@ describe("DetachedTabWindowProvider", () => {
   });
 
   it("窓を開けない場合は別窓状態にせず元画面を残す", () => {
-    mocks.openDetachedWindow.mockReturnValue(null);
+    mocks.openAuxiliaryWindow.mockReturnValue(null);
     render(
-      <DetachedTabWindowProvider>
+      <TabWindowHost>
         <Probe />
-      </DetachedTabWindowProvider>,
+      </TabWindowHost>,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "開く" }));

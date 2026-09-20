@@ -98,9 +98,9 @@ vi.mock("src/view/browser/hooks/use-auto-scroll-state", () => ({
   useAutoScrollState: () => mocks.autoScrollState,
 }));
 
-vi.mock("src/view/browser/hooks/detached-tab-context", () => ({
-  useDetachedTabs: () => ({
-    isDetached: (tabId: string) => mocks.detachedTabIds.has(tabId),
+vi.mock("src/view/browser/hooks/use-detached-tab-controller", () => ({
+  useDetachedTabController: () => ({
+    isDetachedTab: (tabId: string) => mocks.detachedTabIds.has(tabId),
   }),
 }));
 

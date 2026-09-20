@@ -9,7 +9,6 @@ import { BookmarkRootSelectorDialog } from "src/view/browser/components/Bookmark
 import { BottomPanel } from "src/view/browser/components/BottomPanel";
 import { CommentOverlayStatusItem } from "src/view/browser/components/CommentOverlayStatusItem";
 import { ContentArea } from "src/view/browser/components/ContentArea";
-import { DetachedTabWindowProvider } from "src/view/browser/components/DetachedTabWindowHost";
 import { IkioiStatusItem } from "src/view/browser/components/IkioiStatusItem";
 import { NavigationBar } from "src/view/browser/components/NavigationBar";
 import { NextThreadSearchDialog } from "src/view/browser/components/NextThreadSearchDialog";
@@ -19,6 +18,7 @@ import { PopularFilterStatusItem } from "src/view/browser/components/PopularFilt
 import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
 import { StatusBar, StatusBarItem, StatusBarProvider } from "src/view/browser/components/StatusBar";
 import { TabBar } from "src/view/browser/components/TabBar";
+import { TabWindowHost } from "src/view/browser/components/TabWindowHost";
 import { TitleBar } from "src/view/browser/components/TitleBar";
 import { WindowNavigationBridge } from "src/view/browser/components/WindowNavigationBridge";
 import { WriteWindowHost } from "src/view/browser/components/WriteWindowHost";
@@ -321,7 +321,7 @@ const BrowserAppContent: React.FC = () => {
     <TooltipProvider>
       <TabProvider>
         <WriteSessionProvider>
-          <DetachedTabWindowProvider>
+          <TabWindowHost>
             <WriteWindowHost />
             <ArchiveReplayMainThreadSyncBridge />
             {/*
@@ -345,7 +345,7 @@ const BrowserAppContent: React.FC = () => {
               <PaneRow />
               <BookmarkRootSelectorDialog />
             </div>
-          </DetachedTabWindowProvider>
+          </TabWindowHost>
         </WriteSessionProvider>
       </TabProvider>
     </TooltipProvider>

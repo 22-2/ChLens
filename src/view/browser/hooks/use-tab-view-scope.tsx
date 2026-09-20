@@ -1,13 +1,13 @@
 import { createContext, type ReactNode, useContext, useMemo } from "react";
 
-export interface TabDisplayTarget {
+export interface TabViewScope {
   /** 表示対象タブが所属するペイン。操作の暗黙スコープにも使う。 */
   paneId: string;
   /** この表示領域が描画するタブ。メイン画面では指定しない。 */
   tabId: string;
 }
 
-const TabDisplayTargetContext = createContext<TabDisplayTarget | null>(null);
+const TabViewScopeContext = createContext<TabViewScope | null>(null);
 
 /**
  * タブ本体を表示している領域の対象を固定する。
@@ -15,19 +15,17 @@ const TabDisplayTargetContext = createContext<TabDisplayTarget | null>(null);
  * 変更理由: 別窓は元ペインのactiveTabを変更せずに同じタブを表示するため、
  * 共通のタイトルバーやステータス項目が「表示中のタブ」を参照できる境界が必要になる。
  */
-export const TabDisplayTargetProvider: React.FC<{
-  target: TabDisplayTarget;
+export const TabViewScopeProvider: React.FC<{
+  scope: TabViewScope;
   children: ReactNode;
-}> = ({ target, children }) => {
+}> = ({ scope, children }) => {
   const value = useMemo(
-    () => ({ paneId: target.paneId, tabId: target.tabId }),
-    [target.paneId, target.tabId],
+    () => ({ paneId: scope.paneId, tabId: scope.tabId }),
+    [scope.paneId, scope.tabId],
   );
-  return (
-    <TabDisplayTargetContext.Provider value={value}>{children}</TabDisplayTargetContext.Provider>
-  );
+  return <TabViewScopeContext.Provider value={value}>{children}</TabViewScopeContext.Provider>;
 };
 
-export function useTabDisplayTarget(): TabDisplayTarget | null {
-  return useContext(TabDisplayTargetContext);
+export function useTabViewScope(): TabViewScope | null {
+  return useContext(TabViewScopeContext);
 }

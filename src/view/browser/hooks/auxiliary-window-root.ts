@@ -1,4 +1,4 @@
-export interface DetachedWindowOptions {
+export interface AuxiliaryWindowOptions {
   name: string;
   features: string;
   title: string;
@@ -6,7 +6,7 @@ export interface DetachedWindowOptions {
   logLabel: string;
 }
 
-export interface DetachedWindowHandle {
+export interface AuxiliaryWindowHandle {
   window: Window;
   root: HTMLElement;
 }
@@ -24,10 +24,10 @@ function copyStyles(sourceDocument: Document, targetDocument: Document): void {
   }
 }
 
-export function createDetachedWindowRoot(
+export function createAuxiliaryWindowRoot(
   sourceDocument: Document,
   targetWindow: Window,
-  options: DetachedWindowOptions,
+  options: AuxiliaryWindowOptions,
 ): HTMLElement {
   const sourceShell = sourceDocument.querySelector<HTMLElement>(".browser-shell");
   const targetDocument = targetWindow.document;

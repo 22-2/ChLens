@@ -19,7 +19,7 @@ import { requestArchiveReplaySeek } from "src/features/archive-replay/platform";
 import { container } from "src/service-container/index";
 import type { IRes } from "src/service-container/interfaces";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
-import { useViewTarget } from "src/view/browser/hooks/use-view-target";
+import { useTabViewRuntime } from "src/view/browser/hooks/use-tab-view-runtime";
 import { useWriteRequest } from "src/view/browser/hooks/use-write-request";
 import type { Tab, ThreadFilter, ThreadPage as ThreadPageType } from "src/view/browser/types";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
@@ -90,7 +90,7 @@ export function useThreadResContextMenu({
   // フィルタ解除直後のDOM更新完了を待ってからジャンプしないと、
   // 対象レスがまだ存在せずスクロールに失敗するため hook 内で保留する。
   const pendingJumpNumRef = useRef<number | null>(null);
-  const { dispatch, surface: viewSurface, toast } = useViewTarget(tabId);
+  const { dispatch, surface: viewSurface, toast } = useTabViewRuntime(tabId);
   const { activeTab } = useTabStore();
   const openWritePanelWithText = useWriteRequest();
   // 変更理由: 別窓のページではペインのactiveTabと描画中タブが異なるため、
