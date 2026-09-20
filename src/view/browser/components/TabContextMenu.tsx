@@ -11,7 +11,11 @@ import {
 } from "lucide-react";
 import React, { useMemo } from "react";
 import { container } from "src/service-container";
+import { useDetachedTabs } from "src/view/browser/hooks/detached-tab-context";
+import { useOptionalBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { useToast } from "src/view/browser/hooks/use-toast";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import type { Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
 import { ContextMenu, ContextMenuItem } from "src/view/browser/ui/ContextMenu";
@@ -32,9 +36,16 @@ interface Props {
 
 export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
   const { state, dispatch } = useTabStore();
+  const { isDetached, toggleTab } = useDetachedTabs();
+  const bottomPanel = useOptionalBottomPanel();
+  const toast = useToast();
+  const { window: viewWindow } = useViewSurface();
 
   const currentPage = getCurrentPage(tab);
   const isThread = currentPage.type === "thread";
+  const isThreadList = currentPage.type === "threadList";
+  const isDetachedTab = isDetached(tab.id);
+  const canDetach = isThread || isThreadList || isDetachedTab;
 
   // 閉じたタブがあるか
   const hasClosedTabs = state.closedTabs.length > 0;
@@ -62,6 +73,26 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
     // 変更理由: 他・右側・すべてのタブを閉じる、右ペインで開く、URLとMarkdownのコピーは
     // コマンドパレットへ移動したため、タブメニューには置かない。URL系は既存の
     // copy.page-url / copy.page-title-url-markdown コマンドが同等の操作を提供する。
+
+    if (canDetach) {
+      result.push({
+        id: "detach-tab",
+        label: isDetachedTab ? "別窓を閉じる" : "別窓で開く",
+        icon: <ExternalLink />,
+        onSelect: () => {
+          const opened = toggleTab(tab.id);
+          // 窓の生成に成功した時だけ同じペインの下部パネルを閉じ、
+          // ポップアップブロック時は入力中のパネルを残す。
+          if (!isDetachedTab && opened) {
+            bottomPanel?.closePanel();
+          } else if (!isDetachedTab && !opened) {
+            // ログだけでは操作結果が分からないため、利用者へも失敗理由を伝える。
+            toast.error("別窓を開けませんでした。ポップアップ設定を確認してください");
+          }
+        },
+      });
+      result.push({ id: "sep-detach", separator: true });
+    }
 
     if (isThread) {
       const threadPage = currentPage as { threadUrl: string; title: string };
@@ -128,7 +159,8 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
         label: "ブラウザで開く",
         icon: <ExternalLink />,
         onSelect: () => {
-          window.open(threadPage.threadUrl, "_blank", "noopener,noreferrer");
+          // 別窓のタブから実行しても、その窓を起点に外部ページを開く。
+          viewWindow.open(threadPage.threadUrl, "_blank", "noopener,noreferrer");
         },
       });
       result.push({ id: "sep-2", separator: true });
@@ -141,7 +173,20 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
       onSelect: () => dispatch({ type: "TOGGLE_PIN", tabId: tab.id }),
     });
     return result;
-  }, [currentPage, dispatch, hasClosedTabs, isThread, tab.id, tab.pinned]);
+  }, [
+    canDetach,
+    currentPage,
+    dispatch,
+    hasClosedTabs,
+    isDetachedTab,
+    isThread,
+    bottomPanel,
+    toast,
+    viewWindow,
+    tab.id,
+    tab.pinned,
+    toggleTab,
+  ]);
 
   return <ContextMenu x={position.x} y={position.y} items={items} onClose={onClose} />;
 };

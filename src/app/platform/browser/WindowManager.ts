@@ -35,8 +35,9 @@ export const BrowserWindowManager: WindowManager = {
     }
   },
 
-  openPopup(name: string, features: string): Window | null {
-    return window.open("", name, features);
+  openPopup(name: string, features: string, sourceWindow = window): Window | null {
+    // 別窓内のクリックから開く場合も、クリック元のWindowで呼び出してポップアップ許可を引き継ぐ。
+    return sourceWindow.open("", name, features);
   },
 
   async closeCurrent(): Promise<void> {

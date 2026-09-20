@@ -53,10 +53,8 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   }),
 }));
 
-vi.mock("src/view/browser/hooks/use-bottom-panel", () => ({
-  useBottomPanel: () => ({
-    openWritePanelWithText: mocks.openWritePanelWithText,
-  }),
+vi.mock("src/view/browser/hooks/use-write-request", () => ({
+  useWriteRequest: () => mocks.openWritePanelWithText,
 }));
 
 vi.mock("src/view/browser/utils/auto-refresh-pages", () => ({

@@ -7,6 +7,7 @@ import {
   isPopupBranchTarget as isPopupBranchTargetElement,
   POPUP_KEEP_OPEN_TARGET_SELECTOR,
 } from "src/view/browser/hooks/popup-manager/popup-dom";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { POPUP_SELECTOR } from "src/view/browser/utils/constants";
 import { getEventTargetElement } from "src/view/browser/utils/dom";
 
@@ -55,6 +56,7 @@ export function usePopupCloseBehavior({
   onPopupMouseEnter,
   onPopupMouseLeave,
 }: PopupCloseBehaviorParams): PopupCloseBehaviorResult {
+  const { window: viewWindow, document: viewDocument } = useViewSurface();
   const [isHovering, setIsHovering] = useState(false);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
@@ -72,7 +74,7 @@ export function usePopupCloseBehavior({
 
   const handleMouseDownCapture = useCallback(
     (event: React.MouseEvent<HTMLElement>) => {
-      const target = event.target instanceof Element ? event.target : null;
+      const target = getEventTargetElement(event.target, viewWindow);
       if (target?.closest(POPUP_KEEP_OPEN_TARGET_SELECTOR)) {
         // popup本体クリック時は枝を畳みたいが、リンク操作まで同じ扱いにすると
         // 「ポップアップ内のa要素を押した瞬間に子popupが消える」ので先に除外する。
@@ -89,7 +91,7 @@ export function usePopupCloseBehavior({
 
       onPopupMouseDown?.();
     },
-    [armMouseLeaveCloseSuppression, onPopupMouseDown],
+    [armMouseLeaveCloseSuppression, onPopupMouseDown, viewWindow],
   );
 
   const shouldSuppressMouseLeaveClose = useCallback(() => {
@@ -106,33 +108,35 @@ export function usePopupCloseBehavior({
         return;
       }
 
-      const target = event.target instanceof Element ? event.target : null;
+      const target = getEventTargetElement(event.target, viewWindow);
       if (!target?.closest(POPUP_KEEP_OPEN_TARGET_SELECTOR)) {
         return;
       }
 
       armMouseLeaveCloseSuppression();
     },
-    [armMouseLeaveCloseSuppression],
+    [armMouseLeaveCloseSuppression, viewWindow],
   );
 
   const isPopupBranchTarget = useCallback(
     (target: EventTarget | null) =>
-      isPopupBranchTargetElement(target, popupId, isPopupDescendantOf),
-    [isPopupDescendantOf, popupId],
+      isPopupBranchTargetElement(target, popupId, isPopupDescendantOf, viewWindow),
+    [isPopupDescendantOf, popupId, viewWindow],
   );
 
   const isWithinIgnoredOutsideTarget = useCallback(
     (target: EventTarget | null) => {
-      if (!(target instanceof Node)) {
+      const targetElement = getEventTargetElement(target, viewWindow);
+      if (!targetElement) {
         return false;
       }
 
       return (
-        outsideClickIgnoreRefs?.some((ignoreRef) => ignoreRef.current?.contains(target)) ?? false
+        outsideClickIgnoreRefs?.some((ignoreRef) => ignoreRef.current?.contains(targetElement)) ??
+        false
       );
     },
-    [outsideClickIgnoreRefs],
+    [outsideClickIgnoreRefs, viewWindow],
   );
 
   const prevCloseDisabledRef = useRef(!!closeDisabled);
@@ -161,7 +165,7 @@ export function usePopupCloseBehavior({
 
   useEffect(() => {
     const handleOutsideMouseDown = (event: MouseEvent) => {
-      const targetPopupId = getPopupElementId(event.target);
+      const targetPopupId = getPopupElementId(event.target, viewWindow);
       if (
         popupId &&
         targetPopupId &&
@@ -183,11 +187,11 @@ export function usePopupCloseBehavior({
         return;
       }
 
-      if (event.target instanceof Node && popupRef?.current?.contains(event.target)) {
+      const target = getEventTargetElement(event.target, viewWindow);
+      if (target && popupRef?.current?.contains(target)) {
         return;
       }
 
-      const target = getEventTargetElement(event.target);
       const popupElement = target?.closest(POPUP_SELECTOR);
       if (!popupElement) {
         onCloseRef.current();
@@ -204,13 +208,21 @@ export function usePopupCloseBehavior({
 
       onCloseRef.current();
     };
-    document.addEventListener("mousedown", handleOutsideMouseDown);
-    return () => document.removeEventListener("mousedown", handleOutsideMouseDown);
-  }, [closeOnOutsideClick, isPopupBranchTarget, isWithinIgnoredOutsideTarget, popupId, popupRef]);
+    viewDocument.addEventListener("mousedown", handleOutsideMouseDown);
+    return () => viewDocument.removeEventListener("mousedown", handleOutsideMouseDown);
+  }, [
+    closeOnOutsideClick,
+    isPopupBranchTarget,
+    isWithinIgnoredOutsideTarget,
+    popupId,
+    popupRef,
+    viewDocument,
+    viewWindow,
+  ]);
 
   const handleMouseEnter = (event: React.MouseEvent<HTMLElement>) => {
     setIsHovering(true);
-    const relatedPopupId = getPopupElementId(event.relatedTarget);
+    const relatedPopupId = getPopupElementId(event.relatedTarget, viewWindow);
     if (popupId && isPopupDescendantOf?.(relatedPopupId ?? "", popupId)) {
       if (isContextMenuPopupId(relatedPopupId)) {
         // コンテキストメニューは outside click まで維持したいので、
@@ -226,10 +238,11 @@ export function usePopupCloseBehavior({
   };
 
   const handleMouseLeave = (event: React.MouseEvent<HTMLElement>) => {
-    if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) {
+    const relatedTarget = getEventTargetElement(event.relatedTarget, viewWindow);
+    if (relatedTarget && event.currentTarget.contains(relatedTarget)) {
       return;
     }
-    const relatedPopupId = getPopupElementId(event.relatedTarget);
+    const relatedPopupId = getPopupElementId(event.relatedTarget, viewWindow);
     if (popupId && relatedPopupId) {
       if (isPopupBranchTarget(event.relatedTarget)) {
         // 子孫popupへ移動した時も実際には親popupを離れているので hover だけは解除し、
@@ -240,8 +253,7 @@ export function usePopupCloseBehavior({
     }
     if (
       !popupId &&
-      event.relatedTarget instanceof Element &&
-      event.relatedTarget.closest(POPUP_SELECTOR)
+      getEventTargetElement(event.relatedTarget, viewWindow)?.closest(POPUP_SELECTOR)
     ) {
       return;
     }

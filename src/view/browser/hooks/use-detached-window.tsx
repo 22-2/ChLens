@@ -1,64 +1,73 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { platform } from "src/app/platform";
+import {
+  createDetachedWindowRoot,
+  type DetachedWindowHandle,
+  type DetachedWindowOptions,
+} from "src/view/browser/hooks/detached-window-root";
 
-export interface DetachedWindowOptions {
-  name: string;
-  features: string;
-  title: string;
-  shellClassName: string;
-  logLabel: string;
-}
+export type {
+  DetachedWindowHandle,
+  DetachedWindowOptions,
+} from "src/view/browser/hooks/detached-window-root";
 
-interface DetachedWindowHandle {
-  window: Window;
-  root: HTMLElement;
+interface ManagedDetachedWindowHandle extends DetachedWindowHandle {
   onBeforeUnload: () => void;
 }
 
 export interface DetachedWindowState {
   root: HTMLElement | null;
   isOpen: boolean;
-  open: () => void;
+  open: (sourceWindow?: Window) => boolean;
   close: () => void;
 }
 
-function copyStyles(sourceDocument: Document, targetDocument: Document): void {
-  // 変更理由: PortalはDOMだけを別Documentへ移すため、表示側のスタイルも同時に複製して
-  // 将来ほかのページを別窓へ移しても、呼び出し側がCSSの移送方法を意識しないようにする。
-  for (const style of sourceDocument.querySelectorAll<HTMLStyleElement>("style")) {
-    targetDocument.head.appendChild(style.cloneNode(true));
-  }
-  for (const stylesheet of sourceDocument.querySelectorAll<HTMLLinkElement>(
-    'link[rel="stylesheet"]',
-  )) {
-    targetDocument.head.appendChild(stylesheet.cloneNode(true));
-  }
-}
-
-function createWindowRoot(
-  sourceDocument: Document,
-  targetWindow: Window,
+/**
+ * 別窓を開き、Reactを接続するrootだけを準備する。
+ *
+ * 変更理由: 書き込み窓とタブ別窓で同じCSS移送・root生成を使い回し、
+ * 別窓の種類ごとにWindowProxyの扱いが分裂しないようにする。
+ */
+export function openDetachedWindow(
   options: DetachedWindowOptions,
-): HTMLElement {
-  const sourceShell = sourceDocument.querySelector<HTMLElement>(".browser-shell");
-  const targetDocument = targetWindow.document;
-  targetDocument.head.innerHTML = "";
-  targetDocument.title = options.title;
-  targetDocument.head.appendChild(
-    Object.assign(targetDocument.createElement("meta"), {
-      charSet: "utf-8",
-    }),
-  );
-  copyStyles(sourceDocument, targetDocument);
+  sourceWindow?: Window,
+): DetachedWindowHandle | null {
+  const opener = sourceWindow ?? (typeof window === "undefined" ? null : window);
+  if (!opener) {
+    return null;
+  }
 
-  targetDocument.body.innerHTML = "";
-  targetDocument.body.style.margin = "0";
-  targetDocument.body.style.overflow = "hidden";
-  const root = targetDocument.createElement("div");
-  root.className = `browser-shell ${options.shellClassName}`;
-  root.dataset.theme = sourceShell?.dataset.theme ?? "light";
-  targetDocument.body.appendChild(root);
-  return root;
+  let detachedWindow: Window | null = null;
+  try {
+    detachedWindow = sourceWindow
+      ? (platform.window.openPopup?.(options.name, options.features, sourceWindow) ?? null)
+      : (platform.window.openPopup?.(options.name, options.features) ?? null);
+  } catch (error) {
+    console.error(`[${options.logLabel}] 別窓の生成に失敗しました`, error);
+    return null;
+  }
+  if (!detachedWindow) {
+    console.error(`[${options.logLabel}] 別窓を開けませんでした`);
+    return null;
+  }
+
+  try {
+    return {
+      window: detachedWindow,
+      root: createDetachedWindowRoot(opener.document, detachedWindow, options),
+    };
+  } catch (error) {
+    console.error(`[${options.logLabel}] 別窓の表示基盤を作成できませんでした`, error);
+    try {
+      if (!detachedWindow.closed) {
+        detachedWindow.close();
+      }
+    } catch (closeError) {
+      // root作成失敗時にWindowProxyへ触れない環境でも、本窓へ例外を伝播させない。
+      console.error(`[${options.logLabel}] 失敗した別窓を閉じられませんでした`, closeError);
+    }
+    return null;
+  }
 }
 
 /**
@@ -68,7 +77,7 @@ function createWindowRoot(
  * 書き込みで挙動がずれるため、表示するReactツリーから独立した境界にまとめる。
  */
 export function useDetachedWindow(options: DetachedWindowOptions): DetachedWindowState {
-  const handleRef = useRef<DetachedWindowHandle | null>(null);
+  const handleRef = useRef<ManagedDetachedWindowHandle | null>(null);
   const [root, setRoot] = useState<HTMLElement | null>(null);
 
   const close = useCallback(() => {
@@ -85,36 +94,42 @@ export function useDetachedWindow(options: DetachedWindowOptions): DetachedWindo
     }
   }, []);
 
-  const open = useCallback(() => {
-    const existing = handleRef.current;
-    if (existing && !existing.window.closed) {
-      existing.window.focus();
-      return;
-    }
-
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const detachedWindow = platform.window.openPopup?.(options.name, options.features) ?? null;
-    if (!detachedWindow) {
-      console.error(`[${options.logLabel}] 別窓を開けませんでした`);
-      return;
-    }
-
-    const detachedRoot = createWindowRoot(document, detachedWindow, options);
-    const onBeforeUnload = () => {
-      if (handleRef.current?.window !== detachedWindow) {
-        return;
+  const open = useCallback(
+    (sourceWindow?: Window) => {
+      const existing = handleRef.current;
+      if (existing && !existing.window.closed) {
+        existing.window.focus();
+        return true;
       }
-      handleRef.current = null;
-      setRoot(null);
-    };
-    detachedWindow.addEventListener("beforeunload", onBeforeUnload, { once: true });
-    handleRef.current = { window: detachedWindow, root: detachedRoot, onBeforeUnload };
-    setRoot(detachedRoot);
-    detachedWindow.focus();
-  }, [options]);
+
+      const opener = sourceWindow ?? (typeof window === "undefined" ? null : window);
+      if (!opener) {
+        return false;
+      }
+
+      const opened = sourceWindow
+        ? openDetachedWindow(options, sourceWindow)
+        : openDetachedWindow(options);
+      if (!opened) {
+        return false;
+      }
+
+      const { window: detachedWindow, root: detachedRoot } = opened;
+      const onBeforeUnload = () => {
+        if (handleRef.current?.window !== detachedWindow) {
+          return;
+        }
+        handleRef.current = null;
+        setRoot(null);
+      };
+      detachedWindow.addEventListener("beforeunload", onBeforeUnload, { once: true });
+      handleRef.current = { window: detachedWindow, root: detachedRoot, onBeforeUnload };
+      setRoot(detachedRoot);
+      detachedWindow.focus();
+      return true;
+    },
+    [options],
+  );
 
   useEffect(() => {
     return () => {

@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { Tooltip } from "src/view/browser/ui/Tooltip";
+import { getResizeObserverForWindow, isHTMLElementInWindow } from "src/view/browser/utils/dom";
 
 interface ThreadMinimapProps {
   rootRef: React.RefObject<HTMLDivElement | null>;
@@ -49,13 +51,19 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-function getOffsetTopWithinAncestor(el: HTMLElement, ancestor: HTMLElement): number {
+function getOffsetTopWithinAncestor(
+  el: HTMLElement,
+  ancestor: HTMLElement,
+  targetWindow: Window = globalThis.window,
+): number {
   let top = 0;
   let current: HTMLElement | null = el;
 
   while (current && current !== ancestor) {
     top += current.offsetTop;
-    current = current.offsetParent instanceof HTMLElement ? current.offsetParent : null;
+    current = isHTMLElementInWindow(current.offsetParent, targetWindow)
+      ? current.offsetParent
+      : null;
   }
 
   if (current === ancestor) {
@@ -91,6 +99,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
   activeTopBar,
   onMarkerClick,
 }) => {
+  const { window: viewWindow } = useViewSurface();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawRafRef = useRef<number | null>(null);
   const markerHitsRef = useRef<MinimapMarkerHit[]>([]);
@@ -115,8 +124,8 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     }
 
     const panel = host.closest(".content-area__tab-panel");
-    return panel instanceof HTMLElement ? panel : null;
-  }, [rootRef]);
+    return isHTMLElementInWindow(panel, viewWindow) ? panel : null;
+  }, [rootRef, viewWindow]);
 
   const getResponsesRoot = useCallback((): HTMLElement | null => {
     const host = rootRef.current;
@@ -124,8 +133,8 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
       return null;
     }
     const responses = host.querySelector(".thread-page__responses");
-    return responses instanceof HTMLElement ? responses : null;
-  }, [rootRef]);
+    return isHTMLElementInWindow(responses, viewWindow) ? responses : null;
+  }, [rootRef, viewWindow]);
 
   const getTopBarRoot = useCallback((): HTMLElement | null => {
     const host = rootRef.current;
@@ -133,8 +142,8 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
       return null;
     }
     const topBar = host.querySelector(".thread-page__top-bar");
-    return topBar instanceof HTMLElement ? topBar : null;
-  }, [rootRef]);
+    return isHTMLElementInWindow(topBar, viewWindow) ? topBar : null;
+  }, [rootRef, viewWindow]);
 
   const setHostMinimapWidth = useCallback(
     (widthPx: number) => {
@@ -169,7 +178,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     }
 
     const width = clamp(
-      Math.round(window.innerWidth * MINIMAP_WIDTH_RATIO),
+      Math.round(viewWindow.innerWidth * MINIMAP_WIDTH_RATIO),
       MINIMAP_MIN_WIDTH,
       MINIMAP_MAX_WIDTH,
     );
@@ -194,7 +203,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     });
     // 本文をミニマップの下に潜り込ませないため、同じ幅を右余白として予約する。
     setHostMinimapWidth(width + MINIMAP_GAP);
-  }, [getScrollContainer, getTopBarRoot, responseCount, setHostMinimapWidth]);
+  }, [getScrollContainer, getTopBarRoot, responseCount, setHostMinimapWidth, viewWindow]);
 
   const getMetrics = useCallback((): MinimapMetrics | null => {
     const scrollContainer = getScrollContainer();
@@ -232,7 +241,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
       return;
     }
 
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = viewWindow.devicePixelRatio || 1;
     const cssWidth = Math.max(1, Math.round(currentFrame.width));
     const cssHeight = Math.max(1, Math.round(currentFrame.height));
     const pixelWidth = Math.max(1, Math.round(cssWidth * dpr));
@@ -254,7 +263,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, cssWidth, cssHeight);
 
-    const responsesTop = getOffsetTopWithinAncestor(responsesRoot, scrollContainer);
+    const responsesTop = getOffsetTopWithinAncestor(responsesRoot, scrollContainer, viewWindow);
     const minY = 6;
     const maxY = cssHeight - 6;
     const markerX = cssWidth - 6;
@@ -288,7 +297,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
       }
 
       const resEl = responsesRoot.querySelector(`[data-res-num="${resNum}"]`);
-      if (!(resEl instanceof HTMLElement) || resEl.offsetHeight === 0) {
+      if (!isHTMLElementInWindow(resEl, viewWindow) || resEl.offsetHeight === 0) {
         continue;
       }
 
@@ -332,7 +341,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     ctx.strokeStyle = "rgba(0, 0, 0, 0.12)";
     ctx.strokeRect(0.5, 0.5, cssWidth - 1, cssHeight - 1);
     ctx.restore();
-  }, [frame, getMetrics, getResponsesRoot, getScrollContainer, repIndex]);
+  }, [frame, getMetrics, getResponsesRoot, getScrollContainer, repIndex, viewWindow]);
 
   const findMarkerByPoint = useCallback(
     (relativeX: number, relativeY: number): MinimapMarkerHit | null => {
@@ -361,14 +370,14 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     // 同期的な requestAnimationFrame stub でも完了後に予約済み扱いへ戻らないよう、
     // callback が先に走った場合は null を維持する。
     drawRafRef.current = -1;
-    const requestId = window.requestAnimationFrame(() => {
+    const requestId = viewWindow.requestAnimationFrame(() => {
       drawRafRef.current = null;
       draw();
     });
     if (drawRafRef.current != null) {
       drawRafRef.current = requestId;
     }
-  }, [draw]);
+  }, [draw, viewWindow]);
 
   const updateHoverLine = useCallback(
     (relativeY: number) => {
@@ -586,36 +595,36 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     scrollContainer.addEventListener("scroll", onPanelScroll, {
       passive: true,
     });
-    window.addEventListener("resize", onWindowResize);
+    viewWindow.addEventListener("resize", onWindowResize);
 
-    const resizeObserver =
-      typeof ResizeObserver !== "undefined"
-        ? new ResizeObserver(() => {
-            updateFrame();
-            scheduleDraw();
-          })
-        : null;
+    const ResizeObserverConstructor = getResizeObserverForWindow(viewWindow);
+    const resizeObserver = ResizeObserverConstructor
+      ? new ResizeObserverConstructor(() => {
+          updateFrame();
+          scheduleDraw();
+        })
+      : null;
     if (resizeObserver) {
       resizeObserver.observe(scrollContainer);
     }
 
     return () => {
       scrollContainer.removeEventListener("scroll", onPanelScroll);
-      window.removeEventListener("resize", onWindowResize);
+      viewWindow.removeEventListener("resize", onWindowResize);
       resizeObserver?.disconnect();
     };
-  }, [getScrollContainer, scheduleDraw, updateFrame]);
+  }, [getScrollContainer, scheduleDraw, updateFrame, viewWindow]);
 
   useEffect(() => {
     return () => {
       if (drawRafRef.current != null) {
-        window.cancelAnimationFrame(drawRafRef.current);
+        viewWindow.cancelAnimationFrame(drawRafRef.current);
         drawRafRef.current = null;
       }
       setHostMinimapWidth(0);
       releasePointerState();
     };
-  }, [releasePointerState, setHostMinimapWidth]);
+  }, [releasePointerState, setHostMinimapWidth, viewWindow]);
 
   const style = useMemo<React.CSSProperties | undefined>(() => {
     if (!frame) {

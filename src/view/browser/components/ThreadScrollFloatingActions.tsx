@@ -1,5 +1,7 @@
 import { ArrowDown, RefreshCw } from "lucide-react";
 import React, { type RefObject, useCallback, useEffect, useState } from "react";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
+import { getResizeObserverForWindow, isHTMLElementInWindow } from "src/view/browser/utils/dom";
 
 interface ThreadScrollFloatingActionsProps {
   rootRef: RefObject<HTMLDivElement | null>;
@@ -26,23 +28,26 @@ const BOTTOM_EPSILON = 2;
 const NEAR_BOTTOM_DISTANCE = 240;
 const ACTION_BOTTOM_OFFSET = 24;
 
-function getScrollContainer(root: HTMLElement): HTMLElement | null {
+function getScrollContainer(
+  root: HTMLElement,
+  targetWindow: Window = globalThis.window,
+): HTMLElement | null {
   const nearestPanel = root.closest(".content-area__tab-panel");
-  if (nearestPanel instanceof HTMLElement) {
+  if (isHTMLElementInWindow(nearestPanel, targetWindow)) {
     return nearestPanel;
   }
 
   const contentArea = root.closest(".content-area");
-  if (!(contentArea instanceof HTMLElement)) {
+  if (!isHTMLElementInWindow(contentArea, targetWindow)) {
     return null;
   }
 
   const activePanel = contentArea.querySelector(".content-area__tab-panel[data-active='true']");
-  return activePanel instanceof HTMLElement ? activePanel : contentArea;
+  return isHTMLElementInWindow(activePanel, targetWindow) ? activePanel : contentArea;
 }
 
-function readMinimapReservation(root: HTMLElement): number {
-  const rawValue = getComputedStyle(root).getPropertyValue("--thread-minimap-width");
+function readMinimapReservation(root: HTMLElement, targetWindow: Window): number {
+  const rawValue = targetWindow.getComputedStyle(root).getPropertyValue("--thread-minimap-width");
   const reservation = Number.parseFloat(rawValue);
   return Number.isFinite(reservation) ? Math.max(0, reservation) : 0;
 }
@@ -80,6 +85,7 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
   responseCount,
   onEnableAutoRefresh,
 }) => {
+  const { window: viewWindow } = useViewSurface();
   const [layout, setLayout] = useState<ScrollFloatingLayout | null>(null);
 
   useEffect(() => {
@@ -89,7 +95,7 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
       return;
     }
 
-    const scrollContainer = getScrollContainer(root);
+    const scrollContainer = getScrollContainer(root, viewWindow);
     if (!scrollContainer || scrollContainer.dataset.active === "false") {
       setLayout(null);
       return;
@@ -99,7 +105,9 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
     const updateLayout = () => {
       frameId = null;
       const currentRoot = rootRef.current;
-      const currentScrollContainer = currentRoot ? getScrollContainer(currentRoot) : null;
+      const currentScrollContainer = currentRoot
+        ? getScrollContainer(currentRoot, viewWindow)
+        : null;
       if (
         !currentRoot ||
         !currentScrollContainer ||
@@ -131,7 +139,7 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
         // 小さいペインでも下端操作を見失いにくくする。
         isSlightlyAboveBottom:
           !isAtBottom && distanceToBottom <= Math.max(NEAR_BOTTOM_DISTANCE, rect.height * 0.4),
-        minimapReservation: readMinimapReservation(currentRoot),
+        minimapReservation: readMinimapReservation(currentRoot, viewWindow),
       };
 
       setLayout((previous) => (isSameLayout(previous, nextLayout) ? previous : nextLayout));
@@ -143,7 +151,7 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
       // 同期的なrequestAnimationFrame stubでも、callback内で解除した予約状態を
       // 返却後に上書きして以後のスクロール更新を止めないようにする。
       frameId = -1;
-      const requestId = window.requestAnimationFrame(() => {
+      const requestId = viewWindow.requestAnimationFrame(() => {
         frameId = null;
         updateLayout();
       });
@@ -152,34 +160,36 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
       }
     };
 
-    const resizeObserver =
-      typeof ResizeObserver !== "undefined" ? new ResizeObserver(scheduleLayout) : null;
+    const ResizeObserverConstructor = getResizeObserverForWindow(viewWindow);
+    const resizeObserver = ResizeObserverConstructor
+      ? new ResizeObserverConstructor(scheduleLayout)
+      : null;
     resizeObserver?.observe(scrollContainer);
     resizeObserver?.observe(root);
     scrollContainer.addEventListener("scroll", scheduleLayout, { passive: true });
-    window.addEventListener("resize", scheduleLayout);
+    viewWindow.addEventListener("resize", scheduleLayout);
     scheduleLayout();
 
     return () => {
       if (frameId != null) {
-        window.cancelAnimationFrame(frameId);
+        viewWindow.cancelAnimationFrame(frameId);
       }
       resizeObserver?.disconnect();
       scrollContainer.removeEventListener("scroll", scheduleLayout);
-      window.removeEventListener("resize", scheduleLayout);
+      viewWindow.removeEventListener("resize", scheduleLayout);
     };
-  }, [isActive, responseCount, rootRef]);
+  }, [isActive, responseCount, rootRef, viewWindow]);
 
   const scrollToBottom = useCallback(() => {
     const root = rootRef.current;
-    const scrollContainer = root ? getScrollContainer(root) : null;
+    const scrollContainer = root ? getScrollContainer(root, viewWindow) : null;
     if (!scrollContainer) {
       return;
     }
 
     // スクロール位置を即時に確定させ、既存の自動更新境界判定も同じフレームで追従させる。
     scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: "auto" });
-  }, [rootRef]);
+  }, [rootRef, viewWindow]);
 
   if (!layout || !isActive || isFilterEnabled || loading || expired || responseCount === 0) {
     return null;
@@ -187,10 +197,10 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
 
   const jumpBottom = Math.max(
     ACTION_BOTTOM_OFFSET,
-    window.innerHeight - layout.panelBottom + ACTION_BOTTOM_OFFSET,
+    viewWindow.innerHeight - layout.panelBottom + ACTION_BOTTOM_OFFSET,
   );
   // 縦にステータスバーの下へ移動させず、上端に重ねてz-indexだけを下げて背後へ沈める。
-  const autoLoadBottom = Math.max(0, window.innerHeight - layout.panelBottom);
+  const autoLoadBottom = Math.max(0, viewWindow.innerHeight - layout.panelBottom);
   const centerLeft = layout.panelLeft + (layout.panelRight - layout.panelLeft) / 2;
   // CSS変数は「ミニマップ幅 + 左右の逃がし」を予約しているので、
   // その開始位置から少し左へボタンを置けばミニマップに重ならない。

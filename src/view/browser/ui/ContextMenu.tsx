@@ -2,6 +2,8 @@ import { ContextMenu as RadixContextMenu } from "radix-ui";
 import type { ReactNode, RefObject } from "react";
 import React, { useLayoutEffect, useMemo, useRef } from "react";
 import { usePopupCloseBehavior } from "src/view/browser/hooks/use-popup-manager";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
+import { getEventTargetElement } from "src/view/browser/utils/dom";
 
 export interface ContextMenuItem {
   id: string;
@@ -47,6 +49,7 @@ export const ContextMenu: React.FC<Props> = ({
   closeDisabled,
   zIndex,
 }) => {
+  const { window: viewWindow } = useViewSurface();
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerElementRef = useRef<HTMLSpanElement>(null);
   const { handleAuxClickCapture, handleMouseDownCapture, handleMouseEnter, handleMouseLeave } =
@@ -67,11 +70,14 @@ export const ContextMenu: React.FC<Props> = ({
   const visibleItems = useMemo(() => items.filter((item) => item.separator || item.label), [items]);
 
   const isPopupBranchTarget = (target: EventTarget | null) => {
-    if (!popupId || !(target instanceof Element)) {
+    const targetElement = getEventTargetElement(target, viewWindow);
+    if (!popupId || !targetElement) {
       return false;
     }
 
-    const targetPopupId = target.closest('[data-popup="true"]')?.getAttribute("data-popup-id");
+    const targetPopupId = targetElement
+      .closest('[data-popup="true"]')
+      ?.getAttribute("data-popup-id");
     return (
       targetPopupId === popupId ||
       (targetPopupId != null && isPopupDescendantOf?.(targetPopupId, popupId) === true)
@@ -81,8 +87,14 @@ export const ContextMenu: React.FC<Props> = ({
   // 変更理由: トグルボタン上の押下で Radix が先に閉じると、後続の click トグルが
   // 閉じた状態を見て開き直してしまう。開閉の責務はボタン側のトグルへ寄せ、
   // mousedown 側の outsideClickIgnoreRefs と同じくトリガー上では閉じない。
-  const isTriggerTarget = (target: EventTarget | null) =>
-    triggerRef?.current != null && target instanceof Node && triggerRef.current.contains(target);
+  const isTriggerTarget = (target: EventTarget | null) => {
+    const targetElement = getEventTargetElement(target, viewWindow);
+    return (
+      triggerRef?.current != null &&
+      targetElement != null &&
+      triggerRef.current.contains(targetElement)
+    );
+  };
 
   // Radixのvirtual anchorへ座標を渡すため、既存の「stateが生成されたら開く」契約を
   // contextmenuイベントへ変換する。これによりRadix側のfocus/dismissable layerを利用できる。
@@ -92,8 +104,9 @@ export const ContextMenu: React.FC<Props> = ({
       return;
     }
 
+    const viewWindowWithConstructors = viewWindow as Window & typeof globalThis;
     trigger.dispatchEvent(
-      new MouseEvent("contextmenu", {
+      new viewWindowWithConstructors.MouseEvent("contextmenu", {
         bubbles: true,
         cancelable: true,
         clientX: x,
@@ -101,7 +114,7 @@ export const ContextMenu: React.FC<Props> = ({
         button: 2,
       }),
     );
-  }, [x, y]);
+  }, [viewWindow, x, y]);
 
   return (
     <RadixContextMenu.Root

@@ -7,6 +7,8 @@ import { NgBadge } from "src/view/browser/components/NgBadge";
 import { NgResponsePlaceholder } from "src/view/browser/components/NgResponsePlaceholder";
 import { ResBody } from "src/view/browser/components/ResBody";
 import { useIsNgTemporarilyDisabled, useNgDisplayMode } from "src/view/browser/hooks/use-ng-status";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
+import { getEventTargetElement } from "src/view/browser/utils/dom";
 import { getIdHeatColor } from "src/view/browser/utils/id-heat";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
 import { getReplyHeatLevel } from "src/view/browser/utils/reply-heat";
@@ -66,6 +68,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
     threadUrl,
     searchQuery = "",
   }) => {
+    const { window: viewWindow } = useViewSurface();
     const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
     const ngDisplayMode = useNgDisplayMode();
     // res.ng はサービス層がNGワード照合した結果を格納するフィールド。
@@ -148,10 +151,8 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
         data-res-num={res.num}
         className={articleClassName}
         onContextMenu={(e) => {
-          if (
-            e.target instanceof Element &&
-            e.target.closest("a, .res__link, .res__thumb, .res__media-embed")
-          ) {
+          const target = getEventTargetElement(e.target, viewWindow);
+          if (target?.closest("a, .res__link, .res__thumb, .res__media-embed")) {
             // リンクや画像の右クリックはブラウザ既定メニューへ委譲する。
             return;
           }

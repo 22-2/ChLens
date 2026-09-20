@@ -47,6 +47,7 @@ import {
 } from "src/view/browser/hooks/use-bottom-panel";
 import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
 import { useTabStore, useTabViewState } from "src/view/browser/hooks/use-tab-store";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { ContextMenu, type ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { copyText, formatMarkdownLink } from "src/view/browser/utils/clipboard";
 import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
@@ -65,14 +66,15 @@ interface BoardDescriptor {
   boardTitle: string;
 }
 
-function deriveFallbackBoardUrl(threadUrl: string): string {
+function deriveFallbackBoardUrl(threadUrl: string, targetWindow: Window): string {
   const boardUrl = getBoardUrlFromThreadUrl(threadUrl);
   if (boardUrl !== threadUrl) {
     return boardUrl;
   }
 
   try {
-    const parsed = new window.URL(threadUrl);
+    const targetWindowWithConstructors = targetWindow as Window & typeof globalThis;
+    const parsed = new targetWindowWithConstructors.URL(threadUrl);
     const match = parsed.pathname.match(/^(?:\/[^/]+)?\/test\/read\.cgi\/([\w-]+)\/\d+\/?/);
     return match ? `${parsed.origin}/${match[1]}/` : threadUrl;
   } catch {
@@ -80,9 +82,10 @@ function deriveFallbackBoardUrl(threadUrl: string): string {
   }
 }
 
-function normalizeLocation(rawLocation: string): string {
+function normalizeLocation(rawLocation: string, targetWindow: Window): string {
   try {
-    const parsed = new window.URL(rawLocation);
+    const targetWindowWithConstructors = targetWindow as Window & typeof globalThis;
+    const parsed = new targetWindowWithConstructors.URL(rawLocation);
     parsed.hash = "";
     return parsed.toString().replace(/\/+$/, "/");
   } catch {
@@ -94,13 +97,15 @@ function resolveBoardTitle(
   boardUrl: string,
   threadTitle: string,
   history: ReturnType<typeof useTabStore>["activeTab"]["history"],
+  targetWindow: Window,
 ): string {
-  const normalizedBoardUrl = normalizeLocation(boardUrl);
+  const normalizedBoardUrl = normalizeLocation(boardUrl, targetWindow);
   const boardPage = [...history]
     .reverse()
     .find(
       (page) =>
-        page.type === "threadList" && normalizeLocation(page.boardUrl) === normalizedBoardUrl,
+        page.type === "threadList" &&
+        normalizeLocation(page.boardUrl, targetWindow) === normalizedBoardUrl,
     );
   if (
     boardPage?.type === "threadList" &&
@@ -118,7 +123,8 @@ function resolveBoardTitle(
   }
 
   try {
-    const parsed = new window.URL(boardUrl);
+    const targetWindowWithConstructors = targetWindow as Window & typeof globalThis;
+    const parsed = new targetWindowWithConstructors.URL(boardUrl);
     const boardKey = parsed.pathname.replace(/^\/+|\/+$/g, "");
     return boardKey ? `${parsed.hostname}/${boardKey}` : parsed.hostname;
   } catch {
@@ -130,11 +136,12 @@ function createBoardDescriptor(
   threadUrl: string,
   threadTitle: string,
   history: ReturnType<typeof useTabStore>["activeTab"]["history"],
+  targetWindow: Window,
 ): BoardDescriptor {
-  const boardUrl = deriveFallbackBoardUrl(threadUrl);
+  const boardUrl = deriveFallbackBoardUrl(threadUrl, targetWindow);
   return {
     boardUrl,
-    boardTitle: resolveBoardTitle(boardUrl, threadTitle, history),
+    boardTitle: resolveBoardTitle(boardUrl, threadTitle, history, targetWindow),
   };
 }
 
@@ -158,6 +165,9 @@ function refreshThreadNgState(thread: IThread, boardUrl: string): IThread {
 
 export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) => {
   const { activeTab, currentPage, dispatch } = useTabStore();
+  // 変更理由: 下部パネルのスレ一覧も別窓へ移せるため、可視状態・更新タイマー・URL解析を
+  // ページ本体と同じ表示先へ揃え、メイン窓の状態に引きずられないようにする。
+  const { window: viewWindow, document: viewDocument } = useViewSurface();
   const { isNgTemporarilyDisabled, setThreadListStats } = useNgStatus();
   const bookmarkRevision = useBookmarkRevision();
   const {
@@ -167,8 +177,8 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
     setThreadListAutoRefreshIntervalSec,
   } = useBottomPanel();
   const descriptor = useMemo(
-    () => createBoardDescriptor(threadUrl, currentPage.title, activeTab.history),
-    [activeTab.history, currentPage.title, threadUrl],
+    () => createBoardDescriptor(threadUrl, currentPage.title, activeTab.history, viewWindow),
+    [activeTab.history, currentPage.title, threadUrl, viewWindow],
   );
   const boardPage = useMemo(
     () => ({
@@ -212,7 +222,7 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
   const previousBoardUrlRef = useRef(descriptor.boardUrl);
   const skipViewStateUpdateRef = useRef(false);
   const [isDocumentVisible, setIsDocumentVisible] = useState(
-    document.visibilityState === "visible",
+    viewDocument.visibilityState === "visible",
   );
 
   const fetchThreads = useCallback(async () => {
@@ -307,29 +317,30 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
 
   useEffect(() => {
     const handleVisibilityChange = () => {
-      setIsDocumentVisible(document.visibilityState === "visible");
+      setIsDocumentVisible(viewDocument.visibilityState === "visible");
     };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, []);
+    viewDocument.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => viewDocument.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [viewDocument]);
 
   useEffect(() => {
     if (!threadListAutoRefreshEnabled || !isDocumentVisible) {
       return;
     }
 
-    const timerId = window.setInterval(() => {
+    const timerId = viewWindow.setInterval(() => {
       if (!loading) {
         void fetchThreads();
       }
     }, threadListAutoRefreshIntervalSec * 1000);
-    return () => window.clearInterval(timerId);
+    return () => viewWindow.clearInterval(timerId);
   }, [
     fetchThreads,
     isDocumentVisible,
     loading,
     threadListAutoRefreshEnabled,
     threadListAutoRefreshIntervalSec,
+    viewWindow,
   ]);
 
   useEffect(() => {

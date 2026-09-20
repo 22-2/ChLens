@@ -1,5 +1,7 @@
 import type { MouseEvent as ReactMouseEvent, RefObject } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
+import { getEventTargetElement } from "src/view/browser/utils/dom";
 
 export interface PopupHeaderMenuPosition {
   x: number;
@@ -15,6 +17,7 @@ interface PopupHeaderMenuResult {
 
 /** popupヘッダーのメニュー位置と outside click を共通管理する。 */
 export function usePopupHeaderMenu(): PopupHeaderMenuResult {
+  const { window: viewWindow, document: viewDocument } = useViewSurface();
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [menuPosition, setMenuPosition] = useState<PopupHeaderMenuPosition | null>(null);
 
@@ -26,21 +29,22 @@ export function usePopupHeaderMenu(): PopupHeaderMenuResult {
     }
 
     const handleOutsideMenuClick = (event: globalThis.MouseEvent) => {
-      if (!(event.target instanceof Element)) {
+      const target = getEventTargetElement(event.target, viewWindow);
+      if (!target) {
         closeMenu();
         return;
       }
 
-      if (event.target.closest(".context-menu") || menuButtonRef.current?.contains(event.target)) {
+      if (target.closest(".context-menu") || menuButtonRef.current?.contains(target)) {
         return;
       }
 
       closeMenu();
     };
 
-    document.addEventListener("mousedown", handleOutsideMenuClick);
-    return () => document.removeEventListener("mousedown", handleOutsideMenuClick);
-  }, [closeMenu, menuPosition]);
+    viewDocument.addEventListener("mousedown", handleOutsideMenuClick);
+    return () => viewDocument.removeEventListener("mousedown", handleOutsideMenuClick);
+  }, [closeMenu, menuPosition, viewDocument, viewWindow]);
 
   const handleMenuClick = useCallback((event: ReactMouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();

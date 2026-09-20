@@ -49,13 +49,11 @@ import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-ac
 import {
   useActivePaneId,
   usePaneId,
-  useTabDispatchForTab,
   useTabPanes,
   useTabStore,
   useTabViewState,
 } from "src/view/browser/hooks/use-tab-store";
-import { useToast } from "src/view/browser/hooks/use-toast";
-import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
+import { useViewTarget } from "src/view/browser/hooks/use-view-target";
 import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 import { parseOpenedBoardEntries } from "src/view/browser/pages/board-list/board-list-utils";
 import {
@@ -203,11 +201,10 @@ export const ThreadListPage: React.FC<Props> = ({
   isAutoRefreshEnabled = false,
   scrollContainerRef,
 }) => {
-  const { window: viewWindow, document: viewDocument } = useViewSurface();
-  const toast = useToast();
+  const { surface: viewSurface, dispatch, toast } = useViewTarget(tabId);
+  const { window: viewWindow, document: viewDocument } = viewSurface;
   const fallbackScrollContainerRef = useRef<HTMLDivElement>(null);
   const effectiveScrollContainerRef = scrollContainerRef ?? fallbackScrollContainerRef;
-  const dispatch = useTabDispatchForTab(tabId);
   const { activeTab } = useTabStore();
   // 既存の直接利用者との互換性のためactiveTabを残し、通常の描画経路では渡されたtabを優先する。
   const navigationTab = tab ?? activeTab;

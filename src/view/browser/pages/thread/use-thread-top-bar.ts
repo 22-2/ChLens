@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import {
   THREAD_FILTER_TOOLBAR_TOGGLE_EVENT,
   type ThreadFilterToolbarToggleDetail,
@@ -36,6 +37,7 @@ export function useThreadTopBar({
   clearFilter,
   hasActiveFilter = false,
 }: UseThreadTopBarParams): UseThreadTopBarResult {
+  const { window: viewWindow } = useViewSurface();
   const [activeTopBar, setActiveTopBar] = useState<TopBarMode>(() =>
     searchQuery.trim() !== "" || hasActiveFilter ? "filter" : "none",
   );
@@ -91,14 +93,14 @@ export function useThreadTopBar({
       toggleFilterToolbar();
     };
 
-    window.addEventListener(TOP_BAR_EVENT_BY_MODE.search, handleSearchToggle);
-    window.addEventListener(TOP_BAR_EVENT_BY_MODE.filter, handleFilterToggle);
+    viewWindow.addEventListener(TOP_BAR_EVENT_BY_MODE.search, handleSearchToggle);
+    viewWindow.addEventListener(TOP_BAR_EVENT_BY_MODE.filter, handleFilterToggle);
 
     return () => {
-      window.removeEventListener(TOP_BAR_EVENT_BY_MODE.search, handleSearchToggle);
-      window.removeEventListener(TOP_BAR_EVENT_BY_MODE.filter, handleFilterToggle);
+      viewWindow.removeEventListener(TOP_BAR_EVENT_BY_MODE.search, handleSearchToggle);
+      viewWindow.removeEventListener(TOP_BAR_EVENT_BY_MODE.filter, handleFilterToggle);
     };
-  }, [isActive, openFilterToolbarForSearch, tabId, toggleFilterToolbar]);
+  }, [isActive, openFilterToolbarForSearch, tabId, toggleFilterToolbar, viewWindow]);
 
   return {
     activeTopBar,

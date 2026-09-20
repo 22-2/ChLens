@@ -8,15 +8,21 @@ const mocks = vi.hoisted(() => ({
   closePanel: vi.fn(),
   canAutoScroll: false,
   isAutoScrolling: false,
+  detached: false,
   currentPage: {
     type: "thread",
     title: "スレッド",
     threadUrl: "https://example.com/test/read.cgi/software/1/",
   },
+  activeTab: { id: "tab-1" },
 }));
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
-  useTabStore: () => ({ currentPage: mocks.currentPage }),
+  useTabStore: () => ({ currentPage: mocks.currentPage, activeTab: mocks.activeTab }),
+}));
+
+vi.mock("src/view/browser/hooks/detached-tab-context", () => ({
+  useDetachedTabs: () => ({ isDetached: () => mocks.detached }),
 }));
 
 vi.mock("src/view/browser/hooks/use-bottom-panel", () => ({
@@ -55,6 +61,7 @@ describe("BottomPanel", () => {
     mocks.closePanel.mockReset();
     mocks.canAutoScroll = false;
     mocks.isAutoScrolling = false;
+    mocks.detached = false;
     mocks.currentPage = {
       type: "thread",
       title: "スレッド",
@@ -86,6 +93,16 @@ describe("BottomPanel", () => {
       expect(mocks.closePanel).toHaveBeenCalledTimes(1);
     });
     expect(screen.queryByText("write panel")).not.toBeInTheDocument();
+  });
+
+  it("表示中のスレッドを別窓へ移したらパネルを閉じる", async () => {
+    mocks.detached = true;
+
+    render(<BottomPanel />);
+
+    await waitFor(() => {
+      expect(mocks.closePanel).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("自動追従有効中にパネルが開いてもスレッド末尾へ同期する", () => {

@@ -27,6 +27,7 @@ export interface ResponseListImageOptions {
   threadTitle?: string;
   threadUrl?: string;
   theme?: ResolvedTheme;
+  targetDocument?: Document;
 }
 
 const RESPONSE_IMAGE_LAYOUT = {
@@ -172,13 +173,21 @@ function drawResponseImageCard(
 /** IDポップアップなど、レスの並びをそのまま画像へ書き出す。 */
 export function renderResponseListImageCanvas(
   responses: IRes[],
-  { title, threadTitle, threadUrl, theme = "light" }: ResponseListImageOptions,
+  {
+    title,
+    threadTitle,
+    threadUrl,
+    theme = "light",
+    targetDocument = globalThis.document,
+  }: ResponseListImageOptions,
 ): HTMLCanvasElement {
   if (responses.length === 0) {
     throw new Error("画像化するレスがありません");
   }
 
-  const canvas = document.createElement("canvas");
+  // 変更理由: 別窓のポップアップから画像化しても、canvasを描画中のDocumentへ所属させ、
+  // 表示環境ごとのDOM境界を維持する。
+  const canvas = targetDocument.createElement("canvas");
   const context = canvas.getContext("2d");
   if (!context) {
     throw new Error("Canvas 2D contextを取得できませんでした");

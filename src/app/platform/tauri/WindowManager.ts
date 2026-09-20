@@ -22,8 +22,9 @@ export const TauriWindowManager: WindowManager = {
     window.open(options.url, "_blank", features);
   },
 
-  openPopup(name: string, features: string): Window | null {
-    return window.open("", name, features);
+  openPopup(name: string, features: string, sourceWindow = window): Window | null {
+    // 表示元のWindowを受け取り、ブラウザ版と同じく別窓からの操作を起点にできるようにする。
+    return sourceWindow.open("", name, features);
   },
 
   async closeCurrent(): Promise<void> {

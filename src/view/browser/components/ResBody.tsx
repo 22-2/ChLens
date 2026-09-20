@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useRef } from "react";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { hasMissingAnchorTarget, parseAnchorDisplayTargets } from "src/view/browser/utils/anchor";
 import { ANCHOR_SELECTOR, ID_LINK_SELECTOR } from "src/view/browser/utils/constants";
 import { getEventTargetElement } from "src/view/browser/utils/dom";
@@ -345,6 +346,7 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
     ngResNums,
     resMap,
   }) => {
+    const { document: viewDocument } = useViewSurface();
     const interactionHandlers = useResBodyInteractionHandlers({
       anchorPreviewDepth,
       onUrlClick,
@@ -367,7 +369,7 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
       // 変更理由: innerHTMLを描画した後にclassListを変更すると、レス更新時のDOM差し替えと
       // 競合して一瞬だけ通常色へ戻る。描画するHTMLそのものへ状態クラスを含めることで、
       // NG対象・欠損対象のアンカーを常に同じフレームで表示する。
-      const template = document.createElement("template");
+      const template = viewDocument.createElement("template");
       template.innerHTML = highlightedMessageHtml;
       for (const anchor of template.content.querySelectorAll<HTMLAnchorElement>(ANCHOR_SELECTOR)) {
         const targets = parseAnchorDisplayTargets(anchor.textContent?.trim() ?? "");
@@ -381,7 +383,7 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
         anchor.classList.toggle("anchor--missing-target", hasMissingTarget);
       }
       return template.innerHTML;
-    }, [highlightedMessageHtml, ngResNums, resMap]);
+    }, [highlightedMessageHtml, ngResNums, resMap, viewDocument]);
 
     return (
       <div

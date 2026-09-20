@@ -43,7 +43,7 @@ interface WriteSessionContextValue {
   selectThread: (threadUrl: string) => void;
   setDraft: (threadUrl: string, message: string) => void;
   appendDraft: (threadUrl: string, text: string) => void;
-  openWriteWindow: () => void;
+  openWriteWindow: (sourceWindow?: Window) => boolean;
   closeWriteWindow: () => void;
 }
 
@@ -122,7 +122,7 @@ const defaultContextValue: WriteSessionContextValue = {
   selectThread: () => {},
   setDraft: () => {},
   appendDraft: () => {},
-  openWriteWindow: () => {},
+  openWriteWindow: () => false,
   closeWriteWindow: () => {},
 };
 

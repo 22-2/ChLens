@@ -6,6 +6,8 @@ import type { IRes } from "src/service-container";
 import { NgBadge } from "src/view/browser/components/NgBadge";
 import { ResBody } from "src/view/browser/components/ResBody";
 import { useIsNgTemporarilyDisabled, useNgDisplayMode } from "src/view/browser/hooks/use-ng-status";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
+import { getEventTargetElement } from "src/view/browser/utils/dom";
 import { getIdHeatColor } from "src/view/browser/utils/id-heat";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
 import { getReplyHeatLevel } from "src/view/browser/utils/reply-heat";
@@ -35,6 +37,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     resMap,
     threadKey,
   }) => {
+    const { window: viewWindow } = useViewSurface();
     const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
     const ngDisplayMode = useNgDisplayMode();
     const decoded = useMemo(() => decodeResponseHtml(res, messageProtocol), [messageProtocol, res]);
@@ -108,8 +111,9 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
         onContextMenu={(e) => {
           if (!onContextMenu) return;
           if (
-            e.target instanceof Element &&
-            e.target.closest("a, .res__thumb, .res__media-embed")
+            getEventTargetElement(e.target, viewWindow)?.closest(
+              "a, .res__thumb, .res__media-embed",
+            )
           ) {
             // popup 内でもリンク/画像の右クリックは既定メニューを優先する。
             return;

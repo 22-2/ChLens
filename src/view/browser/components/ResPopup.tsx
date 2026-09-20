@@ -5,6 +5,7 @@ import { PopupHeader } from "src/view/browser/components/PopupHeader";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
 import { usePopupHeaderMenu } from "src/view/browser/hooks/use-popup-header-menu";
 import { useTheme } from "src/view/browser/hooks/use-theme";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { FloatingPopup } from "src/view/browser/ui/FloatingPopup";
@@ -102,6 +103,7 @@ export const ResPopup: React.FC<{
   resMap,
   threadKey,
 }) => {
+  const { document: viewDocument } = useViewSurface();
   const theme = useTheme();
   const { menuButtonRef, menuPosition, handleMenuClick, closeMenu } = usePopupHeaderMenu();
 
@@ -128,6 +130,7 @@ export const ResPopup: React.FC<{
               threadTitle,
               threadUrl,
               theme,
+              targetDocument: viewDocument,
             });
             const blob = await canvasToBlob(canvas);
             await copyImageBlob(blob);

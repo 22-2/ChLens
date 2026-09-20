@@ -8,6 +8,7 @@ import { URL as ChURL } from "src/core/URL";
 import { container } from "src/service-container/index";
 import { useScopedConfigBooleanSetting } from "src/view/browser/hooks/use-scoped-config-boolean-setting";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import {
   notifyThreadWriteCompleted,
   notifyThreadWriteStarted,
@@ -64,6 +65,8 @@ export interface UseWriteOptions {
   draft?: string;
   /** 下書きの変更を表示場所の外に保存するための通知。 */
   onDraftChange?: (message: string) => void;
+  /** 共有書き込み窓から再取得する対象タブ。 */
+  tabId?: string;
 }
 
 // -----------------------------------------------------------------------
@@ -260,8 +263,11 @@ async function submitTauriWrite(
 // フック本体
 // -----------------------------------------------------------------------
 export function useWrite(threadUrl: string, options: UseWriteOptions = {}): UseWriteResult {
-  const { draft, onDraftChange } = options;
+  const { draft, onDraftChange, tabId } = options;
   const { dispatch } = useTabStore();
+  // 変更理由: 別窓のiframe通知・送信監視・成功表示のタイマーを、書き込み窓自身の
+  // Windowへ登録し、メイン窓のライフサイクルに依存しないようにする。
+  const { window: viewWindow } = useViewSurface();
 
   const [name, setNameState] = useState(
     () => getStore2String(NAME_KEY) ?? container.config.get("default_name") ?? "",
@@ -303,13 +309,13 @@ export function useWrite(threadUrl: string, options: UseWriteOptions = {}): UseW
     if (timerId == null) {
       return;
     }
-    window.clearTimeout(timerId);
+    viewWindow.clearTimeout(timerId);
     submitWatchdogTimerRef.current = null;
-  }, []);
+  }, [viewWindow]);
 
   const armSubmitWatchdog = useCallback(() => {
     clearSubmitWatchdog();
-    submitWatchdogTimerRef.current = window.setTimeout(() => {
+    submitWatchdogTimerRef.current = viewWindow.setTimeout(() => {
       if (statusRef.current !== "submitting") {
         return;
       }
@@ -321,7 +327,7 @@ export function useWrite(threadUrl: string, options: UseWriteOptions = {}): UseW
       setStatus("error");
       setStatusText("書き込み結果の通知を受信できなかったため待機を解除しました");
     }, SUBMIT_WATCHDOG_MS);
-  }, [clearSubmitWatchdog]);
+  }, [clearSubmitWatchdog, viewWindow]);
 
   const clearTauriWriteAttempt = useCallback(() => {
     setConfirmationPage(null);
@@ -347,16 +353,21 @@ export function useWrite(threadUrl: string, options: UseWriteOptions = {}): UseW
     setStatus("idle");
     setStatusText("");
 
-    if (draft !== undefined) {
-      // 変更理由: 表示場所が変わってもスレッドごとの下書きを復元し、別スレの本文を
-      // 誤投稿しないよう、投稿先の切り替え時だけ外部セッションの値へ同期する。
-      setMessageState(draft);
-    }
-
     if (!isTauriRuntime() && iframeRef.current) {
       iframeRef.current.src = "about:blank";
     }
-  }, [clearSubmitWatchdog, clearTauriWriteAttempt, draft, threadUrl]);
+  }, [clearSubmitWatchdog, clearTauriWriteAttempt, threadUrl]);
+
+  useEffect(() => {
+    if (draft === undefined) {
+      return;
+    }
+
+    // 変更理由: 別窓で開いたまま同じスレへ返信引用を追加するとthreadUrlは変わらない。
+    // URL切替用effectだけで下書きを同期すると、その引用がtextareaへ届かないため、
+    // 外部セッションの本文変更を独立して反映する。
+    setMessageState((currentMessage) => (currentMessage === draft ? currentMessage : draft));
+  }, [draft]);
 
   const canSubmit = status === "idle" && threadUrl !== "" && message.trim() !== "";
 
@@ -374,12 +385,12 @@ export function useWrite(threadUrl: string, options: UseWriteOptions = {}): UseW
   // 書き込み成功後、少し待ってから idle に戻す
   useEffect(() => {
     if (status !== "success") return;
-    const id = setTimeout(() => {
+    const id = viewWindow.setTimeout(() => {
       setStatus("idle");
       setStatusText("");
     }, 3000);
-    return () => clearTimeout(id);
-  }, [status]);
+    return () => viewWindow.clearTimeout(id);
+  }, [status, viewWindow]);
 
   const handleWriteResult = useCallback(
     (data: WriteResultMessage) => {
@@ -406,7 +417,7 @@ export function useWrite(threadUrl: string, options: UseWriteOptions = {}): UseW
 
             // 変更理由: 投稿後の強制再取得も通常の RELOAD 経路へ寄せ、
             // manual reload / auto refresh と同じ forceUpdate 振る舞いを保つ。
-            dispatch({ type: "RELOAD" });
+            dispatch(tabId ? { type: "RELOAD", tabId } : { type: "RELOAD" });
           })();
           break;
         case "confirm":
@@ -441,7 +452,7 @@ export function useWrite(threadUrl: string, options: UseWriteOptions = {}): UseW
           break;
       }
     },
-    [clearSubmitWatchdog, clearTauriWriteAttempt, dispatch, setMessage],
+    [clearSubmitWatchdog, clearTauriWriteAttempt, dispatch, setMessage, tabId],
   );
 
   // iframe からの postMessage を処理する (cs_write.js との通信)
@@ -472,9 +483,9 @@ export function useWrite(threadUrl: string, options: UseWriteOptions = {}): UseW
           break;
       }
     };
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, [handleWriteResult]);
+    viewWindow.addEventListener("message", handleMessage);
+    return () => viewWindow.removeEventListener("message", handleMessage);
+  }, [handleWriteResult, viewWindow]);
 
   const submit = useCallback(async () => {
     if (!canSubmit) return;

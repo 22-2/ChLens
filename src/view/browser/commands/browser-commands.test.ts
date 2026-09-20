@@ -647,6 +647,26 @@ describe("browser commands", () => {
     expect(toastSuccessMock).toHaveBeenCalledWith("datのURLをコピーしました");
   });
 
+  it("表示環境から渡した通知サービスへ結果を送る", async () => {
+    const { context } = createContext({
+      type: "thread",
+      title: "Thread",
+      threadUrl: "https://egg.5ch.net/test/read.cgi/software/123/",
+    });
+    const detachedSuccess = vi.fn();
+    context.toast = {
+      success: detachedSuccess,
+      error: vi.fn(),
+      info: vi.fn(),
+      notify: vi.fn(),
+    } as unknown as NonNullable<BrowserCommandContext["toast"]>;
+
+    await expect(executeBrowserCommand("copy.dat-url", context)).resolves.toBe(true);
+
+    expect(detachedSuccess).toHaveBeenCalledWith("datのURLをコピーしました");
+    expect(toastSuccessMock).not.toHaveBeenCalled();
+  });
+
   it("Markdown形式のスレタイとURLを専用コマンドでコピーする", async () => {
     const { context } = createContext({
       type: "thread",

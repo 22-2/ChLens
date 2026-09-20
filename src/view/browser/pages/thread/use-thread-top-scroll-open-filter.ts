@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import type { TopBarMode } from "src/view/browser/pages/thread/use-thread-top-bar";
+import { getEventTargetElement } from "src/view/browser/utils/dom";
 import { findThreadScrollContainer } from "src/view/browser/utils/thread-read-state";
 
 interface UseThreadTopScrollOpenFilterParams {
@@ -19,6 +21,7 @@ export function useThreadTopScrollOpenFilter({
   openFilterToolbar,
   rootRef,
 }: UseThreadTopScrollOpenFilterParams): void {
+  const { window: viewWindow } = useViewSurface();
   const openedByWheelRef = useRef(false);
 
   useEffect(() => {
@@ -45,12 +48,12 @@ export function useThreadTopScrollOpenFilter({
       // メニューやポップアップ上のホイール操作はフィルタ開閉に反映しない。
       // ポップアップは data-popup="true" 属性を持ち、
       // その他オーバーレイ要素も独自のスクロール挙動を持つため除外する。
+      const eventTarget = getEventTargetElement(event.target, viewWindow);
       if (
-        event.target instanceof Element &&
-        (event.target.closest("[data-popup='true']") ||
-          event.target.closest(".mini-window") ||
-          event.target.closest(".media-viewer") ||
-          event.target.closest(".bookmark-root-dialog"))
+        eventTarget?.closest("[data-popup='true']") ||
+        eventTarget?.closest(".mini-window") ||
+        eventTarget?.closest(".media-viewer") ||
+        eventTarget?.closest(".bookmark-root-dialog")
       ) {
         return;
       }
@@ -84,5 +87,5 @@ export function useThreadTopScrollOpenFilter({
     return () => {
       scrollContainer.removeEventListener("wheel", handleWheel);
     };
-  }, [activeTopBar, closeTopBar, isActive, openFilterToolbar, rootRef]);
+  }, [activeTopBar, closeTopBar, isActive, openFilterToolbar, rootRef, viewWindow]);
 }

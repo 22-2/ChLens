@@ -6,6 +6,8 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
+import { getEventTargetElement } from "src/view/browser/utils/dom";
 
 export const WHEEL_THRESHOLD = 7;
 const COOLDOWN_PERIOD_MS = 1000;
@@ -24,6 +26,7 @@ const INITIAL_SHARED_WHEEL_COOLDOWN_STATE: SharedWheelCooldownState = {
 
 let sharedWheelCooldownState = INITIAL_SHARED_WHEEL_COOLDOWN_STATE;
 let sharedCooldownTimer: number | null = null;
+let sharedCooldownWindow: Window | null = null;
 const sharedWheelCooldownListeners = new Set<() => void>();
 
 function subscribeToSharedWheelCooldown(listener: () => void): () => void {
@@ -40,14 +43,23 @@ function publishSharedWheelCooldown(nextState: SharedWheelCooldownState): void {
   sharedWheelCooldownListeners.forEach((listener) => listener());
 }
 
-function startSharedWheelCooldown(direction: WheelDirection): void {
-  if (sharedCooldownTimer !== null) window.clearTimeout(sharedCooldownTimer);
+function startSharedWheelCooldown(
+  direction: WheelDirection,
+  targetWindow: Window = globalThis.window,
+): void {
+  // 変更理由: 別窓ごとにタイマーIDの採番が分かれるため、共有状態だけを見て
+  // 呼び出し側のWindowから解除すると、別窓の同じ番号のタイマーを誤って消す。
+  if (sharedCooldownTimer !== null) {
+    sharedCooldownWindow?.clearTimeout(sharedCooldownTimer);
+  }
 
   // 変更理由: 一覧とスレッドは別コンポーネント/別タブに存在するため、hook内のtimerでは
   // 画面切替時に更新受付状態が分裂する。モジュール共有にして、同じブラウザ画面内で連続更新を抑制する。
   publishSharedWheelCooldown({ direction, isCoolingDown: true });
-  sharedCooldownTimer = window.setTimeout(() => {
+  sharedCooldownWindow = targetWindow;
+  sharedCooldownTimer = targetWindow.setTimeout(() => {
     sharedCooldownTimer = null;
+    sharedCooldownWindow = null;
     publishSharedWheelCooldown(INITIAL_SHARED_WHEEL_COOLDOWN_STATE);
   }, COOLDOWN_PERIOD_MS);
 }
@@ -79,6 +91,7 @@ export function useWheelPagination({
   isCoolingDown: boolean;
   isLoading: boolean;
 } {
+  const { window: viewWindow } = useViewSurface();
   const [state, setState] = useState<WheelPaginationState>({ count: 0, direction: null });
   const [refreshDirection, setRefreshDirection] = useState<WheelDirection | null>(null);
   const stateRef = useRef<WheelPaginationState>({ count: 0, direction: null });
@@ -99,11 +112,11 @@ export function useWheelPagination({
 
   useEffect(() => {
     if (isEnabled) return;
-    if (resetTimerRef.current !== null) window.clearTimeout(resetTimerRef.current);
+    if (resetTimerRef.current !== null) viewWindow.clearTimeout(resetTimerRef.current);
     resetTimerRef.current = null;
     reset();
     setRefreshDirection(null);
-  }, [isEnabled, reset]);
+  }, [isEnabled, reset, viewWindow]);
 
   useEffect(() => {
     const wasLoading = previousLoadingRef.current;
@@ -118,10 +131,10 @@ export function useWheelPagination({
     // ホイール更新自身はrefreshDirectionが設定済みなので、この分岐では進捗を維持する。
     reset();
     if (resetTimerRef.current !== null) {
-      window.clearTimeout(resetTimerRef.current);
+      viewWindow.clearTimeout(resetTimerRef.current);
       resetTimerRef.current = null;
     }
-  }, [isLoading, refreshDirection, reset, sharedCooldown.isCoolingDown]);
+  }, [isLoading, refreshDirection, reset, sharedCooldown.isCoolingDown, viewWindow]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -130,11 +143,8 @@ export function useWheelPagination({
     const handleWheel = (event: WheelEvent) => {
       // ポップアップ自身のスクロールを、背後のスレッド更新ジェスチャーとして
       // 吸収しない。ポータル経由でもイベントが親パネルへ届くため、ここで除外する。
-      const eventTarget = event.target;
-      if (
-        eventTarget instanceof Element &&
-        eventTarget.closest('[data-popup="true"], .context-menu, .mini-window')
-      ) {
+      const eventTarget = getEventTargetElement(event.target, viewWindow);
+      if (eventTarget?.closest('[data-popup="true"], .context-menu, .mini-window')) {
         return;
       }
 
@@ -157,8 +167,8 @@ export function useWheelPagination({
       }
 
       event.preventDefault();
-      if (resetTimerRef.current !== null) window.clearTimeout(resetTimerRef.current);
-      resetTimerRef.current = window.setTimeout(reset, COUNTER_RESET_DELAY_MS);
+      if (resetTimerRef.current !== null) viewWindow.clearTimeout(resetTimerRef.current);
+      resetTimerRef.current = viewWindow.setTimeout(reset, COUNTER_RESET_DELAY_MS);
 
       const nextState: WheelPaginationState = {
         direction,
@@ -170,7 +180,7 @@ export function useWheelPagination({
       if (nextState.count < WHEEL_THRESHOLD) return;
 
       setRefreshDirection(direction);
-      startSharedWheelCooldown(direction);
+      startSharedWheelCooldown(direction, viewWindow);
       onRefreshRef.current();
       reset();
     };
@@ -178,9 +188,9 @@ export function useWheelPagination({
     container.addEventListener("wheel", handleWheel, { passive: false });
     return () => {
       container.removeEventListener("wheel", handleWheel);
-      if (resetTimerRef.current !== null) window.clearTimeout(resetTimerRef.current);
+      if (resetTimerRef.current !== null) viewWindow.clearTimeout(resetTimerRef.current);
     };
-  }, [containerRef, edge, isEnabled, isLoading, reset]);
+  }, [containerRef, edge, isEnabled, isLoading, reset, viewWindow]);
 
   const isCoolingDown = isEnabled && sharedCooldown.isCoolingDown;
   // 変更理由: 自動更新などのホイール操作以外が起点の読み込み中は、残っていたホイール方向や

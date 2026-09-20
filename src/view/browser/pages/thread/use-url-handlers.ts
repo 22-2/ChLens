@@ -4,6 +4,7 @@ import { platform } from "src/app/platform/index";
 import { getResNumber } from "src/core/URL";
 import { toViewerImageUrl } from "src/features/media/domain/url-media";
 import type { TabAction } from "src/view/browser/hooks/use-tab-store";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { copyText } from "src/view/browser/utils/clipboard";
 import {
@@ -49,6 +50,7 @@ export function useUrlHandlers({
   openMediaFromUrl,
   addPopupContextMenu,
 }: UseUrlHandlersParams): UseUrlHandlersResult {
+  const { window: viewWindow } = useViewSurface();
   const openResolvedUrl = useCallback(
     (
       absoluteUrl: string,
@@ -127,12 +129,12 @@ export function useUrlHandlers({
           id: "open-in-browser",
           label: "ブラウザで開く",
           onSelect: () => {
-            window.open(absoluteUrl, "_blank", "noopener,noreferrer");
+            viewWindow.open(absoluteUrl, "_blank", "noopener,noreferrer");
           },
         },
       ];
     },
-    [openResolvedUrl],
+    [openResolvedUrl, viewWindow],
   );
 
   const handleUrlClick = useCallback(

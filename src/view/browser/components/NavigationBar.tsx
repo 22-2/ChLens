@@ -55,7 +55,9 @@ import { useOmnibar } from "src/view/browser/hooks/use-omnibar";
 import { usePageBookmark } from "src/view/browser/hooks/use-page-bookmark";
 import { useTabBarOrientation } from "src/view/browser/hooks/use-tab-bar-orientation";
 import { useTabPanes, useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { useToast } from "src/view/browser/hooks/use-toast";
 import { useUrlBarVisibility } from "src/view/browser/hooks/use-url-bar-visibility";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { canGoBack, canGoForward, getCurrentPage, getDisplayUrl } from "src/view/browser/types";
 import { Button } from "src/view/browser/ui/Button";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
@@ -295,6 +297,8 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   openArchiveReplayWindow = NOOP_OPEN_ARCHIVE_REPLAY_WINDOW,
 }) => {
   const { state, activeTab, currentPage, dispatch, paneId } = useTabStore();
+  const viewSurface = useViewSurface();
+  const toast = useToast();
   // 2ペイン表示中かどうか（トグルボタンの状態に使う）。
   const { panes, activePaneId } = useTabPanes();
   const isTwoPane = panes.length >= 2;
@@ -499,6 +503,8 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       openResponseJumpDialog,
       openNextThreadSearchDialog,
       openArchiveReplayWindow,
+      toast,
+      viewSurface,
     }),
     [
       activeTab,
@@ -511,7 +517,9 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       openResponseJumpDialog,
       state.closedTabs,
       state.tabs,
+      toast,
       togglePanel,
+      viewSurface,
     ],
   );
   const contextRef = useRef(context);

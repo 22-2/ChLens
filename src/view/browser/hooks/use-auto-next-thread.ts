@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { log } from "src/app/Log";
 import { container } from "src/service-container/index";
 import type { IThread, IToastService } from "src/service-container/interfaces";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
 import {
   type AutoNextThreadMode,
@@ -68,6 +69,7 @@ export function useAutoNextThread({
   followThread,
   toast = container.toast,
 }: UseAutoNextThreadOptions): { status: AutoNextThreadStatus } {
+  const { window: viewWindow, document: viewDocument } = useViewSurface();
   const [status, setStatus] = useState<AutoNextThreadStatus>("idle");
   const [watchState, setWatchState] = useState<MainstreamWatchState | null>(null);
   const lastSearchKeyRef = useRef<string | null>(null);
@@ -79,7 +81,7 @@ export function useAutoNextThread({
   // ブラウザのタブ/ウィンドウを裏に回している間は、ユーザーが見ていないところで
   // 勝手にタブを次スレへ差し替えてしまわないよう、可視状態でのみ動かす。
   const [isDocumentVisible, setIsDocumentVisible] = useState(
-    () => typeof document === "undefined" || document.visibilityState === "visible",
+    () => viewDocument.visibilityState === "visible",
   );
 
   useEffect(() => {
@@ -92,14 +94,14 @@ export function useAutoNextThread({
 
   useEffect(() => {
     const handleVisibilityChange = () => {
-      setIsDocumentVisible(document.visibilityState === "visible");
+      setIsDocumentVisible(viewDocument.visibilityState === "visible");
     };
 
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+    viewDocument.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      viewDocument.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, []);
+  }, [viewDocument]);
 
   useEffect(() => {
     lastSearchKeyRef.current = null;
@@ -160,7 +162,7 @@ export function useAutoNextThread({
 
     const delay = (ms: number) =>
       new Promise<void>((resolve) => {
-        timerId = window.setTimeout(() => {
+        timerId = viewWindow.setTimeout(() => {
           timerId = null;
           resolve();
         }, ms);
@@ -265,7 +267,7 @@ export function useAutoNextThread({
         lastSearchKeyRef.current = null;
       }
       if (timerId != null) {
-        window.clearTimeout(timerId);
+        viewWindow.clearTimeout(timerId);
       }
     };
   }, [
@@ -279,6 +281,7 @@ export function useAutoNextThread({
     threadTitle,
     threadUrl,
     toast,
+    viewWindow,
   ]);
 
   useEffect(() => {
@@ -298,7 +301,7 @@ export function useAutoNextThread({
 
     const delay = (ms: number) =>
       new Promise<void>((resolve) => {
-        timerId = window.setTimeout(() => {
+        timerId = viewWindow.setTimeout(() => {
           timerId = null;
           resolve();
         }, ms);
@@ -385,7 +388,7 @@ export function useAutoNextThread({
     return () => {
       cancelled = true;
       if (timerId != null) {
-        window.clearTimeout(timerId);
+        viewWindow.clearTimeout(timerId);
       }
     };
   }, [
@@ -396,6 +399,7 @@ export function useAutoNextThread({
     mode,
     threadUrl,
     toast,
+    viewWindow,
     watchState,
   ]);
 

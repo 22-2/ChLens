@@ -2,6 +2,7 @@ import { X } from "lucide-react";
 import React, { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { ThreadListPanel } from "src/view/browser/components/ThreadListPanel";
 import { WritePanelContent } from "src/view/browser/components/WritePanelContent";
+import { useDetachedTabs } from "src/view/browser/hooks/detached-tab-context";
 import { useAutoScrollState } from "src/view/browser/hooks/use-auto-scroll-state";
 import {
   BOTTOM_PANEL_THREAD_LIST_TAB_ID,
@@ -9,9 +10,15 @@ import {
   useBottomPanel,
 } from "src/view/browser/hooks/use-bottom-panel";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
+import { isHTMLElementInWindow } from "src/view/browser/utils/dom";
 
 export const BottomPanel: React.FC = () => {
-  const { currentPage } = useTabStore();
+  const { activeTab, currentPage } = useTabStore();
+  const { isDetached } = useDetachedTabs();
+  // 変更理由: 下部パネルを別窓へ移しても、リサイズ操作と開閉直後の追従を
+  // 元のWindowへ登録しないよう、表示先のイベント境界を揃える。
+  const { window: viewWindow, document: viewDocument } = useViewSurface();
   const { canAutoScroll } = useAutoScrollState();
   const { isOpen, height, activeTabId, tabs, closePanel, setHeight, setActiveTab } =
     useBottomPanel();
@@ -25,10 +32,10 @@ export const BottomPanel: React.FC = () => {
   useEffect(() => {
     // スレ一覧・書き込みのどちらも現在スレを操作対象にするため、別ページへ移動したら
     // 下部パネルを閉じて、板・スレの文脈がない状態で誤操作できないようにする。
-    if (isOpen && currentPage.type !== "thread") {
+    if (isOpen && (currentPage.type !== "thread" || isDetached(activeTab.id))) {
       closePanel();
     }
-  }, [closePanel, currentPage.type, isOpen]);
+  }, [activeTab.id, closePanel, currentPage.type, isDetached, isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -52,9 +59,9 @@ export const BottomPanel: React.FC = () => {
     // 2ペイン時は data-active な tab-panel が左右に1個ずつ存在するため、
     // document 全体ではなく自ペイン（.pane-column）配下に限定して、
     // 他ペインのスレッドを誤ってスクロールしないようにする。
-    const scope = rootRef.current?.closest(".pane-column") ?? document;
+    const scope = rootRef.current?.closest(".pane-column") ?? viewDocument;
     const activePanel = scope.querySelector(".content-area__tab-panel[data-active='true']");
-    if (!(activePanel instanceof HTMLElement)) {
+    if (!isHTMLElementInWindow(activePanel, viewWindow)) {
       return;
     }
 
@@ -65,11 +72,11 @@ export const BottomPanel: React.FC = () => {
     };
 
     stickToBottom();
-    const rafId = window.requestAnimationFrame(stickToBottom);
+    const rafId = viewWindow.requestAnimationFrame(stickToBottom);
     return () => {
-      window.cancelAnimationFrame(rafId);
+      viewWindow.cancelAnimationFrame(rafId);
     };
-  }, [activeTabId, canAutoScroll, currentPage.type, isOpen]);
+  }, [activeTabId, canAutoScroll, currentPage.type, isOpen, viewDocument, viewWindow]);
 
   const handleResizeMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -86,14 +93,14 @@ export const BottomPanel: React.FC = () => {
 
       const onMouseUp = () => {
         dragStartY.current = null;
-        window.removeEventListener("mousemove", onMouseMove);
-        window.removeEventListener("mouseup", onMouseUp);
+        viewWindow.removeEventListener("mousemove", onMouseMove);
+        viewWindow.removeEventListener("mouseup", onMouseUp);
       };
 
-      window.addEventListener("mousemove", onMouseMove);
-      window.addEventListener("mouseup", onMouseUp);
+      viewWindow.addEventListener("mousemove", onMouseMove);
+      viewWindow.addEventListener("mouseup", onMouseUp);
     },
-    [height, setHeight],
+    [height, setHeight, viewWindow],
   );
 
   if (!isOpen || currentPage.type !== "thread") return null;

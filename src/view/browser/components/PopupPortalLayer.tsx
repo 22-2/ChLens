@@ -17,7 +17,9 @@ export const PopupPortalLayer: React.FC<PopupPortalLayerProps> = ({ host, childr
 
     // popup 群の mount を Portal に閉じ込めても既存の absolute 座標系を維持するため、
     // まずは thread-page 直下に portal root を挿して責務だけ先に分離する。
-    const nextPortalRoot = document.createElement("div");
+    // 変更理由: hostが別窓のDocumentに属する場合、元窓のdocumentで要素を生成すると
+    // Portal先と要素のownerDocumentが分かれ、スタイル・イベント境界が不整合になるため。
+    const nextPortalRoot = host.ownerDocument.createElement("div");
     nextPortalRoot.className = "thread-page__popup-layer";
     nextPortalRoot.dataset.popupPortalLayer = "true";
     host.appendChild(nextPortalRoot);

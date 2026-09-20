@@ -17,8 +17,11 @@ export function isContextMenuPopupId(popupId: string | null): boolean {
   return popupId?.startsWith("contextMenu-") ?? false;
 }
 
-export function getPopupElementId(target: EventTarget | null): string | null {
-  const targetElement = getEventTargetElement(target);
+export function getPopupElementId(
+  target: EventTarget | null,
+  targetWindow: Window = globalThis.window,
+): string | null {
+  const targetElement = getEventTargetElement(target, targetWindow);
   const popupElement = targetElement?.closest(POPUP_SELECTOR);
   return popupElement?.getAttribute(POPUP_ID_ATTRIBUTE) ?? null;
 }
@@ -27,8 +30,9 @@ export function isPopupBranchTarget(
   target: EventTarget | null,
   popupId: string | undefined,
   isPopupDescendantOf?: (popupId: string, ancestorId: string) => boolean,
+  targetWindow: Window = globalThis.window,
 ): boolean {
-  const targetPopupId = getPopupElementId(target);
+  const targetPopupId = getPopupElementId(target, targetWindow);
   if (!popupId || !targetPopupId) {
     return false;
   }

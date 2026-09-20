@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useOptionalBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { useWrite } from "src/view/browser/hooks/use-write";
 import { useWriteSession } from "src/view/browser/hooks/use-write-session";
 import { Dialog } from "src/view/browser/ui/Dialog";
@@ -50,7 +51,7 @@ export const WritePanelContent: React.FC<WritePanelContentProps> = (props) => {
         <button
           type="button"
           className="write-panel__btn write-panel__btn--secondary"
-          onClick={openWriteWindow}
+          onClick={() => openWriteWindow()}
         >
           別窓を表示
         </button>
@@ -67,6 +68,9 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
   portalContainer,
 }) => {
   const { currentPage } = useTabStore();
+  // 変更理由: 設定DialogのPortal先も書き込み窓と同じDocumentへ置き、別窓で
+  // メイン窓のテーマ境界へ戻らないようにする。
+  const { document: viewDocument } = useViewSurface();
   const bottomPanel = useOptionalBottomPanel();
   const writePanelInsertRequest = standalone ? null : bottomPanel?.writePanelInsertRequest;
   const clearWritePanelInsertRequest = bottomPanel?.clearWritePanelInsertRequest ?? noop;
@@ -117,6 +121,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
   } = useWrite(threadUrl, {
     draft,
     onDraftChange: (nextMessage) => setDraft(threadUrl, nextMessage),
+    tabId: targets.find((target) => target.threadUrl === threadUrl)?.tabId,
   });
 
   const isSubmitting = status === "submitting";
@@ -126,8 +131,11 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
 
   const handleOpenWriteWindow = useCallback(() => {
     // 別窓のReactツリーを先に作成し、現在の下部パネルは表示場所の重複を避けて閉じる。
-    openWriteWindow();
-    closePanel();
+    // 戻り値がfalseのときはポップアップがブロックされたため、入力欄を残す。
+    const opened = openWriteWindow();
+    if (opened !== false) {
+      closePanel();
+    }
   }, [closePanel, openWriteWindow]);
 
   useEffect(() => {
@@ -166,9 +174,9 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
     // テーマトークンは `.browser-shell[data-theme]` にスコープされるため、
     // body直下のPortalではダークテーマのsurface/textを継承できない。
     setDialogPortalContainer(
-      portalContainer ?? document.querySelector<HTMLElement>(".browser-shell"),
+      portalContainer ?? viewDocument.querySelector<HTMLElement>(".browser-shell"),
     );
-  }, [portalContainer]);
+  }, [portalContainer, viewDocument]);
 
   useEffect(() => {
     // 変更理由: エラー状態とDialogの開閉を同じ値で管理すると、Dialogを閉じても

@@ -10,6 +10,7 @@ import type {
   TreePopupItem,
 } from "src/view/browser/hooks/popup-manager/types";
 import { usePopupCore } from "src/view/browser/hooks/popup-manager/use-popup-core";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import {
   ANCHOR_PREVIEW_GUTTER,
   ANCHOR_PREVIEW_HIDE_DELAY_MS,
@@ -79,6 +80,7 @@ export function useThreadPopupManager({
   // rootRef はAPI互換のため受け取るが、座標系は viewport(clientX/Y) を直接使うので未使用。
   resMap,
 }: ThreadPopupManagerParams): ThreadPopupManagerResult {
+  const { window: viewWindow, document: viewDocument } = useViewSurface();
   const {
     popups,
     addPopup,
@@ -125,10 +127,10 @@ export function useThreadPopupManager({
 
   const clearAnchorPreviewHideTimer = useCallback(() => {
     if (anchorPreviewHideTimerRef.current != null) {
-      window.clearTimeout(anchorPreviewHideTimerRef.current);
+      viewWindow.clearTimeout(anchorPreviewHideTimerRef.current);
       anchorPreviewHideTimerRef.current = null;
     }
-  }, []);
+  }, [viewWindow]);
 
   const hideAnchorPreviewsFromDepth = useCallback(
     (depth: number) => {
@@ -152,12 +154,12 @@ export function useThreadPopupManager({
   const hideAnchorPreview = useCallback(
     (fromDepth = 0) => {
       clearAnchorPreviewHideTimer();
-      anchorPreviewHideTimerRef.current = window.setTimeout(() => {
+      anchorPreviewHideTimerRef.current = viewWindow.setTimeout(() => {
         anchorPreviewHideTimerRef.current = null;
         hideAnchorPreviewsFromDepth(fromDepth);
       }, ANCHOR_PREVIEW_HIDE_DELAY_MS);
     },
-    [clearAnchorPreviewHideTimer, hideAnchorPreviewsFromDepth],
+    [clearAnchorPreviewHideTimer, hideAnchorPreviewsFromDepth, viewWindow],
   );
 
   const showAnchorPreview = useCallback(
@@ -177,12 +179,12 @@ export function useThreadPopupManager({
 
       const maxWidth = Math.min(
         ANCHOR_PREVIEW_MAX_WIDTH,
-        window.innerWidth - ANCHOR_PREVIEW_GUTTER * 2,
+        viewWindow.innerWidth - ANCHOR_PREVIEW_GUTTER * 2,
       );
-      const viewport = getPopupViewportBounds();
+      const viewport = getPopupViewportBounds(viewWindow, viewDocument);
       const vx = Math.max(
         ANCHOR_PREVIEW_GUTTER,
-        Math.min(anchorRect.left, window.innerWidth - maxWidth - ANCHOR_PREVIEW_GUTTER),
+        Math.min(anchorRect.left, viewWindow.innerWidth - maxWidth - ANCHOR_PREVIEW_GUTTER),
       );
       const vy = Math.max(
         ANCHOR_PREVIEW_GUTTER,
@@ -237,6 +239,8 @@ export function useThreadPopupManager({
       isPopupDescendantOf,
       resMap,
       toPageCoords,
+      viewDocument,
+      viewWindow,
     ],
   );
 
@@ -303,10 +307,10 @@ export function useThreadPopupManager({
   useEffect(() => {
     return () => {
       if (anchorPreviewHideTimerRef.current != null) {
-        window.clearTimeout(anchorPreviewHideTimerRef.current);
+        viewWindow.clearTimeout(anchorPreviewHideTimerRef.current);
       }
     };
-  }, []);
+  }, [viewWindow]);
 
   return {
     popups,

@@ -2,6 +2,7 @@ import type { RefObject } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { container } from "src/service-container/index";
 import type { IReadState, IRes } from "src/service-container/interfaces";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import {
   consumePendingThreadResJump,
   findThreadScrollContainer,
@@ -32,6 +33,7 @@ export function useThreadReadState({
   loading,
   rootRef,
 }: UseThreadReadStateParams): UseThreadReadStateResult {
+  const { window: viewWindow } = useViewSurface();
   const [initialReadState, setInitialReadState] = useState<IReadState | null>(null);
   const [hasLoadedInitialReadState, setHasLoadedInitialReadState] = useState(false);
   const [isInitialReadStateResolved, setIsInitialReadStateResolved] = useState(false);
@@ -85,13 +87,13 @@ export function useThreadReadState({
 
   const scheduleReadStateSave = useCallback(() => {
     if (saveReadStateTimerRef.current != null) {
-      window.clearTimeout(saveReadStateTimerRef.current);
+      viewWindow.clearTimeout(saveReadStateTimerRef.current);
     }
-    saveReadStateTimerRef.current = window.setTimeout(() => {
+    saveReadStateTimerRef.current = viewWindow.setTimeout(() => {
       saveReadStateTimerRef.current = null;
       void saveCurrentReadState();
     });
-  }, [saveCurrentReadState]);
+  }, [saveCurrentReadState, viewWindow]);
 
   useEffect(() => {
     let cancelled = false;
@@ -148,7 +150,7 @@ export function useThreadReadState({
     );
     setIsInitialReadStateResolved(true);
 
-    window.requestAnimationFrame(() => {
+    viewWindow.requestAnimationFrame(() => {
       void saveCurrentReadState();
     });
   }, [
@@ -159,6 +161,7 @@ export function useThreadReadState({
     responses.length,
     saveCurrentReadState,
     scrollToResponse,
+    viewWindow,
   ]);
 
   useEffect(() => {
@@ -181,7 +184,7 @@ export function useThreadReadState({
     }
 
     setIsInitialReadStateResolved(true);
-    window.requestAnimationFrame(() => {
+    viewWindow.requestAnimationFrame(() => {
       void saveCurrentReadState();
     });
   }, [
@@ -194,6 +197,7 @@ export function useThreadReadState({
     responses.length,
     saveCurrentReadState,
     scrollToResponse,
+    viewWindow,
   ]);
 
   useEffect(() => {
@@ -211,7 +215,7 @@ export function useThreadReadState({
     return () => {
       scrollContainer.removeEventListener("scroll", handleScroll);
       if (saveReadStateTimerRef.current != null) {
-        window.clearTimeout(saveReadStateTimerRef.current);
+        viewWindow.clearTimeout(saveReadStateTimerRef.current);
         saveReadStateTimerRef.current = null;
       }
       void saveCurrentReadState();
@@ -224,6 +228,7 @@ export function useThreadReadState({
     responses.length,
     saveCurrentReadState,
     scheduleReadStateSave,
+    viewWindow,
   ]);
 
   useEffect(() => {
@@ -239,16 +244,16 @@ export function useThreadReadState({
   useEffect(() => {
     const handlePageHide = () => {
       if (saveReadStateTimerRef.current != null) {
-        window.clearTimeout(saveReadStateTimerRef.current);
+        viewWindow.clearTimeout(saveReadStateTimerRef.current);
         saveReadStateTimerRef.current = null;
       }
       void saveCurrentReadState();
     };
-    window.addEventListener("pagehide", handlePageHide);
+    viewWindow.addEventListener("pagehide", handlePageHide);
     return () => {
-      window.removeEventListener("pagehide", handlePageHide);
+      viewWindow.removeEventListener("pagehide", handlePageHide);
     };
-  }, [saveCurrentReadState]);
+  }, [saveCurrentReadState, viewWindow]);
 
   return { isInitialReadStateResolved, scrollToResponse };
 }

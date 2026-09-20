@@ -170,6 +170,18 @@ describe("useWrite", () => {
     expect(result.current.statusText).toBe("");
   });
 
+  it("同じスレッドの外部下書き追加を入力欄へ反映する", () => {
+    let draft = "既存の本文";
+    const { result, rerender } = renderHook(() => useWrite(THREAD_URL, { draft }));
+
+    expect(result.current.message).toBe("既存の本文");
+
+    draft = "既存の本文\n引用レス";
+    act(() => rerender());
+
+    expect(result.current.message).toBe("既存の本文\n引用レス");
+  });
+
   it("Tauri版は確認HTMLを表示し、同じセッションで確認フォームを再送信する", async () => {
     const action = "https://example.com/test/bbs.cgi";
     fetchTauriWriteMock

@@ -121,6 +121,7 @@ describe("WritePanelContent", () => {
     mocks.handleRetry.mockClear();
     mocks.copyText.mockClear();
     mocks.openWriteWindow.mockClear();
+    mocks.openWriteWindow.mockReturnValue(undefined);
 
     configMock = {
       get: vi.fn(() => "off"),
@@ -273,6 +274,17 @@ describe("WritePanelContent", () => {
 
     expect(mocks.openWriteWindow).toHaveBeenCalledTimes(1);
     expect(mocks.closePanel).toHaveBeenCalledTimes(1);
+  });
+
+  it("別窓を開けない場合は下部パネルを閉じない", () => {
+    mocks.openWriteWindow.mockReturnValue(false);
+
+    render(<WritePanelContent />);
+
+    fireEvent.click(screen.getByRole("button", { name: "書き込みを別窓で開く" }));
+
+    expect(mocks.openWriteWindow).toHaveBeenCalledTimes(1);
+    expect(mocks.closePanel).not.toHaveBeenCalled();
   });
 
   it("書き込み失敗の本文をボタン下へ重ねて表示しない", () => {

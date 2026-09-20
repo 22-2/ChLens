@@ -15,10 +15,12 @@ import { ReplyTree } from "src/view/browser/components/ReplyTree";
 import { usePopupHeaderMenu } from "src/view/browser/hooks/use-popup-header-menu";
 import type { ResolvedTheme } from "src/view/browser/hooks/use-theme";
 import { useTheme } from "src/view/browser/hooks/use-theme";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { FloatingPopup } from "src/view/browser/ui/FloatingPopup";
 import { canCopyImageToClipboard, copyImageBlob, copyText } from "src/view/browser/utils/clipboard";
+import { getEventTargetElement } from "src/view/browser/utils/dom";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
 import {
   formatIdForCopy,
@@ -348,8 +350,11 @@ function renderReplyTreeImageCanvas(
     sourceSectionTitle: "参照元レス",
     responsesSectionTitle: "返信レス",
   },
+  targetDocument: Document = globalThis.document,
 ): HTMLCanvasElement {
-  const canvas = document.createElement("canvas");
+  // 変更理由: 別窓のポップアップから画像を作る時も、描画環境と同じDocumentへ
+  // canvasを所属させ、別窓側のDOM境界を越えないようにする。
+  const canvas = targetDocument.createElement("canvas");
   const dpr = QUALITY_MAP[quality];
   const context = canvas.getContext("2d");
   if (!context) {
@@ -581,6 +586,7 @@ export const ReplyTreePopup: React.FC<{
   ngResNums,
   threadKey,
 }) => {
+  const { document: viewDocument } = useViewSurface();
   const { menuButtonRef, menuPosition, handleMenuClick, closeMenu } = usePopupHeaderMenu();
   const [subTreeMenu, setSubTreeMenu] = useState<SubTreeMenuState | null>(null);
   const theme = useTheme();
@@ -615,6 +621,8 @@ export const ReplyTreePopup: React.FC<{
                 threadUrl,
                 undefined,
                 theme,
+                undefined,
+                viewDocument,
               );
               const blob = await canvasToBlob(canvas);
               await copyImageBlob(blob);
@@ -636,25 +644,26 @@ export const ReplyTreePopup: React.FC<{
     }
 
     const handleOutsideSubTreeMenuClick = (e: MouseEvent) => {
-      if (!(e.target instanceof Element)) {
+      const target = getEventTargetElement(e.target, viewDocument.defaultView ?? globalThis.window);
+      if (!target) {
         setSubTreeMenu(null);
         return;
       }
 
-      if (e.target.closest(".context-menu")) {
+      if (target.closest(".context-menu")) {
         return;
       }
 
-      if (e.target.closest(".reply-tree-node__menu-btn")) {
+      if (target.closest(".reply-tree-node__menu-btn")) {
         return;
       }
 
       setSubTreeMenu(null);
     };
 
-    document.addEventListener("mousedown", handleOutsideSubTreeMenuClick);
-    return () => document.removeEventListener("mousedown", handleOutsideSubTreeMenuClick);
-  }, [subTreeMenu]);
+    viewDocument.addEventListener("mousedown", handleOutsideSubTreeMenuClick);
+    return () => viewDocument.removeEventListener("mousedown", handleOutsideSubTreeMenuClick);
+  }, [subTreeMenu, viewDocument]);
 
   const handleResContextMenu = useCallback(
     (event: React.MouseEvent, targetRes: IRes) => {
@@ -740,6 +749,8 @@ export const ReplyTreePopup: React.FC<{
                   threadUrl,
                   undefined,
                   theme,
+                  undefined,
+                  viewDocument,
                 );
                 const blob = await canvasToBlob(canvas);
                 await copyImageBlob(blob);
@@ -780,6 +791,7 @@ export const ReplyTreePopup: React.FC<{
                 sourceSectionTitle: "参照元レス",
                 responsesSectionTitle: "返信レス（上から下）",
               },
+              viewDocument,
             );
             const blob = await canvasToBlob(canvas);
             await copyImageBlob(blob);

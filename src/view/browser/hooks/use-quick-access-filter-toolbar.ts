@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
+import { getEventTargetElement } from "src/view/browser/utils/dom";
 import {
   QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE,
   type QuickAccessFilterPageType,
@@ -25,6 +27,7 @@ export function useQuickAccessFilterToolbar({
   searchQuery,
   setSearchQuery,
 }: UseQuickAccessFilterToolbarParams): UseQuickAccessFilterToolbarResult {
+  const { window: viewWindow } = useViewSurface();
   const [isFilterOpen, setIsFilterOpen] = useState(() => searchQuery.trim().length > 0);
   const openedByWheelRef = useRef(false);
 
@@ -56,12 +59,12 @@ export function useQuickAccessFilterToolbar({
       }
     };
 
-    window.addEventListener(eventName, handleToggle);
+    viewWindow.addEventListener(eventName, handleToggle);
 
     return () => {
-      window.removeEventListener(eventName, handleToggle);
+      viewWindow.removeEventListener(eventName, handleToggle);
     };
-  }, [closeFilterToolbar, isActive, isFilterOpen, pageType, tabId]);
+  }, [closeFilterToolbar, isActive, isFilterOpen, pageType, tabId, viewWindow]);
 
   useEffect(() => {
     if (!isActive) {
@@ -69,21 +72,24 @@ export function useQuickAccessFilterToolbar({
     }
 
     const handleWheel = (event: WheelEvent) => {
-      if (event.ctrlKey || !(event.target instanceof Element)) {
+      if (event.ctrlKey) {
         return;
       }
 
+      const eventTarget = getEventTargetElement(event.target, viewWindow);
+      if (!eventTarget) return;
+
       // メニューやポップアップ上のホイール操作はフィルタ開閉に反映しない。
       if (
-        event.target.closest("[data-popup='true']") ||
-        event.target.closest(".mini-window") ||
-        event.target.closest(".media-viewer") ||
-        event.target.closest(".bookmark-root-dialog")
+        eventTarget.closest("[data-popup='true']") ||
+        eventTarget.closest(".mini-window") ||
+        eventTarget.closest(".media-viewer") ||
+        eventTarget.closest(".bookmark-root-dialog")
       ) {
         return;
       }
 
-      const tabPanel = event.target.closest<HTMLElement>(".content-area__tab-panel");
+      const tabPanel = eventTarget.closest<HTMLElement>(".content-area__tab-panel");
       if (!tabPanel || tabPanel.dataset.tabPanelId !== tabId) {
         return;
       }
@@ -121,12 +127,12 @@ export function useQuickAccessFilterToolbar({
       setIsFilterOpen(true);
     };
 
-    window.addEventListener("wheel", handleWheel, { passive: false });
+    viewWindow.addEventListener("wheel", handleWheel, { passive: false });
 
     return () => {
-      window.removeEventListener("wheel", handleWheel);
+      viewWindow.removeEventListener("wheel", handleWheel);
     };
-  }, [isActive, isFilterOpen, tabId]);
+  }, [isActive, isFilterOpen, tabId, viewWindow]);
 
   return {
     isFilterOpen,

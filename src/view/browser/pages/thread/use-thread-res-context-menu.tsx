@@ -18,9 +18,9 @@ import { stringifyNgDslValue } from "src/core/ngDsl";
 import { requestArchiveReplaySeek } from "src/features/archive-replay/platform";
 import { container } from "src/service-container/index";
 import type { IRes } from "src/service-container/interfaces";
-import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
-import { useTabDispatchForTab, useTabStore } from "src/view/browser/hooks/use-tab-store";
-import { useToast } from "src/view/browser/hooks/use-toast";
+import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { useViewTarget } from "src/view/browser/hooks/use-view-target";
+import { useWriteRequest } from "src/view/browser/hooks/use-write-request";
 import type { Tab, ThreadFilter, ThreadPage as ThreadPageType } from "src/view/browser/types";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import {
@@ -90,10 +90,9 @@ export function useThreadResContextMenu({
   // フィルタ解除直後のDOM更新完了を待ってからジャンプしないと、
   // 対象レスがまだ存在せずスクロールに失敗するため hook 内で保留する。
   const pendingJumpNumRef = useRef<number | null>(null);
-  const dispatch = useTabDispatchForTab(tabId);
+  const { dispatch, surface: viewSurface, toast } = useViewTarget(tabId);
   const { activeTab } = useTabStore();
-  const { openWritePanelWithText } = useBottomPanel();
-  const toast = useToast();
+  const openWritePanelWithText = useWriteRequest();
   // 変更理由: 別窓のページではペインのactiveTabと描画中タブが異なるため、
   // 自動更新メニューの表示も描画対象タブの状態を優先する。
   const isAutoRefreshEnabled = isAutoRefreshEnabledForPage(tab ?? activeTab, page);
@@ -163,7 +162,7 @@ export function useThreadResContextMenu({
       await writeHistoryService.add({
         url: page.threadUrl,
         res: res.num,
-        title: document.title,
+        title: viewSurface.document.title,
         name,
         mail: res.mail,
         message,
@@ -174,7 +173,7 @@ export function useThreadResContextMenu({
       onWriteHistoryAdded?.(res.num);
       toast.success("書込履歴に追加しました");
     },
-    [onWriteHistoryAdded, page.threadUrl, toast],
+    [onWriteHistoryAdded, page.threadUrl, toast, viewSurface],
   );
 
   const removeWriteHistory = useCallback(
@@ -214,7 +213,7 @@ export function useThreadResContextMenu({
         disabled: !kyodemoUrl,
         onSelect: () => {
           if (kyodemoUrl) {
-            window.open(kyodemoUrl, "_blank", "noopener,noreferrer");
+            viewSurface.window.open(kyodemoUrl, "_blank", "noopener,noreferrer");
           }
         },
       },
@@ -229,7 +228,7 @@ export function useThreadResContextMenu({
       },
       { id: "sep-id", separator: true },
     ],
-    [addIdToNg],
+    [addIdToNg, viewSurface],
   );
 
   const buildContextMenuItems = useCallback(
@@ -238,7 +237,7 @@ export function useThreadResContextMenu({
       const kyodemoUrl = rawId ? buildKyodemoUrl(page.threadUrl, rawId) : null;
       const isMiniAa = miniAaResNums.has(targetRes.num);
       const isInWriteHistory = ownResNums.has(targetRes.num);
-      const selectedText = window.getSelection()?.toString().trim() ?? "";
+      const selectedText = viewSurface.window.getSelection()?.toString().trim() ?? "";
       const hasSelection = selectedText.length > 0;
       const hasKeywordFilter = searchQuery.trim().length > 0;
 
@@ -401,7 +400,7 @@ export function useThreadResContextMenu({
               icon: <Search size={14} />,
               onSelect: () => {
                 const encoded = encodeURIComponent(selectedText);
-                window.open(
+                viewSurface.window.open(
                   `https://www.google.co.jp/search?q=${encoded}`,
                   "_blank",
                   "noopener,noreferrer",
@@ -458,6 +457,7 @@ export function useThreadResContextMenu({
       setSearchQuery,
       setMiniAaResNums,
       toast,
+      viewSurface,
     ],
   );
 
@@ -470,7 +470,11 @@ export function useThreadResContextMenu({
 
       // ID要素（.res__id）上で右クリックしたかどうかを判定し、
       // 該当時はID系メニューを最上部へ移動する。
-      const clickedOnId = e.target instanceof Element && e.target.closest(".res__id") !== null;
+      const target = e.target as { closest?: unknown } | null | undefined;
+      const clickedOnId =
+        target != null &&
+        typeof target.closest === "function" &&
+        (target as Element).closest(".res__id") !== null;
 
       // メニュー本体も同じスタックへ積み、parentId で親ポップアップとの寿命を揃える。
       addPopupContextMenu(

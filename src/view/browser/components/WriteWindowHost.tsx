@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { WritePanelContent } from "src/view/browser/components/WritePanelContent";
+import { useTheme } from "src/view/browser/hooks/use-theme";
 import { ViewSurfaceProvider } from "src/view/browser/hooks/use-view-surface";
 import { useWriteSession } from "src/view/browser/hooks/use-write-session";
 import { ToastProvider } from "src/view/browser/ui/Toast";
@@ -13,17 +14,26 @@ import { ToastProvider } from "src/view/browser/ui/Toast";
  */
 export const WriteWindowHost: React.FC = () => {
   const { writeWindowRoot, closeWriteWindow } = useWriteSession();
+  const theme = useTheme();
 
-  if (!writeWindowRoot) {
+  // テーマ設定はメイン窓の変更後も書き込み窓へ反映し、窓を開き直すまで色が古いままに
+  // ならないようにする。root生成時の初期値だけに依存すると切替後にずれる。
+  useEffect(() => {
+    if (!writeWindowRoot) {
+      return;
+    }
+    writeWindowRoot.dataset.theme = theme;
+  }, [theme, writeWindowRoot]);
+
+  const writeWindow = writeWindowRoot?.ownerDocument.defaultView ?? null;
+  const viewSurface = useMemo(
+    () => (writeWindow ? { window: writeWindow, document: writeWindow.document } : null),
+    [writeWindow],
+  );
+
+  if (!writeWindowRoot || !viewSurface) {
     return null;
   }
-
-  const writeWindow = writeWindowRoot.ownerDocument.defaultView;
-  if (!writeWindow) {
-    return null;
-  }
-
-  const viewSurface = { window: writeWindow, document: writeWindow.document };
 
   return createPortal(
     <ViewSurfaceProvider surface={viewSurface}>

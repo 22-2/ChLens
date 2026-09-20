@@ -15,7 +15,7 @@ const { copyTextMock, dispatchMock, threadTab } = vi.hoisted(() => ({
       {
         type: "thread" as const,
         title: "Current Thread",
-        threadUrl: "https://egg.5ch.net/test/read.cgi/software/123/",
+        threadUrl: "https://example.com/test/read.cgi/software/123/",
       },
     ],
     currentIndex: 0,
@@ -84,7 +84,7 @@ describe("TabContextMenu", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "スレタイ&URLをコピー" }));
     expect(copyTextMock).toHaveBeenLastCalledWith(
-      "Current Thread\nhttps://egg.5ch.net/test/read.cgi/software/123/",
+      "Current Thread\nhttps://example.com/test/read.cgi/software/123/",
     );
   });
 });

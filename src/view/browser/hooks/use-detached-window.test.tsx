@@ -16,7 +16,7 @@ vi.mock("src/app/platform", () => ({
   },
 }));
 
-import { useDetachedWindow } from "src/view/browser/hooks/use-detached-window";
+import { openDetachedWindow, useDetachedWindow } from "src/view/browser/hooks/use-detached-window";
 
 const OPTIONS = {
   name: "test-detached-window",
@@ -43,7 +43,7 @@ const Probe: React.FC = () => {
     <>
       <output data-testid="open">{String(isOpen)}</output>
       <output data-testid="theme">{root?.dataset.theme ?? ""}</output>
-      <button onClick={open}>別窓を開く</button>
+      <button onClick={() => open()}>別窓を開く</button>
       <button onClick={close}>別窓を閉じる</button>
     </>
   );
@@ -93,5 +93,17 @@ describe("useDetachedWindow", () => {
 
     expect(screen.getByTestId("open")).toHaveTextContent("false");
     expect(popup.close).toHaveBeenCalledTimes(1);
+  });
+
+  it("呼び出し元のWindowを使ってポップアップを開く", () => {
+    const sourceWindow = createPopup();
+    const popup = createPopup();
+    mocks.openPopup.mockReturnValue(popup);
+
+    const handle = openDetachedWindow(OPTIONS, sourceWindow);
+
+    expect(handle).not.toBeNull();
+    expect(mocks.openPopup).toHaveBeenCalledWith("test-detached-window", "popup", sourceWindow);
+    expect(handle?.root.ownerDocument).toBe(popup.document);
   });
 });

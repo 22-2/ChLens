@@ -9,11 +9,15 @@ export interface PopupViewportBounds {
   height: number;
 }
 
-export function getPopupViewportBounds(): PopupViewportBounds {
-  const statusBar = document.querySelector(".status-bar");
-  let bottom = window.innerHeight;
+export function getPopupViewportBounds(
+  targetWindow: Window = globalThis.window,
+  targetDocument: Document = targetWindow.document,
+): PopupViewportBounds {
+  const statusBar = targetDocument.querySelector(".status-bar");
+  let bottom = targetWindow.innerHeight;
+  const targetWindowWithConstructors = targetWindow as Window & typeof globalThis;
 
-  if (statusBar instanceof HTMLElement) {
+  if (statusBar instanceof targetWindowWithConstructors.HTMLElement) {
     const statusBarRect = statusBar.getBoundingClientRect();
     if (statusBarRect.height > 0 && statusBarRect.top >= 0 && statusBarRect.top < bottom) {
       bottom = statusBarRect.top;
@@ -23,9 +27,9 @@ export function getPopupViewportBounds(): PopupViewportBounds {
   return {
     left: 0,
     top: 0,
-    right: window.innerWidth,
+    right: targetWindow.innerWidth,
     bottom,
-    width: window.innerWidth,
+    width: targetWindow.innerWidth,
     height: Math.max(0, bottom),
   };
 }
@@ -36,9 +40,14 @@ export function getPopupViewportBounds(): PopupViewportBounds {
  * position:absolute の場合は offsetParent の座標系（getBoundingClientRect）を使って
  * style.left / style.top を補正するため、スクロールコンテナ内に配置されていても正しく動作する。
  */
-function adjustPopupOverflow(el: HTMLElement, margin: number): void {
+function adjustPopupOverflow(
+  el: HTMLElement,
+  margin: number,
+  targetWindow: Window,
+  targetDocument: Document,
+): void {
   const rect = el.getBoundingClientRect();
-  const viewport = getPopupViewportBounds();
+  const viewport = getPopupViewportBounds(targetWindow, targetDocument);
   // offsetParent の viewport 上の位置を取得し、absolute 座標系での補正量を計算する。
   // offsetParent が null (body 直下など) の場合は {left:0, top:0} とみなす。
   const cb = el.offsetParent?.getBoundingClientRect() ?? { left: 0, top: 0 };
@@ -85,21 +94,24 @@ export function useAdjustOverflow(ref: RefObject<HTMLElement | null>, margin = 8
     const el = ref.current;
     if (!el) return;
 
-    const adjust = () => adjustPopupOverflow(el, margin);
+    const targetDocument = el.ownerDocument;
+    const targetWindow = targetDocument.defaultView ?? globalThis.window;
+    const adjust = () => adjustPopupOverflow(el, margin, targetWindow, targetDocument);
     adjust();
 
-    window.addEventListener("resize", adjust);
+    targetWindow.addEventListener("resize", adjust);
 
+    const ResizeObserverConstructor = targetWindow.ResizeObserver;
     const resizeObserver =
-      typeof ResizeObserver === "undefined"
+      typeof ResizeObserverConstructor === "undefined"
         ? null
-        : new ResizeObserver(() => {
+        : new ResizeObserverConstructor(() => {
             adjust();
           });
     resizeObserver?.observe(el);
 
     return () => {
-      window.removeEventListener("resize", adjust);
+      targetWindow.removeEventListener("resize", adjust);
       resizeObserver?.disconnect();
     };
   }, [margin, ref]);

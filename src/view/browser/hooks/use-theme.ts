@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { container } from "src/service-container/index";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 
 type ThemeId = "default" | "dark" | "system";
 export type ResolvedTheme = "light" | "dark";
@@ -10,12 +11,13 @@ function parseThemeId(raw: string | null | undefined): ThemeId {
   return "default";
 }
 
-function resolveSystemTheme(): ResolvedTheme {
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+function resolveSystemTheme(targetWindow: Window): ResolvedTheme {
+  return targetWindow.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
 /** theme_id 設定値を監視し、解決済みの light/dark テーマを返すフック */
 export function useTheme(): ResolvedTheme {
+  const { window: viewWindow } = useViewSurface();
   const [themeId, setThemeId] = useState<ThemeId>(() =>
     parseThemeId(container.config.get("theme_id")),
   );
@@ -40,7 +42,7 @@ export function useTheme(): ResolvedTheme {
   const [resolved, setResolved] = useState<ResolvedTheme>(() => {
     const id = parseThemeId(container.config.get("theme_id"));
     if (id === "dark") return "dark";
-    if (id === "system") return resolveSystemTheme();
+    if (id === "system") return resolveSystemTheme(viewWindow);
     return "light";
   });
 
@@ -55,12 +57,12 @@ export function useTheme(): ResolvedTheme {
     }
 
     // system: prefers-color-scheme の変化を監視する
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const mq = viewWindow.matchMedia("(prefers-color-scheme: dark)");
     const handleChange = () => setResolved(mq.matches ? "dark" : "light");
     setResolved(mq.matches ? "dark" : "light");
     mq.addEventListener("change", handleChange);
     return () => mq.removeEventListener("change", handleChange);
-  }, [themeId]);
+  }, [themeId, viewWindow]);
 
   return resolved;
 }

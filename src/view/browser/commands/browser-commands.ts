@@ -26,6 +26,7 @@ import { ChURL, HOSTNAME } from "packages/ch-lib/src/index";
 import type { Dispatch } from "react";
 import { isTauriRuntime } from "src/app/platform/runtime";
 import { container } from "src/service-container";
+import type { IToastService } from "src/service-container/interfaces";
 import {
   getOpenUrlFromCommandId,
   OPEN_URL_COMMAND_ID,
@@ -35,6 +36,7 @@ import {
   RESPONSE_JUMP_COMMAND_ID,
 } from "src/view/browser/commands/response-jump-command";
 import type { ScopedTabAction } from "src/view/browser/hooks/use-tab-store";
+import type { ViewSurface } from "src/view/browser/hooks/use-view-surface";
 import type { Page, Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
 import { copyText, formatMarkdownLink } from "src/view/browser/utils/clipboard";
@@ -90,6 +92,10 @@ export interface BrowserCommandContext {
   openResponseJumpDialog: () => void;
   openNextThreadSearchDialog: () => Promise<void>;
   openArchiveReplayWindow: () => void;
+  // 変更理由: コマンドパレットを別窓へ載せた時も、通知とイベントを表示中の窓へ返すため。
+  // 既存の外部呼び出しとの互換性を保つため未指定時は従来の共有サービスへフォールバックする。
+  viewSurface?: ViewSurface;
+  toast?: IToastService;
 }
 
 export interface BrowserCommandDefinition {
@@ -120,6 +126,19 @@ interface CommandPageTarget {
   url: string;
   title: string;
   bookmarkType: "thread" | "board";
+}
+
+function getCommandSurface(context: BrowserCommandContext): ViewSurface {
+  return (
+    context.viewSurface ?? {
+      window: globalThis.window,
+      document: globalThis.document,
+    }
+  );
+}
+
+function getCommandToast(context: BrowserCommandContext): IToastService {
+  return context.toast ?? container.toast;
 }
 
 type QuickAccessPage = Extract<
@@ -265,7 +284,7 @@ async function importOpenThreadTabs(context: BrowserCommandContext): Promise<voi
   );
 
   if (pagesToImport.length === 0) {
-    container.toast.info("取り込める新しいスレタブはありません");
+    getCommandToast(context).info("取り込める新しいスレタブはありません");
     return;
   }
 
@@ -286,14 +305,14 @@ async function importOpenThreadTabs(context: BrowserCommandContext): Promise<voi
   }
 
   if (failedTabCount > 0) {
-    container.toast.error(
+    getCommandToast(context).error(
       `${pagesToImport.length.toLocaleString("ja-JP")}件のスレタブを取り込みましたが、` +
         `元ブラウザタブ${failedTabCount.toLocaleString("ja-JP")}件を閉じられませんでした`,
     );
     return;
   }
 
-  container.toast.success(
+  getCommandToast(context).success(
     `${pagesToImport.length.toLocaleString("ja-JP")}件のスレタブを取り込みました`,
   );
 }
@@ -310,20 +329,26 @@ async function openSikiLogFile(context: BrowserCommandContext): Promise<void> {
     // 変更理由: Sikiログは通信で再取得できないため、選択直後に本文を登録してから
     // 通常のスレッドタブ経路へ渡し、既存の検索・アンカー・ポップアップ表示を共有する。
     context.dispatch({ type: "OPEN_IN_NEW_TAB", page });
-    container.toast.success(`Sikiログ「${parsed.title}」を開きました`);
+    getCommandToast(context).success(`Sikiログ「${parsed.title}」を開きました`);
   } catch (error: unknown) {
     // ファイル選択後の解析失敗は画面上でも知らせつつ、元のエラーをログへ残す。
     console.error("[BrowserCommand] Sikiログを開けませんでした", {
       fileName: file.name,
       error,
     });
-    container.toast.error(error instanceof Error ? error.message : "Sikiログを開けませんでした");
+    getCommandToast(context).error(
+      error instanceof Error ? error.message : "Sikiログを開けませんでした",
+    );
   }
 }
 
 function toggleFilter(context: BrowserCommandContext): void {
+  const { window: viewWindow } = getCommandSurface(context);
+  const viewWindowWithConstructors = viewWindow as Window & typeof globalThis;
   if (context.currentPage.type === "thread") {
-    window.dispatchEvent(new window.CustomEvent("thread-filter-toolbar-toggle"));
+    viewWindow.dispatchEvent(
+      new viewWindowWithConstructors.CustomEvent("thread-filter-toolbar-toggle"),
+    );
     return;
   }
 
@@ -331,8 +356,8 @@ function toggleFilter(context: BrowserCommandContext): void {
   const eventName = QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE[pageType];
   if (!eventName) return;
 
-  window.dispatchEvent(
-    new window.CustomEvent(eventName, {
+  viewWindow.dispatchEvent(
+    new viewWindowWithConstructors.CustomEvent(eventName, {
       detail: { tabId: context.activeTab.id },
     }),
   );
@@ -345,7 +370,7 @@ function toggleBookmark(context: BrowserCommandContext): void {
   const isBookmarked = Boolean(container.bookmark.get(target.url));
   if (isBookmarked) {
     container.bookmark.remove(target.url);
-    container.toast.info("ブックマークを削除しました");
+    getCommandToast(context).info("ブックマークを削除しました");
     return;
   }
 
@@ -354,12 +379,16 @@ function toggleBookmark(context: BrowserCommandContext): void {
     title: target.title,
     type: target.bookmarkType,
   });
-  container.toast.info("ブックマークに追加しました");
+  getCommandToast(context).info("ブックマークに追加しました");
 }
 
-async function copyWithNotice(text: string, label: string): Promise<void> {
+async function copyWithNotice(
+  context: BrowserCommandContext,
+  text: string,
+  label: string,
+): Promise<void> {
   await copyText(text);
-  container.toast.success(`${label}をコピーしました`);
+  getCommandToast(context).success(`${label}をコピーしました`);
 }
 
 async function retryBoardTitle(context: BrowserCommandContext): Promise<void> {
@@ -381,7 +410,7 @@ async function retryBoardTitle(context: BrowserCommandContext): Promise<void> {
     title,
     boardUrl: page.boardUrl,
   });
-  container.toast.success(`板名を「${title}」に更新しました`);
+  getCommandToast(context).success(`板名を「${title}」に更新しました`);
 }
 
 function getCommandLabel(
@@ -662,10 +691,10 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     group: "page",
     icon: ExternalLink,
     when: ({ currentPage }) => getCommandPageTarget(currentPage) != null,
-    run: ({ currentPage }) => {
-      const target = getCommandPageTarget(currentPage);
+    run: (context) => {
+      const target = getCommandPageTarget(context.currentPage);
       if (!target) return;
-      window.open(target.url, "_blank", "noopener,noreferrer");
+      getCommandSurface(context).window.open(target.url, "_blank", "noopener,noreferrer");
     },
   },
   {
@@ -725,10 +754,10 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     group: "copy",
     icon: Clipboard,
     when: ({ currentPage }) => getCommandPageTarget(currentPage) != null,
-    run: async ({ currentPage }) => {
-      const target = getCommandPageTarget(currentPage);
+    run: async (context) => {
+      const target = getCommandPageTarget(context.currentPage);
       if (!target) return;
-      await copyWithNotice(target.title, "ページタイトル");
+      await copyWithNotice(context, target.title, "ページタイトル");
     },
   },
   {
@@ -739,10 +768,10 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     group: "copy",
     icon: Clipboard,
     when: ({ currentPage }) => getCommandPageTarget(currentPage) != null,
-    run: async ({ currentPage }) => {
-      const target = getCommandPageTarget(currentPage);
+    run: async (context) => {
+      const target = getCommandPageTarget(context.currentPage);
       if (!target) return;
-      await copyWithNotice(target.url, "ページURL");
+      await copyWithNotice(context, target.url, "ページURL");
     },
   },
   {
@@ -753,10 +782,10 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     group: "copy",
     icon: Clipboard,
     when: ({ currentPage }) => getCommandPageTarget(currentPage) != null,
-    run: async ({ currentPage }) => {
-      const target = getCommandPageTarget(currentPage);
+    run: async (context) => {
+      const target = getCommandPageTarget(context.currentPage);
       if (!target) return;
-      await copyWithNotice(`${target.title}\n${target.url}`, "タイトルとURL");
+      await copyWithNotice(context, `${target.title}\n${target.url}`, "タイトルとURL");
     },
   },
   {
@@ -769,11 +798,11 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     icon: Clipboard,
     // 変更理由: 板一覧にはスレタイがないため、スレッドのタイトルと正規URLを組み合わせる操作に限定する。
     when: ({ currentPage }) => currentPage.type === "thread",
-    run: async ({ currentPage }) => {
-      const target = getCommandPageTarget(currentPage);
+    run: async (context) => {
+      const target = getCommandPageTarget(context.currentPage);
       if (!target) return;
       // 変更理由: 改行形式の既存コマンドを残し、Markdownを必要とする貼り付け先だけ選べるようにする。
-      await copyWithNotice(formatMarkdownLink(target.title, target.url), "Markdownリンク");
+      await copyWithNotice(context, formatMarkdownLink(target.title, target.url), "Markdownリンク");
     },
   },
   {
@@ -785,10 +814,10 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     group: "copy",
     icon: Clipboard,
     when: ({ currentPage }) => getSubjectUrlForCommand(currentPage) != null,
-    run: async ({ currentPage }) => {
-      const subjectUrl = getSubjectUrlForCommand(currentPage);
+    run: async (context) => {
+      const subjectUrl = getSubjectUrlForCommand(context.currentPage);
       if (!subjectUrl) return;
-      await copyWithNotice(subjectUrl, "subject.txtのURL");
+      await copyWithNotice(context, subjectUrl, "subject.txtのURL");
     },
   },
   {
@@ -800,10 +829,10 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     group: "copy",
     icon: Clipboard,
     when: ({ currentPage }) => getDatUrlForCommand(currentPage) != null,
-    run: async ({ currentPage }) => {
-      const datUrl = getDatUrlForCommand(currentPage);
+    run: async (context) => {
+      const datUrl = getDatUrlForCommand(context.currentPage);
       if (!datUrl) return;
-      await copyWithNotice(datUrl, "datのURL");
+      await copyWithNotice(context, datUrl, "datのURL");
     },
   },
   {
@@ -815,7 +844,8 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     group: "copy",
     icon: Clipboard,
     when: ({ currentPage }) => currentPage.type === "thread",
-    run: async ({ currentPage }) => {
+    run: async (context) => {
+      const { currentPage } = context;
       if (currentPage.type !== "thread") return;
 
       const thread = await container.thread.getThread(currentPage.threadUrl);
@@ -831,7 +861,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
       const tokenCount = estimateToonTokenCount(toon);
 
       await copyText(toon);
-      container.toast.success(
+      getCommandToast(context).success(
         `スレ全体をTOON形式でコピーしました（推定 ${tokenCount.toLocaleString("ja-JP")} トークン）`,
       );
     },

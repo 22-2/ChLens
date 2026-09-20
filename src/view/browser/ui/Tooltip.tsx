@@ -6,6 +6,7 @@ import {
   type ReactNode,
   useContext,
 } from "react";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 
 type TooltipSide = "top" | "right" | "bottom" | "left";
 
@@ -45,6 +46,11 @@ export function Tooltip({
   zIndex,
 }: TooltipProps) {
   const hasProvider = useContext(TooltipScopeContext);
+  const { document: viewDocument } = useViewSurface();
+  // 別窓ではPortalの既定先がメインdocumentになるため、テーマとイベント境界を
+  // 表示中のbrowser-shellへ揃える。メイン画面では従来どおり同じdocumentへ出す。
+  const portalContainer =
+    viewDocument.querySelector<HTMLElement>(".browser-shell") ?? viewDocument.body;
 
   // disabled時もTriggerのDOMを維持する。状態遷移でcanvasやtable rowを差し替えると、
   // pointer captureや仮想スクロールの参照が切れてしまうため、openだけを閉じる。
@@ -53,7 +59,7 @@ export function Tooltip({
   const content = (
     <RadixTooltip.Root open={isDisabled ? false : open}>
       <RadixTooltip.Trigger asChild>{children}</RadixTooltip.Trigger>
-      <RadixTooltip.Portal>
+      <RadixTooltip.Portal container={portalContainer}>
         <RadixTooltip.Content
           className="browser-tooltip"
           side={position}

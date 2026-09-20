@@ -8,7 +8,9 @@ import {
   THREAD_AUTO_REFRESH_IDLE_STOP_COUNT,
 } from "src/view/browser/hooks/auto-refresh-config";
 import type { ThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { subscribeConfigKeys } from "src/view/browser/utils/config-setting";
+import { getResizeObserverForWindow, isHTMLElementInWindow } from "src/view/browser/utils/dom";
 import { SCOPED_SETTINGS_CONFIG_KEY } from "src/view/browser/utils/scoped-settings";
 
 interface PendingRefreshSnapshot {
@@ -71,6 +73,7 @@ export function useAutoRefresh({
   onAutoStop,
   onThreadExpired,
 }: UseAutoRefreshOptions): UseAutoRefreshResult {
+  const { window: viewWindow, document: viewDocument } = useViewSurface();
   const { markInternalRefreshRequest, consumeRefreshKeyChange, consumeRefreshCompletionGate } =
     refreshController;
   const autoScrollBoundaryRef = useRef<HTMLDivElement>(null);
@@ -103,7 +106,7 @@ export function useAutoRefresh({
   const [canAutoScroll, setCanAutoScroll] = useState(false);
   const [isAutoScrolling, setIsAutoScrolling] = useState(false);
   const [isDocumentVisible, setIsDocumentVisible] = useState(
-    document.visibilityState === "visible",
+    viewDocument.visibilityState === "visible",
   );
   const [intervalMs, setIntervalMs] = useState(() => readThreadAutoRefreshIntervalMs(scopeUrl));
 
@@ -116,26 +119,26 @@ export function useAutoRefresh({
 
   const clearScrollingIndicator = useCallback(() => {
     if (scrollingIndicatorTimerRef.current != null) {
-      window.clearTimeout(scrollingIndicatorTimerRef.current);
+      viewWindow.clearTimeout(scrollingIndicatorTimerRef.current);
       scrollingIndicatorTimerRef.current = null;
     }
     setIsAutoScrolling(false);
-  }, []);
+  }, [viewWindow]);
 
   const showScrollingIndicator = useCallback(() => {
     if (scrollingIndicatorTimerRef.current != null) {
-      window.clearTimeout(scrollingIndicatorTimerRef.current);
+      viewWindow.clearTimeout(scrollingIndicatorTimerRef.current);
       scrollingIndicatorTimerRef.current = null;
     }
 
     // scrollBy 自体は即時でも、状態表示は少し残した方が
     // 「今まさに追従した」ことをユーザーが認識しやすい。
     setIsAutoScrolling(true);
-    scrollingIndicatorTimerRef.current = window.setTimeout(() => {
+    scrollingIndicatorTimerRef.current = viewWindow.setTimeout(() => {
       scrollingIndicatorTimerRef.current = null;
       setIsAutoScrolling(false);
     }, 900);
-  }, []);
+  }, [viewWindow]);
 
   useEffect(() => {
     requestRefreshRef.current = requestRefresh;
@@ -181,23 +184,23 @@ export function useAutoRefresh({
       return null;
     }
     const nearestPanel = host.closest(".content-area__tab-panel");
-    if (nearestPanel instanceof HTMLElement) {
+    if (isHTMLElementInWindow(nearestPanel, viewWindow)) {
       return nearestPanel;
     }
 
     const contentArea = host.closest(".content-area");
-    if (!(contentArea instanceof HTMLElement)) {
+    if (!isHTMLElementInWindow(contentArea, viewWindow)) {
       return null;
     }
 
     const activePanel = contentArea.querySelector(".content-area__tab-panel[data-active='true']");
-    if (activePanel instanceof HTMLElement) {
+    if (isHTMLElementInWindow(activePanel, viewWindow)) {
       return activePanel;
     }
 
     // 互換性のため、旧構成（content-area 自体がスクロール）の場合は fallback する。
     return contentArea;
-  }, [rootRef]);
+  }, [rootRef, viewWindow]);
 
   const moveToThreadBottom = useCallback((): HTMLElement | null => {
     const scrollContainer = getScrollContainer();
@@ -253,10 +256,10 @@ export function useAutoRefresh({
       return;
     }
     startAtBottomAppliedRef.current = true;
-    window.requestAnimationFrame(() => {
+    viewWindow.requestAnimationFrame(() => {
       syncCanAutoScroll();
     });
-  }, [enabled, loading, moveToThreadBottom, startAtBottom, syncCanAutoScroll]);
+  }, [enabled, loading, moveToThreadBottom, startAtBottom, syncCanAutoScroll, viewWindow]);
 
   const capturePendingRefresh = useCallback(
     (
@@ -300,14 +303,14 @@ export function useAutoRefresh({
 
   useEffect(() => {
     const handleVisibilityChange = () => {
-      setIsDocumentVisible(document.visibilityState === "visible");
+      setIsDocumentVisible(viewDocument.visibilityState === "visible");
     };
 
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+    viewDocument.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      viewDocument.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, []);
+  }, [viewDocument]);
 
   useEffect(() => {
     const applyInterval = () => {
@@ -346,7 +349,7 @@ export function useAutoRefresh({
     }
 
     const scrollContainer = moveToThreadBottom();
-    window.requestAnimationFrame(() => {
+    viewWindow.requestAnimationFrame(() => {
       syncCanAutoScroll();
     });
 
@@ -366,6 +369,7 @@ export function useAutoRefresh({
     moveToThreadBottom,
     requestRefreshFromHook,
     syncCanAutoScroll,
+    viewWindow,
   ]);
 
   useLayoutEffect(() => {
@@ -410,7 +414,7 @@ export function useAutoRefresh({
         return;
       }
 
-      scrollObserverFrameRef.current = window.requestAnimationFrame(() => {
+      scrollObserverFrameRef.current = viewWindow.requestAnimationFrame(() => {
         scrollObserverFrameRef.current = null;
         syncCanAutoScroll();
       });
@@ -432,14 +436,14 @@ export function useAutoRefresh({
 
     return () => {
       if (scrollObserverFrameRef.current != null) {
-        window.cancelAnimationFrame(scrollObserverFrameRef.current);
+        viewWindow.cancelAnimationFrame(scrollObserverFrameRef.current);
         scrollObserverFrameRef.current = null;
       }
 
       scrollContainer.removeEventListener("scroll", scheduleSync);
       scrollContainer.removeEventListener("wheel", handleWheel);
     };
-  }, [getScrollContainer, isAutoScrolling, syncCanAutoScroll]);
+  }, [getScrollContainer, isAutoScrolling, syncCanAutoScroll, viewWindow]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -461,7 +465,7 @@ export function useAutoRefresh({
         return;
       }
 
-      contentResizeObserverFrameRef.current = window.requestAnimationFrame(() => {
+      contentResizeObserverFrameRef.current = viewWindow.requestAnimationFrame(() => {
         contentResizeObserverFrameRef.current = null;
 
         const currentRoot = rootRef.current;
@@ -523,13 +527,14 @@ export function useAutoRefresh({
     // 変更理由: サイドタブバー開閉は window リサイズを発火させず、root の幅変化だけが
     // 起きる。scroll 側の window resize だけでは追従維持と競合して判定が外れるため、
     // 同じ補正経路へ一本化し、rAF で合流させて二重判定を防ぐ。
-    window.addEventListener("resize", scheduleContentResize);
+    viewWindow.addEventListener("resize", scheduleContentResize);
 
-    if (typeof ResizeObserver === "undefined") {
+    const ResizeObserverConstructor = getResizeObserverForWindow(viewWindow);
+    if (ResizeObserverConstructor == null) {
       return () => {
-        window.removeEventListener("resize", scheduleContentResize);
+        viewWindow.removeEventListener("resize", scheduleContentResize);
         if (contentResizeObserverFrameRef.current != null) {
-          window.cancelAnimationFrame(contentResizeObserverFrameRef.current);
+          viewWindow.cancelAnimationFrame(contentResizeObserverFrameRef.current);
           contentResizeObserverFrameRef.current = null;
         }
         lastObservedScrollHeightRef.current = null;
@@ -537,7 +542,7 @@ export function useAutoRefresh({
       };
     }
 
-    const resizeObserver = new ResizeObserver(scheduleContentResize);
+    const resizeObserver = new ResizeObserverConstructor(scheduleContentResize);
     resizeObserver.observe(root);
     // 変更理由: root だけではコンテナ自体の高さ変化（下部パネル開閉やウィンドウ高さ変更で
     // 中身の高さが変わらない場合）を検知できない。スクロールコンテナ自体も監視して
@@ -545,10 +550,10 @@ export function useAutoRefresh({
     resizeObserver.observe(scrollContainer);
 
     return () => {
-      window.removeEventListener("resize", scheduleContentResize);
+      viewWindow.removeEventListener("resize", scheduleContentResize);
       resizeObserver.disconnect();
       if (contentResizeObserverFrameRef.current != null) {
-        window.cancelAnimationFrame(contentResizeObserverFrameRef.current);
+        viewWindow.cancelAnimationFrame(contentResizeObserverFrameRef.current);
         contentResizeObserverFrameRef.current = null;
       }
       lastObservedScrollHeightRef.current = null;
@@ -561,22 +566,23 @@ export function useAutoRefresh({
     rootRef,
     showScrollingIndicator,
     syncCanAutoScroll,
+    viewWindow,
   ]);
 
   useEffect(() => {
     return () => {
       if (scrollingIndicatorTimerRef.current != null) {
-        window.clearTimeout(scrollingIndicatorTimerRef.current);
+        viewWindow.clearTimeout(scrollingIndicatorTimerRef.current);
       }
     };
-  }, []);
+  }, [viewWindow]);
 
   useEffect(() => {
     if (!enabled || expired || !isDocumentVisible || intervalMs < MIN_THREAD_AUTO_REFRESH_MS) {
       return;
     }
 
-    const timerId = window.setInterval(() => {
+    const timerId = viewWindow.setInterval(() => {
       if (loadingRef.current || pendingRefreshRef.current) {
         return;
       }
@@ -594,7 +600,7 @@ export function useAutoRefresh({
     }, intervalMs);
 
     return () => {
-      window.clearInterval(timerId);
+      viewWindow.clearInterval(timerId);
     };
   }, [
     capturePendingRefresh,
@@ -604,6 +610,7 @@ export function useAutoRefresh({
     intervalMs,
     isDocumentVisible,
     requestRefreshFromHook,
+    viewWindow,
   ]);
 
   useLayoutEffect(() => {
@@ -706,7 +713,7 @@ export function useAutoRefresh({
     lastObservedClientHeightRef.current = scrollContainer.clientHeight;
     showScrollingIndicator();
 
-    window.requestAnimationFrame(() => {
+    viewWindow.requestAnimationFrame(() => {
       syncCanAutoScroll();
     });
   }, [
@@ -720,6 +727,7 @@ export function useAutoRefresh({
     consumeRefreshCompletionGate,
     showScrollingIndicator,
     syncCanAutoScroll,
+    viewWindow,
   ]);
 
   return {
