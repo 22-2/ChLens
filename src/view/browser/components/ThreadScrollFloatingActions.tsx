@@ -185,10 +185,12 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
     return null;
   }
 
-  const bottom = Math.max(
+  const jumpBottom = Math.max(
     ACTION_BOTTOM_OFFSET,
     window.innerHeight - layout.panelBottom + ACTION_BOTTOM_OFFSET,
   );
+  // 縦にステータスバーの下へ移動させず、上端に重ねてz-indexだけを下げて背後へ沈める。
+  const autoLoadBottom = Math.max(0, window.innerHeight - layout.panelBottom);
   const centerLeft = layout.panelLeft + (layout.panelRight - layout.panelLeft) / 2;
   // CSS変数は「ミニマップ幅 + 左右の逃がし」を予約しているので、
   // その開始位置から少し左へボタンを置けばミニマップに重ならない。
@@ -201,7 +203,7 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
         <button
           type="button"
           className="thread-page__floating-action thread-page__floating-action--auto-load"
-          style={{ left: `${centerLeft}px`, bottom: `${bottom}px` }}
+          style={{ left: `${centerLeft}px`, bottom: `${autoLoadBottom}px` }}
           aria-label="自動読み込みを開始"
           title="自動読み込みを開始"
           onClick={onEnableAutoRefresh}
@@ -216,7 +218,7 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
         <button
           type="button"
           className="thread-page__floating-action thread-page__floating-action--jump"
-          style={{ left: `${jumpLeft}px`, bottom: `${bottom}px` }}
+          style={{ left: `${jumpLeft}px`, bottom: `${jumpBottom}px` }}
           aria-label="下へジャンプ"
           title="下へジャンプ"
           onClick={scrollToBottom}

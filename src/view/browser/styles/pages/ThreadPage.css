@@ -103,7 +103,8 @@
   transition:
     background var(--sys-duration-fast),
     color var(--sys-duration-fast),
-    box-shadow var(--sys-duration-fast);
+    box-shadow var(--sys-duration-fast),
+    transform var(--sys-duration-fast);
   pointer-events: auto;
 }
 
@@ -111,6 +112,24 @@
   background: var(--sys-color-accent);
   color: var(--sys-color-accent-fg);
   box-shadow: var(--sys-shadow-focus);
+}
+
+/* 変更理由: 自動読み込みは最下部で見落としやすい主操作なので、通常時から青背景・白文字で強調する。 */
+.thread-page__floating-action--auto-load {
+  z-index: calc(var(--sys-z-minimap) - 1);
+  border-color: var(--sys-color-accent);
+  background: var(--sys-color-accent);
+  color: var(--sys-color-accent-fg);
+  /* 12pxの取っ手を本文側へ残し、ホバー時にステータスバー上へ出す。 */
+  transform: translate(-50%, calc(100% - var(--sys-space-7)));
+}
+
+.thread-page__floating-action--auto-load:hover,
+.thread-page__floating-action--auto-load:focus-visible {
+  border-color: var(--sys-color-accent-hover);
+  background: var(--sys-color-accent-hover);
+  color: var(--sys-color-accent-fg);
+  transform: translateX(-50%);
 }
 
 .thread-page__floating-action:focus-visible {

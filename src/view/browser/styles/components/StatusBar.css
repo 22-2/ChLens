@@ -1,5 +1,8 @@
 /* Status Bar - VS Code風の左右スロット */
 .status-bar {
+  /* 変更理由: ステータスバー上端に重ねた自動読み込みボタンを背後に隠し、表示を常に優先する。 */
+  position: relative;
+  z-index: var(--sys-z-minimap);
   display: flex;
   align-items: stretch;
   justify-content: space-between;
