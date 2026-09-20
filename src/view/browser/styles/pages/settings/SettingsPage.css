@@ -364,6 +364,7 @@
 .settings-page__site-board-selectors {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
   gap: var(--sys-space-6);
 }
 
