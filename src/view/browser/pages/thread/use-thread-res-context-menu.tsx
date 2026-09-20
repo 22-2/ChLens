@@ -19,8 +19,8 @@ import { requestArchiveReplaySeek } from "src/features/archive-replay/platform";
 import { container } from "src/service-container/index";
 import type { IRes } from "src/service-container/interfaces";
 import { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
-import { useTabDispatch, useTabStore } from "src/view/browser/hooks/use-tab-store";
-import type { ThreadFilter, ThreadPage as ThreadPageType } from "src/view/browser/types";
+import { useTabDispatchForTab, useTabStore } from "src/view/browser/hooks/use-tab-store";
+import type { Tab, ThreadFilter, ThreadPage as ThreadPageType } from "src/view/browser/types";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import {
   getAutoRefreshPageKey,
@@ -49,6 +49,8 @@ interface UseThreadResContextMenuParams {
   miniAaResNums: Set<number>;
   ownResNums: Set<number>;
   page: ThreadPageType;
+  tabId: string;
+  tab?: Tab;
   onWriteHistoryAdded?: (resNum: number) => void;
   onWriteHistoryRemoved?: (resNum: number) => void;
   searchQuery: string;
@@ -74,6 +76,8 @@ export function useThreadResContextMenu({
   miniAaResNums,
   ownResNums,
   page,
+  tab,
+  tabId,
   onWriteHistoryAdded,
   onWriteHistoryRemoved,
   searchQuery,
@@ -85,10 +89,12 @@ export function useThreadResContextMenu({
   // フィルタ解除直後のDOM更新完了を待ってからジャンプしないと、
   // 対象レスがまだ存在せずスクロールに失敗するため hook 内で保留する。
   const pendingJumpNumRef = useRef<number | null>(null);
-  const dispatch = useTabDispatch();
+  const dispatch = useTabDispatchForTab(tabId);
   const { activeTab } = useTabStore();
   const { openWritePanelWithText } = useBottomPanel();
-  const isAutoRefreshEnabled = isAutoRefreshEnabledForPage(activeTab, page);
+  // 変更理由: 別窓のページではペインのactiveTabと描画中タブが異なるため、
+  // 自動更新メニューの表示も描画対象タブの状態を優先する。
+  const isAutoRefreshEnabled = isAutoRefreshEnabledForPage(tab ?? activeTab, page);
 
   const addIdToNg = useCallback(
     async (id: string | undefined) => {

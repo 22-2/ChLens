@@ -27,7 +27,7 @@ import {
 } from "src/view/browser/hooks/use-page-count-status";
 import { usePopupAutoScrollPauseSetting } from "src/view/browser/hooks/use-popup-auto-scroll-pause-setting";
 import { useThreadPopupManager } from "src/view/browser/hooks/use-popup-manager";
-import { useTabDispatch, useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { useTabDispatchForTab, useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useThreadAutoRefresh } from "src/view/browser/hooks/use-thread-auto-refresh";
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";
 import { useThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
@@ -81,7 +81,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   startAutoRefreshAtBottom,
   scrollContainerRef,
 }) => {
-  const { window: viewWindow } = useViewSurface();
+  const viewSurface = useViewSurface();
+  const { window: viewWindow } = viewSurface;
   const rootRef = useRef<HTMLDivElement>(null);
   const fallbackScrollContainerRef = useRef<HTMLDivElement>(null);
   const effectiveScrollContainerRef = scrollContainerRef ?? fallbackScrollContainerRef;
@@ -122,7 +123,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     () => buildReplyToWrittenResSet(ownResNums, indexes.repIndex),
     [indexes.repIndex, ownResNums],
   );
-  const dispatch = useTabDispatch();
+  const dispatch = useTabDispatchForTab(tabId);
   const { activeTab } = useTabStore();
   // 既存の直接利用者との互換性のためactiveTabを残し、通常の描画経路では渡されたtabを優先する。
   const navigationTab = tab ?? activeTab;
@@ -230,7 +231,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     hasActiveFilter: filter !== "all",
   });
 
-  useMouseGesture(rootRef);
+  useMouseGesture(rootRef, viewSurface);
 
   const {
     popups,
@@ -515,6 +516,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     miniAaResNums,
     ownResNums,
     page,
+    tab: navigationTab,
+    tabId,
     onWriteHistoryAdded: handleWriteHistoryAdded,
     onWriteHistoryRemoved: handleWriteHistoryRemoved,
     searchQuery,

@@ -38,7 +38,7 @@ vi.mock("src/features/archive-replay/platform", async (importOriginal) => {
 });
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
-  useTabDispatch: () => mocks.dispatch,
+  useTabDispatchForTab: () => mocks.dispatch,
   useTabStore: () => ({
     activeTab: {
       id: "tab-1",
@@ -105,6 +105,7 @@ function HookHarness() {
       title: "thread title",
       threadUrl: "https://example.com/test/read.cgi/live/1/",
     },
+    tabId: "tab-1",
     searchQuery,
     setFilter: () => {},
     setSearchQuery,
@@ -209,6 +210,7 @@ function FilterJumpHarness() {
       title: "thread title",
       threadUrl: "https://example.com/test/read.cgi/live/1/",
     },
+    tabId: "tab-1",
     searchQuery,
     setFilter,
     setSearchQuery,

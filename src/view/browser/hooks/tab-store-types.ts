@@ -63,7 +63,9 @@ export type TabAction =
 
 // ペインスコープ: 全アクションに「対象ペイン」を付与できる。
 // 省略時はアクティブペインに作用する（グローバルハンドラ用）。
-export type ScopedTabAction = TabAction & { paneId?: string };
+// 表示場所がメインペインでも別窓でも、操作対象のタブを明示できるようにする。
+// tabIdを省略した既存アクションは、従来どおり対象ペインのactiveTabへ作用する。
+export type ScopedTabAction = TabAction & { paneId?: string; tabId?: string };
 
 export interface PaneScopedState {
   tabs: Tab[];

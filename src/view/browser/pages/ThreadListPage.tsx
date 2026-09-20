@@ -49,7 +49,7 @@ import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-ac
 import {
   useActivePaneId,
   usePaneId,
-  useTabDispatch,
+  useTabDispatchForTab,
   useTabPanes,
   useTabStore,
   useTabViewState,
@@ -205,7 +205,7 @@ export const ThreadListPage: React.FC<Props> = ({
   const { window: viewWindow, document: viewDocument } = useViewSurface();
   const fallbackScrollContainerRef = useRef<HTMLDivElement>(null);
   const effectiveScrollContainerRef = scrollContainerRef ?? fallbackScrollContainerRef;
-  const dispatch = useTabDispatch();
+  const dispatch = useTabDispatchForTab(tabId);
   const { activeTab } = useTabStore();
   // 既存の直接利用者との互換性のためactiveTabを残し、通常の描画経路では渡されたtabを優先する。
   const navigationTab = tab ?? activeTab;

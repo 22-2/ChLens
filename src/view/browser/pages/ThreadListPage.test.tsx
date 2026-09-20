@@ -90,6 +90,7 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
     },
   }),
   useTabDispatch: () => dispatchMock,
+  useTabDispatchForTab: () => dispatchMock,
   useTabViewState: () => ({ state: viewStateRef.current, update: updateViewStateMock }),
   usePaneId: () => "pane-1",
   useActivePaneId: () => focusedPaneIdRef.current,

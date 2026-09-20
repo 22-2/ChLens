@@ -406,6 +406,31 @@ function updatePaneActiveTab(
   }));
 }
 
+function updateTabById(
+  state: TabStoreState,
+  tabId: string,
+  updater: (tab: Tab) => Tab,
+): TabStoreState {
+  return {
+    ...state,
+    panes: state.panes.map((pane) => ({
+      ...pane,
+      tabs: pane.tabs.map((tab) => (tab.id === tabId ? updater(tab) : tab)),
+    })),
+  };
+}
+
+function updateTargetTab(
+  state: TabStoreState,
+  paneId: string,
+  tabId: string | undefined,
+  updater: (tab: Tab) => Tab,
+): TabStoreState {
+  // 変更理由: 別窓のページは元のPaneProviderのactiveTabとは異なるタブを操作するため、
+  // tabIdが渡された場合はペインを跨いで対象を更新し、従来の省略時だけactiveTabへ戻す。
+  return tabId ? updateTabById(state, tabId, updater) : updatePaneActiveTab(state, paneId, updater);
+}
+
 function pushPageToTabHistory(tab: Tab, page: Page): Tab {
   const currentPage = getCurrentPage(tab);
   if (getPageIdentity(currentPage) === getPageIdentity(page)) {
@@ -801,18 +826,21 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
 
     case "NAVIGATE": {
       const paneId = resolvePaneId(state, action.paneId);
-      const pane = getPane(state, paneId);
-      const currentPage = getCurrentPage(getPaneActiveTab(pane));
+      const targetTab = action.tabId
+        ? findTabAcrossPanes(state, action.tabId)
+        : getPaneActiveTab(getPane(state, paneId));
+      if (!targetTab) {
+        return state;
+      }
+      const currentPage = getCurrentPage(targetTab);
       if (getPageIdentity(currentPage) === getPageIdentity(action.page)) {
         return state;
       }
 
-      return {
-        ...updatePaneActiveTab(state, paneId, (tab) =>
-          resetAutoRefreshState(pushPageToTabHistory(tab, action.page)),
-        ),
-        activePaneId: paneId,
-      };
+      const nextState = updateTargetTab(state, paneId, action.tabId, (tab) =>
+        resetAutoRefreshState(pushPageToTabHistory(tab, action.page)),
+      );
+      return action.tabId ? nextState : { ...nextState, activePaneId: paneId };
     }
 
     case "NAVIGATE_TAB": {
@@ -848,9 +876,12 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
 
     case "GO_BACK": {
       const paneId = resolvePaneId(state, action.paneId);
-      const tab = getPaneActiveTab(getPane(state, paneId));
+      const tab = action.tabId
+        ? findTabAcrossPanes(state, action.tabId)
+        : getPaneActiveTab(getPane(state, paneId));
+      if (!tab) return state;
       if (tab.currentIndex <= 0) return state;
-      return updatePaneActiveTab(state, paneId, (t) =>
+      return updateTargetTab(state, paneId, action.tabId, (t) =>
         resetAutoRefreshState({
           ...t,
           currentIndex: t.currentIndex - 1,
@@ -860,9 +891,12 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
 
     case "GO_FORWARD": {
       const paneId = resolvePaneId(state, action.paneId);
-      const tab = getPaneActiveTab(getPane(state, paneId));
+      const tab = action.tabId
+        ? findTabAcrossPanes(state, action.tabId)
+        : getPaneActiveTab(getPane(state, paneId));
+      if (!tab) return state;
       if (tab.currentIndex >= tab.history.length - 1) return state;
-      return updatePaneActiveTab(state, paneId, (t) =>
+      return updateTargetTab(state, paneId, action.tabId, (t) =>
         resetAutoRefreshState({
           ...t,
           currentIndex: t.currentIndex + 1,
@@ -872,10 +906,13 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
 
     case "GO_TO_HISTORY_INDEX": {
       const paneId = resolvePaneId(state, action.paneId);
-      const tab = getPaneActiveTab(getPane(state, paneId));
+      const tab = action.tabId
+        ? findTabAcrossPanes(state, action.tabId)
+        : getPaneActiveTab(getPane(state, paneId));
+      if (!tab) return state;
       if (action.index < 0 || action.index >= tab.history.length) return state;
       if (action.index === tab.currentIndex) return state;
-      return updatePaneActiveTab(state, paneId, (t) =>
+      return updateTargetTab(state, paneId, action.tabId, (t) =>
         resetAutoRefreshState({
           ...t,
           currentIndex: action.index,
@@ -911,15 +948,23 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
 
     case "UPDATE_TITLE": {
       const paneId = resolvePaneId(state, action.paneId);
-      const tab = getPaneActiveTab(getPane(state, paneId));
-      const currentPage = { ...tab.history[tab.currentIndex] };
-      currentPage.title = action.title;
-      const newHistory = [...tab.history];
-      newHistory[tab.currentIndex] = currentPage;
-      return updatePaneActiveTab(state, paneId, (t) => ({
-        ...t,
-        history: newHistory,
-      }));
+      const tab = action.tabId
+        ? findTabAcrossPanes(state, action.tabId)
+        : getPaneActiveTab(getPane(state, paneId));
+      if (!tab) {
+        return state;
+      }
+
+      return updateTargetTab(state, paneId, action.tabId, (t) => {
+        const currentPage = { ...t.history[t.currentIndex] };
+        currentPage.title = action.title;
+        const newHistory = [...t.history];
+        newHistory[t.currentIndex] = currentPage;
+        return {
+          ...t,
+          history: newHistory,
+        };
+      });
     }
 
     case "UPDATE_TITLE_FOR_TAB": {
@@ -985,7 +1030,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       // 履歴を変えずにreloadKeyをインクリメントする。
       // ContentAreaがこれをkeyに使うことでページコンポーネントが再マウントされ、データ再取得が走る。
       const paneId = resolvePaneId(state, action.paneId);
-      return updatePaneActiveTab(state, paneId, (tab) => ({
+      return updateTargetTab(state, paneId, action.tabId, (tab) => ({
         ...tab,
         reloadKey: tab.reloadKey + 1,
       }));
@@ -993,7 +1038,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
 
     case "FOLLOW_NEXT_THREAD": {
       const paneId = resolvePaneId(state, action.paneId);
-      return updatePaneActiveTab(state, paneId, (tab) => {
+      return updateTargetTab(state, paneId, action.tabId, (tab) => {
         const nextTab = pushPageToTabHistory(tab, action.page);
         // 自動次スレ移動は「このタブの流れ」を保つのが目的なので、
         // 既存タブ集約を経由せず現在タブの履歴と自動更新束縛を同時に更新する。
@@ -1009,7 +1054,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
 
     case "SET_AUTO_REFRESH_ENABLED": {
       const paneId = resolvePaneId(state, action.paneId);
-      return updatePaneActiveTab(state, paneId, (tab) => ({
+      return updateTargetTab(state, paneId, action.tabId, (tab) => ({
         ...tab,
         autoRefreshEnabled: action.enabled,
         autoRefreshPageKey: action.enabled ? (action.pageKey ?? tab.autoRefreshPageKey) : null,
@@ -1267,9 +1312,10 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         case "NAVIGATE":
         case "FOLLOW_NEXT_THREAD":
         case "NAVIGATE_TAB": {
-          // 対象ペイン（注入された paneId、無ければアクティブペイン）のアクティブタブを記録する。
+          // 対象タブが明示されていれば別窓の描画タブを記録し、省略時は従来どおりペインのactiveTabを記録する。
           const paneId = resolvePaneId(prevState, action.paneId);
-          recordThreadVisitForTab(getPane(nextState, paneId).activeTabId);
+          const targetTabId = action.tabId ?? getPane(nextState, paneId).activeTabId;
+          recordThreadVisitForTab(targetTabId);
           return;
         }
 
@@ -1288,11 +1334,11 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
         case "UPDATE_TITLE": {
           const paneId = resolvePaneId(nextState, action.paneId);
-          const activeTabId = getPane(nextState, paneId).activeTabId;
-          const nextTab = findTabAcrossPanes(nextState, activeTabId);
+          const targetTabId = action.tabId ?? getPane(nextState, paneId).activeTabId;
+          const nextTab = findTabAcrossPanes(nextState, targetTabId);
           const nextPage = nextTab ? getCurrentPage(nextTab) : null;
           if (nextPage?.type === "thread") {
-            syncThreadVisitTitle(activeTabId, nextPage, action.title);
+            syncThreadVisitTitle(targetTabId, nextPage, action.title);
           }
           return;
         }
@@ -1468,6 +1514,18 @@ export function useTabDispatch(): Dispatch<ScopedTabAction> {
       }
     },
     [globalDispatch, paneId],
+  );
+}
+
+export function useTabDispatchForTab(tabId: string): Dispatch<ScopedTabAction> {
+  const dispatch = useTabDispatch();
+  return useMemo<Dispatch<ScopedTabAction>>(
+    () => (action) => {
+      // 変更理由: 別窓のページは元ペインのactiveTabと一致しない場合があるため、
+      // ページ配下の操作へ描画元タブを補い、戻る・更新などを別タブへ誤送信しない。
+      dispatch(action.tabId === undefined ? { ...action, tabId } : action);
+    },
+    [dispatch, tabId],
   );
 }
 

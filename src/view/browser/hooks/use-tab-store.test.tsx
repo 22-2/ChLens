@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { getPageViewStateKey } from "src/view/browser/types";
+import { getCurrentPage, getPageViewStateKey } from "src/view/browser/types";
 import { getAutoRefreshPageKey } from "src/view/browser/utils/auto-refresh-pages";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -866,6 +866,96 @@ describe("TabProvider auto refresh state", () => {
     expect(screen.getByTestId("tabs-count")).toHaveTextContent("2");
     expect(screen.getByTestId("current-page-title")).toHaveTextContent("既存スレ");
     expect(screen.getByTestId("tab-titles")).toHaveTextContent("既存スレ|既存スレ");
+  });
+
+  it("描画対象タブを指定した操作はペインのactiveTabへ作用しない", async () => {
+    vi.resetModules();
+    const { TabProvider, useTabDispatchForTab, useTabStore } =
+      await import("src/view/browser/hooks/use-tab-store");
+
+    function Harness() {
+      const { state, currentPage, dispatch } = useTabStore();
+      const targetTabId = state.tabs[0]?.id ?? "";
+      const targetDispatch = useTabDispatchForTab(targetTabId);
+      const targetTab = state.tabs[0];
+
+      return (
+        <>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "NAVIGATE",
+                page: {
+                  type: "thread",
+                  title: "アクティブ側",
+                  threadUrl: "https://example.com/test/read.cgi/board/active/",
+                },
+              })
+            }
+          >
+            アクティブ側へ移動
+          </button>
+          <button onClick={() => dispatch({ type: "ADD_TAB" })}>別タブを追加</button>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "NAVIGATE",
+                page: {
+                  type: "thread",
+                  title: "別タブ側",
+                  threadUrl: "https://example.com/test/read.cgi/board/other/",
+                },
+              })
+            }
+          >
+            別タブ側へ移動
+          </button>
+          <button
+            onClick={() =>
+              targetDispatch({
+                type: "NAVIGATE",
+                page: {
+                  type: "thread",
+                  title: "描画対象側",
+                  threadUrl: "https://example.com/test/read.cgi/board/target/",
+                },
+              })
+            }
+          >
+            描画対象側へ移動
+          </button>
+          <button onClick={() => targetDispatch({ type: "RELOAD" })}>描画対象を更新</button>
+          <button onClick={() => targetDispatch({ type: "GO_BACK" })}>描画対象を戻す</button>
+          <output data-testid="target-title">
+            {targetTab ? getCurrentPage(targetTab).title : ""}
+          </output>
+          <output data-testid="target-reload-key">{targetTab?.reloadKey ?? -1}</output>
+          <output data-testid="active-title">{currentPage.title}</output>
+        </>
+      );
+    }
+
+    render(
+      <TabProvider>
+        <Harness />
+      </TabProvider>,
+    );
+
+    fireEvent.click(screen.getByText("アクティブ側へ移動"));
+    fireEvent.click(screen.getByText("別タブを追加"));
+    fireEvent.click(screen.getByText("別タブ側へ移動"));
+    fireEvent.click(screen.getByText("描画対象側へ移動"));
+
+    expect(screen.getByTestId("target-title")).toHaveTextContent("描画対象側");
+    expect(screen.getByTestId("active-title")).toHaveTextContent("別タブ側");
+
+    fireEvent.click(screen.getByText("描画対象を更新"));
+    expect(screen.getByTestId("target-reload-key")).toHaveTextContent("1");
+    expect(screen.getByTestId("active-title")).toHaveTextContent("別タブ側");
+
+    fireEvent.click(screen.getByText("描画対象を戻す"));
+    expect(screen.getByTestId("target-title")).toHaveTextContent("アクティブ側");
+    expect(screen.getByTestId("active-title")).toHaveTextContent("別タブ側");
   });
 
   it("クイックアクセス間の遷移で既存ページ判定が誤爆せず切り替わる", async () => {

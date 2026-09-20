@@ -1,4 +1,5 @@
 import { type RefObject, useEffect } from "react";
+import type { ViewSurface } from "src/view/browser/hooks/use-view-surface";
 import type { GestureDirection, GesturePoint } from "src/view/browser/utils/gesture";
 import {
   GESTURE_CONTEXTMENU_SUPPRESS_MS,
@@ -6,24 +7,33 @@ import {
   summarizeVerticalGesture,
 } from "src/view/browser/utils/gesture";
 
-export function useMouseGesture(rootRef: RefObject<HTMLDivElement | null>): void {
+export function useMouseGesture(
+  rootRef: RefObject<HTMLDivElement | null>,
+  viewSurface?: ViewSurface,
+): void {
   useEffect(() => {
     const host = rootRef.current;
     if (!host) return;
 
+    // 変更理由: 別窓へ同じページを描画したときも、ジェスチャーのイベントと表示用
+    // オーバーレイを描画先のWindow/Documentへ揃え、元画面の操作を奪わないようにする。
+    const surfaceWindow = viewSurface?.window ?? window;
+    const surfaceDocument = viewSurface?.document ?? document;
+    const surfaceGlobal = surfaceWindow as Window & typeof globalThis;
+
     const resolveScrollContainer = (): HTMLElement | null => {
       const nearestPanel = host.closest(".content-area__tab-panel");
-      if (nearestPanel instanceof HTMLElement) {
+      if (nearestPanel instanceof surfaceGlobal.HTMLElement) {
         return nearestPanel;
       }
 
       const contentArea = host.closest(".content-area");
-      if (!(contentArea instanceof HTMLElement)) {
+      if (!(contentArea instanceof surfaceGlobal.HTMLElement)) {
         return null;
       }
 
       const activePanel = contentArea.querySelector(".content-area__tab-panel[data-active='true']");
-      if (activePanel instanceof HTMLElement) {
+      if (activePanel instanceof surfaceGlobal.HTMLElement) {
         return activePanel;
       }
 
@@ -42,24 +52,24 @@ export function useMouseGesture(rootRef: RefObject<HTMLDivElement | null>): void
     let suppressTimerId: number | null = null;
 
     const isWithinHost = (target: EventTarget | null): boolean =>
-      target instanceof Node && host.contains(target);
+      target instanceof surfaceGlobal.Node && host.contains(target);
 
     const clearSuppressTimer = (): void => {
       if (suppressTimerId != null) {
-        window.clearTimeout(suppressTimerId);
+        surfaceWindow.clearTimeout(suppressTimerId);
         suppressTimerId = null;
       }
     };
 
     const resizeCanvas = (): void => {
       if (!canvas) return;
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      canvas.width = surfaceWindow.innerWidth;
+      canvas.height = surfaceWindow.innerHeight;
     };
 
     const ensureOverlay = (): void => {
       if (!canvas) {
-        canvas = document.createElement("canvas");
+        canvas = surfaceDocument.createElement("canvas");
         canvas.style.position = "fixed";
         canvas.style.top = "0";
         canvas.style.left = "0";
@@ -67,13 +77,13 @@ export function useMouseGesture(rootRef: RefObject<HTMLDivElement | null>): void
         canvas.style.height = "100%";
         canvas.style.zIndex = "var(--sys-z-gesture)";
         canvas.style.pointerEvents = "none";
-        document.body.appendChild(canvas);
+        surfaceDocument.body.appendChild(canvas);
         context = canvas.getContext("2d");
         resizeCanvas();
       }
 
       if (!label) {
-        label = document.createElement("div");
+        label = surfaceDocument.createElement("div");
         label.style.position = "fixed";
         label.style.top = "50%";
         label.style.left = "50%";
@@ -86,7 +96,7 @@ export function useMouseGesture(rootRef: RefObject<HTMLDivElement | null>): void
         label.style.textShadow =
           "2px 2px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff";
         label.style.fontFamily = "sans-serif";
-        document.body.appendChild(label);
+        surfaceDocument.body.appendChild(label);
       }
 
       if (!context) return;
@@ -177,7 +187,7 @@ export function useMouseGesture(rootRef: RefObject<HTMLDivElement | null>): void
       stopDrawing();
       gestureJustCompleted = true;
       clearSuppressTimer();
-      suppressTimerId = window.setTimeout(() => {
+      suppressTimerId = surfaceWindow.setTimeout(() => {
         gestureJustCompleted = false;
         suppressTimerId = null;
       }, GESTURE_CONTEXTMENU_SUPPRESS_MS);
@@ -221,20 +231,20 @@ export function useMouseGesture(rootRef: RefObject<HTMLDivElement | null>): void
       clearSuppressTimer();
     };
 
-    document.addEventListener("mousedown", handleMouseDown, true);
-    document.addEventListener("mousemove", handleMouseMove, true);
-    document.addEventListener("mouseup", handleMouseUp, true);
-    document.addEventListener("contextmenu", handleContextMenu, true);
-    window.addEventListener("resize", resizeCanvas);
-    window.addEventListener("blur", handleWindowBlur);
+    surfaceDocument.addEventListener("mousedown", handleMouseDown, true);
+    surfaceDocument.addEventListener("mousemove", handleMouseMove, true);
+    surfaceDocument.addEventListener("mouseup", handleMouseUp, true);
+    surfaceDocument.addEventListener("contextmenu", handleContextMenu, true);
+    surfaceWindow.addEventListener("resize", resizeCanvas);
+    surfaceWindow.addEventListener("blur", handleWindowBlur);
 
     return () => {
-      document.removeEventListener("mousedown", handleMouseDown, true);
-      document.removeEventListener("mousemove", handleMouseMove, true);
-      document.removeEventListener("mouseup", handleMouseUp, true);
-      document.removeEventListener("contextmenu", handleContextMenu, true);
-      window.removeEventListener("resize", resizeCanvas);
-      window.removeEventListener("blur", handleWindowBlur);
+      surfaceDocument.removeEventListener("mousedown", handleMouseDown, true);
+      surfaceDocument.removeEventListener("mousemove", handleMouseMove, true);
+      surfaceDocument.removeEventListener("mouseup", handleMouseUp, true);
+      surfaceDocument.removeEventListener("contextmenu", handleContextMenu, true);
+      surfaceWindow.removeEventListener("resize", resizeCanvas);
+      surfaceWindow.removeEventListener("blur", handleWindowBlur);
       clearSuppressTimer();
       if (canvas) {
         canvas.remove();
@@ -243,5 +253,5 @@ export function useMouseGesture(rootRef: RefObject<HTMLDivElement | null>): void
         label.remove();
       }
     };
-  }, [rootRef]);
+  }, [rootRef, viewSurface]);
 }
