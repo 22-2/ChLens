@@ -5,11 +5,13 @@ import React, {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
-import { platform } from "src/app/platform";
 import { getStore2String, setStore2String } from "src/app/Store2Storage";
+import {
+  type DetachedWindowOptions,
+  useDetachedWindow,
+} from "src/view/browser/hooks/use-detached-window";
 import { useTabPanes, useTabStore } from "src/view/browser/hooks/use-tab-store";
 import type { Page, Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
@@ -46,14 +48,13 @@ interface WriteSessionContextValue {
   closeWriteWindow: () => void;
 }
 
-const WRITE_WINDOW_NAME = "chlens-write-window";
-const WRITE_WINDOW_FEATURES = "popup,width=720,height=520,resizable=yes";
-
-interface WriteWindowHandle {
-  window: Window;
-  root: HTMLElement;
-  onBeforeUnload: () => void;
-}
+const WRITE_WINDOW_OPTIONS: DetachedWindowOptions = {
+  name: "chlens-write-window",
+  features: "popup,width=720,height=520,resizable=yes",
+  title: "書き込み - read.crx 2",
+  shellClassName: "write-window-shell",
+  logLabel: "WriteSession",
+};
 
 function loadSession(): WriteSessionState {
   try {
@@ -137,8 +138,7 @@ export const WriteSessionProvider: React.FC<{ children: ReactNode }> = ({ childr
   const { panes, activePaneId } = useTabPanes();
   const { currentPage } = useTabStore();
   const [session, setSession] = useState<WriteSessionState>(loadSession);
-  const writeWindowHandleRef = useRef<WriteWindowHandle | null>(null);
-  const [writeWindowRoot, setWriteWindowRoot] = useState<HTMLElement | null>(null);
+  const detachedWindow = useDetachedWindow(WRITE_WINDOW_OPTIONS);
 
   const targets = useMemo(() => collectWriteTargets(panes, activePaneId), [activePaneId, panes]);
 
@@ -210,112 +210,30 @@ export const WriteSessionProvider: React.FC<{ children: ReactNode }> = ({ childr
     });
   }, []);
 
-  const closeWriteWindow = useCallback(() => {
-    const handle = writeWindowHandleRef.current;
-    writeWindowHandleRef.current = null;
-    setWriteWindowRoot(null);
-    if (!handle) {
-      return;
-    }
-
-    handle.window.removeEventListener("beforeunload", handle.onBeforeUnload);
-    if (!handle.window.closed) {
-      handle.window.close();
-    }
-  }, []);
-
-  const openWriteWindow = useCallback(() => {
-    const existing = writeWindowHandleRef.current;
-    if (existing && !existing.window.closed) {
-      existing.window.focus();
-      return;
-    }
-
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const writeWindow =
-      platform.window.openPopup?.(WRITE_WINDOW_NAME, WRITE_WINDOW_FEATURES) ?? null;
-    if (!writeWindow) {
-      console.error("[WriteSession] 書き込み窓を開けませんでした");
-      return;
-    }
-
-    const sourceShell = document.querySelector<HTMLElement>(".browser-shell");
-    const writeDocument = writeWindow.document;
-    writeDocument.head.innerHTML = "";
-    writeDocument.title = "書き込み - read.crx 2";
-    writeDocument.head.appendChild(
-      Object.assign(writeDocument.createElement("meta"), {
-        charSet: "utf-8",
-      }),
-    );
-
-    // 変更理由: ReactポータルはDOMだけを移動するため、別窓側にも現在のテーマと
-    // コンポーネントCSSを複製しないと、フォームのレイアウトと色が失われる。
-    for (const style of document.querySelectorAll<HTMLStyleElement>("style")) {
-      writeDocument.head.appendChild(style.cloneNode(true));
-    }
-    for (const stylesheet of document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')) {
-      writeDocument.head.appendChild(stylesheet.cloneNode(true));
-    }
-
-    writeDocument.body.innerHTML = "";
-    writeDocument.body.style.margin = "0";
-    writeDocument.body.style.overflow = "hidden";
-    const root = writeDocument.createElement("div");
-    root.className = "browser-shell write-window-shell";
-    root.dataset.theme = sourceShell?.dataset.theme ?? "light";
-    writeDocument.body.appendChild(root);
-
-    const onBeforeUnload = () => {
-      if (writeWindowHandleRef.current?.window !== writeWindow) {
-        return;
-      }
-      writeWindowHandleRef.current = null;
-      setWriteWindowRoot(null);
-    };
-    writeWindow.addEventListener("beforeunload", onBeforeUnload, { once: true });
-    writeWindowHandleRef.current = { window: writeWindow, root, onBeforeUnload };
-    setWriteWindowRoot(root);
-    writeWindow.focus();
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      const handle = writeWindowHandleRef.current;
-      writeWindowHandleRef.current = null;
-      handle?.window.removeEventListener("beforeunload", handle.onBeforeUnload);
-      if (handle && !handle.window.closed) {
-        handle.window.close();
-      }
-    };
-  }, []);
-
   const contextValue = useMemo<WriteSessionContextValue>(
     () => ({
       selectedThreadUrl: session.selectedThreadUrl,
       targets,
-      isWindowOpen: writeWindowRoot !== null,
-      writeWindowRoot,
+      isWindowOpen: detachedWindow.isOpen,
+      writeWindowRoot: detachedWindow.root,
       getDraft,
       selectThread,
       setDraft,
       appendDraft,
-      openWriteWindow,
-      closeWriteWindow,
+      openWriteWindow: detachedWindow.open,
+      closeWriteWindow: detachedWindow.close,
     }),
     [
       appendDraft,
-      closeWriteWindow,
+      detachedWindow.close,
       getDraft,
-      openWriteWindow,
+      detachedWindow.open,
       selectThread,
       session.selectedThreadUrl,
       setDraft,
       targets,
-      writeWindowRoot,
+      detachedWindow.isOpen,
+      detachedWindow.root,
     ],
   );
 
