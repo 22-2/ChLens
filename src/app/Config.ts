@@ -117,7 +117,7 @@ export default class Config {
     ["bbsmenu_option", ""],
     ["useragent", ""],
     ["format_2chnet", "html"],
-    ["sage_flag", "on"],
+    ["sage_flag", "off"],
     // サイト・板設定は全体設定へ安全にフォールバックできる空のドキュメントを既定値にする。
     ["site_board_settings", "{}"],
     ["mousewheel_change_tab", "on"],
