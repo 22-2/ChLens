@@ -72,6 +72,10 @@ const { titleBarButtonSettingsHolder } = vi.hoisted(() => ({
   },
 }));
 
+const { detachedTabHolder } = vi.hoisted(() => ({
+  detachedTabHolder: { value: false },
+}));
+
 vi.mock("src/view/browser/hooks/use-tab-bar-orientation", () => ({
   // 変更理由: タイトルバー左端の更新ボタンは垂直モードだけで出すため、方向指定で切り替える。
   useTabBarOrientation: () => orientationHolder.value,
@@ -79,6 +83,12 @@ vi.mock("src/view/browser/hooks/use-tab-bar-orientation", () => ({
 
 vi.mock("src/view/browser/hooks/use-title-bar-navigation-setting", () => ({
   useTitleBarButtonSettings: () => titleBarButtonSettingsHolder.value,
+}));
+
+vi.mock("src/view/browser/hooks/use-detached-tab-controller", () => ({
+  useDetachedTabController: () => ({
+    isDetachedTab: () => detachedTabHolder.value,
+  }),
 }));
 
 describe("TitleBar", () => {
@@ -98,6 +108,7 @@ describe("TitleBar", () => {
       forwardEnabled: true,
       refreshEnabled: true,
     };
+    detachedTabHolder.value = false;
     mocks.viewTab.history = [
       {
         type: "thread",
@@ -201,6 +212,33 @@ describe("TitleBar", () => {
 
     expect(screen.getByTestId("title-bar-leading")).toBeEmptyDOMElement();
     expect(screen.queryByRole("button", { name: "更新" })).toBeNull();
+  });
+
+  it("別窓では水平モードでも既存の履歴操作をタイトルバーへ表示する", () => {
+    orientationHolder.value = "horizontal";
+    detachedTabHolder.value = true;
+    mocks.viewTab.history = [
+      {
+        type: "home",
+        title: "ホーム",
+      },
+      {
+        type: "thread",
+        title: "Current Thread",
+        threadUrl: "https://egg.5ch.net/test/read.cgi/software/1/",
+      },
+    ];
+    mocks.viewTab.currentIndex = 1;
+    render(<TitleBar />);
+
+    const leading = screen.getByTestId("title-bar-leading");
+    expect([...leading.querySelectorAll("button")].map((button) => button.title)).toEqual([
+      "戻る",
+      "進む",
+      "更新",
+    ]);
+    expect(screen.queryByRole("button", { name: "戻す" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "閉じる" })).toBeNull();
   });
 
   it("長いタイトルは省略可能なタイトル属性を持つ", () => {

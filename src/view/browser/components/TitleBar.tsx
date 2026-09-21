@@ -2,6 +2,7 @@ import { ArrowLeft, ArrowRight, RotateCw } from "lucide-react";
 import React, { useCallback, useState } from "react";
 import { TabContextMenu } from "src/view/browser/components/TabContextMenu";
 import { tabActions } from "src/view/browser/hooks/tab-store-actions";
+import { useDetachedTabController } from "src/view/browser/hooks/use-detached-tab-controller";
 import { useTabBarOrientation } from "src/view/browser/hooks/use-tab-bar-orientation";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useTitleBarButtonSettings } from "src/view/browser/hooks/use-title-bar-navigation-setting";
@@ -14,7 +15,7 @@ interface TitleBarMenuPosition {
 }
 
 export interface TitleBarProps {
-  /** 別窓では専用操作欄へ戻る・進む・更新を集約して重複表示を避ける。 */
+  /** タイトルバー左端の戻る・進む・更新を表示するかどうか。 */
   showNavigationButtons?: boolean;
 }
 
@@ -22,10 +23,12 @@ export const TitleBar: React.FC<TitleBarProps> = ({ showNavigationButtons = true
   const { viewTab, viewPage, dispatch, paneId } = useTabStore();
   const title = viewPage.title || "read.crx 2";
   const tabBarOrientation = useTabBarOrientation();
+  const { isDetachedTab } = useDetachedTabController();
   const { backEnabled, forwardEnabled, refreshEnabled } = useTitleBarButtonSettings();
   // 変更理由: 垂直モードでは更新ボタンをタイトルバー左端に置き、タブバーの上部を空ける。
-  // 水平モードではタブバー側に更新があるため左端は空のまま中央配置を保つ。
-  const showLeadingRefresh = tabBarOrientation === "vertical";
+  // 水平モードではタブバー側に更新があるため通常は左端を空けるが、別窓では
+  // タブバーが存在しないため、同じ既存ボタンをタイトルバーへ移して操作経路を保つ。
+  const showLeadingControls = tabBarOrientation === "vertical" || isDetachedTab(viewTab.id);
   const canNavigateBack = canGoBack(viewTab);
   const canNavigateForward = canGoForward(viewTab);
   const canRefresh = isPageRefreshable(viewPage);
@@ -44,7 +47,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ showNavigationButtons = true
   return (
     <header className="title-bar" data-testid="title-bar">
       <div className="title-bar__leading" data-testid="title-bar-leading">
-        {showLeadingRefresh && showNavigationButtons && (
+        {showLeadingControls && showNavigationButtons && (
           <>
             {backEnabled && (
               <button

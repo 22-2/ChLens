@@ -29,7 +29,6 @@ import { PageCountStatusProvider } from "src/view/browser/hooks/use-page-count-s
 import {
   PaneProvider,
   useTabDispatch,
-  useTabDispatchForTab,
   useTabPanes,
   useTabStore,
 } from "src/view/browser/hooks/use-tab-store";
@@ -37,14 +36,7 @@ import { TabViewScopeProvider } from "src/view/browser/hooks/use-tab-view-scope"
 import { useTheme } from "src/view/browser/hooks/use-theme";
 import { type ViewSurface, ViewSurfaceProvider } from "src/view/browser/hooks/use-view-surface";
 import { useWriteSessionControls } from "src/view/browser/hooks/use-write-session";
-import {
-  canGoBack,
-  canGoForward,
-  getCurrentPage,
-  type Page,
-  type Pane,
-  type Tab,
-} from "src/view/browser/types";
+import { getCurrentPage, type Page, type Pane, type Tab } from "src/view/browser/types";
 import { ToastProvider } from "src/view/browser/ui/Toast";
 
 interface TabWindowEntry extends AuxiliaryWindowHandle {
@@ -414,12 +406,7 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
                         {/* 別窓内の返信・別窓生成失敗などの通知を、表示中の窓へ出す。 */}
                         <ToastProvider topOffset="16px" rightOffset="16px" />
                         {/* 表示タブをContextで固定し、元ペインの選択変更に影響されない共通タイトルを出す。 */}
-                        <TitleBar showNavigationButtons={false} />
-                        <TabWindowToolbar
-                          tab={located.tab}
-                          onReattach={() => reattachTab(entry.tabId)}
-                          onClose={() => closeDetachedTab(entry.tabId)}
-                        />
+                        <TitleBar />
                         <div className="content-area">
                           <TabPanel
                             tab={located.tab}
@@ -448,47 +435,6 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
         );
       })}
     </DetachedTabControllerContext.Provider>
-  );
-};
-
-const TabWindowToolbar: React.FC<{
-  tab: Tab;
-  onReattach: () => void;
-  onClose: () => void;
-}> = ({ tab, onReattach, onClose }) => {
-  const dispatch = useTabDispatchForTab(tab.id);
-
-  return (
-    <nav className="detached-tab-toolbar" aria-label="別窓のタブ操作">
-      <span className="detached-tab-toolbar__title">別窓表示</span>
-      <div className="detached-tab-toolbar__actions">
-        <button
-          type="button"
-          disabled={!canGoBack(tab)}
-          onClick={() => dispatch(tabActions.goBack())}
-          title="前のページ"
-        >
-          戻る
-        </button>
-        <button
-          type="button"
-          disabled={!canGoForward(tab)}
-          onClick={() => dispatch(tabActions.goForward())}
-          title="次のページ"
-        >
-          進む
-        </button>
-        <button type="button" onClick={() => dispatch(tabActions.reload())} title="再読み込み">
-          更新
-        </button>
-        <button type="button" onClick={onReattach} title="メイン画面へ戻す">
-          戻す
-        </button>
-        <button type="button" onClick={onClose} title="タブと別窓を閉じる">
-          閉じる
-        </button>
-      </div>
-    </nav>
   );
 };
 
