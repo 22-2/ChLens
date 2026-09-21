@@ -16,38 +16,6 @@
   height: 100vh;
 }
 
-.write-window__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex: 0 0 auto;
-  min-height: 36px;
-  padding: 0 var(--sys-space-4);
-  border-bottom: 1px solid var(--sys-color-border);
-  background: var(--sys-color-surface-muted);
-}
-
-.write-window__title {
-  margin: 0;
-  font-size: var(--sys-font-size-md);
-  font-weight: 600;
-}
-
-.write-window__close {
-  padding: var(--sys-space-1) var(--sys-space-3);
-  border: 1px solid var(--sys-color-border);
-  border-radius: var(--sys-radius-md);
-  background: transparent;
-  color: var(--sys-color-text-muted);
-  cursor: pointer;
-  font: inherit;
-}
-
-.write-window__close:hover {
-  background: var(--sys-color-border);
-  color: var(--sys-color-text);
-}
-
 .write-window__content {
   flex: 1;
   min-height: 0;

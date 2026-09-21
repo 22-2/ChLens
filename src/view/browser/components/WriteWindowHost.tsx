@@ -40,17 +40,6 @@ export const WriteWindowHost: React.FC = () => {
       {/* 別窓側にも同じ通知UIを置き、投稿操作の結果をメイン窓へ流さない。 */}
       <ToastProvider topOffset="16px" rightOffset="16px" />
       <main className="write-window">
-        <header className="write-window__header">
-          <h1 className="write-window__title">書き込み</h1>
-          <button
-            type="button"
-            className="write-window__close"
-            onClick={closeWriteWindow}
-            aria-label="書き込み窓を閉じる"
-          >
-            閉じる
-          </button>
-        </header>
         <div className="write-window__content">
           <WritePanelContent
             standalone
