@@ -1,17 +1,14 @@
-import {
-  Bookmark,
-  BookmarkX,
-  Clipboard,
-  ExternalLink,
-  List,
-  Pin,
-  PinOff,
-  RotateCcw,
-  X,
-} from "lucide-react";
+import { ExternalLink, List, Pin, PinOff, RotateCcw, X } from "lucide-react";
 import React, { useMemo } from "react";
-import { container } from "src/service-container";
+import {
+  createThreadBookmarkMenuItem,
+  createThreadCopyMenuItems,
+} from "src/view/browser/components/thread-context-menu-items";
 import { tabActions } from "src/view/browser/hooks/tab-store-actions";
+import {
+  readBookmarkStatus,
+  useBookmarkRevision,
+} from "src/view/browser/hooks/use-bookmark-revision";
 import { useOptionalBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useDetachedTabController } from "src/view/browser/hooks/use-detached-tab-controller";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
@@ -20,9 +17,7 @@ import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import type { Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
 import { ContextMenu, ContextMenuItem } from "src/view/browser/ui/ContextMenu";
-import { copyText } from "src/view/browser/utils/clipboard";
 import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
-// `app.bookmark` はグローバルで提供されるサービス
 
 interface MenuPosition {
   x: number;
@@ -41,6 +36,7 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
   const bottomPanel = useOptionalBottomPanel();
   const toast = useToast();
   const { window: viewWindow } = useViewSurface();
+  const bookmarkRevision = useBookmarkRevision();
 
   const currentPage = getCurrentPage(tab);
   const isThread = currentPage.type === "thread";
@@ -71,9 +67,9 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
       { id: "sep-1", separator: true },
     ];
 
-    // 変更理由: 他・右側・すべてのタブを閉じる、右ペインで開く、URLとMarkdownのコピーは
-    // コマンドパレットへ移動したため、タブメニューには置かない。URL系は既存の
-    // copy.page-url / copy.page-title-url-markdown コマンドが同等の操作を提供する。
+    // 変更理由: 他・右側・すべてのタブを閉じる操作は、タブ固有のメニューから分離して
+    // コマンドパレットへ集約する。スレッド固有のブックマーク・コピーだけは一覧メニュー
+    // と同じ共通定義を使い、表示場所による操作差をなくす。
 
     if (canDetach) {
       result.push({
@@ -103,44 +99,17 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
     if (isThread) {
       const threadPage = currentPage as { threadUrl: string; title: string };
       const boardUrl = deriveBoardUrl(threadPage.threadUrl);
-      const isBookmarked = container.bookmark?.get(threadPage.threadUrl);
-      result.push({
-        id: "bookmark",
-        label: isBookmarked ? "ブックマークを削除" : "ブックマークに追加",
-        icon: isBookmarked ? <BookmarkX /> : <Bookmark />,
-        onSelect: () => {
-          try {
-            if (isBookmarked) {
-              container.bookmark.remove(threadPage.threadUrl);
-            } else {
-              container.bookmark.add({
-                url: threadPage.threadUrl,
-                title: threadPage.title,
-                type: "thread",
-              });
-            }
-          } catch (e) {
-            console.error("Bookmark operation failed", e);
-            // TODO: 共通のNoticeみたいなのがほしいな
-          }
-        },
-      });
-      result.push({
-        id: "copy-title",
-        label: "スレタイをコピー",
-        icon: <Clipboard />,
-        onSelect: () => {
-          void copyText(threadPage.title);
-        },
-      });
-      result.push({
-        id: "copy-title-url",
-        label: "スレタイ&URLをコピー",
-        icon: <Clipboard />,
-        onSelect: () => {
-          void copyText(`${threadPage.title}\n${threadPage.threadUrl}`);
-        },
-      });
+      // ブックマーク更新通知だけでもメニューのラベルを再生成するため、revisionを参照する。
+      void bookmarkRevision;
+      result.push(
+        createThreadBookmarkMenuItem({
+          target: { title: threadPage.title, url: threadPage.threadUrl },
+          isBookmarked: readBookmarkStatus(threadPage.threadUrl),
+        }),
+      );
+      result.push(
+        ...createThreadCopyMenuItems({ title: threadPage.title, url: threadPage.threadUrl }),
+      );
       result.push({ id: "sep-copy", separator: true });
       result.push({
         id: "to-board",
@@ -186,6 +155,7 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
     currentPage,
     dispatch,
     hasClosedTabs,
+    bookmarkRevision,
     tabIsDetached,
     isThread,
     bottomPanel,

@@ -1,17 +1,5 @@
-import {
-  Ban,
-  Bookmark,
-  BookmarkX,
-  Check,
-  Clipboard,
-  Copy,
-  ExternalLink,
-  RefreshCw,
-  Search,
-  Type,
-} from "lucide-react";
+import { Ban, Check, RefreshCw, Search } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { stringifyNgDslValue } from "src/core/ngDsl";
 import { container } from "src/service-container/index";
 import type { IReadState, IThread } from "src/service-container/interfaces";
 import { ContextMenuNavigationActions } from "src/view/browser/components/ContextMenuNavigationActions";
@@ -20,6 +8,7 @@ import {
   type DataTableSection,
   SimpleDataTable,
 } from "src/view/browser/components/SimpleDataTable";
+import { createThreadContextMenuItems } from "src/view/browser/components/thread-context-menu-items";
 import {
   calcHeat,
   createHighlightDividerStyle,
@@ -37,6 +26,7 @@ import {
   type ThreadListSortPreference,
   writeThreadListSortPreference,
 } from "src/view/browser/components/thread-list-shared";
+import { ThreadTitleNgDialog } from "src/view/browser/components/ThreadTitleNgDialog";
 import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import {
   readBookmarkStatus,
@@ -48,9 +38,10 @@ import {
 } from "src/view/browser/hooks/use-bottom-panel";
 import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
 import { useTabStore, useTabViewState } from "src/view/browser/hooks/use-tab-store";
+import { useThreadTitleNgDialog } from "src/view/browser/hooks/use-thread-title-ng-dialog";
+import { useToast } from "src/view/browser/hooks/use-toast";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { ContextMenu, type ContextMenuItem } from "src/view/browser/ui/ContextMenu";
-import { copyText, formatMarkdownLink } from "src/view/browser/utils/clipboard";
 import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
 
 interface ThreadListPanelProps {
@@ -169,6 +160,7 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
   // 変更理由: 下部パネルのスレ一覧も別窓へ移せるため、可視状態・更新タイマー・URL解析を
   // ページ本体と同じ表示先へ揃え、メイン窓の状態に引きずられないようにする。
   const { window: viewWindow, document: viewDocument } = useViewSurface();
+  const toast = useToast();
   const { isNgTemporarilyDisabled, setThreadListStats } = useNgStatus();
   const bookmarkRevision = useBookmarkRevision();
   const {
@@ -215,10 +207,11 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
     y: number;
     thread: IThread;
   } | null>(null);
-  const [ngDialogThread, setNgDialogThread] = useState<IThread | null>(null);
-  const [ngTitleDraft, setNgTitleDraft] = useState("");
-  const [ngDialogSaving, setNgDialogSaving] = useState(false);
-  const [ngDialogError, setNgDialogError] = useState<string | null>(null);
+  const threadTitleNgDialog = useThreadTitleNgDialog({
+    toast,
+    logLabel: "ThreadListPanel",
+  });
+  const { open: openThreadTitleNgDialog } = threadTitleNgDialog;
   const requestIdRef = useRef(0);
   const previousBoardUrlRef = useRef(descriptor.boardUrl);
   const skipViewStateUpdateRef = useRef(false);
@@ -525,95 +518,17 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
     }
   }, [isSearchOpen]);
 
-  const openNgDialog = useCallback((thread: IThread) => {
-    setNgDialogThread(thread);
-    setNgTitleDraft(thread.title);
-    setNgDialogError(null);
-  }, []);
-
-  const closeNgDialog = useCallback(() => {
-    if (!ngDialogSaving) {
-      setNgDialogThread(null);
-      setNgDialogError(null);
-    }
-  }, [ngDialogSaving]);
-
-  const registerThreadTitleNg = useCallback(async () => {
-    const title = ngTitleDraft.trim();
-    if (!title || ngDialogSaving) return;
-    setNgDialogSaving(true);
-    setNgDialogError(null);
-    const ngRule = `hide title contains:\n  ${stringifyNgDslValue(title)}`;
-    try {
-      await container.ng.add(ngRule);
-      container.toast.info(`スレタイをNGに追加しました: ${title}`);
-      setNgDialogThread(null);
-    } catch (registerError) {
-      console.error("[ThreadListPanel] thread title NG registration failed:", registerError);
-      const message =
-        registerError instanceof Error ? registerError.message : "NG登録に失敗しました";
-      setNgDialogError(message);
-      container.toast.error(message);
-    } finally {
-      setNgDialogSaving(false);
-    }
-  }, [ngDialogSaving, ngTitleDraft]);
-
   const contextMenuItems = useMemo<ContextMenuItem[]>(() => {
     if (!contextMenuState) return [];
     const { thread } = contextMenuState;
-    const isBookmarked = readBookmarkStatus(thread.url);
-    // 変更理由: 項目ごとに操作種別のアイコンを固定し、長い日本語ラベルでも
-    // メニューを開いた直後にNG・ブックマーク・コピーを見分けられるようにする。
-    return [
-      {
-        id: "ng-title",
-        label: "スレタイをNG登録",
-        icon: <Ban size={14} />,
-        onSelect: () => openNgDialog(thread),
-      },
-      {
-        id: "bookmark",
-        label: isBookmarked ? "ブックマークを削除" : "ブックマークに追加",
-        icon: isBookmarked ? <BookmarkX size={14} /> : <Bookmark size={14} />,
-        onSelect: () => {
-          try {
-            if (isBookmarked) {
-              container.bookmark.remove(thread.url);
-            } else {
-              container.bookmark.add({ url: thread.url, title: thread.title, type: "thread" });
-            }
-          } catch (bookmarkError) {
-            console.error("[ThreadListPanel] bookmark update failed:", bookmarkError);
-          }
-        },
-      },
-      {
-        id: "copy-title",
-        label: "スレタイをコピー",
-        icon: <Type size={14} />,
-        onSelect: () => void copyText(thread.title),
-      },
-      {
-        id: "copy-url",
-        label: "URLをコピー",
-        icon: <ExternalLink size={14} />,
-        onSelect: () => void copyText(thread.url),
-      },
-      {
-        id: "copy-title-url",
-        label: "スレタイ&URLをコピー",
-        icon: <Copy size={14} />,
-        onSelect: () => void copyText(`${thread.title}\n${thread.url}`),
-      },
-      {
-        id: "copy-title-url-markdown",
-        label: "スレタイ&URLをMarkdownでコピー",
-        icon: <Clipboard size={14} />,
-        onSelect: () => void copyText(formatMarkdownLink(thread.title, thread.url)),
-      },
-    ];
-  }, [contextMenuState, openNgDialog]);
+    // ブックマークの外部更新でもメニューの表示を取り直すため、revisionを依存値に含める。
+    void bookmarkRevision;
+    return createThreadContextMenuItems({
+      target: { title: thread.title, url: thread.url },
+      isBookmarked: readBookmarkStatus(thread.url),
+      onRegisterTitleNg: () => openThreadTitleNgDialog(thread),
+    });
+  }, [bookmarkRevision, contextMenuState, openThreadTitleNgDialog]);
 
   const closeContextMenu = useCallback(() => setContextMenuState(null), []);
   const contextMenuNavigationActions = contextMenuState ? (
@@ -801,67 +716,7 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
           onClose={() => setRefreshMenuPosition(null)}
         />
       )}
-      {ngDialogThread && (
-        <div className="bookmark-root-dialog thread-ng-dialog" role="presentation">
-          <button
-            type="button"
-            className="bookmark-root-dialog__backdrop"
-            aria-label="スレタイNG登録を閉じる"
-            onClick={closeNgDialog}
-          />
-          <div
-            className="bookmark-root-dialog__panel thread-ng-dialog__panel"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="thread-list-panel-ng-dialog-title"
-          >
-            <div className="bookmark-root-dialog__header">
-              <div>
-                <p className="bookmark-root-dialog__eyebrow">Thread NG</p>
-                <h2 id="thread-list-panel-ng-dialog-title">スレタイをNG登録</h2>
-              </div>
-              <button
-                type="button"
-                className="bookmark-root-dialog__close"
-                onClick={closeNgDialog}
-                disabled={ngDialogSaving}
-              >
-                閉じる
-              </button>
-            </div>
-            <p className="bookmark-root-dialog__description">
-              次のスレタイをNGワードへ追加します。
-            </p>
-            <label className="thread-ng-dialog__field">
-              <span>スレタイ</span>
-              <textarea
-                value={ngTitleDraft}
-                onChange={(event) => setNgTitleDraft(event.target.value)}
-                rows={3}
-              />
-            </label>
-            {ngDialogError && <p className="bookmark-root-dialog__error">{ngDialogError}</p>}
-            <div className="bookmark-root-dialog__actions">
-              <button
-                type="button"
-                className="bookmark-root-dialog__secondary"
-                onClick={closeNgDialog}
-                disabled={ngDialogSaving}
-              >
-                キャンセル
-              </button>
-              <button
-                type="button"
-                className="bookmark-root-dialog__primary"
-                onClick={() => void registerThreadTitleNg()}
-                disabled={ngDialogSaving || !ngTitleDraft.trim()}
-              >
-                登録
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ThreadTitleNgDialog controller={threadTitleNgDialog} />
     </div>
   );
 };

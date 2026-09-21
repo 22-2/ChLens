@@ -63,26 +63,32 @@ describe("TabContextMenu", () => {
   it("コマンドへ移動した項目をタブメニューに表示しない", () => {
     render(<TabContextMenu tab={threadTab} position={{ x: 10, y: 10 }} onClose={vi.fn()} />);
 
-    // 変更理由: 他・右側・すべてのタブを閉じる、右ペインで開く、URLとMarkdownのコピーは
-    // コマンドパレットへ移動したため、タブメニューには置かない。
+    // 変更理由: 他・右側・すべてのタブを閉じる操作はコマンドパレットへ移動したため、
+    // タブメニューには置かない。スレッドのコピー3項目は共通メニューとして残す。
     expect(screen.queryByRole("button", { name: "他のタブを閉じる" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "右側のタブを閉じる" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "すべて閉じる" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "右のペインで開く" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "URLをコピー" })).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "スレタイ&URLをMarkdownでコピー" }),
     ).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "datのURLをコピー" })).not.toBeInTheDocument();
   });
 
-  it("残したスレタイ&URLのコピーをタブメニューから実行できる", () => {
+  it("スレッドのコピー項目を統一された順序とアイコンで表示する", () => {
     render(<TabContextMenu tab={threadTab} position={{ x: 10, y: 10 }} onClose={vi.fn()} />);
 
-    expect(screen.getByRole("button", { name: "タブを閉じる" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "スレタイ&URLをコピー" })).toBeInTheDocument();
+    const copyLabels = ["スレタイをコピー", "URLをコピー", "スレタイ＆URLをコピー"];
+    const copyButtons = Array.from(
+      document.querySelectorAll<HTMLButtonElement>(".context-menu__item"),
+    ).filter((button) => copyLabels.includes(button.textContent?.trim() ?? ""));
+    expect(copyButtons).toHaveLength(copyLabels.length);
+    expect(copyButtons.map((button) => button.textContent?.trim())).toEqual(copyLabels);
+    for (const button of copyButtons) {
+      expect(button.querySelector("svg")).toHaveClass("lucide-clipboard");
+    }
 
-    fireEvent.click(screen.getByRole("button", { name: "スレタイ&URLをコピー" }));
+    fireEvent.click(copyButtons[2]!);
     expect(copyTextMock).toHaveBeenLastCalledWith(
       "Current Thread\nhttps://example.com/test/read.cgi/software/123/",
     );

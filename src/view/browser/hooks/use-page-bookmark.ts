@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { container } from "src/service-container/index";
+import { readBookmarkStatus } from "src/view/browser/hooks/use-bookmark-revision";
 import type { Page } from "src/view/browser/types";
 import { waitForLegacyBookmarkReady } from "src/view/browser/utils/legacy-app";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
@@ -52,15 +53,6 @@ function normalizeBookmarkComparableUrl(url: string): string {
     return new window.URL(url).href;
   } catch {
     return url.trim();
-  }
-}
-
-function readBookmarkStatus(url: string): boolean {
-  try {
-    return Boolean(container.bookmark.get(url));
-  } catch {
-    // 起動中は bookmark service が未接続のことがあるため、UIを壊さず未登録として描画する。
-    return false;
   }
 }
 

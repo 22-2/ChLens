@@ -868,7 +868,8 @@ describe("ThreadListPage", () => {
       expect(menu?.querySelector('[aria-label="進む"]')).not.toBeNull();
       expect(menu?.querySelector('[aria-label="更新"]')).not.toBeNull();
       expect(menu?.querySelector(".context-menu__header-actions")).not.toBeNull();
-      expect(menu?.querySelectorAll(".context-menu__item .context-menu__icon")).toHaveLength(6);
+      // NG・ブックマーク・タイトル・URL・タイトルとURLの5項目を共通定義から表示する。
+      expect(menu?.querySelectorAll(".context-menu__item .context-menu__icon")).toHaveLength(5);
     });
   });
 
