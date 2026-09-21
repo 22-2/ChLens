@@ -3,6 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import { fireEvent, render } from "@testing-library/react";
 import { useState } from "react";
 import { ResBody } from "src/view/browser/components/ResBody";
+import { ViewSurfaceProvider } from "src/view/browser/hooks/use-view-surface";
 import { RESPECT_DEFAULT_EXTERNAL } from "src/view/browser/utils/link-routing";
 import { describe, expect, it, vi } from "vite-plus/test";
 
@@ -129,6 +130,45 @@ describe("ResBody anchor behavior", () => {
 
     expect(onAnchorClick).toHaveBeenCalledOnce();
     expect(onAnchorClick).toHaveBeenCalledWith(5);
+  });
+
+  it("別窓のDOMでもアンカーのhoverとクリックを処理する", () => {
+    const iframe = document.createElement("iframe");
+    document.body.appendChild(iframe);
+    const viewDocument = iframe.contentDocument;
+    const viewWindow = iframe.contentWindow;
+    if (!viewDocument || !viewWindow) {
+      iframe.remove();
+      throw new Error("別窓テスト用のiframeを初期化できませんでした");
+    }
+
+    const onAnchorClick = vi.fn();
+    const onAnchorHover = vi.fn();
+    const { container, unmount } = render(
+      <ViewSurfaceProvider surface={{ document: viewDocument, window: viewWindow }}>
+        <ResBody
+          messageHtml={ANCHOR_HTML}
+          anchorPreviewDepth={0}
+          onUrlClick={() => {}}
+          onUrlContextMenu={() => {}}
+          onIdLinkClick={() => {}}
+          onAnchorClick={onAnchorClick}
+          onAnchorHover={onAnchorHover}
+          onAnchorLeave={() => {}}
+        />
+      </ViewSurfaceProvider>,
+      { container: viewDocument.body },
+    );
+
+    const anchor = container.querySelector("a.anchor") as HTMLAnchorElement;
+    fireEvent.mouseOver(anchor);
+    fireEvent.click(anchor);
+
+    expect(onAnchorHover).toHaveBeenCalledWith([5], expect.any(Object), ">>5", 0);
+    expect(onAnchorClick).toHaveBeenCalledWith(5);
+
+    unmount();
+    iframe.remove();
   });
 
   it("NGレスへのアンカークリック時も対象レスへジャンプする", () => {

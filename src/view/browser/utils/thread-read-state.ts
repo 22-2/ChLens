@@ -1,4 +1,5 @@
 import type { IReadState } from "src/service-container/interfaces";
+import { isHTMLElementInWindow } from "src/view/browser/utils/dom";
 
 const THREAD_RES_JUMP_EVENT = "thread-res-jump";
 const threadJumpEventTarget = new EventTarget();
@@ -42,7 +43,10 @@ function getResponseElements(host: HTMLElement): HTMLElement[] {
 
 export function findThreadScrollContainer(host: HTMLElement | null): HTMLElement | null {
   const container = host?.closest(".content-area__tab-panel");
-  return container instanceof HTMLElement ? container : null;
+  // 別窓のスクロール領域は主窓のHTMLElementと異なるため、hostの文書に属する
+  // Windowのコンストラクタで判定し、既読位置とレスジャンプの対象を失わない。
+  const targetWindow = host?.ownerDocument.defaultView ?? globalThis.window;
+  return isHTMLElementInWindow(container, targetWindow) ? container : null;
 }
 
 export function scrollThreadToResponse(
@@ -55,7 +59,10 @@ export function scrollThreadToResponse(
   }
 
   const target = host.querySelector(`.thread-page__responses [data-res-num="${resNum}"]`);
-  if (!(target instanceof HTMLElement)) {
+  // Portal先のレス要素を主窓のHTMLElementで判定するとジャンプがfalseになるため、
+  // 実際のhostが属するWindowへ判定を揃える。
+  const targetWindow = host.ownerDocument.defaultView ?? globalThis.window;
+  if (!isHTMLElementInWindow(target, targetWindow)) {
     return false;
   }
 

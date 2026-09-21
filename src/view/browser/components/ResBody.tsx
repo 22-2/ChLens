@@ -50,10 +50,16 @@ function getAnchorHoverKey(anchor: HTMLAnchorElement): string {
   return `${label}:${Math.round(rect.left)}:${Math.round(rect.top)}`;
 }
 
-function getAnchorElement(target: EventTarget | null): HTMLAnchorElement | null {
-  const element = getEventTargetElement(target);
+function getAnchorElement(
+  target: EventTarget | null,
+  targetWindow: Window = globalThis.window,
+): HTMLAnchorElement | null {
+  const element = getEventTargetElement(target, targetWindow);
   const anchor = element?.closest("a");
-  return anchor instanceof HTMLAnchorElement ? anchor : null;
+  // 別窓のDOM要素は主窓のHTMLAnchorElementとは別コンストラクタになるため、
+  // 表示先Windowの判定を使ってアンカー操作を別窓でも受け取る。
+  const targetWindowWithConstructors = targetWindow as Window & typeof globalThis;
+  return anchor instanceof targetWindowWithConstructors.HTMLAnchorElement ? anchor : null;
 }
 
 function getNavigableHref(anchor: HTMLAnchorElement): string | null {
@@ -137,7 +143,10 @@ function useResBodyInteractionHandlers({
   onAnchorClick,
   onAnchorHover,
   onAnchorLeave,
-}: Omit<ResBodyProps, "messageHtml" | "ngResNums">): ResBodyInteractionHandlers {
+  viewWindow,
+}: Omit<ResBodyProps, "messageHtml" | "ngResNums"> & {
+  viewWindow: Window;
+}): ResBodyInteractionHandlers {
   const hoveredAnchorKeyRef = useRef<string | null>(null);
   const middleClickStateRef = useRef<MiddleClickState>({
     href: null,
@@ -162,9 +171,12 @@ function useResBodyInteractionHandlers({
 
   const handleMouseOver = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
-      const target = getEventTargetElement(e.target);
+      const target = getEventTargetElement(e.target, viewWindow);
       const anchor = target?.closest(ANCHOR_SELECTOR);
-      if (!(anchor instanceof HTMLAnchorElement)) {
+      // 別窓のアンカーを主窓のinstanceofで判定するとhover起点まで捨てられるため、
+      // イベントを受けた表示先のコンストラクタで判定する。
+      const targetWindowWithConstructors = viewWindow as Window & typeof globalThis;
+      if (!(anchor instanceof targetWindowWithConstructors.HTMLAnchorElement)) {
         if (hoveredAnchorKeyRef.current) {
           clearHoveredAnchor();
           notifyAnchorLeave();
@@ -189,7 +201,7 @@ function useResBodyInteractionHandlers({
       // 同じアンカー上の細かなマウス移動では再配置せず、プレビューを安定表示させる。
       onAnchorHover(targets, anchor.getBoundingClientRect(), label, anchorPreviewDepth);
     },
-    [anchorPreviewDepth, clearHoveredAnchor, notifyAnchorLeave, onAnchorHover],
+    [anchorPreviewDepth, clearHoveredAnchor, notifyAnchorLeave, onAnchorHover, viewWindow],
   );
 
   const handleMouseLeave = useCallback(() => {
@@ -203,7 +215,7 @@ function useResBodyInteractionHandlers({
         return;
       }
 
-      const anchor = getAnchorElement(e.target);
+      const anchor = getAnchorElement(e.target, viewWindow);
       if (!anchor) {
         return;
       }
@@ -228,12 +240,12 @@ function useResBodyInteractionHandlers({
         stopEvent(e);
       }
     },
-    [onMiddleClickStart, onUrlClick],
+    [onMiddleClickStart, onUrlClick, viewWindow],
   );
 
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
-      const anchor = getAnchorElement(e.target);
+      const anchor = getAnchorElement(e.target, viewWindow);
       if (!anchor) {
         return;
       }
@@ -268,12 +280,12 @@ function useResBodyInteractionHandlers({
         stopEvent(e);
       }
     },
-    [onAnchorClick, onIdLinkClick, onUrlClick],
+    [onAnchorClick, onIdLinkClick, onUrlClick, viewWindow],
   );
 
   const handleAuxClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
-      const anchor = getAnchorElement(e.target);
+      const anchor = getAnchorElement(e.target, viewWindow);
       if (!anchor) {
         return;
       }
@@ -305,21 +317,24 @@ function useResBodyInteractionHandlers({
         stopEvent(e);
       }
     },
-    [onMiddleClickStart, onUrlClick],
+    [onMiddleClickStart, onUrlClick, viewWindow],
   );
 
-  const handleContextMenu = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const anchor = getAnchorElement(e.target);
-    if (!anchor || isManagedAnchor(anchor)) {
-      return;
-    }
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      const anchor = getAnchorElement(e.target, viewWindow);
+      if (!anchor || isManagedAnchor(anchor)) {
+        return;
+      }
 
-    if (!getNavigableHref(anchor)) {
-      return;
-    }
+      if (!getNavigableHref(anchor)) {
+        return;
+      }
 
-    // 画像/リンクの右クリックは拡張内リンクでもネイティブメニューを優先する。
-  }, []);
+      // 画像/リンクの右クリックは拡張内リンクでもネイティブメニューを優先する。
+    },
+    [viewWindow],
+  );
 
   return {
     onMouseOver: handleMouseOver,
@@ -346,7 +361,7 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
     ngResNums,
     resMap,
   }) => {
-    const { document: viewDocument } = useViewSurface();
+    const { window: viewWindow, document: viewDocument } = useViewSurface();
     const interactionHandlers = useResBodyInteractionHandlers({
       anchorPreviewDepth,
       onUrlClick,
@@ -356,6 +371,7 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
       onAnchorClick,
       onAnchorHover,
       onAnchorLeave,
+      viewWindow,
     });
     const highlightedMessageHtml = useMemo(
       () => highlightSearchMatches(messageHtml, searchQuery),
