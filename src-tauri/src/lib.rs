@@ -1,7 +1,69 @@
 mod download;
 mod write_transport;
 
-use tauri::{Manager, WindowEvent};
+use std::sync::{
+  atomic::{AtomicU64, Ordering},
+  Arc,
+};
+
+use tauri::{
+  webview::{NewWindowFeatures, NewWindowResponse, WebviewWindowBuilder},
+  AppHandle, Manager, Runtime, Url, WebviewUrl, WindowEvent,
+};
+
+/// `window.open` で要求された子窓を、既存の WindowProxy から操作できる Tauri 窓として作る。
+///
+/// ブラウザ版と同じく空のドキュメントを先に返し、フロントエンド側がそのドキュメントへ
+/// ポータルを移植する。URL を直接読み込む方式にすると WindowProxy とポータルの接続が
+/// 切れてしまうため、空窓の生成と外部 URL の許可をここで分けている。
+fn create_requested_window<R: Runtime>(
+  app: &AppHandle<R>,
+  next_label: &Arc<AtomicU64>,
+  url: Url,
+  features: NewWindowFeatures,
+) -> NewWindowResponse<R> {
+  // `window.open("", ...)` は about:blank を要求する。その他の URL は外部リンクなので、
+  // WebView2 の既定処理へ渡し、既定のポップアップとして開けるようにする。
+  if url.as_str() != "about:blank" {
+    return NewWindowResponse::Allow;
+  }
+
+  // 別窓側からさらに書き込み窓やタブ窓を開けるよう、子窓にも同じハンドラを登録する。
+  let child_app = app.clone();
+  let child_next_label = Arc::clone(next_label);
+  let label = format!("chlens-popup-{}", next_label.fetch_add(1, Ordering::Relaxed));
+
+  let builder = WebviewWindowBuilder::new(
+    app,
+    label,
+    WebviewUrl::External("about:blank".parse().expect("about:blank is a valid URL")),
+  )
+  .window_features(features)
+  .on_new_window(move |url, features| {
+    create_requested_window(&child_app, &child_next_label, url, features)
+  })
+  .on_document_title_changed(|window, title| {
+    if let Err(error) = window.set_title(&title) {
+      log::error!("別窓のタイトル更新に失敗しました: {error}");
+    }
+  })
+  .title("chlens");
+
+  match builder.build() {
+    Ok(window) => NewWindowResponse::Create { window },
+    Err(error) => {
+      log::error!("Tauriの別窓作成に失敗しました: {error}");
+      NewWindowResponse::Deny
+    }
+  }
+}
+
+fn new_window_handler<R: Runtime>(
+  app: AppHandle<R>,
+  next_label: Arc<AtomicU64>,
+) -> impl Fn(Url, NewWindowFeatures) -> NewWindowResponse<R> + Send + 'static {
+  move |url, features| create_requested_window(&app, &next_label, url, features)
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -33,6 +95,21 @@ pub fn run() {
             .build(),
         )?;
       }
+
+      // Tauriの自動生成では新規ウィンドウのハンドラを登録できないため、Mainだけは
+      // 設定の `create` を無効にし、同じ設定からハンドラ付きで生成する。
+      let main_config = app
+        .config()
+        .app
+        .windows
+        .iter()
+        .find(|config| config.label == "main")
+        .ok_or_else(|| tauri::Error::WindowNotFound)?;
+      let next_label = Arc::new(AtomicU64::new(0));
+      WebviewWindowBuilder::from_config(app.handle(), main_config)?
+        .on_new_window(new_window_handler(app.handle().clone(), next_label))
+        .build()?;
+
       if let Some(overlay) = tauri::Manager::get_webview_window(app, "comment-overlay") {
         overlay.set_ignore_cursor_events(true)?;
       }
