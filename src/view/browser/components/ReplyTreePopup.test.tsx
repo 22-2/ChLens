@@ -179,7 +179,7 @@ describe("ReplyTreePopup", () => {
 
     expect(writeText).toHaveBeenCalledOnce();
     // @ts-expect-error: mock.calls の引数型は vi.fn の型定義から推論されない
-    expect(writeText.mock.calls[0]?.[0]).toContain("[参照元レス]");
+    expect(writeText.mock.calls[0]?.[0]).not.toContain("[参照元レス]");
     // @ts-expect-error: 同上
     expect(writeText.mock.calls[0]?.[0]).toContain("1 name-1");
     // @ts-expect-error: 同上
@@ -302,7 +302,7 @@ describe("ReplyTreePopup", () => {
     if (!copiedText) {
       throw new Error("コピーされたテキストがありません");
     }
-    expect(copiedText).toContain("[参照元レス]");
+    expect(copiedText).not.toContain("[参照元レス]");
     expect(copiedText).toContain("[返信レス]");
     expect(copiedText.indexOf("1 name-1")).toBeLessThan(copiedText.indexOf("2 name-2"));
     expect(copiedText).not.toContain("3 name-3");

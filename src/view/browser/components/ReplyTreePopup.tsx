@@ -473,7 +473,9 @@ function buildReplyTreeCopyText(
   threadTitle?: string,
   threadUrl?: string,
 ): string {
-  const sections = ["[参照元レス]", formatResForCopy(sourceRes)];
+  // 変更理由: 参照元レスの内容は残しつつ、内部向けの見出しを除いて
+  // コピー先へそのまま貼り付けやすいレス列にする。
+  const sections = [formatResForCopy(sourceRes)];
   if (replyResponses.length > 0) {
     sections.push("", "[返信レス]", replyResponses.map(formatResForCopy).join("\n\n"));
   }
@@ -601,7 +603,7 @@ export const ReplyTreePopup: React.FC<{
           // 返信ツリー全体も「起点から下へ辿る」操作なので、子ツリーのコピーと同じ向きで示す。
           icon: <CornerDownRight size={14} />,
           onSelect: () => {
-            // 参照元レスも一緒に入れておくと、コピー先だけ見ても何への返信ツリーか判別できる。
+            // 参照元レスの内容も先頭に含め、見出しなしで自然なレス列として貼り付けられるようにする。
             void copyText(
               buildReplyTreeCopyText(sourceRes, replyResponses, threadTitle, threadUrl),
             );
