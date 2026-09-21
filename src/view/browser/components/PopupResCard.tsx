@@ -41,6 +41,9 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
     const ngDisplayMode = useNgDisplayMode();
     const decoded = useMemo(() => decodeResponseHtml(res, messageProtocol), [messageProtocol, res]);
+    // ポップアップも自動更新中の親再描画に巻き込まれるため、同じHTMLの再代入を避けて
+    // 選択中のText nodeを維持する。
+    const nameMarkup = useMemo(() => ({ __html: decoded.nameHtml }), [decoded.nameHtml]);
     const urls = useMemo(() => extractUrlsFromMessage(decoded.messageHtml), [decoded.messageHtml]);
     const resolvedMedia = useImgurAlbumMedia(decoded.messageHtml, urls, threadKey);
 
@@ -124,7 +127,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
       >
         <header className="res__header">
           <span className={resNumClassName}>{res.num}</span>
-          <span className="res__name" dangerouslySetInnerHTML={{ __html: decoded.nameHtml }} />
+          <span className="res__name" dangerouslySetInnerHTML={nameMarkup} />
           {isNgMatched ? <NgBadge result={res.ng} /> : null}
           {isNgActive && ngDisplayMode === "soft-ng" && isNgRevealed ? (
             <button

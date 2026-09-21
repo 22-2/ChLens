@@ -91,6 +91,9 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
       () => highlightSearchMatches(decoded.nameHtml, searchQuery),
       [decoded.nameHtml, searchQuery],
     );
+    // React 19 は同じ名前HTMLでも wrapper object が毎回変わると innerHTML を再代入する。
+    // 本文更新時に名前欄を選択している場合も、Text nodeを置換せず選択範囲を維持する。
+    const nameMarkup = useMemo(() => ({ __html: highlightedNameHtml }), [highlightedNameHtml]);
     const urls = useMemo(() => extractUrlsFromMessage(decoded.messageHtml), [decoded.messageHtml]);
     const resolvedMedia = useImgurAlbumMedia(decoded.messageHtml, urls, threadUrl);
     const replyHeat = getReplyHeatLevel(repCount);
@@ -161,10 +164,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
       >
         <header className="res__header">
           <span className={resNumClassName}>{res.num}</span>
-          <span
-            className={nameClassName}
-            dangerouslySetInnerHTML={{ __html: highlightedNameHtml }}
-          />
+          <span className={nameClassName} dangerouslySetInnerHTML={nameMarkup} />
           {isOwn ? <span className="res__badge res__badge--own">自分</span> : null}
           {isReplyToOwn ? <span className="res__badge res__badge--reply-to-own">返信</span> : null}
           {isNgMatched ? <NgBadge result={res.ng} /> : null}

@@ -384,13 +384,13 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
       }
       return template.innerHTML;
     }, [highlightedMessageHtml, ngResNums, resMap, viewDocument]);
+    // React 19 は dangerouslySetInnerHTML の object identity が変わると、
+    // HTML文字列が同じでも innerHTML を再代入して選択中のText nodeを置換する。
+    // 自動更新時の親再描画では同じHTMLを再利用し、ユーザーの選択範囲を保持する。
+    const bodyMarkup = useMemo(() => ({ __html: decoratedMessageHtml }), [decoratedMessageHtml]);
 
     return (
-      <div
-        className="res__body"
-        dangerouslySetInnerHTML={{ __html: decoratedMessageHtml }}
-        {...interactionHandlers}
-      />
+      <div className="res__body" dangerouslySetInnerHTML={bodyMarkup} {...interactionHandlers} />
     );
   },
 );

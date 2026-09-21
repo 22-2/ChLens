@@ -13,6 +13,49 @@ const INTERNAL_URL_HTML =
 const ID_LINK_HTML = '<a href="javascript:undefined;" class="anchor_id">id:ABC123(4)</a>';
 
 describe("ResBody anchor behavior", () => {
+  it("同じHTMLの再描画では本文のテキスト選択を保持する", () => {
+    const { container, rerender } = render(
+      <ResBody
+        messageHtml="選択する本文"
+        anchorPreviewDepth={0}
+        onUrlClick={() => {}}
+        onUrlContextMenu={() => {}}
+        onIdLinkClick={() => {}}
+        onAnchorClick={() => {}}
+        onAnchorHover={() => {}}
+        onAnchorLeave={() => {}}
+      />,
+    );
+
+    const body = container.querySelector(".res__body") as HTMLDivElement;
+    const textNode = body.firstChild;
+    const selection = body.ownerDocument.getSelection();
+    const range = body.ownerDocument.createRange();
+    range.selectNodeContents(body);
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+
+    expect(selection?.toString()).toBe("選択する本文");
+
+    rerender(
+      <ResBody
+        messageHtml="選択する本文"
+        ngResNums={new Set()}
+        resMap={new Map()}
+        anchorPreviewDepth={0}
+        onUrlClick={() => {}}
+        onUrlContextMenu={() => {}}
+        onIdLinkClick={() => {}}
+        onAnchorClick={() => {}}
+        onAnchorHover={() => {}}
+        onAnchorLeave={() => {}}
+      />,
+    );
+
+    expect(body.firstChild).toBe(textNode);
+    expect(selection?.toString()).toBe("選択する本文");
+  });
+
   it("rerender後も同じアンカーhoverで onAnchorHover を再発火しない", () => {
     const onAnchorHover = vi.fn();
     const rect: DOMRect = {
