@@ -45,8 +45,12 @@ interface UseAutoRefreshOptions {
   onNewResponses?: (count: number, previousLastResponseNum: number | null) => void;
   /** 新着が一定回数(=間隔×N)来ず放置と判断したとき、自動更新を止めるために呼ぶ。 */
   onAutoStop?: () => void;
+  /** 次スレ探索中は、候補が見つかるまでタブ側の自動更新解除を保留する。 */
+  deferAutoStop?: boolean;
   /** dat落ちを検知して自動更新を止めるとき、一度だけ呼ぶ。 */
   onThreadExpired?: () => void;
+  /** 次スレ探索中は、候補が見つかるまで dat 落ちによる解除通知を保留する。 */
+  deferExpiredStop?: boolean;
 }
 
 export interface UseAutoRefreshResult {
@@ -71,7 +75,9 @@ export function useAutoRefresh({
   requestRefresh,
   onNewResponses,
   onAutoStop,
+  deferAutoStop = false,
   onThreadExpired,
+  deferExpiredStop = false,
 }: UseAutoRefreshOptions): UseAutoRefreshResult {
   const { window: viewWindow, document: viewDocument } = useViewSurface();
   const { markInternalRefreshRequest, consumeRefreshKeyChange, consumeRefreshCompletionGate } =
@@ -163,12 +169,17 @@ export function useAutoRefresh({
       return;
     }
 
-    // expired になった時点で保留中の追従を破棄し、停止通知後に古い更新を反映しない。
-    threadExpiredHandledRef.current = true;
+    // expired になった時点で保留中の追従を破棄する。通信タイマーは別の effect で
+    // 停止したまま、次スレ探索中だけタブ側の停止通知を保留して探索を競合させない。
     pendingRefreshRef.current = null;
     userInterruptedRef.current = false;
+    if (deferExpiredStop) {
+      return;
+    }
+
+    threadExpiredHandledRef.current = true;
     onThreadExpiredRef.current?.();
-  }, [enabled, expired]);
+  }, [deferExpiredStop, enabled, expired]);
 
   useEffect(() => {
     loadingRef.current = loading;
@@ -662,9 +673,14 @@ export function useAutoRefresh({
         } else {
           consecutiveIdleRefreshRef.current += 1;
           if (consecutiveIdleRefreshRef.current >= THREAD_AUTO_REFRESH_IDLE_STOP_COUNT) {
-            consecutiveIdleRefreshRef.current = 0;
-            onAutoStopRef.current?.();
-            return;
+            if (deferAutoStop) {
+              // 次スレ探索が終わるまで累積を保持し、解除後の次回更新で通常停止へ戻す。
+              consecutiveIdleRefreshRef.current = THREAD_AUTO_REFRESH_IDLE_STOP_COUNT;
+            } else {
+              consecutiveIdleRefreshRef.current = 0;
+              onAutoStopRef.current?.();
+              return;
+            }
           }
         }
       } else if (timeoutMs !== null) {
@@ -672,6 +688,10 @@ export function useAutoRefresh({
         if (!hasNewResponses && lastNewResponseTimeRef.current != null) {
           const elapsed = Date.now() - lastNewResponseTimeRef.current;
           if (elapsed >= timeoutMs) {
+            if (deferAutoStop) {
+              // 保留中に基準時刻を消すと、探索終了後も時間ベース停止へ戻れない。
+              return;
+            }
             lastNewResponseTimeRef.current = null;
             onAutoStopRef.current?.();
             return;
@@ -725,6 +745,7 @@ export function useAutoRefresh({
     pauseAutoScroll,
     responseCount,
     consumeRefreshCompletionGate,
+    deferAutoStop,
     showScrollingIndicator,
     syncCanAutoScroll,
     viewWindow,

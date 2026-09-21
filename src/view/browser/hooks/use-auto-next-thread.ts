@@ -15,7 +15,7 @@ const NEXT_THREAD_SEARCH_RETRY_MS = 3_000;
 const MAINSTREAM_WATCH_GRACE_PERIOD_MS = 15_000;
 const MAINSTREAM_WATCH_DURATION_MS = 60_000;
 const MAINSTREAM_WATCH_RETRY_MS = 5_000;
-const NEXT_THREAD_TRIGGER_RES_COUNT = 1000;
+export const NEXT_THREAD_TRIGGER_RES_COUNT = 1000;
 const REQUIRED_CANDIDATE_CONFIRMATIONS: Record<AutoNextThreadMode, number> = {
   cautious: 3,
   balanced: 2,
@@ -40,6 +40,8 @@ interface UseAutoNextThreadOptions {
    */
   canAutoScroll: boolean;
   followThread: (thread: Pick<IThread, "title" | "url">) => void;
+  /** 候補を見つけられず探索を終えたときだけ、自動更新の停止を通知する。 */
+  onSearchExhausted?: () => void;
   toast?: Pick<IToastService, "info">;
 }
 
@@ -67,6 +69,7 @@ export function useAutoNextThread({
   responseMessages,
   canAutoScroll,
   followThread,
+  onSearchExhausted,
   toast = container.toast,
 }: UseAutoNextThreadOptions): { status: AutoNextThreadStatus } {
   const { window: viewWindow, document: viewDocument } = useViewSurface();
@@ -179,6 +182,7 @@ export function useAutoNextThread({
           threadUrl,
         });
         setStatus("idle");
+        onSearchExhausted?.();
         return;
       }
 
@@ -189,6 +193,11 @@ export function useAutoNextThread({
       while (!cancelled && Date.now() < deadline) {
         try {
           const result = await container.board.getThreads(boardUrl);
+          // 取得中にタブが切り替わったり探索条件が無効になった場合は、
+          // 古い subject.txt の結果で別スレへ遷移させない。
+          if (cancelled) {
+            return;
+          }
           const match = findNextThreadMatch(
             result.threads,
             {
@@ -249,11 +258,15 @@ export function useAutoNextThread({
           });
         }
 
+        if (cancelled) {
+          return;
+        }
         await delay(NEXT_THREAD_SEARCH_RETRY_MS);
       }
 
       if (!cancelled) {
         setStatus("idle");
+        onSearchExhausted?.();
       }
     };
 
@@ -277,6 +290,7 @@ export function useAutoNextThread({
     featureEnabled,
     isDocumentVisible,
     mode,
+    onSearchExhausted,
     responseCount,
     threadTitle,
     threadUrl,
@@ -320,6 +334,10 @@ export function useAutoNextThread({
 
         try {
           const result = await container.board.getThreads(watchState.boardUrl);
+          // 取得中に次スレ監視が解除された場合は、古い板一覧を使わず終了する。
+          if (cancelled) {
+            return;
+          }
           const previousSnapshot = mainstreamSnapshotRef.current;
           mainstreamSnapshotRef.current = {
             threads: result.threads,
@@ -372,6 +390,9 @@ export function useAutoNextThread({
           });
         }
 
+        if (cancelled) {
+          return;
+        }
         await delay(MAINSTREAM_WATCH_RETRY_MS);
       }
 

@@ -18,7 +18,10 @@ import { ThreadScrollFloatingActions } from "src/view/browser/components/ThreadS
 import { WheelScrollIndicator } from "src/view/browser/components/WheelScrollIndicator";
 import type { ContextMenuPopupItem } from "src/view/browser/hooks/popup-manager/types";
 import { tabActions } from "src/view/browser/hooks/tab-store-actions";
-import { useAutoNextThread } from "src/view/browser/hooks/use-auto-next-thread";
+import {
+  NEXT_THREAD_TRIGGER_RES_COUNT,
+  useAutoNextThread,
+} from "src/view/browser/hooks/use-auto-next-thread";
 import { useAutoNextThreadSetting } from "src/view/browser/hooks/use-auto-next-thread-setting";
 import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
 import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
@@ -277,6 +280,9 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   // 変更理由: 画面上はいずれも dat 落ち案内を表示する状態であり、
   // 自動更新中にどちらかを取得したら、Issue #29 の完了条件に従って停止処理へ渡す。
   const autoRefreshExpired = expired || missingFromSubject;
+  const shouldDeferNextThreadStop =
+    isAutoNextThreadEnabled &&
+    (autoRefreshExpired || responses.length >= NEXT_THREAD_TRIGGER_RES_COUNT);
   const { enabled: pauseAutoScrollOnPopup } = usePopupAutoScrollPauseSetting();
 
   // 変更理由: 停止理由が増えても、タブ状態の解除と利用者への通知を同じ経路で行い、
@@ -303,6 +309,15 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     // 別の更新条件を持たないようにする。ON直後の再取得と最下部同期はhookへ委譲する。
     dispatch(tabActions.setAutoRefreshEnabled(true, pageKey));
   }, [dispatch, page]);
+
+  const handleNextThreadSearchExhausted = useCallback(() => {
+    if (isCommentOverlayFlowing) {
+      return;
+    }
+    // 変更理由: 次スレ探索中は自動更新の停止を保留しているため、
+    // 3分間候補が見つからなかった時点でだけ通常の停止通知へ戻す。
+    handleAutoRefreshStop("次スレ候補が見つからなかったため自動更新を停止しました");
+  }, [handleAutoRefreshStop, isCommentOverlayFlowing]);
 
   const handleNewResponses = useCallback(
     (count: number, previousLastResponseNum: number | null) => {
@@ -359,10 +374,14 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     onAutoStop: isCommentOverlayFlowing
       ? undefined
       : () => handleAutoRefreshStop("新着が止まったため自動更新を停止しました"),
+    // 1000レス到達後は次スレ探索を優先し、候補が尽きた時点で探索側から停止する。
+    deferAutoStop: shouldDeferNextThreadStop,
     // interval の停止だけではタブに自動更新状態が残るため、dat落ち時も明示的に解除する。
     onThreadExpired: isCommentOverlayFlowing
       ? undefined
       : () => handleAutoRefreshStop("dat落ちを検知したため自動更新を停止しました"),
+    // dat落ち検知と同時に探索が始まるため、探索中だけ停止通知を保留する。
+    deferExpiredStop: isAutoNextThreadEnabled && autoRefreshExpired,
   });
 
   const handleFollowNextThread = useCallback(
@@ -394,7 +413,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     threadUrl: page.threadUrl,
     threadTitle: page.title,
     responseCount: responses.length,
-    expired,
+    expired: autoRefreshExpired,
     mode: autoNextThreadMode,
     responseMessages: autoNextThreadResponseMessages,
     toast,
@@ -402,6 +421,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     // 次スレへ移った後に実況対象を途切れず引き継げるようにする。
     canAutoScroll: isCommentOverlayFlowing || canAutoScroll,
     followThread: handleFollowNextThread,
+    onSearchExhausted: handleNextThreadSearchExhausted,
   });
 
   const imageBlurConfig = useImageBlurConfig();

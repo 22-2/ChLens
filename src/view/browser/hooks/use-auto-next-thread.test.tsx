@@ -34,6 +34,7 @@ function AutoNextThreadHarness({
   mode = "balanced",
   responseMessages = [],
   onFollowThread,
+  onSearchExhausted,
 }: {
   autoRefreshEnabled?: boolean;
   featureEnabled?: boolean;
@@ -45,6 +46,7 @@ function AutoNextThreadHarness({
   mode?: AutoNextThreadMode;
   responseMessages?: readonly string[];
   onFollowThread: (thread: Pick<IThread, "title" | "url">) => void;
+  onSearchExhausted?: () => void;
 }) {
   const { status } = useAutoNextThread({
     autoRefreshEnabled,
@@ -57,6 +59,7 @@ function AutoNextThreadHarness({
     responseMessages,
     canAutoScroll,
     followThread: onFollowThread,
+    onSearchExhausted,
   });
 
   return <output data-testid="status">{status}</output>;
@@ -283,6 +286,98 @@ describe("useAutoNextThread", () => {
     expect(boardGetThreads).toHaveBeenCalledTimes(1);
     expect(onFollowThread).toHaveBeenCalledWith(expect.objectContaining({ url: nextThreadUrl }));
     expect(screen.getByTestId("status")).toHaveTextContent("idle");
+  });
+
+  it("dat落ちフラグでも次スレ探索を開始する", async () => {
+    const onFollowThread = vi.fn();
+    const nextThreadUrl = "https://example.com/test/read.cgi/live/1700000201/";
+    const boardGetThreads = vi.fn().mockResolvedValue({
+      threads: [
+        createThread({
+          title: "実況スレ Part.20",
+          url: "https://example.com/test/read.cgi/live/1700000200/",
+          resCount: 1000,
+          createdAt: 1_700_000_200_000,
+        }),
+        createThread({
+          title: "緊急避難先",
+          url: nextThreadUrl,
+          resCount: 24,
+          createdAt: 1_700_000_201_000,
+        }),
+      ],
+      message: null,
+    });
+
+    container.board = {
+      getThreads: boardGetThreads,
+      getCachedResCount: vi.fn(),
+    };
+
+    render(
+      <AutoNextThreadHarness
+        expired
+        mode="cautious"
+        responseCount={2}
+        responseMessages={[`次スレはこちら <a href="${nextThreadUrl}">${nextThreadUrl}</a>`]}
+        onFollowThread={onFollowThread}
+      />,
+    );
+
+    await flushPromises();
+
+    expect(boardGetThreads).toHaveBeenCalledOnce();
+    expect(onFollowThread).toHaveBeenCalledWith(expect.objectContaining({ url: nextThreadUrl }));
+  });
+
+  it("探索解除後に遅れて返った板一覧では次スレへ移動しない", async () => {
+    const onFollowThread = vi.fn();
+    const onSearchExhausted = vi.fn();
+    const nextThreadUrl = "https://example.com/test/read.cgi/live/1700000201/";
+    let resolveBoardRequest: ((value: { threads: IThread[]; message: null }) => void) | undefined;
+    const boardGetThreads = vi.fn(
+      () =>
+        new Promise<{ threads: IThread[]; message: null }>((resolve) => {
+          resolveBoardRequest = resolve;
+        }),
+    );
+    container.board = {
+      getThreads: boardGetThreads,
+      getCachedResCount: vi.fn(),
+    };
+
+    const view = render(
+      <AutoNextThreadHarness
+        onFollowThread={onFollowThread}
+        onSearchExhausted={onSearchExhausted}
+      />,
+    );
+    await flushPromises();
+    expect(boardGetThreads).toHaveBeenCalledOnce();
+
+    view.rerender(
+      <AutoNextThreadHarness
+        featureEnabled={false}
+        onFollowThread={onFollowThread}
+        onSearchExhausted={onSearchExhausted}
+      />,
+    );
+
+    resolveBoardRequest?.({
+      threads: [
+        createThread({
+          title: "実況スレ Part.21",
+          url: nextThreadUrl,
+          resCount: 24,
+          createdAt: 1_700_000_201_000,
+        }),
+      ],
+      message: null,
+    });
+    await flushPromises();
+
+    expect(onFollowThread).not.toHaveBeenCalled();
+    expect(onSearchExhausted).not.toHaveBeenCalled();
   });
 
   it("機能が無効な間は検索を開始しない", async () => {

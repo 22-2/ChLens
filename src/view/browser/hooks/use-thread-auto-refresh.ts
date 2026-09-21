@@ -21,8 +21,12 @@ interface UseThreadAutoRefreshOptions {
   pauseAutoScroll?: boolean;
   /** 新着が一定回数(=間隔×N)来ず放置と判断したとき、自動更新を止めるために呼ぶ。 */
   onAutoStop?: () => void;
+  /** 次スレ探索中は、候補が見つかるまでタブ側の自動更新解除を保留する。 */
+  deferAutoStop?: boolean;
   /** dat落ちを検知して自動更新を止めるとき、一度だけ呼ぶ。 */
   onThreadExpired?: () => void;
+  /** 次スレ探索中は、候補が見つかるまで dat 落ちによる解除通知を保留する。 */
+  deferExpiredStop?: boolean;
 }
 
 /**
@@ -48,7 +52,9 @@ export function useThreadAutoRefresh(options: UseThreadAutoRefreshOptions): UseA
     onNewResponses,
     pauseAutoScroll = false,
     onAutoStop,
+    deferAutoStop = false,
     onThreadExpired,
+    deferExpiredStop = false,
   } = options;
 
   const setAutoScrollState = useSetAutoScrollState();
@@ -67,7 +73,9 @@ export function useThreadAutoRefresh(options: UseThreadAutoRefreshOptions): UseA
     requestRefresh,
     onNewResponses,
     onAutoStop,
+    deferAutoStop,
     onThreadExpired,
+    deferExpiredStop,
   });
 
   // canAutoScroll / isAutoScrolling をコンテキストへ同期して

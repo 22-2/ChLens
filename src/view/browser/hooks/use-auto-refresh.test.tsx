@@ -62,8 +62,10 @@ function AutoRefreshHarness({
   onRequestRefresh,
   onNewResponses,
   onAutoStop,
+  deferAutoStop = false,
   configureScrollContainer,
   onThreadExpired,
+  deferExpiredStop = false,
 }: {
   enabled?: boolean;
   startAtBottom?: boolean;
@@ -75,8 +77,10 @@ function AutoRefreshHarness({
   onRequestRefresh: () => void;
   onNewResponses?: (count: number, previousLastResponseNum: number | null) => void;
   onAutoStop?: () => void;
+  deferAutoStop?: boolean;
   configureScrollContainer?: (scrollContainer: HTMLDivElement) => void;
   onThreadExpired?: () => void;
+  deferExpiredStop?: boolean;
 }) {
   const [responses, setResponses] = useState([1, 2]);
   const [isLoading, setLoading] = useState(loading);
@@ -109,7 +113,9 @@ function AutoRefreshHarness({
     },
     onNewResponses,
     onAutoStop,
+    deferAutoStop,
     onThreadExpired,
+    deferExpiredStop,
   });
 
   return (
@@ -963,6 +969,45 @@ describe("useAutoRefresh", () => {
     expect(onThreadExpired).toHaveBeenCalledOnce();
   });
 
+  it("次スレ探索中はdat落ち停止を保留し、探索終了後に停止できる", () => {
+    const onRequestRefresh = vi.fn();
+    const onThreadExpired = vi.fn();
+    const { rerender } = render(
+      <AutoRefreshHarness
+        expired={false}
+        deferExpiredStop
+        onRequestRefresh={onRequestRefresh}
+        onThreadExpired={onThreadExpired}
+      />,
+    );
+
+    act(() => {
+      rerender(
+        <AutoRefreshHarness
+          expired
+          deferExpiredStop
+          onRequestRefresh={onRequestRefresh}
+          onThreadExpired={onThreadExpired}
+        />,
+      );
+    });
+
+    expect(onThreadExpired).not.toHaveBeenCalled();
+
+    act(() => {
+      rerender(
+        <AutoRefreshHarness
+          expired
+          deferExpiredStop={false}
+          onRequestRefresh={onRequestRefresh}
+          onThreadExpired={onThreadExpired}
+        />,
+      );
+    });
+
+    expect(onThreadExpired).toHaveBeenCalledOnce();
+  });
+
   it("更新間隔が未設定でも既定の20秒で自動更新する", () => {
     configMock = {
       get: vi.fn((key: string) => {
@@ -1204,6 +1249,53 @@ describe("useAutoRefresh", () => {
     // 閾値ちょうどに達した回で停止する。
     runIdleRefreshCycle();
     expect(onAutoStop).toHaveBeenCalledOnce();
+  });
+
+  it("次スレ探索中は新着停止通知を保留する", () => {
+    const onRequestRefresh = vi.fn();
+    const onAutoStop = vi.fn();
+    render(
+      <AutoRefreshHarness
+        deferAutoStop
+        onRequestRefresh={onRequestRefresh}
+        onAutoStop={onAutoStop}
+      />,
+    );
+
+    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
+    const boundary = screen.getByTestId("boundary") as HTMLDivElement;
+    Object.defineProperty(scrollContainer, "clientHeight", {
+      configurable: true,
+      get: () => 100,
+    });
+    Object.defineProperty(scrollContainer, "scrollTop", {
+      configurable: true,
+      get: () => 200,
+      set: () => {},
+    });
+    Object.defineProperty(scrollContainer, "scrollHeight", {
+      configurable: true,
+      get: () => 300,
+    });
+    scrollContainer.getBoundingClientRect = () => createRect({ top: 0, bottom: 100 });
+    boundary.getBoundingClientRect = () => createRect({ top: 80, bottom: 100 });
+    scrollContainer.scrollBy = vi.fn();
+
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
+
+    for (let i = 0; i < THREAD_AUTO_REFRESH_IDLE_STOP_COUNT; i += 1) {
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+      fireEvent.click(screen.getByText("新着なしで完了"));
+      act(() => {
+        vi.runOnlyPendingTimers();
+      });
+    }
+
+    expect(onAutoStop).not.toHaveBeenCalled();
   });
 
   it("新着が来たらアイドル累積がリセットされ自動停止しない", () => {
