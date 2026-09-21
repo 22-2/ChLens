@@ -88,18 +88,18 @@ vi.mock("src/view/browser/hooks/use-write", () => ({
 }));
 
 vi.mock("src/view/browser/hooks/use-write-session", () => ({
-  useWriteSession: () => ({
+  useWriteSessionControls: () => ({
     isWindowOpen: false,
     writeWindowRoot: null,
     selectedThreadUrl: mocks.selectedThreadUrl,
     targets: mocks.targets,
-    getDraft: () => "",
     selectThread: vi.fn(),
-    setDraft: vi.fn(),
     appendDraft: vi.fn(),
     openWriteWindow: mocks.openWriteWindow,
     closeWriteWindow: vi.fn(),
   }),
+  useWriteDraft: () => "",
+  useWriteDraftActions: () => ({ setDraft: vi.fn() }),
 }));
 
 describe("WritePanelContent", () => {

@@ -31,7 +31,7 @@ vi.mock("src/view/browser/hooks/use-view-surface", () => ({
 }));
 
 vi.mock("src/view/browser/hooks/use-write-session", () => ({
-  useWriteSession: () => ({
+  useWriteSessionControls: () => ({
     isWindowOpen: mocks.isWindowOpen,
     selectedThreadUrl: mocks.selectedThreadUrl,
     appendDraft: mocks.appendDraft,

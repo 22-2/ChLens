@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { useOptionalBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useToast } from "src/view/browser/hooks/use-toast";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
-import { useWriteSession } from "src/view/browser/hooks/use-write-session";
+import { useWriteSessionControls } from "src/view/browser/hooks/use-write-session";
 
 export type WriteRequest = (text: string, threadUrl?: string) => void;
 
@@ -14,7 +14,8 @@ export type WriteRequest = (text: string, threadUrl?: string) => void;
  */
 export function useWriteRequest(): WriteRequest {
   const bottomPanel = useOptionalBottomPanel();
-  const writeSession = useWriteSession();
+  const { isWindowOpen, selectedThreadUrl, selectThread, appendDraft, openWriteWindow } =
+    useWriteSessionControls();
   const toast = useToast();
   const { window: viewWindow } = useViewSurface();
 
@@ -22,18 +23,18 @@ export function useWriteRequest(): WriteRequest {
     (text, threadUrl) => {
       const isDetachedSurface = typeof window !== "undefined" && viewWindow !== window;
 
-      if (writeSession.isWindowOpen || isDetachedSurface || !bottomPanel) {
-        if (writeSession.isWindowOpen) {
+      if (isWindowOpen || isDetachedSurface || !bottomPanel) {
+        if (isWindowOpen) {
           // 共有書き込み窓を表示中は、同じ入力欄を下部パネルにも残さない。
           bottomPanel?.closePanel();
         }
-        const targetThreadUrl = threadUrl ?? writeSession.selectedThreadUrl;
+        const targetThreadUrl = threadUrl ?? selectedThreadUrl;
         if (targetThreadUrl) {
-          writeSession.selectThread(targetThreadUrl);
-          writeSession.appendDraft(targetThreadUrl, text);
+          selectThread(targetThreadUrl);
+          appendDraft(targetThreadUrl, text);
         }
-        if (!writeSession.isWindowOpen) {
-          const opened = writeSession.openWriteWindow(viewWindow);
+        if (!isWindowOpen) {
+          const opened = openWriteWindow(viewWindow);
           if (opened === false) {
             // 下部パネルのない別窓では、ポップアップブロックを画面上でも伝える。
             toast.error("書き込み窓を開けませんでした。ポップアップ設定を確認してください");
@@ -44,6 +45,15 @@ export function useWriteRequest(): WriteRequest {
 
       bottomPanel.openWritePanelWithText(text, threadUrl);
     },
-    [bottomPanel, toast, viewWindow, writeSession],
+    [
+      appendDraft,
+      bottomPanel,
+      isWindowOpen,
+      openWriteWindow,
+      selectThread,
+      selectedThreadUrl,
+      toast,
+      viewWindow,
+    ],
   );
 }

@@ -47,7 +47,10 @@ import {
   UrlBarVisibilityProvider,
   useUrlBarVisibility,
 } from "src/view/browser/hooks/use-url-bar-visibility";
-import { useWriteSession, WriteSessionProvider } from "src/view/browser/hooks/use-write-session";
+import {
+  useWriteSessionControls,
+  WriteSessionProvider,
+} from "src/view/browser/hooks/use-write-session";
 import { ToastProvider } from "src/view/browser/ui/Toast";
 import { TooltipProvider } from "src/view/browser/ui/Tooltip";
 import { applyBBSMenuToItestServerMap } from "src/view/browser/utils/itest-server-map";
@@ -114,7 +117,7 @@ const ActiveThreadBridgeState: React.FC<{ isActive: boolean }> = ({ isActive }) 
 const WritePanelToggleItem: React.FC = () => {
   const { togglePanel } = useBottomPanel();
   const { viewPage } = useTabStore();
-  const { isWindowOpen, openWriteWindow, selectThread } = useWriteSession();
+  const { isWindowOpen, openWriteWindow, selectThread } = useWriteSessionControls();
 
   // 書き込み UI はスレッド専用なので、他ページではステータスバーに出さない。
   if (viewPage.type !== "thread") {

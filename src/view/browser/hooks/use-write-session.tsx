@@ -34,17 +34,26 @@ interface WriteSessionState {
   drafts: Record<string, string>;
 }
 
-interface WriteSessionContextValue {
+interface WriteSessionControlsContextValue {
   selectedThreadUrl: string | null;
   targets: WriteTarget[];
   isWindowOpen: boolean;
   writeWindowRoot: HTMLElement | null;
-  getDraft: (threadUrl: string) => string;
   selectThread: (threadUrl: string) => void;
-  setDraft: (threadUrl: string, message: string) => void;
   appendDraft: (threadUrl: string, text: string) => void;
   openWriteWindow: (sourceWindow?: Window) => boolean;
   closeWriteWindow: () => void;
+}
+
+interface WriteDraftContextValue {
+  drafts: Record<string, string>;
+  getDraft: (threadUrl: string) => string;
+  setDraft: (threadUrl: string, message: string) => void;
+}
+
+export interface WriteSessionContextValue extends WriteSessionControlsContextValue {
+  getDraft: (threadUrl: string) => string;
+  setDraft: (threadUrl: string, message: string) => void;
 }
 
 const WRITE_WINDOW_OPTIONS: AuxiliaryWindowOptions = {
@@ -113,20 +122,27 @@ function collectWriteTargets(
   return targets;
 }
 
-const defaultContextValue: WriteSessionContextValue = {
+const defaultControlsContextValue: WriteSessionControlsContextValue = {
   selectedThreadUrl: null,
   targets: [],
   isWindowOpen: false,
   writeWindowRoot: null,
-  getDraft: () => "",
   selectThread: () => {},
-  setDraft: () => {},
   appendDraft: () => {},
   openWriteWindow: () => false,
   closeWriteWindow: () => {},
 };
 
-const WriteSessionContext = createContext<WriteSessionContextValue>(defaultContextValue);
+const defaultDraftContextValue: WriteDraftContextValue = {
+  drafts: {},
+  getDraft: () => "",
+  setDraft: () => {},
+};
+
+const WriteSessionControlsContext = createContext<WriteSessionControlsContextValue>(
+  defaultControlsContextValue,
+);
+const WriteDraftContext = createContext<WriteDraftContextValue>(defaultDraftContextValue);
 
 /**
  * アプリ全体で1つだけ存在する書き込みセッションを提供する。
@@ -134,6 +150,8 @@ const WriteSessionContext = createContext<WriteSessionContextValue>(defaultConte
  * 変更理由: 書き込み欄をペインの現在タブへ直接結び付けると、別窓へ移したときに
  * 投稿先と下書きが表示場所ごとに分裂する。投稿先をURL単位で共有しておくことで、
  * 下部パネルから別窓へ表示場所を移しても同じセッションを表示できる。
+ * 下書き本文は入力ごとに更新されるため、投稿先や返信メニューだけを使う部品へ
+ * 更新を伝播させないよう、操作用Contextと本文用Contextを分離している。
  */
 export const WriteSessionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { panes, activePaneId } = useTabPanes();
@@ -174,7 +192,13 @@ export const WriteSessionProvider: React.FC<{ children: ReactNode }> = ({ childr
   }, [session.selectedThreadUrl]);
 
   const selectThread = useCallback((threadUrl: string) => {
-    setSession((previous) => ({ ...previous, selectedThreadUrl: threadUrl }));
+    // 変更理由: 返信メニューから同じ投稿先を再選択しても、対象一覧を購読する部品へ
+    // 不要なContext更新を通知しない。
+    setSession((previous) =>
+      previous.selectedThreadUrl === threadUrl
+        ? previous
+        : { ...previous, selectedThreadUrl: threadUrl },
+    );
   }, []);
 
   const getDraft = useCallback(
@@ -188,6 +212,12 @@ export const WriteSessionProvider: React.FC<{ children: ReactNode }> = ({ childr
     }
 
     setSession((previous) => {
+      // 変更理由: IME確定や外部同期で同じ本文が届いても、書き込み欄以外へ
+      // 下書きContextの更新を伝播させない。
+      if ((previous.drafts[threadUrl] ?? "") === message) {
+        return previous;
+      }
+
       const drafts = { ...previous.drafts };
       if (message === "") {
         // 変更理由: 投稿済みの本文を空文字のまま蓄積すると、スレッド数に比例して
@@ -216,15 +246,13 @@ export const WriteSessionProvider: React.FC<{ children: ReactNode }> = ({ childr
     });
   }, []);
 
-  const contextValue = useMemo<WriteSessionContextValue>(
+  const controlsContextValue = useMemo<WriteSessionControlsContextValue>(
     () => ({
       selectedThreadUrl: session.selectedThreadUrl,
       targets,
       isWindowOpen: writeWindow.isOpen,
       writeWindowRoot: writeWindow.root,
-      getDraft,
       selectThread,
-      setDraft,
       appendDraft,
       openWriteWindow: writeWindow.open,
       closeWriteWindow: writeWindow.close,
@@ -232,22 +260,46 @@ export const WriteSessionProvider: React.FC<{ children: ReactNode }> = ({ childr
     [
       appendDraft,
       writeWindow.close,
-      getDraft,
       writeWindow.open,
       selectThread,
       session.selectedThreadUrl,
-      setDraft,
       targets,
       writeWindow.isOpen,
       writeWindow.root,
     ],
   );
 
+  const draftContextValue = useMemo<WriteDraftContextValue>(
+    () => ({ drafts: session.drafts, getDraft, setDraft }),
+    [getDraft, session.drafts, setDraft],
+  );
+
   return (
-    <WriteSessionContext.Provider value={contextValue}>{children}</WriteSessionContext.Provider>
+    <WriteSessionControlsContext.Provider value={controlsContextValue}>
+      <WriteDraftContext.Provider value={draftContextValue}>{children}</WriteDraftContext.Provider>
+    </WriteSessionControlsContext.Provider>
   );
 };
 
+export function useWriteSessionControls(): WriteSessionControlsContextValue {
+  return useContext(WriteSessionControlsContext);
+}
+
+export function useWriteDraft(threadUrl: string): string {
+  const { drafts } = useContext(WriteDraftContext);
+  return threadUrl ? (drafts[threadUrl] ?? "") : "";
+}
+
+export function useWriteDraftActions(): Pick<WriteDraftContextValue, "setDraft"> {
+  const { setDraft } = useContext(WriteDraftContext);
+  return { setDraft };
+}
+
 export function useWriteSession(): WriteSessionContextValue {
-  return useContext(WriteSessionContext);
+  const controls = useWriteSessionControls();
+  const drafts = useContext(WriteDraftContext);
+  return useMemo(
+    () => ({ ...controls, getDraft: drafts.getDraft, setDraft: drafts.setDraft }),
+    [controls, drafts.getDraft, drafts.setDraft],
+  );
 }

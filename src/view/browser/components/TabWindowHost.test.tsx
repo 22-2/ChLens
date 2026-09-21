@@ -72,7 +72,7 @@ vi.mock("src/view/browser/hooks/use-ng-status", () => ({
 }));
 
 vi.mock("src/view/browser/hooks/use-write-session", () => ({
-  useWriteSession: () => ({
+  useWriteSessionControls: () => ({
     openWriteWindow: vi.fn(),
     selectThread: vi.fn(),
   }),

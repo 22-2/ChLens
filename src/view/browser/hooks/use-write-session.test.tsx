@@ -33,7 +33,11 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => ({ viewPage }),
 }));
 
-import { useWriteSession, WriteSessionProvider } from "src/view/browser/hooks/use-write-session";
+import {
+  useWriteSession,
+  useWriteSessionControls,
+  WriteSessionProvider,
+} from "src/view/browser/hooks/use-write-session";
 
 function makeThreadTab(id: string, threadUrl: string, title: string): Tab {
   return {
@@ -62,9 +66,18 @@ const Probe: React.FC = () => {
   );
 };
 
+let controlsRenderCount = 0;
+
+const ControlsProbe: React.FC = () => {
+  useWriteSessionControls();
+  controlsRenderCount += 1;
+  return null;
+};
+
 describe("WriteSessionProvider", () => {
   beforeEach(() => {
     storage.value = null;
+    controlsRenderCount = 0;
     viewPage = { type: "home", title: "ホーム" };
     tabState.panes = [
       {
@@ -115,6 +128,20 @@ describe("WriteSessionProvider", () => {
     });
     expect(storage.value).not.toContain("下書き");
     expect(storage.value).toContain("selectedThreadUrl");
+  });
+
+  it("下書き入力では投稿先操作を使う部品を再描画しない", async () => {
+    render(
+      <WriteSessionProvider>
+        <ControlsProbe />
+        <Probe />
+      </WriteSessionProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId("selected")).toHaveTextContent("software/1/"));
+    const renderCountAfterSelection = controlsRenderCount;
+    fireEvent.click(screen.getByRole("button", { name: "下書きを入力" }));
+    expect(controlsRenderCount).toBe(renderCountAfterSelection);
   });
 
   it("旧形式に保存された下書きも復元しない", async () => {

@@ -36,7 +36,7 @@ import {
 import { TabViewScopeProvider } from "src/view/browser/hooks/use-tab-view-scope";
 import { useTheme } from "src/view/browser/hooks/use-theme";
 import { type ViewSurface, ViewSurfaceProvider } from "src/view/browser/hooks/use-view-surface";
-import { useWriteSession } from "src/view/browser/hooks/use-write-session";
+import { useWriteSessionControls } from "src/view/browser/hooks/use-write-session";
 import {
   canGoBack,
   canGoForward,
@@ -494,7 +494,7 @@ const TabWindowToolbar: React.FC<{
 
 const TabWindowWriteStatusItem: React.FC = () => {
   const { viewPage } = useTabStore();
-  const { openWriteWindow, selectThread } = useWriteSession();
+  const { openWriteWindow, selectThread } = useWriteSessionControls();
 
   if (viewPage.type !== "thread") {
     return null;

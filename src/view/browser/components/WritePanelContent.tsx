@@ -5,7 +5,11 @@ import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boole
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { useWrite } from "src/view/browser/hooks/use-write";
-import { useWriteSession } from "src/view/browser/hooks/use-write-session";
+import {
+  useWriteDraft,
+  useWriteDraftActions,
+  useWriteSessionControls,
+} from "src/view/browser/hooks/use-write-session";
 import { Dialog } from "src/view/browser/ui/Dialog";
 import { CheckboxField } from "src/view/browser/ui/FormControls";
 import { copyText } from "src/view/browser/utils/clipboard";
@@ -24,7 +28,7 @@ export interface WritePanelContentProps {
 export const WritePanelContent: React.FC<WritePanelContentProps> = (props) => {
   const bottomPanel = useOptionalBottomPanel();
   const { isWindowOpen, openWriteWindow, selectedThreadUrl, selectThread, appendDraft } =
-    useWriteSession();
+    useWriteSessionControls();
 
   useEffect(() => {
     const request = bottomPanel?.writePanelInsertRequest;
@@ -75,11 +79,15 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
   const writePanelInsertRequest = standalone ? null : bottomPanel?.writePanelInsertRequest;
   const clearWritePanelInsertRequest = bottomPanel?.clearWritePanelInsertRequest ?? noop;
   const closePanel = standalone ? (onClose ?? noop) : (bottomPanel?.closePanel ?? onClose ?? noop);
-  const { selectedThreadUrl, targets, selectThread, getDraft, setDraft, openWriteWindow } =
-    useWriteSession();
+  const { selectedThreadUrl, targets, selectThread, openWriteWindow } = useWriteSessionControls();
   const fallbackThreadUrl = viewPage.type === "thread" ? viewPage.threadUrl : "";
   const threadUrl = selectedThreadUrl ?? fallbackThreadUrl;
-  const draft = getDraft(threadUrl);
+  const draft = useWriteDraft(threadUrl);
+  const { setDraft } = useWriteDraftActions();
+  const handleDraftChange = useCallback(
+    (nextMessage: string) => setDraft(threadUrl, nextMessage),
+    [setDraft, threadUrl],
+  );
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const errorDialogDescriptionId = useId();
   const authCodeUrlInputId = useId();
@@ -120,7 +128,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
     handleRetry,
   } = useWrite(threadUrl, {
     draft,
-    onDraftChange: (nextMessage) => setDraft(threadUrl, nextMessage),
+    onDraftChange: handleDraftChange,
     tabId: targets.find((target) => target.threadUrl === threadUrl)?.tabId,
   });
 
