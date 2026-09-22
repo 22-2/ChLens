@@ -204,7 +204,7 @@ popup-manager/
 ```bash
 pnpm exec vitest run src/view/browser/hooks/popup-manager/use-thread-popup-manager.test.tsx src/view/browser/hooks/popup-manager/use-popup-close-behavior.test.tsx
 pnpm lint
-pnpm tsc6
+pnpm tsc
 ```
 
 分割完了時にはプロジェクト標準の全体検証も行う。

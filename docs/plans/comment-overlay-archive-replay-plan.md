@@ -303,8 +303,8 @@
 - Mainの通常タブを残したまま実況専用タブを作成し、同一セッションのスレ切替で同じタブを再利用する。
 
 実装時は `pnpm exec vp check`、`pnpm exec vp test run` と関連ビルドを実施する。
-PR前はAGENTS.mdの `pnpm lint`、`pnpm tsc6` の要件を確認する。
-調査時点の `package.json` には `tsc6` スクリプトが見当たらないため、利用可能な実行形式を確認し、実行できなければその事実と代替の型検査を記録する。
+PR前はAGENTS.mdの `pnpm lint`、`pnpm tsc` の要件を確認する。
+調査時点の `package.json` には `tsc` スクリプトが見当たらないため、利用可能な実行形式を確認し、実行できなければその事実と代替の型検査を記録する。
 `pnpm lint` は修正を伴う設定のため、実行後の差分を点検する。
 Tauriのウィンドウ・通信に変更がある場合はTauriビルドと必要なRust側の検査も行う。ブラウザ版に影響する接続変更ではChrome・Firefoxビルドも確認する。
 

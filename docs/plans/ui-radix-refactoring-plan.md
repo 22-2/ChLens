@@ -116,7 +116,7 @@ ToastとContextMenuをRadix wrapperへ移行し、popup共通wrapper化まで完
 - `ui/`: Spinner、Tooltip、Button、Alert、Accordion、Dialog、FormControls、Surface、Toast、ContextMenu、FloatingPopup、Popover（Radix / semantic wrapper）
 - `styles/pages/`: Home、BoardList、PageStatus、ThreadList、ThreadPage、ThreadResponse、SettingsPage、SettingsForm、BookmarkDialog、NGEditor
 - `browser.scss` / `bundle.scss`: 削除済み。browser viewの自前CSS入口は `styles/index.css` のみ
-- `pnpm lint:tokens`、`pnpm tsc6`、対象コンポーネントテスト、Chrome/Firefox/Tauriビルドを各区切りで確認済み
+- `pnpm lint:tokens`、`pnpm tsc`、対象コンポーネントテスト、Chrome/Firefox/Tauriビルドを各区切りで確認済み
 
 ---
 
@@ -489,7 +489,7 @@ Radix移行完了後に別PRで行う。
 
 ```bash
 pnpm lint
-pnpm tsc6
+pnpm tsc
 pnpm test
 pnpm run build:chrome
 pnpm run build:firefox

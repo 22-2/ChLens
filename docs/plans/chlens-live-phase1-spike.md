@@ -87,7 +87,7 @@ Phase 1のwindow／workspace境界は実装済みで、Windows上でOverlayの�
 - `pnpm --filter chlens-live build`: Main／Overlayの2 HTML entryを出力
 - `pnpm --filter chlens-live tauri:build`: Windows向けMSI／NSIS bundle生成成功
 - `pnpm exec vp test run`: 97 test files／501 tests成功
-- `pnpm tsc6`: 成功
+- `pnpm tsc`: 成功
 - `pnpm build:chrome`、`pnpm build:firefox`、`pnpm build:tauri`: 既存3 targetの再ビルド成功
 
 透明Overlayを実際に表示して操作する確認（Mainの表示／非表示／focus、geometry保存）は、Windows上での手動確認として残す。

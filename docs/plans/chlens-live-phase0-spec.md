@@ -137,5 +137,5 @@ identity（boardとthread ID）と表示URL（protocol）を分離して、同�
 
 - `src/view/browser/hooks/use-thread-data.contract.test.tsx` に5種filterと検索の契約テストを追加した。
 - `pnpm exec vp test run`: 97 test files、501 testsが成功した。
-- `pnpm tsc6`: 成功した。
+- `pnpm tsc`: 成功した。
 - 新規テストのformat・lint・型チェック: 成功した。

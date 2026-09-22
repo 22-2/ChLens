@@ -19,7 +19,7 @@ Phase 3では、NGルールの記法・評価・保存境界をChlens本体とCh
 - `@chlen/ch-lib`: 45 tests passed。
 - Chlens本体のNG既存・特性テスト: 29 tests passed。
 - Chlens Liveリポジトリテスト: 2 tests passed。
-- `pnpm tsc6 --noEmit --pretty false`: passed。
+- `pnpm tsc --noEmit --pretty false`: passed。
 - `@chlen/ch-lib`と`chlens-live`の`vp check`: passed。
 
 `pnpm lint`は、既存の`organize-imports-cli`がTypeScript 6のAPI変更により`sourceFile`未定義で落ちるため完走しなかった。Oxlint・トークン検査・フォーマット検査は実行され、既存警告以外のエラーは発生していない。
