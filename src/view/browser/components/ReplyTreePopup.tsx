@@ -9,17 +9,19 @@ import {
 } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 import type { IRes } from "src/service-container";
+import { COMMAND_REQUEST_IDS, runCommandRequest } from "src/view/browser/commands/command-runtime";
 import { PopupHeader } from "src/view/browser/components/PopupHeader";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
 import { ReplyTree } from "src/view/browser/components/ReplyTree";
 import { usePopupHeaderMenu } from "src/view/browser/hooks/use-popup-header-menu";
 import type { ResolvedTheme } from "src/view/browser/hooks/use-theme";
 import { useTheme } from "src/view/browser/hooks/use-theme";
+import { useToast } from "src/view/browser/hooks/use-toast";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { FloatingPopup } from "src/view/browser/ui/FloatingPopup";
-import { canCopyImageToClipboard, copyImageBlob, copyText } from "src/view/browser/utils/clipboard";
+import { canCopyImageToClipboard, copyImageBlob } from "src/view/browser/utils/clipboard";
 import { getEventTargetElement } from "src/view/browser/utils/dom";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
 import {
@@ -589,6 +591,7 @@ export const ReplyTreePopup: React.FC<{
   threadKey,
 }) => {
   const viewSurface = useViewSurface();
+  const toast = useToast();
   const { document: viewDocument } = viewSurface;
   const { menuButtonRef, menuPosition, handleMenuClick, closeMenu } = usePopupHeaderMenu();
   const [subTreeMenu, setSubTreeMenu] = useState<SubTreeMenuState | null>(null);
@@ -596,6 +599,17 @@ export const ReplyTreePopup: React.FC<{
   const sourceRes = resMap.get(resNum) ?? null;
   const replyResponses = sourceRes ? collectReplyTreeResponses(resNum, repIndex, resMap) : [];
   const replyImageEntries = sourceRes ? collectReplyTreeImageEntries(resNum, repIndex, resMap) : [];
+  // 変更理由: 返信ツリーの文字列生成とClipboardの表示先・失敗通知を分離し、
+  // ツリー側で別窓対応の経路を重複実装しないようにする。
+  const runClipboardCommand = useCallback(
+    (text: string) => {
+      void runCommandRequest(
+        { id: COMMAND_REQUEST_IDS.CLIPBOARD_COPY_TEXT, args: { text } },
+        { surface: viewSurface, toast },
+      );
+    },
+    [toast, viewSurface],
+  );
   const treeMenuItems: ContextMenuItem[] = sourceRes
     ? [
         {
@@ -605,9 +619,8 @@ export const ReplyTreePopup: React.FC<{
           icon: <CornerDownRight size={14} />,
           onSelect: () => {
             // 参照元レスの内容も先頭に含め、見出しなしで自然なレス列として貼り付けられるようにする。
-            void copyText(
+            runClipboardCommand(
               buildReplyTreeCopyText(sourceRes, replyResponses, threadTitle, threadUrl),
-              viewSurface,
             );
           },
         },
@@ -734,9 +747,8 @@ export const ReplyTreePopup: React.FC<{
             label: "このレス以降のツリーをコピー",
             icon: <CornerDownRight size={14} />,
             onSelect: () => {
-              void copyText(
+              runClipboardCommand(
                 buildReplyTreeCopyText(targetRes, subReplyResponses, threadTitle, threadUrl),
-                viewSurface,
               );
             },
           },
@@ -772,9 +784,8 @@ export const ReplyTreePopup: React.FC<{
         label: "ツリー先頭からこのレスまでコピー",
         icon: <CornerRightUp size={14} />,
         onSelect: () => {
-          void copyText(
+          runClipboardCommand(
             buildReplyTreeAncestorCopyText(targetRes, ancestorResponses, threadTitle, threadUrl),
-            viewSurface,
           );
         },
       },

@@ -70,6 +70,40 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => ({
     dispatch: dispatchMock,
     state: { selectedTabId: selectedTabIdRef.current },
+    stateRef: {
+      get current() {
+        return {
+          panes: [
+            {
+              id: "pane-1",
+              tabs: [
+                {
+                  id: selectedTabIdRef.current,
+                  history: [
+                    { type: "home", title: "ホーム" },
+                    {
+                      type: "threadList",
+                      title: "Software",
+                      boardUrl: "https://egg.5ch.net/software/",
+                      boardTitle: "Software",
+                    },
+                    { type: "settings", title: "設定" },
+                  ],
+                  currentIndex: 1,
+                  pinned: false,
+                  reloadKey: 0,
+                  autoRefreshEnabled: false,
+                  autoRefreshPageKey: null,
+                },
+              ],
+              activeTabId: selectedTabIdRef.current,
+            },
+          ],
+          activePaneId: "pane-1",
+          closedTabs: [],
+        };
+      },
+    },
     viewTab: {
       id: selectedTabIdRef.current,
       history: [
@@ -309,7 +343,7 @@ describe("ThreadListPage", () => {
       />,
     );
     await vi.advanceTimersByTimeAsync(20000);
-    expect(dispatchMock).toHaveBeenCalledWith({ type: "RELOAD" });
+    expect(dispatchMock).toHaveBeenCalledWith({ type: "RELOAD", tabId: "tab-1" });
   });
 
   it("非表示中の既読更新は保留し、表示復帰時に再取得なしで反映する", async () => {

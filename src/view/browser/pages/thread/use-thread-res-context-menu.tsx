@@ -18,6 +18,7 @@ import { stringifyNgDslValue } from "src/core/ngDsl";
 import { requestArchiveReplaySeek } from "src/features/archive-replay/platform";
 import { container } from "src/service-container/index";
 import type { IRes } from "src/service-container/interfaces";
+import { COMMAND_REQUEST_IDS, runCommandRequest } from "src/view/browser/commands/command-runtime";
 import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useTabViewRuntime } from "src/view/browser/hooks/use-tab-view-runtime";
@@ -28,7 +29,6 @@ import {
   getAutoRefreshPageKey,
   isAutoRefreshEnabledForPage,
 } from "src/view/browser/utils/auto-refresh-pages";
-import { copyText } from "src/view/browser/utils/clipboard";
 import { buildKyodemoUrl } from "src/view/browser/utils/kyodemo-url";
 import { getLegacyWriteHistoryService } from "src/view/browser/utils/legacy-app";
 import { formatResForCopy, stripHtml } from "src/view/browser/utils/response-format";
@@ -94,6 +94,17 @@ export function useThreadResContextMenu({
   const { dispatch, surface: viewSurface, toast } = useTabViewRuntime(tabId);
   const { viewTab } = useTabStore();
   const openWritePanelWithText = useWriteRequest();
+  // 変更理由: メニュー側はコピー文字列の生成だけを担い、表示先と失敗通知は
+  // 共通コマンド実行器へ委譲して、別窓でも同じ経路を使う。
+  const runClipboardCommand = useCallback(
+    (text: string) => {
+      void runCommandRequest(
+        { id: COMMAND_REQUEST_IDS.CLIPBOARD_COPY_TEXT, args: { text } },
+        { surface: viewSurface, toast },
+      );
+    },
+    [toast, viewSurface],
+  );
   // 変更理由: 別窓のページではペインのselectedTabと描画中タブが異なるため、
   // 自動更新メニューの表示も描画対象タブの状態を優先する。
   const isAutoRefreshEnabled = isAutoRefreshEnabledForPage(tab ?? viewTab, page);
@@ -203,9 +214,7 @@ export function useThreadResContextMenu({
         label: "ID/IPをコピー",
         icon: <Copy size={14} />,
         disabled: !rawId,
-        onSelect: async () => {
-          await copyText(rawId, viewSurface);
-        },
+        onSelect: () => runClipboardCommand(rawId),
       },
       {
         id: "search-id",
@@ -229,7 +238,7 @@ export function useThreadResContextMenu({
       },
       { id: "sep-id", separator: true },
     ],
-    [addIdToNg, viewSurface],
+    [addIdToNg, runClipboardCommand, viewSurface],
   );
 
   const buildContextMenuItems = useCallback(
@@ -338,11 +347,11 @@ export function useThreadResContextMenu({
           id: "copy-res",
           label: "レスをコピー",
           icon: <Copy size={14} />,
-          onSelect: async () => {
+          onSelect: () => {
             const copyBody = `${page.title}\n${page.threadUrl}${targetRes.num}\n${formatResForCopy(
               targetRes,
             )}`;
-            await copyText(copyBody, viewSurface);
+            runClipboardCommand(copyBody);
           },
         },
       ];
@@ -392,9 +401,7 @@ export function useThreadResContextMenu({
               id: "copy-selection",
               label: "選択範囲をコピー",
               icon: <Copy size={14} />,
-              onSelect: async () => {
-                await copyText(selectedText, viewSurface);
-              },
+              onSelect: () => runClipboardCommand(selectedText),
             },
             {
               id: "search-selection",
@@ -454,6 +461,7 @@ export function useThreadResContextMenu({
       ownResNums,
       page,
       removeWriteHistory,
+      runClipboardCommand,
       searchQuery,
       setFilter,
       setSearchQuery,

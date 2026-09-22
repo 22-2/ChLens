@@ -1,7 +1,9 @@
 import React, { useCallback, useState } from "react";
+import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
 import { ContextMenuNavigationActions } from "src/view/browser/components/ContextMenuNavigationActions";
 import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
+import { useTabCommandRunner } from "src/view/browser/hooks/use-tab-command-runner";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { buildCategoryId } from "src/view/browser/pages/board-list/board-list-utils";
 import { BoardListContent } from "src/view/browser/pages/board-list/BoardListContent";
@@ -20,6 +22,7 @@ interface BoardListPageProps {
 
 export const BoardListPage: React.FC<BoardListPageProps> = ({ tabId, isActive, refreshKey }) => {
   const { viewTab, viewPage, dispatch } = useTabStore();
+  const runTabCommand = useTabCommandRunner(tabId);
   const {
     categories,
     loading,
@@ -153,11 +156,11 @@ export const BoardListPage: React.FC<BoardListPageProps> = ({ tabId, isActive, r
       canGoForward={canGoForward(viewTab)}
       canRefresh={isPageRefreshable(viewPage)}
       onBack={() => {
-        dispatch(tabActions.goBack());
+        runTabCommand(TAB_COMMAND_IDS.BACK);
         setContextMenuState(null);
       }}
       onForward={() => {
-        dispatch(tabActions.goForward());
+        runTabCommand(TAB_COMMAND_IDS.FORWARD);
         setContextMenuState(null);
       }}
       onRefresh={() => {

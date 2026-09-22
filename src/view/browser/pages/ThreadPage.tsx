@@ -10,6 +10,7 @@ import { useMediaViewerStore } from "src/features/media/browser/use-media-viewer
 import { MediaViewerContainer } from "src/features/media/ui/MediaViewerContainer";
 import { container } from "src/service-container/index";
 import type { IThread } from "src/service-container/interfaces";
+import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
 import { ContextMenuNavigationActions } from "src/view/browser/components/ContextMenuNavigationActions";
 import { PopupRenderer } from "src/view/browser/components/PopupRenderer";
 import { ResItem } from "src/view/browser/components/ResItem";
@@ -31,6 +32,7 @@ import {
 } from "src/view/browser/hooks/use-page-count-status";
 import { usePopupAutoScrollPauseSetting } from "src/view/browser/hooks/use-popup-auto-scroll-pause-setting";
 import { useThreadPopupManager } from "src/view/browser/hooks/use-popup-manager";
+import { useTabCommandRunner } from "src/view/browser/hooks/use-tab-command-runner";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useTabViewRuntime } from "src/view/browser/hooks/use-tab-view-runtime";
 import { useThreadAutoRefresh } from "src/view/browser/hooks/use-thread-auto-refresh";
@@ -86,6 +88,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   scrollContainerRef,
 }) => {
   const { surface: viewSurface, dispatch, toast } = useTabViewRuntime(tabId);
+  const runTabCommand = useTabCommandRunner(tabId);
   const { window: viewWindow } = viewSurface;
   const rootRef = useRef<HTMLDivElement>(null);
   const fallbackScrollContainerRef = useRef<HTMLDivElement>(null);
@@ -197,7 +200,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     isLoading: loading,
     containerRef: effectiveScrollContainerRef,
     edge: "bottom",
-    onRefresh: () => dispatch(tabActions.reload()),
+    onRefresh: () => runTabCommand(TAB_COMMAND_IDS.RELOAD),
   });
   const { setThreadStats } = useNgStatus();
   const { setPageCount } = usePageCountStatus();
@@ -368,7 +371,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     responseCount: responses.length,
     lastResponseNum: responses.at(-1)?.num ?? null,
     rootRef,
-    requestRefresh: () => dispatch(tabActions.reload()),
+    requestRefresh: () => runTabCommand(TAB_COMMAND_IDS.RELOAD),
     onNewResponses: handleNewResponses,
     // 新着が一定回数(=間隔×N)来なかったら、放置スレと判断して自動更新を止める。
     onAutoStop: isCommentOverlayFlowing
@@ -551,20 +554,20 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         canGoForward={canGoForward(navigationTab)}
         canRefresh={isPageRefreshable(page)}
         onBack={() => {
-          dispatch(tabActions.goBack());
+          runTabCommand(TAB_COMMAND_IDS.BACK);
           closePopupById(menu.id);
         }}
         onForward={() => {
-          dispatch(tabActions.goForward());
+          runTabCommand(TAB_COMMAND_IDS.FORWARD);
           closePopupById(menu.id);
         }}
         onRefresh={() => {
-          dispatch(tabActions.reload());
+          runTabCommand(TAB_COMMAND_IDS.RELOAD);
           closePopupById(menu.id);
         }}
       />
     ),
-    [closePopupById, dispatch, navigationTab, page],
+    [closePopupById, navigationTab, page, runTabCommand],
   );
 
   // 空白部分のダブルクリックによる更新。
@@ -585,9 +588,9 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       // テキスト選択中はリロードしない
       if (viewWindow.getSelection()?.toString()) return;
 
-      dispatch(tabActions.reload());
+      runTabCommand(TAB_COMMAND_IDS.RELOAD);
     },
-    [dispatch, viewWindow],
+    [runTabCommand, viewWindow],
   );
 
   const isFilterEnabled = useMemo(

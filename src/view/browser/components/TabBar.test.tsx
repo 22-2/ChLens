@@ -948,7 +948,7 @@ describe("TabBar tab interactions", () => {
     expect(refreshButton).not.toBeDisabled();
     fireEvent.click(refreshButton);
 
-    expect(dispatchMock).toHaveBeenCalledWith({ type: "RELOAD" });
+    expect(dispatchMock).toHaveBeenCalledWith({ type: "RELOAD", tabId: "tab-1" });
   });
 
   it("× ボタンをクリックすると CLOSE_TAB が dispatch される", () => {

@@ -28,6 +28,7 @@ import { isTauriRuntime } from "src/app/platform/runtime";
 import { container } from "src/service-container";
 import type { IToastService } from "src/service-container/interfaces";
 import {
+  COMMAND_REQUEST_IDS,
   type CommandTarget,
   executeCommandRequest,
 } from "src/view/browser/commands/command-runtime";
@@ -39,12 +40,12 @@ import {
   getResponseJumpResNumFromCommandId,
   RESPONSE_JUMP_COMMAND_ID,
 } from "src/view/browser/commands/response-jump-command";
+import { TAB_COMMAND_IDS, type TabCommandId } from "src/view/browser/commands/tab-command-runtime";
 import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import type { ScopedTabAction } from "src/view/browser/hooks/use-tab-store";
 import type { ViewSurface } from "src/view/browser/hooks/use-view-surface";
 import type { Page, Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
-import { copyText } from "src/view/browser/utils/clipboard";
 import {
   canQueryExtensionTabs,
   getOpenCompatibleThreadPages,
@@ -103,6 +104,8 @@ export interface BrowserCommandContext {
   openResponseJumpDialog: () => void;
   openNextThreadSearchDialog: () => Promise<void>;
   openArchiveReplayWindow: () => void;
+  // 履歴・再取得は対象タブを明示する実行器へ委譲し、メニューとパレットで挙動を揃える。
+  runTabCommand?: (id: TabCommandId) => boolean;
   // 変更理由: コマンドパレットを別窓へ載せた時も、通知とイベントを表示中の窓へ返すため。
   // 既存の外部呼び出しとの互換性を保つため未指定時は従来の共有サービスへフォールバックする。
   viewSurface?: ViewSurface;
@@ -366,7 +369,7 @@ async function toggleBookmark(context: BrowserCommandContext): Promise<void> {
   // 変更理由: パレットとコンテキストメニューが同じ対象コマンドを通ることで、
   // 非同期の保存完了と別窓の通知先を入口ごとに実装しないようにする。
   await executeCommandRequest(
-    { id: "target.bookmark.toggle", args: { target } },
+    { id: COMMAND_REQUEST_IDS.TARGET_BOOKMARK_TOGGLE, args: { target } },
     { surface: getCommandSurface(context), toast: getCommandToast(context) },
   );
   getCommandToast(context).info(
@@ -379,7 +382,12 @@ async function copyWithNotice(
   text: string,
   label: string,
 ): Promise<void> {
-  await copyText(text, getCommandSurface(context));
+  // 変更理由: パレットからの任意文字列コピーも他のコピー操作と同じ実行器を通し、
+  // 別窓の表示先とエラー処理を一つの経路へ集約する。
+  await executeCommandRequest(
+    { id: COMMAND_REQUEST_IDS.CLIPBOARD_COPY_TEXT, args: { text } },
+    { surface: getCommandSurface(context), toast: getCommandToast(context) },
+  );
   getCommandToast(context).success(`${label}をコピーしました`);
 }
 
@@ -392,7 +400,7 @@ async function copyTargetWithNotice(
   // 変更理由: ページ用コマンドも対象付きコマンドへ橋渡しし、一覧・タブメニューと
   // 同じ形式判定と別窓のclipboard surfaceを共有する。
   await executeCommandRequest(
-    { id: "target.copy", args: { target, format } },
+    { id: COMMAND_REQUEST_IDS.TARGET_COPY, args: { target, format } },
     { surface: getCommandSurface(context), toast: getCommandToast(context) },
   );
   getCommandToast(context).success(`${label}をコピーしました`);
@@ -588,7 +596,15 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     group: "page",
     icon: RotateCw,
     when: ({ viewPage }) => RELOADABLE_PAGE_TYPES.has(viewPage.type),
-    run: ({ dispatch }) => dispatch(tabActions.reload()),
+    run: ({ dispatch, viewTab, runTabCommand }) => {
+      if (runTabCommand?.(TAB_COMMAND_IDS.RELOAD)) {
+        return;
+      }
+
+      // 変更理由: 古い埋め込み元が実行器を注入しなくても、コマンドパレットを
+      // 別窓から実行した対象タブだけを更新できるよう明示IDへフォールバックする。
+      dispatch({ ...tabActions.reload(), tabId: viewTab.id });
+    },
   },
   {
     id: "page.retry-board-title",
@@ -847,7 +863,10 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
       });
       const tokenCount = estimateToonTokenCount(toon);
 
-      await copyText(toon, getCommandSurface(context));
+      await executeCommandRequest(
+        { id: COMMAND_REQUEST_IDS.CLIPBOARD_COPY_TEXT, args: { text: toon } },
+        { surface: getCommandSurface(context), toast: getCommandToast(context) },
+      );
       getCommandToast(context).success(
         `スレ全体をTOON形式でコピーしました（推定 ${tokenCount.toLocaleString("ja-JP")} トークン）`,
       );

@@ -1,15 +1,17 @@
 import { Copy, Image as ImageIcon, Pin, PinOff } from "lucide-react";
 import React, { useCallback } from "react";
 import type { IRes } from "src/service-container";
+import { COMMAND_REQUEST_IDS, runCommandRequest } from "src/view/browser/commands/command-runtime";
 import { PopupHeader } from "src/view/browser/components/PopupHeader";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
 import { usePopupHeaderMenu } from "src/view/browser/hooks/use-popup-header-menu";
 import { useTheme } from "src/view/browser/hooks/use-theme";
+import { useToast } from "src/view/browser/hooks/use-toast";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { FloatingPopup } from "src/view/browser/ui/FloatingPopup";
-import { canCopyImageToClipboard, copyImageBlob, copyText } from "src/view/browser/utils/clipboard";
+import { canCopyImageToClipboard, copyImageBlob } from "src/view/browser/utils/clipboard";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
 import { formatResForCopy } from "src/view/browser/utils/response-format";
 import { canvasToBlob, renderResponseListImageCanvas } from "src/view/browser/utils/response-image";
@@ -105,10 +107,22 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
   threadUrl,
 }) => {
   const viewSurface = useViewSurface();
+  const toast = useToast();
   const { document: viewDocument } = viewSurface;
   const theme = useTheme();
   const { menuButtonRef, menuPosition, handleMenuClick, closeMenu } = usePopupHeaderMenu();
   const title = `参照: ${label}`;
+  // 変更理由: ポップアップ固有のClipboard呼び出しをなくし、別窓でも
+  // 同じ表示先とエラー通知を共有する。
+  const runClipboardCommand = useCallback(
+    (text: string) => {
+      void runCommandRequest(
+        { id: COMMAND_REQUEST_IDS.CLIPBOARD_COPY_TEXT, args: { text } },
+        { surface: viewSurface, toast },
+      );
+    },
+    [toast, viewSurface],
+  );
 
   const anchorMenuItems: ContextMenuItem[] = [
     {
@@ -117,7 +131,7 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
       icon: <Copy size={14} />,
       onSelect: () => {
         // 変更理由: IDポップアップと同じく表示順を保ったままコピーし、貼り付け先でも読める形にする。
-        void copyText(buildAnchorPopupCopyText(items, threadTitle, threadUrl), viewSurface);
+        runClipboardCommand(buildAnchorPopupCopyText(items, threadTitle, threadUrl));
       },
     },
     {

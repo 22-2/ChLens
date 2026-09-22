@@ -44,6 +44,7 @@ import {
   commandPalette,
   commandPaletteStore,
 } from "src/view/browser/commands/command-palette-store";
+import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
 import { Omnibar } from "src/view/browser/components/Omnibar";
 import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import {
@@ -54,6 +55,7 @@ import {
 import { useOmnibar } from "src/view/browser/hooks/use-omnibar";
 import { usePageBookmark } from "src/view/browser/hooks/use-page-bookmark";
 import { useTabBarOrientation } from "src/view/browser/hooks/use-tab-bar-orientation";
+import { useTabCommandRunner } from "src/view/browser/hooks/use-tab-command-runner";
 import { useTabPanes, useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useToast } from "src/view/browser/hooks/use-toast";
 import { useUrlBarVisibility } from "src/view/browser/hooks/use-url-bar-visibility";
@@ -300,6 +302,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   const { state, viewTab, viewPage, dispatch, paneId } = useTabStore();
   const viewSurface = useViewSurface();
   const toast = useToast();
+  const runTabCommand = useTabCommandRunner(viewTab.id);
   // 2ペイン表示中かどうか（トグルボタンの状態に使う）。
   const { panes, activePaneId } = useTabPanes();
   const isTwoPane = panes.length >= 2;
@@ -505,6 +508,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       openArchiveReplayWindow,
       toast,
       viewSurface,
+      runTabCommand,
     }),
     [
       dispatch,
@@ -517,6 +521,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       state.tabs,
       toast,
       togglePanel,
+      runTabCommand,
       viewPage,
       viewSurface,
       viewTab,
@@ -691,8 +696,8 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
 
   const handleRefresh = useCallback(() => {
     setRefreshMenuPosition(null);
-    dispatch(tabActions.reload());
-  }, [dispatch]);
+    runTabCommand(TAB_COMMAND_IDS.RELOAD);
+  }, [runTabCommand]);
 
   const handleUrlBarToggle = useCallback(() => {
     commandPalette.close();
@@ -1029,7 +1034,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         className="nav-bar__menu-action"
         disabled={!back}
         onClick={() => {
-          dispatch(tabActions.goBack());
+          runTabCommand(TAB_COMMAND_IDS.BACK);
           closeMenu();
         }}
         onContextMenu={handleBackContextMenu}
@@ -1044,7 +1049,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         className="nav-bar__menu-action"
         disabled={!forward}
         onClick={() => {
-          dispatch(tabActions.goForward());
+          runTabCommand(TAB_COMMAND_IDS.FORWARD);
           closeMenu();
         }}
         onContextMenu={handleForwardContextMenu}

@@ -14,6 +14,7 @@ import {
 import normalizeWheel from "normalize-wheel";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { container } from "src/service-container/index";
+import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
 import { useCursorTooltip } from "src/view/browser/components/CursorTooltip";
 import { PageTypeIcon } from "src/view/browser/components/PageTypeIcon";
 import { TabContextMenu } from "src/view/browser/components/TabContextMenu";
@@ -28,6 +29,7 @@ import {
   type TabBarOrientation,
   useVerticalTabBarLayout,
 } from "src/view/browser/hooks/use-tab-bar-orientation";
+import { useTabCommandRunner } from "src/view/browser/hooks/use-tab-command-runner";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import type { Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
@@ -363,6 +365,7 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
 
   const selectedTab = visibleTabs.find((tab) => tab.id === selectedTabId) ?? visibleTabs[0] ?? null;
   const selectedPage = selectedTab ? getCurrentPage(selectedTab) : null;
+  const runTabCommand = useTabCommandRunner(selectedTab?.id ?? "");
   const isTabListScrollable = tabListScrollState.canScrollLeft || tabListScrollState.canScrollRight;
   // 更新は常用操作としてタブバー左端にも置くが、再取得できないページでは無効化する。
   const canRefresh = selectedPage ? isPageRefreshable(selectedPage) : false;
@@ -689,7 +692,7 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
       type="button"
       className="tab-bar__refresh"
       disabled={!canRefresh}
-      onClick={() => dispatch(tabActions.reload())}
+      onClick={() => runTabCommand(TAB_COMMAND_IDS.RELOAD)}
       title="更新"
       aria-label="更新"
     >

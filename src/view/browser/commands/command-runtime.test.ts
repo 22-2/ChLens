@@ -1,5 +1,6 @@
 import { container } from "src/service-container";
 import {
+  COMMAND_REQUEST_IDS,
   type CommandRuntime,
   executeCommandRequest,
   runCommandRequest,
@@ -52,11 +53,22 @@ describe("command-runtime", () => {
     const runtime = createRuntime();
 
     await executeCommandRequest(
-      { id: "target.copy", args: { target, format: "markdown" } },
+      { id: COMMAND_REQUEST_IDS.TARGET_COPY, args: { target, format: "markdown" } },
       runtime,
     );
 
     expect(copyTextMock).toHaveBeenCalledWith(`[${target.title}](${target.url})`, runtime.surface);
+  });
+
+  it("任意文字列コピーも同じ表示環境へ委譲する", async () => {
+    const runtime = createRuntime();
+
+    await executeCommandRequest(
+      { id: COMMAND_REQUEST_IDS.CLIPBOARD_COPY_TEXT, args: { text: "レス本文" } },
+      runtime,
+    );
+
+    expect(copyTextMock).toHaveBeenCalledWith("レス本文", runtime.surface);
   });
 
   it("ブックマークsetは実行時の状態を確認して必要な場合だけ保存する", async () => {
@@ -73,7 +85,10 @@ describe("command-runtime", () => {
     };
 
     await executeCommandRequest(
-      { id: "target.bookmark.set", args: { target, bookmarked: true } },
+      {
+        id: COMMAND_REQUEST_IDS.TARGET_BOOKMARK_SET,
+        args: { target, bookmarked: true },
+      },
       createRuntime(),
     );
     expect(add).toHaveBeenCalledWith({
@@ -84,13 +99,16 @@ describe("command-runtime", () => {
 
     get.mockReturnValue(target);
     await executeCommandRequest(
-      { id: "target.bookmark.set", args: { target, bookmarked: true } },
+      {
+        id: COMMAND_REQUEST_IDS.TARGET_BOOKMARK_SET,
+        args: { target, bookmarked: true },
+      },
       createRuntime(),
     );
     expect(add).toHaveBeenCalledTimes(1);
 
     await executeCommandRequest(
-      { id: "target.bookmark.toggle", args: { target } },
+      { id: COMMAND_REQUEST_IDS.TARGET_BOOKMARK_TOGGLE, args: { target } },
       createRuntime(),
     );
     expect(remove).toHaveBeenCalledWith(target.url);
@@ -105,14 +123,40 @@ describe("command-runtime", () => {
     const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
     await expect(
-      runCommandRequest({ id: "target.copy", args: { target, format: "title" } }, runtime),
+      runCommandRequest(
+        { id: COMMAND_REQUEST_IDS.TARGET_COPY, args: { target, format: "title" } },
+        runtime,
+      ),
     ).resolves.toBe(false);
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      "対象付きコマンドの実行に失敗しました",
-      expect.objectContaining({ commandId: "target.copy", error }),
+      "コマンドの実行に失敗しました",
+      expect.objectContaining({ commandId: COMMAND_REQUEST_IDS.TARGET_COPY, error }),
     );
     expect(toastErrorMock).toHaveBeenCalledWith("コピーに失敗しました");
+    consoleErrorSpy.mockRestore();
+  });
+
+  it("任意文字列コピーの失敗ログには本文を含めない", async () => {
+    const error = new Error("コピーに失敗しました");
+    copyTextMock.mockRejectedValue(error);
+    const runtime = createRuntime();
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    await expect(
+      runCommandRequest(
+        { id: COMMAND_REQUEST_IDS.CLIPBOARD_COPY_TEXT, args: { text: "秘匿本文" } },
+        runtime,
+      ),
+    ).resolves.toBe(false);
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "コマンドの実行に失敗しました",
+      expect.objectContaining({ commandId: COMMAND_REQUEST_IDS.CLIPBOARD_COPY_TEXT, error }),
+    );
+    const details = consoleErrorSpy.mock.calls.at(-1)?.[1] as Record<string, unknown>;
+    expect(details).not.toHaveProperty("target");
+    expect(details).not.toHaveProperty("text");
     consoleErrorSpy.mockRestore();
   });
 });

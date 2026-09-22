@@ -3,11 +3,12 @@ import { useCallback } from "react";
 import { platform } from "src/app/platform/index";
 import { getResNumber } from "src/core/URL";
 import { toViewerImageUrl } from "src/features/media/domain/url-media";
+import { COMMAND_REQUEST_IDS, runCommandRequest } from "src/view/browser/commands/command-runtime";
 import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import type { TabAction } from "src/view/browser/hooks/use-tab-store";
+import { useToast } from "src/view/browser/hooks/use-toast";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
-import { copyText } from "src/view/browser/utils/clipboard";
 import {
   parseInternalBrowserPageStrict,
   resolveAbsoluteUrl,
@@ -53,6 +54,18 @@ export function useUrlHandlers({
 }: UseUrlHandlersParams): UseUrlHandlersResult {
   const viewSurface = useViewSurface();
   const { window: viewWindow } = viewSurface;
+  const toast = useToast();
+  // 変更理由: URLコピーもメニュー固有のClipboard呼び出しを残さず、
+  // 表示先と失敗通知を共通コマンド実行器へ集約する。
+  const runClipboardCommand = useCallback(
+    (text: string) => {
+      void runCommandRequest(
+        { id: COMMAND_REQUEST_IDS.CLIPBOARD_COPY_TEXT, args: { text } },
+        { surface: viewSurface, toast },
+      );
+    },
+    [toast, viewSurface],
+  );
   const openResolvedUrl = useCallback(
     (
       absoluteUrl: string,
@@ -119,10 +132,7 @@ export function useUrlHandlers({
         {
           id: "copy-url",
           label: "URLをコピー",
-          onSelect: () => {
-            // 別窓のURLメニューからコピーしても、表示中の窓のclipboardへ書き込む。
-            void copyText(absoluteUrl, viewSurface);
-          },
+          onSelect: () => runClipboardCommand(absoluteUrl),
         },
         {
           id: "open-in-browser",
@@ -133,7 +143,7 @@ export function useUrlHandlers({
         },
       ];
     },
-    [openResolvedUrl, viewSurface, viewWindow],
+    [openResolvedUrl, runClipboardCommand, viewWindow],
   );
 
   const handleUrlClick = useCallback(

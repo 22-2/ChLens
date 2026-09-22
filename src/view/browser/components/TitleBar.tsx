@@ -1,9 +1,10 @@
 import { ArrowLeft, ArrowRight, RotateCw } from "lucide-react";
 import React, { useCallback, useState } from "react";
+import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
 import { TabContextMenu } from "src/view/browser/components/TabContextMenu";
-import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import { useDetachedTabController } from "src/view/browser/hooks/use-detached-tab-controller";
 import { useTabBarOrientation } from "src/view/browser/hooks/use-tab-bar-orientation";
+import { useTabCommandRunner } from "src/view/browser/hooks/use-tab-command-runner";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useTitleBarButtonSettings } from "src/view/browser/hooks/use-title-bar-navigation-setting";
 import { canGoBack, canGoForward } from "src/view/browser/types";
@@ -20,10 +21,11 @@ export interface TitleBarProps {
 }
 
 export const TitleBar: React.FC<TitleBarProps> = ({ showNavigationButtons = true }) => {
-  const { viewTab, viewPage, dispatch, paneId } = useTabStore();
+  const { viewTab, viewPage, paneId } = useTabStore();
   const title = viewPage.title || "read.crx 2";
   const tabBarOrientation = useTabBarOrientation();
   const { isDetachedTab } = useDetachedTabController();
+  const runTabCommand = useTabCommandRunner(viewTab.id);
   const { backEnabled, forwardEnabled, refreshEnabled } = useTitleBarButtonSettings();
   // 変更理由: 垂直モードでは更新ボタンをタイトルバー左端に置き、タブバーの上部を空ける。
   // 水平モードではタブバー側に更新があるため通常は左端を空けるが、別窓では
@@ -54,7 +56,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ showNavigationButtons = true
                 type="button"
                 className="title-bar__navigation"
                 disabled={!canNavigateBack}
-                onClick={() => dispatch(tabActions.goBack())}
+                onClick={() => runTabCommand(TAB_COMMAND_IDS.BACK)}
                 title="戻る"
                 aria-label="戻る"
               >
@@ -66,7 +68,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ showNavigationButtons = true
                 type="button"
                 className="title-bar__navigation"
                 disabled={!canNavigateForward}
-                onClick={() => dispatch(tabActions.goForward())}
+                onClick={() => runTabCommand(TAB_COMMAND_IDS.FORWARD)}
                 title="進む"
                 aria-label="進む"
               >
@@ -78,7 +80,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ showNavigationButtons = true
                 type="button"
                 className="title-bar__refresh"
                 disabled={!canRefresh}
-                onClick={() => dispatch(tabActions.reload())}
+                onClick={() => runTabCommand(TAB_COMMAND_IDS.RELOAD)}
                 title="更新"
                 aria-label="更新"
               >

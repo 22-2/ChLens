@@ -1,5 +1,9 @@
 import { Ban, Bookmark, BookmarkX, Clipboard } from "lucide-react";
-import type { CommandRequest, CommandTarget } from "src/view/browser/commands/command-runtime";
+import {
+  COMMAND_REQUEST_IDS,
+  type CommandRequest,
+  type CommandTarget,
+} from "src/view/browser/commands/command-runtime";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 
 export interface ThreadMenuTarget {
@@ -36,7 +40,7 @@ export function createThreadCopyMenuItems(
       icon: <Clipboard size={14} />,
       onSelect: () =>
         runCommand({
-          id: "target.copy",
+          id: COMMAND_REQUEST_IDS.TARGET_COPY,
           args: { target: commandTarget, format: "title" },
         }),
     },
@@ -46,7 +50,7 @@ export function createThreadCopyMenuItems(
       icon: <Clipboard size={14} />,
       onSelect: () =>
         runCommand({
-          id: "target.copy",
+          id: COMMAND_REQUEST_IDS.TARGET_COPY,
           args: { target: commandTarget, format: "url" },
         }),
     },
@@ -56,7 +60,7 @@ export function createThreadCopyMenuItems(
       icon: <Clipboard size={14} />,
       onSelect: () =>
         runCommand({
-          id: "target.copy",
+          id: COMMAND_REQUEST_IDS.TARGET_COPY,
           args: { target: commandTarget, format: "title-url" },
         }),
     },
@@ -99,7 +103,7 @@ export function createThreadBookmarkMenuItem({
     icon: isBookmarked ? <BookmarkX size={14} /> : <Bookmark size={14} />,
     onSelect: () => {
       runCommand({
-        id: "target.bookmark.set",
+        id: COMMAND_REQUEST_IDS.TARGET_BOOKMARK_SET,
         args: {
           target: commandTarget,
           bookmarked: !isBookmarked,

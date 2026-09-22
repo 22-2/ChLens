@@ -4,6 +4,7 @@ import { container } from "src/service-container/index";
 import type { IReadState, IThread } from "src/service-container/interfaces";
 import type { CommandRequest } from "src/view/browser/commands/command-runtime";
 import { runCommandRequest } from "src/view/browser/commands/command-runtime";
+import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
 import { ContextMenuNavigationActions } from "src/view/browser/components/ContextMenuNavigationActions";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import {
@@ -39,6 +40,7 @@ import {
   useBottomPanel,
 } from "src/view/browser/hooks/use-bottom-panel";
 import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
+import { useTabCommandRunner } from "src/view/browser/hooks/use-tab-command-runner";
 import { useTabStore, useTabViewState } from "src/view/browser/hooks/use-tab-store";
 import { useThreadTitleNgDialog } from "src/view/browser/hooks/use-thread-title-ng-dialog";
 import { useToast } from "src/view/browser/hooks/use-toast";
@@ -159,6 +161,7 @@ function refreshThreadNgState(thread: IThread, boardUrl: string): IThread {
 
 export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) => {
   const { viewTab, viewPage, dispatch } = useTabStore();
+  const runTabCommand = useTabCommandRunner(viewTab.id);
   // 変更理由: 下部パネルのスレ一覧も別窓へ移せるため、可視状態・更新タイマー・URL解析を
   // ページ本体と同じ表示先へ揃え、メイン窓の状態に引きずられないようにする。
   const viewSurface = useViewSurface();
@@ -547,11 +550,11 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
       canGoForward={viewTab.currentIndex < viewTab.history.length - 1}
       canRefresh={!loading}
       onBack={() => {
-        dispatch(tabActions.goBack());
+        runTabCommand(TAB_COMMAND_IDS.BACK);
         closeContextMenu();
       }}
       onForward={() => {
-        dispatch(tabActions.goForward());
+        runTabCommand(TAB_COMMAND_IDS.FORWARD);
         closeContextMenu();
       }}
       onRefresh={() => {

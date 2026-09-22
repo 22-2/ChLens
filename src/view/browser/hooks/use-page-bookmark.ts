@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { container } from "src/service-container/index";
-import { executeCommandRequest } from "src/view/browser/commands/command-runtime";
+import {
+  COMMAND_REQUEST_IDS,
+  executeCommandRequest,
+} from "src/view/browser/commands/command-runtime";
 import { readBookmarkStatus } from "src/view/browser/hooks/use-bookmark-revision";
 import { useToast } from "src/view/browser/hooks/use-toast";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
@@ -154,7 +157,7 @@ export function usePageBookmark(page: Page): PageBookmarkState {
         // コマンドへ揃えることで、実行時の状態確認と表示先通知を共有する。
         executeCommandRequest(
           {
-            id: "target.bookmark.set",
+            id: COMMAND_REQUEST_IDS.TARGET_BOOKMARK_SET,
             args: {
               target: {
                 kind: bookmarkTarget.type,

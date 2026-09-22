@@ -37,6 +37,15 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
     viewPage: mocks.viewPage,
     dispatch: dispatchMock,
     paneId: "pane-1",
+    stateRef: {
+      get current() {
+        return {
+          panes: [{ id: "pane-1", tabs: [mocks.viewTab], activeTabId: mocks.viewTab.id }],
+          activePaneId: "pane-1",
+          closedTabs: [],
+        };
+      },
+    },
   }),
   useTabPanes: () => ({ panes: [{ id: "pane-1" }], activePaneId: "pane-1" }),
 }));
@@ -153,7 +162,7 @@ describe("TitleBar", () => {
 
     fireEvent.click(refreshButton);
 
-    expect(dispatchMock).toHaveBeenCalledWith({ type: "RELOAD" });
+    expect(dispatchMock).toHaveBeenCalledWith({ type: "RELOAD", tabId: "tab-1" });
   });
 
   it("垂直モードでは更新ボタンの左側に戻る・進むを表示する", () => {
@@ -187,8 +196,8 @@ describe("TitleBar", () => {
     fireEvent.click(screen.getByRole("button", { name: "戻る" }));
     fireEvent.click(screen.getByRole("button", { name: "進む" }));
 
-    expect(dispatchMock).toHaveBeenNthCalledWith(1, { type: "GO_BACK" });
-    expect(dispatchMock).toHaveBeenNthCalledWith(2, { type: "GO_FORWARD" });
+    expect(dispatchMock).toHaveBeenNthCalledWith(1, { type: "GO_BACK", tabId: "tab-1" });
+    expect(dispatchMock).toHaveBeenNthCalledWith(2, { type: "GO_FORWARD", tabId: "tab-1" });
   });
 
   it("設定でタイトルバーの各ボタンを個別に非表示にできる", () => {

@@ -6,6 +6,7 @@ import { container } from "src/service-container/index";
 import type { IReadState, IThread } from "src/service-container/interfaces";
 import type { CommandRequest } from "src/view/browser/commands/command-runtime";
 import { runCommandRequest } from "src/view/browser/commands/command-runtime";
+import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
 import { ContextMenuNavigationActions } from "src/view/browser/components/ContextMenuNavigationActions";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import {
@@ -49,6 +50,7 @@ import {
   usePageCountStatus,
 } from "src/view/browser/hooks/use-page-count-status";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
+import { useTabCommandRunner } from "src/view/browser/hooks/use-tab-command-runner";
 import {
   useActivePaneId,
   usePaneId,
@@ -215,6 +217,7 @@ export const ThreadListPage: React.FC<Props> = ({
   const fallbackScrollContainerRef = useRef<HTMLDivElement>(null);
   const effectiveScrollContainerRef = scrollContainerRef ?? fallbackScrollContainerRef;
   const { viewTab } = useTabStore();
+  const runTabCommand = useTabCommandRunner(tabId);
   // 既存の直接利用者との互換性のため渡されたtabを残し、通常の描画経路ではそれを優先する。
   const navigationTab = tab ?? viewTab;
   const { state: persistedViewState, update: updateViewState } = useTabViewState(tabId, page);
@@ -307,7 +310,7 @@ export const ThreadListPage: React.FC<Props> = ({
     isLoading: loading,
     containerRef: effectiveScrollContainerRef,
     edge: "top",
-    onRefresh: () => dispatch(tabActions.reload()),
+    onRefresh: () => runTabCommand(TAB_COMMAND_IDS.RELOAD),
   });
   const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
     pageType: "threadList",
@@ -672,7 +675,7 @@ export const ThreadListPage: React.FC<Props> = ({
 
       // タブを切り替えた瞬間に旧タブの更新が走ると体感が悪いため、
       // 一覧の自動更新は表示中タブの RELOAD 経路だけを使って発火する。
-      dispatch(tabActions.reload());
+      runTabCommand(TAB_COMMAND_IDS.RELOAD);
     }, boardAutoRefreshIntervalMs);
 
     return () => {
@@ -680,11 +683,11 @@ export const ThreadListPage: React.FC<Props> = ({
     };
   }, [
     boardAutoRefreshIntervalMs,
-    dispatch,
     isActive,
     isAutoRefreshEnabled,
     isDocumentVisible,
     loading,
+    runTabCommand,
     viewWindow,
   ]);
 
@@ -799,9 +802,9 @@ export const ThreadListPage: React.FC<Props> = ({
         return;
       }
 
-      dispatch(tabActions.reload());
+      runTabCommand(TAB_COMMAND_IDS.RELOAD);
     },
-    [dispatch, viewWindow],
+    [runTabCommand, viewWindow],
   );
 
   const openThreadInNewTab = useCallback(
@@ -844,15 +847,15 @@ export const ThreadListPage: React.FC<Props> = ({
       canGoForward={canGoForward(navigationTab)}
       canRefresh={isPageRefreshable(page)}
       onBack={() => {
-        dispatch(tabActions.goBack());
+        runTabCommand(TAB_COMMAND_IDS.BACK);
         closeContextMenu();
       }}
       onForward={() => {
-        dispatch(tabActions.goForward());
+        runTabCommand(TAB_COMMAND_IDS.FORWARD);
         closeContextMenu();
       }}
       onRefresh={() => {
-        dispatch(tabActions.reload());
+        runTabCommand(TAB_COMMAND_IDS.RELOAD);
         closeContextMenu();
       }}
     />

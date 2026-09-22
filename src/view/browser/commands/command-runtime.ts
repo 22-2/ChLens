@@ -16,23 +16,39 @@ export interface CommandTarget {
   readonly title: string;
 }
 
+/** 対象操作・Clipboard操作で共有する要求ID。 */
+export const COMMAND_REQUEST_IDS = {
+  TARGET_COPY: "target.copy",
+  CLIPBOARD_COPY_TEXT: "clipboard.copy-text",
+  TARGET_BOOKMARK_SET: "target.bookmark.set",
+  TARGET_BOOKMARK_TOGGLE: "target.bookmark.toggle",
+} as const;
+
 export type CommandRequest =
   | {
-      readonly id: "target.copy";
+      readonly id: typeof COMMAND_REQUEST_IDS.TARGET_COPY;
       readonly args: {
         readonly target: CommandTarget;
         readonly format: "title" | "url" | "title-url" | "markdown";
       };
     }
+  // 変更理由: レス本文やURLのように対象型へ収まらない文字列も、表示先と失敗処理を
+  // 同じClipboard経路へ集約するため、対象付きコピーとは別の要求として表現する。
   | {
-      readonly id: "target.bookmark.set";
+      readonly id: typeof COMMAND_REQUEST_IDS.CLIPBOARD_COPY_TEXT;
+      readonly args: {
+        readonly text: string;
+      };
+    }
+  | {
+      readonly id: typeof COMMAND_REQUEST_IDS.TARGET_BOOKMARK_SET;
       readonly args: {
         readonly target: CommandTarget;
         readonly bookmarked: boolean;
       };
     }
   | {
-      readonly id: "target.bookmark.toggle";
+      readonly id: typeof COMMAND_REQUEST_IDS.TARGET_BOOKMARK_TOGGLE;
       readonly args: {
         readonly target: CommandTarget;
       };
@@ -52,15 +68,18 @@ export interface CommandRuntime {
 
 function getCommandLabel(request: CommandRequest): string {
   switch (request.id) {
-    case "target.copy":
+    case COMMAND_REQUEST_IDS.TARGET_COPY:
+    case COMMAND_REQUEST_IDS.CLIPBOARD_COPY_TEXT:
       return "コピー";
-    case "target.bookmark.set":
-    case "target.bookmark.toggle":
+    case COMMAND_REQUEST_IDS.TARGET_BOOKMARK_SET:
+    case COMMAND_REQUEST_IDS.TARGET_BOOKMARK_TOGGLE:
       return "ブックマークの更新";
   }
 }
 
-function getCopyText(request: Extract<CommandRequest, { id: "target.copy" }>): string {
+function getCopyText(
+  request: Extract<CommandRequest, { id: typeof COMMAND_REQUEST_IDS.TARGET_COPY }>,
+): string {
   const { target, format } = request.args;
   switch (format) {
     case "title":
@@ -75,7 +94,7 @@ function getCopyText(request: Extract<CommandRequest, { id: "target.copy" }>): s
 }
 
 /**
- * 対象付きコマンドを実行する低位API。
+ * 対象操作・Clipboard操作を実行する低位API。
  *
  * 失敗は呼び出し元へthrowする。メニューイベント用の入口だけがログと通知を
  * まとめて担当することで、入口を増やしても同じエラーが二重に表示されない。
@@ -85,10 +104,19 @@ export async function executeCommandRequest(
   runtime: CommandRuntime,
 ): Promise<void> {
   switch (request.id) {
-    case "target.copy":
-      await copyText(getCopyText(request), runtime.surface);
+    case COMMAND_REQUEST_IDS.TARGET_COPY:
+      await executeCommandRequest(
+        {
+          id: COMMAND_REQUEST_IDS.CLIPBOARD_COPY_TEXT,
+          args: { text: getCopyText(request) },
+        },
+        runtime,
+      );
       return;
-    case "target.bookmark.set": {
+    case COMMAND_REQUEST_IDS.CLIPBOARD_COPY_TEXT:
+      await copyText(request.args.text, runtime.surface);
+      return;
+    case COMMAND_REQUEST_IDS.TARGET_BOOKMARK_SET: {
       const { target, bookmarked } = request.args;
       const currentBookmarked = Boolean(container.bookmark.get(target.url));
       if (currentBookmarked === bookmarked) {
@@ -108,12 +136,12 @@ export async function executeCommandRequest(
       }
       return;
     }
-    case "target.bookmark.toggle": {
+    case COMMAND_REQUEST_IDS.TARGET_BOOKMARK_TOGGLE: {
       const { target } = request.args;
       const currentBookmarked = Boolean(container.bookmark.get(target.url));
       await executeCommandRequest(
         {
-          id: "target.bookmark.set",
+          id: COMMAND_REQUEST_IDS.TARGET_BOOKMARK_SET,
           args: { target, bookmarked: !currentBookmarked },
         },
         runtime,
@@ -124,7 +152,7 @@ export async function executeCommandRequest(
 }
 
 /**
- * UIイベントから安全に呼び出せる対象付きコマンド入口。
+ * UIイベントから安全に呼び出せるコマンド入口。
  *
  * 変更理由: ReactのイベントハンドラはPromiseを待たないため、rejectを放置すると
  * 別窓ではエラーが画面に出ず、原因も追跡できない。ここで操作単位のログと通知を
@@ -138,9 +166,10 @@ export async function runCommandRequest(
     await executeCommandRequest(request, runtime);
     return true;
   } catch (error: unknown) {
-    console.error("対象付きコマンドの実行に失敗しました", {
+    const target = "target" in request.args ? request.args.target : undefined;
+    console.error("コマンドの実行に失敗しました", {
       commandId: request.id,
-      target: request.args.target,
+      ...(target ? { target } : {}),
       error,
     });
     runtime.toast.error(`${getCommandLabel(request)}に失敗しました`);
