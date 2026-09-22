@@ -98,6 +98,7 @@ describe("ペイン（横分割）", () => {
         <div data-testid={`panebox-${paneId}`}>
           <button onClick={() => dispatch({ type: "SPLIT_PANE" })}>{`split-${paneId}`}</button>
           <button onClick={() => dispatch({ type: "CLOSE_PANE" })}>{`close-${paneId}`}</button>
+          <button onClick={() => dispatch({ type: "SWAP_PANE_TABS" })}>{`swap-${paneId}`}</button>
           <button onClick={() => dispatch({ type: "ADD_TAB" })}>{`addtab-${paneId}`}</button>
           <button
             onClick={() =>
@@ -110,6 +111,7 @@ describe("ペイン（横分割）", () => {
             {`toright-${paneId}`}
           </button>
           <output data-testid={`tabcount-${paneId}`}>{state.tabs.length}</output>
+          <output data-testid={`selected-tab-${paneId}`}>{state.selectedTabId}</output>
         </div>
       );
     }
@@ -205,6 +207,21 @@ describe("ペイン（横分割）", () => {
     const remaining = paneIds();
     fireEvent.click(screen.getByText(`close-${remaining[0]}`));
     expect(screen.getByTestId("pane-count")).toHaveTextContent("1");
+  });
+
+  it("SWAP_PANE_TABS で各ペインの選択中タブを入れ替える", async () => {
+    const { paneIds } = await setup();
+    const [first] = paneIds();
+
+    fireEvent.click(screen.getByText(`split-${first}`));
+    const [left, right] = paneIds();
+    const leftTabBefore = screen.getByTestId(`selected-tab-${left}`).textContent;
+    const rightTabBefore = screen.getByTestId(`selected-tab-${right}`).textContent;
+
+    fireEvent.click(screen.getByText(`swap-${right}`));
+
+    expect(screen.getByTestId(`selected-tab-${left}`)).toHaveTextContent(rightTabBefore ?? "");
+    expect(screen.getByTestId(`selected-tab-${right}`)).toHaveTextContent(leftTabBefore ?? "");
   });
 
   it("OPEN_IN_RIGHT_PANE は右ペインが無ければ新規作成してタブを移す", async () => {

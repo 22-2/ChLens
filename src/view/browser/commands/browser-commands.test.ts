@@ -738,6 +738,20 @@ describe("browser commands", () => {
     expect(dispatch).toHaveBeenLastCalledWith({ type: "CLOSE_PANE" });
   });
 
+  it("ペインのタブ入れ替えコマンドは2ペイン時だけ表示し、actionを送る", async () => {
+    const { context, dispatch } = createContext({ type: "home", title: "ホーム" });
+
+    expect(resolveBrowserCommands(context).map(({ id }) => id)).not.toContain(
+      "layout.swap-pane-tabs",
+    );
+
+    context.isTwoPane = true;
+    expect(resolveBrowserCommands(context).map(({ id }) => id)).toContain("layout.swap-pane-tabs");
+
+    await expect(executeBrowserCommand("layout.swap-pane-tabs", context)).resolves.toBe(true);
+    expect(dispatch).toHaveBeenLastCalledWith({ type: "SWAP_PANE_TABS" });
+  });
+
   it("タブ操作コマンドはアクティブなタブを対象にactionを送る", async () => {
     const { context, dispatch } = createContext({ type: "home", title: "ホーム" });
 

@@ -1122,6 +1122,41 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       return { ...state, panes, activePaneId, closedTabs: newClosed };
     }
 
+    case TAB_ACTION_TYPES.SWAP_PANE_TABS: {
+      // 変更理由: 2ペインの表示内容だけを交換し、各ペインが保持している
+      // 非選択タブの並びとペイン自体のフォーカスは維持する。
+      if (state.panes.length < 2) return state;
+
+      const sourcePaneId = resolvePaneId(state, action.paneId);
+      const sourceIndex = state.panes.findIndex((pane) => pane.id === sourcePaneId);
+      const sourcePane = state.panes[sourceIndex];
+      const targetPane = state.panes.find((pane, index) => index !== sourceIndex);
+      if (!sourcePane || !targetPane) return state;
+
+      const sourceTab = sourcePane.tabs.find((tab) => tab.id === sourcePane.activeTabId);
+      const targetTab = targetPane.tabs.find((tab) => tab.id === targetPane.activeTabId);
+      if (!sourceTab || !targetTab) return state;
+
+      const replaceActiveTab = (pane: Pane, currentTabId: string, replacement: Tab): Pane => ({
+        ...pane,
+        tabs: pane.tabs.map((tab) => (tab.id === currentTabId ? replacement : tab)),
+        activeTabId: replacement.id,
+      });
+      const updatedSourcePane = replaceActiveTab(sourcePane, sourceTab.id, targetTab);
+      const updatedTargetPane = replaceActiveTab(targetPane, targetTab.id, sourceTab);
+
+      return {
+        ...state,
+        panes: state.panes.map((pane) =>
+          pane.id === sourcePane.id
+            ? updatedSourcePane
+            : pane.id === targetPane.id
+              ? updatedTargetPane
+              : pane,
+        ),
+      };
+    }
+
     case TAB_ACTION_TYPES.SET_ACTIVE_PANE: {
       const paneId = resolvePaneId(state, action.paneId);
       if (paneId === state.activePaneId) return state;

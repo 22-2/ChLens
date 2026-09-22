@@ -54,6 +54,7 @@ export interface TabActionCreators {
   splitPane(): ActionOf<"SPLIT_PANE">;
   openInRightPane(tabId: string): ActionOf<"OPEN_IN_RIGHT_PANE">;
   closePane(): ActionOf<"CLOSE_PANE">;
+  swapPaneTabs(): ActionOf<"SWAP_PANE_TABS">;
   setActivePane(): ActionOf<"SET_ACTIVE_PANE">;
   moveTabToPane(
     tabId: string,
@@ -123,6 +124,7 @@ export const tabActions: TabActionCreators = {
   splitPane: () => ({ type: TAB_ACTION_TYPES.SPLIT_PANE }),
   openInRightPane: (tabId) => ({ type: TAB_ACTION_TYPES.OPEN_IN_RIGHT_PANE, tabId }),
   closePane: () => ({ type: TAB_ACTION_TYPES.CLOSE_PANE }),
+  swapPaneTabs: () => ({ type: TAB_ACTION_TYPES.SWAP_PANE_TABS }),
   setActivePane: () => ({ type: TAB_ACTION_TYPES.SET_ACTIVE_PANE }),
   moveTabToPane: (tabId, fromPaneId, toPaneId, toIndex) => ({
     type: TAB_ACTION_TYPES.MOVE_TAB_TO_PANE,

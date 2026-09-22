@@ -37,6 +37,7 @@ export const TAB_ACTION_TYPES = {
   SPLIT_PANE: "SPLIT_PANE",
   OPEN_IN_RIGHT_PANE: "OPEN_IN_RIGHT_PANE",
   CLOSE_PANE: "CLOSE_PANE",
+  SWAP_PANE_TABS: "SWAP_PANE_TABS",
   SET_ACTIVE_PANE: "SET_ACTIVE_PANE",
   MOVE_TAB_TO_PANE: "MOVE_TAB_TO_PANE",
   RESTORE: "RESTORE",
@@ -99,6 +100,7 @@ export type TabAction =
   | { type: typeof TAB_ACTION_TYPES.SPLIT_PANE }
   | { type: typeof TAB_ACTION_TYPES.OPEN_IN_RIGHT_PANE; tabId: string }
   | { type: typeof TAB_ACTION_TYPES.CLOSE_PANE }
+  | { type: typeof TAB_ACTION_TYPES.SWAP_PANE_TABS }
   | { type: typeof TAB_ACTION_TYPES.SET_ACTIVE_PANE }
   | {
       type: typeof TAB_ACTION_TYPES.MOVE_TAB_TO_PANE;

@@ -1,5 +1,6 @@
 import {
   Archive,
+  ArrowLeftRight,
   Bookmark,
   Clipboard,
   Columns2,
@@ -749,6 +750,23 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     icon: Columns2,
     run: ({ dispatch, isTwoPane }) =>
       dispatch(isTwoPane ? tabActions.closePane() : tabActions.splitPane()),
+  },
+  {
+    id: "layout.swap-pane-tabs",
+    label: "ペインのタブを入れ替え",
+    englishLabel: "Swap Pane Tabs",
+    description: "左右のペインで選択中のタブを入れ替えます",
+    keywords: ["入れ替え", "交換", "swap", "pane", "ペイン"],
+    group: "layout",
+    icon: ArrowLeftRight,
+    // 変更理由: 交換相手が存在しない1ペイン時に候補を表示すると、実行しても
+    // 何も起きないコマンドが一覧へ混ざるため、2ペイン時だけ公開する。
+    when: ({ isTwoPane }) => isTwoPane,
+    run: ({ dispatch }) => {
+      // 変更理由: 選択中タブの所属ペインはdispatch側で解決し、コマンドから
+      // ペインIDを直接扱わないことで、別窓やアクティブペインの境界を保つ。
+      dispatch(tabActions.swapPaneTabs());
+    },
   },
   {
     id: "layout.toggle-tab-orientation",

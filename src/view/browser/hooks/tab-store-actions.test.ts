@@ -30,4 +30,8 @@ describe("tabActions", () => {
   it("呼び出しごとに新しいアクションオブジェクトを返す", () => {
     expect(tabActions.reload()).not.toBe(tabActions.reload());
   });
+
+  it("ペインの選択中タブ交換アクションを生成する", () => {
+    expect(tabActions.swapPaneTabs()).toEqual({ type: "SWAP_PANE_TABS" });
+  });
 });
