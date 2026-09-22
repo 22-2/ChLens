@@ -82,4 +82,70 @@ describe("tab-command-runtime", () => {
     ).toBe(false);
     expect(runtime.dispatch).not.toHaveBeenCalled();
   });
+
+  it("別ペインのタブを閉じる時は所有ペインを指定する", () => {
+    const target = createTab({ id: "target-tab" });
+    const other = createTab({ id: "other-tab" });
+    const paneSibling = createTab({ id: "pane-2-sibling" });
+    const runtime = createRuntime(target);
+    runtime.state.panes = [
+      { id: "pane-1", tabs: [other], activeTabId: other.id },
+      { id: "pane-2", tabs: [target, paneSibling], activeTabId: target.id },
+    ];
+    runtime.state.activePaneId = "pane-1";
+
+    expect(
+      executeTabCommandRequest({ id: TAB_COMMAND_IDS.CLOSE, args: { tabId: target.id } }, runtime),
+    ).toBe(true);
+    expect(runtime.dispatch).toHaveBeenCalledWith({
+      ...tabActions.closeTab(target.id),
+      paneId: "pane-2",
+      tabId: target.id,
+    });
+  });
+
+  it("固定状態は指定値と異なる時だけ変更する", () => {
+    const target = createTab({ id: "target-tab" });
+    const runtime = createRuntime(target);
+
+    expect(
+      executeTabCommandRequest(
+        { id: TAB_COMMAND_IDS.PIN_SET, args: { tabId: target.id, pinned: true } },
+        runtime,
+      ),
+    ).toBe(true);
+    expect(runtime.dispatch).toHaveBeenCalledWith({
+      ...tabActions.togglePin(target.id),
+      paneId: "pane-1",
+      tabId: target.id,
+    });
+
+    expect(
+      executeTabCommandRequest(
+        { id: TAB_COMMAND_IDS.PIN_SET, args: { tabId: target.id, pinned: false } },
+        runtime,
+      ),
+    ).toBe(false);
+    expect(runtime.dispatch).toHaveBeenCalledTimes(1);
+  });
+
+  it("固定タブとペイン最後のタブは閉じない", () => {
+    const pinnedRuntime = createRuntime(createTab({ pinned: true }));
+    expect(
+      executeTabCommandRequest(
+        { id: TAB_COMMAND_IDS.CLOSE, args: { tabId: "tab-1" } },
+        pinnedRuntime,
+      ),
+    ).toBe(false);
+    expect(pinnedRuntime.dispatch).not.toHaveBeenCalled();
+
+    const lastTabRuntime = createRuntime(createTab());
+    expect(
+      executeTabCommandRequest(
+        { id: TAB_COMMAND_IDS.CLOSE, args: { tabId: "tab-1" } },
+        lastTabRuntime,
+      ),
+    ).toBe(false);
+    expect(lastTabRuntime.dispatch).not.toHaveBeenCalled();
+  });
 });

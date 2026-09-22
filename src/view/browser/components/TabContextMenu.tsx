@@ -2,6 +2,7 @@ import { ExternalLink, List, Pin, PinOff, RotateCcw, X } from "lucide-react";
 import React, { useCallback, useMemo } from "react";
 import type { CommandRequest } from "src/view/browser/commands/command-runtime";
 import { runCommandRequest } from "src/view/browser/commands/command-runtime";
+import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
 import {
   createThreadBookmarkMenuItem,
   createThreadCopyMenuItems,
@@ -13,6 +14,7 @@ import {
 } from "src/view/browser/hooks/use-bookmark-revision";
 import { useOptionalBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useDetachedTabController } from "src/view/browser/hooks/use-detached-tab-controller";
+import { useTabCommandRunner } from "src/view/browser/hooks/use-tab-command-runner";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useToast } from "src/view/browser/hooks/use-toast";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
@@ -34,6 +36,7 @@ interface Props {
 
 export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
   const { state, dispatch } = useTabStore();
+  const runTabCommand = useTabCommandRunner(tab.id);
   const { isDetachedTab, detachTab, reattachTab } = useDetachedTabController();
   const bottomPanel = useOptionalBottomPanel();
   const toast = useToast();
@@ -63,7 +66,7 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
         label: "タブを閉じる",
         disabled: tab.pinned,
         icon: <X />,
-        onSelect: () => dispatch(tabActions.closeTab(tab.id)),
+        onSelect: () => runTabCommand(TAB_COMMAND_IDS.CLOSE),
       },
       {
         id: "reopen",
@@ -160,7 +163,10 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
       id: "pin",
       label: tab.pinned ? "タブの固定を解除" : "タブを固定",
       icon: tab.pinned ? <PinOff /> : <Pin />,
-      onSelect: () => dispatch(tabActions.togglePin(tab.id)),
+      onSelect: () =>
+        runTabCommand(TAB_COMMAND_IDS.PIN_SET, {
+          pinned: !tab.pinned,
+        }),
     });
     return result;
   }, [
@@ -179,6 +185,7 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
     detachTab,
     reattachTab,
     runTargetCommand,
+    runTabCommand,
   ]);
 
   return <ContextMenu x={position.x} y={position.y} items={items} onClose={onClose} />;

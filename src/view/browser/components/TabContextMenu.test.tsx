@@ -6,7 +6,7 @@ import { TabContextMenu } from "src/view/browser/components/TabContextMenu";
 import type { Tab } from "src/view/browser/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-const { copyTextMock, dispatchMock, threadTab } = vi.hoisted(() => ({
+const { copyTextMock, dispatchMock, threadTab, secondTab } = vi.hoisted(() => ({
   copyTextMock: vi.fn<() => Promise<void>>(),
   dispatchMock: vi.fn(),
   threadTab: {
@@ -16,6 +16,20 @@ const { copyTextMock, dispatchMock, threadTab } = vi.hoisted(() => ({
         type: "thread" as const,
         title: "Current Thread",
         threadUrl: "https://example.com/test/read.cgi/software/123/",
+      },
+    ],
+    currentIndex: 0,
+    pinned: false,
+    reloadKey: 0,
+    autoRefreshEnabled: false,
+    autoRefreshPageKey: null,
+  } satisfies Tab,
+  secondTab: {
+    id: "tab-2",
+    history: [
+      {
+        type: "home" as const,
+        title: "Other Tab",
       },
     ],
     currentIndex: 0,
@@ -34,8 +48,16 @@ vi.mock("src/view/browser/utils/clipboard", async (importOriginal) => {
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => ({
     state: {
-      tabs: [threadTab],
+      tabs: [threadTab, secondTab],
       closedTabs: [],
+    },
+    paneId: "pane-1",
+    stateRef: {
+      current: {
+        panes: [{ id: "pane-1", tabs: [threadTab, secondTab], activeTabId: threadTab.id }],
+        activePaneId: "pane-1",
+        closedTabs: [],
+      },
     },
     dispatch: dispatchMock,
   }),
@@ -96,5 +118,15 @@ describe("TabContextMenu", () => {
         document: expect.any(Object),
       }),
     );
+  });
+
+  it("閉じる操作を対象タブのコマンドとして実行する", () => {
+    render(<TabContextMenu tab={threadTab} position={{ x: 10, y: 10 }} onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "タブを閉じる" }));
+    expect(dispatchMock).toHaveBeenCalledWith({
+      type: "CLOSE_TAB",
+      tabId: threadTab.id,
+      paneId: "pane-1",
+    });
   });
 });

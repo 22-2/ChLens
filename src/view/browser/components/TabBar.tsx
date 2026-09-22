@@ -557,9 +557,11 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
 
   const handleTabClose = useCallback(
     (tabId: string) => {
-      dispatch(tabActions.closeTab(tabId));
+      // 変更理由: 中クリックは選択中タブと異なるタブにも発生するため、
+      // コマンドへ対象IDを渡して所有ペインを解決する。
+      runTabCommand(TAB_COMMAND_IDS.CLOSE, { tabId });
     },
-    [dispatch],
+    [runTabCommand],
   );
 
   const handleResizePointerDown = useCallback(

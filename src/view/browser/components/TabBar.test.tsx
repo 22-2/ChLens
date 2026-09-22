@@ -960,6 +960,7 @@ describe("TabBar tab interactions", () => {
     expect(dispatchMock).toHaveBeenCalledWith({
       type: "CLOSE_TAB",
       tabId: "tab-1",
+      paneId: "pane-1",
     });
   });
 

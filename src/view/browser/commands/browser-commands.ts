@@ -597,7 +597,10 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     icon: RotateCw,
     when: ({ viewPage }) => RELOADABLE_PAGE_TYPES.has(viewPage.type),
     run: ({ dispatch, viewTab, runTabCommand }) => {
-      if (runTabCommand?.(TAB_COMMAND_IDS.RELOAD)) {
+      if (runTabCommand) {
+        // 変更理由: 実行器が対象タブの消滅や非対応ページを検出した時に、
+        // 旧dispatchへフォールバックすると別タブを再取得する危険がある。
+        runTabCommand(TAB_COMMAND_IDS.RELOAD);
         return;
       }
 
