@@ -69,6 +69,8 @@ export const ResPopup: React.FC<{
   /** ポップアップ内でも画像ぼかしを適用するためのセット */
   blurredResNums?: Set<number>;
   ngResNums?: ReadonlySet<number>;
+  ownResNums?: ReadonlySet<number>;
+  replyToOwnResNums?: ReadonlySet<number>;
   resMap?: ReadonlyMap<number, unknown>;
   threadKey?: string;
 }> = ({
@@ -102,6 +104,8 @@ export const ResPopup: React.FC<{
   threadUrl,
   blurredResNums,
   ngResNums,
+  ownResNums,
+  replyToOwnResNums,
   resMap,
   threadKey,
 }) => {
@@ -225,6 +229,8 @@ export const ResPopup: React.FC<{
                 onContextMenu={handleResContextMenu}
                 isImageBlurred={blurredResNums?.has(res.num)}
                 ngResNums={ngResNums}
+                isOwn={ownResNums?.has(res.num)}
+                isReplyToOwn={replyToOwnResNums?.has(res.num)}
                 resMap={resMap}
                 threadKey={threadKey}
               />

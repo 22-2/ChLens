@@ -45,6 +45,8 @@ export const ReplyTree: React.FC<{
   blurredResNums?: Set<number>;
   /** ツリー内のアンカー先NG強調にも同じ判定集合を使う。 */
   ngResNums?: ReadonlySet<number>;
+  ownResNums?: ReadonlySet<number>;
+  replyToOwnResNums?: ReadonlySet<number>;
   /** 個別ツリーの三点メニュークリック時コールバック（渡された場合のみボタン表示） */
   onSubTreeMenu?: (
     resNum: number,
@@ -75,6 +77,8 @@ export const ReplyTree: React.FC<{
   depth,
   blurredResNums,
   ngResNums,
+  ownResNums,
+  replyToOwnResNums,
   onSubTreeMenu,
   ancestorResNums = [resNum],
   threadKey,
@@ -125,6 +129,8 @@ export const ReplyTree: React.FC<{
                 onContextMenu={onResContextMenu}
                 isImageBlurred={blurredResNums?.has(res.num)}
                 ngResNums={ngResNums}
+                isOwn={ownResNums?.has(res.num)}
+                isReplyToOwn={replyToOwnResNums?.has(res.num)}
                 resMap={resMap}
                 threadKey={threadKey}
               />

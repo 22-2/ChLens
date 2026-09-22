@@ -766,6 +766,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             threadUrl={page.threadUrl}
             blurredResNums={blurredResNums}
             ngResNums={ngResNums}
+            ownResNums={ownResNums}
+            replyToOwnResNums={replyToOwnResNums}
           />
           <ThreadMinimap
             rootRef={rootRef}

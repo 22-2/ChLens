@@ -59,6 +59,8 @@ interface PopupRendererProps {
   /** ポップアップ内でも画像ぼかしを適用するためのセット */
   blurredResNums?: Set<number>;
   ngResNums?: ReadonlySet<number>;
+  ownResNums?: ReadonlySet<number>;
+  replyToOwnResNums?: ReadonlySet<number>;
 }
 
 function useStablePopupHandlerCache(resetDeps: readonly unknown[]) {
@@ -123,6 +125,8 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
   threadUrl,
   blurredResNums,
   ngResNums,
+  ownResNums,
+  replyToOwnResNums,
 }) => {
   const anchorPreviewDepthByIdRef = useRef(new Map<string, number>());
   anchorPreviewDepthByIdRef.current = new Map(
@@ -197,6 +201,8 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
           zIndex={anchorPreview.z}
           blurredResNums={blurredResNums}
           ngResNums={ngResNums}
+          ownResNums={ownResNums}
+          replyToOwnResNums={replyToOwnResNums}
           resMap={resMap}
           threadKey={threadUrl}
           pinned={anchorPreview.payload.pinned === true}
@@ -269,6 +275,8 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
           )}
           blurredResNums={blurredResNums}
           ngResNums={ngResNums}
+          ownResNums={ownResNums}
+          replyToOwnResNums={replyToOwnResNums}
           resMap={resMap}
           threadKey={threadUrl}
           threadTitle={threadTitle}
@@ -338,6 +346,8 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
           threadUrl={threadUrl}
           blurredResNums={blurredResNums}
           ngResNums={ngResNums}
+          ownResNums={ownResNums}
+          replyToOwnResNums={replyToOwnResNums}
           threadKey={threadUrl}
         />
       ))}

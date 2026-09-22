@@ -555,6 +555,8 @@ export const ReplyTreePopup: React.FC<{
   /** ポップアップ内でも画像ぼかしを適用するためのセット */
   blurredResNums?: Set<number>;
   ngResNums?: ReadonlySet<number>;
+  ownResNums?: ReadonlySet<number>;
+  replyToOwnResNums?: ReadonlySet<number>;
   threadKey?: string;
 }> = ({
   x,
@@ -588,6 +590,8 @@ export const ReplyTreePopup: React.FC<{
   threadUrl,
   blurredResNums,
   ngResNums,
+  ownResNums,
+  replyToOwnResNums,
   threadKey,
 }) => {
   const viewSurface = useViewSurface();
@@ -873,6 +877,8 @@ export const ReplyTreePopup: React.FC<{
                   onContextMenu={handleResContextMenu}
                   isImageBlurred={blurredResNums?.has(sourceRes.num)}
                   ngResNums={ngResNums}
+                  isOwn={ownResNums?.has(sourceRes.num)}
+                  isReplyToOwn={replyToOwnResNums?.has(sourceRes.num)}
                   resMap={resMap}
                   threadKey={threadKey}
                 />
@@ -900,6 +906,8 @@ export const ReplyTreePopup: React.FC<{
                 depth={0}
                 blurredResNums={blurredResNums}
                 ngResNums={ngResNums}
+                ownResNums={ownResNums}
+                replyToOwnResNums={replyToOwnResNums}
                 threadKey={threadKey}
                 onSubTreeMenu={handleSubTreeMenuClick}
               />

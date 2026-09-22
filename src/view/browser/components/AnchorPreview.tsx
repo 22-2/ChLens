@@ -57,6 +57,8 @@ export interface AnchorPreviewProps {
   /** ポップアップ内でも画像ぼかしを適用するためのセット */
   blurredResNums?: Set<number>;
   ngResNums?: ReadonlySet<number>;
+  ownResNums?: ReadonlySet<number>;
+  replyToOwnResNums?: ReadonlySet<number>;
   resMap?: ReadonlyMap<number, unknown>;
   threadKey?: string;
   /** ピン留め中は明示的に閉じるまで自動クローズしない。 */
@@ -98,6 +100,8 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
   zIndex,
   blurredResNums,
   ngResNums,
+  ownResNums,
+  replyToOwnResNums,
   resMap,
   threadKey,
   pinned = false,
@@ -237,6 +241,8 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
                 onContextMenu={handleResContextMenu}
                 isImageBlurred={blurredResNums?.has(res.num)}
                 ngResNums={ngResNums}
+                isOwn={ownResNums?.has(res.num)}
+                isReplyToOwn={replyToOwnResNums?.has(res.num)}
                 resMap={resMap}
                 threadKey={threadKey}
               />

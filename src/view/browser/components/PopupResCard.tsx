@@ -22,6 +22,8 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     idIndex,
     disableRepClick,
     isHighlighted,
+    isOwn,
+    isReplyToOwn,
     onUrlClick,
     onUrlContextMenu,
     onLinkMiddleClickStart,
@@ -128,6 +130,9 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
         <header className="res__header">
           <span className={resNumClassName}>{res.num}</span>
           <span className="res__name" dangerouslySetInnerHTML={nameMarkup} />
+          {/* 変更理由: ポップアップにも同じスレッドの返信関係を渡し、本文表示との認識を揃える。 */}
+          {isOwn ? <span className="res__badge res__badge--own">自分</span> : null}
+          {isReplyToOwn ? <span className="res__badge res__badge--reply-to-own">返信</span> : null}
           {isNgMatched ? <NgBadge result={res.ng} /> : null}
           {isNgActive && ngDisplayMode === "soft-ng" && isNgRevealed ? (
             <button
@@ -232,6 +237,9 @@ export interface StaticResCardProps {
   /** 参照元レスの返信を再帰的に開くのを防ぐための無効化フラグ */
   disableRepClick?: boolean;
   isHighlighted?: boolean;
+  /** 本文側と同じ自分レス・自分への返信バッヂを表示する。 */
+  isOwn?: boolean;
+  isReplyToOwn?: boolean;
   onUrlClick: UrlClickHandler;
   onUrlContextMenu: UrlContextMenuHandler;
   onLinkMiddleClickStart?: () => void;

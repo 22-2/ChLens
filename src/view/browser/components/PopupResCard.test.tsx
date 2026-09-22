@@ -90,6 +90,27 @@ function TemporarilyDisabledNgCard({ res }: { res: IRes }) {
 }
 
 describe("PopupResCard", () => {
+  it("ポップアップ内でも自分レスと自分への返信バッヂを表示する", () => {
+    const { container } = render(
+      <PopupResCard
+        res={BASE_RES}
+        messageProtocol="https:"
+        anchorPreviewDepth={0}
+        isOwn
+        isReplyToOwn
+        onUrlClick={() => {}}
+        onUrlContextMenu={() => {}}
+        onIdLinkClick={() => {}}
+        onAnchorClick={() => {}}
+        onAnchorHover={() => {}}
+        onAnchorLeave={() => {}}
+      />,
+    );
+
+    expect(container.querySelector(".res__badge--own")).toHaveTextContent("自分");
+    expect(container.querySelector(".res__badge--reply-to-own")).toHaveTextContent("返信");
+  });
+
   it("返信数に応じてレス番号と返信ラベルへ同じ強調色クラスを適用する", () => {
     const repIndex = new Map<number, Set<number>>([[10, new Set([1, 2, 3])]]);
 
