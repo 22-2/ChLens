@@ -12,7 +12,11 @@ import React, {
 } from "react";
 import { platform } from "src/app/platform";
 import { getStore2String } from "src/app/Store2Storage";
-import { add as addHistoryRecord, remove as removeHistoryRecord } from "src/core/History";
+import {
+  add as addHistoryRecord,
+  getByUrl as getHistoryRecordsByUrl,
+  remove as removeHistoryRecord,
+} from "src/core/History";
 import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import {
   canCloseTab,
@@ -1319,12 +1323,24 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
       clearThreadVisitsForTab(threadVisitRef.current, tabId);
 
-      visit.pending = addHistoryRecord(
-        visit.threadUrl,
-        visit.title,
-        visit.date,
-        visit.boardTitle,
-      ).catch((error) => {
+      visit.pending = (async () => {
+        if (visit.title === visit.threadUrl) {
+          try {
+            const previousRecords = await getHistoryRecordsByUrl(visit.threadUrl);
+            const previousTitle = previousRecords.find(
+              (record) => record.title.trim() !== "" && record.title !== visit.threadUrl,
+            )?.title;
+            if (previousTitle) {
+              // 変更理由: URLだけで開かれた過去スレでは、取得完了まで既知のタイトルを履歴に残す。
+              visit.title = previousTitle;
+            }
+          } catch (error) {
+            // 変更理由: 既存履歴の参照に失敗しても、新しい閲覧記録そのものは欠かさず保存する。
+            reportHistoryPersistenceError("既存履歴タイトルの取得に失敗しました", error);
+          }
+        }
+        await addHistoryRecord(visit.threadUrl, visit.title, visit.date, visit.boardTitle);
+      })().catch((error) => {
         reportHistoryPersistenceError("閲覧履歴の保存に失敗しました", error);
       });
 

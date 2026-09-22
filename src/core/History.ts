@@ -233,6 +233,12 @@ const getAllRows = async (): Promise<PersistedHistoryRecord[]> => {
   return toPersistedRows(rows);
 };
 
+const getByUrlRows = async (url: string): Promise<PersistedHistoryRecord[]> => {
+  const db = await getDB();
+  const rows = await db.getAllFromIndex(STORE_NAME, "url", url);
+  return toPersistedRows(rows).sort((a, b) => b.date - a.date);
+};
+
 const clearAllRows = async (): Promise<void> => {
   const db = await getDB();
   await db.clear(STORE_NAME);
@@ -349,6 +355,11 @@ const getAllTauriRows = async (): Promise<PersistedHistoryRecord[]> => {
   const tauriHistoryRepository = await safeGetTauriHistoryRepository();
   const rows = await tauriHistoryRepository.getAll();
   return rows as PersistedHistoryRecord[];
+};
+
+const getByUrlTauriRows = async (url: string): Promise<PersistedHistoryRecord[]> => {
+  const tauriHistoryRepository = await safeGetTauriHistoryRepository();
+  return (await tauriHistoryRepository.getByUrl(url)) as PersistedHistoryRecord[];
 };
 
 const countTauriRows = async (): Promise<number> => {
@@ -487,6 +498,25 @@ export const getAll = async function (): Promise<HistoryRecord[]> {
     return await getAllRows();
   } catch (e) {
     return reportError("History.getAll: トランザクション中断", e);
+  }
+};
+
+/**
+@method getByUrl
+@param {String} url
+@return {Promise}
+*/
+export const getByUrl = async function (url: string): Promise<HistoryRecordWithHttps[]> {
+  if (assertArg("History.getByUrl", [[url, "string"]])) {
+    return rejectInvalidArgs("History.getByUrl: 引数が不正です");
+  }
+
+  try {
+    // 変更理由: URLだけで開かれたスレの仮タイトルで、既知の履歴タイトルを失わないようにする。
+    const rows = isTauriRuntime() ? await getByUrlTauriRows(url) : await getByUrlRows(url);
+    return toRowsWithHttps(rows);
+  } catch (e) {
+    return reportError("History.getByUrl: トランザクション中断", e);
   }
 };
 

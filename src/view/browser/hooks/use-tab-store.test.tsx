@@ -5,8 +5,9 @@ import { getCurrentPage, getPageViewStateKey } from "src/view/browser/types";
 import { getAutoRefreshPageKey } from "src/view/browser/utils/auto-refresh-pages";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-const { historyAddMock, historyRemoveMock } = vi.hoisted(() => ({
+const { historyAddMock, historyGetByUrlMock, historyRemoveMock } = vi.hoisted(() => ({
   historyAddMock: vi.fn().mockResolvedValue(undefined),
+  historyGetByUrlMock: vi.fn().mockResolvedValue([]),
   historyRemoveMock: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -22,6 +23,7 @@ vi.mock("src/app/platform", () => ({
 
 vi.mock("src/core/History", () => ({
   add: historyAddMock,
+  getByUrl: historyGetByUrlMock,
   remove: historyRemoveMock,
 }));
 
@@ -73,8 +75,10 @@ describe("TabProvider auto refresh state", () => {
     });
     localStorage.removeItem("chlens_browser_session");
     historyAddMock.mockReset();
+    historyGetByUrlMock.mockReset();
     historyRemoveMock.mockReset();
     historyAddMock.mockResolvedValue(undefined);
+    historyGetByUrlMock.mockResolvedValue([]);
     historyRemoveMock.mockResolvedValue(undefined);
   });
 
@@ -614,12 +618,14 @@ describe("TabProvider auto refresh state", () => {
 
     fireEvent.click(screen.getByText("URL直開き"));
 
-    expect(historyAddMock).toHaveBeenCalledWith(
-      "https://example.com/test/read.cgi/board-a/1/",
-      "https://example.com/test/read.cgi/board-a/1/",
-      expect.any(Number),
-      "board-a",
-    );
+    await waitFor(() => {
+      expect(historyAddMock).toHaveBeenCalledWith(
+        "https://example.com/test/read.cgi/board-a/1/",
+        "https://example.com/test/read.cgi/board-a/1/",
+        expect.any(Number),
+        "board-a",
+      );
+    });
 
     const recordedDate = historyAddMock.mock.calls[0][2] as number;
     historyAddMock.mockClear();
@@ -635,6 +641,57 @@ describe("TabProvider auto refresh state", () => {
         "https://example.com/test/read.cgi/board-a/1/",
         "解決後タイトル",
         recordedDate,
+        "board-a",
+      );
+    });
+  });
+
+  it("履歴からURLだけで開いた過去スレは既存タイトルを引き継ぐ", async () => {
+    vi.resetModules();
+    historyGetByUrlMock.mockResolvedValueOnce([
+      {
+        url: "https://example.com/test/read.cgi/board-a/1/",
+        title: "過去スレのタイトル",
+        date: 123,
+        boardTitle: "board-a",
+        isHttps: true,
+      },
+    ]);
+    const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
+
+    function Harness() {
+      const { dispatch } = useTabStore();
+      return (
+        <button
+          onClick={() =>
+            dispatch({
+              type: "NAVIGATE",
+              page: {
+                type: "thread",
+                title: "https://example.com/test/read.cgi/board-a/1/",
+                threadUrl: "https://example.com/test/read.cgi/board-a/1/",
+              },
+            })
+          }
+        >
+          過去スレを開く
+        </button>
+      );
+    }
+
+    render(
+      <TabProvider>
+        <Harness />
+      </TabProvider>,
+    );
+
+    fireEvent.click(screen.getByText("過去スレを開く"));
+
+    await waitFor(() => {
+      expect(historyAddMock).toHaveBeenCalledWith(
+        "https://example.com/test/read.cgi/board-a/1/",
+        "過去スレのタイトル",
+        expect.any(Number),
         "board-a",
       );
     });
