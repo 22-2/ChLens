@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 
-import { ImgurAlbumResolver, normalizeImgurImageUrl } from "./imgur-album";
+import { ImgurAlbumResolver, ImgurVideoResolver, normalizeImgurImageUrl } from "./imgur-album";
 
 const ALBUM_URL = "https://imgur.com/a/1m6jk1F";
 const THREAD_URL = "https://bbs.example.test/test/read.cgi/live/123/";
@@ -67,5 +67,41 @@ describe("Imgur album resolver", () => {
     expect(fetch).toHaveBeenCalledTimes(2);
     expect(fetch.mock.calls[1]?.[1]).toEqual({ Authorization: "Bearer user-token" });
     expect(logError).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("Imgur video resolver", () => {
+  it("共有ページの動画メタデータから直接再生用MP4を取得してキャッシュする", async () => {
+    const fetch = vi.fn().mockResolvedValue({
+      status: 200,
+      body: JSON.stringify({ data: { mp4: "https://i.imgur.com/TestImgurVideo.mp4" } }),
+    });
+    const resolver = new ImgurVideoResolver({
+      fetch,
+      getClientId: () => "test-client",
+      getAccessToken: () => null,
+    });
+    const sharedUrl = "https://imgur.com/TestImgurVideo";
+
+    await expect(resolver.resolve(sharedUrl)).resolves.toBe(
+      "https://i.imgur.com/TestImgurVideo.mp4",
+    );
+    await expect(resolver.resolve(sharedUrl)).resolves.toBe(
+      "https://i.imgur.com/TestImgurVideo.mp4",
+    );
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledWith("https://api.imgur.com/3/image/TestImgurVideo", {
+      Authorization: "Client-ID test-client",
+    });
+  });
+
+  it("静止画の共有ページには動画URLを返さない", async () => {
+    const resolver = new ImgurVideoResolver({
+      fetch: vi.fn().mockResolvedValue({ status: 200, body: JSON.stringify({ data: {} }) }),
+      getClientId: () => "test-client",
+      getAccessToken: () => null,
+    });
+
+    await expect(resolver.resolve("https://imgur.com/TestImgurImage")).resolves.toBeNull();
   });
 });

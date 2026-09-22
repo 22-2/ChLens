@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 export const IMGUR_ALBUM_API_URL = "https://api.imgur.com/3/album";
+export const IMGUR_IMAGE_API_URL = "https://api.imgur.com/3/image";
 export const IMGUR_ALBUM_REQUEST_TIMEOUT_MS = 8_000;
 
 // Imgurの公開読み取りAPIはClient-IDを要求するため、設定がない場合も
@@ -29,6 +30,11 @@ export interface ImgurHttpResponse {
 }
 
 export type ImgurAlbumImageMap = ReadonlyMap<string, readonly string[]>;
+export type ImgurVideoUrlMap = ReadonlyMap<string, string>;
+
+interface ImgurApiImageDetails {
+  mp4?: unknown;
+}
 
 function isImgurAlbumUrl(rawUrl: string): boolean {
   try {
@@ -215,6 +221,141 @@ export class ImgurAlbumResolver {
 }
 
 export const imgurAlbumResolver = new ImgurAlbumResolver();
+
+function getImgurSingleImageId(rawUrl: string): string | null {
+  try {
+    const url = new URL(rawUrl);
+    if (!["imgur.com", "www.imgur.com", "m.imgur.com"].includes(url.hostname.toLowerCase())) {
+      return null;
+    }
+    const match = url.pathname.match(/^\/([a-z0-9]+)\/?$/i);
+    return match?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Imgur共有ページのAPIメタデータから、動画なら直接再生できるMP4を解決する。 */
+export class ImgurVideoResolver {
+  private readonly fetcher: NonNullable<ImgurAlbumResolverOptions["fetch"]>;
+  private readonly getClientId: ImgurAlbumResolverOptions["getClientId"];
+  private readonly getAccessToken: ImgurAlbumResolverOptions["getAccessToken"];
+  private readonly timeoutMs: number;
+  private readonly logError: NonNullable<ImgurAlbumResolverOptions["logError"]>;
+  private readonly cache = new Map<string, string | null>();
+  private readonly inFlight = new Map<string, Promise<string | null>>();
+
+  constructor(options: ImgurAlbumResolverOptions = {}) {
+    this.fetcher = options.fetch ?? getDefaultFetch();
+    this.getClientId = options.getClientId;
+    this.getAccessToken = options.getAccessToken;
+    this.timeoutMs = options.timeoutMs ?? IMGUR_ALBUM_REQUEST_TIMEOUT_MS;
+    this.logError = options.logError ?? ((message, error) => console.error(message, error));
+  }
+
+  async resolve(rawUrl: string): Promise<string | null> {
+    const imageId = getImgurSingleImageId(rawUrl);
+    if (!imageId) return null;
+    if (this.cache.has(imageId)) return this.cache.get(imageId) ?? null;
+    const pending = this.inFlight.get(imageId);
+    if (pending) return pending;
+
+    const request = this.fetchVideo(imageId);
+    this.inFlight.set(imageId, request);
+    try {
+      const videoUrl = await request;
+      this.cache.set(imageId, videoUrl);
+      return videoUrl;
+    } finally {
+      this.inFlight.delete(imageId);
+    }
+  }
+
+  async resolveMany(rawUrls: readonly string[]): Promise<ImgurVideoUrlMap> {
+    const videos = new Map<string, string>();
+    for (const rawUrl of rawUrls) {
+      const videoUrl = await this.resolve(rawUrl);
+      if (videoUrl) videos.set(rawUrl, videoUrl);
+    }
+    return videos;
+  }
+
+  private async fetchVideo(imageId: string): Promise<string | null> {
+    try {
+      let accessToken = this.getAccessToken?.() ?? null;
+      let clientId = this.getClientId?.() ?? null;
+      if (!this.getAccessToken || !this.getClientId) {
+        const { container } = await import("src/service-container");
+        accessToken ??= container.config.get("imgur_access_token")?.trim() ?? null;
+        clientId ??= container.config.get("imgur_client_id")?.trim() ?? IMGUR_DEFAULT_CLIENT_ID;
+      }
+      clientId ??= IMGUR_DEFAULT_CLIENT_ID;
+      const authorization = accessToken
+        ? `Bearer ${accessToken}`
+        : clientId
+          ? `Client-ID ${clientId}`
+          : null;
+      if (!authorization) throw new Error("Imgur API authorization is not configured");
+
+      const response = await withTimeout(
+        this.fetcher(`${IMGUR_IMAGE_API_URL}/${encodeURIComponent(imageId)}`, {
+          Authorization: authorization,
+        }),
+        this.timeoutMs,
+      );
+      if (response.status < 200 || response.status >= 300) {
+        throw new Error(`Imgur API returned HTTP ${response.status}`);
+      }
+
+      let payload: ImgurApiResponse;
+      try {
+        payload = JSON.parse(response.body) as ImgurApiResponse;
+      } catch (error) {
+        throw new Error("Imgur API returned invalid JSON", { cause: error });
+      }
+      const data = payload.data as ImgurApiImageDetails | undefined;
+      if (typeof data?.mp4 !== "string") return null;
+      const mp4Url = new URL(data.mp4);
+      // APIの値も外部コンテンツとして検証し、別ホストの動画を意図せず埋め込まない。
+      if (mp4Url.protocol !== "https:" || mp4Url.hostname.toLowerCase() !== "i.imgur.com") {
+        throw new Error("Imgur API returned an unexpected MP4 host");
+      }
+      return mp4Url.href;
+    } catch (error) {
+      this.logError(`[ImgurVideoResolver] image resolution failed for ${imageId}`, error);
+      return null;
+    }
+  }
+}
+
+export const imgurVideoResolver = new ImgurVideoResolver();
+
+export function useImgurVideoMedia(urls: readonly string[]): ImgurVideoUrlMap {
+  const candidateUrls = useMemo(
+    () => urls.filter((url, index) => getImgurSingleImageId(url) && urls.indexOf(url) === index),
+    [urls],
+  );
+  const [videos, setVideos] = useState<ImgurVideoUrlMap>(new Map());
+
+  useEffect(() => {
+    let cancelled = false;
+    setVideos(new Map());
+    if (candidateUrls.length === 0) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void imgurVideoResolver.resolveMany(candidateUrls).then((resolved) => {
+      if (!cancelled) setVideos(resolved);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [candidateUrls]);
+
+  return videos;
+}
 
 export interface ImgurAlbumMediaState {
   messageHtml: string;

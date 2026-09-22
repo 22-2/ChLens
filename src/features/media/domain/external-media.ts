@@ -36,7 +36,7 @@ const YOUTUBE_HOSTS = new Set([
 const youtubeFallbackThumbnailUrl = createThumbnailPlaceholder("YouTube", "#ef4444", "#111827");
 const nativeVideoFallbackThumbnailUrl = createThumbnailPlaceholder("VIDEO", "#f8fafc", "#0f172a");
 const twitterFallbackThumbnailUrl = createThumbnailPlaceholder("X POST", "#1d9bf0", "#0f172a");
-const DIRECT_VIDEO_REG = /\.(?:mp4|m4v|webm|ogv|mov|avi)(?:[?#:].*)?$/i;
+const DIRECT_VIDEO_REG = /\.(?:mp4|m4v|webm|ogv|mov|avi|gifv)(?:[?#:].*)?$/i;
 const TWITTER_POST_HOSTS = new Set([
   "twitter.com",
   "www.twitter.com",

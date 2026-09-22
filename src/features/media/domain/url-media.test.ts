@@ -62,6 +62,11 @@ describe("url-media", () => {
     );
   });
 
+  it("ImgurのMP4直リンクを画像サムネイルへ変換しない", () => {
+    expect(toViewerImageUrl("https://i.imgur.com/TestImgurVideo.mp4")).toBeNull();
+    expect(toViewerImageUrl("https://imgur.com/TestImgurVideo.mp4")).toBeNull();
+  });
+
   it("省略スキームと完全スキームが重複したimgur画像URLを正規化して扱う", () => {
     const rawUrl = "ps://https://i.imgur.com/jZia7GC.png";
 

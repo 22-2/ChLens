@@ -58,6 +58,10 @@ describe("external media", () => {
     expect(getDirectVideoLabel(rawUrl)).toBe("Twitter Video");
   });
 
+  it("Imgurのgifv直リンクもネイティブ動画として判定する", () => {
+    expect(isDirectVideoUrl("https://i.imgur.com/TestImgurVideo.gifv")).toBe(true);
+  });
+
   it("Twitter/X投稿URLをFxTwitter API向けのメディア項目へ変換する", () => {
     const media = toTwitterPostEmbed("https://x.com/example/status/1234567890123456789?ref=share");
 

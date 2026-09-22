@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
+import { useImgurVideoMedia } from "../application/imgur-album";
 import {
   type TwitterPost,
   type TwitterPostMetrics,
@@ -53,6 +54,7 @@ interface EmbedMediaItem {
 interface NativeVideoMediaItem {
   type: "nativeVideo";
   rawUrl: string;
+  srcUrl: string;
   providerLabel: string;
 }
 
@@ -104,23 +106,20 @@ function formatTwitterPostDate(createdTimestamp: number | null): string | null {
   return `${twitterPostDateFormatter.format(date)} ${twitterPostWeekdayFormatter.format(date)} ${twitterPostTimeFormatter.format(date)}`;
 }
 
-function buildResMediaItem(rawUrl: string): ResMediaItem | null {
-  const imageUrl = toViewerImageUrl(rawUrl);
-  if (imageUrl) {
-    return {
-      type: "image",
-      rawUrl,
-      src: imageUrl,
-    };
-  }
-
-  if (isDirectVideoUrl(rawUrl)) {
+function buildResMediaItem(rawUrl: string, resolvedVideoUrl?: string): ResMediaItem | null {
+  // ImgurのMP4直リンクをサムネイル変換より先に動画として認識する。
+  if (resolvedVideoUrl || isDirectVideoUrl(rawUrl)) {
+    const srcUrl = resolvedVideoUrl ?? rawUrl;
     return {
       type: "nativeVideo",
       rawUrl,
-      providerLabel: getDirectVideoLabel(rawUrl),
+      srcUrl,
+      providerLabel: getDirectVideoLabel(srcUrl),
     };
   }
+
+  const imageUrl = toViewerImageUrl(rawUrl);
+  if (imageUrl) return { type: "image", rawUrl, src: imageUrl };
 
   const videoEmbed = toInlineVideoEmbed(rawUrl);
   if (videoEmbed) {
@@ -303,7 +302,7 @@ function TwitterPostFallback({
   );
 }
 
-function NativeVideoThumb({ rawUrl }: { rawUrl: string }): React.ReactElement {
+function NativeVideoThumb({ video }: { video: NativeVideoMediaItem }): React.ReactElement {
   const [isPreviewReady, setIsPreviewReady] = useState(false);
   const fallbackPosterUrl = getDirectVideoFallbackThumbnailUrl();
 
@@ -319,7 +318,7 @@ function NativeVideoThumb({ rawUrl }: { rawUrl: string }): React.ReactElement {
       )}
       <video
         className={`res__thumb-video-preview${isPreviewReady ? " res__thumb-video-preview--ready" : ""}`}
-        src={rawUrl}
+        src={video.srcUrl}
         preload="metadata"
         muted
         playsInline
@@ -341,6 +340,7 @@ export function ResMediaGallery({
 }: ResMediaGalleryProps): React.ReactElement | null {
   const handledMiddleClickUrlRef = useRef<string | null>(null);
   const [expandedVideoUrl, setExpandedVideoUrl] = useState<string | null>(null);
+  const imgurVideoUrls = useImgurVideoMedia(urls);
   const [twitterPostStates, setTwitterPostStates] = useState<
     Map<
       string,
@@ -354,8 +354,11 @@ export function ResMediaGallery({
     : undefined;
 
   const mediaItems = useMemo(
-    () => urls.map(buildResMediaItem).filter((item): item is ResMediaItem => item != null),
-    [urls],
+    () =>
+      urls
+        .map((url) => buildResMediaItem(url, imgurVideoUrls.get(url)))
+        .filter((item): item is ResMediaItem => item != null),
+    [imgurVideoUrls, urls],
   );
   const imageUrls = useMemo(
     () =>
@@ -520,7 +523,7 @@ export function ResMediaGallery({
                 onMouseDown={(event) => handleMiddleMouseDown(event, item.rawUrl, undefined)}
                 onAuxClick={(event) => handleMiddleAuxClick(event, item.rawUrl, undefined)}
               >
-                <NativeVideoThumb rawUrl={item.rawUrl} />
+                <NativeVideoThumb video={item} />
                 <span className="res__thumb-badge">{item.providerLabel}</span>
                 <span className="res__thumb-play" aria-hidden="true">
                   ▶
@@ -649,7 +652,7 @@ export function ResMediaGallery({
           ) : expandedMediaItem.type === "nativeVideo" ? (
             <video
               className="res__media-embed-player"
-              src={expandedMediaItem.rawUrl}
+              src={expandedMediaItem.srcUrl}
               controls
               playsInline
               preload="metadata"

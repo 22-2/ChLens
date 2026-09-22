@@ -3,6 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
+import { imgurVideoResolver } from "../application/imgur-album";
 import { twitterPostResolver } from "../application/twitter-post";
 import { ResMediaGallery } from "./ResMediaGallery";
 
@@ -36,6 +37,37 @@ describe("ResMediaGallery", () => {
 
     fireEvent.click(container.querySelector(".res__media-embed-close") as HTMLButtonElement);
     expect(container.querySelector(".res__media-embed-player")).toBeNull();
+  });
+
+  it("ImgurのMP4直リンクを画像ではなく動画として再生する", () => {
+    const rawUrl = "https://i.imgur.com/TestImgurVideo.mp4";
+    const { container } = render(<ResMediaGallery urls={[rawUrl]} onUrlClick={() => {}} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Video を展開する" }));
+
+    expect(container.querySelector(".res__media-embed-player")).toHaveAttribute("src", rawUrl);
+  });
+
+  it("拡張子のないImgur共有URLはAPIのMP4情報を使って動画として再生する", async () => {
+    const rawUrl = "https://imgur.com/TestImgurVideo";
+    const resolve = vi
+      .spyOn(imgurVideoResolver, "resolveMany")
+      .mockResolvedValue(new Map([[rawUrl, "https://i.imgur.com/TestImgurVideo.mp4"]]));
+
+    try {
+      const { container } = render(<ResMediaGallery urls={[rawUrl]} onUrlClick={() => {}} />);
+
+      const videoButton = await screen.findByRole("button", { name: "Video を展開する" });
+      fireEvent.click(videoButton);
+
+      expect(container.querySelector(".res__media-embed-player")).toHaveAttribute(
+        "src",
+        "https://i.imgur.com/TestImgurVideo.mp4",
+      );
+      expect(resolve).toHaveBeenCalledWith([rawUrl]);
+    } finally {
+      resolve.mockRestore();
+    }
   });
 
   it("Twitter/X投稿URLをクリックするとFxTwitterの投稿とメディアをレス内へ表示する", async () => {

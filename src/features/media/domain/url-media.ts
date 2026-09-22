@@ -70,6 +70,8 @@ export function toViewerImageUrl(rawUrl: string): string | null {
 
     // imgur URL の処理を最初に行う（他の拡張子チェックより優先）
     if (host === "i.imgur.com") {
+      // 動画は汎用の拡張子変換から外し、ResMediaGalleryのネイティブ再生へ渡す。
+      if (/\.(?:mp4|m4v|webm|ogv|mov|avi|gifv)$/i.test(pathname)) return null;
       // i.imgur.comの既存画像URLについて、リサイズパラメータを追加してサムネイルを高速化
       // 形式: https://i.imgur.com/[id].jpg → https://i.imgur.com/[id]m.jpg
       const match = pathname.match(/^\/([a-z0-9]+)\.([a-z]+)$/i);
@@ -82,6 +84,11 @@ export function toViewerImageUrl(rawUrl: string): string | null {
 
     if (host === "imgur.com" || host === "m.imgur.com") {
       const parts = pathname.split("/").filter(Boolean);
+
+      // 動画URLを「拡張子付き画像」として変換すると再生可能なMP4を失うため除外する。
+      if (parts.length === 1 && /\.(?:mp4|m4v|webm|ogv|mov|avi|gifv)$/i.test(parts[0])) {
+        return null;
+      }
 
       // imgur.com/[id] または imgur.com/[id]/ の形式（シングル画像）
       if (parts.length === 1) {
