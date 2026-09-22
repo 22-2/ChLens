@@ -99,9 +99,13 @@ export function executeTabCommandRequest(
       dispatchForTab(runtime, location, tabActions.reload());
       return true;
     case TAB_COMMAND_IDS.CLOSE:
-      // 変更理由: reducerは固定タブとペイン最後の1枚を閉じないため、
-      // コマンド境界でも同じ条件を検査して無意味なdispatchを発生させない。
-      if (!canCloseTab(location.tab, location.tabCount)) {
+      // 変更理由: 2ペインなら最後のタブを閉じてそのペインへ戻せるが、
+      // 単一ペインでは空のワークスペースを避けるため代替タブを維持する。
+      if (
+        !canCloseTab(location.tab, location.tabCount, {
+          canCloseLastTab: runtime.state.panes.length > 1,
+        })
+      ) {
         return false;
       }
       // 変更理由: CLOSE_TABはpaneId内だけを検索するため、別ペインの対象を

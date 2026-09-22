@@ -663,8 +663,28 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       const paneId = resolvePaneId(state, action.paneId);
       const pane = getPane(state, paneId);
       const target = pane.tabs.find((t) => t.id === action.tabId);
-      if (!target || !canCloseTab(target, pane.tabs.length, action.replaceLastTab)) return state;
-      // ペインは最低1タブを保つ（空にしたい場合はペインを閉じる）。
+      if (
+        !target ||
+        !canCloseTab(target, pane.tabs.length, {
+          replaceLastTab: action.replaceLastTab,
+          canCloseLastTab: state.panes.length > 1,
+        })
+      ) {
+        return state;
+      }
+      // 2ペイン時は最後のタブを閉じる操作で空ペインを残さず、もう片方へ戻す。
+      if (pane.tabs.length <= 1 && state.panes.length > 1 && !action.replaceLastTab) {
+        const panes = state.panes.filter((candidate) => candidate.id !== paneId);
+        return {
+          ...state,
+          panes,
+          activePaneId: panes.some((candidate) => candidate.id === state.activePaneId)
+            ? state.activePaneId
+            : panes[0].id,
+          closedTabs: pushClosed(state.closedTabs, target),
+        };
+      }
+      // 単一ペインを空にしないため、最後のタブは同じページの代替タブへ置き換える。
       if (pane.tabs.length <= 1) {
         const replacement = createTab(getCurrentPage(target), target);
         return {
@@ -1105,18 +1125,19 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       const paneId = resolvePaneId(state, action.paneId);
       const index = state.panes.findIndex((p) => p.id === paneId);
       if (index === -1) return state;
-      const closingPane = state.panes[index];
-      const panes = state.panes.filter((p) => p.id !== paneId);
-      // 閉じたペインのタブは undo 可能にするため closedTabs へ積む。
-      let newClosed = state.closedTabs;
-      for (const t of closingPane.tabs) {
-        newClosed = pushClosed(newClosed, t);
-      }
-      let activePaneId = state.activePaneId;
-      if (state.activePaneId === paneId) {
-        activePaneId = panes[Math.min(index, panes.length - 1)].id;
-      }
-      return { ...state, panes, activePaneId, closedTabs: newClosed };
+      // 変更理由: ペイン解除は表示レイアウトの変更なのでタブを閉じず、左ペインを
+      // 統合先にして左から右の順で並べる。選択中タブも維持して画面内容を失わない。
+      const leftPane = state.panes[0];
+      const rightPane = state.panes[1];
+      const activeTabId =
+        state.panes.find((candidate) => candidate.id === state.activePaneId)?.activeTabId ??
+        leftPane.activeTabId;
+      const mergedPane: Pane = {
+        ...leftPane,
+        tabs: [...leftPane.tabs, ...rightPane.tabs],
+        activeTabId,
+      };
+      return { ...state, panes: [mergedPane], activePaneId: leftPane.id };
     }
 
     case TAB_ACTION_TYPES.SWAP_PANE_TABS: {

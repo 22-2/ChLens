@@ -34,13 +34,20 @@ export function findTabAcrossPanes(state: TabStoreState, tabId: string): Tab | n
 }
 
 /**
- * 固定タブではなく、ペインに残す最後の1枚でもないかを判定する。
+ * 固定タブではなく、最後の1枚を閉じられる状態かを判定する。
  *
- * 最後の1枚を別窓終了時の代替タブへ置き換える経路だけは許可できるため、
- * その例外を呼び出し側で個別実装せず、同じ判定関数で表現する。
+ * 最後の1枚を閉じてペイン自体を取り除く場合と、別窓終了時の代替タブを作る場合を
+ * 呼び出し側から明示できるようにし、通常の単一ペインでは空状態を避ける。
  */
-export function canCloseTab(tab: Tab, tabCount: number, replaceLastTab = false): boolean {
-  return !tab.pinned && (tabCount > 1 || replaceLastTab);
+export function canCloseTab(
+  tab: Tab,
+  tabCount: number,
+  options: { replaceLastTab?: boolean; canCloseLastTab?: boolean } = {},
+): boolean {
+  return (
+    !tab.pinned &&
+    (tabCount > 1 || options.replaceLastTab === true || options.canCloseLastTab === true)
+  );
 }
 
 /** 対象タブ以外に閉じられる通常タブがあるかを判定する。 */

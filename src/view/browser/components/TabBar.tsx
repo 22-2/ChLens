@@ -98,6 +98,7 @@ interface SortableTabProps {
   isHighlighted: boolean;
   autoRefreshIndicatorState: "active" | "inactive" | null;
   tabCount: number;
+  paneCount: number;
   isVertical: boolean;
   compact: boolean;
   wasDraggingRef: React.MutableRefObject<boolean>;
@@ -116,6 +117,7 @@ const SortableTab: React.FC<SortableTabProps> = ({
   isHighlighted,
   autoRefreshIndicatorState,
   tabCount,
+  paneCount,
   isVertical,
   compact,
   wasDraggingRef,
@@ -222,9 +224,9 @@ const SortableTab: React.FC<SortableTabProps> = ({
             }
           />
         )}
-        {/* 変更理由: 垂直タブでは横幅が限られ、各タブ上の閉じるボタンが本文の視認性と
-            アイコン操作を邪魔するため、閉じる操作は中クリックと右クリックへ集約する。 */}
-        {!isVertical && !tab.pinned && tabCount > 1 && (
+        {/* 変更理由: 垂直タブでは横幅が限られるため閉じる操作を中クリックと右クリックへ集約し、
+            横タブでは2ペイン時の最後のタブも閉じられるようボタンを残す。 */}
+        {!isVertical && !tab.pinned && (tabCount > 1 || paneCount > 1) && (
           <button
             className="tab__close"
             onClick={(e) => {
@@ -786,6 +788,7 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
                   isHighlighted={highlightedTabIds.has(tab.id)}
                   autoRefreshIndicatorState={autoRefreshIndicatorState}
                   tabCount={visibleTabs.length}
+                  paneCount={stateRef.current.panes.length}
                   isVertical={isVertical}
                   compact={isVertical && collapsed}
                   wasDraggingRef={wasDraggingRef}

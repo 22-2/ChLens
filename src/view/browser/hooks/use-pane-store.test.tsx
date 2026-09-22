@@ -100,6 +100,9 @@ describe("ペイン（横分割）", () => {
           <button onClick={() => dispatch({ type: "CLOSE_PANE" })}>{`close-${paneId}`}</button>
           <button onClick={() => dispatch({ type: "SWAP_PANE_TABS" })}>{`swap-${paneId}`}</button>
           <button onClick={() => dispatch({ type: "ADD_TAB" })}>{`addtab-${paneId}`}</button>
+          <button onClick={() => dispatch({ type: "CLOSE_TAB", tabId: state.selectedTabId })}>
+            {`closetab-${paneId}`}
+          </button>
           <button
             onClick={() =>
               dispatch({
@@ -200,13 +203,27 @@ describe("ペイン（横分割）", () => {
     expect(screen.getByTestId("pane-count")).toHaveTextContent("2");
 
     const ids = paneIds();
+    fireEvent.click(screen.getByText(`addtab-${ids[1]}`));
     fireEvent.click(screen.getByText(`close-${ids[1]}`));
     expect(screen.getByTestId("pane-count")).toHaveTextContent("1");
+    expect(screen.getByTestId(`tabcount-${first}`)).toHaveTextContent("3");
 
     // 残り1ペインは閉じられない
     const remaining = paneIds();
     fireEvent.click(screen.getByText(`close-${remaining[0]}`));
     expect(screen.getByTestId("pane-count")).toHaveTextContent("1");
+  });
+
+  it("2ペインで最後のタブを閉じると、そのペインを閉じて1ペインへ戻る", async () => {
+    const { paneIds } = await setup();
+    const [left] = paneIds();
+    fireEvent.click(screen.getByText(`split-${left}`));
+    const [, right] = paneIds();
+
+    fireEvent.click(screen.getByText(`closetab-${right}`));
+
+    expect(screen.getByTestId("pane-count")).toHaveTextContent("1");
+    expect(paneIds()).toEqual([left]);
   });
 
   it("SWAP_PANE_TABS で各ペインの選択中タブを入れ替える", async () => {
