@@ -65,6 +65,19 @@ describe("History browser branch", () => {
     expect(uniqueRows[1]?.isHttps).toBe(false);
   });
 
+  it("getByUrl returns matching visits newest first", async () => {
+    const History = await import("src/core/History");
+
+    await History.add("https://example.com/thread", "older", 100, "board");
+    await History.add("https://example.com/other", "other", 300, "board");
+    await History.add("https://example.com/thread", "newer", 200, "board");
+
+    const rows = await History.getByUrl("https://example.com/thread");
+
+    expect(rows.map((row) => row.title)).toEqual(["newer", "older"]);
+    expect(rows.every((row) => row.isHttps)).toBe(true);
+  });
+
   it("clearRange removes only rows older than threshold", async () => {
     const fixedNow = new Date("2026-05-04T00:00:00.000Z").valueOf();
     vi.spyOn(Date, "now").mockReturnValue(fixedNow);

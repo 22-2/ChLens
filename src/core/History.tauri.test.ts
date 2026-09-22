@@ -7,6 +7,7 @@ const state = vi.hoisted(() => ({
     get: vi.fn(),
     getUnique: vi.fn(),
     getAll: vi.fn(),
+    getByUrl: vi.fn(),
     count: vi.fn(),
     clear: vi.fn(),
     clearRange: vi.fn(),
@@ -75,6 +76,26 @@ describe("History Tauri branch", () => {
     expect(state.tauriHistoryRepository.get).toHaveBeenCalledWith(0, 10);
     expect(rows).toHaveLength(1);
     expect(rows[0].isHttps).toBe(true);
+  });
+
+  it("getByUrl delegates to the Tauri history repository", async () => {
+    state.tauriHistoryRepository.getByUrl.mockResolvedValueOnce([
+      {
+        id: 1,
+        url: "https://example.com/thread",
+        title: "title",
+        date: 123,
+        boardTitle: "board",
+      },
+    ]);
+
+    const History = await import("src/core/History");
+    const rows = await History.getByUrl("https://example.com/thread");
+
+    expect(state.tauriHistoryRepository.getByUrl).toHaveBeenCalledWith(
+      "https://example.com/thread",
+    );
+    expect(rows[0]?.isHttps).toBe(true);
   });
 
   it("clearRange passes unix threshold", async () => {

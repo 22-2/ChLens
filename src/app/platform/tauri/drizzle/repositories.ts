@@ -348,6 +348,15 @@ export const tauriHistoryRepository = {
     return db.select().from(historyTable).orderBy(desc(historyTable.id));
   },
 
+  async getByUrl(url: string): Promise<HistoryRecord[]> {
+    const { db } = await getTauriDrizzleContext();
+    return db
+      .select()
+      .from(historyTable)
+      .where(eq(historyTable.url, url))
+      .orderBy(desc(historyTable.date));
+  },
+
   async count(): Promise<number> {
     const { db } = await getTauriDrizzleContext();
     const rows = await db.select({ count: sql<number>`count(*)` }).from(historyTable);
