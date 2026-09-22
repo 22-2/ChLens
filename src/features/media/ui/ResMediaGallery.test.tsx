@@ -34,6 +34,7 @@ describe("ResMediaGallery", () => {
     const player = container.querySelector(".res__media-embed-player") as HTMLVideoElement;
     expect(player).toBeInTheDocument();
     expect(player).toHaveAttribute("src", rawUrl);
+    expect(container.querySelector(".res__thumb-video-preview")).toHaveAttribute("preload", "none");
 
     fireEvent.click(container.querySelector(".res__media-embed-close") as HTMLButtonElement);
     expect(container.querySelector(".res__media-embed-player")).toBeNull();
@@ -51,20 +52,21 @@ describe("ResMediaGallery", () => {
   it("拡張子のないImgur共有URLはAPIのMP4情報を使って動画として再生する", async () => {
     const rawUrl = "https://imgur.com/TestImgurVideo";
     const resolve = vi
-      .spyOn(imgurVideoResolver, "resolveMany")
-      .mockResolvedValue(new Map([[rawUrl, "https://i.imgur.com/TestImgurVideo.mp4"]]));
+      .spyOn(imgurVideoResolver, "resolve")
+      .mockResolvedValue("https://i.imgur.com/TestImgurVideo.mp4");
 
     try {
       const { container } = render(<ResMediaGallery urls={[rawUrl]} onUrlClick={() => {}} />);
 
-      const videoButton = await screen.findByRole("button", { name: "Video を展開する" });
-      fireEvent.click(videoButton);
+      expect(resolve).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole("link", { name: rawUrl }));
+      await screen.findByRole("button", { name: "Video を閉じる" });
 
       expect(container.querySelector(".res__media-embed-player")).toHaveAttribute(
         "src",
         "https://i.imgur.com/TestImgurVideo.mp4",
       );
-      expect(resolve).toHaveBeenCalledWith([rawUrl]);
+      expect(resolve).toHaveBeenCalledWith(rawUrl);
     } finally {
       resolve.mockRestore();
     }

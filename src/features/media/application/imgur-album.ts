@@ -30,7 +30,6 @@ export interface ImgurHttpResponse {
 }
 
 export type ImgurAlbumImageMap = ReadonlyMap<string, readonly string[]>;
-export type ImgurVideoUrlMap = ReadonlyMap<string, string>;
 
 interface ImgurApiImageDetails {
   mp4?: unknown;
@@ -235,6 +234,10 @@ function getImgurSingleImageId(rawUrl: string): string | null {
   }
 }
 
+export function isImgurVideoResolutionCandidate(rawUrl: string): boolean {
+  return getImgurSingleImageId(rawUrl) !== null;
+}
+
 /** Imgur共有ページのAPIメタデータから、動画なら直接再生できるMP4を解決する。 */
 export class ImgurVideoResolver {
   private readonly fetcher: NonNullable<ImgurAlbumResolverOptions["fetch"]>;
@@ -269,15 +272,6 @@ export class ImgurVideoResolver {
     } finally {
       this.inFlight.delete(imageId);
     }
-  }
-
-  async resolveMany(rawUrls: readonly string[]): Promise<ImgurVideoUrlMap> {
-    const videos = new Map<string, string>();
-    for (const rawUrl of rawUrls) {
-      const videoUrl = await this.resolve(rawUrl);
-      if (videoUrl) videos.set(rawUrl, videoUrl);
-    }
-    return videos;
   }
 
   private async fetchVideo(imageId: string): Promise<string | null> {
@@ -329,33 +323,6 @@ export class ImgurVideoResolver {
 }
 
 export const imgurVideoResolver = new ImgurVideoResolver();
-
-export function useImgurVideoMedia(urls: readonly string[]): ImgurVideoUrlMap {
-  const candidateUrls = useMemo(
-    () => urls.filter((url, index) => getImgurSingleImageId(url) && urls.indexOf(url) === index),
-    [urls],
-  );
-  const [videos, setVideos] = useState<ImgurVideoUrlMap>(new Map());
-
-  useEffect(() => {
-    let cancelled = false;
-    setVideos(new Map());
-    if (candidateUrls.length === 0) {
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    void imgurVideoResolver.resolveMany(candidateUrls).then((resolved) => {
-      if (!cancelled) setVideos(resolved);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [candidateUrls]);
-
-  return videos;
-}
 
 export interface ImgurAlbumMediaState {
   messageHtml: string;

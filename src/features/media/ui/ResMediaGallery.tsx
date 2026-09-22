@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
-import { useImgurVideoMedia } from "../application/imgur-album";
+import { imgurVideoResolver, isImgurVideoResolutionCandidate } from "../application/imgur-album";
 import {
   type TwitterPost,
   type TwitterPostMetrics,
@@ -319,7 +319,8 @@ function NativeVideoThumb({ video }: { video: NativeVideoMediaItem }): React.Rea
       <video
         className={`res__thumb-video-preview${isPreviewReady ? " res__thumb-video-preview--ready" : ""}`}
         src={video.srcUrl}
-        preload="metadata"
+        // 変更理由: スレッドを開いただけで全動画のメタデータを取得しないよう、明示再生まで待つ。
+        preload="none"
         muted
         playsInline
         onLoadedData={() => {
@@ -340,7 +341,9 @@ export function ResMediaGallery({
 }: ResMediaGalleryProps): React.ReactElement | null {
   const handledMiddleClickUrlRef = useRef<string | null>(null);
   const [expandedVideoUrl, setExpandedVideoUrl] = useState<string | null>(null);
-  const imgurVideoUrls = useImgurVideoMedia(urls);
+  const [imgurVideoUrls, setImgurVideoUrls] = useState<ReadonlyMap<string, string>>(
+    () => new Map(),
+  );
   const [twitterPostStates, setTwitterPostStates] = useState<
     Map<
       string,
@@ -491,6 +494,18 @@ export function ResMediaGallery({
                 onClick={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
+                  if (isImgurVideoResolutionCandidate(item.rawUrl)) {
+                    // 共有URLは静止画か動画かAPIでしか確定できないため、クリックされるまで照会しない。
+                    void imgurVideoResolver.resolve(item.rawUrl).then((videoUrl) => {
+                      if (videoUrl) {
+                        setImgurVideoUrls((current) => new Map(current).set(item.rawUrl, videoUrl));
+                        setExpandedVideoUrl(item.rawUrl);
+                        return;
+                      }
+                      onUrlClick(item.rawUrl, imageUrls, 0);
+                    });
+                    return;
+                  }
                   onUrlClick(item.rawUrl, imageUrls, 0);
                 }}
                 onMouseDown={(event) => handleMiddleMouseDown(event, item.rawUrl, imageUrls)}

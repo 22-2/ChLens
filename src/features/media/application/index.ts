@@ -3,17 +3,16 @@ export type {
   ImgurAlbumMediaState,
   ImgurAlbumResolverOptions,
   ImgurHttpResponse,
-  ImgurVideoUrlMap,
 } from "./imgur-album";
 export {
   ImgurAlbumResolver,
   imgurAlbumResolver,
   ImgurVideoResolver,
   imgurVideoResolver,
+  isImgurVideoResolutionCandidate,
   normalizeImgurAlbumUrl,
   normalizeImgurImageUrl,
   useImgurAlbumMedia,
-  useImgurVideoMedia,
 } from "./imgur-album";
 export type {
   TwitterPost,
