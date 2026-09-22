@@ -49,7 +49,7 @@ export const ContextMenu: React.FC<Props> = ({
   closeDisabled,
   zIndex,
 }) => {
-  const { window: viewWindow } = useViewSurface();
+  const { window: viewWindow, document: viewDocument } = useViewSurface();
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerElementRef = useRef<HTMLSpanElement>(null);
   const { handleAuxClickCapture, handleMouseDownCapture, handleMouseEnter, handleMouseLeave } =
@@ -105,16 +105,41 @@ export const ContextMenu: React.FC<Props> = ({
     }
 
     const viewWindowWithConstructors = viewWindow as Window & typeof globalThis;
-    trigger.dispatchEvent(
-      new viewWindowWithConstructors.MouseEvent("contextmenu", {
-        bubbles: true,
-        cancelable: true,
-        clientX: x,
-        clientY: y,
-        button: 2,
-      }),
-    );
-  }, [viewWindow, x, y]);
+    const init = {
+      bubbles: true,
+      cancelable: true,
+      clientX: x,
+      clientY: y,
+      button: 2,
+    };
+    // 別窓のWindowProxyでMouseEvent constructorが未公開でも、表示先Documentの
+    // createEventを使えばRadixへ同じcontextmenuを渡せる。
+    const contextMenuEvent =
+      typeof viewWindowWithConstructors.MouseEvent === "function"
+        ? new viewWindowWithConstructors.MouseEvent("contextmenu", init)
+        : (() => {
+            const event = viewDocument.createEvent("MouseEvent");
+            event.initMouseEvent(
+              "contextmenu",
+              init.bubbles,
+              init.cancelable,
+              viewWindow,
+              0,
+              0,
+              0,
+              init.clientX,
+              init.clientY,
+              false,
+              false,
+              false,
+              false,
+              init.button,
+              null,
+            );
+            return event;
+          })();
+    trigger.dispatchEvent(contextMenuEvent);
+  }, [viewDocument, viewWindow, x, y]);
 
   return (
     <RadixContextMenu.Root

@@ -56,10 +56,14 @@ function getAnchorElement(
 ): HTMLAnchorElement | null {
   const element = getEventTargetElement(target, targetWindow);
   const anchor = element?.closest("a");
-  // 別窓のDOM要素は主窓のHTMLAnchorElementとは別コンストラクタになるため、
-  // 表示先Windowの判定を使ってアンカー操作を別窓でも受け取る。
-  const targetWindowWithConstructors = targetWindow as Window & typeof globalThis;
-  return anchor instanceof targetWindowWithConstructors.HTMLAnchorElement ? anchor : null;
+  if (!anchor || anchor.tagName.toLowerCase() !== "a") {
+    return null;
+  }
+
+  // 別窓のWindowProxyではHTMLAnchorElementのコンストラクタが取得できないことがある。
+  // closest("a")で要素種別は確定しているため、constructor依存で操作を捨てず、
+  // イベント元のDocumentに属するアンカーをそのまま扱う。
+  return anchor as HTMLAnchorElement;
 }
 
 function getNavigableHref(anchor: HTMLAnchorElement): string | null {
@@ -172,11 +176,8 @@ function useResBodyInteractionHandlers({
   const handleMouseOver = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       const target = getEventTargetElement(e.target, viewWindow);
-      const anchor = target?.closest(ANCHOR_SELECTOR);
-      // 別窓のアンカーを主窓のinstanceofで判定するとhover起点まで捨てられるため、
-      // イベントを受けた表示先のコンストラクタで判定する。
-      const targetWindowWithConstructors = viewWindow as Window & typeof globalThis;
-      if (!(anchor instanceof targetWindowWithConstructors.HTMLAnchorElement)) {
+      const anchor = getAnchorElement(target, viewWindow);
+      if (!anchor || !anchor.matches(ANCHOR_SELECTOR)) {
         if (hoveredAnchorKeyRef.current) {
           clearHoveredAnchor();
           notifyAnchorLeave();

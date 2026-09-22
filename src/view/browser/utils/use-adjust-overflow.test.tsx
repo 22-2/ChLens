@@ -53,6 +53,29 @@ describe("getPopupViewportBounds", () => {
       height: 720,
     });
   });
+
+  it("別窓WindowProxyにHTMLElement constructorがなくてもステータスバーを判定する", () => {
+    const viewDocument = document.implementation.createHTMLDocument("detached");
+    const statusBar = viewDocument.createElement("footer");
+    statusBar.className = "status-bar";
+    statusBar.getBoundingClientRect = () => ({ top: 696, bottom: 720, height: 24 }) as DOMRect;
+    viewDocument.body.appendChild(statusBar);
+    const viewWindow = {
+      document: viewDocument,
+      innerWidth: 1280,
+      innerHeight: 720,
+    } as unknown as Window;
+
+    // 表示先Documentに属する要素はconstructorが見えなくても座標計算へ利用する。
+    expect(getPopupViewportBounds(viewWindow, viewDocument)).toEqual({
+      left: 0,
+      top: 0,
+      right: 1280,
+      bottom: 696,
+      width: 1280,
+      height: 696,
+    });
+  });
 });
 
 describe("useAdjustOverflow", () => {

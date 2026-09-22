@@ -154,6 +154,59 @@ describe("thread-read-state", () => {
     iframe.remove();
   });
 
+  it("別窓のWindowProxyでHTMLElement constructorがなくてもレスへスクロールする", () => {
+    const iframe = document.createElement("iframe");
+    document.body.appendChild(iframe);
+    const viewDocument = iframe.contentDocument;
+    const viewWindow = iframe.contentWindow;
+    if (!viewDocument || !viewWindow) {
+      iframe.remove();
+      throw new Error("別窓テスト用のiframeを初期化できませんでした");
+    }
+
+    const viewWindowWithConstructors = viewWindow as Window & typeof globalThis;
+    const originalHTMLElement = viewWindowWithConstructors.HTMLElement;
+    Object.defineProperty(viewWindowWithConstructors, "HTMLElement", {
+      configurable: true,
+      value: undefined,
+    });
+    try {
+      const panel = viewDocument.createElement("div");
+      panel.className = "content-area__tab-panel";
+      panel.getBoundingClientRect = () => createRect({ top: 100, bottom: 260 });
+      Object.defineProperty(panel, "scrollTop", {
+        configurable: true,
+        value: 50,
+        writable: true,
+      });
+      const scrollCalls: ScrollToOptions[] = [];
+      panel.scrollTo = ((options?: ScrollToOptions) => {
+        scrollCalls.push(options ?? { top: 0 });
+      }) as typeof panel.scrollTo;
+
+      const host = viewDocument.createElement("div");
+      host.className = "thread-page";
+      panel.appendChild(host);
+      const responses = viewDocument.createElement("div");
+      responses.className = "thread-page__responses";
+      host.appendChild(responses);
+      const article = viewDocument.createElement("article");
+      article.dataset.resNum = "42";
+      article.getBoundingClientRect = () => createRect({ top: 180, bottom: 240 });
+      responses.appendChild(article);
+      viewDocument.body.appendChild(panel);
+
+      expect(scrollThreadToResponse(host, 42, { highlight: false, offset: 20 })).toBe(true);
+      expect(scrollCalls).toEqual([{ top: 110, behavior: "auto" }]);
+    } finally {
+      Object.defineProperty(viewWindowWithConstructors, "HTMLElement", {
+        configurable: true,
+        value: originalHTMLElement,
+      });
+      iframe.remove();
+    }
+  });
+
   it("pending jumpを保持して後で消費できる", () => {
     const jump = requestThreadResJump("https://example.com/test/read.cgi/live/1/", 42);
 

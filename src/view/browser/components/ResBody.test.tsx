@@ -171,6 +171,47 @@ describe("ResBody anchor behavior", () => {
     iframe.remove();
   });
 
+  it("WindowProxyにDOM constructorがなくてもアンカー操作を処理する", () => {
+    const iframe = document.createElement("iframe");
+    document.body.appendChild(iframe);
+    const viewDocument = iframe.contentDocument;
+    if (!viewDocument) {
+      iframe.remove();
+      throw new Error("別窓テスト用のiframeを初期化できませんでした");
+    }
+
+    const onAnchorClick = vi.fn();
+    const onAnchorHover = vi.fn();
+    // 別窓のWindowProxyでconstructorが公開されない場合を再現し、
+    // イベント元のnodeTypeだけで本文アンカーを復元できる契約を固定する。
+    const proxyWithoutConstructors = { document: viewDocument } as unknown as Window;
+    const { container, unmount } = render(
+      <ViewSurfaceProvider surface={{ document: viewDocument, window: proxyWithoutConstructors }}>
+        <ResBody
+          messageHtml={ANCHOR_HTML}
+          anchorPreviewDepth={0}
+          onUrlClick={() => {}}
+          onUrlContextMenu={() => {}}
+          onIdLinkClick={() => {}}
+          onAnchorClick={onAnchorClick}
+          onAnchorHover={onAnchorHover}
+          onAnchorLeave={() => {}}
+        />
+      </ViewSurfaceProvider>,
+      { container: viewDocument.body },
+    );
+
+    const anchor = container.querySelector("a.anchor") as HTMLAnchorElement;
+    fireEvent.mouseOver(anchor);
+    fireEvent.click(anchor);
+
+    expect(onAnchorHover).toHaveBeenCalledWith([5], expect.any(Object), ">>5", 0);
+    expect(onAnchorClick).toHaveBeenCalledWith(5);
+
+    unmount();
+    iframe.remove();
+  });
+
   it("NGレスへのアンカークリック時も対象レスへジャンプする", () => {
     const onAnchorClick = vi.fn();
     const onAnchorHover = vi.fn();

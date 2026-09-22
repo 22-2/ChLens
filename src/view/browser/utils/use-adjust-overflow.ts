@@ -1,4 +1,5 @@
 import { type RefObject, useEffect } from "react";
+import { isHTMLElementInWindow } from "src/view/browser/utils/dom";
 
 export interface PopupViewportBounds {
   left: number;
@@ -15,9 +16,8 @@ export function getPopupViewportBounds(
 ): PopupViewportBounds {
   const statusBar = targetDocument.querySelector(".status-bar");
   let bottom = targetWindow.innerHeight;
-  const targetWindowWithConstructors = targetWindow as Window & typeof globalThis;
 
-  if (statusBar instanceof targetWindowWithConstructors.HTMLElement) {
+  if (isHTMLElementInWindow(statusBar, targetWindow)) {
     const statusBarRect = statusBar.getBoundingClientRect();
     if (statusBarRect.height > 0 && statusBarRect.top >= 0 && statusBarRect.top < bottom) {
       bottom = statusBarRect.top;

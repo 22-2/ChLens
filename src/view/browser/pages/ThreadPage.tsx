@@ -91,6 +91,13 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const runTabCommand = useTabCommandRunner(tabId);
   const { window: viewWindow } = viewSurface;
   const rootRef = useRef<HTMLDivElement>(null);
+  // 変更理由: refの代入だけでは再描画されないため、別窓の初回描画でもPortal先を
+  // 直ちに渡せるよう、同じrootをstateにも同期する。
+  const [popupHost, setPopupHost] = useState<HTMLDivElement | null>(null);
+  const setThreadRoot = useCallback((node: HTMLDivElement | null) => {
+    rootRef.current = node;
+    setPopupHost((current) => (current === node ? current : node));
+  }, []);
   const fallbackScrollContainerRef = useRef<HTMLDivElement>(null);
   const effectiveScrollContainerRef = scrollContainerRef ?? fallbackScrollContainerRef;
   const refreshController = useThreadRefreshController(refreshKey);
@@ -621,7 +628,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
 
   // ジェスチャーuseEffectでrootRefが確実にマウント済みになるよう、loading中の早期returnを廃止し常にrootRef付きdivを描画する
   return (
-    <div ref={rootRef} className="thread-page" onDoubleClick={handleDoubleClick}>
+    <div ref={setThreadRoot} className="thread-page" onDoubleClick={handleDoubleClick}>
       <WheelScrollIndicator
         {...wheelPagination}
         threshold={WHEEL_THRESHOLD}
@@ -725,7 +732,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             )}
 
           <PopupRenderer
-            host={rootRef.current}
+            host={popupHost}
             anchorPreviews={anchorPreviews}
             idPopupItems={idPopupItems}
             treePopupItems={treePopupItems}
