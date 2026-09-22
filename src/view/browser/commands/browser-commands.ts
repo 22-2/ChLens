@@ -104,7 +104,8 @@ export interface BrowserCommandContext {
   openResponseJumpDialog: () => void;
   openNextThreadSearchDialog: () => Promise<void>;
   openArchiveReplayWindow: () => void;
-  // 履歴・再取得は対象タブを明示する実行器へ委譲し、メニューとパレットで挙動を揃える。
+  // 履歴・再取得・タブライフサイクルは対象タブを明示する実行器へ委譲し、
+  // メニューとパレットで挙動を揃える。
   runTabCommand?: (id: TabCommandId) => boolean;
   // 変更理由: コマンドパレットを別窓へ載せた時も、通知とイベントを表示中の窓へ返すため。
   // 既存の外部呼び出しとの互換性を保つため未指定時は従来の共有サービスへフォールバックする。
@@ -465,7 +466,14 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     isEnabled: ({ closedTabs }) => closedTabs.length > 0,
     // 変更理由: タブメニューと同じ reducer action を使い、復元時の新しいID付与と
     // 自動更新状態のリセットを共通化して、入口ごとの挙動差を防ぐ。
-    run: ({ dispatch }) => dispatch(tabActions.reopenClosedTab()),
+    run: ({ dispatch, runTabCommand }) => {
+      if (runTabCommand) {
+        // 変更理由: 別窓のコマンドパレットから復元しても、表示中ペインへ戻す。
+        runTabCommand(TAB_COMMAND_IDS.REOPEN);
+        return;
+      }
+      dispatch(tabActions.reopenClosedTab());
+    },
   },
   {
     id: "navigation.open-bookmarks",
@@ -552,7 +560,15 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     // 変更理由: タブの右クリックメニューと同じ操作をコマンドパレットからも行えるようにし、
     // 対象は右クリック位置ではなくアクティブなタブにする。
     isEnabled: ({ tabs, viewTab }) => tabs.some((tab) => tab.id !== viewTab.id && !tab.pinned),
-    run: ({ dispatch, viewTab }) => dispatch(tabActions.closeOtherTabs(viewTab.id)),
+    run: ({ dispatch, viewTab, runTabCommand }) => {
+      if (runTabCommand) {
+        // 変更理由: コマンドパレットを別窓へ載せた場合も、表示中タブの所有ペインへ
+        // 一括閉鎖を限定し、メイン窓の選択タブへ誤送信しないようにする。
+        runTabCommand(TAB_COMMAND_IDS.CLOSE_OTHER);
+        return;
+      }
+      dispatch(tabActions.closeOtherTabs(viewTab.id));
+    },
   },
   {
     id: "tab.close-right-tabs",
@@ -566,7 +582,15 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
       const index = tabs.findIndex((tab) => tab.id === viewTab.id);
       return index !== -1 && tabs.slice(index + 1).some((tab) => !tab.pinned);
     },
-    run: ({ dispatch, viewTab }) => dispatch(tabActions.closeRightTabs(viewTab.id)),
+    run: ({ dispatch, viewTab, runTabCommand }) => {
+      if (runTabCommand) {
+        // 変更理由: 右側のタブ判定も実行時のストア状態で行い、対象タブが消えた時に
+        // 別の選択タブへフォールバックしないようにする。
+        runTabCommand(TAB_COMMAND_IDS.CLOSE_RIGHT);
+        return;
+      }
+      dispatch(tabActions.closeRightTabs(viewTab.id));
+    },
   },
   {
     id: "tab.close-all-tabs",
@@ -576,7 +600,14 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     keywords: ["すべて", "close all"],
     group: "tab",
     icon: X,
-    run: ({ dispatch }) => dispatch(tabActions.closeAllTabs()),
+    run: ({ dispatch, runTabCommand }) => {
+      if (runTabCommand) {
+        // 変更理由: 別窓からの一括閉鎖でも、メイン窓の選択ペインを巻き込まない。
+        runTabCommand(TAB_COMMAND_IDS.CLOSE_ALL);
+        return;
+      }
+      dispatch(tabActions.closeAllTabs());
+    },
   },
   {
     id: "tab.open-in-right-pane",
@@ -586,7 +617,14 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     keywords: ["ペイン", "右", "right pane"],
     group: "tab",
     icon: PanelRight,
-    run: ({ dispatch, viewTab }) => dispatch(tabActions.openInRightPane(viewTab.id)),
+    run: ({ dispatch, viewTab, runTabCommand }) => {
+      if (runTabCommand) {
+        // 変更理由: 別窓から移動しても、表示中タブを所有するペインを起点にする。
+        runTabCommand(TAB_COMMAND_IDS.OPEN_RIGHT);
+        return;
+      }
+      dispatch(tabActions.openInRightPane(viewTab.id));
+    },
   },
   {
     id: "page.reload",

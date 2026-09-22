@@ -148,4 +148,99 @@ describe("tab-command-runtime", () => {
     ).toBe(false);
     expect(lastTabRuntime.dispatch).not.toHaveBeenCalled();
   });
+
+  it("他のタブを閉じる時は対象タブの所有ペインを指定する", () => {
+    const target = createTab({ id: "target-tab" });
+    const other = createTab({ id: "other-tab" });
+    const pinned = createTab({ id: "pinned-tab", pinned: true });
+    const runtime = createRuntime(target);
+    runtime.state.panes = [{ id: "pane-1", tabs: [target, other, pinned], activeTabId: target.id }];
+
+    expect(
+      executeTabCommandRequest(
+        { id: TAB_COMMAND_IDS.CLOSE_OTHER, args: { tabId: target.id } },
+        runtime,
+      ),
+    ).toBe(true);
+    expect(runtime.dispatch).toHaveBeenCalledWith({
+      ...tabActions.closeOtherTabs(target.id),
+      paneId: "pane-1",
+      tabId: target.id,
+    });
+  });
+
+  it("右側のタブを閉じる時は対象タブの所有ペインを指定する", () => {
+    const target = createTab({ id: "target-tab" });
+    const right = createTab({ id: "right-tab" });
+    const pinnedRight = createTab({ id: "pinned-right-tab", pinned: true });
+    const runtime = createRuntime(target);
+    runtime.state.panes = [
+      { id: "pane-2", tabs: [target, right, pinnedRight], activeTabId: target.id },
+    ];
+
+    expect(
+      executeTabCommandRequest(
+        { id: TAB_COMMAND_IDS.CLOSE_RIGHT, args: { tabId: target.id } },
+        runtime,
+      ),
+    ).toBe(true);
+    expect(runtime.dispatch).toHaveBeenCalledWith({
+      ...tabActions.closeRightTabs(target.id),
+      paneId: "pane-2",
+      tabId: target.id,
+    });
+  });
+
+  it("すべてのタブを閉じる時は対象タブの所有ペインを指定する", () => {
+    const target = createTab({ id: "target-tab" });
+    const runtime = createRuntime(target);
+    runtime.state.panes = [{ id: "pane-2", tabs: [target], activeTabId: target.id }];
+
+    expect(
+      executeTabCommandRequest(
+        { id: TAB_COMMAND_IDS.CLOSE_ALL, args: { tabId: target.id } },
+        runtime,
+      ),
+    ).toBe(true);
+    expect(runtime.dispatch).toHaveBeenCalledWith({
+      ...tabActions.closeAllTabs(),
+      paneId: "pane-2",
+      tabId: target.id,
+    });
+  });
+
+  it("閉じたタブを対象タブの所有ペインへ復元する", () => {
+    const target = createTab({ id: "target-tab" });
+    const closed = createTab({ id: "closed-tab" });
+    const runtime = createRuntime(target);
+    runtime.state.panes = [{ id: "pane-2", tabs: [target], activeTabId: target.id }];
+    runtime.state.closedTabs = [closed];
+
+    expect(
+      executeTabCommandRequest({ id: TAB_COMMAND_IDS.REOPEN, args: { tabId: target.id } }, runtime),
+    ).toBe(true);
+    expect(runtime.dispatch).toHaveBeenCalledWith({
+      ...tabActions.reopenClosedTab(),
+      paneId: "pane-2",
+      tabId: target.id,
+    });
+  });
+
+  it("右ペインで開く時は元タブの所有ペインを指定する", () => {
+    const target = createTab({ id: "target-tab" });
+    const runtime = createRuntime(target);
+    runtime.state.panes = [{ id: "pane-1", tabs: [target], activeTabId: target.id }];
+
+    expect(
+      executeTabCommandRequest(
+        { id: TAB_COMMAND_IDS.OPEN_RIGHT, args: { tabId: target.id } },
+        runtime,
+      ),
+    ).toBe(true);
+    expect(runtime.dispatch).toHaveBeenCalledWith({
+      ...tabActions.openInRightPane(target.id),
+      paneId: "pane-1",
+      tabId: target.id,
+    });
+  });
 });

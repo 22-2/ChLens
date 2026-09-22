@@ -11,6 +11,11 @@ export const TAB_COMMAND_IDS = {
   RELOAD: "tab.reload",
   CLOSE: "tab.close",
   PIN_SET: "tab.pin.set",
+  CLOSE_OTHER: "tab.close-other",
+  CLOSE_RIGHT: "tab.close-right",
+  CLOSE_ALL: "tab.close-all",
+  REOPEN: "tab.reopen",
+  OPEN_RIGHT: "tab.open-right",
 } as const;
 
 export type TabCommandId = (typeof TAB_COMMAND_IDS)[keyof typeof TAB_COMMAND_IDS];
@@ -38,6 +43,7 @@ export interface TabCommandRuntime {
 interface TabLocation {
   readonly paneId: string;
   readonly tab: Tab;
+  readonly tabs: readonly Tab[];
   readonly tabCount: number;
 }
 
@@ -45,7 +51,7 @@ function findTab(state: TabStoreState, tabId: string): TabLocation | null {
   for (const pane of state.panes) {
     const tab = pane.tabs.find((candidate) => candidate.id === tabId);
     if (tab) {
-      return { paneId: pane.id, tab, tabCount: pane.tabs.length };
+      return { paneId: pane.id, tab, tabs: pane.tabs, tabCount: pane.tabs.length };
     }
   }
   return null;
@@ -118,6 +124,44 @@ export function executeTabCommandRequest(
       }
       // TOGGLE_PINもpaneId内だけを更新するため、所有ペインを必ず添付する。
       dispatchForTab(runtime, location, tabActions.togglePin(location.tab.id), true);
+      return true;
+    case TAB_COMMAND_IDS.CLOSE_OTHER:
+      // 変更理由: 切り離し中のタブも同じペインの配列に残るため、表示中タブだけでなく
+      // ストア上の実体を基準に判定し、既存の一括閉鎖の意味を維持する。
+      if (!location.tabs.some((tab) => tab.id !== location.tab.id && !tab.pinned)) {
+        return false;
+      }
+      // CLOSE_OTHER_TABSはpaneId内だけを検索するため、対象タブの所有ペインを渡す。
+      dispatchForTab(runtime, location, tabActions.closeOtherTabs(location.tab.id), true);
+      return true;
+    case TAB_COMMAND_IDS.CLOSE_RIGHT: {
+      const targetIndex = location.tabs.findIndex((tab) => tab.id === location.tab.id);
+      const hasClosableRightTab =
+        targetIndex !== -1 && location.tabs.slice(targetIndex + 1).some((tab) => !tab.pinned);
+      if (!hasClosableRightTab) {
+        return false;
+      }
+      // CLOSE_RIGHT_TABSも対象タブのペイン内だけを更新するため、所有ペインを明示する。
+      dispatchForTab(runtime, location, tabActions.closeRightTabs(location.tab.id), true);
+      return true;
+    }
+    case TAB_COMMAND_IDS.CLOSE_ALL:
+      // 変更理由: 切り離し中のタブを含む対象ペインの一括閉鎖は、既存reducerの
+      // 「固定タブを残して新しい1枚へ置き換える」動作に委譲する。
+      dispatchForTab(runtime, location, tabActions.closeAllTabs(), true);
+      return true;
+    case TAB_COMMAND_IDS.REOPEN:
+      if (location.tabs.length === 0 || runtime.state.closedTabs.length === 0) {
+        return false;
+      }
+      // 変更理由: 閉じたタブ履歴は全ペイン共有だが、復元先は操作元タブのペインに
+      // 固定し、別窓を閉じた後にメインペインへ復元される競合を避ける。
+      dispatchForTab(runtime, location, tabActions.reopenClosedTab(), true);
+      return true;
+    case TAB_COMMAND_IDS.OPEN_RIGHT:
+      // 変更理由: 右ペインの生成・移動先選択はreducerが一括して扱うため、
+      // コマンド側では元タブの所有ペインとタブIDだけを明示して委譲する。
+      dispatchForTab(runtime, location, tabActions.openInRightPane(location.tab.id), true);
       return true;
   }
 }

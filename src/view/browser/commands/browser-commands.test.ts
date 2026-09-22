@@ -6,6 +6,7 @@ import {
   getSubjectUrlForCommand,
   resolveBrowserCommands,
 } from "src/view/browser/commands/browser-commands";
+import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
 import type { ScopedTabAction } from "src/view/browser/hooks/use-tab-store";
 import type { Page, Tab } from "src/view/browser/types";
 import { setItestServerMapForTesting } from "src/view/browser/utils/itest-server-map";
@@ -786,6 +787,47 @@ describe("browser commands", () => {
     context.tabs = [viewTab];
     expect(findCommand("tab.close-other-tabs")).toMatchObject({ enabled: false });
     expect(findCommand("tab.close-right-tabs")).toMatchObject({ enabled: false });
+  });
+
+  it("対象指定の実行器がある時は一括閉鎖を実行器へ委譲する", async () => {
+    const { context, dispatch } = createContext({ type: "home", title: "ホーム" });
+    context.tabs = [context.viewTab, { ...createTab(context.viewPage), id: "tab-2" }];
+    const runTabCommand = vi.fn(() => true);
+    context.runTabCommand = runTabCommand;
+
+    await expect(executeBrowserCommand("tab.close-other-tabs", context)).resolves.toBe(true);
+    await expect(executeBrowserCommand("tab.close-right-tabs", context)).resolves.toBe(true);
+
+    expect(runTabCommand).toHaveBeenNthCalledWith(1, TAB_COMMAND_IDS.CLOSE_OTHER);
+    expect(runTabCommand).toHaveBeenNthCalledWith(2, TAB_COMMAND_IDS.CLOSE_RIGHT);
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  it("復元と全タブ閉鎖も対象指定の実行器へ委譲する", async () => {
+    const closedTab = createTab({ type: "home", title: "閉じたタブ" });
+    const { context, dispatch } = createContext({ type: "home", title: "ホーム" }, [closedTab]);
+    const runTabCommand = vi.fn(() => true);
+    context.runTabCommand = runTabCommand;
+
+    await expect(executeBrowserCommand("navigation.reopen-closed-tab", context)).resolves.toBe(
+      true,
+    );
+    await expect(executeBrowserCommand("tab.close-all-tabs", context)).resolves.toBe(true);
+
+    expect(runTabCommand).toHaveBeenNthCalledWith(1, TAB_COMMAND_IDS.REOPEN);
+    expect(runTabCommand).toHaveBeenNthCalledWith(2, TAB_COMMAND_IDS.CLOSE_ALL);
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  it("右ペイン移動も対象指定の実行器へ委譲する", async () => {
+    const { context, dispatch } = createContext({ type: "home", title: "ホーム" });
+    const runTabCommand = vi.fn(() => true);
+    context.runTabCommand = runTabCommand;
+
+    await expect(executeBrowserCommand("tab.open-in-right-pane", context)).resolves.toBe(true);
+
+    expect(runTabCommand).toHaveBeenCalledWith(TAB_COMMAND_IDS.OPEN_RIGHT);
+    expect(dispatch).not.toHaveBeenCalled();
   });
 
   it("タブバー方向切り替えコマンドは保存値に応じて反対方向へ切り替える", async () => {
