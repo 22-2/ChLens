@@ -359,6 +359,10 @@ describe("useThreadResContextMenu", () => {
 
     expect(mocks.copyText).toHaveBeenCalledWith(
       "thread title\nhttps://example.com/test/read.cgi/live/1/10\n10 name ID:abc123  date\nmessage",
+      expect.objectContaining({
+        window: expect.any(Object),
+        document: expect.any(Object),
+      }),
     );
   });
 

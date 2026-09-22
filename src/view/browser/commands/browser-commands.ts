@@ -28,6 +28,10 @@ import { isTauriRuntime } from "src/app/platform/runtime";
 import { container } from "src/service-container";
 import type { IToastService } from "src/service-container/interfaces";
 import {
+  type CommandTarget,
+  executeCommandRequest,
+} from "src/view/browser/commands/command-runtime";
+import {
   getOpenUrlFromCommandId,
   OPEN_URL_COMMAND_ID,
 } from "src/view/browser/commands/open-url-command";
@@ -40,7 +44,7 @@ import type { ScopedTabAction } from "src/view/browser/hooks/use-tab-store";
 import type { ViewSurface } from "src/view/browser/hooks/use-view-surface";
 import type { Page, Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
-import { copyText, formatMarkdownLink } from "src/view/browser/utils/clipboard";
+import { copyText } from "src/view/browser/utils/clipboard";
 import {
   canQueryExtensionTabs,
   getOpenCompatibleThreadPages,
@@ -129,12 +133,6 @@ export interface ResolvedBrowserCommand {
   enabled: boolean;
 }
 
-interface CommandPageTarget {
-  url: string;
-  title: string;
-  bookmarkType: "thread" | "board";
-}
-
 function getCommandSurface(context: BrowserCommandContext): ViewSurface {
   return (
     context.viewSurface ?? {
@@ -166,20 +164,20 @@ const FILTERABLE_PAGE_TYPES = new Set<Page["type"]>([
   "logList",
 ]);
 
-export function getCommandPageTarget(page: Page): CommandPageTarget | null {
+export function getCommandPageTarget(page: Page): CommandTarget | null {
   switch (page.type) {
     case "thread":
       return {
         url: page.threadUrl,
         title: page.title || page.threadUrl,
-        bookmarkType: "thread",
+        kind: "thread",
       };
 
     case "threadList":
       return {
         url: page.boardUrl,
         title: page.boardTitle || page.title || page.boardUrl,
-        bookmarkType: "board",
+        kind: "board",
       };
 
     default:
@@ -360,23 +358,20 @@ function toggleFilter(context: BrowserCommandContext): void {
   );
 }
 
-function toggleBookmark(context: BrowserCommandContext): void {
+async function toggleBookmark(context: BrowserCommandContext): Promise<void> {
   const target = getCommandPageTarget(context.viewPage);
   if (!target) return;
 
   const isBookmarked = Boolean(container.bookmark.get(target.url));
-  if (isBookmarked) {
-    container.bookmark.remove(target.url);
-    getCommandToast(context).info("ブックマークを削除しました");
-    return;
-  }
-
-  container.bookmark.add({
-    url: target.url,
-    title: target.title,
-    type: target.bookmarkType,
-  });
-  getCommandToast(context).info("ブックマークに追加しました");
+  // 変更理由: パレットとコンテキストメニューが同じ対象コマンドを通ることで、
+  // 非同期の保存完了と別窓の通知先を入口ごとに実装しないようにする。
+  await executeCommandRequest(
+    { id: "target.bookmark.toggle", args: { target } },
+    { surface: getCommandSurface(context), toast: getCommandToast(context) },
+  );
+  getCommandToast(context).info(
+    isBookmarked ? "ブックマークを削除しました" : "ブックマークに追加しました",
+  );
 }
 
 async function copyWithNotice(
@@ -384,7 +379,22 @@ async function copyWithNotice(
   text: string,
   label: string,
 ): Promise<void> {
-  await copyText(text);
+  await copyText(text, getCommandSurface(context));
+  getCommandToast(context).success(`${label}をコピーしました`);
+}
+
+async function copyTargetWithNotice(
+  context: BrowserCommandContext,
+  target: CommandTarget,
+  format: "title" | "url" | "title-url" | "markdown",
+  label: string,
+): Promise<void> {
+  // 変更理由: ページ用コマンドも対象付きコマンドへ橋渡しし、一覧・タブメニューと
+  // 同じ形式判定と別窓のclipboard surfaceを共有する。
+  await executeCommandRequest(
+    { id: "target.copy", args: { target, format } },
+    { surface: getCommandSurface(context), toast: getCommandToast(context) },
+  );
   getCommandToast(context).success(`${label}をコピーしました`);
 }
 
@@ -734,7 +744,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     run: async (context) => {
       const target = getCommandPageTarget(context.viewPage);
       if (!target) return;
-      await copyWithNotice(context, target.title, "ページタイトル");
+      await copyTargetWithNotice(context, target, "title", "ページタイトル");
     },
   },
   {
@@ -748,7 +758,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     run: async (context) => {
       const target = getCommandPageTarget(context.viewPage);
       if (!target) return;
-      await copyWithNotice(context, target.url, "ページURL");
+      await copyTargetWithNotice(context, target, "url", "ページURL");
     },
   },
   {
@@ -762,7 +772,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     run: async (context) => {
       const target = getCommandPageTarget(context.viewPage);
       if (!target) return;
-      await copyWithNotice(context, `${target.title}\n${target.url}`, "タイトルとURL");
+      await copyTargetWithNotice(context, target, "title-url", "タイトルとURL");
     },
   },
   {
@@ -779,7 +789,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
       const target = getCommandPageTarget(context.viewPage);
       if (!target) return;
       // 変更理由: 改行形式の既存コマンドを残し、Markdownを必要とする貼り付け先だけ選べるようにする。
-      await copyWithNotice(context, formatMarkdownLink(target.title, target.url), "Markdownリンク");
+      await copyTargetWithNotice(context, target, "markdown", "Markdownリンク");
     },
   },
   {
@@ -837,7 +847,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
       });
       const tokenCount = estimateToonTokenCount(toon);
 
-      await copyText(toon);
+      await copyText(toon, getCommandSurface(context));
       getCommandToast(context).success(
         `スレ全体をTOON形式でコピーしました（推定 ${tokenCount.toLocaleString("ja-JP")} トークン）`,
       );

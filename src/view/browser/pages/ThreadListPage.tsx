@@ -4,6 +4,8 @@ import { normalizeBoardUrl as normalizeKnownBoardUrl } from "src/core/BoardUrlNo
 import { URL as ChURL } from "src/core/URL";
 import { container } from "src/service-container/index";
 import type { IReadState, IThread } from "src/service-container/interfaces";
+import type { CommandRequest } from "src/view/browser/commands/command-runtime";
+import { runCommandRequest } from "src/view/browser/commands/command-runtime";
 import { ContextMenuNavigationActions } from "src/view/browser/components/ContextMenuNavigationActions";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import {
@@ -204,6 +206,12 @@ export const ThreadListPage: React.FC<Props> = ({
 }) => {
   const { surface: viewSurface, dispatch, toast } = useTabViewRuntime(tabId);
   const { window: viewWindow, document: viewDocument } = viewSurface;
+  const runTargetCommand = useCallback(
+    (request: CommandRequest) => {
+      void runCommandRequest(request, { surface: viewSurface, toast });
+    },
+    [toast, viewSurface],
+  );
   const fallbackScrollContainerRef = useRef<HTMLDivElement>(null);
   const effectiveScrollContainerRef = scrollContainerRef ?? fallbackScrollContainerRef;
   const { viewTab } = useTabStore();
@@ -825,8 +833,9 @@ export const ThreadListPage: React.FC<Props> = ({
       target: { title: thread.title, url: thread.url },
       isBookmarked: readBookmarkStatus(thread.url),
       onRegisterTitleNg: () => openThreadTitleNgDialog(thread),
+      runCommand: runTargetCommand,
     });
-  }, [bookmarkRevision, contextMenuState, openThreadTitleNgDialog]);
+  }, [bookmarkRevision, contextMenuState, openThreadTitleNgDialog, runTargetCommand]);
 
   const closeContextMenu = useCallback(() => setContextMenuState(null), []);
   const contextMenuNavigationActions = contextMenuState ? (

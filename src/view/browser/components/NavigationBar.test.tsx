@@ -754,7 +754,10 @@ describe("NavigationBar", () => {
       });
     });
     await waitFor(() => {
-      expect(toastInfoMock).toHaveBeenCalledWith("ブックマークに追加しました");
+      expect(toastInfoMock).toHaveBeenCalledWith(
+        "ブックマークに追加しました",
+        expect.objectContaining({ targetWindow: expect.any(Object) }),
+      );
     });
     fireEvent.click(screen.getByTitle("メニュー"));
     expect(
@@ -775,7 +778,10 @@ describe("NavigationBar", () => {
       );
     });
     await waitFor(() => {
-      expect(toastInfoMock).toHaveBeenCalledWith("ブックマークを削除しました");
+      expect(toastInfoMock).toHaveBeenCalledWith(
+        "ブックマークを削除しました",
+        expect.objectContaining({ targetWindow: expect.any(Object) }),
+      );
     });
   });
 
@@ -828,7 +834,10 @@ describe("NavigationBar", () => {
     );
 
     await waitFor(() => {
-      expect(toastInfoMock).toHaveBeenCalledWith("ブックマークに追加しました");
+      expect(toastInfoMock).toHaveBeenCalledWith(
+        "ブックマークに追加しました",
+        expect.objectContaining({ targetWindow: expect.any(Object) }),
+      );
     });
     expect(toastErrorMock).not.toHaveBeenCalledWith("ブックマーク状態の同期に失敗しました");
 

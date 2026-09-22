@@ -204,7 +204,7 @@ export function useThreadResContextMenu({
         icon: <Copy size={14} />,
         disabled: !rawId,
         onSelect: async () => {
-          await copyText(rawId);
+          await copyText(rawId, viewSurface);
         },
       },
       {
@@ -342,7 +342,7 @@ export function useThreadResContextMenu({
             const copyBody = `${page.title}\n${page.threadUrl}${targetRes.num}\n${formatResForCopy(
               targetRes,
             )}`;
-            await copyText(copyBody);
+            await copyText(copyBody, viewSurface);
           },
         },
       ];
@@ -393,7 +393,7 @@ export function useThreadResContextMenu({
               label: "選択範囲をコピー",
               icon: <Copy size={14} />,
               onSelect: async () => {
-                await copyText(selectedText);
+                await copyText(selectedText, viewSurface);
               },
             },
             {

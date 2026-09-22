@@ -74,7 +74,8 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
   const { viewPage } = useTabStore();
   // 変更理由: 設定DialogのPortal先も書き込み窓と同じDocumentへ置き、別窓で
   // メイン窓のテーマ境界へ戻らないようにする。
-  const { document: viewDocument } = useViewSurface();
+  const viewSurface = useViewSurface();
+  const { document: viewDocument } = viewSurface;
   const bottomPanel = useOptionalBottomPanel();
   const writePanelInsertRequest = standalone ? null : bottomPanel?.writePanelInsertRequest;
   const clearWritePanelInsertRequest = bottomPanel?.clearWritePanelInsertRequest ?? noop;
@@ -153,12 +154,12 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
   const handleCopyAuthCodeUrl = useCallback(async () => {
     if (!authCodeUrl) return;
     try {
-      await copyText(authCodeUrl);
+      await copyText(authCodeUrl, viewSurface);
       setIsAuthCodeUrlCopied(true);
     } catch (error) {
       console.error("eddibbの認証URLをコピーできませんでした", error);
     }
-  }, [authCodeUrl]);
+  }, [authCodeUrl, viewSurface]);
 
   const handleConfirmationFrameLoad = useCallback(() => {
     confirmationFrameCleanupRef.current?.();

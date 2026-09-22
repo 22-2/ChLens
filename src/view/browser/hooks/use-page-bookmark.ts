@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { container } from "src/service-container/index";
+import { executeCommandRequest } from "src/view/browser/commands/command-runtime";
 import { readBookmarkStatus } from "src/view/browser/hooks/use-bookmark-revision";
+import { useToast } from "src/view/browser/hooks/use-toast";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import type { Page } from "src/view/browser/types";
 import { waitForLegacyBookmarkReady } from "src/view/browser/utils/legacy-app";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
@@ -43,14 +46,15 @@ export function deriveBookmarkTarget(page: Page): BookmarkTarget | null {
   }
 }
 
-function normalizeBookmarkComparableUrl(url: string): string {
+function normalizeBookmarkComparableUrl(url: string, targetWindow: Window): string {
   const parsed = parseInternalBrowserPage(url);
   if (parsed) {
     return parsed.type === "thread" ? parsed.threadUrl : parsed.boardUrl;
   }
 
   try {
-    return new window.URL(url).href;
+    const targetWindowWithConstructors = targetWindow as Window & typeof globalThis;
+    return new targetWindowWithConstructors.URL(url).href;
   } catch {
     return url.trim();
   }
@@ -64,10 +68,13 @@ export interface PageBookmarkState {
 }
 
 export function usePageBookmark(page: Page): PageBookmarkState {
+  const surface = useViewSurface();
+  const toast = useToast();
   const bookmarkTarget = useMemo(() => deriveBookmarkTarget(page), [page]);
   const normalizedBookmarkTargetUrl = useMemo(
-    () => (bookmarkTarget ? normalizeBookmarkComparableUrl(bookmarkTarget.url) : null),
-    [bookmarkTarget],
+    () =>
+      bookmarkTarget ? normalizeBookmarkComparableUrl(bookmarkTarget.url, surface.window) : null,
+    [bookmarkTarget, surface.window],
   );
   const [isBookmarked, setIsBookmarked] = useState<boolean>(() =>
     bookmarkTarget ? readBookmarkStatus(bookmarkTarget.url) : false,
@@ -107,7 +114,7 @@ export function usePageBookmark(page: Page): PageBookmarkState {
     const handleBookmarkUpdated = ({ bookmark }: BookmarkUpdatePayload = {}) => {
       if (
         typeof bookmark?.url === "string" &&
-        normalizeBookmarkComparableUrl(bookmark.url) !== normalizedBookmarkTargetUrl
+        normalizeBookmarkComparableUrl(bookmark.url, surface.window) !== normalizedBookmarkTargetUrl
       ) {
         return;
       }
@@ -126,7 +133,7 @@ export function usePageBookmark(page: Page): PageBookmarkState {
     } catch {
       return;
     }
-  }, [bookmarkTarget, normalizedBookmarkTargetUrl]);
+  }, [bookmarkTarget, normalizedBookmarkTargetUrl, surface.window]);
 
   const toggleBookmark = useCallback(() => {
     if (!bookmarkTarget || isBookmarkPending) {
@@ -142,17 +149,24 @@ export function usePageBookmark(page: Page): PageBookmarkState {
     setIsBookmarked(nextBookmarkedState);
 
     void Promise.resolve()
-      .then(() => {
-        if (currentBookmarkedState) {
-          return container.bookmark.remove(bookmarkTarget.url);
-        }
-
-        return container.bookmark.add({
-          url: bookmarkTarget.url,
-          title: bookmarkTarget.title,
-          type: bookmarkTarget.type,
-        });
-      })
+      .then(() =>
+        // 変更理由: URLバーと別窓のページボタンで保存処理を分岐させず、対象付き
+        // コマンドへ揃えることで、実行時の状態確認と表示先通知を共有する。
+        executeCommandRequest(
+          {
+            id: "target.bookmark.set",
+            args: {
+              target: {
+                kind: bookmarkTarget.type,
+                url: bookmarkTarget.url,
+                title: bookmarkTarget.title,
+              },
+              bookmarked: nextBookmarkedState,
+            },
+          },
+          { surface, toast },
+        ),
+      )
       .then(() => {
         const actualBookmarkedState = readBookmarkStatus(bookmarkTarget.url);
 
@@ -162,14 +176,14 @@ export function usePageBookmark(page: Page): PageBookmarkState {
           setIsBookmarked(actualBookmarkedState);
         }
 
-        container.toast.info(
+        toast.info(
           nextBookmarkedState ? "ブックマークに追加しました" : "ブックマークを削除しました",
         );
       })
       .catch((error: unknown) => {
         setIsBookmarked(readBookmarkStatus(bookmarkTarget.url));
         setIsBookmarkPending(false);
-        container.toast.error(
+        toast.error(
           nextBookmarkedState
             ? "ブックマークの追加に失敗しました"
             : "ブックマークの削除に失敗しました",
@@ -179,7 +193,7 @@ export function usePageBookmark(page: Page): PageBookmarkState {
       .finally(() => {
         setIsBookmarkPending(false);
       });
-  }, [bookmarkTarget, isBookmarkPending]);
+  }, [bookmarkTarget, isBookmarkPending, surface, toast]);
 
   return {
     bookmarkTarget,

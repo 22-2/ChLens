@@ -36,7 +36,7 @@ export async function runBrowserCommand({
   } catch (error: unknown) {
     const label = getBrowserCommandLabel(commandId, context);
     // コマンドIDとページ種別を残し、複数の入口に集約した操作の失敗元を追跡できるようにする。
-    console.error("Browser command execution failed", {
+    console.error("ブラウザコマンドの実行に失敗しました", {
       commandId,
       pageType: context.viewPage.type,
       error,

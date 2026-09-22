@@ -4,19 +4,35 @@
  * クリップボード実装を経由して実行環境へ依存しないようにする。
  */
 
-export async function copyText(text: string): Promise<void> {
+export interface ClipboardSurface {
+  window: Window;
+  document: Document;
+}
+
+export async function copyText(text: string, surface?: ClipboardSurface): Promise<void> {
+  // 変更理由: 既存のメイン窓呼び出しは省略形を維持しつつ、別窓のメニューだけは
+  // その窓のClipboard APIとフォールバック用DOMを確実に使えるようにする。
+  const targetWindow = surface?.window ?? globalThis.window;
+  const targetDocument = surface?.document ?? globalThis.document;
   try {
-    await navigator.clipboard.writeText(text);
+    await targetWindow.navigator.clipboard.writeText(text);
   } catch {
     // clipboard APIが使えない環境向けフォールバック
-    const textarea = document.createElement("textarea");
-    textarea.value = text;
-    textarea.style.position = "fixed";
-    textarea.style.left = "-9999px";
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand("copy");
-    textarea.remove();
+    const textarea = targetDocument.createElement("textarea");
+    try {
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      targetDocument.body.appendChild(textarea);
+      textarea.select();
+      if (!targetDocument.execCommand("copy")) {
+        throw new Error("クリップボードへのコピーに失敗しました");
+      }
+    } finally {
+      // 変更理由: execCommandがfalseを返す環境でも一時textareaを残さず、
+      // 呼び出し元へ失敗を返してUIの成功表示と実際の結果を一致させる。
+      textarea.remove();
+    }
   }
 }
 
@@ -28,23 +44,26 @@ export function formatMarkdownLink(title: string, url: string): string {
   return `[${escapedTitle}](${escapedUrl})`;
 }
 
-export function canCopyImageToClipboard(): boolean {
+export function canCopyImageToClipboard(surface?: ClipboardSurface): boolean {
+  const targetWindow = surface?.window ?? globalThis.window;
   return (
-    typeof navigator !== "undefined" &&
-    typeof navigator.clipboard?.write === "function" &&
-    typeof globalThis.ClipboardItem !== "undefined"
+    typeof targetWindow !== "undefined" &&
+    typeof targetWindow.navigator?.clipboard?.write === "function" &&
+    typeof (targetWindow as Window & typeof globalThis).ClipboardItem !== "undefined"
   );
 }
 
-export async function copyImageBlob(blob: Blob): Promise<void> {
-  if (!canCopyImageToClipboard()) {
+export async function copyImageBlob(blob: Blob, surface?: ClipboardSurface): Promise<void> {
+  const targetWindow = surface?.window ?? globalThis.window;
+  if (!canCopyImageToClipboard(surface)) {
     throw new Error("Image clipboard API is not available");
   }
 
   // 画像コピーはテキストのような安全なフォールバックがないため、
   // 対応ブラウザだけで明示的に ClipboardItem を使う。
-  await navigator.clipboard.write([
-    new globalThis.ClipboardItem({
+  const targetWindowWithClipboard = targetWindow as Window & typeof globalThis;
+  await targetWindow.navigator.clipboard.write([
+    new targetWindowWithClipboard.ClipboardItem({
       [blob.type]: blob,
     }),
   ]);

@@ -275,7 +275,15 @@ describe("WritePanelContent", () => {
     expect(within(dialog).getByLabelText("認証ページURL")).toHaveValue(mocks.authCodeUrl);
     fireEvent.click(within(dialog).getByRole("button", { name: "URLをコピー" }));
 
-    await waitFor(() => expect(mocks.copyText).toHaveBeenCalledWith(mocks.authCodeUrl));
+    await waitFor(() =>
+      expect(mocks.copyText).toHaveBeenCalledWith(
+        mocks.authCodeUrl,
+        expect.objectContaining({
+          window: expect.any(Object),
+          document: expect.any(Object),
+        }),
+      ),
+    );
     expect(within(dialog).getByRole("button", { name: "コピーしました" })).toBeInTheDocument();
   });
 

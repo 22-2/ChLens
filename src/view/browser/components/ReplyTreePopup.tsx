@@ -588,7 +588,8 @@ export const ReplyTreePopup: React.FC<{
   ngResNums,
   threadKey,
 }) => {
-  const { document: viewDocument } = useViewSurface();
+  const viewSurface = useViewSurface();
+  const { document: viewDocument } = viewSurface;
   const { menuButtonRef, menuPosition, handleMenuClick, closeMenu } = usePopupHeaderMenu();
   const [subTreeMenu, setSubTreeMenu] = useState<SubTreeMenuState | null>(null);
   const theme = useTheme();
@@ -606,6 +607,7 @@ export const ReplyTreePopup: React.FC<{
             // 参照元レスの内容も先頭に含め、見出しなしで自然なレス列として貼り付けられるようにする。
             void copyText(
               buildReplyTreeCopyText(sourceRes, replyResponses, threadTitle, threadUrl),
+              viewSurface,
             );
           },
         },
@@ -613,7 +615,7 @@ export const ReplyTreePopup: React.FC<{
           id: "copy-tree-image",
           label: "返信ツリーを画像としてコピー",
           icon: <ImageIcon size={14} />,
-          disabled: !canCopyImageToClipboard(),
+          disabled: !canCopyImageToClipboard(viewSurface),
           onSelect: () => {
             void (async () => {
               const canvas = renderReplyTreeImageCanvas(
@@ -627,7 +629,7 @@ export const ReplyTreePopup: React.FC<{
                 viewDocument,
               );
               const blob = await canvasToBlob(canvas);
-              await copyImageBlob(blob);
+              await copyImageBlob(blob, viewSurface);
             })();
           },
         },
@@ -734,6 +736,7 @@ export const ReplyTreePopup: React.FC<{
             onSelect: () => {
               void copyText(
                 buildReplyTreeCopyText(targetRes, subReplyResponses, threadTitle, threadUrl),
+                viewSurface,
               );
             },
           },
@@ -741,7 +744,7 @@ export const ReplyTreePopup: React.FC<{
             id: "copy-subtree-image",
             label: "このレス以降のツリーを画像としてコピー",
             icon: <ImageDown size={14} />,
-            disabled: !canCopyImageToClipboard(),
+            disabled: !canCopyImageToClipboard(viewSurface),
             onSelect: () => {
               void (async () => {
                 const canvas = renderReplyTreeImageCanvas(
@@ -755,7 +758,7 @@ export const ReplyTreePopup: React.FC<{
                   viewDocument,
                 );
                 const blob = await canvasToBlob(canvas);
-                await copyImageBlob(blob);
+                await copyImageBlob(blob, viewSurface);
               })();
             },
           },
@@ -771,6 +774,7 @@ export const ReplyTreePopup: React.FC<{
         onSelect: () => {
           void copyText(
             buildReplyTreeAncestorCopyText(targetRes, ancestorResponses, threadTitle, threadUrl),
+            viewSurface,
           );
         },
       },
@@ -778,7 +782,7 @@ export const ReplyTreePopup: React.FC<{
         id: "copy-ancestor-path-image",
         label: "ツリー先頭からこのレスまで画像としてコピー",
         icon: <ImageUp size={14} />,
-        disabled: !canCopyImageToClipboard(),
+        disabled: !canCopyImageToClipboard(viewSurface),
         onSelect: () => {
           void (async () => {
             const canvas = renderReplyTreeImageCanvas(
@@ -796,7 +800,7 @@ export const ReplyTreePopup: React.FC<{
               viewDocument,
             );
             const blob = await canvasToBlob(canvas);
-            await copyImageBlob(blob);
+            await copyImageBlob(blob, viewSurface);
           })();
         },
       },

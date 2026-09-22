@@ -91,6 +91,10 @@ describe("TabContextMenu", () => {
     fireEvent.click(copyButtons[2]!);
     expect(copyTextMock).toHaveBeenLastCalledWith(
       "Current Thread\nhttps://example.com/test/read.cgi/software/123/",
+      expect.objectContaining({
+        window: expect.any(Object),
+        document: expect.any(Object),
+      }),
     );
   });
 });

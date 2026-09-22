@@ -2,6 +2,8 @@ import { Ban, Check, RefreshCw, Search } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { container } from "src/service-container/index";
 import type { IReadState, IThread } from "src/service-container/interfaces";
+import type { CommandRequest } from "src/view/browser/commands/command-runtime";
+import { runCommandRequest } from "src/view/browser/commands/command-runtime";
 import { ContextMenuNavigationActions } from "src/view/browser/components/ContextMenuNavigationActions";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import {
@@ -159,8 +161,15 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
   const { viewTab, viewPage, dispatch } = useTabStore();
   // 変更理由: 下部パネルのスレ一覧も別窓へ移せるため、可視状態・更新タイマー・URL解析を
   // ページ本体と同じ表示先へ揃え、メイン窓の状態に引きずられないようにする。
-  const { window: viewWindow, document: viewDocument } = useViewSurface();
+  const viewSurface = useViewSurface();
+  const { window: viewWindow, document: viewDocument } = viewSurface;
   const toast = useToast();
+  const runTargetCommand = useCallback(
+    (request: CommandRequest) => {
+      void runCommandRequest(request, { surface: viewSurface, toast });
+    },
+    [toast, viewSurface],
+  );
   const { isNgTemporarilyDisabled, setThreadListStats } = useNgStatus();
   const bookmarkRevision = useBookmarkRevision();
   const {
@@ -527,8 +536,9 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
       target: { title: thread.title, url: thread.url },
       isBookmarked: readBookmarkStatus(thread.url),
       onRegisterTitleNg: () => openThreadTitleNgDialog(thread),
+      runCommand: runTargetCommand,
     });
-  }, [bookmarkRevision, contextMenuState, openThreadTitleNgDialog]);
+  }, [bookmarkRevision, contextMenuState, openThreadTitleNgDialog, runTargetCommand]);
 
   const closeContextMenu = useCallback(() => setContextMenuState(null), []);
   const contextMenuNavigationActions = contextMenuState ? (

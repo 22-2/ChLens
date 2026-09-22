@@ -51,7 +51,8 @@ export function useUrlHandlers({
   openMediaFromUrl,
   addPopupContextMenu,
 }: UseUrlHandlersParams): UseUrlHandlersResult {
-  const { window: viewWindow } = useViewSurface();
+  const viewSurface = useViewSurface();
+  const { window: viewWindow } = viewSurface;
   const openResolvedUrl = useCallback(
     (
       absoluteUrl: string,
@@ -119,7 +120,8 @@ export function useUrlHandlers({
           id: "copy-url",
           label: "URLをコピー",
           onSelect: () => {
-            void copyText(absoluteUrl);
+            // 別窓のURLメニューからコピーしても、表示中の窓のclipboardへ書き込む。
+            void copyText(absoluteUrl, viewSurface);
           },
         },
         {
@@ -131,7 +133,7 @@ export function useUrlHandlers({
         },
       ];
     },
-    [openResolvedUrl, viewWindow],
+    [openResolvedUrl, viewSurface, viewWindow],
   );
 
   const handleUrlClick = useCallback(

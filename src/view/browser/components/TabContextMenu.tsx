@@ -1,5 +1,7 @@
 import { ExternalLink, List, Pin, PinOff, RotateCcw, X } from "lucide-react";
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
+import type { CommandRequest } from "src/view/browser/commands/command-runtime";
+import { runCommandRequest } from "src/view/browser/commands/command-runtime";
 import {
   createThreadBookmarkMenuItem,
   createThreadCopyMenuItems,
@@ -35,8 +37,15 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
   const { isDetachedTab, detachTab, reattachTab } = useDetachedTabController();
   const bottomPanel = useOptionalBottomPanel();
   const toast = useToast();
-  const { window: viewWindow } = useViewSurface();
+  const viewSurface = useViewSurface();
+  const { window: viewWindow } = viewSurface;
   const bookmarkRevision = useBookmarkRevision();
+  const runTargetCommand = useCallback(
+    (request: CommandRequest) => {
+      void runCommandRequest(request, { surface: viewSurface, toast });
+    },
+    [toast, viewSurface],
+  );
 
   const currentPage = getCurrentPage(tab);
   const isThread = currentPage.type === "thread";
@@ -105,10 +114,14 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
         createThreadBookmarkMenuItem({
           target: { title: threadPage.title, url: threadPage.threadUrl },
           isBookmarked: readBookmarkStatus(threadPage.threadUrl),
+          runCommand: runTargetCommand,
         }),
       );
       result.push(
-        ...createThreadCopyMenuItems({ title: threadPage.title, url: threadPage.threadUrl }),
+        ...createThreadCopyMenuItems(
+          { title: threadPage.title, url: threadPage.threadUrl },
+          runTargetCommand,
+        ),
       );
       result.push({ id: "sep-copy", separator: true });
       result.push({
@@ -165,6 +178,7 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
     tab.pinned,
     detachTab,
     reattachTab,
+    runTargetCommand,
   ]);
 
   return <ContextMenu x={position.x} y={position.y} items={items} onClose={onClose} />;

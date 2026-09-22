@@ -643,7 +643,13 @@ describe("browser commands", () => {
     });
 
     await expect(executeBrowserCommand("copy.dat-url", context)).resolves.toBe(true);
-    expect(copyTextMock).toHaveBeenCalledWith("https://egg.5ch.io/software/dat/123.dat");
+    expect(copyTextMock).toHaveBeenCalledWith(
+      "https://egg.5ch.io/software/dat/123.dat",
+      expect.objectContaining({
+        window: expect.any(Object),
+        document: expect.any(Object),
+      }),
+    );
     expect(toastSuccessMock).toHaveBeenCalledWith("datのURLをコピーしました");
   });
 
@@ -680,6 +686,10 @@ describe("browser commands", () => {
 
     expect(copyTextMock).toHaveBeenCalledWith(
       "[Title \\] \\\\ note](https://example.test/thread/\\(1\\)?next=2\\))",
+      expect.objectContaining({
+        window: expect.any(Object),
+        document: expect.any(Object),
+      }),
     );
     expect(toastSuccessMock).toHaveBeenCalledWith("Markdownリンクをコピーしました");
   });
@@ -701,7 +711,13 @@ describe("browser commands", () => {
         url: threadUrl,
       }),
     );
-    expect(copyTextMock).toHaveBeenCalledWith("title: Thread");
+    expect(copyTextMock).toHaveBeenCalledWith(
+      "title: Thread",
+      expect.objectContaining({
+        window: expect.any(Object),
+        document: expect.any(Object),
+      }),
+    );
     expect(toastSuccessMock).toHaveBeenCalledWith(
       "スレ全体をTOON形式でコピーしました（推定 1,234 トークン）",
     );

@@ -104,7 +104,8 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
   threadTitle,
   threadUrl,
 }) => {
-  const { document: viewDocument } = useViewSurface();
+  const viewSurface = useViewSurface();
+  const { document: viewDocument } = viewSurface;
   const theme = useTheme();
   const { menuButtonRef, menuPosition, handleMenuClick, closeMenu } = usePopupHeaderMenu();
   const title = `参照: ${label}`;
@@ -116,14 +117,14 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
       icon: <Copy size={14} />,
       onSelect: () => {
         // 変更理由: IDポップアップと同じく表示順を保ったままコピーし、貼り付け先でも読める形にする。
-        void copyText(buildAnchorPopupCopyText(items, threadTitle, threadUrl));
+        void copyText(buildAnchorPopupCopyText(items, threadTitle, threadUrl), viewSurface);
       },
     },
     {
       id: "copy-anchor-image",
       label: "参照を画像としてコピー",
       icon: <ImageIcon size={14} />,
-      disabled: !canCopyImageToClipboard(),
+      disabled: !canCopyImageToClipboard(viewSurface),
       onSelect: () => {
         void (async () => {
           try {
@@ -135,7 +136,7 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
               targetDocument: viewDocument,
             });
             const blob = await canvasToBlob(canvas);
-            await copyImageBlob(blob);
+            await copyImageBlob(blob, viewSurface);
           } catch (error) {
             // 変更理由: 画像コピーには安全なフォールバックがないため、失敗理由をログへ残す。
             console.error("参照を画像としてコピーできませんでした", error);

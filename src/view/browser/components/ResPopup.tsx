@@ -103,7 +103,8 @@ export const ResPopup: React.FC<{
   resMap,
   threadKey,
 }) => {
-  const { document: viewDocument } = useViewSurface();
+  const viewSurface = useViewSurface();
+  const { document: viewDocument } = viewSurface;
   const theme = useTheme();
   const { menuButtonRef, menuPosition, handleMenuClick, closeMenu } = usePopupHeaderMenu();
 
@@ -114,14 +115,14 @@ export const ResPopup: React.FC<{
       icon: <Copy size={14} />,
       onSelect: () => {
         // ID索引の表示順を保ったままコピーし、別の場所へ移してもレス単位で読める形にする。
-        void copyText(buildIdPopupCopyText(items, threadTitle, threadUrl));
+        void copyText(buildIdPopupCopyText(items, threadTitle, threadUrl), viewSurface);
       },
     },
     {
       id: "copy-id-image",
       label: "IDのレスを画像としてコピー",
       icon: <ImageIcon size={14} />,
-      disabled: !canCopyImageToClipboard(),
+      disabled: !canCopyImageToClipboard(viewSurface),
       onSelect: () => {
         void (async () => {
           try {
@@ -133,7 +134,7 @@ export const ResPopup: React.FC<{
               targetDocument: viewDocument,
             });
             const blob = await canvasToBlob(canvas);
-            await copyImageBlob(blob);
+            await copyImageBlob(blob, viewSurface);
           } catch (error) {
             // 画像コピーには安全なフォールバックがないため、失敗理由をログへ残す。
             console.error("IDのレスを画像としてコピーできませんでした", error);

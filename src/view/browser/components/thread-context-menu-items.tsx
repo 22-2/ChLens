@@ -1,7 +1,6 @@
 import { Ban, Bookmark, BookmarkX, Clipboard } from "lucide-react";
-import { container } from "src/service-container";
+import type { CommandRequest, CommandTarget } from "src/view/browser/commands/command-runtime";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
-import { copyText } from "src/view/browser/utils/clipboard";
 
 export interface ThreadMenuTarget {
   title: string;
@@ -12,6 +11,11 @@ export interface ThreadContextMenuOptions {
   target: ThreadMenuTarget;
   isBookmarked: boolean;
   onRegisterTitleNg: () => void;
+  runCommand: (request: CommandRequest) => void;
+}
+
+function toThreadCommandTarget(target: ThreadMenuTarget): CommandTarget {
+  return { ...target, kind: "thread" };
 }
 
 /**
@@ -20,25 +24,41 @@ export interface ThreadContextMenuOptions {
  * 変更理由: スレッドタブ・スレ一覧ページ・下部パネルで項目を個別に定義すると、
  * 並び順やラベル、アイコン、コピー形式がずれるため、1つの定義から生成する。
  */
-export function createThreadCopyMenuItems({ title, url }: ThreadMenuTarget): ContextMenuItem[] {
+export function createThreadCopyMenuItems(
+  target: ThreadMenuTarget,
+  runCommand: (request: CommandRequest) => void,
+): ContextMenuItem[] {
+  const commandTarget = toThreadCommandTarget(target);
   return [
     {
       id: "copy-title",
       label: "スレタイをコピー",
       icon: <Clipboard size={14} />,
-      onSelect: () => void copyText(title),
+      onSelect: () =>
+        runCommand({
+          id: "target.copy",
+          args: { target: commandTarget, format: "title" },
+        }),
     },
     {
       id: "copy-url",
       label: "URLをコピー",
       icon: <Clipboard size={14} />,
-      onSelect: () => void copyText(url),
+      onSelect: () =>
+        runCommand({
+          id: "target.copy",
+          args: { target: commandTarget, format: "url" },
+        }),
     },
     {
       id: "copy-title-url",
       label: "スレタイ＆URLをコピー",
       icon: <Clipboard size={14} />,
-      onSelect: () => void copyText(`${title}\n${url}`),
+      onSelect: () =>
+        runCommand({
+          id: "target.copy",
+          args: { target: commandTarget, format: "title-url" },
+        }),
     },
   ];
 }
@@ -53,6 +73,7 @@ export function createThreadContextMenuItems({
   target,
   isBookmarked,
   onRegisterTitleNg,
+  runCommand,
 }: ThreadContextMenuOptions): ContextMenuItem[] {
   return [
     {
@@ -61,38 +82,29 @@ export function createThreadContextMenuItems({
       icon: <Ban size={14} />,
       onSelect: onRegisterTitleNg,
     },
-    createThreadBookmarkMenuItem({ target, isBookmarked }),
-    ...createThreadCopyMenuItems(target),
+    createThreadBookmarkMenuItem({ target, isBookmarked, runCommand }),
+    ...createThreadCopyMenuItems(target, runCommand),
   ];
 }
 
 export function createThreadBookmarkMenuItem({
   target,
   isBookmarked,
-}: Pick<ThreadContextMenuOptions, "target" | "isBookmarked">): ContextMenuItem {
+  runCommand,
+}: Pick<ThreadContextMenuOptions, "target" | "isBookmarked" | "runCommand">): ContextMenuItem {
+  const commandTarget = toThreadCommandTarget(target);
   return {
     id: "bookmark",
     label: isBookmarked ? "ブックマークを削除" : "ブックマークに追加",
     icon: isBookmarked ? <BookmarkX size={14} /> : <Bookmark size={14} />,
     onSelect: () => {
-      // 実装側のadd/removeは非同期結果を返すことがあるため、同期例外とrejectを
-      // 同じログ経路へ集約し、コンテキストメニューからの未処理Promiseを残さない。
-      void (async () => {
-        try {
-          if (isBookmarked) {
-            await Promise.resolve(container.bookmark.remove(target.url));
-          } else {
-            await Promise.resolve(
-              container.bookmark.add({ url: target.url, title: target.title, type: "thread" }),
-            );
-          }
-        } catch (error) {
-          console.error("[ThreadMenu] ブックマークの更新に失敗しました", {
-            error,
-            url: target.url,
-          });
-        }
-      })();
+      runCommand({
+        id: "target.bookmark.set",
+        args: {
+          target: commandTarget,
+          bookmarked: !isBookmarked,
+        },
+      });
     },
   };
 }
