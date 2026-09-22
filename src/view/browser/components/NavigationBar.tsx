@@ -28,11 +28,10 @@ import { createPortal } from "react-dom";
 import { container } from "src/service-container/index";
 import {
   type BrowserCommandContext,
-  executeBrowserCommand,
-  getBrowserCommandLabel,
   resolveBrowserCommands,
   type ResolvedBrowserCommand,
 } from "src/view/browser/commands/browser-commands";
+import { runBrowserCommand } from "src/view/browser/commands/command-executor";
 import {
   addRecentCommandId,
   normalizeRecentCommandIds,
@@ -540,34 +539,28 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
 
   const executeCommand = useCallback(
     async (command: ResolvedBrowserCommand) => {
-      commandPalette.close();
-      urlInputRef.current?.blur();
-      recordCommand(command.id);
-      setRunningCommandIds((current) => {
-        if (current.has(command.id)) return current;
-        return new Set(current).add(command.id);
-      });
+      await runBrowserCommand({
+        commandId: command.id,
+        context: contextRef.current,
+        onBeforeExecute: () => {
+          commandPalette.close();
+          urlInputRef.current?.blur();
+        },
+        onCommandRecorded: recordCommand,
+        onRunningChange: (commandId, running) => {
+          setRunningCommandIds((current) => {
+            if (running) {
+              if (current.has(commandId)) return current;
+              return new Set(current).add(commandId);
+            }
 
-      const currentContext = contextRef.current;
-      try {
-        await executeBrowserCommand(command.id, currentContext);
-      } catch (error: unknown) {
-        const label = getBrowserCommandLabel(command.id, currentContext);
-        // コマンドIDとページ種別を残し、単一入力へ集約した操作の失敗元を追跡できるようにする。
-        console.error("Browser command execution failed", {
-          commandId: command.id,
-          pageType: currentContext.viewPage.type,
-          error,
-        });
-        container.toast.error(`${label}に失敗しました`);
-      } finally {
-        setRunningCommandIds((current) => {
-          if (!current.has(command.id)) return current;
-          const next = new Set(current);
-          next.delete(command.id);
-          return next;
-        });
-      }
+            if (!current.has(commandId)) return current;
+            const next = new Set(current);
+            next.delete(commandId);
+            return next;
+          });
+        },
+      });
     },
     [recordCommand],
   );
