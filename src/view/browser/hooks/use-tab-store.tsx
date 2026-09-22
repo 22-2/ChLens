@@ -15,6 +15,15 @@ import { getStore2String } from "src/app/Store2Storage";
 import { add as addHistoryRecord, remove as removeHistoryRecord } from "src/core/History";
 import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import {
+  canCloseTab,
+  canOpenInRightPane,
+  canReopenClosedTab,
+  findTabAcrossPanes,
+  hasClosableOtherTabs,
+  hasClosableRightTabs,
+  MAX_PANES,
+} from "src/view/browser/hooks/tab-store-selectors";
+import {
   loadTabStoreSession,
   sanitizeTabStoreState,
   saveTabStoreSession,
@@ -59,8 +68,6 @@ export type {
 
 // 閉じたタブの最大保持数
 const MAX_CLOSED_TABS = 20;
-// 横分割ペインの最大数。現状は2ペイン固定のオン/オフ運用にする。
-const MAX_PANES = 2;
 const CONFIG_KEY_PREFIX = "config_";
 
 type NewTabPageMode = "home" | "related_board" | "custom_board";
@@ -391,15 +398,6 @@ function getActivePaneActiveTab(state: TabStoreState): Tab {
   return getPaneActiveTab(getActivePane(state));
 }
 
-// 全ペインを横断してタブを探す（閲覧履歴記録など）。
-function findTabAcrossPanes(state: TabStoreState, tabId: string): Tab | null {
-  for (const pane of state.panes) {
-    const tab = pane.tabs.find((t) => t.id === tabId);
-    if (tab) return tab;
-  }
-  return null;
-}
-
 // 指定ペインのアクティブタブだけを更新する。
 function updatePaneActiveTab(
   state: TabStoreState,
@@ -665,11 +663,9 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       const paneId = resolvePaneId(state, action.paneId);
       const pane = getPane(state, paneId);
       const target = pane.tabs.find((t) => t.id === action.tabId);
-      // 固定タブは閉じられない
-      if (!target || target.pinned) return state;
+      if (!target || !canCloseTab(target, pane.tabs.length, action.replaceLastTab)) return state;
       // ペインは最低1タブを保つ（空にしたい場合はペインを閉じる）。
       if (pane.tabs.length <= 1) {
-        if (!action.replaceLastTab) return state;
         const replacement = createTab(getCurrentPage(target), target);
         return {
           ...updatePane(state, paneId, (p) => ({
@@ -706,6 +702,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       const paneId = resolvePaneId(state, action.paneId);
       const pane = getPane(state, paneId);
       // 指定タブと固定タブ以外を閉じる
+      if (!hasClosableOtherTabs(pane.tabs, action.tabId)) return state;
       const closed = pane.tabs.filter((t) => t.id !== action.tabId && !t.pinned);
       const remaining = pane.tabs.filter((t) => t.id === action.tabId || t.pinned);
       if (remaining.length === 0) return state;
@@ -729,8 +726,8 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       const pane = getPane(state, paneId);
       const idx = pane.tabs.findIndex((t) => t.id === action.tabId);
       if (idx === -1) return state;
+      if (!hasClosableRightTabs(pane.tabs, action.tabId)) return state;
       const rightTabs = pane.tabs.slice(idx + 1).filter((t) => !t.pinned);
-      if (rightTabs.length === 0) return state;
       const rightIds = new Set(rightTabs.map((t) => t.id));
       const remaining = pane.tabs.filter((t) => !rightIds.has(t.id));
       let newClosed = state.closedTabs;
@@ -777,7 +774,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
     }
 
     case TAB_ACTION_TYPES.REOPEN_CLOSED_TAB: {
-      if (state.closedTabs.length === 0) return state;
+      if (!canReopenClosedTab(state)) return state;
       const paneId = resolvePaneId(state, action.paneId);
       const [reopened, ...rest] = state.closedTabs;
       // 変更理由: 閉じたタブを新規タブとして開き直す時は、自動更新状態を引き継がない。
@@ -1171,6 +1168,8 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       const sourcePane = state.panes[sourceIndex];
       const movingTab = sourcePane.tabs.find((t) => t.id === action.tabId);
       if (!movingTab) return state;
+      const rightPane = state.panes[sourceIndex + 1];
+      if (!rightPane && !canOpenInRightPane(state, sourcePaneId)) return state;
 
       // 元ペインから対象タブを除く。空になるなら既定タブを補充してペインを維持する。
       let remainingSourceTabs = sourcePane.tabs.filter((t) => t.id !== action.tabId);
@@ -1187,7 +1186,6 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
         activeTabId: newSourceActiveId,
       };
 
-      const rightPane = state.panes[sourceIndex + 1];
       if (rightPane) {
         const updatedRightPane: Pane = {
           ...rightPane,
@@ -1199,9 +1197,6 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
         );
         return { ...state, panes, activePaneId: rightPane.id };
       }
-
-      // 右隣が無く、かつ最大ペイン数に達している場合は移動先が作れないので何もしない。
-      if (state.panes.length >= MAX_PANES) return state;
 
       const newPane = createPane(movingTab);
       const panes = state.panes.map((p) => (p.id === sourcePaneId ? updatedSourcePane : p));

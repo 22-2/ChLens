@@ -1,7 +1,16 @@
 import type { Dispatch } from "react";
 import { tabActions } from "src/view/browser/hooks/tab-store-actions";
+import {
+  canCloseTab,
+  canOpenInRightPane,
+  canReopenClosedTab,
+  findTabLocation,
+  hasClosableOtherTabs,
+  hasClosableRightTabs,
+  type TabLocation,
+} from "src/view/browser/hooks/tab-store-selectors";
 import type { ScopedTabAction, TabStoreState } from "src/view/browser/hooks/tab-store-types";
-import { canGoBack, canGoForward, getCurrentPage, type Tab } from "src/view/browser/types";
+import { canGoBack, canGoForward, getCurrentPage } from "src/view/browser/types";
 import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 
 /** タブの履歴・再取得・ライフサイクル操作を共有するコマンドID。 */
@@ -40,23 +49,6 @@ export interface TabCommandRuntime {
   readonly dispatch: Dispatch<ScopedTabAction>;
 }
 
-interface TabLocation {
-  readonly paneId: string;
-  readonly tab: Tab;
-  readonly tabs: readonly Tab[];
-  readonly tabCount: number;
-}
-
-function findTab(state: TabStoreState, tabId: string): TabLocation | null {
-  for (const pane of state.panes) {
-    const tab = pane.tabs.find((candidate) => candidate.id === tabId);
-    if (tab) {
-      return { paneId: pane.id, tab, tabs: pane.tabs, tabCount: pane.tabs.length };
-    }
-  }
-  return null;
-}
-
 function dispatchForTab(
   runtime: TabCommandRuntime,
   location: TabLocation,
@@ -82,7 +74,7 @@ export function executeTabCommandRequest(
   request: TabCommandRequest,
   runtime: TabCommandRuntime,
 ): boolean {
-  const location = findTab(runtime.state, request.args.tabId);
+  const location = findTabLocation(runtime.state, request.args.tabId);
   if (!location) {
     return false;
   }
@@ -109,7 +101,7 @@ export function executeTabCommandRequest(
     case TAB_COMMAND_IDS.CLOSE:
       // 変更理由: reducerは固定タブとペイン最後の1枚を閉じないため、
       // コマンド境界でも同じ条件を検査して無意味なdispatchを発生させない。
-      if (location.tab.pinned || location.tabCount <= 1) {
+      if (!canCloseTab(location.tab, location.tabCount)) {
         return false;
       }
       // 変更理由: CLOSE_TABはpaneId内だけを検索するため、別ペインの対象を
@@ -128,17 +120,14 @@ export function executeTabCommandRequest(
     case TAB_COMMAND_IDS.CLOSE_OTHER:
       // 変更理由: 切り離し中のタブも同じペインの配列に残るため、表示中タブだけでなく
       // ストア上の実体を基準に判定し、既存の一括閉鎖の意味を維持する。
-      if (!location.tabs.some((tab) => tab.id !== location.tab.id && !tab.pinned)) {
+      if (!hasClosableOtherTabs(location.tabs, location.tab.id)) {
         return false;
       }
       // CLOSE_OTHER_TABSはpaneId内だけを検索するため、対象タブの所有ペインを渡す。
       dispatchForTab(runtime, location, tabActions.closeOtherTabs(location.tab.id), true);
       return true;
     case TAB_COMMAND_IDS.CLOSE_RIGHT: {
-      const targetIndex = location.tabs.findIndex((tab) => tab.id === location.tab.id);
-      const hasClosableRightTab =
-        targetIndex !== -1 && location.tabs.slice(targetIndex + 1).some((tab) => !tab.pinned);
-      if (!hasClosableRightTab) {
+      if (!hasClosableRightTabs(location.tabs, location.tab.id)) {
         return false;
       }
       // CLOSE_RIGHT_TABSも対象タブのペイン内だけを更新するため、所有ペインを明示する。
@@ -151,7 +140,7 @@ export function executeTabCommandRequest(
       dispatchForTab(runtime, location, tabActions.closeAllTabs(), true);
       return true;
     case TAB_COMMAND_IDS.REOPEN:
-      if (location.tabs.length === 0 || runtime.state.closedTabs.length === 0) {
+      if (!canReopenClosedTab(runtime.state)) {
         return false;
       }
       // 変更理由: 閉じたタブ履歴は全ペイン共有だが、復元先は操作元タブのペインに
@@ -161,6 +150,9 @@ export function executeTabCommandRequest(
     case TAB_COMMAND_IDS.OPEN_RIGHT:
       // 変更理由: 右ペインの生成・移動先選択はreducerが一括して扱うため、
       // コマンド側では元タブの所有ペインとタブIDだけを明示して委譲する。
+      if (!canOpenInRightPane(runtime.state, location.paneId)) {
+        return false;
+      }
       dispatchForTab(runtime, location, tabActions.openInRightPane(location.tab.id), true);
       return true;
   }

@@ -243,4 +243,22 @@ describe("tab-command-runtime", () => {
       tabId: target.id,
     });
   });
+
+  it("右隣がなくペイン上限に達している時はdispatchしない", () => {
+    const first = createTab({ id: "first-tab" });
+    const target = createTab({ id: "target-tab" });
+    const runtime = createRuntime(target);
+    runtime.state.panes = [
+      { id: "pane-1", tabs: [first], activeTabId: first.id },
+      { id: "pane-2", tabs: [target], activeTabId: target.id },
+    ];
+
+    expect(
+      executeTabCommandRequest(
+        { id: TAB_COMMAND_IDS.OPEN_RIGHT, args: { tabId: target.id } },
+        runtime,
+      ),
+    ).toBe(false);
+    expect(runtime.dispatch).not.toHaveBeenCalled();
+  });
 });
