@@ -1,6 +1,7 @@
 import {
   ChURL,
   executeThreadFetch,
+  getThreadArchiveFallbacks,
   getThreadXhrInfo,
   isHtmlThread,
   parseChThread,
@@ -182,10 +183,19 @@ export default class Thread {
                 }),
             }
           : undefined,
+        // 変更理由: 現行URLやキャッシュが使える場合は余計な通信をせず、通常取得が
+        // HTTP・通信・解析のいずれかで失敗したときだけ過去ログ候補を試す。
+        needFetch
+          ? getThreadArchiveFallbacks(this.url).map(({ url, charset }) => ({
+              path: url,
+              charset,
+            }))
+          : [],
       );
       response = executed.response;
       deltaFlg = executed.plan.deltaFlg;
       readcgiVer = executed.plan.readcgiVer;
+      const responseIsHtml = isHtml || executed.usedFallback === true;
 
       // --- レスポンス解析 ---
       const resolved = executed;
@@ -211,7 +221,7 @@ export default class Thread {
         response,
         thread,
         deltaFlg,
-        isHtml,
+        isHtml: responseIsHtml,
         readcgiVer,
         noChangeFlg,
         hasCache,

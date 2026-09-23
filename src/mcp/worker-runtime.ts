@@ -1,5 +1,6 @@
 import {
   executeThreadFetch,
+  getThreadArchiveFallbacks,
   getThreadXhrInfo,
   isHtmlThread,
   type ParsedThread,
@@ -327,9 +328,16 @@ async function readThread(params: ThreadReadParams): Promise<BridgeThreadResult>
         return toHttpResponse(response, body, path);
       },
     },
+    // 変更理由: MCPでも画面と同じく通常スレ取得が失敗した場合だけ過去ログを試し、
+    // 取得に成功したレスポンスは既存の共通パーサーとキャッシュへ渡す。
+    getThreadArchiveFallbacks(chUrl).map(({ url: fallbackUrl, charset }) => ({
+      path: fallbackUrl,
+      charset,
+    })),
   );
   const { plan } = execution;
   const response = execution.response;
+  const responseIsHtml = isHtml || execution.usedFallback === true;
   const body = response?.body ?? "";
   const parsed = execution.thread;
   if (!parsed || parsed.res.length === 0 || execution.rejected) {
@@ -343,7 +351,7 @@ async function readThread(params: ThreadReadParams): Promise<BridgeThreadResult>
     const nextRawData =
       response.status === 304
         ? null
-        : isHtml
+        : responseIsHtml
           ? null
           : plan.deltaFlg
             ? `${cache?.data ?? ""}${body}`
