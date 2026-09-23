@@ -1,4 +1,9 @@
-import { ChURL, HOSTNAME, isCompatibleBoardHost } from "packages/ch-lib/src/index";
+import {
+  ChURL,
+  HOSTNAME,
+  isArchiveOnlyBoardHost,
+  isCompatibleBoardHost,
+} from "packages/ch-lib/src/index";
 
 export interface BoardUrlNormalizationOptions {
   /** 開いた板の記録など、既知の掲示板ホストだけに限定する場合に指定する。 */
@@ -23,6 +28,9 @@ export function normalizeBoardUrl(
   try {
     const inputUrl = new window.URL(trimmedUrl);
     const parsed = new ChURL(trimmedUrl);
+    // 過去ログ専用ホストの「板URL」は一覧取得できないため、その他の板一覧へ登録しない。
+    // read_archive.cgi のように現役ホスト上の過去ログスレッドは、通常の板へ戻せる。
+    if (isArchiveOnlyBoardHost(parsed.url.hostname)) return null;
     let boardUrl =
       parsed.type === "thread" ? parsed.toBoard().url : parsed.type === "board" ? parsed.url : null;
 

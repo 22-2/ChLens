@@ -1,4 +1,4 @@
-import { HOSTNAME, normalizeBbsHostname } from "../url/hosts";
+import { HOSTNAME, isArchiveOnlyBoardHost, normalizeBbsHostname } from "../url/hosts";
 import { PATTERNS } from "../url/patterns";
 
 export type BBSType = "2ch" | "machi" | "jbbs" | "unknown";
@@ -19,6 +19,9 @@ export class ChURL {
     // 変更理由: URL文字列全体への文字列置換だと、パスやクエリに "2ch.net" を
     // 含むだけの無関係なURLまで書き換えてしまうため、hostname に限定して正規化する。
     this.url.hostname = normalizeBbsHostname(this.url.hostname);
+    // 変更理由: 過去ログ専用ホストは通常のスレッドURLも受け付けるが、
+    // そこから板URLを作ると巨大な過去ログsubject.txtを通常一覧として取得しかねない。
+    this.archive = isArchiveOnlyBoardHost(this.url.hostname);
     this.normalizeAndGuessType();
   }
 
@@ -178,7 +181,8 @@ export class ChURL {
   }
 
   getSubjectUrl(): string | null {
-    if (this.type === "unknown") return null;
+    // 過去ログ専用ホストは通常板のsubject.txt仕様外なので、一覧取得先にしない。
+    if (this.type === "unknown" || this.isArchive) return null;
     const boardUrl = this.toBoard();
     const tmp = new RegExp(`^/(\\w+)(?:/(\\d+)/|/?)$`).exec(boardUrl.url.pathname);
     if (!tmp) return null;

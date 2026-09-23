@@ -65,6 +65,15 @@ const COMPATIBLE_HOST_SUFFIXES = [
 
 const COMPATIBLE_EXACT_HOSTS = [HOSTNAME.NEW_JBBS, HOSTNAME.OLD_JBBS, HOSTNAME.EDDIBB] as const;
 
+/** 過去ログ専用ホストは、確認できたホストだけを明示する。 */
+const ARCHIVE_ONLY_HOSTS = new Set(["kako.5ch.io"]);
+
+/** 過去ログ専用ホストはスレッドを読めても、板一覧(subject.txt)の取得先には使えない。 */
+export function isArchiveOnlyBoardHost(hostname: string): boolean {
+  const normalized = normalizeBbsHostname(hostname.toLowerCase());
+  return ARCHIVE_ONLY_HOSTS.has(normalized);
+}
+
 export function isCompatibleBoardHost(hostname: string): boolean {
   const h = hostname.toLowerCase();
   return (
