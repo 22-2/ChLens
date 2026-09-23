@@ -133,7 +133,9 @@ const SortableTab: React.FC<SortableTabProps> = ({
   });
 
   const page = getCurrentPage(tab);
-  const { show, move, hide, tooltip } = useCursorTooltip();
+  // 変更理由: 垂直タブの隣に開く設定メニューはポップアップ階層にあるため、
+  // タブ名のツールチップだけをその上へ重ねる。
+  const { show, move, hide, tooltip } = useCursorTooltip({ abovePopups: isVertical });
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {

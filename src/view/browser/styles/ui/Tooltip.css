@@ -22,3 +22,8 @@
   z-index: var(--sys-z-table-tooltip);
   pointer-events: none;
 }
+
+/* 変更理由: 設定のコンパクトメニューはポップアップ階層なので、隣の垂直タブ名をその上に表示する。 */
+.cursor-tooltip--above-popups {
+  z-index: var(--sys-z-tooltip);
+}
