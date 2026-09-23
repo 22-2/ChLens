@@ -1,3 +1,4 @@
+import { MoreVertical } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { platformCookieManager } from "src/app/platform/CookieManager";
 import type { BBSMenu } from "src/core/BBSMenuParser";
@@ -20,6 +21,7 @@ import {
   SurfaceTitle,
 } from "src/view/browser/ui/Surface";
 import {
+  clearSiteScopedSettings,
   normalizeBoardKey,
   normalizeSiteKey,
   persistScopedSetting,
@@ -45,7 +47,7 @@ interface RawBoardOption {
 
 const SOURCE_LABELS = {
   board: "この板",
-  site: "このサイト",
+  site: "ドメイン共通",
   global: "全体設定",
 } as const;
 
@@ -206,10 +208,12 @@ export function SiteBoardSettingsPanel() {
   const [selectedBoard, setSelectedBoard] = useState(SITE_SHARED_SCOPE);
   const [manualBoardUrl, setManualBoardUrl] = useState("");
   const [isAddBoardDialogOpen, setIsAddBoardDialogOpen] = useState(false);
+  const [isSiteActionsDialogOpen, setIsSiteActionsDialogOpen] = useState(false);
   const [dialogPortalContainer, setDialogPortalContainer] = useState<HTMLElement | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<ScopedSettingKey | null>(null);
   const [isClearingCookies, setIsClearingCookies] = useState(false);
+  const [isClearingSiteSettings, setIsClearingSiteSettings] = useState(false);
   const [isCheckingCookies, setIsCheckingCookies] = useState(false);
   const [hasSiteCookies, setHasSiteCookies] = useState(false);
 
@@ -314,7 +318,7 @@ export function SiteBoardSettingsPanel() {
         }
       })
       .catch((error: unknown) => {
-        console.error("[SiteBoardSettings] サイトCookieの確認に失敗しました", error);
+        console.error("[SiteBoardSettings] ドメインCookieの確認に失敗しました", error);
         if (!cancelled) {
           setHasSiteCookies(false);
         }
@@ -377,15 +381,44 @@ export function SiteBoardSettingsPanel() {
       await platformCookieManager.clearSiteCookies(selectedSite);
       setHasSiteCookies(false);
       container.toast.success(`${selectedSite}のCookieを削除しました`);
+      setIsSiteActionsDialogOpen(false);
     } catch (error) {
-      console.error("[SiteBoardSettings] サイトCookieの削除に失敗しました", error);
+      console.error("[SiteBoardSettings] ドメインCookieの削除に失敗しました", error);
       container.toast.error(
-        error instanceof Error ? error.message : "サイトCookieの削除に失敗しました",
+        error instanceof Error ? error.message : "ドメインCookieの削除に失敗しました",
       );
     } finally {
       setIsClearingCookies(false);
     }
   }, [isClearingCookies, selectedSite]);
+
+  const clearSiteSettings = useCallback(async () => {
+    if (!selectedSite || isClearingSiteSettings) {
+      return;
+    }
+    // 変更理由: ドメイン共通と各板の設定が一緒に消えることを確認時にも明示する。
+    if (
+      !window.confirm(
+        `ドメイン「${selectedSite}」に共通する設定と、各板で指定した上書き設定を削除します。削除後は「全体設定」の値が適用されます。よろしいっすか？`,
+      )
+    ) {
+      return;
+    }
+
+    setIsClearingSiteSettings(true);
+    try {
+      await clearSiteScopedSettings(selectedSite);
+      setDocument(readScopedSettings());
+      container.toast.success(`${selectedSite}と各板の設定を削除しました`);
+      setIsSiteActionsDialogOpen(false);
+    } catch (error) {
+      container.toast.error(
+        error instanceof Error ? error.message : "ドメインと各板の設定の削除に失敗しました",
+      );
+    } finally {
+      setIsClearingSiteSettings(false);
+    }
+  }, [isClearingSiteSettings, selectedSite]);
 
   const addManualBoard = useCallback((): boolean => {
     const board = normalizeBoardKey(manualBoardUrl);
@@ -422,7 +455,7 @@ export function SiteBoardSettingsPanel() {
       <Surface variant="flat">
         <SurfaceBody className="settings-page__site-board-loading">
           <Spinner size="sm" />
-          <span>サイトと板の一覧を読み込み中...</span>
+          <span>ドメインと板の一覧を読み込み中...</span>
         </SurfaceBody>
       </Surface>
     );
@@ -431,16 +464,27 @@ export function SiteBoardSettingsPanel() {
   return (
     <Surface variant="flat">
       <SurfaceHeader>
-        <SurfaceTitle>サイト・板ごとの設定</SurfaceTitle>
+        <SurfaceTitle>ドメイン共通と、以下各板の設定</SurfaceTitle>
         <SurfaceDescription>
-          板の設定はサイトの設定を引き継ぎ、ここで指定した項目だけを上書きします。対象が見つからないときは板URLを追加できます。
+          ドメイン共通の設定は、ドメイン内のすべての板に適用されます。必要な板だけ個別に上書きできます。対象の板が見つからないときは板URLを追加できます。
         </SurfaceDescription>
       </SurfaceHeader>
       <SurfaceBody>
         <div className="settings-page__site-board-selectors">
           <div className="settings-page__site-board-field">
             <div className="settings-page__site-board-field-heading">
-              <label htmlFor="site-board-site-select">サイト</label>
+              <label htmlFor="site-board-site-select">ドメイン</label>
+              {/* 変更理由: ドメイン単位の削除操作を選択欄の近くに置き、対象を分かりやすくする。 */}
+              <Button
+                className="settings-page__site-board-actions-trigger"
+                variant="subtle"
+                aria-label="ドメインの操作を開く"
+                aria-haspopup="dialog"
+                disabled={!selectedSite}
+                onClick={() => setIsSiteActionsDialogOpen(true)}
+              >
+                <MoreVertical size={18} aria-hidden="true" />
+              </Button>
             </div>
             <select
               id="site-board-site-select"
@@ -450,31 +494,18 @@ export function SiteBoardSettingsPanel() {
                 setSelectedBoard(SITE_SHARED_SCOPE);
               }}
             >
-              <option value="">サイトを選択</option>
+              <option value="">ドメインを選択</option>
               {sites.map((site) => (
                 <option key={site} value={site}>
                   {site}
                 </option>
               ))}
             </select>
-            <div className="settings-page__site-board-cookie-action">
-              <Button
-                className="settings-page__site-board-cookie-button"
-                variant={hasSiteCookies ? "danger" : "subtle"}
-                loading={isClearingCookies || isCheckingCookies}
-                disabled={!selectedSite || !hasSiteCookies}
-                onClick={() => void clearSiteCookies()}
-              >
-                このサイトのCookieをクリア
-              </Button>
-              <span className="settings-page__site-board-cookie-description">
-                書き込み確認に使う認証Cookieを削除します。保存した名前・メール欄は残ります。
-              </span>
-            </div>
           </div>
           <div className="settings-page__site-board-field">
             <div className="settings-page__site-board-field-heading">
-              <label htmlFor="site-board-board-select">板</label>
+              {/* 変更理由: ここでは板だけでなくドメイン共通の設定も選ぶため、選択肢の役割を示す。 */}
+              <label htmlFor="site-board-board-select">設定対象</label>
               <Button
                 className="settings-page__site-board-add-button"
                 variant="subtle"
@@ -489,7 +520,7 @@ export function SiteBoardSettingsPanel() {
               disabled={!selectedSite}
               onChange={(event) => setSelectedBoard(event.currentTarget.value)}
             >
-              <option value={SITE_SHARED_SCOPE}>サイト共通</option>
+              <option value={SITE_SHARED_SCOPE}>ドメイン共通（すべての板）</option>
               {siteBoards.map((board) => (
                 <option key={board.key} value={board.key}>
                   {board.title}
@@ -519,7 +550,7 @@ export function SiteBoardSettingsPanel() {
                 id="site-board-add-dialog-description"
                 className="browser-dialog-description"
               >
-                BBSMENUにない板を設定対象へ追加します。URLからサイトと板を判定します。
+                BBSMENUにない板を設定対象へ追加します。URLからドメインと板を判定します。
               </Dialog.Description>
               <label className="settings-page__site-board-field">
                 <span>板URL</span>
@@ -549,8 +580,78 @@ export function SiteBoardSettingsPanel() {
           </Dialog.Portal>
         </Dialog.Root>
 
+        <Dialog.Root open={isSiteActionsDialogOpen} onOpenChange={setIsSiteActionsDialogOpen}>
+          <Dialog.Portal container={dialogPortalContainer ?? undefined}>
+            <Dialog.Overlay className="browser-dialog-overlay" />
+            <Dialog.Content
+              className="browser-dialog-content settings-page__site-actions-dialog"
+              aria-describedby="site-actions-dialog-description"
+            >
+              <Dialog.Title className="browser-dialog-title">
+                このドメインのデータをクリア
+              </Dialog.Title>
+              <Dialog.Description
+                id="site-actions-dialog-description"
+                className="browser-dialog-description"
+              >
+                対象: <strong>{selectedSite}</strong>
+              </Dialog.Description>
+              {/* 変更理由: 削除対象の説明と操作を縦に並べ、各ボタンが消す内容を明確にする。 */}
+              <div className="settings-page__site-actions-list">
+                <section className="settings-page__site-action">
+                  <h3>認証Cookie</h3>
+                  <p>書き込み確認に使うCookieを削除します。保存した名前・メール欄は残ります。</p>
+                  <div className="settings-page__site-action-controls">
+                    {!isCheckingCookies && !hasSiteCookies && (
+                      <span className="settings-page__site-action-status">
+                        削除するCookieはありません
+                      </span>
+                    )}
+                    <Button
+                      className="settings-page__site-action-button"
+                      variant="danger"
+                      loading={isClearingCookies || isCheckingCookies}
+                      disabled={!selectedSite || !hasSiteCookies || isClearingSiteSettings}
+                      onClick={() => void clearSiteCookies()}
+                    >
+                      このドメインのCookieをクリア
+                    </Button>
+                  </div>
+                </section>
+                <section className="settings-page__site-action">
+                  <h3>ドメイン共通の設定</h3>
+                  <p>
+                    このドメイン共通の設定と各板で指定した上書き設定を削除します。削除後は「全体設定」の値が適用されます。
+                  </p>
+                  <div className="settings-page__site-action-controls">
+                    {!document.sites[selectedSite] && (
+                      <span className="settings-page__site-action-status">
+                        削除する個別設定はありません
+                      </span>
+                    )}
+                    <Button
+                      className="settings-page__site-action-button"
+                      variant="danger"
+                      loading={isClearingSiteSettings}
+                      disabled={!selectedSite || !document.sites[selectedSite] || isClearingCookies}
+                      onClick={() => void clearSiteSettings()}
+                    >
+                      このドメインの設定をクリア
+                    </Button>
+                  </div>
+                </section>
+              </div>
+              <div className="settings-page__site-actions-dialog-footer">
+                <Dialog.Close asChild>
+                  <Button variant="subtle">閉じる</Button>
+                </Dialog.Close>
+              </div>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
+
         {!scope && (
-          <p className="settings-page__site-board-empty">サイトを選ぶと設定を編集できます。</p>
+          <p className="settings-page__site-board-empty">ドメインを選ぶと設定を編集できます。</p>
         )}
 
         {scope && (
@@ -604,9 +705,11 @@ export function SiteBoardSettingsPanel() {
                     }}
                   >
                     <option value="inherit">
-                      {scope.board ? "サイトの設定を使う" : "全体の設定を使う"}
+                      {scope.board ? "ドメイン共通の設定を使う" : "全体設定を使う"}
                     </option>
-                    <option value="custom">この{scope.board ? "板" : "サイト"}で指定する</option>
+                    <option value="custom">
+                      {scope.board ? "この板だけに指定する" : "ドメイン内で共通に指定する"}
+                    </option>
                   </select>
 
                   {isCustom && field.kind === "boolean" && (

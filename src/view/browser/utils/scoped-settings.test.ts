@@ -20,6 +20,7 @@ vi.mock("src/view/browser/utils/link-routing", () => ({
 }));
 
 import {
+  clearSiteScopedSettings,
   normalizeBoardKey,
   normalizeSiteKey,
   parseScopedSettings,
@@ -101,5 +102,34 @@ describe("サイト・板設定", () => {
 
     await persistScopedSetting({ site: "example.com" }, "sage_flag", undefined);
     expect(state.values.get(SCOPED_SETTINGS_CONFIG_KEY)).toBe('{"sites":{}}');
+  });
+
+  it("サイト設定をまとめて削除しても別サイトと全体設定は残る", async () => {
+    state.values.set("sage_flag", "on");
+    state.values.set(
+      SCOPED_SETTINGS_CONFIG_KEY,
+      JSON.stringify({
+        sites: {
+          "example.com": {
+            overrides: { sage_flag: "off" },
+            boards: { "https://example.com/live/": { auto_load_second: "5000" } },
+          },
+          "example.net": { overrides: { sage_flag: "off" }, boards: {} },
+        },
+      }),
+    );
+
+    const pendingSave = persistScopedSetting(
+      { site: "example.com", board: "https://example.com/live/" },
+      "auto_load_second_board",
+      "7000",
+    );
+    const pendingClear = clearSiteScopedSettings("Example.com");
+    await Promise.all([pendingSave, pendingClear]);
+
+    expect(JSON.parse(state.values.get(SCOPED_SETTINGS_CONFIG_KEY) ?? "{}")).toEqual({
+      sites: { "example.net": { overrides: { sage_flag: "off" }, boards: {} } },
+    });
+    expect(state.values.get("sage_flag")).toBe("on");
   });
 });

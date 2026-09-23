@@ -299,6 +299,32 @@ export async function persistScopedSetting(
   await write;
 }
 
+/** 指定サイトのサイト共通・板別上書きをまとめて削除する。 */
+export async function clearSiteScopedSettings(site: string): Promise<void> {
+  const write = scopedWriteQueue.then(async () => {
+    const siteKey = normalizeSiteKey(site);
+    if (!siteKey) {
+      throw new Error("サイトの識別子が不正です");
+    }
+
+    const document = cloneDocument(readScopedSettings());
+    if (!Object.prototype.hasOwnProperty.call(document.sites, siteKey)) {
+      return;
+    }
+
+    // 変更理由: 選択サイトだけを消して別サイト・全体設定を保ち、進行中の保存による設定の復活も防ぐ。
+    delete document.sites[siteKey];
+    try {
+      await container.config.set(SCOPED_SETTINGS_CONFIG_KEY, JSON.stringify(document));
+    } catch (error) {
+      console.error("[ScopedSettings] サイト設定の削除に失敗しました", error);
+      throw error;
+    }
+  });
+  scopedWriteQueue = write.catch(() => undefined);
+  await write;
+}
+
 /** URLを板スコープとして扱い、書き込みパネルなどから変更する。 */
 export async function persistScopedSettingForUrl(
   key: ScopedSettingKey,
