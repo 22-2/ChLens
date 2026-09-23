@@ -106,6 +106,11 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
   }, [formState]);
 
   useEffect(() => {
+    // 変更理由: サムネイル設定を表示へ統合したため、古いページリンクも新しいセクションへ案内する。
+    if (page.sectionId === "thumbnail") {
+      setActiveSectionId("display");
+      return;
+    }
     if (page.sectionId && isSettingsSectionId(page.sectionId)) {
       setActiveSectionId(page.sectionId);
     }
@@ -123,7 +128,9 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
       }
 
       const parsed = JSON.parse(rawState) as SettingsPageUiState;
-      if (parsed.activeSectionId && isSettingsSectionId(parsed.activeSectionId)) {
+      if (parsed.activeSectionId === "thumbnail") {
+        setActiveSectionId("display");
+      } else if (parsed.activeSectionId && isSettingsSectionId(parsed.activeSectionId)) {
         setActiveSectionId(parsed.activeSectionId);
       }
       if (typeof parsed.ngAdvancedOpen === "boolean") {

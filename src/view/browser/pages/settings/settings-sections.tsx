@@ -1,7 +1,7 @@
 import {
   Archive,
+  Eye,
   Globe2,
-  Image as ImageIcon,
   MessageCircle,
   MoreHorizontal,
   RefreshCw,
@@ -100,7 +100,7 @@ const ALL_SETTINGS_SECTIONS = [
   defineSection(
     "general",
     "一般",
-    "タブ動作や表示設定など、ブラウザ全体の基本設定です。",
+    "新しいタブの動作や、開くページを設定します。",
     <Settings size={20} />,
     [
       {
@@ -124,6 +124,41 @@ const ALL_SETTINGS_SECTIONS = [
       },
       {
         kind: "string",
+        key: "new_tab_page_board_url",
+        title: "指定の板 URL",
+        description:
+          "『指定の板（入力）』を選んだ時に開く板URLです（例: https://example.com/test/read.cgi/software/）。",
+      },
+      // 変更理由: 書き込み設定は書き込みパネルの歯車モーダルに集約し、
+      // 全体設定画面で同じ項目を重複表示しない。
+      // {
+      //   kind: "divider",
+      //   id: "network",
+      //   title: "通信",
+      // },
+      // {
+      //   kind: "string",
+      //   key: "format_2chnet",
+      //   title: "2chnetの取得形式",
+      //   options: FORMAT_2CH_OPTIONS,
+      //   widget: "radio",
+      // },
+    ],
+  ),
+  // 変更理由: 一般とサムネイルに分かれていた見た目の設定をまとめ、探しやすくする。
+  defineSection(
+    "display",
+    "表示",
+    "テーマやタブバー、タイトルバー、サムネイルなど画面の見た目を調整します。",
+    <Eye size={20} />,
+    [
+      {
+        kind: "divider",
+        id: "tab-bar",
+        title: "タブバー",
+      },
+      {
+        kind: "string",
         key: "tab_bar_orientation",
         title: "タブバーの配置",
         description: "タブ一覧を上部の横並びと左端の縦並びで切り替えます。",
@@ -135,13 +170,6 @@ const ALL_SETTINGS_SECTIONS = [
         key: "tab_bar_collapsed",
         title: "垂直タブバーを簡易表示にする",
         description: "タイトルを隠してアイコンのみの細幅で表示します。",
-      },
-      {
-        kind: "string",
-        key: "new_tab_page_board_url",
-        title: "指定の板 URL",
-        description:
-          "『指定の板（入力）』を選んだ時に開く板URLです（例: https://example.com/test/read.cgi/software/）。",
       },
       {
         kind: "divider",
@@ -161,20 +189,30 @@ const ALL_SETTINGS_SECTIONS = [
         title: "一覧表でツールチップを表示する",
         description: "行にマウスを重ねたとき、省略されているタイトルの全文を表示します。",
       },
-      // 変更理由: 書き込み設定は書き込みパネルの歯車モーダルに集約し、
-      // 全体設定画面で同じ項目を重複表示しない。
-      // {
-      //   kind: "divider",
-      //   id: "network",
-      //   title: "通信",
-      // },
-      // {
-      //   kind: "string",
-      //   key: "format_2chnet",
-      //   title: "2chnetの取得形式",
-      //   options: FORMAT_2CH_OPTIONS,
-      //   widget: "radio",
-      // },
+      {
+        kind: "divider",
+        id: "thumbnails",
+        title: "サムネイル",
+      },
+      {
+        kind: "boolean",
+        key: "image_blur",
+        title: "画像にぼかしを適用する",
+      },
+      {
+        kind: "number",
+        key: "image_blur_length",
+        title: "ぼかし量",
+        minimum: 1,
+        maximum: 9,
+        step: 1,
+      },
+      {
+        kind: "string",
+        key: "image_blur_word",
+        title: "ぼかし判定ワード",
+        description: "正規表現で指定します。",
+      },
     ],
     {
       supplementaryPanelIds: ["titleBarButtonSettings"],
@@ -286,48 +324,6 @@ const ALL_SETTINGS_SECTIONS = [
         title: "分裂スレを本流判定中はすべて取得する",
         description:
           "コメントOverlay限定で同じ番組の候補スレを並行取得し、本流が決まった後に非本流の待機コメントを除外します。",
-      },
-    ],
-  ),
-  defineSection(
-    "thumbnail",
-    "サムネイル",
-    "画像・動画の読み込みとプレビューサイズを調整します。",
-    <ImageIcon size={20} />,
-    [
-      {
-        kind: "divider",
-        id: "load",
-        title: "読み込み設定",
-      },
-      // {
-      //   kind: "boolean",
-      //   key: "manual_image_load",
-      //   title: "画像を手動で読み込む",
-      // },
-      {
-        kind: "divider",
-        id: "blur",
-        title: "ぼかし設定",
-      },
-      {
-        kind: "boolean",
-        key: "image_blur",
-        title: "画像にぼかしを適用する",
-      },
-      {
-        kind: "number",
-        key: "image_blur_length",
-        title: "ぼかし量",
-        minimum: 1,
-        maximum: 9,
-        step: 1,
-      },
-      {
-        kind: "string",
-        key: "image_blur_word",
-        title: "ぼかし判定ワード",
-        description: "正規表現で指定します。",
       },
     ],
   ),

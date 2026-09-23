@@ -56,13 +56,15 @@ describe("設定セクションの実行環境フィルター", () => {
     expect(keys).not.toContain("write_close_panel_after_submit");
   });
 
-  it("タイトルバーのボタン設定を一般セクションから分離する", () => {
+  it("タイトルバーのボタン設定を表示セクションへまとめる", () => {
     const general = getSettingsSections(false).find((section) => section.id === "general");
-    const keys = general?.fields.map((field) => ("key" in field ? field.key : field.id));
+    const display = getSettingsSections(false).find((section) => section.id === "display");
+    const keys = display?.fields.map((field) => ("key" in field ? field.key : field.id));
 
+    expect(general?.supplementaryPanelIds).not.toContain("titleBarButtonSettings");
+    expect(display?.supplementaryPanelIds).toContain("titleBarButtonSettings");
     expect(keys).not.toContain("title_bar_back");
     expect(keys).not.toContain("title_bar_forward");
     expect(keys).not.toContain("title_bar_refresh");
-    expect(general?.supplementaryPanelIds).toContain("titleBarButtonSettings");
   });
 });

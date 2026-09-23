@@ -3,10 +3,10 @@ import type { ReactNode } from "react";
 
 export type SettingsSectionId =
   | "general"
+  | "display"
   | "site-board"
   | "reload"
   | "overlay"
-  | "thumbnail"
   | "ng"
   | "other"
   | "data";
@@ -86,7 +86,7 @@ export interface SettingsSectionDefinition {
 }
 
 export interface SettingsPageUiState {
-  activeSectionId?: SettingsSectionId;
+  activeSectionId?: SettingsSectionId | "thumbnail";
   mainScrollTop?: number;
   ngExamplesOpen?: boolean;
   ngAdvancedOpen?: boolean;
