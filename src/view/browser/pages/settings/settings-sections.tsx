@@ -55,7 +55,6 @@ const HOW_TO_JUDGMENT_ID_OPTIONS = [
 ] as const satisfies readonly SettingsOption[];
 
 const AUTO_NEXT_THREAD_MODE_OPTIONS = [
-  { const: "cautious", title: "慎重（誤移動を優先して防ぐ）" },
   { const: "balanced", title: "標準（精度と追従性のバランス）" },
   { const: "aggressive", title: "積極（スレタイ変化を広く許容）" },
 ] as const satisfies readonly SettingsOption[];
@@ -274,7 +273,7 @@ const ALL_SETTINGS_SECTIONS = [
         key: "auto_next_thread_mode",
         title: "次スレ判定",
         description:
-          "慎重ほど有力候補の連続確認と候補間の大きな差を求めます。積極でも別板や古いスレには移動しません。",
+          "標準は精度と追従性のバランスを取り、積極はスレタイの変化を広く許容します。どちらも別板や古いスレには移動しません。",
         options: AUTO_NEXT_THREAD_MODE_OPTIONS,
         widget: "radio",
       },
@@ -472,6 +471,10 @@ function readFieldValue(field: SettingsFieldDefinition): SettingsFormValue {
       }
       if (field.key === NG_DISPLAY_CONFIG_KEY) {
         return normalizeNgDisplayMode(rawValue);
+      }
+      if (field.key === "auto_next_thread_mode") {
+        // 変更理由: 慎重モードを選択肢から外したため、既存値は標準へ読み替える。
+        return rawValue === "aggressive" ? "aggressive" : "balanced";
       }
       return typeof rawValue === "string" ? rawValue : "";
   }

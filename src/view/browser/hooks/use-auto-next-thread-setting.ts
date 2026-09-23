@@ -12,9 +12,10 @@ export const AUTO_NEXT_THREAD_MODE_CONFIG_KEY = "auto_next_thread_mode";
 
 function readAutoNextThreadMode(): AutoNextThreadMode {
   const value = readConfigValue(AUTO_NEXT_THREAD_MODE_CONFIG_KEY);
-  if (value === "cautious" || value === "balanced" || value === "aggressive") {
+  if (value === "aggressive") {
     return value;
   }
+  // 変更理由: 慎重モードを選択肢から外したため、過去の保存値は標準へ読み替える。
   return "balanced";
 }
 

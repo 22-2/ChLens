@@ -291,10 +291,10 @@ describe("AutoRefreshStatusItem", () => {
 
     fireEvent.click(button);
     fireEvent.change(screen.getByRole("combobox", { name: "次スレ判定" }), {
-      target: { value: "cautious" },
+      target: { value: "aggressive" },
     });
 
-    expect(mocks.autoNextThreadSetting.setMode).toHaveBeenCalledWith("cautious");
+    expect(mocks.autoNextThreadSetting.setMode).toHaveBeenCalledWith("aggressive");
   });
 
   it("ミニウィンドウからポップアップ表示中の一時停止を切り替えられる", () => {

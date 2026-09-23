@@ -83,12 +83,13 @@ const ThreadAutoRefreshPanelContent: React.FC<ThreadAutoRefreshPanelContentProps
           onChange={(event) => onAutoNextThreadModeChange(event.target.value as AutoNextThreadMode)}
           disabled={!isOnThread}
         >
-          <option value="cautious">慎重（誤移動を防ぐ）</option>
           <option value="balanced">標準</option>
           <option value="aggressive">積極（変化を許容）</option>
         </select>
       </div>
-      <p className="mini-window__note">慎重ほど候補を複数回確認し、曖昧な場合は移動しません</p>
+      <p className="mini-window__note">
+        標準は精度と追従性のバランスを取り、積極はスレタイの変化を広く許容します
+      </p>
     </div>
 
     <div className="mini-window__separator" />
