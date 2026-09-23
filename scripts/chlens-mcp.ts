@@ -62,6 +62,8 @@ function writeJson(response: ServerResponse, status: number, body: unknown): voi
   response.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
     "Access-Control-Allow-Origin": "*",
+    // 拡張からのJSON POSTは事前確認を発生させるため、許可メソッドがないとfetchが失敗する。
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
     "Cache-Control": "no-store",
   });
