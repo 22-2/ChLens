@@ -1,6 +1,6 @@
+import { BBSMenuHtmlParser, type ParsedBBSMenu } from "packages/ch-lib/src/index";
 import Callbacks from "src/app/Callbacks";
 import { BBSMenuFetcher } from "src/core/BBSMenuFetcher";
-import { BBSMenu, BBSMenuParser } from "src/core/BBSMenuParser";
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
 import { getBoardUrlKey, normalizeBBSMenus, normalizeBoardUrl } from "src/core/BoardUrlNormalizer";
 import * as History from "src/core/History";
@@ -17,7 +17,7 @@ const OPENED_BOARDS_CONFIG_KEY = "opened_board_entries";
 
 export interface BBSMenuData {
   status: "success" | "error";
-  menu?: BBSMenu[];
+  menu?: ParsedBBSMenu[];
   message?: string;
 }
 
@@ -25,7 +25,7 @@ export interface BBSMenuData {
  * BBSMenu のデータモデル（オーケストレーター）
  *
  * 板一覧の取得フローを調整する責務のみを持つ。
- * パース・フィルタリングは BBSMenuParser、
+ * 形式解析・TLDフィルタリングは ch-lib の共有パーサー、
  * HTTP通信・キャッシュ管理は BBSMenuFetcher、
  * 未登録板の収集は OtherBoardsCollector が担当する。
  */
@@ -123,7 +123,7 @@ export class BBSMenuModel {
   private _getExcludeTslds(forceReload = false): Set<string> {
     if (!this._bbsmenuOption || forceReload) {
       const optionStr = container.config.get("bbsmenu_option") ?? "";
-      this._bbsmenuOption = BBSMenuParser.parseExcludeOptions(optionStr);
+      this._bbsmenuOption = BBSMenuHtmlParser.parseExcludeOptions(optionStr);
     }
     return this._bbsmenuOption;
   }
@@ -132,20 +132,20 @@ export class BBSMenuModel {
    * 単一のURLから板一覧を取得する。
    * キャッシュが存在する場合はキャッシュを使用し、強制更新時のみHTTP通信を行う。
    */
-  async fetchOne(url: string, force = false): Promise<BBSMenu> {
+  async fetchOne(url: string, force = false): Promise<ParsedBBSMenu> {
     return this._fetcher.fetch(url, force);
   }
 
   /**
    * 複数のURLから板一覧を取得し、未登録板を「その他」として追加して返す。
    */
-  async fetchAll(forceReload = false): Promise<BBSMenu[]> {
+  async fetchAll(forceReload = false): Promise<ParsedBBSMenu[]> {
     // 強制更新時はオプションキャッシュをクリア
     if (forceReload) {
       this._getExcludeTslds(true);
     }
 
-    const menus: BBSMenu[] = [];
+    const menus: ParsedBBSMenu[] = [];
     // 設定未保存時 (null) は URL なしとして扱う。
     const bbsmenuUrls = (container.config.get("bbsmenu") ?? "").split("\n");
 
@@ -229,7 +229,7 @@ export class BBSMenuModel {
       // Why: bbsmenu_update_interval 設定を廃止したため、
       // SQLiteキャッシュは forceReload されるまで常に利用する。
 
-      const menu = JSON.parse(record.data) as BBSMenu[];
+      const menu = JSON.parse(record.data) as ParsedBBSMenu[];
       return { status: "success", menu: normalizeBBSMenus(menu) };
     } catch (e) {
       // Why: Tauri SQLiteの初期化に失敗してもアプリがクラッシュしないよう、

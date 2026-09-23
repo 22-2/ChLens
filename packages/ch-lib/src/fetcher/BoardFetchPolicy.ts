@@ -7,26 +7,13 @@ export interface BoardFetchInfo {
 
 /** 板URLからsubject.txt/offlaw取得先と文字コードを解決する。 */
 export function getBoardFetchInfo(boardUrl: ChURL): BoardFetchInfo | null {
-  const match = new RegExp(`^/(\\w+)(?:/(\\d+)/|/?)$`).exec(boardUrl.url.pathname);
-  if (!match) return null;
+  // 変更理由: 取得先URLの組み立てはChURLにもあるため、掲示板ごとのURL規則を
+  // 二重管理しない。ここではsubject取得に必要な文字コードだけ補う。
+  const path = boardUrl.getSubjectUrl();
+  if (!path) return null;
 
-  const boardName = match[1];
-  const categoryId = match[2];
-  switch (boardUrl.getTsld()) {
-    case "machi.to":
-      return {
-        path: `${boardUrl.url.origin}/bbs/offlaw.cgi/${boardName}/`,
-        charset: "Shift_JIS",
-      };
-    case "shitaraba.net":
-      return {
-        path: `${boardUrl.url.protocol}//jbbs.shitaraba.net/${boardName}/${categoryId}/subject.txt`,
-        charset: "EUC-JP",
-      };
-    default:
-      return {
-        path: `${boardUrl.url.origin}/${boardName}/subject.txt`,
-        charset: "Shift_JIS",
-      };
-  }
+  return {
+    path,
+    charset: boardUrl.getTsld() === "shitaraba.net" ? "EUC-JP" : "Shift_JIS",
+  };
 }

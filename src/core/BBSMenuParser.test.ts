@@ -1,27 +1,5 @@
 import { BBSMenuParser } from "src/core/BBSMenuParser";
-import { describe, expect, it, vi } from "vite-plus/test";
-
-// src/core/URL は BroadcastChannel に依存する src/app を間接的にインポートするため、
-// jsdom 環境では動作しない。BBSMenuParser が使う機能（hostname, getTsld）のみをモックする。
-vi.mock("src/core/URL", () => {
-  class MockURL {
-    hostname: string;
-    href: string;
-    constructor(url: string) {
-      // 最小限のURL解析（テスト用）
-      const match = url.match(/^https?:\/\/([^/]+)(.*)/);
-      if (!match) throw new Error(`Invalid URL: ${url}`);
-      this.hostname = match[1];
-      this.href = url.endsWith("/") ? url : url + "/";
-    }
-    getTsld(): string {
-      const parts = this.hostname.split(".");
-      const len = parts.length;
-      return len >= 2 ? `${parts[len - 2]}.${parts[len - 1]}` : "";
-    }
-  }
-  return { URL: MockURL };
-});
+import { describe, expect, it } from "vite-plus/test";
 
 // ---- テスト用ヘルパー ----
 

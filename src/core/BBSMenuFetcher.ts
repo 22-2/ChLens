@@ -1,4 +1,8 @@
-import { BBSMenu, BBSMenuParser } from "src/core/BBSMenuParser";
+import {
+  BBSMenuHtmlParser,
+  buildBBSMenuFetchPolicy,
+  type ParsedBBSMenu,
+} from "packages/ch-lib/src/index";
 import { Request } from "src/core/HTTP";
 import { createLogger } from "src/core/logger";
 import { ICacheItem } from "src/service-container/interfaces";
@@ -45,7 +49,7 @@ export class BBSMenuFetcher {
    * - キャッシュ未存在 / force=true  → HTTP通信し結果を返す
    *   - 304 の場合は lastUpdated だけ更新してキャッシュデータを返す
    */
-  async fetch(url: string, force = false): Promise<BBSMenu> {
+  async fetch(url: string, force = false): Promise<ParsedBBSMenu> {
     const cache = this.deps.getCache(url);
 
     logger.debug(`Cache を確認します: ${url}`, { cache });
@@ -94,16 +98,17 @@ export class BBSMenuFetcher {
    * キャッシュが存在する場合は If-Modified-Since / If-None-Match を付与する。
    */
   private async sendRequest(url: string, cache: ICacheItem | undefined): Promise<HttpResponse> {
-    const request = new Request("GET", url, {
-      mimeType: "text/plain; charset=Shift_JIS",
+    // 変更理由: 文字コードと条件付きGETはbbsmenuの取得仕様としてch-libで決め、
+    // この層はアプリのHTTPクライアントへ要求を渡すことに専念する。
+    const policy = buildBBSMenuFetchPolicy({
+      hasCache: cache != null,
+      lastModified: cache?.lastModified,
+      etag: cache?.etag,
     });
-
-    if (cache?.lastModified != null) {
-      request.headers["If-Modified-Since"] = new Date(cache.lastModified).toUTCString();
-    }
-    if (cache?.etag != null) {
-      request.headers["If-None-Match"] = cache.etag;
-    }
+    const request = new Request("GET", url, {
+      mimeType: `text/plain; charset=${policy.charset}`,
+    });
+    Object.assign(request.headers, policy.headers);
 
     logger.debug("HTTP通信します", { url });
     return request.send();
@@ -119,11 +124,11 @@ export class BBSMenuFetcher {
     url: string,
     cache: ICacheItem,
     response: HttpResponse | undefined,
-  ): Promise<BBSMenu> {
+  ): Promise<ParsedBBSMenu> {
     const excludeTslds = this.deps.getExcludeTslds();
 
     if (response?.status === 200) {
-      const menu = BBSMenuParser.parse(response.body, url, excludeTslds);
+      const menu = BBSMenuHtmlParser.parse(response.body, url, excludeTslds);
 
       await cache.put(response.body, {
         lastModified: parseLastModified(response.headers["Last-Modified"]),
@@ -138,7 +143,7 @@ export class BBSMenuFetcher {
         logger.debug("304 Not Modified: キャッシュを更新します");
         await cache.put(cache.data);
       }
-      return BBSMenuParser.parse(cache.data, url, excludeTslds);
+      return BBSMenuHtmlParser.parse(cache.data, url, excludeTslds);
     }
 
     throw new Error("板一覧の取得に失敗しました");
