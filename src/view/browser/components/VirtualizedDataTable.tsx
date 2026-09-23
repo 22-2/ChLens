@@ -3,7 +3,6 @@ import React, { useEffect, useMemo, useRef } from "react";
 import { useCursorTooltip } from "src/view/browser/components/CursorTooltip";
 import { type ColumnDef } from "src/view/browser/components/SimpleDataTable";
 import { useColumnVisibility } from "src/view/browser/components/use-column-visibility";
-import { useTableTooltipEnabled } from "src/view/browser/hooks/use-table-tooltip-setting";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { Spinner } from "src/view/browser/ui/Spinner";
 
@@ -53,7 +52,6 @@ export function VirtualizedDataTable<TRow>({
   columnVisibilityLockedKeys,
 }: Props<TRow>): React.ReactElement {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const tableTooltipEnabled = useTableTooltipEnabled();
   const { show, move, hide, tooltip } = useCursorTooltip();
   const {
     visibleColumns,
@@ -156,7 +154,8 @@ export function VirtualizedDataTable<TRow>({
           {virtualRows.map((virtualRow) => {
             const row = rows[virtualRow.index];
             const extraClass = getRowClassName?.(row);
-            const tooltipLabel = tableTooltipEnabled ? getRowTooltip?.(row) : undefined;
+            // 変更理由: 省略表示した行タイトルの全文を確認できるよう、ツールチップは常時表示する。
+            const tooltipLabel = getRowTooltip?.(row);
 
             const rowElement = (
               <tr

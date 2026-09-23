@@ -8,7 +8,6 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import React, { useEffect, useMemo } from "react";
 import { useCursorTooltip } from "src/view/browser/components/CursorTooltip";
 import { useColumnVisibility } from "src/view/browser/components/use-column-visibility";
-import { useTableTooltipEnabled } from "src/view/browser/hooks/use-table-tooltip-setting";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 
 // 変更理由: 汎用コンポーネント化のため `ThreadListTable` から名前を変更しました。
@@ -70,7 +69,6 @@ export function SimpleDataTable<TRow>({
   columnVisibilityStorageKey,
   columnVisibilityLockedKeys,
 }: Props<TRow>): React.ReactElement {
-  const tableTooltipEnabled = useTableTooltipEnabled();
   const { show, move, hide, tooltip } = useCursorTooltip();
   const {
     visibleColumns,
@@ -200,7 +198,8 @@ export function SimpleDataTable<TRow>({
               ...sectionRows.map((row) => {
                 const original = row.original;
                 const extraClass = getRowClassName?.(original);
-                const tooltipLabel = tableTooltipEnabled ? getRowTooltip?.(original) : undefined;
+                // 変更理由: 省略表示した行タイトルの全文を確認できるよう、ツールチップは常時表示する。
+                const tooltipLabel = getRowTooltip?.(original);
                 const rowElement = (
                   <tr
                     className={
