@@ -1,89 +1,102 @@
 # ChLens
 
-スクショ準備中
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-[![MIT License](http://img.shields.io/badge/license-MIT-blue.svg?style=flat)](LICENSE)
+ChLens は [read.crx-2](https://github.com/readcrx-2/read.crx-2) からフォークした、5ch 互換掲示板ブラウザです。
 
-ChLens は readcrx をフォークした、Web 技術で作られた 5ch 互換掲示板ブラウザです。
-主に Chrome/Firefox 向け拡張とデスクトップアプリ（Tauri）として動作します。
+Chrome・Firefox の拡張機能と、Tauri デスクトップアプリとして利用できます。
 
-**特徴**
+## ChLens の画面の考え方
 
-- 5ch 系サービスや互換 BBS（2ch.sc, open2ch, まちBBS, したらば など）に対応
-- TypeScript + React を中心としたモダンなフロントエンド構成
-- 拡張機能と Tauri 両対応でデスクトップ/ブラウザ両方で利用可能
+基本的に**一つのペインに一つのビューを表示**し、板一覧・スレ一覧・スレッドを同じ場所で切り替えます。 複数の一覧や本文を常時並べる従来型の専ブラとは異なり、タブや履歴でページを行き来し、見比べたいときは2ペインにして二つのビューを並べます。タブや書き込み欄は別窓でも開けます。
 
-**サポートプラットフォーム**: Chrome, Firefox, Tauri
+## 特徴
 
-**主要技術スタック**: TypeScript, React, SCSS, Vite, pnpm
+### タブとペインで掲示板を行き来
 
-## クイックスタート
+- ペインごとに表示するページをタブで切り替え、2ペインでは二つのページを並べて表示
+- タブを別窓に切り離して表示
+- 書き込み欄は一つだけ。別窓で開き、投稿先のスレッドを選んで書き込み
+- 縦型タブバーやコマンドパレットから、タブ・ページの操作をすばやく実行
+- スレッド画面の下部パネルから、同じ板のスレ一覧や書き込み画面を開く
 
-事前に `pnpm` がインストールされている必要があります。
+### スレッドを読みやすく、追いやすく
+
+- スレ内検索、レス番号へのジャンプ、返信ツリーやIDのポップアップ
+- NG・ハイライト設定、人気レスの絞り込み、レス数や未読数の表示
+- 自動更新、新着レス通知、次スレ候補の検索
+
+### メディアや過去ログもまとめて表示
+
+- レス内の画像や対応する外部メディアをビューアーで表示
+- Siki の JSON ログを読み込み、スレッドとして閲覧
+- Tauri 版では複数の実況スレッドを時系列で再生し、コメントをオーバーレイ表示
+
+### 板ごとの使い方に合わせて設定
+
+- 5ch 系サービス、2ch.sc、open2ch、まちBBS、したらばなどに対応
+- サイト・板単位で自動更新などの動作を調整
+- お気に入り、閲覧履歴、書き込み履歴を利用
+
+## スクリーンショット
+
+掲載用のスクリーンショットは準備中です。画面の違いが伝わるよう、まず次の3画面を掲載する予定です。
+
+1. 2ペインで板一覧とスレッドを並べた画面
+2. スレ内検索や返信ツリーを使っている画面
+3. Tauri 版の過去実況再生とコメントオーバーレイ
+
+## ダウンロード
+
+拡張機能とデスクトップアプリの配布物は [GitHub Releases](https://github.com/22-2/ChLens/releases) を確認してください。
+
+## 対応環境・サービス
+
+- **ブラウザー拡張機能:** Google Chrome、Mozilla Firefox
+- **デスクトップアプリ:** Tauri
+- **掲示板:** 5ch 系サービス、2ch.sc、open2ch、まちBBS、したらばなどの互換 BBS
+
+掲示板や外部サービスの仕様・利用条件は変更される場合があります。商用利用を含め、利用前に各サービスの規約を確認してください。
+
+## 開発
+
+Node.js と pnpm を用意してから、リポジトリを取得します。
 
 ```bash
-git clone git://github.com/22-2/ChLens.git
+git clone https://github.com/22-2/ChLens.git
 cd ChLens
 pnpm install
 ```
 
-開発やビルドの主なコマンド:
+主なコマンド:
 
 ```bash
-# Chrome 拡張をビルド
+# Chrome / Firefox 拡張機能
 pnpm run build:chrome
-
-# Firefox 拡張をビルド
 pnpm run build:firefox
+pnpm run build:extensions
 
-# Chrome/Firefox拡張をまとめてビルド
-pnpm build:extensions
+# Tauri デスクトップアプリ
+pnpm run build:tauri
+pnpm run dev:tauri
 
-# Tauri デスクトップアプリとインストーラーをビルド
-pnpm build:tauri
-
-# Tauri用WebView資産だけをビルド（通常は build:tauri から自動実行）
-pnpm build:tauri:assets
-
-# Tauri版を開発モードで起動
-pnpm dev:tauri
-
-# 開発ウォッチ（Chrome 用）
+# 開発用ウォッチ
 pnpm run watch:chrome
-
-# Chrome/Firefox拡張をビルドして配布用にパッケージ
-pnpm release:build
 ```
 
-ビルド成果物を別のディレクトリへ自動コピーする場合は、`.env` にコピー先を指定します。
-未設定の場合はコピーされません。
+ビルド成果物を別のディレクトリへコピーする場合は、`.env` にコピー先を指定します。未設定の場合はコピーされません。
 
 ```dotenv
 BUILD_COPY_DESTINATION=../read-crx-build
 ```
 
-コピー対象は `debug/<platform>` のビルド成果物です。`platform` は Chrome / Firefox / Tauri の
-ビルド対象に応じて変わります。
+## 貢献
 
-## 商用利用についての注意
-
-このリポジトリ自体は MIT ライセンスですが、ChLens がアクセスする外部サービスやデータには別途利用規約・商用制限が存在する場合があります。商用利用時は各サービス規約を確認してください。
-
-## 貢献ガイド
-
-- PR のタイトル形式: `[<module_name>] <日本語の説明>`（例: `[thread] フィルター機能を追加`）
-- Issue と PR のタイトル、本文、コメントは日本語で統一する（ラベル名やモジュール名などの固定文字列は除く）
-- AIが作成・更新するPRも例外にせず、タイトル、本文、コメント、コミットの件名と本文を送信前に日本語で確認する
-- `pnpm lint` と `pnpm tsc` を実行して型エラーやリンターエラーがないことを確認してください
-- バグ修正や意図的な実装変更を行う際は、ソース内に「なぜそのようにしたか」の短いコメントを残してください
-
-詳しい開発ルールやコントリビュート手順はプロジェクトの CONTRIBUTING.md（存在する場合）を参照してください。
-
-AIによる`.todo`整理からGitHub Issue、実装、確認までの流れは、[AI改善ループの全体像](docs/guides/ai-improvement-workflow.md)を参照してください。
+Issue や Pull Request での提案・報告を歓迎します。開発ブランチやコード変更のルールは [AGENTS.md](AGENTS.md) を参照してください。
 
 ## 謝辞
 
-本プロジェクトは read.crx-2 の成果をベースにしています。オリジナルの作者並びにコミュニティに感謝します。
+本プロジェクトは read.crx-2 の成果をベースにしています。オリジナルの作者とコミュニティに感謝します。
 
 ## ライセンス
 
