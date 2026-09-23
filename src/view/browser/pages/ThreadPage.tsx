@@ -686,6 +686,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
                     miniAa={miniAaResNums.has(res.num)}
                     messageProtocol={messageProtocol}
                     searchQuery={searchQuery}
+                    searchTarget={searchTarget}
                     onIdClick={handleIdClick}
                     onRepClick={handleRepClick}
                     onUrlClick={handleUrlClick}

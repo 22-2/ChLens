@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useRef } from "react";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
+import type { ThreadSearchTarget } from "src/view/browser/types";
 import { hasMissingAnchorTarget, parseAnchorDisplayTargets } from "src/view/browser/utils/anchor";
 import { ANCHOR_SELECTOR, ID_LINK_SELECTOR } from "src/view/browser/utils/constants";
 import { getEventTargetElement } from "src/view/browser/utils/dom";
@@ -29,6 +30,7 @@ interface MiddleClickState {
 interface ResBodyProps {
   messageHtml: string;
   searchQuery?: string;
+  searchTarget?: ThreadSearchTarget;
   anchorPreviewDepth: number;
   onUrlClick: ResBodyUrlClickHandler;
   onUrlContextMenu: UrlContextMenuHandler;
@@ -351,6 +353,7 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
   ({
     messageHtml,
     searchQuery = "",
+    searchTarget = "all",
     anchorPreviewDepth,
     onUrlClick,
     onUrlContextMenu,
@@ -375,8 +378,11 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
       viewWindow,
     });
     const highlightedMessageHtml = useMemo(
-      () => highlightSearchMatches(messageHtml, searchQuery),
-      [messageHtml, searchQuery],
+      () =>
+        searchTarget === "all" || searchTarget === "body"
+          ? highlightSearchMatches(messageHtml, searchQuery)
+          : messageHtml,
+      [messageHtml, searchQuery, searchTarget],
     );
     const decoratedMessageHtml = useMemo(() => {
       if ((ngResNums == null || ngResNums.size === 0) && resMap == null) {

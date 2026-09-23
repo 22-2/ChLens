@@ -8,6 +8,7 @@ import { NgResponsePlaceholder } from "src/view/browser/components/NgResponsePla
 import { ResBody } from "src/view/browser/components/ResBody";
 import { useIsNgTemporarilyDisabled, useNgDisplayMode } from "src/view/browser/hooks/use-ng-status";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
+import type { ThreadSearchTarget } from "src/view/browser/types";
 import { getEventTargetElement } from "src/view/browser/utils/dom";
 import { getIdHeatColor } from "src/view/browser/utils/id-heat";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
@@ -67,6 +68,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
     resMap,
     threadUrl,
     searchQuery = "",
+    searchTarget = "all",
   }) => {
     const { window: viewWindow } = useViewSurface();
     const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
@@ -88,8 +90,11 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
     // 検索判定と同じ語を表示層へ渡し、本文・名前・IDのどこでレスが一致したかを追えるようにする。
     // 本文と名前のHTMLはテキストノードだけを変換し、リンクやアンカーの操作対象を保つ。
     const highlightedNameHtml = useMemo(
-      () => highlightSearchMatches(decoded.nameHtml, searchQuery),
-      [decoded.nameHtml, searchQuery],
+      () =>
+        searchTarget === "all" || searchTarget === "name"
+          ? highlightSearchMatches(decoded.nameHtml, searchQuery)
+          : decoded.nameHtml,
+      [decoded.nameHtml, searchQuery, searchTarget],
     );
     // React 19 は同じ名前HTMLでも wrapper object が毎回変わると innerHTML を再代入する。
     // 本文更新時に名前欄を選択している場合も、Text nodeを置換せず選択範囲を維持する。
@@ -194,7 +199,10 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
                 onIdClick(res.id!, e);
               }}
             >
-              {renderHighlightedText(res.id, searchQuery)}
+              {renderHighlightedText(
+                res.id,
+                searchTarget === "all" || searchTarget === "id" ? searchQuery : "",
+              )}
               {idCount >= 2 && `(${idPos}/${idCount})`}
             </span>
           )}
@@ -214,6 +222,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
         <ResBody
           messageHtml={resolvedMedia.messageHtml}
           searchQuery={searchQuery}
+          searchTarget={searchTarget}
           anchorPreviewDepth={0}
           ngResNums={ngResNums}
           resMap={resMap}
@@ -262,4 +271,5 @@ export interface ResItemProps {
   /** アルバムAPIの失敗抑止をスレッド単位で分離するためのキー */
   threadUrl?: string;
   searchQuery?: string;
+  searchTarget?: ThreadSearchTarget;
 }

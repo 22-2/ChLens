@@ -136,6 +136,44 @@ describe("ResItem", () => {
     expect(container.querySelector("[data-res-num='1']")).toBeInTheDocument();
   });
 
+  it("検索対象に選んだ欄だけをハイライトする", () => {
+    const props = {
+      res: { ...BASE_RES, id: "リンク" },
+      idPos: 0,
+      idCount: 0,
+      repCount: 0,
+      isOwn: false,
+      isReplyToOwn: false,
+      isImageBlurred: false,
+      imageBlurRadius: 4,
+      miniAa: false,
+      messageProtocol: "https:",
+      onIdClick: () => {},
+      onRepClick: () => {},
+      onUrlClick: () => true,
+      onUrlContextMenu: () => true,
+      onAnchorClick: () => {},
+      onAnchorHover: () => {},
+      onAnchorLeave: () => {},
+      onContextMenu: () => {},
+      searchQuery: "リンク",
+    };
+    const { container, rerender } = render(<ResItem {...props} searchTarget="body" />);
+
+    expect(container.querySelector(".res__body mark")).toHaveTextContent("リンク");
+    expect(container.querySelector(".res__id mark")).not.toBeInTheDocument();
+
+    rerender(<ResItem {...props} searchTarget="id" />);
+
+    expect(container.querySelector(".res__body mark")).not.toBeInTheDocument();
+    expect(container.querySelector(".res__id mark")).toHaveTextContent("リンク");
+
+    rerender(<ResItem {...props} searchQuery="名無しさん" searchTarget="name" />);
+
+    expect(container.querySelector(".res__name mark")).toHaveTextContent("名無しさん");
+    expect(container.querySelector(".res__body mark")).not.toBeInTheDocument();
+  });
+
   it("返信数に応じてレス番号と返信ラベルに同じ強調色クラスを付与する", () => {
     const { rerender } = render(
       <ResItem
