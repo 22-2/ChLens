@@ -1,13 +1,7 @@
-import { MetadataParser } from "../../packages/ch-lib/src/parser/MetadataParser";
-import type { IRes, IThread } from "../../packages/ch-lib/src/parser/ThreadParser";
-import type { ParsedThread, ThreadRes } from "./ThreadParser.js";
+import { MetadataParser } from "./MetadataParser";
+import type { IRes, IThread, ParsedThread, ThreadRes } from "./ThreadParser";
 
-/**
- * Converts the cache/parser shape used by the existing Chlens fetch pipeline into ch-lib's
- * canonical model. The old parser intentionally keeps raw `other` metadata, so the adapter
- * preserves it while assigning the canonical response number here instead of making every
- * parser format invent its own numbering rule.
- */
+/** 旧キャッシュ形式のレスを共有モデルへ変換する。 */
 export function toCanonicalRes(res: ThreadRes, number: number): IRes {
   const metadata = MetadataParser.parse(res.name, res.other);
   const be = /BE:\d+-[A-Z\d]+\(\d+\)/.exec(res.other)?.[0];
@@ -19,8 +13,7 @@ export function toCanonicalRes(res: ThreadRes, number: number): IRes {
     date: metadata.date,
     message: res.message,
     other: res.other,
-    // HTML形式では属性から直接抽出したIDを優先し、旧dat形式では従来どおり
-    // other内のメタデータから復元する。形式ごとの解析差を表示側へ漏らさない。
+    // HTML側で直接抽出したIDは、otherから推測した値より正確なので優先する。
     id: res.id ?? metadata.id,
     slip: metadata.slip,
     trip: metadata.trip,
@@ -28,6 +21,7 @@ export function toCanonicalRes(res: ThreadRes, number: number): IRes {
   };
 }
 
+/** 旧キャッシュ形式のスレッドを共有モデルへ変換する。 */
 export function toCanonicalThread(thread: ParsedThread): IThread {
   return {
     ...(thread.title === undefined ? {} : { title: thread.title }),
@@ -35,11 +29,7 @@ export function toCanonicalThread(thread: ParsedThread): IThread {
   };
 }
 
-/**
- * Converts a canonical snapshot back to the legacy cache shape when an old cache entry must be
- * written. Keeping this reverse operation explicit prevents `number`/`res` field aliases from
- * leaking into persisted records and makes the eventual cache migration reversible.
- */
+/** 共有モデルを既存キャッシュ互換形式へ戻す。 */
 export function fromCanonicalThread(thread: IThread, expired = false): ParsedThread {
   return {
     ...(thread.title === undefined ? {} : { title: thread.title }),

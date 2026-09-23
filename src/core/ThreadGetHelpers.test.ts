@@ -1,12 +1,11 @@
 import {
-  applyCachedInfoToThread,
   buildConditionalRequestHeaders,
   buildThreadFetchPlan,
-  isMissingFromSubject,
   resolveThreadFromResponse,
   shouldRejectThreadResult,
-} from "src/core/ThreadGetHelpers";
-import type { ParsedThread } from "src/core/ThreadParser.js";
+} from "@chlen/ch-lib";
+import type { ParsedThread } from "packages/ch-lib/src/index";
+import { isMissingFromSubject } from "src/core/SubjectPresence";
 import { describe, expect, it } from "vite-plus/test";
 
 const createThread = (title = "t", count = 1): ParsedThread => ({
@@ -158,34 +157,6 @@ describe("ThreadGetHelpers", () => {
     });
 
     expect(rejected).toBe(true);
-  });
-
-  it("applyCachedInfoToThread pads aboon rows to cached count", () => {
-    const thread = createThread("x", 1);
-    applyCachedInfoToThread({
-      thread,
-      status: "success",
-      cachedResCount: 3,
-    });
-
-    expect(thread.res).toHaveLength(3);
-    expect(thread.res[2]).toEqual({
-      name: "あぼーん",
-      mail: "あぼーん",
-      message: "あぼーん",
-      other: "あぼーん",
-    });
-  });
-
-  it("applyCachedInfoToThread does not expire a live thread on a board-cache miss", () => {
-    const thread = createThread();
-
-    applyCachedInfoToThread({
-      thread,
-      status: "not_found",
-    });
-
-    expect(thread.expired).toBe(false);
   });
 
   it("reports a subject miss without treating it as an explicit expiration", () => {

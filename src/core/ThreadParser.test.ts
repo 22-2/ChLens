@@ -5,7 +5,7 @@ import {
   parseJbbsThread,
   parseNetThread,
   parseThread,
-} from "src/core/ThreadParser.js";
+} from "packages/ch-lib/src/index";
 import { describe, expect, it } from "vite-plus/test";
 
 describe("ThreadParser", () => {

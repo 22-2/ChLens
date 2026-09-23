@@ -1,7 +1,6 @@
-import { extractPostDate } from "packages/ch-lib/src/index";
+import { extractPostDate, toCanonicalThread } from "packages/ch-lib/src/index";
 import { buildReplyIndexes } from "src/core/reply-index";
 import Thread from "src/core/Thread.js";
-import { toCanonicalThread } from "src/core/thread-model-adapter.js";
 import { container } from "src/service-container/index";
 
 /**

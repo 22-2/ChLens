@@ -1,7 +1,9 @@
 import {
   BoardParser,
   type BoardThread as CanonicalBoardThread,
+  buildConditionalRequestHeaders,
   ChURL,
+  getBoardFetchInfo,
 } from "packages/ch-lib/src/index";
 import { platform } from "src/app";
 import { Response } from "src/core/HTTP";
@@ -16,11 +18,6 @@ type BoardThread = CanonicalBoardThread & {
   highlight?: unknown;
   isNet?: boolean | null;
 };
-
-interface XhrInfo {
-  path: string;
-  charset: string;
-}
 
 interface BoardResponse {
   status: "success" | "error";
@@ -44,7 +41,7 @@ export default class Board {
    * 板のスレ一覧を取得して解析します
    */
   get(forceUpdate = false): Promise<void> {
-    const tmp = Board._getXhrInfo(this.url);
+    const tmp = getBoardFetchInfo(this.url);
     if (!tmp) {
       return Promise.reject(new Error("取得方法が不明な板です"));
     }
@@ -78,15 +75,11 @@ export default class Board {
         try {
           if (needFetch) {
             // 条件付きGETリクエストの設定
-            const headers: Record<string, string> = {};
-            if (hasCache) {
-              if (cache.lastModified != null) {
-                headers["If-Modified-Since"] = new Date(cache.lastModified).toUTCString();
-              }
-              if (cache.etag != null) {
-                headers["If-None-Match"] = cache.etag;
-              }
-            }
+            const headers = buildConditionalRequestHeaders({
+              hasCache,
+              lastModified: cache.lastModified,
+              etag: cache.etag,
+            });
 
             const httpResponse = await platform.http.fetch(xhrPath, {
               method: "GET",
@@ -282,37 +275,6 @@ class="open_in_rcrx">${container.util.escapeHtml(newBoardUrl)}
   }
 
   /**
-   * 板のURLから取得方法の情報を取得します
-   */
-  private static _getXhrInfo(boardUrl: ChURL): XhrInfo | null {
-    const tmp = new RegExp(`^/(\\w+)(?:/(\\d+)/|/?)$`).exec(boardUrl.url.pathname);
-    if (!tmp) {
-      return null;
-    }
-
-    const boardName = tmp[1];
-    const categoryId = tmp[2];
-
-    switch (boardUrl.getTsld()) {
-      case "machi.to":
-        return {
-          path: `${boardUrl.url.origin}/bbs/offlaw.cgi/${boardName}/`,
-          charset: "Shift_JIS",
-        };
-      case "shitaraba.net":
-        return {
-          path: `${boardUrl.url.protocol}//jbbs.shitaraba.net/${boardName}/${categoryId}/subject.txt`,
-          charset: "EUC-JP",
-        };
-      default:
-        return {
-          path: `${boardUrl.url.origin}/${boardName}/subject.txt`,
-          charset: "Shift_JIS",
-        };
-    }
-  }
-
-  /**
    * 板のテキストをパースして、スレ一覧を取得します
    */
   static parse(url: ChURL, text: string): BoardThread[] | null {
@@ -357,7 +319,7 @@ class="open_in_rcrx">${container.util.escapeHtml(newBoardUrl)}
       throw new Error("スレッドURLの形式が不正です");
     }
 
-    const xhrInfo = Board._getXhrInfo(boardUrl);
+    const xhrInfo = getBoardFetchInfo(boardUrl);
     if (!xhrInfo) {
       throw new Error("その板の取得方法の情報が存在しません");
     }

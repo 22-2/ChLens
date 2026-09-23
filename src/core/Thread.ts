@@ -1,14 +1,7 @@
-import { ChURL } from "packages/ch-lib/src/index";
-import { platform } from "src/app";
-import type { HttpResponse } from "src/app/platform/types";
-import type Cache from "src/core/Cache.js";
-import { chServerMoveDetect } from "src/core/jsutil.js";
 import {
   buildConditionalRequestHeaders,
   buildThreadFetchPlan,
-  isMissingFromSubject,
-} from "src/core/ThreadGetHelpers";
-import {
+  ChURL,
   getThreadXhrInfo,
   isHtmlThread,
   parseChThread,
@@ -19,9 +12,16 @@ import {
   parseNetThread,
   parsePinkThread,
   parseThread,
+  resolveThreadFromResponse,
+  shouldRejectThreadResult,
   type ThreadRes,
   type XhrInfo,
-} from "src/core/ThreadParser.js";
+} from "packages/ch-lib/src/index";
+import { platform } from "src/app";
+import type { HttpResponse } from "src/app/platform/types";
+import type Cache from "src/core/Cache.js";
+import { chServerMoveDetect } from "src/core/jsutil.js";
+import { isMissingFromSubject } from "src/core/SubjectPresence";
 import { container } from "src/service-container/index";
 
 // ---------------------------------------------------------------------------
@@ -54,12 +54,6 @@ interface FetchResult {
   xhrPath: string;
   deltaFlg: boolean;
   readcgiVer: number;
-}
-
-/** _parseResponseIntoThread / _parseSuccessResponse の戻り値 */
-interface ParseResult {
-  thread: ParsedThread | undefined;
-  noChangeFlg: boolean;
 }
 
 /** _updateCacheAfterFetch に渡すパラメータ */
@@ -182,28 +176,35 @@ export default class Thread {
       }
 
       // --- レスポンス解析 ---
-      ({ thread, noChangeFlg } = this._parseResponseIntoThread({
+      // 変更理由: 差分レスの合成規則をMCPと共有し、画面専用Threadへ二重実装しない。
+      const resolved = resolveThreadFromResponse({
         response,
-        cache,
-        hasCache,
+        readcgiVer,
         deltaFlg,
         isHtml,
-        readcgiVer,
         bbsType: this.url.bbsType,
+        hasCache,
+        cacheData: cache.data,
+        cacheParsed: this._getCachedParsedThread(cache),
+        cacheResLength: cache.resLength,
+        url: this.url,
         format2chnet,
-      }));
+        parseThreadFn: parseThread,
+      });
+      thread = resolved.thread;
+      noChangeFlg = resolved.noChangeFlg;
 
       if (!thread) {
         throw { response };
       }
-      if (this.url.bbsType === "2ch" && response?.status === 203) {
-        throw { response, thread };
-      }
       if (
-        response?.status !== 200 &&
-        response?.status !== 304 &&
-        (!(readcgiVer >= 6) || response?.status !== 500) &&
-        (!!response || !hasCache)
+        shouldRejectThreadResult({
+          thread,
+          response,
+          bbsType: this.url.bbsType,
+          readcgiVer,
+          hasCache,
+        })
       ) {
         throw { response, thread };
       }
@@ -374,172 +375,6 @@ export default class Thread {
       deltaFlg: plan.deltaFlg,
       readcgiVer: plan.readcgiVer,
     };
-  }
-
-  // -------------------------------------------------------------------------
-  // Private: レスポンス解析
-  // -------------------------------------------------------------------------
-
-  /**
-   * HTTP レスポンスのステータスと各種フラグに基づいてスレッドを組み立てる。
-   * ステータスコードによる分岐のエントリポイント。
-   */
-  private _parseResponseIntoThread({
-    response,
-    cache,
-    hasCache,
-    deltaFlg,
-    isHtml,
-    readcgiVer,
-    bbsType,
-    format2chnet,
-  }: {
-    response: HttpResponse | undefined;
-    cache: Cache;
-    hasCache: boolean;
-    deltaFlg: boolean;
-    isHtml: boolean;
-    readcgiVer: number;
-    bbsType: string;
-    format2chnet: string | null | undefined;
-  }): ParseResult {
-    if (response?.status === 200 || (readcgiVer >= 6 && response?.status === 500)) {
-      return this._parseSuccessResponse({
-        response,
-        cache,
-        deltaFlg,
-        isHtml,
-        readcgiVer,
-        format2chnet,
-      });
-    }
-
-    if (bbsType === "2ch" && response?.status === 203) {
-      return {
-        thread: this._parse203Response({
-          response,
-          cache,
-          hasCache,
-          deltaFlg,
-          isHtml,
-          format2chnet,
-        }),
-        noChangeFlg: false,
-      };
-    }
-
-    if (hasCache) {
-      const thread = isHtml
-        ? this._getCachedParsedThread(cache)
-        : (parseThread(this.url, cache.data ?? "", { format2chnet }) ?? undefined);
-      return { thread, noChangeFlg: false };
-    }
-
-    return { thread: undefined, noChangeFlg: false };
-  }
-
-  /**
-   * status 200 および readcgiVer >= 6 & status 500（変化なし相当）のレスポンスを解析する。
-   * delta 取得・HTML 形式・readcgi バージョンによる合成処理を担う。
-   */
-  private _parseSuccessResponse({
-    response,
-    cache,
-    deltaFlg,
-    isHtml,
-    readcgiVer,
-    format2chnet,
-  }: {
-    response: HttpResponse;
-    cache: Cache;
-    deltaFlg: boolean;
-    isHtml: boolean;
-    readcgiVer: number;
-    format2chnet: string | null | undefined;
-  }): ParseResult {
-    // 全取得
-    if (!deltaFlg) {
-      return {
-        thread: parseThread(this.url, response.body, { format2chnet }) ?? undefined,
-        noChangeFlg: false,
-      };
-    }
-
-    // 差分取得・dat 形式
-    if (!isHtml) {
-      return {
-        thread:
-          parseThread(this.url, (cache.data ?? "") + response.body, {
-            format2chnet,
-          }) ?? undefined,
-        noChangeFlg: false,
-      };
-    }
-
-    // 差分取得・HTML 形式
-    const threadCache = this._getCachedParsedThread(cache);
-    if (!threadCache) {
-      return { thread: undefined, noChangeFlg: false };
-    }
-
-    // readcgiVer >= 6 の "変化なし" レスポンス
-    if (readcgiVer >= 6 && response.status === 500) {
-      return { thread: threadCache, noChangeFlg: true };
-    }
-
-    const threadResponse = parseThread(this.url, response.body, {
-      format2chnet,
-      resLength: +(cache.resLength || 0),
-    });
-
-    if (!threadResponse) {
-      return { thread: undefined, noChangeFlg: false };
-    }
-
-    // readcgiVer < 6 で差分が 1 件（＝変化なし）
-    if (readcgiVer < 6 && threadResponse.res.length === 1) {
-      return { thread: threadCache, noChangeFlg: true };
-    }
-
-    if (readcgiVer < 6) {
-      threadResponse.res.shift(); // 先頭の重複レスを除去
-    }
-
-    return {
-      thread: {
-        ...threadResponse,
-        res: threadCache.res.concat(threadResponse.res),
-      },
-      noChangeFlg: false,
-    };
-  }
-
-  /**
-   * 2ch 系の status 203 レスポンスを解析する。
-   * キャッシュの有無と delta フラグによってソースを切り替える。
-   */
-  private _parse203Response({
-    response,
-    cache,
-    hasCache,
-    deltaFlg,
-    isHtml,
-    format2chnet,
-  }: {
-    response: HttpResponse;
-    cache: Cache;
-    hasCache: boolean;
-    deltaFlg: boolean;
-    isHtml: boolean;
-    format2chnet: string | null | undefined;
-  }): ParsedThread | undefined {
-    if (!hasCache) {
-      return parseThread(this.url, response.body, { format2chnet }) ?? undefined;
-    }
-    if (deltaFlg && isHtml) {
-      return this._getCachedParsedThread(cache);
-    }
-    return parseThread(this.url, cache.data ?? "", { format2chnet }) ?? undefined;
   }
 
   // -------------------------------------------------------------------------

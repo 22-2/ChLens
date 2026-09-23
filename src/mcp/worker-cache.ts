@@ -1,4 +1,4 @@
-import type { ParsedThread } from "../core/ThreadParser";
+import type { ParsedThread } from "@chlen/ch-lib";
 
 /**
  * Chrome拡張のCacheストアをサービスワーカーから扱うための最小リポジトリ。

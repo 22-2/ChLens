@@ -1,4 +1,4 @@
-import { fromCanonicalThread, toCanonicalThread } from "src/core/thread-model-adapter";
+import { fromCanonicalThread, toCanonicalThread } from "packages/ch-lib/src/index";
 import { describe, expect, it } from "vite-plus/test";
 
 describe("thread model adapter", () => {

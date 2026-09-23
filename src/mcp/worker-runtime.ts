@@ -1,20 +1,18 @@
-import browser from "webextension-polyfill";
-
-import { ChURL } from "../../packages/ch-lib/src/url/ChURL";
-import type { HttpResponse } from "../app/platform/types";
-import { toCanonicalThread } from "../core/thread-model-adapter";
 import {
   buildConditionalRequestHeaders,
   buildThreadFetchPlan,
-  resolveThreadFromResponse,
-  shouldRejectThreadResult,
-} from "../core/ThreadGetHelpers";
-import {
   getThreadXhrInfo,
   isHtmlThread,
   type ParsedThread,
   parseThread,
-} from "../core/ThreadParser";
+  resolveThreadFromResponse,
+  shouldRejectThreadResult,
+  toCanonicalThread,
+} from "@chlen/ch-lib";
+import browser from "webextension-polyfill";
+
+import { ChURL } from "../../packages/ch-lib/src/url/ChURL";
+import type { HttpResponse } from "../app/platform/types";
 import type { IRes } from "../service-container/interfaces";
 import {
   type BridgeFailure,

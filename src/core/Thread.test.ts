@@ -1,5 +1,5 @@
+import type { ParsedThread } from "packages/ch-lib/src/index";
 import type { HttpResponse } from "src/app/platform/types";
-import type { ParsedThread } from "src/core/ThreadParser.js";
 import { describe, expect, it, vi } from "vite-plus/test";
 
 const mocks = vi.hoisted(() => ({
