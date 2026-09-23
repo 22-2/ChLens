@@ -7,12 +7,11 @@
     "push": true
   },
   "hooks": {
-    "before:release": "pnpm run release:build"
+    "before:init": "gh auth status",
+    "after:release": "gh workflow run release.yml --ref develop --field version=${version}"
   },
   "github": {
-    "release": true,
-    "releaseName": "v${version}",
-    "assets": ["release/chlens-chrome-v${version}.zip", "release/chlens-firefox-v${version}.zip"]
+    "release": false
   },
   "npm": false,
   "plugins": {

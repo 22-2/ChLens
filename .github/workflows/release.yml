@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Release version (for example, 3.3.0). Leave empty to choose interactively."
-        required: false
+        description: "Version of the release-it tag to publish (without the v prefix)."
+        required: true
         type: string
 
 permissions:
@@ -15,16 +15,12 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out develop
+      # 変更理由: release-itが作成・pushしたタグの内容から配布物を作る。
+      - name: Check out release tag
         uses: actions/checkout@v4
         with:
-          ref: develop
+          ref: v${{ inputs.version }}
           fetch-depth: 0
-
-      - name: Configure release branch
-        run: |
-          git switch develop
-          git branch --set-upstream-to=origin/develop develop
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
@@ -40,13 +36,19 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run release-it
+      # 変更理由: release-it側ではバージョン・タグを確定し、Actions側で拡張機能をビルドして公開する。
+      - name: Build release packages
+        run: pnpm run release:build
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: v${{ inputs.version }}
+          name: v${{ inputs.version }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            release/chlens-chrome-v${{ inputs.version }}.zip
+            release/chlens-firefox-v${{ inputs.version }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_VERSION: ${{ inputs.version }}
-        run: |
-          if [ -n "$RELEASE_VERSION" ]; then
-            pnpm release --ci "$RELEASE_VERSION"
-          else
-            pnpm release --ci
-          fi
