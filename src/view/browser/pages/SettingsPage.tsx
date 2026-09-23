@@ -628,6 +628,14 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
 
               <hr className="settings-page__divider" />
 
+              {/* 変更理由: 表示セクションのタイトルバー設定を先頭に置き、関連項目を見つけやすくする。 */}
+              {activeSection.id === "display" && (
+                <SettingsSupplementaryPanels
+                  panelIds={activeSection.supplementaryPanelIds}
+                  maintenanceActions={maintenanceActions}
+                />
+              )}
+
               {activeSection.id !== "ng" && (
                 <div className="settings-page__section-stack">
                   {activeSection.id !== "other" &&
@@ -733,10 +741,12 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
                 </div>
               )}
 
-              <SettingsSupplementaryPanels
-                panelIds={activeSection.supplementaryPanelIds}
-                maintenanceActions={maintenanceActions}
-              />
+              {activeSection.id !== "display" && (
+                <SettingsSupplementaryPanels
+                  panelIds={activeSection.supplementaryPanelIds}
+                  maintenanceActions={maintenanceActions}
+                />
+              )}
             </SurfaceBody>
           </Surface>
         </SurfaceStack>
