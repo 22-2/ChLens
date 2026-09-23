@@ -181,10 +181,31 @@ function VideoThumbImage({ embed }: { embed: ExternalMediaEmbed }): React.ReactE
 function TwitterPostCard({
   embed,
   post,
+  onUrlClick,
+  onMiddleMouseDown,
+  onAuxClick,
 }: {
   embed: ExternalMediaEmbed;
   post: TwitterPost;
+  onUrlClick: MediaUrlClickHandler;
+  onMiddleMouseDown: (
+    event: React.MouseEvent<HTMLElement>,
+    url: string,
+    resImages: string[] | undefined,
+  ) => void;
+  onAuxClick: (
+    event: React.MouseEvent<HTMLElement>,
+    url: string,
+    resImages: string[] | undefined,
+  ) => void;
 }): React.ReactElement {
+  // 変更理由: FxTwitterが返す写真も同じレス内の画像として扱い、専ブラの画像ビューアで前後移動できるようにする。
+  const imageUrls = post.media
+    .filter(
+      (media): media is Extract<(typeof post.media)[number], { type: "image" }> =>
+        media.type === "image",
+    )
+    .map((media) => media.url);
   const initialJapaneseTranslation =
     post.translation?.targetLang.toLowerCase() === "ja" ? post.translation : null;
   const [translation, setTranslation] = useState(initialJapaneseTranslation);
@@ -297,8 +318,13 @@ function TwitterPostCard({
                 <a
                   key={`${media.type}:${media.url}`}
                   href={media.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onUrlClick(media.url, imageUrls, 0);
+                  }}
+                  onMouseDown={(event) => onMiddleMouseDown(event, media.url, imageUrls)}
+                  onAuxClick={(event) => onAuxClick(event, media.url, imageUrls)}
                 >
                   <ExternalImage src={media.url} alt={media.altText ?? "投稿画像"} loading="lazy" />
                 </a>
@@ -716,7 +742,13 @@ export function ResMediaGallery({
             (() => {
               const state = twitterPostStates.get(expandedMediaItem.embed.rawUrl);
               return state?.status === "loaded" ? (
-                <TwitterPostCard embed={expandedMediaItem.embed} post={state.post} />
+                <TwitterPostCard
+                  embed={expandedMediaItem.embed}
+                  post={state.post}
+                  onUrlClick={onUrlClick}
+                  onMiddleMouseDown={handleMiddleMouseDown}
+                  onAuxClick={handleMiddleAuxClick}
+                />
               ) : (
                 <TwitterPostFallback
                   embed={expandedMediaItem.embed}

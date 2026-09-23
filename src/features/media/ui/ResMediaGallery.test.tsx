@@ -105,6 +105,11 @@ describe("ResMediaGallery", () => {
           url: "https://pbs.twimg.com/media/photo.jpg",
           altText: "写真の説明",
         },
+        {
+          type: "image",
+          url: "https://pbs.twimg.com/media/second-photo.jpg",
+          altText: "二枚目の写真",
+        },
       ],
     });
     const translate = vi.spyOn(twitterPostResolver, "translate").mockResolvedValue({
@@ -114,7 +119,8 @@ describe("ResMediaGallery", () => {
     });
 
     try {
-      const { container } = render(<ResMediaGallery urls={[rawUrl]} onUrlClick={() => {}} />);
+      const onUrlClick = vi.fn();
+      const { container } = render(<ResMediaGallery urls={[rawUrl]} onUrlClick={onUrlClick} />);
 
       const postButton = screen.getByRole("button", { name: "FxTwitter を展開する" });
       expect(postButton).toHaveClass("res__thumb--post");
@@ -154,6 +160,13 @@ describe("ResMediaGallery", () => {
       );
       expect(screen.getByRole("link", { name: "Xで投稿を開く" })).toHaveAttribute("href", rawUrl);
       expect(resolve).toHaveBeenCalledWith(rawUrl);
+
+      fireEvent.click(screen.getByRole("link", { name: "写真の説明" }));
+      expect(onUrlClick).toHaveBeenCalledWith(
+        "https://pbs.twimg.com/media/photo.jpg",
+        ["https://pbs.twimg.com/media/photo.jpg", "https://pbs.twimg.com/media/second-photo.jpg"],
+        0,
+      );
     } finally {
       resolve.mockRestore();
       translate.mockRestore();
