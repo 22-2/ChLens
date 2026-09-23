@@ -26,7 +26,7 @@ vi.mock("src/service-container/index", () => ({
 import BoardService from "src/core/BoardService";
 
 describe("BoardService canonical subject adapter", () => {
-  it("projects ch-lib board fields into the legacy service result", async () => {
+  it("エッヂの一覧URLを既読DBのURLへ揃えて既読情報を反映する", async () => {
     mocks.getBoard.mockResolvedValueOnce({
       status: "success",
       data: [
@@ -39,13 +39,19 @@ describe("BoardService canonical subject adapter", () => {
         },
       ],
     });
-    mocks.getByBoard.mockResolvedValueOnce([]);
+    const readState = {
+      url: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1/",
+      last: 2,
+      read: 2,
+      received: 4,
+    };
+    mocks.getByBoard.mockResolvedValueOnce([readState]);
     mocks.getBookmark.mockReturnValueOnce(undefined);
 
     await expect(BoardService.getThreads("https://bbs.eddibb.cc/liveedge/")).resolves.toEqual({
       threads: [
         {
-          url: "https://bbs.eddibb.cc/test/read.cgi/liveedge/1/",
+          url: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1/",
           title: "スレッド",
           resCount: 4,
           createdAt: 1000,
@@ -53,11 +59,12 @@ describe("BoardService canonical subject adapter", () => {
           demoted: undefined,
           highlight: undefined,
           isNet: undefined,
-          readState: undefined,
+          readState,
           threadNumber: 0,
         },
       ],
       message: null,
     });
+    expect(mocks.getByBoard).toHaveBeenCalledWith("http://bbs.eddibb.cc/liveedge/");
   });
 });

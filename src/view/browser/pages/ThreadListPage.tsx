@@ -1,6 +1,9 @@
 import React, { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
-import { normalizeBoardUrl as normalizeKnownBoardUrl } from "src/core/BoardUrlNormalizer";
+import {
+  getBoardUrlKey,
+  normalizeBoardUrl as normalizeKnownBoardUrl,
+} from "src/core/BoardUrlNormalizer";
 import { URL as ChURL } from "src/core/URL";
 import { container } from "src/service-container/index";
 import type { IReadState, IThread } from "src/service-container/interfaces";
@@ -418,6 +421,7 @@ export const ThreadListPage: React.FC<Props> = ({
   }, [page.boardUrl]);
 
   useEffect(() => {
+    const pageBoardKey = getBoardUrlKey(page.boardUrl);
     const applyReadStateUpdated = (readState: IReadState) => {
       setThreads((prev) =>
         prev.map((thread) => {
@@ -464,7 +468,12 @@ export const ThreadListPage: React.FC<Props> = ({
       board_url?: string;
       read_state?: IReadState;
     }) => {
-      if (!readState || boardUrl !== page.boardUrl) {
+      // 変更理由: エッヂでは一覧の板URLと既読通知の板URLが http/https と
+      // 通常形式/旧形式で異なるため、同じ板を表すキーで通知を判定する。
+      const sameBoard =
+        boardUrl === page.boardUrl ||
+        (boardUrl != null && pageBoardKey != null && getBoardUrlKey(boardUrl) === pageBoardKey);
+      if (!readState || !sameBoard) {
         return;
       }
 

@@ -389,6 +389,50 @@ describe("ThreadListPage", () => {
     expect(getThreadsMock).toHaveBeenCalledTimes(1);
   });
 
+  it("エッヂのhttp板URLで届いた既読通知を一覧の色と未読数へ反映する", async () => {
+    vi.useRealTimers();
+    const threadUrl = "http://bbs.eddibb.cc/test/read.cgi/example/1/";
+    getThreadsMock.mockResolvedValueOnce({
+      threads: [
+        { ...THREADS[0], url: threadUrl, title: "テストスレ", resCount: 4, readState: undefined },
+      ],
+      message: null,
+    });
+
+    render(
+      <ThreadListPage
+        tabId="tab-1"
+        page={{
+          type: "threadList",
+          title: "テスト板",
+          boardUrl: "https://bbs.eddibb.cc/example/",
+          boardTitle: "テスト板",
+        }}
+        refreshKey={0}
+        isActive={true}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getRenderedThreadTitles()).toContain("テストスレ");
+    });
+    const row = document.querySelector(".simple-data-table__row");
+    expect(row).not.toHaveClass("thread-list__row--visited");
+
+    for (const handler of messageListeners.get("read_state_updated") ?? []) {
+      handler({
+        board_url: "http://bbs.eddibb.cc/example/",
+        read_state: { url: threadUrl, last: 2, read: 2, received: 4 },
+      } as never);
+    }
+
+    await waitFor(() => {
+      const updatedRow = document.querySelector(".simple-data-table__row");
+      expect(updatedRow).toHaveClass("thread-list__row--visited");
+      expect(updatedRow?.querySelector(".thread-list__unread-badge")).toHaveTextContent("2");
+    });
+  });
+
   it("自ペインの表タブでもフォーカス外なら既読更新を保留する", async () => {
     vi.useRealTimers();
     focusedPaneIdRef.current = "pane-2";
