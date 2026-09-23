@@ -383,6 +383,11 @@
   display: block;
 }
 
+.res__thumb--image img {
+  /* 一覧の枠は104px四方に揃え、画像の縦横比の違いは余白で吸収して全体を見せる。 */
+  object-fit: contain;
+}
+
 .res__thumb--blurred img,
 .res__thumb--blurred .res__thumb-video-fallback,
 .res__thumb--blurred .res__thumb-video-preview {

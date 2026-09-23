@@ -587,7 +587,7 @@ export function ResMediaGallery({
               <a
                 key={`image:${item.rawUrl}`}
                 href={item.rawUrl}
-                className={`res__thumb${isBlurred ? " res__thumb--blurred" : ""}`}
+                className={`res__thumb res__thumb--image${isBlurred ? " res__thumb--blurred" : ""}`}
                 style={thumbStyle}
                 onClick={(event) => {
                   event.preventDefault();
