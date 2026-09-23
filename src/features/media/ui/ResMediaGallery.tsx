@@ -185,12 +185,48 @@ function TwitterPostCard({
   embed: ExternalMediaEmbed;
   post: TwitterPost;
 }): React.ReactElement {
+  const initialJapaneseTranslation =
+    post.translation?.targetLang.toLowerCase() === "ja" ? post.translation : null;
+  const [translation, setTranslation] = useState(initialJapaneseTranslation);
+  const [isTranslationShown, setIsTranslationShown] = useState(initialJapaneseTranslation != null);
+  const [isTranslationLoading, setIsTranslationLoading] = useState(false);
+  const [translationError, setTranslationError] = useState(false);
+  const sourceLang = post.lang?.toLowerCase() ?? "";
+  const canTranslateToJapanese =
+    initialJapaneseTranslation != null ||
+    (sourceLang !== "" && sourceLang !== "ja" && !sourceLang.startsWith("ja-"));
   const createdAt = formatTwitterPostDate(post.createdTimestamp);
   const createdAtIso =
     createdAt == null || post.createdTimestamp == null
       ? null
       : new Date(post.createdTimestamp * 1_000).toISOString();
   const visibleMetrics = twitterMetricDefinitions.filter(({ key }) => post.metrics[key] != null);
+
+  const toggleTranslation = async () => {
+    if (isTranslationShown) {
+      setIsTranslationShown(false);
+      return;
+    }
+
+    if (translation) {
+      setIsTranslationShown(true);
+      return;
+    }
+
+    setIsTranslationLoading(true);
+    setTranslationError(false);
+    try {
+      const result = await twitterPostResolver.translate(embed.rawUrl, "ja");
+      if (result) {
+        setTranslation(result);
+        setIsTranslationShown(true);
+      } else {
+        setTranslationError(true);
+      }
+    } finally {
+      setIsTranslationLoading(false);
+    }
+  };
 
   return (
     <div className="res__twitter-post">
@@ -224,7 +260,11 @@ function TwitterPostCard({
           )}
         </div>
       </div>
-      {post.text && <p className="res__twitter-post-text">{renderTwitterPostText(post.text)}</p>}
+      {post.text && (
+        <p className="res__twitter-post-text">
+          {renderTwitterPostText(isTranslationShown && translation ? translation.text : post.text)}
+        </p>
+      )}
       {visibleMetrics.length > 0 && (
         <div className="res__twitter-post-metrics" aria-label="投稿の反応数">
           {visibleMetrics.map(({ key, icon, label }) => {
@@ -285,6 +325,20 @@ function TwitterPostCard({
         <span>FxTwitter</span>
         {post.source && <span>{post.source}</span>}
         {createdAt && createdAtIso && <time dateTime={createdAtIso}>{createdAt}</time>}
+        {canTranslateToJapanese && (
+          <button
+            className="res__twitter-post-translation"
+            type="button"
+            onClick={() => void toggleTranslation()}
+            disabled={isTranslationLoading}
+          >
+            {isTranslationLoading
+              ? "翻訳中…"
+              : isTranslationShown
+                ? "原文を表示"
+                : "日本語訳を表示"}
+          </button>
+        )}
         <a
           className="res__twitter-post-external"
           href={embed.externalUrl}
@@ -293,6 +347,7 @@ function TwitterPostCard({
         >
           Xで投稿を開く
         </a>
+        {translationError && <span role="status">日本語訳を取得できませんでした</span>}
       </div>
     </div>
   );

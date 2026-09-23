@@ -55,6 +55,8 @@ describe("TwitterPostResolver", () => {
       id: POST_ID,
       url: POST_URL,
       text: "投稿本文",
+      lang: null,
+      translation: null,
       createdTimestamp: 1788516000,
       source: "Twitter Web App",
       author: {
@@ -119,6 +121,21 @@ describe("TwitterPostResolver", () => {
     });
   });
 
+  it("FxTwitter APIの投稿言語と日本語訳を取り出す", () => {
+    const response = JSON.parse(createPostResponse()) as { status: Record<string, unknown> };
+    response.status.lang = "en";
+    response.status.translation = {
+      text: "日本語訳",
+      source_lang: "en",
+      target_lang: "ja",
+    };
+
+    expect(parseTwitterPostResponse(JSON.stringify(response), POST_URL, POST_ID)).toMatchObject({
+      lang: "en",
+      translation: { text: "日本語訳", sourceLang: "en", targetLang: "ja" },
+    });
+  });
+
   it("同じ投稿への取得をキャッシュし、APIへ認証情報を送らない", async () => {
     const fetch = vi.fn().mockResolvedValue({ status: 200, body: createPostResponse() });
     const resolver = new TwitterPostResolver({ fetch });
@@ -128,6 +145,33 @@ describe("TwitterPostResolver", () => {
 
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(fetch).toHaveBeenCalledWith(`https://api.fxtwitter.com/2/status/${POST_ID}`, {
+      Accept: "application/json",
+    });
+  });
+
+  it("日本語訳をlangクエリ付きで取得し、成功した翻訳をキャッシュする", async () => {
+    const response = JSON.parse(createPostResponse()) as { status: Record<string, unknown> };
+    response.status.lang = "en";
+    response.status.translation = {
+      text: "日本語訳",
+      source_lang: "en",
+      target_lang: "ja",
+    };
+    const fetch = vi.fn().mockResolvedValue({
+      status: 200,
+      body: JSON.stringify(response),
+    });
+    const resolver = new TwitterPostResolver({ fetch });
+
+    await expect(resolver.translate(POST_URL, "ja")).resolves.toEqual({
+      text: "日本語訳",
+      sourceLang: "en",
+      targetLang: "ja",
+    });
+    await expect(resolver.translate(POST_URL, "ja")).resolves.toMatchObject({ text: "日本語訳" });
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledWith(`https://api.fxtwitter.com/2/status/${POST_ID}?lang=ja`, {
       Accept: "application/json",
     });
   });

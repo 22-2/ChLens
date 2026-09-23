@@ -78,6 +78,8 @@ describe("ResMediaGallery", () => {
       id: "1234567890123456789",
       url: rawUrl,
       text: "投稿本文 https://example.com/post-link. https://example.com/second",
+      lang: "en",
+      translation: null,
       createdTimestamp: 0,
       source: "Twitter Web App",
       author: {
@@ -105,6 +107,11 @@ describe("ResMediaGallery", () => {
         },
       ],
     });
+    const translate = vi.spyOn(twitterPostResolver, "translate").mockResolvedValue({
+      text: "日本語の投稿本文",
+      sourceLang: "en",
+      targetLang: "ja",
+    });
 
     try {
       const { container } = render(<ResMediaGallery urls={[rawUrl]} onUrlClick={() => {}} />);
@@ -126,6 +133,13 @@ describe("ResMediaGallery", () => {
         "target",
         "_blank",
       );
+      const translationButton = screen.getByRole("button", { name: "日本語訳を表示" });
+      expect(translationButton.nextElementSibling).toHaveClass("res__twitter-post-external");
+      fireEvent.click(translationButton);
+      await waitFor(() => expect(screen.getByText("日本語の投稿本文")).toBeInTheDocument());
+      expect(translate).toHaveBeenCalledWith(rawUrl, "ja");
+      fireEvent.click(screen.getByRole("button", { name: "原文を表示" }));
+      expect(screen.getByText(/投稿本文/)).toBeInTheDocument();
       expect(screen.getByLabelText("金色の認証バッジ")).toBeInTheDocument();
       expect(screen.getByLabelText("返信 412件")).toHaveTextContent("412");
       expect(screen.getByLabelText("リポスト 3,300件")).toHaveTextContent("3.3K");
@@ -142,6 +156,7 @@ describe("ResMediaGallery", () => {
       expect(resolve).toHaveBeenCalledWith(rawUrl);
     } finally {
       resolve.mockRestore();
+      translate.mockRestore();
     }
   });
 

@@ -39,10 +39,18 @@ export interface TwitterPostMetrics {
   bookmarks: number | null;
 }
 
+export interface TwitterPostTranslation {
+  text: string;
+  sourceLang: string;
+  targetLang: string;
+}
+
 export interface TwitterPost {
   id: string;
   url: string;
   text: string;
+  lang: string | null;
+  translation: TwitterPostTranslation | null;
   createdTimestamp: number | null;
   source: string | null;
   author: {
@@ -232,10 +240,27 @@ export function parseTwitterPostResponse(
   }
 
   const author = asRecord(status.author);
+  const translationRecord = asRecord(status.translation);
+  const translationText = translationRecord ? getString(translationRecord, "text") : null;
+  const translationSourceLang = translationRecord
+    ? getString(translationRecord, "source_lang")
+    : null;
+  const translationTargetLang = translationRecord
+    ? getString(translationRecord, "target_lang")
+    : null;
   return {
     id,
     url: getString(status, "url") ?? fallbackUrl,
     text: getString(status, "text") ?? "",
+    lang: getString(status, "lang"),
+    translation:
+      translationText && translationSourceLang && translationTargetLang
+        ? {
+            text: translationText,
+            sourceLang: translationSourceLang,
+            targetLang: translationTargetLang,
+          }
+        : null,
     createdTimestamp: parseCreatedTimestamp(status),
     source: getString(status, "source"),
     author: {
@@ -278,6 +303,8 @@ export class TwitterPostResolver {
   private readonly logError: NonNullable<TwitterPostResolverOptions["logError"]>;
   private readonly cache = new Map<string, TwitterPost>();
   private readonly inFlight = new Map<string, Promise<TwitterPost | null>>();
+  private readonly translationCache = new Map<string, TwitterPostTranslation>();
+  private readonly translationInFlight = new Map<string, Promise<TwitterPostTranslation | null>>();
 
   constructor(options: TwitterPostResolverOptions = {}) {
     this.fetcher = options.fetch ?? getDefaultFetch();
@@ -304,10 +331,45 @@ export class TwitterPostResolver {
     }
   }
 
-  private async fetchPost(embed: TwitterPostEmbed): Promise<TwitterPost | null> {
+  async translate(rawUrl: string, targetLang: string): Promise<TwitterPostTranslation | null> {
+    const embed = toTwitterPostEmbed(rawUrl);
+    if (!embed || !/^[a-z]{2}(?:-[a-z]{2})?$/i.test(targetLang)) return null;
+
+    const cacheKey = `${embed.apiUrl}?lang=${targetLang.toLowerCase()}`;
+    const cached = this.translationCache.get(cacheKey);
+    if (cached) return cached;
+
+    const current = this.translationInFlight.get(cacheKey);
+    if (current) return current;
+
+    const request = this.fetchPost(embed, targetLang.toLowerCase()).then((post) => {
+      const translation = post?.translation;
+      if (!translation || translation.targetLang.toLowerCase() !== targetLang.toLowerCase()) {
+        return null;
+      }
+      this.translationCache.set(cacheKey, translation);
+      return translation;
+    });
+    this.translationInFlight.set(cacheKey, request);
     try {
+      return await request;
+    } finally {
+      this.translationInFlight.delete(cacheKey);
+    }
+  }
+
+  private async fetchPost(
+    embed: TwitterPostEmbed,
+    targetLang?: string,
+  ): Promise<TwitterPost | null> {
+    try {
+      const requestUrl = new URL(embed.apiUrl);
+      if (targetLang) {
+        // 変更理由: 翻訳は表示要求があった時だけ取得し、通常の投稿表示で追加通信を発生させない。
+        requestUrl.searchParams.set("lang", targetLang);
+      }
       const response = await withTimeout(
-        this.fetcher(embed.apiUrl, { Accept: "application/json" }),
+        this.fetcher(requestUrl.toString(), { Accept: "application/json" }),
         this.timeoutMs,
       );
       if (response.status < 200 || response.status >= 300) {
@@ -315,11 +377,16 @@ export class TwitterPostResolver {
       }
 
       const post = parseTwitterPostResponse(response.body, embed.externalUrl, embed.postId);
-      this.cache.set(embed.apiUrl, post);
+      if (!targetLang) {
+        this.cache.set(embed.apiUrl, post);
+      }
       return post;
     } catch (error) {
       // 本文や認証情報はログへ出さず、投稿IDと原因だけを記録して元URLへのフォールバックを残す。
-      this.logError(`[TwitterPostResolver] 投稿取得に失敗しました: ${embed.postId}`, error);
+      this.logError(
+        `[TwitterPostResolver] ${targetLang ? "投稿翻訳" : "投稿"}の取得に失敗しました: ${embed.postId}`,
+        error,
+      );
       return null;
     }
   }

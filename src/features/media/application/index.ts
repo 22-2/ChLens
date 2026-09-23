@@ -21,6 +21,7 @@ export type {
   TwitterPostMedia,
   TwitterPostMetrics,
   TwitterPostResolverOptions,
+  TwitterPostTranslation,
   TwitterPostVideo,
   TwitterVerificationBadge,
   TwitterVerificationBadgeColor,

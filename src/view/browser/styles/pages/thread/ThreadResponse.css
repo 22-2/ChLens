@@ -529,9 +529,23 @@
 
 .res__twitter-post-author a,
 .res__twitter-post-external,
+.res__twitter-post-translation,
 .res__twitter-post-fallback a {
   color: var(--sys-color-table-link);
   font-weight: 700;
+}
+
+.res__twitter-post-translation {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.res__twitter-post-translation:disabled {
+  cursor: wait;
+  opacity: 0.7;
 }
 
 .res__twitter-post-screen-name {
