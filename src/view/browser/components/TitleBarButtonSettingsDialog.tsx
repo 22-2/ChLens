@@ -84,7 +84,7 @@ export const TitleBarButtonSettingsDialog: React.FC<TitleBarButtonSettingsDialog
         >
           <Dialog.Title className="browser-dialog-title">タイトルバーのボタン設定</Dialog.Title>
           <Dialog.Description id={descriptionId} className="browser-dialog-description">
-            垂直タブバーのタイトルバー左側に表示するボタンを選択します。
+            タブバーの配置にかかわらず、タイトルバー左側に表示するボタンを選択します。
           </Dialog.Description>
           <div className="title-bar-button-settings__list">
             <TitleBarButtonSwitch

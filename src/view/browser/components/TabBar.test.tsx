@@ -924,33 +924,6 @@ describe("TabBar tab interactions", () => {
     });
   });
 
-  it("更新ボタンをタブバー左端から押すと RELOAD が dispatch される", () => {
-    mocks.tabStore.state = {
-      ...mocks.tabStore.state,
-      tabs: [
-        {
-          ...mocks.tabStore.state.tabs[0],
-          history: [
-            {
-              type: "thread",
-              title: "スレッド",
-              threadUrl: "https://example.com/test/read.cgi/software/1/",
-            },
-          ],
-        },
-      ],
-      selectedTabId: "tab-1",
-    } as unknown as typeof mocks.tabStore.state;
-
-    const { container } = render(<TabBar />);
-    const refreshButton = container.querySelector(".tab-bar__refresh") as HTMLButtonElement;
-
-    expect(refreshButton).not.toBeDisabled();
-    fireEvent.click(refreshButton);
-
-    expect(dispatchMock).toHaveBeenCalledWith({ type: "RELOAD", tabId: "tab-1" });
-  });
-
   it("× ボタンをクリックすると CLOSE_TAB が dispatch される", () => {
     const { container } = render(<TabBar />);
     const closeBtn = container.querySelectorAll(".tab__close")[0] as HTMLButtonElement;
@@ -1067,8 +1040,12 @@ describe("TabBar vertical", () => {
     expect(tabList).toHaveAttribute("role", "tablist");
   });
 
-  it("垂直では更新ボタンをバーに置かずタイトルバー左端へ任せる", () => {
-    const { container } = render(<TabBar orientation="vertical" />);
+  it("水平・垂直どちらでも更新ボタンを置かずタイトルバーへ集約する", () => {
+    const { container, rerender } = render(<TabBar orientation="horizontal" />);
+
+    expect(container.querySelector(".tab-bar__refresh")).toBeNull();
+
+    rerender(<TabBar orientation="vertical" />);
 
     expect(container.querySelector(".tab-bar__refresh")).toBeNull();
     expect(container.querySelector(".tab-bar__collapse")).not.toBeNull();

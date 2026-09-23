@@ -8,7 +8,6 @@ import {
   Pin,
   Plus,
   RotateCcw,
-  RotateCw,
   X,
 } from "lucide-react";
 import normalizeWheel from "normalize-wheel";
@@ -35,7 +34,6 @@ import type { Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { isAutoRefreshEnabledForPage } from "src/view/browser/utils/auto-refresh-pages";
-import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 
 interface ContextMenuState {
   tab: Tab;
@@ -366,11 +364,8 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
   }, [handleTabListResize, updateTabListScrollState, visibleTabs]);
 
   const selectedTab = visibleTabs.find((tab) => tab.id === selectedTabId) ?? visibleTabs[0] ?? null;
-  const selectedPage = selectedTab ? getCurrentPage(selectedTab) : null;
   const runTabCommand = useTabCommandRunner(selectedTab?.id ?? "");
   const isTabListScrollable = tabListScrollState.canScrollLeft || tabListScrollState.canScrollRight;
-  // 更新は常用操作としてタブバー左端にも置くが、再取得できないページでは無効化する。
-  const canRefresh = selectedPage ? isPageRefreshable(selectedPage) : false;
 
   useEffect(() => {
     const prev = prevTabIdsRef.current;
@@ -510,7 +505,7 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
     if (
       target instanceof Element &&
       target.closest(
-        ".tab, .tab-bar__add, .tab-bar__refresh, .tab-bar__bookmark, [data-context-menu-trigger], [data-popup='true']",
+        ".tab, .tab-bar__add, .tab-bar__bookmark, [data-context-menu-trigger], [data-popup='true']",
       )
     ) {
       return;
@@ -691,19 +686,6 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
 
   const displayWidth = dragWidth ?? width;
 
-  const refreshButton = (
-    <button
-      type="button"
-      className="tab-bar__refresh"
-      disabled={!canRefresh}
-      onClick={() => runTabCommand(TAB_COMMAND_IDS.RELOAD)}
-      title="更新"
-      aria-label="更新"
-    >
-      <RotateCw size={16} />
-    </button>
-  );
-
   return (
     <div
       ref={barRef}
@@ -722,8 +704,7 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
       }
       onContextMenu={handleBarContextMenu}
     >
-      {/* 変更理由: 垂直モードの更新ボタンはタイトルバー左端へ移したため、
-          バー上部には開閉ボタンのみ残す。 */}
+      {/* 変更理由: 更新ボタンはタイトルバーへ集約し、タブバー上部はタブ操作に使う。 */}
       {isVertical ? (
         <>
           <div className="tab-bar__vertical-header">
@@ -740,12 +721,7 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
             </button>
           </div>
         </>
-      ) : (
-        <>
-          {refreshButton}
-          <span className="tab-bar__refresh-divider" aria-hidden="true" />
-        </>
-      )}
+      ) : null}
       <DragDropProvider onDragEnd={handleDragEnd}>
         <div
           className={`tab-list-container${

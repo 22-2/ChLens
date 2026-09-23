@@ -2,8 +2,6 @@ import { ArrowLeft, ArrowRight, RotateCw } from "lucide-react";
 import React, { useCallback, useState } from "react";
 import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
 import { TabContextMenu } from "src/view/browser/components/TabContextMenu";
-import { useDetachedTabController } from "src/view/browser/hooks/use-detached-tab-controller";
-import { useTabBarOrientation } from "src/view/browser/hooks/use-tab-bar-orientation";
 import { useTabCommandRunner } from "src/view/browser/hooks/use-tab-command-runner";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useTitleBarButtonSettings } from "src/view/browser/hooks/use-title-bar-navigation-setting";
@@ -23,14 +21,8 @@ export interface TitleBarProps {
 export const TitleBar: React.FC<TitleBarProps> = ({ showNavigationButtons = true }) => {
   const { viewTab, viewPage, paneId } = useTabStore();
   const title = viewPage.title || "read.crx 2";
-  const tabBarOrientation = useTabBarOrientation();
-  const { isDetachedTab } = useDetachedTabController();
   const runTabCommand = useTabCommandRunner(viewTab.id);
   const { backEnabled, forwardEnabled, refreshEnabled } = useTitleBarButtonSettings();
-  // 変更理由: 垂直モードでは更新ボタンをタイトルバー左端に置き、タブバーの上部を空ける。
-  // 水平モードではタブバー側に更新があるため通常は左端を空けるが、別窓では
-  // タブバーが存在しないため、同じ既存ボタンをタイトルバーへ移して操作経路を保つ。
-  const showLeadingControls = tabBarOrientation === "vertical" || isDetachedTab(viewTab.id);
   const canNavigateBack = canGoBack(viewTab);
   const canNavigateForward = canGoForward(viewTab);
   const canRefresh = isPageRefreshable(viewPage);
@@ -49,7 +41,8 @@ export const TitleBar: React.FC<TitleBarProps> = ({ showNavigationButtons = true
   return (
     <header className="title-bar" data-testid="title-bar">
       <div className="title-bar__leading" data-testid="title-bar-leading">
-        {showLeadingControls && showNavigationButtons && (
+        {/* 変更理由: 戻る・進む・更新はタブバーの向きに関係なくタイトルバーに集約する。 */}
+        {showNavigationButtons && (
           <>
             {backEnabled && (
               <button

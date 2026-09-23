@@ -160,7 +160,6 @@
 }
 
 .tab-bar__add,
-.tab-bar__refresh,
 .tab-bar__bookmark {
   display: flex;
   flex-shrink: 0;
@@ -179,35 +178,6 @@
   margin: 0 0 0 var(--sys-space-1);
   border-radius: 2px;
   line-height: 0;
-}
-
-.tab-bar__refresh {
-  align-self: center;
-  width: 30px;
-  height: 30px;
-  margin: 0 6px;
-  border-radius: 2px;
-  transition:
-    background 0.1s,
-    color 0.1s;
-}
-
-.tab-bar__refresh-divider {
-  flex-shrink: 0;
-  width: 1px;
-  height: 18px;
-  margin-right: 6px;
-  background: var(--sys-color-divider-subtle);
-}
-
-.tab-bar__refresh:hover:not(:disabled) {
-  background: var(--sys-color-tab-strip-hover);
-  color: var(--sys-color-text);
-}
-
-.tab-bar__refresh:disabled {
-  color: var(--sys-color-text-disabled);
-  cursor: default;
 }
 
 .tab-bar__add:hover {

@@ -67,10 +67,6 @@ vi.mock("src/view/browser/components/TabContextMenu", () => ({
   ),
 }));
 
-const { orientationHolder } = vi.hoisted(() => ({
-  orientationHolder: { value: "horizontal" },
-}));
-
 const { titleBarButtonSettingsHolder } = vi.hoisted(() => ({
   titleBarButtonSettingsHolder: {
     value: {
@@ -81,23 +77,8 @@ const { titleBarButtonSettingsHolder } = vi.hoisted(() => ({
   },
 }));
 
-const { detachedTabHolder } = vi.hoisted(() => ({
-  detachedTabHolder: { value: false },
-}));
-
-vi.mock("src/view/browser/hooks/use-tab-bar-orientation", () => ({
-  // 変更理由: タイトルバー左端の更新ボタンは垂直モードだけで出すため、方向指定で切り替える。
-  useTabBarOrientation: () => orientationHolder.value,
-}));
-
 vi.mock("src/view/browser/hooks/use-title-bar-navigation-setting", () => ({
   useTitleBarButtonSettings: () => titleBarButtonSettingsHolder.value,
-}));
-
-vi.mock("src/view/browser/hooks/use-detached-tab-controller", () => ({
-  useDetachedTabController: () => ({
-    isDetachedTab: () => detachedTabHolder.value,
-  }),
 }));
 
 describe("TitleBar", () => {
@@ -111,13 +92,11 @@ describe("TitleBar", () => {
       title: "Current Thread",
       threadUrl: "https://egg.5ch.net/test/read.cgi/software/1/",
     };
-    orientationHolder.value = "horizontal";
     titleBarButtonSettingsHolder.value = {
       backEnabled: true,
       forwardEnabled: true,
       refreshEnabled: true,
     };
-    detachedTabHolder.value = false;
     mocks.viewTab.history = [
       {
         type: "thread",
@@ -153,8 +132,7 @@ describe("TitleBar", () => {
     expect(screen.getByTestId("title-bar-nav-slot")).toHaveAttribute("data-pane-id", "pane-1");
   });
 
-  it("垂直モードでは左端に更新ボタンを出す", () => {
-    orientationHolder.value = "vertical";
+  it("水平モードでも左端に更新ボタンを出す", () => {
     render(<TitleBar />);
 
     const refreshButton = screen.getByRole("button", { name: "更新" });
@@ -165,8 +143,7 @@ describe("TitleBar", () => {
     expect(dispatchMock).toHaveBeenCalledWith({ type: "RELOAD", tabId: "tab-1" });
   });
 
-  it("垂直モードでは更新ボタンの左側に戻る・進むを表示する", () => {
-    orientationHolder.value = "vertical";
+  it("水平モードでも更新ボタンの左側に戻る・進むを表示する", () => {
     mocks.viewTab.history = [
       {
         type: "home",
@@ -201,7 +178,6 @@ describe("TitleBar", () => {
   });
 
   it("設定でタイトルバーの各ボタンを個別に非表示にできる", () => {
-    orientationHolder.value = "vertical";
     titleBarButtonSettingsHolder.value = {
       backEnabled: false,
       forwardEnabled: false,
@@ -216,16 +192,18 @@ describe("TitleBar", () => {
     expect(leading).toBeEmptyDOMElement();
   });
 
-  it("水平モードでは左端を空のままにする", () => {
+  it("水平モードでもタイトルバー左端に設定された操作ボタンを表示する", () => {
     render(<TitleBar />);
 
-    expect(screen.getByTestId("title-bar-leading")).toBeEmptyDOMElement();
-    expect(screen.queryByRole("button", { name: "更新" })).toBeNull();
+    const leading = screen.getByTestId("title-bar-leading");
+    expect([...leading.querySelectorAll("button")].map((button) => button.title)).toEqual([
+      "戻る",
+      "進む",
+      "更新",
+    ]);
   });
 
-  it("別窓では水平モードでも既存の履歴操作をタイトルバーへ表示する", () => {
-    orientationHolder.value = "horizontal";
-    detachedTabHolder.value = true;
+  it("水平モードで戻る・進む・更新の操作先を保持する", () => {
     mocks.viewTab.history = [
       {
         type: "home",
@@ -246,8 +224,12 @@ describe("TitleBar", () => {
       "進む",
       "更新",
     ]);
-    expect(screen.queryByRole("button", { name: "戻す" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "閉じる" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "戻る" }));
+    fireEvent.click(screen.getByRole("button", { name: "進む" }));
+    fireEvent.click(screen.getByRole("button", { name: "更新" }));
+    expect(dispatchMock).toHaveBeenNthCalledWith(1, { type: "GO_BACK", tabId: "tab-1" });
+    expect(dispatchMock).toHaveBeenNthCalledWith(2, { type: "GO_FORWARD", tabId: "tab-1" });
+    expect(dispatchMock).toHaveBeenNthCalledWith(3, { type: "RELOAD", tabId: "tab-1" });
   });
 
   it("長いタイトルは省略可能なタイトル属性を持つ", () => {

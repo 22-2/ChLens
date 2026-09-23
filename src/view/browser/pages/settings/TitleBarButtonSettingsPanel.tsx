@@ -29,7 +29,7 @@ export const TitleBarButtonSettingsPanel: React.FC = () => {
         <SurfaceHeader>
           <SurfaceTitle>タイトルバー</SurfaceTitle>
           <SurfaceDescription>
-            垂直タブバー使用時、タイトルバー左側へ表示する戻る・進む・更新ボタンを選択します。
+            タブバーの配置にかかわらず、タイトルバー左側へ表示する戻る・進む・更新ボタンを選択します。
           </SurfaceDescription>
         </SurfaceHeader>
         <SurfaceBody>
