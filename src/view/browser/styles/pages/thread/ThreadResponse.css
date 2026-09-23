@@ -633,12 +633,6 @@
   font-size: var(--sys-font-size-sm);
 }
 
-.res__twitter-post-footer > :not(:first-child)::before {
-  content: "·";
-  margin-inline-end: var(--sys-space-2);
-  color: var(--sys-color-text-muted);
-}
-
 .res__twitter-post-external {
   margin-inline-start: auto;
 }
