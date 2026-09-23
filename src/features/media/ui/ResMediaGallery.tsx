@@ -1,3 +1,4 @@
+import { parseMessage } from "@chlen/ch-lib";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import { imgurVideoResolver, isImgurVideoResolutionCandidate } from "../application/imgur-album";
@@ -39,6 +40,22 @@ interface ResMediaGalleryProps {
 type ThumbStyle = React.CSSProperties & {
   "--res-thumb-blur-radius"?: string;
 };
+
+function renderTwitterPostText(text: string): React.ReactNode[] {
+  return parseMessage(text, { protocol: "https:" }).map((token, index) => {
+    const key = `${index}-${token.type}`;
+    if (token.type === "url") {
+      return (
+        <a key={key} href={token.href} target="_blank" rel="noopener noreferrer">
+          {token.value}
+        </a>
+      );
+    }
+
+    // 変更理由: URL解析は掲示板本文と共通化しつつ、FxTwitter由来のタグはHTMLとして実行しない。
+    return <React.Fragment key={key}>{token.value}</React.Fragment>;
+  });
+}
 
 interface ImageMediaItem {
   type: "image";
@@ -207,7 +224,7 @@ function TwitterPostCard({
           )}
         </div>
       </div>
-      {post.text && <p className="res__twitter-post-text">{post.text}</p>}
+      {post.text && <p className="res__twitter-post-text">{renderTwitterPostText(post.text)}</p>}
       {visibleMetrics.length > 0 && (
         <div className="res__twitter-post-metrics" aria-label="投稿の反応数">
           {visibleMetrics.map(({ key, icon, label }) => {

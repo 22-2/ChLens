@@ -77,7 +77,7 @@ describe("ResMediaGallery", () => {
     const resolve = vi.spyOn(twitterPostResolver, "resolve").mockResolvedValue({
       id: "1234567890123456789",
       url: rawUrl,
-      text: "投稿本文",
+      text: "投稿本文 https://example.com/post-link. https://example.com/second",
       createdTimestamp: 0,
       source: "Twitter Web App",
       author: {
@@ -116,8 +116,16 @@ describe("ResMediaGallery", () => {
 
       fireEvent.click(postButton);
 
-      await waitFor(() => expect(screen.getByText("投稿本文")).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText(/投稿本文/)).toBeInTheDocument());
       expect(container.querySelector(".res__twitter-post")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "https://example.com/post-link" })).toHaveAttribute(
+        "href",
+        "https://example.com/post-link",
+      );
+      expect(screen.getByRole("link", { name: "https://example.com/second" })).toHaveAttribute(
+        "target",
+        "_blank",
+      );
       expect(screen.getByLabelText("金色の認証バッジ")).toBeInTheDocument();
       expect(screen.getByLabelText("返信 412件")).toHaveTextContent("412");
       expect(screen.getByLabelText("リポスト 3,300件")).toHaveTextContent("3.3K");
