@@ -1,7 +1,6 @@
 import {
-  buildConditionalRequestHeaders,
-  buildThreadFetchPlan,
   ChURL,
+  executeThreadFetch,
   getThreadXhrInfo,
   isHtmlThread,
   parseChThread,
@@ -12,13 +11,11 @@ import {
   parseNetThread,
   parsePinkThread,
   parseThread,
-  resolveThreadFromResponse,
-  shouldRejectThreadResult,
   type ThreadRes,
+  type ThreadResponse,
   type XhrInfo,
 } from "packages/ch-lib/src/index";
 import { platform } from "src/app";
-import type { HttpResponse } from "src/app/platform/types";
 import type Cache from "src/core/Cache.js";
 import { chServerMoveDetect } from "src/core/jsutil.js";
 import { isMissingFromSubject } from "src/core/SubjectPresence";
@@ -38,7 +35,7 @@ interface CachedInfoResult {
 }
 
 interface ThreadFailure {
-  response?: HttpResponse;
+  response?: ThreadResponse;
   thread?: ParsedThread;
 }
 
@@ -48,18 +45,10 @@ interface PrepareResult {
   needFetch: boolean;
 }
 
-/** _doFetch の戻り値 */
-interface FetchResult {
-  response: HttpResponse;
-  xhrPath: string;
-  deltaFlg: boolean;
-  readcgiVer: number;
-}
-
 /** _updateCacheAfterFetch に渡すパラメータ */
 interface UpdateCacheParams {
   cache: Cache;
-  response: HttpResponse | undefined;
+  response: ThreadResponse | undefined;
   thread: ParsedThread;
   deltaFlg: boolean;
   isHtml: boolean;
@@ -152,7 +141,7 @@ export default class Thread {
       progress,
     );
 
-    let response: HttpResponse | undefined;
+    let response: ThreadResponse | undefined;
     let thread: ParsedThread | undefined;
     let deltaFlg = false;
     let readcgiVer = 5;
@@ -162,50 +151,51 @@ export default class Thread {
 
     try {
       // --- フェッチ ---
-      if (needFetch) {
-        const fetched = await this._doFetch({
-          cache,
-          hasCache,
+      // 変更理由: 取得計画・通信・差分合成をMCPと同じ実行器に通し、
+      // 呼び出し元ごとに挙動がずれるのを防ぐ。キャッシュ保存だけはアプリ側に残す。
+      const executed = await executeThreadFetch(
+        {
+          tsld: this.tsld,
+          isArchive: this.url.isArchive,
           isHtml,
-          xhrBasePath,
-          xhrCharset,
-        });
-        response = fetched.response;
-        deltaFlg = fetched.deltaFlg;
-        readcgiVer = fetched.readcgiVer;
-      }
+          hasCache,
+          basePath: xhrBasePath,
+          cacheResLength: cache.resLength,
+          cacheReadcgiVer: cache.readcgiVer,
+          charset: xhrCharset,
+          lastModified: cache.lastModified,
+          etag: cache.etag,
+          bbsType: this.url.bbsType,
+          cacheData: cache.data,
+          cacheParsed: this._getCachedParsedThread(cache),
+          url: this.url,
+          format2chnet,
+          parseThreadFn: parseThread,
+        },
+        needFetch
+          ? {
+              fetch: async (path, charset, headers) =>
+                platform.http.fetch(path, {
+                  method: "GET",
+                  mimeType: `text/plain; charset=${charset}`,
+                  headers: { ...headers },
+                }),
+            }
+          : undefined,
+      );
+      response = executed.response;
+      deltaFlg = executed.plan.deltaFlg;
+      readcgiVer = executed.plan.readcgiVer;
 
       // --- レスポンス解析 ---
-      // 変更理由: 差分レスの合成規則をMCPと共有し、画面専用Threadへ二重実装しない。
-      const resolved = resolveThreadFromResponse({
-        response,
-        readcgiVer,
-        deltaFlg,
-        isHtml,
-        bbsType: this.url.bbsType,
-        hasCache,
-        cacheData: cache.data,
-        cacheParsed: this._getCachedParsedThread(cache),
-        cacheResLength: cache.resLength,
-        url: this.url,
-        format2chnet,
-        parseThreadFn: parseThread,
-      });
+      const resolved = executed;
       thread = resolved.thread;
       noChangeFlg = resolved.noChangeFlg;
 
       if (!thread) {
         throw { response };
       }
-      if (
-        shouldRejectThreadResult({
-          thread,
-          response,
-          bbsType: this.url.bbsType,
-          readcgiVer,
-          hasCache,
-        })
-      ) {
+      if (resolved.rejected) {
         throw { response, thread };
       }
 
@@ -330,53 +320,6 @@ export default class Thread {
     }
   }
 
-  /**
-   * フェッチ計画を組み立てて HTTP リクエストを実行する。
-   * URL の決定・差分フラグ・readcgi バージョン・条件付きヘッダーの生成を担う。
-   */
-  private async _doFetch({
-    cache,
-    hasCache,
-    isHtml,
-    xhrBasePath,
-    xhrCharset,
-  }: {
-    cache: Cache;
-    hasCache: boolean;
-    isHtml: boolean;
-    xhrBasePath: string;
-    xhrCharset: string;
-  }): Promise<FetchResult> {
-    const plan = buildThreadFetchPlan({
-      tsld: this.tsld,
-      isArchive: this.url.isArchive,
-      isHtml,
-      hasCache,
-      basePath: xhrBasePath,
-      cacheResLength: cache.resLength,
-      cacheReadcgiVer: cache.readcgiVer,
-    });
-
-    const headers = buildConditionalRequestHeaders({
-      hasCache,
-      lastModified: cache.lastModified,
-      etag: cache.etag,
-    });
-
-    const response = await platform.http.fetch(plan.xhrPath, {
-      method: "GET",
-      mimeType: `text/plain; charset=${xhrCharset}`,
-      headers,
-    });
-
-    return {
-      response,
-      xhrPath: plan.xhrPath,
-      deltaFlg: plan.deltaFlg,
-      readcgiVer: plan.readcgiVer,
-    };
-  }
-
   // -------------------------------------------------------------------------
   // Private: スレッドへの後処理
   // -------------------------------------------------------------------------
@@ -497,11 +440,11 @@ export default class Thread {
       cache.resLength = thread.res.length;
 
       if (response) {
-        const lastModified = new Date(response.headers["Last-Modified"] || "dummy").getTime();
+        const lastModified = new Date(response.headers?.["Last-Modified"] || "dummy").getTime();
         if (Number.isFinite(lastModified)) {
           cache.lastModified = lastModified;
         }
-        const etag = response.headers["ETag"];
+        const etag = response.headers?.["ETag"];
         if (etag) {
           cache.etag = etag;
         }
@@ -566,7 +509,7 @@ export default class Thread {
     hasCache,
     thread,
   }: {
-    response: HttpResponse | undefined;
+    response: ThreadResponse | undefined;
     hasCache: boolean;
     thread: ParsedThread | undefined;
   }): Promise<string> {
@@ -588,7 +531,7 @@ export default class Thread {
     hasCache,
     thread,
   }: {
-    response: HttpResponse;
+    response: ThreadResponse;
     hasCache: boolean;
     thread: ParsedThread | undefined;
   }): Promise<string> {
@@ -618,7 +561,7 @@ export default class Thread {
    * したらば向けエラーメッセージ。
    * レスポンスの error ヘッダーによって詳細なメッセージを付加する。
    */
-  private _buildShitarabaErrorMessage(response: HttpResponse | undefined): string {
+  private _buildShitarabaErrorMessage(response: ThreadResponse | undefined): string {
     let message = "スレッドの読み込みに失敗しました。";
     const errorHeader = response?.headers?.error;
     if (errorHeader == null) return message;

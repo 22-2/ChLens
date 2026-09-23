@@ -1,12 +1,10 @@
 import {
-  buildConditionalRequestHeaders,
-  buildThreadFetchPlan,
+  executeThreadFetch,
   getThreadXhrInfo,
   isHtmlThread,
   type ParsedThread,
   parseThread,
-  resolveThreadFromResponse,
-  shouldRejectThreadResult,
+  type ThreadResponse,
   toCanonicalThread,
 } from "@chlen/ch-lib";
 import browser from "webextension-polyfill";
@@ -173,8 +171,12 @@ function canonicalToLegacy(parsed: ParsedThread): ParsedThread {
   };
 }
 
-function headerValue(response: Response, name: string): string | null {
-  return response.headers.get(name);
+function headerValue(response: ThreadResponse, name: string): string | null {
+  const normalizedName = name.toLowerCase();
+  const entry = Object.entries(response.headers ?? {}).find(
+    ([key]) => key.toLowerCase() === normalizedName,
+  );
+  return entry?.[1] ?? null;
 }
 
 function extractReadcgiVersion(body: string): number | null {
@@ -188,7 +190,7 @@ function extractReadcgiVersion(body: string): number | null {
 function toHttpResponse(response: Response, body: string, url: string): HttpResponse {
   const headers: Record<string, string> = {};
   response.headers.forEach((value, key) => {
-    headers[key] = value;
+    headers[key.toLowerCase()] = value;
   });
   return { status: response.status, headers, body, url };
 }
@@ -203,7 +205,7 @@ async function saveThreadCache(
   chUrl: ChURL,
   parsed: ParsedThread,
   rawData: string | null,
-  response: Response,
+  response: ThreadResponse,
   readcgiVer: number,
   previous: WorkerCacheRecord | null,
 ): Promise<void> {
@@ -296,59 +298,48 @@ async function readThread(params: ThreadReadParams): Promise<BridgeThreadResult>
   // 直接取得する。既存の差分計画と条件付きヘッダーを共有し、同じURLを短時間に
   // 何度も要求しても掲示板へ不要な全量通信を送らない。
   const isHtml = isHtmlThread(chUrl, format2chnet);
-  const plan = buildThreadFetchPlan({
-    tsld: chUrl.getTsld(),
-    isArchive: chUrl.isArchive,
-    isHtml,
-    hasCache: cachedParsed != null,
-    basePath: xhrInfo.path,
-    cacheResLength: cache?.res_length,
-    cacheReadcgiVer: cache?.readcgi_ver,
-  });
-  const requestHeaders = buildConditionalRequestHeaders({
-    hasCache: cachedParsed != null,
-    lastModified: cache?.last_modified,
-    etag: cache?.etag,
-  });
-  const response = await fetch(plan.xhrPath, { headers: requestHeaders });
-  const bodyBuffer = await response.arrayBuffer();
-  const body = new TextDecoder(xhrInfo.charset).decode(bodyBuffer);
-  const httpResponse = toHttpResponse(response, body, plan.xhrPath);
-  const resolved = resolveThreadFromResponse({
-    response: httpResponse,
-    readcgiVer: plan.readcgiVer,
-    deltaFlg: plan.deltaFlg,
-    isHtml,
-    bbsType: chUrl.bbsType,
-    hasCache: cachedParsed != null,
-    cacheData: cache?.data,
-    cacheParsed: cachedParsed,
-    cacheResLength: cache?.res_length,
-    url: chUrl,
-    format2chnet,
-    parseThreadFn: parseThread,
-  });
-  const parsed = resolved.thread;
-  if (!parsed || parsed.res.length === 0) {
-    throw new Error(`スレッドを取得できませんでした (HTTP ${response.status})`);
-  }
-
-  if (
-    shouldRejectThreadResult({
-      thread: parsed,
-      response: httpResponse,
-      bbsType: chUrl.bbsType,
-      readcgiVer: plan.readcgiVer,
+  // 変更理由: 画面側と同じ取得実行器を使い、差分URL・条件付きヘッダー・
+  // 文字コード変換・レスポンス合成の規則がMCPだけ別になるのを防ぐ。
+  const execution = await executeThreadFetch(
+    {
+      tsld: chUrl.getTsld(),
+      isArchive: chUrl.isArchive,
+      isHtml,
       hasCache: cachedParsed != null,
-    })
-  ) {
+      basePath: xhrInfo.path,
+      cacheResLength: cache?.res_length,
+      cacheReadcgiVer: cache?.readcgi_ver,
+      charset: xhrInfo.charset,
+      lastModified: cache?.last_modified,
+      etag: cache?.etag,
+      bbsType: chUrl.bbsType,
+      cacheData: cache?.data,
+      cacheParsed: cachedParsed,
+      url: chUrl,
+      format2chnet,
+      parseThreadFn: parseThread,
+    },
+    {
+      fetch: async (path, charset, headers) => {
+        const response = await fetch(path, { headers: { ...headers } });
+        const bodyBuffer = await response.arrayBuffer();
+        const body = new TextDecoder(charset).decode(bodyBuffer);
+        return toHttpResponse(response, body, path);
+      },
+    },
+  );
+  const { plan } = execution;
+  const response = execution.response;
+  const body = response?.body ?? "";
+  const parsed = execution.thread;
+  if (!parsed || parsed.res.length === 0 || execution.rejected) {
     // 画面側ThreadServiceと同じく、キャッシュを表示できても異常なHTTP応答は
     // 成功扱いにしない。MCP側で「新しい取得に失敗した」ことを判断できるようにする。
-    throw new Error(`スレッドを取得できませんでした (HTTP ${response.status})`);
+    throw new Error(`スレッドを取得できませんでした (HTTP ${response?.status ?? "unknown"})`);
   }
 
   const readcgiVer = extractReadcgiVersion(body) ?? cache?.readcgi_ver ?? plan.readcgiVer;
-  if (isSuccessfulThreadResponse(response.status, readcgiVer)) {
+  if (response && isSuccessfulThreadResponse(response.status, readcgiVer)) {
     const nextRawData =
       response.status === 304
         ? null
