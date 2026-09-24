@@ -233,7 +233,7 @@ const ThreadListAutoRefreshPanelContent: React.FC<ThreadListAutoRefreshPanelCont
         />
         <span className="mini-window__slider-value">{intervalSec}秒</span>
       </div>
-      <p className="mini-window__note">20秒から300秒の範囲で設定できます</p>
+      <p className="mini-window__note">10秒から300秒の範囲で設定できます</p>
     </div>
   </>
 );
