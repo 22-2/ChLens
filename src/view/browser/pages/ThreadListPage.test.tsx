@@ -255,7 +255,7 @@ describe("ThreadListPage", () => {
         (b as { received?: number }).received !== (a as { received?: number }).received,
     } as unknown as typeof serviceContainer.util;
     serviceContainer.config = {
-      get: vi.fn((key: string) => (key === "auto_load_second_board" ? "20000" : "0")),
+      get: vi.fn((key: string) => (key === "auto_load_second_board" ? "10000" : "0")),
       set: vi.fn(),
       getAll: () => ({}),
       ready: (callback: () => void) => callback(),
@@ -329,7 +329,7 @@ describe("ThreadListPage", () => {
         isAutoRefreshEnabled={props.isAutoRefreshEnabled}
       />,
     );
-    await vi.advanceTimersByTimeAsync(20000);
+    await vi.advanceTimersByTimeAsync(10000);
     expect(dispatchMock).not.toHaveBeenCalledWith({ type: "RELOAD" });
 
     selectedTabIdRef.current = "tab-1";
@@ -342,7 +342,7 @@ describe("ThreadListPage", () => {
         isAutoRefreshEnabled={props.isAutoRefreshEnabled}
       />,
     );
-    await vi.advanceTimersByTimeAsync(20000);
+    await vi.advanceTimersByTimeAsync(10000);
     expect(dispatchMock).toHaveBeenCalledWith({ type: "RELOAD", tabId: "tab-1" });
   });
 

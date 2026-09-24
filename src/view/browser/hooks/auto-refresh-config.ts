@@ -15,8 +15,9 @@ export const MIN_THREAD_AUTO_REFRESH_SEC = 5;
 export const MAX_THREAD_AUTO_REFRESH_SEC = 120;
 export const BOARD_AUTO_REFRESH_CONFIG_KEY = "auto_load_second_board";
 export const DEFAULT_BOARD_AUTO_REFRESH_MS = 20000;
-export const MIN_BOARD_AUTO_REFRESH_MS = 20000;
-export const MIN_BOARD_AUTO_REFRESH_SEC = 20;
+// スレ一覧は実況用途でも使われるため、過度な通信を避けつつ10秒間隔を選べるようにする。
+export const MIN_BOARD_AUTO_REFRESH_MS = 10000;
+export const MIN_BOARD_AUTO_REFRESH_SEC = 10;
 export const MAX_BOARD_AUTO_REFRESH_SEC = 300;
 
 // -----------------------------------------------------------------------
