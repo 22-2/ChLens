@@ -1,16 +1,16 @@
 import type { ParsedThread } from "packages/ch-lib/src/index";
-import type { HttpResponse } from "src/app/platform/types";
 import { describe, expect, it, vi } from "vite-plus/test";
 
 const mocks = vi.hoisted(() => ({
   getConfig: vi.fn(() => null),
   getCache: vi.fn(() => ({})),
+  fetch: vi.fn(),
   updateResCount: vi.fn(),
   updateExpired: vi.fn(),
 }));
 
 vi.mock("src/app", () => ({
-  platform: {},
+  platform: { http: { fetch: mocks.fetch } },
 }));
 
 vi.mock("src/service-container/index", () => ({
@@ -31,19 +31,14 @@ vi.mock("src/core/jsutil.js", () => ({
 import Thread from "src/core/Thread.js";
 
 interface ThreadInternals {
-  _buildDomainErrorMessage: () => Promise<string>;
-  _doFetch: () => Promise<{
-    response: HttpResponse;
-    xhrPath: string;
-    deltaFlg: boolean;
-    readcgiVer: number;
-  }>;
+  _buildDomainErrorMessage: (options: unknown) => Promise<string>;
   _fetchCachedResCount: () => Promise<{ status: string }>;
-  _parseResponseIntoThread: () => {
-    thread: ParsedThread;
-    noChangeFlg: boolean;
-  };
-  _prepareCache: () => Promise<{ hasCache: boolean; needFetch: boolean }>;
+  _prepareCache: (
+    cache: unknown,
+    format2chnet: string | null | undefined,
+    forceUpdate: boolean | undefined,
+    progress: () => void,
+  ) => Promise<{ hasCache: boolean; needFetch: boolean }>;
   _padAbobunIfNeeded: (
     thread: ParsedThread,
     result: { status: string; cachedInfo?: { resCount: number } },
@@ -54,26 +49,13 @@ describe("Thread", () => {
   it("本文取得が失敗しても板一覧から消えていればsubject不在を返す", async () => {
     const thread = new Thread("https://example.com/test/read.cgi/board/1000000000/");
     const testableThread = thread as unknown as ThreadInternals;
-    const parsedThread = {
-      title: "テストスレッド",
-      res: [],
-    } as ParsedThread;
 
     vi.spyOn(testableThread, "_prepareCache").mockResolvedValue({
       hasCache: true,
       needFetch: true,
     });
     vi.spyOn(testableThread, "_fetchCachedResCount").mockResolvedValue({ status: "not_found" });
-    vi.spyOn(testableThread, "_doFetch").mockResolvedValue({
-      response: { status: 404, body: "" } as HttpResponse,
-      xhrPath: "https://example.com/board/dat/1000000000.dat",
-      deltaFlg: true,
-      readcgiVer: 5,
-    });
-    vi.spyOn(testableThread, "_parseResponseIntoThread").mockReturnValue({
-      thread: parsedThread,
-      noChangeFlg: false,
-    });
+    mocks.fetch.mockRejectedValue(new Error("通信に失敗しました"));
     vi.spyOn(testableThread, "_buildDomainErrorMessage").mockResolvedValue("取得に失敗しました");
 
     // 変更理由: dat落ちのHTTPステータスはサーバーごとに異なるため、

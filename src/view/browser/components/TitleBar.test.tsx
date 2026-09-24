@@ -214,6 +214,11 @@ describe("TitleBar", () => {
         title: "Current Thread",
         threadUrl: "https://egg.5ch.net/test/read.cgi/software/1/",
       },
+      // 変更理由: 進む操作を有効にし、戻る・進む両方のコマンド発行を検証する。
+      {
+        type: "home",
+        title: "次のページ",
+      },
     ];
     mocks.viewTab.currentIndex = 1;
     render(<TitleBar />);

@@ -61,7 +61,8 @@ describe("設定セクションの実行環境フィルター", () => {
     const display = getSettingsSections(false).find((section) => section.id === "display");
     const keys = display?.fields.map((field) => ("key" in field ? field.key : field.id));
 
-    expect(general?.supplementaryPanelIds).not.toContain("titleBarButtonSettings");
+    expect(general).toBeDefined();
+    expect(general?.supplementaryPanelIds ?? []).not.toContain("titleBarButtonSettings");
     expect(display?.supplementaryPanelIds).toContain("titleBarButtonSettings");
     expect(keys).not.toContain("title_bar_back");
     expect(keys).not.toContain("title_bar_forward");
