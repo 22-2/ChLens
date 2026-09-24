@@ -5,10 +5,10 @@ import type { BBSMenu } from "src/core/BBSMenuParser";
 import { getBoardUrlKey, normalizeBoardUrl } from "src/core/BoardUrlNormalizer";
 import { container } from "src/service-container/index";
 import {
-  MAX_BOARD_AUTO_REFRESH_SEC,
-  MAX_THREAD_AUTO_REFRESH_SEC,
-  MIN_BOARD_AUTO_REFRESH_SEC,
-  MIN_THREAD_AUTO_REFRESH_SEC,
+  MAX_BOARD_AUTO_REFRESH_MS,
+  MAX_THREAD_AUTO_REFRESH_MS,
+  MIN_BOARD_AUTO_REFRESH_MS,
+  MIN_THREAD_AUTO_REFRESH_SETTING_MS,
 } from "src/view/browser/hooks/auto-refresh-config";
 import { Button } from "src/view/browser/ui/Button";
 import { Dialog } from "src/view/browser/ui/Dialog";
@@ -63,16 +63,16 @@ const SETTING_FIELDS = [
     title: "スレッドの自動更新間隔",
     description: "スレッドを自動更新する間隔です。",
     kind: "interval",
-    min: MIN_THREAD_AUTO_REFRESH_SEC,
-    max: MAX_THREAD_AUTO_REFRESH_SEC,
+    min: MIN_THREAD_AUTO_REFRESH_SETTING_MS / 1000,
+    max: MAX_THREAD_AUTO_REFRESH_MS / 1000,
   },
   {
     key: "auto_load_second_board",
     title: "板一覧の自動更新間隔",
     description: "板一覧を自動更新する間隔です。",
     kind: "interval",
-    min: MIN_BOARD_AUTO_REFRESH_SEC,
-    max: MAX_BOARD_AUTO_REFRESH_SEC,
+    min: MIN_BOARD_AUTO_REFRESH_MS / 1000,
+    max: MAX_BOARD_AUTO_REFRESH_MS / 1000,
   },
 ] as const satisfies readonly {
   key: ScopedSettingKey;

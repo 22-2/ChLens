@@ -3,10 +3,10 @@ import {
   BOARD_AUTO_REFRESH_CONFIG_KEY,
   findIdleStopTimeoutOption,
   type IdleStopTimeoutOption,
-  MAX_BOARD_AUTO_REFRESH_SEC,
-  MAX_THREAD_AUTO_REFRESH_SEC,
-  MIN_BOARD_AUTO_REFRESH_SEC,
-  MIN_THREAD_AUTO_REFRESH_SEC,
+  MAX_BOARD_AUTO_REFRESH_MS,
+  MAX_THREAD_AUTO_REFRESH_MS,
+  MIN_BOARD_AUTO_REFRESH_MS,
+  MIN_THREAD_AUTO_REFRESH_SETTING_MS,
   readBoardAutoRefreshIntervalSec,
   readIdleStopTimeoutValue,
   readThreadAutoRefreshIntervalSec,
@@ -25,10 +25,11 @@ import {
   SCOPED_SETTINGS_CONFIG_KEY,
 } from "src/view/browser/utils/scoped-settings";
 
-export const MIN_INTERVAL_SEC = MIN_THREAD_AUTO_REFRESH_SEC;
-export const MAX_INTERVAL_SEC = MAX_THREAD_AUTO_REFRESH_SEC;
-export const MIN_BOARD_INTERVAL_SEC = MIN_BOARD_AUTO_REFRESH_SEC;
-export const MAX_BOARD_INTERVAL_SEC = MAX_BOARD_AUTO_REFRESH_SEC;
+// パネルの入力値は秒単位なので、ミリ秒を表示境界で秒へ変換する。
+export const MIN_INTERVAL_SEC = MIN_THREAD_AUTO_REFRESH_SETTING_MS / 1000;
+export const MAX_INTERVAL_SEC = MAX_THREAD_AUTO_REFRESH_MS / 1000;
+export const MIN_BOARD_INTERVAL_SEC = MIN_BOARD_AUTO_REFRESH_MS / 1000;
+export const MAX_BOARD_INTERVAL_SEC = MAX_BOARD_AUTO_REFRESH_MS / 1000;
 
 type AutoRefreshPanelKind = "thread" | "threadList" | null;
 
