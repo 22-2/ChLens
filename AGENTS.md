@@ -7,7 +7,7 @@
 
 - **パッケージマネージャ:** pnpm
 - **ビルドシステム:** Vite
-- **言語/UIライブラリ:** TypeScript, React, SCSS, Pug (HTMLテンプレート用)
+- **言語/UIライブラリ:** TypeScript, React, SCSS
 - **プラットフォーム:** Chrome, Firefox, Tauri
 - **テスト環境:** Vitest (ユニットテスト), Playwright (E2Eテスト)
 
