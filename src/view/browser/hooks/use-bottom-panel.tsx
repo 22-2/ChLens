@@ -26,9 +26,10 @@ export interface WritePanelInsertRequest {
 }
 
 const STORAGE_KEY = "chlens_bottom_panel_v1";
-const DEFAULT_HEIGHT = 200;
+export const DEFAULT_BOTTOM_PANEL_HEIGHT = 200;
 const MIN_HEIGHT = 80;
-const MAX_HEIGHT = 600;
+// 画面高の半分で一覧を開けるよう、従来の上限を一般的な表示領域より余裕のある値にする。
+const MAX_HEIGHT = 1000;
 // 既存の保存状態にタブ情報がない場合は、従来の書き込みパネルを既定にして
 // アップデート後も起動時の表示を変えない。
 const DEFAULT_ACTIVE_PANEL_TAB_ID = BOTTOM_PANEL_WRITE_TAB_ID;
@@ -79,7 +80,7 @@ interface BottomPanelContextValue {
   openPanel: (tabId?: string) => void;
   openWritePanelWithText: (text: string, threadUrl?: string) => void;
   closePanel: () => void;
-  togglePanel: (tabId?: string) => void;
+  togglePanel: (tabId?: string, openHeight?: number) => void;
   setHeight: (h: number) => void;
   setActivePanelTab: (id: string) => void;
   setThreadListAutoRefreshEnabled: (enabled: boolean) => void;
@@ -94,7 +95,7 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ childre
   const nextWritePanelInsertIdRef = useRef(0);
   const [isOpen, setIsOpen] = useState(saved.isOpen ?? false);
   const [height, setHeightState] = useState(() =>
-    Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, saved.height ?? DEFAULT_HEIGHT)),
+    Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, saved.height ?? DEFAULT_BOTTOM_PANEL_HEIGHT)),
   );
   const [activePanelTabId, setActivePanelTabIdState] = useState(() =>
     BOTTOM_PANEL_TABS.some((tab) => tab.id === saved.activeTabId)
@@ -159,7 +160,7 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ childre
   }, []);
 
   const togglePanel = useCallback(
-    (tabId?: string) => {
+    (tabId?: string, openHeight?: number) => {
       if (tabId) {
         if (!BOTTOM_PANEL_TABS.some((tab) => tab.id === tabId)) {
           return;
@@ -169,19 +170,29 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ childre
         // 書き込みとスレ一覧をどちらも1クリックで開けるようにするための挙動。
         if (activePanelTabId !== tabId) {
           setActivePanelTabIdState(tabId);
-          persist({ activeTabId: tabId, isOpen: true });
+          const patch: SavedState = { activeTabId: tabId, isOpen: true };
+          if (openHeight !== undefined) {
+            const clamped = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, openHeight));
+            setHeightState(clamped);
+            patch.height = clamped;
+          }
+          persist(patch);
           setIsOpen(true);
           return;
         }
       }
 
-      setIsOpen((prev) => {
-        const next = !prev;
-        persist({ isOpen: next });
-        return next;
-      });
+      // サイズ指定はパネルを開く操作にだけ適用し、閉じるクリックで高さ設定を変えない。
+      const next = !isOpen;
+      if (next && openHeight !== undefined) {
+        const clamped = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, openHeight));
+        setHeightState(clamped);
+        persist({ height: clamped });
+      }
+      setIsOpen(next);
+      persist({ isOpen: next });
     },
-    [activePanelTabId],
+    [activePanelTabId, isOpen],
   );
 
   const setThreadListAutoRefreshEnabled = useCallback((enabled: boolean) => {

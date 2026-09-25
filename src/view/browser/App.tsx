@@ -28,6 +28,7 @@ import {
   BOTTOM_PANEL_THREAD_LIST_TAB_ID,
   BOTTOM_PANEL_WRITE_TAB_ID,
   BottomPanelProvider,
+  DEFAULT_BOTTOM_PANEL_HEIGHT,
   useBottomPanel,
 } from "src/view/browser/hooks/use-bottom-panel";
 import { useNextThreadSearch } from "src/view/browser/hooks/use-next-thread-search";
@@ -77,7 +78,10 @@ const ThreadListPanelToggleItem: React.FC = () => {
     >
       <button
         className="status-bar__btn"
-        onClick={() => togglePanel(BOTTOM_PANEL_THREAD_LIST_TAB_ID)}
+        onClick={() => {
+          // 変更理由: スレ一覧は一覧を見ながらスレ本文も確認しやすいよう、開くたび表示領域の半分を使う。
+          togglePanel(BOTTOM_PANEL_THREAD_LIST_TAB_ID, window.innerHeight / 2);
+        }}
         aria-label="スレ一覧パネルを開閉"
       >
         <ListIcon size={12} />
@@ -142,7 +146,9 @@ const WritePanelToggleItem: React.FC = () => {
             openWriteWindow();
             return;
           }
-          togglePanel(BOTTOM_PANEL_WRITE_TAB_ID);
+          // 変更理由: 書き込みは入力欄と本文を両方見渡せる既定サイズで開き、
+          // スレ一覧を使った後も大きな高さがそのまま残らないようにする。
+          togglePanel(BOTTOM_PANEL_WRITE_TAB_ID, DEFAULT_BOTTOM_PANEL_HEIGHT);
         }}
         aria-label="書き込みパネルを開閉"
       >
