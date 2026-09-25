@@ -14,6 +14,7 @@ import { Dialog } from "src/view/browser/ui/Dialog";
 import { CheckboxField } from "src/view/browser/ui/FormControls";
 import { copyText } from "src/view/browser/utils/clipboard";
 import { bindWriteConfirmationFrame } from "src/view/browser/utils/write-confirmation";
+import { findWriteWarnings } from "src/view/browser/utils/write-warning";
 
 const WRITE_SUBMIT_CTRL_ENTER_KEY = "write_submit_ctrl_enter";
 const WRITE_CLOSE_PANEL_AFTER_SUBMIT_KEY = "write_close_panel_after_submit";
@@ -75,7 +76,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
   // 変更理由: 設定DialogのPortal先も書き込み窓と同じDocumentへ置き、別窓で
   // メイン窓のテーマ境界へ戻らないようにする。
   const viewSurface = useViewSurface();
-  const { document: viewDocument } = viewSurface;
+  const { window: viewWindow, document: viewDocument } = viewSurface;
   const bottomPanel = useOptionalBottomPanel();
   const writePanelInsertRequest = standalone ? null : bottomPanel?.writePanelInsertRequest;
   const clearWritePanelInsertRequest = bottomPanel?.clearWritePanelInsertRequest ?? noop;
@@ -93,10 +94,14 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
   const errorDialogDescriptionId = useId();
   const authCodeUrlInputId = useId();
   const settingsDialogDescriptionId = useId();
+  const warningDialogDescriptionId = useId();
   const [dialogPortalContainer, setDialogPortalContainer] = useState<HTMLElement | null>(
     portalContainer ?? null,
   );
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
+  const [isWarningDialogOpen, setIsWarningDialogOpen] = useState(false);
+  const [writeWarnings, setWriteWarnings] = useState<ReturnType<typeof findWriteWarnings>>([]);
+  const [submitDelaySeconds, setSubmitDelaySeconds] = useState(3);
   const [isAuthCodeUrlCopied, setIsAuthCodeUrlCopied] = useState(false);
   const confirmationFrameCleanupRef = useRef<(() => void) | null>(null);
   // 変更理由: 書き込み中の入力欄を増やさず、書き込みに関する設定を
@@ -125,7 +130,6 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
     setMessage,
     submit,
     submitConfirmation,
-    handleSubmit,
     handleRetry,
   } = useWrite(threadUrl, {
     draft,
@@ -137,6 +141,38 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
   const isConfirm = status === "confirm" || confirmationPage != null;
   const isConfirmationSubmitting = confirmationPage != null && isSubmitting;
   const writeErrorMessage = statusText || "書き込みに失敗しました";
+
+  useEffect(() => {
+    // 変更理由: パネルを開いた直後の誤クリックを防ぐため、表示から3秒間は
+    // ボタンとショートカットの両方を無効にして、残り時間も利用者へ示す。
+    const startedAt = Date.now();
+    const updateRemaining = () => {
+      const remaining = Math.max(0, Math.ceil((startedAt + 3000 - Date.now()) / 1000));
+      setSubmitDelaySeconds(remaining);
+      return remaining;
+    };
+    updateRemaining();
+    const timer = viewWindow.setInterval(() => {
+      if (updateRemaining() === 0) viewWindow.clearInterval(timer);
+    }, 100);
+    return () => viewWindow.clearInterval(timer);
+  }, [viewWindow]);
+
+  const requestSubmit = useCallback(() => {
+    if (submitDelaySeconds > 0 || !canSubmit || isSubmitting) return;
+    const warnings = findWriteWarnings([name, mail, message]);
+    if (warnings.length > 0) {
+      setWriteWarnings(warnings);
+      setIsWarningDialogOpen(true);
+      return;
+    }
+    void submit();
+  }, [canSubmit, isSubmitting, mail, message, name, submit, submitDelaySeconds]);
+
+  const confirmWarningSubmit = useCallback(() => {
+    setIsWarningDialogOpen(false);
+    void submit();
+  }, [submit]);
 
   const handleOpenWriteWindow = useCallback(() => {
     // 別窓のReactツリーを先に作成し、現在の下部パネルは表示場所の重複を避けて閉じる。
@@ -257,6 +293,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
         !submitWithCtrlEnter ||
         isSubmitting ||
         !canSubmit ||
+        submitDelaySeconds > 0 ||
         e.key !== "Enter" ||
         !(e.ctrlKey || e.metaKey)
       ) {
@@ -265,9 +302,9 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
 
       // textarea の改行より投稿を優先し、送信ショートカットとして一貫動作させる。
       e.preventDefault();
-      void submit();
+      requestSubmit();
     },
-    [canSubmit, closePanel, isSubmitting, submit, submitWithCtrlEnter],
+    [canSubmit, closePanel, isSubmitting, requestSubmit, submitDelaySeconds, submitWithCtrlEnter],
   );
 
   const handleSubmitWithCtrlEnterChange = useCallback(
@@ -295,7 +332,10 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
     <div className="write-panel">
       <form
         className={`write-panel__form${isConfirm ? " write-panel__form--confirm" : ""}`}
-        onSubmit={handleSubmit}
+        onSubmit={(event) => {
+          event.preventDefault();
+          requestSubmit();
+        }}
       >
         {isConfirm && (
           <div className="write-panel__confirm-bar">
@@ -393,9 +433,9 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
                 <button
                   type="submit"
                   className="write-panel__btn write-panel__btn--primary"
-                  disabled={!canSubmit}
+                  disabled={!canSubmit || isSubmitting || submitDelaySeconds > 0}
                 >
-                  書き込む
+                  {submitDelaySeconds > 0 ? `${submitDelaySeconds}秒後に書き込めます` : "書き込む"}
                 </button>
                 {status === "error" && (
                   <button
@@ -433,6 +473,44 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
             : {})}
         />
       </form>
+      <Dialog.Root open={isWarningDialogOpen} onOpenChange={setIsWarningDialogOpen}>
+        <Dialog.Portal container={dialogPortalContainer ?? undefined}>
+          <Dialog.Overlay className="browser-dialog-overlay" />
+          <Dialog.Content
+            className="browser-dialog-content write-panel__warning-dialog"
+            aria-describedby={warningDialogDescriptionId}
+          >
+            <Dialog.Title className="browser-dialog-title">投稿内容を確認してください</Dialog.Title>
+            <Dialog.Description
+              id={warningDialogDescriptionId}
+              className="browser-dialog-description"
+            >
+              個人情報や第三者を傷つける表現が含まれている可能性があります。公開してよい内容か確認してください。
+            </Dialog.Description>
+            <ul className="write-panel__warning-list">
+              {writeWarnings.map((warning) => (
+                <li key={warning.category}>
+                  <strong>{warning.category}</strong>: {warning.reason}
+                </li>
+              ))}
+            </ul>
+            <div className="write-panel__error-dialog-actions">
+              <Dialog.Close asChild>
+                <button type="button" className="write-panel__btn write-panel__btn--secondary">
+                  内容を見直す
+                </button>
+              </Dialog.Close>
+              <button
+                type="button"
+                className="write-panel__btn write-panel__btn--primary"
+                onClick={confirmWarningSubmit}
+              >
+                確認して投稿
+              </button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
       <Dialog.Root open={isSettingsDialogOpen} onOpenChange={setIsSettingsDialogOpen}>
         <Dialog.Portal container={dialogPortalContainer ?? undefined}>
           <Dialog.Overlay className="browser-dialog-overlay" />

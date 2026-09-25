@@ -255,6 +255,22 @@
   gap: var(--sys-space-5);
 }
 
+.write-panel__warning-dialog {
+  gap: var(--sys-space-5);
+}
+
+.write-panel__warning-list {
+  display: grid;
+  gap: var(--sys-space-3);
+  margin: 0;
+  padding: var(--sys-space-4) var(--sys-space-4) var(--sys-space-4) var(--sys-space-8);
+  border: 1px solid var(--sys-color-warning-border);
+  border-radius: var(--sys-radius-lg);
+  background: var(--sys-color-surface-muted);
+  color: var(--sys-color-text);
+  font-size: var(--sys-font-size-sm);
+}
+
 .write-panel__settings-list {
   display: grid;
   gap: var(--sys-space-6);
