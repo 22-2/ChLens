@@ -166,7 +166,8 @@
 .write-panel__menu-items {
   /* 小さな書き込みパネルでも画面からはみ出しにくい寸法にする。 */
   position: absolute;
-  z-index: 2;
+  /* 変更理由: トリガーより前面に出しつつ、画面共通の重なり順をトークンで保つ。 */
+  z-index: var(--sys-z-local-raised);
   top: calc(100% + var(--sys-space-1));
   right: 0;
   display: grid;

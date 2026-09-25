@@ -121,6 +121,14 @@
     transparent
   );
   --ref-color-media-surface: #0f1115;
+  --ref-color-overlay-comment-shadow: #07101d;
+  /* 透過Overlay内でもレス、選択枠、右クリックメニューの視認性を保つ基準色。 */
+  --ref-color-overlay-media-bg: rgb(0 0 0 / 35%);
+  --ref-color-overlay-comment-own-border: rgb(255 226 92 / 92%);
+  --ref-color-overlay-comment-own-fg: #fff7bf;
+  --ref-color-overlay-comment-system-bg: rgb(126 94 0 / 72%);
+  --ref-color-overlay-menu-surface: rgb(17 27 43 / 96%);
+  --ref-color-overlay-menu-hover: rgb(74 142 218 / 40%);
 
   --ref-space-0: 0;
   --ref-space-1: 2px;
@@ -139,6 +147,8 @@
   --ref-space-14: 40px;
   --ref-space-15: 44px;
   --ref-space-16: 48px;
+  --ref-border-width-thin: 1px;
+  --ref-border-width-strong: 2px;
   --ref-radius-sm: 2px;
   --ref-radius-md: 4px;
   --ref-radius-lg: 6px;
@@ -152,6 +162,11 @@
   --ref-shadow-dragging: 0 4px 12px var(--ref-color-alpha-black-18);
   --ref-shadow-media-embed: 0 10px 24px rgb(15 23 42 / 12%);
   --ref-shadow-dark-media-embed: 0 10px 24px rgb(0 0 0 / 32%);
+  --ref-shadow-overlay-comment-text:
+    -1px -1px 0 var(--ref-color-overlay-comment-shadow),
+    1px -1px 0 var(--ref-color-overlay-comment-shadow),
+    -1px 1px 0 var(--ref-color-overlay-comment-shadow),
+    1px 1px 0 var(--ref-color-overlay-comment-shadow);
   --ref-font-family-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
   --ref-font-family-mono: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
   --ref-font-size-xs: 11px;
@@ -206,6 +221,8 @@
   --sys-space-14: var(--ref-space-14);
   --sys-space-15: var(--ref-space-15);
   --sys-space-16: var(--ref-space-16);
+  --sys-border-width-thin: var(--ref-border-width-thin);
+  --sys-border-width-strong: var(--ref-border-width-strong);
   --sys-radius-sm: var(--ref-radius-sm);
   --sys-radius-md: var(--ref-radius-md);
   --sys-radius-lg: var(--ref-radius-lg);
@@ -217,6 +234,7 @@
   --sys-shadow-focus: var(--ref-shadow-focus);
   --sys-shadow-floating: var(--ref-shadow-floating);
   --sys-shadow-dragging: var(--ref-shadow-dragging);
+  --sys-shadow-overlay-comment-text: var(--ref-shadow-overlay-comment-text);
   --sys-font-family-sans: var(--ref-font-family-sans);
   --sys-font-family-mono: var(--ref-font-family-mono);
   --sys-font-size-xs: var(--ref-font-size-xs);

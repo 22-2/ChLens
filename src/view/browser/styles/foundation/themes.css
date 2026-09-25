@@ -91,6 +91,15 @@
   --sys-color-tooltip-surface: var(--ref-color-dark-neutral-0);
   --sys-color-tooltip-text: var(--ref-color-neutral-0);
   --sys-color-tooltip-border: var(--ref-color-alpha-white-16);
+  /* Tauri Overlayはブラウザのテーマ要素の外で描画されるため、専用の意味色を割り当てる。 */
+  --sys-color-overlay-comment-text: var(--ref-color-neutral-1000);
+  --sys-color-overlay-comment-shadow: var(--ref-color-overlay-comment-shadow);
+  --sys-color-overlay-media-bg: var(--ref-color-overlay-media-bg);
+  --sys-color-overlay-comment-own-border: var(--ref-color-overlay-comment-own-border);
+  --sys-color-overlay-comment-own-fg: var(--ref-color-overlay-comment-own-fg);
+  --sys-color-overlay-comment-system-bg: var(--ref-color-overlay-comment-system-bg);
+  --sys-color-overlay-menu-surface: var(--ref-color-overlay-menu-surface);
+  --sys-color-overlay-menu-hover: var(--ref-color-overlay-menu-hover);
   color-scheme: light;
 }
 
