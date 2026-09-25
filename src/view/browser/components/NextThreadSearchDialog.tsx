@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import type { NextThreadSearchState } from "src/view/browser/hooks/use-next-thread-search";
 import { Dialog } from "src/view/browser/ui/Dialog";
 import { Spinner } from "src/view/browser/ui/Spinner";
@@ -42,6 +42,8 @@ export const NextThreadSearchDialog: React.FC<NextThreadSearchDialogProps> = ({
   onSelect,
 }) => {
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const firstCandidateRef = useRef<HTMLButtonElement>(null);
   const isOpen = state.status !== "idle";
   const isSearching = state.status === "searching";
   const isReady = state.status === "ready";
@@ -52,6 +54,13 @@ export const NextThreadSearchDialog: React.FC<NextThreadSearchDialogProps> = ({
     // body直下のPortalではダークテーマのsurface/textを継承できない。
     setPortalContainer(document.querySelector<HTMLElement>(".browser-shell"));
   }, []);
+
+  useEffect(() => {
+    if (isOpen && isReady && state.candidates.length > 0) {
+      // 検索中に開いた場合も、候補が揃った時点で閉じるボタンではなく先頭候補へ移す。
+      firstCandidateRef.current?.focus();
+    }
+  }, [isOpen, isReady, state.candidates]);
 
   return (
     <Dialog.Root
@@ -64,7 +73,16 @@ export const NextThreadSearchDialog: React.FC<NextThreadSearchDialogProps> = ({
     >
       <Dialog.Portal container={portalContainer ?? undefined}>
         <Dialog.Overlay className="browser-dialog-overlay" />
-        <Dialog.Content className="browser-dialog-content next-thread-search-dialog__content">
+        <Dialog.Content
+          ref={contentRef}
+          className="browser-dialog-content next-thread-search-dialog__content"
+          onOpenAutoFocus={(event) => {
+            // 初期フォーカスを操作の主目的であるスレ候補へ置き、候補待ち中はダイアログ内に留める。
+            event.preventDefault();
+            (firstCandidateRef.current ?? contentRef.current)?.focus();
+          }}
+          tabIndex={-1}
+        >
           <Dialog.Title className="browser-dialog-title">次スレ候補を検索</Dialog.Title>
           <Dialog.Description className="browser-dialog-description">
             「{state.sourceThread?.title ?? "現在のスレ"}」を基準に、積極判定の候補を表示します
@@ -90,6 +108,7 @@ export const NextThreadSearchDialog: React.FC<NextThreadSearchDialogProps> = ({
                 return (
                   <li key={candidate.thread.url}>
                     <button
+                      ref={index === 0 ? firstCandidateRef : undefined}
                       type="button"
                       className="next-thread-search-dialog__candidate"
                       onClick={() => onSelect(candidate)}
