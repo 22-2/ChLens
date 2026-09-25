@@ -38,6 +38,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     ngResNums,
     resMap,
     threadKey,
+    revealHardNgOnClick = false,
   }) => {
     const { window: viewWindow } = useViewSurface();
     const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
@@ -70,17 +71,19 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     const isNgActive = !isNgTemporarilyDisabled && isNgMatched;
     const isNgHighlighted = isNgMatched && ngDisplayMode === "highlight-ng";
     const [isNgRevealed, setIsNgRevealed] = useState(false);
+    const canRevealNg =
+      ngDisplayMode === "soft-ng" || (ngDisplayMode === "hard-ng" && revealHardNgOnClick);
     useEffect(() => {
-      if (ngDisplayMode !== "soft-ng" && isNgRevealed) {
-        // soft-ng以外へ切り替えた後にsoft-ngへ戻した際、本文を自動再表示しない。
+      if (!canRevealNg && isNgRevealed) {
+        // 表示方式の変更後に以前の一時表示を引き継がず、各方式のNG方針を保つ。
         setIsNgRevealed(false);
       }
-    }, [isNgRevealed, ngDisplayMode]);
-    if (isNgActive && ngDisplayMode === "hard-ng") {
+    }, [canRevealNg, isNgRevealed]);
+    if (isNgActive && ngDisplayMode === "hard-ng" && !revealHardNgOnClick) {
       // 通常レスと同じhard-ngを適用し、ポップアップだけから本文を覗けないようにする。
       return null;
     }
-    if (isNgActive && ngDisplayMode === "soft-ng" && !isNgRevealed) {
+    if (isNgActive && canRevealNg && !isNgRevealed) {
       return (
         <article
           className="res res--ng-placeholder"
@@ -134,7 +137,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
           {isOwn ? <span className="res__badge res__badge--own">自分</span> : null}
           {isReplyToOwn ? <span className="res__badge res__badge--reply-to-own">返信</span> : null}
           {isNgMatched ? <NgBadge result={res.ng} /> : null}
-          {isNgActive && ngDisplayMode === "soft-ng" && isNgRevealed ? (
+          {isNgActive && canRevealNg && isNgRevealed ? (
             <button
               type="button"
               className="res__ng-hide"
@@ -258,4 +261,6 @@ export interface StaticResCardProps {
   resMap?: ReadonlyMap<number, unknown>;
   /** 親スレッドのURL。ポップアップでも同じ失敗抑止単位を使う。 */
   threadKey?: string;
+  /** アンカー参照では、hard-ngでも空ポップアップを避けるためクリック式プレースホルダーを出す。 */
+  revealHardNgOnClick?: boolean;
 }

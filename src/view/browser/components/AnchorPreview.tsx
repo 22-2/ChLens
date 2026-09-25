@@ -222,6 +222,7 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
           />
           <div className="anchor-preview__body">
             {items.slice(0, 8).map((res) => (
+              /* hard-ngでも空のアンカーポップアップにせず、利用者が明示操作で本文を確認できるようにする。 */
               <PopupResCard
                 key={res.num}
                 res={res}
@@ -245,6 +246,7 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
                 isReplyToOwn={replyToOwnResNums?.has(res.num)}
                 resMap={resMap}
                 threadKey={threadKey}
+                revealHardNgOnClick
               />
             ))}
           </div>
