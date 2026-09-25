@@ -120,9 +120,10 @@ const ActiveThreadBridgeState: React.FC<{ isActive: boolean }> = ({ isActive }) 
 };
 
 const WritePanelToggleItem: React.FC = () => {
-  const { togglePanel } = useBottomPanel();
+  const { isOpen, activePanelTabId, togglePanel, requestWritePanelFocus } = useBottomPanel();
   const { viewPage } = useTabStore();
-  const { isWindowOpen, openWriteWindow, selectThread } = useWriteSessionControls();
+  const { isWindowOpen, openWriteWindow, selectThread, requestWriteWindowFocus } =
+    useWriteSessionControls();
 
   // 書き込み UI はスレッド専用なので、他ページではステータスバーに出さない。
   if (viewPage.type !== "thread") {
@@ -144,12 +145,17 @@ const WritePanelToggleItem: React.FC = () => {
           selectThread(viewPage.threadUrl);
           if (isWindowOpen) {
             // 共有窓が既にある場合は下部パネルを再表示せず、同じエディタへ戻す。
-            openWriteWindow();
+            if (openWriteWindow()) {
+              requestWriteWindowFocus();
+            }
             return;
           }
           // 変更理由: 書き込みは入力欄と本文を両方見渡せる既定サイズで開き、
           // スレ一覧を使った後も大きな高さがそのまま残らないようにする。
           togglePanel(BOTTOM_PANEL_WRITE_TAB_ID, DEFAULT_BOTTOM_PANEL_HEIGHT);
+          if (!isOpen || activePanelTabId !== BOTTOM_PANEL_WRITE_TAB_ID) {
+            requestWritePanelFocus();
+          }
         }}
         aria-label="書き込みパネルを開閉"
       >

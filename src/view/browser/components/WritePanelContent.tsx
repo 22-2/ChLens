@@ -91,7 +91,14 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
   const writePanelInsertRequest = standalone ? null : bottomPanel?.writePanelInsertRequest;
   const clearWritePanelInsertRequest = bottomPanel?.clearWritePanelInsertRequest ?? noop;
   const closePanel = standalone ? (onClose ?? noop) : (bottomPanel?.closePanel ?? onClose ?? noop);
-  const { selectedThreadUrl, targets, selectThread, openWriteWindow } = useWriteSessionControls();
+  const {
+    selectedThreadUrl,
+    targets,
+    selectThread,
+    openWriteWindow,
+    writeWindowFocusRequestId,
+    consumeWriteWindowFocusRequest,
+  } = useWriteSessionControls();
   const fallbackThreadUrl = viewPage.type === "thread" ? viewPage.threadUrl : "";
   const threadUrl = selectedThreadUrl ?? fallbackThreadUrl;
   const draft = useWriteDraft(threadUrl);
@@ -101,6 +108,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
     [setDraft, threadUrl],
   );
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const writePanelFocusRequestId = bottomPanel?.writePanelFocusRequestId ?? null;
   const imgurFileInputRef = useRef<HTMLInputElement | null>(null);
   const errorDialogDescriptionId = useId();
   const authCodeUrlInputId = useId();
@@ -159,6 +167,37 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
   const isConfirm = status === "confirm" || confirmationPage != null;
   const isConfirmationSubmitting = confirmationPage != null && isSubmitting;
   const writeErrorMessage = statusText || "書き込みに失敗しました";
+
+  useEffect(() => {
+    const requestId = standalone ? writeWindowFocusRequestId : writePanelFocusRequestId;
+    if (requestId == null) {
+      return;
+    }
+
+    const frameId = viewWindow.requestAnimationFrame(() => {
+      const textarea = textareaRef.current;
+      if (!textarea) {
+        return;
+      }
+
+      // パネルを開いた描画が終わってからフォーカスし、ユーザーがすぐ入力できる状態にする。
+      textarea.focus({ preventScroll: true });
+      if (standalone) {
+        consumeWriteWindowFocusRequest(requestId);
+      } else {
+        bottomPanel?.consumeWritePanelFocusRequest(requestId);
+      }
+    });
+
+    return () => viewWindow.cancelAnimationFrame(frameId);
+  }, [
+    bottomPanel,
+    consumeWriteWindowFocusRequest,
+    standalone,
+    viewWindow,
+    writePanelFocusRequestId,
+    writeWindowFocusRequestId,
+  ]);
   const uploadStatusIsVisible =
     isImgurUploading ||
     imgurUploadStatus?.type === "success" ||

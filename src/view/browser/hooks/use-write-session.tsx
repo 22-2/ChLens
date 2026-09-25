@@ -5,6 +5,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { getStore2String, setStore2String } from "src/app/Store2Storage";
@@ -39,7 +40,10 @@ interface WriteSessionControlsContextValue {
   targets: WriteTarget[];
   isWindowOpen: boolean;
   writeWindowRoot: HTMLElement | null;
+  writeWindowFocusRequestId: number | null;
   selectThread: (threadUrl: string) => void;
+  requestWriteWindowFocus: () => void;
+  consumeWriteWindowFocusRequest: (requestId: number) => void;
   appendDraft: (threadUrl: string, text: string) => void;
   openWriteWindow: (sourceWindow?: Window) => boolean;
   closeWriteWindow: () => void;
@@ -127,7 +131,10 @@ const defaultControlsContextValue: WriteSessionControlsContextValue = {
   targets: [],
   isWindowOpen: false,
   writeWindowRoot: null,
+  writeWindowFocusRequestId: null,
   selectThread: () => {},
+  requestWriteWindowFocus: () => {},
+  consumeWriteWindowFocusRequest: () => {},
   appendDraft: () => {},
   openWriteWindow: () => false,
   closeWriteWindow: () => {},
@@ -157,6 +164,8 @@ export const WriteSessionProvider: React.FC<{ children: ReactNode }> = ({ childr
   const { panes, activePaneId } = useTabPanes();
   const { viewPage } = useTabStore();
   const [session, setSession] = useState<WriteSessionState>(loadSession);
+  const nextWriteWindowFocusIdRef = useRef(0);
+  const [writeWindowFocusRequestId, setWriteWindowFocusRequestId] = useState<number | null>(null);
   const writeWindow = useAuxiliaryWindow(WRITE_WINDOW_OPTIONS);
 
   const targets = useMemo(() => collectWriteTargets(panes, activePaneId), [activePaneId, panes]);
@@ -199,6 +208,15 @@ export const WriteSessionProvider: React.FC<{ children: ReactNode }> = ({ childr
         ? previous
         : { ...previous, selectedThreadUrl: threadUrl },
     );
+  }, []);
+
+  const requestWriteWindowFocus = useCallback(() => {
+    nextWriteWindowFocusIdRef.current += 1;
+    setWriteWindowFocusRequestId(nextWriteWindowFocusIdRef.current);
+  }, []);
+
+  const consumeWriteWindowFocusRequest = useCallback((requestId: number) => {
+    setWriteWindowFocusRequestId((current) => (current === requestId ? null : current));
   }, []);
 
   const getDraft = useCallback(
@@ -252,20 +270,26 @@ export const WriteSessionProvider: React.FC<{ children: ReactNode }> = ({ childr
       targets,
       isWindowOpen: writeWindow.isOpen,
       writeWindowRoot: writeWindow.root,
+      writeWindowFocusRequestId,
       selectThread,
+      requestWriteWindowFocus,
+      consumeWriteWindowFocusRequest,
       appendDraft,
       openWriteWindow: writeWindow.open,
       closeWriteWindow: writeWindow.close,
     }),
     [
       appendDraft,
+      consumeWriteWindowFocusRequest,
       writeWindow.close,
       writeWindow.open,
       selectThread,
       session.selectedThreadUrl,
       targets,
       writeWindow.isOpen,
+      writeWindowFocusRequestId,
       writeWindow.root,
+      requestWriteWindowFocus,
     ],
   );
 

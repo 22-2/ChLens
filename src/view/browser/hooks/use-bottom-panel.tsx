@@ -77,7 +77,10 @@ interface BottomPanelContextValue {
   threadListAutoRefreshIntervalSec: ThreadListAutoRefreshIntervalSec;
   tabs: PanelTab[];
   writePanelInsertRequest: WritePanelInsertRequest | null;
+  writePanelFocusRequestId: number | null;
   openPanel: (tabId?: string) => void;
+  requestWritePanelFocus: () => void;
+  consumeWritePanelFocusRequest: (requestId: number) => void;
   openWritePanelWithText: (text: string, threadUrl?: string) => void;
   closePanel: () => void;
   togglePanel: (tabId?: string, openHeight?: number) => void;
@@ -93,6 +96,7 @@ const BottomPanelContext = createContext<BottomPanelContextValue | null>(null);
 export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const saved = loadSaved();
   const nextWritePanelInsertIdRef = useRef(0);
+  const nextWritePanelFocusIdRef = useRef(0);
   const [isOpen, setIsOpen] = useState(saved.isOpen ?? false);
   const [height, setHeightState] = useState(() =>
     Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, saved.height ?? DEFAULT_BOTTOM_PANEL_HEIGHT)),
@@ -115,6 +119,16 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ childre
   );
   const [writePanelInsertRequest, setWritePanelInsertRequest] =
     useState<WritePanelInsertRequest | null>(null);
+  const [writePanelFocusRequestId, setWritePanelFocusRequestId] = useState<number | null>(null);
+
+  const requestWritePanelFocus = useCallback(() => {
+    nextWritePanelFocusIdRef.current += 1;
+    setWritePanelFocusRequestId(nextWritePanelFocusIdRef.current);
+  }, []);
+
+  const consumeWritePanelFocusRequest = useCallback((requestId: number) => {
+    setWritePanelFocusRequestId((current) => (current === requestId ? null : current));
+  }, []);
 
   const setHeight = useCallback((h: number) => {
     const clamped = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, h));
@@ -231,7 +245,10 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ childre
         threadListAutoRefreshIntervalSec,
         tabs: BOTTOM_PANEL_TABS,
         writePanelInsertRequest,
+        writePanelFocusRequestId,
         openPanel,
+        requestWritePanelFocus,
+        consumeWritePanelFocusRequest,
         openWritePanelWithText,
         closePanel,
         togglePanel,
