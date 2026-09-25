@@ -184,7 +184,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
                 setIsNgRevealed(false);
               }}
             >
-              NG非表示
+              再非表示
             </button>
           ) : null}
           {res.id && (

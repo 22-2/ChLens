@@ -7,7 +7,8 @@ import {
   Pin,
   PinOff,
 } from "lucide-react";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { buildReplyIndexes } from "src/core/reply-index";
 import type { IRes } from "src/service-container";
 import { COMMAND_REQUEST_IDS, runCommandRequest } from "src/view/browser/commands/command-runtime";
 import { PopupHeader } from "src/view/browser/components/PopupHeader";
@@ -594,6 +595,12 @@ export const ReplyTreePopup: React.FC<{
   replyToOwnResNums,
   threadKey,
 }) => {
+  // hard-ngの通常索引は非表示レスを除外するため、返信ツリーでは全レスから専用索引を作り、
+  // NGレスもクリック式プレースホルダーとして辿れるようにする。
+  const treeRepIndex = useMemo(
+    () => buildReplyIndexes(Array.from(resMap.values())).repIndex,
+    [resMap],
+  );
   const viewSurface = useViewSurface();
   const toast = useToast();
   const { document: viewDocument } = viewSurface;
@@ -601,8 +608,10 @@ export const ReplyTreePopup: React.FC<{
   const [subTreeMenu, setSubTreeMenu] = useState<SubTreeMenuState | null>(null);
   const theme = useTheme();
   const sourceRes = resMap.get(resNum) ?? null;
-  const replyResponses = sourceRes ? collectReplyTreeResponses(resNum, repIndex, resMap) : [];
-  const replyImageEntries = sourceRes ? collectReplyTreeImageEntries(resNum, repIndex, resMap) : [];
+  const replyResponses = sourceRes ? collectReplyTreeResponses(resNum, treeRepIndex, resMap) : [];
+  const replyImageEntries = sourceRes
+    ? collectReplyTreeImageEntries(resNum, treeRepIndex, resMap)
+    : [];
   // 変更理由: 返信ツリーの文字列生成とClipboardの表示先・失敗通知を分離し、
   // ツリー側で別窓対応の経路を重複実装しないようにする。
   const runClipboardCommand = useCallback(
@@ -731,8 +740,8 @@ export const ReplyTreePopup: React.FC<{
       return [];
     }
 
-    const subReplyResponses = collectReplyTreeResponses(targetResNum, repIndex, resMap);
-    const subReplyImageEntries = collectReplyTreeImageEntries(targetResNum, repIndex, resMap);
+    const subReplyResponses = collectReplyTreeResponses(targetResNum, treeRepIndex, resMap);
+    const subReplyImageEntries = collectReplyTreeImageEntries(targetResNum, treeRepIndex, resMap);
     const ancestorResponses = ancestorResNums
       .map((ancestorResNum) => resMap.get(ancestorResNum))
       .filter((res): res is IRes => res != null);
@@ -881,6 +890,7 @@ export const ReplyTreePopup: React.FC<{
                   isReplyToOwn={replyToOwnResNums?.has(sourceRes.num)}
                   resMap={resMap}
                   threadKey={threadKey}
+                  allowHardNgReveal
                 />
               </section>
             )}
@@ -888,7 +898,7 @@ export const ReplyTreePopup: React.FC<{
               <div className="res-popup__section-title">返信レス</div>
               <ReplyTree
                 resNum={resNum}
-                repIndex={repIndex}
+                repIndex={treeRepIndex}
                 idIndex={idIndex}
                 resMap={resMap}
                 messageProtocol={messageProtocol}
@@ -908,6 +918,7 @@ export const ReplyTreePopup: React.FC<{
                 ngResNums={ngResNums}
                 ownResNums={ownResNums}
                 replyToOwnResNums={replyToOwnResNums}
+                allowHardNgReveal
                 threadKey={threadKey}
                 onSubTreeMenu={handleSubTreeMenuClick}
               />

@@ -246,7 +246,7 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
                 isReplyToOwn={replyToOwnResNums?.has(res.num)}
                 resMap={resMap}
                 threadKey={threadKey}
-                revealHardNgOnClick
+                allowHardNgReveal
               />
             ))}
           </div>

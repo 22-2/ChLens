@@ -38,7 +38,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     ngResNums,
     resMap,
     threadKey,
-    revealHardNgOnClick = false,
+    allowHardNgReveal = false,
   }) => {
     const { window: viewWindow } = useViewSurface();
     const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
@@ -72,14 +72,14 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     const isNgHighlighted = isNgMatched && ngDisplayMode === "highlight-ng";
     const [isNgRevealed, setIsNgRevealed] = useState(false);
     const canRevealNg =
-      ngDisplayMode === "soft-ng" || (ngDisplayMode === "hard-ng" && revealHardNgOnClick);
+      ngDisplayMode === "soft-ng" || (ngDisplayMode === "hard-ng" && allowHardNgReveal);
     useEffect(() => {
       if (!canRevealNg && isNgRevealed) {
         // 表示方式の変更後に以前の一時表示を引き継がず、各方式のNG方針を保つ。
         setIsNgRevealed(false);
       }
     }, [canRevealNg, isNgRevealed]);
-    if (isNgActive && ngDisplayMode === "hard-ng" && !revealHardNgOnClick) {
+    if (isNgActive && ngDisplayMode === "hard-ng" && !allowHardNgReveal) {
       // 通常レスと同じhard-ngを適用し、ポップアップだけから本文を覗けないようにする。
       return null;
     }
@@ -148,7 +148,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
                 setIsNgRevealed(false);
               }}
             >
-              NG非表示
+              再非表示
             </button>
           ) : null}
           {res.id && (
@@ -261,6 +261,6 @@ export interface StaticResCardProps {
   resMap?: ReadonlyMap<number, unknown>;
   /** 親スレッドのURL。ポップアップでも同じ失敗抑止単位を使う。 */
   threadKey?: string;
-  /** アンカー参照では、hard-ngでも空ポップアップを避けるためクリック式プレースホルダーを出す。 */
-  revealHardNgOnClick?: boolean;
+  /** 返信ツリーなどでhard-ngもプレースホルダー表示し、明示操作で本文を確認できるようにする。 */
+  allowHardNgReveal?: boolean;
 }

@@ -279,20 +279,20 @@
   font-size: var(--sys-font-size-sm);
 }
 
+/* 変更理由: 展開後の再非表示操作は、NGバッヂと区別できる青いテキストで示す。 */
 .res__ng-hide {
   margin-left: auto;
-  border: 1px solid var(--sys-color-warning-border);
-  border-radius: var(--sys-radius-pill);
+  border: 0;
   background: transparent;
-  color: var(--sys-color-warning-fg);
-  padding: var(--sys-space-1) var(--sys-space-3);
+  color: var(--sys-color-table-link);
+  padding: 0;
   font: inherit;
   cursor: pointer;
 }
 
 .res__ng-hide:hover,
 .res__ng-hide:focus-visible {
-  background: var(--sys-color-warning-surface);
+  text-decoration: underline;
 }
 
 .res--aa .res__body {

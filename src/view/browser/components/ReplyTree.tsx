@@ -47,6 +47,8 @@ export const ReplyTree: React.FC<{
   ngResNums?: ReadonlySet<number>;
   ownResNums?: ReadonlySet<number>;
   replyToOwnResNums?: ReadonlySet<number>;
+  /** hard-ngの返信もクリック式プレースホルダーとしてツリーへ残す。 */
+  allowHardNgReveal?: boolean;
   /** 個別ツリーの三点メニュークリック時コールバック（渡された場合のみボタン表示） */
   onSubTreeMenu?: (
     resNum: number,
@@ -79,6 +81,7 @@ export const ReplyTree: React.FC<{
   ngResNums,
   ownResNums,
   replyToOwnResNums,
+  allowHardNgReveal = false,
   onSubTreeMenu,
   ancestorResNums = [resNum],
   threadKey,
@@ -133,6 +136,7 @@ export const ReplyTree: React.FC<{
                 isReplyToOwn={replyToOwnResNums?.has(res.num)}
                 resMap={resMap}
                 threadKey={threadKey}
+                allowHardNgReveal={allowHardNgReveal}
               />
               {onSubTreeMenu && (
                 <button
@@ -170,6 +174,7 @@ export const ReplyTree: React.FC<{
               depth={depth + 1}
               blurredResNums={blurredResNums}
               ngResNums={ngResNums}
+              allowHardNgReveal={allowHardNgReveal}
               threadKey={threadKey}
               onSubTreeMenu={onSubTreeMenu}
               ancestorResNums={[...ancestorResNums, replyNum]}
