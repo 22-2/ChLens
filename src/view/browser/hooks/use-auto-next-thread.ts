@@ -10,7 +10,6 @@ import {
   findNextThreadMatch,
 } from "src/view/browser/utils/next-thread-search";
 
-const NEXT_THREAD_SEARCH_DURATION_MS = 180_000;
 const NEXT_THREAD_SEARCH_RETRY_MS = 3_000;
 const MAINSTREAM_WATCH_GRACE_PERIOD_MS = 15_000;
 const MAINSTREAM_WATCH_DURATION_MS = 60_000;
@@ -40,7 +39,7 @@ interface UseAutoNextThreadOptions {
    */
   canAutoScroll: boolean;
   followThread: (thread: Pick<IThread, "title" | "url">) => void;
-  /** 候補を見つけられず探索を終えたときだけ、自動更新の停止を通知する。 */
+  /** 探索を継続できず終了したとき、自動更新の停止を通知する。 */
   onSearchExhausted?: () => void;
   toast?: Pick<IToastService, "info">;
 }
@@ -186,11 +185,9 @@ export function useAutoNextThread({
         return;
       }
 
-      const deadline = Date.now() + NEXT_THREAD_SEARCH_DURATION_MS;
-
       // 1000到達直後はまだ次スレが立っていないことが多いため、
-      // 単発検索ではなく短いポーリングで追ってから同じタブを次スレへ進める。
-      while (!cancelled && Date.now() < deadline) {
+      // 候補が板一覧へ載るまでポーリングし、自動更新を解除せず同じタブを次スレへ進める。
+      while (!cancelled) {
         try {
           const result = await container.board.getThreads(boardUrl);
           // 取得中にタブが切り替わったり探索条件が無効になった場合は、
@@ -262,11 +259,6 @@ export function useAutoNextThread({
           return;
         }
         await delay(NEXT_THREAD_SEARCH_RETRY_MS);
-      }
-
-      if (!cancelled) {
-        setStatus("idle");
-        onSearchExhausted?.();
       }
     };
 

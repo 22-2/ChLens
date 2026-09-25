@@ -341,9 +341,9 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     if (isCommentOverlayFlowing) {
       return;
     }
-    // 変更理由: 次スレ探索中は自動更新の停止を保留しているため、
-    // 3分間候補が見つからなかった時点でだけ通常の停止通知へ戻す。
-    handleAutoRefreshStop("次スレ候補が見つからなかったため自動更新を停止しました");
+    // 変更理由: 次スレ探索中は自動更新の停止を保留するため、
+    // 板URLを解決できず探索を継続できない場合だけ通常の停止通知へ戻す。
+    handleAutoRefreshStop("次スレを探索できなかったため自動更新を停止しました");
   }, [handleAutoRefreshStop, isCommentOverlayFlowing]);
 
   const handleNewResponses = useCallback(
@@ -401,7 +401,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     onAutoStop: isCommentOverlayFlowing
       ? undefined
       : () => handleAutoRefreshStop("新着が止まったため自動更新を停止しました"),
-    // 1000レス到達後は次スレ探索を優先し、候補が尽きた時点で探索側から停止する。
+    // 1000レス到達後は候補が板一覧へ現れるまで探索を続け、自動更新の停止を保留する。
     deferAutoStop: shouldDeferNextThreadStop,
     // interval の停止だけではタブに自動更新状態が残るため、dat落ち時も明示的に解除する。
     onThreadExpired: isCommentOverlayFlowing
