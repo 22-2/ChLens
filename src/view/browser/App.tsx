@@ -178,6 +178,7 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
   const {
     state: nextThreadSearchState,
     searchNextThread,
+    searchSimilarThreads,
     close: closeNextThreadSearch,
     selectCandidate,
   } = useNextThreadSearch({
@@ -204,6 +205,7 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
   const navigationBar = (
     <NavigationBar
       openNextThreadSearchDialog={searchNextThread}
+      openSimilarThreadSearchDialog={searchSimilarThreads}
       openArchiveReplayWindow={openArchiveReplayWindow}
     />
   );

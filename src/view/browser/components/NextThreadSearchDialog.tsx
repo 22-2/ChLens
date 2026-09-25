@@ -4,13 +4,13 @@ import { Dialog } from "src/view/browser/ui/Dialog";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import type {
   NextThreadEvidence,
-  NextThreadMatch,
+  ThreadSearchCandidate,
 } from "src/view/browser/utils/next-thread-search";
 
 interface NextThreadSearchDialogProps {
   state: NextThreadSearchState;
   onClose: () => void;
-  onSelect: (candidate: NextThreadMatch) => void;
+  onSelect: (candidate: ThreadSearchCandidate) => void;
 }
 
 const EVIDENCE_LABELS: Partial<Record<NextThreadEvidence, string>> = {
@@ -26,7 +26,7 @@ const EVIDENCE_LABELS: Partial<Record<NextThreadEvidence, string>> = {
   "active-thread": "稼働中",
 };
 
-function getEvidenceLabels(candidate: NextThreadMatch): string[] {
+function getEvidenceLabels(candidate: ThreadSearchCandidate): string[] {
   return (candidate.reasons ?? [])
     .map((reason) => EVIDENCE_LABELS[reason])
     .filter((label): label is string => label != null);
@@ -48,6 +48,7 @@ export const NextThreadSearchDialog: React.FC<NextThreadSearchDialogProps> = ({
   const isSearching = state.status === "searching";
   const isReady = state.status === "ready";
   const isError = state.status === "error";
+  const isSimilarSearch = state.searchType === "similar";
 
   useEffect(() => {
     // テーマトークンは `.browser-shell[data-theme]` にスコープされるため、
@@ -83,14 +84,20 @@ export const NextThreadSearchDialog: React.FC<NextThreadSearchDialogProps> = ({
           }}
           tabIndex={-1}
         >
-          <Dialog.Title className="browser-dialog-title">次スレ候補を検索</Dialog.Title>
+          <Dialog.Title className="browser-dialog-title">
+            {isSimilarSearch ? "類似スレを検索" : "次スレ候補を検索"}
+          </Dialog.Title>
           <Dialog.Description className="browser-dialog-description">
-            「{state.sourceThread?.title ?? "現在のスレ"}」を基準に、積極判定の候補を表示します
+            「{state.sourceThread?.title ?? "現在のスレ"}」を基準に、
+            {isSimilarSearch ? "タイトルが似ているスレ" : "積極判定の次スレ候補"}を表示します
           </Dialog.Description>
 
           {isSearching ? (
             <div className="next-thread-search-dialog__status" role="status">
-              <Spinner size="sm" aria-label="次スレ候補を検索中" />
+              <Spinner
+                size="sm"
+                aria-label={isSimilarSearch ? "類似スレを検索中" : "次スレ候補を検索中"}
+              />
               <span>板のスレ一覧を検索中...</span>
             </div>
           ) : null}
@@ -102,7 +109,10 @@ export const NextThreadSearchDialog: React.FC<NextThreadSearchDialogProps> = ({
           ) : null}
 
           {isReady && state.candidates.length > 0 ? (
-            <ol className="next-thread-search-dialog__candidate-list" aria-label="次スレ候補一覧">
+            <ol
+              className="next-thread-search-dialog__candidate-list"
+              aria-label={isSimilarSearch ? "類似スレ一覧" : "次スレ候補一覧"}
+            >
               {state.candidates.map((candidate, index) => {
                 const evidenceLabels = getEvidenceLabels(candidate);
                 return (
@@ -146,7 +156,11 @@ export const NextThreadSearchDialog: React.FC<NextThreadSearchDialogProps> = ({
 
           {isReady && state.candidates.length === 0 ? (
             <div className="next-thread-search-dialog__status">
-              <span>次スレ候補は見つかりませんでした。</span>
+              <span>
+                {isSimilarSearch
+                  ? "類似スレは見つかりませんでした。"
+                  : "次スレ候補は見つかりませんでした。"}
+              </span>
               {state.boardMessage ? <span>{state.boardMessage}</span> : null}
             </div>
           ) : null}

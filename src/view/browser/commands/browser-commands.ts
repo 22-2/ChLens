@@ -104,6 +104,7 @@ export interface BrowserCommandContext {
   toggleWritePanel: () => void;
   openResponseJumpDialog: () => void;
   openNextThreadSearchDialog: () => Promise<void>;
+  openSimilarThreadSearchDialog?: () => Promise<void>;
   openArchiveReplayWindow: () => void;
   // 履歴・再取得・タブライフサイクルは対象タブを明示する実行器へ委譲し、
   // メニューとパレットで挙動を揃える。
@@ -680,6 +681,17 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     icon: Search,
     when: ({ viewPage }) => viewPage.type === "thread",
     run: ({ openNextThreadSearchDialog }) => openNextThreadSearchDialog(),
+  },
+  {
+    id: "page.search-similar-threads",
+    label: "類似スレを検索",
+    englishLabel: "Find Similar Threads",
+    description: "現在のスレとタイトルが似ているスレを板一覧から検索します",
+    keywords: ["類似スレ", "似たスレ", "関連スレ", "similar", "thread", "search"],
+    group: "page",
+    icon: Search,
+    when: ({ viewPage }) => viewPage.type === "thread",
+    run: ({ openSimilarThreadSearchDialog }) => openSimilarThreadSearchDialog?.(),
   },
   {
     id: "page.toggle-filter",

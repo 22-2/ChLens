@@ -30,12 +30,16 @@ export type NextThreadEvidence =
   | "newer-thread"
   | "active-thread";
 
-export interface NextThreadMatch {
+export interface ThreadSearchCandidate {
   thread: IThread;
-  reason: "mark" | "number" | "reflection" | "mainstream";
+  reason?: "mark" | "number" | "reflection" | "mainstream";
   similarity: number;
   score?: number;
   reasons?: readonly NextThreadEvidence[];
+}
+
+export interface NextThreadMatch extends ThreadSearchCandidate {
+  reason: "mark" | "number" | "reflection" | "mainstream";
 }
 
 export interface NextThreadSearchOptions {
@@ -604,6 +608,26 @@ export function findNextThreadCandidates(
   return rankNextThreadCandidates(threads, currentThread, resolvedOptions, "res-count")
     .filter((candidate) => candidate.score >= policy.minimumScore)
     .map((candidate) => toNextThreadMatch(currentThread, candidate));
+}
+
+export function findSimilarThreadCandidates(
+  threads: readonly IThread[],
+  currentThread: Pick<IThread, "title" | "url">,
+): ThreadSearchCandidate[] {
+  // 続きのスレかどうかではなく話題の近さで探すため、連番・新しさ・勢いの条件は加えない。
+  return threads
+    .filter(
+      (thread) => thread.url !== currentThread.url && isSameBoard(thread.url, currentThread.url),
+    )
+    .map((thread) => ({
+      thread,
+      similarity: calculateBaseTitleSimilarity(currentThread.title, thread.title),
+    }))
+    .filter((candidate) => candidate.similarity >= NEXT_THREAD_MIN_SIMILARITY)
+    .sort(
+      (left, right) =>
+        right.similarity - left.similarity || right.thread.resCount - left.thread.resCount,
+    );
 }
 
 export function findNextThreadMatch(

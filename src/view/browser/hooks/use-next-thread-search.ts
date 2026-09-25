@@ -7,15 +7,18 @@ import type { Page } from "src/view/browser/types";
 import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
 import {
   findNextThreadCandidates,
-  type NextThreadMatch,
+  findSimilarThreadCandidates,
+  type ThreadSearchCandidate,
 } from "src/view/browser/utils/next-thread-search";
 
 export type NextThreadSearchStatus = "idle" | "searching" | "ready" | "error";
+export type ThreadSearchType = "next" | "similar";
 
 export interface NextThreadSearchState {
   status: NextThreadSearchStatus;
-  sourceThread: Pick<NextThreadMatch["thread"], "title" | "url"> | null;
-  candidates: readonly NextThreadMatch[];
+  searchType?: ThreadSearchType;
+  sourceThread: Pick<ThreadSearchCandidate["thread"], "title" | "url"> | null;
+  candidates: readonly ThreadSearchCandidate[];
   boardMessage: string | null;
   error: string | null;
 }
@@ -29,14 +32,19 @@ interface UseNextThreadSearchOptions {
 
 const IDLE_STATE: NextThreadSearchState = {
   status: "idle",
+  searchType: "next",
   sourceThread: null,
   candidates: [],
   boardMessage: null,
   error: null,
 };
 
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "次スレ候補の検索に失敗しました";
+function getErrorMessage(error: unknown, searchType: ThreadSearchType): string {
+  return error instanceof Error
+    ? error.message
+    : searchType === "similar"
+      ? "類似スレの検索に失敗しました"
+      : "次スレ候補の検索に失敗しました";
 }
 
 export function useNextThreadSearch({
@@ -47,8 +55,9 @@ export function useNextThreadSearch({
 }: UseNextThreadSearchOptions): {
   state: NextThreadSearchState;
   searchNextThread: () => Promise<void>;
+  searchSimilarThreads: () => Promise<void>;
   close: () => void;
-  selectCandidate: (candidate: NextThreadMatch) => void;
+  selectCandidate: (candidate: ThreadSearchCandidate) => void;
 } {
   const [state, setState] = useState<NextThreadSearchState>(IDLE_STATE);
   const requestIdRef = useRef(0);
@@ -60,64 +69,81 @@ export function useNextThreadSearch({
     setState(IDLE_STATE);
   }, []);
 
-  const searchNextThread = useCallback(async () => {
-    if (viewPage.type !== "thread") {
-      return;
-    }
-
-    const sourceThread = {
-      title: viewPage.title,
-      url: viewPage.threadUrl,
-    };
-    const requestId = requestIdRef.current + 1;
-    requestIdRef.current = requestId;
-    setState({
-      status: "searching",
-      sourceThread,
-      candidates: [],
-      boardMessage: null,
-      error: null,
-    });
-
-    try {
-      const boardUrl = getBoardUrlFromThreadUrl(sourceThread.url);
-      const result = await container.board.getThreads(boardUrl);
-      if (requestIdRef.current !== requestId) {
+  const searchThreads = useCallback(
+    async (searchType: ThreadSearchType) => {
+      if (viewPage.type !== "thread") {
         return;
       }
 
-      // 自動追従と同じ積極モードの最低スコアを使い、手動操作では候補を1件に絞らない。
-      const candidates = findNextThreadCandidates(result.threads, sourceThread, {
-        mode: "aggressive",
-      });
+      const sourceThread = {
+        title: viewPage.title,
+        url: viewPage.threadUrl,
+      };
+      const requestId = requestIdRef.current + 1;
+      requestIdRef.current = requestId;
       setState({
-        status: "ready",
-        sourceThread,
-        candidates,
-        boardMessage: result.threads.length === 0 ? result.message : null,
-        error: null,
-      });
-    } catch (error) {
-      if (requestIdRef.current !== requestId) {
-        return;
-      }
-
-      const message = getErrorMessage(error);
-      // 手動検索はコマンド以外からも呼べるため、失敗理由をここで記録して追跡可能にする。
-      log("error", "手動次スレ検索に失敗しました", {
-        error,
-        threadUrl: sourceThread.url,
-      });
-      setState({
-        status: "error",
+        status: "searching",
+        searchType,
         sourceThread,
         candidates: [],
         boardMessage: null,
-        error: message,
+        error: null,
       });
-      throw error;
-    }
-  }, [viewPage]);
+
+      try {
+        const boardUrl = getBoardUrlFromThreadUrl(sourceThread.url);
+        const result = await container.board.getThreads(boardUrl);
+        if (requestIdRef.current !== requestId) {
+          return;
+        }
+
+        // 次スレ検索は積極判定を一覧表示し、類似スレ検索は後続条件なしでタイトルの近さを並べる。
+        const candidates =
+          searchType === "next"
+            ? findNextThreadCandidates(result.threads, sourceThread, { mode: "aggressive" })
+            : findSimilarThreadCandidates(result.threads, sourceThread);
+        setState({
+          status: "ready",
+          searchType,
+          sourceThread,
+          candidates,
+          boardMessage: result.threads.length === 0 ? result.message : null,
+          error: null,
+        });
+      } catch (error) {
+        if (requestIdRef.current !== requestId) {
+          return;
+        }
+
+        const message = getErrorMessage(error, searchType);
+        // 手動検索はコマンド以外からも呼べるため、失敗理由をここで記録して追跡可能にする。
+        log(
+          "error",
+          searchType === "similar"
+            ? "手動類似スレ検索に失敗しました"
+            : "手動次スレ検索に失敗しました",
+          {
+            error,
+            searchType,
+            threadUrl: sourceThread.url,
+          },
+        );
+        setState({
+          status: "error",
+          searchType,
+          sourceThread,
+          candidates: [],
+          boardMessage: null,
+          error: message,
+        });
+        throw error;
+      }
+    },
+    [viewPage],
+  );
+
+  const searchNextThread = useCallback(() => searchThreads("next"), [searchThreads]);
+  const searchSimilarThreads = useCallback(() => searchThreads("similar"), [searchThreads]);
 
   useEffect(() => {
     if (state.sourceThread == null) {
@@ -133,7 +159,7 @@ export function useNextThreadSearch({
   }, [isActive, state.sourceThread, viewPage]);
 
   const selectCandidate = useCallback(
-    (candidate: NextThreadMatch) => {
+    (candidate: ThreadSearchCandidate) => {
       const sourceThread = state.sourceThread;
       if (
         sourceThread == null ||
@@ -159,5 +185,5 @@ export function useNextThreadSearch({
     [close, dispatch, keepAutoRefresh, state.sourceThread, viewPage],
   );
 
-  return { state, searchNextThread, close, selectCandidate };
+  return { state, searchNextThread, searchSimilarThreads, close, selectCandidate };
 }
