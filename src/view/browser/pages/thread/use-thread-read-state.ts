@@ -14,6 +14,7 @@ import {
 } from "src/view/browser/utils/thread-read-state";
 
 interface UseThreadReadStateParams {
+  tabId: string;
   threadUrl: string;
   isActive: boolean;
   responses: IRes[];
@@ -23,10 +24,11 @@ interface UseThreadReadStateParams {
 
 interface UseThreadReadStateResult {
   isInitialReadStateResolved: boolean;
-  scrollToResponse: (resNum: number, options?: { highlight?: boolean; offset?: number }) => void;
+  scrollToResponse: (resNum: number, options?: { highlight?: boolean; offset?: number }) => boolean;
 }
 
 export function useThreadReadState({
+  tabId,
   threadUrl,
   isActive,
   responses,
@@ -141,20 +143,43 @@ export function useThreadReadState({
   }, [threadUrl]);
 
   useEffect(() => {
-    if (!isActive || !pendingThreadJump || responses.length === 0 || loading) return;
+    // 変更理由: 同じスレを複数ペインで開いた場合も、Overlayが選んだタブだけが
+    // レスジャンプ要求を消費するようにする。
+    if (
+      !isActive ||
+      !pendingThreadJump ||
+      (pendingThreadJump.targetTabId && pendingThreadJump.targetTabId !== tabId) ||
+      responses.length === 0 ||
+      loading
+    )
+      return;
 
-    scrollToResponse(pendingThreadJump.resNum);
-    consumePendingThreadResJump(threadUrl, pendingThreadJump.token);
-    setPendingThreadJump((current) =>
-      current?.token === pendingThreadJump.token ? null : current,
-    );
-    setIsInitialReadStateResolved(true);
-
-    viewWindow.requestAnimationFrame(() => {
-      void saveCurrentReadState();
+    const performJump = () => {
+      if (!scrollToResponse(pendingThreadJump.resNum)) return false;
+      consumePendingThreadResJump(threadUrl, pendingThreadJump.token);
+      setPendingThreadJump((current) =>
+        current?.token === pendingThreadJump.token ? null : current,
+      );
+      setIsInitialReadStateResolved(true);
+      viewWindow.requestAnimationFrame(() => {
+        void saveCurrentReadState();
+      });
+      return true;
+    };
+    if (performJump()) return;
+    // 変更理由: 絞り込み解除やスレ再読込の直前に要求が来た場合、まだ存在しない
+    // レスへスクロールできない。DOMへ現れた時に再試行して要求を消費する。
+    const root = rootRef.current;
+    if (!root || typeof MutationObserver === "undefined") return;
+    const observer = new MutationObserver(() => {
+      if (performJump()) observer.disconnect();
     });
+    observer.observe(root, { childList: true, subtree: true });
+    return () => observer.disconnect();
   }, [
     isActive,
+    rootRef,
+    tabId,
     loading,
     threadUrl,
     pendingThreadJump,

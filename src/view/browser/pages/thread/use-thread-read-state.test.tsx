@@ -114,6 +114,7 @@ describe("useThreadReadState Phase 0 contracts", () => {
     const { result, rerender } = renderHook(
       ({ responses }: { responses: IRes[] }) =>
         useThreadReadState({
+          tabId: "thread-tab",
           threadUrl: THREAD_URL,
           isActive: true,
           responses,

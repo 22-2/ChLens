@@ -63,6 +63,7 @@ import {
   buildReplyToWrittenResSet,
   countNewRepliesToWrittenResponses,
 } from "src/view/browser/utils/thread-emphasis";
+import { subscribeThreadResJump } from "src/view/browser/utils/thread-read-state";
 interface ThreadPageProps {
   tabId: string;
   // ContentAreaから描画対象を明示して受け取り、別の表示ホストでもペインのactiveTabに依存しない。
@@ -121,6 +122,22 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     setResponses,
     messageProtocol,
   } = useThreadData(tabId, page, rootRef, refreshController);
+  useEffect(
+    () =>
+      subscribeThreadResJump((jump) => {
+        if (
+          !jump.clearFilter ||
+          jump.threadUrl !== page.threadUrl ||
+          (jump.targetTabId && jump.targetTabId !== tabId)
+        )
+          return;
+        // 変更理由: Overlayから選んだレスが絞り込みでDOMから消えていると、
+        // タブだけ移っても目的のレスを表示できないため、移動時に絞り込みを解除する。
+        setFilter("all");
+        setSearchQuery("");
+      }),
+    [page.threadUrl, setFilter, setSearchQuery, tabId],
+  );
   const clearFilter = useCallback(() => {
     // 変更理由: フィルタバーを閉じた後に再表示したとき、前回の絞り込みだけが
     // 残っている状態を避け、本文と操作欄の状態を一致させる。
@@ -437,6 +454,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const imageBlurConfig = useImageBlurConfig();
 
   const { scrollToResponse, isInitialReadStateResolved } = useThreadReadState({
+    tabId,
     threadUrl: page.threadUrl,
     isActive,
     responses,

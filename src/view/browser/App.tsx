@@ -7,6 +7,7 @@ import { container } from "src/service-container/index";
 import { AutoRefreshStatusItem } from "src/view/browser/components/AutoRefreshStatusItem";
 import { BookmarkRootSelectorDialog } from "src/view/browser/components/BookmarkRootSelectorDialog";
 import { BottomPanel } from "src/view/browser/components/BottomPanel";
+import { CommentOverlayJumpBridge } from "src/view/browser/components/CommentOverlayJumpBridge";
 import { CommentOverlayStatusItem } from "src/view/browser/components/CommentOverlayStatusItem";
 import { ContentArea } from "src/view/browser/components/ContentArea";
 import { IkioiStatusItem } from "src/view/browser/components/IkioiStatusItem";
@@ -331,6 +332,7 @@ const BrowserAppContent: React.FC = () => {
       <TabProvider>
         <WriteSessionProvider>
           <TabWindowHost>
+            <CommentOverlayJumpBridge />
             <WriteWindowHost />
             <ArchiveReplayMainThreadSyncBridge />
             {/*

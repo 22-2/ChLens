@@ -1,7 +1,10 @@
+import { emit, listen } from "@tauri-apps/api/event";
+import { isTauriRuntime } from "src/app/platform/runtime";
 import type { IReadState } from "src/service-container/interfaces";
 import { isHTMLElementInWindow } from "src/view/browser/utils/dom";
 
 const THREAD_RES_JUMP_EVENT = "thread-res-jump";
+const THREAD_RES_JUMP_TAURI_EVENT = "chlens://thread-res-jump";
 const threadJumpEventTarget = new EventTarget();
 const pendingThreadJumpByUrl = new Map<string, PendingThreadJump>();
 
@@ -9,6 +12,8 @@ export interface PendingThreadJump {
   threadUrl: string;
   resNum: number;
   token: string;
+  targetTabId?: string;
+  clearFilter?: boolean;
 }
 
 interface ScrollThreadToResponseOptions {
@@ -145,7 +150,13 @@ export function measureThreadReadState(
   };
 }
 
-export function requestThreadResJump(threadUrl: string, resNum: number): PendingThreadJump | null {
+export function requestThreadResJump(
+  threadUrl: string,
+  resNum: number,
+  targetTabId?: string,
+  clearFilter?: boolean,
+  notifyOtherWebViews = false,
+): PendingThreadJump | null {
   const normalizedResNum = Math.trunc(resNum);
   if (!Number.isFinite(normalizedResNum) || normalizedResNum <= 0) {
     return null;
@@ -155,6 +166,8 @@ export function requestThreadResJump(threadUrl: string, resNum: number): Pending
     threadUrl: normalizeThreadJumpKey(threadUrl),
     resNum: normalizedResNum,
     token: `${Date.now()}:${Math.random()}`,
+    ...(targetTabId ? { targetTabId } : {}),
+    ...(clearFilter ? { clearFilter } : {}),
   } satisfies PendingThreadJump;
 
   // 変更理由: 同一スレを既に開いている時はタブ遷移が no-op になりうるため、
@@ -165,6 +178,17 @@ export function requestThreadResJump(threadUrl: string, resNum: number): Pending
       detail: jump,
     }),
   );
+  if (isTauriRuntime() && targetTabId && notifyOtherWebViews) {
+    // 変更理由: 切り離したタブは別WebViewでEventTargetを共有しないため、
+    // 同じ要求をTauri eventでも配信して、表示先のWebViewで回収できるようにする。
+    void emit(THREAD_RES_JUMP_TAURI_EVENT, jump).catch((error: unknown) => {
+      console.error("[ChLens] WebView間のレスジャンプ通知に失敗しました:", {
+        threadUrl,
+        resNum: normalizedResNum,
+        error,
+      });
+    });
+  }
 
   return jump;
 }
@@ -197,7 +221,41 @@ export function subscribeThreadResJump(listener: (jump: PendingThreadJump) => vo
   };
 
   threadJumpEventTarget.addEventListener(THREAD_RES_JUMP_EVENT, handleJump);
+  let disposed = false;
+  let unlistenTauri: (() => void) | null = null;
+  if (isTauriRuntime()) {
+    void listen<unknown>(THREAD_RES_JUMP_TAURI_EVENT, ({ payload }) => {
+      if (!isPendingThreadJump(payload)) {
+        console.error("[ChLens] WebView間のレスジャンプ要求を検証できません:", payload);
+        return;
+      }
+      listener(payload);
+    })
+      .then((unlisten) => {
+        if (disposed) unlisten();
+        else unlistenTauri = unlisten;
+      })
+      .catch((error: unknown) => {
+        console.error("[ChLens] WebView間のレスジャンプ監視に失敗しました:", error);
+      });
+  }
   return () => {
+    disposed = true;
     threadJumpEventTarget.removeEventListener(THREAD_RES_JUMP_EVENT, handleJump);
+    unlistenTauri?.();
   };
+}
+
+function isPendingThreadJump(value: unknown): value is PendingThreadJump {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Partial<PendingThreadJump>;
+  return (
+    typeof candidate.threadUrl === "string" &&
+    typeof candidate.resNum === "number" &&
+    Number.isInteger(candidate.resNum) &&
+    candidate.resNum > 0 &&
+    typeof candidate.token === "string" &&
+    (candidate.targetTabId === undefined || typeof candidate.targetTabId === "string") &&
+    (candidate.clearFilter === undefined || typeof candidate.clearFilter === "boolean")
+  );
 }
