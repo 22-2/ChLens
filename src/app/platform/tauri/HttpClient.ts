@@ -69,6 +69,8 @@ export const TauriHttpClient: HttpClient = {
       method: options.method || "GET",
       headers: options.headers,
       body: options.body,
+      // 変更理由: ブラウザー版XHRと同じく、アップロード要求が接続待ちのまま残らないようにする。
+      ...(options.timeout ? { connectTimeout: options.timeout } : {}),
     });
 
     console.log(`[TauriHttpClient] Response status: ${response.status}`);

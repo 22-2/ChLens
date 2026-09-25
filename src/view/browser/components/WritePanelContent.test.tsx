@@ -26,11 +26,13 @@ const mocks = vi.hoisted(() => ({
   handleSubmit: vi.fn(),
   handleRetry: vi.fn(),
   copyText: vi.fn().mockResolvedValue(undefined),
+  readClipboardImage: vi.fn(),
   openWriteWindow: vi.fn(),
 }));
 
 vi.mock("src/view/browser/utils/clipboard", () => ({
   copyText: mocks.copyText,
+  readClipboardImage: mocks.readClipboardImage,
 }));
 
 vi.mock("src/app/platform", () => ({
@@ -124,6 +126,7 @@ describe("WritePanelContent", () => {
     mocks.handleSubmit.mockClear();
     mocks.handleRetry.mockClear();
     mocks.copyText.mockClear();
+    mocks.readClipboardImage.mockClear();
     mocks.openWriteWindow.mockClear();
     mocks.openWriteWindow.mockReturnValue(undefined);
 

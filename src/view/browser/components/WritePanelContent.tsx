@@ -1,5 +1,6 @@
 import { Clipboard, ExternalLink, ImagePlus, MoreVertical, Settings } from "lucide-react";
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
+import { uploadImageToImgur } from "src/features/media/application/imgur-upload";
 import { useOptionalBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
@@ -12,7 +13,7 @@ import {
 } from "src/view/browser/hooks/use-write-session";
 import { Dialog } from "src/view/browser/ui/Dialog";
 import { CheckboxField } from "src/view/browser/ui/FormControls";
-import { copyText } from "src/view/browser/utils/clipboard";
+import { copyText, readClipboardImage } from "src/view/browser/utils/clipboard";
 import { bindWriteConfirmationFrame } from "src/view/browser/utils/write-confirmation";
 import { findWriteWarnings } from "src/view/browser/utils/write-warning";
 
@@ -91,6 +92,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
     [setDraft, threadUrl],
   );
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const imgurFileInputRef = useRef<HTMLInputElement | null>(null);
   const errorDialogDescriptionId = useId();
   const authCodeUrlInputId = useId();
   const settingsDialogDescriptionId = useId();
@@ -138,9 +140,62 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
   });
 
   const isSubmitting = status === "submitting";
+  const messageRef = useRef(message);
+  messageRef.current = message;
+  const [isImgurUploading, setIsImgurUploading] = useState(false);
+  const [imgurUploadStatus, setImgurUploadStatus] = useState<{
+    type: "info" | "success" | "error";
+    message: string;
+  } | null>(null);
   const isConfirm = status === "confirm" || confirmationPage != null;
   const isConfirmationSubmitting = confirmationPage != null && isSubmitting;
   const writeErrorMessage = statusText || "書き込みに失敗しました";
+
+  const runImgurUpload = useCallback(
+    async (getImage: () => Promise<Blob>) => {
+      if (isSubmitting || isImgurUploading) return;
+      const uploadThreadUrl = threadUrl;
+      const originalMessage = messageRef.current;
+      setImgurUploadStatus({ type: "info", message: "画像を準備しています..." });
+      setIsImgurUploading(true);
+      try {
+        const image = await getImage();
+        setImgurUploadStatus({ type: "info", message: "Imgurに投稿しています..." });
+        const imageUrl = await uploadImageToImgur(image);
+        const separator = originalMessage === "" || originalMessage.endsWith("\n") ? "" : "\n";
+        const nextMessage = `${originalMessage}${separator}${imageUrl}\n`;
+
+        // 変更理由: 投稿中に投稿先が切り替わっても、画像URLを別スレの本文へ混ぜない。
+        if (threadUrl === uploadThreadUrl) {
+          messageRef.current = nextMessage;
+          setMessage(nextMessage);
+          // Reactの本文反映後にカーソルを末尾へ置き、URLの続きから入力できるようにする。
+          viewWindow.requestAnimationFrame(() => {
+            const textarea = textareaRef.current;
+            if (!textarea) return;
+            textarea.focus();
+            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+          });
+        } else if (uploadThreadUrl) {
+          setDraft(uploadThreadUrl, nextMessage);
+        }
+        setImgurUploadStatus({ type: "success", message: "画像を投稿し、URLを本文に追加しました" });
+      } catch (error) {
+        console.error("[ImgurUpload] 画像の投稿に失敗しました", error);
+        setImgurUploadStatus({
+          type: "error",
+          message: error instanceof Error ? error.message : String(error),
+        });
+      } finally {
+        setIsImgurUploading(false);
+      }
+    },
+    [isImgurUploading, isSubmitting, setDraft, setMessage, threadUrl, viewWindow],
+  );
+
+  const handlePasteClipboardImage = useCallback(() => {
+    void runImgurUpload(() => readClipboardImage(viewSurface));
+  }, [runImgurUpload, viewSurface]);
 
   useEffect(() => {
     // 変更理由: パネルを開いた直後の誤クリックを防ぐため、表示から3秒間は
@@ -362,7 +417,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
                     className="write-panel__target-select"
                     value={selectedThreadUrl ?? ""}
                     onChange={(event) => selectThread(event.currentTarget.value)}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || isImgurUploading}
                     aria-label="投稿先スレッド"
                   >
                     {targets.map((target) => (
@@ -413,7 +468,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
                       event.currentTarget.closest("details")?.removeAttribute("open");
                       setIsSettingsDialogOpen(true);
                     }}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || isImgurUploading}
                   >
                     <Settings size={14} aria-hidden="true" />
                     <span>書き込み設定</span>
@@ -426,22 +481,50 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
                         event.currentTarget.closest("details")?.removeAttribute("open");
                         handleOpenWriteWindow();
                       }}
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || isImgurUploading}
                     >
                       <ExternalLink size={14} aria-hidden="true" />
                       <span>書き込みを別窓で開く</span>
                     </button>
                   )}
-                  <button type="button" className="write-panel__menu-item" disabled>
+                  <button
+                    type="button"
+                    className="write-panel__menu-item"
+                    onClick={(event) => {
+                      event.currentTarget.closest("details")?.removeAttribute("open");
+                      imgurFileInputRef.current?.click();
+                    }}
+                    disabled={isSubmitting || isImgurUploading || !threadUrl}
+                  >
                     <ImagePlus size={14} aria-hidden="true" />
-                    <span>ローカル画像をImgurに投稿（未実装）</span>
+                    <span>ローカル画像をImgurに投稿</span>
                   </button>
-                  <button type="button" className="write-panel__menu-item" disabled>
+                  <button
+                    type="button"
+                    className="write-panel__menu-item"
+                    onClick={(event) => {
+                      event.currentTarget.closest("details")?.removeAttribute("open");
+                      handlePasteClipboardImage();
+                    }}
+                    disabled={isSubmitting || isImgurUploading || !threadUrl}
+                  >
                     <Clipboard size={14} aria-hidden="true" />
-                    <span>クリップボード画像をImgurに投稿（未実装）</span>
+                    <span>クリップボード画像をImgurに投稿</span>
                   </button>
                 </div>
               </details>
+              <input
+                ref={imgurFileInputRef}
+                className="write-panel__file-input"
+                type="file"
+                accept="image/*"
+                aria-label="Imgurに投稿する画像を選択"
+                onChange={(event) => {
+                  const file = event.currentTarget.files?.[0];
+                  event.currentTarget.value = "";
+                  if (file) void runImgurUpload(async () => file);
+                }}
+              />
             </div>
             <div className="write-panel__body-row">
               <textarea
@@ -450,14 +533,16 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyDown={handleTextareaKeyDown}
-                disabled={isSubmitting}
+                disabled={isSubmitting || isImgurUploading}
                 placeholder={threadUrl ? "本文を入力..." : "スレッドを開いてから書き込んでください"}
               />
               <div className="write-panel__side">
                 <button
                   type="submit"
                   className="write-panel__btn write-panel__btn--primary"
-                  disabled={!canSubmit || isSubmitting || submitDelaySeconds > 0}
+                  disabled={
+                    !canSubmit || isSubmitting || isImgurUploading || submitDelaySeconds > 0
+                  }
                 >
                   {submitDelaySeconds > 0 ? `${submitDelaySeconds}秒後に書き込めます` : "書き込む"}
                 </button>
@@ -476,6 +561,15 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
                     title={statusText}
                   >
                     {statusText}
+                  </span>
+                )}
+                {imgurUploadStatus && (
+                  <span
+                    className={`write-panel__status write-panel__status--${imgurUploadStatus.type} write-panel__upload-status`}
+                    role={imgurUploadStatus.type === "error" ? "alert" : "status"}
+                    title={imgurUploadStatus.message}
+                  >
+                    {imgurUploadStatus.message}
                   </span>
                 )}
               </div>

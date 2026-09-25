@@ -68,3 +68,24 @@ export async function copyImageBlob(blob: Blob, surface?: ClipboardSurface): Pro
     }),
   ]);
 }
+
+/** クリップボードからImgurへ投稿できるラスター画像を取得する。 */
+export async function readClipboardImage(surface?: ClipboardSurface): Promise<Blob> {
+  const targetWindow = surface?.window ?? globalThis.window;
+  const read = targetWindow.navigator?.clipboard?.read;
+  if (typeof read !== "function") {
+    throw new Error("この環境ではクリップボード画像の読み取りに対応していません");
+  }
+
+  const items = await read.call(targetWindow.navigator.clipboard);
+  for (const item of items) {
+    const imageType = item.types.find(
+      (type) => type.startsWith("image/") && type !== "image/svg+xml",
+    );
+    if (!imageType) continue;
+    const image = await item.getType(imageType);
+    if (image.size > 0) return image;
+  }
+
+  throw new Error("クリップボードに投稿できる画像がありません");
+}

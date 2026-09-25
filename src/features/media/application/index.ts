@@ -14,6 +14,7 @@ export {
   normalizeImgurImageUrl,
   useImgurAlbumMedia,
 } from "./imgur-album";
+export { IMGUR_UPLOAD_TIMEOUT_MS, uploadImageToImgur } from "./imgur-upload";
 export type {
   TwitterPost,
   TwitterPostHttpResponse,

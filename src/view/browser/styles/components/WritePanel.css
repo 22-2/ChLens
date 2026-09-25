@@ -207,6 +207,10 @@
   color: var(--sys-color-text-disabled);
 }
 
+.write-panel__file-input {
+  display: none;
+}
+
 .write-panel__body-row {
   display: flex;
   gap: var(--sys-space-4);
@@ -296,6 +300,18 @@
 
 .write-panel__status--submitting {
   color: var(--sys-color-text-muted);
+}
+
+.write-panel__status--info {
+  color: var(--sys-color-text-muted);
+}
+
+.write-panel__upload-status {
+  max-height: 5em;
+  overflow: auto;
+  text-overflow: initial;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .write-panel__status--confirm {
