@@ -11,5 +11,6 @@ export const STATUS_BAR_PRIORITY = {
   right: {
     writePanelToggle: 0,
     threadListPanelToggle: 5,
+    writeOperation: 10,
   },
 } as const;

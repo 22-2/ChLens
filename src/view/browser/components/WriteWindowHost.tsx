@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
+import { StatusBar, StatusBarProvider } from "src/view/browser/components/StatusBar";
 import { WritePanelContent } from "src/view/browser/components/WritePanelContent";
 import { useTheme } from "src/view/browser/hooks/use-theme";
 import { ViewSurfaceProvider } from "src/view/browser/hooks/use-view-surface";
@@ -37,17 +38,20 @@ export const WriteWindowHost: React.FC = () => {
 
   return createPortal(
     <ViewSurfaceProvider surface={viewSurface}>
-      {/* 別窓側にも同じ通知UIを置き、投稿操作の結果をメイン窓へ流さない。 */}
-      <ToastProvider topOffset="16px" rightOffset="16px" />
-      <main className="write-window">
-        <div className="write-window__content">
-          <WritePanelContent
-            standalone
-            onClose={closeWriteWindow}
-            portalContainer={writeWindowRoot}
-          />
-        </div>
-      </main>
+      <StatusBarProvider>
+        {/* 別窓側にも通知UIと状態バーを置き、操作結果をメイン窓へ流さない。 */}
+        <ToastProvider topOffset="16px" rightOffset="16px" />
+        <main className="write-window">
+          <div className="write-window__content">
+            <WritePanelContent
+              standalone
+              onClose={closeWriteWindow}
+              portalContainer={writeWindowRoot}
+            />
+          </div>
+          <StatusBar />
+        </main>
+      </StatusBarProvider>
     </ViewSurfaceProvider>,
     writeWindowRoot,
   );

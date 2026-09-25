@@ -3,6 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { container } from "src/service-container/index";
 import type { IConfig, IMessage } from "src/service-container/interfaces";
+import { StatusBar, StatusBarProvider } from "src/view/browser/components/StatusBar";
 import { WritePanelContent } from "src/view/browser/components/WritePanelContent";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -42,6 +43,15 @@ vi.mock("src/app/platform", () => ({
     },
   },
 }));
+
+function renderWritePanel(standalone = false) {
+  return render(
+    <StatusBarProvider>
+      <WritePanelContent standalone={standalone} />
+      <StatusBar />
+    </StatusBarProvider>,
+  );
+}
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => ({
@@ -154,7 +164,7 @@ describe("WritePanelContent", () => {
   it("Ctrl+EnterオプションON時はテキストエリアでCtrl+Enter投稿できる", () => {
     configMock.get = vi.fn((key: string) => (key === "write_submit_ctrl_enter" ? "on" : ""));
 
-    render(<WritePanelContent />);
+    renderWritePanel();
 
     const textarea = screen.getByPlaceholderText("本文を入力...");
     fireEvent.keyDown(textarea, { key: "Enter", ctrlKey: true });
@@ -173,16 +183,16 @@ describe("WritePanelContent", () => {
       },
     ];
 
-    const { unmount } = render(<WritePanelContent />);
+    const { unmount } = renderWritePanel();
     expect(screen.queryByLabelText("投稿先スレッド")).not.toBeInTheDocument();
 
     unmount();
-    render(<WritePanelContent standalone />);
+    renderWritePanel(true);
     expect(screen.getByLabelText("投稿先スレッド")).toBeInTheDocument();
   });
 
   it("Ctrl+EnterオプションOFF時はCtrl+Enterしても投稿しない", () => {
-    render(<WritePanelContent />);
+    renderWritePanel();
 
     const textarea = screen.getByPlaceholderText("本文を入力...");
     fireEvent.keyDown(textarea, { key: "Enter", ctrlKey: true });
@@ -191,14 +201,14 @@ describe("WritePanelContent", () => {
   });
 
   it("Ctrl+Enterとsageの操作欄をパネル内に表示しない", () => {
-    render(<WritePanelContent />);
+    renderWritePanel();
 
     expect(screen.queryByText("Ctrl+Enterで書き込む")).not.toBeInTheDocument();
     expect(screen.queryByText("sage", { selector: "label" })).not.toBeInTheDocument();
   });
 
   it("歯車ボタンから書き込み設定を開いて各項目を変更できる", () => {
-    render(<WritePanelContent />);
+    renderWritePanel();
 
     fireEvent.click(screen.getByRole("button", { name: "書き込み設定" }));
 
@@ -231,25 +241,21 @@ describe("WritePanelContent", () => {
       text: ">>10\n",
     };
 
-    render(<WritePanelContent />);
+    renderWritePanel();
 
     expect(mocks.setMessage).toHaveBeenCalledWith("本文\n>>10\n");
     expect(mocks.clearWritePanelInsertRequest).toHaveBeenCalledWith(1);
   });
 
-  it("書き込みエラーをダイアログへ全文表示し、閉じた後も再入力できる", async () => {
+  it("書き込みエラーをステータスバーへ表示し、再入力できる", async () => {
     const errorMessage = "書き込み失敗: " + "サーバーから返された長いエラー内容。".repeat(12);
     mocks.status = "error";
     mocks.statusText = errorMessage;
 
-    render(<WritePanelContent />);
+    renderWritePanel();
 
-    const dialog = await screen.findByRole("dialog");
-    expect(dialog).toHaveClass("write-panel__error-dialog");
-    expect(within(dialog).getByRole("alert")).toHaveTextContent(errorMessage);
-
-    fireEvent.click(within(dialog).getByRole("button", { name: "閉じる" }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(await screen.findByRole("alert")).toHaveTextContent(errorMessage);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
     const retryButton = screen.getByRole("button", { name: "再入力" });
     expect(retryButton).toBeInTheDocument();
@@ -257,14 +263,13 @@ describe("WritePanelContent", () => {
     expect(mocks.handleRetry).toHaveBeenCalledTimes(1);
   });
 
-  it("エラー本文が空でもフォールバックをダイアログへ表示する", async () => {
+  it("エラー本文が空でもフォールバックをステータスバーへ表示する", async () => {
     mocks.status = "error";
     mocks.statusText = "";
 
-    render(<WritePanelContent />);
+    renderWritePanel();
 
-    const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByRole("alert")).toHaveTextContent("書き込みに失敗しました");
+    expect(await screen.findByRole("alert")).toHaveTextContent("書き込みに失敗しました");
   });
 
   it("eddibb認証コードのエラーでは認証URLを表示してコピーできる", async () => {
@@ -272,7 +277,7 @@ describe("WritePanelContent", () => {
     mocks.statusText = "認証コードを入力してください";
     mocks.authCodeUrl = "https://example.com/auth-code";
 
-    render(<WritePanelContent />);
+    renderWritePanel();
 
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByLabelText("認証ページURL")).toHaveValue(mocks.authCodeUrl);
@@ -296,13 +301,13 @@ describe("WritePanelContent", () => {
     );
     mocks.status = "success";
 
-    render(<WritePanelContent />);
+    renderWritePanel();
 
     expect(mocks.closePanel).toHaveBeenCalledTimes(1);
   });
 
   it("別窓を開いたら下部パネルを閉じる", () => {
-    render(<WritePanelContent />);
+    renderWritePanel();
 
     fireEvent.click(screen.getByRole("button", { name: "書き込みを別窓で開く" }));
 
@@ -313,7 +318,7 @@ describe("WritePanelContent", () => {
   it("別窓を開けない場合は下部パネルを閉じない", () => {
     mocks.openWriteWindow.mockReturnValue(false);
 
-    render(<WritePanelContent />);
+    renderWritePanel();
 
     fireEvent.click(screen.getByRole("button", { name: "書き込みを別窓で開く" }));
 
@@ -321,13 +326,12 @@ describe("WritePanelContent", () => {
     expect(mocks.closePanel).not.toHaveBeenCalled();
   });
 
-  it("書き込み失敗の本文をボタン下へ重ねて表示しない", () => {
+  it("書き込み失敗の本文をステータスバーに表示する", () => {
     mocks.status = "error";
     mocks.statusText = "書き込み結果を確認できませんでした";
 
-    render(<WritePanelContent />);
+    renderWritePanel();
 
-    expect(screen.queryByText(mocks.statusText, { selector: "span" })).not.toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent(mocks.statusText);
   });
 });

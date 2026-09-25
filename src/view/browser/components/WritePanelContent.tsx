@@ -1,6 +1,15 @@
-import { Clipboard, ExternalLink, ImagePlus, MoreVertical, Settings } from "lucide-react";
+import {
+  Clipboard,
+  ExternalLink,
+  ImagePlus,
+  LoaderCircle,
+  MoreVertical,
+  Settings,
+} from "lucide-react";
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { uploadImageToImgur } from "src/features/media/application/imgur-upload";
+import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
+import { StatusBarItem } from "src/view/browser/components/StatusBar";
 import { useOptionalBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
@@ -150,6 +159,27 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
   const isConfirm = status === "confirm" || confirmationPage != null;
   const isConfirmationSubmitting = confirmationPage != null && isSubmitting;
   const writeErrorMessage = statusText || "書き込みに失敗しました";
+  const uploadStatusIsVisible =
+    isImgurUploading ||
+    imgurUploadStatus?.type === "success" ||
+    imgurUploadStatus?.type === "error";
+  const statusBarMessage = uploadStatusIsVisible
+    ? (imgurUploadStatus?.message ?? "Imgurに投稿しています...")
+    : status === "idle"
+      ? null
+      : statusText || (status === "error" ? writeErrorMessage : null);
+  const statusBarIsError = uploadStatusIsVisible
+    ? imgurUploadStatus?.type === "error"
+    : status === "error";
+  const statusBarIsBusy = isImgurUploading || status === "submitting";
+
+  useEffect(() => {
+    if (!imgurUploadStatus || imgurUploadStatus.type === "info") return;
+    // 変更理由: 完了・失敗は次の操作を始めるまで数秒だけ残し、古い結果が
+    // 新しい作業状況に見え続けないようにする。
+    const timer = viewWindow.setTimeout(() => setImgurUploadStatus(null), 5_000);
+    return () => viewWindow.clearTimeout(timer);
+  }, [imgurUploadStatus, viewWindow]);
 
   const runImgurUpload = useCallback(
     async (getImage: () => Promise<Blob>) => {
@@ -279,10 +309,10 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
   }, [portalContainer, viewDocument]);
 
   useEffect(() => {
-    // 変更理由: エラー状態とDialogの開閉を同じ値で管理すると、Dialogを閉じても
-    // statusがerrorのまま再表示されるため、閉じた後も既存の再入力操作を使えるよう分離する。
-    setIsErrorDialogOpen(status === "error");
-  }, [status, statusText]);
+    // 変更理由: 通常のエラーはステータスバーへ集約し、認証URLが必要な場合だけ
+    // コピー操作を提供するDialogを開く。
+    setIsErrorDialogOpen(status === "error" && authCodeUrl != null);
+  }, [authCodeUrl, status]);
 
   useEffect(() => {
     if (status !== "success" || !closePanelAfterSubmit) {
@@ -385,6 +415,24 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
 
   return (
     <div className="write-panel">
+      {statusBarMessage && (
+        <StatusBarItem
+          id="write-operation-status"
+          alignment="right"
+          priority={STATUS_BAR_PRIORITY.right.writeOperation}
+          title={statusBarMessage}
+          className={statusBarIsError ? "write-operation-status--error" : "write-operation-status"}
+        >
+          <span
+            className="write-operation-status__content"
+            role={statusBarIsError ? "alert" : "status"}
+            aria-live={statusBarIsError ? "assertive" : "polite"}
+          >
+            {statusBarIsBusy && <LoaderCircle className="icon--spinning" aria-hidden="true" />}
+            <span className="write-operation-status__message">{statusBarMessage}</span>
+          </span>
+        </StatusBarItem>
+      )}
       <form
         className={`write-panel__form${isConfirm ? " write-panel__form--confirm" : ""}`}
         onSubmit={(event) => {
@@ -555,23 +603,6 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
                     再入力
                   </button>
                 )}
-                {statusText && status !== "error" && (
-                  <span
-                    className={`write-panel__status write-panel__status--${status}`}
-                    title={statusText}
-                  >
-                    {statusText}
-                  </span>
-                )}
-                {imgurUploadStatus && (
-                  <span
-                    className={`write-panel__status write-panel__status--${imgurUploadStatus.type} write-panel__upload-status`}
-                    role={imgurUploadStatus.type === "error" ? "alert" : "status"}
-                    title={imgurUploadStatus.message}
-                  >
-                    {imgurUploadStatus.message}
-                  </span>
-                )}
               </div>
             </div>
           </>
@@ -686,20 +717,13 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
             className="browser-dialog-content write-panel__error-dialog"
             aria-describedby={errorDialogDescriptionId}
           >
-            <Dialog.Title className="browser-dialog-title">書き込みに失敗しました</Dialog.Title>
+            <Dialog.Title className="browser-dialog-title">認証を完了してください</Dialog.Title>
             <Dialog.Description
               id={errorDialogDescriptionId}
               className="browser-dialog-description"
             >
-              {authCodeUrl
-                ? "認証ページで認証を完了し、発行されたトークンをメール欄へ貼り付けてください。"
-                : "サーバーから返されたエラー内容を確認してください。"}
+              認証ページでトークンを発行し、メール欄へ貼り付けてから再入力してください。
             </Dialog.Description>
-            {/* 変更理由: エラー本文は長さや改行を保持したまま確認できる必要があるため、
-                既存のstatusTextはReactのテキストとして表示し、認証URLだけを安全なコピー欄へ分離する。 */}
-            <p className="write-panel__error-message" role="alert">
-              {writeErrorMessage}
-            </p>
             {authCodeUrl && (
               <div className="write-panel__auth-url">
                 <label htmlFor={authCodeUrlInputId}>認証ページURL</label>

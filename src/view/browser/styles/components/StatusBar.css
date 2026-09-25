@@ -56,6 +56,40 @@
   text-overflow: ellipsis;
 }
 
+.status-bar__item.write-operation-status,
+.status-bar__item.write-operation-status--error {
+  flex: 0 1 auto;
+  max-width: min(40vw, 360px);
+  box-sizing: border-box;
+  padding: 0 var(--sys-space-3);
+}
+
+.write-operation-status__content {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sys-space-2);
+  min-width: 0;
+  width: 100%;
+}
+
+.write-operation-status__message {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.write-operation-status--error {
+  color: var(--sys-color-error);
+}
+
+.write-operation-status__content .icon--spinning {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+}
+
 .status-bar__count {
   /* 変更理由: 件数の桁が変わっても数字の幅を揃え、ステータスバーのちらつきを抑える。 */
   font-variant-numeric: tabular-nums;
