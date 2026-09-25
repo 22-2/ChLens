@@ -122,7 +122,13 @@
   cursor: default;
 }
 
-.write-panel__settings-btn {
+.write-panel__menu {
+  position: relative;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.write-panel__menu-trigger {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -135,21 +141,70 @@
   background: transparent;
   color: var(--sys-color-text-muted);
   cursor: pointer;
+  list-style: none;
 }
 
-.write-panel__settings-btn:hover:not(:disabled) {
+.write-panel__menu-trigger::-webkit-details-marker {
+  display: none;
+}
+
+.write-panel__menu-trigger:hover,
+.write-panel__menu[open] > .write-panel__menu-trigger {
   background: var(--sys-color-border);
   color: var(--sys-color-text);
 }
 
-.write-panel__settings-btn:focus-visible {
+.write-panel__menu-trigger:focus-visible {
   outline: 2px solid var(--sys-color-focus-ring);
   outline-offset: 1px;
 }
 
-.write-panel__settings-btn:disabled {
+.write-panel__menu-items {
+  /* 小さな書き込みパネルでも画面からはみ出しにくい寸法にする。 */
+  position: absolute;
+  z-index: 2;
+  top: calc(100% + var(--sys-space-1));
+  right: 0;
+  display: grid;
+  width: max-content;
+  max-width: min(240px, calc(100vw - 24px));
+  padding: 2px;
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-md);
+  background: var(--sys-color-surface);
+  box-shadow: var(--sys-shadow-popup);
+}
+
+.write-panel__menu-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: var(--sys-radius-sm);
+  background: transparent;
+  color: var(--sys-color-text);
+  font: inherit;
+  font-size: 11px;
+  text-align: left;
+  white-space: normal;
+}
+
+.write-panel__menu-item > svg {
+  flex: 0 0 auto;
+}
+
+.write-panel__menu-item:not(:disabled) {
+  cursor: pointer;
+}
+
+.write-panel__menu-item:not(:disabled):hover {
+  background: var(--sys-color-surface-muted);
+}
+
+.write-panel__menu-item:disabled {
   color: var(--sys-color-text-disabled);
-  cursor: default;
 }
 
 .write-panel__body-row {

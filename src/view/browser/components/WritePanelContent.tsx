@@ -1,4 +1,4 @@
-import { ExternalLink, Settings } from "lucide-react";
+import { Clipboard, ExternalLink, ImagePlus, MoreVertical, Settings } from "lucide-react";
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useOptionalBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
@@ -396,28 +396,52 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
                   placeholder=""
                 />
               </label>
-              <button
-                type="button"
-                className="write-panel__settings-btn"
-                onClick={() => setIsSettingsDialogOpen(true)}
-                disabled={isSubmitting}
-                title="書き込み設定"
-                aria-label="書き込み設定"
-              >
-                <Settings size={16} aria-hidden="true" />
-              </button>
-              {!standalone && (
-                <button
-                  type="button"
-                  className="write-panel__settings-btn"
-                  onClick={handleOpenWriteWindow}
-                  disabled={isSubmitting}
-                  title="書き込みを別窓で開く"
-                  aria-label="書き込みを別窓で開く"
+              {/* 投稿操作を入力欄の行へ寄せ、本文欄の縦幅を確保する。 */}
+              <details className="write-panel__menu">
+                <summary
+                  className="write-panel__menu-trigger"
+                  aria-label="その他の操作"
+                  title="その他の操作"
                 >
-                  <ExternalLink size={16} aria-hidden="true" />
-                </button>
-              )}
+                  <MoreVertical size={16} aria-hidden="true" />
+                </summary>
+                <div className="write-panel__menu-items">
+                  <button
+                    type="button"
+                    className="write-panel__menu-item"
+                    onClick={(event) => {
+                      event.currentTarget.closest("details")?.removeAttribute("open");
+                      setIsSettingsDialogOpen(true);
+                    }}
+                    disabled={isSubmitting}
+                  >
+                    <Settings size={14} aria-hidden="true" />
+                    <span>書き込み設定</span>
+                  </button>
+                  {!standalone && (
+                    <button
+                      type="button"
+                      className="write-panel__menu-item"
+                      onClick={(event) => {
+                        event.currentTarget.closest("details")?.removeAttribute("open");
+                        handleOpenWriteWindow();
+                      }}
+                      disabled={isSubmitting}
+                    >
+                      <ExternalLink size={14} aria-hidden="true" />
+                      <span>書き込みを別窓で開く</span>
+                    </button>
+                  )}
+                  <button type="button" className="write-panel__menu-item" disabled>
+                    <ImagePlus size={14} aria-hidden="true" />
+                    <span>ローカル画像をImgurに投稿（未実装）</span>
+                  </button>
+                  <button type="button" className="write-panel__menu-item" disabled>
+                    <Clipboard size={14} aria-hidden="true" />
+                    <span>クリップボード画像をImgurに投稿（未実装）</span>
+                  </button>
+                </div>
+              </details>
             </div>
             <div className="write-panel__body-row">
               <textarea
