@@ -11,6 +11,7 @@ interface NextThreadSearchDialogProps {
   state: NextThreadSearchState;
   onClose: () => void;
   onSelect: (candidate: ThreadSearchCandidate) => void;
+  autoMoveCountdown?: number | null;
 }
 
 const EVIDENCE_LABELS: Partial<Record<NextThreadEvidence, string>> = {
@@ -40,11 +41,13 @@ export const NextThreadSearchDialog: React.FC<NextThreadSearchDialogProps> = ({
   state,
   onClose,
   onSelect,
+  autoMoveCountdown = null,
 }) => {
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const firstCandidateRef = useRef<HTMLButtonElement>(null);
-  const isOpen = state.status !== "idle";
+  const isAutoMovePrompt = autoMoveCountdown != null;
+  const isOpen = state.status !== "idle" || isAutoMovePrompt;
   const isSearching = state.status === "searching";
   const isReady = state.status === "ready";
   const isError = state.status === "error";
@@ -85,12 +88,28 @@ export const NextThreadSearchDialog: React.FC<NextThreadSearchDialogProps> = ({
           tabIndex={-1}
         >
           <Dialog.Title className="browser-dialog-title">
-            {isSimilarSearch ? "類似スレを検索" : "次スレ候補を検索"}
+            {isAutoMovePrompt
+              ? "次スレ候補が見つかりました"
+              : isSimilarSearch
+                ? "類似スレを検索"
+                : "次スレ候補を検索"}
           </Dialog.Title>
           <Dialog.Description className="browser-dialog-description">
-            「{state.sourceThread?.title ?? "現在のスレ"}」を基準に、
-            {isSimilarSearch ? "タイトルが似ているスレ" : "積極判定の次スレ候補"}を表示します
+            {isAutoMovePrompt ? (
+              <>{autoMoveCountdown}秒後に1番目の候補へ移動します。候補を選ぶとすぐに移動します。</>
+            ) : (
+              <>
+                「{state.sourceThread?.title ?? "現在のスレ"}」を基準に、
+                {isSimilarSearch ? "タイトルが似ているスレ" : "積極判定の次スレ候補"}を表示します
+              </>
+            )}
           </Dialog.Description>
+
+          {isAutoMovePrompt ? (
+            <div className="next-thread-search-dialog__status" role="status" aria-live="off">
+              {autoMoveCountdown}秒後に自動で移動します
+            </div>
+          ) : null}
 
           {isSearching ? (
             <div className="next-thread-search-dialog__status" role="status">
@@ -172,7 +191,7 @@ export const NextThreadSearchDialog: React.FC<NextThreadSearchDialogProps> = ({
               data-variant="subtle"
               onClick={onClose}
             >
-              閉じる
+              {isAutoMovePrompt ? "自動移動をキャンセル" : "閉じる"}
             </button>
           </div>
         </Dialog.Content>

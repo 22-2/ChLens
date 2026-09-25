@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { log } from "src/app/Log";
 import { container } from "src/service-container/index";
 import type { IThread, IToastService } from "src/service-container/interfaces";
@@ -7,10 +7,14 @@ import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
 import {
   type AutoNextThreadMode,
   findMainstreamThreadMatch,
+  findNextThreadCandidates,
   findNextThreadMatch,
+  type NextThreadMatch,
+  type ThreadSearchCandidate,
 } from "src/view/browser/utils/next-thread-search";
 
 const NEXT_THREAD_SEARCH_RETRY_MS = 3_000;
+const AUTO_NEXT_THREAD_CONFIRMATION_MS = 5_000;
 const MAINSTREAM_WATCH_GRACE_PERIOD_MS = 15_000;
 const MAINSTREAM_WATCH_DURATION_MS = 60_000;
 const MAINSTREAM_WATCH_RETRY_MS = 5_000;
@@ -21,7 +25,18 @@ const REQUIRED_CANDIDATE_CONFIRMATIONS: Record<AutoNextThreadMode, number> = {
   aggressive: 1,
 };
 
-type AutoNextThreadStatus = "idle" | "searching" | "watching";
+type AutoNextThreadStatus = "idle" | "searching" | "confirming" | "watching";
+
+export interface PendingAutoNextThreadMove {
+  sourceThread: Pick<IThread, "title" | "url">;
+  candidates: readonly NextThreadMatch[];
+  boardUrl: string;
+  mode: AutoNextThreadMode;
+  deadline: number;
+  remainingMilliseconds: number;
+  remainingSeconds: number;
+  isPaused: boolean;
+}
 
 interface UseAutoNextThreadOptions {
   autoRefreshEnabled: boolean;
@@ -38,6 +53,8 @@ interface UseAutoNextThreadOptions {
    * 閾値より下(=追従可能位置)に居るときだけ次スレ移動を行う。
    */
   canAutoScroll: boolean;
+  /** コメント流し中は画面操作を待たせないため、候補確定後すぐ移動する。 */
+  skipMoveDelay?: boolean;
   followThread: (thread: Pick<IThread, "title" | "url">) => void;
   /** 探索を継続できず終了したとき、自動更新の停止を通知する。 */
   onSearchExhausted?: () => void;
@@ -67,12 +84,19 @@ export function useAutoNextThread({
   mode,
   responseMessages,
   canAutoScroll,
+  skipMoveDelay = false,
   followThread,
   onSearchExhausted,
   toast = container.toast,
-}: UseAutoNextThreadOptions): { status: AutoNextThreadStatus } {
+}: UseAutoNextThreadOptions): {
+  status: AutoNextThreadStatus;
+  pendingMove: PendingAutoNextThreadMove | null;
+  cancelPendingMove: () => void;
+  selectPendingCandidate: (candidate: ThreadSearchCandidate) => void;
+} {
   const { window: viewWindow, document: viewDocument } = useViewSurface();
   const [status, setStatus] = useState<AutoNextThreadStatus>("idle");
+  const [pendingMove, setPendingMove] = useState<PendingAutoNextThreadMove | null>(null);
   const [watchState, setWatchState] = useState<MainstreamWatchState | null>(null);
   const lastSearchKeyRef = useRef<string | null>(null);
   const pendingCandidateRef = useRef<{ url: string; count: number } | null>(null);
@@ -96,7 +120,27 @@ export function useAutoNextThread({
 
   useEffect(() => {
     const handleVisibilityChange = () => {
-      setIsDocumentVisible(viewDocument.visibilityState === "visible");
+      const isVisible = viewDocument.visibilityState === "visible";
+      setIsDocumentVisible(isVisible);
+      setPendingMove((current) => {
+        if (current == null || current.isPaused === !isVisible) {
+          return current;
+        }
+        if (!isVisible) {
+          const remainingMilliseconds = Math.max(0, current.deadline - Date.now());
+          return {
+            ...current,
+            remainingMilliseconds,
+            remainingSeconds: Math.ceil(remainingMilliseconds / 1000),
+            isPaused: true,
+          };
+        }
+        return {
+          ...current,
+          deadline: Date.now() + current.remainingMilliseconds,
+          isPaused: false,
+        };
+      });
     };
 
     viewDocument.addEventListener("visibilitychange", handleVisibilityChange);
@@ -110,7 +154,8 @@ export function useAutoNextThread({
     pendingCandidateRef.current = null;
     mainstreamPendingCandidateRef.current = null;
     mainstreamSnapshotRef.current = null;
-    setStatus((prev) => (prev === "searching" ? "idle" : prev));
+    setPendingMove(null);
+    setStatus((prev) => (prev === "searching" || prev === "confirming" ? "idle" : prev));
   }, [mode, threadUrl]);
 
   useEffect(() => {
@@ -123,6 +168,7 @@ export function useAutoNextThread({
     mainstreamPendingCandidateRef.current = null;
     mainstreamSnapshotRef.current = null;
     setWatchState(null);
+    setPendingMove(null);
     setStatus("idle");
   }, [autoRefreshEnabled, featureEnabled]);
 
@@ -139,6 +185,92 @@ export function useAutoNextThread({
     setWatchState(null);
     setStatus("idle");
   }, [threadUrl, watchState]);
+
+  const moveToCandidate = useCallback(
+    (candidate: NextThreadMatch, pending: PendingAutoNextThreadMove) => {
+      followThreadRef.current(candidate.thread);
+      toast.info(`次スレへ移動しました: ${candidate.thread.title}`);
+      setPendingMove(null);
+      // 自動移動時も既存のスレ監視を引き継ぎ、慎重モードでは別候補への再移動を行わない。
+      if (pending.mode === "cautious") {
+        mainstreamPendingCandidateRef.current = null;
+        mainstreamSnapshotRef.current = null;
+        setWatchState(null);
+        setStatus("idle");
+      } else {
+        mainstreamPendingCandidateRef.current = null;
+        mainstreamSnapshotRef.current = null;
+        setWatchState({
+          boardUrl: pending.boardUrl,
+          originalThreadUrl: pending.sourceThread.url,
+          originalThreadTitle: pending.sourceThread.title,
+          currentThreadUrl: candidate.thread.url,
+          startedAt: Date.now(),
+        });
+        setStatus("watching");
+      }
+    },
+    [toast],
+  );
+
+  const cancelPendingMove = useCallback(() => {
+    // キャンセルした満了スレを再検索で即表示しないよう、今回の候補状態だけを破棄する。
+    setPendingMove(null);
+    setStatus("idle");
+  }, []);
+
+  const selectPendingCandidate = useCallback(
+    (candidate: ThreadSearchCandidate) => {
+      if (pendingMove) {
+        const confirmedCandidate = pendingMove.candidates.find(
+          (pendingCandidate) => pendingCandidate.thread.url === candidate.thread.url,
+        );
+        if (confirmedCandidate) {
+          moveToCandidate(confirmedCandidate, pendingMove);
+        }
+      }
+    },
+    [moveToCandidate, pendingMove],
+  );
+
+  useEffect(() => {
+    if (!pendingMove) {
+      return;
+    }
+
+    if (skipMoveDelay) {
+      const firstCandidate = pendingMove.candidates[0];
+      if (firstCandidate) {
+        moveToCandidate(firstCandidate, pendingMove);
+      }
+      return;
+    }
+
+    if (pendingMove.isPaused || !isDocumentVisible) {
+      return;
+    }
+
+    const updateCountdown = () => {
+      const remainingSeconds = Math.max(0, Math.ceil((pendingMove.deadline - Date.now()) / 1000));
+      if (remainingSeconds === 0) {
+        const firstCandidate = pendingMove.candidates[0];
+        if (firstCandidate) {
+          moveToCandidate(firstCandidate, pendingMove);
+        }
+        return;
+      }
+
+      setPendingMove((current) => {
+        if (current == null || current.remainingSeconds === remainingSeconds) {
+          return current;
+        }
+        return { ...current, remainingSeconds };
+      });
+    };
+
+    const timerId = viewWindow.setInterval(updateCountdown, 200);
+    return () => viewWindow.clearInterval(timerId);
+  }, [isDocumentVisible, moveToCandidate, pendingMove, skipMoveDelay, viewWindow]);
 
   useEffect(() => {
     if (!autoRefreshEnabled || !featureEnabled || !isDocumentVisible || !canAutoScroll) {
@@ -220,26 +352,29 @@ export function useAutoNextThread({
               : REQUIRED_CANDIDATE_CONFIRMATIONS[mode];
 
             if (confirmationCount >= requiredConfirmations) {
-              followThreadRef.current(match.thread);
-              toast.info(`次スレへ移動しました: ${match.thread.title}`);
-              // 変更理由: 慎重モードでは、一度移動した後に勢いだけを根拠として
-              // 別候補へ再移動すると「誤移動を避ける」という設定意図に反する。
-              if (mode === "cautious") {
-                mainstreamPendingCandidateRef.current = null;
-                mainstreamSnapshotRef.current = null;
-                setWatchState(null);
-                setStatus("idle");
+              const alternatives = findNextThreadCandidates(
+                result.threads,
+                { title: threadTitle, url: threadUrl },
+                { mode, responseMessages: responseMessagesRef.current },
+              ).filter((candidate) => candidate.thread.url !== match.thread.url);
+              // 判定を通過した候補を先頭に固定し、手動検索と同じレス数・一致度を複数表示する。
+              const candidates = [match, ...alternatives];
+              const pending: PendingAutoNextThreadMove = {
+                sourceThread: { title: threadTitle, url: threadUrl },
+                candidates,
+                boardUrl,
+                mode,
+                deadline: Date.now() + AUTO_NEXT_THREAD_CONFIRMATION_MS,
+                remainingMilliseconds: AUTO_NEXT_THREAD_CONFIRMATION_MS,
+                remainingSeconds: AUTO_NEXT_THREAD_CONFIRMATION_MS / 1000,
+                isPaused: false,
+              };
+
+              if (skipMoveDelay) {
+                moveToCandidate(match, pending);
               } else {
-                mainstreamPendingCandidateRef.current = null;
-                mainstreamSnapshotRef.current = null;
-                setWatchState({
-                  boardUrl,
-                  originalThreadUrl: threadUrl,
-                  originalThreadTitle: threadTitle,
-                  currentThreadUrl: match.thread.url,
-                  startedAt: Date.now(),
-                });
-                setStatus("watching");
+                setPendingMove(pending);
+                setStatus("confirming");
               }
               return;
             }
@@ -282,11 +417,12 @@ export function useAutoNextThread({
     featureEnabled,
     isDocumentVisible,
     mode,
+    moveToCandidate,
     onSearchExhausted,
     responseCount,
     threadTitle,
     threadUrl,
-    toast,
+    skipMoveDelay,
     viewWindow,
   ]);
 
@@ -416,5 +552,5 @@ export function useAutoNextThread({
     watchState,
   ]);
 
-  return { status };
+  return { status, pendingMove, cancelPendingMove, selectPendingCandidate };
 }

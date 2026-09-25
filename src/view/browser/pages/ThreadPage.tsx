@@ -12,6 +12,7 @@ import { container } from "src/service-container/index";
 import type { IThread } from "src/service-container/interfaces";
 import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
 import { ContextMenuNavigationActions } from "src/view/browser/components/ContextMenuNavigationActions";
+import { NextThreadSearchDialog } from "src/view/browser/components/NextThreadSearchDialog";
 import { PopupRenderer } from "src/view/browser/components/PopupRenderer";
 import { ResItem } from "src/view/browser/components/ResItem";
 import { ThreadMinimap } from "src/view/browser/components/ThreadMinimap";
@@ -434,7 +435,11 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     [commentOverlayController, dispatch, isAutoRefreshEnabled, page.threadUrl],
   );
 
-  useAutoNextThread({
+  const {
+    pendingMove: pendingAutoNextThreadMove,
+    cancelPendingMove,
+    selectPendingCandidate,
+  } = useAutoNextThread({
     autoRefreshEnabled: isActiveAutoRefreshEnabled,
     featureEnabled: isAutoNextThreadEnabled,
     threadUrl: page.threadUrl,
@@ -447,6 +452,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     // 変更理由: Overlay実況中は本文タブが非表示でも次スレ探索を継続し、
     // 次スレへ移った後に実況対象を途切れず引き継げるようにする。
     canAutoScroll: isCommentOverlayFlowing || canAutoScroll,
+    // コメント流し中は画面を確認・操作できないため、次スレ候補の表示待ちを省略する。
+    skipMoveDelay: isCommentOverlayFlowing,
     followThread: handleFollowNextThread,
     onSearchExhausted: handleNextThreadSearchExhausted,
   });
@@ -647,6 +654,21 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   // ジェスチャーuseEffectでrootRefが確実にマウント済みになるよう、loading中の早期returnを廃止し常にrootRef付きdivを描画する
   return (
     <div ref={setThreadRoot} className="thread-page" onDoubleClick={handleDoubleClick}>
+      {pendingAutoNextThreadMove ? (
+        <NextThreadSearchDialog
+          state={{
+            status: "ready",
+            searchType: "next",
+            sourceThread: pendingAutoNextThreadMove.sourceThread,
+            candidates: pendingAutoNextThreadMove.candidates,
+            boardMessage: null,
+            error: null,
+          }}
+          autoMoveCountdown={pendingAutoNextThreadMove.remainingSeconds}
+          onClose={cancelPendingMove}
+          onSelect={selectPendingCandidate}
+        />
+      ) : null}
       <WheelScrollIndicator
         {...wheelPagination}
         threshold={WHEEL_THRESHOLD}
