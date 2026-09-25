@@ -3,6 +3,14 @@
   gap: var(--sys-space-5);
 }
 
+.next-thread-search-dialog__countdown {
+  /* 秒数だけを強調し、候補一覧より目立つ背景や余白を増やさない。 */
+  color: var(--sys-color-evidence);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .next-thread-search-dialog__status {
   display: flex;
   flex-direction: column;

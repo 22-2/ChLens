@@ -96,7 +96,14 @@ export const NextThreadSearchDialog: React.FC<NextThreadSearchDialogProps> = ({
           </Dialog.Title>
           <Dialog.Description className="browser-dialog-description">
             {isAutoMovePrompt ? (
-              <>{autoMoveCountdown}秒後に1番目の候補へ移動します。候補を選ぶとすぐに移動します。</>
+              <>
+                {/* 候補を主役にするため、短いカウントは大きな状態パネルを使わず案内文に収める。 */}
+                あと{" "}
+                <strong className="next-thread-search-dialog__countdown">
+                  {autoMoveCountdown}秒
+                </strong>
+                で1番目の候補へ自動移動します。候補を選ぶとすぐに移動します。
+              </>
             ) : (
               <>
                 「{state.sourceThread?.title ?? "現在のスレ"}」を基準に、
@@ -104,12 +111,6 @@ export const NextThreadSearchDialog: React.FC<NextThreadSearchDialogProps> = ({
               </>
             )}
           </Dialog.Description>
-
-          {isAutoMovePrompt ? (
-            <div className="next-thread-search-dialog__status" role="status" aria-live="off">
-              {autoMoveCountdown}秒後に自動で移動します
-            </div>
-          ) : null}
 
           {isSearching ? (
             <div className="next-thread-search-dialog__status" role="status">
