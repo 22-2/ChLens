@@ -1,5 +1,8 @@
 /* Bottom panel and its compact tab strip. */
 .bottom-panel {
+  /* 変更理由: viewport固定の自動更新開始ボタンより下部パネルを前面に保つ。 */
+  position: relative;
+  z-index: var(--sys-z-local-raised);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;

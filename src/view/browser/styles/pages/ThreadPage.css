@@ -116,7 +116,8 @@
 
 /* 変更理由: 自動読み込みは最下部で見落としやすい主操作なので、通常時から青背景・白文字で強調する。 */
 .thread-page__floating-action--auto-load {
-  z-index: calc(var(--sys-z-minimap) - 1);
+  /* 変更理由: パネル展開中に下部パネルの前へ重ならないよう、ローカル操作レイヤーへ下げる。 */
+  z-index: var(--sys-z-local);
   border-color: var(--sys-color-accent);
   background: var(--sys-color-accent);
   color: var(--sys-color-accent-fg);
