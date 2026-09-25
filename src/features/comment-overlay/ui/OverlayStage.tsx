@@ -4,6 +4,7 @@ import type { CSSProperties } from "react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toViewerImageUrl } from "src/features/media/domain/url-media";
 import { ExternalImage } from "src/features/media/ui/ExternalImage";
+import { copyText } from "src/view/browser/utils/clipboard";
 
 import {
   type CommentBacklogPolicy,
@@ -84,6 +85,8 @@ export interface OverlayStageProps {
   estimateWidth?: (comment: CommentCandidate, fontSize: number) => number;
   onQueueOverflow?: (comment: CommentCandidate) => void;
   onCommentClick?: (comment: CommentCandidate) => void;
+  hoveredCommentKey?: string | null;
+  onCommentJump?: (comment: CommentCandidate) => void;
   className?: string;
 }
 
@@ -138,6 +141,8 @@ export function OverlayStage({
   estimateWidth = estimateCommentWidth,
   onQueueOverflow,
   onCommentClick,
+  hoveredCommentKey,
+  onCommentJump,
   className,
 }: OverlayStageProps) {
   const baseLaneHeight = laneHeightProp ?? calculateCommentLaneHeight(COMMENT_OVERLAY_FONT_SIZE);
@@ -260,6 +265,24 @@ export function OverlayStage({
     laneHeight: number;
     fontSize: number;
   } | null>(null);
+  const [localHoveredCommentKey, setLocalHoveredCommentKey] = useState<string | null>(null);
+  const [menu, setMenu] = useState<{ comment: CommentCandidate; x: number; y: number } | null>(
+    null,
+  );
+  const selectedCommentKey = menu
+    ? commentIdentity(menu.comment)
+    : hoveredCommentKey === undefined
+      ? localHoveredCommentKey
+      : hoveredCommentKey;
+  const previouslySelectedCommentKey = useRef<string | null>(null);
+  const selectionSchedulerRef = useRef(scheduler);
+
+  useEffect(() => {
+    if (!menu) return;
+    const closeMenu = () => setMenu(null);
+    window.addEventListener("blur", closeMenu);
+    return () => window.removeEventListener("blur", closeMenu);
+  }, [menu]);
 
   useLayoutEffect(() => {
     const currentLayout = layoutRef.current;
@@ -429,22 +452,42 @@ export function OverlayStage({
     .filter(Boolean)
     .join(" ");
 
-  const pauseComment = (responseNumber: number): void => {
+  useEffect(() => {
+    const previousKey = previouslySelectedCommentKey.current;
+    const schedulerChanged = selectionSchedulerRef.current !== scheduler;
+    if (previousKey === selectedCommentKey && !schedulerChanged) return;
+    // 変更理由: メニューへポインターを移すとmouseleaveが起きても、選択中のレスは
+    // 停止と前面表示を維持する。選択が変わる時だけschedulerへ通知する。
     const now = logicalTime.current;
-    if (scheduler.pause(responseNumber, now)) {
+    const resumed = previousKey && !schedulerChanged ? scheduler.resume(previousKey, now) : false;
+    const paused = selectedCommentKey ? scheduler.pause(selectedCommentKey, now) : false;
+    previouslySelectedCommentKey.current = selectedCommentKey;
+    selectionSchedulerRef.current = scheduler;
+    if (resumed || paused) {
       const nextSnapshot = scheduler.advance(now);
       snapshotRef.current = nextSnapshot;
       setSnapshot(nextSnapshot);
     }
+  }, [scheduler, selectedCommentKey]);
+
+  const openMenu = (event: React.MouseEvent<HTMLElement>, comment: CommentCandidate): void => {
+    if (!interactive) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = stageRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setMenu({
+      comment,
+      x: Math.max(0, Math.min(event.clientX - rect.left, rect.width - 190)),
+      y: Math.max(0, Math.min(event.clientY - rect.top, rect.height - 120)),
+    });
   };
 
-  const resumeComment = (responseNumber: number): void => {
-    const now = logicalTime.current;
-    if (scheduler.resume(responseNumber, now)) {
-      const nextSnapshot = scheduler.advance(now);
-      snapshotRef.current = nextSnapshot;
-      setSnapshot(nextSnapshot);
-    }
+  const copyToClipboard = (value: string): void => {
+    void copyText(value).catch((error: unknown) => {
+      console.error("[ChLens] コメントOverlayのコピーに失敗しました:", error);
+    });
+    setMenu(null);
   };
 
   return (
@@ -458,6 +501,14 @@ export function OverlayStage({
       role="log"
       aria-label="コメントオーバーレイ"
       style={stageStyle}
+      onPointerDown={(event) => {
+        if (menu && !(event.target as Element).closest(".comment-overlay-stage__menu")) {
+          setMenu(null);
+        }
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") setMenu(null);
+      }}
     >
       {snapshot.active.map((scheduledComment) => {
         const commentStyle = {
@@ -467,6 +518,10 @@ export function OverlayStage({
           fontWeight,
           textShadow,
           opacity: commentOpacity,
+          zIndex:
+            selectedCommentKey === commentIdentity(scheduledComment.comment)
+              ? "var(--sys-z-popup-layer)"
+              : "var(--sys-z-local)",
           animationDuration: `${scheduledComment.duration}s`,
           animationDelay: `${-scheduledComment.initialProgress * scheduledComment.duration}s`,
           animationPlayState:
@@ -478,6 +533,7 @@ export function OverlayStage({
         // レス番号だけをReact keyや説明要素のIDへ使うとDOMが再利用される。
         // 取得元を含むidentityで一意化し、同番号のコメントも独立して流す。
         const commentKey = commentIdentity(comment);
+        const selected = selectedCommentKey === commentKey;
         const commentInfoId = `comment-overlay-stage__info-${encodeURIComponent(commentKey)}`;
 
         return (
@@ -487,8 +543,10 @@ export function OverlayStage({
               comment.isSystem ? " comment-overlay-stage__comment--system" : ""
             }${comment.isOwn ? " comment-overlay-stage__comment--own" : ""}`}
             data-response-number={comment.responseNumber}
+            data-comment-key={commentKey}
             data-lane-index={scheduledComment.laneIndex}
             data-paused={scheduledComment.paused}
+            data-selected={selected}
             aria-describedby={
               interactive && showCommentInfo && scheduledComment.paused ? commentInfoId : undefined
             }
@@ -496,10 +554,11 @@ export function OverlayStage({
             tabIndex={interactive ? 0 : -1}
             style={commentStyle}
             aria-label={`レス${comment.responseNumber}: ${comment.text}`}
-            onMouseEnter={interactive ? () => pauseComment(comment.responseNumber) : undefined}
-            onMouseLeave={interactive ? () => resumeComment(comment.responseNumber) : undefined}
-            onFocus={interactive ? () => pauseComment(comment.responseNumber) : undefined}
-            onBlur={interactive ? () => resumeComment(comment.responseNumber) : undefined}
+            onMouseEnter={interactive ? () => setLocalHoveredCommentKey(commentKey) : undefined}
+            onMouseLeave={interactive ? () => setLocalHoveredCommentKey(null) : undefined}
+            onFocus={interactive ? () => setLocalHoveredCommentKey(commentKey) : undefined}
+            onBlur={interactive ? () => setLocalHoveredCommentKey(null) : undefined}
+            onContextMenu={interactive ? (event) => openMenu(event, comment) : undefined}
             onClick={onCommentClick ? () => onCommentClick(comment) : undefined}
           >
             {comment.imageUrls?.slice(0, 3).map((imageUrl) => (
@@ -531,6 +590,49 @@ export function OverlayStage({
           </div>
         );
       })}
+      {interactive && menu ? (
+        <div
+          className="comment-overlay-stage__menu"
+          data-comment-key={commentIdentity(menu.comment)}
+          role="menu"
+          style={{ left: menu.x, top: menu.y }}
+        >
+          {menu.comment.responseNumber > 0 && menu.comment.sourceThreadUrl && onCommentJump ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                onCommentJump(menu.comment);
+                setMenu(null);
+              }}
+            >
+              このレスへジャンプ
+            </button>
+          ) : null}
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() =>
+              copyToClipboard(
+                menu.comment.isSystem
+                  ? menu.comment.text
+                  : `レス${menu.comment.responseNumber} ${menu.comment.author}\n${menu.comment.text}`,
+              )
+            }
+          >
+            レスをコピー
+          </button>
+          {menu.comment.responseNumber > 0 ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => copyToClipboard(String(menu.comment.responseNumber))}
+            >
+              レス番号をコピー
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

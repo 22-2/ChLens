@@ -280,6 +280,44 @@ describe("OverlayStage", () => {
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
 
+  it("複数スレの同番号レスは選んだコメントだけ止め、メニューからそのレスへ移動できる", () => {
+    const first = {
+      ...comment,
+      text: "最初のスレ",
+      sourceThreadUrl: "https://example.com/thread/1",
+    };
+    const second = {
+      ...comment,
+      text: "次のスレ",
+      sourceThreadUrl: "https://example.com/thread/2",
+    };
+    const onCommentJump = vi.fn();
+    render(
+      <OverlayStage
+        comments={[first, second]}
+        stageWidth={600}
+        stageHeight={64}
+        laneHeight={32}
+        collisionMode="adaptive"
+        onCommentJump={onCommentJump}
+      />,
+    );
+    act(() => scheduledFrame?.(0));
+
+    const firstElement = screen.getByText("最初のスレ");
+    const secondElement = screen.getByText("次のスレ");
+    fireEvent.mouseEnter(secondElement);
+    expect(secondElement).toHaveAttribute("data-paused", "true");
+    expect(secondElement).toHaveAttribute("data-selected", "true");
+    expect(firstElement).toHaveAttribute("data-paused", "false");
+
+    fireEvent.contextMenu(secondElement);
+    fireEvent.mouseLeave(secondElement);
+    expect(secondElement).toHaveAttribute("data-paused", "true");
+    fireEvent.click(screen.getByRole("menuitem", { name: "このレスへジャンプ" }));
+    expect(onCommentJump).toHaveBeenCalledWith(second);
+  });
+
   it("入力履歴から外れたレス番号を再利用できる", () => {
     const { rerender } = render(
       <OverlayStage

@@ -22,10 +22,12 @@ import {
   createCommentOverlayEventBus,
   DEFAULT_COMMENT_OVERLAY_GEOMETRY,
 } from "src/features/comment-overlay/platform";
+import { publishCommentOverlayJump } from "src/features/comment-overlay/platform/jump-events";
 import {
   DEFAULT_COMMENT_HISTORY_LIMIT,
   OverlayStage,
 } from "src/features/comment-overlay/ui/OverlayStage";
+import { useOverlayPointerCapture } from "src/features/comment-overlay/ui/use-overlay-pointer-capture";
 
 const MAX_COMMENT_HISTORY = DEFAULT_COMMENT_HISTORY_LIMIT;
 
@@ -59,6 +61,8 @@ export function OverlayApp({
   const archiveReplaySessionRef = useRef<string | null>(null);
   const liveQueueEpochRef = useRef(0);
   const [archiveReplayPlaying, setArchiveReplayPlaying] = useState(true);
+  const overlayRootRef = useRef<HTMLElement>(null);
+  const hoveredCommentKey = useOverlayPointerCapture(overlayRootRef);
   useEffect(() => {
     let disposed = false;
     let unsubscribe: (() => void) | null = null;
@@ -360,7 +364,11 @@ export function OverlayApp({
   }, [platform]);
 
   return (
-    <main className="comment-overlay-window" data-testid="comment-overlay-window">
+    <main
+      ref={overlayRootRef}
+      className="comment-overlay-window"
+      data-testid="comment-overlay-window"
+    >
       <OverlayStage
         key={stageKey}
         className="comment-overlay-window__comment-layer"
@@ -381,7 +389,17 @@ export function OverlayApp({
         scaleReferenceWidth={DEFAULT_COMMENT_OVERLAY_GEOMETRY.width}
         scaleReferenceHeight={DEFAULT_COMMENT_OVERLAY_GEOMETRY.height}
         playing={archiveReplaySessionRef.current === null ? true : archiveReplayPlaying}
-        interactive={false}
+        interactive
+        hoveredCommentKey={hoveredCommentKey}
+        onCommentJump={(comment) => {
+          if (!comment.sourceThreadUrl || comment.responseNumber <= 0) return;
+          void publishCommentOverlayJump({
+            threadUrl: comment.sourceThreadUrl,
+            responseNumber: comment.responseNumber,
+          }).catch((error: unknown) => {
+            console.error("[ChLens] コメントOverlayからのレスジャンプ要求に失敗しました:", error);
+          });
+        }}
         showCommentInfo={false}
         backgroundColor="transparent"
       />

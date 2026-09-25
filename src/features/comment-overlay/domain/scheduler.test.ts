@@ -265,12 +265,12 @@ describe("CommentScheduler", () => {
     const beforePause = scheduler.advance(1).active[0];
     const originalEndAt = beforePause.endAt;
 
-    expect(scheduler.pause(1, 1)).toBe(true);
+    expect(scheduler.pause(":1", 1)).toBe(true);
     const positionWhilePaused = calculateCommentPosition(beforePause, 1);
     expect(calculateCommentPosition(beforePause, 5)).toBe(positionWhilePaused);
     expect(scheduler.advance(5).active).toHaveLength(1);
 
-    expect(scheduler.resume(1, 5)).toBe(true);
+    expect(scheduler.resume(":1", 5)).toBe(true);
     const resumedEndAt = beforePause.endAt;
     expect(resumedEndAt).toBeGreaterThan(originalEndAt);
     expect(scheduler.advance(resumedEndAt - 0.01).active).toHaveLength(1);

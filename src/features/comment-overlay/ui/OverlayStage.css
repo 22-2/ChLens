@@ -1,11 +1,15 @@
+/* 独立したOverlay画面でも共通のsys意味トークンを使えるよう、foundationを読み込む。 */
+@import "../../../view/browser/styles/foundation/tokens.css";
+@import "../../../view/browser/styles/foundation/themes.css";
+
 .comment-overlay-stage {
   position: relative;
   width: 100%;
   height: 100%;
   overflow: hidden;
   isolation: isolate;
-  color: #f4f7fb;
-  font-family: "Segoe UI", sans-serif;
+  color: var(--sys-color-overlay-comment-text);
+  font-family: var(--sys-font-family-sans);
   font-synthesis: none;
   line-height: 1.2;
   text-rendering: optimizeLegibility;
@@ -17,7 +21,7 @@
   gap: 0.35em;
   position: absolute;
   left: 0;
-  z-index: 1;
+  z-index: var(--sys-z-local);
   max-width: none;
   padding: 0 0.12em;
   color: inherit;
@@ -26,11 +30,7 @@
   /* 変更理由: dat本文の<br>は改行文字へ変換されるが、弾幕は常に一行で流す仕様のため、
    * 高さを増やして隣のlaneへ重なることを防ぐ。表示文字列側でも幅計算を同じ形に揃える。 */
   white-space: nowrap;
-  text-shadow:
-    -1px -1px 0 #07101d,
-    1px -1px 0 #07101d,
-    -1px 1px 0 #07101d,
-    1px 1px 0 #07101d;
+  text-shadow: var(--sys-shadow-overlay-comment-text);
   pointer-events: none;
   animation-name: comment-overlay-stage__scroll;
   animation-timing-function: linear;
@@ -39,20 +39,20 @@
 }
 
 .comment-overlay-stage__comment--system {
-  border: 2px solid rgb(255 226 92 / 92%);
-  border-radius: 4px;
+  border: var(--sys-border-width-strong) solid var(--sys-color-overlay-comment-own-border);
+  border-radius: var(--sys-radius-md);
   padding: 0.12em 0.35em;
-  color: #fff7bf;
-  background: rgb(126 94 0 / 72%);
+  color: var(--sys-color-overlay-comment-own-fg);
+  background: var(--sys-color-overlay-comment-system-bg);
 }
 
 .comment-overlay-stage__comment--own {
   /* 変更理由: 自分のレスは流れる速度や本文が変わっても見分けられるよう、
      EdgeLiveViewerと同じ黄色の枠を常に残す。 */
-  border: 2px solid rgb(255 226 92 / 92%);
-  border-radius: 4px;
+  border: var(--sys-border-width-strong) solid var(--sys-color-overlay-comment-own-border);
+  border-radius: var(--sys-radius-md);
   padding: 0.12em 0.35em;
-  color: #fff7bf;
+  color: var(--sys-color-overlay-comment-own-fg);
 }
 
 .comment-overlay-stage__media {
@@ -61,9 +61,9 @@
   height: 1.2em;
   max-height: 120px;
   flex: 0 0 auto;
-  border-radius: 3px;
+  border-radius: var(--sys-radius-sm);
   object-fit: contain;
-  background: rgb(0 0 0 / 35%);
+  background: var(--sys-color-overlay-media-bg);
 }
 
 /* 変更理由: 毎frame Reactでtransformを書き換えると、弾幕の数に比例して再描画負荷が
@@ -83,28 +83,66 @@
   cursor: pointer;
 }
 
+.comment-overlay-stage__comment[data-selected="true"] {
+  /* 変更理由: borderでは測定済みの幅とlane高が変わるため、外側の輪郭でホバーを示す。 */
+  outline: var(--sys-border-width-strong) solid var(--sys-color-focus-ring);
+  /* 最上段でも枠の上辺がstageのoverflowで切れないよう、内側へ描く。 */
+  outline-offset: calc(-1 * var(--sys-border-width-strong));
+  border-radius: var(--sys-radius-sm);
+}
+
+.comment-overlay-stage__menu {
+  display: flex;
+  position: absolute;
+  z-index: var(--sys-z-context-menu);
+  min-width: 180px;
+  flex-direction: column;
+  padding: var(--sys-space-2);
+  border: var(--sys-border-width-thin) solid var(--sys-color-media-border);
+  border-radius: var(--sys-radius-md);
+  background: var(--sys-color-overlay-menu-surface);
+  box-shadow: var(--sys-shadow-floating);
+  pointer-events: auto;
+}
+
+.comment-overlay-stage__menu button {
+  border: 0;
+  border-radius: var(--sys-radius-sm);
+  padding: var(--sys-space-3) var(--sys-space-4);
+  color: var(--sys-color-tooltip-text);
+  background: transparent;
+  font: var(--sys-font-size-md) var(--sys-font-family-sans);
+  text-align: left;
+  cursor: pointer;
+}
+
+.comment-overlay-stage__menu button:hover,
+.comment-overlay-stage__menu button:focus-visible {
+  background: var(--sys-color-overlay-menu-hover);
+}
+
 .comment-overlay-stage__comment:focus-visible {
-  outline: 2px solid #8bc5ff;
-  outline-offset: 2px;
+  outline: var(--sys-border-width-strong) solid var(--sys-color-focus-ring);
+  outline-offset: var(--sys-space-1);
 }
 
 .comment-overlay-stage__comment-info {
   display: flex;
   position: absolute;
-  z-index: 2;
-  bottom: calc(100% + 6px);
+  z-index: var(--sys-z-local-raised);
+  bottom: calc(100% + var(--sys-space-3));
   left: 0;
   width: max-content;
   max-width: min(360px, 70vw);
   flex-direction: column;
-  gap: 2px;
-  padding: 7px 9px;
-  border: 1px solid rgb(255 255 255 / 25%);
-  border-radius: 4px;
-  color: #eaf2fb;
-  background: rgb(12 20 33 / 96%);
-  box-shadow: 0 3px 12px rgb(0 0 0 / 35%);
-  font-size: 12px;
+  gap: var(--sys-space-1);
+  padding: var(--sys-space-3) var(--sys-space-4);
+  border: var(--sys-border-width-thin) solid var(--sys-color-tooltip-border);
+  border-radius: var(--sys-radius-md);
+  color: var(--sys-color-tooltip-text);
+  background: var(--sys-color-tooltip-surface);
+  box-shadow: var(--sys-shadow-tooltip);
+  font-size: var(--sys-font-size-sm);
   font-weight: 400;
   line-height: 1.35;
   white-space: normal;

@@ -1,4 +1,5 @@
 import type { CommentCandidate } from "./comment-types";
+import { commentIdentity } from "./comments";
 
 /** 旧いStorybook fixtureとの互換用。実運用ではdurationSecondsを優先する。 */
 export const DEFAULT_COMMENT_BASE_SPEED_PX_PER_SECOND = 90;
@@ -299,10 +300,10 @@ export class LaneAllocator {
     this.fallbackLaneIndex %= laneCapacity;
   }
 
-  pause(responseNumber: number, now: number): boolean {
+  pause(commentKey: string, now: number): boolean {
     assertFinite(now, "now");
     this.release(now);
-    const scheduled = this.find(responseNumber);
+    const scheduled = this.find(commentKey);
     if (!scheduled || scheduled.paused) return false;
 
     scheduled.paused = true;
@@ -310,10 +311,10 @@ export class LaneAllocator {
     return true;
   }
 
-  resume(responseNumber: number, now: number): boolean {
+  resume(commentKey: string, now: number): boolean {
     assertFinite(now, "now");
     this.release(now);
-    const scheduled = this.find(responseNumber);
+    const scheduled = this.find(commentKey);
     if (!scheduled || !scheduled.paused || scheduled.pausedAt === null) return false;
 
     const pausedDuration = Math.max(now - scheduled.pausedAt, 0);
@@ -372,10 +373,12 @@ export class LaneAllocator {
     return laneIndex;
   }
 
-  private find(responseNumber: number): ScheduledComment | null {
+  private find(commentKey: string): ScheduledComment | null {
     for (const lane of this.lanes) {
       const scheduled = lane.find(
-        (candidate) => candidate.comment.responseNumber === responseNumber,
+        // 変更理由: 複数スレ実況では同じレス番号が同時に流れるため、取得元を含むキーで
+        // 対象を特定し、ホバーしていない別スレのコメントを止めない。
+        (candidate) => commentIdentity(candidate.comment) === commentKey,
       );
       if (scheduled) return scheduled;
     }
@@ -490,14 +493,14 @@ export class CommentScheduler {
     }
   }
 
-  pause(responseNumber: number, now: number): boolean {
+  pause(commentKey: string, now: number): boolean {
     this.assertAndSetNow(now);
-    return this.allocator.pause(responseNumber, now);
+    return this.allocator.pause(commentKey, now);
   }
 
-  resume(responseNumber: number, now: number): boolean {
+  resume(commentKey: string, now: number): boolean {
     this.assertAndSetNow(now);
-    return this.allocator.resume(responseNumber, now);
+    return this.allocator.resume(commentKey, now);
   }
 
   /** リサイズ前の進捗を維持し、待機中コメントの幅も現在のフォントへ更新する。 */
