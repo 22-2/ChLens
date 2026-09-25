@@ -502,7 +502,14 @@ export function OverlayStage({
       aria-label="コメントオーバーレイ"
       style={stageStyle}
       onPointerDown={(event) => {
-        if (menu && !(event.target as Element).closest(".comment-overlay-stage__menu")) {
+        const target = event.target;
+        // 変更理由: メニュー外でも別コメントを操作することがあるため、コメントか
+        // メニューの上でのクリックは保ち、それ以外のstage領域でだけ閉じる。
+        if (
+          menu &&
+          target instanceof Element &&
+          !target.closest(".comment-overlay-stage__menu, .comment-overlay-stage__comment")
+        ) {
           setMenu(null);
         }
       }}
