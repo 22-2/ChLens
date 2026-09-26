@@ -19,11 +19,11 @@ import {
   type BrowsingHistoryParams,
   type LogSearchParams,
   MCP_BRIDGE_HOST,
-  MCP_BRIDGE_PORT,
   type ThreadReadParams,
   type WriteHistoryParams,
 } from "../src/mcp/protocol.ts";
 import { normalizeDebateFormats, saveDebateResult } from "./debate-result.ts";
+import { type BridgeRequester, createSharedBridge } from "./shared-mcp-bridge.ts";
 
 const POLL_TIMEOUT_MS = 25_000;
 const REQUEST_TIMEOUT_MS = 45_000;
@@ -580,7 +580,7 @@ function debatePrepareParams(value: Record<string, unknown>): DebatePrepareParam
 }
 
 async function prepareDebate(
-  broker: ChromeBridgeBroker,
+  broker: BridgeRequester,
   params: Record<string, unknown>,
 ): Promise<string> {
   const bridgeResponse = await broker.request("read-thread", {
@@ -671,7 +671,10 @@ function toolDefinitions(): object[] {
       inputSchema: {
         type: "object",
         properties: {
-          query: { type: "string", description: "スレタイ・本文・URLで絞り込む。省略または空文字で直近の履歴" },
+          query: {
+            type: "string",
+            description: "スレタイ・本文・URLで絞り込む。省略または空文字で直近の履歴",
+          },
           limit: { type: "integer", minimum: 1, maximum: 100, default: 20 },
         },
         additionalProperties: false,
@@ -684,7 +687,10 @@ function toolDefinitions(): object[] {
       inputSchema: {
         type: "object",
         properties: {
-          query: { type: "string", description: "スレタイ・板名・URLで絞り込む。省略または空文字で直近の履歴" },
+          query: {
+            type: "string",
+            description: "スレタイ・板名・URLで絞り込む。省略または空文字で直近の履歴",
+          },
           limit: { type: "integer", minimum: 1, maximum: 100, default: 20 },
         },
         additionalProperties: false,
@@ -758,10 +764,7 @@ function resultText(result: BridgeResponse): string {
   return payload.toon;
 }
 
-async function handleRpc(
-  broker: ChromeBridgeBroker,
-  request: JsonRpcRequest,
-): Promise<object | null> {
+async function handleRpc(broker: BridgeRequester, request: JsonRpcRequest): Promise<object | null> {
   const id = request.id ?? null;
   const method = request.method ?? "";
   if (method === "notifications/initialized" || method.startsWith("notifications/")) {
@@ -809,7 +812,11 @@ async function handleRpc(
     }
 
     let operation: BridgeOperation;
-    let bridgeParams: ThreadReadParams | LogSearchParams | WriteHistoryParams | BrowsingHistoryParams;
+    let bridgeParams:
+      | ThreadReadParams
+      | LogSearchParams
+      | WriteHistoryParams
+      | BrowsingHistoryParams;
     if (name === "read_thread") {
       operation = "read-thread";
       bridgeParams = args as ThreadReadParams;
@@ -840,50 +847,26 @@ async function handleRpc(
 }
 
 async function main(): Promise<void> {
-  const broker = new ChromeBridgeBroker();
-  const httpServer = createServer((request, response) => {
-    void handleBridgeHttp(broker, request, response);
-  });
-  httpServer.on("upgrade", (request, socket, head) => {
-    handleWebSocketUpgrade(broker, request, socket, head);
-  });
-  await new Promise<void>((resolve, reject) => {
-    httpServer.once("error", (error: NodeJS.ErrnoException) => {
-      if (error.code === "EADDRINUSE") {
-        reject(
-          new Error(
-            `ポート ${MCP_BRIDGE_PORT} は使用中です。別のChLens MCPプロセスが起動していないか確認してください。`,
-            { cause: error },
-          ),
-        );
-        return;
-      }
-      reject(error);
+  const broker = createSharedBridge(() => {
+    const localBroker = new ChromeBridgeBroker();
+    const server = createServer((request, response) => {
+      void handleBridgeHttp(localBroker, request, response);
     });
-    // 変更理由: MCPプロセスが重複してもOSに待ち受けを共有させず、ブリッジを一つに限定する。
-    httpServer.listen(
-      { port: MCP_BRIDGE_PORT, host: MCP_BRIDGE_HOST, exclusive: true },
-      () => resolve(),
-    );
+    server.on("upgrade", (request, socket, head) => {
+      handleWebSocketUpgrade(localBroker, request, socket, head);
+    });
+    return { server, broker: localBroker };
   });
-  logError(`ローカルブリッジを起動しました: http://${MCP_BRIDGE_HOST}:${MCP_BRIDGE_PORT}`);
-
   const input = createInterface({ input: process.stdin, crlfDelay: Infinity });
-  let shutdownPromise: Promise<void> | undefined;
-  const shutdown = (): Promise<void> => {
-    if (shutdownPromise) return shutdownPromise;
+  const shutdown = (): void => {
     input.close();
+    process.stdin.pause();
     broker.close();
-    shutdownPromise = new Promise<void>((resolve) => {
-      httpServer.close(() => resolve());
-    });
-    return shutdownPromise;
   };
-  const handleSignal = (): void => {
-    void shutdown();
-  };
-  process.once("SIGINT", handleSignal);
-  process.once("SIGTERM", handleSignal);
+  // 読み取り中のツールが待機していても、stdio切断時点で共有セッションを解放する。
+  input.once("close", () => broker.close());
+  process.once("SIGINT", shutdown);
+  process.once("SIGTERM", shutdown);
 
   try {
     for await (const rawLine of input) {
@@ -900,6 +883,8 @@ async function main(): Promise<void> {
       }
 
       try {
+        // 起動時から利用者として登録し、別チャットだけが終了しても待受を維持する。
+        if (request.method === "initialize") await broker.ready();
         const response = await handleRpc(broker, request);
         if (response != null) process.stdout.write(`${JSON.stringify(response)}\n`);
       } catch (error: unknown) {
@@ -909,9 +894,9 @@ async function main(): Promise<void> {
       }
     }
   } finally {
-    process.off("SIGINT", handleSignal);
-    process.off("SIGTERM", handleSignal);
-    await shutdown();
+    process.off("SIGINT", shutdown);
+    process.off("SIGTERM", shutdown);
+    shutdown();
   }
 }
 
