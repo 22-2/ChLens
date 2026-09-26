@@ -10,12 +10,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 const mocks = vi.hoisted(() => ({
   clearWritePanelInsertRequest: vi.fn(),
   closePanel: vi.fn(),
+  name: "",
+  mail: "",
   message: "本文",
   selectedThreadUrl: null as string | null,
   targets: [] as Array<{ threadUrl: string; title: string; tabId: string }>,
   writePanelInsertRequest: null as { id: number; text: string } | null,
   status: "idle" as "idle" | "submitting" | "confirm" | "success" | "error",
   statusText: "",
+  authCode: null as string | null,
   authCodeUrl: null as string | null,
   confirmationPage: null,
   submit: vi.fn().mockResolvedValue(undefined),
@@ -78,12 +81,13 @@ vi.mock("src/view/browser/hooks/use-bottom-panel", () => ({
 
 vi.mock("src/view/browser/hooks/use-write", () => ({
   useWrite: () => ({
-    name: "",
-    mail: "",
+    name: mocks.name,
+    mail: mocks.mail,
     sage: false,
     message: mocks.message,
     status: mocks.status,
     statusText: mocks.statusText,
+    authCode: mocks.authCode,
     authCodeUrl: mocks.authCodeUrl,
     confirmationPage: mocks.confirmationPage,
     canSubmit: true,
@@ -121,12 +125,15 @@ describe("WritePanelContent", () => {
   beforeEach(() => {
     mocks.clearWritePanelInsertRequest.mockClear();
     mocks.closePanel.mockClear();
+    mocks.name = "";
+    mocks.mail = "";
     mocks.message = "本文";
     mocks.selectedThreadUrl = null;
     mocks.targets = [];
     mocks.writePanelInsertRequest = null;
     mocks.status = "idle";
     mocks.statusText = "";
+    mocks.authCode = null;
     mocks.authCodeUrl = null;
     mocks.submit.mockClear();
     mocks.setName.mockClear();
@@ -272,14 +279,71 @@ describe("WritePanelContent", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("書き込みに失敗しました");
   });
 
+  it("メール欄の認証トークンだけでは警告を出さず投稿する", () => {
+    mocks.mail = "#000673c0853dd270247921bf12109000";
+
+    renderWritePanel();
+    fireEvent.click(screen.getByRole("button", { name: "書き込む" }));
+
+    expect(mocks.submit).toHaveBeenCalledTimes(1);
+    expect(
+      screen.queryByRole("dialog", { name: "投稿内容を確認してください" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("認証トークンを除外しつつ本文の電話番号を警告し、見直し時は投稿しない", async () => {
+    mocks.mail = "#000673c0853dd270247921bf12109000";
+    mocks.message = "連絡先は090-1234-5678です";
+
+    renderWritePanel();
+    fireEvent.click(screen.getByRole("button", { name: "書き込む" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "投稿内容を確認してください" });
+    expect(within(dialog).getByText("電話番号")).toBeInTheDocument();
+    expect(within(dialog).queryByText("住所・郵便番号")).not.toBeInTheDocument();
+    expect(mocks.submit).not.toHaveBeenCalled();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "内容を見直す" }));
+
+    expect(
+      screen.queryByRole("dialog", { name: "投稿内容を確認してください" }),
+    ).not.toBeInTheDocument();
+    expect(mocks.submit).not.toHaveBeenCalled();
+  });
+
+  it("警告を確認して投稿を選ぶと一度だけ投稿する", async () => {
+    mocks.message = "連絡先は sample.user@example.com です";
+
+    renderWritePanel();
+    fireEvent.click(screen.getByRole("button", { name: "書き込む" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "投稿内容を確認してください" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "確認して投稿" }));
+
+    await waitFor(() => expect(mocks.submit).toHaveBeenCalledTimes(1));
+    expect(
+      screen.queryByRole("dialog", { name: "投稿内容を確認してください" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("eddibb認証コードのエラーでは認証URLを表示してコピーできる", async () => {
     mocks.status = "error";
-    mocks.statusText = "認証コードを入力してください";
+    mocks.statusText = "認証が必要です。認証ダイアログの案内に従ってください";
+    mocks.authCode = "332376";
     mocks.authCodeUrl = "https://example.com/auth-code";
 
     renderWritePanel();
 
     const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByLabelText("認証コード")).toHaveValue("332376");
+    fireEvent.click(within(dialog).getByRole("button", { name: "コードをコピー" }));
+    await waitFor(() =>
+      expect(mocks.copyText).toHaveBeenCalledWith(
+        "332376",
+        expect.objectContaining({ window: expect.any(Object), document: expect.any(Object) }),
+      ),
+    );
+    expect(within(dialog).getByRole("button", { name: "コピーしました" })).toBeInTheDocument();
     expect(within(dialog).getByLabelText("認証ページURL")).toHaveValue(mocks.authCodeUrl);
     fireEvent.click(within(dialog).getByRole("button", { name: "URLをコピー" }));
 
@@ -292,7 +356,13 @@ describe("WritePanelContent", () => {
         }),
       ),
     );
-    expect(within(dialog).getByRole("button", { name: "コピーしました" })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(mocks.copyText).toHaveBeenCalledWith(
+        mocks.authCodeUrl,
+        expect.objectContaining({ window: expect.any(Object), document: expect.any(Object) }),
+      ),
+    );
+    expect(within(dialog).getAllByRole("button", { name: "コピーしました" })).toHaveLength(2);
   });
 
   it("書き込み成功時に設定がONならパネルを閉じる", () => {

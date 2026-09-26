@@ -170,6 +170,29 @@ describe("useWrite", () => {
     expect(result.current.statusText).toBe("");
   });
 
+  it("次スレへ移動したら認証コードと認証URLを引き継がない", async () => {
+    fetchTauriWriteMock.mockResolvedValueOnce({
+      status: 200,
+      headers: { "content-type": "text/html; charset=utf-8" },
+      url: "https://example.com/test/bbs.cgi",
+      body: '<html><head><meta name="error_code" content="E-Unauthenticated"><title>ＥＲＲＯＲ</title></head><body>認証コード\'332376\'を用いてください https://example.com/auth-code</body></html>',
+    });
+    let threadUrl = THREAD_URL;
+    const { result, rerender } = renderHook(() => useWrite(threadUrl));
+
+    act(() => result.current.setMessage("投稿本文"));
+    await act(async () => result.current.submit());
+
+    expect(result.current.authCode).toBe("332376");
+    expect(result.current.authCodeUrl).toBe("https://example.com/auth-code");
+
+    threadUrl = NEXT_THREAD_URL;
+    rerender();
+
+    expect(result.current.authCode).toBeNull();
+    expect(result.current.authCodeUrl).toBeNull();
+  });
+
   it("同じスレッドの外部下書き追加を入力欄へ反映する", () => {
     let draft = "既存の本文";
     const { result, rerender } = renderHook(() => useWrite(THREAD_URL, { draft }));
