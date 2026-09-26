@@ -4,6 +4,7 @@ import {
   getBoardUrlFromThreadUrl,
   parseInternalBrowserPage,
   parseInternalBrowserPageStrict,
+  parseOmnibarBrowserPage,
   resolveAbsoluteUrl,
   RESPECT_DEFAULT_EXTERNAL,
   shouldHandleUrlWithApp,
@@ -146,6 +147,18 @@ describe("link-routing", () => {
       boardUrl: "https://example.com/software/",
       boardTitle: "https://example.com/software/",
     });
+  });
+
+  it("omnibarでは任意ドメインの板名と数値IDからスレッドURLを推測する", () => {
+    expect(parseOmnibarBrowserPage("https://bbs.example.test/sample-board/1234567890#42")).toEqual({
+      type: "thread",
+      title: "https://bbs.example.test/test/read.cgi/sample-board/1234567890/#42",
+      threadUrl: "https://bbs.example.test/test/read.cgi/sample-board/1234567890/#42",
+    });
+  });
+
+  it("omnibarでもスレッドIDが数値でない形式は推測しない", () => {
+    expect(parseOmnibarBrowserPage("https://bbs.example.test/sample-board/thread-id")).toBeNull();
   });
 
   it("imgur の単一画像ページURLは板URLとして解析される（画像ビューア優先はopenResolvedUrl側で担保）", () => {

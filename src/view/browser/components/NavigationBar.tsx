@@ -80,6 +80,7 @@ import {
 import {
   getBoardUrlFromThreadUrl,
   parseInternalBrowserPage,
+  parseOmnibarBrowserPage,
 } from "src/view/browser/utils/link-routing";
 import {
   mergeOmnibarSources,
@@ -270,7 +271,7 @@ function navigateByUrl(url: string, dispatch: ReturnType<typeof useTabStore>["di
   const trimmed = url.trim();
   if (!trimmed) return;
 
-  const parsed = parseInternalBrowserPage(trimmed);
+  const parsed = parseOmnibarBrowserPage(trimmed);
   if (!parsed) return;
 
   if (parsed.type === "thread") {
@@ -478,7 +479,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         return null;
       }
 
-      const parsed = parseInternalBrowserPage(trimmed);
+      const parsed = parseOmnibarBrowserPage(trimmed);
       if (!parsed) {
         return null;
       }

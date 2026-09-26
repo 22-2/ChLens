@@ -334,6 +334,26 @@ export function parseInternalBrowserPage(absoluteUrl: string): InternalBrowserPa
 }
 
 /**
+ * Omnibar専用の推測を含めてURLをページへ解決する。
+ * 変更理由: 独自URL形式の掲示板でも板名と数値のスレッドIDが揃えば開けるようにしつつ、
+ * 一般ページ上のリンクを誤ってスレッド扱いしないよう、推測を入力欄に限定する。
+ */
+export function parseOmnibarBrowserPage(absoluteUrl: string): InternalBrowserPage | null {
+  const parsed = parseInternalBrowserPage(absoluteUrl);
+  if (parsed) return parsed;
+
+  const url = normalizeUrl(absoluteUrl);
+  if (!url || classifyBoardHost(url.hostname)) return null;
+
+  const match = /^\/([\w-]+)\/(\d+)\/?$/.exec(url.pathname);
+  if (!match) return null;
+
+  // 変更理由: 省略形式は取得器が扱える標準スレッドパスへ変換し、板とスレの識別を保つ。
+  url.pathname = `/test/read.cgi/${match[1]}/${match[2]}/`;
+  return toThreadPage(url);
+}
+
+/**
  * クリック経路専用。互換ホスト以外のURLはスレ/板として扱わない。
  * オムニバー入力には parseInternalBrowserPage（広い許容）を使う。
  */
