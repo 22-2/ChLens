@@ -111,7 +111,10 @@ async function handleSocketMessage(raw: unknown): Promise<void> {
   if ("type" in request && request.type === "keepalive") return;
   if (
     !("requestId" in request) ||
-    (request.operation !== "read-thread" && request.operation !== "search-logs")
+    (request.operation !== "read-thread" &&
+      request.operation !== "search-logs" &&
+      request.operation !== "read-write-history" &&
+      request.operation !== "read-browsing-history")
   ) {
     console.error("[ChLens MCP] WebSocket要求の形式が不正です:", request);
     return;

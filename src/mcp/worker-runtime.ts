@@ -13,14 +13,17 @@ import browser from "webextension-polyfill";
 import { ChURL } from "../../packages/ch-lib/src/url/ChURL";
 import type { HttpResponse } from "../app/platform/types";
 import type { IRes } from "../service-container/interfaces";
+import { encodeBrowsingHistoryForMcp, encodeWriteHistoryForMcp } from "./history-output";
 import {
   type BridgeFailure,
   type BridgeRequest,
   type BridgeResponse,
   type BridgeSuccess,
   type BridgeThreadResult,
+  type BrowsingHistoryParams,
   type LogSearchParams,
   type ThreadReadParams,
+  type WriteHistoryParams,
 } from "./protocol";
 import { encodeLogsForMcp, encodeThreadForMcp } from "./thread-output";
 import {
@@ -29,6 +32,7 @@ import {
   putWorkerCache,
   type WorkerCacheRecord,
 } from "./worker-cache";
+import { listRecentBrowsingHistory, listRecentWriteHistory } from "./worker-history";
 
 const ACTIVE_THREAD_KEY = "mcp_active_thread_url";
 const FORMAT_KEY = "mcp_format_2chnet";
@@ -57,6 +61,27 @@ function asLogParams(value: unknown): LogSearchParams {
     ...(typeof raw.query === "string" ? { query: raw.query } : {}),
     ...(typeof raw.limit === "number" ? { limit: raw.limit } : {}),
   };
+}
+
+function asWriteHistoryParams(value: unknown): WriteHistoryParams {
+  const raw = asRecord(value);
+  return {
+    ...(typeof raw.query === "string" ? { query: raw.query } : {}),
+    ...(typeof raw.limit === "number" ? { limit: raw.limit } : {}),
+  };
+}
+
+function asBrowsingHistoryParams(value: unknown): BrowsingHistoryParams {
+  const raw = asRecord(value);
+  return {
+    ...(typeof raw.query === "string" ? { query: raw.query } : {}),
+    ...(typeof raw.limit === "number" ? { limit: raw.limit } : {}),
+  };
+}
+
+function normalizeHistoryLimit(limit: number | undefined): number {
+  if (!Number.isFinite(limit)) return 20;
+  return Math.min(100, Math.max(1, Math.floor(limit as number)));
 }
 
 function normalizeThreadUrl(rawUrl: string): string {
@@ -393,13 +418,47 @@ async function searchLogs(
   return { kind: "logs", query, count: logs.length, toon: encodeLogsForMcp(query, logs) };
 }
 
+async function readWriteHistory(
+  params: WriteHistoryParams,
+): Promise<{ kind: "write-history"; query: string; count: number; toon: string }> {
+  const query = params.query?.trim() ?? "";
+  const writes = await listRecentWriteHistory(query, normalizeHistoryLimit(params.limit));
+  return {
+    kind: "write-history",
+    query,
+    count: writes.length,
+    toon: encodeWriteHistoryForMcp(query, writes),
+  };
+}
+
+async function readBrowsingHistory(
+  params: BrowsingHistoryParams,
+): Promise<{ kind: "browsing-history"; query: string; count: number; toon: string }> {
+  const query = params.query?.trim() ?? "";
+  const history = await listRecentBrowsingHistory(query, normalizeHistoryLimit(params.limit));
+  return {
+    kind: "browsing-history",
+    query,
+    count: history.length,
+    toon: encodeBrowsingHistoryForMcp(query, history),
+  };
+}
+
 export async function executeWorkerRequest(request: BridgeRequest): Promise<BridgeResponse> {
   try {
-    let result: BridgeThreadResult | { kind: "logs"; query: string; count: number; toon: string };
+    let result:
+      | BridgeThreadResult
+      | { kind: "logs"; query: string; count: number; toon: string }
+      | { kind: "write-history"; query: string; count: number; toon: string }
+      | { kind: "browsing-history"; query: string; count: number; toon: string };
     if (request.operation === "read-thread") {
       result = await readThread(asThreadParams(request.params));
     } else if (request.operation === "search-logs") {
       result = await searchLogs(asLogParams(request.params));
+    } else if (request.operation === "read-write-history") {
+      result = await readWriteHistory(asWriteHistoryParams(request.params));
+    } else if (request.operation === "read-browsing-history") {
+      result = await readBrowsingHistory(asBrowsingHistoryParams(request.params));
     } else {
       // 型定義外の要求を受けても検索へ誤フォールバックさせず、契約違反として返す。
       throw new Error(`未対応の操作です: ${String(request.operation)}`);
@@ -409,7 +468,10 @@ export async function executeWorkerRequest(request: BridgeRequest): Promise<Brid
       ok: true,
       result,
     } satisfies BridgeSuccess<
-      BridgeThreadResult | { kind: "logs"; query: string; count: number; toon: string }
+      | BridgeThreadResult
+      | { kind: "logs"; query: string; count: number; toon: string }
+      | { kind: "write-history"; query: string; count: number; toon: string }
+      | { kind: "browsing-history"; query: string; count: number; toon: string }
     >;
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);

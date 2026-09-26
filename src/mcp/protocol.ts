@@ -36,12 +36,30 @@ export interface LogSearchParams {
   limit?: number;
 }
 
-export type BridgeOperation = "read-thread" | "search-logs";
+export interface WriteHistoryParams {
+  /** スレタイ・本文・URLを検索する。空文字なら直近の書き込み履歴を返す。 */
+  query?: string;
+  /** 返す履歴の最大件数。 */
+  limit?: number;
+}
+
+export interface BrowsingHistoryParams {
+  /** スレタイ・板名・URLを検索する。空文字なら直近の閲覧履歴を返す。 */
+  query?: string;
+  /** 返す履歴の最大件数。 */
+  limit?: number;
+}
+
+export type BridgeOperation =
+  | "read-thread"
+  | "search-logs"
+  | "read-write-history"
+  | "read-browsing-history";
 
 export interface BridgeRequest {
   requestId: string;
   operation: BridgeOperation;
-  params: ThreadReadParams | LogSearchParams;
+  params: ThreadReadParams | LogSearchParams | WriteHistoryParams | BrowsingHistoryParams;
 }
 
 export interface BridgeSuccess<T> {
@@ -74,6 +92,20 @@ export interface BridgeThreadResult {
 
 export interface BridgeLogResult {
   kind: "logs";
+  query: string;
+  count: number;
+  toon: string;
+}
+
+export interface BridgeWriteHistoryResult {
+  kind: "write-history";
+  query: string;
+  count: number;
+  toon: string;
+}
+
+export interface BridgeBrowsingHistoryResult {
+  kind: "browsing-history";
   query: string;
   count: number;
   toon: string;

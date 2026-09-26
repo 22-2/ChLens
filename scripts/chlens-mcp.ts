@@ -16,10 +16,12 @@ import {
   type BridgeRequest,
   type BridgeResponse,
   type BridgeThreadResult,
+  type BrowsingHistoryParams,
   type LogSearchParams,
   MCP_BRIDGE_HOST,
   MCP_BRIDGE_PORT,
   type ThreadReadParams,
+  type WriteHistoryParams,
 } from "../src/mcp/protocol.ts";
 import { normalizeDebateFormats, saveDebateResult } from "./debate-result.ts";
 
@@ -353,7 +355,7 @@ class ChromeBridgeBroker {
 
   request(
     operation: BridgeOperation,
-    params: ThreadReadParams | LogSearchParams,
+    params: ThreadReadParams | LogSearchParams | WriteHistoryParams | BrowsingHistoryParams,
   ): Promise<BridgeResponse> {
     const client = this.getActiveClient();
     if (!client) {
@@ -648,6 +650,32 @@ function toolDefinitions(): object[] {
       },
     },
     {
+      name: "get_write_history",
+      description:
+        "ChLensに保存されている直近の書き込み履歴を返します。投稿先URL・レス番号・本文を含み、結果はTOONで返します。",
+      inputSchema: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "スレタイ・本文・URLで絞り込む。省略または空文字で直近の履歴" },
+          limit: { type: "integer", minimum: 1, maximum: 100, default: 20 },
+        },
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "get_browsing_history",
+      description:
+        "ChLensに保存されている直近の閲覧履歴を返します。同じスレの重複は除いて新しい順に並べ、結果はTOONで返します。",
+      inputSchema: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "スレタイ・板名・URLで絞り込む。省略または空文字で直近の履歴" },
+          limit: { type: "integer", minimum: 1, maximum: 100, default: 20 },
+        },
+        additionalProperties: false,
+      },
+    },
+    {
       name: "prepare_debate",
       description:
         "指定したレス番号または参加者IDを中心に、返信元・返信先を集めて議論判定用のTOONを作ります。" +
@@ -766,13 +794,19 @@ async function handleRpc(
     }
 
     let operation: BridgeOperation;
-    let bridgeParams: ThreadReadParams | LogSearchParams;
+    let bridgeParams: ThreadReadParams | LogSearchParams | WriteHistoryParams | BrowsingHistoryParams;
     if (name === "read_thread") {
       operation = "read-thread";
       bridgeParams = args as ThreadReadParams;
     } else if (name === "search_logs") {
       operation = "search-logs";
       bridgeParams = args as LogSearchParams;
+    } else if (name === "get_write_history") {
+      operation = "read-write-history";
+      bridgeParams = args as WriteHistoryParams;
+    } else if (name === "get_browsing_history") {
+      operation = "read-browsing-history";
+      bridgeParams = args as BrowsingHistoryParams;
     } else {
       return { jsonrpc: "2.0", id, result: textResult(`未対応のツールです: ${name}`, true) };
     }
