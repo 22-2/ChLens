@@ -26,7 +26,6 @@ describe("議論判定コンテキスト", () => {
   it("中心レスから返信元と返信先を辿る", () => {
     const context = buildDebateContext(THREAD, {
       responseNumbers: [2],
-      contextDepth: 2,
     });
 
     expect(context.scope).toEqual({ responseNumbers: [2], participantIds: [] });
@@ -34,18 +33,22 @@ describe("議論判定コンテキスト", () => {
     expect(context.responses.find((response) => response.num === 2)?.role).toBe("target");
     expect(context.responses.find((response) => response.num === 1)?.role).toBe("context");
     expect(context.omittedResponses).toBe(0);
+    expect(context.toon).toContain("contextDepth: 8");
     expect(context.toon).toContain("debate");
   });
 
   it("参加者IDを指定すると該当レスをすべて中心にする", () => {
     const context = buildDebateContext(THREAD, {
       participantIds: ["ID:BBB"],
-      contextDepth: 0,
     });
 
     expect(context.scope).toEqual({ responseNumbers: [2, 5], participantIds: ["BBB"] });
-    expect(context.responses.map((response) => response.num)).toEqual([2, 5]);
-    expect(context.responses.every((response) => response.role === "target")).toBe(true);
+    expect(context.responses.map((response) => response.num)).toEqual([1, 2, 3, 4, 5]);
+    expect(
+      context.responses
+        .filter((response) => response.role === "target")
+        .map((response) => response.num),
+    ).toEqual([2, 5]);
   });
 });
 
@@ -81,6 +84,32 @@ const RESULT = {
       score: { logic: 3.5, reading: 3, evidence: 4 },
     },
   ],
+  research: [],
+  simpleView: {
+    topic: "根拠の有無",
+    blue: {
+      label: "根拠を示す側",
+      participants: ["AAA"],
+      claims: ["根拠がある"],
+      metrics: {
+        logic: { score: 3, reason: "主張の筋道が通っている。" },
+        reading: { score: 3, reason: "反論の趣旨を捉えている。" },
+        evidence: { score: 4, reason: "具体例を挙げている。" },
+      },
+    },
+    red: {
+      label: "反論する側",
+      participants: ["BBB"],
+      claims: ["反例がある"],
+      metrics: {
+        logic: { score: 3, reason: "反論は一貫している。" },
+        reading: { score: 3, reason: "相手の主張を捉えている。" },
+        evidence: { score: 2, reason: "裏付けは限定的。" },
+      },
+    },
+    blueAdvantage: 0.58,
+    verdictReason: "具体例を示した側が少し優勢。",
+  },
 };
 
 describe("議論判定結果", () => {

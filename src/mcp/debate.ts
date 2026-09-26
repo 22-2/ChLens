@@ -16,7 +16,6 @@ export interface DebatePrepareParams {
   responseNumbers?: number[];
   participantIds?: string[];
   maxResponses?: number;
-  contextDepth?: number;
 }
 
 export interface DebateContextResponse {
@@ -84,6 +83,42 @@ export interface DebateParticipant {
   score?: DebateParticipantScore;
 }
 
+export interface DebateResearchSource {
+  title: string;
+  url: string;
+}
+
+export interface DebateResearch {
+  claim: string;
+  status: "supported" | "contradicted" | "inconclusive";
+  finding: string;
+  sources: DebateResearchSource[];
+}
+
+export interface DebateSimpleMetric {
+  score: number;
+  reason: string;
+}
+
+export interface DebateSimpleSide {
+  label: string;
+  participants: string[];
+  claims: string[];
+  metrics: {
+    logic: DebateSimpleMetric;
+    reading: DebateSimpleMetric;
+    evidence: DebateSimpleMetric;
+  };
+}
+
+export interface DebateSimpleView {
+  topic: string;
+  blue: DebateSimpleSide;
+  red: DebateSimpleSide;
+  blueAdvantage: number;
+  verdictReason: string;
+}
+
 export interface DebateResult {
   schemaVersion: 1;
   thread: {
@@ -99,12 +134,52 @@ export interface DebateResult {
   conclusion: string;
   issues: DebateIssue[];
   participants: DebateParticipant[];
+  research: DebateResearch[];
+  simpleView: DebateSimpleView;
   caveats?: string[];
 }
 
+const SIMPLE_METRIC_SCHEMA = {
+  type: "object",
+  required: ["score", "reason"],
+  properties: {
+    score: { type: "number", minimum: 0, maximum: 5 },
+    reason: { type: "string", maxLength: 120 },
+  },
+} as const;
+
+const SIMPLE_SIDE_SCHEMA = {
+  type: "object",
+  required: ["label", "participants", "claims", "metrics"],
+  properties: {
+    label: { type: "string" },
+    participants: { type: "array", items: { type: "string" } },
+    claims: { type: "array", items: { type: "string" } },
+    metrics: {
+      type: "object",
+      required: ["logic", "reading", "evidence"],
+      properties: {
+        logic: SIMPLE_METRIC_SCHEMA,
+        reading: SIMPLE_METRIC_SCHEMA,
+        evidence: SIMPLE_METRIC_SCHEMA,
+      },
+    },
+  },
+} as const;
+
 export const DEBATE_RESULT_SCHEMA = {
   type: "object",
-  required: ["schemaVersion", "thread", "scope", "summary", "conclusion", "issues", "participants"],
+  required: [
+    "schemaVersion",
+    "thread",
+    "scope",
+    "summary",
+    "conclusion",
+    "issues",
+    "participants",
+    "research",
+    "simpleView",
+  ],
   properties: {
     schemaVersion: { type: "integer", const: 1 },
     thread: {
@@ -167,13 +242,54 @@ export const DEBATE_RESULT_SCHEMA = {
         },
       },
     },
+    // 変更理由: 外部調査は判定を左右する事実に絞り、出典説明で結果が膨らみすぎないよう文字数も制限する。
+    research: {
+      type: "array",
+      maxItems: 2,
+      description: "結論に影響する事実だけを最大2件まで外部調査した結果",
+      items: {
+        type: "object",
+        required: ["claim", "status", "finding", "sources"],
+        properties: {
+          claim: { type: "string", maxLength: 160 },
+          status: { type: "string", enum: ["supported", "contradicted", "inconclusive"] },
+          finding: { type: "string", maxLength: 240 },
+          sources: {
+            type: "array",
+            maxItems: 2,
+            items: {
+              type: "object",
+              required: ["title", "url"],
+              properties: {
+                title: { type: "string", maxLength: 120 },
+                url: { type: "string", maxLength: 2048 },
+              },
+            },
+          },
+        },
+      },
+    },
+    simpleView: {
+      type: "object",
+      required: ["topic", "blue", "red", "blueAdvantage", "verdictReason"],
+      properties: {
+        topic: { type: "string" },
+        blue: SIMPLE_SIDE_SCHEMA,
+        red: SIMPLE_SIDE_SCHEMA,
+        blueAdvantage: { type: "number", minimum: 0, maximum: 1 },
+        verdictReason: { type: "string" },
+      },
+    },
     caveats: { type: "array", items: { type: "string" } },
   },
 } as const;
 
 const ANALYSIS_INSTRUCTIONS =
-  "JSONのみで回答する。固定の二陣営に押し込めず、争点ごとに主張・反論・結論を整理する。" +
-  "侮辱や煽りは論拠として扱わず、外部事実を確認していない場合は断定せず、根拠レスと不確実性を明記する。";
+  "JSONのみで回答する。詳細版は固定の二陣営に押し込めず、争点ごとに主張・反論・結論を整理する。" +
+  "簡易版simpleViewは中心となる対立を青赤2側に要約し、各側の代表主張と論理・読解・根拠の信頼性を5点満点で採点する。" +
+  "結論を左右する出典不足の事実だけ最大2件を外部調査し、各1文と出典1～2件をresearchへ記録する。" +
+  "予測・意見・煽りは検索せず、調査できない時はinconclusiveとする。調査が不要ならresearchは空配列にする。" +
+  "侮辱や煽りは論拠として扱わず、確認していない事実を断定しない。";
 
 interface DecodedThreadResponse {
   num: number;
@@ -212,10 +328,6 @@ function asString(value: unknown, fallback = ""): string {
 
 function asPositiveInteger(value: unknown): number | null {
   return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : null;
-}
-
-function asNonNegativeInteger(value: unknown): number | null {
-  return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : null;
 }
 
 function normalizeParticipantId(value: string): string {
@@ -341,7 +453,9 @@ function buildContextNumbers(
 export function buildDebateContext(value: unknown, params: DebatePrepareParams): DebateContext {
   const thread = normalizeThreadPayload(value);
   const scope = resolveScope(thread.responses, params);
-  const contextDepth = Math.min(asNonNegativeInteger(params.contextDepth) ?? 4, MAX_CONTEXT_DEPTH);
+  // 変更理由: 返信の枝を利用者の指定深度で途中打ち切りすると議論の応酬を見落とすため、
+  // 判定用コンテキストは常に許容される最大深度まで辿る。
+  const contextDepth = MAX_CONTEXT_DEPTH;
   const distances = buildContextNumbers(thread.responses, scope.responseNumbers, contextDepth);
   const ordered = [...distances.entries()]
     .sort((left, right) => left[1] - right[1] || left[0] - right[0])
@@ -473,6 +587,102 @@ function requireScore(value: unknown, path: string): DebateParticipantScore {
   return score as DebateParticipantScore;
 }
 
+function requireLimitedString(value: unknown, path: string, limit: number): string {
+  const result = requireString(value, path);
+  if (Array.from(result).length > limit)
+    throw new Error(`${path}は${limit}文字以内で指定してください`);
+  return result;
+}
+
+function requireTextArray(value: unknown, path: string): string[] {
+  if (!Array.isArray(value)) throw new Error(`${path}は配列で指定してください`);
+  return value.map((item, index) => requireString(item, `${path}[${index}]`));
+}
+
+function requireResearch(value: unknown): DebateResearch[] {
+  if (!Array.isArray(value) || value.length > 2) {
+    throw new Error("researchは2件以内の配列で指定してください");
+  }
+  return value.map((item, index) => {
+    const field = `research[${index}]`;
+    if (!isObject(item)) throw new Error(`${field}が不正です`);
+    const status = item.status;
+    if (status !== "supported" && status !== "contradicted" && status !== "inconclusive") {
+      throw new Error(`${field}.statusが不正です`);
+    }
+    if (!Array.isArray(item.sources) || item.sources.length > 2) {
+      throw new Error(`${field}.sourcesは2件以内の配列で指定してください`);
+    }
+    const sources = item.sources.map((source, sourceIndex) => {
+      const sourcePath = `${field}.sources[${sourceIndex}]`;
+      if (!isObject(source)) throw new Error(`${sourcePath}が不正です`);
+      const url = requireLimitedString(source.url, `${sourcePath}.url`, 2048);
+      let parsedUrl: URL;
+      try {
+        parsedUrl = new URL(url);
+      } catch (error: unknown) {
+        throw new Error(`${sourcePath}.urlが不正です: ${String(error)}`);
+      }
+      if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+        throw new Error(`${sourcePath}.urlはhttpまたはhttpsで指定してください`);
+      }
+      return {
+        title: requireLimitedString(source.title, `${sourcePath}.title`, 120),
+        url: parsedUrl.href,
+      };
+    });
+    return {
+      claim: requireLimitedString(item.claim, `${field}.claim`, 160),
+      status,
+      finding: requireLimitedString(item.finding, `${field}.finding`, 240),
+      sources,
+    };
+  });
+}
+
+function requireSimpleMetric(value: unknown, path: string): DebateSimpleMetric {
+  if (!isObject(value)) throw new Error(`${path}が不正です`);
+  const score = value.score;
+  if (typeof score !== "number" || !Number.isFinite(score) || score < 0 || score > 5) {
+    throw new Error(`${path}.scoreは0から5の数値で指定してください`);
+  }
+  return { score, reason: requireLimitedString(value.reason, `${path}.reason`, 120) };
+}
+
+function requireSimpleSide(value: unknown, path: string): DebateSimpleSide {
+  if (!isObject(value) || !isObject(value.metrics)) throw new Error(`${path}が不正です`);
+  return {
+    label: requireString(value.label, `${path}.label`),
+    participants: requireTextArray(value.participants, `${path}.participants`),
+    claims: requireTextArray(value.claims, `${path}.claims`),
+    metrics: {
+      logic: requireSimpleMetric(value.metrics.logic, `${path}.metrics.logic`),
+      reading: requireSimpleMetric(value.metrics.reading, `${path}.metrics.reading`),
+      evidence: requireSimpleMetric(value.metrics.evidence, `${path}.metrics.evidence`),
+    },
+  };
+}
+
+function requireSimpleView(value: unknown): DebateSimpleView {
+  if (!isObject(value)) throw new Error("simpleViewが不正です");
+  const blueAdvantage = value.blueAdvantage;
+  if (
+    typeof blueAdvantage !== "number" ||
+    !Number.isFinite(blueAdvantage) ||
+    blueAdvantage < 0 ||
+    blueAdvantage > 1
+  ) {
+    throw new Error("simpleView.blueAdvantageは0から1の数値で指定してください");
+  }
+  return {
+    topic: requireString(value.topic, "simpleView.topic"),
+    blue: requireSimpleSide(value.blue, "simpleView.blue"),
+    red: requireSimpleSide(value.red, "simpleView.red"),
+    blueAdvantage,
+    verdictReason: requireString(value.verdictReason, "simpleView.verdictReason"),
+  };
+}
+
 export function validateDebateResult(value: unknown): DebateResult {
   if (!isObject(value)) throw new Error("判定結果はJSONオブジェクトで指定してください");
   if (value.schemaVersion !== 1) throw new Error("schemaVersionは1を指定してください");
@@ -535,6 +745,8 @@ export function validateDebateResult(value: unknown): DebateResult {
     conclusion: requireString(value.conclusion, "conclusion"),
     issues,
     participants,
+    research: requireResearch(value.research),
+    simpleView: requireSimpleView(value.simpleView),
     ...(value.caveats == null ? {} : { caveats: requireStringArray(value.caveats, "caveats") }),
   };
   if (JSON.stringify(result).length > MAX_RESULT_STRING_LENGTH) {
@@ -575,6 +787,13 @@ export function formatDebateText(result: DebateResult): string {
       lines.push(`  - 有効点: ${participant.strengths.join(" / ")}`);
     if (participant.weaknesses.length > 0)
       lines.push(`  - 弱点: ${participant.weaknesses.join(" / ")}`);
+  }
+  if (result.research.length > 0) {
+    lines.push("", "外部調査:");
+    for (const item of result.research) {
+      lines.push(`- ${item.claim} [${item.status}]: ${item.finding}`);
+      for (const source of item.sources) lines.push(`  - ${source.title}: ${source.url}`);
+    }
   }
   if (result.caveats && result.caveats.length > 0) {
     lines.push("", "留意点:", ...result.caveats.map((caveat) => `- ${caveat}`));
@@ -641,6 +860,26 @@ export function formatDebateMarkdown(result: DebateResult): string {
     if (participant.weaknesses.length > 0)
       lines.push(`- 弱点: ${participant.weaknesses.join(" / ")}`);
     lines.push("");
+  }
+  if (result.research.length > 0) {
+    const statusLabels = {
+      supported: "おおむね裏付けあり",
+      contradicted: "反証あり",
+      inconclusive: "確認できず",
+    } as const;
+    lines.push("## 外部調査", "");
+    for (const item of result.research) {
+      lines.push(
+        `### ${escapeMarkdown(item.claim)}（${statusLabels[item.status]}）`,
+        "",
+        item.finding,
+        "",
+      );
+      for (const source of item.sources) {
+        lines.push(`- [${escapeMarkdown(source.title)}](${source.url})`);
+      }
+      lines.push("");
+    }
   }
   if (result.caveats && result.caveats.length > 0) {
     lines.push("## 留意点", "", ...result.caveats.map((caveat) => `- ${caveat}`), "");

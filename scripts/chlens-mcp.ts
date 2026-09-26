@@ -575,7 +575,6 @@ function debatePrepareParams(value: Record<string, unknown>): DebatePrepareParam
       ? { participantIds: value.participantIds as string[] }
       : {}),
     ...(typeof value.maxResponses === "number" ? { maxResponses: value.maxResponses } : {}),
-    ...(typeof value.contextDepth === "number" ? { contextDepth: value.contextDepth } : {}),
   };
 }
 
@@ -708,7 +707,7 @@ function toolDefinitions(): object[] {
       name: "prepare_debate",
       description:
         "指定したレス番号または参加者IDを中心に、返信元・返信先を集めて議論判定用のTOONを作ります。" +
-        "AIは返された指示とresultSchemaに従って判定JSONを作成してください。固定の二陣営ではなく争点単位で整理します。",
+        "返信を辿る深さは常に最大の8です。AIはinstructionsとresultSchemaに従って詳細版と青赤二陣営の簡易版を作成し、根拠不足の重要な事実を最大2件だけ外部調査します。",
       inputSchema: {
         type: "object",
         properties: {
@@ -729,7 +728,6 @@ function toolDefinitions(): object[] {
             description: "議論している参加者のID。該当IDのレスをすべて中心にします",
           },
           maxResponses: { type: "integer", minimum: 1, maximum: 240, default: 240 },
-          contextDepth: { type: "integer", minimum: 0, maximum: 8, default: 4 },
         },
         additionalProperties: false,
       },
@@ -737,7 +735,7 @@ function toolDefinitions(): object[] {
     {
       name: "save_debate_result",
       description:
-        "AIが作成した議論判定JSONを検証し、テキスト・JSON・Markdown・HTML・PNGの指定形式でローカル保存します。画像は全文を折り返して表示します。",
+        "AIが作成した議論判定JSONを検証し、詳細版と簡易版をテキスト・JSON・Markdown・HTML・PNGでローカル保存します。画像内の全文は自動で折り返します。",
       inputSchema: {
         type: "object",
         required: ["result"],
@@ -745,7 +743,10 @@ function toolDefinitions(): object[] {
           result: DEBATE_RESULT_SCHEMA,
           formats: {
             type: "array",
-            items: { type: "string", enum: ["json", "markdown", "text", "html", "png"] },
+            items: {
+              type: "string",
+              enum: ["json", "markdown", "text", "html", "png", "simple-html", "simple-png"],
+            },
             description: "保存する形式。省略時は全形式",
           },
           name: {

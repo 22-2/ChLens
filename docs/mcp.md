@@ -79,9 +79,11 @@ Chrome版の拡張機能IDやNative Messagingの登録は使わないため、�
 
 ## 議論判定
 
-`prepare_debate` は、`url` と `responseNumbers`（レス番号）または `participantIds`（ID）を受け取り、指定対象から返信元・返信先を辿ったTOONを返します。`contextDepth` で辿る深さ、`maxResponses` で返す上限を指定できます。対象レスは `role: target`、理解のために補ったレスは `role: context` として区別されます。
+`prepare_debate` は、`url` と `responseNumbers`（レス番号）または `participantIds`（ID）を受け取り、指定対象から返信元・返信先を最大深度の8まで辿ったTOONを返します。深度は常に最大で、`maxResponses`（最大240）だけ返す件数を指定できます。対象レスは `role: target`、理解のために補ったレスは `role: context` として区別されます。
 
-返されたTOONの `instructions` と `resultSchema` に従って、呼び出し元のAIが判定JSONを作成します。判定結果は固定の二陣営ではなく、争点ごとの `issues` と参加者ごとの `participants` で表現します。罵倒や煽りを根拠として扱わず、判断材料が足りない場合は `insufficient-evidence` と不確実性を記録してください。
+返されたTOONの `instructions` と `resultSchema` に従って、呼び出し元のAIが判定JSONを作成します。詳細版は固定の二陣営ではなく、争点ごとの `issues` と参加者ごとの `participants` で表現します。加えて `simpleView` に青赤2側の主張、論理・読解・根拠の5段階評価をまとめ、簡易版画像として出力します。罵倒や煽りを根拠として扱いません。
+
+結論に大きく影響する事実でスレ内に根拠がないものは、AIが最大2件まで外部調査し、短い要約と各1～2件の出典を `research` に記録します。予測や意見は調査対象にせず、確認できない主張はその旨を示します。これにより出典欄が長くなりすぎないようにします。
 
 `save_debate_result` に判定JSONを渡すと、既定で次の形式を同じベース名で保存します。
 
@@ -90,5 +92,7 @@ Chrome版の拡張機能IDやNative Messagingの登録は使わないため、�
 - `text`: プレーンテキスト
 - `html`: 全文を折り返して表示する判定カード
 - `png`: HTMLをChromiumで画像化した判定カード
+- `simple-html`: 二陣営のゲージ・主張・3軸評価を並べた簡易版カード
+- `simple-png`: 簡易版HTMLをChromiumで画像化したカード
 
-保存先は、`CHLENS_DEBATE_OUTPUT_DIR` を指定した場合はそのディレクトリ、未指定時はユーザーのホームディレクトリにある `ChLens/debate-results` です。`formats` で必要な形式だけに絞れます。画像は内容の高さに合わせて伸び、争点・参加者・根拠を省略しません。HTML形式はPNGのレイアウト確認や再利用に使えます。PNG出力にはPlaywright用Chromiumが必要です。未導入の場合は `pnpm exec playwright install chromium` で追加します。
+保存先は、`CHLENS_DEBATE_OUTPUT_DIR` を指定した場合はそのディレクトリ、未指定時はユーザーのホームディレクトリにある `ChLens/debate-results` です。`formats` で必要な形式だけに絞れます。画像は内容の高さに合わせて伸び、文字を切らずに自動で折り返します。HTML形式はPNGのレイアウト確認や再利用に使えます。PNG出力にはPlaywright用Chromiumが必要です。未導入の場合は `pnpm exec playwright install chromium` で追加します。

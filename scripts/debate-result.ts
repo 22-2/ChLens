@@ -9,11 +9,19 @@ import {
   type DebateIssue,
   type DebateParticipant,
   type DebateResult,
+  type DebateSimpleMetric,
   formatDebateMarkdown,
   formatDebateText,
 } from "../src/mcp/debate.ts";
 
-export type DebateOutputFormat = "json" | "markdown" | "text" | "html" | "png";
+export type DebateOutputFormat =
+  | "json"
+  | "markdown"
+  | "text"
+  | "html"
+  | "png"
+  | "simple-html"
+  | "simple-png";
 
 export interface SavedDebateFile {
   format: DebateOutputFormat;
@@ -25,7 +33,15 @@ export interface SavedDebateResult {
   files: SavedDebateFile[];
 }
 
-const DEFAULT_FORMATS: DebateOutputFormat[] = ["json", "markdown", "text", "html", "png"];
+const DEFAULT_FORMATS: DebateOutputFormat[] = [
+  "json",
+  "markdown",
+  "text",
+  "html",
+  "png",
+  "simple-html",
+  "simple-png",
+];
 const CARD_WIDTH = 1200;
 
 function escapeHtml(value: string): string {
@@ -142,6 +158,20 @@ export function renderDebateHtml(result: DebateResult): string {
   const participants = result.participants;
   const caveats = result.caveats ?? [];
   const threadUrl = safeHttpUrl(result.thread.url);
+  const researchStatusLabels = {
+    supported: "おおむね裏付けあり",
+    contradicted: "反証あり",
+    inconclusive: "確認できず",
+  } as const;
+  const research =
+    result.research.length > 0
+      ? `<section class="research"><h2>不足根拠の外部調査</h2>${result.research
+          .map(
+            (item) =>
+              `<article><h3>${researchStatusLabels[item.status]}: ${escapeHtml(item.claim)}</h3><p class="preserve-text">${escapeHtml(item.finding)}</p>${item.sources.length > 0 ? `<p class="refs">${item.sources.map((source) => `<a href="${escapeHtml(safeHttpUrl(source.url))}">${escapeHtml(source.title)}</a>`).join(" · ")}</p>` : ""}</article>`,
+          )
+          .join("")}</section>`
+      : "";
   // 変更理由: 文章量や返信数を画像の推定高に合わせて削ると、判定に必要な主張が欠けるため、
   // 全項目を通常のHTMLフローで折り返し、内容に応じてカードと画像の高さを伸ばす。
   return `<!doctype html>
@@ -199,16 +229,123 @@ export function renderDebateHtml(result: DebateResult): string {
   .score { margin-top: 10px; color: #cbd5e1; font-size: 14px; }
   .participant-notes { margin-top: 12px; }
   .caveats { margin-top: 16px; padding: 16px; border: 1px solid #475569; border-radius: 12px; }
+  .research { margin: 20px 0; padding: 16px; border: 1px solid #155e75; border-radius: 12px; background: #082f49; }
+  .research article + article { margin-top: 12px; padding-top: 12px; border-top: 1px solid #155e75; }
+  .research h2, .research h3 { margin: 0 0 6px; color: #a5f3fc; }
+  .research h2 { font-size: 19px; }
   .muted { color: #94a3b8; }
-</style></head><body><main class="sheet">
+</style></head><body><main class="sheet image-root">
   <header class="topline"><span class="brand">ChLens 議論判定</span><span class="verdict ${verdict.tone}">${verdict.label}</span></header>
   <h1 class="preserve-text">${escapeHtml(result.thread.title)}</h1>
   <p class="thread-link">${threadUrl ? `<a href="${escapeHtml(threadUrl)}">スレッドを開く</a>` : "スレッドURLなし"}${result.thread.analyzedAt ? ` · 判定日時 ${escapeHtml(result.thread.analyzedAt)}` : ""}</p>
   <section class="summary"><h2>要約</h2><p class="preserve-text">${escapeHtml(result.summary)}</p></section>
   <section class="conclusion"><h2>${verdict.detail}</h2><p class="preserve-text">${escapeHtml(result.conclusion)}</p></section>
+  ${research}
   <section><h2>争点別判定 <span class="meta">${result.issues.length}件</span></h2>${result.issues.map((issue) => issueHtml(result.thread.url, issue)).join("") || '<p class="muted">争点はありません。</p>'}</section>
   <section><h2>参加者別評価 <span class="meta">${participants.length}人</span></h2><div class="participant-grid">${participants.map((participant) => participantHtml(result.thread.url, participant)).join("")}</div></section>
   ${caveats.length > 0 ? `<section class="caveats"><h2>留意点</h2><ul>${caveats.map((item) => `<li class="preserve-text">${escapeHtml(item)}</li>`).join("")}</ul></section>` : ""}
+</main></body></html>`;
+}
+
+function simpleMetricRow(label: string, icon: string, metric: DebateSimpleMetric, tone: string): string {
+  const dots = Array.from({ length: 5 }, (_, index) => {
+    const fill = Math.max(0, Math.min(1, metric.score - index)) * 100;
+    return `<span class="score-dot" style="--fill:${fill}%;--tone:${tone}"></span>`;
+  }).join("");
+  return `<article class="metric-row ${tone === "#38bdf8" ? "blue" : "red"}">
+    <div class="metric-icon-box" aria-hidden="true">${icon}</div>
+    <div class="metric-main"><div class="metric-upper"><strong>${label}</strong><span class="dot-meter">${dots}</span></div>
+      <div class="metric-lower"><p class="metric-desc">${escapeHtml(metric.reason)}</p><strong class="score-number">${metric.score.toFixed(1)}<small>/5.0</small></strong></div>
+    </div>
+  </article>`;
+}
+
+export function renderSimpleDebateHtml(result: DebateResult): string {
+  const view = result.simpleView;
+  // 変更理由: 参考画像のゲージ・二列主張・三軸評価を再現しつつ、長文はHTMLで折り返して全量を残す。
+  const bluePct = Math.round(view.blueAdvantage * 100);
+  const redPct = 100 - bluePct;
+  const side = (name: "blue" | "red") => {
+    const value = view[name];
+    const tone = name === "blue" ? "#38bdf8" : "#f87171";
+    const claims = value.claims
+      .map(
+        (claim, index) =>
+          `<li><span class="claim-number">${index + 1}</span><span class="claim-text">${escapeHtml(claim)}</span></li>`,
+      )
+      .join("");
+    return `<section class="camp ${name}">
+      <header class="camp-heading"><h2>主張</h2><p class="side-label">${escapeHtml(value.label)}${value.participants.length > 0 ? ` · ${value.participants.map(escapeHtml).join("、")}` : ""}</p></header>
+      <ol class="claims">${claims || '<li class="empty">主張なし</li>'}</ol>
+      <h2 class="metrics-heading">評価のポイント</h2>
+      <div class="metrics">
+        ${simpleMetricRow("論理的思考力", "◇", value.metrics.logic, tone)}
+        ${simpleMetricRow("文章読解力", "▤", value.metrics.reading, tone)}
+        ${simpleMetricRow("根拠の信頼性", "⬡", value.metrics.evidence, tone)}
+      </div>
+    </section>`;
+  };
+  return `<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${escapeHtml(view.topic)} - ChLens 議論判定</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; background: #03060f; }
+  body { padding: 14px; color: #f8fafc; font-family: "Yu Gothic UI", Meiryo, "Noto Sans JP", sans-serif; }
+  .image-root { width: 1200px; margin: 0 auto; overflow: visible; }
+  .gauge-panel { display: grid; grid-template-columns: minmax(190px, 1fr) minmax(0, 4fr) minmax(190px, 1fr); align-items: center; gap: 14px; padding: 8px 14px; border: 1px solid #1e293b; border-radius: 5px; background: #090d1a; }
+  .side-id { min-width: 0; overflow-wrap: anywhere; font-size: 15px; font-weight: 800; text-align: center; }
+  .blue .side-id { color: #38bdf8; text-shadow: 0 0 5px rgba(56,189,248,.4); }
+  .red .side-id { color: #f87171; text-shadow: 0 0 5px rgba(248,113,113,.4); }
+  .gauge-center { min-width: 0; }
+  .rates { display: flex; align-items: center; justify-content: space-between; font: 800 34px/1 Impact, "Arial Black", sans-serif; }
+  .rates .blue-rate { color: #38bdf8; }
+  .rates .red-rate { color: #f87171; }
+  .topic { min-width: 0; padding: 4px 12px; color: #fff; font-size: 19px; font-weight: 900; line-height: 1.35; text-align: center; overflow-wrap: anywhere; white-space: pre-wrap; }
+  .gauge { position: relative; display: flex; width: 100%; height: 14px; overflow: hidden; border: 1px solid #334155; border-radius: 3px; background: #020617; }
+  .gauge-blue { background: linear-gradient(90deg,#0284c7,#38bdf8); }
+  .gauge-red { background: linear-gradient(90deg,#f87171,#dc2626); }
+  .gauge-center-line { position: absolute; left: 50%; top: 0; width: 2px; height: 100%; background: rgba(255,255,255,.45); }
+  .columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .camp { min-width: 0; padding: 10px 12px; }
+  .camp.blue { background: rgba(7,19,46,.9); border: 1px solid rgba(56,189,248,.25); border-right: 0; }
+  .camp.red { background: rgba(36,11,19,.9); border: 1px solid rgba(248,113,133,.25); border-left: 1px solid #334155; }
+  .camp-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; border-bottom: 1px solid rgba(255,255,255,.08); padding-bottom: 4px; }
+  .camp-heading h2, .metrics-heading { margin: 0 0 5px; color: #cbd5e1; font-size: 18px; }
+  .side-label { margin: 0; color: #94a3b8; font-size: 12px; text-align: right; overflow-wrap: anywhere; }
+  .claims { display: flex; flex-direction: column; gap: 2px; margin: 4px 0 16px; padding: 4px; list-style: none; border-radius: 4px; background: rgba(0,0,0,.3); }
+  .claims li { display: flex; align-items: flex-start; gap: 8px; min-width: 0; padding: 3px 4px; font-size: 16px; line-height: 1.5; }
+  .claim-number { flex: none; display: inline-grid; place-items: center; width: 21px; height: 21px; margin-top: 1px; border-radius: 50%; color: #020617; font-size: 13px; font-weight: 800; }
+  .blue .claim-number { background: #38bdf8; }
+  .red .claim-number { background: #f87171; }
+  .claim-text { min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .metrics-heading { margin: 12px 0 5px; }
+  .metrics { display: flex; flex-direction: column; gap: 4px; }
+  .metric-row { display: grid; grid-template-columns: 52px minmax(0,1fr); align-items: center; gap: 10px; min-width: 0; padding: 6px 8px; border: 1px solid rgba(255,255,255,.04); border-radius: 3px; background: rgba(0,0,0,.25); }
+  .metric-icon-box { display: grid; place-items: center; font-size: 36px; font-weight: 700; }
+  .metric-row.blue .metric-icon-box, .metric-row.blue .score-number { color: #38bdf8; }
+  .metric-row.red .metric-icon-box, .metric-row.red .score-number { color: #f87171; }
+  .metric-main { min-width: 0; }
+  .metric-upper { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px; }
+  .metric-upper strong { color: #fff; font-size: 16px; }
+  .dot-meter { display: flex; flex: none; gap: 4px; }
+  .score-dot { width: 16px; height: 16px; border-radius: 50%; background: linear-gradient(90deg,var(--tone) var(--fill),#1e293b var(--fill)); }
+  .metric-lower { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: start; gap: 10px; margin-top: 4px; }
+  .metric-desc { min-width: 0; margin: 0; color: #cbd5e1; font-size: 14px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .score-number { flex: none; font: 800 26px/1 Impact,"Arial Black",sans-serif; text-align: right; }
+  .score-number small { color: #64748b; font: 13px/1 "Yu Gothic UI",Meiryo,sans-serif; }
+  .summary-panel { display: grid; grid-template-columns: 120px minmax(0,1fr); align-items: center; gap: 12px; padding: 9px 12px; border: 1px solid #1e293b; border-radius: 4px; background: #090d1a; }
+  .summary-label { padding-right: 12px; border-right: 1px solid #334155; color: #eab308; font-size: 20px; font-weight: 900; text-align: center; }
+  .summary-text { min-width: 0; color: #e2e8f0; font-size: 16px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .empty { color: #94a3b8; }
+</style></head><body><main class="image-root">
+  <section class="gauge-panel">
+    <div class="side-id blue"><div class="rates"><span class="blue-rate">${bluePct}%</span></div>${escapeHtml(view.blue.label)}<br>${view.blue.participants.map(escapeHtml).join("、")}</div>
+    <div class="gauge-center"><div class="topic">${escapeHtml(view.topic)}</div><div class="gauge"><div class="gauge-blue" style="width:${bluePct}%"></div><div class="gauge-red" style="width:${redPct}%"></div><i class="gauge-center-line"></i></div></div>
+    <div class="side-id red"><div class="rates"><span class="red-rate">${redPct}%</span></div>${escapeHtml(view.red.label)}<br>${view.red.participants.map(escapeHtml).join("、")}</div>
+  </section>
+  <div class="columns">${side("blue")}${side("red")}</div>
+  <section class="summary-panel"><div class="summary-label">総合評価</div><p class="summary-text">${escapeHtml(view.verdictReason)}</p></section>
 </main></body></html>`;
 }
 
@@ -218,7 +355,7 @@ export async function renderDebatePng(html: string): Promise<Buffer> {
     const page = await browser.newPage({ viewport: { width: CARD_WIDTH + 56, height: 1000 } });
     await page.setContent(html, { waitUntil: "load" });
     // 変更理由: 画面高で切らず、HTMLの自然な全高を画像に反映して全文を残す。
-    const image = await page.locator(".sheet").screenshot({ type: "png", animations: "disabled" });
+    const image = await page.locator(".image-root").screenshot({ type: "png", animations: "disabled" });
     return image;
   } finally {
     await browser.close();
@@ -252,7 +389,9 @@ export function normalizeDebateFormats(value: unknown): DebateOutputFormat[] {
     allowed.has(item as DebateOutputFormat),
   );
   if (formats.length !== value.length || formats.length === 0) {
-    throw new Error("formatsにはjson、markdown、text、html、pngのいずれかを指定してください");
+    throw new Error(
+      "formatsにはjson、markdown、text、html、png、simple-html、simple-pngのいずれかを指定してください",
+    );
   }
   return formats;
 }
@@ -268,21 +407,32 @@ export async function saveDebateResult(
   const files: SavedDebateFile[] = [];
   let html: string | undefined;
   let png: Buffer | undefined;
+  let simpleHtml: string | undefined;
+  let simplePng: Buffer | undefined;
   for (const format of formats) {
-    const filePath = path.join(directory, `${baseName}.${format}`);
+    // 変更理由: 詳細版と簡易版を同じベース名で並べ、用途に応じて片方だけ保存できるようにする。
+    const suffix = format === "simple-html" ? "simple.html" : format === "simple-png" ? "simple.png" : format;
+    const filePath = path.join(directory, `${baseName}.${suffix}`);
     if (format === "json") {
       await writeFile(filePath, `${JSON.stringify(result, null, 2)}\n`, "utf8");
     } else if (format === "markdown") {
       await writeFile(filePath, `${formatDebateMarkdown(result)}\n`, "utf8");
     } else if (format === "text") {
       await writeFile(filePath, `${formatDebateText(result)}\n`, "utf8");
-    } else {
+    } else if (format === "html") {
       html ??= renderDebateHtml(result);
-      if (format === "html") await writeFile(filePath, html, "utf8");
-      else {
-        png ??= await renderDebatePng(html);
-        await writeFile(filePath, png);
-      }
+      await writeFile(filePath, html, "utf8");
+    } else if (format === "png") {
+      html ??= renderDebateHtml(result);
+      png ??= await renderDebatePng(html);
+      await writeFile(filePath, png);
+    } else if (format === "simple-html") {
+      simpleHtml ??= renderSimpleDebateHtml(result);
+      await writeFile(filePath, simpleHtml, "utf8");
+    } else {
+      simpleHtml ??= renderSimpleDebateHtml(result);
+      simplePng ??= await renderDebatePng(simpleHtml);
+      await writeFile(filePath, simplePng);
     }
     files.push({ format, path: filePath });
   }
