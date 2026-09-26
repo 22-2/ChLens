@@ -161,7 +161,6 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
   const { value: preSubmitWarningsEnabled } = useScopedConfigBooleanSetting(
     "write_pre_submit_warnings",
     threadUrl,
-    true,
   );
 
   const isSubmitting = status === "submitting";

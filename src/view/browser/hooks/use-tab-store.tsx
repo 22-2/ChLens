@@ -10,6 +10,7 @@ import React, {
   useReducer,
   useRef,
 } from "react";
+import { DEFAULT_CONFIG } from "src/app/config-defaults";
 import { platform } from "src/app/platform";
 import { getStore2String } from "src/app/Store2Storage";
 import {
@@ -90,13 +91,13 @@ function resolveNewTabPageMode(raw: string | null): NewTabPageMode {
   }
 
   // 未設定時は「関連する板」を既定にして、スレ閲覧中の導線を短縮する。
-  return "related_board";
+  return DEFAULT_CONFIG.new_tab_page_mode as NewTabPageMode;
 }
 
 function shouldFocusNewTabOnOpen(): boolean {
   const rawValue = readConfigValue("focus_new_tab_on_open");
   if (rawValue === null) {
-    return true;
+    return DEFAULT_CONFIG.focus_new_tab_on_open === "on";
   }
   return rawValue === "on";
 }

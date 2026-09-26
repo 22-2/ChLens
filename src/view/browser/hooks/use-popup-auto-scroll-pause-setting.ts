@@ -8,7 +8,6 @@ export function usePopupAutoScrollPauseSetting(): {
 } {
   const { value: enabled, setValue: setEnabled } = useConfigBooleanSetting(
     POPUP_AUTO_SCROLL_PAUSE_CONFIG_KEY,
-    true,
   );
 
   return { enabled, setEnabled };

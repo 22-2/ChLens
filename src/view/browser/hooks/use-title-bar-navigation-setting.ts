@@ -19,17 +19,13 @@ export interface TitleBarButtonSettings {
  * タイトルバーの描画が同じ設定値を直接共有できるようにする。
  */
 export function useTitleBarButtonSettings(): TitleBarButtonSettings {
-  const { value: backEnabled, setValue: setBackEnabled } = useConfigBooleanSetting(
-    TITLE_BAR_BACK_CONFIG_KEY,
-    true,
-  );
+  const { value: backEnabled, setValue: setBackEnabled } =
+    useConfigBooleanSetting(TITLE_BAR_BACK_CONFIG_KEY);
   const { value: forwardEnabled, setValue: setForwardEnabled } = useConfigBooleanSetting(
     TITLE_BAR_FORWARD_CONFIG_KEY,
-    true,
   );
   const { value: refreshEnabled, setValue: setRefreshEnabled } = useConfigBooleanSetting(
     TITLE_BAR_REFRESH_CONFIG_KEY,
-    true,
   );
 
   return {

@@ -1,10 +1,11 @@
+import { DEFAULT_CONFIG } from "src/app/config-defaults";
 import { readConfigValue } from "src/view/browser/utils/config-setting";
 import { readScopedConfigValue } from "src/view/browser/utils/scoped-settings";
 
 export const THREAD_AUTO_REFRESH_CONFIG_KEY = "auto_load_second";
 // 5秒では通常の閲覧でも通信回数が多くなりやすいため、標準値は20秒にする。
 // 実況など短い間隔が必要な板はサイト・板設定から個別に上書きできる。
-export const DEFAULT_THREAD_AUTO_REFRESH_MS = 20000;
+export const DEFAULT_THREAD_AUTO_REFRESH_MS = Number(DEFAULT_CONFIG.auto_load_second);
 // 設定画面の選択範囲は5〜120秒だが、既存設定の3秒も実行できるよう実行時の下限は別に保つ。
 export const MIN_THREAD_AUTO_REFRESH_MS = 3000;
 // 新着が来ない更新が連続でこの回数に達したら自動更新を止める。
@@ -15,7 +16,7 @@ export const THREAD_AUTO_REFRESH_IDLE_STOP_COUNT = 40;
 export const MIN_THREAD_AUTO_REFRESH_SETTING_MS = 5000;
 export const MAX_THREAD_AUTO_REFRESH_MS = 120000;
 export const BOARD_AUTO_REFRESH_CONFIG_KEY = "auto_load_second_board";
-export const DEFAULT_BOARD_AUTO_REFRESH_MS = 20000;
+export const DEFAULT_BOARD_AUTO_REFRESH_MS = Number(DEFAULT_CONFIG.auto_load_second_board);
 // スレ一覧は実況用途でも使われるため、過度な通信を避けつつ10秒間隔を選べるようにする。
 export const MIN_BOARD_AUTO_REFRESH_MS = 10000;
 export const MAX_BOARD_AUTO_REFRESH_MS = 300000;
@@ -45,7 +46,7 @@ export const IDLE_STOP_TIMEOUT_OPTIONS: readonly IdleStopTimeoutOption[] = [
   { value: "0", label: "無効" },
 ];
 
-export const IDLE_STOP_TIMEOUT_DEFAULT = "auto";
+export const IDLE_STOP_TIMEOUT_DEFAULT = DEFAULT_CONFIG.auto_load_idle_stop_timeout;
 
 export function readIdleStopTimeoutValue(): string {
   const raw = readConfigValue(THREAD_IDLE_STOP_TIMEOUT_CONFIG_KEY);

@@ -12,9 +12,21 @@ vi.mock("src/view/browser/components/NGEditor", () => ({
   NGEditor: () => null,
 }));
 
+import { DEFAULT_CONFIG } from "src/app/config-defaults";
+
 import { getSettingsSections, readAllSettings } from "./settings-sections";
 
 describe("設定セクションの実行環境フィルター", () => {
+  it("設定画面に表示する全項目へ集約した既定値を用意する", () => {
+    const fieldKeys = getSettingsSections(true).flatMap((section) =>
+      section.fields.flatMap((field) => ("key" in field ? [field.key] : [])),
+    );
+
+    for (const key of fieldKeys) {
+      expect(DEFAULT_CONFIG).toHaveProperty(key);
+    }
+  });
+
   it("Browser版ではTauri専用のOverlay設定を表示しない", () => {
     const sections = getSettingsSections(false);
 

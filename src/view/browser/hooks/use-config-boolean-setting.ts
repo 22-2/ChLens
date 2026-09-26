@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { DEFAULT_CONFIG } from "src/app/config-defaults";
 import {
   persistConfigValue,
   readConfigValue,
@@ -23,7 +24,7 @@ function readConfigBoolean(key: string, defaultValue: boolean): boolean {
 
 export function useConfigBooleanSetting(
   key: string,
-  defaultValue = false,
+  defaultValue = DEFAULT_CONFIG[key] === "on",
 ): UseConfigBooleanSettingResult {
   const [value, setValue] = useState(() => readConfigBoolean(key, defaultValue));
 

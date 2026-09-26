@@ -1,5 +1,6 @@
 import { MoreVertical } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { DEFAULT_CONFIG } from "src/app/config-defaults";
 import { platformCookieManager } from "src/app/platform/CookieManager";
 import type { BBSMenu } from "src/core/BBSMenuParser";
 import { getBoardUrlKey, normalizeBoardUrl } from "src/core/BoardUrlNormalizer";
@@ -199,14 +200,14 @@ function getOverride(
 }
 
 function getDefaultValue(key: ScopedSettingKey): string {
+  const raw = container.config.get(key) ?? DEFAULT_CONFIG[key];
   if (key === "sage_flag") {
-    return container.config.get(key) === "on" ? "on" : "off";
+    return raw === "on" ? "on" : "off";
   }
   if (key === "write_pre_submit_warnings") {
-    return container.config.get(key) === "off" ? "off" : "on";
+    return raw === "off" ? "off" : "on";
   }
-  const raw = container.config.get(key);
-  return raw && Number.parseInt(raw, 10) > 0 ? raw : "20000";
+  return Number.parseInt(raw, 10) > 0 ? raw : DEFAULT_CONFIG[key];
 }
 
 function readGlobalSettingValues(): Record<ScopedSettingKey, string> {

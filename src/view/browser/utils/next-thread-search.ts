@@ -1,3 +1,4 @@
+import { DEFAULT_CONFIG } from "src/app/config-defaults";
 import type { IThread } from "src/service-container/interfaces";
 import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
 
@@ -598,7 +599,7 @@ export function findNextThreadCandidates(
   options: NextThreadSearchOptions = {},
 ): NextThreadMatch[] {
   const resolvedOptions: Required<NextThreadSearchOptions> = {
-    mode: options.mode ?? "balanced",
+    mode: options.mode ?? (DEFAULT_CONFIG.auto_next_thread_mode as AutoNextThreadMode),
     responseMessages: options.responseMessages ?? [],
   };
   const policy = NEXT_THREAD_MODE_POLICY[resolvedOptions.mode];
@@ -636,7 +637,7 @@ export function findNextThreadMatch(
   options: NextThreadSearchOptions = {},
 ): NextThreadMatch | null {
   const resolvedOptions: Required<NextThreadSearchOptions> = {
-    mode: options.mode ?? "balanced",
+    mode: options.mode ?? (DEFAULT_CONFIG.auto_next_thread_mode as AutoNextThreadMode),
     responseMessages: options.responseMessages ?? [],
   };
   const candidates = rankNextThreadCandidates(threads, currentThread, resolvedOptions, "score");
@@ -752,7 +753,7 @@ export function findMainstreamThreadMatch(
     originalThreadUrl,
     originalThreadTitle,
     currentThreadUrl,
-    mode = "balanced",
+    mode = DEFAULT_CONFIG.auto_next_thread_mode as AutoNextThreadMode,
     minimumResCount = 10,
     momentumRatio = 1.5,
     previousThreads,

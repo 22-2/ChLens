@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { DEFAULT_CONFIG } from "src/app/config-defaults";
 import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
 import {
   persistConfigValue,
@@ -16,7 +17,7 @@ function readAutoNextThreadMode(): AutoNextThreadMode {
     return value;
   }
   // 変更理由: 慎重モードを選択肢から外したため、過去の保存値は標準へ読み替える。
-  return "balanced";
+  return DEFAULT_CONFIG.auto_next_thread_mode as AutoNextThreadMode;
 }
 
 export function useAutoNextThreadSetting(): {

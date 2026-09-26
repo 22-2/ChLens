@@ -8,6 +8,7 @@ import {
   Settings,
   ShieldAlert,
 } from "lucide-react";
+import { DEFAULT_CONFIG } from "src/app/config-defaults";
 import { isTauriRuntime } from "src/app/platform/runtime";
 import { container } from "src/service-container/index";
 import {
@@ -461,14 +462,16 @@ function readFieldValue(field: SettingsFieldDefinition): SettingsFormValue {
       // 変更理由: 未設定時でもラジオ選択が空表示にならないよう、
       // 新規タブ初期ページは実挙動と同じ既定値をUIにも反映する。
       if (field.key === "new_tab_page_mode") {
-        return typeof rawValue === "string" && rawValue !== "" ? rawValue : "related_board";
+        return typeof rawValue === "string" && rawValue !== ""
+          ? rawValue
+          : DEFAULT_CONFIG.new_tab_page_mode;
       }
       if (field.key === NG_DISPLAY_CONFIG_KEY) {
         return normalizeNgDisplayMode(rawValue);
       }
       if (field.key === "auto_next_thread_mode") {
         // 変更理由: 慎重モードを選択肢から外したため、既存値は標準へ読み替える。
-        return rawValue === "aggressive" ? "aggressive" : "balanced";
+        return rawValue === "aggressive" ? "aggressive" : DEFAULT_CONFIG.auto_next_thread_mode;
       }
       return typeof rawValue === "string" ? rawValue : "";
   }

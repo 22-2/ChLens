@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { DEFAULT_CONFIG } from "src/app/config-defaults";
 import { persistConfigValue, subscribeConfigKeys } from "src/view/browser/utils/config-setting";
 import {
   persistScopedSettingForUrl,
@@ -23,7 +24,7 @@ function readBooleanValue(
 export function useScopedConfigBooleanSetting(
   key: ScopedSettingKey,
   rawUrl: string | undefined,
-  defaultValue = false,
+  defaultValue = DEFAULT_CONFIG[key] === "on",
 ): { value: boolean; setValue: (value: boolean) => void } {
   const [value, setValueState] = useState(() => readBooleanValue(key, rawUrl, defaultValue));
 
