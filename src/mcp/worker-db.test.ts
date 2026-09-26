@@ -1,4 +1,4 @@
-import { matchesQuery, normalizeHistoryLimit } from "src/mcp/worker-db";
+import { matchesQuery, normalizeHistoryLimit, resolveDayRange } from "src/mcp/worker-db";
 import { describe, expect, it } from "vite-plus/test";
 
 describe("MCP向け履歴ヘルパー", () => {
@@ -17,5 +17,21 @@ describe("MCP向け履歴ヘルパー", () => {
     expect(matchesQuery("Testスレ\n本文", "test")).toBe(true);
     expect(matchesQuery("テストスレ\n本文", "テスト")).toBe(true);
     expect(matchesQuery("テストスレ\n本文", "存在しない")).toBe(false);
+  });
+
+  it("日付指定を現地時間の半開区間へ変換する", () => {
+    // 変更理由: 期待値も現地時間で組み立てるため、タイムゾーンに依存せず検証できる。
+    expect(resolveDayRange(undefined)).toBeNull();
+    expect(resolveDayRange("")).toBeNull();
+    expect(resolveDayRange("2026-09-26")).toEqual({
+      start: new Date(2026, 8, 26, 0, 0, 0, 0).getTime(),
+      end: new Date(2026, 8, 27, 0, 0, 0, 0).getTime(),
+    });
+  });
+
+  it("不正な日付指定を拒否する", () => {
+    expect(() => resolveDayRange("2026/09/26")).toThrow();
+    expect(() => resolveDayRange("2026-02-30")).toThrow();
+    expect(() => resolveDayRange("昨日")).toThrow();
   });
 });

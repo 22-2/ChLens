@@ -1,5 +1,5 @@
 import type { McpBrowsingHistoryRecord, McpWriteHistoryRecord } from "./history-output";
-import { listByDateDesc, matchesQuery } from "./worker-db";
+import { listByDateDesc, matchesQuery, resolveDayRange } from "./worker-db";
 
 /**
  * サービスワーカーから閲覧履歴・書き込み履歴を読むための最小リポジトリ。
@@ -41,14 +41,17 @@ interface StoredWriteHistoryRecord {
 export async function listRecentBrowsingHistory(
   query: string,
   limit: number,
+  date?: string,
 ): Promise<McpBrowsingHistoryRecord[]> {
   const needle = query.trim().toLowerCase();
+  const dateRange = resolveDayRange(date);
   const records = await listByDateDesc<StoredHistoryRecord>(
     HISTORY_DATABASE_NAME,
     HISTORY_STORE_NAME,
     {
       indexName: "date",
       limit,
+      dateRange: dateRange ?? undefined,
       matches: (record) =>
         typeof record.url === "string" &&
         (!needle ||
@@ -71,14 +74,17 @@ export async function listRecentBrowsingHistory(
 export async function listRecentWriteHistory(
   query: string,
   limit: number,
+  date?: string,
 ): Promise<McpWriteHistoryRecord[]> {
   const needle = query.trim().toLowerCase();
+  const dateRange = resolveDayRange(date);
   const records = await listByDateDesc<StoredWriteHistoryRecord>(
     WRITE_HISTORY_DATABASE_NAME,
     WRITE_HISTORY_STORE_NAME,
     {
       indexName: "date",
       limit,
+      dateRange: dateRange ?? undefined,
       matches: (record) =>
         typeof record.url === "string" &&
         (!needle ||

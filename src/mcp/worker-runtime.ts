@@ -59,11 +59,16 @@ function asThreadParams(value: unknown): ThreadReadParams {
 }
 
 /** 履歴系3操作のパラメータはquery・limitの同一形状のため、正規化を一本化する。 */
-function asHistorySearchQuery(value: unknown): { query?: string; limit?: number } {
+function asHistorySearchQuery(value: unknown): {
+  query?: string;
+  limit?: number;
+  date?: string;
+} {
   const raw = asRecord(value);
   return {
     ...(typeof raw.query === "string" ? { query: raw.query } : {}),
     ...(typeof raw.limit === "number" ? { limit: raw.limit } : {}),
+    ...(typeof raw.date === "string" ? { date: raw.date } : {}),
   };
 }
 
@@ -397,23 +402,25 @@ async function searchLogs(params: LogSearchParams): Promise<BridgeHistoryResult>
 
 async function readWriteHistory(params: WriteHistoryParams): Promise<BridgeHistoryResult> {
   const query = params.query?.trim() ?? "";
-  const writes = await listRecentWriteHistory(query, normalizeHistoryLimit(params.limit));
+  const date = params.date?.trim() ? params.date.trim() : undefined;
+  const writes = await listRecentWriteHistory(query, normalizeHistoryLimit(params.limit), date);
   return {
     kind: "write-history",
     query,
     count: writes.length,
-    toon: encodeWriteHistoryForMcp(query, writes),
+    toon: encodeWriteHistoryForMcp(query, writes, date),
   };
 }
 
 async function readBrowsingHistory(params: BrowsingHistoryParams): Promise<BridgeHistoryResult> {
   const query = params.query?.trim() ?? "";
-  const history = await listRecentBrowsingHistory(query, normalizeHistoryLimit(params.limit));
+  const date = params.date?.trim() ? params.date.trim() : undefined;
+  const history = await listRecentBrowsingHistory(query, normalizeHistoryLimit(params.limit), date);
   return {
     kind: "browsing-history",
     query,
     count: history.length,
-    toon: encodeBrowsingHistoryForMcp(query, history),
+    toon: encodeBrowsingHistoryForMcp(query, history, date),
   };
 }
 

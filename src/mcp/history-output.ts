@@ -21,6 +21,7 @@ export interface McpBrowsingHistoryRecord {
 export function encodeWriteHistoryForMcp(
   query: string,
   writes: readonly McpWriteHistoryRecord[],
+  date?: string,
 ): string {
   return encode({
     writes: writes.map((write) => ({
@@ -34,6 +35,7 @@ export function encodeWriteHistoryForMcp(
       date: new Date(write.date).toISOString(),
     })),
     query,
+    ...(date == null ? {} : { date }),
     count: writes.length,
   });
 }
@@ -41,6 +43,7 @@ export function encodeWriteHistoryForMcp(
 export function encodeBrowsingHistoryForMcp(
   query: string,
   history: readonly McpBrowsingHistoryRecord[],
+  date?: string,
 ): string {
   return encode({
     history: history.map((entry) => ({
@@ -50,6 +53,7 @@ export function encodeBrowsingHistoryForMcp(
       date: new Date(entry.date).toISOString(),
     })),
     query,
+    ...(date == null ? {} : { date }),
     count: history.length,
   });
 }

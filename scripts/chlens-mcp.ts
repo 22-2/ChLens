@@ -676,6 +676,10 @@ function toolDefinitions(): object[] {
             description: "スレタイ・本文・URLで絞り込む。省略または空文字で直近の履歴",
           },
           limit: { type: "integer", minimum: 1, maximum: 100, default: 20 },
+          date: {
+            type: "string",
+            description: "YYYY-MM-DD形式。指定日の履歴だけを返す。省略時は全期間",
+          },
         },
         additionalProperties: false,
       },
@@ -692,6 +696,10 @@ function toolDefinitions(): object[] {
             description: "スレタイ・板名・URLで絞り込む。省略または空文字で直近の履歴",
           },
           limit: { type: "integer", minimum: 1, maximum: 100, default: 20 },
+          date: {
+            type: "string",
+            description: "YYYY-MM-DD形式。指定日の履歴だけを返す。省略時は全期間",
+          },
         },
         additionalProperties: false,
       },

@@ -18,6 +18,43 @@ export interface DateDescListOptions<T> {
   matches?: (record: T) => boolean;
   /** 指定時は同じキーの重複を除く。新しい順に走査するため先勝ちになる。 */
   dedupeKey?: (record: T) => string;
+  /** 指定時はこの日時範囲（start以上end未満）のレコードだけを走査する。 */
+  dateRange?: DayRange;
+}
+
+/** 日付指定を変換した半開区間。start以上end未満。 */
+export interface DayRange {
+  start: number;
+  end: number;
+}
+
+/**
+ * YYYY-MM-DD形式の日付をブラウザ現地時間の半開区間へ変換する。
+ * 未指定・空文字は範囲なし（null）を返す。不正形式は例外を投げる。
+ */
+export function resolveDayRange(date: string | undefined): DayRange | null {
+  if (date == null || date.trim() === "") return null;
+  const matched = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date.trim());
+  if (!matched) {
+    throw new Error("日付はYYYY-MM-DD形式で指定してください");
+  }
+  const year = Number(matched[1]);
+  const month = Number(matched[2]);
+  const day = Number(matched[3]);
+  const start = new Date(year, month - 1, day, 0, 0, 0, 0).getTime();
+  const end = new Date(year, month - 1, day + 1, 0, 0, 0, 0).getTime();
+  const startDate = new Date(start);
+  // 変更理由: 存在しない日付（2月30日など）はDateが翌月へ繰り上げるため、
+  // 構成要素を比較して沈黙のずれを防ぐ。endは翌日0時で求め、夏時間の切替日もずれない。
+  if (
+    Number.isNaN(start) ||
+    startDate.getFullYear() !== year ||
+    startDate.getMonth() !== month - 1 ||
+    startDate.getDate() !== day
+  ) {
+    throw new Error("存在しない日付です");
+  }
+  return { start, end };
 }
 
 export type WorkerDatabaseUpgrade = (database: IDBPDatabase<unknown>) => void;
@@ -53,7 +90,10 @@ export async function listByDateDesc<T>(
       .transaction(storeName, "readonly")
       .objectStore(storeName)
       .index(options.indexName);
-    let cursor = await index.openCursor(null, "prev");
+    const keyRange = options.dateRange
+      ? IDBKeyRange.bound(options.dateRange.start, options.dateRange.end, false, true)
+      : null;
+    let cursor = await index.openCursor(keyRange, "prev");
     const rows: T[] = [];
     const seen = new Set<string>();
     while (cursor) {

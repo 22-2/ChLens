@@ -42,6 +42,8 @@ export interface WriteHistoryParams {
   query?: string;
   /** 返す履歴の最大件数。 */
   limit?: number;
+  /** YYYY-MM-DD形式。指定日（ブラウザの現地時間）の履歴だけを返す。 */
+  date?: string;
 }
 
 export interface BrowsingHistoryParams {
@@ -49,6 +51,8 @@ export interface BrowsingHistoryParams {
   query?: string;
   /** 返す履歴の最大件数。 */
   limit?: number;
+  /** YYYY-MM-DD形式。指定日（ブラウザの現地時間）の履歴だけを返す。 */
+  date?: string;
 }
 
 export type BridgeOperation =

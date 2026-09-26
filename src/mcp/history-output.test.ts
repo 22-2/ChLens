@@ -69,4 +69,12 @@ describe("MCP向け履歴出力", () => {
       }),
     ]);
   });
+
+  it("日付指定をTOONへ同梱する", () => {
+    const toon = encodeBrowsingHistoryForMcp("", [], "2026-09-26");
+
+    const decoded = decode(toon) as { date?: string; count: number };
+    expect(decoded.date).toBe("2026-09-26");
+    expect(decoded.count).toBe(0);
+  });
 });
