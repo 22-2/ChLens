@@ -30,6 +30,7 @@ import { findUrlTrackingWarning, findWriteWarnings } from "src/view/browser/util
 
 const WRITE_SUBMIT_CTRL_ENTER_KEY = "write_submit_ctrl_enter";
 const WRITE_CLOSE_PANEL_AFTER_SUBMIT_KEY = "write_close_panel_after_submit";
+const WRITE_SANITIZE_URLS_ON_PASTE_KEY = "write_sanitize_urls_on_paste";
 const noop = () => {};
 
 export interface WritePanelContentProps {
@@ -134,6 +135,8 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
   );
   const { value: closePanelAfterSubmit, setValue: setClosePanelAfterSubmit } =
     useConfigBooleanSetting(WRITE_CLOSE_PANEL_AFTER_SUBMIT_KEY);
+  const { value: sanitizeUrlsOnPaste, setValue: setSanitizeUrlsOnPaste } =
+    useScopedConfigBooleanSetting(WRITE_SANITIZE_URLS_ON_PASTE_KEY, threadUrl);
   const {
     name,
     mail,
@@ -294,6 +297,8 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
 
   const handleMessagePaste = useCallback(
     (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      // 変更理由: 板・ドメインで自動除去をOFFにした場合は、貼り付け文字列をそのまま編集欄へ渡す。
+      if (!sanitizeUrlsOnPaste) return;
       const pastedText = event.clipboardData.getData("text/plain");
       const result = sanitizeUrlsInText(pastedText);
       if (result.removedParameters.length === 0) return;
@@ -311,7 +316,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
         if (textarea.isConnected) textarea.setSelectionRange(nextCaret, nextCaret);
       });
     },
-    [message, setMessage, viewWindow],
+    [message, sanitizeUrlsOnPaste, setMessage, viewWindow],
   );
 
   const removeTrackingParametersAndSubmit = useCallback(() => {
@@ -791,6 +796,13 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
                 description="投稿が成功したときだけ、下部の書き込みパネルを閉じます。"
                 checked={closePanelAfterSubmit}
                 onCheckedChange={handleClosePanelAfterSubmitChange}
+              />
+              <CheckboxField
+                id="write-setting-sanitize-urls-on-paste"
+                label="貼り付け時にURLパラメータを除去する"
+                description="投稿先に応じて適用します。全体・ドメイン・板ごとの値はドメイン・板設定で変更できます。"
+                checked={sanitizeUrlsOnPaste}
+                onCheckedChange={setSanitizeUrlsOnPaste}
               />
             </div>
             <div className="write-panel__settings-actions">

@@ -69,6 +69,14 @@ const SETTING_FIELDS = [
     checkboxLabel: "有効にする",
   },
   {
+    key: "write_sanitize_urls_on_paste",
+    title: "貼り付け時にURLパラメータを除去する",
+    description:
+      "URLを貼り付けると追跡用パラメータを除去します。Instagramはクエリ全体を除去します。",
+    kind: "boolean",
+    checkboxLabel: "有効にする",
+  },
+  {
     key: "auto_load_second",
     title: "スレッドの自動更新間隔",
     description: "スレッドを自動更新する間隔です。",
@@ -204,7 +212,8 @@ function getDefaultValue(key: ScopedSettingKey): string {
   if (key === "sage_flag") {
     return raw === "on" ? "on" : "off";
   }
-  if (key === "write_pre_submit_warnings") {
+  if (key === "write_pre_submit_warnings" || key === "write_sanitize_urls_on_paste") {
+    // 変更理由: これらの確認・除去設定はONを既定とし、保存値がない場合も同じ表示にする。
     return raw === "off" ? "off" : "on";
   }
   return Number.parseInt(raw, 10) > 0 ? raw : DEFAULT_CONFIG[key];

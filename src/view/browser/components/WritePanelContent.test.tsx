@@ -148,7 +148,13 @@ describe("WritePanelContent", () => {
     mocks.openWriteWindow.mockReturnValue(undefined);
 
     configMock = {
-      get: vi.fn((key: string) => (key === "write_pre_submit_warnings" ? "on" : "off")),
+      get: vi.fn((key: string) => {
+        if (key === "site_board_settings") return "{}";
+        if (key === "write_pre_submit_warnings" || key === "write_sanitize_urls_on_paste") {
+          return "on";
+        }
+        return "off";
+      }),
       set: vi.fn().mockResolvedValue(undefined),
       getAll: () => ({}),
       ready: (callback: () => void) => callback(),
@@ -214,7 +220,7 @@ describe("WritePanelContent", () => {
     expect(screen.queryByText("sage", { selector: "label" })).not.toBeInTheDocument();
   });
 
-  it("歯車ボタンから書き込み設定を開いて各項目を変更できる", () => {
+  it("歯車ボタンから書き込み設定を開いて各項目を変更できる", async () => {
     renderWritePanel();
 
     fireEvent.click(screen.getByRole("button", { name: "書き込み設定" }));
@@ -227,15 +233,27 @@ describe("WritePanelContent", () => {
     expect(
       within(dialog).getByRole("checkbox", { name: "レス後に書き込みパネルを閉じる" }),
     ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("checkbox", { name: "貼り付け時にURLパラメータを除去する" }),
+    ).toBeChecked();
 
     fireEvent.click(within(dialog).getByRole("checkbox", { name: "Ctrl+Enterで書き込む" }));
     fireEvent.click(within(dialog).getByRole("checkbox", { name: "sageで書き込む" }));
     fireEvent.click(
       within(dialog).getByRole("checkbox", { name: "レス後に書き込みパネルを閉じる" }),
     );
+    fireEvent.click(
+      within(dialog).getByRole("checkbox", { name: "貼り付け時にURLパラメータを除去する" }),
+    );
 
     expect(configMock.set).toHaveBeenCalledWith("write_submit_ctrl_enter", "on");
     expect(configMock.set).toHaveBeenCalledWith("write_close_panel_after_submit", "on");
+    await waitFor(() =>
+      expect(configMock.set).toHaveBeenCalledWith(
+        "site_board_settings",
+        expect.stringContaining('"write_sanitize_urls_on_paste":"off"'),
+      ),
+    );
     expect(mocks.setSage).toHaveBeenCalledWith(true);
 
     fireEvent.click(within(dialog).getByRole("button", { name: "閉じる" }));
@@ -357,7 +375,9 @@ describe("WritePanelContent", () => {
   });
 
   it("投稿前警告をOFFにしても貼り付け時のURL追跡パラメータ除去は行う", () => {
-    configMock.get = vi.fn(() => "off");
+    configMock.get = vi.fn((key: string) =>
+      key === "site_board_settings" ? "{}" : key === "write_sanitize_urls_on_paste" ? "on" : "off",
+    );
 
     renderWritePanel();
 
@@ -373,6 +393,37 @@ describe("WritePanelContent", () => {
     expect(mocks.setMessage).toHaveBeenCalledWith(
       "本文https://www.youtube.com/watch?v=example#t=30s",
     );
+  });
+
+  it("貼り付け除去をOFFにすると自動変換を行わない", () => {
+    configMock.get = vi.fn((key: string) =>
+      key === "site_board_settings" ? "{}" : key === "write_pre_submit_warnings" ? "on" : "off",
+    );
+
+    renderWritePanel();
+
+    const textarea = screen.getByPlaceholderText("本文を入力...");
+    fireEvent.paste(textarea, {
+      clipboardData: {
+        getData: () => "https://www.youtube.com/watch?v=example&si=tracking",
+      },
+    });
+
+    expect(mocks.setMessage).not.toHaveBeenCalled();
+  });
+
+  it("貼り付け除去をOFFにしても投稿前のURL警告は独立して表示する", async () => {
+    configMock.get = vi.fn((key: string) => {
+      if (key === "site_board_settings") return "{}";
+      return key === "write_pre_submit_warnings" ? "on" : "off";
+    });
+    mocks.message = "共有URL https://youtu.be/example?si=tracking";
+
+    renderWritePanel();
+    fireEvent.click(screen.getByRole("button", { name: "書き込む" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "投稿内容を確認してください" });
+    expect(within(dialog).getByText("URLの追跡パラメータ")).toBeInTheDocument();
   });
 
   it("eddibb認証コードのエラーでは認証URLを表示してコピーできる", async () => {

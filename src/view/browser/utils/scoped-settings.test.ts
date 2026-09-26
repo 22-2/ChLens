@@ -90,6 +90,39 @@ describe("サイト・板設定", () => {
     });
   });
 
+  it("貼り付け時のURL除去を板・ドメイン共通・全体設定の順に解決する", () => {
+    state.values.set("write_sanitize_urls_on_paste", "on");
+    state.values.set(
+      SCOPED_SETTINGS_CONFIG_KEY,
+      JSON.stringify({
+        sites: {
+          "example.com": {
+            overrides: { write_sanitize_urls_on_paste: "off" },
+            boards: {
+              "https://example.com/live/": { write_sanitize_urls_on_paste: "on" },
+            },
+          },
+        },
+      }),
+    );
+
+    expect(
+      resolveScopedSetting("write_sanitize_urls_on_paste", "https://example.com/live/"),
+    ).toEqual({
+      value: "on",
+      source: "board",
+    });
+    expect(
+      resolveScopedSetting("write_sanitize_urls_on_paste", "https://example.com/other/"),
+    ).toEqual({ value: "off", source: "site" });
+    expect(
+      resolveScopedSetting("write_sanitize_urls_on_paste", "https://example.net/live/"),
+    ).toEqual({
+      value: "on",
+      source: "global",
+    });
+  });
+
   it("URLの末尾スラッシュやホスト名の大文字を正規化する", () => {
     expect(normalizeSiteKey("HTTPS://Example.COM/path/")).toBe("example.com");
     expect(normalizeBoardKey("https://Example.COM/live?x=1#top")).toBe("https://example.com/live/");

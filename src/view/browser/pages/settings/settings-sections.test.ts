@@ -106,6 +106,7 @@ describe("設定セクションの実行環境フィルター", () => {
     expect(keys).not.toContain("write_submit_ctrl_enter");
     expect(keys).not.toContain("sage_flag");
     expect(keys).not.toContain("write_close_panel_after_submit");
+    expect(keys).not.toContain("write_sanitize_urls_on_paste");
   });
 
   it("タイトルバーのボタン設定を表示セクションへまとめる", () => {

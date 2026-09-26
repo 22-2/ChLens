@@ -14,6 +14,7 @@ export const SCOPED_SETTING_KEYS = [
   "auto_load_second",
   "auto_load_second_board",
   "write_pre_submit_warnings",
+  "write_sanitize_urls_on_paste",
 ] as const;
 
 export type ScopedSettingKey = (typeof SCOPED_SETTING_KEYS)[number];

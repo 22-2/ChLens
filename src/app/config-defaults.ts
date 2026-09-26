@@ -47,6 +47,8 @@ export const DEFAULT_CONFIG: Readonly<Record<string, string>> = {
   write_close_panel_after_submit: "off",
   // 変更理由: 投稿前警告は従来どおり表示しつつ、利用者が書き込み設定から任意で無効化できるようにする。
   write_pre_submit_warnings: "on",
+  // 変更理由: 現在の貼り付け時除去を既定で維持し、利用者が書き込み・ドメイン設定から切り替えられるようにする。
+  write_sanitize_urls_on_paste: "on",
   auto_load_idle_stop_timeout: "auto",
   // コメントOverlayの設定はTauri版の実況開始時に読み込み、Browser版の既存挙動には影響させない。
   // speedキーは既存設定との互換性のため残し、新規値はコメントの通過時間（秒）として保存する。
@@ -144,6 +146,8 @@ export const CONFIG_KEYS_EDITABLE_OUTSIDE_SETTINGS_FORM = [
   "write_close_panel_after_submit",
   // ドメイン・板設定と書き込みパネルから確認動作を切り替える。
   "write_pre_submit_warnings",
+  // 書き込みパネルとドメイン・板設定からURLの貼り付け時除去を切り替える。
+  "write_sanitize_urls_on_paste",
   // 更新コントロールから自動停止時間を選択できる。
   "auto_load_idle_stop_timeout",
   // ドメイン・板設定からsageの既定動作を切り替える。
