@@ -120,7 +120,6 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const [isWarningDialogOpen, setIsWarningDialogOpen] = useState(false);
   const [writeWarnings, setWriteWarnings] = useState<ReturnType<typeof findWriteWarnings>>([]);
-  const [submitDelaySeconds, setSubmitDelaySeconds] = useState(3);
   const [isAuthCodeUrlCopied, setIsAuthCodeUrlCopied] = useState(false);
   const confirmationFrameCleanupRef = useRef<(() => void) | null>(null);
   // 変更理由: 書き込み中の入力欄を増やさず、書き込みに関する設定を
@@ -266,24 +265,8 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
     void runImgurUpload(() => readClipboardImage(viewSurface));
   }, [runImgurUpload, viewSurface]);
 
-  useEffect(() => {
-    // 変更理由: パネルを開いた直後の誤クリックを防ぐため、表示から3秒間は
-    // ボタンとショートカットの両方を無効にして、残り時間も利用者へ示す。
-    const startedAt = Date.now();
-    const updateRemaining = () => {
-      const remaining = Math.max(0, Math.ceil((startedAt + 3000 - Date.now()) / 1000));
-      setSubmitDelaySeconds(remaining);
-      return remaining;
-    };
-    updateRemaining();
-    const timer = viewWindow.setInterval(() => {
-      if (updateRemaining() === 0) viewWindow.clearInterval(timer);
-    }, 100);
-    return () => viewWindow.clearInterval(timer);
-  }, [viewWindow]);
-
   const requestSubmit = useCallback(() => {
-    if (submitDelaySeconds > 0 || !canSubmit || isSubmitting) return;
+    if (!canSubmit || isSubmitting) return;
     const warnings = findWriteWarnings([name, mail, message]);
     if (warnings.length > 0) {
       setWriteWarnings(warnings);
@@ -291,7 +274,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
       return;
     }
     void submit();
-  }, [canSubmit, isSubmitting, mail, message, name, submit, submitDelaySeconds]);
+  }, [canSubmit, isSubmitting, mail, message, name, submit]);
 
   const confirmWarningSubmit = useCallback(() => {
     setIsWarningDialogOpen(false);
@@ -417,7 +400,6 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
         !submitWithCtrlEnter ||
         isSubmitting ||
         !canSubmit ||
-        submitDelaySeconds > 0 ||
         e.key !== "Enter" ||
         !(e.ctrlKey || e.metaKey)
       ) {
@@ -428,7 +410,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
       e.preventDefault();
       requestSubmit();
     },
-    [canSubmit, closePanel, isSubmitting, requestSubmit, submitDelaySeconds, submitWithCtrlEnter],
+    [canSubmit, closePanel, isSubmitting, requestSubmit, submitWithCtrlEnter],
   );
 
   const handleSubmitWithCtrlEnterChange = useCallback(
@@ -627,11 +609,9 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
                 <button
                   type="submit"
                   className="write-panel__btn write-panel__btn--primary"
-                  disabled={
-                    !canSubmit || isSubmitting || isImgurUploading || submitDelaySeconds > 0
-                  }
+                  disabled={!canSubmit || isSubmitting || isImgurUploading}
                 >
-                  {submitDelaySeconds > 0 ? `${submitDelaySeconds}秒後に書き込めます` : "書き込む"}
+                  書き込む
                 </button>
                 {status === "error" && (
                   <button
