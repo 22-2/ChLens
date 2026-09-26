@@ -13,6 +13,7 @@ export const SCOPED_SETTING_KEYS = [
   "sage_flag",
   "auto_load_second",
   "auto_load_second_board",
+  "write_pre_submit_warnings",
 ] as const;
 
 export type ScopedSettingKey = (typeof SCOPED_SETTING_KEYS)[number];
@@ -318,6 +319,26 @@ export async function clearSiteScopedSettings(site: string): Promise<void> {
       await container.config.set(SCOPED_SETTINGS_CONFIG_KEY, JSON.stringify(document));
     } catch (error) {
       console.error("[ScopedSettings] サイト設定の削除に失敗しました", error);
+      throw error;
+    }
+  });
+  scopedWriteQueue = write.catch(() => undefined);
+  await write;
+}
+
+/** すべてのサイト・板の上書きを削除し、全体設定だけを残す。 */
+export async function clearAllSiteScopedSettings(): Promise<void> {
+  const write = scopedWriteQueue.then(async () => {
+    const document = readScopedSettings();
+    if (Object.keys(document.sites).length === 0) {
+      return;
+    }
+
+    // 変更理由: スコープ設定だけを空にし、通常の全体設定は維持したまま全サイトを既定値へ戻す。
+    try {
+      await container.config.set(SCOPED_SETTINGS_CONFIG_KEY, JSON.stringify({ sites: {} }));
+    } catch (error) {
+      console.error("[ScopedSettings] すべてのサイト設定の削除に失敗しました", error);
       throw error;
     }
   });

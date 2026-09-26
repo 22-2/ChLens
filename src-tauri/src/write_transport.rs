@@ -179,6 +179,15 @@ pub fn has_write_cookies(
 }
 
 #[tauri::command]
+pub fn has_any_write_cookies(state: State<'_, WriteTransportState>) -> Result<bool, String> {
+  let sites = state
+    .sites_with_cookies
+    .lock()
+    .map_err(|_| "Tauri版のCookie状態をロックできませんでした".to_string())?;
+  Ok(!sites.is_empty())
+}
+
+#[tauri::command]
 pub fn clear_write_cookies(
   state: State<'_, WriteTransportState>,
   site: String,
@@ -200,6 +209,25 @@ pub fn clear_write_cookies(
   if removed_client || removed_cookie_state {
     log::info!("サイトの書き込みCookieを削除しました: {site}");
   }
+  Ok(())
+}
+
+#[tauri::command]
+pub fn clear_all_write_cookies(state: State<'_, WriteTransportState>) -> Result<(), String> {
+  let mut clients = state
+    .clients
+    .lock()
+    .map_err(|_| "Tauri版の書き込みClientをロックできませんでした".to_string())?;
+  let mut sites_with_cookies = state
+    .sites_with_cookies
+    .lock()
+    .map_err(|_| "Tauri版のCookie状態をロックできませんでした".to_string())?;
+
+  // 変更理由: Cookie JarはサイトごとのClientに保持されるため、全Clientを破棄して全サイトの認証状態をまとめて消す。
+  let removed_count = clients.len();
+  clients.clear();
+  sites_with_cookies.clear();
+  log::info!("すべての書き込みCookieを削除しました: {removed_count}サイト");
   Ok(())
 }
 

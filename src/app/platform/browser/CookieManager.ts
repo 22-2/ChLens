@@ -65,8 +65,32 @@ async function getSiteCookies(site: string): Promise<browser.Cookies.Cookie[]> {
 
 /** ブラウザ拡張機能のサイトCookieを、Cookieのパス違いも含めて削除する。 */
 export const BrowserCookieManager: CookieManager = {
+  async hasAnyCookies(): Promise<boolean> {
+    return (await browser.cookies.getAll({})).length > 0;
+  },
+
   async hasSiteCookies(site: string): Promise<boolean> {
     return (await getSiteCookies(site)).length > 0;
+  },
+
+  async clearAllCookies(): Promise<void> {
+    const cookies = await browser.cookies.getAll({});
+    await Promise.all(
+      cookies.map(async (cookie) => {
+        const siteHost = cookie.domain.replace(/^\.+/u, "");
+        const details = {
+          url: createCookieRemovalUrl(siteHost, cookie.secure, cookie.path),
+          name: cookie.name,
+          storeId: cookie.storeId,
+          ...(cookie.firstPartyDomain ? { firstPartyDomain: cookie.firstPartyDomain } : {}),
+          ...(cookie.partitionKey ? { partitionKey: cookie.partitionKey } : {}),
+        };
+        const removed = await browser.cookies.remove(details);
+        if (removed === null) {
+          throw new Error(`Cookieの削除に失敗しました: ${cookie.name}`);
+        }
+      }),
+    );
   },
 
   async clearSiteCookies(site: string): Promise<void> {

@@ -3,6 +3,16 @@ import type { CookieManager } from "src/app/platform/types";
 
 /** 実行環境ごとのCookie APIを遅延読み込みし、設定画面のテストで拡張APIを要求しない。 */
 export const platformCookieManager: CookieManager = {
+  async hasAnyCookies(): Promise<boolean> {
+    if (isTauriRuntime()) {
+      const { TauriCookieManager } = await import("src/app/platform/tauri/CookieManager");
+      return await TauriCookieManager.hasAnyCookies();
+    }
+
+    const { BrowserCookieManager } = await import("src/app/platform/browser/CookieManager");
+    return await BrowserCookieManager.hasAnyCookies();
+  },
+
   async hasSiteCookies(site: string): Promise<boolean> {
     if (isTauriRuntime()) {
       const { TauriCookieManager } = await import("src/app/platform/tauri/CookieManager");
@@ -11,6 +21,17 @@ export const platformCookieManager: CookieManager = {
 
     const { BrowserCookieManager } = await import("src/app/platform/browser/CookieManager");
     return await BrowserCookieManager.hasSiteCookies(site);
+  },
+
+  async clearAllCookies(): Promise<void> {
+    if (isTauriRuntime()) {
+      const { TauriCookieManager } = await import("src/app/platform/tauri/CookieManager");
+      await TauriCookieManager.clearAllCookies();
+      return;
+    }
+
+    const { BrowserCookieManager } = await import("src/app/platform/browser/CookieManager");
+    await BrowserCookieManager.clearAllCookies();
   },
 
   async clearSiteCookies(site: string): Promise<void> {

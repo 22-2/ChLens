@@ -75,6 +75,31 @@ describe("ブラウザ版サイトCookie管理", () => {
     await expect(BrowserCookieManager.hasSiteCookies("example.com")).resolves.toBe(false);
   });
 
+  it("すべてのサイトのCookieがあるか確認する", async () => {
+    cookieApi.getAll.mockResolvedValue([createCookie()]);
+
+    await expect(BrowserCookieManager.hasAnyCookies()).resolves.toBe(true);
+    expect(cookieApi.getAll).toHaveBeenCalledWith({});
+  });
+
+  it("すべてのサイトのCookieをドメインごとに削除する", async () => {
+    cookieApi.getAll.mockResolvedValue([
+      createCookie({ name: "first", domain: ".example.com", path: "/board", secure: true }),
+      createCookie({ name: "second", domain: "example.net", path: "/", secure: false }),
+    ]);
+
+    await BrowserCookieManager.clearAllCookies();
+
+    expect(cookieApi.getAll).toHaveBeenCalledWith({});
+    expect(cookieApi.remove).toHaveBeenCalledTimes(2);
+    expect(cookieApi.remove).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "first", url: "https://example.com/board" }),
+    );
+    expect(cookieApi.remove).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "second", url: "http://example.net/" }),
+    );
+  });
+
   it("サイト名にパスやクエリを含めた削除を拒否する", async () => {
     await expect(BrowserCookieManager.clearSiteCookies("example.com/board")).rejects.toThrow(
       "Cookieを削除するサイトの指定が不正です",

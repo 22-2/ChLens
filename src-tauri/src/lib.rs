@@ -74,7 +74,9 @@ pub fn run() {
     .plugin(tauri_plugin_sql::Builder::default().build())
     .invoke_handler(tauri::generate_handler![
       download::save_download_file,
+      write_transport::clear_all_write_cookies,
       write_transport::clear_write_cookies,
+      write_transport::has_any_write_cookies,
       write_transport::has_write_cookies,
       write_transport::write_request
     ])

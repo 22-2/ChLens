@@ -12,6 +12,7 @@ import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-prio
 import { StatusBarItem } from "src/view/browser/components/StatusBar";
 import { useOptionalBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
+import { useScopedConfigBooleanSetting } from "src/view/browser/hooks/use-scoped-config-boolean-setting";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { useWrite } from "src/view/browser/hooks/use-write";
@@ -132,7 +133,6 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
   );
   const { value: closePanelAfterSubmit, setValue: setClosePanelAfterSubmit } =
     useConfigBooleanSetting(WRITE_CLOSE_PANEL_AFTER_SUBMIT_KEY);
-
   const {
     name,
     mail,
@@ -157,6 +157,12 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
     onDraftChange: handleDraftChange,
     tabId: targets.find((target) => target.threadUrl === threadUrl)?.tabId,
   });
+  // 変更理由: 投稿前確認はドメイン共通・板別の設定画面で上書きできるよう、投稿先URLの設定を解決する。
+  const { value: preSubmitWarningsEnabled } = useScopedConfigBooleanSetting(
+    "write_pre_submit_warnings",
+    threadUrl,
+    true,
+  );
 
   const isSubmitting = status === "submitting";
   const messageRef = useRef(message);
@@ -270,6 +276,11 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
 
   const requestSubmit = useCallback(() => {
     if (!canSubmit || isSubmitting) return;
+    // 変更理由: 設定をOFFにした場合は投稿前の個人情報チェックと確認ダイアログを省略する。
+    if (!preSubmitWarningsEnabled) {
+      void submit();
+      return;
+    }
     const warnings = findWriteWarnings([name, mail, message]);
     if (warnings.length > 0) {
       setWriteWarnings(warnings);
@@ -277,7 +288,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
       return;
     }
     void submit();
-  }, [canSubmit, isSubmitting, mail, message, name, submit]);
+  }, [canSubmit, isSubmitting, mail, message, name, preSubmitWarningsEnabled, submit]);
 
   const confirmWarningSubmit = useCallback(() => {
     setIsWarningDialogOpen(false);

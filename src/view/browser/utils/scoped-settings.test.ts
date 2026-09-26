@@ -20,6 +20,7 @@ vi.mock("src/view/browser/utils/link-routing", () => ({
 }));
 
 import {
+  clearAllSiteScopedSettings,
   clearSiteScopedSettings,
   normalizeBoardKey,
   normalizeSiteKey,
@@ -56,6 +57,35 @@ describe("サイト・板設定", () => {
     });
     expect(resolveScopedSetting("auto_load_second_board", "https://example.com/live/")).toEqual({
       value: null,
+      source: "global",
+    });
+  });
+
+  it("投稿前確認を板・ドメイン共通・全体設定の順に解決する", () => {
+    state.values.set("write_pre_submit_warnings", "on");
+    state.values.set(
+      SCOPED_SETTINGS_CONFIG_KEY,
+      JSON.stringify({
+        sites: {
+          "example.com": {
+            overrides: { write_pre_submit_warnings: "off" },
+            boards: {
+              "https://example.com/live/": { write_pre_submit_warnings: "on" },
+            },
+          },
+        },
+      }),
+    );
+
+    expect(resolveScopedSetting("write_pre_submit_warnings", "https://example.com/live/")).toEqual({
+      value: "on",
+      source: "board",
+    });
+    expect(resolveScopedSetting("write_pre_submit_warnings", "https://example.com/other/")).toEqual(
+      { value: "off", source: "site" },
+    );
+    expect(resolveScopedSetting("write_pre_submit_warnings", "https://example.net/live/")).toEqual({
+      value: "on",
       source: "global",
     });
   });
@@ -131,5 +161,26 @@ describe("サイト・板設定", () => {
       sites: { "example.net": { overrides: { sage_flag: "off" }, boards: {} } },
     });
     expect(state.values.get("sage_flag")).toBe("on");
+  });
+
+  it("全サイトの設定を削除して全体設定は残す", async () => {
+    state.values.set("write_pre_submit_warnings", "on");
+    state.values.set(
+      SCOPED_SETTINGS_CONFIG_KEY,
+      JSON.stringify({
+        sites: {
+          "example.com": {
+            overrides: { write_pre_submit_warnings: "off" },
+            boards: { "https://example.com/live/": { sage_flag: "on" } },
+          },
+          "example.net": { overrides: { sage_flag: "off" }, boards: {} },
+        },
+      }),
+    );
+
+    await clearAllSiteScopedSettings();
+
+    expect(state.values.get(SCOPED_SETTINGS_CONFIG_KEY)).toBe('{"sites":{}}');
+    expect(state.values.get("write_pre_submit_warnings")).toBe("on");
   });
 });

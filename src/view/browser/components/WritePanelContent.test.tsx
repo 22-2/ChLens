@@ -148,7 +148,7 @@ describe("WritePanelContent", () => {
     mocks.openWriteWindow.mockReturnValue(undefined);
 
     configMock = {
-      get: vi.fn(() => "off"),
+      get: vi.fn((key: string) => (key === "write_pre_submit_warnings" ? "on" : "off")),
       set: vi.fn().mockResolvedValue(undefined),
       getAll: () => ({}),
       ready: (callback: () => void) => callback(),
@@ -281,6 +281,19 @@ describe("WritePanelContent", () => {
 
   it("メール欄の認証トークンだけでは警告を出さず投稿する", () => {
     mocks.mail = "#000673c0853dd270247921bf12109000";
+
+    renderWritePanel();
+    fireEvent.click(screen.getByRole("button", { name: "書き込む" }));
+
+    expect(mocks.submit).toHaveBeenCalledTimes(1);
+    expect(
+      screen.queryByRole("dialog", { name: "投稿内容を確認してください" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("設定をOFFにすると警告対象が含まれていても確認を挟まず投稿する", () => {
+    configMock.get = vi.fn(() => "off");
+    mocks.message = "連絡先は sample.user@example.com です";
 
     renderWritePanel();
     fireEvent.click(screen.getByRole("button", { name: "書き込む" }));
