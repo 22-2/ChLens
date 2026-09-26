@@ -32,6 +32,7 @@ export interface SettingsFieldBase {
   key: string;
   title: string;
   description?: string;
+  deprecated?: boolean;
   widget?: SettingsFormWidget;
   rows?: number;
 }

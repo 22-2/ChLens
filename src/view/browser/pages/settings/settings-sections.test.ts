@@ -27,6 +27,20 @@ describe("設定セクションの実行環境フィルター", () => {
     }
   });
 
+  it("未使用のしきい値ガード設定を非推奨・編集不可として示す", () => {
+    const section = getSettingsSections(false).find((candidate) => candidate.id === "ng");
+    const field = section?.fields.find(
+      (candidate) => "key" in candidate && candidate.key === "use_siki_guard",
+    );
+
+    expect(field).toMatchObject({
+      deprecated: true,
+      title: "しきい値ガードを有効にする（非推奨）",
+    });
+    expect(section?.schema.properties?.use_siki_guard).toMatchObject({ readOnly: true });
+    expect(section?.uiSchema.use_siki_guard).toMatchObject({ "ui:disabled": true });
+  });
+
   it("Browser版ではTauri専用のOverlay設定を表示しない", () => {
     const sections = getSettingsSections(false);
 

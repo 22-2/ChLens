@@ -367,7 +367,10 @@ const ALL_SETTINGS_SECTIONS = [
       {
         kind: "boolean",
         key: "use_siki_guard",
-        title: "しきい値ガードを有効にする",
+        title: "しきい値ガードを有効にする（非推奨）",
+        description:
+          "現在のコードでは参照されず、切り替えても動作に影響しません。保存済み設定との互換性のため表示のみ残しています。",
+        deprecated: true,
       },
       {
         kind: "boolean",

@@ -28,6 +28,9 @@ export function buildFieldSchema(field: SettingsFieldDefinition): RJSFSchema {
   if (field.description) {
     schema.description = field.description;
   }
+  if (field.deprecated) {
+    schema.readOnly = true;
+  }
 
   switch (field.kind) {
     case "boolean":
@@ -71,6 +74,9 @@ export function buildUiSchema(
 
     if (field.widget) {
       fieldUi["ui:widget"] = field.widget;
+    }
+    if (field.deprecated) {
+      fieldUi["ui:disabled"] = true;
     }
     if (field.kind === "number" && field.step !== undefined) {
       options.step = field.step;
