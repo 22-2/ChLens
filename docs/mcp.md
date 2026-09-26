@@ -13,7 +13,7 @@ ChLensのChrome版に保存されているスレッドログを、MCP対応エ�
 - 直近の閲覧履歴の取得（重複排除・新しい順）
 - レスの返信先、被返信先、返信数、アンカー数を含むTOON出力
 - 指定レス・参加者IDを中心にした議論判定用の返信ツリー作成
-- 判定結果のテキスト・JSON・Markdown・SVG・PNG保存
+- 判定結果のテキスト・JSON・Markdown・HTML・PNG保存
 
 `read_thread` の `mode` は次の3種類です。
 
@@ -88,7 +88,7 @@ Chrome版の拡張機能IDやNative Messagingの登録は使わないため、�
 - `json`: 再利用可能な正本データ
 - `markdown`: レス番号へのリンク付きレポート
 - `text`: プレーンテキスト
-- `svg`: Satoriで生成した判定カード
-- `png`: SVGを画像化した判定カード
+- `html`: 全文を折り返して表示する判定カード
+- `png`: HTMLをChromiumで画像化した判定カード
 
-保存先は、`CHLENS_DEBATE_OUTPUT_DIR` を指定した場合はそのディレクトリ、未指定時はユーザーのホームディレクトリにある `ChLens/debate-results` です。`formats` で必要な形式だけに絞れます。画像生成時にSatoriが実行環境のフォント形式へ対応できない場合は、システムフォントを使う簡易SVGへ自動的に切り替えます。
+保存先は、`CHLENS_DEBATE_OUTPUT_DIR` を指定した場合はそのディレクトリ、未指定時はユーザーのホームディレクトリにある `ChLens/debate-results` です。`formats` で必要な形式だけに絞れます。画像は内容の高さに合わせて伸び、争点・参加者・根拠を省略しません。HTML形式はPNGのレイアウト確認や再利用に使えます。PNG出力にはPlaywright用Chromiumが必要です。未導入の場合は `pnpm exec playwright install chromium` で追加します。

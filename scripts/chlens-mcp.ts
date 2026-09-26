@@ -737,7 +737,7 @@ function toolDefinitions(): object[] {
     {
       name: "save_debate_result",
       description:
-        "AIが作成した議論判定JSONを検証し、テキスト・JSON・Markdown・SVG・PNGの指定形式でローカル保存します。",
+        "AIが作成した議論判定JSONを検証し、テキスト・JSON・Markdown・HTML・PNGの指定形式でローカル保存します。画像は全文を折り返して表示します。",
       inputSchema: {
         type: "object",
         required: ["result"],
@@ -745,7 +745,7 @@ function toolDefinitions(): object[] {
           result: DEBATE_RESULT_SCHEMA,
           formats: {
             type: "array",
-            items: { type: "string", enum: ["json", "markdown", "text", "svg", "png"] },
+            items: { type: "string", enum: ["json", "markdown", "text", "html", "png"] },
             description: "保存する形式。省略時は全形式",
           },
           name: {
