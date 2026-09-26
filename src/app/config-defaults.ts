@@ -1,6 +1,5 @@
 // 変更理由: 保存済み設定がない場合の既定値を一つの一覧に集約し、参照箇所ごとの値ずれを防ぐ。
 export const DEFAULT_CONFIG: Readonly<Record<string, string>> = {
-  layout: "pane-3",
   theme_id: "system",
   dblclick_reload: "on",
   // 変更理由: 自動更新のON/OFFとは独立した間隔設定で、未変更時の既定間隔は20秒にする。
@@ -76,3 +75,77 @@ export const DEFAULT_CONFIG: Readonly<Record<string, string>> = {
   replace_str_txt_obj: "[]",
   replace_str_txt: "",
 };
+
+// 設定画面や操作UIから編集できず、内部処理だけで扱う設定。
+// UIで編集可能なキーとの補集合をテストし、新しい既定値の分類漏れを防ぐ。
+export const CONFIG_KEYS_OUTSIDE_SETTINGS_FORM = [
+  // 短縮URLを展開する対象の選択値。URL処理が参照する。
+  "expand_short_url",
+  // 短縮URL展開リクエストのタイムアウト（ミリ秒）。
+  "expand_short_url_timeout",
+  // IDの連鎖NGを有効にする値。自動NG判定が参照する。
+  "chain_ng_id",
+  // SLIPの連鎖NGを有効にする値。自動NG判定が参照する。
+  "chain_ng_slip",
+  // 同一文の繰り返しをNGにするレス数のしきい値。
+  "repeat_message_ng_count",
+  // 書き込み欄に入れる既定の名前。書き込みパネルで編集する。
+  "default_name",
+  // 書き込み欄に入れる既定のメール文字列。書き込みパネルで編集する。
+  "default_mail",
+  // 閲覧履歴を記録しない設定。履歴タブの生成処理が参照する。
+  "no_history",
+  // 書き込み履歴を記録しない設定。書き込み履歴の保存処理が参照する。
+  "no_writehistory",
+  // bbsmenuから除外する板などのオプション文字列。
+  "bbsmenu_option",
+  // 利用者が設定した板名のキャッシュ（JSON）。
+  "other_board_titles",
+  // 書き込みリクエストへ付けるUser-Agent文字列。
+  "useragent",
+  // Imgur APIの利用者アクセストークン。外部連携パネルで編集する。
+  "imgur_access_token",
+  // Imgur APIクライアントID。外部連携パネルで編集する。
+  "imgur_client_id",
+  // 2chnetからスレッドを取得するときに使う形式。
+  "format_2chnet",
+  // ドメイン共通・板別の設定上書きを保存するJSON。
+  "site_board_settings",
+  // 最近開いた板のURLと表示名を保存するJSON。
+  "opened_board_entries",
+  // 画像URL置換ルールの読み込み状態を保持する内部データ。
+  "image_replace_dat_obj",
+  // 画像・動画URLを置き換えるルール一覧。
+  "image_replace_dat",
+  // 文字列置換ルールの読み込み状態を保持する内部データ。
+  "replace_str_txt_obj",
+  // 書き込み・表示文字列の置換ルール一覧。
+  "replace_str_txt",
+] as const;
+
+// 変更理由: 補助パネルや操作UIで編集する設定も通常フォーム外の分類から除き、
+// UIで変更できない既定値だけを CONFIG_KEYS_OUTSIDE_SETTINGS_FORM に残す。
+export const CONFIG_KEYS_EDITABLE_OUTSIDE_SETTINGS_FORM = [
+  // 更新コントロールとドメイン・板設定から更新間隔を変更できる。
+  "auto_load_second",
+  // 板一覧の更新コントロールとドメイン・板設定から変更できる。
+  "auto_load_second_board",
+  // 垂直タブバーのドラッグ操作で幅を保存する。
+  "tab_bar_width",
+  // 表示設定のタイトルバー操作パネルで表示を切り替える。
+  "title_bar_back",
+  // 表示設定のタイトルバー操作パネルで表示を切り替える。
+  "title_bar_forward",
+  // 表示設定のタイトルバー操作パネルで表示を切り替える。
+  "title_bar_refresh",
+  // 書き込みパネルの設定から投稿ショートカットを切り替える。
+  "write_submit_ctrl_enter",
+  // 書き込みパネルの設定から投稿後の動作を切り替える。
+  "write_close_panel_after_submit",
+  // ドメイン・板設定と書き込みパネルから確認動作を切り替える。
+  "write_pre_submit_warnings",
+  // 更新コントロールから自動停止時間を選択できる。
+  "auto_load_idle_stop_timeout",
+  // ドメイン・板設定からsageの既定動作を切り替える。
+  "sage_flag",
+] as const;

@@ -12,7 +12,11 @@ vi.mock("src/view/browser/components/NGEditor", () => ({
   NGEditor: () => null,
 }));
 
-import { DEFAULT_CONFIG } from "src/app/config-defaults";
+import {
+  CONFIG_KEYS_EDITABLE_OUTSIDE_SETTINGS_FORM,
+  CONFIG_KEYS_OUTSIDE_SETTINGS_FORM,
+  DEFAULT_CONFIG,
+} from "src/app/config-defaults";
 
 import { getSettingsSections, readAllSettings } from "./settings-sections";
 
@@ -25,6 +29,28 @@ describe("設定セクションの実行環境フィルター", () => {
     for (const key of fieldKeys) {
       expect(DEFAULT_CONFIG).toHaveProperty(key);
     }
+  });
+
+  it("通常フォームにない既定値を別一覧で明示し、分類漏れを防ぐ", () => {
+    const formKeys = new Set(
+      getSettingsSections(true).flatMap((section) =>
+        section.fields.flatMap((field) => ("key" in field ? [field.key] : [])),
+      ),
+    );
+    const outsideFormKeys = new Set<string>(CONFIG_KEYS_OUTSIDE_SETTINGS_FORM);
+    const editableOutsideFormKeys = new Set<string>(CONFIG_KEYS_EDITABLE_OUTSIDE_SETTINGS_FORM);
+    const unclassifiedKeys = Object.keys(DEFAULT_CONFIG).filter(
+      (key) => !formKeys.has(key) && !editableOutsideFormKeys.has(key) && !outsideFormKeys.has(key),
+    );
+    const incorrectlyClassifiedKeys = CONFIG_KEYS_OUTSIDE_SETTINGS_FORM.filter(
+      (key) =>
+        formKeys.has(key) ||
+        editableOutsideFormKeys.has(key) ||
+        !Object.prototype.hasOwnProperty.call(DEFAULT_CONFIG, key),
+    );
+
+    expect(unclassifiedKeys).toEqual([]);
+    expect(incorrectlyClassifiedKeys).toEqual([]);
   });
 
   it("未使用のしきい値ガード設定を非推奨・編集不可として示す", () => {
