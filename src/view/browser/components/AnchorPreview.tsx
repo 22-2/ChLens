@@ -11,7 +11,7 @@ import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { FloatingPopup } from "src/view/browser/ui/FloatingPopup";
-import { canCopyImageToClipboard, copyImageBlob } from "src/view/browser/utils/clipboard";
+import { canCopyImageToClipboard, copyImageWithNotice } from "src/view/browser/utils/clipboard";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
 import { formatResForCopy } from "src/view/browser/utils/response-format";
 import { canvasToBlob, renderResponseListImageCanvas } from "src/view/browser/utils/response-image";
@@ -144,8 +144,8 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
       icon: <ImageIcon size={14} />,
       disabled: !canCopyImageToClipboard(viewSurface),
       onSelect: () => {
-        void (async () => {
-          try {
+        void copyImageWithNotice(
+          async () => {
             const canvas = renderResponseListImageCanvas(items, {
               title,
               threadTitle,
@@ -153,13 +153,12 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
               theme,
               targetDocument: viewDocument,
             });
-            const blob = await canvasToBlob(canvas);
-            await copyImageBlob(blob, viewSurface);
-          } catch (error) {
-            // 変更理由: 画像コピーには安全なフォールバックがないため、失敗理由をログへ残す。
-            console.error("参照を画像としてコピーできませんでした", error);
-          }
-        })();
+            return canvasToBlob(canvas);
+          },
+          viewSurface,
+          toast,
+          "参照画像",
+        );
       },
     },
     {

@@ -1,3 +1,5 @@
+import type { IToastService } from "src/service-container/interfaces";
+
 /**
  * テキスト・画像のクリップボード操作をまとめる。
  * ブラウザAPIへの依存をこのモジュールへ閉じ込めることで、レス変換やフィルタ判定が
@@ -69,15 +71,33 @@ export async function copyImageBlob(blob: Blob, surface?: ClipboardSurface): Pro
   ]);
 }
 
+/** 画像コピーの成功・失敗を全ての画像コピーUIで同じように通知する。 */
+export async function copyImageWithNotice(
+  createBlob: () => Promise<Blob>,
+  surface: ClipboardSurface,
+  toast: IToastService,
+  label: string,
+): Promise<void> {
+  try {
+    await copyImageBlob(await createBlob(), surface);
+    toast.success(`${label}をコピーしました`);
+  } catch (error) {
+    // 変更理由: 画像コピーにはテキストのような安全な代替経路がないため、失敗を握りつぶさず通知する。
+    console.error(`${label}を画像としてコピーできませんでした`, error);
+    toast.error(`${label}をコピーできませんでした`);
+  }
+}
+
 /** クリップボードからImgurへ投稿できるラスター画像を取得する。 */
 export async function readClipboardImage(surface?: ClipboardSurface): Promise<Blob> {
   const targetWindow = surface?.window ?? globalThis.window;
-  const read = targetWindow.navigator?.clipboard?.read;
-  if (typeof read !== "function") {
+  const clipboard = targetWindow.navigator?.clipboard;
+  if (typeof clipboard?.read !== "function") {
     throw new Error("この環境ではクリップボード画像の読み取りに対応していません");
   }
 
-  const items = await read.call(targetWindow.navigator.clipboard);
+  // 変更理由: Clipboard APIのreadは所属するclipboardオブジェクトをthisとして呼ぶ必要がある。
+  const items = await clipboard.read();
   for (const item of items) {
     const imageType = item.types.find(
       (type) => type.startsWith("image/") && type !== "image/svg+xml",

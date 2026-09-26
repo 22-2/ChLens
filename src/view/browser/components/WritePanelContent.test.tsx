@@ -32,6 +32,9 @@ const mocks = vi.hoisted(() => ({
   copyText: vi.fn().mockResolvedValue(undefined),
   readClipboardImage: vi.fn(),
   openWriteWindow: vi.fn(),
+  toastSuccess: vi.fn(),
+  toastError: vi.fn(),
+  toastInfo: vi.fn(),
 }));
 
 vi.mock("src/view/browser/utils/clipboard", () => ({
@@ -120,6 +123,7 @@ vi.mock("src/view/browser/hooks/use-write-session", () => ({
 
 describe("WritePanelContent", () => {
   let configMock: IConfig;
+  let configSetMock: IConfig["set"];
   let messageMock: IMessage;
 
   beforeEach(() => {
@@ -144,9 +148,13 @@ describe("WritePanelContent", () => {
     mocks.handleRetry.mockClear();
     mocks.copyText.mockClear();
     mocks.readClipboardImage.mockClear();
+    mocks.toastSuccess.mockClear();
+    mocks.toastError.mockClear();
+    mocks.toastInfo.mockClear();
     mocks.openWriteWindow.mockClear();
     mocks.openWriteWindow.mockReturnValue(undefined);
 
+    configSetMock = vi.fn().mockResolvedValue(undefined);
     configMock = {
       get: vi.fn((key: string) => {
         if (key === "site_board_settings") return "{}";
@@ -155,7 +163,7 @@ describe("WritePanelContent", () => {
         }
         return "off";
       }),
-      set: vi.fn().mockResolvedValue(undefined),
+      set: configSetMock,
       getAll: () => ({}),
       ready: (callback: () => void) => callback(),
     };
@@ -167,6 +175,12 @@ describe("WritePanelContent", () => {
 
     container.config = configMock;
     container.message = messageMock;
+    container.toast = {
+      notify: vi.fn(),
+      success: mocks.toastSuccess,
+      error: mocks.toastError,
+      info: mocks.toastInfo,
+    };
   });
 
   afterEach(() => {
@@ -246,10 +260,10 @@ describe("WritePanelContent", () => {
       within(dialog).getByRole("checkbox", { name: "貼り付け時にURLパラメータを除去する" }),
     );
 
-    expect(configMock.set).toHaveBeenCalledWith("write_submit_ctrl_enter", "on");
-    expect(configMock.set).toHaveBeenCalledWith("write_close_panel_after_submit", "on");
+    expect(configSetMock).toHaveBeenCalledWith("write_submit_ctrl_enter", "on");
+    expect(configSetMock).toHaveBeenCalledWith("write_close_panel_after_submit", "on");
     await waitFor(() =>
-      expect(configMock.set).toHaveBeenCalledWith(
+      expect(configSetMock).toHaveBeenCalledWith(
         "site_board_settings",
         expect.stringContaining('"write_sanitize_urls_on_paste":"off"'),
       ),
@@ -372,6 +386,10 @@ describe("WritePanelContent", () => {
     expect(mocks.submit).toHaveBeenCalledWith(
       "共有URL https://www.youtube.com/watch?v=example#t=30s",
     );
+    expect(mocks.toastSuccess).toHaveBeenCalledWith(
+      "URLパラメータを除去しました",
+      expect.objectContaining({ targetWindow: expect.any(Object) }),
+    );
   });
 
   it("投稿前警告をOFFにしても貼り付け時のURL追跡パラメータ除去は行う", () => {
@@ -392,6 +410,10 @@ describe("WritePanelContent", () => {
     // 変更理由: 貼り付け時の変換は投稿前確認設定に依存せず、編集欄にも除去後の本文を反映する。
     expect(mocks.setMessage).toHaveBeenCalledWith(
       "本文https://www.youtube.com/watch?v=example#t=30s",
+    );
+    expect(mocks.toastSuccess).toHaveBeenCalledWith(
+      "貼り付け時にURLパラメータを除去しました",
+      expect.objectContaining({ targetWindow: expect.any(Object) }),
     );
   });
 
@@ -443,6 +465,10 @@ describe("WritePanelContent", () => {
         expect.objectContaining({ window: expect.any(Object), document: expect.any(Object) }),
       ),
     );
+    expect(mocks.toastSuccess).toHaveBeenCalledWith(
+      "認証コードをコピーしました",
+      expect.objectContaining({ targetWindow: expect.any(Object) }),
+    );
     expect(within(dialog).getByRole("button", { name: "コピーしました" })).toBeInTheDocument();
     expect(within(dialog).getByLabelText("認証ページURL")).toHaveValue(mocks.authCodeUrl);
     fireEvent.click(within(dialog).getByRole("button", { name: "URLをコピー" }));
@@ -455,6 +481,10 @@ describe("WritePanelContent", () => {
           document: expect.any(Object),
         }),
       ),
+    );
+    expect(mocks.toastSuccess).toHaveBeenCalledWith(
+      "認証URLをコピーしました",
+      expect.objectContaining({ targetWindow: expect.any(Object) }),
     );
     await waitFor(() =>
       expect(mocks.copyText).toHaveBeenCalledWith(

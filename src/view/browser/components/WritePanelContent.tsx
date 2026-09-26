@@ -14,6 +14,7 @@ import { useOptionalBottomPanel } from "src/view/browser/hooks/use-bottom-panel"
 import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
 import { useScopedConfigBooleanSetting } from "src/view/browser/hooks/use-scoped-config-boolean-setting";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { useToast } from "src/view/browser/hooks/use-toast";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { useWrite } from "src/view/browser/hooks/use-write";
 import {
@@ -89,6 +90,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
   // 変更理由: 設定DialogのPortal先も書き込み窓と同じDocumentへ置き、別窓で
   // メイン窓のテーマ境界へ戻らないようにする。
   const viewSurface = useViewSurface();
+  const toast = useToast();
   const { window: viewWindow, document: viewDocument } = viewSurface;
   const bottomPanel = useOptionalBottomPanel();
   const writePanelInsertRequest = standalone ? null : bottomPanel?.writePanelInsertRequest;
@@ -312,11 +314,12 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
 
       // 変更理由: 追跡値を除去した貼り付け内容を下書きにも保存し、キャレット位置を維持する。
       setMessage(nextMessage);
+      toast.success("貼り付け時にURLパラメータを除去しました");
       viewWindow.requestAnimationFrame(() => {
         if (textarea.isConnected) textarea.setSelectionRange(nextCaret, nextCaret);
       });
     },
-    [message, sanitizeUrlsOnPaste, setMessage, viewWindow],
+    [message, sanitizeUrlsOnPaste, setMessage, toast, viewWindow],
   );
 
   const removeTrackingParametersAndSubmit = useCallback(() => {
@@ -325,6 +328,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
 
     // 変更理由: 除去を選んだ場合も編集欄へ反映し、実際の送信本文と表示内容を一致させる。
     setMessage(result.text);
+    toast.success("URLパラメータを除去しました");
     const remainingWarnings = findWriteWarnings([name, mail, result.text]);
     const trackingWarning = findUrlTrackingWarning(result.text);
     if (trackingWarning) remainingWarnings.push(trackingWarning);
@@ -334,7 +338,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
       setIsWarningDialogOpen(false);
       void submit(result.text);
     }
-  }, [mail, message, name, setMessage, submit]);
+  }, [mail, message, name, setMessage, submit, toast]);
 
   const confirmWarningSubmit = useCallback(() => {
     setIsWarningDialogOpen(false);
@@ -360,20 +364,24 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
     try {
       await copyText(authCode, viewSurface);
       setIsAuthCodeCopied(true);
+      toast.success("認証コードをコピーしました");
     } catch (error) {
       console.error("eddibbの認証コードをコピーできませんでした", error);
+      toast.error("認証コードをコピーできませんでした");
     }
-  }, [authCode, viewSurface]);
+  }, [authCode, toast, viewSurface]);
 
   const handleCopyAuthCodeUrl = useCallback(async () => {
     if (!authCodeUrl) return;
     try {
       await copyText(authCodeUrl, viewSurface);
       setIsAuthCodeUrlCopied(true);
+      toast.success("認証URLをコピーしました");
     } catch (error) {
       console.error("eddibbの認証URLをコピーできませんでした", error);
+      toast.error("認証URLをコピーできませんでした");
     }
-  }, [authCodeUrl, viewSurface]);
+  }, [authCodeUrl, toast, viewSurface]);
 
   const handleConfirmationFrameLoad = useCallback(() => {
     confirmationFrameCleanupRef.current?.();

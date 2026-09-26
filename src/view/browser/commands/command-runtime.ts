@@ -164,6 +164,20 @@ export async function runCommandRequest(
 ): Promise<boolean> {
   try {
     await executeCommandRequest(request, runtime);
+    if (request.id === COMMAND_REQUEST_IDS.TARGET_COPY) {
+      const label =
+        request.args.format === "title"
+          ? "タイトル"
+          : request.args.format === "url"
+            ? "URL"
+            : request.args.format === "title-url"
+              ? "タイトルとURL"
+              : "Markdownリンク";
+      runtime.toast.success(`${label}をコピーしました`);
+    } else if (request.id === COMMAND_REQUEST_IDS.CLIPBOARD_COPY_TEXT) {
+      // 変更理由: URL・本文・選択範囲など入口ごとに成功表示が漏れないよう、共通コピー境界で通知する。
+      runtime.toast.success("クリップボードにコピーしました");
+    }
     return true;
   } catch (error: unknown) {
     const target = "target" in request.args ? request.args.target : undefined;

@@ -22,7 +22,7 @@ import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { FloatingPopup } from "src/view/browser/ui/FloatingPopup";
-import { canCopyImageToClipboard, copyImageBlob } from "src/view/browser/utils/clipboard";
+import { canCopyImageToClipboard, copyImageWithNotice } from "src/view/browser/utils/clipboard";
 import { getEventTargetElement } from "src/view/browser/utils/dom";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
 import {
@@ -643,20 +643,24 @@ export const ReplyTreePopup: React.FC<{
           icon: <ImageIcon size={14} />,
           disabled: !canCopyImageToClipboard(viewSurface),
           onSelect: () => {
-            void (async () => {
-              const canvas = renderReplyTreeImageCanvas(
-                sourceRes,
-                replyImageEntries,
-                threadTitle,
-                threadUrl,
-                undefined,
-                theme,
-                undefined,
-                viewDocument,
-              );
-              const blob = await canvasToBlob(canvas);
-              await copyImageBlob(blob, viewSurface);
-            })();
+            void copyImageWithNotice(
+              async () => {
+                const canvas = renderReplyTreeImageCanvas(
+                  sourceRes,
+                  replyImageEntries,
+                  threadTitle,
+                  threadUrl,
+                  undefined,
+                  theme,
+                  undefined,
+                  viewDocument,
+                );
+                return canvasToBlob(canvas);
+              },
+              viewSurface,
+              toast,
+              "返信ツリー画像",
+            );
           },
         },
         {
@@ -771,20 +775,24 @@ export const ReplyTreePopup: React.FC<{
             icon: <ImageDown size={14} />,
             disabled: !canCopyImageToClipboard(viewSurface),
             onSelect: () => {
-              void (async () => {
-                const canvas = renderReplyTreeImageCanvas(
-                  targetRes,
-                  subReplyImageEntries,
-                  threadTitle,
-                  threadUrl,
-                  undefined,
-                  theme,
-                  undefined,
-                  viewDocument,
-                );
-                const blob = await canvasToBlob(canvas);
-                await copyImageBlob(blob, viewSurface);
-              })();
+              void copyImageWithNotice(
+                async () => {
+                  const canvas = renderReplyTreeImageCanvas(
+                    targetRes,
+                    subReplyImageEntries,
+                    threadTitle,
+                    threadUrl,
+                    undefined,
+                    theme,
+                    undefined,
+                    viewDocument,
+                  );
+                  return canvasToBlob(canvas);
+                },
+                viewSurface,
+                toast,
+                "サブツリー画像",
+              );
             },
           },
         ]
@@ -808,24 +816,28 @@ export const ReplyTreePopup: React.FC<{
         icon: <ImageUp size={14} />,
         disabled: !canCopyImageToClipboard(viewSurface),
         onSelect: () => {
-          void (async () => {
-            const canvas = renderReplyTreeImageCanvas(
-              ancestorPathSourceRes,
-              ancestorImageEntries,
-              threadTitle,
-              threadUrl,
-              undefined,
-              theme,
-              {
-                title: `>>${targetRes.num} までの返信経路`,
-                sourceSectionTitle: "参照元レス",
-                responsesSectionTitle: "返信レス（上から下）",
-              },
-              viewDocument,
-            );
-            const blob = await canvasToBlob(canvas);
-            await copyImageBlob(blob, viewSurface);
-          })();
+          void copyImageWithNotice(
+            async () => {
+              const canvas = renderReplyTreeImageCanvas(
+                ancestorPathSourceRes,
+                ancestorImageEntries,
+                threadTitle,
+                threadUrl,
+                undefined,
+                theme,
+                {
+                  title: `>>${targetRes.num} までの返信経路`,
+                  sourceSectionTitle: "参照元レス",
+                  responsesSectionTitle: "返信レス（上から下）",
+                },
+                viewDocument,
+              );
+              return canvasToBlob(canvas);
+            },
+            viewSurface,
+            toast,
+            "返信経路画像",
+          );
         },
       },
     ];

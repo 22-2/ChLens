@@ -71,6 +71,36 @@ describe("command-runtime", () => {
     expect(copyTextMock).toHaveBeenCalledWith("レス本文", runtime.surface);
   });
 
+  it("タイトルやURLのコピーが成功したら内容に応じたtoastを出す", async () => {
+    const runtime = createRuntime();
+    const toastSuccess = vi.fn();
+    runtime.toast.success = toastSuccess;
+
+    await expect(
+      runCommandRequest(
+        { id: COMMAND_REQUEST_IDS.TARGET_COPY, args: { target, format: "url" } },
+        runtime,
+      ),
+    ).resolves.toBe(true);
+
+    expect(toastSuccess).toHaveBeenCalledWith("URLをコピーしました");
+  });
+
+  it("レス本文などのコピーが成功したら共通toastを出す", async () => {
+    const runtime = createRuntime();
+    const toastSuccess = vi.fn();
+    runtime.toast.success = toastSuccess;
+
+    await expect(
+      runCommandRequest(
+        { id: COMMAND_REQUEST_IDS.CLIPBOARD_COPY_TEXT, args: { text: "レス本文" } },
+        runtime,
+      ),
+    ).resolves.toBe(true);
+
+    expect(toastSuccess).toHaveBeenCalledWith("クリップボードにコピーしました");
+  });
+
   it("ブックマークsetは実行時の状態を確認して必要な場合だけ保存する", async () => {
     const add = vi.fn();
     const remove = vi.fn();

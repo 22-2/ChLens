@@ -1,4 +1,5 @@
-import { copyText } from "src/view/browser/utils/clipboard";
+import type { IToastService } from "src/service-container/interfaces";
+import { copyImageWithNotice, copyText } from "src/view/browser/utils/clipboard";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 function createDetachedSurface(writeText: () => Promise<void>) {
@@ -52,5 +53,61 @@ describe("clipboard", () => {
 
     expect(execCommand).toHaveBeenCalledWith("copy");
     expect(detachedDocument.body.childElementCount).toBe(0);
+  });
+
+  it("画像のコピー成功時にtoastを表示する", async () => {
+    const detachedWindow = Object.create(window) as Window & typeof globalThis;
+    const write = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(detachedWindow, "navigator", {
+      configurable: true,
+      value: { clipboard: { write } } as unknown as Navigator,
+    });
+    Object.defineProperty(detachedWindow, "ClipboardItem", {
+      configurable: true,
+      value: class ClipboardItemMock {
+        constructor(_items: Record<string, Blob>) {}
+      },
+    });
+    const toastSuccess = vi.fn();
+    const toast: IToastService = {
+      notify: vi.fn(),
+      success: toastSuccess,
+      error: vi.fn(),
+      info: vi.fn(),
+    };
+
+    await copyImageWithNotice(
+      async () => new Blob(["image"], { type: "image/png" }),
+      { window: detachedWindow, document },
+      toast,
+      "レス画像",
+    );
+
+    expect(write).toHaveBeenCalledTimes(1);
+    expect(toastSuccess).toHaveBeenCalledWith("レス画像をコピーしました");
+  });
+
+  it("画像コピーの失敗時にtoastで知らせる", async () => {
+    const toastSuccess = vi.fn();
+    const toastError = vi.fn();
+    const toast: IToastService = {
+      notify: vi.fn(),
+      success: toastSuccess,
+      error: toastError,
+      info: vi.fn(),
+    };
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    await copyImageWithNotice(
+      async () => {
+        throw new Error("画像生成に失敗しました");
+      },
+      { window, document },
+      toast,
+      "レス画像",
+    );
+
+    expect(toastError).toHaveBeenCalledWith("レス画像をコピーできませんでした");
+    expect(toastSuccess).not.toHaveBeenCalled();
   });
 });
