@@ -213,6 +213,14 @@ function parseShitarabaPage(url: URL): InternalBrowserPage | null {
 }
 
 function parseEddibbPage(url: URL): InternalBrowserPage | null {
+  const datPage = parseChDatPage(url);
+  if (datPage) {
+    // 変更理由: eddibb は個別パーサーへ先に振り分けられるため、共通のdat判定まで
+    // 到達しない。dat直リンクも既存のread.cgi形式へ揃え、同じスレッド取得経路に乗せる。
+    url.protocol = "http:";
+    return toThreadPage(url);
+  }
+
   const threadMatch = ROUTE_PATTERNS.EDDIBB_THREAD.exec(url.pathname);
   if (threadMatch?.[2]) {
     url.protocol = "http:";

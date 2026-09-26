@@ -77,6 +77,17 @@ export class ChURL {
     // ここで /test/read.cgi/... に正規化して以降の処理を統一する。
     if (hostname === HOSTNAME.EDDIBB) {
       if (
+        this.tryFixPattern(PATTERNS.CH_DAT, (m) => `/test/read.cgi/${m[1]}/${m[2]}/`, {
+          type: "thread",
+          bbsType: "2ch",
+        })
+      ) {
+        // 変更理由: eddibb専用分岐で汎用dat判定が飛ばされるため、直リンクを
+        // 先に標準スレッド形式へ正規化し、eddibbの取得仕様に合わせてHTTPを使う。
+        this.url.protocol = "http:";
+        return;
+      }
+      if (
         this.tryFixPattern(PATTERNS.EDDIBB_THREAD_2, (m) => `/test/read.cgi/${m[1]}/${m[2]}/`, {
           type: "thread",
           bbsType: "2ch",

@@ -12,6 +12,14 @@ describe("ChURL", () => {
     expect(url.getSubjectUrl()).toBe("https://bbs.example.test/flaming/subject.txt");
   });
 
+  it("eddibbのdat直リンクをHTTPの標準スレッドURLへ正規化する", () => {
+    const url = new ChURL("https://bbs.eddibb.cc/liveedge/dat/1000000011.dat");
+
+    expect(url.type).toBe("thread");
+    expect(url.url.href).toBe("http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000011/");
+    expect(url.getDatUrl()).toBe("http://bbs.eddibb.cc/liveedge/dat/1000000011.dat");
+  });
+
   it("レス番号付きのread.cgi URLをスレッド本体へ正規化する", () => {
     const url = new ChURL("https://kako.5ch.io/test/read.cgi/exampleboard/1000000008/20");
 

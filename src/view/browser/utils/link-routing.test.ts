@@ -191,6 +191,14 @@ describe("link-routing", () => {
     });
   });
 
+  it("eddibb のdat直リンクをHTTPの内部スレURLへ正規化する", () => {
+    expect(parseOmnibarBrowserPage("http://bbs.eddibb.cc/liveedge/dat/1000000011.dat")).toEqual({
+      type: "thread",
+      title: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000011/",
+      threadUrl: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000011/",
+    });
+  });
+
   it("eddibb の省略 thread URL は末尾スラッシュなしでも内部スレURLへ正規化する", () => {
     expect(parseInternalBrowserPage("https://bbs.eddibb.cc/liveedge/1000000010")).toEqual({
       type: "thread",
