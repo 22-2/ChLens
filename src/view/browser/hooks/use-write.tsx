@@ -47,6 +47,7 @@ export interface UseWriteResult {
   message: string;
   status: WriteStatus;
   statusText: string;
+  authCode: string | null;
   authCodeUrl: string | null;
   confirmationPage: WriteConfirmationPage | null;
   canSubmit: boolean;
@@ -284,6 +285,7 @@ export function useWrite(threadUrl: string, options: UseWriteOptions = {}): UseW
   const [message, setMessageState] = useState(() => draft ?? "");
   const [status, setStatus] = useState<WriteStatus>("idle");
   const [statusText, setStatusText] = useState("");
+  const [authCode, setAuthCode] = useState<string | null>(null);
   const [authCodeUrl, setAuthCodeUrl] = useState<string | null>(null);
   const [confirmationPage, setConfirmationPage] = useState<WriteConfirmationPage | null>(null);
 
@@ -332,6 +334,7 @@ export function useWrite(threadUrl: string, options: UseWriteOptions = {}): UseW
 
   const clearTauriWriteAttempt = useCallback(() => {
     setConfirmationPage(null);
+    setAuthCode(null);
     setAuthCodeUrl(null);
   }, []);
 
@@ -436,11 +439,11 @@ export function useWrite(threadUrl: string, options: UseWriteOptions = {}): UseW
           clearSubmitWatchdog();
           clearTauriWriteAttempt();
           pendingSubmittedWriteRef.current = null;
+          // 変更理由: 認証コードはステータスバーに全文を流すと読みにくくコピーもしづらいため、認証ダイアログで扱う。
+          setAuthCode(data.code);
           setAuthCodeUrl(data.url);
           setStatus("error");
-          setStatusText(
-            `認証が必要です。認証コード「${data.code}」を認証ページで入力し、発行された#から始まるトークンをメール欄へ貼り付けてください`,
-          );
+          setStatusText("認証が必要です。認証ダイアログの案内に従ってください");
           break;
         case "error":
           clearSubmitWatchdog();
@@ -675,6 +678,7 @@ export function useWrite(threadUrl: string, options: UseWriteOptions = {}): UseW
     message,
     status,
     statusText,
+    authCode,
     authCodeUrl,
     confirmationPage,
     canSubmit,

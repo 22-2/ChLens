@@ -112,6 +112,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
   const imgurFileInputRef = useRef<HTMLInputElement | null>(null);
   const errorDialogDescriptionId = useId();
   const authCodeUrlInputId = useId();
+  const authCodeInputId = useId();
   const settingsDialogDescriptionId = useId();
   const warningDialogDescriptionId = useId();
   const [dialogPortalContainer, setDialogPortalContainer] = useState<HTMLElement | null>(
@@ -121,6 +122,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
   const [isWarningDialogOpen, setIsWarningDialogOpen] = useState(false);
   const [writeWarnings, setWriteWarnings] = useState<ReturnType<typeof findWriteWarnings>>([]);
   const [isAuthCodeUrlCopied, setIsAuthCodeUrlCopied] = useState(false);
+  const [isAuthCodeCopied, setIsAuthCodeCopied] = useState(false);
   const confirmationFrameCleanupRef = useRef<(() => void) | null>(null);
   // 変更理由: 書き込み中の入力欄を増やさず、書き込みに関する設定を
   // パネル内の歯車モーダルへまとめて、必要な時だけ変更できるようにする。
@@ -138,6 +140,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
     message,
     status,
     statusText,
+    authCode,
     authCodeUrl,
     confirmationPage,
     canSubmit,
@@ -292,7 +295,18 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
 
   useEffect(() => {
     setIsAuthCodeUrlCopied(false);
-  }, [authCodeUrl]);
+    setIsAuthCodeCopied(false);
+  }, [authCode, authCodeUrl]);
+
+  const handleCopyAuthCode = useCallback(async () => {
+    if (!authCode) return;
+    try {
+      await copyText(authCode, viewSurface);
+      setIsAuthCodeCopied(true);
+    } catch (error) {
+      console.error("eddibbの認証コードをコピーできませんでした", error);
+    }
+  }, [authCode, viewSurface]);
 
   const handleCopyAuthCodeUrl = useCallback(async () => {
     if (!authCodeUrl) return;
@@ -741,8 +755,30 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
               id={errorDialogDescriptionId}
               className="browser-dialog-description"
             >
-              認証ページでトークンを発行し、メール欄へ貼り付けてから再入力してください。
+              認証コードを認証ページで入力してトークンを発行し、メール欄へ貼り付けてから再入力してください。
             </Dialog.Description>
+            {/* 変更理由: ステータスバーへ流れていた認証コードを、選択・コピーしやすい認証手順内へ移す。 */}
+            {authCode && (
+              <div className="write-panel__auth-url">
+                <label htmlFor={authCodeInputId}>認証コード</label>
+                <textarea
+                  id={authCodeInputId}
+                  className="write-panel__auth-url-input"
+                  value={authCode}
+                  readOnly
+                  rows={1}
+                  onFocus={(event) => event.currentTarget.select()}
+                  aria-label="認証コード"
+                />
+                <button
+                  type="button"
+                  className="write-panel__btn write-panel__btn--secondary"
+                  onClick={() => void handleCopyAuthCode()}
+                >
+                  {isAuthCodeCopied ? "コピーしました" : "コードをコピー"}
+                </button>
+              </div>
+            )}
             {authCodeUrl && (
               <div className="write-panel__auth-url">
                 <label htmlFor={authCodeUrlInputId}>認証ページURL</label>
