@@ -249,10 +249,25 @@ class LocalWebSocket {
 class ChromeBridgeBroker {
   private readonly clients = new Map<string, BridgeClient>();
   private readonly pending = new Map<string, PendingBridgeRequest>();
+  private readonly cleanupTimer: ReturnType<typeof setInterval>;
 
   constructor() {
-    const cleanup = setInterval(() => this.cleanup(), 30_000);
-    cleanup.unref();
+    this.cleanupTimer = setInterval(() => this.cleanup(), 30_000);
+    this.cleanupTimer.unref();
+  }
+
+  close(): void {
+    clearInterval(this.cleanupTimer);
+    for (const client of this.clients.values()) {
+      closeWaiter(client, { request: null });
+      client.socket?.close();
+    }
+    this.clients.clear();
+    for (const pending of this.pending.values()) {
+      clearTimeout(pending.timer);
+      pending.reject(new Error("ChLens MCPサーバーが終了しました"));
+    }
+    this.pending.clear();
   }
 
   register(): RegisterResult {
@@ -833,36 +848,71 @@ async function main(): Promise<void> {
     handleWebSocketUpgrade(broker, request, socket, head);
   });
   await new Promise<void>((resolve, reject) => {
-    httpServer.once("error", reject);
-    httpServer.listen(MCP_BRIDGE_PORT, MCP_BRIDGE_HOST, () => resolve());
+    httpServer.once("error", (error: NodeJS.ErrnoException) => {
+      if (error.code === "EADDRINUSE") {
+        reject(
+          new Error(
+            `ポート ${MCP_BRIDGE_PORT} は使用中です。別のChLens MCPプロセスが起動していないか確認してください。`,
+            { cause: error },
+          ),
+        );
+        return;
+      }
+      reject(error);
+    });
+    // 変更理由: MCPプロセスが重複してもOSに待ち受けを共有させず、ブリッジを一つに限定する。
+    httpServer.listen(
+      { port: MCP_BRIDGE_PORT, host: MCP_BRIDGE_HOST, exclusive: true },
+      () => resolve(),
+    );
   });
   logError(`ローカルブリッジを起動しました: http://${MCP_BRIDGE_HOST}:${MCP_BRIDGE_PORT}`);
 
   const input = createInterface({ input: process.stdin, crlfDelay: Infinity });
-  for await (const rawLine of input) {
-    // Windowsのリダイレクト元がUTF-8 BOMを付けても、最初のJSON-RPC要求を捨てない。
-    const line = rawLine.replace(/^\uFEFF/, "");
-    if (!line.trim()) continue;
-    let request: JsonRpcRequest;
-    try {
-      request = JSON.parse(line) as JsonRpcRequest;
-    } catch (error: unknown) {
-      process.stdout.write(`${JSON.stringify(rpcError(null, -32700, "JSONを解析できません"))}\n`);
-      logError("JSON-RPC要求の解析に失敗しました", error);
-      continue;
-    }
+  let shutdownPromise: Promise<void> | undefined;
+  const shutdown = (): Promise<void> => {
+    if (shutdownPromise) return shutdownPromise;
+    input.close();
+    broker.close();
+    shutdownPromise = new Promise<void>((resolve) => {
+      httpServer.close(() => resolve());
+    });
+    return shutdownPromise;
+  };
+  const handleSignal = (): void => {
+    void shutdown();
+  };
+  process.once("SIGINT", handleSignal);
+  process.once("SIGTERM", handleSignal);
 
-    try {
-      const response = await handleRpc(broker, request);
-      if (response != null) process.stdout.write(`${JSON.stringify(response)}\n`);
-    } catch (error: unknown) {
-      const id = request.id ?? null;
-      process.stdout.write(`${JSON.stringify(rpcError(id, -32603, "内部エラー"))}\n`);
-      logError("JSON-RPC要求の処理に失敗しました", error);
+  try {
+    for await (const rawLine of input) {
+      // Windowsのリダイレクト元がUTF-8 BOMを付けても、最初のJSON-RPC要求を捨てない。
+      const line = rawLine.replace(/^\uFEFF/, "");
+      if (!line.trim()) continue;
+      let request: JsonRpcRequest;
+      try {
+        request = JSON.parse(line) as JsonRpcRequest;
+      } catch (error: unknown) {
+        process.stdout.write(`${JSON.stringify(rpcError(null, -32700, "JSONを解析できません"))}\n`);
+        logError("JSON-RPC要求の解析に失敗しました", error);
+        continue;
+      }
+
+      try {
+        const response = await handleRpc(broker, request);
+        if (response != null) process.stdout.write(`${JSON.stringify(response)}\n`);
+      } catch (error: unknown) {
+        const id = request.id ?? null;
+        process.stdout.write(`${JSON.stringify(rpcError(id, -32603, "内部エラー"))}\n`);
+        logError("JSON-RPC要求の処理に失敗しました", error);
+      }
     }
+  } finally {
+    process.off("SIGINT", handleSignal);
+    process.off("SIGTERM", handleSignal);
+    await shutdown();
   }
-
-  await new Promise<void>((resolve) => httpServer.close(() => resolve()));
 }
 
 void main().catch((error: unknown) => {

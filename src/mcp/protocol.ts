@@ -5,7 +5,8 @@
  * Chrome側へNode専用コードが混ざり、拡張機能のビルドと実行環境が壊れるため。
  */
 
-export const MCP_BRIDGE_PORT = 17890;
+// 既存のローカルサービスとの衝突を避けるため、ChLens専用の新しいポートを使う。
+export const MCP_BRIDGE_PORT = 52539;
 export const MCP_BRIDGE_HOST = "127.0.0.1";
 export const MCP_BRIDGE_BASE_URL = `http://${MCP_BRIDGE_HOST}:${MCP_BRIDGE_PORT}`;
 export const MCP_BRIDGE_WS_URL = `ws://${MCP_BRIDGE_HOST}:${MCP_BRIDGE_PORT}/v1/ws`;
