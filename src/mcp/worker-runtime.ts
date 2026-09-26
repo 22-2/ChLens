@@ -1,5 +1,6 @@
 import {
   executeThreadFetch,
+  fetchHttpsFirst,
   getThreadArchiveFallbacks,
   getThreadXhrInfo,
   isHtmlThread,
@@ -335,7 +336,12 @@ async function readThread(params: ThreadReadParams): Promise<BridgeThreadResult>
     },
     {
       fetch: async (path, charset, headers) => {
-        const response = await fetch(path, { headers: { ...headers } });
+        const response = await fetchHttpsFirst(
+          path,
+          "GET",
+          (requestUrl) => fetch(requestUrl, { headers: { ...headers } }),
+          headers,
+        );
         const bodyBuffer = await response.arrayBuffer();
         const body = new TextDecoder(charset).decode(bodyBuffer);
         return toHttpResponse(response, body, path);

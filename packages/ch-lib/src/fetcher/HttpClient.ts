@@ -1,3 +1,5 @@
+import { fetchHttpsFirst } from "./https-first";
+
 export interface HttpRequest {
   headers?: Readonly<Record<string, string>>;
   signal?: AbortSignal;
@@ -79,10 +81,16 @@ export class HttpStatusError extends Error {
 
 export class FetchHttpClient implements HttpClient {
   async get(url: string, request: HttpRequest = {}): Promise<HttpResponse> {
-    const response = await fetch(url, {
-      headers: request.headers,
-      signal: request.signal,
-    });
+    const response = await fetchHttpsFirst(
+      url,
+      "GET",
+      (requestUrl) =>
+        fetch(requestUrl, {
+          headers: request.headers,
+          signal: request.signal,
+        }),
+      request.headers,
+    );
     const headers: Record<string, string> = {};
     response.headers.forEach((value, key) => {
       headers[key] = value;

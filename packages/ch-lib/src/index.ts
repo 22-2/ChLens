@@ -3,6 +3,7 @@ export * from "./fetcher/BBSMenuFetchPolicy";
 export * from "./fetcher/BoardFetchPolicy";
 export * from "./fetcher/ChFetcher";
 export * from "./fetcher/HttpClient";
+export * from "./fetcher/https-first";
 export * from "./fetcher/ThreadArchiveFallback";
 export * from "./fetcher/ThreadFetchExecutor";
 export * from "./fetcher/ThreadFetchPolicy";

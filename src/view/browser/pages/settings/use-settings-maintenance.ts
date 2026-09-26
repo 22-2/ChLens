@@ -1,3 +1,4 @@
+import { fetchHttpsFirst } from "packages/ch-lib/src/fetcher/https-first";
 import { type MutableRefObject, useCallback, useState } from "react";
 import { container } from "src/service-container/index";
 import {
@@ -49,10 +50,12 @@ export function useSettingsMaintenanceActions({
       const results = await Promise.all(
         targets.map(async (targetUrl) => {
           try {
-            const response = await fetch(targetUrl, {
-              method: "GET",
-              cache: "no-store",
-            });
+            const response = await fetchHttpsFirst(targetUrl, "GET", (requestUrl) =>
+              fetch(requestUrl, {
+                method: "GET",
+                cache: "no-store",
+              }),
+            );
             return {
               ok: response.ok,
               status: response.status,

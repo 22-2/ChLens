@@ -1,4 +1,5 @@
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
+import { fetchHttpsFirst } from "packages/ch-lib/src/fetcher/https-first";
 import {
   type BinaryHttpResponse,
   type HttpClient,
@@ -16,12 +17,18 @@ export async function fetchTauriBinary(
   url: string,
   options: HttpRequestOptions = {},
 ): Promise<BinaryHttpResponse> {
-  const response = await tauriFetch(url, {
-    method: options.method || "GET",
-    headers: options.headers,
-    body: options.body,
-    ...(options.timeout ? { connectTimeout: options.timeout } : {}),
-  });
+  const response = await fetchHttpsFirst(
+    url,
+    options.method,
+    (requestUrl) =>
+      tauriFetch(requestUrl, {
+        method: options.method || "GET",
+        headers: options.headers,
+        body: options.body,
+        ...(options.timeout ? { connectTimeout: options.timeout } : {}),
+      }),
+    options.headers,
+  );
 
   const headers: Record<string, string> = {};
   response.headers.forEach((value: string, key: string) => {
@@ -65,13 +72,19 @@ export const TauriHttpClient: HttpClient = {
     // ImgurのBearer tokenなどの秘密情報をTauriのデバッグログへ出さない。
     console.log(`[TauriHttpClient] Fetching: ${url}`, safeOptions);
 
-    const response = await tauriFetch(url, {
-      method: options.method || "GET",
-      headers: options.headers,
-      body: options.body,
-      // 変更理由: ブラウザー版XHRと同じく、アップロード要求が接続待ちのまま残らないようにする。
-      ...(options.timeout ? { connectTimeout: options.timeout } : {}),
-    });
+    const response = await fetchHttpsFirst(
+      url,
+      options.method,
+      (requestUrl) =>
+        tauriFetch(requestUrl, {
+          method: options.method || "GET",
+          headers: options.headers,
+          body: options.body,
+          // 変更理由: ブラウザー版XHRと同じく、アップロード要求が接続待ちのまま残らないようにする。
+          ...(options.timeout ? { connectTimeout: options.timeout } : {}),
+        }),
+      options.headers,
+    );
 
     console.log(`[TauriHttpClient] Response status: ${response.status}`);
 

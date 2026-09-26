@@ -1,3 +1,4 @@
+import { fetchHttpsFirst } from "packages/ch-lib/src/fetcher/https-first";
 import { HttpClient, HttpRequestOptions, HttpResponse } from "src/app/platform/types";
 import browser from "webextension-polyfill";
 
@@ -54,41 +55,47 @@ function isSameWriteRule(rule: DnrRule, formAction: string, tabId: number): bool
  */
 export const BrowserHttpClient: HttpClient = {
   async fetch(url: string, options: HttpRequestOptions = {}): Promise<HttpResponse> {
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open(options.method ?? "GET", url);
+    return fetchHttpsFirst(
+      url,
+      options.method,
+      (requestUrl) =>
+        new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open(options.method ?? "GET", requestUrl);
 
-      if (options.mimeType) {
-        xhr.overrideMimeType(options.mimeType);
-      }
+          if (options.mimeType) {
+            xhr.overrideMimeType(options.mimeType);
+          }
 
-      if (options.timeout) {
-        xhr.timeout = options.timeout;
-      }
+          if (options.timeout) {
+            xhr.timeout = options.timeout;
+          }
 
-      if (options.headers) {
-        for (const [key, val] of Object.entries(options.headers)) {
-          xhr.setRequestHeader(key, val);
-        }
-      }
+          if (options.headers) {
+            for (const [key, val] of Object.entries(options.headers)) {
+              xhr.setRequestHeader(key, val);
+            }
+          }
 
-      // onloadend は error/abort 後にも呼ばれるため、成功時だけ onload で確定させる
-      xhr.onload = () => {
-        const responseHeaders = parseHTTPHeader(xhr.getAllResponseHeaders());
-        resolve({
-          status: xhr.status,
-          headers: responseHeaders,
-          body: xhr.responseText,
-          url: xhr.responseURL || url,
-        });
-      };
+          // onloadend はerror/abort後にも呼ばれるため、成功時だけonloadで確定させる
+          xhr.onload = () => {
+            const responseHeaders = parseHTTPHeader(xhr.getAllResponseHeaders());
+            resolve({
+              status: xhr.status,
+              headers: responseHeaders,
+              body: xhr.responseText,
+              url: xhr.responseURL || requestUrl,
+            });
+          };
 
-      xhr.ontimeout = () => reject("timeout");
-      xhr.onabort = () => reject("abort");
-      xhr.onerror = () => reject("error");
+          xhr.ontimeout = () => reject("timeout");
+          xhr.onabort = () => reject("abort");
+          xhr.onerror = () => reject("error");
 
-      xhr.send(options.body);
-    });
+          xhr.send(options.body);
+        }),
+      options.headers,
+    );
   },
 
   async setupWriteHeaders(formAction: string): Promise<void> {
