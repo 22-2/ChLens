@@ -59,14 +59,14 @@ const SETTING_FIELDS = [
     title: "sage",
     description: "メール欄へsageを自動設定して投稿します。",
     kind: "boolean",
-    checkboxLabel: "sageを有効にする",
+    checkboxLabel: "有効にする",
   },
   {
     key: "write_pre_submit_warnings",
     title: "投稿前に確認する",
     description: "個人情報や危害表現が含まれる場合に確認を表示します。",
     kind: "boolean",
-    checkboxLabel: "投稿前の確認を有効にする",
+    checkboxLabel: "有効にする",
   },
   {
     key: "auto_load_second",
