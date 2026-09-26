@@ -1,7 +1,20 @@
+import { sanitizeUrlsInText } from "src/view/browser/utils/url-tracking";
+
 export type WriteWarning = {
   category: string;
   reason: string;
 };
+
+// 変更理由: 投稿前の警告は本文を書き換えず、貼り付け時の自動除去とは独立して選べるようにする。
+/** 共有URLに含まれる追跡用パラメータを検出する。 */
+export function findUrlTrackingWarning(text: string): WriteWarning | null {
+  const { removedParameters } = sanitizeUrlsInText(text);
+  if (removedParameters.length === 0) return null;
+  return {
+    category: "URLの追跡パラメータ",
+    reason: `共有元の計測などに使われる可能性のある値（${removedParameters.join(", ")}）が含まれています。`,
+  };
+}
 
 // 変更理由: 投稿に個人情報や脅迫表現が混ざったまま公開される事故を減らしつつ、
 // 引用や説明文の誤検知で投稿を妨げないよう、一致箇所は送信禁止ではなく確認対象にする。

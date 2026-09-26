@@ -215,6 +215,12 @@ importers:
       '@types/webextension-polyfill':
         specifier: ^0.12.5
         version: 0.12.5
+      '@url-sanitize/core':
+        specifier: 2.0.2
+        version: 2.0.2
+      '@url-sanitize/merged':
+        specifier: 2.0.2
+        version: 2.0.2
       buffer:
         specifier: ^6.0.3
         version: 6.0.3
@@ -3564,6 +3570,24 @@ packages:
     engines: {node: '>=16.20.0'}
     cpu: [x64]
     os: [win32]
+
+  '@url-sanitize/adguard@2.0.2':
+    resolution: {integrity: sha512-xvYL+hQiiGWT5zfQMIK+lOzV+8sqI5sB11yRxxS6JY9ot87uq57VPR9JrWcL1hx1kZDFcbXDT8jEfPEq7Q22aQ==}
+
+  '@url-sanitize/brave@2.0.2':
+    resolution: {integrity: sha512-ONKPfsedLXDGZUtY0Ud7hqD7AhCHbFy39bft0cyYrcaMnFbQ4RHE6dhu+Pnc++8t6WVcU2ZlvBNy9aq51GQIhg==}
+
+  '@url-sanitize/clearurls@2.0.2':
+    resolution: {integrity: sha512-38SgAzySG4wSp9eZ7LPuKzt6SsdyKiSXiEQtltmJ4ojIrAxUvpUrZh9mDhmU78zTKnd7TBQCKrY8UWqqKNB7lA==}
+
+  '@url-sanitize/core@2.0.2':
+    resolution: {integrity: sha512-/kHuG6odzpIImNW11U+b4Gf4OPFGPDXfLU67HFpOvWRnk5Ett0BE9oS7Ngp9UG+Qx0TF9k6gd3KI05EXxkKRyA==}
+
+  '@url-sanitize/firefox@2.0.2':
+    resolution: {integrity: sha512-W45AMnmAS+1fWWi2SCZn/FUUKB7wrpRhz7669AoFu8UWAo7lC53jbt4pRlHjcvmu0zndcxVR0MJp08KcruPFMg==}
+
+  '@url-sanitize/merged@2.0.2':
+    resolution: {integrity: sha512-2jvt0t1RCG3NOXdFAZLwC+piZmv+1SHRc/QK934xydPiE7nAchCEuHmHX6fgoyc5u8CWho6tVqaztUqWmzt8Fw==}
 
   '@vitejs/plugin-react@6.0.4':
     resolution: {integrity: sha512-XcCQz0TBpBgljhj0gMuuDj49i6Ytqh5q1osT/Gp5uAVJUCTWxyskk/l1jwYYiu2xcNHHipdMz40EGfM1VdamVg==}
@@ -9191,6 +9215,32 @@ snapshots:
 
   '@typescript/typescript-win32-x64@7.0.2':
     optional: true
+
+  '@url-sanitize/adguard@2.0.2':
+    dependencies:
+      '@url-sanitize/core': 2.0.2
+
+  '@url-sanitize/brave@2.0.2':
+    dependencies:
+      '@url-sanitize/core': 2.0.2
+
+  '@url-sanitize/clearurls@2.0.2':
+    dependencies:
+      '@url-sanitize/core': 2.0.2
+
+  '@url-sanitize/core@2.0.2': {}
+
+  '@url-sanitize/firefox@2.0.2':
+    dependencies:
+      '@url-sanitize/core': 2.0.2
+
+  '@url-sanitize/merged@2.0.2':
+    dependencies:
+      '@url-sanitize/adguard': 2.0.2
+      '@url-sanitize/brave': 2.0.2
+      '@url-sanitize/clearurls': 2.0.2
+      '@url-sanitize/core': 2.0.2
+      '@url-sanitize/firefox': 2.0.2
 
   '@vitejs/plugin-react@6.0.4(@voidzero-dev/vite-plus-core@0.2.4(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(sass@1.102.0)(sugarss@5.0.1(postcss@8.5.24))(tsx@4.21.0)(typescript@7.0.2))':
     dependencies:

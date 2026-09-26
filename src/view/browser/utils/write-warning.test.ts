@@ -1,4 +1,5 @@
-import { findWriteWarnings } from "src/view/browser/utils/write-warning";
+import { sanitizeUrlsInText } from "src/view/browser/utils/url-tracking";
+import { findUrlTrackingWarning, findWriteWarnings } from "src/view/browser/utils/write-warning";
 import { describe, expect, it } from "vite-plus/test";
 
 describe("投稿前の警告検出", () => {
@@ -81,5 +82,59 @@ describe("投稿前の警告検出", () => {
       "メールアドレス",
       "住所・郵便番号",
     ]);
+  });
+
+  it.each([
+    ["Amazonの紹介タグ", "https://www.amazon.com/dp/example?tag=sample-20", "tag"],
+    ["Pinterestの計測値", "https://www.pinterest.com/pin/example/?_epik=sample", "_epik"],
+    ["Instagramの共有値", "https://www.instagram.com/p/example/?igsh=sample", "igsh"],
+    ["Instagramの旧共有値", "https://www.instagram.com/p/example/?igshid=sample", "igshid"],
+    ["Instagramのアカウント識別値", "https://www.instagram.com/p/example/?stkn=sample", "stkn"],
+    [
+      "Instagramのキャンペーン値",
+      "https://www.instagram.com/p/example/?utm_source=ig_web_copy_link",
+      "utm_source",
+    ],
+    ["Facebookのクリック値", "https://www.facebook.com/example?fbclid=sample", "fbclid"],
+    ["Google広告のクリック値", "https://example.com/page?gclid=sample", "gclid"],
+    ["メール配信のクリック値", "https://example.com/page?mc_eid=sample", "mc_eid"],
+    ["Spotifyの共有値", "https://open.spotify.com/track/example?si=sample", "si"],
+    ["TikTokの共有値", "https://www.tiktok.com/@sample/video/123?_t=sample&_r=1", "_t"],
+    ["YouTubeの共有値", "https://youtu.be/example?si=sample", "si"],
+  ])("%sの共有URLパラメータを警告する", (_label, url, parameter) => {
+    expect(findUrlTrackingWarning(url)?.reason).toContain(parameter);
+  });
+
+  it("共有URLから既知の追跡用パラメータだけを除去し、機能パラメータとレス番号を保つ", () => {
+    const input = "動画 https://www.youtube.com/watch?v=example&list=sample&si=tracking#t=30s。";
+
+    expect(sanitizeUrlsInText(input)).toEqual({
+      text: "動画 https://www.youtube.com/watch?v=example&list=sample#t=30s。",
+      removedParameters: ["si"],
+    });
+  });
+
+  it("Instagramの共有URLからアカウント識別につながるstknだけを除去する", () => {
+    const input = "https://www.instagram.com/p/example/?stkn=synthetic";
+
+    expect(sanitizeUrlsInText(input)).toEqual({
+      text: "https://www.instagram.com/p/example/",
+      removedParameters: ["stkn"],
+    });
+  });
+
+  it("追跡用パラメータと似た名前の機能パラメータや他ドメインの値は変更しない", () => {
+    const input =
+      "https://www.youtube.com/watch?v=example&feature=shared https://example.com/watch?si=keep";
+
+    expect(findUrlTrackingWarning(input)).toBeNull();
+    expect(sanitizeUrlsInText(input)).toEqual({ text: input, removedParameters: [] });
+  });
+
+  it("警告の検出だけでは本文を変更しない", () => {
+    const input = "https://youtu.be/example?si=tracking";
+
+    expect(findUrlTrackingWarning(input)).not.toBeNull();
+    expect(input).toBe("https://youtu.be/example?si=tracking");
   });
 });

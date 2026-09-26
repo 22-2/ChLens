@@ -56,7 +56,7 @@ export interface UseWriteResult {
   setMail: (v: string) => void;
   setSage: (v: boolean) => void;
   setMessage: (v: string) => void;
-  submit: () => Promise<void>;
+  submit: (messageOverride?: string) => Promise<void>;
   submitConfirmation: (submission: WriteConfirmationSubmission) => Promise<void>;
   handleSubmit: (e: FormEvent) => Promise<void>;
   handleRetry: () => void;
@@ -491,127 +491,131 @@ export function useWrite(threadUrl: string, options: UseWriteOptions = {}): UseW
     return () => viewWindow.removeEventListener("message", handleMessage);
   }, [handleWriteResult, viewWindow]);
 
-  const submit = useCallback(async () => {
-    if (!canSubmit) return;
+  const submit = useCallback(
+    async (messageOverride?: string) => {
+      const messageToSubmit = messageOverride ?? message;
+      if (!canSubmit || !messageToSubmit.trim()) return;
 
-    // 変更理由: eddibbは認証ページで発行した#トークンをメール欄で認証するため、
-    // sage設定がONでも認証トークンを「sage」で上書きしない。
-    const effectiveMail = sage && !isEddibbAuthToken(threadUrl, mail) ? "sage" : mail;
-    const formData = buildFormData(threadUrl, name, effectiveMail, message);
-    if (!formData) {
-      pendingSubmittedWriteRef.current = null;
-      setStatus("error");
-      setStatusText("このURLへの書き込み形式を判定できませんでした");
-      return;
-    }
+      // 変更理由: eddibbは認証ページで発行した#トークンをメール欄で認証するため、
+      // sage設定がONでも認証トークンを「sage」で上書きしない。
+      const effectiveMail = sage && !isEddibbAuthToken(threadUrl, mail) ? "sage" : mail;
+      const formData = buildFormData(threadUrl, name, effectiveMail, messageToSubmit);
+      if (!formData) {
+        pendingSubmittedWriteRef.current = null;
+        setStatus("error");
+        setStatusText("このURLへの書き込み形式を判定できませんでした");
+        return;
+      }
 
-    const submittedAt = Date.now();
-    pendingSubmittedWriteRef.current = {
-      threadUrl,
-      message,
-      inputName: name,
-      inputMail: effectiveMail,
-      submittedAt,
-    };
+      const submittedAt = Date.now();
+      pendingSubmittedWriteRef.current = {
+        threadUrl,
+        message: messageToSubmit,
+        inputName: name,
+        inputMail: effectiveMail,
+        submittedAt,
+      };
 
-    // 変更理由: ベースラインを送信時点で確定させる。3 秒の待機中に自動更新が走ると
-    // responseCountRef が新着込みの値に更新され、hasAdvancedSinceSubmit が永久に
-    // false になる競合を防ぐため、送信直後に同期イベントで通知する。
-    notifyThreadWriteStarted({ threadUrl, submittedAt });
+      // 変更理由: ベースラインを送信時点で確定させる。3 秒の待機中に自動更新が走ると
+      // responseCountRef が新着込みの値に更新され、hasAdvancedSinceSubmit が永久に
+      // false になる競合を防ぐため、送信直後に同期イベントで通知する。
+      notifyThreadWriteStarted({ threadUrl, submittedAt });
 
-    setStatus("submitting");
-    setStatusText("書き込み中...");
-    const useTauriHttp = isTauriRuntime();
-    if (!useTauriHttp) {
-      armSubmitWatchdog();
-    }
+      setStatus("submitting");
+      setStatusText("書き込み中...");
+      const useTauriHttp = isTauriRuntime();
+      if (!useTauriHttp) {
+        armSubmitWatchdog();
+      }
 
-    try {
-      await setupHeaderModifier(formData.action);
-    } catch (error) {
-      console.error("書き込み用リクエストヘッダーの設定に失敗しました:", error);
-      handleWriteResult({
-        type: "error",
-        message: error instanceof Error ? error.message : String(error),
-      });
-      return;
-    }
-
-    if (useTauriHttp) {
       try {
-        const { getWriteFormFields } = await import("src/app/platform/tauri/WriteForm");
-        handleWriteResult(
-          await submitTauriWrite(
-            {
-              action: formData.action,
-              charset: formData.charset,
-              fields: getWriteFormFields(formData),
-              referer: formData.referer ?? formData.action,
-              bootstrapUrl: threadUrl,
-            },
-            formData.action,
-          ),
-        );
+        await setupHeaderModifier(formData.action);
       } catch (error) {
-        console.error("Tauri版の書き込みに失敗しました:", error);
+        console.error("書き込み用リクエストヘッダーの設定に失敗しました:", error);
         handleWriteResult({
           type: "error",
           message: error instanceof Error ? error.message : String(error),
         });
-      }
-      return;
-    }
-
-    const iframe = iframeRef.current;
-    if (!iframe) {
-      console.error("書き込みフォームのiframeを初期化できませんでした");
-      handleWriteResult({ type: "error", message: "書き込みフォームを初期化できませんでした" });
-      return;
-    }
-
-    // about:blank をロードしてから iframe の contentDocument にフォームを生成して送信する。
-    // 拡張機能内の未配置ファイル（/view/empty.html）に依存すると、ビルド成果物で
-    // ERR_FILE_NOT_FOUND になり content script へ投稿結果が通知されないため、
-    // 作成元の拡張ページと同一オリジンを継承する about:blank を使う。
-    // submit_res.js の _setupForm と同じアプローチ。
-    const onLoad = () => {
-      iframe.removeEventListener("load", onLoad);
-      const doc = iframe.contentDocument;
-      if (!doc) {
-        console.error("書き込みフォームのiframe文書を取得できませんでした");
-        handleWriteResult({
-          type: "error",
-          message: "書き込みフォームを初期化できませんでした",
-        });
         return;
       }
 
-      const form = doc.createElement("form");
-      form.acceptCharset = formData.charset;
-      form.action = formData.action;
-      form.method = "POST";
-
-      for (const [key, val] of Object.entries(formData.input)) {
-        const input = doc.createElement("input");
-        input.name = key;
-        input.value = val;
-        form.appendChild(input);
+      if (useTauriHttp) {
+        try {
+          const { getWriteFormFields } = await import("src/app/platform/tauri/WriteForm");
+          handleWriteResult(
+            await submitTauriWrite(
+              {
+                action: formData.action,
+                charset: formData.charset,
+                fields: getWriteFormFields(formData),
+                referer: formData.referer ?? formData.action,
+                bootstrapUrl: threadUrl,
+              },
+              formData.action,
+            ),
+          );
+        } catch (error) {
+          console.error("Tauri版の書き込みに失敗しました:", error);
+          handleWriteResult({
+            type: "error",
+            message: error instanceof Error ? error.message : String(error),
+          });
+        }
+        return;
       }
-      for (const [key, val] of Object.entries(formData.textarea)) {
-        const ta = doc.createElement("textarea");
-        ta.name = key;
-        ta.textContent = val;
-        form.appendChild(ta);
+
+      const iframe = iframeRef.current;
+      if (!iframe) {
+        console.error("書き込みフォームのiframeを初期化できませんでした");
+        handleWriteResult({ type: "error", message: "書き込みフォームを初期化できませんでした" });
+        return;
       }
 
-      doc.body.appendChild(form);
-      // prototype 経由で呼ぶことで React が合成したイベントをバイパスする
-      Object.getPrototypeOf(form).submit.call(form);
-    };
+      // about:blank をロードしてから iframe の contentDocument にフォームを生成して送信する。
+      // 拡張機能内の未配置ファイル（/view/empty.html）に依存すると、ビルド成果物で
+      // ERR_FILE_NOT_FOUND になり content script へ投稿結果が通知されないため、
+      // 作成元の拡張ページと同一オリジンを継承する about:blank を使う。
+      // submit_res.js の _setupForm と同じアプローチ。
+      const onLoad = () => {
+        iframe.removeEventListener("load", onLoad);
+        const doc = iframe.contentDocument;
+        if (!doc) {
+          console.error("書き込みフォームのiframe文書を取得できませんでした");
+          handleWriteResult({
+            type: "error",
+            message: "書き込みフォームを初期化できませんでした",
+          });
+          return;
+        }
 
-    iframe.addEventListener("load", onLoad);
-    iframe.src = "about:blank";
-  }, [armSubmitWatchdog, canSubmit, handleWriteResult, threadUrl, name, mail, sage, message]);
+        const form = doc.createElement("form");
+        form.acceptCharset = formData.charset;
+        form.action = formData.action;
+        form.method = "POST";
+
+        for (const [key, val] of Object.entries(formData.input)) {
+          const input = doc.createElement("input");
+          input.name = key;
+          input.value = val;
+          form.appendChild(input);
+        }
+        for (const [key, val] of Object.entries(formData.textarea)) {
+          const ta = doc.createElement("textarea");
+          ta.name = key;
+          ta.textContent = val;
+          form.appendChild(ta);
+        }
+
+        doc.body.appendChild(form);
+        // prototype 経由で呼ぶことで React が合成したイベントをバイパスする
+        Object.getPrototypeOf(form).submit.call(form);
+      };
+
+      iframe.addEventListener("load", onLoad);
+      iframe.src = "about:blank";
+    },
+    [armSubmitWatchdog, canSubmit, handleWriteResult, threadUrl, name, mail, sage, message],
+  );
 
   const submitConfirmation = useCallback(
     async (submission: WriteConfirmationSubmission) => {

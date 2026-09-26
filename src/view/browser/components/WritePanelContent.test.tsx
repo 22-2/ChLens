@@ -331,12 +331,48 @@ describe("WritePanelContent", () => {
     fireEvent.click(screen.getByRole("button", { name: "書き込む" }));
 
     const dialog = await screen.findByRole("dialog", { name: "投稿内容を確認してください" });
-    fireEvent.click(within(dialog).getByRole("button", { name: "確認して投稿" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "無視して投稿" }));
 
     await waitFor(() => expect(mocks.submit).toHaveBeenCalledTimes(1));
     expect(
       screen.queryByRole("dialog", { name: "投稿内容を確認してください" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("URLパラメータの除去を選ぶと本文へ反映して除去後の内容を投稿する", async () => {
+    mocks.message = "共有URL https://www.youtube.com/watch?v=example&si=tracking#t=30s";
+
+    renderWritePanel();
+    fireEvent.click(screen.getByRole("button", { name: "書き込む" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "投稿内容を確認してください" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "URLパラメータを除去して投稿" }));
+
+    expect(mocks.setMessage).toHaveBeenCalledWith(
+      "共有URL https://www.youtube.com/watch?v=example#t=30s",
+    );
+    expect(mocks.submit).toHaveBeenCalledWith(
+      "共有URL https://www.youtube.com/watch?v=example#t=30s",
+    );
+  });
+
+  it("投稿前警告をOFFにしても貼り付け時のURL追跡パラメータ除去は行う", () => {
+    configMock.get = vi.fn(() => "off");
+
+    renderWritePanel();
+
+    const textarea = screen.getByPlaceholderText("本文を入力...") as HTMLTextAreaElement;
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    fireEvent.paste(textarea, {
+      clipboardData: {
+        getData: () => "https://www.youtube.com/watch?v=example&si=tracking#t=30s",
+      },
+    });
+
+    // 変更理由: 貼り付け時の変換は投稿前確認設定に依存せず、編集欄にも除去後の本文を反映する。
+    expect(mocks.setMessage).toHaveBeenCalledWith(
+      "本文https://www.youtube.com/watch?v=example#t=30s",
+    );
   });
 
   it("eddibb認証コードのエラーでは認証URLを表示してコピーできる", async () => {

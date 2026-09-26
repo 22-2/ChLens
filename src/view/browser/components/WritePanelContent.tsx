@@ -24,8 +24,9 @@ import {
 import { Dialog } from "src/view/browser/ui/Dialog";
 import { CheckboxField } from "src/view/browser/ui/FormControls";
 import { copyText, readClipboardImage } from "src/view/browser/utils/clipboard";
+import { sanitizeUrlsInText } from "src/view/browser/utils/url-tracking";
 import { bindWriteConfirmationFrame } from "src/view/browser/utils/write-confirmation";
-import { findWriteWarnings } from "src/view/browser/utils/write-warning";
+import { findUrlTrackingWarning, findWriteWarnings } from "src/view/browser/utils/write-warning";
 
 const WRITE_SUBMIT_CTRL_ENTER_KEY = "write_submit_ctrl_enter";
 const WRITE_CLOSE_PANEL_AFTER_SUBMIT_KEY = "write_close_panel_after_submit";
@@ -281,6 +282,8 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
       return;
     }
     const warnings = findWriteWarnings([name, mail, message]);
+    const trackingWarning = findUrlTrackingWarning(message);
+    if (trackingWarning) warnings.push(trackingWarning);
     if (warnings.length > 0) {
       setWriteWarnings(warnings);
       setIsWarningDialogOpen(true);
@@ -288,6 +291,45 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
     }
     void submit();
   }, [canSubmit, isSubmitting, mail, message, name, preSubmitWarningsEnabled, submit]);
+
+  const handleMessagePaste = useCallback(
+    (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      const pastedText = event.clipboardData.getData("text/plain");
+      const result = sanitizeUrlsInText(pastedText);
+      if (result.removedParameters.length === 0) return;
+
+      event.preventDefault();
+      const textarea = event.currentTarget;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const nextMessage = `${message.slice(0, start)}${result.text}${message.slice(end)}`;
+      const nextCaret = start + result.text.length;
+
+      // 変更理由: 追跡値を除去した貼り付け内容を下書きにも保存し、キャレット位置を維持する。
+      setMessage(nextMessage);
+      viewWindow.requestAnimationFrame(() => {
+        if (textarea.isConnected) textarea.setSelectionRange(nextCaret, nextCaret);
+      });
+    },
+    [message, setMessage, viewWindow],
+  );
+
+  const removeTrackingParametersAndSubmit = useCallback(() => {
+    const result = sanitizeUrlsInText(message);
+    if (result.removedParameters.length === 0) return;
+
+    // 変更理由: 除去を選んだ場合も編集欄へ反映し、実際の送信本文と表示内容を一致させる。
+    setMessage(result.text);
+    const remainingWarnings = findWriteWarnings([name, mail, result.text]);
+    const trackingWarning = findUrlTrackingWarning(result.text);
+    if (trackingWarning) remainingWarnings.push(trackingWarning);
+    setWriteWarnings(remainingWarnings);
+
+    if (remainingWarnings.length === 0) {
+      setIsWarningDialogOpen(false);
+      void submit(result.text);
+    }
+  }, [mail, message, name, setMessage, submit]);
 
   const confirmWarningSubmit = useCallback(() => {
     setIsWarningDialogOpen(false);
@@ -624,6 +666,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
                 ref={textareaRef}
                 className="write-panel__textarea"
                 value={message}
+                onPaste={handleMessagePaste}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyDown={handleTextareaKeyDown}
                 disabled={isSubmitting || isImgurUploading}
@@ -677,7 +720,8 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
               id={warningDialogDescriptionId}
               className="browser-dialog-description"
             >
-              個人情報や第三者を傷つける表現が含まれている可能性があります。公開してよい内容か確認してください。
+              公開したくない情報や、共有元の計測に使われるURLパラメータが含まれている可能性があります。
+              投稿前に内容を確認してください。
             </Dialog.Description>
             <ul className="write-panel__warning-list">
               {writeWarnings.map((warning) => (
@@ -692,12 +736,21 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
                   内容を見直す
                 </button>
               </Dialog.Close>
+              {writeWarnings.some((warning) => warning.category === "URLの追跡パラメータ") && (
+                <button
+                  type="button"
+                  className="write-panel__btn write-panel__btn--secondary"
+                  onClick={removeTrackingParametersAndSubmit}
+                >
+                  URLパラメータを除去して投稿
+                </button>
+              )}
               <button
                 type="button"
                 className="write-panel__btn write-panel__btn--primary"
                 onClick={confirmWarningSubmit}
               >
-                確認して投稿
+                無視して投稿
               </button>
             </div>
           </Dialog.Content>
