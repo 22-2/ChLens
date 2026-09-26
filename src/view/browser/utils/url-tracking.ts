@@ -14,7 +14,6 @@ const TRAILING_URL_PUNCTUATION = /[),.;!?\]}、。！？]+$/u;
 const PINTEREST_HOST = /(^|\.)pinterest\.com$/i;
 const PINTEREST_TRACKING_PARAMETERS = new Set(["_epik"]);
 const INSTAGRAM_HOST = /(^|\.)instagram\.com$/i;
-const INSTAGRAM_TRACKING_PARAMETERS = new Set(["stkn"]);
 const YOUTUBE_HOST = /(^|\.)youtube\.com$/i;
 
 function restoreFunctionalParameters(originalUrl: string, sanitizedUrl: string): string {
@@ -75,17 +74,18 @@ export function sanitizeUrlsInText(text: string): SanitizedUrlText {
     }
     const removed = new Set(removedByUpstream);
 
-    // 変更理由: 上流カタログにないPinterest・Instagramの共有値も、追跡やアカウント識別を避けるため補う。
+    // 変更理由: 利用者の希望に従い、Instagramでは未知の値や機能用の値も含めてクエリ全体を捨てる。
     try {
       const parsed = new URL(sanitizedUrl);
-      const localTrackingParameters = PINTEREST_HOST.test(parsed.hostname)
-        ? PINTEREST_TRACKING_PARAMETERS
-        : INSTAGRAM_HOST.test(parsed.hostname)
-          ? INSTAGRAM_TRACKING_PARAMETERS
-          : null;
-      if (localTrackingParameters) {
+      if (INSTAGRAM_HOST.test(parsed.hostname) && parsed.search) {
+        for (const key of parsed.searchParams.keys()) {
+          removed.add(key || "（名前なし）");
+        }
+        parsed.search = "";
+        sanitizedUrl = parsed.href;
+      } else if (PINTEREST_HOST.test(parsed.hostname)) {
         for (const key of Array.from(parsed.searchParams.keys())) {
-          if (localTrackingParameters.has(key.toLowerCase())) {
+          if (PINTEREST_TRACKING_PARAMETERS.has(key.toLowerCase())) {
             parsed.searchParams.delete(key);
             removed.add(key);
           }

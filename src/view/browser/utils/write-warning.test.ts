@@ -123,6 +123,16 @@ describe("投稿前の警告検出", () => {
     });
   });
 
+  it("InstagramのURLは機能用・未知の値も含めてクエリ全体を除去し、フラグメントは保つ", () => {
+    const input =
+      "https://www.instagram.com/p/example/?img_index=2&story_media_id=synthetic&future_key=value#comments";
+
+    expect(sanitizeUrlsInText(input)).toEqual({
+      text: "https://www.instagram.com/p/example/#comments",
+      removedParameters: ["img_index", "story_media_id", "future_key"],
+    });
+  });
+
   it("追跡用パラメータと似た名前の機能パラメータや他ドメインの値は変更しない", () => {
     const input =
       "https://www.youtube.com/watch?v=example&feature=shared https://example.com/watch?si=keep";
