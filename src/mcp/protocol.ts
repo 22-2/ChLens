@@ -57,6 +57,19 @@ export type BridgeOperation =
   | "read-write-history"
   | "read-browsing-history";
 
+/**
+ * ブリッジで受け付ける操作の一覧。
+ *
+ * 変更理由: worker-bridgeの受付検査とworker-runtimeの振り分け表が
+ * それぞれ操作名を列挙すると追加時の更新漏れが起きるため、単一の正本を置く。
+ */
+export const BRIDGE_OPERATIONS: readonly BridgeOperation[] = [
+  "read-thread",
+  "search-logs",
+  "read-write-history",
+  "read-browsing-history",
+];
+
 export interface BridgeRequest {
   requestId: string;
   operation: BridgeOperation;
@@ -111,3 +124,9 @@ export interface BridgeBrowsingHistoryResult {
   count: number;
   toon: string;
 }
+
+/** 履歴系3操作の結果。query・count・toonの形状を共有する。 */
+export type BridgeHistoryResult =
+  | BridgeLogResult
+  | BridgeWriteHistoryResult
+  | BridgeBrowsingHistoryResult;

@@ -16,6 +16,8 @@ import type { IRes } from "../service-container/interfaces";
 import { encodeBrowsingHistoryForMcp, encodeWriteHistoryForMcp } from "./history-output";
 import {
   type BridgeFailure,
+  type BridgeHistoryResult,
+  type BridgeOperation,
   type BridgeRequest,
   type BridgeResponse,
   type BridgeSuccess,
@@ -32,6 +34,7 @@ import {
   putWorkerCache,
   type WorkerCacheRecord,
 } from "./worker-cache";
+import { normalizeHistoryLimit } from "./worker-db";
 import { listRecentBrowsingHistory, listRecentWriteHistory } from "./worker-history";
 
 const ACTIVE_THREAD_KEY = "mcp_active_thread_url";
@@ -55,33 +58,13 @@ function asThreadParams(value: unknown): ThreadReadParams {
   return params;
 }
 
-function asLogParams(value: unknown): LogSearchParams {
+/** 履歴系3操作のパラメータはquery・limitの同一形状のため、正規化を一本化する。 */
+function asHistorySearchQuery(value: unknown): { query?: string; limit?: number } {
   const raw = asRecord(value);
   return {
     ...(typeof raw.query === "string" ? { query: raw.query } : {}),
     ...(typeof raw.limit === "number" ? { limit: raw.limit } : {}),
   };
-}
-
-function asWriteHistoryParams(value: unknown): WriteHistoryParams {
-  const raw = asRecord(value);
-  return {
-    ...(typeof raw.query === "string" ? { query: raw.query } : {}),
-    ...(typeof raw.limit === "number" ? { limit: raw.limit } : {}),
-  };
-}
-
-function asBrowsingHistoryParams(value: unknown): BrowsingHistoryParams {
-  const raw = asRecord(value);
-  return {
-    ...(typeof raw.query === "string" ? { query: raw.query } : {}),
-    ...(typeof raw.limit === "number" ? { limit: raw.limit } : {}),
-  };
-}
-
-function normalizeHistoryLimit(limit: number | undefined): number {
-  if (!Number.isFinite(limit)) return 20;
-  return Math.min(100, Math.max(1, Math.floor(limit as number)));
 }
 
 function normalizeThreadUrl(rawUrl: string): string {
@@ -406,21 +389,13 @@ async function readThread(params: ThreadReadParams): Promise<BridgeThreadResult>
   };
 }
 
-async function searchLogs(
-  params: LogSearchParams,
-): Promise<{ kind: "logs"; query: string; count: number; toon: string }> {
+async function searchLogs(params: LogSearchParams): Promise<BridgeHistoryResult> {
   const query = params.query?.trim() ?? "";
-  const requestedLimit = params.limit ?? 20;
-  const limit = Number.isFinite(requestedLimit)
-    ? Math.min(100, Math.max(1, Math.floor(requestedLimit)))
-    : 20;
-  const logs = await listWorkerLogs(query, limit);
+  const logs = await listWorkerLogs(query, normalizeHistoryLimit(params.limit));
   return { kind: "logs", query, count: logs.length, toon: encodeLogsForMcp(query, logs) };
 }
 
-async function readWriteHistory(
-  params: WriteHistoryParams,
-): Promise<{ kind: "write-history"; query: string; count: number; toon: string }> {
+async function readWriteHistory(params: WriteHistoryParams): Promise<BridgeHistoryResult> {
   const query = params.query?.trim() ?? "";
   const writes = await listRecentWriteHistory(query, normalizeHistoryLimit(params.limit));
   return {
@@ -431,9 +406,7 @@ async function readWriteHistory(
   };
 }
 
-async function readBrowsingHistory(
-  params: BrowsingHistoryParams,
-): Promise<{ kind: "browsing-history"; query: string; count: number; toon: string }> {
+async function readBrowsingHistory(params: BrowsingHistoryParams): Promise<BridgeHistoryResult> {
   const query = params.query?.trim() ?? "";
   const history = await listRecentBrowsingHistory(query, normalizeHistoryLimit(params.limit));
   return {
@@ -444,35 +417,37 @@ async function readBrowsingHistory(
   };
 }
 
+type WorkerOperationResult = BridgeThreadResult | BridgeHistoryResult;
+
+type WorkerOperationHandler = (params: unknown) => Promise<WorkerOperationResult>;
+
+/**
+ * 操作名から処理への対応表。
+ *
+ * 変更理由: if/elseの連鎖では操作追加のたびに分岐と結果型の両方を直す必要があり、
+ * 更新漏れが起きやすい。Record<BridgeOperation, ...>で型が網羅性を保証するため、
+ * protocolへ操作を追加した時点で未対応のハンドラーがコンパイルエラーになる。
+ */
+const OPERATION_HANDLERS: Record<BridgeOperation, WorkerOperationHandler> = {
+  "read-thread": (params) => readThread(asThreadParams(params)),
+  "search-logs": (params) => searchLogs(asHistorySearchQuery(params)),
+  "read-write-history": (params) => readWriteHistory(asHistorySearchQuery(params)),
+  "read-browsing-history": (params) => readBrowsingHistory(asHistorySearchQuery(params)),
+};
+
 export async function executeWorkerRequest(request: BridgeRequest): Promise<BridgeResponse> {
   try {
-    let result:
-      | BridgeThreadResult
-      | { kind: "logs"; query: string; count: number; toon: string }
-      | { kind: "write-history"; query: string; count: number; toon: string }
-      | { kind: "browsing-history"; query: string; count: number; toon: string };
-    if (request.operation === "read-thread") {
-      result = await readThread(asThreadParams(request.params));
-    } else if (request.operation === "search-logs") {
-      result = await searchLogs(asLogParams(request.params));
-    } else if (request.operation === "read-write-history") {
-      result = await readWriteHistory(asWriteHistoryParams(request.params));
-    } else if (request.operation === "read-browsing-history") {
-      result = await readBrowsingHistory(asBrowsingHistoryParams(request.params));
-    } else {
+    const handler = OPERATION_HANDLERS[request.operation];
+    if (!handler) {
       // 型定義外の要求を受けても検索へ誤フォールバックさせず、契約違反として返す。
       throw new Error(`未対応の操作です: ${String(request.operation)}`);
     }
+    const result = await handler(request.params);
     return {
       requestId: request.requestId,
       ok: true,
       result,
-    } satisfies BridgeSuccess<
-      | BridgeThreadResult
-      | { kind: "logs"; query: string; count: number; toon: string }
-      | { kind: "write-history"; query: string; count: number; toon: string }
-      | { kind: "browsing-history"; query: string; count: number; toon: string }
-    >;
+    } satisfies BridgeSuccess<WorkerOperationResult>;
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("[ChLens MCP] サービスワーカー要求の処理に失敗しました:", error);

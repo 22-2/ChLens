@@ -1,6 +1,7 @@
 import browser from "webextension-polyfill";
 
 import {
+  BRIDGE_OPERATIONS,
   type BridgeRequest,
   MCP_BRIDGE_ALARM_NAME,
   MCP_BRIDGE_BASE_URL,
@@ -109,13 +110,7 @@ async function handleSocketMessage(raw: unknown): Promise<void> {
     return;
   }
   if ("type" in request && request.type === "keepalive") return;
-  if (
-    !("requestId" in request) ||
-    (request.operation !== "read-thread" &&
-      request.operation !== "search-logs" &&
-      request.operation !== "read-write-history" &&
-      request.operation !== "read-browsing-history")
-  ) {
+  if (!("requestId" in request) || !BRIDGE_OPERATIONS.includes(request.operation)) {
     console.error("[ChLens MCP] WebSocket要求の形式が不正です:", request);
     return;
   }
