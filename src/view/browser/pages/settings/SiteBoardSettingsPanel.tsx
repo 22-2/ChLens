@@ -209,6 +209,12 @@ function getDefaultValue(key: ScopedSettingKey): string {
   return raw && Number.parseInt(raw, 10) > 0 ? raw : "20000";
 }
 
+function readGlobalSettingValues(): Record<ScopedSettingKey, string> {
+  return Object.fromEntries(
+    SETTING_FIELDS.map((field) => [field.key, getDefaultValue(field.key)]),
+  ) as Record<ScopedSettingKey, string>;
+}
+
 function getScopeUrl(site: string, board: string): string {
   return board === SITE_SHARED_SCOPE ? `https://${site}/` : board;
 }
@@ -229,6 +235,8 @@ export function SiteBoardSettingsPanel() {
   const [isClearingSiteSettings, setIsClearingSiteSettings] = useState(false);
   const [isCheckingCookies, setIsCheckingCookies] = useState(false);
   const [hasSiteCookies, setHasSiteCookies] = useState(false);
+  const [globalValues, setGlobalValues] =
+    useState<Record<ScopedSettingKey, string>>(readGlobalSettingValues);
 
   useEffect(() => {
     setDialogPortalContainer(globalThis.document.querySelector<HTMLElement>(".browser-shell"));
@@ -239,6 +247,9 @@ export function SiteBoardSettingsPanel() {
     const handleConfigUpdated = ({ key }: { key?: string }) => {
       if (key === SCOPED_SETTINGS_CONFIG_KEY) {
         sync();
+      }
+      if (SETTING_FIELDS.some((field) => field.key === key)) {
+        setGlobalValues(readGlobalSettingValues());
       }
     };
     container.message.on("config_updated", handleConfigUpdated);
@@ -371,6 +382,22 @@ export function SiteBoardSettingsPanel() {
     },
     [scope],
   );
+
+  const saveGlobalSetting = useCallback(async (key: ScopedSettingKey, value: string) => {
+    setSavingKey(key);
+    try {
+      // 変更理由: 「すべて」は個別スコープではなく、継承元となる全体設定を編集する範囲として扱う。
+      await container.config.set(key, value);
+      setGlobalValues((current) => ({ ...current, [key]: value }));
+    } catch (error) {
+      console.error(`[SiteBoardSettings] 全体設定 ${key} の保存に失敗しました`, error);
+      container.toast.error(
+        error instanceof Error ? error.message : "全体設定の保存に失敗しました",
+      );
+    } finally {
+      setSavingKey((current) => (current === key ? null : current));
+    }
+  }, []);
 
   const clearSiteCookies = useCallback(async () => {
     if (isClearingCookies) {
@@ -680,9 +707,66 @@ export function SiteBoardSettingsPanel() {
         </Dialog.Root>
 
         {!scope && (
-          <p className="settings-page__site-board-empty">
-            ドメインを選ぶと、ドメイン共通や板別の設定を編集できます。
-          </p>
+          <div className="settings-page__site-board-settings">
+            <p className="settings-page__site-board-empty">
+              ここで編集した値は全体設定として保存され、個別設定がないドメイン・板に適用されます。
+            </p>
+            {SETTING_FIELDS.map((field) => {
+              const value = globalValues[field.key];
+              const intervalValue =
+                field.kind === "interval"
+                  ? toIntervalSeconds(value, 20, field.min ?? 1, field.max ?? 300)
+                  : 0;
+              return (
+                <div key={field.key} className="settings-page__site-board-setting">
+                  <div className="settings-page__site-board-setting-header">
+                    <div>
+                      <h4>{field.title}</h4>
+                      <p>{field.description}</p>
+                    </div>
+                    <span className="settings-page__site-board-source">
+                      {savingKey === field.key ? "保存中..." : "全体設定"}
+                    </span>
+                  </div>
+                  {field.kind === "boolean" ? (
+                    <label className="settings-page__site-board-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={value === "on"}
+                        onChange={(event) =>
+                          void saveGlobalSetting(
+                            field.key,
+                            event.currentTarget.checked ? "on" : "off",
+                          )
+                        }
+                      />
+                      {field.checkboxLabel}
+                    </label>
+                  ) : (
+                    <label className="settings-page__site-board-interval">
+                      <input
+                        type="number"
+                        min={field.min}
+                        max={field.max}
+                        step={1}
+                        value={intervalValue}
+                        onChange={(event) => {
+                          const nextValue = Number(event.currentTarget.value);
+                          if (!Number.isFinite(nextValue)) return;
+                          const clamped = Math.max(
+                            field.min ?? 1,
+                            Math.min(field.max ?? 300, nextValue),
+                          );
+                          void saveGlobalSetting(field.key, String(Math.round(clamped) * 1000));
+                        }}
+                      />
+                      <span>秒</span>
+                    </label>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         )}
 
         {scope && (
