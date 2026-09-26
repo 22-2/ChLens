@@ -157,6 +157,16 @@ describe("link-routing", () => {
     });
   });
 
+  it("omnibarではスレッド末尾の表示件数指定を除いてスレッドURLを推測する", () => {
+    expect(
+      parseOmnibarBrowserPage("https://bbs.example.test/sample-board/1234567890/l50#42"),
+    ).toEqual({
+      type: "thread",
+      title: "https://bbs.example.test/test/read.cgi/sample-board/1234567890/#42",
+      threadUrl: "https://bbs.example.test/test/read.cgi/sample-board/1234567890/#42",
+    });
+  });
+
   it("omnibarでもスレッドIDが数値でない形式は推測しない", () => {
     expect(parseOmnibarBrowserPage("https://bbs.example.test/sample-board/thread-id")).toBeNull();
   });

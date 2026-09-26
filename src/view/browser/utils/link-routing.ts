@@ -345,10 +345,11 @@ export function parseOmnibarBrowserPage(absoluteUrl: string): InternalBrowserPag
   const url = normalizeUrl(absoluteUrl);
   if (!url || classifyBoardHost(url.hostname)) return null;
 
-  const match = /^\/([\w-]+)\/(\d+)\/?$/.exec(url.pathname);
+  const match = /^\/([\w-]+)\/(\d+)(?:\/l\d+)?\/?$/i.exec(url.pathname);
   if (!match) return null;
 
-  // 変更理由: 省略形式は取得器が扱える標準スレッドパスへ変換し、板とスレの識別を保つ。
+  // 変更理由: 省略形式やレス表示件数の指定は取得器が扱える標準スレッドパスへ変換し、
+  // 板とスレの識別を保ちながらレス番号のフラグメントは維持する。
   url.pathname = `/test/read.cgi/${match[1]}/${match[2]}/`;
   return toThreadPage(url);
 }
