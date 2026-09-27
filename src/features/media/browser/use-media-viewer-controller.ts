@@ -9,6 +9,7 @@ import {
 } from "react";
 import { platformDownloadManager } from "src/app/platform/DownloadManager";
 import { isTauriRuntime } from "src/app/platform/runtime";
+import { useToast } from "src/view/browser/hooks/use-toast";
 
 import type { ViewerState } from "./media-viewer-types";
 import { useMediaViewerStore } from "./use-media-viewer-store";
@@ -112,6 +113,7 @@ function getPointWithinStage(stage: HTMLDivElement, clientX: number, clientY: nu
 }
 
 export function useMediaViewerController(scopeId: string): MediaViewerProps | null {
+  const toast = useToast();
   const viewer = useMediaViewerStore((state) =>
     state.viewerScopeId === scopeId ? state.viewer : null,
   );
@@ -501,8 +503,15 @@ export function useMediaViewerController(scopeId: string): MediaViewerProps | nu
   const saveViewerImage = async () => {
     try {
       await platformDownloadManager.save(viewer.src, getViewerDownloadFilename(viewer.src));
+      if (isTauriRuntime()) {
+        // メディアビューア表示中でも結果が分かるよう、共通Toast（ビューアより高いz順）で通知する。
+        toast.success("画像をダウンロードしました");
+      }
     } catch (error) {
       console.error("画像の保存に失敗しました", { url: viewer.src, error });
+      if (isTauriRuntime()) {
+        toast.error("画像をダウンロードできませんでした");
+      }
       // Tauri版では外部ブラウザへのフォールバックもWebView制約で失敗するため、
       // 取得失敗をログへ残して、意図しない別ウィンドウを開かない。
       if (!isTauriRuntime()) {
