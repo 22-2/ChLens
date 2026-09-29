@@ -193,7 +193,7 @@ describe("AutoRefreshStatusItem", () => {
 
   it("スレッドでもスレ一覧でもないページでは表示しない", () => {
     mocks.viewPage = {
-      type: "home",
+      type: "boardTree",
       title: "ホーム",
     };
     mocks.autoRefreshPanel = {

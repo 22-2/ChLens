@@ -85,7 +85,7 @@ describe("BottomPanel", () => {
 
   it("スレッド以外へ移動したらパネルを閉じて非表示にする", async () => {
     mocks.viewPage = {
-      type: "home" as const,
+      type: "boardTree" as const,
       title: "ホーム",
       threadUrl: "",
     };

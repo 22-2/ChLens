@@ -146,7 +146,7 @@ describe("TitleBar", () => {
   it("水平モードでも更新ボタンの左側に戻る・進むを表示する", () => {
     mocks.viewTab.history = [
       {
-        type: "home",
+        type: "boardTree",
         title: "ホーム",
       },
       {
@@ -206,7 +206,7 @@ describe("TitleBar", () => {
   it("水平モードで戻る・進む・更新の操作先を保持する", () => {
     mocks.viewTab.history = [
       {
-        type: "home",
+        type: "boardTree",
         title: "ホーム",
       },
       {
@@ -216,7 +216,7 @@ describe("TitleBar", () => {
       },
       // 変更理由: 進む操作を有効にし、戻る・進む両方のコマンド発行を検証する。
       {
-        type: "home",
+        type: "boardTree",
         title: "次のページ",
       },
     ];

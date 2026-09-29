@@ -12,7 +12,7 @@ describe("tabActions", () => {
   });
 
   it("ペイロード付き操作の引数をアクションへ渡す", () => {
-    const page = { type: "home" as const, title: "ホーム" };
+    const page = { type: "boardTree" as const, title: "ホーム" };
 
     expect(tabActions.navigate(page)).toEqual({ type: "NAVIGATE", page });
     expect(tabActions.openInNewTab(page, { background: true })).toEqual({

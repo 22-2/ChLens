@@ -80,7 +80,7 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
                 {
                   id: selectedTabIdRef.current,
                   history: [
-                    { type: "home", title: "ホーム" },
+                    { type: "boardTree", title: "ホーム" },
                     {
                       type: "threadList",
                       title: "Software",
@@ -107,7 +107,7 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
     viewTab: {
       id: selectedTabIdRef.current,
       history: [
-        { type: "home", title: "ホーム" },
+        { type: "boardTree", title: "ホーム" },
         {
           type: "threadList",
           title: "Software",

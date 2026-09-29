@@ -191,8 +191,8 @@ describe("ペイン（横分割）", () => {
     // 2ペイン目だけタブを増やす
     fireEvent.click(screen.getByText(`addtab-${second}`));
 
-    expect(screen.getByTestId(`tabcount-${first}`)).toHaveTextContent("1");
-    expect(screen.getByTestId(`tabcount-${second}`)).toHaveTextContent("2");
+    expect(screen.getByTestId(`tabcount-${first}`)).toHaveTextContent("2");
+    expect(screen.getByTestId(`tabcount-${second}`)).toHaveTextContent("3");
   });
 
   it("CLOSE_PANE で1ペインに戻れ、最後の1ペインは閉じられない", async () => {
@@ -206,7 +206,8 @@ describe("ペイン（横分割）", () => {
     fireEvent.click(screen.getByText(`addtab-${ids[1]}`));
     fireEvent.click(screen.getByText(`close-${ids[1]}`));
     expect(screen.getByTestId("pane-count")).toHaveTextContent("1");
-    expect(screen.getByTestId(`tabcount-${first}`)).toHaveTextContent("3");
+    // 変更理由: 各ペイン先頭の常設ホームは統合で重複除去されるため、2+3-1=4枚になる。
+    expect(screen.getByTestId(`tabcount-${first}`)).toHaveTextContent("4");
 
     // 残り1ペインは閉じられない
     const remaining = paneIds();
@@ -247,15 +248,15 @@ describe("ペイン（横分割）", () => {
 
     // 1タブ目を増やしておく（移動後も元ペインを空にしない検証）
     fireEvent.click(screen.getByText(`addtab-${first}`));
-    expect(screen.getByTestId(`tabcount-${first}`)).toHaveTextContent("2");
+    expect(screen.getByTestId(`tabcount-${first}`)).toHaveTextContent("3");
 
     fireEvent.click(screen.getByText(`toright-${first}`));
 
     // ペインが2つになり、元ペインのタブが1つ減り、右ペインに移っている。
     expect(screen.getByTestId("pane-count")).toHaveTextContent("2");
-    expect(screen.getByTestId(`tabcount-${first}`)).toHaveTextContent("1");
+    expect(screen.getByTestId(`tabcount-${first}`)).toHaveTextContent("2");
     const ids = paneIds();
-    expect(screen.getByTestId(`tabcount-${ids[1]}`)).toHaveTextContent("1");
+    expect(screen.getByTestId(`tabcount-${ids[1]}`)).toHaveTextContent("2");
     // 移動先ペインがアクティブになる
     expect(screen.getByTestId("active-pane-index")).toHaveTextContent("1");
   });
@@ -267,7 +268,7 @@ describe("ペイン（横分割）", () => {
         tabs: [
           {
             id: "legacy-tab",
-            history: [{ type: "home", title: "ホーム" }],
+            history: [{ type: "boardTree", title: "ホーム" }],
             currentIndex: 0,
             pinned: false,
             reloadKey: 0,

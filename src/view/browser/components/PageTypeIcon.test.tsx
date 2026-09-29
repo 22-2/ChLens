@@ -4,7 +4,7 @@ import type { PageType } from "src/view/browser/types";
 import { describe, expect, it } from "vite-plus/test";
 
 const ALL_PAGE_TYPES: readonly PageType[] = [
-  "home",
+  "boardTree",
   "boardList",
   "threadList",
   "thread",
