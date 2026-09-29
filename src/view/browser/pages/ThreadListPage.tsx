@@ -260,6 +260,7 @@ export const ThreadListPage: React.FC<Props> = ({
   const [searchQuery, setSearchQuery] = useState(() => persistedSearchQuery ?? "");
   const previousBoardUrlRef = useRef(page.boardUrl);
   const previousRefreshKeyRef = useRef(refreshKey);
+  const refreshOverlayTimerRef = useRef<number | null>(null);
   const skipViewStateUpdateRef = useRef(false);
   // 変更理由: 非表示中の read_state 系 message を保留し、表示復帰時に適用するため。
   // 2ペイン時は自ペインの表タブでもフォーカス外なら裏側扱いにし、スレ側の
@@ -341,9 +342,10 @@ export const ThreadListPage: React.FC<Props> = ({
     previousRefreshKeyRef.current = refreshKey;
     setLoading(true);
     if (isRefresh) {
+      if (refreshOverlayTimerRef.current !== null) {
+        window.clearTimeout(refreshOverlayTimerRef.current);
+      }
       setShowRefreshOverlay(true);
-      // 変更理由: 更新中の短い通信でも処理中を見せ、連続操作を抑制するため最低3秒表示する。
-      window.setTimeout(() => setShowRefreshOverlay(false), 3000);
     }
     setError(null);
     try {
@@ -384,7 +386,22 @@ export const ThreadListPage: React.FC<Props> = ({
       setLoading(false);
     }
     // refreshKeyが変わったとき（更新ボタン押下）に再取得を走らせる
-  }, [page.boardUrl, refreshKey]);
+  }, [page.boardUrl, refreshKey, tabId, toast]);
+
+  useEffect(() => {
+    if (!showRefreshOverlay || loading) return;
+    // 変更理由: フェードアウト中だけDOMを残し、完了後に暗幕が居座らないよう短時間で外す。
+    refreshOverlayTimerRef.current = window.setTimeout(() => {
+      setShowRefreshOverlay(false);
+      refreshOverlayTimerRef.current = null;
+    }, 180);
+    return () => {
+      if (refreshOverlayTimerRef.current !== null) {
+        window.clearTimeout(refreshOverlayTimerRef.current);
+        refreshOverlayTimerRef.current = null;
+      }
+    };
+  }, [loading, showRefreshOverlay]);
 
   // 変更理由: IDBキャッシュから前回のスレ一覧を復元し、新しいデータの取得中は古い結果を表示し続ける。
   useEffect(() => {
@@ -1020,7 +1037,11 @@ export const ThreadListPage: React.FC<Props> = ({
         portalContainerRef={effectiveScrollContainerRef}
       />
       {showRefreshOverlay && (
-        <div className="thread-list-page__loading-overlay" role="status" aria-live="polite">
+        <div
+          className={`thread-list-page__loading-overlay${loading ? " thread-list-page__loading-overlay--visible" : ""}`}
+          role="status"
+          aria-live="polite"
+        >
           <Spinner size="sm" aria-label="スレ一覧を読み込み中" />
           <span>スレ一覧を読み込み中...</span>
         </div>
