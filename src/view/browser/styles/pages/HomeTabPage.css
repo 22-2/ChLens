@@ -8,7 +8,7 @@
 }
 /* 変更理由: 日別セクションの見出しは小さめ・淡色・広めの余白で区切り、項目との階層を付ける。 */
 .home-tab-page__heading {
-  margin: 28px 0 4px;
+  margin: 28px 0 8px;
   padding: 0 12px;
   border-bottom: 0;
   color: var(--sys-color-text-muted);
