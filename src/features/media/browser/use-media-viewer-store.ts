@@ -7,16 +7,6 @@ const MIN_VIEWER_SCALE = 0.25;
 const MAX_VIEWER_SCALE = 10;
 const TOOLBAR_ZOOM_STEP = 0.25;
 
-function normalizeWheelZoomTick(deltaY: number, deltaMode = 0): number {
-  if (deltaMode === 1) {
-    return deltaY;
-  }
-  if (deltaMode === 2) {
-    return deltaY * 20;
-  }
-  return deltaY / 120;
-}
-
 function clampViewerScale(scale: number): number {
   // 高解像度メディアの細部を確認しつつ、過大な描画負荷を避けるため拡大は10倍までに制限する。
   return Math.min(MAX_VIEWER_SCALE, Math.max(MIN_VIEWER_SCALE, +scale.toFixed(2)));
@@ -33,7 +23,7 @@ interface MediaViewerStoreState {
   zoomIn: () => void;
   zoomOut: () => void;
   resetScale: () => void;
-  zoomByWheel: (deltaY: number, deltaMode?: number) => void;
+  zoomByWheel: (deltaY: number) => void;
   setImageLoading: (isLoading: boolean) => void;
 }
 
@@ -131,11 +121,14 @@ export const useMediaViewerStore = create<MediaViewerStoreState>((set, get) => (
     set({ viewerScale: 1 });
   },
 
-  zoomByWheel: (deltaY, deltaMode = 0) => {
+  zoomByWheel: (deltaY) => {
+    if (!Number.isFinite(deltaY) || deltaY === 0) {
+      return;
+    }
     set((state) => {
-      // ホイール1クリックごとにツールバーの±ボタンと同じ刻みでズームする。
-      const ticks = normalizeWheelZoomTick(deltaY, deltaMode);
-      const nextScale = state.viewerScale - ticks * TOOLBAR_ZOOM_STEP;
+      // 機器固有の移動量や単位の換算値に依存しないよう、入力の方向だけで
+      // ツールバーと同じ刻みを適用する。細かな入力でも確実に倍率が変わる。
+      const nextScale = state.viewerScale - Math.sign(deltaY) * TOOLBAR_ZOOM_STEP;
       return { viewerScale: clampViewerScale(nextScale) };
     });
   },
