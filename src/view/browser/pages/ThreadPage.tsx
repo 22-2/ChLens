@@ -58,7 +58,7 @@ import {
 } from "src/view/browser/types";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import { getAutoRefreshPageKey } from "src/view/browser/utils/auto-refresh-pages";
-import { consumeManualRefresh } from "src/view/browser/utils/manual-refresh";
+import { consumeManualRefresh, runManualRefresh } from "src/view/browser/utils/manual-refresh";
 import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 import {
   buildBlurredResSet,
@@ -92,6 +92,10 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
 }) => {
   const { surface: viewSurface, dispatch, toast } = useTabViewRuntime(tabId);
   const runTabCommand = useTabCommandRunner(tabId);
+  const requestManualRefresh = useCallback(
+    () => runManualRefresh(tabId, () => runTabCommand(TAB_COMMAND_IDS.RELOAD)),
+    [runTabCommand, tabId],
+  );
   const { window: viewWindow } = viewSurface;
   const rootRef = useRef<HTMLDivElement>(null);
   // 変更理由: refの代入だけでは再描画されないため、別窓の初回描画でもPortal先を
@@ -252,7 +256,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     isLoading: loading,
     containerRef: effectiveScrollContainerRef,
     edge: "bottom",
-    onRefresh: () => runTabCommand(TAB_COMMAND_IDS.RELOAD),
+    onRefresh: requestManualRefresh,
   });
   const { setThreadStats } = useNgStatus();
   const { setPageCount } = usePageCountStatus();
@@ -621,7 +625,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
           closePopupById(menu.id);
         }}
         onRefresh={() => {
-          runTabCommand(TAB_COMMAND_IDS.RELOAD);
+          requestManualRefresh();
           closePopupById(menu.id);
         }}
       />
@@ -647,9 +651,9 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       // テキスト選択中はリロードしない
       if (viewWindow.getSelection()?.toString()) return;
 
-      runTabCommand(TAB_COMMAND_IDS.RELOAD);
+      requestManualRefresh();
     },
-    [runTabCommand, viewWindow],
+    [requestManualRefresh, viewWindow],
   );
 
   const isFilterEnabled = useMemo(

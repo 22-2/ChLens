@@ -78,6 +78,7 @@ import {
   getAutoRefreshThreadPageKey,
   isAutoRefreshEnabledForPage,
 } from "src/view/browser/utils/auto-refresh-pages";
+import { consumeManualRefresh, runManualRefresh } from "src/view/browser/utils/manual-refresh";
 import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 import { SCOPED_SETTINGS_CONFIG_KEY } from "src/view/browser/utils/scoped-settings";
 import { ThreadListView } from "src/view/shared/ThreadListView";
@@ -221,6 +222,10 @@ export const ThreadListPage: React.FC<Props> = ({
   const effectiveScrollContainerRef = scrollContainerRef ?? fallbackScrollContainerRef;
   const { viewTab } = useTabStore();
   const runTabCommand = useTabCommandRunner(tabId);
+  const requestManualRefresh = useCallback(
+    () => runManualRefresh(tabId, () => runTabCommand(TAB_COMMAND_IDS.RELOAD)),
+    [runTabCommand, tabId],
+  );
   // 既存の直接利用者との互換性のため渡されたtabを残し、通常の描画経路ではそれを優先する。
   const navigationTab = tab ?? viewTab;
   const { state: persistedViewState, update: updateViewState } = useTabViewState(tabId, page);
@@ -316,7 +321,7 @@ export const ThreadListPage: React.FC<Props> = ({
     isLoading: loading,
     containerRef: effectiveScrollContainerRef,
     edge: "top",
-    onRefresh: () => runTabCommand(TAB_COMMAND_IDS.RELOAD),
+    onRefresh: requestManualRefresh,
   });
   const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
     pageType: "threadList",
@@ -340,6 +345,7 @@ export const ThreadListPage: React.FC<Props> = ({
   const fetchThreads = useCallback(async () => {
     const isRefresh = previousRefreshKeyRef.current !== refreshKey;
     previousRefreshKeyRef.current = refreshKey;
+    if (isRefresh) consumeManualRefresh(tabId);
     setLoading(true);
     if (isRefresh) {
       if (refreshOverlayTimerRef.current !== null) {
@@ -837,9 +843,9 @@ export const ThreadListPage: React.FC<Props> = ({
         return;
       }
 
-      runTabCommand(TAB_COMMAND_IDS.RELOAD);
+      requestManualRefresh();
     },
-    [runTabCommand, viewWindow],
+    [requestManualRefresh, viewWindow],
   );
 
   const openThreadInNewTab = useCallback(
@@ -890,7 +896,7 @@ export const ThreadListPage: React.FC<Props> = ({
         closeContextMenu();
       }}
       onRefresh={() => {
-        runTabCommand(TAB_COMMAND_IDS.RELOAD);
+        requestManualRefresh();
         closeContextMenu();
       }}
     />
