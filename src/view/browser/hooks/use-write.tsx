@@ -411,13 +411,15 @@ export function useWrite(threadUrl: string, options: UseWriteOptions = {}): UseW
             const pendingSubmittedWrite = pendingSubmittedWriteRef.current;
             pendingSubmittedWriteRef.current = null;
 
-            // 変更理由: 旧UIは投稿完了ページが要求する待ち時間だけ待ってから再取得しており、
-            // 即 reload すると dat 反映前の内容を掴んで「もう一度更新しないと見えない」回帰になる。
-            await wait(delayMs);
-
+            // 変更理由: 再取得待ちの間に自動更新で投稿レスが届くため、
+            // 自分レスの照合情報は成功確定時に配信し、待機は通信だけに適用する。
             if (pendingSubmittedWrite) {
               notifyThreadWriteCompleted(pendingSubmittedWrite);
             }
+
+            // 変更理由: 旧UIは投稿完了ページが要求する待ち時間だけ待ってから再取得しており、
+            // 即 reload すると dat 反映前の内容を掴んで「もう一度更新しないと見えない」回帰になる。
+            await wait(delayMs);
 
             // 変更理由: 投稿後の強制再取得も通常の RELOAD 経路へ寄せ、
             // manual reload / auto refresh と同じ forceUpdate 振る舞いを保つ。

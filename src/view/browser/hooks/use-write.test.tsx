@@ -85,6 +85,10 @@ vi.mock("src/view/browser/utils/thread-write-sync", () => ({
 }));
 
 import { parseTauriWriteResult, useWrite } from "src/view/browser/hooks/use-write";
+import {
+  notifyThreadWriteCompleted,
+  resolveWriteSuccessDelayMs,
+} from "src/view/browser/utils/thread-write-sync";
 import { collectWriteConfirmationFields } from "src/view/browser/utils/write-confirmation";
 
 const THREAD_URL = "https://example.com/test/read.cgi/software/1/";
@@ -92,6 +96,8 @@ const NEXT_THREAD_URL = "https://example.com/test/read.cgi/software/2/";
 
 describe("useWrite", () => {
   beforeEach(() => {
+    vi.mocked(notifyThreadWriteCompleted).mockClear();
+    vi.mocked(resolveWriteSuccessDelayMs).mockReturnValue(0);
     getStore2StringMock.mockReturnValue(null);
     setStore2StringMock.mockClear();
     dispatchMock.mockClear();
@@ -102,6 +108,32 @@ describe("useWrite", () => {
 
   afterEach(() => {
     cleanup();
+    vi.useRealTimers();
+  });
+
+  it("自分レス照合用の成功通知は再取得の5秒待機より前に一度だけ配信する", async () => {
+    vi.useFakeTimers();
+    vi.mocked(resolveWriteSuccessDelayMs).mockReturnValue(5000);
+    fetchTauriWriteMock.mockResolvedValue({
+      status: 200,
+      headers: {},
+      url: "https://example.com/test/bbs.cgi",
+      body: "<html><head><title>書きこみました</title></head></html>",
+    });
+    const { result } = renderHook(() => useWrite(THREAD_URL));
+    act(() => result.current.setMessage("投稿本文"));
+    await act(async () => result.current.submit());
+    expect(result.current.status).toBe("success");
+    expect(notifyThreadWriteCompleted).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        threadUrl: THREAD_URL,
+        message: "投稿本文",
+      }),
+    );
+    expect(dispatchMock).not.toHaveBeenCalled();
+    await act(async () => vi.advanceTimersByTimeAsync(5000));
+    expect(dispatchMock).toHaveBeenCalledExactlyOnceWith({ type: "RELOAD" });
+    expect(notifyThreadWriteCompleted).toHaveBeenCalledTimes(1);
   });
 
   it("postMessage由来のエラー本文をstatusTextへ設定する", () => {

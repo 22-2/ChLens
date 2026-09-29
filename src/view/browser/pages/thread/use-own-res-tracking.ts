@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   add as addWriteHistoryRecord,
   getByUrl as getWriteHistoryByUrl,
@@ -48,7 +48,7 @@ export function useOwnResTracking({
   const responseCountRef = useRef(0);
   const lastResponseNumRef = useRef<number | null>(null);
   const pendingWriteHistoryRef = useRef<PendingWriteHistoryPersistence | null>(null);
-  // 変更理由: notifyThreadWriteCompleted は 3 秒後に発火するため、その間に自動更新が走ると
+  // 変更理由: 投稿成功の応答を待つ間に自動更新が走ると、
   // responseCountRef が新着込みの値になり hasAdvancedSinceSubmit が永久に false になる。
   // 送信直後の notifyThreadWriteStarted でベースラインを先取りしておくことで競合を防ぐ。
   const writeBaselineRef = useRef<{
@@ -57,7 +57,7 @@ export function useOwnResTracking({
     submittedAt: number;
   } | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     responseCountRef.current = responses.length;
     lastResponseNumRef.current = responses.at(-1)?.num ?? null;
   }, [responses]);
@@ -69,7 +69,8 @@ export function useOwnResTracking({
         const rows = await getWriteHistoryByUrl(threadUrl);
         if (!alive) return;
         setOwnResNums(buildWrittenResSet(rows));
-      } catch {
+      } catch (error) {
+        console.error("[useOwnResTracking] 書込履歴の取得に失敗しました", { threadUrl, error });
         if (alive) setOwnResNums(new Set());
       }
     };
@@ -101,7 +102,7 @@ export function useOwnResTracking({
 
       // 変更理由: 送信前時点の末尾レス位置を覚えておくと、同文レスが既にあるスレでも
       // 新着到着前の古いレスを誤って「今書いたレス」と認定する事故を避けられる。
-      // ベースラインは送信直後の writeBaselineRef を優先し、3 秒待機中の自動更新で
+      // ベースラインは送信直後の writeBaselineRef を優先し、送信中の自動更新で
       // responseCountRef が更新されても競合が起きないようにする。
       const baseline =
         writeBaselineRef.current?.submittedAt === payload.submittedAt
@@ -135,7 +136,11 @@ export function useOwnResTracking({
             message: payload.message,
             date: payload.submittedAt,
           });
-        } catch {
+        } catch (error) {
+          console.error("[useOwnResTracking] 仮の書込履歴の保存に失敗しました", {
+            threadUrl,
+            error,
+          });
           return null;
         }
       })();
@@ -149,7 +154,8 @@ export function useOwnResTracking({
     return subscribeThreadWriteCompleted(handleThreadWriteCompleted);
   }, [threadUrl, threadTitle]);
 
-  useEffect(() => {
+  // 変更理由: 通常レスとして一度描画してから印を付けるちらつきを防ぐため、描画前に照合する。
+  useLayoutEffect(() => {
     if (!pendingWrite || responses.length === 0) return;
 
     const currentLastResNum = responses.at(-1)?.num ?? null;
@@ -207,7 +213,8 @@ export function useOwnResTracking({
           } else {
             await addWriteHistoryRecord(finalizedRecord);
           }
-        } catch {
+        } catch (error) {
+          console.error("[useOwnResTracking] 書込履歴の確定に失敗しました", { threadUrl, error });
           // 書込履歴の永続化に失敗しても、画面上の自分レス強調までは失わない。
         }
       }
