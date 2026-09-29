@@ -2,8 +2,10 @@ import type { ResolvedBrowserCommand } from "src/view/browser/commands/browser-c
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
 
 export const OPEN_URL_COMMAND_ID = "navigation.open-url";
+export const OPEN_URL_IN_NEW_TAB_COMMAND_ID = "navigation.open-url-in-new-tab";
 
 const OPEN_URL_COMMAND_ID_PREFIX = `${OPEN_URL_COMMAND_ID}:`;
+const OPEN_URL_IN_NEW_TAB_COMMAND_ID_PREFIX = `${OPEN_URL_IN_NEW_TAB_COMMAND_ID}:`;
 
 /** コマンドパレット入力から開けるURLを取り出す。認識できない入力は null。 */
 export function parseOpenUrlInput(value: string): string | null {
@@ -46,4 +48,32 @@ export function getOpenUrlFromCommandId(commandId: string): string | null {
   }
 
   return parseOpenUrlInput(commandId.slice(OPEN_URL_COMMAND_ID_PREFIX.length));
+}
+
+export function getOpenUrlInNewTabCommandId(url: string): string {
+  // 変更理由: URL直入力の「新しいタブで開く」も同じく動的IDへURLを保持し、
+  // 実行時に通常の開くと区別できるようにする。
+  return `${OPEN_URL_IN_NEW_TAB_COMMAND_ID_PREFIX}${url.trim()}`;
+}
+
+export function createOpenUrlInNewTabCommand(
+  baseCommand: ResolvedBrowserCommand,
+  url: string,
+): ResolvedBrowserCommand {
+  const trimmed = url.trim();
+  return {
+    ...baseCommand,
+    id: getOpenUrlInNewTabCommandId(trimmed),
+    label: `このURLを新しいタブで開く`,
+    englishLabel: `Open This URL in New Tab`,
+    description: trimmed,
+  };
+}
+
+export function getOpenUrlInNewTabFromCommandId(commandId: string): string | null {
+  if (!commandId.startsWith(OPEN_URL_IN_NEW_TAB_COMMAND_ID_PREFIX)) {
+    return null;
+  }
+
+  return parseOpenUrlInput(commandId.slice(OPEN_URL_IN_NEW_TAB_COMMAND_ID_PREFIX.length));
 }

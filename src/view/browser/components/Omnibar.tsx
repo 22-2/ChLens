@@ -104,7 +104,9 @@ export const Omnibar: React.FC<OmnibarProps> = ({
           {!isLoading && mode === "navigation" && suggestions.length > 0
             ? suggestions.map((suggestion, index) => (
                 <button
-                  key={suggestion.url}
+                  key={`${suggestion.url}::${suggestion.actionLabel ?? ""}::${
+                    suggestion.openInNewTab ? "new-tab" : "current-tab"
+                  }`}
                   type="button"
                   className={`nav-bar__omnibar-item nav-bar__omnibar-item--navigation${
                     index === activeSuggestionIndex ? " nav-bar__omnibar-item--active" : ""

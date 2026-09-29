@@ -27,7 +27,10 @@ interface UseOmnibarOptions {
   commands?: readonly ResolvedBrowserCommand[];
   recentCommandIds?: readonly string[];
   onSelectCommand?: (command: ResolvedBrowserCommand) => void;
-  getDirectInputSuggestion?: (inputValue: string, displayUrl: string) => OmnibarSuggestion | null;
+  getDirectInputSuggestion?: (
+    inputValue: string,
+    displayUrl: string,
+  ) => OmnibarSuggestion | OmnibarSuggestion[] | null;
 }
 
 interface UseOmnibarResult {
@@ -125,28 +128,43 @@ export function useOmnibar({
     [inputValue, maxSuggestions, omnibarEntries],
   );
 
-  const directInputSuggestion = useMemo(
-    () =>
-      mode === "navigation" ? (getDirectInputSuggestion?.(inputValue, displayUrl) ?? null) : null,
-    [displayUrl, getDirectInputSuggestion, inputValue, mode],
-  );
+  const directInputSuggestions = useMemo(() => {
+    if (mode !== "navigation") {
+      return [];
+    }
+
+    const result = getDirectInputSuggestion?.(inputValue, displayUrl) ?? null;
+    if (!result) {
+      return [];
+    }
+
+    return Array.isArray(result) ? result : [result];
+  }, [displayUrl, getDirectInputSuggestion, inputValue, mode]);
 
   const suggestions = useMemo(() => {
-    if (!directInputSuggestion) {
+    if (directInputSuggestions.length === 0) {
       return navigationSuggestions;
     }
 
-    if (
-      navigationSuggestions.some(
-        (suggestion) => suggestion.url.trim() === directInputSuggestion.url.trim(),
-      )
-    ) {
+    // 変更理由: 同一URLの履歴候補があるとき通常の「URLを開く」は重複のため隠すが、
+    // 「新しいタブで開く」は明示的な別タブ要求なので残し、直入力の選択肢を保つ。
+    const filteredDirect = directInputSuggestions.filter((direct) => {
+      if (direct.openInNewTab) {
+        return true;
+      }
+
+      return !navigationSuggestions.some(
+        (suggestion) => suggestion.url.trim() === direct.url.trim(),
+      );
+    });
+
+    if (filteredDirect.length === 0) {
       return navigationSuggestions;
     }
 
     // URLとして認識できた入力は、履歴候補と同じリスト内に「URLを開く」操作として置く。
-    return [directInputSuggestion, ...navigationSuggestions].slice(0, maxSuggestions);
-  }, [directInputSuggestion, maxSuggestions, navigationSuggestions]);
+    return [...filteredDirect, ...navigationSuggestions].slice(0, maxSuggestions);
+  }, [directInputSuggestions, maxSuggestions, navigationSuggestions]);
 
   const commandSuggestions = useMemo(
     () =>

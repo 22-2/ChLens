@@ -35,7 +35,9 @@ import {
 } from "src/view/browser/commands/command-runtime";
 import {
   getOpenUrlFromCommandId,
+  getOpenUrlInNewTabFromCommandId,
   OPEN_URL_COMMAND_ID,
+  OPEN_URL_IN_NEW_TAB_COMMAND_ID,
 } from "src/view/browser/commands/open-url-command";
 import {
   getResponseJumpResNumFromCommandId,
@@ -450,6 +452,19 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     englishLabel: "Open URL",
     description: "入力したURLのページを開きます",
     keywords: ["url", "アドレス", "リンク"],
+    group: "navigation",
+    icon: ExternalLink,
+    run: () => {
+      // 変更理由: URLなしの素振り実行では遷移先が定まらないため、
+      // 動的ID付き候補からの実行だけを受け付ける。
+    },
+  },
+  {
+    id: OPEN_URL_IN_NEW_TAB_COMMAND_ID,
+    label: "URLを新しいタブで開く",
+    englishLabel: "Open URL in New Tab",
+    description: "入力したURLのページを新しいタブで開きます",
+    keywords: ["url", "アドレス", "リンク", "新しいタブ", "new tab"],
     group: "navigation",
     icon: ExternalLink,
     run: () => {
@@ -977,6 +992,16 @@ export async function executeBrowserCommand(
     return true;
   }
 
+  const openUrlInNewTab = getOpenUrlInNewTabFromCommandId(commandId);
+  if (openUrlInNewTab !== null) {
+    // 変更理由: URL直入力の「新しいタブで開く」は新規タブの正規履歴に乗せてフォーカスを移し、
+    // 同一タブの履歴へ対象板を補完しない方針と両立させる。
+    const parsed = parseInternalBrowserPage(openUrlInNewTab);
+    if (!parsed) return false;
+    context.dispatch(tabActions.openInNewTabForce(parsed, { focus: true }));
+    return true;
+  }
+
   const responseJumpResNum = getResponseJumpResNumFromCommandId(commandId);
   const definitionId = responseJumpResNum === null ? commandId : RESPONSE_JUMP_COMMAND_ID;
   const definition = BROWSER_COMMAND_DEFINITIONS.find((command) => command.id === definitionId);
@@ -1003,6 +1028,11 @@ export function getBrowserCommandLabel(commandId: string, context: BrowserComman
   const openUrl = getOpenUrlFromCommandId(commandId);
   if (openUrl !== null) {
     return `このURLを開く`;
+  }
+
+  const openUrlInNewTab = getOpenUrlInNewTabFromCommandId(commandId);
+  if (openUrlInNewTab !== null) {
+    return `このURLを新しいタブで開く`;
   }
 
   const responseJumpResNum = getResponseJumpResNumFromCommandId(commandId);

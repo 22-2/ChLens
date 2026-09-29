@@ -427,6 +427,43 @@ describe("NavigationBar", () => {
     });
   });
 
+  it("認識したURLに『URLを新しいタブで開く』候補を表示する", async () => {
+    historyGetMock.mockResolvedValue([]);
+    const mutableWindow = window as unknown as {
+      app?: unknown;
+    };
+    mutableWindow.app = {
+      History: {
+        get: historyGetMock,
+      },
+    };
+
+    render(<NavigationBar />);
+
+    fireEvent.click(screen.getByTitle("URLバーを表示"));
+    const input = screen.getByPlaceholderText("URLを入力");
+    fireEvent.focus(input);
+    fireEvent.change(input, {
+      target: { value: "https://egg.5ch.io/test/read.cgi/board-b/123/" },
+    });
+
+    const openInNewTabButton = await screen.findByRole("option", {
+      name: /URLを新しいタブで開く/,
+    });
+    fireEvent.click(openInNewTabButton);
+
+    expect(dispatchMock).toHaveBeenCalledTimes(1);
+    expect(dispatchMock).toHaveBeenNthCalledWith(1, {
+      type: "OPEN_IN_NEW_TAB_FORCE",
+      focus: true,
+      page: {
+        type: "thread",
+        title: "https://egg.5ch.io/test/read.cgi/board-b/123/",
+        threadUrl: "https://egg.5ch.io/test/read.cgi/board-b/123/",
+      },
+    });
+  });
+
   it("URL欄から別板のスレを開くと、前居た場所へ戻れるよう単一遷移する", () => {
     render(<NavigationBar />);
 

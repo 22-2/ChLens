@@ -2,7 +2,9 @@ import fuzzysort from "fuzzysort";
 import type { ResolvedBrowserCommand } from "src/view/browser/commands/browser-commands";
 import {
   createOpenUrlCommand,
+  createOpenUrlInNewTabCommand,
   OPEN_URL_COMMAND_ID,
+  OPEN_URL_IN_NEW_TAB_COMMAND_ID,
   parseOpenUrlInput,
 } from "src/view/browser/commands/open-url-command";
 import {
@@ -89,16 +91,26 @@ export function filterAndSortBrowserCommands(
   // 変更理由: 「>URL」入力でもURLへ飛ぶ提案を出すため、レス番号ジャンプと
   // 同じく動的候補を合成する。URLは数字のみと重ならないため両立できる。
   const baseOpenUrlCommand = commands.find(({ id }) => id === OPEN_URL_COMMAND_ID);
-  const openUrlInput = baseOpenUrlCommand ? parseOpenUrlInput(query) : null;
+  const baseOpenUrlInNewTabCommand = commands.find(
+    ({ id }) => id === OPEN_URL_IN_NEW_TAB_COMMAND_ID,
+  );
+  const openUrlInput =
+    baseOpenUrlCommand || baseOpenUrlInNewTabCommand ? parseOpenUrlInput(query) : null;
   const openUrlCommand =
     baseOpenUrlCommand && openUrlInput !== null
       ? createOpenUrlCommand(baseOpenUrlCommand, openUrlInput)
+      : null;
+  // 変更理由: URL直入力から新しいタブで開く選択肢も並べ、同一タブで開くだけの導線にしない。
+  const openUrlInNewTabCommand =
+    baseOpenUrlInNewTabCommand && openUrlInput !== null
+      ? createOpenUrlInNewTabCommand(baseOpenUrlInNewTabCommand, openUrlInput)
       : null;
 
   // 変更理由: 固定コマンドを数字の検索結果だけに任せると入力値をラベルへ
   // 反映できないため、スレッド上の正しい数字入力に限って動的候補を合成する。
   const dynamicCommands = [
     ...(openUrlCommand ? [openUrlCommand] : []),
+    ...(openUrlInNewTabCommand ? [openUrlInNewTabCommand] : []),
     ...(responseJumpCommand ? [responseJumpCommand] : []),
   ];
   const commandsToSearch =

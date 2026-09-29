@@ -38,6 +38,12 @@ const threadCommands = [
     "response",
   ]),
   command("navigation.open-url", "URLを開く", "Open URL", ["url", "アドレス", "リンク"]),
+  command("navigation.open-url-in-new-tab", "URLを新しいタブで開く", "Open URL in New Tab", [
+    "url",
+    "アドレス",
+    "リンク",
+    "新しいタブ",
+  ]),
 ];
 
 describe("filterAndSortBrowserCommands", () => {
@@ -119,13 +125,20 @@ describe("filterAndSortBrowserCommands", () => {
       id: "navigation.open-url:https://example.com/test/read.cgi/software/1788743729/",
       label: "このURLを開く",
     });
+    // 変更理由: 同一URL入力から新しいタブで開く選択肢も並べる。
+    expect(result[1]).toMatchObject({
+      id: "navigation.open-url-in-new-tab:https://example.com/test/read.cgi/software/1788743729/",
+      label: "このURLを新しいタブで開く",
+    });
   });
 
   it("認識できない入力はURLを開く候補にしない", () => {
     for (const query of ["ただのメモ", "https://example.com/", ">"]) {
       expect(
-        filterAndSortBrowserCommands(threadCommands, query, []).some(({ id }) =>
-          id.startsWith("navigation.open-url:"),
+        filterAndSortBrowserCommands(threadCommands, query, []).some(
+          ({ id }) =>
+            id.startsWith("navigation.open-url:") ||
+            id.startsWith("navigation.open-url-in-new-tab:"),
         ),
       ).toBe(false);
     }

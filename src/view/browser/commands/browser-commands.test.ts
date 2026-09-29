@@ -342,6 +342,28 @@ describe("browser commands", () => {
     });
   });
 
+  it("URL付きの新しいタブで開く候補は新規タブへフォーカスして遷移する", async () => {
+    const { context, dispatch } = createContext({ type: "home", title: "ホーム" });
+
+    await expect(
+      executeBrowserCommand(
+        "navigation.open-url-in-new-tab:https://example.com/test/read.cgi/software/1788743729/",
+        context,
+      ),
+    ).resolves.toBe(true);
+
+    expect(dispatch).toHaveBeenCalledTimes(1);
+    expect(dispatch).toHaveBeenNthCalledWith(1, {
+      type: "OPEN_IN_NEW_TAB_FORCE",
+      focus: true,
+      page: {
+        type: "thread",
+        title: "https://example.com/test/read.cgi/software/1788743729/",
+        threadUrl: "https://example.com/test/read.cgi/software/1788743729/",
+      },
+    });
+  });
+
   it("スレッドでは次スレ候補検索コマンドを実行できる", async () => {
     const { context } = createContext({
       type: "thread",

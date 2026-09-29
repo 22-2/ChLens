@@ -37,6 +37,9 @@ export interface OmnibarSuggestion {
   isBookmark: boolean;
   sources: OmnibarSource[];
   actionLabel?: string;
+  // 変更理由: URL直入力から「開く」と「新しいタブで開く」を選べるよう、
+  // 同一URLで動作だけが違う候補を区別する。
+  openInNewTab?: boolean;
 }
 
 const MAX_HISTORY_RECENCY_BOOST = 120;

@@ -435,6 +435,27 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   const openSuggestion = useCallback(
     (suggestion: OmnibarSuggestion) => {
       if (suggestion.sources.includes("direct")) {
+        if (suggestion.openInNewTab) {
+          // 変更理由: URL直入力から明示的に別タブで開くときは、新規タブの正規履歴に乗せて
+          // フォーカスを移す。同一タブの履歴へ対象板を補完しない方針と両立させるため。
+          const parsed = parseOmnibarBrowserPage(suggestion.url);
+          if (!parsed) {
+            return;
+          }
+
+          const page =
+            parsed.type === "threadList"
+              ? {
+                  ...parsed,
+                  title: suggestion.title,
+                  boardTitle: suggestion.boardTitle || suggestion.title,
+                }
+              : { ...parsed, title: suggestion.title };
+          dispatch(tabActions.openInNewTabForce(page, { focus: true }));
+          urlInputRef.current?.blur();
+          return;
+        }
+
         navigateByUrl(suggestion.url, dispatch);
         urlInputRef.current?.blur();
         return;
@@ -461,7 +482,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   );
 
   const getDirectInputSuggestion = useCallback(
-    (inputValue: string, currentDisplayUrl: string): OmnibarSuggestion | null => {
+    (inputValue: string, currentDisplayUrl: string): OmnibarSuggestion[] | null => {
       const trimmed = inputValue.trim();
       if (!trimmed || trimmed === currentDisplayUrl.trim()) {
         return null;
@@ -472,15 +493,31 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         return null;
       }
 
-      return {
-        url: trimmed,
-        title: trimmed,
-        boardTitle: parsed.type === "threadList" ? parsed.boardTitle : "",
-        score: Number.POSITIVE_INFINITY,
-        isBookmark: false,
-        sources: ["direct"],
-        actionLabel: "URLを開く",
-      };
+      const boardTitle = parsed.type === "threadList" ? parsed.boardTitle : "";
+
+      // 変更理由: URL直入力は同一タブで開くだけでなく、新しいタブで開く選択肢も並べる。
+      // 先頭が通常の「開く」、次が「新しいタブで開く」で、矢印キーとEnterでも選べる。
+      return [
+        {
+          url: trimmed,
+          title: trimmed,
+          boardTitle,
+          score: Number.POSITIVE_INFINITY,
+          isBookmark: false,
+          sources: ["direct"],
+          actionLabel: "URLを開く",
+        },
+        {
+          url: trimmed,
+          title: trimmed,
+          boardTitle,
+          score: Number.POSITIVE_INFINITY,
+          isBookmark: false,
+          sources: ["direct"],
+          actionLabel: "URLを新しいタブで開く",
+          openInNewTab: true,
+        },
+      ];
     },
     [],
   );
