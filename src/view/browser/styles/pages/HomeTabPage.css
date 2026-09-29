@@ -2,16 +2,22 @@
 .home-tab-page {
   width: 100%;
   min-height: 100%;
-  max-width: 960px;
+  max-width: 720px;
   margin: 0 auto;
-  padding: 16px 20px 32px;
+  padding: 24px 24px 48px;
 }
+/* 変更理由: 日別セクションの見出しは小さめ・淡色・広めの余白で区切り、項目との階層を付ける。 */
 .home-tab-page__heading {
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--sys-color-border);
+  margin: 28px 0 4px;
+  padding: 0 12px;
+  border-bottom: 0;
   color: var(--sys-color-text-muted);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+}
+.home-tab-page__heading:first-child {
+  margin-top: 0;
 }
 .home-tab-page__status {
   display: flex;
@@ -39,18 +45,25 @@
   width: 100%;
   min-width: 0;
   min-height: 0;
-  padding: 8px 12px;
+  padding: 12px;
   border: 0;
-  border-radius: 0;
-  border-bottom: 1px solid var(--sys-color-border);
+  border-radius: 8px;
   background: transparent;
   color: var(--sys-color-text);
+  font-size: 15px;
   text-align: left;
   transition: none;
 }
 .home-tab-page__link.browser-button:hover:not(:disabled) {
-  border-color: transparent transparent var(--sys-color-border);
+  border-color: transparent;
   background: var(--sys-color-list-hover-bg);
+}
+/* 変更理由: 項目間は罫線ではなく余白と角丸ホバーで区切り、詰まった印象をなくす。 */
+.home-tab-page__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
 }
 .home-tab-page__link--board {
   flex-direction: column;
@@ -58,8 +71,7 @@
   gap: 2px;
 }
 /* 変更理由: 板名が長いと横へはみ出すため、1行に収めて末尾省略する。全文はtitle属性のツールチップで確認する。 */
-.home-tab-page__link-title,
-.home-tab-page__link-sub {
+.home-tab-page__link-title {
   display: block;
   width: 100%;
   min-width: 0;
@@ -68,9 +80,7 @@
   text-overflow: ellipsis;
 }
 .home-tab-page__link-title {
+  font-size: 15px;
   font-weight: 600;
-}
-.home-tab-page__link-sub {
-  color: var(--sys-color-text-muted);
-  font-size: 12px;
+  line-height: 1.5;
 }
