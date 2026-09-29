@@ -82,6 +82,32 @@ describe("omnibar utils", () => {
     expect(suggestions[0]?.isBookmark).toBe(true);
   });
 
+  it("スキームや末尾スラッシュが違う同一板は1件にまとめる", () => {
+    const merged = mergeOmnibarSources(
+      [
+        {
+          url: "http://bbs.eddibb.cc/liveedge/",
+          title: "お気に入りの板",
+        },
+      ],
+      [],
+      [
+        {
+          url: "https://bbs.eddibb.cc/liveedge",
+          name: "bbsmenuの板",
+        },
+      ],
+    );
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0]).toMatchObject({
+      url: "http://bbs.eddibb.cc/liveedge/",
+      title: "お気に入りの板",
+      isBookmark: true,
+      sources: ["bookmark", "board"],
+    });
+  });
+
   it("空クエリでも直近履歴を優先して候補を返す", () => {
     const merged = mergeOmnibarSources(
       [],

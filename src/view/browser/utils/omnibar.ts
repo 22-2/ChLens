@@ -66,6 +66,20 @@ function normalizeQuery(query: string): string {
   return query.trim().toLowerCase();
 }
 
+// 変更理由: お気に入りがhttp・bbsmenuがhttpsのように表記だけ違う同一板が
+// 別候補に分かれるため、統合キーではスキーム差と末尾スラッシュ差を吸収する。
+// 開くURL自体は最初の表記を残し、利用者の保存形式を変えない。
+function toMergeKey(rawUrl: string): string {
+  const trimmed = rawUrl.trim();
+  try {
+    const parsed = new URL(trimmed);
+    const path = parsed.pathname.replace(/\/+$/, "") || "/";
+    return `${parsed.hostname.toLowerCase()}${path.toLowerCase()}${parsed.search}`;
+  } catch {
+    return trimmed.toLowerCase().replace(/\/+$/, "");
+  }
+}
+
 function calcTextScore(query: string, title: string, url: string, boardTitle: string): number {
   if (!query) {
     return 0;
@@ -145,9 +159,9 @@ export function mergeOmnibarSources(
     const boardTitle = normalizeString(item.boardTitle);
     const viewedDate = Math.max(0, Math.trunc(toFiniteNumber(item.viewedDate)));
 
-    const existing = byUrl.get(url);
+    const existing = byUrl.get(toMergeKey(url));
     if (!existing) {
-      byUrl.set(url, {
+      byUrl.set(toMergeKey(url), {
         url,
         title,
         boardTitle,
@@ -187,9 +201,9 @@ export function mergeOmnibarSources(
     const title = normalizeString(bookmark.title, url);
     const boardTitle = normalizeString(bookmark.boardTitle);
 
-    const existing = byUrl.get(url);
+    const existing = byUrl.get(toMergeKey(url));
     if (!existing) {
-      byUrl.set(url, {
+      byUrl.set(toMergeKey(url), {
         url,
         title,
         boardTitle,
@@ -222,7 +236,7 @@ export function mergeOmnibarSources(
       continue;
     }
 
-    const existing = byUrl.get(url);
+    const existing = byUrl.get(toMergeKey(url));
     if (existing) {
       // 変更理由: 同じURLが複数ソースに現れても候補は1件にまとめ、
       // 由来だけを複数アイコンで示して重複表示と情報欠落を同時に防ぐ。
@@ -233,7 +247,7 @@ export function mergeOmnibarSources(
       continue;
     }
 
-    byUrl.set(url, {
+    byUrl.set(toMergeKey(url), {
       url,
       title: normalizeString(board.name, url),
       boardTitle: normalizeString(board.boardTitle),
