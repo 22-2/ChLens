@@ -144,7 +144,12 @@ const SIMPLE_METRIC_SCHEMA = {
   required: ["score", "reason"],
   properties: {
     score: { type: "number", minimum: 0, maximum: 5 },
-    reason: { type: "string", maxLength: 120 },
+    reason: {
+      type: "string",
+      maxLength: 120,
+      description:
+        "具体的な発言や応答を取り上げ、なぜその点数になるかを説明する。60～100字を目安に、主語・対象・評価理由を残す。字数合わせの水増しはしない。",
+    },
   },
 } as const;
 
@@ -154,7 +159,16 @@ const SIMPLE_SIDE_SCHEMA = {
   properties: {
     label: { type: "string" },
     participants: { type: "array", items: { type: "string" } },
-    claims: { type: "array", items: { type: "string" } },
+    claims: {
+      type: "array",
+      description:
+        "最初に争点への立場を示し、続けて前提・理由・相手への反論を整理する。3～6項目を目安とするが、実際にない主張は補わない。",
+      items: {
+        type: "string",
+        description:
+          "原文で省略された主語や目的語を文脈の範囲で補い、何についての主張か単独でも分かる文にする。レス番号だけで発言内容を代用しない。",
+      },
+    },
     metrics: {
       type: "object",
       required: ["logic", "reading", "evidence"],
@@ -273,11 +287,18 @@ export const DEBATE_RESULT_SCHEMA = {
       type: "object",
       required: ["topic", "blue", "red", "blueAdvantage", "verdictReason"],
       properties: {
-        topic: { type: "string" },
+        topic: {
+          type: "string",
+          description: "対象と争点が分かる見出し。レス番号だけに依存しない。",
+        },
         blue: SIMPLE_SIDE_SCHEMA,
         red: SIMPLE_SIDE_SCHEMA,
         blueAdvantage: { type: "number", minimum: 0, maximum: 1 },
-        verdictReason: { type: "string" },
+        verdictReason: {
+          type: "string",
+          description:
+            "結論、決め手となった応酬、相手の反論が成立する範囲、未確認事項をつなげて説明する。必要に応じて3～5文を使い、単なる点数の言い換えにしない。",
+        },
       },
     },
     caveats: { type: "array", items: { type: "string" } },
@@ -287,6 +308,12 @@ export const DEBATE_RESULT_SCHEMA = {
 const ANALYSIS_INSTRUCTIONS =
   "JSONのみで回答する。詳細版は固定の二陣営に押し込めず、争点ごとに主張・反論・結論を整理する。" +
   "簡易版simpleViewは中心となる対立を青赤2側に要約し、各側の代表主張と論理・読解・根拠の信頼性を5点満点で採点する。" +
+  // 変更理由: 短文化だけを指示すると前提や評価理由が失われるため、画像単独で議論を理解できる説明を求める。
+  "文章は自然な日本語の常体で書く。スレを読んでいない人にも、何を争い、双方がなぜそう主張し、どの応酬が判定の決め手になったかが分かるようにする。" +
+  "simpleViewのtopicは対象と争点を示し、labelは立場を表す。claimsの先頭は争点への回答とし、以降は前提・理由・反論を論理の順に並べる。" +
+  "原文で省略された主語や目的語を文脈の範囲で補う。『両方』『それ』『一貫している』だけで済ませず、対象や具体的な発言を説明し、レス番号は補助として添える。" +
+  "metricsのreasonは発言の具体例と採点理由を結び付ける。verdictReasonは結論を先に述べ、決め手となる応酬と判定の限界を説明する。文数や項目数を減らすために必要な文脈を削らない。" +
+  "発言者本人の主張と、その人が言及した第三者の主張を混同しない。採点とblueAdvantageは説明文と整合させる。" +
   "結論を左右する出典不足の事実だけ最大2件を外部調査し、各1文と出典1～2件をresearchへ記録する。" +
   "予測・意見・煽りは検索せず、調査できない時はinconclusiveとする。調査が不要ならresearchは空配列にする。" +
   "侮辱や煽りは論拠として扱わず、確認していない事実を断定しない。";
