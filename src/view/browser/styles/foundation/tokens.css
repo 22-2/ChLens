@@ -145,6 +145,8 @@
   --ref-color-overlay-menu-hover: rgb(74 142 218 / 40%);
 
   --ref-space-0: 0;
+  /* 変更理由: 短い更新通知で本文を広く隠さないよう、通知専用の幅を定義する。 */
+  --ref-toast-width: 250px;
   --ref-space-1: 2px;
   --ref-space-2: 4px;
   --ref-space-3: 6px;
@@ -219,6 +221,7 @@
 
   /* Theme-independent system scales. */
   --sys-space-0: var(--ref-space-0);
+  --sys-toast-width: var(--ref-toast-width);
   --sys-space-1: var(--ref-space-1);
   --sys-space-2: var(--ref-space-2);
   --sys-space-3: var(--ref-space-3);

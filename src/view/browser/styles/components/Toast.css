@@ -5,7 +5,8 @@
   top: var(--cmp-toast-offset-top);
   right: var(--cmp-toast-offset-right);
   display: grid;
-  width: min(360px, calc(100vw - var(--sys-space-8)));
+  /* 変更理由: 通知の文字量に対して大きかった横幅と余白を縮め、本文を読み続けやすくする。 */
+  width: min(var(--sys-toast-width), calc(100vw - var(--sys-space-8)));
   gap: var(--sys-space-4);
   margin: 0;
   padding: 0;
@@ -17,9 +18,9 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
-  gap: var(--sys-space-6);
+  gap: var(--sys-space-4);
   min-width: 0;
-  padding: var(--sys-space-5) var(--sys-space-6);
+  padding: var(--sys-space-3) var(--sys-space-4);
   border: 1px solid var(--sys-color-border);
   border-radius: var(--sys-radius-md);
   background: var(--cmp-toast-background, var(--sys-color-surface));

@@ -354,7 +354,15 @@ const BrowserAppContent: React.FC = () => {
               data-tab-orientation={shellTabBarOrientation}
             >
               <WindowNavigationBridge />
-              <ToastProvider topOffset={isUrlBarExpanded ? "88px" : "64px"} rightOffset="78px" />
+              {/* 変更理由: 本文を覆う範囲を減らし、通知を上部バー直下の右端へ寄せる。 */}
+              <ToastProvider
+                topOffset={
+                  isUrlBarExpanded
+                    ? "calc(var(--sys-space-13) + var(--sys-space-10))"
+                    : "var(--sys-space-13)"
+                }
+                rightOffset="var(--sys-space-4)"
+              />
               {/*
                 水平モードではタイトルと必須のレイアウト操作はペインの外に置く。
                 これにより2ペイン時も操作が重複せず、アクティブペインのタイトルだけを表示できる。
