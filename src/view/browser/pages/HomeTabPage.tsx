@@ -10,7 +10,6 @@ import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
 interface RecentBoard {
   boardUrl: string;
   boardTitle: string;
-  threadCount: number;
   lastVisited: number;
 }
 
@@ -18,17 +17,29 @@ function normalizeString(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
 }
 
-function formatLastVisited(timestamp: number): string {
-  if (!timestamp) {
-    return "";
-  }
+function startOfDay(timestamp: number): number {
   const date = new Date(timestamp);
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${month}/${day} ${hours}:${minutes}`;
+  date.setHours(0, 0, 0, 0);
+  return date.getTime();
 }
+
+type BoardGroupKey = "today" | "yesterday" | "older";
+
+function groupKeyOf(lastVisited: number, todayStart: number): BoardGroupKey {
+  if (lastVisited >= todayStart) {
+    return "today";
+  }
+  if (lastVisited >= todayStart - 24 * 60 * 60 * 1000) {
+    return "yesterday";
+  }
+  return "older";
+}
+
+const GROUP_LABELS: Record<BoardGroupKey, string> = {
+  today: "今日",
+  yesterday: "昨日",
+  older: "それ以前",
+};
 
 // 常設ホームタブ専用ビュー。板ツリー（BoardTreePage）とは別物で、最近開いた板だけを並べる。
 // 変更理由: ホームタブ自体は遷移不可のため、板の選択はすべて新規タブで開く。
@@ -60,12 +71,11 @@ export const HomeTabPage: React.FC = () => {
           const boardTitle = normalizeString(record.boardTitle, boardUrl);
           const existing = grouped.get(boardUrl);
           if (existing) {
-            existing.threadCount += 1;
             if (date > existing.lastVisited) {
               existing.lastVisited = date;
             }
           } else {
-            grouped.set(boardUrl, { boardUrl, boardTitle, threadCount: 1, lastVisited: date });
+            grouped.set(boardUrl, { boardUrl, boardTitle, lastVisited: date });
           }
         }
         if (!cancelled) {
@@ -87,6 +97,22 @@ export const HomeTabPage: React.FC = () => {
       cancelled = true;
     };
   }, []);
+
+  // 変更理由: 日付は項目ごとではなく、画像のセッション一覧のように日別セクションで分ける。
+  const grouped = React.useMemo(() => {
+    const todayStart = startOfDay(Date.now());
+    const groups: Record<BoardGroupKey, RecentBoard[]> = {
+      today: [],
+      yesterday: [],
+      older: [],
+    };
+    for (const board of boards) {
+      groups[groupKeyOf(board.lastVisited, todayStart)].push(board);
+    }
+    return (Object.keys(groups) as BoardGroupKey[])
+      .filter((key) => groups[key].length > 0)
+      .map((key) => ({ key, label: GROUP_LABELS[key], items: groups[key] }));
+  }, [boards]);
 
   const openBoard = React.useCallback(
     (board: RecentBoard) => {
@@ -129,30 +155,27 @@ export const HomeTabPage: React.FC = () => {
 
   return (
     <div className="home-tab-page">
-      <div className="home-tab-page__heading">最近開いた板</div>
       {boards.length === 0 ? (
         <div className="home-tab-page__empty">最近開いた板はまだありません。</div>
       ) : (
-        <div className="home-tab-page__list">
-          {boards.map((board) => {
-            const sub = `${board.threadCount}スレ${
-              board.lastVisited ? ` • 最終閲覧 ${formatLastVisited(board.lastVisited)}` : ""
-            }`;
-            const tooltip = `${board.boardTitle}\n${board.boardUrl}\n${sub}`;
-            return (
-              <Button
-                key={board.boardUrl}
-                className="home-tab-page__link home-tab-page__link--board"
-                variant="subtle"
-                onClick={() => openBoard(board)}
-                title={tooltip}
-              >
-                <span className="home-tab-page__link-title">{board.boardTitle}</span>
-                <span className="home-tab-page__link-sub">{sub}</span>
-              </Button>
-            );
-          })}
-        </div>
+        grouped.map((group) => (
+          <React.Fragment key={group.key}>
+            <div className="home-tab-page__heading">{group.label}</div>
+            <div className="home-tab-page__list">
+              {group.items.map((board) => (
+                <Button
+                  key={board.boardUrl}
+                  className="home-tab-page__link home-tab-page__link--board"
+                  variant="subtle"
+                  onClick={() => openBoard(board)}
+                  title={`${board.boardTitle}\n${board.boardUrl}`}
+                >
+                  <span className="home-tab-page__link-title">{board.boardTitle}</span>
+                </Button>
+              ))}
+            </div>
+          </React.Fragment>
+        ))
       )}
     </div>
   );
