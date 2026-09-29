@@ -233,6 +233,7 @@ export const ThreadListPage: React.FC<Props> = ({
   const bookmarkRevision = useBookmarkRevision();
   const [threads, setThreads] = useState<IThread[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showRefreshOverlay, setShowRefreshOverlay] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [boardAutoRefreshIntervalMs, setBoardAutoRefreshIntervalMs] = useState(() =>
     readBoardAutoRefreshIntervalMs(page.boardUrl),
@@ -258,6 +259,7 @@ export const ThreadListPage: React.FC<Props> = ({
   });
   const [searchQuery, setSearchQuery] = useState(() => persistedSearchQuery ?? "");
   const previousBoardUrlRef = useRef(page.boardUrl);
+  const previousRefreshKeyRef = useRef(refreshKey);
   const skipViewStateUpdateRef = useRef(false);
   // 変更理由: 非表示中の read_state 系 message を保留し、表示復帰時に適用するため。
   // 2ペイン時は自ペインの表タブでもフォーカス外なら裏側扱いにし、スレ側の
@@ -335,7 +337,14 @@ export const ThreadListPage: React.FC<Props> = ({
   const { column: sortColumn, direction: sortDirection } = sortPreference;
 
   const fetchThreads = useCallback(async () => {
+    const isRefresh = previousRefreshKeyRef.current !== refreshKey;
+    previousRefreshKeyRef.current = refreshKey;
     setLoading(true);
+    if (isRefresh) {
+      setShowRefreshOverlay(true);
+      // 変更理由: 更新中の短い通信でも処理中を見せ、連続操作を抑制するため最低3秒表示する。
+      window.setTimeout(() => setShowRefreshOverlay(false), 3000);
+    }
     setError(null);
     try {
       // container経由でBoardサービスにアクセス
@@ -1010,6 +1019,12 @@ export const ThreadListPage: React.FC<Props> = ({
         threshold={WHEEL_THRESHOLD}
         portalContainerRef={effectiveScrollContainerRef}
       />
+      {showRefreshOverlay && (
+        <div className="thread-list-page__loading-overlay" role="status" aria-live="polite">
+          <Spinner size="sm" aria-label="スレ一覧を読み込み中" />
+          <span>スレ一覧を読み込み中...</span>
+        </div>
+      )}
       {error && <div className="thread-list-page__notice">{error}</div>}
       <SimpleDataTable
         columns={THREAD_LIST_COLUMNS}

@@ -1,6 +1,20 @@
 /* Thread list and history page layout. */
 .thread-list-page {
   padding: 0;
+  position: relative;
+}
+
+.thread-list-page__loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: var(--sys-z-index-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sys-space-3);
+  background: var(--sys-color-surface-overlay);
+  color: var(--sys-color-fg);
+  pointer-events: all;
 }
 
 .history-list-page {
