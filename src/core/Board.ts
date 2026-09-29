@@ -325,18 +325,17 @@ class="open_in_rcrx">${container.util.escapeHtml(newBoardUrl)}
     }
 
     const cache = container.cache.getCache(xhrInfo.path);
+    let cachedThreads: BoardThread[] | null = null;
     try {
       await cache.get();
-    } catch {
-      throw new Error("No cached board data");
+      cachedThreads = cache.data == null ? null : Board.parse(boardUrl, cache.data);
+    } catch (error) {
+      // 変更理由: URLを直接開いた場合などは板キャッシュがない。ここで終了すると
+      // subject.txtを一度も確認できず、dat落ちによる自動更新停止を取りこぼす。
+      console.error("[Board] スレッド存在確認用の板キャッシュを取得できませんでした:", error);
     }
 
-    const { lastModified, data } = cache;
-    const cachedThreads = Board.parse(boardUrl, data!);
-    if (!cachedThreads) {
-      throw new Error("No cached board data");
-    }
-    let threads: BoardThread[] = cachedThreads;
+    let threads: BoardThread[] = cachedThreads ?? [];
 
     const findThread = () => threads.find(({ url }) => new ChURL(url).url.href === chUrl.url.href);
     let thread = findThread();
@@ -346,7 +345,9 @@ class="open_in_rcrx">${container.util.escapeHtml(newBoardUrl)}
     // 通常表示では通信を増やさず、従来どおりキャッシュ上のレス数を利用する。
     if (forceUpdate || !thread) {
       const board = new Board(boardUrl);
-      await board.get(forceUpdate);
+      // 変更理由: キャッシュが未取得・解析不能なら短時間キャッシュも使わず、
+      // 最新一覧の取得に成功してから存在／不在を判断する。
+      await board.get(forceUpdate || cachedThreads == null);
       if (!board.thread) {
         throw new Error("No refreshed board data");
       }
@@ -357,7 +358,7 @@ class="open_in_rcrx">${container.util.escapeHtml(newBoardUrl)}
     if (thread) {
       return {
         resCount: thread.resCount,
-        modified: lastModified ?? Date.now(),
+        modified: cache.lastModified ?? Date.now(),
       };
     }
 

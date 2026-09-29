@@ -46,7 +46,44 @@ describe("Board.getCachedResCount", () => {
   beforeEach(() => {
     cache.data = "1000000001.dat<>古いスレ一覧 (1)\n";
     cache.lastUpdated = 0;
+    cache.get.mockReset();
+    cache.get.mockResolvedValue(undefined);
     fetchMock.mockReset();
+  });
+
+  it("板キャッシュがなくても最新一覧からスレッドの存在を確認する", async () => {
+    cache.get.mockRejectedValue(new Error("キャッシュ未取得"));
+    fetchMock.mockResolvedValue({
+      status: 200,
+      headers: {},
+      body: "1000000002.dat<>現在のスレ一覧 (2)\n",
+      url: "https://example.com/board/subject.txt",
+    });
+
+    const result = await Board.getCachedResCount(
+      "https://example.com/test/read.cgi/board/1000000002/",
+      { forceUpdate: true },
+    );
+
+    expect(result.resCount).toBe(2);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("板キャッシュがなくても最新一覧から消えたスレッドを検知する", async () => {
+    cache.get.mockRejectedValue(new Error("キャッシュ未取得"));
+    fetchMock.mockResolvedValue({
+      status: 200,
+      headers: {},
+      body: "1000000003.dat<>別のスレッド (3)\n",
+      url: "https://example.com/board/subject.txt",
+    });
+
+    await expect(
+      Board.getCachedResCount("https://example.com/test/read.cgi/board/1000000002/", {
+        forceUpdate: true,
+      }),
+    ).rejects.toThrow("板のスレ一覧にそのスレが存在しません");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("confirms a cached subject miss against a freshly fetched subject", async () => {
