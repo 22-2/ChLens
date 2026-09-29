@@ -1,5 +1,6 @@
 import type { TabStoreState } from "src/view/browser/hooks/tab-store-types";
-import type { Pane, Tab } from "src/view/browser/types";
+import type { Page, Pane, Tab } from "src/view/browser/types";
+import { ensurePaneHomeTab } from "src/view/browser/types";
 import { resetAutoRefreshState } from "src/view/browser/utils/auto-refresh-pages";
 import {
   getBrowserSessionJson,
@@ -9,11 +10,13 @@ import {
 export function sanitizeTabStoreState(state: TabStoreState): TabStoreState {
   return {
     ...state,
-    // 変更理由: 自動更新は実行時状態として扱い、タブ復元/複製で意図せず再開しないよう永続化しない。
-    panes: state.panes.map((pane) => ({
-      ...pane,
-      tabs: pane.tabs.map((tab) => resetAutoRefreshState(tab)),
-    })),
+    // 変更理由: どのペインにも常設ホームを先頭に保ち、他タブのピン留めで埋もれさせない。
+    panes: state.panes.map((pane) =>
+      ensurePaneHomeTab({
+        ...pane,
+        tabs: pane.tabs.map((tab) => resetAutoRefreshState(tab)),
+      }),
+    ),
     closedTabs: state.closedTabs.map((tab) => resetAutoRefreshState(tab)),
   };
 }
@@ -21,7 +24,15 @@ export function sanitizeTabStoreState(state: TabStoreState): TabStoreState {
 function normalizeLoadedTab(tab: Tab): Tab {
   const normalized = {
     ...tab,
-    pinned: tab.pinned ?? false,
+    // 変更理由: 旧セッションのページ種別 "home" は "boardTree" へ移行する。
+    history: (tab.history ?? []).map(
+      (page): Page =>
+        (page as { type: string }).type === "home"
+          ? ({ ...(page as object), type: "boardTree" } as Page)
+          : page,
+    ),
+    pinned: tab.locked ? true : (tab.pinned ?? false),
+    locked: tab.locked ?? false,
     reloadKey: tab.reloadKey ?? 0,
   };
   // 変更理由: 旧セッションに自動更新状態が残っていても復元時は常にOFFへ正規化する。
@@ -51,13 +62,15 @@ export function loadTabStoreSession(): TabStoreState | null {
     if (parsed.panes?.length && parsed.activePaneId) {
       const panes = parsed.panes
         .filter((pane) => pane.tabs?.length > 0)
-        .map((pane) => ({
-          ...pane,
-          tabs: pane.tabs.map((tab) => normalizeLoadedTab(tab)),
-          activeTabId: pane.tabs.some((tab) => tab.id === pane.activeTabId)
-            ? pane.activeTabId
-            : pane.tabs[0].id,
-        }));
+        .map((pane) =>
+          ensurePaneHomeTab({
+            ...pane,
+            tabs: pane.tabs.map((tab) => normalizeLoadedTab(tab)),
+            activeTabId: pane.tabs.some((tab) => tab.id === pane.activeTabId)
+              ? pane.activeTabId
+              : pane.tabs[0].id,
+          }),
+        );
       if (panes.length === 0) return null;
       const activePaneId = panes.some((p) => p.id === parsed.activePaneId)
         ? parsed.activePaneId
@@ -75,11 +88,11 @@ export function loadTabStoreSession(): TabStoreState | null {
       const activeTabId = tabs.some((tab) => tab.id === parsed.activeTabId)
         ? parsed.activeTabId
         : tabs[0].id;
-      const pane: Pane = {
+      const pane: Pane = ensurePaneHomeTab({
         id: crypto.randomUUID(),
         tabs,
         activeTabId,
-      };
+      });
       return {
         panes: [pane],
         activePaneId: pane.id,

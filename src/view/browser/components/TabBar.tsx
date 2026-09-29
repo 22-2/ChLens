@@ -1,6 +1,7 @@
 import { DragDropProvider } from "@dnd-kit/react";
 import { isSortableOperation, useSortable } from "@dnd-kit/react/sortable";
 import {
+  House,
   PanelLeft,
   PanelLeftClose,
   PanelLeftOpen,
@@ -69,11 +70,12 @@ function getMoveTargetIndex(
   isDetachedTab: (tabId: string) => boolean,
 ): number | null {
   const dragTab = pane.tabs.find((tab) => tab.id === dragTabId);
-  if (!dragTab) {
+  // 変更理由: 常設ホームは移動対象外で、他タブの移動先計算からも除外する。
+  if (!dragTab || dragTab.locked) {
     return null;
   }
 
-  const group = pane.tabs.filter((tab) => tab.pinned === dragTab.pinned);
+  const group = pane.tabs.filter((tab) => !tab.locked && tab.pinned === dragTab.pinned);
   const groupWithoutDrag = group.filter((tab) => tab.id !== dragTabId);
   const visibleGroup = groupWithoutDrag.filter((tab) => !isDetachedTab(tab.id));
   const clampedVisibleIndex = Math.max(0, Math.min(visibleIndex, visibleGroup.length));
@@ -127,8 +129,8 @@ const SortableTab: React.FC<SortableTabProps> = ({
   const { ref, isDragSource } = useSortable({
     id: tab.id,
     index,
-    // ピン留めタブと通常タブが境界を越えないようにグループで分離する。
-    group: tab.pinned ? "pinned" : "normal",
+    // 常設ホーム・ピン留め・通常で境界を越えないようグループ分離する。
+    group: tab.locked ? "locked" : tab.pinned ? "pinned" : "normal",
     transition: SORTABLE_TRANSITION,
   });
 
@@ -140,13 +142,16 @@ const SortableTab: React.FC<SortableTabProps> = ({
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
       // 中クリックはドラッグではなく閉じる操作として処理する。
+      // 変更理由: 常設ホームは中クリックでも閉じない。
       if (e.button === 1) {
         e.preventDefault();
         hide();
-        onClose(tab.id);
+        if (!tab.locked) {
+          onClose(tab.id);
+        }
       }
     },
-    [hide, tab.id, onClose],
+    [hide, tab.id, tab.locked, onClose],
   );
 
   const handleClick = useCallback(() => {
@@ -182,7 +187,7 @@ const SortableTab: React.FC<SortableTabProps> = ({
         ref={ref}
         className={`tab${isActive ? " tab--active" : ""}${
           tab.pinned ? " tab--pinned" : ""
-        }${isHighlighted ? " tab--highlighted" : ""}${isDragSource ? " tab--dragging" : ""}`}
+        }${tab.locked ? " tab--locked" : ""}${isHighlighted ? " tab--highlighted" : ""}${isDragSource ? " tab--dragging" : ""}`}
         data-tab-id={tab.id}
         role="tab"
         aria-selected={isActive}
@@ -200,7 +205,12 @@ const SortableTab: React.FC<SortableTabProps> = ({
           onContextMenu(e, tab);
         }}
       >
-        {tab.pinned ? (
+        {/* 変更理由: 常設ホームは常にピン留めサイズ（アイコンのみ）で表示する。板ツリーと区別するためHouseを使う。 */}
+        {tab.locked ? (
+          <span className="tab__icon" title="ホーム（常設）" aria-label="ホーム（常設）">
+            <House size={15} aria-hidden="true" />
+          </span>
+        ) : tab.pinned ? (
           <Pin size={11} />
         ) : compact ? (
           <span className="tab__icon">
@@ -224,9 +234,8 @@ const SortableTab: React.FC<SortableTabProps> = ({
             }
           />
         )}
-        {/* 変更理由: 垂直タブでは横幅が限られるため閉じる操作を中クリックと右クリックへ集約し、
-            横タブでは2ペイン時の最後のタブも閉じられるようボタンを残す。 */}
-        {!isVertical && !tab.pinned && (tabCount > 1 || paneCount > 1) && (
+        {/* 変更理由: 常設ホームは閉鎖不可のため閉じるボタンを出さない。 */}
+        {!isVertical && !tab.pinned && !tab.locked && (tabCount > 1 || paneCount > 1) && (
           <button
             className="tab__close"
             onClick={(e) => {

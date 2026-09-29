@@ -1,9 +1,9 @@
 import {
   Bookmark,
   History,
-  House,
   LayoutList,
   Library,
+  ListTree,
   type LucideProps,
   MessageSquareText,
   PenLine,
@@ -15,8 +15,9 @@ import type { PageType } from "src/view/browser/types";
 
 // 変更理由: 垂直タブバーの簡易表示ではタイトルを隠すため、ページ種別を見分ける
 // アイコンが必須になる。対応表をここに集約し、将来の展開表示側の導入時も使い回す。
+// 常設ホームタブはHouse、板ツリーはListTreeで区別する。
 const PAGE_TYPE_ICONS = {
-  home: House,
+  boardTree: ListTree,
   boardList: Library,
   threadList: LayoutList,
   thread: MessageSquareText,

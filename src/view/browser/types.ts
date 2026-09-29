@@ -1,9 +1,9 @@
 import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
 
 // ページ種別の定義
-// ナビゲーション階層: ホーム → 板一覧 → スレッド一覧 → スレッド
+// ナビゲーション階層: 板ツリー → 板一覧 → スレッド一覧 → スレッド
 export type PageType =
-  | "home"
+  | "boardTree"
   | "boardList"
   | "threadList"
   | "thread"
@@ -21,8 +21,8 @@ export type ThreadFilter = "all" | "popular" | "image" | "video" | "link";
 // ユーザーが選んだ本文・名前・IDの検索条件を失わないようにする。
 export type ThreadSearchTarget = "all" | "body" | "name" | "id";
 
-export interface HomePage {
-  type: "home";
+export interface BoardTreePage {
+  type: "boardTree";
   title: string;
 }
 
@@ -71,7 +71,7 @@ export interface LogListPage {
 }
 
 export type Page =
-  | HomePage
+  | BoardTreePage
   | BoardListPage
   | ThreadListPage
   | ThreadPage
@@ -99,6 +99,8 @@ export interface Tab {
   history: Page[];
   currentIndex: number;
   pinned: boolean;
+  // 常設ホームタブ。ペイン先頭に固定し、遷移・閉鎖・移動・ピン解除を禁止する。
+  locked?: boolean;
   // ページの強制再読み込みに使うカウンター。インクリメントするとContentAreaがページを再マウントする
   reloadKey: number;
   // 自動更新は現在ページだけに結び付け、別ページへ移動した時点で解除する。
@@ -181,6 +183,32 @@ export function getCurrentPage(tab: Tab): Page {
   return tab.history[tab.currentIndex];
 }
 
+// 常設ホームタブを生成する。履歴はboardTree単体で、遷移不可の特殊タブとして扱う。
+export function createHomeTab(id?: string): Tab {
+  return {
+    id: id ?? crypto.randomUUID(),
+    history: [{ type: "boardTree", title: "ホーム" }],
+    currentIndex: 0,
+    pinned: true,
+    locked: true,
+    reloadKey: 0,
+    autoRefreshEnabled: false,
+    autoRefreshPageKey: null,
+  };
+}
+
+// ペイン先頭にホームタブが無ければ挿入し、既存ホームタブを先頭へ寄せる。
+// 変更理由: 他タブをピン留めしても常設ホームが左端/上端に残る不変条件を保つ。
+export function ensurePaneHomeTab<T extends { tabs: Tab[]; activeTabId: string }>(pane: T): T {
+  const homeIndex = pane.tabs.findIndex((tab) => tab.locked);
+  if (homeIndex === 0) {
+    return pane;
+  }
+  const withoutHome = pane.tabs.filter((tab) => !tab.locked);
+  const homeTab = homeIndex > 0 ? pane.tabs[homeIndex]! : createHomeTab();
+  return { ...pane, tabs: [homeTab, ...withoutHome] };
+}
+
 function normalizeViewStateLocation(rawLocation: string): string {
   try {
     const parsed = new URL(rawLocation);
@@ -212,7 +240,7 @@ export function canGoForward(tab: Tab): boolean {
 
 export function getDisplayUrl(page: Page): string {
   switch (page.type) {
-    case "home":
+    case "boardTree":
       return "";
     case "boardList":
       return "板一覧";
@@ -240,37 +268,41 @@ function threadUrlToBoardUrl(threadUrl: string): string {
 }
 
 // 新規タブ用: ページに対してカノニカルな階層スタックを構築する
-// ホーム → 板一覧 → スレッド一覧 → スレッド
+// 板ツリー → 板一覧 → スレッド一覧 → スレッド
 export function buildHierarchy(page: Page): Page[] {
   switch (page.type) {
-    case "home":
+    case "boardTree":
       return [page];
 
     case "boardList":
-      return [{ type: "home", title: "ホーム" }, page];
+      return [{ type: "boardTree", title: "板ツリー" }, page];
 
     case "settings":
-      return [{ type: "home", title: "ホーム" }, page];
+      return [{ type: "boardTree", title: "板ツリー" }, page];
 
     case "bookmarkList":
-      return [{ type: "home", title: "ホーム" }, page];
+      return [{ type: "boardTree", title: "板ツリー" }, page];
 
     case "historyList":
-      return [{ type: "home", title: "ホーム" }, page];
+      return [{ type: "boardTree", title: "板ツリー" }, page];
 
     case "writeHistoryList":
-      return [{ type: "home", title: "ホーム" }, page];
+      return [{ type: "boardTree", title: "板ツリー" }, page];
 
     case "logList":
-      return [{ type: "home", title: "ホーム" }, page];
+      return [{ type: "boardTree", title: "板ツリー" }, page];
 
     case "threadList":
-      return [{ type: "home", title: "ホーム" }, { type: "boardList", title: "板一覧" }, page];
+      return [
+        { type: "boardTree", title: "板ツリー" },
+        { type: "boardList", title: "板一覧" },
+        page,
+      ];
 
     case "thread": {
       const boardUrl = threadUrlToBoardUrl(page.threadUrl);
       return [
-        { type: "home", title: "ホーム" },
+        { type: "boardTree", title: "板ツリー" },
         { type: "boardList", title: "板一覧" },
         {
           type: "threadList",

@@ -46,6 +46,8 @@ export { TAB_ACTION_TYPES } from "src/view/browser/hooks/tab-store-types";
 import { useTabViewScope } from "src/view/browser/hooks/use-tab-view-scope";
 import {
   buildHierarchy,
+  createHomeTab,
+  ensurePaneHomeTab,
   getCurrentPage,
   getPageViewStateKey,
   type Page,
@@ -173,8 +175,8 @@ function clearThreadVisitsForTab(visitStore: Map<string, ThreadHistoryVisit>, ta
 
 function getPageIdentity(page: Page): string {
   switch (page.type) {
-    case "home":
-      return "home";
+    case "boardTree":
+      return "boardTree";
     case "boardList":
       return "boardList";
     case "settings":
@@ -281,7 +283,9 @@ function resolveConfiguredNewTabPage(sourcePage: Page | null, sourceTab: Tab | n
   const mode = resolveNewTabPageMode(readConfigValue("new_tab_page_mode"));
 
   if (mode === "home") {
-    return { type: "home", title: "ホーム" };
+    // 変更理由: 新規タブの既定ページは従来どおりホームページ（板ツリー）で、常設ホームタブは開かない。
+    // 設定値 "home" は旧バージョンとの互換のため維持し、ページ種別だけ boardTree を使う。
+    return { type: "boardTree", title: "板ツリー" };
   }
 
   if (mode === "custom_board") {
@@ -290,7 +294,7 @@ function resolveConfiguredNewTabPage(sourcePage: Page | null, sourceTab: Tab | n
       return createThreadListPageFromBoardUrl(rawBoardUrl);
     }
 
-    return { type: "home", title: "ホーム" };
+    return { type: "boardTree", title: "板ツリー" };
   }
 
   // 変更理由: 「関連する板」タブをスレッドから開くとき、
@@ -301,7 +305,7 @@ function resolveConfiguredNewTabPage(sourcePage: Page | null, sourceTab: Tab | n
     return relatedBoardPage;
   }
 
-  return { type: "home", title: "ホーム" };
+  return { type: "boardTree", title: "板ツリー" };
 }
 
 function createTab(sourcePage: Page | null = null, sourceTab: Tab | null = null): Tab {
@@ -331,12 +335,13 @@ function createTabFromPage(page: Page): Tab {
 }
 
 // 単一タブを内包する新規ペインを生成する。
+// 変更理由: 常設ホームタブを先頭に置き、両ペインとも左端/上端に残す。
 function createPane(initialTab: Tab): Pane {
-  return {
+  return ensurePaneHomeTab({
     id: crypto.randomUUID(),
-    tabs: [initialTab],
+    tabs: initialTab.locked ? [initialTab] : [createHomeTab(), initialTab],
     activeTabId: initialTab.id,
-  };
+  });
 }
 
 function readInitialPageFromLocation(): Page | null {
@@ -390,7 +395,10 @@ function updatePane(
 ): TabStoreState {
   return {
     ...state,
-    panes: state.panes.map((pane) => (pane.id === paneId ? updater(pane) : pane)),
+    // 変更理由: どのタブ操作後も常設ホームが先頭に残るよう、ペイン更新時に寄せ直す。
+    panes: state.panes.map((pane) =>
+      pane.id === paneId ? ensurePaneHomeTab(updater(pane)) : pane,
+    ),
   };
 }
 
@@ -508,7 +516,7 @@ function buildCanonicalThreadListStack(
   threadListPage: Extract<Page, { type: "threadList" }>,
 ): Page[] {
   return [
-    { type: "home", title: "ホーム" },
+    { type: "boardTree", title: "板ツリー" },
     { type: "boardList", title: "板一覧" },
     threadListPage,
   ];
@@ -662,7 +670,15 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
         return state;
       }
       // 2ペイン時は最後のタブを閉じる操作で空ペインを残さず、もう片方へ戻す。
-      if (pane.tabs.length <= 1 && state.panes.length > 1 && !action.replaceLastTab) {
+      // 変更理由: 常設ホームタブは閉じないため、残りがホームだけの場合も「最後のタブ」として扱う。
+      const remainingAfterClose = pane.tabs.filter((t) => t.id !== action.tabId);
+      const leavesOnlyHome =
+        remainingAfterClose.length > 0 && remainingAfterClose.every((t) => t.locked);
+      if (
+        (pane.tabs.length <= 1 || leavesOnlyHome) &&
+        state.panes.length > 1 &&
+        !action.replaceLastTab
+      ) {
         const panes = state.panes.filter((candidate) => candidate.id !== paneId);
         return {
           ...state,
@@ -804,10 +820,25 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
 
     case TAB_ACTION_TYPES.TOGGLE_PIN: {
       const paneId = resolvePaneId(state, action.paneId);
+      const pane = getPane(state, paneId);
+      // 変更理由: 常設ホームはピン留めサイズ固定で、解除・再固定の対象にしない。
+      if (pane.tabs.some((t) => t.id === action.tabId && t.locked)) {
+        return state;
+      }
       return updatePane(state, paneId, (p) => {
         const tabs = p.tabs.map((t) => (t.id === action.tabId ? { ...t, pinned: !t.pinned } : t));
-        // 固定タブを左に、非固定タブを右に並び替え
-        tabs.sort((a, b) => (a.pinned === b.pinned ? 0 : a.pinned ? -1 : 1));
+        // 常設ホーム→固定タブ→通常タブの順に並び替え
+        tabs.sort((a, b) =>
+          a.locked === b.locked
+            ? a.pinned === b.pinned
+              ? 0
+              : a.pinned
+                ? -1
+                : 1
+            : a.locked
+              ? -1
+              : 1,
+        );
         return { ...p, tabs };
       });
     }
@@ -816,7 +847,8 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       const paneId = resolvePaneId(state, action.paneId);
       const pane = getPane(state, paneId);
       const dragTab = pane.tabs.find((t) => t.id === action.dragTabId);
-      if (!dragTab) {
+      // 変更理由: 常設ホームは単独グループで移動不可とし、先頭位置を保つ。
+      if (!dragTab || dragTab.locked) {
         return state;
       }
 
@@ -824,8 +856,9 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       // 並べ替え、最終位置を source.sortable.index（グループ内インデックス）として確定する。
       // ドロップ先タブIDから移動先を逆算すると、その投影インデックスとズレてホイール順序が
       // 表示順と食い違うため、グループ内インデックスを直接の真実として並べ替える。
-      const group = pane.tabs.filter((t) => t.pinned === dragTab.pinned);
-      const others = pane.tabs.filter((t) => t.pinned !== dragTab.pinned);
+      const group = pane.tabs.filter((t) => !t.locked && t.pinned === dragTab.pinned);
+      const lockedTabs = pane.tabs.filter((t) => t.locked);
+      const others = pane.tabs.filter((t) => !t.locked && t.pinned !== dragTab.pinned);
       const fromIndex = group.findIndex((t) => t.id === action.dragTabId);
       const toIndex = Math.max(0, Math.min(action.toIndex, group.length - 1));
       if (fromIndex === -1 || fromIndex === toIndex) {
@@ -834,10 +867,12 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
 
       const reorderedGroup = [...group];
       reorderedGroup.splice(toIndex, 0, reorderedGroup.splice(fromIndex, 1)[0]);
-      // ピン留めタブは常に左、通常タブは常に右、の不変条件を保って再結合する。
+      // 常設ホームを先頭に保ち、ピン留めタブは常に左の不変条件で再結合する。
       return updatePane(state, paneId, (p) => ({
         ...p,
-        tabs: dragTab.pinned ? [...reorderedGroup, ...others] : [...others, ...reorderedGroup],
+        tabs: dragTab.pinned
+          ? [...lockedTabs, ...reorderedGroup, ...others]
+          : [...lockedTabs, ...others, ...reorderedGroup],
       }));
     }
 
@@ -859,7 +894,8 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       const targetTab = action.tabId
         ? findTabAcrossPanes(state, action.tabId)
         : getPaneActiveTab(getPane(state, paneId));
-      if (!targetTab) {
+      // 変更理由: 常設ホームタブは遷移不可とし、ホームの履歴汚染を防ぐ。
+      if (!targetTab || targetTab.locked) {
         return state;
       }
       const currentPage = getCurrentPage(targetTab);
@@ -877,7 +913,8 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       const paneId = resolvePaneId(state, action.paneId);
       const pane = getPane(state, paneId);
       const targetTab = pane.tabs.find((tab) => tab.id === action.tabId);
-      if (!targetTab) {
+      // 変更理由: 常設ホームタブは遷移不可とし、指定遷移も受け付けない。
+      if (!targetTab || targetTab.locked) {
         return state;
       }
 
@@ -1121,11 +1158,14 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       const activeTabId =
         state.panes.find((candidate) => candidate.id === state.activePaneId)?.activeTabId ??
         leftPane.activeTabId;
-      const mergedPane: Pane = {
+      const mergedPane: Pane = ensurePaneHomeTab({
         ...leftPane,
-        tabs: [...leftPane.tabs, ...rightPane.tabs],
+        tabs: [
+          ...leftPane.tabs.filter((t) => !t.locked),
+          ...rightPane.tabs.filter((t) => !t.locked),
+        ],
         activeTabId,
-      };
+      });
       return { ...state, panes: [mergedPane], activePaneId: leftPane.id };
     }
 
@@ -1142,7 +1182,8 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
 
       const sourceTab = sourcePane.tabs.find((tab) => tab.id === sourcePane.activeTabId);
       const targetTab = targetPane.tabs.find((tab) => tab.id === targetPane.activeTabId);
-      if (!sourceTab || !targetTab) return state;
+      // 変更理由: 常設ホーム同士の交換で先頭不変条件が崩れるため、locked絡みは交換しない。
+      if (!sourceTab || !targetTab || sourceTab.locked || targetTab.locked) return state;
 
       const replaceActiveTab = (pane: Pane, currentTabId: string, replacement: Tab): Pane => ({
         ...pane,
@@ -1177,7 +1218,8 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       if (sourceIndex === -1) return state;
       const sourcePane = state.panes[sourceIndex];
       const movingTab = sourcePane.tabs.find((t) => t.id === action.tabId);
-      if (!movingTab) return state;
+      // 変更理由: 常設ホームはペイン間移動の対象にしない。
+      if (!movingTab || movingTab.locked) return state;
       const rightPane = state.panes[sourceIndex + 1];
       if (!rightPane && !canOpenInRightPane(state, sourcePaneId)) return state;
 
@@ -1220,7 +1262,8 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       const toPane = state.panes.find((p) => p.id === action.toPaneId);
       if (!fromPane || !toPane || fromPane.id === toPane.id) return state;
       const movingTab = fromPane.tabs.find((t) => t.id === action.tabId);
-      if (!movingTab) return state;
+      // 変更理由: 常設ホームはペイン間移動の対象にしない。
+      if (!movingTab || movingTab.locked) return state;
 
       let remainingFrom = fromPane.tabs.filter((t) => t.id !== action.tabId);
       if (remainingFrom.length === 0) {

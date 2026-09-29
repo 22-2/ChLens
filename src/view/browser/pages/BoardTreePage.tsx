@@ -1,3 +1,5 @@
+// 旧HomePage。常設ホームタブの専用ビュー（HomeTabPage）とは別物。
+// 変更理由: ホームページとホームタブの混同を避けるため、板ツリーへ改名した。
 import React from "react";
 import { container } from "src/service-container/index";
 import { tabActions } from "src/view/browser/hooks/tab-store-actions";
@@ -54,7 +56,7 @@ async function readFavoriteBoards(): Promise<FavoriteBoard[]> {
   return favorites;
 }
 
-export const HomePage: React.FC = () => {
+export const BoardTreePage: React.FC = () => {
   const { dispatch } = useTabStore();
   const [favoriteBoards, setFavoriteBoards] = React.useState<FavoriteBoard[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -112,48 +114,48 @@ export const HomePage: React.FC = () => {
   // }, [dispatch]);
 
   return (
-    <div className="home-page">
+    <div className="board-tree-page">
       <Button
-        className="home-page__link home-page__link--action"
+        className="board-tree-page__link board-tree-page__link--action"
         variant="subtle"
         onClick={openBoardList}
       >
         板一覧を開く
       </Button>
       {/* <Button
-        className="home-page__link home-page__link--action"
+        className="board-tree-page__link board-tree-page__link--action"
         variant="subtle"
         onClick={openHistory}
       >
         閲覧履歴を開く
       </Button>
       <Button
-        className="home-page__link home-page__link--action"
+        className="board-tree-page__link board-tree-page__link--action"
         variant="subtle"
         onClick={openBookmarks}
       >
         ブックマークを開く
       </Button> */}
-      <div className="home-page__heading">お気に入り板</div>
+      <div className="board-tree-page__heading">お気に入り板</div>
 
       {loading ? (
-        <div className="home-page__status">
+        <div className="board-tree-page__status">
           <Spinner size="xs" />
           <span>お気に入り板を読み込み中...</span>
         </div>
       ) : error ? (
-        <Alert className="home-page__alert" color="red" title="読み込みエラー">
+        <Alert className="board-tree-page__alert" color="red" title="読み込みエラー">
           {error}
         </Alert>
       ) : (
-        <div className="home-page__list">
+        <div className="board-tree-page__list">
           {favoriteBoards.length === 0 ? (
-            <div className="home-page__empty">お気に入り板はまだありません。</div>
+            <div className="board-tree-page__empty">お気に入り板はまだありません。</div>
           ) : (
             favoriteBoards.map((board) => (
               <Button
                 key={board.url}
-                className="home-page__link"
+                className="board-tree-page__link"
                 variant="subtle"
                 onClick={() => openBoard(board)}
               >

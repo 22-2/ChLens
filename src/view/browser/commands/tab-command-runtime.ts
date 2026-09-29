@@ -113,6 +113,10 @@ export function executeTabCommandRequest(
       dispatchForTab(runtime, location, tabActions.closeTab(location.tab.id), true);
       return true;
     case TAB_COMMAND_IDS.PIN_SET:
+      // 変更理由: 常設ホームはピン留めサイズ固定で、指定変更を受け付けない。
+      if (location.tab.locked) {
+        return false;
+      }
       // 変更理由: 固定状態を「切り替える」ではなく「指定状態にする」ことで、
       // メニューの連打や二重イベントでも意図しない反転を起こさない。
       if (typeof request.args.pinned !== "boolean" || location.tab.pinned === request.args.pinned) {

@@ -318,6 +318,12 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   const [forwardMenuPosition, setForwardMenuPosition] = useState<MenuPosition | null>(null);
   // URL入力は必要なときだけ展開し、タブと本文に使える高さを初期状態で確保する。
   const [isUrlExpanded, setIsUrlExpanded] = useState(false);
+  // 変更理由: 常設ホームタブではomnibarを常時表示し、URL入力から板・スレへ直接飛べるようにする。
+  useEffect(() => {
+    if (viewTab.locked) {
+      setIsUrlExpanded(true);
+    }
+  }, [viewTab.locked, viewTab.id]);
   const backButtonRef = useRef<HTMLButtonElement>(null);
   const forwardButtonRef = useRef<HTMLButtonElement>(null);
   const refreshButtonRef = useRef<HTMLButtonElement>(null);
@@ -732,6 +738,14 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
 
   const handleUrlBarToggle = useCallback(() => {
     commandPalette.close();
+    // 変更理由: 常設ホームタブのomnibarは常時表示のため、折りたたみ操作を受け付けない。
+    if (viewTab.locked) {
+      if (!isUrlExpanded) {
+        activate("navigation");
+        setIsUrlExpanded(true);
+      }
+      return;
+    }
     if (isUrlExpanded) {
       handleBlur();
       setIsUrlExpanded(false);
@@ -740,7 +754,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
 
     activate("navigation");
     setIsUrlExpanded(true);
-  }, [activate, handleBlur, isUrlExpanded]);
+  }, [activate, handleBlur, isUrlExpanded, viewTab.locked]);
 
   const openQuickAccessPage = useCallback(
     (page: QuickAccessPage) => {

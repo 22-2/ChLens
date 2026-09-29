@@ -1,0 +1,54 @@
+/* Board Tree Page */
+.board-tree-page {
+  width: 100%;
+  min-height: 100%;
+  padding: 0;
+}
+.board-tree-page__heading {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--sys-color-border);
+  color: var(--sys-color-text-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+.board-tree-page__status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  color: var(--sys-color-text-muted);
+}
+.board-tree-page__alert {
+  margin: 8px 12px 0;
+}
+.board-tree-page__list {
+  width: 100%;
+}
+.board-tree-page__empty {
+  margin: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--sys-color-border);
+  color: var(--sys-color-text-muted);
+}
+.board-tree-page__link.browser-button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  min-height: 0;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 0;
+  border-bottom: 1px solid var(--sys-color-border);
+  background: transparent;
+  color: var(--sys-color-text);
+  text-align: left;
+  transition: none;
+}
+.board-tree-page__link.browser-button:hover:not(:disabled) {
+  border-color: transparent transparent var(--sys-color-border);
+  background: var(--sys-color-list-hover-bg);
+}
+.board-tree-page__link--action {
+  font-weight: 600;
+}

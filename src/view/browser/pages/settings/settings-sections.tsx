@@ -40,7 +40,7 @@ const THEME_ID_OPTIONS = [
 ] as const satisfies readonly SettingsOption[];
 
 const NEW_TAB_PAGE_MODE_OPTIONS = [
-  { const: "home", title: "ホーム（整備中）" },
+  { const: "home", title: "板ツリー" },
   { const: "related_board", title: "関連する板" },
   { const: "custom_board", title: "指定の板（入力）" },
 ] as const satisfies readonly SettingsOption[];
