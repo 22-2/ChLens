@@ -82,6 +82,7 @@ import {
   parseInternalBrowserPage,
   parseOmnibarBrowserPage,
 } from "src/view/browser/utils/link-routing";
+import { runManualRefresh, useManualRefreshCooldown } from "src/view/browser/utils/manual-refresh";
 import {
   mergeOmnibarSources,
   type OmnibarBoardSource,
@@ -292,6 +293,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   openArchiveReplayWindow = NOOP_OPEN_ARCHIVE_REPLAY_WINDOW,
 }) => {
   const { state, viewTab, viewPage, dispatch, paneId } = useTabStore();
+  const refreshCoolingDown = useManualRefreshCooldown(viewTab.id);
   const viewSurface = useViewSurface();
   const toast = useToast();
   const runTabCommand = useTabCommandRunner(viewTab.id);
@@ -727,8 +729,8 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
 
   const handleRefresh = useCallback(() => {
     setRefreshMenuPosition(null);
-    runTabCommand(TAB_COMMAND_IDS.RELOAD);
-  }, [runTabCommand]);
+    runManualRefresh(viewTab.id, () => runTabCommand(TAB_COMMAND_IDS.RELOAD));
+  }, [runTabCommand, viewTab.id]);
 
   const handleUrlBarToggle = useCallback(() => {
     commandPalette.close();
@@ -1093,7 +1095,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         ref={refreshButtonRef}
         type="button"
         className="nav-bar__menu-action"
-        disabled={!isPageRefreshable(viewPage)}
+        disabled={!isPageRefreshable(viewPage) || refreshCoolingDown}
         onClick={handleMenuRefresh}
         onContextMenu={handleRefreshContextMenu}
         title="更新"
