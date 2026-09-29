@@ -66,18 +66,25 @@
   width: 100%;
 }
 .home-tab-page__link--board {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 12px;
 }
 /* 変更理由: 板名が長いと横へはみ出すため、1行に収めて末尾省略する。全文はtitle属性のツールチップで確認する。 */
 .home-tab-page__link-title {
   display: block;
-  width: 100%;
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+/* 変更理由: 所属ドメインは右端に薄文字で添え、板名との主従を付ける。 */
+.home-tab-page__link-domain {
+  flex: 0 0 auto;
+  color: var(--sys-color-text-muted);
+  font-size: 12px;
+  white-space: nowrap;
 }
 .home-tab-page__link-title {
   font-size: 15px;

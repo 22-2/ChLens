@@ -17,6 +17,13 @@ function normalizeString(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
 }
 
+function domainOf(boardUrl: string): string {
+  try {
+    return new URL(boardUrl).hostname;
+  } catch {
+    return "";
+  }
+}
 function startOfDay(timestamp: number): number {
   const date = new Date(timestamp);
   date.setHours(0, 0, 0, 0);
@@ -171,6 +178,9 @@ export const HomeTabPage: React.FC = () => {
                   title={`${board.boardTitle}\n${board.boardUrl}`}
                 >
                   <span className="home-tab-page__link-title">{board.boardTitle}</span>
+                  {domainOf(board.boardUrl) ? (
+                    <span className="home-tab-page__link-domain">{domainOf(board.boardUrl)}</span>
+                  ) : null}
                 </Button>
               ))}
             </div>
