@@ -212,4 +212,183 @@ describe("ThreadMinimap", () => {
     expect(CANVAS_CONTEXT_STUB.moveTo).toHaveBeenCalledTimes(lineCount);
     expect(document.body.querySelector('[role="tooltip"]')).toBeNull();
   });
+
+  it("スティッチ表示中のクリックで注目レスを飛んで強調する", async () => {
+    const panel = document.createElement("div");
+    panel.className = "content-area__tab-panel";
+    const host = document.createElement("div");
+    host.className = "thread-page";
+    const responses = document.createElement("div");
+    responses.className = "thread-page__responses";
+    const response = document.createElement("div");
+    response.dataset.resNum = "10";
+    responses.append(response);
+    host.append(responses);
+    panel.append(host);
+    document.body.append(panel);
+
+    Object.defineProperties(panel, {
+      clientWidth: { configurable: true, value: 1000 },
+      offsetWidth: { configurable: true, value: 1012 },
+      clientHeight: { configurable: true, value: 600 },
+      scrollHeight: { configurable: true, value: 2400 },
+      scrollTop: { configurable: true, value: 120 },
+    });
+    Object.defineProperties(response, {
+      offsetHeight: { configurable: true, value: 48 },
+      offsetTop: { configurable: true, value: 300 },
+    });
+    Object.defineProperty(responses, "offsetParent", {
+      configurable: true,
+      value: panel,
+    });
+    panel.scrollTo = vi.fn();
+    panel.getBoundingClientRect = () =>
+      ({
+        top: 0,
+        left: 0,
+        right: 1000,
+        bottom: 600,
+        width: 1000,
+        height: 600,
+      }) as DOMRect;
+    responses.getBoundingClientRect = () => panel.getBoundingClientRect();
+
+    const rootRef = { current: host } as React.RefObject<HTMLDivElement | null>;
+    const repIndex = new Map<number, Set<number>>([[10, new Set([11, 12, 13])]]);
+    const onMarkerClick = vi.fn();
+    const { container } = render(
+      <ThreadMinimap
+        rootRef={rootRef}
+        repIndex={repIndex}
+        responseCount={1}
+        activeTopBar="none"
+        onMarkerClick={onMarkerClick}
+      />,
+    );
+
+    const canvas = await waitFor(() => {
+      const element = container.querySelector(".thread-page__minimap-canvas");
+      expect(element).toBeInTheDocument();
+      return element as HTMLCanvasElement;
+    });
+    canvas.setPointerCapture = vi.fn();
+    canvas.hasPointerCapture = vi.fn(() => true);
+    canvas.releasePointerCapture = vi.fn();
+
+    // マーカー直上ではなく中央寄りのクリックでも、ホバーが吸着していれば注目レス扱いにする。
+    fireEvent.pointerMove(canvas, {
+      clientX: 920,
+      clientY: 82,
+      pointerId: 1,
+      pointerType: "mouse",
+    });
+    expect(document.body.querySelector('[role="tooltip"]')).toHaveTextContent("レス 10");
+
+    fireEvent.pointerDown(canvas, {
+      clientX: 920,
+      clientY: 82,
+      pointerId: 1,
+      pointerType: "mouse",
+      button: 0,
+    });
+    fireEvent.pointerUp(canvas, {
+      clientX: 920,
+      clientY: 82,
+      pointerId: 1,
+      pointerType: "mouse",
+    });
+
+    // 変更理由: スティッチ表示中のクリックは対象レスへ飛んで強調し、飛び先を見失わないようにする。
+    expect(onMarkerClick).toHaveBeenCalledTimes(1);
+    expect(onMarkerClick).toHaveBeenCalledWith(10);
+  });
+
+  it("ドラッグによるスクロールでは注目レスを強調しない", async () => {
+    const panel = document.createElement("div");
+    panel.className = "content-area__tab-panel";
+    const host = document.createElement("div");
+    host.className = "thread-page";
+    const responses = document.createElement("div");
+    responses.className = "thread-page__responses";
+    const response = document.createElement("div");
+    response.dataset.resNum = "10";
+    responses.append(response);
+    host.append(responses);
+    panel.append(host);
+    document.body.append(panel);
+
+    Object.defineProperties(panel, {
+      clientWidth: { configurable: true, value: 1000 },
+      offsetWidth: { configurable: true, value: 1012 },
+      clientHeight: { configurable: true, value: 600 },
+      scrollHeight: { configurable: true, value: 2400 },
+      scrollTop: { configurable: true, value: 120 },
+    });
+    Object.defineProperties(response, {
+      offsetHeight: { configurable: true, value: 48 },
+      offsetTop: { configurable: true, value: 300 },
+    });
+    Object.defineProperty(responses, "offsetParent", {
+      configurable: true,
+      value: panel,
+    });
+    panel.scrollTo = vi.fn();
+    panel.getBoundingClientRect = () =>
+      ({
+        top: 0,
+        left: 0,
+        right: 1000,
+        bottom: 600,
+        width: 1000,
+        height: 600,
+      }) as DOMRect;
+    responses.getBoundingClientRect = () => panel.getBoundingClientRect();
+
+    const rootRef = { current: host } as React.RefObject<HTMLDivElement | null>;
+    const repIndex = new Map<number, Set<number>>([[10, new Set([11, 12, 13])]]);
+    const onMarkerClick = vi.fn();
+    const { container } = render(
+      <ThreadMinimap
+        rootRef={rootRef}
+        repIndex={repIndex}
+        responseCount={1}
+        activeTopBar="none"
+        onMarkerClick={onMarkerClick}
+      />,
+    );
+
+    const canvas = await waitFor(() => {
+      const element = container.querySelector(".thread-page__minimap-canvas");
+      expect(element).toBeInTheDocument();
+      return element as HTMLCanvasElement;
+    });
+    canvas.setPointerCapture = vi.fn();
+    canvas.hasPointerCapture = vi.fn(() => true);
+    canvas.releasePointerCapture = vi.fn();
+
+    fireEvent.pointerDown(canvas, {
+      clientX: 920,
+      clientY: 82,
+      pointerId: 1,
+      pointerType: "mouse",
+      button: 0,
+    });
+    fireEvent.pointerMove(canvas, {
+      clientX: 920,
+      clientY: 300,
+      pointerId: 1,
+      pointerType: "mouse",
+    });
+    fireEvent.pointerUp(canvas, {
+      clientX: 920,
+      clientY: 300,
+      pointerId: 1,
+      pointerType: "mouse",
+    });
+
+    // 変更理由: ドラッグは視点移動が目的なので、離しても対象レスの強調は行わない。
+    expect(panel.scrollTo).toHaveBeenCalled();
+    expect(onMarkerClick).not.toHaveBeenCalled();
+  });
 });

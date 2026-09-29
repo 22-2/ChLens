@@ -105,6 +105,9 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
   const markerHitsRef = useRef<MinimapMarkerHit[]>([]);
   const responseHitsRef = useRef<MinimapResponseHit[]>([]);
   const hoverLineYRef = useRef<number | null>(null);
+  // 変更理由: pointerUp時のコールバックから最新のスティッチ先を読むため、
+  // hoveredResNum stateと同期したrefを持つ。stateだけではclosureが古くなる。
+  const hoveredResNumRef = useRef<number | null>(null);
   const pointerStateRef = useRef({
     isDragging: false,
     pointerId: -1,
@@ -412,6 +415,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
 
       // 人気レスの近傍だけマーカー位置へ吸着させ、細いミニマップでも狙いやすくする。
       hoverLineYRef.current = nextY;
+      hoveredResNumRef.current = nextResNum;
       setHoveredResNum((current) => (current === nextResNum ? current : nextResNum));
       scheduleDraw();
     },
@@ -520,6 +524,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
       return;
     }
     hoverLineYRef.current = null;
+    hoveredResNumRef.current = null;
     setHoveredResNum(null);
     scheduleDraw();
   }, [scheduleDraw]);
@@ -559,6 +564,21 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
           // 軽微なブレはクリックとして扱い、既存のジャンプ＆ハイライトへ委譲する。
           if (movedDistanceSq <= 144) {
             onMarkerClick(pointerStateRef.current.markerResNum);
+          }
+        }
+      } else if (pointerStateRef.current.mode === "scroll") {
+        const currentFrame = frame;
+        if (currentFrame) {
+          const relativeX = event.clientX - currentFrame.left;
+          const relativeY = clamp(event.clientY - currentFrame.top, 0, currentFrame.height);
+          const moveX = relativeX - pointerStateRef.current.startX;
+          const moveY = relativeY - pointerStateRef.current.startY;
+          const movedDistanceSq = moveX * moveX + moveY * moveY;
+          // 変更理由: マーカー直上以外へのクリックはスクロールだけだったため、
+          // カーソルが注目レスへスティッチ表示されているときのクリックでは
+          // そのレスへ飛んで強調する。ドラッグによるスクロールでは強調しない。
+          if (movedDistanceSq <= 144 && hoveredResNumRef.current != null) {
+            onMarkerClick(hoveredResNumRef.current);
           }
         }
       }
