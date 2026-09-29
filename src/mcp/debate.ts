@@ -1,5 +1,6 @@
 import { encode } from "@toon-format/toon";
 
+import { DEBATE_ANALYSIS_INSTRUCTIONS as ANALYSIS_INSTRUCTIONS } from "./debate-instructions.ts";
 import type { ThreadReadMode } from "./protocol.ts";
 
 const MAX_CONTEXT_RESPONSES = 240;
@@ -143,7 +144,13 @@ const SIMPLE_METRIC_SCHEMA = {
   type: "object",
   required: ["score", "reason"],
   properties: {
-    score: { type: "number", minimum: 0, maximum: 5 },
+    score: {
+      type: "number",
+      minimum: 0,
+      maximum: 5,
+      description:
+        "今回の発言を評価する主観的な点数。0.5刻みを目安とし、材料不足なら便宜上2.5とした旨をreasonに明記する。人物全体の能力ではない。",
+    },
     reason: {
       type: "string",
       maxLength: 120,
@@ -178,6 +185,33 @@ const SIMPLE_SIDE_SCHEMA = {
         evidence: SIMPLE_METRIC_SCHEMA,
       },
     },
+  },
+} as const;
+
+// 変更理由: 構造が不明なために判定根拠が削られないよう、検証側が要求するレス番号・役割・説明を生成側にも公開する。
+const EVIDENCE_SCHEMA = {
+  type: "object",
+  required: ["responseNumbers", "role", "note"],
+  properties: {
+    responseNumbers: { type: "array", items: { type: "integer", minimum: 1 } },
+    role: { type: "string", enum: ["support", "challenge", "context"] },
+    note: {
+      type: "string",
+      description: "どの主張を支持・反証するか、または解釈に必要な文脈を説明する。",
+    },
+  },
+} as const;
+
+const POSITION_SCHEMA = {
+  type: "object",
+  required: ["participantIds", "claim", "evidence"],
+  properties: {
+    participantIds: { type: "array", items: { type: "string" } },
+    claim: {
+      type: "string",
+      description: "本人の主張か第三者への批判かを明確にし、解釈が分かれる場合は断定しない。",
+    },
+    evidence: { type: "array", items: EVIDENCE_SCHEMA },
   },
 } as const;
 
@@ -228,8 +262,8 @@ export const DEBATE_RESULT_SCHEMA = {
             enum: ["resolved", "mixed", "unresolved", "insufficient-evidence"],
           },
           conclusion: { type: "string" },
-          positions: { type: "array", items: { type: "object" } },
-          evidence: { type: "array", items: { type: "object" } },
+          positions: { type: "array", items: POSITION_SCHEMA },
+          evidence: { type: "array", items: EVIDENCE_SCHEMA },
         },
       },
     },
@@ -289,11 +323,18 @@ export const DEBATE_RESULT_SCHEMA = {
       properties: {
         topic: {
           type: "string",
-          description: "対象と争点が分かる見出し。レス番号だけに依存しない。",
+          description:
+            "何について、どの発言や判断が争われているか分かる見出し。抽象的な一般論に置き換えず、実際の対立を示す。専門的な略語やレス番号だけに依存しない。",
         },
         blue: SIMPLE_SIDE_SCHEMA,
         red: SIMPLE_SIDE_SCHEMA,
-        blueAdvantage: { type: "number", minimum: 0, maximum: 1 },
+        blueAdvantage: {
+          type: "number",
+          minimum: 0,
+          maximum: 1,
+          description:
+            "中心争点での主観的な優勢度。勝率や事実の確率ではない。0.1刻みを目安とし、判定不能なら便宜上0.5としてverdictReasonに判定保留と理由を明記する。",
+        },
         verdictReason: {
           type: "string",
           description:
@@ -304,19 +345,6 @@ export const DEBATE_RESULT_SCHEMA = {
     caveats: { type: "array", items: { type: "string" } },
   },
 } as const;
-
-const ANALYSIS_INSTRUCTIONS =
-  "JSONのみで回答する。詳細版は固定の二陣営に押し込めず、争点ごとに主張・反論・結論を整理する。" +
-  "簡易版simpleViewは中心となる対立を青赤2側に要約し、各側の代表主張と論理・読解・根拠の信頼性を5点満点で採点する。" +
-  // 変更理由: 短文化だけを指示すると前提や評価理由が失われるため、画像単独で議論を理解できる説明を求める。
-  "文章は自然な日本語の常体で書く。スレを読んでいない人にも、何を争い、双方がなぜそう主張し、どの応酬が判定の決め手になったかが分かるようにする。" +
-  "simpleViewのtopicは対象と争点を示し、labelは立場を表す。claimsの先頭は争点への回答とし、以降は前提・理由・反論を論理の順に並べる。" +
-  "原文で省略された主語や目的語を文脈の範囲で補う。『両方』『それ』『一貫している』だけで済ませず、対象や具体的な発言を説明し、レス番号は補助として添える。" +
-  "metricsのreasonは発言の具体例と採点理由を結び付ける。verdictReasonは結論を先に述べ、決め手となる応酬と判定の限界を説明する。文数や項目数を減らすために必要な文脈を削らない。" +
-  "発言者本人の主張と、その人が言及した第三者の主張を混同しない。採点とblueAdvantageは説明文と整合させる。" +
-  "結論を左右する出典不足の事実だけ最大2件を外部調査し、各1文と出典1～2件をresearchへ記録する。" +
-  "予測・意見・煽りは検索せず、調査できない時はinconclusiveとする。調査が不要ならresearchは空配列にする。" +
-  "侮辱や煽りは論拠として扱わず、確認していない事実を断定しない。";
 
 interface DecodedThreadResponse {
   num: number;

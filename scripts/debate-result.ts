@@ -288,11 +288,9 @@ export function renderSimpleDebateHtml(result: DebateResult): string {
       <header class="camp-heading"><h2>主張</h2><p class="side-label">${highlightCampNames(value.label)}${value.participants.length > 0 ? ` · ${value.participants.map(escapeHtml).join("、")}` : ""}</p></header>
       <ol class="claims">${claims || '<li class="empty">主張なし</li>'}</ol>
       <h2 class="metrics-heading">評価のポイント</h2>
-      <div class="metrics">
         ${simpleMetricRow("論理的思考力", "◇", value.metrics.logic, tone)}
         ${simpleMetricRow("文章読解力", "▤", value.metrics.reading, tone)}
         ${simpleMetricRow("根拠の信頼性", "⬡", value.metrics.evidence, tone)}
-      </div>
     </section>`;
   };
   return `<!doctype html>
@@ -301,7 +299,8 @@ export function renderSimpleDebateHtml(result: DebateResult): string {
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; min-height: 100%; background: #03060f; }
-  body { padding: 14px; color: #f8fafc; font-family: "Yu Gothic UI", Meiryo, "Noto Sans JP", sans-serif; }
+  /* 変更理由: 縮小表示でも日本語が読めるよう、本文をメイリオ中心の太めの書体にする。 */
+  body { padding: 14px; color: #f8fafc; font-family: Meiryo, "Noto Sans JP", sans-serif; font-weight: 500; }
   .image-root { width: 1200px; margin: 0 auto; overflow: visible; }
   .gauge-panel { display: grid; grid-template-columns: minmax(190px, 1fr) minmax(0, 4fr) minmax(190px, 1fr); align-items: center; gap: 14px; padding: 8px 14px; border: 1px solid #1e293b; border-radius: 5px; background: #090d1a; }
   .side-id { min-width: 0; overflow-wrap: anywhere; font-size: 15px; font-weight: 800; text-align: center; }
@@ -317,14 +316,15 @@ export function renderSimpleDebateHtml(result: DebateResult): string {
   .gauge-red { background: linear-gradient(90deg,#f87171,#dc2626); }
   .gauge-center-line { position: absolute; left: 50%; top: 0; width: 2px; height: 100%; background: rgba(255,255,255,.45); }
   .columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .camp { min-width: 0; padding: 10px 12px; }
+  /* 変更理由: 主張の量が異なっても、左右の評価項目を同じ高さから比較できるよう行を共有する。 */
+  .camp { min-width: 0; padding: 10px 12px; display: grid; grid-row: span 6; grid-template-rows: subgrid; row-gap: 6px; }
   .camp.blue { background: rgba(7,19,46,.9); border: 1px solid rgba(56,189,248,.25); border-right: 0; }
   .camp.red { background: rgba(36,11,19,.9); border: 1px solid rgba(248,113,133,.25); border-left: 1px solid #334155; }
   .camp-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; border-bottom: 1px solid rgba(255,255,255,.08); padding-bottom: 4px; }
   .camp-heading h2, .metrics-heading { margin: 0 0 5px; color: #cbd5e1; font-size: 18px; }
   .side-label { margin: 0; color: #94a3b8; font-size: 12px; text-align: right; overflow-wrap: anywhere; }
-  .claims { display: flex; flex-direction: column; gap: 2px; margin: 4px 0 16px; padding: 4px; list-style: none; border-radius: 4px; background: rgba(0,0,0,.3); }
-  .claims li { display: flex; align-items: flex-start; gap: 8px; min-width: 0; padding: 3px 4px; font-size: 16px; line-height: 1.5; }
+  .claims { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 4px; list-style: none; border-radius: 4px; background: rgba(0,0,0,.3); }
+  .claims li { display: flex; align-items: flex-start; gap: 8px; min-width: 0; padding: 3px 4px; font-size: 16px; font-weight: 700; line-height: 1.5; }
   .claim-number { flex: none; display: inline-grid; place-items: center; width: 21px; height: 21px; margin-top: 1px; border-radius: 50%; color: #020617; font-size: 13px; font-weight: 800; }
   .blue .claim-number { background: #38bdf8; }
   .red .claim-number { background: #f87171; }
@@ -341,12 +341,12 @@ export function renderSimpleDebateHtml(result: DebateResult): string {
   .dot-meter { display: flex; flex: none; gap: 4px; }
   .score-dot { width: 16px; height: 16px; border-radius: 50%; background: linear-gradient(90deg,var(--tone) var(--fill),#1e293b var(--fill)); }
   .metric-lower { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: start; gap: 10px; margin-top: 4px; }
-  .metric-desc { min-width: 0; margin: 0; color: #cbd5e1; font-size: 14px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .metric-desc { min-width: 0; margin: 0; color: #cbd5e1; font-size: 16px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
   .score-number { flex: none; font: 800 26px/1 Impact,"Arial Black",sans-serif; text-align: right; }
   .score-number small { color: #64748b; font: 13px/1 "Yu Gothic UI",Meiryo,sans-serif; }
   .summary-panel { display: grid; grid-template-columns: 120px minmax(0,1fr); align-items: center; gap: 12px; padding: 9px 12px; border: 1px solid #1e293b; border-radius: 4px; background: #090d1a; }
   .summary-label { padding-right: 12px; border-right: 1px solid #334155; color: #eab308; font-size: 20px; font-weight: 900; text-align: center; }
-  .summary-text { min-width: 0; color: #e2e8f0; font-size: 16px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .summary-text { min-width: 0; margin: 0; color: #e2e8f0; font-size: 16px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
   .blue-side-mention { color: #38bdf8; font-weight: 900; }
   .red-side-mention { color: #f87171; font-weight: 900; }
   .empty { color: #94a3b8; }
@@ -356,6 +356,8 @@ export function renderSimpleDebateHtml(result: DebateResult): string {
     <div class="gauge-center"><div class="topic">${highlightCampNames(view.topic)}</div><div class="gauge"><div class="gauge-blue" style="width:${bluePct}%"></div><div class="gauge-red" style="width:${redPct}%"></div><i class="gauge-center-line"></i></div></div>
     <div class="side-id red"><div class="rates"><span class="red-rate">${redPct}%</span></div>${highlightCampNames(view.red.label)}<br>${view.red.participants.map(escapeHtml).join("、")}</div>
   </section>
+  <!-- 変更理由: 元スレを知らない読者にも対立の発端が伝わるよう、見出しと各側の主張の間に背景を表示する。 -->
+  <section class="summary-panel"><div class="summary-label">議論の背景</div><p class="summary-text">${highlightCampNames(result.summary)}</p></section>
   <div class="columns">${side("blue")}${side("red")}</div>
   <section class="summary-panel"><div class="summary-label">総合評価</div><p class="summary-text">${highlightCampNames(view.verdictReason)}</p></section>
 </main></body></html>`;
