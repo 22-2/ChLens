@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -252,6 +253,16 @@ export function renderDebateHtml(result: DebateResult): string {
 </main></body></html>`;
 }
 
+// 変更理由: 参考カードの評価軸を視覚的に識別できるよう、文字記号を電球・書類・盾の固定SVGに置き換える。
+const METRIC_ICONS = {
+  logic:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>',
+  reading:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>',
+  evidence:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>',
+} as const;
+
 function simpleMetricRow(
   label: string,
   icon: string,
@@ -272,6 +283,15 @@ function simpleMetricRow(
 
 export function renderSimpleDebateHtml(result: DebateResult): string {
   const view = result.simpleView;
+  // 変更理由: 書き出すHTMLはブラウザ画面のCSSを読まないため、必要なfoundationを埋め込んで単体で表示可能にする。
+  const foundationCss = ["tokens.css", "themes.css"]
+    .map((file) =>
+      readFileSync(
+        new URL(`../src/view/browser/styles/foundation/${file}`, import.meta.url),
+        "utf8",
+      ),
+    )
+    .join("\n");
   // 変更理由: 参考画像のゲージ・二列主張・三軸評価を再現しつつ、長文はHTMLで折り返して全量を残す。
   const bluePct = Math.round(view.blueAdvantage * 100);
   const redPct = 100 - bluePct;
@@ -285,79 +305,85 @@ export function renderSimpleDebateHtml(result: DebateResult): string {
       )
       .join("");
     return `<section class="camp ${name}">
-      <header class="camp-heading"><h2>主張</h2><p class="side-label">${highlightCampNames(value.label)}${value.participants.length > 0 ? ` · ${value.participants.map(escapeHtml).join("、")}` : ""}</p></header>
+      <header class="camp-heading"><h2>主張</h2><p class="side-label">${highlightCampNames(value.label)}</p></header>
       <ol class="claims">${claims || '<li class="empty">主張なし</li>'}</ol>
       <h2 class="metrics-heading">評価のポイント</h2>
-        ${simpleMetricRow("論理的思考力", "◇", value.metrics.logic, tone)}
-        ${simpleMetricRow("文章読解力", "▤", value.metrics.reading, tone)}
-        ${simpleMetricRow("根拠の信頼性", "⬡", value.metrics.evidence, tone)}
+        ${simpleMetricRow("論理的思考力", METRIC_ICONS.logic, value.metrics.logic, tone)}
+        ${simpleMetricRow("文章読解力", METRIC_ICONS.reading, value.metrics.reading, tone)}
+        ${simpleMetricRow("根拠の信頼性", METRIC_ICONS.evidence, value.metrics.evidence, tone)}
     </section>`;
   };
   return `<!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeHtml(view.topic)} - ChLens 議論判定</title>
 <style>
+  ${foundationCss}
   * { box-sizing: border-box; }
   html, body { margin: 0; min-height: 100%; background: #03060f; }
-  /* 変更理由: 縮小表示でも日本語が読めるよう、本文をメイリオ中心の太めの書体にする。 */
-  body { padding: 14px; color: #f8fafc; font-family: Meiryo, "Noto Sans JP", sans-serif; font-weight: 500; }
-  .image-root { width: 1200px; margin: 0 auto; overflow: visible; }
-  .gauge-panel { display: grid; grid-template-columns: minmax(190px, 1fr) minmax(0, 4fr) minmax(190px, 1fr); align-items: center; gap: 14px; padding: 8px 14px; border: 1px solid #1e293b; border-radius: 5px; background: #090d1a; }
+  /* 変更理由: 参考カードと同じ横幅と密度にし、見出しが長い場合は折り返して全文を残す。 */
+  body { padding: var(--sys-space-2); color: #f8fafc; font-family: var(--sys-debate-font-family); font-weight: 500; }
+  .image-root { width: var(--sys-debate-card-width); margin: 0 auto; overflow: visible; display: flex; flex-direction: column; gap: var(--sys-space-2); }
+  .gauge-panel { display: grid; grid-template-columns: var(--sys-debate-id-width) minmax(0, 1fr) var(--sys-debate-id-width); align-items: center; gap: var(--sys-space-6); padding: var(--sys-space-2) var(--sys-space-5); border: 1px solid #1e293b; border-radius: var(--sys-radius-md); background: #090d1a; }
   .side-id { min-width: 0; overflow-wrap: anywhere; font-size: 15px; font-weight: 800; text-align: center; }
-  .blue .side-id { color: #38bdf8; text-shadow: 0 0 5px rgba(56,189,248,.4); }
-  .red .side-id { color: #f87171; text-shadow: 0 0 5px rgba(248,113,113,.4); }
+  .side-id.blue { color: #38bdf8; text-shadow: var(--sys-debate-blue-glow); }
+  .side-id.red { color: #f87171; text-shadow: var(--sys-debate-red-glow); }
   .gauge-center { min-width: 0; }
-  .rates { display: flex; align-items: center; justify-content: space-between; font: 800 34px/1 Impact, "Arial Black", sans-serif; }
-  .rates .blue-rate { color: #38bdf8; }
-  .rates .red-rate { color: #f87171; }
-  .topic { min-width: 0; padding: 4px 12px; color: #fff; font-size: 19px; font-weight: 900; line-height: 1.35; text-align: center; overflow-wrap: anywhere; white-space: pre-wrap; }
+  .rates { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; font: 800 34px/1 Impact, "Arial Black", sans-serif; font-size: var(--sys-space-13); }
+  .rates .blue-rate { color: #38bdf8; text-shadow: var(--sys-debate-blue-glow); }
+  .rates .red-rate { color: #f87171; text-shadow: var(--sys-debate-red-glow); }
+  .topic { min-width: 0; padding: var(--sys-space-1) var(--sys-space-8); color: #fff; font-family: var(--sys-debate-font-family); font-size: 19px; font-weight: 900; line-height: var(--sys-debate-line-height); text-align: center; overflow-wrap: anywhere; white-space: pre-wrap; }
   .gauge { position: relative; display: flex; width: 100%; height: 14px; overflow: hidden; border: 1px solid #334155; border-radius: 3px; background: #020617; }
   .gauge-blue { background: linear-gradient(90deg,#0284c7,#38bdf8); }
   .gauge-red { background: linear-gradient(90deg,#f87171,#dc2626); }
   .gauge-center-line { position: absolute; left: 50%; top: 0; width: 2px; height: 100%; background: rgba(255,255,255,.45); }
   .columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   /* 変更理由: 主張の量が異なっても、左右の評価項目を同じ高さから比較できるよう行を共有する。 */
-  .camp { min-width: 0; padding: 10px 12px; display: grid; grid-row: span 6; grid-template-rows: subgrid; row-gap: 6px; }
+  .camp { min-width: 0; padding: var(--sys-space-3) var(--sys-space-6); display: grid; grid-row: span 6; grid-template-rows: subgrid; row-gap: var(--sys-space-2); }
   .camp.blue { background: rgba(7,19,46,.9); border: 1px solid rgba(56,189,248,.25); border-right: 0; }
   .camp.red { background: rgba(36,11,19,.9); border: 1px solid rgba(248,113,133,.25); border-left: 1px solid #334155; }
   .camp-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; border-bottom: 1px solid rgba(255,255,255,.08); padding-bottom: 4px; }
-  .camp-heading h2, .metrics-heading { margin: 0 0 5px; color: #cbd5e1; font-size: 18px; }
+  .camp-heading h2, .metrics-heading { margin: 0; color: #cbd5e1; font-size: var(--sys-debate-font-summary); letter-spacing: var(--sys-debate-letter-spacing); }
   .side-label { margin: 0; color: #94a3b8; font-size: 12px; text-align: right; overflow-wrap: anywhere; }
   .claims { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 4px; list-style: none; border-radius: 4px; background: rgba(0,0,0,.3); }
-  .claims li { display: flex; align-items: flex-start; gap: 8px; min-width: 0; padding: 3px 4px; font-size: 16px; font-weight: 700; line-height: 1.5; }
+  .claims li { display: flex; align-items: flex-start; gap: 8px; min-width: 0; padding: var(--sys-space-1) var(--sys-space-2); font-size: 16px; font-weight: 700; line-height: var(--sys-debate-line-height); }
   .claim-number { flex: none; display: inline-grid; place-items: center; width: 21px; height: 21px; margin-top: 1px; border-radius: 50%; color: #020617; font-size: 13px; font-weight: 800; }
   .blue .claim-number { background: #38bdf8; }
   .red .claim-number { background: #f87171; }
   .claim-text { min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
   .metrics-heading { margin: 12px 0 5px; }
   .metrics { display: flex; flex-direction: column; gap: 4px; }
-  .metric-row { display: grid; grid-template-columns: 52px minmax(0,1fr); align-items: center; gap: 10px; min-width: 0; padding: 6px 8px; border: 1px solid rgba(255,255,255,.04); border-radius: 3px; background: rgba(0,0,0,.25); }
+  .metric-row { display: grid; grid-template-columns: var(--sys-space-16) minmax(0,1fr); align-items: center; gap: var(--sys-space-6); min-width: 0; padding: var(--sys-space-2) var(--sys-space-4); border: 1px solid rgba(255,255,255,.04); border-radius: 3px; background: rgba(0,0,0,.25); }
   .metric-icon-box { display: grid; place-items: center; font-size: 36px; font-weight: 700; }
+  .metric-icon-box svg { width: var(--sys-space-16); height: var(--sys-space-16); }
+  .metric-row.blue .score-number { text-shadow: var(--sys-debate-blue-glow); }
+  .metric-row.red .score-number { text-shadow: var(--sys-debate-red-glow); }
   .metric-row.blue .metric-icon-box, .metric-row.blue .score-number { color: #38bdf8; }
   .metric-row.red .metric-icon-box, .metric-row.red .score-number { color: #f87171; }
   .metric-main { min-width: 0; }
   .metric-upper { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px; }
-  .metric-upper strong { color: #fff; font-size: 16px; }
+  .metric-upper strong { color: #fff; font-size: var(--sys-debate-font-label); }
   .dot-meter { display: flex; flex: none; gap: 4px; }
   .score-dot { width: 16px; height: 16px; border-radius: 50%; background: linear-gradient(90deg,var(--tone) var(--fill),#1e293b var(--fill)); }
   .metric-lower { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: start; gap: 10px; margin-top: 4px; }
-  .metric-desc { min-width: 0; margin: 0; color: #cbd5e1; font-size: 16px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
-  .score-number { flex: none; font: 800 26px/1 Impact,"Arial Black",sans-serif; text-align: right; }
+  .metric-desc { min-width: 0; margin: 0; color: #cbd5e1; font-size: var(--sys-debate-font-body); line-height: var(--sys-debate-line-height); white-space: pre-wrap; overflow-wrap: anywhere; text-align: justify; }
+  .score-number { flex: none; font: 800 26px/1 Impact,"Arial Black",sans-serif; font-size: var(--sys-space-11); margin-top: var(--sys-space-4); text-align: right; }
   .score-number small { color: #64748b; font: 13px/1 "Yu Gothic UI",Meiryo,sans-serif; }
-  .summary-panel { display: grid; grid-template-columns: 120px minmax(0,1fr); align-items: center; gap: 12px; padding: 9px 12px; border: 1px solid #1e293b; border-radius: 4px; background: #090d1a; }
-  .summary-label { padding-right: 12px; border-right: 1px solid #334155; color: #eab308; font-size: 20px; font-weight: 900; text-align: center; }
-  .summary-text { min-width: 0; margin: 0; color: #e2e8f0; font-size: 16px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .summary-panel { display: grid; grid-template-columns: 120px minmax(0,1fr); align-items: center; gap: 12px; padding: var(--sys-space-3) var(--sys-space-6); border: 1px solid #1e293b; border-radius: 4px; background: #090d1a; }
+  .summary-label { padding-right: 12px; border-right: 1px solid #334155; color: #eab308; font-size: var(--sys-debate-font-heading); font-weight: 900; text-align: center; }
+  .summary-text { min-width: 0; margin: 0; color: #e2e8f0; font-size: var(--sys-debate-font-summary); line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; text-align: justify; }
+  .background-panel .summary-text { font-size: var(--sys-debate-font-body); }
+  .background-panel .summary-label { font-size: var(--sys-debate-font-label); }
   .blue-side-mention { color: #38bdf8; font-weight: 900; }
   .red-side-mention { color: #f87171; font-weight: 900; }
   .empty { color: #94a3b8; }
 </style></head><body><main class="image-root">
   <section class="gauge-panel">
-    <div class="side-id blue"><div class="rates"><span class="blue-rate">${bluePct}%</span></div>${highlightCampNames(view.blue.label)}<br>${view.blue.participants.map(escapeHtml).join("、")}</div>
-    <div class="gauge-center"><div class="topic">${highlightCampNames(view.topic)}</div><div class="gauge"><div class="gauge-blue" style="width:${bluePct}%"></div><div class="gauge-red" style="width:${redPct}%"></div><i class="gauge-center-line"></i></div></div>
-    <div class="side-id red"><div class="rates"><span class="red-rate">${redPct}%</span></div>${highlightCampNames(view.red.label)}<br>${view.red.participants.map(escapeHtml).join("、")}</div>
+    <div class="side-id blue">${view.blue.participants.map(escapeHtml).join("、") || highlightCampNames(view.blue.label)}</div>
+    <div class="gauge-center"><div class="rates"><span class="blue-rate">${bluePct}%</span><div class="topic">${highlightCampNames(view.topic)}</div><span class="red-rate">${redPct}%</span></div><div class="gauge"><div class="gauge-blue" style="width:${bluePct}%"></div><div class="gauge-red" style="width:${redPct}%"></div><i class="gauge-center-line"></i></div></div>
+    <div class="side-id red">${view.red.participants.map(escapeHtml).join("、") || highlightCampNames(view.red.label)}</div>
   </section>
   <!-- 変更理由: 元スレを知らない読者にも対立の発端が伝わるよう、見出しと各側の主張の間に背景を表示する。 -->
-  <section class="summary-panel"><div class="summary-label">議論の背景</div><p class="summary-text">${highlightCampNames(result.summary)}</p></section>
+  <section class="summary-panel background-panel"><div class="summary-label">議論の背景</div><p class="summary-text">${highlightCampNames(result.summary)}</p></section>
   <div class="columns">${side("blue")}${side("red")}</div>
   <section class="summary-panel"><div class="summary-label">総合評価</div><p class="summary-text">${highlightCampNames(view.verdictReason)}</p></section>
 </main></body></html>`;

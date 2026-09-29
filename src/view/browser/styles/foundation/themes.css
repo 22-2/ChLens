@@ -1,5 +1,16 @@
 /* Semantic color roles. Theme files may select reference values, but must not add literals. */
 :root {
+  --sys-debate-card-width: var(--ref-debate-card-width);
+  --sys-debate-id-width: var(--ref-debate-id-width);
+  --sys-debate-font-body: var(--ref-debate-font-body);
+  --sys-debate-font-label: var(--ref-debate-font-label);
+  --sys-debate-font-summary: var(--ref-debate-font-summary);
+  --sys-debate-font-heading: var(--ref-debate-font-heading);
+  --sys-debate-line-height: var(--ref-debate-line-height);
+  --sys-debate-letter-spacing: var(--ref-debate-letter-spacing);
+  --sys-debate-font-family: var(--ref-debate-font-family);
+  --sys-debate-blue-glow: var(--ref-debate-blue-glow);
+  --sys-debate-red-glow: var(--ref-debate-red-glow);
   --sys-color-surface: var(--ref-color-neutral-0);
   --sys-color-surface-muted: var(--ref-color-neutral-100);
   --sys-color-dialog-surface: var(--ref-color-neutral-0);
