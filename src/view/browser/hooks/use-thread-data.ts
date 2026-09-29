@@ -15,6 +15,7 @@ import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import { useIsNgTemporarilyDisabled, useNgDisplayMode } from "src/view/browser/hooks/use-ng-status";
 import { useTabDispatch, useTabViewState } from "src/view/browser/hooks/use-tab-store";
 import type { ThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
+import { useToast } from "src/view/browser/hooks/use-toast";
 import type {
   ThreadFilter,
   ThreadPage as ThreadPageType,
@@ -25,6 +26,7 @@ import {
   restoreRootSelection,
   type RootSelectionSnapshot,
 } from "src/view/browser/utils/dom-selection";
+import { consumeManualRefresh } from "src/view/browser/utils/manual-refresh";
 import { normalizePopularReplyThreshold } from "src/view/browser/utils/popular-filter";
 import { getImportedSikiThread, isSikiLogThreadUrl } from "src/view/browser/utils/siki-log";
 import {
@@ -76,6 +78,15 @@ export function useThreadData(
   const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
   const ngDisplayMode = useNgDisplayMode();
   const dispatch = useTabDispatch();
+  const toast = useToast();
+  const manualRefreshBaselineRef = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      // 変更理由: スレ移動やタブ終了後に、前のスレの手動更新通知を出さない。
+      manualRefreshBaselineRef.current = null;
+    },
+    [page.threadUrl],
+  );
   const { beginRequest, isLatestRequest, refreshKey } = refreshController;
   const { state: persistedViewState, update: updateViewState } = useTabViewState(tabId, page);
   const [responses, setResponsesState] = useState<IRes[]>([]);
@@ -152,6 +163,20 @@ export function useThreadData(
       const isDifferentThread = fetchedThreadUrlRef.current !== page.threadUrl;
       fetchedThreadUrlRef.current = page.threadUrl;
 
+      if (isDifferentThread) manualRefreshBaselineRef.current = null;
+      if (consumeManualRefresh(tabId)) {
+        manualRefreshBaselineRef.current = isDifferentThread ? 0 : responsesRef.current.length;
+      }
+      const finishManualRefresh = (responseCount: number, failure?: string) => {
+        if (!isCurrentRequest() || manualRefreshBaselineRef.current === null) return;
+        const newCount = Math.max(0, responseCount - manualRefreshBaselineRef.current);
+        manualRefreshBaselineRef.current = null;
+        // 変更理由: loadingがtrueのままの再取得や即時完了でも通知を落とさないよう、
+        // 最新の取得結果が確定した場所で一度だけ通知する。自動更新が先着した0件も知らせる。
+        if (failure) toast.error(failure);
+        else toast.info(`新規レス${newCount}件`);
+      };
+
       setLoading(true);
       // 変更理由: 同じスレの更新中に通知を消すと、通信中だけ dat 落ちやエラー表示が
       // 点滅する。別スレへ移動した場合だけ前スレの状態を破棄し、更新結果が確定するまで
@@ -188,6 +213,7 @@ export function useThreadData(
         }
         setError(null);
         setLoading(false);
+        finishManualRefresh(importedSikiThread.responses.length);
         return;
       }
 
@@ -198,6 +224,7 @@ export function useThreadData(
         setResponses([]);
         setError(message);
         setLoading(false);
+        finishManualRefresh(0, message);
         console.error("[useThreadData] Sikiログの本文登録が見つかりません", {
           threadUrl: page.threadUrl,
         });
@@ -258,14 +285,24 @@ export function useThreadData(
         setExpired(result.expired ?? false);
         setMissingFromSubject(result.missingFromSubject ?? false);
         setError(result.message || null);
+        finishManualRefresh(
+          acceptedResponses.length,
+          result.res.length === 0 ? result.message : undefined,
+        );
         if (result.title && !titleUpdatedRef.current) {
           dispatch(tabActions.updateTitleForTab(tabId, result.title));
         }
       } catch (e) {
+        console.error("[useThreadData] スレッドの取得に失敗しました", {
+          threadUrl: page.threadUrl,
+          error: e,
+        });
         if (!isCurrentRequest()) {
           return;
         }
-        setError(e instanceof Error ? e.message : "スレッドの取得に失敗しました");
+        const message = e instanceof Error ? e.message : "スレッドの取得に失敗しました";
+        setError(message);
+        finishManualRefresh(responsesRef.current.length, message);
       } finally {
         // 変更理由: 古いリクエストの finally で loading を下ろすと、最新リクエストが
         // 通信中でも自動スクロール側が「更新完了」と誤認して保留状態を消費してしまう。
@@ -274,7 +311,16 @@ export function useThreadData(
         }
       }
     },
-    [dispatch, beginRequest, isLatestRequest, page.threadUrl, page.title, setResponses, tabId],
+    [
+      dispatch,
+      beginRequest,
+      isLatestRequest,
+      page.threadUrl,
+      page.title,
+      setResponses,
+      tabId,
+      toast,
+    ],
   );
 
   // 変更理由: IDBキャッシュから前回のレスを復元し、新しいデータの取得中は古い結果を表示し続ける。

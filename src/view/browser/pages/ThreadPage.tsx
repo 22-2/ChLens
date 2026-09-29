@@ -58,7 +58,7 @@ import {
 } from "src/view/browser/types";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import { getAutoRefreshPageKey } from "src/view/browser/utils/auto-refresh-pages";
-import { consumeManualRefresh, runManualRefresh } from "src/view/browser/utils/manual-refresh";
+import { runManualRefresh } from "src/view/browser/utils/manual-refresh";
 import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 import {
   buildBlurredResSet,
@@ -92,10 +92,6 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
 }) => {
   const { surface: viewSurface, dispatch, toast } = useTabViewRuntime(tabId);
   const runTabCommand = useTabCommandRunner(tabId);
-  const requestManualRefresh = useCallback(
-    () => runManualRefresh(tabId, () => runTabCommand(TAB_COMMAND_IDS.RELOAD)),
-    [runTabCommand, tabId],
-  );
   const { window: viewWindow } = viewSurface;
   const rootRef = useRef<HTMLDivElement>(null);
   // 変更理由: refの代入だけでは再描画されないため、別窓の初回描画でもPortal先を
@@ -108,12 +104,6 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const fallbackScrollContainerRef = useRef<HTMLDivElement>(null);
   const effectiveScrollContainerRef = scrollContainerRef ?? fallbackScrollContainerRef;
   const refreshController = useThreadRefreshController(refreshKey);
-  const manualRefreshRef = useRef<{ pending: boolean; started: boolean; previousCount: number }>({
-    pending: false,
-    started: false,
-    previousCount: 0,
-  });
-  const previousRefreshKeyRef = useRef(refreshKey);
   const {
     responses,
     visibleResponses,
@@ -135,25 +125,10 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     setResponses,
     messageProtocol,
   } = useThreadData(tabId, page, rootRef, refreshController);
-  useEffect(() => {
-    if (previousRefreshKeyRef.current === refreshKey) return;
-    previousRefreshKeyRef.current = refreshKey;
-    manualRefreshRef.current = {
-      pending: consumeManualRefresh(tabId),
-      started: false,
-      previousCount: responses.length,
-    };
-  }, [refreshKey, responses.length, tabId]);
-  useEffect(() => {
-    if (loading && manualRefreshRef.current.pending) {
-      manualRefreshRef.current.started = true;
-    } else if (!loading && manualRefreshRef.current.pending && manualRefreshRef.current.started) {
-      const newCount = Math.max(0, responses.length - manualRefreshRef.current.previousCount);
-      manualRefreshRef.current.pending = false;
-      manualRefreshRef.current.started = false;
-      if (newCount > 0) toast.info(`新規レス${newCount}件`);
-    }
-  }, [loading, responses.length, toast]);
+  const requestManualRefresh = useCallback(
+    () => runManualRefresh(tabId, () => runTabCommand(TAB_COMMAND_IDS.RELOAD)),
+    [runTabCommand, tabId],
+  );
   useEffect(
     () =>
       subscribeThreadResJump((jump) => {
@@ -630,7 +605,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         }}
       />
     ),
-    [closePopupById, navigationTab, page, runTabCommand],
+    [closePopupById, navigationTab, page, requestManualRefresh, runTabCommand],
   );
 
   // 空白部分のダブルクリックによる更新。

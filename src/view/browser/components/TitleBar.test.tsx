@@ -3,6 +3,10 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { TitleBar } from "src/view/browser/components/TitleBar";
 import type { Page } from "src/view/browser/types";
+import {
+  consumeManualRefresh,
+  MANUAL_REFRESH_COOLDOWN_MS,
+} from "src/view/browser/utils/manual-refresh";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const { dispatchMock, mocks } = vi.hoisted(() => ({
@@ -82,11 +86,17 @@ vi.mock("src/view/browser/hooks/use-title-bar-navigation-setting", () => ({
 }));
 
 describe("TitleBar", () => {
+  let refreshClock = Date.now();
   afterEach(() => {
     cleanup();
+    consumeManualRefresh("tab-1");
+    vi.restoreAllMocks();
   });
 
   beforeEach(() => {
+    // 変更理由: 同じタブIDを使う別テストへ、前の更新操作の3秒ロックを持ち越さない。
+    refreshClock += MANUAL_REFRESH_COOLDOWN_MS + 1;
+    vi.spyOn(Date, "now").mockReturnValue(refreshClock);
     mocks.viewPage = {
       type: "thread",
       title: "Current Thread",

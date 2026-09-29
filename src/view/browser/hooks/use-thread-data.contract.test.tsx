@@ -10,6 +10,7 @@ import type {
 } from "src/service-container/interfaces";
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";
 import { useThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
+import { runManualRefresh } from "src/view/browser/utils/manual-refresh";
 import { registerSikiLogThread } from "src/view/browser/utils/siki-log";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -33,6 +34,13 @@ vi.mock("src/app", () => ({
     },
   },
 }));
+
+const { toastInfoMock, toastErrorMock } = vi.hoisted(() => ({
+  toastInfoMock: vi.fn(),
+  toastErrorMock: vi.fn(),
+}));
+const toastMock = { info: toastInfoMock, error: toastErrorMock };
+vi.mock("src/view/browser/hooks/use-toast", () => ({ useToast: () => toastMock }));
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabDispatch: () => dispatchMock,
@@ -104,6 +112,8 @@ function createDeferred<T>() {
 
 describe("useThreadData Phase 0 contracts", () => {
   beforeEach(() => {
+    toastInfoMock.mockReset();
+    toastErrorMock.mockReset();
     cacheGetMock.mockReset();
     cacheGetMock.mockResolvedValue(undefined);
     cachePutMock.mockReset();
@@ -136,6 +146,123 @@ describe("useThreadData Phase 0 contracts", () => {
 
   afterEach(() => {
     cleanup();
+  });
+
+  it.each([0, 1])("自動取得中の手動更新は新規レス%d件でも完了を一度通知する", async (added) => {
+    const page = { ...createPage(), threadUrl: "https://example.com/test/read.cgi/board/123/" };
+    const detail = { url: page.threadUrl, title: page.title, res: RESPONSES };
+    const automatic = createDeferred<IThreadDetail>();
+    const manual = createDeferred<IThreadDetail>();
+    container.thread = {
+      getThread: vi
+        .fn()
+        .mockResolvedValueOnce(detail)
+        .mockReturnValueOnce(automatic.promise)
+        .mockReturnValueOnce(manual.promise),
+    } as IThreadService;
+    const tabId = `manual-overlap-${added}`;
+    const rootRef = { current: null } as RefObject<HTMLDivElement | null>;
+    const { result, rerender } = renderHook(
+      ({ refreshKey }) => {
+        const controller = useThreadRefreshController(refreshKey);
+        return useThreadData(tabId, page, rootRef, controller);
+      },
+      { initialProps: { refreshKey: 0 } },
+    );
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    rerender({ refreshKey: 1 });
+    expect(result.current.loading).toBe(true);
+    act(() => runManualRefresh(tabId, () => rerender({ refreshKey: 2 })));
+    await act(async () => automatic.resolve(detail));
+    expect(toastInfoMock).not.toHaveBeenCalled();
+    await act(async () =>
+      manual.resolve({
+        ...detail,
+        res: added ? [...RESPONSES, { ...RESPONSES[0], num: 6 }] : RESPONSES,
+      }),
+    );
+    expect(toastInfoMock).toHaveBeenCalledExactlyOnceWith(`新規レス${added}件`);
+  });
+
+  it("即時に取得が完了する手動更新でも通知し、自動更新だけでは通知しない", async () => {
+    const page = { ...createPage(), threadUrl: "https://example.com/test/read.cgi/board/124/" };
+    const rootRef = { current: null } as RefObject<HTMLDivElement | null>;
+    const tabId = "manual-immediate";
+    const { result, rerender } = renderHook(
+      ({ refreshKey }) => {
+        const controller = useThreadRefreshController(refreshKey);
+        return useThreadData(tabId, page, rootRef, controller);
+      },
+      { initialProps: { refreshKey: 0 } },
+    );
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    rerender({ refreshKey: 1 });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(toastInfoMock).not.toHaveBeenCalled();
+    await act(async () => runManualRefresh(tabId, () => rerender({ refreshKey: 2 })));
+    expect(toastInfoMock).toHaveBeenCalledExactlyOnceWith("新規レス0件");
+  });
+
+  it.each([false, true])(
+    "手動取得が後続の取得に置き換わっても通知を一度に保ち、終了済みタブでは通知しない（終了: %s）",
+    async (closeTab) => {
+      const page = { ...createPage(), threadUrl: "https://example.com/test/read.cgi/board/125/" };
+      const detail = { url: page.threadUrl, title: page.title, res: RESPONSES };
+      const manual = createDeferred<IThreadDetail>();
+      const next = createDeferred<IThreadDetail>();
+      container.thread = {
+        getThread: vi
+          .fn()
+          .mockResolvedValueOnce(detail)
+          .mockReturnValueOnce(manual.promise)
+          .mockReturnValueOnce(next.promise),
+      } as IThreadService;
+      const tabId = `manual-superseded-${closeTab}`;
+      const rootRef = { current: null } as RefObject<HTMLDivElement | null>;
+      const { result, rerender, unmount } = renderHook(
+        ({ refreshKey }) => {
+          const controller = useThreadRefreshController(refreshKey);
+          return useThreadData(tabId, page, rootRef, controller);
+        },
+        { initialProps: { refreshKey: 0 } },
+      );
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      act(() => runManualRefresh(tabId, () => rerender({ refreshKey: 1 })));
+      rerender({ refreshKey: 2 });
+      if (closeTab) unmount();
+      await act(async () => next.resolve(detail));
+      await act(async () => manual.resolve(detail));
+      if (closeTab) expect(toastInfoMock).not.toHaveBeenCalled();
+      else expect(toastInfoMock).toHaveBeenCalledExactlyOnceWith("新規レス0件");
+    },
+  );
+
+  it("手動更新が失敗した場合は新着通知ではなくエラーを一度知らせる", async () => {
+    const page = { ...createPage(), threadUrl: "https://example.com/test/read.cgi/board/126/" };
+    container.thread = {
+      getThread: vi
+        .fn()
+        .mockResolvedValueOnce({ url: page.threadUrl, title: page.title, res: RESPONSES })
+        .mockRejectedValueOnce(new Error("通信エラー")),
+    } as IThreadService;
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const rootRef = { current: null } as RefObject<HTMLDivElement | null>;
+    const { result, rerender } = renderHook(
+      ({ refreshKey }) => {
+        const controller = useThreadRefreshController(refreshKey);
+        return useThreadData("manual-error", page, rootRef, controller);
+      },
+      { initialProps: { refreshKey: 0 } },
+    );
+    try {
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      await act(async () => runManualRefresh("manual-error", () => rerender({ refreshKey: 1 })));
+      expect(toastInfoMock).not.toHaveBeenCalled();
+      expect(toastErrorMock).toHaveBeenCalledExactlyOnceWith("通信エラー");
+      expect(log).toHaveBeenCalled();
+    } finally {
+      log.mockRestore();
+    }
   });
 
   it("登録済みSikiログは通信せず通常のレス表示へ渡す", async () => {
