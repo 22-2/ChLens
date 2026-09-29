@@ -53,6 +53,14 @@ function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
+function highlightCampNames(value: string): string {
+  // 変更理由: 判定文の青側・赤側を参考画像と同じ色で追えるよう、HTMLを無害化してから陣営名だけ装飾する。
+  return escapeHtml(value).replace(/青側|赤側|青陣営|赤陣営/g, (name) => {
+    const side = name.startsWith("青") ? "blue" : "red";
+    return `<span class="${side}-side-mention">${name}</span>`;
+  });
+}
+
 function statusLabel(status: DebateIssue["status"]): string {
   switch (status) {
     case "resolved":
@@ -104,10 +112,7 @@ function responseLink(url: string, num: number): string {
 function responseRefs(url: string, values: readonly number[]): string {
   if (values.length === 0) return '<span class="muted">レス番号なし</span>';
   return values
-    .map(
-      (num) =>
-        `<a href="${escapeHtml(responseLink(url, num))}">レス${num}</a>`,
-    )
+    .map((num) => `<a href="${escapeHtml(responseLink(url, num))}">レス${num}</a>`)
     .join("、");
 }
 
@@ -247,7 +252,12 @@ export function renderDebateHtml(result: DebateResult): string {
 </main></body></html>`;
 }
 
-function simpleMetricRow(label: string, icon: string, metric: DebateSimpleMetric, tone: string): string {
+function simpleMetricRow(
+  label: string,
+  icon: string,
+  metric: DebateSimpleMetric,
+  tone: string,
+): string {
   const dots = Array.from({ length: 5 }, (_, index) => {
     const fill = Math.max(0, Math.min(1, metric.score - index)) * 100;
     return `<span class="score-dot" style="--fill:${fill}%;--tone:${tone}"></span>`;
@@ -255,7 +265,7 @@ function simpleMetricRow(label: string, icon: string, metric: DebateSimpleMetric
   return `<article class="metric-row ${tone === "#38bdf8" ? "blue" : "red"}">
     <div class="metric-icon-box" aria-hidden="true">${icon}</div>
     <div class="metric-main"><div class="metric-upper"><strong>${label}</strong><span class="dot-meter">${dots}</span></div>
-      <div class="metric-lower"><p class="metric-desc">${escapeHtml(metric.reason)}</p><strong class="score-number">${metric.score.toFixed(1)}<small>/5.0</small></strong></div>
+      <div class="metric-lower"><p class="metric-desc">${highlightCampNames(metric.reason)}</p><strong class="score-number">${metric.score.toFixed(1)}<small>/5.0</small></strong></div>
     </div>
   </article>`;
 }
@@ -271,11 +281,11 @@ export function renderSimpleDebateHtml(result: DebateResult): string {
     const claims = value.claims
       .map(
         (claim, index) =>
-          `<li><span class="claim-number">${index + 1}</span><span class="claim-text">${escapeHtml(claim)}</span></li>`,
+          `<li><span class="claim-number">${index + 1}</span><span class="claim-text">${highlightCampNames(claim)}</span></li>`,
       )
       .join("");
     return `<section class="camp ${name}">
-      <header class="camp-heading"><h2>主張</h2><p class="side-label">${escapeHtml(value.label)}${value.participants.length > 0 ? ` · ${value.participants.map(escapeHtml).join("、")}` : ""}</p></header>
+      <header class="camp-heading"><h2>主張</h2><p class="side-label">${highlightCampNames(value.label)}${value.participants.length > 0 ? ` · ${value.participants.map(escapeHtml).join("、")}` : ""}</p></header>
       <ol class="claims">${claims || '<li class="empty">主張なし</li>'}</ol>
       <h2 class="metrics-heading">評価のポイント</h2>
       <div class="metrics">
@@ -337,15 +347,17 @@ export function renderSimpleDebateHtml(result: DebateResult): string {
   .summary-panel { display: grid; grid-template-columns: 120px minmax(0,1fr); align-items: center; gap: 12px; padding: 9px 12px; border: 1px solid #1e293b; border-radius: 4px; background: #090d1a; }
   .summary-label { padding-right: 12px; border-right: 1px solid #334155; color: #eab308; font-size: 20px; font-weight: 900; text-align: center; }
   .summary-text { min-width: 0; color: #e2e8f0; font-size: 16px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .blue-side-mention { color: #38bdf8; font-weight: 900; }
+  .red-side-mention { color: #f87171; font-weight: 900; }
   .empty { color: #94a3b8; }
 </style></head><body><main class="image-root">
   <section class="gauge-panel">
-    <div class="side-id blue"><div class="rates"><span class="blue-rate">${bluePct}%</span></div>${escapeHtml(view.blue.label)}<br>${view.blue.participants.map(escapeHtml).join("、")}</div>
-    <div class="gauge-center"><div class="topic">${escapeHtml(view.topic)}</div><div class="gauge"><div class="gauge-blue" style="width:${bluePct}%"></div><div class="gauge-red" style="width:${redPct}%"></div><i class="gauge-center-line"></i></div></div>
-    <div class="side-id red"><div class="rates"><span class="red-rate">${redPct}%</span></div>${escapeHtml(view.red.label)}<br>${view.red.participants.map(escapeHtml).join("、")}</div>
+    <div class="side-id blue"><div class="rates"><span class="blue-rate">${bluePct}%</span></div>${highlightCampNames(view.blue.label)}<br>${view.blue.participants.map(escapeHtml).join("、")}</div>
+    <div class="gauge-center"><div class="topic">${highlightCampNames(view.topic)}</div><div class="gauge"><div class="gauge-blue" style="width:${bluePct}%"></div><div class="gauge-red" style="width:${redPct}%"></div><i class="gauge-center-line"></i></div></div>
+    <div class="side-id red"><div class="rates"><span class="red-rate">${redPct}%</span></div>${highlightCampNames(view.red.label)}<br>${view.red.participants.map(escapeHtml).join("、")}</div>
   </section>
   <div class="columns">${side("blue")}${side("red")}</div>
-  <section class="summary-panel"><div class="summary-label">総合評価</div><p class="summary-text">${escapeHtml(view.verdictReason)}</p></section>
+  <section class="summary-panel"><div class="summary-label">総合評価</div><p class="summary-text">${highlightCampNames(view.verdictReason)}</p></section>
 </main></body></html>`;
 }
 
@@ -355,7 +367,9 @@ export async function renderDebatePng(html: string): Promise<Buffer> {
     const page = await browser.newPage({ viewport: { width: CARD_WIDTH + 56, height: 1000 } });
     await page.setContent(html, { waitUntil: "load" });
     // 変更理由: 画面高で切らず、HTMLの自然な全高を画像に反映して全文を残す。
-    const image = await page.locator(".image-root").screenshot({ type: "png", animations: "disabled" });
+    const image = await page
+      .locator(".image-root")
+      .screenshot({ type: "png", animations: "disabled" });
     return image;
   } finally {
     await browser.close();
@@ -411,7 +425,8 @@ export async function saveDebateResult(
   let simplePng: Buffer | undefined;
   for (const format of formats) {
     // 変更理由: 詳細版と簡易版を同じベース名で並べ、用途に応じて片方だけ保存できるようにする。
-    const suffix = format === "simple-html" ? "simple.html" : format === "simple-png" ? "simple.png" : format;
+    const suffix =
+      format === "simple-html" ? "simple.html" : format === "simple-png" ? "simple.png" : format;
     const filePath = path.join(directory, `${baseName}.${suffix}`);
     if (format === "json") {
       await writeFile(filePath, `${JSON.stringify(result, null, 2)}\n`, "utf8");
