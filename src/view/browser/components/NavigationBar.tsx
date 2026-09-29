@@ -274,21 +274,9 @@ function navigateByUrl(url: string, dispatch: ReturnType<typeof useTabStore>["di
   const parsed = parseOmnibarBrowserPage(trimmed);
   if (!parsed) return;
 
-  if (parsed.type === "thread") {
-    const boardUrl = getBoardUrlFromThreadUrl(parsed.threadUrl);
-    // 変更理由: URL欄から別板のスレッドを開いたとき、直前に開いていた板を
-    // 戻る先として残すと別板へ戻ってしまう。対象スレッドの板を履歴に積んでから
-    // 遷移することで、戻る操作が常に対象スレッドの板へ戻るようにする。
-    dispatch(
-      tabActions.navigate({
-        type: "threadList",
-        title: boardUrl,
-        boardUrl,
-        boardTitle: boardUrl,
-      }),
-    );
-  }
-
+  // 変更理由: ブラウザ標準と同じく、URL直入力は実際に訪れたページだけを履歴へ積む。
+  // 対象スレの板を自動補完すると、戻る操作が前居た場所ではなく対象板へ飛び、
+  // 直感的でないため補完しない。新規タブ側の正規履歴は buildHierarchyForNewTab が担う。
   dispatch(tabActions.navigate(parsed));
 }
 

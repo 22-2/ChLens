@@ -415,16 +415,9 @@ describe("NavigationBar", () => {
     const openUrlButton = await screen.findByRole("option", { name: /URLを開く/ });
     fireEvent.click(openUrlButton);
 
+    // 変更理由: 前居た場所へ戻れるよう、対象板の補完なしで単一遷移する。
+    expect(dispatchMock).toHaveBeenCalledTimes(1);
     expect(dispatchMock).toHaveBeenNthCalledWith(1, {
-      type: "NAVIGATE",
-      page: {
-        type: "threadList",
-        title: "https://egg.5ch.io/board-b/",
-        boardUrl: "https://egg.5ch.io/board-b/",
-        boardTitle: "https://egg.5ch.io/board-b/",
-      },
-    });
-    expect(dispatchMock).toHaveBeenNthCalledWith(2, {
       type: "NAVIGATE",
       page: {
         type: "thread",
@@ -434,7 +427,7 @@ describe("NavigationBar", () => {
     });
   });
 
-  it("URL欄から別板のスレを開くと、その板を戻る先として履歴に積む", () => {
+  it("URL欄から別板のスレを開くと、前居た場所へ戻れるよう単一遷移する", () => {
     render(<NavigationBar />);
 
     fireEvent.click(screen.getByTitle("URLバーを表示"));
@@ -444,16 +437,9 @@ describe("NavigationBar", () => {
     });
     fireEvent.keyDown(input, { key: "Enter" });
 
+    // 変更理由: 対象板を履歴へ補完すると戻る先が前居た場所ではなくなるため、単一遷移にする。
+    expect(dispatchMock).toHaveBeenCalledTimes(1);
     expect(dispatchMock).toHaveBeenNthCalledWith(1, {
-      type: "NAVIGATE",
-      page: {
-        type: "threadList",
-        title: "https://egg.5ch.io/board-b/",
-        boardUrl: "https://egg.5ch.io/board-b/",
-        boardTitle: "https://egg.5ch.io/board-b/",
-      },
-    });
-    expect(dispatchMock).toHaveBeenNthCalledWith(2, {
       type: "NAVIGATE",
       page: {
         type: "thread",

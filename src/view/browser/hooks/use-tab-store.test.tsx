@@ -1543,7 +1543,7 @@ describe("TabProvider auto refresh state", () => {
     expect(screen.getByTestId("current-page-board-title")).toHaveTextContent("Software");
   });
 
-  it("関連板から別板のスレをURL直開きした戻るで対象板へ戻る", async () => {
+  it("関連板から別板のスレをURL直開きした戻るで前居た板へ戻る", async () => {
     localStorage.setItem("config_new_tab_page_mode", "related_board");
 
     vi.resetModules();
@@ -1633,10 +1633,11 @@ describe("TabProvider auto refresh state", () => {
     fireEvent.click(screen.getByText("板B名を解決"));
     fireEvent.click(screen.getByText("戻る"));
 
+    // 変更理由: 同一タブの遷移は実際に訪れたページだけを積み、前居た関連板へ戻れるようにする。
     expect(screen.getByTestId("current-page-type")).toHaveTextContent("threadList");
-    expect(screen.getByTestId("current-page-title")).toHaveTextContent("Software");
+    expect(screen.getByTestId("current-page-title")).toHaveTextContent("エッヂ");
     expect(screen.getByTestId("current-page-board-url")).toHaveTextContent(
-      "https://egg.5ch.io/software/",
+      "http://bbs.eddibb.cc/liveedge/",
     );
   });
 

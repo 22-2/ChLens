@@ -969,21 +969,10 @@ export async function executeBrowserCommand(
 ): Promise<boolean> {
   const openUrl = getOpenUrlFromCommandId(commandId);
   if (openUrl !== null) {
-    // 変更理由: URL欄からの遷移と同じく、別板スレを開いたときは対象スレの板を
-    // 戻る先として残し、戻る操作が別板へ飛ばないようにする。
+    // 変更理由: ブラウザ標準と同じく、URL直入力は実際に訪れたページだけを履歴へ積み、
+    // 前居た場所へ戻れるようにする。対象スレの板の自動補完は行わない。
     const parsed = parseInternalBrowserPage(openUrl);
     if (!parsed) return false;
-    if (parsed.type === "thread") {
-      const boardUrl = getBoardUrlFromThreadUrl(parsed.threadUrl);
-      context.dispatch(
-        tabActions.navigate({
-          type: "threadList",
-          title: boardUrl,
-          boardUrl,
-          boardTitle: boardUrl,
-        }),
-      );
-    }
     context.dispatch(tabActions.navigate(parsed));
     return true;
   }

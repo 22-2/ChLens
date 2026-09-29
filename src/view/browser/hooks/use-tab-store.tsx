@@ -470,25 +470,9 @@ function pushPageToTabHistory(tab: Tab, page: Page): Tab {
     };
   };
 
-  if (page.type === "thread" && currentPage.type === "threadList") {
-    const targetBoardUrl = deriveBoardUrlFromThreadUrl(page.threadUrl);
-    const currentBoardUrl = normalizePageLocation(currentPage.boardUrl);
-
-    // 関連する板を初期ページにした新規タブで別板のスレをURL直開きした場合、
-    // 関連板をそのまま戻り先にすると対象スレとは別の板へ戻ってしまう。
-    // 対象板の一覧をスレ直前に積み、戻る操作で対象板を復元できるようにする。
-    if (targetBoardUrl && normalizePageLocation(targetBoardUrl) !== currentBoardUrl) {
-      const targetBoardPage = createThreadListPageFromBoardUrl(targetBoardUrl);
-      const newHistory = [...historyUntilCurrent, targetBoardPage, page];
-      return {
-        ...tab,
-        history: newHistory,
-        currentIndex: newHistory.length - 1,
-        viewStates: inheritViewStateForNextThread(),
-      };
-    }
-  }
-
+  // 変更理由: ブラウザ標準と同じく、同一タブ内の遷移は実際に訪れたページだけを積む。
+  // 別板スレへ移動したときも前居た場所へ戻れるようにし、対象板の自動補完は行わない。
+  // 新規タブの正規履歴は buildHierarchyForNewTab が担う。
   const newHistory = [...historyUntilCurrent, page];
   return {
     ...tab,

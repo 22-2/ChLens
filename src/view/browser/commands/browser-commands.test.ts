@@ -320,7 +320,7 @@ describe("browser commands", () => {
     expect(context.openResponseJumpDialog).not.toHaveBeenCalled();
   });
 
-  it("URL付きの開く候補は対象スレの板を戻る先に残して遷移する", async () => {
+  it("URL付きの開く候補は前居た場所へ戻れるよう単一遷移する", async () => {
     const { context, dispatch } = createContext({ type: "home", title: "ホーム" });
 
     await expect(
@@ -330,16 +330,9 @@ describe("browser commands", () => {
       ),
     ).resolves.toBe(true);
 
+    // 変更理由: 対象板を補完すると戻る先が前居た場所ではなくなるため、単一遷移にする。
+    expect(dispatch).toHaveBeenCalledTimes(1);
     expect(dispatch).toHaveBeenNthCalledWith(1, {
-      type: "NAVIGATE",
-      page: {
-        type: "threadList",
-        title: "https://example.com/software/",
-        boardUrl: "https://example.com/software/",
-        boardTitle: "https://example.com/software/",
-      },
-    });
-    expect(dispatch).toHaveBeenNthCalledWith(2, {
       type: "NAVIGATE",
       page: {
         type: "thread",
