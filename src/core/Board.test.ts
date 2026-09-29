@@ -86,6 +86,39 @@ describe("Board.getCachedResCount", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it("板キャッシュも通信結果もない場合はスレッド不在と誤判定しない", async () => {
+    cache.get.mockRejectedValue(new Error("キャッシュ未取得"));
+    fetchMock.mockRejectedValue(new Error("通信に失敗しました"));
+
+    await expect(
+      Board.getCachedResCount("https://example.com/test/read.cgi/board/1000000002/", {
+        forceUpdate: true,
+      }),
+    ).rejects.not.toThrow("板のスレ一覧にそのスレが存在しません");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("板キャッシュが解析不能でも短時間キャッシュへ戻らず最新一覧を確認する", async () => {
+    cache.lastUpdated = Date.now();
+    const parseSpy = vi.spyOn(Board, "parse").mockReturnValueOnce(null);
+    fetchMock.mockResolvedValue({
+      status: 200,
+      headers: {},
+      body: "1000000002.dat<>現在のスレ一覧 (2)\n",
+      url: "https://example.com/board/subject.txt",
+    });
+
+    try {
+      const result = await Board.getCachedResCount(
+        "https://example.com/test/read.cgi/board/1000000002/",
+      );
+      expect(result.resCount).toBe(2);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      parseSpy.mockRestore();
+    }
+  });
+
   it("confirms a cached subject miss against a freshly fetched subject", async () => {
     fetchMock.mockResolvedValue({
       status: 200,
