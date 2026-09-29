@@ -39,6 +39,7 @@ interface ThreadData {
   responses: IRes[];
   visibleResponses: IRes[];
   loading: boolean;
+  isCacheResolved: boolean;
   error: string | null;
   expired: boolean;
   missingFromSubject: boolean;
@@ -78,6 +79,7 @@ export function useThreadData(
   const { beginRequest, isLatestRequest, refreshKey } = refreshController;
   const { state: persistedViewState, update: updateViewState } = useTabViewState(tabId, page);
   const [responses, setResponsesState] = useState<IRes[]>([]);
+  const [cacheResolvedThreadUrl, setCacheResolvedThreadUrl] = useState<string | null>(null);
   const responsesRef = useRef<IRes[]>([]);
   const selectionSnapshotRef = useRef<RootSelectionSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
@@ -140,6 +142,8 @@ export function useThreadData(
       return "https:";
     }
   }, [page.threadUrl]);
+  const isCacheResolved =
+    cacheResolvedThreadUrl === page.threadUrl || isSikiLogThreadUrl(page.threadUrl);
 
   const fetchThread = useCallback(
     async (forceUpdate = false) => {
@@ -275,16 +279,26 @@ export function useThreadData(
 
   // 変更理由: IDBキャッシュから前回のレスを復元し、新しいデータの取得中は古い結果を表示し続ける。
   useEffect(() => {
+    if (fetchedThreadUrlRef.current !== page.threadUrl) {
+      // 変更理由: ページ移動直後に前スレの本文を新しいスレのキャッシュとして見せない。
+      setResponses([]);
+    }
     if (isSikiLogThreadUrl(page.threadUrl)) {
       return;
     }
-
-    void (async () => {
-      const cached = await getThreadResponseCache(page.threadUrl);
+    let isCurrentThread = true;
+    void getThreadResponseCache(page.threadUrl).then((cached) => {
+      if (!isCurrentThread) return;
       if (cached && cached.length > 0) {
-        setResponses(cached);
+        // 変更理由: キャッシュ確認中に取得結果が先着しても、古い本文で新しい表示を上書きしない。
+        setResponses((current) => (current.length === 0 ? cached : current));
       }
-    })();
+      // キャッシュがない場合だけ初回ローディングを見せ、キャッシュがあれば本文表示を優先する。
+      setCacheResolvedThreadUrl(page.threadUrl);
+    });
+    return () => {
+      isCurrentThread = false;
+    };
   }, [page.threadUrl, setResponses]);
 
   useEffect(() => {
@@ -350,6 +364,7 @@ export function useThreadData(
     responses,
     visibleResponses,
     loading,
+    isCacheResolved,
     error,
     expired,
     missingFromSubject,

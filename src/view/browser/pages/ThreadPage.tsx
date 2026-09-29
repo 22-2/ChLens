@@ -114,6 +114,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     responses,
     visibleResponses,
     loading,
+    isCacheResolved,
     error,
     expired,
     missingFromSubject,
@@ -700,12 +701,12 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         threshold={WHEEL_THRESHOLD}
         portalContainerRef={effectiveScrollContainerRef}
       />
-      {loading && responses.length === 0 ? (
+      {loading && isCacheResolved && responses.length === 0 ? (
         <div className="page-status">
           <Spinner size="sm" aria-label="スレッドを読み込み中" />
           <span>スレッドを読み込み中...</span>
         </div>
-      ) : error && responses.length === 0 ? (
+      ) : isCacheResolved && error && responses.length === 0 ? (
         <div className="page-status page-status--error">
           <p>{error}</p>
           <button className="page-status__retry" onClick={() => void fetchThread(true)}>
