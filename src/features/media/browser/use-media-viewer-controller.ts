@@ -5,7 +5,6 @@ import {
   useEffect,
   useLayoutEffect,
   useRef,
-  useState,
 } from "react";
 import { platformDownloadManager } from "src/app/platform/DownloadManager";
 import { isTauriRuntime } from "src/app/platform/runtime";
@@ -32,7 +31,6 @@ export interface MediaViewerProps {
   viewerImageRef: RefObject<HTMLImageElement | null>;
   canNavigateViewerPrev: boolean;
   canNavigateViewerNext: boolean;
-  isMaximized: boolean;
   isLoading: boolean;
   onOverlayClick: () => void;
   onChromeClick: (event: ReactMouseEvent<HTMLDivElement>) => void;
@@ -43,7 +41,6 @@ export interface MediaViewerProps {
   onZoomIn: () => void;
   onSave: () => void;
   onClose: () => void;
-  onToggleMaximize: () => void;
   onImageLoad: () => void;
   onImageError: () => void;
 }
@@ -139,10 +136,6 @@ export function useMediaViewerController(
       closeViewerForScope();
     };
   }, [closeViewerForScope]);
-
-  // ビューポートの最大化状態をローカルで管理する。
-  // viewer が閉じて再開した時にリセットが必要なので useEffect で監視する。
-  const [isMaximized, setIsMaximized] = useState(false);
 
   const viewerStageRef = useRef<HTMLDivElement>(null);
   const viewerCanvasRef = useRef<HTMLDivElement>(null);
@@ -292,14 +285,6 @@ export function useMediaViewerController(
     // paint前にサーフェス状態を初期化してから次画像の描画に入る。
     resetViewerSurface();
   }, [resetViewerSurface, viewer?.src]);
-
-  // 左右移動で viewer.src が変わるたびに解除すると操作体験が崩れるため、
-  // 最大化状態はビューアを閉じたタイミングだけ初期化する。
-  useEffect(() => {
-    if (!viewer) {
-      setIsMaximized(false);
-    }
-  }, [viewer]);
 
   useEffect(() => {
     if (!viewer) {
@@ -492,9 +477,7 @@ export function useMediaViewerController(
     onSave: () => {
       void saveViewerImage();
     },
-    isMaximized,
     onClose: closeViewerForScope,
-    onToggleMaximize: () => setIsMaximized((prev) => !prev),
     onImageLoad: () => {
       setImageLoading(false);
       measureViewerLayout();

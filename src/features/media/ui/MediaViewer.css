@@ -16,13 +16,17 @@
   background: transparent;
 }
 
-.media-viewer--detached .media-viewer__chrome,
-.media-viewer--detached .media-viewer__chrome--maximized {
+.media-viewer--detached .media-viewer__chrome {
   width: 100vw;
   height: 100vh;
   border: 0;
   border-radius: 0;
   box-shadow: none;
+}
+
+/* 変更理由: 別窓はOSの×で終了できるため、ビューア内の閉じる操作を重ねない。 */
+.media-viewer--detached .media-viewer__close {
+  display: none;
 }
 
 .media-viewer__chrome {
@@ -40,12 +44,6 @@
     width var(--sys-duration-slow) var(--sys-ease-out),
     height var(--sys-duration-slow) var(--sys-ease-out),
     border-radius var(--sys-duration-slow) var(--sys-ease-out);
-}
-
-.media-viewer__chrome--maximized {
-  width: calc(100vw - 32px);
-  height: calc(100vh - 32px);
-  border-radius: var(--sys-radius-md);
 }
 
 .media-viewer__toolbar {

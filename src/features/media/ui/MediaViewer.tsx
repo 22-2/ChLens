@@ -1,4 +1,4 @@
-import { ExternalLink, Maximize, Minimize, Undo2 } from "lucide-react";
+import { ExternalLink, Undo2 } from "lucide-react";
 import { Spinner } from "src/view/browser/ui/Spinner";
 
 import type { MediaViewerProps } from "../browser/use-media-viewer-controller";
@@ -17,7 +17,6 @@ export function MediaViewer({
   viewerImageRef,
   canNavigateViewerPrev,
   canNavigateViewerNext,
-  isMaximized,
   isLoading,
   onOverlayClick,
   onChromeClick,
@@ -25,7 +24,6 @@ export function MediaViewer({
   onNavigateNext,
   onSave,
   onClose,
-  onToggleMaximize,
   isDetached,
   onDetach,
   onAttach,
@@ -42,10 +40,7 @@ export function MediaViewer({
       }}
       onClick={onOverlayClick}
     >
-      <div
-        className={`media-viewer__chrome${isMaximized ? " media-viewer__chrome--maximized" : ""}`}
-        onClick={onChromeClick}
-      >
+      <div className="media-viewer__chrome" onClick={onChromeClick}>
         <div className="media-viewer__toolbar">
           <span className="media-viewer__label">{viewer.label}</span>
           <div className="media-viewer__actions">
@@ -84,18 +79,15 @@ export function MediaViewer({
             >
               {isDetached ? <Undo2 size={16} /> : <ExternalLink size={16} />}
             </button>
-            <button
-              type="button"
-              className="media-viewer__btn"
-              onClick={onToggleMaximize}
-              title={isMaximized ? "元のサイズに戻す" : "最大化"}
-            >
-              {isMaximized ? <Minimize size={16} /> : <Maximize size={16} />}
-            </button>
             <button type="button" className="media-viewer__btn" onClick={onSave} title="保存">
               保存
             </button>
-            <button type="button" className="media-viewer__btn" onClick={onClose} title="閉じる">
+            <button
+              type="button"
+              className="media-viewer__btn media-viewer__close"
+              onClick={onClose}
+              title="閉じる"
+            >
               ✕
             </button>
           </div>

@@ -19,7 +19,6 @@ describe("MediaViewer", () => {
         viewerImageRef={createRef<HTMLImageElement>()}
         canNavigateViewerPrev={false}
         canNavigateViewerNext={false}
-        isMaximized={false}
         isLoading={false}
         onOverlayClick={() => {}}
         onChromeClick={() => {}}
@@ -30,7 +29,9 @@ describe("MediaViewer", () => {
         onZoomIn={() => {}}
         onSave={() => {}}
         onClose={() => {}}
-        onToggleMaximize={() => {}}
+        isDetached={false}
+        onDetach={() => {}}
+        onAttach={() => {}}
         onImageLoad={() => {}}
         onImageError={() => {}}
         {...overrides}
@@ -45,6 +46,45 @@ describe("MediaViewer", () => {
     fireEvent.click(screen.getByRole("button", { name: "保存" }));
 
     expect(onSave).toHaveBeenCalledOnce();
+  });
+
+  it("最大化操作を表示せず、別窓では閉じる操作を隠す", () => {
+    const { container, rerender } = renderMediaViewer({ isDetached: false });
+
+    expect(container.querySelector('[title="閉じる"]')).toHaveClass("media-viewer__close");
+    expect(container.querySelector(".media-viewer")).not.toHaveClass("media-viewer--detached");
+    expect(container.querySelector('[title="最大化"]')).toBeNull();
+
+    rerender(
+      <MediaViewer
+        viewer={{ src: "https://example.com/image.jpg", label: "https://example.com/image.jpg" }}
+        viewerStageRef={createRef<HTMLDivElement>()}
+        viewerCanvasRef={createRef<HTMLDivElement>()}
+        viewerImageRef={createRef<HTMLImageElement>()}
+        canNavigateViewerPrev={false}
+        canNavigateViewerNext={false}
+        isLoading={false}
+        onOverlayClick={() => {}}
+        onChromeClick={() => {}}
+        onNavigatePrev={() => {}}
+        onNavigateNext={() => {}}
+        onZoomOut={() => {}}
+        onZoomReset={() => {}}
+        onZoomIn={() => {}}
+        onSave={() => {}}
+        onClose={() => {}}
+        isDetached
+        onDetach={() => {}}
+        onAttach={() => {}}
+        onImageLoad={() => {}}
+        onImageError={() => {}}
+      />,
+    );
+
+    expect(container.querySelector(".media-viewer")).toHaveClass("media-viewer--detached");
+    expect(container.querySelector('[title="閉じる"]')).toHaveClass("media-viewer__close");
+    expect(container.querySelector('[title="元の画面に戻す"]')).not.toBeNull();
+    expect(container.querySelector('[title="最大化"]')).toBeNull();
   });
 
   it("オーバーレイを閉じる mousedown を背後のポップアップへ伝播させない", () => {
