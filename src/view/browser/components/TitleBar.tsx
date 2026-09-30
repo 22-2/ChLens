@@ -6,7 +6,11 @@ import { useTabCommandRunner } from "src/view/browser/hooks/use-tab-command-runn
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useTitleBarButtonSettings } from "src/view/browser/hooks/use-title-bar-navigation-setting";
 import { canGoBack, canGoForward } from "src/view/browser/types";
-import { runManualRefresh, useManualRefreshCooldown } from "src/view/browser/utils/manual-refresh";
+import {
+  getManualRefreshScopeKey,
+  runManualRefresh,
+  useManualRefreshCooldown,
+} from "src/view/browser/utils/manual-refresh";
 import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 
 interface TitleBarMenuPosition {
@@ -27,7 +31,8 @@ export const TitleBar: React.FC<TitleBarProps> = ({ showNavigationButtons = true
   const canNavigateBack = canGoBack(viewTab);
   const canNavigateForward = canGoForward(viewTab);
   const canRefresh = isPageRefreshable(viewPage);
-  const refreshCoolingDown = useManualRefreshCooldown(viewTab.id);
+  const manualRefreshScopeKey = getManualRefreshScopeKey(viewTab.id, viewPage);
+  const refreshCoolingDown = useManualRefreshCooldown(manualRefreshScopeKey);
   const [menuPosition, setMenuPosition] = useState<TitleBarMenuPosition | null>(null);
 
   const handleTitleContextMenu = useCallback((e: React.MouseEvent) => {
@@ -76,7 +81,9 @@ export const TitleBar: React.FC<TitleBarProps> = ({ showNavigationButtons = true
                 className="title-bar__refresh"
                 disabled={!canRefresh || refreshCoolingDown}
                 onClick={() =>
-                  runManualRefresh(viewTab.id, () => runTabCommand(TAB_COMMAND_IDS.RELOAD))
+                  runManualRefresh(manualRefreshScopeKey, () =>
+                    runTabCommand(TAB_COMMAND_IDS.RELOAD),
+                  )
                 }
                 title="更新"
                 aria-label="更新"

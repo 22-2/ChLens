@@ -31,6 +31,7 @@ import {
 } from "src/view/browser/utils/auto-refresh-pages";
 import { buildKyodemoUrl } from "src/view/browser/utils/kyodemo-url";
 import { getLegacyWriteHistoryService } from "src/view/browser/utils/legacy-app";
+import { getManualRefreshScopeKey, runManualRefresh } from "src/view/browser/utils/manual-refresh";
 import { formatResForCopy, stripHtml } from "src/view/browser/utils/response-format";
 
 type AddPopupContextMenu = (
@@ -322,7 +323,8 @@ export function useThreadResContextMenu({
           onSelect: () => {
             // 変更理由: 共通ヘッダーの更新は一般的な再読み込みを担う一方、
             // レス固有メニューの明示更新ではsubject.txtも再確認してdat落ちを判定する。
-            void fetchThread(true);
+            const scopeKey = getManualRefreshScopeKey(tabId, page);
+            runManualRefresh(scopeKey, () => void fetchThread(true));
           },
         },
         {
@@ -460,6 +462,7 @@ export function useThreadResContextMenu({
       openWritePanelWithText,
       ownResNums,
       page,
+      tabId,
       removeWriteHistory,
       runClipboardCommand,
       searchQuery,

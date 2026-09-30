@@ -78,7 +78,11 @@ import {
   getAutoRefreshThreadPageKey,
   isAutoRefreshEnabledForPage,
 } from "src/view/browser/utils/auto-refresh-pages";
-import { consumeManualRefresh, runManualRefresh } from "src/view/browser/utils/manual-refresh";
+import {
+  consumeManualRefresh,
+  getManualRefreshScopeKey,
+  runManualRefresh,
+} from "src/view/browser/utils/manual-refresh";
 import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 import { SCOPED_SETTINGS_CONFIG_KEY } from "src/view/browser/utils/scoped-settings";
 import { ThreadListView } from "src/view/shared/ThreadListView";
@@ -222,9 +226,10 @@ export const ThreadListPage: React.FC<Props> = ({
   const effectiveScrollContainerRef = scrollContainerRef ?? fallbackScrollContainerRef;
   const { viewTab } = useTabStore();
   const runTabCommand = useTabCommandRunner(tabId);
+  const manualRefreshScopeKey = getManualRefreshScopeKey(tabId, page);
   const requestManualRefresh = useCallback(
-    () => runManualRefresh(tabId, () => runTabCommand(TAB_COMMAND_IDS.RELOAD)),
-    [runTabCommand, tabId],
+    () => runManualRefresh(manualRefreshScopeKey, () => runTabCommand(TAB_COMMAND_IDS.RELOAD)),
+    [manualRefreshScopeKey, runTabCommand],
   );
   // 既存の直接利用者との互換性のため渡されたtabを残し、通常の描画経路ではそれを優先する。
   const navigationTab = tab ?? viewTab;
@@ -319,6 +324,7 @@ export const ThreadListPage: React.FC<Props> = ({
   const wheelPagination = useWheelPagination({
     isEnabled: isActive,
     isLoading: loading,
+    cooldownScopeKey: manualRefreshScopeKey,
     containerRef: effectiveScrollContainerRef,
     edge: "top",
     onRefresh: requestManualRefresh,
@@ -345,7 +351,7 @@ export const ThreadListPage: React.FC<Props> = ({
   const fetchThreads = useCallback(async () => {
     const isRefresh = previousRefreshKeyRef.current !== refreshKey;
     previousRefreshKeyRef.current = refreshKey;
-    if (isRefresh) consumeManualRefresh(tabId);
+    if (isRefresh) consumeManualRefresh(manualRefreshScopeKey);
     setLoading(true);
     if (isRefresh) {
       if (refreshOverlayTimerRef.current !== null) {
@@ -392,7 +398,7 @@ export const ThreadListPage: React.FC<Props> = ({
       setLoading(false);
     }
     // refreshKeyが変わったとき（更新ボタン押下）に再取得を走らせる
-  }, [page.boardUrl, refreshKey, tabId, toast]);
+  }, [manualRefreshScopeKey, page.boardUrl, refreshKey]);
 
   useEffect(() => {
     if (!showRefreshOverlay || loading) return;

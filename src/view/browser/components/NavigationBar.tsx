@@ -82,7 +82,11 @@ import {
   parseInternalBrowserPage,
   parseOmnibarBrowserPage,
 } from "src/view/browser/utils/link-routing";
-import { runManualRefresh, useManualRefreshCooldown } from "src/view/browser/utils/manual-refresh";
+import {
+  getManualRefreshScopeKey,
+  runManualRefresh,
+  useManualRefreshCooldown,
+} from "src/view/browser/utils/manual-refresh";
 import {
   mergeOmnibarSources,
   type OmnibarBoardSource,
@@ -293,7 +297,8 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   openArchiveReplayWindow = NOOP_OPEN_ARCHIVE_REPLAY_WINDOW,
 }) => {
   const { state, viewTab, viewPage, dispatch, paneId } = useTabStore();
-  const refreshCoolingDown = useManualRefreshCooldown(viewTab.id);
+  const manualRefreshScopeKey = getManualRefreshScopeKey(viewTab.id, viewPage);
+  const refreshCoolingDown = useManualRefreshCooldown(manualRefreshScopeKey);
   const viewSurface = useViewSurface();
   const toast = useToast();
   const runTabCommand = useTabCommandRunner(viewTab.id);
@@ -729,8 +734,8 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
 
   const handleRefresh = useCallback(() => {
     setRefreshMenuPosition(null);
-    runManualRefresh(viewTab.id, () => runTabCommand(TAB_COMMAND_IDS.RELOAD));
-  }, [runTabCommand, viewTab.id]);
+    runManualRefresh(manualRefreshScopeKey, () => runTabCommand(TAB_COMMAND_IDS.RELOAD));
+  }, [manualRefreshScopeKey, runTabCommand]);
 
   const handleUrlBarToggle = useCallback(() => {
     commandPalette.close();

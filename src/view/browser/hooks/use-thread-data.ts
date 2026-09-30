@@ -26,7 +26,10 @@ import {
   restoreRootSelection,
   type RootSelectionSnapshot,
 } from "src/view/browser/utils/dom-selection";
-import { consumeManualRefresh } from "src/view/browser/utils/manual-refresh";
+import {
+  consumeManualRefresh,
+  getManualRefreshScopeKey,
+} from "src/view/browser/utils/manual-refresh";
 import { normalizePopularReplyThreshold } from "src/view/browser/utils/popular-filter";
 import { getImportedSikiThread, isSikiLogThreadUrl } from "src/view/browser/utils/siki-log";
 import {
@@ -153,6 +156,7 @@ export function useThreadData(
       return "https:";
     }
   }, [page.threadUrl]);
+  const manualRefreshScopeKey = getManualRefreshScopeKey(tabId, page);
   const isCacheResolved =
     cacheResolvedThreadUrl === page.threadUrl || isSikiLogThreadUrl(page.threadUrl);
 
@@ -164,7 +168,7 @@ export function useThreadData(
       fetchedThreadUrlRef.current = page.threadUrl;
 
       if (isDifferentThread) manualRefreshBaselineRef.current = null;
-      if (consumeManualRefresh(tabId)) {
+      if (consumeManualRefresh(manualRefreshScopeKey)) {
         manualRefreshBaselineRef.current = isDifferentThread ? 0 : responsesRef.current.length;
       }
       const finishManualRefresh = (responseCount: number, failure?: string) => {
@@ -315,6 +319,7 @@ export function useThreadData(
       dispatch,
       beginRequest,
       isLatestRequest,
+      manualRefreshScopeKey,
       page.threadUrl,
       page.title,
       setResponses,

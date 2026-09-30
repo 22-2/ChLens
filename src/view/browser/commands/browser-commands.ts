@@ -63,6 +63,7 @@ import {
   parseInternalBrowserPage,
   parseInternalBrowserPageStrict,
 } from "src/view/browser/utils/link-routing";
+import { getManualRefreshScopeKey, runManualRefresh } from "src/view/browser/utils/manual-refresh";
 import {
   parseSikiLogFile,
   registerSikiLogThread,
@@ -651,17 +652,21 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     group: "page",
     icon: RotateCw,
     when: ({ viewPage }) => RELOADABLE_PAGE_TYPES.has(viewPage.type),
-    run: ({ dispatch, viewTab, runTabCommand }) => {
-      if (runTabCommand) {
-        // 変更理由: 実行器が対象タブの消滅や非対応ページを検出した時に、
-        // 旧dispatchへフォールバックすると別タブを再取得する危険がある。
-        runTabCommand(TAB_COMMAND_IDS.RELOAD);
-        return;
-      }
+    run: ({ dispatch, viewPage, viewTab, runTabCommand }) => {
+      // 変更理由: コマンドパレットからの手動再読み込みもボタンと同じscope受付を通し、
+      // 同じページでwheel/ボタンと交互に実行してcooldownを迂回できないようにする。
+      runManualRefresh(getManualRefreshScopeKey(viewTab.id, viewPage), () => {
+        if (runTabCommand) {
+          // 変更理由: 実行器が対象タブの消滅や非対応ページを検出した時に、
+          // 旧dispatchへフォールバックすると別タブを再取得する危険がある。
+          runTabCommand(TAB_COMMAND_IDS.RELOAD);
+          return;
+        }
 
-      // 変更理由: 古い埋め込み元が実行器を注入しなくても、コマンドパレットを
-      // 別窓から実行した対象タブだけを更新できるよう明示IDへフォールバックする。
-      dispatch({ ...tabActions.reload(), tabId: viewTab.id });
+        // 変更理由: 古い埋め込み元が実行器を注入しなくても、コマンドパレットを
+        // 別窓から実行した対象タブだけを更新できるよう明示IDへフォールバックする。
+        dispatch({ ...tabActions.reload(), tabId: viewTab.id });
+      });
     },
   },
   {

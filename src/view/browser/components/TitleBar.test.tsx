@@ -5,6 +5,7 @@ import { TitleBar } from "src/view/browser/components/TitleBar";
 import type { Page } from "src/view/browser/types";
 import {
   consumeManualRefresh,
+  getManualRefreshScopeKey,
   MANUAL_REFRESH_COOLDOWN_MS,
 } from "src/view/browser/utils/manual-refresh";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
@@ -15,7 +16,7 @@ const { dispatchMock, mocks } = vi.hoisted(() => ({
     viewPage: {
       type: "thread" as const,
       title: "Current Thread",
-      threadUrl: "https://egg.5ch.net/test/read.cgi/software/1/",
+      threadUrl: "https://example.com/test/read.cgi/software/1/",
     } as Page,
     viewTab: {
       id: "tab-1",
@@ -23,7 +24,7 @@ const { dispatchMock, mocks } = vi.hoisted(() => ({
         {
           type: "thread",
           title: "Current Thread",
-          threadUrl: "https://egg.5ch.net/test/read.cgi/software/1/",
+          threadUrl: "https://example.com/test/read.cgi/software/1/",
         },
       ] as Page[],
       currentIndex: 0,
@@ -89,7 +90,7 @@ describe("TitleBar", () => {
   let refreshClock = Date.now();
   afterEach(() => {
     cleanup();
-    consumeManualRefresh("tab-1");
+    consumeManualRefresh(getManualRefreshScopeKey("tab-1", mocks.viewPage));
     vi.restoreAllMocks();
   });
 
@@ -100,7 +101,7 @@ describe("TitleBar", () => {
     mocks.viewPage = {
       type: "thread",
       title: "Current Thread",
-      threadUrl: "https://egg.5ch.net/test/read.cgi/software/1/",
+      threadUrl: "https://example.com/test/read.cgi/software/1/",
     };
     titleBarButtonSettingsHolder.value = {
       backEnabled: true,
@@ -111,7 +112,7 @@ describe("TitleBar", () => {
       {
         type: "thread",
         title: "Current Thread",
-        threadUrl: "https://egg.5ch.net/test/read.cgi/software/1/",
+        threadUrl: "https://example.com/test/read.cgi/software/1/",
       },
     ];
     mocks.viewTab.currentIndex = 0;
@@ -151,6 +152,7 @@ describe("TitleBar", () => {
     fireEvent.click(refreshButton);
 
     expect(dispatchMock).toHaveBeenCalledWith({ type: "RELOAD", tabId: "tab-1" });
+    expect(refreshButton).toBeDisabled();
   });
 
   it("水平モードでも更新ボタンの左側に戻る・進むを表示する", () => {
@@ -162,7 +164,7 @@ describe("TitleBar", () => {
       {
         type: "thread",
         title: "Current Thread",
-        threadUrl: "https://egg.5ch.net/test/read.cgi/software/1/",
+        threadUrl: "https://example.com/test/read.cgi/software/1/",
       },
       {
         type: "settings",
@@ -222,7 +224,7 @@ describe("TitleBar", () => {
       {
         type: "thread",
         title: "Current Thread",
-        threadUrl: "https://egg.5ch.net/test/read.cgi/software/1/",
+        threadUrl: "https://example.com/test/read.cgi/software/1/",
       },
       // 変更理由: 進む操作を有効にし、戻る・進む両方のコマンド発行を検証する。
       {
@@ -251,7 +253,7 @@ describe("TitleBar", () => {
     mocks.viewPage = {
       type: "thread",
       title: "長いスレッドタイトル".repeat(20),
-      threadUrl: "https://egg.5ch.net/test/read.cgi/software/1/",
+      threadUrl: "https://example.com/test/read.cgi/software/1/",
     };
 
     render(<TitleBar />);

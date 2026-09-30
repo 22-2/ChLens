@@ -61,7 +61,7 @@ import {
   getAutoRefreshPageKey,
   isAutoRefreshStoppedForPage,
 } from "src/view/browser/utils/auto-refresh-pages";
-import { runManualRefresh } from "src/view/browser/utils/manual-refresh";
+import { getManualRefreshScopeKey, runManualRefresh } from "src/view/browser/utils/manual-refresh";
 import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 import {
   buildBlurredResSet,
@@ -96,6 +96,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const { surface: viewSurface, dispatch, toast } = useTabViewRuntime(tabId);
   const runTabCommand = useTabCommandRunner(tabId);
   const { window: viewWindow } = viewSurface;
+  const manualRefreshScopeKey = getManualRefreshScopeKey(tabId, page);
   const rootRef = useRef<HTMLDivElement>(null);
   // 変更理由: refの代入だけでは再描画されないため、別窓の初回描画でもPortal先を
   // 直ちに渡せるよう、同じrootをstateにも同期する。
@@ -129,8 +130,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     messageProtocol,
   } = useThreadData(tabId, page, rootRef, refreshController);
   const requestManualRefresh = useCallback(
-    () => runManualRefresh(tabId, () => runTabCommand(TAB_COMMAND_IDS.RELOAD)),
-    [runTabCommand, tabId],
+    () => runManualRefresh(manualRefreshScopeKey, () => runTabCommand(TAB_COMMAND_IDS.RELOAD)),
+    [manualRefreshScopeKey, runTabCommand],
   );
   useEffect(
     () =>
@@ -232,6 +233,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const wheelPagination = useWheelPagination({
     isEnabled: isActive,
     isLoading: loading,
+    cooldownScopeKey: manualRefreshScopeKey,
     containerRef: effectiveScrollContainerRef,
     edge: "bottom",
     onRefresh: requestManualRefresh,
@@ -706,7 +708,10 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       ) : isCacheResolved && error && responses.length === 0 ? (
         <div className="page-status page-status--error">
           <p>{error}</p>
-          <button className="page-status__retry" onClick={() => void fetchThread(true)}>
+          <button
+            className="page-status__retry"
+            onClick={() => runManualRefresh(manualRefreshScopeKey, () => void fetchThread(true))}
+          >
             再試行
           </button>
         </div>

@@ -10,7 +10,7 @@ import type {
 } from "src/service-container/interfaces";
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";
 import { useThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
-import { runManualRefresh } from "src/view/browser/utils/manual-refresh";
+import { getManualRefreshScopeKey, runManualRefresh } from "src/view/browser/utils/manual-refresh";
 import { registerSikiLogThread } from "src/view/browser/utils/siki-log";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -172,7 +172,9 @@ describe("useThreadData Phase 0 contracts", () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
     rerender({ refreshKey: 1 });
     expect(result.current.loading).toBe(true);
-    act(() => runManualRefresh(tabId, () => rerender({ refreshKey: 2 })));
+    await act(async () =>
+      runManualRefresh(getManualRefreshScopeKey(tabId, page), () => rerender({ refreshKey: 2 })),
+    );
     await act(async () => automatic.resolve(detail));
     expect(toastInfoMock).not.toHaveBeenCalled();
     await act(async () =>
@@ -199,7 +201,9 @@ describe("useThreadData Phase 0 contracts", () => {
     rerender({ refreshKey: 1 });
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(toastInfoMock).not.toHaveBeenCalled();
-    await act(async () => runManualRefresh(tabId, () => rerender({ refreshKey: 2 })));
+    await act(async () =>
+      runManualRefresh(getManualRefreshScopeKey(tabId, page), () => rerender({ refreshKey: 2 })),
+    );
     expect(toastInfoMock).toHaveBeenCalledExactlyOnceWith("新規レス0件");
   });
 
@@ -227,7 +231,9 @@ describe("useThreadData Phase 0 contracts", () => {
         { initialProps: { refreshKey: 0 } },
       );
       await waitFor(() => expect(result.current.loading).toBe(false));
-      act(() => runManualRefresh(tabId, () => rerender({ refreshKey: 1 })));
+      await act(async () =>
+        runManualRefresh(getManualRefreshScopeKey(tabId, page), () => rerender({ refreshKey: 1 })),
+      );
       rerender({ refreshKey: 2 });
       if (closeTab) unmount();
       await act(async () => next.resolve(detail));
@@ -256,7 +262,11 @@ describe("useThreadData Phase 0 contracts", () => {
     );
     try {
       await waitFor(() => expect(result.current.loading).toBe(false));
-      await act(async () => runManualRefresh("manual-error", () => rerender({ refreshKey: 1 })));
+      await act(async () =>
+        runManualRefresh(getManualRefreshScopeKey("manual-error", page), () =>
+          rerender({ refreshKey: 1 }),
+        ),
+      );
       expect(toastInfoMock).not.toHaveBeenCalled();
       expect(toastErrorMock).toHaveBeenCalledExactlyOnceWith("通信エラー");
       expect(log).toHaveBeenCalled();

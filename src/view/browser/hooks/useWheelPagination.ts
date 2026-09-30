@@ -1,75 +1,22 @@
-import {
-  type RefObject,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { getEventTargetElement } from "src/view/browser/utils/dom";
+import {
+  isManualRefreshCoolingDown,
+  useManualRefreshCooldown,
+} from "src/view/browser/utils/manual-refresh";
 
 export const WHEEL_THRESHOLD = 7;
-const COOLDOWN_PERIOD_MS = 1000;
 const COUNTER_RESET_DELAY_MS = 800;
 type WheelDirection = "up" | "down";
-
-interface SharedWheelCooldownState {
-  direction: WheelDirection | null;
-  isCoolingDown: boolean;
-}
-
-const INITIAL_SHARED_WHEEL_COOLDOWN_STATE: SharedWheelCooldownState = {
-  direction: null,
-  isCoolingDown: false,
-};
-
-let sharedWheelCooldownState = INITIAL_SHARED_WHEEL_COOLDOWN_STATE;
-let sharedCooldownTimer: number | null = null;
-let sharedCooldownWindow: Window | null = null;
-const sharedWheelCooldownListeners = new Set<() => void>();
-
-function subscribeToSharedWheelCooldown(listener: () => void): () => void {
-  sharedWheelCooldownListeners.add(listener);
-  return () => sharedWheelCooldownListeners.delete(listener);
-}
-
-function getSharedWheelCooldownSnapshot(): SharedWheelCooldownState {
-  return sharedWheelCooldownState;
-}
-
-function publishSharedWheelCooldown(nextState: SharedWheelCooldownState): void {
-  sharedWheelCooldownState = nextState;
-  sharedWheelCooldownListeners.forEach((listener) => listener());
-}
-
-function startSharedWheelCooldown(
-  direction: WheelDirection,
-  targetWindow: Window = globalThis.window,
-): void {
-  // 変更理由: 別窓ごとにタイマーIDの採番が分かれるため、共有状態だけを見て
-  // 呼び出し側のWindowから解除すると、別窓の同じ番号のタイマーを誤って消す。
-  if (sharedCooldownTimer !== null) {
-    sharedCooldownWindow?.clearTimeout(sharedCooldownTimer);
-  }
-
-  // 変更理由: 一覧とスレッドは別コンポーネント/別タブに存在するため、hook内のtimerでは
-  // 画面切替時に更新受付状態が分裂する。モジュール共有にして、同じブラウザ画面内で連続更新を抑制する。
-  publishSharedWheelCooldown({ direction, isCoolingDown: true });
-  sharedCooldownWindow = targetWindow;
-  sharedCooldownTimer = targetWindow.setTimeout(() => {
-    sharedCooldownTimer = null;
-    sharedCooldownWindow = null;
-    publishSharedWheelCooldown(INITIAL_SHARED_WHEEL_COOLDOWN_STATE);
-  }, COOLDOWN_PERIOD_MS);
-}
 
 interface UseWheelPaginationOptions {
   isEnabled: boolean;
   isLoading: boolean;
+  cooldownScopeKey: string;
   containerRef: RefObject<HTMLElement | null>;
   edge: "top" | "bottom";
-  onRefresh: () => void;
+  onRefresh: () => boolean | void;
 }
 
 interface WheelPaginationState {
@@ -84,6 +31,7 @@ interface WheelPaginationState {
 export function useWheelPagination({
   isEnabled,
   isLoading,
+  cooldownScopeKey,
   containerRef,
   edge,
   onRefresh,
@@ -99,11 +47,7 @@ export function useWheelPagination({
   const previousLoadingRef = useRef(isLoading);
   const onRefreshRef = useRef(onRefresh);
   onRefreshRef.current = onRefresh;
-  const sharedCooldown = useSyncExternalStore(
-    subscribeToSharedWheelCooldown,
-    getSharedWheelCooldownSnapshot,
-    () => INITIAL_SHARED_WHEEL_COOLDOWN_STATE,
-  );
+  const manualRefreshCoolingDown = useManualRefreshCooldown(cooldownScopeKey);
 
   const reset = useCallback(() => {
     stateRef.current = { count: 0, direction: null };
@@ -122,7 +66,7 @@ export function useWheelPagination({
     const wasLoading = previousLoadingRef.current;
     previousLoadingRef.current = isLoading;
 
-    if (wasLoading || !isLoading || refreshDirection !== null || sharedCooldown.isCoolingDown) {
+    if (wasLoading || !isLoading || refreshDirection !== null) {
       return;
     }
 
@@ -134,7 +78,14 @@ export function useWheelPagination({
       viewWindow.clearTimeout(resetTimerRef.current);
       resetTimerRef.current = null;
     }
-  }, [isLoading, refreshDirection, reset, sharedCooldown.isCoolingDown, viewWindow]);
+  }, [isLoading, refreshDirection, reset, viewWindow]);
+
+  useEffect(() => {
+    if (manualRefreshCoolingDown && refreshDirection === null && stateRef.current.count > 0) {
+      // ボタン更新が始まった時に残っていたwheel進捗をspinner表示へ誤転用しない。
+      reset();
+    }
+  }, [manualRefreshCoolingDown, refreshDirection, reset]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -148,7 +99,7 @@ export function useWheelPagination({
         return;
       }
 
-      if (getSharedWheelCooldownSnapshot().isCoolingDown) {
+      if (isManualRefreshCoolingDown(cooldownScopeKey)) {
         event.preventDefault();
         return;
       }
@@ -180,8 +131,12 @@ export function useWheelPagination({
       if (nextState.count < WHEEL_THRESHOLD) return;
 
       setRefreshDirection(direction);
-      startSharedWheelCooldown(direction, viewWindow);
-      onRefreshRef.current();
+      const accepted = onRefreshRef.current();
+      if (accepted === false) {
+        setRefreshDirection(null);
+        reset();
+        return;
+      }
       reset();
     };
 
@@ -190,22 +145,20 @@ export function useWheelPagination({
       container.removeEventListener("wheel", handleWheel);
       if (resetTimerRef.current !== null) viewWindow.clearTimeout(resetTimerRef.current);
     };
-  }, [containerRef, edge, isEnabled, isLoading, reset, viewWindow]);
+  }, [containerRef, cooldownScopeKey, edge, isEnabled, isLoading, reset, viewWindow]);
 
-  const isCoolingDown = isEnabled && sharedCooldown.isCoolingDown;
+  const isCoolingDown = isEnabled && manualRefreshCoolingDown;
   // 変更理由: 自動更新などのホイール操作以外が起点の読み込み中は、残っていたホイール方向や
   // 進捗でインジケーターを出さない。読み込みと重なっただけで一瞬表示されるのを防ぐ。
   // ホイール更新自体の読み込み中は refreshDirection が残るため、スピナー表示は維持される。
-  const isWheelDriven = sharedCooldown.isCoolingDown || refreshDirection != null;
-  const direction = sharedCooldown.isCoolingDown
-    ? sharedCooldown.direction
-    : (refreshDirection ?? (isLoading ? null : state.direction));
+  const isWheelDriven = refreshDirection != null;
+  const direction = refreshDirection ?? (isLoading ? null : state.direction);
 
   useEffect(() => {
-    if (!isLoading && !sharedCooldown.isCoolingDown && refreshDirection !== null) {
+    if (!isLoading && !manualRefreshCoolingDown && refreshDirection !== null) {
       setRefreshDirection(null);
     }
-  }, [isLoading, refreshDirection, sharedCooldown.isCoolingDown]);
+  }, [isLoading, manualRefreshCoolingDown, refreshDirection]);
 
   // 変更理由: cooldown開始前はrefreshDirectionが未設定なので、stateの進捗をそのまま表示する。
   // cooldown中は共有方向と更新中表示だけを残し、リセット済みの古いカウントを表示しない。
