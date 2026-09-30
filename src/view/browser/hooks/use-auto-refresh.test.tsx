@@ -919,6 +919,41 @@ describe("useAutoRefresh", () => {
     expect(scrollTopValue).toBe(12);
   });
 
+  it("開始前に判明したdat落ちを記録し、開始を繰り返しても取得しない", () => {
+    const onRequestRefresh = vi.fn();
+    const onThreadExpired = vi.fn();
+    const onThreadExpiredDetected = vi.fn();
+    const view = render(
+      <AutoRefreshHarness
+        enabled={false}
+        expired
+        onRequestRefresh={onRequestRefresh}
+        onThreadExpired={onThreadExpired}
+        onThreadExpiredDetected={onThreadExpiredDetected}
+      />,
+    );
+    expect(onThreadExpiredDetected).toHaveBeenCalledOnce();
+    expect(onThreadExpired).not.toHaveBeenCalled();
+
+    for (let attempt = 0; attempt < 10; attempt++) {
+      view.rerender(
+        <AutoRefreshHarness
+          enabled={attempt % 2 === 0}
+          expired
+          onRequestRefresh={onRequestRefresh}
+          onThreadExpired={onThreadExpired}
+          onThreadExpiredDetected={onThreadExpiredDetected}
+        />,
+      );
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+    }
+    expect(onThreadExpiredDetected).toHaveBeenCalledOnce();
+    expect(onThreadExpired).toHaveBeenCalledOnce();
+    expect(onRequestRefresh).not.toHaveBeenCalled();
+  });
+
   it("dat落ち検知で自動更新を止め、再描画やタブ切替では通知を重ねない", () => {
     const onRequestRefresh = vi.fn();
     const onThreadExpired = vi.fn();

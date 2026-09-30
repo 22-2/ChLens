@@ -325,7 +325,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const autoRefreshExpired = expired || missingFromSubject || isAutoRefreshStopped;
   const shouldDeferNextThreadStop =
     isAutoNextThreadEnabled &&
-    (autoRefreshExpired || responses.length >= NEXT_THREAD_TRIGGER_RES_COUNT);
+    !autoRefreshExpired &&
+    responses.length >= NEXT_THREAD_TRIGGER_RES_COUNT;
   const { enabled: pauseAutoScrollOnPopup } = usePopupAutoScrollPauseSetting();
 
   // 変更理由: 停止理由が増えても、タブ状態の解除と利用者への通知を同じ経路で行い、
@@ -420,22 +421,19 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     // 1000レス到達後は候補が板一覧へ現れるまで探索を続け、自動更新の停止を保留する。
     deferAutoStop: shouldDeferNextThreadStop,
     // interval の停止だけではタブに自動更新状態が残るため、dat落ち時も明示的に解除する。
-    onThreadExpired: isCommentOverlayFlowing
-      ? undefined
-      : () => {
-          // 別窓再マウント時の同じ失効通知は繰り返さず、auto-next保留中なら後から停止できる。
-          if (tab?.autoRefreshStoppedPageKey === autoRefreshPageKey && !tab.autoRefreshEnabled) {
-            return;
-          }
-          handleAutoRefreshStop("dat落ちを検知したため自動更新を停止しました");
-        },
+    // 実況中もdat落ちは停止し、次スレ探索やON表示だけが残る状態を防ぐ。
+    onThreadExpired: () => {
+      // 別窓再マウント時の同じ失効通知は繰り返さない。
+      if (tab?.autoRefreshStoppedPageKey === autoRefreshPageKey && !tab.autoRefreshEnabled) {
+        return;
+      }
+      handleAutoRefreshStop("dat落ちを検知したため自動更新を停止しました");
+    },
     onThreadExpiredDetected: () => {
       if (autoRefreshPageKey != null && tab?.autoRefreshStoppedPageKey !== autoRefreshPageKey) {
         dispatch(tabActions.setAutoRefreshStoppedPageKey(autoRefreshPageKey));
       }
     },
-    // dat落ち検知と同時に探索が始まるため、探索中だけ停止通知を保留する。
-    deferExpiredStop: isAutoNextThreadEnabled && autoRefreshExpired,
   });
 
   const handleFollowNextThread = useCallback(

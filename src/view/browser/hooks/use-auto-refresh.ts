@@ -188,17 +188,17 @@ export function useAutoRefresh({
   }, [onThreadExpiredDetected]);
 
   useLayoutEffect(() => {
-    if (!enabled || !expired) {
+    if (!expired) {
       return;
     }
 
-    // dat落ち確定は再マウントで失わないよう記録し、次スレ探索中も元スレの通信だけ止める。
+    // 自動更新OFF中に確認したdat落ちも記録し、後から開始を連打しても通信を再開させない。
     if (!threadExpiredRecordedRef.current) {
       threadExpiredRecordedRef.current = true;
       onThreadExpiredDetectedRef.current?.();
     }
 
-    if (threadExpiredHandledRef.current) {
+    if (!enabled || threadExpiredHandledRef.current) {
       return;
     }
 

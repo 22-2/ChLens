@@ -1123,13 +1123,18 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
 
     case TAB_ACTION_TYPES.SET_AUTO_REFRESH_ENABLED: {
       const paneId = resolvePaneId(state, action.paneId);
-      return updateTargetTab(state, paneId, action.tabId, (tab) => ({
-        ...tab,
-        autoRefreshEnabled: action.enabled,
-        autoRefreshPageKey: action.enabled ? (action.pageKey ?? tab.autoRefreshPageKey) : null,
-        // 変更理由: 明示的な再開では停止状態を解除するが、dat落ち停止の内部OFFでは保持する。
-        autoRefreshStoppedPageKey: action.enabled ? null : (tab.autoRefreshStoppedPageKey ?? null),
-      }));
+      return updateTargetTab(state, paneId, action.tabId, (tab) => {
+        const pageKey =
+          action.pageKey ?? tab.autoRefreshPageKey ?? getAutoRefreshPageKey(getCurrentPage(tab));
+        // dat落ちは同じスレでは回復しないため、開始操作で停止記録を消すとsubject取得が連発する。
+        const enabled =
+          action.enabled && (pageKey == null || pageKey !== tab.autoRefreshStoppedPageKey);
+        return {
+          ...tab,
+          autoRefreshEnabled: enabled,
+          autoRefreshPageKey: enabled ? pageKey : null,
+        };
+      });
     }
 
     case TAB_ACTION_TYPES.SET_AUTO_REFRESH_STOPPED_PAGE_KEY: {
@@ -1137,6 +1142,9 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       return updateTargetTab(state, paneId, action.tabId, (tab) => ({
         ...tab,
         autoRefreshStoppedPageKey: action.pageKey,
+        // 停止記録とON表示を同時に更新し、本文だけ止まってステータスバーが回り続ける状態を防ぐ。
+        autoRefreshEnabled: false,
+        autoRefreshPageKey: null,
       }));
     }
 

@@ -70,7 +70,7 @@ const ThreadAutoRefreshPanelContent: React.FC<ThreadAutoRefreshPanelContentProps
         </button>
       </div>
       <p className="mini-window__note">
-        1000到達やdat落ち後に3秒ごとに次スレを探し、見つかれば同じタブで移動します
+        1000到達後に3秒ごとに次スレを探し、見つかれば同じタブで移動します。dat落ち時は自動更新と探索を停止します
       </p>
       <p className="mini-window__note">
         標準・積極では、移動直後により勢いのある本流候補も監視します

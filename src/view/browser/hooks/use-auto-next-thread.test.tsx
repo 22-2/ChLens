@@ -288,7 +288,7 @@ describe("useAutoNextThread", () => {
     expect(screen.getByTestId("status")).toHaveTextContent("idle");
   });
 
-  it("dat落ちフラグでも次スレ探索を開始する", async () => {
+  it("dat落ち後に開始を繰り返してもsubjectを取得しない", async () => {
     const onFollowThread = vi.fn();
     const nextThreadUrl = "https://example.com/test/read.cgi/live/1700000201/";
     const boardGetThreads = vi.fn().mockResolvedValue({
@@ -314,7 +314,7 @@ describe("useAutoNextThread", () => {
       getCachedResCount: vi.fn(),
     };
 
-    render(
+    const view = render(
       <AutoNextThreadHarness
         expired
         mode="cautious"
@@ -326,59 +326,78 @@ describe("useAutoNextThread", () => {
 
     await flushPromises();
 
-    expect(boardGetThreads).toHaveBeenCalledOnce();
-    expect(onFollowThread).toHaveBeenCalledWith(expect.objectContaining({ url: nextThreadUrl }));
-  });
-
-  it("探索解除後に遅れて返った板一覧では次スレへ移動しない", async () => {
-    const onFollowThread = vi.fn();
-    const onSearchExhausted = vi.fn();
-    const nextThreadUrl = "https://example.com/test/read.cgi/live/1700000201/";
-    let resolveBoardRequest: ((value: { threads: IThread[]; message: null }) => void) | undefined;
-    const boardGetThreads = vi.fn(
-      () =>
-        new Promise<{ threads: IThread[]; message: null }>((resolve) => {
-          resolveBoardRequest = resolve;
-        }),
-    );
-    container.board = {
-      getThreads: boardGetThreads,
-      getCachedResCount: vi.fn(),
-    };
-
-    const view = render(
-      <AutoNextThreadHarness
-        onFollowThread={onFollowThread}
-        onSearchExhausted={onSearchExhausted}
-      />,
-    );
-    await flushPromises();
-    expect(boardGetThreads).toHaveBeenCalledOnce();
-
-    view.rerender(
-      <AutoNextThreadHarness
-        featureEnabled={false}
-        onFollowThread={onFollowThread}
-        onSearchExhausted={onSearchExhausted}
-      />,
-    );
-
-    resolveBoardRequest?.({
-      threads: [
-        createThread({
-          title: "実況スレ Part.21",
-          url: nextThreadUrl,
-          resCount: 24,
-          createdAt: 1_700_000_201_000,
-        }),
-      ],
-      message: null,
-    });
-    await flushPromises();
-
+    for (let attempt = 0; attempt < 20; attempt++) {
+      view.rerender(
+        <AutoNextThreadHarness
+          expired
+          autoRefreshEnabled={attempt % 2 === 0}
+          responseCount={1000}
+          onFollowThread={onFollowThread}
+        />,
+      );
+      await act(async () => vi.advanceTimersByTimeAsync(3000));
+    }
+    expect(screen.getByTestId("status")).toHaveTextContent("idle");
+    expect(boardGetThreads).not.toHaveBeenCalled();
     expect(onFollowThread).not.toHaveBeenCalled();
-    expect(onSearchExhausted).not.toHaveBeenCalled();
   });
+
+  it.each(["機能解除", "dat落ち"])(
+    "%s後に遅れて返った板一覧では探索を再開しない",
+    async (stopReason) => {
+      const onFollowThread = vi.fn();
+      const onSearchExhausted = vi.fn();
+      const nextThreadUrl = "https://example.com/test/read.cgi/live/1700000201/";
+      let resolveBoardRequest: ((value: { threads: IThread[]; message: null }) => void) | undefined;
+      const boardGetThreads = vi.fn(
+        () =>
+          new Promise<{ threads: IThread[]; message: null }>((resolve) => {
+            resolveBoardRequest = resolve;
+          }),
+      );
+      container.board = {
+        getThreads: boardGetThreads,
+        getCachedResCount: vi.fn(),
+      };
+
+      const view = render(
+        <AutoNextThreadHarness
+          onFollowThread={onFollowThread}
+          onSearchExhausted={onSearchExhausted}
+        />,
+      );
+      await flushPromises();
+      expect(boardGetThreads).toHaveBeenCalledOnce();
+
+      view.rerender(
+        <AutoNextThreadHarness
+          featureEnabled={stopReason !== "機能解除"}
+          expired={stopReason === "dat落ち"}
+          onFollowThread={onFollowThread}
+          onSearchExhausted={onSearchExhausted}
+        />,
+      );
+
+      resolveBoardRequest?.({
+        threads: [
+          createThread({
+            title: "実況スレ Part.21",
+            url: nextThreadUrl,
+            resCount: 24,
+            createdAt: 1_700_000_201_000,
+          }),
+        ],
+        message: null,
+      });
+      await flushPromises();
+      await act(async () => vi.advanceTimersByTimeAsync(30_000));
+
+      expect(boardGetThreads).toHaveBeenCalledOnce();
+      expect(screen.getByTestId("status")).toHaveTextContent("idle");
+      expect(onFollowThread).not.toHaveBeenCalled();
+      expect(onSearchExhausted).not.toHaveBeenCalled();
+    },
+  );
 
   it("機能が無効な間は検索を開始しない", async () => {
     const onFollowThread = vi.fn();

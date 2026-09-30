@@ -360,103 +360,117 @@ describe("TabProvider auto refresh state", () => {
     expect(screen.getByTestId("saved-stopped-url")).toHaveTextContent("");
   });
 
-  it("FOLLOW_NEXT_THREAD は現在タブの履歴と自動更新束縛を次スレへ引き継ぐ", async () => {
-    vi.resetModules();
-    const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
+  it.each([true, false])(
+    "dat落ち時のON状態が%sでも再開連打を拒否し、次スレでは解除する",
+    async (initiallyEnabled) => {
+      vi.resetModules();
+      const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
 
-    function Harness() {
-      const { viewTab, viewPage, dispatch } = useTabStore();
-      const isCurrentThreadAutoRefreshEnabled =
-        viewPage.type === "thread" &&
-        viewTab.autoRefreshEnabled &&
-        viewTab.autoRefreshPageKey === getAutoRefreshPageKey(viewPage);
+      function Harness() {
+        const { viewTab, viewPage, dispatch } = useTabStore();
+        const isCurrentThreadAutoRefreshEnabled =
+          viewPage.type === "thread" &&
+          viewTab.autoRefreshEnabled &&
+          viewTab.autoRefreshPageKey === getAutoRefreshPageKey(viewPage);
 
-      return (
-        <>
-          <button
-            onClick={() =>
-              dispatch({
-                type: "SET_AUTO_REFRESH_STOPPED_PAGE_KEY",
-                pageKey: "thread:https://example.com/test/read.cgi/foo/1/",
-              })
-            }
-          >
-            thread-1をdat落ち停止
-          </button>
-          <button
-            onClick={() =>
-              dispatch({
-                type: "NAVIGATE",
-                page: {
-                  type: "thread",
-                  title: "thread-1",
-                  threadUrl: "https://example.com/test/read.cgi/foo/1/",
-                },
-              })
-            }
-          >
-            thread-1 へ移動
-          </button>
-          <button
-            onClick={() =>
-              dispatch({
-                type: "SET_AUTO_REFRESH_ENABLED",
-                enabled: true,
-                pageKey: "thread:https://example.com/test/read.cgi/foo/1/",
-              })
-            }
-          >
-            thread-1 で自動更新ON
-          </button>
-          <button
-            onClick={() =>
-              dispatch({
-                type: "FOLLOW_NEXT_THREAD",
-                page: {
-                  type: "thread",
-                  title: "thread-2",
-                  threadUrl: "https://example.com/test/read.cgi/foo/2/",
-                },
-                keepAutoRefresh: true,
-              })
-            }
-          >
-            次スレへ追従
-          </button>
-          <output data-testid="stored-thread-url">{viewTab.autoRefreshPageKey ?? ""}</output>
-          <output data-testid="stopped-thread-url">
-            {viewTab.autoRefreshStoppedPageKey ?? ""}
-          </output>
-          <output data-testid="history-length">{viewTab.history.length}</output>
-          <output data-testid="current-thread-title">{viewPage.title}</output>
-          <output data-testid="current-thread-enabled">
-            {isCurrentThreadAutoRefreshEnabled ? "enabled" : "disabled"}
-          </output>
-        </>
+        return (
+          <>
+            <button
+              onClick={() =>
+                dispatch({
+                  type: "SET_AUTO_REFRESH_STOPPED_PAGE_KEY",
+                  pageKey: "thread:https://example.com/test/read.cgi/foo/1/",
+                })
+              }
+            >
+              thread-1をdat落ち停止
+            </button>
+            <button
+              onClick={() =>
+                dispatch({
+                  type: "NAVIGATE",
+                  page: {
+                    type: "thread",
+                    title: "thread-1",
+                    threadUrl: "https://example.com/test/read.cgi/foo/1/",
+                  },
+                })
+              }
+            >
+              thread-1 へ移動
+            </button>
+            <button
+              onClick={() =>
+                dispatch({
+                  type: "SET_AUTO_REFRESH_ENABLED",
+                  enabled: true,
+                  pageKey: "thread:https://example.com/test/read.cgi/foo/1/",
+                })
+              }
+            >
+              thread-1 で自動更新ON
+            </button>
+            <button
+              onClick={() =>
+                dispatch({
+                  type: "FOLLOW_NEXT_THREAD",
+                  page: {
+                    type: "thread",
+                    title: "thread-2",
+                    threadUrl: "https://example.com/test/read.cgi/foo/2/",
+                  },
+                  keepAutoRefresh: true,
+                })
+              }
+            >
+              次スレへ追従
+            </button>
+            <output data-testid="stored-thread-url">{viewTab.autoRefreshPageKey ?? ""}</output>
+            <output data-testid="stopped-thread-url">
+              {viewTab.autoRefreshStoppedPageKey ?? ""}
+            </output>
+            <output data-testid="history-length">{viewTab.history.length}</output>
+            <output data-testid="current-thread-title">{viewPage.title}</output>
+            <output data-testid="current-thread-enabled">
+              {isCurrentThreadAutoRefreshEnabled ? "enabled" : "disabled"}
+            </output>
+          </>
+        );
+      }
+
+      render(
+        <TabProvider>
+          <Harness />
+        </TabProvider>,
       );
-    }
 
-    render(
-      <TabProvider>
-        <Harness />
-      </TabProvider>,
-    );
+      fireEvent.click(screen.getByText("thread-1 へ移動"));
+      if (initiallyEnabled) {
+        fireEvent.click(screen.getByText("thread-1 で自動更新ON"));
+      }
+      fireEvent.click(screen.getByText("thread-1をdat落ち停止"));
+      expect(screen.getByTestId("current-thread-enabled")).toHaveTextContent("disabled");
+      for (let attempt = 0; attempt < 20; attempt++) {
+        fireEvent.click(screen.getByText("thread-1 で自動更新ON"));
+      }
+      expect(screen.getByTestId("current-thread-enabled")).toHaveTextContent("disabled");
+      expect(screen.getByTestId("stored-thread-url").textContent).toBe("");
+      expect(screen.getByTestId("stopped-thread-url")).toHaveTextContent(
+        "thread:https://example.com/test/read.cgi/foo/1/",
+      );
+      fireEvent.click(screen.getByText("次スレへ追従"));
 
-    fireEvent.click(screen.getByText("thread-1 へ移動"));
-    fireEvent.click(screen.getByText("thread-1 で自動更新ON"));
-    fireEvent.click(screen.getByText("thread-1をdat落ち停止"));
-    fireEvent.click(screen.getByText("次スレへ追従"));
-
-    expect(screen.getByTestId("stored-thread-url")).toHaveTextContent(
-      "thread:https://example.com/test/read.cgi/foo/2/",
-    );
-    expect(screen.getByTestId("stopped-thread-url")).toHaveTextContent("");
-    // 現仕様の NAVIGATE は祖先(home/板/スレ一覧)を自動補完しないため、
-    // 初期[home] → thread-1 で1段 → thread-2 で1段の計3エントリになる。
-    expect(screen.getByTestId("history-length")).toHaveTextContent("3");
-    expect(screen.getByTestId("current-thread-title")).toHaveTextContent("thread-2");
-    expect(screen.getByTestId("current-thread-enabled")).toHaveTextContent("enabled");
-  });
+      expect(screen.getByTestId("stored-thread-url")).toHaveTextContent(
+        "thread:https://example.com/test/read.cgi/foo/2/",
+      );
+      expect(screen.getByTestId("stopped-thread-url")).toHaveTextContent("");
+      // 現仕様の NAVIGATE は祖先(home/板/スレ一覧)を自動補完しないため、
+      // 初期[home] → thread-1 で1段 → thread-2 で1段の計3エントリになる。
+      expect(screen.getByTestId("history-length")).toHaveTextContent("3");
+      expect(screen.getByTestId("current-thread-title")).toHaveTextContent("thread-2");
+      expect(screen.getByTestId("current-thread-enabled")).toHaveTextContent("enabled");
+    },
+  );
 
   it("OPEN_IN_NEW_TAB では現在タブのページタイトルを変更しない", async () => {
     vi.resetModules();

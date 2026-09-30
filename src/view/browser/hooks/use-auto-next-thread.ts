@@ -75,7 +75,7 @@ interface MainstreamSnapshot {
 }
 
 export function useAutoNextThread({
-  autoRefreshEnabled,
+  autoRefreshEnabled: requestedAutoRefreshEnabled,
   featureEnabled,
   threadUrl,
   threadTitle,
@@ -94,6 +94,8 @@ export function useAutoNextThread({
   cancelPendingMove: () => void;
   selectPendingCandidate: (candidate: ThreadSearchCandidate) => void;
 } {
+  // dat落ち時は次スレ探索のsubject通信も止める。開始操作を繰り返しても探索を再起動させない。
+  const autoRefreshEnabled = requestedAutoRefreshEnabled && !expired;
   const { window: viewWindow, document: viewDocument } = useViewSurface();
   const [status, setStatus] = useState<AutoNextThreadStatus>("idle");
   const [pendingMove, setPendingMove] = useState<PendingAutoNextThreadMove | null>(null);
@@ -234,7 +236,7 @@ export function useAutoNextThread({
   );
 
   useEffect(() => {
-    if (!pendingMove) {
+    if (!pendingMove || !autoRefreshEnabled || !featureEnabled) {
       return;
     }
 
@@ -270,7 +272,15 @@ export function useAutoNextThread({
 
     const timerId = viewWindow.setInterval(updateCountdown, 200);
     return () => viewWindow.clearInterval(timerId);
-  }, [isDocumentVisible, moveToCandidate, pendingMove, skipMoveDelay, viewWindow]);
+  }, [
+    autoRefreshEnabled,
+    featureEnabled,
+    isDocumentVisible,
+    moveToCandidate,
+    pendingMove,
+    skipMoveDelay,
+    viewWindow,
+  ]);
 
   useEffect(() => {
     if (!autoRefreshEnabled || !featureEnabled || !isDocumentVisible || !canAutoScroll) {
