@@ -6,8 +6,13 @@ import {
   MoreVertical,
   Settings,
 } from "lucide-react";
-import React, { useCallback, useEffect, useId, useRef, useState } from "react";
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { uploadImageToImgur } from "src/features/media/application/imgur-upload";
+import { useMediaViewerStore } from "src/features/media/browser/use-media-viewer-store";
+import { extractUrlsFromMessage, toViewerImageUrl } from "src/features/media/domain/url-media";
+import { ExternalImage } from "src/features/media/ui/ExternalImage";
+import { MediaViewerContainer } from "src/features/media/ui/MediaViewerContainer";
 import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
 import { StatusBarItem } from "src/view/browser/components/StatusBar";
 import { useOptionalBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
@@ -170,6 +175,15 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
   );
 
   const isSubmitting = status === "submitting";
+  // 変更理由: 投稿前の本文から画像だけを既存ビューアへ渡し、URLの復元や
+  // 複数画像の前後移動をレス表示と同じ規則で利用できるようにする。
+  const previewImages = useMemo(
+    () => extractUrlsFromMessage(message).filter((url) => toViewerImageUrl(url)),
+    [message],
+  );
+  const previewId = useId();
+  const mediaViewerScopeId = `write-preview:${previewId}:${threadUrl}`;
+  const openMedia = useMediaViewerStore((state) => state.openMediaFromUrl);
   const messageRef = useRef(message);
   messageRef.current = message;
   const [isImgurUploading, setIsImgurUploading] = useState(false);
@@ -704,6 +718,28 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
                 )}
               </div>
             </div>
+            {previewImages.length > 0 && (
+              <div
+                className="write-panel__image-previews"
+                role="group"
+                aria-label="投稿画像のプレビュー"
+              >
+                {/* 変更理由: 本文内の画像を投稿前に見分けて選べるよう、サムネイルから
+                    選んだ画像を開き、ビューアでは本文順に前後移動できるようにする。 */}
+                {previewImages.map((url, index) => (
+                  <button
+                    key={url}
+                    type="button"
+                    className="write-panel__image-preview"
+                    aria-label={`画像${index + 1}をプレビュー`}
+                    title={url}
+                    onClick={() => openMedia(url, previewImages, mediaViewerScopeId)}
+                  >
+                    <ExternalImage src={toViewerImageUrl(url) ?? url} alt="" loading="lazy" />
+                  </button>
+                ))}
+              </div>
+            )}
           </>
         )}
         <iframe
@@ -721,6 +757,11 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
             : {})}
         />
       </form>
+      {/* 変更理由: パネルの切り抜きや重なり順に制限されず、別窓でも同じ画面内で表示する。 */}
+      {createPortal(
+        <MediaViewerContainer scopeId={mediaViewerScopeId} />,
+        dialogPortalContainer ?? viewDocument.body,
+      )}
       <Dialog.Root open={isWarningDialogOpen} onOpenChange={setIsWarningDialogOpen}>
         <Dialog.Portal container={dialogPortalContainer ?? undefined}>
           <Dialog.Overlay className="browser-dialog-overlay" />

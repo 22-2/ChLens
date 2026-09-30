@@ -10,6 +10,7 @@ import {
 import { platformDownloadManager } from "src/app/platform/DownloadManager";
 import { isTauriRuntime } from "src/app/platform/runtime";
 import { useToast } from "src/view/browser/hooks/use-toast";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 
 import type { ViewerState } from "./media-viewer-types";
 import { useMediaViewerStore } from "./use-media-viewer-store";
@@ -67,7 +68,7 @@ function getViewerDownloadFilename(url: string): string {
 }
 
 function getViewerStageViewportSize(stage: HTMLDivElement): ViewerSize {
-  const styles = window.getComputedStyle(stage);
+  const styles = (stage.ownerDocument.defaultView ?? window).getComputedStyle(stage);
   const borderX =
     Number.parseFloat(styles.borderLeftWidth || "0") +
     Number.parseFloat(styles.borderRightWidth || "0");
@@ -94,7 +95,7 @@ function getViewerStageCenter(size: ViewerSize): ViewerPoint {
 
 function getPointWithinStage(stage: HTMLDivElement, clientX: number, clientY: number): ViewerPoint {
   const rect = stage.getBoundingClientRect();
-  const styles = window.getComputedStyle(stage);
+  const styles = (stage.ownerDocument.defaultView ?? window).getComputedStyle(stage);
   const borderLeft = Number.parseFloat(styles.borderLeftWidth || "0");
   const borderTop = Number.parseFloat(styles.borderTopWidth || "0");
 
@@ -105,6 +106,9 @@ function getPointWithinStage(stage: HTMLDivElement, clientX: number, clientY: nu
 }
 
 export function useMediaViewerController(scopeId: string): MediaViewerProps | null {
+  // 変更理由: 書き込み別窓でもキー操作・ドラッグ・リサイズのイベントを
+  // ビューアが表示されている窓で受け取り、メイン窓への誤登録を防ぐ。
+  const { window: viewWindow } = useViewSurface();
   const toast = useToast();
   const viewer = useMediaViewerStore((state) =>
     state.viewerScopeId === scopeId ? state.viewer : null,
@@ -314,9 +318,9 @@ export function useMediaViewerController(scopeId: string): MediaViewerProps | nu
       return () => observer.disconnect();
     }
 
-    window.addEventListener("resize", measureViewerLayout);
-    return () => window.removeEventListener("resize", measureViewerLayout);
-  }, [measureViewerLayout, viewer]);
+    viewWindow.addEventListener("resize", measureViewerLayout);
+    return () => viewWindow.removeEventListener("resize", measureViewerLayout);
+  }, [measureViewerLayout, viewer, viewWindow]);
 
   useLayoutEffect(() => {
     if (!viewer) {
@@ -354,9 +358,9 @@ export function useMediaViewerController(scopeId: string): MediaViewerProps | nu
       }
     };
 
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [closeViewerForScope, navigateViewer, viewer]);
+    viewWindow.addEventListener("keydown", onKeyDown);
+    return () => viewWindow.removeEventListener("keydown", onKeyDown);
+  }, [closeViewerForScope, navigateViewer, viewer, viewWindow]);
 
   useEffect(() => {
     if (!viewer) {
@@ -424,15 +428,15 @@ export function useMediaViewerController(scopeId: string): MediaViewerProps | nu
     };
 
     stage.addEventListener("mousedown", onMouseDown);
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
+    viewWindow.addEventListener("mousemove", onMouseMove);
+    viewWindow.addEventListener("mouseup", onMouseUp);
     return () => {
       stage.removeEventListener("mousedown", onMouseDown);
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
+      viewWindow.removeEventListener("mousemove", onMouseMove);
+      viewWindow.removeEventListener("mouseup", onMouseUp);
       stage.classList.remove("media-viewer__stage--panning");
     };
-  }, [renderViewerTransform, viewer]);
+  }, [renderViewerTransform, viewer, viewWindow]);
 
   if (!viewer) {
     return null;
@@ -453,7 +457,7 @@ export function useMediaViewerController(scopeId: string): MediaViewerProps | nu
       // Tauri版では外部ブラウザへのフォールバックもWebView制約で失敗するため、
       // 取得失敗をログへ残して、意図しない別ウィンドウを開かない。
       if (!isTauriRuntime()) {
-        window.open(viewer.src, "_blank", "noopener,noreferrer");
+        viewWindow.open(viewer.src, "_blank", "noopener,noreferrer");
       }
     }
   };

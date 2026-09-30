@@ -1,10 +1,12 @@
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { useMediaViewerStore } from "src/features/media/browser/use-media-viewer-store";
 import { container } from "src/service-container/index";
 import type { IConfig, IMessage } from "src/service-container/interfaces";
 import { StatusBar, StatusBarProvider } from "src/view/browser/components/StatusBar";
 import { WritePanelContent } from "src/view/browser/components/WritePanelContent";
+import { ViewSurfaceProvider } from "src/view/browser/hooks/use-view-surface";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mocks = vi.hoisted(() => ({
@@ -127,6 +129,12 @@ describe("WritePanelContent", () => {
   let messageMock: IMessage;
 
   beforeEach(() => {
+    useMediaViewerStore.setState({
+      viewer: null,
+      viewerScopeId: null,
+      viewerScale: 1,
+      isLoading: false,
+    });
     mocks.clearWritePanelInsertRequest.mockClear();
     mocks.closePanel.mockClear();
     mocks.name = "";
@@ -186,6 +194,121 @@ describe("WritePanelContent", () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+  });
+
+  it("本文に画像URLがない場合はサムネイルを表示しない", () => {
+    mocks.message = "https://example.com/page https://example.com/video.mp4";
+    renderWritePanel();
+
+    expect(screen.queryByRole("group", { name: "投稿画像のプレビュー" })).not.toBeInTheDocument();
+  });
+
+  it("本文の画像だけを既存ビューアで開き、重複を除いて前後移動できる", () => {
+    const first = "https://example.com/first.jpg";
+    const second = "https://example.com/second.png";
+    mocks.message = `${first}\nhttps://example.com/page\n${second}\n${first}`;
+    renderWritePanel();
+
+    const previews = within(screen.getByRole("group", { name: "投稿画像のプレビュー" }));
+    expect(previews.getAllByRole("button")).toHaveLength(2);
+    expect(
+      previews.getByRole("button", { name: "画像2をプレビュー" }).querySelector("img"),
+    ).toHaveAttribute("src", second);
+    fireEvent.click(previews.getByRole("button", { name: "画像2をプレビュー" }));
+    expect(useMediaViewerStore.getState().viewer?.currentIndex).toBe(1);
+    expect(useMediaViewerStore.getState().viewer?.src).toBe(second);
+    fireEvent.click(screen.getByTitle("閉じる"));
+
+    fireEvent.click(screen.getByRole("button", { name: "画像1をプレビュー" }));
+    fireEvent.load(screen.getByAltText(first));
+    expect(screen.getByRole("img", { name: first })).toHaveAttribute("src", first);
+    expect(useMediaViewerStore.getState().viewer?.images).toEqual([first, second]);
+
+    fireEvent.click(screen.getByTitle("次の画像"));
+    fireEvent.load(screen.getByAltText(second));
+    expect(screen.getByRole("img", { name: second })).toHaveAttribute("src", second);
+    fireEvent.click(screen.getByTitle("前の画像"));
+    fireEvent.load(screen.getByAltText(first));
+    expect(screen.getByRole("img", { name: first })).toBeInTheDocument();
+    fireEvent.click(screen.getByTitle("閉じる"));
+    expect(useMediaViewerStore.getState().viewer).toBeNull();
+    expect(mocks.submit).not.toHaveBeenCalled();
+    expect(mocks.setMessage).not.toHaveBeenCalled();
+  });
+
+  it("本文の編集に合わせてサムネイルを更新し、画像を消したら一覧も消す", () => {
+    mocks.message = "https://example.com/first.jpg";
+    const { rerender } = renderWritePanel();
+    expect(screen.getByRole("button", { name: "画像1をプレビュー" })).toHaveAttribute(
+      "title",
+      mocks.message,
+    );
+
+    mocks.message = "https://example.com/second.png";
+    rerender(
+      <StatusBarProvider>
+        <WritePanelContent />
+      </StatusBarProvider>,
+    );
+    expect(screen.getByRole("button", { name: "画像1をプレビュー" })).toHaveAttribute(
+      "title",
+      mocks.message,
+    );
+
+    mocks.message = "本文だけ";
+    rerender(
+      <StatusBarProvider>
+        <WritePanelContent />
+      </StatusBarProvider>,
+    );
+    expect(screen.queryByRole("group", { name: "投稿画像のプレビュー" })).not.toBeInTheDocument();
+  });
+
+  it("投稿先の切り替えと書き込み欄の破棄でプレビューを閉じる", () => {
+    mocks.message = "https://example.com/first.jpg";
+    const { rerender, unmount } = renderWritePanel();
+    fireEvent.click(screen.getByRole("button", { name: "画像1をプレビュー" }));
+    expect(useMediaViewerStore.getState().viewer).not.toBeNull();
+
+    mocks.selectedThreadUrl = "https://example.com/test/read.cgi/software/2/";
+    rerender(
+      <StatusBarProvider>
+        <WritePanelContent />
+      </StatusBarProvider>,
+    );
+    expect(useMediaViewerStore.getState().viewer).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "画像1をプレビュー" }));
+    unmount();
+    expect(useMediaViewerStore.getState().viewer).toBeNull();
+  });
+
+  it("別窓の表示環境でプレビューを描画し、その窓のEscapeで閉じる", () => {
+    // 変更理由: 別Documentへの描画だけでなく、キーイベントの登録先も検証する。
+    const frame = document.createElement("iframe");
+    document.body.append(frame);
+    const previewWindow = frame.contentWindow!;
+    const previewDocument = frame.contentDocument!;
+    mocks.message = "https://example.com/first.jpg";
+    const { unmount } = render(
+      <ViewSurfaceProvider surface={{ window: previewWindow, document: previewDocument }}>
+        <StatusBarProvider>
+          <WritePanelContent standalone portalContainer={previewDocument.body} />
+        </StatusBarProvider>
+      </ViewSurfaceProvider>,
+      { container: previewDocument.body },
+    );
+    const previewScreen = within(previewDocument.body);
+    fireEvent.click(previewScreen.getByRole("button", { name: "画像1をプレビュー" }));
+    fireEvent.load(previewScreen.getByAltText(mocks.message));
+    expect(previewScreen.getByRole("img")).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(useMediaViewerStore.getState().viewer).not.toBeNull();
+    fireEvent.keyDown(previewWindow, { key: "Escape" });
+    expect(useMediaViewerStore.getState().viewer).toBeNull();
+    unmount();
+    frame.remove();
   });
 
   it("Ctrl+EnterオプションON時はテキストエリアでCtrl+Enter投稿できる", () => {

@@ -222,6 +222,8 @@
   /* Theme-independent system scales. */
   --sys-space-0: var(--ref-space-0);
   --sys-toast-width: var(--ref-toast-width);
+  /* 変更理由: 書き込み欄の高さを本文に残しつつ、投稿画像を見分けられるサイズに揃える。 */
+  --sys-size-write-preview-thumbnail: var(--ref-space-16);
   --sys-space-1: var(--ref-space-1);
   --sys-space-2: var(--ref-space-2);
   --sys-space-3: var(--ref-space-3);
