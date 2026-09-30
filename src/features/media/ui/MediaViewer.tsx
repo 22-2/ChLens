@@ -1,8 +1,14 @@
-import { Maximize, Minimize } from "lucide-react";
+import { ExternalLink, Maximize, Minimize, Undo2 } from "lucide-react";
 import { Spinner } from "src/view/browser/ui/Spinner";
 
 import type { MediaViewerProps } from "../browser/use-media-viewer-controller";
 import { ExternalImage } from "./ExternalImage";
+
+interface MediaViewerWindowProps {
+  isDetached: boolean;
+  onDetach: () => void;
+  onAttach: () => void;
+}
 
 export function MediaViewer({
   viewer,
@@ -20,12 +26,15 @@ export function MediaViewer({
   onSave,
   onClose,
   onToggleMaximize,
+  isDetached,
+  onDetach,
+  onAttach,
   onImageLoad,
   onImageError,
-}: MediaViewerProps) {
+}: MediaViewerProps & MediaViewerWindowProps) {
   return (
     <div
-      className="media-viewer"
+      className={`media-viewer${isDetached ? " media-viewer--detached" : ""}`}
       onMouseDown={(event) => {
         // ビューアをポップアップ内から開いた場合も、オーバーレイのクリックを
         // 背後のポップアップに対する outside click として扱わせない。
@@ -66,6 +75,15 @@ export function MediaViewer({
               </>
             )}
             {/* 変更理由: ズームは画像上のホイール操作に統一し、ツールバーのボタン数を減らす。 */}
+            <button
+              type="button"
+              className="media-viewer__btn"
+              onClick={isDetached ? onAttach : onDetach}
+              title={isDetached ? "元の画面に戻す" : "別窓へ切り離す"}
+              aria-label={isDetached ? "元の画面に戻す" : "別窓へ切り離す"}
+            >
+              {isDetached ? <Undo2 size={16} /> : <ExternalLink size={16} />}
+            </button>
             <button
               type="button"
               className="media-viewer__btn"

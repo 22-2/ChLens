@@ -105,7 +105,10 @@ function getPointWithinStage(stage: HTMLDivElement, clientX: number, clientY: nu
   };
 }
 
-export function useMediaViewerController(scopeId: string): MediaViewerProps | null {
+export function useMediaViewerController(
+  scopeId: string,
+  surfaceKey: object | null = null,
+): MediaViewerProps | null {
   // 変更理由: 書き込み別窓でもキー操作・ドラッグ・リサイズのイベントを
   // ビューアが表示されている窓で受け取り、メイン窓への誤登録を防ぐ。
   const { window: viewWindow } = useViewSurface();
@@ -320,7 +323,7 @@ export function useMediaViewerController(scopeId: string): MediaViewerProps | nu
 
     viewWindow.addEventListener("resize", measureViewerLayout);
     return () => viewWindow.removeEventListener("resize", measureViewerLayout);
-  }, [measureViewerLayout, viewer, viewWindow]);
+  }, [measureViewerLayout, surfaceKey, viewer, viewWindow]);
 
   useLayoutEffect(() => {
     if (!viewer) {
@@ -380,7 +383,7 @@ export function useMediaViewerController(scopeId: string): MediaViewerProps | nu
 
     stage.addEventListener("wheel", onWheel, { passive: false });
     return () => stage.removeEventListener("wheel", onWheel);
-  }, [viewer, zoomByWheel]);
+  }, [surfaceKey, viewer, zoomByWheel]);
 
   useEffect(() => {
     if (!viewer) {
@@ -436,7 +439,7 @@ export function useMediaViewerController(scopeId: string): MediaViewerProps | nu
       viewWindow.removeEventListener("mouseup", onMouseUp);
       stage.classList.remove("media-viewer__stage--panning");
     };
-  }, [renderViewerTransform, viewer, viewWindow]);
+  }, [renderViewerTransform, surfaceKey, viewer, viewWindow]);
 
   if (!viewer) {
     return null;

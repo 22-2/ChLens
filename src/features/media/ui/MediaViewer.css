@@ -10,6 +10,21 @@
   padding: var(--sys-space-8);
 }
 
+/* 変更理由: 別窓ではビューア自体を窓いっぱいに使い、暗幕や外側の余白をなくす。 */
+.media-viewer--detached {
+  padding: 0;
+  background: transparent;
+}
+
+.media-viewer--detached .media-viewer__chrome,
+.media-viewer--detached .media-viewer__chrome--maximized {
+  width: 100vw;
+  height: 100vh;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
 .media-viewer__chrome {
   /* Keep a compact dark frame so the outer scrim remains easy to dismiss. */
   width: min(80vw, 1100px);
