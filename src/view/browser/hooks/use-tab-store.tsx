@@ -1115,6 +1115,8 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
           autoRefreshPageKey: action.keepAutoRefresh
             ? getAutoRefreshPageKey(action.page)
             : nextTab.autoRefreshPageKey,
+          // 変更理由: dat落ち確認は旧スレ固有なので、次スレへ自動更新を引き継ぐ時は解除する。
+          autoRefreshStoppedPageKey: null,
         };
       });
     }
@@ -1125,6 +1127,16 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
         ...tab,
         autoRefreshEnabled: action.enabled,
         autoRefreshPageKey: action.enabled ? (action.pageKey ?? tab.autoRefreshPageKey) : null,
+        // 変更理由: 明示的な再開では停止状態を解除するが、dat落ち停止の内部OFFでは保持する。
+        autoRefreshStoppedPageKey: action.enabled ? null : (tab.autoRefreshStoppedPageKey ?? null),
+      }));
+    }
+
+    case TAB_ACTION_TYPES.SET_AUTO_REFRESH_STOPPED_PAGE_KEY: {
+      const paneId = resolvePaneId(state, action.paneId);
+      return updateTargetTab(state, paneId, action.tabId, (tab) => ({
+        ...tab,
+        autoRefreshStoppedPageKey: action.pageKey,
       }));
     }
 
@@ -1546,6 +1558,7 @@ function actionUsesImplicitExistingTab(action: ScopedTabAction): boolean {
     case TAB_ACTION_TYPES.RELOAD:
     case TAB_ACTION_TYPES.FOLLOW_NEXT_THREAD:
     case TAB_ACTION_TYPES.SET_AUTO_REFRESH_ENABLED:
+    case TAB_ACTION_TYPES.SET_AUTO_REFRESH_STOPPED_PAGE_KEY:
       return true;
     default:
       return false;

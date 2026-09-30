@@ -57,6 +57,8 @@ function AutoRefreshHarness({
   active = true,
   refreshKey = 0,
   expired = false,
+  stopped = false,
+  scopeUrl = "https://example.com/test/read.cgi/board/thread-a/",
   loading = false,
   pauseAutoScroll = false,
   onRequestRefresh,
@@ -65,6 +67,7 @@ function AutoRefreshHarness({
   deferAutoStop = false,
   configureScrollContainer,
   onThreadExpired,
+  onThreadExpiredDetected,
   deferExpiredStop = false,
 }: {
   enabled?: boolean;
@@ -72,6 +75,8 @@ function AutoRefreshHarness({
   active?: boolean;
   refreshKey?: number;
   expired?: boolean;
+  stopped?: boolean;
+  scopeUrl?: string;
   loading?: boolean;
   pauseAutoScroll?: boolean;
   onRequestRefresh: () => void;
@@ -80,6 +85,7 @@ function AutoRefreshHarness({
   deferAutoStop?: boolean;
   configureScrollContainer?: (scrollContainer: HTMLDivElement) => void;
   onThreadExpired?: () => void;
+  onThreadExpiredDetected?: () => void;
   deferExpiredStop?: boolean;
 }) {
   const [responses, setResponses] = useState([1, 2]);
@@ -99,8 +105,9 @@ function AutoRefreshHarness({
   );
   const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling } = useAutoRefresh({
     enabled,
+    scopeUrl,
     startAtBottom,
-    expired,
+    expired: expired || stopped,
     loading: isLoading,
     refreshController,
     pauseAutoScroll,
@@ -115,6 +122,7 @@ function AutoRefreshHarness({
     onAutoStop,
     deferAutoStop,
     onThreadExpired,
+    onThreadExpiredDetected,
     deferExpiredStop,
   });
 
@@ -999,6 +1007,119 @@ describe("useAutoRefresh", () => {
         <AutoRefreshHarness
           expired
           deferExpiredStop={false}
+          onRequestRefresh={onRequestRefresh}
+          onThreadExpired={onThreadExpired}
+        />,
+      );
+    });
+
+    expect(onThreadExpired).toHaveBeenCalledOnce();
+  });
+
+  it("同一スレの後続不確定応答と予約済みtickでは再取得せず、別スレへ移ると再開する", () => {
+    const onRequestRefresh = vi.fn();
+    const onThreadExpiredDetected = vi.fn();
+    const intervalCallbacks: Array<() => void> = [];
+    const setIntervalSpy = vi.spyOn(window, "setInterval").mockImplementation((callback) => {
+      intervalCallbacks.push(callback as () => void);
+      return 1 as unknown as ReturnType<typeof window.setInterval>;
+    });
+    const { rerender } = render(
+      <AutoRefreshHarness
+        scopeUrl="https://example.com/test/read.cgi/board/thread-a/"
+        onRequestRefresh={onRequestRefresh}
+        onThreadExpiredDetected={onThreadExpiredDetected}
+      />,
+    );
+    const scheduledTick = intervalCallbacks.at(-1);
+    expect(scheduledTick).toBeDefined();
+
+    act(() => {
+      rerender(
+        <AutoRefreshHarness
+          scopeUrl="https://example.com/test/read.cgi/board/thread-a/"
+          expired
+          onRequestRefresh={onRequestRefresh}
+          onThreadExpiredDetected={onThreadExpiredDetected}
+        />,
+      );
+    });
+    expect(onThreadExpiredDetected).toHaveBeenCalledOnce();
+
+    act(() => {
+      // subject通信失敗後の本文取得成功を模し、生の失効情報だけがfalseへ戻る状態にする。
+      rerender(
+        <AutoRefreshHarness
+          scopeUrl="https://example.com/test/read.cgi/board/thread-a/"
+          stopped
+          onRequestRefresh={onRequestRefresh}
+          onThreadExpiredDetected={onThreadExpiredDetected}
+        />,
+      );
+      scheduledTick?.();
+      vi.advanceTimersByTime(3000);
+    });
+    expect(onRequestRefresh).not.toHaveBeenCalled();
+
+    act(() => {
+      // FOLLOW_NEXT_THREADは新URLをscopeにするため、旧スレの停止キーを引き継がない。
+      rerender(
+        <AutoRefreshHarness
+          scopeUrl="https://example.com/test/read.cgi/board/thread-b/"
+          onRequestRefresh={onRequestRefresh}
+        />,
+      );
+    });
+    act(() => {
+      intervalCallbacks.at(-1)?.();
+    });
+    expect(onRequestRefresh).toHaveBeenCalledOnce();
+    setIntervalSpy.mockRestore();
+  });
+
+  it("最初の通信失敗だけでは失効停止せず自動更新を続ける", () => {
+    const onRequestRefresh = vi.fn();
+    const onThreadExpiredDetected = vi.fn();
+    const intervalCallbacks: Array<() => void> = [];
+    const setIntervalSpy = vi.spyOn(window, "setInterval").mockImplementation((callback) => {
+      intervalCallbacks.push(callback as () => void);
+      return 1 as unknown as ReturnType<typeof window.setInterval>;
+    });
+
+    render(
+      <AutoRefreshHarness
+        // subject取得の通信失敗はdat落ち確定ではないため、停止条件へ渡さない。
+        expired={false}
+        onRequestRefresh={onRequestRefresh}
+        onThreadExpiredDetected={onThreadExpiredDetected}
+      />,
+    );
+
+    act(() => {
+      intervalCallbacks.at(-1)?.();
+    });
+
+    expect(onRequestRefresh).toHaveBeenCalledOnce();
+    expect(onThreadExpiredDetected).not.toHaveBeenCalled();
+    setIntervalSpy.mockRestore();
+  });
+
+  it("停止通知先が一時的に未設定でも、設定された後に失効停止を処理する", () => {
+    const onRequestRefresh = vi.fn();
+    const onThreadExpired = vi.fn();
+    const { rerender } = render(
+      <AutoRefreshHarness
+        expired
+        onRequestRefresh={onRequestRefresh}
+        onThreadExpired={undefined}
+      />,
+    );
+
+    expect(onThreadExpired).not.toHaveBeenCalled();
+    act(() => {
+      rerender(
+        <AutoRefreshHarness
+          expired
           onRequestRefresh={onRequestRefresh}
           onThreadExpired={onThreadExpired}
         />,

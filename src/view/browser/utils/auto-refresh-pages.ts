@@ -31,8 +31,17 @@ export function isAutoRefreshEnabledForPage(tab: Tab, page: Page): boolean {
   return pageKey != null && tab.autoRefreshEnabled && tab.autoRefreshPageKey === pageKey;
 }
 
+export function isAutoRefreshStoppedForPage(tab: Tab, page: Page): boolean {
+  const pageKey = getAutoRefreshPageKey(page);
+  return pageKey != null && tab.autoRefreshStoppedPageKey === pageKey;
+}
+
 export function resetAutoRefreshState<
-  T extends { autoRefreshEnabled: boolean; autoRefreshPageKey: string | null },
+  T extends {
+    autoRefreshEnabled: boolean;
+    autoRefreshPageKey: string | null;
+    autoRefreshStoppedPageKey?: string | null;
+  },
 >(tab: T): T {
   return {
     ...tab,
@@ -40,5 +49,7 @@ export function resetAutoRefreshState<
     // 別ページへ移動した後に意図せず再開しないよう共通ヘルパで必ず解除する。
     autoRefreshEnabled: false,
     autoRefreshPageKey: null,
+    // 変更理由: 停止キーは今のページだけに属する一時状態なので、通常遷移へ持ち越さない。
+    autoRefreshStoppedPageKey: null,
   };
 }

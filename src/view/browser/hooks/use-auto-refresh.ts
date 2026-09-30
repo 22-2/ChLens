@@ -49,6 +49,8 @@ interface UseAutoRefreshOptions {
   deferAutoStop?: boolean;
   /** dat落ちを検知して自動更新を止めるとき、一度だけ呼ぶ。 */
   onThreadExpired?: () => void;
+  /** dat落ち確定をページの再マウント後も保つ停止キーを記録するときに呼ぶ。 */
+  onThreadExpiredDetected?: () => void;
   /** 次スレ探索中は、候補が見つかるまで dat 落ちによる解除通知を保留する。 */
   deferExpiredStop?: boolean;
 }
@@ -77,6 +79,7 @@ export function useAutoRefresh({
   onAutoStop,
   deferAutoStop = false,
   onThreadExpired,
+  onThreadExpiredDetected,
   deferExpiredStop = false,
 }: UseAutoRefreshOptions): UseAutoRefreshResult {
   const { window: viewWindow, document: viewDocument } = useViewSurface();
@@ -88,9 +91,22 @@ export function useAutoRefresh({
   const onNewResponsesRef = useRef(onNewResponses);
   const onAutoStopRef = useRef(onAutoStop);
   const onThreadExpiredRef = useRef(onThreadExpired);
+  const onThreadExpiredDetectedRef = useRef(onThreadExpiredDetected);
   // 同じスレの再取得では expired が一度 false に戻ることがあるため、
   // 自動更新停止と通知は hook の生存中に一度だけ実行する。
   const threadExpiredHandledRef = useRef(false);
+  const threadExpiredRecordedRef = useRef(false);
+  const expiryScopeUrlRef = useRef(scopeUrl);
+  // 変更理由: intervalのcleanup前に予約済みcallbackが届いても、最新の停止条件で拒否する。
+  const enabledRef = useRef(enabled);
+  const expiredRef = useRef(expired);
+  enabledRef.current = enabled;
+  expiredRef.current = expired;
+  if (expiryScopeUrlRef.current !== scopeUrl) {
+    expiryScopeUrlRef.current = scopeUrl;
+    threadExpiredHandledRef.current = false;
+    threadExpiredRecordedRef.current = false;
+  }
   // 新着が来なかった更新が何回連続したか。新着が来たら 0 に戻す。
   const consecutiveIdleRefreshRef = useRef(0);
   // 最後に新着が来た時刻（epoch ms）。時間ベースの自動停止判定に使う。
@@ -117,6 +133,9 @@ export function useAutoRefresh({
   const [intervalMs, setIntervalMs] = useState(() => readThreadAutoRefreshIntervalMs(scopeUrl));
 
   const requestRefreshFromHook = useCallback(() => {
+    if (!enabledRef.current || expiredRef.current) {
+      return;
+    }
     // タイマー・ON直後の更新はここで先にスナップショットを保存しているため、
     // 後続の refreshKey 変化では同じ更新を二重に記録しない。
     markInternalRefreshRequest();
@@ -160,26 +179,40 @@ export function useAutoRefresh({
     onAutoStopRef.current = onAutoStop;
   }, [onAutoStop]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     onThreadExpiredRef.current = onThreadExpired;
   }, [onThreadExpired]);
 
-  useEffect(() => {
-    if (!enabled || !expired || threadExpiredHandledRef.current) {
+  useLayoutEffect(() => {
+    onThreadExpiredDetectedRef.current = onThreadExpiredDetected;
+  }, [onThreadExpiredDetected]);
+
+  useLayoutEffect(() => {
+    if (!enabled || !expired) {
       return;
     }
 
-    // expired になった時点で保留中の追従を破棄する。通信タイマーは別の effect で
-    // 停止したまま、次スレ探索中だけタブ側の停止通知を保留して探索を競合させない。
+    // dat落ち確定は再マウントで失わないよう記録し、次スレ探索中も元スレの通信だけ止める。
+    if (!threadExpiredRecordedRef.current) {
+      threadExpiredRecordedRef.current = true;
+      onThreadExpiredDetectedRef.current?.();
+    }
+
+    if (threadExpiredHandledRef.current) {
+      return;
+    }
+
+    // dat落ちになった時点で保留中の追従を破棄し、次スレ探索中だけ設定解除通知を保留する。
     pendingRefreshRef.current = null;
     userInterruptedRef.current = false;
-    if (deferExpiredStop) {
+    // Overlay表示中は停止通知先を一時的に外すため、callback未設定では処理済みにしない。
+    if (deferExpiredStop || onThreadExpiredRef.current == null) {
       return;
     }
 
     threadExpiredHandledRef.current = true;
     onThreadExpiredRef.current?.();
-  }, [deferExpiredStop, enabled, expired]);
+  }, [deferExpiredStop, enabled, expired, onThreadExpired]);
 
   useEffect(() => {
     loadingRef.current = loading;
@@ -594,7 +627,13 @@ export function useAutoRefresh({
     }
 
     const timerId = viewWindow.setInterval(() => {
-      if (loadingRef.current || pendingRefreshRef.current) {
+      // clearInterval後に実行待ちのcallbackが残る環境でも、失効後の再取得を始めない。
+      if (
+        !enabledRef.current ||
+        expiredRef.current ||
+        loadingRef.current ||
+        pendingRefreshRef.current
+      ) {
         return;
       }
 

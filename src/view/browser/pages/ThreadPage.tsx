@@ -57,7 +57,10 @@ import {
   type ThreadPage as ThreadPageType,
 } from "src/view/browser/types";
 import { Spinner } from "src/view/browser/ui/Spinner";
-import { getAutoRefreshPageKey } from "src/view/browser/utils/auto-refresh-pages";
+import {
+  getAutoRefreshPageKey,
+  isAutoRefreshStoppedForPage,
+} from "src/view/browser/utils/auto-refresh-pages";
 import { runManualRefresh } from "src/view/browser/utils/manual-refresh";
 import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 import {
@@ -313,7 +316,11 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const isActiveAutoRefreshEnabled = (isActive || isCommentOverlayFlowing) && isAutoRefreshEnabled;
   // 変更理由: 画面上はいずれも dat 落ち案内を表示する状態であり、
   // 自動更新中にどちらかを取得したら、Issue #29 の完了条件に従って停止処理へ渡す。
-  const autoRefreshExpired = expired || missingFromSubject;
+  const autoRefreshPageKey = getAutoRefreshPageKey(page);
+  const isAutoRefreshStopped = tab ? isAutoRefreshStoppedForPage(tab, page) : false;
+  // 変更理由: dat落ちの確定だけは同じURLの不確定subject応答や別窓再マウントで解除せず、
+  // 自動更新タイマーと次スレ探索へ同じスレの失効状態を伝える。ThreadData自体は最新結果のまま保つ。
+  const autoRefreshExpired = expired || missingFromSubject || isAutoRefreshStopped;
   const shouldDeferNextThreadStop =
     isAutoNextThreadEnabled &&
     (autoRefreshExpired || responses.length >= NEXT_THREAD_TRIGGER_RES_COUNT);
@@ -413,7 +420,18 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     // interval の停止だけではタブに自動更新状態が残るため、dat落ち時も明示的に解除する。
     onThreadExpired: isCommentOverlayFlowing
       ? undefined
-      : () => handleAutoRefreshStop("dat落ちを検知したため自動更新を停止しました"),
+      : () => {
+          // 別窓再マウント時の同じ失効通知は繰り返さず、auto-next保留中なら後から停止できる。
+          if (tab?.autoRefreshStoppedPageKey === autoRefreshPageKey && !tab.autoRefreshEnabled) {
+            return;
+          }
+          handleAutoRefreshStop("dat落ちを検知したため自動更新を停止しました");
+        },
+    onThreadExpiredDetected: () => {
+      if (autoRefreshPageKey != null && tab?.autoRefreshStoppedPageKey !== autoRefreshPageKey) {
+        dispatch(tabActions.setAutoRefreshStoppedPageKey(autoRefreshPageKey));
+      }
+    },
     // dat落ち検知と同時に探索が始まるため、探索中だけ停止通知を保留する。
     deferExpiredStop: isAutoNextThreadEnabled && autoRefreshExpired,
   });

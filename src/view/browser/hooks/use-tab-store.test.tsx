@@ -325,6 +325,7 @@ describe("TabProvider auto refresh state", () => {
             reloadKey: 0,
             autoRefreshEnabled: true,
             autoRefreshPageKey: "thread:https://example.com/test/read.cgi/foo/1/",
+            autoRefreshStoppedPageKey: "thread:https://example.com/test/read.cgi/foo/1/",
           },
         ],
         activeTabId: "tab-1",
@@ -343,6 +344,7 @@ describe("TabProvider auto refresh state", () => {
             {viewTab.autoRefreshEnabled ? "enabled" : "disabled"}
           </output>
           <output data-testid="saved-url">{viewTab.autoRefreshPageKey ?? ""}</output>
+          <output data-testid="saved-stopped-url">{viewTab.autoRefreshStoppedPageKey ?? ""}</output>
         </>
       );
     }
@@ -355,6 +357,7 @@ describe("TabProvider auto refresh state", () => {
 
     expect(screen.getByTestId("saved-enabled")).toHaveTextContent("disabled");
     expect(screen.getByTestId("saved-url")).toHaveTextContent("");
+    expect(screen.getByTestId("saved-stopped-url")).toHaveTextContent("");
   });
 
   it("FOLLOW_NEXT_THREAD は現在タブの履歴と自動更新束縛を次スレへ引き継ぐ", async () => {
@@ -370,6 +373,16 @@ describe("TabProvider auto refresh state", () => {
 
       return (
         <>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "SET_AUTO_REFRESH_STOPPED_PAGE_KEY",
+                pageKey: "thread:https://example.com/test/read.cgi/foo/1/",
+              })
+            }
+          >
+            thread-1をdat落ち停止
+          </button>
           <button
             onClick={() =>
               dispatch({
@@ -411,6 +424,9 @@ describe("TabProvider auto refresh state", () => {
             次スレへ追従
           </button>
           <output data-testid="stored-thread-url">{viewTab.autoRefreshPageKey ?? ""}</output>
+          <output data-testid="stopped-thread-url">
+            {viewTab.autoRefreshStoppedPageKey ?? ""}
+          </output>
           <output data-testid="history-length">{viewTab.history.length}</output>
           <output data-testid="current-thread-title">{viewPage.title}</output>
           <output data-testid="current-thread-enabled">
@@ -428,11 +444,13 @@ describe("TabProvider auto refresh state", () => {
 
     fireEvent.click(screen.getByText("thread-1 へ移動"));
     fireEvent.click(screen.getByText("thread-1 で自動更新ON"));
+    fireEvent.click(screen.getByText("thread-1をdat落ち停止"));
     fireEvent.click(screen.getByText("次スレへ追従"));
 
     expect(screen.getByTestId("stored-thread-url")).toHaveTextContent(
       "thread:https://example.com/test/read.cgi/foo/2/",
     );
+    expect(screen.getByTestId("stopped-thread-url")).toHaveTextContent("");
     // 現仕様の NAVIGATE は祖先(home/板/スレ一覧)を自動補完しないため、
     // 初期[home] → thread-1 で1段 → thread-2 で1段の計3エントリになる。
     expect(screen.getByTestId("history-length")).toHaveTextContent("3");

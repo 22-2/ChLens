@@ -51,6 +51,9 @@ export interface TabActionCreators {
     options?: Omit<PayloadOf<"FOLLOW_NEXT_THREAD">, "page">,
   ): ActionOf<"FOLLOW_NEXT_THREAD">;
   setAutoRefreshEnabled(enabled: boolean, pageKey?: string): ActionOf<"SET_AUTO_REFRESH_ENABLED">;
+  setAutoRefreshStoppedPageKey(
+    pageKey: string | null,
+  ): ActionOf<"SET_AUTO_REFRESH_STOPPED_PAGE_KEY">;
   splitPane(): ActionOf<"SPLIT_PANE">;
   openInRightPane(tabId: string): ActionOf<"OPEN_IN_RIGHT_PANE">;
   closePane(): ActionOf<"CLOSE_PANE">;
@@ -120,6 +123,10 @@ export const tabActions: TabActionCreators = {
     type: TAB_ACTION_TYPES.SET_AUTO_REFRESH_ENABLED,
     enabled,
     ...(pageKey === undefined ? {} : { pageKey }),
+  }),
+  setAutoRefreshStoppedPageKey: (pageKey) => ({
+    type: TAB_ACTION_TYPES.SET_AUTO_REFRESH_STOPPED_PAGE_KEY,
+    pageKey,
   }),
   splitPane: () => ({ type: TAB_ACTION_TYPES.SPLIT_PANE }),
   openInRightPane: (tabId) => ({ type: TAB_ACTION_TYPES.OPEN_IN_RIGHT_PANE, tabId }),

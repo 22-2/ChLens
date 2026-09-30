@@ -107,6 +107,8 @@ export interface Tab {
   // スレ/スレ一覧を同じロジックで扱うため、URLそのものではなくページ識別キーを保持する。
   autoRefreshEnabled: boolean;
   autoRefreshPageKey: string | null;
+  // dat落ちを確認したページの自動更新タイマーだけを停止するランタイム状態。
+  autoRefreshStoppedPageKey?: string | null;
   // ページごとの検索・絞り込み・並び順をタブに保持する。
   // URLをキーに含めることで、同じタブ内で板やスレを移動しても状態が混ざらない。
   viewStates?: TabViewStates;
@@ -194,6 +196,7 @@ export function createHomeTab(id?: string): Tab {
     reloadKey: 0,
     autoRefreshEnabled: false,
     autoRefreshPageKey: null,
+    autoRefreshStoppedPageKey: null,
   };
 }
 

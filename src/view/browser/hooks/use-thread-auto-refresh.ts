@@ -25,6 +25,8 @@ interface UseThreadAutoRefreshOptions {
   deferAutoStop?: boolean;
   /** dat落ちを検知して自動更新を止めるとき、一度だけ呼ぶ。 */
   onThreadExpired?: () => void;
+  /** dat落ち確定をページの再マウント後も保つ停止キーを記録するときに呼ぶ。 */
+  onThreadExpiredDetected?: () => void;
   /** 次スレ探索中は、候補が見つかるまで dat 落ちによる解除通知を保留する。 */
   deferExpiredStop?: boolean;
 }
@@ -54,6 +56,7 @@ export function useThreadAutoRefresh(options: UseThreadAutoRefreshOptions): UseA
     onAutoStop,
     deferAutoStop = false,
     onThreadExpired,
+    onThreadExpiredDetected,
     deferExpiredStop = false,
   } = options;
 
@@ -75,6 +78,7 @@ export function useThreadAutoRefresh(options: UseThreadAutoRefreshOptions): UseA
     onAutoStop,
     deferAutoStop,
     onThreadExpired,
+    onThreadExpiredDetected,
     deferExpiredStop,
   });
 

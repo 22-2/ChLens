@@ -34,6 +34,7 @@ export const TAB_ACTION_TYPES = {
   RELOAD: "RELOAD",
   FOLLOW_NEXT_THREAD: "FOLLOW_NEXT_THREAD",
   SET_AUTO_REFRESH_ENABLED: "SET_AUTO_REFRESH_ENABLED",
+  SET_AUTO_REFRESH_STOPPED_PAGE_KEY: "SET_AUTO_REFRESH_STOPPED_PAGE_KEY",
   SPLIT_PANE: "SPLIT_PANE",
   OPEN_IN_RIGHT_PANE: "OPEN_IN_RIGHT_PANE",
   CLOSE_PANE: "CLOSE_PANE",
@@ -94,6 +95,10 @@ export type TabAction =
       type: typeof TAB_ACTION_TYPES.SET_AUTO_REFRESH_ENABLED;
       enabled: boolean;
       pageKey?: string;
+    }
+  | {
+      type: typeof TAB_ACTION_TYPES.SET_AUTO_REFRESH_STOPPED_PAGE_KEY;
+      pageKey: string | null;
     }
   // --- ペイン操作（横分割） ---
   // いずれも対象ペインは注入された paneId（操作元ペイン）を基準にする。
