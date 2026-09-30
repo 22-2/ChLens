@@ -17,9 +17,6 @@ export function MediaViewer({
   onChromeClick,
   onNavigatePrev,
   onNavigateNext,
-  onZoomOut,
-  onZoomReset,
-  onZoomIn,
   onSave,
   onClose,
   onToggleMaximize,
@@ -68,15 +65,7 @@ export function MediaViewer({
                 </button>
               </>
             )}
-            <button type="button" className="media-viewer__btn" onClick={onZoomOut} title="縮小">
-              -
-            </button>
-            <button type="button" className="media-viewer__btn" onClick={onZoomReset} title="等倍">
-              100%
-            </button>
-            <button type="button" className="media-viewer__btn" onClick={onZoomIn} title="拡大">
-              +
-            </button>
+            {/* 変更理由: ズームは画像上のホイール操作に統一し、ツールバーのボタン数を減らす。 */}
             <button
               type="button"
               className="media-viewer__btn"
