@@ -107,7 +107,7 @@ export interface Tab {
   // スレ/スレ一覧を同じロジックで扱うため、URLそのものではなくページ識別キーを保持する。
   autoRefreshEnabled: boolean;
   autoRefreshPageKey: string | null;
-  // dat落ちを確認したページの自動更新タイマーだけを停止するランタイム状態。
+  // dat落ち・満了・次スレ探索の期限終了を記録し、同じページの開始連打による再開を防ぐ。
   autoRefreshStoppedPageKey?: string | null;
   // ページごとの検索・絞り込み・並び順をタブに保持する。
   // URLをキーに含めることで、同じタブ内で板やスレを移動しても状態が混ざらない。

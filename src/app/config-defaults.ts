@@ -7,6 +7,8 @@ export const DEFAULT_CONFIG: Readonly<Record<string, string>> = {
   auto_load_second_board: "20000",
   auto_next_thread: "off",
   auto_next_thread_mode: "balanced",
+  // EdgeLiveViewerと同じく候補がまだ立っていない間だけ待ち、subjectの無期限取得を防ぐ。
+  next_thread_search_duration: "180",
   pause_auto_scroll_on_popup: "on",
   image_blur: "on",
   image_blur_length: "4",

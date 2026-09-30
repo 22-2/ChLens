@@ -251,7 +251,11 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     },
     [mediaViewerScopeId, openMedia],
   );
-  const { enabled: isAutoNextThreadEnabled, mode: autoNextThreadMode } = useAutoNextThreadSetting();
+  const {
+    enabled: isAutoNextThreadEnabled,
+    mode: autoNextThreadMode,
+    searchDurationSeconds: nextThreadSearchDurationSeconds,
+  } = useAutoNextThreadSetting();
   const autoNextThreadResponseMessages = useMemo(
     () => responses.map((response) => response.message),
     [responses],
@@ -320,13 +324,13 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   // 自動更新中にどちらかを取得したら、Issue #29 の完了条件に従って停止処理へ渡す。
   const autoRefreshPageKey = getAutoRefreshPageKey(page);
   const isAutoRefreshStopped = tab ? isAutoRefreshStoppedForPage(tab, page) : false;
-  // 変更理由: dat落ちの確定だけは同じURLの不確定subject応答や別窓再マウントで解除せず、
-  // 自動更新タイマーと次スレ探索へ同じスレの失効状態を伝える。ThreadData自体は最新結果のまま保つ。
+  // dat落ちや探索終了の停止記録は、不確定subject応答や別窓再マウントでも保持する。
+  // 本文タイマーと次スレ探索を同時に止めるため、ThreadDataの取得結果とは別に扱う。
   const autoRefreshExpired = expired || missingFromSubject || isAutoRefreshStopped;
+  const hasReachedThreadLimit = responses.length >= NEXT_THREAD_TRIGGER_RES_COUNT;
+  // 満了スレの本文は取得せず、次スレが現れるまでの待機だけを期限付きで継続する。
   const shouldDeferNextThreadStop =
-    isAutoNextThreadEnabled &&
-    !autoRefreshExpired &&
-    responses.length >= NEXT_THREAD_TRIGGER_RES_COUNT;
+    isAutoNextThreadEnabled && hasReachedThreadLimit && !isAutoRefreshStopped;
   const { enabled: pauseAutoScrollOnPopup } = usePopupAutoScrollPauseSetting();
 
   // 変更理由: 停止理由が増えても、タブ状態の解除と利用者への通知を同じ経路で行い、
@@ -355,13 +359,13 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   }, [dispatch, page]);
 
   const handleNextThreadSearchExhausted = useCallback(() => {
-    if (isCommentOverlayFlowing) {
+    if (autoRefreshPageKey == null) {
       return;
     }
-    // 変更理由: 次スレ探索中は自動更新の停止を保留するため、
-    // 板URLを解決できず探索を継続できない場合だけ通常の停止通知へ戻す。
-    handleAutoRefreshStop("次スレを探索できなかったため自動更新を停止しました");
-  }, [handleAutoRefreshStop, isCommentOverlayFlowing]);
+    // 実況中も期限で終了し、開始連打や別窓への移動で同じ満了スレの探索を再開させない。
+    dispatch(tabActions.setAutoRefreshStoppedPageKey(autoRefreshPageKey));
+    toast.info("次スレが見つからなかったため自動更新を停止しました");
+  }, [autoRefreshPageKey, dispatch, toast]);
 
   const handleNewResponses = useCallback(
     (count: number, previousLastResponseNum: number | null) => {
@@ -402,7 +406,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     startAtBottom: startAutoRefreshAtBottom,
     threadUrl: page.threadUrl,
     refreshController,
-    expired: autoRefreshExpired,
+    expired: autoRefreshExpired || hasReachedThreadLimit,
     loading,
     // 変更理由: ポップアップを読みながら新着へ流されない従来動作を、
     // ユーザーが用途に合わせて無効化できるようにする。
@@ -421,19 +425,24 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     // 1000レス到達後は候補が板一覧へ現れるまで探索を続け、自動更新の停止を保留する。
     deferAutoStop: shouldDeferNextThreadStop,
     // interval の停止だけではタブに自動更新状態が残るため、dat落ち時も明示的に解除する。
-    // 実況中もdat落ちは停止し、次スレ探索やON表示だけが残る状態を防ぐ。
+    // 1000未満のdat落ちは実況中も停止し、満了後は次スレ探索の期限終了まで待つ。
     onThreadExpired: () => {
       // 別窓再マウント時の同じ失効通知は繰り返さない。
       if (tab?.autoRefreshStoppedPageKey === autoRefreshPageKey && !tab.autoRefreshEnabled) {
         return;
       }
-      handleAutoRefreshStop("dat落ちを検知したため自動更新を停止しました");
+      handleAutoRefreshStop(
+        autoRefreshExpired
+          ? "dat落ちを検知したため自動更新を停止しました"
+          : "1000レスに到達したため自動更新を停止しました",
+      );
     },
     onThreadExpiredDetected: () => {
       if (autoRefreshPageKey != null && tab?.autoRefreshStoppedPageKey !== autoRefreshPageKey) {
         dispatch(tabActions.setAutoRefreshStoppedPageKey(autoRefreshPageKey));
       }
     },
+    deferExpiredStop: shouldDeferNextThreadStop,
   });
 
   const handleFollowNextThread = useCallback(
@@ -471,6 +480,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     responseCount: responses.length,
     expired: autoRefreshExpired,
     mode: autoNextThreadMode,
+    searchDurationSeconds: nextThreadSearchDurationSeconds,
     responseMessages: autoNextThreadResponseMessages,
     toast,
     // 変更理由: Overlay実況中は本文タブが非表示でも次スレ探索を継続し、

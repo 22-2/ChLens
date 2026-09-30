@@ -259,9 +259,19 @@ const ALL_SETTINGS_SECTIONS = [
       {
         kind: "boolean",
         key: "auto_next_thread",
-        title: "1000到達やdat落ち後に次スレへ自動移動する",
+        title: "1000到達後に次スレへ自動移動する",
         description:
-          "3秒ごとに最大180秒探索し、標準・積極では移動後も本流候補を短時間だけ監視します。",
+          "3秒ごとに設定した時間だけ探索します。1000未満でdat落ちした場合は停止し、標準・積極では移動後も本流候補を短時間だけ監視します。",
+      },
+      {
+        // 探索時間を明示し、次スレ未作成時にsubjectの確認をいつ終了するか利用者が選べるようにする。
+        kind: "number",
+        key: "next_thread_search_duration",
+        title: "次スレ検索時間（秒）",
+        description: "時間内に候補が見つからない場合は自動更新も停止します。",
+        minimum: 60,
+        maximum: 600,
+        step: 1,
       },
       {
         kind: "string",

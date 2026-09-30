@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { DEFAULT_CONFIG } from "src/app/config-defaults";
 import { log } from "src/app/Log";
 import { container } from "src/service-container/index";
 import type { IThread, IToastService } from "src/service-container/interfaces";
@@ -47,6 +48,8 @@ interface UseAutoNextThreadOptions {
   expired: boolean;
   mode: AutoNextThreadMode;
   responseMessages: readonly string[];
+  /** 探索開始時からの上限秒数。停止や非表示を挟んでも期限を延ばさない。 */
+  searchDurationSeconds?: number;
   /**
    * 自動スクロール閾値より下に居るかどうか。
    * 上の方を読んでいる最中に勝手に次スレへ飛ばすとユーザーの文脈を壊すので、
@@ -74,6 +77,14 @@ interface MainstreamSnapshot {
   observedAt: number;
 }
 
+interface NextThreadSearchSession {
+  threadUrl: string;
+  deadline: number;
+  nextRequestAt: number;
+  phase: "searching" | "found" | "exhausted";
+  request: ReturnType<typeof container.board.getThreads> | null;
+}
+
 export function useAutoNextThread({
   autoRefreshEnabled: requestedAutoRefreshEnabled,
   featureEnabled,
@@ -83,6 +94,7 @@ export function useAutoNextThread({
   expired,
   mode,
   responseMessages,
+  searchDurationSeconds = Number(DEFAULT_CONFIG.next_thread_search_duration),
   canAutoScroll,
   skipMoveDelay = false,
   followThread,
@@ -94,13 +106,20 @@ export function useAutoNextThread({
   cancelPendingMove: () => void;
   selectPendingCandidate: (candidate: ThreadSearchCandidate) => void;
 } {
-  // dat落ち時は次スレ探索のsubject通信も止める。開始操作を繰り返しても探索を再起動させない。
-  const autoRefreshEnabled = requestedAutoRefreshEnabled && !expired;
+  // dat落ちだけでは探索を開始しない。1000到達後は元スレが落ちても期限内だけ次スレを待つ。
+  const autoRefreshEnabled =
+    requestedAutoRefreshEnabled && (!expired || responseCount >= NEXT_THREAD_TRIGGER_RES_COUNT);
   const { window: viewWindow, document: viewDocument } = useViewSurface();
   const [status, setStatus] = useState<AutoNextThreadStatus>("idle");
   const [pendingMove, setPendingMove] = useState<PendingAutoNextThreadMove | null>(null);
   const [watchState, setWatchState] = useState<MainstreamWatchState | null>(null);
   const lastSearchKeyRef = useRef<string | null>(null);
+  const searchSessionRef = useRef<NextThreadSearchSession | null>(null);
+  const searchDeadlineTimerRef = useRef<number | null>(null);
+  const onSearchExhaustedRef = useRef(onSearchExhausted);
+  if (searchSessionRef.current?.threadUrl !== threadUrl) {
+    searchSessionRef.current = null;
+  }
   const pendingCandidateRef = useRef<{ url: string; count: number } | null>(null);
   const mainstreamPendingCandidateRef = useRef<{ url: string; count: number } | null>(null);
   const mainstreamSnapshotRef = useRef<MainstreamSnapshot | null>(null);
@@ -115,6 +134,20 @@ export function useAutoNextThread({
   useEffect(() => {
     followThreadRef.current = followThread;
   }, [followThread]);
+
+  useEffect(() => {
+    onSearchExhaustedRef.current = onSearchExhausted;
+  }, [onSearchExhausted]);
+
+  useEffect(() => {
+    // 読書位置やON/OFFで通信を止めても期限は進め、別スレへの遷移・画面破棄時だけタイマーを解除する。
+    return () => {
+      if (searchDeadlineTimerRef.current != null) {
+        viewWindow.clearTimeout(searchDeadlineTimerRef.current);
+        searchDeadlineTimerRef.current = null;
+      }
+    };
+  }, [threadUrl, viewWindow]);
 
   useEffect(() => {
     responseMessagesRef.current = responseMessages;
@@ -152,6 +185,10 @@ export function useAutoNextThread({
   }, [viewDocument]);
 
   useEffect(() => {
+    // 判定モードの変更で候補を破棄しても、再探索では最初に決めた期限を引き継ぐ。
+    if (searchSessionRef.current?.phase === "found") {
+      searchSessionRef.current.phase = "searching";
+    }
     lastSearchKeyRef.current = null;
     pendingCandidateRef.current = null;
     mainstreamPendingCandidateRef.current = null;
@@ -165,6 +202,9 @@ export function useAutoNextThread({
       return;
     }
 
+    if (searchSessionRef.current?.phase === "found") {
+      searchSessionRef.current.phase = "searching";
+    }
     lastSearchKeyRef.current = null;
     pendingCandidateRef.current = null;
     mainstreamPendingCandidateRef.current = null;
@@ -286,18 +326,38 @@ export function useAutoNextThread({
     if (!autoRefreshEnabled || !featureEnabled || !isDocumentVisible || !canAutoScroll) {
       return;
     }
-    if (!expired && responseCount < NEXT_THREAD_TRIGGER_RES_COUNT) {
+    if (responseCount < NEXT_THREAD_TRIGGER_RES_COUNT) {
       return;
     }
 
-    const searchKey = `${threadUrl}:${expired ? "expired" : "full"}`;
+    const searchKey = threadUrl;
     if (lastSearchKeyRef.current === searchKey) {
       return;
     }
     lastSearchKeyRef.current = searchKey;
 
+    // ON/OFFや表示切替でeffectが作り直されても、期限と通信の待ち時間を同じスレに保持する。
+    const duration =
+      Number.isFinite(searchDurationSeconds) &&
+      searchDurationSeconds >= 60 &&
+      searchDurationSeconds <= 600
+        ? searchDurationSeconds
+        : Number(DEFAULT_CONFIG.next_thread_search_duration);
+    const session = searchSessionRef.current ?? {
+      threadUrl,
+      deadline: Date.now() + duration * 1000,
+      nextRequestAt: 0,
+      phase: "searching" as const,
+      request: null,
+    };
+    searchSessionRef.current = session;
+    if (session.phase !== "searching") {
+      return;
+    }
+
     let cancelled = false;
     let timerId: number | null = null;
+    let resolveDelay: (() => void) | null = null;
 
     setWatchState(null);
     mainstreamPendingCandidateRef.current = null;
@@ -306,11 +366,42 @@ export function useAutoNextThread({
 
     const delay = (ms: number) =>
       new Promise<void>((resolve) => {
+        resolveDelay = resolve;
         timerId = viewWindow.setTimeout(() => {
           timerId = null;
+          resolveDelay = null;
           resolve();
         }, ms);
       });
+
+    const finishSearch = () => {
+      if (searchSessionRef.current !== session || session.phase !== "searching") {
+        return;
+      }
+      session.phase = "exhausted";
+      cancelled = true;
+      if (timerId != null) viewWindow.clearTimeout(timerId);
+      if (searchDeadlineTimerRef.current != null) {
+        viewWindow.clearTimeout(searchDeadlineTimerRef.current);
+        searchDeadlineTimerRef.current = null;
+      }
+      resolveDelay?.();
+      pendingCandidateRef.current = null;
+      setStatus("idle");
+      onSearchExhaustedRef.current?.();
+    };
+
+    // subjectの応答が遅くても期限でON表示を解除し、期限後に返る候補では移動しない。
+    if (Date.now() >= session.deadline) {
+      finishSearch();
+      return;
+    }
+    if (searchDeadlineTimerRef.current == null) {
+      searchDeadlineTimerRef.current = viewWindow.setTimeout(
+        finishSearch,
+        session.deadline - Date.now(),
+      );
+    }
 
     const searchNextThread = async () => {
       // oxlint-disable-next-line no-useless-assignment
@@ -322,19 +413,39 @@ export function useAutoNextThread({
           error,
           threadUrl,
         });
-        setStatus("idle");
-        onSearchExhausted?.();
+        finishSearch();
         return;
       }
 
       // 1000到達直後はまだ次スレが立っていないことが多いため、
-      // 候補が板一覧へ載るまでポーリングし、自動更新を解除せず同じタブを次スレへ進める。
-      while (!cancelled) {
+      // 設定した期限まで3秒ごとに確認し、候補未作成のままsubjectを取得し続けることを防ぐ。
+      while (!cancelled && session.phase === "searching") {
+        if (Date.now() >= session.deadline) {
+          finishSearch();
+          return;
+        }
+        if (session.request == null && Date.now() < session.nextRequestAt) {
+          await delay(Math.min(session.nextRequestAt, session.deadline) - Date.now());
+          continue;
+        }
         try {
-          const result = await container.board.getThreads(boardUrl);
+          // 開始連打で待機中のリクエストを重ねず、結果が返った後も3秒の間隔を守る。
+          session.nextRequestAt = Date.now() + NEXT_THREAD_SEARCH_RETRY_MS;
+          const request = session.request ?? container.board.getThreads(boardUrl);
+          session.request = request;
+          const result = await request.finally(() => {
+            if (session.request === request) {
+              session.request = null;
+              session.nextRequestAt = Date.now() + NEXT_THREAD_SEARCH_RETRY_MS;
+            }
+          });
           // 取得中にタブが切り替わったり探索条件が無効になった場合は、
           // 古い subject.txt の結果で別スレへ遷移させない。
-          if (cancelled) {
+          if (cancelled || session.phase !== "searching") {
+            return;
+          }
+          if (Date.now() >= session.deadline) {
+            finishSearch();
             return;
           }
           const match = findNextThreadMatch(
@@ -362,6 +473,11 @@ export function useAutoNextThread({
               : REQUIRED_CANDIDATE_CONFIRMATIONS[mode];
 
             if (confirmationCount >= requiredConfirmations) {
+              session.phase = "found";
+              if (searchDeadlineTimerRef.current != null) {
+                viewWindow.clearTimeout(searchDeadlineTimerRef.current);
+                searchDeadlineTimerRef.current = null;
+              }
               const alternatives = findNextThreadCandidates(
                 result.threads,
                 { title: threadTitle, url: threadUrl },
@@ -400,10 +516,10 @@ export function useAutoNextThread({
           });
         }
 
-        if (cancelled) {
+        if (cancelled || session.phase !== "searching") {
           return;
         }
-        await delay(NEXT_THREAD_SEARCH_RETRY_MS);
+        await delay(Math.min(NEXT_THREAD_SEARCH_RETRY_MS, session.deadline - Date.now()));
       }
     };
 
@@ -419,16 +535,16 @@ export function useAutoNextThread({
       if (timerId != null) {
         viewWindow.clearTimeout(timerId);
       }
+      resolveDelay?.();
     };
   }, [
     autoRefreshEnabled,
     canAutoScroll,
-    expired,
     featureEnabled,
     isDocumentVisible,
     mode,
     moveToCandidate,
-    onSearchExhausted,
+    searchDurationSeconds,
     responseCount,
     threadTitle,
     threadUrl,

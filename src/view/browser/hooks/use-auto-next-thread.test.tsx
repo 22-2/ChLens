@@ -33,6 +33,8 @@ function AutoNextThreadHarness({
   canAutoScroll = true,
   mode = "balanced",
   responseMessages = [],
+  searchDurationSeconds,
+  skipMoveDelay = true,
   onFollowThread,
   onSearchExhausted,
 }: {
@@ -45,6 +47,8 @@ function AutoNextThreadHarness({
   canAutoScroll?: boolean;
   mode?: AutoNextThreadMode;
   responseMessages?: readonly string[];
+  searchDurationSeconds?: number;
+  skipMoveDelay?: boolean;
   onFollowThread: (thread: Pick<IThread, "title" | "url">) => void;
   onSearchExhausted?: () => void;
 }) {
@@ -57,6 +61,9 @@ function AutoNextThreadHarness({
     expired,
     mode,
     responseMessages,
+    searchDurationSeconds,
+    // 候補の判定テストは実況時と同じ即時移動を使い、確認待ち時間の検証は個別に行う。
+    skipMoveDelay,
     canAutoScroll,
     followThread: onFollowThread,
     onSearchExhausted,
@@ -331,7 +338,7 @@ describe("useAutoNextThread", () => {
         <AutoNextThreadHarness
           expired
           autoRefreshEnabled={attempt % 2 === 0}
-          responseCount={1000}
+          responseCount={2}
           onFollowThread={onFollowThread}
         />,
       );
@@ -373,6 +380,7 @@ describe("useAutoNextThread", () => {
         <AutoNextThreadHarness
           featureEnabled={stopReason !== "機能解除"}
           expired={stopReason === "dat落ち"}
+          responseCount={stopReason === "dat落ち" ? 999 : 1000}
           onFollowThread={onFollowThread}
           onSearchExhausted={onSearchExhausted}
         />,
@@ -398,6 +406,186 @@ describe("useAutoNextThread", () => {
       expect(onSearchExhausted).not.toHaveBeenCalled();
     },
   );
+
+  it.each([60, 180])(
+    "1000到達後はdat落ちしていても3秒ごとに探索し、%s秒で終了する",
+    async (duration) => {
+      const onFollowThread = vi.fn();
+      const onSearchExhausted = vi.fn();
+      const boardGetThreads = vi.fn().mockResolvedValue({ threads: [], message: null });
+      container.board = { getThreads: boardGetThreads, getCachedResCount: vi.fn() };
+      const view = render(
+        <AutoNextThreadHarness
+          expired
+          searchDurationSeconds={duration === 180 ? undefined : duration}
+          onFollowThread={onFollowThread}
+          onSearchExhausted={onSearchExhausted}
+        />,
+      );
+      await flushPromises();
+      await act(async () => vi.advanceTimersByTimeAsync(duration * 1000 - 1));
+      expect(screen.getByTestId("status")).toHaveTextContent("searching");
+      expect(boardGetThreads).toHaveBeenCalledTimes(duration / 3);
+      expect(onSearchExhausted).not.toHaveBeenCalled();
+
+      await act(async () => vi.advanceTimersByTimeAsync(1));
+      expect(screen.getByTestId("status")).toHaveTextContent("idle");
+      expect(onSearchExhausted).toHaveBeenCalledOnce();
+      // 期限後に開始を繰り返しても、同じ満了スレの探索は再起動しない。
+      for (let attempt = 0; attempt < 10; attempt++) {
+        view.rerender(
+          <AutoNextThreadHarness
+            expired
+            autoRefreshEnabled={attempt % 2 === 1}
+            onFollowThread={onFollowThread}
+            onSearchExhausted={onSearchExhausted}
+          />,
+        );
+      }
+      await act(async () => vi.advanceTimersByTimeAsync(60_000));
+      expect(boardGetThreads).toHaveBeenCalledTimes(duration / 3);
+      expect(onSearchExhausted).toHaveBeenCalledOnce();
+      expect(onFollowThread).not.toHaveBeenCalled();
+    },
+  );
+
+  it("満了前は探索せず、1000到達後のdat落ちやON連打でも間隔と期限を維持する", async () => {
+    const onFollowThread = vi.fn();
+    const onSearchExhausted = vi.fn();
+    const boardGetThreads = vi.fn().mockResolvedValue({ threads: [], message: null });
+    container.board = { getThreads: boardGetThreads, getCachedResCount: vi.fn() };
+    const props = { onFollowThread, onSearchExhausted, searchDurationSeconds: 60 };
+    const view = render(<AutoNextThreadHarness {...props} responseCount={999} />);
+    await act(async () => vi.advanceTimersByTimeAsync(10_000));
+    expect(boardGetThreads).not.toHaveBeenCalled();
+    view.rerender(<AutoNextThreadHarness {...props} />);
+    await flushPromises();
+    expect(boardGetThreads).toHaveBeenCalledOnce();
+
+    for (let attempt = 0; attempt < 10; attempt++) {
+      view.rerender(
+        <AutoNextThreadHarness {...props} expired autoRefreshEnabled={attempt % 2 === 1} />,
+      );
+      await flushPromises();
+    }
+    expect(boardGetThreads).toHaveBeenCalledOnce();
+    await act(async () => vi.advanceTimersByTimeAsync(30_000));
+    // 設定や表示条件が変わっても、実行中の探索の期限を延ばさない。
+    view.rerender(<AutoNextThreadHarness {...props} canAutoScroll={false} />);
+    await act(async () => vi.advanceTimersByTimeAsync(10_000));
+    view.rerender(
+      <AutoNextThreadHarness {...props} searchDurationSeconds={600} mode="aggressive" />,
+    );
+    await act(async () => vi.advanceTimersByTimeAsync(20_000));
+    expect(onSearchExhausted).toHaveBeenCalledOnce();
+    expect(screen.getByTestId("status")).toHaveTextContent("idle");
+    expect(onFollowThread).not.toHaveBeenCalled();
+  });
+
+  it.each(["読書位置", "OFF操作"])(
+    "%sで探索を一時停止したままでも、元の期限で終了する",
+    async (pauseReason) => {
+      const boardGetThreads = vi.fn().mockResolvedValue({ threads: [], message: null });
+      container.board = { getThreads: boardGetThreads, getCachedResCount: vi.fn() };
+      const onSearchExhausted = vi.fn();
+      const onFollowThread = vi.fn();
+      const props = { onSearchExhausted, onFollowThread, searchDurationSeconds: 60 };
+      const view = render(<AutoNextThreadHarness {...props} />);
+      await act(async () => vi.advanceTimersByTimeAsync(10_000));
+      const requestCount = boardGetThreads.mock.calls.length;
+      view.rerender(
+        <AutoNextThreadHarness
+          {...props}
+          canAutoScroll={pauseReason !== "読書位置"}
+          autoRefreshEnabled={pauseReason !== "OFF操作"}
+        />,
+      );
+      await act(async () => vi.advanceTimersByTimeAsync(50_000));
+      expect(onSearchExhausted).toHaveBeenCalledOnce();
+      expect(screen.getByTestId("status")).toHaveTextContent("idle");
+      expect(boardGetThreads).toHaveBeenCalledTimes(requestCount);
+      view.rerender(<AutoNextThreadHarness {...props} />);
+      await act(async () => vi.advanceTimersByTimeAsync(10_000));
+      expect(boardGetThreads).toHaveBeenCalledTimes(requestCount);
+      expect(onSearchExhausted).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("取得待ちの開始連打でリクエストを重ねず、期限後に返る候補でも移動しない", async () => {
+    let resolveRequest: ((result: { threads: IThread[]; message: null }) => void) | undefined;
+    const boardGetThreads = vi.fn(
+      () =>
+        new Promise<{ threads: IThread[]; message: null }>((resolve) => {
+          resolveRequest = resolve;
+        }),
+    );
+    container.board = { getThreads: boardGetThreads, getCachedResCount: vi.fn() };
+    const onFollowThread = vi.fn();
+    const onSearchExhausted = vi.fn();
+    const props = {
+      onFollowThread,
+      onSearchExhausted,
+      searchDurationSeconds: 60,
+      mode: "aggressive" as const,
+    };
+    const view = render(<AutoNextThreadHarness {...props} />);
+    for (let attempt = 0; attempt < 20; attempt++) {
+      view.rerender(<AutoNextThreadHarness {...props} autoRefreshEnabled={attempt % 2 === 1} />);
+    }
+    expect(boardGetThreads).toHaveBeenCalledOnce();
+    await act(async () => vi.advanceTimersByTimeAsync(60_000));
+    expect(onSearchExhausted).toHaveBeenCalledOnce();
+    expect(screen.getByTestId("status")).toHaveTextContent("idle");
+    resolveRequest?.({
+      threads: [
+        createThread({
+          title: "実況スレ Part.21",
+          url: "https://example.com/test/read.cgi/live/1700000201/",
+          resCount: 20,
+          createdAt: 1_700_000_201_000,
+        }),
+      ],
+      message: null,
+    });
+    await flushPromises();
+    await act(async () => vi.advanceTimersByTimeAsync(10_000));
+    expect(boardGetThreads).toHaveBeenCalledOnce();
+    expect(onFollowThread).not.toHaveBeenCalled();
+  });
+
+  it("候補が期限内に見つかれば探索を終え、確認待ち中に探索期限で停止しない", async () => {
+    const boardGetThreads = vi.fn().mockResolvedValue({
+      threads: [
+        createThread({
+          title: "実況スレ Part.21",
+          url: "https://example.com/test/read.cgi/live/1700000201/",
+          resCount: 20,
+          createdAt: 1_700_000_201_000,
+        }),
+      ],
+      message: null,
+    });
+    container.board = { getThreads: boardGetThreads, getCachedResCount: vi.fn() };
+    const onFollowThread = vi.fn();
+    const onSearchExhausted = vi.fn();
+    render(
+      <AutoNextThreadHarness
+        mode="aggressive"
+        skipMoveDelay={false}
+        searchDurationSeconds={60}
+        onFollowThread={onFollowThread}
+        onSearchExhausted={onSearchExhausted}
+      />,
+    );
+    await flushPromises();
+    expect(screen.getByTestId("status")).toHaveTextContent("confirming");
+    expect(onFollowThread).not.toHaveBeenCalled();
+    await act(async () => vi.advanceTimersByTimeAsync(5000));
+    expect(onFollowThread).toHaveBeenCalledOnce();
+    await act(async () => vi.advanceTimersByTimeAsync(60_000));
+    expect(boardGetThreads).toHaveBeenCalledOnce();
+    expect(onSearchExhausted).not.toHaveBeenCalled();
+  });
 
   it("機能が無効な間は検索を開始しない", async () => {
     const onFollowThread = vi.fn();

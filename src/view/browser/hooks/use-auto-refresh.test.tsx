@@ -1015,12 +1015,14 @@ describe("useAutoRefresh", () => {
   it("次スレ探索中はdat落ち停止を保留し、探索終了後に停止できる", () => {
     const onRequestRefresh = vi.fn();
     const onThreadExpired = vi.fn();
+    const onThreadExpiredDetected = vi.fn();
     const { rerender } = render(
       <AutoRefreshHarness
         expired={false}
         deferExpiredStop
         onRequestRefresh={onRequestRefresh}
         onThreadExpired={onThreadExpired}
+        onThreadExpiredDetected={onThreadExpiredDetected}
       />,
     );
 
@@ -1031,11 +1033,17 @@ describe("useAutoRefresh", () => {
           deferExpiredStop
           onRequestRefresh={onRequestRefresh}
           onThreadExpired={onThreadExpired}
+          onThreadExpiredDetected={onThreadExpiredDetected}
         />,
       );
     });
 
     expect(onThreadExpired).not.toHaveBeenCalled();
+    expect(onThreadExpiredDetected).not.toHaveBeenCalled();
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+    expect(onRequestRefresh).not.toHaveBeenCalled();
 
     act(() => {
       rerender(
@@ -1044,11 +1052,13 @@ describe("useAutoRefresh", () => {
           deferExpiredStop={false}
           onRequestRefresh={onRequestRefresh}
           onThreadExpired={onThreadExpired}
+          onThreadExpiredDetected={onThreadExpiredDetected}
         />,
       );
     });
 
     expect(onThreadExpired).toHaveBeenCalledOnce();
+    expect(onThreadExpiredDetected).toHaveBeenCalledOnce();
   });
 
   it("同一スレの後続不確定応答と予約済みtickでは再取得せず、別スレへ移ると再開する", () => {

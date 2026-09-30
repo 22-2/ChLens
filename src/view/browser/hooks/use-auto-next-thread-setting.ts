@@ -10,6 +10,15 @@ import type { AutoNextThreadMode } from "src/view/browser/utils/next-thread-sear
 
 export const AUTO_NEXT_THREAD_CONFIG_KEY = "auto_next_thread";
 export const AUTO_NEXT_THREAD_MODE_CONFIG_KEY = "auto_next_thread_mode";
+export const NEXT_THREAD_SEARCH_DURATION_CONFIG_KEY = "next_thread_search_duration";
+
+function readSearchDurationSeconds(): number {
+  const value = Number(readConfigValue(NEXT_THREAD_SEARCH_DURATION_CONFIG_KEY));
+  // 古い設定や未保存値でも無期限にならないよう、既定値とEdgeLiveViewerの設定範囲を使う。
+  return Number.isFinite(value) && value >= 60 && value <= 600
+    ? Math.floor(value)
+    : Number(DEFAULT_CONFIG.next_thread_search_duration);
+}
 
 function readAutoNextThreadMode(): AutoNextThreadMode {
   const value = readConfigValue(AUTO_NEXT_THREAD_MODE_CONFIG_KEY);
@@ -23,6 +32,7 @@ function readAutoNextThreadMode(): AutoNextThreadMode {
 export function useAutoNextThreadSetting(): {
   enabled: boolean;
   mode: AutoNextThreadMode;
+  searchDurationSeconds: number;
   setEnabled: (enabled: boolean) => void;
   setMode: (mode: AutoNextThreadMode) => void;
 } {
@@ -30,11 +40,15 @@ export function useAutoNextThreadSetting(): {
     AUTO_NEXT_THREAD_CONFIG_KEY,
   );
   const [mode, setModeState] = useState(readAutoNextThreadMode);
+  const [searchDurationSeconds, setSearchDurationSeconds] = useState(readSearchDurationSeconds);
 
   useEffect(() => {
     return subscribeConfigKeys(
-      [AUTO_NEXT_THREAD_MODE_CONFIG_KEY],
-      () => setModeState(readAutoNextThreadMode()),
+      [AUTO_NEXT_THREAD_MODE_CONFIG_KEY, NEXT_THREAD_SEARCH_DURATION_CONFIG_KEY],
+      () => {
+        setModeState(readAutoNextThreadMode());
+        setSearchDurationSeconds(readSearchDurationSeconds());
+      },
       { label: "AutoNextThreadSetting" },
     );
   }, []);
@@ -44,5 +58,5 @@ export function useAutoNextThreadSetting(): {
     persistConfigValue(AUTO_NEXT_THREAD_MODE_CONFIG_KEY, nextMode, "AutoNextThreadSetting");
   }, []);
 
-  return { enabled, mode, setEnabled, setMode };
+  return { enabled, mode, searchDurationSeconds, setEnabled, setMode };
 }

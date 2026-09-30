@@ -1126,7 +1126,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       return updateTargetTab(state, paneId, action.tabId, (tab) => {
         const pageKey =
           action.pageKey ?? tab.autoRefreshPageKey ?? getAutoRefreshPageKey(getCurrentPage(tab));
-        // dat落ちは同じスレでは回復しないため、開始操作で停止記録を消すとsubject取得が連発する。
+        // dat落ちや探索期限の終了を開始操作で解除すると、同じスレのsubject取得が連発する。
         const enabled =
           action.enabled && (pageKey == null || pageKey !== tab.autoRefreshStoppedPageKey);
         return {

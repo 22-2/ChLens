@@ -192,8 +192,8 @@ export function useAutoRefresh({
       return;
     }
 
-    // 自動更新OFF中に確認したdat落ちも記録し、後から開始を連打しても通信を再開させない。
-    if (!threadExpiredRecordedRef.current) {
+    // 自動更新OFF中も停止理由を記録する。満了後の次スレ探索中は、期限終了時に画面側で記録する。
+    if (!deferExpiredStop && !threadExpiredRecordedRef.current) {
       threadExpiredRecordedRef.current = true;
       onThreadExpiredDetectedRef.current?.();
     }
