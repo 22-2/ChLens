@@ -58,7 +58,8 @@ export const HomeTabPage: React.FC = () => {
 
   React.useEffect(() => {
     let cancelled = false;
-    (async () => {
+    // 変更理由: この非同期処理は内部で失敗を表示用状態へ変換して処理するため、呼び出し側で待たないことを明示する。
+    void (async () => {
       setLoading(true);
       setError(null);
       try {
@@ -91,6 +92,7 @@ export const HomeTabPage: React.FC = () => {
           );
         }
       } catch (e) {
+        console.error("最近開いた板の読み込みに失敗しました", e);
         if (!cancelled) {
           setError(e instanceof Error ? e.message : "最近開いた板の読み込みに失敗しました");
         }
@@ -175,6 +177,13 @@ export const HomeTabPage: React.FC = () => {
                   className="home-tab-page__link home-tab-page__link--board"
                   variant="subtle"
                   onClick={() => openBoard(board)}
+                  onMouseDown={(event) => {
+                    if (event.button === 1) {
+                      // 変更理由: ブラウザーは中ボタンのmousedownでオートスクロールを始めるため、
+                      // 後続のauxclickで背景タブを開く前に既定動作を止める。
+                      event.preventDefault();
+                    }
+                  }}
                   onAuxClick={(event) => {
                     if (event.button !== 1) return;
                     // 変更理由: 常設ホームは通常クリックでも新規タブを開くため、

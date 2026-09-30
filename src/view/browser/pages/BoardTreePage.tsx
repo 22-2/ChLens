@@ -96,14 +96,24 @@ export const BoardTreePage: React.FC = () => {
   // }, [dispatch]);
 
   const openBoard = React.useCallback(
-    (board: FavoriteBoard) => {
+    (board: FavoriteBoard, background = false) => {
       dispatch(
-        tabActions.navigate({
-          type: "threadList",
-          title: board.title,
-          boardUrl: board.url,
-          boardTitle: board.title,
-        }),
+        background
+          ? tabActions.openInNewTab(
+              {
+                type: "threadList",
+                title: board.title,
+                boardUrl: board.url,
+                boardTitle: board.title,
+              },
+              { background: true },
+            )
+          : tabActions.navigate({
+              type: "threadList",
+              title: board.title,
+              boardUrl: board.url,
+              boardTitle: board.title,
+            }),
       );
     },
     [dispatch],
@@ -158,6 +168,20 @@ export const BoardTreePage: React.FC = () => {
                 className="board-tree-page__link"
                 variant="subtle"
                 onClick={() => openBoard(board)}
+                onMouseDown={(event) => {
+                  if (event.button === 1) {
+                    // 変更理由: 中ボタンのmousedownがブラウザーのオートスクロールを起動する前に止め、
+                    // auxclickで背景タブを開く操作へつなげる。
+                    event.preventDefault();
+                  }
+                }}
+                onAuxClick={(event) => {
+                  if (event.button !== 1) return;
+                  // 変更理由: ミドルクリックは現在のホームを保ったまま板を背景タブで開く。
+                  event.preventDefault();
+                  event.stopPropagation();
+                  openBoard(board, true);
+                }}
               >
                 {board.title}
               </Button>
