@@ -6,7 +6,7 @@ const manualRefreshScopes = new Set<string>();
 const listenersByScope = new Map<string, Set<() => void>>();
 const cooldownTimers = new Map<string, number>();
 
-export const MANUAL_REFRESH_COOLDOWN_MS = 3000;
+export const MANUAL_REFRESH_COOLDOWN_MS = 1500;
 
 export function getManualRefreshScopeKey(tabId: string, page: Page): string {
   // 変更理由: 同じタブでも別スレ/別板の更新は独立させ、同じページの入口だけを揃える。
