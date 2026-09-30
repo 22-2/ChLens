@@ -32,6 +32,8 @@ export default class Board {
   url: ChURL;
   thread: BoardThread[] | null = null;
   message: string | null = null;
+  // subject不在をdat落ちと扱う前に、一覧が正常な取得結果か確認する。
+  subjectListVerified = false;
 
   constructor(url: string | ChURL) {
     this.url = url instanceof ChURL ? url : new ChURL(url);
@@ -41,6 +43,7 @@ export default class Board {
    * 板のスレ一覧を取得して解析します
    */
   get(forceUpdate = false): Promise<void> {
+    this.subjectListVerified = false;
     const tmp = getBoardFetchInfo(this.url);
     if (!tmp) {
       return Promise.reject(new Error("取得方法が不明な板です"));
@@ -140,6 +143,11 @@ export default class Board {
 
           // 成功時の処理
           this.thread = threadList;
+          // 変更理由: HTTP失敗時に残った一覧キャッシュを「現在も不在」と誤判定しない。
+          this.subjectListVerified =
+            !needFetch ||
+            response?.status === 304 ||
+            (response?.status === 200 && response.body != null);
           resolve();
 
           // キャッシュ更新処理
@@ -226,6 +234,10 @@ class="open_in_rcrx">${container.util.escapeHtml(newBoardUrl)}
         }
 
         // dat落ちスキャン
+        // 変更理由: 通信失敗時に表示用で残した古い一覧から、ブックマークやThreadのexpiredを誤更新しない。
+        if (!this.subjectListVerified) {
+          return;
+        }
         if (!threadList || threadList.length === 0) {
           return;
         }
@@ -350,6 +362,10 @@ class="open_in_rcrx">${container.util.escapeHtml(newBoardUrl)}
       await board.get(forceUpdate || cachedThreads == null);
       if (!board.thread) {
         throw new Error("No refreshed board data");
+      }
+      if (!board.subjectListVerified) {
+        // 変更理由: stale cache を使った通信失敗では、対象スレの不在を確認できたとは限らない。
+        throw new Error("板のスレ一覧を確認できませんでした");
       }
       threads = board.thread;
       thread = findThread();

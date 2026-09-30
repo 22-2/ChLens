@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 // インメモリ ObjectStore（url を keyPath とする）で Cache のブラウザ分岐を検証する。
 // fake-indexeddb / webextension-polyfill を避け、Cache のログ用ロジックだけを切り出してテストする。
@@ -108,6 +108,7 @@ async function saveThreadLog(opts: {
   data?: string;
   parsed?: unknown;
   resLength?: number;
+  expired?: boolean;
   lastUpdated: number;
 }): Promise<void> {
   const { default: Cache } = await import("src/core/Cache");
@@ -117,6 +118,7 @@ async function saveThreadLog(opts: {
   cache.boardUrl = opts.boardUrl;
   cache.kind = "thread";
   cache.resLength = opts.resLength ?? null;
+  cache.expired = opts.expired ?? null;
   cache.parsed = opts.parsed ?? null;
   cache.lastUpdated = opts.lastUpdated;
   await cache.put(opts.data ?? "dummy");
@@ -129,6 +131,10 @@ describe("Cache browser log branch", () => {
   beforeEach(() => {
     rows.clear();
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it("round-trips log metadata through put/get", async () => {
@@ -149,6 +155,45 @@ describe("Cache browser log branch", () => {
     expect(cache.boardUrl).toBe("https://ex.com/board/");
     expect(cache.kind).toBe("thread");
     expect(cache.resLength).toBe(5);
+  });
+
+  it("本文のないdat落ち状態だけを保存しログ本文として扱わない", async () => {
+    const { default: Cache } = await import("src/core/Cache");
+    const state = new Cache("https://ex.com/board/dat/1.dat");
+    state.expired = true;
+    state.kind = "thread_state";
+    state.lastUpdated = 100;
+
+    await state.put();
+
+    const restored = new Cache(state.key);
+    await restored.get();
+    expect(restored.expired).toBe(true);
+    expect(restored.data).toBeNull();
+    expect(restored.parsed).toBeNull();
+    expect(await Cache.listLogs()).toEqual([]);
+  });
+
+  it("kind未設定でも確認済みdat落ちキャッシュは期間削除から保持する", async () => {
+    const { default: Cache } = await import("src/core/Cache");
+    vi.stubGlobal("IDBKeyRange", {
+      upperBound: (upper: number, upperOpen: boolean) => ({ upper, upperOpen }),
+    });
+    const oldExpired = new Cache("https://ex.com/b/dat/1.dat");
+    oldExpired.data = "保存済み本文";
+    oldExpired.lastUpdated = Date.now() - 10 * 24 * 60 * 60 * 1000;
+    oldExpired.expired = true;
+    // 変更理由: dat落ち判定以前の本文キャッシュにはkindが付いていないことがある。
+    await oldExpired.put();
+    const oldBoard = new Cache("https://ex.com/b/subject.txt");
+    oldBoard.data = "板キャッシュ";
+    oldBoard.lastUpdated = oldExpired.lastUpdated;
+    await oldBoard.put();
+
+    await Cache.clearRange(1);
+
+    expect(await store.get(oldExpired.key)).toMatchObject({ expired: true });
+    expect(await store.get(oldBoard.key)).toBeNull();
   });
 
   it("listLogs returns only thread logs, newest first, with threadUrl + isHttps", async () => {
@@ -239,6 +284,7 @@ describe("Cache browser log branch", () => {
       boardUrl: "https://ex.com/b/",
       data: "本文データ",
       parsed: { responses: [{ num: 1, message: "parsed" }] },
+      expired: true,
       lastUpdated: 100,
     });
     await store.put({
@@ -252,6 +298,7 @@ describe("Cache browser log branch", () => {
     expect(records).toHaveLength(1);
     expect(records[0]?.data).toBe("本文データ");
     expect(records[0]?.parsed).toEqual({ responses: [{ num: 1, message: "parsed" }] });
+    expect(records[0]?.expired).toBe(true);
 
     await Cache.replaceLogArchiveRecords(records);
 
@@ -259,6 +306,7 @@ describe("Cache browser log branch", () => {
     expect(restored).toMatchObject({
       data: "本文データ",
       parsed: { responses: [{ num: 1, message: "parsed" }] },
+      expired: true,
       kind: "thread",
     });
     expect(await store.get("https://ex.com/b/subject.txt")).not.toBeNull();

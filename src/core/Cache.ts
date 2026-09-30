@@ -39,6 +39,7 @@ export interface LogArchiveRecord {
   resLength: number | null;
   datSize: number | null;
   readcgiVer: number | null;
+  expired: boolean | null;
   title: string | null;
   threadUrl: string | null;
   boardUrl: string | null;
@@ -62,6 +63,8 @@ export default class Cache {
   resLength: number | null = null;
   datSize: number | null = null;
   readcgiVer: number | null = null;
+  // 変更理由: 確定したdat落ちを保存し、再表示時にsubject.txtへ再照会しない。
+  expired: boolean | null = null;
   // 変更理由: 閲覧ログ機能のため、スレのメタ情報をキャッシュに同居させる。
   // kind でスレ(thread)を板/bbsmenu/短縮URL等の他キャッシュと区別し、ログ一覧の対象を絞る。
   title: string | null = null;
@@ -110,7 +113,7 @@ export default class Cache {
 
   /**
    * 指定日数以上古いキャッシュを削除します。
-   * 変更理由: 閲覧ログ(kind==="thread")は恒久保存の対象なので、自動掃除では消さない。
+   * 変更理由: 閲覧ログとdat落ち状態は本文がなくても復元に必要なので、自動掃除では消さない。
    */
   static async clearRange(day: number): Promise<void> {
     const dayUnix = Date.now() - day * 24 * 60 * 60 * 1000;
@@ -128,9 +131,15 @@ export default class Cache {
       .getAll(IDBKeyRange.upperBound(dayUnix, true))) as Array<{
       url: string;
       kind?: string | null;
+      expired?: boolean | null;
     }>;
     await Promise.all(
-      rows.filter((row) => row.kind !== "thread").map((row) => store.delete(row.url)),
+      rows
+        // 変更理由: 旧形式の本文キャッシュはkind未設定でもexpiredだけは保持する。
+        .filter(
+          (row) => row.kind !== "thread" && row.kind !== "thread_state" && row.expired !== true,
+        )
+        .map((row) => store.delete(row.url)),
     );
   }
 
@@ -202,6 +211,7 @@ export default class Cache {
         resLength: cache.resLength,
         datSize: cache.datSize,
         readcgiVer: cache.readcgiVer,
+        expired: cache.expired,
         title: cache.title,
         threadUrl: cache.threadUrl,
         boardUrl: cache.boardUrl,
@@ -230,6 +240,7 @@ export default class Cache {
       cache.resLength = record.resLength;
       cache.datSize = record.datSize;
       cache.readcgiVer = record.readcgiVer;
+      cache.expired = record.expired;
       cache.title = record.title;
       cache.threadUrl = record.threadUrl;
       cache.boardUrl = record.boardUrl;
@@ -416,6 +427,7 @@ export default class Cache {
         this.resLength = result.resLength;
         this.datSize = result.datSize;
         this.readcgiVer = result.readcgiVer;
+        this.expired = result.expired;
         this.title = result.title ?? null;
         this.threadUrl = result.threadUrl ?? null;
         this.boardUrl = result.boardUrl ?? null;
@@ -483,6 +495,7 @@ export default class Cache {
           resLength: this.resLength || null,
           datSize: this.datSize || null,
           readcgiVer: this.readcgiVer || null,
+          expired: this.expired,
           title: this.title || null,
           threadUrl: this.threadUrl || null,
           boardUrl: this.boardUrl || null,
@@ -502,6 +515,7 @@ export default class Cache {
         res_length: this.resLength || null,
         dat_size: this.datSize || null,
         readcgi_ver: this.readcgiVer || null,
+        expired: this.expired,
         title: this.title || null,
         thread_url: this.threadUrl || null,
         board_url: this.boardUrl || null,
@@ -559,11 +573,12 @@ export default class Cache {
       return false;
     }
 
-    // dataまたはparsedのいずれかは必須
+    // dataまたはparsedのいずれかは必須。ただし初回の明示失効は状態だけでも保存する。
     const hasData =
       (this.data != null && typeof this.data === "string") ||
       (this.parsed != null && typeof this.parsed === "object");
-    if (!hasData) {
+    const hasExpiredStateOnly = this.expired === true && this.kind === "thread_state";
+    if (!hasData && !hasExpiredStateOnly) {
       return false;
     }
 
@@ -586,6 +601,9 @@ export default class Cache {
       return false;
     }
     if (this.readcgiVer != null && !Number.isFinite(this.readcgiVer)) {
+      return false;
+    }
+    if (this.expired != null && typeof this.expired !== "boolean") {
       return false;
     }
 

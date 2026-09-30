@@ -277,6 +277,8 @@ function toLogArchiveRecord(value: unknown): LogArchiveRecord | null {
     resLength: toFiniteNumberOrNull(record.resLength),
     datSize: toFiniteNumberOrNull(record.datSize),
     readcgiVer: toFiniteNumberOrNull(record.readcgiVer),
+    // 旧バックアップには列がないため、未確認(null)として復元する。
+    expired: typeof record.expired === "boolean" ? record.expired : null,
     title: typeof record.title === "string" ? record.title : null,
     threadUrl: typeof record.threadUrl === "string" ? record.threadUrl : null,
     boardUrl: typeof record.boardUrl === "string" ? record.boardUrl : null,

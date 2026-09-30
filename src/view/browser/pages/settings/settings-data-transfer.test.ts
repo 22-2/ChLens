@@ -93,6 +93,7 @@ const log = {
   resLength: 10,
   datSize: 100,
   readcgiVer: null,
+  expired: true,
   title: "過去ログ",
   threadUrl: "https://example.com/test/read.cgi/software/1/",
   boardUrl: "https://example.com/software/",

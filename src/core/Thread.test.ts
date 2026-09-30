@@ -1,5 +1,5 @@
 import type { ParsedThread } from "packages/ch-lib/src/index";
-import { describe, expect, it, vi } from "vite-plus/test";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mocks = vi.hoisted(() => ({
   getConfig: vi.fn(() => null),
@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   fetch: vi.fn(),
   updateResCount: vi.fn(),
   updateExpired: vi.fn(),
+  getBookmark: vi.fn(() => null),
+  messageSend: vi.fn(),
 }));
 
 vi.mock("src/app", () => ({
@@ -18,9 +20,12 @@ vi.mock("src/service-container/index", () => ({
     config: { get: mocks.getConfig },
     cache: { getCache: mocks.getCache },
     bookmark: {
+      get: mocks.getBookmark,
       updateResCount: mocks.updateResCount,
       updateExpired: mocks.updateExpired,
     },
+    message: { send: mocks.messageSend },
+    util: { defer: vi.fn(() => Promise.resolve()) },
   },
 }));
 
@@ -46,6 +51,10 @@ interface ThreadInternals {
 }
 
 describe("Thread", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("本文取得が失敗しても板一覧から消えていればsubject不在を返す", async () => {
     const thread = new Thread("https://example.com/test/read.cgi/board/1000000000/");
     const testableThread = thread as unknown as ThreadInternals;
@@ -63,6 +72,187 @@ describe("Thread", () => {
     await expect(thread.get(true)).rejects.toBeUndefined();
 
     expect(thread.missingFromSubject).toBe(true);
+  });
+
+  it("HTTP 203でdat落ちが確定したらsubjectを照会せずキャッシュへ記録する", async () => {
+    const cache = {
+      data: "本文キャッシュ",
+      lastUpdated: Date.now(),
+      expired: false,
+      put: vi.fn().mockResolvedValue(undefined),
+    };
+    mocks.getCache.mockReturnValue(cache);
+    mocks.fetch.mockResolvedValue({
+      status: 203,
+      body: "",
+      headers: {},
+      url: "https://example.com/test/read.cgi/board/1000000000/",
+    });
+
+    const thread = new Thread("https://example.com/test/read.cgi/board/1000000000/");
+    const testableThread = thread as unknown as ThreadInternals;
+    vi.spyOn(testableThread, "_prepareCache").mockResolvedValue({
+      hasCache: true,
+      needFetch: true,
+    });
+    const subjectLookup = vi.spyOn(testableThread, "_fetchCachedResCount");
+    vi.spyOn(testableThread, "_buildDomainErrorMessage").mockResolvedValue("dat落ちです");
+
+    await expect(thread.get(true)).rejects.toBeUndefined();
+
+    expect(subjectLookup).not.toHaveBeenCalled();
+    expect(thread.expired).toBe(true);
+    expect(cache.expired).toBe(true);
+    expect(cache.put).toHaveBeenCalledOnce();
+  });
+
+  it("本文キャッシュがない初回203も状態専用レコードへ保存する", async () => {
+    const cache = {
+      data: null,
+      parsed: null,
+      lastUpdated: null,
+      expired: false,
+      kind: null,
+      get: vi.fn().mockResolvedValue(undefined),
+      put: vi.fn().mockResolvedValue(undefined),
+    };
+    mocks.getCache.mockReturnValue(cache);
+    mocks.fetch.mockResolvedValue({
+      status: 203,
+      body: "",
+      headers: {},
+      url: "https://example.com/test/read.cgi/board/1000000000/",
+    });
+
+    const thread = new Thread("https://example.com/test/read.cgi/board/1000000000/");
+    const testableThread = thread as unknown as ThreadInternals;
+    vi.spyOn(testableThread, "_prepareCache").mockResolvedValue({
+      hasCache: false,
+      needFetch: true,
+    });
+    const subjectLookup = vi.spyOn(testableThread, "_fetchCachedResCount");
+    vi.spyOn(testableThread, "_buildDomainErrorMessage").mockResolvedValue("dat落ちです");
+
+    await expect(thread.get(true)).rejects.toBeUndefined();
+
+    expect(subjectLookup).not.toHaveBeenCalled();
+    expect(cache.expired).toBe(true);
+    expect(cache.kind).toBe("thread_state");
+    expect(cache.lastUpdated).toEqual(expect.any(Number));
+    expect(cache.put).toHaveBeenCalledOnce();
+
+    const reopenedThread = new Thread("https://example.com/test/read.cgi/board/1000000000/");
+    const reopenedInternals = reopenedThread as unknown as ThreadInternals;
+    const reopenedSubjectLookup = vi.spyOn(reopenedInternals, "_fetchCachedResCount");
+    await expect(reopenedThread.get()).rejects.toBeUndefined();
+    expect(reopenedThread.expired).toBe(true);
+    expect(reopenedSubjectLookup).not.toHaveBeenCalled();
+    expect(mocks.fetch).toHaveBeenCalledTimes(2);
+    expect(cache.put).toHaveBeenCalledTimes(2);
+  });
+
+  it("本文とsubjectの通信失敗だけではexpired状態を保存しない", async () => {
+    const cache = {
+      data: "本文キャッシュ",
+      expired: false,
+      lastUpdated: Date.now(),
+      put: vi.fn().mockResolvedValue(undefined),
+    };
+    mocks.getCache.mockReturnValue(cache);
+    mocks.fetch.mockRejectedValue(new Error("通信に失敗しました"));
+
+    const thread = new Thread("https://example.com/test/read.cgi/board/1000000000/");
+    const testableThread = thread as unknown as ThreadInternals;
+    vi.spyOn(testableThread, "_prepareCache").mockResolvedValue({
+      hasCache: true,
+      needFetch: true,
+    });
+    vi.spyOn(testableThread, "_fetchCachedResCount").mockResolvedValue({ status: "none" });
+    vi.spyOn(testableThread, "_buildDomainErrorMessage").mockResolvedValue("取得に失敗しました");
+
+    await expect(thread.get(true)).rejects.toBeUndefined();
+
+    expect(thread.expired).toBe(false);
+    expect(cache.expired).toBe(false);
+    expect(cache.put).not.toHaveBeenCalled();
+  });
+
+  it("キャッシュ済みのdat落ち状態をsubject通信より前に復元する", async () => {
+    const thread = new Thread("https://example.com/test/read.cgi/board/1000000000/");
+    const testableThread = thread as unknown as ThreadInternals;
+    const cache = {
+      expired: true,
+      lastUpdated: Date.now(),
+      get: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const result = await testableThread._prepareCache(cache, null, false, vi.fn());
+
+    expect(result).toEqual({ hasCache: false, needFetch: true });
+    expect(thread.expired).toBe(true);
+  });
+
+  it("subject不在を確認した後の本文200でもexpiredを保持してsubjectを再照会しない", async () => {
+    const body = "名無し<>sage<>2026/09/30<>本文<>テストスレ\n";
+    const cache = {
+      data: null as string | null,
+      parsed: null,
+      lastUpdated: null as number | null,
+      lastModified: null,
+      etag: null,
+      resLength: null,
+      readcgiVer: null,
+      expired: false,
+      get: vi.fn().mockResolvedValue(undefined),
+      put: vi.fn().mockResolvedValue(undefined),
+    };
+    mocks.getCache.mockReturnValue(cache);
+    mocks.fetch.mockResolvedValue({
+      status: 200,
+      body,
+      headers: {},
+      url: "https://example.com/test/read.cgi/board/1000000000/",
+    });
+
+    const firstThread = new Thread("https://example.com/test/read.cgi/board/1000000000/");
+    const firstInternals = firstThread as unknown as ThreadInternals;
+    vi.spyOn(firstInternals, "_prepareCache").mockResolvedValue({
+      hasCache: false,
+      needFetch: true,
+    });
+    vi.spyOn(firstInternals, "_fetchCachedResCount").mockResolvedValue({ status: "not_found" });
+    await firstThread.get(true);
+    expect(firstThread.expired).toBe(true);
+    expect(cache.expired).toBe(true);
+
+    const forceRefresh200 = new Thread("https://example.com/test/read.cgi/board/1000000000/");
+    const forceRefresh200Internals = forceRefresh200 as unknown as ThreadInternals;
+    const subjectLookupAfter200 = vi.spyOn(forceRefresh200Internals, "_fetchCachedResCount");
+    await forceRefresh200.get(true);
+    expect(forceRefresh200.expired).toBe(true);
+    expect(subjectLookupAfter200).not.toHaveBeenCalled();
+
+    mocks.fetch.mockResolvedValueOnce({
+      status: 304,
+      body: "",
+      headers: {},
+      url: "https://example.com/test/read.cgi/board/1000000000/",
+    });
+    const forceRefresh304 = new Thread("https://example.com/test/read.cgi/board/1000000000/");
+    const forceRefresh304Internals = forceRefresh304 as unknown as ThreadInternals;
+    const subjectLookupAfter304 = vi.spyOn(forceRefresh304Internals, "_fetchCachedResCount");
+    await forceRefresh304.get(true);
+    expect(forceRefresh304.expired).toBe(true);
+    expect(subjectLookupAfter304).not.toHaveBeenCalled();
+
+    const reopenedThread = new Thread("https://example.com/test/read.cgi/board/1000000000/");
+    const reopenedInternals = reopenedThread as unknown as ThreadInternals;
+    const subjectLookupAfterReopen = vi.spyOn(reopenedInternals, "_fetchCachedResCount");
+    await reopenedThread.get();
+
+    expect(reopenedThread.expired).toBe(true);
+    expect(subjectLookupAfterReopen).not.toHaveBeenCalled();
+    expect(mocks.fetch).toHaveBeenCalledTimes(3);
   });
 
   it("subjectの件数補填を表示用コピーへ限定し、実データを変更しない", () => {

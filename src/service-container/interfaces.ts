@@ -24,6 +24,8 @@ export interface ICacheItem {
   parsed?: unknown;
   readcgiVer?: number;
   datSize?: number;
+  // 確認済みのdat落ちをsubject再取得なしで復元するためのスレッド状態。
+  expired?: boolean | null;
   // 閲覧ログ用メタ情報
   title?: string | null;
   threadUrl?: string | null;

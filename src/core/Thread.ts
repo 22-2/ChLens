@@ -56,6 +56,7 @@ interface UpdateCacheParams {
   readcgiVer: number;
   noChangeFlg: boolean;
   hasCache: boolean;
+  expired: boolean;
 }
 
 const isLegacySubjectPadding = (res: ThreadRes): boolean =>
@@ -130,11 +131,6 @@ export default class Thread {
     const isHtml = isHtmlThread(this.url, format2chnet);
     const cache = container.cache.getCache(xhrBasePath) as Cache;
 
-    // 板スレ一覧のキャッシュ取得はフェッチと並行して開始する
-    // 変更理由: 手動・自動更新では本文だけでなくsubject.txtも再確認し、
-    // キャッシュに残ったスレをdat落ちと誤って生存扱いし続けないようにする。
-    const getCachedInfoPromise = this._fetchCachedResCount(forceUpdate === true);
-
     const { hasCache, needFetch } = await this._prepareCache(
       cache,
       format2chnet,
@@ -149,6 +145,8 @@ export default class Thread {
     let noChangeFlg: boolean;
     let failed = false;
     let cachedInfoResult: CachedInfoResult | undefined;
+    // Bookmark.expiredも既存データとして残っているため、古いキャッシュからも復元する。
+    this.expired = this.expired || container.bookmark.get(this.url.url.href)?.expired === true;
 
     try {
       // --- フェッチ ---
@@ -210,13 +208,21 @@ export default class Thread {
       }
 
       // --- あぼーん補填・インスタンスへの反映 ---
-      cachedInfoResult = await getCachedInfoPromise;
+      // 変更理由: 本文でdat落ちを確定できた場合は、不要なsubject通信を始めない。
+      cachedInfoResult =
+        this.expired || response?.status === 203 || thread.expired === true
+          ? { status: "none" }
+          : await this._fetchCachedResCount(forceUpdate === true);
       const displayThread = this._padAbobunIfNeeded(thread, cachedInfoResult);
+      const hadCachedExpiration = this.expired;
       this._applyThreadToSelf(displayThread);
+      // 変更理由: datが200で取得できてもsubject消失後の過去ログである場合があるため、
+      // 一度確認したexpiredは本文応答だけでは解除せず、再表示と強制更新をまたいで保持する。
+      this.expired = this.expired || hadCachedExpiration || this.missingFromSubject;
       this.message = "";
 
-      // キャッシュ更新はメインフローをブロックしない（fire-and-forget）
-      void this._updateCacheAfterFetch({
+      // 通常更新は画面返却を待たせないが、expired状態だけは再表示時のsubject省略に必要なので保存を待つ。
+      const cacheUpdate = this._updateCacheAfterFetch({
         cache,
         response,
         thread,
@@ -225,16 +231,28 @@ export default class Thread {
         readcgiVer,
         noChangeFlg,
         hasCache,
-      }).catch(() => {});
+        expired: this.expired,
+      });
+      const logCacheUpdateFailure = (error: unknown) => {
+        console.error("[Thread] スレッドキャッシュの更新に失敗しました:", error);
+      };
+      if (this.expired) {
+        // 変更理由: 次のThreadインスタンスがsubject照合を省けるよう、expired記録だけは返却前に永続化する。
+        await cacheUpdate.catch(logCacheUpdateFailure);
+      } else {
+        void cacheUpdate.catch(logCacheUpdateFailure);
+      }
     } catch (error: unknown) {
       const failure = typeof error === "object" && error != null ? (error as ThreadFailure) : {};
       response = failure.response;
       thread = failure.thread;
 
-      // 変更理由: dat落ち時の応答はサーバーによって203だけでなく404/500等にもなる。
-      // 本文取得が失敗した経路でも、並行取得したsubject.txtからスレ消失を確認できた場合は
-      // 画面へ通知し、自動更新を確実に停止できるよう独立した状態として引き継ぐ。
-      cachedInfoResult ??= await getCachedInfoPromise;
+      const hasExplicitExpiration =
+        response?.status === 203 || thread?.expired === true || this.expired;
+      // 変更理由: 明示的な失効応答を優先し、subject.txtは未確定時だけ追加確認する。
+      cachedInfoResult ??= hasExplicitExpiration
+        ? { status: "none" }
+        : await this._fetchCachedResCount(forceUpdate === true);
       this.missingFromSubject = isMissingFromSubject(cachedInfoResult.status);
 
       if (thread) {
@@ -250,11 +268,20 @@ export default class Thread {
       // （5ch.io の 203 など）があるため、インスタンス側にも伝播させる。
       // また、HTTP 203 はサーバーが明示的に dat 落ちを通知するステータスなので、
       // thread の有無にかかわらず expired とする。
-      if (thread?.expired === true || response?.status === 203) {
+      if (thread?.expired === true || response?.status === 203 || this.missingFromSubject) {
         this.expired = true;
       }
       failed = true;
     } finally {
+      // 変更理由: 本文取得失敗時にも確認済み状態を残し、次回subject照合を省けるようにする。
+      if (failed && this.expired) {
+        this._markCacheExpired(cache);
+        try {
+          await cache.put();
+        } catch (error: unknown) {
+          console.error("[Thread] dat落ち状態のキャッシュ保存に失敗しました:", error);
+        }
+      }
       // ブックマーク更新は成否に関わらず実行する
       if (thread != null) {
         container.bookmark.updateResCount(this.url.url.href, thread.res.length);
@@ -276,7 +303,7 @@ export default class Thread {
 
   /**
    * 板スレ一覧からキャッシュされたレス数を取得する。
-   * get() の最初に呼び出してフェッチと並行して実行する。
+   * 本文取得で失効が確定せず、保存済み失効状態もない場合だけ呼び出す。
    */
   private async _fetchCachedResCount(forceUpdate: boolean): Promise<CachedInfoResult> {
     try {
@@ -307,8 +334,18 @@ export default class Thread {
     forceUpdate: boolean | undefined,
     progress: () => void,
   ): Promise<PrepareResult> {
+    this.expired = container.bookmark.get(this.url.url.href)?.expired === true;
     try {
       await cache.get();
+      const cachedParsed = cache.parsed as Partial<ParsedThread> | null;
+      // 旧キャッシュにparsed.expiredが残っていれば新しい列と同じ状態として復元する。
+      this.expired = this.expired || cache.expired === true || cachedParsed?.expired === true;
+      const hasCachedThreadData =
+        cache.data != null || (cachedParsed != null && Array.isArray(cachedParsed.res));
+      if (!hasCachedThreadData) {
+        // 変更理由: expiredメタだけのレコードを本文キャッシュと誤認すると、通信を省いて空表示になる。
+        return { hasCache: false, needFetch: true };
+      }
       const isFresh = !forceUpdate && Date.now() - (cache.lastUpdated ?? 0) <= 1000 * 3;
       if (isFresh) {
         return { hasCache: true, needFetch: false };
@@ -357,9 +394,8 @@ export default class Thread {
   /**
    * 板スレ一覧のレス数と突き合わせ、不足分をあぼーんで補填する。
    *
-   * 変更理由: 板一覧キャッシュの未取得・不完全な subject.txt・URL の表記揺れでも
-   * not_found になり得るため、ここでは expired として扱わず独立した信号にする。
-   * ブラウザ画面での自動更新停止と通知は、取得結果を受け取った側でこの信号も含めて判断する。
+   * 変更理由: 件数差の補填とスレッド消失は別の判定なので、ここではsubject不在の
+   * 信号だけを保持し、expiredの永続化は一覧の確認状態も含めて呼び出し側で判断する。
    */
   private _padAbobunIfNeeded(thread: ParsedThread, result: CachedInfoResult): ParsedThread {
     let displayThread = thread;
@@ -407,7 +443,7 @@ export default class Thread {
 
   /**
    * フェッチ成功後のキャッシュ更新を行う。
-   * resolve() 後に fire-and-forget で呼ばれるため、例外を外部に漏らさないこと。
+   * 通常時はfire-and-forgetで呼ぶが、expiredを確定したときは永続化完了を待つ。
    */
   private async _updateCacheAfterFetch({
     cache,
@@ -418,9 +454,11 @@ export default class Thread {
     readcgiVer,
     noChangeFlg,
     hasCache,
+    expired,
   }: UpdateCacheParams): Promise<void> {
     if (response?.status === 200 || (readcgiVer >= 6 && response?.status === 500)) {
       cache.lastUpdated = Date.now();
+      cache.expired = expired;
 
       if (isHtml && response) {
         const detectedVer = this._extractReadcgiVer(response.body);
@@ -466,6 +504,7 @@ export default class Thread {
       this._notifyLogUpdated();
     } else if (hasCache && response?.status === 304) {
       cache.lastUpdated = Date.now();
+      cache.expired = expired;
       // 304(変化なし)でもログのメタを最新化しておく（kind 未設定の旧キャッシュ救済）。
       this._applyLogMetadata(cache, thread);
       await cache.put();
@@ -487,6 +526,30 @@ export default class Thread {
       // toBoard() はスレURL以外で例外。その場合は板URLを空のままにする。
     }
     cache.kind = "thread";
+  }
+
+  /** 本文がなくても初回の明示失効を保存できるメタレコードを用意する。 */
+  private _markCacheExpired(cache: Cache): void {
+    cache.expired = true;
+    const parsedThread = cache.parsed as Partial<ParsedThread> | null;
+    const hasThreadData =
+      cache.data != null || (parsedThread != null && Array.isArray(parsedThread.res));
+    if (!hasThreadData) {
+      // 変更理由: 本文なしの状態レコードは閲覧ログに出さず、Thread.getでは必ず本文を再取得する。
+      cache.data = null;
+      cache.parsed = null;
+      cache.kind = "thread_state";
+      cache.lastUpdated = Date.now();
+      cache.threadUrl = this.url.url.href;
+      cache.title = this.title ?? "";
+      try {
+        cache.boardUrl = this.url.toBoard().url.href;
+      } catch {
+        // 板URLを組み立てられない場合も、expiredの状態自体は保存する。
+      }
+    } else if (cache.lastUpdated == null) {
+      cache.lastUpdated = Date.now();
+    }
   }
 
   /** ログ一覧へ更新を通知する（一覧側で再読込させる）。 */

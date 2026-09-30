@@ -12,6 +12,7 @@ export const cacheTable = sqliteTable(
     resLength: integer("res_length"),
     datSize: integer("dat_size"),
     readcgiVer: integer("readcgi_ver"),
+    expired: integer("expired"),
     // 閲覧ログ機能用のメタ情報。kind="thread" のスレキャッシュのみログ一覧の対象。
     // url(主キー)は dat パスのため、スレを再表示するための read.cgi 形式 URL を別途持つ。
     title: text("title"),

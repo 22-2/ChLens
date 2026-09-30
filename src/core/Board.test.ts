@@ -98,6 +98,36 @@ describe("Board.getCachedResCount", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it("stale subjectキャッシュと通信失敗だけではスレッド不在を確定しない", async () => {
+    cache.data = "1000000001.dat<>古いスレ一覧 (1)\n";
+    cache.lastUpdated = 0;
+    fetchMock.mockResolvedValue({
+      status: 503,
+      headers: {},
+      body: "",
+      url: "https://example.com/board/subject.txt",
+    });
+
+    await expect(
+      Board.getCachedResCount("https://example.com/test/read.cgi/board/1000000002/"),
+    ).rejects.not.toThrow("板のスレ一覧にそのスレが存在しません");
+  });
+
+  it("200応答でもsubjectとして解析できない本文から不在を確定しない", async () => {
+    cache.data = "1000000001.dat<>古いスレ一覧 (1)\n";
+    cache.lastUpdated = 0;
+    fetchMock.mockResolvedValue({
+      status: 200,
+      headers: {},
+      body: "<html>エラーページ</html>",
+      url: "https://example.com/board/subject.txt",
+    });
+
+    await expect(
+      Board.getCachedResCount("https://example.com/test/read.cgi/board/1000000002/"),
+    ).rejects.not.toThrow("板のスレ一覧にそのスレが存在しません");
+  });
+
   it("板キャッシュが解析不能でも短時間キャッシュへ戻らず最新一覧を確認する", async () => {
     cache.lastUpdated = Date.now();
     const parseSpy = vi.spyOn(Board, "parse").mockReturnValueOnce(null);

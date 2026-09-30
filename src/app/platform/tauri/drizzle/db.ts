@@ -48,6 +48,7 @@ async function runMigrations(raw: SqlPluginDatabase): Promise<void> {
       res_length INTEGER,
       dat_size INTEGER,
       readcgi_ver INTEGER,
+      expired INTEGER,
       title TEXT,
       thread_url TEXT,
       board_url TEXT,
@@ -62,6 +63,8 @@ async function runMigrations(raw: SqlPluginDatabase): Promise<void> {
   await addColumnIfMissing(raw, "cache", "board_url", "TEXT");
   await addColumnIfMissing(raw, "cache", "board_title", "TEXT");
   await addColumnIfMissing(raw, "cache", "kind", "TEXT");
+  // 変更理由: 既存Tauri利用者にも確定済みのdat落ち状態を追加移行で保持する。
+  await addColumnIfMissing(raw, "cache", "expired", "INTEGER");
   await raw.execute("CREATE INDEX IF NOT EXISTS idx_cache_last_updated ON cache(last_updated)");
   await raw.execute("CREATE INDEX IF NOT EXISTS idx_cache_last_modified ON cache(last_modified)");
   await raw.execute("CREATE INDEX IF NOT EXISTS idx_cache_kind ON cache(kind)");

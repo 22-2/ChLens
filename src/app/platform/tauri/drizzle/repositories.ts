@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, lt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { getTauriDrizzleContext } from "src/app/platform/tauri/drizzle/db";
 import {
   bbsMenuCacheTable,
@@ -26,6 +26,7 @@ interface CacheRecordInput {
   resLength: number | null;
   datSize: number | null;
   readcgiVer: number | null;
+  expired: boolean | null;
   title?: string | null;
   threadUrl?: string | null;
   boardUrl?: string | null;
@@ -131,6 +132,7 @@ export const tauriCacheRepository = {
       resLength: row.resLength,
       datSize: row.datSize,
       readcgiVer: row.readcgiVer,
+      expired: row.expired == null ? null : row.expired !== 0,
       title: row.title,
       threadUrl: row.threadUrl,
       boardUrl: row.boardUrl,
@@ -154,6 +156,7 @@ export const tauriCacheRepository = {
         resLength: record.resLength,
         datSize: record.datSize,
         readcgiVer: record.readcgiVer,
+        expired: record.expired == null ? null : record.expired ? 1 : 0,
         title: record.title ?? null,
         threadUrl: record.threadUrl ?? null,
         boardUrl: record.boardUrl ?? null,
@@ -171,6 +174,7 @@ export const tauriCacheRepository = {
           resLength: record.resLength,
           datSize: record.datSize,
           readcgiVer: record.readcgiVer,
+          expired: record.expired == null ? null : record.expired ? 1 : 0,
           title: record.title ?? null,
           threadUrl: record.threadUrl ?? null,
           boardUrl: record.boardUrl ?? null,
@@ -198,15 +202,15 @@ export const tauriCacheRepository = {
 
   async clearOlderThan(dayUnix: number): Promise<void> {
     const { db } = await getTauriDrizzleContext();
-    // 変更理由: 閲覧ログ(kind="thread")は恒久保存のため自動掃除では消さない。
-    await db
-      .delete(cacheTable)
-      .where(
-        and(
-          lt(cacheTable.lastUpdated, dayUnix),
-          sql`(${cacheTable.kind} IS NULL OR ${cacheTable.kind} != 'thread')`,
-        ),
-      );
+    // 変更理由: 閲覧ログとdat落ち状態は本文がなくても復元に必要なので自動掃除から除外する。
+    await db.delete(cacheTable).where(
+      and(
+        lt(cacheTable.lastUpdated, dayUnix),
+        // 変更理由: 旧形式でkind未設定の本文キャッシュも、確認済みexpiredは保持する。
+        or(isNull(cacheTable.expired), ne(cacheTable.expired, 1)),
+        sql`(${cacheTable.kind} IS NULL OR ${cacheTable.kind} NOT IN ('thread', 'thread_state'))`,
+      ),
+    );
   },
 
   async listLogs(offset: number, limit: number): Promise<CacheLogRecord[]> {
