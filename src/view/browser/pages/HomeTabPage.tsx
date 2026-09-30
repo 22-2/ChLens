@@ -122,7 +122,7 @@ export const HomeTabPage: React.FC = () => {
   }, [boards]);
 
   const openBoard = React.useCallback(
-    (board: RecentBoard) => {
+    (board: RecentBoard, background = false) => {
       // 変更理由: ホームタブの履歴をNAVIGATEで上書きしないよう、新規タブへ逃がす。
       dispatch(
         tabActions.openInNewTab(
@@ -132,7 +132,7 @@ export const HomeTabPage: React.FC = () => {
             boardUrl: board.boardUrl,
             boardTitle: board.boardTitle,
           },
-          { background: false },
+          { background },
         ),
       );
     },
@@ -175,6 +175,14 @@ export const HomeTabPage: React.FC = () => {
                   className="home-tab-page__link home-tab-page__link--board"
                   variant="subtle"
                   onClick={() => openBoard(board)}
+                  onAuxClick={(event) => {
+                    if (event.button !== 1) return;
+                    // 変更理由: 常設ホームは通常クリックでも新規タブを開くため、
+                    // 中クリックも同じ板を新規タブへ送り、ブラウザー既定動作との二重処理を防ぐ。
+                    event.preventDefault();
+                    event.stopPropagation();
+                    openBoard(board, true);
+                  }}
                   title={`${board.boardTitle}\n${board.boardUrl}`}
                 >
                   <span className="home-tab-page__link-title">{board.boardTitle}</span>
