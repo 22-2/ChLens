@@ -269,6 +269,7 @@ export function OverlayStage({
   const [menu, setMenu] = useState<{ comment: CommentCandidate; x: number; y: number } | null>(
     null,
   );
+  const menuRef = useRef<HTMLDivElement>(null);
   const selectedCommentKey = menu
     ? commentIdentity(menu.comment)
     : hoveredCommentKey === undefined
@@ -279,9 +280,23 @@ export function OverlayStage({
 
   useEffect(() => {
     if (!menu) return;
+    const ownerDocument = stageRef.current?.ownerDocument;
+    const ownerWindow = ownerDocument?.defaultView;
+    if (!ownerDocument || !ownerWindow) return;
     const closeMenu = () => setMenu(null);
-    window.addEventListener("blur", closeMenu);
-    return () => window.removeEventListener("blur", closeMenu);
+    // 変更理由: stage内だけの判定では表示領域の外を押しても閉じず、コメント上も
+    // 除外されていた。伝播を止めるUIでも閉じられるよう、documentのcaptureで
+    // メニュー自身の操作だけを除外し、コメントを含む外側のクリックを拾う。
+    const handleOutsidePointerDown = (event: PointerEvent) => {
+      const menuElement = menuRef.current;
+      if (!menuElement || !event.composedPath().includes(menuElement)) closeMenu();
+    };
+    ownerDocument.addEventListener("pointerdown", handleOutsidePointerDown, true);
+    ownerWindow.addEventListener("blur", closeMenu);
+    return () => {
+      ownerDocument.removeEventListener("pointerdown", handleOutsidePointerDown, true);
+      ownerWindow.removeEventListener("blur", closeMenu);
+    };
   }, [menu]);
 
   useLayoutEffect(() => {
@@ -501,18 +516,6 @@ export function OverlayStage({
       role="log"
       aria-label="コメントオーバーレイ"
       style={stageStyle}
-      onPointerDown={(event) => {
-        const target = event.target;
-        // 変更理由: メニュー外でも別コメントを操作することがあるため、コメントか
-        // メニューの上でのクリックは保ち、それ以外のstage領域でだけ閉じる。
-        if (
-          menu &&
-          target instanceof Element &&
-          !target.closest(".comment-overlay-stage__menu, .comment-overlay-stage__comment")
-        ) {
-          setMenu(null);
-        }
-      }}
       onKeyDown={(event) => {
         if (event.key === "Escape") setMenu(null);
       }}
@@ -566,7 +569,11 @@ export function OverlayStage({
             onFocus={interactive ? () => setLocalHoveredCommentKey(commentKey) : undefined}
             onBlur={interactive ? () => setLocalHoveredCommentKey(null) : undefined}
             onContextMenu={interactive ? (event) => openMenu(event, comment) : undefined}
-            onClick={onCommentClick ? () => onCommentClick(comment) : undefined}
+            onClick={() => {
+              // 変更理由: pointerdownを伴わないクリックでも閉じ、既存のレス操作も実行する。
+              setMenu(null);
+              onCommentClick?.(comment);
+            }}
           >
             {comment.imageUrls?.slice(0, 3).map((imageUrl) => (
               <ExternalImage
@@ -599,6 +606,7 @@ export function OverlayStage({
       })}
       {interactive && menu ? (
         <div
+          ref={menuRef}
           className="comment-overlay-stage__menu"
           data-comment-key={commentIdentity(menu.comment)}
           role="menu"

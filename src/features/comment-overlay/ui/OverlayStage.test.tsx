@@ -318,6 +318,63 @@ describe("OverlayStage", () => {
     expect(onCommentJump).toHaveBeenCalledWith(second);
   });
 
+  it("メニュー内の押下では閉じず、表示領域内外の押下で閉じてコメントの停止を解除する", () => {
+    render(
+      <>
+        <button type="button" onPointerDown={(event) => event.stopPropagation()}>
+          表示領域の外
+        </button>
+        <OverlayStage comments={[comment]} />
+      </>,
+    );
+    act(() => scheduledFrame?.(0));
+    const activeComment = screen.getByText(comment.text);
+
+    for (const target of [
+      screen.getByTestId("comment-overlay-stage"),
+      screen.getByRole("button", { name: "表示領域の外" }),
+    ]) {
+      fireEvent.contextMenu(activeComment);
+      expect(activeComment).toHaveAttribute("data-paused", "true");
+      fireEvent.pointerDown(screen.getByRole("menuitem", { name: "レスをコピー" }));
+      expect(screen.getByRole("menu")).toBeInTheDocument();
+
+      fireEvent.pointerDown(target);
+      expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+      expect(activeComment).toHaveAttribute("data-paused", "false");
+    }
+  });
+
+  it("選択中と別のコメントの押下でもメニューを閉じる", () => {
+    render(
+      <OverlayStage
+        comments={[comment, { ...comment, responseNumber: 2, text: "別のコメント" }]}
+        collisionMode="adaptive"
+      />,
+    );
+    act(() => scheduledFrame?.(0));
+    const activeComment = screen.getByText(comment.text);
+
+    for (const target of [activeComment, screen.getByText("別のコメント")]) {
+      fireEvent.contextMenu(activeComment);
+      fireEvent.pointerDown(target);
+      expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    }
+  });
+
+  it("コメントのクリックでメニューを閉じ、既存のクリック処理も実行する", () => {
+    const onCommentClick = vi.fn();
+    render(<OverlayStage comments={[comment]} onCommentClick={onCommentClick} />);
+    act(() => scheduledFrame?.(0));
+    const activeComment = screen.getByText(comment.text);
+    fireEvent.contextMenu(activeComment);
+
+    fireEvent.click(activeComment);
+
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    expect(onCommentClick).toHaveBeenCalledWith(comment);
+  });
+
   it("入力履歴から外れたレス番号を再利用できる", () => {
     const { rerender } = render(
       <OverlayStage
