@@ -107,11 +107,15 @@ export function useThreadData(
   );
   const [searchTarget, setSearchTarget] = useState<ThreadSearchTarget>(() => {
     const persistedSearchTarget = persistedViewState.searchTarget;
+    // 変更理由: 旧版は既定の「すべて」も自動保存していたため、移行前の値だけ本文へ直し、以後の明示選択は尊重する。
+    if (persistedSearchTarget === "all" && !persistedViewState.searchTargetDefaultMigrated) {
+      return "body";
+    }
     return persistedSearchTarget === "body" ||
       persistedSearchTarget === "name" ||
       persistedSearchTarget === "id"
       ? persistedSearchTarget
-      : "all";
+      : "body";
   });
   const [searchQuery, setSearchQuery] = useState(() => persistedViewState.searchQuery ?? "");
   const [showSearch, setShowSearch] = useState(false);
@@ -119,7 +123,12 @@ export function useThreadData(
   const fetchedThreadUrlRef = useRef(page.threadUrl);
 
   useEffect(() => {
-    updateViewState({ filter, searchQuery, searchTarget });
+    updateViewState({
+      filter,
+      searchQuery,
+      searchTarget,
+      searchTargetDefaultMigrated: true,
+    });
   }, [filter, searchQuery, searchTarget, updateViewState]);
 
   const setResponses = useCallback<Dispatch<SetStateAction<IRes[]>>>(

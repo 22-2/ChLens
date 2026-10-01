@@ -87,6 +87,8 @@ export interface TabViewState {
   // 人気フィルタの判定条件もフィルタ状態と同じスレッド単位で復元する。
   popularReplyThreshold?: number;
   searchTarget?: ThreadSearchTarget;
+  // 旧版が既定値の「すべて」を自動保存していたため、移行済みかを記録する。
+  searchTargetDefaultMigrated?: boolean;
   sortColumn?: string | null;
   sortDirection?: "asc" | "desc";
   searchMode?: "title" | "body";
