@@ -43,7 +43,7 @@ interface MinimapResponseHit {
 const MINIMAP_MIN_WIDTH = 30;
 const MINIMAP_MAX_WIDTH = 180;
 const MINIMAP_WIDTH_RATIO = 0.08;
-const MINIMAP_GAP = 10;
+const MINIMAP_CONTENT_GAP = 10;
 const MINIMAP_MIN_DRAWABLE_HEIGHT = 80;
 const MINIMAP_MARKER_SNAP_DISTANCE = 8;
 
@@ -188,7 +188,8 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
 
     const scrollbarWidth = Math.max(0, scrollContainer.offsetWidth - scrollContainer.clientWidth);
     // スクロールバーと重なるとドラッグ操作が失敗しやすいので、バー幅ぶん左へ逃がす。
-    const preferredLeft = rect.right - scrollbarWidth - width - MINIMAP_GAP;
+    // 変更理由: 右端の余白は設けず、ペイン基準の右端へスクロールバー直前まで寄せる。
+    const preferredLeft = rect.right - scrollbarWidth - width;
     const left = Math.max(rect.left + 8, preferredLeft);
 
     const nextFrame: MinimapFrame = {
@@ -205,7 +206,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
       return isSameFrame(prev, nextFrame) ? prev : nextFrame;
     });
     // 本文をミニマップの下に潜り込ませないため、同じ幅を右余白として予約する。
-    setHostMinimapWidth(width + MINIMAP_GAP);
+    setHostMinimapWidth(width + MINIMAP_CONTENT_GAP);
   }, [getScrollContainer, getTopBarRoot, responseCount, setHostMinimapWidth, viewWindow]);
 
   const getMetrics = useCallback((): MinimapMetrics | null => {
