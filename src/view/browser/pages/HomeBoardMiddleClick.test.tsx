@@ -75,33 +75,58 @@ describe("ホームの板項目のミドルクリック", () => {
     vi.unstubAllGlobals();
   });
 
-  async function renderPage(kind: "常設ホーム" | "お気に入り板") {
+  async function renderPage() {
     vi.resetModules();
     const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
     const { HomeTabPage } = await import("src/view/browser/pages/HomeTabPage");
-    const { BoardTreePage } = await import("src/view/browser/pages/BoardTreePage");
     function State() {
-      const { state, viewPage } = useTabStore();
+      const { state, viewPage, dispatch } = useTabStore();
       return (
         <>
+          <button
+            onClick={() =>
+              dispatch({ type: "SELECT_TAB", tabId: state.tabs.find((tab) => tab.locked)!.id })
+            }
+          >
+            ホームを選ぶ
+          </button>
           <output data-testid="tab-count">{state.tabs.length}</output>
           <output data-testid="active-page-type">{viewPage.type}</output>
+          <output data-testid="home-history">
+            {state.tabs
+              .find((tab) => tab.locked)
+              ?.history.map((page) => page.type)
+              .join("|")}
+          </output>
+          <output data-testid="new-tab-history">
+            {state.tabs
+              .at(-1)
+              ?.history.map((page) => page.type)
+              .join("|")}
+          </output>
         </>
       );
     }
     render(
       <TabProvider>
         <State />
-        {kind === "常設ホーム" ? <HomeTabPage /> : <BoardTreePage />}
+        <HomeTabPage />
       </TabProvider>,
     );
+    fireEvent.click(screen.getByRole("button", { name: "ホームを選ぶ" }));
   }
 
-  it.each(["常設ホーム", "お気に入り板"] as const)(
+  it.each(["最近開いた板", "お気に入り板"] as const)(
     "%s でmousedownの既定動作を止め、背景タブだけを追加する",
     async (kind) => {
-      await renderPage(kind);
-      const board = await screen.findByRole("button", { name: /サンプル板/ });
+      await renderPage();
+      await screen.findAllByRole("button", { name: /サンプル板/ });
+      await waitFor(() =>
+        expect(screen.getAllByRole("button", { name: /サンプル板/ })).toHaveLength(2),
+      );
+      const board = screen.getAllByRole("button", { name: /サンプル板/ })[
+        kind === "お気に入り板" ? 0 : 1
+      ];
       const initialTabCount = Number(screen.getByTestId("tab-count").textContent);
 
       // 実ブラウザーは中ボタンのmousedownからオートスクロールを始めるため、
@@ -112,7 +137,38 @@ describe("ホームの板項目のミドルクリック", () => {
       await waitFor(() =>
         expect(Number(screen.getByTestId("tab-count").textContent)).toBe(initialTabCount + 1),
       );
-      expect(screen.getByTestId("active-page-type")).toHaveTextContent("boardTree");
+      expect(screen.getByTestId("active-page-type")).toHaveTextContent("home");
+      expect(screen.getByTestId("new-tab-history")).toHaveTextContent("boardList|threadList");
     },
   );
+
+  it.each(["最近開いた板", "お気に入り板"] as const)(
+    "%sの通常クリックでも常設ホームを上書きせず、板一覧を戻る先にする",
+    async (kind) => {
+      await renderPage();
+      await waitFor(() =>
+        expect(screen.getAllByRole("button", { name: /サンプル板/ })).toHaveLength(2),
+      );
+      const board = screen.getAllByRole("button", { name: /サンプル板/ })[
+        kind === "お気に入り板" ? 0 : 1
+      ];
+      const initialTabCount = Number(screen.getByTestId("tab-count").textContent);
+      fireEvent.click(board);
+      expect(Number(screen.getByTestId("tab-count").textContent)).toBe(initialTabCount + 1);
+      expect(screen.getByTestId("home-history")).toHaveTextContent(/^home$/);
+      expect(screen.getByTestId("new-tab-history")).toHaveTextContent(/^boardList\|threadList$/);
+    },
+  );
+
+  it("ホームから板一覧を中クリックで開いてもホームを保ち、戻る先を重複させない", async () => {
+    await renderPage();
+    const boardList = screen.getByRole("button", { name: "板一覧を開く" });
+    expect(fireEvent.mouseDown(boardList, { button: 1 })).toBe(false);
+    fireEvent(
+      boardList,
+      new MouseEvent("auxclick", { bubbles: true, cancelable: true, button: 1 }),
+    );
+    expect(screen.getByTestId("active-page-type")).toHaveTextContent("home");
+    expect(screen.getByTestId("new-tab-history")).toHaveTextContent(/^boardList$/);
+  });
 });

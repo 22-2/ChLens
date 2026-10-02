@@ -91,7 +91,7 @@ describe("CommentOverlayStatusItem", () => {
   });
 
   it("スレッド以外では実況操作を表示しない", () => {
-    mocks.viewPage = { type: "boardTree", title: "ホーム" };
+    mocks.viewPage = { type: "boardList", title: "ホーム" };
 
     renderItem();
 
@@ -127,7 +127,7 @@ describe("CommentOverlayStatusItem", () => {
   });
 
   it("スレッドを離れても表示中の実況を停止しない", () => {
-    mocks.viewPage = { type: "boardTree", title: "ホーム" };
+    mocks.viewPage = { type: "boardList", title: "ホーム" };
     mocks.snapshot = {
       state: {
         status: "running",

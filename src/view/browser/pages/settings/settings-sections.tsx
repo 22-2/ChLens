@@ -40,7 +40,8 @@ const THEME_ID_OPTIONS = [
 ] as const satisfies readonly SettingsOption[];
 
 const NEW_TAB_PAGE_MODE_OPTIONS = [
-  { const: "home", title: "板ツリー" },
+  // 旧設定のhomeを維持しつつ、ホーム統合後の実際の初期画面名を表示する。
+  { const: "home", title: "板一覧" },
   { const: "related_board", title: "関連する板" },
   { const: "custom_board", title: "指定の板（入力）" },
 ] as const satisfies readonly SettingsOption[];

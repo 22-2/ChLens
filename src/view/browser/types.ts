@@ -1,9 +1,9 @@
 import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
 
 // ページ種別の定義
-// ナビゲーション階層: 板ツリー → 板一覧 → スレッド一覧 → スレッド
+// 常設ホームはタブ履歴から独立させ、戻る先は板一覧 → スレッド一覧 → スレッドに統一する。
 export type PageType =
-  | "boardTree"
+  | "home"
   | "boardList"
   | "threadList"
   | "thread"
@@ -21,8 +21,8 @@ export type ThreadFilter = "all" | "popular" | "image" | "video" | "link";
 // ユーザーが選んだ本文・名前・IDの検索条件を失わないようにする。
 export type ThreadSearchTarget = "all" | "body" | "name" | "id";
 
-export interface BoardTreePage {
-  type: "boardTree";
+export interface HomePage {
+  type: "home";
   title: string;
 }
 
@@ -71,7 +71,7 @@ export interface LogListPage {
 }
 
 export type Page =
-  | BoardTreePage
+  | HomePage
   | BoardListPage
   | ThreadListPage
   | ThreadPage
@@ -187,11 +187,11 @@ export function getCurrentPage(tab: Tab): Page {
   return tab.history[tab.currentIndex];
 }
 
-// 常設ホームタブを生成する。履歴はboardTree単体で、遷移不可の特殊タブとして扱う。
+// ホームは常設タブだけに置き、通常タブの戻る履歴に重複して現れないようにする。
 export function createHomeTab(id?: string): Tab {
   return {
     id: id ?? crypto.randomUUID(),
-    history: [{ type: "boardTree", title: "ホーム" }],
+    history: [{ type: "home", title: "ホーム" }],
     currentIndex: 0,
     pinned: true,
     locked: true,
@@ -245,7 +245,7 @@ export function canGoForward(tab: Tab): boolean {
 
 export function getDisplayUrl(page: Page): string {
   switch (page.type) {
-    case "boardTree":
+    case "home":
       return "";
     case "boardList":
       return "板一覧";
@@ -273,41 +273,36 @@ function threadUrlToBoardUrl(threadUrl: string): string {
 }
 
 // 新規タブ用: ページに対してカノニカルな階層スタックを構築する
-// 板ツリー → 板一覧 → スレッド一覧 → スレッド
+// ホームを通常タブ内に増やさず、板一覧を戻る先の起点にする。
 export function buildHierarchy(page: Page): Page[] {
   switch (page.type) {
-    case "boardTree":
-      return [page];
+    case "home":
+      return [{ type: "boardList", title: "板一覧" }];
 
     case "boardList":
-      return [{ type: "boardTree", title: "板ツリー" }, page];
+      return [page];
 
     case "settings":
-      return [{ type: "boardTree", title: "板ツリー" }, page];
+      return [{ type: "boardList", title: "板一覧" }, page];
 
     case "bookmarkList":
-      return [{ type: "boardTree", title: "板ツリー" }, page];
+      return [{ type: "boardList", title: "板一覧" }, page];
 
     case "historyList":
-      return [{ type: "boardTree", title: "板ツリー" }, page];
+      return [{ type: "boardList", title: "板一覧" }, page];
 
     case "writeHistoryList":
-      return [{ type: "boardTree", title: "板ツリー" }, page];
+      return [{ type: "boardList", title: "板一覧" }, page];
 
     case "logList":
-      return [{ type: "boardTree", title: "板ツリー" }, page];
+      return [{ type: "boardList", title: "板一覧" }, page];
 
     case "threadList":
-      return [
-        { type: "boardTree", title: "板ツリー" },
-        { type: "boardList", title: "板一覧" },
-        page,
-      ];
+      return [{ type: "boardList", title: "板一覧" }, page];
 
     case "thread": {
       const boardUrl = threadUrlToBoardUrl(page.threadUrl);
       return [
-        { type: "boardTree", title: "板ツリー" },
         { type: "boardList", title: "板一覧" },
         {
           type: "threadList",

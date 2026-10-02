@@ -1,5 +1,3 @@
-// 旧HomePage。常設ホームタブの専用ビュー（HomeTabPage）とは別物。
-// 変更理由: ホームページとホームタブの混同を避けるため、板ツリーへ改名した。
 import React from "react";
 import { container } from "src/service-container/index";
 import { tabActions } from "src/view/browser/hooks/tab-store-actions";
@@ -56,7 +54,8 @@ async function readFavoriteBoards(): Promise<FavoriteBoard[]> {
   return favorites;
 }
 
-export const BoardTreePage: React.FC = () => {
+// 板ツリーの独立画面をなくしてもお気に入りへの入口を失わないよう、常設ホーム内で表示する。
+export const FavoriteBoardsSection: React.FC = () => {
   const { dispatch } = useTabStore();
   const [favoriteBoards, setFavoriteBoards] = React.useState<FavoriteBoard[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -68,6 +67,7 @@ export const BoardTreePage: React.FC = () => {
     try {
       setFavoriteBoards(await readFavoriteBoards());
     } catch (e) {
+      console.error("お気に入り板の読み込みに失敗しました", e);
       setError(e instanceof Error ? e.message : "お気に入り板の読み込みに失敗しました");
     } finally {
       setLoading(false);
@@ -87,85 +87,41 @@ export const BoardTreePage: React.FC = () => {
     };
   }, [loadFavoriteBoards]);
 
-  const openBoardList = React.useCallback(() => {
-    dispatch(tabActions.navigate({ type: "boardList", title: "板一覧" }));
-  }, [dispatch]);
-
-  // const openHistory = React.useCallback(() => {
-  //   dispatch(tabActions.navigate({ type: "historyList", title: "閲覧履歴" }));
-  // }, [dispatch]);
-
   const openBoard = React.useCallback(
     (board: FavoriteBoard, background = false) => {
+      // 常設ホームを遷移させず、通常クリック・中クリックとも新規タブで板を開く。
       dispatch(
-        background
-          ? tabActions.openInNewTab(
-              {
-                type: "threadList",
-                title: board.title,
-                boardUrl: board.url,
-                boardTitle: board.title,
-              },
-              { background: true },
-            )
-          : tabActions.navigate({
-              type: "threadList",
-              title: board.title,
-              boardUrl: board.url,
-              boardTitle: board.title,
-            }),
+        tabActions.openInNewTab(
+          { type: "threadList", title: board.title, boardUrl: board.url, boardTitle: board.title },
+          { background },
+        ),
       );
     },
     [dispatch],
   );
 
-  // const openBookmarks = React.useCallback(() => {
-  //   dispatch(tabActions.navigate({ type: "bookmarkList", title: "ブックマーク" }));
-  // }, [dispatch]);
-
   return (
-    <div className="board-tree-page">
-      <Button
-        className="board-tree-page__link board-tree-page__link--action"
-        variant="subtle"
-        onClick={openBoardList}
-      >
-        板一覧を開く
-      </Button>
-      {/* <Button
-        className="board-tree-page__link board-tree-page__link--action"
-        variant="subtle"
-        onClick={openHistory}
-      >
-        閲覧履歴を開く
-      </Button>
-      <Button
-        className="board-tree-page__link board-tree-page__link--action"
-        variant="subtle"
-        onClick={openBookmarks}
-      >
-        ブックマークを開く
-      </Button> */}
-      <div className="board-tree-page__heading">お気に入り板</div>
+    <section>
+      <div className="home-tab-page__heading">お気に入り板</div>
 
       {loading ? (
-        <div className="board-tree-page__status">
+        <div className="home-tab-page__status">
           <Spinner size="xs" />
           <span>お気に入り板を読み込み中...</span>
         </div>
       ) : error ? (
-        <Alert className="board-tree-page__alert" color="red" title="読み込みエラー">
+        <Alert className="home-tab-page__alert" color="red" title="読み込みエラー">
           {error}
         </Alert>
       ) : (
-        <div className="board-tree-page__list">
+        <div className="home-tab-page__list">
           {favoriteBoards.length === 0 ? (
-            <div className="board-tree-page__empty">お気に入り板はまだありません。</div>
+            <div className="home-tab-page__empty">お気に入り板はまだありません。</div>
           ) : (
             favoriteBoards.map((board) => (
               <Button
                 key={board.url}
-                className="board-tree-page__link"
+                className="home-tab-page__link"
                 variant="subtle"
                 onClick={() => openBoard(board)}
                 onMouseDown={(event) => {
@@ -189,6 +145,6 @@ export const BoardTreePage: React.FC = () => {
           )}
         </div>
       )}
-    </div>
+    </section>
   );
 };

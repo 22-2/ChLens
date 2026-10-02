@@ -205,7 +205,7 @@ const SortableTab: React.FC<SortableTabProps> = ({
           onContextMenu(e, tab);
         }}
       >
-        {/* 変更理由: 常設ホームは常にピン留めサイズ（アイコンのみ）で表示する。板ツリーと区別するためHouseを使う。 */}
+        {/* 変更理由: 常設ホームは常にピン留めサイズ（アイコンのみ）で表示する。ホームの目印としてHouseを使う。 */}
         {tab.locked ? (
           <span className="tab__icon" title="ホーム（常設）" aria-label="ホーム（常設）">
             <House size={15} aria-hidden="true" />

@@ -31,7 +31,6 @@
 @import "./components/NavigationBar.css";
 @import "./components/WheelScrollIndicator.css";
 @import "./pages/PageStatus.css";
-@import "./pages/BoardTreePage.css";
 @import "./pages/HomeTabPage.css";
 @import "./pages/BoardListPage.css";
 @import "./pages/settings/NGEditor.css";

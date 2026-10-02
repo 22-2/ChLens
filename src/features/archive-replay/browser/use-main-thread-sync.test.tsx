@@ -29,7 +29,7 @@ function createState(): TabStoreState {
         tabs: [
           {
             id: "tab-home",
-            history: [{ type: "boardTree", title: "ホーム" }],
+            history: [{ type: "boardList", title: "ホーム" }],
             currentIndex: 0,
             pinned: false,
             reloadKey: 0,

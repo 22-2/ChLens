@@ -1,6 +1,6 @@
 import type { TabStoreState } from "src/view/browser/hooks/tab-store-types";
 import type { Page, Pane, Tab } from "src/view/browser/types";
-import { ensurePaneHomeTab } from "src/view/browser/types";
+import { createHomeTab, ensurePaneHomeTab } from "src/view/browser/types";
 import { resetAutoRefreshState } from "src/view/browser/utils/auto-refresh-pages";
 import {
   getBrowserSessionJson,
@@ -22,16 +22,30 @@ export function sanitizeTabStoreState(state: TabStoreState): TabStoreState {
 }
 
 function normalizeLoadedTab(tab: Tab): Tab {
+  // 常設ホームの旧ページ種別は専用のhomeへ移し、通常タブには板一覧だけを残す。
+  if (tab.locked) {
+    return { ...tab, ...createHomeTab(tab.id) };
+  }
+
+  const history: Page[] = [];
+  let currentIndex = 0;
+  for (const [index, page] of (tab.history ?? []).entries()) {
+    const type = (page as { type: string }).type;
+    const migratedPage: Page =
+      type === "home" || type === "boardTree" ? { type: "boardList", title: "板一覧" } : page;
+    // 旧階層の「板ツリー → 板一覧」が同じ画面への二度の戻る操作にならないようまとめる。
+    if (!(migratedPage.type === "boardList" && history.at(-1)?.type === "boardList")) {
+      history.push(migratedPage);
+    }
+    if (index <= tab.currentIndex) currentIndex = history.length - 1;
+  }
+  if (history.length === 0) history.push({ type: "boardList", title: "板一覧" });
+
   const normalized = {
     ...tab,
-    // 変更理由: 旧セッションのページ種別 "home" は "boardTree" へ移行する。
-    history: (tab.history ?? []).map(
-      (page): Page =>
-        (page as { type: string }).type === "home"
-          ? ({ ...(page as object), type: "boardTree" } as Page)
-          : page,
-    ),
-    pinned: tab.locked ? true : (tab.pinned ?? false),
+    history,
+    currentIndex,
+    pinned: tab.pinned ?? false,
     locked: tab.locked ?? false,
     reloadKey: tab.reloadKey ?? 0,
   };

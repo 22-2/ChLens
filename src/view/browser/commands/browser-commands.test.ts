@@ -193,7 +193,7 @@ describe("browser commands", () => {
   });
 
   it("ページ条件に合わないコマンドを一覧から除外する", () => {
-    const { context } = createContext({ type: "boardTree", title: "ホーム" });
+    const { context } = createContext({ type: "boardList", title: "ホーム" });
     const ids = resolveBrowserCommands(context).map((command) => command.id);
 
     expect(ids).toContain("navigation.open-settings");
@@ -214,7 +214,7 @@ describe("browser commands", () => {
       configurable: true,
       value: {},
     });
-    const { context } = createContext({ type: "boardTree", title: "ホーム" });
+    const { context } = createContext({ type: "boardList", title: "ホーム" });
     const openArchiveReplayWindow = vi.fn();
     context.openArchiveReplayWindow = openArchiveReplayWindow;
 
@@ -234,7 +234,7 @@ describe("browser commands", () => {
   });
 
   it("Sikiログを選択すると本文を新しいタブで開く", async () => {
-    const { context, dispatch } = createContext({ type: "boardTree", title: "ホーム" });
+    const { context, dispatch } = createContext({ type: "boardList", title: "ホーム" });
     const file = {
       name: "thread.json",
       text: vi.fn<() => Promise<string>>(),
@@ -258,7 +258,7 @@ describe("browser commands", () => {
   });
 
   it("閉じたタブがないと再オープンを無効化し、履歴があれば既存actionを送る", async () => {
-    const { context, dispatch } = createContext({ type: "boardTree", title: "ホーム" });
+    const { context, dispatch } = createContext({ type: "boardList", title: "ホーム" });
     const findReopenCommand = () =>
       resolveBrowserCommands(context).find(({ id }) => id === "navigation.reopen-closed-tab");
 
@@ -268,7 +268,7 @@ describe("browser commands", () => {
       enabled: false,
     });
 
-    context.closedTabs = [createTab({ type: "boardTree", title: "復元するタブ" })];
+    context.closedTabs = [createTab({ type: "boardList", title: "復元するタブ" })];
     expect(findReopenCommand()).toMatchObject({ enabled: true });
 
     await expect(executeBrowserCommand("navigation.reopen-closed-tab", context)).resolves.toBe(
@@ -321,7 +321,7 @@ describe("browser commands", () => {
   });
 
   it("URL付きの開く候補は前居た場所へ戻れるよう単一遷移する", async () => {
-    const { context, dispatch } = createContext({ type: "boardTree", title: "ホーム" });
+    const { context, dispatch } = createContext({ type: "boardList", title: "ホーム" });
 
     await expect(
       executeBrowserCommand(
@@ -343,7 +343,7 @@ describe("browser commands", () => {
   });
 
   it("URL付きの新しいタブで開く候補は新規タブへフォーカスして遷移する", async () => {
-    const { context, dispatch } = createContext({ type: "boardTree", title: "ホーム" });
+    const { context, dispatch } = createContext({ type: "boardList", title: "ホーム" });
 
     await expect(
       executeBrowserCommand(
@@ -427,7 +427,7 @@ describe("browser commands", () => {
   });
 
   it("拡張機能でだけ開いているスレタブの取り込みコマンドを表示する", () => {
-    const { context } = createContext({ type: "boardTree", title: "ホーム" });
+    const { context } = createContext({ type: "boardList", title: "ホーム" });
 
     expect(resolveBrowserCommands(context).map(({ id }) => id)).toContain(
       "navigation.import-open-thread-tabs",
@@ -499,7 +499,7 @@ describe("browser commands", () => {
         title: "スレッドA（途中）",
       },
     ]);
-    const { context, dispatch } = createContext({ type: "boardTree", title: "ホーム" });
+    const { context, dispatch } = createContext({ type: "boardList", title: "ホーム" });
 
     await expect(
       executeBrowserCommand("navigation.import-open-thread-tabs", context),
@@ -533,7 +533,7 @@ describe("browser commands", () => {
       },
     ]);
     removeTabsMock.mockRejectedValueOnce(new Error("タブは既に閉じられています"));
-    const { context, dispatch } = createContext({ type: "boardTree", title: "ホーム" });
+    const { context, dispatch } = createContext({ type: "boardList", title: "ホーム" });
 
     await expect(
       executeBrowserCommand("navigation.import-open-thread-tabs", context),
@@ -554,7 +554,7 @@ describe("browser commands", () => {
         title: "スレッドA",
       },
     ]);
-    const { context, dispatch } = createContext({ type: "boardTree", title: "ホーム" });
+    const { context, dispatch } = createContext({ type: "boardList", title: "ホーム" });
 
     await expect(
       executeBrowserCommand("navigation.import-open-thread-tabs", context),
@@ -741,7 +741,7 @@ describe("browser commands", () => {
 
   it("2ペイン切り替えは現在の表示状態に応じたactionを送る", async () => {
     const { context, dispatch } = createContext({
-      type: "boardTree",
+      type: "boardList",
       title: "ホーム",
     });
 
@@ -754,7 +754,7 @@ describe("browser commands", () => {
   });
 
   it("ペインのタブ入れ替えコマンドは2ペイン時だけ表示し、actionを送る", async () => {
-    const { context, dispatch } = createContext({ type: "boardTree", title: "ホーム" });
+    const { context, dispatch } = createContext({ type: "boardList", title: "ホーム" });
 
     expect(resolveBrowserCommands(context).map(({ id }) => id)).not.toContain(
       "layout.swap-pane-tabs",
@@ -768,7 +768,7 @@ describe("browser commands", () => {
   });
 
   it("タブ操作コマンドはアクティブなタブを対象にactionを送る", async () => {
-    const { context, dispatch } = createContext({ type: "boardTree", title: "ホーム" });
+    const { context, dispatch } = createContext({ type: "boardList", title: "ホーム" });
 
     const ids = resolveBrowserCommands(context).map((command) => command.id);
     expect(ids).toContain("tab.close-other-tabs");
@@ -784,7 +784,7 @@ describe("browser commands", () => {
   });
 
   it("他のタブ・右側のタブを閉じるは閉じられるタブがある時だけ有効になる", async () => {
-    const homePage: Page = { type: "boardTree", title: "ホーム" };
+    const homePage: Page = { type: "boardList", title: "ホーム" };
     const viewTab = createTab(homePage);
     const otherTab: Tab = { ...createTab(homePage), id: "tab-2" };
     const dispatch = vi.fn<(action: ScopedTabAction) => void>();
@@ -819,7 +819,7 @@ describe("browser commands", () => {
   });
 
   it("対象指定の実行器がある時は一括閉鎖を実行器へ委譲する", async () => {
-    const { context, dispatch } = createContext({ type: "boardTree", title: "ホーム" });
+    const { context, dispatch } = createContext({ type: "boardList", title: "ホーム" });
     context.tabs = [context.viewTab, { ...createTab(context.viewPage), id: "tab-2" }];
     const runTabCommand = vi.fn(() => true);
     context.runTabCommand = runTabCommand;
@@ -833,8 +833,8 @@ describe("browser commands", () => {
   });
 
   it("復元と全タブ閉鎖も対象指定の実行器へ委譲する", async () => {
-    const closedTab = createTab({ type: "boardTree", title: "閉じたタブ" });
-    const { context, dispatch } = createContext({ type: "boardTree", title: "ホーム" }, [
+    const closedTab = createTab({ type: "boardList", title: "閉じたタブ" });
+    const { context, dispatch } = createContext({ type: "boardList", title: "ホーム" }, [
       closedTab,
     ]);
     const runTabCommand = vi.fn(() => true);
@@ -851,7 +851,7 @@ describe("browser commands", () => {
   });
 
   it("右ペイン移動も対象指定の実行器へ委譲する", async () => {
-    const { context, dispatch } = createContext({ type: "boardTree", title: "ホーム" });
+    const { context, dispatch } = createContext({ type: "boardList", title: "ホーム" });
     const runTabCommand = vi.fn(() => true);
     context.runTabCommand = runTabCommand;
 
@@ -862,7 +862,7 @@ describe("browser commands", () => {
   });
 
   it("タブバー方向切り替えコマンドは保存値に応じて反対方向へ切り替える", async () => {
-    const { context } = createContext({ type: "boardTree", title: "ホーム" });
+    const { context } = createContext({ type: "boardList", title: "ホーム" });
     const configSetMock = vi.fn();
     let originalConfig: unknown;
     try {

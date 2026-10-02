@@ -9,7 +9,7 @@ import type { Tab } from "src/view/browser/types";
 import { describe, expect, it, vi } from "vite-plus/test";
 
 function createTab(overrides: Partial<Tab> = {}): Tab {
-  const page = { type: "boardTree" as const, title: "ホーム" };
+  const page = { type: "boardList" as const, title: "ホーム" };
   return {
     id: "tab-1",
     history: [page, { type: "settings", title: "設定" }],

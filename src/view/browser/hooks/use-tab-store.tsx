@@ -175,8 +175,8 @@ function clearThreadVisitsForTab(visitStore: Map<string, ThreadHistoryVisit>, ta
 
 function getPageIdentity(page: Page): string {
   switch (page.type) {
-    case "boardTree":
-      return "boardTree";
+    case "home":
+      return "home";
     case "boardList":
       return "boardList";
     case "settings":
@@ -283,9 +283,9 @@ function resolveConfiguredNewTabPage(sourcePage: Page | null, sourceTab: Tab | n
   const mode = resolveNewTabPageMode(readConfigValue("new_tab_page_mode"));
 
   if (mode === "home") {
-    // 変更理由: 新規タブの既定ページは従来どおりホームページ（板ツリー）で、常設ホームタブは開かない。
-    // 設定値 "home" は旧バージョンとの互換のため維持し、ページ種別だけ boardTree を使う。
-    return { type: "boardTree", title: "板ツリー" };
+    // ホームを常設タブへ統合したため、新規タブは板一覧から始める。
+    // 保存済みの設定を引き継ぐため、設定値 "home" は互換用に維持する。
+    return { type: "boardList", title: "板一覧" };
   }
 
   if (mode === "custom_board") {
@@ -294,7 +294,7 @@ function resolveConfiguredNewTabPage(sourcePage: Page | null, sourceTab: Tab | n
       return createThreadListPageFromBoardUrl(rawBoardUrl);
     }
 
-    return { type: "boardTree", title: "板ツリー" };
+    return { type: "boardList", title: "板一覧" };
   }
 
   // 変更理由: 「関連する板」タブをスレッドから開くとき、
@@ -305,7 +305,7 @@ function resolveConfiguredNewTabPage(sourcePage: Page | null, sourceTab: Tab | n
     return relatedBoardPage;
   }
 
-  return { type: "boardTree", title: "板ツリー" };
+  return { type: "boardList", title: "板一覧" };
 }
 
 function createTab(sourcePage: Page | null = null, sourceTab: Tab | null = null): Tab {
@@ -516,7 +516,7 @@ function buildCanonicalThreadListStack(
   threadListPage: Extract<Page, { type: "threadList" }>,
 ): Page[] {
   return [
-    { type: "boardTree", title: "板ツリー" },
+    // ホームは常設タブに残し、新規タブの戻る先は板一覧から構築する。
     { type: "boardList", title: "板一覧" },
     threadListPage,
   ];
@@ -599,6 +599,8 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
         (t) => getPageIdentity(getCurrentPage(t)) === targetIdentity,
       );
       if (existingDuplicate) {
+        // 中クリックは既存タブを再利用するときもホームや現在の板からフォーカスを奪わない。
+        if (action.background) return state;
         return {
           ...updatePane(state, paneId, (p) => ({
             ...p,

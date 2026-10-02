@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
       tabs: [
         {
           id: "tab-1",
-          history: [{ type: "boardTree", title: "ホーム" }],
+          history: [{ type: "boardList", title: "ホーム" }],
           currentIndex: 0,
           pinned: false,
           reloadKey: 0,
@@ -154,7 +154,7 @@ describe("TabBar wheel switching", () => {
       tabs: [
         {
           id: "tab-1",
-          history: [{ type: "boardTree", title: "ホーム" }],
+          history: [{ type: "boardList", title: "ホーム" }],
           currentIndex: 0,
           pinned: false,
           reloadKey: 0,
@@ -367,7 +367,7 @@ describe("TabBar wheel switching", () => {
           ...mocks.tabStore.state.tabs,
           {
             id: "tab-3",
-            history: [{ type: "boardTree", title: "新しいタブ" }],
+            history: [{ type: "boardList", title: "新しいタブ" }],
             currentIndex: 0,
             pinned: false,
             reloadKey: 0,
@@ -598,7 +598,7 @@ describe("TabBar wheel switching", () => {
       tabs: [
         {
           id: "tab-1",
-          history: [{ type: "boardTree", title: "ホーム" }],
+          history: [{ type: "boardList", title: "ホーム" }],
           currentIndex: 0,
           pinned: false,
           reloadKey: 0,
@@ -636,7 +636,7 @@ describe("TabBar wheel switching", () => {
       tabs: [
         {
           id: "tab-1",
-          history: [{ type: "boardTree", title: "ホーム" }],
+          history: [{ type: "boardList", title: "ホーム" }],
           currentIndex: 0,
           pinned: false,
           reloadKey: 0,
@@ -688,7 +688,7 @@ describe("TabBar drag-to-reorder", () => {
       tabs: [
         {
           id: "tab-1",
-          history: [{ type: "boardTree", title: "ホーム" }],
+          history: [{ type: "boardList", title: "ホーム" }],
           currentIndex: 0,
           pinned: false,
           reloadKey: 0,
@@ -794,7 +794,7 @@ describe("TabBar detached tabs", () => {
       tabs: [
         {
           id: "tab-1",
-          history: [{ type: "boardTree", title: "ホーム" }],
+          history: [{ type: "boardList", title: "ホーム" }],
           currentIndex: 0,
           pinned: false,
           reloadKey: 0,
@@ -868,7 +868,7 @@ describe("TabBar tab interactions", () => {
       tabs: [
         {
           id: "tab-1",
-          history: [{ type: "boardTree", title: "ホーム" }],
+          history: [{ type: "boardList", title: "ホーム" }],
           currentIndex: 0,
           pinned: false,
           reloadKey: 0,
@@ -942,7 +942,7 @@ describe("TabBar tab interactions", () => {
       tabs: [
         {
           id: "tab-1",
-          history: [{ type: "boardTree", title: "ホーム" }],
+          history: [{ type: "boardList", title: "ホーム" }],
           currentIndex: 0,
           pinned: false,
           reloadKey: 0,
@@ -1001,7 +1001,7 @@ describe("TabBar vertical", () => {
       tabs: [
         {
           id: "tab-1",
-          history: [{ type: "boardTree", title: "ホーム" }],
+          history: [{ type: "boardList", title: "ホーム" }],
           currentIndex: 0,
           pinned: false,
           reloadKey: 0,

@@ -89,7 +89,7 @@ describe("PopularFilterStatusItem", () => {
 
   it("スレッド以外では表示しない", () => {
     mocks.viewPage = {
-      type: "boardTree",
+      type: "boardList",
       title: "ホーム",
       threadUrl: "",
     };

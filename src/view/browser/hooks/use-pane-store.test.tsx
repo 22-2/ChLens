@@ -268,7 +268,7 @@ describe("ペイン（横分割）", () => {
         tabs: [
           {
             id: "legacy-tab",
-            history: [{ type: "boardTree", title: "ホーム" }],
+            history: [{ type: "boardList", title: "ホーム" }],
             currentIndex: 0,
             pinned: false,
             reloadKey: 0,

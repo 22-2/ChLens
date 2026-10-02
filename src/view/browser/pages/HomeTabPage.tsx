@@ -1,7 +1,9 @@
 import React from "react";
 import { getAll as getAllHistory } from "src/core/History";
+import { PageTypeIcon } from "src/view/browser/components/PageTypeIcon";
 import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import { FavoriteBoardsSection } from "src/view/browser/pages/FavoriteBoardsSection";
 import { Alert } from "src/view/browser/ui/Alert";
 import { Button } from "src/view/browser/ui/Button";
 import { Spinner } from "src/view/browser/ui/Spinner";
@@ -48,7 +50,7 @@ const GROUP_LABELS: Record<BoardGroupKey, string> = {
   older: "それ以前",
 };
 
-// 常設ホームタブ専用ビュー。板ツリー（BoardTreePage）とは別物で、最近開いた板だけを並べる。
+// ホームを常設タブへ統合し、お気に入り板と最近開いた板の入口をまとめる。
 // 変更理由: ホームタブ自体は遷移不可のため、板の選択はすべて新規タブで開く。
 export const HomeTabPage: React.FC = () => {
   const { dispatch } = useTabStore();
@@ -141,69 +143,81 @@ export const HomeTabPage: React.FC = () => {
     [dispatch],
   );
 
-  if (loading) {
-    return (
-      <div className="home-tab-page">
-        <div className="home-tab-page__status">
-          <Spinner size="xs" />
-          <span>最近開いた板を読み込み中...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="home-tab-page">
-        <Alert className="home-tab-page__alert" color="red" title="読み込みエラー">
-          {error}
-        </Alert>
-      </div>
-    );
-  }
-
   return (
     <div className="home-tab-page">
-      {boards.length === 0 ? (
-        <div className="home-tab-page__empty">最近開いた板はまだありません。</div>
-      ) : (
-        grouped.map((group) => (
-          <React.Fragment key={group.key}>
-            <div className="home-tab-page__heading">{group.label}</div>
-            <div className="home-tab-page__list">
-              {group.items.map((board) => (
-                <Button
-                  key={board.boardUrl}
-                  className="home-tab-page__link home-tab-page__link--board"
-                  variant="subtle"
-                  onClick={() => openBoard(board)}
-                  onMouseDown={(event) => {
-                    if (event.button === 1) {
-                      // 変更理由: ブラウザーは中ボタンのmousedownでオートスクロールを始めるため、
-                      // 後続のauxclickで背景タブを開く前に既定動作を止める。
+      {/* 常設ホームではNAVIGATEが禁止されるため、板一覧の入口も新規タブを使う。 */}
+      <Button
+        className="home-tab-page__link"
+        variant="subtle"
+        onClick={() => dispatch(tabActions.openInNewTab({ type: "boardList", title: "板一覧" }))}
+        onMouseDown={(event) => {
+          if (event.button === 1) event.preventDefault();
+        }}
+        onAuxClick={(event) => {
+          if (event.button !== 1) return;
+          event.preventDefault();
+          dispatch(
+            tabActions.openInNewTab({ type: "boardList", title: "板一覧" }, { background: true }),
+          );
+        }}
+      >
+        <PageTypeIcon type="boardList" />
+        板一覧を開く
+      </Button>
+      <FavoriteBoardsSection />
+      <section>
+        <div className="home-tab-page__heading">最近開いた板</div>
+        {/* 履歴の取得に失敗しても、お気に入り板と板一覧の入口は使えるようにする。 */}
+        {loading ? (
+          <div className="home-tab-page__status">
+            <Spinner size="xs" />
+            <span>最近開いた板を読み込み中...</span>
+          </div>
+        ) : error ? (
+          <Alert className="home-tab-page__alert" color="red" title="読み込みエラー">
+            {error}
+          </Alert>
+        ) : boards.length === 0 ? (
+          <div className="home-tab-page__empty">最近開いた板はまだありません。</div>
+        ) : (
+          grouped.map((group) => (
+            <React.Fragment key={group.key}>
+              <div className="home-tab-page__heading">{group.label}</div>
+              <div className="home-tab-page__list">
+                {group.items.map((board) => (
+                  <Button
+                    key={board.boardUrl}
+                    className="home-tab-page__link home-tab-page__link--board"
+                    variant="subtle"
+                    onClick={() => openBoard(board)}
+                    onMouseDown={(event) => {
+                      if (event.button === 1) {
+                        // 変更理由: ブラウザーは中ボタンのmousedownでオートスクロールを始めるため、
+                        // 後続のauxclickで背景タブを開く前に既定動作を止める。
+                        event.preventDefault();
+                      }
+                    }}
+                    onAuxClick={(event) => {
+                      if (event.button !== 1) return;
+                      // 変更理由: 常設ホームは通常クリックでも新規タブを開くため、
+                      // 中クリックも同じ板を新規タブへ送り、ブラウザー既定動作との二重処理を防ぐ。
                       event.preventDefault();
-                    }
-                  }}
-                  onAuxClick={(event) => {
-                    if (event.button !== 1) return;
-                    // 変更理由: 常設ホームは通常クリックでも新規タブを開くため、
-                    // 中クリックも同じ板を新規タブへ送り、ブラウザー既定動作との二重処理を防ぐ。
-                    event.preventDefault();
-                    event.stopPropagation();
-                    openBoard(board, true);
-                  }}
-                  title={`${board.boardTitle}\n${board.boardUrl}`}
-                >
-                  <span className="home-tab-page__link-title">{board.boardTitle}</span>
-                  {domainOf(board.boardUrl) ? (
-                    <span className="home-tab-page__link-domain">{domainOf(board.boardUrl)}</span>
-                  ) : null}
-                </Button>
-              ))}
-            </div>
-          </React.Fragment>
-        ))
-      )}
+                      event.stopPropagation();
+                      openBoard(board, true);
+                    }}
+                    title={`${board.boardTitle}\n${board.boardUrl}`}
+                  >
+                    <span className="home-tab-page__link-title">{board.boardTitle}</span>
+                    {domainOf(board.boardUrl) ? (
+                      <span className="home-tab-page__link-domain">{domainOf(board.boardUrl)}</span>
+                    ) : null}
+                  </Button>
+                ))}
+              </div>
+            </React.Fragment>
+          ))
+        )}
+      </section>
     </div>
   );
 };

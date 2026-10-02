@@ -10,7 +10,7 @@ const tabState = {
   panes: [] as Array<{ id: string; tabs: Tab[] }>,
   activePaneId: "pane-a",
 };
-let viewPage: Page = { type: "boardTree", title: "ホーム" };
+let viewPage: Page = { type: "boardList", title: "ホーム" };
 
 vi.mock("src/app/Store2Storage", () => ({
   getStore2String: () => storage.value,
@@ -78,7 +78,7 @@ describe("WriteSessionProvider", () => {
   beforeEach(() => {
     storage.value = null;
     controlsRenderCount = 0;
-    viewPage = { type: "boardTree", title: "ホーム" };
+    viewPage = { type: "boardList", title: "ホーム" };
     tabState.panes = [
       {
         id: "pane-a",

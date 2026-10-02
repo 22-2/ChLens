@@ -24,14 +24,6 @@ vi.mock("src/view/browser/hooks/use-detached-tab-controller", () => ({
   }),
 }));
 
-vi.mock("src/view/browser/pages/BoardTreePage", () => ({
-  BoardTreePage: () => (
-    <div data-testid="page-home" style={{ height: "2400px" }}>
-      home
-    </div>
-  ),
-}));
-
 vi.mock("src/view/browser/pages/HomeTabPage", () => ({
   HomeTabPage: () => (
     <div data-testid="page-home-tab" style={{ height: "2400px" }}>
@@ -109,7 +101,7 @@ vi.mock("src/view/browser/pages/ThreadPage", () => ({
 function createTab(id: string): Tab {
   return {
     id,
-    history: [{ type: "boardTree", title: "ホーム" }],
+    history: [{ type: "home", title: "ホーム" }],
     currentIndex: 0,
     pinned: false,
     reloadKey: 0,
@@ -148,7 +140,7 @@ describe("ContentArea tab switching", () => {
 
   it("アクティブでないタブは display:none で隠す", () => {
     const tab1 = createTabWithPage("tab-1", {
-      type: "boardTree",
+      type: "home",
       title: "ホーム",
     });
     const tab2 = createTabWithPage("tab-2", {
@@ -179,7 +171,7 @@ describe("ContentArea tab switching", () => {
 
   it("非アクティブ化してもタブごとの scroll 状態を保持する", () => {
     const tab1 = createTabWithPage("tab-1", {
-      type: "boardTree",
+      type: "home",
       title: "ホーム",
     });
     const tab2 = createTabWithPage("tab-2", {
@@ -294,7 +286,7 @@ describe("ContentArea tab switching", () => {
       threadUrl: "https://example.com/test/read.cgi/board/123/",
     });
     const homeTab = createTabWithPage("tab-2", {
-      type: "boardTree",
+      type: "home",
       title: "ホーム",
     });
 
@@ -315,7 +307,7 @@ describe("ContentArea tab switching", () => {
 
   it("別窓へ切り離したタブは元窓の本文から外す", () => {
     const mainTab = createTabWithPage("tab-1", {
-      type: "boardTree",
+      type: "home",
       title: "ホーム",
     });
     const detachedTab = createTabWithPage("tab-2", {

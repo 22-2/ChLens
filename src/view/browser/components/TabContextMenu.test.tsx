@@ -28,7 +28,7 @@ const { copyTextMock, dispatchMock, threadTab, secondTab } = vi.hoisted(() => ({
     id: "tab-2",
     history: [
       {
-        type: "boardTree" as const,
+        type: "boardList" as const,
         title: "Other Tab",
       },
     ],

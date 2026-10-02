@@ -1,7 +1,6 @@
 import { memo, type RefObject, useEffect, useRef, useState } from "react";
 import { type ViewSurface, ViewSurfaceProvider } from "src/view/browser/hooks/use-view-surface";
 import { BoardListPage } from "src/view/browser/pages/BoardListPage";
-import { BoardTreePage } from "src/view/browser/pages/BoardTreePage";
 import { BookmarkListPage } from "src/view/browser/pages/BookmarkListPage";
 import { HistoryListPage } from "src/view/browser/pages/HistoryListPage";
 import { HomeTabPage } from "src/view/browser/pages/HomeTabPage";
@@ -36,8 +35,8 @@ function buildPageRenderKey(
       return `${tabId}:${historyIndex}:writeHistoryList`;
     case "logList":
       return `${tabId}:${historyIndex}:logList`;
-    case "boardTree":
-      return `${tabId}:${historyIndex}:boardTree`;
+    case "home":
+      return `${tabId}:${historyIndex}:home`;
   }
 }
 
@@ -70,9 +69,9 @@ const TabPageContent = memo(function TabPageContent({
   const page = getCurrentPage(tab);
 
   switch (page.type) {
-    case "boardTree":
-      // 変更理由: 常設ホームタブは専用ビュー、通常のホームページは板ツリーとして分離する。
-      return tab.locked ? <HomeTabPage /> : <BoardTreePage />;
+    case "home":
+      // ホームは常設タブ専用に統合し、お気に入り板も同じ画面で扱う。
+      return <HomeTabPage />;
     case "boardList":
       return <BoardListPage tabId={tab.id} isActive={isActive} refreshKey={tab.reloadKey} />;
     case "settings":

@@ -1129,7 +1129,7 @@ describe("TabProvider auto refresh state", () => {
     const scopedViewId = screen.getByTestId("scoped-view-id").textContent;
     expect(scopedSelectedId).toBe(mainSelectedId);
     expect(scopedViewId).not.toBe(scopedSelectedId);
-    expect(screen.getByTestId("scoped-selected-title")).toHaveTextContent("板ツリー");
+    expect(screen.getByTestId("scoped-selected-title")).toHaveTextContent("板一覧");
     expect(screen.getByTestId("scoped-view-title")).toHaveTextContent("別窓候補のスレ");
 
     fireEvent.click(screen.getByText("別窓側へ移動"));
@@ -1278,9 +1278,7 @@ describe("TabProvider auto refresh state", () => {
 
     expect(screen.getByTestId("current-page-title")).toHaveTextContent("thread-2");
     // 祖先の自動補完なし: ユーザーが実際に訪れたページのみ積まれる
-    expect(screen.getByTestId("history-titles")).toHaveTextContent(
-      "板ツリー|板A|thread-1|thread-2",
-    );
+    expect(screen.getByTestId("history-titles")).toHaveTextContent("板一覧|板A|thread-1|thread-2");
     expect(screen.getByTestId("history-index")).toHaveTextContent("3");
 
     fireEvent.click(screen.getByText("戻る"));
@@ -1332,12 +1330,12 @@ describe("TabProvider auto refresh state", () => {
     fireEvent.click(screen.getByText("スレをURL直開き"));
 
     // 祖先の自動補完なし: ホームと直開きスレだけが積まれる
-    expect(screen.getByTestId("history-titles")).toHaveTextContent("板ツリー|direct-thread");
+    expect(screen.getByTestId("history-titles")).toHaveTextContent("板一覧|direct-thread");
 
     fireEvent.click(screen.getByText("戻る"));
 
-    expect(screen.getByTestId("current-page-type")).toHaveTextContent("boardTree");
-    expect(screen.getByTestId("current-page-title")).toHaveTextContent("板ツリー");
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent("boardList");
+    expect(screen.getByTestId("current-page-title")).toHaveTextContent("板一覧");
   });
 
   it("UPDATE_TITLE_FOR_TAB は対象タブだけを更新し、アクティブタブを汚染しない", async () => {
@@ -1468,7 +1466,7 @@ describe("TabProvider auto refresh state", () => {
     fireEvent.click(screen.getByText("板URL直開き"));
     expect(screen.getByTestId("current-page-type")).toHaveTextContent("threadList");
     // 祖先の自動補完なし: ホームと板だけが積まれる
-    expect(screen.getByTestId("history-titles")).toHaveTextContent("板ツリー|板A");
+    expect(screen.getByTestId("history-titles")).toHaveTextContent("板一覧|板A");
     expect(screen.getByTestId("history-index")).toHaveTextContent("1");
 
     fireEvent.click(screen.getByText("進む"));
@@ -1507,12 +1505,12 @@ describe("TabProvider auto refresh state", () => {
 
     fireEvent.click(screen.getByText("新規タブ"));
     expect(screen.getByTestId("tabs-count")).toHaveTextContent("3");
-    expect(screen.getByTestId("current-page-type")).toHaveTextContent("boardTree");
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent("boardList");
     expect(screen.getByTestId("history-length")).toHaveTextContent("1");
     expect(screen.getByTestId("history-index")).toHaveTextContent("0");
 
     fireEvent.click(screen.getByText("進む"));
-    expect(screen.getByTestId("current-page-type")).toHaveTextContent("boardTree");
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent("boardList");
     expect(screen.getByTestId("history-index")).toHaveTextContent("0");
   });
 
