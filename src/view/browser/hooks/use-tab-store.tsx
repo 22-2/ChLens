@@ -613,8 +613,9 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
         (t) => getPageIdentity(getCurrentPage(t)) === targetIdentity,
       );
       if (existingDuplicate) {
-        // 中クリックは既存タブを再利用するときもホームや現在の板からフォーカスを奪わない。
-        if (action.background) return state;
+        // スレを再度開く操作では既存タブへ移動するため、背景指定は新規作成時だけに適用する。
+        // 板などを背景で開く操作は、既存タブがあっても現在の表示を維持する。
+        if (action.background && action.page.type !== "thread") return state;
         return {
           ...updatePane(state, paneId, (p) => ({
             ...p,

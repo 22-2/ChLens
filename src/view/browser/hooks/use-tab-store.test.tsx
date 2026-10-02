@@ -754,73 +754,81 @@ describe("TabProvider auto refresh state", () => {
     });
   });
 
-  it("OPEN_IN_NEW_TAB は設定オフ時にバックグラウンドで新規タブを作成する", async () => {
-    vi.resetModules();
-    localStorage.setItem("config_focus_new_tab_on_open", "off");
-    const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
+  it.each([
+    { focusSetting: "off", background: undefined },
+    { focusSetting: "off", background: true },
+    { focusSetting: "on", background: true },
+  ])(
+    "新規スレは背景で開き、既存スレにはフォーカスする（設定=$focusSetting、背景指定=$background）",
+    async ({ focusSetting, background }) => {
+      vi.resetModules();
+      localStorage.setItem("config_focus_new_tab_on_open", focusSetting);
+      const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
 
-    function Harness() {
-      const { state, viewTab, viewPage, dispatch } = useTabStore();
+      function Harness() {
+        const { state, viewTab, viewPage, dispatch } = useTabStore();
 
-      return (
-        <>
-          <button
-            onClick={() =>
-              dispatch({
-                type: "NAVIGATE",
-                page: {
-                  type: "threadList",
-                  title: "板A",
-                  boardUrl: "https://example.com/board-a/",
-                  boardTitle: "板A",
-                },
-              })
-            }
-          >
-            板Aへ移動
-          </button>
-          <button
-            onClick={() =>
-              dispatch({
-                type: "OPEN_IN_NEW_TAB",
-                page: {
-                  type: "thread",
-                  title: "既存スレ",
-                  threadUrl: "https://example.com/test/read.cgi/board-a/1/",
-                },
-              })
-            }
-          >
-            既存スレを新しいタブで開く
-          </button>
-          <output data-testid="tabs-count">{state.tabs.length}</output>
-          <output data-testid="active-tab-id">{viewTab.id}</output>
-          <output data-testid="current-page-title">{viewPage.title}</output>
-        </>
+        return (
+          <>
+            <button
+              onClick={() =>
+                dispatch({
+                  type: "NAVIGATE",
+                  page: {
+                    type: "threadList",
+                    title: "板A",
+                    boardUrl: "https://example.com/board-a/",
+                    boardTitle: "板A",
+                  },
+                })
+              }
+            >
+              板Aへ移動
+            </button>
+            <button
+              onClick={() =>
+                dispatch({
+                  type: "OPEN_IN_NEW_TAB",
+                  background,
+                  page: {
+                    type: "thread",
+                    title: "既存スレ",
+                    threadUrl: "https://example.com/test/read.cgi/board-a/1/",
+                  },
+                })
+              }
+            >
+              既存スレを新しいタブで開く
+            </button>
+            <output data-testid="tabs-count">{state.tabs.length}</output>
+            <output data-testid="active-tab-id">{viewTab.id}</output>
+            <output data-testid="current-page-title">{viewPage.title}</output>
+          </>
+        );
+      }
+
+      render(
+        <TabProvider>
+          <Harness />
+        </TabProvider>,
       );
-    }
 
-    render(
-      <TabProvider>
-        <Harness />
-      </TabProvider>,
-    );
+      fireEvent.click(screen.getByText("板Aへ移動"));
+      const originalActiveTabId = screen.getByTestId("active-tab-id").textContent;
 
-    fireEvent.click(screen.getByText("板Aへ移動"));
-    const originalActiveTabId = screen.getByTestId("active-tab-id").textContent;
+      fireEvent.click(screen.getByText("既存スレを新しいタブで開く"));
+      expect(screen.getByTestId("tabs-count")).toHaveTextContent("2");
+      expect(screen.getByTestId("active-tab-id").textContent).toBe(originalActiveTabId);
 
-    fireEvent.click(screen.getByText("既存スレを新しいタブで開く"));
-    expect(screen.getByTestId("tabs-count")).toHaveTextContent("2");
-    expect(screen.getByTestId("active-tab-id").textContent).toBe(originalActiveTabId);
+      // 現仕様では重複防止が働くため、同じURLを再度開いても新規タブは増えず、
+      // 既存の該当タブへフォーカスが移る（背景設定でも重複時はそのタブを表示する）。
+      fireEvent.click(screen.getByText("既存スレを新しいタブで開く"));
 
-    // 現仕様では重複防止が働くため、同じURLを再度開いても新規タブは増えず、
-    // 既存の該当タブへフォーカスが移る（背景設定でも重複時はそのタブを表示する）。
-    fireEvent.click(screen.getByText("既存スレを新しいタブで開く"));
-
-    expect(screen.getByTestId("tabs-count")).toHaveTextContent("2");
-    expect(screen.getByTestId("active-tab-id").textContent).not.toBe(originalActiveTabId);
-    expect(screen.getByTestId("current-page-title")).toHaveTextContent("既存スレ");
-  });
+      expect(screen.getByTestId("tabs-count")).toHaveTextContent("2");
+      expect(screen.getByTestId("active-tab-id").textContent).not.toBe(originalActiveTabId);
+      expect(screen.getByTestId("current-page-title")).toHaveTextContent("既存スレ");
+    },
+  );
 
   it("OPEN_IN_NEW_TAB は設定オン時に新しいタブをアクティブにする", async () => {
     vi.resetModules();
