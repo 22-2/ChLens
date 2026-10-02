@@ -24,9 +24,10 @@ const originalUrl = window.location.href;
 function savedState(): TabStoreState {
   const boardTab = {
     ...createHomeTab("board-tab"),
-    locked: false,
     pinned: true,
+    currentIndex: 1,
     history: [
+      { type: "home" as const, title: "ホーム" },
       {
         type: "threadList" as const,
         title: "サンプル板",

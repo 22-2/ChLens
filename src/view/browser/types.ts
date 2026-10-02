@@ -1,7 +1,7 @@
 import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
 
 // ページ種別の定義
-// 常設ホームは入口として板一覧も内包し、スレ一覧の戻る先はホームの最初の画面にする。
+// すべてのタブがホームを起点とし、同じタブでスレ一覧・スレッドへ移動する。
 export type PageType =
   | "home"
   | "newTab"
@@ -27,7 +27,7 @@ export interface HomePage {
   title: string;
 }
 
-// 常設ホームを複製せず、開く板が未指定でも移動・終了できる通常タブを用意する。
+// 保存済みセッションの旧ページ種別を読み取り、復元時にhomeへ移行する。
 export interface NewTabPage {
   type: "newTab";
   title: string;
@@ -109,7 +109,7 @@ export interface Tab {
   history: Page[];
   currentIndex: number;
   pinned: boolean;
-  // 常設ホームタブ。ペイン先頭に固定し、遷移・閉鎖・移動・ピン解除を禁止する。
+  // 旧セッションの常設ホームを通常タブへ移行するためだけに読み取る。
   locked?: boolean;
   // ページの強制再読み込みに使うカウンター。インクリメントするとContentAreaがページを再マウントする
   reloadKey: number;
@@ -195,14 +195,13 @@ export function getCurrentPage(tab: Tab): Page {
   return tab.history[tab.currentIndex];
 }
 
-// ホームは常設タブだけに置き、通常タブの戻る履歴に重複して現れないようにする。
+// 新規タブと空ペインの入口は通常のホームに揃え、固定扱いしない。
 export function createHomeTab(id?: string): Tab {
   return {
     id: id ?? crypto.randomUUID(),
     history: [{ type: "home", title: "ホーム" }],
     currentIndex: 0,
-    pinned: true,
-    locked: true,
+    pinned: false,
     reloadKey: 0,
     autoRefreshEnabled: false,
     autoRefreshPageKey: null,
@@ -210,16 +209,12 @@ export function createHomeTab(id?: string): Tab {
   };
 }
 
-// ペイン先頭にホームタブが無ければ挿入し、既存ホームタブを先頭へ寄せる。
-// 変更理由: 他タブをピン留めしても常設ホームが左端/上端に残る不変条件を保つ。
-export function ensurePaneHomeTab<T extends { tabs: Tab[]; activeTabId: string }>(pane: T): T {
-  const homeIndex = pane.tabs.findIndex((tab) => tab.locked);
-  if (homeIndex === 0) {
-    return pane;
-  }
-  const withoutHome = pane.tabs.filter((tab) => !tab.locked);
-  const homeTab = homeIndex > 0 ? pane.tabs[homeIndex]! : createHomeTab();
-  return { ...pane, tabs: [homeTab, ...withoutHome] };
+// タブの移動で空になったペインにだけ入口を補い、既存のタブ順を保つ。
+export function ensurePaneHasTab<T extends { tabs: Tab[]; activeTabId: string }>(pane: T): T {
+  // 常設タブは追加せず、移動や終了で空になったペインだけホームで補う。
+  if (pane.tabs.length > 0) return pane;
+  const home = createHomeTab();
+  return { ...pane, tabs: [home], activeTabId: home.id };
 }
 
 function normalizeViewStateLocation(rawLocation: string): string {
@@ -244,8 +239,8 @@ export function getPageViewStateKey(page: Page): string {
 }
 
 export function canGoBack(tab: Tab): boolean {
-  // 通常タブの履歴先頭でも常設ホームへ戻れる。ホーム自体には戻る先を作らない。
-  return tab.currentIndex > 0 || (!tab.locked && getCurrentPage(tab).type !== "home");
+  // ホームへの戻るも同じタブの履歴で行い、他のタブを選択しない。
+  return tab.currentIndex > 0;
 }
 
 export function canGoForward(tab: Tab): boolean {
@@ -288,6 +283,7 @@ export function buildHierarchy(page: Page): Page[] {
   switch (page.type) {
     case "home":
     case "newTab":
+      return [{ type: "home", title: "ホーム" }];
     case "boardList":
     case "settings":
     case "bookmarkList":
@@ -295,11 +291,13 @@ export function buildHierarchy(page: Page): Page[] {
     case "writeHistoryList":
     case "logList":
     case "threadList":
-      return [page];
+      // URLや別タブから直接開いた場合も、同じタブのホームへ戻れる履歴を持たせる。
+      return [{ type: "home", title: "ホーム" }, page];
 
     case "thread": {
       const boardUrl = threadUrlToBoardUrl(page.threadUrl);
       return [
+        { type: "home", title: "ホーム" },
         {
           type: "threadList",
           title: boardUrl,

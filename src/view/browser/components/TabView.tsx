@@ -71,10 +71,8 @@ const TabPageContent = memo(function TabPageContent({
 
   switch (page.type) {
     case "newTab":
-      // 保存済みの板の入口を共有し、新しいタブでもURLを知らずに移動できるようにする。
-      return <HomeTabPage />;
     case "home":
-      // ホームは常設タブ専用に統合し、お気に入り板も同じ画面で扱う。
+      // 旧空タブの種別も同じホームを表示し、入口画面を一つに統一する。
       return <HomeTabPage />;
     case "boardList":
       return <BoardListPage tabId={tab.id} isActive={isActive} refreshKey={tab.reloadKey} />;

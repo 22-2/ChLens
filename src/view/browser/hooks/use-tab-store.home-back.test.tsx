@@ -75,179 +75,140 @@ function activeTab() {
   return pane.tabs.find((tab) => tab.id === pane.activeTabId)!;
 }
 
-describe("スレ一覧から常設ホームへの戻る", () => {
-  it("ホームだけのペインを分割・統合してもホームの選択を保つ", async () => {
+describe("通常タブのホームと閲覧履歴", () => {
+  it("初期ホームは固定されず、新規タブもそれぞれ独立したホームになる", async () => {
     await mount();
-    act(() => dispatch({ type: "SPLIT_PANE" }));
-    expect(stateRef.current.panes).toHaveLength(2);
-    act(() => dispatch({ type: "CLOSE_PANE" }));
-    expect(stateRef.current.panes).toHaveLength(1);
-    expect(stateRef.current.panes[0].tabs).toHaveLength(1);
-    expect(screen.getByTestId("page")).toHaveTextContent("home");
-  });
-
-  it("初期表示はホームだけを選び、板一覧は同じ常設タブ内で開く", async () => {
-    await mount();
-    expect(screen.getByTestId("page")).toHaveTextContent("home");
-    expect(stateRef.current.panes[0].tabs).toHaveLength(1);
-    act(() => dispatch({ type: "NAVIGATE", page: { type: "boardList", title: "板一覧" } }));
-    expect(screen.getByTestId("page")).toHaveTextContent("boardList");
-    expect(stateRef.current.panes[0].tabs).toHaveLength(1);
-    expect(activeTab().locked).toBe(true);
-    expect(canGoBack(activeTab())).toBe(true);
-    act(() => dispatch({ type: "NAVIGATE", page: { type: "boardList", title: "板一覧" } }));
-    expect(activeTab().history).toHaveLength(2);
-    act(() => dispatch({ type: "GO_BACK" }));
-    expect(screen.getByTestId("page")).toHaveTextContent("home");
-  });
-
-  it.each(["related_board", "home", "custom_board"])(
-    "ホームだけでも%s設定の新規タブ操作で通常タブを追加し、移動と終了ができる",
-    async (mode) => {
-      localStorage.setItem("config_new_tab_page_mode", mode);
-      await mount();
-      const homeId = activeTab().id;
-      act(() => dispatch({ type: "ADD_TAB" }));
-      const newId = activeTab().id;
-      expect(newId).not.toBe(homeId);
-      expect(activeTab().locked).toBeFalsy();
-      expect(activeTab().pinned).toBe(false);
-      expect(screen.getByTestId("page")).toHaveTextContent("newTab");
-      expect(stateRef.current.panes[0].tabs).toHaveLength(2);
-      act(() => dispatch({ type: "NAVIGATE", page: board }));
-      expect(activeTab().id).toBe(newId);
-      expect(screen.getByTestId("page")).toHaveTextContent("threadList");
-      expect(stateRef.current.panes[0].tabs).toHaveLength(2);
-      act(() => dispatch({ type: "CLOSE_TAB", tabId: newId }));
-      expect(activeTab().id).toBe(homeId);
-      expect(stateRef.current.panes[0].tabs).toHaveLength(1);
-    },
-  );
-
-  it("空の新規タブは再読み込みでも板一覧に変わらず復元する", async () => {
-    await mount();
+    const first = activeTab().id;
+    expect(activeTab().pinned).toBe(false);
+    expect(activeTab().locked).toBeUndefined();
     act(() => dispatch({ type: "ADD_TAB" }));
-    const saved = stateRef.current;
-    const newId = activeTab().id;
-    cleanup();
-    vi.resetModules();
-    await mount(saved);
-    expect(activeTab().id).toBe(newId);
-    expect(activeTab().locked).toBeFalsy();
-    expect(screen.getByTestId("page")).toHaveTextContent("newTab");
-    expect(stateRef.current.panes[0].tabs).toHaveLength(2);
+    const second = activeTab().id;
+    act(() => dispatch({ type: "ADD_TAB" }));
+    expect(new Set([first, second, activeTab().id]).size).toBe(3);
+    expect(stateRef.current.panes[0].tabs).toHaveLength(3);
+    expect(screen.getByTestId("page")).toHaveTextContent("home");
   });
 
-  it("ホーム内の板一覧で板を選ぶと別タブを開き、戻るではホームの最初の画面を選ぶ", async () => {
+  it("同じタブでホーム・板・スレを開き、戻ると進むで往復できる", async () => {
     await mount();
-    act(() => dispatch({ type: "NAVIGATE", page: { type: "boardList", title: "板一覧" } }));
-    const homeId = activeTab().id;
+    const id = activeTab().id;
+    act(() => dispatch({ type: "NAVIGATE", page: board }));
     act(() =>
       dispatch({
-        type: "UPDATE_TAB_VIEW_STATE",
-        tabId: homeId,
-        pageKey: "boardList",
-        patch: { searchQuery: "サンプル" },
-      }),
-    );
-    act(() => dispatch({ type: "NAVIGATE", page: board }));
-    expect(activeTab().locked).toBeFalsy();
-    expect(activeTab().history).toEqual([board]);
-    expect(stateRef.current.panes[0].tabs).toHaveLength(2);
-    act(() => dispatch({ type: "GO_BACK" }));
-    expect(activeTab().id).toBe(homeId);
-    expect(screen.getByTestId("page")).toHaveTextContent("home");
-    act(() => dispatch({ type: "NAVIGATE", page: { type: "boardList", title: "板一覧" } }));
-    expect(activeTab().viewStates?.boardList.searchQuery).toBe("サンプル");
-    expect(stateRef.current.panes[0].tabs).toHaveLength(2);
-  });
-
-  it("ホーム内の板一覧と検索状態をセッションから復元する", async () => {
-    const home = {
-      ...createHomeTab("saved-home"),
-      history: [
-        { type: "home" as const, title: "ホーム" },
-        { type: "boardList" as const, title: "板一覧" },
-      ],
-      currentIndex: 1,
-      viewStates: { boardList: { searchQuery: "保存済み" } },
-    };
-    await mount({
-      panes: [{ id: "saved", tabs: [home], activeTabId: home.id }],
-      activePaneId: "saved",
-      closedTabs: [],
-    });
-    expect(screen.getByTestId("page")).toHaveTextContent("boardList");
-    expect(activeTab().viewStates?.boardList.searchQuery).toBe("保存済み");
-    act(() => dispatch({ type: "GO_BACK" }));
-    expect(screen.getByTestId("page")).toHaveTextContent("home");
-  });
-
-  it("ホームから開いた板の履歴先頭でも戻れるが、スレ一覧タブの状態は保つ", async () => {
-    await mount();
-    act(() => dispatch({ type: "NAVIGATE", page: board }));
-    const original = activeTab();
-    expect(original.history.map((page) => page.type)).toEqual(["threadList"]);
-    expect(canGoBack(original)).toBe(true);
-    act(() => dispatch({ type: "GO_BACK" }));
-    expect(screen.getByTestId("page")).toHaveTextContent("home");
-    expect(stateRef.current.panes[0].tabs.find((tab) => tab.id === original.id)).toEqual(original);
-    expect(canGoBack(activeTab())).toBe(false);
-  });
-
-  it("すべて閉じるの置き換え先がホームでも常設ホームは1枚だけ残る", async () => {
-    localStorage.setItem("config_new_tab_page_mode", "home");
-    await mount();
-    act(() => dispatch({ type: "NAVIGATE", page: board }));
-    act(() => dispatch({ type: "CLOSE_ALL_TABS" }));
-    expect(stateRef.current.panes[0].tabs).toHaveLength(1);
-    expect(screen.getByTestId("page")).toHaveTextContent("home");
-  });
-
-  it("スレッドからはスレ一覧へ戻り、次の戻るでホームを選ぶ", async () => {
-    await mount();
-    act(() =>
-      dispatch({
-        type: "OPEN_IN_NEW_TAB_FORCE",
+        type: "NAVIGATE",
         page: {
           type: "thread",
-          title: "スレッド",
+          title: "スレ",
           threadUrl: "https://example.com/test/read.cgi/sample/1/",
         },
-        focus: true,
       }),
     );
-    expect(activeTab().history.map((page) => page.type)).toEqual(["threadList", "thread"]);
+    expect(activeTab().history.map((page) => page.type)).toEqual(["home", "threadList", "thread"]);
     act(() => dispatch({ type: "GO_BACK" }));
     expect(screen.getByTestId("page")).toHaveTextContent("threadList");
     act(() => dispatch({ type: "GO_BACK" }));
     expect(screen.getByTestId("page")).toHaveTextContent("home");
+    expect(canGoBack(activeTab())).toBe(false);
+    act(() => dispatch({ type: "GO_FORWARD" }));
+    expect(screen.getByTestId("page")).toHaveTextContent("threadList");
+    expect(activeTab().id).toBe(id);
+    expect(stateRef.current.panes[0].tabs).toHaveLength(1);
   });
 
-  it("別ペインの旧セッションに板一覧の祖先があっても、対象ペインのホームへ戻る", async () => {
+  it("板一覧から板を選ぶと、板一覧を挟まず同じタブのホームへ戻る", async () => {
+    await mount();
+    const id = activeTab().id;
+    act(() => dispatch({ type: "NAVIGATE", page: { type: "boardList", title: "板一覧" } }));
+    act(() => dispatch({ type: "NAVIGATE", page: board }));
+    expect(activeTab().history.map((page) => page.type)).toEqual(["home", "threadList"]);
+    act(() => dispatch({ type: "GO_BACK" }));
+    expect(activeTab().id).toBe(id);
+    expect(screen.getByTestId("page")).toHaveTextContent("home");
+  });
+
+  it("スレを新規タブで直接開いても板とホームの戻る先を持つ", async () => {
+    await mount();
+    act(() =>
+      dispatch({
+        type: "OPEN_IN_NEW_TAB_FORCE",
+        focus: true,
+        page: {
+          type: "thread",
+          title: "スレ",
+          threadUrl: "https://example.com/test/read.cgi/sample/1/",
+        },
+      }),
+    );
+    expect(activeTab().history.map((page) => page.type)).toEqual(["home", "threadList", "thread"]);
+    const id = activeTab().id;
+    act(() => dispatch({ type: "GO_BACK" }));
+    act(() => dispatch({ type: "GO_BACK" }));
+    expect(activeTab().id).toBe(id);
+    expect(screen.getByTestId("page")).toHaveTextContent("home");
+  });
+
+  it("分割したペインを統合してもホームを重複扱いせず選択を保つ", async () => {
+    await mount();
+    act(() => dispatch({ type: "SPLIT_PANE" }));
+    const id = activeTab().id;
+    act(() => dispatch({ type: "CLOSE_PANE" }));
+    expect(stateRef.current.panes).toHaveLength(1);
+    expect(stateRef.current.panes[0].tabs).toHaveLength(2);
+    expect(activeTab().id).toBe(id);
+  });
+
+  it("旧固定ホームと旧空タブをIDを保って通常ホームへ移行する", async () => {
+    const oldHome: Tab = { ...createHomeTab("old-home"), locked: true, pinned: true };
+    const oldBlank: Tab = {
+      ...createHomeTab("old-blank"),
+      history: [{ type: "newTab", title: "新しいタブ" }],
+    };
+    await mount({
+      panes: [{ id: "pane", tabs: [oldHome, oldBlank], activeTabId: oldBlank.id }],
+      activePaneId: "pane",
+      closedTabs: [],
+    });
+    expect(stateRef.current.panes[0].tabs.map((tab) => tab.id)).toEqual([oldHome.id, oldBlank.id]);
+    expect(
+      stateRef.current.panes[0].tabs.every((tab) => !tab.pinned && tab.locked === undefined),
+    ).toBe(true);
+    expect(activeTab().id).toBe(oldBlank.id);
+    expect(screen.getByTestId("page")).toHaveTextContent("home");
+  });
+
+  it("別ペインの戻る操作は対象タブの履歴だけを戻す", async () => {
     const tab: Tab = {
       ...createHomeTab("right-board"),
-      locked: false,
-      pinned: false,
       history: [{ type: "boardList", title: "板一覧" }, board],
       currentIndex: 1,
     };
-    const leftHome = createHomeTab("left-home");
-    const rightHome = createHomeTab("right-home");
+    const left = createHomeTab("left-home");
     await mount({
       panes: [
-        { id: "left", tabs: [leftHome], activeTabId: leftHome.id },
-        { id: "right", tabs: [rightHome, tab], activeTabId: tab.id },
+        { id: "left", tabs: [left], activeTabId: left.id },
+        { id: "right", tabs: [tab], activeTabId: tab.id },
       ],
       activePaneId: "left",
       closedTabs: [],
     });
     act(() => dispatch({ type: "GO_BACK", paneId: "right", tabId: tab.id }));
-    expect(stateRef.current.activePaneId).toBe("right");
-    expect(activeTab().id).toBe(rightHome.id);
-    expect(
-      getCurrentPage(stateRef.current.panes[1].tabs.find((candidate) => candidate.id === tab.id)!),
-    ).toEqual(board);
-    expect(stateRef.current.panes[0].activeTabId).toBe(leftHome.id);
+    expect(stateRef.current.activePaneId).toBe("left");
+    expect(stateRef.current.panes[1].activeTabId).toBe(tab.id);
+    expect(getCurrentPage(stateRef.current.panes[1].tabs[0]).type).toBe("home");
+  });
+
+  it("ホームもピン留めと終了ができ、全終了後は通常ホームを一つ開く", async () => {
+    await mount();
+    const id = activeTab().id;
+    act(() => dispatch({ type: "TOGGLE_PIN", tabId: id }));
+    expect(activeTab().pinned).toBe(true);
+    act(() => dispatch({ type: "TOGGLE_PIN", tabId: id }));
+    act(() => dispatch({ type: "ADD_TAB" }));
+    act(() => dispatch({ type: "CLOSE_TAB", tabId: id }));
+    expect(stateRef.current.panes[0].tabs.some((tab) => tab.id === id)).toBe(false);
+    act(() => dispatch({ type: "CLOSE_ALL_TABS" }));
+    expect(stateRef.current.panes[0].tabs).toHaveLength(1);
+    expect(activeTab().pinned).toBe(false);
+    expect(getCurrentPage(activeTab()).type).toBe("home");
   });
 });

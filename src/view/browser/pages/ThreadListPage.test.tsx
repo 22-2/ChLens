@@ -1295,8 +1295,8 @@ describe("ThreadListPage", () => {
     await waitFor(() => {
       const menu = document.querySelector(".context-menu");
       expect(menu).not.toBeNull();
-      // 履歴先頭のスレ一覧でも常設ホームへ戻れるため、戻る操作を有効にする。
-      expect(menu?.querySelector('[aria-label="戻る"]')).toBeEnabled();
+      // このタブは履歴先頭のため、戻る先が存在しない。
+      expect(menu?.querySelector('[aria-label="戻る"]')).toBeDisabled();
       expect(menu?.querySelector('[aria-label="進む"]')).not.toBeNull();
       expect(menu?.querySelector('[aria-label="更新"]')).not.toBeNull();
       expect(menu?.querySelector(".context-menu__header-actions")).not.toBeNull();

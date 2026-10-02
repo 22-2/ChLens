@@ -1,6 +1,6 @@
 import type { TabStoreState } from "src/view/browser/hooks/tab-store-types";
 import type { Page, Pane, Tab } from "src/view/browser/types";
-import { createHomeTab, ensurePaneHomeTab } from "src/view/browser/types";
+import { ensurePaneHasTab } from "src/view/browser/types";
 import { resetAutoRefreshState } from "src/view/browser/utils/auto-refresh-pages";
 import {
   getBrowserSessionJson,
@@ -10,9 +10,9 @@ import {
 export function sanitizeTabStoreState(state: TabStoreState): TabStoreState {
   return {
     ...state,
-    // 変更理由: どのペインにも常設ホームを先頭に保ち、他タブのピン留めで埋もれさせない。
+    // 空になったペインだけ補い、保存のたびにホームタブを増やさない。
     panes: state.panes.map((pane) =>
-      ensurePaneHomeTab({
+      ensurePaneHasTab({
         ...pane,
         tabs: pane.tabs.map((tab) => resetAutoRefreshState(tab)),
       }),
@@ -22,44 +22,36 @@ export function sanitizeTabStoreState(state: TabStoreState): TabStoreState {
 }
 
 function normalizeLoadedTab(tab: Tab): Tab {
-  // 常設ホームの旧ページ種別は専用のhomeへ移し、通常タブには板一覧だけを残す。
-  if (tab.locked) {
-    const home = { ...tab, ...createHomeTab(tab.id) };
-    // F5後もホーム内の板一覧と検索状態を復元し、旧版の常設板ツリーはホームへ移す。
-    if (tab.history?.[0]?.type === "home" && tab.history[1]?.type === "boardList") {
-      return {
-        ...home,
-        history: [home.history[0], tab.history[1]],
-        currentIndex: tab.currentIndex === 1 ? 1 : 0,
-      };
-    }
-    return home;
-  }
-
+  const { locked, ...fields } = tab;
+  // 旧常設ホーム・空の新規タブを通常ホームへ移し、固定状態とタブIDは独立して引き継ぐ。
+  const oldHistory: Page[] = (tab.history ?? []).map((page) =>
+    ["newTab", "boardTree"].includes(page.type) ? { type: "home", title: "ホーム" } : page,
+  );
+  const oldIndex = Math.max(0, Math.min(tab.currentIndex ?? 0, oldHistory.length - 1));
   const history: Page[] = [];
   let currentIndex = 0;
-  for (const [index, page] of (tab.history ?? []).entries()) {
-    const type = (page as { type: string }).type;
-    const migratedPage: Page =
-      type === "home" || type === "boardTree" ? { type: "boardList", title: "板一覧" } : page;
-    // 旧階層の「板ツリー → 板一覧」が同じ画面への二度の戻る操作にならないようまとめる。
-    if (!(migratedPage.type === "boardList" && history.at(-1)?.type === "boardList")) {
-      history.push(migratedPage);
-    }
-    if (index <= tab.currentIndex) currentIndex = history.length - 1;
+  oldHistory.forEach((page, index) => {
+    // 板一覧から開いた板の戻る先をホームに統一するが、表示中の板一覧は復元する。
+    if (
+      page.type === "boardList" &&
+      index !== oldIndex &&
+      oldHistory[index + 1]?.type === "threadList"
+    )
+      return;
+    if (index === oldIndex) currentIndex = history.length;
+    history.push(page);
+  });
+  if (history[0]?.type !== "home") {
+    history.unshift({ type: "home", title: "ホーム" });
+    if (history.length > 1) currentIndex += 1;
   }
-  if (history.length === 0) history.push({ type: "boardList", title: "板一覧" });
-
-  const normalized = {
-    ...tab,
+  return resetAutoRefreshState({
+    ...fields,
     history,
     currentIndex,
-    pinned: tab.pinned ?? false,
-    locked: tab.locked ?? false,
+    pinned: locked ? false : (tab.pinned ?? false),
     reloadKey: tab.reloadKey ?? 0,
-  };
-  // 変更理由: 旧セッションに自動更新状態が残っていても復元時は常にOFFへ正規化する。
-  return resetAutoRefreshState(normalized);
+  });
 }
 
 // 旧形状（単一タブリスト）のセッションも読めるようにするための型。
@@ -86,7 +78,7 @@ export function loadTabStoreSession(): TabStoreState | null {
       const panes = parsed.panes
         .filter((pane) => pane.tabs?.length > 0)
         .map((pane) =>
-          ensurePaneHomeTab({
+          ensurePaneHasTab({
             ...pane,
             tabs: pane.tabs.map((tab) => normalizeLoadedTab(tab)),
             activeTabId: pane.tabs.some((tab) => tab.id === pane.activeTabId)
@@ -111,7 +103,7 @@ export function loadTabStoreSession(): TabStoreState | null {
       const activeTabId = tabs.some((tab) => tab.id === parsed.activeTabId)
         ? parsed.activeTabId
         : tabs[0].id;
-      const pane: Pane = ensurePaneHomeTab({
+      const pane: Pane = ensurePaneHasTab({
         id: crypto.randomUUID(),
         tabs,
         activeTabId,

@@ -31,7 +31,8 @@ export const DEFAULT_CONFIG: Readonly<Record<string, string>> = {
   default_name: "",
   default_mail: "",
   focus_new_tab_on_open: "on",
-  new_tab_page_mode: "related_board",
+  // 新規タブも同じホームを入口にし、既存の関連板・指定板の設定は選択肢として保つ。
+  new_tab_page_mode: "home",
   new_tab_page_board_url: "",
   // 変更理由: 垂直タブバー導入時の既定は水平とし、既存利用者の見た目を変えない。
   tab_bar_orientation: "horizontal",

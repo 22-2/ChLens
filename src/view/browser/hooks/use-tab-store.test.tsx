@@ -491,7 +491,7 @@ describe("TabProvider auto refresh state", () => {
       expect(screen.getByTestId("stopped-thread-url")).toHaveTextContent("");
       // 現仕様の NAVIGATE は祖先(home/板/スレ一覧)を自動補完しないため、
       // 初期[home] → thread-1 で1段 → thread-2 で1段の計3エントリになる。
-      expect(screen.getByTestId("history-length")).toHaveTextContent("3");
+      expect(screen.getByTestId("history-length")).toHaveTextContent("4");
       expect(screen.getByTestId("current-thread-title")).toHaveTextContent("thread-2");
       expect(screen.getByTestId("current-thread-enabled")).toHaveTextContent("enabled");
     },
@@ -561,7 +561,7 @@ describe("TabProvider auto refresh state", () => {
 
     fireEvent.click(screen.getByText("新規タブで開く"));
 
-    expect(screen.getByTestId("tabs-count")).toHaveTextContent("3");
+    expect(screen.getByTestId("tabs-count")).toHaveTextContent("2");
     expect(screen.getByTestId("active-tab-id").textContent).toBe(activeTabIdBefore);
     expect(screen.getByTestId("current-page-title")).toHaveTextContent("板A");
     expect(screen.getByTestId("current-page-type")).toHaveTextContent("threadList");
@@ -810,14 +810,14 @@ describe("TabProvider auto refresh state", () => {
     const originalActiveTabId = screen.getByTestId("active-tab-id").textContent;
 
     fireEvent.click(screen.getByText("既存スレを新しいタブで開く"));
-    expect(screen.getByTestId("tabs-count")).toHaveTextContent("3");
+    expect(screen.getByTestId("tabs-count")).toHaveTextContent("2");
     expect(screen.getByTestId("active-tab-id").textContent).toBe(originalActiveTabId);
 
     // 現仕様では重複防止が働くため、同じURLを再度開いても新規タブは増えず、
     // 既存の該当タブへフォーカスが移る（背景設定でも重複時はそのタブを表示する）。
     fireEvent.click(screen.getByText("既存スレを新しいタブで開く"));
 
-    expect(screen.getByTestId("tabs-count")).toHaveTextContent("3");
+    expect(screen.getByTestId("tabs-count")).toHaveTextContent("2");
     expect(screen.getByTestId("active-tab-id").textContent).not.toBe(originalActiveTabId);
     expect(screen.getByTestId("current-page-title")).toHaveTextContent("既存スレ");
   });
@@ -878,7 +878,7 @@ describe("TabProvider auto refresh state", () => {
     const originalActiveTabId = screen.getByTestId("active-tab-id").textContent;
 
     fireEvent.click(screen.getByText("既存スレを新しいタブで開く"));
-    expect(screen.getByTestId("tabs-count")).toHaveTextContent("3");
+    expect(screen.getByTestId("tabs-count")).toHaveTextContent("2");
     expect(screen.getByTestId("active-tab-id").textContent).not.toBe(originalActiveTabId);
     expect(screen.getByTestId("current-page-title")).toHaveTextContent("既存スレ");
   });
@@ -977,9 +977,9 @@ describe("TabProvider auto refresh state", () => {
     fireEvent.click(screen.getByText("既存スレをクリック"));
 
     // タブ数は変わらず、現在タブの履歴に積まれる（別タブへ飛ばない）
-    expect(screen.getByTestId("tabs-count")).toHaveTextContent("3");
+    expect(screen.getByTestId("tabs-count")).toHaveTextContent("2");
     expect(screen.getByTestId("current-page-title")).toHaveTextContent("既存スレ");
-    expect(screen.getByTestId("tab-titles")).toHaveTextContent("ホーム|既存スレ|既存スレ");
+    expect(screen.getByTestId("tab-titles")).toHaveTextContent("既存スレ|既存スレ");
   });
 
   it("描画対象タブを指定した操作はペインのactiveTabへ作用しない", async () => {
@@ -1303,7 +1303,7 @@ describe("TabProvider auto refresh state", () => {
 
     expect(screen.getByTestId("current-page-title")).toHaveTextContent("thread-2");
     // 祖先の自動補完なし: ユーザーが実際に訪れたページのみ積まれる
-    expect(screen.getByTestId("history-titles")).toHaveTextContent("板一覧|板A|thread-1|thread-2");
+    expect(screen.getByTestId("history-titles")).toHaveTextContent("ホーム|板A|thread-1|thread-2");
     expect(screen.getByTestId("history-index")).toHaveTextContent("3");
 
     fireEvent.click(screen.getByText("戻る"));
@@ -1313,7 +1313,7 @@ describe("TabProvider auto refresh state", () => {
     expect(screen.getByTestId("history-index")).toHaveTextContent("2");
   });
 
-  it("ホームからURL直開きしたスレで戻るとホームへ戻る", async () => {
+  it("ホームからURL直開きしたスレはスレ一覧を経由してホームへ戻る", async () => {
     vi.resetModules();
     const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
 
@@ -1323,7 +1323,8 @@ describe("TabProvider auto refresh state", () => {
       return (
         <>
           <button
-            onClick={() =>
+            onClick={() => {
+              dispatch({ type: "GO_TO_HISTORY_INDEX", index: 0 });
               dispatch({
                 type: "NAVIGATE",
                 page: {
@@ -1331,8 +1332,8 @@ describe("TabProvider auto refresh state", () => {
                   title: "direct-thread",
                   threadUrl: "https://example.com/test/read.cgi/board-a/1/",
                 },
-              })
-            }
+              });
+            }}
           >
             スレをURL直開き
           </button>
@@ -1354,9 +1355,13 @@ describe("TabProvider auto refresh state", () => {
 
     fireEvent.click(screen.getByText("スレをURL直開き"));
 
-    // 祖先の自動補完なし: ホームと直開きスレだけが積まれる
-    expect(screen.getByTestId("history-titles")).toHaveTextContent("板一覧|direct-thread");
+    // URL直開きでもスレ一覧を補い、同じタブのホームへ戻れるようにする。
+    expect(screen.getByTestId("history-titles")).toHaveTextContent(
+      "ホーム|https://example.com/board-a/|direct-thread",
+    );
 
+    fireEvent.click(screen.getByText("戻る"));
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent("threadList");
     fireEvent.click(screen.getByText("戻る"));
 
     expect(screen.getByTestId("current-page-type")).toHaveTextContent("home");
@@ -1439,7 +1444,7 @@ describe("TabProvider auto refresh state", () => {
     const activeTabIdBefore = screen.getByTestId("active-tab-id").textContent;
 
     fireEvent.click(screen.getByText("背景タブを開く"));
-    expect(screen.getByTestId("tabs-count")).toHaveTextContent("3");
+    expect(screen.getByTestId("tabs-count")).toHaveTextContent("2");
 
     fireEvent.click(screen.getByText("背景タブのタイトル更新"));
 
@@ -1491,7 +1496,7 @@ describe("TabProvider auto refresh state", () => {
     fireEvent.click(screen.getByText("板URL直開き"));
     expect(screen.getByTestId("current-page-type")).toHaveTextContent("threadList");
     // 祖先の自動補完なし: ホームと板だけが積まれる
-    expect(screen.getByTestId("history-titles")).toHaveTextContent("板一覧|板A");
+    expect(screen.getByTestId("history-titles")).toHaveTextContent("ホーム|板A");
     expect(screen.getByTestId("history-index")).toHaveTextContent("1");
 
     fireEvent.click(screen.getByText("進む"));
@@ -1499,7 +1504,7 @@ describe("TabProvider auto refresh state", () => {
     expect(screen.getByTestId("history-index")).toHaveTextContent("1");
   });
 
-  it("関連板がない新規タブ操作は空の通常タブを追加し、進むは効かない", async () => {
+  it("新規タブ操作は通常のホームを追加し、進むは効かない", async () => {
     vi.resetModules();
     const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
 
@@ -1529,13 +1534,13 @@ describe("TabProvider auto refresh state", () => {
     );
 
     fireEvent.click(screen.getByText("新規タブ"));
-    expect(screen.getByTestId("tabs-count")).toHaveTextContent("3");
-    expect(screen.getByTestId("current-page-type")).toHaveTextContent("newTab");
+    expect(screen.getByTestId("tabs-count")).toHaveTextContent("2");
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent("home");
     expect(screen.getByTestId("history-length")).toHaveTextContent("1");
     expect(screen.getByTestId("history-index")).toHaveTextContent("0");
 
     fireEvent.click(screen.getByText("進む"));
-    expect(screen.getByTestId("current-page-type")).toHaveTextContent("newTab");
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent("home");
     expect(screen.getByTestId("history-index")).toHaveTextContent("0");
   });
 

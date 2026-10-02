@@ -64,8 +64,8 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
       {
         id: "close",
         label: "タブを閉じる",
-        // 変更理由: 常設ホームは閉鎖不可とする。
-        disabled: tab.pinned || tab.locked,
+        // ホームを含む通常タブは共通の終了規則に従う。
+        disabled: tab.pinned,
         icon: <X />,
         onSelect: () => runTabCommand(TAB_COMMAND_IDS.CLOSE),
       },
@@ -163,8 +163,6 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
     result.push({
       id: "pin",
       label: tab.pinned ? "タブの固定を解除" : "タブを固定",
-      // 変更理由: 常設ホームはピン留めサイズ固定で、固定解除の対象にしない。
-      disabled: tab.locked,
       icon: tab.pinned ? <PinOff /> : <Pin />,
       onSelect: () =>
         runTabCommand(TAB_COMMAND_IDS.PIN_SET, {

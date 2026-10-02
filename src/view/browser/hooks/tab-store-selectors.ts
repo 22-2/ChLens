@@ -44,10 +44,6 @@ export function canCloseTab(
   tabCount: number,
   options: { replaceLastTab?: boolean; canCloseLastTab?: boolean } = {},
 ): boolean {
-  // 変更理由: 常設ホームタブは閉鎖不可とし、件数条件より先に判定する。
-  if (tab.locked) {
-    return false;
-  }
   return (
     !tab.pinned &&
     (tabCount > 1 || options.replaceLastTab === true || options.canCloseLastTab === true)

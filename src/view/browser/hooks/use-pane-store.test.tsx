@@ -222,7 +222,7 @@ describe("ペイン（横分割）", () => {
     // 2ペイン目だけタブを増やす
     fireEvent.click(screen.getByText(`addtab-${second}`));
 
-    expect(screen.getByTestId(`tabcount-${first}`)).toHaveTextContent("2");
+    expect(screen.getByTestId(`tabcount-${first}`)).toHaveTextContent("1");
     expect(screen.getByTestId(`tabcount-${second}`)).toHaveTextContent("2");
   });
 
@@ -237,7 +237,7 @@ describe("ペイン（横分割）", () => {
     fireEvent.click(screen.getByText(`addtab-${ids[1]}`));
     fireEvent.click(screen.getByText(`close-${ids[1]}`));
     expect(screen.getByTestId("pane-count")).toHaveTextContent("1");
-    // 分割直後はホームだけなので、通常タブを1枚追加して統合すると2+2-1=3枚になる。
+    // ホームも通常タブとして統合し、左右の1+2枚をそのまま保つ。
     expect(screen.getByTestId(`tabcount-${first}`)).toHaveTextContent("3");
 
     // 残り1ペインは閉じられない
@@ -252,8 +252,7 @@ describe("ペイン（横分割）", () => {
     fireEvent.click(screen.getByText(`split-${left}`));
     const [, right] = paneIds();
 
-    // 常設ホームは閉じられないため、閉じる対象の通常タブを明示的に開く。
-    fireEvent.click(screen.getByText(`addtab-${right}`));
+    // ホーム一枚だけのペインも、最後のタブを閉じれば終了できる。
     fireEvent.click(screen.getByText(`closetab-${right}`));
 
     expect(screen.getByTestId("pane-count")).toHaveTextContent("1");
@@ -266,7 +265,7 @@ describe("ペイン（横分割）", () => {
 
     fireEvent.click(screen.getByText(`split-${first}`));
     const [left, right] = paneIds();
-    // ホームは交換対象ではないため、右側にも通常タブを開いてから交換する。
+    // 右側へタブを追加し、選択中のタブ同士を交換する。
     fireEvent.click(screen.getByText(`addtab-${right}`));
     const leftTabBefore = screen.getByTestId(`selected-tab-${left}`).textContent;
     const rightTabBefore = screen.getByTestId(`selected-tab-${right}`).textContent;
@@ -283,15 +282,15 @@ describe("ペイン（横分割）", () => {
 
     // 1タブ目を増やしておく（移動後も元ペインを空にしない検証）
     fireEvent.click(screen.getByText(`addtab-${first}`));
-    expect(screen.getByTestId(`tabcount-${first}`)).toHaveTextContent("3");
+    expect(screen.getByTestId(`tabcount-${first}`)).toHaveTextContent("2");
 
     fireEvent.click(screen.getByText(`toright-${first}`));
 
     // ペインが2つになり、元ペインのタブが1つ減り、右ペインに移っている。
     expect(screen.getByTestId("pane-count")).toHaveTextContent("2");
-    expect(screen.getByTestId(`tabcount-${first}`)).toHaveTextContent("2");
+    expect(screen.getByTestId(`tabcount-${first}`)).toHaveTextContent("1");
     const ids = paneIds();
-    expect(screen.getByTestId(`tabcount-${ids[1]}`)).toHaveTextContent("2");
+    expect(screen.getByTestId(`tabcount-${ids[1]}`)).toHaveTextContent("1");
     // 移動先ペインがアクティブになる
     expect(screen.getByTestId("active-pane-index")).toHaveTextContent("1");
   });
