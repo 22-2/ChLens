@@ -94,13 +94,12 @@ export class BBSMenuModel {
             [],
           );
 
-          const normalizedRaw = JSON.stringify(normalizedEntries);
-          if (raw !== normalizedRaw) {
-            void container.config.set(OPENED_BOARDS_CONFIG_KEY, normalizedRaw);
-          }
+          // 板一覧はURLと板名だけを使うが、同じ保存レコードには閲覧日時なども含まれる。
+          // 読み取り用の射影を書き戻すとF5後に日時が消えるため、ここでは永続データを変更しない。
           return normalizedEntries;
-        } catch {
+        } catch (error) {
           // 破損データは空扱いにして板一覧表示を継続する。
+          console.error("開いた板の記録を板一覧へ読み込めませんでした", error);
           return [];
         }
       },

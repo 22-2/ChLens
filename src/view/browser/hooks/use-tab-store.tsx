@@ -358,18 +358,31 @@ function readInitialPageFromLocation(): Page | null {
 }
 
 const initialPageFromLocation = readInitialPageFromLocation();
-const restoredSession = initialPageFromLocation ? null : loadTabStoreSession();
-const initialState: TabStoreState =
-  restoredSession ??
-  (() => {
-    const tab = initialPageFromLocation ? createTabFromPage(initialPageFromLocation) : createTab();
-    const pane = createPane(tab);
-    return {
-      panes: [pane],
-      activePaneId: pane.id,
-      closedTabs: [],
-    };
-  })();
+const restoredSession = loadTabStoreSession();
+const initialState: TabStoreState = (() => {
+  if (restoredSession) {
+    if (!initialPageFromLocation) return restoredSession;
+    // 外部リンクの起動先は復元済みセッションへ追加する。qを理由に復元を飛ばすと、
+    // 起動時の保存で以前のタブが上書きされ、F5でも同じ初期化が繰り返される。
+    const pane = getActivePane(restoredSession);
+    const target =
+      pane.tabs.find(
+        (tab) => getPageIdentity(getCurrentPage(tab)) === getPageIdentity(initialPageFromLocation),
+      ) ?? createTabFromPage(initialPageFromLocation);
+    return updatePane(restoredSession, pane.id, (current) => ({
+      ...current,
+      tabs: pane.tabs.includes(target) ? pane.tabs : [...pane.tabs, target],
+      activeTabId: target.id,
+    }));
+  }
+  const tab = initialPageFromLocation ? createTabFromPage(initialPageFromLocation) : createTab();
+  const pane = createPane(tab);
+  return {
+    panes: [pane],
+    activePaneId: pane.id,
+    closedTabs: [],
+  };
+})();
 
 // --- ペイン解決ヘルパー ---
 
@@ -1426,6 +1439,9 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const nextState = tabReducer(prevState, action);
       stateRef.current = nextState;
       baseDispatch(action);
+      // Reactの描画後のEffectまで保存を待つと、その前のF5・終了で直前の操作が失われる。
+      // 同期更新した状態を操作時点で保存し、描画後にも実際のタブIDを含む確定状態へ同期する。
+      if (nextState !== prevState) saveTabStoreSession(nextState);
 
       const recordThreadVisitForTab = (tabId: string) => {
         const nextTab = findTabAcrossPanes(nextState, tabId);
@@ -1524,6 +1540,18 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
     saveTabStoreSession(state);
   }, [state]);
+
+  useEffect(() => {
+    if (!initialPageFromLocation) return;
+    try {
+      // 起動指示は一度だけ消費し、次のF5では現在の保存済みセッションをそのまま復元する。
+      const url = new window.URL(window.location.href);
+      url.searchParams.delete("q");
+      window.history.replaceState(window.history.state, "", url.href);
+    } catch (error) {
+      console.error("起動先のURLパラメーターを消費できませんでした", error);
+    }
+  }, []);
 
   // アクティブタブのページタイトルが変わったらウィンドウタイトルを更新する
   useEffect(() => {
