@@ -129,15 +129,14 @@ describe("ホームの板項目のミドルクリック", () => {
     vi.resetModules();
     const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
     const { HomeTabPage } = await import("src/view/browser/pages/HomeTabPage");
+    function StartPage() {
+      return <HomeTabPage />;
+    }
     function State() {
       const { state, viewPage, dispatch } = useTabStore();
       return (
         <>
-          <button
-            onClick={() =>
-              dispatch({ type: "SELECT_TAB", tabId: state.tabs.find((tab) => tab.locked)!.id })
-            }
-          >
+          <button onClick={() => dispatch({ type: "SELECT_TAB", tabId: state.tabs[0].id })}>
             ホームを選ぶ
           </button>
           <button
@@ -153,7 +152,7 @@ describe("ホームの板項目のミドルクリック", () => {
           <output data-testid="active-page-type">{viewPage.type}</output>
           <output data-testid="home-history">
             {state.tabs
-              .find((tab) => tab.locked)
+              .at(0)
               ?.history.map((page) => page.type)
               .join("|")}
           </output>
@@ -169,7 +168,7 @@ describe("ホームの板項目のミドルクリック", () => {
     render(
       <TabProvider>
         <State />
-        <HomeTabPage />
+        <StartPage />
       </TabProvider>,
     );
     fireEvent.click(screen.getByRole("button", { name: "ホームを選ぶ" }));
@@ -189,7 +188,9 @@ describe("ホームの板項目のミドルクリック", () => {
     "新しいタブの板項目%dは通常クリックでそのタブに開き、追加取得しない",
     async (index) => {
       await renderPage(true);
-      expect(screen.getByText("URLを入力するか、下の板を選んでください。")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "URLを入力" }).closest("p")).toHaveTextContent(
+        "URLを入力するか、下の板を選んでください。",
+      );
       await waitFor(() =>
         expect(screen.getAllByRole("button", { name: /サンプル板/ })).toHaveLength(2),
       );
@@ -215,18 +216,27 @@ describe("ホームの板項目のミドルクリック", () => {
       const originalId = screen.getByTestId("active-tab-id").textContent;
       fireEvent(board, new MouseEvent("auxclick", { bubbles: true, cancelable: true, button: 1 }));
       expect(screen.getByTestId("active-tab-id")).toHaveTextContent(originalId!);
-      expect(screen.getByTestId("active-page-type")).toHaveTextContent("newTab");
+      expect(screen.getByTestId("active-page-type")).toHaveTextContent("home");
       expect(screen.getByTestId("tab-count")).toHaveTextContent("3");
     },
   );
 
-  it("新しいタブの板一覧リンクは常設ホーム内で開き、元の新しいタブを残す", async () => {
+  it("新しいタブのURL入力リンクはCtrl+Lと同じnavigationモードでomnibarを開く", async () => {
     await renderPage(true);
-    fireEvent.click(screen.getByRole("button", { name: "ホームで板一覧を開く" }));
+    const { commandPalette, commandPaletteStore } =
+      await import("src/view/browser/commands/command-palette-store");
+    fireEvent.click(screen.getByRole("button", { name: "URLを入力" }));
+    expect(commandPaletteStore.getState()).toMatchObject({ opened: true, mode: "navigation" });
+    commandPalette.close();
+  });
+
+  it("新しいタブの板一覧ボタンは同じタブで開き、他のホームを保つ", async () => {
+    await renderPage(true);
+    fireEvent.click(screen.getByRole("button", { name: "板一覧を開く" }));
     expect(screen.getByTestId("active-page-type")).toHaveTextContent("boardList");
     expect(screen.getByTestId("tab-count")).toHaveTextContent("2");
-    expect(screen.getByTestId("home-history")).toHaveTextContent(/^home\|boardList$/);
-    expect(screen.getByTestId("new-tab-history")).toHaveTextContent(/^newTab$/);
+    expect(screen.getByTestId("home-history")).toHaveTextContent(/^home$/);
+    expect(screen.getByTestId("new-tab-history")).toHaveTextContent(/^home\|boardList$/);
   });
 
   it.each(["現在のタブで開く", "新しいタブで開く"])(
@@ -324,16 +334,16 @@ describe("ホームの板項目のミドルクリック", () => {
     expect(askBoardTitleMock).not.toHaveBeenCalled();
   });
 
-  it("常設ホームの右クリックは遷移せず、メニューから新規タブだけを開く", async () => {
+  it("ホームの右クリックは遷移せず、メニューで開く先を選べる", async () => {
     await renderPage();
     const initialCount = Number(screen.getByTestId("tab-count").textContent);
     await openFavoriteMenu();
-    expect(screen.queryByRole("button", { name: "現在のタブで開く" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "現在のタブで開く" })).toBeInTheDocument();
     expect(Number(screen.getByTestId("tab-count").textContent)).toBe(initialCount);
     fireEvent.click(screen.getByRole("button", { name: "新しいタブで開く" }));
     expect(Number(screen.getByTestId("tab-count").textContent)).toBe(initialCount + 1);
     expect(screen.getByTestId("home-history")).toHaveTextContent(/^home$/);
-    expect(screen.getByTestId("new-tab-history")).toHaveTextContent(/^threadList$/);
+    expect(screen.getByTestId("new-tab-history")).toHaveTextContent(/^home\|threadList$/);
   });
 
   it.each([
@@ -393,7 +403,7 @@ describe("ホームの板項目のミドルクリック", () => {
       new MouseEvent("auxclick", { button: 1, bubbles: true, cancelable: true }),
     );
     expect(screen.getByTestId("active-page-type")).toHaveTextContent(/^home$/);
-    expect(screen.getByTestId("new-tab-history")).toHaveTextContent(/^threadList$/);
+    expect(screen.getByTestId("new-tab-history")).toHaveTextContent(/^home\|threadList$/);
   });
 
   it.each(["最近開いた板", "お気に入り板"] as const)(
@@ -423,7 +433,7 @@ describe("ホームの板項目のミドルクリック", () => {
   );
 
   it.each(["最近開いた板", "お気に入り板"] as const)(
-    "%sの通常クリックでも常設ホームを上書きせず、ホームを戻る先にする",
+    "%sの通常クリックは同じタブで開き、ホームを戻る先にする",
     async (kind) => {
       await renderPage();
       await waitFor(() =>
@@ -434,13 +444,13 @@ describe("ホームの板項目のミドルクリック", () => {
       ];
       const initialTabCount = Number(screen.getByTestId("tab-count").textContent);
       fireEvent.click(board);
-      expect(Number(screen.getByTestId("tab-count").textContent)).toBe(initialTabCount + 1);
-      expect(screen.getByTestId("home-history")).toHaveTextContent(/^home$/);
-      expect(screen.getByTestId("new-tab-history")).toHaveTextContent(/^threadList$/);
+      expect(Number(screen.getByTestId("tab-count").textContent)).toBe(initialTabCount);
+      expect(screen.getByTestId("home-history")).toHaveTextContent(/^home\|threadList$/);
+      expect(screen.getByTestId("new-tab-history")).toHaveTextContent(/^home\|threadList$/);
     },
   );
 
-  it("板一覧ボタンは常設ホーム内で切り替え、押し直してもタブを増やさない", async () => {
+  it("板一覧ボタンは同じタブ内で切り替え、押し直してもタブを増やさない", async () => {
     await renderPage();
     const initialTabCount = Number(screen.getByTestId("tab-count").textContent);
     const boardList = screen.getByRole("button", { name: "板一覧を開く" });

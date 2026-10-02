@@ -58,7 +58,7 @@ async function readFavoriteBoards(): Promise<FavoriteBoard[]> {
   return favorites;
 }
 
-// 板ツリーの独立画面をなくしてもお気に入りへの入口を失わないよう、常設ホーム内で表示する。
+// 板ツリーの独立画面をなくしてもお気に入りへの入口を失わないよう、ホーム内で表示する。
 export const FavoriteBoardsSection: React.FC = () => {
   const { dispatch, viewPage } = useTabStore();
   const [favoriteBoards, setFavoriteBoards] = React.useState<FavoriteBoard[]>([]);
@@ -66,8 +66,7 @@ export const FavoriteBoardsSection: React.FC = () => {
   const [error, setError] = React.useState<string | null>(null);
   const [contextMenuState, setContextMenuState] =
     React.useState<BookmarkContextMenuState<FavoriteBoard> | null>(null);
-  const isNewTab = viewPage.type === "newTab";
-  const isActive = viewPage.type === "home" || isNewTab;
+  const isActive = viewPage.type === "home";
 
   React.useEffect(() => {
     // ホームは常時マウントされるため、他のタブへ移った時点で対象板のメニューを閉じる。
@@ -110,14 +109,14 @@ export const FavoriteBoardsSection: React.FC = () => {
         boardUrl: board.url,
         boardTitle: board.title,
       };
-      // 新しいタブは選択先へ移動し、常設ホーム・中クリック・明示的な別タブ操作は別タブを使う。
-      if (isNewTab && !background && !forceNewTab) {
+      // 通常クリックは現在タブ、中クリックと明示的な新規タブ操作だけは別タブで開く。
+      if (!background && !forceNewTab) {
         dispatch(tabActions.navigate(page));
         return;
       }
       dispatch(tabActions.openInNewTab(page, { background }));
     },
-    [dispatch, isNewTab],
+    [dispatch],
   );
 
   return (
@@ -140,7 +139,7 @@ export const FavoriteBoardsSection: React.FC = () => {
               <div className="home-tab-page__empty">お気に入り板はまだありません。</div>
             ) : (
               // 新しいタブは選択の入口に絞り、長い一覧でホームと同じ密度にならないようにする。
-              (isNewTab ? favoriteBoards.slice(0, 8) : favoriteBoards).map((board) => (
+              favoriteBoards.map((board) => (
                 <Button
                   key={board.url}
                   className="home-tab-page__link"
@@ -182,8 +181,8 @@ export const FavoriteBoardsSection: React.FC = () => {
             url: contextMenuState.entry.url,
             title: contextMenuState.entry.title,
           }}
-          // 通常の新しいタブでは現在タブへの移動も選べるが、常設ホームには出さない。
-          onOpenCurrentTab={isNewTab ? () => openBoard(contextMenuState.entry) : undefined}
+          // 開く先を利用者が選べるよう、現在タブと新規タブの両方を用意する。
+          onOpenCurrentTab={() => openBoard(contextMenuState.entry)}
           onOpenInNewTab={(background) => openBoard(contextMenuState.entry, background, true)}
           onRemoved={(url) =>
             setFavoriteBoards((current) => current.filter((board) => board.url !== url))

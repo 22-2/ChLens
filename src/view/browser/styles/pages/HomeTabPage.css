@@ -6,33 +6,24 @@
   margin: 0 auto;
   padding: var(--sys-space-10) var(--sys-space-10) var(--sys-space-16);
 }
-/* 同じ大きさの見出しと余白だけでは所属が曖昧になるため、区画を線と大見出しで区切る。 */
+/* すべてのタブの入口を同じ余白と文字の階層で表示する。 */
 .home-tab-page__section {
   margin-block-start: var(--sys-space-10);
 }
 .home-tab-page__section + .home-tab-page__section {
   padding-block-start: var(--sys-space-8);
-  border-block-start: var(--sys-border-width-thin) solid var(--sys-color-border);
 }
 .home-tab-page__section-heading {
   margin: 0 0 var(--sys-space-4);
-  padding-inline: var(--sys-space-6);
-  color: var(--sys-color-text);
-  font-size: var(--sys-font-size-lg);
-  font-weight: 600;
-}
-/* 左の線と字下げを区画の本文全体へ適用し、空状態や読み込み表示も所属を保つ。 */
-.home-tab-page__section-content {
-  margin-inline-start: var(--sys-space-6);
-  padding-inline-start: var(--sys-space-4);
-  border-inline-start: var(--sys-border-width-thin) solid var(--sys-color-border);
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-sm);
+  font-weight: 500;
 }
 .home-tab-page__date-group + .home-tab-page__date-group {
   margin-block-start: var(--sys-space-8);
 }
 .home-tab-page__date-heading {
   margin: 0 0 var(--sys-space-2);
-  padding-inline: var(--sys-space-6);
   color: var(--sys-color-text-muted);
   font-size: var(--sys-font-size-sm);
   font-weight: 500;
@@ -103,60 +94,33 @@
   white-space: nowrap;
 }
 
-/* 新しいタブは一覧を管理するホームと区別し、少数の板を選ぶための余白を優先する。 */
-.home-tab-page--new-tab {
-  max-width: var(--sys-new-tab-content-max-width);
-  padding-block: calc(var(--sys-space-16) + var(--sys-space-16)) var(--sys-space-16);
-}
-.new-tab-page__intro {
+/* 入口の案内は共通の余白と文字サイズを使い、板の一覧との階層を分ける。 */
+.board-start-page__intro {
   margin-block-end: var(--sys-space-16);
 }
-.new-tab-page__title {
+.board-start-page__title {
   margin: 0 0 var(--sys-space-4);
   color: var(--sys-color-text);
-  font-size: var(--sys-new-tab-title-font-size);
+  font-size: var(--sys-board-start-title-font-size);
   font-weight: 500;
 }
-.new-tab-page__hint {
+.board-start-page__hint {
   margin: 0;
   color: var(--sys-color-text-muted);
   font-size: var(--sys-font-size-body);
 }
-.home-tab-page--new-tab .home-tab-page__section + .home-tab-page__section {
-  margin-block-start: var(--sys-space-10);
-  padding-block-start: 0;
-  border: 0;
-}
-.home-tab-page--new-tab .home-tab-page__section-heading {
-  padding: 0;
-  font-size: var(--sys-font-size-sm);
-  font-weight: 500;
-  color: var(--sys-color-text-muted);
-}
-.home-tab-page--new-tab .home-tab-page__section-content {
-  margin: 0;
+/* 文中のURL入力だけを操作対象にし、周囲の案内を大きなボタンにしない。 */
+.board-start-page__url-link {
   padding: 0;
   border: 0;
+  background: transparent;
+  color: var(--sys-color-accent);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: var(--sys-space-1);
+  cursor: pointer;
 }
-.home-tab-page--new-tab .home-tab-page__list {
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: var(--sys-space-2);
-}
-.home-tab-page--new-tab .home-tab-page__link.browser-button {
-  width: auto;
-  max-width: 100%;
-  padding: var(--sys-space-3) var(--sys-space-4);
-  font-size: var(--sys-font-size-body);
-}
-.home-tab-page--new-tab .home-tab-page__link-title {
-  font-size: var(--sys-font-size-body);
-  font-weight: 400;
-}
-.new-tab-page__footer {
-  margin-block-start: var(--sys-space-16);
-}
-.new-tab-page__footer .home-tab-page__link.browser-button {
-  color: var(--sys-color-text-muted);
-  font-size: var(--sys-font-size-sm);
+.board-start-page__url-link:focus-visible {
+  outline: var(--sys-border-width-thin) solid var(--sys-color-focus-ring);
+  outline-offset: var(--sys-space-1);
 }

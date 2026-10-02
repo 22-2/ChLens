@@ -2,8 +2,7 @@
 :root {
   --sys-home-content-max-width: var(--ref-home-content-max-width);
   --sys-home-board-font-size: var(--ref-home-board-font-size);
-  --sys-new-tab-title-font-size: var(--ref-new-tab-title-font-size);
-  --sys-new-tab-content-max-width: var(--ref-new-tab-content-max-width);
+  --sys-board-start-title-font-size: var(--ref-board-start-title-font-size);
   --sys-debate-card-width: var(--ref-debate-card-width);
   --sys-debate-id-width: var(--ref-debate-id-width);
   --sys-debate-font-body: var(--ref-debate-font-body);

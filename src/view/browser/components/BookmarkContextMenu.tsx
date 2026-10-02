@@ -63,7 +63,7 @@ export function BookmarkContextMenu({
   };
 
   const items: ContextMenuItem[] = [
-    // 常設ホームは遷移できないため、現在タブの操作は対応する呼び出し元だけに表示する。
+    // 現在タブへの遷移は、対応する操作を渡した呼び出し元で表示する。
     ...(onOpenCurrentTab
       ? [
           {
