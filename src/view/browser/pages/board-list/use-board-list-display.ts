@@ -45,6 +45,7 @@ export function useBoardListDisplay(params: {
   });
   const [searchQuery, setSearchQuery] = useState(() => persistedViewState.searchQuery ?? "");
   const savedOpenStatesRef = useRef<Record<string, boolean> | null>(null);
+  const { openStates, updateOpenStates } = params;
 
   useEffect(() => {
     updateViewState({ searchQuery });
@@ -180,11 +181,11 @@ export function useBoardListDisplay(params: {
     if (hasQuery) {
       // 検索開始時に現在の openStates を保存
       if (savedOpenStatesRef.current === null) {
-        savedOpenStatesRef.current = { ...params.openStates };
+        savedOpenStatesRef.current = { ...openStates };
       }
 
       // 全ての階層を開く
-      params.updateOpenStates(() => {
+      updateOpenStates((prev) => {
         const allOpen: Record<string, boolean> = {};
         for (const menu of displayMenus) {
           allOpen[menu.name] = true;
@@ -192,16 +193,22 @@ export function useBoardListDisplay(params: {
             allOpen[buildCategoryId(menu.name, category.name)] = true;
           }
         }
-        return allOpen;
+        // 開閉状態の反映による再描画では、同じ状態を再保存して更新ループを起こさない。
+        return Object.keys(prev).length === Object.keys(allOpen).length &&
+          Object.entries(allOpen).every(([key, value]) => prev[key] === value)
+          ? prev
+          : allOpen;
       });
     } else {
       // 検索終了時に元の状態に戻す
       if (savedOpenStatesRef.current !== null) {
-        params.updateOpenStates(() => savedOpenStatesRef.current!);
+        // Reactは更新関数を後から実行できるため、refを解除する前に復元値を確保する。
+        const savedOpenStates = savedOpenStatesRef.current;
         savedOpenStatesRef.current = null;
+        updateOpenStates(() => savedOpenStates);
       }
     }
-  }, [searchQuery, displayMenus, params]);
+  }, [searchQuery, displayMenus, openStates, updateOpenStates]);
 
   return {
     displayMenus,

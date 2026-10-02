@@ -19,6 +19,31 @@ const CONFIG_KEYS = {
   OPENED_BOARDS: "opened_board_entries",
 } as const;
 
+function loadOpenStates(): Record<string, boolean> {
+  const raw = container.config.get(CONFIG_KEYS.OPEN_STATES);
+  if (!raw) return {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    // 過去の検索復元処理がnullを保存した場合も、F5で起動不能にせず既定状態へ戻す。
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+      logger.warn("板一覧の開閉設定がオブジェクトではないため、既定状態で表示します", {
+        value: parsed,
+      });
+      return {};
+    }
+    const entries = Object.entries(parsed);
+    if (entries.some(([, value]) => typeof value !== "boolean")) {
+      logger.warn("板一覧の開閉設定に不正な値があるため、真偽値の項目だけを復元します");
+    }
+    return Object.fromEntries(
+      entries.filter((entry): entry is [string, boolean] => typeof entry[1] === "boolean"),
+    );
+  } catch (error) {
+    logger.warn("板一覧の開閉設定を読み込めないため、既定状態で表示します", error);
+    return {};
+  }
+}
+
 // ─── ユーティリティ ──────────────────────────────────────────────────────────
 
 /**
@@ -90,7 +115,8 @@ export function useBoardListLogic(refreshKey = 0) {
   const [categories, setCategories] = useState<BBSMenu[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [openStates, setOpenStates] = useState<Record<string, boolean>>({});
+  // 検索中のセッション復元でも、検索フックが保存前の初期値を退避しないよう先に読み込む。
+  const [openStates, setOpenStates] = useState<Record<string, boolean>>(loadOpenStates);
   const [openedBoardEntries, setOpenedBoardEntries] = useState<OpenedBoardEntry[]>([]);
 
   const [removedBoardUrls, addRemovedBoardUrl] = usePersistedSet(
@@ -119,21 +145,6 @@ export function useBoardListLogic(refreshKey = 0) {
       setError(e instanceof Error ? e.message : "不明なエラー");
     } finally {
       setLoading(false);
-    }
-  }, []);
-
-  // ─── アコーディオン状態の復元 ────────────────────────────────────────────
-
-  useEffect(() => {
-    const raw = container.config.get(CONFIG_KEYS.OPEN_STATES);
-    if (!raw) return;
-    try {
-      setOpenStates(JSON.parse(raw) as Record<string, boolean>);
-    } catch (e) {
-      logger.warn(
-        `[useBoardListLogic] Failed to parse "${CONFIG_KEYS.OPEN_STATES}", using defaults.`,
-        e,
-      );
     }
   }, []);
 
@@ -217,7 +228,14 @@ export function useBoardListLogic(refreshKey = 0) {
     (updater: (prev: Record<string, boolean>) => Record<string, boolean>) => {
       setOpenStates((prev) => {
         const next = updater(prev);
-        void container.config.set(CONFIG_KEYS.OPEN_STATES, JSON.stringify(next));
+        // 検索中は同じ開閉状態を返すことがあるため、変更があるときだけ保存する。
+        if (next !== prev) {
+          void Promise.resolve()
+            .then(() => container.config.set(CONFIG_KEYS.OPEN_STATES, JSON.stringify(next)))
+            .catch((error) => {
+              logger.error("板一覧の開閉設定を保存できませんでした", error);
+            });
+        }
         return next;
       });
     },
