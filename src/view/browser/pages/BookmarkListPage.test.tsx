@@ -1,17 +1,28 @@
 import "@testing-library/jest-dom/vitest";
 
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { container } from "src/service-container";
 import { BookmarkListPage } from "src/view/browser/pages/BookmarkListPage";
 import { QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE } from "src/view/browser/utils/filter-toolbar-events";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mockUseTabStore = vi.fn();
+const { dispatchMock, removeBookmarkMock, copyTextMock, toastErrorMock } = vi.hoisted(() => ({
+  dispatchMock: vi.fn(),
+  removeBookmarkMock: vi.fn(async (_url: string) => true),
+  copyTextMock: vi.fn(async (_text: string) => undefined),
+  toastErrorMock: vi.fn(),
+}));
+
+vi.mock("src/view/browser/utils/clipboard", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("src/view/browser/utils/clipboard")>()),
+  copyText: copyTextMock,
+}));
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => mockUseTabStore(),
   // useTabDispatch は dispatch のみを返す安定した関数。ページのフル状態購読回避後もdispatchが使える。
-  useTabDispatch: () => vi.fn(),
+  useTabDispatch: () => dispatchMock,
   useTabViewState: () => ({ state: {}, update: vi.fn() }),
 }));
 
@@ -28,6 +39,10 @@ describe("BookmarkListPage", () => {
   beforeEach(() => {
     mockUseTabStore.mockReset();
     getAllBookmarks.mockReset();
+    dispatchMock.mockReset();
+    removeBookmarkMock.mockReset().mockResolvedValue(true);
+    copyTextMock.mockReset().mockResolvedValue(undefined);
+    toastErrorMock.mockReset();
     bookmarkUpdatedHandler = null;
 
     mockUseTabStore.mockReturnValue({
@@ -68,22 +83,106 @@ describe("BookmarkListPage", () => {
       getAll: () => ({}),
       ready: (callback: () => void) => callback(),
     };
+    container.bookmark = {
+      get: vi.fn(),
+      add: vi.fn(),
+      remove: removeBookmarkMock,
+      updateResCount: vi.fn(),
+      updateExpired: vi.fn(),
+      getByBoard: () => [],
+    };
+    container.toast = { notify: vi.fn(), info: vi.fn(), success: vi.fn(), error: toastErrorMock };
   });
 
   afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
+  });
+
+  it.each([
+    { kind: "スレ", url: "https://example.com/test/read.cgi/sample/1/", type: "thread" },
+    { kind: "板", url: "https://example.com/sample/", type: "threadList" },
+  ])(
+    "$kindの右クリックから現在タブと新規タブで開き、通常・中クリックも維持する",
+    async ({ url, type }) => {
+      getAllBookmarks.mockReturnValue([{ url, title: "サンプル", boardTitle: "サンプル板" }]);
+      render(<BookmarkListPage tabId="tab-1" isActive={true} />);
+      const row = (await screen.findByText("サンプル")).closest("tr")!;
+      const page =
+        type === "thread"
+          ? { type, title: "サンプル", threadUrl: url }
+          : { type, title: "サンプル", boardUrl: url, boardTitle: "サンプル板" };
+      fireEvent.click(row);
+      expect(dispatchMock).toHaveBeenLastCalledWith({ type: "NAVIGATE", page });
+      fireEvent.mouseDown(row, { button: 1 });
+      expect(dispatchMock).toHaveBeenLastCalledWith({
+        type: "OPEN_IN_NEW_TAB",
+        page,
+        background: true,
+      });
+      dispatchMock.mockClear();
+      fireEvent.contextMenu(row);
+      expect(dispatchMock).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole("button", { name: "現在のタブで開く" }));
+      expect(dispatchMock).toHaveBeenLastCalledWith({ type: "NAVIGATE", page });
+      fireEvent.contextMenu(row);
+      fireEvent.click(screen.getByRole("button", { name: "新しいタブで開く" }));
+      expect(dispatchMock).toHaveBeenLastCalledWith({
+        type: "OPEN_IN_NEW_TAB",
+        page,
+        background: false,
+      });
+    },
+  );
+
+  it("削除の完了を待って対象行を消し、失敗した対象は残す", async () => {
+    const url = "https://example.com/sample/";
+    getAllBookmarks.mockReturnValue([{ url, title: "サンプル板" }]);
+    removeBookmarkMock.mockResolvedValueOnce(false);
+    const logger = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    render(<BookmarkListPage tabId="tab-1" isActive={true} />);
+    const row = (await screen.findByText("サンプル板")).closest("tr")!;
+    fireEvent.contextMenu(row);
+    fireEvent.click(screen.getByRole("button", { name: "ブックマークを削除" }));
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalled());
+    expect(logger).toHaveBeenCalled();
+    expect(screen.getByText("サンプル板")).toBeInTheDocument();
+    fireEvent.contextMenu(row);
+    fireEvent.click(screen.getByRole("button", { name: "ブックマークを削除" }));
+    await waitFor(() => expect(screen.queryByText("サンプル板")).not.toBeInTheDocument());
+    expect(removeBookmarkMock).toHaveBeenLastCalledWith(url);
+  });
+
+  it("コピー対象をクリックした行から取得し、非表示になったらメニューを閉じる", async () => {
+    const url = "https://example.com/sample/";
+    getAllBookmarks.mockReturnValue([{ url, title: "サンプル板" }]);
+    const { rerender } = render(<BookmarkListPage tabId="tab-1" isActive={true} />);
+    const row = (await screen.findByText("サンプル板")).closest("tr")!;
+    fireEvent.contextMenu(row);
+    fireEvent.click(screen.getByRole("button", { name: "タイトル&URLをコピー" }));
+    await waitFor(() =>
+      expect(copyTextMock).toHaveBeenCalledWith(
+        `サンプル板\n${url}`,
+        expect.objectContaining({ window, document }),
+      ),
+    );
+    fireEvent.contextMenu(row);
+    rerender(<BookmarkListPage tabId="tab-1" isActive={false} />);
+    expect(screen.queryByRole("button", { name: "ブックマークを削除" })).not.toBeInTheDocument();
+    rerender(<BookmarkListPage tabId="tab-1" isActive={true} />);
+    expect(screen.queryByRole("button", { name: "ブックマークを削除" })).not.toBeInTheDocument();
   });
 
   it("スレと板の両方のブックマークを一覧表示する", async () => {
     getAllBookmarks.mockReturnValue([
       {
-        url: "https://egg.5ch.io/test/read.cgi/software/1/",
+        url: "https://example.com/test/read.cgi/software/1/",
         title: "Current Thread",
         resCount: 120,
         readState: { read: 100 },
       },
       {
-        url: "https://egg.5ch.io/software/",
+        url: "https://example.com/software/",
         title: "Software",
       },
     ]);
@@ -99,7 +198,7 @@ describe("BookmarkListPage", () => {
   it("ブックマークフィルターバーをメニューイベントで開閉できる", async () => {
     getAllBookmarks.mockReturnValue([
       {
-        url: "https://egg.5ch.io/test/read.cgi/software/1/",
+        url: "https://example.com/test/read.cgi/software/1/",
         title: "Current Thread",
       },
     ]);
@@ -137,7 +236,7 @@ describe("BookmarkListPage", () => {
   it("bookmark_updated を受けたら一覧を再読込する", async () => {
     getAllBookmarks.mockReturnValueOnce([]).mockReturnValueOnce([
       {
-        url: "https://egg.5ch.io/test/read.cgi/software/1/",
+        url: "https://example.com/test/read.cgi/software/1/",
         title: "Current Thread",
       },
     ]);
@@ -161,7 +260,7 @@ describe("BookmarkListPage", () => {
 
     getAllBookmarks.mockReturnValue([
       {
-        url: "https://egg.5ch.io/test/read.cgi/software/1/",
+        url: "https://example.com/test/read.cgi/software/1/",
         title: "Current Thread",
       },
     ]);

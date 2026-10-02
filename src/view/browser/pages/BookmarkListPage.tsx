@@ -1,5 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { container } from "src/service-container/index";
+import {
+  BookmarkContextMenu,
+  type BookmarkContextMenuState,
+} from "src/view/browser/components/BookmarkContextMenu";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import { ColumnDef, SimpleDataTable } from "src/view/browser/components/SimpleDataTable";
 import { tabActions } from "src/view/browser/hooks/tab-store-actions";
@@ -237,6 +241,13 @@ export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({ tabId, isAct
   const [entries, setEntries] = useState<BookmarkEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [contextMenuState, setContextMenuState] =
+    useState<BookmarkContextMenuState<BookmarkEntry> | null>(null);
+
+  useEffect(() => {
+    // 非表示タブも保持されるため、タブ切り替え時に別の画面へメニューが残らないよう閉じる。
+    if (!isActive) setContextMenuState(null);
+  }, [isActive]);
   const [searchQuery, setSearchQuery] = useState(() => persistedViewState.searchQuery ?? "");
   const [sortState, setSortState] = useState<BookmarkSortState>(() => {
     const column = persistedViewState.sortColumn;
@@ -271,6 +282,7 @@ export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({ tabId, isAct
     try {
       setEntries(await readBookmarks());
     } catch (e) {
+      console.error("ブックマークの読み込みに失敗しました", e);
       setError(e instanceof Error ? e.message : "ブックマークの読み込みに失敗しました");
       setEntries([]);
     } finally {
@@ -284,6 +296,8 @@ export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({ tabId, isAct
 
   useEffect(() => {
     const handleBookmarkUpdated = () => {
+      // 更新後の一覧へ古い対象のメニューが再表示されないよう、再読込前に閉じる。
+      setContextMenuState(null);
       // 変更理由: ブックマーク一覧タブは hidden のまま保持されるため、
       // 追加・削除イベントで再読込しないと開き直しても古い一覧が残る。
       void loadEntries();
@@ -373,11 +387,11 @@ export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({ tabId, isAct
   );
 
   const openEntryInNewTab = useCallback(
-    (entry: BookmarkEntry) => {
+    (entry: BookmarkEntry, background = true) => {
       const parsed = parseInternalBrowserPage(entry.url);
       if (!parsed) return;
 
-      // ミドルクリックはバックグラウンドで開く（設定に関わらず常にバックグラウンドタブ）
+      // 中クリックは必ず背景で開き、メニューの通常クリックは新規タブの設定に従う。
       dispatch(
         tabActions.openInNewTab(
           {
@@ -387,7 +401,7 @@ export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({ tabId, isAct
               ? { boardTitle: entry.boardTitle || entry.title }
               : {}),
           },
-          { background: true },
+          { background },
         ),
       );
     },
@@ -431,12 +445,28 @@ export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({ tabId, isAct
         getRowTooltip={(row) => row.title}
         onRowClick={openEntry}
         onRowMiddleClick={openEntryInNewTab}
+        onRowContextMenu={(entry, x, y) => setContextMenuState({ entry, x, y })}
         sortColumn={sortState.column ?? undefined}
         sortDirection={sortState.direction}
         onSort={handleSort}
         columnVisibilityStorageKey={COLUMN_VISIBILITY_STORAGE_KEY}
         columnVisibilityLockedKeys={COLUMN_VISIBILITY_LOCKED_KEYS}
       />
+      {contextMenuState && isActive ? (
+        <BookmarkContextMenu
+          x={contextMenuState.x}
+          y={contextMenuState.y}
+          target={{
+            kind: contextMenuState.entry.pageType === "thread" ? "thread" : "board",
+            url: contextMenuState.entry.url,
+            title: contextMenuState.entry.title,
+          }}
+          onOpenCurrentTab={() => openEntry(contextMenuState.entry)}
+          onOpenInNewTab={(background) => openEntryInNewTab(contextMenuState.entry, background)}
+          onRemoved={(url) => setEntries((current) => current.filter((entry) => entry.url !== url))}
+          onClose={() => setContextMenuState(null)}
+        />
+      ) : null}
     </div>
   );
 };

@@ -1,5 +1,9 @@
 import React from "react";
 import { container } from "src/service-container/index";
+import {
+  BookmarkContextMenu,
+  type BookmarkContextMenuState,
+} from "src/view/browser/components/BookmarkContextMenu";
 import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { Alert } from "src/view/browser/ui/Alert";
@@ -56,10 +60,18 @@ async function readFavoriteBoards(): Promise<FavoriteBoard[]> {
 
 // 板ツリーの独立画面をなくしてもお気に入りへの入口を失わないよう、常設ホーム内で表示する。
 export const FavoriteBoardsSection: React.FC = () => {
-  const { dispatch } = useTabStore();
+  const { dispatch, viewPage } = useTabStore();
   const [favoriteBoards, setFavoriteBoards] = React.useState<FavoriteBoard[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [contextMenuState, setContextMenuState] =
+    React.useState<BookmarkContextMenuState<FavoriteBoard> | null>(null);
+  const isActive = viewPage.type === "home";
+
+  React.useEffect(() => {
+    // ホームは常時マウントされるため、他のタブへ移った時点で対象板のメニューを閉じる。
+    if (!isActive) setContextMenuState(null);
+  }, [isActive]);
 
   const loadFavoriteBoards = React.useCallback(async () => {
     setLoading(true);
@@ -78,6 +90,8 @@ export const FavoriteBoardsSection: React.FC = () => {
     void loadFavoriteBoards();
 
     const handleBookmarkUpdated = () => {
+      // 別の画面で対象が削除・変更された場合、古い板に対するメニュー操作を残さない。
+      setContextMenuState(null);
       void loadFavoriteBoards();
     };
 
@@ -125,6 +139,11 @@ export const FavoriteBoardsSection: React.FC = () => {
                   className="home-tab-page__link"
                   variant="subtle"
                   onClick={() => openBoard(board)}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setContextMenuState({ entry: board, x: event.clientX, y: event.clientY });
+                  }}
                   onMouseDown={(event) => {
                     if (event.button === 1) {
                       // 変更理由: 中ボタンのmousedownがブラウザーのオートスクロールを起動する前に止め、
@@ -147,6 +166,22 @@ export const FavoriteBoardsSection: React.FC = () => {
           </div>
         )}
       </div>
+      {contextMenuState && isActive ? (
+        <BookmarkContextMenu
+          x={contextMenuState.x}
+          y={contextMenuState.y}
+          target={{
+            kind: "board",
+            url: contextMenuState.entry.url,
+            title: contextMenuState.entry.title,
+          }}
+          onOpenInNewTab={(background) => openBoard(contextMenuState.entry, background)}
+          onRemoved={(url) =>
+            setFavoriteBoards((current) => current.filter((board) => board.url !== url))
+          }
+          onClose={() => setContextMenuState(null)}
+        />
+      ) : null}
     </section>
   );
 };
