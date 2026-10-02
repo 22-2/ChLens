@@ -8,7 +8,6 @@ interface WheelScrollIndicatorProps {
   direction: "up" | "down" | null;
   count: number;
   threshold: number;
-  isCoolingDown?: boolean;
   isLoading?: boolean;
   portalContainerRef?: RefObject<HTMLElement | null>;
 }
@@ -17,11 +16,12 @@ export const WheelScrollIndicator = memo(function WheelScrollIndicator({
   direction,
   count,
   threshold,
-  isCoolingDown = false,
   isLoading = false,
   portalContainerRef,
 }: WheelScrollIndicatorProps): React.ReactElement | null {
-  const isBusy = isLoading || isCoolingDown;
+  // 変更理由: 連続更新を防ぐ待ち時間は通信中ではないため、
+  // スピナーの表示期間は実際のロード状態だけに合わせる。
+  const isBusy = isLoading;
   const shouldRender = Boolean(direction && (isBusy || count !== 0));
   const indicatorRef = useRef<HTMLDivElement | null>(null);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);

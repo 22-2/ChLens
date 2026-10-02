@@ -270,7 +270,6 @@ export const ThreadListPage: React.FC<Props> = ({
   const [searchQuery, setSearchQuery] = useState(() => persistedSearchQuery ?? "");
   const previousBoardUrlRef = useRef(page.boardUrl);
   const previousRefreshKeyRef = useRef(refreshKey);
-  const refreshOverlayTimerRef = useRef<number | null>(null);
   const skipViewStateUpdateRef = useRef(false);
   // 変更理由: 非表示中の read_state 系 message を保留し、表示復帰時に適用するため。
   // 2ペイン時は自ペインの表タブでもフォーカス外なら裏側扱いにし、スレ側の
@@ -356,9 +355,6 @@ export const ThreadListPage: React.FC<Props> = ({
     if (isRefresh) consumeManualRefresh(manualRefreshScopeKey);
     setLoading(true);
     if (isRefresh) {
-      if (refreshOverlayTimerRef.current !== null) {
-        window.clearTimeout(refreshOverlayTimerRef.current);
-      }
       setShowRefreshOverlay(true);
     }
     setError(null);
@@ -398,24 +394,12 @@ export const ThreadListPage: React.FC<Props> = ({
       }
     } finally {
       setLoading(false);
+      // 変更理由: 完了後のフェード用にスピナーを残すとロード時間より長く見えるため、
+      // 成功・失敗のどちらでも取得完了と同時に更新表示を終了する。
+      setShowRefreshOverlay(false);
     }
     // refreshKeyが変わったとき（更新ボタン押下）に再取得を走らせる
   }, [manualRefreshScopeKey, page.boardUrl, refreshKey]);
-
-  useEffect(() => {
-    if (!showRefreshOverlay || loading) return;
-    // 変更理由: フェードアウト中だけDOMを残し、完了後に暗幕が居座らないよう短時間で外す。
-    refreshOverlayTimerRef.current = window.setTimeout(() => {
-      setShowRefreshOverlay(false);
-      refreshOverlayTimerRef.current = null;
-    }, 180);
-    return () => {
-      if (refreshOverlayTimerRef.current !== null) {
-        window.clearTimeout(refreshOverlayTimerRef.current);
-        refreshOverlayTimerRef.current = null;
-      }
-    };
-  }, [loading, showRefreshOverlay]);
 
   // 変更理由: IDBキャッシュから前回のスレ一覧を復元し、新しいデータの取得中は古い結果を表示し続ける。
   useEffect(() => {

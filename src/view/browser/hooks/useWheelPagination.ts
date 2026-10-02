@@ -66,6 +66,13 @@ export function useWheelPagination({
     const wasLoading = previousLoadingRef.current;
     previousLoadingRef.current = isLoading;
 
+    if (wasLoading && !isLoading) {
+      // 変更理由: ロード完了でホイール由来の表示状態も終わらせ、待ち時間内に
+      // 自動更新が始まっても前回のホイール操作のスピナーを再表示しない。
+      setRefreshDirection(null);
+      return;
+    }
+
     if (wasLoading || !isLoading || refreshDirection !== null) {
       return;
     }
@@ -160,9 +167,8 @@ export function useWheelPagination({
     }
   }, [isLoading, manualRefreshCoolingDown, refreshDirection]);
 
-  // 変更理由: cooldown開始前はrefreshDirectionが未設定なので、stateの進捗をそのまま表示する。
-  // cooldown中は共有方向と更新中表示だけを残し、リセット済みの古いカウントを表示しない。
-  // ホイール由来でない読み込み中も、残っていたカウントの進捗バーを出さない。
+  // 変更理由: ホイール更新の受付後や外部の読み込み中には古い進捗を表示しない。
+  // スピナーは実際のロード状態から描画し、連続更新の待ち時間とは切り離す。
   const count = isWheelDriven || isLoading ? 0 : state.count;
 
   return {

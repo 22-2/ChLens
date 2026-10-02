@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createRef } from "react";
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
 import { container as serviceContainer } from "src/service-container/index";
@@ -344,6 +344,57 @@ describe("ThreadListPage", () => {
     toggleFilter();
     expect(screen.queryByRole("textbox")).toBeNull();
   });
+
+  it.each([false, true])(
+    "一覧の中央スピナーは更新の完了と同時に消える（取得失敗: %s）",
+    async (fails) => {
+      // 変更理由: タイマーを進めずに表示終了を確認し、完了後にフェード用の
+      // スピナーが残る挙動が成功・失敗の両方で再発しないようにする。
+      vi.useRealTimers();
+      const page = {
+        type: "threadList" as const,
+        title: "テスト板",
+        boardUrl: "https://example.com/spinner-duration/",
+        boardTitle: "テスト板",
+      };
+      const { rerender } = render(
+        <ThreadListPage tabId="tab-1" page={page} refreshKey={0} isActive />,
+      );
+      await waitFor(() => expect(getRenderedThreadTitles()).toHaveLength(3));
+      vi.useFakeTimers();
+
+      const refreshError = new Error("テスト用の取得失敗");
+      let finishRefresh = () => {};
+      getThreadsMock.mockImplementationOnce(
+        () =>
+          new Promise((resolve, reject) => {
+            finishRefresh = () =>
+              fails ? reject(refreshError) : resolve({ threads: THREADS, message: null });
+          }),
+      );
+      const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        rerender(<ThreadListPage tabId="tab-1" page={page} refreshKey={1} isActive />);
+        expect(screen.getByLabelText("スレ一覧を読み込み中")).toBeVisible();
+
+        await act(async () => {
+          finishRefresh();
+          await flushAsyncRender();
+        });
+
+        expect(screen.queryByLabelText("スレ一覧を読み込み中")).toBeNull();
+        expect(document.querySelector(".thread-list-page__loading-overlay")).toBeNull();
+        if (fails) {
+          expect(errorLog).toHaveBeenCalledWith(
+            expect.any(String),
+            expect.objectContaining({ error: refreshError }),
+          );
+        }
+      } finally {
+        errorLog.mockRestore();
+      }
+    },
+  );
 
   it("一覧の自動更新は表示中タブでのみ発火する", async () => {
     const props = {

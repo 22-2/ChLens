@@ -6,6 +6,7 @@ import { WheelScrollIndicator } from "src/view/browser/components/WheelScrollInd
 import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 import {
   getManualRefreshCooldownRemainingMs,
+  MANUAL_REFRESH_COOLDOWN_MS,
   runManualRefresh,
 } from "src/view/browser/utils/manual-refresh";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
@@ -67,7 +68,7 @@ describe("useWheelPagination", () => {
     vi.useRealTimers();
   });
 
-  it("同じthread scopeではwheel更新の受付と表示を3秒共有する", async () => {
+  it("同じスレッドの更新待ちを共有し、ロードが始まるまではスピナーを出さない", async () => {
     const listRefresh = vi.fn();
     const threadRefresh = vi.fn();
     const scope = "tab-1\u0000thread:https://example.com/thread/1";
@@ -94,14 +95,14 @@ describe("useWheelPagination", () => {
 
     scrollToRefresh(list, -1);
     expect(listRefresh).toHaveBeenCalledTimes(1);
-    expect(screen.getAllByLabelText("ホイール更新中")).toHaveLength(1);
+    expect(screen.queryAllByLabelText("ホイール更新中")).toHaveLength(0);
     expect(list).toHaveAttribute("data-cooling", "true");
     expect(thread).toHaveAttribute("data-cooling", "true");
 
     scrollToRefresh(thread, 1);
     expect(threadRefresh).not.toHaveBeenCalled();
 
-    await vi.advanceTimersByTimeAsync(3000);
+    await vi.advanceTimersByTimeAsync(MANUAL_REFRESH_COOLDOWN_MS);
     expect(screen.queryAllByLabelText("ホイール更新中")).toHaveLength(0);
     expect(list).toHaveAttribute("data-cooling", "false");
     expect(thread).toHaveAttribute("data-cooling", "false");
@@ -142,7 +143,7 @@ describe("useWheelPagination", () => {
     expect(screen.queryByLabelText("ホイール更新中")).toBeNull();
   });
 
-  it("wheel更新後はボタン受付も同じ3秒期限で拒否する", () => {
+  it("ホイール更新後はボタンの受付も同じ待ち時間で拒否する", () => {
     const scope = "tab-1\u0000thread:https://example.com/thread/wheel-first";
     const wheelRefresh = vi.fn();
     const buttonRefresh = vi.fn();
@@ -227,33 +228,79 @@ describe("useWheelPagination", () => {
     expect(screen.queryByRole("progressbar")).toBeNull();
   });
 
-  it("ホイール更新による読み込み中はcooldown終了後もスピナーを維持する", async () => {
-    const scope = "tab-1\u0000thread:https://example.com/thread/long-running";
-    const refresh = vi.fn();
-    const onRefresh = () => runManualRefresh(scope, refresh);
-    const { rerender } = render(
-      <WheelProbe id="list" edge="bottom" cooldownScopeKey={scope} onRefresh={onRefresh} />,
-    );
-    const list = screen.getByTestId("list");
-    setScrollableMetrics(list);
+  it.each(["top", "bottom"] as const)(
+    "%s端の更新は待ち時間内でもロード完了時にスピナーを消す",
+    async (edge) => {
+      const scope = `tab-1\u0000thread:https://example.com/thread/short-running-${edge}`;
+      const onRefresh = () => runManualRefresh(scope, vi.fn());
+      const { rerender } = render(
+        <WheelProbe id="list" edge={edge} cooldownScopeKey={scope} onRefresh={onRefresh} />,
+      );
+      const list = screen.getByTestId("list");
+      setScrollableMetrics(list);
+      scrollToRefresh(list, edge === "top" ? -1 : 1);
 
-    scrollToRefresh(list, 1);
-    expect(refresh).toHaveBeenCalledTimes(1);
+      rerender(
+        <WheelProbe
+          id="list"
+          edge={edge}
+          cooldownScopeKey={scope}
+          isLoading
+          onRefresh={onRefresh}
+        />,
+      );
+      expect(screen.getByLabelText("ホイール更新中")).toBeVisible();
+      await vi.advanceTimersByTimeAsync(100);
 
-    // ホイール更新の読み込みがcooldownより長引いても、更新方向が残る間は表示する。
-    rerender(
-      <WheelProbe
-        id="list"
-        edge="bottom"
-        cooldownScopeKey={scope}
-        isLoading
-        onRefresh={onRefresh}
-      />,
-    );
-    await vi.advanceTimersByTimeAsync(3000);
-    expect(screen.getByLabelText("ホイール更新中")).toBeInTheDocument();
+      rerender(<WheelProbe id="list" edge={edge} cooldownScopeKey={scope} onRefresh={onRefresh} />);
+      expect(screen.queryByLabelText("ホイール更新中")).toBeNull();
+      expect(screen.queryByRole("progressbar")).toBeNull();
+      expect(list).toHaveAttribute("data-cooling", "true");
 
-    rerender(<WheelProbe id="list" edge="bottom" cooldownScopeKey={scope} onRefresh={onRefresh} />);
-    expect(screen.queryByLabelText("ホイール更新中")).toBeNull();
-  });
+      // 完了後の自動更新に前回のホイール由来の表示を引き継がない。
+      rerender(
+        <WheelProbe
+          id="list"
+          edge={edge}
+          cooldownScopeKey={scope}
+          isLoading
+          onRefresh={onRefresh}
+        />,
+      );
+      expect(screen.queryByLabelText("ホイール更新中")).toBeNull();
+    },
+  );
+
+  it.each(["top", "bottom"] as const)(
+    "%s端の更新は待ち時間が終わってもロード中はスピナーを維持する",
+    async (edge) => {
+      const scope = `tab-1\u0000thread:https://example.com/thread/long-running-${edge}`;
+      const refresh = vi.fn();
+      const onRefresh = () => runManualRefresh(scope, refresh);
+      const { rerender } = render(
+        <WheelProbe id="list" edge={edge} cooldownScopeKey={scope} onRefresh={onRefresh} />,
+      );
+      const list = screen.getByTestId("list");
+      setScrollableMetrics(list);
+
+      scrollToRefresh(list, edge === "top" ? -1 : 1);
+      expect(refresh).toHaveBeenCalledTimes(1);
+
+      // ホイール更新の読み込みがcooldownより長引いても、更新方向が残る間は表示する。
+      rerender(
+        <WheelProbe
+          id="list"
+          edge={edge}
+          cooldownScopeKey={scope}
+          isLoading
+          onRefresh={onRefresh}
+        />,
+      );
+      await vi.advanceTimersByTimeAsync(MANUAL_REFRESH_COOLDOWN_MS);
+      expect(screen.getByLabelText("ホイール更新中")).toBeInTheDocument();
+
+      rerender(<WheelProbe id="list" edge={edge} cooldownScopeKey={scope} onRefresh={onRefresh} />);
+      expect(screen.queryByLabelText("ホイール更新中")).toBeNull();
+    },
+  );
 });
