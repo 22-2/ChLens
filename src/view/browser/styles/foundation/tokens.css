@@ -148,6 +148,8 @@
   /* ホームの幅と板名の文字サイズを保ち、区画の余白は共通スケールで揃える。 */
   --ref-home-content-max-width: 720px;
   --ref-home-board-font-size: 15px;
+  --ref-new-tab-title-font-size: 24px;
+  --ref-new-tab-content-max-width: 600px;
   /* 変更理由: 短い更新通知で本文を広く隠さないよう、通知専用の幅を定義する。 */
   --ref-toast-width: 250px;
   --ref-space-1: 2px;

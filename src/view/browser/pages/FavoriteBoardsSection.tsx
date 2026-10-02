@@ -66,7 +66,8 @@ export const FavoriteBoardsSection: React.FC = () => {
   const [error, setError] = React.useState<string | null>(null);
   const [contextMenuState, setContextMenuState] =
     React.useState<BookmarkContextMenuState<FavoriteBoard> | null>(null);
-  const isActive = viewPage.type === "home";
+  const isNewTab = viewPage.type === "newTab";
+  const isActive = viewPage.type === "home" || isNewTab;
 
   React.useEffect(() => {
     // ホームは常時マウントされるため、他のタブへ移った時点で対象板のメニューを閉じる。
@@ -102,16 +103,21 @@ export const FavoriteBoardsSection: React.FC = () => {
   }, [loadFavoriteBoards]);
 
   const openBoard = React.useCallback(
-    (board: FavoriteBoard, background = false) => {
-      // 常設ホームを遷移させず、通常クリック・中クリックとも新規タブで板を開く。
-      dispatch(
-        tabActions.openInNewTab(
-          { type: "threadList", title: board.title, boardUrl: board.url, boardTitle: board.title },
-          { background },
-        ),
-      );
+    (board: FavoriteBoard, background = false, forceNewTab = false) => {
+      const page = {
+        type: "threadList" as const,
+        title: board.title,
+        boardUrl: board.url,
+        boardTitle: board.title,
+      };
+      // 新しいタブは選択先へ移動し、常設ホーム・中クリック・明示的な別タブ操作は別タブを使う。
+      if (isNewTab && !background && !forceNewTab) {
+        dispatch(tabActions.navigate(page));
+        return;
+      }
+      dispatch(tabActions.openInNewTab(page, { background }));
     },
-    [dispatch],
+    [dispatch, isNewTab],
   );
 
   return (
@@ -133,7 +139,8 @@ export const FavoriteBoardsSection: React.FC = () => {
             {favoriteBoards.length === 0 ? (
               <div className="home-tab-page__empty">お気に入り板はまだありません。</div>
             ) : (
-              favoriteBoards.map((board) => (
+              // 新しいタブは選択の入口に絞り、長い一覧でホームと同じ密度にならないようにする。
+              (isNewTab ? favoriteBoards.slice(0, 8) : favoriteBoards).map((board) => (
                 <Button
                   key={board.url}
                   className="home-tab-page__link"
@@ -175,7 +182,9 @@ export const FavoriteBoardsSection: React.FC = () => {
             url: contextMenuState.entry.url,
             title: contextMenuState.entry.title,
           }}
-          onOpenInNewTab={(background) => openBoard(contextMenuState.entry, background)}
+          // 通常の新しいタブでは現在タブへの移動も選べるが、常設ホームには出さない。
+          onOpenCurrentTab={isNewTab ? () => openBoard(contextMenuState.entry) : undefined}
+          onOpenInNewTab={(background) => openBoard(contextMenuState.entry, background, true)}
           onRemoved={(url) =>
             setFavoriteBoards((current) => current.filter((board) => board.url !== url))
           }

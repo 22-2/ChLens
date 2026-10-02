@@ -125,7 +125,7 @@ describe("ホームの板項目のミドルクリック", () => {
     vi.restoreAllMocks();
   });
 
-  async function renderPage() {
+  async function renderPage(newTab = false) {
     vi.resetModules();
     const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
     const { HomeTabPage } = await import("src/view/browser/pages/HomeTabPage");
@@ -148,6 +148,8 @@ describe("ホームの板項目のミドルクリック", () => {
             板一覧を選ぶ
           </button>
           <output data-testid="tab-count">{state.tabs.length}</output>
+          <button onClick={() => dispatch({ type: "ADD_TAB" })}>新しいタブを追加</button>
+          <output data-testid="active-tab-id">{state.selectedTabId}</output>
           <output data-testid="active-page-type">{viewPage.type}</output>
           <output data-testid="home-history">
             {state.tabs
@@ -171,6 +173,7 @@ describe("ホームの板項目のミドルクリック", () => {
       </TabProvider>,
     );
     fireEvent.click(screen.getByRole("button", { name: "ホームを選ぶ" }));
+    if (newTab) fireEvent.click(screen.getByRole("button", { name: "新しいタブを追加" }));
   }
 
   async function openFavoriteMenu() {
@@ -181,6 +184,63 @@ describe("ホームの板項目のミドルクリック", () => {
     expect(fireEvent.contextMenu(favorite, { clientX: 40, clientY: 80 })).toBe(false);
     return favorite;
   }
+
+  it.each([0, 1])(
+    "新しいタブの板項目%dは通常クリックでそのタブに開き、追加取得しない",
+    async (index) => {
+      await renderPage(true);
+      expect(screen.getByText("URLを入力するか、下の板を選んでください。")).toBeInTheDocument();
+      await waitFor(() =>
+        expect(screen.getAllByRole("button", { name: /サンプル板/ })).toHaveLength(2),
+      );
+      const boards = screen.getAllByRole("button", { name: /サンプル板/ });
+      const originalId = screen.getByTestId("active-tab-id").textContent;
+      fireEvent.click(boards[index]);
+      expect(screen.getByTestId("active-tab-id")).toHaveTextContent(originalId!);
+      expect(screen.getByTestId("active-page-type")).toHaveTextContent("threadList");
+      expect(screen.getByTestId("tab-count")).toHaveTextContent("2");
+      expect(screen.getByTestId("home-history")).toHaveTextContent(/^home$/);
+      expect(askBoardTitleMock).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([0, 1])(
+    "新しいタブの板項目%dを中クリックすると背景で開き、新しいタブを保つ",
+    async (index) => {
+      await renderPage(true);
+      await waitFor(() =>
+        expect(screen.getAllByRole("button", { name: /サンプル板/ })).toHaveLength(2),
+      );
+      const board = screen.getAllByRole("button", { name: /サンプル板/ })[index];
+      const originalId = screen.getByTestId("active-tab-id").textContent;
+      fireEvent(board, new MouseEvent("auxclick", { bubbles: true, cancelable: true, button: 1 }));
+      expect(screen.getByTestId("active-tab-id")).toHaveTextContent(originalId!);
+      expect(screen.getByTestId("active-page-type")).toHaveTextContent("newTab");
+      expect(screen.getByTestId("tab-count")).toHaveTextContent("3");
+    },
+  );
+
+  it("新しいタブの板一覧リンクは常設ホーム内で開き、元の新しいタブを残す", async () => {
+    await renderPage(true);
+    fireEvent.click(screen.getByRole("button", { name: "ホームで板一覧を開く" }));
+    expect(screen.getByTestId("active-page-type")).toHaveTextContent("boardList");
+    expect(screen.getByTestId("tab-count")).toHaveTextContent("2");
+    expect(screen.getByTestId("home-history")).toHaveTextContent(/^home\|boardList$/);
+    expect(screen.getByTestId("new-tab-history")).toHaveTextContent(/^newTab$/);
+  });
+
+  it.each(["現在のタブで開く", "新しいタブで開く"])(
+    "新しいタブのお気に入りメニューの%sは指定した場所で開く",
+    async (action) => {
+      await renderPage(true);
+      await openFavoriteMenu();
+      fireEvent.click(screen.getByRole("button", { name: action }));
+      expect(screen.getByTestId("active-page-type")).toHaveTextContent("threadList");
+      expect(screen.getByTestId("tab-count")).toHaveTextContent(
+        action === "現在のタブで開く" ? "2" : "3",
+      );
+    },
+  );
 
   it("板キーだけの旧履歴を保存済みの表示名で補い、開くタブにも引き継ぐ", async () => {
     historyRecords[0].boardTitle = "sample";

@@ -58,9 +58,10 @@ const GROUP_LABELS: Record<BoardGroupKey, string> = {
 };
 
 // ホームを常設タブへ統合し、お気に入り板と最近開いた板の入口をまとめる。
-// 変更理由: ホームタブ自体は遷移不可のため、板の選択はすべて新規タブで開く。
+// 常設ホームは別タブへの入口、新しいタブは選択した板を自分で開く入口として同じ一覧を使う。
 export const HomeTabPage: React.FC = () => {
-  const { dispatch, viewPage } = useTabStore();
+  const { dispatch, viewPage, state } = useTabStore();
+  const isNewTab = viewPage.type === "newTab";
   const [boards, setBoards] = React.useState<RecentBoard[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -183,33 +184,55 @@ export const HomeTabPage: React.FC = () => {
 
   const openBoard = React.useCallback(
     (board: RecentBoard, background = false) => {
-      // 変更理由: ホームタブの履歴をNAVIGATEで上書きしないよう、新規タブへ逃がす。
-      dispatch(
-        tabActions.openInNewTab(
-          {
-            type: "threadList",
-            title: board.boardTitle,
-            boardUrl: board.boardUrl,
-            boardTitle: board.boardTitle,
-          },
-          { background },
-        ),
-      );
+      const page = {
+        type: "threadList" as const,
+        title: board.boardTitle,
+        boardUrl: board.boardUrl,
+        boardTitle: board.boardTitle,
+      };
+      // 新しいタブは通常クリックで使い切り、中クリックは従来どおり背景タブへ送る。
+      if (isNewTab && !background) {
+        dispatch(tabActions.navigate(page));
+        return;
+      }
+      dispatch(tabActions.openInNewTab(page, { background }));
     },
-    [dispatch],
+    [dispatch, isNewTab],
   );
 
+  const boardListLink = (
+    <Button
+      className="home-tab-page__link"
+      variant="subtle"
+      onClick={() => {
+        const home = state.tabs.find((tab) => tab.locked)!;
+        // 板一覧は常設ホームだけに表示し、新しいタブ内へ複製しない。
+        dispatch({
+          ...tabActions.navigate({ type: "boardList", title: "板一覧" }),
+          tabId: home.id,
+        });
+        dispatch({ type: "SELECT_TAB", tabId: home.id });
+      }}
+    >
+      <PageTypeIcon type="boardList" />
+      {isNewTab ? "ホームで板一覧を開く" : "板一覧を開く"}
+    </Button>
+  );
+  // 新しいタブは最新の少数項目だけを示し、日付別の履歴画面は常設ホームに任せる。
+  const displayGroups = isNewTab
+    ? [{ key: "recent", label: "", items: boards.slice(0, 6) }]
+    : grouped;
+
   return (
-    <div className="home-tab-page">
-      {/* 板を探す入口は常設ホーム内で切り替え、押し直してもタブを増やさない。 */}
-      <Button
-        className="home-tab-page__link"
-        variant="subtle"
-        onClick={() => dispatch(tabActions.navigate({ type: "boardList", title: "板一覧" }))}
-      >
-        <PageTypeIcon type="boardList" />
-        板一覧を開く
-      </Button>
+    <div className={`home-tab-page${isNewTab ? " home-tab-page--new-tab" : ""}`}>
+      {isNewTab ? (
+        <header className="new-tab-page__intro">
+          <h1 className="new-tab-page__title">新しいタブ</h1>
+          <p className="new-tab-page__hint">URLを入力するか、下の板を選んでください。</p>
+        </header>
+      ) : (
+        boardListLink
+      )}
       <FavoriteBoardsSection />
       <section className="home-tab-page__section">
         {/* 区画名・日付・板の順に階層を分け、日付が最近開いた板に属することを示す。 */}
@@ -228,9 +251,11 @@ export const HomeTabPage: React.FC = () => {
           ) : boards.length === 0 ? (
             <div className="home-tab-page__empty">最近開いた板はまだありません。</div>
           ) : (
-            grouped.map((group) => (
+            displayGroups.map((group) => (
               <div key={group.key} className="home-tab-page__date-group">
-                <h3 className="home-tab-page__date-heading">{group.label}</h3>
+                {group.label ? (
+                  <h3 className="home-tab-page__date-heading">{group.label}</h3>
+                ) : null}
                 <div className="home-tab-page__list">
                   {group.items.map((board) => (
                     <Button
@@ -256,7 +281,7 @@ export const HomeTabPage: React.FC = () => {
                       title={`${board.boardTitle}\n${board.boardUrl}`}
                     >
                       <span className="home-tab-page__link-title">{board.boardTitle}</span>
-                      {domainOf(board.boardUrl) ? (
+                      {!isNewTab && domainOf(board.boardUrl) ? (
                         <span className="home-tab-page__link-domain">
                           {domainOf(board.boardUrl)}
                         </span>
@@ -269,6 +294,7 @@ export const HomeTabPage: React.FC = () => {
           )}
         </div>
       </section>
+      {isNewTab ? <div className="new-tab-page__footer">{boardListLink}</div> : null}
     </div>
   );
 };

@@ -102,3 +102,61 @@
   font-size: var(--sys-font-size-sm);
   white-space: nowrap;
 }
+
+/* 新しいタブは一覧を管理するホームと区別し、少数の板を選ぶための余白を優先する。 */
+.home-tab-page--new-tab {
+  max-width: var(--sys-new-tab-content-max-width);
+  padding-block: calc(var(--sys-space-16) + var(--sys-space-16)) var(--sys-space-16);
+}
+.new-tab-page__intro {
+  margin-block-end: var(--sys-space-16);
+}
+.new-tab-page__title {
+  margin: 0 0 var(--sys-space-4);
+  color: var(--sys-color-text);
+  font-size: var(--sys-new-tab-title-font-size);
+  font-weight: 500;
+}
+.new-tab-page__hint {
+  margin: 0;
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-body);
+}
+.home-tab-page--new-tab .home-tab-page__section + .home-tab-page__section {
+  margin-block-start: var(--sys-space-10);
+  padding-block-start: 0;
+  border: 0;
+}
+.home-tab-page--new-tab .home-tab-page__section-heading {
+  padding: 0;
+  font-size: var(--sys-font-size-sm);
+  font-weight: 500;
+  color: var(--sys-color-text-muted);
+}
+.home-tab-page--new-tab .home-tab-page__section-content {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.home-tab-page--new-tab .home-tab-page__list {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--sys-space-2);
+}
+.home-tab-page--new-tab .home-tab-page__link.browser-button {
+  width: auto;
+  max-width: 100%;
+  padding: var(--sys-space-3) var(--sys-space-4);
+  font-size: var(--sys-font-size-body);
+}
+.home-tab-page--new-tab .home-tab-page__link-title {
+  font-size: var(--sys-font-size-body);
+  font-weight: 400;
+}
+.new-tab-page__footer {
+  margin-block-start: var(--sys-space-16);
+}
+.new-tab-page__footer .home-tab-page__link.browser-button {
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-sm);
+}

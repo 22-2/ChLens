@@ -71,8 +71,8 @@ const TabPageContent = memo(function TabPageContent({
 
   switch (page.type) {
     case "newTab":
-      // ホームの板一覧を複製せず、URL入力で移動するための通常タブとして表示する。
-      return <div className="page-status">URLを入力して板やスレッドを開けます。</div>;
+      // 保存済みの板の入口を共有し、新しいタブでもURLを知らずに移動できるようにする。
+      return <HomeTabPage />;
     case "home":
       // ホームは常設タブ専用に統合し、お気に入り板も同じ画面で扱う。
       return <HomeTabPage />;
