@@ -53,6 +53,17 @@ vi.mock("src/view/browser/components/thread-list-shared", async (importOriginal)
 vi.mock("src/core/BoardTitleSolver.js", () => ({
   ask: vi.fn(async () => null),
 }));
+vi.mock("src/core/BoardUrlNormalizer", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("src/core/BoardUrlNormalizer")>();
+  // 実在の板へ依存せず、予約済みドメインで板を開いた記録を検証する。
+  return {
+    ...actual,
+    normalizeBoardUrl: (url: string, options?: Parameters<typeof actual.normalizeBoardUrl>[1]) =>
+      actual.normalizeBoardUrl(url, url.includes("example.com") ? {} : options),
+    getBoardUrlKey: (url: string, options?: Parameters<typeof actual.getBoardUrlKey>[1]) =>
+      actual.getBoardUrlKey(url, url.includes("example.com") ? {} : options),
+  };
+});
 
 vi.mock("src/core/URL", () => ({
   URL: class MockChURL {
@@ -291,6 +302,69 @@ describe("ThreadListPage", () => {
     configUpdatedListeners.clear();
     messageListeners.clear();
     vi.useRealTimers();
+  });
+
+  it("板だけを開いた日時を保存し、板名更新では日時を維持し、再選択で更新する", async () => {
+    vi.useRealTimers();
+    let saved = "[]";
+    serviceContainer.config.get = vi.fn((key: string) =>
+      key === "opened_board_entries" ? saved : "0",
+    );
+    serviceContainer.config.set = vi.fn((key: string, value: unknown) => {
+      if (key === "opened_board_entries") saved = String(value);
+    });
+    let now = 100;
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    const page = {
+      type: "threadList" as const,
+      title: "sample",
+      boardUrl: "https://example.com/sample/",
+      boardTitle: "sample",
+    };
+    const { rerender } = render(
+      <ThreadListPage tabId="tab-1" page={page} refreshKey={0} isActive />,
+    );
+    await waitFor(() =>
+      expect(JSON.parse(saved)).toEqual([{ url: page.boardUrl, title: "", lastVisited: 100 }]),
+    );
+    expect(askBoardTitle).toHaveBeenCalled();
+    now = 200;
+    const resolvedPage = { ...page, title: "サンプル板", boardTitle: "サンプル板" };
+    rerender(<ThreadListPage tabId="tab-1" page={resolvedPage} refreshKey={0} isActive />);
+    await waitFor(() =>
+      expect(JSON.parse(saved)[0]).toEqual({
+        url: page.boardUrl,
+        title: "サンプル板",
+        lastVisited: 100,
+      }),
+    );
+    rerender(<ThreadListPage tabId="tab-1" page={resolvedPage} refreshKey={0} isActive={false} />);
+    rerender(<ThreadListPage tabId="tab-1" page={resolvedPage} refreshKey={0} isActive />);
+    await waitFor(() => expect(JSON.parse(saved)[0].lastVisited).toBe(200));
+    vi.restoreAllMocks();
+  });
+
+  it("板の保存に失敗した場合は詳細をログへ出し、次の保存を続ける", async () => {
+    vi.useRealTimers();
+    const logger = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const error = new Error("保存失敗");
+    const saveConfig = vi.fn().mockRejectedValueOnce(error);
+    serviceContainer.config.set = saveConfig;
+    const page = {
+      type: "threadList" as const,
+      title: "サンプル板",
+      boardUrl: "https://example.com/sample/",
+      boardTitle: "サンプル板",
+    };
+    render(<ThreadListPage tabId="tab-1" page={page} refreshKey={0} isActive />);
+    await waitFor(() =>
+      expect(logger).toHaveBeenCalledWith("開いた板の保存に失敗しました", {
+        boardUrl: page.boardUrl,
+        error,
+      }),
+    );
+    await waitFor(() => expect(saveConfig).toHaveBeenCalledTimes(2));
+    logger.mockRestore();
   });
 
   it("一覧上端のホイールは読み込み中も更新待ちもフィルタを開かず更新だけを行う", async () => {

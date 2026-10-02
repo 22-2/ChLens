@@ -1,8 +1,15 @@
 import React from "react";
+import { askByUrl as askBoardTitle } from "src/core/BoardTitleSolver.js";
+import { getBoardUrlKey, normalizeBoardUrl } from "src/core/BoardUrlNormalizer";
 import { getAll as getAllHistory } from "src/core/History";
+import { container } from "src/service-container/index";
 import { PageTypeIcon } from "src/view/browser/components/PageTypeIcon";
 import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import {
+  isResolvedBoardTitle,
+  parseOpenedBoardEntries,
+} from "src/view/browser/pages/board-list/board-list-utils";
 import { FavoriteBoardsSection } from "src/view/browser/pages/FavoriteBoardsSection";
 import { Alert } from "src/view/browser/ui/Alert";
 import { Button } from "src/view/browser/ui/Button";
@@ -53,21 +60,38 @@ const GROUP_LABELS: Record<BoardGroupKey, string> = {
 // ホームを常設タブへ統合し、お気に入り板と最近開いた板の入口をまとめる。
 // 変更理由: ホームタブ自体は遷移不可のため、板の選択はすべて新規タブで開く。
 export const HomeTabPage: React.FC = () => {
-  const { dispatch } = useTabStore();
+  const { dispatch, viewPage } = useTabStore();
   const [boards, setBoards] = React.useState<RecentBoard[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const resolvedTitles = React.useRef(new Map<string, string>());
 
   React.useEffect(() => {
     let cancelled = false;
+    let revision = 0;
     // 変更理由: この非同期処理は内部で失敗を表示用状態へ変換して処理するため、呼び出し側で待たないことを明示する。
-    void (async () => {
-      setLoading(true);
+    const loadBoards = async () => {
+      const requestRevision = ++revision;
       setError(null);
       try {
         const records = await getAllHistory();
-        // 変更理由: 閲覧履歴はスレ単位でしか残らないため、スレURLから板URLを導出して板単位へ集約する。
+        // 旧スレ履歴も残しつつ、板だけを開いた日時と解決済みの表示名を板単位で統合する。
         const grouped = new Map<string, RecentBoard>();
+        const addBoard = (rawUrl: string, boardTitle: string, date: number) => {
+          const boardUrl = normalizeBoardUrl(rawUrl);
+          const key = getBoardUrlKey(rawUrl);
+          if (!boardUrl || !key) return;
+          const existing = grouped.get(key);
+          if (existing) {
+            if (date > existing.lastVisited) {
+              existing.boardUrl = boardUrl;
+              existing.lastVisited = date;
+            }
+            if (isResolvedBoardTitle(boardUrl, boardTitle)) existing.boardTitle = boardTitle;
+          } else {
+            grouped.set(key, { boardUrl, boardTitle: boardTitle || boardUrl, lastVisited: date });
+          }
+        };
         for (const record of Array.isArray(records) ? records : []) {
           const threadUrl = normalizeString(record.url);
           if (!threadUrl) {
@@ -78,36 +102,72 @@ export const HomeTabPage: React.FC = () => {
             continue;
           }
           const date = typeof record.date === "number" ? record.date : 0;
-          const boardTitle = normalizeString(record.boardTitle, boardUrl);
-          const existing = grouped.get(boardUrl);
-          if (existing) {
-            if (date > existing.lastVisited) {
-              existing.lastVisited = date;
-            }
-          } else {
-            grouped.set(boardUrl, { boardUrl, boardTitle, lastVisited: date });
-          }
+          addBoard(boardUrl, normalizeString(record.boardTitle), date);
         }
-        if (!cancelled) {
-          setBoards(
-            [...grouped.values()].sort((a, b) => b.lastVisited - a.lastVisited).slice(0, 100),
-          );
+        for (const entry of parseOpenedBoardEntries(container.config.get("opened_board_entries"))) {
+          addBoard(entry.url, entry.title ?? "", entry.lastVisited ?? 0);
+        }
+        const recentBoards = [...grouped.values()]
+          .sort((a, b) => b.lastVisited - a.lastVisited)
+          .slice(0, 100);
+        // 一部の板名取得が遅くても、開いた日時の反映や他の板への移動は待たせない。
+        if (!cancelled && revision === requestRevision) {
+          setBoards(recentBoards);
+          setLoading(false);
+        }
+        const titledBoards = await Promise.all(
+          recentBoards.map(async (board) => {
+            if (isResolvedBoardTitle(board.boardUrl, board.boardTitle)) return board;
+            try {
+              // 板キーしかない旧履歴にも、板一覧やSETTING.TXTから取得した表示名を使う。
+              const key = getBoardUrlKey(board.boardUrl)!;
+              const title =
+                resolvedTitles.current.get(key) ?? (await askBoardTitle(board.boardUrl));
+              if (title) {
+                if (isResolvedBoardTitle(board.boardUrl, title))
+                  resolvedTitles.current.set(key, title);
+                return { ...board, boardTitle: title };
+              }
+            } catch (error) {
+              console.error("最近開いた板の板名の取得に失敗しました", {
+                boardUrl: board.boardUrl,
+                error,
+              });
+            }
+            return board;
+          }),
+        );
+        // 連続通知で古い読み込みが後から完了しても、最新の閲覧日時を巻き戻さない。
+        if (!cancelled && revision === requestRevision) {
+          setBoards(titledBoards);
         }
       } catch (e) {
         console.error("最近開いた板の読み込みに失敗しました", e);
-        if (!cancelled) {
+        if (!cancelled && revision === requestRevision) {
           setError(e instanceof Error ? e.message : "最近開いた板の読み込みに失敗しました");
         }
       } finally {
-        if (!cancelled) {
+        if (!cancelled && revision === requestRevision) {
           setLoading(false);
         }
       }
-    })();
+    };
+    const handleConfigUpdated = ({ key }: { key?: string }) => {
+      if (key === "opened_board_entries") void loadBoards();
+    };
+    const handleHistoryUpdated = () => {
+      void loadBoards();
+    };
+    // 常設ホームは非表示でも残るため、保存通知と前面復帰の両方で一覧を再同期する。
+    container.message.on("config_updated", handleConfigUpdated);
+    container.message.on("history_updated", handleHistoryUpdated);
+    void loadBoards();
     return () => {
       cancelled = true;
+      container.message.off("config_updated", handleConfigUpdated);
+      container.message.off("history_updated", handleHistoryUpdated);
     };
-  }, []);
+  }, [viewPage.type]);
 
   // 変更理由: 日付は項目ごとではなく、画像のセッション一覧のように日別セクションで分ける。
   const grouped = React.useMemo(() => {

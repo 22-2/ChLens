@@ -3,6 +3,21 @@ import { getBoardUrlKey, normalizeBoardUrl } from "src/core/BoardUrlNormalizer";
 export interface OpenedBoardEntry {
   url: string;
   title?: string;
+  lastVisited?: number;
+}
+
+export function isResolvedBoardTitle(boardUrl: string, candidate: string): boolean {
+  if (!candidate.trim() || candidate === boardUrl) return false;
+  try {
+    const parsed = new URL(boardUrl);
+    const path = decodeURIComponent(parsed.pathname.replace(/^\/+|\/+$/g, ""));
+    // 履歴に保存された板キーやhost/pathを表示名と誤認すると、実際の板名を再取得できない。
+    return (
+      candidate !== path && candidate !== `${parsed.hostname}/${path}` && candidate !== parsed.href
+    );
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -42,6 +57,7 @@ export function parseOpenedBoardEntries(raw: string | null): OpenedBoardEntry[] 
     const parsed = JSON.parse(raw) as Array<{
       url?: unknown;
       title?: unknown;
+      lastVisited?: unknown;
     }>;
     if (!Array.isArray(parsed)) {
       return [];
@@ -63,6 +79,10 @@ export function parseOpenedBoardEntries(raw: string | null): OpenedBoardEntry[] 
         const normalizedEntry: OpenedBoardEntry = { url: normalizedUrl };
         if (typeof entry.title === "string") {
           normalizedEntry.title = entry.title;
+        }
+        // 日時のない旧データはそのまま読み込み、不正な日時で「今日」に分類されるのを防ぐ。
+        if (typeof entry.lastVisited === "number" && Number.isFinite(entry.lastVisited)) {
+          normalizedEntry.lastVisited = entry.lastVisited;
         }
         return normalizedEntry;
       })
@@ -86,6 +106,12 @@ export function parseOpenedBoardEntries(raw: string | null): OpenedBoardEntry[] 
       // 重複レコードのうち後ろにだけ板名がある場合は、その名前を引き継ぐ。
       if (!uniqueEntries[existingIndex].title && entry.title) {
         uniqueEntries[existingIndex] = { ...uniqueEntries[existingIndex], title: entry.title };
+      }
+      if ((entry.lastVisited ?? 0) > (uniqueEntries[existingIndex].lastVisited ?? 0)) {
+        uniqueEntries[existingIndex] = {
+          ...uniqueEntries[existingIndex],
+          lastVisited: entry.lastVisited,
+        };
       }
     }
 

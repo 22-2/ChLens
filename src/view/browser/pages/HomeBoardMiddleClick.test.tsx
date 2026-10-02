@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const { historyRecords, favoriteBoards, removeBookmarkMock, copyTextMock, toastErrorMock } =
@@ -19,13 +19,37 @@ const { historyRecords, favoriteBoards, removeBookmarkMock, copyTextMock, toastE
   }));
 
 vi.mock("src/core/History", () => ({ getAll: vi.fn(async () => historyRecords) }));
+const { openedBoards, askBoardTitleMock, listeners } = vi.hoisted(() => ({
+  openedBoards: { raw: "[]" },
+  askBoardTitleMock: vi.fn(async (_url: string): Promise<string | null> => "表示用の板名"),
+  listeners: new Map<string, Set<(payload: { key?: string }) => void>>(),
+}));
+vi.mock("src/core/BoardTitleSolver.js", () => ({ askByUrl: askBoardTitleMock }));
+vi.mock("src/core/BoardUrlNormalizer", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("src/core/BoardUrlNormalizer")>();
+  // 架空の掲示板ホストを使い、実在の板URLをテストへ持ち込まず保存データを検証する。
+  return {
+    ...actual,
+    normalizeBoardUrl: (url: string) => actual.normalizeBoardUrl(url),
+    getBoardUrlKey: (url: string) => actual.getBoardUrlKey(url),
+  };
+});
 vi.mock("src/view/browser/utils/legacy-app", () => ({
   getLegacyBookmarkService: () => ({ getAllBoards: () => favoriteBoards }),
   waitForLegacyBookmarkReady: vi.fn(async () => undefined),
 }));
 vi.mock("src/service-container/index", () => ({
   container: {
-    message: { on: vi.fn(), off: vi.fn() },
+    config: { get: vi.fn(() => openedBoards.raw) },
+    message: {
+      on: vi.fn((type: string, handler: (payload: { key?: string }) => void) => {
+        if (!listeners.has(type)) listeners.set(type, new Set());
+        listeners.get(type)!.add(handler);
+      }),
+      off: vi.fn((type: string, handler: (payload: { key?: string }) => void) =>
+        listeners.get(type)?.delete(handler),
+      ),
+    },
     bookmark: { remove: removeBookmarkMock },
     toast: { notify: vi.fn(), info: vi.fn(), success: vi.fn(), error: toastErrorMock },
   },
@@ -67,6 +91,9 @@ function createMemoryStorage(): Storage {
 
 describe("ホームの板項目のミドルクリック", () => {
   beforeEach(() => {
+    openedBoards.raw = "[]";
+    listeners.clear();
+    askBoardTitleMock.mockReset().mockResolvedValue("表示用の板名");
     removeBookmarkMock.mockReset().mockResolvedValue(true);
     copyTextMock.mockReset().mockResolvedValue(undefined);
     toastErrorMock.mockReset();
@@ -147,6 +174,69 @@ describe("ホームの板項目のミドルクリック", () => {
     expect(fireEvent.contextMenu(favorite, { clientX: 40, clientY: 80 })).toBe(false);
     return favorite;
   }
+
+  it("板キーだけの旧履歴を表示名へ解決し、開くタブにも引き継ぐ", async () => {
+    historyRecords[0].boardTitle = "sample";
+    await renderPage();
+    const board = await screen.findByRole("button", { name: /表示用の板名/ });
+    expect(askBoardTitleMock).toHaveBeenCalledWith("https://example.com/sample/");
+    fireEvent.click(board);
+    expect(screen.getByTestId("new-tab-history")).toHaveTextContent("boardList|threadList");
+  });
+
+  it("板を開いた保存通知で旧履歴の板が今日へ移り、スレ履歴のない板も表示する", async () => {
+    await renderPage();
+    await screen.findByRole("heading", { name: "それ以前" });
+    openedBoards.raw = JSON.stringify([
+      { url: "http://example.com/sample/", title: "サンプル板", lastVisited: Date.now() },
+      { url: "https://example.com/another/", title: "別の板", lastVisited: Date.now() },
+    ]);
+    act(() =>
+      listeners
+        .get("config_updated")
+        ?.forEach((handler) => handler({ key: "opened_board_entries" })),
+    );
+    const today = await screen.findByRole("heading", { name: "今日" });
+    const group = within(today.parentElement!);
+    expect(group.getAllByRole("button", { name: /サンプル板/ })).toHaveLength(1);
+    expect(group.getByRole("button", { name: /別の板/ })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "それ以前" })).not.toBeInTheDocument();
+  });
+
+  it("スレ閲覧の保存通知とホームへの復帰でも一覧を再読込する", async () => {
+    await renderPage();
+    await screen.findByRole("heading", { name: "それ以前" });
+    historyRecords[0].date = Date.now();
+    act(() => listeners.get("history_updated")?.forEach((handler) => handler({})));
+    await screen.findByRole("heading", { name: "今日" });
+    fireEvent.click(screen.getByRole("button", { name: "板一覧を選ぶ" }));
+    await screen.findByRole("heading", { name: "今日" });
+    historyRecords[0].date = 1;
+    fireEvent.click(screen.getByRole("button", { name: "ホームを選ぶ" }));
+    await screen.findByRole("heading", { name: "それ以前" });
+  });
+
+  it("古い板名の取得を待たず今日へ移し、遅い読み込みで日時や表示名を巻き戻さない", async () => {
+    const pending = Promise.withResolvers<string>();
+    askBoardTitleMock.mockImplementation(() => pending.promise);
+    historyRecords[0].boardTitle = "sample";
+    await renderPage();
+    await screen.findByRole("heading", { name: "それ以前" });
+    await waitFor(() => expect(askBoardTitleMock).toHaveBeenCalled());
+    openedBoards.raw = JSON.stringify([
+      { url: "https://example.com/sample/", title: "サンプル板", lastVisited: Date.now() },
+    ]);
+    act(() =>
+      listeners
+        .get("config_updated")
+        ?.forEach((handler) => handler({ key: "opened_board_entries" })),
+    );
+    await screen.findByRole("heading", { name: "今日" });
+    await act(async () => pending.resolve("古い読み込みの板名"));
+    expect(screen.getByRole("heading", { name: "今日" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "それ以前" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /古い読み込みの板名/ })).not.toBeInTheDocument();
+  });
 
   it("常設ホームの右クリックは遷移せず、メニューから新規タブだけを開く", async () => {
     await renderPage();

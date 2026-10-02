@@ -64,7 +64,11 @@ import {
 import { useTabViewRuntime } from "src/view/browser/hooks/use-tab-view-runtime";
 import { useThreadTitleNgDialog } from "src/view/browser/hooks/use-thread-title-ng-dialog";
 import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
-import { parseOpenedBoardEntries } from "src/view/browser/pages/board-list/board-list-utils";
+import {
+  isResolvedBoardTitle,
+  type OpenedBoardEntry,
+  parseOpenedBoardEntries,
+} from "src/view/browser/pages/board-list/board-list-utils";
 import {
   canGoBack,
   canGoForward,
@@ -121,21 +125,6 @@ interface Props {
   scrollContainerRef?: RefObject<HTMLDivElement | null>;
 }
 
-function deriveBoardTitlePlaceholder(boardUrl: string): string | null {
-  try {
-    const parsed = new URL(boardUrl);
-    const pathPart = parsed.pathname.replace(/^\/|\/$/g, "");
-    return pathPart ? `${parsed.hostname}/${pathPart}` : parsed.hostname;
-  } catch {
-    return null;
-  }
-}
-
-interface OpenedBoardEntry {
-  url: string;
-  title: string;
-}
-
 function readOpenedBoardEntries(): OpenedBoardEntry[] {
   const raw = container.config.get(OPENED_BOARDS_CONFIG_KEY);
   if (!raw) {
@@ -145,17 +134,17 @@ function readOpenedBoardEntries(): OpenedBoardEntry[] {
   return parseOpenedBoardEntries(raw).map((entry) => ({
     url: entry.url,
     title: entry.title ?? "",
+    lastVisited: entry.lastVisited,
   }));
 }
 
-function writeOpenedBoardEntries(entries: OpenedBoardEntry[]): void {
-  void container.config.set(
-    OPENED_BOARDS_CONFIG_KEY,
-    JSON.stringify(entries.slice(0, MAX_OPENED_BOARD_ENTRIES)),
-  );
-}
+let openedBoardWrite = Promise.resolve();
 
-function upsertOpenedBoardEntry(boardUrl: string, boardTitle: string | null): void {
+function upsertOpenedBoardEntry(
+  boardUrl: string,
+  boardTitle: string | null,
+  lastVisited?: number,
+): void {
   const normalizedUrl = normalizeKnownBoardUrl(boardUrl, { requireCompatibleHost: true });
   if (normalizedUrl === null) {
     // 変更理由: 外部サイトをスレ一覧の板として記録するとBBSMENUへ混入するため、
@@ -163,34 +152,33 @@ function upsertOpenedBoardEntry(boardUrl: string, boardTitle: string | null): vo
     return;
   }
   const nextTitle = boardTitle && boardTitle.trim() !== "" ? boardTitle : undefined;
-  const existingEntries = readOpenedBoardEntries();
-  const existingIndex = existingEntries.findIndex((entry) => entry.url === normalizedUrl);
-
-  if (existingIndex >= 0) {
-    const existing = existingEntries[existingIndex];
-    if (!nextTitle || existing.title === nextTitle) {
-      return;
-    }
-
-    const updated = [...existingEntries];
-    updated[existingIndex] = { ...existing, title: nextTitle };
-    writeOpenedBoardEntries(updated);
-    return;
-  }
-
-  // 変更理由: readState/history 未生成でも「一度開いた板」に残せるよう、
-  // スレ一覧を開いた時点で板URLを明示記録する。
-  writeOpenedBoardEntries([{ url: normalizedUrl, title: nextTitle || "" }, ...existingEntries]);
-}
-
-function isResolvedBoardTitle(boardUrl: string, candidate: string): boolean {
-  if (!candidate || candidate === boardUrl) {
-    return false;
-  }
-
-  // 変更理由: 履歴/候補生成の一部は boardTitle に host/path 形式の仮ラベルを入れるため、
-  // それを確定タイトル扱いすると実板名の再解決が止まり URL 風タイトルが残る。
-  return candidate !== deriveBoardTitlePlaceholder(boardUrl);
+  // 板の初回記録と遅れて届く板名、複数タブの保存が互いを上書きしないよう順番に保存する。
+  openedBoardWrite = openedBoardWrite
+    .then(async () => {
+      const entries = readOpenedBoardEntries();
+      const key = getBoardUrlKey(normalizedUrl);
+      const existing = entries.find((entry) => getBoardUrlKey(entry.url) === key);
+      const updated: OpenedBoardEntry = {
+        url: normalizedUrl,
+        title: nextTitle ?? existing?.title ?? "",
+        lastVisited: lastVisited ?? existing?.lastVisited,
+      };
+      if (
+        existing &&
+        existing.title === updated.title &&
+        existing.lastVisited === updated.lastVisited
+      )
+        return;
+      const nextEntries = [
+        updated,
+        ...entries.filter((entry) => getBoardUrlKey(entry.url) !== key),
+      ];
+      await container.config.set(
+        OPENED_BOARDS_CONFIG_KEY,
+        JSON.stringify(nextEntries.slice(0, MAX_OPENED_BOARD_ENTRIES)),
+      );
+    })
+    .catch((error) => console.error("開いた板の保存に失敗しました", { boardUrl, error }));
 }
 
 function resolveInitialBoardTitle(page: ThreadListPageType): string | null {
@@ -630,6 +618,15 @@ export const ThreadListPage: React.FC<Props> = ({
     const resolvedTitle = resolveInitialBoardTitle(page);
     upsertOpenedBoardEntry(page.boardUrl, resolvedTitle);
   }, [page.boardTitle, page.boardUrl, page.title]);
+
+  const visitedBoardRef = useRef<string | null>(null);
+  useEffect(() => {
+    // スレを開かず板だけを開いた場合や既存タブの再選択も記録する。板名解決では日時を進めない。
+    if (visitedBoardRef.current !== page.boardUrl || isActive) {
+      visitedBoardRef.current = page.boardUrl;
+      upsertOpenedBoardEntry(page.boardUrl, null, Date.now());
+    }
+  }, [isActive, page.boardUrl]);
 
   useEffect(() => {
     let cancelled = false;
