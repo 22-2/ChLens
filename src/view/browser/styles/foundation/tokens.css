@@ -145,6 +145,9 @@
   --ref-color-overlay-menu-hover: rgb(74 142 218 / 40%);
 
   --ref-space-0: 0;
+  /* ホームの幅と板名の文字サイズを保ち、区画の余白は共通スケールで揃える。 */
+  --ref-home-content-max-width: 720px;
+  --ref-home-board-font-size: 15px;
   /* 変更理由: 短い更新通知で本文を広く隠さないよう、通知専用の幅を定義する。 */
   --ref-toast-width: 250px;
   --ref-space-1: 2px;

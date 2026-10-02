@@ -101,50 +101,52 @@ export const FavoriteBoardsSection: React.FC = () => {
   );
 
   return (
-    <section>
-      <div className="home-tab-page__heading">お気に入り板</div>
-
-      {loading ? (
-        <div className="home-tab-page__status">
-          <Spinner size="xs" />
-          <span>お気に入り板を読み込み中...</span>
-        </div>
-      ) : error ? (
-        <Alert className="home-tab-page__alert" color="red" title="読み込みエラー">
-          {error}
-        </Alert>
-      ) : (
-        <div className="home-tab-page__list">
-          {favoriteBoards.length === 0 ? (
-            <div className="home-tab-page__empty">お気に入り板はまだありません。</div>
-          ) : (
-            favoriteBoards.map((board) => (
-              <Button
-                key={board.url}
-                className="home-tab-page__link"
-                variant="subtle"
-                onClick={() => openBoard(board)}
-                onMouseDown={(event) => {
-                  if (event.button === 1) {
-                    // 変更理由: 中ボタンのmousedownがブラウザーのオートスクロールを起動する前に止め、
-                    // auxclickで背景タブを開く操作へつなげる。
+    <section className="home-tab-page__section">
+      {/* 区画名と板項目の所属を見分けられるよう、日付見出しとは別の階層にする。 */}
+      <h2 className="home-tab-page__section-heading">お気に入り板</h2>
+      <div className="home-tab-page__section-content">
+        {loading ? (
+          <div className="home-tab-page__status">
+            <Spinner size="xs" />
+            <span>お気に入り板を読み込み中...</span>
+          </div>
+        ) : error ? (
+          <Alert className="home-tab-page__alert" color="red" title="読み込みエラー">
+            {error}
+          </Alert>
+        ) : (
+          <div className="home-tab-page__list">
+            {favoriteBoards.length === 0 ? (
+              <div className="home-tab-page__empty">お気に入り板はまだありません。</div>
+            ) : (
+              favoriteBoards.map((board) => (
+                <Button
+                  key={board.url}
+                  className="home-tab-page__link"
+                  variant="subtle"
+                  onClick={() => openBoard(board)}
+                  onMouseDown={(event) => {
+                    if (event.button === 1) {
+                      // 変更理由: 中ボタンのmousedownがブラウザーのオートスクロールを起動する前に止め、
+                      // auxclickで背景タブを開く操作へつなげる。
+                      event.preventDefault();
+                    }
+                  }}
+                  onAuxClick={(event) => {
+                    if (event.button !== 1) return;
+                    // 変更理由: ミドルクリックは現在のホームを保ったまま板を背景タブで開く。
                     event.preventDefault();
-                  }
-                }}
-                onAuxClick={(event) => {
-                  if (event.button !== 1) return;
-                  // 変更理由: ミドルクリックは現在のホームを保ったまま板を背景タブで開く。
-                  event.preventDefault();
-                  event.stopPropagation();
-                  openBoard(board, true);
-                }}
-              >
-                {board.title}
-              </Button>
-            ))
-          )}
-        </div>
-      )}
+                    event.stopPropagation();
+                    openBoard(board, true);
+                  }}
+                >
+                  {board.title}
+                </Button>
+              ))
+            )}
+          </div>
+        )}
+      </div>
     </section>
   );
 };

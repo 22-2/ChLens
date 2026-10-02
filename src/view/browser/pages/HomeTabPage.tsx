@@ -165,58 +165,63 @@ export const HomeTabPage: React.FC = () => {
         板一覧を開く
       </Button>
       <FavoriteBoardsSection />
-      <section>
-        <div className="home-tab-page__heading">最近開いた板</div>
-        {/* 履歴の取得に失敗しても、お気に入り板と板一覧の入口は使えるようにする。 */}
-        {loading ? (
-          <div className="home-tab-page__status">
-            <Spinner size="xs" />
-            <span>最近開いた板を読み込み中...</span>
-          </div>
-        ) : error ? (
-          <Alert className="home-tab-page__alert" color="red" title="読み込みエラー">
-            {error}
-          </Alert>
-        ) : boards.length === 0 ? (
-          <div className="home-tab-page__empty">最近開いた板はまだありません。</div>
-        ) : (
-          grouped.map((group) => (
-            <React.Fragment key={group.key}>
-              <div className="home-tab-page__heading">{group.label}</div>
-              <div className="home-tab-page__list">
-                {group.items.map((board) => (
-                  <Button
-                    key={board.boardUrl}
-                    className="home-tab-page__link home-tab-page__link--board"
-                    variant="subtle"
-                    onClick={() => openBoard(board)}
-                    onMouseDown={(event) => {
-                      if (event.button === 1) {
-                        // 変更理由: ブラウザーは中ボタンのmousedownでオートスクロールを始めるため、
-                        // 後続のauxclickで背景タブを開く前に既定動作を止める。
+      <section className="home-tab-page__section">
+        {/* 区画名・日付・板の順に階層を分け、日付が最近開いた板に属することを示す。 */}
+        <h2 className="home-tab-page__section-heading">最近開いた板</h2>
+        <div className="home-tab-page__section-content">
+          {/* 履歴の取得に失敗しても、お気に入り板と板一覧の入口は使えるようにする。 */}
+          {loading ? (
+            <div className="home-tab-page__status">
+              <Spinner size="xs" />
+              <span>最近開いた板を読み込み中...</span>
+            </div>
+          ) : error ? (
+            <Alert className="home-tab-page__alert" color="red" title="読み込みエラー">
+              {error}
+            </Alert>
+          ) : boards.length === 0 ? (
+            <div className="home-tab-page__empty">最近開いた板はまだありません。</div>
+          ) : (
+            grouped.map((group) => (
+              <div key={group.key} className="home-tab-page__date-group">
+                <h3 className="home-tab-page__date-heading">{group.label}</h3>
+                <div className="home-tab-page__list">
+                  {group.items.map((board) => (
+                    <Button
+                      key={board.boardUrl}
+                      className="home-tab-page__link home-tab-page__link--board"
+                      variant="subtle"
+                      onClick={() => openBoard(board)}
+                      onMouseDown={(event) => {
+                        if (event.button === 1) {
+                          // 変更理由: ブラウザーは中ボタンのmousedownでオートスクロールを始めるため、
+                          // 後続のauxclickで背景タブを開く前に既定動作を止める。
+                          event.preventDefault();
+                        }
+                      }}
+                      onAuxClick={(event) => {
+                        if (event.button !== 1) return;
+                        // 変更理由: 常設ホームは通常クリックでも新規タブを開くため、
+                        // 中クリックも同じ板を新規タブへ送り、ブラウザー既定動作との二重処理を防ぐ。
                         event.preventDefault();
-                      }
-                    }}
-                    onAuxClick={(event) => {
-                      if (event.button !== 1) return;
-                      // 変更理由: 常設ホームは通常クリックでも新規タブを開くため、
-                      // 中クリックも同じ板を新規タブへ送り、ブラウザー既定動作との二重処理を防ぐ。
-                      event.preventDefault();
-                      event.stopPropagation();
-                      openBoard(board, true);
-                    }}
-                    title={`${board.boardTitle}\n${board.boardUrl}`}
-                  >
-                    <span className="home-tab-page__link-title">{board.boardTitle}</span>
-                    {domainOf(board.boardUrl) ? (
-                      <span className="home-tab-page__link-domain">{domainOf(board.boardUrl)}</span>
-                    ) : null}
-                  </Button>
-                ))}
+                        event.stopPropagation();
+                        openBoard(board, true);
+                      }}
+                      title={`${board.boardTitle}\n${board.boardUrl}`}
+                    >
+                      <span className="home-tab-page__link-title">{board.boardTitle}</span>
+                      {domainOf(board.boardUrl) ? (
+                        <span className="home-tab-page__link-domain">
+                          {domainOf(board.boardUrl)}
+                        </span>
+                      ) : null}
+                    </Button>
+                  ))}
+                </div>
               </div>
-            </React.Fragment>
-          ))
-        )}
+            ))
+          )}
+        </div>
       </section>
     </div>
   );

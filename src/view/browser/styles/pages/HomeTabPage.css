@@ -2,55 +2,70 @@
 .home-tab-page {
   width: 100%;
   min-height: 100%;
-  max-width: 720px;
+  max-width: var(--sys-home-content-max-width);
   margin: 0 auto;
-  padding: 24px 24px 48px;
+  padding: var(--sys-space-10) var(--sys-space-10) var(--sys-space-16);
 }
-/* 変更理由: 日別セクションの見出しは小さめ・淡色・広めの余白で区切り、項目との階層を付ける。 */
-.home-tab-page__heading {
-  margin: 28px 0 8px;
-  padding: 0 12px;
-  border-bottom: 0;
+/* 同じ大きさの見出しと余白だけでは所属が曖昧になるため、区画を線と大見出しで区切る。 */
+.home-tab-page__section {
+  margin-block-start: var(--sys-space-10);
+}
+.home-tab-page__section + .home-tab-page__section {
+  padding-block-start: var(--sys-space-8);
+  border-block-start: var(--sys-border-width-thin) solid var(--sys-color-border);
+}
+.home-tab-page__section-heading {
+  margin: 0 0 var(--sys-space-4);
+  padding-inline: var(--sys-space-6);
+  color: var(--sys-color-text);
+  font-size: var(--sys-font-size-lg);
+  font-weight: 600;
+}
+/* 左の線と字下げを区画の本文全体へ適用し、空状態や読み込み表示も所属を保つ。 */
+.home-tab-page__section-content {
+  margin-inline-start: var(--sys-space-6);
+  padding-inline-start: var(--sys-space-4);
+  border-inline-start: var(--sys-border-width-thin) solid var(--sys-color-border);
+}
+.home-tab-page__date-group + .home-tab-page__date-group {
+  margin-block-start: var(--sys-space-8);
+}
+.home-tab-page__date-heading {
+  margin: 0 0 var(--sys-space-2);
+  padding-inline: var(--sys-space-6);
   color: var(--sys-color-text-muted);
-  font-size: 12px;
+  font-size: var(--sys-font-size-sm);
   font-weight: 500;
-  letter-spacing: 0.06em;
-}
-.home-tab-page__heading:first-child {
-  margin-top: 0;
 }
 .home-tab-page__status {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: var(--sys-space-4);
+  padding: var(--sys-space-4) var(--sys-space-6);
   color: var(--sys-color-text-muted);
 }
 .home-tab-page__alert {
-  margin: 8px 12px 0;
-}
-.home-tab-page__list {
-  width: 100%;
+  margin: var(--sys-space-4) var(--sys-space-6) 0;
 }
 .home-tab-page__empty {
   margin: 0;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--sys-color-border);
+  padding: var(--sys-space-4) var(--sys-space-6);
   color: var(--sys-color-text-muted);
 }
 .home-tab-page__link.browser-button {
   display: flex;
   align-items: center;
   justify-content: flex-start;
+  gap: var(--sys-space-4);
   width: 100%;
   min-width: 0;
   min-height: 0;
-  padding: 8px 12px;
+  padding: var(--sys-space-4) var(--sys-space-6);
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--sys-radius-xl);
   background: transparent;
   color: var(--sys-color-text);
-  font-size: 15px;
+  font-size: var(--sys-home-board-font-size);
   text-align: left;
   transition: none;
 }
@@ -58,19 +73,18 @@
   border-color: transparent;
   background: var(--sys-color-list-hover-bg);
 }
-/* 変更理由: 項目間は罫線ではなく余白と角丸ホバーで区切り、詰まった印象をなくす。 */
 .home-tab-page__list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--sys-space-1);
   width: 100%;
 }
 .home-tab-page__link--board {
   flex-direction: row;
   align-items: baseline;
-  gap: 12px;
+  gap: var(--sys-space-6);
 }
-/* 変更理由: 板名が長いと横へはみ出すため、1行に収めて末尾省略する。全文はtitle属性のツールチップで確認する。 */
+/* 長い板名でも所属の線やドメインを押し出さず、全文はツールチップで確認できるようにする。 */
 .home-tab-page__link-title {
   display: block;
   flex: 1 1 auto;
@@ -78,16 +92,13 @@
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+  font-size: var(--sys-home-board-font-size);
+  font-weight: 600;
+  line-height: 1.5;
 }
-/* 変更理由: 所属ドメインは右端に薄文字で添え、板名との主従を付ける。 */
 .home-tab-page__link-domain {
   flex: 0 0 auto;
   color: var(--sys-color-text-muted);
-  font-size: 12px;
+  font-size: var(--sys-font-size-sm);
   white-space: nowrap;
-}
-.home-tab-page__link-title {
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.5;
 }
