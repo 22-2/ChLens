@@ -1,5 +1,6 @@
 import {
   Bookmark,
+  File,
   History,
   House,
   LayoutList,
@@ -18,6 +19,8 @@ import type { PageType } from "src/view/browser/types";
 // 板ツリーを削除しても板を探す目印を保つため、ListTreeを板一覧へ引き継ぐ。
 const PAGE_TYPE_ICONS = {
   home: House,
+  // 空の通常タブは常設ホームと区別できる目印にする。
+  newTab: File,
   boardList: ListTree,
   threadList: LayoutList,
   thread: MessageSquareText,

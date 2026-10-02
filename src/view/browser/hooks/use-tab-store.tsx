@@ -176,7 +176,8 @@ function clearThreadVisitsForTab(visitStore: Map<string, ThreadHistoryVisit>, ta
 function getPageIdentity(page: Page): string {
   switch (page.type) {
     case "home":
-      return "home";
+    case "newTab":
+      return page.type;
     case "boardList":
       return "boardList";
     case "settings":
@@ -585,16 +586,11 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       const pane = getPane(state, paneId);
       const activeTab = getPaneActiveTab(pane);
       const sourcePage = getCurrentPage(activeTab);
-      const newTab = createTab(sourcePage, activeTab);
-      if (newTab.locked) {
-        return {
-          ...updatePane(state, paneId, (p) => ({
-            ...p,
-            activeTabId: p.tabs.find((t) => t.locked)!.id,
-          })),
-          activePaneId: action.preserveActivePane ? state.activePaneId : paneId,
-        };
-      }
+      const configuredTab = createTab(sourcePage, activeTab);
+      // 明示的な新規タブ操作では必ず通常タブを追加する。板が未指定でもホーム選択で終えない。
+      const newTab = configuredTab.locked
+        ? createTabFromPage({ type: "newTab", title: "新しいタブ" })
+        : configuredTab;
       // 固定タブの後ろに非固定タブを追加
       return {
         ...updatePane(state, paneId, (p) => ({

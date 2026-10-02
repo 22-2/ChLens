@@ -4,6 +4,7 @@ import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
 // 常設ホームは入口として板一覧も内包し、スレ一覧の戻る先はホームの最初の画面にする。
 export type PageType =
   | "home"
+  | "newTab"
   | "boardList"
   | "threadList"
   | "thread"
@@ -23,6 +24,12 @@ export type ThreadSearchTarget = "all" | "body" | "name" | "id";
 
 export interface HomePage {
   type: "home";
+  title: string;
+}
+
+// 常設ホームを複製せず、開く板が未指定でも移動・終了できる通常タブを用意する。
+export interface NewTabPage {
+  type: "newTab";
   title: string;
 }
 
@@ -72,6 +79,7 @@ export interface LogListPage {
 
 export type Page =
   | HomePage
+  | NewTabPage
   | BoardListPage
   | ThreadListPage
   | ThreadPage
@@ -247,6 +255,7 @@ export function canGoForward(tab: Tab): boolean {
 export function getDisplayUrl(page: Page): string {
   switch (page.type) {
     case "home":
+    case "newTab":
       return "";
     case "boardList":
       return "板一覧";
@@ -278,6 +287,7 @@ function threadUrlToBoardUrl(threadUrl: string): string {
 export function buildHierarchy(page: Page): Page[] {
   switch (page.type) {
     case "home":
+    case "newTab":
     case "boardList":
     case "settings":
     case "bookmarkList":

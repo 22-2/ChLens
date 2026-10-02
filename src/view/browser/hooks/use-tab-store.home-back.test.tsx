@@ -86,11 +86,9 @@ describe("スレ一覧から常設ホームへの戻る", () => {
     expect(screen.getByTestId("page")).toHaveTextContent("home");
   });
 
-  it("初期表示と既定の新規タブ操作はホームだけを選び、板一覧は明示的に開く", async () => {
+  it("初期表示はホームだけを選び、板一覧は同じ常設タブ内で開く", async () => {
     await mount();
     expect(screen.getByTestId("page")).toHaveTextContent("home");
-    expect(stateRef.current.panes[0].tabs).toHaveLength(1);
-    act(() => dispatch({ type: "ADD_TAB" }));
     expect(stateRef.current.panes[0].tabs).toHaveLength(1);
     act(() => dispatch({ type: "NAVIGATE", page: { type: "boardList", title: "板一覧" } }));
     expect(screen.getByTestId("page")).toHaveTextContent("boardList");
@@ -101,6 +99,43 @@ describe("スレ一覧から常設ホームへの戻る", () => {
     expect(activeTab().history).toHaveLength(2);
     act(() => dispatch({ type: "GO_BACK" }));
     expect(screen.getByTestId("page")).toHaveTextContent("home");
+  });
+
+  it.each(["related_board", "home", "custom_board"])(
+    "ホームだけでも%s設定の新規タブ操作で通常タブを追加し、移動と終了ができる",
+    async (mode) => {
+      localStorage.setItem("config_new_tab_page_mode", mode);
+      await mount();
+      const homeId = activeTab().id;
+      act(() => dispatch({ type: "ADD_TAB" }));
+      const newId = activeTab().id;
+      expect(newId).not.toBe(homeId);
+      expect(activeTab().locked).toBeFalsy();
+      expect(activeTab().pinned).toBe(false);
+      expect(screen.getByTestId("page")).toHaveTextContent("newTab");
+      expect(stateRef.current.panes[0].tabs).toHaveLength(2);
+      act(() => dispatch({ type: "NAVIGATE", page: board }));
+      expect(activeTab().id).toBe(newId);
+      expect(screen.getByTestId("page")).toHaveTextContent("threadList");
+      expect(stateRef.current.panes[0].tabs).toHaveLength(2);
+      act(() => dispatch({ type: "CLOSE_TAB", tabId: newId }));
+      expect(activeTab().id).toBe(homeId);
+      expect(stateRef.current.panes[0].tabs).toHaveLength(1);
+    },
+  );
+
+  it("空の新規タブは再読み込みでも板一覧に変わらず復元する", async () => {
+    await mount();
+    act(() => dispatch({ type: "ADD_TAB" }));
+    const saved = stateRef.current;
+    const newId = activeTab().id;
+    cleanup();
+    vi.resetModules();
+    await mount(saved);
+    expect(activeTab().id).toBe(newId);
+    expect(activeTab().locked).toBeFalsy();
+    expect(screen.getByTestId("page")).toHaveTextContent("newTab");
+    expect(stateRef.current.panes[0].tabs).toHaveLength(2);
   });
 
   it("ホーム内の板一覧で板を選ぶと別タブを開き、戻るではホームの最初の画面を選ぶ", async () => {

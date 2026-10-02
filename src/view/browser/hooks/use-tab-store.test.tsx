@@ -1499,7 +1499,7 @@ describe("TabProvider auto refresh state", () => {
     expect(screen.getByTestId("history-index")).toHaveTextContent("1");
   });
 
-  it("既定の新規タブ操作は常設ホームを選び、進むは効かない", async () => {
+  it("関連板がない新規タブ操作は空の通常タブを追加し、進むは効かない", async () => {
     vi.resetModules();
     const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
 
@@ -1529,13 +1529,13 @@ describe("TabProvider auto refresh state", () => {
     );
 
     fireEvent.click(screen.getByText("新規タブ"));
-    expect(screen.getByTestId("tabs-count")).toHaveTextContent("2");
-    expect(screen.getByTestId("current-page-type")).toHaveTextContent("home");
+    expect(screen.getByTestId("tabs-count")).toHaveTextContent("3");
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent("newTab");
     expect(screen.getByTestId("history-length")).toHaveTextContent("1");
     expect(screen.getByTestId("history-index")).toHaveTextContent("0");
 
     fireEvent.click(screen.getByText("進む"));
-    expect(screen.getByTestId("current-page-type")).toHaveTextContent("home");
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent("newTab");
     expect(screen.getByTestId("history-index")).toHaveTextContent("0");
   });
 
