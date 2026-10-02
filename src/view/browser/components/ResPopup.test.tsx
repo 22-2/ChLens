@@ -63,6 +63,8 @@ describe("ResPopup", () => {
   }
 
   beforeEach(() => {
+    // コピー後の通知まで実行されるため、テストでも通知サービスを登録する。
+    container.toast = { notify: vi.fn(), success: vi.fn(), error: vi.fn(), info: vi.fn() };
     writeText.mockResolvedValue();
     writeClipboard.mockResolvedValue();
     container.config = {

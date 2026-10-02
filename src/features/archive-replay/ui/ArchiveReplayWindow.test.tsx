@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { CommentOverlayWindowPlatform } from "src/features/comment-overlay/platform/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -89,11 +89,14 @@ describe("過去実況再生ウィンドウ", () => {
 
     expect(await screen.findByText("スレ1: 架空の実況")).toBeInTheDocument();
     expect(getThreadMock).toHaveBeenCalledWith("https://example.com/thread-a/");
-    expect(
-      archiveReplayEventBus.events.some(
-        (event) => event.type === "comment" && event.comment.responseNumber === 1,
-      ),
-    ).toBe(true);
+    // 読み込み結果の描画後もOverlayへの配信は非同期で続くため、配信そのものの完了を待つ。
+    await waitFor(() => {
+      expect(
+        archiveReplayEventBus.events.some(
+          (event) => event.type === "comment" && event.comment.responseNumber === 1,
+        ),
+      ).toBe(true);
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "現在の実況スレをメインで開く" }));
     expect(mainThreadSyncPublisher).toHaveBeenCalledWith(

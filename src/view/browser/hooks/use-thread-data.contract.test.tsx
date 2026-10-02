@@ -367,6 +367,8 @@ describe("useThreadData Phase 0 contracts", () => {
 
     act(() => {
       result.current.setFilter("image");
+      // 既定は本文検索なので、名前・IDを含む組み合わせの検証では検索対象を明示する。
+      result.current.setSearchTarget("all");
       result.current.setSearchQuery("image-user");
     });
     expect(result.current.filteredResponses.map((res) => res.num)).toEqual([2]);

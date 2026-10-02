@@ -18,11 +18,12 @@ function createRes(num: number, message: string, id?: string): IRes {
   };
 }
 
+// 返信ツリーはNGレスも含めて本文から索引を再構築するため、疑似索引と同じ参照関係を本文にも持たせる。
 const TEST_RES_MAP = new Map<number, IRes>([
   [1, createRes(1, "source message", "source-id")],
-  [2, createRes(2, "reply message", "ID:reply-id")],
-  [3, createRes(3, "sibling reply message", "id:sibling-id")],
-  [4, createRes(4, "nested reply message", "nested-id")],
+  [2, createRes(2, "&gt;&gt;1<br>reply message", "ID:reply-id")],
+  [3, createRes(3, "&gt;&gt;2<br>sibling reply message", "id:sibling-id")],
+  [4, createRes(4, "&gt;&gt;2<br>nested reply message", "nested-id")],
 ]);
 
 const TEST_REP_INDEX = new Map<number, Set<number>>([
@@ -81,6 +82,8 @@ describe("ReplyTreePopup", () => {
   };
 
   beforeEach(() => {
+    // コピー後の通知まで実行されるため、テストでも通知サービスを登録する。
+    container.toast = { notify: vi.fn(), success: vi.fn(), error: vi.fn(), info: vi.fn() };
     writeText.mockResolvedValue();
     writeClipboard.mockResolvedValue();
     canvasContextStub.fillText.mockClear();

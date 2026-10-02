@@ -2,6 +2,7 @@ import "@testing-library/jest-dom/vitest";
 
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import type { MouseEvent as ReactMouseEvent } from "react";
+import { buildReplyIndexes } from "src/core/reply-index";
 import { container } from "src/service-container/index";
 import type { IRes } from "src/service-container/interfaces";
 import { AnchorPreview } from "src/view/browser/components/AnchorPreview";
@@ -29,17 +30,16 @@ function createRes(num: number, message: string, id?: string): IRes {
   };
 }
 
+// 本文から再構築するツリーとプレビューの返信件数が一致するよう、同じレスから索引を作る。
 const TEST_RES_MAP = new Map<number, IRes>([
-  [2, createRes(2, "&gt;&gt;3")],
+  [1, createRes(1, "root response")],
+  [2, createRes(2, "&gt;&gt;1<br>&gt;&gt;3")],
   [3, createRes(3, "preview target")],
-  [4, createRes(4, "&gt;&gt;5")],
+  [4, createRes(4, "&gt;&gt;3<br>&gt;&gt;5")],
   [5, createRes(5, "nested preview target")],
 ]);
 
-const TEST_REP_INDEX = new Map<number, Set<number>>([
-  [1, new Set([2])],
-  [3, new Set([4])],
-]);
+const TEST_REP_INDEX = buildReplyIndexes(Array.from(TEST_RES_MAP.values())).repIndex;
 
 const DUPLICATE_REPLY_RES_MAP = new Map<number, IRes>([
   [3, createRes(3, "preview target")],
@@ -50,10 +50,11 @@ const DUPLICATE_REPLY_INDEX = new Map<number, Set<number>>([[3, new Set([6])]]);
 
 const ID_CHAIN_RES_MAP = new Map<number, IRes>([
   [10, createRes(10, "id root", "ID:AAA")],
-  [11, createRes(11, "id reply", "ID:AAA")],
+  // ID経由で開くツリーも実際の返信を表示できるよう、本文に参照元を含める。
+  [11, createRes(11, "&gt;&gt;10<br>id reply", "ID:AAA")],
 ]);
 
-const ID_CHAIN_REP_INDEX = new Map<number, Set<number>>([[10, new Set([11])]]);
+const ID_CHAIN_REP_INDEX = buildReplyIndexes(Array.from(ID_CHAIN_RES_MAP.values())).repIndex;
 
 const ID_CHAIN_INDEX = new Map<string, Set<number>>([["ID:AAA", new Set([10, 11])]]);
 
@@ -416,6 +417,8 @@ function PopupIdChainHarness() {
 
 describe("thread popup manager integration", () => {
   beforeEach(() => {
+    // コピー後の通知まで実行されるため、テストでも通知サービスを登録する。
+    container.toast = { notify: vi.fn(), success: vi.fn(), error: vi.fn(), info: vi.fn() };
     container.config = {
       get: vi.fn(() => "default"),
       set: vi.fn(),
@@ -494,7 +497,9 @@ describe("thread popup manager integration", () => {
 
     expect(screen.getByText("参照: >>3")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText("返信(1)"));
+    // 親ツリーの無効な返信リンクではなく、参照先プレビューから子ツリーを開く。
+    const anchorPreview = document.querySelector(".anchor-preview") as HTMLElement;
+    fireEvent.click(within(anchorPreview).getByText("返信(2)"));
 
     expect(screen.getByText(">>3 への返信ツリー")).toBeInTheDocument();
     expect(screen.getByTestId("popup-stack")).toHaveTextContent("tree:3:depth=1");
@@ -523,7 +528,8 @@ describe("thread popup manager integration", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "返信を開く" }));
     fireEvent.mouseOver(screen.getByRole("link", { name: ">>3" }));
-    fireEvent.click(screen.getByText("返信(1)"));
+    const anchorPreview = document.querySelector(".anchor-preview") as HTMLElement;
+    fireEvent.click(within(anchorPreview).getByText("返信(2)"));
     fireEvent.contextMenu(screen.getByText("4"));
 
     expect(screen.getByText("参照: >>3")).toBeInTheDocument();
@@ -577,7 +583,8 @@ describe("thread popup manager integration", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "返信を開く" }));
     fireEvent.mouseOver(screen.getByRole("link", { name: ">>3" }));
-    fireEvent.click(screen.getByText("返信(1)"));
+    const anchorPreview = document.querySelector(".anchor-preview") as HTMLElement;
+    fireEvent.click(within(anchorPreview).getByText("返信(2)"));
     fireEvent.contextMenu(screen.getByText("4"));
 
     act(() => {
@@ -951,6 +958,8 @@ const RES_BASE_PROPS = {
 
 describe("ReplyTreePopup close behavior", () => {
   beforeEach(() => {
+    // コピー後の通知まで実行されるため、テストでも通知サービスを登録する。
+    container.toast = { notify: vi.fn(), success: vi.fn(), error: vi.fn(), info: vi.fn() };
     container.config = {
       get: vi.fn(() => "default"),
       set: vi.fn(),

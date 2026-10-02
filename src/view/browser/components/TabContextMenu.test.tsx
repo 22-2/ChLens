@@ -65,6 +65,8 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
 
 describe("TabContextMenu", () => {
   beforeEach(() => {
+    // コピー後の通知まで実行されるため、テストでも通知サービスを登録する。
+    container.toast = { notify: vi.fn(), success: vi.fn(), error: vi.fn(), info: vi.fn() };
     copyTextMock.mockResolvedValue();
     container.bookmark = {
       get: vi.fn(),
