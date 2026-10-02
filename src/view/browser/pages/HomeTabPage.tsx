@@ -201,21 +201,11 @@ export const HomeTabPage: React.FC = () => {
 
   return (
     <div className="home-tab-page">
-      {/* 常設ホームではNAVIGATEが禁止されるため、板一覧の入口も新規タブを使う。 */}
+      {/* 板を探す入口は常設ホーム内で切り替え、押し直してもタブを増やさない。 */}
       <Button
         className="home-tab-page__link"
         variant="subtle"
-        onClick={() => dispatch(tabActions.openInNewTab({ type: "boardList", title: "板一覧" }))}
-        onMouseDown={(event) => {
-          if (event.button === 1) event.preventDefault();
-        }}
-        onAuxClick={(event) => {
-          if (event.button !== 1) return;
-          event.preventDefault();
-          dispatch(
-            tabActions.openInNewTab({ type: "boardList", title: "板一覧" }, { background: true }),
-          );
-        }}
+        onClick={() => dispatch(tabActions.navigate({ type: "boardList", title: "板一覧" }))}
       >
         <PageTypeIcon type="boardList" />
         板一覧を開く

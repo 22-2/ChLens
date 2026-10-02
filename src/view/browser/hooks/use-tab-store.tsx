@@ -925,6 +925,17 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
         // ホームからの通常遷移は常設タブを保ち、明示的に開いた対象を前面へ出す。
         const ownerPaneId =
           state.panes.find((p) => p.tabs.some((tab) => tab.id === targetTab.id))?.id ?? paneId;
+        if (action.page.type === "boardList") {
+          // 板一覧はホーム内の補助画面に限定し、常設タブの履歴を2画面に固定する。
+          return updatePane(state, ownerPaneId, (p) => ({
+            ...p,
+            tabs: p.tabs.map((tab) =>
+              tab.id === targetTab.id
+                ? { ...tab, history: [tab.history[0], action.page], currentIndex: 1 }
+                : tab,
+            ),
+          }));
+        }
         const next = tabReducer(state, {
           type: TAB_ACTION_TYPES.OPEN_IN_NEW_TAB,
           page: action.page,
@@ -990,6 +1001,10 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
         ? findTabAcrossPanes(state, action.tabId)
         : getPaneActiveTab(getPane(state, paneId));
       if (!tab) return state;
+      if (tab.locked) {
+        // 板一覧からは常設ホームの最初の画面へ戻り、検索状態はviewStatesに残す。
+        return updateTargetTab(state, paneId, action.tabId, (t) => ({ ...t, currentIndex: 0 }));
+      }
       // スレ一覧の戻るは履歴を巻き戻さずホームを選ぶ。旧セッションの板一覧祖先も表示しない。
       if (
         getCurrentPage(tab).type === "threadList" ||
@@ -998,9 +1013,16 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       ) {
         const owner = state.panes.find((p) => p.tabs.some((candidate) => candidate.id === tab.id));
         const home = owner?.tabs.find((candidate) => candidate.locked);
-        if (!owner || !home || home.id === tab.id) return state;
+        if (!owner || !home) return state;
         return {
-          ...updatePane(state, owner.id, (p) => ({ ...p, activeTabId: home.id })),
+          ...updatePane(state, owner.id, (p) => ({
+            ...p,
+            activeTabId: home.id,
+            // スレ一覧の戻るは、ホームが板一覧を表示中でも最初の画面へ戻す。
+            tabs: p.tabs.map((candidate) =>
+              candidate.id === home.id ? { ...candidate, currentIndex: 0 } : candidate,
+            ),
+          })),
           activePaneId: owner.id,
         };
       }

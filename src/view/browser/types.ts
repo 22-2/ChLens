@@ -1,7 +1,7 @@
 import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
 
 // ページ種別の定義
-// 常設ホームはタブ履歴から独立させ、戻る先は板一覧 → スレッド一覧 → スレッドに統一する。
+// 常設ホームは入口として板一覧も内包し、スレ一覧の戻る先はホームの最初の画面にする。
 export type PageType =
   | "home"
   | "boardList"
@@ -237,7 +237,7 @@ export function getPageViewStateKey(page: Page): string {
 
 export function canGoBack(tab: Tab): boolean {
   // 通常タブの履歴先頭でも常設ホームへ戻れる。ホーム自体には戻る先を作らない。
-  return !tab.locked && (tab.currentIndex > 0 || getCurrentPage(tab).type !== "home");
+  return tab.currentIndex > 0 || (!tab.locked && getCurrentPage(tab).type !== "home");
 }
 
 export function canGoForward(tab: Tab): boolean {

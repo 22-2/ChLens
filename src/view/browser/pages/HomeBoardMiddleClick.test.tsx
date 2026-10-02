@@ -380,15 +380,13 @@ describe("ホームの板項目のミドルクリック", () => {
     },
   );
 
-  it("ホームから板一覧を中クリックで開いてもホームを保ち、戻る先を重複させない", async () => {
+  it("板一覧ボタンは常設ホーム内で切り替え、押し直してもタブを増やさない", async () => {
     await renderPage();
+    const initialTabCount = Number(screen.getByTestId("tab-count").textContent);
     const boardList = screen.getByRole("button", { name: "板一覧を開く" });
-    expect(fireEvent.mouseDown(boardList, { button: 1 })).toBe(false);
-    fireEvent(
-      boardList,
-      new MouseEvent("auxclick", { bubbles: true, cancelable: true, button: 1 }),
-    );
-    expect(screen.getByTestId("active-page-type")).toHaveTextContent("home");
-    expect(screen.getByTestId("new-tab-history")).toHaveTextContent(/^boardList$/);
+    fireEvent.click(boardList);
+    expect(screen.getByTestId("active-page-type")).toHaveTextContent("boardList");
+    expect(screen.getByTestId("home-history")).toHaveTextContent(/^home\|boardList$/);
+    expect(Number(screen.getByTestId("tab-count").textContent)).toBe(initialTabCount);
   });
 });

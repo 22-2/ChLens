@@ -24,7 +24,16 @@ export function sanitizeTabStoreState(state: TabStoreState): TabStoreState {
 function normalizeLoadedTab(tab: Tab): Tab {
   // 常設ホームの旧ページ種別は専用のhomeへ移し、通常タブには板一覧だけを残す。
   if (tab.locked) {
-    return { ...tab, ...createHomeTab(tab.id) };
+    const home = { ...tab, ...createHomeTab(tab.id) };
+    // F5後もホーム内の板一覧と検索状態を復元し、旧版の常設板ツリーはホームへ移す。
+    if (tab.history?.[0]?.type === "home" && tab.history[1]?.type === "boardList") {
+      return {
+        ...home,
+        history: [home.history[0], tab.history[1]],
+        currentIndex: tab.currentIndex === 1 ? 1 : 0,
+      };
+    }
+    return home;
   }
 
   const history: Page[] = [];

@@ -94,7 +94,58 @@ describe("スレ一覧から常設ホームへの戻る", () => {
     expect(stateRef.current.panes[0].tabs).toHaveLength(1);
     act(() => dispatch({ type: "NAVIGATE", page: { type: "boardList", title: "板一覧" } }));
     expect(screen.getByTestId("page")).toHaveTextContent("boardList");
+    expect(stateRef.current.panes[0].tabs).toHaveLength(1);
+    expect(activeTab().locked).toBe(true);
+    expect(canGoBack(activeTab())).toBe(true);
+    act(() => dispatch({ type: "NAVIGATE", page: { type: "boardList", title: "板一覧" } }));
+    expect(activeTab().history).toHaveLength(2);
+    act(() => dispatch({ type: "GO_BACK" }));
+    expect(screen.getByTestId("page")).toHaveTextContent("home");
+  });
+
+  it("ホーム内の板一覧で板を選ぶと別タブを開き、戻るではホームの最初の画面を選ぶ", async () => {
+    await mount();
+    act(() => dispatch({ type: "NAVIGATE", page: { type: "boardList", title: "板一覧" } }));
+    const homeId = activeTab().id;
+    act(() =>
+      dispatch({
+        type: "UPDATE_TAB_VIEW_STATE",
+        tabId: homeId,
+        pageKey: "boardList",
+        patch: { searchQuery: "サンプル" },
+      }),
+    );
+    act(() => dispatch({ type: "NAVIGATE", page: board }));
+    expect(activeTab().locked).toBeFalsy();
+    expect(activeTab().history).toEqual([board]);
     expect(stateRef.current.panes[0].tabs).toHaveLength(2);
+    act(() => dispatch({ type: "GO_BACK" }));
+    expect(activeTab().id).toBe(homeId);
+    expect(screen.getByTestId("page")).toHaveTextContent("home");
+    act(() => dispatch({ type: "NAVIGATE", page: { type: "boardList", title: "板一覧" } }));
+    expect(activeTab().viewStates?.boardList.searchQuery).toBe("サンプル");
+    expect(stateRef.current.panes[0].tabs).toHaveLength(2);
+  });
+
+  it("ホーム内の板一覧と検索状態をセッションから復元する", async () => {
+    const home = {
+      ...createHomeTab("saved-home"),
+      history: [
+        { type: "home" as const, title: "ホーム" },
+        { type: "boardList" as const, title: "板一覧" },
+      ],
+      currentIndex: 1,
+      viewStates: { boardList: { searchQuery: "保存済み" } },
+    };
+    await mount({
+      panes: [{ id: "saved", tabs: [home], activeTabId: home.id }],
+      activePaneId: "saved",
+      closedTabs: [],
+    });
+    expect(screen.getByTestId("page")).toHaveTextContent("boardList");
+    expect(activeTab().viewStates?.boardList.searchQuery).toBe("保存済み");
+    act(() => dispatch({ type: "GO_BACK" }));
+    expect(screen.getByTestId("page")).toHaveTextContent("home");
   });
 
   it("ホームから開いた板の履歴先頭でも戻れるが、スレ一覧タブの状態は保つ", async () => {
