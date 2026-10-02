@@ -3,20 +3,24 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
+import { QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE } from "src/view/browser/utils/filter-toolbar-events";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 
 function QuickAccessFilterHarness({
   isActive = true,
   virtualized = false,
+  isWheelToggleEnabled = true,
 }: {
   isActive?: boolean;
   virtualized?: boolean;
+  isWheelToggleEnabled?: boolean;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
     pageType: "threadList",
     tabId: "tab-1",
     isActive,
+    isWheelToggleEnabled,
     searchQuery,
     setSearchQuery,
   });
@@ -53,7 +57,7 @@ function QuickAccessFilterHarness({
   );
 }
 
-describe("useQuickAccessFilterToolbar wheel handling", () => {
+describe("クイックアクセスのフィルタ開閉", () => {
   afterEach(() => {
     cleanup();
   });
@@ -64,6 +68,39 @@ describe("useQuickAccessFilterToolbar wheel handling", () => {
     fireEvent.wheel(screen.getByTestId("panel"), { deltaY: -48 });
 
     expect(screen.getByTestId("filter-state")).toHaveTextContent("open");
+  });
+
+  it.each([false, true])(
+    "ホイール開閉を無効にした一覧ではフィルタを開かない（仮想化: %s）",
+    (virtualized) => {
+      render(<QuickAccessFilterHarness isWheelToggleEnabled={false} virtualized={virtualized} />);
+
+      fireEvent.wheel(screen.getByText("row"), { deltaY: -48 });
+
+      expect(screen.getByTestId("filter-state")).toHaveTextContent("closed");
+    },
+  );
+
+  it("ホイール開閉が無効でも既存のトグル操作で開閉でき、ホイールで入力を隠さない", () => {
+    render(<QuickAccessFilterHarness isWheelToggleEnabled={false} />);
+    const toggleFilter = () =>
+      fireEvent(
+        window,
+        new CustomEvent(QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.threadList, {
+          detail: { tabId: "tab-1" },
+        }),
+      );
+
+    toggleFilter();
+    expect(screen.getByTestId("filter-state")).toHaveTextContent("open");
+    fireEvent.change(screen.getByLabelText("search query"), { target: { value: "検索語" } });
+    fireEvent.wheel(screen.getByText("row"), { deltaY: 48 });
+    expect(screen.getByTestId("filter-state")).toHaveTextContent("open");
+    expect(screen.getByLabelText("search query")).toHaveValue("検索語");
+
+    toggleFilter();
+    expect(screen.getByTestId("filter-state")).toHaveTextContent("closed");
+    expect(screen.getByLabelText("search query")).toHaveValue("");
   });
 
   it("仮想テーブルは内側のスクロール位置で上端を判定する", () => {

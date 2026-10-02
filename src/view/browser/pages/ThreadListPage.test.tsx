@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { createRef } from "react";
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
 import { container as serviceContainer } from "src/service-container/index";
 import type { IBoardService, IBookmark, IThread } from "src/service-container/interfaces";
@@ -8,7 +9,9 @@ import {
   type DisplayThread,
   THREAD_LIST_COLUMNS,
 } from "src/view/browser/components/thread-list-shared";
+import { WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 import { ThreadListPage } from "src/view/browser/pages/ThreadListPage";
+import { QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE } from "src/view/browser/utils/filter-toolbar-events";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const THREAD_LIST_SORT_STORAGE_KEY = "chlens_browser_thread_list_sort_by_site";
@@ -288,6 +291,58 @@ describe("ThreadListPage", () => {
     configUpdatedListeners.clear();
     messageListeners.clear();
     vi.useRealTimers();
+  });
+
+  it("一覧上端のホイールは読み込み中も更新待ちもフィルタを開かず更新だけを行う", async () => {
+    // 変更理由: フック単体ではイベントの競合を再現できないため、実際の一覧と
+    // スクロール要素を組み合わせて更新・ボタン開閉の両方を確認する。
+    vi.useRealTimers();
+    const scrollContainerRef = createRef<HTMLDivElement>();
+    render(
+      <div ref={scrollContainerRef} className="content-area__tab-panel" data-tab-panel-id="tab-1">
+        <ThreadListPage
+          tabId="tab-1"
+          page={{
+            type: "threadList",
+            title: "テスト板",
+            boardUrl: "https://example.com/wheel-refresh/",
+            boardTitle: "テスト板",
+          }}
+          refreshKey={0}
+          isActive
+          scrollContainerRef={scrollContainerRef}
+        />
+      </div>,
+    );
+    const panel = scrollContainerRef.current!;
+    fireEvent.wheel(panel, { deltaY: -48 });
+    expect(screen.queryByRole("textbox")).toBeNull();
+
+    await waitFor(() => expect(getRenderedThreadTitles()).toHaveLength(3));
+    dispatchMock.mockClear();
+    for (let index = 0; index < WHEEL_THRESHOLD; index += 1) {
+      fireEvent.wheel(panel, { deltaY: -48 });
+      expect(screen.queryByRole("textbox")).toBeNull();
+    }
+    expect(dispatchMock).toHaveBeenCalledWith({ type: "RELOAD", tabId: "tab-1" });
+    const refreshCount = dispatchMock.mock.calls.length;
+    fireEvent.wheel(panel, { deltaY: -48 });
+    expect(dispatchMock).toHaveBeenCalledTimes(refreshCount);
+    expect(screen.queryByRole("textbox")).toBeNull();
+
+    const toggleFilter = () =>
+      fireEvent(
+        window,
+        new CustomEvent(QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.threadList, {
+          detail: { tabId: "tab-1" },
+        }),
+      );
+    toggleFilter();
+    expect(screen.getByRole("textbox")).toBeVisible();
+    fireEvent.wheel(panel, { deltaY: 48 });
+    expect(screen.getByRole("textbox")).toBeVisible();
+    toggleFilter();
+    expect(screen.queryByRole("textbox")).toBeNull();
   });
 
   it("一覧の自動更新は表示中タブでのみ発火する", async () => {

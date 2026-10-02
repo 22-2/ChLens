@@ -11,6 +11,7 @@ interface UseQuickAccessFilterToolbarParams {
   pageType: QuickAccessFilterPageType;
   tabId: string;
   isActive: boolean;
+  isWheelToggleEnabled?: boolean;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
 }
@@ -24,6 +25,7 @@ export function useQuickAccessFilterToolbar({
   pageType,
   tabId,
   isActive,
+  isWheelToggleEnabled = true,
   searchQuery,
   setSearchQuery,
 }: UseQuickAccessFilterToolbarParams): UseQuickAccessFilterToolbarResult {
@@ -67,7 +69,9 @@ export function useQuickAccessFilterToolbar({
   }, [closeFilterToolbar, isActive, isFilterOpen, pageType, tabId, viewWindow]);
 
   useEffect(() => {
-    if (!isActive) {
+    // 変更理由: ホイール更新のある一覧では開閉操作をボタンに限定し、
+    // 更新の進捗・読み込み・クールダウン中も同じ操作に二つの役割を持たせない。
+    if (!isActive || !isWheelToggleEnabled) {
       return;
     }
 
@@ -132,7 +136,7 @@ export function useQuickAccessFilterToolbar({
     return () => {
       viewWindow.removeEventListener("wheel", handleWheel);
     };
-  }, [isActive, isFilterOpen, tabId, viewWindow]);
+  }, [isActive, isFilterOpen, isWheelToggleEnabled, tabId, viewWindow]);
 
   return {
     isFilterOpen,

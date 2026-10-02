@@ -331,6 +331,8 @@ export const ThreadListPage: React.FC<Props> = ({
   });
   const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
     pageType: "threadList",
+    // 一覧上端のホイールは更新に割り当て、フィルタ開閉との競合を防ぐ。
+    isWheelToggleEnabled: false,
     tabId,
     isActive,
     searchQuery,
