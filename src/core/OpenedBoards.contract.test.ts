@@ -1,0 +1,47 @@
+import { BBSMenuModel } from "src/core/BBSMenuModel";
+import { parseOpenedBoardEntries } from "src/view/browser/pages/board-list/board-list-utils";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
+
+const { config } = vi.hoisted(() => ({ config: new Map<string, string>() }));
+vi.mock("src/service-container/index", () => ({
+  container: { config: { get: (key: string) => config.get(key) ?? null } },
+}));
+vi.mock("src/core/BBSMenuFetcher", () => ({ BBSMenuFetcher: class {} }));
+vi.mock("src/core/URL", () => ({ URL: class {} }));
+vi.mock("src/core/History", () => ({}));
+vi.mock("src/core/ReadState.js", () => ({}));
+
+describe("独自ホストの取得確認と板履歴の読み取り", () => {
+  beforeEach(() => config.clear());
+
+  it("確認済みの板はホームとその他の板一覧で読み込み、再構築後も名前と日時を保つ", async () => {
+    const board = {
+      url: "https://example.org/sample/",
+      title: "独自の板名",
+      lastVisited: Date.now(),
+      subjectVerified: true,
+    };
+    const saved = JSON.stringify([board]);
+    config.set("opened_board_entries", saved);
+    for (let restart = 0; restart < 2; restart += 1) {
+      expect(parseOpenedBoardEntries(saved)).toEqual([board]);
+      const menus = await new BBSMenuModel().fetchAll();
+      expect(menus[0].categories[0].boards).toEqual([
+        { url: board.url, name: board.title, subjectVerified: true },
+      ]);
+      expect(config.get("opened_board_entries")).toBe(saved);
+    }
+  });
+
+  it.each([undefined, "true", false])(
+    "未確認の外部サイトの旧記録を再び板へ混ぜない（確認=%s）",
+    async (subjectVerified) => {
+      const saved = JSON.stringify([
+        { url: "https://example.org/sample/", title: "外部サイト", subjectVerified },
+      ]);
+      config.set("opened_board_entries", saved);
+      expect(parseOpenedBoardEntries(saved)).toEqual([]);
+      expect(await new BBSMenuModel().fetchAll()).toEqual([]);
+    },
+  );
+});

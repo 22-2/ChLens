@@ -4,6 +4,7 @@ export interface OpenedBoardEntry {
   url: string;
   title?: string;
   lastVisited?: number;
+  subjectVerified?: true;
 }
 
 export function isResolvedBoardTitle(boardUrl: string, candidate: string): boolean {
@@ -58,6 +59,7 @@ export function parseOpenedBoardEntries(raw: string | null): OpenedBoardEntry[] 
       url?: unknown;
       title?: unknown;
       lastVisited?: unknown;
+      subjectVerified?: unknown;
     }>;
     if (!Array.isArray(parsed)) {
       return [];
@@ -69,14 +71,17 @@ export function parseOpenedBoardEntries(raw: string | null): OpenedBoardEntry[] 
           return null;
         }
 
-        // 変更理由: 過去に外部サイトを板URLとして保存していたデータがあるため、
-        // 「一度開いた板」へは掲示板として判定できるURLだけを残す。
-        const normalizedUrl = normalizeBoardUrl(entry.url, { requireCompatibleHost: true });
+        // 未確認の外部サイトを除外しつつ、スレ一覧を取得できた独自ホストは保存記録で認める。
+        const normalizedUrl = normalizeBoardUrl(entry.url, {
+          requireCompatibleHost: true,
+          subjectVerified: entry.subjectVerified === true,
+        });
         if (!normalizedUrl) {
           return null;
         }
 
         const normalizedEntry: OpenedBoardEntry = { url: normalizedUrl };
+        if (entry.subjectVerified === true) normalizedEntry.subjectVerified = true;
         if (typeof entry.title === "string") {
           normalizedEntry.title = entry.title;
         }
@@ -91,7 +96,10 @@ export function parseOpenedBoardEntries(raw: string | null): OpenedBoardEntry[] 
     const uniqueEntries: OpenedBoardEntry[] = [];
     const indexByBoardKey = new Map<string, number>();
     for (const entry of entries) {
-      const boardKey = getBoardUrlKey(entry.url, { requireCompatibleHost: true });
+      const boardKey = getBoardUrlKey(entry.url, {
+        requireCompatibleHost: true,
+        subjectVerified: entry.subjectVerified === true,
+      });
       if (boardKey === null) {
         continue;
       }
@@ -107,6 +115,7 @@ export function parseOpenedBoardEntries(raw: string | null): OpenedBoardEntry[] 
       if (!uniqueEntries[existingIndex].title && entry.title) {
         uniqueEntries[existingIndex] = { ...uniqueEntries[existingIndex], title: entry.title };
       }
+      if (entry.subjectVerified) uniqueEntries[existingIndex].subjectVerified = true;
       if ((entry.lastVisited ?? 0) > (uniqueEntries[existingIndex].lastVisited ?? 0)) {
         uniqueEntries[existingIndex] = {
           ...uniqueEntries[existingIndex],

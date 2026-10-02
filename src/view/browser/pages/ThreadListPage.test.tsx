@@ -344,11 +344,178 @@ describe("ThreadListPage", () => {
     vi.restoreAllMocks();
   });
 
+  it("未保存の板名は取得結果から直接保存し、タブの描画更新を待たず閲覧日時を保つ", async () => {
+    vi.useRealTimers();
+    let saved = JSON.stringify([{ url: "https://example.com/sample/", title: "", lastVisited: 1 }]);
+    serviceContainer.config.get = vi.fn((key: string) =>
+      key === "opened_board_entries" ? saved : "0",
+    );
+    serviceContainer.config.set = vi.fn((key: string, value: unknown) => {
+      if (key === "opened_board_entries") saved = String(value);
+    });
+    const pending = Promise.withResolvers<string>();
+    vi.mocked(askBoardTitle).mockReturnValueOnce(pending.promise);
+    const page = {
+      type: "threadList" as const,
+      title: "sample",
+      boardUrl: "https://example.com/sample/",
+      boardTitle: "sample",
+    };
+    render(<ThreadListPage tabId="tab-1" page={page} refreshKey={0} isActive />);
+    await waitFor(() => expect(JSON.parse(saved)[0].lastVisited).toBeGreaterThan(1));
+    const visitedAt = JSON.parse(saved)[0].lastVisited;
+    await act(async () => pending.resolve("取得した板名"));
+    await waitFor(() =>
+      expect(JSON.parse(saved)[0]).toEqual({
+        url: page.boardUrl,
+        title: "取得した板名",
+        lastVisited: visitedAt,
+      }),
+    );
+    expect(dispatchMock).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "取得した板名", boardUrl: page.boardUrl }),
+    );
+  });
+
+  it("板を切り替えた後に届いた名前も元の板へ保存し、表示中の板を上書きしない", async () => {
+    vi.useRealTimers();
+    let saved = "[]";
+    serviceContainer.config.get = vi.fn((key: string) =>
+      key === "opened_board_entries" ? saved : "0",
+    );
+    serviceContainer.config.set = vi.fn((key: string, value: unknown) => {
+      if (key === "opened_board_entries") saved = String(value);
+    });
+    const pending = Promise.withResolvers<string>();
+    vi.mocked(askBoardTitle).mockReturnValueOnce(pending.promise);
+    const first = {
+      type: "threadList" as const,
+      title: "sample",
+      boardUrl: "https://example.com/sample/",
+      boardTitle: "sample",
+    };
+    const second = {
+      type: "threadList" as const,
+      title: "別の板",
+      boardUrl: "https://example.com/another/",
+      boardTitle: "別の板",
+    };
+    const { rerender } = render(
+      <ThreadListPage tabId="tab-1" page={first} refreshKey={0} isActive />,
+    );
+    await waitFor(() => expect(JSON.parse(saved)).toHaveLength(1));
+    const visitedAt = JSON.parse(saved)[0].lastVisited;
+    rerender(<ThreadListPage tabId="tab-1" page={second} refreshKey={0} isActive />);
+    await waitFor(() => expect(JSON.parse(saved)).toHaveLength(2));
+    await act(async () => pending.resolve("最初の板名"));
+    await waitFor(() =>
+      expect(
+        JSON.parse(saved).find((entry: { url: string }) => entry.url === first.boardUrl),
+      ).toEqual({ url: first.boardUrl, title: "最初の板名", lastVisited: visitedAt }),
+    );
+    expect(
+      JSON.parse(saved).find((entry: { url: string }) => entry.url === second.boardUrl).title,
+    ).toBe("別の板");
+    expect(dispatchMock).not.toHaveBeenCalledWith(expect.objectContaining({ title: "最初の板名" }));
+  });
+
+  it.each([true, false])(
+    "独自ホストの板はスレ一覧の取得確認を保存し、名前の到着順に依存しない（名前が先=%s）",
+    async (nameFirst) => {
+      vi.useRealTimers();
+      let saved = "[]";
+      serviceContainer.config.get = vi.fn((key: string) =>
+        key === "opened_board_entries" ? saved : "0",
+      );
+      serviceContainer.config.set = vi.fn((key: string, value: unknown) => {
+        if (key === "opened_board_entries") saved = String(value);
+      });
+      const title = Promise.withResolvers<string>();
+      const subject = Promise.withResolvers<{ threads: IThread[]; message: null }>();
+      vi.mocked(askBoardTitle).mockReturnValueOnce(title.promise);
+      getThreadsMock.mockReturnValueOnce(subject.promise);
+      const page = {
+        type: "threadList" as const,
+        title: "sample",
+        boardUrl: "https://example.org/sample/",
+        boardTitle: "sample",
+      };
+      const { unmount } = render(
+        <ThreadListPage tabId="tab-1" page={page} refreshKey={0} isActive />,
+      );
+      await act(flushAsyncRender);
+      expect(JSON.parse(saved)).toEqual([]);
+      const todayStart = new Date().setHours(0, 0, 0, 0);
+      if (nameFirst) await act(async () => title.resolve("独自の板名"));
+      await act(async () => subject.resolve({ threads: THREADS, message: null }));
+      if (!nameFirst) await act(async () => title.resolve("独自の板名"));
+      await waitFor(() =>
+        expect(JSON.parse(saved)[0]).toMatchObject({
+          url: page.boardUrl,
+          title: "独自の板名",
+          subjectVerified: true,
+        }),
+      );
+      expect(JSON.parse(saved)[0].lastVisited).toBeGreaterThanOrEqual(todayStart);
+      unmount();
+      render(
+        <ThreadListPage
+          tabId="tab-1"
+          page={{ ...page, title: "独自の板名", boardTitle: "独自の板名" }}
+          refreshKey={0}
+          isActive
+        />,
+      );
+      await waitFor(() => expect(JSON.parse(saved)).toHaveLength(1));
+      expect(JSON.parse(saved)[0]).toMatchObject({ title: "独自の板名", subjectVerified: true });
+      expect(askBoardTitle).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("独自ホストは名前だけ判明しても、スレ一覧の取得に失敗したら保存対象を広げない", async () => {
+    vi.useRealTimers();
+    const logger = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    let saved = "[]";
+    serviceContainer.config.get = vi.fn((key: string) =>
+      key === "opened_board_entries" ? saved : "0",
+    );
+    serviceContainer.config.set = vi.fn((key: string, value: unknown) => {
+      if (key === "opened_board_entries") saved = String(value);
+    });
+    getThreadsMock.mockRejectedValueOnce(new Error("スレ一覧なし"));
+    vi.mocked(askBoardTitle).mockResolvedValueOnce("名前だけの結果");
+    render(
+      <ThreadListPage
+        tabId="tab-1"
+        page={{
+          type: "threadList",
+          title: "sample",
+          boardUrl: "https://example.org/sample/",
+          boardTitle: "sample",
+        }}
+        refreshKey={0}
+        isActive
+      />,
+    );
+    await waitFor(() => expect(logger).toHaveBeenCalled());
+    await act(flushAsyncRender);
+    expect(JSON.parse(saved)).toEqual([]);
+    logger.mockRestore();
+  });
+
   it("板の保存に失敗した場合は詳細をログへ出し、次の保存を続ける", async () => {
     vi.useRealTimers();
     const logger = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const error = new Error("保存失敗");
-    const saveConfig = vi.fn().mockRejectedValueOnce(error);
+    let saved = "[]";
+    serviceContainer.config.get = vi.fn((key: string) =>
+      key === "opened_board_entries" ? saved : "0",
+    );
+    const saveConfig = vi
+      .fn((key: string, value: unknown) => {
+        if (key === "opened_board_entries") saved = String(value);
+      })
+      .mockRejectedValueOnce(error);
     serviceContainer.config.set = saveConfig;
     const page = {
       type: "threadList" as const,
@@ -363,7 +530,13 @@ describe("ThreadListPage", () => {
         error,
       }),
     );
-    await waitFor(() => expect(saveConfig).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(JSON.parse(saved)[0]).toMatchObject({
+        url: page.boardUrl,
+        title: page.title,
+        lastVisited: expect.any(Number),
+      }),
+    );
     logger.mockRestore();
   });
 

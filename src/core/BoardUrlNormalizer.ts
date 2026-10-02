@@ -8,6 +8,8 @@ import {
 export interface BoardUrlNormalizationOptions {
   /** 開いた板の記録など、既知の掲示板ホストだけに限定する場合に指定する。 */
   requireCompatibleHost?: boolean;
+  /** スレ一覧の取得・解析に成功した保存レコードだけ、未登録ホストを許可する。 */
+  subjectVerified?: boolean;
 }
 
 /**
@@ -61,7 +63,12 @@ export function normalizeBoardUrl(
       return null;
     }
 
-    if (options.requireCompatibleHost && !isCompatibleBoardHost(normalized.hostname)) {
+    // 独自ホストは実際のスレ一覧取得で確認し、既存のホスト一覧へ名前を追加しない。
+    if (
+      options.requireCompatibleHost &&
+      !options.subjectVerified &&
+      !isCompatibleBoardHost(normalized.hostname)
+    ) {
       return null;
     }
 
@@ -108,6 +115,7 @@ export function getBoardUrlKey(
 export interface NormalizableBoard {
   name: string;
   url: string;
+  subjectVerified?: true;
 }
 
 export interface NormalizableBBSMenu {
@@ -132,12 +140,15 @@ export function normalizeBBSMenus<T extends NormalizableBBSMenu>(menus: T[]): T[
       const categories = menu.categories
         .map((category) => {
           const boards: NormalizableBoard[] = [];
-          // 「その他」は履歴由来のため、既知の掲示板ホストに限定して
-          // 過去に混入したTwitterやDiscordなどをキャッシュからも掃除する。
+          // 旧履歴の外部サイトは除きつつ、取得確認済みの独自ホストは再起動後も残す。
           const requireCompatibleHost = menu.name === "その他" || menu.name === "Other";
           for (const board of category.boards) {
-            const normalizedUrl = normalizeBoardUrl(board.url, { requireCompatibleHost });
-            const boardKey = getBoardUrlKey(board.url, { requireCompatibleHost });
+            const options = {
+              requireCompatibleHost,
+              subjectVerified: board.subjectVerified === true,
+            };
+            const normalizedUrl = normalizeBoardUrl(board.url, options);
+            const boardKey = getBoardUrlKey(board.url, options);
             if (normalizedUrl === null || boardKey === null || seenBoardKeys.has(boardKey)) {
               continue;
             }

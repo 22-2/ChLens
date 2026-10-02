@@ -58,39 +58,41 @@ export class BBSMenuModel {
           const parsed = JSON.parse(raw) as Array<{
             url?: unknown;
             title?: unknown;
+            subjectVerified?: unknown;
           }>;
           if (!Array.isArray(parsed)) {
             return [];
           }
 
-          // 変更理由: 外部サイトを板として保存していた過去データがあるため、
-          // BBSMENUを組み立てる時点で既知の掲示板URLだけに戻し、一覧への再混入を防ぐ。
+          // 外部サイトの旧記録は除き、スレ一覧の取得確認済みの板はホストを列挙せずに残す。
           const seenBoardKeys = new Set<string>();
-          const normalizedEntries = parsed.reduce<Array<{ url: string; title?: string }>>(
-            (acc, entry) => {
-              if (!entry || typeof entry.url !== "string") {
-                return acc;
-              }
-
-              const normalizedUrl = normalizeBoardUrl(entry.url, {
-                requireCompatibleHost: true,
-              });
-              const boardKey = normalizedUrl === null ? null : getBoardUrlKey(normalizedUrl);
-              if (normalizedUrl === null || boardKey === null || seenBoardKeys.has(boardKey)) {
-                return acc;
-              }
-
-              seenBoardKeys.add(boardKey);
-              if (typeof entry.title === "string") {
-                acc.push({ url: normalizedUrl, title: entry.title });
-                return acc;
-              }
-
-              acc.push({ url: normalizedUrl });
+          const normalizedEntries = parsed.reduce<
+            Array<{ url: string; title?: string; subjectVerified?: true }>
+          >((acc, entry) => {
+            if (!entry || typeof entry.url !== "string") {
               return acc;
-            },
-            [],
-          );
+            }
+
+            const normalizedUrl = normalizeBoardUrl(entry.url, {
+              requireCompatibleHost: true,
+              subjectVerified: entry.subjectVerified === true,
+            });
+            const boardKey = normalizedUrl === null ? null : getBoardUrlKey(normalizedUrl);
+            if (normalizedUrl === null || boardKey === null || seenBoardKeys.has(boardKey)) {
+              return acc;
+            }
+
+            seenBoardKeys.add(boardKey);
+            const confirmation =
+              entry.subjectVerified === true ? { subjectVerified: true as const } : {};
+            if (typeof entry.title === "string") {
+              acc.push({ url: normalizedUrl, title: entry.title, ...confirmation });
+              return acc;
+            }
+
+            acc.push({ url: normalizedUrl, ...confirmation });
+            return acc;
+          }, []);
 
           // 板一覧はURLと板名だけを使うが、同じ保存レコードには閲覧日時なども含まれる。
           // 読み取り用の射影を書き戻すとF5後に日時が消えるため、ここでは永続データを変更しない。

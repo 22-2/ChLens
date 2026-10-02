@@ -15,6 +15,13 @@ export interface HistoryEntry {
 export interface OpenedBoardEntry {
   url: string;
   title?: string;
+  subjectVerified?: true;
+}
+
+interface CollectedBoard {
+  name: string;
+  url: string;
+  subjectVerified?: true;
 }
 
 /**
@@ -74,21 +81,27 @@ export class OtherBoardsCollector {
   /**
    * ReadStateと履歴から未登録の板URLを収集して返す。
    */
-  private async _collectUnregisteredBoards(
-    registeredUrls: Set<string>,
-  ): Promise<{ name: string; url: string }[]> {
-    const otherBoards: { name: string; url: string }[] = [];
+  private async _collectUnregisteredBoards(registeredUrls: Set<string>): Promise<CollectedBoard[]> {
+    const otherBoards: CollectedBoard[] = [];
     const seenUrls = new Set<string>();
 
-    const addIfNew = (url: string, name: string) => {
-      const normalizedUrl = normalizeBoardUrl(url, { requireCompatibleHost: true });
+    const addIfNew = (url: string, name: string, subjectVerified = false) => {
+      const normalizedUrl = normalizeBoardUrl(url, {
+        requireCompatibleHost: true,
+        subjectVerified,
+      });
       const boardKey = normalizedUrl === null ? null : getBoardUrlKey(normalizedUrl);
       if (normalizedUrl === null || boardKey === null) {
         // 外部サイトや板として解釈できないURLは「一度開いた板」へ混ぜない。
         return;
       }
       if (!registeredUrls.has(boardKey) && !seenUrls.has(boardKey)) {
-        otherBoards.push({ name, url: normalizedUrl });
+        // 取得確認は板ごとの記録で渡し、メニュー正規化でも独自ホストを除外させない。
+        otherBoards.push({
+          name,
+          url: normalizedUrl,
+          ...(subjectVerified ? { subjectVerified: true as const } : {}),
+        });
         seenUrls.add(boardKey);
       }
     };
@@ -111,7 +124,7 @@ export class OtherBoardsCollector {
           typeof opened.title === "string" && opened.title.trim() !== ""
             ? opened.title
             : trimmedUrl;
-        addIfNew(trimmedUrl, title);
+        addIfNew(trimmedUrl, title, opened.subjectVerified === true);
       }
     } catch (e) {
       console.error("Failed to fetch opened boards for Other category", e);

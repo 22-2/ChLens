@@ -135,6 +135,7 @@ function readOpenedBoardEntries(): OpenedBoardEntry[] {
     url: entry.url,
     title: entry.title ?? "",
     lastVisited: entry.lastVisited,
+    ...(entry.subjectVerified ? { subjectVerified: true as const } : {}),
   }));
 }
 
@@ -144,11 +145,11 @@ function upsertOpenedBoardEntry(
   boardUrl: string,
   boardTitle: string | null,
   lastVisited?: number,
+  subjectVerified = false,
 ): void {
-  const normalizedUrl = normalizeKnownBoardUrl(boardUrl, { requireCompatibleHost: true });
+  const normalizedUrl = normalizeKnownBoardUrl(boardUrl);
   if (normalizedUrl === null) {
-    // 変更理由: 外部サイトをスレ一覧の板として記録するとBBSMENUへ混入するため、
-    // 掲示板URLとして判定できないページは保存対象から除外する。
+    // 板のパスとして解釈できないURLは、取得確認があっても保存対象から除外する。
     return;
   }
   const nextTitle = boardTitle && boardTitle.trim() !== "" ? boardTitle : undefined;
@@ -158,15 +159,29 @@ function upsertOpenedBoardEntry(
       const entries = readOpenedBoardEntries();
       const key = getBoardUrlKey(normalizedUrl);
       const existing = entries.find((entry) => getBoardUrlKey(entry.url) === key);
+      const verified = subjectVerified || existing?.subjectVerified === true;
+      if (
+        !normalizeKnownBoardUrl(normalizedUrl, {
+          requireCompatibleHost: true,
+          subjectVerified: verified,
+        })
+      )
+        return;
+      // 独自ホストの取得確認をレコードへ残し、ホーム・板一覧・再起動で同じ判断を使う。
+      const needsConfirmation = !normalizeKnownBoardUrl(normalizedUrl, {
+        requireCompatibleHost: true,
+      });
       const updated: OpenedBoardEntry = {
         url: normalizedUrl,
         title: nextTitle ?? existing?.title ?? "",
         lastVisited: lastVisited ?? existing?.lastVisited,
+        ...(verified && needsConfirmation ? { subjectVerified: true as const } : {}),
       };
       if (
         existing &&
         existing.title === updated.title &&
-        existing.lastVisited === updated.lastVisited
+        existing.lastVisited === updated.lastVisited &&
+        existing.subjectVerified === updated.subjectVerified
       )
         return;
       const nextEntries = [
@@ -213,6 +228,13 @@ export const ThreadListPage: React.FC<Props> = ({
   const fallbackScrollContainerRef = useRef<HTMLDivElement>(null);
   const effectiveScrollContainerRef = scrollContainerRef ?? fallbackScrollContainerRef;
   const { viewTab } = useTabStore();
+  const visitedBoardRef = useRef<{ url: string; lastVisited: number } | null>(null);
+  const resolvedBoardTitlesRef = useRef(new Map<string, string>());
+  const initialBoardTitle = resolveInitialBoardTitle(page);
+  useEffect(() => {
+    // スレ一覧の取得より前に名前が分かる経路も、取得確認後の保存へ引き継ぐ。
+    if (initialBoardTitle) resolvedBoardTitlesRef.current.set(page.boardUrl, initialBoardTitle);
+  }, [initialBoardTitle, page.boardUrl]);
   const runTabCommand = useTabCommandRunner(tabId);
   const manualRefreshScopeKey = getManualRefreshScopeKey(tabId, page);
   const requestManualRefresh = useCallback(
@@ -338,6 +360,7 @@ export const ThreadListPage: React.FC<Props> = ({
   const { column: sortColumn, direction: sortDirection } = sortPreference;
 
   const fetchThreads = useCallback(async () => {
+    const startedAt = Date.now();
     const isRefresh = previousRefreshKeyRef.current !== refreshKey;
     previousRefreshKeyRef.current = refreshKey;
     if (isRefresh) consumeManualRefresh(manualRefreshScopeKey);
@@ -350,6 +373,20 @@ export const ThreadListPage: React.FC<Props> = ({
       // container経由でBoardサービスにアクセス
       const result = await container.board.getThreads(page.boardUrl);
       setThreads(result.threads);
+      if (!result.message && result.threads.length > 0) {
+        // 実際にスレ一覧を取得・解析できた板だけを確認し、ホストの固定リストを不要にする。
+        // 名前が先に届く場合も拾い、取得完了の時刻で閲覧日時を進めない。
+        const visitedAt =
+          visitedBoardRef.current?.url === page.boardUrl
+            ? visitedBoardRef.current.lastVisited
+            : startedAt;
+        upsertOpenedBoardEntry(
+          page.boardUrl,
+          resolvedBoardTitlesRef.current.get(page.boardUrl) ?? null,
+          visitedAt,
+          true,
+        );
+      }
       if (result.threads.length > 0 || !result.message) {
         // 変更理由: 注意メッセージ付きの空結果で直前の正常キャッシュを上書きすると、
         // 戻る操作時に復元できず誤警告だけが残るため、失敗相当の空結果は保存しない。
@@ -615,16 +652,14 @@ export const ThreadListPage: React.FC<Props> = ({
   }, [page.boardUrl, sortPreference]);
 
   useEffect(() => {
-    const resolvedTitle = resolveInitialBoardTitle(page);
-    upsertOpenedBoardEntry(page.boardUrl, resolvedTitle);
-  }, [page.boardTitle, page.boardUrl, page.title]);
+    upsertOpenedBoardEntry(page.boardUrl, initialBoardTitle);
+  }, [initialBoardTitle, page.boardUrl]);
 
-  const visitedBoardRef = useRef<string | null>(null);
   useEffect(() => {
     // スレを開かず板だけを開いた場合や既存タブの再選択も記録する。板名解決では日時を進めない。
-    if (visitedBoardRef.current !== page.boardUrl || isActive) {
-      visitedBoardRef.current = page.boardUrl;
-      upsertOpenedBoardEntry(page.boardUrl, null, Date.now());
+    if (visitedBoardRef.current?.url !== page.boardUrl || isActive) {
+      visitedBoardRef.current = { url: page.boardUrl, lastVisited: Date.now() };
+      upsertOpenedBoardEntry(page.boardUrl, null, visitedBoardRef.current.lastVisited);
     }
   }, [isActive, page.boardUrl]);
 
@@ -633,7 +668,6 @@ export const ThreadListPage: React.FC<Props> = ({
 
     // 変更理由: スレ一覧コンポーネントは再マウントされない経路があるため、
     // 「初回だけ取得」だと別板へ遷移した後のタイトルが更新されないことがある。
-    const initialBoardTitle = resolveInitialBoardTitle(page);
     if (initialBoardTitle) {
       if (initialBoardTitle !== page.title) {
         dispatch(tabActions.updateTitleForTab(tabId, initialBoardTitle, page.boardUrl));
@@ -643,6 +677,12 @@ export const ThreadListPage: React.FC<Props> = ({
 
     askBoardTitle(new ChURL(page.boardUrl))
       .then((title) => {
+        if (title && isResolvedBoardTitle(page.boardUrl, title)) {
+          resolvedBoardTitlesRef.current.set(page.boardUrl, title);
+          // タブの再描画を保存の前提にせず、遷移後に届いた名前も元の板へ残す。
+          // 板名解決の遅延では閲覧日時を進めず、板を開いた時刻をそのまま保つ。
+          upsertOpenedBoardEntry(page.boardUrl, title);
+        }
         if (!cancelled && title) {
           dispatch(tabActions.updateTitleForTab(tabId, title, page.boardUrl));
         }
@@ -654,7 +694,7 @@ export const ThreadListPage: React.FC<Props> = ({
     return () => {
       cancelled = true;
     };
-  }, [dispatch, page.boardTitle, page.boardUrl, tabId]);
+  }, [dispatch, initialBoardTitle, page.boardUrl, page.title, tabId]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
