@@ -74,6 +74,31 @@ describe("TabProvider auto refresh state", () => {
       value: localStorageMock,
     });
     localStorage.removeItem("chlens_browser_session");
+    // 履歴・タブ操作の既存テストは、ホームから明示的に開いた板一覧があるセッションで検証する。
+    localStorage.setItem(
+      "chlens_browser_session",
+      JSON.stringify({
+        panes: [
+          {
+            id: "initial-pane",
+            activeTabId: "initial-board-list",
+            tabs: [
+              {
+                id: "initial-board-list",
+                history: [{ type: "boardList", title: "板一覧" }],
+                currentIndex: 0,
+                pinned: false,
+                reloadKey: 0,
+                autoRefreshEnabled: false,
+                autoRefreshPageKey: null,
+              },
+            ],
+          },
+        ],
+        activePaneId: "initial-pane",
+        closedTabs: [],
+      }),
+    );
     historyAddMock.mockReset();
     historyGetByUrlMock.mockReset();
     historyRemoveMock.mockReset();
@@ -1334,8 +1359,8 @@ describe("TabProvider auto refresh state", () => {
 
     fireEvent.click(screen.getByText("戻る"));
 
-    expect(screen.getByTestId("current-page-type")).toHaveTextContent("boardList");
-    expect(screen.getByTestId("current-page-title")).toHaveTextContent("板一覧");
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent("home");
+    expect(screen.getByTestId("current-page-title")).toHaveTextContent("ホーム");
   });
 
   it("UPDATE_TITLE_FOR_TAB は対象タブだけを更新し、アクティブタブを汚染しない", async () => {
@@ -1474,7 +1499,7 @@ describe("TabProvider auto refresh state", () => {
     expect(screen.getByTestId("history-index")).toHaveTextContent("1");
   });
 
-  it("新規タブ直後は進むが効かない", async () => {
+  it("既定の新規タブ操作は常設ホームを選び、進むは効かない", async () => {
     vi.resetModules();
     const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
 
@@ -1504,13 +1529,13 @@ describe("TabProvider auto refresh state", () => {
     );
 
     fireEvent.click(screen.getByText("新規タブ"));
-    expect(screen.getByTestId("tabs-count")).toHaveTextContent("3");
-    expect(screen.getByTestId("current-page-type")).toHaveTextContent("boardList");
+    expect(screen.getByTestId("tabs-count")).toHaveTextContent("2");
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent("home");
     expect(screen.getByTestId("history-length")).toHaveTextContent("1");
     expect(screen.getByTestId("history-index")).toHaveTextContent("0");
 
     fireEvent.click(screen.getByText("進む"));
-    expect(screen.getByTestId("current-page-type")).toHaveTextContent("boardList");
+    expect(screen.getByTestId("current-page-type")).toHaveTextContent("home");
     expect(screen.getByTestId("history-index")).toHaveTextContent("0");
   });
 

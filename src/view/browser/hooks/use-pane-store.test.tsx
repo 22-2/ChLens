@@ -63,6 +63,29 @@ describe("ペイン（横分割）", () => {
       value: localStorageMock,
     });
     localStorage.removeItem(SESSION_KEY);
+    // ペイン操作は明示的に開いた通常タブを使い、ホームだけの初期表示と分けて検証する。
+    localStorage.setItem(
+      SESSION_KEY,
+      JSON.stringify({
+        panes: [
+          {
+            id: "initial-pane",
+            activeTabId: "initial-settings",
+            tabs: [
+              {
+                id: "initial-settings",
+                history: [{ type: "settings", title: "設定" }],
+                currentIndex: 0,
+                pinned: false,
+                reloadKey: 0,
+              },
+            ],
+          },
+        ],
+        activePaneId: "initial-pane",
+        closedTabs: [],
+      }),
+    );
   });
 
   afterEach(() => {
@@ -99,7 +122,15 @@ describe("ペイン（横分割）", () => {
           <button onClick={() => dispatch({ type: "SPLIT_PANE" })}>{`split-${paneId}`}</button>
           <button onClick={() => dispatch({ type: "CLOSE_PANE" })}>{`close-${paneId}`}</button>
           <button onClick={() => dispatch({ type: "SWAP_PANE_TABS" })}>{`swap-${paneId}`}</button>
-          <button onClick={() => dispatch({ type: "ADD_TAB" })}>{`addtab-${paneId}`}</button>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "OPEN_IN_NEW_TAB_FORCE",
+                page: { type: "settings", title: "設定" },
+                focus: true,
+              })
+            }
+          >{`addtab-${paneId}`}</button>
           <button onClick={() => dispatch({ type: "CLOSE_TAB", tabId: state.selectedTabId })}>
             {`closetab-${paneId}`}
           </button>
@@ -192,7 +223,7 @@ describe("ペイン（横分割）", () => {
     fireEvent.click(screen.getByText(`addtab-${second}`));
 
     expect(screen.getByTestId(`tabcount-${first}`)).toHaveTextContent("2");
-    expect(screen.getByTestId(`tabcount-${second}`)).toHaveTextContent("3");
+    expect(screen.getByTestId(`tabcount-${second}`)).toHaveTextContent("2");
   });
 
   it("CLOSE_PANE で1ペインに戻れ、最後の1ペインは閉じられない", async () => {
@@ -206,8 +237,8 @@ describe("ペイン（横分割）", () => {
     fireEvent.click(screen.getByText(`addtab-${ids[1]}`));
     fireEvent.click(screen.getByText(`close-${ids[1]}`));
     expect(screen.getByTestId("pane-count")).toHaveTextContent("1");
-    // 変更理由: 各ペイン先頭の常設ホームは統合で重複除去されるため、2+3-1=4枚になる。
-    expect(screen.getByTestId(`tabcount-${first}`)).toHaveTextContent("4");
+    // 分割直後はホームだけなので、通常タブを1枚追加して統合すると2+2-1=3枚になる。
+    expect(screen.getByTestId(`tabcount-${first}`)).toHaveTextContent("3");
 
     // 残り1ペインは閉じられない
     const remaining = paneIds();
@@ -221,6 +252,8 @@ describe("ペイン（横分割）", () => {
     fireEvent.click(screen.getByText(`split-${left}`));
     const [, right] = paneIds();
 
+    // 常設ホームは閉じられないため、閉じる対象の通常タブを明示的に開く。
+    fireEvent.click(screen.getByText(`addtab-${right}`));
     fireEvent.click(screen.getByText(`closetab-${right}`));
 
     expect(screen.getByTestId("pane-count")).toHaveTextContent("1");
@@ -233,6 +266,8 @@ describe("ペイン（横分割）", () => {
 
     fireEvent.click(screen.getByText(`split-${first}`));
     const [left, right] = paneIds();
+    // ホームは交換対象ではないため、右側にも通常タブを開いてから交換する。
+    fireEvent.click(screen.getByText(`addtab-${right}`));
     const leftTabBefore = screen.getByTestId(`selected-tab-${left}`).textContent;
     const rightTabBefore = screen.getByTestId(`selected-tab-${right}`).textContent;
 

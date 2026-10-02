@@ -236,7 +236,8 @@ export function getPageViewStateKey(page: Page): string {
 }
 
 export function canGoBack(tab: Tab): boolean {
-  return tab.currentIndex > 0;
+  // 通常タブの履歴先頭でも常設ホームへ戻れる。ホーム自体には戻る先を作らない。
+  return !tab.locked && (tab.currentIndex > 0 || getCurrentPage(tab).type !== "home");
 }
 
 export function canGoForward(tab: Tab): boolean {
@@ -273,37 +274,22 @@ function threadUrlToBoardUrl(threadUrl: string): string {
 }
 
 // 新規タブ用: ページに対してカノニカルな階層スタックを構築する
-// ホームを通常タブ内に増やさず、板一覧を戻る先の起点にする。
+// 板一覧はホームから明示的に開く入口に限定し、祖先として自動生成しない。
 export function buildHierarchy(page: Page): Page[] {
   switch (page.type) {
     case "home":
-      return [{ type: "boardList", title: "板一覧" }];
-
     case "boardList":
-      return [page];
-
     case "settings":
-      return [{ type: "boardList", title: "板一覧" }, page];
-
     case "bookmarkList":
-      return [{ type: "boardList", title: "板一覧" }, page];
-
     case "historyList":
-      return [{ type: "boardList", title: "板一覧" }, page];
-
     case "writeHistoryList":
-      return [{ type: "boardList", title: "板一覧" }, page];
-
     case "logList":
-      return [{ type: "boardList", title: "板一覧" }, page];
-
     case "threadList":
-      return [{ type: "boardList", title: "板一覧" }, page];
+      return [page];
 
     case "thread": {
       const boardUrl = threadUrlToBoardUrl(page.threadUrl);
       return [
-        { type: "boardList", title: "板一覧" },
         {
           type: "threadList",
           title: boardUrl,

@@ -142,7 +142,7 @@ describe("ホームの板項目のミドルクリック", () => {
           </button>
           <button
             onClick={() =>
-              dispatch({ type: "SELECT_TAB", tabId: state.tabs.find((tab) => !tab.locked)!.id })
+              dispatch({ type: "OPEN_IN_NEW_TAB", page: { type: "boardList", title: "板一覧" } })
             }
           >
             板一覧を選ぶ
@@ -189,7 +189,7 @@ describe("ホームの板項目のミドルクリック", () => {
     expect(getCachedTitlesMock).toHaveBeenCalled();
     expect(askBoardTitleMock).not.toHaveBeenCalled();
     fireEvent.click(board);
-    expect(screen.getByTestId("new-tab-history")).toHaveTextContent("boardList|threadList");
+    expect(screen.getByTestId("new-tab-history")).toHaveTextContent("threadList");
   });
 
   it("板を開いた保存通知で旧履歴の板が今日へ移り、スレ履歴のない板も表示する", async () => {
@@ -273,7 +273,7 @@ describe("ホームの板項目のミドルクリック", () => {
     fireEvent.click(screen.getByRole("button", { name: "新しいタブで開く" }));
     expect(Number(screen.getByTestId("tab-count").textContent)).toBe(initialCount + 1);
     expect(screen.getByTestId("home-history")).toHaveTextContent(/^home$/);
-    expect(screen.getByTestId("new-tab-history")).toHaveTextContent(/^boardList\|threadList$/);
+    expect(screen.getByTestId("new-tab-history")).toHaveTextContent(/^threadList$/);
   });
 
   it.each([
@@ -333,7 +333,7 @@ describe("ホームの板項目のミドルクリック", () => {
       new MouseEvent("auxclick", { button: 1, bubbles: true, cancelable: true }),
     );
     expect(screen.getByTestId("active-page-type")).toHaveTextContent(/^home$/);
-    expect(screen.getByTestId("new-tab-history")).toHaveTextContent(/^boardList\|threadList$/);
+    expect(screen.getByTestId("new-tab-history")).toHaveTextContent(/^threadList$/);
   });
 
   it.each(["最近開いた板", "お気に入り板"] as const)(
@@ -358,12 +358,12 @@ describe("ホームの板項目のミドルクリック", () => {
         expect(Number(screen.getByTestId("tab-count").textContent)).toBe(initialTabCount + 1),
       );
       expect(screen.getByTestId("active-page-type")).toHaveTextContent("home");
-      expect(screen.getByTestId("new-tab-history")).toHaveTextContent("boardList|threadList");
+      expect(screen.getByTestId("new-tab-history")).toHaveTextContent("threadList");
     },
   );
 
   it.each(["最近開いた板", "お気に入り板"] as const)(
-    "%sの通常クリックでも常設ホームを上書きせず、板一覧を戻る先にする",
+    "%sの通常クリックでも常設ホームを上書きせず、ホームを戻る先にする",
     async (kind) => {
       await renderPage();
       await waitFor(() =>
@@ -376,7 +376,7 @@ describe("ホームの板項目のミドルクリック", () => {
       fireEvent.click(board);
       expect(Number(screen.getByTestId("tab-count").textContent)).toBe(initialTabCount + 1);
       expect(screen.getByTestId("home-history")).toHaveTextContent(/^home$/);
-      expect(screen.getByTestId("new-tab-history")).toHaveTextContent(/^boardList\|threadList$/);
+      expect(screen.getByTestId("new-tab-history")).toHaveTextContent(/^threadList$/);
     },
   );
 

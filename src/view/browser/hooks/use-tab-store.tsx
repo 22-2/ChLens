@@ -283,9 +283,8 @@ function resolveConfiguredNewTabPage(sourcePage: Page | null, sourceTab: Tab | n
   const mode = resolveNewTabPageMode(readConfigValue("new_tab_page_mode"));
 
   if (mode === "home") {
-    // ホームを常設タブへ統合したため、新規タブは板一覧から始める。
-    // 保存済みの設定を引き継ぐため、設定値 "home" は互換用に維持する。
-    return { type: "boardList", title: "板一覧" };
+    // 板一覧の入口をホームのボタンに限定し、既定の新規タブ操作は常設ホームを選ぶ。
+    return { type: "home", title: "ホーム" };
   }
 
   if (mode === "custom_board") {
@@ -294,7 +293,7 @@ function resolveConfiguredNewTabPage(sourcePage: Page | null, sourceTab: Tab | n
       return createThreadListPageFromBoardUrl(rawBoardUrl);
     }
 
-    return { type: "boardList", title: "板一覧" };
+    return { type: "home", title: "ホーム" };
   }
 
   // 変更理由: 「関連する板」タブをスレッドから開くとき、
@@ -305,11 +304,12 @@ function resolveConfiguredNewTabPage(sourcePage: Page | null, sourceTab: Tab | n
     return relatedBoardPage;
   }
 
-  return { type: "boardList", title: "板一覧" };
+  return { type: "home", title: "ホーム" };
 }
 
 function createTab(sourcePage: Page | null = null, sourceTab: Tab | null = null): Tab {
   const initialPage = resolveConfiguredNewTabPage(sourcePage, sourceTab);
+  if (initialPage.type === "home") return createHomeTab();
   return {
     id: crypto.randomUUID(),
     history: buildHierarchy(initialPage),
@@ -528,11 +528,8 @@ function deriveBoardUrlFromThreadUrl(threadUrl: string): string | null {
 function buildCanonicalThreadListStack(
   threadListPage: Extract<Page, { type: "threadList" }>,
 ): Page[] {
-  return [
-    // ホームは常設タブに残し、新規タブの戻る先は板一覧から構築する。
-    { type: "boardList", title: "板一覧" },
-    threadListPage,
-  ];
+  // 戻る先は同じペインの常設ホームとし、履歴へ板一覧を自動で挟まない。
+  return [threadListPage];
 }
 
 function buildCanonicalThreadStack(
@@ -589,6 +586,15 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       const activeTab = getPaneActiveTab(pane);
       const sourcePage = getCurrentPage(activeTab);
       const newTab = createTab(sourcePage, activeTab);
+      if (newTab.locked) {
+        return {
+          ...updatePane(state, paneId, (p) => ({
+            ...p,
+            activeTabId: p.tabs.find((t) => t.locked)!.id,
+          })),
+          activePaneId: action.preserveActivePane ? state.activePaneId : paneId,
+        };
+      }
       // 固定タブの後ろに非固定タブを追加
       return {
         ...updatePane(state, paneId, (p) => ({
@@ -626,7 +632,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       // バックグラウンドで新規タブを開く（アクティブタブ/ペインを切り替えない）。
       // buildHierarchyForNewTab で現在ページの板名を引き継いだカノニカルな祖先履歴を付与する。
       // background フラグが true の場合は、設定値を無視して常にバックグラウンドで開く。
-      const newTabForOpen = createTab();
+      const newTabForOpen = createTabFromPage(action.page);
       const sourcePageForOpen = getCurrentPage(getPaneActiveTab(pane));
       const newHistoryForOpen = buildHierarchyForNewTab(sourcePageForOpen, action.page);
       const shouldFocus = action.background ? false : shouldFocusNewTabOnOpen();
@@ -652,7 +658,7 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
     case TAB_ACTION_TYPES.OPEN_IN_NEW_TAB_FORCE: {
       const paneId = resolvePaneId(state, action.paneId);
       const pane = getPane(state, paneId);
-      const newTabForForce = createTab();
+      const newTabForForce = createTabFromPage(action.page);
       const sourcePageForForce = getCurrentPage(getPaneActiveTab(pane));
       const newHistoryForForce = buildHierarchyForNewTab(sourcePageForForce, action.page);
       const newTab = {
@@ -802,11 +808,13 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       const activeTab = getPaneActiveTab(pane);
       const sourcePage = getCurrentPage(activeTab);
       const newTab = createTab(sourcePage, activeTab);
+      // 既定の置き換え先はホームなので、固定タブとして残した常設ホームを重複追加しない。
+      const replacement = newTab.locked ? pinned.find((tab) => tab.locked)! : newTab;
       return {
         ...updatePane(state, paneId, (p) => ({
           ...p,
-          tabs: [...pinned, newTab],
-          activeTabId: newTab.id,
+          tabs: newTab.locked ? pinned : [...pinned, newTab],
+          activeTabId: replacement.id,
         })),
         activePaneId: paneId,
         closedTabs: newClosed,
@@ -910,8 +918,28 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
         ? findTabAcrossPanes(state, action.tabId)
         : getPaneActiveTab(getPane(state, paneId));
       // 変更理由: 常設ホームタブは遷移不可とし、ホームの履歴汚染を防ぐ。
-      if (!targetTab || targetTab.locked) {
+      if (!targetTab) {
         return state;
+      }
+      if (targetTab.locked) {
+        // ホームからの通常遷移は常設タブを保ち、明示的に開いた対象を前面へ出す。
+        const ownerPaneId =
+          state.panes.find((p) => p.tabs.some((tab) => tab.id === targetTab.id))?.id ?? paneId;
+        const next = tabReducer(state, {
+          type: TAB_ACTION_TYPES.OPEN_IN_NEW_TAB,
+          page: action.page,
+          paneId: ownerPaneId,
+        });
+        return {
+          ...updatePane(next, ownerPaneId, (p) => ({
+            ...p,
+            activeTabId: p.tabs.find(
+              (candidate) =>
+                getPageIdentity(getCurrentPage(candidate)) === getPageIdentity(action.page),
+            )!.id,
+          })),
+          activePaneId: ownerPaneId,
+        };
       }
       const currentPage = getCurrentPage(targetTab);
       if (getPageIdentity(currentPage) === getPageIdentity(action.page)) {
@@ -962,7 +990,20 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
         ? findTabAcrossPanes(state, action.tabId)
         : getPaneActiveTab(getPane(state, paneId));
       if (!tab) return state;
-      if (tab.currentIndex <= 0) return state;
+      // スレ一覧の戻るは履歴を巻き戻さずホームを選ぶ。旧セッションの板一覧祖先も表示しない。
+      if (
+        getCurrentPage(tab).type === "threadList" ||
+        tab.currentIndex <= 0 ||
+        tab.history[tab.currentIndex - 1]?.type === "boardList"
+      ) {
+        const owner = state.panes.find((p) => p.tabs.some((candidate) => candidate.id === tab.id));
+        const home = owner?.tabs.find((candidate) => candidate.locked);
+        if (!owner || !home || home.id === tab.id) return state;
+        return {
+          ...updatePane(state, owner.id, (p) => ({ ...p, activeTabId: home.id })),
+          activePaneId: owner.id,
+        };
+      }
       return updateTargetTab(state, paneId, action.tabId, (t) =>
         resetAutoRefreshState({
           ...t,
@@ -1190,15 +1231,17 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       // 統合先にして左から右の順で並べる。選択中タブも維持して画面内容を失わない。
       const leftPane = state.panes[0];
       const rightPane = state.panes[1];
-      const activeTabId =
+      const selectedTabId =
         state.panes.find((candidate) => candidate.id === state.activePaneId)?.activeTabId ??
         leftPane.activeTabId;
+      // ホームだけのペインも統合できるよう左のホームを残し、右のホーム選択はそこへ移す。
+      const home = leftPane.tabs.find((tab) => tab.locked)!;
+      const activeTabId = rightPane.tabs.some((tab) => tab.id === selectedTabId && tab.locked)
+        ? home.id
+        : selectedTabId;
       const mergedPane: Pane = ensurePaneHomeTab({
         ...leftPane,
-        tabs: [
-          ...leftPane.tabs.filter((t) => !t.locked),
-          ...rightPane.tabs.filter((t) => !t.locked),
-        ],
+        tabs: [...leftPane.tabs, ...rightPane.tabs.filter((t) => !t.locked)],
         activeTabId,
       });
       return { ...state, panes: [mergedPane], activePaneId: leftPane.id };
