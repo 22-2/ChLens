@@ -1,5 +1,5 @@
 import React from "react";
-import { askByUrl as askBoardTitle } from "src/core/BoardTitleSolver.js";
+import { getCachedTitles } from "src/core/BoardTitleSolver.js";
 import { getBoardUrlKey, normalizeBoardUrl } from "src/core/BoardUrlNormalizer";
 import { getAll as getAllHistory } from "src/core/History";
 import { container } from "src/service-container/index";
@@ -64,7 +64,6 @@ export const HomeTabPage: React.FC = () => {
   const [boards, setBoards] = React.useState<RecentBoard[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const resolvedTitles = React.useRef(new Map<string, string>());
 
   React.useEffect(() => {
     let cancelled = false;
@@ -110,33 +109,24 @@ export const HomeTabPage: React.FC = () => {
         const recentBoards = [...grouped.values()]
           .sort((a, b) => b.lastVisited - a.lastVisited)
           .slice(0, 100);
-        // 一部の板名取得が遅くても、開いた日時の反映や他の板への移動は待たせない。
+        // 保存済み板一覧の読み込みが遅くても、開いた日時の反映や他の板への移動は待たせない。
         if (!cancelled && revision === requestRevision) {
           setBoards(recentBoards);
           setLoading(false);
         }
-        const titledBoards = await Promise.all(
-          recentBoards.map(async (board) => {
-            if (isResolvedBoardTitle(board.boardUrl, board.boardTitle)) return board;
-            try {
-              // 板キーしかない旧履歴にも、板一覧やSETTING.TXTから取得した表示名を使う。
-              const key = getBoardUrlKey(board.boardUrl)!;
-              const title =
-                resolvedTitles.current.get(key) ?? (await askBoardTitle(board.boardUrl));
-              if (title) {
-                if (isResolvedBoardTitle(board.boardUrl, title))
-                  resolvedTitles.current.set(key, title);
-                return { ...board, boardTitle: title };
-              }
-            } catch (error) {
-              console.error("最近開いた板の板名の取得に失敗しました", {
-                boardUrl: board.boardUrl,
-                error,
-              });
-            }
-            return board;
-          }),
-        );
+        // 板キーしかない旧履歴も手元の情報で補完し、表示・再読込・F5では通信しない。
+        const cachedTitles = recentBoards.some(
+          (board) => !isResolvedBoardTitle(board.boardUrl, board.boardTitle),
+        )
+          ? await getCachedTitles()
+          : new Map<string, string>();
+        const titledBoards = recentBoards.map((board) => {
+          if (isResolvedBoardTitle(board.boardUrl, board.boardTitle)) return board;
+          const title = cachedTitles.get(getBoardUrlKey(board.boardUrl)!);
+          return title && isResolvedBoardTitle(board.boardUrl, title)
+            ? { ...board, boardTitle: title }
+            : board;
+        });
         // 連続通知で古い読み込みが後から完了しても、最新の閲覧日時を巻き戻さない。
         if (!cancelled && revision === requestRevision) {
           setBoards(titledBoards);
@@ -153,7 +143,8 @@ export const HomeTabPage: React.FC = () => {
       }
     };
     const handleConfigUpdated = ({ key }: { key?: string }) => {
-      if (key === "opened_board_entries") void loadBoards();
+      if (key === "opened_board_entries" || key === "other_board_titles" || key === "bbsmenu")
+        void loadBoards();
     };
     const handleHistoryUpdated = () => {
       void loadBoards();
@@ -161,11 +152,16 @@ export const HomeTabPage: React.FC = () => {
     // 常設ホームは非表示でも残るため、保存通知と前面復帰の両方で一覧を再同期する。
     container.message.on("config_updated", handleConfigUpdated);
     container.message.on("history_updated", handleHistoryUpdated);
+    // 他の画面で取得・保存された板名だけを取り込み、ホームからの追加取得は行わない。
+    container.message.on("bbs_menu_updated", handleHistoryUpdated);
+    container.message.on("bookmark_updated", handleHistoryUpdated);
     void loadBoards();
     return () => {
       cancelled = true;
       container.message.off("config_updated", handleConfigUpdated);
       container.message.off("history_updated", handleHistoryUpdated);
+      container.message.off("bbs_menu_updated", handleHistoryUpdated);
+      container.message.off("bookmark_updated", handleHistoryUpdated);
     };
   }, [viewPage.type]);
 

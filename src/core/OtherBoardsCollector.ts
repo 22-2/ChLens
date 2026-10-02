@@ -28,21 +28,19 @@ export interface IOtherBoardsDeps {
   /** 旧データ互換のReadState・履歴収集を有効にする。既定値はtrue。 */
   includeLegacySources?: boolean;
   getCachedBoardTitles(): Record<string, string>;
-  saveBoardTitles(titles: Record<string, string>): void;
-  resolveBoardTitle(boardUrl: URL): Promise<string | null>;
 }
 
 /**
  * BBSMenuに登録されていない板を「その他」カテゴリとして収集するクラス。
  * ReadState・履歴を参照し、未登録の板URLを収集する。
- * 板名の非同期解決はfire-and-forgetで行い、表示をブロックしない。
+ * 板名は保存済みの情報だけを使い、一覧の収集から通信を起こさない。
  */
 export class OtherBoardsCollector {
   constructor(private readonly deps: IOtherBoardsDeps) {}
 
   /**
    * menusに登録されていない板を収集し、「その他」メニューとして追加する。
-   * 板名の解決はバックグラウンドで非同期に行われる。
+   * 未解決の板名は、その板を実際に開くときに取得する。
    */
   async collect(menus: BBSMenu[]): Promise<void> {
     const registeredUrls = this._buildRegisteredUrlSet(menus);
@@ -51,7 +49,7 @@ export class OtherBoardsCollector {
     if (otherBoards.length === 0) return;
 
     this._applyBoardTitles(otherBoards);
-    this._resolveUnknownTitlesInBackground(otherBoards);
+    // 板を1件開く際にもこの収集が呼ばれるため、全候補のSETTING.TXT取得へ進めない。
     this._appendToMenus(menus, otherBoards);
   }
 
@@ -173,38 +171,6 @@ export class OtherBoardsCollector {
         board.name = cached[board.url];
       }
     }
-  }
-
-  /**
-   * 未解決の板名をバックグラウンドで非同期取得しキャッシュに保存する。
-   * 板一覧の表示をブロックしないためfire-and-forgetにする。
-   */
-  private _resolveUnknownTitlesInBackground(boards: { name: string; url: string }[]): void {
-    void (async () => {
-      const cached = this.deps.getCachedBoardTitles();
-      let hasNewTitles = false;
-
-      await Promise.all(
-        boards.map(async (board) => {
-          if (board.name === board.url) {
-            try {
-              const title = await this.deps.resolveBoardTitle(new URL(board.url));
-              if (title) {
-                board.name = title;
-                cached[board.url] = title;
-                hasNewTitles = true;
-              }
-            } catch {
-              // 解決失敗は無視
-            }
-          }
-        }),
-      );
-
-      if (hasNewTitles) {
-        this.deps.saveBoardTitles(cached);
-      }
-    })();
   }
 
   /**

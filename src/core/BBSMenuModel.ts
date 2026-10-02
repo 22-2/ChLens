@@ -1,14 +1,12 @@
 import { BBSMenuHtmlParser, type ParsedBBSMenu } from "packages/ch-lib/src/index";
 import Callbacks from "src/app/Callbacks";
 import { BBSMenuFetcher } from "src/core/BBSMenuFetcher";
-import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
 import { getBoardUrlKey, normalizeBBSMenus, normalizeBoardUrl } from "src/core/BoardUrlNormalizer";
 import * as History from "src/core/History";
 import { createLogger } from "src/core/logger";
 import { OtherBoardsCollector } from "src/core/OtherBoardsCollector";
 import * as ReadState from "src/core/ReadState.js";
 import { getTauriRepositories, isTauriRuntime } from "src/core/TauriDrizzleBridge";
-import { URL } from "src/core/URL";
 import { container } from "src/service-container/index";
 
 const logger = createLogger("BBSMenuModel");
@@ -109,9 +107,6 @@ export class BBSMenuModel {
         const str = container.config.get("other_board_titles");
         return str ? (JSON.parse(str) as Record<string, string>) : {};
       },
-      saveBoardTitles: (titles) =>
-        container.config.set("other_board_titles", JSON.stringify(titles)),
-      resolveBoardTitle: (boardUrl: URL) => askBoardTitle(boardUrl),
     });
   }
 
@@ -133,6 +128,34 @@ export class BBSMenuModel {
    */
   async fetchOne(url: string, force = false): Promise<ParsedBBSMenu> {
     return this._fetcher.fetch(url, force);
+  }
+
+  async getCached(): Promise<BBSMenuData> {
+    if (this._cachedResult) return this._cachedResult;
+    if (isTauriRuntime()) {
+      const cached = await this._loadFromSQLite();
+      if (cached) return cached;
+    }
+    const urls = (container.config.get("bbsmenu") ?? "")
+      .split("\n")
+      .map((url) => url.trim())
+      .filter((url) => url !== "" && !url.startsWith("//"));
+    const cachedMenus = await Promise.all(
+      urls.map(async (url) => {
+        try {
+          return await this._fetcher.getCached(url);
+        } catch (error) {
+          console.error("保存済み板一覧の読み込みに失敗しました", { url, error });
+          return null;
+        }
+      }),
+    );
+    // ホームは板名だけを参照するため、履歴由来の「その他」を再構築しない。
+    // 空の結果も通常取得のキャッシュへ入れず、板一覧を開いたときの取得は妨げない。
+    return {
+      status: "success",
+      menu: normalizeBBSMenus(cachedMenus.filter((menu) => menu !== null)),
+    };
   }
 
   /**

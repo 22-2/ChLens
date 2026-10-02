@@ -42,6 +42,13 @@ type HttpResponse = Awaited<ReturnType<InstanceType<typeof Request>["send"]>>;
 export class BBSMenuFetcher {
   constructor(private readonly deps: IFetcherDeps) {}
 
+  async getCached(url: string): Promise<ParsedBBSMenu | null> {
+    // ホームの板名表示では、キャッシュがなくても通信や条件付きGETへ進まない。
+    const cache = this.deps.getCache(url);
+    if (!(await this.tryLoadCache(cache))) return null;
+    return this.resolveMenu(url, cache, undefined);
+  }
+
   /**
    * 指定URLからBBSMenuを取得する。
    *

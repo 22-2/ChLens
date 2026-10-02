@@ -19,12 +19,16 @@ const { historyRecords, favoriteBoards, removeBookmarkMock, copyTextMock, toastE
   }));
 
 vi.mock("src/core/History", () => ({ getAll: vi.fn(async () => historyRecords) }));
-const { openedBoards, askBoardTitleMock, listeners } = vi.hoisted(() => ({
+const { openedBoards, askBoardTitleMock, getCachedTitlesMock, listeners } = vi.hoisted(() => ({
   openedBoards: { raw: "[]" },
   askBoardTitleMock: vi.fn(async (_url: string): Promise<string | null> => "表示用の板名"),
+  getCachedTitlesMock: vi.fn(async () => new Map<string, string>()),
   listeners: new Map<string, Set<(payload: { key?: string }) => void>>(),
 }));
-vi.mock("src/core/BoardTitleSolver.js", () => ({ askByUrl: askBoardTitleMock }));
+vi.mock("src/core/BoardTitleSolver.js", () => ({
+  askByUrl: askBoardTitleMock,
+  getCachedTitles: getCachedTitlesMock,
+}));
 vi.mock("src/core/BoardUrlNormalizer", async (importOriginal) => {
   const actual = await importOriginal<typeof import("src/core/BoardUrlNormalizer")>();
   // 架空の掲示板ホストを使い、実在の板URLをテストへ持ち込まず保存データを検証する。
@@ -94,6 +98,9 @@ describe("ホームの板項目のミドルクリック", () => {
     openedBoards.raw = "[]";
     listeners.clear();
     askBoardTitleMock.mockReset().mockResolvedValue("表示用の板名");
+    getCachedTitlesMock
+      .mockReset()
+      .mockResolvedValue(new Map([["example.com/sample/", "表示用の板名"]]));
     removeBookmarkMock.mockReset().mockResolvedValue(true);
     copyTextMock.mockReset().mockResolvedValue(undefined);
     toastErrorMock.mockReset();
@@ -175,11 +182,12 @@ describe("ホームの板項目のミドルクリック", () => {
     return favorite;
   }
 
-  it("板キーだけの旧履歴を表示名へ解決し、開くタブにも引き継ぐ", async () => {
+  it("板キーだけの旧履歴を保存済みの表示名で補い、開くタブにも引き継ぐ", async () => {
     historyRecords[0].boardTitle = "sample";
     await renderPage();
     const board = await screen.findByRole("button", { name: /表示用の板名/ });
-    expect(askBoardTitleMock).toHaveBeenCalledWith("https://example.com/sample/");
+    expect(getCachedTitlesMock).toHaveBeenCalled();
+    expect(askBoardTitleMock).not.toHaveBeenCalled();
     fireEvent.click(board);
     expect(screen.getByTestId("new-tab-history")).toHaveTextContent("boardList|threadList");
   });
@@ -217,12 +225,12 @@ describe("ホームの板項目のミドルクリック", () => {
   });
 
   it("古い板名の取得を待たず今日へ移し、遅い読み込みで日時や表示名を巻き戻さない", async () => {
-    const pending = Promise.withResolvers<string>();
-    askBoardTitleMock.mockImplementation(() => pending.promise);
+    const pending = Promise.withResolvers<Map<string, string>>();
+    getCachedTitlesMock.mockImplementation(() => pending.promise);
     historyRecords[0].boardTitle = "sample";
     await renderPage();
     await screen.findByRole("heading", { name: "それ以前" });
-    await waitFor(() => expect(askBoardTitleMock).toHaveBeenCalled());
+    await waitFor(() => expect(getCachedTitlesMock).toHaveBeenCalled());
     openedBoards.raw = JSON.stringify([
       { url: "https://example.com/sample/", title: "サンプル板", lastVisited: Date.now() },
     ]);
@@ -232,10 +240,28 @@ describe("ホームの板項目のミドルクリック", () => {
         ?.forEach((handler) => handler({ key: "opened_board_entries" })),
     );
     await screen.findByRole("heading", { name: "今日" });
-    await act(async () => pending.resolve("古い読み込みの板名"));
+    await act(async () =>
+      pending.resolve(new Map([["example.com/sample/", "古い読み込みの板名"]])),
+    );
     expect(screen.getByRole("heading", { name: "今日" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "それ以前" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /古い読み込みの板名/ })).not.toBeInTheDocument();
+  });
+
+  it("板名キャッシュがなくても表示・通知・ホーム復帰・再起動で通信へ進まない", async () => {
+    getCachedTitlesMock.mockResolvedValue(new Map());
+    historyRecords[0].boardTitle = "sample";
+    await renderPage();
+    await screen.findByRole("heading", { name: "それ以前" });
+    act(() => listeners.get("history_updated")?.forEach((handler) => handler({})));
+    fireEvent.click(screen.getByRole("button", { name: "板一覧を選ぶ" }));
+    fireEvent.click(screen.getByRole("button", { name: "ホームを選ぶ" }));
+    await screen.findByRole("button", { name: /^sample/ });
+    cleanup();
+    await renderPage();
+    await screen.findByRole("button", { name: /^sample/ });
+    expect(getCachedTitlesMock).toHaveBeenCalled();
+    expect(askBoardTitleMock).not.toHaveBeenCalled();
   });
 
   it("常設ホームの右クリックは遷移せず、メニューから新規タブだけを開く", async () => {

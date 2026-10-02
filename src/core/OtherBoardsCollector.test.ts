@@ -50,8 +50,6 @@ function makeDeps(overrides: Partial<IOtherBoardsDeps> = {}): IOtherBoardsDeps {
     getAllReadStates: vi.fn().mockResolvedValue([]),
     getUniqueHistory: vi.fn().mockResolvedValue([]),
     getCachedBoardTitles: vi.fn().mockReturnValue({}),
-    saveBoardTitles: vi.fn(),
-    resolveBoardTitle: vi.fn().mockResolvedValue(null),
     ...overrides,
   };
 }

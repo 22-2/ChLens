@@ -1,7 +1,63 @@
-import { get as getBBSMenu, onChange as BBSMenuOnChange } from "src/core/BBSMenu.js";
+import {
+  get as getBBSMenu,
+  getCached as getCachedBBSMenu,
+  onChange as BBSMenuOnChange,
+} from "src/core/BBSMenu.js";
 import { BBSMenuData } from "src/core/BBSMenuModel";
+import { getBoardUrlKey } from "src/core/BoardUrlNormalizer";
 import { Request } from "src/core/HTTP";
 import { URL } from "src/core/URL";
+import { container } from "src/service-container/index";
+
+const isSavedTitleResolved = (title: string | null, boardUrl: string): title is string => {
+  if (!title?.trim()) return false;
+  const url = new window.URL(boardUrl);
+  // 「その他」のURLや旧履歴の板キーは仮の名前。選択した板の名前取得を妨げない。
+  return (
+    getBoardUrlKey(title) !== getBoardUrlKey(boardUrl) &&
+    title !== url.pathname.split("/").filter(Boolean).at(-1)
+  );
+};
+
+export const getCachedTitles = async (): Promise<Map<string, string>> => {
+  // 一覧の表示だけで全板のSETTING.TXTを取得しないよう、通信可能なaskとは入口を分ける。
+  const titles = new Map<string, string>();
+  const addTitle = (url: string, title: string) => {
+    const key = getBoardUrlKey(url);
+    if (key && isSavedTitleResolved(title, url)) titles.set(key, title);
+  };
+  const cached = await getCachedBBSMenu();
+  for (const menu of cached.menu ?? []) {
+    for (const category of menu.categories) {
+      for (const board of category.boards) addTitle(board.url, board.name);
+    }
+  }
+  const rawTitles = container.config.get("other_board_titles");
+  if (rawTitles) {
+    try {
+      const parsed: unknown = JSON.parse(rawTitles);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        for (const [url, title] of Object.entries(parsed)) {
+          if (typeof title === "string") addTitle(url, title);
+        }
+      }
+    } catch (error) {
+      console.error("保存済みの板名を読み込めませんでした", error);
+    }
+  }
+  if (typeof app !== "undefined" && app.bookmark) {
+    // 初回のローカル読み取りを待ち、起動直後も保存済みのお気に入り名を使う。
+    try {
+      await app.bookmark.promiseFirstScan;
+    } catch (error) {
+      console.error("お気に入りの初回読み込みに失敗しました", error);
+    }
+    for (const board of app.bookmark.getAllBoards()) {
+      addTitle(board.url, _formatBoardTitle(board.title, new URL(board.url)));
+    }
+  }
+  return titles;
+};
 
 // 旧形式 (menu?: {board: []}[]) を表すローカル interface 群は実際のデータ構造
 // (BBSMenuData: menu?: BBSMenu[] = categories/boards 形式) と食い違っていたため削除し、
@@ -68,7 +124,8 @@ const searchFromBBSMenu = async (url: URL): Promise<string | null> => {
   const bbsmenu = await _getBBSMenu();
   // スキーム違いでも同じ板を引けるようにトグルURLを併用する。
   const url2 = url.createProtocolToggled();
-  return bbsmenu.get(url.href) ?? bbsmenu.get(url2.href) ?? null;
+  const title = bbsmenu.get(url.href) ?? bbsmenu.get(url2.href) ?? null;
+  return isSavedTitleResolved(title, url.href) ? title : null;
 };
 
 const _formatBoardTitle = (title: string, url: URL): string => {
@@ -95,7 +152,8 @@ const searchFromBookmark = (url: URL): string | null => {
     return null;
   }
 
-  return _formatBoardTitle(bookmark.title, new URL(bookmark.url));
+  const title = _formatBoardTitle(bookmark.title, new URL(bookmark.url));
+  return isSavedTitleResolved(title, url.href) ? title : null;
 };
 
 const searchFromSettingTXT = async (url: URL): Promise<string> => {

@@ -2,17 +2,27 @@ import { getStore2String, setStore2String } from "src/app/Store2Storage";
 import { BBSMenuModel } from "src/core/BBSMenuModel";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-const { configSet } = vi.hoisted(() => ({ configSet: vi.fn() }));
+const { configSet, cachedMenuMock, fetchMenuMock, askMock } = vi.hoisted(() => ({
+  configSet: vi.fn(),
+  cachedMenuMock: vi.fn(),
+  fetchMenuMock: vi.fn(),
+  askMock: vi.fn(),
+}));
 vi.mock("src/service-container/index", () => ({
   container: {
     config: { get: (key: string) => getStore2String(`config_${key}`), set: configSet },
   },
 }));
-vi.mock("src/core/BoardTitleSolver.js", () => ({ ask: vi.fn() }));
+vi.mock("src/core/BoardTitleSolver.js", () => ({ ask: askMock }));
 vi.mock("src/core/History", () => ({ getUnique: vi.fn() }));
 vi.mock("src/core/ReadState.js", () => ({ getAll: vi.fn() }));
 vi.mock("src/core/URL", () => ({ URL: class {} }));
-vi.mock("src/core/BBSMenuFetcher", () => ({ BBSMenuFetcher: class {} }));
+vi.mock("src/core/BBSMenuFetcher", () => ({
+  BBSMenuFetcher: class {
+    getCached = cachedMenuMock;
+    fetch = fetchMenuMock;
+  },
+}));
 vi.mock("src/core/BoardUrlNormalizer", async (importOriginal) => {
   const actual = await importOriginal<typeof import("src/core/BoardUrlNormalizer")>();
   // 架空の掲示板ホストを使い、再起動時のデータ読み取りを実在の板へ依存させない。
@@ -46,6 +56,9 @@ describe("板一覧の読み取りと開いた板の永続データ", () => {
     configSet
       .mockReset()
       .mockImplementation((key: string, value: string) => setStore2String(`config_${key}`, value));
+    cachedMenuMock.mockReset().mockResolvedValue(null);
+    fetchMenuMock.mockReset().mockResolvedValue({ name: "保存済み板一覧", categories: [] });
+    askMock.mockReset().mockResolvedValue("取得した板名");
   });
 
   afterEach(() => vi.unstubAllGlobals());
@@ -62,6 +75,44 @@ describe("板一覧の読み取りと開いた板の永続データ", () => {
       ]);
       expect(getStore2String("config_opened_board_entries")).toBe(raw);
     }
+    expect(configSet).not.toHaveBeenCalled();
+  });
+
+  it("キャッシュ参照では未登録板を収集せず、通常取得や設定保存にも進まない", async () => {
+    await setStore2String("config_bbsmenu", "https://example.com/bbsmenu.html");
+    await setStore2String(
+      "config_opened_board_entries",
+      JSON.stringify([{ url: "https://example.com/unknown/" }]),
+    );
+    const menu = {
+      name: "保存済み板一覧",
+      categories: [
+        { name: "カテゴリ", boards: [{ url: "https://example.com/sample/", name: "サンプル板" }] },
+      ],
+    };
+    cachedMenuMock.mockResolvedValue(menu);
+    expect(await new BBSMenuModel().getCached()).toEqual({ status: "success", menu: [menu] });
+    expect(cachedMenuMock).toHaveBeenCalledWith("https://example.com/bbsmenu.html");
+    expect(fetchMenuMock).not.toHaveBeenCalled();
+    expect(configSet).not.toHaveBeenCalled();
+  });
+
+  it("キャッシュ欠落を通常取得の結果に固定せず、後から板一覧を取得できる", async () => {
+    await setStore2String("config_bbsmenu", "https://example.com/bbsmenu.html");
+    const model = new BBSMenuModel();
+    expect(await model.getCached()).toEqual({ status: "success", menu: [] });
+    expect((await model.get()).menu?.[0].name).toBe("保存済み板一覧");
+    expect(fetchMenuMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("通常の板一覧を組み立てても多数の未解決板の名前をまとめて取得しない", async () => {
+    const entries = Array.from({ length: 100 }, (_, index) => ({
+      url: `https://example.com/board${index}/`,
+    }));
+    await setStore2String("config_opened_board_entries", JSON.stringify(entries));
+    const result = await new BBSMenuModel().get();
+    expect(result.menu?.[0].categories[0].boards).toHaveLength(100);
+    expect(askMock).not.toHaveBeenCalled();
     expect(configSet).not.toHaveBeenCalled();
   });
 });

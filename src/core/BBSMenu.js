@@ -42,3 +42,8 @@ export const fetch = async function (url, force = false) {
 export const get = async function (forceReload = false) {
   return await _model.get(forceReload);
 };
+
+// ホームの表示名参照は通信を起こさず、取得済みの板一覧だけを使う。
+export const getCached = async function () {
+  return await _model.getCached();
+};
