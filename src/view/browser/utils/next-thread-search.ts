@@ -23,6 +23,7 @@ export type NextThreadEvidence =
   | "explicit-link"
   | "exact-adjacent-number"
   | "exact-next-number"
+  | "program-title-continuation"
   | "nearby-next-number"
   | "same-base-title"
   | "near-title"
@@ -101,6 +102,26 @@ function calculateBaseTitleSimilarity(leftTitle: string, rightTitle: string): nu
   return calculateTitleSimilarity(
     stripSequenceDecoration(leftTitle),
     stripSequenceDecoration(rightTitle),
+  );
+}
+
+function hasProgramTitleContinuation(currentTitle: string, candidateTitle: string): boolean {
+  const currentBase = normalizeThreadTitle(stripSequenceDecoration(currentTitle));
+  const candidateBase = normalizeThreadTitle(stripSequenceDecoration(candidateTitle));
+  const currentPrefix = currentBase.match(/^【[^】]+】/)?.[0] ?? "";
+  const candidatePrefix = candidateBase.match(/^【[^】]+】/)?.[0] ?? "";
+  if (currentPrefix !== candidatePrefix) {
+    return false;
+  }
+
+  // 番組一覧から単独番組の★2へ変わると全文の類似度が下がるため、最後の番組の継続を別に判定する。
+  // 局名だけの一致や終了済みの前番組への誤移動を避け、局の接頭辞と最後の番組名の一致を要求する。
+  const programs = currentBase.slice(currentPrefix.length).split(/[→⇒]/);
+  const lastProgram = programs.at(-1) ?? "";
+  return (
+    programs.length > 1 &&
+    /[\p{L}\p{N}]/u.test(lastProgram) &&
+    lastProgram === candidateBase.slice(candidatePrefix.length)
   );
 }
 
@@ -469,6 +490,15 @@ function rankNextThreadCandidates(
         !explicitlyLinked
       ) {
         return null;
+      } else if (
+        options.mode === "aggressive" &&
+        candidateNumber.isExplicitSequence &&
+        candidateNumber.value === 2 &&
+        hasProgramTitleContinuation(currentThread.title, thread.title)
+      ) {
+        // ★1を省略した番組一覧でも、最後の番組だけを残した★2なら積極モードで連番相当として評価する。
+        numberScore = 40;
+        numberReason = "program-title-continuation";
       }
 
       if (isReflection && options.mode !== "aggressive" && !explicitlyLinked) {

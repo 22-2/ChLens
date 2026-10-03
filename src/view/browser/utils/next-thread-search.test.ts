@@ -24,6 +24,63 @@ function createThread(
 }
 
 describe("next-thread-search", () => {
+  it.each(["", " ★1"])(
+    "積極判定では番組一覧%sから最後の番組だけを残した次の連番へ移動する",
+    (sequence) => {
+      const currentThread = {
+        title: "【架空局】朝の冒険団→森の仲間たち！→銀河の守り隊→月の探検隊(新)" + sequence,
+        url: "https://example.com/test/read.cgi/live/1700000000/",
+      };
+      const nextThread = createThread({
+        title: "【架空局】月の探検隊(新) ★2",
+        url: "https://example.com/test/read.cgi/live/1700000001/",
+        resCount: 1,
+        createdAt: 1_700_000_001_000,
+      });
+
+      expect(
+        findNextThreadMatch([nextThread], currentThread, { mode: "aggressive" })?.thread.url,
+      ).toBe(nextThread.url);
+      expect(
+        findNextThreadCandidates([nextThread], currentThread, { mode: "aggressive" }).map(
+          ({ thread }) => thread.url,
+        ),
+      ).toEqual([nextThread.url]);
+      expect(
+        findNextThreadMatch([nextThread], currentThread, { mode: "balanced" })?.thread.url,
+      ).toBe(sequence ? nextThread.url : undefined);
+      expect(findNextThreadMatch([nextThread], currentThread, { mode: "cautious" })).toBeNull();
+    },
+  );
+
+  it.each([
+    ["【架空局】別の番組 ★2", "live", "1700000001", 20],
+    ["【架空別局】月の探検隊(新) ★2", "live", "1700000001", 20],
+    ["【架空局】朝の冒険団 ★2", "live", "1700000001", 20],
+    ["【架空局】月の探検隊(新) ★3", "live", "1700000001", 20],
+    ["【架空局】月の探検隊(新) ★2", "other", "1700000001", 20],
+    ["【架空局】月の探検隊(新) ★2", "live", "1699999999", 20],
+    ["【架空局】月の探検隊(新) ★2", "live", "1700000001", 1000],
+  ])(
+    "番組名が短縮されても無関係・別板・古い・満了の候補へ移動しない（%s、%s、%s、%s）",
+    (title, board, timestamp, resCount) => {
+      const currentThread = {
+        title: "【架空局】朝の冒険団→森の仲間たち！→銀河の守り隊→月の探検隊(新)",
+        url: "https://example.com/test/read.cgi/live/1700000000/",
+      };
+      const candidate = createThread({
+        title,
+        url: `https://example.com/test/read.cgi/${board}/${timestamp}/`,
+        resCount,
+        createdAt: Number(timestamp) * 1000,
+      });
+      expect(findNextThreadMatch([candidate], currentThread, { mode: "aggressive" })).toBeNull();
+      expect(findNextThreadCandidates([candidate], currentThread, { mode: "aggressive" })).toEqual(
+        [],
+      );
+    },
+  );
+
   it.each([
     ["半角の笑い", "w".repeat(80)],
     ["全角の笑い", "ｗ".repeat(80)],

@@ -18,6 +18,8 @@ const EVIDENCE_LABELS: Partial<Record<NextThreadEvidence, string>> = {
   "explicit-link": "本文リンク",
   "exact-adjacent-number": "連番",
   "exact-next-number": "次番号",
+  // 類似度が低くても番組一覧の末尾から継続すると判定した理由を、候補の比較時に示す。
+  "program-title-continuation": "番組の継続",
   "nearby-next-number": "近い番号",
   "same-base-title": "同系統タイトル",
   "near-title": "近いタイトル",
