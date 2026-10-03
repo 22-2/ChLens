@@ -73,22 +73,25 @@ export class ChURL {
       return;
     }
 
-    // eddibb は /board/threadKey 形式のURLが混在するため、
-    // ここで /test/read.cgi/... に正規化して以降の処理を統一する。
+    // datと標準スレッド形式は共通経路で正規化し、ホスト固有のHTTP指定だけを残す。
+    if (
+      this.tryFixPattern(PATTERNS.CH_DAT, (m) => `/test/read.cgi/${m[1]}/${m[2]}/`, {
+        type: "thread",
+        bbsType: "2ch",
+      }) ||
+      this.tryFixPattern(PATTERNS.CH_THREAD, (m) => `/${m[1]}/`, {
+        type: "thread",
+        bbsType: "2ch",
+      })
+    ) {
+      if (hostname === HOSTNAME.EDDIBB) this.url.protocol = "http:";
+      return;
+    }
+
+    // 短縮形式を通常ホストへ広げると一般ページを誤認するため、既知ホストに限定する。
     if (hostname === HOSTNAME.EDDIBB) {
       if (
-        this.tryFixPattern(PATTERNS.CH_DAT, (m) => `/test/read.cgi/${m[1]}/${m[2]}/`, {
-          type: "thread",
-          bbsType: "2ch",
-        })
-      ) {
-        // 変更理由: eddibb専用分岐で汎用dat判定が飛ばされるため、直リンクを
-        // 先に標準スレッド形式へ正規化し、eddibbの取得仕様に合わせてHTTPを使う。
-        this.url.protocol = "http:";
-        return;
-      }
-      if (
-        this.tryFixPattern(PATTERNS.EDDIBB_THREAD_2, (m) => `/test/read.cgi/${m[1]}/${m[2]}/`, {
+        this.tryFixPattern(PATTERNS.CH_SHORT_THREAD, (m) => `/test/read.cgi/${m[1]}/${m[2]}/`, {
           type: "thread",
           bbsType: "2ch",
         })
@@ -96,47 +99,14 @@ export class ChURL {
         this.url.protocol = "http:";
         return;
       }
-      if (
-        this.tryFixPattern(PATTERNS.EDDIBB_THREAD, (m) => `/test/read.cgi/${m[1]}/${m[2]}/`, {
-          type: "thread",
-          bbsType: "2ch",
-        })
-      ) {
-        this.url.protocol = "http:";
-        return;
-      }
-      if (
-        this.tryFixPattern(PATTERNS.EDDIBB_BOARD_2, (m) => `/test/read.cgi/${m[1]}/`, {
-          type: "board",
-          bbsType: "2ch",
-        })
-      ) {
-        return;
-      }
-      this.tryFixPattern(PATTERNS.EDDIBB_BOARD, (m) => `/${m[1]}/`, {
+      // 判定をまとめても旧read.cgi形式の板パスは維持し、末尾スラッシュだけを補う。
+      this.tryFixPattern(PATTERNS.CH_BOARD_KEY, (m) => (m[0].endsWith("/") ? m[0] : `${m[0]}/`), {
         type: "board",
         bbsType: "2ch",
       });
       return;
     }
 
-    if (
-      this.tryFixPattern(PATTERNS.CH_DAT, (m) => `/test/read.cgi/${m[1]}/${m[2]}/`, {
-        type: "thread",
-        bbsType: "2ch",
-      })
-    ) {
-      // dat直リンクを既存のスレッドURLへ正規化し、取得URL・板URL・キャッシュキーの
-      // 生成処理を新しいドメイン分岐なしで共通化する。
-      return;
-    }
-
-    // 2ch / 5ch
-    if (
-      this.tryFixPattern(PATTERNS.CH_THREAD, (m) => `/${m[1]}/`, { type: "thread", bbsType: "2ch" })
-    ) {
-      return;
-    }
     this.tryFixPattern(PATTERNS.CH_BOARD, (m) => `/${m[1]}`, { type: "board", bbsType: "2ch" });
   }
 

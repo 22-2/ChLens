@@ -63,7 +63,8 @@ function isEddibbTarget(hostname: string, pathname: string): boolean {
     return false;
   }
 
-  return PATTERNS.EDDIBB_THREAD.test(pathname) || PATTERNS.EDDIBB_THREAD_2.test(pathname);
+  // 標準形式の定義を増やさず、既知ホストにだけ短縮形式の判定を追加する。
+  return PATTERNS.CH_THREAD.test(pathname) || PATTERNS.CH_SHORT_THREAD.test(pathname);
 }
 
 function isUlaTarget(hostname: string, pathname: string): boolean {

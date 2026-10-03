@@ -154,7 +154,8 @@ function parseChDatPage(url: URL): InternalThreadPage | null {
 // Board-specific parsers
 // ---------------------------------------------------------------------------
 
-function parseChStylePage(url: URL): InternalBrowserPage | null {
+// datと標準read.cgi形式はホストによらず同じ構造なので、eddibbの入口でも共有する。
+function parseChThreadPage(url: URL): InternalThreadPage | null {
   const datPage = parseChDatPage(url);
   if (datPage) return datPage;
 
@@ -163,6 +164,13 @@ function parseChStylePage(url: URL): InternalBrowserPage | null {
     url.pathname = `/${threadMatch[1]}/`;
     return toThreadPage(url);
   }
+
+  return null;
+}
+
+function parseChStylePage(url: URL): InternalBrowserPage | null {
+  const threadPage = parseChThreadPage(url);
+  if (threadPage) return threadPage;
 
   const boardMatch = ROUTE_PATTERNS.CH_STYLE_BOARD.exec(url.pathname);
   if (boardMatch) {
@@ -213,22 +221,21 @@ function parseShitarabaPage(url: URL): InternalBrowserPage | null {
 }
 
 function parseEddibbPage(url: URL): InternalBrowserPage | null {
-  const datPage = parseChDatPage(url);
-  if (datPage) {
-    // 変更理由: eddibb は個別パーサーへ先に振り分けられるため、共通のdat判定まで
-    // 到達しない。dat直リンクも既存のread.cgi形式へ揃え、同じスレッド取得経路に乗せる。
+  const threadPage = parseChThreadPage(url);
+  if (threadPage) {
+    // 標準形式の解釈は共通処理へ任せ、eddibb固有のHTTP指定だけを適用する。
     url.protocol = "http:";
     return toThreadPage(url);
   }
 
-  const threadMatch = ROUTE_PATTERNS.EDDIBB_THREAD.exec(url.pathname);
+  const threadMatch = ROUTE_PATTERNS.CH_SHORT_THREAD.exec(url.pathname);
   if (threadMatch?.[2]) {
     url.protocol = "http:";
     url.pathname = `/test/read.cgi/${threadMatch[1]}/${threadMatch[2]}/`;
     return toThreadPage(url);
   }
 
-  const boardMatch = ROUTE_PATTERNS.EDDIBB_BOARD.exec(url.pathname);
+  const boardMatch = ROUTE_PATTERNS.CH_BOARD_KEY.exec(url.pathname);
   if (boardMatch) {
     url.pathname = `/${boardMatch[1]}/`;
     return toThreadListPage(url);
@@ -254,17 +261,11 @@ function dispatchParser(url: URL, strict: boolean): InternalBrowserPage | null {
     return BOARD_PARSERS[boardType](url);
   }
 
-  const datPage = parseChDatPage(url);
-  if (datPage) return datPage;
-
   // 変更理由: /test/read.cgi/<board>/<thread> 形式は 5ch互換掲示板特有の
   // パスで誤爆の恐れがないため、ドメインに依存せず（クリック経路の
   // strict=true でも）内部スレッドとして扱う。
-  const threadMatch = ROUTE_PATTERNS.CH_STYLE_THREAD.exec(url.pathname);
-  if (threadMatch) {
-    url.pathname = `/${threadMatch[1]}/`;
-    return toThreadPage(url);
-  }
+  const threadPage = parseChThreadPage(url);
+  if (threadPage) return threadPage;
 
   // 変更理由: /<board>/ 形式は imgur のような一般URLとも一致してしまうため、
   // strict=true（クリック経路）ではフォールバックを適用しない。
@@ -306,7 +307,8 @@ export function getBoardUrlFromThreadUrl(threadUrl: string): string {
 
   switch (boardType) {
     case "eddibb": {
-      const match = ROUTE_PATTERNS.EDDIBB_THREAD.exec(url.pathname);
+      // 標準形式は上の共通判定で処理済みなので、eddibbの短縮形式だけを補う。
+      const match = ROUTE_PATTERNS.CH_SHORT_THREAD.exec(url.pathname);
       if (match?.[2]) return `${url.origin}/${match[1]}/`;
       break;
     }
@@ -353,7 +355,7 @@ export function parseOmnibarBrowserPage(absoluteUrl: string): InternalBrowserPag
   const url = normalizeUrl(absoluteUrl);
   if (!url || classifyBoardHost(url.hostname)) return null;
 
-  const match = /^\/([\w-]+)\/(\d+)(?:\/l\d+)?\/?$/i.exec(url.pathname);
+  const match = ROUTE_PATTERNS.OMNIBAR_SHORT_THREAD.exec(url.pathname);
   if (!match) return null;
 
   // 変更理由: 省略形式やレス表示件数の指定は取得器が扱える標準スレッドパスへ変換し、
