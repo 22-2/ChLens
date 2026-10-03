@@ -145,6 +145,34 @@ describe("useWrite", () => {
     expect(result.current.statusText).toBe("書き込みに失敗しました");
   });
 
+  it("拡張版の認証通知を認証ダイアログの案内へ反映する", () => {
+    const { result } = renderHook(() => useWrite(THREAD_URL));
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          data: { type: "auth-code", code: "123456", url: "https://example.com/auth-code" },
+        }),
+      );
+    });
+    expect(result.current.status).toBe("error");
+    expect(result.current.authCode).toBe("123456");
+    expect(result.current.authCodeUrl).toBe("https://example.com/auth-code");
+  });
+
+  it("別サイトを案内する認証通知はエラーにする", () => {
+    const { result } = renderHook(() => useWrite(THREAD_URL));
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          data: { type: "auth-code", code: "123456", url: "https://other.example.com/auth-code" },
+        }),
+      );
+    });
+    expect(result.current.status).toBe("error");
+    expect(result.current.authCode).toBeNull();
+    expect(result.current.authCodeUrl).toBeNull();
+  });
+
   it("postMessageの長文エラーを省略せず保持する", () => {
     const { result } = renderHook(() => useWrite(THREAD_URL));
     const errorMessage = "長いエラー内容\n".repeat(200);

@@ -41,18 +41,15 @@ type ViewerTargets = {
 };
 
 function getWritePageText(): string {
-  const texts = [document.title];
-  const bodyText = document.body?.innerText ?? document.documentElement.textContent ?? "";
+  // タイトルは別項目で判定するため、本文へ重ねて混ぜて拒否理由を隠さない。
+  const texts: string[] = [];
+  const bodyText =
+    document.body?.innerText ??
+    document.body?.textContent ??
+    document.documentElement.textContent ??
+    "";
   if (bodyText !== "") {
     texts.push(bodyText);
-  }
-
-  const fontText = Array.from(
-    document.getElementsByTagName("font"),
-    (font) => font.textContent ?? "",
-  ).join("\n");
-  if (fontText !== "") {
-    texts.push(fontText);
   }
 
   return texts.join("\n");
@@ -73,12 +70,19 @@ function postWriteResult(message: WriteResultMessage): void {
   window.parent.postMessage(message, "*");
 }
 
-function notifyWriteResult(): void {
+export function notifyWriteResult(): void {
   const result = classifyWriteResult({
     url: window.location.href,
     title: document.title,
     bodyText: getWritePageText(),
+    // 強調された拒否理由を本文と分け、案内文全体より優先して表示できるようにする。
+    fontText: Array.from(
+      document.getElementsByTagName("font"),
+      (font) => font.textContent ?? "",
+    ).join("\n"),
     refreshContent: getRefreshContent(),
+    // 拡張版でも認証エラーの種別を渡し、Tauri版と同じ認証コード案内を利用する。
+    errorCode: document.querySelector('meta[name="error_code"]')?.getAttribute("content")?.trim(),
   });
   if (result == null) {
     return;

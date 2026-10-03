@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vite-plus/test";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 const { runtimeGetUrlMock, sendMessageMock } = vi.hoisted(() => ({
   runtimeGetUrlMock: vi.fn((path: string) => {
@@ -18,6 +18,33 @@ vi.mock("webextension-polyfill", () => ({
 }));
 
 describe("cs_addlink", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    document.title = "";
+    document.head.querySelector('meta[name="error_code"]')?.remove();
+    document.body.innerHTML = "";
+  });
+
+  it("認証エラーの種別とコードを親ウィンドウへ通知する", async () => {
+    const { notifyWriteResult } = await import("src/cs_addlink");
+    const postMessage = vi.fn();
+    vi.stubGlobal("parent", { postMessage });
+    vi.stubGlobal("location", { href: "https://example.com/test/bbs.cgi" });
+    document.title = "ＥＲＲＯＲ";
+    const meta = document.createElement("meta");
+    meta.name = "error_code";
+    meta.content = "E-Unauthenticated";
+    document.head.appendChild(meta);
+    document.body.textContent = "認証コード'123456'を用いてください https://example.com/auth-code";
+
+    notifyWriteResult();
+
+    expect(postMessage).toHaveBeenCalledExactlyOnceWith(
+      { type: "auth-code", code: "123456", url: "https://example.com/auth-code" },
+      "*",
+    );
+  });
+
   it("左クリック経路と補助クリック経路で同じ正規化済みURLを共有する", async () => {
     const { createViewerTargets } = await import("src/cs_addlink");
 

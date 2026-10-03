@@ -47,11 +47,26 @@ export function resolveWriteSuccessDelayMsFromRefresh(
   return Number.isFinite(delayMs) && delayMs >= 0 ? delayMs : undefined;
 }
 
-function resolveErrorMessage(text: string): string | undefined {
-  return text
-    .split(/\r?\n/)
-    .map((value) => value.trim())
-    .find((value) => value !== "" && WRITE_ERROR_TEXT_PATTERN.test(value));
+function resolveErrorMessage(page: WriteResultPageData): string | undefined {
+  // タイトルだけの「ＥＲＲＯＲ」を優先すると拒否理由が消えるため、本文と強調文から詳細を探す。
+  let fallback: string | undefined;
+  for (const text of [page.fontText, page.bodyText, page.title]) {
+    const lines = (text ?? "")
+      .split(/\r?\n/)
+      .map((value) => value.trim())
+      .filter((value) => value !== "");
+    fallback ??= lines[0];
+    const details = lines.filter(
+      (value) =>
+        !/^(?:ＥＲＲＯＲ|ERROR|エラー|書き込みエラー|書込みエラー|投稿エラー)[\s:：!！]*$/i.test(
+          value,
+        ),
+    );
+    if (details.length > 0) {
+      return [...new Set(details)].join("\n");
+    }
+  }
+  return fallback;
 }
 
 export function classifyWriteResult(page: WriteResultPageData): WriteResultMessage | null {
@@ -79,15 +94,16 @@ export function classifyWriteResult(page: WriteResultPageData): WriteResultMessa
     };
   }
 
-  if (WRITE_CONFIRM_TEXT_PATTERN.test(text)) {
-    return { type: "confirm" };
-  }
-
-  if (WRITE_ERROR_TEXT_PATTERN.test(text)) {
+  // エラー本文にも「確認してください」が含まれるので、確認ページより拒否結果を優先する。
+  if (page.errorCode || WRITE_ERROR_TEXT_PATTERN.test(text)) {
     return {
       type: "error",
-      message: resolveErrorMessage(text),
+      message: resolveErrorMessage(page),
     };
+  }
+
+  if (WRITE_CONFIRM_TEXT_PATTERN.test(text)) {
+    return { type: "confirm" };
   }
 
   return null;

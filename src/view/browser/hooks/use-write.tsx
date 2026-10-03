@@ -1,4 +1,8 @@
-import { getWriteFormData, isWriteAuthToken } from "packages/ch-lib/src/index";
+import {
+  getWriteFormData,
+  isWriteAuthToken,
+  resolveWriteAuthCodeUrl,
+} from "packages/ch-lib/src/index";
 import { type FormEvent, type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import { platform } from "src/app";
 import { wait } from "src/app/Defer";
@@ -365,6 +369,8 @@ export function useWrite(threadUrl: string, options: UseWriteOptions = {}): UseW
           clearSubmitWatchdog();
           clearTauriWriteAttempt();
           pendingSubmittedWriteRef.current = null;
+          // サーバーによる拒否も例外と同じく記録し、表示だけでは追えない失敗を調査できるようにする。
+          console.error("書き込みが拒否されました:", data.message ?? "エラー詳細なし");
           setStatus("error");
           setStatusText(
             data.message ? `書き込み失敗: ${String(data.message)}` : "書き込みに失敗しました",
@@ -378,7 +384,7 @@ export function useWrite(threadUrl: string, options: UseWriteOptions = {}): UseW
   // iframe からの postMessage を処理する (cs_write.js との通信)
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
-      const data = e.data as { type?: string; message?: unknown };
+      const data = e.data as { type?: string; message?: unknown; code?: unknown; url?: unknown };
       switch (data?.type) {
         case "ping":
           (e.source as Window | null)?.postMessage(PONG_MSG, "*");
@@ -395,6 +401,18 @@ export function useWrite(threadUrl: string, options: UseWriteOptions = {}): UseW
         case "confirm":
           handleWriteResult({ type: "confirm" });
           break;
+        case "auth-code": {
+          // content scriptの認証通知も受け取り、同じ掲示板の認証先だけを案内する。
+          const authUrl =
+            typeof data.url === "string" ? resolveWriteAuthCodeUrl(data.url, threadUrl) : null;
+          if (typeof data.code === "string" && /^\d{6}$/.test(data.code) && authUrl != null) {
+            handleWriteResult({ type: "auth-code", code: data.code, url: authUrl });
+          } else {
+            console.error("書き込み認証の通知が不正です");
+            handleWriteResult({ type: "error", message: "認証コードの通知を読み取れませんでした" });
+          }
+          break;
+        }
         case "error":
           handleWriteResult({
             type: "error",
@@ -405,7 +423,7 @@ export function useWrite(threadUrl: string, options: UseWriteOptions = {}): UseW
     };
     viewWindow.addEventListener("message", handleMessage);
     return () => viewWindow.removeEventListener("message", handleMessage);
-  }, [handleWriteResult, viewWindow]);
+  }, [handleWriteResult, threadUrl, viewWindow]);
 
   const submit = useCallback(
     async (messageOverride?: string) => {
