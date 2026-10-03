@@ -10,6 +10,49 @@ import { describe, expect, it } from "vite-plus/test";
 const MODES: AutoNextThreadMode[] = ["balanced", "aggressive"];
 const BASE_TIMESTAMP = 1_700_100_000;
 
+// ユーザー指定の再現用スレタイは原文を保ち、各隣接段階が自動移動できるかを個別に確認する。
+const PROVIDED_THREAD_TITLES = [
+  "【NTV】金曜ロードSHOW！ミライの未来 ★1【地上波初】",
+  "【NTV】金曜ロードSHOW！ミライの未来 ★2【地上波初】",
+  "【NTV】金曜ロードSHOW！ミライのガイジ ★3【地上波初】",
+  "【NTV】金曜ロードSHOW！ミライのガイジ ★4【地上波初】",
+  "【NTV】金曜ロードSHOW！ミライのガイジ ★5【地上波初】",
+  "【NTV】金曜ロードSHOW！ミライのガイジ ★6【地上波初】",
+  "【NTV】金曜ロードSHOW！ミライのガイジ ★7【地上波初】",
+  "【NTV】金曜ガイジSHOW！ガイジのガイジ ★8【地上波初】",
+  "【NTV】金曜ガイジSHOW！ガイジの害児★9【地上波初】",
+  "【ガイジ】金曜ガイジSHOW！ガイジのガイジ★10【ガイジ波初】",
+  "【ガイジ】金曜ガイジSHOW！ガイジのガイジ★11【ガイジ波初】",
+  "【ガイジ】金曜ガイジSHOW！ガイジのガイジ★12【ガイジ波初】",
+  "【ガイジ】金曜ガイジSHOW！ガイジのガイジ★14【ガイジ波初】",
+  "【ガイジ】金曜ガイジGAIJI！ガイジのガイジ★15【ガイジ波初】",
+  "【ガイジ】ガイジ　ガイジ",
+];
+
+const PROVIDED_TRANSITIONS = PROVIDED_THREAD_TITLES.slice(0, -1).map((title, index) => ({
+  title,
+  nextTitle: PROVIDED_THREAD_TITLES[index + 1],
+  index,
+  transition: `${index + 1}行目→${index + 2}行目`,
+  unsupportedModes: index === 13 ? MODES : [6, 8, 12].includes(index) ? ["balanced"] : [],
+}));
+
+describe.each(MODES)("指定スレタイの隣接遷移（%s）", (mode) => {
+  const verifyTransition = ({ title, nextTitle, index }: (typeof PROVIDED_TRANSITIONS)[number]) => {
+    const source = thread(title, index);
+    const candidate = thread(nextTitle, index + 1);
+    expect(findNextThreadMatch([candidate], source, { mode })?.thread.url).toBe(candidate.url);
+  };
+  it.each(PROVIDED_TRANSITIONS.filter(({ unsupportedModes }) => !unsupportedModes.includes(mode)))(
+    "$transition：$title → $nextTitle",
+    verifyTransition,
+  );
+  // 現時点で追従できない段階も削除せず残す。対応後はfailsが失敗し、通常の回帰テストへ昇格できる。
+  it.fails.each(
+    PROVIDED_TRANSITIONS.filter(({ unsupportedModes }) => unsupportedModes.includes(mode)),
+  )("未対応の$transition：$title → $nextTitle", verifyTransition);
+});
+
 function thread(title: string, offset: number, overrides: Partial<IThread> = {}): IThread {
   return {
     title,
