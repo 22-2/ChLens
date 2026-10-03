@@ -21,7 +21,6 @@ const MAINSTREAM_WATCH_DURATION_MS = 60_000;
 const MAINSTREAM_WATCH_RETRY_MS = 5_000;
 export const NEXT_THREAD_TRIGGER_RES_COUNT = 1000;
 const REQUIRED_CANDIDATE_CONFIRMATIONS: Record<AutoNextThreadMode, number> = {
-  cautious: 3,
   balanced: 2,
   aggressive: 1,
 };
@@ -233,24 +232,17 @@ export function useAutoNextThread({
       followThreadRef.current(candidate.thread);
       toast.info(`次スレへ移動しました: ${candidate.thread.title}`);
       setPendingMove(null);
-      // 自動移動時も既存のスレ監視を引き継ぎ、慎重モードでは別候補への再移動を行わない。
-      if (pending.mode === "cautious") {
-        mainstreamPendingCandidateRef.current = null;
-        mainstreamSnapshotRef.current = null;
-        setWatchState(null);
-        setStatus("idle");
-      } else {
-        mainstreamPendingCandidateRef.current = null;
-        mainstreamSnapshotRef.current = null;
-        setWatchState({
-          boardUrl: pending.boardUrl,
-          originalThreadUrl: pending.sourceThread.url,
-          originalThreadTitle: pending.sourceThread.title,
-          currentThreadUrl: candidate.thread.url,
-          startedAt: Date.now(),
-        });
-        setStatus("watching");
-      }
+      // 慎重モードの廃止後は標準・積極のどちらも、自動移動先へ監視を引き継いで本流候補を確認する。
+      mainstreamPendingCandidateRef.current = null;
+      mainstreamSnapshotRef.current = null;
+      setWatchState({
+        boardUrl: pending.boardUrl,
+        originalThreadUrl: pending.sourceThread.url,
+        originalThreadTitle: pending.sourceThread.title,
+        currentThreadUrl: candidate.thread.url,
+        startedAt: Date.now(),
+      });
+      setStatus("watching");
     },
     [toast],
   );
@@ -276,7 +268,8 @@ export function useAutoNextThread({
   );
 
   useEffect(() => {
-    if (!pendingMove || !autoRefreshEnabled || !featureEnabled) {
+    // 候補の確認待ち中でも読書位置を優先し、上のレスへ戻った利用者を自動移動させない。
+    if (!pendingMove || !autoRefreshEnabled || !featureEnabled || !canAutoScroll) {
       return;
     }
 
@@ -295,6 +288,8 @@ export function useAutoNextThread({
     const updateCountdown = () => {
       const remainingSeconds = Math.max(0, Math.ceil((pendingMove.deadline - Date.now()) / 1000));
       if (remainingSeconds === 0) {
+        // Reactが移動状態を反映する前に次のintervalが発火しても、同じ候補へ繰り返し移動しない。
+        viewWindow.clearInterval(timerId);
         const firstCandidate = pendingMove.candidates[0];
         if (firstCandidate) {
           moveToCandidate(firstCandidate, pendingMove);
@@ -314,6 +309,7 @@ export function useAutoNextThread({
     return () => viewWindow.clearInterval(timerId);
   }, [
     autoRefreshEnabled,
+    canAutoScroll,
     featureEnabled,
     isDocumentVisible,
     moveToCandidate,

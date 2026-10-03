@@ -260,7 +260,7 @@ describe("useAutoNextThread", () => {
     expect(onFollowThread).toHaveBeenCalledWith(expect.objectContaining({ url: mainstreamUrl }));
   });
 
-  it("慎重判定でも本文で案内された次スレは待たずに移動する", async () => {
+  it("標準判定でも本文で案内された次スレは待たずに移動する", async () => {
     const onFollowThread = vi.fn();
     const nextThreadUrl = "https://example.com/test/read.cgi/live/1700000201/";
     const boardGetThreads = vi.fn().mockResolvedValue({
@@ -282,7 +282,7 @@ describe("useAutoNextThread", () => {
 
     render(
       <AutoNextThreadHarness
-        mode="cautious"
+        mode="balanced"
         responseMessages={[`次スレはこちら <a href="${nextThreadUrl}">${nextThreadUrl}</a>`]}
         onFollowThread={onFollowThread}
       />,
@@ -292,7 +292,7 @@ describe("useAutoNextThread", () => {
 
     expect(boardGetThreads).toHaveBeenCalledTimes(1);
     expect(onFollowThread).toHaveBeenCalledWith(expect.objectContaining({ url: nextThreadUrl }));
-    expect(screen.getByTestId("status")).toHaveTextContent("idle");
+    expect(screen.getByTestId("status")).toHaveTextContent("watching");
   });
 
   it("dat落ち後に開始を繰り返してもsubjectを取得しない", async () => {
@@ -324,7 +324,7 @@ describe("useAutoNextThread", () => {
     const view = render(
       <AutoNextThreadHarness
         expired
-        mode="cautious"
+        mode="balanced"
         responseCount={2}
         responseMessages={[`次スレはこちら <a href="${nextThreadUrl}">${nextThreadUrl}</a>`]}
         onFollowThread={onFollowThread}
@@ -603,5 +603,140 @@ describe("useAutoNextThread", () => {
     expect(screen.getByTestId("status")).toHaveTextContent("idle");
     expect(boardGetThreads).not.toHaveBeenCalled();
     expect(onFollowThread).not.toHaveBeenCalled();
+  });
+
+  // スコア判定が正しくても、実際の探索では確認回数や非同期応答によって誤移動し得るため別に検証する。
+  it.each([
+    { mode: "balanced" as const, confirmations: 2 },
+    { mode: "aggressive" as const, confirmations: 1 },
+  ])("$modeでは同じ候補を$confirmations回確認して移動する", async ({ mode, confirmations }) => {
+    const candidate = createThread({
+      title: "架空の月面探検隊 ★2",
+      url: "https://example.com/test/read.cgi/live/1700000201/",
+      resCount: 20,
+      createdAt: 1_700_000_201_000,
+    });
+    const getThreads = vi.fn().mockResolvedValue({ threads: [candidate], message: null });
+    container.board = { getThreads, getCachedResCount: vi.fn() };
+    const onFollowThread = vi.fn();
+    render(
+      <AutoNextThreadHarness
+        mode={mode}
+        threadTitle="架空の月面探検隊 ★1"
+        onFollowThread={onFollowThread}
+      />,
+    );
+    await flushPromises();
+    for (let confirmation = 1; confirmation < confirmations; confirmation++) {
+      expect(onFollowThread).not.toHaveBeenCalled();
+      await act(async () => vi.advanceTimersByTimeAsync(3000));
+    }
+    expect(getThreads).toHaveBeenCalledTimes(confirmations);
+    expect(onFollowThread).toHaveBeenCalledOnce();
+    expect(onFollowThread).toHaveBeenCalledWith(expect.objectContaining({ url: candidate.url }));
+  });
+
+  it.each(["入れ替わる", "消える"])(
+    "標準判定では途中で候補が%sと確認回数を引き継がない",
+    async (change) => {
+      const first = createThread({
+        title: "架空の月面探検隊 ★2",
+        url: "https://example.com/test/read.cgi/live/1700000201/",
+        resCount: 20,
+        createdAt: 1_700_000_201_000,
+      });
+      const second = { ...first, url: "https://example.com/test/read.cgi/live/1700000202/" };
+      const expected = change === "入れ替わる" ? second : first;
+      const getThreads = vi
+        .fn()
+        .mockResolvedValueOnce({ threads: [first], message: null })
+        .mockResolvedValueOnce({ threads: change === "入れ替わる" ? [second] : [], message: null })
+        .mockResolvedValue({ threads: [expected], message: null });
+      container.board = { getThreads, getCachedResCount: vi.fn() };
+      const onFollowThread = vi.fn();
+      render(
+        <AutoNextThreadHarness threadTitle="架空の月面探検隊 ★1" onFollowThread={onFollowThread} />,
+      );
+      await flushPromises();
+      const requestsBeforeMove = change === "入れ替わる" ? 2 : 3;
+      for (let request = 1; request < requestsBeforeMove; request++) {
+        await act(async () => vi.advanceTimersByTimeAsync(3000));
+        expect(onFollowThread).not.toHaveBeenCalled();
+      }
+      await act(async () => vi.advanceTimersByTimeAsync(3000));
+      expect(onFollowThread).toHaveBeenCalledOnce();
+      expect(onFollowThread).toHaveBeenCalledWith(expect.objectContaining({ url: expected.url }));
+    },
+  );
+
+  it.each(["スレ変更", "画面破棄"])("取得待ち中の%s後に古い結果で移動しない", async (change) => {
+    let resolveRequest: ((result: { threads: IThread[]; message: null }) => void) | undefined;
+    const getThreads = vi.fn(
+      () =>
+        new Promise<{ threads: IThread[]; message: null }>((resolve) => {
+          resolveRequest = resolve;
+        }),
+    );
+    container.board = { getThreads, getCachedResCount: vi.fn() };
+    const onFollowThread = vi.fn();
+    const view = render(
+      <AutoNextThreadHarness mode="aggressive" onFollowThread={onFollowThread} />,
+    );
+    if (change === "スレ変更") {
+      view.rerender(
+        <AutoNextThreadHarness
+          mode="aggressive"
+          threadUrl="https://example.com/test/read.cgi/live/1700000300/"
+          responseCount={10}
+          onFollowThread={onFollowThread}
+        />,
+      );
+    } else {
+      view.unmount();
+    }
+    resolveRequest?.({
+      threads: [
+        createThread({
+          title: "実況スレ Part.21",
+          url: "https://example.com/test/read.cgi/live/1700000201/",
+          resCount: 20,
+          createdAt: 1_700_000_201_000,
+        }),
+      ],
+      message: null,
+    });
+    await flushPromises();
+    await act(async () => vi.advanceTimersByTimeAsync(5000));
+    expect(onFollowThread).not.toHaveBeenCalled();
+    expect(getThreads).toHaveBeenCalledOnce();
+  });
+
+  it("確認待ち中に上のレスを読みに戻ったら自動移動せず、追従位置で再開する", async () => {
+    const candidate = createThread({
+      title: "架空の月面探検隊 ★2",
+      url: "https://example.com/test/read.cgi/live/1700000201/",
+      resCount: 20,
+      createdAt: 1_700_000_201_000,
+    });
+    container.board = {
+      getThreads: vi.fn().mockResolvedValue({ threads: [candidate], message: null }),
+      getCachedResCount: vi.fn(),
+    };
+    const onFollowThread = vi.fn();
+    const props = {
+      mode: "aggressive" as const,
+      skipMoveDelay: false,
+      threadTitle: "架空の月面探検隊 ★1",
+      onFollowThread,
+    };
+    const view = render(<AutoNextThreadHarness {...props} />);
+    await flushPromises();
+    expect(screen.getByTestId("status")).toHaveTextContent("confirming");
+    view.rerender(<AutoNextThreadHarness {...props} canAutoScroll={false} />);
+    await act(async () => vi.advanceTimersByTimeAsync(10_000));
+    expect(onFollowThread).not.toHaveBeenCalled();
+    view.rerender(<AutoNextThreadHarness {...props} canAutoScroll />);
+    await act(async () => vi.advanceTimersByTimeAsync(5000));
+    expect(onFollowThread).toHaveBeenCalledOnce();
   });
 });

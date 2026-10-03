@@ -10,15 +10,15 @@ const TITLE_DECORATION_PATTERN =
   / ?(?:\[(?:無断)?転載禁止\]|(?:\(c\)|©|�|&copy;|&#169;)(?:2ch\.net|@?bbspink\.com)) ?/g;
 const KATAKANA_PATTERN = /[\u30a1-\u30f6]/g;
 const THREAD_NUMBER_PATTERN = /(\d*\.\d+|\d+)/g;
-const STAR_NUMBER_PATTERN = /★(\d+)$/;
-const PART_DOT_NUMBER_PATTERN = /Part\.(\d+)$/i;
-const PART_NUMBER_PATTERN = /Part(\d+)$/i;
+const STAR_NUMBER_PATTERN = /★\s*(\d+)$/;
+const PART_DOT_NUMBER_PATTERN = /Part\.\s*(\d+)$/i;
+const PART_NUMBER_PATTERN = /Part\s*(\d+)$/i;
 const PART2_PATTERN = /(★2|Part\.2|Part2)(?:\s+.*)?$/i;
 
 const NEXT_THREAD_MIN_SIMILARITY = 0.3;
 const NEAR_TITLE_SIMILARITY = 0.85;
 
-export type AutoNextThreadMode = "cautious" | "balanced" | "aggressive";
+export type AutoNextThreadMode = "balanced" | "aggressive";
 export type NextThreadEvidence =
   | "explicit-link"
   | "exact-adjacent-number"
@@ -92,9 +92,11 @@ function stripTitleDecoration(title: string): string {
 }
 
 function stripSequenceDecoration(title: string): string {
+  // 全角番号や番号前の空白でも同じ系列として比較し、連番解析とタイトル類似度の解釈を揃える。
   return title
+    .normalize("NFKC")
     .replace(/^\s*●\s*/, "")
-    .replace(/(?:★\d+|Part\.?\s*\d+)\s*$/i, "")
+    .replace(/(?:★\s*\d+|Part\.?\s*\d+)\s*$/i, "")
     .trim();
 }
 
@@ -263,7 +265,8 @@ function calculateEditSimilarity(left: string, right: string): number {
 }
 
 export function extractThreadSequenceNumber(title: string): ThreadNumberResult {
-  const trimmedTitle = title.trim();
+  // 類似度だけが全角表記を正規化すると、同じ連番を検出できず番号の逆行も見逃す。
+  const trimmedTitle = stripTitleDecoration(title).normalize("NFKC").trim();
   const starMatch = trimmedTitle.match(STAR_NUMBER_PATTERN);
   if (starMatch) {
     return {
@@ -412,7 +415,6 @@ const NEXT_THREAD_MODE_POLICY: Record<
   AutoNextThreadMode,
   { minimumScore: number; minimumMargin: number }
 > = {
-  cautious: { minimumScore: 80, minimumMargin: 20 },
   balanced: { minimumScore: 60, minimumMargin: 12 },
   aggressive: { minimumScore: 35, minimumMargin: 0 },
 };
@@ -722,6 +724,7 @@ function filterMainstreamCandidates(
     currentThreadTitle,
     minimumResCount,
   } = options;
+  const originalSortKey = extractThreadTimestamp(originalThreadUrl);
   const candidates = threads.filter((thread) => {
     if (thread.url === currentThreadUrl || thread.url === originalThreadUrl) {
       return false;
@@ -729,7 +732,13 @@ function filterMainstreamCandidates(
     if (thread.resCount >= 1000 || thread.resCount < minimumResCount) {
       return false;
     }
-    return true;
+    // 移動後の勢い比較でも探索元の板と時系列を守り、同名の別板や過去スレへ戻らない。
+    // 移動先より前に立った本流候補は許容し、探索を開始した元スレより後に立ったものへ限定する。
+    if (!isSameBoard(thread.url, originalThreadUrl)) {
+      return false;
+    }
+    const candidateSortKey = extractThreadTimestamp(thread.url);
+    return originalSortKey === 0 || candidateSortKey === 0 || candidateSortKey > originalSortKey;
   });
 
   if (isMarkedThread(originalThreadTitle)) {
@@ -811,7 +820,7 @@ export function findMainstreamThreadMatch(
     currentThreadTitle: currentThread.title,
     minimumResCount,
   });
-  const minimumSimilarity = mode === "cautious" ? 0.75 : mode === "balanced" ? 0.5 : 0.3;
+  const minimumSimilarity = mode === "balanced" ? 0.5 : 0.3;
 
   const viableCandidates = candidates
     .map((candidate) => ({

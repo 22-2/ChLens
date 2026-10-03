@@ -49,7 +49,6 @@ describe("next-thread-search", () => {
       expect(
         findNextThreadMatch([nextThread], currentThread, { mode: "balanced" })?.thread.url,
       ).toBe(sequence ? nextThread.url : undefined);
-      expect(findNextThreadMatch([nextThread], currentThread, { mode: "cautious" })).toBeNull();
     },
   );
 
@@ -497,7 +496,7 @@ describe("next-thread-search", () => {
     ];
 
     const match = findNextThreadMatch(threads, currentThread, {
-      mode: "cautious",
+      mode: "balanced",
       responseMessages: [`次スレはこちら <a href="${expectedUrl}">${expectedUrl}</a>`],
     });
 
