@@ -10,10 +10,9 @@ const TITLE_DECORATION_PATTERN =
   / ?(?:\[(?:無断)?転載禁止\]|(?:\(c\)|©|�|&copy;|&#169;)(?:2ch\.net|@?bbspink\.com)) ?/g;
 const KATAKANA_PATTERN = /[\u30a1-\u30f6]/g;
 const THREAD_NUMBER_PATTERN = /(\d*\.\d+|\d+)/g;
-const STAR_NUMBER_PATTERN = /★\s*(\d+)$/;
-const PART_DOT_NUMBER_PATTERN = /Part\.\s*(\d+)$/i;
-const PART_NUMBER_PATTERN = /Part\s*(\d+)$/i;
-const PART2_PATTERN = /(★2|Part\.2|Part2)(?:\s+.*)?$/i;
+// 番号後の放送情報などは連番の一部ではないため、括弧書きを残して番号だけを取り出す。
+const EXPLICIT_SEQUENCE_PATTERN =
+  /(★|Part\.?)\s*(\d+)((?:\s*(?:【[^】]*】|\[[^\]]*\]|\([^)]*\)))*\s*)$/i;
 
 const NEXT_THREAD_MIN_SIMILARITY = 0.3;
 const NEAR_TITLE_SIMILARITY = 0.85;
@@ -24,6 +23,7 @@ export type NextThreadEvidence =
   | "exact-adjacent-number"
   | "exact-next-number"
   | "program-title-continuation"
+  | "short-title-continuation"
   | "nearby-next-number"
   | "same-base-title"
   | "near-title"
@@ -96,7 +96,7 @@ function stripSequenceDecoration(title: string): string {
   return title
     .normalize("NFKC")
     .replace(/^\s*●\s*/, "")
-    .replace(/(?:★\s*\d+|Part\.?\s*\d+)\s*$/i, "")
+    .replace(EXPLICIT_SEQUENCE_PATTERN, "$3")
     .trim();
 }
 
@@ -124,6 +124,30 @@ function hasProgramTitleContinuation(currentTitle: string, candidateTitle: strin
     programs.length > 1 &&
     /[\p{L}\p{N}]/u.test(lastProgram) &&
     lastProgram === candidateBase.slice(candidatePrefix.length)
+  );
+}
+
+function hasShortTitleContinuation(currentTitle: string, candidateTitle: string): boolean {
+  const currentBase = normalizeThreadTitle(stripSequenceDecoration(currentTitle));
+  const candidateBase = normalizeThreadTitle(stripSequenceDecoration(candidateTitle));
+  const currentPrefix = currentBase.match(/^【[^】]+】/)?.[0];
+  const candidatePrefix = candidateBase.match(/^【[^】]+】/)?.[0];
+  if (!currentPrefix || currentPrefix !== candidatePrefix) {
+    return false;
+  }
+
+  // 長い連番タイトルから番号なしの短い題名へ変わる場合、局名・末尾の告知だけでは継続と判定しない。
+  // 接頭辞と告知を除いた本文で、短縮後の全文が順序を保って含まれることを継続の根拠にする。
+  const stripNotes = (value: string) => value.replace(/(?:【[^】]*】|\[[^\]]*\]|\([^)]*\))+$/, "");
+  const currentTopic = stripNotes(currentBase.slice(currentPrefix.length));
+  const candidateTopic = stripNotes(candidateBase.slice(candidatePrefix.length));
+  // ごく短い単語・単一文字の反復・長文中のわずかな断片だけでは継続の根拠として弱いため除外する。
+  return (
+    candidateTopic.length >= 6 &&
+    new Set(candidateTopic).size >= 3 &&
+    candidateTopic.length < currentTopic.length &&
+    candidateTopic.length / currentTopic.length >= 0.2 &&
+    countSequenceMatches(currentTopic, candidateTopic) === candidateTopic.length
   );
 }
 
@@ -267,32 +291,12 @@ function calculateEditSimilarity(left: string, right: string): number {
 export function extractThreadSequenceNumber(title: string): ThreadNumberResult {
   // 類似度だけが全角表記を正規化すると、同じ連番を検出できず番号の逆行も見逃す。
   const trimmedTitle = stripTitleDecoration(title).normalize("NFKC").trim();
-  const starMatch = trimmedTitle.match(STAR_NUMBER_PATTERN);
-  if (starMatch) {
+  const sequenceMatch = trimmedTitle.match(EXPLICIT_SEQUENCE_PATTERN);
+  if (sequenceMatch) {
     return {
-      value: Number.parseFloat(starMatch[1]),
+      value: Number.parseFloat(sequenceMatch[2]),
       hasNumber: true,
-      isStar: true,
-      isExplicitSequence: true,
-    };
-  }
-
-  const partDotMatch = trimmedTitle.match(PART_DOT_NUMBER_PATTERN);
-  if (partDotMatch) {
-    return {
-      value: Number.parseFloat(partDotMatch[1]),
-      hasNumber: true,
-      isStar: false,
-      isExplicitSequence: true,
-    };
-  }
-
-  const partMatch = trimmedTitle.match(PART_NUMBER_PATTERN);
-  if (partMatch) {
-    return {
-      value: Number.parseFloat(partMatch[1]),
-      hasNumber: true,
-      isStar: false,
+      isStar: sequenceMatch[1] === "★",
       isExplicitSequence: true,
     };
   }
@@ -427,6 +431,28 @@ function rankNextThreadCandidates(
 ): RankedNextThreadCandidate[] {
   const currentNumber = extractThreadSequenceNumber(currentThread.title);
   const currentSortKey = extractThreadTimestamp(currentThread.url);
+  // 次の連番が板一覧にあれば、その先の番号なし短縮スレへ飛ばさない。
+  // 標準で番号飛びを保留する場合も、短縮候補を迂回路として採用しない。
+  const hasNumberedContinuation =
+    currentNumber.isExplicitSequence &&
+    threads.some((thread) => {
+      if (thread.resCount >= 1000 || !isSameBoard(thread.url, currentThread.url)) {
+        return false;
+      }
+      const sortKey = extractThreadTimestamp(thread.url);
+      if (currentSortKey > 0 && sortKey > 0 && sortKey <= currentSortKey) {
+        return false;
+      }
+      const number = extractThreadSequenceNumber(thread.title);
+      const difference = number.value - currentNumber.value;
+      return (
+        number.isExplicitSequence &&
+        difference > 0 &&
+        difference <= 3 &&
+        calculateBaseTitleSimilarity(currentThread.title, thread.title) >=
+          NEXT_THREAD_MIN_SIMILARITY
+      );
+    });
 
   return threads
     .filter((thread) => {
@@ -469,10 +495,22 @@ function rankNextThreadCandidates(
       let numberReason: NextThreadEvidence | null = null;
       if (currentNumber.isExplicitSequence) {
         if (!candidateNumber.isExplicitSequence) {
+          const shortTitleContinuation =
+            !hasNumberedContinuation &&
+            !candidateNumber.hasNumber &&
+            hasShortTitleContinuation(currentThread.title, thread.title);
           // 変更理由: 「★反省会」のような番号を持たない反省会スレは、
           // 連番条件を満たさなくても積極モードでは次スレ候補として評価する。
-          if (!explicitlyLinked && !(options.mode === "aggressive" && isReflection)) {
+          if (
+            !explicitlyLinked &&
+            !shortTitleContinuation &&
+            !(options.mode === "aggressive" && isReflection)
+          ) {
             return null;
+          }
+          if (shortTitleContinuation) {
+            numberScore = 40;
+            numberReason = "short-title-continuation";
           }
         } else {
           const difference = candidateNumber.value - currentNumber.value;
@@ -778,9 +816,7 @@ function filterMainstreamCandidates(
     if (candidate.isStar && (candidate.number === 1 || candidate.number === 2)) {
       return true;
     }
-    return (
-      !current.hasNumber && candidate.number === 2 && PART2_PATTERN.test(candidate.thread.title)
-    );
+    return !current.hasNumber && candidateNumber.value === 2 && candidateNumber.isExplicitSequence;
   });
 }
 

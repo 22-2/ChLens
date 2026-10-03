@@ -20,6 +20,8 @@ const EVIDENCE_LABELS: Partial<Record<NextThreadEvidence, string>> = {
   "exact-next-number": "次番号",
   // 類似度が低くても番組一覧の末尾から継続すると判定した理由を、候補の比較時に示す。
   "program-title-continuation": "番組の継続",
+  // 番号が消えた短縮タイトルも、元の話題を保持していることを候補の根拠として表示する。
+  "short-title-continuation": "題名の短縮",
   "nearby-next-number": "近い番号",
   "same-base-title": "同系統タイトル",
   "near-title": "近いタイトル",

@@ -1,6 +1,7 @@
 import type { IThread } from "src/service-container/interfaces";
 import {
   type AutoNextThreadMode,
+  extractThreadSequenceNumber,
   findMainstreamThreadMatch,
   findNextThreadCandidates,
   findNextThreadMatch,
@@ -34,23 +35,33 @@ const PROVIDED_TRANSITIONS = PROVIDED_THREAD_TITLES.slice(0, -1).map((title, ind
   nextTitle: PROVIDED_THREAD_TITLES[index + 1],
   index,
   transition: `${index + 1}行目→${index + 2}行目`,
-  unsupportedModes: index === 13 ? MODES : [6, 8, 12].includes(index) ? ["balanced"] : [],
 }));
 
 describe.each(MODES)("指定スレタイの隣接遷移（%s）", (mode) => {
   const verifyTransition = ({ title, nextTitle, index }: (typeof PROVIDED_TRANSITIONS)[number]) => {
     const source = thread(title, index);
     const candidate = thread(nextTitle, index + 1);
-    expect(findNextThreadMatch([candidate], source, { mode })?.thread.url).toBe(candidate.url);
+    // 標準は連番を飛ばさず、積極だけが★12から★14への移動を許容する。
+    const expectedUrl = mode === "balanced" && index === 11 ? undefined : candidate.url;
+    expect(findNextThreadMatch([candidate], source, { mode })?.thread.url).toBe(expectedUrl);
+    expect(
+      findNextThreadCandidates([candidate], source, { mode }).map(({ thread }) => thread.url),
+    ).toEqual(expectedUrl ? [expectedUrl] : []);
   };
-  it.each(PROVIDED_TRANSITIONS.filter(({ unsupportedModes }) => !unsupportedModes.includes(mode)))(
-    "$transition：$title → $nextTitle",
-    verifyTransition,
+  it.each(PROVIDED_TRANSITIONS)("$transition：$title → $nextTitle", verifyTransition);
+
+  it.each(PROVIDED_TRANSITIONS)(
+    "複数候補がある$transitionでも後続スレを飛ばさない",
+    ({ title, index }) => {
+      const source = thread(title, index);
+      const candidates = PROVIDED_THREAD_TITLES.map((title, offset) => thread(title, offset));
+      const expectedUrl =
+        mode === "balanced" && index === 11 ? undefined : candidates[index + 1].url;
+      for (const ordered of [candidates, [...candidates].reverse()]) {
+        expect(findNextThreadMatch(ordered, source, { mode })?.thread.url).toBe(expectedUrl);
+      }
+    },
   );
-  // 現時点で追従できない段階も削除せず残す。対応後はfailsが失敗し、通常の回帰テストへ昇格できる。
-  it.fails.each(
-    PROVIDED_TRANSITIONS.filter(({ unsupportedModes }) => unsupportedModes.includes(mode)),
-  )("未対応の$transition：$title → $nextTitle", verifyTransition);
 });
 
 function thread(title: string, offset: number, overrides: Partial<IThread> = {}): IThread {
@@ -66,6 +77,66 @@ function thread(title: string, offset: number, overrides: Partial<IThread> = {})
     ...overrides,
   };
 }
+
+describe("番号後に括弧書きがある連番", () => {
+  it.each([
+    ["架空の月面探検隊 ★10【初放送】", 10, true],
+    ["架空の月面探検隊 ★１０［第2章］", 10, true],
+    ["架空の月面探検隊 Part.10 (新)【第2026回】", 10, false],
+    ["架空の月面探検隊 Part 10【初放送】【字幕】", 10, false],
+  ])("%sでは括弧内の数字を連番と取り違えない", (title, number, isStar) => {
+    expect(extractThreadSequenceNumber(title)).toEqual({
+      value: number,
+      hasNumber: true,
+      isStar,
+      isExplicitSequence: true,
+    });
+  });
+
+  it.each(MODES)("%sでは括弧書きが変わっても連番を認識し逆行しない", (mode) => {
+    const source = thread("架空の月面探検隊 ★10【第2章】", 0);
+    const next = thread("架空の月面探検隊 ★11【第3章】", 1);
+    const previous = thread("架空の月面探検隊 ★9【第2026回】", 2);
+    expect(findNextThreadMatch([previous, next], source, { mode })?.thread.url).toBe(next.url);
+    expect(findNextThreadMatch([previous], source, { mode })).toBeNull();
+  });
+});
+
+describe.each(MODES)("番号なしへの題名短縮（%s）", (mode) => {
+  const source = thread("【架空局】月面探検隊SHOW！星の冒険星の冒険★15【新放送】", 0);
+
+  it("話題を残した番号なしの短縮タイトルへ移動する", () => {
+    const candidate = thread("【架空局】星の冒険 星の冒険", 1);
+    const match = findNextThreadMatch([candidate], source, { mode });
+    expect(match?.thread.url).toBe(candidate.url);
+    expect(match?.reasons).toContain("short-title-continuation");
+  });
+
+  it.each([
+    "【架空別局】星の冒険 星の冒険",
+    "【架空局】別の話題を実況",
+    "【架空局】冒険",
+    "【架空局】星星星星星星",
+    "【架空局】星の冒険と別事件",
+    "【架空局】新放送 新放送",
+    "【架空局】星の冒険 ★14",
+  ])("接頭辞だけの一致・弱い断片・逆行する%sへ移動しない", (title) => {
+    const candidate = thread(title, 1);
+    expect(findNextThreadMatch([candidate], source, { mode })).toBeNull();
+    expect(findNextThreadCandidates([candidate], source, { mode })).toEqual([]);
+  });
+
+  it("短縮候補があっても本文で案内された次の連番を優先する", () => {
+    const short = thread("【架空局】星の冒険 星の冒険", 2);
+    const next = thread("【架空局】月面探検隊SHOW！星の冒険星の冒険★16【新放送】", 1);
+    expect(
+      findNextThreadMatch([short, next], source, {
+        mode,
+        responseMessages: [`次スレ ${next.url}`],
+      })?.thread.url,
+    ).toBe(next.url);
+  });
+});
 
 interface ContinuationCase {
   name: string;
