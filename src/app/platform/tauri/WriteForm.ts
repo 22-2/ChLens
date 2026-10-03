@@ -9,7 +9,15 @@ const FORM_CHARSET_ALIASES: Record<string, string> = {
 
 function encodeFormComponent(value: string, charset: string): string {
   const encoding = FORM_CHARSET_ALIASES[charset.toUpperCase()] ?? charset;
-  const bytes = iconv.encode(value, encoding);
+  // iconvは表現できない文字を「?」に置換するため、HTMLフォームと同じ数値文字参照で保持する。
+  // コードポイント単位で扱い、絵文字のサロゲートペアや結合文字を分断しない。
+  const representableValue = Array.from(value, (character) => {
+    const characterBytes = iconv.encode(character, encoding);
+    return character !== "?" && characterBytes.every((byte) => byte === 0x3f)
+      ? `&#${character.codePointAt(0)};`
+      : character;
+  }).join("");
+  const bytes = iconv.encode(representableValue, encoding);
   let encoded = "";
 
   for (const byte of bytes) {
