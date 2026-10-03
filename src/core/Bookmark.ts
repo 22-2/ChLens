@@ -1,3 +1,4 @@
+import { ChURL } from "packages/ch-lib/src/index";
 import { message } from "src/app";
 import { isTauriRuntime } from "src/app/platform/runtime";
 import { Entry, ReadState, SyncableEntryList } from "src/core/BookmarkEntryList";
@@ -5,7 +6,6 @@ import BrowserBookmarkEntryList from "src/core/BrowserBookmarkEntryList";
 import IDBBookmarkEntryList from "src/core/IDBBookmarkEntryList";
 import { isNewerReadState } from "src/core/jsutil";
 import { get as getReadState } from "src/core/ReadState.js";
-import { threadToBoard } from "src/core/URL";
 
 export default class Bookmark {
   readonly bel: SyncableEntryList & {
@@ -57,7 +57,7 @@ export default class Bookmark {
             }
             if (typeName === "READ_STATE") {
               message.send("read_state_updated", {
-                board_url: threadToBoard(bookmark.url),
+                board_url: new ChURL(bookmark.url).toBoard().href,
                 read_state: bookmark.readState,
               });
             }

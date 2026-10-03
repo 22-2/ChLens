@@ -1,6 +1,6 @@
+import { ChURL } from "packages/ch-lib/src/index";
 import { BBSMenu } from "src/core/BBSMenuParser";
 import { getBoardUrlKey, normalizeBoardUrl } from "src/core/BoardUrlNormalizer";
-import { URL } from "src/core/URL";
 
 export interface ReadStateEntry {
   url: string;
@@ -140,7 +140,7 @@ export class OtherBoardsCollector {
           try {
             let boardUrl = rs.board_url;
             if (!boardUrl) {
-              const u = new URL(rs.url);
+              const u = new ChURL(rs.url);
               if (u.guessType().type !== "thread") continue;
               boardUrl = u.toBoard().href;
             }
@@ -158,7 +158,7 @@ export class OtherBoardsCollector {
         const historyEntries = await this.deps.getUniqueHistory();
         for (const entry of historyEntries) {
           try {
-            const u = new URL(entry.url);
+            const u = new ChURL(entry.url);
             if (u.guessType().type !== "thread") continue;
             const boardUrl = u.toBoard().href;
             addIfNew(boardUrl, entry.boardTitle || boardUrl);

@@ -1,6 +1,6 @@
+import { ChURL, createSikiGuardRequestUrl } from "packages/ch-lib/src/index";
 import Cache from "src/core/Cache.js";
 import { Request } from "src/core/HTTP.ts";
-import { URL } from "src/core/URL.ts";
 
 /**
 @class SikiGuard
@@ -12,7 +12,7 @@ export default class SikiGuard {
   constructor(url) {
     // 旧 JSDoc の @type String は実際の代入型 (URL) と食い違っていたため削除し、
     // 代入からの型推論に任せる。
-    this.url = new URL(url);
+    this.url = new ChURL(url);
 
     /** @type {Map<string, Set<string>>} */
     this.idMap = new Map();
@@ -29,14 +29,13 @@ export default class SikiGuard {
     let response, idMap;
     let hasCache = false;
 
-    const xhrInfo = SikiGuard._getXhrInfo(this.url);
-    if (xhrInfo == null) {
+    const url = createSikiGuardRequestUrl(this.url.href);
+    if (url == null) {
       this.idMap = new Map();
       return;
     }
 
     // キャッシュ取得
-    const url = `https://sikiguard.net/${xhrInfo.tsld}/${xhrInfo.board}/id.json`;
     const cache = new Cache(url);
 
     let needFetch = false;
@@ -153,26 +152,6 @@ export default class SikiGuard {
         data: board.idMap !== null ? board.idMap : new Map(),
       };
     }
-  }
-
-  /**
-  @method _getXhrInfo
-  @private
-  @static
-  @param {URL} threadUrl src/core/URL.ts の URL (getTsld を持つ)
-  */
-  static _getXhrInfo(threadUrl) {
-    const tsld = threadUrl.getTsld();
-    const splits = threadUrl.pathname.split("/");
-
-    if (["5ch.io", "bbspink.com"].includes(tsld)) {
-      return {
-        tsld,
-        board: splits[3],
-      };
-    }
-
-    return null;
   }
 
   /**

@@ -1,10 +1,10 @@
+import { ChURL } from "packages/ch-lib/src/index";
 import React, { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
 import {
   getBoardUrlKey,
   normalizeBoardUrl as normalizeKnownBoardUrl,
 } from "src/core/BoardUrlNormalizer";
-import { URL as ChURL } from "src/core/URL";
 import { container } from "src/service-container/index";
 import type { IReadState, IThread } from "src/service-container/interfaces";
 import type { CommandRequest } from "src/view/browser/commands/command-runtime";

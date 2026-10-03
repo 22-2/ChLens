@@ -65,21 +65,6 @@ vi.mock("src/core/BoardUrlNormalizer", async (importOriginal) => {
   };
 });
 
-vi.mock("src/core/URL", () => ({
-  URL: class MockChURL {
-    #url: URL;
-
-    constructor(rawUrl: string) {
-      this.#url = new window.URL(rawUrl);
-    }
-
-    getTsld(): string {
-      const parts = this.#url.hostname.toLowerCase().split(".");
-      return parts.length >= 2 ? parts.slice(-2).join(".") : this.#url.hostname.toLowerCase();
-    }
-  },
-}));
-
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabStore: () => ({
     dispatch: dispatchMock,

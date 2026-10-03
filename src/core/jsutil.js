@@ -1,7 +1,13 @@
+import {
+  ChURL,
+  extractBoardServerInfo,
+  getBoardNetwork,
+  getThreadReferenceKeys,
+  resolveBoardMoveUrl,
+} from "packages/ch-lib/src/index";
 import { get as getBBSMenu } from "src/core/BBSMenu.js";
 import Board from "src/core/Board.js";
 import { Request } from "src/core/HTTP.ts";
-import { URL } from "src/core/URL.ts";
 import { levenshteinDistance } from "src/core/Util.ts";
 
 /**
@@ -63,25 +69,23 @@ export var Anchor = {
   },
 };
 
-const boardUrlReg = /^https?:\/\/\w+\.5ch\.net\/(\w+)\/$/;
 //2chの鯖移転検出関数
 //移転を検出した場合は移転先のURLをresolveに載せる
 //検出出来なかった場合はrejectする
 //htmlを渡す事で通信をスキップする事が出来る
 /**
- * @param {URL | { url?: unknown } | null | undefined} oldBoardUrl 板URL (app.URL.URL または ch-lib の ChURL)
+ * @param {URL | { url?: unknown } | null | undefined} oldBoardUrl
  * @param {string} [html]
  */
 export var chServerMoveDetect = async function (oldBoardUrl, html) {
-  // 呼び出し元によって app.URL.URL と ch-lib の ChURL が混在するため、
-  // ここで生の URL インスタンスへ正規化して undefined URL リクエストを防ぐ。
-  // instanceof を先に判定する形にしているのは型の絞り込みのためで、
-  // URL インスタンスは .url プロパティを持たないので判定結果は従来と同じ。
+  // app URL APIから渡る値もChURLへ揃え、以降の板URL処理を一つの型に統一する。
   let normalizedOldBoardUrl;
-  if (oldBoardUrl instanceof window.URL) {
+  if (oldBoardUrl instanceof ChURL) {
     normalizedOldBoardUrl = oldBoardUrl;
+  } else if (oldBoardUrl instanceof window.URL) {
+    normalizedOldBoardUrl = new ChURL(oldBoardUrl.href);
   } else if (oldBoardUrl != null && oldBoardUrl.url instanceof window.URL) {
-    normalizedOldBoardUrl = oldBoardUrl.url;
+    normalizedOldBoardUrl = new ChURL(oldBoardUrl.url.href);
   } else {
     throw new Error("板URLの型が不正です");
   }
@@ -103,18 +107,19 @@ export var chServerMoveDetect = async function (oldBoardUrl, html) {
   }
 
   //htmlから移転を判定
-  const res = new RegExp(`location\\.href="(https?://(\\w+\\.)?5ch\\.net/\\w*/)"`).exec(html);
+  const res = /location\.href="(https?:\/\/[^"]+)"/.exec(html);
   if (res) {
-    let newBoardUrlTmp;
-    if (res[2] != null) {
-      newBoardUrlTmp = new URL(res[1]);
-    } else {
+    let redirectedBoardUrl = resolveBoardMoveUrl(normalizedOldBoardUrl, res[1]);
+    if (redirectedBoardUrl == null && getBoardNetwork(res[1]) === "5ch") {
       const { responseURL } = await new Request("GET", res[1]).send();
-      newBoardUrlTmp = new URL(responseURL);
+      redirectedBoardUrl = resolveBoardMoveUrl(normalizedOldBoardUrl, res[1], responseURL);
     }
-    newBoardUrlTmp.protocol = "http";
-    if (newBoardUrlTmp.hostname !== normalizedOldBoardUrl.hostname) {
-      newBoardUrl = newBoardUrlTmp;
+    if (redirectedBoardUrl != null) {
+      const newBoardUrlTmp = new ChURL(redirectedBoardUrl);
+      newBoardUrlTmp.protocol = "http:";
+      if (newBoardUrlTmp.hostname !== normalizedOldBoardUrl.hostname) {
+        newBoardUrl = newBoardUrlTmp;
+      }
     }
   }
 
@@ -125,10 +130,8 @@ export var chServerMoveDetect = async function (oldBoardUrl, html) {
       if (data == null) {
         throw new Error("BBSMenuの取得に失敗しました");
       }
-      const boardKey = __guard__(normalizedOldBoardUrl.pathname.split("/"), (x) => x[1]);
-      if (!boardKey) {
-        throw new Error("板のURL形式が不明です");
-      }
+      const sourceInfo = extractBoardServerInfo(normalizedOldBoardUrl.href);
+      if (!sourceInfo) throw new Error("板のURL形式が不明です");
       // BBSMenu のデータ構造は BBSMenuParser 導入時に
       // 「カテゴリ配列 (category.board)」から「menu[].categories[].boards[]」へ変わったが、
       // このレガシー関数だけ旧形式のまま走査しており移転先を見つけられなくなっていた。
@@ -136,11 +139,14 @@ export var chServerMoveDetect = async function (oldBoardUrl, html) {
       for (let menuDoc of data) {
         for (let category of menuDoc.categories) {
           for (let board of category.boards) {
-            const m = board.url.match(boardUrlReg);
-            if (m != null) {
-              const newUrl = new URL(m[0]);
+            const destinationInfo = extractBoardServerInfo(board.url);
+            if (
+              destinationInfo?.boardName === sourceInfo.boardName &&
+              destinationInfo.network === sourceInfo.network
+            ) {
+              const newUrl = new ChURL(board.url);
               newUrl.protocol = "http:";
-              if (boardKey === m[1] && normalizedOldBoardUrl.hostname !== newUrl.hostname) {
+              if (normalizedOldBoardUrl.hostname !== newUrl.hostname) {
                 return newUrl;
               }
             }
@@ -217,7 +223,7 @@ export var getHowToOpen = function ({ type, button, shiftKey, ctrlKey, metaKey }
  * @param {string} resString
  */
 export var searchNextThread = async function (threadUrlStr, threadTitle, resString) {
-  const threadUrl = new URL(threadUrlStr);
+  const threadUrl = new ChURL(threadUrlStr);
   const boardUrl = threadUrl.toBoard();
   threadTitle = normalize(threadTitle);
 
@@ -232,10 +238,9 @@ export var searchNextThread = async function (threadUrlStr, threadTitle, resStri
     .filter(({ url, resCount }) => url !== threadUrl.href && resCount < 1001)
     .map(function ({ title, url }) {
       let score = levenshteinDistance(threadTitle, normalize(title), false);
-      const m = url.match(/(?:https:\/\/)?(?:\w+(\.[25]ch\.net\/.+)|(.+))$/);
-      // m が null のケース (旧実装では実行時エラーになっていた) は url をそのまま検索する。
-      const matched = m == null ? null : m[1] != null ? m[1] : m[2];
-      if (resString.includes(matched != null ? matched : url)) {
+      // 変更理由: 投稿本文内のURL照合でホスト別の省略規則を重複させない。
+      const referenceKeys = getThreadReferenceKeys(url);
+      if (referenceKeys.some((key) => resString.includes(key))) {
         score -= 3;
       }
       return { score, title, url };

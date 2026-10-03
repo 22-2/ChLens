@@ -46,7 +46,10 @@ import { useThreadTitleNgDialog } from "src/view/browser/hooks/use-thread-title-
 import { useToast } from "src/view/browser/hooks/use-toast";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { ContextMenu, type ContextMenuItem } from "src/view/browser/ui/ContextMenu";
-import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
+import {
+  getBoardUrlFromThreadUrl,
+  resolveBoardUrlForBrowser,
+} from "src/view/browser/utils/link-routing";
 
 interface ThreadListPanelProps {
   threadUrl: string;
@@ -62,26 +65,17 @@ interface BoardDescriptor {
   boardTitle: string;
 }
 
-function deriveFallbackBoardUrl(threadUrl: string, targetWindow: Window): string {
-  const boardUrl = getBoardUrlFromThreadUrl(threadUrl);
-  if (boardUrl !== threadUrl) {
-    return boardUrl;
-  }
-
-  try {
-    const targetWindowWithConstructors = targetWindow as Window & typeof globalThis;
-    const parsed = new targetWindowWithConstructors.URL(threadUrl);
-    const match = parsed.pathname.match(/^(?:\/[^/]+)?\/test\/read\.cgi\/([\w-]+)\/\d+\/?/);
-    return match ? `${parsed.origin}/${match[1]}/` : threadUrl;
-  } catch {
-    return threadUrl;
-  }
+function deriveFallbackBoardUrl(threadUrl: string): string {
+  return getBoardUrlFromThreadUrl(threadUrl);
 }
 
 function normalizeLocation(rawLocation: string, targetWindow: Window): string {
   try {
     const targetWindowWithConstructors = targetWindow as Window & typeof globalThis;
-    const parsed = new targetWindowWithConstructors.URL(rawLocation);
+    // 変更理由: 旧ホストや別URL形式の同じ掲示板をパネル履歴と照合するため、
+    // 掲示板URLの正規化はch-libへ委譲してから一般的なフラグメント除去を行う。
+    const resolved = resolveBoardUrlForBrowser(rawLocation);
+    const parsed = new targetWindowWithConstructors.URL(resolved?.url ?? rawLocation);
     parsed.hash = "";
     return parsed.toString().replace(/\/+$/, "/");
   } catch {
@@ -118,6 +112,13 @@ function resolveBoardTitle(
     return boardPage.title;
   }
 
+  const board = resolveBoardUrlForBrowser(boardUrl);
+  if (board?.type === "board") {
+    const targetWindowWithConstructors = targetWindow as Window & typeof globalThis;
+    const host = new targetWindowWithConstructors.URL(board.boardUrl).hostname;
+    return `${host}/${board.boardName}`;
+  }
+
   try {
     const targetWindowWithConstructors = targetWindow as Window & typeof globalThis;
     const parsed = new targetWindowWithConstructors.URL(boardUrl);
@@ -134,7 +135,7 @@ function createBoardDescriptor(
   history: ReturnType<typeof useTabStore>["viewTab"]["history"],
   targetWindow: Window,
 ): BoardDescriptor {
-  const boardUrl = deriveFallbackBoardUrl(threadUrl, targetWindow);
+  const boardUrl = deriveFallbackBoardUrl(threadUrl);
   return {
     boardUrl,
     boardTitle: resolveBoardTitle(boardUrl, threadTitle, history, targetWindow),

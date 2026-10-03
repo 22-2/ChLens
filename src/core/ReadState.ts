@@ -1,9 +1,9 @@
+import { ChURL, normalizeReadStateUrl } from "packages/ch-lib/src/index";
 import { assertArg, criticalError, log } from "src/app/Log";
 import message from "src/app/Message";
 import { deepCopy } from "src/app/Util";
 import { indexedDBRequestToPromise } from "src/core/jsutil.js";
 import { getTauriRepositories, isTauriRuntime } from "src/core/TauriDrizzleBridge";
-import { URL } from "src/core/URL";
 import type { IReadState } from "src/service-container/interfaces";
 
 const DB_VERSION = 2;
@@ -13,8 +13,8 @@ interface ReadStateRecord extends IReadState {
 }
 
 interface UrlFilterResult {
-  original: URL;
-  replaced: URL;
+  original: ChURL;
+  replaced: ChURL;
 }
 
 const _openDB: Promise<IDBDatabase> = new Promise((resolve, reject) => {
@@ -50,11 +50,11 @@ const _openDB: Promise<IDBDatabase> = new Promise((resolve, reject) => {
 });
 
 const _urlFilter = (originalUrlStr: string): UrlFilterResult => {
-  const original = new URL(originalUrlStr);
-  const replaced = new URL(originalUrlStr);
-  if (original.hostname.endsWith(".5ch.io")) {
-    replaced.hostname = "*.5ch.io";
-  }
+  const original = new ChURL(originalUrlStr);
+  // 変更理由: 旧保存契約ではフラグメントをキーに含めないため、ChURLの入力値から明示的に除く。
+  original.hash = "";
+  // 変更理由: 5ch横断既読キーのホスト変換はURL仕様なので、保存層へ重複実装しない。
+  const replaced = new ChURL(normalizeReadStateUrl(original.href));
 
   return { original, replaced };
 };

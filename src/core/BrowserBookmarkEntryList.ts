@@ -1,5 +1,5 @@
+import { ChURL } from "packages/ch-lib/src/index";
 import { Entry, newerEntry, SyncableEntryList } from "src/core/BookmarkEntryList";
-import { URL } from "src/core/URL";
 import browser from "webextension-polyfill";
 
 export default class BrowserBookmarkEntryList extends SyncableEntryList {
@@ -9,7 +9,7 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
   readonly needReconfigureRootNodeId = new app.Callbacks({ persistent: true });
 
   static entryToURL(entry: Entry): string {
-    const url = new URL(entry.url);
+    const url = new ChURL(entry.url);
     const param: Record<string, string> = {};
 
     if (entry.resCount !== null && Number.isFinite(entry.resCount)) {
@@ -38,13 +38,14 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
   }
 
   static URLToEntry(urlStr: string): Entry | null {
-    const url = new URL(urlStr);
+    const url = new ChURL(urlStr);
+    const arg = url.getHashParams();
+    url.hash = "";
     urlStr = url.href;
     const { type, bbsType } = url.guessType();
 
     if (type === "unknown") return null;
 
-    const arg = url.getHashParams();
     const entry: Entry = {
       type,
       bbsType,

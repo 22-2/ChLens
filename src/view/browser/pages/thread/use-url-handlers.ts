@@ -1,7 +1,7 @@
+import { ChURL } from "packages/ch-lib/src/index";
 import type { Dispatch, MouseEvent } from "react";
 import { useCallback } from "react";
 import { platform } from "src/app/platform/index";
-import { getResNumber } from "src/core/URL";
 import { toViewerImageUrl } from "src/features/media/domain/url-media";
 import { COMMAND_REQUEST_IDS, runCommandRequest } from "src/view/browser/commands/command-runtime";
 import { tabActions } from "src/view/browser/hooks/tab-store-actions";
@@ -85,7 +85,8 @@ export function useUrlHandlers({
 
       if (internalPage) {
         if (internalPage.type === "thread") {
-          const jumpResNum = Number.parseInt(getResNumber(absoluteUrl) ?? "", 10);
+          // 変更理由: レス番号のURL形式は共有ライブラリに集約し、画面はジャンプ操作だけを行う。
+          const jumpResNum = Number.parseInt(new ChURL(absoluteUrl).getResNumber() ?? "", 10);
           if (Number.isFinite(jumpResNum) && jumpResNum > 0) {
             requestThreadResJump(internalPage.threadUrl, jumpResNum);
           }

@@ -8,11 +8,14 @@ describe("URLパターンの互換性", () => {
     [PATTERNS.CH_DAT, "/board-key/dat/123.dat/", ["board-key", "123"]],
     [ROUTE_PATTERNS.CH_DAT, "/board-key/dat/123.dat", ["board-key", "123"]],
     [PATTERNS.MACHI_THREAD, "/bbs/read.cgi/board/123/45", ["board/123"]],
+    [PATTERNS.MACHI_THREAD, "/bbs/read.cgi/board-key/123/45", ["board-key/123"]],
     [PATTERNS.MACHI_RESNUM, "/bbs/read.cgi/board/123/45", ["45"]],
     [ROUTE_PATTERNS.MACHI_THREAD, "/bbs/read.cgi/board-key/123/45", ["board-key", "123"]],
     [PATTERNS.SHITARABA_THREAD, "/bbs/read.cgi/board/12/123/45", ["read.cgi/board/12/123"]],
+    [PATTERNS.SHITARABA_THREAD, "/bbs/read.cgi/board-key/12/123/45", ["read.cgi/board-key/12/123"]],
     [PATTERNS.SHITARABA_RESNUM, "/bbs/read_archive.cgi/board/12/123/45", ["45"]],
     [PATTERNS.SHITARABA_TO_BOARD, "/bbs/read_archive.cgi/board/12/123/", ["board/12"]],
+    [PATTERNS.SHITARABA_TO_BOARD, "/bbs/read_archive.cgi/board-key/12/123/", ["board-key/12"]],
     [
       ROUTE_PATTERNS.SHITARABA_THREAD,
       "/bbs/read.cgi/board-key/12/123/45",
@@ -34,8 +37,10 @@ describe("URLパターンの互換性", () => {
       ["board-key"],
     ],
     [ROUTE_PATTERNS.CH_STYLE_THREAD, "/test/read.cgi/board/123", ["test/read.cgi/board/123"]],
+    [ROUTE_PATTERNS.CH_STYLE_THREAD, "/test/-/board-key/123/45", ["test/-/board-key/123"]],
     [ROUTE_PATTERNS.CH_STYLE_BOARD_FROM_THREAD, "/test/read.cgi/board/123", ["board"]],
     [PATTERNS.CH_SHORT_THREAD, "/board/123/45", ["board", "123"]],
+    [PATTERNS.CH_SHORT_THREAD, "/board-key/123/45", ["board-key", "123"]],
     [PATTERNS.CH_BOARD_KEY, "/board", ["board"]],
     [PATTERNS.CH_BOARD_KEY, "/test/read.cgi/board/", ["board"]],
     [ROUTE_PATTERNS.CH_SHORT_THREAD, "/board-key/123/45", ["board-key", "123"]],
@@ -46,16 +51,12 @@ describe("URLパターンの互換性", () => {
     expect(pattern.exec(path)?.slice(1)).toEqual(captures);
   });
 
-  // 完全一致の判定と接頭辞の判定、用途ごとのハイフン許容は意図的に異なる。
+  // 完全一致の判定と接頭辞の判定は用途ごとの境界を保つ。
   it.each([
     [PATTERNS.CH_DAT, "/board/dat/123.dat/45"],
     [ROUTE_PATTERNS.CH_DAT, "/board/dat/123.dat?x=1"],
-    [PATTERNS.MACHI_THREAD, "/bbs/read.cgi/board-key/123/"],
-    [PATTERNS.SHITARABA_THREAD, "/bbs/read.cgi/board-key/12/123/"],
     [PATTERNS.SHITARABA_TO_BOARD, "/bbs/read.cgi/board/12/123/45"],
-    [ROUTE_PATTERNS.CH_STYLE_THREAD, "/test/-/board/123/"],
     [ROUTE_PATTERNS.MACHI_THREAD, "/bbs/read_archive.cgi/board/123/"],
-    [PATTERNS.CH_SHORT_THREAD, "/board-key/123/"],
     [ROUTE_PATTERNS.OMNIBAR_SHORT_THREAD, "/board/123/45"],
     [ROUTE_PATTERNS.OMNIBAR_SHORT_THREAD, "/board/123/other"],
     [ROUTE_PATTERNS.OMNIBAR_SHORT_THREAD, "/test/read.cgi/board/123/"],

@@ -1,17 +1,10 @@
+import { createItestServerMap } from "packages/ch-lib/src/index";
 import type { BBSMenu } from "src/core/BBSMenuParser";
-
-// itest（携帯版）URLの多くは板キーしか持たずサーバー名が分からないため、
-// サーバー名を含まない形式を bbsmenu の板キー→実サーバーホスト名対応表で解決する。
-// フォーク元では URL.convertFromPhone() + pushServerInfo() が担っていた変換だが、
-// 本フォークのURL処理は link-routing.ts（同期）に集約されているので、
-// 同期で引ける対応表としてここに分離した。
 
 const STORAGE_KEY = "itestServerMap";
 
-// board key -> hostname (例: "adultgoods" -> "mercury.bbspink.com")
+// URLの解釈と対応表の組み立てはch-libへ委譲し、画面側では保存した結果だけを扱う。
 let serverMap = new Map<string, string>();
-
-const BOARD_URL_REG = /^https?:\/\/(\w+)\.(5ch\.net|5ch\.io|bbspink\.com)\/(\w+)\/?$/;
 
 function loadPersistedMap(): void {
   try {
@@ -25,50 +18,39 @@ function loadPersistedMap(): void {
         ),
       );
     }
-  } catch {
-    // 壊れたキャッシュは無視し、次回のbbsmenu適用で再生成する
+  } catch (error) {
+    // 変更理由: 保存領域が無効でも画面を起動できるよう復元は続行しつつ、原因を調査できるよう記録する。
+    console.error("itestサーバー対応表を復元できませんでした:", error);
   }
 }
 
 function persistMap(): void {
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(Object.fromEntries(serverMap)));
-  } catch {
-    // 保存失敗してもメモリ上の対応表で動作は継続できる
+  } catch (error) {
+    // 変更理由: 保存に失敗しても現在セッションのメモリ上の対応表は使えるため、失敗を記録して動作を続ける。
+    console.error("itestサーバー対応表を保存できませんでした:", error);
   }
 }
 
-// 初回起動直後（bbsmenu未取得）でも itest URL を解決できるよう、
-// 前回セッションで保存した対応表をモジュール読込時に復元する。
+// 初回起動直後（bbsmenu未取得）でも前回の対応表を利用できるよう、読み込み時に復元する。
 if (typeof window !== "undefined" && "localStorage" in window) {
   loadPersistedMap();
 }
 
-/** bbsmenu の板URLから itest 解決用の対応表を構築する。 */
+/** bbsmenuの板URLから作った対応表を保存する。 */
 export function applyBBSMenuToItestServerMap(menus: readonly BBSMenu[]): void {
-  const next = new Map<string, string>();
-
-  for (const menu of menus) {
-    for (const category of menu.categories) {
-      for (const board of category.boards) {
-        const match = BOARD_URL_REG.exec(board.url);
-        if (!match) continue;
-        const [, server, domain, boardKey] = match;
-        // アプリ内では 5ch.net を 5ch.io へ正規化して扱う規約に合わせる
-        const host = domain === "5ch.net" ? `${server}.5ch.io` : `${server}.${domain}`;
-        if (!next.has(boardKey)) {
-          next.set(boardKey, host);
-        }
-      }
-    }
-  }
-
+  const boardUrls = menus.flatMap((menu) =>
+    menu.categories.flatMap((category) => category.boards.map((board) => board.url)),
+  );
+  const next = createItestServerMap(boardUrls);
+  // 変更理由: 空のメニュー取得で有効な保存済み対応表を消さず、次の更新まで解決を続ける。
   if (next.size === 0) return;
-  serverMap = next;
+  serverMap = new Map(next);
   persistMap();
 }
 
-/** 板キーから実サーバーのホスト名を返す。未知の板は null。 */
+/** 板キーから実サーバーのホスト名を返す。未知の板はnull。 */
 export function resolveItestServerHostname(boardKey: string): string | null {
   return serverMap.get(boardKey) ?? null;
 }

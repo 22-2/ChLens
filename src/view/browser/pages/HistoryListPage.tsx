@@ -1,3 +1,4 @@
+import { normalizeReadStateUrl } from "packages/ch-lib/src/index";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { platform } from "src/app";
 import { container } from "src/service-container/index";
@@ -102,17 +103,8 @@ function normalizeNumber(value: unknown): number {
 }
 
 function normalizeReadStateLookupUrl(url: string): string {
-  try {
-    const parsedUrl = new window.URL(url);
-    // 変更理由: ReadState.getAll() の IndexedDB 実装は *.5ch.io に正規化された URL を返すため、
-    // 履歴側も同じ規則で揃えて未読数の突き合わせ漏れを防ぐ。
-    if (parsedUrl.hostname.endsWith(".5ch.io")) {
-      parsedUrl.hostname = "*.5ch.io";
-    }
-    return parsedUrl.href;
-  } catch {
-    return url;
-  }
+  // 変更理由: 既読保存側と履歴側の掲示板ホスト正規化がずれて未読数が欠けないよう共有規則を使う。
+  return normalizeReadStateUrl(url);
 }
 
 async function readHistoryUnreadCountIndex(): Promise<Map<string, number>> {

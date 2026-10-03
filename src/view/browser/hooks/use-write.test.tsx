@@ -39,28 +39,6 @@ vi.mock("src/app/Store2Storage", () => ({
   setStore2String: setStore2StringMock,
 }));
 
-vi.mock("src/core/URL", () => ({
-  URL: class MockURL {
-    protocol = "https:";
-    hostname = "example.com";
-    pathname = "/test/read.cgi/software/1/";
-
-    constructor(_url: string) {}
-
-    guessType() {
-      return { bbsType: "2ch" };
-    }
-
-    getTsld() {
-      return "example.com";
-    }
-
-    toBoard() {
-      return { href: "https://example.com/software/" };
-    }
-  },
-}));
-
 vi.mock("src/service-container/index", () => ({
   container: {
     config: {

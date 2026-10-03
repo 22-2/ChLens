@@ -1,3 +1,7 @@
+import {
+  isWriteResultPageUrl as isChLibWriteResultPageUrl,
+  resolveWriteAuthCodeUrl as resolveChLibWriteAuthCodeUrl,
+} from "packages/ch-lib/src/index";
 import type { WriteConfirmationPage } from "src/view/browser/utils/write-confirmation";
 
 export type WriteResultMessage =
@@ -15,47 +19,16 @@ export interface WriteResultPageData {
   errorCode?: string;
 }
 
-const WRITE_RESULT_URL_PATTERNS = [
-  /^https?:\/\/[^/]+\/test\/bbs\.cgi(?:\?.*)?$/i,
-  /^https?:\/\/jbbs\.shitaraba\.net\/bbs\/write\.cgi\/[\w-]+\/[\d-]+\/(?:\d+|new)\/?(?:\?.*)?$/i,
-  /^https?:\/\/[^/]+\/bbs\/write\.cgi(?:\?.*)?$/i,
-] as const;
-
 const WRITE_SUCCESS_TEXT_PATTERN = /書き(?:こ|込)みました/;
 const WRITE_CONFIRM_TEXT_PATTERN = /確認/;
 const WRITE_AUTH_CODE_PATTERN = /認証コード\s*['’‘＇]?([0-9]{6})['’”＇]?/;
 const WRITE_ERROR_TEXT_PATTERN =
   /(?:ＥＲＲＯＲ|ERROR|書き込みエラー|書込みエラー|投稿エラー|スレッド作成規制中)/;
 
-function resolveAuthCodeUrl(text: string, pageUrl: string): string | null {
-  const matchedUrl = text.match(/https?:\/\/[^\s<>"']+\/auth-code(?:[/?#][^\s<>"']*)?/i)?.[0];
-
-  try {
-    const page = new URL(pageUrl);
-    const candidate = new URL(matchedUrl ?? "/auth-code", pageUrl);
-    // 変更理由: サーバー本文から開くURLをそのまま信用せず、同じ掲示板の
-    // HTTPS認証ページだけを許可して、エラー本文経由の外部サイト誘導を防ぐ。
-    if (
-      candidate.hostname !== page.hostname ||
-      candidate.pathname !== "/auth-code" ||
-      !["http:", "https:"].includes(candidate.protocol)
-    ) {
-      return null;
-    }
-    if (candidate.protocol === "http:") {
-      candidate.protocol = "https:";
-    }
-    return candidate.href;
-  } catch (error) {
-    console.error("eddibbの認証ページURLを解釈できませんでした:", error);
-    return null;
-  }
-}
-
 // 変更理由: ブラウザ版はcontent script、Tauri版はHTTPレスポンスを読むため、
 // 結果ページの判定だけを共有してプラットフォームごとの通知経路を分ける。
 export function isWriteResultPageUrl(rawUrl: string): boolean {
-  return WRITE_RESULT_URL_PATTERNS.some((pattern) => pattern.test(rawUrl));
+  return isChLibWriteResultPageUrl(rawUrl);
 }
 
 export function resolveWriteSuccessDelayMsFromRefresh(
@@ -92,7 +65,8 @@ export function classifyWriteResult(page: WriteResultPageData): WriteResultMessa
 
   const authCode = text.match(WRITE_AUTH_CODE_PATTERN)?.[1];
   if (authCode != null && page.errorCode === "E-Unauthenticated") {
-    const authCodeUrl = resolveAuthCodeUrl(text, page.url);
+    // 変更理由: 書き込みフォームのURL形式と安全な認証先判定は掲示板仕様としてch-libへ委譲する。
+    const authCodeUrl = resolveChLibWriteAuthCodeUrl(text, page.url);
     if (authCodeUrl != null) {
       return { type: "auth-code", code: authCode, url: authCodeUrl };
     }

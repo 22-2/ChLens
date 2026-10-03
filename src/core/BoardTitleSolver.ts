@@ -1,4 +1,10 @@
 import {
+  ChURL,
+  createBoardTitleRequest,
+  formatBoardTitleForUrl,
+  resolveBoardTitle,
+} from "packages/ch-lib/src/index";
+import {
   get as getBBSMenu,
   getCached as getCachedBBSMenu,
   onChange as BBSMenuOnChange,
@@ -6,16 +12,14 @@ import {
 import { BBSMenuData } from "src/core/BBSMenuModel";
 import { getBoardUrlKey } from "src/core/BoardUrlNormalizer";
 import { Request } from "src/core/HTTP";
-import { URL } from "src/core/URL";
 import { container } from "src/service-container/index";
 
 const isSavedTitleResolved = (title: string | null, boardUrl: string): title is string => {
   if (!title?.trim()) return false;
-  const url = new window.URL(boardUrl);
   // 「その他」のURLや旧履歴の板キーは仮の名前。選択した板の名前取得を妨げない。
   return (
     getBoardUrlKey(title) !== getBoardUrlKey(boardUrl) &&
-    title !== url.pathname.split("/").filter(Boolean).at(-1)
+    title !== createBoardTitleRequest(boardUrl)?.fallbackTitle
   );
 };
 
@@ -53,7 +57,7 @@ export const getCachedTitles = async (): Promise<Map<string, string>> => {
       console.error("お気に入りの初回読み込みに失敗しました", error);
     }
     for (const board of app.bookmark.getAllBoards()) {
-      addTitle(board.url, _formatBoardTitle(board.title, new URL(board.url)));
+      addTitle(board.url, _formatBoardTitle(board.title, new ChURL(board.url)));
     }
   }
   return titles;
@@ -120,7 +124,7 @@ const _getBBSMenu = async (): Promise<Map<string, string>> => {
   return _bbsmenu;
 };
 
-const searchFromBBSMenu = async (url: URL): Promise<string | null> => {
+const searchFromBBSMenu = async (url: ChURL): Promise<string | null> => {
   const bbsmenu = await _getBBSMenu();
   // スキーム違いでも同じ板を引けるようにトグルURLを併用する。
   const url2 = url.createProtocolToggled();
@@ -128,20 +132,12 @@ const searchFromBBSMenu = async (url: URL): Promise<string | null> => {
   return isSavedTitleResolved(title, url.href) ? title : null;
 };
 
-const _formatBoardTitle = (title: string, url: URL): string => {
-  switch (url.getTsld()) {
-    case "5ch.io":
-      return title.replace("＠2ch掲示板", "");
-    case "2ch.sc":
-      return `${title}_sc`;
-    case "open2ch.net":
-      return `${title}_op`;
-    default:
-      return title;
-  }
+const _formatBoardTitle = (title: string, url: ChURL): string => {
+  // 変更理由: 掲示板ごとの表示名規則をタイトル管理側へ重複させない。
+  return formatBoardTitleForUrl(title, url.href);
 };
 
-const searchFromBookmark = (url: URL): string | null => {
+const searchFromBookmark = (url: ChURL): string | null => {
   if (!app.bookmark) {
     return null;
   }
@@ -152,61 +148,28 @@ const searchFromBookmark = (url: URL): string | null => {
     return null;
   }
 
-  const title = _formatBoardTitle(bookmark.title, new URL(bookmark.url));
+  const title = _formatBoardTitle(bookmark.title, new ChURL(bookmark.url));
   return isSavedTitleResolved(title, url.href) ? title : null;
 };
 
-const searchFromSettingTXT = async (url: URL): Promise<string> => {
-  const { status, body } = await new Request("GET", `${url.href}SETTING.TXT`, {
-    mimeType: "text/plain; charset=Shift_JIS",
+const searchFromBoardTitleRequest = async (url: ChURL): Promise<string | null> => {
+  const request = createBoardTitleRequest(url.href);
+  if (!request) return null;
+
+  const charset = request.charset === "shift_jis" ? "Shift_JIS" : "EUC-JP";
+  const { status, body } = await new Request("GET", request.url, {
+    mimeType: `text/plain; charset=${charset}`,
     timeout: 1000 * 10,
   }).send();
 
   if (status !== 200) {
-    throw new Error("SETTING.TXTを取得する通信に失敗しました");
+    throw new Error("板名を取得する通信に失敗しました");
   }
 
-  const titleOrigMatch = /^BBS_TITLE_ORIG=(.+)$/m.exec(body);
-  if (titleOrigMatch) {
-    return _formatBoardTitle(titleOrigMatch[1], url);
-  }
-
-  const titleMatch = /^BBS_TITLE=(.+)$/m.exec(body);
-  if (titleMatch) {
-    return _formatBoardTitle(titleMatch[1], url);
-  }
-
-  // 意図: 一部サーバーは板名を返さないため、板キーへフォールバックして失敗連鎖を防ぐ。
-  const boardKey = url.pathname.split("/")[1];
-  if (boardKey) {
-    return boardKey;
-  }
-
-  throw new Error("SETTING.TXTに名前の情報がありません");
+  return resolveBoardTitle(request, body);
 };
 
-const searchFromJbbsAPI = async (url: URL): Promise<string> => {
-  const tmp = url.pathname.split("/");
-  const ajaxPath = `${url.protocol}//jbbs.shitaraba.net/bbs/api/setting.cgi/${tmp[1]}/${tmp[2]}/`;
-
-  const { status, body } = await new Request("GET", ajaxPath, {
-    mimeType: "text/plain; charset=EUC-JP",
-    timeout: 1000 * 10,
-  }).send();
-
-  if (status !== 200) {
-    throw new Error("したらばの板のAPIの通信に失敗しました");
-  }
-
-  const titleMatch = /^BBS_TITLE=(.+)$/m.exec(body);
-  if (titleMatch) {
-    return titleMatch[1];
-  }
-
-  throw new Error("したらばの板のAPIに名前の情報がありません");
-};
-
-export const ask = async (url: URL): Promise<string | null> => {
+export const ask = async (url: ChURL): Promise<string | null> => {
   let name = await searchFromBBSMenu(url);
   if (name != null) {
     return name;
@@ -218,15 +181,7 @@ export const ask = async (url: URL): Promise<string | null> => {
   }
 
   try {
-    if (url.guessType().bbsType === "2ch") {
-      return await searchFromSettingTXT(url);
-    }
-
-    if (url.guessType().bbsType === "jbbs") {
-      return await searchFromJbbsAPI(url);
-    }
-
-    return null;
+    return await searchFromBoardTitleRequest(url);
   } catch (e) {
     throw new Error(`板名の取得に失敗しました: ${String(e)}`, { cause: e });
   }
@@ -234,4 +189,5 @@ export const ask = async (url: URL): Promise<string | null> => {
 
 // コマンドなどURL文字列しか持たない呼び出し元が、旧URLクラスの生成責務を
 // 重複して持たずに板名解決を再実行できる入口。
-export const askByUrl = async (boardUrl: string): Promise<string | null> => ask(new URL(boardUrl));
+export const askByUrl = async (boardUrl: string): Promise<string | null> =>
+  ask(new ChURL(boardUrl));

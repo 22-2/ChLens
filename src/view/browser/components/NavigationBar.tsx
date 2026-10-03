@@ -156,7 +156,7 @@ function normalizeLegacyTimestamp(value: unknown): number {
 function deriveBoardTitle(threadUrl: string): string {
   try {
     const parsed = new window.URL(threadUrl);
-    // 変更理由: read.cgi 系のURL揺れを helper 側に集約し、表示名だけこの関数で整形する。
+    // 変更理由: URLから板名を再抽出せず、共有処理の結果を表示名だけこの関数で整形する。
     const boardUrl = getBoardUrlFromThreadUrl(threadUrl);
     if (boardUrl !== threadUrl) {
       const boardParsed = new window.URL(boardUrl);

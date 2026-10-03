@@ -4,11 +4,15 @@ import {
   buildConditionalRequestHeaders,
   ChURL,
   getBoardFetchInfo,
+  getBoardNetwork,
+  resolveBoardRedirectUrl,
 } from "packages/ch-lib/src/index";
 import { platform } from "src/app";
 import { Response } from "src/core/HTTP";
 import { chServerMoveDetect } from "src/core/jsutil";
 import { container } from "src/service-container/index";
+
+// 変更理由: 5ch/2ch.scのホスト名判定をcoreへ複製せず、通信条件だけを意味分類で選ぶ。
 
 // JSDocの型情報をTypeScriptに変換。subject parserの基本形はch-libを正とし、
 // NG／表示状態だけをChlens側のBoard projectionとして追加する。
@@ -100,13 +104,15 @@ export default class Board {
 
           // サーバー移転判定
           // 2chで自動移動しているときはサーバー移転
+          // 変更理由: responseURLから板URLを作る形式解析はch-libへ移し、移転検知は取得結果だけで判断する。
           if (
             response != null &&
-            this.url.getTsld() === "5ch.io" &&
-            response.responseURL != null &&
-            this.url.url.hostname !== response.responseURL.split("/")[2]
+            getBoardNetwork(this.url) === "5ch" &&
+            response.responseURL != null
           ) {
-            newBoardUrl = response.responseURL.slice(0, -"subject.txt".length);
+            newBoardUrl = resolveBoardRedirectUrl(this.url, response.responseURL) ?? undefined;
+          }
+          if (newBoardUrl != null) {
             throw { response, newBoardUrl };
           }
 
@@ -189,7 +195,7 @@ export default class Board {
           this.message = "板の読み込みに失敗しました。";
 
           // サーバー移転の検出試行
-          if (newBoardUrl != null && this.url.getTsld() === "5ch.io") {
+          if (newBoardUrl != null && getBoardNetwork(this.url.url) === "5ch") {
             try {
               newBoardUrl = (await chServerMoveDetect(this.url)).href;
               this.message += `\
@@ -201,7 +207,7 @@ class="open_in_rcrx">${container.util.escapeHtml(newBoardUrl)}
             } catch {
               // サーバー移転検出失敗
             }
-          } else if (this.url.getTsld() === "5ch.io" && response != null) {
+          } else if (getBoardNetwork(this.url.url) === "5ch" && response != null) {
             try {
               newBoardUrl = (await chServerMoveDetect(this.url)).href;
               this.message += `\
@@ -290,7 +296,7 @@ class="open_in_rcrx">${container.util.escapeHtml(newBoardUrl)}
    * 板のテキストをパースして、スレ一覧を取得します
    */
   static parse(url: ChURL, text: string): BoardThread[] | null {
-    const scFlg = url.getTsld() === "2ch.sc";
+    const scFlg = getBoardNetwork(url.url) === "2ch-sc";
     const threads = BoardParser.parse(url, text);
 
     // nullチェック

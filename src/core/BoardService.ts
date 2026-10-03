@@ -1,7 +1,7 @@
 import {
   type BoardThread as CanonicalBoardThread,
-  ChURL,
-  HOSTNAME,
+  getReadStateBoardUrl,
+  getReadStateThreadUrl,
 } from "packages/ch-lib/src/index";
 import Board from "src/core/Board.js";
 import { container } from "src/service-container/index";
@@ -15,28 +15,6 @@ interface BoardGetResult {
 
 interface BoardLikeUrl {
   href: string;
-}
-
-function getReadStateBoardUrl(boardUrl: string): string {
-  const parsed = new ChURL(boardUrl);
-  if (parsed.url.hostname !== HOSTNAME.EDDIBB) return boardUrl;
-
-  const match = /^\/(?:test\/read\.cgi\/)?([\w-]+)\/?$/.exec(parsed.url.pathname);
-  if (!match) return boardUrl;
-
-  // 変更理由: エッヂの既読DBはスレURLから作った http の板URLをキーにする。
-  // 一覧側の https URLで検索すると保存済みの既読情報を取得できない。
-  const lookup = new URL(parsed.url.href);
-  lookup.protocol = "http:";
-  lookup.pathname = `/${match[1]}/`;
-  return lookup.href;
-}
-
-function getReadStateThreadUrl(threadUrl: string): string {
-  const parsed = new ChURL(threadUrl);
-  // 変更理由: エッヂの一覧取得元は https を返す場合があるが、スレ閲覧と既読DBは
-  // ChURL が正規化した http URL を使うため、一覧の照合キーも合わせる。
-  return parsed.url.hostname === HOSTNAME.EDDIBB ? parsed.url.href : threadUrl;
 }
 
 const BoardService = {

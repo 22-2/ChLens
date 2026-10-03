@@ -1,6 +1,7 @@
 import {
   ChURL,
   executeThreadFetch,
+  getBoardNetwork,
   getThreadArchiveFallbacks,
   getThreadXhrInfo,
   isHtmlThread,
@@ -12,8 +13,10 @@ import {
   parseNetThread,
   parsePinkThread,
   parseThread,
+  replaceBoardUrlServer,
   type ThreadRes,
   type ThreadResponse,
+  toArchiveThreadUrl,
   type XhrInfo,
 } from "packages/ch-lib/src/index";
 import { platform } from "src/app";
@@ -586,10 +589,11 @@ export default class Thread {
     hasCache: boolean;
     thread: ParsedThread | undefined;
   }): Promise<string> {
-    if (this.tsld === "5ch.io" && response) {
+    // 変更理由: ホスト名ごとの通信仕様をURL文字列比較で分岐せず、ch-libの分類を使う。
+    if (getBoardNetwork(this.url.url) === "5ch" && response) {
       return this._build5chioErrorMessage({ response, hasCache, thread });
     }
-    if (this.tsld === "shitaraba.net" && !this.url.isArchive) {
+    if (getBoardNetwork(this.url.url) === "shitaraba" && !this.url.isArchive) {
       return this._buildShitarabaErrorMessage(response);
     }
     return this._buildDefaultErrorMessage({ hasCache, thread });
@@ -611,10 +615,13 @@ export default class Thread {
     let message = "";
     try {
       const newBoardURL = await chServerMoveDetect(this.url.toBoard());
-      const newUrl = new ChURL(this.url.url.href);
-      newUrl.url.hostname = newBoardURL.hostname;
-      const href = container.util.escapeHtml(container.util.safeHref(newUrl.url.href));
-      const label = container.util.escapeHtml(newUrl.url.href);
+      const movedUrl = replaceBoardUrlServer(this.url, newBoardURL);
+      if (movedUrl === null) throw new Error("移転先のスレッドURLを作成できませんでした");
+      const newUrl = new ChURL(movedUrl);
+      // 変更理由: 旧表示URLは移転先ホストだけを差し替え、元の通信schemeを維持していた。
+      newUrl.protocol = this.url.protocol;
+      const href = container.util.escapeHtml(container.util.safeHref(newUrl.href));
+      const label = container.util.escapeHtml(newUrl.href);
       message += `スレッドの読み込みに失敗しました。\nサーバーが移転している可能性が有ります\n(<a href="${href}" class="open_in_rcrx">${label}</a>)`;
     } catch {
       if (response.status === 203) {
@@ -651,7 +658,8 @@ export default class Thread {
           "\n該当するスレッドは存在しません。\nURLが間違っているか過去ログに移動せずに削除されています。";
         break;
       case "STORAGE IN": {
-        const newUrl = this.url.url.href.replace("/read.cgi/", "/read_archive.cgi/");
+        // 変更理由: 過去ログURLのパス形式はch-libで一元管理し、表示側は変換結果だけを使う。
+        const newUrl = toArchiveThreadUrl(this.url.url.href) ?? this.url.url.href;
         const href = container.util.escapeHtml(container.util.safeHref(newUrl));
         const label = container.util.escapeHtml(newUrl);
         message += `\n過去ログが存在します\n(<a href="${href}" class="open_in_rcrx">${label}</a>)`;

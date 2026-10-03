@@ -1,4 +1,5 @@
-import { fix as fixUrl, threadToBoard, URL } from "src/core/URL";
+import { ChURL, replaceBoardUrlServer } from "packages/ch-lib/src/index";
+import { fix as fixUrl } from "src/core/URL";
 
 export interface ReadState {
   url: string;
@@ -41,7 +42,7 @@ export class EntryList {
     this.cache.set(entry.url, entry);
 
     if (entry.type === "thread") {
-      const boardURL = threadToBoard(entry.url);
+      const boardURL = new ChURL(entry.url).toBoard().href;
       if (!this.boardURLIndex.has(boardURL)) {
         this.boardURLIndex.set(boardURL, new Set());
       }
@@ -58,7 +59,8 @@ export class EntryList {
   }
 
   async remove(urlStr: string): Promise<boolean> {
-    const url = new URL(urlStr);
+    const url = new ChURL(urlStr);
+    url.hash = "";
     urlStr = url.href;
 
     if (!this.cache.has(urlStr)) return false;
@@ -101,13 +103,17 @@ export class EntryList {
       void this.add(boardEntry);
     }
 
-    const tmp = new URL(to).origin;
-    const reg = /^https?:\/\/[\w.]+\//;
     // スレブックマーク移行
     for (const entry of this.getThreadsByBoardURL(from)) {
+      // 変更理由: originの文字列置換でURL末尾のslashやpathを壊さず、移転先への生成をch-libへ委譲する。
+      const movedUrl = replaceBoardUrlServer(entry.url, to);
+      if (movedUrl === null) {
+        console.error("スレッドのお気に入りを移転できませんでした", { from, to, url: entry.url });
+        continue;
+      }
       void this.remove(entry.url);
 
-      entry.url = entry.url.replace(reg, tmp);
+      entry.url = movedUrl;
       if (entry.readState) {
         entry.readState.url = entry.url;
       }

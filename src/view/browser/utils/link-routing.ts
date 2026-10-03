@@ -1,16 +1,9 @@
 import {
-  type BoardHostType,
-  classifyBoardHost,
-  HOSTNAME,
-  normalizeBbsHostname,
-  ROUTE_PATTERNS,
+  getBoardUrlFromThreadUrl as getChLibBoardUrlFromThreadUrl,
+  resolveBoardUrl as resolveChLibBoardUrl,
 } from "packages/ch-lib/src/index";
 import type { MouseEvent } from "react";
 import { resolveItestServerHostname } from "src/view/browser/utils/itest-server-map";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 
 export type UrlHandlingMode = "respect-default-external";
 export const RESPECT_DEFAULT_EXTERNAL: UrlHandlingMode = "respect-default-external";
@@ -49,13 +42,7 @@ export interface InternalThreadListPage {
 
 export type InternalBrowserPage = InternalThreadPage | InternalThreadListPage;
 
-// ---------------------------------------------------------------------------
-// URL normalization
-// ---------------------------------------------------------------------------
-// 変更理由: 互換ホスト判定・移転マップ・ルーティング用正規表現は ch-lib の
-// hosts.ts / patterns.ts に集約した。このファイルには view 固有のポリシー
-// (strict/オムニバーの許容差、itest サーバー解決)だけを残す。
-
+/** 相対URLを現在ページに対して解決する、掲示板形式に依存しない補助関数。 */
 export function resolveAbsoluteUrl(rawUrl: string, baseUrl: string): string {
   try {
     return new window.URL(rawUrl, baseUrl).href;
@@ -64,313 +51,59 @@ export function resolveAbsoluteUrl(rawUrl: string, baseUrl: string): string {
   }
 }
 
-function normalizeItestUrl(url: URL): void {
-  const isItestHost =
-    url.hostname === HOSTNAME.ITEST_5CH || url.hostname === HOSTNAME.ITEST_BBSPINK;
-  if (!isItestHost) return;
+function toInternalBrowserPage(
+  result: ReturnType<typeof resolveChLibBoardUrl>,
+): InternalBrowserPage | null {
+  if (!result) return null;
 
-  const threadMatch = ROUTE_PATTERNS.ITEST_THREAD.exec(url.pathname);
-  if (threadMatch) {
-    const [, serverPrefix, boardKey, threadKey] = threadMatch;
-    url.pathname = `/test/read.cgi/${boardKey}/${threadKey}/`;
-    convertItestHostname(url, boardKey, serverPrefix);
-    return;
+  if (result.type === "thread") {
+    return { type: "thread", title: result.url, threadUrl: result.threadUrl };
   }
 
-  const boardMatch = ROUTE_PATTERNS.ITEST_BOARD.exec(url.pathname);
-  if (boardMatch) {
-    // 変更理由: iTest の /<prefix>/test/read.cgi/... を board と誤認して
-    // /<prefix>/ へ潰れる不具合を防ぐため、板URL判定は完全一致のときだけ許可する。
-    url.pathname = `/${boardMatch[1]}/`;
-    convertItestHostname(url, boardMatch[1]);
-  }
-}
-
-function convertItestHostname(url: URL, boardKey: string, serverPrefix?: string): void {
-  // 変更理由: itest ホストのままでは dat/subject.txt を取得できないため、
-  // bbsmenu 由来の対応表で実サーバー（例: mercury.bbspink.com）へ変換する。
-  // `kako` は板サーバーではなく過去ログ用ホストを表すため、板対応表より優先する。
-  // ここを板対応表に任せると、過去ログが現行板サーバーへ変換されて取得できない。
-  if (serverPrefix?.toLowerCase() === "kako") {
-    const domain = url.hostname === HOSTNAME.ITEST_BBSPINK ? "bbspink.com" : HOSTNAME.NEW_5CH;
-    url.hostname = `${serverPrefix}.${domain}`;
-    return;
-  }
-
-  const hostname = resolveItestServerHostname(boardKey);
-  if (hostname) {
-    url.hostname = hostname;
-    return;
-  }
-
-  // 対応表の復元・取得前でも、携帯向けURLに含まれるサーバー名は実サーバーを示す。
-  // 対応表が無い場合だけこの情報を使い、itestホストのままでは取得できない状態を避ける。
-  if (serverPrefix) {
-    const domain = url.hostname === HOSTNAME.ITEST_BBSPINK ? "bbspink.com" : HOSTNAME.NEW_5CH;
-    url.hostname = `${serverPrefix}.${domain}`;
-  }
-}
-
-/** Parse, normalize, and return a URL object; returns null on failure. */
-function normalizeUrl(raw: string): URL | null {
-  try {
-    const url = new window.URL(raw);
-    url.hostname = normalizeBbsHostname(url.hostname);
-    normalizeItestUrl(url);
-    return url;
-  } catch {
-    return null;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Page builders
-// ---------------------------------------------------------------------------
-
-function toThreadPage(url: URL): InternalThreadPage {
-  return { type: "thread", title: url.href, threadUrl: url.href };
-}
-
-function toThreadListPage(url: URL): InternalThreadListPage {
   return {
     type: "threadList",
-    title: url.href,
-    boardUrl: url.href,
-    boardTitle: url.href,
+    title: result.url,
+    boardUrl: result.boardUrl,
+    boardTitle: result.boardUrl,
   };
 }
 
-function parseChDatPage(url: URL): InternalThreadPage | null {
-  const datMatch = ROUTE_PATTERNS.CH_DAT.exec(url.pathname);
-  if (!datMatch) return null;
-
-  // dat直リンクは板名と数値のスレッド番号が揃うため、独自ドメインを列挙せずに
-  // 既存のスレッド画面へ正規化できる。ChURL側でも同じ正規化を行う。
-  url.pathname = `/test/read.cgi/${datMatch[1]}/${datMatch[2]}/`;
-  return toThreadPage(url);
+export function resolveBoardUrlForBrowser(
+  absoluteUrl: string,
+  mode: "strict" | "browse" | "guess" = "browse",
+) {
+  // 変更理由: 掲示板ごとのホスト・URL形式・正規化規則を画面側へ複製せず、
+  // 入力経路ごとの許容方針だけを指定して ch-lib の意味単位APIへ渡す。
+  return resolveChLibBoardUrl(absoluteUrl, {
+    mode,
+    resolveServerHostname: resolveItestServerHostname,
+  });
 }
 
-// ---------------------------------------------------------------------------
-// Board-specific parsers
-// ---------------------------------------------------------------------------
-
-// datと標準read.cgi形式はホストによらず同じ構造なので、eddibbの入口でも共有する。
-function parseChThreadPage(url: URL): InternalThreadPage | null {
-  const datPage = parseChDatPage(url);
-  if (datPage) return datPage;
-
-  const threadMatch = ROUTE_PATTERNS.CH_STYLE_THREAD.exec(url.pathname);
-  if (threadMatch) {
-    url.pathname = `/${threadMatch[1]}/`;
-    return toThreadPage(url);
-  }
-
-  return null;
+function resolvePage(absoluteUrl: string, mode: "strict" | "browse" | "guess") {
+  return toInternalBrowserPage(resolveBoardUrlForBrowser(absoluteUrl, mode));
 }
-
-function parseChStylePage(url: URL): InternalBrowserPage | null {
-  const threadPage = parseChThreadPage(url);
-  if (threadPage) return threadPage;
-
-  const boardMatch = ROUTE_PATTERNS.CH_STYLE_BOARD.exec(url.pathname);
-  if (boardMatch) {
-    url.pathname = `/${boardMatch[1]}/`;
-    return toThreadListPage(url);
-  }
-
-  return null;
-}
-
-function parseMachiPage(url: URL): InternalBrowserPage | null {
-  const threadMatch = ROUTE_PATTERNS.MACHI_THREAD.exec(url.pathname);
-  if (threadMatch) {
-    url.pathname = `/bbs/read.cgi/${threadMatch[1]}/${threadMatch[2]}/`;
-    return toThreadPage(url);
-  }
-
-  const boardMatch = ROUTE_PATTERNS.MACHI_BOARD.exec(url.pathname);
-  if (boardMatch) {
-    url.pathname = `/${boardMatch[1]}/`;
-    return toThreadListPage(url);
-  }
-
-  return null;
-}
-
-function parseShitarabaPage(url: URL): InternalBrowserPage | null {
-  const threadMatch = ROUTE_PATTERNS.SHITARABA_THREAD.exec(url.pathname);
-  if (threadMatch) {
-    const action = url.pathname.includes("read_archive") ? "read_archive" : "read";
-    url.pathname = `/bbs/${action}.cgi/${threadMatch[1]}/${threadMatch[2]}/${threadMatch[3]}/`;
-    return toThreadPage(url);
-  }
-
-  const storageMatch = ROUTE_PATTERNS.SHITARABA_STORAGE.exec(url.pathname);
-  if (storageMatch) {
-    url.pathname = `/bbs/read_archive.cgi/${storageMatch[1]}/${storageMatch[2]}/${storageMatch[3]}/`;
-    return toThreadPage(url);
-  }
-
-  const boardMatch = ROUTE_PATTERNS.SHITARABA_BOARD.exec(url.pathname);
-  if (boardMatch) {
-    url.pathname = `/${boardMatch[1]}/${boardMatch[2]}/`;
-    return toThreadListPage(url);
-  }
-
-  return null;
-}
-
-function parseEddibbPage(url: URL): InternalBrowserPage | null {
-  const threadPage = parseChThreadPage(url);
-  if (threadPage) {
-    // 標準形式の解釈は共通処理へ任せ、eddibb固有のHTTP指定だけを適用する。
-    url.protocol = "http:";
-    return toThreadPage(url);
-  }
-
-  const threadMatch = ROUTE_PATTERNS.CH_SHORT_THREAD.exec(url.pathname);
-  if (threadMatch?.[2]) {
-    url.protocol = "http:";
-    url.pathname = `/test/read.cgi/${threadMatch[1]}/${threadMatch[2]}/`;
-    return toThreadPage(url);
-  }
-
-  const boardMatch = ROUTE_PATTERNS.CH_BOARD_KEY.exec(url.pathname);
-  if (boardMatch) {
-    url.pathname = `/${boardMatch[1]}/`;
-    return toThreadListPage(url);
-  }
-
-  return null;
-}
-
-// ---------------------------------------------------------------------------
-// Dispatch table
-// ---------------------------------------------------------------------------
-
-const BOARD_PARSERS: Record<BoardHostType, (url: URL) => InternalBrowserPage | null> = {
-  eddibb: parseEddibbPage,
-  shitaraba: parseShitarabaPage,
-  machi: parseMachiPage,
-  "ch-style": parseChStylePage,
-};
-
-function dispatchParser(url: URL, strict: boolean): InternalBrowserPage | null {
-  const boardType = classifyBoardHost(url.hostname);
-  if (boardType) {
-    return BOARD_PARSERS[boardType](url);
-  }
-
-  // 変更理由: /test/read.cgi/<board>/<thread> 形式は 5ch互換掲示板特有の
-  // パスで誤爆の恐れがないため、ドメインに依存せず（クリック経路の
-  // strict=true でも）内部スレッドとして扱う。
-  const threadPage = parseChThreadPage(url);
-  if (threadPage) return threadPage;
-
-  // 変更理由: /<board>/ 形式は imgur のような一般URLとも一致してしまうため、
-  // strict=true（クリック経路）ではフォールバックを適用しない。
-  // オムニバー入力（strict=false）でのみ板として許可する。
-  if (strict) {
-    return null;
-  }
-
-  const boardMatch = ROUTE_PATTERNS.CH_STYLE_BOARD.exec(url.pathname);
-  if (boardMatch) {
-    url.pathname = `/${boardMatch[1]}/`;
-    return toThreadListPage(url);
-  }
-
-  return null;
-}
-
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
 
 export function getBoardUrlFromThreadUrl(threadUrl: string): string {
-  const url = normalizeUrl(threadUrl);
-  if (!url) return threadUrl;
-
-  const datMatch = ROUTE_PATTERNS.CH_DAT.exec(url.pathname);
-  if (datMatch) return `${url.origin}/${datMatch[1]}/`;
-
-  const genericThreadMatch = ROUTE_PATTERNS.CH_STYLE_BOARD_FROM_THREAD.exec(url.pathname);
-  if (genericThreadMatch) {
-    // 変更理由: 板ホストを既知一覧に登録していない互換サーバーでも、オムニバーから
-    // スレを開いた際に「戻る先」として正しい板URLを生成し、スレURLそのものを
-    // threadListとして誤って積まないようにする。
-    return `${url.origin}/${genericThreadMatch[1]}/`;
-  }
-
-  const boardType = classifyBoardHost(url.hostname);
-  if (!boardType) return threadUrl;
-
-  switch (boardType) {
-    case "eddibb": {
-      // 標準形式は上の共通判定で処理済みなので、eddibbの短縮形式だけを補う。
-      const match = ROUTE_PATTERNS.CH_SHORT_THREAD.exec(url.pathname);
-      if (match?.[2]) return `${url.origin}/${match[1]}/`;
-      break;
-    }
-    case "shitaraba": {
-      const threadMatch = ROUTE_PATTERNS.SHITARABA_THREAD.exec(url.pathname);
-      if (threadMatch) {
-        return `${url.origin}/bbs/read.cgi/${threadMatch[1]}/${threadMatch[2]}/`;
-      }
-      const storageMatch = ROUTE_PATTERNS.SHITARABA_STORAGE.exec(url.pathname);
-      if (storageMatch) {
-        return `${url.origin}/bbs/read.cgi/${storageMatch[1]}/${storageMatch[2]}/`;
-      }
-      break;
-    }
-    case "machi": {
-      const match = ROUTE_PATTERNS.MACHI_THREAD.exec(url.pathname);
-      if (match) return `${url.origin}/${match[1]}/`;
-      break;
-    }
-    case "ch-style": {
-      const match = ROUTE_PATTERNS.CH_STYLE_BOARD_FROM_THREAD.exec(url.pathname);
-      if (match) return `${url.origin}/${match[1]}/`;
-      break;
-    }
-  }
-
-  return threadUrl;
+  // 変更理由: 既存の入力スキームを保ちつつ、必要なサーバー対応表も注入して板URL生成をch-libに委譲する。
+  return getChLibBoardUrlFromThreadUrl(threadUrl, {
+    resolveServerHostname: resolveItestServerHostname,
+  });
 }
 
+/** 内部ブラウズとオムニバーで使う、互換形式を含むページ解決。 */
 export function parseInternalBrowserPage(absoluteUrl: string): InternalBrowserPage | null {
-  const url = normalizeUrl(absoluteUrl);
-  return url ? dispatchParser(url, false) : null;
+  return resolvePage(absoluteUrl, "browse");
 }
 
-/**
- * Omnibar専用の推測を含めてURLをページへ解決する。
- * 変更理由: 独自URL形式の掲示板でも板名と数値のスレッドIDが揃えば開けるようにしつつ、
- * 一般ページ上のリンクを誤ってスレッド扱いしないよう、推測を入力欄に限定する。
- */
-export function parseOmnibarBrowserPage(absoluteUrl: string): InternalBrowserPage | null {
-  const parsed = parseInternalBrowserPage(absoluteUrl);
-  if (parsed) return parsed;
-
-  const url = normalizeUrl(absoluteUrl);
-  if (!url || classifyBoardHost(url.hostname)) return null;
-
-  const match = ROUTE_PATTERNS.OMNIBAR_SHORT_THREAD.exec(url.pathname);
-  if (!match) return null;
-
-  // 変更理由: 省略形式やレス表示件数の指定は取得器が扱える標準スレッドパスへ変換し、
-  // 板とスレの識別を保ちながらレス番号のフラグメントは維持する。
-  url.pathname = `/test/read.cgi/${match[1]}/${match[2]}/`;
-  return toThreadPage(url);
-}
-
-/**
- * クリック経路専用。互換ホスト以外のURLはスレ/板として扱わない。
- * オムニバー入力には parseInternalBrowserPage（広い許容）を使う。
- */
+/** クリック経路では掲示板として確実に識別できるURLだけを解決する。 */
 export function parseInternalBrowserPageStrict(absoluteUrl: string): InternalBrowserPage | null {
-  const url = normalizeUrl(absoluteUrl);
-  return url ? dispatchParser(url, true) : null;
+  return resolvePage(absoluteUrl, "strict");
+}
+
+/** オムニバーでは未知ホストの短縮スレURLも推測して解決する。 */
+export function parseOmnibarBrowserPage(absoluteUrl: string): InternalBrowserPage | null {
+  return resolvePage(absoluteUrl, "guess");
 }
 
 export function shouldHandleUrlWithApp(absoluteUrl: string, mode?: UrlHandlingMode): boolean {

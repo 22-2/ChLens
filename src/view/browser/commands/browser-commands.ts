@@ -23,7 +23,7 @@ import {
   Star,
   X,
 } from "lucide-react";
-import { ChURL, HOSTNAME } from "packages/ch-lib/src/index";
+import { ChURL } from "packages/ch-lib/src/index";
 import type { Dispatch } from "react";
 import { isTauriRuntime } from "src/app/platform/runtime";
 import { container } from "src/service-container";
@@ -206,17 +206,6 @@ function getNormalizedCommandPageUrl(page: Page): string | null {
         ? parsed.boardUrl
         : target.url;
 
-  try {
-    const hostname = new URL(normalizedUrl).hostname;
-    // 変更理由: itest URLのoriginからdat/subject.txtを組み立てても取得不能なので、
-    // bbsmenu由来の実サーバーへ解決できなかった場合はコマンド自体を隠す。
-    if (hostname === HOSTNAME.ITEST_5CH || hostname === HOSTNAME.ITEST_BBSPINK) {
-      return null;
-    }
-  } catch {
-    return null;
-  }
-
   return normalizedUrl;
 }
 
@@ -276,8 +265,7 @@ async function importOpenThreadTabs(context: BrowserCommandContext): Promise<voi
     context.tabs
       .map((tab) => getCurrentPage(tab))
       .filter((page): page is Extract<Page, { type: "thread" }> => page.type === "thread")
-      // 変更理由: 既存のアプリ内タブが旧5ch.net URLを保持していても、
-      // ブラウザ側で正規化した5ch.io URLと同じスレッドとして重複排除するため。
+      // 変更理由: 保存済みタブと正規化済みURLの表記差を吸収し、同じスレッドを重複登録しないため。
       .map((page) => {
         const normalizedPage = parseInternalBrowserPageStrict(page.threadUrl);
         return normalizedPage?.type === "thread" ? normalizedPage.threadUrl : page.threadUrl;

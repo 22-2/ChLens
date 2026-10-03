@@ -1,4 +1,5 @@
 import { ChURL } from "../url/ChURL";
+import { type BoardServerNetwork, getBoardNetwork } from "../url/serverMap";
 import { decodeCharReference } from "../utils/entities";
 
 export type BoardTitleSource = "setting" | "jbbs";
@@ -19,7 +20,7 @@ function getTwoChannelBoardKey(boardUrl: ChURL): string | null {
   return boardKey || null;
 }
 
-function formatBoardTitle(title: string, boardTsld: string): string {
+export function formatBoardTitle(title: string, boardTsld: string): string {
   switch (boardTsld) {
     case "5ch.io":
       return title.replace("＠2ch掲示板", "");
@@ -30,6 +31,18 @@ function formatBoardTitle(title: string, boardTsld: string): string {
     default:
       return title;
   }
+}
+
+/** URLのホスト知識を呼び出し側へ漏らさず、板名の表記を整える。 */
+export function formatBoardTitleForUrl(title: string, boardUrl: string | URL): string {
+  const network = getBoardNetwork(boardUrl);
+  const networkNames: Partial<Record<BoardServerNetwork, string>> = {
+    "5ch": "5ch.io",
+    "2ch-sc": "2ch.sc",
+    open2ch: "open2ch.net",
+  };
+  const networkName = networkNames[network];
+  return formatBoardTitle(title, networkName ?? "");
 }
 
 /**

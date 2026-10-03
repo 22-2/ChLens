@@ -1,8 +1,6 @@
 import {
-  ChURL,
-  HOSTNAME,
-  isArchiveOnlyBoardHost,
-  isCompatibleBoardHost,
+  getBoardUrlKey as getChBoardUrlKey,
+  normalizeBoardUrl as normalizeChBoardUrl,
 } from "packages/ch-lib/src/index";
 
 export interface BoardUrlNormalizationOptions {
@@ -22,73 +20,7 @@ export function normalizeBoardUrl(
   rawUrl: string,
   options: BoardUrlNormalizationOptions = {},
 ): string | null {
-  const trimmedUrl = rawUrl.trim();
-  if (trimmedUrl === "") {
-    return null;
-  }
-
-  try {
-    const inputUrl = new window.URL(trimmedUrl);
-    const parsed = new ChURL(trimmedUrl);
-    // 過去ログ専用ホストの「板URL」は一覧取得できないため、その他の板一覧へ登録しない。
-    // read_archive.cgi のように現役ホスト上の過去ログスレッドは、通常の板へ戻せる。
-    if (isArchiveOnlyBoardHost(parsed.url.hostname)) return null;
-    let boardUrl =
-      parsed.type === "thread" ? parsed.toBoard().url : parsed.type === "board" ? parsed.url : null;
-
-    // ChURLの古い板パターンは板名のハイフンを許容しないため、
-    // 既知ホストに限って板パスの形だけを補完する。
-    if (boardUrl === null && isCompatibleBoardHost(inputUrl.hostname)) {
-      const path = inputUrl.pathname;
-      const isSingleSegmentBoard = /^\/(?:subback\/|test\/-\/)?[\w-]+\/?$/u.test(path);
-      const isShitarabaBoard =
-        inputUrl.hostname.endsWith(".shitaraba.net") && /^\/[\w-]+\/[\w-]+\/?$/u.test(path);
-      if (isSingleSegmentBoard || isShitarabaBoard) {
-        boardUrl = inputUrl;
-      }
-    }
-
-    if (boardUrl === null) {
-      return null;
-    }
-
-    const normalized = new window.URL(boardUrl.href);
-    normalized.hostname = normalized.hostname.toLowerCase();
-    normalized.search = "";
-    normalized.hash = "";
-
-    // 5chの既読情報はサーバー横断検索用に *.5ch.io へ保存されるが、
-    // ワイルドカードは実在する板ホストではないため一覧へ表示しない。
-    if (normalized.hostname.includes("*") || normalized.hostname.includes("%")) {
-      return null;
-    }
-
-    // 独自ホストは実際のスレ一覧取得で確認し、既存のホスト一覧へ名前を追加しない。
-    if (
-      options.requireCompatibleHost &&
-      !options.subjectVerified &&
-      !isCompatibleBoardHost(normalized.hostname)
-    ) {
-      return null;
-    }
-
-    // EddibBは旧形式(/test/read.cgi/板/)と通常形式(/板/)が混在するため、
-    // 板URLの比較時だけ通常形式へ寄せて同一板として扱う。
-    if (normalized.hostname === HOSTNAME.EDDIBB) {
-      const match = /^\/test\/read\.cgi\/([\w-]+)\/?$/i.exec(normalized.pathname);
-      if (match) {
-        normalized.pathname = `/${match[1]}/`;
-      }
-    }
-
-    if (!normalized.pathname.endsWith("/")) {
-      normalized.pathname += "/";
-    }
-
-    return normalized.href;
-  } catch {
-    return null;
-  }
+  return normalizeChBoardUrl(rawUrl, options);
 }
 
 /**
@@ -99,17 +31,7 @@ export function getBoardUrlKey(
   rawUrl: string,
   options: BoardUrlNormalizationOptions = {},
 ): string | null {
-  const normalizedUrl = normalizeBoardUrl(rawUrl, options);
-  if (normalizedUrl === null) {
-    return null;
-  }
-
-  try {
-    const parsed = new window.URL(normalizedUrl);
-    return `${parsed.host.toLowerCase()}${parsed.pathname}`;
-  } catch {
-    return null;
-  }
+  return getChBoardUrlKey(rawUrl, options);
 }
 
 export interface NormalizableBoard {

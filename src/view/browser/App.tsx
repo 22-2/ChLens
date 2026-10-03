@@ -321,7 +321,7 @@ const BrowserAppContent: React.FC = () => {
   useNotificationListener();
   const { isAnyExpanded: isUrlBarExpanded } = useUrlBarVisibility();
 
-  // itest（携帯版）URLを実サーバーへ変換するための対応表を bbsmenu から構築する。
+  // 変更理由: URL解決用のサーバー対応表は板一覧から更新し、画面の操作中は同期参照できるようにする。
   // 前回セッションの localStorage キャッシュがあるため、ここでの取得は
   // 次回以降の起動に備えた更新も兼ねる。
   useEffect(() => {

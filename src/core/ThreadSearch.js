@@ -1,7 +1,8 @@
+import { ChURL } from "packages/ch-lib/src/index";
 import { ask as askBoardTitleSolver } from "src/core/BoardTitleSolver.js";
 import { Request } from "src/core/HTTP.ts";
 import { decodeCharReference } from "src/core/jsutil.js";
-import { setProtocol, URL } from "src/core/URL.ts";
+import { setProtocol } from "src/core/URL.ts";
 
 // decaffeinate 由来の initClass パターン (prototype への代入) は TS が
 // プロパティを認識できないため、通常のクラスフィールドとモジュール関数へ書き換えた。
@@ -21,8 +22,7 @@ const _parse = (protocol) =>
     let title = decodeCharReference(item.T("title")[0].textContent ?? "");
     const m = title.match(/\((\d+)\)$/);
     title = title.replace(/\(\d+\)$/, "");
-    // 旧コードの app.URL.URL はグローバル参照だったが、型解決のため直接 import した同じクラスを使う。
-    const boardUrl = new URL(url).toBoard();
+    const boardUrl = new ChURL(url).toBoard();
     try {
       boardTitle = await askBoardTitleSolver(boardUrl);
     } catch {

@@ -1,4 +1,3 @@
-import { normalizeBbsHostname } from "packages/ch-lib/src/index";
 import React, {
   createContext,
   type Dispatch,
@@ -60,8 +59,8 @@ import {
   resetAutoRefreshState,
 } from "src/view/browser/utils/auto-refresh-pages";
 import {
-  getBoardUrlFromThreadUrl,
   parseInternalBrowserPage,
+  resolveBoardUrlForBrowser,
 } from "src/view/browser/utils/link-routing";
 import browser from "webextension-polyfill";
 
@@ -106,10 +105,10 @@ function shouldFocusNewTabOnOpen(): boolean {
 
 function normalizePageLocation(rawLocation: string): string {
   try {
-    const parsed = new window.URL(rawLocation);
-    // 変更理由: 5ch.netから5ch.ioへ正規化したURLと、旧ドメインの履歴URLを
-    // 同じ板として照合し、関連板タブで保存済みの板名を引き継ぐため。
-    parsed.hostname = normalizeBbsHostname(parsed.hostname);
+    // 変更理由: 板URLのホスト移転や別形式の同一性をタブ管理側で再実装せず、
+    // ch-libが返す正規URLを履歴・板ページの照合キーにも使う。
+    const resolved = resolveBoardUrlForBrowser(rawLocation);
+    const parsed = new window.URL(resolved?.url ?? rawLocation);
     parsed.hash = "";
     return parsed.toString().replace(/\/+$/, "/");
   } catch {
@@ -132,9 +131,9 @@ function isHistoryDisabled(): boolean {
 
 function deriveHistoryBoardTitle(threadUrl: string): string {
   try {
-    const parsed = new window.URL(threadUrl);
-    const match = parsed.pathname.match(/^(?:\/[\w-]+)?\/test\/read\.cgi\/([\w-]+)\/\d+\/?/);
-    return decodeURIComponent(match?.[1] ?? "");
+    const resolved = resolveBoardUrlForBrowser(threadUrl);
+    if (resolved?.type !== "thread") return "";
+    return resolved.boardName;
   } catch {
     return "";
   }
@@ -508,25 +507,9 @@ function pushPageToTabHistory(tab: Tab, page: Page): Tab {
 }
 
 function deriveBoardUrlFromThreadUrl(threadUrl: string): string | null {
-  // 変更理由: URL判定を link-routing に集約し、タブ生成時だけ null フォールバック契約を維持する。
-  const boardUrl = getBoardUrlFromThreadUrl(threadUrl);
-  if (boardUrl !== threadUrl) {
-    return boardUrl;
-  }
-
-  try {
-    const parsed = new window.URL(threadUrl);
-    const match = parsed.pathname.match(/^(?:\/[\w-]+)?\/test\/read\.cgi\/([\w-]+)\/\d+\/?/);
-    if (!match) {
-      return null;
-    }
-
-    // 変更理由: 互換ホスト判定外でも read.cgi 形式のURL直開きは存在するため、
-    // 最低限 board セグメントだけ復元して canonical stack を壊さないようにする。
-    return `${parsed.origin}/${match[1]}/`;
-  } catch {
-    return null;
-  }
+  // 変更理由: 履歴スタックの親板は、形式を解釈せずch-libの意味解析結果から得る。
+  const resolved = resolveBoardUrlForBrowser(threadUrl);
+  return resolved?.type === "thread" ? resolved.boardUrl : null;
 }
 
 function buildCanonicalThreadListStack(

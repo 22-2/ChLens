@@ -15,8 +15,8 @@ import {
   waitForLegacyBookmarkReady,
 } from "src/view/browser/utils/legacy-app";
 import {
-  getBoardUrlFromThreadUrl,
   parseInternalBrowserPage,
+  resolveBoardUrlForBrowser,
 } from "src/view/browser/utils/link-routing";
 
 type SortDirection = "asc" | "desc";
@@ -72,11 +72,9 @@ function normalizeString(value: unknown, fallback = ""): string {
 }
 
 function parseCreatedAt(url: string): number {
-  const matched = url.match(/\/(\d+)\/?$/);
-  if (!matched) {
-    return 0;
-  }
-  return Number.parseInt(matched[1], 10) * 1000;
+  const resolved = resolveBoardUrlForBrowser(url);
+  if (resolved?.type !== "thread" || !/^\d+$/.test(resolved.threadId)) return 0;
+  return Number.parseInt(resolved.threadId, 10) * 1000;
 }
 
 function calcHeat(createdAt: number, resCount: number): number {
@@ -90,13 +88,10 @@ function calcHeat(createdAt: number, resCount: number): number {
 function deriveBoardTitle(threadUrl: string): string {
   try {
     const parsed = new window.URL(threadUrl);
-    // 変更理由: read.cgi 系URLの板抽出を link-routing 側へ寄せ、UIごとの判定ブレを防ぐ。
-    const boardUrl = getBoardUrlFromThreadUrl(threadUrl);
-    if (boardUrl !== threadUrl) {
-      const boardParsed = new window.URL(boardUrl);
-      if (/^\/[^/]+\/$/.test(boardParsed.pathname)) {
-        return `${parsed.hostname}/${boardParsed.pathname.replace(/^\//, "").replace(/\/$/, "")}`;
-      }
+    // 変更理由: 掲示板別のURL形式から板名を再抽出せず、ライブラリが返す板識別子を表示する。
+    const resolved = resolveBoardUrlForBrowser(threadUrl);
+    if (resolved?.type === "thread") {
+      return `${parsed.hostname}/${resolved.boardName}`;
     }
 
     return parsed.hostname;

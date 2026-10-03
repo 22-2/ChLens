@@ -21,6 +21,12 @@
 
 - [ReplaceStrTxt 置換DSL仕様案](specs/replace-str-txt-dsl-spec.md)
 
+### Design
+
+アプリケーション内の責務や設計境界。
+
+- [掲示板URLの責務境界](design/url-boundary.md)
+
 ### Guides
 
 開発者や自動化が参照する手順書。

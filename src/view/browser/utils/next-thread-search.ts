@@ -1,9 +1,11 @@
 import { DEFAULT_CONFIG } from "src/app/config-defaults";
 import type { IThread } from "src/service-container/interfaces";
-import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
+import {
+  getBoardUrlFromThreadUrl,
+  resolveBoardUrlForBrowser,
+} from "src/view/browser/utils/link-routing";
 
-// 変更理由: read.cgi 系URLの判定ロジックを link-routing に集約し、
-// 次スレ探索側は互換のために再エクスポートだけを維持する。
+// 変更理由: 板URLの判定を共有処理に集約し、次スレ探索側には互換再エクスポートだけを残す。
 export { getBoardUrlFromThreadUrl };
 
 const TITLE_DECORATION_PATTERN =
@@ -340,13 +342,9 @@ function hasAdjacentNonExplicitNumber(
 }
 
 function extractThreadTimestamp(url: string): number {
-  try {
-    const parsed = new window.URL(url);
-    const matched = parsed.pathname.match(/\/(\d+)\/?$/);
-    return matched ? Number.parseInt(matched[1], 10) : 0;
-  } catch {
-    return 0;
-  }
+  const resolved = resolveBoardUrlForBrowser(url);
+  if (resolved?.type !== "thread" || !/^\d+$/.test(resolved.threadId)) return 0;
+  return Number.parseInt(resolved.threadId, 10);
 }
 
 function getThreadSortKey(thread: IThread): number {
@@ -378,18 +376,11 @@ function isMarkedThread(title: string): boolean {
 }
 
 function isSameBoard(leftUrl: string, rightUrl: string): boolean {
-  try {
-    const left = new window.URL(leftUrl);
-    const right = new window.URL(rightUrl);
-    const leftBoardKey = left.pathname.match(/\/test\/read\.cgi\/([^/]+)\//)?.[1];
-    const rightBoardKey = right.pathname.match(/\/test\/read\.cgi\/([^/]+)\//)?.[1];
-    if (leftBoardKey && rightBoardKey) {
-      return left.hostname === right.hostname && leftBoardKey === rightBoardKey;
-    }
-    return getBoardUrlFromThreadUrl(leftUrl) === getBoardUrlFromThreadUrl(rightUrl);
-  } catch {
-    return false;
-  }
+  // 変更理由: 板名とホスト名の組み合わせはURL形式ごとに異なるため、同一板判定はch-libのキーを使う。
+  const left = resolveBoardUrlForBrowser(leftUrl);
+  const right = resolveBoardUrlForBrowser(rightUrl);
+  if (left?.type !== "thread" || right?.type !== "thread") return false;
+  return left.boardKey === right.boardKey;
 }
 
 function countLinkEvidence(

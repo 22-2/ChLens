@@ -1,10 +1,10 @@
+import { getWriteFormData, isWriteAuthToken } from "packages/ch-lib/src/index";
 import { type FormEvent, type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import { platform } from "src/app";
 import { wait } from "src/app/Defer";
 import { isTauriRuntime } from "src/app/platform/runtime";
 import type { HttpResponse, WriteFormData, WriteFormField } from "src/app/platform/types";
 import { getStore2String, setStore2String } from "src/app/Store2Storage";
-import { URL as ChURL } from "src/core/URL";
 import { container } from "src/service-container/index";
 import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import { useScopedConfigBooleanSetting } from "src/view/browser/hooks/use-scoped-config-boolean-setting";
@@ -75,105 +75,19 @@ export interface UseWriteOptions {
 // 純粋関数: BBS種別に応じたフォームデータを組み立てる
 // submit_res.js の _getFormData に相当
 // -----------------------------------------------------------------------
-function isEddibbAuthToken(threadUrl: string, mail: string): boolean {
-  try {
-    const url = new ChURL(threadUrl);
-    return url.hostname === "bbs.eddibb.cc" && /^#[A-Za-z0-9_-]{16,}$/.test(mail.trim());
-  } catch {
-    return false;
-  }
-}
-
 function buildFormData(
   threadUrl: string,
   name: string,
   mail: string,
   message: string,
 ): WriteFormData | null {
-  let url: ChURL;
-  try {
-    url = new ChURL(threadUrl);
-  } catch {
-    return null;
-  }
-
-  const { bbsType } = url.guessType();
-  const tsld = url.getTsld();
-  const { protocol, hostname } = url;
-  const parts = url.pathname.split("/");
-  const referer = (() => {
-    try {
-      return url.toBoard().href;
-    } catch (error) {
-      console.error("書き込み用の板URLを作成できませんでした:", error);
-      return threadUrl;
-    }
-  })();
-
-  if (bbsType === "2ch") {
-    if (tsld === "open2ch.net") {
-      return {
-        action: `${protocol}//${hostname}/test/bbs.cgi`,
-        charset: "UTF-8",
-        referer,
-        input: { submit: "書", bbs: parts[3], key: parts[4], FROM: name, mail },
-        textarea: { MESSAGE: message },
-      };
-    }
-    // eddibb は submit ラベルが異なる
-    const submitLabel = hostname === "bbs.eddibb.cc" ? "書き込む" : "書きこむ";
-    return {
-      action: `${protocol}//${hostname}/test/bbs.cgi`,
-      charset: "Shift_JIS",
-      referer,
-      input: {
-        submit: submitLabel,
-        time: String(Math.floor(Date.now() / 1000) - 60),
-        bbs: parts[3],
-        key: parts[4],
-        FROM: name,
-        mail,
-        oekaki_thread1: "",
-      },
-      textarea: { MESSAGE: message },
-    };
-  }
-
-  if (bbsType === "jbbs") {
-    return {
-      action: `${protocol}//jbbs.shitaraba.net/bbs/write.cgi/${parts[3]}/${parts[4]}/${parts[5]}/`,
-      charset: "EUC-JP",
-      referer,
-      input: {
-        TIME: String(Math.floor(Date.now() / 1000) - 60),
-        DIR: parts[3],
-        BBS: parts[4],
-        KEY: parts[5],
-        NAME: name,
-        MAIL: mail,
-      },
-      textarea: { MESSAGE: message },
-    };
-  }
-
-  if (bbsType === "machi") {
-    return {
-      action: `${protocol}//${hostname}/bbs/write.cgi`,
-      charset: "Shift_JIS",
-      referer,
-      input: {
-        submit: "書きこむ",
-        TIME: String(Math.floor(Date.now() / 1000) - 60),
-        BBS: parts[3],
-        KEY: parts[4],
-        NAME: name,
-        MAIL: mail,
-      },
-      textarea: { MESSAGE: message },
-    };
-  }
-
-  return null;
+  // 変更理由: 投稿先ごとのURL形式・項目名・文字コードをUI側へ重複させず、ch-libでフォーム仕様を解決する。
+  return getWriteFormData(threadUrl, {
+    name,
+    mail,
+    message,
+    nowSeconds: Math.floor(Date.now() / 1000),
+  });
 }
 
 // -----------------------------------------------------------------------
@@ -500,7 +414,7 @@ export function useWrite(threadUrl: string, options: UseWriteOptions = {}): UseW
 
       // 変更理由: eddibbは認証ページで発行した#トークンをメール欄で認証するため、
       // sage設定がONでも認証トークンを「sage」で上書きしない。
-      const effectiveMail = sage && !isEddibbAuthToken(threadUrl, mail) ? "sage" : mail;
+      const effectiveMail = sage && !isWriteAuthToken(threadUrl, mail) ? "sage" : mail;
       const formData = buildFormData(threadUrl, name, effectiveMail, messageToSubmit);
       if (!formData) {
         pendingSubmittedWriteRef.current = null;

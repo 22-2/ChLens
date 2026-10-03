@@ -1,4 +1,5 @@
 import {
+  ChURL,
   executeThreadFetch,
   fetchHttpsFirst,
   getThreadArchiveFallbacks,
@@ -6,12 +7,12 @@ import {
   isHtmlThread,
   type ParsedThread,
   parseThread,
+  resolveBoardUrl,
   type ThreadResponse,
   toCanonicalThread,
 } from "@chlen/ch-lib";
 import browser from "webextension-polyfill";
 
-import { ChURL } from "../../packages/ch-lib/src/url/ChURL";
 import type { HttpResponse } from "../app/platform/types";
 import type { IRes } from "../service-container/interfaces";
 import { encodeBrowsingHistoryForMcp, encodeWriteHistoryForMcp } from "./history-output";
@@ -75,16 +76,12 @@ function asHistorySearchQuery(value: unknown): {
 
 function normalizeThreadUrl(rawUrl: string): string {
   try {
-    const input = new URL(rawUrl);
-    const eddibbDat = /^\/([\w-]+)\/dat\/(\d+)\.dat\/?$/i.exec(input.pathname);
-    if (input.hostname.toLowerCase() === "bbs.eddibb.cc" && eddibbDat) {
-      // 変更理由: eddibbのdat直リンクはChURLの通常入口より先に専用形式で判定されるため、
-      // MCPへ貼られた保存先URLもread.cgi形式へ揃えて既存の取得計画を再利用する。
-      input.pathname = `/test/read.cgi/${eddibbDat[1]}/${eddibbDat[2]}/`;
-    }
-    const url = new ChURL(input);
-    if (url.type !== "thread") throw new Error("スレッドURLを指定してください");
-    return url.url.href;
+    const parsed = resolveBoardUrl(rawUrl, { mode: "browse" });
+    if (parsed?.type !== "thread") throw new Error("スレッドURLを指定してください");
+    const url = new ChURL(parsed.threadUrl);
+    // 変更理由: MCP取得先ではページ内レス位置を使わないため、保存用URLからフラグメントを除く。
+    url.hash = "";
+    return url.href;
   } catch (error: unknown) {
     if (error instanceof Error && error.message === "スレッドURLを指定してください") throw error;
     throw new Error("スレッドURLを指定してください");

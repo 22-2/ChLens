@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, isNull, lt, ne, or, sql } from "drizzle-orm";
+import { ChURL, normalizeReadStateUrl } from "packages/ch-lib/src/index";
 import { getTauriDrizzleContext } from "src/app/platform/tauri/drizzle/db";
 import {
   bbsMenuCacheTable,
@@ -7,7 +8,6 @@ import {
   readStateTable,
   writeHistoryTable,
 } from "src/app/platform/tauri/drizzle/schema";
-import { URL } from "src/core/URL";
 import type { IReadState } from "src/service-container/interfaces";
 
 interface BBSMenuCacheRecord {
@@ -67,16 +67,16 @@ interface WriteHistoryRecord {
 }
 
 interface UrlFilterResult {
-  original: URL;
-  replaced: URL;
+  original: ChURL;
+  replaced: ChURL;
 }
 
 function urlFilter(originalUrlStr: string): UrlFilterResult {
-  const original = new URL(originalUrlStr);
-  const replaced = new URL(originalUrlStr);
-  if (original.hostname.endsWith(".5ch.io")) {
-    replaced.hostname = "*.5ch.io";
-  }
+  const original = new ChURL(originalUrlStr);
+  // 変更理由: 既存の既読DBキーにフラグメントを含めない契約を保つ。
+  original.hash = "";
+  // 変更理由: 既読DBキーのホスト変換をIndexedDB実装と共通化する。
+  const replaced = new ChURL(normalizeReadStateUrl(original.href));
 
   return { original, replaced };
 }

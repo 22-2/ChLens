@@ -6,8 +6,8 @@ import {
 import { describe, expect, it, vi } from "vite-plus/test";
 
 // 実在するスレッドURLを使わず、既知ホストと未知ホストの入力ポリシーを比較する。
-vi.mock("packages/ch-lib/src/index", async (importOriginal) => {
-  const library = await importOriginal<typeof import("packages/ch-lib/src/index")>();
+vi.mock("packages/ch-lib/src/url/hosts", async (importOriginal) => {
+  const library = await importOriginal<typeof import("packages/ch-lib/src/url/hosts")>();
   return {
     ...library,
     classifyBoardHost: (hostname: string) =>

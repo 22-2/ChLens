@@ -271,8 +271,7 @@ export function getDisplayUrl(page: Page): string {
   }
 }
 
-// スレッドURLから板URLを導出する
-// /test/read.cgi/board_name/thread_id/ → /board_name/
+// 変更理由: 板URLの形式ごとの差をUIのページ階層へ持ち込まないため、導出は共通処理へ委譲する。
 function threadUrlToBoardUrl(threadUrl: string): string {
   return getBoardUrlFromThreadUrl(threadUrl);
 }
