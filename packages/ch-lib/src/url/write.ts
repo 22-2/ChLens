@@ -22,6 +22,9 @@ export function getWriteFormData(threadUrl: string, input: WriteFormInput): ChWr
   let url: ChURL;
   try {
     url = new ChURL(threadUrl);
+    // 保存・照合用の正規化で通信方式が変わっても、投稿は入力URLのHTTP/HTTPSを維持する。
+    // 掲示板ごとの強制HTTPS化ではなく、フォーク元と同じ共通方針で送信先を決める。
+    url.protocol = new URL(threadUrl).protocol;
   } catch {
     return null;
   }

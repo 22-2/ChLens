@@ -50,7 +50,8 @@ const BoardService = {
       return {
         // BoardParser's canonical subject fields are projected into the legacy service item
         // explicitly; this keeps service-only state from leaking back into ch-lib.
-        url: threadUrl,
+        // 既読照合キーは表示URLへ流用せず、一覧取得元のHTTP/HTTPSを投稿まで引き継ぐ。
+        url: thread.url,
         title: thread.title,
         resCount: thread.resCount,
         createdAt: thread.createdAt,

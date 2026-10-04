@@ -9,7 +9,18 @@ import {
   RESPECT_DEFAULT_EXTERNAL,
   shouldHandleUrlWithApp,
 } from "src/view/browser/utils/link-routing";
-import { beforeEach, describe, expect, it } from "vite-plus/test";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
+
+// 実在するスレッドを使わず、通信方式と保存キーの違いを検証する。
+vi.mock("packages/ch-lib/src/url/hosts", async (importOriginal) => {
+  const hosts = await importOriginal<typeof import("packages/ch-lib/src/url/hosts")>();
+  return {
+    ...hosts,
+    HOSTNAME: { ...hosts.HOSTNAME, EDDIBB: "edge.example.com" },
+    classifyBoardHost: (hostname: string) =>
+      hostname === "edge.example.com" ? "eddibb" : hosts.classifyBoardHost(hostname),
+  };
+});
 
 describe("link-routing", () => {
   beforeEach(() => {
@@ -184,26 +195,26 @@ describe("link-routing", () => {
   });
 
   it("eddibb の簡略 thread URL も内部スレURLへ正規化する", () => {
-    expect(parseInternalBrowserPage("https://bbs.eddibb.cc/liveedge/1000000006/")).toEqual({
+    expect(parseInternalBrowserPage("https://edge.example.com/liveedge/1000000006/")).toEqual({
       type: "thread",
-      title: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000006/",
-      threadUrl: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000006/",
+      title: "https://edge.example.com/test/read.cgi/liveedge/1000000006/",
+      threadUrl: "https://edge.example.com/test/read.cgi/liveedge/1000000006/",
     });
   });
 
   it("eddibb のdat直リンクをHTTPの内部スレURLへ正規化する", () => {
-    expect(parseOmnibarBrowserPage("http://bbs.eddibb.cc/liveedge/dat/1000000011.dat")).toEqual({
+    expect(parseOmnibarBrowserPage("http://edge.example.com/liveedge/dat/1000000011.dat")).toEqual({
       type: "thread",
-      title: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000011/",
-      threadUrl: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000011/",
+      title: "http://edge.example.com/test/read.cgi/liveedge/1000000011/",
+      threadUrl: "http://edge.example.com/test/read.cgi/liveedge/1000000011/",
     });
   });
 
   it("eddibb の省略 thread URL は末尾スラッシュなしでも内部スレURLへ正規化する", () => {
-    expect(parseInternalBrowserPage("https://bbs.eddibb.cc/liveedge/1000000010")).toEqual({
+    expect(parseInternalBrowserPage("https://edge.example.com/liveedge/1000000010")).toEqual({
       type: "thread",
-      title: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000010/",
-      threadUrl: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000010/",
+      title: "https://edge.example.com/test/read.cgi/liveedge/1000000010/",
+      threadUrl: "https://edge.example.com/test/read.cgi/liveedge/1000000010/",
     });
   });
 
@@ -247,10 +258,10 @@ describe("link-routing strict", () => {
   });
 
   it("eddibb は strict でも正規化する", () => {
-    expect(parseInternalBrowserPageStrict("https://bbs.eddibb.cc/liveedge/1000000010")).toEqual({
+    expect(parseInternalBrowserPageStrict("https://edge.example.com/liveedge/1000000010")).toEqual({
       type: "thread",
-      title: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000010/",
-      threadUrl: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000010/",
+      title: "https://edge.example.com/test/read.cgi/liveedge/1000000010/",
+      threadUrl: "https://edge.example.com/test/read.cgi/liveedge/1000000010/",
     });
   });
 });

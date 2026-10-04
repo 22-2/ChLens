@@ -167,14 +167,13 @@ function parseKnownBoardRoute(url: URL): ParsedRoute | null {
   if (hostType === "eddibb") {
     const thread = parseChThread(url);
     if (thread) {
-      url.protocol = "http:";
+      // 開くURLの通信方式は入力どおりに保ち、保存キーの正規化を閲覧・投稿へ持ち込まない。
       return thread;
     }
 
     const shortThread = ROUTE_PATTERNS.CH_SHORT_THREAD.exec(url.pathname);
     if (shortThread?.[2]) {
       url.pathname = `/test/read.cgi/${shortThread[1]}/${shortThread[2]}/`;
-      url.protocol = "http:";
       return {
         type: "thread",
         bbsType: "2ch",

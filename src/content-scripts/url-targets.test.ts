@@ -2,7 +2,13 @@ import {
   isTargetContentScriptUrl,
   normalizeContentScriptTargetUrl,
 } from "src/content-scripts/url-targets";
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it, vi } from "vite-plus/test";
+
+// 実在するスレッドを使わず、通信方式と保存キーの違いを検証する。
+vi.mock("packages/ch-lib/src/url/hosts", async (importOriginal) => {
+  const hosts = await importOriginal<typeof import("packages/ch-lib/src/url/hosts")>();
+  return { ...hosts, HOSTNAME: { ...hosts.HOSTNAME, EDDIBB: "edge.example.com" } };
+});
 
 describe("content script url targets", () => {
   it("5ch の read.cgi スレッドURLを対象と判定する", () => {
@@ -34,8 +40,8 @@ describe("content script url targets", () => {
   });
 
   it("eddibb の素URLを read.cgi 形式へ正規化する", () => {
-    expect(normalizeContentScriptTargetUrl("https://bbs.eddibb.cc/liveedge/1000000006/")).toBe(
-      "http://bbs.eddibb.cc/test/read.cgi/liveedge/1000000006/",
+    expect(normalizeContentScriptTargetUrl("https://edge.example.com/liveedge/1000000006/")).toBe(
+      "https://edge.example.com/test/read.cgi/liveedge/1000000006/",
     );
   });
 });

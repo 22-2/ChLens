@@ -60,9 +60,12 @@ function isC2chTarget(hostname: string, pathname: string): boolean {
 
 /** eddibb短縮スレッドURLを内部取得器が扱える形式へ正規化する。 */
 export function normalizeContentScriptTargetUrl(rawUrl: string): string {
-  const matched = /^https:\/\/bbs\.eddibb\.cc\/([\w-]+)\/(\d+)\/?$/i.exec(rawUrl);
-  if (!matched) return rawUrl;
-  return `http://bbs.eddibb.cc/test/read.cgi/${matched[1]}/${matched[2]}/`;
+  const matched = /^https:\/\/([^/]+)\/([\w-]+)\/(\d+)\/?$/i.exec(rawUrl);
+  if (!matched || matched[1].toLowerCase() !== HOSTNAME.EDDIBB) return rawUrl;
+  // ブラウザから開いたHTTPSを維持し、後続の投稿先までHTTPへ変えてしまわない。
+  const target = new URL(rawUrl);
+  target.pathname = `/test/read.cgi/${matched[2]}/${matched[3]}/`;
+  return target.href;
 }
 
 /** content scriptを注入する掲示板URLかを判定する。 */

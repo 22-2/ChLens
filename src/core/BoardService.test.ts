@@ -25,13 +25,19 @@ vi.mock("src/service-container/index", () => ({
 
 import BoardService from "src/core/BoardService";
 
+// 実在するスレッドを使わず、通信方式と保存キーの違いを検証する。
+vi.mock("packages/ch-lib/src/url/hosts", async (importOriginal) => {
+  const hosts = await importOriginal<typeof import("packages/ch-lib/src/url/hosts")>();
+  return { ...hosts, HOSTNAME: { ...hosts.HOSTNAME, EDDIBB: "edge.example.com" } };
+});
+
 describe("BoardService canonical subject adapter", () => {
-  it("エッヂの一覧URLを既読DBのURLへ揃えて既読情報を反映する", async () => {
+  it("一覧URLのHTTPSを維持しHTTPの既読キーで既読情報を反映する", async () => {
     mocks.getBoard.mockResolvedValueOnce({
       status: "success",
       data: [
         {
-          url: "https://bbs.eddibb.cc/test/read.cgi/liveedge/1/",
+          url: "https://edge.example.com/test/read.cgi/liveedge/1/",
           title: "スレッド",
           resCount: 4,
           createdAt: 1000,
@@ -40,7 +46,7 @@ describe("BoardService canonical subject adapter", () => {
       ],
     });
     const readState = {
-      url: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1/",
+      url: "http://edge.example.com/test/read.cgi/liveedge/1/",
       last: 2,
       read: 2,
       received: 4,
@@ -48,10 +54,10 @@ describe("BoardService canonical subject adapter", () => {
     mocks.getByBoard.mockResolvedValueOnce([readState]);
     mocks.getBookmark.mockReturnValueOnce(undefined);
 
-    await expect(BoardService.getThreads("https://bbs.eddibb.cc/liveedge/")).resolves.toEqual({
+    await expect(BoardService.getThreads("https://edge.example.com/liveedge/")).resolves.toEqual({
       threads: [
         {
-          url: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1/",
+          url: "https://edge.example.com/test/read.cgi/liveedge/1/",
           title: "スレッド",
           resCount: 4,
           createdAt: 1000,
@@ -65,6 +71,6 @@ describe("BoardService canonical subject adapter", () => {
       ],
       message: null,
     });
-    expect(mocks.getByBoard).toHaveBeenCalledWith("http://bbs.eddibb.cc/liveedge/");
+    expect(mocks.getByBoard).toHaveBeenCalledWith("http://edge.example.com/liveedge/");
   });
 });

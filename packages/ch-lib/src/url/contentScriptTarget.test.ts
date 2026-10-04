@@ -1,4 +1,10 @@
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it, vi } from "vite-plus/test";
+
+// 短縮URLの通信方式を実在する掲示板へ依存せずに検証する。
+vi.mock("./hosts", async (importOriginal) => {
+  const hosts = await importOriginal<typeof import("./hosts")>();
+  return { ...hosts, HOSTNAME: { ...hosts.HOSTNAME, EDDIBB: "edge.example.com" } };
+});
 
 import { isTargetContentScriptUrl, normalizeContentScriptTargetUrl } from "./contentScriptTarget";
 import { HOSTNAME } from "./hosts";
@@ -26,7 +32,7 @@ describe("content script対象URLの判定", () => {
   it("eddibbの短縮スレッドURLを取得器向け形式へ正規化する", () => {
     expect(
       normalizeContentScriptTargetUrl(urlWithHost(HOSTNAME.EDDIBB, "/sample-board/123/")),
-    ).toBe(`http://${HOSTNAME.EDDIBB}/test/read.cgi/sample-board/123/`);
+    ).toBe(`https://${HOSTNAME.EDDIBB}/test/read.cgi/sample-board/123/`);
     expect(normalizeContentScriptTargetUrl(urlWithHost(HOSTNAME.EDDIBB, "/sample-board/"))).toBe(
       `https://${HOSTNAME.EDDIBB}/sample-board/`,
     );

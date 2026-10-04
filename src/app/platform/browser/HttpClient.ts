@@ -99,6 +99,7 @@ export const BrowserHttpClient: HttpClient = {
   },
 
   async setupWriteHeaders(formAction: string): Promise<void> {
+    // フォーク元と同様、認証Cookieはブラウザに任せ、メール欄の値から作成・上書きしない。
     const api = browser;
 
     if (
