@@ -3,12 +3,10 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { createInterface } from "node:readline";
 import type { Duplex } from "node:stream";
 
-import { decode } from "@toon-format/toon";
-
 import {
-  buildDebateContext,
   DEBATE_RESULT_SCHEMA,
   type DebatePrepareParams,
+  prepareDebateContext,
   validateDebateResult,
 } from "../src/mcp/debate.ts";
 import {
@@ -22,6 +20,7 @@ import {
   type ThreadReadParams,
   type WriteHistoryParams,
 } from "../src/mcp/protocol.ts";
+import { readDebateInstructions } from "./debate-instructions.ts";
 import { normalizeDebateFormats, saveDebateResult } from "./debate-result.ts";
 import { type BridgeRequester, createSharedBridge } from "./shared-mcp-bridge.ts";
 
@@ -582,20 +581,20 @@ async function prepareDebate(
   broker: BridgeRequester,
   params: Record<string, unknown>,
 ): Promise<string> {
-  const bridgeResponse = await broker.request("read-thread", {
-    url: typeof params.url === "string" ? params.url : undefined,
-    mode:
-      params.mode === "cache" || params.mode === "refresh" || params.mode === "auto"
-        ? params.mode
-        : "auto",
-  });
-  if (!bridgeResponse.ok)
-    throw new Error(`ChLensから取得できませんでした: ${bridgeResponse.error}`);
-  const payload = bridgeResponse.result as BridgeThreadResult;
-  if (!payload || typeof payload.toon !== "string") {
-    throw new Error("ChLensのスレッド応答にTOONがありません");
-  }
-  const context = buildDebateContext(decode(payload.toon), debatePrepareParams(params));
+  const context = await prepareDebateContext(
+    debatePrepareParams(params),
+    async (readParams) => {
+      const bridgeResponse = await broker.request("read-thread", readParams);
+      if (!bridgeResponse.ok)
+        throw new Error(`ChLensから取得できませんでした: ${bridgeResponse.error}`);
+      const payload = bridgeResponse.result as BridgeThreadResult;
+      if (!payload || typeof payload.toon !== "string") {
+        throw new Error("ChLensのスレッド応答にTOONがありません");
+      }
+      return payload;
+    },
+    readDebateInstructions(),
+  );
   return context.toon;
 }
 

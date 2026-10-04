@@ -1,0 +1,3 @@
+interface:
+  display_name: "ChLens 議論判定"
+  short_description: "5ch互換掲示板ChLensの議論を争点別に判定し結果をJSON・画像で保存"

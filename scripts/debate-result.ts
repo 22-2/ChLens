@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { chromium } from "playwright";
 
@@ -269,14 +270,23 @@ function simpleMetricRow(
   metric: DebateSimpleMetric,
   tone: string,
 ): string {
-  const dots = Array.from({ length: 5 }, (_, index) => {
-    const fill = Math.max(0, Math.min(1, metric.score - index)) * 100;
-    return `<span class="score-dot" style="--fill:${fill}%;--tone:${tone}"></span>`;
-  }).join("");
+  // 変更理由: 評価不能に平均点のメーターを出すと実測の評価に見えるため、数値とゲージを両方省く。
+  const score = metric.score;
+  const dots =
+    score === null
+      ? ""
+      : `<span class="dot-meter">${Array.from({ length: 5 }, (_, index) => {
+          const fill = Math.max(0, Math.min(1, score - index)) * 100;
+          return `<span class="score-dot" style="--fill:${fill}%;--tone:${tone}"></span>`;
+        }).join("")}</span>`;
+  const scoreHtml =
+    score === null
+      ? '<strong class="score-number unrated">評価不能</strong>'
+      : `<strong class="score-number">${score.toFixed(1)}<small>/5.0</small></strong>`;
   return `<article class="metric-row ${tone === "#38bdf8" ? "blue" : "red"}">
     <div class="metric-icon-box" aria-hidden="true">${icon}</div>
-    <div class="metric-main"><div class="metric-upper"><strong>${label}</strong><span class="dot-meter">${dots}</span></div>
-      <div class="metric-lower"><p class="metric-desc">${highlightCampNames(metric.reason)}</p><strong class="score-number">${metric.score.toFixed(1)}<small>/5.0</small></strong></div>
+    <div class="metric-main"><div class="metric-upper"><strong>${label}</strong>${dots}</div>
+      <div class="metric-lower"><p class="metric-desc">${highlightCampNames(metric.reason)}</p>${scoreHtml}</div>
     </div>
   </article>`;
 }
@@ -284,17 +294,22 @@ function simpleMetricRow(
 export function renderSimpleDebateHtml(result: DebateResult): string {
   const view = result.simpleView;
   // 変更理由: 書き出すHTMLはブラウザ画面のCSSを読まないため、必要なfoundationを埋め込んで単体で表示可能にする。
+  // Viteのasset URL変換でCSS以外を読まないよう、Nodeのファイルパスとして解決する。
+  const foundationDirectory = path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "../src/view/browser/styles/foundation",
+  );
   const foundationCss = ["tokens.css", "themes.css"]
-    .map((file) =>
-      readFileSync(
-        new URL(`../src/view/browser/styles/foundation/${file}`, import.meta.url),
-        "utf8",
-      ),
-    )
+    .map((file) => readFileSync(path.join(foundationDirectory, file), "utf8"))
     .join("\n");
   // 変更理由: 参考画像のゲージ・二列主張・三軸評価を再現しつつ、長文はHTMLで折り返して全量を残す。
-  const bluePct = Math.round(view.blueAdvantage * 100);
-  const redPct = 100 - bluePct;
+  const bluePct = view.blueAdvantage === null ? null : Math.round(view.blueAdvantage * 100);
+  const redPct = bluePct === null ? null : 100 - bluePct;
+  // 変更理由: 判定保留を50対50の比較として描かず、互角とは異なる状態を画像だけでも伝える。
+  const gaugeHtml =
+    bluePct === null
+      ? `<div class="topic">${highlightCampNames(view.topic)}</div><p class="pending-verdict">判定保留（優勢度は評価不能）</p>`
+      : `<div class="rates"><span class="blue-rate">${bluePct}%</span><div class="topic">${highlightCampNames(view.topic)}</div><span class="red-rate">${redPct}%</span></div><div class="gauge"><div class="gauge-blue" style="width:${bluePct}%"></div><div class="gauge-red" style="width:${redPct}%"></div><i class="gauge-center-line"></i></div>`;
   const side = (name: "blue" | "red") => {
     const value = view[name];
     const tone = name === "blue" ? "#38bdf8" : "#f87171";
@@ -328,6 +343,7 @@ export function renderSimpleDebateHtml(result: DebateResult): string {
   .side-id.blue { color: #38bdf8; text-shadow: var(--sys-debate-blue-glow); }
   .side-id.red { color: #f87171; text-shadow: var(--sys-debate-red-glow); }
   .gauge-center { min-width: 0; }
+  .pending-verdict { margin: var(--sys-space-2) 0; color: var(--sys-color-media-text-muted); font-size: var(--sys-debate-font-label); text-align: center; }
   .rates { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; font: 800 34px/1 Impact, "Arial Black", sans-serif; font-size: var(--sys-space-13); }
   .rates .blue-rate { color: #38bdf8; text-shadow: var(--sys-debate-blue-glow); }
   .rates .red-rate { color: #f87171; text-shadow: var(--sys-debate-red-glow); }
@@ -368,6 +384,7 @@ export function renderSimpleDebateHtml(result: DebateResult): string {
   .metric-desc { min-width: 0; margin: 0; color: #cbd5e1; font-size: var(--sys-debate-font-body); line-height: var(--sys-debate-line-height); white-space: pre-wrap; overflow-wrap: anywhere; text-align: justify; }
   .score-number { flex: none; font: 800 26px/1 Impact,"Arial Black",sans-serif; font-size: var(--sys-space-11); margin-top: var(--sys-space-4); text-align: right; }
   .score-number small { color: #64748b; font: 13px/1 "Yu Gothic UI",Meiryo,sans-serif; }
+  .score-number.unrated { font-family: var(--sys-debate-font-family); font-size: var(--sys-debate-font-label); }
   .summary-panel { display: grid; grid-template-columns: 120px minmax(0,1fr); align-items: center; gap: 12px; padding: var(--sys-space-3) var(--sys-space-6); border: 1px solid #1e293b; border-radius: 4px; background: #090d1a; }
   .summary-label { padding-right: 12px; border-right: 1px solid #334155; color: #eab308; font-size: var(--sys-debate-font-heading); font-weight: 900; text-align: center; }
   .summary-text { min-width: 0; margin: 0; color: #e2e8f0; font-size: var(--sys-debate-font-summary); line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; text-align: justify; }
@@ -379,7 +396,7 @@ export function renderSimpleDebateHtml(result: DebateResult): string {
 </style></head><body><main class="image-root">
   <section class="gauge-panel">
     <div class="side-id blue">${view.blue.participants.map(escapeHtml).join("、") || highlightCampNames(view.blue.label)}</div>
-    <div class="gauge-center"><div class="rates"><span class="blue-rate">${bluePct}%</span><div class="topic">${highlightCampNames(view.topic)}</div><span class="red-rate">${redPct}%</span></div><div class="gauge"><div class="gauge-blue" style="width:${bluePct}%"></div><div class="gauge-red" style="width:${redPct}%"></div><i class="gauge-center-line"></i></div></div>
+    <div class="gauge-center">${gaugeHtml}</div>
     <div class="side-id red">${view.red.participants.map(escapeHtml).join("、") || highlightCampNames(view.red.label)}</div>
   </section>
   <!-- 変更理由: 元スレを知らない読者にも対立の発端が伝わるよう、見出しと各側の主張の間に背景を表示する。 -->

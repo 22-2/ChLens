@@ -1,0 +1,3 @@
+interface:
+  display_name: "ChLens ログ・履歴"
+  short_description: "5ch互換掲示板ChLensの保存ログと閲覧・書き込み履歴を検索・閲覧"

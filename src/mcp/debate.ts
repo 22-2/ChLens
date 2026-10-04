@@ -1,7 +1,6 @@
-import { encode } from "@toon-format/toon";
+import { decode, encode } from "@toon-format/toon";
 
-import { DEBATE_ANALYSIS_INSTRUCTIONS as ANALYSIS_INSTRUCTIONS } from "./debate-instructions.ts";
-import type { ThreadReadMode } from "./protocol.ts";
+import type { BridgeThreadResult, ThreadReadMode, ThreadReadParams } from "./protocol.ts";
 
 const MAX_CONTEXT_RESPONSES = 240;
 const MAX_CONTEXT_DEPTH = 8;
@@ -97,7 +96,8 @@ export interface DebateResearch {
 }
 
 export interface DebateSimpleMetric {
-  score: number;
+  // 変更理由: 評価材料不足を平均点と混同しないよう、評価不能は数値ではなくnullで表す。
+  score: number | null;
   reason: string;
 }
 
@@ -116,7 +116,8 @@ export interface DebateSimpleView {
   topic: string;
   blue: DebateSimpleSide;
   red: DebateSimpleSide;
-  blueAdvantage: number;
+  // 変更理由: 判定保留を互角の0.5と区別し、画像でも優勢度を表示しない状態を持たせる。
+  blueAdvantage: number | null;
   verdictReason: string;
 }
 
@@ -145,11 +146,11 @@ const SIMPLE_METRIC_SCHEMA = {
   required: ["score", "reason"],
   properties: {
     score: {
-      type: "number",
+      type: ["number", "null"],
       minimum: 0,
       maximum: 5,
       description:
-        "今回の発言を評価する主観的な点数。0.5刻みを目安とし、材料不足なら便宜上2.5とした旨をreasonに明記する。人物全体の能力ではない。",
+        "今回の発言を評価する主観的な点数。0.5刻みを目安とし、材料不足ならnullとしてreasonに評価不能の理由を明記する。人物全体の能力ではない。",
     },
     reason: {
       type: "string",
@@ -329,11 +330,11 @@ export const DEBATE_RESULT_SCHEMA = {
         blue: SIMPLE_SIDE_SCHEMA,
         red: SIMPLE_SIDE_SCHEMA,
         blueAdvantage: {
-          type: "number",
+          type: ["number", "null"],
           minimum: 0,
           maximum: 1,
           description:
-            "中心争点での主観的な優勢度。勝率や事実の確率ではない。0.1刻みを目安とし、判定不能なら便宜上0.5としてverdictReasonに判定保留と理由を明記する。",
+            "中心争点での主観的な優勢度。勝率や事実の確率ではない。0.1刻みを目安とし、判定不能ならnullとしてverdictReasonに判定保留と理由を明記する。0.5は材料に基づく互角に限る。",
         },
         verdictReason: {
           type: "string",
@@ -505,7 +506,12 @@ function buildContextNumbers(
   return distances;
 }
 
-export function buildDebateContext(value: unknown, params: DebatePrepareParams): DebateContext {
+// 変更理由: 判定処理へNodeのファイル読み込みを持ち込まず、MCP側で読んだスキルの指示を受け取る。
+export function buildDebateContext(
+  value: unknown,
+  params: DebatePrepareParams,
+  instructions: string,
+): DebateContext {
   const thread = normalizeThreadPayload(value);
   const scope = resolveScope(thread.responses, params);
   // 変更理由: 返信の枝を利用者の指定深度で途中打ち切りすると議論の応酬を見落とすため、
@@ -553,7 +559,7 @@ export function buildDebateContext(value: unknown, params: DebatePrepareParams):
       responseCount: responses.length,
       omittedResponses,
       contextDepth,
-      instructions: ANALYSIS_INSTRUCTIONS,
+      instructions,
       resultSchema: DEBATE_RESULT_SCHEMA,
     },
     responses,
@@ -568,10 +574,52 @@ export function buildDebateContext(value: unknown, params: DebatePrepareParams):
     scope,
     responses,
     omittedResponses,
-    instructions: ANALYSIS_INSTRUCTIONS,
+    instructions,
     resultSchema: DEBATE_RESULT_SCHEMA,
     toon: encode(contextData),
   };
+}
+
+export async function prepareDebateContext(
+  params: DebatePrepareParams,
+  readThread: (params: ThreadReadParams) => Promise<BridgeThreadResult>,
+  instructions: string,
+): Promise<DebateContext> {
+  const firstPage = await readThread({ url: params.url, mode: params.mode ?? "auto" });
+  const thread = normalizeThreadPayload(decode(firstPage.toon));
+  const responses = new Map(thread.responses.map((response) => [response.num, response]));
+  let lastResponseNumber = thread.responses.reduce(
+    (last, response) => Math.max(last, response.num),
+    0,
+  );
+
+  // 変更理由: 通常閲覧の500件制限を判定にも適用すると後半の中心レスや反論を落とすため、
+  // 全ページを揃えてから返信ツリーを抽出する。追加ページはURLとキャッシュを固定する。
+  while (responses.size < thread.totalResponses) {
+    const start = lastResponseNumber + 1;
+    const page = await readThread({ url: thread.url, mode: "cache", start });
+    const next = normalizeThreadPayload(decode(page.toon));
+    if (next.url !== thread.url || next.totalResponses !== thread.totalResponses) {
+      throw new Error("議論用ログの取得中にスレッドまたはレス数が変わりました。再実行してください");
+    }
+    const additional = next.responses.filter((response) => response.num >= start);
+    // 変更理由: 続きを取得できないまま部分ログで判定したり、同じページを無限取得したりしない。
+    if (additional.length === 0) {
+      throw new Error(`議論用ログの続き（レス${start}以降）を取得できませんでした`);
+    }
+    for (const response of additional) {
+      responses.set(response.num, response);
+      lastResponseNumber = Math.max(lastResponseNumber, response.num);
+    }
+  }
+  return buildDebateContext(
+    {
+      thread: { title: thread.title, url: thread.url, totalResponses: thread.totalResponses },
+      responses: [...responses.values()],
+    },
+    params,
+    instructions,
+  );
 }
 
 function requireString(value: unknown, path: string): string {
@@ -698,8 +746,11 @@ function requireResearch(value: unknown): DebateResearch[] {
 function requireSimpleMetric(value: unknown, path: string): DebateSimpleMetric {
   if (!isObject(value)) throw new Error(`${path}が不正です`);
   const score = value.score;
-  if (typeof score !== "number" || !Number.isFinite(score) || score < 0 || score > 5) {
-    throw new Error(`${path}.scoreは0から5の数値で指定してください`);
+  if (
+    score !== null &&
+    (typeof score !== "number" || !Number.isFinite(score) || score < 0 || score > 5)
+  ) {
+    throw new Error(`${path}.scoreは0から5の数値、または評価不能を表すnullで指定してください`);
   }
   return { score, reason: requireLimitedString(value.reason, `${path}.reason`, 120) };
 }
@@ -722,12 +773,15 @@ function requireSimpleView(value: unknown): DebateSimpleView {
   if (!isObject(value)) throw new Error("simpleViewが不正です");
   const blueAdvantage = value.blueAdvantage;
   if (
-    typeof blueAdvantage !== "number" ||
-    !Number.isFinite(blueAdvantage) ||
-    blueAdvantage < 0 ||
-    blueAdvantage > 1
+    blueAdvantage !== null &&
+    (typeof blueAdvantage !== "number" ||
+      !Number.isFinite(blueAdvantage) ||
+      blueAdvantage < 0 ||
+      blueAdvantage > 1)
   ) {
-    throw new Error("simpleView.blueAdvantageは0から1の数値で指定してください");
+    throw new Error(
+      "simpleView.blueAdvantageは0から1の数値、または判定保留を表すnullで指定してください",
+    );
   }
   return {
     topic: requireString(value.topic, "simpleView.topic"),

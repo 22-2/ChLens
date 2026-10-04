@@ -1,11 +1,19 @@
-import { describe, expect, it } from "vite-plus/test";
+import { decode } from "@toon-format/toon";
+import { describe, expect, it, vi } from "vite-plus/test";
 
+import { readDebateInstructions } from "../../scripts/debate-instructions.ts";
+import { renderSimpleDebateHtml } from "../../scripts/debate-result.ts";
 import {
   buildDebateContext,
   formatDebateMarkdown,
   formatDebateText,
+  prepareDebateContext,
   validateDebateResult,
 } from "./debate.ts";
+import type { BridgeThreadResult, ThreadReadParams } from "./protocol.ts";
+import { encodeThreadForMcp } from "./thread-output.ts";
+
+const DEBATE_INSTRUCTIONS = readDebateInstructions();
 
 const THREAD = {
   thread: {
@@ -24,9 +32,13 @@ const THREAD = {
 
 describe("議論判定コンテキスト", () => {
   it("中心レスから返信元と返信先を辿る", () => {
-    const context = buildDebateContext(THREAD, {
-      responseNumbers: [2],
-    });
+    const context = buildDebateContext(
+      THREAD,
+      {
+        responseNumbers: [2],
+      },
+      DEBATE_INSTRUCTIONS,
+    );
 
     expect(context.scope).toEqual({ responseNumbers: [2], participantIds: [] });
     expect(context.responses.map((response) => response.num)).toEqual([1, 2, 3, 4, 5]);
@@ -35,12 +47,18 @@ describe("議論判定コンテキスト", () => {
     expect(context.omittedResponses).toBe(0);
     expect(context.toon).toContain("contextDepth: 8");
     expect(context.toon).toContain("debate");
+    const payload = decode(context.toon) as { debate: { instructions: string } };
+    expect(payload.debate.instructions).toBe(DEBATE_INSTRUCTIONS);
   });
 
   it("参加者IDを指定すると該当レスをすべて中心にする", () => {
-    const context = buildDebateContext(THREAD, {
-      participantIds: ["ID:BBB"],
-    });
+    const context = buildDebateContext(
+      THREAD,
+      {
+        participantIds: ["ID:BBB"],
+      },
+      DEBATE_INSTRUCTIONS,
+    );
 
     expect(context.scope).toEqual({ responseNumbers: [2, 5], participantIds: ["BBB"] });
     expect(context.responses.map((response) => response.num)).toEqual([1, 2, 3, 4, 5]);
@@ -49,6 +67,106 @@ describe("議論判定コンテキスト", () => {
         .filter((response) => response.role === "target")
         .map((response) => response.num),
     ).toEqual([2, 5]);
+  });
+});
+
+// 変更理由: 返信が500件の境界をまたぐ実ログ形式を使い、先頭ページだけで判定する回帰を防ぐ。
+const LARGE_THREAD = {
+  title: "後半の議論テスト",
+  url: "https://example.com/test/read.cgi/board/2/",
+  res: Array.from({ length: 1002 }, (_, index) => {
+    const num = index + 1;
+    const messages: Record<number, string> = {
+      499: "境界前の発言",
+      700: ">>499 中心の主張",
+      701: ">>700 反論",
+      1001: ">>701 後続の主張",
+      1002: ">>1001 返答",
+    };
+    return {
+      num,
+      name: "名無しさん",
+      mail: "",
+      date: "10:00",
+      id: num === 700 || num === 1001 ? "AAA" : "BBB",
+      message: messages[num] ?? "無関係な発言",
+    };
+  }),
+};
+
+function createThreadReader() {
+  return vi.fn(async (params: ThreadReadParams): Promise<BridgeThreadResult> => ({
+    kind: "thread",
+    title: LARGE_THREAD.title,
+    url: LARGE_THREAD.url,
+    source: params.mode ?? "auto",
+    ...encodeThreadForMcp(LARGE_THREAD, params, params.mode ?? "auto"),
+  }));
+}
+
+describe("議論用ログのページ取得", () => {
+  it("後半の中心レスと全ページにまたがる返信を取得し、続きのURLとキャッシュを固定する", async () => {
+    const readThread = createThreadReader();
+    const context = await prepareDebateContext(
+      { responseNumbers: [700], mode: "refresh" },
+      readThread,
+      DEBATE_INSTRUCTIONS,
+    );
+
+    expect(context.responses.map((response) => response.num)).toEqual([499, 700, 701, 1001, 1002]);
+    expect(readThread.mock.calls.map(([params]) => params)).toEqual([
+      { url: undefined, mode: "refresh" },
+      { url: LARGE_THREAD.url, mode: "cache", start: 501 },
+      { url: LARGE_THREAD.url, mode: "cache", start: 1001 },
+    ]);
+  });
+
+  it("同じIDの後半の発言も中心レスに含める", async () => {
+    const context = await prepareDebateContext(
+      { participantIds: ["AAA"] },
+      createThreadReader(),
+      DEBATE_INSTRUCTIONS,
+    );
+    expect(context.scope.responseNumbers).toEqual([700, 1001]);
+  });
+
+  it("先頭ページを繰り返す応答では部分ログを判定せずエラーにする", async () => {
+    const firstPage = await createThreadReader()({});
+    const readThread = vi.fn(async (_params: ThreadReadParams) => firstPage);
+    await expect(
+      prepareDebateContext({ responseNumbers: [499] }, readThread, DEBATE_INSTRUCTIONS),
+    ).rejects.toThrow("議論用ログの続き");
+    expect(readThread).toHaveBeenCalledTimes(2);
+  });
+
+  it("追加ページの取得エラーを呼び出し元に伝える", async () => {
+    const firstPage = await createThreadReader()({});
+    const readThread = vi
+      .fn<(params: ThreadReadParams) => Promise<BridgeThreadResult>>()
+      .mockResolvedValueOnce(firstPage)
+      .mockRejectedValueOnce(new Error("キャッシュを取得できません"));
+    await expect(
+      prepareDebateContext({ responseNumbers: [499] }, readThread, DEBATE_INSTRUCTIONS),
+    ).rejects.toThrow("キャッシュを取得できません");
+  });
+
+  it("追加ページのレス数が変わった場合は異なる時点のログを混ぜない", async () => {
+    const firstPage = await createThreadReader()({});
+    const changedThread = { ...LARGE_THREAD, res: LARGE_THREAD.res.slice(0, -1) };
+    const secondPage: BridgeThreadResult = {
+      kind: "thread",
+      title: LARGE_THREAD.title,
+      url: LARGE_THREAD.url,
+      source: "cache",
+      ...encodeThreadForMcp(changedThread, { start: 501 }, "cache"),
+    };
+    const readThread = vi
+      .fn<(params: ThreadReadParams) => Promise<BridgeThreadResult>>()
+      .mockResolvedValueOnce(firstPage)
+      .mockResolvedValueOnce(secondPage);
+    await expect(
+      prepareDebateContext({ responseNumbers: [700] }, readThread, DEBATE_INSTRUCTIONS),
+    ).rejects.toThrow("レス数が変わりました");
   });
 });
 
@@ -122,4 +240,78 @@ describe("議論判定結果", () => {
   it("必須フィールドがない結果を拒否する", () => {
     expect(() => validateDebateResult({ ...RESULT, conclusion: "" })).toThrow("conclusion");
   });
+
+  it("評価不能と判定保留のnullを維持して検証する", () => {
+    const metric = { score: null, reason: "評価材料不足のため評価不能。" };
+    const result = validateDebateResult({
+      ...RESULT,
+      simpleView: {
+        ...RESULT.simpleView,
+        blueAdvantage: null,
+        verdictReason: "判定保留。後続の根拠が不足している。",
+        blue: {
+          ...RESULT.simpleView.blue,
+          metrics: { logic: metric, reading: metric, evidence: metric },
+        },
+        red: {
+          ...RESULT.simpleView.red,
+          metrics: { logic: metric, reading: metric, evidence: metric },
+        },
+      },
+    });
+    expect(result.simpleView.blueAdvantage).toBeNull();
+    expect(result.simpleView.blue.metrics.logic.score).toBeNull();
+    const document = new DOMParser().parseFromString(renderSimpleDebateHtml(result), "text/html");
+    expect(document.querySelector(".pending-verdict")?.textContent).toContain("判定保留");
+    expect(document.querySelector(".gauge")).toBeNull();
+    expect(document.querySelector(".rates")).toBeNull();
+    expect(document.querySelectorAll(".dot-meter")).toHaveLength(0);
+    expect([...document.querySelectorAll(".score-number")].map((node) => node.textContent)).toEqual(
+      Array(6).fill("評価不能"),
+    );
+  });
+
+  it("材料に基づく互角と中間点は従来どおり数値で表示する", () => {
+    const result = validateDebateResult({
+      ...RESULT,
+      simpleView: { ...RESULT.simpleView, blueAdvantage: 0.5 },
+    });
+    result.simpleView.blue.metrics.logic.score = 2.5;
+    const document = new DOMParser().parseFromString(renderSimpleDebateHtml(result), "text/html");
+    expect(document.querySelector(".pending-verdict")).toBeNull();
+    expect(document.querySelector(".blue-rate")?.textContent).toBe("50%");
+    expect(document.querySelector(".gauge-blue")?.getAttribute("style")).toBe("width:50%");
+    expect(document.querySelectorAll(".dot-meter")).toHaveLength(6);
+    expect(document.querySelector(".score-number")?.textContent).toBe("2.5/5.0");
+  });
+
+  it.each([undefined, -1, 6, Number.NaN, "2.5"])(
+    "null以外の不正な評価値（%s）を拒否する",
+    (score) => {
+      expect(() =>
+        validateDebateResult({
+          ...RESULT,
+          simpleView: {
+            ...RESULT.simpleView,
+            blue: {
+              ...RESULT.simpleView.blue,
+              metrics: {
+                ...RESULT.simpleView.blue.metrics,
+                logic: { score, reason: "評価理由。" },
+              },
+            },
+          },
+        }),
+      ).toThrow("score");
+    },
+  );
+
+  it.each([undefined, -0.1, 1.1, Number.NaN, "0.5"])(
+    "null以外の不正な優勢度（%s）を拒否する",
+    (blueAdvantage) => {
+      expect(() =>
+        validateDebateResult({ ...RESULT, simpleView: { ...RESULT.simpleView, blueAdvantage } }),
+      ).toThrow("blueAdvantage");
+    },
+  );
 });
