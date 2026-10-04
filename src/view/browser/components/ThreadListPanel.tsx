@@ -1,4 +1,4 @@
-import { Ban, Check, RefreshCw, Search } from "lucide-react";
+import { Check, RotateCw, Search } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { container } from "src/service-container/index";
 import type { IReadState, IThread } from "src/service-container/interfaces";
@@ -606,14 +606,6 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
           {descriptor.boardTitle}
         </span>
         <div className="thread-list-panel__toolbar-actions">
-          <span
-            className="thread-list-panel__ng-count"
-            title={`NG ${ngCount}件、強調 ${highlightCount}件`}
-            aria-label={`NG ${ngCount}件、強調 ${highlightCount}件`}
-          >
-            <Ban size={14} />
-            <span>{ngCount}</span>
-          </span>
           <button
             type="button"
             className={`thread-list-panel__toolbar-btn${isSearchOpen ? " thread-list-panel__toolbar-btn--active" : ""}`}
@@ -624,9 +616,10 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
           >
             <Search size={14} />
           </button>
+          {/* 変更理由: メイン側の更新操作とアイコン・寸法・状態表示を揃え、一覧間の見た目の差をなくす。 */}
           <button
             type="button"
-            className={`thread-list-panel__toolbar-btn${threadListAutoRefreshEnabled ? " thread-list-panel__toolbar-btn--active" : ""}`}
+            className={`thread-list-panel__toolbar-btn nav-bar__menu-action${threadListAutoRefreshEnabled ? " nav-bar__menu-action--active" : ""}`}
             title={`一覧を更新（左クリック: 今すぐ更新、右クリック: 自動更新設定${threadListAutoRefreshEnabled ? `・現在 ${threadListAutoRefreshIntervalSec}秒` : ""}）`}
             aria-label="スレ一覧を更新"
             onClick={() => void fetchThreads()}
@@ -635,7 +628,7 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
               setRefreshMenuPosition({ x: event.clientX, y: event.clientY });
             }}
           >
-            <RefreshCw size={14} className={loading ? "icon--spinning" : undefined} />
+            <RotateCw size={17} className={loading ? "icon--spinning" : undefined} />
           </button>
         </div>
       </div>

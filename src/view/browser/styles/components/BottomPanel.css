@@ -146,33 +146,31 @@
   gap: var(--sys-space-1);
 }
 
-.thread-list-panel__toolbar-btn,
-.thread-list-panel__ng-count {
+.thread-list-panel__toolbar-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--sys-space-1);
-  min-width: 25px;
-  height: 25px;
-  padding: 0 var(--sys-space-2);
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
   border: none;
   border-radius: var(--sys-radius-md);
   background: transparent;
   color: var(--sys-color-text-muted);
   font-family: inherit;
-  font-size: var(--sys-font-size-xs);
-  font-variant-numeric: tabular-nums;
   cursor: pointer;
+}
+
+.thread-list-panel .thread-list-panel__toolbar-btn {
+  /* ナビゲーションメニューの共通ボタン幅に揃えつつ、ツールバー内で伸長させない。 */
+  flex: 0 0 30px;
 }
 
 .thread-list-panel__toolbar-btn:hover,
 .thread-list-panel__toolbar-btn--active {
   background: var(--sys-color-status-hover-overlay);
   color: var(--sys-color-text);
-}
-
-.thread-list-panel__ng-count {
-  cursor: default;
 }
 
 .thread-list-panel__search-bar {
