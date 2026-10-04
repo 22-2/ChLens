@@ -1,4 +1,4 @@
-import { AlertTriangle, MessageCircle } from "lucide-react";
+import { AlertTriangle, MessagesCircle } from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { isTauriRuntime } from "src/app/platform/runtime";
 import { useCommentOverlay } from "src/features/comment-overlay/application/use-comment-overlay";
@@ -128,6 +128,7 @@ export const CommentOverlayStatusItem: React.FC<CommentOverlayStatusItemProps> =
 
   return (
     <>
+      {/* 変更理由: 左側の情報項目の末尾へ置き、アイコンだけで機能が伝わらない状態を避ける。 */}
       <StatusBarItem
         id="comment-overlay-status"
         alignment="left"
@@ -144,11 +145,13 @@ export const CommentOverlayStatusItem: React.FC<CommentOverlayStatusItemProps> =
           title={statusLabel}
           aria-label={statusLabel}
         >
+          {/* 変更理由: 通常の単一メッセージと区別し、複数レスの実況機能を示す。 */}
           {errorLabel ? (
             <AlertTriangle size={13} aria-hidden="true" />
           ) : (
-            <MessageCircle size={13} aria-hidden="true" />
+            <MessagesCircle size={13} aria-hidden="true" />
           )}
+          <span className="status-bar__btn-label">実況</span>
         </button>
       </StatusBarItem>
 
