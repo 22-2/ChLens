@@ -15,7 +15,9 @@ import {
   type ThreadSearchCandidate,
 } from "src/view/browser/utils/next-thread-search";
 
-const NEXT_THREAD_SEARCH_RETRY_MS = 3_000;
+const NEXT_THREAD_SEARCH_FAST_RETRY_MS = 3_000;
+const NEXT_THREAD_SEARCH_FAST_DURATION_MS = 30_000;
+const NEXT_THREAD_SEARCH_RETRY_MS = 10_000;
 const AUTO_NEXT_THREAD_CONFIRMATION_MS = 5_000;
 const MAINSTREAM_WATCH_GRACE_PERIOD_MS = 15_000;
 const MAINSTREAM_WATCH_DURATION_MS = 60_000;
@@ -78,10 +80,18 @@ interface MainstreamSnapshot {
 
 interface NextThreadSearchSession {
   threadUrl: string;
+  startedAt: number;
   deadline: number;
   nextRequestAt: number;
   phase: "searching" | "found" | "exhausted";
   request: ReturnType<typeof container.board.getThreads> | null;
+}
+
+function getNextThreadSearchRetryMs(session: NextThreadSearchSession): number {
+  // 次スレが立つ直後は見つけやすくするため細かく確認し、その後は板一覧への負荷を抑える。
+  return Date.now() - session.startedAt < NEXT_THREAD_SEARCH_FAST_DURATION_MS
+    ? NEXT_THREAD_SEARCH_FAST_RETRY_MS
+    : NEXT_THREAD_SEARCH_RETRY_MS;
 }
 
 export function useAutoNextThread({
@@ -338,6 +348,7 @@ export function useAutoNextThread({
         : Number(DEFAULT_CONFIG.next_thread_search_duration);
     const session = searchSessionRef.current ?? {
       threadUrl,
+      startedAt: Date.now(),
       deadline: Date.now() + duration * 1000,
       nextRequestAt: 0,
       phase: "searching" as const,
@@ -410,8 +421,7 @@ export function useAutoNextThread({
         return;
       }
 
-      // 1000到達直後はまだ次スレが立っていないことが多いため、
-      // 設定した期限まで3秒ごとに確認し、候補未作成のままsubjectを取得し続けることを防ぐ。
+      // 1000到達直後は3秒間隔で見つけやすくし、30秒後は10秒間隔にして期限までの取得負荷を抑える。
       while (!cancelled && session.phase === "searching") {
         if (Date.now() >= session.deadline) {
           finishSearch();
@@ -422,14 +432,14 @@ export function useAutoNextThread({
           continue;
         }
         try {
-          // 開始連打で待機中のリクエストを重ねず、結果が返った後も3秒の間隔を守る。
-          session.nextRequestAt = Date.now() + NEXT_THREAD_SEARCH_RETRY_MS;
+          // 開始連打で待機中のリクエストを重ねず、初期・通常それぞれの間隔を守る。
+          session.nextRequestAt = Date.now() + getNextThreadSearchRetryMs(session);
           const request = session.request ?? container.board.getThreads(boardUrl);
           session.request = request;
           const result = await request.finally(() => {
             if (session.request === request) {
               session.request = null;
-              session.nextRequestAt = Date.now() + NEXT_THREAD_SEARCH_RETRY_MS;
+              session.nextRequestAt = Date.now() + getNextThreadSearchRetryMs(session);
             }
           });
           // 取得中にタブが切り替わったり探索条件が無効になった場合は、
@@ -512,7 +522,7 @@ export function useAutoNextThread({
         if (cancelled || session.phase !== "searching") {
           return;
         }
-        await delay(Math.min(NEXT_THREAD_SEARCH_RETRY_MS, session.deadline - Date.now()));
+        await delay(Math.min(session.nextRequestAt - Date.now(), session.deadline - Date.now()));
       }
     };
 

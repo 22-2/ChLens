@@ -404,7 +404,7 @@ describe("useAutoNextThread", () => {
     { duration: 180, responseCount: 600 },
     { duration: 180, responseCount: 1000 },
   ])(
-    "$responseCountレスのdat落ち後も3秒ごとに探索し、$duration秒で終了する",
+    "$responseCountレスのdat落ち後は最初の30秒を3秒ごと、その後は10秒ごとに探索し、$duration秒で終了する",
     async ({ duration, responseCount }) => {
       const onFollowThread = vi.fn();
       const onSearchExhausted = vi.fn();
@@ -422,7 +422,8 @@ describe("useAutoNextThread", () => {
       await flushPromises();
       await act(async () => vi.advanceTimersByTimeAsync(duration * 1000 - 1));
       expect(screen.getByTestId("status")).toHaveTextContent("searching");
-      expect(boardGetThreads).toHaveBeenCalledTimes(duration / 3);
+      const expectedRequestCount = 11 + Math.floor((duration - 31) / 10);
+      expect(boardGetThreads).toHaveBeenCalledTimes(expectedRequestCount);
       expect(onSearchExhausted).not.toHaveBeenCalled();
 
       await act(async () => vi.advanceTimersByTimeAsync(1));
@@ -441,7 +442,7 @@ describe("useAutoNextThread", () => {
         );
       }
       await act(async () => vi.advanceTimersByTimeAsync(60_000));
-      expect(boardGetThreads).toHaveBeenCalledTimes(duration / 3);
+      expect(boardGetThreads).toHaveBeenCalledTimes(expectedRequestCount);
       expect(onSearchExhausted).toHaveBeenCalledOnce();
       expect(onFollowThread).not.toHaveBeenCalled();
     },
